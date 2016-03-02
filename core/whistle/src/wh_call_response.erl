@@ -52,7 +52,7 @@ send(Call, Code, Cause, Media) ->
 send(_, _, 'undefined', 'undefined', 'undefined') ->
     {'error', 'no_response'};
 send(CallId, CtrlQ, 'undefined', 'undefined', Media) ->
-    NoopId = couch_mgr:get_uuid(),
+    NoopId = kz_datamgr:get_uuid(),
     Commands = [wh_json:from_list([{<<"Application-Name">>, <<"noop">>}
                                    ,{<<"Msg-ID">>, NoopId}
                                    ,{<<"Call-ID">>, CallId}
@@ -70,7 +70,7 @@ send(CallId, CtrlQ, 'undefined', 'undefined', Media) ->
     do_send(CallId, CtrlQ, Commands),
     {'ok', NoopId};
 send(CallId, CtrlQ, Code, Cause, 'undefined') ->
-    NoopId = couch_mgr:get_uuid(),
+    NoopId = kz_datamgr:get_uuid(),
     Commands = [wh_json:from_list([{<<"Application-Name">>, <<"noop">>}
                                    ,{<<"Msg-ID">>, NoopId}
                                    ,{<<"Call-ID">>, CallId}
@@ -85,7 +85,7 @@ send(CallId, CtrlQ, Code, Cause, 'undefined') ->
     do_send(CallId, CtrlQ, Commands),
     {'ok', NoopId};
 send(CallId, CtrlQ, Code, Cause, Media) ->
-    NoopId = couch_mgr:get_uuid(),
+    NoopId = kz_datamgr:get_uuid(),
     Commands = [wh_json:from_list([{<<"Application-Name">>, <<"noop">>}
                                    ,{<<"Msg-ID">>, NoopId}
                                    ,{<<"Call-ID">>, CallId}

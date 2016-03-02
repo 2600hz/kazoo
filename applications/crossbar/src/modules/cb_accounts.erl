@@ -294,7 +294,7 @@ patch(Context, AccountId) ->
 
 put(Context) ->
     JObj = cb_context:doc(Context),
-    AccountId = wh_doc:id(JObj, couch_mgr:get_uuid()),
+    AccountId = wh_doc:id(JObj, kz_datamgr:get_uuid()),
     try create_new_account_db(prepare_context(AccountId, Context)) of
         C ->
             Tree = kz_account:tree(JObj),
@@ -973,7 +973,7 @@ fix_start_key([StartKey|_T]) -> StartKey.
 load_account_tree(Context) ->
     Tree = get_authorized_account_tree(Context),
     Options = [{'keys', Tree}, 'include_docs'],
-    case couch_mgr:all_docs(?WH_ACCOUNTS_DB, Options) of
+    case kz_datamgr:all_docs(?WH_ACCOUNTS_DB, Options) of
         {'error', R} -> crossbar_doc:handle_couch_mgr_errors(R, ?WH_ACCOUNTS_DB, Context);
         {'ok', JObjs} -> format_account_tree_results(Context, JObjs)
     end.
@@ -1119,7 +1119,7 @@ add_pvt_enabled(Context) ->
         [ParentId | _] ->
             ParentDb = wh_util:format_account_id(ParentId, 'encoded'),
             case (not wh_util:is_empty(ParentId))
-                andalso couch_mgr:open_doc(ParentDb, ParentId)
+                andalso kz_datamgr:open_doc(ParentDb, ParentId)
             of
                 {'ok', Parent} ->
                     case kz_account:is_enabled(Parent) of
@@ -1169,7 +1169,7 @@ create_new_tree('undefined') ->
 create_new_tree(Parent) when is_binary(Parent) ->
     ParentId = wh_util:format_account_id(Parent, 'raw'),
     ParentDb = wh_util:format_account_id(Parent, 'encoded'),
-    case couch_mgr:open_doc(ParentDb, ParentId) of
+    case kz_datamgr:open_doc(ParentDb, ParentId) of
         {'error', _} -> create_new_tree('undefined');
         {'ok', JObj} ->
             kz_account:tree(JObj) ++ [ParentId]
@@ -1230,7 +1230,7 @@ create_new_account_db(Context) ->
     AccountDb = cb_context:account_db(Context),
     _ = ensure_accounts_db_exists(),
     case whapps_util:is_account_db(AccountDb)
-        andalso couch_mgr:db_create(AccountDb)
+        andalso kz_datamgr:db_create(AccountDb)
     of
         'false' ->
             lager:debug("failed to create database: ~s", [AccountDb]),
@@ -1285,7 +1285,7 @@ maybe_set_notification_preference(Context) ->
 set_notification_preference(Context, Preference) ->
     AccountDb = cb_context:account_db(Context),
     AccountDefinition = kz_account:set_notification_preference(cb_context:doc(Context), Preference),
-    case couch_mgr:save_doc(AccountDb, AccountDefinition) of
+    case kz_datamgr:save_doc(AccountDb, AccountDefinition) of
         {'error', _R} ->
             lager:error("failed to update account definition: ~p", [_R]);
         {'ok', AccountDef} ->
@@ -1305,7 +1305,7 @@ create_first_transaction(AccountId) ->
 
 -spec ensure_accounts_db_exists() -> 'ok'.
 ensure_accounts_db_exists() ->
-    case couch_mgr:db_exists(?WH_ACCOUNTS_DB) of
+    case kz_datamgr:db_exists(?WH_ACCOUNTS_DB) of
         'true' -> 'ok';
         'false' ->
             _ = whapps_maintenance:refresh(?WH_ACCOUNTS_DB),
@@ -1328,7 +1328,7 @@ create_account_definition(Context) ->
 
     JObj = maybe_set_trial_expires(wh_json:set_values(Props, cb_context:doc(Context))),
 
-    case couch_mgr:save_doc(AccountDb, JObj) of
+    case kz_datamgr:save_doc(AccountDb, JObj) of
         {'ok', AccountDef}->
             _ = replicate_account_definition(AccountDef),
             cb_context:setters(Context
@@ -1372,7 +1372,7 @@ ensure_views(_Context, [_Id|_], 0) ->
     lager:debug("failed to find design doc ~s in ~s", [_Id, cb_context:account_db(_Context)]);
 ensure_views(Context, [Id|Ids], Retries) ->
     AccountDb = cb_context:account_db(Context),
-    case couch_mgr:open_doc(AccountDb, Id) of
+    case kz_datamgr:open_doc(AccountDb, Id) of
         {'ok', _} -> ensure_views(Context, Ids, 3);
         {'error', 'not_found'} ->
             timer:sleep(500),
@@ -1393,11 +1393,11 @@ ensure_views(Context, [Id|Ids], Retries) ->
                                           {'error', any()}.
 replicate_account_definition(JObj) ->
     AccountId = wh_doc:id(JObj),
-    case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
+    case kz_datamgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
         {'ok', Rev} ->
-            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:set_revision(JObj, Rev));
+            kz_datamgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:set_revision(JObj, Rev));
         _Else ->
-            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:delete_revision(JObj))
+            kz_datamgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:delete_revision(JObj))
     end.
 
 %%--------------------------------------------------------------------
@@ -1410,7 +1410,7 @@ replicate_account_definition(JObj) ->
 -spec is_unique_realm(api_binary(), ne_binary()) -> boolean().
 is_unique_realm(AccountId, Realm) ->
     ViewOptions = [{'key', wh_util:to_lower_binary(Realm)}],
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_REALM, ViewOptions) of
+    case kz_datamgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_REALM, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [JObj]} -> wh_doc:id(JObj) =:= AccountId;
         {'error', 'not_found'} -> 'true';
@@ -1434,7 +1434,7 @@ maybe_is_unique_account_name(AccountId, Name) ->
 is_unique_account_name(AccountId, Name) ->
     AccountName = wh_util:normalize_account_name(Name),
     ViewOptions = [{'key', AccountName}],
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_NAME, ViewOptions) of
+    case kz_datamgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_NAME, ViewOptions) of
         {'ok', []} -> 'true';
         {'error', 'not_found'} -> 'true';
         {'ok', [JObj|_]} -> wh_doc:id(JObj) =:= AccountId;
@@ -1521,20 +1521,20 @@ delete_remove_sip_aggregates(Context) ->
     ViewOptions = ['include_docs'
                    ,{'key', cb_context:account_id(Context)}
                   ],
-    _ = case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup_by_account">>, ViewOptions) of
+    _ = case kz_datamgr:get_results(?WH_SIP_DB, <<"credentials/lookup_by_account">>, ViewOptions) of
             {'error', _R} ->
                 lager:debug("unable to clean sip_auth: ~p", [_R]);
             {'ok', JObjs} ->
                 Docs = [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs],
-                couch_mgr:del_docs(?WH_SIP_DB, Docs)
+                kz_datamgr:del_docs(?WH_SIP_DB, Docs)
         end,
     delete_remove_db(Context).
 
 -spec delete_remove_db(cb_context:context()) -> cb_context:context() | boolean().
 delete_remove_db(Context) ->
-    Removed = case couch_mgr:open_doc(cb_context:account_db(Context), cb_context:account_id(Context)) of
+    Removed = case kz_datamgr:open_doc(cb_context:account_db(Context), cb_context:account_id(Context)) of
                   {'ok', _} ->
-                      couch_mgr:db_delete(cb_context:account_db(Context)),
+                      kz_datamgr:db_delete(cb_context:account_db(Context)),
                       delete_mod_dbs(Context);
                   {'error', 'not_found'} -> 'true';
                   {'error', _R} ->
@@ -1559,7 +1559,7 @@ delete_mod_dbs(Context) ->
 
 delete_mod_dbs(AccountId, Year, Month) ->
     Db = wh_util:format_account_mod_id(AccountId, Year, Month),
-    case couch_mgr:db_delete(Db) of
+    case kz_datamgr:db_delete(Db) of
         'true' ->
             lager:debug("removed account mod: ~s", [Db]),
             {PrevYear, PrevMonth} = kazoo_modb_util:prev_year_month(Year, Month),
@@ -1571,7 +1571,7 @@ delete_mod_dbs(AccountId, Year, Month) ->
 
 -spec delete_remove_from_accounts(cb_context:context()) -> cb_context:context().
 delete_remove_from_accounts(Context) ->
-    case couch_mgr:open_doc(?WH_ACCOUNTS_DB, cb_context:account_id(Context)) of
+    case kz_datamgr:open_doc(?WH_ACCOUNTS_DB, cb_context:account_id(Context)) of
         {'ok', JObj} ->
             _ = wh_util:spawn(fun provisioner_util:maybe_delete_account/1, [Context]),
             _ = wh_util:spawn(fun cb_mobile_manager:delete_account/1, [Context]),

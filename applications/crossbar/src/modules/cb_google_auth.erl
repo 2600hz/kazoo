@@ -25,7 +25,7 @@
 %%% API
 %%%===================================================================
 init() ->
-    couch_mgr:db_create(?KZ_TOKEN_DB),
+    kz_datamgr:db_create(?KZ_TOKEN_DB),
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.google_auth">>, ?MODULE, 'allowed_methods'),
@@ -161,7 +161,7 @@ maybe_load_username(Account, Context) ->
     ViewOptions = [{'key', Username}
                    ,'include_docs'
                   ],
-    case couch_mgr:get_results(AccountDb, ?USERNAME_LIST, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, ?USERNAME_LIST, ViewOptions) of
         {'ok', [User]} ->
             case wh_json:is_false([<<"doc">>, <<"enabled">>], JObj) of
                 'false' ->
@@ -239,7 +239,7 @@ create_auth_token(Context) ->
                     ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
                     ,{<<"method">>, wh_util:to_binary(?MODULE)}
                     ],
-            case couch_mgr:save_doc(?KZ_TOKEN_DB, wh_json:from_list(Token)) of
+            case kz_datamgr:save_doc(?KZ_TOKEN_DB, wh_json:from_list(Token)) of
                 {'ok', Doc} ->
                     AuthToken = wh_doc:id(Doc),
                     lager:debug("created new local auth token ~s", [AuthToken]),

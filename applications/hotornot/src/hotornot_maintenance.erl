@@ -63,7 +63,7 @@ rates_between(Pre, Post) ->
     ViewOpts = [{'startkey', wh_util:to_binary(Pre)}
                 ,{'endkey', wh_util:to_binary(Post)}
                ],
-    case couch_mgr:get_results(?WH_RATES_DB, <<"rates/lookup">>, ViewOpts) of
+    case kz_datamgr:get_results(?WH_RATES_DB, <<"rates/lookup">>, ViewOpts) of
         {'ok', []} -> io:format("rate lookup had no results~n");
         {'error', _E} -> io:format("rate lookup error: ~p~n", [_E]);
         {'ok', Rates} ->

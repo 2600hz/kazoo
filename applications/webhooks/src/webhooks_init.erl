@@ -39,7 +39,7 @@ init_dbs() ->
 -spec maybe_init_account(wh_json:object(), wh_proplist()) -> 'ok' | 'false'.
 maybe_init_account(JObj, _Props) ->
     Database = wapi_conf:get_database(JObj),
-    couch_util:db_classification(Database) =:= 'account'
+    kz_datamgr:db_classification(Database) =:= 'account'
         andalso do_init(Database).
 
 -spec init_master_account_db() -> 'ok'.
@@ -54,7 +54,7 @@ init_master_account_db() ->
     end.
 
 init_master_account_db(MasterAccountDb) ->
-    _ = couch_mgr:revise_doc_from_file(MasterAccountDb
+    _ = kz_datamgr:revise_doc_from_file(MasterAccountDb
                                       ,'webhooks'
                                       ,<<"webhooks.json">>
                                       ),

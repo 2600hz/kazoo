@@ -250,7 +250,7 @@ get_default_caller_id(Context, 'undefined') ->
 get_default_caller_id(Context, OwnerId) ->
     AccountDb = cb_context:account_db(Context),
     {'ok', JObj1} = kz_account:fetch(AccountDb),
-    {'ok', JObj2} = couch_mgr:open_cache_doc(AccountDb, OwnerId),
+    {'ok', JObj2} = kz_datamgr:open_cache_doc(AccountDb, OwnerId),
     wh_json:get_first_defined(
       [?CALLER_ID_INTERNAL, ?CALLER_ID_EXTERNAL]
       ,wh_json:merge_recursive(JObj1, JObj2)

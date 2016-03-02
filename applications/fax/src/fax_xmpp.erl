@@ -68,7 +68,7 @@ handle_call(_Request, _From, State) ->
   {'reply', 'ok', State}.
 
 handle_cast('start', #state{faxbox_id=FaxBoxId} = State) ->
-    case couch_mgr:open_doc(?WH_FAXES_DB, FaxBoxId) of
+    case kz_datamgr:open_doc(?WH_FAXES_DB, FaxBoxId) of
         {'ok', JObj} ->
             {'noreply', handle_start(JObj, State), ?POLLING_INTERVAL};
         E ->

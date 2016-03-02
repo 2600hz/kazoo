@@ -25,7 +25,7 @@ get_gateways() ->
 -spec get_local_gateways(wh_json:object()) -> wh_json:object().
 get_local_gateways(Gateways) ->
     ViewOptions = [],
-    case couch_mgr:get_results(?WH_SIP_DB, <<"resources/listing_uac_gateways">>, ViewOptions) of
+    case kz_datamgr:get_results(?WH_SIP_DB, <<"resources/listing_uac_gateways">>, ViewOptions) of
         {'error', _R} ->
             lager:debug("unable to fetch resource registrations: ~p", [_R]),
             Gateways;
@@ -36,7 +36,7 @@ get_local_gateways(Gateways) ->
 -spec get_offnet_gateways(wh_json:object()) -> wh_json:object().
 get_offnet_gateways(Gateways) ->
     ViewOptions = [],
-    case couch_mgr:get_results(?WH_OFFNET_DB, <<"resources/listing_uac_gateways">>, ViewOptions) of
+    case kz_datamgr:get_results(?WH_OFFNET_DB, <<"resources/listing_uac_gateways">>, ViewOptions) of
         {'error', _R} ->
             lager:debug("unable to fetch resource registrations: ~p", [_R]),
             Gateways;

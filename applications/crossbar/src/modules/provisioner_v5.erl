@@ -223,7 +223,7 @@ set_owner(JObj) ->
 get_owner('undefined', _) -> {'error', 'undefined'};
 get_owner(OwnerId, AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    couch_mgr:open_cache_doc(AccountDb, OwnerId).
+    kz_datamgr:open_cache_doc(AccountDb, OwnerId).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -408,7 +408,7 @@ get_feature_key_type(Type, Brand, Family) ->
                                             {'error', any()}.
 get_user(AccountId, UserId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    couch_mgr:open_cache_doc(AccountDb, UserId).
+    kz_datamgr:open_cache_doc(AccountDb, UserId).
 
 -spec maybe_add_feature_key(ne_binary(), api_object(), wh_json:object()) -> wh_json:object().
 maybe_add_feature_key(_Key, 'undefined', JObj) -> JObj;
@@ -543,7 +543,7 @@ create_alert(JObj, AccountId, AuthToken) ->
     ],
 
     OwnerId =
-        case couch_mgr:open_cache_doc(?KZ_TOKEN_DB, AuthToken) of
+        case kz_datamgr:open_cache_doc(?KZ_TOKEN_DB, AuthToken) of
             {'error', _R} -> 'undefined';
             {'ok', JObj} ->
                 wh_json:get_value(<<"owner_id">>, JObj)

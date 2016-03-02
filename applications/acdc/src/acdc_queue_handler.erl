@@ -91,7 +91,7 @@ handle_queue_change(AccountDb, AccountId, QueueId, ?DOC_EDITED) ->
     case acdc_queues_sup:find_queue_supervisor(AccountId, QueueId) of
         'undefined' -> acdc_queues_sup:new(AccountId, QueueId);
         QueueSup when is_pid(QueueSup) ->
-            {'ok', JObj} = couch_mgr:open_doc(AccountDb, QueueId),
+            {'ok', JObj} = kz_datamgr:open_doc(AccountDb, QueueId),
             WorkersSup = acdc_queue_sup:workers_sup(QueueSup),
             _ = [acdc_queue_fsm:refresh(acdc_queue_worker_sup:fsm(WorkerSup), JObj)
                  || WorkerSup <- acdc_queue_workers_sup:workers(WorkersSup)

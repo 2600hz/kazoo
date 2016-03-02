@@ -9,8 +9,6 @@
 %%%-------------------------------------------------------------------
 -module(wh_doc).
 
--include("wh_couch.hrl").
-
 -include_lib("whistle/include/wh_types.hrl"). % get the whistle types
 
 -export([update_pvt_parameters/2, update_pvt_parameters/3

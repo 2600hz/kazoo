@@ -9,7 +9,7 @@
                  , public_key
 
                  , whistle
-                 , whistle_couch
+                 , kazoo_data
                  , kazoo_web
 
                  , lager

@@ -46,15 +46,10 @@
 
 -define(SERVER, ?MODULE).
 
--type couch_connection() :: wh_couch_connections:couch_connection().
--type couch_connections() :: wh_couch_connections:couch_connections().
-
 -type media() :: {api_binary(), ne_binary()}.
 
 -type store_url() :: 'false' |
                      {'true', 'local'} |
-                     {'true', 'third_party'} |
-                     {'true', atom()} |
                      {'true', 'other', ne_binary()}.
 
 -record(state, {url                        :: api_binary()
@@ -426,11 +421,10 @@ store_recording_meta(#state{call=Call
                  wh_json:from_list(
                    [{<<"name">>, MediaName}
                     ,{<<"description">>, <<"recording ", MediaName/binary>>}
-                    ,{<<"content_type">>, ext_to_mime(Ext)}
+                    ,{<<"content_type">>, kz_mime:from_extension(Ext)}
                     ,{<<"media_type">>, Ext}
                     ,{<<"media_source">>, <<"recorded">>}
                     ,{<<"source_type">>, wh_util:to_binary(?MODULE)}
-                    ,{<<"pvt_type">>, <<"private_media">>}
                     ,{<<"pvt_type">>, <<"call_recording">>}
                     ,{<<"from">>, whapps_call:from(Call)}
                     ,{<<"to">>, whapps_call:to(Call)}
@@ -442,22 +436,18 @@ store_recording_meta(#state{call=Call
                  ,Db
                 ),
     kazoo_modb:create(Db),
-    case couch_mgr:ensure_saved(Db, MediaDoc) of
+    case kz_datamgr:ensure_saved(Db, MediaDoc) of
         {'ok', JObj} -> wh_doc:revision(JObj);
         {'error', _}= Err -> Err
     end.
 
 -spec maybe_store_recording_meta(state()) -> ne_binary() | {'error', any()}.
 maybe_store_recording_meta(#state{doc_db=Db, doc_id=DocId}=State) ->
-    case couch_mgr:lookup_doc_rev(Db, DocId) of
+    case kz_datamgr:lookup_doc_rev(Db, DocId) of
         {'ok', Rev} -> Rev;
         _ -> store_recording_meta(State)
     end.
 
-
--spec ext_to_mime(ne_binary()) -> ne_binary().
-ext_to_mime(<<"wav">>) -> <<"audio/x-wav">>;
-ext_to_mime(_) -> <<"audio/mp3">>.
 
 -spec get_media_name(ne_binary(), api_binary()) -> ne_binary().
 get_media_name(CallId, Ext) ->
@@ -468,9 +458,17 @@ get_url(Data) ->
     wh_json:get_value(<<"url">>, Data).
 
 -spec store_url(state(), ne_binary()) -> ne_binary().
-store_url(#state{doc_db=Db, doc_id=MediaId, media={_,MediaName}, should_store={'true', Tag}}, Rev) ->
-    Url = wh_couch_connections:get_url(Tag),
-    <<Url/binary, Db/binary, "/", MediaId/binary, "/", MediaName/binary, "?rev=", Rev/binary>>.
+store_url(#state{doc_db=Db
+                 ,doc_id=MediaId
+                 ,media={_,MediaName}
+                 ,format=Ext
+                 ,should_store={'true', 'local'}
+                }, Rev) ->
+    Options = [{'revision', Rev}
+               ,{'content_type', kz_mime:from_extension(Ext)}
+               ,{'doc_type', <<"call_recording">>}
+              ],
+    kz_datamgr:attachment_url(Db, MediaId, MediaName, Options).
 
 -spec should_store_recording() -> store_url().
 -spec should_store_recording(api_binary()) -> store_url().
@@ -481,9 +479,7 @@ should_store_recording(Url) ->
     end.
 
 should_store_recording() ->
-    BCHost = whapps_config:get_ne_binary(?CONFIG_CAT, <<"third_party_bigcouch_host">>),
     case whapps_config:get_is_true(?CONFIG_CAT, <<"store_recordings">>, 'false') of
-        'true' when BCHost =/= 'undefined' -> {'true', 'third_party'};
         'true' -> {'true', 'local'};
         'false' -> 'false'
     end.
@@ -492,49 +488,26 @@ should_store_recording() ->
 save_recording(#state{media={_, MediaName}}, 'false') ->
     lager:info("not configured to store recording ~s", [MediaName]),
     gen_server:cast(self(), 'stop');
-save_recording(#state{call=Call, media=Media}=State, {'true', Tag}) ->
-    maybe_add_connection(Tag),
+save_recording(#state{call=Call, media=Media}=State, {'true', 'local'}) ->
     case maybe_store_recording_meta(State) of
         {'error', Err} ->
-            lager:warning("error storing metadata for ~p : ", [Tag, Err]),
+            lager:warning("error storing metadata : ~p", [Err]),
             gen_server:cast(self(), 'store_failed');
         Rev ->
             StoreUrl = store_url(State, Rev),
-            lager:info("store ~p url: ~s", [Tag, StoreUrl]),
-            store_recording(Media, StoreUrl, Call, Tag)
+            lager:info("store url: ~s", [StoreUrl]),
+            store_recording(Media, StoreUrl, Call, 'local')
     end;
 save_recording(#state{call=Call, media=Media}, {'true', 'other', Url}) ->
     lager:info("store remote url: ~s", [Url]),
     store_recording(Media, Url, Call, 'other').
-
--spec maybe_add_connection(atom()) -> 'ok'.
-maybe_add_connection('local') -> 'ok';
-maybe_add_connection(Tag) ->
-    Connections = wh_couch_connections:get_by_tag(Tag),
-    maybe_add_connection(Tag, Connections).
-
--spec maybe_add_connection(atom(), couch_connections()) -> 'ok'.
-maybe_add_connection(Tag, []) ->
-    Conn = couch_connection(Tag),
-    wh_couch_connections:add_unique(Conn, Tag),
-    wh_couch_connections:wait_for_connection(Tag, ?MILLISECONDS_IN_MINUTE),
-    couch_mgr:server_tag(Tag);
-maybe_add_connection(Tag, [_|_]) ->
-    couch_mgr:server_tag(Tag).
-
--spec couch_connection(atom()) -> couch_connection().
-couch_connection('third_party') ->
-  BCHost = whapps_config:get_ne_binary(?CONFIG_CAT, <<"third_party_bigcouch_host">>),
-  BCPort = whapps_config:get_integer(?CONFIG_CAT, <<"third_party_bigcouch_port">>, 5984),
-  wh_couch_connection:config(BCHost, BCPort);
-couch_connection(_Tag) -> wh_couch_connection:config().
 
 -spec store_recording({ne_binary(), ne_binary()}, ne_binary(), whapps_call:call(), 'local' | 'other') -> 'ok'.
 store_recording(Media, Url, Call, 'other') ->
     StoreUrl = append_path(Url, Media),
     lager:debug("appending filename to url: ~s", [StoreUrl]),
     store(Media, StoreUrl, Call);
-store_recording(Media, StoreUrl, Call, _Tag) ->
+store_recording(Media, StoreUrl, Call, 'local') ->
     store(Media, StoreUrl, Call).
 
 -spec append_path(ne_binary(), {ne_binary(), ne_binary()}) -> ne_binary().

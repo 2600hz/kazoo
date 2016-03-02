@@ -1,8 +1,8 @@
--module(whistle_couch_app).
+-module(kazoo_data_app).
 
 -behaviour(application).
 
--include_lib("whistle/include/wh_types.hrl").
+-include("kz_data.hrl").
 
 %% Application callbacks
 -export([start/2, stop/1]).
@@ -16,7 +16,7 @@
 %%--------------------------------------------------------------------
 -spec start(application:start_type(), any()) -> startapp_ret().
 start(_StartType, _StartArgs) ->
-    whistle_couch_sup:start_link().
+    kazoo_data_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public

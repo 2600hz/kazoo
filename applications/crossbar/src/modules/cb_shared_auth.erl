@@ -36,7 +36,7 @@
 %%% API
 %%%===================================================================
 init() ->
-    couch_mgr:db_create(?KZ_TOKEN_DB),
+    kz_datamgr:db_create(?KZ_TOKEN_DB),
     Url = whapps_config:get_string(<<"crossbar.shared_auth">>, <<"authoritative_crossbar">>),
     lager:debug("shared auth started up, using ~s as authoritative crossbar", [Url]),
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
@@ -164,7 +164,7 @@ validate_request(Context, ?HTTP_GET, JObj) ->
     case kz_account:fetch(AccountId) of
         {'ok', Account} ->
             Db = wh_util:format_account_id(AccountId, 'encoded'),
-            case couch_mgr:open_doc(Db, UserId) of
+            case kz_datamgr:open_doc(Db, UserId) of
                 {'ok', User} ->
                     RespData = wh_json:from_list([{<<"account">>, Account}
                                                   ,{<<"user">>, User}
@@ -209,7 +209,7 @@ create_local_token(Context) ->
                                ,{<<"method">>, wh_util:to_binary(?MODULE)}
                                ,{<<"shared_token">>, cb_context:auth_token(Context)}
                               ]),
-    case couch_mgr:save_doc(?KZ_TOKEN_DB, Token) of
+    case kz_datamgr:save_doc(?KZ_TOKEN_DB, Token) of
         {'ok', Doc} ->
             AuthToken = wh_doc:id(Doc),
             lager:debug("created new local auth token ~s", [AuthToken]),
@@ -279,7 +279,7 @@ import_missing_account(_AccountId, 'undefined') ->
 import_missing_account(AccountId, Account) ->
     %% check if the account database exists
     Db = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:db_exists(Db) of
+    case kz_datamgr:db_exists(Db) of
         %% if the account database exists make sure it has the account
         %% definition, because when couch is acting up it can skip this
         'true' ->
@@ -340,7 +340,7 @@ import_missing_user(_, _, 'undefined') ->
     'false';
 import_missing_user(AccountId, UserId, User) ->
     Db = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:lookup_doc_rev(Db, UserId) of
+    case kz_datamgr:lookup_doc_rev(Db, UserId) of
         {'ok', _} ->
             lager:debug("remote user ~s already exists locally in account ~s", [UserId, AccountId]),
             'true';

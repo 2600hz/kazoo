@@ -1,23 +1,34 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(wh_couch_connection_sup).
+-module(kazoo_data_sup).
 
 -behaviour(supervisor).
 
--include("wh_couch.hrl").
+-include("kz_data.hrl").
 
 -define(SERVER, ?MODULE).
 
--export([start_link/0]).
--export([add/1]).
--export([init/1]).
+-export([start_link/0
+         ,init/1
+        ]).
 
--define(CHILDREN, [?WORKER('wh_couch_connection')]).
+-define(ORIGIN_BINDINGS, [[]]).
+-define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}
+                      ,'new_node_flush'
+                      ,'channel_reconnect_flush'
+                     ]).
+
+-define(CHILDREN, [?WORKER('kazoo_data_init')
+                   ,?CACHE_ARGS(?KZ_DATA_CACHE, ?CACHE_PROPS)
+                   ,?SUPER('kz_dataconnection_sup')
+                   ,?WORKER('kz_dataconnections')
+                   ,?WORKER('kazoo_data_bootstrap')
+                  ]).
 
 %% ===================================================================
 %% API functions
@@ -30,9 +41,6 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
-
-add(Connection) ->
-    supervisor:start_child(?SERVER, [Connection]).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -49,9 +57,9 @@ add(Connection) ->
 %%--------------------------------------------------------------------
 -spec init(any()) -> sup_init_ret().
 init([]) ->
-    RestartStrategy = 'simple_one_for_one',
-    MaxRestarts = 0,
-    MaxSecondsBetweenRestarts = 1,
+    RestartStrategy = 'one_for_one',
+    MaxRestarts = 5,
+    MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 

@@ -255,7 +255,7 @@ cleanup(_SystemDb) -> 'ok'.
 -spec cleanup_orphaned_services_docs() -> 'ok'.
 -spec cleanup_orphaned_services_docs(wh_json:objects()) -> 'ok'.
 cleanup_orphaned_services_docs() ->
-    case couch_mgr:all_docs(?WH_SERVICES_DB) of
+    case kz_datamgr:all_docs(?WH_SERVICES_DB) of
         {'ok', Docs} ->
             cleanup_orphaned_services_docs(Docs);
         {'error', _E} ->
@@ -270,11 +270,11 @@ cleanup_orphaned_services_docs([View|Views]) ->
 -spec cleanup_orphaned_services_doc(wh_json:object() | ne_binary()) -> 'ok'.
 cleanup_orphaned_services_doc(<<"_design/", _/binary>>) -> 'ok';
 cleanup_orphaned_services_doc(<<_/binary>> = AccountId) ->
-    case couch_mgr:db_exists(wh_util:format_account_id(AccountId, 'encoded')) of
+    case kz_datamgr:db_exists(wh_util:format_account_id(AccountId, 'encoded')) of
         'true' -> 'ok';
         'false' ->
             lager:info("account ~s no longer exists but has a services doc", [AccountId]),
-            couch_mgr:del_doc(?WH_SERVICES_DB, AccountId),
+            kz_datamgr:del_doc(?WH_SERVICES_DB, AccountId),
             timer:sleep(5 * ?MILLISECONDS_IN_SECOND)
     end;
 cleanup_orphaned_services_doc(View) ->

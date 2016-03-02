@@ -1073,7 +1073,8 @@ finish_request(_Req, Context) ->
 -spec create_resp_content(cowboy_req:req(), cb_context:context()) ->
                                  {ne_binary() | iolist(), cowboy_req:req()}.
 create_resp_content(Req0, Context) ->
-    try wh_json:encode(create_resp_envelope(Context)) of
+    Resp = create_resp_envelope(Context),
+    try wh_json:encode(Resp) of
         JSON ->
             case cb_context:req_value(Context, <<"jsonp">>) of
                 'undefined' -> {JSON, Req0};
@@ -1085,10 +1086,10 @@ create_resp_content(Req0, Context) ->
             end
     catch
         'throw':{'json_encode', {'bad_term', _Term}} ->
-            lager:debug("json encoding failed on ~p", [_Term]),
+            lager:debug("json encoding failed on ~p : ~p", [_Term, Resp]),
             {<<"encoding response failed: bad term">>, Req0};
         _E:_R ->
-            lager:debug("failed to encode response: ~s: ~p", [_E, _R]),
+            lager:debug("failed to encode response: ~s: ~p : ~p", [_E, _R, Resp]),
             {<<"failure in request, contact support">>, Req0}
     end.
 

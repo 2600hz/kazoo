@@ -254,12 +254,12 @@ should_restrict_call(Call, Number) ->
 %%--------------------------------------------------------------------
 -spec get_list_entry(wh_json:object(), whapps_call:call()) ->
                             {wh_json:object(), binary()} |
-                            {'error', couch_mgr:couchbeam_error()}.
+                            {'error', kz_datamgr:couchbeam_error()}.
 get_list_entry(Data, Call) ->
     ListId = wh_json:get_ne_value(<<"id">>, Data),
     AccountDb = whapps_call:account_db(Call),
 
-    case couch_mgr:open_cache_doc(AccountDb, ListId) of
+    case kz_datamgr:open_cache_doc(AccountDb, ListId) of
         {'ok', ListJObj} ->
             LengthDigits = wh_json:get_ne_value(<<"length">>, ListJObj),
 	    lager:debug("digit length to limit lookup key in number: ~p ", [LengthDigits]),
@@ -279,11 +279,11 @@ get_list_entry(Data, Call) ->
 
 -spec get_lists_entry(wh_json:object(), whapps_call:call()) ->
                              {binary(), binary(), binary()} |
-                             {'error', couch_mgr:couchbeam_error()}.
+                             {'error', kz_datamgr:couchbeam_error()}.
 get_lists_entry(Data, Call) ->
     ListId = wh_json:get_ne_value(<<"id">>, Data),
     AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:get_results(AccountDb,<<"lists/entries">>,[{'key', ListId}]) of
+    case kz_datamgr:get_results(AccountDb,<<"lists/entries">>,[{'key', ListId}]) of
         {'ok', Entries} ->
 	    CaptureGroup = whapps_call:kvs_fetch('cf_capture_group', Call),
 	    <<CIDKey:2/binary, Dest/binary>> = CaptureGroup,

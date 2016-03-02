@@ -57,7 +57,11 @@ notification_emails(Box) ->
     notification_emails(Box, []).
 notification_emails(Box, Default) ->
     case wh_json:get_value(?KEY_NOTIFY_EMAILS, Box) of
-        'undefined' -> wh_json:get_value(?KEY_OLD_NOTIFY_EMAILS, Box, Default);
+        'undefined' ->
+            case wh_json:get_value(?KEY_OLD_NOTIFY_EMAILS, Box, Default) of
+                Email when is_binary(Email) -> [Email];
+                Emails -> Emails
+            end;
         Emails -> Emails
     end.
 
@@ -83,7 +87,7 @@ owner(Box) ->
     end.
 
 owner(Box, OwnerId) ->
-    case couch_mgr:open_cache_doc(wh_doc:account_db(Box), OwnerId) of
+    case kz_datamgr:open_cache_doc(wh_doc:account_db(Box), OwnerId) of
         {'ok', OwnerJObj} -> OwnerJObj;
         {'error', 'not_found'} -> 'undefined'
     end.

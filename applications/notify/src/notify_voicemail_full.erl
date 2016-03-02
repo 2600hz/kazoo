@@ -71,7 +71,7 @@ send(JObj, Account) ->
 
     VMBoxId = wh_json:get_value(<<"Voicemail-Box">>, JObj),
     lager:debug("loading vm box ~s", [VMBoxId]),
-    {'ok', VMBox} = couch_mgr:open_cache_doc(AccountDb, VMBoxId),
+    {'ok', VMBox} = kz_datamgr:open_cache_doc(AccountDb, VMBoxId),
 
     {'ok', UserJObj} = get_owner(AccountDb, VMBox),
 
@@ -109,7 +109,7 @@ get_owner(_AccountDb, _VMBox, 'undefined') ->
     {'ok', wh_json:new()};
 get_owner(AccountDb, _VMBox, OwnerId) ->
     lager:debug("attempting to load owner: ~s", [OwnerId]),
-    {'ok', _} = couch_mgr:open_cache_doc(AccountDb, OwnerId).
+    {'ok', _} = kz_datamgr:open_cache_doc(AccountDb, OwnerId).
 
 -spec maybe_add_user_email(ne_binaries(), api_binary()) -> ne_binaries().
 maybe_add_user_email(BoxEmails, 'undefined') -> BoxEmails;
@@ -147,7 +147,7 @@ get_vm_name(JObj) ->
 get_vm_doc(JObj) ->
     VMId = wh_json:get_value(<<"Voicemail-Box">>, JObj),
     AccoundDB = wh_json:get_value(<<"Account-DB">>, JObj),
-    case couch_mgr:open_cache_doc(AccoundDB, VMId) of
+    case kz_datamgr:open_cache_doc(AccoundDB, VMId) of
         {'ok', VMDoc} -> VMDoc;
         {'error', _E} ->
             lager:info("could not open doc ~p in ~p", [VMId, AccoundDB]),

@@ -332,7 +332,7 @@ do_save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
     case whapps_call_command:b_channel_status(CallId) of
         {'ok', _} ->
             lager:debug("attempting to update parked calls document for slot ~s with call ~s", [SlotNumber, CallId]),
-            case couch_mgr:save_doc(AccountDb, wh_json:set_value([<<"slots">>, SlotNumber], Slot, ParkedCalls)) of
+            case kz_datamgr:save_doc(AccountDb, wh_json:set_value([<<"slots">>, SlotNumber], Slot, ParkedCalls)) of
                 {'ok', JObj}=Ok ->
                     lager:info("successfully stored call parking data for slot ~s", [SlotNumber]),
                     CacheProps = [{'origin', {'db', AccountDb, ?DB_DOC_NAME}}],
@@ -352,11 +352,11 @@ do_save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
 maybe_resolve_conflict(SlotNumber, Slot, ParkedCalls, Call) ->
     AccountDb = whapps_call:account_db(Call),
     ExpectedParkedCall = wh_json:get_ne_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls),
-    {'ok', JObj1} = couch_mgr:open_doc(AccountDb, ?DB_DOC_NAME),
+    {'ok', JObj1} = kz_datamgr:open_doc(AccountDb, ?DB_DOC_NAME),
     case wh_json:get_ne_value([<<"slots">>, SlotNumber, <<"Call-ID">>], JObj1) of
         ExpectedParkedCall ->
             UpdatedJObj = wh_json:set_value([<<"slots">>, SlotNumber], Slot, JObj1),
-            {'ok', JObj2}=Ok = couch_mgr:save_doc(AccountDb, UpdatedJObj),
+            {'ok', JObj2}=Ok = kz_datamgr:save_doc(AccountDb, UpdatedJObj),
             lager:info("conflict when attempting to store call parking data for slot ~s due to a different slot update", [SlotNumber]),
             CacheProps = [{'origin', {'db', AccountDb, ?DB_DOC_NAME}}],
             kz_cache:store_local(?CALLFLOW_CACHE, ?PARKED_CALLS_KEY(AccountDb), JObj2, CacheProps),
@@ -410,7 +410,7 @@ update_call_id(Replaces, ParkedCalls, Call, Loops) ->
                       ],
             UpdatedSlot = lists:foldr(fun(F, J) -> F(J) end, Slot, Updaters),
             JObj = wh_json:set_value([<<"slots">>, SlotNumber], UpdatedSlot, ParkedCalls),
-            case couch_mgr:save_doc(whapps_call:account_db(Call), JObj) of
+            case kz_datamgr:save_doc(whapps_call:account_db(Call), JObj) of
                 {'ok', _} ->
                     update_presence(UpdatedSlot),
                     {'ok', SlotNumber, UpdatedSlot};
@@ -513,7 +513,7 @@ get_parked_calls(AccountDb, AccountId) ->
 
 -spec fetch_parked_calls(ne_binary(), ne_binary()) -> wh_json:object().
 fetch_parked_calls(AccountDb, AccountId) ->
-    case couch_mgr:open_doc(AccountDb, ?DB_DOC_NAME) of
+    case kz_datamgr:open_doc(AccountDb, ?DB_DOC_NAME) of
         {'error', 'not_found'} ->
             Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
             Generators = [fun(J) -> wh_doc:set_id(J, <<"parked_calls">>) end
@@ -542,12 +542,12 @@ fetch_parked_calls(AccountDb, AccountId) ->
                           {'ok', wh_json:object()} |
                           {'error', any()}.
 cleanup_slot(SlotNumber, ParkedCallId, AccountDb) ->
-    case couch_mgr:open_doc(AccountDb, ?DB_DOC_NAME) of
+    case kz_datamgr:open_doc(AccountDb, ?DB_DOC_NAME) of
         {'ok', JObj} ->
             case wh_json:get_value([<<"slots">>, SlotNumber, <<"Call-ID">>], JObj) of
                 ParkedCallId ->
                     lager:info("delete parked call ~s in slot ~s", [ParkedCallId, SlotNumber]),
-                    case couch_mgr:save_doc(AccountDb, wh_json:delete_key([<<"slots">>, SlotNumber], JObj)) of
+                    case kz_datamgr:save_doc(AccountDb, wh_json:delete_key([<<"slots">>, SlotNumber], JObj)) of
                         {'ok', _}=Ok ->
                             Slot = wh_json:get_value([<<"slots">>, SlotNumber], JObj),
                             update_presence(<<"terminated">>, Slot),

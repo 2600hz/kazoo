@@ -155,7 +155,7 @@ voicefabric_request_body(<<"urlencode">>, Data) ->
     {'ok', Headers, Body};
 voicefabric_request_body(<<"multipart">>, Data) ->
     Boundary = iolist_to_binary([<<"--bound--">>
-                                 ,couch_mgr:get_uuid()
+                                 ,kz_datamgr:get_uuid()
                                  ,<<"--bound--">>
                                 ]),
     Headers = [{"Content-Type"

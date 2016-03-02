@@ -92,8 +92,8 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = couch_mgr:db_create(?KZ_ACDC_DB),
-    _ = couch_mgr:revise_doc_from_file(?KZ_ACDC_DB, 'crossbar', <<"views/acdc.json">>),
+    _ = kz_datamgr:db_create(?KZ_ACDC_DB),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_ACDC_DB, 'crossbar', <<"views/acdc.json">>),
 
     _ = crossbar_bindings:bind(<<"*.allowed_methods.queues">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.queues">>, ?MODULE, 'resource_exists'),
@@ -313,7 +313,7 @@ is_active_call(Context, CallId) ->
 
 is_valid_queue(Context, <<_/binary>> = QueueId) ->
     AcctDb = cb_context:account_db(Context),
-    case couch_mgr:open_cache_doc(AcctDb, QueueId) of
+    case kz_datamgr:open_cache_doc(AcctDb, QueueId) of
         {'ok', QueueJObj} -> is_valid_queue(Context, QueueJObj);
         {'error', _} ->
             {'false'
@@ -345,7 +345,7 @@ is_valid_queue(Context, QueueJObj) ->
 is_valid_endpoint(Context, DataJObj) ->
     AcctDb = cb_context:account_db(Context),
     Id = wh_doc:id(DataJObj),
-    case couch_mgr:open_cache_doc(AcctDb, Id) of
+    case kz_datamgr:open_cache_doc(AcctDb, Id) of
         {'ok', CallMeJObj} -> is_valid_endpoint_type(Context, CallMeJObj);
         {'error', _} ->
             {'false'
@@ -793,7 +793,7 @@ normalize_agents_results(JObj, Acc) ->
 %%--------------------------------------------------------------------
 -spec activate_account_for_acdc(cb_context:context()) -> 'ok'.
 activate_account_for_acdc(Context) ->
-    case couch_mgr:open_cache_doc(?KZ_ACDC_DB, cb_context:account_id(Context)) of
+    case kz_datamgr:open_cache_doc(?KZ_ACDC_DB, cb_context:account_id(Context)) of
         {'ok', _} -> 'ok';
         {'error', 'not_found'} ->
             lager:debug("creating account doc ~s in acdc db", [cb_context:account_id(Context)]),
@@ -802,7 +802,7 @@ activate_account_for_acdc(Context) ->
                                                ,[{'account_id', cb_context:account_id(Context)}
                                                  ,{'type', <<"acdc_activation">>}
                                                 ]),
-            {'ok', _} = couch_mgr:ensure_saved(?KZ_ACDC_DB, Doc),
+            {'ok', _} = kz_datamgr:ensure_saved(?KZ_ACDC_DB, Doc),
             'ok';
         {'error', _E} ->
             lager:debug("failed to check acdc activation doc: ~p", [_E])
@@ -810,10 +810,10 @@ activate_account_for_acdc(Context) ->
 
 -spec deactivate_account_for_acdc(ne_binary()) -> 'ok'.
 deactivate_account_for_acdc(AccountId) ->
-    case couch_mgr:open_doc(?KZ_ACDC_DB, AccountId) of
+    case kz_datamgr:open_doc(?KZ_ACDC_DB, AccountId) of
         {'error', _} -> 'ok';
         {'ok', JObj} ->
-            case couch_mgr:del_doc(?KZ_ACDC_DB, JObj) of
+            case kz_datamgr:del_doc(?KZ_ACDC_DB, JObj) of
                 {'ok', _} ->
                     lager:debug("removed ~s from ~s", [AccountId, ?KZ_ACDC_DB]);
                 {'error', _E} ->

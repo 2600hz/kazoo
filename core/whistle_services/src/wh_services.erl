@@ -241,9 +241,9 @@ fetch_services_doc(AccountId) ->
     fetch_services_doc(AccountId, 'false').
 
 fetch_services_doc(AccountId, 'false') ->
-    couch_mgr:open_cache_doc(?WH_SERVICES_DB, AccountId);
+    kz_datamgr:open_cache_doc(?WH_SERVICES_DB, AccountId);
 fetch_services_doc(AccountId, 'true') ->
-    couch_mgr:open_doc(?WH_SERVICES_DB, AccountId).
+    kz_datamgr:open_doc(?WH_SERVICES_DB, AccountId).
 
 -spec handle_fetch_result(ne_binary(), wh_json:object()) -> services().
 handle_fetch_result(AccountId, JObj) ->
@@ -311,13 +311,13 @@ save_as_dirty(#wh_services{jobj = JObj
                       ,{fun wh_doc:set_modified/2, wh_util:current_tstamp()}
                      ]
                    ),
-    case couch_mgr:save_doc(?WH_SERVICES_DB, UpdatedJObj) of
+    case kz_datamgr:save_doc(?WH_SERVICES_DB, UpdatedJObj) of
         {'ok', SavedJObj} ->
             lager:debug("marked services as dirty for account ~s", [AccountId]),
             from_service_json(SavedJObj);
         {'error', 'not_found'} ->
             lager:debug("service database does not exist, attempting to create"),
-            'true' = couch_mgr:db_create(?WH_SERVICES_DB),
+            'true' = kz_datamgr:db_create(?WH_SERVICES_DB),
             timer:sleep(BackOff),
             save_as_dirty(Services, BackOff);
         {'error', 'conflict'} ->
@@ -369,7 +369,7 @@ save(#wh_services{jobj = JObj
             ],
     UpdatedJObj = wh_json:set_values(props:filter_undefined(Props), JObj),
 
-    case couch_mgr:save_doc(?WH_SERVICES_DB, UpdatedJObj) of
+    case kz_datamgr:save_doc(?WH_SERVICES_DB, UpdatedJObj) of
         {'ok', NewJObj} ->
             lager:debug("saved services for ~s: ~s", [AccountId, wh_json:encode(kzd_services:quantities(NewJObj))]),
             IsReseller = kzd_services:is_reseller(NewJObj),
@@ -387,13 +387,13 @@ save(#wh_services{jobj = JObj
                                 };
         {'error', 'not_found'} ->
             lager:debug("service database does not exist, attempting to create"),
-            'true' = couch_mgr:db_create(?WH_SERVICES_DB),
+            'true' = kz_datamgr:db_create(?WH_SERVICES_DB),
             timer:sleep(BackOff),
             save(Services, BackOff);
         {'error', 'conflict'} ->
             lager:debug("services for ~s conflicted, merging changes and retrying", [AccountId]),
             timer:sleep(BackOff + random:uniform(?BASE_BACKOFF)),
-            {'ok', Existing} = couch_mgr:open_doc(?WH_SERVICES_DB, AccountId),
+            {'ok', Existing} = kz_datamgr:open_doc(?WH_SERVICES_DB, AccountId),
             save(Services#wh_services{jobj=Existing}, BackOff*2)
     end.
 
@@ -408,10 +408,10 @@ delete(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     %% TODO: support other bookkeepers, and just cancel subscriptions....
     _ = (catch braintree_customer:delete(AccountId)),
-    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+    case kz_datamgr:open_doc(?WH_SERVICES_DB, AccountId) of
         {'ok', JObj} ->
             lager:debug("marking services for account ~s as deleted", [AccountId]),
-            couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_values([{<<"pvt_deleted">>, 'true'}
+            kz_datamgr:save_doc(?WH_SERVICES_DB, wh_json:set_values([{<<"pvt_deleted">>, 'true'}
                                                                     ,{<<"pvt_dirty">>, 'true'}
                                                                    ]
                                                                    ,JObj
@@ -1231,7 +1231,7 @@ do_cascade_quantities(<<_/binary>> = Account, <<_/binary>> = View) ->
                    ,{'startkey', [AccountId]}
                    ,{'endkey', [AccountId, wh_json:new()]}
                   ],
-    case couch_mgr:get_results(?WH_SERVICES_DB, View, ViewOptions) of
+    case kz_datamgr:get_results(?WH_SERVICES_DB, View, ViewOptions) of
         {'error', _} -> wh_json:new();
         {'ok', JObjs} ->
             lists:foldl(fun do_cascade_quantities_fold/2, wh_json:new(), JObjs)
@@ -1289,7 +1289,7 @@ populate_service_plans(JObj, ResellerId) ->
 
 -spec default_service_plan_id(ne_binary()) -> api_binary().
 default_service_plan_id(ResellerId) ->
-    case couch_mgr:open_doc(?WH_SERVICES_DB, ResellerId) of
+    case kz_datamgr:open_doc(?WH_SERVICES_DB, ResellerId) of
         {'ok', JObj} -> wh_json:get_value(<<"default_service_plan">>, JObj);
         {'error', _R} ->
             lager:debug("unable to open reseller ~s services: ~p", [ResellerId, _R]),
@@ -1299,7 +1299,7 @@ default_service_plan_id(ResellerId) ->
 -spec depreciated_default_service_plan_id(ne_binary()) -> api_binary().
 depreciated_default_service_plan_id(ResellerId) ->
     ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
-    case couch_mgr:open_doc(ResellerDb, ResellerId) of
+    case kz_datamgr:open_doc(ResellerDb, ResellerId) of
         {'ok', JObj} -> wh_json:get_value(<<"default_service_plan">>, JObj);
         {'error', _R} ->
             lager:debug("unable to open reseller ~s account definition: ~p", [ResellerId, _R]),
@@ -1360,7 +1360,7 @@ get_reseller_id([]) ->
     {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
     MasterAccountId;
 get_reseller_id([Parent|Ancestors]) ->
-    case couch_mgr:open_cache_doc(?WH_SERVICES_DB, Parent) of
+    case kz_datamgr:open_cache_doc(?WH_SERVICES_DB, Parent) of
         {'error', _R} ->
             lager:debug("failed to open services doc ~s durning reseller search: ~p", [Parent, _R]),
             get_reseller_id(Ancestors);

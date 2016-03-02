@@ -9,7 +9,7 @@
 
                  , whistle
                  , whistle_amqp
-                 , whistle_couch
+                 , kazoo_data
                  , kazoo_web
 
                  , lager

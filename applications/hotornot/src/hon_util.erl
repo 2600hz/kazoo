@@ -38,7 +38,7 @@ find_candidate_rates(E164, _FromDID) when byte_size(E164) > ?MIN_PREFIX_LEN ->
     Keys = build_keys(E164),
 
     lager:debug("searching for prefixes for ~s: ~p", [E164, Keys]),
-    case couch_mgr:get_results(?WH_RATES_DB
+    case kz_datamgr:get_results(?WH_RATES_DB
                                ,<<"rates/lookup">>
                                ,[{'keys', Keys}
                                  ,'include_docs'

@@ -54,8 +54,8 @@ init() ->
     crossbar_bindings:bind(<<"*.execute.delete.rates">>, ?MODULE, 'delete').
 
 init_db() ->
-    _ = couch_mgr:db_create(?WH_RATES_DB),
-    couch_mgr:revise_doc_from_file(?WH_RATES_DB, 'crossbar', "views/rates.json").
+    _ = kz_datamgr:db_create(?WH_RATES_DB),
+    kz_datamgr:revise_doc_from_file(?WH_RATES_DB, 'crossbar', "views/rates.json").
 
 authorize(Context) ->
     authorize(Context, cb_context:req_nouns(Context)).
@@ -349,7 +349,7 @@ convert_file(ContentType, _, _) ->
 -spec csv_to_rates(ne_binary(), cb_context:context()) ->
                           {'ok', {integer(), wh_json:objects()}}.
 csv_to_rates(CSV, Context) ->
-    BulkInsert = couch_util:max_bulk_insert(),
+    BulkInsert = kz_datamgr:max_bulk_insert(),
     ecsv:process_csv_binary_with(CSV
                                  ,fun(Row, {Count, JObjs}) ->
                                           process_row(Context, Row, Count, JObjs, BulkInsert)

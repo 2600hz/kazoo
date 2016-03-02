@@ -126,7 +126,7 @@ maybe_start_metaflows(_AccountId, _AuthorizingType, _AuthorizingId, _OwnerId, _C
 -spec maybe_start_device_metaflows(ne_binary(), api_binary(), whapps_call:call()) -> 'ok'.
 maybe_start_device_metaflows(_AccountId, 'undefined', _Call) -> 'ok';
 maybe_start_device_metaflows(AccountId, DeviceId, Call) ->
-    {'ok', Endpoint} = couch_mgr:open_cache_doc(whapps_call:account_db(Call)
+    {'ok', Endpoint} = kz_datamgr:open_cache_doc(whapps_call:account_db(Call)
                                                 ,DeviceId
                                                ),
     maybe_start_metaflows(AccountId, Call, wh_json:get_value(<<"metaflows">>, Endpoint)).
@@ -134,7 +134,7 @@ maybe_start_device_metaflows(AccountId, DeviceId, Call) ->
 -spec maybe_start_user_metaflows(ne_binary(), api_binary(), whapps_call:call()) -> 'ok'.
 maybe_start_user_metaflows(_AccountId, 'undefined', _Call) -> 'ok';
 maybe_start_user_metaflows(AccountId, UserId, Call) ->
-    {'ok', User} = couch_mgr:open_cache_doc(whapps_call:account_db(Call)
+    {'ok', User} = kz_datamgr:open_cache_doc(whapps_call:account_db(Call)
                                             ,UserId
                                            ),
     maybe_start_metaflows(AccountId, Call, wh_json:get_value(<<"metaflows">>, User)).

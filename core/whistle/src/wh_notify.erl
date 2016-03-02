@@ -75,7 +75,7 @@ port_request(PhoneNumber, Account) ->
 deregister(LastReg) ->
     AuthorizingId = wh_json:get_value(<<"Authorizing-ID">>, LastReg),
     AccountDb = wh_json:get_value(<<"Account-DB">>, LastReg),
-    case couch_mgr:open_cache_doc(AccountDb, AuthorizingId) of
+    case kz_datamgr:open_cache_doc(AccountDb, AuthorizingId) of
         {'ok', Endpoint} -> deregister(LastReg, Endpoint);
         {'error', _R} ->
             lager:info("unable to lookup endpoint ~s in database ~s for deregister notice: ~p", [AuthorizingId, AccountDb, _R])

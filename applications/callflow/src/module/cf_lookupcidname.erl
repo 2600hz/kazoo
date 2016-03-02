@@ -56,7 +56,7 @@ match_prefixes_in_lists(_AccountDb, _Number, []) ->
 -spec match_prefixes_in_list(ne_binary(), ne_binaries(), ne_binary()) -> match_number_result().
 match_prefixes_in_list(AccountDb, Prefixes, ListId) ->
     Keys = [[ListId, Prefix] || Prefix <- Prefixes],
-    case couch_mgr:get_results(AccountDb
+    case kz_datamgr:get_results(AccountDb
                                ,<<"lists/match_prefix_in_list">>
                                ,[{'keys', Keys}, {'include_docs', 'true'}])
     of
@@ -97,7 +97,7 @@ build_keys(<<>>, _, Acc) -> Acc.
 -spec match_regexp_in_list(ne_binary(), ne_binary(), ne_binary()) ->
     'continue' | {'stop', api_binary()}.
 match_regexp_in_list(AccountDb, Number, ListId) when is_binary(ListId) ->
-    case couch_mgr:get_results(AccountDb
+    case kz_datamgr:get_results(AccountDb
                                ,<<"lists/regexps_in_list">>
                                ,[{'keys', [ListId]} , {'include_docs', 'true'}])
     of

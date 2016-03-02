@@ -384,7 +384,7 @@ store_recording(AttachmentName, MediaId, Call) ->
 -spec get_new_attachment_url(binary(), binary(), whapps_call:call()) -> ne_binary().
 get_new_attachment_url(AttachmentName, MediaId, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    _ = case couch_mgr:open_cache_doc(AccountDb, MediaId) of
+    _ = case kz_datamgr:open_cache_doc(AccountDb, MediaId) of
             {'ok', JObj} ->
                 maybe_delete_attachments(AccountDb, MediaId, JObj);
             {'error', _} -> 'ok'
@@ -397,7 +397,7 @@ maybe_delete_attachments(AccountDb, _MediaId, JObj) ->
     case wh_doc:maybe_remove_attachments(JObj) of
         {'false', _} -> 'ok';
         {'true', Removed} ->
-            couch_mgr:save_doc(AccountDb, Removed),
+            kz_datamgr:save_doc(AccountDb, Removed),
             lager:debug("removing attachments from ~s", [_MediaId])
     end.
 
@@ -458,7 +458,7 @@ recording_media_doc(Type, #cf_menu_data{name=MenuName
              ,{<<"media_source">>, <<"recording">>}
              ,{<<"streamable">>, 'true'}],
     Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), AccountDb, [{'type', <<"media">>}]),
-    {'ok', JObj} = couch_mgr:save_doc(AccountDb, Doc),
+    {'ok', JObj} = kz_datamgr:save_doc(AccountDb, Doc),
     wh_doc:id(JObj).
 
 %%--------------------------------------------------------------------
@@ -474,10 +474,10 @@ recording_media_doc(Type, #cf_menu_data{name=MenuName
 update_doc(Key, Value, #cf_menu_data{menu_id=Id}, Db) ->
     update_doc(Key, Value, Id, Db);
 update_doc(Key, Value, Id, <<_/binary>> = Db) ->
-    case couch_mgr:open_doc(Db, Id) of
+    case kz_datamgr:open_doc(Db, Id) of
         {'error', _}=E -> lager:info("unable to update ~s in ~s, ~p", [Id, Db, E]);
         {'ok', JObj} ->
-            case couch_mgr:save_doc(Db, wh_json:set_value(Key, Value, JObj)) of
+            case kz_datamgr:save_doc(Db, wh_json:set_value(Key, Value, JObj)) of
                 {'error', 'conflict'} -> update_doc(Key, Value, Id, Db);
                 {'ok', _} -> 'ok';
                 {'error', _}=E -> lager:info("unable to update ~s in ~s, ~p", [Id, Db, E])
@@ -487,10 +487,10 @@ update_doc(Key, Value, Id, Call) ->
     update_doc(Key, Value, Id, whapps_call:account_db(Call)).
 
 update_doc(Updates, Id, <<_/binary>> = Db) ->
-    case couch_mgr:open_doc(Db, Id) of
+    case kz_datamgr:open_doc(Db, Id) of
         {'error', _}=E -> lager:info("unable to update ~s in ~s, ~p", [Id, Db, E]);
         {'ok', JObj} ->
-            case couch_mgr:save_doc(Db, wh_json:set_values(Updates, JObj)) of
+            case kz_datamgr:save_doc(Db, wh_json:set_values(Updates, JObj)) of
                 {'error', 'conflict'} -> update_doc(Updates, Id, Db);
                 {'ok', _} -> 'ok';
                 {'error', _}=E -> lager:info("unable to update ~s in ~s, ~p", [Id, Db, E])
@@ -509,7 +509,7 @@ update_doc(Updates, Id, Call) ->
 get_menu_profile(Data, Call) ->
     Id = wh_doc:id(Data),
     AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:open_doc(AccountDb, Id) of
+    case kz_datamgr:open_doc(AccountDb, Id) of
         {'ok', JObj} ->
             lager:info("loaded menu route ~s", [Id]),
             Default = #cf_menu_data{},

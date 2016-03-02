@@ -181,7 +181,7 @@ find_port_info(NotifyJObj) ->
 
 -spec find_port_doc(ne_binary()) -> wh_json:object().
 find_port_doc(PortRequestId) ->
-    case couch_mgr:open_cache_doc(?KZ_PORT_REQUESTS_DB, PortRequestId) of
+    case kz_datamgr:open_cache_doc(?KZ_PORT_REQUESTS_DB, PortRequestId) of
         {'ok', PortDoc} -> PortDoc;
         {'error', _} -> wh_json:new()
     end.
@@ -236,7 +236,7 @@ get_attachments(JObj) ->
 get_number_attachments(JObj) ->
     Number = wnm_util:normalize_number(wh_json:get_value(<<"Number">>, JObj)),
     NumberDb = wnm_util:number_to_db_name(Number),
-    case couch_mgr:open_doc(NumberDb, Number) of
+    case kz_datamgr:open_doc(NumberDb, Number) of
         {'ok', NumberJObj} ->
             Attachments = wh_doc:attachments(NumberJObj, wh_json:new()),
             fetch_attachments(wh_json:to_proplist(Attachments), NumberDb, Number);
@@ -245,7 +245,7 @@ get_number_attachments(JObj) ->
 
 -spec get_port_attachments(wh_json:object()) -> attachments().
 get_port_attachments(PortRequestId) ->
-    case couch_mgr:open_cache_doc(?KZ_PORT_REQUESTS_DB, PortRequestId) of
+    case kz_datamgr:open_cache_doc(?KZ_PORT_REQUESTS_DB, PortRequestId) of
         {'ok', PortJObj} ->
             Attachments = wh_doc:attachments(PortJObj, wh_json:new()),
             fetch_attachments(wh_json:to_proplist(Attachments), ?KZ_PORT_REQUESTS_DB, PortRequestId);
@@ -259,7 +259,7 @@ fetch_attachments(Attachments, Db, Id) ->
 -spec fetch_attachments(wh_proplist(), ne_binary(), ne_binary(), attachments()) -> attachments().
 fetch_attachments([], _, _, EmailAttachments) -> EmailAttachments;
 fetch_attachments([{AttachmentName, AttachmentJObj}|Attachments], Db, Id, EmailAttachments) ->
-    case couch_mgr:fetch_attachment(Db, Id, fix_attachment_name(AttachmentName)) of
+    case kz_datamgr:fetch_attachment(Db, Id, fix_attachment_name(AttachmentName)) of
         {'ok', AttachmentBin} ->
             Attachment = create_attachment(AttachmentName, AttachmentJObj, AttachmentBin),
             fetch_attachments(Attachments, Db, Id, [Attachment|EmailAttachments]);

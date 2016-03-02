@@ -76,7 +76,7 @@ maybe_agent_queue_change(_AccountId, _AgentId, _Evt, _QueueId, _JObj) ->
 
 update_agent('undefined', QueueId, _F, AccountId, AgentId, _JObj) ->
     lager:debug("new agent process needs starting"),
-    {'ok', AgentJObj} = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
+    {'ok', AgentJObj} = kz_datamgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
                                                  ,AgentId
                                                 ),
     lager:debug("agent loaded"),
@@ -146,7 +146,7 @@ maybe_start_agent(AccountId, AgentId) ->
         'undefined' ->
             lager:debug("agent ~s (~s) not found, starting", [AgentId, AccountId]),
             acdc_agent_stats:agent_ready(AccountId, AgentId),
-            case couch_mgr:open_doc(wh_util:format_account_id(AccountId, 'encoded'), AgentId) of
+            case kz_datamgr:open_doc(wh_util:format_account_id(AccountId, 'encoded'), AgentId) of
                 {'ok', AgentJObj} -> acdc_agents_sup:new(AgentJObj);
                 {'error', _E}=E ->
                     lager:debug("error opening agent doc: ~p", [_E]),
@@ -317,7 +317,7 @@ handle_change(JObj, <<"device">>) ->
                         );
 handle_change(JObj, <<"undefined">>) ->
     lager:debug("undefined type for change"),
-    case couch_mgr:open_cache_doc(wh_json:get_value(<<"Database">>, JObj)
+    case kz_datamgr:open_cache_doc(wh_json:get_value(<<"Database">>, JObj)
                                   ,wh_json:get_value(<<"ID">>, JObj)
                                  )
     of
@@ -377,7 +377,7 @@ handle_device_change(AccountDb, AccountId, DeviceId, Rev, ?DOC_DELETED, Cnt) ->
 handle_agent_change(_AccountDb, AccountId, AgentId, ?DOC_CREATED) ->
     lager:debug("new agent ~s(~s) created, hope they log in soon!", [AgentId, AccountId]);
 handle_agent_change(AccountDb, AccountId, AgentId, ?DOC_EDITED) ->
-    {'ok', JObj} = couch_mgr:open_doc(AccountDb, AgentId),
+    {'ok', JObj} = kz_datamgr:open_doc(AccountDb, AgentId),
     lager:debug("agent ~s edited", [AgentId]),
     case acdc_agents_sup:find_agent_supervisor(AccountId, AgentId) of
         'undefined' -> lager:debug("failed to find agent ~s", [AgentId]);

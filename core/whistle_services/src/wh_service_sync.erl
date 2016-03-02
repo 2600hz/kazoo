@@ -50,7 +50,7 @@ sync(Account) ->
 -spec clean(ne_binary()) -> wh_std_return().
 clean(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+    case kz_datamgr:open_doc(?WH_SERVICES_DB, AccountId) of
         {'error', _}=E -> E;
         {'ok', ServicesJObj} ->
             immediate_sync(AccountId, wh_doc:set_soft_deleted(ServicesJObj, 'true'))
@@ -192,7 +192,7 @@ maybe_sync_service() ->
                    ,'include_docs'
                    ,{'endkey', wh_util:current_tstamp() - SyncBufferPeriod}
                   ],
-    case couch_mgr:get_results(?WH_SERVICES_DB, <<"services/dirty">>, ViewOptions) of
+    case kz_datamgr:get_results(?WH_SERVICES_DB, <<"services/dirty">>, ViewOptions) of
         {'error', _}=E -> E;
         {'ok', [JObj]} -> bump_modified(wh_json:get_value(<<"doc">>, JObj));
         {'ok', _} -> {'error', 'no_dirty_services'}
@@ -210,7 +210,7 @@ bump_modified(JObj) ->
                            ]
                           ,wh_services:to_json(Services)
                           ),
-    case couch_mgr:save_doc(?WH_SERVICES_DB, UpdatedServicesJObj) of
+    case kz_datamgr:save_doc(?WH_SERVICES_DB, UpdatedServicesJObj) of
         {'error', _}=E ->
             %% If we conflict or cant save the doc with a new modified timestamp
             %% then another process is probably handling it, move on
@@ -304,7 +304,7 @@ maybe_sync_transactions(AccountId, ServicesJObj, Bookkeeper) ->
 sync_transactions(AccountId, ServicesJObj, Bookkeeper, Transactions) ->
     BillingId = kzd_services:billing_id(ServicesJObj),
     FailedTransactions = Bookkeeper:charge_transactions(BillingId, Transactions),
-    case couch_mgr:save_doc(?WH_SERVICES_DB
+    case kz_datamgr:save_doc(?WH_SERVICES_DB
                            ,kzd_services:set_transactions(ServicesJObj, FailedTransactions)
                            )
     of
@@ -377,12 +377,12 @@ get_billing_id(AccountId, ServicesJObj) ->
 
 -spec mark_dirty(ne_binary() | kzd_services:doc()) -> wh_std_return().
 mark_dirty(AccountId) when is_binary(AccountId) ->
-    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+    case kz_datamgr:open_doc(?WH_SERVICES_DB, AccountId) of
         {'error', _}=E -> E;
         {'ok', ServicesJObj} -> mark_dirty(ServicesJObj)
     end;
 mark_dirty(ServicesJObj) ->
-    couch_mgr:save_doc(?WH_SERVICES_DB
+    kz_datamgr:save_doc(?WH_SERVICES_DB
                        ,wh_json:set_values([{<<"pvt_dirty">>, 'true'}
                                             ,{<<"pvt_modified">>, wh_util:current_tstamp()}
                                            ]
@@ -392,14 +392,14 @@ mark_dirty(ServicesJObj) ->
 
 -spec mark_clean(kzd_services:doc()) -> wh_std_return().
 mark_clean(ServicesJObj) ->
-    couch_mgr:save_doc(?WH_SERVICES_DB
+    kz_datamgr:save_doc(?WH_SERVICES_DB
                       ,kzd_services:set_is_dirty(ServicesJObj, 'false')
                       ).
 
 -spec mark_clean_and_status(ne_binary(), kzd_services:doc()) -> wh_std_return().
 mark_clean_and_status(Status, ServicesJObj) ->
     lager:debug("marking services clean with status ~s", [Status]),
-    couch_mgr:save_doc(?WH_SERVICES_DB
+    kz_datamgr:save_doc(?WH_SERVICES_DB
                       ,wh_json:set_values([{<<"pvt_dirty">>, 'false'}
                                           ,{<<"pvt_status">>, Status}
                                           ]
@@ -409,12 +409,12 @@ mark_clean_and_status(Status, ServicesJObj) ->
 
 -spec maybe_update_billing_id(ne_binary(), ne_binary(), wh_json:object()) -> wh_std_return().
 maybe_update_billing_id(BillingId, AccountId, ServicesJObj) ->
-    case couch_mgr:open_doc(?WH_ACCOUNTS_DB, BillingId) of
+    case kz_datamgr:open_doc(?WH_ACCOUNTS_DB, BillingId) of
         {'error', _} ->
             lager:debug("billing id ~s on ~s does not exist anymore, updating to bill self"
                         ,[BillingId, AccountId]
                        ),
-            couch_mgr:save_doc(?WH_SERVICES_DB, kzd_services:set_billing_id(ServicesJObj, AccountId));
+            kz_datamgr:save_doc(?WH_SERVICES_DB, kzd_services:set_billing_id(ServicesJObj, AccountId));
         {'ok', JObj} ->
             case wh_doc:is_soft_deleted(JObj) of
                 'false' -> wh_services:reconcile(BillingId);
@@ -422,7 +422,7 @@ maybe_update_billing_id(BillingId, AccountId, ServicesJObj) ->
                     lager:debug("billing id ~s on ~s was deleted, updating to bill self"
                                 ,[BillingId, AccountId]
                                ),
-                    couch_mgr:save_doc(?WH_SERVICES_DB, kzd_services:set_billing_id(ServicesJObj, AccountId))
+                    kz_datamgr:save_doc(?WH_SERVICES_DB, kzd_services:set_billing_id(ServicesJObj, AccountId))
             end
     end.
 

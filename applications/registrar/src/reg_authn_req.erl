@@ -135,7 +135,7 @@ get_presence_id(AccountDb, DeviceId, OwnerId) ->
 
 -spec maybe_get_owner_presence_id(ne_binary(), ne_binary(), ne_binary()) -> api_binary().
 maybe_get_owner_presence_id(AccountDb, DeviceId, OwnerId) ->
-    case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
+    case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
         {'error', _} -> 'undefined';
         {'ok', UserJObj} ->
             case kzd_user:presence_id(UserJObj) of
@@ -146,7 +146,7 @@ maybe_get_owner_presence_id(AccountDb, DeviceId, OwnerId) ->
 
 -spec get_device_presence_id(ne_binary(), ne_binary()) -> api_binary().
 get_device_presence_id(AccountDb, DeviceId) ->
-    case couch_mgr:open_cache_doc(AccountDb, DeviceId) of
+    case kz_datamgr:open_cache_doc(AccountDb, DeviceId) of
         {'error', _} -> 'undefined';
         {'ok', JObj} ->
             case kz_device:presence_id(JObj) of
@@ -232,7 +232,7 @@ get_auth_user_in_agg(Username, Realm) ->
                    ,'include_docs'
                   ],
     case whapps_config:get_is_true(?CONFIG_CAT, <<"use_aggregate">>, 'true')
-        andalso couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions)
+        andalso kz_datamgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions)
     of
         'false' ->
             lager:debug("SIP credential aggregate db is disabled"),
@@ -255,7 +255,7 @@ get_auth_user_in_account(Username, Realm, AccountDB) ->
     ViewOptions = [{'key', Username}
                    ,'include_docs'
                   ],
-    case couch_mgr:get_results(AccountDB, <<"devices/sip_credentials">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDB, <<"devices/sip_credentials">>, ViewOptions) of
         {'error', _R} ->
             lager:warning("failed to look up SIP credentials in ~s: ~p", [AccountDB, _R]),
             get_auth_user_in_agg(Username, Realm);
@@ -335,7 +335,7 @@ maybe_owner_enabled(JObj) ->
 -spec is_owner_enabled(ne_binary(), ne_binary()) -> boolean().
 is_owner_enabled(AccountDb, OwnerId) ->
     Default = whapps_config:get_is_true(?CONFIG_CAT, <<"owner_enabled_default">>, 'true'),
-    case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
+    case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
         {'ok', UserJObj} ->
             case kzd_user:is_enabled(UserJObj, Default) of
                 'true' -> 'true';
@@ -463,7 +463,7 @@ maybe_msisdn_from_callflows(#auth_user{account_db=AccountDB}=AuthUser
     ViewOptions = [{'startkey', [Type, Id]}
                    ,{'endkey', [Type, Id, <<"9999999">>]}
                   ],
-    case couch_mgr:get_results(AccountDB, <<"callflow/msisdn">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDB, <<"callflow/msisdn">>, ViewOptions) of
         {'error', _R} ->
             lager:warning("failed to look up msisdn  in ~s: ~p", [AccountDB, _R]),
             AuthUser;

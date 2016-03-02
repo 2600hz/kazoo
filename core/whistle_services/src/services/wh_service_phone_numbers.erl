@@ -57,7 +57,7 @@ phone_number_activation_charge(Number, Services) ->
 reconcile(Services) ->
     AccountId = wh_services:account_id(Services),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
+    case kz_datamgr:open_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
         {'error', _R} ->
             lager:debug("unable to get current phone_numbers in service: ~p", [_R]),
             Services;

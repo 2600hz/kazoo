@@ -28,7 +28,7 @@
 reconcile(Services) ->
     AccountId = wh_services:account_id(Services),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:get_results_count(AccountDb, ?DESIGN_DOC, []) of
+    case kz_datamgr:get_results_count(AccountDb, ?DESIGN_DOC, []) of
         {'error', _R} ->
             lager:debug("unable to get current whitelabel docs: ~p for account: ~s", [_R, AccountId]),
             Services;

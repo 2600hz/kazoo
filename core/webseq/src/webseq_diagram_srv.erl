@@ -123,7 +123,7 @@ init({'db', Database}) ->
 init({'db', Name, Database}=Type) ->
     wh_util:put_callid(Name),
 
-    case couch_mgr:db_exists(Database) of
+    case kz_datamgr:db_exists(Database) of
         'true' ->
             lager:debug("webseq tracing ~s to db: ~s", [Name, Database]),
             {'ok', #state{name=Name
@@ -216,7 +216,7 @@ write_to_db(Database, Name, Str, Args) ->
             ,Database
             ,[{'type', <<"webseq">>}]
            ),
-    case couch_mgr:save_doc(Database, Doc) of
+    case kz_datamgr:save_doc(Database, Doc) of
         {'ok', _} -> 'ok';
         {'error', E} ->
             lager:debug("failed to write ~s with ~s: ~p", [Str, Args, E]),
@@ -236,7 +236,7 @@ trunc_database(Database, Name) ->
         {'ok', []} -> 'ok';
         {'ok', Docs} ->
             lager:debug("deleting docs for ~s in ~s", [Name, Database]),
-            {'ok', _} = couch_mgr:del_docs(Database, Docs),
+            {'ok', _} = kz_datamgr:del_docs(Database, Docs),
             'ok';
         {'error', 'not_found'} ->
             init_db(Database),
@@ -253,7 +253,7 @@ get_docs_by_name(Database, Name) ->
     get_docs_by_name(Database, Name, []).
 get_docs_by_name(Database, Name, Opts) ->
     Options = props:insert_value('key', Name, Opts),
-    couch_mgr:get_results(Database, <<"webseq/listing_by_name">>, Options).
+    kz_datamgr:get_results(Database, <<"webseq/listing_by_name">>, Options).
 
 -spec rotate_db(ne_binary(), ne_binary()) -> 'ok'.
 rotate_db(Database, Name) ->
@@ -274,7 +274,7 @@ rotate_db(Database, Name) ->
 rotate_db(Database, Name, Docs) ->
     RotatedName = <<Name/binary, ".", (wh_util:rand_hex_binary(3))/binary>>,
     Rotated = [rotate_doc(RotatedName, wh_json:get_value(<<"doc">>, Doc)) || Doc <- Docs],
-    {'ok', _} = couch_mgr:save_docs(Database, Rotated).
+    {'ok', _} = kz_datamgr:save_docs(Database, Rotated).
 
 -spec rotate_doc(ne_binary(), wh_json:object()) -> wh_json:object().
 rotate_doc(RotatedName, Doc) ->

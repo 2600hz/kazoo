@@ -243,7 +243,7 @@ validate_unique_numbers(CallflowId, _Numbers, Context, 'undefined') ->
 validate_unique_numbers(CallflowId, [], Context, _AccountDb) ->
     check_callflow_schema(CallflowId, Context);
 validate_unique_numbers(CallflowId, Numbers, Context, AccountDb) ->
-    case couch_mgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
+    case kz_datamgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
         {'error', _R} ->
             lager:debug("failed to load callflows from account: ~p", [_R]),
             check_callflow_schema(CallflowId, Context);
@@ -566,7 +566,7 @@ create_metadata(_, <<"_">>, JObj) -> JObj;
 create_metadata(_, Id, JObj) when byte_size(Id) < 2 -> JObj;
 create_metadata(Db, Id, JObj) ->
     case wh_json:get_value(Id, JObj) =:= 'undefined'
-        andalso couch_mgr:open_cache_doc(Db, Id)
+        andalso kz_datamgr:open_cache_doc(Db, Id)
     of
         'false'  -> JObj;
         {'ok', Doc} ->  wh_json:set_value(Id, create_metadata(Doc), JObj);

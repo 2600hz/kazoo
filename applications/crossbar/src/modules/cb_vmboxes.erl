@@ -523,7 +523,7 @@ load_message_binary(DocId, MediaId, Context) ->
 -spec load_message_binary_from_message(ne_binary(), cb_context:context(), boolean(), wh_json:object()) ->
                                               {boolean(), cb_context:context()}.
 load_message_binary_from_message(MediaId, Context, Update) ->
-    case couch_mgr:open_cache_doc(cb_context:account_db(Context), MediaId) of
+    case kz_datamgr:open_cache_doc(cb_context:account_db(Context), MediaId) of
         {'error', 'not_found'} ->
             {'false', set_bad_media_identifier(Context, MediaId)};
         {'error', _E} ->
@@ -542,7 +542,7 @@ load_message_binary_from_message(MediaId, Context, Update, Media) ->
                                    ,filename:extension(AttachmentId)
                                    ,kzd_voicemail_box:timezone(Doc)
                                   ),
-    case couch_mgr:fetch_attachment(cb_context:account_db(Context), MediaId, AttachmentId) of
+    case kz_datamgr:fetch_attachment(cb_context:account_db(Context), MediaId, AttachmentId) of
         {'error', 'db_not_reachable'} ->
             {'false', cb_context:add_system_error('datastore_unreachable', Context)};
         {'error', 'not_found'} ->
@@ -638,7 +638,7 @@ check_uniqueness(VMBoxId, Context) ->
 
 check_uniqueness(VMBoxId, Context, Mailbox) ->
     ViewOptions = [{'key', Mailbox}],
-    case couch_mgr:get_results(cb_context:account_db(Context)
+    case kz_datamgr:get_results(cb_context:account_db(Context)
                                ,<<"vmboxes/listing_by_mailbox">>
                                ,ViewOptions
                               )
@@ -696,7 +696,7 @@ cleanup_heard_voicemail(Account) ->
 cleanup_heard_voicemail(AccountDb, Duration) ->
     Today = wh_util:current_tstamp(),
     DurationS = Duration * ?SECONDS_IN_DAY,
-    case couch_mgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
+    case kz_datamgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
         {'ok', []} -> lager:debug("no voicemail boxes in ~s", [AccountDb]);
         {'ok', View} ->
             cleanup_heard_voicemail(AccountDb
@@ -745,7 +745,7 @@ cleanup_voicemail_box(AccountDb, Timestamp, {Box, Msgs}) ->
             lager:debug("soft-deleted old messages"),
 
             Box1 = wh_json:set_value(<<"messages">>, Newer, Box),
-            {'ok', Box2} = couch_mgr:save_doc(AccountDb, Box1),
+            {'ok', Box2} = kz_datamgr:save_doc(AccountDb, Box1),
             lager:debug("updated messages in voicemail box ~s", [wh_doc:id(Box2)])
     end.
 
@@ -757,8 +757,8 @@ cleanup_voicemail_box(AccountDb, Timestamp, {Box, Msgs}) ->
 %%--------------------------------------------------------------------
 -spec delete_media(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error', _}.
 delete_media(AccountDb, MediaId) ->
-    {'ok', JObj} = couch_mgr:open_cache_doc(AccountDb, MediaId),
-    couch_mgr:ensure_saved(AccountDb
+    {'ok', JObj} = kz_datamgr:open_cache_doc(AccountDb, MediaId),
+    kz_datamgr:ensure_saved(AccountDb
                            ,wh_doc:set_soft_deleted(JObj, 'true')
                           ).
 
@@ -787,7 +787,7 @@ maybe_migrate_vm_box(Box) ->
 -spec migrate(ne_binary()) -> 'ok'.
 migrate(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
+    case kz_datamgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
         {'ok', []} -> 'ok';
         {'error', _E} -> io:format("failed to check account ~s for voicemail boxes: ~p~n", [Account, _E]);
         {'ok', Boxes} ->
@@ -825,7 +825,7 @@ maybe_migrate_boxes(AccountDb, Boxes) ->
 -spec maybe_update_boxes(ne_binary(), wh_json:objects()) -> 'ok'.
 maybe_update_boxes(_AccountDb, []) -> 'ok';
 maybe_update_boxes(AccountDb, Boxes) ->
-    case couch_mgr:save_docs(AccountDb, Boxes) of
+    case kz_datamgr:save_docs(AccountDb, Boxes) of
         {'ok', _Saved} -> io:format("  updated ~p boxes in ~s~n", [length(_Saved), AccountDb]);
         {'error', _E}-> io:format("  failed to update boxes: ~p~n", [_E])
     end.

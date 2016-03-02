@@ -318,7 +318,7 @@ view_keys(Context) ->
 is_user_admin(_Account, 'undefined') -> 'false';
 is_user_admin(Account, UserId) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, UserId) of
+    case kz_datamgr:open_cache_doc(AccountDb, UserId) of
         {'error', _} -> 'false';
         {'ok', JObj} ->
             case wh_json:get_value(<<"priv_level">>, JObj) of

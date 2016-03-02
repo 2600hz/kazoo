@@ -59,7 +59,7 @@ number_tree(DID) ->
     case stepswitch_util:lookup_number(DID) of
         {'error', _} -> io:format("DID ~s was not found~n", [DID]);
         {'ok', AccountId, _Props} ->
-            case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
+            case kz_datamgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
                 {'ok', AccountDoc} -> number_tree(DID, AccountDoc);
                 {'error', _E} -> io:format("failed to find account doc for ~s(~s)~n", [AccountId, DID])
             end
@@ -74,7 +74,7 @@ number_tree(DID, AccountDoc) ->
 -spec print_tree(ne_binaries()) -> 'ok'.
 print_tree([]) -> 'ok';
 print_tree([AccountId|Tree]) ->
-    {'ok', AccountDoc} = couch_mgr:open_cache_doc(<<"accounts">>, AccountId),
+    {'ok', AccountDoc} = kz_datamgr:open_cache_doc(<<"accounts">>, AccountId),
     io:format(" ~s(~s) ->", [kz_account:name(AccountDoc), wh_doc:id(AccountDoc)]),
     print_tree(Tree).
 
@@ -130,17 +130,17 @@ cnam_flush() ->
 -spec refresh() -> 'ok'.
 refresh() ->
     lager:debug("ensuring database ~s exists", [?RESOURCES_DB]),
-    couch_mgr:db_create(?RESOURCES_DB),
+    kz_datamgr:db_create(?RESOURCES_DB),
     Views = [whapps_util:get_view_json('crossbar', <<"views/resources.json">>)
              | whapps_util:get_views_json('stepswitch', "views")
             ],
     whapps_util:update_views(?RESOURCES_DB, Views, 'true'),
-    case catch couch_mgr:all_docs(?RESOURCES_DB, ['include_docs']) of
+    case catch kz_datamgr:all_docs(?RESOURCES_DB, ['include_docs']) of
         {'error', _} -> 'ok';
         {'EXIT', _E} ->
             lager:debug("failure looking up all docs in ~s: ~p", [?RESOURCES_DB, _E]);
         {'ok', JObjs} ->
-            _ = couch_mgr:del_docs(?RESOURCES_DB
+            _ = kz_datamgr:del_docs(?RESOURCES_DB
                                    ,[Doc
                                      || JObj <- JObjs,
                                         begin

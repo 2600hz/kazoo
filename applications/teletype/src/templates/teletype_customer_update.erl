@@ -80,7 +80,7 @@ process_accounts(DataJObj) ->
     ViewOpts = [{'startkey', [SenderId]}
                ,{'endkey', [SenderId, wh_json:new()]}
                ],
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?ACC_CHILDREN_LIST, ViewOpts) of
+    case kz_datamgr:get_results(?WH_ACCOUNTS_DB, ?ACC_CHILDREN_LIST, ViewOpts) of
         {'ok', Accounts} ->
             [process_account(wh_json:get_value(<<"id">>, Account), DataJObj) || Account <- Accounts];
         {'error', _Reason} = E ->
@@ -95,7 +95,7 @@ process_account(AccountId, DataJObj) ->
             send_update_to_user(UserJObj, DataJObj);
         _ ->
             AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-            {'ok', Users} = couch_mgr:get_results(AccountDb, ?ACC_USERS_LIST, []),
+            {'ok', Users} = kz_datamgr:get_results(AccountDb, ?ACC_USERS_LIST, []),
             select_users_to_update(lists:map(fun(User) -> wh_json:get_value(<<"value">>, User) end, Users), DataJObj)
     end.
 

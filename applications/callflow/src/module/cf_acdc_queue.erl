@@ -80,14 +80,14 @@ send_agent_message(Call, AgentId, QueueId, PubFun) ->
 
 -spec update_queues(whapps_call:call(), ne_binary(), ne_binary(), ne_binary()) ->
                     {'ok', wh_json:object()}
-                    | couch_mgr:couchbeam_error().
+                    | kz_datamgr:couchbeam_error().
 update_queues(Call, AgentId, QueueId, <<"login">>) ->
-    couch_mgr:update_cache_doc(whapps_call:account_db(Call)
+    kz_datamgr:update_cache_doc(whapps_call:account_db(Call)
                                ,AgentId
                                ,fun (JObj) -> kzd_agent:maybe_add_queue(JObj, QueueId, 'skip') end
                               );
 update_queues(Call, AgentId, QueueId, <<"logout">>) ->
-    couch_mgr:update_cache_doc(whapps_call:account_db(Call)
+    kz_datamgr:update_cache_doc(whapps_call:account_db(Call)
                                ,AgentId
                                ,fun (JObj) -> kzd_agent:maybe_rm_queue(JObj, QueueId, 'skip') end
                               ).

@@ -24,7 +24,7 @@ authorization_header(#oauth_token{type=Type,token=Token}) ->
     <<Type/binary, " ", Token/binary>>.
 
 get_oauth_provider(ProviderId) ->
-    case couch_mgr:open_doc(?KZ_OAUTH_DB, ProviderId) of
+    case kz_datamgr:open_doc(?KZ_OAUTH_DB, ProviderId) of
         {'ok', JObj} -> {'ok', oauth_provider_from_jobj(ProviderId, JObj)};
         {'error', _} -> {'error', <<"OAUTH - Provider ", ProviderId/binary, " not found">>}
     end.
@@ -39,7 +39,7 @@ oauth_provider_from_jobj(ProviderId, JObj) ->
                    }.
 
 get_oauth_app(AppId) ->
-    case couch_mgr:open_doc(?KZ_OAUTH_DB, AppId) of
+    case kz_datamgr:open_doc(?KZ_OAUTH_DB, AppId) of
         {'ok', JObj} ->
             ProviderId = wh_json:get_value(<<"pvt_oauth_provider">>, JObj),
             case get_oauth_provider(ProviderId) of
@@ -52,12 +52,12 @@ get_oauth_app(AppId) ->
 oauth_app_from_jobj(AppId, Provider, JObj) ->
     #oauth_app{name = AppId
                ,account_id = wh_doc:account_id(JObj)
-               ,secret = wh_json:get_value(<<"pvt_secret">>, JObj)
+               ,secret = wh_json:get_first_defined([<<"pvt_secret">>, <<"client_secret">>], JObj)
                ,user_prefix = wh_json:get_value(<<"pvt_user_prefix">>, JObj)
                ,provider = Provider}.
 
 get_oauth_service_app(AppId) ->
-    case couch_mgr:open_doc(?KZ_OAUTH_DB, AppId) of
+    case kz_datamgr:open_doc(?KZ_OAUTH_DB, AppId) of
         {'ok', JObj} ->
             ProviderId = wh_json:get_value(<<"pvt_oauth_provider">>, JObj),
             {'ok', Provider} = get_oauth_provider(ProviderId),
@@ -80,9 +80,9 @@ oauth_service_from_jobj(AppId, Provider, JObj) ->
                                    {'ok', oauth_service_app()} |
                                    {'error', any()}.
 load_service_app_keys(#oauth_service_app{name=AppId}=App) ->
-    case couch_mgr:fetch_attachment(?KZ_OAUTH_DB, AppId, <<"public_key.pem">>) of
+    case kz_datamgr:fetch_attachment(?KZ_OAUTH_DB, AppId, <<"public_key.pem">>) of
         {'ok', PublicKey} ->
-            case couch_mgr:fetch_attachment(?KZ_OAUTH_DB, AppId, <<"private_key.pem">>) of
+            case kz_datamgr:fetch_attachment(?KZ_OAUTH_DB, AppId, <<"private_key.pem">>) of
                 {'ok', PrivateKey} ->
                     {'ok', oauth_service_app_from_keys(PublicKey, PrivateKey, App)};
                 {'error', _R}=Error ->
@@ -143,9 +143,8 @@ token(AppId, UserId) when is_binary(AppId) ->
         {'ok', App} -> token(App, UserId);
         Error -> Error
     end;
-token(#oauth_app{user_prefix=UserPrefix}=App, UserId) when is_binary(UserId) ->
-    DocId = <<UserPrefix/binary,"-", UserId/binary>>,
-    case couch_mgr:open_doc(?KZ_OAUTH_DB, DocId) of
+token(#oauth_app{}=App, DocId) when is_binary(DocId) ->
+    case kz_datamgr:open_doc(?KZ_OAUTH_DB, DocId) of
         {'ok', JObj} -> token(App, #oauth_refresh_token{token=wh_json:get_value(<<"refresh_token">>, JObj)});
         {'error', _R}=Error ->
             lager:debug("unable to get oauth user id ~s: ~p", [DocId, _R]),
@@ -209,9 +208,16 @@ verify_token(#oauth_provider{tokeninfo_url=TokenInfoUrl}, AccessToken) ->
 refresh_token(Token) ->
     #oauth_refresh_token{token=Token}.
 
--spec refresh_token(oauth_app(), api_binary(), api_binary(), wh_proplist() ) ->
+-spec refresh_token(api_binary() | oauth_app(), api_binary(), api_binary(), wh_proplist() ) ->
                            {'ok', api_object()} |
                            {'error', any()}.
+refresh_token(AppId, Scope, AuthorizationCode, ExtraHeaders)
+  when is_binary(AppId) ->
+    lager:debug("getting oauth-app ~p",[AppId]),
+    case get_oauth_app(AppId) of
+        {'ok', App} -> refresh_token(App, Scope, AuthorizationCode, ExtraHeaders);
+        Error -> Error
+    end;
 refresh_token(App, Scope, AuthorizationCode, ExtraHeaders) ->
     refresh_token(App, Scope, AuthorizationCode, ExtraHeaders, <<"postmessage">>).
 

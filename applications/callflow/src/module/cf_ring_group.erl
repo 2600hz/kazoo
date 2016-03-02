@@ -196,7 +196,7 @@ get_user_endpoint_ids(Member, EndpointIds, Id, GroupWeight, Call) ->
 -spec get_group_members(wh_json:object(), ne_binary(), group_weight(), wh_json:object(), whapps_call:call()) -> wh_json:objects().
 get_group_members(Member, Id, GroupWeight, Data, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:open_cache_doc(AccountDb, Id) of
+    case kz_datamgr:open_cache_doc(AccountDb, Id) of
         {'ok', JObj} ->
             maybe_order_group_members(GroupWeight, Member, JObj, Data);
         {'error', _R} ->

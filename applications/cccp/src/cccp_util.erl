@@ -63,7 +63,7 @@ handle_disconnect_cause(JObj, Call) ->
                        'error'.
 authorize(Value, View) ->
     ViewOptions = [{'key', Value}],
-    case couch_mgr:get_results(?KZ_CCCPS_DB, View, ViewOptions) of
+    case kz_datamgr:get_results(?KZ_CCCPS_DB, View, ViewOptions) of
         {'ok',[]} ->
             lager:info("Auth by ~p failed for: ~p. No such value in Db.", [Value, View]),
             'empty';   %%% don't change. used in cb_cccps.erl
@@ -89,7 +89,7 @@ legalize_outbound_cid(OutboundCID, AccountId) ->
 -spec ensure_valid_caller_id(ne_binary(), ne_binary()) -> ne_binary().
 ensure_valid_caller_id(OutboundCID, AccountId) ->
     {'ok', AccountPhoneNumbersList} =
-        couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
+        kz_datamgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
                                  ,?WNM_PHONE_NUMBER_DOC
                                 ),
     case lists:member(wnm_util:normalize_number(OutboundCID)
@@ -152,7 +152,7 @@ verify_entered_number(EnteredNumber, Call, Retries) ->
                                     'ok'.
 get_last_dialed_number(Call) ->
     DocId = whapps_call:kvs_fetch('auth_doc_id', Call),
-    {'ok', Doc} = couch_mgr:open_doc(<<"cccps">>, DocId),
+    {'ok', Doc} = kz_datamgr:open_doc(<<"cccps">>, DocId),
     LastDialed = wh_json:get_value(<<"pvt_last_dialed">>, Doc),
     case cccp_allowed_callee(LastDialed) of
        'false' ->
@@ -164,8 +164,8 @@ get_last_dialed_number(Call) ->
 
 -spec store_last_dialed(ne_binary(), ne_binary()) -> 'ok'.
 store_last_dialed(Number, DocId) ->
-    {'ok', Doc} = couch_mgr:update_doc(<<"cccps">>, DocId, [{<<"pvt_last_dialed">>, Number}]),
-    _ = couch_mgr:update_doc(wh_doc:account_db(Doc), DocId, [{<<"pvt_last_dialed">>, Number}]),
+    {'ok', Doc} = kz_datamgr:update_doc(<<"cccps">>, DocId, [{<<"pvt_last_dialed">>, Number}]),
+    _ = kz_datamgr:update_doc(wh_doc:account_db(Doc), DocId, [{<<"pvt_last_dialed">>, Number}]),
     'ok'.
 
 -spec check_restrictions(ne_binary(), whapps_call:call()) ->
@@ -173,7 +173,7 @@ store_last_dialed(Number, DocId) ->
                                 'ok'.
 check_restrictions(Number, Call) ->
     DocId = whapps_call:kvs_fetch('auth_doc_id', Call),
-    {'ok', Doc} = couch_mgr:open_doc(<<"cccps">>, DocId),
+    {'ok', Doc} = kz_datamgr:open_doc(<<"cccps">>, DocId),
     AccountId = wh_doc:account_id(Doc),
     AccountDb = wh_doc:account_db(Doc),
     case is_number_restricted(Number, AccountId, AccountDb) of
@@ -186,7 +186,7 @@ check_restrictions(Number, Call) ->
 
 -spec is_number_restricted(ne_binary(), ne_binary(), ne_binary()) -> boolean().
 is_number_restricted(Number, DocId, AccountDb) ->
-    case couch_mgr:open_cache_doc(AccountDb, DocId) of
+    case kz_datamgr:open_cache_doc(AccountDb, DocId) of
         {'error', _} -> 'false';
         {'ok', JObj} ->
             Classification = wnm_util:classify_number(Number),
@@ -242,7 +242,7 @@ build_bridge_offnet_request(CallId, ToDID, Q, CtrlQ, AccountId, OutboundCID) ->
 
 -spec build_bridge_request(ne_binary(), ne_binary(), binary(), ne_binary(), ne_binary()) -> wh_proplist().
 build_bridge_request(CallId, ToDID, CID, CtrlQ, AccountId) ->
-    {'ok', AccountDoc} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
+    {'ok', AccountDoc} = kz_datamgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
     Realm = wh_json:get_value(<<"realm">>, AccountDoc),
     CCVs = [{<<"Account-ID">>, AccountId}
             ,{<<"Authorizing-ID">>, AccountId}

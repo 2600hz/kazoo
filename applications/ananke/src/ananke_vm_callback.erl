@@ -51,7 +51,7 @@ check(AccountId, VMBoxId) ->
 
 has_unread(AccountId, VMBoxId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    {'ok', VMBox} = couch_mgr:open_cache_doc(AccountDb, VMBoxId),
+    {'ok', VMBox} = kz_datamgr:open_cache_doc(AccountDb, VMBoxId),
     length([X || X <- wh_json:get_value(<<"messages">>, VMBox, []), wh_json:get_value(<<"folder">>, X) =:= <<"new">>]) > 0.
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> any().
@@ -63,14 +63,14 @@ handle_req(JObj, Props) ->
     AccountDb = wh_json:get_value(<<"Account-DB">>, JObj),
     VMBoxId = wh_json:get_value(<<"Voicemail-Box">>, JObj),
     lager:debug("handling new voicemail in ~p", [VMBoxId]),
-    {'ok', VMBoxJObj} = couch_mgr:open_cache_doc(AccountDb, VMBoxId),
+    {'ok', VMBoxJObj} = kz_datamgr:open_cache_doc(AccountDb, VMBoxId),
     case kzd_voicemail_box:owner_id(VMBoxJObj) of
         'undefined' ->
             lager:debug("no owner");
         UserId ->
             lager:debug("voicemail owner is ~p", [UserId]),
-            {'ok', UserJObj} = couch_mgr:open_cache_doc(AccountDb, UserId),
-            {'ok', AccountJObj} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
+            {'ok', UserJObj} = kz_datamgr:open_cache_doc(AccountDb, UserId),
+            {'ok', AccountJObj} = kz_datamgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
 
             OptionsPath = [<<"notify">>, <<"callback">>],
             VMBoxNotifyJObj = wh_json:get_value(OptionsPath, VMBoxJObj),
@@ -105,7 +105,7 @@ handle_req(JObj, Props) ->
 
 -spec get_voicemail_number(ne_binary(), ne_binary()) -> api_binary().
 get_voicemail_number(AccountDb, Mailbox) ->
-    {'ok', Callflows} = couch_mgr:get_results(AccountDb
+    {'ok', Callflows} = kz_datamgr:get_results(AccountDb
                                               ,<<"callflows/crossbar_listing">>
                                              ,[{<<"include_docs">>, 'true'}]),
     case [Cf || Cf <- Callflows, is_voicemail_cf(Cf)] of

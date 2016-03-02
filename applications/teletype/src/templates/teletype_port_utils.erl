@@ -41,7 +41,7 @@ get_attachments(DataJObj, 'false') ->
 -spec get_attachment_fold(wh_json:key(), attachments(), ne_binary(), wh_json:object()) ->
                                  attachments().
 get_attachment_fold(Name, Acc, PortReqId, Doc) ->
-    {'ok', Attachment} = couch_mgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, PortReqId, Name),
+    {'ok', Attachment} = kz_datamgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, PortReqId, Name),
     ContentType = wh_doc:attachment_content_type(Doc, Name),
     {_, BinAttachment} = kz_attachment:decode_base64(Attachment),
     [{ContentType, Name, BinAttachment}|Acc].

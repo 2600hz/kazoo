@@ -75,7 +75,7 @@ maybe_prepend_preflow(JObj, Props, Call, Flow, NoMatch) ->
                              wh_json:object().
 prepend_preflow(AccountId, PreflowId, Flow) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, PreflowId) of
+    case kz_datamgr:open_cache_doc(AccountDb, PreflowId) of
         {'error', _E} ->
             lager:warning("could not open ~s in ~s : ~p", [PreflowId, AccountDb, _E]),
             Flow;

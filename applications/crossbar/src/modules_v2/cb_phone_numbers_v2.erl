@@ -123,7 +123,7 @@ populate_phone_numbers(Context) ->
             ,{<<"pvt_modified">>, wh_util:current_tstamp()}
             ,{<<"pvt_created">>, wh_util:current_tstamp()}
            ],
-    _ = couch_mgr:save_doc(AccountDb, wh_json:from_list(PVTs)),
+    _ = kz_datamgr:save_doc(AccountDb, wh_json:from_list(PVTs)),
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -948,10 +948,10 @@ update_context_locality_fold(Key, Value, JObj) ->
 update_phone_numbers_locality(Context, Localities) ->
     AccountDb = cb_context:account_db(Context),
     DocId = wh_doc:id(cb_context:doc(Context), ?WNM_PHONE_NUMBER_DOC),
-    case couch_mgr:open_doc(AccountDb, DocId) of
+    case kz_datamgr:open_doc(AccountDb, DocId) of
         {'ok', JObj} ->
             J = wh_json:foldl(fun update_phone_numbers_locality_fold/3, JObj, Localities),
-            couch_mgr:save_doc(AccountDb, J);
+            kz_datamgr:save_doc(AccountDb, J);
         {'error', _E}=E ->
             lager:error("failed to update locality for ~s in ~s: ~p", [DocId, AccountDb, _E]),
             E
@@ -1098,7 +1098,7 @@ get_auth_user_email(Context) ->
         'undefined' -> 'undefined';
         UserId ->
             AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-            case couch_mgr:open_doc(AccountDb, UserId) of
+            case kz_datamgr:open_doc(AccountDb, UserId) of
                 {'ok', User} -> wh_json:get_value(<<"email">>, User);
                 {'error', _} -> 'undefined'
             end

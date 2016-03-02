@@ -25,6 +25,7 @@ src/kz_mime.erl: src/kz_mime.erl.src
 	@cat $(GEN_SRC) \
 		| head -n `grep -n "%% GENERATED" $(GEN_SRC) | cut -d : -f 1` \
 		> $(GEN_OUT)
+	@echo "from_extension(Ext) when not is_binary(Ext) -> from_extension(wh_util:to_binary(Ext));" >> $(GEN_OUT)
 	@echo "from_extension(<<$$., Ext/binary>>) -> from_extension(Ext);" >> $(GEN_OUT)
 	@cat $(GEN_FILE) \
 		| grep -v ^# \

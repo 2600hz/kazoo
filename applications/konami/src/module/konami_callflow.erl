@@ -37,7 +37,7 @@ callflow(Data, Call, 'undefined') ->
                                                        ,<<"collected">>
                                                       ], Data));
 callflow(_Data, Call, CallflowId) ->
-    couch_mgr:open_cache_doc(whapps_call:account_db(Call)
+    kz_datamgr:open_cache_doc(whapps_call:account_db(Call)
                              ,CallflowId
                             ).
 
@@ -46,7 +46,7 @@ captured_callflow(Call, [Number]) ->
     captured_callflow(Call, Number);
 captured_callflow(Call, Number) ->
     Options = [{'key', Number}, 'include_docs'],
-    case couch_mgr:get_results(whapps_call:account_db(Call), ?LIST_BY_NUMBER, Options) of
+    case kz_datamgr:get_results(whapps_call:account_db(Call), ?LIST_BY_NUMBER, Options) of
         {'ok', [JObj]} -> {'ok', wh_json:get_value(<<"doc">>, JObj)};
         E -> E
     end.

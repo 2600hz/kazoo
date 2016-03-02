@@ -96,7 +96,7 @@ intercept_restrictions(Data) ->
 
 -spec maybe_allowed_to_intercept(whapps_call:call(), wh_proplist()) -> boolean().
 maybe_allowed_to_intercept(Call, Props) ->
-    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), whapps_call:authorizing_id(Call)) of
+    case kz_datamgr:open_cache_doc(whapps_call:account_db(Call), whapps_call:authorizing_id(Call)) of
         {'ok', DeviceDoc} ->
             maybe_allowed_to_intercept(Call, Props, DeviceDoc);
         {'error', _Err} ->
@@ -119,7 +119,7 @@ can_device_intercept(Call, Props, DeviceDoc) ->
 -spec device_has_same_owner(whapps_call:call(), wh_json:object(), api_binary()) -> boolean().
 device_has_same_owner(_Call, _Device, 'undefined') -> 'false';
 device_has_same_owner(Call, DeviceDoc, TargetDeviceId) ->
-    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), TargetDeviceId) of
+    case kz_datamgr:open_cache_doc(whapps_call:account_db(Call), TargetDeviceId) of
         {'ok', TargetDevice} ->
             wh_json:get_value(<<"owner_id">>, DeviceDoc)
                 =:= wh_json:get_value(<<"owner_id">>, TargetDevice);

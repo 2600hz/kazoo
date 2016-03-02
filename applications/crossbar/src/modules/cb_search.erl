@@ -267,7 +267,7 @@ validate_query(Context, Available, Query) when is_binary(Query) ->
 %%--------------------------------------------------------------------
 -spec query_options(ne_binary()) -> ne_binaries().
 query_options(AccountDb) ->
-    case couch_mgr:open_cache_doc(AccountDb, <<"_design/search">>) of
+    case kz_datamgr:open_cache_doc(AccountDb, <<"_design/search">>) of
         {'ok', JObj} ->
             format_query_options(wh_json:get_keys(<<"views">>, JObj));
         {'error', _E} when AccountDb =:= ?WH_ACCOUNTS_DB ->

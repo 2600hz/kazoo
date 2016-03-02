@@ -28,7 +28,7 @@ start_link() ->
 -spec init_acdc() -> any().
 init_acdc() ->
     wh_util:put_callid(?MODULE),
-    case couch_mgr:get_all_results(?KZ_ACDC_DB, <<"acdc/accounts_listing">>) of
+    case kz_datamgr:get_all_results(?KZ_ACDC_DB, <<"acdc/accounts_listing">>) of
         {'ok', []} ->
             lager:debug("no accounts configured for acdc");
         {'ok', Accounts} ->
@@ -43,8 +43,8 @@ init_acdc() ->
 
 -spec init_db() -> any().
 init_db() ->
-    _ = couch_mgr:db_create(?KZ_ACDC_DB),
-    _ = couch_mgr:revise_doc_from_file(?KZ_ACDC_DB, 'crossbar', <<"views/acdc.json">>).
+    _ = kz_datamgr:db_create(?KZ_ACDC_DB),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_ACDC_DB, 'crossbar', <<"views/acdc.json">>).
 
 -spec init_acct(ne_binary()) -> 'ok'.
 init_acct(Account) ->
@@ -56,10 +56,10 @@ init_acct(Account) ->
     acdc_stats:init_db(AccountId),
 
     init_queues(AccountId
-                ,couch_mgr:get_results(AccountDb, <<"queues/crossbar_listing">>, [])
+                ,kz_datamgr:get_results(AccountDb, <<"queues/crossbar_listing">>, [])
                ),
     init_agents(AccountId
-                ,couch_mgr:get_results(AccountDb, <<"users/crossbar_listing">>, [])
+                ,kz_datamgr:get_results(AccountDb, <<"users/crossbar_listing">>, [])
                ).
 
 -spec init_acct_queues(ne_binary()) -> any().
@@ -69,7 +69,7 @@ init_acct_queues(Account) ->
 
     lager:debug("init acdc account queues: ~s", [AccountId]),
     init_agents(AccountId
-                ,couch_mgr:get_results(AccountDb, <<"queues/crossbar_listing">>, [])
+                ,kz_datamgr:get_results(AccountDb, <<"queues/crossbar_listing">>, [])
                ).
 
 -spec init_acct_agents(ne_binary()) -> any().
@@ -79,10 +79,10 @@ init_acct_agents(Account) ->
 
     lager:debug("init acdc account agents: ~s", [AccountId]),
     init_agents(AccountId
-                ,couch_mgr:get_results(AccountDb, <<"users/crossbar_listing">>, [])
+                ,kz_datamgr:get_results(AccountDb, <<"users/crossbar_listing">>, [])
                ).
 
--spec init_queues(ne_binary(), couch_mgr:get_results_return()) -> any().
+-spec init_queues(ne_binary(), kz_datamgr:get_results_return()) -> any().
 init_queues(_, {'ok', []}) -> 'ok';
 init_queues(AccountId, {'error', 'gateway_timeout'}) ->
     lager:debug("gateway timed out loading queues in account ~s, trying again in a moment", [AccountId]),
@@ -100,7 +100,7 @@ init_queues(AccountId, {'ok', Qs}) ->
     acdc_stats:init_db(AccountId),
     [acdc_queues_sup:new(AccountId, wh_doc:id(Q)) || Q <- Qs].
 
--spec init_agents(ne_binary(), couch_mgr:get_results_return()) -> any().
+-spec init_agents(ne_binary(), kz_datamgr:get_results_return()) -> any().
 init_agents(_, {'ok', []}) -> 'ok';
 init_agents(AccountId, {'error', 'gateway_timeout'}) ->
     lager:debug("gateway timed out loading agents in account ~s, trying again in a moment", [AccountId]),
@@ -130,7 +130,7 @@ try_again(AccountId, View, F) ->
               wh_util:put_callid(?MODULE),
               wait_a_bit(),
               AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-              F(AccountId, couch_mgr:get_results(AccountDb, View, []))
+              F(AccountId, kz_datamgr:get_results(AccountDb, View, []))
       end).
 
 -spec declare_exchanges() -> 'ok'.

@@ -45,7 +45,7 @@ find_template(AccountId, Props) ->
 -spec find_template(ne_binary(), wh_proplist() | ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
 find_template(AccountId, DocType, AttachmentId) when is_binary(DocType) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:fetch_attachment(AccountDb, ?TEMPLATE_DOC_ID(DocType), AttachmentId) of
+    case kz_datamgr:fetch_attachment(AccountDb, ?TEMPLATE_DOC_ID(DocType), AttachmentId) of
         {'ok', _}=OK -> OK;
         {'error', _R} ->
             lager:error("failed to find template ~s/~s in ~s: ~p"
@@ -133,7 +133,7 @@ cmd_fold({Search, Replace}, Subject) ->
 -spec default_template(ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
 default_template(DocType, AttachmentId) ->
     lager:debug("searching for default template ~s", [AttachmentId]),
-    case couch_mgr:fetch_attachment(?WH_CONFIG_DB, ?TEMPLATE_DOC_ID(DocType), AttachmentId) of
+    case kz_datamgr:fetch_attachment(?WH_CONFIG_DB, ?TEMPLATE_DOC_ID(DocType), AttachmentId) of
         {'ok', _}=OK -> OK;
         {'error', 'not_found'} -> maybe_create_default_template(DocType, AttachmentId);
         {'error', _R}=Error ->
@@ -169,7 +169,7 @@ create_default_template(Template, DocType, AttachmentId) ->
           ,?WH_CONFIG_DB
           ,[{'type', <<"config">>}]
          ),
-    case couch_mgr:save_doc(?WH_CONFIG_DB, JObj) of
+    case kz_datamgr:save_doc(?WH_CONFIG_DB, JObj) of
         {'ok', _} -> save_default_attachment(Template, DocType, AttachmentId);
         {'error', 'conflict'} -> save_default_attachment(Template, DocType, AttachmentId);
         {'error', _R}=Error ->
@@ -183,7 +183,7 @@ create_default_template(Template, DocType, AttachmentId) ->
 save_default_attachment(Template, DocType, AttachmentId) ->
     lager:debug("saving default template ~s attachment", [DocType]),
     case
-        couch_mgr:put_attachment(
+        kz_datamgr:put_attachment(
           ?WH_CONFIG_DB
           ,?TEMPLATE_DOC_ID(DocType)
           ,AttachmentId

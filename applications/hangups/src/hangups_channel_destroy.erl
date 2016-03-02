@@ -105,14 +105,14 @@ maybe_add_number_info(JObj) ->
 %%--------------------------------------------------------------------
 -spec build_account_tree(ne_binary()) -> wh_json:object().
 build_account_tree(AccountId) ->
-    {'ok', AccountDoc} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
+    {'ok', AccountDoc} = kz_datamgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
     Tree = kz_account:tree(AccountDoc),
     build_account_tree(Tree, []).
 
 -spec build_account_tree(ne_binaries(), wh_proplist()) -> wh_json:object().
 build_account_tree([], Map) -> wh_json:from_list(Map);
 build_account_tree([AccountId|Tree], Map) ->
-    {'ok', AccountDoc} = couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId),
+    {'ok', AccountDoc} = kz_datamgr:open_doc(?WH_ACCOUNTS_DB, AccountId),
     build_account_tree(Tree, [{AccountId, wh_json:get_value(<<"name">>, AccountDoc)} | Map]).
 
 %%--------------------------------------------------------------------
@@ -131,7 +131,7 @@ find_realm(JObj, AccountId) ->
 -spec get_account_realm(api_binary()) -> ne_binary().
 get_account_realm('undefined') -> <<"unknown">>;
 get_account_realm(AccountId) ->
-    case couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
+    case kz_datamgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
         {'ok', JObj} -> wh_json:get_value(<<"realm">>, JObj, <<"unknown">>);
         {'error', _} -> <<"unknown">>
     end.

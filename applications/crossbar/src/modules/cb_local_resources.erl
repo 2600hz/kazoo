@@ -28,7 +28,7 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = couch_mgr:revise_doc_from_file(?WH_SIP_DB, 'crossbar', "views/resources.json"),
+    _ = kz_datamgr:revise_doc_from_file(?WH_SIP_DB, 'crossbar', "views/resources.json"),
     crossbar_maintenance:start_module('cb_resources').
 
 %%--------------------------------------------------------------------
@@ -176,7 +176,7 @@ maybe_aggregate_resource(Context, 'success') ->
             maybe_remove_aggregate(ResourceId, Context);
         'true' ->
             lager:debug("adding resource to the sip auth aggregate"),
-            couch_mgr:ensure_saved(?WH_SIP_DB, wh_doc:delete_revision(cb_context:doc(Context))),
+            kz_datamgr:ensure_saved(?WH_SIP_DB, wh_doc:delete_revision(cb_context:doc(Context))),
             _ = wapi_switch:publish_reload_gateways(),
             _ = wapi_switch:publish_reload_acls(),
             'true'
@@ -190,9 +190,9 @@ maybe_remove_aggregate(ResourceId, Context) ->
     maybe_remove_aggregate(ResourceId, Context, cb_context:resp_status(Context)).
 
 maybe_remove_aggregate(ResourceId, _Context, 'success') ->
-    case couch_mgr:open_doc(?WH_SIP_DB, ResourceId) of
+    case kz_datamgr:open_doc(?WH_SIP_DB, ResourceId) of
         {'ok', JObj} ->
-            couch_mgr:del_doc(?WH_SIP_DB, JObj),
+            kz_datamgr:del_doc(?WH_SIP_DB, JObj),
             _ = wapi_switch:publish_reload_gateways(),
             _ = wapi_switch:publish_reload_acls(),
             'true';
@@ -212,7 +212,7 @@ maybe_remove_aggregate(_ResourceId, _Context, _Status) -> 'false'.
 -spec get_all_sip_auth_ips() -> sip_auth_ips().
 get_all_sip_auth_ips() ->
     ViewOptions = [],
-    case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup_by_ip">>, ViewOptions) of
+    case kz_datamgr:get_results(?WH_SIP_DB, <<"credentials/lookup_by_ip">>, ViewOptions) of
         {'ok', JObjs} -> lists:foldr(fun get_sip_auth_ip/2, [], JObjs);
         {'error', _} -> []
     end.
@@ -293,7 +293,7 @@ maybe_aggregate_resources([Resource|Resources]) ->
     of
         'true' ->
             lager:debug("adding resource to the sip auth aggregate"),
-            couch_mgr:ensure_saved(?WH_SIP_DB, wh_doc:delete_revision(Resource)),
+            kz_datamgr:ensure_saved(?WH_SIP_DB, wh_doc:delete_revision(Resource)),
             _ = wapi_switch:publish_reload_gateways(),
             _ = wapi_switch:publish_reload_acls(),
             maybe_aggregate_resources(Resources);
@@ -309,9 +309,9 @@ maybe_aggregate_resources([Resource|Resources]) ->
 -spec maybe_remove_aggregates(wh_json:objects()) -> 'ok'.
 maybe_remove_aggregates([]) -> 'ok';
 maybe_remove_aggregates([Resource|Resources]) ->
-    case couch_mgr:open_doc(?WH_SIP_DB, wh_doc:id(Resource)) of
+    case kz_datamgr:open_doc(?WH_SIP_DB, wh_doc:id(Resource)) of
         {'ok', JObj} ->
-            couch_mgr:del_doc(?WH_SIP_DB, JObj),
+            kz_datamgr:del_doc(?WH_SIP_DB, JObj),
             _ = wapi_switch:publish_reload_gateways(),
             _ = wapi_switch:publish_reload_acls(),
             maybe_remove_aggregates(Resources);

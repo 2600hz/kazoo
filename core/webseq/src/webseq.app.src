@@ -8,7 +8,7 @@
                   , crypto
 
                   , whistle
-                  , whistle_couch
+                  , kazoo_data
 
                   , gproc
                   , lager

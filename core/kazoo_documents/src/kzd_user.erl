@@ -249,7 +249,7 @@ devices(UserJObj) ->
                    ,{'endkey', [UserId, wh_json:new()]}
                    ,'include_docs'
                   ],
-    case couch_mgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
         {'ok', JObjs} -> [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs];
         {'error', _R} ->
             lager:warning("unable to find documents owned by ~s: ~p", [UserId, _R]),
@@ -259,6 +259,6 @@ devices(UserJObj) ->
 -spec fetch(ne_binary(), ne_binary()) -> {'ok', doc()} | {'error', any()}.
 fetch(<<_/binary>> = AccountId, <<_/binary>> = UserId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    couch_mgr:open_cache_doc(AccountDb, UserId);
+    kz_datamgr:open_cache_doc(AccountDb, UserId);
 fetch(_, _) ->
     {'error', 'invalid_parametres'}.

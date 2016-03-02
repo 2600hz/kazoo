@@ -292,7 +292,7 @@ is_number_db(_) -> 'false'.
 crawl_numbers_db(NumberDb) ->
     lager:debug("getting all numbers from ~s",[NumberDb]),
     Db = wh_util:to_binary(http_uri:encode(wh_util:to_list(NumberDb))),
-    try couch_mgr:all_docs(Db) of
+    try kz_datamgr:all_docs(Db) of
         {'ok', []} ->
             lager:debug("no number docs in ~s",[NumberDb]);
         {'ok', JObjs} ->
@@ -321,7 +321,7 @@ get_numbers(JObjs) ->
 -spec maybe_export_numbers(ne_binary(), ne_binaries()) -> 'ok'.
 maybe_export_numbers(_, []) -> 'ok';
 maybe_export_numbers(Db, [Number|Numbers]) ->
-    _ = case couch_mgr:open_doc(Db, Number) of
+    _ = case kz_datamgr:open_doc(Db, Number) of
             {'ok', JObj} ->
                 maybe_export_number(Number
                                     ,wh_json:get_value(?PVT_NUMBER_STATE, JObj)
@@ -344,7 +344,7 @@ maybe_export_number(Number, ?NUMBER_STATE_IN_SERVICE, AccountId) ->
     %%    and the callflows.  Once possible improvement might be to walk
     %%    the accounts, pulling all callflows and building for any assigned
     %%    reconcilable number (instead of walking the numbers).
-    case couch_mgr:get_results(AccountDb, ?CALLFLOW_VIEW, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, ?CALLFLOW_VIEW, ViewOptions) of
         {'ok', []} ->
             lager:debug("number ~s in service for account ~s but no callflows using it"
                         ,[Number, AccountId]
@@ -389,7 +389,7 @@ process_callflow(Number, AccountId, <<"device">>, DeviceId) ->
                 ,[DeviceId, Number]
                ),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, DeviceId) of
+    case kz_datamgr:open_cache_doc(AccountDb, DeviceId) of
         {'ok', JObj } -> process_device(Number, AccountId, JObj);
         {'error', _R} ->
             lager:debug("unable to get device ~s from account ~s: ~p"
@@ -402,7 +402,7 @@ process_callflow(Number, AccountId, <<"user">>, UserId) ->
                ),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     ViewOptions = [{'key', UserId}],
-    case couch_mgr:get_results(AccountDb, ?DEVICES_VIEW, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, ?DEVICES_VIEW, ViewOptions) of
         {'ok', JObjs} ->
             Devices = [wh_json:get_value([<<"value">>,<<"id">>], JObj)
                        || JObj <- JObjs,

@@ -88,7 +88,7 @@ maybe_get_doc(_, 'undefined') ->
 maybe_get_doc('undefined', _) ->
     {'error', 'no_account_db'};
 maybe_get_doc(AccountDb, Id) ->
-    case couch_mgr:open_doc(AccountDb, Id) of
+    case kz_datamgr:open_doc(AccountDb, Id) of
         {'ok', JObj}=Ok ->
             case wh_doc:type(JObj) of
                 <<"device">> -> Ok;
@@ -142,12 +142,12 @@ deactivate_dnd(#dnd{jobj=JObj
 -spec maybe_update_doc(boolean(), wh_json:object(), ne_binary()) -> wh_jobj_return().
 maybe_update_doc(Enabled, JObj, AccountDb) ->
     Updated = wh_json:set_value([<<"do_not_disturb">>, <<"enabled">>], Enabled, JObj),
-    case couch_mgr:save_doc(AccountDb, Updated) of
+    case kz_datamgr:save_doc(AccountDb, Updated) of
         {'ok', _}=Ok ->
             lager:info("dnd enabled set to ~s on document ~s", [Enabled, wh_doc:id(JObj)]),
             Ok;
         {'error', 'conflict'} ->
-            case couch_mgr:open_doc(AccountDb, wh_doc:id(JObj)) of
+            case kz_datamgr:open_doc(AccountDb, wh_doc:id(JObj)) of
                 {'error', _}=E -> E;
                 {'ok', NewJObj} -> maybe_update_doc(Enabled, NewJObj, AccountDb)
             end;

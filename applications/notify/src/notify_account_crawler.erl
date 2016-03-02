@@ -45,7 +45,7 @@ start_link() ->
 -spec check(ne_binary()) -> 'ok'.
 check(Account) when is_binary(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
+    case kz_datamgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
         {'ok', AccountJObj} ->
             process_account(AccountId, wh_doc:account_db(AccountJObj), AccountJObj);
         {'error', _R} ->
@@ -126,14 +126,14 @@ handle_info('next_account', [Account|Accounts]) ->
             AccountId ->
                 %% do not open the account def in the account db or we will
                 %% be wasting bigcouch's file descriptors
-                OpenResult = couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId),
+                OpenResult = kz_datamgr:open_doc(?WH_ACCOUNTS_DB, AccountId),
                 check_then_process_account(AccountId, OpenResult)
         end,
     Cycle = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"interaccount_delay">>, 10 * ?MILLISECONDS_IN_SECOND),
     erlang:send_after(Cycle, self(), 'next_account'),
     {'noreply', Accounts, 'hibernate'};
 handle_info('crawl_accounts', _) ->
-    _ = case couch_mgr:all_docs(?WH_ACCOUNTS_DB) of
+    _ = case kz_datamgr:all_docs(?WH_ACCOUNTS_DB) of
             {'ok', JObjs} ->
                 self() ! 'next_account',
                 {'noreply', wh_util:shuffle_list(JObjs)};
@@ -271,7 +271,7 @@ test_for_initial_call(AccountId, AccountDb) ->
     ViewOptions = [{'key', <<"cdr">>}
                    ,{'limit', 1}
                   ],
-    case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
         {'ok', [_|_]} ->
             lager:debug("found initial call in account ~s", [AccountId]),
             handle_initial_call(AccountId);

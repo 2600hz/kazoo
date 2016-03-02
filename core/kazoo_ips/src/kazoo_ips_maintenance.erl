@@ -74,7 +74,7 @@ assign() ->
 assign(IP, Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    _ = case couch_mgr:open_doc(AccountDb, AccountId) of
+    _ = case kz_datamgr:open_doc(AccountDb, AccountId) of
             {'ok', _} ->
                 case kz_ip:assign(Account, IP) of
                     {'ok', _} ->

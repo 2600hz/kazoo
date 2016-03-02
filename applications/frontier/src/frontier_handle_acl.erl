@@ -76,7 +76,7 @@ run_acl_query(Entity, IncludeRealm) ->
     ViewOpts = build_view_options(Entity, IncludeRealm),
     {'ok', UserDb} = whapps_util:get_account_by_realm(frontier_utils:extract_realm(Entity)),
     lager:debug("Looking for ~s's acls in ~s", [Entity, UserDb]),
-    case couch_mgr:get_results(UserDb, <<"access_lists/crossbar_listing">>, ViewOpts) of
+    case kz_datamgr:get_results(UserDb, <<"access_lists/crossbar_listing">>, ViewOpts) of
         {'ok', Results} ->
             lager:debug("Found ~p records", [length(Results)]),
             Results;

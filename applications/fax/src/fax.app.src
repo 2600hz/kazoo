@@ -12,7 +12,7 @@
 
                  , whistle
                  , whistle_amqp
-                 , whistle_couch
+                 , kazoo_data
                  , whistle_apps
                  , kazoo_modb
                  , kazoo_oauth

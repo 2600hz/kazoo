@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(wh_couch_bootstrap).
+-module(kazoo_data_bootstrap).
 
 -behaviour(gen_server).
 
@@ -18,7 +18,7 @@
          ,code_change/3
         ]).
 
--include("wh_couch.hrl").
+-include("kz_data.hrl").
 
 -define(SERVER, ?MODULE).
 -record(state, {}).
@@ -51,19 +51,10 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     wh_util:put_callid(?LOG_SYSTEM_ID),
-    Config= get_config(),
-    %% TODO: for the time being just maintain backward compatability
-    wh_couch_connections:add(create_connection(Config)),
-    wh_couch_connections:add(create_admin_connection(Config)),
-    [AutoCmpt|_] = wh_config:get('bigcouch', 'compact_automatically', ['true']),
-    CacheProps = [{'expires', 'infinity'}
-                  ,{'origin', {'db', ?WH_CONFIG_DB, ?CONFIG_CAT}}
-                 ],
-    kz_cache:store_local(?WH_COUCH_CACHE, <<"compact_automatically">>, AutoCmpt, CacheProps),
-    [Cookie|_] = wh_config:get_atom('bigcouch', 'cookie', ['monster']),
-    wh_couch_connections:set_node_cookie(Cookie),
-    lager:info("waiting for first bigcouch/haproxy connection...", []),
-    wh_couch_connections:wait_for_connection(),
+    Connection = kz_dataconfig:connection(),
+    kz_dataconnections:add(Connection),
+    lager:info("waiting for first connection...", []),
+    kz_dataconnections:wait_for_connection(),
     {'ok', #state{}, 100}.
 
 %%--------------------------------------------------------------------
@@ -140,51 +131,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--type couch_config_tuple() :: {string(), inet:port_number(), string(), string(), inet:port_number()}.
--type couch_config_proplist() :: [{'default_couch_host', couch_config_tuple()}].
--spec get_config() -> couch_config_proplist().
-get_config() ->
-    [IP|_] = wh_config:get('bigcouch', 'ip', ["localhost"]),
-    [Port|_] = wh_config:get_integer('bigcouch', 'port', [5984]),
-    [Username|_]= wh_config:get_raw_string('bigcouch', 'username', [""]),
-    [Pwd|_] = wh_config:get_raw_string('bigcouch', 'password', [""]),
-    [AdminPort|_] = wh_config:get_integer('bigcouch', 'admin_port', [5986]),
-    [{'default_couch_host', {IP, Port, Username, Pwd, AdminPort}}].
-
--spec create_connection(couch_config_proplist()) -> couch_connection().
-create_connection(Props) ->
-    Routines = [fun(C) ->
-                        import_config(props:get_value('default_couch_host', Props), C)
-                end
-                ,fun(C) -> wh_couch_connection:set_admin('false', C) end
-               ],
-    lists:foldl(fun(F, C) -> F(C) end, #wh_couch_connection{id = 1}, Routines).
-
--spec create_admin_connection(couch_config_proplist()) -> couch_connection().
-create_admin_connection(Props) ->
-    Routines = [fun(C) ->
-                        case props:get_value('default_couch_host', Props) of
-                            {Host, _, User, Pass, AdminPort} ->
-                                import_config({Host, AdminPort, User, Pass}, C);
-                            {Host, _, User, Pass} ->
-                                import_config({Host, User, Pass}, C);
-                            Else ->
-                                import_config(Else, C)
-                        end
-                end
-                ,fun(C) -> wh_couch_connection:set_admin('true', C) end
-               ],
-    lists:foldl(fun(F, C) -> F(C) end, #wh_couch_connection{id = 2}, Routines).
-
--spec import_config('undefined' | tuple(), couch_connection()) -> couch_connection().
-import_config({Host}, Connection) ->
-    wh_couch_connection:config(Host, Connection);
-import_config({Host, Port}, Connection) ->
-    wh_couch_connection:config(Host, Port, Connection);
-import_config({Host, User, Pass}, Connection) ->
-    wh_couch_connection:config(Host, User, Pass, Connection);
-import_config({Host, Port, User, Pass}, Connection) ->
-    wh_couch_connection:config(Host, Port, User, Pass, Connection);
-import_config({Host, Port, User, Pass, _}, Connection) ->
-    wh_couch_connection:config(Host, Port, User, Pass, Connection);
-import_config('undefined', Connection) -> Connection.

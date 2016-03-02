@@ -70,7 +70,7 @@
                         fun((cb_context:context()) -> startkey()) |
                         fun((wh_proplist(), cb_context:context()) -> startkey()).
 
--type view_options() :: couch_util:view_options() |
+-type view_options() :: kazoo_data:view_options() |
                         [{'databases', ne_binaries()} |
                          {'startkey_fun', startkey_fun()}
                         ].
@@ -139,8 +139,8 @@ load(DocId, Context, Options) ->
 load(_DocId, Context, _Options, 'error') -> Context;
 load(DocId, Context, Opts, _RespStatus) when is_binary(DocId) ->
     OpenFun = case props:get_is_true('use_cache', Opts, 'true') of
-                  'true' ->  fun couch_mgr:open_cache_doc/3;
-                  'false' -> fun couch_mgr:open_doc/3
+                  'true' ->  fun kz_datamgr:open_cache_doc/3;
+                  'false' -> fun kz_datamgr:open_doc/3
               end,
     case OpenFun(cb_context:account_db(Context), DocId, Opts) of
         {'error', Error} ->
@@ -152,7 +152,7 @@ load([], Context, _Options, _RespStatus) ->
     cb_context:add_system_error('bad_identifier',  Context);
 load([_|_]=IDs, Context, Opts, _RespStatus) ->
     Opts1 = [{'keys', IDs}, 'include_docs' | Opts],
-    case couch_mgr:all_docs(cb_context:account_db(Context), Opts1) of
+    case kz_datamgr:all_docs(cb_context:account_db(Context), Opts1) of
         {'error', Error} -> handle_couch_mgr_errors(Error, IDs, Context);
         {'ok', JObjs} ->
             Docs = extract_included_docs(JObjs),
@@ -195,7 +195,7 @@ handle_successful_load(Context, JObj, 'false') ->
                             {'ok', wh_json:object()} |
                             {'error', atom()}.
 load_from_file(Db, File) ->
-    couch_mgr:load_doc_from_file(Db, 'crossbar', File).
+    kz_datamgr:load_doc_from_file(Db, 'crossbar', File).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -298,7 +298,7 @@ load_view(View, Options, Context, StartKey, PageSize, FilterFun) ->
                                 ,start_key=StartKey
                                 ,page_size=PageSize
                                 ,filter_fun=FilterFun
-                                ,dbs=lists:filter(fun couch_mgr:db_exists/1
+                                ,dbs=lists:filter(fun kz_datamgr:db_exists/1
                                                   ,props:get_value('databases', Options, [cb_context:account_db(Context)])
                                                  )
                                 ,direction=view_sort_direction(Options)
@@ -360,9 +360,9 @@ load_view(#load_view_params{view=View
             _V -> props:delete('include_docs', IncludeOptions)
         end,
 
-    lager:debug("couch_mgr:get_results(~p, ~p, ~p)", [Db, View, ViewOptions]),
+    lager:debug("kz_datamgr:get_results(~p, ~p, ~p)", [Db, View, ViewOptions]),
 
-    case couch_mgr:get_results(Db, View, ViewOptions) of
+    case kz_datamgr:get_results(Db, View, ViewOptions) of
         % There were more dbs, so move to the next one
         {'error', 'not_found'} when Dbs =:= [] ->
             lager:debug("either the db ~s or view ~s was not found", [Db, View]),
@@ -432,7 +432,7 @@ start_key_fun(Options, Context) ->
 %%--------------------------------------------------------------------
 -spec load_docs(cb_context:context(), filter_fun()) -> cb_context:context().
 load_docs(Context, Filter) when is_function(Filter, 2) ->
-    case couch_mgr:all_docs(cb_context:account_db(Context)) of
+    case kz_datamgr:all_docs(cb_context:account_db(Context)) of
         {'error', Error} -> handle_couch_mgr_errors(Error, <<"all_docs">>, Context);
         {'ok', JObjs} ->
             Filtered = [JObj
@@ -454,7 +454,7 @@ load_docs(Context, Filter) when is_function(Filter, 2) ->
 -spec load_attachment(ne_binary() | wh_json:object(), ne_binary(), cb_context:context()) ->
                              cb_context:context().
 load_attachment(DocId, AName, Context) when is_binary(DocId) ->
-    case couch_mgr:fetch_attachment(cb_context:account_db(Context), DocId, AName) of
+    case kz_datamgr:fetch_attachment(cb_context:account_db(Context), DocId, AName) of
         {'error', Error} -> handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', AttachBin} ->
             lager:debug("loaded attachment ~s from doc ~s from db ~s"
@@ -496,7 +496,7 @@ save(Context, [], _Options) ->
     cb_context:set_resp_status(Context, 'success');
 save(Context, [_|_]=JObjs, Options) ->
     JObjs0 = update_pvt_parameters(JObjs, Context),
-    case couch_mgr:save_docs(cb_context:account_db(Context), JObjs0, Options) of
+    case kz_datamgr:save_docs(cb_context:account_db(Context), JObjs0, Options) of
         {'error', Error} ->
             IDs = [wh_doc:id(JObj) || JObj <- JObjs],
             handle_couch_mgr_errors(Error, IDs, Context);
@@ -507,7 +507,7 @@ save(Context, [_|_]=JObjs, Options) ->
     end;
 save(Context, JObj, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
-    case couch_mgr:save_doc(cb_context:account_db(Context), JObj0, Options) of
+    case kz_datamgr:save_doc(cb_context:account_db(Context), JObj0, Options) of
         {'error', Error} ->
             DocId = wh_doc:id(JObj0),
             handle_couch_mgr_errors(Error, DocId, Context);
@@ -541,7 +541,7 @@ ensure_saved(Context, Options) ->
 
 ensure_saved(Context, JObj, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
-    case couch_mgr:ensure_saved(cb_context:account_db(Context), JObj0, Options) of
+    case kz_datamgr:ensure_saved(cb_context:account_db(Context), JObj0, Options) of
         {'error', Error} ->
             DocId = wh_doc:id(JObj0),
             handle_couch_mgr_errors(Error, DocId, Context);
@@ -576,7 +576,7 @@ save_attachment(DocId, AName, Contents, Context) ->
 save_attachment(DocId, Name, Contents, Context, Options) ->
     Opts1 = case props:get_value('rev', Options) of
                 'undefined' ->
-                    {'ok', Rev} = couch_mgr:lookup_doc_rev(cb_context:account_db(Context), DocId),
+                    {'ok', Rev} = kz_datamgr:lookup_doc_rev(cb_context:account_db(Context), DocId),
                     lager:debug("looking up rev for ~s: ~s", [DocId, Rev]),
                     [{'rev', Rev} | Options];
                 _O -> Options
@@ -584,7 +584,7 @@ save_attachment(DocId, Name, Contents, Context, Options) ->
 
     AName = wh_util:clean_binary(Name),
 
-    case couch_mgr:put_attachment(cb_context:account_db(Context), DocId, AName, Contents, Opts1) of
+    case kz_datamgr:put_attachment(cb_context:account_db(Context), DocId, AName, Contents, Opts1) of
         {'error', 'conflict'=Error} ->
             lager:debug("saving attachment resulted in a conflict, checking for validity"),
             Context1 = load(DocId, Context, [{'use_cache', 'false'}]),
@@ -595,7 +595,7 @@ save_attachment(DocId, Name, Contents, Context, Options) ->
                     handle_couch_mgr_errors(Error, AName, Context);
                 _Attachment ->
                     lager:debug("attachment ~s was in _attachments, considering it successful", [AName]),
-                    {'ok', Rev1} = couch_mgr:lookup_doc_rev(cb_context:account_db(Context), DocId),
+                    {'ok', Rev1} = kz_datamgr:lookup_doc_rev(cb_context:account_db(Context), DocId),
                     cb_context:setters(Context
                                        ,[{fun cb_context:set_doc/2, wh_json:new()}
                                          ,{fun cb_context:set_resp_status/2, 'success'}
@@ -613,7 +613,7 @@ save_attachment(DocId, Name, Contents, Context, Options) ->
             lager:debug("saved attachment ~s to doc ~s to db ~s"
                         ,[AName, DocId, cb_context:account_db(Context)]
                        ),
-            {'ok', Rev1} = couch_mgr:lookup_doc_rev(cb_context:account_db(Context), DocId),
+            {'ok', Rev1} = kz_datamgr:lookup_doc_rev(cb_context:account_db(Context), DocId),
             cb_context:setters(Context
                                ,[{fun cb_context:set_doc/2, wh_json:new()}
                                  ,{fun cb_context:set_resp_status/2, 'success'}
@@ -627,11 +627,11 @@ save_attachment(DocId, Name, Contents, Context, Options) ->
                               {'error', any()}.
 maybe_delete_doc(Context, DocId) ->
     AccountDb = cb_context:account_db(Context),
-    case couch_mgr:open_doc(AccountDb, DocId) of
+    case kz_datamgr:open_doc(AccountDb, DocId) of
         {'error', _}=Error -> Error;
         {'ok', JObj} ->
             case wh_doc:attachments(JObj) of
-                'undefined' -> couch_mgr:del_doc(AccountDb, JObj);
+                'undefined' -> kz_datamgr:del_doc(AccountDb, JObj);
                 _Attachments -> {'ok', 'non_empty'}
             end
     end.
@@ -655,12 +655,12 @@ delete(Context) ->
 
 delete(Context, 'soft') ->
     Doc = cb_context:doc(Context),
-    case couch_mgr:lookup_doc_rev(cb_context:account_db(Context), wh_doc:id(Doc)) of
+    case kz_datamgr:lookup_doc_rev(cb_context:account_db(Context), wh_doc:id(Doc)) of
         {'ok', Rev}   -> soft_delete(Context, Rev);
         {'error', _E} -> soft_delete(Context, wh_doc:revision(Doc))
     end;
 delete(Context, 'permanent') ->
-    do_delete(Context, cb_context:doc(Context), fun couch_mgr:del_doc/2).
+    do_delete(Context, cb_context:doc(Context), fun kz_datamgr:del_doc/2).
 
 -spec soft_delete(cb_context:context(), api_binary()) -> cb_context:context().
 soft_delete(Context, Rev) ->
@@ -670,11 +670,11 @@ soft_delete(Context, Rev) ->
                         ,[{fun wh_doc:set_soft_deleted/2, 'true'}
                           ,{fun wh_doc:set_revision/2, Rev}
                          ]),
-    do_delete(Context, JObj1, fun couch_mgr:save_doc/2).
+    do_delete(Context, JObj1, fun kz_datamgr:save_doc/2).
 
 -type delete_fun() :: fun((ne_binary(), wh_json:object() | ne_binary()) ->
                                  {'ok', wh_json:object() | wh_json:objects()} |
-                                 couch_mgr:couchbeam_error()).
+                                 kz_datamgr:couchbeam_error()).
 
 -spec do_delete(cb_context:context(), wh_json:object(), delete_fun()) ->
                        cb_context:context().
@@ -709,7 +709,7 @@ do_delete(Context, JObj, CouchFun) ->
 -spec delete_attachment(ne_binary(), ne_binary(), cb_context:context()) ->
                                cb_context:context().
 delete_attachment(DocId, AName, Context) ->
-    case couch_mgr:delete_attachment(cb_context:account_db(Context), DocId, AName) of
+    case kz_datamgr:delete_attachment(cb_context:account_db(Context), DocId, AName) of
         {'error', 'not_found'} -> handle_couch_mgr_success(wh_json:new(), Context);
         {'error', Error} ->
             lager:debug("failed to delete attachment: ~p", [Error]),
@@ -1035,7 +1035,7 @@ version_specific_success(JObjs, Context, _Version) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_couch_mgr_errors(couch_util:couchbeam_errors(), api_binary() | api_binaries(), cb_context:context()) ->
+-spec handle_couch_mgr_errors(kazoo_data:data_errors(), api_binary() | api_binaries(), cb_context:context()) ->
                                      cb_context:context().
 handle_couch_mgr_errors('invalid_db_name', _, Context) ->
     lager:debug("datastore ~s not_found", [cb_context:account_db(Context)]),

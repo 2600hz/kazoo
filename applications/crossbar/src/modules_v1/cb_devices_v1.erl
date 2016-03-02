@@ -299,8 +299,8 @@ error_used_mac_address(Context) ->
 
 -spec get_mac_addresses(ne_binary()) -> ne_binaries().
 get_mac_addresses(DbName) ->
-    case couch_mgr:get_all_results(DbName, ?CB_LIST_MAC) of
-        {'ok', AdJObj} -> couch_mgr:get_result_keys(AdJObj);
+    case kz_datamgr:get_all_results(DbName, ?CB_LIST_MAC) of
+        {'ok', AdJObj} -> kz_datamgr:get_result_keys(AdJObj);
         _ -> []
     end.
 
@@ -531,7 +531,7 @@ is_sip_creds_unique(AccountDb, Realm, Username, DeviceId) ->
 -spec is_creds_locally_unique(ne_binary(), ne_binary(), ne_binary()) -> boolean().
 is_creds_locally_unique(AccountDb, Username, DeviceId) ->
     ViewOptions = [{<<"key">>, wh_util:to_lower_binary(Username)}],
-    case couch_mgr:get_results(AccountDb, <<"devices/sip_credentials">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"devices/sip_credentials">>, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [JObj]} -> wh_doc:id(JObj) =:= DeviceId;
         {'error', 'not_found'} -> 'true';
@@ -544,7 +544,7 @@ is_creds_global_unique(Realm, Username, DeviceId) ->
                                 , wh_util:to_lower_binary(Username)
                                ]
                    }],
-    case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
+    case kz_datamgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [JObj]} -> wh_doc:id(JObj) =:= DeviceId;
         {'error', 'not_found'} -> 'true';
@@ -569,7 +569,7 @@ maybe_aggregate_device(DeviceId, Context, 'success') ->
             maybe_remove_aggregate(DeviceId, Context);
         'true' ->
             lager:debug("adding device to the sip auth aggregate"),
-            {'ok', _} = couch_mgr:ensure_saved(?WH_SIP_DB, wh_doc:delete_revision(cb_context:doc(Context))),
+            {'ok', _} = kz_datamgr:ensure_saved(?WH_SIP_DB, wh_doc:delete_revision(cb_context:doc(Context))),
             whapps_util:amqp_pool_send([], fun(_) -> wapi_switch:publish_reload_acls() end),
             'true'
     end;
@@ -588,9 +588,9 @@ maybe_remove_aggregate(DeviceId, Context) ->
 
 maybe_remove_aggregate('undefined', _Context, _RespStatus) -> 'false';
 maybe_remove_aggregate(DeviceId, _Context, 'success') ->
-    case couch_mgr:open_doc(?WH_SIP_DB, DeviceId) of
+    case kz_datamgr:open_doc(?WH_SIP_DB, DeviceId) of
         {'ok', JObj} ->
-            _ = couch_mgr:del_doc(?WH_SIP_DB, JObj),
+            _ = kz_datamgr:del_doc(?WH_SIP_DB, JObj),
             whapps_util:amqp_pool_send([], fun(_) -> wapi_switch:publish_reload_acls() end),
             'true';
         {'error', 'not_found'} -> 'false'

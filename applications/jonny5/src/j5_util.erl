@@ -112,7 +112,7 @@ add_limit_details(Account, Prefix, Props) ->
 get_account_name('undefined') -> <<"unknown">>;
 get_account_name(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    case couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
+    case kz_datamgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
         {'error', _} -> AccountId;
         {'ok', JObj} -> wh_json:get_ne_value(<<"name">>, JObj, AccountId)
     end.

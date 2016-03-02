@@ -275,7 +275,7 @@ init([Super, AccountId, QueueId]) ->
     wh_util:put_callid(<<"mgr_", QueueId/binary>>),
 
     AcctDb = wh_util:format_account_id(AccountId, 'encoded'),
-    {'ok', QueueJObj} = couch_mgr:open_cache_doc(AcctDb, QueueId),
+    {'ok', QueueJObj} = kz_datamgr:open_cache_doc(AcctDb, QueueId),
 
     init(Super, AccountId, QueueId, QueueJObj).
 
@@ -283,7 +283,7 @@ init(Super, AccountId, QueueId, QueueJObj) ->
     process_flag('trap_exit', 'false'),
 
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    couch_mgr:add_to_doc_cache(AccountDb, QueueId, QueueJObj),
+    kz_datamgr:add_to_doc_cache(AccountDb, QueueId, QueueJObj),
 
     _ = start_secondary_queue(AccountId, QueueId),
 
@@ -409,7 +409,7 @@ handle_cast({'start_workers'}, #state{account_id=AccountId
                                       ,supervisor=QueueSup
                                      }=State) ->
     WorkersSup = acdc_queue_sup:workers_sup(QueueSup),
-    case couch_mgr:get_results(wh_util:format_account_id(AccountId, 'encoded')
+    case kz_datamgr:get_results(wh_util:format_account_id(AccountId, 'encoded')
                                ,<<"queues/agents_listing">>
                                ,[{'key', QueueId}
                                  ,'include_docs'
@@ -576,7 +576,7 @@ start_secondary_queue(AccountId, QueueId) ->
 
 -spec lookup_priority_levels(ne_binary(), ne_binary()) -> api_integer().
 lookup_priority_levels(AccountDB, QueueId) ->
-    case couch_mgr:open_cache_doc(AccountDB, QueueId) of
+    case kz_datamgr:open_cache_doc(AccountDB, QueueId) of
         {'ok', JObj} -> wh_json:get_value(<<"max_priority">>, JObj);
         _ -> 'undefined'
     end.
@@ -716,7 +716,7 @@ create_strategy_state(Strategy, AcctDb, QueueId) ->
 create_strategy_state('rr', 'undefined', AcctDb, QueueId) ->
     create_strategy_state('rr', queue:new(), AcctDb, QueueId);
 create_strategy_state('rr', AgentQ, AcctDb, QueueId) ->
-    case couch_mgr:get_results(AcctDb, <<"queues/agents_listing">>, [{'key', QueueId}]) of
+    case kz_datamgr:get_results(AcctDb, <<"queues/agents_listing">>, [{'key', QueueId}]) of
         {'ok', []} -> lager:debug("no agents around"), AgentQ;
         {'ok', JObjs} ->
             Q = queue:from_list([Id || JObj <- JObjs,
@@ -728,7 +728,7 @@ create_strategy_state('rr', AgentQ, AcctDb, QueueId) ->
 create_strategy_state('mi', 'undefined', AcctDb, QueueId) ->
     create_strategy_state('mi', [], AcctDb, QueueId);
 create_strategy_state('mi', AgentL, AcctDb, QueueId) ->
-    case couch_mgr:get_results(AcctDb, <<"queues/agents_listing">>, [{key, QueueId}]) of
+    case kz_datamgr:get_results(AcctDb, <<"queues/agents_listing">>, [{key, QueueId}]) of
         {'ok', []} -> lager:debug("no agents around"), AgentL;
         {'ok', JObjs} ->
             lists:foldl(fun(JObj, Acc) ->

@@ -22,7 +22,7 @@
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Id = wh_doc:id(Data),
-    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), Id) of
+    case kz_datamgr:open_cache_doc(whapps_call:account_db(Call), Id) of
         {'error', R} ->
             lager:info("could not branch to callflow ~s, ~p", [Id, R]),
             cf_exe:continue(Call);

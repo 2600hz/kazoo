@@ -491,7 +491,7 @@ merge_device(MACAddress, Context) ->
 get_owner('undefined', _) -> wh_json:new();
 get_owner(OwnerId, AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
+    case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
         {'ok', Owner} -> Owner;
         {'error', _R} ->
             lager:debug("unable to open user definition ~s/~s: ~p", [AccountDb, OwnerId, _R]),
@@ -541,7 +541,7 @@ send_provisioning_template(JObj, Context) ->
 get_template(Context) ->
     DocId = wh_json:get_value([<<"provision">>, <<"id">>], cb_context:doc(Context)),
     case is_binary(DocId)
-        andalso couch_mgr:fetch_attachment(cb_context:account_db(Context), DocId, ?TEMPLATE_ATTCH)
+        andalso kz_datamgr:fetch_attachment(cb_context:account_db(Context), DocId, ?TEMPLATE_ATTCH)
     of
         'false' ->
             lager:debug("unknown template id ~s", [DocId]),
@@ -645,7 +645,7 @@ set_device_line_defaults(Context) ->
 -spec set_global_overrides(cb_context:context()) ->
                                   [fun((wh_json:object()) -> wh_json:object()),...].
 set_global_overrides(_) ->
-    GlobalDefaults = case couch_mgr:open_cache_doc(?WH_PROVISIONER_DB, <<"base_properties">>) of
+    GlobalDefaults = case kz_datamgr:open_cache_doc(?WH_PROVISIONER_DB, <<"base_properties">>) of
                          {'ok', JObj} -> JObj;
                          {'error', _} -> wh_json:new()
                      end,
@@ -688,7 +688,7 @@ set_account_overrides(Context) ->
                                 [fun((wh_json:object()) -> wh_json:object()),...].
 set_user_overrides(Context) ->
     OwnerId = wh_json:get_ne_value(<<"owner_id">>, cb_context:doc(Context)),
-    User = case is_binary(OwnerId) andalso couch_mgr:open_doc(cb_context:account_db(Context), OwnerId) of
+    User = case is_binary(OwnerId) andalso kz_datamgr:open_doc(cb_context:account_db(Context), OwnerId) of
                {'ok', JObj} -> JObj;
                _Else -> wh_json:new()
            end,

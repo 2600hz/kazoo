@@ -35,8 +35,8 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = couch_mgr:revise_doc_from_file(?WH_SIP_DB, 'crossbar', "views/resources.json"),
-    _ = couch_mgr:revise_doc_from_file(?WH_OFFNET_DB, 'crossbar', "views/resources.json"),
+    _ = kz_datamgr:revise_doc_from_file(?WH_SIP_DB, 'crossbar', "views/resources.json"),
+    _ = kz_datamgr:revise_doc_from_file(?WH_OFFNET_DB, 'crossbar', "views/resources.json"),
 
     _Pid = maybe_start_jobs_listener(),
     lager:debug("started jobs listener: ~p", [_Pid]),
@@ -241,7 +241,7 @@ validate_collection(Context) ->
 -type collection_fold_acc() :: cb_context:context().
 -spec validate_collection_fold(wh_json:object(), collection_fold_acc()) -> collection_fold_acc().
 validate_collection_fold(Resource, C) ->
-    Id = wh_doc:id(Resource, couch_mgr:get_uuid()),
+    Id = wh_doc:id(Resource, kz_datamgr:get_uuid()),
     case validate_collection_resource(wh_json:set_value(<<"id">>, Id, Resource)
                                       ,C
                                       ,cb_context:req_verb(C)

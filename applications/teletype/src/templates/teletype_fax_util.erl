@@ -150,7 +150,7 @@ get_file_name(Macros, Ext) ->
                                    {'ok', ne_binary(), binary()} |
                                    {'error', 'no_attachment'}.
 get_attachment_binary(Db, Id) ->
-    case couch_mgr:open_cache_doc(Db, Id) of
+    case kz_datamgr:open_cache_doc(Db, Id) of
         {'error', 'not_found'} when Db =/= ?WH_FAXES_DB ->
             get_attachment_binary(?WH_FAXES_DB, Id);
         {'error', 'not_found'} ->
@@ -171,7 +171,7 @@ get_attachment_binary(Db, Id) ->
 get_attachment_binary(Db, Id, FaxJObj) ->
     [AttachmentName] = wh_doc:attachment_names(FaxJObj),
 
-    case couch_mgr:fetch_attachment(Db, Id, AttachmentName) of
+    case kz_datamgr:fetch_attachment(Db, Id, AttachmentName) of
         {'ok', Bin} ->
             get_attachment(wh_doc:attachment_content_type(FaxJObj, AttachmentName), Bin);
         {'error', _E} ->

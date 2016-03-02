@@ -92,8 +92,8 @@ admin_description(T) ->
 %%--------------------------------------------------------------------
 -spec refresh() -> 'ok'.
 refresh() ->
-    couch_mgr:db_create(?WH_SERVICES_DB),
-    couch_mgr:revise_docs_from_folder(?WH_SERVICES_DB, 'whistle_services', "views").
+    kz_datamgr:db_create(?WH_SERVICES_DB),
+    kz_datamgr:revise_docs_from_folder(?WH_SERVICES_DB, 'whistle_services', "views").
 
 %%--------------------------------------------------------------------
 %% @public
@@ -194,4 +194,3 @@ make_reseller(Account) when not is_binary(Account) ->
     make_reseller(wh_util:to_binary(Account));
 make_reseller(Account) ->
     whs_account_conversion:promote(Account).
-

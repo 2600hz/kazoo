@@ -325,7 +325,7 @@ find_call(CallId) ->
 -spec init([]) -> {'ok', #state{}}.
 init([]) ->
     wh_util:put_callid(<<"acdc.stats">>),
-    couch_mgr:suppress_change_notice(),
+    kz_datamgr:suppress_change_notice(),
     lager:debug("started new acdc stats collector"),
 
     {'ok', #state{archive_ref=start_archive_timer()
@@ -628,9 +628,9 @@ maybe_archive_call_data(Srv, Match) ->
     case ets:select(call_table_id(), Match) of
         [] -> 'ok';
         Stats ->
-            couch_mgr:suppress_change_notice(),
+            kz_datamgr:suppress_change_notice(),
             ToSave = lists:foldl(fun archive_call_fold/2, dict:new(), Stats),
-            _ = [couch_mgr:save_docs(acdc_stats_util:db_name(Account), Docs)
+            _ = [kz_datamgr:save_docs(acdc_stats_util:db_name(Account), Docs)
                  || {Account, Docs} <- dict:to_list(ToSave)
                 ],
             [gen_listener:cast(Srv, {'update_call', Id, [{#call_stat.is_archived, 'true'}]})
@@ -752,14 +752,14 @@ miss_to_doc(#agent_miss{agent_id=AgentId
 -spec init_db(ne_binary()) -> 'ok'.
 init_db(AccountId) ->
     DbName = acdc_stats_util:db_name(AccountId),
-    maybe_created_db(DbName, couch_mgr:db_create(DbName)).
+    maybe_created_db(DbName, kz_datamgr:db_create(DbName)).
 
 -spec maybe_created_db(ne_binary(), boolean()) -> 'ok'.
 maybe_created_db(DbName, 'false') ->
     lager:debug("database ~s already created", [DbName]);
 maybe_created_db(DbName, 'true') ->
     lager:debug("created db ~s, adding views", [DbName]),
-    couch_mgr:revise_views_from_folder(DbName, 'acdc').
+    kz_datamgr:revise_views_from_folder(DbName, 'acdc').
 
 -spec call_stat_id(wh_json:object()) -> ne_binary().
 -spec call_stat_id(ne_binary(), ne_binary()) -> ne_binary().

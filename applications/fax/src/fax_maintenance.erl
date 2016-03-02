@@ -82,12 +82,12 @@ migrate_faxes(Account, Options) ->
 -spec maybe_migrate_private_media(ne_binary(), wh_json:object()) -> 'ok'.
 
 migrate_private_media(Account) ->
-    AccountDb = case couch_mgr:db_exists(Account) of
+    AccountDb = case kz_datamgr:db_exists(Account) of
                     'true' -> Account;
                     'false' -> wh_util:format_account_id(Account, 'encoded')
                 end,
     ViewOptions = [{'key', <<"private_media">>}],
-    case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
         {'ok', []} -> 'ok';
         {'ok', JObjs3}->
             _ = [maybe_migrate_private_media(AccountDb, JObj) || JObj <- JObjs3],
@@ -98,7 +98,7 @@ migrate_private_media(Account) ->
 
 maybe_migrate_private_media(AccountDb, JObj) ->
     DocId = wh_doc:id(JObj),
-    case couch_mgr:open_doc(AccountDb, DocId) of
+    case kz_datamgr:open_doc(AccountDb, DocId) of
         {'ok', Doc } ->
             MediaType = wh_json:get_value(<<"media_type">>, Doc),
             migrate_private_media(AccountDb, Doc, MediaType);
@@ -107,7 +107,7 @@ maybe_migrate_private_media(AccountDb, JObj) ->
     end.
 
 migrate_private_media(AccountDb, Doc, <<"tiff">>) ->
-    {'ok', _} = couch_mgr:ensure_saved(AccountDb, wh_doc:set_type(Doc, <<"fax">>)),
+    {'ok', _} = kz_datamgr:ensure_saved(AccountDb, wh_doc:set_type(Doc, <<"fax">>)),
     'ok';
 migrate_private_media(_AccountDb, _JObj, _MediaType) -> 'ok'.
 
@@ -116,12 +116,12 @@ migrate_private_media(_AccountDb, _JObj, _MediaType) -> 'ok'.
 -spec maybe_recover_private_media(ne_binary(), wh_json:object()) -> 'ok'.
 
 recover_private_media(Account) ->
-    AccountDb = case couch_mgr:db_exists(Account) of
+    AccountDb = case kz_datamgr:db_exists(Account) of
                     'true' -> Account;
                     'false' -> wh_util:format_account_id(Account, 'encoded')
                 end,
     ViewOptions = [{'key', <<"fax">>}],
-    case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
         {'ok', []} -> 'ok';
         {'ok', JObjs3}->
             _ = [maybe_recover_private_media(AccountDb, JObj) || JObj <- JObjs3],
@@ -131,13 +131,13 @@ recover_private_media(Account) ->
     end.
 
 maybe_recover_private_media(AccountDb, JObj) ->
-    {'ok', Doc } = couch_mgr:open_doc(AccountDb, wh_doc:id(JObj)),
+    {'ok', Doc } = kz_datamgr:open_doc(AccountDb, wh_doc:id(JObj)),
     recover_private_media(AccountDb, Doc, wh_json:get_value(<<"media_type">>, Doc)).
 
 recover_private_media(_AccountDb, _Doc, <<"tiff">>) ->
     'ok';
 recover_private_media(AccountDb, Doc, _MediaType) ->
-    {'ok', _ } = couch_mgr:ensure_saved(AccountDb, wh_doc:set_type(Doc, <<"private_media">>)),
+    {'ok', _ } = kz_datamgr:ensure_saved(AccountDb, wh_doc:set_type(Doc, <<"private_media">>)),
     'ok'.
 
 -spec migrate_faxes_to_modb(ne_binary(),  wh_proplist()) -> 'ok'.
@@ -145,12 +145,12 @@ recover_private_media(AccountDb, Doc, _MediaType) ->
 -spec migrate_fax_to_modb(ne_binary(), ne_binary(), wh_json:object(),  wh_proplist()) -> 'ok'.
 
 migrate_faxes_to_modb(Account, Options) ->
-    AccountDb = case couch_mgr:db_exists(Account) of
+    AccountDb = case kz_datamgr:db_exists(Account) of
                     'true' -> Account;
                     'false' -> wh_util:format_account_id(Account, 'encoded')
                 end,
     ViewOptions = [{'key', <<"fax">>}],
-    case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
         {'ok', []} -> io:format("no fax docs in db for fax migration ~s~n", [AccountDb]);
         {'ok', JObjs3}->
             _ = [maybe_migrate_fax_to_modb(AccountDb, JObj, Options) || JObj <- JObjs3],
@@ -161,14 +161,14 @@ migrate_faxes_to_modb(Account, Options) ->
 
 maybe_migrate_fax_to_modb(AccountDb, JObj, Options) ->
     DocId = wh_doc:id(JObj),
-    case couch_mgr:open_doc(AccountDb, DocId) of
+    case kz_datamgr:open_doc(AccountDb, DocId) of
         {'ok', Doc} ->
             case wh_doc:attachments(Doc) of
                 'undefined' ->
                     case whapps_config:get_is_true(<<"fax">>, <<"delete_empty_faxes">>, 'false') of
                         'true' ->
                             io:format("deleting no attachments fax doc ~s from ~s~n",[DocId, AccountDb]),
-                            couch_mgr:del_doc(AccountDb, Doc);
+                            kz_datamgr:del_doc(AccountDb, Doc);
                         'false' -> 'ok'
                     end;
                 _Attachments ->
@@ -190,7 +190,7 @@ migrate_fax_to_modb(AccountDb, DocId, JObj, Options) ->
             >>,
     io:format("moving doc ~s/~s to ~s/~s~n",[AccountDb, DocId, AccountMODb, FaxId]),
     kazoo_modb:create(AccountMODb),
-    case couch_mgr:move_doc(AccountDb, DocId, FaxMODb, FaxId, Options) of
+    case kz_datamgr:move_doc(AccountDb, DocId, FaxMODb, FaxId, Options) of
         {'ok', _JObj} -> io:format("document ~s moved to ~s~n",[DocId, FaxId]);
         {'error', Error} -> io:format("error ~p moving document ~s to ~s~n",[Error, DocId, FaxId])
     end.
@@ -216,7 +216,7 @@ account_jobs(AccountId, State) ->
                    ,{'endkey', [AccountId, State, wh_json:new()]}
                    ],
 
-    _ = case couch_mgr:get_results(?WH_FAXES_DB, <<"faxes/list_by_account_state">>, ViewOptions) of
+    _ = case kz_datamgr:get_results(?WH_FAXES_DB, <<"faxes/list_by_account_state">>, ViewOptions) of
             {'ok', Jobs} ->
                 [io:format(FormatString, [wh_json:get_value([<<"value">>, <<"id">>], JObj)
                                           ,wh_util:format_datetime(
@@ -245,7 +245,7 @@ faxbox_jobs(FaxboxId, State) ->
                    ,{'endkey', [FaxboxId, State, wh_json:new()]}
                    ],
 
-    _ = case couch_mgr:get_results(?WH_FAXES_DB, <<"faxes/list_by_faxbox_state">>, ViewOptions) of
+    _ = case kz_datamgr:get_results(?WH_FAXES_DB, <<"faxes/list_by_faxbox_state">>, ViewOptions) of
             {'ok', Jobs} ->
                 [io:format(FormatString, [wh_json:get_value([<<"value">>, <<"id">>], JObj)
                                           ,wh_util:format_datetime(
@@ -268,7 +268,7 @@ pending_jobs() ->
     FormatString = "| ~-30s | ~-17s | ~-32s | ~-32s | ~-20s | ~-20s |~n",
     io:format(FormatString, [<<"Job">>, <<"Date">>, <<"Account">>, <<"Faxbox">>, <<"From">>, <<"To">>]),
     io:format("+================================+===================+==================================+==================================+======================+======================+~n", []),
-    _ = case couch_mgr:get_results(?WH_FAXES_DB, <<"faxes/jobs">>) of
+    _ = case kz_datamgr:get_results(?WH_FAXES_DB, <<"faxes/jobs">>) of
             {'ok', Jobs} ->
                 [io:format(FormatString, [wh_json:get_value([<<"value">>, <<"id">>], JObj)
                                           ,wh_util:format_datetime(
@@ -290,7 +290,7 @@ active_jobs() ->
     FormatString = "| ~-20s | ~-30s | ~-17s | ~-32s | ~-32s | ~-20s | ~-20s |~n",
     io:format(FormatString, [<<"Node">>, <<"Job">>, <<"Date">>, <<"Account">>, <<"FaxBox">>, <<"From">>, <<"To">>]),
     io:format("+======================+================================+===================+==================================+==================================+======================+======================+~n", []),
-    _ = case couch_mgr:get_results(?WH_FAXES_DB, <<"faxes/processing_by_node">>) of
+    _ = case kz_datamgr:get_results(?WH_FAXES_DB, <<"faxes/processing_by_node">>) of
             {'ok', Jobs} ->
                 [io:format(FormatString, [wh_json:get_value([<<"value">>, <<"node">>], JObj)
                                           ,wh_json:get_value([<<"value">>, <<"id">>], JObj)
@@ -319,7 +319,7 @@ restart_job(JobID) ->
 -spec update_job(binary(), binary()) -> 'ok' | {'error', any()}.
 -spec update_job(binary(), binary(), wh_json:object()) -> 'ok' | {'error', any()}.
 update_job(JobID, State) ->
-    case couch_mgr:open_doc(?WH_FAXES_DB, JobID) of
+    case kz_datamgr:open_doc(?WH_FAXES_DB, JobID) of
         {'error', _}=E -> E;
         {'ok', JObj} ->
             update_job(JobID, State, JObj)
@@ -332,7 +332,7 @@ update_job(JobID, State, JObj) ->
             {'error', 'job_not_already_in_state'};
         _Other ->
             Opts = [{'rev', wh_doc:revision(JObj)}],
-            couch_mgr:save_doc(?WH_FAXES_DB
+            kz_datamgr:save_doc(?WH_FAXES_DB
                                ,wh_json:set_values([{<<"pvt_job_status">>, State}
                                                     ,{<<"pvt_modified">>, wh_util:current_tstamp()}
                                                    ]
@@ -354,7 +354,7 @@ migrate_outbound_faxes(Number) when is_integer(Number) ->
     io:format("start migrating outbound faxes with batch size ~p~n", [Number]),
     migrate_outbound_faxes([{'limit', Number}]);
 migrate_outbound_faxes(Options) ->
-    case couch_mgr:all_docs(?WH_FAXES_DB, Options) of
+    case kz_datamgr:all_docs(?WH_FAXES_DB, Options) of
         {'error', _E} ->
             io:format("failed to crawl faxes db: ~p~n", [ _E]);
         {'ok', []} ->
@@ -376,7 +376,7 @@ migrate_outbound_faxes([JObj | JObjs], _Acc) ->
 -spec maybe_migrate_outbound_fax(ne_binary()) -> 'ok'.
 maybe_migrate_outbound_fax(<<"_design/", _/binary>>) -> 'ok';
 maybe_migrate_outbound_fax(DocId) ->
-    case couch_mgr:open_doc(?WH_FAXES_DB, DocId) of
+    case kz_datamgr:open_doc(?WH_FAXES_DB, DocId) of
         {'ok', Doc} -> maybe_migrate_outbound_fax(wh_doc:type(Doc), Doc);
         {'error', _E} -> io:format("error opening document ~s in faxes db~n", [DocId])
     end.
@@ -400,7 +400,7 @@ migrate_outbound_fax(JObj) ->
     kazoo_modb:create(AccountMODb),
     ToDB = wh_util:format_account_modb(AccountMODb, 'encoded'),
     ToId = ?MATCH_MODB_PREFIX(wh_util:to_binary(Year), wh_util:pad_month(Month),FromId),
-    case couch_mgr:move_doc(FromDB, FromId, ToDB, ToId, ['override_existing_document']) of
+    case kz_datamgr:move_doc(FromDB, FromId, ToDB, ToId, ['override_existing_document']) of
         {'ok', _} -> io:format("document ~s/~s moved to ~s/~s~n", [FromDB, FromId, ToDB, ToId]);
         {'error', _E} -> io:format("error ~p moving document ~s/~s to ~s/~s~n", [_E, FromDB, FromId, ToDB, ToId])
     end.
@@ -416,7 +416,7 @@ load_smtp_attachment(DocId, Filename) ->
     case file:read_file(Filename) of
         {'ok', FileContents} ->
             CT = kz_mime:from_filename(Filename),
-            case couch_mgr:open_doc(?WH_FAXES_DB, DocId) of
+            case kz_datamgr:open_doc(?WH_FAXES_DB, DocId) of
                 {'ok', JObj} ->
                     case fax_util:save_fax_attachment(JObj, FileContents, CT) of
                         {'ok', _Doc} -> io:format("attachment ~s for docid ~s recovered~n", [Filename, DocId]);

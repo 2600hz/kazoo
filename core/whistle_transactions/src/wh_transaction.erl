@@ -242,7 +242,7 @@ set_sub_account_name(AccountName, Transaction) when is_binary(AccountName) ->
 
 -spec set_sub_account_info(ne_binary(), transaction()) -> transaction().
 set_sub_account_info(AccountId, Transaction) when is_binary(AccountId) ->
-    case couch_mgr:open_cache_doc(<<"accounts">>, AccountId) of
+    case kz_datamgr:open_cache_doc(<<"accounts">>, AccountId) of
         {'error', _R} ->
             lager:error("failed to open account ~s : ~p", [AccountId, _R]),
             Transaction#wh_transaction{sub_account_id=AccountId};
@@ -417,7 +417,7 @@ maybe_add_sub_account_name(JObj) ->
 
 -spec add_sub_account_name(ne_binary(), wh_json:object()) -> wh_json:object().
 add_sub_account_name(AccountId, JObj) ->
-    case couch_mgr:open_cache_doc(<<"accounts">>, AccountId) of
+    case kz_datamgr:open_cache_doc(<<"accounts">>, AccountId) of
         {'error', _R} ->
             lager:error("failed to open account doc ~s : ~p", [AccountId, _R]),
             JObj;
@@ -498,7 +498,7 @@ remove(#wh_transaction{}=Transaction) ->
 
 -spec remove_transaction(transaction()) -> 'ok' | {'error', any()}.
 remove_transaction(#wh_transaction{pvt_account_db=AccountDb}=Transaction) ->
-    case couch_mgr:del_doc(AccountDb, to_json(Transaction)) of
+    case kz_datamgr:del_doc(AccountDb, to_json(Transaction)) of
         {'ok', _} -> 'ok';
         {'error', _}=E -> E
     end.
@@ -548,7 +548,7 @@ service_save(#wh_transaction{}=Transaction) ->
                                       {'error', any()}.
 service_save_transaction(#wh_transaction{pvt_account_id=AccountId}=Transaction) ->
     TransactionJObj = to_json(Transaction#wh_transaction{pvt_modified=wh_util:current_tstamp()}),
-    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+    case kz_datamgr:open_doc(?WH_SERVICES_DB, AccountId) of
         {'error', _R}=Error ->
             lager:debug("unable to open account ~s services doc: ~p", [AccountId, _R]),
             Error;
@@ -558,7 +558,7 @@ service_save_transaction(#wh_transaction{pvt_account_id=AccountId}=Transaction) 
                       [{<<"transactions">>, [TransactionJObj|Transactions]}
                       ,{<<"pvt_dirty">>, 'true'}
                       ], JObj),
-            couch_mgr:save_doc(?WH_SERVICES_DB, JObj1)
+            kz_datamgr:save_doc(?WH_SERVICES_DB, JObj1)
     end.
 
 %%--------------------------------------------------------------------

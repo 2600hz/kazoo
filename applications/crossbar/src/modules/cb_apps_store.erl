@@ -638,7 +638,7 @@ get_attachment(Context, Id) ->
 get_attachment(Context, Id, JObj, Attachment) ->
     Db = wh_doc:account_db(JObj),
     AppId = wh_doc:id(JObj),
-    case couch_mgr:fetch_attachment(Db, AppId, Id) of
+    case kz_datamgr:fetch_attachment(Db, AppId, Id) of
         {'error', R} ->
             Reason = wh_util:to_binary(R),
             lager:error("failed to fetch attachment, ~s in ~s, (account: ~s)", [Id, AppId, Db]),

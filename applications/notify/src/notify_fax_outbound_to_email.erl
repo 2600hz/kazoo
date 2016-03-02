@@ -38,7 +38,7 @@ handle_req(JObj, _Props) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     JobId = wh_json:get_value(<<"Fax-JobId">>, JObj),
     lager:debug("account-id: ~s, fax-id: ~s", [AccountId, JobId]),
-    {'ok', FaxDoc} = couch_mgr:open_doc(?WH_FAXES_DB, JobId),
+    {'ok', FaxDoc} = kz_datamgr:open_doc(?WH_FAXES_DB, JobId),
 
     Emails = wh_json:get_value([<<"notifications">>,<<"email">>,<<"send_to">>], FaxDoc, []),
 

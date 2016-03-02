@@ -198,7 +198,7 @@ try_to_store(Db, Id, Attachment, CT, Req0) ->
                ,{'content_length', byte_size(Contents)}
               ],
     lager:debug("putting ~s onto ~s(~s): ~s", [Attachment, Id, DbName, CT]),
-    case couch_mgr:put_attachment(DbName, Id, Attachment, Contents, Options) of
+    case kz_datamgr:put_attachment(DbName, Id, Attachment, Contents, Options) of
         {'ok', JObj} ->
             lager:debug("successfully stored(~p) ~p ~p ~p", [CT, DbName, Id, Attachment]),
             {'ok', success(JObj, Req1), 'ok'};
@@ -214,7 +214,7 @@ try_to_store(Db, Id, Attachment, CT, Req0) ->
 maybe_resolve_conflict(DbName, Id, Attachment, Contents, Options, Req0) ->
     timer:sleep(5 * ?MILLISECONDS_IN_SECOND),
     lager:debug("putting ~s onto ~s(~s): ~-800p", [Attachment, Id, DbName, Options]),
-    case couch_mgr:put_attachment(DbName, Id, Attachment, Contents, Options) of
+    case kz_datamgr:put_attachment(DbName, Id, Attachment, Contents, Options) of
         {'ok', JObj} ->
             lager:debug("successfully stored ~p ~p ~p", [DbName, Id, Attachment]),
             {'ok', success(JObj, Req0), 'ok'};

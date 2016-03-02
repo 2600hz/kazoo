@@ -187,7 +187,7 @@ save_sms(JObj, ?MATCH_MODB_PREFIX(Year,Month,_) = DocId, Doc, Call) ->
               ]),
     JObjDoc = wh_json:set_values(Props, Doc),
     kazoo_modb:create(AccountDb),
-    case couch_mgr:save_doc(AccountDb, JObjDoc, Opts) of
+    case kz_datamgr:save_doc(AccountDb, JObjDoc, Opts) of
         {'ok', Saved} ->
             whapps_call:kvs_store(<<"_rev">>, wh_doc:revision(Saved), Call);
         {'error', E} ->
@@ -223,7 +223,7 @@ get_endpoint_id_from_sipdb(Realm, Username) ->
                             ,wh_util:to_lower_binary(Username)
                            ]
                    }],
-    case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
+    case kz_datamgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
         {'ok', [JObj]} ->
             EndpointId = wh_doc:id(JObj),
             AccountDb = wh_json:get_value([<<"value">>, <<"account_db">>], JObj),
@@ -258,7 +258,7 @@ get_endpoint_from_sipdb(Realm, Username) ->
                    }
                    ,'include_docs'
                   ],
-    case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
+    case kz_datamgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
         {'ok', [JObj]} ->
             EndpointId = wh_doc:id(JObj),
             CacheProps = [{'origin', {'db', ?WH_SIP_DB, EndpointId}}],
@@ -469,7 +469,7 @@ fetch_mdn(Num) ->
 fetch_mdn_result(AccountId, Num) ->
     AccountDb = wh_util:format_account_db(AccountId),
     ViewOptions = [{'key', mdn_from_e164(Num)}],
-    case couch_mgr:get_results(AccountDb, ?MDN_VIEW, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, ?MDN_VIEW, ViewOptions) of
         {'ok', []} -> {'error', 'not_found'};
         {'ok', [JObj]} ->
             Id = wh_doc:id(JObj),
