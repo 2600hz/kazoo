@@ -790,7 +790,7 @@ save_docs(DbName, Docs) when is_list(Docs) ->
     save_docs(DbName, Docs, []).
 
 save_docs(DbName, Docs, Options) when is_list(Docs) andalso ?VALID_DBNAME ->
-    OldSetting = maybe_toggle_publish(Options),    
+    OldSetting = maybe_toggle_publish(Options),
     Result = [kzs_doc:save_doc(kzs_plan:plan(DbName, Doc), DbName, Doc, Options) || Doc <- Docs],
     maybe_revert_publish(OldSetting),
     Result;
@@ -1093,7 +1093,8 @@ attachment_url(DbName, DocId, AttachmentId, Options) when ?VALID_DBNAME ->
                    end
           end,
     case maybe_add_required_options(Options, RequiredOptions, Fun) of
-        {'ok', NewOptions} -> kzs_attachments:attachment_url(DbName
+        {'ok', NewOptions} -> kzs_attachments:attachment_url(kzs_plan:plan(DbName, NewOptions)
+                                                             ,DbName
                                                              ,DocId
                                                              ,AttachmentId
                                                              ,NewOptions
