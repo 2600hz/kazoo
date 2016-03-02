@@ -20,9 +20,9 @@ start(N, X, CDRTot, ECDRTot, Raw) ->
     StartKey = start_key(),
     EndKey = end_key(StartKey),
 
-    {ECDR, _} = timer:tc(couch_mgr, get_results, [<<"account%2F50%2F3d%2F96f14def94f7ce08cf3e1a025375">>, <<"ecdrs/crossbar_listing">>, [{<<"startkey">>,StartKey},{<<"endkey">>,EndKey}]]),
+    {ECDR, _} = timer:tc(kz_datamgr, get_results, [<<"account%2F50%2F3d%2F96f14def94f7ce08cf3e1a025375">>, <<"ecdrs/crossbar_listing">>, [{<<"startkey">>,StartKey},{<<"endkey">>,EndKey}]]),
 
-    {CDR,_} = timer:tc(couch_mgr, get_results, [<<"account%2F50%2F3d%2F96f14def94f7ce08cf3e1a025375">>, <<"cdrs/crossbar_listing">>, [{<<"startkey">>,StartKey},{<<"endkey">>,EndKey}]]),
+    {CDR,_} = timer:tc(kz_datamgr, get_results, [<<"account%2F50%2F3d%2F96f14def94f7ce08cf3e1a025375">>, <<"cdrs/crossbar_listing">>, [{<<"startkey">>,StartKey},{<<"endkey">>,EndKey}]]),
 
     start(N, X-1, CDRTot + CDR, ECDRTot + ECDR, [ [{range, EndKey - StartKey}, {run, X}] | Raw]).
 

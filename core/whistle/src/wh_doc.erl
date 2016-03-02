@@ -48,19 +48,21 @@
                    ,fun add_id/3
                   ]).
 
-
+%% CouchDB Keys
+-define(KEY_ATTACHMENTS, <<"_attachments">>).
+-define(KEY_DELETED, <<"_deleted">>).
 -define(KEY_ID, <<"_id">>).
 -define(KEY_REV, <<"_rev">>).
--define(KEY_DELETED, <<"_deleted">>).
--define(KEY_ATTACHMENTS, <<"_attachments">>).
--define(KEY_PVT_TYPE, <<"pvt_type">>).
--define(KEY_ACCOUNT_ID, <<"pvt_account_id">>).
+
+%% Private Kazoo Keys
 -define(KEY_ACCOUNT_DB, <<"pvt_account_db">>).
+-define(KEY_ACCOUNT_ID, <<"pvt_account_id">>).
 -define(KEY_CREATED, <<"pvt_created">>).
 -define(KEY_MODIFIED, <<"pvt_modified">>).
+-define(KEY_NODE, <<"pvt_node">>).
+-define(KEY_PVT_TYPE, <<"pvt_type">>).
 -define(KEY_SOFT_DELETED, <<"pvt_deleted">>).
 -define(KEY_VSN, <<"pvt_vsn">>).
--define(KEY_NODE, <<"pvt_node">>).
 
 %%--------------------------------------------------------------------
 %% @private
