@@ -701,7 +701,7 @@ maybe_exec_erase_callbacks(Key, Tab) ->
             'ok';
         _Callback -> 'ok'
     catch
-        _ -> 'ok'
+        'error':'badarg' -> 'ok'
     end.
 
 -spec exec_erase_callback(any(), atom(), callback_fun()) -> any().
