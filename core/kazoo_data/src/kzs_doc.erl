@@ -22,7 +22,7 @@
 
 -include("kz_data.hrl").
 
--type copy_function() :: fun((server(), ne_binary(), wh_json:object(), wh_proplist()) ->
+-type copy_function() :: fun((map(), ne_binary(), wh_json:object(), wh_proplist()) ->
                               {'ok', wh_json:object()} | data_error()).
 -export_type([copy_function/0]).
 -define(COPY_DOC_OVERRIDE_PROPERTY, 'override_existing_document').
@@ -30,16 +30,16 @@
 
 %% Document related functions --------------------------------------------------
 
--spec open_doc(server(), ne_binary(), ne_binary(), wh_proplist()) ->
+-spec open_doc(map(), ne_binary(), ne_binary(), wh_proplist()) ->
                       {'ok', wh_json:object()} |
                       data_error().
-open_doc({App, Conn}, DbName, DocId, Options) ->
+open_doc(#{server := {App, Conn}}, DbName, DocId, Options) ->
     App:open_doc(Conn, DbName, DocId, Options).
 
--spec save_doc(server(), ne_binary(), wh_json:object(), wh_proplist()) ->
+-spec save_doc(map(), ne_binary(), wh_json:object(), wh_proplist()) ->
                       {'ok', wh_json:object()} |
                       data_error().
-save_doc({App, Conn}, DbName, Doc, Options) ->
+save_doc(#{server := {App, Conn}}, DbName, Doc, Options) ->
     {PreparedDoc, PublishDoc} = prepare_doc_for_save(DbName, Doc),
     try App:save_doc(Conn, DbName, PreparedDoc, Options) of
         {'ok', JObj}=Ok -> kzs_publish:maybe_publish_doc(DbName, PublishDoc, JObj),
@@ -52,10 +52,10 @@ save_doc({App, Conn}, DbName, Doc, Options) ->
 
 
 
--spec save_docs(server(), ne_binary(), wh_json:objects(), wh_proplist()) ->
+-spec save_docs(map(), ne_binary(), wh_json:objects(), wh_proplist()) ->
                        {'ok', wh_json:objects()} |
                        data_error().
-save_docs({App, Conn}, DbName, Docs, Options) ->
+save_docs(#{server := {App, Conn}}, DbName, Docs, Options) ->
     {PreparedDocs, Publish} = lists:unzip([prepare_doc_for_save(DbName, D) || D <- Docs]),
     try App:save_docs(Conn, DbName, PreparedDocs, Options) of
         {'ok', JObjs}=Ok -> kzs_publish:maybe_publish_docs(DbName, Publish, JObjs),
@@ -65,16 +65,16 @@ save_docs({App, Conn}, DbName, Docs, Options) ->
         _Ex:Er -> {'error', {_Ex, Er}}
     end.
 
--spec lookup_doc_rev(server(), ne_binary(), ne_binary()) ->
+-spec lookup_doc_rev(map(), ne_binary(), ne_binary()) ->
                             {'ok', ne_binary()} |
                             data_error().
-lookup_doc_rev({App, Conn}, DbName, DocId) ->
+lookup_doc_rev(#{server := {App, Conn}}, DbName, DocId) ->
     App:lookup_doc_rev(Conn, DbName, DocId).
 
--spec ensure_saved(server(), ne_binary(), wh_json:object(), wh_proplist()) ->
+-spec ensure_saved(map(), ne_binary(), wh_json:object(), wh_proplist()) ->
                           {'ok', wh_json:object()} |
                           data_error().
-ensure_saved({App, Conn}, DbName, Doc, Options) ->
+ensure_saved(#{server := {App, Conn}}, DbName, Doc, Options) ->
     {PreparedDoc, PublishDoc} = prepare_doc_for_save(DbName, Doc),
     try App:ensure_saved(Conn, DbName, PreparedDoc, Options) of
         {'ok', JObj}=Ok -> kzs_publish:maybe_publish_doc(DbName, PublishDoc, JObj),
@@ -85,22 +85,22 @@ ensure_saved({App, Conn}, DbName, Doc, Options) ->
                  'failed'
     end.
 
--spec del_doc(server(), ne_binary(), wh_json:object() | ne_binary()) ->
+-spec del_doc(map(), ne_binary(), wh_json:object() | ne_binary()) ->
                      {'ok', wh_json:objects()} |
                      data_error().
-del_doc({App, Conn}, DbName, Doc) ->
+del_doc(#{server := {App, Conn}}, DbName, Doc) ->
     kzs_cache:flush_cache_doc(DbName, Doc),
     App:del_doc(Conn, DbName, Doc).
 
--spec del_docs(server(), ne_binary(), wh_json:objects()) ->
+-spec del_docs(map(), ne_binary(), wh_json:objects()) ->
                       {'ok', wh_json:objects()} |
                       data_error().
-del_docs({App, Conn}, DbName, Docs) ->
+del_docs(#{server := {App, Conn}}, DbName, Docs) ->
     kzs_cache:flush_cache_docs(DbName, Docs),
     App:del_docs(Conn, DbName, Docs).
 
 
--spec copy_doc(server(), copy_doc(), wh_proplist()) ->
+-spec copy_doc(map(), copy_doc(), wh_proplist()) ->
                       {'ok', wh_json:object()} |
                       data_error().
 copy_doc(Server, #copy_doc{source_dbname = SourceDb
@@ -111,13 +111,13 @@ copy_doc(Server, #copy_doc{source_dbname = SourceDb
                                        }, Options);
 copy_doc(Server, #copy_doc{dest_doc_id='undefined'}=CopySpec, Options) ->
     copy_doc(Server, CopySpec#copy_doc{dest_doc_id=wh_util:rand_hex_binary(16)}, Options);
-copy_doc({App, Conn}, CopySpec, Options) ->
+copy_doc(#{server := {App, Conn}}, CopySpec, Options) ->
     App:copy_doc(Conn, CopySpec, Options).
 
--spec move_doc(server(), copy_doc(), wh_proplist()) ->
+-spec move_doc(map(), copy_doc(), wh_proplist()) ->
                       {'ok', wh_json:object()} |
                       data_error().
-move_doc({App, Conn}, CopySpec, Options) ->
+move_doc(#{server := {App, Conn}}, CopySpec, Options) ->
     App:move_doc(Conn, CopySpec, Options).
 
 
