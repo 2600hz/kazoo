@@ -17,18 +17,24 @@
 
 -include("kz_data.hrl").
 
--spec server_info(map()) -> {'ok', wh_json:object()} |
+-spec server_info(map() | server()) -> {'ok', wh_json:object()} |
                                {'error', any()}.
-server_info(#{server := {App, Conn}}) -> App:server_info(Conn).
+server_info(#{server := {App, Conn}}) -> App:server_info(Conn);
+server_info({App, Conn}) -> App:server_info(Conn).
 
--spec server_url(map()) -> ne_binary().
-server_url(#{server := {App, Conn}}) -> App:server_url(Conn).
+-spec server_url(map() | server()) -> ne_binary().
+server_url(#{server := {App, Conn}}) -> App:server_url(Conn);
+server_url({App, Conn}) -> App:server_url(Conn).
 
--spec db_url(map(), ne_binary()) -> ne_binary().
-db_url(#{server := {App, Conn}}, DbName) -> App:db_url(Conn, DbName).
+-spec db_url(map() | server(), ne_binary()) -> ne_binary().
+db_url(#{server := {App, Conn}}, DbName) -> App:db_url(Conn, DbName);
+db_url({App, Conn}, DbName) -> App:db_url(Conn, DbName).
 
--spec get_db(map(), ne_binary()) -> db().
+-spec get_db(map() | server(), ne_binary()) -> db().
 get_db(#{server := {App, Conn}}, DbName) ->
+    {'ok', Db} = App:get_db(Conn, DbName),
+    #db{app=App, server=Conn, db=Db, name=DbName};
+get_db({App, Conn}, DbName) ->
     {'ok', Db} = App:get_db(Conn, DbName),
     #db{app=App, server=Conn, db=Db, name=DbName}.
 
