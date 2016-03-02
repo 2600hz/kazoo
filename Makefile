@@ -68,10 +68,10 @@ clean-release:
 	$(if $(wildcard rel/relx.config rel/vm.args rel/dev-vm.args), \
 	  rm $(wildcard rel/relx.config rel/vm.args rel/dev-vm.args)  )
 
-build-release: rel/relx.config rel/vm.args
-	$(RELX) --config $< -V 2 release --relname 'kazoo'
+build-release: clean-release rel/relx.config rel/vm.args
+	$(RELX) --config rel/relx.config -V 2 release --relname 'kazoo'
 tar-release: rel/relx.config rel/vm.args
-	$(RELX) --config $< -V 2 release tar --relname 'kazoo'
+	$(RELX) --config rel/relx.config -V 2 release tar --relname 'kazoo'
 rel/relx.config: rel/relx.config.src
 	$(ROOT)/scripts/src2any.escript $<
 
