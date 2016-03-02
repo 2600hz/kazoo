@@ -29,10 +29,7 @@ to_extension(CT) ->
 %% '''
 -spec from_filename(file:filename_all()) -> binary().
 from_filename(Path) ->
-	case filename:extension(Path) of
-		<<>> -> <<"application/octet-stream">>;
-		<<$., Ext/binary >> -> from_extension(Ext)
-	end.
+    from_extension(filename:extension(Path)).
 
 
 %% @doc Return the mimetype for any file by looking at its extension.

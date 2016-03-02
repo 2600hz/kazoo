@@ -12,9 +12,7 @@
 %% Attachment-related
 -export([fetch_attachment/4
          ,stream_attachment/5
-         ,put_attachment/5
          ,put_attachment/6
-         ,delete_attachment/4
          ,delete_attachment/5
          ,attachment_url/5
         ]).
@@ -25,51 +23,44 @@
 
 
 %% Attachment-related functions ------------------------------------------------
--spec fetch_attachment(server(), ne_binary(), ne_binary(), ne_binary()) ->
+-spec fetch_attachment(map(), ne_binary(), ne_binary(), ne_binary()) ->
                               {'ok', binary()} |
                               data_error().
-fetch_attachment({App, Conn}, DbName, DocId, AName) ->
+fetch_attachment(#{server := {App, Conn}}, DbName, DocId, AName) ->
+    %% OPEN CACHE DOC
+    %% CHECK STUB
+    %% MAYBE PROXY
     App:fetch_attachment(Conn, DbName, DocId, AName).
-    %% maybe translation here
 
--spec stream_attachment(server(), ne_binary(), ne_binary(), ne_binary(), pid()) ->
+-spec stream_attachment(map(), ne_binary(), ne_binary(), ne_binary(), pid()) ->
                                {'ok', reference()} |
                                data_error().
-stream_attachment({App, Conn}, DbName, DocId, AName, Caller) ->
+stream_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Caller) ->
+    %% OPEN CACHE DOC
+    %% CHECK STUB
+    %% MAYBE PROXY
     App:stream_attachment(Conn, DbName, DocId, AName, Caller).
-    %% maybe translation here and redirection
 
--spec put_attachment(server(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
+-spec put_attachment(map(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
                             {'ok', wh_json:object()} |
                             data_error().
--spec put_attachment(server(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
-                            {'ok', wh_json:object()} |
-                            data_error().
-put_attachment(Server, DbName, DocId, AName, Contents) ->
-    put_attachment(Server, DbName, DocId, AName, Contents, []).
-
-put_attachment({App, Conn}, DbName, DocId, AName, Contents, Options) ->
+put_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Contents, Options) ->
     %% maybe translation here and redirection
     kzs_cache:flush_cache_doc(DbName, DocId),
     App:put_attachment(Conn, DbName, DocId, AName, Contents, Options).
 
--spec delete_attachment(server(), ne_binary(), ne_binary(), ne_binary()) ->
+-spec delete_attachment(map(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
                                {'ok', wh_json:object()} |
                                data_error().
--spec delete_attachment(server(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
-                               {'ok', wh_json:object()} |
-                               data_error().
-delete_attachment(Server, DbName, DocId, AName) ->
-    delete_attachment(Server, DbName, DocId, AName, []).
-
-delete_attachment({App, Conn}, DbName, DocId, AName, Options) ->
+delete_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Options) ->
     App:delete_attachment(Conn, DbName, DocId, AName, Options).
 
-attachment_url({App, Conn}, DbName, DocId, AttachmentId, Options) ->
+attachment_url(#{server := {App, Conn}}, DbName, DocId, AttachmentId, Options) ->
     %% FECTH PROVIDER FOR ACCOUNTDB/DOCTYPE
     %% FETCH URL FROM PROVIDER
     %% CAN DEFER TO DATACONNECTION
-    %% OR CREATE A PROXY URL WITH CALLBACK
+    %% OR CREATE A STUB AND PROXY URL WITH CALLBACK
     %% SUP PROXY
     %% FOR NOW DEFER TO DRIVER
+%%    #{server := {App, Conn}} = kz_dataplan:get_server(DBName, Options),
     App:attachment_url(Conn, DbName, DocId, AttachmentId, Options).

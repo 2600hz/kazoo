@@ -79,7 +79,6 @@
          ,enable_change_notice/0
          ,change_notice/0
         ]).
--export([server_tag/0, server_tag/1]).
 
 -include("kz_data.hrl").
 
@@ -155,10 +154,10 @@ update_doc_from_file(DbName, App, File) ->
                                   {'ok', wh_json:object()} |
                                   data_error().
 revise_doc_from_file(DbName, App, File) ->
-    case ?MODULE:update_doc_from_file(DbName, App, File) of
+    case update_doc_from_file(DbName, App, File) of
         {'error', _E} ->
             lager:debug("failed to update doc: ~p", [_E]),
-            ?MODULE:load_doc_from_file(DbName, App, File);
+            load_doc_from_file(DbName, App, File);
         {'ok', _}=Resp ->
             lager:debug("revised ~s", [File]),
             Resp
@@ -257,7 +256,7 @@ do_load_fixtures_from_folder(DbName, [F|Fs]) ->
 %%--------------------------------------------------------------------
 -spec db_exists(text()) -> boolean().
 db_exists(DbName) when ?VALID_DBNAME ->
-    kzs_db:db_exists(get_server(), DbName);
+    kzs_db:db_exists(kzs_plan:plan(DbName), DbName);
 db_exists(DbName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> db_exists(Db);
@@ -284,7 +283,7 @@ db_exists(DbName) ->
 %% -spec admin_db_info() -> {'ok', ne_binaries()} |
 %%                          data_error().
 db_info() ->
-    kzs_db:db_info(get_server()).
+    kzs_db:db_info(kzs_plan:plan()).
 
 %% admin_db_info() ->
 %%     kzs_db:db_info(kz_dataconnections:get_admin_server()).
@@ -301,7 +300,7 @@ db_info() ->
 %%                                data_error().
 
 db_info(DbName) when ?VALID_DBNAME ->
-    kzs_db:db_info(get_server(), DbName);
+    kzs_db:db_info(kzs_plan:plan(DbName), DbName);
 db_info(DbName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> db_info(Db);
@@ -330,7 +329,7 @@ db_info(DbName) ->
 %%                                data_error().
 
 design_info(DbName, DesignName) when ?VALID_DBNAME ->
-    kzs_view:design_info(get_server(), DbName, DesignName);
+    kzs_view:design_info(kzs_plan:plan(DbName, DesignName), DbName, DesignName);
 design_info(DbName, DesignName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> design_info(Db, DesignName);
@@ -349,7 +348,7 @@ design_info(DbName, DesignName) ->
 %% -spec admin_design_compact(ne_binary(), ne_binary()) -> boolean().
 
 design_compact(DbName, DesignName) when ?VALID_DBNAME->
-    kzs_view:design_compact(get_server(), DbName, DesignName);
+    kzs_view:design_compact(kzs_plan:plan(DbName, DesignName), DbName, DesignName);
 design_compact(DbName, DesignName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> design_compact(Db, DesignName);
@@ -368,7 +367,7 @@ design_compact(DbName, DesignName) ->
 %% -spec admin_db_view_cleanup(ne_binary()) -> boolean().
 
 db_view_cleanup(DbName) when ?VALID_DBNAME ->
-    kzs_db:db_view_cleanup(get_server(), DbName);
+    kzs_db:db_view_cleanup(kzs_plan:plan(DbName), DbName);
 db_view_cleanup(DbName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> db_view_cleanup(Db);
@@ -422,7 +421,7 @@ db_view_cleanup(DbName) ->
 db_replicate(Prop) when is_list(Prop) ->
     db_replicate(wh_json:from_list(Prop));
 db_replicate(JObj) ->
-    kzs_db:db_replicate(get_server(), JObj).
+    kzs_db:db_replicate(kzs_plan:plan(), JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -437,7 +436,7 @@ db_create(DbName) ->
     db_create(DbName, []).
 
 db_create(DbName, Options) when ?VALID_DBNAME ->
-    kzs_db:db_create(get_server(), DbName, Options);
+    kzs_db:db_create(kzs_plan:plan(DbName), DbName, Options);
 db_create(DbName, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> db_create(Db, Options);
@@ -454,7 +453,7 @@ db_create(DbName, Options) ->
 %% -spec admin_db_compact(text()) -> boolean().
 
 db_compact(DbName) when ?VALID_DBNAME ->
-    kzs_db:db_compact(get_server(), DbName);
+    kzs_db:db_compact(kzs_plan:plan(DbName), DbName);
 db_compact(DbName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> db_compact(Db);
@@ -477,7 +476,7 @@ db_compact(DbName) ->
 %%--------------------------------------------------------------------
 -spec db_delete(text()) -> boolean().
 db_delete(DbName) when ?VALID_DBNAME ->
-    kzs_db:db_delete(get_server(), DbName);
+    kzs_db:db_delete(kzs_plan:plan(DbName), DbName);
 db_delete(DbName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> db_delete(Db);
@@ -497,7 +496,7 @@ db_archive(DbName) ->
  db_archive(DbName, filename:join([<<Folder/binary, "/", DbName/binary, ".json">>])).
 
 db_archive(DbName, Filename) when ?VALID_DBNAME ->
-    kzs_db:db_archive(get_server(), DbName, Filename);
+    kzs_db:db_archive(kzs_plan:plan(DbName), DbName, Filename);
 db_archive(DbName, Filename) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> db_archive(Db, Filename);
@@ -528,7 +527,7 @@ open_cache_doc(DbName, DocId) ->
     open_cache_doc(DbName, DocId, []).
 
 open_cache_doc(DbName, DocId, Options) when ?VALID_DBNAME ->
-    kzs_cache:open_cache_doc(get_server(), DbName, DocId, Options);
+    kzs_cache:open_cache_doc(DbName, DocId, Options);
 open_cache_doc(DbName, DocId, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> open_cache_doc(Db, DocId, Options);
@@ -604,23 +603,19 @@ flush_cache_docs(DbName) ->
                       {'ok', wh_json:object()} |
                       data_error() |
                       {'error', 'not_found'}.
--spec open_doc(server(), text(), ne_binary(), wh_proplist()) ->
-                      {'ok', wh_json:object()} |
-                      data_error() |
-                      {'error', 'not_found'}.
 open_doc(DbName, DocId) ->
     open_doc(DbName, DocId, []).
 
 open_doc(DbName, DocId, Options) when ?VALID_DBNAME ->
-    kzs_doc:open_doc(get_server(), DbName, DocId, Options);
+    kzs_doc:open_doc(kzs_plan:plan(DbName, Options), DbName, DocId, Options);
 open_doc(DbName, DocId, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> open_doc(Db, DocId, Options);
         {'error', _}=E -> E
     end.
 
-open_doc(Server, DbName, DocId, Options) ->
-    kzs_doc:open_doc(Server, DbName, DocId, Options).
+%% open_doc(Server, DbName, DocId, Options) ->
+%%     kzs_doc:open_doc(Server, DbName, DocId, Options).
 
 
 %% -spec admin_open_doc(text(), ne_binary()) ->
@@ -653,7 +648,7 @@ all_docs(DbName) ->
     all_docs(DbName, []).
 
 all_docs(DbName, Options) when ?VALID_DBNAME ->
-    kzs_view:all_docs(get_server(), DbName, Options);
+    kzs_view:all_docs(kzs_plan:plan(DbName), DbName, Options);
 all_docs(DbName, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> all_docs(Db, Options);
@@ -667,7 +662,7 @@ db_list() ->
     db_list([]).
 
 db_list(Options) ->
-    kzs_db:db_list(get_server(), Options).
+    kzs_db:db_list(kzs_plan:plan(), Options).
 
 %% -spec admin_all_docs(text()) -> {'ok', wh_json:objects()} |
 %%                                 data_error().
@@ -695,7 +690,7 @@ all_design_docs(DbName) ->
     all_design_docs(DbName, []).
 
 all_design_docs(DbName, Options) when ?VALID_DBNAME ->
-    kzs_view:all_design_docs(get_server(), DbName, Options);
+    kzs_view:all_design_docs(kzs_plan:plan(DbName), DbName, Options);
 all_design_docs(DbName, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> all_design_docs(Db, Options);
@@ -713,7 +708,7 @@ all_design_docs(DbName, Options) ->
                             data_error().
 lookup_doc_rev(_DbName, 'undefined') -> {'error', 'not_found'};
 lookup_doc_rev(DbName, DocId) when ?VALID_DBNAME ->
-    kzs_doc:lookup_doc_rev(get_server(), DbName, DocId);
+    kzs_doc:lookup_doc_rev(kzs_plan:plan(DbName), DbName, DocId);
 lookup_doc_rev(DbName, DocId) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> lookup_doc_rev(Db, DocId);
@@ -747,7 +742,7 @@ ensure_saved(DbName, Doc) ->
     ensure_saved(DbName, Doc, []).
 
 ensure_saved(DbName, Doc, Options) when ?VALID_DBNAME ->
-    kzs_doc:ensure_saved(get_server(), DbName, Doc, Options);
+    kzs_doc:ensure_saved(kzs_plan:plan(DbName, Doc), DbName, Doc, Options);
 ensure_saved(DbName, Doc, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> ensure_saved(Db, Doc, Options);
@@ -759,7 +754,7 @@ ensure_saved(DbName, Doc, Options) ->
                       data_error().
 save_doc(DbName, Doc, Options) when ?VALID_DBNAME ->
     OldSetting = maybe_toggle_publish(Options),
-    Result = kzs_doc:save_doc(get_server(), DbName, Doc, Options),
+    Result = kzs_doc:save_doc(kzs_plan:plan(DbName, Doc), DbName, Doc, Options),
     maybe_revert_publish(OldSetting),
     Result;
 save_doc(DbName, Doc, Options) ->
@@ -795,8 +790,8 @@ save_docs(DbName, Docs) when is_list(Docs) ->
     save_docs(DbName, Docs, []).
 
 save_docs(DbName, Docs, Options) when is_list(Docs) andalso ?VALID_DBNAME ->
-    OldSetting = maybe_toggle_publish(Options),
-    Result = kzs_doc:save_docs(get_server(), DbName, Docs, Options),
+    OldSetting = maybe_toggle_publish(Options),    
+    Result = [kzs_doc:save_doc(kzs_plan:plan(DbName, Doc), DbName, Doc, Options) || Doc <- Docs],
     maybe_revert_publish(OldSetting),
     Result;
 save_docs(DbName, Docs, Options) when is_list(Docs) ->
@@ -847,7 +842,7 @@ update_doc(DbName, Id, UpdateProps, CreateProps) when is_list(UpdateProps),
 del_doc(DbName, Doc) when is_list(Doc) ->
     del_docs(DbName, Doc);
 del_doc(DbName, Doc) when ?VALID_DBNAME ->
-    kzs_doc:del_doc(get_server(), DbName, Doc);
+    kzs_doc:del_doc(kzs_plan:plan(DbName, Doc), DbName, Doc);
 del_doc(DbName, Doc) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> del_doc(Db, Doc);
@@ -864,7 +859,7 @@ del_doc(DbName, Doc) ->
                       {'ok', wh_json:objects()} |
                       data_error().
 del_docs(DbName, Docs) when is_list(Docs) andalso ?VALID_DBNAME ->
-    kzs_doc:del_docs(get_server(), DbName, Docs);
+    kzs_doc:del_docs(kzs_plan:plan(DbName), DbName, Docs);
 del_docs(DbName, Docs) when is_list(Docs) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> del_docs(Db, Docs);
@@ -878,7 +873,7 @@ del_docs(DbName, Docs) when is_list(Docs) ->
                               {'ok', binary()} |
                               data_error().
 fetch_attachment(DbName, DocId, AName) when ?VALID_DBNAME ->
-    kzs_attachments:fetch_attachment(get_server(), DbName, DocId, AName);
+    kzs_attachments:fetch_attachment(kzs_plan:plan(DbName, DocId), DbName, DocId, AName);
 fetch_attachment(DbName, DocId, AName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> fetch_attachment(Db, DocId, AName);
@@ -889,7 +884,7 @@ fetch_attachment(DbName, DocId, AName) ->
                                {'ok', reference()} |
                                {'error', any()}.
 stream_attachment(DbName, DocId, AName) when ?VALID_DBNAME ->
-    kzs_attachments:stream_attachment(get_server(), DbName, DocId, AName, self());
+    kzs_attachments:stream_attachment(kzs_plan:plan(DbName, DocId), DbName, DocId, AName, self());
 stream_attachment(DbName, DocId, AName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> stream_attachment(Db, DocId, AName);
@@ -907,7 +902,7 @@ put_attachment(DbName, DocId, AName, Contents) ->
     put_attachment(DbName, DocId, AName, Contents, []).
 
 put_attachment(DbName, DocId, AName, Contents, Options) when ?VALID_DBNAME ->
-    kzs_attachments:put_attachment(get_server(), DbName, DocId, AName, Contents, Options);
+    kzs_attachments:put_attachment(kzs_plan:plan(DbName, DocId), DbName, DocId, AName, Contents, Options);
 put_attachment(DbName, DocId, AName, Contents, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> put_attachment(Db, DocId, AName, Contents, Options);
@@ -924,7 +919,7 @@ delete_attachment(DbName, DocId, AName) ->
     delete_attachment(DbName, DocId, AName, []).
 
 delete_attachment(DbName, DocId, AName, Options) when ?VALID_DBNAME ->
-    kzs_attachments:delete_attachment(get_server(), DbName, DocId, AName, Options);
+    kzs_attachments:delete_attachment(kzs_plan:plan(DbName, DocId), DbName, DocId, AName, Options);
 delete_attachment(DbName, DocId, AName, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> delete_attachment(Db, DocId, AName, Options);
@@ -954,7 +949,7 @@ get_results(DbName, DesignDoc) ->
     get_results(DbName, DesignDoc, []).
 
 get_results(DbName, DesignDoc, Options) when ?VALID_DBNAME ->
-    kzs_view:get_results(get_server(), DbName, DesignDoc, Options);
+    kzs_view:get_results(kzs_plan:plan(DbName, Options), DbName, DesignDoc, Options);
 get_results(DbName, DesignDoc, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> get_results(Db, DesignDoc, Options);
@@ -962,7 +957,7 @@ get_results(DbName, DesignDoc, Options) ->
     end.
 
 get_results_count(DbName, DesignDoc, Options) ->
-    kzs_view:get_results_count(get_server(), DbName, DesignDoc, Options).
+    kzs_view:get_results_count(kzs_plan:plan(DbName, Options), DbName, DesignDoc, Options).
 
 -spec get_result_keys(wh_json:objects()) -> wh_json:keys().
 get_result_keys(JObjs) ->
@@ -1036,7 +1031,7 @@ copy_doc(FromDB, FromId, Options) ->
 copy_doc(FromDB, FromId, ToDB, Options) ->
     copy_doc(FromDB, FromId, ToDB, 'undefined', Options).
 copy_doc(FromDB, FromId, ToDB, ToId, Options) ->
-    kzs_doc:copy_doc(get_server()
+    kzs_doc:copy_doc(kzs_plan:plan(FromDB)
                        ,#copy_doc{source_dbname=FromDB
                                      ,source_doc_id=FromId
                                      ,dest_dbname=ToDB
@@ -1058,28 +1053,13 @@ move_doc(FromDB, FromId, Options) ->
 move_doc(FromDB, FromId, ToDB, Options) ->
     move_doc(FromDB, FromId, ToDB, 'undefined', Options).
 move_doc(FromDB, FromId, ToDB, ToId, Options) ->
-    kzs_doc:move_doc(get_server()
+    kzs_doc:move_doc(kzs_plan:plan(FromDB)
                        ,#copy_doc{source_dbname=FromDB
                                      ,source_doc_id=FromId
                                      ,dest_dbname=ToDB
                                      ,dest_doc_id=ToId
                                      }
                        ,Options).
-
--spec get_server() -> server().
-get_server() ->
-    kz_dataconnections:get_server(server_tag()).
-
--spec server_tag() -> term().
-server_tag() ->
-    case get('$kz_dataserver_tag') of
-        'undefined' -> 'local';
-        Tag -> Tag
-    end.
-
--spec server_tag(term()) -> 'ok'.
-server_tag(Tag) ->
-    put('$kz_dataserver_tag', Tag).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -1104,18 +1084,16 @@ attachment_url(DbName, DocId, AttachmentId) ->
     end.
 
 attachment_url(DbName, DocId, AttachmentId, Options) when ?VALID_DBNAME ->
-    Server = get_server(),
     RequiredOptions = [{'doc_type', fun wh_doc:type/1}
                        ,{'revision', fun wh_doc:revision/1}
                       ],
-    Fun = fun() -> case open_doc(Server, DbName, DocId, []) of
+    Fun = fun() -> case open_doc(DbName, DocId, []) of
                        {'ok', JObj} -> JObj;
                        _ -> wh_json:new()
                    end
           end,
     case maybe_add_required_options(Options, RequiredOptions, Fun) of
-        {'ok', NewOptions} -> kzs_attachments:attachment_url(Server
-                                                             ,DbName
+        {'ok', NewOptions} -> kzs_attachments:attachment_url(DbName
                                                              ,DocId
                                                              ,AttachmentId
                                                              ,NewOptions
