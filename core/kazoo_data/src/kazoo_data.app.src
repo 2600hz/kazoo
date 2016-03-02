@@ -4,7 +4,7 @@
   ,{id, "108013a5-95e7-4e18-5757-344d22bebce8"}
   ,{vsn, "4.0.0"}
   ,{modules, []}
-  ,{registered, []}
+  ,{registered, [kazoo_data_app, kazoo_data_sup]}
   ,{applications, [ kernel
                   , stdlib
                   , crypto
@@ -13,5 +13,5 @@
                   , whistle_config
                   , whistle_amqp
                   ]}
-  ,{mod, {kazoo_data, []}}
+  ,{mod, {kazoo_data_app, []}}
  ]}.

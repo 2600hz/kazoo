@@ -61,14 +61,22 @@ get_dataplan(DBName, DocType) ->
 system_dataplan() ->
     #{tag => 'local', server => kz_dataconnections:get_server(server_tag())}.
 
-account_dataplan(_DBName) ->
+account_dataplan(AccountDb) ->
+    AccountId = wh_util:format_account_id(AccountDb),
+    lager:debug("ACCOUNT ID IS ~p", [AccountId]),
     #{tag => 'local', server => kz_dataconnections:get_server(server_tag())}.
 
-account_dataplan(_DBName, _DocType) ->
+account_dataplan(AccountDb, _DocType) ->
+    AccountId = wh_util:format_account_id(AccountDb),
+    lager:debug("ACCOUNT ID IS ~p", [AccountId]),
     #{tag => 'local', server => kz_dataconnections:get_server(server_tag())}.
 
-account_modb_dataplan(_DBName) ->
+account_modb_dataplan(AccountMODB) ->
+    AccountId = wh_util:format_account_id(AccountMODB),
+    lager:debug("ACCOUNT ID IS ~p", [AccountId]),
     #{tag => 'local', server => kz_dataconnections:get_server(server_tag())}.
 
-account_modb_dataplan(_DBName, _DocType) ->
+account_modb_dataplan(AccountMODB, _DocType) ->
+    AccountId = wh_util:format_account_id(AccountMODB),
+    lager:debug("ACCOUNT ID IS ~p", [AccountId]),
     #{tag => 'local', server => kz_dataconnections:get_server(server_tag())}.
