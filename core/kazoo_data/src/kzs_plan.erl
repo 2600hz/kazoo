@@ -5,13 +5,19 @@
 %%% @end
 %%% @contributors
 %%%-----------------------------------------------------------------------------
--module(kzs_dataplan).
+-module(kzs_plan).
 
 -include("kz_data.hrl").
 
--export([plan/2]).
+-export([plan/0, plan/1, plan/2]).
 
 -define(IS_JSON_GUARD(Obj), is_tuple(Obj) andalso is_list(element(1, Obj))).
+
+plan() ->
+    system_dataplan().
+
+plan(DbName) ->
+    get_dataplan(DbName).
 
 -spec plan(ne_binary(), ne_binary() | wh_proplist() | wh_json:object()) -> map().
 plan(DbName, DocType) when is_binary(DocType) ->
@@ -32,6 +38,13 @@ server_tag() ->
 %% server_tag(Tag) ->
 %%     put('$kz_dataserver_tag', Tag).
 
+get_dataplan(DBName) ->
+    case kzs_util:db_classification(DBName) of
+        'modb' -> account_modb_dataplan(DBName);
+        'account' -> account_dataplan(DBName);
+        _Else -> system_dataplan()
+    end.
+
 get_dataplan(DBName, DocType) ->
     case kzs_util:db_classification(DBName) of
         'modb' -> account_modb_dataplan(DBName, DocType);
@@ -43,7 +56,13 @@ get_dataplan(DBName, DocType) ->
 system_dataplan() ->
     #{tag => 'local', server => kz_dataconnections:get_server(server_tag())}.
 
+account_dataplan(_DBName) ->
+    #{tag => 'local', server => kz_dataconnections:get_server(server_tag())}.
+
 account_dataplan(_DBName, _DocType) ->
+    #{tag => 'local', server => kz_dataconnections:get_server(server_tag())}.
+
+account_modb_dataplan(_DBName) ->
     #{tag => 'local', server => kz_dataconnections:get_server(server_tag())}.
 
 account_modb_dataplan(_DBName, _DocType) ->
