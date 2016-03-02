@@ -19,13 +19,18 @@ plan() ->
 plan(DbName) ->
     get_dataplan(DbName).
 
--spec plan(ne_binary(), ne_binary() | wh_proplist() | wh_json:object()) -> map().
+-spec plan(ne_binary(), atom() | ne_binary() | wh_proplist() | wh_json:object()) -> map().
 plan(DbName, DocType) when is_binary(DocType) ->
     get_dataplan(DbName, DocType);
 plan(DbName, Props) when is_list(Props) ->
     plan(DbName, props:get_value('doc_type', Props));
 plan(DbName, Doc) when ?IS_JSON_GUARD(Doc) ->
-    plan(DbName, wh_doc:type(Doc)).
+    plan(DbName, wh_doc:type(Doc));
+plan(DbName, 'undefined')  ->
+    plan(DbName);
+plan(DbName, DocType)
+  when is_atom(DocType) ->
+    plan(DbName, wh_util:to_binary(DocType)).
 
 -spec server_tag() -> term().
 server_tag() ->
