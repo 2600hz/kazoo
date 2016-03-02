@@ -258,7 +258,7 @@ build_request(Method, Url, Headers, _Body) when (Method == 'options');
                                                 (Method == 'get');
                                                 (Method == 'head');
                                                 (Method == 'trace') ->
-    {Url, Headers};
+    {wh_util:to_list(Url), ensure_string_headers(Headers)};
 build_request(Method, Url, Headers, Body) when (Method == 'post');
                                                (Method == 'put');
                                                (Method == 'delete') ->
@@ -271,8 +271,10 @@ build_request(Method, Url, Headers, Body) when (Method == 'post');
                                           ]
                                           ,Headers
                                           ,""),
-    {Url, Headers, ContentType, Body}.
+    {wh_util:to_list(Url), ensure_string_headers(Headers), wh_util:to_list(ContentType), Body}.
 
+ensure_string_headers(Headers) ->
+    [{wh_util:to_list(K), wh_util:to_list(V)} || {K,V} <- Headers].
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Get options out of a propslist based on options type
