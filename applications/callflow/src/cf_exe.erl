@@ -544,78 +544,91 @@ handle_info(_Msg, State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State}.
 
+handle_channel_destroyed(Self, NotifyPids, JObj) ->
+    channel_destroyed(Self),
+    relay_message(NotifyPids, JObj).
+
+handle_channel_transfer(Call, JObj) ->
+    OrgFetchId = whapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
+    NewFetchId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
+
+    case OrgFetchId =:= NewFetchId of
+        'false' -> 'ok';
+        'true'  -> transfer(Call)
+    end.
+
+handle_channel_replaced(Call, JObj, Notify) ->
+    OrgFetchId = whapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
+    NewFetchId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
+
+    case OrgFetchId =:= NewFetchId of
+        'false' ->
+            'ignore';
+
+        'true' ->
+            ReplacedBy = wh_json:get_value(<<"Replaced-By">>, JObj),
+            callid_update(ReplacedBy, Call),
+            relay_message(Notify, JObj)
+    end.
+
+handle_usurp(Self, Call, JObj) ->
+    OrgFetchId = whapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
+    NewFetchId = wh_json:get_value(<<"Fetch-ID">>, JObj),
+
+    case OrgFetchId =:= NewFetchId of
+        'false' -> control_usurped(Self);
+        'true'  -> 'ok'
+    end.
+
+handle_error(CallId, Notify, JObj) ->
+    case wh_json:get_value([<<"Request">>, <<"Call-ID">>], JObj) of
+        CallId      -> relay_message(Notify, JObj);
+        'undefined' -> relay_message(Notify, JObj);
+        _Else       -> 'ignore'
+    end.
+
+relay_message(NotifyPids, Message) ->
+    [whapps_call_command:relay_event(Pid, Message) || Pid <- NotifyPids, is_pid(Pid)].
+
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% @end
+%% @doc Handle call messages, sometimes forward them on.
 %%--------------------------------------------------------------------
-handle_event(JObj, #state{cf_module_pid=PidRef
-                          ,call=Call
-                          ,self=Self
-                         }) ->
+handle_event(JObj, #state{cf_module_pid=PidRef, call=Call ,self=Self}) ->
     CallId = whapps_call:call_id_direct(Call),
     Others = whapps_call:kvs_fetch('cf_event_pids', [], Call),
+    Notify = if is_pid(PidRef) -> [PidRef | Others]; 'true' -> Others end,
+
     case {whapps_util:get_event_type(JObj), wh_json:get_value(<<"Call-ID">>, JObj)} of
         {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
-            channel_destroyed(Self),
-            {'reply', [{'cf_module_pid', get_pid(PidRef)}
-                       ,{'cf_event_pids', Others}
-                      ]};
+            handle_channel_destroyed(Self, Notify, JObj);
+
         {{<<"call_event">>, <<"CHANNEL_DISCONNECTED">>}, CallId} ->
-            channel_destroyed(Self),
-            {'reply', [{'cf_module_pid', get_pid(PidRef)}
-                       ,{'cf_event_pids', Others}
-                      ]};
+            handle_channel_destroyed(Self, Notify, JObj);
+
         {{<<"call_event">>, <<"CHANNEL_TRANSFEREE">>}, _} ->
-            ExeFetchId = whapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
-            TransferFetchId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
-            _ = case ExeFetchId =:= TransferFetchId of
-                    'false' -> 'ok';
-                    'true' -> transfer(Call)
-                end,
-            'ignore';
+            handle_channel_transfer(Call, JObj);
+
         {{<<"call_event">>, <<"CHANNEL_REPLACED">>}, _} ->
-            ExeFetchId = whapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
-            TransferFetchId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
-            case ExeFetchId =:= TransferFetchId of
-                'false' -> 'ignore';
-                'true' ->
-                    ReplacedBy = wh_json:get_value(<<"Replaced-By">>, JObj),
-                    callid_update(ReplacedBy, Call),
-                    {'reply', [{'cf_module_pid', get_pid(PidRef)}
-                               ,{'cf_event_pids', Others}
-                              ]}
-            end;
+            handle_channel_replaced(Call, JObj, Notify);
+
         {{<<"call_event">>, <<"usurp_control">>}, CallId} ->
-            _ = case whapps_call:custom_channel_var(<<"Fetch-ID">>, Call)
-                    =:= wh_json:get_value(<<"Fetch-ID">>, JObj)
-                of
-                    'false' -> control_usurped(Self);
-                    'true' -> 'ok'
-                end,
-            'ignore';
+            handle_usurp(Self, Call, JObj);
+
         {{<<"error">>, _}, _} ->
-            case wh_json:get_value([<<"Request">>, <<"Call-ID">>], JObj) of
-                CallId -> {'reply', [{'cf_module_pid', get_pid(PidRef)}
-                                     ,{'cf_event_pids', Others}
-                                    ]};
-                'undefined' -> {'reply', [{'cf_module_pid', get_pid(PidRef)}
-                                          ,{'cf_event_pids', Others}
-                                         ]};
-                _Else -> 'ignore'
-            end;
+            handle_error(CallId, Notify, JObj);
+
         {_, CallId} ->
-            {'reply', [{'cf_module_pid', get_pid(PidRef)}
-                       ,{'cf_event_pids', Others}
-                      ]};
+            relay_message(Notify, JObj);
+
         {{_Cat, _Name}, _Else} when Others =:= [] ->
-            lager:info("received ~s (~s) from call ~s while relaying for ~s"
-                       , [_Cat, _Name, _Else, CallId]),
-            'ignore';
+            lager:info("received ~s (~s) from call ~s while relaying for ~s", [_Cat, _Name, _Else, CallId]);
+
         {_Evt, _Else} ->
             lager:info("the others want to know about ~p", [_Evt]),
-            {'reply', [{'cf_event_pids', Others}]}
-    end.
+            relay_message(Others, JObj)
+    end,
+    'ignore'.
 
 -spec get_pid({pid(), any()}) -> pid().
 get_pid({Pid, _}) when is_pid(Pid) -> Pid;
