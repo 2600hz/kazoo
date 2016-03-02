@@ -10,6 +10,12 @@ notifications:
 otp_release:
   - 18.2
 
+sudo: false
+
+services:
+  - rabbitmq
+#  - couchdb
+
 addons:
   apt:
     packages:
@@ -20,8 +26,6 @@ cache:
   directories:
     - $HOME/proper
     - $TRAVIS_BUILD_DIR/deps
-
-sudo: false
 
 before_install:
   - set -e
@@ -43,3 +47,4 @@ after_success:
   - make compile-test
   - make eunit
   - make elvis
+  - ./scripts/check-release-startup.sh
