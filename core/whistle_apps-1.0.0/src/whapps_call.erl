@@ -1045,7 +1045,13 @@ retrieve(CallId) ->
     retrieve(CallId, 'undefined').
 
 retrieve(CallId, AppName) ->
-    wh_cache:fetch_local(?WHAPPS_CALL_CACHE, {?MODULE, 'call', AppName, CallId}).
+    case wh_cache:fetch_local(?WHAPPS_CALL_CACHE, {?MODULE, 'call', AppName, CallId}) of
+        {'error', _R} ->
+            lager:info("call retrieve failed, retrying: ~p", [_R]),
+            timer:sleep(500),
+            wh_cache:fetch_local(?WHAPPS_CALL_CACHE, {?MODULE, 'call', AppName, CallId});
+        Else -> Else
+    end.
 
 %% EUNIT TESTING
 -ifdef(TEST).
