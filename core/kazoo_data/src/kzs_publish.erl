@@ -124,17 +124,17 @@ publish(Action, Db, Doc) ->
 
     Props =
         [{<<"ID">>, Id}
-         ,{<<"Type">>, Type}
-         ,{<<"Database">>, Db}
-         ,{<<"Rev">>, wh_doc:revision(Doc)}
-         ,{<<"Account-ID">>, doc_acct_id(Db, Doc)}
-         ,{<<"Date-Modified">>, wh_doc:created(Doc)}
-         ,{<<"Date-Created">>, wh_doc:modified(Doc)}
-         ,{<<"Is-Soft-Deleted">>, IsSoftDeleted}
+        ,{<<"Type">>, Type}
+        ,{<<"Database">>, Db}
+        ,{<<"Rev">>, wh_doc:revision(Doc)}
+        ,{<<"Account-ID">>, doc_acct_id(Db, Doc)}
+        ,{<<"Date-Modified">>, wh_doc:created(Doc)}
+        ,{<<"Date-Created">>, wh_doc:modified(Doc)}
+        ,{<<"Is-Soft-Deleted">>, IsSoftDeleted}
          | wh_api:default_headers(<<"configuration">>
-                                  ,EventName
-                                  ,?CONFIG_CAT
-                                  ,<<"1.0.0">>
+                                 ,EventName
+                                 ,?CONFIG_CAT
+                                 ,<<"1.0.0">>
                                  )
         ],
     Fun = fun(P) -> wapi_conf:publish_doc_update(Action, Db, Type, Id, P) end,

@@ -145,8 +145,8 @@ maybe_tombstone(JObj, 'true') ->
     wh_json:from_list(
       props:filter_undefined(
         [{<<"_id">>, wh_doc:id(JObj)}
-         ,{<<"_rev">>, wh_doc:revision(JObj)}
-         ,{<<"_deleted">>, 'true'}
+        ,{<<"_rev">>, wh_doc:revision(JObj)}
+        ,{<<"_deleted">>, 'true'}
         ]
        )
      );

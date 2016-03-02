@@ -85,10 +85,12 @@
 
 -define(FIXTURES_FOLDER, "fixtures").
 
--define(PUBLISH_FIELDS, [<<"pvt_type">>
+-define(PUBLISH_FIELDS, [<<"_deleted">>
                          ,<<"pvt_account_id">>
                          ,<<"pvt_created">>
+                         ,<<"pvt_deleted">>
                          ,<<"pvt_modified">>
+                         ,<<"pvt_type">>
                         ]).
 
 -define(DELETE_KEYS, [<<"_rev">>, <<"id">>, <<"_attachments">>]).
