@@ -71,13 +71,23 @@ find_attachment([Db, Id, Attachment]) ->
     find_attachment([Db, Id, <<"unknown">>, Attachment]);
 find_attachment([Db, Id, Type, Attachment]) ->
     find_attachment([Db, Id, Type, <<"unknown">>, Attachment]);
-find_attachment([Db = ?MEDIA_DB, Id, Type, Attachment]) ->
-    {'ok', {Db, Id, Type, Attachment}};
 find_attachment([Db = ?MEDIA_DB, Id, Type, Rev, Attachment]) ->
-    {'ok', {Db, Id, Type, Rev, Attachment}};
+    {'ok', #media_store_path{db = Db
+                            ,id = Id
+                            ,type = Type
+                            ,rev = Rev
+                            ,att = Attachment
+                            }
+    };
 find_attachment([Db, Id, Type, Rev, Attachment]) ->
     AccountDb =  wh_util:format_account_id(Db, 'encoded'),
-    {'ok', {AccountDb, Id, Type, Rev, Attachment}};
+    {'ok', #media_store_path{db = AccountDb
+                            ,id = Id
+                            ,type = Type
+                            ,rev = Rev
+                            ,att = Attachment
+                            }
+    };
 find_attachment(Id) when not is_list(Id) ->
     find_attachment([Id]).
 
