@@ -45,7 +45,6 @@ put_attachment(#server{}=Conn, DbName, DocId, AName, Contents) ->
 
 put_attachment(#server{}=Conn, DbName, DocId, AName, Contents, Options) ->
     Db = kz_couch_util:get_db(Conn, DbName),
-%    do_put_attachment(Db, DocId, AName, Contents, kz_couch_util:maybe_add_rev(Db, DocId, Options)).
     do_put_attachment(Db, DocId, AName, Contents, Options).
 
 -spec delete_attachment(server(), ne_binary(), ne_binary(), ne_binary()) ->

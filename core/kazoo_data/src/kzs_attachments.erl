@@ -44,8 +44,18 @@ stream_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Caller) ->
 -spec put_attachment(map(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
                             {'ok', wh_json:object()} |
                             data_error().
+put_attachment(#{server := {App, Conn}
+                ,att_handler := {Handler, Params}
+                }, DbName, DocId, AName, Contents, Options) ->
+    kzs_cache:flush_cache_doc(DbName, DocId),
+    Handler:put_attachment(Params, DbName, DocId, AName, Contents, Options),
+    App:put_attachment(Conn, DbName, DocId, AName, Contents, Options);
+%%     kzs_cache:flush_cache_doc(DbName, DocId),
+%%     App:put_attachment(Conn, DbName, DocId, AName, Contents, Options);
+%%     case Handler:put_attachment(Params, DbName, DocId, AName, Contents, Options) of
+%%         {'stub', Id} ->
+
 put_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Contents, Options) ->
-    %% maybe translation here and redirection
     kzs_cache:flush_cache_doc(DbName, DocId),
     App:put_attachment(Conn, DbName, DocId, AName, Contents, Options).
 
@@ -55,12 +65,7 @@ put_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Contents, Options
 delete_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Options) ->
     App:delete_attachment(Conn, DbName, DocId, AName, Options).
 
+attachment_url(#{att_proxy := 'true'}, DbName, DocId, AttachmentId, Options) ->
+    wh_media_url:store(DbName, DocId, AttachmentId, Options);
 attachment_url(#{server := {App, Conn}}, DbName, DocId, AttachmentId, Options) ->
-    %% FECTH PROVIDER FOR ACCOUNTDB/DOCTYPE
-    %% FETCH URL FROM PROVIDER
-    %% CAN DEFER TO DATACONNECTION
-    %% OR CREATE A STUB AND PROXY URL WITH CALLBACK
-    %% SUP PROXY
-    %% FOR NOW DEFER TO DRIVER
-%%    #{server := {App, Conn}} = kz_dataplan:get_server(DBName, Options),
     App:attachment_url(Conn, DbName, DocId, AttachmentId, Options).
