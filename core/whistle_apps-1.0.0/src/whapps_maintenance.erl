@@ -184,7 +184,8 @@ refresh(?KZ_OAUTH_DB) ->
     kazoo_oauth_maintenance:register_common_providers();
 refresh(?KZ_WEBHOOKS_DB) ->
     couch_mgr:db_create(?KZ_WEBHOOKS_DB),
-    couch_mgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>);
+    couch_mgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>),
+    webhooks_maintenance:reset_webhooks_list();
 refresh(?WH_OFFNET_DB) ->
     couch_mgr:db_create(?WH_OFFNET_DB),
     stepswitch_maintenance:refresh();
@@ -481,6 +482,7 @@ get_all_account_views() ->
 fetch_all_account_views() ->
     [whapps_util:get_view_json('whistle_apps', ?MAINTENANCE_VIEW_FILE)
      ,whapps_util:get_view_json('conference', <<"views/conference.json">>)
+     ,whapps_util:get_view_json('webhooks', <<"webhooks.json">>)
      |whapps_util:get_views_json('crossbar', "account")
      ++ whapps_util:get_views_json('callflow', "views")
     ].
