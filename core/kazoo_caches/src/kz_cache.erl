@@ -82,7 +82,6 @@
                    }).
 
 -type cache_obj() :: #cache_obj{}.
--type cache_objs() :: [cache_obj()].
 
 -type store_options() :: [{'origin', origin_tuple() | origin_tuples()} |
                           {'expires', wh_timeout()} |
@@ -351,14 +350,61 @@ wait_for_key_local(Srv, Key, Timeout) ->
         {_, Ref, _} -> {'error', 'timeout'}
     end.
 
--spec handle_document_change(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_document_change(wh_json:object(), wh_proplist()) -> 'ok' | 'false'.
 handle_document_change(JObj, Props) ->
     'true' = wapi_conf:doc_update_v(JObj),
     Srv = props:get_value('server', Props),
     Db = wh_json:get_value(<<"Database">>, JObj),
     Type = wh_json:get_value(<<"Type">>, JObj),
     Id = wh_json:get_value(<<"ID">>, JObj),
-    gen_listener:cast(Srv, {'change', Db, Type, Id}).
+
+    _Keys = maybe_erase_changed(Srv, Db, Type, Id
+                               ,props:get_value('pointer_tab', Props)
+                               ),
+    _Keys =/= [] andalso
+        lager:debug("removed ~p keys for ~s/~s/~s", [length(_Keys), Db, Id, Type]).
+
+-spec maybe_erase_changed(pid(), ne_binary(), ne_binary(), ne_binary(), ets:tid()) -> list().
+maybe_erase_changed(Srv, Db, Type, Id, PointerTab) ->
+    MatchSpec = [{#cache_obj{origin = {'db', Db}, _ = '_'}
+                 ,[]
+                 ,['$_']
+                 }
+                ,{#cache_obj{origin = {'db', Db, Type}, _ = '_'}
+                 ,[]
+                 ,['$_']
+                 }
+                ,{#cache_obj{origin = {'db', Db, Id}, _ = '_'}
+                 ,[]
+                 ,['$_']
+                 }
+                ,{#cache_obj{origin = {'type', Type, Id}, _ = '_'}
+                 ,[]
+                 ,['$_']
+                 }
+                ,{#cache_obj{origin = {'type', Type}, _ = '_'}
+                 ,[]
+                 ,['$_']
+                 }
+                ],
+
+    lists:foldl(fun(Obj, Removed) ->
+                        erase_changed(Obj, Removed, Srv)
+                end
+               ,[]
+               ,ets:select(PointerTab, MatchSpec)
+               ).
+
+-spec erase_changed(cache_obj(), list(), pid()) -> list().
+erase_changed(#cache_obj{key=Key}, Removed, Srv) ->
+    case lists:member(Key, Removed) of
+        'true' -> Removed;
+        'false' ->
+            lager:debug("removing updated cache object ~-300p", [Key]),
+            gen_listener:cast(Srv, {'erase', Key}),
+            [Key | Removed]
+    end.
+
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -521,12 +567,6 @@ handle_cast({'flush'}, #state{tab=Tab
 
     {'noreply', State};
 
-handle_cast({'change', Db, Type, Id}
-           ,#state{pointer_tab=PointerTab}=State
-           ) ->
-    maybe_erase_changed(Db, Type, Id, PointerTab),
-    {'noreply', State};
-
 handle_cast({'wh_amqp_channel', {'new_channel', 'false'}}
            ,#state{name=Name
                   ,tab=Tab
@@ -615,11 +655,14 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(JObj, _State) ->
-    case wh_api:node(JObj) =:= wh_util:to_binary(node()) of
-        'true' -> 'ignore';
-        'false' -> {'reply', []}
-    end.
+handle_event(_JObj, #state{tab=Tab
+                           ,pointer_tab=PointerTab
+                           ,monitor_tab=MonitorTab
+                          }) ->
+    {'reply', [{'object_tab', Tab}
+              ,{'pointer_tab', PointerTab}
+              ,{'monitor_tab', MonitorTab}
+              ]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -686,54 +729,6 @@ maybe_add_db_origin([{'db', Db, Id} | Props], Acc) ->
 maybe_add_db_origin([P | Props], Acc) ->
     maybe_add_db_origin(Props, [P |Acc]).
 
--spec maybe_erase_changed(ne_binary(), ne_binary(), ne_binary(), ets:tid()) -> 'ok'.
-maybe_erase_changed(Db, Type, Id, PointerTab) ->
-    MatchSpec = [{#cache_obj{origin = {'db', Db}, _ = '_'}
-                  ,[]
-                  ,['$_']
-                 }
-                ,{#cache_obj{origin = {'db', Db, Type}, _ = '_'}
-                 ,[]
-                 ,['$_']
-                 }
-                ,{#cache_obj{origin = {'db', Db, Id}, _ = '_'}
-                 ,[]
-                 ,['$_']
-                 }
-                ,{#cache_obj{origin = {'type', Type, Id}, _ = '_'}
-                 ,[]
-                 ,['$_']
-                 }
-                ,{#cache_obj{origin = {'type', Type}, _ = '_'}
-                 ,[]
-                 ,['$_']
-                 }
-                ],
-    Objects = ets:select(PointerTab, MatchSpec),
-    erase_changed(PointerTab, Objects).
-
--spec erase_changed(ets:tid(), cache_objs()) -> 'ok'.
-erase_changed(PointerTab, Objects) ->
-    _Removed =
-        lists:foldl(fun(Object, Removed) ->
-                            erase_changed_object(PointerTab, Object, Removed)
-                    end
-                   ,[]
-                   ,Objects
-                   ),
-    'ok'.
-
--spec erase_changed_object(ets:tid(), cache_obj(), list()) -> list().
-erase_changed_object(PointerTab, #cache_obj{key=Key}=Object, Removed) ->
-    _ = case lists:member(Key, Removed) of
-            'true' -> Removed;
-            'false' ->
-                lager:debug("removing updated cache object ~-300p", [Key]),
-                _ = maybe_exec_erase_callbacks(PointerTab, Object),
-                maybe_remove_object(PointerTab, Key),
-                [Key|Removed]
-        end.
-
 -spec expire_objects(ets:tid()) -> non_neg_integer().
 expire_objects(Tab) ->
     Now = wh_util:current_tstamp(),
@@ -787,8 +782,7 @@ maybe_exec_erase_callbacks(_Tab
                           ) when is_function(Fun, 3) ->
     wh_util:spawn(Fun, [Key, Value, 'erase']),
     'ok';
-maybe_exec_erase_callbacks(_Tab, #cache_obj{}) ->
-    'ok';
+maybe_exec_erase_callbacks(_Tab, #cache_obj{}) -> 'ok';
 maybe_exec_erase_callbacks(Tab, Key) ->
     try ets:lookup_element(Tab, Key, #cache_obj.callback) of
         Fun when is_function(Fun, 3) ->
