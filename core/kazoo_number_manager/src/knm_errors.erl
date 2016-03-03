@@ -101,7 +101,7 @@ multiple_choice(Number, Update) ->
 assign_failure(PhoneNumber, E) ->
     throw({'error', 'assign_failure', PhoneNumber, E}).
 
--spec database_error(couch_mgr:couchbeam_errors(), knm_phone_number:knm_phone_number() | ne_binary()) ->
+-spec database_error(kz_data:data_errors(), knm_phone_number:knm_phone_number() | ne_binary()) ->
                             no_return().
 database_error(E, PhoneNumber) ->
     throw({'error'

@@ -274,7 +274,7 @@ check_descendants(Context, JObj, AccountId, AsAccountId, AsOwnerId) ->
 
 -spec get_descendants(ne_binary()) ->
                              {'ok', ne_binaries()} |
-                             kz_datamgr:couchbeam_error().
+                             kz_data:data_error().
 get_descendants(AccountId) ->
     case kz_datamgr:get_results(<<"accounts">>
                                ,<<"accounts/listing_by_descendants">>

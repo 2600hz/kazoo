@@ -193,7 +193,7 @@ buy(Nums, Account) ->
 free(AccountId)
   when is_binary(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, ?KNM_PHONE_NUMBERS_DOC) of
+    case kz_datamgr:open_cache_doc(AccountDb, ?KNM_PHONE_NUMBERS_DOC) of
         {'ok', JObj} ->
             free_numbers(AccountId, JObj);
         {'error', _E} ->
@@ -257,7 +257,7 @@ check_to_free_number(_AccountId, Number, _OtherAccountId) ->
 emergency_enabled(Account)
   when is_binary(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, ?KNM_PHONE_NUMBERS_DOC) of
+    case kz_datamgr:open_cache_doc(AccountDb, ?KNM_PHONE_NUMBERS_DOC) of
         {'ok', JObj} ->
             Numbers = wh_json:get_keys(wh_json:public_fields(JObj)),
             Options = [{'assigned_to', wh_util:format_account_id(Account, 'raw')}

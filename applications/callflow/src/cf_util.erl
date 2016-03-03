@@ -242,11 +242,11 @@ is_unsolicited_mwi_enabled(AccountId) ->
 -spec unsolicited_owner_mwi_update(api_binary(), api_binary()) ->
                                           'ok' |
                                           {'error', mwi_update_return()} |
-                                          kz_datamgr:couchbeam_error().
+                                          kz_data:data_error().
 -spec unsolicited_owner_mwi_update(ne_binary(), ne_binary(), boolean()) ->
                                           'ok' |
                                           {'error', mwi_update_return()} |
-                                          kz_datamgr:couchbeam_error().
+                                          kz_data:data_error().
 unsolicited_owner_mwi_update('undefined', _) -> {'error', 'missing_account_db'};
 unsolicited_owner_mwi_update(_, 'undefined') -> {'error', 'missing_owner_id'};
 unsolicited_owner_mwi_update(AccountDb, OwnerId) ->
@@ -529,7 +529,7 @@ get_endpoint_id_by_sip_username(AccountDb, Username) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec get_operator_callflow(ne_binary()) -> {'ok', wh_json:object()} |
-                                            kz_datamgr:couchbeam_error().
+                                            kz_data:data_error().
 get_operator_callflow(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     Options = [{'key', ?OPERATOR_KEY}, 'include_docs'],
