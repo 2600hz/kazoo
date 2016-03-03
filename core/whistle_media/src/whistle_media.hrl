@@ -53,5 +53,15 @@
                      ,{<<"record_min_sec">>, 0}
                     ]).
 
+-record(media_store_path,
+        {db :: ne_binary()
+        ,id :: ne_binary()
+        ,type :: ne_binary()
+        ,rev :: ne_binary()
+        ,att :: ne_binary()
+        }).
+
+-type media_store_path() :: #media_store_path{}.
+
 -define(WH_MEDIA_HRL, 'true').
 -endif.
