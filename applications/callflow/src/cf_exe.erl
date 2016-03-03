@@ -11,7 +11,7 @@
 
 %% API
 -export([start_link/1]).
--export([relay_amqp/2, send_amqp/3]).
+-export([send_amqp/3]).
 -export([get_call/1, set_call/1]).
 -export([callid/1, callid/2]).
 -export([queue_name/1]).
@@ -47,12 +47,11 @@
 -include("callflow.hrl").
 -include_lib("whistle/src/wh_json.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(CALL_SANITY_CHECK, 30000).
 
--define(RESPONDERS, [{{?MODULE, 'relay_amqp'}
-                      ,[{<<"*">>, <<"*">>}]
-                     }
-                    ]).
+-define(RESPONDERS, []).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
@@ -77,11 +76,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {'ok', Pid} | 'ignore' | {'error', Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(whapps_call:call()) -> startlink_ret().
 start_link(Call) ->
@@ -89,7 +84,7 @@ start_link(Call) ->
     Bindings = [{'call', [{'callid', CallId}]}
                 ,{'self', []}
                ],
-    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
+    gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
                                       ,{'bindings', Bindings}
                                       ,{'queue_name', ?QUEUE_NAME}
                                       ,{'queue_options', ?QUEUE_OPTIONS}
@@ -268,14 +263,6 @@ wildcard_is_empty(Call) ->
     Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     wildcard_is_empty(Srv).
 
--spec relay_amqp(wh_json:object(), wh_proplist()) -> any().
-relay_amqp(JObj, Props) ->
-    Pids = case props:get_value('cf_module_pid', Props) of
-               P when is_pid(P) -> [P | props:get_value('cf_event_pids', Props, [])];
-               _ -> props:get_value('cf_event_pids', Props, [])
-           end,
-    [whapps_call_command:relay_event(Pid, JObj) || Pid <- Pids, is_pid(Pid)].
-
 -spec send_amqp(pid() | whapps_call:call(), api_terms(), wh_amqp_worker:publish_fun()) -> 'ok'.
 send_amqp(Srv, API, PubFun) when is_pid(Srv), is_function(PubFun, 1) ->
     gen_listener:cast(Srv, {'send_amqp', API, PubFun});
@@ -418,7 +405,6 @@ handle_cast('continue_on_destroy', State) ->
 handle_cast({'continue_with_flow', NewFlow}, State) ->
     lager:info("callflow has been reset"),
     {'noreply', launch_cf_module(State#state{flow=NewFlow})};
-
 handle_cast({'branch', _NewFlow}, #state{branch_count=BC}=State) when BC =< 0 ->
     lager:warning("callflow exceeded max branch count, terminating"),
     {'stop', 'normal', State};
@@ -440,7 +426,6 @@ handle_cast({'branch', NewFlow}, #state{flow=Flow
                                         )
             }
     end;
-
 handle_cast({'callid_update', NewCallId}, #state{call=Call}=State) ->
     wh_util:put_callid(NewCallId),
     PrevCallId = whapps_call:call_id_direct(Call),
@@ -474,7 +459,7 @@ handle_cast('initialize', #state{call=Call}=State) ->
     CallWithHelpers = lists:foldr(fun(F, C) -> F(C) end, Call, Updaters),
     _ = wh_util:spawn(fun cf_singular_call_hooks:maybe_hook_call/1, [CallWithHelpers]),
     {'noreply', State#state{call=CallWithHelpers
-                            ,flow=Flow
+                       ,flow=Flow
                       }};
 handle_cast({'gen_listener', {'created_queue', Q}}, #state{call=Call}=State) ->
     {'noreply', State#state{queue=Q
@@ -492,10 +477,6 @@ handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
--spec event_listener_name(whapps_call:call(), atom() | ne_binary()) -> ne_binary().
-event_listener_name(Call, Module) ->
-    <<(whapps_call:call_id_direct(Call))/binary, "-", (wh_util:to_binary(Module))/binary>>.
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -509,6 +490,7 @@ event_listener_name(Call, Module) ->
 handle_info({'DOWN', Ref, 'process', Pid, 'normal'}, #state{cf_module_pid={Pid, Ref}
                                                             ,call=Call
                                                            }=State) ->
+
     erlang:demonitor(Ref, ['flush']),
     lager:debug("cf module ~s down normally", [whapps_call:kvs_fetch('cf_last_action', Call)]),
     {'noreply', State#state{cf_module_pid='undefined'}};
@@ -542,80 +524,38 @@ handle_info(_Msg, State) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% @end
+%% @doc Handle call messages, sometimes forward them on.
 %%--------------------------------------------------------------------
-handle_event(JObj, #state{cf_module_pid=PidRef
-                          ,call=Call
-                          ,self=Self
-                         }) ->
+handle_event(JObj, #state{cf_module_pid=PidRef, call=Call ,self=Self}) ->
     CallId = whapps_call:call_id_direct(Call),
     Others = whapps_call:kvs_fetch('cf_event_pids', [], Call),
+    ModPid = get_pid(PidRef),
+    Notify = if is_pid(ModPid) -> [ModPid | Others]; 'true' -> Others end,
+
     case {whapps_util:get_event_type(JObj), wh_json:get_value(<<"Call-ID">>, JObj)} of
         {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
-            channel_destroyed(Self),
-            {'reply', [{'cf_module_pid', get_pid(PidRef)}
-                       ,{'cf_event_pids', Others}
-                      ]};
+            handle_channel_destroyed(Self, Notify, JObj);
         {{<<"call_event">>, <<"CHANNEL_DISCONNECTED">>}, CallId} ->
-            channel_destroyed(Self),
-            {'reply', [{'cf_module_pid', get_pid(PidRef)}
-                       ,{'cf_event_pids', Others}
-                      ]};
+            handle_channel_destroyed(Self, Notify, JObj);
         {{<<"call_event">>, <<"CHANNEL_TRANSFEREE">>}, _} ->
-            ExeFetchId = whapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
-            TransferFetchId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
-            _ = case ExeFetchId =:= TransferFetchId of
-                    'false' -> 'ok';
-                    'true' -> transfer(Call)
-                end,
-            'ignore';
+            handle_channel_transfer(Call, JObj);
         {{<<"call_event">>, <<"CHANNEL_REPLACED">>}, _} ->
-            ExeFetchId = whapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
-            TransferFetchId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
-            case ExeFetchId =:= TransferFetchId of
-                'false' -> 'ignore';
-                'true' ->
-                    ReplacedBy = wh_json:get_value(<<"Replaced-By">>, JObj),
-                    callid_update(ReplacedBy, Call),
-                    {'reply', [{'cf_module_pid', get_pid(PidRef)}
-                               ,{'cf_event_pids', Others}
-                              ]}
-            end;
+            handle_channel_replaced(Call, JObj, Notify);
         {{<<"call_event">>, <<"usurp_control">>}, CallId} ->
-            _ = case whapps_call:custom_channel_var(<<"Fetch-ID">>, Call)
-                    =:= wh_json:get_value(<<"Fetch-ID">>, JObj)
-                of
-                    'false' -> control_usurped(Self);
-                    'true' -> 'ok'
-                end,
-            'ignore';
+            handle_usurp(Self, Call, JObj);
         {{<<"error">>, _}, _} ->
-            case wh_json:get_value([<<"Request">>, <<"Call-ID">>], JObj) of
-                CallId -> {'reply', [{'cf_module_pid', get_pid(PidRef)}
-                                     ,{'cf_event_pids', Others}
-                                    ]};
-                'undefined' -> {'reply', [{'cf_module_pid', get_pid(PidRef)}
-                                          ,{'cf_event_pids', Others}
-                                         ]};
-                _Else -> 'ignore'
-            end;
+            handle_error(CallId, Notify, JObj);
         {_, CallId} ->
-            {'reply', [{'cf_module_pid', get_pid(PidRef)}
-                       ,{'cf_event_pids', Others}
-                      ]};
+            relay_message(Notify, JObj);
         {{_Cat, _Name}, _Else} when Others =:= [] ->
             lager:info("received ~s (~s) from call ~s while relaying for ~s"
-                       , [_Cat, _Name, _Else, CallId]),
-            'ignore';
+                      ,[_Cat, _Name, _Else, CallId]
+                      );
         {_Evt, _Else} ->
             lager:info("the others want to know about ~p", [_Evt]),
-            {'reply', [{'cf_event_pids', Others}]}
-    end.
-
--spec get_pid({pid(), any()}) -> pid().
-get_pid({Pid, _}) when is_pid(Pid) -> Pid;
-get_pid(_) -> 'undefined'.
+            relay_message(Others, JObj)
+    end,
+    'ignore'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -643,14 +583,6 @@ terminate(_Reason, #state{call=Call
     exit(Pid, 'kill'),
     hangup_call(Call),
     lager:info("callflow execution has been stopped: ~p", [_Reason]).
-
--spec hangup_call(whapps_call:call()) -> 'ok'.
-hangup_call(Call) ->
-    Cmd = [{<<"Event-Name">>, <<"command">>}
-           ,{<<"Event-Category">>, <<"call">>}
-           ,{<<"Application-Name">>, <<"hangup">>}
-          ],
-    send_command(Cmd, whapps_call:control_queue_direct(Call), whapps_call:call_id_direct(Call)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -725,7 +657,7 @@ cf_module_not_found(Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec spawn_cf_module(CFModule, list(), whapps_call:call()) ->
-                             {{pid(), reference()}, CFModule}.
+                             {pid_ref(), CFModule}.
 spawn_cf_module(CFModule, Data, Call) ->
     AMQPConsumer = wh_amqp_channel:consumer_pid(),
     {spawn_monitor(
@@ -742,7 +674,6 @@ spawn_cf_module(CFModule, Data, Call) ->
                        throw(R)
                end
        end), CFModule}.
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -784,3 +715,70 @@ log_call_information(Call) ->
         _Else -> lager:info("inception ~s: using attributes for an external call", [_Else])
     end,
     lager:info("authorizing id ~s", [whapps_call:authorizing_id(Call)]).
+
+-spec handle_channel_destroyed(pid(), pids(), wh_json:object()) -> 'ok'.
+handle_channel_destroyed(Self, Notify, JObj) ->
+    channel_destroyed(Self),
+    relay_message(Notify, JObj).
+
+-spec handle_channel_transfer(whapps_call:call(), wh_json:object()) -> 'ok'.
+handle_channel_transfer(Call, JObj) ->
+    OrgFetchId = whapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
+    NewFetchId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
+    case OrgFetchId =:= NewFetchId of
+        'true'  -> transfer(Call);
+        'false' -> 'ok'
+    end.
+
+-spec handle_channel_replaced(whapps_call:call(), wh_json:object(), pids()) -> 'ok'.
+handle_channel_replaced(Call, JObj, Notify) ->
+    OrgFetchId = whapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
+    NewFetchId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
+    case OrgFetchId =:= NewFetchId of
+        'true' ->
+            ReplacedBy = wh_json:get_value(<<"Replaced-By">>, JObj),
+            callid_update(ReplacedBy, Call),
+            relay_message(Notify, JObj);
+        'false' -> 'ok'
+    end.
+
+-spec handle_usurp(pid(), ne_binary(), wh_json:object()) -> 'ok'.
+handle_usurp(Self, Call, JObj) ->
+    OrgFetchId = whapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
+    NewFetchId = wh_json:get_value(<<"Fetch-ID">>, JObj),
+    case OrgFetchId =:= NewFetchId of
+        'false' -> control_usurped(Self);
+        'true'  -> 'ok'
+    end.
+
+-spec handle_error(ne_binary(), pids(), wh_json:object()) -> 'ok'.
+handle_error(CallId, Notify, JObj) ->
+    case wh_json:get_value([<<"Request">>, <<"Call-ID">>], JObj) of
+        CallId      -> relay_message(Notify, JObj);
+        'undefined' -> relay_message(Notify, JObj);
+        _Else       -> 'ok'
+    end.
+
+-spec relay_message(pids(), wh_json:object()) -> 'ok'.
+relay_message(Notify, Message) ->
+    _ = [whapps_call_command:relay_event(Pid, Message)
+         || Pid <- Notify
+                ,is_pid(Pid)
+        ],
+    'ok'.
+
+-spec get_pid({pid(), reference()} | 'undefined') -> pid().
+get_pid({Pid, _}) when is_pid(Pid) -> Pid;
+get_pid(_) -> 'undefined'.
+
+-spec hangup_call(whapps_call:call()) -> 'ok'.
+hangup_call(Call) ->
+    Cmd = [{<<"Event-Name">>, <<"command">>}
+           ,{<<"Event-Category">>, <<"call">>}
+           ,{<<"Application-Name">>, <<"hangup">>}
+          ],
+    send_command(Cmd, whapps_call:control_queue_direct(Call), whapps_call:call_id_direct(Call)).
+
+-spec event_listener_name(whapps_call:call(), atom() | ne_binary()) -> ne_binary().
+event_listener_name(Call, Module) ->
+    <<(whapps_call:call_id_direct(Call))/binary, "-", (wh_util:to_binary(Module))/binary>>.
