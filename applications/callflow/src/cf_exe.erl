@@ -11,7 +11,7 @@
 
 %% API
 -export([start_link/1]).
--export([relay_amqp/2, send_amqp/3]).
+-export([send_amqp/3]).
 -export([get_call/1, set_call/1]).
 -export([callid/1, callid/2]).
 -export([queue_name/1]).
@@ -52,10 +52,7 @@
 
 -define(CALL_SANITY_CHECK, 30000).
 
--define(RESPONDERS, [{{?MODULE, 'relay_amqp'}
-                      ,[{<<"*">>, <<"*">>}]
-                     }
-                    ]).
+-define(RESPONDERS, []).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
@@ -273,14 +270,6 @@ wildcard_is_empty(Call) ->
     Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     wildcard_is_empty(Srv).
 
--spec relay_amqp(wh_json:object(), wh_proplist()) -> any().
-relay_amqp(JObj, Props) ->
-    Pids = case props:get_value('cf_module_pid', Props) of
-               P when is_pid(P) -> [P | props:get_value('cf_event_pids', Props, [])];
-               _ -> props:get_value('cf_event_pids', Props, [])
-           end,
-    [whapps_call_command:relay_event(Pid, JObj) || Pid <- Pids, is_pid(Pid)].
-
 -spec send_amqp(pid() | whapps_call:call(), api_terms(), wh_amqp_worker:publish_fun()) -> 'ok'.
 send_amqp(Srv, API, PubFun) when is_pid(Srv), is_function(PubFun, 1) ->
     gen_listener:cast(Srv, {'send_amqp', API, PubFun});
@@ -424,7 +413,6 @@ handle_cast('continue_on_destroy', State) ->
 handle_cast({'continue_with_flow', NewFlow}, State) ->
     lager:info("callflow has been reset"),
     {'noreply', launch_cf_module(State#state{flow=NewFlow})};
-
 handle_cast({'branch', _NewFlow}, #state{branch_count=BC}=State) when BC =< 0 ->
     lager:warning("callflow exceeded max branch count, terminating"),
     {'stop', 'normal', State};
@@ -446,7 +434,6 @@ handle_cast({'branch', NewFlow}, #state{flow=Flow
                                         )
             }
     end;
-
 handle_cast({'callid_update', NewCallId}, #state{call=Call}=State) ->
     wh_util:put_callid(NewCallId),
     PrevCallId = whapps_call:call_id_direct(Call),
@@ -544,52 +531,6 @@ handle_info(_Msg, State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State}.
 
-handle_channel_destroyed(Self, NotifyPids, JObj) ->
-    channel_destroyed(Self),
-    relay_message(NotifyPids, JObj).
-
-handle_channel_transfer(Call, JObj) ->
-    OrgFetchId = whapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
-    NewFetchId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
-
-    case OrgFetchId =:= NewFetchId of
-        'false' -> 'ok';
-        'true'  -> transfer(Call)
-    end.
-
-handle_channel_replaced(Call, JObj, Notify) ->
-    OrgFetchId = whapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
-    NewFetchId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
-
-    case OrgFetchId =:= NewFetchId of
-        'false' ->
-            'ignore';
-
-        'true' ->
-            ReplacedBy = wh_json:get_value(<<"Replaced-By">>, JObj),
-            callid_update(ReplacedBy, Call),
-            relay_message(Notify, JObj)
-    end.
-
-handle_usurp(Self, Call, JObj) ->
-    OrgFetchId = whapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
-    NewFetchId = wh_json:get_value(<<"Fetch-ID">>, JObj),
-
-    case OrgFetchId =:= NewFetchId of
-        'false' -> control_usurped(Self);
-        'true'  -> 'ok'
-    end.
-
-handle_error(CallId, Notify, JObj) ->
-    case wh_json:get_value([<<"Request">>, <<"Call-ID">>], JObj) of
-        CallId      -> relay_message(Notify, JObj);
-        'undefined' -> relay_message(Notify, JObj);
-        _Else       -> 'ignore'
-    end.
-
-relay_message(NotifyPids, Message) ->
-    [whapps_call_command:relay_event(Pid, Message) || Pid <- NotifyPids, is_pid(Pid)].
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Handle call messages, sometimes forward them on.
@@ -603,37 +544,27 @@ handle_event(JObj, #state{cf_module_pid=PidRef, call=Call ,self=Self}) ->
     case {whapps_util:get_event_type(JObj), wh_json:get_value(<<"Call-ID">>, JObj)} of
         {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
             handle_channel_destroyed(Self, Notify, JObj);
-
         {{<<"call_event">>, <<"CHANNEL_DISCONNECTED">>}, CallId} ->
             handle_channel_destroyed(Self, Notify, JObj);
-
         {{<<"call_event">>, <<"CHANNEL_TRANSFEREE">>}, _} ->
             handle_channel_transfer(Call, JObj);
-
         {{<<"call_event">>, <<"CHANNEL_REPLACED">>}, _} ->
             handle_channel_replaced(Call, JObj, Notify);
-
         {{<<"call_event">>, <<"usurp_control">>}, CallId} ->
             handle_usurp(Self, Call, JObj);
-
         {{<<"error">>, _}, _} ->
             handle_error(CallId, Notify, JObj);
-
         {_, CallId} ->
             relay_message(Notify, JObj);
-
         {{_Cat, _Name}, _Else} when Others =:= [] ->
-            lager:info("received ~s (~s) from call ~s while relaying for ~s", [_Cat, _Name, _Else, CallId]);
-
+            lager:info("received ~s (~s) from call ~s while relaying for ~s"
+                      ,[_Cat, _Name, _Else, CallId]
+                      );
         {_Evt, _Else} ->
             lager:info("the others want to know about ~p", [_Evt]),
             relay_message(Others, JObj)
     end,
     'ignore'.
-
--spec get_pid({pid(), any()}) -> pid().
-get_pid({Pid, _}) when is_pid(Pid) -> Pid;
-get_pid(_) -> 'undefined'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -661,14 +592,6 @@ terminate(_Reason, #state{call=Call
     exit(Pid, 'kill'),
     hangup_call(Call),
     lager:info("callflow execution has been stopped: ~p", [_Reason]).
-
--spec hangup_call(whapps_call:call()) -> 'ok'.
-hangup_call(Call) ->
-    Cmd = [{<<"Event-Name">>, <<"command">>}
-           ,{<<"Event-Category">>, <<"call">>}
-           ,{<<"Application-Name">>, <<"hangup">>}
-          ],
-    send_command(Cmd, whapps_call:control_queue_direct(Call), whapps_call:call_id_direct(Call)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -806,3 +729,67 @@ log_call_information(Call) ->
         _Else -> lager:info("inception ~s: using attributes for an external call", [_Else])
     end,
     lager:info("authorizing id ~s", [whapps_call:authorizing_id(Call)]).
+
+-spec handle_channel_destroyed(pid(), pids(), wh_json:object()) -> 'ok'.
+handle_channel_destroyed(Self, Notify, JObj) ->
+    channel_destroyed(Self),
+    relay_message(Notify, JObj).
+
+-spec handle_channel_transfer(whapps_call:call(), wh_json:object()) -> 'ok'.
+handle_channel_transfer(Call, JObj) ->
+    OrgFetchId = whapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
+    NewFetchId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
+    case OrgFetchId =:= NewFetchId of
+        'true'  -> transfer(Call);
+        'false' -> 'ok'
+    end.
+
+-spec handle_channel_replaced(whapps_call:call(), wh_json:object(), pids()) -> 'ok'.
+handle_channel_replaced(Call, JObj, Notify) ->
+    OrgFetchId = whapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
+    NewFetchId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
+    case OrgFetchId =:= NewFetchId of
+        'true' ->
+            ReplacedBy = wh_json:get_value(<<"Replaced-By">>, JObj),
+            callid_update(ReplacedBy, Call),
+            relay_message(Notify, JObj);
+        'false' -> 'ok'
+    end.
+
+-spec handle_usurp(pid(), ne_binary(), wh_json:object()) -> 'ok'.
+handle_usurp(Self, Call, JObj) ->
+    OrgFetchId = whapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
+    NewFetchId = wh_json:get_value(<<"Fetch-ID">>, JObj),
+    case OrgFetchId =:= NewFetchId of
+        'false' -> control_usurped(Self);
+        'true'  -> 'ok'
+    end.
+
+-spec handle_error(ne_binary(), pids(), wh_json:object()) -> 'ok'.
+handle_error(CallId, Notify, JObj) ->
+    case wh_json:get_value([<<"Request">>, <<"Call-ID">>], JObj) of
+        CallId      -> relay_message(Notify, JObj);
+        'undefined' -> relay_message(Notify, JObj);
+        _Else       -> 'ok'
+    end.
+
+-spec relay_message(pids(), wh_json:object()) -> 'ok'.
+relay_message(Notify, Message) ->
+    _ = [whapps_call_command:relay_event(Pid, Message) 
+         || Pid <- Notify
+                ,is_pid(Pid)
+        ],
+    'ok'.
+
+-spec get_pid({pid(), reference()} | 'undefined') -> pid().
+get_pid({Pid, _}) when is_pid(Pid) -> Pid;
+get_pid(_) -> 'undefined'.
+
+-spec hangup_call(whapps_call:call()) -> 'ok'.
+hangup_call(Call) ->
+    Cmd = [{<<"Event-Name">>, <<"command">>}
+           ,{<<"Event-Category">>, <<"call">>}
+           ,{<<"Application-Name">>, <<"hangup">>}
+          ],
+    send_command(Cmd, whapps_call:control_queue_direct(Call), whapps_call:call_id_direct(Call)).
+
