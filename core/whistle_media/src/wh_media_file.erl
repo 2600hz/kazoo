@@ -148,7 +148,7 @@ media_manager_proxy_uri(JObj, #media_store_path{db = Db
                                                 ,type = Type
                                                 ,rev = Rev
                                                 ,att = Attachment
-                                               }) ->    
+                                               }) ->
     Host = wh_network_utils:get_hostname(),
     Port = whapps_config:get_binary(?CONFIG_CAT, <<"proxy_port">>, 24517),
     StreamType = wh_media_util:convert_stream_type(wh_json:get_value(<<"Stream-Type">>, JObj)),
