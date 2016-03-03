@@ -53,7 +53,7 @@ init() ->
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() -> [?HTTP_PUT].
 allowed_methods(?RECOVERY) -> [?HTTP_PUT];
-allowed_methods(_) -> [?HTTP_GET].
+allowed_methods(_Token) -> [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -67,7 +67,7 @@ allowed_methods(_) -> [?HTTP_GET].
 -spec resource_exists(path_tokens()) -> boolean().
 resource_exists() -> 'true'.
 resource_exists(?RECOVERY) -> 'true';
-resource_exists(_) -> 'true'.
+resource_exists(_Token) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -79,7 +79,7 @@ authorize(Context) ->
     authorize_nouns(cb_context:req_nouns(Context)).
 
 authorize_nouns([{<<"user_auth">>, _}]) -> 'true';
-authorize_nouns(_) -> 'false'.
+authorize_nouns(_Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
