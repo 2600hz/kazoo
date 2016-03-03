@@ -775,7 +775,7 @@ handle_error(CallId, Notify, JObj) ->
 
 -spec relay_message(pids(), wh_json:object()) -> 'ok'.
 relay_message(Notify, Message) ->
-    _ = [whapps_call_command:relay_event(Pid, Message) 
+    _ = [whapps_call_command:relay_event(Pid, Message)
          || Pid <- Notify
                 ,is_pid(Pid)
         ],
