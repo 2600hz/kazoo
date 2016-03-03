@@ -1994,8 +1994,9 @@ get_new_attachment_url(AttachmentName, MediaId, Call) ->
                 maybe_remove_attachments(AccountDb, MediaId, JObj);
             {'error', _} -> 'ok'
         end,
-    {'ok', URL} = wh_media_url:store(AccountDb, MediaId, AttachmentName),
-    URL.
+%%    {'ok', URL} = wh_media_url:store(AccountDb, MediaId, AttachmentName),
+%%    URL.
+    kz_datamgr:attachment_url(AccountDb, MediaId, AttachmentName, [{'doc_type', <<"voicemail">>}]).
 
 -spec maybe_remove_attachments(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 maybe_remove_attachments(AccountDb, MediaId, JObj) ->
