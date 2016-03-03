@@ -191,7 +191,7 @@ update_doc(Number, UpdateProps) ->
 
 -spec create_managed_db() -> 'ok'.
 create_managed_db() ->
-    kz_data:db_create(?WH_MANAGED),
+    kz_datamgr:db_create(?WH_MANAGED),
     _ = kz_datamgr:revise_doc_from_file(?WH_MANAGED, 'kazoo_number_manager', ?MANAGED_VIEW_FILE),
     'ok'.
 
