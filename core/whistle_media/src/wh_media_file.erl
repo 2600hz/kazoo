@@ -28,8 +28,9 @@ get_uri(Media, JObj) when is_binary(Media) ->
 get_uri(Paths, JObj) ->
     case find_attachment(Paths) of
         {'error', _}=E -> E;
-        {'ok', {Db, Id, Attachment}} ->
-            maybe_local_haproxy_uri(JObj, Db, Id, Attachment)
+        {'ok', {Db, Id, Type, Rev, Attachment}} ->
+            media_manager_proxy_uri(JObj, Db, Id, Type, Rev, Attachment)
+%            maybe_local_haproxy_uri(JObj, Db, Id, Attachment)
     end.
 
 -spec maybe_prepare_proxy(ne_binary()) -> 'ok' | 'error'.
@@ -66,11 +67,17 @@ find_attachment([Db, Id]) ->
     find_attachment([Db, Id, 'first']);
 find_attachment([Db, Id, 'first']) ->
     maybe_find_attachment(Db, Id);
-find_attachment([Db = ?MEDIA_DB, Id, Attachment]) ->
-    {'ok', {Db, Id, Attachment}};
 find_attachment([Db, Id, Attachment]) ->
+    find_attachment([Db, Id, <<"unknown">>, Attachment]);
+find_attachment([Db, Id, Type, Attachment]) ->
+    find_attachment([Db, Id, Type, <<"unknown">>, Attachment]);
+find_attachment([Db = ?MEDIA_DB, Id, Type, Attachment]) ->
+    {'ok', {Db, Id, Type, Attachment}};
+find_attachment([Db = ?MEDIA_DB, Id, Type, Rev, Attachment]) ->
+    {'ok', {Db, Id, Type, Rev, Attachment}};
+find_attachment([Db, Id, Type, Rev, Attachment]) ->
     AccountDb =  wh_util:format_account_id(Db, 'encoded'),
-    {'ok', {AccountDb, Id, Attachment}};
+    {'ok', {AccountDb, Id, Type, Rev, Attachment}};
 find_attachment(Id) when not is_list(Id) ->
     find_attachment([Id]).
 
@@ -109,39 +116,47 @@ maybe_find_attachment(Db, Id, JObj) ->
             {'ok', {Db, cow_qs:urlencode(Id), AttachmentName}}
     end.
 
--spec maybe_local_haproxy_uri(wh_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
-                                     {'ok', ne_binary()} |
-                                     {'error', 'no_stream_strategy'}.
-maybe_local_haproxy_uri(JObj, Db, Id, Attachment) ->
-    case whapps_config:get_is_true(?CONFIG_CAT, <<"use_bigcouch_direct">>, 'true') of
-        'false' -> maybe_media_manager_proxy_uri(JObj, Db, Id, Attachment);
-        'true' ->
-            Url = kz_datamgr:attachment_url(Db, Id, Attachment),
-            {'ok', Url}
-    end.
+%% -spec maybe_local_haproxy_uri(wh_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
+%%                                      {'ok', ne_binary()} |
+%%                                      {'error', 'no_stream_strategy'}.
+%% maybe_local_haproxy_uri(JObj, Db, Id, Attachment) ->
+%%     case whapps_config:get_is_true(?CONFIG_CAT, <<"use_bigcouch_direct">>, 'true') of
+%%         'false' -> maybe_media_manager_proxy_uri(JObj, Db, Id, Attachment);
+%%         'true' ->
+%%             Url = kz_datamgr:attachment_url(Db, Id, Attachment),
+%%             {'ok', Url}
+%%     end.
+%%
+%% -spec maybe_media_manager_proxy_uri(wh_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
+%%                                            {'ok', ne_binary()} |
+%%                                            {'error', 'no_stream_strategy'}.
+%% maybe_media_manager_proxy_uri(JObj, Db, Id, Attachment) ->
+%%     case whapps_config:get_is_true(?CONFIG_CAT, <<"use_media_proxy">>, 'true') of
+%%         'false' ->
+%%             lager:warning("unable to build URL for media ~s ~s ~s", [Db, Id, Attachment]),
+%%             {'error', 'no_stream_strategy'};
+%%         'true' ->
+%%             lager:debug("using media manager as proxy"),
+%%             media_manager_proxy_uri(JObj, Db, Id, Attachment)
+%%     end.
 
--spec maybe_media_manager_proxy_uri(wh_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
-                                           {'ok', ne_binary()} |
-                                           {'error', 'no_stream_strategy'}.
-maybe_media_manager_proxy_uri(JObj, Db, Id, Attachment) ->
-    case whapps_config:get_is_true(?CONFIG_CAT, <<"use_media_proxy">>, 'true') of
-        'false' ->
-            lager:warning("unable to build URL for media ~s ~s ~s", [Db, Id, Attachment]),
-            {'error', 'no_stream_strategy'};
-        'true' ->
-            lager:debug("using media manager as proxy"),
-            Host = wh_network_utils:get_hostname(),
-            Port = whapps_config:get_binary(?CONFIG_CAT, <<"proxy_port">>, 24517),
-            StreamType = wh_media_util:convert_stream_type(wh_json:get_value(<<"Stream-Type">>, JObj)),
-            Permissions = case StreamType =:= <<"store">> of
-                              'true' -> 'proxy_store';
-                              'false' -> 'proxy_playback'
-                          end,
-            {'ok', <<(wh_media_util:base_url(Host, Port, Permissions))/binary
-                     ,StreamType/binary
-                     ,"/", Db/binary
-                     ,"/", Id/binary
-                     ,"/", Attachment/binary
-                   >>
-            }
-    end.
+-spec media_manager_proxy_uri(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
+          {'ok', ne_binary()} |
+              {'error', 'no_stream_strategy'}.
+media_manager_proxy_uri(JObj, Db, Id, Type, Rev, Attachment) ->
+    Host = wh_network_utils:get_hostname(),
+    Port = whapps_config:get_binary(?CONFIG_CAT, <<"proxy_port">>, 24517),
+    StreamType = wh_media_util:convert_stream_type(wh_json:get_value(<<"Stream-Type">>, JObj)),
+    Permissions = case StreamType =:= <<"store">> of
+                      'true' -> 'proxy_store';
+                      'false' -> 'proxy_playback'
+                  end,
+    {'ok', <<(wh_media_util:base_url(Host, Port, Permissions))/binary
+             ,StreamType/binary
+             ,"/", Db/binary
+             ,"/", Id/binary
+             ,"/", Type/binary
+             ,"/", Rev/binary
+             ,"/", Attachment/binary
+           >>
+    }.
