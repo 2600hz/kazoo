@@ -738,7 +738,7 @@ to_csv(Req, Context) ->
         _ ->
             RespBody = maybe_flatten_jobj(Context1),
             RespHeaders1 = [{<<"Content-Type">>, <<"application/octet-stream">>}
-                            ,{<<"Content-Length">>, iolist_size(RespBody)}
+                            ,{<<"Content-Length">>, size(wh_util:to_binary(RespBody))/8}
                             ,{<<"Content-Disposition">>, <<"attachment; filename=\"data.csv\"">>}
                             | cb_context:resp_headers(Context1)
                            ],
