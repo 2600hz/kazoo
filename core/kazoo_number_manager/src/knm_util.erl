@@ -19,13 +19,11 @@
 
 -spec get_all_number_dbs() -> ne_binaries().
 get_all_number_dbs() ->
-    {'ok', Dbs} = kz_datamgr:admin_all_docs(<<"dbs">>
-                                               ,[{'startkey', ?KNM_DB_PREFIX}
-                                                 ,{'endkey', <<?KNM_DB_PREFIX_L, "\ufff0">>}
-                                                ]),
-    [cow_qs:urlencode(wh_doc:id(View))
-     || View <- Dbs
-    ].
+    ViewOptions = [{'startkey', ?KNM_DB_PREFIX}
+                   ,{'endkey', <<?KNM_DB_PREFIX_L, "\ufff0">>}
+                  ],
+    {'ok', Dbs} = kz_datamgr:db_list(ViewOptions),
+    [cow_qs:urlencode(wh_doc:id(View)) || View <- Dbs].
 
 -spec pretty_print(ne_binary()) -> ne_binary().
 pretty_print(Number) ->
