@@ -6204,14 +6204,14 @@
                     "type": "string"
                 },
                 "phone_number": {
-                    "description": "A phone number assigned to the users account",
+                    "description": "A phone number assigned to the user's account",
                     "maxLength": 64,
                     "minLength": 1,
                     "required": false,
                     "type": "string"
                 },
                 "username": {
-                    "description": "The users username",
+                    "description": "The user's username",
                     "maxLength": 254,
                     "minLength": 1,
                     "required": true,
@@ -8659,6 +8659,9 @@
             }
         },
         "/v2/user_auth/{ID}": {
+            "get": {}
+        },
+        "/v2/user_auth/{TOKEN}": {
             "get": {}
         },
         "/v2/webhooks": {
