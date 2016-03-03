@@ -164,7 +164,7 @@ server_url(#server{url=Url}) -> Url.
 -spec db_url(server(), ne_binary()) -> ne_binary().
 db_url(#server{}=Conn, DbName) ->
     Server = server_url(Conn),
-    list_to_binary([Server, DbName]).
+    list_to_binary([Server, "/", DbName]).
 
 %%------------------------------------------------------------------------------
 %% @private
