@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% Simple cache server
 %%% @end
@@ -79,7 +79,6 @@
                     ,type = 'normal' :: 'normal' | 'monitor' | 'pointer' | '_'
                    }).
 -type cache_obj() :: #cache_obj{}.
--type cache_objs() :: [cache_obj()].
 
 -type store_options() :: [{'origin', origin_tuple() | origin_tuples()} |
                           {'expires', wh_timeout()} |
@@ -340,7 +339,61 @@ handle_document_change(JObj, Props) ->
     Db = wh_json:get_value(<<"Database">>, JObj),
     Type = wh_json:get_value(<<"Type">>, JObj),
     Id = wh_json:get_value(<<"ID">>, JObj),
-    gen_listener:cast(Srv, {'change', Db, Type, Id}).
+
+    maybe_erase_changed(Srv, Db, Type, Id, props:get_value('table_id', Props)).
+
+-spec maybe_erase_changed(pid(), ne_binary(), ne_binary(), ne_binary(), atom()) -> 'ok'.
+maybe_erase_changed(Srv, Db, Type, Id, Tab) ->
+    MatchSpec = [{#cache_obj{origin = {'db', Db}, _ = '_'}
+                 ,[]
+                 ,['$_']
+                 }
+                ,{#cache_obj{origin = {'db', Db, Type}, _ = '_'}
+                 ,[]
+                 ,['$_']
+                 }
+                ,{#cache_obj{origin = {'db', Db, Id}, _ = '_'}
+                 ,[]
+                 ,['$_']
+                 }
+                ,{#cache_obj{origin = {'type', Type, Id}, _ = '_'}
+                 ,[]
+                 ,['$_']
+                 }
+                ,{#cache_obj{origin = {'type', Type}, _ = '_'}
+                 ,[]
+                 ,['$_']
+                 }
+                ],
+    Objects = ets:select(Tab, MatchSpec),
+    Objects =/= [] andalso lager:debug("erasing changed doc ~s/~s (type ~s)"
+                                       ,[Db, Id, Type]
+                                      ),
+
+    lists:foldl(fun(Obj, Removed) ->
+                        erase_changed(Obj, Removed, Srv)
+                end
+               ,[]
+               ,Objects
+               ).
+
+-spec erase_changed(cache_obj(), list(), pid()) -> list().
+erase_changed(#cache_obj{type='pointer', value=Key}, Removed, Srv) ->
+    case lists:member(Key, Removed) of
+        'true' -> Removed;
+        'false' ->
+            lager:debug("removing updated cache object ~-300p", [Key]),
+            gen_listener:cast(Srv, {'erase', Key}),
+            [Key | Removed]
+    end;
+erase_changed(#cache_obj{type='normal', key=Key}, Removed, Srv) ->
+    case lists:member(Key, Removed) of
+        'true' -> Removed;
+        'false' ->
+            lager:debug("removing updated cache object ~-300p", [Key]),
+            gen_listener:cast(Srv, {'erase', Key}),
+            [Key | Removed]
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -452,9 +505,6 @@ handle_cast({'flush'}, #state{tab=Tab}=State) ->
     maybe_exec_flush_callbacks(Tab),
     ets:delete_all_objects(Tab),
     {'noreply', State};
-handle_cast({'change', Db, Type, Id}, #state{tab=Tab}=State) ->
-    maybe_erase_changed(Db, Type, Id, Tab),
-    {'noreply', State};
 handle_cast({'wh_amqp_channel', {'new_channel', 'false'}}, #state{name=Name
                                                                   ,tab=Tab
                                                                   ,new_channel_flush='true'
@@ -519,11 +569,8 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(JObj, _State) ->
-    case wh_api:node(JObj) =:= wh_util:to_binary(node()) of
-        'true' -> 'ignore';
-        'false' -> {'reply', []}
-    end.
+handle_event(_JObj, _State) ->
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -572,55 +619,6 @@ get_props_callback(Props) ->
 
 -spec get_props_origin(wh_proplist()) -> 'undefined' | origin_tuple() | origin_tuples().
 get_props_origin(Props) -> props:get_value('origin', Props).
-
--spec maybe_erase_changed(ne_binary(), ne_binary(), ne_binary(), atom()) -> 'ok'.
-maybe_erase_changed(Db, Type, Id, Tab) ->
-    MatchSpec = [{#cache_obj{origin = {'db', Db}, _ = '_'}
-                  ,[]
-                  ,['$_']
-                 }
-                 ,{#cache_obj{origin = {'db', Db, Type}, _ = '_'}
-                   ,[]
-                   ,['$_']
-                  }
-                 ,{#cache_obj{origin = {'db', Db, Id}, _ = '_'}
-                   ,[]
-                   ,['$_']
-                  }
-                 ,{#cache_obj{origin = {'type', Type, Id}, _ = '_'}
-                   ,[]
-                   ,['$_']
-                  }
-                 ,{#cache_obj{origin = {'type', Type}, _ = '_'}
-                   ,[]
-                   ,['$_']
-                  }
-                ],
-    Objects = ets:select(Tab, MatchSpec),
-    erase_changed(Objects, [], Tab).
-
--spec erase_changed(cache_objs(), list(), atom()) -> 'ok'.
-erase_changed([], _, _) -> 'ok';
-erase_changed([#cache_obj{type='pointer', value=Key}|Objects], Removed, Tab) ->
-    _Removed = case lists:member(Key, Removed) of
-                   'true' -> 0;
-                   'false' ->
-                       lager:debug("removing updated cache object ~-300p", [Key]),
-                       _ = maybe_exec_erase_callbacks(Key, Tab),
-                       maybe_remove_object(Key, Tab)
-               end,
-    lager:debug("removed ~b objects for ~p", [_Removed, Key]),
-    erase_changed(Objects, [Key|Removed], Tab);
-erase_changed([#cache_obj{type='normal', key=Key}|Objects], Removed, Tab) ->
-    _Removed = case lists:member(Key, Removed) of
-                   'true' -> 0;
-                   'false' ->
-                       lager:debug("removing updated cache object ~-300p", [Key]),
-                       _ = maybe_exec_erase_callbacks(Key, Tab),
-                       maybe_remove_object(Key, Tab)
-        end,
-    lager:debug("removed ~b objects for ~p", [_Removed, Key]),
-    erase_changed(Objects, [Key|Removed], Tab).
 
 -spec expire_objects(atom()) -> non_neg_integer().
 expire_objects(Tab) ->
