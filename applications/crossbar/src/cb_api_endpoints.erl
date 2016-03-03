@@ -7,6 +7,7 @@
          ,to_swagger_json/0
          ,to_ref_doc/0
          ,schema_to_doc/2
+         ,schema_to_table/1
         ]).
 
 -include("crossbar.hrl").
@@ -113,7 +114,6 @@ schema_to_doc(Schema, Doc) ->
     {'ok', SchemaJObj} = wh_json_schema:load(Schema),
     Table = schema_to_table(SchemaJObj),
 
-
     DocFile = filename:join([code:lib_dir('crossbar')
                              ,"doc"
                              ,Doc
@@ -139,6 +139,9 @@ schema_to_doc(Schema, Doc) ->
          ,?TABLE_ROW(<<"---">>, <<"-----------">>, <<"----">>, <<"-------">>, <<"--------">>)
         ]).
 
+schema_to_table(<<_/binary>> = Schema) ->
+    {'ok', JObj} = wh_json_schema:load(Schema),
+    schema_to_table(JObj);
 schema_to_table(SchemaJObj) ->
     Properties = wh_json:get_value(<<"properties">>, SchemaJObj, wh_json:new()),
     Reversed = wh_json:foldl(fun property_to_row/3, [?TABLE_HEADER], Properties),
