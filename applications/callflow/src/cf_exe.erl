@@ -597,7 +597,8 @@ relay_message(NotifyPids, Message) ->
 handle_event(JObj, #state{cf_module_pid=PidRef, call=Call ,self=Self}) ->
     CallId = whapps_call:call_id_direct(Call),
     Others = whapps_call:kvs_fetch('cf_event_pids', [], Call),
-    Notify = if is_pid(PidRef) -> [PidRef | Others]; 'true' -> Others end,
+    ModPid = get_pid(PidRef),
+    Notify = if is_pid(ModPid) -> [ModPid | Others]; 'true' -> Others end,
 
     case {whapps_util:get_event_type(JObj), wh_json:get_value(<<"Call-ID">>, JObj)} of
         {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
