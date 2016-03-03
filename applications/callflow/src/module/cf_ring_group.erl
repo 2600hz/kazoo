@@ -63,20 +63,24 @@ repeat(_Data, _Call, _N, 'fail') ->
 -spec attempt_endpoints(wh_json:objects(), wh_json:object(), whapps_call:call()) ->
     'stop' | 'fail' | 'continue'.
 attempt_endpoints(Endpoints, Data, Call) ->
+    FailOnSingleReject = wh_json:get_value(<<"fail_on_single_reject">>, Data, 'undefined'),
     Timeout = wh_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
     Strategy = freeswitch_strategy(Data),
     Ringback = wh_json:get_value(<<"ringback">>, Data),
     IgnoreForward = wh_json:get_binary_boolean(<<"ignore_forward">>, Data, <<"true">>),
+
+    Command = [{<<"Application-Name">>, <<"bridge">>}
+        ,{<<"Endpoints">>, Endpoints}
+        ,{<<"Timeout">>, Timeout}
+        ,{<<"Ignore-Early-Media">>, <<"true">>}
+        ,{<<"Ringback">>, wh_media_util:media_path(Ringback, Call)}
+        ,{<<"Fail-On-Single-Reject">>, FailOnSingleReject}
+        ,{<<"Dial-Endpoint-Method">>, Strategy}
+        ,{<<"Ignore-Forward">>, IgnoreForward}
+    ],
+
     lager:info("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
-    case whapps_call_command:b_bridge(Endpoints
-                                      ,Timeout
-                                      ,Strategy
-                                      ,<<"true">>
-                                      ,Ringback
-                                      ,'undefined'
-                                      ,IgnoreForward
-                                      ,Call
-                                     )
+    case bridge(Command, Timeout, Call)
     of
         {'ok', _} ->
             lager:info("completed successful bridge to the ring group - call finished normally"),
@@ -328,3 +332,8 @@ freeswitch_strategy(Data) ->
         ?DIAL_METHOD_SIMUL -> ?DIAL_METHOD_SIMUL;
         _ -> ?DIAL_METHOD_SINGLE
     end.
+
+-spec bridge(wh_proplist(), integer(), whapps_call:call()) -> whapps_api_bridge_return().
+bridge(Command, Timeout, Call) ->
+    whapps_call_command:send_command(Command, Call),
+    whapps_call_command:b_bridge_wait(Timeout, Call).

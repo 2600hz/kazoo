@@ -55,7 +55,17 @@ bridge_to_endpoints(Data, Call) ->
     case cf_endpoint:build(EndpointId, Params, Call) of
         {'error', _}=E -> E;
         {'ok', Endpoints} ->
+            FailOnSingleReject = wh_json:get_value(<<"fail_on_single_reject">>, Data, 'undefined'),
             Timeout = wh_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
             IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
-            whapps_call_command:b_bridge(Endpoints, Timeout, <<"simultaneous">>, IgnoreEarlyMedia, Call)
+            Command = [{<<"Application-Name">>, <<"bridge">>}
+                ,{<<"Endpoints">>, Endpoints}
+                ,{<<"Timeout">>, Timeout}
+                ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
+                ,{<<"Fail-On-Single-Reject">>, FailOnSingleReject}
+                ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
+                ,{<<"Ignore-Forward">>, <<"false">>}
+            ],
+            whapps_call_command:send_command(Command, Call),
+            whapps_call_command:b_bridge_wait(Timeout, Call)
     end.
