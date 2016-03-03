@@ -130,7 +130,7 @@ fetch(_DID, _Options) ->
 fetch(Num, Options) ->
     NormalizedNum = knm_converters:normalize(Num),
     NumberDb = knm_converters:to_db(NormalizedNum),
-    case couch_mgr:open_cache_doc(NumberDb, NormalizedNum) of
+    case kz_datamgr:open_cache_doc(NumberDb, NormalizedNum) of
         {'error', _R}=E ->
             lager:error("failed to open ~s in ~s: ~p"
                         ,[NormalizedNum, NumberDb, _R]
@@ -676,7 +676,7 @@ save_to_number_db(PhoneNumber) -> PhoneNumber.
 save_to_number_db(PhoneNumber) ->
     NumberDb = number_db(PhoneNumber),
     JObj = to_json(PhoneNumber),
-    case couch_mgr:ensure_saved(NumberDb, JObj) of
+    case kz_datamgr:ensure_saved(NumberDb, JObj) of
         {'error', E} ->
             lager:error("failed to save ~s in ~s: ~p"
                         ,[?MODULE:number(PhoneNumber), NumberDb, E]
@@ -718,7 +718,7 @@ assign(PhoneNumber, _AssignedTo) ->
 -else.
 assign(PhoneNumber, AssignedTo) ->
     AccountDb = wh_util:format_account_id(AssignedTo, 'encoded'),
-    case couch_mgr:ensure_saved(AccountDb, to_json(PhoneNumber)) of
+    case kz_datamgr:ensure_saved(AccountDb, to_json(PhoneNumber)) of
         {'error', E} ->
             lager:error("failed to assign number ~s to ~s"
                         ,[?MODULE:number(PhoneNumber), AccountDb]
@@ -770,7 +770,7 @@ unassign(PhoneNumber, PrevAssignedTo) ->
 -spec do_unassign(knm_phone_number(), ne_binary()) -> knm_phone_number().
 do_unassign(PhoneNumber, PrevAssignedTo) ->
     AccountDb = wh_util:format_account_id(PrevAssignedTo, 'encoded'),
-    case couch_mgr:del_doc(AccountDb, to_json(PhoneNumber)) of
+    case kz_datamgr:del_doc(AccountDb, to_json(PhoneNumber)) of
         {'error', E} ->
             lager:error("failed to unassign number ~s from ~s"
                         ,[?MODULE:number(PhoneNumber), PrevAssignedTo]
@@ -788,7 +788,7 @@ do_unassign(PhoneNumber, PrevAssignedTo) ->
                                    {'error', any()}.
 get_number_in_account(AccountId, Num) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    couch_mgr:open_cache_doc(AccountDb, Num).
+    kz_datamgr:open_cache_doc(AccountDb, Num).
 
 -endif.
 
@@ -801,7 +801,7 @@ get_number_in_account(AccountId, Num) ->
 delete_number_doc(Number) ->
     NumberDb = number_db(Number),
     JObj = to_json(Number),
-    case couch_mgr:del_doc(NumberDb, JObj) of
+    case kz_datamgr:del_doc(NumberDb, JObj) of
         {'error', _R}=E -> E;
         {'ok', _} -> {'ok', Number}
     end.
@@ -822,8 +822,7 @@ maybe_remove_number_from_account(Number) ->
             {'ok', Number};
         'false' ->
             AccountDb = wh_util:format_account_id(AssignedTo, 'encoded'),
-            JObj = to_json(Number),
-            case couch_mgr:del_doc(AccountDb, JObj) of
+            case kz_datamgr:del_doc(AccountDb, to_json(Number)) of
                 {'error', _R}=E -> E;
                 {'ok', _} -> {'ok', Number}
             end

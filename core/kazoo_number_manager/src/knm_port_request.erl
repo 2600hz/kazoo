@@ -38,8 +38,8 @@
 %%--------------------------------------------------------------------
 -spec init() -> any().
 init() ->
-    _ = couch_mgr:db_create(?KZ_PORT_REQUESTS_DB),
-    couch_mgr:revise_doc_from_file(?KZ_PORT_REQUESTS_DB, 'crossbar', <<"views/port_requests.json">>).
+    _ = kz_datamgr:db_create(?KZ_PORT_REQUESTS_DB),
+    kz_datamgr:revise_doc_from_file(?KZ_PORT_REQUESTS_DB, 'crossbar', <<"views/port_requests.json">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -81,7 +81,7 @@ get(DID)
   when is_binary(DID) ->
     ViewOptions = [{'key', DID}, 'include_docs'],
     case
-        couch_mgr:get_results(
+        kz_datamgr:get_results(
           ?KZ_PORT_REQUESTS_DB
           ,<<"port_requests/port_in_numbers">>
           ,ViewOptions
@@ -218,7 +218,7 @@ charge_for_port(_JObj, AccountId) ->
 %%--------------------------------------------------------------------
 -spec send_submitted_requests() -> 'ok'.
 send_submitted_requests() ->
-    case couch_mgr:get_results(?KZ_PORT_REQUESTS_DB
+    case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB
                                ,?VIEW_LISTING_SUBMITTED
                                ,['include_docs']
                               )
@@ -289,7 +289,7 @@ transition_numbers(PortReq) ->
 -spec clear_numbers_from_port(wh_json:object()) -> wh_json:object().
 clear_numbers_from_port(PortReq) ->
     Cleared = wh_json:set_value(<<"numbers">>, wh_json:new(), PortReq),
-    case couch_mgr:save_doc(?KZ_PORT_REQUESTS_DB, Cleared) of
+    case kz_datamgr:save_doc(?KZ_PORT_REQUESTS_DB, Cleared) of
         {'ok', PortReq1} -> lager:debug("port numbers cleared"), PortReq1;
         {'error', 'conflict'} ->
             lager:debug("port request doc was updated before we could re-save"),
@@ -407,7 +407,7 @@ fetch_and_send(Url, JObj) ->
 
     wh_json:foldl(
       fun(Key, Value, 'ok') ->
-              case couch_mgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, Id, Key) of
+              case kz_datamgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, Id, Key) of
                   {'error', _R} ->
                       lager:error("failed to fetch attachment ~s : ~p", [Key, _R]),
                       throw('error');
@@ -451,7 +451,7 @@ send_attachment(Url, Id, Name, Options, Attachment) ->
 -spec set_flag(wh_json:object()) -> 'ok'.
 set_flag(JObj) ->
     Doc = wh_json:set_value(?PVT_SENT, 'true', JObj),
-    case couch_mgr:save_doc(?KZ_PORT_REQUESTS_DB, Doc) of
+    case kz_datamgr:save_doc(?KZ_PORT_REQUESTS_DB, Doc) of
         {'ok', _} ->
             lager:debug("flag for submitted_port_request successfully set");
         {'error', _R} ->
@@ -483,7 +483,7 @@ migrate_docs(Docs) ->
          || Doc <- Docs,
             (UpdatedDoc = migrate_doc(wh_json:get_value(<<"doc">>, Doc))) =/= 'undefined'
         ],
-    {'ok', _} = couch_mgr:save_docs(?KZ_PORT_REQUESTS_DB, UpdatedDocs),
+    {'ok', _} = kz_datamgr:save_docs(?KZ_PORT_REQUESTS_DB, UpdatedDocs),
     'ok'.
 
 -spec migrate_doc(wh_json:object()) -> api_object().
@@ -507,9 +507,8 @@ update_doc(PortRequest, AccountId) ->
 
 -spec fetch_docs(binary(), pos_integer()) -> {'ok', wh_json:objects()}.
 fetch_docs(StartKey, Limit) ->
-    couch_mgr:all_docs(?KZ_PORT_REQUESTS_DB
-                       ,[{'startkey', StartKey}
-                         ,{'limit', Limit + 1}
-                         ,'include_docs'
-                        ]
-                      ).
+    ViewOptions = [{'startkey', StartKey}
+                   ,{'limit', Limit + 1}
+                   ,'include_docs'
+                  ],
+    kz_datamgr:all_docs(?KZ_PORT_REQUESTS_DB, ViewOptions).

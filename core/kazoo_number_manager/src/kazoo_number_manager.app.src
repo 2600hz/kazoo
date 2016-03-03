@@ -7,11 +7,11 @@
   {applications, [ kernel
                  , stdlib
 
+                 , kazoo_data
                  , kazoo_documents
                  , kazoo_web
                  , kazoo_xml
                  , whistle
-                 , whistle_couch
                  , whistle_services
                  , whistle_transactions
 

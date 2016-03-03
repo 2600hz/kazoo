@@ -840,7 +840,7 @@ default_force_outbound() ->
                                       lookup_account_return().
 fetch_account_from_ports(NormalizedNum, Error) ->
     case
-        couch_mgr:get_results(
+        kz_datamgr:get_results(
           ?KZ_PORT_REQUESTS_DB
           ,<<"port_requests/port_in_numbers">>
           ,[{'key', NormalizedNum}]

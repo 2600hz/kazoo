@@ -89,7 +89,7 @@ get(EndpointId, Call) ->
 
 -spec maybe_fetch_endpoint(ne_binary(), ne_binary()) ->
                                   {'ok', wh_json:object()} |
-                                  kz_datamgr:couchbeam_error().
+                                  kz_data:data_error().
 maybe_fetch_endpoint(EndpointId, AccountDb) ->
     case kz_datamgr:open_cache_doc(AccountDb, EndpointId) of
         {'ok', JObj} ->

@@ -254,7 +254,7 @@ should_restrict_call(Call, Number) ->
 %%--------------------------------------------------------------------
 -spec get_list_entry(wh_json:object(), whapps_call:call()) ->
                             {wh_json:object(), binary()} |
-                            {'error', kz_datamgr:couchbeam_error()}.
+                            {'error', kz_data:data_error()}.
 get_list_entry(Data, Call) ->
     ListId = wh_json:get_ne_value(<<"id">>, Data),
     AccountDb = whapps_call:account_db(Call),
@@ -279,7 +279,7 @@ get_list_entry(Data, Call) ->
 
 -spec get_lists_entry(wh_json:object(), whapps_call:call()) ->
                              {binary(), binary(), binary()} |
-                             {'error', kz_datamgr:couchbeam_error()}.
+                             {'error', kz_data:data_error()}.
 get_lists_entry(Data, Call) ->
     ListId = wh_json:get_ne_value(<<"id">>, Data),
     AccountDb = whapps_call:account_db(Call),

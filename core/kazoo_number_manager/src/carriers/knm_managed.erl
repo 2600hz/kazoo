@@ -62,7 +62,7 @@ do_find_numbers_in_account(Number, Quantity, AccountId) ->
                    ,{'limit', Quantity}
                    ,'include_docs'
                   ],
-    case couch_mgr:get_results(?WH_MANAGED, <<"numbers/status">>, ViewOptions) of
+    case kz_datamgr:get_results(?WH_MANAGED, <<"numbers/status">>, ViewOptions) of
         {'ok', []} ->
             lager:debug("found no available managed numbers for account ~p", [AccountId]),
             {'error', 'non_available'};
@@ -168,7 +168,7 @@ save_doc(AccountId, Number) ->
     save_doc(JObj).
 
 save_doc(JObj) ->
-    case couch_mgr:save_doc(?WH_MANAGED, JObj) of
+    case kz_datamgr:save_doc(?WH_MANAGED, JObj) of
         {'error', 'not_found'} ->
             create_managed_db(),
             save_doc(JObj);
@@ -179,7 +179,7 @@ save_doc(JObj) ->
                         knm_number:knm_number().
 update_doc(Number, UpdateProps) ->
     Doc = knm_phone_number:doc(knm_number:phone_number(Number)),
-    case couch_mgr:update_doc(?WH_MANAGED, wh_doc:id(Doc), UpdateProps) of
+    case kz_datamgr:update_doc(?WH_MANAGED, wh_doc:id(Doc), UpdateProps) of
         {'error', Error} ->
             knm_errors:unspecified(Error, Number);
         {'ok', UpdatedDoc} ->
@@ -191,8 +191,8 @@ update_doc(Number, UpdateProps) ->
 
 -spec create_managed_db() -> 'ok'.
 create_managed_db() ->
-    _ = couch_mgr:db_create(?WH_MANAGED),
-    _ = couch_mgr:revise_doc_from_file(?WH_MANAGED, 'kazoo_number_manager', ?MANAGED_VIEW_FILE),
+    kz_data:db_create(?WH_MANAGED),
+    _ = kz_datamgr:revise_doc_from_file(?WH_MANAGED, 'kazoo_number_manager', ?MANAGED_VIEW_FILE),
     'ok'.
 
 -spec should_lookup_cnam() -> 'true'.

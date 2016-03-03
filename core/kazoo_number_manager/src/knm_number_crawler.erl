@@ -171,9 +171,9 @@ cleanup_timer() ->
 
 -spec crawl_number_db(ne_binary()) -> 'ok'.
 crawl_number_db(Db) ->
-    crawl_number_docs(Db, couch_mgr:all_docs(Db, ['include_docs'])).
+    crawl_number_docs(Db, kz_datamgr:all_docs(Db, ['include_docs'])).
 
--spec crawl_number_docs(ne_binary(), couch_mgr:get_results_return()) -> 'ok'.
+-spec crawl_number_docs(ne_binary(), kz_data:get_results_return()) -> 'ok'.
 crawl_number_docs(_Db, {'error', _E}) ->
     lager:debug(" failed to crawl number db ~s: ~p", [_Db, _E]);
 crawl_number_docs(Db, {'ok', Docs}) ->

@@ -19,7 +19,7 @@
 
 -spec get_all_number_dbs() -> ne_binaries().
 get_all_number_dbs() ->
-    {'ok', Dbs} = couch_mgr:admin_all_docs(<<"dbs">>
+    {'ok', Dbs} = kz_datamgr:admin_all_docs(<<"dbs">>
                                                ,[{'startkey', ?KNM_DB_PREFIX}
                                                  ,{'endkey', <<?KNM_DB_PREFIX_L, "\ufff0">>}
                                                 ]),
