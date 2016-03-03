@@ -141,16 +141,6 @@ unauthorized_body() ->
     </HTML>
     ">>.
 
--record(media_store_path,
-        {db :: ne_binary()
-        ,id :: ne_binary()
-        ,type :: ne_binary()
-        ,rev :: ne_binary()
-        ,att :: ne_binary()
-        }).
-
--type media_store_path() :: #media_store_path{}.
-
 -spec handle(cowboy_req:req(), ne_binaries()) ->
                     {'ok', cowboy_req:req(), 'ok'}.
 handle(Req0, [Db, Id, Type, Rev, Attachment]) ->

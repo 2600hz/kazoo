@@ -28,8 +28,8 @@ get_uri(Media, JObj) when is_binary(Media) ->
 get_uri(Paths, JObj) ->
     case find_attachment(Paths) of
         {'error', _}=E -> E;
-        {'ok', {Db, Id, Type, Rev, Attachment}} ->
-            media_manager_proxy_uri(JObj, Db, Id, Type, Rev, Attachment)
+        {'ok', #media_store_path{}=Store} ->
+            media_manager_proxy_uri(JObj, Store)
 %            maybe_local_haproxy_uri(JObj, Db, Id, Attachment)
     end.
 
@@ -59,7 +59,7 @@ start_media_file_cache(Db, Id, Attachment) ->
     end.
 
 -spec find_attachment(ne_binaries() | ne_binary()) ->
-                             {'ok', {ne_binary(), ne_binary(), ne_binary()}} |
+                             {'ok', media_store_path()} |
                              {'error', 'not_found'}.
 find_attachment([Id]) ->
     find_attachment([?WH_MEDIA_DB, Id]);
@@ -140,10 +140,15 @@ maybe_find_attachment(Db, Id, JObj) ->
 %%             media_manager_proxy_uri(JObj, Db, Id, Attachment)
 %%     end.
 
--spec media_manager_proxy_uri(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
+-spec media_manager_proxy_uri(wh_json:object(), media_store_path()) ->
           {'ok', ne_binary()} |
-              {'error', 'no_stream_strategy'}.
-media_manager_proxy_uri(JObj, Db, Id, Type, Rev, Attachment) ->
+          {'error', 'no_stream_strategy'}.
+media_manager_proxy_uri(JObj, #media_store_path{db = Db
+                                                ,id = Id
+                                                ,type = Type
+                                                ,rev = Rev
+                                                ,att = Attachment
+                                               }) ->    
     Host = wh_network_utils:get_hostname(),
     Port = whapps_config:get_binary(?CONFIG_CAT, <<"proxy_port">>, 24517),
     StreamType = wh_media_util:convert_stream_type(wh_json:get_value(<<"Stream-Type">>, JObj)),
