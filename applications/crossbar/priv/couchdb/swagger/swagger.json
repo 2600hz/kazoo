@@ -8658,9 +8658,6 @@
                 }
             }
         },
-        "/v2/user_auth/{ID}": {
-            "get": {}
-        },
         "/v2/user_auth/{TOKEN}": {
             "get": {}
         },
