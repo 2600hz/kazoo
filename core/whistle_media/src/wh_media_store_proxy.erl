@@ -21,8 +21,7 @@
 init({_Transport, _Proto}, Req0, _Opts) ->
     wh_util:put_callid(wh_util:rand_hex_binary(16)),
     case cowboy_req:path_info(Req0) of
-        {[_, _, _]=PathTokens, Req1} ->
-            is_authentic(PathTokens, Req1);
+        {[_, _, _, _, _]=PathTokens, Req1} -> is_authentic(PathTokens, Req1);
         {_Else, Req1} ->
             lager:debug("unexpected path: ~p", [_Else]),
             {'ok', Req2} = cowboy_req:reply(404, Req1),
@@ -142,88 +141,110 @@ unauthorized_body() ->
     </HTML>
     ">>.
 
+-record(media_store_path,
+        {db :: ne_binary()
+        ,id :: ne_binary()
+        ,type :: ne_binary()
+        ,rev :: ne_binary()
+        ,att :: ne_binary()
+        }).
+
+-type media_store_path() :: #media_store_path{}.
+
 -spec handle(cowboy_req:req(), ne_binaries()) ->
                     {'ok', cowboy_req:req(), 'ok'}.
-handle(Req0, [Db, Id, Attachment]) ->
-    is_appropriate_content_type(Db, Id, Attachment, Req0).
+handle(Req0, [Db, Id, Type, Rev, Attachment]) ->
+    Path = #media_store_path{db = Db
+                            ,id = Id
+                            ,type = Type
+                            ,rev = Rev
+                            ,att = Attachment
+                            },
+    is_appropriate_content_type(Path, Req0).
 
--spec is_appropriate_content_type(ne_binary(), ne_binary(), ne_binary(), cowboy_req:req()) ->
+-spec is_appropriate_content_type(media_store_path(), cowboy_req:req()) ->
                                          {'ok', cowboy_req:req(), 'ok'}.
-is_appropriate_content_type(Db, Id, Attachment, Req0) ->
+is_appropriate_content_type(Path, Req0) ->
     case cowboy_req:header(<<"content-type">>, Req0) of
         {<<"audio/", _/binary>> = CT, Req1}->
             lager:debug("found content-type via header: ~s", [CT]),
-            ensure_extension_present(Db, Id, Attachment, CT, Req1);
+            ensure_extension_present(Path, CT, Req1);
         {_CT, Req1} ->
             lager:debug("inappropriate content-type via headers: ~s", [_CT]),
-            is_appropriate_extension(Db, Id, Attachment, Req1)
+            is_appropriate_extension(Path, Req1)
     end.
 
--spec is_appropriate_extension(ne_binary(), ne_binary(), ne_binary(), cowboy_req:req()) ->
+-spec is_appropriate_extension(media_store_path(), cowboy_req:req()) ->
                                       {'ok', cowboy_req:req(), 'ok'}.
-is_appropriate_extension(Db, Id, Attachment, Req0) ->
+is_appropriate_extension(#media_store_path{att=Attachment}=Path, Req0) ->
     Extension = filename:extension(Attachment),
     case wh_mime_types:from_extension(Extension) of
         <<"audio/", _/binary>> = CT->
             lager:debug("found content-type via extension: ~s", [CT]),
-            try_to_store(Db, Id, Attachment, CT, Req0);
+            try_to_store(Path, CT, Req0);
         _CT ->
             lager:debug("inappropriate content-type via extension: ~s", [_CT]),
             {'ok', Req1} = cowboy_req:reply(415, Req0),
             {'ok', Req1, 'ok'}
     end.
 
--spec ensure_extension_present(ne_binary(), ne_binary(), ne_binary(), ne_binary(), cowboy_req:req()) ->
+-spec ensure_extension_present(media_store_path(), ne_binary(), cowboy_req:req()) ->
                                       {'ok', cowboy_req:req(), 'ok'}.
-ensure_extension_present(Db, Id, Attachment, CT, Req0) ->
+ensure_extension_present(#media_store_path{att=Attachment}=Path, CT, Req0) ->
     case wh_util:is_empty(filename:extension(Attachment))
         andalso wh_mime_types:to_extension(CT)
     of
         'false' ->
-            try_to_store(Db, Id, Attachment, CT, Req0);
+            try_to_store(Path, CT, Req0);
         ?NE_BINARY = Extension ->
-            try_to_store(Db, Id, <<Attachment/binary, ".", Extension/binary>>, CT, Req0);
+            try_to_store(Path#media_store_path{att= <<Attachment/binary, ".", Extension/binary>>}, CT, Req0);
         _Else ->
             lager:debug("unable to correct missing extension for content-type: ~s", [CT]),
             {'ok', Req1} = cowboy_req:reply(400, Req0),
             {'ok', Req1, 'ok'}
     end.
 
--spec try_to_store(ne_binary(), ne_binary(), ne_binary(), ne_binary(), cowboy_req:req()) ->
+-spec try_to_store(media_store_path(), ne_binary(), cowboy_req:req()) ->
                           {'ok', cowboy_req:req(), 'ok'}.
-try_to_store(Db, Id, Attachment, CT, Req0) ->
+try_to_store(#media_store_path{db=Db
+                              ,id=Id
+                              ,type=Type
+                              ,rev=Rev
+                              ,att=Attachment
+                              }, CT, Req0) ->
     DbName = wh_util:format_account_id(Db, 'encoded'),
     {'ok', Contents, Req1} = cowboy_req:body(Req0),
     Options = [{'content_type', wh_util:to_list(CT)}
                ,{'content_length', byte_size(Contents)}
+               ,{'doc_type', Type}
+               ,{'revision', Rev}
+               ,{'rev', Rev}
               ],
     lager:debug("putting ~s onto ~s(~s): ~s", [Attachment, Id, DbName, CT]),
     case kz_datamgr:put_attachment(DbName, Id, Attachment, Contents, Options) of
         {'ok', JObj} ->
             lager:debug("successfully stored(~p) ~p ~p ~p", [CT, DbName, Id, Attachment]),
             {'ok', success(JObj, Req1), 'ok'};
-        {'error', 'conflict'} ->
-            maybe_resolve_conflict(DbName, Id, Attachment, Contents, Options, Req1);
         {'error', Reason} ->
             lager:debug("unable to store file: ~p", [Reason]),
             {'ok', failure(Reason, Req1), 'ok'}
     end.
 
--spec maybe_resolve_conflict(ne_binary(), ne_binary(), ne_binary(), binary(), wh_proplist(), cowboy_req:req()) ->
-                                    {'ok', cowboy_req:req(), 'ok'}.
-maybe_resolve_conflict(DbName, Id, Attachment, Contents, Options, Req0) ->
-    timer:sleep(5 * ?MILLISECONDS_IN_SECOND),
-    lager:debug("putting ~s onto ~s(~s): ~-800p", [Attachment, Id, DbName, Options]),
-    case kz_datamgr:put_attachment(DbName, Id, Attachment, Contents, Options) of
-        {'ok', JObj} ->
-            lager:debug("successfully stored ~p ~p ~p", [DbName, Id, Attachment]),
-            {'ok', success(JObj, Req0), 'ok'};
-        {'error', 'conflict'} ->
-            maybe_resolve_conflict(DbName, Id, Attachment, Contents, Options, Req0);
-        {'error', Reason} ->
-            lager:debug("unable to store file: ~p", [Reason]),
-            {'ok', failure(Reason, Req0), 'ok'}
-    end.
+%% -spec maybe_resolve_conflict(ne_binary(), ne_binary(), ne_binary(), binary(), wh_proplist(), cowboy_req:req()) ->
+%%                                     {'ok', cowboy_req:req(), 'ok'}.
+%% maybe_resolve_conflict(DbName, Id, Attachment, Contents, Options, Req0) ->
+%%     timer:sleep(5 * ?MILLISECONDS_IN_SECOND),
+%%     lager:debug("putting ~s onto ~s(~s): ~-800p", [Attachment, Id, DbName, Options]),
+%%     case kz_datamgr:put_attachment(DbName, Id, Attachment, Contents, Options) of
+%%         {'ok', JObj} ->
+%%             lager:debug("successfully stored ~p ~p ~p", [DbName, Id, Attachment]),
+%%             {'ok', success(JObj, Req0), 'ok'};
+%%         {'error', 'conflict'} ->
+%%             maybe_resolve_conflict(DbName, Id, Attachment, Contents, Options, Req0);
+%%         {'error', Reason} ->
+%%             lager:debug("unable to store file: ~p", [Reason]),
+%%             {'ok', failure(Reason, Req0), 'ok'}
+%%     end.
 
 -spec success(wh_json:object(), cowboy_req:req()) -> cowboy_req:req().
 success(JObj, Req0) ->

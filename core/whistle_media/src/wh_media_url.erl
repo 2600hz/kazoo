@@ -9,7 +9,7 @@
 -module(wh_media_url).
 
 -export([playback/2]).
--export([store/3]).
+-export([store/3, store/4]).
 
 -include("whistle_media.hrl").
 
@@ -53,4 +53,16 @@ store(Db, Id, Attachment) ->
         {'error', _}=E -> E;
         {'ok', URI} ->
             {'ok', <<URI/binary, Rev/binary>>}
+    end.
+
+-spec store(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
+                   ne_binary() |
+                   {'error', any()}.
+store(Db, Id, Attachment, Options) ->
+    JObj = wh_json:from_list([{<<"Stream-Type">>, <<"store">>}]),
+    Rev = props:get_value('revision', Options),
+    Type = props:get_value('doc_type', Options),
+    case wh_media_file:get_uri([Db, Id, Type, Rev, Attachment], JObj) of
+        {'error', _}=E -> E;
+        {'ok', URI} -> URI
     end.
