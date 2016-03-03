@@ -445,6 +445,7 @@ refresh_account_db(Database) ->
     _ = ensure_account_definition(AccountDb, AccountId),
     Views = get_all_account_views(),
     _ = whapps_util:update_views(AccountDb, Views, 'true'),
+    _ = webhooks_maintenance:reset_webhooks_list(),
     crossbar_util:descendants_count(AccountId).
 
 -spec remove_depreciated_account_views(ne_binary()) -> 'ok'.
@@ -485,6 +486,7 @@ get_all_account_views() ->
 fetch_all_account_views() ->
     [whapps_util:get_view_json('whistle_apps', ?MAINTENANCE_VIEW_FILE)
      ,whapps_util:get_view_json('conference', <<"views/conference.json">>)
+     ,whapps_util:get_view_json('webhooks', <<"webhooks.json">>)
      |whapps_util:get_views_json('crossbar', "account")
      ++ whapps_util:get_views_json('callflow', "views")
     ].
