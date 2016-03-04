@@ -323,7 +323,14 @@ List can contain any valid HTTP method ("GET", "PUT", "POST", "PATCH", "DELETE")
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `restrictions` |   | `object` |   | `false`
-
+`restrictions.^\w+$` | Name of athentication metod used when creating token. "_" for match any auth method | `object` |   | `true`
+`restrictions.^\w+$.^\w+$` | User privelege level. "_" for match any priv level | `object` |   | `true`
+`restrictions.^\w+$.^\w+$.^\w+$` |   | `array(object)` |   | `true`
+`restrictions.^\w+$.^\w+$.^\w+$.[].allowed_accounts` | Account allowed to match this item | `array(string)` |   | `false`
+`restrictions.^\w+$.^\w+$.^\w+$.[].allowed_accounts.[]` |   | `string` |   | `false`
+`restrictions.^\w+$.^\w+$.^\w+$.[].rules` | Rules applied to endpoint parameters | `object` |   | `false`
+`restrictions.^\w+$.^\w+$.^\w+$.[].rules.^[\w/#*]+$` |   | `array(string('GET', 'PUT', 'POST', 'PATCH', 'DELETE', '_'))` |   | `false`
+`restrictions.^\w+$.^\w+$.^\w+$.[].rules.^[\w/#*]+$.[]` |   | `string` |   | `false`
 
 #### Remove account's token restrictions
 
