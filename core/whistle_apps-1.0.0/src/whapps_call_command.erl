@@ -2013,18 +2013,21 @@ b_privacy(Mode, Call) ->
 collect_digits(MaxDigits, Call) ->
     do_collect_digits(#wcc_collect_digits{max_digits=wh_util:to_integer(MaxDigits)
                                           ,call=Call
+                                          ,after_timeout=?DEFAULT_INTERDIGIT_TIMEOUT
                                          }).
 
 collect_digits(MaxDigits, Timeout, Call) ->
     do_collect_digits(#wcc_collect_digits{max_digits=wh_util:to_integer(MaxDigits)
-                                          ,timeout=wh_util:to_integer(Timeout)
-                                          ,call=Call
+                                         ,timeout=wh_util:to_integer(Timeout)
+                                         ,call=Call
+                                         ,after_timeout=wh_util:to_integer(Timeout)
                                          }).
 
 collect_digits(MaxDigits, Timeout, Interdigit, Call) ->
     do_collect_digits(#wcc_collect_digits{max_digits=wh_util:to_integer(MaxDigits)
                                           ,timeout=wh_util:to_integer(Timeout)
                                           ,interdigit=wh_util:to_integer(Interdigit)
+                                         ,after_timeout=wh_util:to_integer(Timeout)
                                           ,call=Call
                                          }).
 
