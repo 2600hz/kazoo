@@ -88,6 +88,16 @@ ensure_saved(#{server := {App, Conn}}, DbName, Doc, Options) ->
 -spec del_doc(map(), ne_binary(), wh_json:object() | ne_binary(), wh_proplist()) ->
                      {'ok', wh_json:objects()} |
                      data_error().
+del_doc(Server, DbName, DocId, Options)
+  when is_binary(DocId) ->
+    case lookup_doc_rev(Server, DbName, DocId) of
+        {'error', _}=Err -> Err;
+        {'ok', Rev} ->
+            JObj = wh_json:from_list([{<<"_id">>, DocId}
+                                      ,{<<"_rev">>, Rev}
+                                     ]),
+            del_doc(Server, DbName, JObj, Options)
+    end;
 del_doc(#{server := {App, Conn}}, DbName, Doc, Options) ->
     kzs_cache:flush_cache_doc(DbName, Doc),
     App:del_doc(Conn, DbName, Doc, Options).
