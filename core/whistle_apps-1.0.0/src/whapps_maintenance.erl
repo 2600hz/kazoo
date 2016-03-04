@@ -184,8 +184,7 @@ refresh(?KZ_OAUTH_DB) ->
     kazoo_oauth_maintenance:register_common_providers();
 refresh(?KZ_WEBHOOKS_DB) ->
     couch_mgr:db_create(?KZ_WEBHOOKS_DB),
-    couch_mgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>),
-    webhooks_maintenance:reset_webhooks_list();
+    couch_mgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>);
 refresh(?WH_OFFNET_DB) ->
     couch_mgr:db_create(?WH_OFFNET_DB),
     stepswitch_maintenance:refresh();
@@ -442,6 +441,7 @@ refresh_account_db(Database) ->
     _ = ensure_account_definition(AccountDb, AccountId),
     Views = get_all_account_views(),
     _ = whapps_util:update_views(AccountDb, Views, 'true'),
+    _ = webhooks_maintenance:reset_webhooks_list(),
     crossbar_util:descendants_count(AccountId).
 
 -spec remove_depreciated_account_views(ne_binary()) -> 'ok'.
