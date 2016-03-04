@@ -90,14 +90,14 @@ ensure_saved(#{server := {App, Conn}}, DbName, Doc, Options) ->
                      data_error().
 del_doc(#{server := {App, Conn}}, DbName, Doc) ->
     kzs_cache:flush_cache_doc(DbName, Doc),
-    App:del_doc(Conn, DbName, Doc).
+    App:del_doc(Conn, DbName, Doc, []).
 
 -spec del_docs(map(), ne_binary(), wh_json:objects()) ->
                       {'ok', wh_json:objects()} |
                       data_error().
 del_docs(#{server := {App, Conn}}, DbName, Docs) ->
     kzs_cache:flush_cache_docs(DbName, Docs),
-    App:del_docs(Conn, DbName, Docs).
+    App:del_docs(Conn, DbName, Docs, []).
 
 
 -spec copy_doc(map(), copy_doc(), wh_proplist()) ->
