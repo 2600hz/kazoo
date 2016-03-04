@@ -207,12 +207,12 @@ cell_wrap(?EMPTY_JSON_OBJECT) -> <<"`{}`">>;
 cell_wrap(Type) -> [<<"`">>, wh_util:to_binary(Type), <<"`">>].
 
 maybe_sub_properties_to_row(<<"object">>, Names, Settings, Acc0) ->
-    wh_json:foldl(fun(Name, SubSettings, Acc1) ->
-                          property_to_row(Names ++ [Name], SubSettings, Acc1)
-                  end
-                 ,Acc0
-                 ,wh_json:get_value(<<"properties">>, Settings, wh_json:new())
-                 );
+    lists:foldl(fun(Key, Acc1) ->
+                        maybe_object_properties_to_row(Key, Acc1, Names, Settings)
+                end
+                ,Acc0
+                ,[<<"properties">>, <<"patternProperties">>]
+               );
 maybe_sub_properties_to_row(<<"array">>, Names, Settings, Acc) ->
     case wh_json:get_value([<<"items">>, <<"type">>], Settings) of
         <<"object">> = Type ->
@@ -233,6 +233,14 @@ maybe_sub_properties_to_row(<<"array">>, Names, Settings, Acc) ->
     end;
 maybe_sub_properties_to_row(_Type, _Keys, _Settings, Acc) ->
     Acc.
+
+maybe_object_properties_to_row(Key, Acc0, Names, Settings) ->
+    wh_json:foldl(fun(Name, SubSettings, Acc1) ->
+                          property_to_row(Names ++ [Name], SubSettings, Acc1)
+                  end
+                 ,Acc0
+                 ,wh_json:get_value(Key, Settings, wh_json:new())
+                 ).
 
 -define(SWAGGER_INFO
        ,wh_json:from_list([{<<"title">>, <<"Crossbar">>}
