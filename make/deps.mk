@@ -1,6 +1,6 @@
 DEPS = lager eiconv gen_smtp amqp_client cowboy jesse jiffy certifi couchbeam wsock zucchini \
        erlsom erlydtl exml escalus folsom detergent erlang_localtime \
-       nklib nksip gproc poolboy syslog lager_syslog eflame socketio hep ecsv
+       nklib nksip gproc poolboy syslog lager_syslog eflame socketio hep ecsv reloader
 
 dep_escalus = hex 2.6.4
 dep_exml = git https://github.com/paulgray/exml 2.2.1
@@ -22,3 +22,6 @@ dep_erlang_localtime = git https://github.com/lazedo/erlang_localtime 0bb2601638
 dep_socketio = git https://github.com/lazedo/socket.io-cowboy 0.2
 dep_hep = git https://github.com/lazedo/hep 1.5.4
 dep_ecsv = git https://github.com/lazedo/ecsv 0.2.1
+
+### for scripts/dev-start-*.sh
+dep_reloader = git https://github.com/oinksoft/reloader
