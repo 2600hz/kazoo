@@ -53,6 +53,9 @@ Key | Description | Type | Default | Required
 `presence_id` | Static presence ID (used instead of SIP username) | `string` |   | `false`
 `provision` | Provision data | `object` |   | `false`
 `provision.feature_keys` |   | `object` |   | `false`
+`provision.feature_keys.^[0-9]+$` |   | `object` |   | `false`
+`provision.feature_keys.^[0-9]+$.type` | Feature key type | `string('presence', 'parking', 'personal_parking', 'speed_dial')` |   | `true`
+`provision.feature_keys.^[0-9]+$.value` | Feature key value | `string, integer` |   | `true`
 `register_overwrite_notify` | When true enables overwrite notifications | `boolean` | `false` | `false`
 `ringtones` |   | `object` | `{}` | `false`
 `ringtones.external` | The alert info SIP header added when the call is from internal sources | `string(0..256)` |   | `false`
