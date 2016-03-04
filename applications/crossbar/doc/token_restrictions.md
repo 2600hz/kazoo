@@ -1,10 +1,11 @@
-
 ### Token restrictions
-Module `cb_token_restrictions`.
 
-#### What is it?
+#### About token restrictions
+
 Token restrictions - set of rules saved in auth token document. These rules grant access to API URIs.
+
 **If the token document doesn't have any rules then this module won't apply any restrictions to request.**
+
 These rules are created when the system creates an auth token.
 Rules can be loaded from system template or account template.
 System template located in `system_config/crossbar.token_restrictions`.
@@ -124,7 +125,7 @@ Example template:
 At this step module compare resource from URI with resource names in token restrictions.
 If URI is `/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/{MODIFIER}/` then endpoint will be `users`, and `{USER_ID}`, `{MODIFIER}` are arguments of this endpoint.
 Rules applied to the last endpoint in URI.
-You can use "catch all" (`"_"`) endpoint name. First tries exact endpoint name; if not found, try the catch-all (if it exists).
+You can use "catch all" (`"_"`) endpoint name. First tries exact endpoint name: if not found, try the catch-all (if it exists).
 
 ```JSON
 {
@@ -196,6 +197,7 @@ Endpoint argumnets matched with parameter `"rules"`.
       "rules": {
         "/": [ ... ],
         "{DEVICE_ID}": [ ... ],
+        "{DEVICE_ID}/sync": [ ... ],
         "*": [ ... ]
       }
     }
@@ -205,10 +207,26 @@ Endpoint argumnets matched with parameter `"rules"`.
 
 The search is performed in the order in which they appear in the rules for first match. No more search after that.
 
-`/` - match empty argument list:
+##### Rule keys
+Key | Description
+--- | -----------
+`/` | match empty argument list (or used as separator between other keys)
+`*` | match any single, non-empty argument
+`#` | match any count of arguments (or zero arguments)
+`string` | match exact string
+
+**Examples:**
+
+`/` - match empty argument list
+
 **Matches**
 * `/v2/accounts/{ACCOUNT_ID}/devices`
 
+**Doesn't Match**
+* `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync`
+* `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{DID}`
+
+---
 `*` - match any single, non-empty argument
 
 **Matches**
@@ -219,14 +237,18 @@ The search is performed in the order in which they appear in the rules for first
 **Doesn't Match**
 * `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync`
 
+---
 `#` - match any arguments (or no arguments)
+
 **Matches**
 * `/v2/accounts/{ACCOUNT_ID}/devices`
 * `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}`
 * `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync`
 * etc
 
+---
 `{DEVICE_ID}` - exact match
+
 **Matches**
 * `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}`
 
@@ -237,11 +259,30 @@ The search is performed in the order in which they appear in the rules for first
 
 For matching more than one argument, you can use `/` to delineate how to process the arguments. You can mix and match special characters, explicit strings, etc.
 
-`*/*/*` - match exactly three arguments
+---
+`{DEVICE_ID}/quickcall/{DID}` - match exact list of arguments
+
 **Matches**
 * `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{DID}`
 
-`{DEVICE_ID}/#` - matches `{DEVICE_ID}` plus 0 or more arguments
+**Doesn't Match**
+* `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}`
+* `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync`
+* `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{DID_2}`
+
+---
+`*/*/*` - match exactly three arguments
+
+**Matches**
+* `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{DID}`
+
+**Doesn't Match**
+* `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}`
+* `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync`
+
+---
+`{DEVICE_ID}/#` - matches `{DEVICE_ID}` plus all arguments
+
 **Matches**
 * `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}`
 * `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync`
@@ -277,64 +318,40 @@ If endpoint matching fails to find a match, Crossbar will try to match the HTTP 
 
 List can contain any valid HTTP method ("GET", "PUT", "POST", "PATCH", "DELETE") or the "catch all" - `"_"`.
 
-#### Manage accounts templates
+#### Schema
 
-##### Get current account template
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`restrictions` |   | `object` |   | `false`
 
-`GET /v2/accounts/{ACCOUNT_ID}/token_restrictions` return JSON like this:
 
-```JSON
-{
-  "data": {
-    "restrictions": {
-      "{AUTH_METHOD}": {
-        "{PRIV_LEVEL}": {
-          "{API_ENDPOINT}": [
-            {
-              "allowed_accounts": {ACCOUNT_IDS},
-              "rules": {
-                "{ARGUMENT_MATCH}":{HTTP_METHODS}
-              }
-            }
-          ]
-        }
-      }
-    }
-  }
-}
+#### Remove
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/token_restrictions
+
+```curl
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/token_restrictions
 ```
 
-If the account doesn't have token restrictions, the API will return a 404 error.
+#### Fetch
 
-##### Create/update account template
+> GET /v2/accounts/{ACCOUNT_ID}/token_restrictions
 
-`POST /v2/accounts/{ACCOUNT_ID}/token_restrictions`
-
-```JSON
-{
-  "data": {
-    "restrictions": {
-      "_": {
-        "_": {
-          "about": [
-            {
-              "allowed_accounts": [
-                "_"
-              ],
-              "rules": {
-                "/": [
-                  "GET"
-                ]
-              }
-            }
-          ]
-        }
-      }
-    }
-  }
-}
+```curl
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/token_restrictions
 ```
 
-##### Delete account template
+#### Change
 
-`DELETE /v2/accounts/{ACCOUNT_ID}/token_restrictions`
+> POST /v2/accounts/{ACCOUNT_ID}/token_restrictions
+
+```curl
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/token_restrictions
+```
+
