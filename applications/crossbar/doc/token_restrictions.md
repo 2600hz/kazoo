@@ -179,7 +179,7 @@ List of account IDs set in parameter `"allowed_accounts"`. You can write exact I
 
 * `"{AUTH_ACCOUNT_ID}"` - match request account id to the account of the auth token
 * `"{DESCENDANT_ACCOUNT_ID}"` - match any descendants of the auth account
-* `"_"` - match any account. **If the `"allowed_accounts"` parameter is missing, it is treated as a catch-all**
+* `"_"` - match any account. **If the `"allowed_accounts"` parameter is missing, it is treated as `"_"` (match any account).**
 
 The first endpoint-rule object matched to the requested account will be used in the next step of argument matching.
 
@@ -325,7 +325,7 @@ Key | Description | Type | Default | Required
 `restrictions` |   | `object` |   | `false`
 
 
-#### Remove
+#### Remove account's token restrictions
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/token_restrictions
 
@@ -335,7 +335,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/token_restrictions
 ```
 
-#### Fetch
+#### Fetch account's token restrictions
 
 > GET /v2/accounts/{ACCOUNT_ID}/token_restrictions
 
@@ -345,13 +345,101 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/token_restrictions
 ```
 
-#### Change
+#### Change account's token restrictions
 
 > POST /v2/accounts/{ACCOUNT_ID}/token_restrictions
 
 ```curl
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d @data.txt
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/token_restrictions
 ```
 
+File `data.txt` contains this restrictions:
+* `admin` has full access
+* `operator` can view/create/update devices (but not delete), full access to callflows, all other API restricted
+* `accountant` can only view transactions, all other API restricted
+* `user` can only view devices and other users. all other API restricted
+
+```JSON
+{
+  "data": {
+    "restrictions": {
+      "_": {
+        "admin": {
+          "_": [
+            {
+              "rules": {
+                "#": [
+                  "_"
+                ]
+              }
+            }
+          ]
+        },
+        "operator": {
+          "devices": {
+            "rules": {
+              "#": [
+                "GET",
+                "POST",
+                "PUT"
+              ]
+            }
+          },
+          "callflows": {
+            "rules": {
+              "#": [
+                "_"
+              ]
+            }
+          },
+          "_": {
+            "rules": {
+              "#": [
+                "GET"
+              ]
+            }
+          }
+        },
+        "accountant": {
+          "transactions": {
+            "rules": {
+              "#": [
+                "GET"
+              ]
+            }
+          },
+          "_": {
+            "rules": {
+              "#": []
+            }
+          }
+        },
+        "user": {
+          "users": {
+            "rules": {
+              "#": [
+                "GET"
+              ]
+            },
+            "devices": {
+              "rules": {
+                "#": [
+                  "GET"
+                ]
+              },
+              "_": {
+                "rules": {
+                  "#": []
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
