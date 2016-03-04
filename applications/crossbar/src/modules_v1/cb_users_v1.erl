@@ -296,7 +296,7 @@ post(Context, UserId, ?PHOTO) ->
     Headers = wh_json:get_value(<<"headers">>, FileObj),
     CT = wh_json:get_value(<<"content_type">>, Headers),
     Content = wh_json:get_value(<<"contents">>, FileObj),
-    Opts = [{'content_type', CT}],
+    Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(kzd_user:type())],
     crossbar_doc:save_attachment(UserId, ?PHOTO, Content, Context, Opts).
 
 -spec put(cb_context:context()) -> cb_context:context().
@@ -382,7 +382,7 @@ convert_to_vcard(Context) ->
 -spec set_photo(wh_json:object(), cb_context:context()) -> wh_json:object().
 set_photo(JObj, Context) ->
     UserId = wh_doc:id(cb_context:doc(Context)),
-    Attach = crossbar_doc:load_attachment(UserId, ?PHOTO, Context),
+    Attach = crossbar_doc:load_attachment(UserId, ?PHOTO, ?TYPE_CHECK_OPTION(kzd_user:type()), Context),
     case cb_context:resp_status(Attach) of
         'error' -> JObj;
         'success' ->

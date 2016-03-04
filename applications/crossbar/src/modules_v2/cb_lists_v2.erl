@@ -261,7 +261,7 @@ set_org(JObj, _, _, ListId) ->
 set_photo(JObj, Context) ->
     %% This code is copied from cb_users_v2. May be move it to crossbar_doc?
     DocId = wh_json:get_value(<<"_id">>, cb_context:doc(Context)),
-    Attach = crossbar_doc:load_attachment(DocId, ?PHOTO, Context),
+    Attach = crossbar_doc:load_attachment(DocId, ?PHOTO, ?TYPE_CHECK_OPTION(?TYPE_LIST_ENTRY), Context),
     case cb_context:resp_status(Attach) of
         'error' -> JObj;
         'success' ->

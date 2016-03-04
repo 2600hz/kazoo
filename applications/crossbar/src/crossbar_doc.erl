@@ -15,7 +15,7 @@
          ,merge/3
          ,patch_and_validate/3
          ,load_view/3, load_view/4, load_view/5, load_view/6
-         ,load_attachment/3, load_docs/2
+         ,load_attachment/3, load_attachment/4, load_docs/2
          ,save/1, save/2
          ,delete/1, delete/2
          ,save_attachment/4, save_attachment/5
@@ -308,7 +308,7 @@ merge(DataJObj, JObj, Context) ->
 -spec patch_and_validate(ne_binary(), cb_context:context(), validate_fun()) ->
                                 cb_context:context().
 patch_and_validate(Id, Context, ValidateFun) ->
-    Context1 = ?MODULE:load(Id, Context),
+    Context1 = ?MODULE:load(Id, Context, ?TYPE_CHECK_OPTION_ANY),
     Context2 = case cb_context:resp_status(Context1) of
                    'success' ->
                        PubJObj = wh_doc:public_fields(cb_context:req_data(Context)),
@@ -523,15 +523,15 @@ load_docs(Context, Filter) when is_function(Filter, 2) ->
 %%--------------------------------------------------------------------
 -spec load_attachment(kazoo_data:docid() | wh_json:object(), ne_binary(), cb_context:context()) ->
                              cb_context:context().
-load_attachment({DocType, DocId}, AName, Context) ->
-    load_attachment(DocId, AName, [{'doc_type', DocType}], Context);
-load_attachment(DocId, AName, Context) when is_binary(DocId) ->
-    load_attachment(DocId, AName, [], Context);
 load_attachment(Doc, AName, Context) ->
-    load_attachment({wh_doc:type(Doc), wh_doc:id(Doc)}, AName, Context).
+    load_attachment(Doc, AName, Context).
 
--spec load_attachment(ne_binary(), ne_binary(), wh_proplist(), cb_context:context()) ->
+-spec load_attachment(kazoo_data:docid() | wh_json:object(), ne_binary(), wh_proplist(), cb_context:context()) ->
                              cb_context:context().
+load_attachment({DocType, DocId}, AName, Options, Context) ->
+    load_attachment(DocId, AName, [{'doc_type', DocType} | Options], Context);
+load_attachment(Doc={_}, AName, Options, Context) ->
+    load_attachment({wh_doc:type(Doc), wh_doc:id(Doc)}, AName, Options, Context);
 load_attachment(DocId, AName, Options, Context) ->
     case kz_datamgr:fetch_attachment(cb_context:account_db(Context), DocId, AName, Options) of
         {'error', Error} -> handle_couch_mgr_errors(Error, DocId, Context);
@@ -664,7 +664,7 @@ save_attachment(DocId, Name, Contents, Context, Options) ->
     case kz_datamgr:put_attachment(cb_context:account_db(Context), DocId, AName, Contents, Opts1) of
         {'error', 'conflict'=Error} ->
             lager:debug("saving attachment resulted in a conflict, checking for validity"),
-            Context1 = load(DocId, Context, [{'use_cache', 'false'}]),
+            Context1 = load(DocId, Context, [{'use_cache', 'false'} | Options]),
             case wh_doc:attachment(cb_context:doc(Context1), AName) of
                 'undefined' ->
                     lager:debug("attachment does appear to be missing, reporting error"),

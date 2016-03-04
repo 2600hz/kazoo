@@ -369,7 +369,7 @@ put(Context, Id, ?PORT_ATTACHMENT) ->
     Contents = wh_json:get_value(<<"contents">>, FileJObj),
 
     CT = wh_json:get_string_value([<<"headers">>, <<"content_type">>], FileJObj),
-    Opts = [{'content_type', CT}],
+    Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(<<"port_request">>)],
 
     crossbar_doc:save_attachment(Id
                                  ,cb_modules_util:attachment_name(Filename, CT)
@@ -470,7 +470,7 @@ post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     [{_Filename, FileJObj}] = cb_context:req_files(Context),
     Contents = wh_json:get_value(<<"contents">>, FileJObj),
     CT = wh_json:get_string_value([<<"headers">>, <<"content_type">>], FileJObj),
-    Opts = [{'content_type', CT}],
+    Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(<<"port_request">>)],
 
     case wh_doc:attachment(cb_context:doc(Context), AttachmentId) of
         'undefined' -> lager:debug("no attachment named ~s", [AttachmentId]);
@@ -1147,6 +1147,7 @@ load_attachment(AttachmentId, Context) ->
     cb_context:add_resp_headers(
       crossbar_doc:load_attachment(cb_context:doc(Context)
                                    ,AttachmentId
+                                   ,?TYPE_CHECK_OPTION(<<"port_request">>)
                                    ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
                                   )
       ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}

@@ -913,7 +913,10 @@ load_media_binary(Context, MediaId) ->
                 [] -> crossbar_util:response_bad_identifier(MediaId, Context);
                 [Attachment|_] ->
                     cb_context:add_resp_headers(
-                      crossbar_doc:load_attachment(cb_context:doc(Context1), Attachment, Context1)
+                      crossbar_doc:load_attachment(cb_context:doc(Context1)
+                                                   ,Attachment
+                                                   ,?TYPE_CHECK_OPTION(kzd_media:type()))
+                                                   ,Context1
                       ,[{<<"Content-Disposition">>, <<"attachment; filename=", Attachment/binary>>}
                         ,{<<"Content-Type">>, wh_doc:attachment_content_type(cb_context:doc(Context1), Attachment)}
                         ,{<<"Content-Length">>, wh_doc:attachment_length(cb_context:doc(Context1), Attachment)}
@@ -943,7 +946,7 @@ update_media_binary(Context, MediaId, [{Filename, FileObj}|Files]) ->
     Contents = wh_json:get_value(<<"contents">>, FileObj),
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj),
     lager:debug("file content type: ~s", [CT]),
-    Opts = [{'content_type', CT}],
+    Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(kzd_media:type())],
 
     update_media_binary(
       crossbar_doc:save_attachment(MediaId

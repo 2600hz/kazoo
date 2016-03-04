@@ -170,7 +170,7 @@ do_load_recording_binary(DocId, Context) ->
             case wh_doc:attachment_names(cb_context:doc(Context1)) of
                 [] -> cb_context:add_system_error('bad_identifier', [{'details', DocId}], Context1);
                 [AName | _] ->
-                    Ctx = crossbar_doc:load_attachment({<<"call_recording">>, DocId}, AName, Context),
+                    Ctx = crossbar_doc:load_attachment({<<"call_recording">>, DocId}, AName, ?TYPE_CHECK_OPTION_ANY, Context),
                     set_resp_headers(Ctx, AName)
             end;
         _Status -> Context1

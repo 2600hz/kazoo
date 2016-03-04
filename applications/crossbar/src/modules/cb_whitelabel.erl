@@ -744,7 +744,7 @@ filter_attachment_type([AttachmentId|AttachmentIds], AttachType) ->
 update_response_with_attachment(Context, AttachmentId, JObj) ->
     cb_context:set_resp_etag(
       cb_context:add_resp_headers(
-        crossbar_doc:load_attachment(cb_context:doc(Context), AttachmentId, Context)
+        crossbar_doc:load_attachment(cb_context:doc(Context), AttachmentId, ?TYPE_CHECK_OPTION(<<"whitelabel">>), Context)
         ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
           ,{<<"Content-Type">>, wh_json:get_value([AttachmentId, <<"content_type">>], JObj)}
           ,{<<"Content-Length">>, wh_json:get_value([AttachmentId, <<"length">>], JObj)}
@@ -815,7 +815,7 @@ update_whitelabel_binary(AttachType, WhitelabelId, Context) ->
     [{Filename, FileObj}] = cb_context:req_files(Context),
     Contents = wh_json:get_value(<<"contents">>, FileObj),
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj),
-    Opts = [{'content_type', CT}],
+    Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(<<"whitelabel">>)],
 
     JObj1 = case whitelabel_binary_meta(Context, AttachType) of
                 'undefined' -> JObj;

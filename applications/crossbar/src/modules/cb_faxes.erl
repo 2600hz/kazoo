@@ -603,7 +603,7 @@ do_load_fax_binary(FaxId, Context) ->
 
 -spec set_fax_binary(cb_context:context(), ne_binary()) -> cb_context:context().
 set_fax_binary(Context, AttachmentId) ->
-    cb_context:setters(crossbar_doc:load_attachment(cb_context:doc(Context), AttachmentId, Context)
+    cb_context:setters(crossbar_doc:load_attachment(cb_context:doc(Context), AttachmentId, ?TYPE_CHECK_OPTION(<<"fax">>), Context)
                        ,[{fun cb_context:set_resp_etag/2, 'undefined'}
                          ,{fun cb_context:add_resp_headers/2
                            ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
@@ -678,6 +678,7 @@ save_attachment(Context, Filename, FileJObj) ->
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
     Opts = [{'content_type', CT}
             ,{'rev', wh_doc:revision(JObj)}
+            | ?TYPE_CHECK_OPTION(<<"fax">>)
            ],
     set_pending(crossbar_doc:save_attachment(DocId
                                              ,cb_modules_util:attachment_name(Filename, CT)

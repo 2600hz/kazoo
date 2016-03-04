@@ -808,14 +808,16 @@ migrate_template_attachment(MasterAccountDb, Id, AName, AMeta, Context) ->
         {'ok', Bin} ->
             ContentType = wh_json:get_value(<<"content_type">>, AMeta),
             lager:debug("saving attachment for ~s(~s): ~s", [Id, AName, ContentType]),
+            Opts = [{'headers'
+                     ,[{'content_type', wh_util:to_list(ContentType)}]
+                    }
+                    | ?TYPE_CHECK_OPTION(kz_notification:pvt_type())
+                   ],
             crossbar_doc:save_attachment(Id
                                          ,attachment_name_by_content_type(ContentType)
                                          ,Bin
                                          ,Context
-                                         ,[{'headers'
-                                            ,[{'content_type', wh_util:to_list(ContentType)}]
-                                           }
-                                          ]
+                                         ,Opts
                                         );
         {'error', _E} ->
             lager:debug("failed to load attachment ~s for ~s: ~p", [AName, Id, _E]),
@@ -868,11 +870,15 @@ attachment_filename(Id, Accept) ->
 
 -spec read_system_attachment(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 read_system_attachment(Context, DocId, Name) ->
-    crossbar_doc:load_attachment(DocId, Name, cb_context:set_account_db(Context, ?WH_CONFIG_DB)).
+    crossbar_doc:load_attachment(DocId
+                                 ,Name
+                                 ,?TYPE_CHECK_OPTION(kz_notification:pvt_type())
+                                 ,cb_context:set_account_db(Context, ?WH_CONFIG_DB)
+                                ).
 
 -spec read_account_attachment(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 read_account_attachment(Context, DocId, Name) ->
-    Context1 = crossbar_doc:load_attachment(DocId, Name, Context),
+    Context1 = crossbar_doc:load_attachment(DocId, Name, ?TYPE_CHECK_OPTION(kz_notification:pvt_type()), Context),
     case {cb_context:resp_error_code(Context1)
           ,cb_context:resp_status(Context1)
          }
@@ -918,7 +924,7 @@ update_template(Context, Id, FileJObj) ->
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
     lager:debug("file content type for ~s: ~s", [Id, CT]),
 
-    Opts = [{'content_type', wh_util:to_list(CT)}], % Temporary until couchbeam update
+    Opts = [{'content_type', wh_util:to_list(CT)} | ?TYPE_CHECK_OPTION(kz_notification:pvt_type())], % Temporary until couchbeam update
 
     AttachmentName = attachment_name_by_content_type(CT),
 
