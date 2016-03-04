@@ -12,8 +12,8 @@
          ,lookup_doc_rev/3
          ,save_doc/4
          ,save_docs/4
-         ,del_doc/3
-         ,del_docs/3
+         ,del_doc/4
+         ,del_docs/4
          ,ensure_saved/4
          ,copy_doc/3
          ,move_doc/3
@@ -85,19 +85,19 @@ ensure_saved(#{server := {App, Conn}}, DbName, Doc, Options) ->
                  'failed'
     end.
 
--spec del_doc(map(), ne_binary(), wh_json:object() | ne_binary()) ->
+-spec del_doc(map(), ne_binary(), wh_json:object() | ne_binary(), wh_proplist()) ->
                      {'ok', wh_json:objects()} |
                      data_error().
-del_doc(#{server := {App, Conn}}, DbName, Doc) ->
+del_doc(#{server := {App, Conn}}, DbName, Doc, Options) ->
     kzs_cache:flush_cache_doc(DbName, Doc),
-    App:del_doc(Conn, DbName, Doc).
+    App:del_doc(Conn, DbName, Doc, Options).
 
--spec del_docs(map(), ne_binary(), wh_json:objects()) ->
+-spec del_docs(map(), ne_binary(), wh_json:objects(), wh_proplist()) ->
                       {'ok', wh_json:objects()} |
                       data_error().
-del_docs(#{server := {App, Conn}}, DbName, Docs) ->
+del_docs(#{server := {App, Conn}}, DbName, Docs, Options) ->
     kzs_cache:flush_cache_docs(DbName, Docs),
-    App:del_docs(Conn, DbName, Docs).
+    App:del_docs(Conn, DbName, Docs, Options).
 
 
 -spec copy_doc(map(), copy_doc(), wh_proplist()) ->
