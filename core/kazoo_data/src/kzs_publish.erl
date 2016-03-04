@@ -73,7 +73,7 @@ should_publish_db_changes(DbName) ->
 -spec publish_doc(ne_binary(), wh_json:object(), wh_json:object()) -> 'ok'.
 publish_doc(DbName, Doc, JObj) ->
     case wh_doc:is_soft_deleted(Doc)
-        orelse wh_json:is_true(<<"_deleted">>, Doc)
+        orelse wh_doc:is_deleted(Doc)
     of
         'true' ->
             publish('deleted', wh_util:to_binary(DbName), publish_fields(Doc, JObj));

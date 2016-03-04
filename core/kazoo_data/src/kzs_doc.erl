@@ -99,16 +99,30 @@ del_doc(Server, DbName, DocId, Options)
             del_doc(Server, DbName, JObj, Options)
     end;
 del_doc(#{server := {App, Conn}}, DbName, Doc, Options) ->
-    kzs_cache:flush_cache_doc(DbName, Doc),
-    App:del_doc(Conn, DbName, Doc, Options).
+    {PreparedDoc, PublishDoc} = prepare_doc_for_save(DbName, Doc),
+    try App:del_doc(Conn, DbName, PreparedDoc, Options) of
+        {'ok', JObj}=Ok -> kzs_publish:maybe_publish_doc(DbName, PublishDoc, JObj),
+                           kzs_cache:flush_cache_doc(DbName, JObj),
+                           Ok;
+        Else -> Else
+    catch
+        Ex:Er -> lager:error("exception ~p : ~p", [Ex, Er]),
+                 'failed'
+    end.
 
 -spec del_docs(map(), ne_binary(), wh_json:objects(), wh_proplist()) ->
                       {'ok', wh_json:objects()} |
                       data_error().
 del_docs(#{server := {App, Conn}}, DbName, Docs, Options) ->
-    kzs_cache:flush_cache_docs(DbName, Docs),
-    App:del_docs(Conn, DbName, Docs, Options).
-
+    {PreparedDocs, Publish} = lists:unzip([prepare_doc_for_save(DbName, D) || D <- Docs]),
+    try App:del_docs(Conn, DbName, PreparedDocs, Options) of
+        {'ok', JObjs}=Ok -> kzs_publish:maybe_publish_docs(DbName, Publish, JObjs),
+                            kzs_cache:flush_cache_docs(DbName, JObjs),
+                           Ok;
+        Else -> Else
+    catch
+        _Ex:Er -> {'error', {_Ex, Er}}
+    end.
 
 -spec copy_doc(map(), copy_doc(), wh_proplist()) ->
                       {'ok', wh_json:object()} |
