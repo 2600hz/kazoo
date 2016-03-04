@@ -30,6 +30,7 @@
 -export([handle/2]).
 
 -define(DEFAULT_EVENT_WAIT, 10000).
+-define(RES_CONFIG_CAT, <<?CF_CONFIG_CAT/binary, ".resources">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -233,7 +234,8 @@ get_original_request_user(Call) ->
 -spec get_sip_headers(wh_json:object(), whapps_call:call()) -> api_object().
 get_sip_headers(Data, Call) ->
     Routines = [fun(J) ->
-                        case wh_json:is_true(<<"emit_account_id">>, Data) of
+                        Default = whapps_config:get_is_true(?RES_CONFIG_CAT, <<"default_emit_account_id">>, 'false'),
+                        case wh_json:is_true(<<"emit_account_id">>, Data, Default) of
                             'false' -> J;
                             'true' ->
                                 wh_json:set_value(<<"X-Account-ID">>, whapps_call:account_id(Call), J)
