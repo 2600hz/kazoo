@@ -126,11 +126,13 @@ decode(JSON, <<"application/json">>) ->
             Size = erlang:byte_size(Text),
             Part = binary:part(Text, Loc, Size-Loc),
             lager:debug("~s near char # ~b of ~b ('~s'): ~s", [Err, Loc, Size, Part, Text]),
+            log_big_binary(iolist_to_binary(JSON)),
             try_converting(JSON, {'error', Err});
         'throw':E ->
             lager:debug("thrown decoder error: ~p", [E]),
             throw(E)
     end.
+
 try_converting(JSON, E) ->
     case unicode:bom_to_encoding(JSON) of
         {'latin1', 0} ->
@@ -147,6 +149,13 @@ try_converting(JSON, E) ->
             lager:debug("unknown encoding: ~p", [_Enc]),
             throw(E)
     end.
+
+-spec log_big_binary(ne_binary()) -> 'ok'.
+log_big_binary(<<Bin:900/binary, Rest/binary>>) ->
+    lager:debug("bin: ~s", [wh_util:hexencode_binary(Bin)]),
+    log_big_binary(Rest);
+log_big_binary(Bin) ->
+    lager:debug("bin: ~s", [wh_util:hexencode_binary(Bin)]).
 
 -spec is_empty(any()) -> boolean().
 is_empty(MaybeJObj) ->
