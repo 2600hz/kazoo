@@ -39,5 +39,5 @@ after_success:
   - ./scripts/check-dialyzer.escript .kazoo.plt $files
   - make build-release
   - make compile-test
-  - ERL_LIBS="$HOME/proper" make eunit
+  - ERL_LIBS="$HOME/proper" ERLC_OPTS='-DPROPER' make eunit
   - ./scripts/check-whitespace.sh core/ applications/
