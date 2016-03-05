@@ -1,8 +1,7 @@
 ROOT = ../..
 PROJECT = call_inspector
 
-TEST_EBINS = $(wildcard $(ROOT)/deps/mochiweb-*/ebin) \
-             $(wildcard $(ROOT)/deps/ejson-*/ebin)
+TEST_EBINS = $(wildcard $(ROOT)/deps/mochiweb-*/ebin)
 
 all: compile
 
