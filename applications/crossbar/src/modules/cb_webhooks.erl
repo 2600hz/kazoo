@@ -106,7 +106,7 @@ maybe_revise_schema(SchemaJObj, MasterDb) ->
 revise_schema(SchemaJObj, HNs) ->
     HookNames = [<<"all">> | lists:delete(<<"skel">>, HNs)],
     Updated = wh_json:set_value([<<"properties">>, <<"hook">>, <<"enum">>], HookNames, SchemaJObj),
-    case couch_mgr:save_doc(?WH_SCHEMA_DB, Updated) of
+    case kz_datamgr:save_doc(?WH_SCHEMA_DB, Updated) of
         {'ok', _} -> lager:info("added hooks enum to schema: ~p", [HookNames]);
         {'error', _E} -> lager:warning("failed to add hooks enum to schema: ~p", [_E])
     end.
