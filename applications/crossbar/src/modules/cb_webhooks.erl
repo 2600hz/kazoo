@@ -103,7 +103,8 @@ maybe_revise_schema(SchemaJObj, MasterDb) ->
     end.
 
 -spec revise_schema(wh_json:object(), ne_binaries()) -> 'ok'.
-revise_schema(SchemaJObj, HookNames) ->
+revise_schema(SchemaJObj, HNs) ->
+    HookNames = [<<"all">> | lists:delete(<<"skel">>, HNs)],
     Updated = wh_json:set_value([<<"properties">>, <<"hook">>, <<"enum">>], HookNames, SchemaJObj),
     case couch_mgr:save_doc(?WH_SCHEMA_DB, Updated) of
         {'ok', _} -> lager:info("added hooks enum to schema: ~p", [HookNames]);
@@ -446,12 +447,14 @@ summary_available(Context) ->
 -spec normalize_available(wh_json:object(), wh_json:objects()) ->
                                  wh_json:objects().
 normalize_available(JObj, Acc) ->
-    Doc = wh_json:public_fields(wh_json:get_value(<<"doc">>, JObj)),
-    Name = wh_json:get_value(<<"name">>, Doc),
+    case wh_json:get_value(<<"key">>, JObj) of
+        <<"skel">> -> Acc;
+        _ ->
+            Doc = wh_json:public_fields(wh_json:get_value(<<"doc">>, JObj)),
+            Name = wh_json:get_value(<<"name">>, Doc),
 
-    [wh_json:set_value(<<"id">>, Name, Doc)
-     | Acc
-    ].
+            [wh_json:set_value(<<"id">>, Name, Doc) | Acc]
+    end.
 
 -spec summary_attempts(cb_context:context()) -> cb_context:context().
 -spec summary_attempts(cb_context:context(), api_binary()) -> cb_context:context().
