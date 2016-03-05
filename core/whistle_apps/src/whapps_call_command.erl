@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -2060,12 +2060,14 @@ b_privacy(Mode, Call) ->
 collect_digits(MaxDigits, Call) ->
     do_collect_digits(#wcc_collect_digits{max_digits=wh_util:to_integer(MaxDigits)
                                           ,call=Call
+                                          ,after_timeout=?DEFAULT_DIGIT_TIMEOUT
                                          }).
 
 collect_digits(MaxDigits, Timeout, Call) ->
     do_collect_digits(#wcc_collect_digits{max_digits=wh_util:to_integer(MaxDigits)
                                           ,timeout=wh_util:to_integer(Timeout)
                                           ,call=Call
+                                          ,after_timeout=wh_util:to_integer(Timeout)
                                          }).
 
 collect_digits(MaxDigits, Timeout, Interdigit, Call) ->
@@ -2073,6 +2075,7 @@ collect_digits(MaxDigits, Timeout, Interdigit, Call) ->
                                           ,timeout=wh_util:to_integer(Timeout)
                                           ,interdigit=wh_util:to_integer(Interdigit)
                                           ,call=Call
+                                         ,after_timeout=wh_util:to_integer(Timeout)
                                          }).
 
 collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Call) ->
