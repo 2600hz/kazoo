@@ -18,6 +18,7 @@ addons:
 cache:
   directories:
     - $HOME/proper
+    - $TRAVIS_BUILD_DIR/deps
 
 sudo: false
 
