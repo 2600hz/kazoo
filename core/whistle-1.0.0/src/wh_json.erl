@@ -115,37 +115,47 @@ decode(JSON, <<"application/json">>) ->
     try ejson:decode(JSON) of
         JObj -> JObj
     catch
-        'throw':{'error',{_Loc, 'invalid_string'}}=E ->
+        'throw':{'error',{_Loc, 'invalid_string'}} ->
             lager:debug("invalid string(near char ~p) in input, checking for unicode", [_Loc]),
-            try_converting(JSON, E);
+            try_converting(JSON);
         'throw':{'invalid_json',{{'error',{1, Err}}, _Text}} ->
             lager:debug("~s: ~s", [Err, _Text]),
-            throw({'error', Err});
+            new();
         'throw':{'invalid_json',{{'error',{Loc, Err}}, Text}} ->
             Size = erlang:byte_size(Text),
             Part = binary:part(Text, Loc, Size-Loc),
             lager:debug("~s near char # ~b of ~b ('~s'): ~s", [Err, Loc, Size, Part, Text]),
-            try_converting(JSON, {'error', Err});
+            log_big_binary(iolist_to_binary(JSON)),
+            try_converting(JSON);
         'throw':E ->
             lager:debug("thrown decoder error: ~p", [E]),
-            throw(E)
+            new()
     end.
-try_converting(JSON, E) ->
+try_converting(JSON) ->
     case unicode:bom_to_encoding(JSON) of
         {'latin1', 0} ->
             lager:debug("json is latin1, trying as utf8"),
             case unicode:characters_to_binary(JSON, 'latin1', 'utf8') of
                 Converted when is_binary(Converted) ->
                     case unicode:bom_to_encoding(Converted) of
-                        {'latin1', 0} -> throw(E);
+                        {'latin1', 0} -> new();
                         _ -> decode(Converted)
                     end;
-                _O -> lager:debug("failed to char_to_bin: ~p", [_O]), throw(E)
+                _O ->
+                    lager:debug("failed to char_to_bin: ~p", [_O]),
+                    new()
             end;
         _Enc ->
             lager:debug("unknown encoding: ~p", [_Enc]),
-            throw(E)
+            new()
     end.
+
+-spec log_big_binary(ne_binary()) -> 'ok'.
+log_big_binary(<<Bin:900/binary, Rest/binary>>) ->
+    lager:debug("bin: ~s", [wh_util:hexencode_binary(Bin)]),
+    log_big_binary(Rest);
+log_big_binary(Bin) ->
+    lager:debug("bin: ~s", [wh_util:hexencode_binary(Bin)]).
 
 -spec is_empty(any()) -> boolean().
 is_empty(MaybeJObj) ->
