@@ -28,7 +28,7 @@
 
 -include("stepswitch.hrl").
 -include_lib("whistle/include/wapi_offnet_resource.hrl").
--include_lib("whistle_number_manager/include/wh_number_manager.hrl").
+-include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -60,6 +60,7 @@
                                          }
                                        ]
                               }).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -466,24 +467,15 @@ find_valid_emergency_number([Number|_]) ->
 
 -spec valid_emergency_numbers(ne_binary()) -> ne_binaries().
 valid_emergency_numbers(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case kz_datamgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
-        {'ok', JObj} ->
-            [Number
-             || Number <- wh_json:get_public_keys(JObj),
-                wnm_util:emergency_services_configured(Number, JObj)
-            ];
-        {'error', _R} ->
-            []
+    case knm_numbers:emergency_enabled(AccountId) of
+        {'ok', Numbers} -> Numbers;
+        {'error', _R} -> []
     end.
 
 -spec default_emergency_number(ne_binary()) -> ne_binary().
 default_emergency_number(Requested) ->
-    case whapps_config:get_non_empty(
-           ?SS_CONFIG_CAT
-           ,<<"default_emergency_cid_number">>
-          )
-    of
+    Key = <<"default_emergency_cid_number">>,
+    case whapps_config:get_non_empty(?SS_CONFIG_CAT, Key) of
         'undefined' -> Requested;
         Else -> Else
     end.

@@ -483,7 +483,7 @@ find_account('undefined', AccountRealm, AccountName, Context) ->
             find_account('undefined', 'undefined', AccountName, C)
     end;
 find_account(PhoneNumber, AccountRealm, AccountName, Context) ->
-    case wh_number_manager:lookup_account_by_number(PhoneNumber) of
+    case knm_number:lookup_account(PhoneNumber) of
         {'ok', AccountId, _} ->
             AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
             lager:debug("found account by phone number '~s': ~s", [PhoneNumber, AccountDb]),

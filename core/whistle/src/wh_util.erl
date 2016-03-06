@@ -69,6 +69,7 @@
 -export([uri_encode/1
          ,uri_decode/1
          ,resolve_uri/2
+         ,safe_urlencode/1
          ,normalize_amqp_uri/1
         ]).
 
@@ -146,6 +147,7 @@
 log_stacktrace() ->
     ST = erlang:get_stacktrace(),
     log_stacktrace(ST).
+
 log_stacktrace(ST) ->
     lager:info("stacktrace:"),
     _ = [log_stacktrace_mfa(M, F, A, Info)
@@ -350,7 +352,9 @@ is_in_account_hierarchy(_, 'undefined', _) -> 'false';
 is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
     CheckId = ?MODULE:format_account_id(CheckFor, 'raw'),
     AccountId = ?MODULE:format_account_id(InAccount, 'raw'),
-    case (IncludeSelf andalso AccountId =:= CheckId) orelse kz_account:fetch(AccountId) of
+    case (IncludeSelf andalso AccountId =:= CheckId)
+        orelse kz_account:fetch(AccountId)
+    of
         'true' ->
             lager:debug("account ~s is the same as the account to fetch the hierarchy from", [CheckId]),
             'true';
@@ -847,6 +851,13 @@ uri(BaseUrl, Tokens) ->
     [Pro, Url] = binary:split(BaseUrl, <<"://">>),
     Uri = filename:join([Url | Tokens]),
     <<Pro/binary, "://", Uri/binary>>.
+
+
+-spec safe_urlencode(binary() | number()) -> iolist().
+safe_urlencode(V) when is_binary(V)
+                       orelse is_number(V) ->
+    cow_qs:urlencode(wh_util:to_binary(V)).
+
 
 -spec to_integer(string() | binary() | integer() | float()) -> integer().
 -spec to_integer(string() | binary() | integer() | float(), 'strict' | 'notstrict') -> integer().

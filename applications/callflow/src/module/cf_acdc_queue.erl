@@ -80,7 +80,7 @@ send_agent_message(Call, AgentId, QueueId, PubFun) ->
 
 -spec update_queues(whapps_call:call(), ne_binary(), ne_binary(), ne_binary()) ->
                     {'ok', wh_json:object()}
-                    | kz_datamgr:couchbeam_error().
+                    | kz_data:data_error().
 update_queues(Call, AgentId, QueueId, <<"login">>) ->
     kz_datamgr:update_cache_doc(whapps_call:account_db(Call)
                                ,AgentId

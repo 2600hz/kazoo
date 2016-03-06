@@ -25,12 +25,16 @@
          ,api_key/1, set_api_key/2
          ,is_superduper_admin/1, set_superduper_admin/2
          ,allow_number_additions/1, set_allow_number_additions/2
+
          ,trial_expiration/1, trial_expiration/2, set_trial_expiration/2
          ,trial_time_left/1, trial_time_left/2
-         ,trial_has_expired/1, is_expired/1
+         ,trial_has_expired/1, trial_has_expired/2
+         ,is_expired/1
          ,is_trial_account/1
          ,is_reseller/1, promote/1, demote/1
          ,reseller_id/1, set_reseller_id/2
+
+         ,dial_plan/1, dial_plan/2
         ]).
 
 -define(ID, <<"_id">>).
@@ -49,6 +53,7 @@
 -define(KEY_TRIAL_ACCOUNT, <<"is_trial_account">>).
 -define(RESELLER, <<"pvt_reseller">>).
 -define(RESELLER_ID, <<"pvt_reseller_id">>).
+-define(KEY_DIAL_PLAN, <<"dial_plan">>).
 
 -define(PVT_TYPE, <<"account">>).
 
@@ -322,20 +327,10 @@ set_superduper_admin(JObj, IsAdmin) ->
 allow_number_additions(JObj) ->
     wh_json:is_true(?ALLOW_NUMBER_ADDITIONS, JObj).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec set_allow_number_additions(doc(), boolean()) -> doc().
 set_allow_number_additions(JObj, IsAllowed) ->
-    wh_json:set_value(?ALLOW_NUMBER_ADDITIONS, IsAllowed, JObj).
+    wh_json:set_value(?ALLOW_NUMBER_ADDITIONS, wh_util:is_true(IsAllowed), JObj).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec trial_expiration(doc()) -> api_integer().
 -spec trial_expiration(doc(), Default) -> integer() | Default.
 trial_expiration(JObj) ->
@@ -376,8 +371,10 @@ trial_time_left(JObj, Now) ->
 %%--------------------------------------------------------------------
 -spec trial_has_expired(doc()) -> boolean().
 trial_has_expired(JObj) ->
+    trial_has_expired(JObj, wh_util:current_tstamp()).
+trial_has_expired(JObj, Now) ->
     trial_expiration(JObj) =/= 'undefined' andalso
-        trial_time_left(JObj) =< 0.
+        trial_time_left(JObj, Now) =< 0.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -447,6 +444,14 @@ reseller_id(JObj) ->
 set_reseller_id(JObj, ResellerId) ->
     wh_json:set_value(?RESELLER_ID, ResellerId, JObj).
 
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec dial_plan(doc()) -> api_object().
+-spec dial_plan(doc(), Default) -> wh_json:object() | Default.
+dial_plan(JObj) ->
+    dial_plan(JObj, 'undefined').
+dial_plan(JObj, Default) ->
+    wh_json:get_json_value(?KEY_DIAL_PLAN, JObj, Default).

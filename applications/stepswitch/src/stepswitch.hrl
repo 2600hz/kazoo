@@ -2,7 +2,7 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
--include_lib("whistle_number_manager/include/wh_number_manager.hrl").
+-include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 
 -define(ROUTES_DB, ?WH_OFFNET_DB).
 -define(RESOURCES_DB, ?WH_OFFNET_DB).

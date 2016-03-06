@@ -98,7 +98,7 @@ allow_dial(Data, Call, Retries, Interdigit) ->
                                                         ,Call
                                                        ),
 
-    Number = wnm_util:to_e164(Digits),
+    Number = knm_converters:normalize(Digits),
     lager:info("caller is trying to call '~s'", [Number]),
 
     Call1 = maybe_update_caller_id(Data, Call),
@@ -277,7 +277,7 @@ should_restrict_call_by_account(Call, Number) ->
     case kz_account:fetch(whapps_call:account_id(Call)) of
         {'error', _} -> 'false';
         {'ok', JObj} ->
-            Classification = wnm_util:classify_number(Number),
+            Classification = knm_converters:classify(Number),
             lager:info("classified number as ~p", [Classification]),
             wh_json:get_value([<<"call_restriction">>, Classification, <<"action">>], JObj) =:= <<"deny">>
     end.

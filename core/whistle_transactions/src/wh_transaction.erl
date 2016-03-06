@@ -75,8 +75,6 @@
 -type transaction() :: #wh_transaction{}.
 -type transactions() :: [transaction()].
 
--type units() :: non_neg_integer().
-
 -export_type([transaction/0
               ,transactions/0
               ,units/0

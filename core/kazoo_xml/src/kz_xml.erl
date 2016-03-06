@@ -20,8 +20,8 @@
 elements(Els) -> [El || #xmlElement{}=El <- Els].
 elements(Els, Name) -> [El || #xmlElement{name=N}=El <- Els, N =:= Name].
 
--spec texts_to_binary(xml_els()) -> binary().
--spec texts_to_binary(xml_els(), pos_integer()) -> binary().
+-spec texts_to_binary(xml_texts()) -> binary().
+-spec texts_to_binary(xml_texts(), pos_integer()) -> binary().
 texts_to_binary([]) -> <<>>;
 texts_to_binary([_|_]=Vs) ->
     lists:foldl(fun(C, B) ->

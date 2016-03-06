@@ -26,7 +26,7 @@
 -export([reset/0]).
 
 -include("crossbar.hrl").
--include_lib("whistle_number_manager/include/wh_number_manager.hrl").
+-include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -274,7 +274,7 @@ process_realm(Realm, Dir, Module) ->
 -spec build_freeswitch(pid()) -> any().
 build_freeswitch(Pid) ->
     WorkDir = setup_directory(),
-    AllDBs = wnm_util:get_all_number_dbs(),
+    AllDBs = knm_util:get_all_number_dbs(),
     _ = [crawl_numbers_db(Db) || Db <- AllDBs, is_number_db(Db)],
     process_realms(),
     File = zip_directory(WorkDir),
@@ -324,8 +324,8 @@ maybe_export_numbers(Db, [Number|Numbers]) ->
     _ = case kz_datamgr:open_doc(Db, Number) of
             {'ok', JObj} ->
                 maybe_export_number(Number
-                                    ,wh_json:get_value(?PVT_NUMBER_STATE, JObj)
-                                    ,wh_json:get_value(<<"pvt_assigned_to">>, JObj)
+                                    ,wh_json:get_value(?PVT_STATE, JObj)
+                                    ,wh_json:get_value(?PVT_ASSIGNED_TO, JObj)
                                    );
             {'error', _R} ->
                 lager:debug("error fetching number ~s from ~d: ~p"

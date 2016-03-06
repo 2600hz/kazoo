@@ -22,7 +22,6 @@
 -export([handle_message_delivery/2]).
 
 -include("stepswitch.hrl").
--include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -492,22 +491,16 @@ maybe_emergency_cid_number(OffnetReq) ->
                                   ne_binary().
 emergency_cid_number(OffnetReq) ->
     Account = wapi_offnet_resource:account_id(OffnetReq),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
     Candidates = [wapi_offnet_resource:emergency_caller_id_number(OffnetReq)
                   ,wapi_offnet_resource:outbound_caller_id_number(OffnetReq)
                  ],
     Requested = stepswitch_bridge:bridge_emergency_cid_number(OffnetReq),
     lager:debug("ensuring requested CID is emergency enabled: ~s", [Requested]),
-    case kz_datamgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
-        {'ok', PhoneNumbers} ->
-            Numbers = wh_json:get_keys(wh_json:public_fields(PhoneNumbers)),
-            EmergencyEnabled = [Number
-                                || Number <- Numbers,
-                                   wnm_util:emergency_services_configured(Number, PhoneNumbers)
-                               ],
-            emergency_cid_number(Requested, Candidates, EmergencyEnabled);
+    case knm_numbers:emergency_enabled(Account) of
+        {'ok', EnabledNumbers} ->
+            emergency_cid_number(Requested, Candidates, EnabledNumbers);
         {'error', _R} ->
-            lager:error("unable to fetch the ~s from account ~s: ~p", [?WNM_PHONE_NUMBER_DOC, Account, _R]),
+            lager:error("unable to fetch emergency numbers from account ~s: ~p", [Account, _R]),
             emergency_cid_number(Requested, Candidates, [])
     end.
 

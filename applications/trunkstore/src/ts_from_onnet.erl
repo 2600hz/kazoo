@@ -34,7 +34,7 @@ start_amqp(State) ->
 maybe_onnet_data(State) ->
     JObj = ts_callflow:get_request_data(State),
     {ToUser, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"outbound_user_field">>),
-    ToDID = wnm_util:to_e164(ToUser),
+    ToDID = knm_converters:normalize(ToUser),
     CallID = ts_callflow:get_aleg_id(State),
     AccountId = ts_callflow:get_account_id(State),
     FromUser = wh_json:get_value(<<"Caller-ID-Name">>, JObj),
@@ -53,8 +53,8 @@ maybe_onnet_data(State) ->
                 end
         end,
     SrvOptions = wh_json:get_value([<<"server">>, <<"options">>], Options, wh_json:new()),
-    case wnm_util:is_reconcilable(ToDID)
-        orelse wnm_util:classify_number(ToDID) =:= <<"emergency">>
+    case knm_converters:is_reconcilable(ToDID)
+        orelse knm_converters:classify(ToDID) =:= <<"emergency">>
         orelse wh_json:is_true(<<"hunt_non_reconcilable">>, SrvOptions, 'false')
         orelse whapps_config:get_is_true(?TS_CONFIG_CAT, <<"default_hunt_non_reconcilable">>, 'false')
     of

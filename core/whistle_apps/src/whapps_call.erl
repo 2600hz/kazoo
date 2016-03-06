@@ -237,7 +237,7 @@ from_route_req(RouteReq, #whapps_call{call_id=OldCallId
     Call1#whapps_call{
         call_id=CallId
         ,request=Request
-        ,request_user=wnm_util:to_e164(RequestUser)
+        ,request_user=knm_converters:normalize(RequestUser)
         ,request_realm=RequestRealm
         ,from=From
         ,from_user=FromUser
@@ -574,7 +574,7 @@ maybe_format_caller_id(Call, Format) ->
 -spec maybe_format_caller_id_str(ne_binary(), api_object()) -> ne_binary().
 maybe_format_caller_id_str(Cid, 'undefined') -> Cid;
 maybe_format_caller_id_str(Cid, Format) ->
-    Class = wnm_util:classify_number(Cid),
+    Class = knm_converters:classify(Cid),
     lager:debug("checking for caller id reformating rules for ~s numbers", [Class]),
     case wh_json:get_ne_value(Class, Format) of
         'undefined' -> maybe_reformat_caller_id(Cid, wh_json:get_ne_value(<<"all">>, Format));
@@ -590,7 +590,7 @@ maybe_reformat_caller_id(CallerId, Format) ->
 -spec maybe_regex_caller_id(ne_binary(), api_binary(), wh_json:object()) -> ne_binary().
 maybe_regex_caller_id(CallerId, 'undefined', _) -> CallerId;
 maybe_regex_caller_id(CallerId, Regex, Format) ->
-    Normalized = wnm_util:normalize_number(CallerId),
+    Normalized = knm_converters:normalize(CallerId),
     case re:run(Normalized, Regex, [{'capture', 'all_but_first', 'binary'}]) of
         {'match', UseCid} ->
             lager:info("cid rewrite match found ~s from normalized caller id ~s"
@@ -665,7 +665,7 @@ callee_id_number(#whapps_call{callee_id_number=CIDNumber}) -> CIDNumber.
 set_request(Request, #whapps_call{}=Call) when is_binary(Request) ->
     [RequestUser, RequestRealm] = binary:split(Request, <<"@">>),
     Call#whapps_call{request=Request
-                     ,request_user=wnm_util:to_e164(RequestUser)
+                     ,request_user=knm_converters:normalize(RequestUser)
                      ,request_realm=RequestRealm
                     }.
 

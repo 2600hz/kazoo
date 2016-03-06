@@ -14,7 +14,7 @@
                   , whistle_amqp
                   , whistle_services
                   , kazoo_documents
-                  , whistle_number_manager
+                  , kazoo_number_manager
                   , kazoo_token_buckets
                   , kazoo_caches
                   , kazoo_web

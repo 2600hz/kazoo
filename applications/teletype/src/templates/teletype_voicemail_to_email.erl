@@ -172,8 +172,8 @@ get_file_name(MediaJObj, Macros) ->
              }
         of
             {'undefined', 'undefined'} -> <<"Unknown">>;
-            {'undefined', Num} -> wnm_util:pretty_print(wh_util:to_binary(Num));
-            {Name, _} -> wnm_util:pretty_print(wh_util:to_binary(Name))
+            {'undefined', Num} -> knm_util:pretty_print(wh_util:to_binary(Num));
+            {Name, _} -> knm_util:pretty_print(wh_util:to_binary(Name))
         end,
 
     LocalDateTime = props:get_value([<<"date_called">>, <<"local">>], Macros),
@@ -239,15 +239,15 @@ build_to_data(DataJObj) ->
 -spec build_caller_id_data(wh_json:object()) -> wh_proplist().
 build_caller_id_data(DataJObj) ->
     props:filter_undefined(
-      [{<<"number">>, wnm_util:pretty_print(wh_json:get_value(<<"caller_id_number">>, DataJObj))}
-       ,{<<"name">>, wnm_util:pretty_print(wh_json:get_value(<<"caller_id_name">>, DataJObj))}
+      [{<<"number">>, knm_util:pretty_print(wh_json:get_value(<<"caller_id_number">>, DataJObj))}
+       ,{<<"name">>, knm_util:pretty_print(wh_json:get_value(<<"caller_id_name">>, DataJObj))}
       ]).
 
 -spec build_callee_id_data(wh_json:object()) -> wh_proplist().
 build_callee_id_data(DataJObj) ->
     props:filter_undefined(
-      [{<<"number">>, wnm_util:pretty_print(wh_json:get_value(<<"callee_id_number">>, DataJObj))}
-       ,{<<"name">>, wnm_util:pretty_print(wh_json:get_value(<<"callee_id_name">>, DataJObj))}
+      [{<<"number">>, knm_util:pretty_print(wh_json:get_value(<<"callee_id_number">>, DataJObj))}
+       ,{<<"name">>, knm_util:pretty_print(wh_json:get_value(<<"callee_id_name">>, DataJObj))}
       ]).
 
 -spec build_date_called_data(wh_json:object()) -> wh_proplist().

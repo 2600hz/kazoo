@@ -39,6 +39,7 @@
 
 -type http_method() :: ne_binary(). %% HTTP Verbs in UPPERCASE
 -type http_methods() :: ne_binaries().
+-type req_verb() :: http_method().
 
 -type validator() :: 'required' | 'not_empty' | 'is_type'
                    | 'is_format' | 'numeric_min'

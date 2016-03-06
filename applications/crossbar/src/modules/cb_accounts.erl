@@ -1513,7 +1513,7 @@ delete_remove_services(Context) ->
 
 -spec delete_free_numbers(cb_context:context()) -> cb_context:context() | boolean().
 delete_free_numbers(Context) ->
-    _ = wh_number_manager:free_numbers(cb_context:account_id(Context)),
+    _ = knm_numbers:free(cb_context:account_id(Context)),
     delete_remove_sip_aggregates(Context).
 
 -spec delete_remove_sip_aggregates(cb_context:context()) -> cb_context:context() | boolean().

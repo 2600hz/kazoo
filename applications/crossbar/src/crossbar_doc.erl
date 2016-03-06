@@ -674,7 +674,7 @@ soft_delete(Context, Rev) ->
 
 -type delete_fun() :: fun((ne_binary(), wh_json:object() | ne_binary()) ->
                                  {'ok', wh_json:object() | wh_json:objects()} |
-                                 kz_datamgr:couchbeam_error()).
+                                 kz_data:data_error()).
 
 -spec do_delete(cb_context:context(), wh_json:object(), delete_fun()) ->
                        cb_context:context().

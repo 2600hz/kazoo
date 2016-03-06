@@ -75,6 +75,7 @@
          ,normalize_jobj/3
          ,normalize/1
          ,normalize_key/1
+         ,are_identical/2
         ]).
 -export([public_fields/1
          ,private_fields/1
@@ -182,6 +183,21 @@ is_json_term(Vs) when is_list(Vs) ->
 is_json_term({'json', IOList}) when is_list(IOList) -> 'true';
 is_json_term(MaybeJObj) ->
     is_json_object(MaybeJObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec are_identical(api_object(), api_object()) -> boolean().
+are_identical('undefined', 'undefined') -> 'true';
+are_identical('undefined', _) -> 'false';
+are_identical(_, 'undefined') -> 'false';
+are_identical(JObj1, JObj2) ->
+    [KV || {_, V}=KV <- wh_json:to_proplist(JObj1), (not wh_util:is_empty(V))]
+        =:=
+    [KV || {_, V}=KV <- wh_json:to_proplist(JObj2), (not wh_util:is_empty(V))].
 
 %% converts top-level proplist to json object, but only if sub-proplists have been converted
 %% first.
@@ -340,17 +356,20 @@ filter(Pred, ?JSON_WRAPPER(_)=JObj, Keys) when is_list(Keys),
     set_value(Keys, filter(Pred, get_json_value(Keys, JObj)), JObj);
 filter(Pred, JObj, Key) -> filter(Pred, JObj, [Key]).
 
--spec map(fun((key(), json_term()) -> {key(), json_term()}), object()) -> object().
+-spec map(fun((key(), json_term()) -> {key(), json_term()}), object()) ->
+                 object().
 map(F, ?JSON_WRAPPER(Prop)) -> from_list([ F(K, V) || {K,V} <- Prop]).
 
 -spec foreach(fun(({json_key(), json_term()}) -> any()), object()) -> 'ok'.
 foreach(F, ?JSON_WRAPPER(Prop)) when is_function(F, 1) -> lists:foreach(F, Prop).
 
--spec all(fun(({json_key(), json_term()}) -> boolean()), object()) -> boolean().
+-spec all(fun(({json_key(), json_term()}) -> boolean()), object()) ->
+                 boolean().
 all(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
     lists:all(Pred, Prop).
 
--spec any(fun(({json_key(), json_term()}) -> boolean()), object()) -> boolean().
+-spec any(fun(({json_key(), json_term()}) -> boolean()), object()) ->
+                 boolean().
 any(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
     lists:any(Pred, Prop).
 
@@ -738,8 +757,10 @@ set_value1([], Value, _JObj) -> Value.
 
 -spec delete_key(key(), object() | objects()) -> object() | objects().
 -spec delete_key(key(), object() | objects(), 'prune' | 'no_prune') -> object() | objects().
-delete_key(Key, JObj) when not is_list(Key) -> delete_key([Key], JObj, 'no_prune');
-delete_key(Keys, JObj) -> delete_key(Keys, JObj, 'no_prune').
+delete_key(Key, JObj) when not is_list(Key) ->
+    delete_key([Key], JObj, 'no_prune');
+delete_key(Keys, JObj) ->
+    delete_key(Keys, JObj, 'no_prune').
 
 %% 'prune' removes the parent key if the result of the delete is an empty list; no 'prune' leaves the parent intact
 %% so, delete_key([<<"k1">>, <<"k1.1">>], {struct, [{<<"k1">>, {struct, [{<<"k1.1">>, <<"v1.1">>}]}}]}) would result in

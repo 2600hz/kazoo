@@ -114,7 +114,7 @@ from_jobj(JObj) ->
              ,billing_seconds = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj, 0)
              ,answered_time = wh_json:get_integer_value(<<"Answered-Seconds">>, JObj, 0)
              ,timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj, wh_util:current_tstamp())
-             ,classification = wnm_util:classify_number(Number)
+             ,classification = knm_converters:classify(Number)
              ,number = Number
              ,request_jobj = JObj
              ,request_ccvs = CCVs
