@@ -202,6 +202,7 @@ schema_string_type(Settings) ->
 
 cell_wrap('undefined') -> <<" ">>;
 cell_wrap([]) -> <<"`[]`">>;
+cell_wrap(L) when is_list(L) -> [<<"`[\"">>, wh_util:join_binary(L, <<"\", \"">>), <<"\"]`">>];
 cell_wrap(<<>>) -> <<"\"\"">>;
 cell_wrap(?EMPTY_JSON_OBJECT) -> <<"`{}`">>;
 cell_wrap(Type) -> [<<"`">>, wh_util:to_binary(Type), <<"`">>].
