@@ -8,7 +8,8 @@
 %%% @contributors
 %%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
--module(wnm_voip_innovations).
+-module(knm_voip_innovations).
+-behaviour(knm_gen_carrier).
 
 -export([find_numbers/3]).
 -export([acquire_number/1]).
@@ -17,11 +18,11 @@
 -export([is_number_billable/1]).
 -export([should_lookup_cnam/0]).
 
--include("../wnm.hrl").
+-include("knm.hrl").
 
--define(WNM_VI_CONFIG_CAT, <<(?WNM_CONFIG_CAT)/binary, ".voip_innovations">>).
+-define(KNM_VI_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".voip_innovations">>).
 
--define(VI_DEBUG, whapps_config:get_is_true(?WNM_VI_CONFIG_CAT, <<"debug">>, 'false')).
+-define(VI_DEBUG, whapps_config:get_is_true(?KNM_VI_CONFIG_CAT, <<"debug">>, 'false')).
 -define(VI_DEBUG_FILE, "/tmp/voipinnovations.xml").
 -define(DEBUG_WRITE(Format, Args),
         _ = ?VI_DEBUG andalso
@@ -35,9 +36,9 @@
 -define(VI_DEFAULT_NAMESPACE, "http://tempuri.org/").
 
 -define(IS_SANDBOX_PROVISIONING_TRUE,
-       whapps_config:get_is_true(?WNM_VI_CONFIG_CAT, <<"sandbox_provisioning">>, 'false')).
+       whapps_config:get_is_true(?KNM_VI_CONFIG_CAT, <<"sandbox_provisioning">>, 'false')).
 -define(IS_PROVISIONING_ENABLED,
-        whapps_config:get_is_true(?WNM_VI_CONFIG_CAT, <<"enable_provisioning">>, 'true')).
+        whapps_config:get_is_true(?KNM_VI_CONFIG_CAT, <<"enable_provisioning">>, 'true')).
 
 -define(VI_URL_V2, %% (XML POST)
         "https://backoffice.voipinnovations.com/api2.pl").
@@ -48,9 +49,9 @@
 -define(URL_IN_USE,
        case ?IS_SANDBOX_PROVISIONING_TRUE of 'true' -> ?VI_URL_V3_SANDBOX; 'false' -> ?VI_URL_V3 end).
 
--define(VI_LOGIN, whapps_config:get_string(?WNM_VI_CONFIG_CAT, <<"login">>, <<>>)).
--define(VI_PASSWORD, whapps_config:get_string(?WNM_VI_CONFIG_CAT, <<"password">>, <<>>)).
--define(VI_ENDPOINT_GROUP, whapps_config:get_string(?WNM_VI_CONFIG_CAT, <<"endpoint_group">>, <<>>)).
+-define(VI_LOGIN, whapps_config:get_string(?KNM_VI_CONFIG_CAT, <<"login">>, <<>>)).
+-define(VI_PASSWORD, whapps_config:get_string(?KNM_VI_CONFIG_CAT, <<"password">>, <<>>)).
+-define(VI_ENDPOINT_GROUP, whapps_config:get_string(?KNM_VI_CONFIG_CAT, <<"endpoint_group">>, <<>>)).
 
 
 -type soap_response() :: {'ok', xml_el()} | {'error', any()}.
@@ -65,11 +66,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec get_number_data(ne_binary()) -> wh_json:object().
-get_number_data(<<"+", Rest/binary>>) ->
-    get_number_data(Rest);
-get_number_data(<<"1", Rest/binary>>) ->
-    get_number_data(Rest);
-get_number_data(Number) ->
+get_number_data(N) ->
+    Number = 'remove +1'(N),
     Resp = soap("queryDID", Number),
     case to_json('get_number_data', Number, Resp) of
         {'ok', JObj} -> JObj;
@@ -77,7 +75,7 @@ get_number_data(Number) ->
     end.
 
 %% @public
--spec is_number_billable(wnm_number()) -> boolean().
+-spec is_number_billable(knm_number:knm_number()) -> boolean().
 is_number_billable(_Number) -> 'true'.
 
 
@@ -87,17 +85,21 @@ is_number_billable(_Number) -> 'true'.
 %% Query the system for a quantity of available numbers in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) -> to_json_ret().
-find_numbers(<<"+", Rest/binary>>, Quantity, Opts) ->
-    find_numbers(Rest, Quantity, Opts);
-find_numbers(<<"1", Rest/binary>>, Quantity, Opts) ->
-    find_numbers(Rest, Quantity, Opts);
-find_numbers(<<NPA:3/binary>>, Quantity, _) ->
+-spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
+                          {'ok', knm_number:knm_numbers()} |
+                          {'error', any()}.
+find_numbers(<<"+", Rest/binary>>, Quantity, Options) ->
+    find_numbers(Rest, Quantity, Options);
+find_numbers(<<"1", Rest/binary>>, Quantity, Options) ->
+    find_numbers(Rest, Quantity, Options);
+find_numbers(<<NPA:3/binary>>, Quantity, Options) ->
     Resp = soap("getDIDs", [{"npa", NPA}]),
-    to_json('find_numbers', Quantity, Resp);
-find_numbers(<<NXX:6/binary,_/binary>>, Quantity, _) ->
+    MaybeJson = to_json('find_numbers', Quantity, Resp),
+    to_numbers(MaybeJson, props:get_value(<<"account_id">>, Options));
+find_numbers(<<NXX:6/binary,_/binary>>, Quantity, Options) ->
     Resp = soap("getDIDs", [{"nxx", NXX}]),
-    to_json('find_numbers', Quantity, Resp).
+    MaybeJson = to_json('find_numbers', Quantity, Resp),
+    to_numbers(MaybeJson, props:get_value(<<"account_id">>, Options)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -105,21 +107,22 @@ find_numbers(<<NXX:6/binary,_/binary>>, Quantity, _) ->
 %% Acquire a given number from the carrier
 %% @end
 %%--------------------------------------------------------------------
--spec acquire_number(wnm_number()) -> wnm_number().
-acquire_number(#number{dry_run = 'true'}=Number) -> Number;
-acquire_number(#number{number = <<$+,Number/binary>>}=NR) ->
-    acquire_number(NR#number{number = Number});
-acquire_number(#number{number = <<$1,Number/binary>>}=NR) ->
-    acquire_number(NR#number{number = Number});
-acquire_number(#number{number = Number}=NR) ->
-    N = NR#number{number = wnm_util:normalize_number(Number)},
-    case ?IS_PROVISIONING_ENABLED or ?IS_SANDBOX_PROVISIONING_TRUE of
-        'true' ->
-            Resp = soap("assignDID", [Number]),
-            maybe_return(N, to_json('acquire_number', [Number], Resp));
+-spec acquire_number(knm_number:knm_number()) -> knm_number:knm_number().
+acquire_number(Number) ->
+    Debug = ?IS_SANDBOX_PROVISIONING_TRUE,
+    case ?IS_PROVISIONING_ENABLED of
+        'false' when Debug ->
+            lager:debug("allowing sandbox provisioning"),
+            Number;
         'false' ->
-            Error = <<"Unable to acquire numbers on this system, carrier provisioning is disabled">>,
-            wnm_number:error_carrier_fault(Error, N)
+            knm_errors:unspecified('provisioning_disabled', Number);
+        'true' ->
+            N = 'remove +1'(
+                  knm_phone_number:number(knm_number:phone_number(Number))
+                 ),
+            Resp = soap("assignDID", [N]),
+            Ret = to_json('acquire_number', [N], Resp),
+            maybe_return(Ret, Number)
     end.
 
 %%--------------------------------------------------------------------
@@ -128,21 +131,23 @@ acquire_number(#number{number = Number}=NR) ->
 %% Release a number from the routing table
 %% @end
 %%--------------------------------------------------------------------
--spec disconnect_number(wnm_number()) -> wnm_number().
-disconnect_number(#number{dry_run = 'true'}=Number) -> Number;
-disconnect_number(#number{number = <<$+,Number/binary>>}=NR) ->
-    disconnect_number(NR#number{number = Number});
-disconnect_number(#number{number = <<$1,Number/binary>>}=NR) ->
-    disconnect_number(NR#number{number = Number});
-disconnect_number(#number{number = Number}=NR) ->
-    N = NR#number{number = wnm_util:normalize_number(Number)},
-    case ?IS_PROVISIONING_ENABLED or ?IS_SANDBOX_PROVISIONING_TRUE of
+-spec disconnect_number(knm_number:knm_number()) ->
+                               knm_number:knm_number().
+disconnect_number(Number) ->
+    Debug = ?IS_SANDBOX_PROVISIONING_TRUE,
+    case ?IS_PROVISIONING_ENABLED of
+        'false' when Debug ->
+            lager:debug("allowing sandbox provisioning"),
+            Number;
+       'false' ->
+            knm_errors:unspecified('provisioning_disabled', Number);
         'true' ->
-            Resp = soap("releaseDID", [Number]),
-            maybe_return(N, to_json('disconnect_number', [Number], Resp));
-        'false' ->
-            Error = <<"Unable to acquire numbers on this system, carrier provisioning is disabled">>,
-            wnm_number:error_carrier_fault(Error, N)
+            N = 'remove +1'(
+                  knm_phone_number:number(knm_number:phone_number(Number))
+                 ),
+            Resp = soap("releaseDID", [N]),
+            Ret = to_json('disconnect_number', [N], Resp),
+            maybe_return(Ret, Number)
     end.
 
 %% @public
@@ -152,15 +157,44 @@ should_lookup_cnam() -> 'true'.
 
 %%% Internals
 
--spec maybe_return(wnm_number(), to_json_ret()) -> wnm_number().
-maybe_return(N, {'error', Reason}) ->
-    wnm_number:error_carrier_fault(Reason, N);
-maybe_return(N, {'ok', JObj}) ->
+-spec 'remove +1'(ne_binary()) -> ne_binary().
+'remove +1'(<<"+", Rest/binary>>) ->
+    'remove +1'(Rest);
+'remove +1'(<<"1", Rest/binary>>) ->
+    'remove +1'(Rest);
+'remove +1'(Else) ->
+    Else.
+
+-spec to_numbers(to_json_ret(), ne_binary()) ->
+                        {'ok', knm_number:knm_numbers()} |
+                        {'error', any()}.
+to_numbers({'error',_R}=Error, _) ->
+    Error;
+to_numbers({'ok',JObj}, AccountId) ->
+    Num = wh_json:get_value(<<"e164">>, JObj),
+    NormalizedNum = knm_converters:normalize(Num),
+    NumberDb = knm_converters:to_db(NormalizedNum),
+    Updates = [{fun knm_phone_number:set_number/2, NormalizedNum}
+               ,{fun knm_phone_number:set_number_db/2, NumberDb}
+               ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
+               ,{fun knm_phone_number:set_carrier_data/2, JObj}
+               ,{fun knm_phone_number:set_number_db/2, NumberDb}
+               ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
+               ,{fun knm_phone_number:set_assign_to/2, AccountId}
+              ],
+    {'ok', PhoneNumber} = knm_phone_number:setters(knm_phone_number:new(), Updates),
+    knm_number:set_phone_number(knm_number:new(), PhoneNumber).
+
+-spec maybe_return(to_json_ret(), knm_number:knm_number()) ->
+                          knm_number:knm_number().
+maybe_return({'error', Reason}, N) ->
+    knm_errors:unspecified(Reason, N);
+maybe_return({'ok', JObj}, N) ->
     case <<"100">> == wh_json:get_value(<<"code">>, JObj) of
         'true' -> N;
         'false' ->
             Reason = wh_json:get_value(<<"msg">>, JObj),
-            maybe_return(N, {'error', Reason})
+            maybe_return({'error', Reason}, N)
     end.
 
 -spec to_json(atom(), any(), soap_response()) -> to_json_ret().
@@ -313,7 +347,7 @@ soap_request(Action, Body) ->
     Url = ?URL_IN_USE,
     Headers = [{"SOAPAction", ?VI_DEFAULT_NAMESPACE++Action}
                ,{"Accept", "*/*"}
-               ,{"User-Agent", ?WNM_USER_AGENT}
+               ,{"User-Agent", ?KNM_USER_AGENT}
                ,{"Content-Type", "text/xml;charset=UTF-8"}
               ],
     HTTPOptions = [{'ssl', [{'verify', 'verify_none'}]}

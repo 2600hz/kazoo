@@ -1,18 +1,18 @@
-### Whistle Number Manager VoIP Innovations
+### Kazoo Number Manager VoIP Innovations
 
-The whistle number manager VoIP Innovations module can be used to integrate Kazoo with http://voipinnovations.com/
+The kazoo number manager VoIP Innovations module can be used to integrate Kazoo with http://voipinnovations.com/
 
 #### Configuring number manager
 
-To enable whistle number manager to use the VoIP Innovations module you will need to first update the number_manager document in the system_config database.
+To enable kazoo number manager to use the VoIP Innovations module you will need to first update the number_manager document in the system_config database.
 
-In the configuration section that applies to your crossbar servers (or the default) add "wnm_voip_innovations" to the carrier_modules parameter.
+In the configuration section that applies to your crossbar servers (or the default) add "knm_voip_innovations" to the carrier_modules parameter.
 
 For example:
 ```json
        "carrier_modules": [
-           "wnm_local",
-           "wnm_voip_innovations"
+           "knm_local",
+           "knm_voip_innovations"
        ]
 ```
 
