@@ -44,7 +44,7 @@ Key | Description | Type | Default | Required
 `grace_period` | The amount of time, in seconds, to wait before starting another resource | `integer` | `5` | `false`
 `media` | The default resouce media parameters applied if not present to all specified gateways | `object` | `{}` | `false`
 `media.audio` | The default audio media parameters | `object` | `{}` | `false`
-`media.audio.codecs` | A list of default codecs to use | `array(string('OPUS', 'CELT@32000h', 'G7221@32000h', 'G7221@16000h', 'G722', 'speex@32000h', 'speex@16000h', 'PCMU', 'PCMA', 'G729', 'GSM', 'CELT@48000h', 'CELT@64000h', 'G722_16', 'G722_32', 'CELT_48', 'CELT_64', 'Speex', 'speex'))` | `PCMU` | `false`
+`media.audio.codecs` | A list of default codecs to use | `array(string('OPUS', 'CELT@32000h', 'G7221@32000h', 'G7221@16000h', 'G722', 'speex@32000h', 'speex@16000h', 'PCMU', 'PCMA', 'G729', 'GSM', 'CELT@48000h', 'CELT@64000h', 'G722_16', 'G722_32', 'CELT_48', 'CELT_64', 'Speex', 'speex'))` | `["PCMU"]` | `false`
 `media.audio.codecs.[]` |   | `string` |   | `false`
 `media.bypass_media` | Default bypass media mode | `boolean` |   | `false`
 `media.fax_option` | Support T.38 | `boolean` |   | `false`

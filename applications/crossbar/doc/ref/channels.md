@@ -18,21 +18,21 @@ curl -v -X GET \
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/channels/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/channels/{UU_ID}
 
 ```curl
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/channels/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/channels/{UU_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/channels/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/channels/{UU_ID}
 
 ```curl
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/channels/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/channels/{UU_ID}
 ```
 
