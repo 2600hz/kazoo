@@ -337,10 +337,7 @@ body("releaseDID", Numbers=[_|_]) ->
         "</tns:DIDParam>"]
        || Number <- Numbers
      ],
-     "</tns:didParams>"];
-
-body("auditDIDs", []) ->
-    "".
+     "</tns:didParams>"].
 
 -spec soap_request(nonempty_string(), iolist()) -> soap_response().
 soap_request(Action, Body) ->
