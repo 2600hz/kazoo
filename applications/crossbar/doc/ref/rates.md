@@ -8,6 +8,8 @@ Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `carrier` | Friendly name for the carrier providing this rate | `string` |   | `false`
 `description` | Friendly description of the rate | `string` |   | `false`
+`direction` | Apply this rate based on the direction of the call (relative to FreeSWITCH) | `array(string('inbound', 'outbound'))` | `["inbound", "outbound"]` | `false`
+`direction.[]` |   | `string` |   | `false`
 `internal_rate_cost` | The per-min rate charged by the upstream provider | `number` |   | `false`
 `iso_country_code` | Country code this rate applies to | `string` |   | `false`
 `options` | List of options this rate is good for, to be matched against a customer's options | `array(string)` |   | `false`
