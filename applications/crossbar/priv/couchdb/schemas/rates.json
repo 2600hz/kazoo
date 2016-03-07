@@ -16,6 +16,23 @@
             "required": false,
             "type": "string"
         },
+        "direction": {
+            "default": [
+                "inbound",
+                "outbound"
+            ],
+            "description": "Apply this rate based on the direction of the call (relative to FreeSWITCH)",
+            "items": {
+                "enum": [
+                    "inbound",
+                    "outbound"
+                ],
+                "type": "string"
+            },
+            "name": "Direction",
+            "required": false,
+            "type": "array"
+        },
         "internal_rate_cost": {
             "description": "The per-min rate charged by the upstream provider",
             "minimum": 0,
