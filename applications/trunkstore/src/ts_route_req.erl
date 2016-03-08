@@ -32,7 +32,7 @@ handle_req(ApiJObj, _Options) ->
             ts_offnet_sup:start_handler(<<"offnet-", CallID/binary>>, ApiJObj);
         {AcctID, AuthID} when is_binary(AcctID) andalso is_binary(AuthID) ->
             %% Coming from PBX (on-net); authed by Registrar or ts_auth
-            lager:info("call with fetch-id began on the network", [wapi_route:fetch_id(ApiJObj)]),
+            lager:info("call with fetch-id ~s began on the network", [wapi_route:fetch_id(ApiJObj)]),
             ts_onnet_sup:start_handler(<<"onnet-", CallID/binary>>, ApiJObj);
         {_AcctID, _AuthID} ->
             lager:debug("insufficient information available to lookup routing for ~s, ignoring", [wapi_route:fetch_id(ApiJObj)])
