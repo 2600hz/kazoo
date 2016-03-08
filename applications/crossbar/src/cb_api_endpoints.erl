@@ -425,10 +425,9 @@ format_path_tokens(<<_/binary>> = Token) ->
 format_path_tokens(Tokens) ->
     [format_path_token(Token) || Token <- Tokens, Token =/= <<"/">>].
 
-format_path_token(<<"_">>) ->
-    <<"{ID}">>;
-format_path_token(<<"AccountId">>) ->
-    <<"{ACCOUNT_ID}">>;
+format_path_token(<<"_">>) -> <<"{ID}">>;
+format_path_token(<<"AccountId">>) -> <<"{ACCOUNT_ID}">>;
+format_path_token(<<"_UUID">>) -> <<"{UUID}">>;
 format_path_token(<<"_", Rest/binary>>) ->
     VarName = wh_util:to_upper_binary(Rest),
     case binary:split(VarName, <<"ID">>) of

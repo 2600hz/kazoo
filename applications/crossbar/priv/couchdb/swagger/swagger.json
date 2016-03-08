@@ -7639,7 +7639,7 @@
             "get": {},
             "post": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/channels/{UU_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/channels/{UUID}": {
             "get": {},
             "post": {}
         },
@@ -8119,13 +8119,10 @@
         "/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/activate": {
             "put": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/pivot": {
+        "/v2/accounts/{ACCOUNT_ID}/pivot/debug": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/pivot/debug/{ID}": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/pivot/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/pivot/debug/{UUID}": {
             "get": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/port_requests": {
