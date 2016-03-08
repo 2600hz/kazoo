@@ -20,7 +20,7 @@
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     QueueId     = wh_json:get_value(<<"queue_id">>, Data),
-    QueueConfig = couch_mgr:open_cache_doc(whapps_call:account_db(Call), QueueId),
+    QueueConfig = kz_datamgr:open_doc(whapps_call:account_db(Call), QueueId),
 
     case QueueConfig of
         {'ok', Config} ->
