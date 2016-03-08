@@ -24,6 +24,7 @@
 
          ,call_id/1
          ,control_queue/1
+         ,fetch_id/1
         ]).
 
 -include_lib("whistle/include/wh_api.hrl").
@@ -31,6 +32,7 @@
 
 -define(KEY_CALL_ID, <<"Call-ID">>).
 -define(KEY_CONTROL_QUEUE, <<"Control-Queue">>).
+-define(KEY_FETCH_ID, [<<"Custom-Channel-Vars">>, <<"Fetch-ID">>]).
 
 %% routing keys to use in the callmgr exchange
 -define(KEY_ROUTE_REQ, <<"route.req">>). %% corresponds to the route_req/1 api call
@@ -348,6 +350,10 @@ get_auth_user_realm(ApiJObj) ->
 -spec call_id(wh_json:object()) -> api_binary().
 call_id(JObj) ->
     wh_json:get_value(?KEY_CALL_ID, JObj).
+
+-spec fetch_id(wh_json:object()) -> api_binary().
+fetch_id(JObj) ->
+    wh_json:get_value(?KEY_FETCH_ID, JObj).
 
 -spec control_queue(wh_json:object()) -> api_binary().
 control_queue(JObj) ->

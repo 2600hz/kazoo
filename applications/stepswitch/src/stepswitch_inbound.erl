@@ -18,11 +18,12 @@
 %%--------------------------------------------------------------------
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
-    'true' = wapi_route:req_v(JObj),
     _ = wh_util:put_callid(JObj),
+    'true' = wapi_route:req_v(JObj),
     case wh_json:get_ne_value(?CCV(<<"Account-ID">>), JObj) of
         'undefined' -> maybe_relay_request(JObj);
-        _AcctID -> 'ok'
+        AccountId -> lager:debug("fetch-id ~s already has account-id ~s, skipping.",
+                                 [wapi_route:fetch_id(JObj), AccountId])
     end.
 
 %%--------------------------------------------------------------------
@@ -36,8 +37,9 @@ maybe_relay_request(JObj) ->
     Number = stepswitch_util:get_inbound_destination(JObj),
     case stepswitch_util:lookup_number(Number) of
         {'error', _R} ->
-            lager:info("unable to determine account for ~s: ~p", [Number, _R]);
+            lager:info("unable to determine account for fetch-id ~s, ~s: ~p", [wapi_route:fetch_id(JObj), Number, _R]);
         {'ok', _, NumberProps} ->
+            lager:debug("running routines for number ~s, fetch-id : ~s", [Number, wapi_route:fetch_id(JObj)]),
             Routines = [fun set_account_id/2
                         ,fun set_ignore_display_updates/2
                         ,fun set_inception/2
@@ -239,7 +241,7 @@ maybe_blacklisted(_NumberProps, JObj) ->
 -spec relay_request(wh_json:object()) -> wh_json:object().
 relay_request(JObj) ->
     wapi_route:publish_req(JObj),
-    lager:debug("relaying route request").
+    lager:debug("relaying route request ~s", [wapi_route:fetch_id(JObj)]).
 
 %%--------------------------------------------------------------------
 %% @private
