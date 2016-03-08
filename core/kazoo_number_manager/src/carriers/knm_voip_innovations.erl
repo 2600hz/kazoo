@@ -18,6 +18,10 @@
 -export([is_number_billable/1]).
 -export([should_lookup_cnam/0]).
 
+-ifdef(TEST).
+- export([soap_request/2]).  %% Only to pass compilation
+-endif.
+
 -include("knm.hrl").
 
 -define(KNM_VI_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".voip_innovations">>).
@@ -170,20 +174,23 @@ should_lookup_cnam() -> 'true'.
                         {'error', any()}.
 to_numbers({'error',_R}=Error, _) ->
     Error;
-to_numbers({'ok',JObj}, AccountId) ->
-    Num = wh_json:get_value(<<"e164">>, JObj),
-    NormalizedNum = knm_converters:normalize(Num),
-    NumberDb = knm_converters:to_db(NormalizedNum),
-    Updates = [{fun knm_phone_number:set_number/2, NormalizedNum}
-               ,{fun knm_phone_number:set_number_db/2, NumberDb}
-               ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
-               ,{fun knm_phone_number:set_carrier_data/2, JObj}
-               ,{fun knm_phone_number:set_number_db/2, NumberDb}
-               ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
-               ,{fun knm_phone_number:set_assign_to/2, AccountId}
-              ],
-    {'ok', PhoneNumber} = knm_phone_number:setters(knm_phone_number:new(), Updates),
-    knm_number:set_phone_number(knm_number:new(), PhoneNumber).
+to_numbers({'ok',JObjs}, AccountId) ->
+    {'ok',
+     [ begin
+           NormalizedNum = wh_json:get_value(<<"e164">>, JObj),
+           NumberDb = knm_converters:to_db(NormalizedNum),
+           Updates = [{fun knm_phone_number:set_number/2, NormalizedNum}
+                      ,{fun knm_phone_number:set_number_db/2, NumberDb}
+                      ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
+                      ,{fun knm_phone_number:set_carrier_data/2, JObj}
+                      ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
+                      ,{fun knm_phone_number:set_assign_to/2, AccountId}
+                     ],
+           {'ok', PhoneNumber} = knm_phone_number:setters(knm_phone_number:new(), Updates),
+           knm_number:set_phone_number(knm_number:new(), PhoneNumber)
+       end
+       || JObj <- JObjs ]
+    }.
 
 -spec maybe_return(to_json_ret(), knm_number:knm_number()) ->
                           knm_number:knm_number().
@@ -205,7 +212,7 @@ to_json('get_number_data', _Number, {'ok', Xml}) ->
     Code = wh_util:get_xml_value("//statusCode/text()", DID),
     Msg = wh_util:get_xml_value("//status/text()", DID),
     lager:debug("lookup ~s: ~s:~s", [_Number, Code, Msg]),
-    R = [{<<"e164">>, wh_util:get_xml_value("//tn/text()", DID)}
+    R = [{<<"e164">>, knm_converters:normalize(wh_util:get_xml_value("//tn/text()", DID))}
         ,{<<"status">>, wh_util:get_xml_value("//availability/text()", DID)}
         ,{<<"msg">>, Msg}
         ,{<<"code">>, Code}
@@ -223,22 +230,17 @@ to_json('find_numbers', Quantity, {'ok', Xml}) ->
     XPath = xpath("getDIDs", ["DIDLocators", "DIDLocator"]),
     DIDs = xmerl_xpath:string(XPath, Xml),
     lager:debug("found ~p numbers", [length(DIDs)]),
-    R =
-        [ begin
-              Number = wh_util:get_xml_value("//tn/text()", DID),
-              JObj =
-                  wh_json:from_list(
-                    [{<<"e164">>, Number}
-                    ,{<<"rate_center">>, wh_util:get_xml_value("//rateCenter/text()", DID)}
-                    ,{<<"state">>, wh_util:get_xml_value("//state/text()", DID)}
-                    ,{<<"cnam">>, wh_util:is_true(wh_util:get_xml_value("//outboundCNAM/text()", DID))}
-                    ,{<<"t38">>, wh_util:is_true(wh_util:get_xml_value("//t38/text()", DID))}
-                    ]),
-              {Number, JObj}
-          end
-          || DID=#xmlElement{} <- lists:sublist(DIDs, Quantity)
-        ],
-    {'ok', wh_json:from_list(R)};
+    {'ok',
+     [ wh_json:from_list(
+         [{<<"e164">>, knm_converters:normalize(wh_util:get_xml_value("//tn/text()", DID))}
+          ,{<<"rate_center">>, wh_util:get_xml_value("//rateCenter/text()", DID)}
+          ,{<<"state">>, wh_util:get_xml_value("//state/text()", DID)}
+          ,{<<"cnam">>, wh_util:is_true(wh_util:get_xml_value("//outboundCNAM/text()", DID))}
+          ,{<<"t38">>, wh_util:is_true(wh_util:get_xml_value("//t38/text()", DID))}
+         ])
+       || DID=#xmlElement{} <- lists:sublist(DIDs, Quantity)
+     ]
+    };
 
 to_json('acquire_number', _Numbers, {'ok', Xml}) ->
     XPath = xpath("assignDID", ["DIDs", "DID"]),
@@ -259,13 +261,15 @@ to_json('acquire_number', _Numbers, {'ok', Xml}) ->
 to_json('disconnect_number', _Numbers, {'ok', Xml}) ->
     XPath = xpath("releaseDID", ["DIDs", "DID"]),
     [JObj] = [ begin
+                   N = wh_util:get_xml_value("//tn/text()", DID),
+                   Msg = wh_util:get_xml_value("//status/text()", DID),
                    Code = wh_util:get_xml_value("//statusCode/text()", DID),
-                   lager:debug("disconnect ~s: ~s:~s",
-                               [wh_util:get_xml_value("//tn/text()", DID)
-                               ,Code
-                               ,wh_util:get_xml_value("//status/text()", DID)
-                               ]),
-                   wh_json:from_list([{<<"code">>, Code}])
+                   lager:debug("disconnect ~s: ~s:~s", [N, Code, Msg]),
+                   wh_json:from_list(
+                     [{<<"code">>, Code}
+                      ,{<<"msg">>, Msg}
+                      ,{<<"e164">>, knm_converters:normalize(N)}
+                     ])
                end
                || DID=#xmlElement{name = 'DID'}
                       <- xmerl_xpath:string(XPath, Xml)
@@ -276,9 +280,26 @@ to_json(_Target, _, {'error',_R}=Error) ->
     Error.
 
 -spec soap(nonempty_string(), any()) -> soap_response().
+-ifndef(TEST).
 soap(Action, Props) ->
     Body = soap_envelope(Action, Props),
     soap_request(Action, Body).
+-else.
+soap(Action, Props) ->
+    _Body = soap_envelope(Action, Props),
+    Resp =
+        case Action of
+            "queryDID" ->
+                knm_util:fixture("voip_innovations_query_response.xml");
+            "getDIDs" ->
+                knm_util:fixture("voip_innovations_get_response.xml");
+            "assignDID" ->
+                knm_util:fixture("voip_innovations_assign_response.xml");
+            "releaseDID" ->
+                knm_util:fixture("voip_innovations_release_response.xml")
+        end,
+    handle_response({'ok', 200, [], Resp}).
+-endif.
 
 -spec soap_envelope(nonempty_string(), any()) -> iolist().
 soap_envelope(Action, Props) ->
@@ -372,7 +393,7 @@ handle_response({'ok', Code, _Headers, "<?xml"++_=Response}) ->
 handle_response({'ok', Code, _Headers, _Response}) ->
     ?DEBUG_APPEND("Response:~n~p~n~p~n~s~n", [Code, _Headers, _Response]),
     Reason = http_code(Code),
-    lager:debug("request error: ~s (~s)", [Code, Reason]),
+    lager:debug("request error: ~p (~s)", [Code, Reason]),
     {'error', Reason};
 handle_response({'error', _}=E) ->
     lager:debug("request error: ~p", [E]),
@@ -392,11 +413,11 @@ verify_response(Xml) ->
             {'error', RespMsg}
     end.
 
--spec http_code(nonempty_string()) -> atom().
-http_code("401") -> 'unauthenticated';
-http_code("403") -> 'unauthorized';
-http_code("404") -> 'not_found';
-http_code("5"++[_,_]) -> 'server_error';
+-spec http_code(pos_integer()) -> atom().
+http_code(401) -> 'unauthenticated';
+http_code(403) -> 'unauthorized';
+http_code(404) -> 'not_found';
+http_code(Code) when Code >= 500 -> 'server_error';
 http_code(_Code) -> 'empty_response'.
 
 -spec xpath(nonempty_string(), [nonempty_string()]) -> nonempty_string().
