@@ -158,10 +158,13 @@ log_update(ServiceItem) ->
 
 -spec log_update_rate(ne_binary(), ne_binary(), wh_service_item:item()) -> 'ok'.
 log_update_rate(Category, Item, ServiceItem) ->
-    Rate =  wh_service_item:rate(ServiceItem),
-    lager:debug("set '~s/~s' with quantity ~p @ $~p"
-                ,[Category, Item, wh_service_item:quantity(ServiceItem), Rate]
-               ).
+    case wh_service_item:rate(ServiceItem) of
+        'undefined' -> 'ok';
+        Rate ->
+            lager:debug("set '~s/~s' with quantity ~p @ $~p"
+                        ,[Category, Item, wh_service_item:quantity(ServiceItem), Rate]
+                       )
+    end.
 
 -spec log_update_cumulative_discount(ne_binary(), ne_binary(), wh_service_item:item()) -> 'ok'.
 log_update_cumulative_discount(Category, Item, ServiceItem) ->
