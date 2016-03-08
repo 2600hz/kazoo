@@ -478,13 +478,18 @@ migrate(StartKey, Limit) ->
 -spec migrate_docs(wh_json:objects()) -> 'ok'.
 migrate_docs([]) -> 'ok';
 migrate_docs(Docs) ->
-    UpdatedDocs =
-        [UpdatedDoc
-         || Doc <- Docs,
+    case prepare_docs_for_migrate(Docs) of
+        [] -> 'ok';
+        UpdatedDocs ->
+            {'ok', _} = kz_datamgr:save_docs(?KZ_PORT_REQUESTS_DB, UpdatedDocs),
+            'ok'
+    end.
+
+-spec prepare_docs_for_migrate(wh_json:objects()) -> wh_json:objects().
+prepare_docs_for_migrate(Docs) ->
+    [UpdatedDoc || Doc <- Docs,
             (UpdatedDoc = migrate_doc(wh_json:get_value(<<"doc">>, Doc))) =/= 'undefined'
-        ],
-    {'ok', _} = kz_datamgr:save_docs(?KZ_PORT_REQUESTS_DB, UpdatedDocs),
-    'ok'.
+    ].
 
 -spec migrate_doc(wh_json:object()) -> api_object().
 migrate_doc(PortRequest) ->
