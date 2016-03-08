@@ -32,7 +32,7 @@
 
 -define(KEY_CALL_ID, <<"Call-ID">>).
 -define(KEY_CONTROL_QUEUE, <<"Control-Queue">>).
--define(KEY_FETCH_ID, [<<"Custom-Channel-Vars">>, <<"Call-ID">>]).
+-define(KEY_FETCH_ID, [<<"Custom-Channel-Vars">>, <<"Fetch-ID">>]).
 
 %% routing keys to use in the callmgr exchange
 -define(KEY_ROUTE_REQ, <<"route.req">>). %% corresponds to the route_req/1 api call
