@@ -452,21 +452,9 @@ find_account('undefined', 'undefined', AccountName, Context) ->
     end;
 find_account('undefined', AccountRealm, AccountName, Context) ->
     case whapps_util:get_account_by_realm(AccountRealm) of
-        {'ok', 'undefined'} ->
-            lager:debug("failed to find account ~s by name", [AccountName]),
-            C = cb_context:add_validation_error(
-                  <<"account_name">>
-                  ,<<"not_found">>
-                  ,wh_json:from_list(
-                     [{<<"message">>, <<"The provided account name could not be found">>}
-                      ,{<<"cause">>, AccountName}
-                     ])
-                  ,Context
-                 ),
-            find_account('undefined', 'undefined', 'undefined', C);
-        {'ok', AccountDb} ->
-            lager:debug("found account by realm '~s': ~s", [AccountRealm, AccountDb]),
-            {'ok', AccountDb};
+        {'ok', _AccountDb}=OK ->
+            lager:debug("found account by realm '~s': ~s", [AccountRealm, _AccountDb]),
+            OK;
         {'multiples', AccountDbs} ->
             lager:debug("the account realm returned multiple results"),
             {'ok', AccountDbs};
@@ -504,11 +492,10 @@ find_account(PhoneNumber, AccountRealm, AccountName, Context) ->
 -spec consume_tokens(cb_context:context()) -> cb_context:context().
 consume_tokens(Context) ->
     case kz_buckets:consume_tokens_until(?APP_NAME
-                                         ,cb_modules_util:bucket_name(Context)
-                                         ,cb_modules_util:token_cost(Context, ?USER_AUTH_TOKENS)
+                                        ,cb_modules_util:bucket_name(Context)
+                                        ,cb_modules_util:token_cost(Context, ?USER_AUTH_TOKENS)
                                         )
     of
         'true' -> cb_context:set_resp_status(Context, 'success');
-        'false' ->
-            cb_context:add_system_error('too_many_requests', Context)
+        'false' -> cb_context:add_system_error('too_many_requests', Context)
     end.

@@ -68,6 +68,6 @@ db_exists(#{server := {App, Conn}}, DbName) -> App:db_exists(Conn, DbName).
 db_archive(#{server := {App, Conn}}, DbName, Filename) -> App:db_archive(Conn, DbName, Filename).
 
 
--spec db_list(map(), view_options()) -> {'ok', wh_json:objects()} | data_error().
+-spec db_list(map(), view_options()) -> {'ok', ne_binaries()} | data_error().
 db_list(#{server := {App, Conn}}, Options) ->
     App:db_list(Conn, Options).

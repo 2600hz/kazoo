@@ -19,7 +19,7 @@ plan() ->
 plan(DbName) ->
     get_dataplan(DbName).
 
--spec plan(ne_binary(), atom() | ne_binary() | wh_proplist() | wh_json:object()) -> map().
+-spec plan(ne_binary(), atom() | ne_binary() | view_options() | wh_json:object()) -> map().
 plan(DbName, DocType) when is_binary(DocType) ->
     get_dataplan(DbName, DocType);
 plan(DbName, Props) when is_list(Props) ->

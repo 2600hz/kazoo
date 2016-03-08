@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% Conferences module
 %%%
@@ -309,7 +309,7 @@ do_conference_action(Context, Id, Action, ParticipantId) ->
         _ -> cb_context:add_system_error('forbidden', Context)
     end.
 
--spec perform_conference_action(whapps_conference:conference(), binary(), ne_binary()) -> 'ok'.
+-spec perform_conference_action(whapps_conference:conference(), ne_binary(), api_integer()) -> 'ok'.
 perform_conference_action(Conference, <<"mute">>, ParticipantId) ->
     whapps_conference_command:mute_participant(ParticipantId, Conference),
     whapps_conference_command:prompt(<<"conf-muted">>, ParticipantId, Conference);

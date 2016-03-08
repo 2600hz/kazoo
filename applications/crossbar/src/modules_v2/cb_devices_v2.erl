@@ -601,7 +601,7 @@ is_sip_creds_unique(AccountDb, Realm, Username, DeviceId) ->
         andalso is_creds_global_unique(Realm, Username, DeviceId).
 
 is_creds_locally_unique(AccountDb, Username, DeviceId) ->
-    ViewOptions = [{<<"key">>, wh_util:to_lower_binary(Username)}],
+    ViewOptions = [{'key', wh_util:to_lower_binary(Username)}],
     case kz_datamgr:get_results(AccountDb, <<"devices/sip_credentials">>, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [JObj]} -> wh_doc:id(JObj) =:= DeviceId;
@@ -610,9 +610,9 @@ is_creds_locally_unique(AccountDb, Username, DeviceId) ->
     end.
 
 is_creds_global_unique(Realm, Username, DeviceId) ->
-    ViewOptions = [{<<"key">>, [wh_util:to_lower_binary(Realm)
-                                ,wh_util:to_lower_binary(Username)
-                               ]
+    ViewOptions = [{'key', [wh_util:to_lower_binary(Realm)
+                           ,wh_util:to_lower_binary(Username)
+                           ]
                    }],
     case kz_datamgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
         {'ok', []} -> 'true';

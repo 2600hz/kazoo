@@ -14,7 +14,8 @@
 -export([update/1]).
 -export([wait_for_connection/0, wait_for_connection/1, wait_for_connection/2]).
 -export([get_server/0, get_server/1
-         ,test_conn/0, test_conn/1]).
+         ,test_conn/0, test_conn/1
+        ]).
 
 -export([init/1
          ,handle_call/3
@@ -219,4 +220,3 @@ code_change(_OldVsn, State, _Extra) ->
 maybe_start_new_connection(Connection) ->
     _ = kz_dataconnection_sup:add(Connection),
     _ = ets:insert(?MODULE, Connection).
-

@@ -202,7 +202,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec zip_directory(ne_binary()) -> string().
+-spec zip_directory(file:filename_all()) -> string().
 zip_directory(WorkDir0) ->
     WorkDir = wh_util:to_list(WorkDir0),
     ZipName = lists:concat([WorkDir, ".zip"]),
@@ -210,7 +210,7 @@ zip_directory(WorkDir0) ->
     {'ok', _} = zip:zip(ZipName , Files, [{'cwd', WorkDir}]),
     ZipName.
 
--spec setup_directory() -> ne_binary().
+-spec setup_directory() -> file:filename_all().
 setup_directory() ->
     TopDir = wh_util:rand_hex_binary(8),
     WorkRootDir = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"work_dir">>, <<"/tmp/">>),
@@ -225,10 +225,11 @@ setup_directory() ->
     _ = [wh_util:write_file(filename:join([WorkDir, D, xml_file_name(T)])
                             ,xml_file_from_config(T)
                            )
-         || {D, T} <- Files, lists:member(wh_util:to_binary(T), Filter)
+         || {D, T} <- Files,
+            lists:member(wh_util:to_binary(T), Filter)
         ],
-    put(<<"WorkDir">>,WorkDir),
-    put(<<"Realms">>,[]),
+    put(<<"WorkDir">>, WorkDir),
+    put(<<"Realms">>, []),
     WorkDir.
 
 -spec process_realms() -> 'ok'.

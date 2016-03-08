@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% Common functions for the provisioner modules
@@ -586,11 +586,11 @@ decode(JSON) ->
 -spec req_headers(ne_binary()) -> wh_proplist().
 req_headers(Token) ->
     props:filter_undefined(
-        [{"Content-Type", "application/json"}
-         ,{"X-Auth-Token", wh_util:to_list(Token)}
-         ,{"X-Kazoo-Cluster-ID", get_cluster_id()}
-         ,{"User-Agent", wh_util:to_list(erlang:node())}
-        ]).
+      [{"Content-Type", "application/json"}
+      ,{"X-Auth-Token", wh_util:to_list(Token)}
+      ,{"X-Kazoo-Cluster-ID", get_cluster_id()}
+      ,{"User-Agent", wh_util:to_list(erlang:node())}
+      ]).
 
 -spec get_cluster_id() -> string().
 get_cluster_id() ->
@@ -618,13 +618,12 @@ check_request(Data) ->
             {'ok', Data};
         Schema ->
             case
-                jesse:validate_with_schema(
-                    Schema
-                    ,Data
-                    ,[{'allowed_errors', 'infinity'}
-                      ,{'schema_loader_fun', fun wh_json_schema:load/1}
-                     ]
-                )
+                jesse:validate_with_schema(Schema
+                                          ,Data
+                                          ,[{'allowed_errors', 'infinity'}
+                                           ,{'schema_loader_fun', fun wh_json_schema:load/1}
+                                           ]
+                                          )
             of
                 {'error', _}=Error -> Error;
                 {'ok', JObj} ->
