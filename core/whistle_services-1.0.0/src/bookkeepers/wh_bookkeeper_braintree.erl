@@ -547,11 +547,14 @@ handle_single_discount(ServiceItem, Subscription) ->
     KeySingle = [<<"braintree">>, <<"discounts">>, <<"single">>],
     DiscountId = wh_service_item:bookkeeper(KeySingle, ServiceItem),
     SingleDiscount = wh_service_item:single_discount(ServiceItem),
-    case wh_util:is_empty(SingleDiscount) orelse wh_util:is_empty(DiscountId) of
+    Rate = wh_service_item:single_discount_rate(ServiceItem),
+    case wh_util:is_empty(SingleDiscount)
+        orelse wh_util:is_empty(DiscountId)
+        orelse (not erlang:is_number(Rate))
+    of
         'true' -> Subscription;
         'false' ->
             S = braintree_subscription:update_discount_quantity(Subscription, DiscountId, 1),
-            Rate = wh_service_item:single_discount_rate(ServiceItem),
             braintree_subscription:update_discount_amount(S, DiscountId, Rate)
     end.
 
@@ -567,11 +570,14 @@ handle_cumulative_discounts(ServiceItem, Subscription) ->
     KeyCumulative = [<<"braintree">>, <<"discounts">>, <<"cumulative">>],
     DiscountId = wh_service_item:bookkeeper(KeyCumulative, ServiceItem),
     CumulativeDiscount = wh_service_item:cumulative_discount(ServiceItem),
-    case wh_util:is_empty(CumulativeDiscount) orelse wh_util:is_empty(DiscountId) of
+    Rate = wh_service_item:cumulative_discount_rate(ServiceItem),
+    case wh_util:is_empty(CumulativeDiscount)
+        orelse wh_util:is_empty(DiscountId)
+        orelse (not erlang:is_number(Rate))
+    of
         'true' -> Subscription;
         'false' ->
             S = braintree_subscription:update_discount_quantity(Subscription, DiscountId, CumulativeDiscount),
-            Rate = wh_service_item:cumulative_discount_rate(ServiceItem),
             braintree_subscription:update_discount_amount(S, DiscountId, Rate)
     end.
 
@@ -650,8 +656,13 @@ prepare_subscription(ServiceItem, AddOnId, PlanId, Updates) ->
                         braintree_subscription:update_addon_quantity(S, AddOnId, Quantity)
                 end
                ,fun(S) ->
-                        Rate = wh_service_item:rate(ServiceItem),
-                        braintree_subscription:update_addon_amount(S, AddOnId, Rate)
+                        case wh_service_item:rate(ServiceItem) of
+                            'undefined' ->
+                                braintree_subscription:update_addon_amount(S, AddOnId, 0.0);
+                            Rate ->
+                                braintree_subscription:update_addon_amount(S, AddOnId, Rate)
+                        end
+
                 end
                ,fun(S) -> handle_single_discount(ServiceItem, S) end
                ,fun(S) -> handle_cumulative_discounts(ServiceItem, S) end
