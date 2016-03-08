@@ -351,15 +351,25 @@ handle_cast('prepare_job', #state{job_id=JobId
     end;
 handle_cast('count_pages', #state{file=File
                                   ,job=JObj
+                                  ,pool=Pid
                                  }=State) ->
-    {NumberOfPages, FileSize} = get_sizes(File),
-    Values = [{<<"pvt_pages">>, NumberOfPages}
-              ,{<<"pvt_size">>, FileSize}
-             ],
-    gen_server:cast(self(), 'send'),
-    {'noreply',State#state{job=wh_json:set_values(Values, JObj)
-                           ,pages=NumberOfPages
-                          }};
+    try get_sizes(File) of
+        {NumberOfPages, FileSize} ->
+            Values = [{<<"pvt_pages">>, NumberOfPages}
+                      ,{<<"pvt_size">>, FileSize}
+                     ],
+            gen_server:cast(self(), 'send'),
+            {'noreply',State#state{job=wh_json:set_values(Values, JObj)
+                                   ,pages=NumberOfPages
+                                  }}
+    catch
+        _Type:Exception ->
+            lager:debug("caught ~p: ~p", [_Type, Exception]),
+            send_error_status(State, Exception),
+            release_failed_job('bad_file', Exception, JObj),
+            gen_server:cast(Pid, {'job_complete', self()}),
+            {'noreply', reset(State)}
+    end;
 handle_cast('send', #state{job_id=JobId
                            ,job=JObj
                            ,queue_name=Q
