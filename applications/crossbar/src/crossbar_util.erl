@@ -481,7 +481,7 @@ move_account(AccountId, JObj, ToTree) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_move(ne_binary(), ne_binary()) ->
-                           {'error', _} |
+                           {'error', any()} |
                            {'ok', wh_json:object(), ne_binaries()}.
 validate_move(AccountId, ToAccount) ->
     case kz_account:fetch(AccountId) of
@@ -643,8 +643,8 @@ replicate_account_definition(JObj) ->
 -spec disable_account(api_binary()) -> 'ok' | {'error', any()}.
 disable_account('undefined') -> 'ok';
 disable_account(AccountId) ->
-    ViewOptions = [{<<"startkey">>, [AccountId]}
-                   ,{<<"endkey">>, [AccountId, wh_json:new()]}
+    ViewOptions = [{'startkey', [AccountId]}
+                   ,{'endkey', [AccountId, wh_json:new()]}
                   ],
     case kz_datamgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
         {'ok', JObjs} ->
@@ -664,8 +664,8 @@ disable_account(AccountId) ->
 -spec enable_account(api_binary()) -> 'ok' | {'error', any()}.
 enable_account('undefined') -> ok;
 enable_account(AccountId) ->
-    ViewOptions = [{<<"startkey">>, [AccountId]}
-                   ,{<<"endkey">>, [AccountId, wh_json:new()]}
+    ViewOptions = [{'startkey', [AccountId]}
+                   ,{'endkey', [AccountId, wh_json:new()]}
                   ],
     case kz_datamgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
         {'ok', JObjs} ->

@@ -206,8 +206,8 @@ account_depth(Account) ->
 -spec account_has_descendants(ne_binary()) -> boolean().
 account_has_descendants(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    ViewOptions = [{<<"startkey">>, [AccountId]}
-                   ,{<<"endkey">>, [AccountId, wh_json:new()]}
+    ViewOptions = [{'startkey', [AccountId]}
+                   ,{'endkey', [AccountId, wh_json:new()]}
                   ],
     {'ok', JObjs} = kz_datamgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions),
     length([JObj || JObj <- JObjs, kz_account:id(JObj) =/= AccountId]) > 0.

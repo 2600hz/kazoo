@@ -61,12 +61,11 @@ migrate(Accounts) ->
 
     UpdatedModules = remove_deprecated_modules(CurrentModules, ?DEPRECATED_MODULES),
 
-    add_missing_modules(
-      UpdatedModules
-      ,[Module
-        || Module <- ?DEFAULT_MODULES,
-           (not lists:member(Module, CurrentModules))
-       ]).
+    add_missing_modules(UpdatedModules
+                       ,[Module
+                         || Module <- ?DEFAULT_MODULES,
+                            (not lists:member(Module, CurrentModules))
+                        ]).
 
 -spec remove_deprecated_modules(atoms(), atoms()) -> atoms().
 remove_deprecated_modules(Modules, Deprecated) ->
@@ -290,7 +289,11 @@ find_account_by_id(Id) ->
 %%--------------------------------------------------------------------
 -spec allow_account_number_additions(input_term()) -> 'ok' | 'failed'.
 allow_account_number_additions(AccountId) ->
-    wh_util:set_allow_number_additions(AccountId, 'true').
+    case wh_util:set_allow_number_additions(AccountId, 'true') of
+        {'ok', _} -> 'ok';
+        {'error', _} -> 'failed'
+    end.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -299,7 +302,10 @@ allow_account_number_additions(AccountId) ->
 %%--------------------------------------------------------------------
 -spec disallow_account_number_additions(input_term()) -> 'ok' | 'failed'.
 disallow_account_number_additions(AccountId) ->
-    wh_util:set_allow_number_additions(AccountId, 'false').
+    case wh_util:set_allow_number_additions(AccountId, 'false') of
+        {'ok', _} -> 'ok';
+        {'error', _} -> 'failed'
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -309,7 +315,10 @@ disallow_account_number_additions(AccountId) ->
 %%--------------------------------------------------------------------
 -spec enable_account(input_term()) -> 'ok' | 'failed'.
 enable_account(AccountId) ->
-    wh_util:enable_account(AccountId).
+    case wh_util:enable_account(AccountId) of
+        {'ok', _} -> 'ok';
+        {'error', _} -> 'failed'
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -319,7 +328,10 @@ enable_account(AccountId) ->
 %%--------------------------------------------------------------------
 -spec disable_account(input_term()) -> 'ok' | 'failed'.
 disable_account(AccountId) ->
-    wh_util:disable_account(AccountId).
+    case wh_util:disable_account(AccountId) of
+        {'ok', _} -> 'ok';
+        {'error', _} -> 'failed'
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -329,7 +341,10 @@ disable_account(AccountId) ->
 %%--------------------------------------------------------------------
 -spec promote_account(input_term()) -> 'ok' | 'failed'.
 promote_account(AccountId) ->
-    wh_util:set_superduper_admin(AccountId, 'true').
+    case wh_util:set_superduper_admin(AccountId, 'true') of
+        {'ok', _} -> 'ok';
+        {'error', _} -> 'failed'
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -339,7 +354,10 @@ promote_account(AccountId) ->
 %%--------------------------------------------------------------------
 -spec demote_account(input_term()) -> 'ok' | 'failed'.
 demote_account(AccountId) ->
-    wh_util:set_superduper_admin(AccountId, 'false').
+    case wh_util:set_superduper_admin(AccountId, 'false') of
+        {'ok', _} -> 'ok';
+        {'error', _} -> 'failed'
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -863,7 +881,7 @@ safe_delete_image(AccountDb, AppId, Image) ->
     end.
 
 -spec maybe_add_images(file:filename(), ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
-maybe_add_images(AppPath, AppId, MetaData, MasterAccountDb) ->
+maybe_add_images(AppPath, <<_/binary>> = AppId, MetaData, MasterAccountDb) ->
     Icons       = [wh_json:get_value(<<"icon">>, MetaData)],
     Screenshots = wh_json:get_value(<<"screenshots">>, MetaData, []),
 
@@ -905,7 +923,7 @@ add_image(AppId, MasterAccountDb, ImageId, ImageData) ->
         {'error', _E} -> io:format("   failed to save ~s to ~s: ~p~n", [ImageId, AppId, _E])
     end.
 
--spec read_images([file:filename()]) -> {'ok', [{file:filename(), binary()}]}.
+-spec read_images([{ne_binary(), file:filename()}]) -> {'ok', [{file:filename(), binary()}]}.
 read_images(Images) ->
     {'ok', [{Image, read_image(ImagePath)}
             || {Image, ImagePath} <- Images

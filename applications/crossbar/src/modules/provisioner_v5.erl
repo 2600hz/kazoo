@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% Common functions for the provisioner modules
@@ -548,24 +548,21 @@ create_alert(JObj, AccountId, AuthToken) ->
             {'ok', JObj} ->
                 wh_json:get_value(<<"owner_id">>, JObj)
         end,
-    From = [
-        wh_json:from_list([{<<"type">>, <<"account">>}, {<<"value">>, AccountId}])
-        ,wh_json:from_list([{<<"type">>, <<"user">>}, {<<"value">>, OwnerId}])
-    ],
+    From = [wh_json:from_list([{<<"type">>, <<"account">>}, {<<"value">>, AccountId}])
+           ,wh_json:from_list([{<<"type">>, <<"user">>}, {<<"value">>, OwnerId}])
+           ],
 
-    To = [
-        wh_json:from_list([{<<"type">>, AccountId}, {<<"value">>, <<"admins">>}])
-        ,wh_json:from_list([{<<"type">>, wh_services:get_reseller_id(AccountId)}, {<<"value">>, <<"admins">>}])
-    ],
+    To = [wh_json:from_list([{<<"type">>, AccountId}, {<<"value">>, <<"admins">>}])
+         ,wh_json:from_list([{<<"type">>, wh_services:get_reseller_id(AccountId)}, {<<"value">>, <<"admins">>}])
+         ],
 
     {'ok', JObj} =
-        whapps_alert:create(
-            <<"Provisioning Error">>
-            ,<<"Error trying to provision device">>
-            ,From
-            ,To
-            ,Props
-        ),
+        whapps_alert:create(<<"Provisioning Error">>
+                           ,<<"Error trying to provision device">>
+                           ,From
+                           ,To
+                           ,Props
+                           ),
     whapps_alert:save(JObj).
 
 -spec decode(string()) -> ne_binary().
@@ -581,11 +578,11 @@ decode(JSON) ->
 -spec req_headers(ne_binary()) -> wh_proplist().
 req_headers(Token) ->
     props:filter_undefined(
-        [{"Content-Type", "application/json"}
-         ,{"X-Auth-Token", wh_util:to_list(Token)}
-         ,{"X-Kazoo-Cluster-ID", get_cluster_id()}
-         ,{"User-Agent", wh_util:to_list(erlang:node())}
-        ]).
+      [{"Content-Type", "application/json"}
+      ,{"X-Auth-Token", wh_util:to_list(Token)}
+      ,{"X-Kazoo-Cluster-ID", get_cluster_id()}
+      ,{"User-Agent", wh_util:to_list(erlang:node())}
+      ]).
 
 -spec get_cluster_id() -> string().
 get_cluster_id() ->
@@ -613,13 +610,12 @@ check_request(Data) ->
             {'ok', Data};
         Schema ->
             case
-                jesse:validate_with_schema(
-                    Schema
-                    ,Data
-                    ,[{'allowed_errors', 'infinity'}
-                      ,{'schema_loader_fun', fun wh_json_schema:load/1}
-                     ]
-                )
+                jesse:validate_with_schema(Schema
+                                          ,Data
+                                          ,[{'allowed_errors', 'infinity'}
+                                           ,{'schema_loader_fun', fun wh_json_schema:load/1}
+                                           ]
+                                          )
             of
                 {'error', _}=Error -> Error;
                 {'ok', JObj} ->

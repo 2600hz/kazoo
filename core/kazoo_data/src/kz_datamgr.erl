@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2015, 2600Hz INC
+%%% @copyright (C) 2010-2016, 2600Hz INC
 %%% @doc
 %%% Manage data connections
 %%% @end
@@ -656,8 +656,8 @@ all_docs(DbName, Options) ->
         {'error', _}=E -> E
     end.
 
--spec db_list() -> {'ok', wh_json:objects()} | data_error().
--spec db_list(wh_proplist()) -> {'ok', wh_json:objects()} | data_error().
+-spec db_list() -> {'ok', ne_binaries()} | data_error().
+-spec db_list(wh_proplist()) -> {'ok', ne_binaries()} | data_error().
 
 db_list() ->
     db_list([]).

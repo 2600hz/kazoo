@@ -34,34 +34,51 @@
                   }).
 -type copy_doc() :: #copy_doc{}.
 
--type data_errors() :: 'not_found' | 'conflict' | 'failed' |
-                            'precondition_failed' | 'db_not_reachable' |
-                            'db_not_found' | 'worker_is_dead' | 'invalid_db_name' |
-                            'unknown_req_id' | 'retry_later' |
-                            'req_timedout' | 'sel_conn_closed' |
-                            'invalid_view_name' | 'gateway_timeout' |
-                            {integer(), _} | % {error_code, body}
-                            integer() |
-                            {'EXIT', _} |
-                            {'url_parsing_failed', _} |
-                            {'conn_failed', _} |
-                            {'ok', string(), _, _}.
+-type data_errors() :: 'conflict' |
+                       'db_not_found' |
+                       'db_not_reachable' |
+                       'failed' |
+                       'gateway_timeout' |
+                       'invalid_db_name' |
+                       'invalid_view_name' |
+                       'not_found' |
+                       'precondition_failed' |
+                       'req_timedout' |
+                       'retry_later' |
+                       'sel_conn_closed' |
+                       'unknown_req_id' |
+                       'worker_is_dead' |
+                       integer() |
+                       {'EXIT', _} |
+                       {'conn_failed', _} |
+                       {'ok', string(), _, _} |
+                       {'url_parsing_failed', _} |
+                       {integer(), _}. % {error_code, body}
+
 -type data_error() :: {'error', data_errors()}.
 
+-type stale() :: 'ok' | 'update_after'.
 
--type stale() :: ok | update_after.
+-type key_range() :: binary() | [binary() | wh_json:object()].
 
--type view_option() :: {key, binary()} | {start_docid, binary()}
-    | {end_docid, binary()} | {start_key, binary()}
-    | {end_key, binary()} | {limit, integer()}
-    | {stale, stale()}
-    | descending
-    | {skip, integer()}
-    | group | {group_level, exact | integer()}
-    | reduce | {reduce, boolean()}
-    | inclusive_end | include_docs | conflicts
-    | {list, binary()}
-    | {keys, list(binary())}.
+-type view_option() :: 'conflicts' |
+                       'descending' |
+                       'group' |
+                       'include_docs' |
+                       'inclusive_end' |
+                       'reduce' |
+                       {'end_docid', binary()} |
+                       {'endkey', key_range()} |
+                       {'group_level', 'exact' | integer()} |
+                       {'key', binary()} |
+                       {'keys', [binary()]} |
+                       {'limit', integer()} |
+                       {'list', binary()} |
+                       {'reduce', boolean()} |
+                       {'skip', integer()} |
+                       {'stale', stale()} |
+                       {'start_docid', binary()} |
+                       {'startkey', key_range()}.
 
 -type view_options() :: list(view_option()).
 
