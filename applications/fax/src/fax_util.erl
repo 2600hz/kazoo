@@ -91,7 +91,7 @@ extension_to_content_type(Ext) when is_binary(Ext) ->
         "" ->
             lager:debug("extension ~s not handled, returning 'application/octet-stream'",[Ext]),
             <<"application/octet-stream">>;
-        CT -> CT
+        CT -> wh_util:to_binary(CT)
     end.
 
 
