@@ -9,7 +9,6 @@
 -module(konami_util).
 
 -export([listen_on_other_leg/2]).
--export([send_hangup_req/1]).
 
 -include("konami.hrl").
 
@@ -22,14 +21,4 @@ listen_on_other_leg(Call, Events) ->
           ],
     lager:debug("sending noop for b leg events"),
     whapps_call_command:send_command(API, Call).
-
--spec send_hangup_req(ne_binary()) -> 'ok'.
-send_hangup_req(CallId) ->
-    API = [{<<"Call-ID">>, CallId}
-           ,{<<"Action">>, <<"hangup">>}
-           ,{<<"Data">>, wh_json:new()}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    lager:debug("attempting to hangup ~s", [CallId]),
-    wh_amqp_worker:cast(API, fun wapi_metaflow:publish_req/1).
 

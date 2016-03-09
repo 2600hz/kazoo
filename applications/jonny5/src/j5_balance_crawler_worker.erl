@@ -53,10 +53,10 @@ maybe_disconnect_account(AccountId) ->
 disconnect_account(AccountId) ->
     case j5_channels:per_minute(AccountId) of
         Count when Count > 0 ->
-            lager:debug("account ~p has ~p per-minute calls, disconnect them",[AccountId, Count]),
+            lager:debug("account ~s has ~p per-minute calls, disconnect them",[AccountId, Count]),
             maybe_disconnect_channels(j5_channels:account(AccountId));
         _ ->
-            lager:debug("account ~p doesn't have any per-minute call",[AccountId])
+            lager:debug("account ~s doesn't have any per-minute call",[AccountId])
     end.
 
 -spec maybe_disconnect_channels(j5_channels:channels()) -> 'ok'.
@@ -75,14 +75,22 @@ maybe_disconnect_channels([Channel|Channels]) ->
 -spec disconnect_channel(wh_proplist()) -> 'ok'.
 disconnect_channel(Props) ->
     CallId =  props:get_ne_binary_value(<<"Call-ID">>, Props),
+    OtherLeg =  props:get_ne_binary_value(<<"Other-Leg-Call-ID">>, Props),
     HangupDelay = get_hangup_delay(Props),
-    lager:debug("call id ~p, account billing ~p, reseller billing ~p (delayed hangup:~s seconds)",
+    lager:debug("call id ~s, account billing ~s, reseller billing ~s (delayed hangup:~p seconds)",
                 [CallId
                  ,props:get_binary_value(<<"Account-Billing">>, Props)
                  ,props:get_binary_value(<<"Reseller-Billing">>, Props)
                  ,HangupDelay
                 ]),
-    try_disconnect_call(CallId, HangupDelay).
+    case props:get_ne_binary_value(<<"Control-Queue">>, Props, 'false')
+         orelse j5_channels:get_control_q(OtherLeg)
+    of
+        'undefined' -> lager:warning("can't find control queue for disconnecting call ~s",[CallId]);
+        ControlQ ->
+            lager:debug("found control queue ~s trying disconnect call ~s", [ControlQ, CallId]),
+            try_disconnect_call(CallId, ControlQ, HangupDelay)
+    end.
 
 -spec get_hangup_delay(wh_proplist()) -> integer().
 get_hangup_delay(Props) ->
@@ -101,12 +109,21 @@ get_hangup_delay(Props) ->
             end
     end.
 
--spec try_disconnect_call(ne_binary(), integer()) -> 'ok'.
-try_disconnect_call(CallId, HangupDelay) when is_integer(HangupDelay) andalso HangupDelay > 0 ->
+-spec try_disconnect_call(ne_binary(), ne_binary(), integer()) -> 'ok'.
+try_disconnect_call(CallId, ControlQ, HangupDelay) ->
+    JSON = {[{<<"Call-ID">>, CallId}
+             ,{<<"Control-Queue">>, ControlQ}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ]},
+    Call = whapps_call:from_json(JSON),
+    try_disconnect_call(Call, HangupDelay).
+
+-spec try_disconnect_call(whapps_call:call(), integer()) -> 'ok'.
+try_disconnect_call(Call, HangupDelay) when is_integer(HangupDelay) andalso HangupDelay > 0 ->
     _ = wh_util:spawn(fun() ->
-                      timer:sleep(HangupDelay * ?MILLISECONDS_IN_SECOND),
-                      konami_util:send_hangup_req(CallId)
-              end
-             ),
+                              timer:sleep(HangupDelay * ?MILLISECONDS_IN_SECOND),
+                              whapps_call_command:hangup(Call)
+                      end
+                     ),
     'ok';
-try_disconnect_call(CallId, _HangupDelay) -> konami_util:send_hangup_req(CallId).
+try_disconnect_call(Call, _HangupDelay) -> whapps_call_command:hangup(Call).

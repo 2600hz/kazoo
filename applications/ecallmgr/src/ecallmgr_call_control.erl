@@ -516,6 +516,7 @@ call_control_ready(#state{call_id=CallId
           ],
     lager:debug("sending route_win to ~s", [ControllerQ]),
     wapi_route:publish_win(ControllerQ, Win),
+    maybe_broadcast_win(Win),
     Usurp = [{<<"Call-ID">>, CallId}
              ,{<<"Fetch-ID">>, FetchId}
              ,{<<"Reason">>, <<"Route-Win">>}
@@ -524,6 +525,18 @@ call_control_ready(#state{call_id=CallId
             ],
     lager:debug("sending control usurp for ~s", [FetchId]),
     wapi_call:publish_usurp_control(CallId, Usurp).
+
+-spec maybe_broadcast_win(api_terms()) -> 'ok'.
+maybe_broadcast_win(Win) ->
+    Queues = ecallmgr_config:get(<<"broadcast_route_win_to_queues">>, [<<"jonny5">>]),
+    maybe_broadcast_win(Queues, Win).
+
+-spec maybe_broadcast_win(ne_binaries(), api_terms()) -> 'ok'.
+maybe_broadcast_win([], _Win) -> 'ok';
+maybe_broadcast_win([Q|Queues], Win) ->
+    lager:debug("sending route_win to queue ~s", [Q]),
+    wapi_route:broadcast_win(Q, Win),
+    maybe_broadcast_win(Queues, Win).
 
 %%--------------------------------------------------------------------
 %% @private
