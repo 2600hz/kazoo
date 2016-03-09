@@ -529,12 +529,12 @@ flush_util() ->
 
 -spec show_channels() -> 'no_return'.
 show_channels() ->
-    io:format("This function is depreciated, please use channel_summary or channel_detail~n"),
+    io:format("This function is depreciated, please use channel_summary or channel_details~n"),
     'no_return'.
 
 -spec show_calls() -> 'no_return'.
 show_calls() ->
-    io:format("This function is depreciated, please use channel_summary or channel_detail~n"),
+    io:format("This function is depreciated, please use channel_summary or channel_details~n"),
     'no_return'.
 
 -spec check_sync(text(), text()) -> 'ok'.
