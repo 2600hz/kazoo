@@ -196,10 +196,14 @@ post(Context, DeviceId) ->
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    Context1 = crossbar_doc:save(Context),
-    _ = maybe_aggregate_device('undefined', Context1),
-    _ = wh_util:spawn('provisioner_util', 'maybe_provision', [Context1]),
-    Context1.
+    case wh_json:get_ne_binary_value(<<"device_type">>, cb_context:doc(Context)) of
+        <<"mobile">> -> maybe_create_mobile(Context);
+        _Else ->
+            Context1 = crossbar_doc:save(Context),
+            _ = maybe_aggregate_device('undefined', Context1),
+            _ = wh_util:spawn('provisioner_util', 'maybe_provision', [Context1]),
+            Context1
+    end.
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, DeviceId) ->
@@ -596,3 +600,82 @@ maybe_remove_aggregate(DeviceId, _Context, 'success') ->
         {'error', 'not_found'} -> 'false'
     end;
 maybe_remove_aggregate(_, _, _) -> 'false'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-type context_monad() :: {'ok', cb_context:context()} |
+                         {'error', ne_binary()}.
+-spec maybe_create_mobile(cb_context:context()) -> cb_context:context().
+maybe_create_mobile(Context) ->
+    Routines = [fun fail_if_mdn_undefined/1
+               ,fun fail_if_mdn_taken/1
+               ,fun register_mdn/1
+               ,fun set_mobile_public_fields/1
+               ],
+    case lists:foldl(fun (F,I) -> F(I) end, {'ok',Context}, Routines) of
+        {'ok', _} -> crossbar_doc:save(Context);
+        {'error', BinMsg} ->
+            crossbar_util:response('error', BinMsg, 400, Context)
+    end.
+
+-spec get_mdn(cb_context:context()) -> api_binary().
+get_mdn(Context) ->
+    wh_json:get_ne_binary_value([<<"mobile">>, <<"mdn">>], cb_context:doc(Context)).
+
+-spec fail_if_mdn_undefined(context_monad()) -> context_monad().
+fail_if_mdn_undefined({'ok', Context}=Ok) ->
+    case get_mdn(Context) of
+        'undefined' ->
+            lager:debug("MDN undefined, aborting"),
+            {'error', <<"Mobile Device Number is undefined">>};
+        _Else -> Ok
+    end.
+
+-spec fail_if_mdn_taken(context_monad()) -> context_monad().
+fail_if_mdn_taken({'error', _R}=Error) -> Error;
+fail_if_mdn_taken({'ok', Context}=Ok) ->
+    MDN = get_mdn(Context),
+    try wnm_number:get(wnm_util:to_e164(MDN)) of
+        _Number -> {'error', <<"Mobile Device Number is already taken">>}
+    catch
+        'throw':{_R, _Number} ->
+            lager:debug("endpoint mdn ~s is not taken: ~p", [MDN, _R]),
+            Ok
+    end.
+
+-spec register_mdn(context_monad()) -> context_monad().
+register_mdn({'error', _R}=Error) -> Error;
+register_mdn({'ok', Context}=Ok) ->
+    Normalized = wnm_util:to_e164(get_mdn(Context)),
+    AccountId = cb_context:account_id(Context),
+    AuthAccountId = cb_context:auth_account_id(Context),
+    case wh_number_manager:reconcile_number(Normalized, AccountId, AuthAccountId) of
+        {'error', _R} ->
+            lager:debug("MDN ~s registration failed: ~p", [Normalized, _R]),
+            {'error', <<"Could not register this Mobile Device Number">>};
+        _Else -> Ok
+    end.
+
+-spec set_mobile_public_fields(context_monad()) -> context_monad().
+set_mobile_public_fields({'error', _R}=Error) -> Error;
+set_mobile_public_fields({'ok', Context}=Ok) ->
+    Normalized = wnm_util:to_e164(get_mdn(Context)),
+    AuthAccountId = cb_context:auth_account_id(Context),
+    MobileField =
+        wh_json:from_list([{<<"provider">>, <<"tower-of-power">>}
+                          ]),
+    PublicFields = wh_json:from_list([{<<"mobile">>, MobileField}]),
+    case wh_number_manager:set_public_fields(Normalized
+                                            ,PublicFields
+                                            ,AuthAccountId
+                                            )
+    of
+        {'error', _R} ->
+            lager:debug("MDN ~s could not update public fields: ~p", [Normalized, _R]),
+            {'error', <<"Could not update this Mobile Device Number's public fields">>};
+        _Else -> Ok
+    end.
