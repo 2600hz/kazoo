@@ -110,11 +110,12 @@ del_doc(#{server := {App, Conn}}, DbName, Doc, Options) ->
                  'failed'
     end.
 
--spec del_docs(map(), ne_binary(), wh_json:objects(), wh_proplist()) ->
+-spec del_docs(map(), ne_binary(), wh_json:objects() | ne_binaries(), wh_proplist()) ->
                       {'ok', wh_json:objects()} |
                       data_error().
 del_docs(#{server := {App, Conn}}, DbName, Docs, Options) ->
-    {PreparedDocs, Publish} = lists:unzip([prepare_doc_for_save(DbName, D) || D <- Docs]),
+    DelDocs = [prepare_doc_for_del(DbName, D) || D <- Docs],
+    {PreparedDocs, Publish} = lists:unzip([prepare_doc_for_save(DbName, D) || D <- DelDocs]),
     try App:del_docs(Conn, DbName, PreparedDocs, Options) of
         {'ok', JObjs}=Ok -> kzs_publish:maybe_publish_docs(DbName, Publish, JObjs),
                             kzs_cache:flush_cache_docs(DbName, JObjs),
@@ -144,6 +145,25 @@ copy_doc(#{server := {App, Conn}}, CopySpec, Options) ->
 move_doc(#{server := {App, Conn}}, CopySpec, Options) ->
     App:move_doc(Conn, CopySpec, Options).
 
+-spec prepare_doc_for_del(server(), couchbeam_db(), wh_json:object() | ne_binary()) ->
+                                 wh_json:object().
+prepare_doc_for_del(Conn, Db, <<_/binary>> = DocId) ->
+    prepare_doc_for_del(Conn, Db, wh_json:from_list([{<<"_id">>, DocId}]));
+prepare_doc_for_del(Conn, #db{name=DbName}, Doc) ->
+    Id = wh_doc:id(Doc),
+    DocRev = case wh_doc:revision(Doc) of
+                 'undefined' ->
+                     {'ok', Rev} = lookup_doc_rev(Conn, wh_util:to_binary(DbName), Id),
+                     Rev;
+                 Rev -> Rev
+             end,
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"_id">>, Id}
+         ,{<<"_rev">>, DocRev}
+         ,{<<"_deleted">>, 'true'}
+         | publish_fields(Doc)
+        ])).
 
 -spec prepare_doc_for_save(ne_binary(), wh_json:object()) -> {wh_json:object(), wh_json:object()}.
 -spec prepare_doc_for_save(ne_binary(), wh_json:object(), boolean()) -> {wh_json:object(), wh_json:object()}.
