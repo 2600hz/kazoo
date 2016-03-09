@@ -65,11 +65,12 @@ is_authorized(AccountId, UserId, AppId) ->
             AppJObj = wh_json:get_value(AppId, kzd_apps_store:apps(Doc)),
             Allowed = wh_json:get_value(<<"allowed_users">>, AppJObj, <<"specific">>),
             Users = wh_json:get_value(<<"users">>, AppJObj, []),
-            case {Allowed, Users} of
+            UserIds = [wh_json:get_value(<<"id">>, U, U) || U <- Users],
+            case {Allowed, UserIds} of
                 {<<"all">>, _} -> 'true';
                 {<<"specific">>, []} -> 'false';
-                {<<"specific">>, Users} when is_list(Users) ->
-                    lists:member(UserId, Users);
+                {<<"specific">>, UserIds} when is_list(UserIds) ->
+                    lists:member(UserId, UserIds);
                 {<<"admins">>, _} ->
                     <<"admin">> =:= get_user_priv_level(AccountId, UserId);
                 {_A, _U} ->
