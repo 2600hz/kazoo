@@ -12,6 +12,8 @@
          ,current_state/1
          ,public_fields/1
          ,get/1
+         ,account_active_ports/1
+         ,account_has_active_port/1
          ,normalize_attachments/1
          ,normalize_numbers/1
          ,transition_to_complete/1
@@ -27,6 +29,7 @@
 -include_lib("kazoo_number_manager/include/knm_port_request.hrl").
 
 -define(VIEW_LISTING_SUBMITTED, <<"port_requests/listing_submitted">>).
+-define(ACTIVE_PORT_LISTING, <<"port_requests/active_port_request">>).
 
 -type transition_response() :: {'ok', wh_json:object()} |
                                {'error', 'invalid_state_transition'}.
@@ -77,8 +80,7 @@ public_fields(JObj) ->
 -spec get(ne_binary() | knm_phone_number:knm_phone_number()) ->
                  {'ok', wh_json:object()} |
                  {'error', 'not_found'}.
-get(DID)
-  when is_binary(DID) ->
+get(DID) when is_binary(DID) ->
     ViewOptions = [{'key', DID}, 'include_docs'],
     case
         kz_datamgr:get_results(
@@ -95,6 +97,35 @@ get(DID)
     end;
 get(Number) ->
     ?MODULE:get(knm_phone_number:number(Number)).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec account_active_ports(ne_binary()) -> {'ok', wh_json:object()} |
+                                             {'error', 'not_found'}.
+account_active_ports(AccountId) ->
+    ViewOptions = [{'key', AccountId}, 'include_docs'],
+    case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, ?ACTIVE_PORT_LISTING, ViewOptions) of
+        {'ok', []} -> {'error', 'not_found'};
+        {'ok', Ports} -> {'ok', [wh_json:get_value(<<"doc">>, Doc) || Doc <- Ports]};
+        {'error', _R} ->
+            lager:error("failed to query for account port numbers ~p", [_R]),
+            {'error', 'not_found'}
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec account_has_active_port(ne_binary()) -> boolean().
+account_has_active_port(AccountId) ->
+    case account_active_ports(AccountId) of
+        {'ok', [_|_]} -> 'true';
+        {'error', 'not_found'} -> 'false'
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
