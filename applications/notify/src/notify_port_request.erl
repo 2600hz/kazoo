@@ -94,7 +94,7 @@ create_template_props(<<"v2">>, NotifyJObj, AccountJObj) ->
     PortData = notify_util:json_to_template_props(wh_doc:public_fields(PortDoc)),
     [Number|_]=Numbers = find_numbers(PortData, NotifyJObj),
 
-    NumberString = wh_util:join_binary([Num || {Num, _} <- Numbers], <<" ">>),
+    NumberString = wh_util:join_binary(Numbers, <<" ">>),
 
     Request = [{<<"port">>
                 ,[{<<"service_provider">>, wh_json:get_value(<<"carrier">>, PortDoc)}
@@ -159,12 +159,13 @@ get_default_from() ->
     DefaultFrom = wh_util:to_binary(node()),
     whapps_config:get_binary(?MOD_CONFIG_CAT, <<"default_from">>, DefaultFrom).
 
--spec find_numbers(wh_proplist(), wh_json:object()) -> ne_binaries() | wh_proplists().
+-spec find_numbers(wh_proplist(), wh_json:object()) -> ne_binaries().
 find_numbers(PortData, NotifyJObj) ->
-    case props:get_value(<<"numbers">>, PortData) of
-        'undefined' -> find_numbers(NotifyJObj);
-        Ns -> Ns
-    end.
+    Numbers = case props:get_value(<<"numbers">>, PortData) of
+                  'undefined' -> find_numbers(NotifyJObj);
+                  Ns -> Ns
+              end,
+    [normalize_find_numbers(Number) || Number <- Numbers].
 
 -spec find_numbers(wh_json:object()) -> ne_binaries() | wh_proplists().
 find_numbers(NotifyJObj) ->
@@ -186,6 +187,10 @@ find_port_doc(PortRequestId) ->
         {'error', _} -> wh_json:new()
     end.
 
+-spec normalize_find_numbers(wh_proplist() | ne_binary()) -> ne_binary().
+normalize_find_numbers({Number, _}) -> Number;
+normalize_find_numbers(Number) -> Number.
+  
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
