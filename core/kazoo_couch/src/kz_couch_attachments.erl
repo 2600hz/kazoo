@@ -119,7 +119,7 @@ maybe_add_extension(AName, Options) ->
 
 -spec maybe_add_revision(wh_proplist()) -> binary().
 maybe_add_revision(Options) ->
-    case props:get_value('revision', Options) of
+    case props:get_value('rev', Options) of
         'undefined' -> <<>>;
         Rev -> <<"?rev=", Rev/binary>>
     end.

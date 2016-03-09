@@ -464,7 +464,7 @@ store_url(#state{doc_db=Db
                  ,format=Ext
                  ,should_store={'true', 'local'}
                 }, Rev) ->
-    Options = [{'revision', Rev}
+    Options = [{'rev', Rev}
                ,{'content_type', kz_mime:from_extension(Ext)}
                ,{'doc_type', <<"call_recording">>}
               ],

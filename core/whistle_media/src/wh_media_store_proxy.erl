@@ -213,7 +213,6 @@ try_to_store(#media_store_path{db=Db
     Options = [{'content_type', wh_util:to_list(CT)}
                ,{'content_length', byte_size(Contents)}
                ,{'doc_type', Type}
-               ,{'revision', Rev}
                ,{'rev', Rev}
               ],
     lager:debug("putting ~s onto ~s(~s): ~s", [Attachment, Id, DbName, CT]),
