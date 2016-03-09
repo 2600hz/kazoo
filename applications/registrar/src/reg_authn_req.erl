@@ -105,7 +105,8 @@ create_ccvs(#auth_user{doc=JObj}=AuthUser) ->
              ,{<<"Register-Overwrite-Notify">>, AuthUser#auth_user.register_overwrite_notify}
              ,{<<"Pusher-Application">>, wh_json:get_value([<<"push">>, <<"Token-App">>], JObj)}
              | (create_specific_ccvs(AuthUser, AuthUser#auth_user.method)
-                 ++ generate_security_ccvs(AuthUser))
+                 ++ generate_security_ccvs(AuthUser)
+                 ++ add_custom_tags(JObj))
             ],
     wh_json:from_list(props:filter_undefined(Props)).
 
@@ -572,3 +573,9 @@ maybe_enforce_security({#auth_user{doc=JObj}=User, Acc}) ->
 -spec maybe_set_encryption_flags({auth_user(), wh_proplist()}) -> {auth_user(), wh_proplist()}.
 maybe_set_encryption_flags({#auth_user{doc=JObj}=User, Acc}) ->
     {User, encryption_method_map(Acc, JObj)}.
+
+-spec add_custom_tags(wh_json:object()) -> wh_proplist().
+add_custom_tags(JObj) ->
+    wh_json:to_proplist(
+      wh_json:get_json_value(<<"custom_tags">>, JObj, wh_json:new())
+     ).
