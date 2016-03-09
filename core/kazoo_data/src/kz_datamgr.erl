@@ -862,13 +862,13 @@ del_doc(DbName, Doc, Options) ->
 %% remove documents from the db
 %% @end
 %%--------------------------------------------------------------------
--spec del_docs(text(), wh_json:objects()) ->
+-spec del_docs(text(), wh_json:objects() | ne_binaries()) ->
                       {'ok', wh_json:objects()} |
                       data_error().
 del_docs(DbName, Docs) ->
     del_docs(DbName, Docs, []).
 
--spec del_docs(text(), wh_json:objects(), wh_proplist()) ->
+-spec del_docs(text(), wh_json:objects() | ne_binaries(), wh_proplist()) ->
                       {'ok', wh_json:objects()} |
                       data_error().
 del_docs(DbName, Docs, Options) when is_list(Docs) andalso ?VALID_DBNAME ->
@@ -977,7 +977,7 @@ attachment_url(DbName, DocId, AttachmentId, Options) ->
 %%%===================================================================
 attachment_options(DbName, DocId, Options) ->
     RequiredOptions = [{'doc_type', fun wh_doc:type/1}
-                       ,{'revision', fun wh_doc:revision/1}
+                       ,{'rev', fun wh_doc:revision/1}
                       ],
     attachment_options(DbName, DocId, Options, RequiredOptions).
 
