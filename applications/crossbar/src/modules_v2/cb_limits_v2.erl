@@ -22,8 +22,16 @@
 -define(CB_LIST, <<"limits/crossbar_listing">>).
 -define(PVT_TYPE, <<"limits">>).
 -define(LIMITS_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".", (?PVT_TYPE)/binary>>).
--define(DEFAULT_LEAK_PVT_FIELDS, [<<"allow_prepay">>, <<"allow_postpay">>, <<"max_postpay_amount">>]).
--define(DEFAULT_RESELLER_PVT_FIELDS, [<<"allow_prepay">>, <<"allow_postpay">>, <<"max_postpay_amount">>]).
+-define(DEFAULT_ALLOWED_PVT_UPDATE, [<<"master">>, <<"reseller">>]).
+-define(ALLOWED_PVT_UPDATE, whapps_config:get_non_empty(?LIMITS_CONFIG_CAT, <<"allowed_pvt_updates">>, ?DEFAULT_ALLOWED_PVT_UPDATE)).
+-define(DEFAULT_ALLOWED_UPDATE, [<<"master">>, <<"master-client">>, <<"reseller">>]).
+-define(ALLOWED_UPDATE, whapps_config:get_non_empty(?LIMITS_CONFIG_CAT, <<"allowed_updates">>, ?DEFAULT_ALLOWED_UPDATE)).
+-define(LIMIT_PROPERTIES, [<<"allow_prepay">>, <<"allow_postpay">>, <<"max_postpay_amount">>
+                          ,<<"twoway_trunks">>, <<"inbound_trunks">>, <<"outbound_trunks">>
+                          ,<<"resource_consuming_calls">>, <<"calls">>, <<"burst_trunks">>
+                          ,<<"enabled">>
+                          ]).
+-define(OVERRIDES_KEY, <<"overrides">>).
 
 %%%===================================================================
 %%% API
@@ -77,7 +85,11 @@ process_billing(Context, [{<<"limits">>, _}|_], ?HTTP_GET) ->
     Context;
 process_billing(Context, [{<<"limits">>, _}|_], _Verb) ->
     AccountId = cb_context:account_id(Context),
-    try wh_services:allow_updates(AccountId) andalso is_allowed(Context) of
+    try wh_services:allow_updates(AccountId)
+             andalso (allowed_updates(Context)
+                      orelse allowed_pvt_updates(Context)
+                     )
+    of
         'true' -> Context;
         'false' ->
             Message = <<"Please contact your phone provider to add limits.">>,
@@ -91,27 +103,6 @@ process_billing(Context, [{<<"limits">>, _}|_], _Verb) ->
             crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context)
     end;
 process_billing(Context, _Nouns, _Verb) -> Context.
-
--spec is_allowed(cb_context:context()) -> boolean().
-is_allowed(Context) ->
-    AccountId = cb_context:account_id(Context),
-    AuthAccountId = cb_context:auth_account_id(Context),
-    IsSystemAdmin = wh_util:is_system_admin(AuthAccountId),
-    {'ok', MasterAccount} = whapps_util:get_master_account_id(),
-    case wh_services:find_reseller_id(AccountId) of
-        AuthAccountId ->
-            lager:debug("allowing reseller to update limits"),
-            'true';
-        MasterAccount ->
-            lager:debug("allowing direct account to update limits"),
-            'true';
-        _Else when IsSystemAdmin ->
-            lager:debug("allowing system admin to update limits"),
-            'true';
-        _Else ->
-            lager:debug("sub-accounts of non-master resellers must contact the reseller to change their limits"),
-            'false'
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -134,13 +125,53 @@ validate_limits(Context, ?HTTP_POST) ->
 
 -spec post(cb_context:context()) -> cb_context:context().
 post(Context) ->
+    case have_overrides_changed(Context) of
+        'false' -> do_post(Context);
+        'true' ->
+            case allowed_pvt_updates(Context) of
+                'true' -> handle_overrides(Context);
+                'false' ->
+                    Message = <<"You are not authorized to modify overrides, please resubmit without this property.">>,
+                    cb_context:add_system_error(
+                      'forbidden'
+                      ,wh_json:from_list([{<<"message">>, Message}])
+                      ,Context
+                     )
+            end
+    end.
+
+-spec have_overrides_changed(cb_context:contex()) -> boolean().
+have_overrides_changed(Context) ->
+    ReqData = cb_context:req_data(Context),
+    case wh_json:get_ne_value(?OVERRIDES_KEY, ReqData) of
+        'undefined' -> 'false';
+        Overrides ->
+            Doc = cb_context:doc(Context),
+            lists:any(fun(Key) ->
+                              wh_json:get_value(Key, Overrides)
+                                  =/= wh_json:get_value(<<"pvt_", Key/binary>>, Doc)
+                      end
+                     ,?LIMIT_PROPERTIES
+                     )
+    end.
+
+-spec handle_overrides(cb_context:context()) -> cb_context:context().
+handle_overrides(Context) ->
+    Overrides = wh_json:get_value(?OVERRIDES_KEY, cb_context:req_data(Context)),
+    ReqData = lists:foldl(fun(Key, J) ->
+                                  Value = wh_json:get_value(Key, Overrides),
+                                  wh_json:set_value(<<"pvt_", Key/binary>>, Value, J)
+                          end
+                         ,cb_context:doc(Context)
+                         ,wh_json:get_keys(Overrides)
+                         ),
+    do_post(cb_context:set_doc(Context, wh_json:delete_key(?OVERRIDES_KEY, ReqData))).
+
+-spec do_post(cb_context:context()) -> cb_context:context().
+do_post(Context) ->
     Callback =
         fun() ->
-                Routines = [fun crossbar_doc:save/1
-                            ,fun maybe_leak_pvt_fields/1
-                            ,fun maybe_reseller_pvt_fields/1
-                           ],
-                cb_context:setters(Context, Routines)
+                crossbar_doc:save(Context)
         end,
     crossbar_services:maybe_dry_run(Context, Callback).
 
@@ -156,8 +187,7 @@ post(Context) ->
 -spec load_limit(cb_context:context()) -> cb_context:context().
 load_limit(Context) ->
     Routines = [fun maybe_handle_load_failure/1
-                ,fun maybe_leak_pvt_fields/1
-                ,fun maybe_reseller_pvt_fields/1
+               ,fun add_overrides/1
                ],
     cb_context:setters(crossbar_doc:load(?PVT_TYPE, Context), Routines).
 
@@ -170,7 +200,7 @@ load_limit(Context) ->
 -spec on_successful_validation(cb_context:context()) -> cb_context:context().
 on_successful_validation(Context) ->
     Routines = [fun maybe_handle_load_failure/1
-                ,fun maybe_set_pvt_fields/1
+                ,fun add_overrides/1
                ],
     cb_context:setters(crossbar_doc:load_merge(?PVT_TYPE, Context), Routines).
 
@@ -203,59 +233,49 @@ maybe_handle_load_failure(Context, 404) ->
                         ]);
 maybe_handle_load_failure(Context, _RespCode) -> Context.
 
--spec maybe_leak_pvt_fields(cb_context:context()) -> cb_context:context().
-maybe_leak_pvt_fields(Context) ->
-    LeakFields = whapps_config:get_non_empty(?LIMITS_CONFIG_CAT, <<"leak_pvt_fields">>, ?DEFAULT_LEAK_PVT_FIELDS),
-    leak_pvt_fields(Context, cb_context:doc(Context), LeakFields).
-
--spec maybe_reseller_pvt_fields(cb_context:context()) -> cb_context:context().
-maybe_reseller_pvt_fields(Context) ->
-    case is_allowed(Context) of
+-spec allowed_updates(cb_context:context()) -> boolean().
+allowed_updates(Context) ->
+    Type = get_authorized_type(Context),
+    case lists:member(Type, ?ALLOWED_UPDATE) of
+        'false' -> 'false';
         'true' ->
-            ResellerFields = whapps_config:get_non_empty(?LIMITS_CONFIG_CAT, <<"reseller_pvt_fields">>, ?DEFAULT_RESELLER_PVT_FIELDS),
-            leak_pvt_fields(Context, cb_context:doc(Context), ResellerFields);
-        'false' -> Context
+            lager:debug("allowing ~s to update limits"),
+            'true'
     end.
 
--spec leak_pvt_fields(cb_context:context(), wh_json:object(), ne_binaries()) -> cb_context:context().
-leak_pvt_fields(Context, 'undefined', _Fields) -> Context;
-leak_pvt_fields(Context, _Doc, []) -> Context;
-leak_pvt_fields(Context, Doc, Fields) when is_list(Fields) ->
-    {_, LeakData} = lists:foldl(fun leak_field/2, {Doc, wh_json:new()}, Fields),
-    RespData = cb_context:resp_data(Context),
-    cb_context:set_resp_data(Context, wh_json:merge_recursive(RespData, LeakData));
-leak_pvt_fields(Context, _Doc, _Fields) -> Context.
+-spec allowed_pvt_updates(cb_context:context()) -> boolean().
+allowed_pvt_updates(Context) ->
+    Type = get_authorized_type(Context),
+    case lists:member(Type, ?ALLOWED_PVT_UPDATE) of
+        'false' -> 'false';
+        'true' ->
+            lager:debug("allowing ~s to update limits overrides (pvt)"),
+            'true'
+    end.
 
--spec leak_field(ne_binary(), {wh_json:object(), wh_json:object()}) -> {wh_json:object(), wh_json:object()}.
-leak_field(<<"pvt_", Field/binary>>, {Doc, LeakData}) -> leak_field(Field, {Doc, LeakData});
-leak_field(Field, {Doc, LeakData}) when is_binary(Field)->
-    case wh_json:get_value(<<"pvt_", Field/binary>>, Doc) of
-        'undefined' -> {Doc, LeakData};
-        Value -> {Doc, wh_json:set_value(Field, Value, LeakData)}
-    end;
-leak_field(_Field, {Doc, LeakData}) -> {Doc, LeakData}.
+-spec get_authorized_type(cb_context:context()) -> ne_binary().
+get_authorized_type(Context) ->
+    AuthAccountId = cb_context:auth_account_id(Context),
+    IsSystemAdmin = wh_util:is_system_admin(AuthAccountId),
+    {'ok', MasterAccount} = whapps_util:get_master_account_id(),
+    case wh_services:find_reseller_id(cb_context:account_id(Context)) of
+        _Else when IsSystemAdmin -> <<"master">>;
+        AuthAccountId -> <<"reseller">>;
+        MasterAccount -> <<"master-client">>;
+        _Else -> <<"reseller-client">>
+    end.
 
--spec maybe_set_pvt_fields(cb_context:context()) -> cb_context:context().
-maybe_set_pvt_fields(Context) ->
-    ResellerFields = whapps_config:get_non_empty(?LIMITS_CONFIG_CAT, <<"reseller_pvt_fields">>, ?DEFAULT_RESELLER_PVT_FIELDS),
-    maybe_leak_pvt_fields(set_pvt_fields(Context, cb_context:doc(Context), ResellerFields)).
+-spec add_overrides(cb_context:context()) -> cb_context:context().
+add_overrides(Context) ->
+    Doc = cb_context:doc(Context),
+    Resp = lists:foldl(fun(Key, JObj) ->
+                               case wh_json:get_ne_value(<<"pvt_", Key/binary>>, Doc) of
+                                   'undefined' -> JObj;
+                                   Value -> wh_json:set_value([?OVERRIDES_KEY, Key], Value, JObj)
+                               end
+                       end
+                      ,wh_json:set_value(?OVERRIDES_KEY, wh_json:new(), cb_context:resp_data(Context))
+                      ,?LIMIT_PROPERTIES
+                      ),
+    cb_context:set_resp_data(Context, Resp).
 
--spec set_pvt_fields(cb_context:context(), wh_json:object(), ne_binaries()) -> cb_context:context().
-set_pvt_fields(Context, _Doc, []) -> Context;
-set_pvt_fields(Context, Doc, Fields) when is_list(Fields) ->
-    NewDoc = lists:foldl(fun set_pvt_field/2, Doc, Fields),
-    cb_context:set_doc(Context, NewDoc);
-set_pvt_fields(Context, _Doc, _Fields) -> Context.
-
--spec set_pvt_field(ne_binary(), {wh_json:object(), wh_json:object()}) -> {wh_json:object(), wh_json:object()}.
-set_pvt_field(<<"pvt_", Field/binary>>, Doc) -> set_pvt_field(Field, Doc);
-set_pvt_field(Field, Doc) when is_binary(Field)->
-    NewDoc = wh_json:delete_key(<<"pvt_", Field/binary>>, Doc),
-    case wh_json:get_value(Field, NewDoc) of
-        'undefined' -> NewDoc;
-        Value ->
-            wh_json:delete_key(Field,
-                               wh_json:set_value(<<"pvt_", Field/binary>>, Value, NewDoc)
-                              )
-    end;
-set_pvt_field(_Field, Doc) -> Doc.
