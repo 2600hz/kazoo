@@ -1246,11 +1246,11 @@ create_new_account_db(Context) ->
             _ = crossbar_bindings:map(<<"account.created">>, C),
             lager:debug("alerted listeners of new account"),
 
-            _ = wh_services:reconcile(AccountDb),
-            lager:debug("performed initial services reconcile"),
-
             _ = create_account_mod(cb_context:account_id(C)),
             lager:debug("created this month's MODb for account"),
+
+            _ = wh_services:reconcile(AccountDb),
+            lager:debug("performed initial services reconcile"),
 
             _ = create_first_transaction(cb_context:account_id(C)),
             lager:debug("created first transaction for account"),
