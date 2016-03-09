@@ -21,6 +21,9 @@
 
 -define(CB_LIST, <<"limits/crossbar_listing">>).
 -define(PVT_TYPE, <<"limits">>).
+-define(LIMITS_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".", (?PVT_TYPE)/binary>>).
+-define(DEFAULT_LEAK_PVT_FIELDS, [<<"allow_prepay">>, <<"allow_postpay">>, <<"max_postpay_amount">>]).
+-define(DEFAULT_RESELLER_PVT_FIELDS, [<<"allow_prepay">>, <<"allow_postpay">>, <<"max_postpay_amount">>]).
 
 %%%===================================================================
 %%% API
@@ -133,7 +136,11 @@ validate_limits(Context, ?HTTP_POST) ->
 post(Context) ->
     Callback =
         fun() ->
-            crossbar_doc:save(Context)
+                Routines = [fun crossbar_doc:save/1
+                            ,fun maybe_leak_pvt_fields/1
+                            ,fun maybe_reseller_pvt_fields/1
+                           ],
+                cb_context:setters(Context, Routines)
         end,
     crossbar_services:maybe_dry_run(Context, Callback).
 
@@ -148,7 +155,11 @@ post(Context) ->
 %%--------------------------------------------------------------------
 -spec load_limit(cb_context:context()) -> cb_context:context().
 load_limit(Context) ->
-    maybe_handle_load_failure(crossbar_doc:load(?PVT_TYPE, Context)).
+    Routines = [fun maybe_handle_load_failure/1
+                ,fun maybe_leak_pvt_fields/1
+                ,fun maybe_reseller_pvt_fields/1
+               ],
+    cb_context:setters(crossbar_doc:load(?PVT_TYPE, Context), Routines).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -158,7 +169,10 @@ load_limit(Context) ->
 %%--------------------------------------------------------------------
 -spec on_successful_validation(cb_context:context()) -> cb_context:context().
 on_successful_validation(Context) ->
-    maybe_handle_load_failure(crossbar_doc:load_merge(?PVT_TYPE, Context)).
+    Routines = [fun maybe_handle_load_failure/1
+                ,fun maybe_set_pvt_fields/1
+               ],
+    cb_context:setters(crossbar_doc:load_merge(?PVT_TYPE, Context), Routines).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -188,3 +202,60 @@ maybe_handle_load_failure(Context, 404) ->
                          ,{fun cb_context:set_doc/2, crossbar_doc:update_pvt_parameters(JObj, Context)}
                         ]);
 maybe_handle_load_failure(Context, _RespCode) -> Context.
+
+-spec maybe_leak_pvt_fields(cb_context:context()) -> cb_context:context().
+maybe_leak_pvt_fields(Context) ->
+    LeakFields = whapps_config:get_non_empty(?LIMITS_CONFIG_CAT, <<"leak_pvt_fields">>, ?DEFAULT_LEAK_PVT_FIELDS),
+    leak_pvt_fields(Context, cb_context:doc(Context), LeakFields).
+
+-spec maybe_reseller_pvt_fields(cb_context:context()) -> cb_context:context().
+maybe_reseller_pvt_fields(Context) ->
+    case is_allowed(Context) of
+        'true' ->
+            ResellerFields = whapps_config:get_non_empty(?LIMITS_CONFIG_CAT, <<"reseller_pvt_fields">>, ?DEFAULT_RESELLER_PVT_FIELDS),
+            leak_pvt_fields(Context, cb_context:doc(Context), ResellerFields);
+        'false' -> Context
+    end.
+
+-spec leak_pvt_fields(cb_context:context(), wh_json:object(), ne_binaries()) -> cb_context:context().
+leak_pvt_fields(Context, 'undefined', _Fields) -> Context;
+leak_pvt_fields(Context, _Doc, []) -> Context;
+leak_pvt_fields(Context, Doc, Fields) when is_list(Fields) ->
+    {_, LeakData} = lists:foldl(fun leak_field/2, {Doc, wh_json:new()}, Fields),
+    RespData = cb_context:resp_data(Context),
+    cb_context:set_resp_data(Context, wh_json:merge_recursive(RespData, LeakData));
+leak_pvt_fields(Context, _Doc, _Fields) -> Context.
+
+-spec leak_field(ne_binary(), {wh_json:object(), wh_json:object()}) -> {wh_json:object(), wh_json:object()}.
+leak_field(<<"pvt_", Field/binary>>, {Doc, LeakData}) -> leak_field(Field, {Doc, LeakData});
+leak_field(Field, {Doc, LeakData}) when is_binary(Field)->
+    case wh_json:get_value(<<"pvt_", Field/binary>>, Doc) of
+        'undefined' -> {Doc, LeakData};
+        Value -> {Doc, wh_json:set_value(Field, Value, LeakData)}
+    end;
+leak_field(_Field, {Doc, LeakData}) -> {Doc, LeakData}.
+
+-spec maybe_set_pvt_fields(cb_context:context()) -> cb_context:context().
+maybe_set_pvt_fields(Context) ->
+    ResellerFields = whapps_config:get_non_empty(?LIMITS_CONFIG_CAT, <<"reseller_pvt_fields">>, ?DEFAULT_RESELLER_PVT_FIELDS),
+    maybe_leak_pvt_fields(set_pvt_fields(Context, cb_context:doc(Context), ResellerFields)).
+
+-spec set_pvt_fields(cb_context:context(), wh_json:object(), ne_binaries()) -> cb_context:context().
+set_pvt_fields(Context, _Doc, []) -> Context;
+set_pvt_fields(Context, Doc, Fields) when is_list(Fields) ->
+    NewDoc = lists:foldl(fun set_pvt_field/2, Doc, Fields),
+    cb_context:set_doc(Context, NewDoc);
+set_pvt_fields(Context, _Doc, _Fields) -> Context.
+
+-spec set_pvt_field(ne_binary(), {wh_json:object(), wh_json:object()}) -> {wh_json:object(), wh_json:object()}.
+set_pvt_field(<<"pvt_", Field/binary>>, Doc) -> set_pvt_field(Field, Doc);
+set_pvt_field(Field, Doc) when is_binary(Field)->
+    NewDoc = wh_json:delete_key(<<"pvt_", Field/binary>>, Doc),
+    case wh_json:get_value(Field, NewDoc) of
+        'undefined' -> NewDoc;
+        Value ->
+            wh_json:delete_key(Field,
+                               wh_json:set_value(<<"pvt_", Field/binary>>, Value, NewDoc)
+                              )
+    end;
+set_pvt_field(_Field, Doc) -> Doc.
