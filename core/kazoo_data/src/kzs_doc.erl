@@ -162,7 +162,7 @@ prepare_doc_for_del(Server, DbName, Doc) ->
         [{<<"_id">>, Id}
          ,{<<"_rev">>, DocRev}
          ,{<<"_deleted">>, 'true'}
-         | publish_fields(Doc)
+         | kzs_publish:publish_fields(Doc)
         ])).
 
 -spec prepare_doc_for_save(ne_binary(), wh_json:object()) -> {wh_json:object(), wh_json:object()}.
