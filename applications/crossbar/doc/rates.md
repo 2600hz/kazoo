@@ -34,6 +34,7 @@ For bulk uploading. CSV rows can be formatted in the following ways:
 * `Prefix, ISO, Desc, InternalRate, Rate`
 * `Prefix, ISO, Desc, Surcharge, InternalRate, Rate`
 * `Prefix, ISO, Desc, InternalSurcharge, Surcharge, InternalRate, Rate`
+* `Prefix, ISO, Desc, InternalSurcharge, Surcharge, Internal_rate, Rate, Routes, RateIncrement, RateMinimum, Direction`
 
 A US-1 row might look like:
 
