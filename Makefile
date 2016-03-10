@@ -1,9 +1,10 @@
 ROOT = .
 RELX = $(ROOT)/utils/relx/relx
+ELVIS = $(ROOT)/utils/elvis/elvis
 
 KAZOODIRS = core/Makefile applications/Makefile
 
-.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release tar-release release
+.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release tar-release release elvis
 
 all: compile rel/dev-vm.args
 
@@ -129,3 +130,7 @@ sup_completion: kazoo
 	@$(if $(wildcard $(sup_completion_file)), rm $(sup_completion_file))
 	@$(ROOT)/scripts/sup-build-autocomplete.escript $(sup_completion_file) applications/ core/
 	@echo SUP Bash completion file written at $(sup_completion_file)
+
+
+elvis:
+	$(ELVIS) rock

@@ -42,4 +42,4 @@ after_success:
   - # ERL_LIBS="$HOME/proper" make eunit
   - make compile-test
   - make eunit
-  - ./scripts/check-whitespace.sh core/ applications/
+  - make elvis
