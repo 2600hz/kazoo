@@ -888,7 +888,9 @@ load_paginated_descendants(AccountId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_siblings(ne_binary(), cb_context:context()) -> cb_context:context().
 load_siblings(AccountId, Context) ->
-    case wh_util:is_system_admin(cb_context:auth_account_id(Context)) of
+    case whapps_config:get_is_true(?ACCOUNTS_CONFIG_CAT, <<"allow_unprivileged_get_siblings">>, 'true')
+        orelse wh_util:is_system_admin(cb_context:auth_account_id(Context))
+    of
         'true' -> load_siblings(AccountId, Context, cb_context:api_version(Context));
         'false' -> cb_context:add_system_error('forbidden', Context)
     end.
