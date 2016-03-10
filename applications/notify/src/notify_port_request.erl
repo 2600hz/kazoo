@@ -190,7 +190,7 @@ find_port_doc(PortRequestId) ->
 -spec normalize_find_numbers(wh_proplist() | ne_binary()) -> ne_binary().
 normalize_find_numbers({Number, _}) -> Number;
 normalize_find_numbers(Number) -> Number.
-  
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
