@@ -341,18 +341,19 @@ extract_file_body(Context, ContentType, Req0) ->
                                           halt_return().
 handle_max_filesize_exceeded(Context, Req1) ->
     Maximum = ?MAX_UPLOAD_SIZE,
-    MaxLen = wh_util:to_binary(Maximum),
+    MaxSize = wh_util:to_binary(Maximum),
+
     lager:error("file size exceeded, max is ~p", [Maximum]),
-    ?MODULE:halt(Req1
-                 ,cb_context:add_validation_error(<<"file">>
-                                                  ,<<"maxLength">>
-                                                  ,wh_json:from_list(
-                                                     [{<<"message">>, <<"Files must not be more than ", MaxLen/binary, " bytes">>}
-                                                      ,{<<"target">>, Maximum}
-                                                     ])
-                                                  ,cb_context:set_resp_error_code(Context, 413) %% payload too large
-                                                 )
-                ).
+
+    Message = <<"Files must not be more than ", MaxSize/binary, " bytes">>,
+    JObj = wh_json:from_list([{<<"message">>, Message}, {<<"target">>, Maximum}]),
+    Context1 = cb_context:add_validation_error(<<"file">>
+                                               ,<<"maxSize">>
+                                               ,JObj
+                                               ,cb_context:set_resp_error_code(Context, 413)
+                                              ),
+
+    ?MODULE:halt(Req1, Context1).
 
 -spec handle_file_contents(cb_context:context(), ne_binary(), cowboy_req:req(), binary()) ->
                                   {cb_context:context(), cowboy_req:req()} |
@@ -1201,9 +1202,11 @@ halt(Req0, Context) ->
 
     Req4 = cowboy_req:set_resp_header(<<"x-request-id">>, cb_context:req_id(Context), Req3),
 
+    Req5 = cowboy_req:set_resp_header(<<"content-type">>, <<"application/json">>, Req4),
+
     lager:debug("setting status code: ~p", [StatusCode]),
-    {'ok', Req5} = cowboy_req:reply(StatusCode, Req4),
-    {'halt', Req5, cb_context:set_resp_status(Context, 'halt')}.
+    {'ok', Req6} = cowboy_req:reply(StatusCode, Req5),
+    {'halt', Req6, cb_context:set_resp_status(Context, 'halt')}.
 
 -spec create_event_name(cb_context:context(), ne_binary() | ne_binaries()) -> ne_binary().
 create_event_name(Context, Segments) when is_list(Segments) ->
