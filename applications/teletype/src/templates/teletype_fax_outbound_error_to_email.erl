@@ -172,7 +172,7 @@ from_data(DataJObj) ->
     FromE164 = wh_json:get_value(<<"from_user">>, DataJObj),
 
     props:filter_undefined(
-      [{<<"from_user">>, wnm_util:pretty_print(FromE164)}
+      [{<<"from_user">>, knm_util:pretty_print(FromE164)}
        ,{<<"from_realm">>, wh_json:get_value(<<"from_realm">>, DataJObj)}
       ]).
 
@@ -180,7 +180,7 @@ from_data(DataJObj) ->
 to_data(DataJObj) ->
     ToE164 = wh_json:get_value(<<"to_user">>, DataJObj),
     props:filter_undefined(
-      [{<<"user">>, wnm_util:pretty_print(ToE164)}
+      [{<<"user">>, knm_util:pretty_print(ToE164)}
        ,{<<"realm">>, wh_json:get_value(<<"to_realm">>, DataJObj)}
       ]).
 

@@ -72,7 +72,7 @@ inbound_account_by_ip(Request, IP) ->
 -spec determine_account_id_from_number(j5_request:request()) -> 'ok'.
 determine_account_id_from_number(Request) ->
     Number = j5_request:number(Request),
-    case wh_number_manager:lookup_account_by_number(Number) of
+    case knm_number:lookup_account(Number) of
         {'ok', AccountId, Props} ->
             maybe_local_resource(AccountId, Props, Request);
         {'error', {'account_disabled', AccountId}} ->
@@ -90,7 +90,7 @@ determine_account_id_from_number(Request) ->
 
 -spec maybe_local_resource(ne_binary(), wh_proplist(), j5_request:request()) -> 'ok'.
 maybe_local_resource(AccountId, Props, Request) ->
-    case wh_number_properties:is_local_number(Props) of
+    case knm_number:is_local_number(Props) of
         'true' -> maybe_authz_local_resource(AccountId, Request);
         'false' ->
             maybe_account_limited(

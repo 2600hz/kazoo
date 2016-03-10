@@ -60,7 +60,7 @@ store(Db, Id, Attachment) ->
                    {'error', any()}.
 store(Db, Id, Attachment, Options) ->
     JObj = wh_json:from_list([{<<"Stream-Type">>, <<"store">>}]),
-    Rev = props:get_value('revision', Options),
+    Rev = props:get_value('rev', Options),
     Type = props:get_value('doc_type', Options),
     case wh_media_file:get_uri([Db, Id, Type, Rev, Attachment], JObj) of
         {'error', _}=E -> E;

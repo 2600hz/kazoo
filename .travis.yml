@@ -16,8 +16,10 @@ addons:
       - xsltproc
 
 cache:
+  apt: true
   directories:
     - $HOME/proper
+    - $TRAVIS_BUILD_DIR/deps
 
 sudo: false
 
@@ -36,6 +38,8 @@ after_success:
   - make build-plt
   - ./scripts/check-dialyzer.escript .kazoo.plt $files
   - make build-release
+  - # ERL_LIBS="$HOME/proper" ERLC_OPTS='-DPROPER' make compile-test
+  - # ERL_LIBS="$HOME/proper" make eunit
   - make compile-test
-  - ERL_LIBS="$HOME/proper" make eunit
+  - make eunit
   - ./scripts/check-whitespace.sh core/ applications/

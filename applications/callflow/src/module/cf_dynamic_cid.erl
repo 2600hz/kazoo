@@ -173,7 +173,7 @@ proceed_with_call(NewCallerIdName, NewCallerIdNumber, Dest, Data, Call) ->
                ,{fun whapps_call:set_caller_id_name/2, NewCallerIdName}
               ],
     cf_exe:set_call(whapps_call:exec(Updates, Call)),
-    Number = wnm_util:to_e164(Dest),
+    Number = knm_converters:normalize(Dest),
     lager:info("send the call onto real destination of: ~s", [Number]),
     maybe_route_to_callflow(Data, Call, Number).
 
@@ -241,7 +241,7 @@ should_restrict_call(Call, Number) ->
     case  cf_endpoint:get(Call) of
         {'error', _} -> 'false';
         {'ok', JObj} ->
-            Classification = wnm_util:classify_number(Number),
+            Classification = knm_converters:classify(Number),
             lager:info("classified number as ~s", [Classification]),
             wh_json:get_value([<<"call_restriction">>, Classification, <<"action">>], JObj) =:= <<"deny">>
     end.
@@ -254,7 +254,7 @@ should_restrict_call(Call, Number) ->
 %%--------------------------------------------------------------------
 -spec get_list_entry(wh_json:object(), whapps_call:call()) ->
                             {wh_json:object(), binary()} |
-                            {'error', kz_datamgr:couchbeam_error()}.
+                            {'error', kz_data:data_error()}.
 get_list_entry(Data, Call) ->
     ListId = wh_json:get_ne_value(<<"id">>, Data),
     AccountDb = whapps_call:account_db(Call),
@@ -279,7 +279,7 @@ get_list_entry(Data, Call) ->
 
 -spec get_lists_entry(wh_json:object(), whapps_call:call()) ->
                              {binary(), binary(), binary()} |
-                             {'error', kz_datamgr:couchbeam_error()}.
+                             {'error', kz_data:data_error()}.
 get_lists_entry(Data, Call) ->
     ListId = wh_json:get_ne_value(<<"id">>, Data),
     AccountDb = whapps_call:account_db(Call),

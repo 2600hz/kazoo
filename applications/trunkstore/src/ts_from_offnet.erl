@@ -184,8 +184,8 @@ try_failover_e164(State, ToDID) ->
 -spec get_endpoint_data(wh_json:object()) -> {'endpoint', wh_json:object()}.
 get_endpoint_data(JObj) ->
     {ToUser, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
-    ToDID = wnm_util:to_e164(ToUser),
-    case wh_number_manager:lookup_account_by_number(ToDID) of
+    ToDID = knm_converters:normalize(ToUser),
+    case knm_number:lookup_account(ToDID) of
         {'ok', AccountId, NumberProps} ->
             get_endpoint_data(JObj, ToDID, AccountId, NumberProps);
         _Else ->
@@ -195,7 +195,7 @@ get_endpoint_data(JObj) ->
 
 -spec get_endpoint_data(wh_json:object(), ne_binary(), ne_binary(), wh_proplist()) -> {'endpoint', wh_json:object()}.
 get_endpoint_data(JObj, ToDID, AccountId, NumberProps) ->
-    ForceOut = wh_number_properties:should_force_outbound(NumberProps),
+    ForceOut = knm_number:should_force_outbound(NumberProps),
     lager:info("building endpoint for account id ~s with force out ~s", [AccountId, ForceOut]),
     RoutingData1 = routing_data(ToDID, AccountId),
 
@@ -241,8 +241,8 @@ routing_data(ToDID, AccountId, Settings) ->
     DIDOptions = wh_json:get_value(<<"DID_Opts">>, Settings, wh_json:new()),
     HuntAccountId = wh_json:get_value([<<"server">>, <<"hunt_account_id">>], Settings),
     RouteOpts = wh_json:get_value(<<"options">>, DIDOptions, []),
-    NumConfig = case wh_number_manager:get_public_fields(ToDID, AccountId) of
-                    {'ok', Fields} -> Fields;
+    NumConfig = case knm_number:get(ToDID, [{'auth_by', AccountId}]) of
+                    {'ok', KNum} -> knm_number:to_public_json(KNum);
                     {'error', _} -> wh_json:new()
                 end,
     AuthU = wh_json:get_value(<<"auth_user">>, AuthOpts),

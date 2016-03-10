@@ -61,7 +61,7 @@ reconcile_cdr(_, _) -> 'ok'.
 %%--------------------------------------------------------------------
 -spec eligible_for_flat_rate(j5_request:request()) -> boolean().
 eligible_for_flat_rate(Request) ->
-    Number = wnm_util:to_e164(j5_request:number(Request)),
+    Number = knm_converters:normalize(j5_request:number(Request)),
     TrunkWhitelist = ?WHITELIST,
     TrunkBlacklist = ?BLACKLIST,
     (wh_util:is_empty(TrunkWhitelist)

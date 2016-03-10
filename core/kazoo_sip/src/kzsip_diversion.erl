@@ -55,7 +55,7 @@ new() -> wh_json:new().
 -spec user(diversion()) -> api_binary().
 
 user(JObj) ->
-    wnm_sip:user(wnm_sip:parse(address(JObj))).
+    knm_sip:user(knm_sip:parse(address(JObj))).
 address(JObj) ->
     wh_json:get_ne_binary_value(?PARAM_ADDRESS, JObj).
 reason(JObj) ->
@@ -87,9 +87,9 @@ extensions_fold({_K, _V}=Extention, Acc) ->
 -spec set_counter(diversion(), non_neg_integer()) -> diversion().
 
 set_user(JObj, User) ->
-    Address = wnm_sip:parse(address(JObj)),
-    Address1 = wnm_sip:set_user(Address, User),
-    set_address(JObj, list_to_binary([<<"<">>, wnm_sip:encode(Address1), <<">">>])).
+    Address = knm_sip:parse(address(JObj)),
+    Address1 = knm_sip:set_user(Address, User),
+    set_address(JObj, list_to_binary([<<"<">>, knm_sip:encode(Address1), <<">">>])).
 set_address(JObj, Address) ->
     wh_json:set_value(?PARAM_ADDRESS, Address, JObj).
 set_reason(JObj, Reason) ->

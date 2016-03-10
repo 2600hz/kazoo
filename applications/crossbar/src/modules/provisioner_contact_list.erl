@@ -166,7 +166,7 @@ split_contact_numbers(Numbers) ->
 split_contact_numbers(Results, []) ->
     Results;
 split_contact_numbers({External, Internal}, [Number|Numbers]) ->
-    case wnm_util:is_reconcilable(Number) of
+    case knm_converters:is_reconcilable(Number) of
         true ->
             split_contact_numbers({[Number|External], Internal}, Numbers);
         false ->

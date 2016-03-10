@@ -107,7 +107,7 @@ lookup_did(DID, AccountId) ->
             Resp;
         {'error', 'not_found'} ->
             Options = [{'key', DID}],
-            CacheProps = [{'origin', [{'db', wnm_util:number_to_db_name(DID), DID}, {'type', <<"number">>}]}],
+            CacheProps = [{'origin', [{'db', knm_converters:to_db(DID), DID}, {'type', <<"number">>}]}],
             case kz_datamgr:get_results(AccountDb, ?TS_VIEW_DIDLOOKUP, Options) of
                 {'ok', []} ->
                     lager:info("cache miss for ~s, no results", [DID]),
@@ -215,14 +215,14 @@ get_call_duration(JObj) ->
 -spec invite_format(ne_binary(), ne_binary()) -> wh_proplist().
 invite_format(<<"e.164">>, To) ->
     [{<<"Invite-Format">>, <<"e164">>}
-     ,{<<"To-DID">>, wnm_util:to_e164(To)}
+     ,{<<"To-DID">>, knm_converters:normalize(To)}
     ];
 invite_format(<<"e164">>, To) ->
     [{<<"Invite-Format">>, <<"e164">>}
-     ,{<<"To-DID">>, wnm_util:to_e164(To)}
+     ,{<<"To-DID">>, knm_converters:normalize(To)}
     ];
 invite_format(<<"e164_without_plus">>, To) ->
-    case wnm_util:to_e164(To) of
+    case knm_converters:normalize(To) of
         <<$+, PluslessDID/binary>> ->
             lager:info("while processing 'e164_without_plus' flag, DID ~s converted to E.164 with truncated '+': ~s",[To, PluslessDID]),
             [{<<"Invite-Format">>, <<"e164">>}
@@ -235,19 +235,19 @@ invite_format(<<"e164_without_plus">>, To) ->
     end;
 invite_format(<<"1npanxxxxxx">>, To) ->
     [{<<"Invite-Format">>, <<"1npan">>}
-     ,{<<"To-DID">>, wnm_util:to_1npan(To)}
+     ,{<<"To-DID">>, knm_converters:to_1npan(To)}
     ];
 invite_format(<<"1npan">>, To) ->
     [{<<"Invite-Format">>, <<"1npan">>}
-     ,{<<"To-DID">>, wnm_util:to_1npan(To)}
+     ,{<<"To-DID">>, knm_converters:to_1npan(To)}
     ];
 invite_format(<<"npanxxxxxx">>, To) ->
     [{<<"Invite-Format">>, <<"npan">>}
-     ,{<<"To-DID">>, wnm_util:to_npan(To)}
+     ,{<<"To-DID">>, knm_converters:to_npan(To)}
     ];
 invite_format(<<"npan">>, To) ->
     [{<<"Invite-Format">>, <<"npan">>}
-     ,{<<"To-DID">>, wnm_util:to_npan(To)}
+     ,{<<"To-DID">>, knm_converters:to_npan(To)}
     ];
 invite_format(_, _) ->
     [{<<"Invite-Format">>, <<"username">>}].
@@ -340,15 +340,15 @@ maybe_ensure_cid_valid('emergency', ECIDNum, _FromUser, _AccountId) ->
 -spec validate_external_cid(api_binary(), ne_binary(), ne_binary()) -> ne_binary().
 validate_external_cid(CIDNum, FromUser, AccountId) ->
     lager:info("ensure_valid_caller_id flag detected, will check whether CID is legal..."),
-    case wh_number_manager:lookup_account_by_number(CIDNum) of
+    case knm_number:lookup_account(CIDNum) of
         {'ok', AccountId, _} -> CIDNum;
         _Else -> validate_from_user(FromUser, AccountId)
     end.
 
 -spec validate_from_user(ne_binary(), ne_binary()) -> ne_binary().
 validate_from_user(FromUser, AccountId) ->
-    NormalizedFromUser = wnm_util:normalize_number(FromUser),
-    case wh_number_manager:lookup_account_by_number(NormalizedFromUser) of
+    NormalizedFromUser = knm_converters:normalize(FromUser),
+    case knm_number:lookup_account(NormalizedFromUser) of
         {'ok', AccountId, _} ->
             lager:info("CID Number derived from CID Name, normalized and set to: ~s", [NormalizedFromUser]),
             NormalizedFromUser;
@@ -364,7 +364,7 @@ maybe_restrict_call(#ts_callflow_state{acctid=AccountId
                                       }
                     ,Command) ->
     Number = props:get_value(<<"To-DID">>, Command),
-    Classification = wnm_util:classify_number(Number),
+    Classification = knm_converters:classify(Number),
     lager:debug("Trunkstore classified number as ~p", [Classification]),
     Username = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Username">>], RRObj),
     Realm = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Realm">>], RRObj),

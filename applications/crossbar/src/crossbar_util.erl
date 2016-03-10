@@ -1096,7 +1096,7 @@ format_emergency_caller_id_number(Context, Emergency) ->
     case wh_json:get_value(<<"number">>, Emergency) of
         'undefined' -> Context;
         Number ->
-            NEmergency = wh_json:set_value(<<"number">>, wnm_util:to_e164(Number), Emergency),
+            NEmergency = wh_json:set_value(<<"number">>, knm_converters:normalize(Number), Emergency),
             CallerId = cb_context:req_value(Context, <<"caller_id">>),
             NCallerId = wh_json:set_value(?KEY_EMERGENCY, NEmergency, CallerId),
 

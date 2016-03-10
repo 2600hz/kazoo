@@ -32,3 +32,4 @@ core/whistle/src/kz_mime.erl
 core/whistle/mime.types
 
 applications/*/priv/archive_data/*
+

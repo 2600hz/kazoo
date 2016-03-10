@@ -400,7 +400,7 @@ get_inbound_destination(JObj) ->
     Inception = wh_json:get_value(<<"Route-Type">>, JObj, ?DEFAULT_INCEPTION),
     Keys = get_inbound_field(Inception),
     Number = wh_json:get_first_defined(Keys, JObj),
-    {wnm_util:to_e164(Number), Inception}.
+    {knm_converters:normalize(Number), Inception}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -412,7 +412,7 @@ get_inbound_destination(JObj) ->
                            {'ok', ne_binary(), wh_proplist()} |
                            {'error', any()}.
 lookup_number(Number) ->
-    Num = wnm_util:normalize_number(Number),
+    Num = knm_converters:normalize(Number),
     case kz_cache:fetch_local(?DOODLE_CACHE, cache_key_number(Num)) of
         {'ok', {AccountId, Props}} ->
             lager:debug("cached number ~s is associated with account ~s", [Num, AccountId]),
@@ -424,9 +424,9 @@ lookup_number(Number) ->
                           {'ok', ne_binary(), wh_proplist()} |
                           {'error', any()}.
 fetch_number(Num) ->
-    case wh_number_manager:lookup_account_by_number(Num) of
+    case knm_number:lookup_account(Num) of
         {'ok', AccountId, Props} ->
-            CacheProps = [{'origin', [{'db', wnm_util:number_to_db_name(Num), Num}, {'type', <<"number">>}]}],
+            CacheProps = [{'origin', [{'db', knm_converters:to_db(Num), Num}, {'type', <<"number">>}]}],
             kz_cache:store_local(?DOODLE_CACHE, cache_key_number(Num), {AccountId, Props}, CacheProps),
             lager:debug("~s is associated with account ~s", [Num, AccountId]),
             {'ok', AccountId, Props};
@@ -443,7 +443,7 @@ cache_key_number(Number) ->
                         {'ok', ne_binary(), api_binary()} |
                         {'error', any()}.
 lookup_mdn(Number) ->
-    Num = wnm_util:normalize_number(Number),
+    Num = knm_converters:normalize(Number),
     case kz_cache:fetch_local(?DOODLE_CACHE, cache_key_mdn(Num)) of
         {'ok', {Id, OwnerId}} ->
             lager:debug("cached number ~s is associated with ~s/~s", [Num, OwnerId, Id]),

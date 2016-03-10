@@ -123,7 +123,7 @@ maybe_find_attachment(Db, Id, JObj) ->
             {'error', 'no_data'};
         [AttachmentName | _] ->
             lager:debug("found first attachment ~s on ~s in ~s", [AttachmentName, Id, Db]),
-            {'ok', {Db, cow_qs:urlencode(Id), AttachmentName}}
+            find_attachment([Db, Id, wh_doc:type(JObj), wh_doc:revision(JObj), AttachmentName])
     end.
 
 %% -spec maybe_local_haproxy_uri(wh_json:object(), ne_binary(), ne_binary(), ne_binary()) ->

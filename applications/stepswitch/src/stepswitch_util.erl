@@ -54,7 +54,7 @@ get_inbound_destination(JObj) ->
     {Number, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
     case whapps_config:get_is_true(?SS_CONFIG_CAT, <<"assume_inbound_e164">>, 'false') of
         'true' -> assume_e164(Number);
-        'false' -> wnm_util:to_e164(Number)
+        'false' -> knm_converters:normalize(Number)
     end.
 
 -spec assume_e164(ne_binary()) -> ne_binary().
@@ -71,7 +71,7 @@ assume_e164(Number) -> <<$+, Number/binary>>.
 get_outbound_destination(OffnetReq) ->
     Number = wapi_offnet_resource:to_did(OffnetReq),
     case wapi_offnet_resource:bypass_e164(OffnetReq) of
-        'false' -> wnm_util:to_e164(Number);
+         'false' -> knm_converters:normalize(Number);
         'true' -> Number
     end.
 
@@ -82,10 +82,10 @@ get_outbound_destination(OffnetReq) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec lookup_number(ne_binary()) ->
-                           {'ok', ne_binary(), number_properties()} |
+                           {'ok', ne_binary(), knm_number:number_properties()} |
                            {'error', any()}.
 lookup_number(Number) ->
-    Num = wnm_util:normalize_number(Number),
+    Num = knm_converters:normalize(Number),
     case kz_cache:fetch_local(?STEPSWITCH_CACHE, cache_key_number(Num)) of
         {'ok', {AccountId, Props}} ->
             lager:debug("found number properties in stepswitch cache"),
@@ -94,17 +94,12 @@ lookup_number(Number) ->
     end.
 
 -spec fetch_number(ne_binary()) ->
-                          {'ok', ne_binary(), number_properties()} |
+                          {'ok', ne_binary(), knm_number:number_properties()} |
                           {'error', any()}.
 fetch_number(Num) ->
-    case wh_number_manager:lookup_account_by_number(Num) of
+    case knm_number:lookup_account(Num) of
         {'ok', AccountId, Props} ->
-            CacheProps = [{'origin'
-                          ,[{'db', wnm_util:number_to_db_name(Num), Num}
-                           ,{'type', <<"number">>}
-                           ]
-                          }
-                         ],
+            CacheProps = [{'origin', [{'db', knm_converters:to_db(Num), Num}, {'type', <<"number">>}]}],
             kz_cache:store_local(?STEPSWITCH_CACHE, cache_key_number(Num), {AccountId, Props}, CacheProps),
             lager:debug("~s is associated with account ~s", [Num, AccountId]),
             {'ok', AccountId, Props};
@@ -136,7 +131,7 @@ correct_shortdial(Number, CIDNum) when is_binary(CIDNum) ->
     case is_binary(CIDNum) andalso (size(CIDNum) - size(Number)) of
         Length when Length =< MaxCorrection, Length >= MinCorrection ->
             Correction = wh_util:truncate_right_binary(CIDNum, Length),
-            CorrectedNumber = wnm_util:to_e164(<<Correction/binary, Number/binary>>),
+            CorrectedNumber = knm_converters:normalize(<<Correction/binary, Number/binary>>),
             lager:debug("corrected shortdial ~s via CID ~s to ~s"
                        ,[Number, CIDNum, CorrectedNumber]),
             CorrectedNumber;

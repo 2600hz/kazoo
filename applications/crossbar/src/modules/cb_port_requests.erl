@@ -27,9 +27,9 @@
          ,authority/1
         ]).
 
--include_lib("whistle_number_manager/include/wh_number_manager.hrl").
--include_lib("whistle_number_manager/include/wh_port_request.hrl").
 -include("crossbar.hrl").
+-include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
+-include_lib("kazoo_number_manager/include/knm_port_request.hrl").
 
 -define(MY_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".port_requests">>).
 
@@ -68,7 +68,7 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    wh_port_request:init(),
+    knm_port_request:init(),
 
     Bindings = [{crossbar_cleanup:binding_system(), 'cleanup'}
                 ,{<<"*.allowed_methods.port_requests">>, 'allowed_methods'}
@@ -455,7 +455,7 @@ do_patch(Context, _Id) ->
         'success' ->
             cb_context:set_resp_data(
                 Context1
-                ,wh_port_request:public_fields(cb_context:doc(Context1))
+                ,knm_port_request:public_fields(cb_context:doc(Context1))
             );
         _Status ->
             Context1
@@ -501,7 +501,7 @@ do_post(Context, Id) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             _ = maybe_send_port_comment_notification(Context1, Id),
-            cb_context:set_resp_data(Context1, wh_port_request:public_fields(cb_context:doc(Context1)));
+            cb_context:set_resp_data(Context1, knm_port_request:public_fields(cb_context:doc(Context1)));
         _Status ->
             Context1
     end.
@@ -629,7 +629,7 @@ validate_attachment(Context, Id, AttachmentId, ?HTTP_DELETE) ->
 -spec is_deletable(cb_context:context()) -> cb_context:context().
 -spec is_deletable(cb_context:context(), ne_binary()) -> cb_context:context().
 is_deletable(Context) ->
-    is_deletable(Context, wh_port_request:current_state(cb_context:doc(Context))).
+    is_deletable(Context, knm_port_request:current_state(cb_context:doc(Context))).
 is_deletable(Context, ?PORT_UNCONFIRMED) -> Context;
 is_deletable(Context, ?PORT_REJECT) -> Context;
 is_deletable(Context, ?PORT_CANCELED) -> Context;
@@ -662,7 +662,7 @@ read(Context, Id) ->
     Context1 = load_port_request(Context, Id),
     case cb_context:resp_status(Context1) of
         'success' ->
-            PubDoc = wh_port_request:public_fields(cb_context:doc(Context1)),
+            PubDoc = knm_port_request:public_fields(cb_context:doc(Context1)),
             cb_context:set_resp_data(cb_context:set_doc(Context1, PubDoc)
                                      ,PubDoc
                                     );
@@ -879,7 +879,7 @@ summary_descendants_by_number(Context, Number) ->
                         descendant_keys().
 build_keys(Context, Number) ->
     build_keys_from_account(
-      wnm_util:to_e164(Number)
+      knm_converters:normalize(Number)
       ,props:get_value(<<"accounts">>, cb_context:req_nouns(Context))
      ).
 
@@ -927,7 +927,7 @@ build_descendant_key(JObj, Acc, E164) ->
 normalize_view_results(Res, Acc) ->
     [leak_pvt_fields(
        Res
-       ,wh_port_request:public_fields(wh_json:get_value(<<"doc">>, Res))
+       ,knm_port_request:public_fields(wh_json:get_value(<<"doc">>, Res))
       )
      | Acc
     ].
@@ -956,7 +956,7 @@ summary_attachments(Context, Id) ->
     Context1 = load_port_request(Context, Id),
     As = wh_doc:attachments(cb_context:doc(Context1), wh_json:new()),
     cb_context:set_resp_data(Context1
-                             ,wh_port_request:normalize_attachments(As)
+                             ,knm_port_request:normalize_attachments(As)
                             ).
 
 %%--------------------------------------------------------------------
@@ -1016,7 +1016,7 @@ on_successful_validation(Context, _Id, 'false') ->
 -spec can_update_port_request(cb_context:context(), ne_binary()) -> boolean().
 can_update_port_request(Context) ->
     lager:debug("port request: ~p", [cb_context:doc(Context)]),
-    can_update_port_request(Context, wh_port_request:current_state(cb_context:doc(Context))).
+    can_update_port_request(Context, knm_port_request:current_state(cb_context:doc(Context))).
 
 can_update_port_request(_Context, ?PORT_UNCONFIRMED) ->
     'true';
@@ -1032,20 +1032,14 @@ can_update_port_request(Context, _) ->
 %%--------------------------------------------------------------------
 -spec successful_validation(cb_context:context(), api_binary()) -> cb_context:context().
 successful_validation(Context, 'undefined') ->
-    JObj = cb_context:doc(Context),
-    cb_context:set_doc(Context
-                       ,wh_json:set_values([{<<"pvt_type">>, <<"port_request">>}
-                                            ,{?PORT_PVT_STATE, ?PORT_UNCONFIRMED}
-                                           ]
-                                           ,wh_port_request:normalize_numbers(JObj)
-                                          )
-                      );
+    Normalized = knm_port_request:normalize_numbers(cb_context:doc(Context)),
+    Unconf = [{<<"pvt_type">>, <<"port_request">>}
+              ,{?PORT_PVT_STATE, ?PORT_UNCONFIRMED}
+             ],
+    cb_context:set_doc(Context, wh_json:set_values(Unconf, Normalized));
 successful_validation(Context, _Id) ->
-    cb_context:set_doc(Context
-                       ,wh_port_request:normalize_numbers(
-                          cb_context:doc(Context)
-                         )
-                      ).
+    Normalized = knm_port_request:normalize_numbers(cb_context:doc(Context)),
+    cb_context:set_doc(Context, Normalized).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1057,7 +1051,7 @@ successful_validation(Context, _Id) ->
 -spec check_number_portability(api_binary(), ne_binary(), cb_context:context(), ne_binary(), wh_json:object()) ->
                                       cb_context:context().
 check_number_portability(PortId, Number, Context) ->
-    E164 = wnm_util:to_e164(Number),
+    E164 = knm_converters:normalize(Number),
     lager:debug("checking ~s(~s) for portability", [E164, Number]),
     PortOptions = [{'key', E164}],
     case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, ?PORT_REQ_NUMBERS, PortOptions) of
@@ -1116,7 +1110,7 @@ number_validation_error(Context, Number, Message) ->
 -spec check_number_existence(ne_binary(), ne_binary(), cb_context:context()) ->
                                     cb_context:context().
 check_number_existence(E164, Number, Context) ->
-    case wh_number_manager:lookup_account_by_number(E164) of
+    case knm_number:lookup_account(E164) of
         {'ok', _AccountId, _} ->
             lager:debug("number ~s exists and belongs to ~s", [E164, _AccountId]),
             number_validation_error(Context, Number, <<"Number exists on the system already">>);
@@ -1173,7 +1167,7 @@ load_attachment(AttachmentId, Context) ->
 maybe_move_state(Context, Id, PortState) ->
     Context1 = load_port_request(Context, Id),
     case cb_context:resp_status(Context1) =:= 'success'
-        andalso wh_port_request:maybe_transition(cb_context:doc(Context1), PortState)
+        andalso knm_port_request:maybe_transition(cb_context:doc(Context1), PortState)
     of
         'false' -> Context1;
         {'ok', PortRequest} ->
@@ -1511,12 +1505,12 @@ remove_phone_number(Number, _, {_, Acc}) ->
 get_phone_numbers_doc(Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    Context1 = crossbar_doc:load(?WNM_PHONE_NUMBER_DOC, cb_context:set_account_db(Context, AccountDb)),
+    Context1 = crossbar_doc:load(?KNM_PHONE_NUMBERS_DOC, cb_context:set_account_db(Context, AccountDb)),
     case cb_context:resp_status(Context1) of
         'success' ->
             {'ok', cb_context:doc(Context1)};
         Status ->
-            lager:error("failed to open phone_numbers doc in ~s : ~p", [AccountId, Status]),
+            lager:error("failed to open ~s doc in ~s : ~p", [?KNM_PHONE_NUMBERS_DOC, AccountId, Status]),
             {'error', Status}
     end.
 
@@ -1528,21 +1522,19 @@ get_phone_numbers_doc(Context) ->
 -spec save_phone_numbers_doc(cb_context:context(), wh_json:object()) -> 'ok' | 'error'.
 save_phone_numbers_doc(Context, JObj) ->
     AccountId = cb_context:account_id(Context),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-
     Context1 =
         cb_context:setters(
           Context
           ,[{fun cb_context:set_doc/2, JObj}
-            ,{fun cb_context:set_account_db/2, AccountDb}
+            ,{fun cb_context:set_account_db/2, wh_util:format_account_id(AccountId, 'encoded')}
            ]
          ),
-    Context2 = crossbar_doc:save(Context1),
 
-    case cb_context:resp_status(Context2) of
+    case cb_context:resp_status(crossbar_doc:save(Context1)) of
         'success' -> 'ok';
         _Status ->
-            lager:error("failed to save phone_numbers doc in ~s : ~p", [AccountId, _Status]),
+            lager:error("failed to save ~s doc in ~s : ~p"
+                        ,[?KNM_PHONE_NUMBERS_DOC, AccountId, _Status]),
             'error'
     end.
 
@@ -1561,7 +1553,7 @@ generate_loa_from_port(Context, PortRequest) ->
 
     AccountDoc = cb_context:account_doc(Context),
 
-    Numbers = [wnm_util:pretty_print(N) || N <- wh_json:get_keys(<<"numbers">>, PortRequest)],
+    Numbers = [knm_util:pretty_print(N) || N <- wh_json:get_keys(<<"numbers">>, PortRequest)],
 
     QRCode = create_qr_code(cb_context:account_id(Context), wh_doc:id(PortRequest)),
 

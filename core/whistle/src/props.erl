@@ -231,10 +231,7 @@ delete_keys([_|_]=Ks, Props) -> lists:foldl(fun ?MODULE:delete/2, Props, Ks).
 
 -spec is_defined(wh_proplist_key(), wh_proplist()) -> boolean().
 is_defined(Key, Props) ->
-    case lists:keyfind(Key, 1, Props) of
-        {Key,_} -> 'true';
-        'false' -> lists:member(Key, Props)
-    end.
+    get_value(Key, Props) =/= 'undefined'.
 
 -spec unique(wh_proplist()) -> wh_proplist().
 unique(List) ->
@@ -294,8 +291,13 @@ encode_kv(<<>>, K, [_|_]=Props) -> to_querystring(Props, [wh_util:to_binary(K)])
 encode_kv(Prefix, K, [_|_]=Props) -> to_querystring(Props, [Prefix, <<"[">>, wh_util:to_binary(K), <<"]">>]).
 
 -spec encode_kv(iolist() | binary(), ne_binary(), ne_binary(), string() | binary()) -> iolist().
-encode_kv(<<>>, K, Sep, V) -> [wh_util:to_binary(K), Sep, wh_util:to_binary(V)];
-encode_kv(Prefix, K, Sep, V) -> [Prefix, <<"[">>, wh_util:to_binary(K), <<"]">>, Sep, wh_util:to_binary(V)].
+encode_kv(<<>>, K, Sep, V) ->
+    [wh_util:to_binary(K), Sep, wh_util:to_binary(V)];
+encode_kv(Prefix, K, Sep, V) ->
+    [Prefix
+     ,<<"[">>, wh_util:to_binary(K), <<"]">>
+     ,Sep, wh_util:to_binary(V)
+    ].
 
 -spec encode_kv(iolist() | binary(), ne_binary(), [string()], ne_binary(), iolist()) -> iolist().
 encode_kv(Prefix, K, [V], Sep, Acc) ->

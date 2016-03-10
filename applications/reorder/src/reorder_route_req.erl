@@ -26,7 +26,7 @@ handle_req(JObj, Props) ->
 -spec maybe_known_number(ne_binary(), wh_json:object()) -> 'ok'.
 maybe_known_number(ControllerQ, JObj) ->
     Number = get_dest_number(JObj),
-    case wh_number_manager:lookup_account_by_number(Number) of
+    case knm_number:lookup_account(Number) of
         {'ok', _, _} -> send_known_number_response(JObj, ControllerQ);
         {'error', _R} ->
             lager:debug("~s is not associated with any account, ~p", [Number, _R]),
@@ -42,7 +42,7 @@ get_dest_number(JObj) ->
             lager:debug("assuming number is e164, normalizing to ~s", [Number]),
             Number;
         _ ->
-            Number = wnm_util:normalize_number(User),
+            Number = knm_converters:normalize(User),
             lager:debug("converted number to e164: ~s", [Number]),
             Number
     end.

@@ -13,7 +13,7 @@
 -export([public_json/1]).
 -export([to_json/1]).
 
--export([empty/0]).
+-export([new/0]).
 -export([allow_updates/1]).
 -export([from_service_json/1, from_service_json/2]).
 -export([reconcile/1, reconcile/2
@@ -93,17 +93,11 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec empty() -> services().
-empty() ->
+-spec new() -> services().
+-spec new(ne_binary()) -> services().
+new() ->
     #wh_services{}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec new(ne_binary()) -> services().
 new(<<_/binary>> = AccountId) ->
     AccountJObj = get_account_definition(AccountId),
 
@@ -501,7 +495,8 @@ update(CategoryId, ItemId, Quantity, #wh_services{updates=JObj}=Services)
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec activation_charges(ne_binary(), ne_binary(), services() | ne_binary()) -> number().
+-spec activation_charges(ne_binary(), ne_binary(), services() | ne_binary()) ->
+                                number().
 activation_charges(CategoryId, ItemId, #wh_services{jobj=ServicesJObj}) ->
     Plans = wh_service_plans:from_service_json(ServicesJObj),
     wh_service_plans:activation_charges(CategoryId, ItemId, Plans);

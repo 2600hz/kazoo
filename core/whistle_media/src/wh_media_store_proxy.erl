@@ -159,6 +159,9 @@ is_appropriate_content_type(Path, Req0) ->
         {<<"audio/", _/binary>> = CT, Req1}->
             lager:debug("found content-type via header: ~s", [CT]),
             ensure_extension_present(Path, CT, Req1);
+        {<<"video/", _/binary>> = CT, Req1}->
+            lager:debug("found content-type via header: ~s", [CT]),
+            ensure_extension_present(Path, CT, Req1);
         {_CT, Req1} ->
             lager:debug("inappropriate content-type via headers: ~s", [_CT]),
             is_appropriate_extension(Path, Req1)
@@ -168,8 +171,11 @@ is_appropriate_content_type(Path, Req0) ->
                                       {'ok', cowboy_req:req(), 'ok'}.
 is_appropriate_extension(#media_store_path{att=Attachment}=Path, Req0) ->
     Extension = filename:extension(Attachment),
-    case wh_mime_types:from_extension(Extension) of
+    case kz_mime:from_extension(Extension) of
         <<"audio/", _/binary>> = CT->
+            lager:debug("found content-type via extension: ~s", [CT]),
+            try_to_store(Path, CT, Req0);
+        <<"video/", _/binary>> = CT->
             lager:debug("found content-type via extension: ~s", [CT]),
             try_to_store(Path, CT, Req0);
         _CT ->
@@ -182,7 +188,7 @@ is_appropriate_extension(#media_store_path{att=Attachment}=Path, Req0) ->
                                       {'ok', cowboy_req:req(), 'ok'}.
 ensure_extension_present(#media_store_path{att=Attachment}=Path, CT, Req0) ->
     case wh_util:is_empty(filename:extension(Attachment))
-        andalso wh_mime_types:to_extension(CT)
+        andalso kz_mime:to_extension(CT)
     of
         'false' ->
             try_to_store(Path, CT, Req0);
@@ -207,7 +213,6 @@ try_to_store(#media_store_path{db=Db
     Options = [{'content_type', wh_util:to_list(CT)}
                ,{'content_length', byte_size(Contents)}
                ,{'doc_type', Type}
-               ,{'revision', Rev}
                ,{'rev', Rev}
               ],
     lager:debug("putting ~s onto ~s(~s): ~s", [Attachment, Id, DbName, CT]),

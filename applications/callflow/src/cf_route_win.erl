@@ -95,8 +95,8 @@ maybe_classification_restriction(JObj, Call) ->
     Request = find_request(Call),
     AccountId = whapps_call:account_id(Call),
     DialPlan = wh_json:get_value(<<"dial_plan">>, JObj, wh_json:new()),
-    Number = wnm_util:to_e164(Request, AccountId, DialPlan),
-    Classification = wnm_util:classify_number(Number, AccountId),
+    Number = knm_converters:normalize(Request, AccountId, DialPlan),
+    Classification = knm_converters:classify(Number),
     lager:debug("classified number ~s as ~s, testing for call restrictions"
                 ,[Number, Classification]
                ),

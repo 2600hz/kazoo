@@ -3,6 +3,9 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
+-type units() :: non_neg_integer().
+-type dollars() :: number().
+
 -define(TOPUP_CONFIG, <<"topup">>).
 
 -define(CODE_PER_MINUTE_CALL, 1001).

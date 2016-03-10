@@ -219,7 +219,7 @@ calc_service_updates(Context, <<"port_request">>) ->
           ,wh_json:new()
           ,Numbers
          ),
-    wh_service_phone_numbers:reconcile(PhoneNumbers, Services);
+    wh_service_phone_numbers:reconcile(Services, PhoneNumbers);
 calc_service_updates(Context, <<"app">>) ->
     [{<<"apps_store">>, [Id]} | _] = cb_context:req_nouns(Context),
     case wh_service_ui_apps:is_in_use(cb_context:req_data(Context)) of

@@ -90,9 +90,9 @@ legalize_outbound_cid(OutboundCID, AccountId) ->
 ensure_valid_caller_id(OutboundCID, AccountId) ->
     {'ok', AccountPhoneNumbersList} =
         kz_datamgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
-                                 ,?WNM_PHONE_NUMBER_DOC
+                                 ,?KNM_PHONE_NUMBERS_DOC
                                 ),
-    case lists:member(wnm_util:normalize_number(OutboundCID)
+    case lists:member(knm_converters:normalize(OutboundCID)
                       ,wh_json:get_keys(AccountPhoneNumbersList)
                      )
     of
@@ -137,7 +137,7 @@ get_number(Call, Retries) ->
 
 -spec verify_entered_number(ne_binary(), whapps_call:call(), integer()) -> 'ok'.
 verify_entered_number(EnteredNumber, Call, Retries) ->
-    Number = wnm_util:to_e164(re:replace(EnteredNumber, "[^0-9]", "", ['global', {'return', 'binary'}])),
+    Number = knm_converters:normalize(re:replace(EnteredNumber, "[^0-9]", "", ['global', {'return', 'binary'}])),
     case cccp_allowed_callee(Number) of
         'true' ->
             check_restrictions(Number, Call);
@@ -189,7 +189,7 @@ is_number_restricted(Number, DocId, AccountDb) ->
     case kz_datamgr:open_cache_doc(AccountDb, DocId) of
         {'error', _} -> 'false';
         {'ok', JObj} ->
-            Classification = wnm_util:classify_number(Number),
+            Classification = knm_converters:classify(Number),
             wh_json:get_value([<<"call_restriction">>, Classification, <<"action">>], JObj) =:= <<"deny">>
     end.
 
@@ -288,9 +288,9 @@ bridge_to_loopback(CallId, ToDID, CID,  CtrlQ, AccountId) ->
 
 -spec bridge(ne_binary(), ne_binary(), ne_binary(), binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 bridge(CallId, ToDID, CID, Q, CtrlQ, AccountId, AccountCID) ->
-    case wnm_util:is_reconcilable(ToDID) of
+    case knm_converters:is_reconcilable(ToDID) of
         'true' ->
-            case wh_number_manager:lookup_account_by_number(ToDID) of
+            case knm_number:lookup_account(ToDID) of
                 {'ok',_,_} ->
                     bridge_to_loopback(CallId, ToDID, CID, CtrlQ, AccountId);
                 _ ->

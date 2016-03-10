@@ -177,10 +177,10 @@ match_invite_format(JObj, <<"Diversions">> = Key, Value) ->
 
     Address = kzsip_diversion:address(Value),
 
-    SIP = wnm_sip:parse(Address),
-    SIP1 = wnm_sip:set_user(SIP, FormatFun(wnm_sip:user(SIP))),
+    SIP = knm_sip:parse(Address),
+    SIP1 = knm_sip:set_user(SIP, FormatFun(knm_sip:user(SIP))),
 
-    Address1 =  wnm_sip:encode(SIP1),
+    Address1 =  knm_sip:encode(SIP1),
 
     wh_json:set_value(Key, kzsip_diversion:set_address(Value, Address1), JObj);
 match_invite_format(JObj, Key, Value) ->
@@ -296,9 +296,9 @@ match_invite_format(JObj, Key, User, Realm) ->
                                fun((ne_binary()) -> ne_binary()).
 invite_format_fun(JObj) ->
     case wh_json:get_value(<<"Invite-Format">>, JObj) of
-        <<"e164">> -> fun wnm_util:to_e164/1;
-        <<"1npan">> -> fun wnm_util:to_1npan/1;
-        <<"npan">> -> fun wnm_util:to_npan/1
+        <<"e164">> -> fun knm_converters:normalize/1;
+        <<"1npan">> -> fun knm_converters:to_1npan/1;
+        <<"npan">> -> fun knm_converters:to_npan/1
     end.
 
 -spec maybe_match(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), wh_json:object()) ->

@@ -195,9 +195,9 @@ lookup_account_id(JObj) ->
 
 -spec fetch_account_id(ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
 fetch_account_id(Number) ->
-    case wh_number_manager:lookup_account_by_number(Number) of
+    case knm_number:lookup_account(Number) of
         {'ok', AccountId, _} ->
-            CacheProps = [{'origin', {'db', wnm_util:number_to_db_name(Number), Number}}],
+            CacheProps = [{'origin', {'db', knm_converters:to_db(Number), Number}}],
             kz_cache:store_local(?HOOKS_CACHE_NAME, cache_key_number(Number), AccountId, CacheProps),
             {'ok', AccountId};
         {'error', _}=Error -> Error
@@ -211,7 +211,7 @@ get_inbound_destination(JObj) ->
     {Number, _} = whapps_util:get_destination(JObj, <<"stepswitch">>, <<"inbound_user_field">>),
     case whapps_config:get_is_true(<<"stepswitch">>, <<"assume_inbound_e164">>, 'false') of
         'true' -> assume_e164(Number);
-        'false' -> wnm_util:to_e164(Number)
+        'false' -> knm_converters:normalize(Number)
     end.
 
 -spec assume_e164(ne_binary()) -> ne_binary().

@@ -108,7 +108,7 @@ request_caller_id(OffnetReq) ->
 
 -spec route_req(ne_binary(), ne_binary(), wh_proplist(), wapi_offnet_resource:req()) -> wh_proplist().
 route_req(CallId, FetchId, Props, OffnetReq) ->
-    TargetAccountId = wh_number_properties:account_id(Props),
+    TargetAccountId = knm_number:account_id(Props),
     TargetAccountRealm = wh_util:get_account_realm(TargetAccountId),
     OffnetReqAccountRealm = wapi_offnet_resource:account_realm(OffnetReq),
     ToDID = wapi_offnet_resource:to_did(OffnetReq),

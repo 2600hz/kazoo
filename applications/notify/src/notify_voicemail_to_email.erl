@@ -127,14 +127,14 @@ create_template_props(Event, Timezone, Account) ->
     [{<<"account">>, notify_util:json_to_template_props(Account)}
      ,{<<"service">>, notify_util:get_service_props(Event, Account, ?MOD_CONFIG_CAT)}
      ,{<<"voicemail">>, props:filter_undefined(
-                          [{<<"caller_id_number">>, wnm_util:pretty_print(CIDNum)}
+                          [{<<"caller_id_number">>, knm_util:pretty_print(CIDNum)}
                            %% sometimes the name is a number...
-                           ,{<<"caller_id_name">>, wnm_util:pretty_print(CIDName)}
+                           ,{<<"caller_id_name">>, knm_util:pretty_print(CIDName)}
                            ,{<<"date_called_utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
                            ,{<<"date_called">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
-                           ,{<<"from_user">>, wnm_util:pretty_print(FromE164)}
+                           ,{<<"from_user">>, knm_util:pretty_print(FromE164)}
                            ,{<<"from_realm">>, wh_json:get_value(<<"From-Realm">>, Event)}
-                           ,{<<"to_user">>, wnm_util:pretty_print(ToE164)}
+                           ,{<<"to_user">>, knm_util:pretty_print(ToE164)}
                            ,{<<"to_realm">>, wh_json:get_value(<<"To-Realm">>, Event)}
                            ,{<<"box">>, wh_json:get_value(<<"Voicemail-Box">>, Event)}
                            ,{<<"media">>, wh_json:get_value(<<"Voicemail-Name">>, Event)}
@@ -249,8 +249,8 @@ get_file_name(MediaJObj, Props) ->
              }
         of
             {'undefined', 'undefined'} -> <<"Unknown">>;
-            {'undefined', Num} -> wnm_util:pretty_print(wh_util:to_binary(Num));
-            {Name, _} -> wnm_util:pretty_print(wh_util:to_binary(Name))
+            {'undefined', Num} -> knm_util:pretty_print(wh_util:to_binary(Num));
+            {Name, _} -> knm_util:pretty_print(wh_util:to_binary(Name))
         end,
 
     LocalDateTime = props:get_value(<<"date_called">>, Voicemail, <<"0000-00-00_00-00-00">>),

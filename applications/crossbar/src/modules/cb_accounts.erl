@@ -1251,11 +1251,11 @@ create_new_account_db(Context) ->
             _ = crossbar_bindings:map(<<"account.created">>, C),
             lager:debug("alerted listeners of new account"),
 
-            _ = wh_services:reconcile(AccountDb),
-            lager:debug("performed initial services reconcile"),
-
             _ = create_account_mod(cb_context:account_id(C)),
             lager:debug("created this month's MODb for account"),
+
+            _ = wh_services:reconcile(AccountDb),
+            lager:debug("performed initial services reconcile"),
 
             _ = create_first_transaction(cb_context:account_id(C)),
             lager:debug("created first transaction for account"),
@@ -1518,7 +1518,7 @@ delete_remove_services(Context) ->
 
 -spec delete_free_numbers(cb_context:context()) -> cb_context:context() | boolean().
 delete_free_numbers(Context) ->
-    _ = wh_number_manager:free_numbers(cb_context:account_id(Context)),
+    _ = knm_numbers:free(cb_context:account_id(Context)),
     delete_remove_sip_aggregates(Context).
 
 -spec delete_remove_sip_aggregates(cb_context:context()) -> cb_context:context() | boolean().

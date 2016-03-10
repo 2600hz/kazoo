@@ -12,8 +12,8 @@
          ,lookup_doc_rev/3
          ,save_doc/4
          ,save_docs/4
-         ,del_doc/3
-         ,del_docs/3
+         ,del_doc/4
+         ,del_docs/4
          ,ensure_saved/4
          ,copy_doc/3
          ,move_doc/3
@@ -85,20 +85,45 @@ ensure_saved(#{server := {App, Conn}}, DbName, Doc, Options) ->
                  'failed'
     end.
 
--spec del_doc(map(), ne_binary(), wh_json:object() | ne_binary()) ->
+-spec del_doc(map(), ne_binary(), wh_json:object() | ne_binary(), wh_proplist()) ->
                      {'ok', wh_json:objects()} |
                      data_error().
-del_doc(#{server := {App, Conn}}, DbName, Doc) ->
-    kzs_cache:flush_cache_doc(DbName, Doc),
-    App:del_doc(Conn, DbName, Doc).
+del_doc(Server, DbName, DocId, Options)
+  when is_binary(DocId) ->
+    case lookup_doc_rev(Server, DbName, DocId) of
+        {'error', _}=Err -> Err;
+        {'ok', Rev} ->
+            JObj = wh_json:from_list([{<<"_id">>, DocId}
+                                      ,{<<"_rev">>, Rev}
+                                     ]),
+            del_doc(Server, DbName, JObj, Options)
+    end;
+del_doc(#{server := {App, Conn}}, DbName, Doc, Options) ->
+    {PreparedDoc, PublishDoc} = prepare_doc_for_save(DbName, Doc),
+    try App:del_doc(Conn, DbName, PreparedDoc, Options) of
+        {'ok', JObj}=Ok -> kzs_publish:maybe_publish_doc(DbName, PublishDoc, JObj),
+                           kzs_cache:flush_cache_doc(DbName, JObj),
+                           Ok;
+        Else -> Else
+    catch
+        Ex:Er -> lager:error("exception ~p : ~p", [Ex, Er]),
+                 'failed'
+    end.
 
--spec del_docs(map(), ne_binary(), wh_json:objects()) ->
+-spec del_docs(map(), ne_binary(), wh_json:objects() | ne_binaries(), wh_proplist()) ->
                       {'ok', wh_json:objects()} |
                       data_error().
-del_docs(#{server := {App, Conn}}, DbName, Docs) ->
-    kzs_cache:flush_cache_docs(DbName, Docs),
-    App:del_docs(Conn, DbName, Docs).
-
+del_docs(#{server := {App, Conn}}=Server, DbName, Docs, Options) ->
+    DelDocs = [prepare_doc_for_del(Server,DbName, D) || D <- Docs],
+    {PreparedDocs, Publish} = lists:unzip([prepare_doc_for_save(DbName, D) || D <- DelDocs]),
+    try App:del_docs(Conn, DbName, PreparedDocs, Options) of
+        {'ok', JObjs}=Ok -> kzs_publish:maybe_publish_docs(DbName, Publish, JObjs),
+                            kzs_cache:flush_cache_docs(DbName, JObjs),
+                           Ok;
+        Else -> Else
+    catch
+        _Ex:Er -> {'error', {_Ex, Er}}
+    end.
 
 -spec copy_doc(map(), copy_doc(), wh_proplist()) ->
                       {'ok', wh_json:object()} |
@@ -120,6 +145,25 @@ copy_doc(#{server := {App, Conn}}, CopySpec, Options) ->
 move_doc(#{server := {App, Conn}}, CopySpec, Options) ->
     App:move_doc(Conn, CopySpec, Options).
 
+-spec prepare_doc_for_del(map(), ne_binary(), wh_json:object() | ne_binary()) ->
+                                 wh_json:object().
+prepare_doc_for_del(Server, Db, <<_/binary>> = DocId) ->
+    prepare_doc_for_del(Server, Db, wh_json:from_list([{<<"_id">>, DocId}]));
+prepare_doc_for_del(Server, DbName, Doc) ->
+    Id = wh_doc:id(Doc),
+    DocRev = case wh_doc:revision(Doc) of
+                 'undefined' ->
+                     {'ok', Rev} = lookup_doc_rev(Server, DbName, Id),
+                     Rev;
+                 Rev -> Rev
+             end,
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"_id">>, Id}
+         ,{<<"_rev">>, DocRev}
+         ,{<<"_deleted">>, 'true'}
+         | kzs_publish:publish_fields(Doc)
+        ])).
 
 -spec prepare_doc_for_save(ne_binary(), wh_json:object()) -> {wh_json:object(), wh_json:object()}.
 -spec prepare_doc_for_save(ne_binary(), wh_json:object(), boolean()) -> {wh_json:object(), wh_json:object()}.

@@ -38,6 +38,7 @@
          ,add_to_doc_cache/3
          ,open_doc/2,open_doc/3
          ,del_doc/2, del_docs/2
+         ,del_doc/3, del_docs/3
          ,lookup_doc_rev/2
          ,update_doc/3, update_doc/4
          ,load_doc_from_file/3
@@ -839,13 +840,19 @@ update_doc(DbName, Id, UpdateProps, CreateProps) when is_list(UpdateProps),
 -spec del_doc(text(), wh_json:object() | wh_json:objects() | ne_binary()) ->
                      {'ok', wh_json:objects()} |
                      data_error().
-del_doc(DbName, Doc) when is_list(Doc) ->
-    del_docs(DbName, Doc);
-del_doc(DbName, Doc) when ?VALID_DBNAME ->
-    kzs_doc:del_doc(kzs_plan:plan(DbName, Doc), DbName, Doc);
 del_doc(DbName, Doc) ->
+    del_doc(DbName, Doc, []).
+
+-spec del_doc(text(), wh_json:object() | wh_json:objects() | ne_binary(), wh_proplist()) ->
+                     {'ok', wh_json:objects()} |
+                     data_error().
+del_doc(DbName, Doc, Options) when is_list(Doc) ->
+    del_docs(DbName, Doc, Options);
+del_doc(DbName, Doc, Options) when ?VALID_DBNAME ->
+    kzs_doc:del_doc(kzs_plan:plan(DbName, Doc), DbName, Doc, Options);
+del_doc(DbName, Doc, Options) ->
     case maybe_convert_dbname(DbName) of
-        {'ok', Db} -> del_doc(Db, Doc);
+        {'ok', Db} -> del_doc(Db, Doc, Options);
         {'error', _}=E -> E
     end.
 
@@ -855,14 +862,20 @@ del_doc(DbName, Doc) ->
 %% remove documents from the db
 %% @end
 %%--------------------------------------------------------------------
--spec del_docs(text(), wh_json:objects()) ->
+-spec del_docs(text(), wh_json:objects() | ne_binaries()) ->
                       {'ok', wh_json:objects()} |
                       data_error().
-del_docs(DbName, Docs) when is_list(Docs) andalso ?VALID_DBNAME ->
-    kzs_doc:del_docs(kzs_plan:plan(DbName), DbName, Docs);
-del_docs(DbName, Docs) when is_list(Docs) ->
+del_docs(DbName, Docs) ->
+    del_docs(DbName, Docs, []).
+
+-spec del_docs(text(), wh_json:objects() | ne_binaries(), wh_proplist()) ->
+                      {'ok', wh_json:objects()} |
+                      data_error().
+del_docs(DbName, Docs, Options) when is_list(Docs) andalso ?VALID_DBNAME ->
+    kzs_doc:del_docs(kzs_plan:plan(DbName), DbName, Docs, Options);
+del_docs(DbName, Docs, Options) when is_list(Docs) ->
     case maybe_convert_dbname(DbName) of
-        {'ok', Db} -> del_docs(Db, Docs);
+        {'ok', Db} -> del_docs(Db, Docs, Options);
         {'error', _}=E -> E
     end.
 
@@ -964,7 +977,7 @@ attachment_url(DbName, DocId, AttachmentId, Options) ->
 %%%===================================================================
 attachment_options(DbName, DocId, Options) ->
     RequiredOptions = [{'doc_type', fun wh_doc:type/1}
-                       ,{'revision', fun wh_doc:revision/1}
+                       ,{'rev', fun wh_doc:revision/1}
                       ],
     attachment_options(DbName, DocId, Options, RequiredOptions).
 

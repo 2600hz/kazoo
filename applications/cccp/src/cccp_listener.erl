@@ -168,5 +168,5 @@ validate_sysconfig() ->
 validate_sysconfig(Key) ->
     case whapps_config:get(?CCCP_CONFIG_CAT, Key) of
         'undefined' -> lager:warning("cccp hasn't been configured with ~s in system_config/~s; this is necessary", [Key, ?CCCP_CONFIG_CAT]);
-        Value -> lager:debug("cccp using ~s for ~s", [wnm_util:normalize_number(Value), Key])
+        Value -> lager:debug("cccp using ~s for ~s", [knm_converters:normalize(Value), Key])
     end.

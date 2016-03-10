@@ -31,7 +31,7 @@
 candidate_rates(ToDID) ->
     candidate_rates(ToDID, <<>>).
 candidate_rates(ToDID, FromDID) ->
-    E164 = wnm_util:to_e164(ToDID),
+    E164 = knm_converters:normalize(ToDID),
     find_candidate_rates(E164, FromDID).
 
 find_candidate_rates(E164, _FromDID) when byte_size(E164) > ?MIN_PREFIX_LEN ->
@@ -77,7 +77,7 @@ matching_rates(Rates, DID) ->
     matching_rates(Rates, DID, 'undefined', []).
 
 matching_rates(Rates, DID, Direction, RouteOptions) ->
-    E164 = wnm_util:to_e164(DID),
+    E164 = knm_converters:normalize(DID),
     [Rate || Rate <- Rates,
              matching_rate(Rate, E164, Direction, RouteOptions)
     ].
