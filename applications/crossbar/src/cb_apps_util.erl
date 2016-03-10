@@ -65,7 +65,7 @@ is_authorized(AccountId, UserId, AppId) ->
             AppJObj = wh_json:get_value(AppId, kzd_apps_store:apps(Doc)),
             Allowed = wh_json:get_value(<<"allowed_users">>, AppJObj, <<"specific">>),
             Users = wh_json:get_value(<<"users">>, AppJObj, []),
-            UserIds = [wh_json:get_value(<<"id">>, U, U) || U <- Users],
+            UserIds = [wh_json:get_value(<<"id">>, U, []) || U <- Users],
             case {Allowed, UserIds} of
                 {<<"all">>, _} -> 'true';
                 {<<"specific">>, []} -> 'false';
