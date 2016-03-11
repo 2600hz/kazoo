@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <soap:Body>
+    <queryDIDResponse xmlns="http://tempuri.org/">
+      <queryDIDResult>
+        <responseCode>100</responseCode>
+        <responseMessage>Success</responseMessage>
+        <DIDs>
+          <DID>
+            <tn>4353198001</tn>
+            <availability>assigned</availability>
+            <rewrite>4353198001</rewrite>
+            <status>Number currently assigned to you with refid '' rewritten as '4353198001' to endpoint '13550'</status>
+            <statusCode>100</statusCode>
+            <tier>1</tier>
+            <refId/>
+            <Network>Onvoy</Network>
+            <endpointId>13550</endpointId>
+            <expireDate>2013-11-25T17:32:48.707</expireDate>
+            <has411>false</has411>
+            <has911>false</has911>
+            <cnam>true</cnam>
+            <cnamStorageActive>false</cnamStorageActive>
+            <cnamStorageAvailability>true</cnamStorageAvailability>
+            <t38>true</t38>
+          </DID>
+        </DIDs>
+        <DIDLocators/>
+        <DIDCounts/>
+        <DIDGroups/>
+        <ConferenceLine>
+          <Enabled>false</Enabled>
+        </ConferenceLine>
+      </queryDIDResult>
+    </queryDIDResponse>
+  </soap:Body>
+</soap:Envelope>

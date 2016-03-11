@@ -23,7 +23,6 @@
 
 -define(KNM_BW_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".bandwidth">>).
 
--define(SERVER, ?MODULE).
 -define(BW_XML_PROLOG, "<?xml version=\"1.0\"?>").
 -define(BW_XML_NAMESPACE
         ,[{'xmlns:xsi', "http://www.w3.org/2001/XMLSchema-instance"}
@@ -115,7 +114,6 @@ found_number_to_object(Found, AccountId) ->
                ,{fun knm_phone_number:set_number_db/2, NumberDb}
                ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
                ,{fun knm_phone_number:set_carrier_data/2, JObj}
-               ,{fun knm_phone_number:set_number_db/2, NumberDb}
                ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
                ,{fun knm_phone_number:set_assign_to/2, AccountId}
               ],

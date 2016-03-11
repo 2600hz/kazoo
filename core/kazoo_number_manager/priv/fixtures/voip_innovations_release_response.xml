@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <soap:Body>
+    <releaseDIDResponse xmlns="http://tempuri.org/">
+      <releaseDIDResult>
+        <responseCode>100</responseCode>
+        <responseMessage>Success</responseMessage>
+        <DIDs>
+          <DID>
+            <tn>4352154974</tn>
+            <availability/>
+            <rewrite/>
+            <status>Number currently available</status>
+            <statusCode>106231</statusCode>
+            <tier/>
+            <refId/>
+            <endpointId>0</endpointId>
+            <expireDate>1900-01-01T00:00:00</expireDate>
+            <has411>false</has411>
+            <has911>false</has911>
+            <cnam>false</cnam>
+            <cnamStorageActive>false</cnamStorageActive>
+            <cnamStorageAvailability>false</cnamStorageAvailability>
+            <t38>false</t38>
+          </DID>
+        </DIDs>
+        <DIDLocators/>
+        <DIDCounts/>
+      </releaseDIDResult>
+    </releaseDIDResponse>
+  </soap:Body>
+</soap:Envelope>
