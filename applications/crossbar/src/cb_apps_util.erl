@@ -69,7 +69,7 @@ is_authorized(AccountId, UserId, AppId) ->
             case {Allowed, UserIds} of
                 {<<"all">>, _} -> 'true';
                 {<<"specific">>, []} -> 'false';
-                {<<"specific">>, UserIds} when is_list(UserIds) ->
+                {<<"specific">>, UserIds} ->
                     lists:member(UserId, UserIds);
                 {<<"admins">>, _} ->
                     <<"admin">> =:= get_user_priv_level(AccountId, UserId);
