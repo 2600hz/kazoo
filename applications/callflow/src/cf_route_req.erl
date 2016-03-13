@@ -24,6 +24,7 @@
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
+    _ = wh_util:put_callid(JObj),
     'true' = wapi_route:req_v(JObj),
     Routines = [fun maybe_referred_call/1
                 ,fun maybe_device_redirected/1
@@ -34,7 +35,7 @@ handle_req(JObj, Props) ->
         andalso callflow_resource_allowed(Call)
     of
         'true' ->
-            lager:info("received a request asking if callflows can route this call"),
+            lager:info("received request ~s asking if callflows can route this call", [wapi_route:fetch_id(JObj)]),
             AllowNoMatch = allow_no_match(Call),
             case cf_util:lookup_callflow(Call) of
                 %% if NoMatch is false then allow the callflow or if it is true and we are able allowed
@@ -47,7 +48,7 @@ handle_req(JObj, Props) ->
                     lager:info("unable to find callflow ~p", [R])
             end;
         'false' ->
-            'ok'
+            lager:debug("callflow not handling fetch-id ~s", [wapi_route:fetch_id(JObj)])
     end.
 
 -spec maybe_prepend_preflow(wh_json:object(), wh_proplist()
