@@ -48,12 +48,34 @@ recv(_SessionPid, _SessionId, {'event', _Ignore, <<"subscribe">>, SubscriptionJO
 recv(SessionPid, SessionId, {'event', _Ignore, <<"unsubscribe">>, SubscriptionJObj}, Context) ->
     lager:debug("maybe remove binding for session: ~p. Data: ~p", [SessionId, SubscriptionJObj]),
     unsubscribe(Context, SubscriptionJObj, SessionPid, SessionId);
+recv(_SessionPid, _SessionId, {'event', _Ignore, <<"send_amqp">>, Data}, Context) ->
+    lager:debug("received send_amqp event on socket ~p with data payload", [_SessionId]),
+    amqp_send(Context, Data),
+    {'ok', Context};
 recv(_SessionPid, _SessionId, {'event', _Ignore, _Event, _Data}, Context) ->
     lager:debug("received event: ~p on socket ~p with data payload", [_Event, _SessionId]),
     {'ok', Context};
 recv(_SessionPid, SessionId, Message, Context) ->
     lager:info("receive unknown message ~p on socket ~p", [Message, SessionId]),
     {'ok', Context}.
+
+amqp_send(Context, Data) ->
+    case blackhole_util:is_authorized(Context) of
+        'true' ->
+            {Message} = Data,
+            {Keys, _} = lists:unzip(Message),
+
+            SendMessage = Message ++ [
+                {<<"Msg-ID">>, wh_util:rand_hex_binary(16)}
+                | wh_api:default_headers(<<"qubicle">>, <<"1.0">>)
+            ],
+
+            {'ok', Payload} = wh_api:build_message(SendMessage, [], Keys),
+            amqp_util:basic_publish(<<"qubicle">>, <<"qubicle.recipient">>, Payload, ?DEFAULT_CONTENT_TYPE);
+
+        'false' ->
+            lager:info("ahh ahh ahh, you didn't say the magic word")
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
