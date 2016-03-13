@@ -341,18 +341,19 @@ extract_file_body(Context, ContentType, Req0) ->
                                           halt_return().
 handle_max_filesize_exceeded(Context, Req1) ->
     Maximum = ?MAX_UPLOAD_SIZE,
-    MaxLen = wh_util:to_binary(Maximum),
+    MaxSize = wh_util:to_binary(Maximum),
+
     lager:error("file size exceeded, max is ~p", [Maximum]),
-    ?MODULE:halt(Req1
-                 ,cb_context:add_validation_error(<<"file">>
-                                                  ,<<"maxLength">>
-                                                  ,wh_json:from_list(
-                                                     [{<<"message">>, <<"Files must not be more than ", MaxLen/binary, " bytes">>}
-                                                      ,{<<"target">>, Maximum}
-                                                     ])
-                                                  ,cb_context:set_resp_error_code(Context, 413) %% payload too large
-                                                 )
-                ).
+
+    Message = <<"Files must not be more than ", MaxSize/binary, " bytes">>,
+    JObj = wh_json:from_list([{<<"message">>, Message}, {<<"target">>, Maximum}]),
+    Context1 = cb_context:add_validation_error(<<"file">>
+                                               ,<<"maxSize">>
+                                               ,JObj
+                                               ,cb_context:set_resp_error_code(Context, 413)
+                                              ),
+
+    ?MODULE:halt(Req1, Context1).
 
 -spec handle_file_contents(cb_context:context(), ne_binary(), cowboy_req:req(), binary()) ->
                                   {cb_context:context(), cowboy_req:req()} |
@@ -1076,7 +1077,10 @@ create_resp_content(Req0, Context) ->
     try wh_json:encode(create_resp_envelope(Context)) of
         JSON ->
             case cb_context:req_value(Context, <<"jsonp">>) of
-                'undefined' -> {JSON, Req0};
+                'undefined' ->
+                    {JSON
+                     ,cowboy_req:set_resp_header(<<"content-type">>, <<"application/json">>, Req0)
+                    };
                 JsonFun when is_binary(JsonFun) ->
                     lager:debug("jsonp wrapping in ~s: ~p", [JsonFun, JSON]),
                     {[JsonFun, <<"(">>, JSON, <<");">>]

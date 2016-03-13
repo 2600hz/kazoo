@@ -1105,6 +1105,8 @@ add_validation_error(Property, <<"minLength">>=C, Message, Context) ->
     add_depreciated_validation_error(Property, C, Message, Context);
 add_validation_error(Property, <<"maxLength">>=C, Message, Context) ->
     add_depreciated_validation_error(Property, C, Message, Context);
+add_validation_error(Property, <<"maxSize">>=C, Message, Context) ->
+    add_depreciated_validation_error(Property, C, Message, Context);
 add_validation_error(Property, <<"enum">>=C, Message, Context) ->
     add_depreciated_validation_error(Property, C, Message, Context);
 add_validation_error(Property, <<"format">>=C, Message, Context) ->

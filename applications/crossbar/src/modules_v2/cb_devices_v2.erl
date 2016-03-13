@@ -38,6 +38,8 @@
 -define(CB_LIST_MAC, <<"devices/listing_by_macaddress">>).
 
 -define(KEY_MAC_ADDRESS, <<"mac_address">>).
+-define(KEY_MOBILE_MDN, [<<"mobile">>, <<"mdn">>]).
+-define(KEY_DEVICE_TYPE, <<"device_type">>).
 
 %%%===================================================================
 %%% API
@@ -245,6 +247,7 @@ validate(Context, DeviceId, ?QUICKCALL_PATH_TOKEN, _ToDial) ->
 post(Context, DeviceId) ->
     _ = wh_util:spawn(fun() -> crossbar_util:flush_registration(Context) end),
     case changed_mac_address(Context) of
+        'false' -> error_used_mac_address(Context);
         'true' ->
             _ = crossbar_util:maybe_refresh_fs_xml('device', Context),
             Context1 = cb_modules_util:take_sync_field(Context),
@@ -255,9 +258,7 @@ post(Context, DeviceId) ->
                           _ = provisioner_util:maybe_provision(Context2),
                           _ = provisioner_util:maybe_sync_sip_data(Context1, 'device')
                   end),
-            Context1;
-        'false' ->
-            error_used_mac_address(Context)
+            maybe_add_mobile_mdn(Context2)
     end.
 
 -spec post(cb_context:context(), path_token(), path_token()) ->
@@ -272,10 +273,10 @@ post(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
 put(Context) ->
     Callback =
         fun() ->
-            Context1 = crossbar_doc:save(Context),
-            _ = maybe_aggregate_device('undefined', Context1),
-            _ = wh_util:spawn('provisioner_util', 'maybe_provision', [Context1]),
-            Context1
+                Context1 = crossbar_doc:save(Context),
+                _ = maybe_aggregate_device('undefined', Context1),
+                _ = wh_util:spawn('provisioner_util', 'maybe_provision', [Context1]),
+                maybe_add_mobile_mdn(Context1)
         end,
     crossbar_services:maybe_dry_run(Context, Callback).
 
@@ -283,10 +284,14 @@ put(Context) ->
 delete(Context, DeviceId) ->
     _ = crossbar_util:refresh_fs_xml(Context),
     Context1 = crossbar_doc:delete(Context),
-    _ = crossbar_util:flush_registration(Context),
-    _ = wh_util:spawn('provisioner_util', 'maybe_delete_provision', [Context]),
-    _ = maybe_remove_aggregate(DeviceId, Context),
-    Context1.
+    case get_device_type(Context) of
+        <<"mobile">> -> remove_mobile_mdn(Context);
+        _Else ->
+            _ = crossbar_util:flush_registration(Context),
+            _ = wh_util:spawn('provisioner_util', 'maybe_delete_provision', [Context]),
+            _ = maybe_remove_aggregate(DeviceId, Context),
+            Context1
+    end.
 
 %%%===================================================================
 %%% Internal functions
@@ -331,9 +336,104 @@ load_users_device_summary(Context, UserId) ->
 %%--------------------------------------------------------------------
 -spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
 validate_request('undefined', Context) ->
-    check_mac_address('undefined', Context);
+    maybe_check_mdn('undefined', Context);
 validate_request(DeviceId, Context) ->
-    prepare_outbound_flags(DeviceId, Context).
+    Context1 = crossbar_doc:load(DeviceId, Context),
+    case cb_context:resp_status(Context1) of
+        'success' -> maybe_check_mdn(DeviceId, Context1);
+        _Else -> Context1
+    end.
+
+-spec maybe_check_mdn(api_binary(), cb_context:context()) -> cb_context:context().
+maybe_check_mdn(DeviceId, Context) ->
+    case get_device_type(Context) of
+        <<"mobile">> -> check_mdn_undefined(DeviceId, Context);
+        _Else when DeviceId =:= 'undefined' ->
+            check_mac_address(DeviceId, Context);
+        _Else ->
+            prepare_outbound_flags(DeviceId, Context)
+    end.
+
+-spec check_mdn_undefined(api_binary(), cb_context:context()) -> cb_context:context().
+check_mdn_undefined(DeviceId, Context) ->
+    case get_mdn(Context) =:= 'undefined' of
+        'true' -> error_mdn_undefined(Context);
+        'false' -> check_mdn_changed(DeviceId, Context)
+    end.
+
+-spec error_mdn_undefined(cb_context:context()) -> cb_context:context().
+error_mdn_undefined(Context) ->
+    cb_context:add_validation_error(
+      ?KEY_MOBILE_MDN
+      ,<<"required">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"Field is required but missing">>}]
+        )
+      ,Context
+     ).
+
+-spec check_mdn_changed(api_binary(), cb_context:context()) -> cb_context:context().
+check_mdn_changed('undefined', Context) -> check_mdn_taken('undefined', Context);
+check_mdn_changed(DeviceId, Context) ->
+    SuperAdmin = cb_modules_util:is_superduper_admin(Context),
+    case has_mdn_changed(Context) of
+        'false' when SuperAdmin ->
+            Context1 = cb_context:store(Context, 'remove_mobile_mdn', 'true'),
+            check_mdn_taken(DeviceId, Context1);
+        'false' -> error_mdn_changed(Context);
+        'true' -> prepare_outbound_flags(DeviceId, Context)
+    end.
+
+-spec error_mdn_changed(cb_context:context()) -> cb_context:context().
+error_mdn_changed(Context) ->
+    NewMDN = cb_context:req_value(Context, ?KEY_MOBILE_MDN),
+    OldMDN = wh_json:get_ne_value(?KEY_MOBILE_MDN, cb_context:fetch(Context, 'db_doc')),
+    lager:debug("mobile device number attempted to be changed from ~s to ~s"
+                ,[OldMDN, NewMDN]
+               ),
+    cb_context:add_validation_error(
+      ?KEY_MOBILE_MDN
+      ,<<"invalid">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"Mobile Device Number can not be changed">>}
+          ,{<<"cause">>, NewMDN}
+         ])
+      ,Context
+     ).
+
+-spec check_mdn_taken(api_binary(), cb_context:context()) -> cb_context:context().
+check_mdn_taken(DeviceId, Context) ->
+    MDN = get_mdn(Context),
+    try wnm_number:get(MDN) of
+        _Number -> error_mdn_taken(MDN, Context)
+    catch
+        'throw':{_R, _Number} ->
+            lager:debug("endpoint mdn ~s is not taken: ~p", [MDN, _R]),
+            check_mdn_registered(DeviceId, Context)
+    end.
+
+-spec error_mdn_taken(ne_binary(), cb_context:context()) -> cb_context:context().
+error_mdn_taken(Number, Context) ->
+    cb_context:add_validation_error(
+      ?KEY_MOBILE_MDN
+      ,<<"unique">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"Mobile Device Number already exists in the system">>}
+          ,{<<"cause">>, Number}
+         ])
+      ,Context
+     ).
+
+-spec check_mdn_registered(api_binary(), cb_context:context()) -> cb_context:context().
+check_mdn_registered(DeviceId, Context) ->
+    %%TODO: issue API request to TOP (if configured with URL) and validate
+    %%   that the number is present in that system, if not stop the request
+    %%   and don't set handle_modible_mdn
+    Context1 = cb_context:store(Context, 'add_mobile_mdn', 'true'),
+    case DeviceId =:= 'undefined' of
+        'true' -> check_mac_address(DeviceId, Context1);
+        'false' -> prepare_outbound_flags(DeviceId, Context1)
+    end.
 
 -spec changed_mac_address(cb_context:context()) -> boolean().
 changed_mac_address(Context) ->
@@ -487,7 +587,33 @@ validate_device_ip_unique(IP, DeviceId, Context) ->
 -spec check_emergency_caller_id(api_binary(), cb_context:context()) -> cb_context:context().
 check_emergency_caller_id(DeviceId, Context) ->
     Context1 = crossbar_util:format_emergency_caller_id_number(Context),
-    check_device_schema(DeviceId, Context1).
+    check_device_type_change(DeviceId, Context1).
+
+-spec check_device_type_change(api_binary(), cb_context:context()) -> cb_context:context().
+check_device_type_change('undefined', Context) -> check_device_schema('undefined', Context);
+check_device_type_change(DeviceId, Context) ->
+    DeviceType = kz_device:device_type(cb_context:req_data(Context)),
+    SuperAdmin = cb_modules_util:is_superduper_admin(Context),
+    case kz_device:device_type(cb_context:fetch(Context, 'db_doc')) of
+        DeviceType -> check_device_schema(DeviceId, Context);
+        _Else when SuperAdmin ->
+            check_device_schema(DeviceId, Context);
+        _Else when DeviceType =:= 'undefined' ->
+            error_device_type_change(<<>>, Context);
+        _Else -> error_device_type_change(DeviceType, Context)
+    end.
+
+-spec error_device_type_change(api_binary(), cb_context:context()) -> cb_context:context().
+error_device_type_change(DeviceType, Context) ->
+    cb_context:add_validation_error(
+      <<"device_type">>
+      ,<<"invalid">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"Not authorized to change device type">>}
+          ,{<<"cause">>, DeviceType}
+         ])
+      ,Context
+     ).
 
 -spec check_device_schema(api_binary(), cb_context:context()) -> cb_context:context().
 check_device_schema(DeviceId, Context) ->
@@ -666,3 +792,129 @@ maybe_remove_aggregate(DeviceId, _Context, 'success') ->
         {'error', 'not_found'} -> 'false'
     end;
 maybe_remove_aggregate(_, _, _) -> 'false'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_device_type(cb_context:context()) -> cb_context:context().
+get_device_type(Context) ->
+    case kz_device:device_type(cb_context:fetch(Context, 'db_doc')) of
+        'undefined' ->
+            kz_device:device_type(cb_context:req_data(Context));
+        DeviceType -> DeviceType
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_add_mobile_mdn(cb_context:context()) -> cb_context:context().
+maybe_add_mobile_mdn(Context) ->
+    case wh_util:is_true(cb_context:fetch(Context, 'add_mobile_mdn')) of
+        'true' -> add_mobile_mdn(Context);
+        'false' -> Context
+    end.
+
+-spec add_mobile_mdn(cb_context:context()) -> cb_context:context().
+add_mobile_mdn(Context) ->
+    Normalized = wnm_util:to_e164(get_mdn(Context)),
+    AccountId = cb_context:account_id(Context),
+    case wh_number_manager:reconcile_number(Normalized, AccountId, 'system') of
+        {'error', _R} ->
+            lager:debug("unable to add MDN ~s to database: ~p", [Normalized, _R]),
+            _ = crossbar_doc:delete(Context),
+            cb_context:add_system_error('datastore_fault', Context);
+        _Else ->
+            lager:debug("created new mdn number ~s", [Normalized]),
+            set_mobile_public_fields(Context)
+    end.
+
+-spec set_mobile_public_fields(cb_context:context()) -> cb_context:context().
+set_mobile_public_fields(Context) ->
+    Normalized = wnm_util:to_e164(get_mdn(Context)),
+    AuthAccountId = cb_context:auth_account_id(Context),
+    DeviceId = wh_doc:id(cb_context:doc(Context)),
+    MobileField =
+        wh_json:from_list([{<<"provider">>, <<"tower-of-power">>}
+                           ,{<<"authorizing">>, wh_json:from_list(
+                                                  [{<<"account-id">>, AuthAccountId}]
+                                                 )}
+                           ,{<<"device-id">>, DeviceId}
+                          ]),
+    PublicFields = wh_json:from_list([{<<"mobile">>, MobileField}]),
+    case wh_number_manager:set_public_fields(
+           Normalized
+           ,PublicFields
+           ,AuthAccountId
+          )
+    of
+        {'error', _R} ->
+            lager:debug("unable to update the public number fileds on the MDN ~s: ~p"
+                        ,[Normalized, _R]
+                       ),
+            _ = crossbar_doc:delete(Context),
+            cb_context:add_system_error('datastore_fault', Context);
+        _Else ->
+            lager:debug("set public fields for new mdn ~s to ~s"
+                        ,[Normalized, wh_json:encode(PublicFields)]
+                       ),
+            maybe_remove_mobile_mdn(Context)
+    end.
+
+-spec maybe_remove_mobile_mdn(cb_context:context()) -> cb_context:context().
+maybe_remove_mobile_mdn(Context) ->
+    case wh_util:is_true(cb_context:fetch(Context, 'remove_mobile_mdn')) of
+        'true' -> remove_mobile_mdn(Context);
+        'false' -> Context
+    end.
+
+-spec remove_mobile_mdn(cb_context:context()) -> cb_context:context().
+remove_mobile_mdn(Context) ->
+    JObj = cb_context:fetch(Context, 'db_doc'),
+    case wh_json:get_ne_value(?KEY_MOBILE_MDN, JObj) of
+        'undefined' -> Context;
+        MDN -> remove_if_mobile(MDN, Context)
+    end.
+
+-spec remove_if_mobile(ne_binary(), cb_context:context()) -> cb_context:context().
+remove_if_mobile(MDN, Context) ->
+    try wh_number_manager:get_public_fields(MDN, 'system') of
+        {'ok', JObj} ->
+            case wh_json:get_ne_value(<<"mobile">>, JObj) of
+                'undefined' -> Context;
+                Mobile ->
+                    lager:debug("removing mdn number ~s with mobile properties ~s"
+                                ,[MDN, wh_json:encode(Mobile)]
+                               ),
+                    _ = wh_number_manager:release_number(MDN, 'system'),
+                    Context
+            end;
+       _Else -> Context
+    catch
+        'throw':{_R, _Number} ->
+            lager:debug("unable to fetch current mdn ~s for removal: ~p"
+                        ,[MDN, _R]
+                       ),
+                Context
+    end.
+
+-spec get_mdn(cb_context:context()) -> api_binary().
+get_mdn(Context) ->
+    case cb_context:req_value(Context, ?KEY_MOBILE_MDN) of
+        'undefined' ->
+            wh_json:get_ne_value(?KEY_MOBILE_MDN, cb_context:fetch(Context, 'db_doc'));
+        MDN -> MDN
+    end.
+
+-spec has_mdn_changed(cb_context:context()) -> boolean().
+has_mdn_changed(Context) ->
+    NewMDN = cb_context:req_value(Context, ?KEY_MOBILE_MDN),
+    case wh_json:get_ne_value(?KEY_MOBILE_MDN, cb_context:fetch(Context, 'db_doc')) of
+        'undefined' -> 'false';
+        OldMDN -> wnm_util:to_e164(NewMDN) =:= wnm_util:to_e164(OldMDN)
+    end.
