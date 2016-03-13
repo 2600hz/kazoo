@@ -61,10 +61,12 @@ is_authorized(AccountId, UserId, AppId) ->
             'false';
         {'ok', Doc} ->
             AppJObj = wh_json:get_value(AppId, kz_apps_store:apps(Doc)),
-            Allowed = wh_json:get_value(<<"allowed_users">>, AppJObj, <<"specific">>),
-            Users = wh_json:get_value(<<"users">>, AppJObj, []),
-            UserIds = [wh_json:get_value(<<"id">>, U, []) || U <- Users],
-            case {Allowed, UserIds} of
+            AllowedType = wh_json:get_value(<<"allowed_users">>, AppJObj, <<"specific">>),
+            SpecificIds = get_specific_ids(
+                            wh_json:get_value(<<"users">>, AppJObj, [])
+                           ),
+            io:format("~p ~p~n", [{AllowedType, SpecificIds}, UserId]),
+            case {AllowedType, SpecificIds} of
                 {<<"all">>, _} -> 'true';
                 {<<"specific">>, []} -> 'false';
                 {<<"specific">>, UserIds} ->
@@ -75,6 +77,18 @@ is_authorized(AccountId, UserId, AppId) ->
                     lager:error("unknown data ~p : ~p", [_A, _U]),
                     'false'
             end
+    end.
+
+-spec get_specific_ids(wh_json:objects()) -> ne_binaries().
+get_specific_ids(Users) ->
+    get_specific_ids(Users, []).
+
+-spec get_specific_ids(wh_json:objects(), ne_binaries()) -> ne_binaries().
+get_specific_ids([], UserIds) -> UserIds;
+get_specific_ids([User|Users], UserIds) ->
+    case wh_json:get_ne_value(<<"id">>, User) of
+        'undefined' -> get_specific_ids(Users, UserIds);
+        UserId -> get_specific_ids(Users, [UserId|UserIds])
     end.
 
 %%--------------------------------------------------------------------
