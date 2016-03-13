@@ -1077,7 +1077,10 @@ create_resp_content(Req0, Context) ->
     try wh_json:encode(create_resp_envelope(Context)) of
         JSON ->
             case cb_context:req_value(Context, <<"jsonp">>) of
-                'undefined' -> {JSON, Req0};
+                'undefined' ->
+                    {JSON
+                     ,cowboy_req:set_resp_header(<<"content-type">>, <<"application/json">>, Req0)
+                    };
                 JsonFun when is_binary(JsonFun) ->
                     lager:debug("jsonp wrapping in ~s: ~p", [JsonFun, JSON]),
                     {[JsonFun, <<"(">>, JSON, <<");">>]
@@ -1202,11 +1205,9 @@ halt(Req0, Context) ->
 
     Req4 = cowboy_req:set_resp_header(<<"x-request-id">>, cb_context:req_id(Context), Req3),
 
-    Req5 = cowboy_req:set_resp_header(<<"content-type">>, <<"application/json">>, Req4),
-
     lager:debug("setting status code: ~p", [StatusCode]),
-    {'ok', Req6} = cowboy_req:reply(StatusCode, Req5),
-    {'halt', Req6, cb_context:set_resp_status(Context, 'halt')}.
+    {'ok', Req5} = cowboy_req:reply(StatusCode, Req4),
+    {'halt', Req5, cb_context:set_resp_status(Context, 'halt')}.
 
 -spec create_event_name(cb_context:context(), ne_binary() | ne_binaries()) -> ne_binary().
 create_event_name(Context, Segments) when is_list(Segments) ->
