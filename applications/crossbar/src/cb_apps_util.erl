@@ -65,7 +65,6 @@ is_authorized(AccountId, UserId, AppId) ->
             SpecificIds = get_specific_ids(
                             wh_json:get_value(<<"users">>, AppJObj, [])
                            ),
-            io:format("~p ~p~n", [{AllowedType, SpecificIds}, UserId]),
             case {AllowedType, SpecificIds} of
                 {<<"all">>, _} -> 'true';
                 {<<"specific">>, []} -> 'false';
