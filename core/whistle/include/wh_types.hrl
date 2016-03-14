@@ -240,6 +240,10 @@
 -type xml_things() :: xml_els() | xml_texts().
 
 
+-type account_id() :: <<_:(8*32)>>.
+-type account_db() :: <<_:(8*48)>>.
+-type account_db_unencoded() :: <<_:(8*41)>>.
+
 -define(MATCH_ACCOUNT_RAW(Account),
         <<(Account):32/binary>>
        ).
@@ -254,7 +258,7 @@
        ).
 
 -define(MATCH_ACCOUNT_RAW(A, B, Rest),
-        <<(A):2/binary, (B):2/binary, (Rest)/binary>>  %% FIXME: add mising size
+        <<(A):2/binary, (B):2/binary, (Rest)/binary>>  %% FIXME: add missing size (Rest:8*28)
        ).
 -define(MATCH_ACCOUNT_UNENCODED(A, B, Rest),
         <<"account/", (A):2/binary, "/", (B):2/binary, "/", (Rest):28/binary>>
@@ -265,6 +269,10 @@
 -define(MATCH_ACCOUNT_encoded(A, B, Rest),
         <<"account%2f", (A):2/binary, "%2f", (B):2/binary, "%2f", (Rest):28/binary>>
        ).
+
+-type modb_id() :: <<_:(8*39)>>.
+-type modb_db() :: <<_:(8*55)>>.
+-type modb_db_unencoded() :: <<_:(8*49)>>.
 
 -define(MATCH_MODB_SUFFIX_RAW(A, B, Rest, Year, Month),
         <<(A):2/binary, (B):2/binary, (Rest):28/binary
@@ -288,7 +296,7 @@
        ).
 
 %% FIXME: replace these with the above ones, actually matching: "account..."
-%%   and then add MATCH_MODB_SUFFIX_encoded/3.
+%% FIXME: add MATCH_MODB_SUFFIX_encoded/3
 -define(MATCH_MODB_SUFFIX_RAW(Account, Year, Month),
         <<(Account):32/binary, "-", (Year):4/binary, (Month):2/binary>>
        ).
@@ -300,10 +308,10 @@
        ).
 
 -define(MATCH_MODB_PREFIX(Year, Month, Account),
-        <<(Year):4/binary, (Month):2/binary, "-", (Account)/binary>>  %% FIXME: add mising size
+        <<(Year):4/binary, (Month):2/binary, "-", (Account)/binary>>  %% FIXME: add missing size
        ).
 -define(MATCH_MODB_PREFIX_M1(Year, Month, Account),
-        <<(Year):4/binary, (Month):1/binary, "-", (Account)/binary>>  %% FIXME: add mising size
+        <<(Year):4/binary, (Month):1/binary, "-", (Account)/binary>>  %% FIXME: add missing size
        ).
 
 %% WH_NODES types

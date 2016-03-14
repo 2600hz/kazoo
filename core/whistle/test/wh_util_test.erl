@@ -296,14 +296,17 @@ account_formats_test_() ->
 
     MODb = list_to_binary([AccountId, "-", Year, Month]),
     MODbEn = list_to_binary([AccountDbEn, "-", Year, Month]),
+    MODbUn = list_to_binary([AccountDbUn, "-", Year, Month]),
 
     Formats = [AccountId, AccountDbUn, AccountDbEn
                ,MODb, MODbEn
               ],
-    Funs = [{fun(F) -> wh_util:format_account_id(F, 'raw') end, AccountId}
-            ,{fun(F) -> wh_util:format_account_id(F, 'unencoded') end, AccountDbUn}
-            ,{fun(F) -> wh_util:format_account_id(F, 'encoded') end, AccountDbEn}
-            ,{fun wh_util:format_account_mod_id/1, MODbEn}
+    Funs = [{fun wh_util:format_account_id/1, AccountId}
+            ,{fun wh_util:format_account_db/1, AccountDbEn}
+            ,{fun wh_util:format_unencoded_account_db/1, AccountDbUn}
+            ,{fun wh_util:format_modb_id/1, MODb}
+            ,{fun wh_util:format_modb_db/1, MODbEn}
+            ,{fun wh_util:format_unencoded_modb_db/1, MODbUn}
            ],
     [{format_title(Format, Expected)
       ,?_assertEqual(Expected, Fun(Format))
