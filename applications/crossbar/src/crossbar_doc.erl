@@ -349,7 +349,7 @@ load_view(#load_view_params{view=View
 
     IncludeOptions =
         case has_qs_filter(Context) of
-            'true' -> props:insert_value('include_docs', DefaultOptions);
+            'true' -> ['include_docs' | props:delete('include_docs', DefaultOptions)];
             'false' -> DefaultOptions
         end,
 
