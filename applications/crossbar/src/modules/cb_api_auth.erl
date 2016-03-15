@@ -173,7 +173,7 @@ validate_by_api_key(Context, ApiKey, Doc) ->
 consume_tokens(Context) ->
     case kz_buckets:consume_tokens_until(?APP_NAME
                                          ,cb_modules_util:bucket_name(Context)
-                                         ,?API_AUTH_TOKENS
+                                         ,cb_modules_util:token_cost(Context, ?API_AUTH_TOKENS)
                                         )
     of
         'true' -> cb_context:set_resp_status(Context, 'success');
