@@ -374,8 +374,12 @@ load_view(#load_view_params{view=View
             handle_couch_mgr_errors(Error, View, Context);
         {'ok', JObjs} ->
             lager:debug("paginating view '~s' from '~s', starting at '~p'", [View, Db, StartKey]),
+            Pagination = case is_integer(Limit) of
+                             'true' -> PageSize;
+                             'false' -> Limit
+                         end,
             handle_couch_mgr_pagination_success(JObjs
-                                                ,if is_integer(Limit) -> PageSize; 'true' -> Limit end
+                                                ,Pagination
                                                 ,cb_context:api_version(Context)
                                                 ,LVPs#load_view_params{dbs=Dbs
                                                                        ,context=cb_context:set_resp_status(Context, 'success')

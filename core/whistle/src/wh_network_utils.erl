@@ -345,17 +345,17 @@ mxtuple_to_binary({Priority, Domain}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec pretty_print_bytes(non_neg_integer()) -> iolist().
+pretty_print_bytes(Bytes)
+  when Bytes div 1073741824 > 0 ->
+    io_lib:format("~.2fGB", [Bytes/1073741824]);
+pretty_print_bytes(Bytes)
+  when Bytes div 1048576 > 0 ->
+    io_lib:format("~.2fMB", [Bytes/1048576]);
+pretty_print_bytes(Bytes)
+  when Bytes div 1024 > 0 ->
+    io_lib:format("~.2fKB", [Bytes/1024]);
 pretty_print_bytes(Bytes) ->
-    if
-        Bytes div 1073741824 > 0 ->
-            io_lib:format("~.2fGB", [Bytes/1073741824]);
-        Bytes div 1048576 > 0 ->
-            io_lib:format("~.2fMB", [Bytes/1048576]);
-        Bytes div 1024 > 0 ->
-            io_lib:format("~.2fKB", [Bytes/1024]);
-        'true' ->
-            io_lib:format("~BB", [Bytes])
-    end.
+    io_lib:format("~BB", [Bytes]).
 
 %%--------------------------------------------------------------------
 %% @public
