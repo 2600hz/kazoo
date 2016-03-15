@@ -189,11 +189,11 @@ store_value(Operation, Realm, Key, Value ,State=#state{sip=SipList}) when is_int
     NewData = case props:get_value(Realm, SipList) of
                   'undefined' -> [{Key, Value}];
                   RealmData ->
-                      NewValue = if Operation == 'add' ->
-                                         props:get_value(Key, RealmData, 0) + Value;
-                                    'true' ->
-                                         Value
-                                 end,
+                      NewValue =
+                          case Operation == 'add' of
+                              'true' -> props:get_value(Key, RealmData, 0) + Value;
+                              'false' -> Value
+                          end,
                       lists:keystore(Key, 1, RealmData, {Key, NewValue})
               end,
     State#state{sip=lists:keystore(Realm, 1, SipList, {Realm, NewData})}.

@@ -539,7 +539,10 @@ handle_event(JObj, #state{cf_module_pid=PidRef, call=Call ,self=Self}) ->
     CallId = whapps_call:call_id_direct(Call),
     Others = whapps_call:kvs_fetch('cf_event_pids', [], Call),
     ModPid = get_pid(PidRef),
-    Notify = if is_pid(ModPid) -> [ModPid | Others]; 'true' -> Others end,
+    Notify = case is_pid(ModPid) of
+                 'true' -> [ModPid | Others];
+                 'false' -> Others
+             end,
 
     case {whapps_util:get_event_type(JObj), wh_json:get_value(<<"Call-ID">>, JObj)} of
         {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
