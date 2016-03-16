@@ -383,8 +383,8 @@ is_in_account_hierarchy(CheckFor, InAccount) ->
 is_in_account_hierarchy('undefined', _, _) -> 'false';
 is_in_account_hierarchy(_, 'undefined', _) -> 'false';
 is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
-    CheckId = ?MODULE:format_account_id(CheckFor, 'raw'),
-    AccountId = ?MODULE:format_account_id(InAccount, 'raw'),
+    CheckId = format_account_id(CheckFor),
+    AccountId = format_account_id(InAccount),
     case (IncludeSelf andalso AccountId =:= CheckId)
         orelse kz_account:fetch(AccountId)
     of
@@ -530,17 +530,12 @@ account_update(Account, UpdateFun) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Retrieves the account realm
-%% @end
+%% @doc Retrieves the account realm
 %%--------------------------------------------------------------------
 -spec get_account_realm(api_binary()) -> api_binary().
--spec get_account_realm(api_binary(), ne_binary()) -> api_binary().
-get_account_realm(AccountId) ->
-    get_account_realm(
-      ?MODULE:format_account_id(AccountId, 'encoded')
-      ,?MODULE:format_account_id(AccountId, 'raw')
-     ).
+-spec get_account_realm(api_binary(), account_id()) -> api_binary().
+get_account_realm(Account) ->
+    get_account_realm(format_account_db(Account), format_account_id(Account)).
 
 get_account_realm('undefined', _) -> 'undefined';
 get_account_realm(Db, AccountId) ->
