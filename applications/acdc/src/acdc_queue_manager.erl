@@ -11,7 +11,6 @@
 %%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(acdc_queue_manager).
-
 -behaviour(gen_listener).
 
 %% API
@@ -51,7 +50,7 @@
 -type queue_strategy_state() :: queue:queue() | ne_binaries().
 
 -record(state, {ignored_member_calls = dict:new() :: dict:dict()
-                ,account_id :: api_binary()
+                ,account_id :: api_accountid()
                 ,queue_id :: api_binary()
                 ,supervisor :: pid()
                 ,strategy = 'rr' :: queue_strategy() % round-robin | most-idle
@@ -63,7 +62,7 @@
 -type mgr_state() :: #state{}.
 
 -define(BINDINGS(A, Q), [{'conf', [{'type', <<"queue">>}
-                                   ,{'db', wh_util:format_account_id(A, 'encoded')}
+                                   ,{'db', wh_util:format_account_db(A)}
                                    ,{'id', Q}
                                    ,'federate'
                                   ]}
@@ -274,15 +273,15 @@ init([Super, QueueJObj]) ->
 init([Super, AccountId, QueueId]) ->
     wh_util:put_callid(<<"mgr_", QueueId/binary>>),
 
-    AcctDb = wh_util:format_account_id(AccountId, 'encoded'),
-    {'ok', QueueJObj} = kz_datamgr:open_cache_doc(AcctDb, QueueId),
+    AccountDb = wh_util:format_account_db(AccountId),
+    {'ok', QueueJObj} = kz_datamgr:open_cache_doc(AccountDb, QueueId),
 
     init(Super, AccountId, QueueId, QueueJObj).
 
 init(Super, AccountId, QueueId, QueueJObj) ->
     process_flag('trap_exit', 'false'),
 
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = wh_util:format_account_db(AccountId),
     kz_datamgr:add_to_doc_cache(AccountDb, QueueId, QueueJObj),
 
     _ = start_secondary_queue(AccountId, QueueId),
@@ -409,7 +408,7 @@ handle_cast({'start_workers'}, #state{account_id=AccountId
                                       ,supervisor=QueueSup
                                      }=State) ->
     WorkersSup = acdc_queue_sup:workers_sup(QueueSup),
-    case kz_datamgr:get_results(wh_util:format_account_id(AccountId, 'encoded')
+    case kz_datamgr:get_results(wh_util:format_account_db(AccountId)
                                ,<<"queues/agents_listing">>
                                ,[{'key', QueueId}
                                  ,'include_docs'
@@ -574,9 +573,9 @@ start_secondary_queue(AccountId, QueueId) ->
                     ,?SECONDARY_BINDINGS(AccountId, QueueId)
                    ]).
 
--spec lookup_priority_levels(ne_binary(), ne_binary()) -> api_integer().
-lookup_priority_levels(AccountDB, QueueId) ->
-    case kz_datamgr:open_cache_doc(AccountDB, QueueId) of
+-spec lookup_priority_levels(account_db(), ne_binary()) -> api_integer().
+lookup_priority_levels(AccountDb, QueueId) ->
+    case kz_datamgr:open_cache_doc(AccountDb, QueueId) of
         {'ok', JObj} -> wh_json:get_value(<<"max_priority">>, JObj);
         _ -> 'undefined'
     end.
@@ -584,7 +583,7 @@ lookup_priority_levels(AccountDB, QueueId) ->
 make_ignore_key(AccountId, QueueId, CallId) ->
     {AccountId, QueueId, CallId}.
 
--spec start_agent_and_worker(pid(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+-spec start_agent_and_worker(pid(), account_id(), ne_binary(), wh_json:object()) -> 'ok'.
 start_agent_and_worker(WorkersSup, AccountId, QueueId, AgentJObj) ->
     acdc_queue_workers_sup:new_worker(WorkersSup, AccountId, QueueId),
     AgentId = wh_doc:id(AgentJObj),
@@ -593,7 +592,6 @@ start_agent_and_worker(WorkersSup, AccountId, QueueId, AgentJObj) ->
         {'ok', <<"logged_out">>} -> 'ok';
         {'ok', _Status} ->
             lager:debug("maybe starting agent ~s(~s) for queue ~s", [AgentId, _Status, QueueId]),
-
             case acdc_agents_sup:find_agent_supervisor(AccountId, AgentId) of
                 'undefined' -> acdc_agents_sup:new(AgentJObj);
                 P when is_pid(P) -> 'ok'

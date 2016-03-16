@@ -96,8 +96,8 @@
 
 -define(RESOURCE_TYPE_AUDIO, <<"audio">>).
 
--record(state, {account_id :: ne_binary()
-                ,account_db :: ne_binary()
+-record(state, {account_id :: account_id()
+                ,account_db :: account_db()
                 ,agent_id :: ne_binary()
                 ,agent_listener :: server_ref()
                 ,agent_listener_id :: ne_binary()
@@ -347,7 +347,8 @@ new_endpoint(FSM, EP) ->
 edited_endpoint(FSM, EP) ->
     lager:debug("sending EP to ~p: ~p", [FSM, EP]),
     gen_fsm:send_all_state_event(FSM, {'edited_endpoint', wh_doc:id(EP), EP}).
-deleted_endpoint(FSM, EP) -> lager:debug("sending EP to ~p: ~p", [FSM, EP]).
+deleted_endpoint(FSM, EP) ->
+    lager:debug("sending EP to ~p: ~p", [FSM, EP]).
 
 %%%===================================================================
 %%% gen_fsm callbacks
@@ -375,7 +376,7 @@ init([AccountId, AgentId, Supervisor, Props, IsThief]) ->
     lager:debug("waiting for listener in ~p", [_P]),
 
     {'ok', 'wait', #state{account_id = AccountId
-                          ,account_db = wh_util:format_account_id(AccountId, 'encoded')
+                          ,account_db = wh_util:format_account_db(AccountId)
                           ,agent_id = AgentId
                           ,fsm_call_id = FSMCallId
                           ,max_connect_failures = max_failures(AccountId)

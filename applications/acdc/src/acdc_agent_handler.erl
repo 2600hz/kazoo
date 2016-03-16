@@ -76,7 +76,7 @@ maybe_agent_queue_change(_AccountId, _AgentId, _Evt, _QueueId, _JObj) ->
 
 update_agent('undefined', QueueId, _F, AccountId, AgentId, _JObj) ->
     lager:debug("new agent process needs starting"),
-    {'ok', AgentJObj} = kz_datamgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
+    {'ok', AgentJObj} = kz_datamgr:open_cache_doc(wh_util:format_account_db(AccountId)
                                                  ,AgentId
                                                 ),
     lager:debug("agent loaded"),
@@ -137,7 +137,7 @@ login_resp(JObj, Status) ->
             wapi_acdc_agent:publish_login_resp(ServerID, Prop)
     end.
 
--spec maybe_start_agent(api_binary(), api_binary()) ->
+-spec maybe_start_agent(api_accountid(), api_binary()) ->
                                {'ok', pid()} |
                                {'exists', pid()} |
                                {'error', any()}.
@@ -146,7 +146,7 @@ maybe_start_agent(AccountId, AgentId) ->
         'undefined' ->
             lager:debug("agent ~s (~s) not found, starting", [AgentId, AccountId]),
             acdc_agent_stats:agent_ready(AccountId, AgentId),
-            case kz_datamgr:open_doc(wh_util:format_account_id(AccountId, 'encoded'), AgentId) of
+            case kz_datamgr:open_doc(wh_util:format_account_db(AccountId), AgentId) of
                 {'ok', AgentJObj} -> acdc_agents_sup:new(AgentJObj);
                 {'error', _E}=E ->
                     lager:debug("error opening agent doc: ~p", [_E]),
@@ -396,7 +396,9 @@ handle_presence_probe(JObj, _Props) ->
     'true' = wapi_presence:probe_v(JObj),
     Realm = wh_json:get_value(<<"Realm">>, JObj),
     case whapps_util:get_account_by_realm(Realm) of
-        {'ok', AcctDb} -> maybe_respond_to_presence_probe(JObj, wh_util:format_account_id(AcctDb, 'raw'));
+        {'ok', AccountDb} ->
+            AccountId = wh_util:format_account_id(AccountDb),
+            maybe_respond_to_presence_probe(JObj, AccountId);
         _ -> lager:debug("ignoring presence probe from realm ~s", [Realm])
     end.
 
