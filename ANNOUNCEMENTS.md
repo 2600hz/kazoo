@@ -22,10 +22,6 @@ If you plan to support the new API to download the company directory as a PDF yo
 
 The default ports that Kamailio listens to for the WebRTC websocket have changed, this was due to a port conflict on all-in-one installs with TLS enabled Kazoo APIs. The standard HTTP websocket port was 8080 and is now 5064.  The TLS HTTP websocket port was 8443 and is now 5065.  If you would like to continue using the old ports please update "/etc/kazoo/kamailio/local.cfg" after an update to kazoo-configs 3.22.12+
 
-#### Listing Sibling Accounts
-
-By default only the system admin will be able to list sibling accounts, a non-backward compatable change.  If you would like to continue the existing behaviour then set `allow_unprivileged_get_siblings` in system_config/crossbar.accounts to `true`.
-
 ### 4.0
 
 #### Erlang Version Support
