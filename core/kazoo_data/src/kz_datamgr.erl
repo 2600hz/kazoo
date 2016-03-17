@@ -58,7 +58,7 @@
 
 %% attachments
 -export([fetch_attachment/3
-         ,stream_attachment/3
+         ,stream_attachment/3, stream_attachment/4
          ,put_attachment/4, put_attachment/5
          ,delete_attachment/3, delete_attachment/4
          ,attachment_url/3, attachment_url/4
@@ -896,11 +896,17 @@ fetch_attachment(DbName, DocId, AName) ->
 -spec stream_attachment(text(), ne_binary(), ne_binary()) ->
                                {'ok', reference()} |
                                {'error', any()}.
-stream_attachment(DbName, DocId, AName) when ?VALID_DBNAME ->
-    kzs_attachments:stream_attachment(kzs_plan:plan(DbName, DocId), DbName, DocId, AName, self());
 stream_attachment(DbName, DocId, AName) ->
+    stream_attachment(DbName, DocId, AName, self()).
+
+-spec stream_attachment(text(), ne_binary(), ne_binary(), pid()) ->
+                               {'ok', reference()} |
+                               {'error', any()}.
+stream_attachment(DbName, DocId, AName, Pid) when ?VALID_DBNAME ->
+    kzs_attachments:stream_attachment(kzs_plan:plan(DbName, DocId), DbName, DocId, AName, Pid);
+stream_attachment(DbName, DocId, AName, Pid) ->
     case maybe_convert_dbname(DbName) of
-        {'ok', Db} -> stream_attachment(Db, DocId, AName);
+        {'ok', Db} -> stream_attachment(Db, DocId, AName, Pid);
         {'error', _}=E -> E
     end.
 
