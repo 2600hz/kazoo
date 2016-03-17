@@ -10,12 +10,17 @@
 -module(wh_util).
 
 -export([log_stacktrace/0, log_stacktrace/1
+
          ,format_account_id/1
          ,format_account_db/1
          ,format_unencoded_account_db/1
-         ,format_modb_id/1, format_modb_id/2, format_modb_id/3
+
+         ,format_modb_id/1
          ,format_modb_db/1
          ,format_unencoded_modb_db/1
+
+         ,format_modb_db_from/1, format_modb_db_from/2, format_modb_db_from/3
+
          ,normalize_account_name/1
          ,account_update/1, account_update/2
         ]).
@@ -209,6 +214,7 @@ change_syslog_log_level(L) ->
 %% @doc
 %% Given a representation of an account string, return the account ID.
 %% Note: this used to be known as the 'raw' format.
+%% Was: format_account_id(Account, 'raw').
 %% @end
 %%--------------------------------------------------------------------
 -spec format_account_id(api_binary()) -> account_id().
@@ -240,6 +246,7 @@ format_account_id(Other) ->
 %% @doc
 %% Given a representation of an account string, return the account DB.
 %% Note: this used to be known as the 'encoded' format.
+%% Was: format_account_id(Account, 'encoded').
 %% @end
 %%--------------------------------------------------------------------
 -spec format_account_db(api_binary()) -> account_db().
@@ -257,6 +264,7 @@ format_account_db(Account) ->
 %% Given a representation of an account string,
 %%   return the account DB as a human readable string.
 %% Note: this used to be known as the 'unencoded' format.
+%% Was: format_account_id(Account, 'unencoded').
 %% @end
 %%--------------------------------------------------------------------
 -spec format_unencoded_account_db(api_binary()) -> account_db_unencoded().
@@ -271,68 +279,75 @@ format_unencoded_account_db(Account) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Given a representation of an account's MoDB string,
-%%   return the account's MoDB ID string.
-%% Note: this used to be known as the 'raw' format for MoDBs.
+%% Given a representation of an account's MODb string,
+%%   return the account's MODb ID, DB or unencoded DB string.
+%% Was: format_account_modb(Account, 'raw').
+%% Was: format_account_modb(Account, 'encoded').
+%% Was: format_account_modb(Account, 'unencoded').
 %% @end
 %%--------------------------------------------------------------------
--spec format_modb_id(api_binary()) -> modb_id().
--spec format_modb_id(api_binary(), wh_now() | gregorian_seconds()) -> modb_id().
--spec format_modb_id(api_binary(), wh_year() | ne_binary(), wh_month() | ne_binary()) -> modb_id().
-format_modb_id(?MATCH_MODB_SUFFIX_RAW(_,_,_) = MoDbId) ->
-    MoDbId;
+-type modb_formats() :: modb_id() | modb_db() | modb_db_unencoded().
+-spec format_modb_id(modb_formats()) -> modb_id().
+format_modb_id(?MATCH_MODB_SUFFIX_RAW(_,_,_) = MODbId) ->
+    MODbId;
 format_modb_id(?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, Year, Month)) ->
     ?MATCH_MODB_SUFFIX_RAW(A, B, Rest, Year, Month);
 format_modb_id(?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, Year, Month)) ->
-    ?MATCH_MODB_SUFFIX_RAW(A, B, Rest, Year, Month);
-format_modb_id(Account) ->
-    format_modb_id(Account, os:timestamp()).
+    ?MATCH_MODB_SUFFIX_RAW(A, B, Rest, Year, Month).
 
-format_modb_id(Account, {_,_,_}=Timestamp) ->
+-spec format_modb_db(modb_formats()) -> modb_db().
+format_modb_db(?MATCH_MODB_SUFFIX_ENCODED(_,_,_,_,_) = MODbEn) ->
+    MODbEn;
+format_modb_db(?MATCH_MODB_SUFFIX_RAW(A, B, Rest, Month, Year)) ->
+    ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, Month, Year);
+format_modb_db(?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, Month, Year)) ->
+    ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, Month, Year).
+
+-spec format_unencoded_modb_db(modb_formats()) -> modb_db_unencoded().
+format_unencoded_modb_db(?MATCH_MODB_SUFFIX_UNENCODED(_,_,_,_,_) = MODbUn) ->
+    MODbUn;
+format_unencoded_modb_db(?MATCH_MODB_SUFFIX_RAW(A, B, Rest, Month, Year)) ->
+    ?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, Month, Year);
+format_unencoded_modb_db(?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, Month, Year)) ->
+    ?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, Month, Year).
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given an account's string, keeps only the account part and add
+%%   the month & year part.
+%% If month or year is missing, they are set to current month & year.
+%% Was: format_account_mod_id(Account).
+%% Was: format_account_mod_id(Account, Timestamp).
+%% Was: format_account_mod_id(Account, Year, Month).
+%% Was: format_account_id(Account, Year, Month).
+%% @end
+%%--------------------------------------------------------------------
+-spec format_modb_db_from(api_binary()) -> modb_db().
+-spec format_modb_db_from(api_binary(), wh_now() | gregorian_seconds()) -> modb_db().
+-spec format_modb_db_from(api_binary(), wh_year() | ne_binary(), wh_month() | ne_binary()) -> modb_db().
+
+format_modb_db_from(Account) ->
+    format_modb_db_from(Account, os:timestamp()).
+
+format_modb_db_from(Account, {_,_,_}=Timestamp) ->
     {{Year, Month, _}, _} = calendar:now_to_universal_time(Timestamp),
-    format_modb_id(Account, Year, Month);
-format_modb_id(Account, Timestamp) when is_integer(Timestamp),
-                                        Timestamp > 0 ->
+    format_modb_db_from(Account, Year, Month);
+format_modb_db_from(Account, Timestamp) when is_integer(Timestamp),
+                                             Timestamp > 0 ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
-    format_modb_id(Account, Year, Month).
+    format_modb_db_from(Account, Year, Month).
 
-format_modb_id('undefined', _Year, _Month) -> 'undefined';
-format_modb_id(Account, Year, Month) when is_integer(Year),
-                                          is_integer(Month) ->
+format_modb_db_from('undefined', _Year, _Month) -> 'undefined';
+format_modb_db_from(Account, Year, Month) when is_integer(Year),
+                                               is_integer(Month) ->
     ?MATCH_ACCOUNT_RAW(A,B,Rest) = format_account_id(Account),
-    ?MATCH_MODB_SUFFIX_RAW(A, B, Rest, to_binary(Year), pad_month(Month));
-format_modb_id(Account, Year, Month) when not is_integer(Year) ->
-    format_modb_id(Account, to_integer(Year), Month);
-format_modb_id(Account, Year, Month) when not is_integer(Month) ->
-    format_modb_id(Account, Year, to_integer(Month)).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given a representation of an account's MoDB string,
-%%   return the account's MoDB DB string.
-%% Note: this used to be known as the 'encoded' format for MoDBs.
-%% @end
-%%--------------------------------------------------------------------
--spec format_modb_db(api_binary()) -> modb_db().
-format_modb_db('undefined') -> 'undefined';
-format_modb_db(MoDB) ->
-    ?MATCH_MODB_SUFFIX_RAW(A,B,Rest,Year,Month) = format_modb_id(MoDB),
-    ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, Year, Month).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given a representation of an account's MoDB string,
-%%   return the account's MoDB DB string.
-%% Note: this used to be known as the 'encoded' format for MoDBs.
-%% @end
-%%--------------------------------------------------------------------
--spec format_unencoded_modb_db(api_binary()) -> modb_db_unencoded().
-format_unencoded_modb_db('undefined') -> 'undefined';
-format_unencoded_modb_db(MoDB) ->
-    ?MATCH_MODB_SUFFIX_RAW(A,B,Rest,Year,Month) = format_modb_id(MoDB),
-    ?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, Year, Month).
+    ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, to_binary(Year), pad_month(Month));
+format_modb_db_from(Account, Year, Month) when not is_integer(Year) ->
+    format_modb_db_from(Account, to_integer(Year), Month);
+format_modb_db_from(Account, Year, Month) when not is_integer(Month) ->
+    format_modb_db_from(Account, Year, to_integer(Month)).
 
 %%--------------------------------------------------------------------
 %% @public

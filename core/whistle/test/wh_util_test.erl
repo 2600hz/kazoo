@@ -1,11 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2015, 2600Hz INC
+%%% @copyright (C) 2010-2016, 2600Hz INC
 %%% @doc
 %%% Various utilities - a veritable cornicopia
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
 %%%   Karl Anderson
+%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(wh_util_test).
 
@@ -286,20 +287,21 @@ resolve_uri_test() ->
     ?assertEqual(<<"http://pivot/script2.php">>, wh_util:resolve_uri(RawPath, <<"/", Relative/binary>>)).
 
 account_formats_test_() ->
-    AccountId = <<A:2/binary, B:2/binary, Rest/binary>> = wh_util:rand_hex_binary(16),
+    AccountId = <<A:2/binary, B:2/binary, Rest:28/binary>> = wh_util:rand_hex_binary(16),
     AccountDbUn = list_to_binary(["account/", A, "/", B, "/", Rest]),
     AccountDbEn = list_to_binary(["account%2F", A, "%2F", B, "%2F", Rest]),
 
     {Y, M, _} = erlang:date(),
     Year = wh_util:to_binary(Y),
     Month = wh_util:pad_month(M),
+    Now = os:timestamp(),
 
     MODb = list_to_binary([AccountId, "-", Year, Month]),
     MODbEn = list_to_binary([AccountDbEn, "-", Year, Month]),
     MODbUn = list_to_binary([AccountDbUn, "-", Year, Month]),
 
     Formats = [AccountId, AccountDbUn, AccountDbEn
-               ,MODb, MODbEn
+               ,MODb, MODbEn, MODbUn
               ],
     Funs = [{fun wh_util:format_account_id/1, AccountId}
             ,{fun wh_util:format_account_db/1, AccountDbEn}
@@ -307,17 +309,27 @@ account_formats_test_() ->
             ,{fun wh_util:format_modb_id/1, MODb}
             ,{fun wh_util:format_modb_db/1, MODbEn}
             ,{fun wh_util:format_unencoded_modb_db/1, MODbUn}
+            ,{fun wh_util:format_modb_db_from/1, MODbEn}
+            ,{fun(F) -> wh_util:format_modb_db_from(F, Now) end, MODbEn}
+            ,{fun(F) -> wh_util:format_modb_db_from(F, Y, M) end, MODbEn}
            ],
-    [{format_title(Format, Expected)
-      ,?_assertEqual(Expected, Fun(Format))
+    [{format_title(Fun, Format, Expected)
+      ,format_assert(Fun, Format, Expected)
      }
      || {Fun, Expected} <- Funs,
         Format <- Formats
     ].
 
-format_title(Format, Expected) ->
-    wh_util:to_list(
-      iolist_to_binary(
-        ["Converting ", Format, " to ", Expected]
-       )
+format_assert(Fun, Format, Expected) ->
+    Matchable = format_title(Fun, Format, Expected),
+    format_assert(Matchable, Fun, Format, Expected).
+
+format_assert("#Fun<wh_util.format_modb_id.1>"++_, Fun, ?MATCH_ACCOUNT_RAW(_)=Format, _Expected) ->
+    ?_assertException('error', 'function_clause', Fun(Format));
+format_assert(_FunStr, Fun, Format, Expected) ->
+    ?_assertEqual(Expected, Fun(Format)).
+
+format_title(Fun, Format, Expected) ->
+    lists:flatten(
+      io_lib:format("~p converting ~s to ~s", [Fun, Format, Expected])
      ).

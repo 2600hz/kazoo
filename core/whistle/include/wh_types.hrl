@@ -243,6 +243,8 @@
 -type account_id() :: <<_:(8*32)>>.
 -type account_db() :: <<_:(8*48)>>.
 -type account_db_unencoded() :: <<_:(8*41)>>.
+-type api_account_id() :: 'undefined' | account_id().
+-type api_account_db() :: 'undefined' | account_db().
 
 -define(MATCH_ACCOUNT_RAW(Account),
         <<(Account):32/binary>>
