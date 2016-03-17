@@ -36,6 +36,7 @@
                            ,{<<"audio">>, <<"wav">>}
                            ,{<<"audio">>, <<"mpeg">>}
                            ,{<<"audio">>, <<"mp3">>}
+                           ,{<<"video">>, <<"mp4">>}
                            ,{<<"audio">>, <<"ogg">>}
                            ,{<<"application">>, <<"base64">>}
                            ,{<<"application">>, <<"x-base64">>}

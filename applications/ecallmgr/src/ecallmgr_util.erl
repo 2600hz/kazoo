@@ -895,6 +895,7 @@ recording_extension(MediaName) ->
         Empty when Empty =:= <<>> orelse Empty =:= [] ->
             ecallmgr_config:get(<<"default_recording_extension">>, <<".mp3">>);
         <<".mp3">> = MP3 -> MP3;
+        <<".mp4">> = MP4 -> MP4;
         <<".wav">> = WAV -> WAV;
         _ -> ecallmgr_config:get(<<"default_recording_extension">>, <<".mp3">>)
     end.

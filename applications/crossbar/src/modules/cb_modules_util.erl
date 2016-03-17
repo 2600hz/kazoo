@@ -15,7 +15,6 @@
          ,is_superduper_admin/1
 
          ,attachment_name/2
-         ,content_type_to_extension/1
          ,parse_media_type/1
 
          ,bucket_name/1
@@ -446,39 +445,11 @@ attachment_name(Filename, CT) ->
                            case wh_util:is_empty(filename:extension(A)) of
                                'false' -> A;
                                'true' ->
-                                   <<A/binary, ".", (content_type_to_extension(CT))/binary>>
+                                   <<A/binary, ".", (kz_mime:to_extension(CT))/binary>>
                            end
                    end
                  ],
     lists:foldl(fun(F, A) -> F(A) end, Filename, Generators).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert known media types to extensions
-%% @end
-%%--------------------------------------------------------------------
--spec content_type_to_extension(text()) -> ne_binary().
-content_type_to_extension(L) when not is_binary(L) ->
-    content_type_to_extension(wh_util:to_binary(L));
-content_type_to_extension(<<"audio/wav">>) -> <<"wav">>;
-content_type_to_extension(<<"audio/x-wav">>) -> <<"wav">>;
-content_type_to_extension(<<"audio/mpeg">>) -> <<"mp3">>;
-content_type_to_extension(<<"audio/mpeg3">>) -> <<"mp3">>;
-content_type_to_extension(<<"audio/mp3">>) -> <<"mp3">>;
-content_type_to_extension(<<"audio/ogg">>) -> <<"ogg">>;
-content_type_to_extension(<<"application/x-pdf">>) -> <<"pdf">>;
-content_type_to_extension(<<"application/pdf">>) -> <<"pdf">>;
-content_type_to_extension(<<"image/tiff">>) -> <<"tif">>;
-content_type_to_extension(<<"image/tif">>) -> <<"tif">>;
-content_type_to_extension(<<"image/jpg">>) -> <<"jpg">>;
-content_type_to_extension(<<"image/jpeg">>) -> <<"jpg">>;
-content_type_to_extension(<<"image/png">>) -> <<"png">>;
-content_type_to_extension(<<"image/gif">>) -> <<"gif">>;
-content_type_to_extension(<<"text/html">>) -> <<"html">>;
-content_type_to_extension(<<"text/plain">>) -> <<"txt">>;
-content_type_to_extension(<<"image/icon">>) -> <<"ico">>;
-content_type_to_extension(<<"image/x-icon">>) -> <<"ico">>.
 
 -spec parse_media_type(ne_binary()) ->
                               {'error', 'badarg'} |
