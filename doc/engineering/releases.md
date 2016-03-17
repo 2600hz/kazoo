@@ -50,7 +50,7 @@ Once built, start a release in "attached mode":
 
 Which is equivalent to
 
-    make ACT=console REL=whistle_apps release
+    ACT=console REL=whistle_apps make release
 
 There are different ways to start/stop a release (set the Makefile `ACT` variable accordingly):
 * `console` (default value): starts a node killable with `^G q`
@@ -70,14 +70,14 @@ To open a console with a node started with `foreground`, use `remote_console`.
 
 If the `ecallmgr` died, this would start another VM:
 
-    make REL=ecallmgr ACT=start  release
+    REL=ecallmgr ACT=start  make release
 
 
 When troubleshooting, this attaches a REPL to the running faulty `ecallmgr` node:
 
-    make REL=ecallmgr ACT=attach release
+    REL=ecallmgr ACT=attach make release
 
 
 This gracefully stops an `ecallmgr` node:
 
-    make REL=ecallmgr ACT=stop   release
+    REL=ecallmgr ACT=stop   make release
