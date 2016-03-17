@@ -236,12 +236,12 @@ handle_url_encoded_body(Context, Req, QS, ReqBody, JObj) ->
                                          halt_return().
 set_request_data_in_context(Context, Req, JObj, QS) ->
     case is_valid_request_envelope(JObj) of
-        'undefined' ->
+        'false' ->
             lager:info("failed to find 'data' in envelope, invalid request"),
             ?MODULE:halt(Req, Context);
-        Data ->
+        'true' ->
             Setters = [{fun cb_context:set_req_json/2, JObj}
-                      ,{fun cb_context:set_req_data/2, Data}
+                      ,{fun cb_context:set_req_data/2, wh_json:get_value(<<"data">>, JObj)}
                       ,{fun cb_context:set_query_string/2, QS}
                       ],
             {cb_context:setters(Context, Setters), Req}
@@ -258,10 +258,26 @@ try_json(ReqBody, QS, Context, Req) ->
     catch
         'throw':_R ->
             lager:debug("failed to get JSON too: ~p", [_R]),
-            ?MODULE:halt(Req, Context);
-        _:_ ->
-            ?MODULE:halt(Req, Context)
+            halt_on_invalid_envelope(Req, Context);
+        _E:_R ->
+            lager:warning("failed to get json body: ~s: ~p", [_E, _R]),
+            halt_on_invalid_envelope(Req, Context)
     end.
+
+-spec halt_on_invalid_envelope(cowboy_req:req(), cb_context:context()) ->
+                                      halt_return().
+halt_on_invalid_envelope(Req, Context) ->
+    ?MODULE:halt(Req
+                 ,cb_context:add_validation_error(<<"data">>
+                                                 ,<<"required">>
+                                                 ,wh_json:from_list(
+                                                    [{<<"message">>, <<"All request json must include the 'data' key at the top level">>}
+                                                    ,{<<"target">>, <<"data">>}
+                                                    ]
+                                                   )
+                                                 ,Context
+                                                 )
+                ).
 
 -spec get_url_encoded_body(ne_binary()) -> wh_json:object().
 get_url_encoded_body(ReqBody) ->
