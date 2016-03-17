@@ -42,7 +42,7 @@ maybe_prepare_proxy(URI) ->
     end.
 
 -spec prepare_proxy(ne_binaries()) -> 'ok' | 'error'.
-prepare_proxy([Db, Id, Attachment]) ->
+prepare_proxy([Db, Id, _Type, _Rev, Attachment]) ->
     case wh_media_cache_sup:find_file_server(Db, Id, Attachment) =:= {'error', 'no_file_server'} of
         'true' -> start_media_file_cache(Db, Id, Attachment);
         'false' -> lager:debug("existing file server for ~s/~s/~s", [Db, Id, Attachment])
@@ -122,8 +122,9 @@ maybe_find_attachment(Db, Id, JObj) ->
             lager:debug("media doc ~s in ~s has no attachments", [Id, Db]),
             {'error', 'no_data'};
         [AttachmentName | _] ->
+            AccountId = wh_util:format_account_id(Db, 'raw'),
             lager:debug("found first attachment ~s on ~s in ~s", [AttachmentName, Id, Db]),
-            find_attachment([Db, Id, wh_doc:type(JObj), wh_doc:revision(JObj), AttachmentName])
+            find_attachment([AccountId, Id, wh_doc:type(JObj), wh_doc:revision(JObj), AttachmentName])
     end.
 
 %% -spec maybe_local_haproxy_uri(wh_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
