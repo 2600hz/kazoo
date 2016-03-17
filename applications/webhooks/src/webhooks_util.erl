@@ -45,6 +45,8 @@
        ).
 -define(IBROWSE_OPTS, [{'connect_timeout', ?CONNECT_TIMEOUT_MS}
                        ,{'response_format', 'binary'}
+                       ,{'max_sessions', 512}
+                       ,{'max_pipeline_size', 10}
                       ]).
 
 -define(IBROWSE_TIMEOUT_MS
@@ -216,10 +218,9 @@ fire_hook(JObj, Hook, URI, Method, Retries, {'error', 'req_timedout'}) ->
     lager:debug("request timed out to ~s, retrying", [URI]),
     _ = failed_hook(Hook, Retries, <<"request_timed_out">>),
     retry_hook(JObj, Hook, URI, Method, Retries);
-fire_hook(_JObj, Hook, URI, _Method, Retries, {'error', 'retry_later'}) ->
-    lager:debug("failed with 'retry_later' to ~s", [URI]),
-    _ = failed_hook(Hook, Retries, <<"retry_later">>),
-    'ok';
+fire_hook(JObj, Hook, URI, Method, Retries, {'error', 'retry_later'}) ->
+    lager:warning("failed with 'retry_later' to ~s, pipeline is full", [URI]),
+    retry_hook(JObj, Hook, URI, Method, Retries+1);
 fire_hook(_JObj, Hook, URI, _Method, Retries, {'error', {'conn_failed', {'error', E}}}) ->
     lager:debug("connection failed with ~p to ~s", [E, URI]),
     _ = failed_hook(Hook, Retries, wh_util:to_binary(E)),
