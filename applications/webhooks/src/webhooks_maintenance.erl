@@ -116,10 +116,14 @@ enable_descendant_hooks(AccountId) ->
 
 -spec reset_webhooks_list() -> 'ok'.
 reset_webhooks_list() ->
-    {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
-    Ids = get_webhooks(MasterAccountDb),
-    _ = kz_datamgr:del_docs(MasterAccountDb, Ids),
-    webhooks_init:init_modules().
+    case whapps_util:get_master_account_db() of
+        {'ok', MasterAccountDb} ->
+            Ids = get_webhooks(MasterAccountDb),
+            _ = kz_datamgr:del_docs(MasterAccountDb, Ids),
+            webhooks_init:init_modules();
+        {'error', _} ->
+            lager:warning("no master account id set, unable to reset webhooks list")
+    end.
 
 -spec get_webhooks(ne_binary()) -> ne_binaries().
 get_webhooks(MasterAccountDb) ->
