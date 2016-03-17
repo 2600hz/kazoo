@@ -238,7 +238,7 @@ set_request_data_in_context(Context, Req, JObj, QS) ->
     case is_valid_request_envelope(JObj) of
         'undefined' ->
             lager:info("failed to find 'data' in envelope, invalid request"),
-            halt(Req, Context);
+            ?MODULE:halt(Req, Context);
         Data ->
             Setters = [{fun cb_context:set_req_json/2, JObj}
                       ,{fun cb_context:set_req_data/2, Data}
