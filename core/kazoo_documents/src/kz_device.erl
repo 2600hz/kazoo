@@ -307,7 +307,6 @@ timezone(Box, Default) ->
 owner_timezone(Box, Default) ->
     case owner(Box) of
         'undefined'   -> account_timezone(Box, Default);
-        <<"inherit">> -> account_timezone(Box, Default);  %% UI-1808
         OwnerJObj -> owner_timezone(Box, Default, OwnerJObj)
     end.
 
@@ -322,7 +321,7 @@ owner(Box) ->
 owner(Box, OwnerId) ->
     case kz_datamgr:open_cache_doc(wh_doc:account_db(Box)
                                   ,OwnerId
-                                 )
+                                  )
     of
         {'ok', OwnerJObj} -> OwnerJObj;
         {'error', 'not_found'} -> 'undefined'
@@ -347,4 +346,3 @@ unsolicitated_mwi_updates(DeviceJObj) ->
 -spec set_unsolicitated_mwi_updates(doc(), boolean()) -> doc().
 set_unsolicitated_mwi_updates(DeviceJObj, Enabled) ->
     wh_json:set_value(?KEY_UNSOLICITATED_MWI_UPDATES, Enabled, DeviceJObj).
-

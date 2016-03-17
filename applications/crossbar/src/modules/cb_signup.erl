@@ -146,7 +146,7 @@ validate(Context, ActivationKey) ->
     end.
 
 -spec authorize(cb_context:context()) -> 'true'.
--spec authorize_nouns(cb_context:req_nouns()) -> 'true'.
+-spec authorize_nouns(req_nouns()) -> 'true'.
 authorize(Context) ->
     authorize_nouns(cb_context:req_nouns(Context)).
 
@@ -154,7 +154,7 @@ authorize_nouns([{<<"signup">>,[]}]) -> 'true';
 authorize_nouns([{<<"signup">>,[_]}]) -> 'true'.
 
 -spec authenticate(cb_context:context()) -> 'true'.
--spec authenticate_nouns(cb_context:req_nouns()) -> 'true'.
+-spec authenticate_nouns(req_nouns()) -> 'true'.
 authenticate(Context) ->
     authenticate_nouns(cb_context:req_nouns(Context)).
 

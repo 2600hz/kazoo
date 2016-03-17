@@ -455,8 +455,9 @@ validate_delete(Context) ->
 %%--------------------------------------------------------------------
 -spec set_response({'ok', wh_json:object()} |
                    knm_number_return() |
-                   {binary(), binary()}, binary()
-                   ,cb_context:context()) ->
+                   {binary(), binary()}
+                  ,binary()
+                  ,cb_context:context()) ->
                           cb_context:context().
 set_response({'ok', {'ok', Doc}}, _, Context) ->
     crossbar_util:response(Doc, Context);
@@ -489,9 +490,9 @@ collection_process(Context, ?ACTIVATE) ->
     Numbers = wh_json:get_value(<<"numbers">>, cb_context:req_data(Context), []),
     collection_process(Context, Numbers, ?ACTIVATE);
 collection_process(Context, Numbers) ->
-    Temp = wh_json:set_values([{<<"success">>, wh_json:new()}
-                               ,{<<"error">>, wh_json:new()}
-                              ], wh_json:new()),
+    Temp = wh_json:from_list([{<<"success">>, wh_json:new()}
+                             ,{<<"error">>, wh_json:new()}
+                             ]),
     lists:foldl(
       fun(Number, Acc) ->
               case collection_action(Context, cb_context:req_verb(Context), Number) of
@@ -503,16 +504,15 @@ collection_process(Context, Numbers) ->
                       wh_json:set_value([<<"error">>, Number], JObj, Acc)
               end
       end
-      ,Temp
-      ,Numbers
+               ,Temp
+               ,Numbers
      ).
 
 collection_process(Context, Numbers, Action) ->
-    Base = wh_json:set_values([{<<"success">>, wh_json:new()}
-                               ,{<<"error">>, wh_json:new()}
-                              ]
-                             ,wh_json:new()
-                             ),
+    Base = wh_json:from_list([{<<"success">>, wh_json:new()}
+                             ,{<<"error">>, wh_json:new()}
+                             ]
+                            ),
     lists:foldl(
       fun(Number, Acc) ->
               case collection_action(Context, cb_context:req_verb(Context), Number, Action) of

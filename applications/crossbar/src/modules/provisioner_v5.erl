@@ -537,38 +537,43 @@ handle_resp(_Error, _AccountId, _AuthToken) ->
     lager:error("provisioning fatal error ~p", [_Error]).
 
 create_alert(JObj, AccountId, AuthToken) ->
-    Props = [
-        {<<"metadata">>, JObj}
-        ,{<<"category">>, <<"provisioner">>}
-    ],
+    Props = [{<<"metadata">>, JObj}
+            ,{<<"category">>, <<"provisioner">>}
+            ],
 
     OwnerId =
         case kz_datamgr:open_cache_doc(?KZ_TOKEN_DB, AuthToken) of
             {'error', _R} -> 'undefined';
-            {'ok', JObj} ->
-                wh_json:get_value(<<"owner_id">>, JObj)
+            {'ok', AuthJObj} ->
+                wh_json:get_value(<<"owner_id">>, AuthJObj)
         end,
-    From = [
-        wh_json:from_list([{<<"type">>, <<"account">>}, {<<"value">>, AccountId}])
-        ,wh_json:from_list([{<<"type">>, <<"user">>}, {<<"value">>, OwnerId}])
-    ],
 
-    To = [
-        wh_json:from_list([{<<"type">>, AccountId}, {<<"value">>, <<"admins">>}])
-        ,wh_json:from_list([{<<"type">>, wh_services:get_reseller_id(AccountId)}, {<<"value">>, <<"admins">>}])
-    ],
+    From = [wh_json:from_list([{<<"type">>, <<"account">>}
+                              ,{<<"value">>, AccountId}
+                              ])
+           ,wh_json:from_list([{<<"type">>, <<"user">>}
+                              ,{<<"value">>, OwnerId}
+                              ])
+           ],
 
-    {'ok', JObj} =
-        whapps_alert:create(
-            <<"Provisioning Error">>
-            ,<<"Error trying to provision device">>
-            ,From
-            ,To
-            ,Props
-        ),
-    whapps_alert:save(JObj).
+    To = [wh_json:from_list([{<<"type">>, AccountId}
+                            ,{<<"value">>, <<"admins">>}
+                            ])
+         ,wh_json:from_list([{<<"type">>, wh_services:get_reseller_id(AccountId)}
+                            ,{<<"value">>, <<"admins">>}
+                            ])
+         ],
 
--spec decode(string()) -> ne_binary().
+    {'ok', AlertJObj} =
+        whapps_alert:create(<<"Provisioning Error">>
+                           ,<<"Error trying to provision device">>
+                           ,From
+                           ,To
+                           ,Props
+                           ),
+    whapps_alert:save(AlertJObj).
+
+-spec decode(string()) -> wh_json:object().
 decode(JSON) ->
     try wh_json:encode(JSON) of
         JObj -> wh_json:decode(JObj)
