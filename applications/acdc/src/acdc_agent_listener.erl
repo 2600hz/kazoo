@@ -116,17 +116,17 @@
 %% When an agent is paused (on break, logged out, etc)
 -define(PAUSED_TIMER_MESSAGE, 'paused_timeout').
 
--define(BINDINGS(AccountId, AgentId), [{'self', []}
-                                       ,{'acdc_agent', [{'account_id', AccountId}
-                                                        ,{'agent_id', AgentId}
-                                                        ,{'restrict_to', ['sync', 'stats_req']}
-                                                       ]}
-                                       ,{'conf', [{'action', <<"*">>}
-                                                  ,{'db', wh_util:format_account_db(AccountId)}
-                                                  ,{'id', AgentId}
-                                                  ,'federate'
-                                                 ]}
-                                      ]).
+-define(BINDINGS(AcctId, AgentId), [{'self', []}
+                                    ,{'acdc_agent', [{'account_id', AcctId}
+                                                     ,{'agent_id', AgentId}
+                                                     ,{'restrict_to', ['sync', 'stats_req']}
+                                                    ]}
+                                    ,{'conf', [{'action', <<"*">>}
+                                               ,{'db', wh_util:format_account_id(AcctId, 'encoded')}
+                                               ,{'id', AgentId}
+                                               ,'federate'
+                                              ]}
+                                   ]).
 
 -define(RESPONDERS, [{{'acdc_agent_handler', 'handle_sync_req'}
                       ,[{<<"agent">>, <<"sync_req">>}]
@@ -1178,7 +1178,7 @@ stop_agent_leg(ACallId, ACtrlQ) ->
 
 find_account_id(JObj) ->
     case wh_doc:account_id(JObj) of
-        'undefined' -> wh_util:format_account_id(wh_doc:account_db(JObj));
+        'undefined' -> wh_util:format_account_id(wh_doc:account_db(JObj), 'raw');
         AcctId -> AcctId
     end.
 

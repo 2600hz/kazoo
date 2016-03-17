@@ -33,15 +33,15 @@
 
 -include("acdc.hrl").
 
--spec logout_agents(account_id()) -> 'ok'.
+-spec logout_agents(ne_binary()) -> 'ok'.
 logout_agents(AccountId) ->
     io:format("Sending notices to logout agents for ~s~n", [AccountId]),
-    AccountDb = wh_util:format_account_db(AccountId),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     {'ok', AgentView} = kz_datamgr:get_all_results(AccountDb, <<"agents/crossbar_listing">>),
     _ = [logout_agent(AccountId, wh_doc:id(Agent)) || Agent <- AgentView],
     'ok'.
 
--spec logout_agent(account_id(), ne_binary()) -> 'ok'.
+-spec logout_agent(ne_binary(), ne_binary()) -> 'ok'.
 logout_agent(AccountId, AgentId) ->
     io:format("Sending notice to log out agent ~s (~s)~n", [AgentId, AccountId]),
     Update = props:filter_undefined(
@@ -250,9 +250,9 @@ migrate_to_acdc_db(AccountId, Retries) ->
             migrate_to_acdc_db(AccountId, Retries-1)
     end.
 
--spec maybe_migrate(account_id()) -> 'ok'.
+-spec maybe_migrate(ne_binary()) -> 'ok'.
 maybe_migrate(AccountId) ->
-    AccountDb = wh_util:format_account_db(AccountId),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:get_results(AccountDb, <<"queues/crossbar_listing">>, [{'limit', 1}]) of
         {'ok', []} -> 'ok';
         {'ok', [_|_]} ->
@@ -268,7 +268,7 @@ maybe_migrate(AccountId) ->
             io:format("failed to query queue listing for account ~s: ~p~n", [AccountId, _E])
     end.
 
--spec agent_presence_id(account_id(), ne_binary()) -> 'ok'.
+-spec agent_presence_id(ne_binary(), ne_binary()) -> 'ok'.
 agent_presence_id(AccountId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AccountId, AgentId) of
         'undefined' ->

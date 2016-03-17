@@ -51,20 +51,22 @@ status() ->
     'ok'.
 
 -spec new(wh_json:object()) -> sup_startchild_ret().
--spec new(account_id(), ne_binary()) -> sup_startchild_ret().
+-spec new(ne_binary(), ne_binary()) -> sup_startchild_ret().
 new(JObj) ->
-    case find_agent_supervisor(wh_doc:account_id(JObj), wh_doc:id(JObj)) of
+    case find_agent_supervisor(wh_doc:account_id(JObj)
+                               ,wh_doc:id(JObj)
+                              )
+    of
         'undefined' -> supervisor:start_child(?SERVER, [JObj]);
         P when is_pid(P) -> lager:debug("agent already started here: ~p", [P])
     end.
 
-new(AccountId, AgentId) ->
-    case find_agent_supervisor(AccountId, AgentId) of
+new(AcctId, AgentId) ->
+    case find_agent_supervisor(AcctId, AgentId) of
         'undefined' ->
-            {'ok', Agent} = kz_datamgr:open_doc(wh_util:format_account_db(AccountId), AgentId),
+            {'ok', Agent} = kz_datamgr:open_doc(wh_util:format_account_id(AcctId, 'encoded'), AgentId),
             supervisor:start_child(?SERVER, [Agent]);
-        P when is_pid(P) ->
-            lager:debug("agent already started here: ~p", [P])
+        P when is_pid(P) -> lager:debug("agent already started here: ~p", [P])
     end.
 
 new(AcctId, AgentId, AgentJObj, Queues) ->

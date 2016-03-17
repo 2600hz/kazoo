@@ -110,11 +110,10 @@ handle_queue_change(_, AccountId, QueueId, ?DOC_DELETED) ->
 
 handle_presence_probe(JObj, _Props) ->
     'true' = wapi_presence:probe_v(JObj),
+
     Realm = wh_json:get_value(<<"Realm">>, JObj),
     case whapps_util:get_account_by_realm(Realm) of
-        {'ok', AccountDb} ->
-            AccountId = wh_util:format_account_id(AccountDb),
-            maybe_respond_to_presence_probe(JObj, AccountId);
+        {'ok', AcctDb} -> maybe_respond_to_presence_probe(JObj, wh_util:format_account_id(AcctDb, raw));
         _ -> 'ok'
     end.
 

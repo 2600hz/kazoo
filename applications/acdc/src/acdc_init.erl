@@ -48,8 +48,8 @@ init_db() ->
 
 -spec init_acct(ne_binary()) -> 'ok'.
 init_acct(Account) ->
-    AccountDb = wh_util:format_account_db(Account),
-    AccountId = wh_util:format_account_id(Account),
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    AccountId = wh_util:format_account_id(Account, 'raw'),
 
     lager:debug("init acdc account: ~s", [AccountId]),
 
@@ -64,8 +64,8 @@ init_acct(Account) ->
 
 -spec init_acct_queues(ne_binary()) -> any().
 init_acct_queues(Account) ->
-    AccountDb = wh_util:format_account_db(Account),
-    AccountId = wh_util:format_account_id(Account),
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    AccountId = wh_util:format_account_id(Account, 'raw'),
 
     lager:debug("init acdc account queues: ~s", [AccountId]),
     init_agents(AccountId
@@ -74,15 +74,15 @@ init_acct_queues(Account) ->
 
 -spec init_acct_agents(ne_binary()) -> any().
 init_acct_agents(Account) ->
-    AccountDb = wh_util:format_account_db(Account),
-    AccountId = wh_util:format_account_id(Account),
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    AccountId = wh_util:format_account_id(Account, 'raw'),
 
     lager:debug("init acdc account agents: ~s", [AccountId]),
     init_agents(AccountId
                 ,kz_datamgr:get_results(AccountDb, <<"users/crossbar_listing">>, [])
                ).
 
--spec init_queues(account_id(), kz_datamgr:get_results_return()) -> any().
+-spec init_queues(ne_binary(), kz_datamgr:get_results_return()) -> any().
 init_queues(_, {'ok', []}) -> 'ok';
 init_queues(AccountId, {'error', 'gateway_timeout'}) ->
     lager:debug("gateway timed out loading queues in account ~s, trying again in a moment", [AccountId]),
@@ -100,7 +100,7 @@ init_queues(AccountId, {'ok', Qs}) ->
     acdc_stats:init_db(AccountId),
     [acdc_queues_sup:new(AccountId, wh_doc:id(Q)) || Q <- Qs].
 
--spec init_agents(account_id(), kz_datamgr:get_results_return()) -> any().
+-spec init_agents(ne_binary(), kz_datamgr:get_results_return()) -> any().
 init_agents(_, {'ok', []}) -> 'ok';
 init_agents(AccountId, {'error', 'gateway_timeout'}) ->
     lager:debug("gateway timed out loading agents in account ~s, trying again in a moment", [AccountId]),
@@ -129,7 +129,7 @@ try_again(AccountId, View, F) ->
       fun() ->
               wh_util:put_callid(?MODULE),
               wait_a_bit(),
-              AccountDb = wh_util:format_account_db(AccountId),
+              AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
               F(AccountId, kz_datamgr:get_results(AccountDb, View, []))
       end).
 
