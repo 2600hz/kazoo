@@ -94,11 +94,12 @@ endif
 
 DIALYZER ?= dialyzer
 PLT ?= .kazoo.plt
+OTP_APPS ?= erts kernel stdlib crypto public_key ssl asn1 inets
 $(PLT): DEPS_SRCS  ?= $(shell find $(ROOT)/deps -name src )
 # $(PLT): CORE_EBINS ?= $(shell find $(ROOT)/core -name ebin)
 $(PLT):
 	@$(DIALYZER) --no_native --build_plt --output_plt $(PLT) \
-	    --apps erts kernel stdlib crypto public_key ssl \
+	    --apps $(OTP_APPS) \
 	    -r $(DEPS_SRCS)
 	@for ebin in $(CORE_EBINS); do \
 	    $(DIALYZER) --no_native --add_to_plt --plt $(PLT) --output_plt $(PLT) -r $$ebin; \
