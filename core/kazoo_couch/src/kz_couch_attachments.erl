@@ -80,16 +80,22 @@ do_fetch_attachment(#db{}=Db, DocId, AName) ->
                                   {'ok', reference()} |
                                   couchbeam_error().
 do_stream_attachment(#db{}=Db, DocId, AName, Caller) ->
-    case couchbeam:fetch_attachment(Db, DocId, AName, [{stream, true}]) of
-        {'ok', Ref}=Ret -> wh_util:spawn(fun relay_stream_attachment/2, [Caller, Ref]),
-                           Ret;
+    case couchbeam:fetch_attachment(Db, DocId, AName, [{stream, true},{async,true}]) of
+        {'ok', Ref}=Ret ->
+            Msg = couchbeam:stream_attachment(Ref),
+            St = get(Ref),
+            wh_util:spawn(fun relay_stream_attachment/4, [Caller, Ref, Msg, St]),
+            Ret;
         Else -> Else
     end.
 
-relay_stream_attachment(Caller, Ref) ->
-    relay_stream_attachment(Caller, Ref, couchbeam:stream_attachment(Ref)).
+relay_stream_attachment(Caller, Ref, Msg, St) ->
+    put(Ref, St),
+    relay_stream_attachment(Caller, Ref, Msg).
 
 relay_stream_attachment(Caller, Ref, {'error', _}=Msg) ->
+    Caller ! {Ref, Msg};
+relay_stream_attachment(Caller, Ref, 'done'=Msg) ->
     Caller ! {Ref, Msg};
 relay_stream_attachment(Caller, Ref, Msg) ->
     Caller ! {Ref, Msg},
