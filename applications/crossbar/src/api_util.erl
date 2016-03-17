@@ -238,7 +238,7 @@ set_request_data_in_context(Context, Req, JObj, QS) ->
     case is_valid_request_envelope(JObj) of
         'false' ->
             lager:info("failed to find 'data' in envelope, invalid request"),
-            ?MODULE:halt(Req, Context);
+            halt_on_invalid_envelope(Req, Context);
         'true' ->
             Setters = [{fun cb_context:set_req_json/2, JObj}
                       ,{fun cb_context:set_req_data/2, wh_json:get_value(<<"data">>, JObj)}
@@ -275,7 +275,7 @@ halt_on_invalid_envelope(Req, Context) ->
                                                     ,{<<"target">>, <<"data">>}
                                                     ]
                                                    )
-                                                 ,Context
+                                                 ,cb_context:set_resp_error_code(Context, 400)
                                                  )
                 ).
 
@@ -1196,7 +1196,7 @@ fix_header(H, V, _) ->
                   halt_return().
 halt(Req0, Context) ->
     StatusCode = cb_context:resp_error_code(Context),
-    lager:debug("halting execution here"),
+    lager:debug("halting execution here with ~p", [StatusCode]),
 
     {Content, Req1} = create_resp_content(Req0, Context),
     lager:debug("setting resp body: ~s", [Content]),

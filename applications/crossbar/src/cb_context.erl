@@ -1144,7 +1144,6 @@ add_validation_error(Property, Code, Message, Context) ->
     lager:warning("UNKNOWN ERROR CODE: ~p", [Code]),
     add_depreciated_validation_error(Property, Code, Message, Context).
 
-
 add_depreciated_validation_error(<<"account">>, <<"expired">>, Message, Context) ->
     add_depreciated_validation_error(<<"account">>, <<"expired">>, Message, Context, 423, <<"locked">>);
 add_depreciated_validation_error(<<"account">>, <<"disabled">>, Message, Context) ->
