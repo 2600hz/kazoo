@@ -854,7 +854,7 @@ read_template(Context, Id, Accept) ->
 attachment_filename(Id, Accept) ->
     [<<"attachment; filename=">>
      ,kz_notification:resp_id(Id)
-     ,$., cb_modules_util:content_type_to_extension(Accept)
+     ,$., kz_mime:to_extension(Accept)
     ].
 
 -spec read_system_attachment(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().

@@ -844,7 +844,7 @@ attachment_name(Filename, CT) ->
                            case wh_util:is_empty(filename:extension(A)) of
                                'false' -> A;
                                'true' ->
-                                   <<A/binary, ".", (cb_modules_util:content_type_to_extension(CT))/binary>>
+                                   <<A/binary, ".", (kz_mime:to_extension(CT))/binary>>
                            end
                    end
                  ],

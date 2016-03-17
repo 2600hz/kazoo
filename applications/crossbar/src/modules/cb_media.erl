@@ -301,7 +301,7 @@ normalize_upload(Context, MediaId, FileJObj) ->
     normalize_upload(Context, MediaId, FileJObj, wh_json:get_value([<<"headers">>, <<"content_type">>], FileJObj)).
 
 normalize_upload(Context, MediaId, FileJObj, UploadContentType) ->
-    FromExt = cb_modules_util:content_type_to_extension(UploadContentType),
+    FromExt = kz_mime:to_extension(UploadContentType),
     ToExt =  ?NORMALIZATION_FORMAT,
 
     lager:info("upload is of type '~s', normalizing from ~s to ~s"
