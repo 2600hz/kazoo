@@ -156,14 +156,7 @@ get_parsed_content_type({'ok', {Main, Sub, _Opts}, Req}) ->
 get_req_data(Context, {'undefined', Req0}, QS) ->
     lager:debug("undefined content type when getting req data, assuming application/json"),
     {JSON, Req1} = get_json_body(Req0),
-
-    Setters = [{fun cb_context:set_req_json/2, JSON}
-               ,{fun cb_context:set_req_data/2, wh_json:get_value(<<"data">>, JSON, wh_json:new())}
-               ,{fun cb_context:set_query_string/2, QS}
-              ],
-    {lists:foldl(fun({F, D}, C) -> F(C, D) end, Context, Setters)
-     ,Req1
-    };
+    set_request_data_in_context(Context, Req1, JSON, QS);
 get_req_data(Context, {<<"multipart/form-data">>, Req}, QS) ->
     lager:debug("multipart/form-data content type when getting req data"),
     maybe_extract_multipart(cb_context:set_query_string(Context, QS), Req, QS);
@@ -177,23 +170,11 @@ get_req_data(Context, {<<"application/json">>, Req1}, QS) ->
     lager:debug("application/json content type when getting req data"),
     {JSON, Req2} = get_json_body(Req1),
 
-    Setters = [{fun cb_context:set_req_json/2, JSON}
-               ,{fun cb_context:set_req_data/2, wh_json:get_value(<<"data">>, JSON, wh_json:new())}
-               ,{fun cb_context:set_query_string/2, QS}
-              ],
-    {lists:foldl(fun({F, D}, C) -> F(C, D) end, Context, Setters)
-     ,Req2
-    };
+    set_request_data_in_context(Context, Req2, JSON, QS);
 get_req_data(Context, {<<"application/x-json">>, Req1}, QS) ->
     lager:debug("application/x-json content type when getting req data"),
     {JSON, Req2} = get_json_body(Req1),
-    Setters = [{fun cb_context:set_req_json/2, JSON}
-               ,{fun cb_context:set_req_data/2, wh_json:get_value(<<"data">>, JSON, wh_json:new())}
-               ,{fun cb_context:set_query_string/2, QS}
-              ],
-    {lists:foldl(fun({F, D}, C) -> F(C, D) end, Context, Setters)
-     ,Req2
-    };
+    set_request_data_in_context(Context, Req2, JSON, QS);
 get_req_data(Context, {<<"application/base64">>, Req1}, QS) ->
     lager:debug("application/base64 content type when getting req data"),
     decode_base64(cb_context:set_query_string(Context, QS), <<"application/base64">>, Req1);
@@ -245,14 +226,25 @@ handle_url_encoded_body(Context, Req, QS, ReqBody, JObj) ->
             lager:debug("failed to parse url-encoded request body, but we'll give json a go on ~p", [_JSON]),
             try_json(ReqBody, QS, Context, Req);
         _Vs ->
-            lager:debug("was able to parse request body as url-encoded: ~p", [JObj]),
+            lager:debug("was able to parse request body as url-encoded to json: ~p", [JObj]),
+
+            set_request_data_in_context(Context, Req, JObj, QS)
+    end.
+
+-spec set_request_data_in_context(cb_context:context(), cowboy_req:req(), wh_json:object(), wh_json:object()) ->
+                                         {cb_context:context(), cowboy_req:req()} |
+                                         halt_return().
+set_request_data_in_context(Context, Req, JObj, QS) ->
+    case is_valid_request_envelope(JObj) of
+        'false' ->
+            lager:info("failed to find 'data' in envelope, invalid request"),
+            halt_on_invalid_envelope(Req, Context);
+        'true' ->
             Setters = [{fun cb_context:set_req_json/2, JObj}
-                       ,{fun cb_context:set_req_data/2, wh_json:get_value(<<"data">>, JObj, wh_json:new())}
-                       ,{fun cb_context:set_query_string/2, QS}
+                      ,{fun cb_context:set_req_data/2, wh_json:get_value(<<"data">>, JObj)}
+                      ,{fun cb_context:set_query_string/2, QS}
                       ],
-            {lists:foldl(fun({F, D}, C) -> F(C, D) end, Context, Setters)
-             ,Req
-            }
+            {cb_context:setters(Context, Setters), Req}
     end.
 
 -spec try_json(ne_binary(), wh_json:object(), cb_context:context(), cowboy_req:req()) ->
@@ -262,21 +254,30 @@ try_json(ReqBody, QS, Context, Req) ->
     try get_json_body(ReqBody, Req) of
         {JObj, Req1} ->
             lager:debug("was able to parse as JSON"),
-
-            Setters = [{fun cb_context:set_req_json/2, JObj}
-                       ,{fun cb_context:set_req_data/2, wh_json:get_value(<<"data">>, JObj, wh_json:new())}
-                       ,{fun cb_context:set_query_string/2, QS}
-                      ],
-            {lists:foldl(fun({F, D}, C) -> F(C, D) end, Context, Setters)
-             ,Req1
-            }
+            set_request_data_in_context(Context, Req1, JObj, QS)
     catch
         'throw':_R ->
             lager:debug("failed to get JSON too: ~p", [_R]),
-            ?MODULE:halt(Req, Context);
-        _:_ ->
-            ?MODULE:halt(Req, Context)
+            halt_on_invalid_envelope(Req, Context);
+        _E:_R ->
+            lager:warning("failed to get json body: ~s: ~p", [_E, _R]),
+            halt_on_invalid_envelope(Req, Context)
     end.
+
+-spec halt_on_invalid_envelope(cowboy_req:req(), cb_context:context()) ->
+                                      halt_return().
+halt_on_invalid_envelope(Req, Context) ->
+    ?MODULE:halt(Req
+                 ,cb_context:add_validation_error(<<"data">>
+                                                 ,<<"required">>
+                                                 ,wh_json:from_list(
+                                                    [{<<"message">>, <<"All request json must include the 'data' key at the top level">>}
+                                                    ,{<<"target">>, <<"data">>}
+                                                    ]
+                                                   )
+                                                 ,cb_context:set_resp_error_code(Context, 400)
+                                                 )
+                ).
 
 -spec get_url_encoded_body(ne_binary()) -> wh_json:object().
 get_url_encoded_body(ReqBody) ->
@@ -1195,7 +1196,7 @@ fix_header(H, V, _) ->
                   halt_return().
 halt(Req0, Context) ->
     StatusCode = cb_context:resp_error_code(Context),
-    lager:debug("halting execution here"),
+    lager:debug("halting execution here with ~p", [StatusCode]),
 
     {Content, Req1} = create_resp_content(Req0, Context),
     lager:debug("setting resp body: ~s", [Content]),

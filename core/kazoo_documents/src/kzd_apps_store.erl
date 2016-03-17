@@ -87,13 +87,13 @@ set_apps(JObj, Data) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec blacklist(wh_json:object()) -> ne_binaries().
--spec blacklist(wh_json:object(), any()) -> ne_binaries().
+-spec blacklist(wh_json:object(), Default) -> ne_binaries() | Default.
 blacklist(JObj) ->
     wh_json:get_value(?BLACKLIST, JObj, []).
 
 blacklist(JObj, Default) ->
     wh_json:get_value(?BLACKLIST, JObj, Default).
 
--spec set_blacklist(wh_json:object(), any()) -> ne_binaries().
+-spec set_blacklist(wh_json:object(), wh_json:json_term()) -> wh_json:object().
 set_blacklist(JObj, Data) ->
     wh_json:set_value(?BLACKLIST, Data, JObj).
