@@ -4,7 +4,7 @@ ELVIS = $(ROOT)/utils/elvis/elvis
 
 KAZOODIRS = core/Makefile applications/Makefile
 
-.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release tar-release release elvis
+.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release tar-release release read-release-cookie elvis
 
 all: compile rel/dev-vm.args
 
@@ -91,6 +91,10 @@ ifeq ($(REL),ecallmgr)
 else
 	@RELX_REPLACE_OS_VARS=true KZname='-name $(REL)' _rel/kazoo/bin/kazoo $(ACT) "$$@"
 endif
+
+read-release-cookie: REL ?= whistle_apps
+read-release-cookie:
+	@RELX_REPLACE_OS_VARS=true KZname='-name $(REL)' _rel/kazoo/bin/kazoo escript lib/whistle_config-*/priv/read-cookie.escript "$$@"
 
 DIALYZER ?= dialyzer
 PLT ?= .kazoo.plt

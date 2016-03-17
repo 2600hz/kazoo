@@ -81,3 +81,13 @@ When troubleshooting, this attaches a REPL to the running faulty `ecallmgr` node
 This gracefully stops an `ecallmgr` node:
 
     REL=ecallmgr ACT=stop   make release
+
+
+### Read a release's cookie from Kazoo's configuration
+
+    REL=whistle_apps make read-release-cookie
+
+This hits `/etc/kazoo/config.ini` or the file at `$KAZOO_CONFIG`
+and reads the cookie value for release `REL`.
+
+Note: the release does not even need to be started!
