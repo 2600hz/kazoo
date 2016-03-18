@@ -351,25 +351,24 @@ handle_cast('prepare_job', #state{job_id=JobId
     end;
 handle_cast('count_pages', #state{file=File
                                   ,job=JObj
-                                  ,pool=Pid
                                  }=State) ->
-    try get_sizes(File) of
-        {NumberOfPages, FileSize} ->
-            Values = [{<<"pvt_pages">>, NumberOfPages}
-                      ,{<<"pvt_size">>, FileSize}
-                     ],
-            gen_server:cast(self(), 'send'),
-            {'noreply',State#state{job=wh_json:set_values(Values, JObj)
+    {NumberOfPages, FileSize} = get_sizes(File),
+    Values = [{<<"pvt_pages">>, NumberOfPages}
+              ,{<<"pvt_size">>, FileSize}
+             ],
+    NewState = case NumberOfPages of
+                   Num when Num == 0 ->
+                       State#state{job = wh_json:set_values(Values, JObj)
+                                   ,pages = Num
+                                   ,status = <<"unknown">>
+                                  };
+                   _ ->
+                       State#state{job=wh_json:set_values(Values, JObj)
                                    ,pages=NumberOfPages
-                                  }}
-    catch
-        _Type:Exception ->
-            lager:debug("caught ~p: ~p", [_Type, Exception]),
-            send_error_status(State, Exception),
-            release_failed_job('bad_file', Exception, JObj),
-            gen_server:cast(Pid, {'job_complete', self()}),
-            {'noreply', reset(State)}
-    end;
+                                  }
+               end,
+    gen_server:cast(self(), 'send'),
+    {'noreply', NewState};
 handle_cast('send', #state{job_id=JobId
                            ,job=JObj
                            ,queue_name=Q
@@ -834,7 +833,7 @@ prepare_contents(JobId, RespHeaders, RespContent) ->
                                                  ),
             Cmd = io_lib:format(ConvertCmd, [OutputFile, InputFile]),
             lager:debug("attempting to convert pdf: ~s", [Cmd]),
-            case os:cmd(Cmd) of
+            case catch os:cmd(Cmd) of
                 "success" ->
                     {'ok', OutputFile};
                 _Else ->
@@ -848,7 +847,7 @@ prepare_contents(JobId, RespHeaders, RespContent) ->
             ConvertCmd = whapps_config:get_binary(?CONFIG_CAT, <<"conversion_image_command">>, ?CONVERT_IMAGE_CMD),
             Cmd = io_lib:format(ConvertCmd, [InputFile, OutputFile]),
             lager:debug("attempting to convert ~s: ~s", [SubType, Cmd]),
-            case os:cmd(Cmd) of
+            case catch os:cmd(Cmd) of
                 "success" ->
                     {'ok', OutputFile};
                 _Else ->
@@ -878,7 +877,7 @@ convert_openoffice_document(CT, TmpDir, JobId, RespContent) ->
     OpenOfficeServer = whapps_config:get_binary(?CONFIG_CAT, <<"openoffice_server">>, <<"'socket,host=localhost,port=2002;urp;StarOffice.ComponentContext'">>),
     Cmd = io_lib:format(ConvertCmd, [OpenOfficeServer, InputFile, OutputFile]),
     lager:debug("attemting to convert openoffice document: ~s", [Cmd]),
-    case os:cmd(Cmd) of
+    case catch os:cmd(Cmd) of
         "success" ->
             {'ok', OutputFile};
         _Else ->
@@ -890,8 +889,10 @@ convert_openoffice_document(CT, TmpDir, JobId, RespContent) ->
 get_sizes(OutputFile) when is_binary(OutputFile) ->
     CmdCount = whapps_config:get_binary(?CONFIG_CAT, <<"count_pages_command">>, ?COUNT_PAGES_CMD),
     Cmd = io_lib:format(CmdCount, [OutputFile]),
-    Result = os:cmd(wh_util:to_list(Cmd)),
-    NumberOfPages = wh_util:to_integer(Result),
+    NumberOfPages = case catch os:cmd(wh_util:to_list(Cmd)) of
+                        {'EXIT', _} -> 0;
+                        Result -> wh_util:to_integer(Result)
+                    end,
     FileSize = filelib:file_size(wh_util:to_list(OutputFile)),
     {NumberOfPages, FileSize}.
 
