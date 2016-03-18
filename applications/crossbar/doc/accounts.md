@@ -37,7 +37,7 @@ With the following data payload:
 
 ## Listing Sibling Accounts
 
-By default a user account under an admin/reseller account can view all the other accounts under that reseller. If you would like current account only will be able to query its child accounts' sibling and not other accounts then set `allow_unprivileged_siblings_get` in `system_config/crossbar.accounts` to `false`. Admin account can unrestrictedly list siblings.
+By default a user account under an admin/reseller account can view all the other accounts under that reseller. If you would like current account only will be able to query its child accounts' sibling and not other accounts then set `allow_sibling_listing` in `system_config/crossbar.accounts` to `false`. Admin account can unrestrictedly list siblings.
 
 ## The Account Tree
 
