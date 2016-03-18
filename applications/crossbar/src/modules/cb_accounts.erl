@@ -888,7 +888,15 @@ load_paginated_descendants(AccountId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_siblings(ne_binary(), cb_context:context()) -> cb_context:context().
 load_siblings(AccountId, Context) ->
-    load_siblings(AccountId, Context, cb_context:api_version(Context)).
+    case wh_util:is_system_admin(cb_context:auth_account_id(Context))
+        orelse
+        (AccountId =/= cb_context:auth_account_id(Context)
+         andalso whapps_config:get_is_true(?ACCOUNTS_CONFIG_CAT, <<"allow_sibling_listing">>, 'true')
+        )
+    of
+        'true' -> load_siblings(AccountId, Context, cb_context:api_version(Context));
+        'false' -> cb_context:add_system_error('forbidden', Context)
+    end.
 
 -spec load_siblings(ne_binary(), cb_context:context(), ne_binary()) -> cb_context:context().
 load_siblings(AccountId, Context, ?VERSION_1) ->
@@ -931,24 +939,11 @@ load_paginated_siblings(AccountId, Context) ->
 -spec load_siblings_results(ne_binary(), cb_context:context(), wh_json:objects()) -> cb_context:context().
 load_siblings_results(_AccountId, Context, [JObj|_]) ->
     Parent = wh_json:get_value([<<"value">>, <<"id">>], JObj),
-    case is_allowed_siblings_get(Parent, Context) of
-        'true' -> load_children(Parent, Context);
-        'false' -> cb_context:add_system_error('forbidden', Context)
-    end;
+    load_children(Parent, Context);
 load_siblings_results(AccountId, Context, _) ->
     cb_context:add_system_error('bad_identifier', wh_json:from_list([{<<"cause">>, AccountId}]),  Context).
 
--spec is_allowed_siblings_get(ne_binary(), cb_context:context()) -> boolean().
--spec is_allowed_siblings_get(ne_binary(), cb_context:context(), boolean()) -> boolean().
-is_allowed_siblings_get(AccountId, Context) ->
-    is_allowed_siblings_get(AccountId, Context, wh_util:is_system_admin(cb_context:auth_account_id(Context))).
 
-is_allowed_siblings_get(_AccountId, _Context, 'true') -> 'true';
-is_allowed_siblings_get(AccountId, Context, _) ->
-    case whapps_config:get_is_true(?ACCOUNTS_CONFIG_CAT, <<"allow_unprivileged_siblings_get">>, 'true') of
-        'true' -> 'true';
-        'false' -> AccountId =:= cb_context:auth_account_id(Context)
-    end.
 
 -spec start_key(cb_context:context()) -> binary().
 start_key(Context) ->
