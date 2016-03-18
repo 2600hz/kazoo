@@ -60,6 +60,7 @@
          ,fax_detection/1, fax_detection_v/1
          ,store_vm/1, store_vm_v/1
          ,b_leg_events_v/1
+         ,audio_level/1
         ]).
 
 -export([queue/1, queue_v/1
@@ -681,7 +682,21 @@ park_v(Prop) when is_list(Prop) ->
 park_v(JObj) ->
     park_v(wh_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+-spec audio_level(api_terms()) -> api_formatter_return().
+audio_level(Prop) when is_list(Prop) ->
+    case audio_level_v(Prop) of
+         'true' -> wh_api:build_message(Prop, ?AUDIO_REQ_HEADERS, ?OPTIONAL_AUDIO_REQ_HEADERS);
+         'false' -> {'error', "Proplist failed validation for audio_level_req"}
+    end;
+audio_level(JObj) ->
+    audio_level(wh_json:to_proplist(JObj)).
+
+-spec audio_level_v(api_terms()) -> boolean().
+audio_level_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?AUDIO_REQ_HEADERS, ?AUDIO_REQ_VALUES, ?AUDIO_REQ_TYPES);
+audio_level_v(JObj) ->
+    audio_level(wh_json:to_proplist(JObj)).
+
 %% @doc Set Custom Channel variables - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end

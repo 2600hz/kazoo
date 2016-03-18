@@ -407,6 +407,16 @@
                          ]).
 -define(PARK_REQ_TYPES, []).
 
+%% Audio level/mute
+-define(AUDIO_REQ_HEADERS, [<<"Application-Name">>, <<"Insert-At">>, <<"Call-ID">>, <<"Action">>, <<"Level">>, <<"Mode">>]).
+-define(OPTIONAL_AUDIO_REQ_HEADERS, []).
+-define(AUDIO_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                          ,{<<"Event-Name">>, <<"command">>}
+                          ,{<<"Application-Name">>, <<"audio_level">>}
+                          ,?INSERT_AT_TUPLE
+                         ]).
+-define(AUDIO_REQ_TYPES, []).
+
 %% Set
 -define(SET_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>
                           ,<<"Custom-Channel-Vars">>, <<"Custom-Call-Vars">>
