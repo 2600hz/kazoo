@@ -888,8 +888,11 @@ load_paginated_descendants(AccountId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_siblings(ne_binary(), cb_context:context()) -> cb_context:context().
 load_siblings(AccountId, Context) ->
-    case whapps_config:get_is_true(?ACCOUNTS_CONFIG_CAT, <<"allow_unprivileged_get_siblings">>, 'false')
-        orelse wh_util:is_system_admin(cb_context:auth_account_id(Context))
+    case wh_util:is_system_admin(cb_context:auth_account_id(Context))
+        orelse
+        (AccountId =/= cb_context:auth_account_id(Context)
+         andalso whapps_config:get_is_true(?ACCOUNTS_CONFIG_CAT, <<"allow_sibling_listing">>, 'true')
+        )
     of
         'true' -> load_siblings(AccountId, Context, cb_context:api_version(Context));
         'false' -> cb_context:add_system_error('forbidden', Context)
@@ -939,6 +942,7 @@ load_siblings_results(_AccountId, Context, [JObj|_]) ->
     load_children(Parent, Context);
 load_siblings_results(AccountId, Context, _) ->
     cb_context:add_system_error('bad_identifier', wh_json:from_list([{<<"cause">>, AccountId}]),  Context).
+
 
 
 -spec start_key(cb_context:context()) -> binary().
