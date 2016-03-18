@@ -200,7 +200,7 @@ See Common Configuration section below for configuration to be done on all serve
 ### Cluster specific configuration
 
 **Update HAProxy configuration with all bigcouch servers**
-*/etc/kazoo/haproxy.cfg*
+*/etc/kazoo/haproxy/haproxy.cfg*
 ```
 listen bigcouch-data 127.0.0.1:15984
   balance roundrobin
