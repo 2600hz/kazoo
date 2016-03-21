@@ -128,9 +128,10 @@ get_cors_headers(Allow) ->
                           {cb_context:context(), cowboy_req:req()} |
                           halt_return().
 get_req_data(Context, Req0) ->
+    {Method, Req1} = cowboy_req:method(Req0),
     maybe_get_req_data(Context
-                      ,Req0
-                      ,cb_context:req_verb(Context)
+                      ,Req1
+                      ,Method
                       ).
 
 -spec maybe_get_req_data(cb_context:context(), cowboy_req:req(), http_method()) ->
@@ -260,6 +261,7 @@ set_request_data_in_context(Context, Req, JObj, QS) ->
             lager:info("failed to find 'data' in envelope, invalid request"),
             halt_on_invalid_envelope(Req, Context);
         'true' ->
+            lager:debug("req body: ~p", [JObj]),
             Setters = [{fun cb_context:set_req_json/2, JObj}
                       ,{fun cb_context:set_req_data/2, wh_json:get_value(<<"data">>, JObj)}
                       ,{fun cb_context:set_query_string/2, QS}
@@ -270,6 +272,7 @@ set_request_data_in_context(Context, Req, JObj, QS) ->
 -spec set_empty_request(cb_context:context(), cowboy_req:req(), wh_json:object()) ->
                                {cb_context:context(), cowboy_req:req()}.
 set_empty_request(Context, Req, QS) ->
+    lager:debug("no request body to parse"),
     Setters = [{fun cb_context:set_req_json/2, wh_json:new()}
               ,{fun cb_context:set_req_data/2, wh_json:new()}
               ,{fun cb_context:set_query_string/2, QS}
