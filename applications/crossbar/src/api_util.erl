@@ -128,12 +128,32 @@ get_cors_headers(Allow) ->
                           {cb_context:context(), cowboy_req:req()} |
                           halt_return().
 get_req_data(Context, Req0) ->
+    maybe_get_req_data(Context
+                      ,Req0
+                      ,cb_context:req_verb(Context)
+                      ).
+
+-spec maybe_get_req_data(cb_context:context(), cowboy_req:req(), http_method()) ->
+                                {cb_context:context(), cowboy_req:req()} |
+                                halt_return().
+maybe_get_req_data(Context, Req0, ?HTTP_GET) ->
+    {QS, Req1} = get_query_string_data(Req0),
+    set_empty_request(Context, Req1, QS);
+maybe_get_req_data(Context, Req0, ?HTTP_OPTIONS) ->
+    {QS, Req1} = get_query_string_data(Req0),
+    set_empty_request(Context, Req1, QS);
+maybe_get_req_data(Context, Req0, _Verb) ->
     {QS, Req1} = get_query_string_data(Req0),
     get_req_data(Context, get_content_type(Req1), QS).
 
+-spec get_query_string_data(cowboy_req:req()) ->
+                                   {wh_json:object(), cowboy_req:req()}.
+-spec get_query_string_data(wh_proplist(), cowboy_req:req()) ->
+                                   {wh_json:object(), cowboy_req:req()}.
 get_query_string_data(Req0) ->
     {QS0, Req1} = cowboy_req:qs_vals(Req0),
     get_query_string_data(QS0, Req1).
+
 get_query_string_data([], Req) ->
     {wh_json:new(), Req};
 get_query_string_data(QS0, Req) ->
@@ -246,6 +266,15 @@ set_request_data_in_context(Context, Req, JObj, QS) ->
                       ],
             {cb_context:setters(Context, Setters), Req}
     end.
+
+-spec set_empty_request(cb_context:context(), cowboy_req:req(), wh_json:object()) ->
+                               {cb_context:context(), cowboy_req:req()}.
+set_empty_request(Context, Req, QS) ->
+    Setters = [{fun cb_context:set_req_json/2, wh_json:new()}
+              ,{fun cb_context:set_req_data/2, wh_json:new()}
+              ,{fun cb_context:set_query_string/2, QS}
+              ],
+    {cb_context:setters(Context, Setters), Req}.
 
 -spec try_json(ne_binary(), wh_json:object(), cb_context:context(), cowboy_req:req()) ->
                       {cb_context:context(), cowboy_req:req()} |
