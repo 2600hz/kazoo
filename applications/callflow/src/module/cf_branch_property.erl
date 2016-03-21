@@ -5,7 +5,7 @@
 %%% "data":{
 %%%   "action":"branch", % the only one action supported currently
 %%%   "scope": "[device|user|account]",
-%%%   "field": "whatever_field_you_want"
+%%%   "property": "whatever_field_you_want"
 %%% }
 %%%
 %%% Branch to child whose name pointed in callflow's data section
@@ -23,33 +23,54 @@
 
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    AuthId = whapps_call:authorizing_id(Call),
-    Scope = wh_json:get_binary_value(<<"scope">>, Data, <<"device">>),
-    PointedField = wh_json:get_binary_value(<<"field">>, Data),
-    GetDocIdFun = case {Scope, whapps_call:authorizing_type(Call)} of
-                      {<<"account">>, _} -> fun() -> whapps_call:account_id(Call) end;
-                      {Same, Same} -> fun() -> AuthId end;
-                      {_, <<"device">>} -> fun() -> lookup_device_owner(Call, AuthId) end;
-                      {_, <<"user">>} -> fun() -> 'undefined' end;
-                      _Else ->
-                          lager:debug("unsupported authorizing type: ~s", [_Else]),
-                          fun() -> 'undefined' end
-                  end,
-    DocId = case is_binary(PointedField) of
-                'true' -> GetDocIdFun();
-                'false' ->
-                    lager:debug("property \"field\" unset"),
-                    'undefined'
-            end,
-    ChildName = case is_binary(DocId) of
-                    'true' -> lookup_childname(Call, DocId, PointedField);
+    Scope = wh_json:get_binary_value(<<"scope">>, Data),
+    PointedField = wh_json:get_binary_value(<<"property">>, Data),
+    ChildName = case is_binary(PointedField) of
+                    'true' -> lookup_child_name(Scope, Call, PointedField);
                     'false' ->
-                        lager:debug("can not find document for current scope"),
+                        lager:debug("value for \"property\" is unset"),
                         'undefined'
                 end,
     case is_binary(ChildName) of
         'true' -> cf_exe:continue(ChildName, Call);
         'false' -> cf_exe:continue(Call)
+    end.
+
+-spec lookup_child_name(api_binary(), whapps_call:call(), ne_binary()) -> api_binary().
+lookup_child_name(Scope, Call, Field) ->
+    case Scope of
+        <<"device">> -> targeted_lookup(Scope, Call, Field);
+        <<"user">> -> targeted_lookup(Scope, Call, Field);
+        <<"account">> -> targeted_lookup(Scope, Call, Field);
+        _ -> automatic_lookup(Call, Field)
+    end.
+
+-spec automatic_lookup(whapps_call:call(), ne_binary()) -> api_binary().
+automatic_lookup(Call, Field) ->
+    case cf_endpoint:get(Call) of
+        {'ok', JObj} -> wh_json:get_value(Field, JObj);
+        _Else ->
+            lager:debug("can not lookup endpoint for caller"),
+            'undefined'
+    end.
+
+-spec targeted_lookup(ne_binary(), whapps_call:call(), ne_binary()) -> api_binary().
+targeted_lookup(Scope, Call, Field) ->
+    AuthId = whapps_call:authorizing_id(Call),
+    DocId = case {Scope, whapps_call:authorizing_type(Call)} of
+                      {<<"account">>, _} -> whapps_call:account_id(Call);
+                      {Same, Same} -> AuthId;
+                      {_, <<"device">>} -> lookup_device_owner(Call, AuthId);
+                      {_, <<"user">>} -> 'undefined';
+                      _Else ->
+                          lager:debug("unsupported authorizing type: ~s", [_Else]),
+                          'undefined'
+                  end,
+    case is_binary(DocId) of
+        'true' -> lookup_childname(Call, DocId, Field);
+        'false' ->
+            lager:debug("can not find document for current scope(~s)", [Scope]),
+            'undefined'
     end.
 
 -spec lookup_device_owner(whapps_call:call(), ne_binary()) -> api_binary().
