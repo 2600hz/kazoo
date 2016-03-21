@@ -21,19 +21,20 @@
 
 -include("whistle_apps.hrl").
 
-
 -define(HIDDEN_APPS
         ,['amqp_client','apns','asn1'
           ,'braintree'
-          ,'compiler','cowboy','cowlib','couchbeam','crypto'
-          ,'escalus','exml'
+          ,'certifi','compiler','cowboy','cowlib','couchbeam','crypto'
+          ,'eflame','escalus','exml'
           ,'folsom'
           ,'gcm','gen_smtp','goldrush','gproc'
-          ,'inets'
-          ,'kazoo_bindings','kazoo_caches','kazoo_documents', 'kazoo_etsmgr'
-          ,'kazoo_modb','kazoo_number_manager'
-          ,'kazoo_oauth','kazoo_token_buckets','kazoo_web', 'kernel'
-          ,'lager', 'lager_syslog'
+          ,'hackney'
+          ,'idna','inets'
+          ,'kazoo_bindings','kazoo_caches','kazoo_couch','kazoo_data'
+          ,'kazoo_documents','kazoo_etsmgr','kazoo_modb','kazoo_number_manager'
+          ,'kazoo_oauth','kazoo_token_buckets','kazoo_web','kazoo_xml','kernel'
+          ,'lager','lager_syslog'
+          ,'mimerl'
           ,'nksip'
           ,'poolboy','public_key'
           ,'rabbit_common','ranch'
