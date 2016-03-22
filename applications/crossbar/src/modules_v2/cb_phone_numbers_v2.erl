@@ -659,7 +659,7 @@ clean_summary(Context) ->
 %%--------------------------------------------------------------------
 -spec apply_filters(wh_proplist(), wh_json:object()) -> wh_json:object().
 apply_filters([], Numbers) -> Numbers;
-apply_filters([{<<"filter_", Key/binary>>, Value}|QS], Numbers) ->
+apply_filters([{<<"filter_", _/binary>> = Key, Value}|QS], Numbers) ->
     Numbers1 = apply_filter(Key, Value, Numbers),
     apply_filters(QS, Numbers1);
 apply_filters([{Key, _}|QS], Numbers) ->
@@ -675,10 +675,10 @@ apply_filters([{Key, _}|QS], Numbers) ->
 apply_filter(Key, Value, Numbers) ->
     wh_json:foldl(
         fun(Number, JObj, Acc) ->
-            case wh_json:get_value(Key, JObj) of
-                Value -> Acc;
-                _Else -> wh_json:delete_key(Number, Acc)
-            end
+                case crossbar_doc:filter_prop(JObj, Key, Value) of
+                    'true' -> Acc;
+                    'false' -> wh_json:delete_key(Number, Acc)
+                end
         end
         ,Numbers
         ,Numbers
