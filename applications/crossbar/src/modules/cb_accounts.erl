@@ -636,7 +636,16 @@ maybe_disallow_direct_clients('false', _AccountId, Context) ->
 validate_delete_request(AccountId, Context) ->
     case whapps_util:account_has_descendants(AccountId) of
         'true' ->  cb_context:add_system_error('account_has_descendants', Context);
-        'false' -> cb_context:set_resp_status(Context, 'success')
+        'false' ->
+            case knm_port_request:account_has_active_port(AccountId) of
+                'false' -> cb_context:set_resp_status(Context, 'success');
+                'true' ->
+                    lager:debug("pervent deleting account ~s due to has active port request", [AccountId]),
+                    cb_context:add_system_error('account_has_active_port'
+                                                ,wh_json:from_list([{<<"message">>
+                                                                    ,<<"Account has active port request">>}])
+                                                ,Context)
+            end
     end.
 
 %% @private
