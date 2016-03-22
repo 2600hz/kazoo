@@ -12,7 +12,7 @@ NODE_NAME=ecallmgr
 export KAZOO_APPS=ecallmgr
 
 exec erl \
-     -name $NODE_NAME \
+     -name $NODE_NAME@"$(hostname -f)" \
      -args_file $ROOT/rel/dev-vm.args \
      -config $ROOT/rel/sys.config \
      -s reloader
