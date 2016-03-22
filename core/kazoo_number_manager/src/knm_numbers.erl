@@ -12,6 +12,7 @@
          ,create/1
          ,move/1 ,move/2
          ,update/1 ,update/2
+         ,reconcile/2
          ,delete/1 ,delete/2
          ,change_state/1 ,change_state/2
          ,assigned_to_app/1 ,assigned_to_app/2
@@ -33,14 +34,14 @@
                  numbers_return().
 -spec get(ne_binaries(), knm_number_options:options()) ->
                  numbers_return().
--spec get(ne_binaries(), knm_number_options:options(), numbers_return()) ->
-                 numbers_return().
 get(Nums) ->
     get(Nums, knm_number_options:default()).
 
 get(Nums, Options) ->
     get(Nums, Options, []).
 
+-spec get(ne_binaries(), knm_number_options:options(), numbers_return()) ->
+                 numbers_return().
 get([], _Options, Acc) -> Acc;
 get([Num|Nums], Options, Acc) ->
     Return = knm_number:get(Num, Options),
@@ -52,10 +53,10 @@ get([Num|Nums], Options, Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create(wh_proplist()) -> numbers_return().
--spec create(wh_proplist(), numbers_return()) -> numbers_return().
 create(Props) ->
     create(Props, []).
 
+-spec create(wh_proplist(), numbers_return()) -> numbers_return().
 create([], Acc) -> Acc;
 create([{Num, Data}|Props], Acc) ->
     Return = knm_number:create(Num, Data),
@@ -70,14 +71,14 @@ create([{Num, Data}|Props], Acc) ->
                   numbers_return().
 -spec move(wh_proplist(), knm_number_options:options()) ->
                   numbers_return().
--spec move(wh_proplist(), knm_number_options:options(), numbers_return()) ->
-                  numbers_return().
 move(Props) ->
     move(Props, knm_number_options:default()).
 
 move(Props, Options) ->
     move(Props, Options, []).
 
+-spec move(wh_proplist(), knm_number_options:options(), numbers_return()) ->
+                  numbers_return().
 move([], _Options, Acc) -> Acc;
 move([{Num, MoveTo}|Props], Options, Acc) ->
     Return = knm_number:move(Num, MoveTo, Options),
@@ -92,14 +93,14 @@ move([{Num, MoveTo}|Props], Options, Acc) ->
                     numbers_return().
 -spec update(wh_proplist(), knm_number_options:options()) ->
                     numbers_return().
--spec update(wh_proplist(), knm_number_options:options(), numbers_return()) ->
-                    numbers_return().
 update(Props) ->
     update(Props, knm_number_options:default()).
 
 update(Props, Options) ->
     update(Props, Options, []).
 
+-spec update(wh_proplist(), knm_number_options:options(), numbers_return()) ->
+                    numbers_return().
 update([], _Options, Acc) -> Acc;
 update([{Num, Data}|Props], Options, Acc) ->
     Return = knm_number:update(Num, Data, Options),
@@ -110,11 +111,26 @@ update([{Num, Data}|Props], Options, Acc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec reconcile(ne_binaries(), knm_number_options:options()) ->
+                       numbers_return().
+reconcile(Numbers, Options) ->
+    reconcile(Numbers, Options, []).
+
+-spec reconcile(ne_binaries(), knm_number_options:options(), numbers_return()) ->
+                       numbers_return().
+reconcile([], _Options, Acc) -> Acc;
+reconcile([Number|Numbers], Options, Acc) ->
+    Return = knm_number:reconcile(Number, Options),
+    reconcile(Numbers, Options, [{Number, Return}|Acc]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec delete(ne_binaries()) ->
                     numbers_return().
 -spec delete(ne_binaries(), knm_number_options:options()) ->
-                    numbers_return().
--spec delete(ne_binaries(), knm_number_options:options(), numbers_return()) ->
                     numbers_return().
 delete(Props) ->
     delete(Props, knm_number_options:default()).
@@ -122,6 +138,8 @@ delete(Props) ->
 delete(Props, Options) ->
     delete(Props, Options, []).
 
+-spec delete(ne_binaries(), knm_number_options:options(), numbers_return()) ->
+                    numbers_return().
 delete([], _Options, Acc) -> Acc;
 delete([Num|Nums], Options, Acc) ->
     Return = knm_number:delete(Num, Options),
@@ -136,14 +154,14 @@ delete([Num|Nums], Options, Acc) ->
                           numbers_return().
 -spec change_state(wh_proplist(), knm_number_options:options()) ->
                           numbers_return().
--spec change_state(wh_proplist(), knm_number_options:options(), numbers_return()) ->
-                          numbers_return().
 change_state(Props) ->
     change_state(Props, knm_number_options:default()).
 
 change_state(Props, Options) ->
     change_state(Props, Options, []).
 
+-spec change_state(wh_proplist(), knm_number_options:options(), numbers_return()) ->
+                          numbers_return().
 change_state([], _Options, Acc) -> Acc;
 change_state([{Num, State}|Props], Options, Acc) ->
     try knm_number_states:to_state(Num, State, Options) of
@@ -162,14 +180,14 @@ change_state([{Num, State}|Props], Options, Acc) ->
                              numbers_return().
 -spec assigned_to_app(wh_proplist(), knm_number_options:options()) ->
                              numbers_return().
--spec assigned_to_app(wh_proplist(), knm_number_options:options(), numbers_return()) ->
-                             numbers_return().
 assigned_to_app(Props) ->
     assigned_to_app(Props, knm_number_options:default()).
 
 assigned_to_app(Props, Options) ->
     assigned_to_app(Props, Options, []).
 
+-spec assigned_to_app(wh_proplist(), knm_number_options:options(), numbers_return()) ->
+                             numbers_return().
 assigned_to_app([], _Options, Acc) -> Acc;
 assigned_to_app([{Num, App}|Props], Options, Acc) ->
     Return = knm_number:assign_to_app(Num, App, Options),

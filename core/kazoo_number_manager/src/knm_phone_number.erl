@@ -65,7 +65,7 @@
                            ,auth_by :: api_binary()
                            ,dry_run = 'false' :: boolean()
                            ,locality :: wh_json:object()
-                           ,doc :: wh_json:object()
+                           ,doc = wh_json:new() :: wh_json:object()
                           }).
 -opaque knm_phone_number() :: #knm_phone_number{}.
 
@@ -90,15 +90,15 @@ new(DID) ->
 new(DID, Options) ->
     NormalizedNum = knm_converters:normalize(DID),
     NumberDb = knm_converters:to_db(NormalizedNum),
-
-    #knm_phone_number{number=NormalizedNum
-                     ,number_db=NumberDb
-                     ,assign_to=knm_number_options:assign_to(Options)
-                     ,state=?NUMBER_STATE_DISCOVERY
-                     ,module_name=?CARRIER_OTHER
-                     ,carrier_data=wh_json:new()
-                     ,auth_by=knm_number_options:auth_by(Options)
-                     ,dry_run=knm_number_options:dry_run(Options)
+    #knm_phone_number{number = NormalizedNum
+                     ,number_db = NumberDb
+                     ,assign_to = knm_number_options:assign_to(Options)
+                     ,state = ?NUMBER_STATE_DISCOVERY
+                     ,module_name = ?CARRIER_OTHER
+                     ,carrier_data = wh_json:new()
+                     ,auth_by = knm_number_options:auth_by(Options)
+                     ,dry_run = knm_number_options:dry_run(Options)
+                     ,doc = knm_number_options:public_fields(Options)
                      }.
 
 %%--------------------------------------------------------------------

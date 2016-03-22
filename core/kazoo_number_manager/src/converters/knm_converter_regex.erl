@@ -35,19 +35,19 @@
 %%--------------------------------------------------------------------
 -spec normalize(ne_binary()) ->
                        ne_binary().
-normalize(<<_/binary>> = Num) ->
+normalize(?NE_BINARY = Num) ->
     to_e164(Num).
 
 -spec normalize(ne_binary(), api_binary()) ->
                        ne_binary().
-normalize(<<_/binary>> = Num, 'undefined') ->
+normalize(?NE_BINARY = Num, 'undefined') ->
     to_e164(Num);
-normalize(<<_/binary>> = Num, AccountId) ->
+normalize(?NE_BINARY = Num, AccountId) ->
     to_e164(Num, AccountId).
 
 -spec normalize(ne_binary(), ne_binary(), wh_json:object()) ->
                        ne_binary().
-normalize(<<_/binary>> = Num, AccountId, DialPlan) ->
+normalize(?NE_BINARY = Num, AccountId, DialPlan) ->
     to_e164_from_account_dialplan(Num, AccountId, DialPlan).
 
 %%--------------------------------------------------------------------
@@ -84,13 +84,13 @@ to_1npan(Num) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec to_e164(ne_binary()) -> ne_binary().
-to_e164(<<$+, _/binary>> = N) -> N;
+to_e164(<<"+",_/binary>> = N) -> N;
 to_e164(Number) ->
     Converters = get_e164_converters(),
     Regexes = wh_json:get_keys(Converters),
     maybe_convert_to_e164(Regexes, Converters, Number).
 
-to_e164(<<$+, _/binary>> = N, _AccountId) -> N;
+to_e164(<<"+",_/binary>> = N, _AccountId) -> N;
 to_e164(Number, Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     case kz_account:fetch(AccountId) of
@@ -101,7 +101,7 @@ to_e164(Number, Account) ->
     end.
 
 -spec to_e164_from_account(ne_binary(), ne_binary()) -> ne_binary().
-to_e164_from_account(Number, <<_/binary>> = AccountId) ->
+to_e164_from_account(Number, ?NE_BINARY = AccountId) ->
     Converters = get_e164_converters(AccountId),
     Regexes = wh_json:get_keys(Converters),
     maybe_convert_to_e164(Regexes, Converters, Number).

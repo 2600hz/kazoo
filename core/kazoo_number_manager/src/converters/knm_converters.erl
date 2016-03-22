@@ -297,7 +297,7 @@ get_classifier_regex(JObj) ->
 %%--------------------------------------------------------------------
 -spec correct_depreciated_classifiers(wh_json:key(), wh_json:json_term(), wh_json:object()) ->
                                              wh_json:object().
-correct_depreciated_classifiers(Classifier, <<_/binary>> = Regex, JObj) ->
+correct_depreciated_classifiers(Classifier, ?NE_BINARY = Regex, JObj) ->
     J = wh_json:from_list([{<<"regex">>, Regex}
                            ,{<<"friendly_name">>, Classifier}
                           ]),
