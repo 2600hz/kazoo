@@ -902,7 +902,7 @@ get_public_fields(Number, AuthBy) ->
                          {E, Reason};
                     (#number{number_doc=JObj}) ->
                          lager:debug("fetch public fields successfully completed"),
-                         {'ok', wh_json:public_fields(JObj)}
+                         {'ok', JObj}
                  end
                ],
     lists:foldl(fun(F, J) -> catch F(J) end, 'ok', Routines).
