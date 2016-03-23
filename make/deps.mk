@@ -13,9 +13,9 @@ dep_jiffy = hex 0.14.7
 dep_jesse = git https://github.com/for-GET/jesse 9e7830001deb78b57ce2ae15049afb7fecb8d386
 dep_nklib = git https://github.com/NetComposer/nklib
 dep_nksip = git https://github.com/NetComposer/nksip
+dep_couchbeam = git https://github.com/benoitc/couchbeam 1.3.0
 
 ### pr request opened upstream ###
-dep_couchbeam = git https://github.com/lazedo/couchbeam kz
 dep_erlang_localtime = git https://github.com/lazedo/erlang_localtime 0bb26016380cd7df5d30aa0ef284ae252b5bae31
 
 ### need to update upstream ###
