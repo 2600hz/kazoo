@@ -431,7 +431,7 @@ create_number(Number, AssignTo, AuthBy, PublicFields, DryRun, ModuleName) ->
                                      ]};
                     (#number{number_doc=JObj}) ->
                          lager:debug("create number successfully completed"),
-                         {'ok', wh_json:public_fields(JObj)}
+                         {'ok', leaks_private_fields_safely(JObj)}
                  end
                ],
     lists:foldl(fun(F, J) -> catch F(J) end, 'ok', Routines).
@@ -902,7 +902,7 @@ get_public_fields(Number, AuthBy) ->
                          {E, Reason};
                     (#number{number_doc=JObj}) ->
                          lager:debug("fetch public fields successfully completed"),
-                         {'ok', JObj}
+                         {'ok', leaks_private_fields_safely(JObj)}
                  end
                ],
     lists:foldl(fun(F, J) -> catch F(J) end, 'ok', Routines).
@@ -943,7 +943,7 @@ set_public_fields(Number, PublicFields, AuthBy, DryRun) ->
                                      ]};
                     (#number{number_doc=JObj}) ->
                          lager:debug("set public fields successfully completed"),
-                         {'ok', wh_json:public_fields(JObj)}
+                         {'ok', leaks_private_fields_safely(JObj)}
                  end
                ],
     lists:foldl(fun(F, J) -> catch F(J) end, wnm_number:get(Number, PublicFields), Routines).
@@ -958,6 +958,11 @@ track_assignment(Account, Props) ->
       end
       ,Props
      ).
+
+-spec leaks_private_fields_safely(wh_json:object()) -> wh_json:object().
+leaks_private_fields_safely(JObj) ->
+    PrivateFields = wh_json:set_value(<<"_read_only">>, wh_json:private_fields(JObj), wh_json:new()),
+    wh_json:merge_jobjs(PrivateFields, wh_json:public_fields(JObj)).
 
 %%--------------------------------------------------------------------
 %% @private
