@@ -124,7 +124,9 @@ check_sync(Username, Realm) ->
             case ensure_contact_user(Contact, Username, Realm) of
                 'undefined' ->
                     lager:error("invalid contact : ~p : ~p", [Contact, Registration]);
-                Valid -> send_check_sync(Node, Username, Realm, Valid)
+                Valid ->
+                    ecallmgr_registrar:flush(Realm, Username),
+                    send_check_sync(Node, Username, Realm, Valid)
             end
     end.
 
