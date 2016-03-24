@@ -51,13 +51,13 @@ proceed_with_endpoint(State, Endpoint, JObj) ->
     Q = ts_callflow:get_my_queue(State),
     'true' = wapi_dialplan:bridge_endpoint_v(Endpoint),
 
-    MediaHandling = case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Offnet-Loopback-Number">>], JObj) of
-                        'undefined' ->
+    MediaHandling = case wh_json:is_true([<<"Custom-Channel-Vars">>, <<"Executing-Extension">>], JObj) of
+                        'false' ->
                             case wh_util:is_false(wh_json:get_value(<<"Bypass-Media">>, Endpoint)) of
                                 'true' -> <<"process">>; %% bypass media is false, process media
                                 'false' -> <<"bypass">>
                             end;
-                        _ -> <<"process">>
+                        'true' -> <<"process">>
                     end,
     Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, [Endpoint]}
