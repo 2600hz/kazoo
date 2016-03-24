@@ -1,8 +1,8 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
-%%% Listing of all expected v1 callbacks
+%%% Listing of all expected v2 callbacks
 %%%
 %%% @end
 %%% @contributors:
@@ -59,7 +59,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.encodings_provided.skels">>, ?MODULE, 'encodings_provided'),
     _ = crossbar_bindings:bind(<<"*.validate.skels">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.billing">>, ?MODULE, 'billing'),
-    _ = crossbar_bindings:bind(<<"*.execute.get.skels">>, ?MODULE, 'get'),
+
     _ = crossbar_bindings:bind(<<"*.execute.put.skels">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.skels">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.skels">>, ?MODULE, 'patch'),
@@ -99,7 +99,7 @@ authorize(_) -> 'false'.
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
-allowed_methods(_) ->
+allowed_methods(_SkelId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
@@ -114,7 +114,7 @@ allowed_methods(_) ->
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
-resource_exists(_) -> 'true'.
+resource_exists(_SkelId) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
