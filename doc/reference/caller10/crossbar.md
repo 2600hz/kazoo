@@ -20,135 +20,206 @@ Imagine an engine turning a gear, which turns a gear, which turns still more gea
   By default, Crossbar accepts and provides JSON-formatted data payloads. There are times, however, where Crossbar accepts alternative data formats (like uploading music on hold files), and where Crossbar will send alternative data formats back to the client (downloading a voicemail).
   Again, based on the path tokens passed in, you can alter the content types provided and accepted. Read more about [HTTP Request headers](https://en.wikipedia.org/wiki/List_of_HTTP_headers#Requests) and why client applications should set them properly.
   * Content Types Provided
-  This listing will match against the client's Accept header. If missing, Crossbar will assume "application/json". If the client wants to receive audio/mp3 (a voicemail, say), it will set the header "Accept: audio/mp3" in the HTTP request. Your module will then need to allow that content type (and any others your module will provide) in the `content_types_provided` function(s). See the [cb_media module](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_media.erl#L157-L179) where it determines the Content-Type of the requested media file and sets the `content_types_provided` accordingly.
-  The other parameter in the `content_types_provided` format (`to_json`, `to_binary`, etc) are the encoders for the response. See the [api_resource](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/api_resource.erl#L646) module for the available encoders. You can also supply your own `to_*` functions: (bind for)[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_cdrs.erl#L96] and (output)[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_cdrs.erl#L100-L107] the format requested.
+    This listing will match against the client's Accept header. If missing, Crossbar will assume "application/json". If the client wants to receive audio/mp3 (a voicemail, say), it will set the header "Accept: audio/mp3" in the HTTP request. Your module will then need to allow that content type (and any others your module will provide) in the `content_types_provided` function(s). See the [cb_media module](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_media.erl#L157-L179) where it determines the Content-Type of the requested media file and sets the `content_types_provided` accordingly.
+    The other parameter in the `content_types_provided` format (`to_json`, `to_binary`, etc) are the encoders for the response. See the [api_resource](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/api_resource.erl#L646) module for the available encoders. You can also supply your own `to_*` functions: (bind for)[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_cdrs.erl#L96] and (output)[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_cdrs.erl#L100-L107] the format requested.
   * Content Types Accepted
-  This listing will match against the client's Content-Type header. If missing, Crossbar will assume "application/json". If the client is providing a request other than a JSON payload, it must set the Content-Type header appropriately. This is typically a more static listing of MIME types, as seen again in the cb_media module.
-  Similar to the content types provided, content types accepted requires another parameter, the decoding function ("from_json", "from_binary", etc). See the api_resource module for the available decoders.
-Languages Provided
-If you plan to provide more than just English responses (and we hope our international community does!), you can define what languages your module will provide (matched against a request's "Accept-Language" header). Skeleton example.
-Charsets Provided
-If you have alternative character sets you'd like to provide (like UTF-8 or UTF-16), set them here. They will be matched against the request's "Accept-Charset" (otherwise the first in the list will be used). Skeleton example.
-Encodings Provided
-If you provide alternative encodings, maybe a different compression engine, set the encodings your module will provide here. They will be matched against the request's "Accept-Encoding". Read more about HTTP compression. Skeleton example of setting encodings.
-Validate
-The validation gear allows the resource module to check the request's data payload to ensure it meets the appropriate criteria. Typically on PUT and POST the resource module will use the JSON schema of the resource to validate the request's payload to see if it conforms to the schema. For GET requests, the resource module will either do a lookup for a listing of all resource instances, or check whether the provided ID exists (similarly for DELETE). Generally speaking, any data on the payload not validated by the schema is automatically stored (with the exception of private fields, covered later) should the saving of the payload be successful (meaning Crossbar does not strip non-private fields it can't validate). The skeleton example shows how, based on the path tokens provided and the HTTP method used, different validation routines are invoked.
-Another task of the validate gear is to ready the request to be executed (loading the appropriate data into the Context record).
-Billing
-If your module will invoke a paid-feature and you need to communicate that to your backend billing system, this gear is where you'll tie that in. See, for instance, billing for devices.
-Execute
-The execute gear takes the data loaded during the previous stages (most notably the validate stage) and executes the HTTP verb. In typical CRUD, the PUT would save a new document, a POST would update and existing document, and a DELETE would remove an existing document. GETs don't have an execute stage as it is expected that the validate stage has loaded the data necessary for creating a response. You can see in the skeleton example how you define methods based on the HTTP verbs.
-Etag
-Set the Etag header. This is automatically handled (if possible, and usually done for you - see crossbar_doc), otherwise left blank. Skeleton example.
-Expires
-Set the time for when the resource(s) returned will expire (the client should consider the response stale after this time). Skeleton example.
-Finish Request
-This gear is available after the response is on its way to the client, allowing the resource module to do any cleanup or updating necessary. Skeleton example.
-Creating the contests resource
+    This listing will match against the client's Content-Type header. If missing, Crossbar will assume "application/json". If the client is providing a request other than a JSON payload, it must set the Content-Type header appropriately. This is typically a more [static listing](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_media.erl#L35-L43) of MIME types, as seen again in the [cb_media](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_media.erl#L181-L192) module.
+    Similar to the content types provided, content types accepted requires another parameter, the decoding function ("from_json", "from_binary", etc). See the [api_resource](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/api_resource.erl#L610-L644) module for the available decoders.
+* Languages Provided
+  If you plan to provide more than just English responses (and we hope our international community does!), you can define what languages your module will provide (matched against a request's "Accept-Language" header). [Skeleton example](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_skels.erl#L143-L153).
+* Charsets Provided
+  If you have alternative character sets you'd like to provide (like UTF-8 or UTF-16), set them here. They will be matched against the request's "Accept-Charset" (otherwise the first in the list will be used). [Skeleton example](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_skels.erl#L155-L165).
+* Encodings Provided
+  If you provide alternative encodings, maybe a different compression engine, set the encodings your module will provide here. They will be matched against the request's "Accept-Encoding". Read more about HTTP compression. [Skeleton example](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_skels.erl#L167-L177).
+* Validate
+  The validation gear allows the resource module to check the request's data payload to ensure it meets the appropriate criteria. Typically on PUT and POST the resource module will use the JSON schema of the resource to validate the request's payload to see if it conforms to the schema. For GET requests, the resource module will either do a lookup for a listing of all resource instances, or check whether the provided ID exists (similarly for DELETE). Generally speaking, any data on the payload not validated by the schema is automatically stored (with the exception of private fields, covered later) should the saving of the payload be successful (meaning Crossbar does not strip non-private fields it can't validate). The [skeleton example](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_skels.erl#L179-L210) shows how, based on the path tokens provided and the HTTP method used, different validation routines are invoked.
+  Another task of the validate gear is to ready the request to be executed (loading the appropriate data into the Context record).
+* Billing
+  If your module will invoke a paid-feature and you need to communicate that to your backend billing system, this gear is where you'll tie that in. See, for instance, [billing for devices](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules_v2/cb_devices_v2.erl#L117-L143).
+* Execute
+  The execute gear takes the data loaded during the previous stages (most notably the validate stage) and executes the HTTP verb. In typical CRUD, the PUT would save a new document, a POST would update and existing document, and a DELETE would remove an existing document. GETs don't have an execute stage as it is expected that the validate stage has loaded the data necessary for creating a response. You can see in the [skeleton example](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_skels.erl#L223-L263) how you define methods based on the HTTP verbs.
+* Etag
+  Set the [Etag header](https://en.wikipedia.org/wiki/HTTP_ETag). This is automatically handled (if possible, and usually done for you - see [crossbar_doc](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/crossbar_doc.erl#L1014)), otherwise left blank. [Skeleton example](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_skels.erl#L265-L273).
+* Expires
+  Set the time for when the resource(s) returned will expire (the client should consider the response stale after this time). [Skeleton example](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_skels.erl#L275-L283).
+* Finish Request
+  This gear is available after the response is on its way to the client, allowing the resource module to do any cleanup or updating necessary. [Skeleton example](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_skels.erl#L285-L293).
+
+#### Creating the contests resource
+
 Now that we've seen an overview of the available gears we can hook our resource into, let's see about actually building the contests resource.
-The first thing to do is copy the cb_skels.erl and rename it to cb_contests.erl (remember, by convention we use the plural of the resource name for the module name).
+
+The first thing to do is copy the [cb_skels.erl](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_skels.erl) and rename it to `cb_contests.erl` (remember, by convention we use the plural of the resource name for the module name).
+
+```bash
 2600hz/kazoo$ cd applications/crossbar/
 2600hz/kazoo/applications/crossbar$ cp src/modules/cb_skels.erl src/modules/cb_contests.erl
+```
+
 Next, search/replace skels with contests, then skel with contest:
+
+```bash
 2600hz/kazoo/applications/crossbar$ sed -i 's/skels/contests/g' src/modules/cb_contests.erl
 2600hz/kazoo/applications/crossbar$ sed -i 's/skel/contest/g' src/modules/cb_contests.erl
-Run make and the module should compile successfully (there should be a cb_contests.beam in the ebin/ folder).
+```
+
+Run make and the module should compile successfully (there should be a cb_contests.beam in the ebin/ folder). This does assume you've built Kazoo from the root directlry.
+
+```bash
 2600hz/kazoo/applications/crossbar$ make
 ...make output...
 2600hz/kazoo/applications/crossbar$ ls ebin/cb_contests.beam
 ebin/cb_contests.beam
+```
+
 Congrats, you've just created your first CRUD-y resource! Let's load the beam into the running VM and start the endpoint.
+
+```bash
 2600hz/kazoo$ sup whistle_maintenance hotload cb_contests
 ok
 2600hz/kazoo$ sup crossbar_maintenance start_module cb_contests
 ok
 2600hz/kazoo$ sup crossbar_maintenance running_modules
 [cb_about,...,cb_contests,...] # note: your output may vary here, just verify cb_contests is in the list
-cb_contests in detail
-First, some cleanup
-A lot of the functions in cb_contests just set the defaults. Most can be removed without loss of functionality. The typical ones to not include are:
-authenticate
-authorize
-content_types_provided
-content_types_accepted
-languages_provided
-charsets_provided
-encodings_provided
-billing
-etag
-expires
-finish_request
+```
+
+#### `cb_contests` in detail
+
+First, some cleanup!
+
+A lot of the functions in `cb_contests` just set the defaults. Most can be removed without loss of functionality. The typical ones to not include are:
+
+* authenticate
+* authorize
+* content_types_provided
+* content_types_accepted
+* languages_provided
+* charsets_provided
+* encodings_provided
+* billing
+* etag
+* expires
+* finish_request
+
 Remove the exports that correlate to these events, as well as the function definitions later in the module.
-init/0
+
+##### `init/0`
+
 The init function serves to register your module to the crossbar_bindings server. The bindings server allows a module to register functions to be called when a particular routing key is fired. The routing keys allowed are nearly identical to what RabbitMQ/AMQP allow; however, in practice Crossbar modules typically only use the '*' wildcard segment or explicit segment matching.
+
 See below for more about routing keys.
+
 The init/0 is only run when the module is loaded into the running Crossbar system (at boot, or via crossbar_maintenance:start_module/1). It can also be used to initialize databases or other initialization tasks.
+
 Be sure to remove the bind calls to the events removed above.
-allowed_methods/{0,1}
-We define two versions of the allowed_methods, one to handle /contests (that is, "contests" with no path tokens), and one to handle /contests/contest_id (that is, "contests" with one token, "contest_id").
-/contests is accessible via an HTTP GET (listing of contests) or PUT (create a new contest).
-/contests/contest_id is accessible via GET (details of contest), POST (edit contest), or DELETE (remove contest).
-resource_exists/{0,1}
-We have already determined that /contests and /contests/contest_id are existing resource paths, so return true for both cases.
-validate/{1, 2}
-Now things change a bit. The first argument to these functions will be the cb_context record associated with the request. Any subsequent arguments will be the path tokens provided in the request.
-/contests will result in validate(Context) being called.
-/contests/contest_id will result in validate(Context, ContestId) being called.
-validate/{1,2} uses the HTTP verb to determine what action to take (summary, create, read, update).
-put/1
-Because a PUT is only valid for /contests, we only need to define an arity-1 version (with the cb_context as the argument). Since validate/1 has been successful, we know that the to-be-created contest is loaded up in the cb_context record and ready for saving, so the only thing needing doing is calling crossbar_doc:save(Context). This will save the contest to the account database and load the saved version (with auto-generated id and rev) into the cb_context record, ready to build the response.
-post/2
-Because a POST is only valid for /contests/contest_id, post(Context, ContestId) is called. Similarly to put/1, because the validate/2 took care of loading the existing contest doc, merging the request's contest payload, and validating the result, we know Context is ready for saving; post/2 just needs to execute the save.
-delete/2
-The validate/2 counterpart will have tried to read in the contest identified; if request execution reaches this function, Context is loaded with the doc to "delete". It is important to remember that deletes via crossbar_doc:delete/1 are "soft-deletes", so-called because they actually only set a private field indicating the document is no longer accessible.
-create/1
-This function will validate that the request data conforms to the JSON schema. cb_context:validate_request_data/3 takes the schema name, the Context, and a callback function to run if the request data passes validation.
-read/2
-This function will attempt to load the document with id Id into the cb_context record.
-update/2
-Similar to create/1, this will first validate the request data and if successful, will merge the request data with the existing document (done in the callback function).
-summary/1
-By convention, resources have a design document in the account databases named after the resource, with, at a minimum, a view named "crossbar_listing". This view will list existing resource documents with the id as the key, and the value as the summary version of the resource. Once loaded, each view result will be mapped over using the supplied callback (normalize_view_results/2 in this case).
-on_successful_validation/2
-Here we see what happens when the request data is successfully verified. If a PUT (or new resource creation), the Id is undefined, and the first clause will update the to-be-saved document with the pvt_type field (and others if desired).
-If the request is a POST (or updating an existing document), the crossbar_doc:load_merge/2 will handle loading the current version of the resource, and merging the new values from the request.
-normalize_view_results/2
+
+##### `allowed_methods/{0,1}`
+
+We define two versions of the allowed_methods, one to handle `/contests` (that is, "contests" with no path tokens), and one to handle `/contests/{CONTEST_ID}` (that is, "contests" with one token, "{CONTEST_ID}").
+
+`/contests` is accessible via an HTTP GET (listing of contests) or PUT (create a new contest).
+
+`/contests/{CONTEST_ID}` is accessible via GET (details of contest), POST (edit contest), PATCH (edit subset of contest fields), or DELETE (remove contest).
+
+##### `resource_exists/{0,1}`
+
+We have already determined that `/contests` and `/contests/{CONTEST_ID}` are existing resource paths, so return true for both cases.
+
+##### `validate/{1,2}`
+
+Now things change a bit. The first argument to these functions will be the `cb_context` record associated with the request. Any subsequent arguments will be the path tokens provided in the request.
+
+`/contests` will result in `validate(Context)` being called.
+`/contests/{CONTEST_ID}` will result in `validate(Context, ContestId)` being called.
+
+`validate/{1,2}` uses the HTTP verb to determine what action to take (summary, create, read, update).
+
+##### `put/1`
+
+Because a PUT is only valid for `/contests`, we only need to define an arity-1 version (with the `cb_context` as the argument). Since `validate/1` has been successful, we know that the to-be-created contest is loaded up in the `cb_context` record and ready for saving, so the only thing needing doing is calling `crossbar_doc:save(Context)`. This will save the contest to the account database and load the saved version (with auto-generated id and rev) into the cb_context record, ready to build the response.
+
+##### `post/2`
+
+Because a POST is only valid for `/contests/{CONTEST_ID}`, `post(Context, ContestId)` is called. Similar to `put/1`, because the `validate/2` took care of loading the existing contest doc, merging the request's contest payload, and validating the result, we know `Context` is ready for saving; `post/2` just needs to execute the save.
+
+##### `delete/2`
+
+The `validate/2` counterpart will have tried to read in the contest identified; if request execution reaches this function, Context is loaded with the doc to "delete". It is important to remember that deletes via `crossbar_doc:delete/1` are "soft-deleted" (by default), so-called because they actually only set a private field (`pvt_deleted`) indicating the document is no longer accessible.
+
+#### Helper functions
+
+##### `create/1`
+
+This function will validate that the request data conforms to the JSON schema. `cb_context:validate_request_data/3` takes the schema name, the Context, and a callback function to run if the request data passes validation. An optional fourth argument takes a function to run if the request data fails validation.
+
+##### `read/2`
+
+This function will attempt to load the document with id Id into the `cb_context` record.
+
+##### `update/2`
+
+Similar to `create/1`, this will first validate the request data and, if successful, merges the request data with the existing document (done in the callback function).
+
+##### `summary/1`
+
+By convention, resources have a design document in the account databases named after the resource, with, at a minimum, a view named "crossbar_listing". This view will list existing resource documents with the id as the key, and the value as the summary version of the resource. Once loaded, each view result will be mapped over using the supplied callback (`normalize_view_results/2` in this case).
+
+##### `on_successful_validation/2`
+
+Here we see what happens when the request data is successfully verified. If a PUT (or new resource creation), the Id is undefined, and the first clause will update the to-be-saved document with the `pvt_type` field (and others if desired).
+
+If the request is a POST (or updating an existing document), the `crossbar_doc:load_merge/2` will handle loading the current version of the resource, and merging the new values from the request.
+
+##### `normalize_view_results/2`
+
 Run on each result from a view lookup. JObj will an element from the view listing, while Acc will be the list of JSON objects returned by the normalizer. In this instance, the function merely prepends the value of the "value" key (another JSON object typically) to the accumulator.
-The Context record
-Crossbar threads a record throughout the request, typically bound to the Context variable, and should provide you with all the information you will need to process a given request. Refer to the cb_context.erl module for the various accessor functions.
-Other important Crossbar modules
-crossbar_doc.erl
-This is a wrapper around the whistle_couch library, and provides a simplified interface for getting documents, view results, attachments, etc. The module also takes care of updating the cb_context record along the way.
-crossbar_util.erl
-When you need to set custom responses, crossbar_util has the helpers you need to set the response code, response headers, response body, etc.
-crossbar_bindings.erl
-The bindings server, routing the various stages of a request to the interested modules.
-bind/3 binds a Module/Function pair to a key (similar to AMQP's binding keys). The arity of the Module:Function called will depend on the number of path tokens associated with the resource requested.
-map/2 takes a routing key and a payload and maps the payload over any matching Module/Function pairs bound to a matching binding key. You will get a list of each matching Module/Function's responses.
-fold/2 takes a routing key and a payload, and folds the payload through the matching Module/Function pairs (meaning if the first matching pair modifies the payload, the new payload is passed along to the next matching pair). You will get the final version of the payload back.
-There are also some pretty nifty PropEr tests in this module, to help with the fuzzy testing of the binding/routing engine, if you're into that kind of stuff.
-crossbar_cleanup.erl
-The cleanup server, responsible for general DB maintenance. It cleans up soft-deleted documents, heard voicemails past a certain age, and more. It also provides bindings for your module to hook into should you want to do periodic maintenance tasks too. For instance, if you have an hourly maintenance task you could do the following in your init/0:
-cb_my_module.erl
+
+#### The Context record
+
+Crossbar threads a record throughout the request, typically bound to the Context variable, and should provide you with all the information you will need to process a given request. Refer to the [cb_context.erl](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/cb_context.erl) module for the various accessor functions.
+
+#### Other important Crossbar modules
+
+* [crossbar_doc.erl](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/crossbar_doc.erl)
+  This is a wrapper around the kazoo_data library, and provides a simplified interface for getting documents, view results, attachments, etc. The module also takes care of updating the `cb_context` record along the way.
+* [crossbar_util.erl](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/crossbar_util.erl)
+  When you need to set custom responses, crossbar_util has the helpers you need to set the response code, response headers, response body, etc.
+* [crossbar_bindings.erl](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/crossbar_bindings.erl)
+  The bindings server, routing the various stages of a request to the interested modules.
+  `bind/3` binds a Module/Function pair to a key (similar to AMQP's [binding keys](https://www.rabbitmq.com/tutorials/amqp-concepts.html)). The arity of the Module:Function called will depend on the number of path tokens associated with the resource requested.
+  `map/2` takes a routing key and a payload and maps the payload over any matching Module/Function pairs bound to a matching binding key. You will get a list of each matching Module/Function's responses.
+  `fold/2` takes a routing key and a payload, and folds the payload through the matching Module/Function pairs (meaning if the first matching pair modifies the payload, the new payload is passed along to the next matching pair). You will get the final version of the payload back.
+  There are also some pretty nifty [PropEr](http://proper.softlab.ntua.gr/) [tests](https://github.com/2600hz/kazoo/blob/master/core/kazoo_bindings/test/kazoo_bindings_test.erl) in the underlying `kazoo_bindings` application, to help with the fuzzy testing of the binding/routing engine, if you're into that kind of stuff.
+* [crossbar_cleanup.erl](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/crossbar_cleanup.erl)
+  The cleanup server, responsible for general DB maintenance. It cleans up soft-deleted documents, heard voicemails past a certain age, and more. It also provides bindings for your module to hook into should you want to do periodic maintenance tasks too. For instance, if you have an hourly maintenance task you could do the following in your init/0:
+
+```erlang
 -module(cb_my_module).
 -export([init/0
          ,hourly_cleanup/0
-                 ]).
+        ]).
 
-                  init() ->
-                      crossbar_bindings:bind(crossbar_cleanup:binding_hour(), 'cb_my_module', 'hourly_cleanup').
+init() ->
+    crossbar_bindings:bind(crossbar_cleanup:binding_hour(), 'cb_my_module', 'hourly_cleanup').
 
-                       hourly_cleanup() ->
-                           lager:debug("hey, has it been an hour already?").
-                           Every hour, your hourly_cleanup/0 will be called (as long as it is properly exported, of course!).
-                           You can also bind for the periodic DB cleanup events. Crossbar classifies databases in one of four ways: account, account_mod, system, and other. If you bind for one or more database types, the arity-1 version of your Module/Function pair will be called, with the database name as the only argument.
-                           init() ->
-                               crossbar_bindings:bind(crossbar_cleanup:binding_account(), 'cb_my_module', 'account_db_cleanup').
+hourly_cleanup() ->
+    lager:debug("hey, has it been an hour already?").
+```
 
-                                account_db_cleanup(AccountDb) ->
-                                    lager:debug("periodic cleanup of ~s commencing", [AccountDb]).
-                                    Resource Schemas
-                                    The JSON schemas allow Crossbar to validate the fields that Crossbar (and Kazoo in general) care about. All other non-private fields are stored and supplied on request unmodified. If a backend application is to use a field in a document, it should be part of the JSON schema (never trust user input!).
+  Every hour, your `hourly_cleanup/0` will be called (as long as it is properly exported, of course!).
+  You can also bind for the periodic DB cleanup events. Crossbar classifies databases in one of four ways: `account`, `account_mod`, `system`, and `other`. If you bind for one or more database types, the arity-1 version of your Module/Function pair will be called, with the database name as the only argument.
+
+```erlang
+init() ->
+    crossbar_bindings:bind(crossbar_cleanup:binding_account(), 'cb_my_module', 'account_db_cleanup').
+
+account_db_cleanup(AccountDb) ->
+    lager:debug("periodic cleanup of ~s commencing", [AccountDb]).
+```
+
+#### Resource Schemas
+
+The JSON schemas allow Crossbar to validate the fields that Crossbar (and Kazoo in general) care about. All other non-private fields are stored and supplied on request unmodified. If a backend application is to use a field in a document, it should be part of the JSON schema (never trust user input!).
                                     Crossbar has a host of schemas you can use as reference. The easiest way to load your own schema is to put the resources.json into the schemas folder and run 'sup crossbar_maintenance refresh_schemas'. It is recommended that, if you need to update a schema, you do so on the disk version and run the refresh routine again.
                                     Make sure you have the contests.json schema from the beginning, save it into the schemas directory as contests.json, and run the refresh command. Now navigate to your Futon interface for the system_schemas and check that the contests schema is properly loaded.
                                     Core applications used
