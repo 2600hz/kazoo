@@ -1,4 +1,4 @@
-## Kazoo [![Build Status](https://travis-ci.org/2600hz/kazoo.svg?branch=master)](https://travis-ci.org/2600hz/kazoo) [![Issue Stats](http://issuestats.com/github/2600hz/kazoo/badge/pr)](http://issuestats.com/github/2600hz/kazoo)
+## Kazoo [![Build Status](https://travis-ci.org/2600hz/kazoo.svg?branch=master)](https://travis-ci.org/2600hz/kazoo) [![Issue Stats](http://issuestats.com/github/2600hz/kazoo/badge/pr)](http://issuestats.com/github/2600hz/kazoo) [![2600Hz IRC](https://img.shields.io/badge/irc-%232600hz-orange.svg)](https://webchat.freenode.net/?channels=2600hz)
 
 ````
     ... ........                                                
@@ -107,7 +107,7 @@ No problem!  We have many different places where folks can chip in time. These i
 * Maintaining and expanding the documentation
 * Blogging, tweeting, and other forms of publicizing your usage of and love for the platform, community, code, company, etc.
 * Join us in real time and help other community members:
-    * on IRC (#2600hz on Freenode)
+    * [![2600Hz IRC](https://img.shields.io/badge/irc-%232600hz-orange.svg)](https://webchat.freenode.net/?channels=2600hz)
     * our [Users mailing list](//groups.google.com/forum/?fromgroups#!forum/2600hz-users)
     * our [Developers mailing list](//groups.google.com/forum/?fromgroups#!forum/2600hz-dev)
     * our [Forum](//forum.2600hz.com/)
@@ -181,4 +181,4 @@ If you have a non-US deployment, please consider sharing your system configurati
 * Visit http://2600hz.org
 * Read more at http://wiki.2600hz.org
 * Bugs and feature requests http://tickets.2600hz.org
-* Join us on IRC @ freenode.net in #2600hz
+* [![2600Hz IRC](https://img.shields.io/badge/irc-%232600hz-orange.svg)](https://webchat.freenode.net/?channels=2600hz)
