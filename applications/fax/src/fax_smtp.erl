@@ -191,11 +191,10 @@ handle_VRFY(_Address, State) ->
     {'error', "252 VRFY disabled by policy, just send some mail", State}.
 
 -spec handle_other(binary(), binary(), state()) ->
-                          {iolist(), state()} |
-                          {state()}.
+                          {iolist() | 'noreply', state()}.
 handle_other(<<"PROXY">>, Args, State) ->
-    lager:debug("PROXY : ~p",[Args]),
-    {State};
+    lager:debug("smtp proxy protocol : ~p",[Args]),
+    {'noreply', State};
 handle_other(Verb, Args, State) ->
     %% You can implement other SMTP verbs here, if you need to
     lager:debug("500 Error: command not recognized : '~s ~s'",[Verb,Args]),
