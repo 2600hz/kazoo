@@ -105,7 +105,6 @@ handle_cast(_Msg, State) ->
 handle_info('timeout', #state{jobs=[]}=State) ->
     Upto = wh_util:current_tstamp(),
     ViewOptions = [{'limit', 100}
-%                   ,{'startkey', [wh_json:new()]}
                    ,{'endkey', Upto}
                    ],
     case kz_datamgr:get_results(?WH_FAXES_DB, <<"faxes/jobs">>, ViewOptions) of
