@@ -340,6 +340,10 @@ get_account_dynamic_flags(_, Call, Flags) ->
 -spec process_dynamic_flags(ne_binaries(), ne_binaries(), whapps_call:call()) ->
                                    ne_binaries().
 process_dynamic_flags([], Flags, _) -> Flags;
+process_dynamic_flags([<<"zone">>|DynamicFlags], Flags, Call) ->
+    Zone = wh_util:to_binary(wh_nodes:local_zone()),
+    lager:debug("adding dynamic flag ~s", [Zone]),
+    process_dynamic_flags(DynamicFlags, [Zone|Flags], Call);
 process_dynamic_flags([DynamicFlag|DynamicFlags], Flags, Call) ->
     case is_flag_exported(DynamicFlag) of
         'false' -> process_dynamic_flags(DynamicFlags, Flags, Call);

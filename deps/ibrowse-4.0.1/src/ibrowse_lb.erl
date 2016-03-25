@@ -41,6 +41,7 @@
                }).
 
 -include("ibrowse.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
 %%====================================================================
 %% External functions
@@ -126,7 +127,7 @@ handle_call(_Req, _From, #state{proc_state = shutting_down} = State) ->
 %% Update max_sessions in #state with supplied value
 handle_call({spawn_connection, _Url, Max_sess, Max_pipe, _}, _From,
             #state{num_cur_sessions = Num} = State)
-    when Num >= Max_sess ->
+  when Num >= Max_sess ->
     State_1 = maybe_create_ets(State),
     Reply = find_best_connection(State_1#state.ets_tid, Max_pipe),
     {reply, Reply, State_1#state{max_sessions = Max_sess,
@@ -240,8 +241,20 @@ find_best_connection(Pid, Tid, Max_pipe) ->
     case ets:lookup(Tid, Pid) of
         [{Pid, Cur_sz, Speculative_sz}] when Cur_sz < Max_pipe,
                                              Speculative_sz < Max_pipe ->
-            ets:update_counter(Tid, Pid, {3, 1, 9999999, 9999999}),
-            {ok, Pid};
+            try ets:update_counter(Tid, Pid, {3, 1, 9999999, 9999999}) of
+                _ -> {ok, Pid}
+            catch
+                _E:_R ->
+                    lager:warning("invalid ibrowse table, attempting to advance to next connection"),
+                    lager:info("~s when updating ets tid ~p for pid ~p: ~p"
+                               ,[_E, Tid, Pid, _R]
+                              ),
+                    lager:info("tab info: ~p", [catch ets:info(Tid)]),
+                    lager:info("pid process info: ~p"
+                               ,[process_info(Pid)]
+                              ),
+                    find_best_connection(ets:next(Tid, Pid), Tid, Max_pipe)
+            end;
         _ ->
             find_best_connection(ets:next(Tid, Pid), Tid, Max_pipe)
     end.
