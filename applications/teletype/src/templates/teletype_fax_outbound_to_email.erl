@@ -162,7 +162,7 @@ callee_id_data(DataJObj) ->
 date_called_data(DataJObj) ->
     DateCalled = wh_json:get_integer_value(<<"fax_timestamp">>, DataJObj, wh_util:current_tstamp()),
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
-    Timezone = wh_json:get_value([<<"fax">>, <<"rx_result">>, <<"timezone">>], DataJObj, <<"UTC">>),
+    Timezone = wh_json:get_value([<<"fax">>, <<"tx_result">>, <<"timezone">>], DataJObj, <<"UTC">>),
     ClockTimezone = whapps_config:get(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
 
     props:filter_undefined(
@@ -172,16 +172,16 @@ date_called_data(DataJObj) ->
 
 -spec from_data(wh_json:object()) -> wh_proplist().
 from_data(DataJObj) ->
-    FromE164 = wh_json:get_value(<<"from_user">>, DataJObj),
+    FromE164 = wh_json:get_value(<<"caller_id_number">>, DataJObj),
 
     props:filter_undefined(
-      [{<<"from_user">>, knm_util:pretty_print(FromE164)}
-       ,{<<"from_realm">>, wh_json:get_value(<<"from_realm">>, DataJObj)}
+      [{<<"user">>, knm_util:pretty_print(FromE164)}
+       ,{<<"realm">>, wh_json:get_value(<<"from_realm">>, DataJObj)}
       ]).
 
 -spec to_data(wh_json:object()) -> wh_proplist().
 to_data(DataJObj) ->
-    ToE164 = wh_json:get_value(<<"to_user">>, DataJObj),
+    ToE164 = wh_json:get_value(<<"callee_id_number">>, DataJObj),
     props:filter_undefined(
       [{<<"user">>, knm_util:pretty_print(ToE164)}
        ,{<<"realm">>, wh_json:get_value(<<"to_realm">>, DataJObj)}
