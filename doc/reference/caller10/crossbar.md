@@ -375,7 +375,7 @@ You should be able to perform all the necessary CRUD operations now. Congratulat
 
 #### Miscellaneous topics
 
-* Securing with SSL or use HAProxy instead
+* [Securing with SSL](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/doc/securing_crossbar.md) or use HAProxy instead
 * Account hierarchy
 * Maintenance module
 * Doc change AMQP events
