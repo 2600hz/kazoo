@@ -8,41 +8,41 @@ Imagine an engine turning a gear, which turns a gear, which turns still more gea
 
 #### Resource Gears
 
-* Authentication
+* **Authentication**
   The authentication (or authn) gear asks if the client is who they say they are. [cb_token_auth](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_token_auth.erl#L91-119) (session token module) provides a good example of authenticating the client.
-* Authorization
+* **Authorization**
   The authorization (or authz) gear asks if the client is allowed to access the resource. There are some [system-wide resources](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_simple_authz.erl#L24-29) that only the top-level account should access, and obviously access to accounts a requestor does not belong to should not be allowed. See the [cb_simple_authz.erl](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_simple_authz.erl#L41-L67) module for an example.
-* Allowed Methods
+* **Allowed Methods**
   This gear asks, given the path tokens that are passed to this module, what HTTP methods (GET, PUT, POST, etc) are allowed. For basic CRUD, for instance, a request with no extra data (/contests for instance) will typically allow GET and PUT, while a request with an ID (/contests/contest_id) will allow GET, POST, and DELETE. [Skeleton example](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_skels.erl#L98-L103).
-* Resource Exists
+* **Resource Exists**
   This gear asks, does this request point to a resource that should exist? Taking the basic CRUD, we would expect /contests and /contests/contest_id to exist, but would not expect /contests/contest_id/start_time to exist. Now, whether contest_id actually exists is another matter, handled later in the validate stage. [Skeleton example](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_skels.erl#L114-L117).
-* Content Types Provided and Accepted
+* **Content Types Provided and Accepted**
   By default, Crossbar accepts and provides JSON-formatted data payloads. There are times, however, where Crossbar accepts alternative data formats (like uploading music on hold files), and where Crossbar will send alternative data formats back to the client (downloading a voicemail).
   Again, based on the path tokens passed in, you can alter the content types provided and accepted. Read more about [HTTP Request headers](https://en.wikipedia.org/wiki/List_of_HTTP_headers#Requests) and why client applications should set them properly.
-  * Content Types Provided
+  * **Content Types Provided**
     This listing will match against the client's Accept header. If missing, Crossbar will assume "application/json". If the client wants to receive audio/mp3 (a voicemail, say), it will set the header "Accept: audio/mp3" in the HTTP request. Your module will then need to allow that content type (and any others your module will provide) in the `content_types_provided` function(s). See the [cb_media module](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_media.erl#L157-L179) where it determines the Content-Type of the requested media file and sets the `content_types_provided` accordingly.
-    The other parameter in the `content_types_provided` format (`to_json`, `to_binary`, etc) are the encoders for the response. See the [api_resource](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/api_resource.erl#L646) module for the available encoders. You can also supply your own `to_*` functions: (bind for)[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_cdrs.erl#L96] and (output)[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_cdrs.erl#L100-L107] the format requested.
-  * Content Types Accepted
+    The other parameter in the `content_types_provided` format (`to_json`, `to_binary`, etc) are the encoders for the response. See the [api_resource](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/api_resource.erl#L646) module for the available encoders. You can also supply your own `to_*` functions: [bind for](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_cdrs.erl#L96) and [output](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_cdrs.erl#L100-L107) the format requested.
+  * **Content Types Accepted**
     This listing will match against the client's Content-Type header. If missing, Crossbar will assume "application/json". If the client is providing a request other than a JSON payload, it must set the Content-Type header appropriately. This is typically a more [static listing](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_media.erl#L35-L43) of MIME types, as seen again in the [cb_media](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_media.erl#L181-L192) module.
     Similar to the content types provided, content types accepted requires another parameter, the decoding function ("from_json", "from_binary", etc). See the [api_resource](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/api_resource.erl#L610-L644) module for the available decoders.
-* Languages Provided
+* **Languages Provided**
   If you plan to provide more than just English responses (and we hope our international community does!), you can define what languages your module will provide (matched against a request's "Accept-Language" header). [Skeleton example](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_skels.erl#L143-L153).
-* Charsets Provided
+* **Charsets Provided**
   If you have alternative character sets you'd like to provide (like UTF-8 or UTF-16), set them here. They will be matched against the request's "Accept-Charset" (otherwise the first in the list will be used). [Skeleton example](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_skels.erl#L155-L165).
-* Encodings Provided
+* **Encodings Provided**
   If you provide alternative encodings, maybe a different compression engine, set the encodings your module will provide here. They will be matched against the request's "Accept-Encoding". Read more about HTTP compression. [Skeleton example](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_skels.erl#L167-L177).
-* Validate
+* **Validate**
   The validation gear allows the resource module to check the request's data payload to ensure it meets the appropriate criteria. Typically on PUT and POST the resource module will use the JSON schema of the resource to validate the request's payload to see if it conforms to the schema. For GET requests, the resource module will either do a lookup for a listing of all resource instances, or check whether the provided ID exists (similarly for DELETE). Generally speaking, any data on the payload not validated by the schema is automatically stored (with the exception of private fields, covered later) should the saving of the payload be successful (meaning Crossbar does not strip non-private fields it can't validate). The [skeleton example](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_skels.erl#L179-L210) shows how, based on the path tokens provided and the HTTP method used, different validation routines are invoked.
   Another task of the validate gear is to ready the request to be executed (loading the appropriate data into the Context record).
-* Billing
+* **Billing**
   If your module will invoke a paid-feature and you need to communicate that to your backend billing system, this gear is where you'll tie that in. See, for instance, [billing for devices](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules_v2/cb_devices_v2.erl#L117-L143).
-* Execute
+* **Execute**
   The execute gear takes the data loaded during the previous stages (most notably the validate stage) and executes the HTTP verb. In typical CRUD, the PUT would save a new document, a POST would update and existing document, and a DELETE would remove an existing document. GETs don't have an execute stage as it is expected that the validate stage has loaded the data necessary for creating a response. You can see in the [skeleton example](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_skels.erl#L223-L263) how you define methods based on the HTTP verbs.
-* Etag
+* **Etag**
   Set the [Etag header](https://en.wikipedia.org/wiki/HTTP_ETag). This is automatically handled (if possible, and usually done for you - see [crossbar_doc](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/crossbar_doc.erl#L1014)), otherwise left blank. [Skeleton example](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_skels.erl#L265-L273).
-* Expires
+* **Expires**
   Set the time for when the resource(s) returned will expire (the client should consider the response stale after this time). [Skeleton example](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_skels.erl#L275-L283).
-* Finish Request
+* **Finish Request**
   This gear is available after the response is on its way to the client, allowing the resource module to do any cleanup or updating necessary. [Skeleton example](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/modules/cb_skels.erl#L285-L293).
 
 #### Creating the contests resource
