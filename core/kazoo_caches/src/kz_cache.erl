@@ -482,9 +482,9 @@ to_tab(Tab, Suffix) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec monitor_response_fun(pid()) -> fun().
-monitor_response_fun(Pid) ->
-    fun(Key, Ref, Reason) -> Pid ! {Reason, Ref, Key} end.
+-spec monitor_response_fun(pid(), reference()) -> fun().
+monitor_response_fun(Pid, Ref) ->
+    fun(_, Value, Reason) -> Pid ! {Reason, Ref, Value} end.
 
 handle_call({'tables'}, _From, #state{pointer_tab=PointerTab
                                       ,monitor_tab=MonitorTab
@@ -506,7 +506,7 @@ handle_call({'wait_for_key', Key, Timeout}
             CacheObj = #cache_obj{key=Key
                                  ,value=Ref
                                  ,expires=Timeout
-                                 ,callback=monitor_response_fun(Pid)
+                                 ,callback=monitor_response_fun(Pid, Ref)
                                  },
             ets:insert(MonitorTab, CacheObj),
             {'reply', {'ok', Ref}, State#state{has_monitors='true'}}
