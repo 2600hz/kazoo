@@ -67,14 +67,6 @@ account_dataplan(AccountDb) ->
     lager:debug("ACCOUNT ID IS ~p", [AccountId]),
     #{tag => 'local', server => kz_dataconnections:get_server(server_tag())}.
 
-account_dataplan(AccountDb, <<"voicemail">>) ->
-    AccountId = wh_util:format_account_id(AccountDb),
-    lager:debug("VOICEMAIL ACCOUNT ID IS ~p", [AccountId]),
-    #{tag => 'local'
-     ,att_proxy => 'true'
-     ,att_handler => {kz_att_gdrive, #{}}
-     ,server => kz_dataconnections:get_server(server_tag())
-     };
 account_dataplan(AccountDb, _DocType) ->
     AccountId = wh_util:format_account_id(AccountDb),
     lager:debug("ACCOUNT ID IS ~p : ~p", [AccountId, _DocType]),
