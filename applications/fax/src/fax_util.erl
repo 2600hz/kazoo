@@ -114,10 +114,10 @@ save_fax_attachment(JObj, FileContents, CT, Count) ->
     case check_fax_attachment(DocId, Name) of
         {'ok', J} -> save_fax_doc_completed(J);
         {'missing', J} ->
-            lager:debug("Missing fax attachment on fax id ~s rev ~s",[DocId, Rev]),
+            lager:debug("missing fax attachment on fax id ~s rev ~s",[DocId, Rev]),
             save_fax_attachment(J, FileContents, CT, Count-1);
         {'error', _R} ->
-            lager:debug("Error ~p saving fax attachment on fax id ~s rev ~s",[_R, DocId, Rev]),
+            lager:debug("error ~p saving fax attachment on fax id ~s rev ~s",[_R, DocId, Rev]),
             {'ok', J} = kz_datamgr:open_doc(?WH_FAXES_DB, DocId),
             save_fax_attachment(J, FileContents, CT, Count-1)
     end.
