@@ -724,7 +724,10 @@ move_doc(JObj) ->
     kazoo_modb:create(AccountMODb),
     ToDB = wh_util:format_account_modb(AccountMODb, 'encoded'),
     ToId = ?MATCH_MODB_PREFIX(wh_util:to_binary(Year), wh_util:pad_month(Month), FromId),
-   {'ok', Doc} = kz_datamgr:move_doc(FromDB, FromId, ToDB, ToId, ['override_existing_document']),
+    Options = ['override_existing_document'
+               ,{'doc_type', <<"fax">>}
+              ],
+   {'ok', Doc} = kz_datamgr:move_doc(FromDB, FromId, ToDB, ToId, Options),
     Doc.
 
 -spec fax_error(wh_json:object()) -> api_binary().
