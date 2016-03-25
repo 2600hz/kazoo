@@ -478,7 +478,7 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=B
                               ,{<<"Duration-OFF">>, <<"100">>}
                              ]),
     whapps_call_command:tones([Tone], Call),
-    lager:info("composing new voicemail"),
+    lager:info("composing new voicemail to ~s", [AttachmentName]),
     case whapps_call_command:b_record(AttachmentName, ?ANY_DIGIT, wh_util:to_binary(MaxMessageLength), Call) of
         {'ok', Msg} ->
             Length = wh_json:get_integer_value(<<"Length">>, Msg, 0),
