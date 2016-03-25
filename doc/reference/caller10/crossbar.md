@@ -219,117 +219,164 @@ account_db_cleanup(AccountDb) ->
 
 #### Resource Schemas
 
-The JSON schemas allow Crossbar to validate the fields that Crossbar (and Kazoo in general) care about. All other non-private fields are stored and supplied on request unmodified. If a backend application is to use a field in a document, it should be part of the JSON schema (never trust user input!).
-                                    Crossbar has a host of schemas you can use as reference. The easiest way to load your own schema is to put the resources.json into the schemas folder and run 'sup crossbar_maintenance refresh_schemas'. It is recommended that, if you need to update a schema, you do so on the disk version and run the refresh routine again.
-                                    Make sure you have the contests.json schema from the beginning, save it into the schemas directory as contests.json, and run the refresh command. Now navigate to your Futon interface for the system_schemas and check that the contests schema is properly loaded.
-                                    Core applications used
-                                    See the core utils page for more, but the primary utilities used in Crossbar are:
-                                    wh_json/props
-                                    wh_util
-                                    kz_buckets
-                                    Building the view
-                                    The last bit left is to create the design document for the account to make querying the list of contests do-able. First, the design document:
-                                    applications/crossbar/priv/couchdb/account/contests.json
-                                    {
-                                        "_id": "_design/contests"
-                                            ,"language": "javascript"
-                                                ,"views": {
-                                                        "crossbar_listing": {
-                                                                    "map": "function(doc) { if (doc.pvt_type != 'contest' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name':doc.name}); }"
-                                                                            }
-                                                                                }
-                                                                                }
-                                                                                Save this document to $KAZOO/applications/crossbar/priv/couchdb/account/ as contests.json.
-                                                                                Now we need to load the view into the account databases.
-                                                                                2600hz/kazoo$ sup whapps_maintenance refresh_account_dbs
-                                                                                This could take a while. Verify the view has been loaded in account database by navigating to http://localhost:5984/_utils/database.html?{account_db}/_design/contests/_view/crossbar_listing
-                                                                                Now we're ready to test the API!
-                                                                                Let's play with the new API
-                                                                                First, generate an authentication token to start playing with the API! See the Generating an Authentication Token for how to do that. We will use placeholders of {account_id} and {auth_token} in the cURL examples. Please substitute your appropriate values! On to the cURL!
-                                                                                # optional step
-                                                                                alias pp="python -mjson.tool"
+The [JSON schemas](http://json-schema.org/) allow Crossbar to validate the fields that Crossbar (and Kazoo in general) care about. All other non-private fields are stored and supplied on request unmodified. If a backend application is to use a field in a document, it should be part of the JSON schema (never trust user input!).
 
-                                                                                 # Fetch all contests
-                                                                                 2600hz/kazoo$ curl -v -X GET -H "X-Auth-Token: {auth_token}" http://thinky64.2600hz.com:8000/v1/accounts/{account_id}/contests | pp
-                                                                                 ... Request/Response headers ...
-                                                                                 {
-                                                                                     "auth_token": "{auth_token}",
-                                                                                         "data": [],
-                                                                                             "request_id": "b0b95aa6edc1649687f5818046b70ae6",
-                                                                                                 "revision": "undefined",
-                                                                                                     "status": "success"
-                                                                                                     }
-                                                                                                     As you can see from the "data" portion, there are no contests in this account yet. Let's remedy that.
-                                                                                                     # Create a basic contest
-                                                                                                     # Starting at 9am Feb 26th, using the erlang shell
-                                                                                                     # erl> calendar:datetime_to_gregorian_seconds({{2014,2,26},{9,0,0}}).
-                                                                                                     # 63560624400
+Crossbar has a host of [schemas](https://github.com/2600hz/kazoo/tree/master/applications/crossbar/priv/couchdb/schemas) you can use as reference. The easiest way to load your own schema is to put the resources.json into the schemas folder and run `sup crossbar_maintenance refresh_schemas`. It is recommended that, if you need to update a schema, you do so on the disk version and run the refresh routine again.
 
-                                                                                                     2600hz/kazoo$ curl -v -X PUT -H "X-Auth-Token: {auth_token}" -H "Content-Type: application/json" http://thinky64.2600hz.com:8000/v1/accounts/{account_id}/contests -d '{"data":{"name":"First Contest", "start_time":63560624400}}' | pp
-                                                                                                     ... Request/Response headers ...
-                                                                                                     {
-                                                                                                         "auth_token": "{auth_token}",
-                                                                                                             "data": {
-                                                                                                                     "winning_caller_number": {
-                                                                                                                                 "required": "Field is required but missing"
-                                                                                                                                         }
-                                                                                                                                             },
-                                                                                                                                                 "error": "400",
-                                                                                                                                                     "message": "invalid data",
-                                                                                                                                                         "request_id": "fc52be00acea348d7f6f4f161d444211",
-                                                                                                                                                             "status": "error"
-                                                                                                                                                             }
-                                                                                                                                                             Oops! We forgot a field, winning_caller_number, from the payload. Let's try again.
-                                                                                                                                                             2600hz/kazoo$ curl -v -X PUT -H "X-Auth-Token: {auth_token}" -H "Content-Type: application/json" http://thinky64.2600hz.com:8000/v1/accounts/{account_id}/contests -d '{"data":{"name":"First Contest", "start_time":63560624400, "winning_caller_number":9}}' | pp
-                                                                                                                                                             ... Request/Response headers ...
-                                                                                                                                                             {
-                                                                                                                                                                 "auth_token": "{auth_token}",
-                                                                                                                                                                     "data": {
-                                                                                                                                                                             "id": "7e5c820c59b1c8c8e20f36e3d34f5581",
-                                                                                                                                                                                     "name": "First Contest",
-                                                                                                                                                                                             "start_time": 63560624400,
-                                                                                                                                                                                                     "winning_caller_number": 9
-                                                                                                                                                                                                         },
-                                                                                                                                                                                                             "request_id": "d87d774f25d1f19d9ebb5948871bcd98",
-                                                                                                                                                                                                                 "revision": "1-ad92a1b4feb1acfbb6768a7e2f8e4c9e",
-                                                                                                                                                                                                                     "status": "success"
-                                                                                                                                                                                                                     }
-                                                                                                                                                                                                                     Nice. Take note of the "id" field (there's also a Location header in the response with the full URI for the resource).
-                                                                                                                                                                                                                     It is also important to note the "request_id" (see as well the X-Request-ID response header); use that value to grep the Kazoo logs (typically /var/log/2600hz-platform.log) to see the decision-making used during the request.
-                                                                                                                                                                                                                     Let's verify both that we can access the contest directly and that it shows up in the summary view now.
-                                                                                                                                                                                                                     2600hz/kazoo$ curl -v -X GET -H "X-Auth-Token: 1499eb50d6a0e039907866b6ef08bdc0" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/contests/7e5c820c59b1c8c8e20f36e3d34f5581 | pp
-                                                                                                                                                                                                                     ... Request/Response headers ...
-                                                                                                                                                                                                                     {
-                                                                                                                                                                                                                         "auth_token": "{auth_token}",
-                                                                                                                                                                                                                             "data": {
-                                                                                                                                                                                                                                     "id": "7e5c820c59b1c8c8e20f36e3d34f5581",
-                                                                                                                                                                                                                                             "name": "First Contest",
-                                                                                                                                                                                                                                                     "start_time": 63560624400,
-                                                                                                                                                                                                                                                             "winning_caller_number": 9
-                                                                                                                                                                                                                                                                 },
-                                                                                                                                                                                                                                                                     "request_id": "4477b35dce603b48eb51d8a3539e5b60",
-                                                                                                                                                                                                                                                                         "revision": "1-ad92a1b4feb1acfbb6768a7e2f8e4c9e",
-                                                                                                                                                                                                                                                                             "status": "success"
-                                                                                                                                                                                                                                                                             }
-                                                                                                                                                                                                                                                                             2600hz/kazoo$ curl -v -X GET -H "X-Auth-Token: {auth_token}" http://thinky64.2600hz.com:8000/v1/accounts/{account_id}/contests | pp
-                                                                                                                                                                                                                                                                             ... Request/Response headers ...
-                                                                                                                                                                                                                                                                             {
-                                                                                                                                                                                                                                                                                 "auth_token": "{auth_token}",
-                                                                                                                                                                                                                                                                                     "data": [
-                                                                                                                                                                                                                                                                                             {
-                                                                                                                                                                                                                                                                                                         "id": "7e5c820c59b1c8c8e20f36e3d34f5581",
-                                                                                                                                                                                                                                                                                                                     "name": "First Contest"
-                                                                                                                                                                                                                                                                                                                             }
-                                                                                                                                                                                                                                                                                                                                 ],
-                                                                                                                                                                                                                                                                                                                                     "request_id": "85065f0a3ab22e7fc9cc1319adb17d94",
-                                                                                                                                                                                                                                                                                                                                         "revision": "da2074c5274616f384b631f724b6fb18",
-                                                                                                                                                                                                                                                                                                                                             "status": "success"
-                                                                                                                                                                                                                                                                                                                                             }
-                                                                                                                                                                                                                                                                                                                                             You should be able to perform all the necessary CRUD operations now. Congratulations, you've built a Crossbar module, loaded it into a running system, built a view, and successfully used the new resource API via cURL.
-                                                                                                                                                                                                                                                                                                                                             Miscellaneous topics
-                                                                                                                                                                                                                                                                                                                                             Securing with SSL or use HAProxy instead
-                                                                                                                                                                                                                                                                                                                                             Account hierarchy
-                                                                                                                                                                                                                                                                                                                                             Maintenance module
-                                                                                                                                                                                                                                                                                                                                             Doc change AMQP events
-                                                                                                                                                                                                                                                                                                                                             OAuth ???
-                                                                                                                                                                                                                                                                                                                                             Others ???
+Make sure you have the contests.json schema from the [beginning](./index.md), save it into the schemas directory as `contests.json`, and run the refresh command. Now navigate to your Couch interface for the `system_schemas` database and check that the contests schema is properly loaded.
+
+#### Core applications used
+
+The primary utilities used in Crossbar are:
+  * [wh_json](https://github.com/2600hz/kazoo/blob/master/core/whistle/src/wh_json.erl) - working with Erlang-encoded JSON objects
+  * [props](https://github.com/2600hz/kazoo/blob/master/core/whistle/src/props.erl) - working with Erlang proplists
+  * [wh_util](https://github.com/2600hz/kazoo/blob/master/core/whistle/src/wh_util.erl) - dumping ground of utilities
+
+#### Building the view
+
+The last bit left is to create the design document for the account to make querying the list of contests do-able. First, the design document:
+
+```json
+applications/crossbar/priv/couchdb/account/contests.json
+{
+    "_id": "_design/contests"
+    ,"language": "javascript"
+    ,"views": {
+        "crossbar_listing": {
+            "map": "function(doc) { if (doc.pvt_type != 'contest' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name':doc.name}); }"
+        }
+    }
+}
+```
+
+Save this document to `$KAZOO/applications/crossbar/priv/couchdb/account/` as `contests.json`.
+
+Now we need to load the view into the account databases.
+
+```bash
+2600hz/kazoo$ sup whapps_maintenance refresh_account_dbs
+```
+
+This could take a while. Verify the view has been loaded in account database by navigating to `http://localhost:15984/_utils/database.html?{ACCOUNT_DB}/_design/contests/_view/crossbar_listing`
+
+Now we're ready to test the API!
+
+#### Let's play with the new API
+
+First, generate an authentication token to start playing with the API! See the Generating an Authentication Token for how to do that. We will use placeholders of {ACCOUNT_ID} and {AUTH_TOKEN} in the cURL examples. Please substitute your appropriate values! On to the cURL!
+
+First, an optional alias that I find helpful to pretty print JSON in the shell:
+
+```bash
+# optional step
+alias pp="python -mjson.tool"
+```
+
+##### Fetch all contests
+
+```bash
+2600hz/kazoo$ curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/contests | pp
+... Request/Response headers ...
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [],
+    "request_id": "{REQUEST_ID}",
+    "revision": "undefined",
+    "status": "success"
+}
+```
+As you can see from the "data" portion, there are no contests in this account yet. Let's remedy that.
+
+#### Create a basic contest
+
+We want to create a contest on April 20th, starting at 9am. We need to get the gregorian seconds:
+
+```erlang
+erl> calendar:datetime_to_gregorian_seconds({{2016,4,20},{9,0,0}}).
+63628362000
+```
+
+Using that value, create the basic structure
+
+```bash
+2600hz/kazoo$ curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/contests -d '{"data":{"name":"First Contest", "start_time":63628362000}}' | pp
+... Request/Response headers ...
+{
+    "auth_token": "{auth_token}",
+    "data": {
+        "winning_caller_number": {
+            "required": "Field is required but missing"
+        }
+    },
+    "error": "400",
+    "message": "invalid data",
+    "request_id": "{REQUEST_ID}",
+    "status": "error"
+}
+```
+
+Oops! We forgot a field, `winning_caller_number`, from the payload. Let's try again.
+
+```bash
+2600hz/kazoo$ curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/contests -d '{"data":{"name":"First Contest", "start_time":63628362000, "winning_caller_number":9}}' | pp
+... Request/Response headers ...
+{
+    "auth_token": "{auth_token}",
+    "data": {
+        "id": "{CONTEST_ID}",
+        "name": "First Contest",
+        "start_time": 63628362000,
+        "winning_caller_number": 9
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "1-ad92a1b4feb1acfbb6768a7e2f8e4c9e",
+    "status": "success"
+}
+```
+
+Nice. Take note of the "id" field (there's also a Location header in the response with the full URI for the resource).
+
+It is also important to note the "request_id" (see as well the X-Request-ID response header); use that value to grep the Kazoo logs (typically /var/log/2600hz/kazoo.log) to see the decision-making used during the request.
+
+Let's verify both that we can access the contest directly and that it shows up in the summary view now.
+
+```bash
+2600hz/kazoo$ curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/contests/{CONTEST_ID} | pp
+... Request/Response headers ...
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "id": "{CONTEST_ID}",
+        "name": "First Contest",
+        "start_time": 63628362000,
+        "winning_caller_number": 9
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "1-ad92a1b4feb1acfbb6768a7e2f8e4c9e",
+    "status": "success"
+}
+2600hz/kazoo$ curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/contests | pp
+... Request/Response headers ...
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "id": "{CONTEST_ID}",
+            "name": "First Contest"
+        }
+    ],
+    "request_id": "{REQUEST_ID}",
+    "revision": "da2074c5274616f384b631f724b6fb18",
+    "status": "success"
+}
+```
+
+You should be able to perform all the necessary CRUD operations now. Congratulations, you've built a Crossbar module, loaded it into a running system, built a view, and successfully used the new resource API via cURL!
+
+#### Miscellaneous topics
+
+* Securing with SSL or use HAProxy instead
+* Account hierarchy
+* Maintenance module
+* Doc change AMQP events
+* Alternative auth methods
