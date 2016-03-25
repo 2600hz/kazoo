@@ -2,6 +2,7 @@
 
 #### About Faxes
 
+
 #### Schema
 
 Key | Description | Type | Default | Required
@@ -39,14 +40,45 @@ Key | Description | Type | Default | Required
 `tx_result.time_elapsed` | The amount of time from submition to completion | `integer` | `0` | `false`
 
 
-#### Create
+#### Create an outgoing fax
+
+Create a fax document that includes where to find the document to send. These are fetched by the `fax_jobs` worker and distributed to `fax_worker` processes.
 
 > PUT /v2/accounts/{ACCOUNT_ID}/faxes
 
 ```curl
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data":{"document":{"url":"http://myserver.com/fax.pdf","method":"get"},"retries":3,"from_name":"Test Fax","from_number":"18884732963","to_name":"To Name","to_number":"18884732963"}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes
+{
+    "auth_token":"{AUTH_TOKEN}",
+    "status":"success",
+    "data":{
+        "document":{
+            "url":"http://myserver.com/fax.pdf",
+            "method":"get"
+        },
+        "retries":3,
+        "from_name":"Test Fax",
+        "from_number":"18884732963",
+        "to_name":"To Name",
+        "to_number":"18884732963",
+        "attempts":0,
+        "tx_result":{
+            "success":false,
+            "error_message":"",
+            "pages_sent":0,
+            "time_elapsed":0,
+            "fax_bad_rows":0,
+            "fax_speed":0,
+            "fax_receiver_id":"",
+            "fax_error_correction":false
+        },
+        "id":"{FAX_JOB_ID}"
+    },
+    "revision":"1-f24d3c75c461e84935559360b8a3a7e4"
+}
 ```
 
 #### Fetch
@@ -278,4 +310,3 @@ curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}/attachment
 ```
-

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%%
@@ -50,8 +50,8 @@
 -define(ACCEPTED_TYPES, [{'from_binary', ?ACCEPTED_MIME_TYPES}]).
 
 -define(OUTGOING_FAX_DOC_MAP, [{<<"created">>, <<"pvt_created">>}
-                               ,{<<"delivered">>, fun get_delivered_date/1}
-                               ,{<<"status">>, fun get_execution_status/2}
+                              ,{<<"delivered">>, fun get_delivered_date/1}
+                              ,{<<"status">>, fun get_execution_status/2}
                               ]).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".fax">>).
