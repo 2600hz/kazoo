@@ -209,7 +209,7 @@ maybe_export_vars(Node, UUID, Props) ->
 send_command(_, _, [], _) -> 'ok';
 send_command(Node, UUID, AppArgs, Fun) when is_list(AppArgs) ->
     Set = list_to_binary([UUID, " ", AppArgs]),
-    lager:debug("~p api uuid_setvar_multi ~p", [Node, Set]),
+    lager:debug("~p api uuid_setvar_multi ~ts", [Node, Set]),
     Fun(Node, 'uuid_setvar_multi', Set).
 
 %% this should be considered temporary
