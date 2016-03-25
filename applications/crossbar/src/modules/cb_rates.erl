@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%% Upload a rate deck, query rates for a given DID
 %%% @end
@@ -80,11 +80,11 @@ allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST].
 
 -spec allowed_methods(path_token()) -> http_methods().
-allowed_methods(_) ->
+allowed_methods(_RateId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 -spec allowed_methods(path_token(),path_token()) -> http_methods().
-allowed_methods(?NUMBER,_) ->
+allowed_methods(?NUMBER, _PhoneNumber) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -99,10 +99,10 @@ allowed_methods(?NUMBER,_) ->
 resource_exists() -> 'true'.
 
 -spec resource_exists(path_token()) -> 'true'.
-resource_exists(_) -> 'true'.
+resource_exists(_RateId) -> 'true'.
 
 -spec resource_exists(path_token(),path_token()) -> 'true'.
-resource_exists(?NUMBER,_) -> 'true'.
+resource_exists(?NUMBER, _PhoneNumber) -> 'true'.
 
 -spec content_types_accepted(cb_context:context()) -> cb_context:context().
 content_types_accepted(Context) ->
@@ -238,10 +238,38 @@ validate_patch(Id, Context) ->
 %%--------------------------------------------------------------------
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    cb_context:set_doc(Context, wh_doc:set_type(cb_context:doc(Context), <<"rate">>));
+    Doc = lists:foldl(fun doc_updates/2
+                      ,cb_context:doc(Context)
+                      ,[{fun wh_doc:set_type/2, <<"rate">>}
+                        ,fun ensure_routes_set/1
+                       ]
+                     ),
+    cb_context:set_doc(Context, Doc);
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
 
+-spec doc_updates({fun(), ne_binary()} | fun(), wh_json:object()) ->
+                         wh_json:object().
+doc_updates({Fun, Value}, Doc) when is_function(Fun, 2) ->
+    Fun(Doc, Value);
+doc_updates(Fun, Doc) when is_function(Fun, 1) ->
+    Fun(Doc).
+
+-spec ensure_routes_set(wh_json:object()) -> wh_json:object().
+-spec ensure_routes_set(wh_json:object(), api_binaries()) -> wh_json:object().
+ensure_routes_set(Doc) ->
+    ensure_routes_set(Doc, wh_json:get_value(<<"routes">>, Doc)).
+
+ensure_routes_set(Doc, 'undefined') ->
+    add_default_route(Doc, wh_json:get_value(<<"prefix">>, Doc));
+ensure_routes_set(Doc, []) ->
+    add_default_route(Doc, wh_json:get_value(<<"prefix">>, Doc));
+ensure_routes_set(Doc, _) ->
+    Doc.
+
+-spec add_default_route(wh_json:object(), ne_binary()) -> wh_json:object().
+add_default_route(Doc, Prefix) ->
+    wh_json:set_value(<<"routes">>, [<<"^\\+?", Prefix/binary, ".+$">>], Doc).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -269,27 +297,21 @@ check_uploaded_file(Context, [{_Name, File}|_]) ->
     lager:debug("checking file ~s", [_Name]),
     case wh_json:get_value(<<"contents">>, File) of
         'undefined' ->
-            cb_context:add_validation_error(
-                <<"file">>
-                ,<<"required">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"file contents not found">>}
-                 ])
-                ,Context
-            );
+            error_no_file(Context);
         Bin when is_binary(Bin) ->
             lager:debug("file: ~s", [Bin]),
             cb_context:set_resp_status(Context, 'success')
     end;
 check_uploaded_file(Context, _ReqFiles) ->
-    cb_context:add_validation_error(
-        <<"file">>
-        ,<<"required">>
-        ,wh_json:from_list([
-            {<<"message">>, <<"no file to process">>}
-         ])
-        ,Context
-    ).
+    error_no_file(Context).
+
+-spec error_no_file(cb_context:context()) -> cb_context:context().
+error_no_file(Context) ->
+    cb_context:add_validation_error(<<"file">>
+                                   ,<<"required">>
+                                   ,wh_json:from_list([{<<"message">>, <<"no file to process">>}])
+                                   ,Context
+                                   ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -327,14 +349,7 @@ process_upload_file(Context, [{_Name, File}|_]) ->
                  ,Context
                 );
 process_upload_file(Context, _ReqFiles) ->
-    cb_context:add_validation_error(
-        <<"file">>
-        ,<<"required">>
-        ,wh_json:from_list([
-            {<<"message">>, <<"no file to process">>}
-         ])
-        ,Context
-    ).
+    error_no_file(Context).
 
 -spec convert_file(ne_binary(), ne_binary(), cb_context:context()) ->
                           {'ok', {non_neg_integer(), wh_json:objects()}}.
@@ -409,7 +424,7 @@ process_row(Row, {Count, JObjs}=Acc) ->
                        ,{<<"direction">>, get_row_direction(Row)}
                        ,{<<"pvt_rate_surcharge">>, get_row_internal_surcharge(Row)}
                        ,{<<"routes">>, [<<"^\\+", (wh_util:to_binary(Prefix))/binary, "(\\d*)$">>]}
-                       ,{?HTTP_OPTIONS, []}
+                       ,{<<"options">>, []}
                       ]),
 
             {Count + 1, [wh_json:from_list(Props) | JObjs]}
@@ -527,20 +542,21 @@ save_processed_rates(Context, Count) ->
 -spec rate_for_number(ne_binary(), cb_context:context()) -> cb_context:context().
 rate_for_number(Phonenumber, Context) ->
     case wh_amqp_worker:call([{<<"To-DID">>, Phonenumber}
-                              ,{<<"Send-Empty">>, 'true'}
+                             ,{<<"Send-Empty">>, 'true'}
+                             ,{<<"Msg-ID">>, cb_context:req_id(Context)}
                               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ]
-                             ,fun wapi_rate:publish_req/1
-                             ,fun wapi_rate:resp_v/1
-                             ,10 * ?MILLISECONDS_IN_SECOND
+                            ,fun wapi_rate:publish_req/1
+                            ,fun wapi_rate:resp_v/1
+                            ,3 * ?MILLISECONDS_IN_SECOND
                             )
     of
         {'ok', Rate} ->
-            lager:debug("found rate for ~s", [Phonenumber]),
+            lager:debug("found rate for ~s: ~p", [Phonenumber, Rate]),
             maybe_handle_rate(Phonenumber, Context, Rate);
         _E ->
             lager:debug("failed to query for number ~s: ~p", [Phonenumber, _E]),
-            cb_context:add_system_error('No rate found for this number', Context)
+            cb_context:add_system_error(<<"No rate found for this number">>, Context)
     end.
 
 -spec maybe_handle_rate(ne_binary(), cb_context:context(), wh_json:object()) ->
@@ -549,7 +565,7 @@ maybe_handle_rate(Phonenumber, Context, Rate) ->
     case wh_json:get_value(<<"Base-Cost">>, Rate) of
         'undefined' ->
             lager:debug("empty rate response for ~s", [Phonenumber]),
-            cb_context:add_system_error('No rate found for this number', Context);
+            cb_context:add_system_error(<<"No rate found for this number">>, Context);
         _BaseCost ->
             normalize_view(wh_json:set_value(<<"E164-Number">>, Phonenumber, Rate), Context)
     end.

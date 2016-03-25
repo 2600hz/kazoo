@@ -1,12 +1,8 @@
-/*
-Section: Crossbar
-Title: Blacklists
-Language: en-US
-*/
+
 
 A blacklist is a map of caller id numbers that can be then apply to the account to block these callers to call the system.
 
-## Structure
+#### Structure
 
 The structure is really simple:
 
@@ -35,7 +31,7 @@ When you upload numbers they will be converted to e164 format.  In the event tha
 }
 ```
 
-## Usage
+#### Usage
 
 Once you created your blacklists using the api you can apply them to the account by adding the blacklist ids to the account, like the following:
 
@@ -46,7 +42,7 @@ Once you created your blacklists using the api you can apply them to the account
 ]
 ```
 
-## Crossbar
+#### Crossbar
 
 Using Crossbar to modify Blacklist is very simple:
 
@@ -55,24 +51,24 @@ Using Crossbar to modify Blacklist is very simple:
 * POST - Updates a set.
 * DELETE - Removes a set.
 
-### Account Blacklist URI
+##### Account Blacklist URI
 
 `/v2/accounts/{ACCOUNT_ID}/blacklists`
 
-#### GET - Fetch account blacklists:
+###### GET - Fetch account blacklists:
 
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/blacklists
 
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/blacklists/{ID}
 
-#### PUT - Add account blacklists:
+###### PUT - Add account blacklists:
 
     curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/blacklists -d '{"data": {"name": "Main Blacklis","numbers": {"+14151234567": {}}}'
 
-#### POST - Update account blacklists:
+###### POST - Update account blacklists:
 
     curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/blacklists/{ID} -d '{"data": {"name": "Main Blacklis","numbers": {"+14151234567": {}}}'
 
-#### DELETE - Remove account blacklists:
+###### DELETE - Remove account blacklists:
 
     curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/blacklists/{ID}

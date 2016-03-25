@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% Listing of all expected v1 callbacks
@@ -11,9 +11,9 @@
 -module(cb_pivot).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
-         ,resource_exists/0, resource_exists/1, resource_exists/2
-         ,validate/1, validate/2, validate/3
+         ,allowed_methods/1, allowed_methods/2
+         ,resource_exists/1, resource_exists/2
+         ,validate/2, validate/3
         ]).
 
 -include("crossbar.hrl").
@@ -47,14 +47,11 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
-allowed_methods() ->
+allowed_methods(?DEBUG_PATH_TOKEN) ->
     [?HTTP_GET].
-allowed_methods(_) ->
-    [?HTTP_GET].
-allowed_methods(?DEBUG_PATH_TOKEN, _) ->
+allowed_methods(?DEBUG_PATH_TOKEN, _UUID) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -66,11 +63,9 @@ allowed_methods(?DEBUG_PATH_TOKEN, _) ->
 %%    /pivot/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
 -spec resource_exists(path_token(), path_token()) -> 'true'.
-resource_exists() -> 'true'.
-resource_exists(_) -> 'true'.
+resource_exists(?DEBUG_PATH_TOKEN) -> 'true'.
 resource_exists(?DEBUG_PATH_TOKEN, _) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -83,39 +78,16 @@ resource_exists(?DEBUG_PATH_TOKEN, _) -> 'true'.
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
--spec validate(cb_context:context()) ->
-                      cb_context:context().
 -spec validate(cb_context:context(), path_token()) ->
                       cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token()) ->
                       cb_context:context().
 
-validate(Context) ->
-  summary(Context).
-
 validate(Context, ?DEBUG_PATH_TOKEN) ->
-  debug_summary(Context);
-validate(Context, Id) ->
-  read(Context, Id).
+  debug_summary(Context).
 
 validate(Context, ?DEBUG_PATH_TOKEN, CallId) ->
   debug_read(Context, CallId).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
-%% resource.
-%% @end
-%%--------------------------------------------------------------------
--spec summary(cb_context:context()) -> cb_context:context().
-summary(Context) ->
-    crossbar_doc:load_view(
-      ?CB_LIST
-      ,[]
-      ,Context
-      ,fun normalize_view_results/2
-     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -150,16 +122,6 @@ fix_req_pagination(Context) ->
     QS = cb_context:query_string(Context),
     Size = crossbar_doc:pagination_page_size(Context),
     cb_context:set_query_string(Context, wh_json:set_value(<<"page_size">>, Size*2 +1, QS)).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load an instance from the database
-%% @end
-%%--------------------------------------------------------------------
--spec read(cb_context:context(), ne_binary()) -> cb_context:context().
-read(Context, Id) ->
-    crossbar_doc:load(Id, Context).
 
 %%--------------------------------------------------------------------
 %% @private

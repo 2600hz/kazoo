@@ -1,23 +1,17 @@
-/*
-Section: Crossbar
-Title: Ledgers
-Language: en-US
-Version: 3.22
-*/
 
-# Ledgers
+### Ledgers
 
-## List current Ledgers
+#### List current Ledgers
 
 List current ledgers and value for an account.
 
-### Request
+##### Request
 
 - Verb: `GET`
 - Url: `/accounts/{{ACCOUNT_ID}}/ledgers`
 
 
-### Response
+##### Response
 
 ```json
 {
@@ -29,17 +23,17 @@ List current ledgers and value for an account.
 }
 ```
 
-## Get Ledger value
+#### Get Ledger value
 
 List current ledgers and value for an account.
 
-### Request
+##### Request
 
 - Verb: `GET`
 - Url: `/accounts/{{ACCOUNT_ID}}/ledgers/{{LEDGER}}`
 
 
-### Response
+##### Response
 
 ```json
 {
@@ -50,11 +44,11 @@ List current ledgers and value for an account.
 }
 ```
 
-## Credit / Debit
+#### Credit / Debit
 
 Credit or Debit a specific ledger (**must be admin to use**).
 
-### Request
+##### Request
 
 - Verb: `PUT`
 - Url: `/accounts/{{ACCOUNT_ID}}/ledgers/credit` or `/accounts/{{ACCOUNT_ID}}/ledgers/debit`
@@ -86,7 +80,7 @@ Credit or Debit a specific ledger (**must be admin to use**).
 }
 ```
 
-### Response
+##### Response
 
 ```json
 {

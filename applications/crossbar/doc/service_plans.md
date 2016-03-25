@@ -1,21 +1,15 @@
-/*
-Section: Crossbar
-Title: Service Plans
-Language: en-US
-Version: 3.20
-*/
 
-# Service Plans
+### Service Plans
 
-## List your reseller service plans
+#### List your reseller service plans
 
 This api allow you to list the service plans that you can subscribe to.
 
-### Retrieving your service plans.
+##### Retrieving your service plans.
 
 Useful for resellers.
 
-#### Request
+###### Request
 
 - Verb: `GET`
 - Url: `/v2/accounts/{ACCOUNT_ID}/service_plans`
@@ -24,7 +18,7 @@ Useful for resellers.
 
     `curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{ACCOUNT_ID}/service_plans`
 
-#### Response
+###### Response
 
     {"page_size": 1,
      "data": [
@@ -37,11 +31,11 @@ Useful for resellers.
      "auth_token": "{AUTH_TOKEN}"
     }
 
-### Retrieving one of your service plans.
+##### Retrieving one of your service plans.
 
 Useful for resellers.
 
-#### Request
+###### Request
 
 - Verb: `GET`
 - Url: `/v2/accounts/{ACCOUNT_ID}/service_plans/{SERVICE_PLAN_ID}`
@@ -49,7 +43,7 @@ Useful for resellers.
 
     `curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{ACCOUNT_ID}/service_plans/{SERVICE_PLAN_ID}`
 
-#### Response
+###### Response
 
     {"data":{
         "name": "Macpie's plan",
@@ -174,11 +168,11 @@ Useful for resellers.
      "status": "success"
     }
 
-### Adding service plan to an account.
+##### Adding service plan to an account.
 
 Useful for resellers.
 
-#### Request
+###### Request
 
 - Verb: `POST`
 - Url: `/v2/accounts/{ACCOUNT_ID}/service_plans/{SERVICE_PLAN_ID}`
@@ -186,7 +180,7 @@ Useful for resellers.
 
     `curl -X POST -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{ACCOUNT_ID}/service_plans/{SERVICE_PLAN_ID} -d '{"data":{"id":"service_plan_id"}'`
 
-#### Response
+###### Response
 
 ```json
 {
@@ -195,11 +189,11 @@ Useful for resellers.
 }
 ```
 
-### Adding/Removing multiple service plans on an account.
+##### Adding/Removing multiple service plans on an account.
 
 Useful for resellers.
 
-#### Request
+###### Request
 
 - Verb: `POST`
 - Url: `/v2/accounts/{ACCOUNT_ID}/service_plans`
@@ -214,7 +208,7 @@ Useful for resellers.
 }
 ```
 
-#### Response
+###### Response
 
 ```json
 {
@@ -223,11 +217,11 @@ Useful for resellers.
 }
 ```
 
-### Removing service plan from an account.
+##### Removing service plan from an account.
 
 Useful for resellers.
 
-#### Request
+###### Request
 
 - Verb: `DELETE`
 - Url: `/v2/accounts/{ACCOUNT_ID}/service_plans/{SERVICE_PLAN_ID}`
@@ -236,11 +230,11 @@ Useful for resellers.
     `curl -X DELETE -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{ACCOUNT_ID}/service_plans/{SERVICE_PLAN_ID}`
 
 
-### Retrieving your current plan
+##### Retrieving your current plan
 
 This will retreive the service plan currenlty applied on your account.
 
-#### Request
+###### Request
 
 - Verb: `GET`
 - Url: `/v2/accounts/{ACCOUNT_ID}/service_plans/current`
@@ -248,7 +242,7 @@ This will retreive the service plan currenlty applied on your account.
 
     `curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{ACCOUNT_ID}/service_plans/current`
 
-#### Response
+###### Response
 
     {"data": {
         "account_quantities": {
@@ -399,13 +393,13 @@ This will retreive the service plan currenlty applied on your account.
     "auth_token": "{AUTH_TOKEN}"
 }
 
-## Listing Service Plans available to you
+#### Listing Service Plans available to you
 
 This api will list the services plan that can be applied to your account
 
-### Retrieving all plans
+##### Retrieving all plans
 
-#### Request
+###### Request
 
 
 - Verb: `GET`
@@ -414,7 +408,7 @@ This api will list the services plan that can be applied to your account
 
     `curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{ACCOUNT_ID}/service_plans/available`
 
-#### Response
+###### Response
 
     {"page_size": 1,
      "data": [
@@ -427,9 +421,9 @@ This api will list the services plan that can be applied to your account
      "auth_token": "{AUTH_TOKEN}"
     }
 
-### Retrieving a plan
+##### Retrieving a plan
 
-#### Request
+###### Request
 
 - Verb: `GET`
 - Url: `/v2/accounts/{ACCOUNT_ID}/service_plans/available/{PLAN_ID}`
@@ -437,7 +431,7 @@ This api will list the services plan that can be applied to your account
 
     `curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{ACCOUNT_ID}/service_plans/available/{PLAN_ID}`
 
-#### Response
+###### Response
 
     {"data": {
         "name": "Test plan",
@@ -563,11 +557,11 @@ This api will list the services plan that can be applied to your account
      "auth_token": "{AUTH_TOKEN}"
     }
 
-### Override a plan
+##### Override a plan
 
 **Must be super duper admin**
 
-#### Request
+###### Request
 
 - Verb: `POST`
 - Url: `/v2/accounts/{ACCOUNT_ID}/service_plans/override`
@@ -590,7 +584,7 @@ This api will list the services plan that can be applied to your account
 }
 ```
 
-#### Response
+###### Response
 
 All override payload
 

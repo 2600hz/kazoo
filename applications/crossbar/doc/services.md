@@ -1,11 +1,5 @@
-/*
-Section: Crossbar
-Title: Services
-Language: en-US
-Version: 3.20
-*/
 
-# Services
+### Services
 
 Fetch the current services:
 

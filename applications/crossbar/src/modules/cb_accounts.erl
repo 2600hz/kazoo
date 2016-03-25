@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% Account module
 %%%
@@ -94,22 +94,17 @@ allowed_methods(AccountId) ->
             [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH]
     end.
 
-allowed_methods(_, ?MOVE) ->
+allowed_methods(_AccountId, ?MOVE) ->
     [?HTTP_POST];
-allowed_methods(_, ?RESELLER) ->
+allowed_methods(_AccountId, ?RESELLER) ->
     [?HTTP_PUT, ?HTTP_DELETE];
-allowed_methods(_, Path) ->
-    Paths =  [?CHILDREN
-              ,?DESCENDANTS
-              ,?SIBLINGS
-              ,?API_KEY
-              ,?TREE
-              ,?PARENTS
-             ],
-    case lists:member(Path, Paths) of
-        'true' -> [?HTTP_GET];
-        'false' -> []
-    end.
+allowed_methods(_AccountId, ?CHILDREN) -> [?HTTP_GET];
+allowed_methods(_AccountId, ?DESCENDANTS) -> [?HTTP_GET];
+allowed_methods(_AccountId, ?SIBLINGS) -> [?HTTP_GET];
+allowed_methods(_AccountId, ?API_KEY) -> [?HTTP_GET];
+allowed_methods(_AccountId, ?TREE) -> [?HTTP_GET];
+allowed_methods(_AccountId, ?PARENTS) -> [?HTTP_GET];
+allowed_methods(_AccountId, _Path) -> [].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -227,17 +222,19 @@ validate_account_path(Context, AccountId, ?MOVE, ?HTTP_POST) ->
     Data = cb_context:req_data(Context),
     case wh_json:get_binary_value(<<"to">>, Data) of
         'undefined' ->
-            cb_context:add_validation_error(
-                <<"to">>
-                ,<<"required">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"Field 'to' is required">>}
-                 ])
-                ,Context
-            );
+            cb_context:add_validation_error(<<"to">>
+                                           ,<<"required">>
+                                           ,wh_json:from_list(
+                                              [{<<"message">>, <<"Field 'to' is required">>}]
+                                             )
+                                           ,Context
+                                           );
         ToAccount ->
             case validate_move(whapps_config:get(?ACCOUNTS_CONFIG_CAT, <<"allow_move">>, <<"superduper_admin">>)
-                               ,Context, AccountId, ToAccount)
+                              ,Context
+                              ,AccountId
+                              ,ToAccount
+                              )
             of
                 'true' -> cb_context:set_resp_status(Context, 'success');
                 'false' -> cb_context:add_system_error('forbidden', Context)
@@ -395,16 +392,15 @@ validate_move(<<"tree">>, Context, MoveAccount, ToAccount) ->
     AuthId = wh_json:get_value(<<"account_id">>, AuthDoc),
     MoveTree = crossbar_util:get_tree(MoveAccount),
     ToTree = crossbar_util:get_tree(ToAccount),
-    L = lists:foldl(
-            fun(Id, Acc) ->
-                case lists:member(Id, ToTree) of
-                    'false' -> Acc;
-                    'true' -> [Id|Acc]
-                end
-            end
-            ,[]
-            ,MoveTree
-        ),
+    L = lists:foldl(fun(Id, Acc) ->
+                            case lists:member(Id, ToTree) of
+                                'false' -> Acc;
+                                'true' -> [Id|Acc]
+                            end
+                    end
+                   ,[]
+                   ,MoveTree
+                   ),
     lists:member(AuthId, L);
 validate_move(_Type, _, _, _) ->
     lager:error("unknow move type ~p", [_Type]),
@@ -599,13 +595,13 @@ maybe_import_enabled(Context, JObj, IsEnabled) ->
 -spec disallow_direct_clients(api_binary(), cb_context:context()) -> cb_context:context().
 disallow_direct_clients(AccountId, Context) ->
     AllowDirect = whapps_config:get_is_true(?WH_ACCOUNTS_DB, 'allow_subaccounts_for_direct', 'true'),
-    maybe_disallow_direct_clients(AllowDirect, AccountId, Context).
+    maybe_disallow_direct_clients(AccountId, Context, AllowDirect).
 
--spec maybe_disallow_direct_clients(boolean(), api_binary(), cb_context:context()) ->
+-spec maybe_disallow_direct_clients(api_binary(), cb_context:context(), boolean()) ->
                                            cb_context:context().
-maybe_disallow_direct_clients('true', _AccountId, Context) ->
+maybe_disallow_direct_clients(_AccountId, Context, 'true') ->
     Context;
-maybe_disallow_direct_clients('false', _AccountId, Context) ->
+maybe_disallow_direct_clients(_AccountId, Context, 'false') ->
     {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
     AuthAccountId = cb_context:auth_account_id(Context),
     AuthUserReseller = wh_services:get_reseller_id(AuthAccountId),
@@ -951,8 +947,6 @@ load_siblings_results(_AccountId, Context, [JObj|_]) ->
     load_children(Parent, Context);
 load_siblings_results(AccountId, Context, _) ->
     cb_context:add_system_error('bad_identifier', wh_json:from_list([{<<"cause">>, AccountId}]),  Context).
-
-
 
 -spec start_key(cb_context:context()) -> binary().
 start_key(Context) ->

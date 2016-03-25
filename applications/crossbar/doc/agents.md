@@ -1,8 +1,7 @@
-
-#API for managing agent status
+### API for managing agent status
 This API provides convenient way for agent status management without need to dial feature codes. It's useful for various call center agent/supervisor interfaces.
 
-### Log In/Log Out agent to/from some queue
+##### Log In/Log Out agent to/from some queue
 
 /agents/AID/queue_status (GET, POST):
 
@@ -20,7 +19,7 @@ where
 {{action}} - "login" | "logout"
 and {{queue_id}} is an ID of the queue
 
-### Set agent status:
+##### Set agent status:
 
 /agents/AID/status  (GET, POST):
 ```

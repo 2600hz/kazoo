@@ -1,19 +1,14 @@
-/*
-Section: Crossbar
-Title: Rate Limiting
-Language: en-US
-Version: 3.19
-*/
+
 
 API abuse can occur either maliciously or on accident; either way, the API server needs to protect itself from clients consuming too many server resources simultaneously.
 
-## Token Buckets
+#### Token Buckets
 
 Crossbar (and Kazoo in general) has a [token bucket facility](https://en.wikipedia.org/wiki/Token_bucket) for tracking how many tokens a particular bucket has left. A bucket will be created for each client based on the IP of the client and the account ID being manipulated. As a client makes requests against the APIs, tokens will be deducted from the bucket until the bucket is exhausted, at which point API requests will return an [HTTP 429 error](https://en.wikipedia.org/wiki/List_of_HTTP_status_codes#4xx_Client_Error).
 
 If you receive a 429, that means you're accessing the APIs too quickly and your bucket hasn't been replenished enough to permit the request to be processed.
 
-## Configuring API Costs
+#### Configuring API Costs
 
 By default, every request costs 1 token (typically a bucket starts with 100 tokens which refill at 10 tokens per second). Administrators can optionally increase the cost of certain APIs (or methods on an API) to discourage heavy access patterns.
 
@@ -37,7 +32,7 @@ Concretely, if the request is `GET /v2/accounts/{ACCOUNT_ID}/callflows`, Crossba
 
 Note: `{HTTP_METHOD}` is always in all-caps for the key.
 
-### Sample configuration
+##### Sample configuration
 
 Using the request above, you can configure the costs in the `crossbar` config in a variety of ways:
 
@@ -88,7 +83,7 @@ Using the request above, you can configure the costs in the `crossbar` config in
          }
         }
 
-## Disable token costs
+#### Disable token costs
 
 If an administrator prefers to not use rate-limiting, or wants to set a flat-rate for all requests, configure the `token_costs` with just a number (0 to disable):
 
@@ -108,7 +103,7 @@ If an administrator prefers to not use rate-limiting, or wants to set a flat-rat
          }
         }
 
-## Configuring Token Bucket start parameters
+#### Configuring Token Bucket start parameters
 
 To configure the token buckets themselves, look in the `system_config/token_buckets` document.
 
@@ -118,7 +113,7 @@ To configure the token buckets themselves, look in the `system_config/token_buck
 
 So the default bucket will have a maximum of 100 tokens, refilling at 10 tokens per second.
 
-### Per-Application configuration
+##### Per-Application configuration
 
 An administrator can change the above parameters on a per-application basis. This would allow larger token limits for Crossbar-related buckets, and smaller limits for Callflow-related (for instance). Configure these per-application settings in the `token_buckets` document by creating an object with the application name as the key, and the parameters above as sub keys.
 
@@ -137,11 +132,11 @@ An administrator can change the above parameters on a per-application basis. Thi
      }
     }
 
-## Special Cases
+#### Special Cases
 
 There are some APIs that have extra rate limiting options for administrators to tweak.
 
-### Quickcall
+##### Quickcall
 
 Administrators can increase the cost of the quickcall API to keep call volume low from this endpoint.
 

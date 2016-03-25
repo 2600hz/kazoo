@@ -13,7 +13,7 @@
 
 -define(EMPTY_JSON_OBJECT, ?JSON_WRAPPER([])).
 
--type object() :: ?JSON_WRAPPER(json_proplist()).
+-type object() :: ?JSON_WRAPPER(json_proplist()) | ?EMPTY_JSON_OBJECT.
 -type objects() :: [object()].
 
 -type json_string() :: ne_binary() | atom() | pos_integer().

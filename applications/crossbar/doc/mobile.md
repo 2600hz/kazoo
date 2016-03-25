@@ -1,30 +1,23 @@
-/*
-Section: Crossbar
-Title: Mobile
-Language: en-US
-*/
 
-# Mobile APIs
+### Mobile APIs
 Learn how to use the 2600hz mobile API set to activate and manage phones.
 
-## Device Management
+#### Device Management
 Activate, suspend and manage any device on the 2600hz mobile network using the below APIs. Service change requests
 usually take approximately five minutes to take effect.
 
-### Activate a Device
+##### Activate a Device
 
 
-### List Active Devices
+##### List Active Devices
 
-### Cancel Device
+##### Cancel Device
 
-### Suspend Device
-
-
-
-## Usage Tracking
+##### Suspend Device
 
 
-## Call Routing
+
+#### Usage Tracking
 
 
+#### Call Routing

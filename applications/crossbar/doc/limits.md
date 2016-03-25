@@ -1,21 +1,15 @@
-/*
-Section: Crossbar
-Title: Limits
-Language: en-US
-Version: 3.18
-*/
 
-# Limits
+### Limits
 
-## Get limits for a given account
+#### Get limits for a given account
 
-### Request
+##### Request
 
 - Verb: `GET`
 - Url: `/accounts/{{ACCOUNT_ID}}/limits`
 - Payload: None
 
-### Response
+##### Response
 
 ```
 {
@@ -30,9 +24,9 @@ Version: 3.18
 }
 ```
 
-## Update limits for a given account
+#### Update limits for a given account
 
-### Request VERSION 1
+##### Request VERSION 1
 
 - Verb: `POST`
 - Url: `v1/accounts/{{ACCOUNT_ID}}/limits`
@@ -50,7 +44,7 @@ Version: 3.18
 }
 ```
 
-### Response VERSION 1
+##### Response VERSION 1
 
 
 ```
@@ -70,7 +64,7 @@ Version: 3.18
 }
 ```
 
-### Request VERSION 2
+##### Request VERSION 2
 
 The version 2 will respond with a "402 - accept charges" first. You will then need to re-do the same request and add `"accept_charges": true` to your payload (see below).
 
@@ -89,7 +83,7 @@ The version 2 will respond with a "402 - accept charges" first. You will then ne
 }
 ```
 
-#### Accepting charges
+###### Accepting charges
 
 ```
 {
@@ -103,7 +97,7 @@ The version 2 will respond with a "402 - accept charges" first. You will then ne
 }
 ```
 
-### Response VERSION 2
+##### Response VERSION 2
 
 
 ```
@@ -128,7 +122,7 @@ The version 2 will respond with a "402 - accept charges" first. You will then ne
 }
 ```
 
-#### Once charges are accepted
+###### Once charges are accepted
 
 ```
 {

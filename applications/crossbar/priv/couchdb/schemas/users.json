@@ -385,7 +385,7 @@
             "type": "object"
         },
         "presence_id": {
-            "description": "User's presence ID",
+            "description": "Static presence ID (used instead of SIP username)",
             "name": "Presence ID",
             "required": false,
             "type": "string"
@@ -477,7 +477,8 @@
         "vm_to_email_enabled": {
             "default": true,
             "description": "Determines if the user would like voicemails emailed to them",
-            "name": "VM To Emain Enabled"
+            "name": "VM To Emain Enabled",
+            "type": "boolean"
         },
         "voicemail": {
             "properties": {

@@ -282,25 +282,28 @@ get_endpoints(Call, Context, ?DEVICES_QCALL_NOUNS(_DeviceId, Number)) ->
     end;
 get_endpoints(Call, _Context, ?USERS_QCALL_NOUNS(_UserId, Number)) ->
     Properties = wh_json:from_list([{<<"can_call_self">>, 'true'}
-                                    ,{<<"suppress_clid">>, 'true'}
-                                    ,{<<"source">>, 'cb_users'}
+                                   ,{<<"suppress_clid">>, 'true'}
+                                   ,{<<"source">>, 'cb_users'}
                                    ]),
     lists:foldr(fun(EndpointId, Acc) ->
                         case cf_endpoint:build(EndpointId, Properties, aleg_cid(Number, Call)) of
                             {'ok', Endpoint} -> Endpoint ++ Acc;
                             {'error', _E} -> Acc
                         end
-                end, [], cf_attributes:owned_by(_UserId, <<"device">>, Call));
+                end
+               ,[]
+               ,cf_attributes:owned_by(_UserId, <<"device">>, Call)
+               );
 get_endpoints(_Call, _Context, _ReqNouns) ->
     [].
 
 -spec aleg_cid(ne_binary(), whapps_call:call()) -> whapps_call:call().
 aleg_cid(Number, Call) ->
-    Routines = [fun(C) -> whapps_call:set_custom_channel_var(<<"Retain-CID">>, <<"true">>, C) end
-                ,fun(C) -> whapps_call:set_caller_id_name(<<"QuickCall">>, C) end
-                ,fun(C) -> whapps_call:set_caller_id_number(wh_util:to_binary(Number), C) end
+    Routines = [{fun whapps_call:set_custom_channel_var/3, <<"Retain-CID">>, <<"true">>}
+               ,{fun whapps_call:set_caller_id_name/2, <<"QuickCall">>}
+               ,{fun whapps_call:set_caller_id_number/2, wh_util:to_binary(Number)}
                ],
-    lists:foldl(fun(F, C) -> F(C) end, Call, Routines).
+    whapps_call:exec(Routines, Call).
 
 -spec originate_quickcall(wh_json:objects(), whapps_call:call(), cb_context:context()) ->
                                  cb_context:context().
@@ -319,25 +322,27 @@ originate_quickcall(Endpoints, Call, Context) ->
 
     {DefaultCIDNumber, DefaultCIDName} = cf_attributes:caller_id(<<"external">>, Call),
 
-    Request = [{<<"Application-Name">>, <<"transfer">>}
-               ,{<<"Application-Data">>, get_application_data(Context)}
-               ,{<<"Msg-ID">>, MsgId}
-               ,{<<"Endpoints">>, update_quickcall_endpoints(AutoAnswer, Endpoints)}
-               ,{<<"Timeout">>, get_timeout(Context)}
-               ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Context)}
-               ,{<<"Media">>, get_media(Context)}
-               ,{<<"Outbound-Caller-ID-Name">>, <<"Device QuickCall">>}
-               ,{<<"Outbound-Caller-ID-Number">>, whapps_call:request_user(Call)}
-               ,{<<"Outbound-Callee-ID-Name">>, get_cid_name(Context, DefaultCIDName)}
-               ,{<<"Outbound-Callee-ID-Number">>, get_cid_number(Context, DefaultCIDNumber)}
-               ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
-               ,{<<"Continue-On-Fail">>, 'false'}
-               ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
-               ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
-               | wh_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
-              ],
+    Request =
+        wh_json:from_list(
+          [{<<"Application-Name">>, <<"transfer">>}
+          ,{<<"Application-Data">>, get_application_data(Context)}
+          ,{<<"Msg-ID">>, MsgId}
+          ,{<<"Endpoints">>, update_quickcall_endpoints(AutoAnswer, Endpoints)}
+          ,{<<"Timeout">>, get_timeout(Context)}
+          ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Context)}
+          ,{<<"Media">>, get_media(Context)}
+          ,{<<"Outbound-Caller-ID-Name">>, <<"Device QuickCall">>}
+          ,{<<"Outbound-Caller-ID-Number">>, whapps_call:request_user(Call)}
+          ,{<<"Outbound-Callee-ID-Name">>, get_cid_name(Context, DefaultCIDName)}
+          ,{<<"Outbound-Callee-ID-Number">>, get_cid_number(Context, DefaultCIDNumber)}
+          ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
+          ,{<<"Continue-On-Fail">>, 'false'}
+          ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+          ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
+           | wh_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
+          ]),
     wh_amqp_worker:cast(Request, fun wapi_resource:publish_originate_req/1),
-    JObj = wh_json:normalize(wh_json:from_list(wh_api:remove_defaults(Request))),
+    JObj = wh_json:normalize(wh_api:remove_defaults(Request)),
     crossbar_util:response_202(<<"quickcall initiated">>, JObj, cb_context:set_resp_data(Context, Request)).
 
 -spec update_quickcall_endpoints(boolean(), wh_json:objects()) -> wh_json:objects().

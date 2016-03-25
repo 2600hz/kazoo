@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for resource documents
@@ -129,10 +129,10 @@ allowed_methods(?COLLECTION) ->
     [?HTTP_PUT, ?HTTP_POST];
 allowed_methods(?JOBS) ->
     [?HTTP_GET, ?HTTP_PUT];
-allowed_methods(_) ->
+allowed_methods(_ResourceId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
-allowed_methods(?JOBS, _Id) ->
+allowed_methods(?JOBS, _JobId) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -242,9 +242,9 @@ validate_collection(Context) ->
 -spec validate_collection_fold(wh_json:object(), collection_fold_acc()) -> collection_fold_acc().
 validate_collection_fold(Resource, C) ->
     Id = wh_doc:id(Resource, kz_datamgr:get_uuid()),
-    case validate_collection_resource(wh_json:set_value(<<"id">>, Id, Resource)
-                                      ,C
-                                      ,cb_context:req_verb(C)
+    case validate_collection_resource(wh_doc:set_id(Resource, Id)
+                                     ,C
+                                     ,cb_context:req_verb(C)
                                      )
     of
         {'ok', C1} ->

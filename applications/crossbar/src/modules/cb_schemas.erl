@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
-%%%
-%%% Handle client requests for skel documents
 %%%
 %%% @end
 %%% @contributors
@@ -65,9 +63,9 @@ authenticate_nouns(_) -> 'false'.
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
-allowed_methods(_) ->
+allowed_methods(_SchemaDoc) ->
     [?HTTP_GET].
-allowed_methods(_, ?VALIDATION_PATH_TOKEN) ->
+allowed_methods(_SchemaDoc, ?VALIDATION_PATH_TOKEN) ->
     [?HTTP_PUT].
 
 %%--------------------------------------------------------------------
@@ -82,8 +80,8 @@ allowed_methods(_, ?VALIDATION_PATH_TOKEN) ->
 -spec resource_exists(path_token()) -> 'true'.
 -spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() ->  'true'.
-resource_exists(_) -> 'true'.
-resource_exists(_, ?VALIDATION_PATH_TOKEN) -> 'true'.
+resource_exists(_SchemaName) -> 'true'.
+resource_exists(_SchemaName, ?VALIDATION_PATH_TOKEN) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private

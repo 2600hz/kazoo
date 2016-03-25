@@ -1,27 +1,28 @@
-/*
-Section: Crossbar
-Title: Transactions
-Language: en-US
-Version: 3.20
-*/
+### Transactions
 
-# Transactions
+#### About
 
-## Get transactions
+The transactions endpoint allows you to list debits and credits made to a specified account
 
-### Request
+#### Schema
+    TODO add schema maybe. not sure I completely understand what should go here.
 
-- Verb: `GET`
-- Url: `/accounts/{{ACCOUNT_ID}}/transactions`
-- Payload: None
-- options:
-    - `created_from` {{TIMESTAMP}}
-    - `created_to` {{TIMESTAMP}}
+#### Get a summary of transactions
+
+    Options:  TODO ask how options should be documented.  how are options submitted?
+    - `created_from` {TIMESTAMP}
+    - `created_to` {TIMESTAMP}
     - `reason` `only_calls`
 
-### Response
+> GET /v2/accounts/{ACCOUNT_ID}/transactions
 
-    {"data": [
+```curl
+curl -x GET \
+     -H "X-Auth-Token: {AUTH_TOKEN}" \
+     http://{SERVER}/v2/accounts/{ACCOUNT_ID}/transactions
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
         {"description": "monthly rollup",
          "id": "09dd02e20e07dbb65401802ba20cfb32",
          "amount": 10.179999999999999716,
@@ -32,7 +33,7 @@ Version: 3.20
          "code": 9999
         }
         ,{"metadata": {
-            "auth_account_id": "{{AUTH_ACCOUNT_ID}}"
+            "auth_account_id": "{AUTH_ACCOUNT_ID}"
         },
         "id": "7dd1c20894587e9cbacb2d7fa2de80ab",
         "amount": 1.0,
@@ -42,41 +43,86 @@ Version: 3.20
         "version": 2,
         "code": 3005
      }],
-     "status": "success"
-    }
+    "request_id": "{REQUEST_ID}",
+    "status": "success"
+}
+```
 
+#### Get current balance
 
-## Get current balance
+> GET /v2/accounts/{ACCOUNT_ID}/transactions/current_balance
 
-### Request
-
-- Verb: `GET`
-- Url: `/accounts/{{ACCOUNT_ID}}/transactions/current_balance`
-- Payload: None
-
-### Response
-
-    {"data": {
+```curl
+curl -x GET \
+     -H "X-Auth-Token: {AUTH_TOKEN}" \
+     http://{SERVER}/v2/accounts/{ACCOUNT_ID}/transactions/current_balance
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
         "balance": 9.18
      },
-     "status": "success"
-    }
+    "request_id": "{REQUEST_ID}",
+    "status": "success"
+}
+```
 
-## Debit an account
+#### Get monthly recurring transactions
+
+Querystring options:
+    - `created_from` {TIMESTAMP}
+    - `created_to` {TIMESTAMP}
+    - `reason` `only_calls`
+
+> GET /v2/accounts/{ACCOUNT_ID}/transactions/monthly_recurring
+
+```curl
+curl -x GET \
+     -H "X-Auth-Token: {AUTH_TOKEN}" \
+     http://{SERVER}/v2/accounts/{ACCOUNT_ID}/transactions/monthly_recurring
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+     },
+    "request_id": "{REQUEST_ID}",
+    "status": "success"
+}
+```
+
+#### Get subscriptions
+
+> GET /v2/accounts/{ACCOUNT_ID}/transactions/subscriptions
+
+```curl
+curl -x GET \
+     -H "X-Auth-Token: {AUTH_TOKEN}" \
+     http://{SERVER}/v2/accounts/{ACCOUNT_ID}/transactions/subscriptions
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+
+     },
+    "request_id": "{REQUEST_ID}",
+    "status": "success"
+}
+```
+
+
+#### Debit an account
 
 Only for super duper admins and resellers.
 
-### Request
+> DELETE /v2/accounts/{ACCOUNT_ID}/transactions/debit
 
-- Verb: `DELETE`
-- Url: `/accounts/{{ACCOUNT_ID}}/transactions/debit`
-- Payload: `{"data": {"amount": 1} }`
-
-### Response
-
-    {"data": {
+```curl
+curl -x DELETE \
+     -H "X-Auth-Token: {AUTH_TOKEN}" \
+     -d '{"data": {"amount": 1} }'
+     http://{SERVER}/v2/accounts/{ACCOUNT_ID}/transactions/debit
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
         "metadata": {
-            "auth_account_id": "{{ACCOUNT_ID}}"
+            "auth_account_id": "{ACCOUNT_ID}"
         },
         "id": "d478a0f74865c8512b71daf82b602b7a",
         "amount": 1.0,
@@ -86,5 +132,9 @@ Only for super duper admins and resellers.
         "version": 2,
         "code": 3005
      },
-     "status": "success"
-    }
+    "request_id": "{REQUEST_ID}",
+    "status": "success"
+}
+```
+
+#### Get transaction details

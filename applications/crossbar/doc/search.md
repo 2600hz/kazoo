@@ -1,14 +1,10 @@
-/*
-Section: Crossbar
-Title: Search
-Language: en-US
-*/
+
 
 The Search API allows queries on databases.
 
 
 
-## Crossbar
+#### Crossbar
 
 You can search for accounts by:
 
@@ -16,7 +12,7 @@ You can search for accounts by:
 * realm
 * id
 
-### _GET_ - Fetch search results
+##### _GET_ - Fetch search results
 
     t = document type
     q = view name
@@ -47,7 +43,7 @@ You can search for accounts by:
     }
 
 
-### _GET_ - Multi Search
+##### _GET_ - Multi Search
 
     t = document type
     by_{view_name} = value

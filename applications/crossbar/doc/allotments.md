@@ -1,23 +1,17 @@
-/*
-Section: Crossbar
-Title: Allotments
-Language: en-US
-Version: 3.22
-*/
 
-# Allotments
+### Allotments
 
 Module `cb_allotments`.
 
-## Get allotments configuration for a given account
+#### Get allotments configuration for a given account
 
-### Request
+##### Request
 
 - Verb: `GET`
 - Url: `/v2/accounts/{{ACCOUNT_ID}}/allotments`
 - Payload: None
 
-### Response
+##### Response
 
 ```JSON
 {
@@ -47,7 +41,7 @@ Module `cb_allotments`.
 }
 ```
 
-#### Explanаtion
+###### Explanаtion
 
 Each object have name (`outbound_national`) which build from direction (inbound or outbound) and classificator from number_manager configuration.
 Properties:
@@ -58,9 +52,9 @@ Properties:
 - `no_consume_time`: if call less or equal of this time (in seconds), then no allotment consumed.
 - `group_consume`: other allotments which will be summed, when calcualting rest of allotments time on authorization. See examples below.
 
-#### Examples
+###### Examples
 
-##### "increment", "minimum" and "no_consume_time"
+####### "increment", "minimum" and "no_consume_time"
 
 ```json
       "outbound_local": {
@@ -76,7 +70,7 @@ Call with duration 40 seconds will be count as 60 seconds.
 5 seconds -> 0
 6 seconds -> 60
 
-#### "group_consume"
+###### "group_consume"
 
 ```json
       "Class1": {
@@ -127,9 +121,9 @@ Class1 - 60 (300 Class1 + 60 Class2 + 180 Class3 = 540, 600-540 = 60)
 Class2 - 0 (60 Class2 + 300 Class1 = 360, 360 > 120)
 Class3 - 60 (180 Class3 + 60 Class2 = 240, 300-240 = 60)
 
-## Update allotments configuration for a given account
+#### Update allotments configuration for a given account
 
-### Request
+##### Request
 
 - Verb: `POST`
 - Url: `/v2/accounts/{{ACCOUNT_ID}}/allotments`
@@ -162,14 +156,14 @@ Class3 - 60 (180 Class3 + 60 Class2 = 240, 300-240 = 60)
 }
 ```
 
-## Get consumed allotments for a given account
+#### Get consumed allotments for a given account
 
-### Request
+##### Request
 - Verb: `GET`
 - Url: `/v2/accounts/{{ACCOUNT_ID}}/allotments/consumed`
 - Payload: None
 
-### Response
+##### Response
 
 ```JSON
 {
@@ -191,16 +185,16 @@ Class3 - 60 (180 Class3 + 60 Class2 = 240, 300-240 = 60)
 }
 ```
 
-## Get consumed allotments for a certain period of time
+#### Get consumed allotments for a certain period of time
 
-### Request
+##### Request
 - Verb: `GET`
 - Url: `/v2/accounts/{{ACCOUNT_ID}}/allotments/consumed?created_from={{TIMESTAMP}}&created_to={{TIMESTAMP}}`
 - Payload: None
 
 `{{TIMESTAMP}}` - Gregorian epoch seconds.
 
-### Response
+##### Response
 
 ```JSON
 {
@@ -222,9 +216,9 @@ Class3 - 60 (180 Class3 + 60 Class2 = 240, 300-240 = 60)
 }
 ```
 
-## Get consumed allotments at certain time
+#### Get consumed allotments at certain time
 
-### Request
+##### Request
 - Verb: `GET`
 - Url: `/v2/accounts/{{ACCOUNT_ID}}/allotments/consumed?created_from={{TIMESTAMP}}`
 OR
@@ -245,7 +239,7 @@ OR
 
 ```
 
-### Response
+##### Response
 
 ```JSON
 {

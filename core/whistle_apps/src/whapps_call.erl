@@ -878,26 +878,29 @@ from_tag(#whapps_call{from_tag=FromTag}) ->
 direction(#whapps_call{direction=Direction}) ->
     Direction.
 
--spec remove_custom_channel_vars(ne_binaries(), whapps_call:call()) -> whapps_call:call().
+-spec remove_custom_channel_vars(wh_json:keys(), whapps_call:call()) -> whapps_call:call().
 remove_custom_channel_vars(Keys, #whapps_call{}=Call) ->
     whapps_call_command:set(wh_json:from_list([{Key, <<>>} || Key <- Keys]), 'undefined', Call),
     handle_ccvs_remove(Keys, Call).
 
--spec handle_ccvs_remove(wh_json:object(), whapps_call:call()) -> whapps_call:call().
+-spec handle_ccvs_remove(wh_json:keys(), whapps_call:call()) -> whapps_call:call().
 handle_ccvs_remove(Keys, #whapps_call{ccvs=CCVs}=Call) ->
     lists:foldl(fun(Key, C) ->
-        case props:get_value(Key, ?SPECIAL_VARS) of
-          'undefined' -> C;
-          Index -> setelement(Index, C, 'undefined')
-        end
-      end, Call#whapps_call{ccvs=wh_json:delete_keys(Keys, CCVs)}, Keys).
+                        case props:get_value(Key, ?SPECIAL_VARS) of
+                            'undefined' -> C;
+                            Index -> setelement(Index, C, 'undefined')
+                        end
+                end
+               ,Call#whapps_call{ccvs=wh_json:delete_keys(Keys, CCVs)}
+               ,Keys
+               ).
 
--spec set_custom_channel_var(any(), any(), call()) -> call().
+-spec set_custom_channel_var(wh_json:key(), wh_json:json_term(), call()) -> call().
 set_custom_channel_var(Key, Value, Call) ->
     whapps_call_command:set(wh_json:set_value(Key, Value, wh_json:new()), 'undefined', Call),
     insert_custom_channel_var(Key, Value, Call).
 
--spec insert_custom_channel_var(any(), any(), call()) -> call().
+-spec insert_custom_channel_var(wh_json:key(), wh_json:json_term(), call()) -> call().
 insert_custom_channel_var(Key, Value, #whapps_call{ccvs=CCVs}=Call) ->
     handle_ccvs_update(wh_json:set_value(Key, Value, CCVs), Call).
 

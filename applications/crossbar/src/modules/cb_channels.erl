@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
-%%%
-%%% Listing of all expected v1 callbacks
 %%%
 %%% @end
 %%% @contributors:
@@ -12,11 +10,11 @@
 -module(cb_channels).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,content_types_provided/1
-         ,validate/1, validate/2
-         ,post/2
+        ,allowed_methods/0, allowed_methods/1
+        ,resource_exists/0, resource_exists/1
+        ,content_types_provided/1
+        ,validate/1, validate/2
+        ,post/2
         ]).
 
 -include("crossbar.hrl").
@@ -36,12 +34,12 @@
 -spec init() -> 'ok'.
 init() ->
     cb_modules_util:bind(?MODULE
-                         ,[{<<"*.allowed_methods.channels">>, 'allowed_methods'}
-                           ,{<<"*.resource_exists.channels">>, 'resource_exists'}
-                           ,{<<"*.content_types_provided.channels">>, 'content_types_provided'}
-                           ,{<<"*.validate.channels">>, 'validate'}
-                           ,{<<"*.execute.post.channels">>, 'post'}
-                          ]).
+                        ,[{<<"*.allowed_methods.channels">>, 'allowed_methods'}
+                         ,{<<"*.resource_exists.channels">>, 'resource_exists'}
+                         ,{<<"*.content_types_provided.channels">>, 'content_types_provided'}
+                         ,{<<"*.validate.channels">>, 'validate'}
+                         ,{<<"*.execute.post.channels">>, 'post'}
+                         ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -54,7 +52,7 @@ init() ->
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
-allowed_methods(_) ->
+allowed_methods(_UUID) ->
     [?HTTP_GET, ?HTTP_POST].
 
 %%--------------------------------------------------------------------
@@ -69,7 +67,7 @@ allowed_methods(_) ->
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
-resource_exists(_) -> 'true'.
+resource_exists(_UUID) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -81,10 +79,10 @@ resource_exists(_) -> 'true'.
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context()) -> cb_context:context().
 content_types_provided(Context) ->
-    CTPs = [{'to_json', ?JSON_CONTENT_TYPES}
-            ,{'to_csv', ?CSV_CONTENT_TYPES}
-           ],
-    cb_context:add_content_types_provided(Context, CTPs).
+    cb_context:add_content_types_provided(Context
+                                         ,[{'to_json', ?JSON_CONTENT_TYPES}
+                                          ,{'to_csv', ?CSV_CONTENT_TYPES}
+                                          ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -121,7 +119,7 @@ validate_channel(Context, Id, ?HTTP_POST) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(Context, _) ->
+post(Context, _UUID) ->
     cb_context:set_resp_status(Context, 'success').
 
 %%--------------------------------------------------------------------
@@ -132,16 +130,7 @@ post(Context, _) ->
 %%--------------------------------------------------------------------
 -spec read(cb_context:context(), ne_binary()) -> cb_context:context().
 read(Context, CallId) ->
-    Req = [{<<"Call-ID">>, CallId}
-           ,{<<"Fields">>, <<"all">>}
-           ,{<<"Active-Only">>, 'true'}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    case wh_amqp_worker:call_collect(Req
-                                     ,fun wapi_call:publish_query_channels_req/1
-                                     ,{'ecallmgr', fun wapi_call:query_channels_resp_v/1}
-                                    )
-    of
+    case channels_query(CallId) of
         {'ok', []} ->
             lager:debug("no channel resp for ~s", [CallId]),
             crossbar_util:response_bad_identifier(CallId, Context);
@@ -163,6 +152,19 @@ read(Context, CallId) ->
             lager:debug("error: ~p", [_E]),
             crossbar_util:response_datastore_timeout(Context)
     end.
+
+-spec channels_query(ne_binary()) -> wh_amqp_worker:request_return().
+channels_query(CallId) ->
+    Req = [{<<"Call-ID">>, CallId}
+          ,{<<"Fields">>, <<"all">>}
+          ,{<<"Active-Only">>, 'true'}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+
+    wh_amqp_worker:call_collect(Req
+                               ,fun wapi_call:publish_query_channels_req/1
+                               ,{'ecallmgr', fun wapi_call:query_channels_resp_v/1}
+                               ).
 
 -spec find_channel(ne_binary(), ne_binary(), wh_json:objects()) -> api_object().
 find_channel(_AccountId, _CallId, []) -> 'undefined';
@@ -392,14 +394,11 @@ maybe_transfer(Context, Transferor) ->
     case wh_json:get_value(<<"other_leg_call_id">>, Channel) of
         'undefined' ->
             lager:debug("no transferee leg found"),
-            cb_context:add_validation_error(
-                <<"other_leg_call_id">>
-                ,<<"required">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"Channel is not bridged">>}
-                 ])
-                ,Context
-            );
+            cb_context:add_validation_error(<<"other_leg_call_id">>
+                                           ,<<"required">>
+                                           ,wh_json:from_list([{<<"message">>, <<"Channel is not bridged">>}])
+                                           ,Context
+                                           );
         Transferee ->
             maybe_transfer(Context, Transferor, Transferee)
     end.
@@ -408,27 +407,24 @@ maybe_transfer(Context, Transferor, Transferee) ->
     case cb_context:req_value(Context, <<"target">>) of
         'undefined' ->
             lager:debug("no target destination"),
-            cb_context:add_validation_error(
-                <<"target">>
-                ,<<"required">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"No target destination specified">>}
-                 ])
-                ,Context
-            );
+            cb_context:add_validation_error(<<"target">>
+                                           ,<<"required">>
+                                           ,wh_json:from_list([{<<"message">>, <<"No target destination specified">>}])
+                                           ,Context
+                                           );
         Target ->
             maybe_transfer(Context, Transferor, Transferee, Target)
     end.
 
 maybe_transfer(Context, Transferor, _Transferee, Target) ->
     API = [{<<"Call-ID">>, Transferor}
-           ,{<<"Action">>, <<"transfer">>}
-           ,{<<"Data">>, wh_json:from_list(
-                           [{<<"target">>, Target}
-                            ,{<<"takeback_dtmf">>, cb_context:req_value(Context, <<"takeback_dtmf">>)}
-                            ,{<<"moh">>, cb_context:req_value(Context, <<"moh">>)}
-                           ])
-            }
+          ,{<<"Action">>, <<"transfer">>}
+          ,{<<"Data">>, wh_json:from_list(
+                          [{<<"target">>, Target}
+                          ,{<<"takeback_dtmf">>, cb_context:req_value(Context, <<"takeback_dtmf">>)}
+                          ,{<<"moh">>, cb_context:req_value(Context, <<"moh">>)}
+                          ])
+           }
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 

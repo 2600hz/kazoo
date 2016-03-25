@@ -429,7 +429,9 @@ is_account_expired(Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_disable_account(ne_binary()) ->'ok' | {'error', any()}.
+-spec maybe_disable_account(ne_binary()) ->
+                            {'ok', wh_json:object()} |
+                            {'error', any()}.
 maybe_disable_account(Account) ->
     case is_account_enabled(Account) of
         'false' -> 'ok';
@@ -442,7 +444,9 @@ maybe_disable_account(Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec disable_account(ne_binary()) ->'ok' | {'error', any()}.
+-spec disable_account(ne_binary()) ->
+                            {'ok', wh_json:object()} |
+                            {'error', any()}.
 disable_account(Account) ->
     account_update(Account, fun kz_account:disable/1).
 
@@ -451,7 +455,9 @@ disable_account(Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec enable_account(ne_binary()) ->'ok' | {'error', any()}.
+-spec enable_account(ne_binary()) ->
+                            {'ok', wh_json:object()} |
+                            {'error', any()}.
 enable_account(Account) ->
     account_update(Account, fun kz_account:enable/1).
 
@@ -460,7 +466,9 @@ enable_account(Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_superduper_admin(ne_binary(), boolean()) ->'ok' | {'error', any()}.
+-spec set_superduper_admin(ne_binary(), boolean()) ->
+                            {'ok', wh_json:object()} |
+                            {'error', any()}.
 set_superduper_admin(Account, IsAdmin) ->
     account_update(Account, fun(J) -> kz_account:set_superduper_admin(J, IsAdmin) end).
 
@@ -469,7 +477,9 @@ set_superduper_admin(Account, IsAdmin) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_allow_number_additions(ne_binary(), boolean()) ->'ok' | {'error', any()}.
+-spec set_allow_number_additions(ne_binary(), boolean()) ->
+                            {'ok', wh_json:object()} |
+                            {'error', any()}.
 set_allow_number_additions(Account, IsAllowed) ->
     account_update(Account, fun(J) -> kz_account:set_allow_number_additions(J, IsAllowed) end).
 
@@ -478,7 +488,9 @@ set_allow_number_additions(Account, IsAllowed) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec account_update(kz_account:doc()) -> 'ok' | {'error', any()}.
+-spec account_update(kz_account:doc()) ->
+                            {'ok', wh_json:object()} |
+                            {'error', any()}.
 -spec account_update(ne_binary(), function()) -> 'ok' | {'error', any()}.
 account_update(AccountJObj) ->
     AccountDb = wh_doc:account_db(AccountJObj),

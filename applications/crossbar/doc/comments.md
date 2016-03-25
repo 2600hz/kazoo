@@ -1,27 +1,23 @@
-/*
-Section: Crossbar
-Title: Comments
-Language: en-US
-*/
+
 
 Allow you to add comments to "any" documents in Kazoo.
 
-## Comments
+#### Comments
 
 * GET - Gets the current comment(s).
 * PUT - Add a comment.
 * POST - Update a comment.
 * DELETE - Remove a comment(s).
 
-### Fetch Comments:
+##### Fetch Comments:
 
-#### Request
+###### Request
 
 - Verb: `GET`
 - Url: `/v2/accounts/{{ACCOUNT_ID}/{{DOC_TYPE}}/{{ID}}/comments`
 - Payload: None
 
-#### Response
+###### Response
 
 ```json
 {
@@ -32,15 +28,15 @@ Allow you to add comments to "any" documents in Kazoo.
 }
 ```
 
-### Fetch a Comment:
+##### Fetch a Comment:
 
-#### Request
+###### Request
 
 - Verb: `GET`
 - Url: `/v2/accounts/{{ACCOUNT_ID}/{{DOC_TYPE}}/{{ID}}/comments/{{COMMENT_NUMBER}}`
 - Payload: None
 
-#### Response
+###### Response
 
 ```json
 {
@@ -49,9 +45,9 @@ Allow you to add comments to "any" documents in Kazoo.
 }
 ```
 
-### Add a Comment:
+##### Add a Comment:
 
-#### Request
+###### Request
 
 - Verb: `PUT`
 - Url: `/v2/accounts/{{ACCOUNT_ID}/{{DOC_TYPE}}/{{ID}}/comments`
@@ -65,7 +61,7 @@ Allow you to add comments to "any" documents in Kazoo.
 }
 ```
 
-#### Response
+###### Response
 
 ```json
 {
@@ -76,9 +72,9 @@ Allow you to add comments to "any" documents in Kazoo.
 }
 ```
 
-### Update a Comment:
+##### Update a Comment:
 
-#### Request
+###### Request
 
 - Verb: `POST`
 - Url: `/v2/accounts/{{ACCOUNT_ID}/{{DOC_TYPE}}/{{ID}}/comments/{{COMMENT_NUMBER}}`
@@ -90,7 +86,7 @@ Allow you to add comments to "any" documents in Kazoo.
 }
 ```
 
-#### Response
+###### Response
 
 ```json
 {
@@ -99,15 +95,15 @@ Allow you to add comments to "any" documents in Kazoo.
 }
 ```
 
-### Delete all Comments:
+##### Delete all Comments:
 
-#### Request
+###### Request
 
 - Verb: `DELETE`
 - Url: `/v2/accounts/{{ACCOUNT_ID}/{{DOC_TYPE}}/{{ID}}/comments`
 - Payload: None
 
-#### Response
+###### Response
 
 
 ```json
@@ -117,15 +113,15 @@ Allow you to add comments to "any" documents in Kazoo.
 }
 ```
 
-### Delete a Comment:
+##### Delete a Comment:
 
-#### Request
+###### Request
 
 - Verb: `DELETE`
 - Url: `/v2/accounts/{{ACCOUNT_ID}/{{DOC_TYPE}}/{{ID}}/comments/{{COMMENT_NUMBER}}`
 - Payload: None
 
-#### Response
+###### Response
 
 ```json
 {
