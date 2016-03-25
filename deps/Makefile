@@ -1,8 +1,8 @@
 ROOT = ..
 
 MAKEDIRS = rabbitmq_server-*/Makefile \
-	ibrowse-*/Makefile \
 	lager-*/Makefile \
+	ibrowse-*/Makefile \
 	cowlib-*/Makefile \
 	wsock-*/Makefile \
 	merl-*/Makefile \
