@@ -15,8 +15,8 @@
          ,del_doc/4
          ,del_docs/4
          ,ensure_saved/4
-         ,copy_doc/3
-         ,move_doc/3
+         ,copy_doc/4
+         ,move_doc/4
         ]).
 
 
@@ -86,24 +86,21 @@ ensure_saved(#{server := {App, Conn}}, DbName, Doc, Options) ->
     end.
 
 -spec del_doc(map(), ne_binary(), wh_json:object() | ne_binary(), wh_proplist()) ->
-                     {'ok', wh_json:objects()} |
+                     {'ok', wh_json:object()} |
                      data_error().
 del_doc(Server, DbName, DocId, Options)
   when is_binary(DocId) ->
-    case lookup_doc_rev(Server, DbName, DocId) of
+    case open_doc(Server, DbName, DocId, Options) of
         {'error', _}=Err -> Err;
-        {'ok', Rev} ->
-            JObj = wh_json:from_list([{<<"_id">>, DocId}
-                                      ,{<<"_rev">>, Rev}
-                                     ]),
-            del_doc(Server, DbName, JObj, Options)
+        {'ok', JObj} -> del_doc(Server, DbName, JObj, Options)
     end;
-del_doc(#{server := {App, Conn}}, DbName, Doc, Options) ->
-    {PreparedDoc, PublishDoc} = prepare_doc_for_save(DbName, Doc),
+del_doc(#{server := {App, Conn}}=Server, DbName, Doc, Options) ->
+    DelDoc = prepare_doc_for_del(Server,DbName, Doc),
+    {PreparedDoc, PublishDoc} = prepare_doc_for_save(DbName, DelDoc),
     try App:del_doc(Conn, DbName, PreparedDoc, Options) of
-        {'ok', JObj}=Ok -> kzs_publish:maybe_publish_doc(DbName, PublishDoc, JObj),
-                           kzs_cache:flush_cache_doc(DbName, JObj),
-                           Ok;
+        {'ok', [JObj | _]} -> kzs_publish:maybe_publish_doc(DbName, PublishDoc, JObj),
+                              kzs_cache:flush_cache_doc(DbName, JObj),
+                              {'ok', JObj};
         Else -> Else
     catch
         Ex:Er -> lager:error("exception ~p : ~p", [Ex, Er]),
@@ -124,26 +121,6 @@ del_docs(#{server := {App, Conn}}=Server, DbName, Docs, Options) ->
     catch
         _Ex:Er -> {'error', {_Ex, Er}}
     end.
-
--spec copy_doc(map(), copy_doc(), wh_proplist()) ->
-                      {'ok', wh_json:object()} |
-                      data_error().
-copy_doc(Server, #copy_doc{source_dbname = SourceDb
-                                      ,dest_dbname='undefined'
-                                     }=CopySpec, Options) ->
-    copy_doc(Server, CopySpec#copy_doc{dest_dbname=SourceDb
-                                        ,dest_doc_id=wh_util:rand_hex_binary(16)
-                                       }, Options);
-copy_doc(Server, #copy_doc{dest_doc_id='undefined'}=CopySpec, Options) ->
-    copy_doc(Server, CopySpec#copy_doc{dest_doc_id=wh_util:rand_hex_binary(16)}, Options);
-copy_doc(#{server := {App, Conn}}, CopySpec, Options) ->
-    App:copy_doc(Conn, CopySpec, Options).
-
--spec move_doc(map(), copy_doc(), wh_proplist()) ->
-                      {'ok', wh_json:object()} |
-                      data_error().
-move_doc(#{server := {App, Conn}}, CopySpec, Options) ->
-    App:move_doc(Conn, CopySpec, Options).
 
 -spec prepare_doc_for_del(map(), ne_binary(), wh_json:object() | ne_binary()) ->
                                  wh_json:object().
@@ -203,3 +180,83 @@ maybe_set_docid(Doc) ->
         _ -> Doc
     end.
 
+-spec default_copy_function(boolean()) -> copy_function().
+default_copy_function('true') -> fun ensure_saved/4;
+default_copy_function('false') -> fun save_doc/4.
+
+-spec copy_doc(map(), map(), copy_doc(), wh_proplist()) ->
+                      {'ok', wh_json:object()} |
+                      data_error().
+copy_doc(Src, Dst, CopySpec, Options) ->
+    SaveFun = default_copy_function(props:is_defined(?COPY_DOC_OVERRIDE_PROPERTY, Options)),
+    copy_doc(Src, Dst, CopySpec, SaveFun, props:delete(?COPY_DOC_OVERRIDE_PROPERTY, Options)).
+
+
+-spec copy_doc(map(), map(), copy_doc(), copy_function(), wh_proplist()) ->
+                      {'ok', wh_json:object()} |
+                      data_error().
+copy_doc(Src, Dst, CopySpec, CopyFun, Options) ->
+    #copy_doc{source_dbname = SourceDbName
+                 ,source_doc_id = SourceDocId
+                 ,dest_dbname = DestDbName
+                 ,dest_doc_id = DestDocId
+                } = CopySpec,
+    case open_doc(Src, SourceDbName, SourceDocId, Options) of
+        {'ok', SourceDoc} ->
+            Props = [{<<"_id">>, DestDocId}
+                     | maybe_set_account_db(wh_doc:account_db(SourceDoc), SourceDbName, DestDbName)
+                    ],
+            DestinationDoc = wh_json:set_values(Props, wh_json:delete_keys(?DELETE_KEYS, SourceDoc)),
+            case CopyFun(Dst, DestDbName, DestinationDoc, Options) of
+                {'ok', _JObj} ->
+                    Attachments = wh_doc:attachments(SourceDoc, wh_json:new()),
+                    copy_attachments(Src, Dst, CopySpec, wh_json:get_values(Attachments));
+                Error -> Error
+            end;
+        Error -> Error
+    end.
+
+-spec copy_attachments(map(), map(), copy_doc(), {wh_json:json_terms(), wh_json:keys()}) ->
+                              {'ok', ne_binary()} |
+                              {'error', any()}.
+copy_attachments(_Src, Dst, CopySpec, {[], []}) ->
+    #copy_doc{dest_dbname = DestDbName
+                 ,dest_doc_id = DestDocId
+                } = CopySpec,
+    open_doc(Dst, DestDbName, DestDocId, []);
+copy_attachments(Src, Dst, CopySpec, {[JObj | JObjs], [Key | Keys]}) ->
+    #copy_doc{source_dbname = SourceDbName
+                 ,source_doc_id = SourceDocId
+                 ,dest_dbname = DestDbName
+                 ,dest_doc_id = DestDocId
+                } = CopySpec,
+    case kzs_attachments:fetch_attachment(Src, SourceDbName, SourceDocId, Key) of
+        {'ok', Contents} ->
+            ContentType = wh_json:get_value([<<"content_type">>], JObj),
+            Opts = [{'content_type', wh_util:to_list(ContentType)}],
+            case kz_datamgr:put_attachment(DestDbName, DestDocId, Key, Contents, Opts) of
+                {'ok', _AttachmentDoc} ->
+                    copy_attachments(Src, Dst, CopySpec, {JObjs, Keys});
+                Error -> Error
+            end;
+        Error -> Error
+    end.
+
+-spec maybe_set_account_db(api_binary(), ne_binary(), ne_binary()) -> wh_proplist().
+maybe_set_account_db(DB, DB, DestDbName) ->
+    [{<<"pvt_account_db">>, DestDbName}];
+maybe_set_account_db(_1, _, _) -> [].
+
+-spec move_doc(map(), map(), copy_doc(), wh_proplist()) ->
+                      {'ok', wh_json:object()} |
+                      data_error().
+move_doc(Src, Dst, CopySpec, Options) ->
+    #copy_doc{source_dbname = SourceDbName
+             ,source_doc_id = SourceDocId
+             } = CopySpec,
+    case copy_doc(Src, Dst, CopySpec, Options) of
+        {'ok', JObj} ->
+            _ = del_doc(Src, SourceDbName, SourceDocId, []),
+            {'ok', JObj};
+        Error -> Error
+     end.

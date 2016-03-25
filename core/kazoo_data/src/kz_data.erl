@@ -36,8 +36,6 @@
 -callback del_doc(_, _, _, _) -> any().
 -callback del_docs(_, _, _, _) -> any().
 -callback ensure_saved(_, _, _, _) -> any().
--callback copy_doc(_, _, _) -> any().
--callback move_doc(_, _, _) -> any().
 
 %% Attachment-related
 -callback fetch_attachment(_, _, _, _) -> any().

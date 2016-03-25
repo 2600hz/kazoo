@@ -1126,46 +1126,55 @@ maybe_convert_dbname(DbName) ->
 -spec copy_doc(ne_binary(), ne_binary(), wh_proplist()) ->
                       {'ok', wh_json:object()} |
                       data_error().
--spec copy_doc(ne_binary(), ne_binary(), api_binary(), wh_proplist()) ->
+-spec copy_doc(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
                       {'ok', wh_json:object()} |
                       data_error().
--spec copy_doc(ne_binary(), ne_binary(), api_binary(), api_binary(), wh_proplist()) ->
+-spec copy_doc(ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
                       {'ok', wh_json:object()} |
                       data_error().
+
 copy_doc(FromDB, FromId, Options) ->
-    copy_doc(FromDB, FromId, 'undefined', Options).
+    ToId = wh_util:rand_hex_binary(16),
+    copy_doc(FromDB, FromId, FromDB, ToId, Options).
+
 copy_doc(FromDB, FromId, ToDB, Options) ->
-    copy_doc(FromDB, FromId, ToDB, 'undefined', Options).
+    copy_doc(FromDB, FromId, ToDB, FromId, Options).
+
 copy_doc(FromDB, FromId, ToDB, ToId, Options) ->
-    kzs_doc:copy_doc(kzs_plan:plan(FromDB)
-                       ,#copy_doc{source_dbname=FromDB
-                                     ,source_doc_id=FromId
-                                     ,dest_dbname=ToDB
-                                     ,dest_doc_id=ToId
-                                     }
-                       ,Options).
+    Src = kzs_plan:plan(FromDB, Options),
+    Dst = kzs_plan:plan(ToDB, Options),
+    CopySpec = #copy_doc{source_dbname=FromDB
+                         ,source_doc_id=FromId
+                         ,dest_dbname=ToDB
+                         ,dest_doc_id=ToId
+                        },
+    kzs_doc:copy_doc(Src, Dst, CopySpec, Options).
 
 -spec move_doc(ne_binary(), ne_binary(), wh_proplist()) ->
                       {'ok', wh_json:object()} |
                       data_error().
--spec move_doc(ne_binary(), ne_binary(), api_binary(), wh_proplist()) ->
+-spec move_doc(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
                       {'ok', wh_json:object()} |
                       data_error().
--spec move_doc(ne_binary(), ne_binary(), api_binary(), api_binary(), wh_proplist()) ->
+-spec move_doc(ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
                       {'ok', wh_json:object()} |
                       data_error().
 move_doc(FromDB, FromId, Options) ->
-    move_doc(FromDB, FromId, 'undefined', Options).
+    ToId = wh_util:rand_hex_binary(16),
+    move_doc(FromDB, FromId, FromDB, ToId, Options).
+
 move_doc(FromDB, FromId, ToDB, Options) ->
-    move_doc(FromDB, FromId, ToDB, 'undefined', Options).
+    move_doc(FromDB, FromId, ToDB, FromId, Options).
+
 move_doc(FromDB, FromId, ToDB, ToId, Options) ->
-    kzs_doc:move_doc(kzs_plan:plan(FromDB)
-                       ,#copy_doc{source_dbname=FromDB
-                                     ,source_doc_id=FromId
-                                     ,dest_dbname=ToDB
-                                     ,dest_doc_id=ToId
-                                     }
-                       ,Options).
+    Src = kzs_plan:plan(FromDB, Options),
+    Dst = kzs_plan:plan(ToDB, Options),
+    CopySpec = #copy_doc{source_dbname=FromDB
+                         ,source_doc_id=FromId
+                         ,dest_dbname=ToDB
+                         ,dest_doc_id=ToId
+                        },
+    kzs_doc:move_doc(Src, Dst, CopySpec, Options).
 
 %%------------------------------------------------------------------------------
 %% @public

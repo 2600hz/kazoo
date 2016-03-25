@@ -36,7 +36,8 @@
 
 -type data_errors() :: 'not_found' | 'conflict' | 'failed' |
                             'precondition_failed' | 'db_not_reachable' |
-                            'db_not_found' | 'worker_is_dead' | 'invalid_db_name' |
+                            'db_not_found' | 'worker_is_dead' |
+                            'invalid_db_name' | 'invalid_doc_id' |
                             'unknown_req_id' | 'retry_later' |
                             'req_timedout' | 'sel_conn_closed' |
                             'invalid_view_name' | 'gateway_timeout' |

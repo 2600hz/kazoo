@@ -72,6 +72,7 @@ account_dataplan(AccountDb, <<"voicemail">>) ->
     lager:debug("VOICEMAIL ACCOUNT ID IS ~p", [AccountId]),
     #{tag => 'local'
      ,att_proxy => 'true'
+     ,att_handler => {kz_att_gdrive, #{}}
      ,server => kz_dataconnections:get_server(server_tag())
      };
 account_dataplan(AccountDb, _DocType) ->
