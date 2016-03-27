@@ -3,7 +3,7 @@
 runtime0=10  # seconds
 runtime1=11  # seconds
 runtime2=12  # seconds
-rel=whistle_apps  # whistle_apps | ecallmgr | ...
+rel=${REL:-whistle_apps}  # whistle_apps | ecallmgr | ...
 
 [[ ! -d _rel ]] && echo 'Cannot find _rel/ Is the release built?' && exit -1
 

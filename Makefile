@@ -85,7 +85,7 @@ rel/vm.args: rel/args rel/dev-vm.args
 release: ACT ?= console # start | attach | stop | console | foreground
 release: REL ?= whistle_apps # whistle_apps | ecallmgr | …
 release:
-ifneq ($(REL),whistle_apps)
+ifneq ($(findstring whistle_apps,$(REL)),whistle_apps)
 	@export KAZOO_APPS='ecallmgr'
 endif
 	@RELX_REPLACE_OS_VARS=true KZname='-name $(REL)' _rel/kazoo/bin/kazoo $(ACT) "$$@"
