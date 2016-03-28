@@ -112,7 +112,7 @@ allowed_methods(?INBOX, _Id) ->
     [?HTTP_GET, ?HTTP_DELETE];
 allowed_methods(?OUTBOX, _Id) ->
     [?HTTP_GET, ?HTTP_DELETE];
-allowed_methods(?OUTGOING, _Id) ->
+allowed_methods(?OUTGOING, _FaxJobId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 allowed_methods(?INBOX, _Id, ?ATTACHMENT) ->
