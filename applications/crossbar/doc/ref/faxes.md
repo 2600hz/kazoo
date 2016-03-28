@@ -151,131 +151,131 @@ curl -v -X POST \
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
 
 ```curl
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
 
 ```curl
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}
 
 ```curl
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}
 
 ```curl
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAX_ID}
 
 ```curl
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAX_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAX_ID}
 
 ```curl
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAX_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/faxes/smtplog/{_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/faxes/smtplog/{ATTEMPT_ID}
 
 ```curl
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/smtplog/{_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/smtplog/{ATTEMPT_ID}
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}/attachment
+> DELETE /v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAXJOB_ID}/attachment
 
 ```curl
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}/attachment
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAXJOB_ID}/attachment
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}/attachment
+> GET /v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAXJOB_ID}/attachment
 
 ```curl
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}/attachment
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAXJOB_ID}/attachment
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}/attachment
+> DELETE /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}/attachment
 
 ```curl
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}/attachment
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}/attachment
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}/attachment
+> GET /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}/attachment
 
 ```curl
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}/attachment
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}/attachment
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}/attachment
+> DELETE /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}/attachment
 
 ```curl
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}/attachment
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}/attachment
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}/attachment
+> GET /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}/attachment
 
 ```curl
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}/attachment
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}/attachment
 ```
 
