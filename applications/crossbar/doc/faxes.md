@@ -42,7 +42,7 @@ Key | Description | Type | Default | Required
 
 #### Create an outgoing fax
 
-Create a fax document that includes where to find the document to send. These are fetched by the `fax_jobs` worker and distributed to `fax_worker` processes.
+Create a fax document that includes where to find the document to send. These are fetched by the `fax_jobs` worker and distributed to `fax_worker` processes. You can fetch the status of the created job using the `faxes/outgoing/{FAX_ID}` path
 
 > PUT /v2/accounts/{ACCOUNT_ID}/faxes
 
@@ -52,8 +52,6 @@ curl -v -X PUT \
     -d '{"data":{"document":{"url":"http://myserver.com/fax.pdf","method":"get"},"retries":3,"from_name":"Test Fax","from_number":"18884732963","to_name":"To Name","to_number":"18884732963"}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes
 {
-    "auth_token":"{AUTH_TOKEN}",
-    "status":"success",
     "data":{
         "document":{
             "url":"http://myserver.com/fax.pdf",
@@ -66,18 +64,22 @@ curl -v -X PUT \
         "to_number":"18884732963",
         "attempts":0,
         "tx_result":{
-            "success":false,
             "error_message":"",
-            "pages_sent":0,
-            "time_elapsed":0,
             "fax_bad_rows":0,
-            "fax_speed":0,
-            "fax_receiver_id":"",
-            "fax_error_correction":false
+            "fax_error_correction":false,
+            "fax_receiver_id":""
+            ,"fax_speed":0,
+            "pages_sent":0,
+            "success":false,
+            "time_elapsed":0
         },
+        "fax_timezone":"undefined",
         "id":"{FAX_JOB_ID}"
     },
-    "revision":"1-f24d3c75c461e84935559360b8a3a7e4"
+    "revision":"1-53e7a67f473fe55d586a3b10dcca3ced",
+    "request_id":"{REQUEST_ID}",
+    "status":"success",
+    "auth_token":"{AUTH_TOKEN}"
 }
 ```
 
@@ -153,12 +155,45 @@ curl -v -X DELETE \
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
 
 ```curl
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "attempts": 0,
+        "created": 63626410973,
+        "delivered": "undefined",
+        "document": {
+            "method": "get",
+            "url": "http://myserver.com/fax.pdf"
+        },
+        "fax_timezone": "undefined",
+        "from_name": "Test Fax",
+        "from_number": "18884732963",
+        "id": "{FAXJOB_ID}",
+        "retries": 3,
+        "status": "pending",
+        "to_name": "To Name",
+        "to_number": "18884732963",
+        "tx_result": {
+            "error_message": "",
+            "fax_bad_rows": 0,
+            "fax_error_correction": false,
+            "fax_receiver_id": "",
+            "fax_speed": 0,
+            "pages_sent": 0,
+            "success": false,
+            "time_elapsed": 0
+        }
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "1-53e7a67f473fe55d586a3b10dcca3ced",
+    "status": "success"
+}
 ```
 
 #### Patch
