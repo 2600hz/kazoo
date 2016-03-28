@@ -7735,7 +7735,7 @@
             "get": {},
             "put": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}": {
             "delete": {},
             "get": {},
             "patch": {},
