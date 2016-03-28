@@ -111,42 +111,42 @@ curl -v -X GET \
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
 
 ```curl
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
 
 ```curl
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}
+> PATCH /v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
 
 ```curl
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}
+> POST /v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
 
 ```curl
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
 ```
 
 #### Remove
