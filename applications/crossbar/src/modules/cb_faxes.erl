@@ -104,22 +104,22 @@ allowed_methods(?OUTBOX) ->
 allowed_methods(?OUTGOING) ->
     [?HTTP_GET, ?HTTP_PUT].
 
-allowed_methods(?SMTP_LOG, _Id) ->
+allowed_methods(?SMTP_LOG, _AttemptId) ->
     [?HTTP_GET];
-allowed_methods(?INCOMING, _Id) ->
+allowed_methods(?INCOMING, _FaxId) ->
     [?HTTP_GET, ?HTTP_DELETE];
-allowed_methods(?INBOX, _Id) ->
+allowed_methods(?INBOX, _FaxId) ->
     [?HTTP_GET, ?HTTP_DELETE];
-allowed_methods(?OUTBOX, _Id) ->
+allowed_methods(?OUTBOX, _FaxId) ->
     [?HTTP_GET, ?HTTP_DELETE];
 allowed_methods(?OUTGOING, _FaxJobId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
-allowed_methods(?INBOX, _Id, ?ATTACHMENT) ->
+allowed_methods(?INBOX, _FaxId, ?ATTACHMENT) ->
     [?HTTP_GET, ?HTTP_DELETE];
-allowed_methods(?OUTBOX, _Id, ?ATTACHMENT) ->
+allowed_methods(?OUTBOX, _FaxId, ?ATTACHMENT) ->
     [?HTTP_GET, ?HTTP_DELETE];
-allowed_methods(?INCOMING, _Id, ?ATTACHMENT) ->
+allowed_methods(?INCOMING, _FaxJobId, ?ATTACHMENT) ->
     [?HTTP_GET, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
