@@ -203,7 +203,42 @@ curl -v -X GET \
 ```curl
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data":{"key":"value"}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "attempts": 0,
+        "created": 63626410973,
+        "delivered": "undefined",
+        "document": {
+            "method": "get",
+            "url": "http://myserver.com/fax.pdf"
+        },
+        "fax_timezone": "undefined",
+        "from_name": "Test Fax",
+        "from_number": "18884732963",
+        "id": "{FAXJOB_ID}",
+        "key": "value",
+        "retries": 3,
+        "status": "pending",
+        "to_name": "To Name",
+        "to_number": "18884732963",
+        "tx_result": {
+            "error_message": "",
+            "fax_bad_rows": 0,
+            "fax_error_correction": false,
+            "fax_receiver_id": "",
+            "fax_speed": 0,
+            "pages_sent": 0,
+            "success": false,
+            "time_elapsed": 0
+        }
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "1-53e7a67f473fe55d586a3b10dcca3ced",
+    "status": "success"
+}
 ```
 
 #### Change
@@ -213,7 +248,39 @@ curl -v -X PATCH \
 ```curl
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data":{"attempts": 0,"document": {"method": "get","url": "http://myserver.com/fax.pdf"},"fax_timezone": "undefined","from_name": "Test Fax","from_number": "18884732963","key": "value","retries": 3,"to_name": "To Name","to_number": "18884732963","tx_result": {"error_message": "","fax_bad_rows": 0,"fax_error_correction": false,"fax_receiver_id": "","fax_speed": 0,"pages_sent": 0,"success": false,"time_elapsed": 0}}}'
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
+{
+    "auth_token": "1c68b69845b569b0770f9cbcb0b901e6",
+    "data": {
+        "attempts": 0,
+        "document": {
+            "method": "get",
+            "url": "http://myserver.com/fax.pdf"
+        },
+        "fax_timezone": "undefined",
+        "from_name": "Test Fax",
+        "from_number": "18884732963",
+        "id": "{FAXJOB_ID}",
+        "key": "value",
+        "retries": 3,
+        "to_name": "To Name",
+        "to_number": "18884732963",
+        "tx_result": {
+            "error_message": "",
+            "fax_bad_rows": 0,
+            "fax_error_correction": false,
+            "fax_receiver_id": "",
+            "fax_speed": 0,
+            "pages_sent": 0,
+            "success": false,
+            "time_elapsed": 0
+        }
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "2-cc2b8bf363df8518c3d332bea2943c87",
+    "status": "success"
+}
 ```
 
 #### Remove
