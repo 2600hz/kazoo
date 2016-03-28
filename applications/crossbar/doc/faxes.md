@@ -2,6 +2,7 @@
 
 #### About Faxes
 
+The Faxes API exposes lots of ways to generate and fetch faxes.
 
 #### Schema
 
@@ -38,7 +39,6 @@ Key | Description | Type | Default | Required
 `tx_result.pages_sent` | The number of pages transmitted | `integer` | `0` | `false`
 `tx_result.success` | True if the fax transmission was successful | `boolean` | `false` | `false`
 `tx_result.time_elapsed` | The amount of time from submition to completion | `integer` | `0` | `false`
-
 
 #### Create an outgoing fax
 
@@ -85,15 +85,38 @@ curl -v -X PUT \
 
 #### Fetch
 
+Fetch a listing of all outgoing faxes. Use the "id" to fetch details about a particular job.
+
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/outgoing
 
 ```curl
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "created": 63626410973,
+            "from": "18884732963",
+            "id": "{FAXJOB_ID}",
+            "status": "pending",
+            "to": "18884732963"
+        }
+    ],
+    "page_size": 1,
+    "request_id": "{REQUEST_ID}",
+    "revision": "e7dc82251f713694d4ddd5a95bf3701c",
+    "start_key": [
+        "{START_KEY}"
+    ],
+    "status": "success"
+}
 ```
 
 #### Create
+
+This is identical to the `PUT /faxes` above.
 
 > PUT /v2/accounts/{ACCOUNT_ID}/faxes/outgoing
 
