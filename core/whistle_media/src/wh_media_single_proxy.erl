@@ -21,10 +21,12 @@ init({_Transport, _Proto}, Req0, _Opts) ->
         {[<<"tts">>, Id], Req1} ->
             init_from_tts(maybe_strip_extension(Id), Req1);
         {[?MEDIA_DB = Db, Id, Type, Rev, Attachment], Req1} ->
-            init_from_doc(Db, Id, Type, Rev, Attachment, Req1);
+            EncodedId = wh_util:to_binary(http_uri:encode(wh_util:to_list(Id))),
+            init_from_doc(Db, EncodedId, Type, Rev, Attachment, Req1);
         {[Db, Id, Type, Rev, Attachment], Req1} ->
             AccountDb = wh_util:format_account_id(Db, 'encoded'),
-            init_from_doc(AccountDb, Id, Type, Rev, Attachment, Req1)
+            EncodedId = wh_util:to_binary(http_uri:encode(wh_util:to_list(Id))),
+            init_from_doc(AccountDb, EncodedId, Type, Rev, Attachment, Req1)
     end.
 
 init_from_tts(Id, Req) ->
