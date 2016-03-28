@@ -7701,33 +7701,33 @@
         "/v2/accounts/{ACCOUNT_ID}/faxes/inbox": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}": {
             "delete": {},
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}/attachment": {
+        "/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}/attachment": {
             "delete": {},
             "get": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/faxes/incoming": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAXJOB_ID}/attachment": {
             "delete": {},
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}/attachment": {
+        "/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAX_ID}": {
             "delete": {},
             "get": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/faxes/outbox": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}": {
             "delete": {},
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}/attachment": {
+        "/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}/attachment": {
             "delete": {},
             "get": {}
         },
@@ -7744,7 +7744,7 @@
         "/v2/accounts/{ACCOUNT_ID}/faxes/smtplog": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/faxes/smtplog/{_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/faxes/smtplog/{ATTEMPT_ID}": {
             "get": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/freeswitch": {
