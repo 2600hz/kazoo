@@ -605,7 +605,9 @@ attachment_url(#state{storage=#fax_storage{id=FaxDocId
                                            ,db=AccountDb
                                           }
                      }) ->
-    Options = [{'content_type', kz_mime:from_extension(?FAX_EXTENSION)}],
+    Options = [{'content_type', kz_mime:from_extension(?FAX_EXTENSION)}
+               ,{'doc_type', <<"fax">>}
+              ],
     kz_datamgr:attachment_url(AccountDb, FaxDocId, AttachmentId, Options).
 
 %% -spec maybe_delete_attachments(ne_binary(), wh_json:object()) -> 'ok'.
