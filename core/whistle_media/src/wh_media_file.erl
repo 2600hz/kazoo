@@ -79,9 +79,26 @@ find_attachment([Db = ?MEDIA_DB, Id, Type, Rev, Attachment]) ->
                             ,att = Attachment
                             }
     };
-find_attachment([Db, Id, Type, Rev, Attachment]) ->
-    AccountDb =  wh_util:format_account_id(Db, 'encoded'),
+find_attachment([?MATCH_ACCOUNT_RAW(Account), Id, Type, Rev, Attachment]) ->
+    AccountDb =  wh_util:format_account_id(Account, 'encoded'),
     {'ok', #media_store_path{db = AccountDb
+                            ,id = Id
+                            ,type = Type
+                            ,rev = Rev
+                            ,att = Attachment
+                            }
+    };
+find_attachment([?MATCH_ACCOUNT_UNENCODED(Account), Id, Type, Rev, Attachment]) ->
+    AccountDb =  wh_util:format_account_id(Account, 'encoded'),
+    {'ok', #media_store_path{db = AccountDb
+                            ,id = Id
+                            ,type = Type
+                            ,rev = Rev
+                            ,att = Attachment
+                            }
+    };
+find_attachment([Db, Id, Type, Rev, Attachment]) ->
+    {'ok', #media_store_path{db = Db
                             ,id = Id
                             ,type = Type
                             ,rev = Rev

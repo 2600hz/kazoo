@@ -144,7 +144,8 @@ unauthorized_body() ->
 -spec handle(cowboy_req:req(), ne_binaries()) ->
                     {'ok', cowboy_req:req(), 'ok'}.
 handle(Req0, [Db, Id, Type, Rev, Attachment]) ->
-    Path = #media_store_path{db = Db
+    DbName = wh_util:to_binary(http_uri:encode(wh_util:to_list(Db))),
+    Path = #media_store_path{db = DbName
                             ,id = Id
                             ,type = Type
                             ,rev = Rev
@@ -162,6 +163,9 @@ is_appropriate_content_type(Path, Req0) ->
         {<<"video/", _/binary>> = CT, Req1}->
             lager:debug("found content-type via header: ~s", [CT]),
             ensure_extension_present(Path, CT, Req1);
+        {<<"image/", _/binary>> = CT, Req1}->
+            lager:debug("found content-type via header: ~s", [CT]),
+            ensure_extension_present(Path, CT, Req1);
         {_CT, Req1} ->
             lager:debug("inappropriate content-type via headers: ~s", [_CT]),
             is_appropriate_extension(Path, Req1)
@@ -176,6 +180,9 @@ is_appropriate_extension(#media_store_path{att=Attachment}=Path, Req0) ->
             lager:debug("found content-type via extension: ~s", [CT]),
             try_to_store(Path, CT, Req0);
         <<"video/", _/binary>> = CT->
+            lager:debug("found content-type via extension: ~s", [CT]),
+            try_to_store(Path, CT, Req0);
+        <<"image/", _/binary>> = CT->
             lager:debug("found content-type via extension: ~s", [CT]),
             try_to_store(Path, CT, Req0);
         _CT ->
@@ -208,17 +215,16 @@ try_to_store(#media_store_path{db=Db
                               ,rev=Rev
                               ,att=Attachment
                               }, CT, Req0) ->
-    DbName = wh_util:format_account_id(Db, 'encoded'),
     {'ok', Contents, Req1} = cowboy_req:body(Req0),
     Options = [{'content_type', wh_util:to_list(CT)}
                ,{'content_length', byte_size(Contents)}
                ,{'doc_type', Type}
                ,{'rev', Rev}
               ],
-    lager:debug("putting ~s onto ~s(~s): ~s", [Attachment, Id, DbName, CT]),
-    case kz_datamgr:put_attachment(DbName, Id, Attachment, Contents, Options) of
+    lager:debug("putting ~s onto ~s(~s): ~s", [Attachment, Id, Db, CT]),
+    case kz_datamgr:put_attachment(Db, Id, Attachment, Contents, Options) of
         {'ok', JObj} ->
-            lager:debug("successfully stored(~p) ~p ~p ~p", [CT, DbName, Id, Attachment]),
+            lager:debug("successfully stored(~p) ~p ~p ~p", [CT, Db, Id, Attachment]),
             {'ok', success(JObj, Req1), 'ok'};
         {'error', Reason} ->
             lager:debug("unable to store file: ~p", [Reason]),
