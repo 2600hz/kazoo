@@ -291,7 +291,7 @@ from_json(JObj) ->
        ,prev_assigned_to=wh_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)
        ,used_by=wh_json:get_value(?PVT_USED_BY, JObj)
        ,features=wh_json:get_value(?PVT_FEATURES, JObj)
-       ,state=wh_json:get_value(?PVT_STATE, JObj)
+       ,state = wh_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)
        ,reserve_history=wh_json:get_value(?PVT_RESERVE_HISTORY, JObj)
        ,ported_in=wh_json:get_value(?PVT_PORTED_IN, JObj)
        ,module_name=wh_json:get_value(?PVT_MODULE_NAME, JObj)

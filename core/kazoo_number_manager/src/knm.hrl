@@ -24,7 +24,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -define(LOG_WARN(F,A), ?debugFmt(F ++ "\n",A)).
 -define(LOG_DEBUG(F,A), ?debugFmt(F ++ "\n",A)).
--define(LOG_DEBUG(F),?debugFmt(F ++ "\n",[])).
+-define(LOG_DEBUG(F), ?debugFmt(F ++ "\n",[])).
 
 -define(TEST_CREATE_NUM, <<"+15559871234">>).
 -define(TEST_AVAILABLE_NUM, <<"+15551239876">>).

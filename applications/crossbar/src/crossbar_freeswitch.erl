@@ -325,7 +325,7 @@ maybe_export_numbers(Db, [Number|Numbers]) ->
     _ = case kz_datamgr:open_doc(Db, Number) of
             {'ok', JObj} ->
                 maybe_export_number(Number
-                                    ,wh_json:get_value(?PVT_STATE, JObj)
+                                    ,wh_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)
                                     ,wh_json:get_value(?PVT_ASSIGNED_TO, JObj)
                                    );
             {'error', _R} ->
