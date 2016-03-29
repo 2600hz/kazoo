@@ -7,12 +7,17 @@ MAKEDIRS = deps/Makefile \
 	   core/Makefile \
 	   applications/Makefile
 
-.PHONY: $(MAKEDIRS) core deps apps xref dialyze dialyze-apps dialyze-core dialyze-kazoo
+.PHONY: bottom-base $(MAKEDIRS) core deps apps xref dialyze dialyze-apps dialyze-core dialyze-kazoo
 
 all : compile
 
 compile: ACTION = all
-compile: $(MAKEDIRS)
+compile: bottom-base $(MAKEDIRS)
+
+bottom-base:
+	$(MAKE) -C deps/lager-* all
+	$(MAKE) -C deps/ amqp
+	$(MAKE) -C core/whistle-* all
 
 $(MAKEDIRS):
 	$(MAKE) -C $(@D) $(ACTION)
