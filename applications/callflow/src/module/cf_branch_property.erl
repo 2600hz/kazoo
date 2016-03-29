@@ -23,30 +23,25 @@
 
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    Scope = wh_json:get_binary_value(<<"scope">>, Data),
-    PointedField = wh_json:get_binary_value(<<"property">>, Data),
-    ChildName = case is_binary(PointedField) of
-                    'true' -> lookup_child_name(Scope, Call, PointedField);
-                    'false' ->
-                        lager:debug("value for \"property\" is unset"),
-                        'undefined'
-                end,
-    case is_binary(ChildName) of
-        'true' -> cf_exe:continue(ChildName, Call);
-        'false' -> cf_exe:continue(Call)
-    end.
+    ChildName = maybe_lookup_child_name(Data, Call, wh_json:get_binary_value(<<"property">>, Data)),
+    branch_to_child(ChildName, Call).
 
--spec lookup_child_name(api_binary(), whapps_call:call(), ne_binary()) -> api_binary().
-lookup_child_name(Scope, Call, Field) ->
-    case Scope of
-        <<"device">> -> targeted_lookup(Scope, Call, Field);
-        <<"user">> -> targeted_lookup(Scope, Call, Field);
-        <<"account">> -> targeted_lookup(Scope, Call, Field);
-        _ -> automatic_lookup(Call, Field)
-    end.
+-spec maybe_lookup_child_name(wh_json:object(), whapps_call:call(), api_binary()) -> api_binary().
+maybe_lookup_child_name(_Data, _Call, 'undefined') ->
+    lager:debug("value for \"property\" is unset"),
+    'undefined';
+maybe_lookup_child_name(Data, Call, Property) ->
+    choose_lookup_variant(wh_json:get_binary_value(<<"scope">>, Data), Call, Property).
 
--spec automatic_lookup(whapps_call:call(), ne_binary()) -> api_binary().
-automatic_lookup(Call, Field) ->
+-spec branch_to_child(api_binary(), whapps_call:call()) -> 'ok'.
+branch_to_child('undefined', Call) -> cf_exe:continue(Call);
+branch_to_child(ChildName, Call) -> cf_exe:continue(ChildName, Call).
+
+-spec choose_lookup_variant(api_binary(), whapps_call:call(), ne_binary()) -> api_binary().
+choose_lookup_variant(<<"device">> = Scope, Call, Field) -> targeted_lookup(Scope, Call, Field);
+choose_lookup_variant(<<"user">> = Scope, Call, Field) -> targeted_lookup(Scope, Call, Field);
+choose_lookup_variant(<<"account">> = Scope, Call, Field) -> targeted_lookup(Scope, Call, Field);
+choose_lookup_variant(_, Call, Field) ->
     case cf_endpoint:get(Call) of
         {'ok', JObj} -> wh_json:get_value(Field, JObj);
         _Else ->
@@ -55,23 +50,17 @@ automatic_lookup(Call, Field) ->
     end.
 
 -spec targeted_lookup(ne_binary(), whapps_call:call(), ne_binary()) -> api_binary().
+targeted_lookup(<<"account">>, Call, Field) -> lookup_childname(Call, whapps_call:account_id(Call), Field);
 targeted_lookup(Scope, Call, Field) ->
-    AuthId = whapps_call:authorizing_id(Call),
-    DocId = case {Scope, whapps_call:authorizing_type(Call)} of
-                      {<<"account">>, _} -> whapps_call:account_id(Call);
-                      {Same, Same} -> AuthId;
-                      {_, <<"device">>} -> lookup_device_owner(Call, AuthId);
-                      {_, <<"user">>} -> 'undefined';
-                      _Else ->
-                          lager:debug("unsupported authorizing type: ~s", [_Else]),
-                          'undefined'
-                  end,
-    case is_binary(DocId) of
-        'true' -> lookup_childname(Call, DocId, Field);
-        'false' ->
-            lager:debug("can not find document for current scope(~s)", [Scope]),
-            'undefined'
-    end.
+    DocId = check_auth_type(Scope, Call, whapps_call:authorizing_type(Call)),
+    lookup_childname(Call, DocId, Field).
+
+check_auth_type(Scope, Call, Scope) -> whapps_call:authorizing_id(Call);
+check_auth_type(_Scope, Call, <<"device">>) -> lookup_device_owner(Call, whapps_call:authorizing_id(Call));
+check_auth_type(_Scope, _Call, <<"user">>) -> 'undefined';
+check_auth_type(_Scope, _Call, _AuthType) ->
+      lager:debug("unsupported authorizing type: ~s", [_AuthType]),
+      'undefined'.
 
 -spec lookup_device_owner(whapps_call:call(), ne_binary()) -> api_binary().
 lookup_device_owner(Call, DeviceId) ->
@@ -83,6 +72,9 @@ lookup_device_owner(Call, DeviceId) ->
     end.
 
 -spec lookup_childname(whapps_call:call(), ne_binary(), ne_binary()) -> api_binary().
+lookup_childname(_Call, 'undefined', _Field) ->
+    lager:debug("can not find document for current scope"),
+    'undefined';
 lookup_childname(Call, DocId, Field) ->
     case kz_datamgr:open_cache_doc(whapps_call:account_db(Call), DocId) of
         {'ok', JObj} -> wh_json:get_binary_value(Field, wh_json:public_fields(JObj));
