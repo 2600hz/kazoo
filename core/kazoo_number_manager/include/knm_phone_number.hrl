@@ -25,6 +25,7 @@
 -define(PVT_USED_BY, <<"pvt_used_by">>).
 -define(PVT_FEATURES, <<"pvt_features">>).
 -define(PVT_STATE, <<"pvt_state">>).
+-define(PVT_STATE_LEGACY, <<"pvt_number_state">>).
 -define(PVT_RESERVE_HISTORY, <<"pvt_reserve_history">>).
 -define(PVT_PORTED_IN, <<"pvt_ported_in">>).
 -define(PVT_MODULE_NAME, <<"pvt_module_name">>).

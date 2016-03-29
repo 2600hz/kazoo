@@ -34,7 +34,7 @@ save(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     CurrentState = knm_phone_number:state(PhoneNumber),
     Doc = knm_phone_number:doc(PhoneNumber),
-    State = wh_json:get_ne_value(?PVT_STATE, Doc),
+    State = wh_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], Doc),
     save(Number, CurrentState, State).
 
 save(Number, ?NUMBER_STATE_PORT_IN, ?NUMBER_STATE_IN_SERVICE) ->
