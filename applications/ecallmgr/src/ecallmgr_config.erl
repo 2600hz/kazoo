@@ -204,10 +204,8 @@ maybe_cache_resp(_, _ , <<"undefined">>) -> 'ok';
 maybe_cache_resp(_, _ , <<"null">>) -> 'ok';
 maybe_cache_resp(Key, Node, Value) ->
     CacheProps = [{'origin', {'db', ?WH_CONFIG_DB, <<"ecallmgr">>}}],
-    kzc_cache:store(?ECALLMGR_UTIL_CACHE
-                         ,cache_key(Key, Node)
-                         ,Value
-                         ,CacheProps).
+    CacheKey = cache_key(Key, Node),
+    kzc_cache:store(?ECALLMGR_UTIL_CACHE, CacheKey, Value, CacheProps).
 
 -spec set(wh_json:key(), wh_json:json_term()) -> 'ok'.
 set(Key, Value) ->

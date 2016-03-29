@@ -59,23 +59,23 @@ maybe_authorize_channel(Props, Node) ->
     case kzd_freeswitch:channel_authorized(Props) of
         <<"true">> ->
             kzc_cache:store(?ECALLMGR_UTIL_CACHE
-                                 ,?AUTHZ_RESPONSE_KEY(CallId)
-                                 ,{'true', wh_json:new()}
-                                ),
+                            ,?AUTHZ_RESPONSE_KEY(CallId)
+                            ,{'true', wh_json:new()}
+                           ),
             'true';
         <<"false">> ->
             kzc_cache:store(?ECALLMGR_UTIL_CACHE
-                                 ,?AUTHZ_RESPONSE_KEY(CallId)
-                                 ,'false'
-                                ),
+                            ,?AUTHZ_RESPONSE_KEY(CallId)
+                            ,'false'
+                           ),
             'false';
         _Else ->
             case kzd_freeswitch:hunt_destination_number(Props) of
                 <<"conference">> ->
                     kzc_cache:store(?ECALLMGR_UTIL_CACHE
-                                         ,?AUTHZ_RESPONSE_KEY(CallId)
-                                         ,{'true', wh_json:new()}
-                                        ),
+                                    ,?AUTHZ_RESPONSE_KEY(CallId)
+                                    ,{'true', wh_json:new()}
+                                   ),
                     'true';
                 _Hunt ->
                     maybe_channel_recovering(Props, CallId, Node)
@@ -240,9 +240,9 @@ allow_call(Props, CallId, Node) ->
               ,{<<"Channel-Authorized">>, <<"true">>}
              ]),
     kzc_cache:store(?ECALLMGR_UTIL_CACHE
-                         ,?AUTHZ_RESPONSE_KEY(CallId)
-                         ,{'true', wh_json:from_list(Vars)}
-                        ),
+                    ,?AUTHZ_RESPONSE_KEY(CallId)
+                    ,{'true', wh_json:from_list(Vars)}
+                   ),
     _ = case props:is_true(<<"Call-Setup">>, Props, 'false') of
             'false' -> ecallmgr_fs_command:set(Node, CallId, Vars);
             'true' -> 'ok'
