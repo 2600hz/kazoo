@@ -4,11 +4,12 @@
   ,{id, "14f7c3cd-06f0-40a8-b750-2fda4cb06ea7"}
   ,{vsn, "4.0.0"}
   ,{modules, []}
-  ,{registered, [whistle_couch_cache, wh_couch_bootstrap, couch_compactor_fsm, whistle_couch_sup, wh_couch_connection_sup, wh_change_handler_sup, wh_couch_connections]}
+  ,{registered, [ ]}
   ,{applications, [ kernel
                   , stdlib
                   , crypto
                   , public_key
+
                   , couchbeam
                   , lager
                   ]}

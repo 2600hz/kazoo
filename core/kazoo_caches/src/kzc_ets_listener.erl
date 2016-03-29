@@ -10,6 +10,8 @@
 %%%-------------------------------------------------------------------
 -module(kzc_ets_listener).
 
+-include("kz_caches.hrl").
+
 -export([init/1
          ,handle_call/3
          ,handle_cast/2

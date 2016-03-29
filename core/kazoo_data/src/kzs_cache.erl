@@ -28,7 +28,7 @@
                             data_error() |
                             {'error', 'not_found'}.
 open_cache_doc(DbName, DocId, Options) ->
-    case kz_cache:peek_local(?KZ_DATA_CACHE, {?MODULE, DbName, DocId}) of
+    case kzc_cache:peek(?CACHE_NAME, {?MODULE, DbName, DocId}) of
         {'ok', {'error', _}=E} -> E;
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
@@ -88,7 +88,7 @@ add_to_doc_cache(DbName, DocId, CacheValue) ->
         'true' ->
            cache_if_not_media(CacheProps, DbName, DocId, CacheValue);
         'false' ->
-            kz_cache:store_local(?KZ_DATA_CACHE, {?MODULE, DbName, DocId}, CacheValue, CacheProps)
+            kzc_cache:store(?CACHE_NAME, {?MODULE, DbName, DocId}, CacheValue, CacheProps)
     end.
 
 -spec cache_if_not_media(wh_proplist(), ne_binary(), ne_binary(), wh_json:object() | data_error()) -> 'ok'.
@@ -105,7 +105,7 @@ cache_if_not_media(CacheProps, DbName, DocId, CacheValue) ->
         <<"media">> -> 'ok';
         <<"private_media">> -> 'ok';
         _Else ->
-            kz_cache:store_local(?KZ_DATA_CACHE, {?MODULE, DbName, DocId}, CacheValue, CacheProps)
+            kzc_cache:store(?CACHE_NAME, {?MODULE, DbName, DocId}, CacheValue, CacheProps)
     end.
 
 -spec flush_cache_doc(ne_binary() | db(), ne_binary() | wh_json:object()) -> 'ok'.
@@ -118,23 +118,24 @@ flush_cache_doc(Db, Doc) when is_binary(Db) ->
 flush_cache_doc(#db{name=Name}, Doc, Options) ->
     flush_cache_doc(wh_util:to_binary(Name), Doc, Options);
 flush_cache_doc(DbName, DocId, _Options) when is_binary(DocId) ->
-    kz_cache:erase_local(?KZ_DATA_CACHE, {?MODULE, DbName, DocId});
+    kzc_cache:erase(?CACHE_NAME, {?MODULE, DbName, DocId});
 flush_cache_doc(DbName, Doc, Options) ->
     flush_cache_doc(DbName, wh_doc:id(Doc), Options).
 
 -spec flush_cache_docs() -> 'ok'.
-flush_cache_docs() -> kz_cache:flush_local(?KZ_DATA_CACHE).
+flush_cache_docs() ->
+    kzc_cache:flush(?CACHE_NAME).
 
 -spec flush_cache_docs(ne_binary() | db()) -> 'ok'.
 flush_cache_docs(#db{name=Name}) ->
     flush_cache_docs(wh_util:to_binary(Name));
 flush_cache_docs(DbName) ->
     Filter = fun({?MODULE, DbName1, _DocId}=K, _) when DbName1 =:= DbName ->
-                     kz_cache:erase_local(?KZ_DATA_CACHE, K),
+                     kzc_cache:erase(?CACHE_NAME, K),
                      'true';
                 (_, _) -> 'false'
              end,
-    _ = kz_cache:filter_local(?KZ_DATA_CACHE, Filter),
+    _ = kzc_cache:filter(?CACHE_NAME, Filter),
     'ok'.
 
 -spec flush_cache_docs(ne_binary() | db(), ne_binaries() | wh_json:objects()) -> 'ok'.

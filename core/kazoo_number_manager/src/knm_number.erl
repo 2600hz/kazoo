@@ -591,14 +591,14 @@ lookup_account('undefined') -> {'error', 'not_reconcilable'};
 lookup_account(Num) ->
     NormalizedNum = knm_converters:normalize(Num),
     Key = {'account_lookup', NormalizedNum},
-    case kz_cache:peek_local(?KNM_CACHE, Key) of
+    case kzc_cache:peek(?CACHE_NAME, Key) of
         {'ok', Ok} -> Ok;
         {'error', 'not_found'} ->
             case fetch_account_from_number(NormalizedNum) of
                 {'ok', _, _}=Ok ->
                     NumberDb = knm_converters:to_db(NormalizedNum),
                     CacheProps = [{'origin', [{'db', NumberDb, NormalizedNum}]}],
-                    kz_cache:store_local(?KNM_CACHE, Key, Ok, CacheProps),
+                    kzc_cache:store(?CACHE_NAME, Key, Ok, CacheProps),
                     Ok;
                 Else -> Else
             end
