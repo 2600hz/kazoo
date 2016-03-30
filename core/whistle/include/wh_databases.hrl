@@ -26,7 +26,8 @@
 
 -define(KZ_PORT_REQUESTS_DB, <<"port_requests">>).
 
--define(KZ_OAUTH_DB,<<"oauth">>).
+-define(KZ_OAUTH_DB, <<"oauth">>).
+-define(KZ_DATA_DB, <<"system_data">>).
 
 -define(KZ_SYSTEM_DBS, [?WH_CONFIG_DB
                         ,?WH_SCHEMA_DB
@@ -46,6 +47,7 @@
                         ,?KZ_WEBHOOKS_DB
                         ,?KZ_TOKEN_DB
                         ,?WH_ALERTS_DB
+                        ,?KZ_DATA_DB
                        ]).
 
 -define(WH_DATABASES_HRL, 'true').
