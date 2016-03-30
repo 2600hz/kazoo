@@ -13,6 +13,7 @@
 -compile({'no_auto_import', [get_keys/1]}).
 
 -export([to_proplist/1, to_proplist/2]).
+-export([to_map/1, to_map/2]).
 -export([to_querystring/1]).
 -export([recursive_to_proplist/1]).
 
@@ -283,6 +284,26 @@ recursive_to_proplist(?JSON_WRAPPER(Props)) ->
 recursive_to_proplist(Props) when is_list(Props) ->
     [recursive_to_proplist(V) || V <- Props];
 recursive_to_proplist(Else) -> Else.
+
+-spec to_map(object() | objects()) -> map().
+-spec to_map(key(), object() | objects()) -> map().
+%% Convert a json object to a map
+to_map(JObjs) when is_list(JObjs) ->
+    lists:foldl(fun to_map_fold/2, #{}, JObjs);
+to_map(JObj) ->
+    maps:from_list(recursive_to_proplist(JObj)).
+
+%% convert everything starting at a specific key
+to_map(Key, JObj) ->
+    Props = recursive_to_proplist(get_json_value(Key, JObj, new())),
+    maps:from_list(Props).
+
+to_map_fold(JObj, #{}=Map) ->
+    Props = recursive_to_proplist(JObj),
+    maps:merge(Map, maps:from_list(Props)).
+    
+    
+
 
 %% Convert {key1:val1,key2:[v2_1, v2_2],key3:{k3_1:v3_1}} =>
 %%   key=val&key2[]=v2_1&key2[]=v2_2&key3[key3_1]=v3_1
@@ -865,7 +886,7 @@ replace_in_list(N, V1, [V | Vs], Acc) ->
                                 {'ok', wh_json:object()} |
                                 {'error', atom()}.
 
--spec load_fixture_from_file(atom(), nonempty_string() | ne_binary() | ne_binary()) ->
+-spec load_fixture_from_file(atom(), nonempty_string() | ne_binary(), ne_binary()) ->
                                 {'ok', wh_json:object()} |
                                 {'error', atom()}.
 
