@@ -291,16 +291,21 @@ recursive_to_proplist(Else) -> Else.
 to_map(JObjs) when is_list(JObjs) ->
     lists:foldl(fun to_map_fold/2, #{}, JObjs);
 to_map(JObj) ->
-    maps:from_list(recursive_to_proplist(JObj)).
+    recursive_to_map(JObj).
 
 %% convert everything starting at a specific key
 to_map(Key, JObj) ->
-    Props = recursive_to_proplist(get_json_value(Key, JObj, new())),
-    maps:from_list(Props).
+    recursive_to_map(get_json_value(Key, JObj, new())).
 
 to_map_fold(JObj, #{}=Map) ->
-    Props = recursive_to_proplist(JObj),
-    maps:merge(Map, maps:from_list(Props)).
+    maps:merge(Map, recursive_to_map(JObj)).
+
+-spec recursive_to_map(object() | objects() | wh_proplist()) -> map().
+recursive_to_map(?JSON_WRAPPER(Props)) ->
+    maps:from_list([{K, recursive_to_map(V)} || {K, V} <- Props]);
+recursive_to_map(Props) when is_list(Props) ->
+    maps:from_list([recursive_to_map(V) || V <- Props]);
+recursive_to_map(Else) -> Else.
 
 %% Convert {key1:val1,key2:[v2_1, v2_2],key3:{k3_1:v3_1}} =>
 %%   key=val&key2[]=v2_1&key2[]=v2_2&key3[key3_1]=v3_1
