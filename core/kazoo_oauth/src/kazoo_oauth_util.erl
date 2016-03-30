@@ -144,7 +144,7 @@ token(DocId) when is_binary(DocId) ->
         {'error', _R}=Error ->
             lager:debug("unable to get oauth doc ~s: ~p", [DocId, _R]),
             Error
-    end;
+    end.
 
 -spec token(api_binary() | oauth_app(), api_binary() | oauth_refresh_token()) ->
                    {'ok', oauth_token()} |
