@@ -301,9 +301,6 @@ to_map(Key, JObj) ->
 to_map_fold(JObj, #{}=Map) ->
     Props = recursive_to_proplist(JObj),
     maps:merge(Map, maps:from_list(Props)).
-    
-    
-
 
 %% Convert {key1:val1,key2:[v2_1, v2_2],key3:{k3_1:v3_1}} =>
 %%   key=val&key2[]=v2_1&key2[]=v2_2&key3[key3_1]=v3_1
