@@ -10,7 +10,7 @@
          ,get_oauth_app/1
          ,get_oauth_service_app/1
         ]).
--export([token/2
+-export([token/1, token/2
          ,verify_token/2
          ,refresh_token/1
          ,refresh_token/4
@@ -133,6 +133,18 @@ jwt(#oauth_service_app{private_key=PrivateKey
     Assertion = <<JWT64_HEADER/binary, ".", JWT64/binary, ".", JWT_SIGNATURE64/binary>>,
     _Verify = public_key:verify(JWT_FOR_SIGN, 'sha256', JWT_SIGNATURE, PublicKey),
     Assertion.
+
+-spec token(ne_binary()) -> {'ok', oauth_token()} | {'error', any()}.
+token(DocId) when is_binary(DocId) ->
+    case kz_datamgr:open_cache_doc(?KZ_OAUTH_DB, DocId) of
+        {'ok', JObj} ->
+            Tok = #oauth_refresh_token{token=wh_json:get_value(<<"refresh_token">>, JObj)},
+            AppId = wh_json:get_value(<<"app">>, JObj),
+            token(AppId, Tok);
+        {'error', _R}=Error ->
+            lager:debug("unable to get oauth doc ~s: ~p", [DocId, _R]),
+            Error
+    end;
 
 -spec token(api_binary() | oauth_app(), api_binary() | oauth_refresh_token()) ->
                    {'ok', oauth_token()} |
