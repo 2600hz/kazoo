@@ -187,8 +187,8 @@ get_sip_from(Props, _) ->
     Default = <<(props:get_value(<<"sip_from_user">>, Props, <<"nouser">>))/binary
                 ,"@"
                 ,(props:get_first_defined([?GET_CCV(<<"Realm">>)
-                                           ,<<"sip_from_host">>
                                            ,<<"variable_sip_from_host">>
+                                           ,<<"sip_from_host">>
                                           ], Props, ?DEFAULT_REALM))/binary
               >>,
     props:get_first_defined([<<"Channel-Presence-ID">>
@@ -201,8 +201,11 @@ get_sip_request(Props) ->
     [User | _] = binary:split(
                    props:get_first_defined(
                      [<<"Hunt-Destination-Number">>
+                      ,<<"Caller-Destination-Number">>
                       ,<<"variable_sip_req_uri">>
                       ,<<"variable_sip_to_user">>
+                      ,<<"sip_req_uri">>
+                      ,<<"sip_to_user">>
                      ], Props, <<"nouser">>), <<"@">>, ['global']),
     Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
                                      ,<<"variable_sip_auth_realm">>
@@ -210,6 +213,7 @@ get_sip_request(Props) ->
                                      ,<<"sip_auth_realm">>
                                      ,<<"sip_to_host">>
                                      ,<<"variable_sip_req_host">>
+                                     ,<<"sip_req_host">>
                                     ], Props, ?DEFAULT_REALM),
     <<User/binary, "@", Realm/binary>>.
 
