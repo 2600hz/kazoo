@@ -69,7 +69,7 @@
 
 -export([from_list/1, merge_jobjs/2]).
 
--export([load_fixture_from_file/2]).
+-export([load_fixture_from_file/2, load_fixture_from_file/3]).
 
 -export([normalize_jobj/1
          ,normalize_jobj/3
@@ -864,9 +864,17 @@ replace_in_list(N, V1, [V | Vs], Acc) ->
 -spec load_fixture_from_file(atom(), nonempty_string() | ne_binary()) ->
                                 {'ok', wh_json:object()} |
                                 {'error', atom()}.
+
+-spec load_fixture_from_file(atom(), nonempty_string() | ne_binary() | ne_binary()) ->
+                                {'ok', wh_json:object()} |
+                                {'error', atom()}.
+
 load_fixture_from_file(App, File) ->
-    Path = list_to_binary([code:priv_dir(App), "/couchdb/", wh_util:to_list(File)]),
-    lager:debug("read fixture from filesystem whapp ~s from CouchDB JSON file: ~s", [App, Path]),
+    load_fixture_from_file(App, <<"couchdb">>, File).
+
+load_fixture_from_file(App, Dir, File) ->
+    Path = list_to_binary([code:priv_dir(App), "/", wh_util:to_list(Dir), "/", wh_util:to_list(File)]),
+    lager:debug("read fixture from filesystem whapp ~s from JSON file: ~s", [App, Path]),
     try
         {'ok', Bin} = file:read_file(Path),
         decode(Bin)
