@@ -12,6 +12,7 @@
 %%% @contributors
 %%%   Karl Anderson
 %%%   James Aimonetti
+%%%   SIPLABS, LLC (Vladimir Potapev)
 %%%-------------------------------------------------------------------
 -module(cf_voicemail).
 
@@ -19,7 +20,9 @@
 -include_lib("whistle/src/wh_json.hrl").
 
 -export([handle/2]).
--export([new_message/4]).
+-export([new_message/4
+         ,update_doc/4
+        ]).
 
 -define(KEY_MEDIA_ID, <<"media_id">>).
 -define(KEY_VOICEMAIL, <<"voicemail">>).
@@ -122,6 +125,7 @@
           %% Post playbak
           ,keep = <<"1">>
           ,replay = <<"2">>
+          ,forward = <<"3">>
           ,prev = <<"4">>
           ,next = <<"6">>
           ,delete = <<"7">>
@@ -154,6 +158,7 @@
           ,notifications :: wh_json:object()
           ,after_notify_action = 'nothing' :: 'nothing' | 'delete' | 'save'
           ,interdigit_timeout = whapps_call_command:default_interdigit_timeout() :: pos_integer()
+          ,wrong_mailbox_prompt = 'undefined' :: api_binary()
           ,play_greeting_intro = 'false' :: boolean()
           ,use_person_not_available = 'false' :: boolean()
           ,not_configurable = 'false' :: boolean()
@@ -225,7 +230,10 @@ check_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}, _, Call, Loop) when
     'ok';
 check_mailbox(#mailbox{exists='false'}=Box, _ , Call, Loop) ->
     %% if the callflow did not define the mailbox to check then request the mailbox ID from the user
-    find_mailbox(Box, Call, Loop);
+    case find_mailbox(Box, <<"vm-enter_id">>, Call, Loop) of
+        {'ok', Profile, NewLoop} -> check_mailbox(Profile, Call, NewLoop);
+        'error' -> 'ok'
+    end;
 check_mailbox(#mailbox{require_pin='false'}=Box, 'true', Call, _) ->
     %% If this is the owner of the mailbox calling in and it doesn't require a pin then jump
     %% right to the main menu
@@ -273,17 +281,21 @@ check_mailbox(#mailbox{pin=Pin
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_mailbox(mailbox(), whapps_call:call(), non_neg_integer()) -> 'ok'.
-
-find_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}, Call, Loop) when Loop > MaxLoginAttempts ->
+-spec find_mailbox(mailbox(), api_binary(), whapps_call:call(), non_neg_integer()) ->
+                            {'ok', mailbox(), non_neg_integer()} | 'error'.
+find_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}, _VmEnterIdMedia, Call, Loop) when Loop > MaxLoginAttempts ->
     %% if we have exceeded the maximum loop attempts then terminate this call
     lager:info("maximum number of invalid attempts to find mailbox"),
     _ = whapps_call_command:b_prompt(<<"vm-abort">>, Call),
-    'ok';
-find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, Loop) ->
+    'error';
+find_mailbox(#mailbox{interdigit_timeout=Interdigit
+                      ,wrong_mailbox_prompt=WrongMailboxPrompt}=Box
+             ,VmEnterIdMedia
+             ,Call
+             ,Loop) ->
     lager:info("requesting mailbox number to check"),
 
-    NoopId = whapps_call_command:prompt(<<"vm-enter_id">>, Call),
+    NoopId = whapps_call_command:prompt(VmEnterIdMedia, Call),
 
     case whapps_call_command:collect_digits(?MAILBOX_DEFAULT_BOX_NUMBER_LENGTH
                                             ,whapps_call_command:default_collect_timeout()
@@ -293,7 +305,7 @@ find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, Loop) ->
                                            )
     of
         {'ok', <<>>} ->
-            find_mailbox(Box, Call, Loop + 1);
+            find_mailbox(Box, VmEnterIdMedia, Call, Loop + 1);
         {'ok', Mailbox} ->
             BoxNum = try wh_util:to_integer(Mailbox) catch _:_ -> 0 end,
             %% find the voicemail box, by making a fake 'callflow data payload' we look for it now because if the
@@ -303,22 +315,24 @@ find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, Loop) ->
             case couch_mgr:get_results(AccountDb, <<"vmboxes/listing_by_mailbox">>, ViewOptions) of
                 {'ok', []} ->
                     lager:info("mailbox ~s doesnt exist", [Mailbox]),
-                    find_mailbox(Box, Call, Loop + 1);
+                    is_binary(WrongMailboxPrompt) andalso whapps_call_command:b_prompt(WrongMailboxPrompt, Call),
+                    find_mailbox(Box, VmEnterIdMedia, Call, Loop + 1);
                 {'ok', [JObj]} ->
                     lager:info("get profile of ~p", [JObj]),
-                    ReqBox = get_mailbox_profile(
-                               wh_json:from_list([{<<"id">>, wh_doc:id(JObj)}])
-                               ,Call
-                              ),
-                    check_mailbox(ReqBox, Call, Loop);
+                    Profile = get_mailbox_profile(wh_json:from_list([{<<"id">>, wh_doc:id(JObj)}])
+                                                  ,Call
+                                                 ),
+                    {'ok', Profile, Loop};
                 {'ok', _} ->
                     lager:info("mailbox ~s is ambiguous", [Mailbox]),
-                    find_mailbox(Box, Call, Loop + 1);
+                    find_mailbox(Box, VmEnterIdMedia, Call, Loop + 1);
                 _E ->
                     lager:info("failed to find mailbox ~s: ~p", [Mailbox, _E]),
-                    find_mailbox(Box, Call, Loop + 1)
+                    find_mailbox(Box, VmEnterIdMedia, Call, Loop + 1)
             end;
-        _E -> lager:info("recv other: ~p", [_E])
+        _E ->
+            lager:info("recv other: ~p", [_E]),
+            'error'
     end.
 
 %%--------------------------------------------------------------------
@@ -773,12 +787,334 @@ play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{timezone=Timezone}=B
         {'ok', 'replay'} ->
             lager:info("caller choose to replay"),
             play_messages(Messages, PrevMessages, Count, Box, Call);
+        {'ok', 'forward'} ->
+            lager:info("caller choose to forward the message"),
+            forward_message(H, Box, Call),
+            play_messages(T, PrevMessages, Count, Box, Call);
         {'error', _} ->
             lager:info("error during message playback")
     end;
 play_messages([], _, _, _, _) ->
     lager:info("all messages in folder played to caller"),
     'complete'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Main function for forwarding a message to another vmbox of this account
+%% @end
+%%--------------------------------------------------------------------
+-spec forward_message(wh_json:object(), mailbox(), whapps_call:call()) -> 'ok'.
+forward_message(Message, SourceMailBox, Call) ->
+    lager:info("enter destination mailbox number"),
+    _ = whapps_call_command:b_flush(Call),
+    case find_mailbox(#mailbox{max_login_attempts=10
+                               ,wrong_mailbox_prompt= <<"menu-invalid_entry">>}
+                      ,<<"vm-enter_forward_id">>
+                      ,Call
+                      ,1
+                     )
+    of
+        {'ok', DestMailBox, _} ->
+            #mailbox{mailbox_id = SourceId} = SourceMailBox,
+            #mailbox{mailbox_id = DestId} = DestMailBox,
+            case SourceId of
+                DestId ->
+                    lager:info("source mailbox can't be a destination mailbox"),
+                    _ = whapps_call_command:b_prompt(<<"menu-invalid_entry">>, Call),
+                    forward_message(Message, SourceMailBox, Call);
+                _ ->
+                    perform_forward(SourceMailBox, DestMailBox, Message, Call)
+            end;
+        Err ->
+            lager:error("error when finding destination mailbox number: ~p", [Err]),
+            'ok'
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Internal function which forwards a message to another vmbox of this account
+%% @end
+%%--------------------------------------------------------------------
+-spec perform_forward(mailbox(), mailbox(), wh_json:object(), whapps_call:call()) -> 'ok'.
+perform_forward(#mailbox{mailbox_id = SrcId} = SourceMailBox
+                ,#mailbox{mailbox_id = DstId} = DestMailBox
+                ,Message
+                ,Call
+               ) ->
+    lager:info("perform voicemail forwarding"),
+    AccountDB = whapps_call:account_db(Call),
+    MediaId = wh_json:get_binary_value(?KEY_MEDIA_ID, Message),
+    % processing media
+    {'ok', OutSize, ForwardedMediaDocId} = update_media(Message, SourceMailBox, DestMailBox, Call),
+    {'ok', JSrcDoc} = couch_mgr:open_cache_doc(AccountDB, SrcId),
+    {'ok', JDstDoc} = couch_mgr:open_cache_doc(AccountDB, DstId),
+
+    NewSrcMsgs = lists:map(
+        fun (Msg) ->
+            case wh_json:get_binary_value(?KEY_MEDIA_ID, Msg) == MediaId of
+                % move original message in the original vmbox to "saved" folder
+                'true' -> wh_json:set_value(?VM_KEY_FOLDER, ?VM_FOLDER_SAVED, Msg);
+                _ -> Msg
+            end
+        end
+        ,wh_json:get_list_value(?VM_KEY_MESSAGES, JSrcDoc)),
+    Message1 = wh_json:set_values([{?VM_KEY_FOLDER, ?VM_FOLDER_NEW}
+                                   ,{<<"media_id">>, ForwardedMediaDocId}
+                                   ,{<<"length">>, OutSize}
+                                  ], Message),
+    NewDstMsgs = [Message1 | wh_json:get_list_value(?VM_KEY_MESSAGES, JDstDoc)],
+    JNewSrcDoc = wh_json:set_value(?VM_KEY_MESSAGES, NewSrcMsgs, JSrcDoc),
+    JNewDstDoc = wh_json:set_value(?VM_KEY_MESSAGES, NewDstMsgs, JDstDoc),
+    case couch_mgr:save_docs(AccountDB, [JNewSrcDoc, JNewDstDoc]) of
+        {'ok', _Objs} ->
+            lager:info("voicemail forward completed"),
+            send_mwi_update(DestMailBox, Call);
+        {'error', E} ->
+            lager:error("voicemail forward failed: ~p", [E])
+    end,
+    'ok'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Detecting of an .mp3 file sample rate. It needs to generate tone with the same sample rate as original record.
+%% @end
+%%--------------------------------------------------------------------
+-spec detect_file_sample_rate(ne_binary()) -> {'ok', api_binary()} |
+                                              {'error', 'detection_failed'}.
+detect_file_sample_rate(FilePath) ->
+    RateCmd = binary_to_list(wh_util:join_binary([<<"sox --i -r ">>, FilePath], <<" ">>)),
+    RateCmdOut = os:cmd(RateCmd),
+    RateCmdOut =:= [] orelse lager:debug("detect sample rate cmd out: ~ts", [RateCmdOut]),
+    case re:run(RateCmdOut, "^(\\d+).*$", [{'capture', [1], 'binary'}]) of
+        {'match', [RateStr]} ->
+            lager:debug("file ~p sample rate: ~p", [FilePath, RateStr]),
+            {'ok', RateStr};
+        _Else ->
+            {'error', 'detection_failed'}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Detecting of an .mp3 file sample rate. It needs to generate tone with the same sample rate as original record.
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_replace_by_resampled_message(ne_binary(), ne_binary()) -> {'ok', ne_binary()} |
+                                                                      {'error', any()}.
+maybe_replace_by_resampled_message(ResampledMessagePath, ForwardMessagePath) ->
+    case file:read_file(ResampledMessagePath) of
+        {'ok', _Res} ->
+            % replace original forwarded message by temp file
+            DelFileRes = wh_util:delete_file(ForwardMessagePath),
+            MoveFileRes = wh_util:rename_file(ResampledMessagePath, ForwardMessagePath),
+            case {DelFileRes, MoveFileRes} of
+                {'ok', 'ok'} ->
+                    lager:debug("set new resampled message ~p as forwarded message ~p"
+                                ,[ResampledMessagePath, ForwardMessagePath]),
+                    {'ok', _Res};
+                {{'error', Reason} = DelFileErr, _} ->
+                    lager:error("can't delete forwarded message: ~p", [Reason]),
+                    DelFileErr;
+                {_, {'error', Reason} = MoveFileErr} ->
+                    lager:error("can't move forwarded message: ~p", [Reason]),
+                    MoveFileErr
+            end;
+        {'error', _Reason} ->
+            lager:error("can't convert forwarded message to needed sample rate"),
+            {'error', _Reason}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Compares sample rate of accompanying message and original message to
+%% to understand that it should be replaced or not
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_should_convert(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> {'ok', ne_binary()} |
+                                                                                  {'error', any()}.
+maybe_should_convert(OrigMessagePath, OrigMsgSampleRate, ForwardMessagePath, ForwardedMsgSampleRateRes) ->
+    case ForwardedMsgSampleRateRes of
+        {'ok', OrigMsgSampleRate} ->
+            lager:debug("sample rates of original and forwarded messages are equal"),
+            {'ok', OrigMsgSampleRate};
+        {'ok', _ForwardedMsgSampleRate} ->
+            % need to convert forwarded message bitrate to original message's bitrate
+            Name1 = tmp_file(),
+            Name1Path = wh_util:join_binary([<<"/tmp/">>, Name1], <<>>),
+            Cmd = binary_to_list(wh_util:join_binary([<<"sox">>
+                                                      ,ForwardMessagePath
+                                                      ,<<"-r">>
+                                                      ,OrigMsgSampleRate
+                                                      ,Name1Path
+                                                     ], <<" ">>)),
+            CmdOut = os:cmd(Cmd),
+            CmdOut =:= [] orelse lager:debug("forwareded message resampling result: ~ts", [CmdOut]),
+            maybe_replace_by_resampled_message(Name1Path, ForwardMessagePath);
+        {'error', _Reason} ->
+            lager:error("can't detect sample rate for forwarded message ~p : ~p", [OrigMessagePath, _Reason]),
+            {'error', _Reason}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Updates media_filename value of actual mailbox
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_update_media_name(whapps_call:call(), ne_binary(), ne_binary(), ne_binary()) ->
+                             {'ok', integer(), ne_binary()} |
+                             {'error', any()}.
+maybe_update_media_name(Call, OutFileName, OutFileBin, ForwardMediaId) ->
+    case update_doc(<<"media_filename">>, OutFileName, ForwardMediaId, whapps_call:account_db(Call)) of
+        'ok' ->
+            {'ok', erlang:size(OutFileBin), ForwardMediaId};
+        {'error', Reason} ->
+            lager:error("failed to update media document ~p: ~p", [ForwardMediaId, Reason]),
+            {'error', Reason}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Stores resulted media (accompanying message, tome and original message) as attachment
+%% @end
+%%--------------------------------------------------------------------
+-spec store_current_attachment(whapps_call:call(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
+                              {'ok', integer(), ne_binary()} |
+                              {'error', any()}.
+store_current_attachment(Call, OrigMediaFileName, OutFileName, OutFileBin, ForwardMediaId) ->
+    case couch_mgr:put_attachment(whapps_call:account_db(Call), ForwardMediaId, OutFileName, OutFileBin) of
+        {'ok', _JObj} ->
+            % update media_name
+            maybe_update_media_name(Call, OutFileName, OutFileBin, ForwardMediaId);
+        {'error', Reason} ->
+            lager:error("failed to store attachment ~p to media document ~p: ~p", [OrigMediaFileName
+                                                                                   ,ForwardMediaId
+                                                                                   ,Reason]),
+            {'error', Reason}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Checks if resulted media (accompanying message, tome and original message) should be stored as attachment
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_store_current_attachment(whapps_call:call(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
+                                    {'ok', integer(), ne_binary()} |
+                                    {'error', any()}.
+maybe_store_current_attachment(Call, OutPath, OutFileName, OrigMediaFileName, ForwardMediaId) ->
+    case file:read_file(OutPath) of
+        {'ok', OutFileBin} ->
+            lager:debug("media converted, new length: ~p", [integer_to_list(byte_size(OutFileBin))]),
+            % storing current attachment
+            store_current_attachment(Call, OrigMediaFileName, OutFileName, OutFileBin, ForwardMediaId);
+        {'error', Reason} ->
+            lager:error("failed to concatenate all into ~p: ~p", [OutFileName, Reason]),
+            {'error', Reason}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Main private function which contains whole algorithm of an message forwarding
+%% @end
+%%--------------------------------------------------------------------
+-spec update_media(ne_binary(), mailbox(), mailbox(), whapps_call:call()) -> {'ok', integer(), ne_binary()} |
+                                                                             {'error', any()}.
+update_media(OrigMessage, _SourceMailBox, DestMailBox, Call) ->
+    lager:debug("update voicemail media"),
+    Tone = wh_json:from_list([{<<"Frequencies">>, [<<"440">>]}
+                              ,{<<"Duration-ON">>, <<"500">>}
+                              ,{<<"Duration-OFF">>, <<"100">>}
+                             ]),
+    % invite to record additional info for forwarding op
+    whapps_call_command:audio_macro([{'prompt', <<"vm-person_not_available">>}], Call),
+    whapps_call_command:tones([Tone], Call),
+
+    TmpMediaFileName = tmp_file(),
+    _ = whapps_call_command:b_record(TmpMediaFileName, Call),
+    % create new media document in destination vmbox to store forwarded message in it as attachment
+    ForwardMediaId = recording_media_doc(<<"forwarding message">>, DestMailBox, Call),
+    % store media in the document as temporary attachment
+    _ = store_recording(TmpMediaFileName, ForwardMediaId, Call),
+    % get forwarded message from document and store it on /tmp
+    {'ok', ForwardMessageBin} = couch_mgr:fetch_attachment(whapps_call:account_db(Call)
+                                                           ,ForwardMediaId
+                                                           ,TmpMediaFileName),
+    ForwardMessagePath = wh_util:join_binary([<<"/tmp/_">>, TmpMediaFileName], <<>>),
+    wh_util:write_file(ForwardMessagePath, ForwardMessageBin, ['write', 'binary']),
+    % delete temporary attachment
+    couch_mgr:delete_attachment(whapps_call:account_db(Call), ForwardMediaId, TmpMediaFileName),
+
+    % store orig message on /tmp
+    OrigMediaId = wh_json:get_binary_value(?KEY_MEDIA_ID, OrigMessage),
+    {'ok', JObj} = couch_mgr:open_cache_doc(whapps_call:account_db(Call), OrigMediaId),
+    OrigMediaFileName = wh_json:get_value(<<"media_filename">>, JObj),
+    {'ok', OrigMessageBin} = couch_mgr:fetch_attachment(whapps_call:account_db(Call), OrigMediaId, OrigMediaFileName),
+    OrigMessagePath = wh_util:join_binary([<<"/tmp/">>, OrigMediaFileName], <<>>),
+    wh_util:write_file(OrigMessagePath, OrigMessageBin, ['write', 'binary']),
+
+    % get sample rates for both mp3s
+    OrigMsgSampleRateRes = detect_file_sample_rate(OrigMessagePath),
+    ForwardedMsgSampleRateRes = detect_file_sample_rate(ForwardMessagePath),
+
+    ToneFileName = tmp_file(),
+    TonePath = wh_util:join_binary([<<"/tmp/">>, ToneFileName], <<>>),
+    Res = case OrigMsgSampleRateRes of
+            {'ok', OrigMsgSampleRate} ->
+                % generate tone as file
+                Duration = wh_json:get_integer_value(<<"Duration-ON">>, Tone),
+                ToneLen = wh_util:to_binary(Duration / ?MILLISECONDS_IN_SECOND),
+                [ToneFreq] = wh_json:get_value(<<"Frequencies">>, Tone),
+                ToneCmd = binary_to_list(wh_util:join_binary([<<"sox -r">>
+                                                              ,OrigMsgSampleRate
+                                                              ,<<"-n">>
+                                                              ,TonePath
+                                                              ,<<"synth">>
+                                                              ,ToneLen
+                                                              ,<<"sin">>
+                                                              ,ToneFreq
+                                                             ], <<" ">>)),
+                ToneCmdOut = os:cmd(ToneCmd),
+                ToneCmdOut =:= [] orelse lager:debug("tone generation result: ~ts", [ToneCmdOut]),
+                % check if should convert forwarded message to bitrate of original message
+                maybe_should_convert(OrigMessagePath, OrigMsgSampleRate, ForwardMessagePath, ForwardedMsgSampleRateRes);
+            {'error', _Reason} ->
+                lager:error("can't detect sample rate for original message ~p : ~p", [OrigMessagePath, _Reason]),
+                {'error', _Reason}
+        end,
+
+    OutFileName = tmp_file(),
+    OutPath = wh_util:join_binary([<<"/tmp/">>, OutFileName], <<>>),
+    Res2 = case Res of
+               {'ok', _} ->
+                   % * use sox pre_msg.mp3 beep.mp3 orig_msg2.mp3 forwarded_msg.mp3 to join two message
+                   Cmd1 = binary_to_list(wh_util:join_binary([<<"sox">>
+                                                              ,ForwardMessagePath
+                                                              ,TonePath
+                                                              ,OrigMessagePath
+                                                              ,OutPath
+                                                             ], <<" ">>)),
+                   CmdOut1 = os:cmd(Cmd1),
+                   CmdOut1 =:= [] orelse lager:debug("messages concatenation result: ~ts", [CmdOut1]),
+                   maybe_store_current_attachment(Call, OutPath, OutFileName, OrigMediaFileName, ForwardMediaId);
+               {'error', _} = E ->
+                   E
+           end,
+    wh_util:delete_file(ForwardMessagePath),
+    lager:debug("deleted forwarded message: ~p", [ForwardMessagePath]),
+    wh_util:delete_file(TonePath),
+    lager:debug("deleted tone message: ~p", [TonePath]),
+    wh_util:delete_file(OrigMessagePath),
+    lager:debug("deleted original message: ~p", [OrigMessagePath]),
+    wh_util:delete_file(OutPath),
+    lager:debug("deleted result message: ~p", [OutPath]),
+    Res2.
 
 -spec play_next_message(wh_json:objects(), wh_json:objects(), non_neg_integer(), mailbox(), whapps_call:call()) ->
                                'ok' | 'complete'.
@@ -813,6 +1149,7 @@ message_menu(Box, Call) ->
     message_menu([{'prompt', <<"vm-message_menu">>}], Box, Call).
 message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
                                          ,keep=Keep
+                                         ,forward=Forward
                                          ,delete=Delete
                                          ,prev=Prev
                                          ,next=Next
@@ -836,6 +1173,7 @@ message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
         {'ok', Replay} -> {'ok', 'replay'};
         {'ok', Prev} -> {'ok', 'prev'};
         {'ok', Next} -> {'ok', 'next'};
+        {'ok', Forward} -> {'ok', 'forward'};
         {'error', _}=E -> E;
         _ -> message_menu(Box, Call)
     end.
