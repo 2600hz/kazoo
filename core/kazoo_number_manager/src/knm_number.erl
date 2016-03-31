@@ -411,7 +411,7 @@ save(Number) ->
 %% @public
 %% @doc
 %% Note: option 'assigned_to' needs to be non-empty
-%% Note: option 'auth_by' needs to be non-empty
+%% Note: option 'auth_by' should always be MasterAccountId
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile(ne_binary(), knm_number_options:options()) ->
