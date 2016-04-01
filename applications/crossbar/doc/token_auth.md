@@ -12,46 +12,57 @@ The authentication token can be created with restrictions on what resource URIs 
 
 For example, when creating an authentication token via [API key](./api_authentication.md), include the following object to restrict the resultant authentication token to read-only:
 
-    {"data":{
-        "api_key":"{API_KEY}"
-        ,"restrictions":{
+```json
+{
+    "data":{
+        "api_key":"{API_KEY}",
+        "restrictions":{
             "get":["#"]
         }
-     }
     }
+}
+```
 
 AMQP binding tokens are used (`#` and `*`) to denote wildcards. An example with more fine-grained restrictions:
 
-    {"data":{
-        "api_key":"{API_KEY}"
-        ,"restrictions":{
+``json
+{
+    "data":{
+        "api_key":"{API_KEY}",
+        "restrictions":{
             "get":[
-                "accounts/{ACCOUNT_ID}/users"
-                ,"accounts/{ACCOUNT_ID}/users/*"
-                ,"accounts/{ACCOUNT_ID}/users/*/*"
-            ]
+                "accounts/{ACCOUNT_ID}/users",
+                "accounts/{ACCOUNT_ID}/users/*",
+                "accounts/{ACCOUNT_ID}/users/*/*"
+            ],
             "put":[
                 "accounts/{ACCOUNT_ID}/users"
-            ]
-            ,"post":[
+            ],
+            "post":[
                 "accounts/{ACCOUNT_ID}/users/*"
-            ]
-            ,"delete":[
+            ],
+            "delete":[
                 "accounts/{ACCOUNT_ID}/users/*"
             ]
         }
-     }
     }
+}
+```
 
 This would restrict the authentication token to only be able to access {ACCOUNT_ID}'s users resource and perform all of the CRUD actions (as well as quickcall and channel listings for a user). We can simply this restrictions object by using `*` for the method and `#` to match any URI with `/users`:
 
-    {"data":{
-        "api_key":"{API_KEY}"
-        ,"restrictions":{
-            "*":["accounts/{ACCOUNT_ID}/users/#"]
+```json
+{
+    "data":{
+        "api_key":"{API_KEY}",
+        "restrictions":{
+            "*":[
+                "accounts/{ACCOUNT_ID}/users/#"
+            ]
         }
-     }
     }
+}
+```
 
 Here the `#` matches 0 or more segments after `/users`.
 
@@ -65,4 +76,14 @@ URL segment: `/token_auth`
 
 If you'd like to invalidate an authentication token programmatically (versus letting the system expire the token), you can issue a `DELETE`:
 
-    curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/token_auth
+```shell
+curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/token_auth -d '{"data": {}}'
+```
+
+```json
+{
+    "request_id": "1465c97856e5a77636b7476cd59916f7",
+    "revision": "undefined",
+    "status": "success"
+}
+```
