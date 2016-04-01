@@ -25,12 +25,12 @@ curl -v -X PUT \
 
 #### Fetch
 
-> GET /v2/user_auth/{TOKEN}
+> GET /v2/accounts/{ACCOUNT_ID}/user_auth/{AUTH_TOKEN}
 
 ```curl
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/user_auth/{TOKEN}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/user_auth/{AUTH_TOKEN}
 ```
 
 #### Create
