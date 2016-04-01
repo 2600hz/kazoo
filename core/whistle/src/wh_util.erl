@@ -89,6 +89,8 @@
          ,iso8601/1
          ,pretty_print_elapsed_s/1
          ,decr_timeout/2
+         ,pretty_print_bytes/1
+         ,bin_usage/0, mem_usage/0
         ]).
 -export([microseconds_to_seconds/1
          ,milliseconds_to_seconds/1
@@ -1309,6 +1311,28 @@ unitfy_seconds(Seconds) ->
     D = Seconds div ?SECONDS_IN_DAY,
     [to_binary(D), "d", unitfy_seconds(Seconds - (D * ?SECONDS_IN_DAY))].
 
+-spec pretty_print_bytes(non_neg_integer()) -> ne_binary().
+pretty_print_bytes(0) -> <<"0B">>;
+pretty_print_bytes(Bytes) ->
+    iolist_to_binary(unitfy_bytes(Bytes)).
+
+-spec unitfy_bytes(non_neg_integer()) -> iolist().
+unitfy_bytes(0) -> "";
+unitfy_bytes(Bytes) when Bytes < ?BYTES_K  ->
+    [to_binary(Bytes), "B"];
+unitfy_bytes(Bytes) when Bytes < ?BYTES_M ->
+    K = Bytes div ?BYTES_K,
+    [to_binary(K), "K", unitfy_bytes(Bytes rem ?BYTES_K)];
+unitfy_bytes(Bytes) when Bytes < ?BYTES_G ->
+    M = Bytes div ?BYTES_M,
+    [to_binary(M), "M", unitfy_bytes(Bytes rem ?BYTES_M)];
+unitfy_bytes(Bytes) when Bytes < ?BYTES_T ->
+    G = Bytes div ?BYTES_G,
+    [to_binary(G), "G", unitfy_bytes(Bytes rem ?BYTES_G)];
+unitfy_bytes(Bytes) ->
+    T = Bytes div ?BYTES_T,
+    [to_binary(T), "T", unitfy_bytes(Bytes rem ?BYTES_T)].
+
 -spec decr_timeout(wh_timeout(), non_neg_integer() | wh_now()) -> wh_timeout().
 decr_timeout('infinity', _) -> 'infinity';
 decr_timeout(Timeout, Elapsed) when is_integer(Elapsed) ->
@@ -1393,6 +1417,16 @@ format_datetime() ->
 
 format_datetime(Timestamp) ->
     list_to_binary([format_date(Timestamp), " ", format_time(Timestamp)]).
+
+-spec bin_usage() -> integer().
+bin_usage() ->
+    {'ok', {_, Usage, _}} = recon_lib:proc_attrs(binary_memory, self()),
+    Usage.
+
+-spec mem_usage() -> integer().
+mem_usage() ->
+    {'memory', Memory} = erlang:process_info(self(), 'memory'),
+    Memory.
 
 -spec node_name() -> binary().
 -spec node_hostname() -> binary().

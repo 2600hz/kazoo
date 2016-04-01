@@ -94,6 +94,7 @@ rest_init(Req0, Opts) ->
               ,{fun cb_context:set_profile_id/2, ProfileId}
               ,{fun cb_context:set_api_version/2, Version}
               ,{fun cb_context:set_magic_pathed/2, props:is_defined('magic_path', Opts)}
+              ,{fun cb_context:store/3, 'metrics', metrics()}
               ],
 
     Context0 = cb_context:setters(cb_context:new(), Setters),
@@ -110,6 +111,10 @@ rest_init(Req0, Opts) ->
             lager:info("~s: ~s?~s from ~s", [Method, Path, QS, ClientIP]),
             {'ok', cowboy_req:set_resp_header(<<"x-request-id">>, ReqId, Req9), Context3}
     end.
+
+-spec metrics() -> {non_neg_integer(), non_neg_integer()}.
+metrics() ->
+    {wh_util:bin_usage(), wh_util:mem_usage()}.
 
 find_version(Path, Req) ->
     case cowboy_req:binding('version', Req) of
@@ -178,10 +183,30 @@ rest_terminate(Req, Context, ?HTTP_OPTIONS) ->
               ),
     _ = api_util:finish_request(Req, Context);
 rest_terminate(Req, Context, Verb) ->
-    lager:info("~s request fulfilled in ~p ms"
-               ,[Verb, wh_util:elapsed_ms(cb_context:start(Context))]
+    {ABin, AMem} = metrics(),
+    {BBin, BMem} = cb_context:fetch(Context, 'metrics'),
+
+    lager:info("~s request fulfilled in ~p ms ~s mem ~s bin"
+               ,[Verb, wh_util:elapsed_ms(cb_context:start(Context))
+                 ,pretty_metric(AMem - BMem)
+                 ,pretty_metric(ABin - BBin)
+                ]
               ),
     _ = api_util:finish_request(Req, Context).
+
+-spec pretty_metric(integer()) -> ne_binary().
+-spec pretty_metric(integer(), boolean()) -> ne_binary().
+pretty_metric(N) ->
+    pretty_metric(N, whapps_config:get_is_true(?CONFIG_CAT, <<"pretty_metrics">>, 'true')).
+
+pretty_metric(N, 'false') ->
+    wh_util:to_binary(N);
+pretty_metric(N, 'true') when N < 0 ->
+    NegN = N * -1,
+    PrettyN = wh_util:pretty_print_bytes(NegN),
+    <<"-", PrettyN/binary>>;
+pretty_metric(N, 'true') ->
+    wh_util:pretty_print_bytes(N).
 
 %%%===================================================================
 %%% CowboyHTTPRest API Callbacks

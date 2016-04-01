@@ -1,6 +1,7 @@
 DEPS = lager eiconv gen_smtp amqp_client cowboy jesse jiffy certifi couchbeam wsock zucchini \
        erlsom erlydtl exml escalus folsom detergent erlang_localtime \
-       nklib nksip gproc poolboy syslog lager_syslog eflame socketio hep ecsv reloader
+       nklib nksip gproc poolboy syslog lager_syslog eflame socketio hep ecsv reloader \
+	proper recon
 
 dep_escalus = hex 2.6.4
 dep_exml = git https://github.com/paulgray/exml 2.2.1
