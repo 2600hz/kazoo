@@ -1134,7 +1134,7 @@ on_successful_validation(Id, Context) ->
 
 -spec handle_missing_account_notification(cb_context:context(), ne_binary(), wh_proplist()) ->
                                                  cb_context:context().
-handle_missing_account_notification(Context, Id, [{<<"notifications">>, [Id, ?PREVIEW]}|_]) ->
+handle_missing_account_notification(Context, Id, [{<<"notifications">>, [_Id, ?PREVIEW]}|_]) ->
     lager:debug("preview request, ignoring if notification ~s is missing", [Id]),
     on_successful_validation(Id, Context);
 handle_missing_account_notification(Context, Id, _ReqNouns) ->
