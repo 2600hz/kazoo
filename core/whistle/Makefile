@@ -17,9 +17,6 @@ all: compile
 
 include $(ROOT)/make/kz.mk
 
-proper: ERLC_OPTS += -DPROPER
-proper: compile-test test
-
 clean-generated:
 	$(if $(wildcard src/kz_mime.erl), rm src/kz_mime.erl)
 

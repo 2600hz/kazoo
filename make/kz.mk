@@ -1,6 +1,6 @@
 ## Kazoo Makefile targets
 
-.PHONY: compile json compile-test clean clean-test eunit dialyze xref
+.PHONY: compile json compile-test clean clean-test eunit dialyze xref proper
 
 ## pipefail enforces that the command fails even when run through a pipe
 SHELL = /bin/bash -o pipefail
@@ -19,7 +19,6 @@ TEST_PA = -pa ebin/ $(foreach EBIN,$(TEST_EBINS),-pa $(EBIN))
 ## SOURCES provides a way to specify compilation order (left to right)
 SOURCES     ?= src/*.erl $(if $(wildcard src/*/*.erl), src/*/*.erl)
 TEST_SOURCES = $(SOURCES) $(if $(wildcard test/*.erl), test/*.erl)
-
 
 ## COMPILE_MOAR can contain Makefile-specific targets (see CLEAN_MOAR, compile-test)
 compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json
@@ -61,6 +60,8 @@ test: compile-test
 eunit:
 	ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
 
+proper: ERLC_OPTS += -DPROPER
+proper: compile-test test
 
 PLT ?= $(ROOT)/.kazoo.plt
 $(PLT):
