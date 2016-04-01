@@ -320,8 +320,8 @@ check_fs_node(Props) when is_list(Props) ->
 -spec get_value(api_terms(), ne_binary(), ne_binary()) -> api_binary().
 get_value(Props, Key, Default) when is_list(Props) ->
     get_value(Props, Key, fun props:get_value/3, Default);
-get_value(Props, Key, Default) ->
-    get_value(Props, Key, fun wh_json:get_value/3, Default).
+get_value(JObj, Key, Default) ->
+    get_value(JObj, Key, fun wh_json:get_value/3, Default).
 
 -spec get_value(api_terms(), ne_binary(), fun(), ne_binary()) -> api_binary().
 get_value(API, Key, Get, Default) ->

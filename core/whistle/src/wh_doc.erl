@@ -289,7 +289,10 @@ id(JObj, Default) ->
                                     ,<<"id">>
                                     ,<<"ID">>
                                     ,[<<"value">>, <<"id">>]
-                                   ], JObj, Default),
+                                   ]
+                                  ,JObj
+                                  ,Default
+                                  ),
     case wh_util:is_empty(Id) of
         'true' -> Default;
         'false' -> Id

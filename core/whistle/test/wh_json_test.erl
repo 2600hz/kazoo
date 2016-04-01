@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz
+%%% @copyright (C) 2011-2016, 2600Hz
 %%% @doc
 %%% proplists-like interface to json objects
 %%% @end
@@ -9,27 +9,31 @@
 %%%-------------------------------------------------------------------
 -module(wh_json_test).
 
+-include_lib("whistle/src/wh_json.hrl").
+
 -ifdef(PROPER).
 - include_lib("proper/include/proper.hrl").
 -endif.
 -include_lib("eunit/include/eunit.hrl").
 
--include_lib("whistle/src/wh_json.hrl").
-
 %% PropEr Testing
 -ifdef(PROPER).
 
+is_json_object_proper_test_() ->
+    {"Runs wh_json PropEr tests for is_json_object/1",
+     {'timeout', 10000, [?_assertEqual([], proper:module(?MODULE))]}}.
+
 prop_is_object() ->
     ?FORALL(JObj
-            ,wh_json:object()
-            ,?WHENFAIL(io:format("Failed prop_is_json_object ~p~n", [JObj])
+            ,object()
+            ,?WHENFAIL(io:format("Failed is_json_object with ~p~n", [JObj])
                        ,wh_json:is_json_object(JObj)
                       )
            ).
 
 prop_from_list() ->
     ?FORALL(Prop
-            ,wh_json:json_proplist()
+            ,json_proplist()
             ,?WHENFAIL(io:format("Failed prop_from_list with ~p~n", [Prop])
                        ,wh_json:is_json_object(wh_json:from_list(Prop))
                       )
@@ -37,7 +41,7 @@ prop_from_list() ->
 
 prop_get_value() ->
     ?FORALL(Prop
-            ,wh_json:json_proplist()
+            ,json_proplist()
             ,?WHENFAIL(io:format("Failed prop_get_value with ~p~n", [Prop])
                        ,begin
                             JObj = wh_json:from_list(Prop),
@@ -51,7 +55,7 @@ prop_get_value() ->
 
 prop_set_value() ->
     ?FORALL({JObj, Key, Value}
-            ,{wh_json:object(), wh_json:keys(), wh_json:json_term()}
+            ,{object(), keys(), json_term()}
             ,?WHENFAIL(io:format("Failed prop_set_value with ~p:~p -> ~p~n", [Key, Value, JObj]),
                        begin
                            JObj1 = wh_json:set_value(Key, Value, JObj),
@@ -101,12 +105,6 @@ merge_overrides_test() ->
 
     ?assertEqual(1, wh_json:get_value(Key, ?SP)),
     ?assertEqual(20, wh_json:get_value(Key, AP)).
-
--ifdef(PROPER).
-is_json_object_proper_test_() ->
-    {"Runs wh_json PropEr tests for is_json_object/1",
-     {'timeout', 10000, [?_assertEqual([], proper:module(?MODULE))]}}.
--endif.
 
 is_empty_test() ->
     ?assertEqual('true', wh_json:is_empty(wh_json:new())),

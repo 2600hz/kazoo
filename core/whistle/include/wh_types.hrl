@@ -38,7 +38,7 @@
 -type pid_ref() :: {pid(), reference()}.
 -type pid_refs() :: [pid_ref()].
 
--type api_terms() :: wh_json:object() | wh_json:json_proplist().
+-type api_terms() :: wh_json:object() | wh_proplist().
 -type api_binary() :: binary() | 'undefined'.
 -type api_binaries() :: [api_binary()] | 'undefined'.
 -type api_object() :: wh_json:object() | 'undefined'.
