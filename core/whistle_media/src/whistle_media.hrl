@@ -1,4 +1,4 @@
--ifndef(WH_MEDIA_HRL).
+-ifndef(WHISTLE_MEDIA_HRL).
 
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_media.hrl").
@@ -63,5 +63,5 @@
 
 -type media_store_path() :: #media_store_path{}.
 
--define(WH_MEDIA_HRL, 'true').
+-define(WHISTLE_MEDIA_HRL, 'true').
 -endif.

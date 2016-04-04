@@ -1,4 +1,4 @@
--ifndef(KZ_IPS_HRL).
+-ifndef(KAZOO_IPS_HRL).
 
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
@@ -8,5 +8,5 @@
 -define(ASSIGNED, <<"assigned">>).
 -define(PVT_TYPE, <<"dedicated_ip">>).
 
--define(KZ_IPS_HRL, 'true').
+-define(KAZOO_IPS_HRL, 'true').
 -endif.
