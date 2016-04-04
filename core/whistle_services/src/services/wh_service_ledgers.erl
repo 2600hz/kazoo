@@ -12,7 +12,7 @@
 
 -define(CATEGORY, <<"ledgers">>).
 
--include("../whistle_services.hrl").
+-include("whistle_services.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
