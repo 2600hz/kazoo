@@ -459,24 +459,31 @@ load_docs(Context, Filter) when is_function(Filter, 2) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load_attachment(ne_binary() | wh_json:object(), ne_binary(), cb_context:context()) ->
+-spec load_attachment(kazoo_data:docid() | wh_json:object(), ne_binary(), cb_context:context()) ->
                              cb_context:context().
+load_attachment({DocType, DocId}, AName, Context) ->
+    load_attachment(DocId, AName, [{'doc_type', DocType}], Context);
 load_attachment(DocId, AName, Context) when is_binary(DocId) ->
-    case kz_datamgr:fetch_attachment(cb_context:account_db(Context), DocId, AName) of
+    load_attachment(DocId, AName, [], Context);
+load_attachment(Doc, AName, Context) ->
+    load_attachment({wh_doc:type(Doc), wh_doc:id(Doc)}, AName, Context).
+
+-spec load_attachment(ne_binary(), ne_binary(), wh_proplist(), cb_context:context()) ->
+                             cb_context:context().
+load_attachment(DocId, AName, Options, Context) ->
+    case kz_datamgr:fetch_attachment(cb_context:account_db(Context), DocId, AName, Options) of
         {'error', Error} -> handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', AttachBin} ->
             lager:debug("loaded attachment ~s from doc ~s from db ~s"
                         ,[AName, DocId, cb_context:account_db(Context)]
                        ),
-            Context1 = load(DocId, Context),
+            Context1 = load(DocId, Context, Options),
             'success' = cb_context:resp_status(Context1),
             cb_context:setters(Context1
                                ,[{fun cb_context:set_resp_data/2, AttachBin}
                                  ,{fun cb_context:set_resp_etag/2, rev_to_etag(cb_context:doc(Context1))}
                                 ])
     end;
-load_attachment(Doc, AName, Context) ->
-    load_attachment(wh_doc:id(Doc), AName, Context).
 
 %%--------------------------------------------------------------------
 %% @public
