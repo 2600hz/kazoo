@@ -505,8 +505,11 @@ start_key(Options, Context) ->
 start_key_fun(Options, Context) ->
     case props:get_value('startkey', Options) of
         'undefined' ->
-            lager:debug("getting start_key from request: ~p", [ cb_context:req_value(Context, <<"start_key">>)]),
-            cb_context:req_value(Context, <<"start_key">>);
+            StartKey = cb_context:req_value(Context, <<"start_key">>),
+            lager:debug("getting start_key from request: ~p"
+                       ,[StartKey]
+                       ),
+            StartKey;
         StartKey ->
             lager:debug("getting start_key from options: ~p", [StartKey]),
             StartKey

@@ -26,6 +26,7 @@
         ,db_delete/1
         ,db_replicate/1
         ,db_archive/1, db_archive/2
+        ,db_import/2
         ,db_list/0, db_list/1
         ]).
 
@@ -482,6 +483,13 @@ db_archive(DbName, Filename) ->
         {'error', _}=E -> E
     end.
 
+db_import(DbName, ArchiveFile) when ?VALID_DBNAME ->
+    kzs_db:db_archive(kzs_plan:plan(DbName), DbName, ArchiveFile);
+db_import(DbName, ArchiveFile) ->
+    case maybe_convert_dbname(DbName) of
+        {'ok', Db} -> db_archive(Db, ArchiveFile);
+        {'error', _}=E -> E
+    end.
 
 %%%===================================================================
 %%% Document Functions

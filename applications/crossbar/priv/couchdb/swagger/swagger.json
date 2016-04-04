@@ -5902,32 +5902,6 @@
             "required": true,
             "type": "object"
         },
-        "queue_update": {
-            "description": "Schema for queue update request",
-            "name": "Call Update",
-            "properties": {
-                "action": {
-                    "description": "Action to perform",
-                    "enum": [
-                        "login",
-                        "logout"
-                    ],
-                    "name": "Action",
-                    "required": true,
-                    "type": "string"
-                },
-                "queue_id": {
-                    "description": "Queue Identifier",
-                    "maxLength": 128,
-                    "minLength": 1,
-                    "name": "Queue ID",
-                    "required": true,
-                    "type": "string"
-                }
-            },
-            "required": true,
-            "type": "object"
-        },
         "queues": {
             "description": "Call Queues - FIFO call queues for serializing callers connecting to agents",
             "name": "Call Queue",
@@ -8454,10 +8428,13 @@
         "/v2/accounts/{ACCOUNT_ID}/cdrs": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/cdrs/legs/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/cdrs/interaction": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/cdrs/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/cdrs/legs/{INTERACTION_ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/cdrs/{CDR_ID}": {
             "get": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/channels": {
