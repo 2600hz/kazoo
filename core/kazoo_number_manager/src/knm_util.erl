@@ -23,7 +23,7 @@ get_all_number_dbs() ->
                    ,{'endkey', <<?KNM_DB_PREFIX_L, "\ufff0">>}
                   ],
     {'ok', Dbs} = kz_datamgr:db_list(ViewOptions),
-    [cow_qs:urlencode(Db) || Db <- Dbs].
+    [kz_http_util:urlencode(Db) || Db <- Dbs].
 
 -spec pretty_print(ne_binary()) -> ne_binary().
 pretty_print(Number) ->

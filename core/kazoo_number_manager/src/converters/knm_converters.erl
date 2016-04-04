@@ -168,7 +168,7 @@ to_1npan(Num) ->
 %%--------------------------------------------------------------------
 -spec to_db(<<_:40,_:_*8>>) -> api_binary().
 to_db(<<NumPrefix:5/binary, _/binary>>) ->
-    cow_qs:urlencode(<<?KNM_DB_PREFIX/binary, NumPrefix/binary>>);
+    kz_http_util:urlencode(<<?KNM_DB_PREFIX/binary, NumPrefix/binary>>);
 to_db(_) ->
     'undefined'.
 

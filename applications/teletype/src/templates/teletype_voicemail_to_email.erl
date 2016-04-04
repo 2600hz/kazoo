@@ -181,7 +181,7 @@ get_file_name(MediaJObj, Macros) ->
     Extension = get_extension(MediaJObj),
     FileName = list_to_binary([CallerID, "_", wh_util:pretty_print_datetime(LocalDateTime), ".", Extension]),
 
-    cow_qs:urlencode(
+    kz_http_util:urlencode(
       binary:replace(wh_util:to_lower_binary(FileName), <<" ">>, <<"_">>)
      ).
 

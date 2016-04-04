@@ -930,7 +930,7 @@ update_template(Context, Id, FileJObj) ->
 
 -spec attachment_name_by_content_type(ne_binary()) -> ne_binary().
 attachment_name_by_content_type(CT) ->
-    <<"template.", (cow_qs:urlencode(CT))/binary>>.
+    <<"template.", (kz_http_util:urlencode(CT))/binary>>.
 
 -spec attachment_name_by_media_type(ne_binary()) -> ne_binary().
 attachment_name_by_media_type(CT) ->
