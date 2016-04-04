@@ -40,7 +40,11 @@ plan(DbName, DocType)
   when is_atom(DocType) ->
     plan(DbName, wh_util:to_binary(DocType)).
 
--spec plan(ne_binary(), ne_binary(), api_binary()) -> map().
+-spec plan(ne_binary(), api_binary(), api_binary()) -> map().
+plan(DbName, 'undefined', 'undefined') ->
+    get_dataplan(DbName);
+plan(DbName, DocType, 'undefined') ->
+    get_dataplan(DbName, DocType);
 plan(DbName, DocType, DocOwner) ->
     get_dataplan(DbName, DocType, DocOwner).
 
@@ -51,6 +55,8 @@ get_dataplan(DBName) ->
         Else -> system_dataplan(DBName, Else)
     end.
 
+get_dataplan(DBName, 'undefined') ->
+    get_dataplan(DBName);
 get_dataplan(DBName, DocType) ->
     case kzs_util:db_classification(DBName) of
         'modb' -> account_modb_dataplan(DBName, DocType);
@@ -72,7 +78,8 @@ system_dataplan() ->
 
 system_dataplan(DBName, _Classification)
   when DBName == ?WH_CONFIG_DB;
-       DBName == ?KZ_DATA_DB ->
+       DBName == ?KZ_DATA_DB;
+       DBName == ?WH_SERVICES_DB ->
     SysTag = 'local',
     #{tag => SysTag, server => kz_dataconnections:get_server(SysTag)};
 system_dataplan(_DBName, 'numbers') ->
@@ -85,7 +92,7 @@ system_dataplan(DBName, _Classification) ->
 account_dataplan(AccountDb) ->
     AccountId = wh_util:format_account_id(AccountDb),
     Plan = fetch_dataplan([?SYSTEM_DATAPLAN
-                          ,wh_services:find_reseller_id(AccountId)
+                          ,reseller_id(AccountId)
                           ,AccountId
                           ]),
     dataplan_match(<<"account">>, Plan).
@@ -95,7 +102,7 @@ account_dataplan(AccountDb, 'undefined') ->
 account_dataplan(AccountDb, DocType) ->
     AccountId = wh_util:format_account_id(AccountDb),
     Plan = fetch_dataplan([?SYSTEM_DATAPLAN
-                          ,wh_services:find_reseller_id(AccountId)
+                          ,reseller_id(AccountId)
                           ,AccountId
                           ]),
     dataplan_match(<<"account">>, DocType, Plan).
@@ -105,7 +112,7 @@ account_dataplan(AccountDb, DocType, 'undefined') ->
 account_dataplan(AccountDb, DocType, DocOwner) ->
     AccountId = wh_util:format_account_id(AccountDb),
     Plan = fetch_dataplan([?SYSTEM_DATAPLAN
-                          ,wh_services:find_reseller_id(AccountId)
+                          ,reseller_id(AccountId)
                           ,AccountId
                           ,DocOwner
                           ]),
@@ -114,7 +121,7 @@ account_dataplan(AccountDb, DocType, DocOwner) ->
 account_modb_dataplan(AccountMODB) ->
     AccountId = wh_util:format_account_id(AccountMODB),
     Plan = fetch_dataplan([?SYSTEM_DATAPLAN
-                          ,wh_services:find_reseller_id(AccountId)
+                          ,reseller_id(AccountId)
                           ,AccountId
                           ]),
     dataplan_match(<<"modb">>, Plan).
@@ -124,7 +131,7 @@ account_modb_dataplan(AccountMODB, 'undefined') ->
 account_modb_dataplan(AccountMODB, DocType) ->
     AccountId = wh_util:format_account_id(AccountMODB),
     Plan = fetch_dataplan([?SYSTEM_DATAPLAN
-                          ,wh_services:find_reseller_id(AccountId)
+                          ,reseller_id(AccountId)
                           ,AccountId
                           ]),
     dataplan_match(<<"modb">>, DocType, Plan).
@@ -134,11 +141,19 @@ account_modb_dataplan(AccountMODB, DocType, 'undefined') ->
 account_modb_dataplan(AccountMODB, DocType, DocOwner) ->
     AccountId = wh_util:format_account_id(AccountMODB),
     Plan = fetch_dataplan([?SYSTEM_DATAPLAN
-                          ,wh_services:find_reseller_id(AccountId)
+                          ,reseller_id(AccountId)
                           ,AccountId
                           ,DocOwner
                           ]),
     dataplan_match(<<"modb">>, DocType, Plan).
+
+reseller_id(AccountId) ->
+    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+    reseller_id(AccountId, MasterAccountId).
+
+reseller_id(AccountId, AccountId) -> 'undefined';
+reseller_id(AccountId, _MasterAccountId) ->
+    wh_services:find_reseller_id(AccountId).
 
 -spec dataplan_connections(map(),map()) -> [{atom(), server()}].
 dataplan_connections(Map, Index) ->
@@ -240,7 +255,7 @@ fetch_dataplans([Key | Keys], Plan) ->
 
 fetch_dataplan(Keys)
   when is_list(Keys) ->
-    fetch_dataplans(Keys);
+    fetch_dataplans([K || K <- Keys, K =/= 'undefined']);
 fetch_dataplan(Id) ->
     case kz_datamgr:open_cache_doc(?KZ_DATA_DB, Id, ['cache_failures']) of
         {'ok', JObj} -> JObj;
