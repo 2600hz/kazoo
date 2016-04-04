@@ -15,6 +15,7 @@
          ,get_results/4
          ,get_results_count/4
          ,all_docs/3
+         ,doc_type_from_view/2
         ]).
 
 -include("kz_data.hrl").
@@ -29,7 +30,8 @@ design_info(#{server := {App, Conn}}, DBName, Design) -> App:design_info(Conn, D
 -spec all_design_docs(map(), ne_binary(), view_options()) ->
                              {'ok', wh_json:objects()} |
                              data_error().
-all_design_docs(#{server := {App, Conn}}, DBName, Options) -> App:all_design_docs(Conn, DBName, Options).
+all_design_docs(#{server := {App, Conn}}, DBName, Options) ->
+    App:all_design_docs(Conn, DBName, Options).
 
 -spec all_docs(map(), ne_binary(), view_options()) ->
                       {'ok', wh_json:objects()} |
@@ -51,3 +53,10 @@ get_results(#{server := {App, Conn}}, DbName, DesignDoc, ViewOptions) ->
                                data_error().
 get_results_count(#{server := {App, Conn}}, DbName, DesignDoc, ViewOptions) ->
     App:get_results_count(Conn, DbName, DesignDoc, ViewOptions).
+
+-spec doc_type_from_view(ne_binary(), ne_binary()) -> api_binary() | api_binaries().
+doc_type_from_view(<<"faxes">>, _ViewName) -> <<"fax">>;
+doc_type_from_view(<<"cdrs">>, _ViewName) -> <<"cdr">>;
+doc_type_from_view(<<"recordings">>, _ViewName) -> <<"call_recording">>;
+doc_type_from_view(<<"sms">>, _ViewName) -> <<"sms">>;
+doc_type_from_view(_ViewType, _ViewName) -> 'undefined'.

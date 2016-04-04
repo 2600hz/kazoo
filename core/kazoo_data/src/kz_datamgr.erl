@@ -985,7 +985,8 @@ get_results(DbName, DesignDoc) ->
     get_results(DbName, DesignDoc, []).
 
 get_results(DbName, DesignDoc, Options) when ?VALID_DBNAME ->
-    kzs_view:get_results(kzs_plan:plan(DbName, Options), DbName, DesignDoc, Options);
+    Opts = maybe_add_doc_type_from_view(DesignDoc, Options),
+    kzs_view:get_results(kzs_plan:plan(DbName, Opts), DbName, DesignDoc, Options);
 get_results(DbName, DesignDoc, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> get_results(Db, DesignDoc, Options);
@@ -993,7 +994,8 @@ get_results(DbName, DesignDoc, Options) ->
     end.
 
 get_results_count(DbName, DesignDoc, Options) ->
-    kzs_view:get_results_count(kzs_plan:plan(DbName, Options), DbName, DesignDoc, Options).
+    Opts = maybe_add_doc_type_from_view(DesignDoc, Options),
+    kzs_view:get_results_count(kzs_plan:plan(DbName, Opts), DbName, DesignDoc, Options).
 
 -spec get_result_keys(wh_json:objects()) -> wh_json:keys().
 get_result_keys(JObjs) ->
@@ -1120,8 +1122,25 @@ db_classification(DBName) -> kzs_util:db_classification(DBName).
 -spec format_error(any()) -> any().
 format_error(Error) -> kzs_server:format_error(Error).
 
+-spec maybe_add_doc_type(ne_binary(), wh_proplist()) -> wh_proplist().
 maybe_add_doc_type(DocType, Options) ->
     case props:get_value('doc_type', Options) of
         'undefined' -> [{'doc_type', DocType} | Options];
         _ -> Options
+    end.
+
+-spec maybe_add_doc_type_from_view(ne_binary(), wh_proplist()) -> wh_proplist().
+maybe_add_doc_type_from_view(ViewName, Options) ->
+    case props:get_value('doc_type', Options) of
+        'undefined' -> add_doc_type_from_view(ViewName, Options);
+        _ -> Options
+    end.
+
+-spec add_doc_type_from_view(ne_binary(), wh_proplist()) -> wh_proplist().
+add_doc_type_from_view(View, Options) ->
+    [ViewType, ViewName | _] = binary:split(View, <<"/">>, ['global']),
+    case kzs_view:doc_type_from_view(ViewType, ViewName) of
+        'undefined' -> Options;
+        [DocType | _] -> [{'doc_type', DocType} | Options];
+        DocType -> [{'doc_type', DocType} | Options]
     end.
