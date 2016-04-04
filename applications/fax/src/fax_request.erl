@@ -161,7 +161,7 @@ handle_cast({'fax_status', <<"negociateresult">>, JObj}, State) ->
     Data = wh_json:get_value(<<"Application-Data">>, JObj, wh_json:new()),
     TransferRate = wh_json:get_integer_value(<<"Fax-Transfer-Rate">>, Data, 1),
     lager:debug("fax status - negociate result - ~s : ~p",[State#state.fax_id, TransferRate]),
-    Status = list_to_binary(["Fax negotiated at ", wh_util:to_list(TransferRate)]),
+    Status = list_to_binary(["fax negotiated at ", wh_util:to_list(TransferRate)]),
     send_status(State, Status, Data),
     {'noreply', State#state{status=Status
                             ,page=1
@@ -516,7 +516,7 @@ check_for_upload(#state{call=_Call
                                               ,db=FaxDb
                                              }
                        }=State) ->
-    case kz_datamgr:open_doc(FaxDb, FaxDocId) of
+    case kz_datamgr:open_doc(FaxDb, {<<"fax">>, FaxDocId}) of
         {'ok', FaxDoc} ->
             check_upload_for_attachment(FaxDoc, State);
         {'error', Error} ->
@@ -605,10 +605,8 @@ attachment_url(#state{storage=#fax_storage{id=FaxDocId
                                            ,db=AccountDb
                                           }
                      }) ->
-    Options = [{'content_type', kz_mime:from_extension(?FAX_EXTENSION)}
-               ,{'doc_type', <<"fax">>}
-              ],
-    kz_datamgr:attachment_url(AccountDb, FaxDocId, AttachmentId, Options).
+    Options = [{'content_type', kz_mime:from_extension(?FAX_EXTENSION)}],
+    kz_datamgr:attachment_url(AccountDb, {<<"fax">>, FaxDocId}, AttachmentId, Options).
 
 %% -spec maybe_delete_attachments(ne_binary(), wh_json:object()) -> 'ok'.
 %% maybe_delete_attachments(AccountDb, JObj) ->
