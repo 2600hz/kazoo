@@ -72,7 +72,7 @@ get_fax_doc(DataJObj, 'false') ->
 -spec get_fax_doc_from_modb(wh_json:object(), ne_binary()) -> wh_json:object().
 get_fax_doc_from_modb(DataJObj, FaxId) ->
     AccountId = teletype_util:find_account_id(DataJObj),
-    case kazoo_modb:open_doc(AccountId, FaxId) of
+    case kazoo_modb:open_doc(AccountId, {<<"fax">>, FaxId}) of
         {'ok', FaxJObj} -> FaxJObj;
         {'error', _E} ->
             lager:debug("failed to find fax ~s: ~p", [FaxId, _E]),
@@ -150,7 +150,7 @@ get_file_name(Macros, Ext) ->
                                    {'ok', ne_binary(), binary()} |
                                    {'error', 'no_attachment'}.
 get_attachment_binary(Db, Id) ->
-    case kz_datamgr:open_cache_doc(Db, Id) of
+    case kz_datamgr:open_cache_doc(Db, {<<"fax">>, Id}) of
         {'error', 'not_found'} when Db =/= ?WH_FAXES_DB ->
             get_attachment_binary(?WH_FAXES_DB, Id);
         {'error', 'not_found'} ->
@@ -171,7 +171,7 @@ get_attachment_binary(Db, Id) ->
 get_attachment_binary(Db, Id, FaxJObj) ->
     [AttachmentName] = wh_doc:attachment_names(FaxJObj),
 
-    case kz_datamgr:fetch_attachment(Db, Id, AttachmentName) of
+    case kz_datamgr:fetch_attachment(Db, {<<"fax">>, Id}, AttachmentName) of
         {'ok', Bin} ->
             get_attachment(wh_doc:attachment_content_type(FaxJObj, AttachmentName), Bin);
         {'error', _E} ->
