@@ -741,7 +741,7 @@ open_doc(Type, 'undefined', DataJObj) ->
     maybe_load_preview(Type, {'error', 'empty_doc_id'}, is_preview(DataJObj));
 open_doc(Type, DocId, DataJObj) ->
     AccountDb = find_account_db(Type, DataJObj),
-    case kz_datamgr:open_cache_doc(AccountDb, DocId) of
+    case kz_datamgr:open_cache_doc(AccountDb, {Type, DocId}) of
         {'ok', _JObj}=OK -> OK;
         {'error', _E}=Error ->
             maybe_load_preview(Type, Error, is_preview(DataJObj))
