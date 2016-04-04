@@ -483,7 +483,7 @@ load_attachment(DocId, AName, Options, Context) ->
                                ,[{fun cb_context:set_resp_data/2, AttachBin}
                                  ,{fun cb_context:set_resp_etag/2, rev_to_etag(cb_context:doc(Context1))}
                                 ])
-    end;
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

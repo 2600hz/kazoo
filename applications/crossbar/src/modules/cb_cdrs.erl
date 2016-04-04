@@ -542,6 +542,7 @@ load_chunked_cdrs(Db, Ids, {_, Context}=Payload) ->
             'false' -> lists:split(?MAX_BULK, Ids)
         end,
     ViewOptions = [{'keys', BulkIds}
+                   ,{'doc_type', <<"cdr">>}
                    ,'include_docs'
                   ],
     case kz_datamgr:all_docs(Db, ViewOptions) of
