@@ -374,9 +374,9 @@ create(Context) ->
 read(?MATCH_MODB_PREFIX(YYYY,MM,_) = Id, Context) ->
     Year  = wh_util:to_integer(YYYY),
     Month = wh_util:to_integer(MM),
-    crossbar_doc:load(Id, cb_context:set_account_modb(Context, Year, Month));
+    crossbar_doc:load({<<"fax">>, Id}, cb_context:set_account_modb(Context, Year, Month));
 read(Id, Context) ->
-    crossbar_doc:load(Id, Context).
+    crossbar_doc:load({<<"fax">>, Id}, Context).
 
 -spec load_modb_fax_doc(ne_binary(), cb_context:context()) -> cb_context:context().
 load_modb_fax_doc(Id, Context) ->
@@ -433,7 +433,7 @@ get_fax_running_status(Id, Q) ->
 %%--------------------------------------------------------------------
 -spec load_fax_meta(ne_binary(), cb_context:context()) -> cb_context:context().
 load_fax_meta(FaxId, Context) ->
-    crossbar_doc:load(FaxId, Context).
+    crossbar_doc:load({<<"fax">>, FaxId}, Context).
 
 %%--------------------------------------------------------------------
 %% @private
