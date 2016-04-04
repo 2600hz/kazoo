@@ -123,16 +123,20 @@ current_doc_vsn() -> ?CROSSBAR_DOC_VSN.
 %% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load(api_binary() | api_binaries(), cb_context:context()) ->
+-spec load(kazoo_data:docid() | kazoo_data:docids(), cb_context:context()) ->
                   cb_context:context().
--spec load(api_binary() | api_binaries(), cb_context:context(), wh_proplist()) ->
+-spec load(kazoo_data:docid() | kazoo_data:docids(), cb_context:context(), wh_proplist()) ->
                   cb_context:context().
--spec load(api_binary() | api_binaries(), cb_context:context(), wh_proplist(), crossbar_status()) ->
+-spec load(ne_binary() | ne_binaries(), cb_context:context(), wh_proplist(), crossbar_status()) ->
                   cb_context:context().
 
+load({DocType, DocId}, Context) ->
+    load(DocId, Context, [{'doc_type', DocType}]);
 load(DocId, Context) ->
     load(DocId, Context, []).
 
+load({DocType, DocId}, Context, Options) ->
+    load(DocId, Context, [{'doc_type', DocType} | Options]);
 load(DocId, Context, Options) ->
     load(DocId, Context, Options, cb_context:resp_status(Context)).
 
