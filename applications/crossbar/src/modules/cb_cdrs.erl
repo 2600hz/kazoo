@@ -738,7 +738,7 @@ load_cdr(?MATCH_MODB_PREFIX(Year,Month,_) = CDRId, Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = kazoo_modb:get_modb(AccountId, wh_util:to_integer(Year), wh_util:to_integer(Month)),
     Context1 = cb_context:set_account_db(Context, AccountDb),
-    crossbar_doc:load(CDRId, Context1);
+    crossbar_doc:load({<<"cdr">>, CDRId}, Context1);
 load_cdr(CDRId, Context) ->
     lager:debug("error loading cdr by id ~p", [CDRId]),
     crossbar_util:response('error', <<"could not find cdr with supplied id">>, 404, Context).
@@ -754,7 +754,7 @@ load_legs(<<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId, Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = kazoo_modb:get_modb(AccountId, wh_util:to_integer(Year), wh_util:to_integer(Month)),
     Context1 = cb_context:set_account_db(Context, AccountDb),
-    case kz_datamgr:open_cache_doc(AccountDb, DocId) of
+    case kz_datamgr:open_cache_doc(AccountDb, {<<"cdr">>, DocId}) of
         {'ok', JObj} ->
             load_legs(wh_json:get_value(<<"interaction_id">>, JObj), Context1);
         _ ->
