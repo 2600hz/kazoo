@@ -1392,6 +1392,7 @@ maybe_set_confirm_properties({Endpoint, Call, CallFwd, JObj}=Acc) ->
             Confirm = [{<<"Confirm-Key">>, <<"1">>}
                        ,{<<"Confirm-Cancel-Timeout">>, <<"2">>}
                        ,{<<"Confirm-File">>, ?CONFIRM_FILE(Call)}
+                       ,{<<"Require-Ignore-Early-Media">>, <<"true">>}
                       ],
             {Endpoint, Call, CallFwd
              ,wh_json:merge_jobjs(wh_json:from_list(Confirm), JObj)
