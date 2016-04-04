@@ -870,7 +870,7 @@ uri(BaseUrl, Tokens) ->
 -spec safe_urlencode(binary() | number()) -> iolist().
 safe_urlencode(V) when is_binary(V)
                        orelse is_number(V) ->
-    cow_qs:urlencode(wh_util:to_binary(V)).
+    kz_http_util:urlencode(wh_util:to_binary(V)).
 
 
 -spec to_integer(string() | binary() | integer() | float()) -> integer().
