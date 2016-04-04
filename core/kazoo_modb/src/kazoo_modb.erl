@@ -78,15 +78,18 @@ get_results_missing_db(Account, View, ViewOptions, Retry) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec open_doc(ne_binary(), ne_binary()) ->
+-spec open_doc(ne_binary(), kazoo_data:docid()) ->
                       {'ok', wh_json:object()} |
                       {'error', atom()}.
--spec open_doc(ne_binary(), ne_binary(), integer() | wh_proplist()) ->
+-spec open_doc(ne_binary(), kazoo_data:docid(), integer() | wh_proplist()) ->
                       {'ok', wh_json:object()} |
                       {'error', atom()}.
--spec open_doc(ne_binary(), ne_binary(), wh_year() | ne_binary(), wh_month() | ne_binary()) ->
+-spec open_doc(ne_binary(), kazoo_data:docid(), wh_year() | ne_binary(), wh_month() | ne_binary()) ->
                       {'ok', wh_json:object()} |
                       {'error', atom()}.
+open_doc(Account, {_, ?MATCH_MODB_PREFIX(Year,Month,_)} = DocId) ->
+    AccountMODb = get_modb(Account, wh_util:to_integer(Year), wh_util:to_integer(Month)),
+    couch_open(AccountMODb, DocId);
 open_doc(Account, ?MATCH_MODB_PREFIX(Year,Month,_) = DocId) ->
     AccountMODb = get_modb(Account, wh_util:to_integer(Year), wh_util:to_integer(Month)),
     couch_open(AccountMODb, DocId);
@@ -94,7 +97,12 @@ open_doc(Account, DocId) ->
     AccountMODb = get_modb(Account),
     couch_open(AccountMODb, DocId).
 
-open_doc(Account, DocId, Timestamp) ->
+open_doc(Account, DocId, Options)
+  when is_list(Options) ->
+    AccountMODb = get_modb(Account),
+    couch_open(AccountMODb, DocId, Options);
+open_doc(Account, DocId, Timestamp)
+  when is_integer(Timestamp) ->
     AccountMODb = get_modb(Account, Timestamp),
     couch_open(AccountMODb, DocId).
 
@@ -106,8 +114,14 @@ open_doc(Account, DocId, Year, Month) ->
                         {'ok', wh_json:object()} |
                         {'error', atom()}.
 couch_open(AccountMODb, DocId) ->
+    couch_open(AccountMODb, DocId, []).
+
+-spec couch_open(ne_binary(), ne_binary(), wh_proplist()) ->
+                        {'ok', wh_json:object()} |
+                        {'error', atom()}.
+couch_open(AccountMODb, DocId, Options) ->
     EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
-    case kz_datamgr:open_doc(EncodedMODb, DocId) of
+    case kz_datamgr:open_doc(EncodedMODb, DocId, Options) of
         {'ok', _}=Ok -> Ok;
         {'error', _E}=Error ->
             lager:error("fail to open doc ~p in ~p reason: ~p", [DocId, EncodedMODb, _E]),
