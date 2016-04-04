@@ -55,6 +55,9 @@ init([]) ->
     kz_dataconnections:add(Connection),
     lager:info("waiting for first connection...", []),
     kz_dataconnections:wait_for_connection(),
+    #data_connection{tag=Tag} = Connection,
+    Server = #{tag => Tag, server => kz_dataconnections:get_server(Tag)},
+    kzs_db:db_create(Server, ?KZ_DATA_DB),
     {'ok', #state{}, 100}.
 
 %%--------------------------------------------------------------------

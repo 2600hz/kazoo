@@ -74,16 +74,29 @@ lookup_doc_rev(#{server := {App, Conn}}, DbName, DocId) ->
 -spec ensure_saved(map(), ne_binary(), wh_json:object(), wh_proplist()) ->
                           {'ok', wh_json:object()} |
                           data_error().
-ensure_saved(#{server := {App, Conn}}, DbName, Doc, Options) ->
+ensure_saved(#{server := {App, Conn}}=Map, DbName, Doc, Options) ->
     {PreparedDoc, PublishDoc} = prepare_doc_for_save(DbName, Doc),
     try App:ensure_saved(Conn, DbName, PreparedDoc, Options) of
         {'ok', JObj}=Ok -> kzs_publish:maybe_publish_doc(DbName, PublishDoc, JObj),
+                           _ = maybe_ensure_saved_others(wh_doc:id(Doc), Map, DbName, Doc, Options),
                            Ok;
         Else -> Else
     catch
         Ex:Er -> lager:error("exception ~p : ~p", [Ex, Er]),
                  'failed'
     end.
+
+maybe_ensure_saved_others(<<"_design", _/binary>>, Map, DbName, Doc, Options) ->
+    Others = maps:get('others', Map, []),
+    lists:all(fun({_Tag, M1}) ->
+                      case ensure_saved(#{server => M1}, DbName, Doc, Options) of
+                          {'ok', _} -> 'true';
+                          _ -> 'false'
+                      end
+              end, Others),
+    'ok';
+maybe_ensure_saved_others(_, _, _, _, _) -> 'ok'.
+
 
 -spec del_doc(map(), ne_binary(), wh_json:object() | ne_binary(), wh_proplist()) ->
                      {'ok', wh_json:object()} |

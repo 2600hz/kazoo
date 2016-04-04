@@ -71,7 +71,7 @@ wait_for_connection(Tag, Timeout) ->
         {'error', _E} ->
             timer:sleep(random:uniform(?MILLISECONDS_IN_SECOND) + 100),
             wait_for_connection(Tag, wh_util:decr_timeout(Timeout, Start));
-        _M -> lager:info("WAIT ~p", [_M])
+        {'ok', Info} -> lager:info("connected to ~s : ~s", [Tag, Info])
     catch
         'error':{'badmatch','$end_of_table'} ->
             timer:sleep(random:uniform(?MILLISECONDS_IN_SECOND) + 100),

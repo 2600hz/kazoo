@@ -19,11 +19,15 @@
 
 -define(ORIGIN_BINDINGS, [[]]).
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}
-                      ,'new_node_flush'
-                      ,'channel_reconnect_flush'
+%%                      ,'new_node_flush'
+%%                      ,'channel_reconnect_flush'
                      ]).
 
+-define(DP_ORIGIN_BINDINGS, [[{'db', ?KZ_DATA_DB}]]).
+-define(DP_CACHE_PROPS, [{'origin_bindings', ?DP_ORIGIN_BINDINGS}]).
+
 -define(CHILDREN, [?WORKER('kazoo_data_init')
+                   ,?CACHE_ARGS(?KZ_DP_CACHE, ?DP_CACHE_PROPS)
                    ,?CACHE_ARGS(?KZ_DATA_CACHE, ?CACHE_PROPS)
                    ,?SUPER('kz_dataconnection_sup')
                    ,?WORKER('kz_dataconnections')

@@ -8,5 +8,6 @@
               ,get_results_return/0
               ,db_classifications/0
               ,view_options/0
+              ,docid/0, docids/0
              ]).
 

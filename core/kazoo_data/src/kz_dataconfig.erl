@@ -8,7 +8,7 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([connection/0]).
+-export([connection/0, connection/1]).
 
 
 ensure_driver_app(App) ->
@@ -25,6 +25,9 @@ connection() ->
 
 connection(List) when is_list(List) ->
     connection(maps:from_list(List));
+connection(#{driver := App}=Map)
+  when not is_atom(App) ->
+    connection(Map#{driver => wh_util:to_atom(App, 'true')});
 connection(#{driver := App, tag := Tag}=Map) ->
     _ = ensure_driver_app(App),
     is_driver_app(App),

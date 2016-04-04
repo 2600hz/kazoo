@@ -1,0 +1,24 @@
+{
+    "attachments": {},
+    "connections": {
+        "local": {}
+    },
+    "plan": {
+        "account": {
+            "attachments": {},
+            "connection": "local",
+            "types": {}
+        },
+        "modb": {
+            "attachments": {},
+            "connection": "local",
+            "types": {}
+        },
+        "system": {
+            "attachments": {},
+            "connection": "local",
+            "types": {}
+        }
+    },
+    "pvt_type": "storage"
+}

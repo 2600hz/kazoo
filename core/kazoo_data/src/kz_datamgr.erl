@@ -19,7 +19,7 @@
 %% System manipulation
 -export([db_exists/1
          ,db_info/0, db_info/1
-         ,db_create/1, db_create/2
+         ,db_create/1
          ,db_compact/1
          ,db_view_cleanup/1
          ,db_delete/1
@@ -39,7 +39,7 @@
          ,open_doc/2,open_doc/3
          ,del_doc/2, del_docs/2
          ,del_doc/3, del_docs/3
-         ,lookup_doc_rev/2
+         ,lookup_doc_rev/2, lookup_doc_rev/3
          ,update_doc/3, update_doc/4
          ,load_doc_from_file/3
          ,update_doc_from_file/3
@@ -57,8 +57,8 @@
         ]).
 
 %% attachments
--export([fetch_attachment/3
-         ,stream_attachment/3, stream_attachment/4
+-export([fetch_attachment/3, fetch_attachment/4
+         ,stream_attachment/3, stream_attachment/4, stream_attachment/5
          ,put_attachment/4, put_attachment/5
          ,delete_attachment/3, delete_attachment/4
          ,attachment_url/3, attachment_url/4
@@ -128,8 +128,7 @@ update_doc_from_file(DbName, App, File) when ?VALID_DBNAME ->
     try
         {'ok', Bin} = file:read_file(Path),
         JObj = wh_json:decode(Bin),
-        {'ok', Rev} = ?MODULE:lookup_doc_rev(DbName, wh_doc:id(JObj)),
-        ?MODULE:save_doc(DbName, wh_doc:set_revision(JObj, Rev))
+        ensure_saved(DbName, JObj)
     catch
         _Type:{'badmatch',{'error',Reason}} ->
             lager:debug("bad match: ~p", [Reason]),
@@ -199,16 +198,7 @@ do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
         {'ok', Bin} = file:read_file(H),
         JObj = wh_json:decode(Bin),
         Sleep andalso timer:sleep(250),
-        case lookup_doc_rev(DbName, wh_doc:id(JObj)) of
-            {'ok', Rev} ->
-                lager:debug("update doc from file ~s in ~s", [H, DbName]),
-                save_doc(DbName, wh_doc:set_revision(JObj, Rev));
-            {'error', 'not_found'} ->
-                lager:debug("import doc from file ~s in ~s", [H, DbName]),
-                save_doc(DbName, JObj);
-            {'error', Reason} ->
-                lager:debug("failed to load doc ~s into ~s, ~p", [H, DbName, Reason])
-        end,
+        _ = ensure_saved(DbName, JObj),
         do_revise_docs_from_folder(DbName, Sleep, T)
     catch
         _:_ ->
@@ -264,15 +254,6 @@ db_exists(DbName) ->
         {'error', _}=E -> E
     end.
 
-%% -spec admin_db_exists(text()) -> boolean().
-%% admin_db_exists(DbName) when ?VALID_DBNAME ->
-%%     kzs_db:db_exists(kz_dataconnections:get_admin_server(), DbName);
-%% admin_db_exists(DbName) ->
-%%     case maybe_convert_dbname(DbName) of
-%%         {'ok', Db} -> admin_db_exists(Db);
-%%         {'error', _}=E -> E
-%%     end.
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -281,13 +262,8 @@ db_exists(DbName) ->
 %%--------------------------------------------------------------------
 -spec db_info() -> {'ok', ne_binaries()} |
                    data_error().
-%% -spec admin_db_info() -> {'ok', ne_binaries()} |
-%%                          data_error().
 db_info() ->
     kzs_db:db_info(kzs_plan:plan()).
-
-%% admin_db_info() ->
-%%     kzs_db:db_info(kz_dataconnections:get_admin_server()).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -297,9 +273,6 @@ db_info() ->
 %%--------------------------------------------------------------------
 -spec db_info(text()) -> {'ok', wh_json:object()} |
                          data_error().
-%% -spec admin_db_info(text()) -> {'ok', wh_json:object()} |
-%%                                data_error().
-
 db_info(DbName) when ?VALID_DBNAME ->
     kzs_db:db_info(kzs_plan:plan(DbName), DbName);
 db_info(DbName) ->
@@ -307,14 +280,6 @@ db_info(DbName) ->
         {'ok', Db} -> db_info(Db);
         {'error', _}=E -> E
     end.
-
-%% admin_db_info(DbName) when ?VALID_DBNAME ->
-%%     kzs_db:db_info(wh_couch_connections:get_admin_server(), DbName);
-%% admin_db_info(DbName) ->
-%%     case maybe_convert_dbname(DbName) of
-%%         {'ok', Db} -> admin_db_info(Db);
-%%         {'error', _}=E -> E
-%%     end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -325,9 +290,6 @@ db_info(DbName) ->
 -spec design_info(text(), ne_binary()) ->
                          {'ok', wh_json:object()} |
                          data_error().
-%% -spec admin_design_info(text(), ne_binary()) ->
-%%                                {'ok', wh_json:object()} |
-%%                                data_error().
 
 design_info(DbName, DesignName) when ?VALID_DBNAME ->
     kzs_view:design_info(kzs_plan:plan(DbName, DesignName), DbName, DesignName);
@@ -337,16 +299,7 @@ design_info(DbName, DesignName) ->
         {'error', _}=E -> E
     end.
 
-%% admin_design_info(DbName, DesignName) when ?VALID_DBNAME ->
-%%     kzs_view:design_info(wh_couch_connections:get_admin_server(), DbName, DesignName);
-%% admin_design_info(DbName, DesignName) ->
-%%     case maybe_convert_dbname(DbName) of
-%%         {'ok', Db} -> admin_design_info(Db, DesignName);
-%%         {'error', _}=E -> E
-%%     end.
-
 -spec design_compact(ne_binary(), ne_binary()) -> boolean().
-%% -spec admin_design_compact(ne_binary(), ne_binary()) -> boolean().
 
 design_compact(DbName, DesignName) when ?VALID_DBNAME->
     kzs_view:design_compact(kzs_plan:plan(DbName, DesignName), DbName, DesignName);
@@ -356,16 +309,7 @@ design_compact(DbName, DesignName) ->
         {'error', _}=E -> E
     end.
 
-%% admin_design_compact(DbName, DesignName) when ?VALID_DBNAME ->
-%%     kzs_view:design_compact(wh_couch_connections:get_admin_server(), DbName, DesignName);
-%% admin_design_compact(DbName, DesignName) ->
-%%     case maybe_convert_dbname(DbName) of
-%%         {'ok', Db} -> admin_design_compact(Db, DesignName);
-%%         {'error', _}=E -> E
-%%     end.
-
 -spec db_view_cleanup(ne_binary()) -> boolean().
-%% -spec admin_db_view_cleanup(ne_binary()) -> boolean().
 
 db_view_cleanup(DbName) when ?VALID_DBNAME ->
     kzs_db:db_view_cleanup(kzs_plan:plan(DbName), DbName);
@@ -374,14 +318,6 @@ db_view_cleanup(DbName) ->
         {'ok', Db} -> db_view_cleanup(Db);
         {'error', _}=E -> E
     end.
-
-%% admin_db_view_cleanup(DbName) when ?VALID_DBNAME ->
-%%     kzs_db:db_view_cleanup(wh_couch_connections:get_admin_server(), DbName);
-%% admin_db_view_cleanup(DbName) ->
-%%     case maybe_convert_dbname(DbName) of
-%%         {'ok', Db} -> admin_db_view_cleanup(Db);
-%%         {'error', _}=E -> E
-%%     end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -451,7 +387,6 @@ db_create(DbName, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec db_compact(text()) -> boolean().
-%% -spec admin_db_compact(text()) -> boolean().
 
 db_compact(DbName) when ?VALID_DBNAME ->
     kzs_db:db_compact(kzs_plan:plan(DbName), DbName);
@@ -460,14 +395,6 @@ db_compact(DbName) ->
         {'ok', Db} -> db_compact(Db);
         {'error', _}=E -> E
     end.
-
-%% admin_db_compact(DbName) when ?VALID_DBNAME ->
-%%     kzs_db:db_compact(wh_couch_connections:get_admin_server(), DbName);
-%% admin_db_compact(DbName) ->
-%%     case maybe_convert_dbname(DbName) of
-%%         {'ok', Db} -> admin_db_compact(Db);
-%%         {'error', _}=E -> E
-%%     end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -515,18 +442,22 @@ db_archive(DbName, Filename) ->
 %% fetch a cached doc or open it if not available.
 %% @end
 %%--------------------------------------------------------------------
--spec open_cache_doc(text(), ne_binary()) ->
+-spec open_cache_doc(text(), docid()) ->
                             {'ok', wh_json:object()} |
                             data_error() |
                             {'error', 'not_found'}.
--spec open_cache_doc(text(), ne_binary(), wh_proplist()) ->
+-spec open_cache_doc(text(), docid(), wh_proplist()) ->
                             {'ok', wh_json:object()} |
                             data_error() |
                             {'error', 'not_found'}.
 
+open_cache_doc(DbName, {DocType, DocId}) ->
+    open_cache_doc(DbName, DocId, [{'doc_type', DocType}]);
 open_cache_doc(DbName, DocId) ->
     open_cache_doc(DbName, DocId, []).
 
+open_cache_doc(DbName, {DocType, DocId}, Options) ->
+    open_cache_doc(DbName, DocId, maybe_add_doc_type(DocType, Options));
 open_cache_doc(DbName, DocId, Options) when ?VALID_DBNAME ->
     kzs_cache:open_cache_doc(DbName, DocId, Options);
 open_cache_doc(DbName, DocId, Options) ->
@@ -596,17 +527,22 @@ flush_cache_docs(DbName) ->
 %% open a document given a doc id returns an error tuple or the json
 %% @end
 %%--------------------------------------------------------------------
--spec open_doc(text(), ne_binary()) ->
+-spec open_doc(text(), docid()) ->
                       {'ok', wh_json:object()} |
                       data_error() |
                       {'error', 'not_found'}.
--spec open_doc(text(), ne_binary(), wh_proplist()) ->
+-spec open_doc(text(), docid(), wh_proplist()) ->
                       {'ok', wh_json:object()} |
                       data_error() |
                       {'error', 'not_found'}.
+
+open_doc(DbName, {DocType, DocId}) ->
+    open_doc(DbName, DocId, [{'doc_type', DocType}]);
 open_doc(DbName, DocId) ->
     open_doc(DbName, DocId, []).
 
+open_doc(DbName, {DocType, DocId}, Options) ->
+    open_doc(DbName, DocId, maybe_add_doc_type(DocType, Options));
 open_doc(DbName, DocId, Options) when ?VALID_DBNAME ->
     kzs_doc:open_doc(kzs_plan:plan(DbName, Options), DbName, DocId, Options);
 open_doc(DbName, DocId, Options) ->
@@ -614,29 +550,6 @@ open_doc(DbName, DocId, Options) ->
         {'ok', Db} -> open_doc(Db, DocId, Options);
         {'error', _}=E -> E
     end.
-
-%% open_doc(Server, DbName, DocId, Options) ->
-%%     kzs_doc:open_doc(Server, DbName, DocId, Options).
-
-
-%% -spec admin_open_doc(text(), ne_binary()) ->
-%%                             {'ok', wh_json:object()} |
-%%                             data_error() |
-%%                             {'error', 'not_found'}.
-%% -spec admin_open_doc(text(), ne_binary(), wh_proplist()) ->
-%%                             {'ok', wh_json:object()} |
-%%                             data_error() |
-%%                             {'error', 'not_found'}.
-%% admin_open_doc(DbName, DocId) ->
-%%     admin_open_doc(DbName, DocId, []).
-%%
-%% admin_open_doc(DbName, DocId, Options) when ?VALID_DBNAME->
-%%     kzs_doc:open_doc(kz_dataconnections:get_admin_server(), DbName, DocId, Options);
-%% admin_open_doc(DbName, DocId, Options) ->
-%%     case maybe_convert_dbname(DbName) of
-%%         {'ok', Db} -> admin_open_doc(Db, DocId, Options);
-%%         {'error', _}=E -> E
-%%     end.
 
 -spec all_docs(text()) ->
                       {'ok', wh_json:objects()} |
@@ -649,7 +562,7 @@ all_docs(DbName) ->
     all_docs(DbName, []).
 
 all_docs(DbName, Options) when ?VALID_DBNAME ->
-    kzs_view:all_docs(kzs_plan:plan(DbName), DbName, Options);
+    kzs_view:all_docs(kzs_plan:plan(DbName, Options), DbName, Options);
 all_docs(DbName, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> all_docs(Db, Options);
@@ -664,23 +577,6 @@ db_list() ->
 
 db_list(Options) ->
     kzs_db:db_list(kzs_plan:plan(), Options).
-
-%% -spec admin_all_docs(text()) -> {'ok', wh_json:objects()} |
-%%                                 data_error().
-%%
-%% -spec admin_all_docs(text(), wh_proplist()) -> {'ok', wh_json:objects()} |
-%%                                                data_error().
-%%
-%% admin_all_docs(DbName) ->
-%%     admin_all_docs(DbName, []).
-%%
-%% admin_all_docs(DbName, Options) when ?VALID_DBNAME ->
-%%     kzs_view:all_docs(kz_dataconnections:get_admin_server(), DbName, Options);
-%% admin_all_docs(DbName, Options) ->
-%%     case maybe_convert_dbname(DbName) of
-%%         {'ok', Db} -> admin_all_docs(Db, Options);
-%%         {'error', _}=E -> E
-%%     end.
 
 -spec all_design_docs(text()) -> {'ok', wh_json:objects()} |
                                  data_error().
@@ -704,15 +600,23 @@ all_design_docs(DbName, Options) ->
 %% get the revision of a document (much faster than requesting the whole document)
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_doc_rev(text(), api_binary()) ->
+-spec lookup_doc_rev(text(), docid()) ->
                             {'ok', ne_binary()} |
                             data_error().
-lookup_doc_rev(_DbName, 'undefined') -> {'error', 'not_found'};
-lookup_doc_rev(DbName, DocId) when ?VALID_DBNAME ->
-    kzs_doc:lookup_doc_rev(kzs_plan:plan(DbName), DbName, DocId);
+lookup_doc_rev(DbName, {DocType, DocId}) ->
+    lookup_doc_rev(DbName, DocId, [{'doc_type', DocType}]);
 lookup_doc_rev(DbName, DocId) ->
+    lookup_doc_rev(DbName, DocId, []).
+
+-spec lookup_doc_rev(text(), docid(), wh_proplist()) ->
+                            {'ok', ne_binary()} | data_error().
+lookup_doc_rev(DbName, {DocType, DocId}, Options) ->
+    lookup_doc_rev(DbName, DocId, maybe_add_doc_type(DocType, Options));
+lookup_doc_rev(DbName, DocId, Options) when ?VALID_DBNAME ->
+    kzs_doc:lookup_doc_rev(kzs_plan:plan(DbName, Options), DbName, DocId);
+lookup_doc_rev(DbName, DocId, Options) ->
     case maybe_convert_dbname(DbName) of
-        {'ok', Db} -> lookup_doc_rev(Db, DocId);
+        {'ok', Db} -> lookup_doc_rev(Db, DocId, Options);
         {'error', _}=E -> E
     end.
 
@@ -807,10 +711,10 @@ save_docs(DbName, Docs, Options) when is_list(Docs) ->
 %% fetch, update and save a doc (creating if not present)
 %% @end
 %%--------------------------------------------------------------------
--spec update_doc(ne_binary(), ne_binary(), wh_proplist()) ->
+-spec update_doc(ne_binary(), docid(), wh_proplist()) ->
                         {'ok', wh_json:object()} |
                         data_error().
--spec update_doc(ne_binary(), ne_binary(), wh_proplist(), wh_proplist()) ->
+-spec update_doc(ne_binary(), docid(), wh_proplist(), wh_proplist()) ->
                         {'ok', wh_json:object()} |
                         data_error().
 
@@ -882,44 +786,65 @@ del_docs(DbName, Docs, Options) when is_list(Docs) ->
 %%%===================================================================
 %%% Attachment Functions
 %%%===================================================================
--spec fetch_attachment(text(), ne_binary(), ne_binary()) ->
+-spec fetch_attachment(text(), docid(), ne_binary()) ->
                               {'ok', binary()} |
                               data_error().
-fetch_attachment(DbName, DocId, AName) when ?VALID_DBNAME ->
-    kzs_attachments:fetch_attachment(kzs_plan:plan(DbName, DocId), DbName, DocId, AName);
+
+-spec fetch_attachment(text(), docid(), ne_binary(), wh_proplist()) ->
+                              {'ok', binary()} |
+                              data_error().
+fetch_attachment(DbName, {DocType, DocId}, AName) ->
+    fetch_attachment(DbName, DocId, AName, [{'doc_type', DocType}]);
 fetch_attachment(DbName, DocId, AName) ->
+    fetch_attachment(DbName, DocId, AName, []).
+
+fetch_attachment(DbName, {DocType, DocId}, AName, Options) when ?VALID_DBNAME ->
+    fetch_attachment(DbName, DocId, AName, maybe_add_doc_type(DocType, Options));
+fetch_attachment(DbName, DocId, AName, Options) when ?VALID_DBNAME ->
+    kzs_attachments:fetch_attachment(kzs_plan:plan(DbName, Options), DbName, DocId, AName);
+fetch_attachment(DbName, DocId, AName, Options) ->
     case maybe_convert_dbname(DbName) of
-        {'ok', Db} -> fetch_attachment(Db, DocId, AName);
+        {'ok', Db} -> fetch_attachment(Db, DocId, AName, Options);
         {'error', _}=E -> E
     end.
 
--spec stream_attachment(text(), ne_binary(), ne_binary()) ->
+-spec stream_attachment(text(), docid(), ne_binary()) ->
                                {'ok', reference()} |
                                {'error', any()}.
 stream_attachment(DbName, DocId, AName) ->
-    stream_attachment(DbName, DocId, AName, self()).
+    stream_attachment(DbName, DocId, AName, []).
 
--spec stream_attachment(text(), ne_binary(), ne_binary(), pid()) ->
+-spec stream_attachment(text(), docid(), ne_binary(), wh_proplist()) ->
                                {'ok', reference()} |
                                {'error', any()}.
-stream_attachment(DbName, DocId, AName, Pid) when ?VALID_DBNAME ->
-    kzs_attachments:stream_attachment(kzs_plan:plan(DbName, DocId), DbName, DocId, AName, Pid);
-stream_attachment(DbName, DocId, AName, Pid) ->
+stream_attachment(DbName, DocId, AName, Options) ->
+    stream_attachment(DbName, DocId, AName, Options, self()).
+
+-spec stream_attachment(text(), docid(), ne_binary(), wh_proplist(), pid()) ->
+                               {'ok', reference()} |
+                               {'error', any()}.
+stream_attachment(DbName, {DocType, DocId}, AName, Options, Pid) when ?VALID_DBNAME ->
+    stream_attachment(DbName, DocId, AName, maybe_add_doc_type(DocType, Options), Pid);
+stream_attachment(DbName, DocId, AName, Options, Pid) when ?VALID_DBNAME ->
+    kzs_attachments:stream_attachment(kzs_plan:plan(DbName, Options), DbName, DocId, AName, Pid);
+stream_attachment(DbName, DocId, AName, Options, Pid) ->
     case maybe_convert_dbname(DbName) of
-        {'ok', Db} -> stream_attachment(Db, DocId, AName, Pid);
+        {'ok', Db} -> stream_attachment(Db, DocId, AName, Options, Pid);
         {'error', _}=E -> E
     end.
 
--spec put_attachment(text(), ne_binary(), ne_binary(), ne_binary()) ->
+-spec put_attachment(text(), docid(), ne_binary(), ne_binary()) ->
                             {'ok', wh_json:object()} |
                             data_error().
 %% Options = [ {'content_type', Type}, {'content_length', Len}, {'rev', Rev}] <- note atoms as keys in proplist
--spec put_attachment(text(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
+-spec put_attachment(text(), docid(), ne_binary(), ne_binary(), wh_proplist()) ->
                             {'ok', wh_json:object()} |
                             data_error().
 put_attachment(DbName, DocId, AName, Contents) ->
     put_attachment(DbName, DocId, AName, Contents, []).
 
+put_attachment(DbName, {DocType, DocId}, AName, Contents, Options) ->
+    put_attachment(DbName, DocId, AName, Contents, maybe_add_doc_type(DocType, Options));
 put_attachment(DbName, DocId, AName, Contents, Options) when ?VALID_DBNAME ->
     case attachment_options(DbName, DocId, Options) of
         {'ok', NewOptions} -> kzs_attachments:put_attachment(kzs_plan:plan(DbName, NewOptions)
@@ -954,6 +879,9 @@ delete_attachment(DbName, DocId, AName, Options) ->
         {'error', _}=E -> E
     end.
 
+-spec attachment_url(text(), docid(), ne_binary()) -> ne_binary().
+-spec attachment_url(text(), docid(), ne_binary(), wh_proplist()) -> ne_binary().
+
 attachment_url(DbName, DocId, AttachmentId) ->
     case filename:extension(AttachmentId) of
         [] -> attachment_url(DbName, DocId, AttachmentId, []);
@@ -962,6 +890,8 @@ attachment_url(DbName, DocId, AttachmentId) ->
             attachment_url(DbName, DocId, AttachmentId, Options)
     end.
 
+attachment_url(DbName, {DocType, DocId}, AttachmentId, Options) when ?VALID_DBNAME ->
+    attachment_url(DbName, DocId, AttachmentId, maybe_add_doc_type(DocType, Options));
 attachment_url(DbName, DocId, AttachmentId, Options) when ?VALID_DBNAME ->
     case attachment_options(DbName, DocId, Options) of
         {'ok', NewOptions} -> kzs_attachments:attachment_url(kzs_plan:plan(DbName, NewOptions)
@@ -988,7 +918,7 @@ attachment_options(DbName, DocId, Options) ->
     attachment_options(DbName, DocId, Options, RequiredOptions).
 
 attachment_options(DbName, DocId, Options, RequiredOptions) ->
-    Fun = fun() -> case open_doc(DbName, DocId, []) of
+    Fun = fun() -> case open_doc(DbName, DocId, Options) of
                        {'ok', JObj} -> JObj;
                        _ -> wh_json:new()
                    end
@@ -1189,3 +1119,9 @@ db_classification(DBName) -> kzs_util:db_classification(DBName).
 
 -spec format_error(any()) -> any().
 format_error(Error) -> kzs_server:format_error(Error).
+
+maybe_add_doc_type(DocType, Options) ->
+    case props:get_value('doc_type', Options) of
+        'undefined' -> [{'doc_type', DocType} | Options];
+        _ -> Options
+    end.

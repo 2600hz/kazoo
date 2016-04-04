@@ -95,7 +95,7 @@ handle_cast(_Msg, Connection) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info('maintain_connection', #data_connection{connected = 'false'}=Connection) ->
-    case maybe_reconnect(Connection) of
+    case try_connection(Connection) of
         {'error', _} ->
             erlang:send_after(?MILLISECONDS_IN_SECOND, self(), 'maintain_connection'),
             {'noreply', Connection};
@@ -149,10 +149,9 @@ code_change(_OldVsn, Connection, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec maybe_reconnect(data_connection()) ->
-                             {'ok', data_connection()} |
-                             {'error', any()}.
-maybe_reconnect(#data_connection{app=App, props=Props}=Connection) ->
+
+-spec try_connection(data_connection()) ->  {'ok', data_connection()} | {'error', any()}.
+try_connection(#data_connection{app=App, props=Props}=Connection) ->
     lager:info("trying to connect ~s", [App]),
     try App:new_connection(Props) of
         {'ok', Server} -> {'ok', Connection#data_connection{server=Server}};
@@ -162,9 +161,9 @@ maybe_reconnect(#data_connection{app=App, props=Props}=Connection) ->
     end.
 
 -spec handle_error(data_connection(), tuple()) -> {'error', any()}.
-handle_error(#data_connection{app=App, props=Props}, _Error) ->
-    lager:info("failed to connect with ~s : ~p", [App, maps:to_list(Props)]),
-    {'error', 'conn_failed'}.
+handle_error(#data_connection{app=App, props=Props}, Error) ->
+    lager:info("failed to connect with ~s : ~p : ~p", [App, Error, maps:to_list(Props)]),
+    {'error', Error}.
 
 -spec connection_established(data_connection()) -> data_connection().
 connection_established(Connection) ->

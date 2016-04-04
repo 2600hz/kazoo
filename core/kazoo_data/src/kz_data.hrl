@@ -5,6 +5,8 @@
 -include_lib("whistle/include/kz_system_config.hrl").
 
 -define(KZ_DATA_CACHE, 'kazoo_data_cache').
+-define(KZ_DP_CACHE, 'kazoo_data_plan_cache').
+
 -define(CONFIG_CAT, <<"datamgr">>).
 
 -record(data_connection, {id = wh_util:current_tstamp()
@@ -48,6 +50,7 @@
                        'sel_conn_closed' |
                        'unknown_req_id' |
                        'worker_is_dead' |
+                       'resource_not_available' |
                        integer() |
                        {'EXIT', _} |
                        {'conn_failed', _} |
@@ -89,6 +92,9 @@
 -type db_create_options() :: [{'q',integer()} | {'n',integer()}].
 
 -type ddoc() :: ne_binary() | 'all_docs' | 'design_docs'.
+
+-type docid() :: ne_binary() | {ne_binary(), ne_binary()}.
+-type docids() :: ne_binary() | {ne_binary(), ne_binaries()}.
 
 -type get_results_return() :: {'ok', wh_json:objects() | wh_json:keys()} |
                               data_error().
