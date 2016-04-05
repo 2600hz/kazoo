@@ -95,8 +95,11 @@ db_exists(#{server := {App, Conn}}=Map, DbName) ->
         lists:all(fun({_Tag, M}) -> db_exists(#{server => M}, DbName) end, maps:get('others', Map, [])).
 
 -spec db_archive(map(), ne_binary(), ne_binary()) -> boolean().
-db_archive(#{server := {App, Conn}}, DbName, Filename) -> App:db_archive(Conn, DbName, Filename).
-
+db_archive(#{server := {App, Conn}}=Server, DbName, Filename) ->
+    case db_exists(Server, DbName) of
+        'true' -> App:db_archive(Conn, DbName, Filename);
+        'false' -> 'ok'
+    end.
 
 -spec db_list(map(), view_options()) -> {'ok', ne_binaries()} | data_error().
 db_list(#{server := {App, Conn}}=Map, Options) ->
