@@ -13,20 +13,23 @@ This API check if the numbers are still available for purchase.
 ##### Request
 
 - Verb: `POST`
-- Url: `/accounts/ACCOUNT_ID/phone_numbers/check`
+- Url: `/accounts/{{ACCOUNT_ID}}/phone_numbers/check`
 - Payload:
 
-        {"data": {
-             "numbers": [
-                 "+14159383408",
-                 "+14156715576"
-             ]
-         }
-        }
+```json
+{
+    "data": {
+        "numbers": [
+            "+14159383408",
+            "+14156715576"
+        ]
+    }
+}
+```
 
 ##### Response
 
-```
+```json
 {
     "data": {
         "+14159383408": "success"
@@ -39,10 +42,19 @@ This API check if the numbers are still available for purchase.
 }
 ```
 
-##### _GET_ Classifier for a number
+#### Check classifier for a number
 
-    curl -X GET -H "Content-Type: application/json" http://crossbar:8000/v2/phone_numbers/classifiers/4158867900
-    {"auth_token": "{AUTH_TOKEN}"
+##### Request
+
+```shell
+curl -X GET -H 'Content-Type: application/json' http://{{SERVER}}:8000/v2/phone_numbers/classifiers/4158867900
+```
+
+##### Response
+
+```json
+{
+    "auth_token": "{{AUTH_TOKEN}}"
      ,"data": {
          "e164": "+14158867900"
          ,"friendly_name": "US DID"
@@ -51,10 +63,11 @@ This API check if the numbers are still available for purchase.
          ,"pretty_print": "SS(###) ##### - ####"
          ,"regex": "^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$"
      }
-     ,"request_id": {REQUEST_ID}
+     ,"request_id": {{REQUEST_ID}}
      ,"revision": "undefined"
      ,"status": "success"
-    }
+}
+```
 
 
 #### Fix Phone Numbers
@@ -62,12 +75,12 @@ This API check if the numbers are still available for purchase.
 ##### Request
 
 - Verb: `POST`
-- Url: `v2/accounts/ACCOUNT_ID/phone_numbers/fix`
-- Payload: None
+- Url: `/v2/accounts/{{ACCOUNT_ID}}/phone_numbers/fix`
+- Payload: none
 
 ##### Response
 
-```
+```json
 {
     "data": {}
     "status": "success"
@@ -76,19 +89,20 @@ This API check if the numbers are still available for purchase.
 
 #### Activate a new phone number
 
-    curl -X PUT -H "Content-Type: application/json" -H "X-Auth-Token: {{AUTH_TOKEN}}" \
-    http://server:8000/v2/accounts/{{ACCOUNT_ID}}/phone_numbers/{{NUMBER}}/activate -d '{}'
-
+```shell
+curl -X PUT -H "Content-Type: application/json" -H "X-Auth-Token: {{AUTH_TOKEN}}" \
+    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/phone_numbers/{{NUMBER}}/activate -d '{}'
+```
 
 #### E911
 
 ##### Request
 
 - Verb: `POST`
-- Url: `v2/accounts/{{ACCOUNT_ID}}/phone_numbers/{{NUMBER}}`
+- Url: `/v2/accounts/{{ACCOUNT_ID}}/phone_numbers/{{NUMBER}}`
 - Payload:
 
-```
+```json
 {
     "data": {
         "used_by": "callflow",
@@ -108,7 +122,7 @@ This API check if the numbers are still available for purchase.
 
 ###### Invalid address
 
-```
+```json
 {
     "data": {
         "address": {
@@ -132,7 +146,7 @@ This API check if the numbers are still available for purchase.
 ```
 ###### Multiple choice
 
-```
+```json
 {
     "data": {
         "multiple_choice": {
@@ -169,7 +183,7 @@ This API check if the numbers are still available for purchase.
 
 ###### Success
 
-```
+```json
 {
     "data": {
         "used_by": "callflow",
