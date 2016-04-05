@@ -1,4 +1,4 @@
--module(kazoo_couch).
+-module(kazoo_couchdb).
 
 -behaviour(kz_data).
 
