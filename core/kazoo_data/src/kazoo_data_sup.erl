@@ -19,8 +19,6 @@
 
 -define(ORIGIN_BINDINGS, [[]]).
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}
-%%                      ,'new_node_flush'
-%%                      ,'channel_reconnect_flush'
                      ]).
 
 -define(DP_ORIGIN_BINDINGS, [[{'db', ?KZ_DATA_DB}]]).
