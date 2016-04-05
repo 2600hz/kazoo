@@ -8218,6 +8218,15 @@
             "get": {},
             "post": {}
         },
+        "/v2/accounts/{ACCOUNT_ID}/recordings": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}/attachment": {
+            "get": {}
+        },
         "/v2/accounts/{ACCOUNT_ID}/registrations": {
             "delete": {},
             "get": {}
