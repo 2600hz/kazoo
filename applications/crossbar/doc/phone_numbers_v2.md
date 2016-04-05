@@ -10,7 +10,6 @@ Learn how to use the 2600hz mobile API set to activate and manage numbers.
 
 ## APIs
 
-* [List account's phone numbers](#user-content-list-accounts-phone-numbers)
 * [Search for number](#user-content-search-for-number)
 * [Load classifiers](#user-content-load-classifiers)
 * [Classify a number](#user-content-classify-a-number)
@@ -18,31 +17,6 @@ Learn how to use the 2600hz mobile API set to activate and manage numbers.
 * [Locality](#user-content-locality)
 * [Fix](#user-content-fix)
 
-### List account's phone numbers
-
-#### Request
-
-`GET` `http://{{SERVER}}/v2/accounts/{{account_id}}/phone_numbers`
-
-#### Response
-
-```json
-{
-    "page_size": 1,
-    "data": [{
-        "id": "+14202000000",
-        "number": "+14202000000",
-        "state": "in_service",
-        "features": {
-            "test_feature": true
-        },
-        "assigned_to": "{{account_id}}",
-        "created": 63602485423,
-        "updated": 63602485423
-    }],
-    "status": "success"
-}
-```
 
 ### Search for number
 

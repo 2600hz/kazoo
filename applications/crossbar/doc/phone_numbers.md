@@ -1,6 +1,53 @@
 
 ### Phone Numbers
-Learn how to use the 2600hz mobile API set to activate and manage numbers.
+The 2600hz mobile API set: activate and manage numbers.
+
+
+#### Check an account's phone numbers
+
+This lists the numbers an account owns, along with their properties.
+
+##### Request
+
+- Verb: `GET`
+- Url: `/v2/accounts/{{ACCOUNT_ID}}/phone_numbers`
+- Payload: none
+
+##### Response
+
+```json
+{
+    "auth_token": "1931484e3fba5777588176584828e7be",
+    "data": {
+        "casquade_quantity": 0,
+        "numbers": {
+            "+14155555555": {
+                "assigned_to": "4b8c6fec4b2597882c0390202d195419",
+                "created": 63602230185,
+                "features": [
+                    "local"
+                ],
+                "state": "in_service",
+                "updated": 63602230212,
+                "used_by": "callflow"
+            },
+            "+14158865100": {
+                "assigned_to": "4b8c6fec4b2597882c0390202d195419",
+                "created": 63624719324,
+                "features": [
+                    "local"
+                ],
+                "state": "in_service",
+                "updated": 63624719325,
+                "used_by": ""
+            }
+        }
+    },
+    "request_id": "923fce7eec4d13d5e7df09ca6fbbcadd",
+    "revision": "19-d21bca301d4721b03f368b73de35f813",
+    "status": "success"
+}
+```
 
 
 #### Check Phone Numbers availability
