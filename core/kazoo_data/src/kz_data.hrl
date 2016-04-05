@@ -100,7 +100,8 @@
                               data_error().
 
 -define(DEFAULT_DATA_SECTION, [{local, bigcouch}]).
--define(MERGE_PROPS, [{driver, kazoo_couch}
+-define(MERGE_PROPS, [{app, kazoo_couch}
+                      ,{module, kazoo_bigcouch}
                       ,{tag, local}
                      ]).
 -define(MERGE_MAP, maps:from_list(?MERGE_PROPS)).

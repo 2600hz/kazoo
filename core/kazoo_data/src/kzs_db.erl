@@ -99,5 +99,14 @@ db_archive(#{server := {App, Conn}}, DbName, Filename) -> App:db_archive(Conn, D
 
 
 -spec db_list(map(), view_options()) -> {'ok', ne_binaries()} | data_error().
-db_list(#{server := {App, Conn}}, Options) ->
-    App:db_list(Conn, Options).
+db_list(#{server := {App, Conn}}=Map, Options) ->
+    db_list_all(App:db_list(Conn, Options), Options, maps:get('others', Map, [])).
+
+db_list_all(DBs, _Options, []) -> DBs;
+db_list_all({'ok', DBs}, Options, Others) ->
+    {_, DBList} = lists:foldl(fun db_list_all_fold/2, {Options, DBs}, Others),
+    DBList.
+
+db_list_all_fold({_Tag, Server}, {Options, DBs}) ->
+    {'ok', DBList} = db_list(Server, Options),
+    {Options, lists:usort(DBs ++ DBList)}.
