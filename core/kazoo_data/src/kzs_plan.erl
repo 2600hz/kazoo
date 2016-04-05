@@ -148,11 +148,18 @@ account_modb_dataplan(AccountMODB, DocType, DocOwner) ->
     dataplan_match(<<"modb">>, DocType, Plan).
 
 reseller_id(AccountId) ->
-    case whapps_util:get_master_account_id() of
-        {'ok', MasterAccountId} -> reseller_id(AccountId, MasterAccountId);
-        {'error', _Err} ->
-            lager:critical("no master account id whn getting account ~s", [AccountId]),
-            'undefined'
+    case get('$plan_reseller') of
+        AccountId -> 'undefined';
+        _ -> put('$plan_reseller', AccountId),
+             case whapps_util:get_master_account_id() of
+                 {'ok', MasterAccountId} ->
+                     ResellerId = reseller_id(AccountId, MasterAccountId),
+                     put('$plan_reseller', 'undefined'),
+                     ResellerId;
+                 {'error', _Err} ->
+                     lager:critical("no master account id whn getting account ~s", [AccountId]),
+                     'undefined'
+             end
     end.
 
 reseller_id(AccountId, AccountId) -> 'undefined';
