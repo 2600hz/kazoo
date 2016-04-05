@@ -91,8 +91,19 @@ db_info(#{server := {App, Conn}}, DbName) -> App:db_info(Conn, DbName).
 
 -spec db_exists(map(), ne_binary()) -> boolean().
 db_exists(#{server := {App, Conn}}=Map, DbName) ->
-    App:db_exists(Conn, DbName) andalso
-        lists:all(fun({_Tag, M}) -> db_exists(#{server => M}, DbName) end, maps:get('others', Map, [])).
+    case kz_cache:peek_local(?KZ_DP_CACHE, {'database', DbName}) of
+        {'ok', Exists} -> Exists;
+        _ -> Exists = App:db_exists(Conn, DbName) andalso
+                          db_exists_all(DbName, maps:get('others', Map, [])),
+             Props = [{'origin', {'db', DbName}}],
+             kz_cache:store_local(?KZ_DP_CACHE, {'database', DbName}, Exists, Props),
+             Exists
+    end.
+
+-spec db_exists_all(ne_binary(), list()) -> boolean().
+db_exists_all(_, []) -> 'true';
+db_exists_all(DbName, Others) ->
+    lists:all(fun({_Tag, M}) -> db_exists(#{server => M}, DbName) end, Others).
 
 -spec db_archive(map(), ne_binary(), ne_binary()) -> boolean().
 db_archive(#{server := {App, Conn}}=Server, DbName, Filename) ->
