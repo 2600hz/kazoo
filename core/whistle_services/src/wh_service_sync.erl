@@ -74,13 +74,16 @@ clean(Account) ->
 -spec init([]) -> {'ok', #state{}}.
 init([]) ->
     io:format("getting ~s sync_services~n", [?WHS_CONFIG_CAT]),
+    lager:debug("getting ~s sync_services", [?WHS_CONFIG_CAT]),
     case whapps_config:get_is_true(?WHS_CONFIG_CAT, <<"sync_services">>, 'false') of
         'false' ->
             io:format("not starting sync services~n"),
+            lager:debug("not starting sync services"),
             {'ok', #state{}};
         'true' ->
             _Ref = start_sync_service_timer(),
-            io:format("started sync services ~p", [_Ref]),
+            io:format("started sync services ~p\n", [_Ref]),
+            lager:debug("started sync services ~p", [_Ref]),
             {'ok', #state{}}
     end.
 
@@ -181,7 +184,9 @@ sync(AccountId, ServicesJObj) ->
         AccountId -> maybe_sync_services(AccountId, ServicesJObj);
         BillingId ->
             io:format("Account ~s is configured to use the credit card of ~s, following billing tree~n"
-                ,[AccountId, BillingId]),
+                     ,[AccountId, BillingId]),
+            lager:debug("account ~s is configured to use the credit card of ~s, following billing tree"
+                       ,[AccountId, BillingId]),
             sync(BillingId)
     end.
 
