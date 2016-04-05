@@ -25,7 +25,6 @@
 -define(CHILDREN, [?CACHE_ARGS(?JONNY5_CACHE, ?CACHE_PROPS)
                    ,?WORKER('jonny5_listener')
                    ,?WORKER('j5_channels')
-                   ,?WORKER('j5_balance_crawler_fsm')
                   ]).
 
 %% ===================================================================
