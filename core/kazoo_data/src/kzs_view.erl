@@ -36,7 +36,8 @@ all_design_docs(#{server := {App, Conn}}, DBName, Options) ->
 -spec all_docs(map(), ne_binary(), view_options()) ->
                       {'ok', wh_json:objects()} |
                       data_error().
-all_docs(#{server := {App, Conn}}, DbName, Options) -> App:all_docs(Conn, DbName, Options).
+all_docs(#{server := {App, Conn}}, DbName, Options) ->
+    App:all_docs(Conn, DbName, Options).
 
 -spec get_results(map(), ne_binary(), ne_binary(), view_options()) ->
                          {'ok', wh_json:objects() | wh_json:keys()} |
