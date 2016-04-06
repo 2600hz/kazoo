@@ -32,7 +32,6 @@
                    ,?WORKER('omnipresence_listener')
                    ,?WORKER('omnipresence_shared_listener')
                    ,?SUPER('omnip_sup')
-                   | maybe_start_sip_proxy()
                   ]).
 
 %% ===================================================================
@@ -77,13 +76,3 @@ init([]) ->
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
     {'ok', {SupFlags, ?CHILDREN}}.
-
--spec maybe_start_sip_proxy() -> list().
-maybe_start_sip_proxy() ->
-    maybe_start_sip_proxy(whapps_config:get_is_true(?CONFIG_CAT, <<"start_sip_proxy">>, 'false')).
-
--spec maybe_start_sip_proxy(boolean()) -> list().
-maybe_start_sip_proxy('true') ->
-    [?WORKER('omnipresence_proxy')];
-maybe_start_sip_proxy('false') ->
-    [].
