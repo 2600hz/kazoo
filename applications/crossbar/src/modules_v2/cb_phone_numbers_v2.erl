@@ -364,8 +364,7 @@ classified_number(Context, Number, Classifier) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?FIX) ->
-    AccountId = cb_context:account_id(Context),
-    _ = knm_maintenance:fix_by_account(AccountId),
+    %% TODO
     summary(Context);
 post(Context, ?COLLECTION) ->
     post_collection(Context, cb_context:req_json(Context));
