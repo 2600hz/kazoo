@@ -58,6 +58,7 @@
                 ,media                     :: media()
                 ,doc_db                    :: ne_binary()
                 ,doc_id                    :: ne_binary()
+                ,cdr_id                    :: ne_binary()
                 ,call                      :: whapps_call:call()
                 ,record_on_answer          :: boolean()
                 ,record_on_bridge          :: boolean()
@@ -172,7 +173,9 @@ init([Call, Data]) ->
     {Year, Month, _} = erlang:date(),
     AccountDb = wh_util:format_account_modb(kazoo_modb:get_modb(AccountId, Year, Month),'encoded'),
     CallId = whapps_call:call_id(Call),
-    DocId = ?MATCH_MODB_PREFIX(wh_util:to_binary(Year), wh_util:pad_month(Month), CallId),
+    CdrId = ?MATCH_MODB_PREFIX(wh_util:to_binary(Year), wh_util:pad_month(Month), CallId),
+    RecordingId = wh_util:rand_hex_binary(16),
+    DocId = ?MATCH_MODB_PREFIX(wh_util:to_binary(Year), wh_util:pad_month(Month), RecordingId),
     DefaultMediaName = get_media_name(wh_util:rand_hex_binary(16), Format),
     MediaName = wh_json:get_value(?RECORDING_ID_KEY, Data, DefaultMediaName),
     Url = get_url(Data),
@@ -183,6 +186,7 @@ init([Call, Data]) ->
                   ,media={'undefined',MediaName}
                   ,doc_id=DocId
                   ,doc_db=AccountDb
+                  ,cdr_id=CdrId
                   ,call=Call
                   ,time_limit=TimeLimit
                   ,record_on_answer=RecordOnAnswer
@@ -415,10 +419,13 @@ store_recording_meta(#state{call=Call
                             ,media={_, MediaName}
                             ,doc_db=Db
                             ,doc_id=DocId
+                            ,cdr_id=CdrId
+                            ,url=Url
                            }) ->
     CallId = whapps_call:call_id(Call),
     MediaDoc = wh_doc:update_pvt_parameters(
                  wh_json:from_list(
+                   props:filter_empty(
                    [{<<"name">>, MediaName}
                     ,{<<"description">>, <<"recording ", MediaName/binary>>}
                     ,{<<"content_type">>, kz_mime:from_extension(Ext)}
@@ -431,8 +438,11 @@ store_recording_meta(#state{call=Call
                     ,{<<"caller_id_number">>, whapps_call:caller_id_number(Call)}
                     ,{<<"caller_id_name">>, whapps_call:caller_id_name(Call)}
                     ,{<<"call_id">>, CallId}
+                    ,{<<"owner_id">>, whapps_call:owner_id(Call)}
+                    ,{<<"url">>, Url}
+                    ,{<<"cdr_id">>, CdrId}
                     ,{<<"_id">>, DocId}
-                   ])
+                   ]))
                  ,Db
                 ),
     kazoo_modb:create(Db),
@@ -443,7 +453,7 @@ store_recording_meta(#state{call=Call
 
 -spec maybe_store_recording_meta(state()) -> ne_binary() | {'error', any()}.
 maybe_store_recording_meta(#state{doc_db=Db, doc_id=DocId}=State) ->
-    case kz_datamgr:lookup_doc_rev(Db, DocId) of
+    case kz_datamgr:lookup_doc_rev(Db, {<<"call_recording">>, DocId}) of
         {'ok', Rev} -> Rev;
         _ -> store_recording_meta(State)
     end.
@@ -498,9 +508,15 @@ save_recording(#state{call=Call, media=Media}=State, {'true', 'local'}) ->
             lager:info("store url: ~s", [StoreUrl]),
             store_recording(Media, StoreUrl, Call, 'local')
     end;
-save_recording(#state{call=Call, media=Media}, {'true', 'other', Url}) ->
-    lager:info("store remote url: ~s", [Url]),
-    store_recording(Media, Url, Call, 'other').
+save_recording(#state{call=Call, media=Media}=State, {'true', 'other', Url}) ->
+    case maybe_store_recording_meta(State) of
+        {'error', Err} ->
+            lager:warning("error storing metadata : ~p", [Err]),
+            gen_server:cast(self(), 'store_failed');
+        _Rev ->
+            lager:info("store remote url: ~s", [Url]),
+            store_recording(Media, Url, Call, 'other')
+    end.
 
 -spec store_recording({ne_binary(), ne_binary()}, ne_binary(), whapps_call:call(), 'local' | 'other') -> 'ok'.
 store_recording(Media, Url, Call, 'other') ->
