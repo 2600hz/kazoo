@@ -9,10 +9,6 @@ The Faxes API exposes lots of ways to generate and fetch faxes.
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `attempts` | The number of attempts made, this will be set by the system and reset automaticly on put/post | `integer` | `0` | `false`
-`callback` | A URL to send results to | `object` |   | `false`
-`callback.method` | The HTTP method used for the callback | `string('post', 'put')` |   | `false`
-`callback.type` | The content-type used for the body of the callback | `string('json', 'www-url-form-encoded')` |   | `false`
-`callback.url` | The URL to call back with the results | `string` |   | `false`
 `document` | Parameters related to the storage of a fax document | `object` | `{}` | `false`
 `document.content` | The content provided in the body when fetching for transmission as a post | `string(0..256)` |   | `false`
 `document.content_type` | The content type header to be used when fetching for transmission as a post | `string` |   | `false`
@@ -81,6 +77,18 @@ curl -v -X PUT \
     "status":"success",
     "auth_token":"{AUTH_TOKEN}"
 }
+```
+
+you can also multipart to attach the document instead of fetching it later.
+this is a good solution for portals that upload documents.
+
+```curl
+curl -v -X PUT \
+     -H "Content-Type: multipart/mixed" \
+     -F "content=@fax.json; type=application/json" \
+     -F "content=@fax.pdf; type=application/pdf" \
+     -H 'X-Auth-Token: {AUTH_TOKEN}' \
+     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes
 ```
 
 #### Fetch outgoing faxes and their statuses
