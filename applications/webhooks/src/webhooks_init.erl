@@ -99,7 +99,7 @@ existing_modules(WebhooksRoot) ->
              ,"webhooks_util"
             ],
     Pattern = filename:join(ModulesDirectory, "*"++Extension),
-    [wh_util:to_atom(Module)
+    [wh_util:to_atom(Module, 'true')
      || Path <- filelib:wildcard(Pattern),
         not lists:member((Module=filename:basename(Path, Extension)), Utils)
     ].
