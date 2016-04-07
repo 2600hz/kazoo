@@ -3,53 +3,6 @@
 The 2600hz mobile API set: activate and manage numbers.
 
 
-#### Check an account's phone numbers
-
-This lists the numbers an account owns, along with their properties.
-
-##### Request
-
-- Verb: `GET`
-- Url: `/v2/accounts/{{ACCOUNT_ID}}/phone_numbers`
-- Payload: none
-
-##### Response
-
-```json
-{
-    "auth_token": "1931484e3fba5777588176584828e7be",
-    "data": {
-        "casquade_quantity": 0,
-        "numbers": {
-            "+14155555555": {
-                "assigned_to": "4b8c6fec4b2597882c0390202d195419",
-                "created": 63602230185,
-                "features": [
-                    "local"
-                ],
-                "state": "in_service",
-                "updated": 63602230212,
-                "used_by": "callflow"
-            },
-            "+14158865100": {
-                "assigned_to": "4b8c6fec4b2597882c0390202d195419",
-                "created": 63624719324,
-                "features": [
-                    "local"
-                ],
-                "state": "in_service",
-                "updated": 63624719325,
-                "used_by": ""
-            }
-        }
-    },
-    "request_id": "923fce7eec4d13d5e7df09ca6fbbcadd",
-    "revision": "19-d21bca301d4721b03f368b73de35f813",
-    "status": "success"
-}
-```
-
-
 #### Check Phone Numbers availability
 
 This API check if the numbers are still available for purchase.
@@ -254,6 +207,108 @@ curl -X PUT -H "Content-Type: application/json" -H "X-Auth-Token: {{AUTH_TOKEN}}
             }
         }
     },
+    "status": "success"
+}
+```
+
+
+#### List an account's phone numbers
+
+This lists the numbers an account owns, along with their properties.
+
+##### Request
+
+- Verb: `GET`
+- Url: `/v2/accounts/{{ACCOUNT_ID}}/phone_numbers`
+- Payload: none
+
+##### Response
+
+```json
+{
+    "auth_token": "1931484e3fba5777588176584828e7be",
+    "data": {
+        "casquade_quantity": 0,
+        "numbers": {
+            "+14155555555": {
+                "assigned_to": "4b8c6fec4b2597882c0390202d195419",
+                "created": 63602230185,
+                "features": [
+                    "local"
+                ],
+                "state": "in_service",
+                "updated": 63602230212,
+                "used_by": "callflow"
+            },
+            "+14158865100": {
+                "assigned_to": "4b8c6fec4b2597882c0390202d195419",
+                "created": 63624719324,
+                "features": [
+                    "local"
+                ],
+                "state": "in_service",
+                "updated": 63624719325,
+                "used_by": ""
+            }
+        }
+    },
+    "request_id": "923fce7eec4d13d5e7df09ca6fbbcadd",
+    "revision": "19-d21bca301d4721b03f368b73de35f813",
+    "status": "success"
+}
+```
+
+
+#### Search for numbers
+
+Looks for numbers using the carrier module set up for your account.
+
+##### Request
+
+- Verb: `GET`
+- Url: `/v2/phone_numbers?prefix={PREFIX}&quantity={QUANTITY}&offset={OFFSET}`
+- Payload: none
+- `PREFIX`: a 3-digit number prefix such as an area code (e.g. `415`)
+- `QUANTITY`: maximum amount of numbers to be returned (e.g. `2`)
+- `OFFSET`: page number (e.g. `0`)
+
+##### Response
+
+```json
+{
+    "auth_token": "",
+    "data": [
+        {
+            "e164": "+14152338397",
+            "formatted_number": "1-415-233-8397",
+            "npa_nxx": "415233",
+            "number": "+14152338397",
+            "number_id": "4AA418FB-3409-4340-8210-E7EAFE2AB118",
+            "rate_center": {
+                "lata": "722",
+                "name": "SAN RAFAEL",
+                "state": "CA"
+            },
+            "status": "Available",
+            "ten_digit": "4152338397"
+        },
+        {
+            "e164": "+14152338421",
+            "formatted_number": "1-415-233-8421",
+            "npa_nxx": "415233",
+            "number": "+14152338421",
+            "number_id": "0CD68E85-F149-477F-9C13-1E720ACCC3EE",
+            "rate_center": {
+                "lata": "722",
+                "name": "SAN RAFAEL",
+                "state": "CA"
+            },
+            "status": "Available",
+            "ten_digit": "4152338421"
+        }
+    ],
+    "request_id": "1c9a13a0f729c2d6d35a9c4515e5da03",
+    "revision": "undefined",
     "status": "success"
 }
 ```

@@ -10,43 +10,12 @@ Learn how to use the 2600hz mobile API set to activate and manage numbers.
 
 ## APIs
 
-* [Search for number](#user-content-search-for-number)
 * [Load classifiers](#user-content-load-classifiers)
 * [Classify a number](#user-content-classify-a-number)
 * [Get a number](#user-content-get-a-number)
 * [Locality](#user-content-locality)
 * [Fix](#user-content-fix)
 
-
-### Search for number
-
-#### Request
-
-`GET` `http://{{SERVER}}/v2/phone_numbers?prefix=415&quantity=5`
-
-##### Query String parameters
-
-* `prefix`: number prefix, **required** (ex: 415)
-* `quantity`: how many numbers, **not required**  (ex: 2)
-
-#### Response
-
-```json
-{
-    "data": [{
-        "id": "+14158551292"
-    }, {
-        "id": "+14158551293"
-    }, {
-        "id": "+14158551294"
-    }, {
-        "id": "+14158551295"
-    }, {
-        "id": "+14158551296"
-    }],
-    "status": "success"
-}
-```
 
 ### Load classifiers
 
