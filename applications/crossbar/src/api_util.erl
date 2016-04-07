@@ -140,6 +140,9 @@ get_req_data(Context, Req0) ->
 maybe_get_req_data(Context, Req0, ?HTTP_GET) ->
     {QS, Req1} = get_query_string_data(Req0),
     set_empty_request(Context, Req1, QS);
+maybe_get_req_data(Context, Req0, ?HTTP_DELETE) ->
+    {QS, Req1} = get_query_string_data(Req0),
+    set_empty_request(Context, Req1, QS);
 maybe_get_req_data(Context, Req0, ?HTTP_OPTIONS) ->
     {QS, Req1} = get_query_string_data(Req0),
     set_empty_request(Context, Req1, QS);
