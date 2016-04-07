@@ -380,10 +380,21 @@ update_phone_number(Number, Routines) ->
 %%--------------------------------------------------------------------
 -spec save(knm_number()) -> knm_number_return().
 save(Number) ->
-    Number1 = knm_services:update_services(Number),
+    PhoneNumber = knm_number:phone_number(Number),
+    Num =
+        case 'undefined' == knm_phone_number:assigned_to(PhoneNumber)
+            andalso ?NUMBER_STATE_DISCOVERY == knm_phone_number:state(PhoneNumber)
+        of
+            'true' ->
+                %% Number was created as a result of carrier search
+                %%  thus has no services associated with it
+                Number;
+            'false' ->
+                knm_services:update_services(Number)
+        end,
     wrap_phone_number_return(
-      knm_phone_number:save(phone_number(Number1))
-      ,Number1
+      knm_phone_number:save(phone_number(Num))
+      ,Num
      ).
 
 %%--------------------------------------------------------------------

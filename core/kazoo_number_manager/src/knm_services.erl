@@ -110,11 +110,10 @@ deactivate_features(Number, Features) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec update_services(knm_number:knm_number()) -> knm_number:knm_number().
 -ifdef(TEST).
 update_services(Number) -> Number.
 -else.
--spec update_services(knm_number:knm_number()) ->
-                                   knm_number:knm_number().
 -spec update_services(knm_number:knm_number(), boolean()) ->
                                    knm_number:knm_number().
 update_services(Number) ->
@@ -131,13 +130,10 @@ update_services(Number, 'false') ->
     PhoneNumber = knm_number:phone_number(Number),
     AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
     _ = wh_services:reconcile(AssignedTo, <<"phone_numbers">>),
-
     PrevAssignedTo = knm_phone_number:prev_assigned_to(PhoneNumber),
     _ = wh_services:reconcile(PrevAssignedTo, <<"phone_numbers">>),
-
     Services = fetch_services(Number),
     Transactions = knm_number:transactions(Number),
-
     _ = wh_services:commit_transactions(Services, Transactions),
     Number.
 -endif.
@@ -199,8 +195,7 @@ activate_phone_number(Number, BillingId, Units) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_services(knm_number:knm_number()) ->
-                            wh_services:services().
+-spec fetch_services(knm_number:knm_number()) -> wh_services:services().
 -ifdef(TEST).
 fetch_services(_Number) -> wh_services:new().
 -else.

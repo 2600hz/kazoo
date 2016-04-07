@@ -677,12 +677,17 @@ save_to_number_db(PhoneNumber) ->
     NumberDb = number_db(PhoneNumber),
     JObj = to_json(PhoneNumber),
     case kz_datamgr:ensure_saved(NumberDb, JObj) of
+        {'ok', Doc} -> from_json(Doc);
+        {'error', 'not_found'} ->
+            lager:debug("creating new db '~s' for number '~s'", [NumberDb, number(PhoneNumber)]),
+            'true' = kz_datamgr:db_create(NumberDb),
+            kz_datamgr:revise_views_from_folder(NumberDb, wh_util:to_atom(?APP_NAME)),
+            save_to_number_db(PhoneNumber);
         {'error', E} ->
             lager:error("failed to save ~s in ~s: ~p"
                         ,[?MODULE:number(PhoneNumber), NumberDb, E]
                        ),
-            knm_errors:database_error(E, PhoneNumber);
-        {'ok', Doc} -> from_json(Doc)
+            knm_errors:database_error(E, PhoneNumber)
     end.
 -endif.
 
