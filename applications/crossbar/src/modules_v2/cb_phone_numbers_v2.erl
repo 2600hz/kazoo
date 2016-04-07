@@ -364,8 +364,7 @@ classified_number(Context, Number, Classifier) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?FIX) ->
-    AccountId = cb_context:account_id(Context),
-    _ = knm_maintenance:fix_by_account(AccountId),
+    %% TODO
     summary(Context);
 post(Context, ?COLLECTION) ->
     post_collection(Context, cb_context:req_json(Context));
@@ -515,14 +514,14 @@ clean_summary(Context) ->
     Routines = [fun(JObj) -> wh_json:delete_key(<<"id">>, JObj) end
                 ,fun(JObj) -> wh_json:set_value(<<"numbers">>, JObj, wh_json:new()) end
                 ,fun(JObj) ->
-                    Service = wh_services:fetch(AccountId),
-                    Quantity = wh_services:cascade_category_quantity(?KNM_PHONE_NUMBERS_DOC, [], Service),
-                    wh_json:set_value(<<"casquade_quantity">>, Quantity, JObj)
+                         Service = wh_services:fetch(AccountId),
+                         Quantity = wh_services:cascade_category_quantity(?KNM_PHONE_NUMBERS_DOC, [], Service),
+                         wh_json:set_value(<<"casquade_quantity">>, Quantity, JObj)
                  end
                 ,fun(JObj) ->
-                    QS = wh_json:to_proplist(cb_context:query_string(Context)),
-                    Numbers = wh_json:get_value(<<"numbers">>, JObj),
-                    wh_json:set_value(<<"numbers">>, apply_filters(QS, Numbers), JObj)
+                         QS = wh_json:to_proplist(cb_context:query_string(Context)),
+                         Numbers = wh_json:get_value(<<"numbers">>, JObj),
+                         wh_json:set_value(<<"numbers">>, apply_filters(QS, Numbers), JObj)
                  end
                ],
     lists:foldl(fun(F, JObj) -> F(JObj) end
@@ -564,19 +563,18 @@ apply_filter(Key, Value, Numbers) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%
-%% @end
+%% @doc Search for numbers, requesting carrier module
 %%--------------------------------------------------------------------
 -spec find_numbers(cb_context:context()) -> cb_context:context().
 find_numbers(Context) ->
     JObj = get_find_numbers_req(Context),
     Prefix = wh_json:get_ne_value(?PREFIX, JObj),
-    Quantity = wh_json:get_integer_value(<<"quantity">>, JObj, 1),
+    Quantity = wh_json:get_value(<<"quantity">>, JObj, 1),
     OnSuccess =
         fun(C) ->
+                Found = knm_carriers:find(Prefix, Quantity, wh_json:to_proplist(JObj)),
                 cb_context:setters(C
-                                  ,[{fun cb_context:set_resp_data/2, knm_carriers:find(Prefix, Quantity, wh_json:to_proplist(JObj))}
+                                  ,[{fun cb_context:set_resp_data/2, Found}
                                     ,{fun cb_context:set_resp_status/2, 'success'}
                                    ])
         end,

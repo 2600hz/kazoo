@@ -244,8 +244,8 @@ should_lookup_cnam() -> 'true'.
 %% @end
 %%--------------------------------------------------------------------
 -spec make_numbers_request(atom(), wh_proplist()) ->
-                                  {'ok', term()} |
-                                  {'error', term()}.
+                                  {'ok', any()} |
+                                  {'error', any()}.
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
@@ -276,6 +276,7 @@ make_numbers_request(Verb, Props) ->
     HTTPOptions = [{'ssl', [{'verify', 'verify_none'}]}
                    ,{'timeout', 180 * ?MILLISECONDS_IN_SECOND}
                    ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
+                  , {'body_format', 'string'}
                   ],
     ?BW_DEBUG("Request:~n~s ~s~n~s~n", ['post', ?BW_NUMBER_URL, Body]),
     case kz_http:post(?BW_NUMBER_URL, Headers, Body, HTTPOptions) of
@@ -322,11 +323,9 @@ make_numbers_request(Verb, Props) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Convert a number order response to json
-%% @end
+%% @doc Convert a number order response to json
 %%--------------------------------------------------------------------
--spec number_order_response_to_json(term()) -> wh_json:object().
+-spec number_order_response_to_json(any()) -> wh_json:object().
 number_order_response_to_json([]) ->
     wh_json:new();
 number_order_response_to_json([Xml]) ->

@@ -10,69 +10,12 @@ Learn how to use the 2600hz mobile API set to activate and manage numbers.
 
 ## APIs
 
-* [List account's phone numbers](#user-content-list-accounts-phone-numbers)
-* [Search for number](#user-content-search-for-number)
 * [Load classifiers](#user-content-load-classifiers)
 * [Classify a number](#user-content-classify-a-number)
 * [Get a number](#user-content-get-a-number)
 * [Locality](#user-content-locality)
 * [Fix](#user-content-fix)
 
-### List account's phone numbers
-
-#### Request
-
-`GET` `http://{{SERVER}}/v2/accounts/{{account_id}}/phone_numbers`
-
-#### Response
-
-```json
-{
-    "page_size": 1,
-    "data": [{
-        "id": "+14202000000",
-        "number": "+14202000000",
-        "state": "in_service",
-        "features": {
-            "test_feature": true
-        },
-        "assigned_to": "{{account_id}}",
-        "created": 63602485423,
-        "updated": 63602485423
-    }],
-    "status": "success"
-}
-```
-
-### Search for number
-
-#### Request
-
-`GET` `http://{{SERVER}}/v2/phone_numbers?prefix=415&quantity=5`
-
-##### Query String parameters
-
-* `prefix`: number prefix, **required** (ex: 415)
-* `quantity`: how many numbers, **not required**  (ex: 2)
-
-#### Response
-
-```json
-{
-    "data": [{
-        "id": "+14158551292"
-    }, {
-        "id": "+14158551293"
-    }, {
-        "id": "+14158551294"
-    }, {
-        "id": "+14158551295"
-    }, {
-        "id": "+14158551296"
-    }],
-    "status": "success"
-}
-```
 
 ### Load classifiers
 

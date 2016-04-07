@@ -74,7 +74,6 @@ find(Num, Quantity) ->
 
 find(Num, Quantity, Options) ->
     NormalizedNumber = knm_converters:normalize(Num),
-
     lists:foldl(fun(Carrier, Acc) ->
                         find_fold(Carrier, Acc, NormalizedNumber, Quantity, Options)
                 end
@@ -108,12 +107,8 @@ process_bulk_carrier_results(Acc, Numbers) ->
                                      wh_json:objects().
 process_carrier_results(Acc, []) -> Acc;
 process_carrier_results(Acc, Numbers) ->
-    lists:reverse(
-      lists:foldl(fun process_number_result/2
-                  ,[]
-                  ,Numbers
-                 )
-     ) ++ Acc.
+    Results = lists:foldl(fun process_number_result/2, [], Numbers),
+    lists:reverse(Results, Acc).
 
 -spec process_number_result(knm_number:knm_number(), wh_json:objects()) ->
                                    wh_json:objects().
@@ -126,7 +121,6 @@ process_number_result(Number, Acc, ?CARRIER_OTHER) ->
 process_number_result(Number, Acc, Carrier) ->
     PhoneNumber = knm_number:phone_number(Number),
     DID = knm_phone_number:number(PhoneNumber),
-
     check_for_existing_did(Number, Acc, Carrier, knm_phone_number:fetch(DID)).
 
 -spec check_for_existing_did(knm_number:knm_number(), wh_json:objects(), ne_binary(), knm_phone_number_return()) ->
