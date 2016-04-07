@@ -74,7 +74,6 @@ find(Num, Quantity) ->
 
 find(Num, Quantity, Options) ->
     NormalizedNumber = knm_converters:normalize(Num),
-
     lists:foldl(fun(Carrier, Acc) ->
                         find_fold(Carrier, Acc, NormalizedNumber, Quantity, Options)
                 end
