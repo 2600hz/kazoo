@@ -1,6 +1,6 @@
 DEPS = lager eiconv gen_smtp amqp_client cowboy jesse jiffy certifi couchbeam wsock zucchini \
        erlsom erlydtl exml escalus folsom detergent erlang_localtime \
-       nklib nksip gproc poolboy syslog lager_syslog eflame socketio hep ecsv reloader \
+       nklib gproc poolboy syslog lager_syslog eflame socketio hep ecsv reloader \
 	proper recon
 
 dep_escalus = hex 2.6.4
@@ -13,7 +13,6 @@ dep_detergent = git https://github.com/pap/detergent e86dfeded3e4f9f3f9278c6a1ae
 dep_jiffy = hex 0.14.7
 dep_jesse = git https://github.com/for-GET/jesse 9e7830001deb78b57ce2ae15049afb7fecb8d386
 dep_nklib = git https://github.com/NetComposer/nklib
-dep_nksip = git https://github.com/NetComposer/nksip
 dep_couchbeam = git https://github.com/benoitc/couchbeam 1.3.0
 
 ### pr request opened upstream ###
