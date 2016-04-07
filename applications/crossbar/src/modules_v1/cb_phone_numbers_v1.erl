@@ -27,7 +27,6 @@
         ]).
 
 -include("crossbar.hrl").
--include_lib("kazoo_number_manager/include/knm_records.hrl").
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 
 -define(ACTIVATE, <<"activate">>).
@@ -462,10 +461,11 @@ validate_delete(Context) ->
                           cb_context:context().
 set_response({'ok', {'ok', Doc}}, _, Context) ->
     crossbar_util:response(Doc, Context);
-set_response({'ok', #knm_number{}=Number}, _, Context) ->
-    crossbar_util:response(knm_number:to_public_json(Number), Context);
 set_response({'ok', Doc}, _, Context) ->
-    crossbar_util:response(Doc, Context);
+    case knm_number:is_number(Doc) of
+        'true' -> crossbar_util:response(knm_number:to_public_json(Doc), Context);
+        'false' -> crossbar_util:response(Doc, Context)
+    end;
 set_response({'error', Data}, _, Context) ->
     case wh_json:is_json_object(Data) of
         'true' ->

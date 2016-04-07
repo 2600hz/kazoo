@@ -1,7 +1,6 @@
 -ifndef(KNM_HRL).
 -include_lib("whistle/include/wh_databases.hrl").
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
--include_lib("kazoo_number_manager/include/knm_records.hrl").
 
 -define(APP_VERSION, <<"4.0.0">>).
 -define(APP_NAME, <<"kazoo_number_manager">>).
