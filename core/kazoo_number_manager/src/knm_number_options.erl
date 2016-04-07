@@ -39,7 +39,7 @@
 
 -spec default() -> options().
 default() ->
-    [{'auth_by', ?DEFAULT_AUTH_BY}
+    [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
      ,{'dry_run', 'false'}
     ].
 

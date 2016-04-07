@@ -411,19 +411,22 @@ save(Number) ->
 %% @public
 %% @doc
 %% Note: option 'assigned_to' needs to be non-empty
-%% Note: option 'auth_by' should always be MasterAccountId
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile(ne_binary(), knm_number_options:options()) ->
                        knm_number_return().
 reconcile(DID, Options) ->
+    %% Note: option 'auth_by' should always be MasterAccountId
+    NewOptions = [ {'auth_by', ?KNM_DEFAULT_AUTH_BY}
+                   | Options
+                 ],
     case ?MODULE:get(DID) of
         {'ok', Number} ->
-            reconcile_number(Number, Options);
+            reconcile_number(Number, NewOptions);
         {'error', 'not_found'} ->
             AssignedTo = knm_number_options:assigned_to(Options),
             %% Ensures state to be IN_SERVICE
-            move(DID, AssignedTo, Options);
+            move(DID, AssignedTo, NewOptions);
         {'error', _}=E -> E
     end.
 

@@ -3,7 +3,7 @@
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 
--define(DEFAULT_AUTH_BY, <<"system">>).
+-define(KNM_DEFAULT_AUTH_BY, <<"system">>).
 
 -type knm_phone_number_return() ::
         {'ok', knm_phone_number:knm_phone_number()} |

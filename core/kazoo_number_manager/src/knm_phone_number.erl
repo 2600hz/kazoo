@@ -206,14 +206,14 @@ authorize_release(PhoneNumber) ->
     authorize_release(PhoneNumber, auth_by(PhoneNumber)).
 
 -ifdef(TEST).
-authorize_release(PhoneNumber, ?DEFAULT_AUTH_BY) ->
+authorize_release(PhoneNumber, ?KNM_DEFAULT_AUTH_BY) ->
     authorized_release(PhoneNumber);
 authorize_release(PhoneNumber, ?MASTER_ACCOUNT_ID) ->
     authorized_release(PhoneNumber);
 authorize_release(_PhoneNumber, _AuthBy) ->
     knm_errors:unauthorized().
 -else.
-authorize_release(PhoneNumber, ?DEFAULT_AUTH_BY) ->
+authorize_release(PhoneNumber, ?KNM_DEFAULT_AUTH_BY) ->
     authorized_release(PhoneNumber);
 authorize_release(PhoneNumber, AuthBy) ->
     AssignedTo = assigned_to(PhoneNumber),
@@ -636,7 +636,7 @@ list_attachments(PhoneNumber, AuthBy) ->
 -spec set_options(knm_phone_number(), knm_number_options:options()) -> knm_phone_number().
 set_options(Number, Options) when is_list(Options) ->
     Updates = [{fun set_dry_run/2, knm_number_options:dry_run(Options, 'false')}
-               ,{fun set_auth_by/2, knm_number_options:auth_by(Options, ?DEFAULT_AUTH_BY)}
+               ,{fun set_auth_by/2, knm_number_options:auth_by(Options, ?KNM_DEFAULT_AUTH_BY)}
                ,{fun set_assign_to/2, knm_number_options:assign_to(Options)}
               ],
     {'ok', PhoneNumber} = setters(Number, Updates),
@@ -649,7 +649,7 @@ set_options(Number, Options) when is_list(Options) ->
 %%--------------------------------------------------------------------
 -spec is_authorized(knm_phone_number()) -> boolean().
 -ifdef(TEST).
-is_authorized(#knm_phone_number{auth_by= ?DEFAULT_AUTH_BY}) -> 'true';
+is_authorized(#knm_phone_number{auth_by= ?KNM_DEFAULT_AUTH_BY}) -> 'true';
 is_authorized(#knm_phone_number{assigned_to=AssignedTo
                                 ,auth_by=AuthBy
                                }) ->
@@ -657,7 +657,7 @@ is_authorized(#knm_phone_number{assigned_to=AssignedTo
     (AssignedTo =:= ?RESELLER_ACCOUNT_ID orelse AssignedTo =:= ?MASTER_ACCOUNT_ID)
         andalso (AuthBy =:= ?RESELLER_ACCOUNT_ID orelse AuthBy =:= ?MASTER_ACCOUNT_ID).
 -else.
-is_authorized(#knm_phone_number{auth_by= ?DEFAULT_AUTH_BY}) -> 'true';
+is_authorized(#knm_phone_number{auth_by= ?KNM_DEFAULT_AUTH_BY}) -> 'true';
 is_authorized(#knm_phone_number{assigned_to=AssignedTo
                                 ,auth_by=AuthBy
                                }) ->

@@ -143,7 +143,7 @@ authorize(Number) ->
        ).
 -endif.
 
-authorize(Number, ?DEFAULT_AUTH_BY) -> Number;
+authorize(Number, ?KNM_DEFAULT_AUTH_BY) -> Number;
 authorize(Number, AuthBy) ->
     AssignTo = knm_phone_number:assign_to(knm_number:phone_number(Number)),
     case ?ACCT_HIERARCHY(AuthBy, AssignTo, 'true') of

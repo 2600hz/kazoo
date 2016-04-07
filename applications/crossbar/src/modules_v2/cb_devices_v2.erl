@@ -27,6 +27,7 @@
         ]).
 
 -include("crossbar.hrl").
+-include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 
 -define(STATUS_PATH_TOKEN, <<"status">>).
 -define(CHECK_SYNC_PATH_TOKEN, <<"sync">>).
@@ -817,10 +818,8 @@ maybe_add_mobile_mdn(Context) ->
 
 -spec add_mobile_mdn(cb_context:context()) -> cb_context:context().
 add_mobile_mdn(Context) ->
-    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
     Normalized = knm_converters:normalize(get_mdn(Context)),
     Options = [ {'assigned_to', cb_context:account_id(Context)}
-              , {'auth_by', MasterAccountId}
               , {'dry_run', not cb_context:accepting_charges(Context)}
               ],
     case knm_number:reconcile(Normalized, Options) of
@@ -878,9 +877,6 @@ remove_mobile_mdn(Context) ->
 -spec remove_if_mobile(ne_binary(), cb_context:context()) -> cb_context:context().
 remove_if_mobile(MDN, Context) ->
     Normalized = knm_converters:normalize(MDN),
-    Options = [ {'auth_by', <<"system">>}
-              , {'dry_run', not cb_context:accepting_charges(Context)}
-              ],
     case knm_number:get(Normalized) of
         {'ok', Number} ->
             case wh_json:get_ne_value(<<"mobile">>, knm_number:to_public_json(Number)) of
@@ -888,6 +884,9 @@ remove_if_mobile(MDN, Context) ->
                 Mobile ->
                     lager:debug("removing mdn ~s with mobile properties ~s"
                                ,[Normalized, wh_json:encode(Mobile)]),
+                    Options = [ {'auth_by', ?KNM_DEFAULT_AUTH_BY}
+                              , {'dry_run', not cb_context:accepting_charges(Context)}
+                              ],
                     _ = knm_number:delete(Normalized, Options),
                     Context
             end;
