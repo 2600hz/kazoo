@@ -146,8 +146,7 @@ acquire_and_provision_number(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     AuthBy = knm_phone_number:auth_by(PhoneNumber),
     AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
-    Data = knm_phone_number:carrier_data(PhoneNumber),
-    Id = wh_json:get_string_value(<<"number_id">>, Data),
+    Id = wh_json:get_string_value(<<"number_id">>, knm_phone_number:carrier_data(PhoneNumber)),
     Hosts = case whapps_config:get(?KNM_BW_CONFIG_CAT, <<"endpoints">>) of
                 'undefined' -> [];
                 Endpoint when is_binary(Endpoint) ->
