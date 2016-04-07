@@ -76,7 +76,7 @@ auth_by(Options, Default) ->
 public_fields(Options) ->
     public_fields(Options, 'undefined').
 public_fields(Options, Default) ->
-    props:get_binary_value('public_fields', Options, Default).
+    props:get_value('public_fields', Options, Default).
 
 -spec state(options()) -> api_binary().
 -spec state(options(), Default) -> ne_binary() | Default.

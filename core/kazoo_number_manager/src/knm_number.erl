@@ -55,13 +55,6 @@
 
 -include("knm.hrl").
 
--record(knm_number, {knm_phone_number :: knm_phone_number:knm_phone_number()
-                     ,services :: wh_services:services()
-                     ,billing_id :: api_binary()
-                     ,transactions = [] :: wh_transaction:transactions()
-                     ,errors = [] :: list()
-                     ,charges = [] :: [{ne_binary(), integer()}]
-                    }).
 -opaque knm_number() :: #knm_number{}.
 -type knm_numbers() :: [knm_number()].
 
@@ -601,7 +594,12 @@ buy(Num, Account) ->
 buy(Num, Account, Options) ->
     Updates = [{fun knm_phone_number:set_assigned_to/2, wh_util:format_account_id(Account, 'raw')}
                ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_IN_SERVICE}
-               ,fun knm_carriers:acquire/1
+               %%
+               %% NEED FIX!
+               %% All functions expects knm_phone_number:knm_phone_number() on input
+               %% but knm_carriers:acquire expects knm_number:knm_number()
+               %% ,fun knm_carriers:acquire/1
+               %%
               ],
     update(Num, Updates, Options).
 
