@@ -23,10 +23,18 @@ is_driver_app(App) ->
 connection() ->
     [Section] = wh_config:get('data', 'config', ['bigcouch']),
     Props = props:get_value('generic', wh_config:get(Section), []),
-    connection(Props).
+    connection(connection_options(Props)).
+
+connection_options(Props) ->
+    case props:get_value('connect_options', Props) of
+        'undefined' -> Props;
+        Section ->
+            Options = props:get_value('generic', wh_config:get(Section), []),
+            [{'connect_options', Options} | props:delete('connect_options', Props)]
+    end.
 
 connection(List) when is_list(List) ->
-    connection(maps:from_list(List));
+    connection(maps:from_list(props:filter_undefined(List)));
 connection(#{driver := App}=Map)
   when not is_atom(App) ->
     connection(Map#{driver => wh_util:to_atom(App, 'true')});

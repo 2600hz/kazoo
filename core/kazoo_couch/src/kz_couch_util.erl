@@ -81,23 +81,38 @@ retry504s(Fun, Cnt) ->
                                 server() |
                                 {'error', 'timeout' | 'ehostunreach' | _}.
 new_connection(#kz_couch_connection{host=Host
-                                        ,port=Port
-                                        ,username=_User
-                                        ,password=_Pass
+                                   ,port=Port
+                                   ,username=User
+                                   ,password=Pass
+                                   ,options=Options
                                     }) ->
-%%    Options = [{'basic_auth', {User, Pass}}
-%%     Options = [{'pool', Tag}
-%%                ,{'pool_name', Tag}
-    Options = [{'pool_size', 100}
-               ,{'max_sessions', 512}
-               ,{'max_pipeline_size', 10}
-               ,{'connect_timeout', 500}
-               ,{'connect_options', [{'keepalive', true}]}
-%               ,{'timeout', 'infinity'}
-              ],
-    get_new_conn(Host, Port, Options);
+    get_new_conn(Host, Port, maybe_add_auth(User, Pass, check_options(Options)));
 new_connection(#{}=Map) ->
     new_connection(maps:fold(fun connection_parse/3, #kz_couch_connection{}, Map)).
+
+-spec maybe_add_auth(string(), string(), wh_proplist()) -> wh_proplist().
+maybe_add_auth("", _Pass, Options) -> Options;
+maybe_add_auth(User, Pass, Options) ->
+    [{'basic_auth', {User, Pass}} | Options].
+
+check_options(Options) ->
+    Routines = [fun convert_options/1
+                ,fun filter_options/1
+               ],
+    lists:foldl(fun(Fun, Opts) -> Fun(Opts) end, Options, Routines).
+
+filter_options(Options) ->
+    [ KV || {K, _} = KV <- Options, not lists:member(K, ?NO_OPTIONS)].
+
+convert_options(Options) ->
+    lists:map(fun convert_option/1, Options).
+
+convert_option({K, V}) ->
+    case lists:member(K, ?ATOM_OPTIONS) of
+        'true' -> {K, wh_util:to_atom(V, 'true')};
+        'false' when is_map(V) -> {K, maps:to_list(V)};
+        'false' -> {K, V}
+    end.
 
 -spec connection_parse(any(), any(), couch_connection()) -> couch_connection().
 connection_parse(ip, V, Conn) ->
@@ -146,20 +161,6 @@ server_info(#server{}=Conn) -> couchbeam:server_info(Conn).
 
 -spec server_url(server()) -> ne_binary().
 server_url(#server{url=Url}) -> Url.
-%%     UserPass = case props:get_value('basic_auth', Options) of
-%%                    'undefined' -> <<>>;
-%%                    {U, P} -> list_to_binary([U, <<":">>, P])
-%%                end,
-%%     Protocol = case wh_util:is_true(props:get_value('is_ssl', Options)) of
-%%                    'false' -> <<"http">>;
-%%                    'true' -> <<"https">>
-%%                end,
-%%
-%%     list_to_binary([Protocol, <<"://">>, UserPass
-%%                     ,<<"@">>, wh_util:to_binary(Host)
-%%                     ,<<":">>, wh_util:to_binary(Port)
-%%                     ,<<"/">>
-%%                    ]).
 
 -spec db_url(server(), ne_binary()) -> ne_binary().
 db_url(#server{}=Conn, DbName) ->

@@ -309,5 +309,7 @@ start_connection(Tag, Params) ->
 map_keys_to_atoms(Map) ->
     maps:fold(fun map_keys_to_atoms_fold/3, #{}, Map).
 
+map_keys_to_atoms_fold(K, V, Acc) when is_map(V) ->
+    Acc#{wh_util:to_atom(K, 'true') => map_keys_to_atoms(V)};
 map_keys_to_atoms_fold(K, V, Acc) ->
     Acc#{wh_util:to_atom(K, 'true') => V}.

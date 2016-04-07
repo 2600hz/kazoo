@@ -162,7 +162,7 @@ try_connection(#data_connection{app=App, props=Props}=Connection) ->
 
 -spec handle_error(data_connection(), tuple()) -> {'error', any()}.
 handle_error(#data_connection{app=App, props=Props}, Error) ->
-    lager:info("failed to connect with ~s : ~p : ~p", [App, Error, maps:to_list(Props)]),
+    lager:info("failed to connect with ~s : ~p : ~p", [App, Error, Props]),
     {'error', Error}.
 
 -spec connection_established(data_connection()) -> data_connection().

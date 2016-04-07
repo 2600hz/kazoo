@@ -60,7 +60,7 @@
                               ,port = ?DEFAULT_PORT
                               ,username = ""
                               ,password = ""
-                              ,options :: wh_proplist()
+                              ,options = [] :: wh_proplist()
                               ,connected = 'false'
                               ,ready = 'false'
                               ,admin = 'false'
@@ -77,6 +77,9 @@
                       ,dest_doc_id = 'undefined' :: api_binary()
                      }).
 -type copy_doc() :: #wh_copy_doc{}.
+
+-define(NO_OPTIONS, [cookie, admin_port, compact_automatically]).
+-define(ATOM_OPTIONS, [pool, pool_name]).
 
 -define(KZ_COUCH_HRL, 'true').
 -endif.
