@@ -138,12 +138,12 @@ get_new_conn(Host, Port, Opts) ->
     lager:debug("new connection to host ~s:~b, testing: ~p", [Host, Port, Conn]),
     case server_info(Conn) of
         {'ok', ConnData} ->
-            CouchVersion = wh_json:get_value(<<"version">>, ConnData),
-            BigCouchVersion = wh_json:get_value(<<"bigcouch">>, ConnData),
+            CouchVersion = wh_json:get_ne_binary_value(<<"version">>, ConnData),
+            BigCouchVersion = wh_json:get_ne_binary_value(<<"bigcouch">>, ConnData),
             lager:info("connected successfully to ~s:~b", [Host, Port]),
             lager:debug("responding CouchDB version: ~p", [CouchVersion]),
             lager:debug("responding BigCouch version: ~p", [BigCouchVersion]),
-            {'ok', Conn};
+            {'ok', add_couch_version(CouchVersion, BigCouchVersion, Conn)};
         {'error', {'conn_failed', {'error', 'timeout'}}} ->
             lager:warning("connection timed out for ~s:~p", [Host, Port]),
             {'error', 'timeout'};
@@ -154,6 +154,13 @@ get_new_conn(Host, Port, Opts) ->
             lager:warning("connection to ~s:~p failed: ~p", [Host, Port, _E]),
             E
     end.
+
+add_couch_version(<<"1.6", _/binary>>, 'undefined', #server{options=Options}=Conn) ->
+    Conn#server{options = [{driver_version, 'couchdb_1_6'} | Options]};
+add_couch_version(_, 'undefined', #server{options=Options}=Conn) ->
+    Conn#server{options = [{driver_version, 'couchdb_2'} | Options]};
+add_couch_version(_, _, #server{options=Options}=Conn) ->
+    Conn#server{options = [{driver_version, 'bigcouch'} | Options]}.
 
 -spec server_info(server()) -> {'ok', wh_json:object()} |
                                {'error', any()}.

@@ -1,4 +1,4 @@
--module(kazoo_bigcouch).
+-module(kazoo_couch).
 
 -behaviour(kz_data).
 
@@ -96,9 +96,21 @@ db_exists(Server, DbName) ->
 db_archive(Server, DbName, Filename) ->
     kz_couch_db:db_archive(Server, DbName, Filename).
 
+
 db_list(Server, Options) ->
+    db_list(version(Server), Server, Options).
+
+%%
+%% db specific
+%%
+db_list('couchdb_2', Server, Options) ->
+    kz_couch_db:db_list(Server, Options);
+db_list('bigcouch', Server, Options) ->
     {'ok', Results} = kz_couch_view:all_docs(Server, <<"dbs">>, Options),
-    {'ok', [ wh_doc:id(Db) || Db <- Results]}.
+    {'ok', [ wh_doc:id(Db) || Db <- Results]};
+db_list('couchdb_1_6', Server, Options) ->
+    {'ok', List} = kz_couch_db:db_list(Server, Options),
+    {'ok', db_local_filter(List, Options)}.
 
 %% Document operations
 open_doc(Server, DbName, DocId, Options) ->
@@ -159,3 +171,24 @@ get_results_count(Server, DbName, DesignDoc, ViewOptions) ->
 
 all_docs(Server, DbName, Options) ->
     kz_couch_view:all_docs(Server, DbName, Options).
+
+-spec version(server()) -> couch_version().
+version(#server{options=Options}) ->
+    props:get_value('driver_version', Options).
+
+db_local_filter(List, Options) ->
+    lists:filter(
+      fun(DB) -> lists:all(
+                   fun(Option) -> db_local_filter_option(Option, DB) end
+                   , Options)
+      end, List).
+
+db_local_filter_option({'start_key', Value}, DB) ->
+    DB >= Value;
+db_local_filter_option({'startkey', Value}, DB) ->
+    DB >= Value;
+db_local_filter_option({'end_key', Value}, DB) ->
+    DB =< Value;
+db_local_filter_option({'endkey', Value}, DB) ->
+    DB =< Value;
+db_local_filter_option(_Option, _DB) -> 'true'.
