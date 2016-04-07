@@ -536,13 +536,13 @@ collection_process(Context, Numbers, Action) ->
                                   {'ok', wh_json:object()}.
 
 collection_action(Context, ?HTTP_PUT, Number) ->
-    Options = [{'assigned_to', cb_context:account_id(Context)}
+    Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
                ,{'public_fields', wh_json:delete_key(<<"numbers">>, cb_context:doc(Context))}
               ],
     knm_number:create(Number, Options);
 collection_action(Context, ?HTTP_POST, Number) ->
-    Options = [{'assigned_to', cb_context:account_id(Context)}
+    Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
               ],
     ToMerge = wh_json:delete_key(<<"numbers">>, cb_context:doc(Context)),

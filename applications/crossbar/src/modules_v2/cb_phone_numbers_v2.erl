@@ -457,7 +457,7 @@ activate_number(Context, Number, ReqJObj) ->
 -spec reserve_number(cb_context:context(), path_token(), wh_json:object()) ->
                             cb_context:context().
 reserve_number(Context, Number, ReqJObj) ->
-    Options = [{'assigned_to', cb_context:account_id(Context)}
+    Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
                ,{'dry_run', cb_context:accepting_charges(Context)}
                ,{'public_fields', cb_context:doc(Context)}
@@ -1149,14 +1149,14 @@ collection_action(Context, Number, _) ->
 -spec number_action(cb_context:context(), path_token(), http_method()) ->
                            knm_number_return().
 number_action(Context, Number, ?HTTP_PUT) ->
-    Options = [{'assigned_to', cb_context:account_id(Context)}
+    Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
                ,{'dry_run', not cb_context:accepting_charges(Context)}
                ,{'public_fields', wh_json:delete_key(<<"numbers">>, cb_context:doc(Context))}
               ],
     knm_number:create(Number, Options);
 number_action(Context, Number, ?HTTP_POST) ->
-    Options = [{'assigned_to', cb_context:account_id(Context)}
+    Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
                ,{'dry_run', not cb_context:accepting_charges(Context)}
               ],
