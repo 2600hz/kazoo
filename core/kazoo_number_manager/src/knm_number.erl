@@ -31,6 +31,7 @@
          ,errors/1
          ,charges/2, set_charges/3
          ,to_public_json/1
+         ,is_number/1
         ]).
 
 -export([account_id/1, set_account_id/2
@@ -100,6 +101,10 @@
 %%--------------------------------------------------------------------
 -spec new() -> knm_number().
 new() -> #knm_number{}.
+
+-spec is_number(knm_number() | any()) -> boolean().
+is_number(#knm_number{}) -> 'true';
+is_number(_) -> 'false'.
 
 -spec get(ne_binary()) ->
                  knm_number_return().
@@ -612,7 +617,12 @@ buy(Num, Account) ->
 buy(Num, Account, Options) ->
     Updates = [{fun knm_phone_number:set_assigned_to/2, wh_util:format_account_id(Account, 'raw')}
                ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_IN_SERVICE}
-               ,fun knm_carriers:acquire/1
+               %%
+               %% NEED FIX!
+               %% All functions expects knm_phone_number:knm_phone_number() on input
+               %% but knm_carriers:acquire expects knm_number:knm_number()
+               %% ,fun knm_carriers:acquire/1
+               %%
               ],
     update(Num, Updates, Options).
 

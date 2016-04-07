@@ -381,7 +381,7 @@ post_collection(Context, ReqJObj) ->
 
 -spec post_number(cb_context:context(), path_token(), wh_json:object()) -> cb_context:context().
 post_number(Context, Number, ReqJObj) ->
-    Options = [{'assigned_to', cb_context:account_id(Context)}
+    Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
                ,{'dry_run', not cb_context:accepting_charges(Context)}
                ,{'public_fields', cb_context:doc(Context)}
@@ -412,7 +412,7 @@ put_collection(Context, ReqJObj) ->
 -spec put_number(cb_context:context(), path_token(), wh_json:object()) ->
                         cb_context:context().
 put_number(Context, Number, ReqJObj) ->
-    Options = [{'assigned_to', cb_context:account_id(Context)}
+    Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
                ,{'dry_run', not cb_context:accepting_charges(Context)}
                ,{'public_fields', cb_context:doc(Context)}
@@ -992,7 +992,10 @@ set_response(Result, Number, Context) ->
 set_response({'ok', {'ok', Doc}}, _, Context, _) ->
     crossbar_util:response(Doc, Context);
 set_response({'ok', Doc}, _, Context, _) ->
-    crossbar_util:response(Doc, Context);
+    case knm_number:is_number(Doc) of
+        'true' -> crossbar_util:response(knm_number:to_public_json(Doc), Context);
+        'false' -> crossbar_util:response(Doc, Context)
+    end;
 set_response({'dry_run', Props}, _, Context, Fun) ->
     RespJObj = dry_run_response(Props),
     case wh_json:is_empty(RespJObj) of

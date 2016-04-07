@@ -264,7 +264,7 @@ put(Context, ?COLLECTION) ->
     Results = collection_process(Context),
     set_response(Results, <<>>, Context);
 put(Context, Number) ->
-    Options = [{'assigned_to', cb_context:account_id(Context)}
+    Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
                ,{'public_fields', cb_context:doc(Context)}
               ],
@@ -285,7 +285,7 @@ put(Context, Number, ?ACTIVATE) ->
              end,
     set_response(Result, Number, Context);
 put(Context, Number, ?RESERVE) ->
-    Options = [{'assigned_to', cb_context:account_id(Context)}
+    Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
                ,{'public_fields', cb_context:doc(Context)}
               ],
@@ -462,7 +462,10 @@ validate_delete(Context) ->
 set_response({'ok', {'ok', Doc}}, _, Context) ->
     crossbar_util:response(Doc, Context);
 set_response({'ok', Doc}, _, Context) ->
-    crossbar_util:response(Doc, Context);
+    case knm_number:is_number(Doc) of
+        'true' -> crossbar_util:response(knm_number:to_public_json(Doc), Context);
+        'false' -> crossbar_util:response(Doc, Context)
+    end;
 set_response({'error', Data}, _, Context) ->
     case wh_json:is_json_object(Data) of
         'true' ->
