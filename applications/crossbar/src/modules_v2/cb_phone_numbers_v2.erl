@@ -476,6 +476,7 @@ delete(Context, ?COLLECTION) ->
     set_response({'ok', Results}, <<>>, Context);
 delete(Context, Number) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
+               ,{'dry_run', not cb_context:accepting_charges(Context)}
               ],
     Result = knm_number:delete(Number, Options),
     set_response(Result, Number, Context).
@@ -940,6 +941,7 @@ identify(Context, Number) ->
 -spec read(cb_context:context(), ne_binary()) -> cb_context:context().
 read(Context, Number) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
+               ,{'dry_run', not cb_context:accepting_charges(Context)}
               ],
     Result = case knm_number:get(Number, Options) of
                  {'ok', KNum} -> {'ok', knm_number:to_public_json(KNum)};
@@ -1162,6 +1164,7 @@ number_action(Context, Number, ?HTTP_POST) ->
     knm_number:update(Number, [{fun knm_phone_number:update_doc/2, ToMerge}], Options);
 number_action(Context, Number, ?HTTP_DELETE) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
+               ,{'dry_run', not cb_context:accepting_charges(Context)}
               ],
     knm_number:delete(Number, Options).
 

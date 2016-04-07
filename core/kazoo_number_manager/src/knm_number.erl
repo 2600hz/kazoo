@@ -19,7 +19,7 @@
          ,lookup_account/1
          ,buy/2, buy/3
          ,save/1
-         ,reconcile/3
+         ,reconcile/2
          ,reserve/2
         ]).
 
@@ -106,6 +106,13 @@ new() -> #knm_number{}.
 is_number(#knm_number{}) -> 'true';
 is_number(_) -> 'false'.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc Attempts to get a number from DB.
+%% Note: Number parameter has to be normalized.
+%% Note: get/1,2 should not throw, instead returns: {ok,_} | {error,_} | ...
+%% @end
+%%--------------------------------------------------------------------
 -spec get(ne_binary()) ->
                  knm_number_return().
 -spec get(ne_binary(), knm_number_options:options()) ->
@@ -163,14 +170,14 @@ ensure_state(PhoneNumber, ExpectedState) ->
     case knm_phone_number:state(PhoneNumber) of
         ExpectedState -> 'true';
         _State ->
+            lager:debug("wrong state: expected ~s, got ~s", [ExpectedState, _State]),
             knm_errors:number_exists(
               knm_phone_number:number(PhoneNumber)
              )
     end.
 
--spec create_phone_number(knm_number()) ->
-                                 knm_number() |
-                                 dry_run_return().
+-spec create_phone_number(knm_number()) -> knm_number() |
+                                           dry_run_return().
 create_phone_number(Number) ->
     ensure_state(phone_number(Number), ?NUMBER_STATE_AVAILABLE),
     Routines = [fun knm_number_states:to_reserved/1
@@ -281,18 +288,16 @@ ensure_number_is_not_porting(Num) ->
 
 -spec create_updaters(ne_binary(), knm_number_options:options()) ->
                              knm_phone_number:set_functions().
-create_updaters(<<_/binary>> = Num, Props) when is_list(Props) ->
+create_updaters(?NE_BINARY=Num, Props) when is_list(Props) ->
     NormalizedNum = knm_converters:normalize(Num),
-    NumberDb = knm_converters:to_db(NormalizedNum),
-
     props:filter_undefined(
       [{fun knm_phone_number:set_number/2, NormalizedNum}
-       ,{fun knm_phone_number:set_number_db/2, NumberDb}
+       ,{fun knm_phone_number:set_number_db/2, knm_converters:to_db(NormalizedNum)}
        ,{fun knm_phone_number:set_state/2
          ,knm_number_options:state(Props, ?NUMBER_STATE_AVAILABLE)
         }
        ,{fun knm_phone_number:set_ported_in/2
-         ,knm_number_options:ported_in(Props, 'false')
+         ,knm_number_options:ported_in(Props)
         }
        ,{fun knm_phone_number:set_assign_to/2
          ,knm_number_options:assign_to(Props)
@@ -301,7 +306,7 @@ create_updaters(<<_/binary>> = Num, Props) when is_list(Props) ->
          ,knm_number_options:auth_by(Props)
         }
        ,{fun knm_phone_number:set_dry_run/2
-         ,knm_number_options:dry_run(Props, 'false')
+         ,knm_number_options:dry_run(Props)
         }
        ,{fun knm_phone_number:set_module_name/2
          ,knm_number_options:module_name(Props, knm_carriers:default_carrier())
@@ -335,7 +340,7 @@ move(Num, MoveTo, Options) ->
 -spec move_to(knm_number:knm_number(), ne_binary()) ->
                      knm_number_return().
 move_to(Number, MoveTo) ->
-    AccountId = wh_util:format_account_id(MoveTo, 'raw'),
+    AccountId = wh_util:format_account_id(MoveTo),
     PhoneNumber = phone_number(Number),
     MovedPhoneNumber = knm_phone_number:set_assign_to(PhoneNumber, AccountId),
     MovedNumber = set_phone_number(Number, MovedPhoneNumber),
@@ -405,31 +410,38 @@ save(Number) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Note: option 'assigned_to' needs to be non-empty
+%% Note: option 'auth_by' should always be MasterAccountId
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile(ne_binary(), ne_binary(), ne_binary()) ->
+-spec reconcile(ne_binary(), knm_number_options:options()) ->
                        knm_number_return().
-reconcile(DID, AssignTo, AuthBy) ->
+reconcile(DID, Options) ->
     case ?MODULE:get(DID) of
         {'ok', Number} ->
-            reconcile_number(Number, AssignTo, AuthBy);
+            reconcile_number(Number, Options);
         {'error', 'not_found'} ->
-            create(DID, [{'assigned_to', AssignTo}
-                         ,{'auth_by', AuthBy}
-                         ,{'state', ?NUMBER_STATE_IN_SERVICE}
-                        ]);
+            AssignedTo = knm_number_options:assigned_to(Options),
+            %% Ensures state to be IN_SERVICE
+            move(DID, AssignedTo, Options);
         {'error', _}=E -> E
     end.
 
-reconcile_number(Number, AssignTo, AuthBy) ->
+-spec reconcile_number(knm_number(), knm_number_options:options()) ->
+                              knm_number_return().
+reconcile_number(Number, Options) ->
     PhoneNumber = phone_number(Number),
-    Updaters = [{AssignTo
+    Updaters = [{knm_number_options:assigned_to(Options)
                  ,knm_phone_number:assigned_to(PhoneNumber)
                  ,fun knm_phone_number:set_assigned_to/2
                 }
-                ,{AuthBy
+                ,{knm_number_options:auth_by(Options)
                   ,knm_phone_number:auth_by(PhoneNumber)
                   ,fun knm_phone_number:set_auth_by/2
+                 }
+                ,{knm_number_options:public_fields(Options)
+                  ,knm_phone_number:doc(PhoneNumber)
+                  ,fun knm_phone_number:set_doc/2
                  }
                 ,{?NUMBER_STATE_IN_SERVICE
                   ,knm_phone_number:state(PhoneNumber)
@@ -968,7 +980,7 @@ attempt(Fun, Args) ->
 -spec num_to_did(api_binary() | knm_number() | knm_phone_number:knm_phone_number()) ->
                         api_binary().
 num_to_did('undefined') -> 'undefined';
-num_to_did(<<_/binary>> = DID) -> DID;
+num_to_did(?NE_BINARY = DID) -> DID;
 num_to_did(#knm_number{}=Number) ->
     num_to_did(phone_number(Number));
 num_to_did(PhoneNumber) ->

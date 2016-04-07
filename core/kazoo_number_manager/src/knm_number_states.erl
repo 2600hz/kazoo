@@ -28,7 +28,7 @@
                       kn().
 to_state(DID, ToState) ->
     to_state(DID, ToState, knm_number_options:default()).
-to_state(<<_/binary>> = DID, ToState, Options) ->
+to_state(?NE_BINARY = DID, ToState, Options) ->
     case knm_number:get(DID, Options) of
         {'error', E} -> knm_errors:unspecified(E, DID);
         {'ok', Number} -> change_state(Number, ToState)

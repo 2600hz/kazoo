@@ -383,13 +383,12 @@ maybe_reconcile_numbers(Context) ->
             Set1 = sets:from_list(wh_json:get_value(<<"numbers">>, CurrentJObj, [])),
             Set2 = sets:from_list(wh_json:get_value(<<"numbers">>, cb_context:doc(Context), [])),
             NewNumbers = sets:subtract(Set2, Set1),
-
-            AssignTo = cb_context:account_id(Context),
-            AuthBy = cb_context:auth_account_id(Context),
-
-            _Numbers = [knm_number:reconcile(Number, AssignTo, AuthBy)
-                        || Number <- sets:to_list(NewNumbers)
-                       ],
+            {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+            Options = [ {'assigned_to', cb_context:account_id(Context)}
+                      , {'auth_by', MasterAccountId}
+                      , {'dry_run', not cb_context:accepting_charges(Context)}
+                      ],
+            _ = knm_numbers:reconcile(sets:to_list(NewNumbers), Options),
             Context
     end.
 
