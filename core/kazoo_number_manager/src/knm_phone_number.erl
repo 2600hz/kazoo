@@ -259,7 +259,7 @@ to_json(#knm_phone_number{doc=JObj}=N) ->
     Now = wh_util:current_tstamp(),
     wh_json:from_list(
       props:filter_undefined(
-        [{<<"_id">>, ?MODULE:number(N)}
+        [{<<"_id">>, number(N)}
          ,{?PVT_DB_NAME, number_db(N)}
          ,{?PVT_ASSIGNED_TO, assigned_to(N)}
          ,{?PVT_PREVIOUSLY_ASSIGNED_TO, prev_assigned_to(N)}
@@ -685,7 +685,7 @@ save_to_number_db(PhoneNumber) ->
             save_to_number_db(PhoneNumber);
         {'error', E} ->
             lager:error("failed to save ~s in ~s: ~p"
-                        ,[?MODULE:number(PhoneNumber), NumberDb, E]
+                        ,[number(PhoneNumber), NumberDb, E]
                        ),
             knm_errors:database_error(E, PhoneNumber)
     end.
@@ -698,9 +698,7 @@ save_to_number_db(PhoneNumber) ->
 %%--------------------------------------------------------------------
 -spec handle_assignment(knm_phone_number()) -> knm_phone_number().
 handle_assignment(PhoneNumber) ->
-    ?LOG_DEBUG("handling assignment for ~s"
-               ,[?MODULE:number(PhoneNumber)]
-              ),
+    ?LOG_DEBUG("handling assignment for ~s", [number(PhoneNumber)]),
     unassign(assign(PhoneNumber)).
 
 %%--------------------------------------------------------------------
@@ -726,12 +724,12 @@ assign(PhoneNumber, AssignedTo) ->
     case kz_datamgr:ensure_saved(AccountDb, to_json(PhoneNumber)) of
         {'error', E} ->
             lager:error("failed to assign number ~s to ~s"
-                        ,[?MODULE:number(PhoneNumber), AccountDb]
+                        ,[number(PhoneNumber), AccountDb]
                        ),
             knm_errors:assign_failure(PhoneNumber, E);
         {'ok', JObj} ->
             lager:debug("assigned number ~s to ~s"
-                        ,[?MODULE:number(PhoneNumber), AccountDb]
+                        ,[number(PhoneNumber), AccountDb]
                        ),
             from_json(JObj)
     end.
@@ -749,7 +747,7 @@ unassign(PhoneNumber) ->
     case wh_util:is_empty(PrevAssignedTo) of
         'true' ->
             lager:debug("prev_assigned_to is is empty for ~s, ignoring"
-                        ,[?MODULE:number(PhoneNumber)]
+                        ,[number(PhoneNumber)]
                        ),
             PhoneNumber;
         'false' ->
@@ -761,7 +759,7 @@ unassign(PhoneNumber, _PrevAssignedTo) ->
     PhoneNumber.
 -else.
 unassign(PhoneNumber, PrevAssignedTo) ->
-    Num = ?MODULE:number(PhoneNumber),
+    Num = number(PhoneNumber),
     case get_number_in_account(PrevAssignedTo, Num) of
         {'error', 'not_found'} ->
             lager:debug("number ~s was not found in ~s, no need to unassign"
@@ -778,12 +776,12 @@ do_unassign(PhoneNumber, PrevAssignedTo) ->
     case kz_datamgr:del_doc(AccountDb, to_json(PhoneNumber)) of
         {'error', E} ->
             lager:error("failed to unassign number ~s from ~s"
-                        ,[?MODULE:number(PhoneNumber), PrevAssignedTo]
+                        ,[number(PhoneNumber), PrevAssignedTo]
                        ),
             knm_errors:assign_failure(PhoneNumber, E);
         {'ok', _} ->
             lager:debug("unassigned number ~s from ~s"
-                        ,[?MODULE:number(PhoneNumber), PrevAssignedTo]
+                        ,[number(PhoneNumber), PrevAssignedTo]
                        ),
             PhoneNumber
     end.
@@ -822,7 +820,7 @@ maybe_remove_number_from_account(Number) ->
     case wh_util:is_empty(AssignedTo) of
         'true' ->
             lager:debug("assigned_to is is empty for ~s, ignoring"
-                        ,[?MODULE:number(Number)]
+                        ,[number(Number)]
                        ),
             {'ok', Number};
         'false' ->
