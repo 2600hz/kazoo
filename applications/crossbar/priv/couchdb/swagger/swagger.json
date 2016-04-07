@@ -8388,6 +8388,9 @@
         "/v2/accounts/{ACCOUNT_ID}/tree": {
             "get": {}
         },
+        "/v2/accounts/{ACCOUNT_ID}/user_auth/{AUTH_TOKEN}": {
+            "get": {}
+        },
         "/v2/accounts/{ACCOUNT_ID}/users": {
             "get": {},
             "put": {}
@@ -8923,7 +8926,7 @@
                 }
             }
         },
-        "/v2/accounts/{ACCOUNT_ID}/user_auth/{AUTH_TOKEN}": {
+        "/v2/user_auth/{AUTHTOKEN}": {
             "get": {}
         },
         "/v2/webhooks": {
