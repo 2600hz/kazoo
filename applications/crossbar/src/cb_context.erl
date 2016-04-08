@@ -583,9 +583,9 @@ validate_request_data(<<_/binary>> = Schema, Context) ->
             validate_request_data(SchemaJObj, Context)
     end;
 validate_request_data(SchemaJObj, Context) ->
-    case wh_json_schema:validate(SchemaJObj
-                                 ,wh_json:public_fields(req_data(Context))
-                                )
+    try wh_json_schema:validate(SchemaJObj
+                               ,wh_json:public_fields(req_data(Context))
+                               )
     of
         {'ok', JObj} ->
             passed(
@@ -596,6 +596,16 @@ validate_request_data(SchemaJObj, Context) ->
                                                                          ,Errors
                                                                         ]),
             failed(Context, Errors)
+    catch
+        'error':'function_clause' ->
+            ST = erlang:get_stacktrace(),
+            lager:debug("function clause failure"),
+            wh_util:log_stacktrace(ST),
+            Context#cb_context{resp_status='fatal'
+                              ,resp_error_code=500
+                              ,resp_data=wh_json:new()
+                              ,resp_error_msg= <<"validation failed to run on the server">>
+                              }
     end.
 
 validate_request_data(Schema, Context, OnSuccess) ->
@@ -710,6 +720,35 @@ failed_error({'data_invalid'
          ])
       ,Context
      );
+failed_error({'data_invalid'
+              ,FailedSchemaJObj
+              ,'wrong_size'
+              ,FailedValue
+              ,FailedKeyPath
+             }, Context) ->
+    Minimum = wh_json:get_value(<<"minItems">>, FailedSchemaJObj),
+    Maximum = wh_json:get_value(<<"maxItems">>, FailedSchemaJObj),
+
+    case length(FailedValue) of
+        N when N < Minimum ->
+            failed_error({'data_invalid'
+                          ,FailedSchemaJObj
+                          ,'wrong_min_items'
+                          ,FailedValue
+                          ,FailedKeyPath
+                         }
+                        ,Context
+                        );
+        N when N > Maximum ->
+            failed_error({'data_invalid'
+                          ,FailedSchemaJObj
+                          ,'wrong_max_items'
+                          ,FailedValue
+                          ,FailedKeyPath
+                         }
+                        ,Context
+                        )
+    end;
 failed_error({'data_invalid'
               ,FailedSchemaJObj
               ,'wrong_min_items'
