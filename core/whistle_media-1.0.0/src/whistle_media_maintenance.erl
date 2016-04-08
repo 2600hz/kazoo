@@ -52,20 +52,25 @@ set_account_language(Account, Language) ->
         _E:_R -> 'ok'
     end.
 
-import_prompts(Path) ->
-    import_prompts(Path, wh_media_util:default_prompt_language()).
+-spec import_prompts(file:name()) -> 'ok'.
+-spec import_prompts(file:name(), text()) -> 'ok'.
+import_prompts(DirPath) ->
+    import_prompts(DirPath, wh_media_util:default_prompt_language()).
 
-import_prompts(Path, Lang) ->
-    couch_mgr:db_create(?WH_MEDIA_DB),
-    MediaPath = filename:join([Path, "*.{wav,mp3}"]),
-    case filelib:wildcard(wh_util:to_list(MediaPath)) of
-        [] ->
-            io:format("failed to find media files in '~s'~n", [Path]);
-        Files ->
-            import_files(Path, Lang, Files)
+import_prompts(DirPath, Lang) ->
+    case filelib:is_dir(DirPath) of
+        'false' ->
+            io:format("not a directory, or is inaccessible: '~s'\n", [DirPath]);
+        'true' ->
+            couch_mgr:db_create(?WH_MEDIA_DB),
+            MediaPath = filename:join([DirPath, "*.{wav,mp3}"]),
+            case filelib:wildcard(wh_util:to_list(MediaPath)) of
+                [] -> io:format("failed to find media files in '~s'~n", [DirPath]);
+                Files -> import_files(DirPath, Lang, Files)
+            end
     end.
 
--spec import_files(ne_binary(), ne_binary(), [file:filename()]) -> 'ok'.
+-spec import_files(file:name(), ne_binary(), [file:filename()]) -> 'ok'.
 import_files(Path, Lang, Files) ->
     io:format("importing prompts from '~s' with language '~s'~n", [Path, Lang]),
     case import_prompts_from_files(Files, Lang) of
@@ -84,9 +89,9 @@ import_prompts_from_files(Files, Lang) ->
          (Err = (catch import_prompt(F, Lang))) =/= 'ok'
      ].
 
--spec import_prompt(text() | file:filename()) -> 'ok' | {'error', any()}.
--spec import_prompt(text() | file:filename(), text()) -> 'ok' | {'error', any()}.
--spec import_prompt(text() | file:filename(), text(), ne_binary()) -> 'ok' | {'error', any()}.
+-spec import_prompt(file:filename()) -> 'ok' | {'error', any()}.
+-spec import_prompt(file:filename(), text()) -> 'ok' | {'error', any()}.
+-spec import_prompt(file:filename(), text(), ne_binary()) -> 'ok' | {'error', any()}.
 
 import_prompt(Path) ->
     import_prompt(Path, wh_media_util:default_prompt_language()).
