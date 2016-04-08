@@ -161,12 +161,12 @@ maybe_create_number(Job, AccountId, AuthAccountId, CarrierModule, Number) ->
 -spec create_number(wh_json:object(), ne_binary(), ne_binary(), api_binary(), ne_binary()) ->
                            wh_json:object().
 create_number(Job, AccountId, AuthAccountId, CarrierModule, DID) ->
-    Options = [{<<"assigned_to">>, AccountId}
-               ,{<<"auth_by">>, AuthAccountId}
-               ,{<<"state">>, ?NUMBER_STATE_AVAILABLE}
-               ,{<<"public_fields">>, build_number_properties(Job)}
-               ,{<<"dry_run">>, 'false'}
-               ,{<<"module_name">>, CarrierModule}
+    Options = [{'assign_to', AccountId}
+               ,{'auth_by', AuthAccountId}
+               ,{'state', ?NUMBER_STATE_AVAILABLE}
+               ,{'public_fields', build_number_properties(Job)}
+               ,{'dry_run', 'false'}
+               ,{'module_name', CarrierModule}
               ],
     try knm_number:create(DID, Options) of
         {'ok', Number} ->

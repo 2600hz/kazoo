@@ -14,7 +14,7 @@
          ,dry_run/1, dry_run/2
          ,module_name/1, module_name/2
          ,ported_in/1, ported_in/2
-         ,public_fields/1, public_fields/2
+         ,public_fields/1
          ,state/1, state/2
          ,should_delete/1, should_delete/2
 
@@ -39,7 +39,7 @@
 
 -spec default() -> options().
 default() ->
-    [{'auth_by', ?DEFAULT_AUTH_BY}
+    [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
      ,{'dry_run', 'false'}
     ].
 
@@ -72,11 +72,8 @@ auth_by(Options, Default) ->
     props:get_binary_value('auth_by', Options, Default).
 
 -spec public_fields(options()) -> api_object().
--spec public_fields(options(), Default) -> wh_json:object() | Default.
 public_fields(Options) ->
-    public_fields(Options, 'undefined').
-public_fields(Options, Default) ->
-    props:get_value('public_fields', Options, Default).
+    props:get_value('public_fields', Options, wh_json:new()).
 
 -spec state(options()) -> api_binary().
 -spec state(options(), Default) -> ne_binary() | Default.
