@@ -50,7 +50,7 @@ replaced_by(JObj) ->
     wh_json:get_value(<<"Replaced-By">>, JObj).
 
 -spec custom_channel_vars(wh_json:object()) -> api_object().
--spec custom_channel_vars(wh_json:object(), Default) -> api_object().
+-spec custom_channel_vars(wh_json:object(), Default) -> api_object() | Default.
 custom_channel_vars(JObj) ->
     custom_channel_vars(JObj, 'undefined').
 
