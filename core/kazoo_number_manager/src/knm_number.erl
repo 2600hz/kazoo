@@ -311,7 +311,7 @@ create_updaters(?NE_BINARY=Num, Props) when is_list(Props) ->
        ,{fun knm_phone_number:set_module_name/2
          ,knm_number_options:module_name(Props, knm_carriers:default_carrier())
         }
-       ,{fun knm_phone_number:set_doc/2
+       ,{fun knm_phone_number:update_doc/2
          ,knm_number_options:public_fields(Props)
         }
       ]).
@@ -444,7 +444,7 @@ reconcile_number(Number, Options) ->
                  }
                 ,{knm_number_options:public_fields(Options)
                   ,knm_phone_number:doc(PhoneNumber)
-                  ,fun knm_phone_number:set_doc/2
+                  ,fun knm_phone_number:update_doc/2
                  }
                 ,{?NUMBER_STATE_IN_SERVICE
                   ,knm_phone_number:state(PhoneNumber)
