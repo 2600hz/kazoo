@@ -41,6 +41,20 @@
 
 -define(MAX_UPLOAD_SIZE, whapps_config:get_integer(?CONFIG_CAT, <<"max_upload_size">>, 8000000)).
 
+-define(DATA_SCHEMA
+        ,wh_json:from_list([{<<"type">>, <<"object">>}
+                            ,{<<"description">>, <<"The request data to be processed">>}
+                            ,{<<"required">>, 'true'}
+                           ])
+       ).
+
+-define(ENVELOPE_SCHEMA
+       ,wh_json:from_list([{<<"properties">>
+                           ,wh_json:from_list([{<<"data">>, ?DATA_SCHEMA}])
+                           }
+                          ])
+       ).
+
 -type halt_return() :: {'halt', cowboy_req:req(), cb_context:context()}.
 
 %%--------------------------------------------------------------------
@@ -260,16 +274,16 @@ handle_url_encoded_body(Context, Req, QS, ReqBody, JObj) ->
                                          halt_return().
 set_request_data_in_context(Context, Req, JObj, QS) ->
     case is_valid_request_envelope(JObj) of
-        'false' ->
-            lager:info("failed to find 'data' in envelope, invalid request"),
-            halt_on_invalid_envelope(Req, Context);
         'true' ->
             lager:debug("req body: ~p", [JObj]),
             Setters = [{fun cb_context:set_req_json/2, JObj}
                       ,{fun cb_context:set_req_data/2, wh_json:get_value(<<"data">>, JObj)}
                       ,{fun cb_context:set_query_string/2, QS}
                       ],
-            {cb_context:setters(Context, Setters), Req}
+            {cb_context:setters(Context, Setters), Req};
+        Errors ->
+            lager:info("failed to find 'data' in envelope, invalid request"),
+            ?MODULE:halt(Req, cb_context:failed(Context, Errors))
     end.
 
 -spec set_empty_request(cb_context:context(), cowboy_req:req(), wh_json:object()) ->
@@ -510,31 +524,14 @@ get_json_body(<<>>, Req) -> {wh_json:new(), Req};
 get_json_body(ReqBody, Req) -> decode_json_body(ReqBody, Req).
 
 decode_json_body(ReqBody, Req) ->
-    lager:debug("request has a json payload: ~s", [ReqBody]),
     try wh_json:decode(ReqBody) of
-        JObj -> validate_decoded_json_body(normalize_envelope_keys(JObj), Req)
+        JObj ->
+            lager:debug("request has a json payload: ~s", [ReqBody]),
+            {normalize_envelope_keys(JObj), Req}
     catch
         'throw':{'invalid_json',{{'error',{ErrLine, ErrMsg}}, _JSON}} ->
             lager:debug("failed to decode json near ~p: ~s", [ErrLine, ErrMsg]),
             {{'malformed', <<(wh_util:to_binary(ErrMsg))/binary, " (around ", (wh_util:to_binary(ErrLine))/binary>>}, Req}
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% validates decoded json body
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec validate_decoded_json_body(wh_json:object(), cowboy_req:req()) -> get_json_return().
-validate_decoded_json_body(JObj, Req) ->
-    case is_valid_request_envelope(JObj) of
-        'true' ->
-            lager:debug("request envelope is valid"),
-            {JObj, Req};
-        'false' ->
-            lager:debug("invalid request envelope"),
-            {{'malformed', <<"Invalid JSON request envelope">>}, Req}
     end.
 
 %%--------------------------------------------------------------------
@@ -558,9 +555,15 @@ normalize_envelope_keys_foldl(K, V, JObj) -> wh_json:set_value(wh_json:normalize
 %% Determines if the request envelope is valid
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_request_envelope(wh_json:object()) -> boolean().
-is_valid_request_envelope(JSON) ->
-    wh_json:get_value([<<"data">>], JSON, 'undefined') =/= 'undefined'.
+-spec is_valid_request_envelope(wh_json:object()) -> 'true' | jesse_error:error().
+is_valid_request_envelope(Envelope) ->
+    case wh_json_schema:validate(?ENVELOPE_SCHEMA
+                                ,Envelope
+                                )
+    of
+        {'ok', _} -> 'true';
+        {'error', Errors} -> Errors
+    end.
 
 -spec get_http_verb(http_method(), cb_context:context()) -> ne_binary().
 get_http_verb(Method, Context) ->
