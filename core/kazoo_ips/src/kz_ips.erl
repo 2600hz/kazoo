@@ -74,7 +74,7 @@ assigned(Account) ->
     case kz_datamgr:get_results(?WH_DEDICATED_IP_DB
                                ,<<"dedicated_ips/assigned_to_listing">>
                                ,ViewOptions
-                              )
+                               )
     of
         {'error', 'not_found'} ->
             kz_ip_utils:refresh_database(
