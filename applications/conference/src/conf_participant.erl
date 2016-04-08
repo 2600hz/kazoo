@@ -15,6 +15,7 @@
 -export([start_link/1]).
 -export([relay_amqp/2]).
 -export([handle_participants_event/2]).
+-export([handle_participants_commands/2]).
 -export([handle_conference_error/2]).
 
 -export([consume_call_events/1]).
@@ -50,6 +51,9 @@
                      }
                      ,{{?MODULE, 'handle_participants_event'}
                        ,[{<<"conference">>, <<"participants_event">>}]
+                      }
+                     ,{{?MODULE, 'handle_participants_commands'}
+                       ,[{<<"conference">>, <<"*">>}]
                       }
                      ,{{?MODULE, 'handle_conference_error'}
                        ,[{<<"conference">>, <<"error">>}]
@@ -171,6 +175,25 @@ handle_participants_event(JObj, Props) ->
     Srv = props:get_value('server', Props),
     gen_listener:cast(Srv, {'sync_participant', JObj}).
 
+-spec handle_participants_commands(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_participants_commands(JObj, Props) ->
+    case props:get_value('participant_id', Props) == wh_util:to_integer(wh_json:get_value(<<"Participant">>, JObj)) of
+        'true' -> handle_commands(JObj, Props);
+        'false' -> 'ok'
+    end.
+
+-spec handle_commands(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_commands(JObj, Props) ->
+    case wh_json:get_value(<<"Application-Name">>, JObj) of
+        <<"mute_participant">> ->
+            Srv = props:get_value('server', Props),
+            gen_listener:cast(Srv, 'mute_participant_update');
+        <<"unmute_participant">> ->
+            Srv = props:get_value('server', Props),
+            gen_listener:cast(Srv, 'unmute_participant_update');
+        _ -> 'ok'
+    end.
+
 -spec handle_conference_error(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_conference_error(JObj, Props) ->
     'true' = wapi_conference:conference_error_v(JObj),
@@ -274,7 +297,7 @@ handle_cast({'remove_consumer', C}, #participant{call_event_consumers=Cs}=P) ->
 handle_cast({'set_conference', Conference}, Participant) ->
     ConferenceId = whapps_conference:id(Conference),
     lager:debug("received conference data for conference ~s", [ConferenceId]),
-    gen_listener:add_binding(self(), 'conference', [{'restrict_to', [{'conference', ConferenceId}]}]),
+    gen_listener:add_binding(self(), 'conference', [{'conference', ConferenceId}, {'restrict_to', ['event','command']}]),
     {'noreply', Participant#participant{conference=Conference}};
 handle_cast({'set_discovery_event', DE}, #participant{}=Participant) ->
     {'noreply', Participant#participant{discovery_event=DE}};
@@ -336,6 +359,10 @@ handle_cast('unmute', #participant{participant_id=ParticipantId
     whapps_conference_command:unmute_participant(ParticipantId, Conference),
     whapps_conference_command:prompt(<<"conf-unmuted">>, ParticipantId, Conference),
     {'noreply', Participant#participant{muted='false'}};
+handle_cast('mute_participant_update', Participant) ->
+    {'noreply', Participant#participant{muted='true'}};
+handle_cast('unmute_participant_update', Participant) ->
+    {'noreply', Participant#participant{muted='false'}};
 handle_cast('toggle_mute', #participant{muted='true'}=Participant) ->
     unmute(self()),
     {'noreply', Participant};
@@ -390,6 +417,7 @@ handle_info(_Msg, Participant) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(JObj, #participant{call_event_consumers=Consumers
+                                ,participant_id=ParticipantId
                                 ,call=Call
                                 ,server=Srv
                                }) ->
@@ -408,7 +436,7 @@ handle_event(JObj, #participant{call_event_consumers=Consumers
         {_Else, _OtherLeg} ->
             lager:debug("unhandled event for other leg ~s: ~p", [_OtherLeg, _Else])
     end,
-    {'reply', [{'call_event_consumers', Consumers}]}.
+    {'reply', [{'call_event_consumers', Consumers},{'participant_id', ParticipantId}]}.
 
 %%--------------------------------------------------------------------
 %% @private
