@@ -410,13 +410,12 @@ save(Number) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Note: option 'assigned_to' needs to be non-empty
+%% Note: option 'assign_to' needs to be non-empty
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile(ne_binary(), knm_number_options:options()) ->
                        knm_number_return().
 reconcile(DID, Options) ->
-    %% Note: option 'auth_by' should always be MasterAccountId
     NewOptions = [ {'auth_by', ?KNM_DEFAULT_AUTH_BY}
                    | Options
                  ],
@@ -424,9 +423,9 @@ reconcile(DID, Options) ->
         {'ok', Number} ->
             reconcile_number(Number, NewOptions);
         {'error', 'not_found'} ->
-            AssignedTo = knm_number_options:assigned_to(Options),
+            AssignTo = knm_number_options:assign_to(Options),
             %% Ensures state to be IN_SERVICE
-            move(DID, AssignedTo, NewOptions);
+            move(DID, AssignTo, NewOptions);
         {'error', _}=E -> E
     end.
 
@@ -434,7 +433,7 @@ reconcile(DID, Options) ->
                               knm_number_return().
 reconcile_number(Number, Options) ->
     PhoneNumber = phone_number(Number),
-    Updaters = [{knm_number_options:assigned_to(Options)
+    Updaters = [{knm_number_options:assign_to(Options)
                  ,knm_phone_number:assigned_to(PhoneNumber)
                  ,fun knm_phone_number:set_assigned_to/2
                 }
