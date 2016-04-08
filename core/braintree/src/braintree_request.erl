@@ -17,10 +17,10 @@
 
 -type http_verb() :: 'put' | 'post' | 'get' | 'delete'.
 
--define(BT_DEFAULT_ENVIRONMENT, whapps_config:get_string(<<"braintree">>, <<"default_environment">>, <<>>)).
--define(BT_DEFAULT_MERCHANT_ID, whapps_config:get_string(<<"braintree">>, <<"default_merchant_id">>, <<>>)).
--define(BT_DEFAULT_PUBLIC_KEY, whapps_config:get_string(<<"braintree">>, <<"default_public_key">>, <<>>)).
--define(BT_DEFAULT_PRIVATE_KEY, whapps_config:get_string(<<"braintree">>, <<"default_private_key">>, <<>>)).
+-define(BT_DEFAULT_ENVIRONMENT, whapps_config:get_string(<<"braintree">>, <<"default_environment">>, [])).
+-define(BT_DEFAULT_MERCHANT_ID, whapps_config:get_string(<<"braintree">>, <<"default_merchant_id">>, [])).
+-define(BT_DEFAULT_PUBLIC_KEY, whapps_config:get_binary(<<"braintree">>, <<"default_public_key">>, <<>>)).
+-define(BT_DEFAULT_PRIVATE_KEY, whapps_config:get_binary(<<"braintree">>, <<"default_private_key">>, <<>>)).
 
 %%--------------------------------------------------------------------
 %% @public
