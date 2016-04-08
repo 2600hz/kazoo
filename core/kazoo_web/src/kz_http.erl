@@ -245,7 +245,7 @@ maybe_basic_auth(Headers, Options) ->
     case props:get_value('basic_auth', Options) of
         'undefined' -> {Headers, Options};
         {Username, Password} ->
-            AuthString = "Basic " ++ base64:encode_to_string(<<Username/binary, ":", Password/binary>>),
+            AuthString = "Basic " ++ base64:encode_to_string(<<(wh_util:to_binary(Username))/binary, ":", (wh_util:to_binary(Password))/binary>>),
             BasicAuth = {"Authorization", AuthString},
             {[BasicAuth|Headers], props:delete('basic_auth', Options)}
     end.
