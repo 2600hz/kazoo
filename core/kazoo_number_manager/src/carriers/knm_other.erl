@@ -55,7 +55,7 @@
                           {'ok', knm_number:knm_numbers()}.
 find_numbers(Number, Quantity, Options) ->
     case ?PHONEBOOK_URL(Options) of
-        'undefined' -> {'error', 'non_available'};
+        'undefined' -> {'error', 'not_available'};
         Url ->
             case props:is_defined(<<"blocks">>, Options) of
                 'false' -> get_numbers(Url, Number, Quantity, Options);
@@ -79,7 +79,7 @@ check_numbers(Numbers, _Props) ->
                       ],
     case whapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>) of
         'undefined' ->
-            {'error', 'non_available'};
+            {'error', 'not_available'};
         Url ->
             DefaultCountry = whapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
             ReqBody = wh_json:set_value(<<"data">>, FormatedNumbers, wh_json:new()),
@@ -207,7 +207,7 @@ format_check_numbers_success(Body) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_numbers(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
-                         {'error', 'non_available'} |
+                         {'error', 'not_available'} |
                          {'ok', knm_number:knm_numbers()}.
 get_numbers(Url, Number, Quantity, Options) ->
     Offset = props:get_binary_value(<<"offset">>, Options, <<"0">>),
@@ -229,19 +229,19 @@ query_for_numbers(Uri) ->
 -endif.
 
 -spec handle_number_query_results(kz_http:http_ret(), wh_proplist()) ->
-                                         {'error', 'non_available'} |
+                                         {'error', 'not_available'} |
                                          {'ok', knm_number:knm_numbers()}.
 handle_number_query_results({'error', _Reason}, _Options) ->
     lager:error("number query failed: ~p", [_Reason]),
-    {'error', 'non_available'};
+    {'error', 'not_available'};
 handle_number_query_results({'ok', 200, _Headers, Body}, Options) ->
     format_numbers_resp(wh_json:decode(Body), Options);
 handle_number_query_results({'ok', _Status, _Headers, _Body}, _Options) ->
     lager:error("number query failed with ~s: ~s", [_Status, _Body]),
-    {'error', 'non_available'}.
+    {'error', 'not_available'}.
 
 -spec format_numbers_resp(wh_json:object(), wh_proplist()) ->
-                                 {'error', 'non_available'} |
+                                 {'error', 'not_available'} |
                                  {'ok', knm_number:knm_numbers()}.
 format_numbers_resp(JObj, Options) ->
     case wh_json:get_value(<<"status">>, JObj) of
@@ -261,7 +261,7 @@ format_numbers_resp(JObj, Options) ->
             };
         _Error ->
             lager:error("block lookup resp error: ~p", [_Error]),
-            {'error', 'non_available'}
+            {'error', 'not_available'}
     end.
 
 -spec format_number_resp(ne_binary(), wh_json:object(), knm_number:knm_numbers()) ->
@@ -286,7 +286,7 @@ format_number_resp(DID, CarrierData, AccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_blocks(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
-                        {'error', 'non_available'} |
+                        {'error', 'not_available'} |
                         {'ok', knm_number:knm_numbers()}.
 -ifdef(TEST).
 get_blocks(?BLOCK_PHONEBOOK_URL, _Number, _Quantity, Props) ->
@@ -311,10 +311,10 @@ get_blocks(Url, Number, Quantity, Props) ->
             format_blocks_resp(wh_json:decode(Body), Props);
         {'ok', _Status, _Headers, Body} ->
             lager:error("block lookup failed: ~p ~p", [_Status, Body]),
-            {'error', 'non_available'};
+            {'error', 'not_available'};
         {'error', Reason} ->
             lager:error("block lookup error: ~p", [Reason]),
-            {'error', 'non_available'}
+            {'error', 'not_available'}
     end.
 -endif.
 
@@ -324,7 +324,7 @@ get_blocks(Url, Number, Quantity, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec format_blocks_resp(wh_json:object(), wh_proplist()) ->
-                                {'error', 'non_available'} |
+                                {'error', 'not_available'} |
                                 {'bulk', knm_number:knm_numbers()}.
 format_blocks_resp(JObj, Options) ->
     case wh_json:get_value(<<"status">>, JObj) of
@@ -339,7 +339,7 @@ format_blocks_resp(JObj, Options) ->
             {'bulk', Numbers};
         _Error ->
             lager:error("block lookup resp error: ~p", [JObj]),
-            {'error', 'non_available'}
+            {'error', 'not_available'}
     end.
 
 -spec format_block_resp_fold(wh_json:object(), knm_number:knm_numbers(), api_binary()) ->
