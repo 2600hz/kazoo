@@ -1125,7 +1125,7 @@ store_recording(Props, CallId, Node) ->
                       ,{<<"Msg-ID">>, CallId}
                       ,{<<"Media-Name">>, MediaName}
                       ,{<<"Media-Transfer-Destination">>, Url}
-                      ,{<<"Insert-At">>, kzd_freeswitch:ccv(Props, <<"Insert-At">>, <<"now">>)}
+                      ,{<<"Insert-At">>, <<"now">>}
                       ,{<<"Media-Transfer-Method">>, media_transfer_method(Props)}
                       ,{<<"Application-Name">>, <<"store">>}
                       ,{<<"Event-Category">>, <<"call">>}
