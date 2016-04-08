@@ -240,6 +240,7 @@
         ]).
 
 -define(CHANNEL_LOOPBACK_HEADER_PREFIX, "Export-Loopback-").
+-define(CALL_INTERACTION_ID, "Call-Interaction-ID").
 
 -type xml_thing() :: xml_el() | xml_text().
 -type xml_things() :: xml_els() | xml_texts().

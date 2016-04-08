@@ -451,7 +451,6 @@
 
 -define(CHANNEL_VARS_EXT, "Execute-Extension-Original-").
 
--define(CALL_INTERACTION_ID, "Call-Interaction-ID").
 -define(CALL_INTERACTION_DEFAULT
         ,<<(wh_util:to_binary(wh_util:current_tstamp()))/binary
            ,"-", (wh_util:rand_hex_binary(4))/binary
