@@ -117,16 +117,21 @@ get_channel_vars(Call) ->
       props:filter_undefined(get_channel_vars(EndpointId, Call))
      ).
 
--spec get_channel_vars(api_binary(), whapps_call:call()) -> wh_json:object().
-get_channel_vars('undefined', _Call) -> [];
+-spec get_channel_vars(api_binary(), whapps_call:call()) -> wh_proplist().
+get_channel_vars('undefined', Call) -> [maybe_require_ignore_early_media(Call)];
 get_channel_vars(EndpointId, Call) ->
     case cf_endpoint:get(EndpointId, whapps_call:account_db(Call)) of
         {'ok', Endpoint} ->
             [{<<"Authorizing-ID">>, EndpointId}
              ,{<<"Owner-ID">>, wh_json:get_value(<<"owner_id">>, Endpoint)}
+             ,maybe_require_ignore_early_media(Call)
             ];
-        {'error', _} -> []
+        {'error', _} -> [maybe_require_ignore_early_media(Call)]
     end.
+
+-spec maybe_require_ignore_early_media(whapps_call:call()) -> {ne_binary(), api_binary()}.
+maybe_require_ignore_early_media(Call) ->
+    {<<"Require-Ignore-Early-Media">>, whapps_call:custom_channel_var(<<"Require-Ignore-Early-Media">>, Call)}.    
 
 -spec get_bypass_e164(wh_json:object()) -> boolean().
 get_bypass_e164(Data) ->
