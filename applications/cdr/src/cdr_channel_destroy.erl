@@ -18,6 +18,9 @@
 -define(LOOPBACK_KEY, <<"ignore_loopback_bowout">>).
 -define(IGNORE_LOOPBACK(AccountId), whapps_account_config:get_global(AccountId, ?CONFIG_CAT, ?LOOPBACK_KEY, 'true')).
 
+-define(CHANNEL_VARS, <<"Custom-Channel-Vars">>).
+-define(CCV(Key), [?CHANNEL_VARS, Key]).
+
 -export([handle_req/2]).
 
 handle_req(JObj, _Props) ->
@@ -84,7 +87,7 @@ prepare_and_save(AccountId, Timestamp, JObj) ->
     lists:foldl(fun(F, J) ->
                         F(AccountId, Timestamp, J)
                 end
-                ,wh_json:normalize_jobj(JObj)
+                ,JObj
                 ,Routines
                ),
     'ok'.
@@ -105,14 +108,14 @@ update_pvt_parameters(AccountId, Timestamp, JObj) ->
 
 -spec update_ccvs(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 update_ccvs(_, _, JObj) ->
-    CCVs = wh_json:get_value(<<"custom_channel_vars">>, JObj, wh_json:new()),
+    CCVs = kz_call_event:custom_channel_vars(JObj, wh_json:new()),
     {UpdatedJobj, UpdatedCCVs} =
         wh_json:foldl(
             fun update_ccvs_foldl/3
             ,{JObj, CCVs}
             ,CCVs
         ),
-    wh_json:set_value(<<"custom_channel_vars">>, UpdatedCCVs, UpdatedJobj).
+    wh_json:set_value(?CHANNEL_VARS, UpdatedCCVs, UpdatedJobj).
 
 -spec update_ccvs_foldl(wh_json:key(), wh_json:json_term(), {wh_json:object(), wh_json:object()}) ->
                                {wh_json:object(), wh_json:object()}.
@@ -127,7 +130,7 @@ update_ccvs_foldl(Key, Value,  {JObj, CCVs}=Acc) ->
 
 -spec set_doc_id(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 set_doc_id(_, Timestamp, JObj) ->
-    CallId = wh_json:get_value(<<"call_id">>, JObj),
+    CallId = kz_call_event:call_id(JObj),
 %% we should consider this because there is a lost channel in case of
 %% nightmare transfers
 %%    CallId = wh_util:rand_hex_binary(16),
@@ -136,19 +139,19 @@ set_doc_id(_, Timestamp, JObj) ->
 
 -spec set_call_priority(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 set_call_priority(_AccountId, _Timestamp, JObj) ->
-    maybe_leak_ccv(JObj, <<"call_priority">>).
+    maybe_leak_ccv(JObj, <<"Call-Priority">>).
 
 -spec set_recording_url(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 set_recording_url(_AccountId, _Timestamp, JObj) ->
-    maybe_leak_ccv(JObj, <<"recording_url">>).
+    maybe_leak_ccv(JObj, <<"Recording-Url">>).
 
 -spec maybe_set_e164_destination(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 maybe_set_e164_destination(_AccountId, _Timestamp, JObj) ->
-    maybe_leak_ccv(JObj, <<"e164_destination">>).
+    maybe_leak_ccv(JObj, <<"E164-Destination">>).
 
 -spec is_conference(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 is_conference(_AccountId, _Timestamp, JObj) ->
-    maybe_leak_ccv(JObj, <<"is_conference">>, {fun wh_json:is_true/3, 'false'}).
+    maybe_leak_ccv(JObj, <<"Is-Conference">>, {fun wh_json:is_true/3, 'false'}).
 
 -spec maybe_leak_ccv(wh_json:object(), wh_json:key()) -> wh_json:object().
 -spec maybe_leak_ccv(wh_json:object(), wh_json:key(), {fun(), any()}) -> wh_json:object().
@@ -156,37 +159,35 @@ maybe_leak_ccv(JObj, Key) ->
     maybe_leak_ccv(JObj, Key, {fun wh_json:get_value/3, 'undefined'}).
 
 maybe_leak_ccv(JObj, Key, {GetFun, Default}) ->
-    CCVKey = [<<"custom_channel_vars">>, Key],
-    case GetFun(CCVKey, JObj, Default) of
+    case GetFun(?CCV(Key), JObj, Default) of
         'undefined' -> JObj;
         Default -> JObj;
         Value -> wh_json:set_value(Key
                                    ,Value
-                                   ,wh_json:delete_key(CCVKey, JObj)
+                                   ,wh_json:delete_key(?CCV(Key), JObj)
                                   )
     end.
 
 -spec set_interaction(api_binary(), gregorian_seconds(), wh_json:object()) ->
                        wh_json:object().
 set_interaction(_AccountId, _Timestamp, JObj) ->
-    InteractionKey = [<<"custom_channel_vars">>, <<"call_interaction_id">>],
-    <<Time:11/binary, "-", Key/binary>> = Interaction = wh_json:get_value(InteractionKey, JObj),
+    <<Time:11/binary, "-", Key/binary>> = Interaction = kz_call_event:custom_channel_var(JObj, ?CALL_INTERACTION_ID),
     Timestamp = wh_util:to_integer(Time),
-    CallId = wh_json:get_value(<<"call_id">>, JObj),
+    CallId = kz_call_event:call_id(JObj),
     DocId = cdr_util:get_cdr_doc_id(Timestamp, CallId),
 
     wh_json:set_values(
-      [{<<"interaction_time">>, Timestamp}
-       ,{<<"interaction_key">>, Key}
-       ,{<<"interaction_id">>, Interaction}
+      [{<<"Interaction-Time">>, Timestamp}
+       ,{<<"Interaction-Key">>, Key}
+       ,{<<"Interaction-Id">>, Interaction}
       ]
-      ,wh_json:delete_key(InteractionKey, wh_doc:set_id(JObj, DocId))
+      ,wh_json:delete_key(?CCV(?CALL_INTERACTION_ID), wh_doc:set_id(JObj, DocId))
      ).
 
 -spec save_cdr(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 save_cdr(_, _, JObj) ->
     CDRDb = wh_doc:account_db(JObj),
-    case cdr_util:save_cdr(CDRDb, JObj) of
+    case cdr_util:save_cdr(CDRDb, wh_json:normalize_jobj(JObj)) of
         {'error', 'max_retries'} ->
             lager:error("write failed to ~s, too many retries", [CDRDb]);
         'ok' -> 'ok'
