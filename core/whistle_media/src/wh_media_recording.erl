@@ -59,6 +59,7 @@
                 ,doc_db                    :: ne_binary()
                 ,doc_id                    :: ne_binary()
                 ,cdr_id                    :: ne_binary()
+                ,interaction_id            :: ne_binary()
                 ,call                      :: whapps_call:call()
                 ,record_on_answer          :: boolean()
                 ,record_on_bridge          :: boolean()
@@ -176,6 +177,7 @@ init([Call, Data]) ->
     CdrId = ?MATCH_MODB_PREFIX(wh_util:to_binary(Year), wh_util:pad_month(Month), CallId),
     RecordingId = wh_util:rand_hex_binary(16),
     DocId = ?MATCH_MODB_PREFIX(wh_util:to_binary(Year), wh_util:pad_month(Month), RecordingId),
+    InteractionId = whapps_call:custom_channel_var(?CALL_INTERACTION_ID, Call),
     DefaultMediaName = get_media_name(wh_util:rand_hex_binary(16), Format),
     MediaName = wh_json:get_value(?RECORDING_ID_KEY, Data, DefaultMediaName),
     Url = get_url(Data),
@@ -187,6 +189,7 @@ init([Call, Data]) ->
                   ,doc_id=DocId
                   ,doc_db=AccountDb
                   ,cdr_id=CdrId
+                  ,interaction_id=InteractionId
                   ,call=Call
                   ,time_limit=TimeLimit
                   ,record_on_answer=RecordOnAnswer
@@ -420,6 +423,7 @@ store_recording_meta(#state{call=Call
                             ,doc_db=Db
                             ,doc_id=DocId
                             ,cdr_id=CdrId
+                            ,interaction_id=InteractionId
                             ,url=Url
                            }) ->
     CallId = whapps_call:call_id(Call),
@@ -441,6 +445,7 @@ store_recording_meta(#state{call=Call
                     ,{<<"owner_id">>, whapps_call:owner_id(Call)}
                     ,{<<"url">>, Url}
                     ,{<<"cdr_id">>, CdrId}
+                    ,{<<"interaction_id">>, InteractionId}
                     ,{<<"_id">>, DocId}
                    ]))
                  ,Db
