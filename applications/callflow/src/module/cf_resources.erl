@@ -103,7 +103,11 @@ build_offnet_request(Data, Call) ->
 -spec get_channel_vars(whapps_call:call()) -> wh_json:object().
 get_channel_vars(Call) ->
     wh_json:from_list(
-      [{<<"Authorizing-ID">>, whapps_call:authorizing_id(Call)}]
+      props:filter_undefined(
+        [{<<"Authorizing-ID">>, whapps_call:authorizing_id(Call)}
+         ,{<<"Require-Ignore-Early-Media">>, whapps_call:custom_channel_var(<<"Require-Ignore-Early-Media">>, Call)}
+        ]
+       )
      ).
 
 -spec get_bypass_e164(wh_json:object()) -> boolean().

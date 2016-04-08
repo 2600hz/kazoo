@@ -331,6 +331,8 @@ build_bridge(#state{endpoints=Endpoints
          ),
 
     FmtEndpoints = stepswitch_util:format_endpoints(Endpoints, Name, Number, OffnetReq),
+    IgnoreEarlyMedia = wh_json:is_true(<<"Require-Ignore-Early-Media">>, CCVs, 'false')
+                           orelse wapi_offnet_resource:ignore_early_media(OffnetReq, 'false'),
 
     props:filter_undefined(
       [{<<"Application-Name">>, <<"bridge">>}
@@ -341,7 +343,7 @@ build_bridge(#state{endpoints=Endpoints
        ,{<<"Caller-ID-Name">>, Name}
        ,{<<"Custom-Channel-Vars">>, CCVs}
        ,{<<"Timeout">>, wapi_offnet_resource:timeout(OffnetReq)}
-       ,{<<"Ignore-Early-Media">>, wapi_offnet_resource:ignore_early_media(OffnetReq, 'false')}
+       ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
        ,{<<"Media">>, wapi_offnet_resource:media(OffnetReq)}
        ,{<<"Hold-Media">>, wapi_offnet_resource:hold_media(OffnetReq)}
        ,{<<"Presence-ID">>, wapi_offnet_resource:presence_id(OffnetReq)}
