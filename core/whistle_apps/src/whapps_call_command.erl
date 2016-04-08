@@ -1429,10 +1429,12 @@ record_call(Media, Action, TimeLimit, Terminators, Call) ->
     Limit = props:get_value(<<"Time-Limit">>, Media, wh_util:to_binary(TimeLimit)),
     SampleRate = props:get_value(<<"Record-Sample-Rate">>, Media),
     RecordMinSec = props:get_value(<<"Record-Min-Sec">>, Media),
+    MediaRecorder = props:get_value(<<"Media-Recorder">>, Media),
 
     Command = props:filter_undefined(
                 [{<<"Application-Name">>, <<"record_call">>}
                  ,{<<"Media-Name">>, MediaName}
+                 ,{<<"Media-Recorder">>, MediaRecorder}
                  ,{<<"Record-Action">>, Action}
                  ,{<<"Time-Limit">>, Limit}
                  ,{<<"Terminators">>, Terminators}
