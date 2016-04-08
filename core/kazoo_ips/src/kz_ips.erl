@@ -98,12 +98,12 @@ assigned(Account) ->
                    {'error', any()}.
 zones() ->
     ViewOptions = [{'group', 'true'}
-                   ,{'group_level', 1}
+                  ,{'group_level', 1}
                   ],
     case kz_datamgr:get_results(?WH_DEDICATED_IP_DB
                                ,<<"dedicated_ips/zone_listing">>
                                ,ViewOptions
-                              )
+                               )
     of
         {'error', 'not_found'} ->
             kz_ip_utils:refresh_database(
