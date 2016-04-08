@@ -40,13 +40,13 @@ available(Zone) -> available(Zone, 1).
 available(Zone, Quantity) ->
     ViewOptions = props:filter_undefined(
                     [{'key', Zone}
-                     ,{'limit', Quantity}
+                    ,{'limit', Quantity}
                     ]
                    ),
     case kz_datamgr:get_results(?WH_DEDICATED_IP_DB
                                ,<<"dedicated_ips/available_listing">>
                                ,ViewOptions
-                              )
+                               )
     of
         {'error', 'not_found'} ->
             kz_ip_utils:refresh_database(
