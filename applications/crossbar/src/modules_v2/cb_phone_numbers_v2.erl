@@ -22,7 +22,6 @@
          ,put/2, put/3
          ,post/2
          ,delete/2
-         ,summary/1
          ,populate_phone_numbers/1
         ]).
 
@@ -484,51 +483,51 @@ delete(Context, Number) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
+%% Lists numbers on GET /v2/accounts/{{ACCOUNT_ID}}/phone_numbers
 %% @end
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    Context1 = crossbar_doc:load(?KNM_PHONE_NUMBERS_DOC, Context),
-    case cb_context:resp_error_code(Context1) of
-        404 -> Context1;
-        _Code ->
-            Context2 = cb_context:set_resp_data(Context1, clean_summary(Context1)),
-            case cb_context:resp_status(Context2) of
-                'success' -> maybe_update_locality(Context2);
-                _Status -> Context2
-            end
+    Context1 = view_account_phone_numbers(Context),
+    case cb_context:resp_status(Context1) of
+        'success' -> maybe_update_locality(Context1);
+        _Status -> Context1
     end.
 
-
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec clean_summary(cb_context:context()) -> wh_json:object().
-clean_summary(Context) ->
-    AccountId = cb_context:account_id(Context),
-    Routines = [fun(JObj) -> wh_json:delete_key(<<"id">>, JObj) end
-                ,fun(JObj) -> wh_json:set_value(<<"numbers">>, JObj, wh_json:new()) end
-                ,fun(JObj) ->
-                         Service = wh_services:fetch(AccountId),
-                         Quantity = wh_services:cascade_category_quantity(?KNM_PHONE_NUMBERS_DOC, [], Service),
-                         wh_json:set_value(<<"casquade_quantity">>, Quantity, JObj)
-                 end
-                ,fun(JObj) ->
-                         QS = wh_json:to_proplist(cb_context:query_string(Context)),
-                         Numbers = wh_json:get_value(<<"numbers">>, JObj),
-                         wh_json:set_value(<<"numbers">>, apply_filters(QS, Numbers), JObj)
-                 end
-               ],
-    lists:foldl(fun(F, JObj) -> F(JObj) end
-                ,cb_context:resp_data(Context)
-                ,Routines
-               ).
+-spec view_account_phone_numbers(cb_context:context()) -> cb_context:context().
+view_account_phone_numbers(Context) ->
+    Context1 = crossbar_doc:load_view(?KNM_CROSSBAR_VIEW, [], Context, fun normalize_view_results/2),
+    Routines =
+        [ fun (ListOfNumProps) ->
+                  NumbersJObj = lists:foldl(fun wh_json:merge_jobjs/2, wh_json:new(), ListOfNumProps),
+                  QS = wh_json:to_proplist(cb_context:query_string(Context)),
+                  Filtered = apply_filters(QS, NumbersJObj),
+                  wh_json:set_value(<<"numbers">>, Filtered, wh_json:new())
+          end
+        , fun (RespData) ->
+                  Service = wh_services:fetch(cb_context:account_id(Context)),
+                  Quantity = wh_services:cascade_category_quantity(?KNM_PHONE_NUMBERS_DOC, [], Service),
+                  wh_json:set_value(<<"casquade_quantity">>, Quantity, RespData)
+          end
+        ],
+    NewRespData = lists:foldl( fun (F, JObj) -> F(JObj) end
+                             , cb_context:resp_data(Context1)
+                             , Routines ),
+    cb_context:set_resp_data(Context1, NewRespData).
+
+%% @private
+-spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+normalize_view_results(JObj, Acc) ->
+    Number = wh_json:get_value(<<"key">>, JObj),
+    Properties = wh_json:get_value(<<"value">>, JObj),
+    [ wh_json:set_value(Number, Properties, wh_json:new())
+      | Acc
+    ].
 
 %%--------------------------------------------------------------------
 %% @private
