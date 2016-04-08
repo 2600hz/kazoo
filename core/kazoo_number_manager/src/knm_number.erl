@@ -140,24 +140,24 @@ get_number(Num, Options) ->
 %%--------------------------------------------------------------------
 -spec create(ne_binary(), knm_number_options:options()) ->
                     knm_number_return().
-create(Num, Props) ->
-    attempt(fun create_or_load/2, [Num, Props]).
+create(Num, Options) ->
+    attempt(fun create_or_load/2, [Num, Options]).
 
--spec create_or_load(ne_binary(), wh_proplist()) ->
+-spec create_or_load(ne_binary(), knm_number_options:options()) ->
                             knm_number() | dry_run_return().
--spec create_or_load(ne_binary(), wh_proplist(), knm_phone_number_return()) ->
-                            knm_number() | dry_run_return().
-create_or_load(Num, Props) ->
-    create_or_load(Num, Props, knm_phone_number:fetch(Num)).
+create_or_load(Num, Options) ->
+    create_or_load(Num, Options, knm_phone_number:fetch(Num)).
 
-create_or_load(Num, Props, {'error', 'not_found'}) ->
-    ensure_can_create(Num, Props),
-    Updates = create_updaters(Num, Props),
+-spec create_or_load(ne_binary(), knm_number_options:options(), knm_phone_number_return()) ->
+                            knm_number() | dry_run_return().
+create_or_load(Num, Options, {'error', 'not_found'}) ->
+    ensure_can_create(Num, Options),
+    Updates = create_updaters(Num, Options),
     {'ok', PhoneNumber} = knm_phone_number:setters(knm_phone_number:new(), Updates),
     create_phone_number(set_phone_number(new(), PhoneNumber));
-create_or_load(Num, Props, {'ok', PhoneNumber}) ->
+create_or_load(Num, Options, {'ok', PhoneNumber}) ->
     ensure_can_load_to_create(PhoneNumber),
-    Updates = create_updaters(Num, Props),
+    Updates = create_updaters(Num, Options),
     {'ok', NewPhoneNumber} = knm_phone_number:setters(PhoneNumber, Updates),
     create_phone_number(set_phone_number(new(), NewPhoneNumber)).
 
@@ -244,16 +244,16 @@ dry_run_response(Number) ->
     }.
 
 -spec ensure_can_create(ne_binary(), knm_number_options:options()) -> 'true'.
-ensure_can_create(Num, Props) ->
-    ensure_account_can_create(Props)
+ensure_can_create(Num, Options) ->
+    ensure_account_can_create(Options)
         andalso ensure_number_is_not_porting(Num).
 
 -spec ensure_account_can_create(knm_number_options:options()) -> 'true'.
-ensure_account_can_create(Props) ->
-    case knm_number_options:auth_by(Props) of
+ensure_account_can_create(Options) ->
+    case knm_number_options:auth_by(Options) of
         'undefined' -> knm_errors:unauthorized();
         AccountId ->
-            ensure_account_is_allowed_to_create(Props, AccountId)
+            ensure_account_is_allowed_to_create(Options, AccountId)
     end.
 
 -ifdef(TEST).
@@ -261,13 +261,13 @@ ensure_account_can_create(Props) ->
         ,{'ok', props:get_value(<<"auth_by_account">>, Props)}
        ).
 -else.
--define(LOAD_ACCOUNT(_Props, AccountId)
+-define(LOAD_ACCOUNT(_Options, AccountId)
         ,kz_account:fetch(AccountId)
        ).
 -endif.
 
-ensure_account_is_allowed_to_create(_Props, _AccountId) ->
-    {'ok', JObj} = ?LOAD_ACCOUNT(_Props, _AccountId),
+ensure_account_is_allowed_to_create(_Options, _AccountId) ->
+    {'ok', JObj} = ?LOAD_ACCOUNT(_Options, _AccountId),
     case kz_account:allow_number_additions(JObj) of
         'true' -> 'true';
         'false' -> knm_errors:unauthorized()
@@ -288,31 +288,31 @@ ensure_number_is_not_porting(Num) ->
 
 -spec create_updaters(ne_binary(), knm_number_options:options()) ->
                              knm_phone_number:set_functions().
-create_updaters(?NE_BINARY=Num, Props) when is_list(Props) ->
+create_updaters(?NE_BINARY=Num, Options) when is_list(Options) ->
     NormalizedNum = knm_converters:normalize(Num),
     props:filter_undefined(
       [{fun knm_phone_number:set_number/2, NormalizedNum}
        ,{fun knm_phone_number:set_number_db/2, knm_converters:to_db(NormalizedNum)}
        ,{fun knm_phone_number:set_state/2
-         ,knm_number_options:state(Props, ?NUMBER_STATE_AVAILABLE)
+         ,knm_number_options:state(Options, ?NUMBER_STATE_AVAILABLE)
         }
        ,{fun knm_phone_number:set_ported_in/2
-         ,knm_number_options:ported_in(Props)
+         ,knm_number_options:ported_in(Options)
         }
        ,{fun knm_phone_number:set_assign_to/2
-         ,knm_number_options:assign_to(Props)
+         ,knm_number_options:assign_to(Options)
         }
        ,{fun knm_phone_number:set_auth_by/2
-         ,knm_number_options:auth_by(Props)
+         ,knm_number_options:auth_by(Options)
         }
        ,{fun knm_phone_number:set_dry_run/2
-         ,knm_number_options:dry_run(Props)
+         ,knm_number_options:dry_run(Options)
         }
        ,{fun knm_phone_number:set_module_name/2
-         ,knm_number_options:module_name(Props, knm_carriers:default_carrier())
+         ,knm_number_options:module_name(Options, knm_carriers:default_carrier())
         }
        ,{fun knm_phone_number:update_doc/2
-         ,knm_number_options:public_fields(Props)
+         ,knm_number_options:public_fields(Options)
         }
       ]).
 

@@ -819,7 +819,7 @@ maybe_add_mobile_mdn(Context) ->
 -spec add_mobile_mdn(cb_context:context()) -> cb_context:context().
 add_mobile_mdn(Context) ->
     Normalized = knm_converters:normalize(get_mdn(Context)),
-    Options = [ {'assigned_to', cb_context:account_id(Context)}
+    Options = [ {'assign_to', cb_context:account_id(Context)}
               , {'dry_run', not cb_context:accepting_charges(Context)}
               ],
     case knm_number:reconcile(Normalized, Options) of
