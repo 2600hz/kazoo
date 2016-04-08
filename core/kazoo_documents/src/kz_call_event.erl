@@ -12,7 +12,8 @@
          ,other_leg_call_id/1
          ,other_leg_destination_number/1, other_leg_destination_number/2
          ,replaced_by/1
-         ,custom_channel_vars/1, custom_channel_var/2, custom_channel_var/3
+         ,custom_channel_vars/1, custom_channel_vars/2
+         ,custom_channel_var/2, custom_channel_var/3
          ,custom_sip_headers/1
          ,authorizing_id/1, authorizing_type/1
          ,dtmf_digit/1
@@ -49,8 +50,12 @@ replaced_by(JObj) ->
     wh_json:get_value(<<"Replaced-By">>, JObj).
 
 -spec custom_channel_vars(wh_json:object()) -> api_object().
+-spec custom_channel_vars(wh_json:object(), Default) -> api_object().
 custom_channel_vars(JObj) ->
-    wh_json:get_value(<<"Custom-Channel-Vars">>, JObj).
+    custom_channel_vars(JObj, 'undefined').
+
+custom_channel_vars(JObj, Default) ->
+    wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, Default).
 
 -spec custom_channel_var(wh_json:object(), wh_json:key()) ->
                                 api_binary().
