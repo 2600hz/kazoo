@@ -12,7 +12,7 @@
 
 find_local_test_() ->
     [{"Finding local numbers not supported"
-      ,?_assertMatch({'error', 'non_available'}
+      ,?_assertMatch({'error', 'not_available'}
                      ,knm_local:find_numbers(<<"415">>, 1, [])
                     )
      }

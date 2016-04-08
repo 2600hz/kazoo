@@ -44,7 +44,7 @@ find_numbers(Number, Quantity, Opts) ->
                                      {'error', any()}.
 find_numbers_in_account(Number, Quantity, AccountId) ->
     case do_find_numbers_in_account(Number, Quantity, AccountId) of
-        {'error', 'non_available'}=Error ->
+        {'error', 'not_available'}=Error ->
             case wh_services:find_reseller_id(AccountId) of
                 AccountId -> Error;
                 ResellerId ->
@@ -65,7 +65,7 @@ do_find_numbers_in_account(Number, Quantity, AccountId) ->
     case kz_datamgr:get_results(?WH_MANAGED, <<"numbers/status">>, ViewOptions) of
         {'ok', []} ->
             lager:debug("found no available managed numbers for account ~p", [AccountId]),
-            {'error', 'non_available'};
+            {'error', 'not_available'};
         {'ok', JObjs} ->
             lager:debug("found available managed numbers for account ~s", [AccountId]),
             {'ok', format_numbers_resp(JObjs)};

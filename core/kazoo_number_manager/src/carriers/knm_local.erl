@@ -28,13 +28,13 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
-                          {'error', 'non_available'}.
+                          {'error', 'not_available'}.
 find_numbers(Number, Quanity, Opts) when size(Number) < 5 ->
     find_numbers(<<"+1", Number/binary>>, Quanity, Opts);
 find_numbers(_Number, _Quanity, _Opts) ->
     %% TODO: given the requestor's account, discover wnm_local numbers
     %%        that are available but managed by accendants of the account.
-    {'error', 'non_available'}.
+    {'error', 'not_available'}.
 
 -spec is_number_billable(knm_number:knm_number()) -> 'false'.
 is_number_billable(_Number) -> 'false'.
