@@ -1430,21 +1430,22 @@ start_record_call_args(Node, UUID, JObj, RecordingName) ->
     RecordMinSec = wh_json:get_binary_value(<<"Record-Min-Sec">>, JObj),
     SampleRate = get_sample_rate(JObj),
 
-    _ = ecallmgr_fs_command:set(Node, UUID, [{<<"recording_follow_transfer">>, FollowTransfer}
-                                       ,{<<"recording_follow_attxfer">>, FollowTransfer}
-                                       ,{<<"Record-Min-Sec">>, RecordMinSec}
-                                       ,{<<"record_sample_rate">>, wh_util:to_binary(SampleRate)}
-                                      ]),
-    _ = ecallmgr_fs_command:export(
-          Node
-          ,UUID
-          ,[{<<"Insert-At">>, wh_json:get_value(<<"Insert-At">>, JObj)}
-            ,{<<"Time-Limit">>, wh_json:get_value(<<"Time-Limit">>, JObj)}
-            ,{<<"Media-Name">>, wh_json:get_value(<<"Media-Name">>, JObj)}
-            ,{<<"Media-Transfer-Method">>, wh_json:get_value(<<"Media-Transfer-Method">>, JObj)}
-            ,{<<"Media-Transfer-Destination">>, wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)}
-            ,{<<"Additional-Headers">>, wh_json:get_value(<<"Additional-Headers">>, JObj)}
-           ]),
+    Vars = props:filter_undefined(
+             [{<<"recording_follow_transfer">>, FollowTransfer}
+              ,{<<"recording_follow_attxfer">>, FollowTransfer}
+              ,{<<"Record-Min-Sec">>, RecordMinSec}
+              ,{<<"record_sample_rate">>, wh_util:to_binary(SampleRate)}
+              ,{<<"Media-Recorder">>, wh_json:get_value(<<"Media-Recorder">>, JObj)}
+             ]),
+    _ = ecallmgr_fs_command:set(Node, UUID, Vars),
+    ExportVars = props:filter_undefined(
+                   [{<<"Time-Limit">>, wh_json:get_value(<<"Time-Limit">>, JObj)}
+                    ,{<<"Media-Name">>, wh_json:get_value(<<"Media-Name">>, JObj)}
+                    ,{<<"Media-Transfer-Method">>, wh_json:get_value(<<"Media-Transfer-Method">>, JObj)}
+                    ,{<<"Media-Transfer-Destination">>, wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)}
+                    ,{<<"Additional-Headers">>, wh_json:get_value(<<"Additional-Headers">>, JObj)}
+                   ]),
+    _ = ecallmgr_fs_command:export(Node, UUID, ExportVars),
 
     list_to_binary([UUID, <<" start ">>
                     ,RecordingName, <<" ">>
