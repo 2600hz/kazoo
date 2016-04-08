@@ -300,7 +300,7 @@ validate_ip_not_in_use(Context, IP, 'error') ->
                                        ,Context
                                        )
     end;
-validate_ip_not_in_use(IP, Context, _Status) ->
+validate_ip_not_in_use(Context, IP, _Status) ->
     case kz_ip:is_available(IP) of
         'true' -> cb_context:set_resp_status(Context, 'success');
         'false' -> error_ip_assigned(Context, IP);
