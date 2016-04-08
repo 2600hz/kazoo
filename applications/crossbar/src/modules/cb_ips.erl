@@ -53,7 +53,13 @@ init() ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_POST].
 
-allowed_methods(_) ->
+allowed_methods(?ASSIGNED) ->
+    [?HTTP_GET];
+allowed_methods(?ZONES) ->
+    [?HTTP_GET];
+allowed_methods(?HOSTS) ->
+    [?HTTP_GET];
+allowed_methods(_IP) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
@@ -104,7 +110,7 @@ validate_ips(Context, ?HOSTS, ?HTTP_GET) ->
 validate_ips(Context, IP, ?HTTP_GET) ->
     load_ip(Context, IP);
 validate_ips(Context, IP, ?HTTP_POST) ->
-    maybe_assign_ip(Context, IP);
+    validate_ip_not_in_use(Context, IP);
 validate_ips(Context, IP, ?HTTP_DELETE) ->
     release_ip(Context, IP).
 
@@ -258,49 +264,63 @@ load_ip(Context, Id) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_assign_ips(cb_context:context()) -> cb_context:context().
--spec maybe_assign_ips(cb_context:context(), ne_binaries()) -> cb_context:context().
 maybe_assign_ips(Context) ->
-    ReqData = cb_context:req_data(Context),
-    maybe_assign_ips(
-      cb_context:set_resp_status(Context, 'success')
-      ,wh_json:get_value(<<"ips">>, ReqData, [])
-     ).
+    OnSuccess = fun validate_ips_not_in_use/1,
+    cb_context:validate_request_data(<<"webhooks">>, Context, OnSuccess).
 
-maybe_assign_ips(Context, []) -> Context;
-maybe_assign_ips(Context, [Ip|Ips]) ->
-    case cb_context:resp_status(Context) of
-        'success' ->
-            Context1 = maybe_assign_ip(Context, Ip),
-            maybe_assign_ips(Context1, Ips);
-        _ -> Context
-    end.
+-spec validate_ips_not_in_use(cb_context:context()) -> cb_context:context().
+-spec validate_ips_not_in_use(cb_context:context(), ne_binaries()) -> cb_context:context().
+validate_ips_not_in_use(Context) ->
+    validate_ips_not_in_use(Context
+                           ,cb_context:req_data(Context, <<"ips">>, [])
+                           ).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_assign_ip(cb_context:context(), ne_binary()) -> cb_context:context().
-maybe_assign_ip(Context, Ip) ->
-    case kz_ip:is_available(Ip) of
-        'true' -> cb_context:set_resp_status(Context, 'success');
-        'false' ->
-            cb_context:add_validation_error(
-              <<"ip">>
-              ,<<"forbidden">>
-              ,wh_json:from_list(
-                 [{<<"cause">>, Ip}
-                  ,{<<"message">>, <<"ip already assigned">>}
-                 ])
-              ,Context
-             );
+validate_ips_not_in_use(Context, IPs) ->
+    lists:foldl(fun validate_ip_not_in_use/2
+               ,Context
+               ,IPs
+               ).
+
+-spec validate_ip_not_in_use(ne_binary() | cb_context:context(), ne_binary() | cb_context:context()) ->
+                                    cb_context:context().
+validate_ip_not_in_use(<<_/binary>> = IP, Context) ->
+    validate_ip_not_in_use(Context, IP);
+validate_ip_not_in_use(Context, <<_/binary>> = IP) ->
+    validate_ip_not_in_use(Context, IP, cb_context:resp_status(Context)).
+
+-spec validate_ip_not_in_use(cb_context:context(), ne_binary(), crossbar_status()) ->
+                                    cb_context:context().
+validate_ip_not_in_use(Context, IP, 'error') ->
+    case kz_ip:is_available(IP) of
+        'true' -> Context;
+        'false' -> error_ip_assigned(Context, IP);
         {'error', Reason} ->
-            cb_context:add_system_error(
-              'datastore_fault'
-              ,wh_json:from_list([{<<"cause">>, Reason}])
-              ,Context
-             )
+            cb_context:add_system_error('datastore_fault'
+                                       ,wh_json:from_list([{<<"cause">>, Reason}])
+                                       ,Context
+                                       )
+    end;
+validate_ip_not_in_use(IP, Context, _Status) ->
+    case kz_ip:is_available(IP) of
+        'true' -> cb_context:set_resp_status(Context, 'success');
+        'false' -> error_ip_assigned(Context, IP);
+        {'error', Reason} ->
+            cb_context:add_system_error('datastore_fault'
+                                       ,wh_json:from_list([{<<"cause">>, Reason}])
+                                       ,Context
+                                       )
     end.
+
+-spec error_ip_assigned(cb_context:context(), ne_binary()) -> cb_context:context().
+error_ip_assigned(Context, IP) ->
+    cb_context:add_validation_error(<<"ip">>
+                                   ,<<"forbidden">>
+                                   ,wh_json:from_list(
+                                      [{<<"cause">>, IP}
+                                      ,{<<"message">>, <<"ip already assigned">>}
+                                      ])
+                                   ,Context
+                                   ).
 
 %%--------------------------------------------------------------------
 %% @private
