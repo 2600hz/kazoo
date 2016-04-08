@@ -96,11 +96,11 @@ create(IP, Zone, Host) ->
                    {'ok', ip()} |
                    {'error', any()}.
 fetch(IP) ->
-    case kz_datamgr:open_doc(?WH_DEDICATED_IP_DB, IP) of
+    case kz_datamgr:open_cache_doc(?WH_DEDICATED_IP_DB, IP) of
         {'ok', JObj} -> {'ok', from_json(JObj)};
         {'error', _R}=E ->
             lager:debug("unable to fetch dedicated ip ~s: ~p"
-                        ,[IP, _R]
+                       ,[IP, _R]
                        ),
             E
     end.
@@ -114,25 +114,25 @@ fetch(IP) ->
 -spec assign(ne_binary(), ne_binary() | ip()) ->
                     {'ok', ip()} |
                     {'error', any()}.
-assign(Account, <<_/binary>> = Ip) ->
-    case fetch(Ip) of
-        {'ok', IP} -> assign(Account, IP);
+assign(Account, <<_/binary>> = RawIP) ->
+    case fetch(RawIP) of
+        {'ok', IPDoc} -> assign(Account, IPDoc);
         {'error', _}=E -> E
     end;
-assign(Account, IP) ->
-    'true' = is_dedicated_ip(IP),
-    case is_available(IP) of
+assign(Account, IPDoc) ->
+    'true' = is_dedicated_ip(IPDoc),
+    case is_available(IPDoc) of
         {'error', _}=E -> E;
         'false' -> {'error', 'already_assigned'};
         'true' ->
-            JObj = to_json(IP),
+            IPJObj = to_json(IPDoc),
             AccountId = wh_util:format_account_id(Account, 'raw'),
             Props = [{<<"pvt_assigned_to">>, AccountId}
-                     ,{<<"pvt_modified">>, wh_util:current_tstamp()}
-                     ,{<<"pvt_status">>, ?ASSIGNED}
+                    ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+                    ,{<<"pvt_status">>, ?ASSIGNED}
                     ],
-            save(wh_json:set_values(Props, JObj)
-                 ,wh_json:get_ne_binary_value(<<"pvt_assigned_to">>, JObj)
+            save(wh_json:set_values(Props, IPJObj)
+                ,wh_json:get_ne_binary_value(<<"pvt_assigned_to">>, IPJObj)
                 )
     end.
 
@@ -158,7 +158,7 @@ release(IP) ->
             ],
     JObj = to_json(IP),
     save(wh_json:delete_keys(RemoveKeys, wh_json:set_values(Props, JObj))
-         ,wh_json:get_ne_binary_value(<<"pvt_assigned_to">>, JObj)
+        ,wh_json:get_ne_binary_value(<<"pvt_assigned_to">>, JObj)
         ).
 
 %%--------------------------------------------------------------------
