@@ -449,17 +449,17 @@ maybe_flush_registration_on_enabled(Realm, OldDevice, NewDevice) ->
 -spec move_account(ne_binary(), ne_binary()) ->
                           {'ok', wh_json:object()} |
                           {'error', any()}.
--spec move_account(ne_binary(), wh_json:object(), ne_binaries()) ->
+-spec move_account(ne_binary(), wh_json:object(), ne_binary(), ne_binaries()) ->
                           {'ok', wh_json:object()} |
                           {'error', any()}.
 move_account(<<_/binary>> = AccountId, <<_/binary>> = ToAccount) ->
     case validate_move(AccountId, ToAccount) of
         {'error', _E}=Error -> Error;
         {'ok', JObj, ToTree} ->
-            move_account(AccountId, JObj, ToTree)
+            move_account(AccountId, JObj, ToAccount, ToTree)
     end.
 
-move_account(AccountId, JObj, ToTree) ->
+move_account(AccountId, JObj, ToAccount, ToTree) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     PreviousTree = kz_account:tree(JObj),
     JObj1 = wh_json:set_values([{<<"pvt_tree">>, ToTree}
@@ -469,11 +469,26 @@ move_account(AccountId, JObj, ToTree) ->
     case kz_datamgr:save_doc(AccountDb, JObj1) of
         {'error', _E}=Error -> Error;
         {'ok', _} ->
+            NewResellerId = find_reseller_id(ToAccount),
             {'ok', _} = replicate_account_definition(JObj1),
-            {'ok', _} = move_descendants(AccountId, ToTree),
+            {'ok', _} = move_descendants(AccountId, ToTree, NewResellerId),
             {'ok', _} = mark_dirty(AccountId),
-            move_service(AccountId, ToTree, 'true')
+            move_service(AccountId, ToTree, NewResellerId, 'true')
     end.
+
+-spec find_reseller_id(ne_binary()) -> ne_binary().
+-spec find_reseller_id(ne_binary(), boolean()) -> ne_binary().
+find_reseller_id(ToAccount) ->
+    case wh_services:fetch_services_doc(ToAccount, 'false') of
+        {'error', _} -> wh_services:get_reseller_id(ToAccount);
+        {'ok', JObj} ->
+            find_reseller_id(ToAccount, kzd_services:is_reseller(JObj))
+    end.
+
+find_reseller_id(ToAccount, 'true') ->
+    ToAccount;
+find_reseller_id(ToAccount, 'false') ->
+    wh_services:get_reseller_id(ToAccount).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -499,17 +514,17 @@ validate_move(AccountId, ToAccount) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec move_descendants(ne_binary(), ne_binaries()) ->
+-spec move_descendants(ne_binary(), ne_binaries(), ne_binary()) ->
                               {'ok', 'done'} |
                               {'error', any()}.
-move_descendants(<<_/binary>> = AccountId, Tree) ->
-    update_descendants_tree(get_descendants(AccountId), Tree).
+move_descendants(<<_/binary>> = AccountId, Tree, NewResellerId) ->
+    update_descendants_tree(get_descendants(AccountId), Tree, NewResellerId).
 
--spec update_descendants_tree(ne_binaries(), ne_binaries()) ->
+-spec update_descendants_tree(ne_binaries(), ne_binaries(), ne_binary()) ->
                                      {'ok', 'done'} |
                                      {'error', any()}.
-update_descendants_tree([], _) -> {'ok', 'done'};
-update_descendants_tree([Descendant|Descendants], Tree) ->
+update_descendants_tree([], _, _) -> {'ok', 'done'};
+update_descendants_tree([Descendant|Descendants], Tree, NewResellerId) ->
     AccountId = wh_util:format_account_id(Descendant, 'raw'),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:open_doc(AccountDb, AccountId) of
@@ -526,8 +541,8 @@ update_descendants_tree([Descendant|Descendants], Tree) ->
                 {'error', _E}=Error -> Error;
                 {'ok', _} ->
                     {'ok', _} = replicate_account_definition(JObj1),
-                    {'ok', _} = move_service(AccountId, ToTree, 'undefined'),
-                    update_descendants_tree(Descendants, ToTree)
+                    {'ok', _} = move_service(AccountId, ToTree, NewResellerId, 'undefined'),
+                    update_descendants_tree(Descendants, ToTree, NewResellerId)
             end
     end.
 
@@ -536,25 +551,26 @@ update_descendants_tree([Descendant|Descendants], Tree) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec move_service(ne_binary(), ne_binaries(), api_boolean()) ->
+-spec move_service(ne_binary(), ne_binaries(), ne_binary(), api_boolean()) ->
                           {'ok', wh_json:object()} |
                           {'error', any()}.
-move_service(AccountId, NewTree, Dirty) ->
+move_service(AccountId, NewTree, NewResellerId, Dirty) ->
     case kz_datamgr:open_doc(?WH_SERVICES_DB, AccountId) of
         {'error', _E}=Error -> Error;
         {'ok', JObj} ->
-            move_service_doc(NewTree, Dirty, JObj)
+            move_service_doc(NewTree, NewResellerId, Dirty, JObj)
     end.
 
--spec move_service_doc(ne_binaries(), api_boolean(), wh_json:object()) ->
+-spec move_service_doc(ne_binaries(), ne_binary(), api_boolean(), wh_json:object()) ->
                           {'ok', wh_json:object()} |
                           {'error', any()}.
-move_service_doc(NewTree, Dirty, JObj) ->
+move_service_doc(NewTree, NewResellerId, Dirty, JObj) ->
     PreviousTree = kz_account:tree(JObj),
     Props = props:filter_undefined([{<<"pvt_tree">>, NewTree}
                                     ,{<<"pvt_dirty">>, Dirty}
                                     ,{<<"pvt_previous_tree">>, PreviousTree}
                                     ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+                                    ,{<<"pvt_reseller_id">>, NewResellerId}
                                    ]),
     case kz_datamgr:save_doc(?WH_SERVICES_DB, wh_json:set_values(Props, JObj)) of
         {'error', _E}=Error -> Error;
