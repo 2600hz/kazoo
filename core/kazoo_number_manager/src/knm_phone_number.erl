@@ -174,7 +174,15 @@ save(#knm_phone_number{dry_run='false'}=PhoneNumber) ->
 delete(#knm_phone_number{dry_run='true'}=Number) ->
     {'ok', Number};
 delete(#knm_phone_number{dry_run='false'}=Number) ->
-    Routines = [fun knm_providers:delete/1
+    Routines = [fun(PhoneNumber) ->
+                        knm_number:phone_number(
+                          knm_providers:delete(
+                            knm_number:set_phone_number(
+                              knm_number:new(), PhoneNumber
+                             )
+                           )
+                         )
+                end
                 ,fun delete_number_doc/1
                 ,fun maybe_remove_number_from_account/1
                ],
