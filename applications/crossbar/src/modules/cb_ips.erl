@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%%
@@ -266,13 +266,13 @@ load_ip(Context, Id) ->
 -spec maybe_assign_ips(cb_context:context()) -> cb_context:context().
 maybe_assign_ips(Context) ->
     OnSuccess = fun validate_ips_not_in_use/1,
-    cb_context:validate_request_data(<<"webhooks">>, Context, OnSuccess).
+    cb_context:validate_request_data(<<"ips">>, Context, OnSuccess).
 
 -spec validate_ips_not_in_use(cb_context:context()) -> cb_context:context().
 -spec validate_ips_not_in_use(cb_context:context(), ne_binaries()) -> cb_context:context().
 validate_ips_not_in_use(Context) ->
     validate_ips_not_in_use(Context
-                           ,cb_context:req_data(Context, <<"ips">>, [])
+                           ,cb_context:req_value(Context, <<"ips">>)
                            ).
 
 validate_ips_not_in_use(Context, IPs) ->
