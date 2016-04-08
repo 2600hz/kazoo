@@ -545,12 +545,12 @@ append_path(Url, {_, MediaName}) ->
 -spec start_recording(whapps_call:call(), ne_binary(), pos_integer(), ne_binary(), api_integer(), api_integer()) -> 'ok'.
 start_recording(Call, MediaName, TimeLimit, MediaRecorder, SampleRate, RecordMinSec) ->
     lager:debug("starting recording of ~s", [MediaName]),
-    Call1 = whapps_call:set_custom_channel_var(<<"Media-Recorder">>, MediaRecorder, Call),
     Props = [{<<"Media-Name">>, MediaName}
              ,{<<"Record-Sample-Rate">>, SampleRate}
              ,{<<"Record-Min-Sec">>, wh_util:to_binary(RecordMinSec)}
+             ,{<<"Media-Recorder">>, MediaRecorder}
             ],
-    whapps_call_command:start_record_call(Props, TimeLimit, Call1),
+    whapps_call_command:start_record_call(Props, TimeLimit, Call),
     gen_server:cast(self(), 'recording_started').
 
 -spec store({ne_binary(), ne_binary()}, ne_binary(), whapps_call:call()) -> 'ok'.
