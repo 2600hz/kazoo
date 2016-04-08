@@ -283,11 +283,8 @@ build_freeswitch(Pid) ->
     gen_server:cast(Pid, {'completed', File}).
 
 -spec is_number_db(ne_binary()) -> boolean().
-%% should this change (+) go into wnm_util ?
-is_number_db(<<"numbers/+", _/binary>>) -> 'true';
-is_number_db(<<"numbers%2f%2b", _/binary>>) -> 'true';
-is_number_db(<<"numbers%2F%2B", _/binary>>) -> 'true';
-is_number_db(_) -> 'false'.
+is_number_db(DB) ->
+    kz_datamgr:db_classification(DB) == 'numbers'.
 
 -spec crawl_numbers_db(ne_binary()) -> 'ok'.
 crawl_numbers_db(NumberDb) ->
