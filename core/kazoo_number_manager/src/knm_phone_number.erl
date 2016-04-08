@@ -728,7 +728,7 @@ assign(PhoneNumber, _AssignedTo) ->
     PhoneNumber.
 -else.
 assign(PhoneNumber, AssignedTo) ->
-    AccountDb = wh_util:format_account_id(AssignedTo, 'encoded'),
+    AccountDb = wh_util:format_account_db(AssignedTo),
     case kz_datamgr:ensure_saved(AccountDb, to_json(PhoneNumber)) of
         {'error', E} ->
             lager:error("failed to assign number ~s to ~s"

@@ -619,26 +619,23 @@ lookup_account(Num) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Has a carrier module buy the number.
+%% Note: number has to be in numbers db first hand.
 %% @end
 %%--------------------------------------------------------------------
--spec buy(ne_binary(), ne_binary()) ->
-                 knm_number_return().
--spec buy(ne_binary(), ne_binary(), wh_proplist()) ->
-                 knm_number_return().
+-spec buy(ne_binary(), ne_binary()) -> knm_number_return().
+-spec buy(ne_binary(), ne_binary(), wh_proplist()) -> knm_number_return().
 buy(Num, Account) ->
+    %% Note: do not use default options here (auths anyone)
     buy(Num, Account, []).
 
 buy(Num, Account, Options) ->
-    Updates = [{fun knm_phone_number:set_assigned_to/2, wh_util:format_account_id(Account, 'raw')}
-               ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_IN_SERVICE}
-               %%
-               %% NEED FIX!
-               %% All functions expects knm_phone_number:knm_phone_number() on input
-               %% but knm_carriers:acquire expects knm_number:knm_number()
-               %% ,fun knm_carriers:acquire/1
-               %%
+    {'ok', Number} = ?MODULE:get(Num, Options),
+    AcquiredNumber = knm_carriers:acquire(Number),
+    Updates = [ {fun knm_phone_number:set_assigned_to/2, wh_util:format_account_id(Account)}
+              , {fun knm_phone_number:set_state/2, ?NUMBER_STATE_IN_SERVICE}
               ],
-    update(Num, Updates, Options).
+    update_phone_number(AcquiredNumber, Updates).
 
 
 %%--------------------------------------------------------------------
