@@ -122,8 +122,8 @@ new() -> #cb_context{}.
 is_context(#cb_context{}) -> 'true';
 is_context(_) -> 'false'.
 
--spec req_value(context(), wh_json:key()) -> wh_json:json_term().
--spec req_value(context(), wh_json:key(), Default) -> wh_json:json_term() | Default.
+-spec req_value(context(), wh_json:keys()) -> wh_json:json_term().
+-spec req_value(context(), wh_json:keys(), Default) -> wh_json:json_term() | Default.
 req_value(#cb_context{}=Context, Key) ->
     req_value(Context, Key, 'undefined').
 req_value(#cb_context{req_data=ReqData
