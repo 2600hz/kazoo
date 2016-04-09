@@ -28,6 +28,8 @@
 -include("crossbar.hrl").
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 
+-define(CB_LIST, <<"phone_numbers/crossbar_listing">>).
+
 -define(ACTIVATE, <<"activate">>).
 -define(RESERVE, <<"reserve">>).
 
@@ -89,7 +91,6 @@
 %%%===================================================================
 init() ->
     _ = crossbar_bindings:bind(<<"account.created">>, ?MODULE, 'populate_phone_numbers'),
-    _ = crossbar_bindings:bind(<<"v2_resource.content_types_accepted.phone_numbers">>, ?MODULE, 'content_types_accepted'),
     _ = crossbar_bindings:bind(<<"v2_resource.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"v2_resource.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"v2_resource.billing">>, ?MODULE, 'billing'),
@@ -486,9 +487,7 @@ delete(Context, Number) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Lists numbers on GET /v2/accounts/{{ACCOUNT_ID}}/phone_numbers
-%% @end
+%% @doc Lists numbers on GET /v2/accounts/{{ACCOUNT_ID}}/phone_numbers
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
@@ -501,24 +500,27 @@ summary(Context) ->
 %% @private
 -spec view_account_phone_numbers(cb_context:context()) -> cb_context:context().
 view_account_phone_numbers(Context) ->
-    Context1 = crossbar_doc:load_view(?KNM_CROSSBAR_VIEW, [], Context, fun normalize_view_results/2),
-    Routines =
-        [ fun (ListOfNumProps) ->
-                  NumbersJObj = lists:foldl(fun wh_json:merge_jobjs/2, wh_json:new(), ListOfNumProps),
-                  QS = wh_json:to_proplist(cb_context:query_string(Context)),
-                  Filtered = apply_filters(QS, NumbersJObj),
-                  wh_json:set_value(<<"numbers">>, Filtered, wh_json:new())
-          end
-        , fun (RespData) ->
-                  Service = wh_services:fetch(cb_context:account_id(Context)),
-                  Quantity = wh_services:cascade_category_quantity(?KNM_PHONE_NUMBERS_DOC, [], Service),
-                  wh_json:set_value(<<"casquade_quantity">>, Quantity, RespData)
-          end
-        ],
-    NewRespData = lists:foldl( fun (F, JObj) -> F(JObj) end
-                             , cb_context:resp_data(Context1)
-                             , Routines ),
+    Context1 = crossbar_doc:load_view(?CB_LIST, [], rename_qs_filters(Context), fun normalize_view_results/2),
+    ListOfNumProps = cb_context:resp_data(Context1),
+    NumbersJObj = lists:foldl(fun wh_json:merge_jobjs/2, wh_json:new(), ListOfNumProps),
+    Service = wh_services:fetch(cb_context:account_id(Context)),
+    Quantity = wh_services:cascade_category_quantity(?KNM_PHONE_NUMBERS_DOC, [], Service),
+    NewRespData = wh_json:from_list([ {<<"numbers">>, NumbersJObj}
+                                    , {<<"casquade_quantity">>, Quantity}
+                                    ]),
     cb_context:set_resp_data(Context1, NewRespData).
+
+%% @private
+-spec rename_qs_filters(cb_context:context()) -> cb_context:context().
+rename_qs_filters(Context) ->
+    Renamer = fun
+                  (<<"filter_state">>, Value)       -> {<<"filter_pvt_state">>, Value};
+                  (<<"filter_assigned_to">>, Value) -> {<<"filter_pvt_assigned_to">>, Value};
+                  (<<"filter_locality">>, Value)    -> {<<"filter_pvt_locality">>, Value};
+                  (K, V) -> {K, V}
+              end,
+    NewQS = wh_json:map(Renamer, cb_context:query_string(Context)),
+    cb_context:set_query_string(Context, NewQS).
 
 %% @private
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
@@ -528,38 +530,6 @@ normalize_view_results(JObj, Acc) ->
     [ wh_json:set_value(Number, Properties, wh_json:new())
       | Acc
     ].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec apply_filters(wh_proplist(), wh_json:object()) -> wh_json:object().
-apply_filters([], Numbers) -> Numbers;
-apply_filters([{<<"filter_", Key/binary>>, Value}|QS], Numbers) ->
-    Numbers1 = apply_filter(Key, Value, Numbers),
-    apply_filters(QS, Numbers1);
-apply_filters([{Key, _}|QS], Numbers) ->
-    lager:debug("unknown key ~s, ignoring", [Key]),
-    apply_filters(QS, Numbers).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec apply_filter(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:object().
-apply_filter(Key, Value, Numbers) ->
-    wh_json:foldl(
-        fun(Number, JObj, Acc) ->
-            case wh_json:get_value(Key, JObj) of
-                Value -> Acc;
-                _Else -> wh_json:delete_key(Number, Acc)
-            end
-        end
-        ,Numbers
-        ,Numbers
-    ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -762,7 +732,7 @@ get_prefix(City) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% resource.
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_update_locality(cb_context:context()) ->
