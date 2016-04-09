@@ -251,11 +251,11 @@ authorized_release(PhoneNumber) ->
 %%--------------------------------------------------------------------
 -spec to_public_json(knm_phone_number()) -> wh_json:object().
 to_public_json(Number) ->
-    wh_json:set_values([{<<"used_by">>, used_by(Number)}
-                        ,{<<"features">>, features(Number)}
-                       ]
-                       ,wh_json:public_fields(to_json(Number))
-                      ).
+    ToLeak = props:filter_empty(
+               [{<<"used_by">>, used_by(Number)}
+               ,{<<"features">>, features(Number)}
+               ]),
+    wh_json:set_values(ToLeak, wh_json:public_fields(to_json(Number))).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -266,7 +266,7 @@ to_public_json(Number) ->
 to_json(#knm_phone_number{doc=JObj}=N) ->
     Now = wh_util:current_tstamp(),
     wh_json:from_list(
-      props:filter_undefined(
+      props:filter_empty(
         [{<<"_id">>, number(N)}
          ,{?PVT_DB_NAME, number_db(N)}
          ,{?PVT_ASSIGNED_TO, assigned_to(N)}
@@ -318,7 +318,7 @@ from_json(JObj) ->
 new() ->
     #knm_phone_number{}.
 
--spec is_phone_number(knm_phone_number() | any()) -> boolean().
+-spec is_phone_number(any()) -> boolean().
 is_phone_number(#knm_phone_number{}) -> 'true';
 is_phone_number(_) -> 'false'.
 
