@@ -78,8 +78,8 @@
        ).
 
 -define(DEFAULT_COUNTRY, <<"US">>).
--define(FREE_URL, <<"phonebook_url">>).
--define(PAYED_URL, <<"phonebook_url_premium">>).
+-define(KEY_PHONEBOOK_FREE_URL, <<"phonebook_url">>).
+-define(KEY_PHONEBOOK_PAID_URL, <<"phonebook_url_premium">>).
 -define(PREFIX, <<"prefix">>).
 -define(LOCALITY, <<"locality">>).
 -define(CHECK, <<"check">>).
@@ -618,7 +618,7 @@ find_locality(Context) ->
             );
         Numbers when is_list(Numbers) ->
             Url = get_url(cb_context:req_value(Context, <<"quality">>)),
-            case get_locality(Numbers, Url) of
+            case fetch_locality(Numbers, Url) of
                 {'error', E} ->
                     crossbar_util:response('error', E, 500, Context);
                 {'ok', Localities} ->
@@ -694,32 +694,29 @@ format_carriers_check([{_Module, {'ok', ModuleResults}}|Rest], JObj) ->
 format_carriers_check([_|Rest], JObj) ->
     format_carriers_check(Rest, JObj).
 
--spec get_url(any()) -> binary().
-get_url(<<"high">>) -> ?PAYED_URL;
-get_url(_) -> ?FREE_URL.
+-spec get_url(any()) -> ne_binary().
+get_url(<<"high">>) -> ?KEY_PHONEBOOK_PAID_URL;
+get_url(_) -> ?KEY_PHONEBOOK_FREE_URL.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_prefix(ne_binary()) ->
-                        {'ok', wh_json:object()} |
-                        {'error', any()}.
+-spec get_prefix(ne_binary()) -> {'ok', wh_json:object()} |
+                                 {'error', any()}.
 get_prefix(City) ->
-    Country = whapps_config:get(?PHONE_NUMBERS_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
-    case whapps_config:get(?PHONE_NUMBERS_CONFIG_CAT, ?FREE_URL) of
+    case whapps_config:get_string(?PHONE_NUMBERS_CONFIG_CAT, ?KEY_PHONEBOOK_FREE_URL) of
         'undefined' ->
             {'error', <<"Unable to acquire numbers missing carrier url">>};
         Url ->
-            ReqParam = wh_util:uri_encode(binary:bin_to_list(City)),
-            Req = binary:bin_to_list(<<Url/binary, "/", Country/binary, "/city?pattern=">>),
-            Uri = lists:append(Req, ReqParam),
-            case kz_http:get(Uri) of
+            Country = whapps_config:get_string(?PHONE_NUMBERS_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
+            ReqParam = wh_util:uri_encode(City),
+            case kz_http:get(lists:flatten(Url, "/", Country, "/city?pattern=", ReqParam)) of
                 {'ok', 200, _Headers, Body} ->
                     JObj = wh_json:decode(Body),
                     case wh_json:get_value(<<"data">>, JObj) of
-                        'undefined' -> {'error ', JObj};
+                        'undefined' -> {'error', JObj};
                         Data -> {'ok', Data}
                     end;
                 {'ok', _Status, _Headers, Body} ->
@@ -731,51 +728,32 @@ get_prefix(City) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%
+%% @doc Tries to fill [Number,locality] field with info from phonebook.
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_update_locality(cb_context:context()) ->
-                                   cb_context:context().
+-spec maybe_update_locality(cb_context:context()) -> cb_context:context().
 maybe_update_locality(Context) ->
-    Numbers = wh_json:foldl(
-                fun(Key, Value, Acc) ->
-                        case wh_json:get_value(<<"locality">>, Value) =:= 'undefined'
-                            andalso knm_converters:is_reconcilable(Key)
-                        of
-                            'true' -> [Key|Acc];
-                            'false' -> Acc
-                        end
-                end
-                ,[]
-                ,wh_json:get_value(<<"numbers">>, cb_context:resp_data(Context))
-               ),
-    update_locality(Context, Numbers).
+    Numbers = wh_json:get_value(<<"numbers">>, cb_context:resp_data(Context)),
+    ToUpdate =
+        [Num || {Num,NumProps} <- wh_json:to_proplist(Numbers),
+                wh_json:get_value(<<"locality">>, NumProps) =:= 'undefined'
+                    andalso knm_converters:is_reconcilable(Num)
+        ],
+    update_locality(Context, ToUpdate).
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec update_locality(cb_context:context(), ne_binaries()) ->
                              cb_context:context().
 update_locality(Context, []) -> Context;
 update_locality(Context, Numbers) ->
-    case get_locality(Numbers, ?FREE_URL) of
-        {'error', <<"missing phonebook url">>} -> Context;
-        {'error', _} -> Context;
+    case fetch_locality(Numbers, ?KEY_PHONEBOOK_FREE_URL) of
         {'ok', Localities} ->
             _ = wh_util:spawn(fun update_phone_numbers_locality/2, [Context, Localities]),
-            update_context_locality(Context, Localities)
+            update_context_locality(Context, Localities);
+        {'error', _} -> Context
     end.
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec update_context_locality(cb_context:context(), wh_json:object()) ->
                                      cb_context:context().
 update_context_locality(Context, Localities) ->
@@ -787,19 +765,12 @@ update_context_locality_fold(Key, Value, JObj) ->
     case wh_json:get_value(<<"status">>, Value) of
         <<"success">> ->
             Locality = wh_json:delete_key(<<"status">>, Value),
-            wh_json:set_value([<<"numbers">>
-                               ,Key
-                               ,<<"locality">>
-                              ], Locality, JObj);
+            Path = [<<"numbers">>, Key, <<"locality">>],
+            wh_json:set_value(Path, Locality, JObj);
         _Else -> JObj
     end.
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec update_phone_numbers_locality(cb_context:context(), wh_json:object()) ->
                                            {'ok', wh_json:object()} |
                                            {'error', any()}.
@@ -815,7 +786,9 @@ update_phone_numbers_locality(Context, Localities) ->
             E
     end.
 
--spec update_phone_numbers_locality_fold(ne_binary(), wh_json:object(), wh_json:object()) -> wh_json:object().
+%% @private
+-spec update_phone_numbers_locality_fold(ne_binary(), wh_json:object(), wh_json:object()) ->
+                                                wh_json:object().
 update_phone_numbers_locality_fold(Key, Value, JObj) ->
     case wh_json:get_value(<<"status">>, Value) of
         <<"success">> ->
@@ -828,47 +801,32 @@ update_phone_numbers_locality_fold(Key, Value, JObj) ->
         _Else -> JObj
     end.
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% resource.
-%% @end
-%%--------------------------------------------------------------------
--spec get_locality(ne_binaries(), ne_binary()) ->
-                          {'error', ne_binary()} |
-                          {'ok', wh_json:object()}.
-get_locality([], _) -> {'error', <<"number missing">>};
-get_locality(Numbers, UrlType) ->
-    case whapps_config:get(?PHONE_NUMBERS_CONFIG_CAT, UrlType) of
+-spec fetch_locality(ne_binaries(), ne_binary()) -> {'ok', wh_json:object()} |
+                                                    {'error', any()}.
+fetch_locality(Numbers, PhonebookUrlType) ->
+    case whapps_config:get_string(?PHONE_NUMBERS_CONFIG_CAT, PhonebookUrlType) of
         'undefined' ->
-            lager:error("could not get number locality url"),
-            {'error', <<"missing phonebook url">>};
-        Url ->
+            lager:error("could not get locality url ~s", [PhonebookUrlType]),
+            {'error', <<"could not get locality url">>};
+        URL ->
             ReqBody = wh_json:set_value(<<"data">>, Numbers, wh_json:new()),
-            Uri = <<Url/binary, "/locality/metadata">>,
-            case kz_http:post(binary:bin_to_list(Uri), [], wh_json:encode(ReqBody)) of
+            case kz_http:post(URL++"/locality/metadata", [], wh_json:encode(ReqBody)) of
                 {'ok', 200, _Headers, Body} ->
-                    handle_locality_resp(wh_json:decode(Body));
+                    handle_phonebook_resp(wh_json:decode(Body));
                 {'ok', _Status, _, _Body} ->
                     lager:error("number locality lookup failed: ~p ~p", [_Status, _Body]),
                     {'error', <<"number locality lookup failed">>};
-                {'error', Reason} ->
-                    lager:error("number locality lookup failed: ~p", [Reason]),
+                {'error', _Reason} ->
+                    lager:error("number locality lookup failed: ~p", [_Reason]),
                     {'error', <<"number locality lookup failed">>}
             end
     end.
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec handle_locality_resp(wh_json:object()) ->
-                                  {'error', ne_binary()} |
-                                  {'ok', wh_json:object()}.
-handle_locality_resp(Resp) ->
-    case wh_json:get_value(<<"status">>, Resp, <<"error">>) of
+-spec handle_phonebook_resp(wh_json:object()) -> 'ok'.
+handle_phonebook_resp(Resp) ->
+    case wh_json:get_value(<<"status">>, Resp) of
         <<"success">> ->
             {'ok', wh_json:get_value(<<"data">>, Resp, wh_json:new())};
         _E ->
