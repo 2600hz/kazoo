@@ -221,6 +221,7 @@ This lists the numbers an account owns, along with their properties.
 - Verb: `GET`
 - Url: `/v2/accounts/{{ACCOUNT_ID}}/phone_numbers`
 - Payload: none
+- Note: one can apply filters such as `?filter_state=in_service` or `?created_from=63627345744`
 
 ##### Response
 
@@ -233,9 +234,7 @@ This lists the numbers an account owns, along with their properties.
             "+14155555555": {
                 "assigned_to": "4b8c6fec4b2597882c0390202d195419",
                 "created": 63602230185,
-                "features": [
-                    "local"
-                ],
+                "features": {},
                 "state": "in_service",
                 "updated": 63602230212,
                 "used_by": "callflow"
@@ -243,9 +242,7 @@ This lists the numbers an account owns, along with their properties.
             "+14158865100": {
                 "assigned_to": "4b8c6fec4b2597882c0390202d195419",
                 "created": 63624719324,
-                "features": [
-                    "local"
-                ],
+                "features": {},
                 "state": "in_service",
                 "updated": 63624719325,
                 "used_by": ""
