@@ -1448,9 +1448,8 @@ add_to_phone_numbers_doc(Context, JObj) ->
 build_number_properties(AccountId, Now) ->
     wh_json:from_list(
       [{<<"state">>, ?NUMBER_STATE_PORT_IN}
-       ,{<<"features">>, []}
+       ,{<<"features">>, wh_json:new()}
        ,{<<"assigned_to">>, AccountId}
-       ,{<<"used_by">>, <<>>}
        ,{<<"created">>, Now}
        ,{<<"updated">>, Now}
       ]).

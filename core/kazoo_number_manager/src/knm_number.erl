@@ -102,7 +102,7 @@
 -spec new() -> knm_number().
 new() -> #knm_number{}.
 
--spec is_number(knm_number() | any()) -> boolean().
+-spec is_number(any()) -> boolean().
 is_number(#knm_number{}) -> 'true';
 is_number(_) -> 'false'.
 
