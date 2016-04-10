@@ -35,7 +35,10 @@
          ,reseller_id/1, set_reseller_id/2
 
          ,dial_plan/1, dial_plan/2
+         ,fax_settings/1
         ]).
+
+-include("kz_documents.hrl").
 
 -define(ID, <<"_id">>).
 -define(NAME, <<"name">>).
@@ -56,8 +59,6 @@
 -define(KEY_DIAL_PLAN, <<"dial_plan">>).
 
 -define(PVT_TYPE, <<"account">>).
-
--include("kz_documents.hrl").
 
 -type doc() :: wh_json:object().
 -export_type([doc/0]).
@@ -167,15 +168,29 @@ set_language(JObj, Language) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec timezone(doc()) -> api_binary().
--spec timezone(doc(), Default) -> ne_binary() | Default.
+-spec timezone(ne_binary() | doc()) -> api_binary().
+-spec timezone(ne_binary() | doc(), Default) -> ne_binary() | Default.
+timezone(AccountId)
+  when is_binary(AccountId) ->
+    {'ok', JObj} = fetch(AccountId),
+    timezone(JObj);
 timezone(JObj) ->
     timezone(JObj, 'undefined').
+timezone(AccountId, Default)
+  when is_binary(AccountId) ->
+    {'ok', JObj} = fetch(AccountId),
+    timezone(JObj, Default);
 timezone(JObj, Default) ->
     case wh_json:get_value(?TIMEZONE, JObj, Default) of
-        <<"inherit">> -> Default;  %% UI-1808
+        <<"inherit">> -> parent_timezone(wh_doc:account_id(JObj), parent_account_id(JObj));
+        'undefined' -> parent_timezone(wh_doc:account_id(JObj), parent_account_id(JObj));
         TZ -> TZ
     end.
+
+-spec parent_timezone(ne_binary(), api_binary()) -> ne_binary().
+parent_timezone(AccountId, AccountId) -> ?DEFAULT_TIMEZONE;
+parent_timezone(_AccountId, 'undefined') -> ?DEFAULT_TIMEZONE;
+parent_timezone(_AccountId, ParentId) -> timezone(ParentId).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -455,3 +470,17 @@ dial_plan(JObj) ->
     dial_plan(JObj, 'undefined').
 dial_plan(JObj, Default) ->
     wh_json:get_json_value(?KEY_DIAL_PLAN, JObj, Default).
+
+-spec fax_settings(doc() | ne_binary()) -> doc().
+fax_settings(AccountId)
+  when is_binary(AccountId) ->
+    case fetch(AccountId) of
+        {'ok', JObj} -> fax_settings(JObj);
+        {'error', _} -> ?SYSTEM_FAX_SETTINGS
+    end;
+fax_settings(JObj) ->
+    FaxSettings = wh_json:get_json_value(?FAX_SETTINGS_KEY, JObj, ?DEFAULT_FAX_SETTINGS),
+    case wh_json:get_value(?FAX_TIMEZONE_KEY, FaxSettings) of
+        'undefined' -> wh_json:set_value(?FAX_TIMEZONE_KEY, timezone(JObj), FaxSettings);
+        _ -> FaxSettings
+    end.
