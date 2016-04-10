@@ -712,7 +712,7 @@ get_prefix(City) ->
         Url ->
             Country = whapps_config:get_string(?PHONE_NUMBERS_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
             ReqParam = wh_util:uri_encode(City),
-            case kz_http:get(lists:flatten(Url, "/", Country, "/city?pattern=", ReqParam)) of
+            case kz_http:get(lists:flatten([Url, "/", Country, "/city?pattern=", ReqParam])) of
                 {'ok', 200, _Headers, Body} ->
                     JObj = wh_json:decode(Body),
                     case wh_json:get_value(<<"data">>, JObj) of
