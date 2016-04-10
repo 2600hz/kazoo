@@ -12,7 +12,6 @@ Learn how to use the 2600hz mobile API set to activate and manage numbers.
 
 * [Load classifiers](#user-content-load-classifiers)
 * [Classify a number](#user-content-classify-a-number)
-* [Get a number](#user-content-get-a-number)
 * [Locality](#user-content-locality)
 * [Fix](#user-content-fix)
 
@@ -82,23 +81,6 @@ Learn how to use the 2600hz mobile API set to activate and manage numbers.
         "e164": "+14158551292",
         "number": "4158551292",
         "name": "did_us"
-    },
-    "status": "success"
-}
-```
-
-### Get a number
-
-#### Request
-
-`GET` `http://{{SERVER}}/v2/accounts/{{account_id}}/phone_numbers/{{NUMBER}}`
-
-#### Response
-
-```json
-{
-    "data": {
-        "id": "+14158551292"
     },
     "status": "success"
 }
