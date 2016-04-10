@@ -110,14 +110,14 @@ init() ->
 -spec populate_phone_numbers(cb_context:context()) -> 'ok'.
 populate_phone_numbers(Context) ->
     AccountDb = cb_context:account_db(Context),
-    AccountId = cb_context:account_id(Context),
+    Now = wh_util:current_tstamp(),
     PVTs = [{<<"_id">>, ?KNM_PHONE_NUMBERS_DOC}
             ,{<<"pvt_account_db">>, AccountDb}
-            ,{<<"pvt_account_id">>, AccountId}
+            ,{<<"pvt_account_id">>, cb_context:account_id()}
             ,{<<"pvt_vsn">>, <<"1">>}
             ,{<<"pvt_type">>, ?KNM_PHONE_NUMBERS_DOC}
-            ,{<<"pvt_modified">>, wh_util:current_tstamp()}
-            ,{<<"pvt_created">>, wh_util:current_tstamp()}
+            ,{<<"pvt_modified">>, Now}
+            ,{<<"pvt_created">>, Now}
            ],
     _ = kz_datamgr:save_doc(AccountDb, wh_json:from_list(PVTs)),
     'ok'.
@@ -190,7 +190,7 @@ allowed_methods(?LOCALITY) ->
     [?HTTP_POST];
 allowed_methods(?CHECK) ->
     [?HTTP_POST];
-allowed_methods(_) ->
+allowed_methods(_PhoneNumber) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
 
 allowed_methods(?COLLECTION, ?ACTIVATE) ->
@@ -199,9 +199,9 @@ allowed_methods(?CLASSIFIERS, _PhoneNumber) ->
     [?HTTP_GET];
 allowed_methods(_PhoneNumber, ?ACTIVATE) ->
     [?HTTP_PUT];
-allowed_methods(_, ?RESERVE) ->
+allowed_methods(_PhoneNumber, ?RESERVE) ->
     [?HTTP_PUT];
-allowed_methods(_, ?IDENTIFY) ->
+allowed_methods(_PhoneNumber, ?IDENTIFY) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -222,12 +222,12 @@ resource_exists(?PREFIX) -> 'true';
 resource_exists(?LOCALITY) -> 'true';
 resource_exists(?CHECK) -> 'true';
 resource_exists(?CLASSIFIERS) -> 'true';
-resource_exists(_) -> 'true'.
+resource_exists(_PhoneNumber) -> 'true'.
 
-resource_exists(_, ?ACTIVATE) -> 'true';
-resource_exists(_, ?RESERVE) -> 'true';
-resource_exists(_, ?IDENTIFY) -> 'true';
-resource_exists(?CLASSIFIERS, _) -> 'true';
+resource_exists(_PhoneNumber, ?ACTIVATE) -> 'true';
+resource_exists(_PhoneNumber, ?RESERVE) -> 'true';
+resource_exists(_PhoneNumber, ?IDENTIFY) -> 'true';
+resource_exists(?CLASSIFIERS, _PhoneNumber) -> 'true';
 resource_exists(_, _) -> 'false'.
 
 %%--------------------------------------------------------------------
@@ -955,7 +955,7 @@ set_response({'invalid', Reason}, _, Context, _) ->
     lager:debug("invalid: ~p", [Reason]),
     cb_context:add_validation_error(<<"address">>, <<"invalid">>, Reason, Context);
 set_response({Error, Reason}, _, Context, _) ->
-    lager:debug("~p: ~p", [Error, Reason]),
+    lager:debug("error ~p: ~p", [Error, Reason]),
     cb_context:add_system_error(Error, Reason, Context);
 set_response(_Else, _, Context, _) ->
     lager:debug("unexpected response: ~p", [_Else]),
