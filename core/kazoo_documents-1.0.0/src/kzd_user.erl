@@ -17,6 +17,7 @@
          ,enable/1, disable/1
          ,type/0
          ,devices/1
+         ,fax_settings/1
         ]).
 
 -include("kz_documents.hrl").
@@ -203,7 +204,8 @@ timezone(JObj) ->
     timezone(JObj, 'undefined').
 timezone(JObj, Default) ->
     case wh_json:get_value(?KEY_TIMEZONE, JObj, Default) of
-        <<"inherit">> -> Default;  %% UI-1808
+        <<"inherit">> -> kz_account:timezone(wh_doc:account_id(JObj));  %% UI-1808
+        'undefined' -> kz_account:timezone(wh_doc:account_id(JObj));
         TZ -> TZ
     end.
 
@@ -254,3 +256,13 @@ devices(UserJObj) ->
             lager:warning("unable to find documents owned by ~s: ~p", [UserId, _R]),
             []
     end.
+
+-spec fax_settings(doc()) -> doc().
+fax_settings(JObj) ->
+    FaxSettings = wh_json:get_json_value(?FAX_SETTINGS_KEY, JObj, wh_json:new()),
+    UserFaxSettings = case wh_json:get_value(?FAX_TIMEZONE_KEY, FaxSettings) of
+        'undefined' -> wh_json:set_value(?FAX_TIMEZONE_KEY, timezone(JObj), FaxSettings);
+        _ -> FaxSettings
+    end,
+    AccountFaxSettings = kz_account:fax_settings(wh_doc:account_id(JObj)),
+    wh_json:merge_jobjs(UserFaxSettings, AccountFaxSettings).

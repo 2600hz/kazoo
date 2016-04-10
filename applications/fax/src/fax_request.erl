@@ -308,13 +308,9 @@ maybe_update_fax_settings(#state{call=Call
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
         {'ok', JObj} ->
-            case wh_json:is_json_object(<<"fax_settings">>, JObj) of
-                'false' -> maybe_update_fax_settings_from_account(State);
-                'true' ->
-                    FaxSettings = wh_json:get_value(<<"fax_settings">>, JObj),
-                    update_fax_settings(Call, FaxSettings)
-            end,
-            case wh_json:is_true(<<"fax_to_email_enabled">>, JObj, 'false') of
+            lager:debug("updating fax settings from user ~s", [OwnerId]),
+            update_fax_settings(Call, kzd_user:fax_settings(JObj)),
+            case wh_json:is_true(<<"fax_to_email_enabled">>, JObj, 'true') of
                 'true' ->
                     UserEmail = wh_json:get_value(<<"email">>, JObj),
                     Notify = wh_json:set_value([<<"email">>,<<"send_to">>], [UserEmail] , wh_json:new()),
@@ -365,18 +361,11 @@ maybe_add_owner_to_notify_list(List, OwnerEmail) ->
 maybe_update_fax_settings_from_account(#state{call=Call}=State) ->
     case kz_account:fetch(whapps_call:account_id(Call)) of
         {'ok', JObj} ->
-            case wh_json:is_json_object(<<"fax_settings">>, JObj) of
-                'true' ->
-                    FaxSettings = wh_json:get_value(<<"fax_settings">>, JObj),
-                    update_fax_settings(Call, FaxSettings);
-                'false' ->
-                    lager:debug("no settings for local fax"),
-                    update_fax_settings(Call, wh_json:new())
-            end;
+            lager:debug("updating fax settings from account"),
+            update_fax_settings(Call, kz_account:fax_settings(JObj));
         {'error', _} ->
             lager:debug("no settings for local fax - missing account"),
             update_fax_settings(Call, wh_json:new())
-
     end,
     State.
 
