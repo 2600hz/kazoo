@@ -307,7 +307,7 @@ maybe_update_fax_settings(#state{call=Call
                                 }=State) ->
     AccountDb = whapps_call:account_db(Call),
     case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
-        {'ok', JObj} -> 
+        {'ok', JObj} ->
             lager:debug("updating fax settings from user ~s", [OwnerId]),
             update_fax_settings(Call, kzd_user:fax_settings(JObj)),
             case wh_json:is_true(<<"fax_to_email_enabled">>, JObj, 'true') of
