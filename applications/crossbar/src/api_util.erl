@@ -306,7 +306,7 @@ halt_on_invalid_envelope(Req, Context) ->
                  ,cb_context:add_validation_error(<<"data">>
                                                  ,<<"required">>
                                                  ,wh_json:from_list(
-                                                    [{<<"message">>, <<"All request json must include the 'data' key at the top level">>}
+                                                    [{<<"message">>, <<"All JSON requests must include the 'data' key at the top level">>}
                                                     ,{<<"target">>, <<"data">>}
                                                     ]
                                                    )
