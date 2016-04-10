@@ -113,7 +113,7 @@ populate_phone_numbers(Context) ->
     Now = wh_util:current_tstamp(),
     PVTs = [{<<"_id">>, ?KNM_PHONE_NUMBERS_DOC}
             ,{<<"pvt_account_db">>, AccountDb}
-            ,{<<"pvt_account_id">>, cb_context:account_id()}
+            ,{<<"pvt_account_id">>, cb_context:account_id(Context)}
             ,{<<"pvt_vsn">>, <<"1">>}
             ,{<<"pvt_type">>, ?KNM_PHONE_NUMBERS_DOC}
             ,{<<"pvt_modified">>, Now}
