@@ -367,107 +367,55 @@ post(Context, ?FIX) ->
     %% TODO
     summary(Context);
 post(Context, ?COLLECTION) ->
-    post_collection(Context, cb_context:req_json(Context));
+    CB = fun() -> post(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
+    set_response(collection_process(Context), <<>>, Context, CB);
 post(Context, Number) ->
-    post_number(Context, Number, cb_context:req_json(Context)).
-
--spec post_collection(cb_context:context(), wh_json:object()) -> cb_context:context().
-post_collection(Context, ReqJObj) ->
-    Fun = fun() ->
-                  NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
-                  ?MODULE:post(cb_context:set_req_json(Context, NewReqJObj), ?COLLECTION)
-          end,
-    set_response(collection_process(Context), <<>>, Context, Fun).
-
--spec post_number(cb_context:context(), path_token(), wh_json:object()) -> cb_context:context().
-post_number(Context, Number, ReqJObj) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
                ,{'dry_run', not cb_context:accepting_charges(Context)}
                ,{'public_fields', cb_context:doc(Context)}
               ],
     Result = knm_number:create(Number, Options),
-    Fun = fun() ->
-                  NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
-                  ?MODULE:post(cb_context:set_req_json(Context, NewReqJObj), Number)
-          end,
-    set_response(Result, Number, Context, Fun).
+    CB = fun() -> post(cb_context:set_accepting_charges(Context), Number) end,
+    set_response(Result, Number, Context, CB).
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context, ?COLLECTION) ->
-    put_collection(Context, cb_context:req_json(Context));
-put(Context, Number) ->
-    put_number(Context, Number, cb_context:req_json(Context)).
-
--spec put_collection(cb_context:context(), wh_json:object()) -> cb_context:context().
-put_collection(Context, ReqJObj) ->
     Results = collection_process(Context),
-    Fun = fun() ->
-                  NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
-                  ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj), ?COLLECTION)
-          end,
-    set_response(Results, <<>>, Context, Fun).
-
--spec put_number(cb_context:context(), path_token(), wh_json:object()) ->
-                        cb_context:context().
-put_number(Context, Number, ReqJObj) ->
+    CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
+    set_response(Results, <<>>, Context, CB);
+put(Context, Number) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
                ,{'dry_run', not cb_context:accepting_charges(Context)}
                ,{'public_fields', cb_context:doc(Context)}
               ],
     Result = knm_number:create(Number, Options),
-    Fun = fun() ->
-                  NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
-                  ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj), Number)
-          end,
-    set_response(Result, Number, Context, Fun).
+    CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number) end,
+    set_response(Result, Number, Context, CB).
 
 put(Context, ?COLLECTION, ?ACTIVATE) ->
-    activate_collection(Context, cb_context:req_json(Context));
-put(Context, Number, ?ACTIVATE) ->
-    activate_number(Context, Number, cb_context:req_json(Context));
-put(Context, Number, ?RESERVE) ->
-    reserve_number(Context, Number, cb_context:req_json(Context)).
-
--spec activate_collection(cb_context:context(), wh_json:object()) -> cb_context:context().
-activate_collection(Context, ReqJObj) ->
     Results = collection_process(Context, ?ACTIVATE),
-    Fun = fun() ->
-                  NewReqJObj = wh_json:set_value(<<"accept_charges">>, 'true', ReqJObj),
-                  ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj), ?COLLECTION, ?ACTIVATE)
-          end,
-    set_response(Results, <<>>, Context, Fun).
-
--spec activate_number(cb_context:context(), path_token(), wh_json:object()) ->
-                             cb_context:context().
-activate_number(Context, Number, ReqJObj) ->
+    CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), ?COLLECTION, ?ACTIVATE) end,
+    set_response(Results, <<>>, Context, CB);
+put(Context, Number, ?ACTIVATE) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
                ,{'dry_run', not cb_context:accepting_charges(Context)}
                ,{'public_fields', cb_context:doc(Context)}
               ],
     Result = knm_number:buy(Number, cb_context:account_id(Context), Options),
-    Fun = fun() ->
-                  NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
-                  ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj), Number, ?ACTIVATE)
-          end,
-    set_response(Result, Number, Context, Fun).
-
--spec reserve_number(cb_context:context(), path_token(), wh_json:object()) ->
-                            cb_context:context().
-reserve_number(Context, Number, ReqJObj) ->
+    CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number, ?ACTIVATE) end,
+    set_response(Result, Number, Context, CB);
+put(Context, Number, ?RESERVE) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
                ,{'dry_run', cb_context:accepting_charges(Context)}
                ,{'public_fields', cb_context:doc(Context)}
               ],
     Result = knm_number:reserve(Number, Options),
-    Fun = fun() ->
-                  NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
-                  ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj), Number, ?RESERVE)
-          end,
-    set_response(Result, Number, Context, Fun).
+    CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number, ?RESERVE) end,
+    set_response(Result, Number, Context, CB).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, ?COLLECTION) ->
