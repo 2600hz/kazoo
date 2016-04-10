@@ -375,7 +375,7 @@ post(Context, Number) ->
                ,{'dry_run', not cb_context:accepting_charges(Context)}
                ,{'public_fields', cb_context:doc(Context)}
               ],
-    Result = knm_number:create(Number, Options),
+    Result = knm_number:update(Number, Options),
     CB = fun() -> post(cb_context:set_accepting_charges(Context), Number) end,
     set_response(Result, Number, Context, CB).
 
@@ -410,7 +410,7 @@ put(Context, Number, ?ACTIVATE) ->
 put(Context, Number, ?RESERVE) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
-               ,{'dry_run', cb_context:accepting_charges(Context)}
+               ,{'dry_run', not cb_context:accepting_charges(Context)}
                ,{'public_fields', cb_context:doc(Context)}
               ],
     Result = knm_number:reserve(Number, Options),
