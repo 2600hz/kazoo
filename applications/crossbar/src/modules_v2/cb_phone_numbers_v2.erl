@@ -867,7 +867,6 @@ set_response(Result, Number, Context) ->
 
 -spec set_response({'ok', wh_json:object()} |
                    knm_number_return() |
-                   {'dry_run', wh_proplist()} |
                    {'dry_run', ne_binary(), wh_json:object()} |
                    {binary(), binary()}
                    ,binary()
@@ -881,12 +880,6 @@ set_response({'ok', Doc}, _, Context, _) ->
     case knm_number:is_number(Doc) of
         'true' -> crossbar_util:response(knm_number:to_public_json(Doc), Context);
         'false' -> crossbar_util:response(Doc, Context)
-    end;
-set_response({'dry_run', Props}, _, Context, Fun) ->
-    RespJObj = dry_run_response(Props),
-    case wh_json:is_empty(RespJObj) of
-        'true' -> Fun();
-        'false' -> crossbar_util:response_402(RespJObj, Context)
     end;
 set_response({'dry_run', ?COLLECTION, Doc}, _, Context, Fun) ->
     RespJObj = dry_run_response(?COLLECTION, Doc),
