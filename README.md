@@ -1,4 +1,4 @@
-## Kazoo [![Build Status](https://travis-ci.org/2600Hz/kazoo.svg?branch=master)](https://travis-ci.org/2600Hz/kazoo) [![Issue Stats](http://issuestats.com/github/2600Hz/kazoo/badge/pr)](http://issuestats.com/github/2600Hz/kazoo) [![2600Hz IRC](https://img.shields.io/badge/irc-%232600Hz-orange.svg)](https://webchat.freenode.net/?channels=2600Hz)
+## Kazoo [![Build Status](https://travis-ci.org/2600hz/kazoo.svg?branch=master)](https://travis-ci.org/2600hz/kazoo) [![Issue Stats](http://issuestats.com/github/2600hz/kazoo/badge/pr)](http://issuestats.com/github/2600hz/kazoo) [![2600Hz IRC](https://img.shields.io/badge/irc-%232600hz-orange.svg)](https://webchat.freenode.net/?channels=2600hz)
 
 ````
     ... ........                                                
