@@ -122,7 +122,7 @@ fetch(?TEST_IN_SERVICE_NUM, Options) ->
 fetch(?TEST_IN_SERVICE_WITH_HISTORY_NUM, Options) ->
     handle_fetched_result(?IN_SERVICE_WITH_HISTORY_NUMBER, Options);
 fetch(?BW_EXISTING_DID, Options) ->
-    handle_fetched_result(?BW_EXISTING_DID, Options);
+    handle_fetched_result(?BW_EXISTING_JSON, Options);
 fetch(_DID, _Options) ->
     {'error', 'not_found'}.
 -else.

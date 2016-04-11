@@ -119,8 +119,7 @@ process_number_result(Number, Acc) ->
 process_number_result(Number, Acc, ?CARRIER_OTHER) ->
     [found_number_to_jobj(Number) | Acc];
 process_number_result(Number, Acc, Carrier) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    DID = knm_phone_number:number(PhoneNumber),
+    DID = knm_phone_number:number(knm_number:phone_number(Number)),
     check_for_existing_did(Number, Acc, Carrier, knm_phone_number:fetch(DID)).
 
 -spec check_for_existing_did(knm_number:knm_number(), wh_json:objects(), ne_binary(), knm_phone_number_return()) ->
