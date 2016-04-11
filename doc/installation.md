@@ -439,13 +439,13 @@ Add acl entries for SIP servers
 
 ## Validate installation
 
-### Check database
+### Check CouchDB
 
 On all servers, curl the database ip/port to verify that it is reachable:
 
 ```shell
-#> curl localhost:15984
-{"couchdb":"Welcome","version":"010704a","vendor":{"name":"The Apache Software Foundation"}}
+#> curl localhost:5984
+{"couchdb":"Welcome","version":"5fa9098","vendor":{"name":"The Apache Software Foundation"}}
 ```
 
 ### Check FreeSWITCH
