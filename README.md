@@ -1,4 +1,4 @@
-## Kazoo [![Build Status](https://travis-ci.org/2600hz/kazoo.svg?branch=master)](https://travis-ci.org/2600hz/kazoo) [![Issue Stats](http://issuestats.com/github/2600hz/kazoo/badge/pr)](http://issuestats.com/github/2600hz/kazoo) [![2600Hz IRC](https://img.shields.io/badge/irc-%232600hz-orange.svg)](https://webchat.freenode.net/?channels=2600hz)
+## Kazoo [![Build Status](https://travis-ci.org/2600Hz/kazoo.svg?branch=master)](https://travis-ci.org/2600Hz/kazoo) [![Issue Stats](http://issuestats.com/github/2600Hz/kazoo/badge/pr)](http://issuestats.com/github/2600Hz/kazoo) [![2600Hz IRC](https://img.shields.io/badge/irc-%232600Hz-orange.svg)](https://webchat.freenode.net/?channels=2600Hz)
 
 ````
     ... ........                                                
@@ -94,7 +94,7 @@ We are an exciting team of experienced and knowledgeable thought leaders in
 the enterprise communications space. Our experience ranges from hosting and
 managing services to carrier-grade termination, software design and
 professional services. Let us know how we can help you and, in return, we will
-ensure 2600hz is always leading the way in cloud telecom.
+ensure 2600Hz is always leading the way in cloud telecom.
 
 ## Who Can Contribute?
 
@@ -107,28 +107,28 @@ No problem!  We have many different places where folks can chip in time. These i
 * Maintaining and expanding the documentation
 * Blogging, tweeting, and other forms of publicizing your usage of and love for the platform, community, code, company, etc.
 * Join us in real time and help other community members:
-    * [![2600Hz IRC](https://img.shields.io/badge/irc-%232600hz-orange.svg)](https://webchat.freenode.net/?channels=2600hz)
-    * our [Users mailing list](//groups.google.com/forum/?fromgroups#!forum/2600hz-users)
-    * our [Developers mailing list](//groups.google.com/forum/?fromgroups#!forum/2600hz-dev)
-    * our [Forum](//forum.2600hz.com/)
-* Contribute scripts to the [community repo](//github.com/2600hz/community-scripts)
+    * [![2600Hz IRC](https://img.shields.io/badge/irc-%232600Hz-orange.svg)](https://webchat.freenode.net/?channels=2600Hz)
+    * our [Users mailing list](//groups.google.com/forum/?fromgroups#!forum/2600Hz-users)
+    * our [Developers mailing list](//groups.google.com/forum/?fromgroups#!forum/2600Hz-dev)
+    * our [Forum](//forum.2600Hz.com/)
+* Contribute scripts to the [community repo](//github.com/2600Hz/community-scripts)
 * Help with building RPMs, DEBs, and other system packages
-* Browse the open [Issues](//2600hz.atlassian.net/browse/KAZOO) and test bugs to see if they're valid
+* Browse the open [Issues](//2600Hz.atlassian.net/browse/KAZOO) and test bugs to see if they're valid
 * Make a sugestion!
 
 ### Internationalization Help
 
 Translation efforts are always appreciated. We're working on redesigning how our back- and front-ends handle the world's languages and hope to make it easy to contribute translations. Stay tuned for more; please let us know of your interest and be sure to join the mailing lists so you can receive announcements regarding internationalization efforts.
 
-If you have a non-US deployment, please consider sharing your system configuration!  We are trying to build [examples](//github.com/2600hz/kazoo/tree/master/applications/crossbar/doc/internationalization) for every locality and fix any deficiencies.
+If you have a non-US deployment, please consider sharing your system configuration!  We are trying to build [examples](//github.com/2600Hz/kazoo/tree/master/applications/crossbar/doc/internationalization) for every locality and fix any deficiencies.
 
 ### I know me some Erlang! How can I contribute?
 
 * Clone the repo
     * If you're completely new to Git, read Github's [great introduction](//help.github.com/articles/fork-a-repo/) to forking repos
 * Squash a bug, build a feature, etc
-    * Browse the [ticket queue](//2600hz.atlassian.net/browse/KAZOO) and find one you'd like to tackle.
-    * Feel free to drop a line to the [dev mailing list](//groups.google.com/forum/?fromgroups#!forum/2600hz-dev) letting us know you're taking on a ticket, especially if you have questions.
+    * Browse the [ticket queue](//2600Hz.atlassian.net/browse/KAZOO) and find one you'd like to tackle.
+    * Feel free to drop a line to the [dev mailing list](//groups.google.com/forum/?fromgroups#!forum/2600Hz-dev) letting us know you're taking on a ticket, especially if you have questions.
 * Once you feel the code is ready for inclusion, issue a [pull request](//help.github.com/articles/using-pull-requests/)!
     * Please keep your pull requests focused and specific to the task at hand
     * If, in the course of your work you add/modify/delete code unrelated to the core task, create a new ticket describing why you've made these additional changes, and issue a separate pull request.
@@ -136,11 +136,11 @@ If you have a non-US deployment, please consider sharing your system configurati
 ### Do you know other languages?
 
 * Help us write some automated testing tools
-* Check out our Javascript/HTML/CSS [GUI](//github.com/2600hz/kazoo-ui)
-* Check out our REST APIs and help us create SDKs in your favorite languages ([PHP](//github.com/2600hz/kazoo-php-sdk) | [RUBY](//github.com/2600hz/kazoo-ruby-sdk))
+* Check out our Javascript/HTML/CSS [GUI](//github.com/2600Hz/kazoo-ui)
+* Check out our REST APIs and help us create SDKs in your favorite languages ([PHP](//github.com/2600Hz/kazoo-php-sdk) | [RUBY](//github.com/2600Hz/kazoo-ruby-sdk))
 * Check out our Pivot APIs and help us create SDKs in your favorite languages
 * Check out our AMQP APIs and create a WhApp in your favorite language
-* Help out with the [configuration scripts](//github.com/2600hz/kazoo-configs)
+* Help out with the [configuration scripts](//github.com/2600Hz/kazoo-configs)
 
 ## Build Dependencies
 
@@ -159,7 +159,7 @@ If you have a non-US deployment, please consider sharing your system configurati
 
 ## How to Build
 
-* Once the dependencies are all here, after a fresh `git clone https://github.com/2600hz/kazoo.git` just `make`.
+* Once the dependencies are all here, after a fresh `git clone https://github.com/2600Hz/kazoo.git` just `make`.
 * When developing, one can `cd` into any app directory (within `applications/` or `core/`) and run:
     * `make` (`make all` or `make clean`)
     * `make xref` to look for calls to undefined functions (uses [Xref](http://www.erlang.org/doc/apps/tools/xref_chapter.html))
@@ -172,13 +172,12 @@ If you have a non-US deployment, please consider sharing your system configurati
     1. `make eunit` (instead of `make test`) to run the test suite without recompiling each app
     * *This way apps can call code from other apps that was compiled with the `TEST` macro defined*
 * `make build-release` will generate a [deployable release](http://learnyousomeerlang.com/release-is-the-word)
-    * [More on using releases with Kazoo](https://github.com/2600hz/kazoo/blob/master/doc/engineering/releases.md)
+    * [More on using releases with Kazoo](https://github.com/2600Hz/kazoo/blob/master/doc/engineering/releases.md)
 * `make sup_completion` creates `sup.bash`: a Bash completion file for the SUP command
 
 ## Learn More
 
 * Join us at [KazooCon!](http://kazoocon.com/)
-* Visit http://2600hz.org
-* Read more at http://wiki.2600hz.org
-* Bugs and feature requests http://tickets.2600hz.org
-* [![2600Hz IRC](https://img.shields.io/badge/irc-%232600hz-orange.svg)](https://webchat.freenode.net/?channels=2600hz)
+* Visit [the community site](http://2600hz.org)
+* Bugs and feature requests can be found [here](http://tickets.2600hz.org)
+* [![2600Hz IRC](https://img.shields.io/badge/irc-%232600Hz-orange.svg)](https://webchat.freenode.net/?channels=2600Hz)
