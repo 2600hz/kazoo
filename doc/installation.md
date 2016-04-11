@@ -1,19 +1,41 @@
-/*
-Section: Kazoo
-Title: Installation
-*/
-
 # Kazoo Installation Guide
 
-**NOTE: This document is a work in progress**
+This is a guide to installing Kazoo on a Debian 8 (Jessie) base installation. Other GNU/Linux distros should work similarly, though the dependencies may differ a bit.
 
-## Installation requirements
+## Dependencies
 
-The simplest Kazoo installation only requires a single server.  Naturally to take full advantage of the distributed capabilities offered by Kazoo you will need multiple servers to form a cluster.  The basic requirements for a Kazoo server (single or multiple server deployment) are:
+### Erlang
 
-* CentOS (64bit)
-* root access
-* internet access
+Kazoo 4 targets Erlang 18+. There are a couple ways to install Erlang:
+
+* From source. I prefer to use a tool like [kerl](https://github.com/yrashk/kerl) to manage my installations. If you want to play around with multiple versions of Erlang while hacking on Kazoo, this is probably the best way.
+* Install from the [Erlang Solutions](https://www.erlang-solutions.com/resources/download.html) packages. These tend to be kept up-to-date better than the default distro's packages.
+
+### Others
+
+```shell
+#> sudo apt-get install build-essential python2 libxslt gcc-c++ zip unzip expat-devel zlib-devel openssl-devel libxml-devel make nc
+```
+
+## Building Kazoo
+
+* Once the dependencies are all here, after a fresh `git clone https://github.com/2600Hz/kazoo.git` just `make`.
+* When developing, one can `cd` into any app directory (within `applications/` or `core/`) and run:
+    * `make` (`make all` or `make clean`)
+    * `make xref` to look for calls to undefined functions (uses [Xref](http://www.erlang.org/doc/apps/tools/xref_chapter.html))
+    * `make dialyze` to statically type-check the app (uses [Dialyzer](http://www.erlang.org/doc/man/dialyzer.html))
+    * `make test` runs the app / sub-apps test suite, if any.
+        * **Note:** make sure to `make clean all` after running your tests, as test BEAMs are generated in `ebin/`!
+* To run the full test suite it is advised to
+    1. `cd` into the root of the project
+    1. `make compile-test` to compile every app with the `TEST` macro defined
+    1. `make eunit` (instead of `make test`) to run the test suite without recompiling each app
+    * *This way apps can call code from other apps that was compiled with the `TEST` macro defined*
+* `make build-release` will generate a [deployable release](http://learnyousomeerlang.com/release-is-the-word)
+    * [More on using releases with Kazoo](https://github.com/2600Hz/kazoo/blob/master/doc/engineering/releases.md)
+* `make sup_completion` creates `sup.bash`: a Bash completion file for the SUP command
+
+# Bigger Picture
 
 ## Server components
 
@@ -21,16 +43,16 @@ There are six major components to a Kazoo system, they can all be installed on o
 
 * Kazoo
   * Provides all application logic for the system, the brains of the operation.
-* RabbitMQ 
+* RabbitMQ
   * Messaging system using AMQP, it provides command and control as well as allows examination of running system state.
 * Kamailio
   * Provides the SIP processing for the system.  For the purposes of this guide we will assume that it is always installed on the same server as Kazoo.
 * Freeswitch
   * Provides all media handling for calls.  In a multiple server cluster there will typically be dedicated Freeswitch servers.
-* Bigcouch
-  * Provides the database for configuration and reporting for a cluster.  Typically you will want Bigcouch running on multiple servers in a cluster for redundancy purposes.
+* CouchDB
+  * Provides the database for configuration and reporting for a cluster.  Typically you will want CouchDB running on multiple servers in a cluster for redundancy purposes.
 * HAProxy
-  * Provides load balancing and request distribution.  Also routes internal system connections between components and Bigcouch.
+  * Provides load balancing and request distribution.  Also routes internal system connections between components and CouchDB.
 * Monster-UI
   * Provides the Kazoo web interface for configuration and monitoring of the system.
 
@@ -478,5 +500,3 @@ Verify that the status shows nodes for BOTH Server 1 and Server 3
 ## Notes / Credits
 
 This guide was created using the (very good) guide at http://www.powerpbx.org/content/kazoo-v3-single-or-multiple-server-voip-telephony-platform-install-guide-v1 as a template / starting point.
-
-

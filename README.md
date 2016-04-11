@@ -98,11 +98,11 @@ ensure 2600Hz is always leading the way in cloud telecom.
 
 ## Who Can Contribute?
 
-_Everyone can!_
+**Everyone can!**
 
 ### Not a coder?
 
-No problem!  We have many different places where folks can chip in time. These include (but aren't limited to):
+No problem! We have many different places where folks can chip in time. These include (but aren't limited to):
 
 * Maintaining and expanding the documentation
 * Blogging, tweeting, and other forms of publicizing your usage of and love for the platform, community, code, company, etc.
@@ -110,7 +110,7 @@ No problem!  We have many different places where folks can chip in time. These i
     * [![2600Hz IRC](https://img.shields.io/badge/irc-%232600Hz-orange.svg)](https://webchat.freenode.net/?channels=2600Hz)
     * our [Users mailing list](//groups.google.com/forum/?fromgroups#!forum/2600Hz-users)
     * our [Developers mailing list](//groups.google.com/forum/?fromgroups#!forum/2600Hz-dev)
-    * our [Forum](//forum.2600Hz.com/)
+    * our [Forum](http://forum.2600Hz.com/)
 * Contribute scripts to the [community repo](//github.com/2600Hz/community-scripts)
 * Help with building RPMs, DEBs, and other system packages
 * Browse the open [Issues](//2600Hz.atlassian.net/browse/KAZOO) and test bugs to see if they're valid
@@ -142,38 +142,9 @@ If you have a non-US deployment, please consider sharing your system configurati
 * Check out our AMQP APIs and create a WhApp in your favorite language
 * Help out with the [configuration scripts](//github.com/2600Hz/kazoo-configs)
 
-## Build Dependencies
+## Building Kazoo
 
-* erlang ≥ 18.2
-* python2
-* libxslt
-* gcc-c++
-* zip
-* unzip
-* expat-devel
-* zlib-devel
-* openssl-devel
-* libxml-devel
-* make
-* nc
-
-## How to Build
-
-* Once the dependencies are all here, after a fresh `git clone https://github.com/2600Hz/kazoo.git` just `make`.
-* When developing, one can `cd` into any app directory (within `applications/` or `core/`) and run:
-    * `make` (`make all` or `make clean`)
-    * `make xref` to look for calls to undefined functions (uses [Xref](http://www.erlang.org/doc/apps/tools/xref_chapter.html))
-    * `make dialyze` to statically type-check the app (uses [Dialyzer](http://www.erlang.org/doc/man/dialyzer.html))
-    * `make test` runs the app / sub-apps test suite, if any.
-        * **Note:** make sure to `make clean all` after running your tests, as test BEAMs are generated in `ebin/`!
-* To run the full test suite it is advised to
-    1. `cd` into the root of the project
-    1. `make compile-test` to compile every app with the `TEST` macro defined
-    1. `make eunit` (instead of `make test`) to run the test suite without recompiling each app
-    * *This way apps can call code from other apps that was compiled with the `TEST` macro defined*
-* `make build-release` will generate a [deployable release](http://learnyousomeerlang.com/release-is-the-word)
-    * [More on using releases with Kazoo](https://github.com/2600Hz/kazoo/blob/master/doc/engineering/releases.md)
-* `make sup_completion` creates `sup.bash`: a Bash completion file for the SUP command
+See the [installation](./doc/installaction.md) page to build.
 
 ## Learn More
 
