@@ -332,6 +332,9 @@ Adds a number to the database, returning its properties.
 ```json
 {
     "data": {
+        "dash_e911": {
+            "caller_name": "Moi"
+        }
     }
 }
 ```
@@ -345,12 +348,15 @@ Adds a number to the database, returning its properties.
     "auth_token": "9376332cc1c4ef5fc31371bfaa92ff0a",
     "data": {
         "assigned_to": "009afc511c97b2ae693c6cc4920988e8",
-        "created": 63627600046,
-        "id": "+14242424246",
+        "created": 63627604811,
+        "dash_e911": {
+            "caller_name": "Moi"
+        },
+        "id": "+14242424248",
         "state": "reserved",
-        "updated": 63627600046
+        "updated": 63627604811
     },
-    "request_id": "b6d739be079c32da407722aa0d3cca6d",
+    "request_id": "c62107997ee2b31c978077953fafaebd",
     "revision": "undefined",
     "status": "success"
 }

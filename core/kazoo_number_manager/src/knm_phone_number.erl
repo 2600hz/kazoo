@@ -249,17 +249,26 @@ authorized_release(PhoneNumber) ->
 -spec to_public_json(knm_phone_number()) -> wh_json:object().
 to_public_json(Number) ->
     JObj = to_json(Number),
-    wh_json:from_list(
-      props:filter_empty(
-        [ {<<"id">>, wh_doc:id(JObj)}
-        , {<<"assigned_to">>, wh_json:get_value(?PVT_ASSIGNED_TO, JObj)}
-        , {<<"created">>, wh_doc:created(JObj)}
-        , {<<"features">>, wh_json:get_value(?PVT_FEATURES, JObj)}
-        , {<<"state">>, wh_json:get_value(?PVT_STATE, JObj)}
-        , {<<"updated">>, wh_doc:modified(JObj)}
-        , {<<"used_by">>, wh_json:get_value(?PVT_USED_BY, JObj)}
-        ])
-     ).
+    LeakJObj =
+        wh_json:from_list(
+          props:filter_empty(
+            [ {<<"assigned_to">>, wh_json:get_value(?PVT_ASSIGNED_TO, JObj)}
+            , {<<"created">>, wh_doc:created(JObj)}
+            , {<<"features">>, wh_json:get_value(?PVT_FEATURES, JObj)}
+            , {<<"state">>, wh_json:get_value(?PVT_STATE, JObj)}
+            , {<<"updated">>, wh_doc:modified(JObj)}
+            , {<<"used_by">>, wh_json:get_value(?PVT_USED_BY, JObj)}
+            ])
+         ),
+    IDPlusForeignJObj =
+        wh_json:from_list(
+          props:filter_empty(
+            wh_json:to_proplist(
+              wh_json:public_fields(JObj)
+             )
+           )
+         ),
+    wh_json:merge_jobjs(LeakJObj, IDPlusForeignJObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -286,6 +295,9 @@ to_json(#knm_phone_number{doc=JObj}=N) ->
          ,{?PVT_MODIFIED, Now}
          ,{?PVT_CREATED, wh_doc:created(JObj, Now)}
          ,{?PVT_TYPE, <<"number">>}
+         | wh_json:to_proplist(
+             wh_json:delete_key(<<"id">>, wh_json:public_fields(JObj))
+            )
         ])
      ).
 
@@ -297,20 +309,20 @@ to_json(#knm_phone_number{doc=JObj}=N) ->
 -spec from_json(wh_json:object()) -> knm_phone_number().
 from_json(JObj) ->
     #knm_phone_number{
-       number=wh_doc:id(JObj)
-       ,number_db=wh_json:get_value(?PVT_DB_NAME, JObj)
-       ,assigned_to=wh_json:get_value(?PVT_ASSIGNED_TO, JObj)
-       ,prev_assigned_to=wh_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)
-       ,used_by=wh_json:get_value(?PVT_USED_BY, JObj)
-       ,features=wh_json:get_value(?PVT_FEATURES, JObj)
+       number = wh_doc:id(JObj)
+       ,number_db = wh_json:get_value(?PVT_DB_NAME, JObj)
+       ,assigned_to = wh_json:get_value(?PVT_ASSIGNED_TO, JObj)
+       ,prev_assigned_to = wh_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)
+       ,used_by = wh_json:get_value(?PVT_USED_BY, JObj)
+       ,features = wh_json:get_value(?PVT_FEATURES, JObj)
        ,state = wh_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)
-       ,reserve_history=wh_json:get_value(?PVT_RESERVE_HISTORY, JObj)
-       ,ported_in=wh_json:get_value(?PVT_PORTED_IN, JObj)
-       ,module_name=wh_json:get_value(?PVT_MODULE_NAME, JObj)
-       ,carrier_data=wh_json:get_value(?PVT_CARRIER_DATA, JObj)
-       ,region=wh_json:get_value(?PVT_REGION, JObj)
-       ,auth_by=wh_json:get_value(?PVT_AUTH_BY, JObj)
-       ,doc=JObj
+       ,reserve_history = wh_json:get_value(?PVT_RESERVE_HISTORY, JObj)
+       ,ported_in = wh_json:get_value(?PVT_PORTED_IN, JObj)
+       ,module_name = wh_json:get_value(?PVT_MODULE_NAME, JObj)
+       ,carrier_data = wh_json:get_value(?PVT_CARRIER_DATA, JObj)
+       ,region = wh_json:get_value(?PVT_REGION, JObj)
+       ,auth_by = wh_json:get_value(?PVT_AUTH_BY, JObj)
+       ,doc = wh_json:delete_key(<<"id">>, wh_json:public_fields(JObj))
       }.
 
 %%--------------------------------------------------------------------
