@@ -48,7 +48,7 @@ There are six major components to a Kazoo system, they can all be installed on o
 * [Kamailio](https://www.kamailio.org/w/)
   * Provides the SIP processing for the system.  For the purposes of this guide we will assume that it is always installed on the same server as Kazoo.
 * [FreeSWITCH](https://freeswitch.org/)
-  * Provides all media handling for calls.  In a multiple server cluster there will typically be dedicated Freeswitch servers.
+  * Provides all media handling for calls.  In a multiple server cluster there will typically be dedicated FreeSWITCH servers.
 * [CouchDB](https://couchdb.apache.org/)
   * Provides the database for configuration and reporting for a cluster.  Typically you will want CouchDB running on multiple servers in a cluster for redundancy purposes.
 * [HAProxy](http://www.haproxy.org/)
@@ -60,10 +60,10 @@ There are six major components to a Kazoo system, they can all be installed on o
 
 There are a few concerns that should be planned for when designing a Kazoo cluster.
 
-* Design in enough bigcouch servers from the start
+* Design in enough CouchDB servers from the start
   * It is difficult to add additional database servers once the cluster has been deployed, as such you should plan in advance and add the maximum number of bigcouch servers that you forsee needing in the near future of the cluster from the start.
-* Each zone should have it's own Freeswitch server
-  * Freeswitch servers may not be shared between zones
+* Each zone should have it's own FreeSWITCH server
+  * FreeSWITCH servers may not be shared between zones
 
 ## Pre-Installation
 
@@ -442,15 +442,13 @@ Add acl entries for SIP servers
 ### Check database
 
 On all servers, curl the database ip/port to verify that it is reachable:
-```
-# curl localhost:15984
-```
-You should see something similar to:
-```
-{"couchdb":"Welcome","version":"1.1.1","bigcouch":"0.4.2"}
+
+```shell
+#> curl localhost:15984
+{"couchdb":"Welcome","version":"010704a","vendor":{"name":"The Apache Software Foundation"}}
 ```
 
-### Check Freeswitch
+### Check FreeSWITCH
 
 Connect to the cli and verify that you have at least one profile running, also verify that BOTH ecallmgr nodes are connected
 ```
