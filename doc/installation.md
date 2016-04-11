@@ -41,19 +41,19 @@ Kazoo 4 targets Erlang 18+. There are a couple ways to install Erlang:
 
 There are six major components to a Kazoo system, they can all be installed on one server or split arbitrarily over any number of servers.  This guide will provide examples for installing either a single server, or three server cluster.  The components and their functions are:
 
-* Kazoo
+* [Kazoo](https://github.com/2600hz/kazoo)
   * Provides all application logic for the system, the brains of the operation.
-* RabbitMQ
+* [RabbitMQ](https://github.com/rabbitmq/rabbitmq-server)
   * Messaging system using AMQP, it provides command and control as well as allows examination of running system state.
-* Kamailio
+* [Kamailio](https://www.kamailio.org/w/)
   * Provides the SIP processing for the system.  For the purposes of this guide we will assume that it is always installed on the same server as Kazoo.
-* Freeswitch
+* [FreeSWITCH](https://freeswitch.org/)
   * Provides all media handling for calls.  In a multiple server cluster there will typically be dedicated Freeswitch servers.
-* CouchDB
+* [CouchDB](https://couchdb.apache.org/)
   * Provides the database for configuration and reporting for a cluster.  Typically you will want CouchDB running on multiple servers in a cluster for redundancy purposes.
-* HAProxy
+* [HAProxy](http://www.haproxy.org/)
   * Provides load balancing and request distribution.  Also routes internal system connections between components and CouchDB.
-* Monster-UI
+* [Monster-UI](https://github.com/2600hz/monster-ui/)
   * Provides the Kazoo web interface for configuration and monitoring of the system.
 
 ## Cluster design considerations
