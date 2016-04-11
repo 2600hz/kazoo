@@ -12,7 +12,7 @@
          ,assigned_to/1, assigned_to/2
          ,auth_by/1, auth_by/2
          ,dry_run/1, dry_run/2
-         ,module_name/1, module_name/2
+         ,module_name/1
          ,ported_in/1, ported_in/2
          ,public_fields/1
          ,state/1, state/2
@@ -92,11 +92,11 @@ ported_in(Options, Default) ->
     props:get_is_true('ported_in', Options, Default).
 
 -spec module_name(options()) -> ne_binary().
--spec module_name(options(), Default) -> ne_binary() | Default.
 module_name(Options) ->
-    module_name(Options, knm_carriers:default_carrier()).
-module_name(Options, Default) ->
-    props:get_binary_value('module_name', Options, Default).
+    case props:get_ne_binary_value('module_name', Options) of
+        'undefined' -> knm_carriers:default_carrier();
+        ModuleName -> ModuleName
+    end.
 
 -spec should_delete(options()) -> boolean().
 -spec should_delete(options(), Default) -> boolean() | Default.
