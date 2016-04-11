@@ -368,7 +368,7 @@ post(Context, ?FIX) ->
     summary(Context);
 post(Context, ?COLLECTION) ->
     CB = fun() -> post(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
-    set_response(collection_process(Context), <<>>, Context, CB);
+    set_response(collection_process(Context), Context, CB);
 post(Context, Number) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
@@ -377,13 +377,13 @@ post(Context, Number) ->
               ],
     Result = knm_number:update(Number, Options),
     CB = fun() -> post(cb_context:set_accepting_charges(Context), Number) end,
-    set_response(Result, Number, Context, CB).
+    set_response(Result, Context, CB).
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context, ?COLLECTION) ->
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
-    set_response(collection_process(Context), <<>>, Context, CB);
+    set_response(collection_process(Context), Context, CB);
 put(Context, Number) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
@@ -392,12 +392,12 @@ put(Context, Number) ->
               ],
     Result = knm_number:create(Number, Options),
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number) end,
-    set_response(Result, Number, Context, CB).
+    set_response(Result, Context, CB).
 
 put(Context, ?COLLECTION, ?ACTIVATE) ->
     Results = collection_process(Context, ?ACTIVATE),
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), ?COLLECTION, ?ACTIVATE) end,
-    set_response(Results, <<>>, Context, CB);
+    set_response(Results, Context, CB);
 put(Context, Number, ?ACTIVATE) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
                ,{'dry_run', not cb_context:accepting_charges(Context)}
@@ -405,7 +405,7 @@ put(Context, Number, ?ACTIVATE) ->
               ],
     Result = knm_number:buy(Number, cb_context:account_id(Context), Options),
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number, ?ACTIVATE) end,
-    set_response(Result, Number, Context, CB);
+    set_response(Result, Context, CB);
 put(Context, Number, ?RESERVE) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
@@ -414,19 +414,19 @@ put(Context, Number, ?RESERVE) ->
               ],
     Result = knm_number:reserve(Number, Options),
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number, ?RESERVE) end,
-    set_response(Result, Number, Context, CB).
+    set_response(Result, Context, CB).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, ?COLLECTION) ->
     Numbers = wh_json:get_value(<<"numbers">>, cb_context:req_data(Context), []),
     Results = collection_process(Context, Numbers, <<"delete">>),
-    set_response({'ok', Results}, <<>>, Context);
+    set_response({'ok', Results}, Context);
 delete(Context, Number) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
                ,{'dry_run', not cb_context:accepting_charges(Context)}
               ],
     Result = knm_number:delete(Number, Options),
-    set_response(Result, Number, Context).
+    set_response(Result, Context).
 
 %%%===================================================================
 %%% Internal functions
@@ -798,14 +798,14 @@ identify(Context, Number) ->
                 ,Context
             );
         {'error', E} ->
-            set_response({wh_util:to_binary(E), <<>>}, Number, Context);
+            set_response({wh_util:to_binary(E), <<>>}, Context);
         {'ok', AccountId, Options} ->
             JObj = wh_json:set_values([{<<"account_id">>, AccountId}
                                        ,{<<"number">>, knm_number:number(Options)}
                                       ]
                                       ,wh_json:new()
                                      ),
-            set_response({'ok', JObj}, Number, Context)
+            set_response({'ok', JObj}, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -861,38 +861,35 @@ validate_delete(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-set_response(Result, Number, Context) ->
-    set_response(Result, Number, Context, fun () -> Context end).
+set_response(Result, Context) ->
+    set_response(Result, Context, fun() -> Context end).
 
--spec set_response({'ok', wh_json:object()} |
-                   knm_number_return() |
-                   {'dry_run', ne_binary(), wh_json:object()} |
-                   {binary(), binary()}
-                   ,binary()
-                   ,cb_context:context()
-                   ,fun(() -> cb_context:context())
-                  ) ->
-                          cb_context:context().
-set_response({'ok', {'ok', Doc}}, _, Context, _) ->
+-type result() :: {'ok', wh_json:object()} |
+                  knm_number_return() |
+                  {'dry_run', ne_binary(), wh_json:object()} |
+                  {binary(), binary()}.
+-type cb() :: fun(() -> cb_context:context()).
+-spec set_response(result(), cb_context:context(), cb()) -> cb_context:context().
+set_response({'ok', {'ok', Doc}}, Context, _) ->
     crossbar_util:response(Doc, Context);
-set_response({'ok', Thing}, _, Context, _) ->
+set_response({'ok', Thing}, Context, _) ->
     case knm_number:is_number(Thing) of
         'true' -> crossbar_util:response(knm_number:to_public_json(Thing), Context);
         'false' -> crossbar_util:response(Thing, Context)
     end;
-set_response({'dry_run', ?COLLECTION, JObj}, _, Context, CB) ->
+set_response({'dry_run', ?COLLECTION, JObj}, Context, CB) ->
     RespJObj = dry_run_response(?COLLECTION, JObj),
     case wh_json:is_empty(RespJObj) of
         'true' -> CB();
         'false' -> crossbar_util:response_402(RespJObj, Context)
     end;
-set_response({'dry_run', Services, _ActivationCharges}, _, Context, CB) ->
+set_response({'dry_run', Services, _ActivationCharges}, Context, CB) ->
     RespJObj = wh_services:dry_run(Services),
     case wh_json:is_empty(RespJObj) of
         'true' -> CB();
         'false' -> crossbar_util:response_402(RespJObj, Context)
     end;
-set_response({'error', Data}, _, Context, _) ->
+set_response({'error', Data}, Context, _) ->
     case wh_json:is_json_object(Data) of
         'true' ->
             Code = knm_errors:code(Data),
@@ -903,13 +900,13 @@ set_response({'error', Data}, _, Context, _) ->
             lager:debug("error: ~p", [Data]),
             crossbar_util:response_400(<<"client error">>, Data, Context)
     end;
-set_response({'invalid', Reason}, _, Context, _) ->
+set_response({'invalid', Reason}, Context, _) ->
     lager:debug("invalid: ~p", [Reason]),
     cb_context:add_validation_error(<<"address">>, <<"invalid">>, Reason, Context);
-set_response({Error, Reason}, _, Context, _) ->
+set_response({Error, Reason}, Context, _) ->
     lager:debug("error ~p: ~p", [Error, Reason]),
     cb_context:add_system_error(Error, Reason, Context);
-set_response(_Else, _, Context, _) ->
+set_response(_Else, Context, _) ->
     lager:debug("unexpected response: ~p", [_Else]),
     cb_context:add_system_error('unspecified_fault', Context).
 
