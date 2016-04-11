@@ -244,16 +244,22 @@ authorized_release(PhoneNumber) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% @end
+%% @doc Returns same fields view phone_numbers.json returns.
 %%--------------------------------------------------------------------
 -spec to_public_json(knm_phone_number()) -> wh_json:object().
 to_public_json(Number) ->
-    ToLeak = props:filter_empty(
-               [{<<"used_by">>, used_by(Number)}
-               ,{<<"features">>, features(Number)}
-               ]),
-    wh_json:set_values(ToLeak, wh_json:public_fields(to_json(Number))).
+    JObj = to_json(Number),
+    wh_json:from_list(
+      props:filter_empty(
+        [ {<<"id">>, wh_doc:id(JObj)}
+        , {<<"assigned_to">>, wh_json:get_value(?PVT_ASSIGNED_TO, JObj)}
+        , {<<"created">>, wh_doc:created(JObj)}
+        , {<<"features">>, wh_json:get_value(?PVT_FEATURES, JObj)}
+        , {<<"state">>, wh_json:get_value(?PVT_STATE, JObj)}
+        , {<<"updated">>, wh_doc:modified(JObj)}
+        , {<<"used_by">>, wh_json:get_value(?PVT_USED_BY, JObj)}
+        ])
+     ).
 
 %%--------------------------------------------------------------------
 %% @public
