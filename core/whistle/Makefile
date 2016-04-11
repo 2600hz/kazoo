@@ -1,9 +1,8 @@
 ROOT = ../..
 PROJECT = whistle
 
-SOURCES = src/kazoo_transform.erl src/kz_mime.erl src/*.erl src/api/*.erl
+SOURCES = src/kazoo_transform.erl src/*.erl src/api/*.erl
 
-COMPILE_MOAR = src/kz_mime.erl
 CLEAN_MOAR = clean-generated
 
 # Mimetypes module generator.
@@ -13,7 +12,7 @@ GEN_FILE = mime.types
 GEN_SRC = src/kz_mime.erl.src
 GEN_OUT = src/kz_mime.erl
 
-all: compile
+all: compile | $(GEN_OUT)
 
 include $(ROOT)/make/kz.mk
 
