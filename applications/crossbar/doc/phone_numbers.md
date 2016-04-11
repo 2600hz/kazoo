@@ -255,6 +255,17 @@ This lists the numbers an account owns, along with their properties.
 }
 ```
 
+
+### Per-number CRUD operations
+
+- Note: `PHONENUMBER` has to be URL-encoded
+    * e.g. turn `+14155555555` into `%2B14155555555`
+    * Note `4123456789` is turned into `+14123456789`
+    * Note however, `41234567` is turned into `+41234567`, so be careful!
+- Note: to add/modify numbers, either:
+    * Account document must be showing `pvt_wnm_allow_additions` as `true`
+    * Or auth must be done via master account.
+
 #### List an account's specific phone number
 
 Lists the properties associated with this account's number.
@@ -264,7 +275,6 @@ Lists the properties associated with this account's number.
 - Verb: `GET`
 - Url: `/v2/accounts/{{ACCOUNT_ID}}/phone_numbers/{{PHONENUMBER}}`
 - Payload: none
-- Note: `PHONENUMBER` has to be URL-encoded (e.g. turn `+14155555555` into `%2B14155555555`. Note `4155555555` works too!)
 
 ##### Response
 
@@ -292,7 +302,6 @@ Lists the properties associated with this account's number.
 
 Possible reasons for failure:
 
-* Number contains a typo
 * Account does not have enough privileges to read number
 * Number does not exist
 
@@ -306,6 +315,79 @@ Possible reasons for failure:
     "error": "404",
     "message": "bad_identifier",
     "request_id": "94cf464971722272dd0b04cbc491303f",
+    "status": "error"
+}
+```
+
+#### Add a number to the database
+
+Adds a number to the database, returning its properties.
+
+##### Request
+
+- Verb: `PUT`
+- Url: `/v2/accounts/{{ACCOUNT_ID}}/phone_numbers/{{PHONENUMBER}}`
+- Payload: `facultative`
+
+```json
+{
+    "data": {
+    }
+}
+```
+
+##### Response
+
+###### Success
+
+```json
+{
+    "auth_token": "9376332cc1c4ef5fc31371bfaa92ff0a",
+    "data": {
+        "assigned_to": "009afc511c97b2ae693c6cc4920988e8",
+        "created": 63627600046,
+        "id": "+14242424246",
+        "state": "reserved",
+        "updated": 63627600046
+    },
+    "request_id": "b6d739be079c32da407722aa0d3cca6d",
+    "revision": "undefined",
+    "status": "success"
+}
+```
+
+###### Failure
+
+####### Number already exists
+
+```json
+{
+    "auth_token": "9376332cc1c4ef5fc31371bfaa92ff0a",
+    "data": {
+        "cause": "+14242424246",
+        "code": 409,
+        "error": "number_exists",
+        "message": "number +14242424246 already exists"
+    },
+    "error": "409",
+    "message": "number_exists",
+    "request_id": "230c62bcb9ed7f97538e22d72f2c724f",
+    "status": "error"
+}
+```
+
+####### Account unauthorized
+
+```json
+{
+    "auth_token": "b913eb25a2bc681671414a9a8ca8a0e9",
+    "data": {
+        "message": "unknown failure",
+        "unauthorized": "Not authorized to perform requested number operation"
+    },
+    "error": "500",
+    "message": "unauthorized",
+    "request_id": "e74ecf82e529dd2fa2a1dc57af3783d9",
     "status": "error"
 }
 ```
