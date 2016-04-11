@@ -144,7 +144,7 @@ If you have a non-US deployment, please consider sharing your system configurati
 
 ## Building Kazoo
 
-See the [installation](./doc/installaction.md) page to build.
+See the [installation](./doc/installation.md) page to build.
 
 ## Learn More
 
