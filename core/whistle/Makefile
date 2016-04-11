@@ -1,7 +1,7 @@
 ROOT = ../..
 PROJECT = whistle
 
-SOURCES = src/kazoo_transform.erl src/*.erl src/api/*.erl
+SOURCES = src/kazoo_transform.erl src/kz_mime.erl src/*.erl src/api/*.erl
 
 COMPILE_MOAR = src/kz_mime.erl
 CLEAN_MOAR = clean-generated
@@ -51,3 +51,5 @@ $(GEN_OUT): $(GEN_FILE) $(GEN_SRC)
 		>> $(GEN_OUT)
 	echo 'to_extensions(_) -> [<<>>].' >> $(GEN_OUT)
 	tail $(GEN_SRC) -n +`grep -n '%% GENERATED' $(GEN_SRC) | cut -d: -f1` >> $(GEN_OUT)
+	@mkdir -p ebin/
+	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $(GEN_OUT)

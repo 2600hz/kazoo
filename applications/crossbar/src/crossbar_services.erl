@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2015, 2600Hz
+%%% @copyright (C) 2010-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -231,8 +231,7 @@ calc_service_updates(Context, <<"app">>) ->
     end;
 calc_service_updates(Context, <<"ips">>) ->
     Services = fetch_service(Context),
-    UpdatedServices = wh_service_ips:reconcile(Services, <<"dedicated">>),
-    wh_services:dry_run(UpdatedServices);
+    wh_service_ips:reconcile(Services, <<"dedicated">>);
 calc_service_updates(Context, <<"branding">>) ->
     Services = fetch_service(Context),
     wh_service_whitelabel:reconcile(Services, <<"whitelabel">>);
