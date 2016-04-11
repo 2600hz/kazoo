@@ -85,9 +85,8 @@ nomorobo_score(Data, Call) ->
 
 -spec nomorobo_req(ne_binary(), wh_json:object()) -> kz_http:ret().
 nomorobo_req(URI, Data) ->
-    Username = wh_json:get_value(<<"username">>, Data),
-    Password = wh_json:get_value(<<"password">>, Data),
-
+    Username = wh_json:get_binary_value(<<"username">>, Data),
+    Password = wh_json:get_binary_value(<<"password">>, Data),
     Options = [{'basic_auth', {Username, Password}}
                ,{'ssl', [{'verify', 'verify_none'}]}
               ],
