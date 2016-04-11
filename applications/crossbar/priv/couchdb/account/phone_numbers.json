@@ -3,7 +3,7 @@
     "language": "javascript",
     "views": {
         "crossbar_listing": {
-            "map": "function(doc) { if(doc.pvt_type != 'number' || doc.pvt_deleted) return; emit(doc._id, {state: (typeof doc.pvt_state !== 'undefined') ? doc.pvt_state : doc.pvt_number_state, features: doc.pvt_features, assigned_to: doc.pvt_assigned_to, used_by: doc.pvt_used_by, created: doc.pvt_created, updated: doc.pvt_modified, locality: doc.pvt_locality});}"
+            "map": "function(doc) { if(doc.pvt_type != 'number' || doc.pvt_deleted) return; emit(doc._id, {state: (typeof doc.pvt_state !== 'undefined') ? doc.pvt_state : doc.pvt_number_state, features: doc.pvt_features, assigned_to: doc.pvt_assigned_to, used_by: doc.pvt_used_by || '', created: doc.pvt_created, updated: doc.pvt_modified, locality: doc.pvt_locality});}"
         }
     }
 }
