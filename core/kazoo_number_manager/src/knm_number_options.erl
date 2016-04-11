@@ -48,7 +48,9 @@ default() ->
 dry_run(Options) ->
     dry_run(Options, 'false').
 dry_run(Options, Default) ->
-    props:get_is_true('dry_run', Options, Default).
+    R = props:get_is_true('dry_run', Options, Default),
+    _ = R andalso lager:debug("dry_run-ing btw"),
+    R.
 
 -spec assigned_to(options()) -> api_binary().
 -spec assigned_to(options(), Default) -> ne_binary() | Default.

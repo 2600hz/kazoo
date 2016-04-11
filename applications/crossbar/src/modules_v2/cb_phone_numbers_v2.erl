@@ -382,9 +382,8 @@ post(Context, Number) ->
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context, ?COLLECTION) ->
-    Results = collection_process(Context),
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
-    set_response(Results, <<>>, Context, CB);
+    set_response(collection_process(Context), <<>>, Context, CB);
 put(Context, Number) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
@@ -876,20 +875,23 @@ set_response(Result, Number, Context) ->
                           cb_context:context().
 set_response({'ok', {'ok', Doc}}, _, Context, _) ->
     crossbar_util:response(Doc, Context);
-set_response({'ok', Doc}, _, Context, _) ->
-    case knm_number:is_number(Doc) of
-        'true' -> crossbar_util:response(knm_number:to_public_json(Doc), Context);
-        'false' -> crossbar_util:response(Doc, Context)
+set_response({'ok', Thing}, _, Context, _) ->
+    case knm_number:is_number(Thing) of
+        'true' -> crossbar_util:response(knm_number:to_public_json(Thing), Context);
+        'false' -> crossbar_util:response(Thing, Context)
     end;
-set_response({'dry_run', ?COLLECTION, Doc}, _, Context, Fun) ->
-    RespJObj = dry_run_response(?COLLECTION, Doc),
+set_response({'dry_run', ?COLLECTION, JObj}, _, Context, CB) ->
+    RespJObj = dry_run_response(?COLLECTION, JObj),
     case wh_json:is_empty(RespJObj) of
-        'true' -> Fun();
+        'true' -> CB();
         'false' -> crossbar_util:response_402(RespJObj, Context)
     end;
-set_response({'dry_run', Services, _ActivationCharges}, _, Context, _) ->
-    DryRun = wh_services:dry_run(Services),
-    crossbar_util:response(DryRun, Context);
+set_response({'dry_run', Services, _ActivationCharges}, _, Context, CB) ->
+    RespJObj = wh_services:dry_run(Services),
+    case wh_json:is_empty(RespJObj) of
+        'true' -> CB();
+        'false' -> crossbar_util:response_402(RespJObj, Context)
+    end;
 set_response({'error', Data}, _, Context, _) ->
     case wh_json:is_json_object(Data) of
         'true' ->
@@ -918,7 +920,6 @@ set_response(_Else, _, Context, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec dry_run_response(wh_proplist()) -> wh_json:object().
--spec dry_run_response(ne_binary(), wh_json:object()) -> wh_json:object().
 dry_run_response(Props) ->
     case props:get_value('services', Props) of
         'undefined' -> wh_json:new();
@@ -926,6 +927,7 @@ dry_run_response(Props) ->
             wh_services:dry_run(Services)
     end.
 
+-spec dry_run_response(ne_binary(), wh_json:object()) -> wh_json:object().
 dry_run_response(?COLLECTION, JObj) ->
     case wh_json:get_value(<<"error">>, JObj) of
         'undefined' -> accumulate_resp(wh_json:get_value(<<"charges">>, JObj, wh_json:new()));
