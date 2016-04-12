@@ -19,6 +19,7 @@
 -include("ecallmgr.hrl").
 
 -define(FS_CMD_SET_MULTIVAR, 'kz_uuid_setvar_multi').
+-define(FS_MULTI_VAR_SEP, " ^^;").
 
 %%--------------------------------------------------------------------
 %% @public
@@ -197,9 +198,10 @@ maybe_export_vars(Node, UUID, Props) ->
 api(Node, Cmd, Args) ->
     freeswitch:api(Node, Cmd, Args).
 
+api(_, _, _, []) -> 'ok';
 api(Node, UUID, Cmd, Args)
   when is_list(Args)->
-    api(Node, Cmd, list_to_binary([UUID, " ", Args]));
+    api(Node, Cmd, list_to_binary([UUID, ?FS_MULTI_VAR_SEP, Args]));
 api(Node, UUID, Cmd, Args) ->
     api(Node, Cmd, <<UUID/binary, " ", Args/binary>>).
 
@@ -208,8 +210,9 @@ api(Node, UUID, Cmd, Args) ->
 bgapi(Node, Cmd, Args) ->
     freeswitch:bgapi(Node, Cmd, Args).
 
+bgapi(_, _, _, []) -> 'ok';
 bgapi(Node, UUID, Cmd, Args)
   when is_list(Args)->
-    bgapi(Node, Cmd, list_to_binary([UUID, " ", Args]));
+    bgapi(Node, Cmd, list_to_binary([UUID, ?FS_MULTI_VAR_SEP, Args]));
 bgapi(Node, UUID, Cmd, Args) ->
     bgapi(Node, Cmd, <<UUID/binary, " ", Args/binary>>).
