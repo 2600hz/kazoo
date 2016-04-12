@@ -124,6 +124,10 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
 ```
 
+##### Response
+
+###### Success
+
 ```json
 {
     "auth_token": "694c7e1938aa213955fe600442c433f1",
@@ -137,6 +141,22 @@ curl -v -X DELETE \
     "request_id": "82f2a22ac4c0a1bfef214face6a746df",
     "revision": "undefined",
     "status": "success"
+}
+```
+
+###### Number not in account
+
+```json
+{
+    "auth_token": "694c7e1938aa213955fe600442c433f1",
+    "data": {
+        "message": "bad identifier",
+        "not_found": "The number could not be found"
+    },
+    "error": "404",
+    "message": "bad_identifier",
+    "request_id": "326492fe35f072b8f65e985e92af32ef",
+    "status": "error"
 }
 ```
 

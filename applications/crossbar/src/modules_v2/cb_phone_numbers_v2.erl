@@ -302,11 +302,7 @@ validate_number(Context, Number, ?HTTP_GET) ->
     case knm_number:get(Number, Options) of
         {'ok', KNMNumber} ->
             crossbar_util:response(knm_number:to_public_json(KNMNumber), Context);
-        {'error', _JObj} ->
-            Msg = wh_json:from_list([ {<<"message">>, <<"bad identifier">>}
-                                    , {<<"not_found">>, <<"The number could not be found">>}
-                                    ]),
-            cb_context:add_system_error('bad_identifier', Msg, Context)
+        {'error', _JObj} -> reply_number_not_found(Context)
     end;
 validate_number(Context, _Number, ?HTTP_POST) ->
     validate_request(Context);
@@ -883,7 +879,10 @@ set_response({'error', Data}, Context, _) ->
             cb_context:add_system_error(Code, Msg, Data, Context);
         'false' ->
             lager:debug("error: ~p", [Data]),
-            crossbar_util:response_400(<<"client error">>, Data, Context)
+            case Data of
+                'not_found' -> reply_number_not_found(Context);
+                _ -> crossbar_util:response_400(<<"client error">>, Data, Context)
+            end
     end;
 set_response({'invalid', Reason}, Context, _) ->
     lager:debug("invalid: ~p", [Reason]),
@@ -894,6 +893,13 @@ set_response({Error, Reason}, Context, _) ->
 set_response(_Else, Context, _) ->
     lager:debug("unexpected response: ~p", [_Else]),
     cb_context:add_system_error('unspecified_fault', Context).
+
+-spec reply_number_not_found(cb_context:context()) -> cb_context:context().
+reply_number_not_found(Context) ->
+    Msg = wh_json:from_list([ {<<"message">>, <<"bad identifier">>}
+                            , {<<"not_found">>, <<"The number could not be found">>}
+                            ]),
+    cb_context:add_system_error('bad_identifier', Msg, Context).
 
 %%--------------------------------------------------------------------
 %% @private
