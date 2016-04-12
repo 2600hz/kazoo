@@ -9,7 +9,7 @@ This is a guide to installing Kazoo on a Debian 8 (Jessie) base installation. Ot
 ```shell
 #> sudo apt-get install build-essential libxslt-dev \
     zip unzip expat zlib1g-dev libssl-dev curl \
-    libncurses5-dev
+    libncurses5-dev git-core libexpat1-dev
 ```
 
 ### Erlang
@@ -31,7 +31,19 @@ $ . /usr/lib/erlang/activate
 
 ## Building Kazoo
 
-* Once the dependencies are all here, after a fresh `git clone https://github.com/2600Hz/kazoo.git` just `make`.
+### Short version
+
+```
+$ cd /opt
+$ git clone https://github.com/2600Hz/kazoo.git
+$ cd kazoo
+$ make
+```
+
+### Longer version
+
+* Once the dependencies are installed above, including Erlang 18+, clone the Kazoo repo: `git clone https://github.com/2600Hz/kazoo.git`
+* Enter the kazoo directory and build the project with `make`
 * When developing, one can `cd` into any app directory (within `applications/` or `core/`) and run:
     * `make` (`make all` or `make clean`)
     * `make xref` to look for calls to undefined functions (uses [Xref](http://www.erlang.org/doc/apps/tools/xref_chapter.html))
@@ -42,6 +54,7 @@ $ . /usr/lib/erlang/activate
     1. `cd` into the root of the project
     1. `make compile-test` to compile every app with the `TEST` macro defined
     1. `make eunit` (instead of `make test`) to run the test suite without recompiling each app
+    1. `make proper` to run the test suite, including property-based tests (uses [PropEr](https://github.com/manopapad/proper))
     * *This way apps can call code from other apps that was compiled with the `TEST` macro defined*
 * `make build-release` will generate a [deployable release](http://learnyousomeerlang.com/release-is-the-word)
     * [More on using releases with Kazoo](https://github.com/2600Hz/kazoo/blob/master/doc/engineering/releases.md)
