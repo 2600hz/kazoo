@@ -118,17 +118,21 @@ decode(JSON, <<"application/json">>) ->
         'throw':{'error',{_Loc, 'invalid_string'}} ->
             lager:debug("invalid string(near char ~p) in input, checking for unicode", [_Loc]),
             try_converting(JSON);
-        'throw':{'invalid_json',{{'error',{1, Err}}, _Text}} ->
-            lager:debug("~s: ~s", [Err, _Text]),
+        'throw':{'invalid_json',{{'error',{1, _Err}}, _Text}} ->
+            lager:debug("~s: ~s", [_Err, _Text]),
             new();
-        'throw':{'invalid_json',{{'error',{Loc, Err}}, Text}} ->
+        'throw':{'invalid_json',{{'error',{Loc, _Err}}, Text}} ->
             Size = erlang:byte_size(Text),
             Part = binary:part(Text, Loc, Size-Loc),
-            lager:debug("~s near char # ~b of ~b ('~s'): ~s", [Err, Loc, Size, Part, Text]),
+            lager:debug("~s near char # ~b of ~b ('~s'): ~s", [_Err, Loc, Size, Part, Text]),
             log_big_binary(iolist_to_binary(JSON)),
             try_converting(JSON);
-        'throw':E ->
-            lager:debug("thrown decoder error: ~p", [E]),
+        'throw':_E ->
+            lager:debug("thrown decoder error: ~p", [_E]),
+            new();
+        _Error:_Reason ->
+            lager:debug("decoder exited with ~p:~p", [_Error, _Reason]),
+            log_big_binary(iolist_to_binary(JSON)),
             new()
     end.
 try_converting(JSON) ->
