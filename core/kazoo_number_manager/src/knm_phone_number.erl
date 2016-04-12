@@ -154,6 +154,7 @@ handle_fetched_result(JObj, Options) ->
 %%--------------------------------------------------------------------
 -spec save(knm_phone_number()) -> knm_phone_number().
 save(#knm_phone_number{dry_run='true'}=PhoneNumber) ->
+    lager:debug("dry_run-ing btw"),
     PhoneNumber;
 save(#knm_phone_number{dry_run='false'}=PhoneNumber) ->
     Routines = [fun save_to_number_db/1
@@ -169,6 +170,7 @@ save(#knm_phone_number{dry_run='false'}=PhoneNumber) ->
 %%--------------------------------------------------------------------
 -spec delete(knm_phone_number()) -> knm_phone_number_return().
 delete(#knm_phone_number{dry_run='true'}=Number) ->
+    lager:debug("dry_run-ing btw"),
     {'ok', Number};
 delete(#knm_phone_number{dry_run='false'}=Number) ->
     Routines = [fun(PhoneNumber) ->
@@ -443,7 +445,7 @@ set_assigned_to(N, AssignedTo=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec prev_assigned_to(knm_phone_number()) -> ne_binary().
+-spec prev_assigned_to(knm_phone_number()) -> api_binary().
 prev_assigned_to(#knm_phone_number{prev_assigned_to=PrevAssignedTo}) ->
     PrevAssignedTo.
 
@@ -456,7 +458,7 @@ set_prev_assigned_to(N, PrevAssignedTo=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec used_by(knm_phone_number()) -> ne_binary().
+-spec used_by(knm_phone_number()) -> api_binary().
 used_by(#knm_phone_number{used_by=UsedBy}) -> UsedBy.
 
 -spec set_used_by(knm_phone_number(), ne_binary()) -> knm_phone_number().
@@ -799,7 +801,7 @@ unassign(PhoneNumber, PrevAssignedTo) ->
 
 -spec do_unassign(knm_phone_number(), ne_binary()) -> knm_phone_number().
 do_unassign(PhoneNumber, PrevAssignedTo) ->
-    AccountDb = wh_util:format_account_id(PrevAssignedTo, 'encoded'),
+    AccountDb = wh_util:format_account_db(PrevAssignedTo),
     case kz_datamgr:del_doc(AccountDb, to_json(PhoneNumber)) of
         {'error', E} ->
             lager:error("failed to unassign number ~s from ~s"
@@ -817,9 +819,8 @@ do_unassign(PhoneNumber, PrevAssignedTo) ->
                                    {'ok', wh_json:object()} |
                                    {'error', any()}.
 get_number_in_account(AccountId, Num) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = wh_util:format_account_db(AccountId),
     kz_datamgr:open_cache_doc(AccountDb, Num).
-
 -endif.
 
 %%--------------------------------------------------------------------
@@ -846,13 +847,10 @@ maybe_remove_number_from_account(Number) ->
     AssignedTo = assigned_to(Number),
     case wh_util:is_empty(AssignedTo) of
         'true' ->
-            lager:debug("assigned_to is is empty for ~s, ignoring"
-                        ,[number(Number)]
-                       ),
+            lager:debug("assigned_to is is empty for ~s, ignoring", [number(Number)]),
             {'ok', Number};
         'false' ->
-            AccountDb = wh_util:format_account_id(AssignedTo, 'encoded'),
-            case kz_datamgr:del_doc(AccountDb, to_json(Number)) of
+            case kz_datamgr:del_doc(wh_util:format_account_db(AssignedTo), to_json(Number)) of
                 {'error', _R}=E -> E;
                 {'ok', _} -> {'ok', Number}
             end
