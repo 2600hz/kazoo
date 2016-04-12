@@ -504,7 +504,8 @@ delete(Num, Options) ->
 -spec delete_number(knm_number(), knm_number_options:options()) ->
                            knm_number_return().
 delete_number(Number, Options) ->
-    Routines = [fun knm_phone_number:release/1],
+    Routines = [fun knm_phone_number:release/1
+               ],
     {'ok', PhoneNumber} = knm_phone_number:setters(phone_number(Number), Routines),
     unwind_or_disconnect(set_phone_number(Number, PhoneNumber), Options).
 

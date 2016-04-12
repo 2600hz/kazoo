@@ -154,6 +154,7 @@ handle_fetched_result(JObj, Options) ->
 %%--------------------------------------------------------------------
 -spec save(knm_phone_number()) -> knm_phone_number().
 save(#knm_phone_number{dry_run='true'}=PhoneNumber) ->
+    lager:debug("dry_run-ing btw"),
     PhoneNumber;
 save(#knm_phone_number{dry_run='false'}=PhoneNumber) ->
     Routines = [fun save_to_number_db/1
@@ -169,6 +170,7 @@ save(#knm_phone_number{dry_run='false'}=PhoneNumber) ->
 %%--------------------------------------------------------------------
 -spec delete(knm_phone_number()) -> knm_phone_number_return().
 delete(#knm_phone_number{dry_run='true'}=Number) ->
+    lager:debug("dry_run-ing btw"),
     {'ok', Number};
 delete(#knm_phone_number{dry_run='false'}=Number) ->
     Routines = [fun(PhoneNumber) ->
