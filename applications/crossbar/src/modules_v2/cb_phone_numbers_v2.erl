@@ -430,8 +430,18 @@ delete(Context, ?COLLECTION) ->
 delete(Context, Number) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ],
-    Result = knm_number:delete(Number, Options),
-    set_response(Result, Context).
+    case knm_number:delete(Number, Options) of
+        {'error', Data}=Error ->
+            case wh_json:is_json_object(Data) andalso
+                knm_errors:error(Data) == <<"invalid_state_transition">> andalso
+                knm_errors:cause(Data) == <<"from available to released">>
+            of
+                'true' -> reply_number_not_found(Context);
+                'false' -> set_response(Error, Context)
+            end;
+        Else ->
+            set_response(Else, Context)
+    end.
 
 %%%===================================================================
 %%% Internal functions

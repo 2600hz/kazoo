@@ -801,7 +801,7 @@ unassign(PhoneNumber, PrevAssignedTo) ->
 
 -spec do_unassign(knm_phone_number(), ne_binary()) -> knm_phone_number().
 do_unassign(PhoneNumber, PrevAssignedTo) ->
-    AccountDb = wh_util:format_account_id(PrevAssignedTo, 'encoded'),
+    AccountDb = wh_util:format_account_db(PrevAssignedTo),
     case kz_datamgr:del_doc(AccountDb, to_json(PhoneNumber)) of
         {'error', E} ->
             lager:error("failed to unassign number ~s from ~s"
@@ -819,9 +819,8 @@ do_unassign(PhoneNumber, PrevAssignedTo) ->
                                    {'ok', wh_json:object()} |
                                    {'error', any()}.
 get_number_in_account(AccountId, Num) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = wh_util:format_account_db(AccountId),
     kz_datamgr:open_cache_doc(AccountDb, Num).
-
 -endif.
 
 %%--------------------------------------------------------------------
