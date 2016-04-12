@@ -476,9 +476,11 @@ build_originate_args(#state{originate_req=JObj
                            }=State) ->
     State#state{dialstrings=build_originate_args(State, JObj, FetchId)}.
 
+-spec update_dialstrings(state()) -> state().
 update_dialstrings(#state{dialstrings=DialString, action = Action} = State) ->
     State#state{dialstrings = iolist_to_binary([DialString, " ", Action])}.
 
+-spec originate_ready(state()) -> {'noreply', state()} | {'stop', 'normal', state()}.
 originate_ready(#state{node = _Node} = State) ->
     case start_control_process(State) of
         {'ok', #state{control_pid=Pid
