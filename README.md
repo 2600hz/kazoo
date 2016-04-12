@@ -59,7 +59,7 @@
 
 ### Cloud-Based Telecommunications For Everyone
 
-Welcome to Kazoo, an ambitious project to bring cloud-based VoIP and telecommunications to everyone. Our goal is to provide the world with a free, open telecommunications software platform. Released under the [OSI-approved MPL 1.1 open source software license](//opensource.org/licenses/MPL-1.1), we're building upon strong FOSS components like [GNU](//www.gnu.org/)/[Linux](//en.wikipedia.org/wiki/Linux), [Erlang](//www.erlang.org/), [FreeSWITCH](//freeswitch.org), [Apache CouchDB](https://couchdb.apache.org/), and [RabbitMQ](//www.rabbitmq.com). Our project is a great example of the wonderful things that can happen when software is open.
+Welcome to Kazoo, an ambitious project to bring cloud-based VoIP and telecommunications to everyone. Our goal is to provide the world with a free, open telecommunications software platform. Released under the [OSI-approved MPL 1.1 open source software license](https://opensource.org/licenses/MPL-1.1), we're building upon strong FOSS components like [GNU](https://www.gnu.org/)/[Linux](https://en.wikipedia.org/wiki/Linux), [Erlang](https://www.erlang.org/), [FreeSWITCH](https://freeswitch.org), [Apache CouchDB](https://couchdb.apache.org/), and [RabbitMQ](https://www.rabbitmq.com). Our project is a great example of the wonderful things that can happen when software is open.
 
 ### What is Kazoo?
 
@@ -108,12 +108,12 @@ No problem! We have many different places where folks can chip in time. These in
 * Blogging, tweeting, and other forms of publicizing your usage of and love for the platform, community, code, company, etc.
 * Join us in real time and help other community members:
     * [![2600Hz IRC](https://img.shields.io/badge/irc-%232600Hz-orange.svg)](https://webchat.freenode.net/?channels=2600Hz)
-    * our [Users mailing list](//groups.google.com/forum/?fromgroups#!forum/2600Hz-users)
-    * our [Developers mailing list](//groups.google.com/forum/?fromgroups#!forum/2600Hz-dev)
+    * our [Users mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600Hz-users)
+    * our [Developers mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600Hz-dev)
     * our [Forum](http://forum.2600Hz.com/)
 * Contribute scripts to the [community repo]https://github.com/2600Hz/community-scripts)
 * Help with building RPMs, DEBs, and other system packages
-* Browse the open [Issues](//2600Hz.atlassian.net/browse/KAZOO) and test bugs to see if they're valid
+* Browse the open [Issues](https://2600Hz.atlassian.net/browse/KAZOO) and test bugs to see if they're valid
 * Make a sugestion!
 
 ### Internationalization Help
@@ -125,11 +125,11 @@ If you have a non-US deployment, please consider sharing your system configurati
 ### I know me some Erlang! How can I contribute?
 
 * Clone the repo
-    * If you're completely new to Git, read Github's [great introduction](//help.github.com/articles/fork-a-repo/) to forking repos
+    * If you're completely new to Git, read Github's [great introduction](https://help.github.com/articles/fork-a-repo/) to forking repos
 * Squash a bug, build a feature, etc
-    * Browse the [ticket queue](//2600Hz.atlassian.net/browse/KAZOO) and find one you'd like to tackle.
-    * Feel free to drop a line to the [dev mailing list](//groups.google.com/forum/?fromgroups#!forum/2600Hz-dev) letting us know you're taking on a ticket, especially if you have questions.
-* Once you feel the code is ready for inclusion, issue a [pull request](//help.github.com/articles/using-pull-requests/)!
+    * Browse the [ticket queue](https://2600Hz.atlassian.net/browse/KAZOO) and find one you'd like to tackle.
+    * Feel free to drop a line to the [dev mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600Hz-dev) letting us know you're taking on a ticket, especially if you have questions.
+* Once you feel the code is ready for inclusion, issue a [pull request](https://help.github.com/articles/using-pull-requests/)!
     * Please keep your pull requests focused and specific to the task at hand
     * If, in the course of your work you add/modify/delete code unrelated to the core task, create a new ticket describing why you've made these additional changes, and issue a separate pull request.
 
