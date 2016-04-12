@@ -323,7 +323,7 @@ create_updaters(?NE_BINARY=Num, Options) when is_list(Options) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec move(ne_binary(), ne_binary()) -> knm_number_return().
--spec move(ne_binary(), ne_binary(), wh_proplist()) -> knm_number_return().
+-spec move(ne_binary(), ne_binary(), knm_number_options:options()) -> knm_number_return().
 move(Num, MoveTo) ->
     move(Num, MoveTo, knm_number_options:default()).
 
@@ -359,7 +359,7 @@ move_to(Number, MoveTo) ->
 %%--------------------------------------------------------------------
 -spec update(ne_binary(), knm_phone_number:set_functions()) ->
                     knm_number_return().
--spec update(ne_binary(), knm_phone_number:set_functions(), wh_proplist()) ->
+-spec update(ne_binary(), knm_phone_number:set_functions(), knm_number_options:options()) ->
                     knm_number_return().
 update(Num, Routines) ->
     update(Num, Routines, knm_number_options:default()).
@@ -555,7 +555,7 @@ delete_phone_number(Number) ->
 %%--------------------------------------------------------------------
 -spec assign_to_app(ne_binary(), api_binary()) ->
                            knm_number_return().
--spec assign_to_app(ne_binary(), api_binary(), wh_proplist()) ->
+-spec assign_to_app(ne_binary(), api_binary(), knm_number_options:options()) ->
                            knm_number_return().
 assign_to_app(Num, App) ->
     assign_to_app(Num, App, knm_number_options:default()).
@@ -612,7 +612,7 @@ lookup_account(Num) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec buy(ne_binary(), ne_binary()) -> knm_number_return().
--spec buy(ne_binary(), ne_binary(), wh_proplist()) -> knm_number_return().
+-spec buy(ne_binary(), ne_binary(), knm_number_options:options()) -> knm_number_return().
 buy(Num, Account) ->
     %% Note: do not use default options here (auths anyone)
     buy(Num, Account, []).

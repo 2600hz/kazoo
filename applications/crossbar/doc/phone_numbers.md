@@ -220,10 +220,28 @@ Possible reasons for failure:
 
 > POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"my_field": "some other value"}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
+```
+
+```json
+{
+    "auth_token": "694c7e1938aa213955fe600442c433f1",
+    "data": {
+        "assigned_to": "009afc511c97b2ae693c6cc4920988e8",
+        "created": 63627604811,
+        "my_field": "some other value",
+        "id": "+14242424248",
+        "state": "reserved",
+        "updated": 63627605412
+    },
+    "request_id": "60b34181efe0baac85fc7dae1e8ab7ce",
+    "revision": "undefined",
+    "status": "success"
+}
 ```
 
 #### Add a number to the database
