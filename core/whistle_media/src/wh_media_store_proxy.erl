@@ -58,8 +58,11 @@ maybe_basic_authentication(PathTokens, Req0) ->
 maybe_basic_authentication(Username, Password, PathTokens, Req1) ->
     AuthUsername = whapps_config:get_binary(?CONFIG_CAT, <<"proxy_username">>, <<>>),
     AuthPassword = whapps_config:get_binary(?CONFIG_CAT, <<"proxy_password">>, <<>>),
-    case (not wh_util:is_empty(AuthUsername)) andalso (not wh_util:is_empty(AuthPassword))
-        andalso Username =:= AuthUsername andalso Password =:= AuthPassword
+    case
+        not wh_util:is_empty(AuthUsername) andalso
+        not wh_util:is_empty(AuthPassword) andalso
+        Username == AuthUsername andalso
+        Password == AuthPassword
     of
         'true' ->  {'ok', Req1, PathTokens};
         'false' ->

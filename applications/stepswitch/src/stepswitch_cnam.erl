@@ -322,41 +322,38 @@ get_http_body(JObj) ->
             lists:flatten(Body)
     end.
 
--spec get_http_headers() -> wh_proplist().
+-spec get_http_headers() -> [{nonempty_string(), nonempty_string()}].
 get_http_headers() ->
     Headers = [{"Accept", ?HTTP_ACCEPT_HEADER}
                ,{"User-Agent", ?HTTP_USER_AGENT}
                ,{"Content-Type", ?HTTP_CONTENT_TYPE}
               ],
-    Routines = [
-                fun maybe_enable_auth/1
-               ],
-    lists:foldl(fun(F, P) -> F(P) end, Headers, Routines).
+    maybe_enable_auth(Headers).
 
--spec get_http_options(string()) -> wh_proplist().
+-spec get_http_options(ne_binary()) -> wh_proplist().
 get_http_options(Url) ->
     Defaults = [{'connect_timeout', ?HTTP_CONNECT_TIMEOUT_MS}
                 ,{'timeout', 1500}
                ],
-    Routines = [fun maybe_enable_ssl/2
-               ],
-    lists:foldl(fun(F, P) -> F(Url, P) end, Defaults, Routines).
+    maybe_enable_ssl(Url, Defaults).
 
 -spec maybe_enable_ssl(ne_binary(), wh_proplist()) -> wh_proplist().
 maybe_enable_ssl(<<"https", _/binary>>, Props) ->
     [{'ssl', [{'verify', 'verify_none'}]}|Props];
 maybe_enable_ssl(_, Props) -> Props.
 
--spec maybe_enable_auth(wh_proplist()) -> wh_proplist().
+-spec maybe_enable_auth([{nonempty_string(), nonempty_string()}]) ->
+                               [{nonempty_string(), nonempty_string()}].
 maybe_enable_auth(Props) ->
     Username = whapps_config:get_string(?CONFIG_CAT, <<"http_basic_auth_username">>, <<>>),
     Password = whapps_config:get_string(?CONFIG_CAT, <<"http_basic_auth_password">>, <<>>),
     case wh_util:is_empty(Username) orelse wh_util:is_empty(Password) of
         'true' -> Props;
-        'false' -> [ basic_auth(Username, Password) | Props]
+        'false' -> [basic_auth(Username, Password) | Props]
     end.
 
--spec basic_auth(string(), string()) -> {string(), string()}.
+-spec basic_auth(nonempty_string(), nonempty_string()) ->
+                        {nonempty_string(), nonempty_string()}.
 basic_auth(Username, Password) ->
     Encoded = base64:encode_to_string(Username ++ [$: | Password]),
     {"Authorization", lists:flatten(["Basic ", Encoded])}.
@@ -369,9 +366,8 @@ get_http_method() ->
         _Else -> 'get'
     end.
 
--spec render(wh_json:object(), ne_binary()) ->
-                    {'ok', iolist()} |
-                    {'error', 'timeout'}.
+-spec render(wh_json:object(), ne_binary()) -> {'ok', iolist()} |
+                                               {'error', 'timeout'}.
 render(JObj, Template) ->
     case catch poolboy:checkout(?STEPSWITCH_CNAM_POOL, 'false', 1000) of
         W when is_pid(W) ->

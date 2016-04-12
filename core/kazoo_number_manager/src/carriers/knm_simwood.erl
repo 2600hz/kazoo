@@ -32,8 +32,8 @@
        ).
 
 -define(SW_ACCOUNT_ID, whapps_config:get_string(?KNM_SW_CONFIG_CAT, <<"simwood_account_id">>, <<>>)).
--define(SW_AUTH_USERNAME, whapps_config:get_string(?KNM_SW_CONFIG_CAT, <<"auth_username">>, <<>>)).
--define(SW_AUTH_PASSWORD, whapps_config:get_string(?KNM_SW_CONFIG_CAT, <<"auth_password">>, <<>>)).
+-define(SW_AUTH_USERNAME, whapps_config:get_binary(?KNM_SW_CONFIG_CAT, <<"auth_username">>, <<>>)).
+-define(SW_AUTH_PASSWORD, whapps_config:get_binary(?KNM_SW_CONFIG_CAT, <<"auth_password">>, <<>>)).
 
 %%--------------------------------------------------------------------
 %% @public
