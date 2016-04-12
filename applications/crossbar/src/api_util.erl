@@ -269,22 +269,28 @@ handle_url_encoded_body(Context, Req, QS, ReqBody, JObj) ->
             set_request_data_in_context(Context, Req, JObj, QS)
     end.
 
--spec set_request_data_in_context(cb_context:context(), cowboy_req:req(), wh_json:object(), wh_json:object()) ->
+-spec set_request_data_in_context(cb_context:context(), cowboy_req:req(), api_object(), wh_json:object()) ->
                                          {cb_context:context(), cowboy_req:req()} |
                                          halt_return().
+set_request_data_in_context(Context, Req, 'undefined', QS) ->
+    set_valid_data_in_context(Context, Req, wh_json:new(), QS);
 set_request_data_in_context(Context, Req, JObj, QS) ->
     case is_valid_request_envelope(JObj) of
-        'true' ->
-            lager:debug("req body: ~p", [JObj]),
-            Setters = [{fun cb_context:set_req_json/2, JObj}
-                      ,{fun cb_context:set_req_data/2, wh_json:get_value(<<"data">>, JObj)}
-                      ,{fun cb_context:set_query_string/2, QS}
-                      ],
-            {cb_context:setters(Context, Setters), Req};
+        'true' -> set_valid_data_in_context(Context, Req, JObj, QS);
         Errors ->
             lager:info("failed to find 'data' in envelope, invalid request"),
             ?MODULE:halt(Req, cb_context:failed(Context, Errors))
     end.
+
+-spec set_valid_data_in_context(cb_context:context(), cowboy_req:req(), wh_json:object(), wh_json:object()) ->
+                                       {cb_context:context(), cowboy_req:req()}.
+set_valid_data_in_context(Context, Req, JObj, QS) ->
+    lager:debug("req body: ~p", [JObj]),
+    Setters = [{fun cb_context:set_req_json/2, JObj}
+              ,{fun cb_context:set_req_data/2, wh_json:get_value(<<"data">>, JObj, wh_json:new())}
+              ,{fun cb_context:set_query_string/2, QS}
+              ],
+    {cb_context:setters(Context, Setters), Req}.
 
 -spec set_empty_request(cb_context:context(), cowboy_req:req(), wh_json:object()) ->
                                {cb_context:context(), cowboy_req:req()}.
@@ -511,18 +517,19 @@ get_request_body(_Req0, _Body, {'more', _, Req1}) ->
 get_request_body(_Req0, Body, {'ok', Data, Req1}) ->
     {iolist_to_binary([Body, Data]), Req1}.
 
--type get_json_return() :: {wh_json:object(), cowboy_req:req()} |
+-type get_json_return() :: {api_object(), cowboy_req:req()} |
                            {{'malformed', ne_binary()}, cowboy_req:req()}.
 -spec get_json_body(cowboy_req:req()) -> get_json_return().
--spec decode_json_body(binary(), cowboy_req:req()) -> get_json_return().
+-spec get_json_body(binary(), cowboy_req:req()) -> get_json_return().
 
 get_json_body(Req0) ->
     {Body, Req1} = get_request_body(Req0),
     get_json_body(Body, Req1).
 
-get_json_body(<<>>, Req) -> {wh_json:new(), Req};
+get_json_body(<<>>, Req) -> {'undefined', Req};
 get_json_body(ReqBody, Req) -> decode_json_body(ReqBody, Req).
 
+-spec decode_json_body(binary(), cowboy_req:req()) -> get_json_return().
 decode_json_body(ReqBody, Req) ->
     try wh_json:decode(ReqBody) of
         JObj ->
@@ -555,7 +562,7 @@ normalize_envelope_keys_foldl(K, V, JObj) -> wh_json:set_value(wh_json:normalize
 %% Determines if the request envelope is valid
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_request_envelope(wh_json:object()) -> 'true' | jesse_error:error().
+-spec is_valid_request_envelope( wh_json:object()) -> 'true' | jesse_error:error().
 is_valid_request_envelope(Envelope) ->
     case wh_json_schema:validate(?ENVELOPE_SCHEMA
                                 ,Envelope
