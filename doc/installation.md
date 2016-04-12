@@ -4,18 +4,30 @@ This is a guide to installing Kazoo on a Debian 8 (Jessie) base installation. Ot
 
 ## Dependencies
 
+### Packages Required
+
+```shell
+#> sudo apt-get install build-essential libxslt-dev \
+    zip unzip expat zlib1g-dev libssl-dev curl \
+    libncurses5-dev
+```
+
 ### Erlang
 
 Kazoo 4 targets Erlang 18+. There are a couple ways to install Erlang:
 
 * From source. I prefer to use a tool like [kerl](https://github.com/yrashk/kerl) to manage my installations. If you want to play around with multiple versions of Erlang while hacking on Kazoo, this is probably the best way.
-* Install from the [Erlang Solutions](https://www.erlang-solutions.com/resources/download.html) packages. These tend to be kept up-to-date better than the default distro's packages.
-
-### Others
-
 ```shell
-#> sudo apt-get install build-essential python2 libxslt gcc-c++ zip unzip expat-devel zlib-devel openssl-devel libxml-devel make nc
+$ curl -O https://raw.githubusercontent.com/yrashk/kerl/master/kerl
+$ chmod a+x kerl
+$ mv kerl /usr/bin
+$ kerl list releases
+$ kerl build 18.2 r18.2 # this takes a while
+$ kerl install r18.2 /usr/lib/erlang
+$ . /usr/lib/erlang/activate
 ```
+
+* Install from the [Erlang Solutions](https://www.erlang-solutions.com/resources/download.html) packages. These tend to be kept up-to-date better than the default distro's packages.
 
 ## Building Kazoo
 
