@@ -501,67 +501,51 @@ delete(Num, Options) ->
             attempt(fun delete_number/2, [Number, Options])
     end.
 
--spec delete_number(knm_number(), knm_number_options:options()) ->
-                           knm_number_return().
+-spec delete_number(knm_number(), knm_number_options:options()) -> knm_number_return().
 delete_number(Number, Options) ->
     Routines = [fun knm_phone_number:release/1
                ],
     {'ok', PhoneNumber} = knm_phone_number:setters(phone_number(Number), Routines),
-    unwind_or_disconnect(set_phone_number(Number, PhoneNumber), Options).
+    N = unwind_or_disconnect(set_phone_number(Number, PhoneNumber), Options),
+    wrap_phone_number_return(
+      knm_phone_number:save(phone_number(N))
+      ,N
+     ).
 
--spec unwind_or_disconnect(knm_number(), knm_number_options:options()) ->
-                                  knm_number_return().
--spec unwind_or_disconnect(knm_number(), knm_number_options:options(), knm_phone_number:knm_phone_number()) ->
-                                  knm_number_return().
+-spec unwind_or_disconnect(knm_number(), knm_number_options:options()) -> knm_number().
 unwind_or_disconnect(Number, Options) ->
-    PhoneNumber = phone_number(Number),
-    unwind_or_disconnect(Number
-                         ,Options
-                         ,knm_phone_number:unwind_reserve_history(PhoneNumber)
-                        ).
-
-unwind_or_disconnect(Number, Options, PhoneNumber) ->
+    PhoneNumber = knm_phone_number:unwind_reserve_history(phone_number(Number)),
+    N = set_phone_number(Number, PhoneNumber),
     case knm_phone_number:reserve_history(PhoneNumber) of
-        [] -> disconnect(set_phone_number(Number, PhoneNumber), Options);
-        History -> unwind(Number, PhoneNumber, History)
+        [] -> disconnect(N, Options);
+        History -> unwind(N, History)
     end.
 
--spec unwind(knm_number(), knm_phone_number:knm_phone_number(), ne_binaries()) ->
-                    knm_number_return().
-unwind(Number, PhoneNumber, [NewAssignedTo|_]) ->
+-spec unwind(knm_phone_number:phone_number(), ne_binaries()) -> knm_number().
+unwind(Number, [NewAssignedTo|_]) ->
     Routines = [{fun knm_phone_number:set_assigned_to/2, NewAssignedTo}
                 ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_RESERVED}
                ],
-    wrap_phone_number_routines(
-      set_phone_number(Number, PhoneNumber)
-      ,Routines
-     ).
+    {'ok', PhoneNumber} = knm_phone_number:setters(phone_number(Number), Routines),
+    set_phone_number(Number, PhoneNumber).
 
--spec disconnect(knm_number(), knm_number_options:options()) -> knm_number_return().
--spec disconnect(knm_number(), knm_number_options:options(), boolean()) -> knm_number_return().
+-spec disconnect(knm_number(), knm_number_options:options()) -> knm_number().
 disconnect(Number, Options) ->
-    disconnect(Number
-               ,Options
-               ,knm_config:should_permanently_delete(knm_number_options:should_delete(Options))
-              ).
-
-disconnect(Number, _Options, ShouldDelete) ->
+    ShouldDelete = knm_config:should_permanently_delete(
+                     knm_number_options:should_delete(Options)
+                    ),
     try knm_carriers:disconnect(Number) of
-        N1 -> maybe_delete_phone_number(N1, ShouldDelete)
+        N when not ShouldDelete -> N;
+        N when     ShouldDelete -> delete_phone_number(N)
     catch
         _E:_R when ShouldDelete ->
             ?LOG_WARN("failed to disconnect number: ~s: ~p", [_E, _R]),
             delete_phone_number(Number)
     end.
 
--spec maybe_delete_phone_number(knm_number(), boolean()) ->
-                                       knm_number_return().
-maybe_delete_phone_number(Number, 'false') -> {'ok', Number};
-maybe_delete_phone_number(Number, 'true') -> delete_phone_number(Number).
-
--spec delete_phone_number(knm_number()) -> {'ok', knm_number()}.
+-spec delete_phone_number(knm_number()) -> knm_number().
 delete_phone_number(Number) ->
-    {'ok', knm_number_states:to_deleted(Number)}.
+    knm_number_states:to_deleted(Number).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -585,7 +569,7 @@ assign_to_app(Num, App, Options) ->
 -spec maybe_update_assignment(knm_number:knm_number(), api_binary()) ->
                                      knm_number_return().
 maybe_update_assignment(Number, NewApp) ->
-    PhoneNumber = knm_number:phone_number(Number),
+    PhoneNumber = phone_number(Number),
     case knm_phone_number:used_by(PhoneNumber) of
         NewApp -> {'ok', Number};
         _OldApp ->
@@ -689,14 +673,6 @@ transfer_media_id(Props) when is_list(Props) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
--spec wrap_phone_number_routines(knm_number(), knm_phone_number:set_functions()) ->
-                                         knm_number_return().
-wrap_phone_number_routines(Number, Routines) ->
-    wrap_phone_number_return(
-      knm_phone_number:setters(phone_number(Number), Routines)
-      ,Number
-     ).
 
 %%--------------------------------------------------------------------
 %% @private

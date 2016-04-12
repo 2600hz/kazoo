@@ -433,7 +433,6 @@ delete(Context, ?COLLECTION) ->
     set_response({'ok', Results}, Context);
 delete(Context, Number) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
-               ,{'dry_run', not cb_context:accepting_charges(Context)}
               ],
     Result = knm_number:delete(Number, Options),
     set_response(Result, Context).
@@ -1027,7 +1026,6 @@ number_action(Context, Number, ?HTTP_POST) ->
     knm_number:update(Number, Routines, Options);
 number_action(Context, Number, ?HTTP_DELETE) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
-               ,{'dry_run', not cb_context:accepting_charges(Context)}
               ],
     knm_number:delete(Number, Options).
 

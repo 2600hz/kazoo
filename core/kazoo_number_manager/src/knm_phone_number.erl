@@ -445,7 +445,7 @@ set_assigned_to(N, AssignedTo=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec prev_assigned_to(knm_phone_number()) -> ne_binary().
+-spec prev_assigned_to(knm_phone_number()) -> api_binary().
 prev_assigned_to(#knm_phone_number{prev_assigned_to=PrevAssignedTo}) ->
     PrevAssignedTo.
 
@@ -458,7 +458,7 @@ set_prev_assigned_to(N, PrevAssignedTo=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec used_by(knm_phone_number()) -> ne_binary().
+-spec used_by(knm_phone_number()) -> api_binary().
 used_by(#knm_phone_number{used_by=UsedBy}) -> UsedBy.
 
 -spec set_used_by(knm_phone_number(), ne_binary()) -> knm_phone_number().
@@ -848,13 +848,10 @@ maybe_remove_number_from_account(Number) ->
     AssignedTo = assigned_to(Number),
     case wh_util:is_empty(AssignedTo) of
         'true' ->
-            lager:debug("assigned_to is is empty for ~s, ignoring"
-                        ,[number(Number)]
-                       ),
+            lager:debug("assigned_to is is empty for ~s, ignoring", [number(Number)]),
             {'ok', Number};
         'false' ->
-            AccountDb = wh_util:format_account_id(AssignedTo, 'encoded'),
-            case kz_datamgr:del_doc(AccountDb, to_json(Number)) of
+            case kz_datamgr:del_doc(wh_util:format_account_db(AssignedTo), to_json(Number)) of
                 {'error', _R}=E -> E;
                 {'ok', _} -> {'ok', Number}
             end
