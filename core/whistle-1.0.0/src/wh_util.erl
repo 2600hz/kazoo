@@ -130,6 +130,7 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
+-include_lib("whistle/include/wh_api.hrl").
 
 -define(WHISTLE_VERSION_CACHE_KEY, {?MODULE, 'whistle_version'}).
 
@@ -612,9 +613,9 @@ put_callid(JObj) -> erlang:put('callid', callid(JObj)).
 get_callid() -> erlang:get('callid').
 
 callid(Prop) when is_list(Prop) ->
-    props:get_first_defined([<<"Call-ID">>, <<"Msg-ID">>], Prop, ?LOG_SYSTEM_ID);
+    props:get_first_defined([?KEY_LOG_ID, <<"Call-ID">>, ?KEY_MSG_ID], Prop, ?LOG_SYSTEM_ID);
 callid(JObj) ->
-    wh_json:get_first_defined([<<"Call-ID">>, <<"Msg-ID">>], JObj, ?LOG_SYSTEM_ID).
+    wh_json:get_first_defined([?KEY_LOG_ID, <<"Call-ID">>, ?KEY_MSG_ID], JObj, ?LOG_SYSTEM_ID).
 
 %% @public
 -spec spawn(fun(() -> any())) -> pid().
