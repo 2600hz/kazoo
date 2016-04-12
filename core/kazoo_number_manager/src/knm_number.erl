@@ -309,7 +309,7 @@ create_updaters(?NE_BINARY=Num, Options) when is_list(Options) ->
          ,knm_number_options:dry_run(Options)
         }
        ,{fun knm_phone_number:set_module_name/2
-         ,knm_number_options:module_name(Options, knm_carriers:default_carrier())
+         ,knm_number_options:module_name(Options)
         }
        ,{fun knm_phone_number:update_doc/2
          ,knm_number_options:public_fields(Options)
