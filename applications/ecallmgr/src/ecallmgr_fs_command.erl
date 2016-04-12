@@ -18,7 +18,7 @@
 
 -include("ecallmgr.hrl").
 
--define(FS_CMD_SET_MULTIVAR, <<"kz_uuid_setvar_multi">>).
+-define(FS_CMD_SET_MULTIVAR, 'kz_uuid_setvar_multi').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -192,18 +192,24 @@ maybe_export_vars(Node, UUID, Props) ->
                     (KV, Acc) -> [KV| Acc]
                 end, [], Props).
 
--spec api(atom(), binary(), binary()) -> ecallmgr_util:send_cmd_ret().
--spec api(atom(), binary(), binary(), binary()) -> ecallmgr_util:send_cmd_ret().
+-spec api(atom(), atom(), binary()) -> ecallmgr_util:send_cmd_ret().
+-spec api(atom(), atom(), binary(), binary() | list()) -> ecallmgr_util:send_cmd_ret().
 api(Node, Cmd, Args) ->
     freeswitch:api(Node, Cmd, Args).
 
+api(Node, UUID, Cmd, Args)
+  when is_list(Args)->
+    api(Node, Cmd, list_to_binary([UUID, " ", Args]));
 api(Node, UUID, Cmd, Args) ->
-    api(Node, <<UUID/binary, " ", Cmd/binary>>, Args).
+    api(Node, Cmd, <<UUID/binary, " ", Args/binary>>).
 
 -spec bgapi(atom(), binary(), binary()) -> ecallmgr_util:send_cmd_ret().
--spec bgapi(atom(), binary(), binary(), binary()) -> ecallmgr_util:send_cmd_ret().
+-spec bgapi(atom(), binary(), binary(), binary() | list()) -> ecallmgr_util:send_cmd_ret().
 bgapi(Node, Cmd, Args) ->
     freeswitch:bgapi(Node, Cmd, Args).
 
+bgapi(Node, UUID, Cmd, Args)
+  when is_list(Args)->
+    bgapi(Node, Cmd, list_to_binary([UUID, " ", Args]));
 bgapi(Node, UUID, Cmd, Args) ->
-    bgapi(Node, <<UUID/binary, " ", Cmd/binary>>, Args).
+    bgapi(Node, Cmd, <<UUID/binary, " ", Args/binary>>).
