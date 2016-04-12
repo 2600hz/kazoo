@@ -268,7 +268,7 @@ This lists the numbers an account owns, along with their properties.
 
 #### List an account's specific phone number
 
-Lists the properties associated with this account's number.
+Show the number's properties along with user-defined properties.
 
 ##### Request
 
@@ -285,6 +285,7 @@ Lists the properties associated with this account's number.
     "auth_token": "1a82795e8759f62d77f6552de80ce32e",
     "data": {
         "id": "+14155555555",
+        "my_own_field": {},
         "assigned_to": "4b8c6fec4b2597882c0390202d195419",
         "created": 63602230185,
         "features": {},
@@ -332,9 +333,7 @@ Adds a number to the database, returning its properties.
 ```json
 {
     "data": {
-        "dash_e911": {
-            "caller_name": "Moi"
-        }
+        "my_field": "my value"
     }
 }
 ```
@@ -349,9 +348,7 @@ Adds a number to the database, returning its properties.
     "data": {
         "assigned_to": "009afc511c97b2ae693c6cc4920988e8",
         "created": 63627604811,
-        "dash_e911": {
-            "caller_name": "Moi"
-        },
+        "my_field": "my value",
         "id": "+14242424248",
         "state": "reserved",
         "updated": 63627604811

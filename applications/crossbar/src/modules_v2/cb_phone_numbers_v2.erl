@@ -297,7 +297,17 @@ validate(Context, Number) ->
 
 -spec validate_number(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_number(Context, Number, ?HTTP_GET) ->
-    read(Context, Number);
+    Options = [{'auth_by', cb_context:auth_account_id(Context)}
+              ],
+    case knm_number:get(Number, Options) of
+        {'ok', KNMNumber} ->
+            crossbar_util:response(knm_number:to_public_json(KNMNumber), Context);
+        {'error', _JObj} ->
+            Msg = wh_json:from_list([ {<<"message">>, <<"bad identifier">>}
+                                    , {<<"not_found">>, <<"The number could not be found">>}
+                                    ]),
+            cb_context:add_system_error('bad_identifier', Msg, Context)
+    end;
 validate_number(Context, _Number, ?HTTP_POST) ->
     validate_request(Context);
 validate_number(Context, _Number, ?HTTP_PUT) ->
@@ -806,30 +816,6 @@ identify(Context, Number) ->
                                       ,wh_json:new()
                                      ),
             set_response({'ok', JObj}, Context)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Load an instance from the database
-%%--------------------------------------------------------------------
--spec read(cb_context:context(), ne_binary()) -> cb_context:context().
-read(Context, Number) ->
-    ViewOptions = [ {'keys', [knm_converters:normalize(Number)]}
-                  ],
-    case
-        cb_context:resp_data(
-          crossbar_doc:load_view(?CB_LIST, ViewOptions, Context, fun normalize_view_results/2)
-         )
-    of
-        [NumberFound] ->
-            [Id] = wh_json:get_keys(NumberFound),
-            NewRespData = wh_json:set_value(<<"id">>, Id, wh_json:get_value(Id, NumberFound)),
-            crossbar_util:response(NewRespData, Context);
-        [] ->
-            Msg = wh_json:from_list([ {<<"message">>, <<"bad identifier">>}
-                                    , {<<"not_found">>, <<"The number could not be found">>}
-                                    ]),
-            cb_context:add_system_error('bad_identifier', Msg, Context)
     end.
 
 %%--------------------------------------------------------------------
