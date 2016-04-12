@@ -154,12 +154,12 @@ try_converting(JSON) ->
             new()
     end.
 
--spec log_big_binary(ne_binary()) -> 'ok'.
-log_big_binary(<<Bin:900/binary, Rest/binary>>) ->
-    lager:debug("bin: ~s", [wh_util:hexencode_binary(Bin)]),
+-spec log_big_binary(binary()) -> 'ok'.
+log_big_binary(<<Bin:500/binary, Rest/binary>>) ->
+    lager:debug("bin: ~w", [Bin]),
     log_big_binary(Rest);
 log_big_binary(Bin) ->
-    lager:debug("bin: ~s", [wh_util:hexencode_binary(Bin)]).
+    lager:debug("bin: ~w", [Bin]).
 
 -spec is_empty(any()) -> boolean().
 is_empty(MaybeJObj) ->
