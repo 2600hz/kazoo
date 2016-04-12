@@ -366,13 +366,22 @@ pad_month(Month) when Month < 10 ->
 pad_month(Month) ->
     to_binary(Month).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Normalize the account name by converting the name to lower case
+%% and then removing all non-alphanumeric characters.
+%%
+%% This can possibly return an empty binary.
+%% @end
+%%--------------------------------------------------------------------
 -spec normalize_account_name(api_binary()) -> api_binary().
 normalize_account_name('undefined') -> 'undefined';
 normalize_account_name(AccountName) ->
     << <<Char>>
-       || <<Char>> <= ?MODULE:to_lower_binary(AccountName),
+       || <<Char>> <= to_lower_binary(AccountName),
           (Char >= $a andalso Char =< $z)
-              orelse (Char >= $0 andalso Char =< $9)
+              or (Char >= $0 andalso Char =< $9)
     >>.
 
 %%--------------------------------------------------------------------
