@@ -430,7 +430,7 @@ delete(Context, ?COLLECTION) ->
 delete(Context, Number) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ],
-    case knm_number:delete(Number, Options) of
+    case knm_number:release(Number, Options) of
         {'error', Data}=Error ->
             case wh_json:is_json_object(Data) andalso
                 knm_errors:error(Data) == <<"invalid_state_transition">> andalso
@@ -1043,7 +1043,7 @@ number_action(Context, Number, ?HTTP_POST) ->
 number_action(Context, Number, ?HTTP_DELETE) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ],
-    knm_number:delete(Number, Options).
+    knm_number:release(Number, Options).
 
 %%--------------------------------------------------------------------
 %% @private

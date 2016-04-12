@@ -14,7 +14,8 @@
          ,create/2
          ,move/2, move/3
          ,update/2, update/3
-         ,delete/1, delete/2
+         ,release/1, release/2
+         %% TODO: delete/1,2 (calls knm_phone_number:delete/1
          ,assign_to_app/2, assign_to_app/3
          ,lookup_account/1
          ,buy/2, buy/3
@@ -487,22 +488,22 @@ update_requires_save({NewV, _OldV, SetFun}, {_, PhoneNumber}) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec delete(ne_binary()) ->
-                    knm_number_return().
--spec delete(ne_binary(), knm_number_options:options()) ->
-                    knm_number_return().
-delete(Num) ->
-    delete(Num, knm_number_options:default()).
+-spec release(ne_binary()) ->
+                     knm_number_return().
+-spec release(ne_binary(), knm_number_options:options()) ->
+                     knm_number_return().
+release(Num) ->
+    release(Num, knm_number_options:default()).
 
-delete(Num, Options) ->
+release(Num, Options) ->
     case ?MODULE:get(Num, Options) of
         {'error', _R}=E -> E;
         {'ok', Number} ->
-            attempt(fun delete_number/2, [Number, Options])
+            attempt(fun release_number/2, [Number, Options])
     end.
 
--spec delete_number(knm_number(), knm_number_options:options()) -> knm_number_return().
-delete_number(Number, Options) ->
+-spec release_number(knm_number(), knm_number_options:options()) -> knm_number_return().
+release_number(Number, Options) ->
     Routines = [fun knm_phone_number:release/1
                ],
     {'ok', PhoneNumber} = knm_phone_number:setters(phone_number(Number), Routines),

@@ -299,7 +299,7 @@ delete(Context, ?COLLECTION) ->
 delete(Context, Number) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ],
-    Result = knm_number:delete(Number, Options),
+    Result = knm_number:release(Number, Options),
     set_response(Result, Number, Context).
 
 -spec summary(cb_context:context()) -> cb_context:context().
@@ -550,7 +550,7 @@ collection_action(Context, ?HTTP_POST, Number) ->
 collection_action(Context, ?HTTP_DELETE, Number) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ],
-    knm_number:delete(Number, Options).
+    knm_number:release(Number, Options).
 
 collection_action(Context, ?HTTP_PUT, Number, ?ACTIVATE) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}

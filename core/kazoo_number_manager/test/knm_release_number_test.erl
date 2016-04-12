@@ -26,14 +26,14 @@ release_unknown_number(Tests) ->
     [{"verfiy missing numbers return errors"
       ,?_assertMatch(
           {'error', 'not_found'}
-          ,knm_number:delete(?TEST_CREATE_NUM)
+          ,knm_number:release(?TEST_CREATE_NUM)
          )
      }
      | Tests
     ].
 
 release_available_number(Tests) ->
-    {'error', Error} = knm_number:delete(?TEST_AVAILABLE_NUM),
+    {'error', Error} = knm_number:release(?TEST_AVAILABLE_NUM),
 
     [{"Verify error code for releasing available number"
       ,?_assertEqual(400, knm_errors:code(Error))
@@ -45,7 +45,7 @@ release_available_number(Tests) ->
     ].
 
 release_in_service_number(Tests) ->
-    {'ok', Released} = knm_number:delete(?TEST_IN_SERVICE_NUM),
+    {'ok', Released} = knm_number:release(?TEST_IN_SERVICE_NUM),
     PhoneNumber = knm_number:phone_number(Released),
 
     [{"verify number state is changed"
@@ -62,7 +62,7 @@ release_in_service_number(Tests) ->
     ].
 
 release_with_history(Tests) ->
-    {'ok', Unwound} = knm_number:delete(?TEST_IN_SERVICE_WITH_HISTORY_NUM),
+    {'ok', Unwound} = knm_number:release(?TEST_IN_SERVICE_WITH_HISTORY_NUM),
     PhoneNumber = knm_number:phone_number(Unwound),
 
     [{"verify number state is moved to RESERVED"
@@ -84,7 +84,7 @@ release_with_history(Tests) ->
     ].
 
 release_for_hard_delete(Tests) ->
-    {'ok', Deleted} = knm_number:delete(?TEST_IN_SERVICE_NUM, [{'should_delete', 'true'}]),
+    {'ok', Deleted} = knm_number:release(?TEST_IN_SERVICE_NUM, [{'should_delete', 'true'}]),
     PhoneNumber = knm_number:phone_number(Deleted),
 
     [{"verify number state is moved to DELETED"

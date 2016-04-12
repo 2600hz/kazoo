@@ -887,7 +887,7 @@ remove_if_mobile(MDN, Context) ->
                     Options = [ {'auth_by', ?KNM_DEFAULT_AUTH_BY}
                               , {'dry_run', not cb_context:accepting_charges(Context)}
                               ],
-                    _ = knm_number:delete(Normalized, Options),
+                    _ = knm_number:release(Normalized, Options),
                     Context
             end;
         {'error', _R} ->
