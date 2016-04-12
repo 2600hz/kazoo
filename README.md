@@ -111,7 +111,7 @@ No problem! We have many different places where folks can chip in time. These in
     * our [Users mailing list](//groups.google.com/forum/?fromgroups#!forum/2600Hz-users)
     * our [Developers mailing list](//groups.google.com/forum/?fromgroups#!forum/2600Hz-dev)
     * our [Forum](http://forum.2600Hz.com/)
-* Contribute scripts to the [community repo](//github.com/2600Hz/community-scripts)
+* Contribute scripts to the [community repo]https://github.com/2600Hz/community-scripts)
 * Help with building RPMs, DEBs, and other system packages
 * Browse the open [Issues](//2600Hz.atlassian.net/browse/KAZOO) and test bugs to see if they're valid
 * Make a sugestion!
@@ -120,7 +120,7 @@ No problem! We have many different places where folks can chip in time. These in
 
 Translation efforts are always appreciated. We're working on redesigning how our back- and front-ends handle the world's languages and hope to make it easy to contribute translations. Stay tuned for more; please let us know of your interest and be sure to join the mailing lists so you can receive announcements regarding internationalization efforts.
 
-If you have a non-US deployment, please consider sharing your system configuration!  We are trying to build [examples](//github.com/2600Hz/kazoo/tree/master/applications/crossbar/doc/internationalization) for every locality and fix any deficiencies.
+If you have a non-US deployment, please consider sharing your system configuration!  We are trying to build [examples]https://github.com/2600Hz/kazoo/tree/master/applications/crossbar/doc/internationalization) for every locality and fix any deficiencies.
 
 ### I know me some Erlang! How can I contribute?
 
@@ -136,11 +136,11 @@ If you have a non-US deployment, please consider sharing your system configurati
 ### Do you know other languages?
 
 * Help us write some automated testing tools
-* Check out our Javascript/HTML/CSS [GUI](//github.com/2600Hz/kazoo-ui)
-* Check out our REST APIs and help us create SDKs in your favorite languages ([PHP](//github.com/2600Hz/kazoo-php-sdk) | [RUBY](//github.com/2600Hz/kazoo-ruby-sdk))
+* Check out our Javascript/HTML/CSS [GUI]https://github.com/2600Hz/kazoo-ui)
+* Check out our REST APIs and help us create SDKs in your favorite languages ([PHP]https://github.com/2600Hz/kazoo-php-sdk) | [RUBY]https://github.com/2600Hz/kazoo-ruby-sdk))
 * Check out our Pivot APIs and help us create SDKs in your favorite languages
 * Check out our AMQP APIs and create a WhApp in your favorite language
-* Help out with the [configuration scripts](//github.com/2600Hz/kazoo-configs)
+* Help out with the [configuration scripts]https://github.com/2600Hz/kazoo-configs)
 
 ## Building Kazoo
 
