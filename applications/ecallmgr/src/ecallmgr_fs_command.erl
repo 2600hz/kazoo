@@ -218,6 +218,7 @@ bgapi(Node, UUID, Cmd, Args)
 bgapi(Node, UUID, Cmd, Args) ->
     bgapi(Node, Cmd, <<UUID/binary, " ", Args/binary>>).
 
+-spec fs_args_to_binary(list()) -> binary().
 fs_args_to_binary([_]=Args) ->
     list_to_binary(Args);
 fs_args_to_binary(Args) ->
