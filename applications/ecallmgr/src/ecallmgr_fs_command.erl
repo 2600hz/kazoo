@@ -19,7 +19,8 @@
 -include("ecallmgr.hrl").
 
 -define(FS_CMD_SET_MULTIVAR, 'kz_uuid_setvar_multi').
--define(FS_MULTI_VAR_SEP, " ^^;").
+-define(FS_MULTI_VAR_SEP, ";").
+-define(FS_MULTI_VAR_SEP_PREFIX, "^^").
 
 %%--------------------------------------------------------------------
 %% @public
@@ -82,10 +83,10 @@ export(_, _, []) -> 'ok';
 export(Node, UUID, Props) ->
     Exports = process_fs_kv(Node, UUID, Props, 'export'),
     lager:debug("~p sendmsg export ~p ~p", [Node, UUID, Exports]),
-    AppArg = list_to_binary(["^^;", Exports]),
+%    AppArg = list_to_binary(["^^;", Exports]),
     _ = freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
                                         ,{"execute-app-name", "kz_export"}
-                                        ,{"execute-app-arg", AppArg}
+                                        ,{"execute-app-arg", fs_args_to_binary(Exports)}
                                        ]),
     'ok'.
 
@@ -155,11 +156,11 @@ process_fs_kv(Node, UUID, [K|KVs], 'unset'=Action)
 
 process_fs_kv_fold(_, _, {_Key, 'undefined'}, _, Acc) -> Acc;
 process_fs_kv_fold(_Node, UUID, {K, V}, Action, Acc) when is_binary(V) ->
-    [format_fs_kv(K, V, UUID, Action), ";" | Acc];
+    [format_fs_kv(K, V, UUID, Action) | Acc];
 process_fs_kv_fold(_Node, _UUID, K, 'unset', Acc)
   when is_binary(K) ->
     Key = ecallmgr_util:get_fs_key(K),
-    [Key, "=;" | Acc];
+    [<<Key/binary, "=">> | Acc];
 process_fs_kv_fold(_, _, _, _, Acc) ->
     Acc.
 
@@ -176,7 +177,7 @@ format_fs_kv(Key, _Value, _UUID, 'unset') ->
 format_fs_kv(<<"ringback">>, Media, _, _) ->
     [<<"ringback=", Media/binary>>, <<"transfer_ringback=", Media/binary>>];
 format_fs_kv(<<"Auto-Answer">> = Key, Value, _, _) ->
-    [<<"alert_info=", "intercom", ";", Key/binary, "=", Value/binary>>];
+    [<<"alert_info=intercom">>, <<Key/binary, "=", Value/binary>>];
 format_fs_kv(_Key, 'undefined', _UUID, _) -> [];
 format_fs_kv(Key, Value, UUID, _) ->
     {K, V} = ecallmgr_util:get_fs_key_and_value(Key, Value, UUID),
@@ -199,11 +200,9 @@ api(Node, Cmd, Args) ->
     freeswitch:api(Node, Cmd, Args).
 
 api(_, _, _, []) -> 'ok';
-api(Node, UUID, Cmd, [_]=Args) ->
-    api(Node, Cmd, list_to_binary([UUID, " ", Args]));
 api(Node, UUID, Cmd, Args)
   when is_list(Args)->
-    api(Node, Cmd, list_to_binary([UUID, ?FS_MULTI_VAR_SEP, Args]));
+    api(Node, Cmd, list_to_binary([UUID, " ", fs_args_to_binary(Args)]));
 api(Node, UUID, Cmd, Args) ->
     api(Node, Cmd, <<UUID/binary, " ", Args/binary>>).
 
@@ -213,10 +212,14 @@ bgapi(Node, Cmd, Args) ->
     freeswitch:bgapi(Node, Cmd, Args).
 
 bgapi(_, _, _, []) -> 'ok';
-bgapi(Node, UUID, Cmd, [_]=Args) ->
-    bgapi(Node, Cmd, list_to_binary([UUID, " ", Args]));
 bgapi(Node, UUID, Cmd, Args)
   when is_list(Args)->
-    bgapi(Node, Cmd, list_to_binary([UUID, ?FS_MULTI_VAR_SEP, Args]));
+    bgapi(Node, Cmd, list_to_binary([UUID, " ", fs_args_to_binary(Args)]));
 bgapi(Node, UUID, Cmd, Args) ->
     bgapi(Node, Cmd, <<UUID/binary, " ", Args/binary>>).
+
+fs_args_to_binary([_]=Args) ->
+    list_to_binary(Args);
+fs_args_to_binary(Args) ->
+    Bins = [list_to_binary([?FS_MULTI_VAR_SEP, Arg]) || Arg <- Args],
+    list_to_binary([?FS_MULTI_VAR_SEP_PREFIX, Bins]).
