@@ -35,7 +35,7 @@ get_cdr_doc_id(Year, Month, CallId) ->
                       'ok' | wh_std_return().
 save_cdr(?WH_ANONYMOUS_CDR_DB=Db, Doc) ->
     case whapps_config:get_is_true(?CONFIG_CAT, <<"store_anonymous">>, 'false') of
-        'false' -> 'ok';
+        'false' -> lager:debug("ignoring storage for anonymous cdr");
         'true' -> save_cdr(Db, Doc, 0)
     end;
 save_cdr(AccountMOD, Doc) ->
