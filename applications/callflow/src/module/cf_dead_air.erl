@@ -20,9 +20,6 @@
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(_Data, Call) ->
     _ = whapps_call_command:b_answer(Call),
-    _ = freeswitch:api(wh_util:to_atom(whapps_call:switch_nodename(Call),'true')
-                       ,'uuid_media'
-                       ,wh_util:to_list(<<"off ", (whapps_call:call_id(Call))/binary>>)
-                      ),
+    _ = whapps_call_command:audio_level(Call, <<"write">>, <<"start">>, <<"-4">>),
     _ = whapps_call_command:wait_for_hangup(),
-        cf_exe:stop(Call).
+    cf_exe:stop(Call).
