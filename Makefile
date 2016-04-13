@@ -40,6 +40,9 @@ test: ACTION = test
 test: ERLC_OPTS += -DPROPER
 test: $(KAZOODIRS)
 
+check: ERLC_OPTS += -DPROPER
+check: compile-test eunit clean-kazoo kazoo
+
 clean-deps:
 	$(if $(wildcard deps/), $(MAKE) -C deps/ clean)
 	$(if $(wildcard deps/), rm -r deps/)
