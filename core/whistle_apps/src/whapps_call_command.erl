@@ -191,6 +191,7 @@
 
 -export([get_outbound_t38_settings/1, get_outbound_t38_settings/2]).
 -export([get_inbound_t38_settings/1, get_inbound_t38_settings/2]).
+-export([audio_level/4]).
 
 -type audio_macro_prompt() :: {'play', binary()} | {'play', binary(), binaries()} |
                               {'prompt', binary()} | {'prompt', binary(), ne_binaries()} |
@@ -1525,6 +1526,15 @@ b_store_vm(MediaName, Transfer, Method, Headers, SuppressReport, Call) ->
               ],
     send_command(Command, Call),
     wait_for_headless_application(<<"store_vm">>).
+
+audio_level(Call, Mode, Action, Level) ->
+    Command = [{<<"Application-Name">>, <<"audio_level">>}
+               ,{<<"Action">>, Action}
+               ,{<<"Level">>, Level}
+               ,{<<"Mode">>, Mode}
+               ,{<<"Insert-At">>, <<"now">>}
+              ],
+    send_command(Command, Call).
 
 
 %%--------------------------------------------------------------------

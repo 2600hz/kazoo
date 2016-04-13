@@ -110,6 +110,13 @@ get_fs_app(_Node, _UUID, JObj, <<"hangup">>) ->
         'true' ->  {<<"unbridge">>, <<>>}
     end;
 
+get_fs_app(_Node, UUID, JObj, <<"audio_level">>) ->
+    Action = wh_json:get_value(<<"Action">>, JObj),
+    Level = wh_json:get_value(<<"Level">>, JObj),
+    Mode = wh_json:get_value(<<"Mode">>, JObj),
+    Data = <<UUID/binary, " ", Action/binary, " ", Mode/binary, " mute ", Level/binary>>,
+    {<<"audio_level">>, Data};
+
 get_fs_app(_Node, UUID, JObj, <<"play_and_collect_digits">>) ->
     case wapi_dialplan:play_and_collect_digits_v(JObj) of
         'false' -> {'error', <<"play_and_collect_digits failed to execute as JObj did not validate">>};
