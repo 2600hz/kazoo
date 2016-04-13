@@ -132,7 +132,9 @@ maybe_start_plaintext(Dispatch) ->
 
             %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
             try cowboy:start_http('api_resource', Workers
-                                  ,[{'port', Port}]
+                                  ,[{'ip', {0,0,0,0,0,0,0,0}}
+                                    ,{'port', Port}
+                                   ]
                                   ,[{'env', [{'dispatch', Dispatch}
                                              ,{'timeout', ReqTimeout}
                                             ]}
