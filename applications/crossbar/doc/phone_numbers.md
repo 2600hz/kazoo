@@ -114,14 +114,50 @@ curl -v -X GET \
     * Account document must be showing `pvt_wnm_allow_additions` as `true`
     * Or auth must be done via master account.
 
-#### Remove
+#### Remove a number from the account owning it
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
+```
+
+##### Response
+
+###### Success
+
+```json
+{
+    "auth_token": "694c7e1938aa213955fe600442c433f1",
+    "data": {
+        "assigned_to": "009afc511c97b2ae693c6cc4920988e8",
+        "created": 63627691442,
+        "id": "+14242424301",
+        "state": "available",
+        "updated": 63627691442
+    },
+    "request_id": "82f2a22ac4c0a1bfef214face6a746df",
+    "revision": "undefined",
+    "status": "success"
+}
+```
+
+###### Number not in account
+
+```json
+{
+    "auth_token": "694c7e1938aa213955fe600442c433f1",
+    "data": {
+        "message": "bad identifier",
+        "not_found": "The number could not be found"
+    },
+    "error": "404",
+    "message": "bad_identifier",
+    "request_id": "326492fe35f072b8f65e985e92af32ef",
+    "status": "error"
+}
 ```
 
 #### List an account's specific phone number
@@ -598,32 +634,6 @@ curl -X PUT -H "Content-Type: application/json" -H "X-Auth-Token: {{AUTH_TOKEN}}
     "status": "success"
 }
 ```
-
-
-#### Remove a number from its account
-
-Delete a number without returning its properties.
-
-##### Request
-
-- Verb: `DELETE`
-- Url: `/v2/accounts/{{ACCOUNT_ID}}/phone_numbers/{{PHONENUMBER}}`
-- Payload: none
-
-##### Response
-
-###### Success
-
-```json
-{
-    "auth_token": "1a82795e8759f62d77f6552de80ce32e",
-    "data": {},
-    "request_id": "7fc1a404904d140b55246d76e9575580",
-    "revision": "undefined",
-    "status": "success"
-}
-```
-
 
 
 ### Load classifiers

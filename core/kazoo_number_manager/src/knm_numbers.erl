@@ -13,7 +13,7 @@
          ,move/1 ,move/2
          ,update/1 ,update/2
          ,reconcile/2
-         ,delete/1 ,delete/2
+         ,release/1 ,release/2
          ,change_state/1 ,change_state/2
          ,assigned_to_app/1 ,assigned_to_app/2
          ,buy/2
@@ -128,22 +128,22 @@ reconcile([Number|Numbers], Options, Acc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec delete(ne_binaries()) ->
-                    numbers_return().
--spec delete(ne_binaries(), knm_number_options:options()) ->
-                    numbers_return().
-delete(Props) ->
-    delete(Props, knm_number_options:default()).
+-spec release(ne_binaries()) ->
+                     numbers_return().
+-spec release(ne_binaries(), knm_number_options:options()) ->
+                     numbers_return().
+release(Props) ->
+    release(Props, knm_number_options:default()).
 
-delete(Props, Options) ->
-    delete(Props, Options, []).
+release(Props, Options) ->
+    release(Props, Options, []).
 
--spec delete(ne_binaries(), knm_number_options:options(), numbers_return()) ->
-                    numbers_return().
-delete([], _Options, Acc) -> Acc;
-delete([Num|Nums], Options, Acc) ->
-    Return = knm_number:delete(Num, Options),
-    delete(Nums, Options, [{Num, Return}|Acc]).
+-spec release(ne_binaries(), knm_number_options:options(), numbers_return()) ->
+                     numbers_return().
+release([], _Options, Acc) -> Acc;
+release([Num|Nums], Options, Acc) ->
+    Return = knm_number:release(Num, Options),
+    release(Nums, Options, [{Num, Return}|Acc]).
 
 %%--------------------------------------------------------------------
 %% @public

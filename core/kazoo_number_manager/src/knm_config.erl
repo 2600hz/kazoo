@@ -10,22 +10,18 @@
 
 -define(LOCALITY_CONFIG_CAT, <<"number_manager.locality">>).
 
+-spec should_permanently_delete() -> boolean().
+-spec should_permanently_delete(boolean()) -> boolean().
 -ifdef(TEST).
 should_permanently_delete() ->
     'false'.
 should_permanently_delete(Default) ->
     Default.
 -else.
-
--spec should_permanently_delete() -> boolean().
--spec should_permanently_delete(boolean()) -> boolean().
 should_permanently_delete() ->
     should_permanently_delete('false').
 should_permanently_delete(Default) ->
-    whapps_config:get_is_true(?KNM_CONFIG_CAT
-                              ,<<"should_permanently_delete">>
-                              ,Default
-                             ).
+    whapps_config:get_is_true(?KNM_CONFIG_CAT, <<"should_permanently_delete">>, Default).
 -endif.
 
 -spec released_state() -> ne_binary().
@@ -37,10 +33,7 @@ released_state() ->
 released_state(Default) -> Default.
 -else.
 released_state(Default) ->
-    whapps_config:get_binary(?KNM_CONFIG_CAT
-                             ,<<"released_state">>
-                             ,Default
-                            ).
+    whapps_config:get_binary(?KNM_CONFIG_CAT, <<"released_state">>, Default).
 -endif.
 
 -spec default_locality_url() -> api_binary().
