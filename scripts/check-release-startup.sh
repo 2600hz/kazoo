@@ -1,16 +1,18 @@
-#!/bin/bash -x
-
-runtime0=10  # seconds
-runtime1=11  # seconds
-runtime2=12  # seconds
-rel=${REL:-whistle_apps}  # whistle_apps | ecallmgr | ...
+#!/bin/bash
 
 [[ ! -d _rel ]] && echo 'Cannot find _rel/ Is the release built?' && exit -1
 
 echo 'Checking the startup of the release...'
 
-sleep $runtime0 && ACT=stop REL=$rel make release &
-sleep $runtime1 && ACT=stop REL=$rel make release &
-sleep $runtime2 && ACT=stop REL=$rel make release &
+rel=${REL:-whistle_apps}  # whistle_apps | ecallmgr | ...
+[[ $rel != *@* ]] && rel=$rel@127.0.0.1
+
+[[ $rel != whistle_apps* ]] && export KAZOO_APPS='ecallmgr'
+
+function stop() {
+    erl -noshell -setcookie change_me -name stopper@${rel##*@} -eval "ok = rpc:call('$rel', init, stop, [])." -s init stop
+}
+
+sleep 180 && stop &
 
 REL=$rel make release

@@ -14,7 +14,7 @@ sudo: false
 
 services:
   - rabbitmq
-#  - couchdb
+  - couchdb
 
 addons:
   apt:
@@ -41,7 +41,7 @@ after_success:
   - files="$(git diff --name-only master... -- application/ core/)" || true && echo $files
   - make build-plt
   - ./scripts/check-dialyzer.escript .kazoo.plt $files
-  - make build-release
+  - make build-ci-release
   - # ERL_LIBS="$HOME/proper" ERLC_OPTS='-DPROPER' make compile-test
   - # ERL_LIBS="$HOME/proper" make eunit
   - make compile-test
