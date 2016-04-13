@@ -1,0 +1,3 @@
+# Uncomment next line if your host uses IPv6 dns names
+#PROTO_DIST=inet6_tcp
+
