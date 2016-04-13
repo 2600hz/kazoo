@@ -22,6 +22,7 @@
          ,db_create/1
          ,db_compact/1
          ,db_view_cleanup/1
+         ,db_view_update/2, db_view_update/3
          ,db_delete/1
          ,db_replicate/1
          ,db_archive/1, db_archive/2
@@ -316,6 +317,20 @@ db_view_cleanup(DbName) when ?VALID_DBNAME ->
 db_view_cleanup(DbName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> db_view_cleanup(Db);
+        {'error', _}=E -> E
+    end.
+
+-spec db_view_update(ne_binary(), wh_proplist()) -> boolean().
+-spec db_view_update(ne_binary(), wh_proplist(), boolean()) -> boolean().
+
+db_view_update(DbName, Views) ->
+    db_view_update(DbName, Views, 'false').
+
+db_view_update(DbName, Views, Remove) when ?VALID_DBNAME ->
+    kzs_db:db_view_update(kzs_plan:plan(DbName), DbName, Views, Remove);
+db_view_update(DbName, Views, Remove) ->
+    case maybe_convert_dbname(DbName) of
+        {'ok', Db} -> db_view_update(Db, Views, Remove);
         {'error', _}=E -> E
     end.
 
