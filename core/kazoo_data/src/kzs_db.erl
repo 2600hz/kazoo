@@ -166,6 +166,6 @@ update_views([Found|Finds], Db, Views, Remove, Server) ->
         View2 ->
             lager:debug("updating view '~s' in '~s'", [Id, Db]),
             Rev = wh_doc:revision(Doc),
-            _ = kzs_doc:ensure_saved(Server, Db, wh_doc:set_revision(View2, Rev)),
+            _ = kzs_doc:ensure_saved(Server, Db, wh_doc:set_revision(View2, Rev), []),
             update_views(Finds, Db, props:delete(Id, Views), Remove, Server)
     end.
