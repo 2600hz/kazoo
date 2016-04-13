@@ -10,7 +10,7 @@
 
 
 %% Doc related
--export([open_cache_doc/3
+-export([open_cache_doc/3, open_cache_doc/4
          ,add_to_doc_cache/3
          ,flush_cache_doc/2
          ,flush_cache_doc/3
@@ -33,6 +33,25 @@ open_cache_doc(DbName, DocId, Options) ->
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
             case kz_datamgr:open_doc(DbName, DocId, remove_cache_options(Options)) of
+                {'error', _}=E ->
+                    maybe_cache_failure(DbName, DocId, Options, E),
+                    E;
+                {'ok', JObj}=Ok ->
+                    add_to_doc_cache(DbName, DocId, JObj),
+                    Ok
+            end
+    end.
+
+-spec open_cache_doc(map(), text(), ne_binary(), wh_proplist()) ->
+                            {'ok', wh_json:object()} |
+                            data_error() |
+                            {'error', 'not_found'}.
+open_cache_doc(Server, DbName, DocId, Options) ->
+    case kz_cache:peek_local(?KZ_DATA_CACHE, {?MODULE, DbName, DocId}) of
+        {'ok', {'error', _}=E} -> E;
+        {'ok', _}=Ok -> Ok;
+        {'error', 'not_found'} ->
+            case kzs_doc:open_doc(Server, DbName, DocId, remove_cache_options(Options)) of
                 {'error', _}=E ->
                     maybe_cache_failure(DbName, DocId, Options, E),
                     E;
