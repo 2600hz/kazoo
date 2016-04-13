@@ -134,7 +134,7 @@ db_view_update(#{}=Map, DbName, Views, Remove) ->
                           do_db_view_update(#{server => M1}, DbName, Views, Remove)
                   end, Others).
 
--spec do_db_view_update(map(), ne_binary(), wh_proplist(), boolean()) -> boolean().    
+-spec do_db_view_update(map(), ne_binary(), wh_proplist(), boolean()) -> boolean().
 do_db_view_update(#{}=Server, Db, Views, Remove) ->
     case kzs_view:all_design_docs(Server, Db, ['include_docs']) of
         {'ok', Found} -> update_views(Found, Db, Views, Remove, Server);
