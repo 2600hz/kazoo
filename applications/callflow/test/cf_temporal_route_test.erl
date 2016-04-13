@@ -7,8 +7,8 @@
 %%%-------------------------------------------------------------------
 -module(cf_temporal_route_test).
 
--include("../src/callflow.hrl").
--include("../src/module/cf_temporal_route.hrl").
+-include("callflow.hrl").
+-include("module/cf_temporal_route.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 sort_wdays_test() ->

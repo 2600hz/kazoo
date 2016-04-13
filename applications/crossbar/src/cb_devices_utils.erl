@@ -10,7 +10,7 @@
 
 -export([is_ip_unique/2]).
 
--include("./crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(AUTHZ_ID, <<"authorizing_id">>).
 

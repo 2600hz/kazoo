@@ -14,7 +14,7 @@
          ,start_mod/1, stop_mod/1
         ]).
 
--include("./crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(USE_COMPRESSION, whapps_config:get_is_true(?CONFIG_CAT, <<"compress_response_body">>, 'true')).
 

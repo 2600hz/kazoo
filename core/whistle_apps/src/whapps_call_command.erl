@@ -11,7 +11,7 @@
 %%%-------------------------------------------------------------------
 -module(whapps_call_command).
 
--include("./whapps_call_command.hrl").
+-include("whapps_call_command.hrl").
 
 -export([presence/2, presence/3, presence/4, presence/5]).
 -export([channel_status/1, channel_status/2
