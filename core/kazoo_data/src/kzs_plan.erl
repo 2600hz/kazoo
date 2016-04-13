@@ -203,13 +203,13 @@ dataplan_match(Classification, Plan) ->
              } = GAtt,
             AttHandler = wh_util:to_atom(AttHandlerBin,'true'),
             Params = maps:merge(AttSettings, maps:get(<<"params">>, CAtt, #{})),
-            X = maps:fold(fun(K, V, Acc) -> Acc#{wh_util:to_atom(K, 'true') => V} end, #{}, Params),
 
             #{tag => Tag
              ,server => Server
              ,others => Others
              ,att_proxy => 'true'
-             ,att_handler => {AttHandler, X}
+             ,att_post_handler => att_post_handler(CAtt)
+             ,att_handler => {AttHandler, map_keys_to_atoms(Params)}
              }
     end.
 
@@ -243,9 +243,13 @@ dataplan_match(Classification, DocType, Plan) ->
             #{tag => Tag
              ,server => Server
              ,att_proxy => 'true'
+             ,att_post_handler => att_post_handler(TypeAttMap)
              ,att_handler => {AttHandler, map_keys_to_atoms(Params)}
              }
     end.
+
+att_post_handler(#{<<"stub">> := 'true'}) -> 'stub';
+att_post_handler(#{}) -> 'external'.
 
 -spec fetch_dataplans(ne_binaries()) -> map().
 fetch_dataplans([Key | Keys]) ->
