@@ -15,6 +15,8 @@
          ,public_fields/1
          ,private_fields/1
          ,attachments/1, attachments/2
+         ,stub_attachments/1, stub_attachments/2
+         ,external_attachments/1, external_attachments/2
          ,attachment_names/1
          ,attachment/1, attachment/2, attachment/3
 
@@ -63,6 +65,11 @@
 -define(KEY_PVT_TYPE, <<"pvt_type">>).
 -define(KEY_SOFT_DELETED, <<"pvt_deleted">>).
 -define(KEY_VSN, <<"pvt_vsn">>).
+-define(KEY_EXTERNAL_ATTACHMENTS, <<"pvt_attachments">>).
+
+%% Helper Macros
+-define(KEYS_ATTACHMENTS, [?KEY_ATTACHMENTS, ?KEY_EXTERNAL_ATTACHMENTS]).
+-define(KEYS_ATTACHMENTS(A), [ [Key, A] || Key <- ?KEYS_ATTACHMENTS]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -204,7 +211,32 @@ private_fields(JObj) -> wh_json:filter(fun({K, _}) -> is_private_key(K) end, JOb
 attachments(JObj) ->
     attachments(JObj, 'undefined').
 attachments(JObj, Default) ->
-    wh_json:get_value(?KEY_ATTACHMENTS, JObj, Default).
+    A1 = wh_json:get_value(?KEY_ATTACHMENTS, JObj, wh_json:new()),
+    A2 = wh_json:get_value(?KEY_EXTERNAL_ATTACHMENTS, JObj, wh_json:new()),
+    case wh_json:merge_jobjs(A1, A2) of
+        {[]} -> Default;
+        A3 -> A3
+    end.
+
+-spec stub_attachments(wh_json:object()) -> api_object().
+-spec stub_attachments(wh_json:object(), Default) -> wh_json:object() | Default.
+stub_attachments(JObj) ->
+    stub_attachments(JObj, 'undefined').
+stub_attachments(JObj, Default) ->
+    case wh_json:get_value(?KEY_ATTACHMENTS, JObj, wh_json:new()) of
+        {[]} -> Default;
+        A3 -> A3
+    end.
+
+-spec external_attachments(wh_json:object()) -> api_object().
+-spec external_attachments(wh_json:object(), Default) -> wh_json:object() | Default.
+external_attachments(JObj) ->
+    external_attachments(JObj, 'undefined').
+external_attachments(JObj, Default) ->
+    case wh_json:get_value(?KEY_EXTERNAL_ATTACHMENTS, JObj, wh_json:new()) of
+        {[]} -> Default;
+        A3 -> A3
+    end.
 
 -spec attachment_names(wh_json:object()) -> ne_binaries().
 attachment_names(JObj) ->
@@ -254,18 +286,18 @@ delete_attachment(JObj, AName) ->
 maybe_remove_attachments(JObj) ->
     case attachments(JObj) of
         'undefined' -> {'false', JObj};
-        _Attachments -> {'true', wh_json:delete_key(?KEY_ATTACHMENTS, JObj)}
+        _Attachments -> {'true', wh_json:delete_keys(?KEYS_ATTACHMENTS, JObj)}
     end.
 
 -spec maybe_remove_attachments(wh_json:object(), api_object()) -> wh_json:object().
 maybe_remove_attachments(JObj, 'undefined') -> JObj;
 maybe_remove_attachments(JObj, _Attachments) ->
-    wh_json:delete_key(?KEY_ATTACHMENTS, JObj).
+    wh_json:delete_keys(?KEYS_ATTACHMENTS, JObj).
 
 -spec maybe_remove_attachment(wh_json:object(), ne_binary(), api_object()) -> wh_json:object().
 maybe_remove_attachment(JObj, _AName, 'undefined') -> JObj;
 maybe_remove_attachment(JObj, AName, _AMeta) ->
-    wh_json:delete_key([?KEY_ATTACHMENTS, AName], JObj).
+    wh_json:delete_keys(?KEYS_ATTACHMENTS(AName), JObj).
 
 -spec revision(wh_json:object()) -> api_binary().
 revision(JObj) ->
