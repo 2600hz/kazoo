@@ -1,19 +1,15 @@
+## Call Parking
+
+### About Call Parking
+
 Parking will place a call in a numbered "slot" where it will remain until it is retrieved or the caller hangs up.
 
-## Example of `data` payload
+### Schema for callflow action
 
-    "data": {
-        "action": "{ACTION}"
-        ,"default_ringback_timeout": {RINGBACK}
-        ,"default_callback_timeout": {CALLBACK}
-        ,"default_presence_type": {PRESENCE_TYPE}
-        ,"slots": {}
-    }
-
-## Mandatory fields
+#### Mandatory fields
 **action** - action (see below)
 
-## Optional fields
+#### Optional fields
 
 * **{ACTION}**: default is `park`
     * `auto` - If the provided slot has an active call then retrieve it, if not then the calling channel is parked.
@@ -26,8 +22,17 @@ Parking will place a call in a numbered "slot" where it will remain until it is 
     * `confirmed` - Indicate that the call state is 'answered'.  
 * **{SLOTS}** - This object is used to override the options on a per-slot bases where the object key is the slot number.  When setting parameters per-slot the leading 'default_' should be removed.
 
-### Slots format
-#### Example
+#### Example of `data` payload
+
+    "data": {
+        "action": "{ACTION}"
+        ,"default_ringback_timeout": {RINGBACK}
+        ,"default_callback_timeout": {CALLBACK}
+        ,"default_presence_type": {PRESENCE_TYPE}
+        ,"slots": {}
+    }
+
+#### Example of `slots` payload
 
     "100": {
         "ringback_timeout": "{RINGBACK}"
@@ -35,11 +40,11 @@ Parking will place a call in a numbered "slot" where it will remain until it is 
         ,"presence_type": "{PRESENCE_TYPE}"
     }
 
-## Children Options
+### Example Callflow
 
 When a ringback fails the park module will look for a child key which matches the parking slot number.  If one is found then the callflow is branched to that child, otherwise the call is re-parked.
 
-## Example Flow
+#### Example Flow
 
 ```
 {  
