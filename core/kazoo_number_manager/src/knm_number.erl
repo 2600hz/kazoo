@@ -114,10 +114,8 @@ is_number(_) -> 'false'.
 %% Note: get/1,2 should not throw, instead returns: {ok,_} | {error,_} | ...
 %% @end
 %%--------------------------------------------------------------------
--spec get(ne_binary()) ->
-                 knm_number_return().
--spec get(ne_binary(), knm_number_options:options()) ->
-                 knm_number_return().
+-spec get(ne_binary()) -> knm_number_return().
+-spec get(ne_binary(), knm_number_options:options()) -> knm_number_return().
 get(Num) ->
     get(Num, knm_number_options:default()).
 

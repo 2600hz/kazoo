@@ -364,7 +364,8 @@ classified_number(Context, Number, Classifier) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?FIX) ->
-    %% TODO
+    AccountDb = cb_context:account_db(Context),
+    'ok' = knm_maintenance:fix_account_numbers(AccountDb),
     summary(Context);
 post(Context, ?COLLECTION) ->
     CB = fun() -> post(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
