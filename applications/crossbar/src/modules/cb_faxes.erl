@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%%
@@ -50,8 +50,8 @@
 -define(ACCEPTED_TYPES, [{'from_binary', ?ACCEPTED_MIME_TYPES}]).
 
 -define(OUTGOING_FAX_DOC_MAP, [{<<"created">>, <<"pvt_created">>}
-                               ,{<<"delivered">>, fun get_delivered_date/1}
-                               ,{<<"status">>, fun get_execution_status/2}
+                              ,{<<"delivered">>, fun get_delivered_date/1}
+                              ,{<<"status">>, fun get_execution_status/2}
                               ]).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".fax">>).
@@ -104,22 +104,22 @@ allowed_methods(?OUTBOX) ->
 allowed_methods(?OUTGOING) ->
     [?HTTP_GET, ?HTTP_PUT].
 
-allowed_methods(?SMTP_LOG, _Id) ->
+allowed_methods(?SMTP_LOG, _AttemptId) ->
     [?HTTP_GET];
-allowed_methods(?INCOMING, _Id) ->
+allowed_methods(?INCOMING, _FaxId) ->
     [?HTTP_GET, ?HTTP_DELETE];
-allowed_methods(?INBOX, _Id) ->
+allowed_methods(?INBOX, _FaxId) ->
     [?HTTP_GET, ?HTTP_DELETE];
-allowed_methods(?OUTBOX, _Id) ->
+allowed_methods(?OUTBOX, _FaxId) ->
     [?HTTP_GET, ?HTTP_DELETE];
-allowed_methods(?OUTGOING, _Id) ->
+allowed_methods(?OUTGOING, _FaxJobId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
-allowed_methods(?INBOX, _Id, ?ATTACHMENT) ->
+allowed_methods(?INBOX, _FaxId, ?ATTACHMENT) ->
     [?HTTP_GET, ?HTTP_DELETE];
-allowed_methods(?OUTBOX, _Id, ?ATTACHMENT) ->
+allowed_methods(?OUTBOX, _FaxId, ?ATTACHMENT) ->
     [?HTTP_GET, ?HTTP_DELETE];
-allowed_methods(?INCOMING, _Id, ?ATTACHMENT) ->
+allowed_methods(?INCOMING, _FaxJobId, ?ATTACHMENT) ->
     [?HTTP_GET, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------

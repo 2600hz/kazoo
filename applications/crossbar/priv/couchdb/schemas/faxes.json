@@ -13,41 +13,7 @@
             "required": false,
             "type": "integer"
         },
-        "callback": {
-            "description": "A URL to send results to",
-            "properties": {
-                "method": {
-                    "description": "The HTTP method used for the callback",
-                    "enum": [
-                        "post",
-                        "put"
-                    ],
-                    "name": "Method",
-                    "required": false,
-                    "type": "string"
-                },
-                "type": {
-                    "description": "The content-type used for the body of the callback",
-                    "enum": [
-                        "json",
-                        "www-url-form-encoded"
-                    ],
-                    "name": "Content-Type",
-                    "required": false,
-                    "type": "string"
-                },
-                "url": {
-                    "description": "The URL to call back with the results",
-                    "name": "URL",
-                    "required": false,
-                    "type": "string"
-                }
-            },
-            "required": false,
-            "type": "object"
-        },
         "document": {
-            "default": {},
             "description": "Parameters related to the storage of a fax document",
             "properties": {
                 "content": {

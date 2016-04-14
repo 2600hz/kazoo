@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015, 2600Hz
+%%% @copyright (C) 2015-2016, 2600Hz
 %%% @doc
 %%% Call Event JSON Object
 %%% @end
@@ -20,12 +20,14 @@
          ,event_name/1
          ,hangup_cause/1, hangup_code/1, disposition/1
          ,application_name/1, application_response/1
+         ,application_event/1, application_data/1
          ,response_message/1, response_code/1
          ,account_id/1
          ,owner_id/1
          ,timestamp/1
          ,ringing_seconds/1, billing_seconds/1, duration_seconds/1
          ,is_call_forwarded/1, is_call_forwarded/2
+         ,error_message/1
         ]).
 
 -include("kz_documents.hrl").
@@ -103,6 +105,14 @@ disposition(JObj) ->
 application_name(JObj) ->
     wh_json:get_value(<<"Application-Name">>, JObj).
 
+-spec application_event(wh_json:object()) -> api_binary().
+application_event(JObj) ->
+    wh_json:get_value(<<"Application-Event">>, JObj).
+
+-spec application_data(wh_json:object()) -> wh_json:object().
+application_data(JObj) ->
+    wh_json:get_value(<<"Application-Data">>, JObj, wh_json:new()).
+
 -spec application_response(wh_json:object()) -> api_binary().
 application_response(JObj) ->
     wh_json:get_value(<<"Application-Response">>, JObj).
@@ -149,3 +159,7 @@ is_call_forwarded(JObj, Default) ->
         Default -> Default;
         IsForwarded -> wh_util:is_true(IsForwarded)
     end.
+
+-spec error_message(wh_json:object()) -> api_binary().
+error_message(JObj) ->
+    wh_json:get_value(<<"Error-Message">>, JObj).

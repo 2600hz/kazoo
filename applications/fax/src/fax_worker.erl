@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -44,25 +44,24 @@
 -type state() :: #state{}.
 
 
--define(BINDINGS, [
-                   {'self', []}
+-define(BINDINGS, [{'self', []}
                   ,{'fax', [{'restrict_to', ['query_status']}]}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_tx_resp'}
-                      ,[{<<"resource">>, <<"offnet_resp">>}]
+                     ,[{<<"resource">>, <<"offnet_resp">>}]
                      }
-                     ,{{?MODULE, 'handle_fax_event'}
-                       ,[{<<"call_event">>, <<"CHANNEL_FAX_STATUS">>}]
-                      }
-                     ,{{?MODULE, 'handle_channel_destroy'}
-                       ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
-                      }
-                     ,{{?MODULE, 'handle_channel_replaced'}
-                       ,[{<<"call_event">>, <<"CHANNEL_REPLACED">>}]
-                      }
-                     ,{{?MODULE, 'handle_job_status_query'}
-                       ,[{<<"fax">>, <<"query_status">>}]
-                      }
+                    ,{{?MODULE, 'handle_fax_event'}
+                     ,[{<<"call_event">>, <<"CHANNEL_FAX_STATUS">>}]
+                     }
+                    ,{{?MODULE, 'handle_channel_destroy'}
+                     ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
+                     }
+                    ,{{?MODULE, 'handle_channel_replaced'}
+                     ,[{<<"call_event">>, <<"CHANNEL_REPLACED">>}]
+                     }
+                    ,{{?MODULE, 'handle_job_status_query'}
+                     ,[{<<"fax">>, <<"query_status">>}]
+                     }
                     ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
@@ -74,32 +73,36 @@
 
 -define(COUNT_PAGES_CMD, <<"echo -n `tiffinfo ~s | grep 'Page Number' | grep -c 'P'`">>).
 -define(CONVERT_PDF_CMD, <<"/usr/bin/gs -q "
-                            "-r204x98 "
-                            "-g1728x1078 "
-                            "-dNOPAUSE "
-                            "-dBATCH "
-                            "-dSAFER "
-                            "-sDEVICE=tiffg3 "
-                            "-sOutputFile=~s -- ~s > /dev/null "
-                            "&& echo -n \"success\"">>).
+                           "-r204x98 "
+                           "-g1728x1078 "
+                           "-dNOPAUSE "
+                           "-dBATCH "
+                           "-dSAFER "
+                           "-sDEVICE=tiffg3 "
+                           "-sOutputFile=~s -- ~s > /dev/null "
+                           "&& echo -n \"success\""
+                         >>).
 -define(CONVERT_IMAGE_CMD, <<"convert -density 204x98 "
-                            "-units PixelsPerInch "
-                            "-size 1728x1078 ~s ~s > /dev/null "
-                            "&& echo -n success">>).
+                             "-units PixelsPerInch "
+                             "-size 1728x1078 ~s ~s > /dev/null "
+                             "&& echo -n success"
+                           >>).
 -define(CONVERT_OO_DOC_CMD, <<"unoconv -c ~s -f pdf --stdout ~s "
-                            "| /usr/bin/gs -q "
-                            "-r204x98 "
-                            "-g1728x1078 "
-                            "-dNOPAUSE "
-                            "-dBATCH "
-                            "-dSAFER "
-                            "-sDEVICE=tiffg3 "
-                            "-sOutputFile=~s - > /dev/null"
-                            "&& echo -n success">>).
+                              "| /usr/bin/gs -q "
+                              "-r204x98 "
+                              "-g1728x1078 "
+                              "-dNOPAUSE "
+                              "-dBATCH "
+                              "-dSAFER "
+                              "-sDEVICE=tiffg3 "
+                              "-sOutputFile=~s - > /dev/null"
+                              "&& echo -n success"
+                            >>).
 
 -define(CALLFLOW_LIST, <<"callflow/listing_by_number">>).
 -define(ENSURE_CID_KEY, <<"ensure_valid_caller_id">>).
 -define(DEFAULT_ENSURE_CID, whapps_config:get_is_true(?CONFIG_CAT, ?ENSURE_CID_KEY, 'true')).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -116,27 +119,28 @@ start_link(_) ->
                                       ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
 
+-spec handle_tx_resp(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_tx_resp(JObj, Props) ->
     Srv = props:get_value('server', Props),
-    gen_server:cast(Srv, {'tx_resp', wh_json:get_value(<<"Msg-ID">>, JObj), JObj}).
+    gen_server:cast(Srv, {'tx_resp', wh_api:msg_id(JObj), JObj}).
 
-
+-spec handle_fax_event(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_fax_event(JObj, Props) ->
     Srv = props:get_value('server', Props),
-    JobId = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Authorizing-ID">>], JObj),
-    Event = wh_json:get_value(<<"Application-Event">>, JObj),
+    JobId = kz_call_event:authorizing_id(JObj),
+    Event = kz_call_event:application_event(JObj),
     gen_server:cast(Srv, {'fax_status', Event , JobId, JObj}).
 
--spec handle_channel_destroy(wh_json:object(), wh_proplist()) -> any().
+-spec handle_channel_destroy(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_channel_destroy(JObj, Props) ->
     Srv = props:get_value('server', Props),
-    JobId = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Authorizing-ID">>], JObj),
+    JobId = kz_call_event:authorizing_id(JObj),
     gen_server:cast(Srv, {'channel_destroy', JobId, JObj}).
 
--spec handle_channel_replaced(wh_json:object(), wh_proplist()) -> any().
+-spec handle_channel_replaced(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_channel_replaced(JObj, Props) ->
     Srv = props:get_value('server', Props),
-    JobId = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Authorizing-ID">>], JObj),
+    JobId = kz_call_event:authorizing_id(JObj),
     gen_server:cast(Srv, {'channel_replaced', JobId, JObj}).
 
 -spec handle_job_status_query(wh_json:object(), wh_proplist()) -> any().
@@ -144,8 +148,8 @@ handle_job_status_query(JObj, Props) ->
     'true' = wapi_fax:query_status_v(JObj),
     Srv = props:get_value('server', Props),
     JobId = wh_json:get_value(<<"Job-ID">>, JObj),
-    Queue = wh_json:get_value(<<"Server-ID">>, JObj),
-    MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
+    Queue = wh_api:server_id(JObj),
+    MsgId = wh_api:msg_id(JObj),
     gen_server:cast(Srv, {'query_status', JobId, Queue, MsgId, JObj}).
 
 %%%===================================================================
@@ -197,14 +201,14 @@ handle_cast({'tx_resp', JobId, JObj}, #state{job_id=JobId
                                              ,job=Job
                                              ,pool=Pid
                                             }=State) ->
-    case wh_json:get_value(<<"Response-Message">>, JObj) of
+    case kz_call_event:response_message(JObj) of
         <<"SUCCESS">> ->
             lager:debug("received successful attempt to originate fax, continue processing"),
             send_status(State, <<"received successful attempt to originate fax">>),
             {'noreply', State#state{status = <<"negotiating">>}};
         _Else ->
             lager:debug("received failed attempt to tx fax, releasing job: ~s", [_Else]),
-            send_error_status(State, wh_json:get_value(<<"Error-Message">>, JObj)),
+            send_error_status(State, kz_call_event:error_message(JObj)),
             release_failed_job('tx_resp', JObj, Job),
             gen_server:cast(Pid, {'job_complete', self()}),
             {'noreply', reset(State)}
@@ -213,12 +217,12 @@ handle_cast({'tx_resp', JobId2, _}, #state{job_id=JobId}=State) ->
     lager:debug("received txresp for ~s but this JobId is ~s",[JobId2, JobId]),
     {'noreply', State};
 handle_cast({'channel_destroy', JobId, JObj}, #state{job_id=JobId
-                                                     ,job=Job
-                                                     ,pool=Pid
-                                                     ,fax_status='undefined'
+                                                    ,job=Job
+                                                    ,pool=Pid
+                                                    ,fax_status='undefined'
                                                     }=State) ->
     lager:debug("received channel destroy for ~s : ~p",[JobId, JObj]),
-    send_error_status(State, wh_json:get_value(<<"Hangup-Cause">>, JObj)),
+    send_error_status(State, kz_call_event:hangup_cause(JObj)),
     _ = release_failed_job('channel_destroy', JObj, Job),
     gen_server:cast(Pid, {'job_complete', self()}),
     {'noreply', reset(State)};
@@ -229,7 +233,7 @@ handle_cast({'channel_destroy', JobId2, _JObj}, #state{job_id=JobId}=State) ->
     lager:debug("received channel destroy for ~s but this JobId is ~s",[JobId2, JobId]),
     {'noreply', State};
 handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}, State) ->
-    Data = wh_json:get_value(<<"Application-Data">>, JObj, wh_json:new()),
+    Data = kz_call_event:application_data(JObj),
     TransferRate = wh_json:get_integer_value(<<"Fax-Transfer-Rate">>, Data, 1),
     lager:debug("fax status - negociate result - ~s : ~p",[JobId, TransferRate]),
     Status = list_to_binary(["Fax negotiated at ", wh_util:to_list(TransferRate)]),
@@ -240,25 +244,25 @@ handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}, State) ->
 handle_cast({'fax_status', <<"pageresult">>, JobId, JObj}
             ,#state{pages=Pages}=State
            ) ->
-    Data = wh_json:get_value(<<"Application-Data">>, JObj, wh_json:new()),
+    Data = kz_call_event:application_data(JObj),
     Page = wh_json:get_integer_value(<<"Fax-Transferred-Pages">>, Data, 0),
     lager:debug("fax status - page result - ~s : ~p : ~p"
-                ,[JobId, Page, wh_util:current_tstamp()]
+               ,[JobId, Page, wh_util:current_tstamp()]
                ),
     Status = list_to_binary(["Sent Page ", wh_util:to_list(Page), " of ", wh_util:to_list(Pages)]),
     send_status(State#state{page=Page}, Status, Data),
     {'noreply', State#state{page=Page
-                            ,status=Status
-                            ,fax_status=Data
+                           ,status=Status
+                           ,fax_status=Data
                            }};
 handle_cast({'fax_status', <<"result">>, JobId, JObj}
-            ,#state{job_id=JobId
-                    ,job=Job
-                    ,pool=Pid
-                   }=State
+           ,#state{job_id=JobId
+                  ,job=Job
+                  ,pool=Pid
+                  }=State
            ) ->
-    Data = wh_json:get_value(<<"Application-Data">>, JObj, wh_json:new()),
-    case wh_json:is_true([<<"Application-Data">>, <<"Fax-Success">>], JObj) of
+    Data = kz_call_event:application_data(JObj),
+    case wh_json:is_true([<<"Fax-Success">>], Data) of
         'true' ->
             send_status(State, <<"Fax Successfuly sent">>, ?FAX_END, Data),
             release_successful_job(JObj, Job);
@@ -272,11 +276,11 @@ handle_cast({'fax_status', Event, JobId, _}, State) ->
     lager:debug("fax status ~s - ~s event not handled",[JobId, Event]),
     {'noreply', State};
 handle_cast({'query_status', JobId, Queue, MsgId, _JObj}
-            ,#state{status=Status
-                    ,job_id=JobId
-                    ,account_id=AccountId
-                    ,fax_status=Data
-                   }=State
+           ,#state{status=Status
+                  ,job_id=JobId
+                  ,account_id=AccountId
+                  ,fax_status=Data
+                  }=State
            ) ->
     lager:debug("query fax status ~s handled by this queue",[JobId]),
     send_reply_status(Queue, MsgId, JobId, Status, AccountId, Data),
@@ -303,12 +307,12 @@ handle_cast({'attempt_transmission', Pid, Job}, #state{queue_name=Q}=State) ->
             lager:debug("acquired job ~s", [JobId]),
             Status = <<"preparing">>,
             NewState = State#state{job_id = JobId
-                                   ,pool = Pid
-                                   ,job = JObj
-                                   ,account_id = wh_doc:account_id(JObj)
-                                   ,status = Status
-                                   ,page = 0
-                                   ,fax_status = 'undefined'
+                                  ,pool = Pid
+                                  ,job = JObj
+                                  ,account_id = wh_doc:account_id(JObj)
+                                  ,status = Status
+                                  ,page = 0
+                                  ,fax_status = 'undefined'
                                   },
             send_status(NewState, <<"job acquired">>, ?FAX_START, 'undefined'),
             gen_server:cast(self(), 'prepare_job'),
@@ -319,8 +323,8 @@ handle_cast({'attempt_transmission', Pid, Job}, #state{queue_name=Q}=State) ->
             {'noreply', reset(State)}
     end;
 handle_cast('prepare_job', #state{job_id=JobId
-                                  ,job=JObj
-                                  ,pool=Pid
+                                 ,job=JObj
+                                 ,pool=Pid
                                  }=State) ->
     send_status(State, <<"fetching document to send">>, ?FAX_PREPARE, 'undefined'),
     case fetch_document(JObj) of
@@ -350,46 +354,46 @@ handle_cast('prepare_job', #state{job_id=JobId
             {'noreply', reset(State)}
     end;
 handle_cast('count_pages', #state{file=File
-                                  ,job=JObj
+                                 ,job=JObj
                                  }=State) ->
     {NumberOfPages, FileSize} = get_sizes(File),
     Values = [{<<"pvt_pages">>, NumberOfPages}
-              ,{<<"pvt_size">>, FileSize}
+             ,{<<"pvt_size">>, FileSize}
              ],
     NewState = case NumberOfPages of
                    Num when Num == 0 ->
                        State#state{job = wh_json:set_values(Values, JObj)
-                                   ,pages = Num
-                                   ,status = <<"unknown">>
+                                  ,pages = Num
+                                  ,status = <<"unknown">>
                                   };
                    _ ->
                        State#state{job=wh_json:set_values(Values, JObj)
-                                   ,pages=NumberOfPages
+                                  ,pages=NumberOfPages
                                   }
                end,
     gen_server:cast(self(), 'send'),
     {'noreply', NewState};
 handle_cast('send', #state{job_id=JobId
-                           ,job=JObj
-                           ,queue_name=Q
+                          ,job=JObj
+                          ,queue_name=Q
                           }=State) ->
     send_status(State, <<"ready to send">>, ?FAX_SEND, 'undefined'),
     send_fax(JobId, JObj, Q),
     {'noreply', State};
 handle_cast({'error', 'invalid_number', Number}, #state{job=JObj
-                                                        ,pool=Pid
+                                                       ,pool=Pid
                                                        }=State) ->
     send_error_status(State, <<"invalid fax number">>),
     release_failed_job('invalid_number', Number, JObj),
     gen_server:cast(Pid, {'job_complete', self()}),
-     {'noreply', reset(State)};
+    {'noreply', reset(State)};
 handle_cast({'error', 'invalid_cid', Number}, #state{job=JObj
-                                                     ,pool=Pid
+                                                    ,pool=Pid
                                                     }=State) ->
     send_error_status(State, <<"invalid fax cid number">>),
     release_failed_job('invalid_cid', Number, JObj),
     gen_server:cast(Pid, {'job_complete', self()}),
-     {'noreply', reset(State)};
+    {'noreply', reset(State)};
 handle_cast({'gen_listener', {'created_queue', QueueName}}, State) ->
     lager:debug("fax worker discovered queue name ~s", [QueueName]),
     {'noreply', State#state{queue_name=QueueName}};

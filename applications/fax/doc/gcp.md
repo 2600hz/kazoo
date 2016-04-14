@@ -4,7 +4,7 @@ Title: Google Cloud Printer
 Language: en-US
 */
 
-#Google Cloud Printer
+# Google Cloud Printer
 ## Features
 * No problem rendering. Google will render the document and deliver it as pdf to kazoo
 * Printer can be shared among people with google account without being tied to kazoo
