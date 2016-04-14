@@ -15,7 +15,6 @@ Looks for numbers using the carrier module set up for your account.
 
 ```shell
 curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/phone_numbers?prefix={PREFIX}&quantity={QUANTITY}&offset={OFFSET}
 ```
 
@@ -75,12 +74,12 @@ curl -v -X GET \
 
 ```json
 {
-    "auth_token": "1931484e3fba5777588176584828e7be",
+    "auth_token": "{AUTH_TOKEN}",
     "data": {
         "casquade_quantity": 0,
         "numbers": {
             "+14155555555": {
-                "assigned_to": "4b8c6fec4b2597882c0390202d195419",
+                "assigned_to": "{ACCOUNT_ID}",
                 "created": 63602230185,
                 "features": {},
                 "state": "in_service",
@@ -88,7 +87,7 @@ curl -v -X GET \
                 "used_by": "callflow"
             },
             "+14158865100": {
-                "assigned_to": "4b8c6fec4b2597882c0390202d195419",
+                "assigned_to": "{ACCOUNT_ID}",
                 "created": 63624719324,
                 "features": {},
                 "state": "in_service",
@@ -130,11 +129,11 @@ curl -v -X DELETE \
 
 ```json
 {
-    "auth_token": "694c7e1938aa213955fe600442c433f1",
+    "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "assigned_to": "009afc511c97b2ae693c6cc4920988e8",
+        "assigned_to": "{ACCOUNT_ID}",
         "created": 63627691442,
-        "id": "+14242424301",
+        "id": "{PHONENUMBER}",
         "state": "available",
         "updated": 63627691442
     },
@@ -148,7 +147,7 @@ curl -v -X DELETE \
 
 ```json
 {
-    "auth_token": "694c7e1938aa213955fe600442c433f1",
+    "auth_token": "{AUTH_TOKEN}",
     "data": {
         "message": "bad identifier",
         "not_found": "The number could not be found"
@@ -178,11 +177,11 @@ curl -v -X GET \
 
 ```json
 {
-    "auth_token": "1a82795e8759f62d77f6552de80ce32e",
+    "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "id": "+14155555555",
+        "id": "{PHONENUMBER}",
         "my_own_field": {},
-        "assigned_to": "4b8c6fec4b2597882c0390202d195419",
+        "assigned_to": "{ACCOUNT_ID}",
         "created": 63602230185,
         "features": {},
         "state": "in_service",
@@ -204,7 +203,7 @@ Possible reasons for failure:
 
 ```json
 {
-    "auth_token": "1a82795e8759f62d77f6552de80ce32e",
+    "auth_token": "{AUTH_TOKEN}",
     "data": {
         "message": "bad identifier",
         "not_found": "The number could not be found"
@@ -229,12 +228,12 @@ curl -v -X POST \
 
 ```json
 {
-    "auth_token": "694c7e1938aa213955fe600442c433f1",
+    "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "assigned_to": "009afc511c97b2ae693c6cc4920988e8",
+        "assigned_to": "{ACCOUNT_ID}",
         "created": 63627604811,
         "my_field": "some other value",
-        "id": "+14242424248",
+        "id": "{PHONENUMBER}",
         "state": "reserved",
         "updated": 63627605412
     },
@@ -263,12 +262,12 @@ curl -v -X PUT \
 
 ```json
 {
-    "auth_token": "9376332cc1c4ef5fc31371bfaa92ff0a",
+    "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "assigned_to": "009afc511c97b2ae693c6cc4920988e8",
+        "assigned_to": "{ACCOUNT_ID}",
         "created": 63627604811,
         "my_field": "my value",
-        "id": "+14242424248",
+        "id": "{PHONENUMBER}",
         "state": "reserved",
         "updated": 63627604811
     },
@@ -284,12 +283,12 @@ curl -v -X PUT \
 
 ```json
 {
-    "auth_token": "9376332cc1c4ef5fc31371bfaa92ff0a",
+    "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "cause": "+14242424246",
+        "cause": "{PHONENUMBER}",
         "code": 409,
         "error": "number_exists",
-        "message": "number +14242424246 already exists"
+        "message": "number {PHONENUMBER} already exists"
     },
     "error": "409",
     "message": "number_exists",
@@ -302,7 +301,7 @@ curl -v -X PUT \
 
 ```json
 {
-    "auth_token": "b913eb25a2bc681671414a9a8ca8a0e9",
+    "auth_token": "{AUTH_TOKEN}",
     "data": {
         "message": "unknown failure",
         "unauthorized": "Not authorized to perform requested number operation"
