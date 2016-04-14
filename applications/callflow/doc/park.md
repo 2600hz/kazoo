@@ -19,7 +19,7 @@ Parking will place a call in a numbered "slot" where it will remain until it is 
 * **{CALLBACK}** - When a parked call has remained parked for the {RINGBACK} duration the parker will be called for this time.  The default is set in the `system_config` database on the `callflow.park` document.
 * **{PRESENCE_TYPE}** - This parameter overrides the dialog state used for occupied slots.  The default can be set in the account db as an account config on `configs_callflow.park` or the `system_config` database on the `callflow.park` document.
     * `early` - Indicate that the call state is 'ringing', generally this causes the phones to attempt to pick up a ringing call as well as blink.
-    * `confirmed` - Indicate that the call state is 'answered'.  
+    * `confirmed` - Indicate that the call state is 'answered'.
 * **{SLOTS}** - This object is used to override the options on a per-slot bases where the object key is the slot number.  When setting parameters per-slot the leading 'default_' should be removed.
 
 #### Example of `data` payload
@@ -47,30 +47,30 @@ When a ringback fails the park module will look for a child key which matches th
 #### Example Flow
 
 ```
-{  
+{
    ...
-   "flow":{  
-      "data":{  
+   "flow":{
+      "data":{
          "action":"auto",
          "default_ringback_timeout":120000,
          "default_callback_timeout":30000,
-         "slots":{  
-            "100":{  
+         "slots":{
+            "100":{
                "ringback_timeout":10000
             },
-            "101":{  
+            "101":{
                "ringback_timeout":25000,
                "presence_type":"confirmed"
             }
          }
       },
       "module":"park",
-      "children":{  
-         "100":{  
-            "children":{  
+      "children":{
+         "100":{
+            "children":{
 
             },
-            "data":{  
+            "data":{
                "id":"8ca0e4c50aa1e2901d749307e19b2e4b"
             },
             "module":"voicemail"
