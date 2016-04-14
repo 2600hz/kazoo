@@ -25,7 +25,8 @@ get_all_number_dbs() ->
     {'ok', Dbs} = kz_datamgr:db_list(ViewOptions),
     [kz_http_util:urlencode(Db) || Db <- Dbs].
 
--spec pretty_print(ne_binary()) -> ne_binary().
+-spec pretty_print(api_binary()) -> ne_binary().
+pretty_print('undefined') -> <<"unknown">>;
 pretty_print(Number) ->
     case pretty_print_format(Number) of
         'undefined' -> Number;
