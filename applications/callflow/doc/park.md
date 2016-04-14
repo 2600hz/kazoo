@@ -1,4 +1,4 @@
-Parking will place a call in a numbered "slot" where it will reamain until it is retrieved or the caller hangs up.
+Parking will place a call in a numbered "slot" where it will remain until it is retrieved or the caller hangs up.
 
 ## Example of `data` payload
 
