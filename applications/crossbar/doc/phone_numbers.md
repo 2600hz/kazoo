@@ -131,13 +131,20 @@ curl -v -X DELETE \
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "assigned_to": "{ACCOUNT_ID}",
-        "created": 63627691442,
-        "id": "{PHONENUMBER}",
-        "state": "available",
-        "updated": 63627691442
+        "_read_only": {
+            "_id": "{PHONENUMBER}",
+            "pvt_assigned_to": "{ACCOUNT_ID}",
+            "pvt_created": 63627848588,
+            "pvt_db_name": "numbers%2F%2B1424",
+            "pvt_modified": 63627848588,
+            "pvt_module_name": "knm_local",
+            "pvt_previously_assigned_to": "{ACCOUNT_ID}",
+            "pvt_state": "available",
+            "pvt_type": "number"
+        },
+        "id": "{PHONENUMBER}"
     },
-    "request_id": "82f2a22ac4c0a1bfef214face6a746df",
+    "request_id": "df394a4f3175bfe9367919482dc7f217",
     "revision": "undefined",
     "status": "success"
 }
@@ -179,16 +186,23 @@ curl -v -X GET \
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
+        "_read_only": {
+            "_id": "{PHONENUMBER}",
+            "pvt_assigned_to": "{ACCOUNT_ID}",
+            "pvt_created": 63627848989,
+            "pvt_db_name": "numbers%2F%2B1424",
+            "pvt_modified": 63627848989,
+            "pvt_module_name": "knm_local",
+            "pvt_reserve_history": [
+                "{ACCOUNT_ID}"
+            ],
+            "pvt_state": "reserved",
+            "pvt_type": "number"
+        },
         "id": "{PHONENUMBER}",
-        "my_own_field": {},
-        "assigned_to": "{ACCOUNT_ID}",
-        "created": 63602230185,
-        "features": {},
-        "state": "in_service",
-        "updated": 63602230212,
-        "used_by": "callflow"
+        "my_own_field": {}
     },
-    "request_id": "e268c22be3076a12d8581ebab0d89cc8",
+    "request_id": "609d2ddbc57fbbce22b42be229b67840",
     "revision": "undefined",
     "status": "success"
 }
@@ -222,7 +236,7 @@ Possible reasons for failure:
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data": {"my_field": "some other value"}}' \
+    -d '{"data": {"my_own_field": "some other value"}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
 ```
 
@@ -230,14 +244,23 @@ curl -v -X POST \
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "assigned_to": "{ACCOUNT_ID}",
-        "created": 63627604811,
-        "my_field": "some other value",
+        "_read_only": {
+            "_id": "{PHONENUMBER}",
+            "pvt_assigned_to": "{ACCOUNT_ID}",
+            "pvt_created": 63627848989,
+            "pvt_db_name": "numbers%2F%2B1424",
+            "pvt_modified": 63627848989,
+            "pvt_module_name": "knm_local",
+            "pvt_reserve_history": [
+                "{ACCOUNT_ID}"
+            ],
+            "pvt_state": "reserved",
+            "pvt_type": "number"
+        },
         "id": "{PHONENUMBER}",
-        "state": "reserved",
-        "updated": 63627605412
+        "my_own_field": "some other value"
     },
-    "request_id": "60b34181efe0baac85fc7dae1e8ab7ce",
+    "request_id": "609d2ddbc57fbbce22b42be229b67840",
     "revision": "undefined",
     "status": "success"
 }
@@ -247,12 +270,14 @@ curl -v -X POST \
 
 Adds a number to the database, returning its properties.
 
+Note: payload is facultative.
+
 > PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
 
 ```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data": {"my_field": "my value"}}' \
+    -d '{"data": {"my_own_field": {}}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
 ```
 
@@ -264,14 +289,23 @@ curl -v -X PUT \
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "assigned_to": "{ACCOUNT_ID}",
-        "created": 63627604811,
-        "my_field": "my value",
+        "_read_only": {
+            "_id": "{PHONENUMBER}",
+            "pvt_assigned_to": "{ACCOUNT_ID}",
+            "pvt_created": 63627848989,
+            "pvt_db_name": "numbers%2F%2B1424",
+            "pvt_modified": 63627848989,
+            "pvt_module_name": "knm_local",
+            "pvt_reserve_history": [
+                "{ACCOUNT_ID}"
+            ],
+            "pvt_state": "reserved",
+            "pvt_type": "number"
+        },
         "id": "{PHONENUMBER}",
-        "state": "reserved",
-        "updated": 63627604811
+        "my_own_field": {}
     },
-    "request_id": "c62107997ee2b31c978077953fafaebd",
+    "request_id": "609d2ddbc57fbbce22b42be229b67840",
     "revision": "undefined",
     "status": "success"
 }
