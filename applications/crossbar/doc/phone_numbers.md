@@ -15,7 +15,6 @@ Looks for numbers using the carrier module set up for your account.
 
 ```shell
 curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/phone_numbers?prefix={PREFIX}&quantity={QUANTITY}&offset={OFFSET}
 ```
 
@@ -75,12 +74,12 @@ curl -v -X GET \
 
 ```json
 {
-    "auth_token": "1931484e3fba5777588176584828e7be",
+    "auth_token": "{AUTH_TOKEN}",
     "data": {
         "casquade_quantity": 0,
         "numbers": {
             "+14155555555": {
-                "assigned_to": "4b8c6fec4b2597882c0390202d195419",
+                "assigned_to": "{ACCOUNT_ID}",
                 "created": 63602230185,
                 "features": {},
                 "state": "in_service",
@@ -88,7 +87,7 @@ curl -v -X GET \
                 "used_by": "callflow"
             },
             "+14158865100": {
-                "assigned_to": "4b8c6fec4b2597882c0390202d195419",
+                "assigned_to": "{ACCOUNT_ID}",
                 "created": 63624719324,
                 "features": {},
                 "state": "in_service",
@@ -130,15 +129,22 @@ curl -v -X DELETE \
 
 ```json
 {
-    "auth_token": "694c7e1938aa213955fe600442c433f1",
+    "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "assigned_to": "009afc511c97b2ae693c6cc4920988e8",
-        "created": 63627691442,
-        "id": "+14242424301",
-        "state": "available",
-        "updated": 63627691442
+        "_read_only": {
+            "_id": "{PHONENUMBER}",
+            "pvt_assigned_to": "{ACCOUNT_ID}",
+            "pvt_created": 63627848588,
+            "pvt_db_name": "numbers%2F%2B1424",
+            "pvt_modified": 63627848588,
+            "pvt_module_name": "knm_local",
+            "pvt_previously_assigned_to": "{ACCOUNT_ID}",
+            "pvt_state": "available",
+            "pvt_type": "number"
+        },
+        "id": "{PHONENUMBER}"
     },
-    "request_id": "82f2a22ac4c0a1bfef214face6a746df",
+    "request_id": "df394a4f3175bfe9367919482dc7f217",
     "revision": "undefined",
     "status": "success"
 }
@@ -148,7 +154,7 @@ curl -v -X DELETE \
 
 ```json
 {
-    "auth_token": "694c7e1938aa213955fe600442c433f1",
+    "auth_token": "{AUTH_TOKEN}",
     "data": {
         "message": "bad identifier",
         "not_found": "The number could not be found"
@@ -178,18 +184,25 @@ curl -v -X GET \
 
 ```json
 {
-    "auth_token": "1a82795e8759f62d77f6552de80ce32e",
+    "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "id": "+14155555555",
-        "my_own_field": {},
-        "assigned_to": "4b8c6fec4b2597882c0390202d195419",
-        "created": 63602230185,
-        "features": {},
-        "state": "in_service",
-        "updated": 63602230212,
-        "used_by": "callflow"
+        "_read_only": {
+            "_id": "{PHONENUMBER}",
+            "pvt_assigned_to": "{ACCOUNT_ID}",
+            "pvt_created": 63627848989,
+            "pvt_db_name": "numbers%2F%2B1424",
+            "pvt_modified": 63627848989,
+            "pvt_module_name": "knm_local",
+            "pvt_reserve_history": [
+                "{ACCOUNT_ID}"
+            ],
+            "pvt_state": "reserved",
+            "pvt_type": "number"
+        },
+        "id": "{PHONENUMBER}",
+        "my_own_field": {}
     },
-    "request_id": "e268c22be3076a12d8581ebab0d89cc8",
+    "request_id": "609d2ddbc57fbbce22b42be229b67840",
     "revision": "undefined",
     "status": "success"
 }
@@ -204,7 +217,7 @@ Possible reasons for failure:
 
 ```json
 {
-    "auth_token": "1a82795e8759f62d77f6552de80ce32e",
+    "auth_token": "{AUTH_TOKEN}",
     "data": {
         "message": "bad identifier",
         "not_found": "The number could not be found"
@@ -220,22 +233,51 @@ Possible reasons for failure:
 
 > POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"my_own_field": "some other value"}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "_read_only": {
+            "_id": "{PHONENUMBER}",
+            "pvt_assigned_to": "{ACCOUNT_ID}",
+            "pvt_created": 63627848989,
+            "pvt_db_name": "numbers%2F%2B1424",
+            "pvt_modified": 63627848989,
+            "pvt_module_name": "knm_local",
+            "pvt_reserve_history": [
+                "{ACCOUNT_ID}"
+            ],
+            "pvt_state": "reserved",
+            "pvt_type": "number"
+        },
+        "id": "{PHONENUMBER}",
+        "my_own_field": "some other value"
+    },
+    "request_id": "609d2ddbc57fbbce22b42be229b67840",
+    "revision": "undefined",
+    "status": "success"
+}
 ```
 
 #### Add a number to the database
 
 Adds a number to the database, returning its properties.
 
+Note: payload is facultative.
+
 > PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
 
 ```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data": {"my_field": "my value"}}' \
+    -d '{"data": {"my_own_field": {}}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
 ```
 
@@ -245,16 +287,25 @@ curl -v -X PUT \
 
 ```json
 {
-    "auth_token": "9376332cc1c4ef5fc31371bfaa92ff0a",
+    "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "assigned_to": "009afc511c97b2ae693c6cc4920988e8",
-        "created": 63627604811,
-        "my_field": "my value",
-        "id": "+14242424248",
-        "state": "reserved",
-        "updated": 63627604811
+        "_read_only": {
+            "_id": "{PHONENUMBER}",
+            "pvt_assigned_to": "{ACCOUNT_ID}",
+            "pvt_created": 63627848989,
+            "pvt_db_name": "numbers%2F%2B1424",
+            "pvt_modified": 63627848989,
+            "pvt_module_name": "knm_local",
+            "pvt_reserve_history": [
+                "{ACCOUNT_ID}"
+            ],
+            "pvt_state": "reserved",
+            "pvt_type": "number"
+        },
+        "id": "{PHONENUMBER}",
+        "my_own_field": {}
     },
-    "request_id": "c62107997ee2b31c978077953fafaebd",
+    "request_id": "609d2ddbc57fbbce22b42be229b67840",
     "revision": "undefined",
     "status": "success"
 }
@@ -266,12 +317,12 @@ curl -v -X PUT \
 
 ```json
 {
-    "auth_token": "9376332cc1c4ef5fc31371bfaa92ff0a",
+    "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "cause": "+14242424246",
+        "cause": "{PHONENUMBER}",
         "code": 409,
         "error": "number_exists",
-        "message": "number +14242424246 already exists"
+        "message": "number {PHONENUMBER} already exists"
     },
     "error": "409",
     "message": "number_exists",
@@ -284,7 +335,7 @@ curl -v -X PUT \
 
 ```json
 {
-    "auth_token": "b913eb25a2bc681671414a9a8ca8a0e9",
+    "auth_token": "{AUTH_TOKEN}",
     "data": {
         "message": "unknown failure",
         "unauthorized": "Not authorized to perform requested number operation"

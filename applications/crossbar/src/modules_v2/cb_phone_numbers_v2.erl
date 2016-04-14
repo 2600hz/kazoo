@@ -378,12 +378,11 @@ post(Context, ?COLLECTION) ->
 post(Context, Number) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
-               ,{'dry_run', not cb_context:accepting_charges(Context)}
-               ,{'public_fields', cb_context:doc(Context)}
               ],
-    Result = knm_number:update(Number, Options),
-    CB = fun() -> post(cb_context:set_accepting_charges(Context), Number) end,
-    set_response(Result, Context, CB).
+    Updaters = [{fun knm_phone_number:update_doc/2, cb_context:doc(Context)}
+               ],
+    Result = knm_number:update(Number, Updaters, Options),
+    set_response(Result, Context).
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().

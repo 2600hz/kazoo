@@ -272,13 +272,12 @@ check_to_free_number(_AccountId, Number, _OtherAccountId) ->
 %%--------------------------------------------------------------------
 -spec emergency_enabled(ne_binary()) -> {'ok', knm_number:knm_numbers()} |
                                         {'error', any()}.
-emergency_enabled(Account)
-  when is_binary(Account) ->
+emergency_enabled(Account = ?NE_BINARY) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     case kz_datamgr:open_cache_doc(AccountDb, ?KNM_PHONE_NUMBERS_DOC) of
         {'ok', JObj} ->
             Numbers = wh_json:get_keys(wh_json:public_fields(JObj)),
-            Options = [{'assigned_to', wh_util:format_account_id(Account, 'raw')}
+            Options = [{'assigned_to', wh_util:format_account_id(Account)}
                       ],
             PhoneNumbers = fetch(Numbers, Options),
             EnabledNumbers =

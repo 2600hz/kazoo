@@ -251,26 +251,14 @@ authorized_release(PhoneNumber) ->
 -spec to_public_json(knm_phone_number()) -> wh_json:object().
 to_public_json(Number) ->
     JObj = to_json(Number),
-    LeakJObj =
-        wh_json:from_list(
-          props:filter_empty(
-            [ {<<"assigned_to">>, wh_json:get_value(?PVT_ASSIGNED_TO, JObj)}
-            , {<<"created">>, wh_doc:created(JObj)}
-            , {<<"features">>, wh_json:get_value(?PVT_FEATURES, JObj)}
-            , {<<"state">>, wh_json:get_value(?PVT_STATE, JObj)}
-            , {<<"updated">>, wh_doc:modified(JObj)}
-            , {<<"used_by">>, wh_json:get_value(?PVT_USED_BY, JObj)}
-            ])
-         ),
-    IDPlusForeignJObj =
-        wh_json:from_list(
-          props:filter_empty(
-            wh_json:to_proplist(
-              wh_json:public_fields(JObj)
-             )
-           )
-         ),
-    wh_json:merge_jobjs(LeakJObj, IDPlusForeignJObj).
+    ToLeak = wh_json:from_list(
+               props:filter_empty(
+                 wh_json:to_proplist(
+                   wh_json:private_fields(JObj)
+                  )
+                )
+              ),
+    wh_json:set_value(<<"_read_only">>, ToLeak, wh_json:public_fields(JObj)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -629,8 +617,8 @@ set_doc(N, JObj=?JSON_WRAPPER(_)) ->
     N#knm_phone_number{doc=JObj}.
 
 -spec update_doc(knm_phone_number(), wh_json:object()) -> knm_phone_number().
-update_doc(N, JObj=?JSON_WRAPPER(_)) ->
-    Updated = wh_json:merge_jobjs(doc(N), wh_json:public_fields(JObj)),
+update_doc(N=#knm_phone_number{doc = Doc}, JObj=?JSON_WRAPPER(_)) ->
+    Updated = wh_json:merge_jobjs(JObj, Doc),
     N#knm_phone_number{doc = Updated}.
 
 %%--------------------------------------------------------------------
