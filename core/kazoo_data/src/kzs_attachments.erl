@@ -27,12 +27,26 @@
 -spec fetch_attachment(map(), ne_binary(), ne_binary(), ne_binary()) ->
                               {'ok', binary()} |
                               data_error().
-fetch_attachment(#{server := {App, Conn}}, DbName, DocId, AName) ->
-    %% OPEN CACHE DOC
-    %% CHECK STUB
-    %% MAYBE PROXY
-    App:fetch_attachment(Conn, DbName, DocId, AName).
+fetch_attachment(#{}=Server, DbName, DocId, AName) ->
+    case kzs_cache:open_cache_doc(Server, DbName, DocId, []) of
+        {'ok', Doc} ->
+            case wh_doc:attachment(Doc, AName) of
+                'undefined' -> {'error', 'not_found'};
+                Att -> do_fetch_attachment(Server, DbName, DocId, AName, Att)
+            end;
+        {'error', _}=E -> E
+    end.
 
+do_fetch_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Att) ->
+    case wh_json:get_value(<<"handler">>, Att) of
+        'undefined' -> App:fetch_attachment(Conn, DbName, DocId, AName);
+        Handler -> do_fetch_attachment_from_handler(wh_json:to_proplist(Handler), DbName, DocId, AName)
+    end.
+
+do_fetch_attachment_from_handler([{Handler, Props}], DbName, DocId, AName) ->
+    Module = wh_util:to_atom(Handler, 'true'),
+    Module:fetch_attachment(Props, DbName, DocId, AName).
+    
 -spec stream_attachment(map(), ne_binary(), ne_binary(), ne_binary(), pid()) ->
                                {'ok', reference()} |
                                data_error().
