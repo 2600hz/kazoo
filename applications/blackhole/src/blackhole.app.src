@@ -19,7 +19,6 @@
                  , lager
                  , ranch
                  , cowboy
-                 , socketio
                  ]},
   {mod, {blackhole_app, []}}
  ]}.
