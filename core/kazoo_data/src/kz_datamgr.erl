@@ -933,7 +933,7 @@ attachment_options(DbName, DocId, Options) ->
     attachment_options(DbName, DocId, Options, RequiredOptions).
 
 attachment_options(DbName, DocId, Options, RequiredOptions) ->
-    Fun = fun() -> case open_doc(DbName, DocId, Options) of
+    Fun = fun() -> case open_cache_doc(DbName, DocId, Options) of
                        {'ok', JObj} -> JObj;
                        _ -> wh_json:new()
                    end
@@ -974,8 +974,13 @@ add_required_options(Options, RequiredOptions, JObj) ->
 add_required_option({Key, Fun}, {JObj, Options}=Acc) ->
     case props:is_defined(Key, Options) of
         'true' -> Acc;
-        'false' -> {JObj, props:filter_undefined([{Key, Fun(JObj)} | Options])}
-    end.
+        'false' ->
+            Value = case Fun(JObj) of
+                        'undefined' -> <<"UNKNOWN">>;
+                        V -> V
+                    end,
+            {JObj, [{Key, Value} | Options]}
+end.
 
 %%%===================================================================
 %%% View Functions
