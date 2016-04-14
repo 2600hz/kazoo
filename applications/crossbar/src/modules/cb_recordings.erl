@@ -75,7 +75,7 @@ allowed_methods(_RecordingId, ?ATTACHMENT) -> [?HTTP_GET].
 %% @public
 %% @doc
 %% Does the path point to a valid resource
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.

@@ -131,7 +131,7 @@ get_channel_vars(EndpointId, Call) ->
 
 -spec maybe_require_ignore_early_media(whapps_call:call()) -> {ne_binary(), api_binary()}.
 maybe_require_ignore_early_media(Call) ->
-    {<<"Require-Ignore-Early-Media">>, whapps_call:custom_channel_var(<<"Require-Ignore-Early-Media">>, Call)}.    
+    {<<"Require-Ignore-Early-Media">>, whapps_call:custom_channel_var(<<"Require-Ignore-Early-Media">>, Call)}.
 
 -spec get_bypass_e164(wh_json:object()) -> boolean().
 get_bypass_e164(Data) ->
