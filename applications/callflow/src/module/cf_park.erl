@@ -644,7 +644,7 @@ unanswered_action(SlotNumber, Slot, Data, Call) ->
 -spec presence_type(ne_binary(), wh_json:object(), whapps_call:call()) -> ne_binary().
 presence_type(SlotNumber, Data, Call) ->
     JObj = slot_configuration(Data, SlotNumber),
-    DefaultPresenceType = 
+    DefaultPresenceType =
         wh_json:get_ne_value(
           <<"default_presence_type">>
           ,Data
