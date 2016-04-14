@@ -535,6 +535,7 @@ disconnect(Number, Options) ->
     ShouldDelete = knm_config:should_permanently_delete(
                      knm_number_options:should_delete(Options)
                     ),
+    lager:debug("will delete permanently: ~p", [ShouldDelete]),
     try knm_carriers:disconnect(Number) of
         N when not ShouldDelete -> N;
         N when     ShouldDelete -> delete_phone_number(N)
