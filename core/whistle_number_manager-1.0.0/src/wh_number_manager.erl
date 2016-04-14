@@ -39,9 +39,6 @@
 
 -define(SERVER, ?MODULE).
 
--define(LEAK_PRIVATE_TO_READONLY, [<<"created">>, <<"modified">>]).
--define(LEAK_PRIVATE_TO_DOCROOT, [<<"used_by">>, <<"state">>]).
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -962,33 +959,29 @@ track_assignment(Account, Props) ->
       ,Props
      ).
 
--spec strip_pvt_prefix(binary(), binary()) -> {binary(), binary()}.
-strip_pvt_prefix(<<"pvt_", Key/binary>>, Val) ->
-    {Key, Val};
-
-strip_pvt_prefix(Key, Val) ->
-    {Key, Val}.
-
--spec filter_pvt_readonly({binary(), binary()}) -> boolean().
-filter_pvt_readonly({K, _V}) ->
-    lists:member(K, ?LEAK_PRIVATE_TO_READONLY).
-
--spec filter_pvt_docroot({binary(), binary()}) -> boolean().
-filter_pvt_docroot({K, _V}) ->
-    lists:member(K, ?LEAK_PRIVATE_TO_DOCROOT).
-
 -spec leaks_private_fields_safely(wh_json:object()) -> wh_json:object().
 leaks_private_fields_safely(JObj) ->
-    PrivateFields = wh_json:private_fields(JObj),
-    PvtStripped   = wh_json:map(fun strip_pvt_prefix/2, PrivateFields),
-
-    ReadOnlyStripped = wh_json:filter(fun filter_pvt_readonly/1, PvtStripped),
-    PublicStripped   = wh_json:filter(fun filter_pvt_docroot/1, PvtStripped),
-
-    ReadOnlyFields = wh_json:set_value(<<"_read_only">>, ReadOnlyStripped, wh_json:new()),
-    LeakedFields   = wh_json:merge_jobjs(ReadOnlyFields, PublicStripped),
-
-    wh_json:merge_jobjs(LeakedFields, wh_json:public_fields(JObj)).
+    State = {<<"state">>, wh_json:get_value(?PVT_NUMBER_STATE, JObj)},
+    UsedBy = {<<"used_by">>, wh_json:get_value(<<"used_by">>, JObj)},
+    ReadOnly =
+        wh_json:from_list(
+          props:filter_empty(
+            [ {<<"created">>, wh_doc:created(JObj)}
+            , {<<"modified">>, wh_doc:modified(JObj)}
+            , State
+            , UsedBy
+            , {<<"module">>, wh_json:get_value(<<"pvt_module_name">>, JObj)}
+            ])
+         ),
+    Root =
+        wh_json:from_list(
+          props:filter_empty(
+            [ State
+            , UsedBy
+              | wh_json:to_proplist(wh_json:public_fields(JObj))
+            ])
+         ),
+    wh_json:set_value(<<"_read_only">>, ReadOnly, Root).
 
 %%--------------------------------------------------------------------
 %% @private
