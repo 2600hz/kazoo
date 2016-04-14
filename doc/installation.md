@@ -17,6 +17,7 @@ This is a guide to installing Kazoo on a Debian 8 (Jessie) base installation. Ot
 Kazoo 4 targets Erlang 18+. There are a couple ways to install Erlang:
 
 * From source. I prefer to use a tool like [kerl](https://github.com/yrashk/kerl) to manage my installations. If you want to play around with multiple versions of Erlang while hacking on Kazoo, this is probably the best way.
+
 ```shell
 $ curl -O https://raw.githubusercontent.com/yrashk/kerl/master/kerl
 $ chmod a+x kerl
@@ -53,9 +54,9 @@ $ make
 * To run the full test suite it is advised to
     1. `cd` into the root of the project
     1. `make compile-test` to compile every app with the `TEST` macro defined
+        * *This way apps can call code from other apps in a kind of `TEST` mode*
     1. `make eunit` (instead of `make test`) to run the test suite without recompiling each app
     1. `make proper` to run the test suite, including property-based tests (uses [PropEr](https://github.com/manopapad/proper))
-    * *This way apps can call code from other apps that was compiled with the `TEST` macro defined*
 * `make build-release` will generate a [deployable release](http://learnyousomeerlang.com/release-is-the-word)
     * [More on using releases with Kazoo](https://github.com/2600Hz/kazoo/blob/master/doc/engineering/releases.md)
 * `make sup_completion` creates `sup.bash`: a Bash completion file for the SUP command
@@ -470,7 +471,7 @@ On all servers, curl the database ip/port to verify that it is reachable:
 
 ```shell
 #> curl localhost:5984
-{"couchdb":"Welcome","version":"5fa9098","vendor":{"name":"The Apache Software Foundation"}}
+{"couchdb":"Welcome", "uuid":"0d13a8a56e2fbd9338531c4063c41910", "version":"1.6.1", "vendor":{"version":"12.04", "name":"Ubuntu"}}
 ```
 
 ### Check FreeSWITCH

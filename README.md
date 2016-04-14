@@ -107,7 +107,7 @@ No problem! We have many different places where folks can chip in time. These in
 * Maintaining and expanding the documentation
 * Blogging, tweeting, and other forms of publicizing your usage of and love for the platform, community, code, company, etc.
 * Join us in real time and help other community members:
-    * [![2600Hz IRC](https://img.shields.io/badge/irc-%232600Hz-orange.svg)](https://webchat.freenode.net/?channels=2600Hz)
+    * [![2600Hz IRC](https://img.shields.io/badge/irc-%232600hz-orange.svg)](https://webchat.freenode.net/?channels=2600Hz)
     * our [Users mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600Hz-users)
     * our [Developers mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600Hz-dev)
     * our [Forum](http://forum.2600Hz.com/)
