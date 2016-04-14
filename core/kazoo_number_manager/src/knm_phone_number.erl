@@ -195,6 +195,8 @@ release(PhoneNumber) ->
 
 release(PhoneNumber, ?NUMBER_STATE_RELEASED) ->
     PhoneNumber;
+release(PhoneNumber, ?NUMBER_STATE_DELETED) ->
+    PhoneNumber;
 release(PhoneNumber, ?NUMBER_STATE_RESERVED) ->
     authorize_release(PhoneNumber);
 release(PhoneNumber, ?NUMBER_STATE_PORT_IN) ->
