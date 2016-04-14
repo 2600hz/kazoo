@@ -46,7 +46,7 @@ do_fetch_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Att) ->
 do_fetch_attachment_from_handler([{Handler, Props}], DbName, DocId, AName) ->
     Module = wh_util:to_atom(Handler, 'true'),
     Module:fetch_attachment(Props, DbName, DocId, AName).
-    
+
 -spec stream_attachment(map(), ne_binary(), ne_binary(), ne_binary(), pid()) ->
                                {'ok', reference()} |
                                data_error().
