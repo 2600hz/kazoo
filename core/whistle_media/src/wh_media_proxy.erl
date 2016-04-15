@@ -43,7 +43,9 @@ maybe_start_plaintext(Dispatch) ->
             Listeners = whapps_config:get_integer(?CONFIG_CAT, <<"proxy_listeners">>, 25),
 
             cowboy:start_http('wh_media_proxy', Listeners
-                              ,[{'port', Port}]
+                              ,[{'ip', {0,0,0,0,0,0,0,0}}
+                                    ,{'port', Port}
+                               ]
                               ,[{'env', [{'dispatch', Dispatch}]}]
                              ),
             lager:info("started media proxy on port ~p", [Port])
