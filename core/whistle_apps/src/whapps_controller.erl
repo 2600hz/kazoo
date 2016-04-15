@@ -38,7 +38,7 @@
           ,'nksip'
           ,'poolboy','public_key'
           ,'rabbit_common','ranch'
-          ,'sasl','socketio','ssl','stdlib','syntax_tools','syslog'
+          ,'sasl','ssl','stdlib','syntax_tools','syslog'
           ,'webseq'
           ,'whistle','whistle_amqp','whistle_apps','whistle_config'
           ,'whistle_couch','whistle_media'
