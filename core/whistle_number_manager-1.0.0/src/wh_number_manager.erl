@@ -961,8 +961,27 @@ track_assignment(Account, Props) ->
 
 -spec leaks_private_fields_safely(wh_json:object()) -> wh_json:object().
 leaks_private_fields_safely(JObj) ->
-    PrivateFields = wh_json:set_value(<<"_read_only">>, wh_json:private_fields(JObj), wh_json:new()),
-    wh_json:merge_jobjs(PrivateFields, wh_json:public_fields(JObj)).
+    State = {<<"state">>, wh_json:get_value(?PVT_NUMBER_STATE, JObj)},
+    UsedBy = {<<"used_by">>, wh_json:get_value(<<"used_by">>, JObj)},
+    ReadOnly =
+        wh_json:from_list(
+          props:filter_empty(
+            [{<<"created">>, wh_doc:created(JObj)}
+            ,{<<"modified">>, wh_doc:modified(JObj)}
+            ,State
+            ,UsedBy
+            ,{<<"module">>, wh_json:get_value(<<"pvt_module_name">>, JObj)}
+            ])
+         ),
+    Root =
+        wh_json:from_list(
+          props:filter_empty(
+            [ State
+            , UsedBy
+              | wh_json:to_proplist(wh_json:public_fields(JObj))
+            ])
+         ),
+    wh_json:set_value(<<"_read_only">>, ReadOnly, Root).
 
 %%--------------------------------------------------------------------
 %% @private
