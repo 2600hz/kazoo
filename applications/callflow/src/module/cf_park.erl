@@ -645,7 +645,7 @@ unanswered_action(SlotNumber, Slot, Data, Call) ->
 presence_type(SlotNumber, Data, Call) ->
     JObj = slot_configuration(Data, SlotNumber),
     DefaultPresenceType =
-        wh_json:get_ne_value(
+        wh_json:get_ne_binary_value(
           <<"default_presence_type">>
           ,Data
           ,?ACCOUNT_PARKED_TYPE(whapps_call:account_id(Call))
