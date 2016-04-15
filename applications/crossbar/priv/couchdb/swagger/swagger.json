@@ -1095,6 +1095,80 @@
             "required": true,
             "type": "object"
         },
+        "callflows.record_caller": {
+            "description": "Record the caller's audio stream",
+            "properties": {
+                "action": {
+                    "default": "start",
+                    "description": "Whether to start or stop the recording",
+                    "enum": [
+                        "start",
+                        "stop"
+                    ],
+                    "name": "Action",
+                    "required": false,
+                    "type": "string"
+                },
+                "format": {
+                    "description": "What format to store the recording on disk",
+                    "enum": [
+                        "mp3",
+                        "wav"
+                    ],
+                    "name": "Format",
+                    "type": "string"
+                },
+                "record_min_sec": {
+                    "description": "The minimum length, in seconds, the recording must be to be considered successful. Otherwise it is deleted",
+                    "name": "Minimum recording seconds",
+                    "required": false,
+                    "type": "integer"
+                },
+                "record_on_answer": {
+                    "default": false,
+                    "description": "Whether to delay the recording until the channel is answered",
+                    "name": "Record On Answer",
+                    "required": false,
+                    "type": "boolean"
+                },
+                "record_on_bridge": {
+                    "default": false,
+                    "description": "Whether to delay the recording until the channel is bridged",
+                    "name": "Record On Bridge",
+                    "required": false,
+                    "type": "boolean"
+                },
+                "record_sample_rate": {
+                    "description": "What sampling rate to use on the recording",
+                    "name": "Sample Rate",
+                    "required": false,
+                    "type": "integer"
+                },
+                "recording_id": {
+                    "description": "Name the media file that will be generated from the call",
+                    "name": "Recording ID",
+                    "required": false,
+                    "type": "string"
+                },
+                "time_limit": {
+                    "default": 3600,
+                    "description": "Time limit, in seconds, for the recording",
+                    "maximum": 3600,
+                    "minimum": 5,
+                    "name": "Time Limit",
+                    "required": false,
+                    "type": "integer"
+                },
+                "url": {
+                    "description": "The URL to use when sending the recording for storage",
+                    "name": "URL",
+                    "required": true,
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
         "callflows.response": {
             "description": "Validator for the Response callflow action",
             "properties": {
@@ -4916,6 +4990,81 @@
             "required": true,
             "type": "object"
         },
+        "qubicle_queues": {
+            "description": "Qubicle queues",
+            "name": "Qubicle Call Queue",
+            "properties": {
+                "agent_connect_timeout": {
+                    "default": 15,
+                    "description": "Amount of time in seconds that qubicle will wait for the agent to successfully answer a call.",
+                    "minimum": 1,
+                    "name": "Agent Connect Timeout",
+                    "required": false,
+                    "type": "integer"
+                },
+                "agent_wrapup_time": {
+                    "default": 2,
+                    "description": "Pre-defined wait period applied after an agent handles a customer call",
+                    "minimum": 0,
+                    "name": "Agent Wrapup Time",
+                    "required": false,
+                    "type": "integer"
+                },
+                "hold_treatment": {
+                    "description": "Media ID (or appropriate media URI) of media to play while caller is on hold.",
+                    "name": "Hold Treatment",
+                    "required": false,
+                    "type": "string"
+                },
+                "queue_name": {
+                    "description": "A friendly name for the queue",
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "name": "Name",
+                    "required": true,
+                    "type": "string"
+                },
+                "queue_router": {
+                    "default": "route_round_robin",
+                    "description": "The queue router used for routing and delivering calls to recipients",
+                    "enum": [
+                        "route_round_robin",
+                        "route_most_idle"
+                    ],
+                    "name": "Router",
+                    "required": false,
+                    "type": "string"
+                },
+                "queue_timeout": {
+                    "default": 3600,
+                    "description": "The maximum amount of time in seconds that a call will wait in queue.",
+                    "minimum": 10,
+                    "name": "Queue Timeout",
+                    "required": false,
+                    "type": "integer"
+                },
+                "queue_type": {
+                    "default": "queue_basic",
+                    "description": "The type of queue",
+                    "enum": [
+                        "queue_basic"
+                    ],
+                    "name": "Type",
+                    "required": true,
+                    "type": "string"
+                },
+                "tick_time": {
+                    "default": 1000,
+                    "description": "The time between delivery ticks in milliseconds",
+                    "minimum": 250,
+                    "name": "Tick Time",
+                    "required": false,
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
         "queue_update": {
             "description": "Schema for queue update request",
             "name": "Call Update",
@@ -8067,6 +8216,35 @@
             "post": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/presence/{EXTENSION}": {
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/qubicle_agents": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/qubicle_agents/status/{ID}": {
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/qubicle_agents/{ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/qubicle_agents/{ID}/status": {
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/qubicle_queues": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/qubicle_queues/{Q_ID}": {
+            "delete": {},
+            "get": {},
+            "patch": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/qubicle_queues/{Q_ID}/roster": {
+            "delete": {},
+            "get": {},
             "post": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/queues": {
