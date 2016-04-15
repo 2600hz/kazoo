@@ -78,7 +78,7 @@ get_balance_threshold(DataJObj) ->
         {'ok', JObj} ->
             ConfigCat = <<(?NOTIFY_CONFIG_CAT)/binary, ".low_balance">>,
             Default = whapps_config:get_float(ConfigCat, <<"threshold">>, 5.00),
-            wht_util:pretty_print_dollars(kz_account:low_balance_threshold(JObj))
+            wht_util:pretty_print_dollars(kz_account:low_balance_threshold(JObj, Default))
     end.
 
 -spec handle_req(wh_json:object()) -> 'ok'.
