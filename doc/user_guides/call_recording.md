@@ -37,9 +37,14 @@ If successful, all calls to/from this user will be recorded.
 
 ##### Callflow action
 
-You can enable call recording on a per-callflow basis by using the `record_caller` callflow action.
+You can enable call recording on a per-callflow basis by using the `record_caller` callflow action. The callflow action can take the following parameters:
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-action | Whether to start or stop the recording | string(32) | | Y
-stuff | A list of stuff to do | array(string()) | [] | N
+`action` | Toggle whether to start or stop a recording | `string('start', 'stop')` |   | `true`
+`format` | Disk Format to write the recording | `string('mp3', 'wav')` |   | `false`
+`record_min_sec` | Minimal record time, in seconds, to store recordings | `integer` |   | `false`
+`record_on_answer` | Whether to delay starting the recording until the call is answered | `boolean` |   | `false`
+`record_sample_rate` | Sampling rate of the recording, in Hz | `integer` |   | `false`
+`time_limit` | Limit, in seconds, of how long to record the call | `integer` |   | `false`
+`url` | What URL to use as a base for where to send the recording after it finishes | `string` |   | `false`
