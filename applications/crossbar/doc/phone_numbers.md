@@ -132,17 +132,13 @@ curl -v -X DELETE \
     "auth_token": "{AUTH_TOKEN}",
     "data": {
         "_read_only": {
-            "_id": "{PHONENUMBER}",
-            "pvt_assigned_to": "{ACCOUNT_ID}",
-            "pvt_created": 63627848588,
-            "pvt_db_name": "numbers%2F%2B1424",
-            "pvt_modified": 63627848588,
-            "pvt_module_name": "knm_local",
-            "pvt_previously_assigned_to": "{ACCOUNT_ID}",
-            "pvt_state": "available",
-            "pvt_type": "number"
+            "created": 63627848588,
+            "updated": 63627848588,
+            "module_name": "knm_local",
+            "state": "available"
         },
-        "id": "{PHONENUMBER}"
+        "id": "{PHONENUMBER}",
+        "state": "available"
     },
     "request_id": "df394a4f3175bfe9367919482dc7f217",
     "revision": "undefined",
@@ -187,19 +183,13 @@ curl -v -X GET \
     "auth_token": "{AUTH_TOKEN}",
     "data": {
         "_read_only": {
-            "_id": "{PHONENUMBER}",
-            "pvt_assigned_to": "{ACCOUNT_ID}",
-            "pvt_created": 63627848989,
-            "pvt_db_name": "numbers%2F%2B1424",
-            "pvt_modified": 63627848989,
-            "pvt_module_name": "knm_local",
-            "pvt_reserve_history": [
-                "{ACCOUNT_ID}"
-            ],
-            "pvt_state": "reserved",
-            "pvt_type": "number"
+            "created": 63627848989,
+            "updated": 63627848989,
+            "module_name": "knm_local",
+            "state": "reserved"
         },
         "id": "{PHONENUMBER}",
+        "state": "reserved",
         "my_own_field": {}
     },
     "request_id": "609d2ddbc57fbbce22b42be229b67840",
@@ -245,19 +235,13 @@ curl -v -X POST \
     "auth_token": "{AUTH_TOKEN}",
     "data": {
         "_read_only": {
-            "_id": "{PHONENUMBER}",
-            "pvt_assigned_to": "{ACCOUNT_ID}",
-            "pvt_created": 63627848989,
-            "pvt_db_name": "numbers%2F%2B1424",
-            "pvt_modified": 63627848989,
-            "pvt_module_name": "knm_local",
-            "pvt_reserve_history": [
-                "{ACCOUNT_ID}"
-            ],
-            "pvt_state": "reserved",
-            "pvt_type": "number"
+            "created": 63627848989,
+            "updated": 63627848989,
+            "module_name": "knm_local",
+            "state": "reserved"
         },
         "id": "{PHONENUMBER}",
+        "state": "reserved",
         "my_own_field": "some other value"
     },
     "request_id": "609d2ddbc57fbbce22b42be229b67840",
@@ -290,19 +274,13 @@ curl -v -X PUT \
     "auth_token": "{AUTH_TOKEN}",
     "data": {
         "_read_only": {
-            "_id": "{PHONENUMBER}",
-            "pvt_assigned_to": "{ACCOUNT_ID}",
-            "pvt_created": 63627848989,
-            "pvt_db_name": "numbers%2F%2B1424",
-            "pvt_modified": 63627848989,
-            "pvt_module_name": "knm_local",
-            "pvt_reserve_history": [
-                "{ACCOUNT_ID}"
-            ],
-            "pvt_state": "reserved",
-            "pvt_type": "number"
+            "created": 63627848989,
+            "updated": 63627848989,
+            "module_name": "knm_local",
+            "state": "reserved"
         },
         "id": "{PHONENUMBER}",
+        "state": "reserved",
         "my_own_field": {}
     },
     "request_id": "609d2ddbc57fbbce22b42be229b67840",
