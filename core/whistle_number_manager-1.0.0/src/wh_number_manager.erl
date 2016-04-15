@@ -967,7 +967,7 @@ leaks_private_fields_safely(JObj) ->
         wh_json:from_list(
           props:filter_empty(
             [ {<<"created">>, wh_doc:created(JObj)}
-            , {<<"modified">>, wh_doc:modified(JObj)}
+            , {<<"updated">>, wh_doc:modified(JObj)}
             , State
             , UsedBy
             , {<<"module">>, wh_json:get_value(<<"pvt_module_name">>, JObj)}
