@@ -17,7 +17,6 @@
          ,realm/1, realm/2, set_realm/2
          ,language/1, set_language/2
          ,timezone/1, timezone/2, set_timezone/2
-         ,threshold/2 ,set_threshold/2
          ,parent_account_id/1
          ,tree/1, tree/2 ,set_tree/2
          ,notification_preference/1, set_notification_preference/2
@@ -25,7 +24,6 @@
          ,api_key/1, set_api_key/2
          ,is_superduper_admin/1, set_superduper_admin/2
          ,allow_number_additions/1, set_allow_number_additions/2
-
          ,trial_expiration/1, trial_expiration/2, set_trial_expiration/2
          ,trial_time_left/1, trial_time_left/2
          ,trial_has_expired/1, trial_has_expired/2
@@ -36,6 +34,11 @@
 
          ,dial_plan/1, dial_plan/2
          ,fax_settings/1
+         ,low_balance_threshold/1, low_balance_threshold/2, set_low_balance_threshold/2
+         ,low_balance_sent/1, set_low_balance_sent/1, reset_low_balance_sent/1
+         ,low_balance_enabled/1, set_low_balance_enabled/1, reset_low_balance_enabled/1, low_balance_enabled_exists/1
+         ,low_balance_tstamp/1, set_low_balance_tstamp/1, set_low_balance_tstamp/2, remove_low_balance_tstamp/1
+         ,topup_threshold/1, topup_threshold/2, set_topup_threshold/2
         ]).
 
 -include("kz_documents.hrl").
@@ -57,6 +60,11 @@
 -define(RESELLER, <<"pvt_reseller">>).
 -define(RESELLER_ID, <<"pvt_reseller_id">>).
 -define(KEY_DIAL_PLAN, <<"dial_plan">>).
+-define(LOW_BALANCE_SENT, [<<"notifications">>, <<"low_balance">>, <<"sent_low_balance">>]).
+-define(LOW_BALANCE_ENABLED, [<<"notifications">>, <<"low_balance">>, <<"enabled">>]).
+-define(LOW_BALANCE_THRESHOLD, [<<"notifications">>, <<"low_balance">>, <<"threshold">>]).
+-define(LOW_BALANCE_TSTAMP, [<<"notifications">>, <<"low_balance">>, <<"last_notification">>]).
+-define(TOPUP_THRESHOLD, [<<"topup">>, <<"threshold">>]).
 
 -define(PVT_TYPE, <<"account">>).
 
@@ -206,18 +214,97 @@ set_timezone(JObj, Timezone) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec threshold(doc(), Default) -> float() | Default.
-threshold(JObj, Default) ->
-    wh_json:get_float_value(<<"threshold">>, JObj, Default).
+-spec low_balance_threshold(doc()) -> api_float().
+low_balance_threshold(JObj) ->
+    low_balance_threshold(JObj, 'undefined').
+
+-spec low_balance_threshold(doc(), Default) -> float() | Default.
+low_balance_threshold(JObj, Default) ->
+    case wh_json:get_float_value(?LOW_BALANCE_THRESHOLD, JObj) of
+        'undefined' -> topup_threshold(JObj, Default);
+        Threshold -> Threshold
+    end.
+
+-spec set_low_balance_threshold(doc(), float()) -> doc().
+set_low_balance_threshold(JObj, Threshold) ->
+    wh_json:set_value(?LOW_BALANCE_THRESHOLD, Threshold, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_threshold(doc(), float()) -> doc().
-set_threshold(JObj, Threshold) ->
-    wh_json:set_value(?THRESHOLD, Threshold, JObj).
+-spec low_balance_sent(doc()) -> boolean().
+low_balance_sent(JObj) ->
+    wh_json:is_true(?LOW_BALANCE_SENT, JObj).
+
+-spec set_low_balance_sent(doc()) -> doc().
+set_low_balance_sent(JObj) ->
+    wh_json:set_value(?LOW_BALANCE_SENT, 'true', JObj).
+
+-spec reset_low_balance_sent(doc()) -> doc().
+reset_low_balance_sent(JObj) ->
+    wh_json:set_value(?LOW_BALANCE_SENT, 'false', JObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec low_balance_enabled(doc()) -> boolean().
+low_balance_enabled(JObj) ->
+    wh_json:is_true(?LOW_BALANCE_ENABLED, JObj).
+
+-spec set_low_balance_enabled(doc()) -> doc().
+set_low_balance_enabled(JObj) ->
+    wh_json:set_value(?LOW_BALANCE_ENABLED, 'true', JObj).
+
+-spec reset_low_balance_enabled(doc()) -> doc().
+reset_low_balance_enabled(JObj) ->
+    wh_json:set_value(?LOW_BALANCE_ENABLED, 'false', JObj).
+
+-spec low_balance_enabled_exists(doc()) -> boolean().
+low_balance_enabled_exists(JObj) ->
+    wh_json:get_ne_value(?LOW_BALANCE_ENABLED, JObj) =/= 'undefined'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec low_balance_tstamp(doc()) -> api_number().
+low_balance_tstamp(JObj) ->
+    wh_json:get_integer_value(?LOW_BALANCE_TSTAMP, JObj).
+
+-spec set_low_balance_tstamp(doc()) -> doc().
+set_low_balance_tstamp(JObj) ->
+    TStamp = wh_util:current_tstamp(),
+    set_low_balance_tstamp(JObj, TStamp).
+
+-spec set_low_balance_tstamp(doc(), number()) -> doc().
+set_low_balance_tstamp(JObj, TStamp) ->
+    wh_json:set_value(?LOW_BALANCE_TSTAMP, TStamp, JObj).
+
+-spec remove_low_balance_tstamp(doc()) -> doc().
+remove_low_balance_tstamp(JObj) ->
+    wh_json:delete_key(?LOW_BALANCE_TSTAMP, JObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec topup_threshold(doc()) -> api_float().
+topup_threshold(JObj) ->
+    topup_threshold(JObj, 'undefined').
+
+-spec topup_threshold(doc(), Default) -> float() | Default.
+topup_threshold(JObj, Default) ->
+    wh_json:get_float_value(?TOPUP_THRESHOLD, JObj, Default).
+
+-spec set_topup_threshold(doc(), float()) -> doc().
+set_topup_threshold(JObj, Threshold) ->
+    wh_json:set_value(?TOPUP_THRESHOLD, Threshold, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
