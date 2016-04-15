@@ -8,27 +8,54 @@
 %%%-------------------------------------------------------------------
 -module(blackhole_default_handler).
 
-%-behaviour(cowboy_http_handler).
-
--export([init/3
-         ,handle/2
-         ,terminate/3
-        ]).
+-export([
+    init/3,
+    websocket_init/3,
+    websocket_handle/3,
+    websocket_info/3,
+    websocket_terminate/3
+]).
 
 -include("blackhole.hrl").
 
+init({_Any, 'http'}, _Req0, _HandlerOpts) ->
+    {'upgrade', 'protocol', 'cowboy_websocket'}.
 
--spec init({atom(), 'http'}, cowboy_req:req(), wh_proplist()) ->
-                  {'ok', cowboy_req:req(), 'undefined'}.
-init({_Any, 'http'}, Req0, _HandlerOpts) ->
-    wh_util:put_callid(?LOG_SYSTEM_ID),
-    {'ok', Req0, 'undefined'}.
+websocket_init(_Type, Req, _Opts) ->
+    {Peer, _}  = cowboy_req:peer(Req),
+    {RemIp, _} = Peer,
 
--spec handle(cowboy_req:req(), State) -> {'ok', cowboy_req:req(), State}.
-handle(Req, State) ->
-    Headers = [{<<"Content-Type">>, <<"text/plain; charset=UTF-8">>}],
-    {'ok', Req1} = cowboy_req:reply(200, Headers, <<"OK">>, Req),
-    {'ok', Req1, State}.
+    {'ok', State} = blackhole_socket_callback:open(self(), session_id(Req), RemIp),
+    {'ok', Req, State}.
 
--spec terminate(term(), cowboy_req:req(), term()) -> 'ok'.
-terminate(_Reason, _Req, _State) -> 'ok'.
+websocket_handle({'text', Data}, Req, State) ->
+    Obj    = wh_json:decode(Data),
+    Action = wh_json:get_value(<<"action">>, Obj),
+    Msg    = wh_json:delete_key(<<"action">>, Obj),
+
+    {'ok', NewState} = blackhole_socket_callback:recv(self(), session_id(Req), {Action, Msg}, State),
+    {'ok', Req, NewState}.
+
+websocket_info({'$gen_cast', _}, Req, State) ->
+    {'ok', Req, State};
+
+websocket_info({'send_event', Event, Data}, Req, State) ->
+    Msg = wh_json:set_value(<<"routing_key">>, Event, Data),
+    {'reply', {'text', wh_json:encode(Msg)}, Req, State};
+
+websocket_info(Info, Req, State) ->
+    lager:info("unhandled websocket info: ~p", [Info]),
+    {'ok', Req, State}.
+
+websocket_terminate(_Reason, Req, State) ->
+    blackhole_socket_callback:close(self(), session_id(Req), State).
+
+-spec session_id(cowboy_req:req()) -> binary().
+session_id(Req) ->
+    {Peer, _}  = cowboy_req:peer(Req),
+    {Ip, Port} = Peer,
+
+    BinIp   = wh_util:to_binary(inet_parse:ntoa(Ip)),
+    BinPort = wh_util:to_binary(integer_to_list(Port)),
+
+    <<BinIp/binary, ":", BinPort/binary>>.

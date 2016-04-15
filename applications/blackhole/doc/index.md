@@ -30,68 +30,44 @@ From here, you can write your own Javascript callbacks, triggered everytime a re
 ```html
 <html>
   <head>
-    <script src="http://cdnjs.cloudflare.com/ajax/libs/socket.io/0.9.6/socket.io.min.js"></script>
   </head>
   <body>
     <script>
-        var socket = io.connect('http://{BLACKHOLE_IP_ADDRESS}:5555');
+        var socket = new WebSocket("ws://{BLACKHOLE_IP_ADDRESS}:5555");
 
-        socket.emit('subscribe', {
-            account_id: '{ACCOUNT_ID}',
-            auth_token: '{AUTH_TOKEN}',
-            binding: 'call.CHANNEL_CREATE.*'
-        });
+        function send(data) {
+            socket.send(JSON.stringify(data));
+        }
 
-        socket.emit('subscribe', {
-            account_id: '{ACCOUNT_ID}',
-            auth_token: '{AUTH_TOKEN}',
-            bindings: ['call.CHANNEL_ANSWER.*', 'call.CHANNEL_DESTROY.*']
-        });
+        socket.onopen = function() {
+            send({
+                action: 'subscribe',
+                account_id: '{ACCOUNT_ID}',
+                auth_token: '{AUTH_TOKEN}',
+                binding: 'call.CHANNEL_CREATE.*'
+            });
 
-        socket.emit('subscribe', {
-            account_id: accountId,
-            auth_token: token,
-            bindings: ['doc_created.*.user.*', 'doc_edited.*.user.*']
-        });
+            send({
+                action: 'subscribe',
+                account_id: '{ACCOUNT_ID}',
+                auth_token: '{AUTH_TOKEN}',
+                bindings: ['call.CHANNEL_ANSWER.*', 'call.CHANNEL_DESTROY.*']
+            });
 
-        socket.on('CHANNEL_CREATE', function(EventJObj) {
-            console.log(EventJObj);
-        });
-
-        socket.on('CHANNEL_ANSWER', function(EventJObj) {
-            console.log(EventJObj);
-        });
-
-        socket.on('CHANNEL_DESTROY', function(EventJObj) {
-            console.log(EventJObj);
-        });
-
-        socket.on('doc_created_user', function(EventJObj) {
-            console.log(EventJObj);
-        });
-
-        socket.on('doc_edited_user', function(EventJObj) {
-            console.log(EventJObj);
-        });
-
-        // socket.emit('unsubscribe', {
-        //     account_id: accountId,
-        //     auth_token: token,
-        //     bindings: ['doc_created.*.user.*', 'doc_edited.*.user.*']
-        // });
-
-        // socket.emit('unsubscribe_all', {
-        //     account_id: accountId,
-        //     auth_token: token
-        // });
-
-        var Events = ['connect', 'error', 'disconnect', 'reconnect', 'reconnect_attempt', 'reconnecting', 'reconnect_error', 'reconnect_failed'];
-
-        for (var idx in Events) {
-            socket.on(Events[idx], function(_evt) {
-                console.log('=ERROR REPORT==== ' + Events[idx]);
+            send({
+                action: 'subscribe',
+                account_id: accountId,
+                auth_token: token,
+                bindings: ['doc_created.*.user.*', 'doc_edited.*.user.*']
             });
         }
+
+        socket.onmessage = function(raw_message) {
+            var json_data = JSON.parse(raw_message.data);
+
+            console.log(json_data);
+        };
+
     </script>
   </body>
 </html>
@@ -103,14 +79,16 @@ You can add one or multiple bindings by using:
 
 ``` javascript
 // For one use: binding
-socket.emit('subscribe', {
+send({
+    action: 'subscribe',
     account_id: '{ACCOUNT_ID}',
     auth_token: '{AUTH_TOKEN}',
     binding: 'doc_edited.*.user.*'
 });
 
 // For multiple use: bindings
-socket.emit('subscribe', {
+send({
+    action: 'subscribe',
     account_id: '{ACCOUNT_ID}',
     auth_token: '{AUTH_TOKEN}',
     bindings: ['doc_edited.*.user.*', 'doc_deleted.*.user.*']
@@ -120,7 +98,8 @@ socket.emit('subscribe', {
 You can also add a friendly name and some metadata to any subscribe command.
 
 ``` javascript
-socket.emit('subscribe', {
+send({
+    action: 'subscribe',
     account_id: '{ACCOUNT_ID}',
     auth_token: '{AUTH_TOKEN}',
     name: "My new socket",
@@ -136,12 +115,12 @@ To remove unnecessary bindings use 'unsubscribe' event:
 
 For particular subscription:
 ```
-socket.emit('unsubscribe', { account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'call.CHANNEL_CREATE.*' });
+send({ action: 'unsubscribe', account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'call.CHANNEL_CREATE.*' });
 ```
 
 For all previous subscriptions:
 ```
-socket.emit('unsubscribe', { auth_token: '{AUTH_TOKEN}' });
+send({ action: 'unsubscribe', auth_token: '{AUTH_TOKEN}' });
 ```
 
 

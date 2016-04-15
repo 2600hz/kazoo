@@ -1,6 +1,6 @@
 DEPS = lager eiconv gen_smtp amqp_client cowboy jesse jiffy certifi couchbeam wsock zucchini \
        erlsom erlydtl exml escalus folsom detergent erlang_localtime \
-       nklib gproc poolboy syslog lager_syslog eflame socketio hep ecsv reloader \
+       nklib gproc poolboy syslog lager_syslog eflame hep ecsv reloader \
 	proper recon
 
 dep_escalus = hex 2.6.4
@@ -19,7 +19,6 @@ dep_couchbeam = git https://github.com/benoitc/couchbeam 1.3.0
 dep_erlang_localtime = git https://github.com/lazedo/erlang_localtime 0bb26016380cd7df5d30aa0ef284ae252b5bae31
 
 ### need to update upstream ###
-dep_socketio = git https://github.com/lazedo/socket.io-cowboy 0.2
 dep_hep = git https://github.com/lazedo/hep 1.5.4
 dep_ecsv = git https://github.com/lazedo/ecsv 0.2.1
 

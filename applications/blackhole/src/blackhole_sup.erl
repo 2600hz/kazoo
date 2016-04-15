@@ -36,21 +36,10 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    Dispatch = cowboy_router:compile([
-                                      {'_', [{"/socket.io/1/[...]"
-                                             ,'socketio_handler'
-                                             ,[socketio_session:configure([{'heartbeat', 5000}
-                                                                          ,{'heartbeat_timeout', 30000}
-                                                                          ,{'session_timeout', 30000}
-                                                                          ,{'callback', 'blackhole_socket_callback'}
-                                                                          ,{'protocol', 'socketio_data_protocol'}
-                                                                          ])]}
-                                            ,{"/", 'blackhole_default_handler', []}
-                                            ]
-                                      }
-                                     ]),
+    Dispatch = cowboy_router:compile([{'_', [{"/", 'blackhole_default_handler', []}]}]),
+
     Port = whapps_config:get_integer(?APP_NAME, <<"port">>, 5555),
-    {'ok', _} = cowboy:start_http('socketio_http_listener', 100, [{'port', Port}],
+    {'ok', _} = cowboy:start_http('blackhole_http_listener', 100, [{'port', Port}],
                                   [{'env', [{'dispatch', Dispatch}]}]),
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
