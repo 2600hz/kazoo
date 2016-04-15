@@ -1,50 +1,65 @@
-## Call Parking
+### Call Parking
 
-### About Call Parking
+#### About Call Parking
 
-Parking will place a call in a numbered "slot" where it will remain until it is retrieved or the caller hangs up.
+Parking will place a call in a numbered "slot" where it will remain until it is retrieved or the caller hangs up.  It can be configured so that if the device parking the call is known then the parked call will periodically ring the parker back.  Optionally, if the parker does not answer a ringback the callflow can be configured to advance to a child and execute further callflow actions.
 
-### Schema for callflow action
+#### Configuring Call Parking
 
-#### Mandatory fields
-**action** - action (see below)
+Some call parking parameters can be configured in a number of ways:
 
-#### Optional fields
+* The parameters `default_ringback_timeout`, `default_callback_timeout` and `park_presence_type` can be set for the entire system in `system_config/callflow.park`.
+* The parmaeter `parked_presence_type` can be set for an entire account in `<account-db>/configs_callflow.park`.
+* The parameters `default_ringback_timeout`, `default_callback_timeout` and `default_presence_type` can be set for all slots accessed by a callflow in the flow data.
+* The parameters `ringback_timeout`, `callback_timeout` and `presence_type` can be set per-slot as accessed by a callflow in the flow data `slots` object.
 
-* **{ACTION}**: default is `park`
-    * `auto` - If the provided slot has an active call then retrieve it, if not then the calling channel is parked.
-    * `park` - Attempt to place the calling channel into the indicated slot.  If the slot is already occupied then the attempt is rejected.
-    * `retrieve` - Attempt to retrieve a call from the indicated slot.  If the slot does not have an active call then the attempt is rejected.
-* **{RINGBACK}** - When a call is parked and the device parking the call is known then parked call will ring the parker on this period.  The default is set in the `system_config` database on the `callflow.park` document.
-* **{CALLBACK}** - When a parked call has remained parked for the {RINGBACK} duration the parker will be called for this time.  The default is set in the `system_config` database on the `callflow.park` document.
-* **{PRESENCE_TYPE}** - This parameter overrides the dialog state used for occupied slots.  The default can be set in the account db as an account config on `configs_callflow.park` or the `system_config` database on the `callflow.park` document.
-    * `early` - Indicate that the call state is 'ringing', generally this causes the phones to attempt to pick up a ringing call as well as blink.
-    * `confirmed` - Indicate that the call state is 'answered'.
-* **{SLOTS}** - This object is used to override the options on a per-slot bases where the object key is the slot number.  When setting parameters per-slot the leading 'default_' should be removed.
+The presence type parameter has some inconsistant naming for backwards compatability but `park_presence_type` and `default_presence_type` are modifying the same behaviour.
 
-#### Example of `data` payload
+##### Callflow data object
 
-    "data": {
-        "action": "{ACTION}"
-        ,"default_ringback_timeout": {RINGBACK}
-        ,"default_callback_timeout": {CALLBACK}
-        ,"default_presence_type": {PRESENCE_TYPE}
-        ,"slots": {}
-    }
+You can override the defaults for the entire system or individually configure slot behaviour based on the callflow used to access it.  The data parameters are:
 
-#### Example of `slots` payload
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`action` | The behaviour of the parking module when invoked in the specific callflow | `string('auto', 'park', 'retrieve')` | `park`  | `true`
+`default_ringback_timeout` | When a call is parked and the device parking the call is known then parked call will ring the parker on this period. | `integer` |   | `false`
+`default_callback_timeout` | When a parked call has remained parked for the `ringback_timeout` duration the parker will be called for this time. | `integer` |   | `false`
+`default_presence_type` | This parameter overrides the dialog state used for occupied slots. | `string('early', 'confirmed')` |   | `false`
+`slots` | This object is used to override the options on a per-slot bases where the object key is the slot number.  See below for details. | {} |   | `false`
 
-    "100": {
-        "ringback_timeout": "{RINGBACK}"
-        ,"callback_timeout": "{CALLBACK}"
-        ,"presence_type": "{PRESENCE_TYPE}"
-    }
+##### Callflow data.slots object
 
-### Example Callflow
+You can override the defaults for the entire system or individually configure slot behaviour based on the callflow used to access it.  The data parameters are:
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`ringback_timeout` | When a call is parked and the device parking the call is known then parked call will ring the parker on this period. | `integer` |   | `false`
+`callback_timeout` | When a parked call has remained parked for the `ringback_timeout` duration the parker will be called for this time. | `integer` |   | `false`
+`presence_type` | This parameter overrides the dialog state used for occupied slots. | `string('early', 'confirmed')` |   | `false`
+
+##### Example of `data` object
+
+``` 
+   "data":{  
+      "action":"auto",
+      "default_ringback_timeout":5000,
+      "default_callback_timeout":26000,
+      "default_presence_type":"early",
+      "slots":{  
+         "100":{  
+            "ringback_timeout":5000,
+            "callback_timeout":26000,
+            "presence_type":"confirmed"
+         }
+      }
+   }
+```
+
+#### Callflow parking children
 
 When a ringback fails the park module will look for a child key which matches the parking slot number.  If one is found then the callflow is branched to that child, otherwise the call is re-parked.
 
-#### Example Flow
+##### Example Flow
 
 ```
 {
@@ -79,6 +94,4 @@ When a ringback fails the park module will look for a child key which matches th
    }
    ...
 }
-
-
 ```
