@@ -324,10 +324,11 @@ maybe_reset_low_balance_sent(AccountJObj) ->
         'true' -> reset_low_balance_sent(AccountJObj);
         'false' -> 'ok'
     end.
+
 -spec reset_low_balance_sent(kz_account:doc()) ->  'ok' |
                                                    {'error', any()}.
 reset_low_balance_sent(AccountJObj0) ->
-    lager:debug("resetting low balance sent", []),
+    lager:debug("resetting low balance sent"),
     AccountJObj1 = kz_account:reset_low_balance_sent(AccountJObj0),
     AccountJObj2 = kz_account:remove_low_balance_tstamp(AccountJObj1),
     wh_util:account_update(AccountJObj2).
