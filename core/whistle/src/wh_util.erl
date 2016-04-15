@@ -567,7 +567,7 @@ account_update(Account, UpdateFun) ->
 -spec get_account_realm(api_binary()) -> api_binary().
 -spec get_account_realm(api_binary(), ne_binary()) -> api_binary().
 get_account_realm(Account) ->
-    get_account_realm(format_account_db(Account), format_account_db(Account)).
+    get_account_realm(format_account_db(Account), format_account_id(Account)).
 
 get_account_realm('undefined', _) -> 'undefined';
 get_account_realm(Db, AccountId) ->
