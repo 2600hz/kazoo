@@ -382,6 +382,7 @@ create_credits(Context) ->
                                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                       ]),
             JObj = wh_transaction:to_json(Transaction),
+            _ = reset_low_balance_notification(AccountId),
             cb_context:setters(Context
                                ,[{fun cb_context:set_resp_status/2, 'success'}
                                  ,{fun cb_context:set_doc/2, JObj}
@@ -389,6 +390,16 @@ create_credits(Context) ->
                                 ]);
         {'error', Reason} ->
             crossbar_util:response('error', <<"transaction error">>, 500, Reason, Context)
+    end.
+
+-spec reset_low_balance_notification(ne_binary()) -> 'ok'.
+reset_low_balance_notification(AccountId) ->
+    case kz_account:fetch(AccountId) of
+        {'error', _} -> 'ok';
+        {'ok', AccountJObj0} ->
+            AccountJObj1 = kz_account:reset_low_balance_sent(AccountJObj0),
+            AccountJObj2 = kz_account:remove_low_balance_tstamp(AccountJObj1),
+            wh_util:account_update(AccountJObj2)
     end.
 
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
