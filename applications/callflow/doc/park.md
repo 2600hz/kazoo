@@ -39,14 +39,14 @@ Key | Description | Type | Default | Required
 
 ##### Example of `data` object
 
-``` 
-   "data":{  
+```
+   "data":{
       "action":"auto",
       "default_ringback_timeout":5000,
       "default_callback_timeout":26000,
       "default_presence_type":"early",
-      "slots":{  
-         "100":{  
+      "slots":{
+         "100":{
             "ringback_timeout":5000,
             "callback_timeout":26000,
             "presence_type":"confirmed"
