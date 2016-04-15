@@ -27,8 +27,6 @@
 
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".account_crawler">>).
 
--define(KEY_LOW_BALANCE_SENT, [<<"notifications">>, <<"low_balance">>, <<"sent_low_balance">>]).
-
 -record(state, {}).
 
 %%%===================================================================
@@ -305,43 +303,48 @@ maybe_test_for_low_balance(AccountId, AccountJObj) ->
 
 -spec test_for_low_balance(ne_binary(), kz_account:doc()) -> 'ok'.
 test_for_low_balance(AccountId, AccountJObj) ->
-    Threshold = low_balance_threshold(AccountId),
+    Threshold = low_balance_threshold(AccountJObj),
     CurrentBalance = wht_util:current_balance(AccountId),
     lager:debug("checking if account ~s balance $~w is below $~w"
                ,[AccountId, wht_util:units_to_dollars(CurrentBalance), Threshold]
                ),
-
     case is_account_balance_too_low(CurrentBalance, Threshold) of
+        'false' -> maybe_reset_low_balance_sent(AccountJObj);
         'true' ->
             maybe_low_balance_notify(AccountJObj, CurrentBalance),
-            maybe_reset_low_balance_sent(
-              AccountJObj
-              ,maybe_topup_account(AccountId, CurrentBalance)
-             );
-        'false' ->
-            'ok'
+            maybe_topup_account(AccountJObj, CurrentBalance)
     end.
 
--spec maybe_reset_low_balance_sent(kz_account:doc(), 'ok' | 'error') -> 'ok'.
-maybe_reset_low_balance_sent(AccountJObj, 'ok') ->
-    UpdatedAccountJObj = wh_json:set_value(?KEY_LOW_BALANCE_SENT, 'false', AccountJObj),
-    wh_util:account_update(UpdatedAccountJObj),
-    lager:debug("topup succeeded, resetting ~s to 'false'", [?KEY_LOW_BALANCE_SENT]);
-maybe_reset_low_balance_sent(_AccountJObj, Error) ->
-    lager:debug("not resetting ~s, topup error: ~p"
-               ,[?KEY_LOW_BALANCE_SENT, Error]
-               ).
+-spec maybe_reset_low_balance_sent(kz_account:doc()) -> 'ok' |
+                                                        {'error', any()}.
+maybe_reset_low_balance_sent(AccountJObj) ->
+    case kz_account:low_balance_sent(AccountJObj)
+        orelse kz_account:low_balance_tstamp(AccountJObj) =/= 'undefined'
+    of
+        'true' -> reset_low_balance_sent(AccountJObj);
+        'false' -> 'ok'
+    end.
+
+-spec reset_low_balance_sent(kz_account:doc()) ->  'ok' |
+                                                   {'error', any()}.
+reset_low_balance_sent(AccountJObj0) ->
+    lager:debug("resetting low balance sent"),
+    AccountJObj1 = kz_account:reset_low_balance_sent(AccountJObj0),
+    AccountJObj2 = kz_account:remove_low_balance_tstamp(AccountJObj1),
+    wh_util:account_update(AccountJObj2).
 
 -spec is_account_balance_too_low(wh_transaction:units(), number()) -> boolean().
 is_account_balance_too_low(CurrentBalance, Threshold) ->
     CurrentBalance < wht_util:dollars_to_units(Threshold).
 
--spec maybe_topup_account(ne_binary(), wh_transaction:units()) ->
+-spec maybe_topup_account(kz_account:doc(), wh_transaction:units()) ->
                                  'ok' |
                                  wh_topup:error().
-maybe_topup_account(AccountId, CurrentBalance) ->
+maybe_topup_account(AccountJObj, CurrentBalance) ->
+    AccountId = kz_account:id(AccountJObj),
     case wh_topup:init(AccountId, CurrentBalance) of
         'ok' ->
+            _ = maybe_reset_low_balance_sent(AccountJObj),
             lager:debug("topup successful for ~s", [AccountId]);
         {'error', Error} ->
             lager:error("topup failed for ~s: ~p", [AccountId, Error]),
@@ -350,31 +353,61 @@ maybe_topup_account(AccountId, CurrentBalance) ->
 
 -spec maybe_low_balance_notify(kz_account:doc(), wh_transaction:units()) -> 'ok'.
 maybe_low_balance_notify(AccountJObj, CurrentBalance) ->
-    case wh_json:is_true(?KEY_LOW_BALANCE_SENT, AccountJObj, 'false') of
-        'true' -> lager:debug("low balance alert already sent apparently");
+    case kz_account:low_balance_enabled_exists(AccountJObj) of
         'false' ->
-            _ = notify_of_low_balance(wh_doc:id(AccountJObj), CurrentBalance),
-            update_account_low_balance_sent(AccountJObj)
+            lager:debug("low balance notification enabled key not present, using deprecated check"),
+            maybe_low_balance_notify_deprecated(AccountJObj, CurrentBalance);
+        'true' ->
+            maybe_low_balance_notify(AccountJObj, CurrentBalance, kz_account:low_balance_enabled(AccountJObj))
+    end.
+
+-spec maybe_low_balance_notify(kz_account:doc(), wh_transaction:units(), boolean()) -> 'ok'.
+maybe_low_balance_notify(_AccountJObj, _CurrentBalance, 'false') ->
+    lager:debug("low balance notification disabled"),
+    'ok';
+maybe_low_balance_notify(AccountJObj, CurrentBalance, 'true') ->
+    lager:debug("low balance notification enabled"),
+    case kz_account:low_balance_tstamp(AccountJObj) of
+        LowBalanceSent when is_number(LowBalanceSent) ->
+            Cycle = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"low_balance_repeat_s">>, 1 * ?SECONDS_IN_DAY),
+            Diff = wh_util:current_tstamp() - LowBalanceSent,
+            case Diff >= Cycle of
+                'false' -> lager:debug("low balance alert sent ~w seconds ago, repeats every ~w", [Diff, Cycle]);
+                'true' -> notify_of_low_balance(AccountJObj, CurrentBalance)
+            end;
+        _Else -> notify_of_low_balance(AccountJObj, CurrentBalance)
+    end.
+
+-spec maybe_low_balance_notify_deprecated(kz_account:doc(), wh_transaction:units()) -> 'ok'.
+maybe_low_balance_notify_deprecated(AccountJObj, CurrentBalance) ->
+    case kz_account:low_balance_sent(AccountJObj) of
+        'true' -> lager:debug("low balance alert already sent");
+        'false' -> notify_of_low_balance(AccountJObj, CurrentBalance)
     end.
 
 -spec update_account_low_balance_sent(kz_account:doc()) -> 'ok' |
-                                                            {'error', any()}.
-update_account_low_balance_sent(AccountJObj) ->
-    UpdatedAccountJObj = wh_json:set_value(?KEY_LOW_BALANCE_SENT, 'true', AccountJObj),
-    wh_util:account_update(UpdatedAccountJObj).
+                                                           {'error', any()}.
+update_account_low_balance_sent(AccountJObj0) ->
+    AccountJObj1 = kz_account:set_low_balance_sent(AccountJObj0),
+    AccountJObj2 = kz_account:set_low_balance_tstamp(AccountJObj1),
+    wh_util:account_update(AccountJObj2).
 
--spec notify_of_low_balance(ne_binary(), wh_transaction:units()) -> 'ok'.
-notify_of_low_balance(AccountId, CurrentBalance) ->
-    wh_notify:low_balance(AccountId, CurrentBalance).
+-spec notify_of_low_balance(kz_account:doc(), wh_transaction:units()) -> 'ok'.
+notify_of_low_balance(AccountJObj, CurrentBalance) ->
+    AccountId = kz_account:id(AccountJObj),
+    lager:debug("sending low balance alert for account ~s with balance ~w"
+                ,[AccountId, CurrentBalance]),
+    'ok' = wh_notify:low_balance(AccountId, CurrentBalance),
+    update_account_low_balance_sent(AccountJObj).
 
--spec low_balance_threshold(ne_binary()) -> float().
-low_balance_threshold(Account) ->
+-spec low_balance_threshold(ne_binary() | kz_account:doc()) -> float().
+low_balance_threshold(AccountId) when is_binary(AccountId) ->
+    case kz_account:fetch(AccountId) of
+        {'error', _R} -> low_balance_threshold(wh_json:new());
+        {'ok', JObj} -> low_balance_threshold(JObj)
+    end;
+low_balance_threshold(AccountJObj) ->
     ConfigCat = <<(?NOTIFY_CONFIG_CAT)/binary, ".low_balance">>,
     Default = whapps_config:get_float(ConfigCat, <<"threshold">>, 5.00),
+    kz_account:low_balance_threshold(AccountJObj, Default).
 
-    case kz_account:fetch(Account) of
-        {'error', _R} -> Default;
-        {'ok', JObj} ->
-            TopUp = wh_json:get_float_value([<<"topup">>, <<"threshold">>], JObj, Default),
-            kz_account:threshold(JObj, TopUp)
-    end.
