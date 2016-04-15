@@ -3,17 +3,6 @@
     "_id": "callflows.record_caller",
     "description": "Record the caller's audio stream",
     "properties": {
-        "action": {
-            "default": "start",
-            "description": "Whether to start or stop the recording",
-            "enum": [
-                "start",
-                "stop"
-            ],
-            "name": "Action",
-            "required": false,
-            "type": "string"
-        },
         "format": {
             "description": "What format to store the recording on disk",
             "enum": [
@@ -23,36 +12,12 @@
             "name": "Format",
             "type": "string"
         },
-        "record_min_sec": {
-            "description": "The minimum length, in seconds, the recording must be to be considered successful. Otherwise it is deleted",
-            "name": "Minimum recording seconds",
-            "required": false,
-            "type": "integer"
-        },
-        "record_on_answer": {
-            "default": false,
-            "description": "Whether to delay the recording until the channel is answered",
-            "name": "Record On Answer",
-            "required": false,
-            "type": "boolean"
-        },
-        "record_on_bridge": {
-            "default": false,
-            "description": "Whether to delay the recording until the channel is bridged",
-            "name": "Record On Bridge",
-            "required": false,
-            "type": "boolean"
-        },
-        "record_sample_rate": {
-            "description": "What sampling rate to use on the recording",
-            "name": "Sample Rate",
-            "required": false,
-            "type": "integer"
-        },
-        "recording_id": {
-            "description": "Name the media file that will be generated from the call",
-            "name": "Recording ID",
-            "required": false,
+        "method": {
+            "description": "What HTTP method to use when sending the recording",
+            "enum": [
+                "put",
+                "post"
+            ],
             "type": "string"
         },
         "time_limit": {
