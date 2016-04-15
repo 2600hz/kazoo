@@ -650,7 +650,7 @@ presence_type(SlotNumber, Data, Call) ->
           ,Data
           ,?ACCOUNT_PARKED_TYPE(whapps_call:account_id(Call))
          ),
-    wh_json:get_value(<<"presence_type">>, JObj, DefaultPresenceType).
+    wh_json:get_ne_binary_value(<<"presence_type">>, JObj, DefaultPresenceType).
 
 -spec slots_configuration(wh_json:object()) -> wh_json:object().
 slots_configuration(Data) ->
