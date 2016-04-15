@@ -8123,35 +8123,6 @@
         "/v2/accounts/{ACCOUNT_ID}/presence/{EXTENSION}": {
             "post": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/qubicle_agents": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/qubicle_agents/status/{ID}": {
-            "get": {},
-            "post": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/qubicle_agents/{ID}": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/qubicle_agents/{ID}/status": {
-            "get": {},
-            "post": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/qubicle_queues": {
-            "get": {},
-            "put": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/qubicle_queues/{Q_ID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/qubicle_queues/{Q_ID}/roster": {
-            "delete": {},
-            "get": {},
-            "post": {}
-        },
         "/v2/accounts/{ACCOUNT_ID}/queues": {
             "get": {},
             "put": {}
