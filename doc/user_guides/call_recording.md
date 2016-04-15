@@ -35,7 +35,7 @@ curl -v -X PATCH \
 
 If successful, all calls to/from this user will be recorded.
 
-##### Callflow action
+##### Callflow action - Record Call
 
 You can enable call recording on a per-callflow basis by using the `record_call` callflow action. The callflow action can take the following parameters:
 
@@ -48,3 +48,14 @@ Key | Description | Type | Default | Required
 `record_sample_rate` | Sampling rate of the recording, in Hz | `integer` |   | `false`
 `time_limit` | Limit, in seconds, of how long to record the call | `integer` |   | `false`
 `url` | What URL to use as a base for where to send the recording after it finishes | `string` |   | `false`
+
+##### Callflow action - Record Caller
+
+The `record_caller` callflow action is meant for recording things like voicemails or IVR prompts. The schema for the callflow action is:
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`format` | What format to store the recording on disk | `string('mp3', 'wav')` |   | `false`
+`method` | What HTTP method to use when sending the recording | `string('put', 'post')` |   | `false`
+`time_limit` | Time limit, in seconds, for the recording | `integer` | `3600` | `false`
+`url` | The URL to use when sending the recording for storage | `string` |   | `true`
