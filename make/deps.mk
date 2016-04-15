@@ -1,4 +1,4 @@
-DEPS = lager eiconv gen_smtp amqp_client cowlib cowboy gun jesse jiffy certifi couchbeam wsock zucchini \
+DEPS = lager eiconv gen_smtp amqp_client cowboy jesse jiffy certifi couchbeam wsock zucchini \
        erlsom erlydtl exml escalus folsom detergent erlang_localtime \
        nklib gproc poolboy syslog lager_syslog eflame hep ecsv reloader \
 	proper recon
@@ -14,7 +14,6 @@ dep_jiffy = hex 0.14.7
 dep_jesse = git https://github.com/for-GET/jesse 9e7830001deb78b57ce2ae15049afb7fecb8d386
 dep_nklib = git https://github.com/NetComposer/nklib
 dep_couchbeam = git https://github.com/benoitc/couchbeam 1.3.0
-dep_cowlib = git https://github.com/ninenines/cowlib 1.3.0
 
 ### pr request opened upstream ###
 dep_erlang_localtime = git https://github.com/lazedo/erlang_localtime 0bb26016380cd7df5d30aa0ef284ae252b5bae31
