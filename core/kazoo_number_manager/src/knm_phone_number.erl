@@ -259,7 +259,7 @@ to_public_json(Number) ->
         wh_json:from_list(
           props:filter_empty(
             [ {<<"created">>, wh_doc:created(JObj)}
-            , {<<"updated">>, wh_doc:modified(JObj)}
+            , {<<"modified">>, wh_doc:modified(JObj)}
             , State
             , UsedBy
             , {<<"module">>, module_name(Number)}

@@ -133,7 +133,7 @@ curl -v -X DELETE \
     "data": {
         "_read_only": {
             "created": 63627848588,
-            "updated": 63627848588,
+            "modified": 63627848588,
             "module_name": "knm_local",
             "state": "available"
         },
@@ -184,7 +184,7 @@ curl -v -X GET \
     "data": {
         "_read_only": {
             "created": 63627848989,
-            "updated": 63627848989,
+            "modified": 63627848989,
             "module_name": "knm_local",
             "state": "reserved"
         },
@@ -236,7 +236,7 @@ curl -v -X POST \
     "data": {
         "_read_only": {
             "created": 63627848989,
-            "updated": 63627848989,
+            "modified": 63627848989,
             "module_name": "knm_local",
             "state": "reserved"
         },
@@ -275,7 +275,7 @@ curl -v -X PUT \
     "data": {
         "_read_only": {
             "created": 63627848989,
-            "updated": 63627848989,
+            "modified": 63627848989,
             "module_name": "knm_local",
             "state": "reserved"
         },
