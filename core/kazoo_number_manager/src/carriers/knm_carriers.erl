@@ -292,20 +292,21 @@ default_carrier() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec acquire(knm_number:knm_number()) -> knm_number:knm_number().
--spec acquire(knm_number:knm_number(), ne_binary(), boolean()) ->
-                     knm_number:knm_number().
 acquire(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     Module = knm_phone_number:module_name(PhoneNumber),
     DryRun = knm_phone_number:dry_run(PhoneNumber),
     acquire(Number, Module, DryRun).
 
-acquire(Number, _Mod, 'true') ->
-    Number;
+-spec acquire(knm_number:knm_number(), ne_binary(), boolean()) ->
+                     knm_number:knm_number().
 acquire(Number, 'undefined', _DryRun) ->
     knm_errors:carrier_not_specified(Number);
+acquire(Number, _Mod, 'true') ->
+    Number;
 acquire(Number, ?NE_BINARY = Mod, 'false') ->
     Module = carrier_module(Mod),
+    lager:debug("contacting carrier ~s", [Module]),
     Module:acquire_number(Number).
 
 %%--------------------------------------------------------------------

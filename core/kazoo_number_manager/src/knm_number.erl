@@ -617,13 +617,23 @@ buy(Num, Account) ->
     buy(Num, Account, []).
 
 buy(Num, Account, Options) ->
-    {'ok', Number} = ?MODULE:get(Num, Options),
-    AcquiredNumber = knm_carriers:acquire(Number),
-    Updates = [ {fun knm_phone_number:set_assigned_to/2, wh_util:format_account_id(Account)}
-              , {fun knm_phone_number:set_state/2, ?NUMBER_STATE_IN_SERVICE}
-              ],
-    update_phone_number(AcquiredNumber, Updates).
+    case ?MODULE:get(Num, Options) of
+        {'ok', Number} ->
+            attempt(fun acquire/2, [Number, Account]);
+        {'error', _R}=Error -> Error
+    end.
 
+%% @private
+-spec acquire(knm_number(), ne_binary()) -> knm_number_return().
+acquire(Number, Account) ->
+    'true' = ensure_state(phone_number(Number), ?NUMBER_STATE_DISCOVERY),
+    AcquiredNumber = knm_carriers:acquire(Number),
+    Num = knm_phone_number:number(phone_number(Number)),
+    Updates =
+        [ {fun knm_phone_number:set_assigned_to/2, wh_util:format_account_id(Account)}
+        , {fun knm_phone_number:set_state/2, ?NUMBER_STATE_IN_SERVICE}
+        ],
+    update_phone_number(AcquiredNumber, Updates).
 
 %%--------------------------------------------------------------------
 %% Public get/set number_options()

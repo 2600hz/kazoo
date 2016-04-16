@@ -1,6 +1,6 @@
 ### Phone Numbers
 
-The 2600hz mobile API set: activate and manage numbers.
+The 2600hz mobile API set: manage numbers.
 
 
 #### Search for numbers
@@ -716,14 +716,71 @@ curl -v -X PUT \
 ```
 
 
-#### Create
+#### Buy a number once searched for
 
 > PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/activate
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/activate
+```
+
+##### Responses
+
+###### Success
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "_read_only": {
+            "created": 63628027112,
+            "modified": 63628027112,
+            "module_name": "knm_bandwidth",
+            "state": "in_service"
+        },
+        "id": "{PHONENUMBER}",
+        "state": "in_service"
+    },
+    "request_id": "4a1a73bfa12d11ac63c74d377cd961f6",
+    "revision": "undefined",
+    "status": "success"
+}
+```
+
+###### Number was not returned in previous search results
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "message": "bad identifier",
+        "not_found": "The number could not be found"
+    },
+    "error": "404",
+    "message": "bad_identifier",
+    "request_id": "ff8fabea35650b4850154c7eb3f1d769",
+    "status": "error"
+}
+```
+
+###### Number already in service
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "cause": "{PHONENUMBER}",
+        "code": 409,
+        "error": "number_exists",
+        "message": "number {PHONENUMBER} already exists"
+    },
+    "error": "409",
+    "message": "number_exists",
+    "request_id": "a5afb2f5708019192920d0d95f703c13",
+    "status": "error"
+}
 ```
 
 
@@ -822,14 +879,6 @@ curl -v -X PUT \
     "request_id": "892b3cc884bd913cd3912c5b4c757421",
     "status": "error"
 }
-```
-
-
-#### Activate a new phone number
-
-```shell
-curl -X PUT -H "Content-Type: application/json" -H "X-Auth-Token: {{AUTH_TOKEN}}" \
-    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/phone_numbers/{{NUMBER}}/activate -d '{}'
 ```
 
 
