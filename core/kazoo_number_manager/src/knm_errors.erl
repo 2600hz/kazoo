@@ -21,6 +21,7 @@
          ,assign_failure/2
          ,database_error/2
          ,number_is_porting/1
+         ,by_carrier/3
         ]).
 
 -export([to_json/1, to_json/2, to_json/3
@@ -101,18 +102,23 @@ multiple_choice(Number, Update) ->
 assign_failure(PhoneNumber, E) ->
     throw({'error', 'assign_failure', PhoneNumber, E}).
 
--spec database_error(kz_data:data_errors(), knm_phone_number:knm_phone_number() | ne_binary()) ->
+-spec database_error(kz_data:data_errors(), knm_phone_number:knm_phone_number()) ->
                             no_return().
 database_error(E, PhoneNumber) ->
     throw({'error'
            ,'database_error'
-           ,E
            ,PhoneNumber
+           ,E
           }).
 
 -spec number_is_porting(ne_binary()) -> no_return().
 number_is_porting(Num) ->
     throw({'error', 'number_is_porting', Num}).
+
+-spec by_carrier(module(), ne_binary() | atom(), kn()) ->
+                        no_return().
+by_carrier(Carrier, E, Number) ->
+    throw({'error', 'by_carrier', Number, {Carrier,E}}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -152,6 +158,11 @@ to_json('no_change_required', _, Cause) ->
 to_json('invalid_state_transition', _, Cause) ->
     Message = <<"invalid state transition">>,
     build_error(400, 'invalid_state_transition', Message, Cause);
+to_json('by_carrier', _, {Carrier,Cause}) ->
+    BinCarrier = wh_util:to_binary(Carrier),
+    BinCause = wh_util:to_binary(Cause),
+    Message = <<"fault by carrier ", BinCarrier/binary>>,
+    build_error(500, 'unspecified_fault', Message, BinCause);
 to_json(Reason, _, Cause) ->
     build_error(500, 'unspecified_fault', Reason, Cause).
 

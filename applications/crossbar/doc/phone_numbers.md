@@ -783,6 +783,23 @@ curl -v -X PUT \
 }
 ```
 
+###### Carrier fault
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "cause": "db.SaveTelephoneNumberRequest: There is no TelephoneNumber with the ID: 166C0CE6-2225-4D15-90C9-7B6BFB0ABCB5. Save operation failed.",
+        "code": 500,
+        "error": "unspecified_fault",
+        "message": "fault by carrier knm_bandwidth"
+    },
+    "error": "500",
+    "message": "unspecified_fault",
+    "request_id": "c289d4d8e2fce94f35a7c3ec9a2a9805",
+    "status": "error"
+}
+
 
 #### Classify a number
 

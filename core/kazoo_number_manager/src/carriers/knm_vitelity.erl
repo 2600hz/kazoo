@@ -478,11 +478,11 @@ query_vitelity(Number, URI) ->
     ?LOG_DEBUG("querying ~s", [URI]),
     case kz_http:post(wh_util:to_list(URI)) of
         {'ok', _RespCode, _RespHeaders, RespXML} ->
-            ?LOG_DEBUG("recv ~s: ~s", [_RespCode, RespXML]),
+            ?LOG_DEBUG("recv ~p: ~s", [_RespCode, RespXML]),
             process_xml_resp(Number, RespXML);
         {'error', Error} ->
             ?LOG_DEBUG("error querying: ~p", [Error]),
-            knm_errors:unspecified(Error, Number)
+            knm_errors:by_carrier(?MODULE, Error, Number)
     end.
 
 %%--------------------------------------------------------------------
@@ -499,7 +499,7 @@ process_xml_resp(Number, XML) ->
     catch
         _E:_R ->
             ?LOG_DEBUG("failed to decode xml: ~s: ~p", [_E, _R]),
-            knm_errors:unspecified('failed_decode_resp', Number)
+            knm_errors:by_carrier(?MODULE, 'failed_decode_resp', Number)
     end.
 
 %%--------------------------------------------------------------------
@@ -518,7 +518,7 @@ process_xml_content_tag(Number, #xmlElement{name='content'
         <<"fail">> ->
             Msg = knm_vitelity_util:xml_resp_error_msg(Els),
             ?LOG_DEBUG("xml status is 'fail': ~s", [Msg]),
-            knm_errors:unspecified(Msg, Number);
+            knm_errors:by_carrier(?MODULE, Msg, Number);
         <<"ok">> ->
             ?LOG_DEBUG("successful provisioning"),
             Number
