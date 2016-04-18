@@ -28,6 +28,7 @@
 %%   as that will cause duplicate credit/debits at the end of the call since
 %%   the round-robin shared queue thing wont work.
 -define(RESPONDERS, [{'j5_authz_req', [{<<"authz">>, <<"authz_req">>}]}
+                     ,{'j5_balance_check_req', [{<<"authz">>, <<"balance_check_req">>}]}
                      ,{'j5_channel_destroy', [{<<"call_event">>, <<"CHANNEL_DESTROY">>}]}
                     ]).
 -define(BINDINGS, [{'call', [{'restrict_to', [<<"CHANNEL_DESTROY">>]}]}
