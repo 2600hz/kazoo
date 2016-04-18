@@ -1237,6 +1237,7 @@ build_error_message(_Version, Message) when is_binary(Message) ->
 build_error_message(_Version, JObj) ->
     JObj.
 
+-spec maybe_convert_numbers(cb_context:context(), wh_json:object(), jesse_error:error_reasons()) -> cb_context:context().
 maybe_convert_numbers(Context, SchemaJObj, Errors) ->
     JObj = req_data(Context),
     case lists:foldl(fun maybe_convert_number/2, JObj, Errors) of
@@ -1246,22 +1247,18 @@ maybe_convert_numbers(Context, SchemaJObj, Errors) ->
                                                                         ]),
             failed(Context, Errors);
         NewJObj ->
-            validate_request_data(SchemaJObj, set_req_data(Context, NewJObj) )
+            validate_request_data(SchemaJObj, set_req_data(Context, NewJObj))
     end.
 
+-spec maybe_convert_number(jesse_error:error_reason(), wh_json:object()) -> wh_json:object().
 maybe_convert_number({data_invalid, {Props}, 'wrong_type', Value, Key}, JObj) ->
     case props:get_value(<<"type">>, Props) of
-        <<"integer">> -> case filter_numbers(Value) of
-                             <<>> -> JObj;
-                             V -> wh_json:set_value(Key, wh_util:to_integer(V), JObj)
-                         end;
+        <<"integer">> -> 
+            try wh_util:to_integer(Value) of
+                V -> wh_json:set_value(Key, V, JObj)
+            catch _E:_R
+                lager:debug("error converting value to integer ~p : ~p : ~p", [Value, _E, _R])
+             end;
         _ -> JObj
     end;
 maybe_convert_number(_, JObj) -> JObj.
-
--spec filter_numbers(binary()) -> binary().
-filter_numbers(Number) ->
-    << <<X>> || <<X>> <= Number, is_digit(X)>>.
-
--spec is_digit(integer()) -> boolean().
-is_digit(N) -> N >= $0 andalso N =< $9.
