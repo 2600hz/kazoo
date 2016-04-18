@@ -590,6 +590,7 @@ validate_request_data(<<_/binary>> = Schema, Context) ->
             validate_request_data(SchemaJObj, Context)
     end;
 validate_request_data(SchemaJObj, Context) ->
+    Strict = whapps_config:get_is_true(?CONFIG_CAT, <<"schema_strict_validation">>, 'false'),
     try wh_json_schema:validate(SchemaJObj
                                ,wh_json:public_fields(req_data(Context))
                                )
@@ -598,11 +599,13 @@ validate_request_data(SchemaJObj, Context) ->
             passed(
               set_doc(Context, wh_json_schema:add_defaults(JObj, SchemaJObj))
              );
-        {'error', Errors} ->
+        {'error', Errors} when Strict ->
             lager:debug("request data did not validate against ~s: ~p", [wh_doc:id(SchemaJObj)
                                                                          ,Errors
                                                                         ]),
-            failed(Context, Errors)
+            failed(Context, Errors);
+        {'error', Errors} ->
+            maybe_fix_js_types(Context, SchemaJObj, Errors)
     catch
         'error':'function_clause' ->
             ST = erlang:get_stacktrace(),
@@ -1233,3 +1236,39 @@ build_error_message(_Version, Message) when is_binary(Message) ->
     wh_json:from_list([{<<"message">>, Message}]);
 build_error_message(_Version, JObj) ->
     JObj.
+
+-spec maybe_fix_js_types(cb_context:context(), wh_json:object(), jesse_error:error_reasons()) ->
+                                cb_context:context().
+maybe_fix_js_types(Context, SchemaJObj, Errors) ->
+    JObj = req_data(Context),
+    case lists:foldl(fun maybe_fix_js_type/2, JObj, Errors) of
+        JObj ->
+            lager:debug("request data did not validate against ~s: ~p", [wh_doc:id(SchemaJObj)
+                                                                         ,Errors
+                                                                        ]),
+            failed(Context, Errors);
+        NewJObj ->
+            validate_request_data(SchemaJObj, set_req_data(Context, NewJObj))
+    end.
+
+-spec maybe_fix_js_type(jesse_error:error_reason(), wh_json:object()) ->
+                               wh_json:object().
+maybe_fix_js_type({'data_invalid', SchemaJObj, 'wrong_type', Value, Key}, JObj) ->
+    case wh_json:get_value(<<"type">>, SchemaJObj) of
+        <<"integer">> -> maybe_fix_js_integer(Key, Value, JObj);
+        _Type -> JObj
+    end;
+maybe_fix_js_type(_, JObj) -> JObj.
+
+-spec maybe_fix_js_integer(wh_json:key(), wh_json:json_term(), wh_json:object()) ->
+                                  wh_json:object().
+maybe_fix_js_integer(Key, Value, JObj) ->
+    try wh_util:to_integer(Value) of
+        V -> wh_json:set_value(Key, V, JObj)
+    catch
+        _E:_R ->
+            lager:debug("error converting value to integer ~p : ~p : ~p"
+                       ,[Value, _E, _R]
+                       ),
+            JObj
+    end.
