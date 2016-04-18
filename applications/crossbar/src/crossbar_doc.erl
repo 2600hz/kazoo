@@ -165,7 +165,7 @@ load([_|_]=IDs, Context, Opts, _RespStatus) ->
             case check_document_type(IDs, Context, Docs, Opts) of
                 'true' ->
                     cb_context:store(handle_couch_mgr_success(Docs, Context), 'db_doc', Docs);
-                'fasle' ->
+                'false' ->
                     ErrorCause = wh_json:from_list([{<<"cause">>, IDs}]),
                     cb_context:add_system_error('bad_identifier', ErrorCause, Context)
             end
@@ -178,7 +178,19 @@ get_open_function(Options) ->
         'false' -> fun kz_datamgr:open_doc/3
     end.
 
--spec check_document_type(api_binary(), cb_context:context(), wh_json:object(), wh_proplist()) ->
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Returns 'true' or 'false' if the requested document type is matched
+%% against the actual document type or the name of the last resource
+%% that request it. It first checks expected type is matched with document
+%% type, if it fails it checks document type with the name of the
+%% last resource. If the document doesn't have a `pvt_type`
+%% property or the resource requested that expected type to be `any`,
+%% it will return `true`.
+%% @end
+%%--------------------------------------------------------------------
+-spec check_document_type(ne_binary() | ne_binaries(), cb_context:context(), wh_json:object(), wh_proplist()) ->
                                   boolean().
 check_document_type(DocId, Context, JObj, Options) when is_binary(DocId) ->
     JObjType = wh_doc:type(JObj),

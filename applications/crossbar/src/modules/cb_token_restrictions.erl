@@ -81,7 +81,7 @@ validate(Context, ?HTTP_DELETE) ->
 
 -spec load_restrictions(cb_context:context()) -> cb_context:context().
 load_restrictions(Context) ->
-    crossbar_doc:load(?CB_ACCOUNT_TOKEN_RESTRICTIONS, Context).
+    crossbar_doc:load(?CB_ACCOUNT_TOKEN_RESTRICTIONS, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE)).
 
 validate_request(Context) ->
     OnSuccess = fun(C) -> on_successful_validation(C) end,
@@ -89,7 +89,7 @@ validate_request(Context) ->
 
 -spec on_successful_validation(cb_context:context()) -> cb_context:context().
 on_successful_validation(Context) ->
-    Context1 = crossbar_doc:load_merge(?CB_ACCOUNT_TOKEN_RESTRICTIONS, Context),
+    Context1 = crossbar_doc:load_merge(?CB_ACCOUNT_TOKEN_RESTRICTIONS, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE)),
     case cb_context:resp_status(Context1) of
         'success' -> Context1;
         _Status ->

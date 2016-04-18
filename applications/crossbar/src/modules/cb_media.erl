@@ -915,8 +915,9 @@ load_media_binary(Context, MediaId) ->
                     cb_context:add_resp_headers(
                       crossbar_doc:load_attachment(cb_context:doc(Context1)
                                                    ,Attachment
-                                                   ,?TYPE_CHECK_OPTION(kzd_media:type()))
+                                                   ,?TYPE_CHECK_OPTION(kzd_media:type())
                                                    ,Context1
+                                                  )
                       ,[{<<"Content-Disposition">>, <<"attachment; filename=", Attachment/binary>>}
                         ,{<<"Content-Type">>, wh_doc:attachment_content_type(cb_context:doc(Context1), Attachment)}
                         ,{<<"Content-Length">>, wh_doc:attachment_length(cb_context:doc(Context1), Attachment)}

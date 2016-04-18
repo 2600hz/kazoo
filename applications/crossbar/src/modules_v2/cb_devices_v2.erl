@@ -338,7 +338,7 @@ load_users_device_summary(Context, UserId) ->
 validate_request('undefined', Context) ->
     maybe_check_mdn('undefined', Context);
 validate_request(DeviceId, Context) ->
-    Context1 = crossbar_doc:load(DeviceId, Context),
+    Context1 = crossbar_doc:load(DeviceId, Context, ?TYPE_CHECK_OPTION(kz_device:type())),
     case cb_context:resp_status(Context1) of
         'success' -> maybe_check_mdn(DeviceId, Context1);
         _Else -> Context1

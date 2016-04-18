@@ -180,7 +180,7 @@ create(Context) ->
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     Context1 = cb_context:set_account_db(Context, ?WH_ALERTS_DB),
-    crossbar_doc:load(Id, Context1).
+    crossbar_doc:load(Id, Context1, ?TYPE_CHECK_OPTION(<<"alert">>)).
 
 %%--------------------------------------------------------------------
 %% @private
