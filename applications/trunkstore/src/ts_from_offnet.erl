@@ -97,6 +97,7 @@ send_onnet(State, Command) ->
     _ = wait_for_bridge(State),
     ts_callflow:send_hangup(State).
 
+-spec maybe_send_privacy(ts_callflow:state()) -> 'ok'.
 maybe_send_privacy(State) ->
     CCVs = ts_callflow:get_custom_channel_vars(State),
     case ?CALLER_PRIVACY(CCVs) of
@@ -109,7 +110,7 @@ maybe_send_privacy(State) ->
                       ,{<<"Call-ID">>, CallID}
                        | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
                       ],
-            _ = wapi_dialplan:publish_command(CtlQ, Command);
+            wapi_dialplan:publish_command(CtlQ, Command);
         'false' -> 'ok'
     end.
 
@@ -205,7 +206,7 @@ try_failover_e164(State, ToDID) ->
 %%--------------------------------------------------------------------
 %% Out-of-band functions
 %%--------------------------------------------------------------------
--spec get_endpoint_data(any()) -> {'endpoint', wh_json:object()}.
+-spec get_endpoint_data(ts_callflow:state()) -> {'endpoint', wh_json:object()}.
 get_endpoint_data(State) ->
     JObj = ts_callflow:get_request_data(State),
     {ToUser, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
@@ -218,7 +219,8 @@ get_endpoint_data(State) ->
             throw('unknown_account')
     end.
 
--spec get_endpoint_data(any(), wh_json:object(), ne_binary(), ne_binary(), wh_proplist()) -> {'endpoint', wh_json:object()}.
+-spec get_endpoint_data(ts_callflow:state(), wh_json:object(), ne_binary(), ne_binary(), wh_proplist()) ->
+                                {'endpoint', wh_json:object()}.
 get_endpoint_data(State, JObj, ToDID, AccountId, NumberProps) ->
     ForceOut = knm_number:should_force_outbound(NumberProps),
     lager:info("building endpoint for account id ~s with force out ~s", [AccountId, ForceOut]),
@@ -384,7 +386,7 @@ callee_id([JObj | T]) ->
             end
     end.
 
--spec maybe_anonymize_caller_id(any(), ne_binary(), ne_binary()) -> wh_proplist().
+-spec maybe_anonymize_caller_id(ts_callflow:state(), ne_binary(), ne_binary()) -> wh_proplist().
 maybe_anonymize_caller_id(State, OldCallerId, CidFormat) ->
     CCVs = ts_callflow:get_custom_channel_vars(State),
     case should_anonymize_caller_id(State, ?CALLER_PRIVACY(CCVs)) of
@@ -399,12 +401,13 @@ maybe_anonymize_caller_id(State, OldCallerId, CidFormat) ->
             ]
     end.
 
--spec should_anonymize_caller_id(any(), boolean()) -> boolean().
+-spec should_anonymize_caller_id(ts_callflow:state(), boolean()) -> boolean().
 should_anonymize_caller_id(State, 'true') ->
     AccountDb = ts_callflow:get_account_id(State),
     fetch_anonymizer_option(AccountDb, kz_account:fetch(AccountDb)) =:= ?DEFAULT_ANONYMIZER_OPTION;
 should_anonymize_caller_id(_, _) -> 'false'.
 
+-spec fetch_anonymizer_option(ne_binary(), {'ok', wh_json:object()} | {'error', any()}) -> ne_binary().
 fetch_anonymizer_option(_, {'ok', JObj}) ->
     wh_json:get_value(?ANONYMIZER_OPTIONS, JObj, ?DEFAULT_ANONYMIZER_OPTION);
 fetch_anonymizer_option(AccountDb, {'error', _}) ->
