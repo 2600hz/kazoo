@@ -1256,8 +1256,9 @@ maybe_convert_number({data_invalid, {Props}, 'wrong_type', Value, Key}, JObj) ->
         <<"integer">> -> 
             try wh_util:to_integer(Value) of
                 V -> wh_json:set_value(Key, V, JObj)
-            catch _E:_R
-                lager:debug("error converting value to integer ~p : ~p : ~p", [Value, _E, _R])
+            catch
+                _E:_R -> lager:debug("error converting value to integer ~p : ~p : ~p", [Value, _E, _R]),
+                JObj
              end;
         _ -> JObj
     end;
