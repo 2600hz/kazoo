@@ -590,6 +590,7 @@ validate_request_data(<<_/binary>> = Schema, Context) ->
             validate_request_data(SchemaJObj, Context)
     end;
 validate_request_data(SchemaJObj, Context) ->
+    Strict = whapps_config:get_is_true(?CONFIG_CAT, <<"schema_strict_validation">>, 'false'),
     try wh_json_schema:validate(SchemaJObj
                                ,wh_json:public_fields(req_data(Context))
                                )
@@ -598,11 +599,13 @@ validate_request_data(SchemaJObj, Context) ->
             passed(
               set_doc(Context, wh_json_schema:add_defaults(JObj, SchemaJObj))
              );
-        {'error', Errors} ->
+        {'error', Errors} when Strict ->
             lager:debug("request data did not validate against ~s: ~p", [wh_doc:id(SchemaJObj)
                                                                          ,Errors
                                                                         ]),
-            failed(Context, Errors)
+            failed(Context, Errors);
+        {'error', Errors} ->
+            maybe_convert_numbers(Context, SchemaJObj, Errors)
     catch
         'error':'function_clause' ->
             ST = erlang:get_stacktrace(),
@@ -1233,3 +1236,32 @@ build_error_message(_Version, Message) when is_binary(Message) ->
     wh_json:from_list([{<<"message">>, Message}]);
 build_error_message(_Version, JObj) ->
     JObj.
+
+maybe_convert_numbers(Context, SchemaJObj, Errors) ->
+    JObj = req_data(Context),
+    case lists:foldl(fun maybe_convert_number/2, JObj, Errors) of
+        JObj ->
+            lager:debug("request data did not validate against ~s: ~p", [wh_doc:id(SchemaJObj)
+                                                                         ,Errors
+                                                                        ]),
+            failed(Context, Errors);
+        NewJObj ->
+            validate_request_data(SchemaJObj, set_req_data(Context, NewJObj) )
+    end.
+
+maybe_convert_number({data_invalid, {Props}, 'wrong_type', Value, Key}, JObj) ->
+    case props:get_value(<<"type">>, Props) of
+        <<"integer">> -> case filter_numbers(Value) of
+                             <<>> -> JObj;
+                             V -> wh_json:set_value(Key, wh_util:to_integer(V), JObj)
+                         end;
+        _ -> JObj
+    end;
+maybe_convert_number(_, JObj) -> JObj.
+
+-spec filter_numbers(binary()) -> binary().
+filter_numbers(Number) ->
+    << <<X>> || <<X>> <= Number, is_digit(X)>>.
+
+-spec is_digit(integer()) -> boolean().
+is_digit(N) -> N >= $0 andalso N =< $9.
