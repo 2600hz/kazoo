@@ -1251,8 +1251,8 @@ maybe_convert_numbers(Context, SchemaJObj, Errors) ->
     end.
 
 -spec maybe_convert_number(jesse_error:error_reason(), wh_json:object()) -> wh_json:object().
-maybe_convert_number({data_invalid, {Props}, 'wrong_type', Value, Key}, JObj) ->
-    case props:get_value(<<"type">>, Props) of
+maybe_convert_number({'data_invalid', SchemaJObj, 'wrong_type', Value, Key}, JObj) ->
+    case wh_json:get_value(<<"type">>, SchemaJObj) of
         <<"integer">> -> 
             try wh_util:to_integer(Value) of
                 V -> wh_json:set_value(Key, V, JObj)
