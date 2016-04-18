@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% @end
 %%% @contributors
@@ -25,8 +25,9 @@
 -include("callflow.hrl").
 
 -define(CALLER_PRIVACY(CCVs)
-        ,(wh_json:is_true(<<"Caller-Privacy-Number">>, CCVs, 'false')
-        orelse wh_json:is_true(<<"Caller-Privacy-Name">>, CCVs, 'false'))
+       ,(wh_json:is_true(<<"Caller-Privacy-Number">>, CCVs, 'false')
+         orelse wh_json:is_true(<<"Caller-Privacy-Name">>, CCVs, 'false')
+        )
        ).
 
 %%-----------------------------------------------------------------------------
@@ -204,20 +205,18 @@ maybe_ensure_cid_valid(Number, Name, _, Attribute, Call) ->
                                {api_binary(), api_binary()}.
 maybe_cid_privacy(Number, Name, Call) ->
     case wh_util:is_true(whapps_call:kvs_fetch('cf_privacy', Call))
-            orelse ?CALLER_PRIVACY(whapps_call:custom_channel_vars(Call))
+        orelse ?CALLER_PRIVACY(whapps_call:custom_channel_vars(Call))
     of
         'true' ->
             lager:info("overriding caller id to maintain privacy"),
-            {whapps_config:get_non_empty(
-               <<"callflow">>
-               ,<<"privacy_number">>
-               ,wh_util:anonymous_caller_id_number()
-              )
-             ,whapps_config:get_non_empty(
-                <<"callflow">>
-                ,<<"privacy_name">>
-                ,wh_util:anonymous_caller_id_name()
-               )
+            {whapps_config:get_non_empty(<<"callflow">>
+                                        ,<<"privacy_number">>
+                                        ,wh_util:anonymous_caller_id_number()
+                                        )
+            ,whapps_config:get_non_empty(<<"callflow">>
+                                        ,<<"privacy_name">>
+                                        ,wh_util:anonymous_caller_id_name()
+                                        )
             };
         'false' -> {Number, Name}
     end.

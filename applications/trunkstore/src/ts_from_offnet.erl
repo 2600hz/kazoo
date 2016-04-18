@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% Calls coming from offnet (in this case, likely stepswitch) potentially
 %%% destined for a trunkstore client, or, if the account exists and
@@ -17,8 +17,9 @@
 -define(SERVER, ?MODULE).
 
 -define(CALLER_PRIVACY(CCVs)
-        ,(wh_json:is_true(<<"Caller-Privacy-Number">>, CCVs, 'false')
-        orelse wh_json:is_true(<<"Caller-Privacy-Name">>, CCVs, 'false'))
+       ,(wh_json:is_true(<<"Caller-Privacy-Number">>, CCVs, 'false')
+         orelse wh_json:is_true(<<"Caller-Privacy-Name">>, CCVs, 'false')
+        )
        ).
 
 -define(ANONYMIZER_OPTIONS, [<<"caller_id_options">>, <<"anonymizer">>]).
@@ -104,10 +105,10 @@ maybe_send_privacy(State) ->
             CtlQ = ts_callflow:get_control_queue(State),
             CallID = ts_callflow:get_aleg_id(State),
             Command = [{<<"Application-Name">>, <<"privacy">>}
-                        ,{<<"Privacy-Mode">>, <<"full">>}
-                        ,{<<"Call-ID">>, CallID}
-                        | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-                       ],
+                      ,{<<"Privacy-Mode">>, <<"full">>}
+                      ,{<<"Call-ID">>, CallID}
+                       | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+                      ],
             _ = wapi_dialplan:publish_command(CtlQ, Command);
         'false' -> 'ok'
     end.
@@ -375,7 +376,8 @@ callee_id([JObj | T]) ->
         'false' -> callee_id(T);
         'true' ->
             case {wh_json:get_value(<<"cid_name">>, JObj)
-                  ,wh_json:get_value(<<"cid_number">>, JObj)}
+                 ,wh_json:get_value(<<"cid_number">>, JObj)
+                 }
             of
                 {'undefined', 'undefined'} -> callee_id(T);
                 CalleeID -> CalleeID
@@ -388,10 +390,13 @@ maybe_anonymize_caller_id(State, OldCallerId, CidFormat) ->
     case should_anonymize_caller_id(State, ?CALLER_PRIVACY(CCVs)) of
         'true' ->
             [{<<"Outbound-Caller-ID-Name">>, wh_util:anonymous_caller_id_name()}
-             ,{<<"Outbound-Caller-ID-Number">>, wh_util:anonymous_caller_id_number()}];
+            ,{<<"Outbound-Caller-ID-Number">>, wh_util:anonymous_caller_id_number()}
+            ];
         'false' ->
             [{<<"Outbound-Caller-ID-Name">>
-              ,whapps_call:maybe_format_caller_id_str(OldCallerId, CidFormat)}]
+             ,whapps_call:maybe_format_caller_id_str(OldCallerId, CidFormat)
+             }
+            ]
     end.
 
 -spec should_anonymize_caller_id(any(), boolean()) -> boolean().
