@@ -289,7 +289,7 @@ is_number_blacklisted(_Blacklist, 'undefined') ->
     lager:debug("no caller id number to check in blacklists"),
     'false';
 is_number_blacklisted(Blacklist, Number) ->
-    Normalized = wnm_util:normalize_number(Number),
+    Normalized = knm_converters:normalize(Number),
     case wh_json:get_value(Normalized, Blacklist) of
         'undefined' ->
             lager:debug("~s(~s) not blacklisted, did not match any rule", [Number, Normalized]),
