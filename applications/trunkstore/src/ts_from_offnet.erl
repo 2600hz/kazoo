@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% Calls coming from offnet (in this case, likely stepswitch) potentially
 %%% destined for a trunkstore client, or, if the account exists and
@@ -15,6 +15,15 @@
 -include("ts.hrl").
 
 -define(SERVER, ?MODULE).
+
+-define(CALLER_PRIVACY(CCVs)
+       ,(wh_json:is_true(<<"Caller-Privacy-Number">>, CCVs, 'false')
+         orelse wh_json:is_true(<<"Caller-Privacy-Name">>, CCVs, 'false')
+        )
+       ).
+
+-define(ANONYMIZER_OPTIONS, [<<"caller_id_options">>, <<"anonymizer">>]).
+-define(DEFAULT_ANONYMIZER_OPTION, <<"kazoo">>).
 
 -spec start_link(wh_json:object()) -> startlink_ret().
 start_link(RouteReqJObj) ->
@@ -34,7 +43,7 @@ start_amqp(State) ->
 -spec endpoint_data(ts_callflow:state()) -> 'ok'.
 endpoint_data(State) ->
     JObj = ts_callflow:get_request_data(State),
-    try get_endpoint_data(JObj) of
+    try get_endpoint_data(State) of
         {'endpoint', Endpoint} ->
             proceed_with_endpoint(State, Endpoint, JObj)
     catch
@@ -83,9 +92,27 @@ wait_for_win(State, Command) ->
 send_onnet(State, Command) ->
     lager:info("sending onnet command: ~p", [Command]),
     CtlQ = ts_callflow:get_control_queue(State),
+    _ = maybe_send_privacy(State),
     _ = wapi_dialplan:publish_command(CtlQ, Command),
     _ = wait_for_bridge(State),
     ts_callflow:send_hangup(State).
+
+-spec maybe_send_privacy(ts_callflow:state()) -> 'ok'.
+maybe_send_privacy(State) ->
+    CCVs = ts_callflow:get_custom_channel_vars(State),
+    case ?CALLER_PRIVACY(CCVs) of
+        'true' ->
+            Q = ts_callflow:get_my_queue(State),
+            CtlQ = ts_callflow:get_control_queue(State),
+            CallID = ts_callflow:get_aleg_id(State),
+            Command = [{<<"Application-Name">>, <<"privacy">>}
+                      ,{<<"Privacy-Mode">>, <<"full">>}
+                      ,{<<"Call-ID">>, CallID}
+                       | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+                      ],
+            wapi_dialplan:publish_command(CtlQ, Command);
+        'false' -> 'ok'
+    end.
 
 wait_for_bridge(State) ->
     case ts_callflow:wait_for_bridge(State) of
@@ -179,20 +206,22 @@ try_failover_e164(State, ToDID) ->
 %%--------------------------------------------------------------------
 %% Out-of-band functions
 %%--------------------------------------------------------------------
--spec get_endpoint_data(wh_json:object()) -> {'endpoint', wh_json:object()}.
-get_endpoint_data(JObj) ->
+-spec get_endpoint_data(ts_callflow:state()) -> {'endpoint', wh_json:object()}.
+get_endpoint_data(State) ->
+    JObj = ts_callflow:get_request_data(State),
     {ToUser, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
     ToDID = knm_converters:normalize(ToUser),
     case knm_number:lookup_account(ToDID) of
         {'ok', AccountId, NumberProps} ->
-            get_endpoint_data(JObj, ToDID, AccountId, NumberProps);
+            get_endpoint_data(State, JObj, ToDID, AccountId, NumberProps);
         _Else ->
             lager:debug("unable to lookup account for number ~s: ~p", [ToDID, _Else]),
             throw('unknown_account')
     end.
 
--spec get_endpoint_data(wh_json:object(), ne_binary(), ne_binary(), wh_proplist()) -> {'endpoint', wh_json:object()}.
-get_endpoint_data(JObj, ToDID, AccountId, NumberProps) ->
+-spec get_endpoint_data(ts_callflow:state(), wh_json:object(), ne_binary(), ne_binary(), wh_proplist()) ->
+                                {'endpoint', wh_json:object()}.
+get_endpoint_data(State, JObj, ToDID, AccountId, NumberProps) ->
     ForceOut = knm_number:should_force_outbound(NumberProps),
     lager:info("building endpoint for account id ~s with force out ~s", [AccountId, ForceOut]),
     RoutingData1 = routing_data(ToDID, AccountId),
@@ -200,8 +229,8 @@ get_endpoint_data(JObj, ToDID, AccountId, NumberProps) ->
     CidOptions  = proplists:get_value(<<"Caller-ID-Options">>, RoutingData1),
     CidFormat   = wh_json:get_ne_value(<<"format">>, CidOptions),
     OldCallerId = wh_json:get_value(<<"Caller-ID-Number">>, JObj),
-    NewCallerId = whapps_call:maybe_format_caller_id_str(OldCallerId, CidFormat),
-    RoutingData = RoutingData1 ++ [{<<"Outbound-Caller-ID-Number">>, NewCallerId}],
+    NewCallerId = maybe_anonymize_caller_id(State, OldCallerId, CidFormat),
+    RoutingData = RoutingData1 ++ NewCallerId,
 
     AuthUser = props:get_value(<<"To-User">>, RoutingData),
     AuthRealm = props:get_value(<<"To-Realm">>, RoutingData),
@@ -349,9 +378,38 @@ callee_id([JObj | T]) ->
         'false' -> callee_id(T);
         'true' ->
             case {wh_json:get_value(<<"cid_name">>, JObj)
-                  ,wh_json:get_value(<<"cid_number">>, JObj)}
+                 ,wh_json:get_value(<<"cid_number">>, JObj)
+                 }
             of
                 {'undefined', 'undefined'} -> callee_id(T);
                 CalleeID -> CalleeID
             end
     end.
+
+-spec maybe_anonymize_caller_id(ts_callflow:state(), ne_binary(), ne_binary()) -> wh_proplist().
+maybe_anonymize_caller_id(State, OldCallerId, CidFormat) ->
+    CCVs = ts_callflow:get_custom_channel_vars(State),
+    case should_anonymize_caller_id(State, ?CALLER_PRIVACY(CCVs)) of
+        'true' ->
+            [{<<"Outbound-Caller-ID-Name">>, wh_util:anonymous_caller_id_name()}
+            ,{<<"Outbound-Caller-ID-Number">>, wh_util:anonymous_caller_id_number()}
+            ];
+        'false' ->
+            [{<<"Outbound-Caller-ID-Name">>
+             ,whapps_call:maybe_format_caller_id_str(OldCallerId, CidFormat)
+             }
+            ]
+    end.
+
+-spec should_anonymize_caller_id(ts_callflow:state(), boolean()) -> boolean().
+should_anonymize_caller_id(State, 'true') ->
+    AccountDb = ts_callflow:get_account_id(State),
+    fetch_anonymizer_option(AccountDb, kz_account:fetch(AccountDb)) =:= ?DEFAULT_ANONYMIZER_OPTION;
+should_anonymize_caller_id(_, _) -> 'false'.
+
+-spec fetch_anonymizer_option(ne_binary(), {'ok', wh_json:object()} | {'error', any()}) -> ne_binary().
+fetch_anonymizer_option(_, {'ok', JObj}) ->
+    wh_json:get_value(?ANONYMIZER_OPTIONS, JObj, ?DEFAULT_ANONYMIZER_OPTION);
+fetch_anonymizer_option(AccountDb, {'error', _}) ->
+    lager:error("error opening account doc ~p", [AccountDb]),
+    ?DEFAULT_ANONYMIZER_OPTION.
