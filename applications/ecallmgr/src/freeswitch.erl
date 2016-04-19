@@ -36,6 +36,9 @@
 
 -define(TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 
+-type fs_api_return() :: {'ok', binary()} | {'error', 'timeout' | binary()}.
+-export_type([fs_api_return/0]).
+
 version(Node) ->
     version(Node, ?TIMEOUT).
 version(Node, Timeout) ->
