@@ -192,6 +192,7 @@
 -export([get_outbound_t38_settings/1, get_outbound_t38_settings/2]).
 -export([get_inbound_t38_settings/1, get_inbound_t38_settings/2]).
 -export([audio_level/4]).
+-export([store_file/3, store_file/4]).
 
 -type audio_macro_prompt() :: {'play', binary()} | {'play', binary(), binaries()} |
                               {'prompt', binary()} | {'prompt', binary(), ne_binaries()} |
@@ -216,6 +217,8 @@
 -define(DEFAULT_MESSAGE_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"message_timeout">>, 5 * ?MILLISECONDS_IN_SECOND)).
 -define(DEFAULT_APPLICATION_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"application_timeout">>, 500 * ?MILLISECONDS_IN_SECOND)).
 
+-define(DEFAULT_STORAGE_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"storage_timeout_ms">>, 5 * ?MILLISECONDS_IN_MINUTE)).
+
 -spec default_collect_timeout() -> pos_integer().
 default_collect_timeout() ->
     ?DEFAULT_COLLECT_TIMEOUT.
@@ -235,6 +238,10 @@ default_message_timeout() ->
 -spec default_application_timeout() -> pos_integer().
 default_application_timeout() ->
     ?DEFAULT_APPLICATION_TIMEOUT.
+
+-spec default_storage_timeout() -> pos_integer().
+default_storage_timeout() ->
+    ?DEFAULT_STORAGE_TIMEOUT.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -2912,3 +2919,22 @@ wait_for_unparked_call(Call, Timeout) ->
                     wait_for_unparked_call(Call, wh_util:decr_timeout(Timeout, Start))
             end
     end.
+
+store_file_args(Filename, Url) ->
+    [{<<"File-Name">>, Filename}
+     ,{<<"Url">>, Url}
+     ,{<<"Http-Method">>, <<"put">>}
+    ].
+
+store_file(Filename, Url, Call) ->
+    store_file(Filename, Url, default_storage_timeout(), Call).
+
+store_file(Filename, Url, Timeout, Call) ->
+    AppName = whapps_call:application_name(Call),
+    AppVersion = whapps_call:application_version(Call),
+    API = [{<<"Command">>, <<"send_http">>}
+           ,{<<"Args">>, wh_json:from_list(store_file_args(Filename, Url))}
+           ,{<<"FreeSWITCH-Node">>, whapps_call:switch_nodename(Call)}
+           | wh_api:default_headers(AppName, AppVersion)
+          ],
+    wh_amqp_worker:call(API, fun wapi_switch:publish_command/1, fun wapi_switch:fs_reply_v/1, Timeout).
