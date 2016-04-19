@@ -227,6 +227,7 @@ build_template_data(DataJObj) ->
      ,{<<"call_id">>, wh_json:get_value(<<"call_id">>, DataJObj)}
      ,{<<"from">>, build_from_data(DataJObj)}
      ,{<<"to">>, build_to_data(DataJObj)}
+     ,{<<"account">>, teletype_util:account_params(DataJObj)}
     ].
 
 -spec build_from_data(wh_json:object()) -> wh_proplist().
