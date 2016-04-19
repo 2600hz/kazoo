@@ -894,27 +894,27 @@ delete_attachment(DbName, DocId, AName, Options) ->
         {'error', _}=E -> E
     end.
 
--spec attachment_url(text(), docid(), ne_binary()) -> ne_binary().
--spec attachment_url(text(), docid(), ne_binary(), wh_proplist()) -> ne_binary().
+-spec attachment_url(text(), docid(), ne_binary()) -> {'ok', ne_binary()}
+                                                    | {'proxy', tuple()}
+                                                    | {'error', any()}.
+-spec attachment_url(text(), docid(), ne_binary(), wh_proplist()) -> {'ok', ne_binary()}
+                                                                   | {'proxy', tuple()}
+                                                                   | {'error', any()}.
 
 attachment_url(DbName, DocId, AttachmentId) ->
-    case filename:extension(AttachmentId) of
-        [] -> attachment_url(DbName, DocId, AttachmentId, []);
-        Ext ->
-            Options = [{'content_type', kz_mime:from_extension(Ext)}],
-            attachment_url(DbName, DocId, AttachmentId, Options)
-    end.
+    attachment_url(DbName, DocId, AttachmentId, []).
 
 attachment_url(DbName, {DocType, DocId}, AttachmentId, Options) when ?VALID_DBNAME ->
     attachment_url(DbName, DocId, AttachmentId, maybe_add_doc_type(DocType, Options));
 attachment_url(DbName, DocId, AttachmentId, Options) when ?VALID_DBNAME ->
-    case attachment_options(DbName, DocId, Options) of
-        {'ok', NewOptions} -> kzs_attachments:attachment_url(kzs_plan:plan(DbName, NewOptions)
-                                                             ,DbName
-                                                             ,DocId
-                                                             ,AttachmentId
-                                                             ,NewOptions
-                                                            );
+    Plan = kzs_plan:plan(DbName, Options),
+    case kzs_cache:open_cache_doc(Plan, DbName, DocId, Options) of
+        {'ok', JObj} ->
+            NewOptions = [{'rev', wh_doc:revision(JObj)}
+                          | maybe_add_doc_type(wh_doc:type(JObj), Options)
+                         ],
+            Handler = wh_doc:attachment_property(JObj, AttachmentId, <<"handler">>),
+            kzs_attachments:attachment_url(Plan, DbName, DocId, AttachmentId, Handler, NewOptions);
         {'error', _} = Error -> Error
     end;
 attachment_url(DbName, DocId, AttachmentId, Options) ->

@@ -14,7 +14,7 @@
          ,stream_attachment/5
          ,put_attachment/6
          ,delete_attachment/5
-         ,attachment_url/5
+         ,attachment_url/6
         ]).
 
 
@@ -111,7 +111,9 @@ external_attachment(DbName, JObj, Att) ->
 delete_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Options) ->
     App:delete_attachment(Conn, DbName, DocId, AName, Options).
 
-attachment_url(#{att_proxy := 'true'}, DbName, DocId, AttachmentId, Options) ->
-    wh_media_url:store(DbName, DocId, AttachmentId, Options);
-attachment_url(#{server := {App, Conn}}, DbName, DocId, AttachmentId, Options) ->
-    App:attachment_url(Conn, DbName, DocId, AttachmentId, Options).
+attachment_url(#{att_proxy := 'true'}, DbName, DocId, AttachmentId, 'undefined', Options) ->
+    {'proxy', {DbName, DocId, AttachmentId, Options}};
+attachment_url(#{server := {App, Conn}}, DbName, DocId, AttachmentId, 'undefined', Options) ->
+    App:attachment_url(Conn, DbName, DocId, AttachmentId, Options);
+attachment_url(_, DbName, DocId, AttachmentId, Handler, Options) ->
+    {'proxy', {DbName, DocId, AttachmentId, Handler, Options}}.
