@@ -31,38 +31,26 @@ playback(<<"prompt://", PromptPath/binary>>, Options) ->
             lager:warning("invalid prompt path: ~p", [_Path]),
             {'error', 'invalid_media_name'}
     end;
-playback(Media, Options) ->
+playback(Media, JObj) ->
     lager:debug("lookup media url for ~s", [Media]),
-    case wh_media_file:get_uri(Media, Options) of
-        {'error', _}=E -> E;
-        {'ok', URI}=Ok ->
-            _ = wh_media_file:maybe_prepare_proxy(URI),
-            Ok
-    end.
+    wh_media_file:get_uri(Media, JObj).
 
--spec store(ne_binary(), ne_binary(), ne_binary()) ->
+-spec store(ne_binary(), kazoo_data:docid(), ne_binary()) ->
                    {'ok', ne_binary()} |
                    {'error', any()}.
+store(Db, {Type, Id}, Attachment) ->
+    JObj = wh_json:from_list([{<<"Stream-Type">>, <<"store">>}]),
+    wh_media_file:get_uri([Db, Id, Type, Attachment], JObj);
 store(Db, Id, Attachment) ->
-    Options = wh_json:from_list([{<<"Stream-Type">>, <<"store">>}]),
-    Rev = case kz_datamgr:lookup_doc_rev(Db, Id) of
-              {'ok', R} -> <<"?rev=", R/binary>>;
-              _ -> <<>>
-          end,
-    case wh_media_file:get_uri([Db, Id, Attachment], Options) of
-        {'error', _}=E -> E;
-        {'ok', URI} ->
-            {'ok', <<URI/binary, Rev/binary>>}
-    end.
+    JObj = wh_json:from_list([{<<"Stream-Type">>, <<"store">>}]),
+    wh_media_file:get_uri([Db, Id, Attachment], JObj).
 
--spec store(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
-                   ne_binary() |
+-spec store(ne_binary(), kazoo_data:docid(), ne_binary(), wh_proplist()) ->
+                   {'ok', ne_binary()} |
                    {'error', any()}.
 store(Db, Id, Attachment, Options) ->
     JObj = wh_json:from_list([{<<"Stream-Type">>, <<"store">>}]),
     Rev = props:get_value('rev', Options),
     Type = props:get_value('doc_type', Options),
-    case wh_media_file:get_uri([Db, Id, Type, Rev, Attachment], JObj) of
-        {'error', _}=E -> E;
-        {'ok', URI} -> URI
-    end.
+    wh_media_file:get_uri([Db, Id, Type, Rev, Attachment], JObj).
+

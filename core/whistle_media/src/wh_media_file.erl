@@ -9,7 +9,6 @@
 -module(wh_media_file).
 
 -export([get_uri/2]).
--export([maybe_prepare_proxy/1]).
 
 -include("whistle_media.hrl").
 
@@ -28,9 +27,7 @@ get_uri(Media, JObj) when is_binary(Media) ->
 get_uri(Paths, JObj) ->
     case find_attachment(Paths) of
         {'error', _}=E -> E;
-        {'ok', #media_store_path{}=Store} ->
-            media_manager_proxy_uri(JObj, Store)
-%            maybe_local_haproxy_uri(JObj, Db, Id, Attachment)
+        {'ok', #media_store_path{}=Store} -> maybe_proxy(JObj, Store)
     end.
 
 -spec maybe_prepare_proxy(ne_binary()) -> 'ok' | 'error'.
@@ -58,9 +55,57 @@ start_media_file_cache(Db, Id, Attachment) ->
             throw(E)
     end.
 
+-spec maybe_proxy(wh_json:object(), media_store_path()) ->
+          {'ok', ne_binary()} |
+          {'error', 'no_stream_strategy'}.
+maybe_proxy(JObj, #media_store_path{db = Db
+                                    ,id = Id
+                                    ,type = Type
+                                    ,att = Attachment
+                                   }=Store) ->
+    case kz_datamgr:attachment_url(Db, {Type, Id}, Attachment) of
+        {'ok', _}=URI -> URI;
+        {'proxy', _} -> proxy_uri(JObj, Store)
+    end.
+
+-spec proxy_uri(wh_json:object(), media_store_path()) ->
+          {'ok', ne_binary()} |
+              {'error', 'no_stream_strategy'}.
+proxy_uri(JObj, #media_store_path{db = Db
+                                  ,id = Id
+                                  ,type = Type
+                                  ,rev = Rev
+                                  ,att = Attachment
+                                 }) ->
+    Host = wh_network_utils:get_hostname(),
+    Port = whapps_config:get_binary(?CONFIG_CAT, <<"proxy_port">>, 24517),
+    StreamType = wh_media_util:convert_stream_type(wh_json:get_value(<<"Stream-Type">>, JObj)),
+    Permissions = case StreamType =:= <<"store">> of
+                      'true' -> 'proxy_store';
+                      'false' -> 'proxy_playback'
+                  end,
+    URL = <<(wh_media_util:base_url(Host, Port, Permissions))/binary
+             ,StreamType/binary
+              ,"/", Db/binary
+              ,"/", Id/binary
+              ,"/", Type/binary
+              ,"/", Rev/binary
+              ,"/", Attachment/binary
+          >>,
+    _ = maybe_prepare_proxy(URL),
+    {'ok', URL}.
+
+
+
 -spec find_attachment(ne_binaries() | ne_binary()) ->
                              {'ok', media_store_path()} |
                              {'error', 'not_found'}.
+find_attachment(Media) when is_binary(Media) ->
+    Paths = [Path
+             || Path <- binary:split(Media, <<"/">>, ['global', 'trim']),
+                (not wh_util:is_empty(Path))
+            ],
+    find_attachment(Paths);
 find_attachment([Id]) ->
     find_attachment([?WH_MEDIA_DB, Id]);
 find_attachment([Db, Id]) ->
@@ -70,7 +115,8 @@ find_attachment([Db, Id, 'first']) ->
 find_attachment([Db, Id, Attachment]) ->
     find_attachment([Db, Id, <<"unknown">>, Attachment]);
 find_attachment([Db, Id, Type, Attachment]) ->
-    find_attachment([Db, Id, Type, <<"unknown">>, Attachment]);
+    {'ok', Rev} = kz_datamgr:lookup_doc_rev(Db, {Type, Id}),
+    find_attachment([Db, Id, Type, Rev, Attachment]);
 find_attachment([Db = ?MEDIA_DB, Id, Type, Rev, Attachment]) ->
     {'ok', #media_store_path{db = Db
                             ,id = Id
@@ -104,9 +150,7 @@ find_attachment([Db, Id, Type, Rev, Attachment]) ->
                             ,rev = Rev
                             ,att = Attachment
                             }
-    };
-find_attachment(Id) when not is_list(Id) ->
-    find_attachment([Id]).
+    }.
 
 -spec maybe_find_attachment(ne_binary(), ne_binary()) ->
                                    {'ok', {ne_binary(), ne_binary(), ne_binary()}} |
@@ -143,53 +187,3 @@ maybe_find_attachment(Db, Id, JObj) ->
             lager:debug("found first attachment ~s on ~s in ~s", [AttachmentName, Id, Db]),
             find_attachment([AccountId, Id, wh_doc:type(JObj), wh_doc:revision(JObj), AttachmentName])
     end.
-
-%% -spec maybe_local_haproxy_uri(wh_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
-%%                                      {'ok', ne_binary()} |
-%%                                      {'error', 'no_stream_strategy'}.
-%% maybe_local_haproxy_uri(JObj, Db, Id, Attachment) ->
-%%     case whapps_config:get_is_true(?CONFIG_CAT, <<"use_bigcouch_direct">>, 'true') of
-%%         'false' -> maybe_media_manager_proxy_uri(JObj, Db, Id, Attachment);
-%%         'true' ->
-%%             Url = kz_datamgr:attachment_url(Db, Id, Attachment),
-%%             {'ok', Url}
-%%     end.
-%%
-%% -spec maybe_media_manager_proxy_uri(wh_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
-%%                                            {'ok', ne_binary()} |
-%%                                            {'error', 'no_stream_strategy'}.
-%% maybe_media_manager_proxy_uri(JObj, Db, Id, Attachment) ->
-%%     case whapps_config:get_is_true(?CONFIG_CAT, <<"use_media_proxy">>, 'true') of
-%%         'false' ->
-%%             lager:warning("unable to build URL for media ~s ~s ~s", [Db, Id, Attachment]),
-%%             {'error', 'no_stream_strategy'};
-%%         'true' ->
-%%             lager:debug("using media manager as proxy"),
-%%             media_manager_proxy_uri(JObj, Db, Id, Attachment)
-%%     end.
-
--spec media_manager_proxy_uri(wh_json:object(), media_store_path()) ->
-          {'ok', ne_binary()} |
-          {'error', 'no_stream_strategy'}.
-media_manager_proxy_uri(JObj, #media_store_path{db = Db
-                                                ,id = Id
-                                                ,type = Type
-                                                ,rev = Rev
-                                                ,att = Attachment
-                                               }) ->
-    Host = wh_network_utils:get_hostname(),
-    Port = whapps_config:get_binary(?CONFIG_CAT, <<"proxy_port">>, 24517),
-    StreamType = wh_media_util:convert_stream_type(wh_json:get_value(<<"Stream-Type">>, JObj)),
-    Permissions = case StreamType =:= <<"store">> of
-                      'true' -> 'proxy_store';
-                      'false' -> 'proxy_playback'
-                  end,
-    {'ok', <<(wh_media_util:base_url(Host, Port, Permissions))/binary
-             ,StreamType/binary
-             ,"/", Db/binary
-             ,"/", Id/binary
-             ,"/", Type/binary
-             ,"/", Rev/binary
-             ,"/", Attachment/binary
-           >>
-    }.
