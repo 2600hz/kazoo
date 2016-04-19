@@ -188,8 +188,6 @@ handle_cast({'fax_status', <<"result">>, JObj}, State) ->
 handle_cast({'fax_status', Event, _JObj}, State) ->
     lager:debug("fax status not handled - ~s",[Event]),
     {'noreply', State};
-handle_cast({'exec_completed', <<"store_fax">>, Status, JObj}, State) ->
-    check_retry_storage(Status, JObj, State);
 handle_cast({'exec_completed', <<"receive_fax">>, Result, _JObj}, State) ->
     lager:debug("Fax Receive Result ~s",[Result]),
     {'noreply', State};
@@ -294,7 +292,10 @@ get_fax_storage(Call) ->
               ,"-"
               ,(wh_util:rand_hex_binary(16))/binary
             >>,
-    FaxAttachmentId = wh_util:rand_hex_binary(16),
+    AttachmentId = wh_util:rand_hex_binary(16),
+    Ext = whapps_config:get_binary(?CONFIG_CAT, <<"default_fax_extension">>, <<".tiff">>),
+    FaxAttachmentId = <<AttachmentId/binary, Ext/binary>>,
+    
     #fax_storage{id=FaxId
                  ,db=FaxDb
                  ,attachment_id=FaxAttachmentId
@@ -433,7 +434,7 @@ maybe_store_fax(JObj, #state{storage=#fax_storage{id=FaxId}}=State) ->
     case store_fax(JObj, State) of
         {'ok', FaxId} ->
             lager:debug("fax stored successfully into ~s", [FaxId]),
-            {'noreply', store_attachment(State#state{fax_result=JObj})};
+            store_attachment(State#state{fax_result=JObj});
         {'error', Error} ->
             lager:debug("store fax other resp: ~p", [Error]),
             notify_failure(JObj, Error, State),
@@ -455,80 +456,35 @@ store_fax(JObj, #state{storage=#fax_storage{id=FaxDocId
 -spec get_fs_filename(state()) -> ne_binary().
 get_fs_filename(#state{storage=#fax_storage{attachment_id=AttachmentId}}) ->
     LocalPath = whapps_config:get_binary(?CONFIG_CAT, <<"fax_file_path">>, <<"/tmp/">>),
-    Ext = whapps_config:get_binary(?CONFIG_CAT, <<"default_fax_extension">>, <<".tiff">>),
-    <<LocalPath/binary, AttachmentId/binary, Ext/binary>>.
+    <<LocalPath/binary, AttachmentId/binary>>.
 
--spec store_attachment(state()) -> state().
+-spec store_attachment(state()) -> handle_cast_return().
 store_attachment(#state{call=Call
                         ,fax_store_count=Count
+                        ,fax_result=FaxResultObj
                        }=State) ->
     FaxUrl = attachment_url(State),
     FaxFile = get_fs_filename(State),
-    lager:debug("storing fax ~s to ~s", [FaxFile, FaxUrl]),
-    whapps_call_command:store_fax(FaxUrl, FaxFile, Call),
-    State#state{fax_store_count=Count+1}.
-
--spec check_retry_storage(ne_binary(), wh_json:object(), state()) ->
-                                 {'noreply', state()} |
-                                 {'stop', 'normal', state()}.
-check_retry_storage(<<"success">>, JObj, #state{fax_result=FaxResultObj} =State) ->
-    case check_for_upload(State) of
-        'error' -> maybe_retry_storage(<<"storage success but no attachment">>, JObj, State);
-        'ok' ->
+    case whapps_call_command:store_file(FaxFile, FaxUrl, Call) of
+        {'ok', _JObj} ->
             notify_success(FaxResultObj, State),
-            {'stop', 'normal', State}
-    end;
-check_retry_storage(Error, JObj, #state{fax_result=FaxResultObj} = State) ->
-    case check_for_upload(State) of
-        'error' -> maybe_retry_storage(Error, JObj, State);
-        'ok' ->
-            lager:debug("got error ~s from store_fax but check for upload succeeded",[Error]),
-            notify_success(FaxResultObj, State),
-            {'stop', 'normal', State}
+            {'stop', 'normal', State};
+        {'error', Error} ->
+             maybe_retry_storage(Error, State#state{fax_store_count=Count+1})
     end.
 
--spec maybe_retry_storage(binary(), wh_json:object(), state()) ->
+-spec maybe_retry_storage(binary(), state()) ->
                                  {'noreply', state()} |
                                  {'stop', 'normal', state()}.
-maybe_retry_storage(Error, JObj, #state{fax_store_count=Count}=State) ->
+maybe_retry_storage(Error, #state{fax_store_count=Count
+                                 ,fax_result=JObj
+                                 }=State) ->
     lager:debug("fax store error ~s - ~p",[Error, JObj]),
     case Count < whapps_config:get_integer(?CONFIG_CAT, <<"max_storage_retry">>, 5) of
-        'true' -> {'noreply', store_attachment(State)};
+        'true' -> store_attachment(State);
         'false' ->
             notify_failure(JObj, Error, State),
             {'stop', 'normal', State}
-    end.
-
--spec check_for_upload(state()) -> 'ok' | 'error'.
-check_for_upload(#state{call=_Call
-                        ,storage=#fax_storage{id=FaxDocId
-                                              ,db=FaxDb
-                                             }
-                       }=State) ->
-    case kz_datamgr:open_doc(FaxDb, {<<"fax">>, FaxDocId}) of
-        {'ok', FaxDoc} ->
-            check_upload_for_attachment(FaxDoc, State);
-        {'error', Error} ->
-            lager:debug("error reading document ~s/~s when looking for valid attachment : ~p"
-                        ,[FaxDb, FaxDocId, Error]
-                       ),
-            'error'
-    end.
-
--spec check_upload_for_attachment(wh_json:object(), state()) -> 'ok' | 'error'.
-check_upload_for_attachment(FaxDoc, State) ->
-    case wh_doc:attachment_names(FaxDoc) of
-        [] -> 'error';
-        [AttachmentName] ->
-            check_attachment_for_data(FaxDoc, AttachmentName, State)
-    end.
-
--spec check_attachment_for_data(wh_json:object(), ne_binary(), state()) -> 'ok' | 'error'.
-check_attachment_for_data(FaxDoc, AttachmentName, _State) ->
-    Attachment = wh_doc:attachment(FaxDoc, AttachmentName),
-    case wh_json:get_value(<<"length">>, Attachment) of
-        0 -> 'error';
-        _Len -> 'ok'
     end.
 
 -spec create_fax_doc(wh_json:object(), state()) ->
@@ -594,17 +550,8 @@ attachment_url(#state{storage=#fax_storage{id=FaxDocId
                                            ,db=AccountDb
                                           }
                      }) ->
-    Options = [{'content_type', kz_mime:from_extension(?FAX_EXTENSION)}],
-    kz_datamgr:attachment_url(AccountDb, {<<"fax">>, FaxDocId}, AttachmentId, Options).
-
-%% -spec maybe_delete_attachments(ne_binary(), wh_json:object()) -> 'ok'.
-%% maybe_delete_attachments(AccountDb, JObj) ->
-%%     case wh_doc:maybe_remove_attachments(JObj) of
-%%         {'false', _} -> 'ok';
-%%         {'true', Removed} ->
-%%             kz_datamgr:save_doc(AccountDb, Removed),
-%%             lager:debug("removed attachments from faxdoc")
-%%     end.
+     {'ok', URL} = wh_media_url:store(AccountDb, {<<"fax">>, FaxDocId}, AttachmentId),
+    URL.
 
 -spec fax_fields(wh_json:object()) -> wh_json:object().
 fax_fields(JObj) ->
