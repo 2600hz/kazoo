@@ -58,7 +58,7 @@ start_link() ->
 init(_Args) ->
     process_flag('trap_exit', 'true'),
     wh_util:put_callid(?MODULE),
-    gen_fsm:send_event(self(), 'start_cycle'),
+    gen_fsm:send_event_after(?CRAWLER_CYCLE_MS, 'start_cycle'),
     {'ok', 'idle', 'undefined'}.
 
 handle_info({'EXIT', WorkerPid, Reason}, StateName, WorkerPid) ->
