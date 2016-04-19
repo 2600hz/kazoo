@@ -503,7 +503,16 @@ create_fax_doc(JObj, #state{owner_id = OwnerId
                            ,wh_util:to_binary(Y), "-", wh_util:to_binary(M), "-", wh_util:to_binary(D)
                            ," " , wh_util:to_binary(H), ":", wh_util:to_binary(I), ":", wh_util:to_binary(S)
                            ," UTC"
-                          ]),
+                          ]),%% -spec maybe_delete_attachments(ne_binary(), wh_json:object()) -> 'ok'.
+%% maybe_delete_attachments(AccountDb, JObj) ->
+%%     case wh_doc:maybe_remove_attachments(JObj) of
+%%         {'false', _} -> 'ok';
+%%         {'true', Removed} ->
+%%             kz_datamgr:save_doc(AccountDb, Removed),
+%%             lager:debug("removed attachments from faxdoc")
+%%     end.
+
+
     ?MATCH_MODB_PREFIX(Year,Month,_) = FaxDocId,
     CdrId = <<(wh_util:to_binary(Year))/binary
               ,(wh_util:pad_month(Month))/binary
