@@ -145,7 +145,7 @@ show_all() ->
                       [ecallmgr_fs_channel:to_json(Channel) | Acc]
               end, [], ?CHANNELS_TBL).
 
--spec per_minute_accounts() -> api_binaries().
+-spec per_minute_accounts() -> ne_binaries().
 per_minute_accounts() ->
     MatchSpec = [
                  {#channel{account_id = '$1'
@@ -164,22 +164,10 @@ per_minute_accounts() ->
                    ,[{'=/=', '$1', 'undefined'}]
                    ,['$$']
                   }
-%%                ,{#channel{account_id = '$1', reseller_id = '$2', _ = '_'}
-%%                 ,[{'andalso', {'=/=', '$1', 'undefined'}, {'=/=', '$2', 'undefined'}}]
-%%                  ,['$$']
-%%                 }
-%%                ,{#channel{account_id = '$1', _ = '_'}
-%%                  ,[{'=/=', '$1', 'undefined'}]
-%%                  ,['$$']
-%%                 }
-%%                ,{#channel{reseller_id = '$1', _ = '_'}
-%%                  ,[{'=/=', '$1', 'undefined'}]
-%%                  ,['$$']
-%%                 }
                 ],
     lists:usort(lists:flatten(ets:select(?CHANNELS_TBL, MatchSpec))).
 
--spec per_minute_channels(api_binary()) -> api_binaries().
+-spec per_minute_channels(ne_binary()) -> [{ne_binary(), ne_binary()}].
 per_minute_channels(AccountId) ->
     MatchSpec = [
                  {#channel{node = '$1', uuid = '$2', reseller_id = AccountId, reseller_billing = <<"per_minute">>, _ = '_'}
@@ -190,14 +178,6 @@ per_minute_channels(AccountId) ->
                    ,[]
                    ,[{{'$1', '$2'}}]
                   }
-%%                ,{#channel{node = '$1', uuid = '$2', reseller_id = AccountId, _ = '_'}
-%%                  ,[]
-%%                  ,[{{'$1', '$2'}}]
-%%                 }
-%%                ,{#channel{node = '$1', uuid = '$2', account_id = AccountId, _ = '_'}
-%%                  ,[]
-%%                  ,[{{'$1', '$2'}}]
-%%                 }
                 ],
     ets:select(?CHANNELS_TBL, MatchSpec).
 

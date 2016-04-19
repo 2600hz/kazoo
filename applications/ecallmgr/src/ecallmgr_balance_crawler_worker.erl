@@ -15,7 +15,6 @@
 
 -define(SERVER, ?MODULE).
 -define(INTERACCOUNT_DELAY_MS, ecallmgr_config:get_integer(<<"balance_crawler_interaccount_delay_ms">>, 10)).
--define(DELAYED_HANGUP, ecallmgr_config:get_is_true(<<"balance_crawler_delayed_hangup">>, 'true')).
 -define(FETCH_TIMEOUT_MS, ecallmgr_config:get_integer(<<"balance_crawler_fetch_timeout_ms">>, 10000)).
 
 -spec start() -> no_return().
