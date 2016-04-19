@@ -295,7 +295,7 @@ get_fax_storage(Call) ->
     AttachmentId = wh_util:rand_hex_binary(16),
     Ext = whapps_config:get_binary(?CONFIG_CAT, <<"default_fax_extension">>, <<".tiff">>),
     FaxAttachmentId = <<AttachmentId/binary, Ext/binary>>,
-    
+
     #fax_storage{id=FaxId
                  ,db=FaxDb
                  ,attachment_id=FaxAttachmentId
