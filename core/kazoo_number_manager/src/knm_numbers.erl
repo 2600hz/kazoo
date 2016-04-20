@@ -9,23 +9,21 @@
 -module(knm_numbers).
 
 -export([get/1, get/2
-         ,create/1
+         ,create/1, create/2
          ,move/1 ,move/2
-         ,update/1 ,update/2
+         ,update/1 ,update/2, update/3
          ,reconcile/2
          ,release/1 ,release/2
          ,change_state/1 ,change_state/2
          ,assigned_to_app/1 ,assigned_to_app/2
-         ,buy/2
+         ,buy/3
          ,free/1
          ,emergency_enabled/1
         ]).
 
 -include("knm.hrl").
 
--type numbers_return() :: [ {ne_binary(), knm_number_return()} |
-                            {'error', any()}
-                          ].
+-type numbers_return() :: [ {ne_binary(), knm_number_return()} ].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -57,6 +55,10 @@ do_get([Num|Nums], Options, Acc) ->
 -spec create(wh_proplist()) -> numbers_return().
 create(Props) ->
     do_create(Props, []).
+
+-spec create(ne_binaries(), knm_number_options:options()) -> numbers_return().
+create(Nums, Options) ->
+    [{Num, knm_number:create(Num, Options)} || Num <- Nums].
 
 -spec do_create(wh_proplist(), numbers_return()) -> numbers_return().
 do_create([], Acc) -> Acc;
@@ -95,11 +97,16 @@ do_move([{Num, MoveTo}|Props], Options, Acc) ->
                     numbers_return().
 -spec update(wh_proplist(), knm_number_options:options()) ->
                     numbers_return().
+-spec update(ne_binaries(), knm_phone_number:set_functions(), knm_number_options:options()) ->
+                    numbers_return().
 update(Props) ->
     update(Props, knm_number_options:default()).
 
 update(Props, Options) ->
     do_update(Props, Options, []).
+
+update(Nums, Routines, Options) ->
+    [{Num, knm_number:update(Num, Routines, Options)} || Num <- Nums].
 
 -spec do_update(wh_proplist(), knm_number_options:options(), numbers_return()) ->
                        numbers_return().
@@ -134,18 +141,11 @@ do_reconcile([Number|Numbers], Options, Acc) ->
                      numbers_return().
 -spec release(ne_binaries(), knm_number_options:options()) ->
                      numbers_return().
-release(Props) ->
-    release(Props, knm_number_options:default()).
+release(Nums) ->
+    release(Nums, knm_number_options:default()).
 
-release(Props, Options) ->
-    do_release(Props, Options, []).
-
--spec do_release(ne_binaries(), knm_number_options:options(), numbers_return()) ->
-                        numbers_return().
-do_release([], _Options, Acc) -> Acc;
-do_release([Num|Nums], Options, Acc) ->
-    Return = knm_number:release(Num, Options),
-    do_release(Nums, Options, [{Num, Return}|Acc]).
+release(Nums, Options) ->
+    [{Num, knm_number:release(Num, Options)} || Num <- Nums].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -200,9 +200,10 @@ do_assigned_to_app([{Num, App}|Props], Options, Acc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec buy(ne_binaries(), ne_binary()) -> numbers_return().
-buy(Nums, Account) ->
-    [knm_number:buy(Num, Account) || Num <- Nums].
+-spec buy(ne_binaries(), ne_binary(), knm_number_options:options()) ->
+                 numbers_return().
+buy(Nums, Account, Options) ->
+    [{Num,knm_number:buy(Num, Account, Options)} || Num <- Nums].
 
 %%--------------------------------------------------------------------
 %% @public
