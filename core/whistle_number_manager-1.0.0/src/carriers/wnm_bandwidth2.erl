@@ -63,10 +63,10 @@ find_numbers(<<"+", Rest/binary>>, Quantity, Opts) ->
 find_numbers(<<"1", Rest/binary>>, Quantity, Opts) ->
     find_numbers(Rest, Quantity, Opts);
 
-find_numbers(<<"8", Rest/binary>>, Quantity, _) ->
+find_numbers(<<"8", Second:1/binary, _/binary>>, Quantity, _) ->
     UseQuantity = list_to_binary(integer_to_list(Quantity)),
-    {'ok', Result} = search(<<"tollFreeWildCardPattern=8", Rest/binary, "&enableTNDetail=true&quantity=", UseQuantity/binary>>),
-    tollfree_search_response_to_json(Result);
+    {'ok', Result} = search(<<"tollFreeWildCardPattern=8", Second/binary, "*&enableTNDetail=true&quantity=", UseQuantity/binary>>),
+    process_tollfree_response(Result);
 
 find_numbers(<<NPA:3/binary>>, Quantity, _) ->
     UseQuantity = list_to_binary(integer_to_list(Quantity)),
@@ -79,8 +79,13 @@ find_numbers(Search, Quantity, _) ->
     {'ok', Result} = search(<<"npaNxx=", NpaNxx/binary, "&enableTNDetail=true&quantity=", UseQuantity/binary>>),
     process_search_response(Result).
 
+process_tollfree_response(Result) ->
+    Results   = xmerl_xpath:string("TelephoneNumberList/TelephoneNumber", Result),
+    Formatted = [tollfree_search_response_to_json(X) || X <- Results],
+    {'ok', wh_json:from_list(Formatted)}.
+
 process_search_response(Result) ->
-    Numbers   = xmerl_xpath:string("TelephoneNumberDetailList", Result),
+    Numbers   = xmerl_xpath:string("TelephoneNumberDetailList/TelephoneNumberDetail", Result),
     Formatted = [search_response_to_json(X) || X <- Numbers],
     {'ok', wh_json:from_list(Formatted)}.
 
