@@ -325,9 +325,7 @@ gift_data() -> 'ok'.
 %%--------------------------------------------------------------------
 init([]) ->
     wh_util:put_callid(?LOG_SYSTEM_ID),
-
     lager:debug("starting bindings server"),
-
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -600,7 +598,7 @@ fold_bind_results([#kz_responder{module=M
             fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders);
         {'EXIT', _E} ->
             ST = erlang:get_stacktrace(),
-            lager:debug("~s:~s/~p died unexpectedly: ~p", [M, F, length(Payload), _E]),
+            lager:error("~s:~s/~p died unexpectedly: ~p", [M, F, length(Payload), _E]),
             wh_util:log_stacktrace(ST),
             fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders);
         Pay1 ->
@@ -616,7 +614,7 @@ fold_bind_results([#kz_responder{module=M
             fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders);
         _T:_E ->
             ST = erlang:get_stacktrace(),
-            lager:debug("excepted: ~s: ~p", [_T, _E]),
+            lager:error("excepted: ~s: ~p", [_T, _E]),
             wh_util:log_stacktrace(ST),
             fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders)
     end;
@@ -629,7 +627,7 @@ fold_bind_results([], Payload, Route, RespondersLen, ReRunResponders) ->
             fold_bind_results(lists:reverse(ReRunResponders), Payload, Route, N, []);
         RespondersLen ->
             %% If all Pids 'eoq'ed, ReRunQ will be the same queue, and Payload will be unchanged - exit the fold
-            lager:debug("loop detected for ~s, returning", [Route]),
+            lager:error("loop detected for ~s, returning", [Route]),
             Payload
     end.
 
@@ -647,27 +645,28 @@ apply_responder(#kz_responder{module=M
 
 -spec log_undefined(atom(), atom(), non_neg_integer(), list()) -> 'ok'.
 log_undefined(M, F, Length, [{M, F, _Args,_}|_]) ->
-    lager:debug("undefined function ~s:~s/~b", [M, F, Length]);
+    lager:error("undefined function ~s:~s/~b", [M, F, Length]);
 log_undefined(M, F, Length, [{RealM, RealF, RealArgs,_}|_]) ->
-    lager:debug("undefined function ~s:~s/~b", [RealM, RealF, length(RealArgs)]),
-    lager:debug("in call ~s:~s/~b", [M, F, Length]);
+    lager:error("undefined function ~s:~s/~b", [RealM, RealF, length(RealArgs)]),
+    lager:error("in call ~s:~s/~b", [M, F, Length]);
 log_undefined(M, F, Length, ST) ->
-    lager:debug("undefined function ~s:~s/~b", [M, F, Length]),
+    lager:error("undefined function ~s:~s/~b", [M, F, Length]),
     wh_util:log_stacktrace(ST).
 
 log_function_clause(M, F, Length, [{M, F, _Args, _}|_]) ->
-    lager:debug("unable to find function clause for ~s:~s/~b", [M, F, Length]);
+    lager:error("unable to find function clause for ~s:~s/~b", [M, F, Length]);
 log_function_clause(M, F, Length, [{RealM, RealF, RealArgs, Where}|_ST]) ->
-    lager:debug("unable to find function clause for ~s:~s(~s) in ~s:~p"
+    lager:error("unable to find function clause for ~s:~s(~s) in ~s:~p"
                 ,[RealM, RealF
                   ,wh_util:join_binary([wh_util:to_binary(io_lib:format("~p",[A])) || A <- RealArgs], <<", ">>)
                   ,props:get_value('file', Where), props:get_value('line', Where)
                  ]
                ),
-    lager:debug("as part of ~s:~s/~p", [M, F, Length]),
-    [lager:debug("st: ~p", [ST]) || ST <- _ST];
+    lager:error("as part of ~s:~s/~p", [M, F, Length]),
+    _ = [lager:error("st: ~p", [ST]) || ST <- _ST],
+    'ok';
 log_function_clause(M, F, Lenth, ST) ->
-    lager:debug("no matching function clause for ~s:~s/~p", [M, F, Lenth]),
+    lager:error("no matching function clause for ~s:~s/~p", [M, F, Lenth]),
     wh_util:log_stacktrace(ST).
 
 -spec map_processor(ne_binary(), payload(), kz_bindings()) -> list().
