@@ -6,7 +6,7 @@
 %%% Could be usefull for external calls/conferences recording over inbound leg
 %%%
 %%% "data":{}
-%%% 
+%%%
 %%% @end
 %%% @contributors
 %%%   Kirill Sysoev github.com/onnet

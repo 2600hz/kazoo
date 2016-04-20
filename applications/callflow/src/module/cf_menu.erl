@@ -389,8 +389,7 @@ get_new_attachment_url(AttachmentName, MediaId, Call) ->
                 maybe_delete_attachments(AccountDb, MediaId, JObj);
             {'error', _} -> 'ok'
         end,
-    {'ok', URL} = wh_media_url:store(AccountDb, MediaId, AttachmentName),
-    URL.
+    wh_media_url:store(AccountDb, MediaId, AttachmentName).
 
 -spec maybe_delete_attachments(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 maybe_delete_attachments(AccountDb, _MediaId, JObj) ->
