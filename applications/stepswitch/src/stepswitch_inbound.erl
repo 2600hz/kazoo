@@ -10,6 +10,10 @@
 
 -include("stepswitch.hrl").
 
+-define(SHOULD_BLOCK_ANONYMOUS(AccountId)
+        ,whapps_account_config:get_global(AccountId, ?SS_CONFIG_CAT, <<"block_anonymous_caller_id">>, 'false')
+       ).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -281,23 +285,31 @@ is_blacklisted(JObj) ->
             'false';
         {'ok', Blacklists} ->
             Blacklist = get_blacklist(AccountId, Blacklists),
-            is_number_blacklisted(Blacklist, wh_json:get_value(<<"Caller-ID-Number">>, JObj))
+            is_number_blacklisted(AccountId, Blacklist, wh_json:get_value(<<"Caller-ID-Number">>, JObj))
     end.
 
--spec is_number_blacklisted(wh_json:object(), api_binary()) -> boolean().
-is_number_blacklisted(_Blacklist, 'undefined') ->
-    lager:debug("no caller id number to check in blacklists"),
-    'false';
-is_number_blacklisted(Blacklist, Number) ->
+-spec is_number_blacklisted(ne_binary(), wh_json:object(), ne_binary()) -> boolean().
+is_number_blacklisted(AccountId, Blacklist, Number) ->
     Normalized = knm_converters:normalize(Number),
     case wh_json:get_value(Normalized, Blacklist) of
         'undefined' ->
-            lager:debug("~s(~s) not blacklisted, did not match any rule", [Number, Normalized]),
-            'false';
+            maybe_block_anonymous(AccountId, Number, wh_util:anonymous_caller_id_number());
         _Rule ->
             lager:info("~s(~s) is blacklisted", [Number, Normalized]),
             'true'
     end.
+
+-spec maybe_block_anonymous(ne_binary(), ne_binary(), ne_binary()) -> boolean().
+maybe_block_anonymous(AccountId, Number, Number) ->
+    case ?SHOULD_BLOCK_ANONYMOUS(AccountId) of
+        'false' -> 'false';
+        'true' ->
+            lager:info("anonymous caller ids are blocked for account ~s", [AccountId]),
+            'true'
+    end;
+maybe_block_anonymous(_AccountId, _Number, _Anonymous) ->
+    lager:debug("~s is not blacklisted", [_Number]),
+    'false'.
 
 -spec get_blacklists(ne_binary()) ->
                             {'ok', ne_binaries()} |
