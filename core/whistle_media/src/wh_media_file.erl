@@ -64,8 +64,9 @@ maybe_proxy(JObj, #media_store_path{db = Db
                                     ,opt = Options
                                    }=Store) ->
     case kz_datamgr:attachment_url(Db, Id, Attachment, Options) of
-        {'ok', URI} -> URI;
-        {'proxy', _} -> proxy_uri(JObj, Store)
+        {'error', 'not_found'} -> <<>>;
+        {'proxy', _} -> proxy_uri(JObj, Store);
+        <<_/binary>> = URI -> URI
     end.
 
 -spec proxy_uri(wh_json:object(), media_store_path()) ->
