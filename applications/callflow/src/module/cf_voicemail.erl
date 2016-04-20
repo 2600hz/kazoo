@@ -567,7 +567,7 @@ main_menu(#mailbox{keys=#keys{hear_new=HearNew
     lager:debug("playing mailbox main menu"),
     _ = whapps_call_command:b_flush(Call),
 
-    Messages = kz_vm_message:get_messages_metadata(whapps_call:account_id(Call), BoxId),
+    Messages = kz_vm_message:messages(whapps_call:account_id(Call), BoxId),
     New = kzd_voice_message:count_messages(Messages, ?VM_FOLDER_NEW),
     Saved = kzd_voice_message:count_messages(Messages, ?VM_FOLDER_SAVED),
 
@@ -619,7 +619,7 @@ main_menu(#mailbox{keys=#keys{hear_new=HearNew
     lager:debug("playing mailbox main menu"),
     _ = whapps_call_command:b_flush(Call),
 
-    Messages = kz_vm_message:get_messages_metadata(whapps_call:account_id(Call), BoxId),
+    Messages = kz_vm_message:messages(whapps_call:account_id(Call), BoxId),
     New = kzd_voice_message:count_messages(Messages, ?VM_FOLDER_NEW),
     Saved = kzd_voice_message:count_messages(Messages, ?VM_FOLDER_SAVED),
 
@@ -1263,13 +1263,12 @@ new_message(AttachmentName, Length, #mailbox{mailbox_number=BoxNum
                                              ,after_notify_action=Action
                                             }=Box, Call) ->
     AccountId = whapps_call:account_id(Call),
-    NewMsgProps = [{<<"AttachmentName">>, AttachmentName}
-                   ,{<<"Box-Id">>, BoxId}
+    NewMsgProps = [{{<<"Box-Id">>, BoxId}
                    ,{<<"OwnerId">>, OwnerId}
                    ,{<<"Length">>, Length}
                    ,{<<"Transcribe-Voicemail">>, MaybeTranscribe}
                    ,{<<"After-Notify-Action">>, Action}
-                   ,{<<"Default-Storage">>, ?MAILBOX_DEFAULT_STORAGE}
+                   ,{<<"Default-External-Storage">>, ?MAILBOX_DEFAULT_STORAGE}
                    ,{<<"Default-Extension">>, ?DEFAULT_VM_EXTENSION}
                    ,{<<"Retry-Storage-Times">>, ?MAILBOX_RETRY_STORAGE_TIMES(AccountId)}
                    ,{<<"Retry-Local-Storage">>, ?MAILBOX_RETRY_LOCAL_STORAGE_REMOTE_FAILS(AccountId)}
@@ -1845,7 +1844,7 @@ send_mwi_update(#mailbox{owner_id=OwnerId
                          ,account_db=AccountDb
                          ,mailbox_id=BoxId}, Call) ->
     _ = wh_util:spawn(fun cf_util:unsolicited_owner_mwi_update/2, [AccountDb, OwnerId]),
-    Messages = kz_vm_message:get_messages_metadata(whapps_call:account_id(Call), BoxId),
+    Messages = kz_vm_message:messages(whapps_call:account_id(Call), BoxId),
     New = kzd_voice_message:count_messages(Messages, ?VM_FOLDER_NEW),
     Saved = kzd_voice_message:count_messages(Messages, ?VM_FOLDER_SAVED),
     _ = wh_util:spawn(fun send_mwi_update/4, [New, Saved, BoxNumber, Call]),

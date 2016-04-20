@@ -8,13 +8,14 @@
 %%%-------------------------------------------------------------------
 -module(kzd_voice_message).
 
--export([new/0, new/7, create_metadata_object/7
+-export([new/0, new/6, create_metadata_object/7
          ,count_messages/1, count_messages/2
          ,type/0
          ,external_media_url/1, external_media_url/2, set_external_media_url/2
          ,folder/1, folder/2, set_folder/2, set_folder_saved/1, set_folder_deleted/1, filter_folder/2
          ,media_id/1
          ,metadata/1, metadata/2, set_metadata/2
+         ,utc_seconds/1
         ]).
 
 -include("kz_documents.hrl").
@@ -45,19 +46,14 @@
 -define(KEY_META_CALL_ID, <<"call_id">>).
 -define(KEY_META_LENGTH, <<"length">>).
 
--define(KEY_FOLDER, <<"folder">>).
--define(KEY_FOLDER_NEW, <<"new">>).
--define(KEY_FOLDER_SAVED, <<"saved">>).
--define(KEY_FOLDER_DELETED, <<"deleted">>).
-
 -define(PVT_TYPE, <<"voice_message">>).
 
 -spec new() -> doc().
 new() ->
     wh_json:from_list([{?PVT_TYPE, type()}]).
 
--spec new(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary()) -> doc().
-new(AccountDb, BoxNum, BoxId, AttachmentName, Timezone, DefaultExtension, DefaultStorage) ->
+-spec new(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> doc().
+new(Db, DocId, AttachmentName, BoxNum, Timezone, Props) ->
     UtcSeconds = wh_util:current_tstamp(),
     UtcDateTime = calendar:gregorian_seconds_to_datetime(UtcSeconds),
     Name = case localtime:utc_to_local(UtcDateTime, Timezone) of
@@ -68,19 +64,20 @@ new(AccountDb, BoxNum, BoxId, AttachmentName, Timezone, DefaultExtension, Defaul
                    message_name(BoxNum, DT)
            end,
 
-    Props = props:filter_undefined(
-              [{?KEY_NAME, Name}
+    DocProps = props:filter_undefined(
+              [{<<"_id">>, DocId}
+               ,{?KEY_NAME, Name}
                ,{?KEY_DESC, <<"voicemail message media">>}
                ,{?KEY_SOURCE_TYPE, ?KEY_VOICEMAIL}
-               ,{?KEY_SOURCE_ID, BoxId}
+               ,{?KEY_SOURCE_ID, props:get_value(<<"Box-Id">>, Props)}
                ,{?KEY_MEDIA_SOURCE, <<"recording">>}
-               ,{?KEY_MEDIA_TYPE, DefaultExtension}
+               ,{?KEY_MEDIA_TYPE, props:get_value(<<"Default-Extension">>, Props)}
                ,{?KEY_MEDIA_FILENAME, AttachmentName}
                ,{?KEY_STREAMABLE, 'true'}
                ,{?KEY_UTC_SEC, UtcSeconds}
-               ,{?KEY_EXTERNAL_MEDIA_URL, DefaultStorage}
+               ,{?KEY_EXTERNAL_MEDIA_URL, props:get_value(<<"Default-External-Storage">>, Props)}
               ]),
-    wh_doc:update_pvt_parameters(wh_json:from_list(Props), AccountDb, [{'type', type()}]).
+    wh_doc:update_pvt_parameters(wh_json:from_list(DocProps), Db, [{'type', type()}]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -113,7 +110,7 @@ create_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, ExternalMediaU
              ,{?KEY_META_CID_NUMBER, CIDNumber}
              ,{?KEY_META_CID_NUMBER, CIDName}
              ,{?KEY_META_CALL_ID, whapps_call:call_id(Call)}
-             ,{?KEY_FOLDER, ?KEY_FOLDER_NEW}
+             ,{?VM_KEY_FOLDER, ?VM_FOLDER_NEW}
              ,{?KEY_META_LENGTH, Length}
              ,{?KEY_MEDIA_ID, MediaId}
              ,{?KEY_EXTERNAL_MEDIA_URL, ExternalMediaUrl}
@@ -144,19 +141,19 @@ folder(JObj) ->
 
 -spec folder(doc(), Default) -> ne_binary() | Default.
 folder(JObj, Default) ->
-    wh_json:get_value(?KEY_FOLDER, JObj, Default).
+    wh_json:get_value(?VM_KEY_FOLDER, JObj, Default).
 
 -spec set_folder(api_binary(), doc()) -> doc().
 set_folder(Folder, JObj) ->
-    wh_json:set_value(?KEY_FOLDER, Folder, JObj).
+    wh_json:set_value(?VM_KEY_FOLDER, Folder, JObj).
 
 -spec set_folder_saved(doc()) -> doc().
 set_folder_saved(JObj) ->
-    wh_json:set_value(?KEY_FOLDER, ?KEY_FOLDER_SAVED, JObj).
+    wh_json:set_value(?VM_KEY_FOLDER, ?VM_FOLDER_SAVED, JObj).
 
 -spec set_folder_deleted(doc()) -> doc().
 set_folder_deleted(JObj) ->
-    wh_json:set_value(?KEY_FOLDER, ?KEY_FOLDER_DELETED, JObj).
+    wh_json:set_value(?VM_KEY_FOLDER, ?VM_FOLDER_DELETED, JObj).
 
 -spec media_id(doc()) -> api_binary().
 media_id(JObj) ->
@@ -173,6 +170,9 @@ metadata(JObj, Default) ->
 -spec set_metadata(doc(), doc()) -> doc().
 set_metadata(Metadata, JObj) ->
     wh_json:set_value(?KEY_METADATA, Metadata, JObj).
+
+-spec utc_seconds(doc()) -> pos_integer().
+  wh_json:get_integer_value(?KEY_UTC_SEC, JObj).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -197,8 +197,13 @@ count_messages(Messages) ->
 %% @doc Count message list in specific folder(s)
 %% @end
 %%--------------------------------------------------------------------
--spec count_messages(wh_json:objects(), ne_binary()) -> non_neg_integer().
-count_messages(Messages, Folder) ->
+-spec count_messages(wh_json:objects(), ne_binary() | ne_binaries()) -> non_neg_integer().
+count_messages(Messages, Folders) when is_list(Folders) ->
     lists:sum([1 || Message <- Messages,
-                    wh_json:get_value(?VM_KEY_FOLDER, Message) =:= Folder
-              ]).
+                    begin
+                        F = wh_json:get_value(?VM_KEY_FOLDER, Message),
+                        lists:member(F, Folders)
+                    end
+              ]);
+count_messages(Messages, Folder) ->
+    count_messages(Messages, [Folder]).
