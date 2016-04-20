@@ -107,6 +107,8 @@ find_attachment([Db, Id]) ->
     find_attachment([Db, Id, 'first']);
 find_attachment([Db, Id, 'first']) ->
     maybe_find_attachment(Db, Id);
+find_attachment([?WH_MEDIA_DB=Db, Lang, Id]) ->
+    find_attachment([Db, <<Lang/binary, "/", Id/binary>>, 'first']);
 find_attachment([Db, Id, Attachment]) ->
     find_attachment([Db, Id, Attachment, []]);
 find_attachment([Db = ?MEDIA_DB, Id, Attachment, Options]) ->
