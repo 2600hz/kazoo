@@ -60,8 +60,8 @@ allowed_methods(_) ->
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
-resource_exists() -> true.
-resource_exists(_) -> true.
+resource_exists() -> 'true'.
+resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -203,22 +203,14 @@ normalize_view_results(JObj, Acc) ->
 format_numbers(Context) ->
     Doc = cb_context:doc(Context),
     Numbers =
-        wh_json:foldl(
-            fun format_numbers_foldl/3
-            ,wh_json:get_value(<<"raw_numbers">>, Doc, wh_json:new())
-            ,wh_json:get_value(<<"numbers">>, Doc, wh_json:new())
-        ),
-    cb_context:set_doc(
-        Context
-        ,wh_json:set_value(<<"numbers">>, Numbers, Doc)
-    ).
+        wh_json:map(fun format_number_map/2
+                   ,wh_json:get_value(<<"numbers">>, Doc, wh_json:new())
+                   ),
+    cb_context:set_doc(Context
+                      ,wh_json:set_value(<<"numbers">>, Numbers, Doc)
+                      ).
 
-
--spec format_numbers_foldl(ne_binary(), wh_json:object(), wh_json:object()) -> wh_json:object().
-format_numbers_foldl(Number, Data, JObj) ->
-    case wh_util:anonymous_caller_id_number() of
-        Number -> wh_json:set_value(Number, Data, JObj);
-        _Else ->
-            E164 = knm_converters:normalize(Number),
-            wh_json:set_value(E164, Data, JObj)
-    end.
+-spec format_number_map(ne_binary(), wh_json:object()) ->
+                               {ne_binary(), wh_json:object()}.
+format_number_map(Number, Data) ->
+    {knm_converters:normalize(Number), Data}.
