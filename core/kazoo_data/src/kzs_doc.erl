@@ -26,6 +26,7 @@
                               {'ok', wh_json:object()} | data_error()).
 -export_type([copy_function/0]).
 -define(COPY_DOC_OVERRIDE_PROPERTY, 'override_existing_document').
+-define(COPY_TRANSFORM, 'transform').
 
 
 %% Document related functions --------------------------------------------------
@@ -208,19 +209,22 @@ copy_doc(Src, Dst, CopySpec, Options) ->
 -spec copy_doc(map(), map(), copy_doc(), copy_function(), wh_proplist()) ->
                       {'ok', wh_json:object()} |
                       data_error().
-copy_doc(Src, Dst, CopySpec, CopyFun, Options) ->
+copy_doc(Src, Dst, CopySpec, CopyFun, Opts) ->
     #copy_doc{source_dbname = SourceDbName
                  ,source_doc_id = SourceDocId
                  ,dest_dbname = DestDbName
                  ,dest_doc_id = DestDocId
                 } = CopySpec,
+    Transform = props:get_value('transform', Opts),
+    Options = props:delete(?COPY_TRANSFORM, Opts),
     case open_doc(Src, SourceDbName, SourceDocId, Options) of
         {'ok', SourceDoc} ->
             Props = [{<<"_id">>, DestDocId}
                      | maybe_set_account_db(wh_doc:account_db(SourceDoc), SourceDbName, DestDbName)
                     ],
             DestinationDoc = wh_json:set_values(Props, wh_json:delete_keys(?DELETE_KEYS, SourceDoc)),
-            case CopyFun(Dst, DestDbName, DestinationDoc, Options) of
+            Doc = copy_transform(Transform, SourceDoc, DestinationDoc),
+            case CopyFun(Dst, DestDbName, Doc, Options) of
                 {'ok', _JObj} ->
                     Attachments = wh_doc:attachments(SourceDoc, wh_json:new()),
                     copy_attachments(Src, Dst, CopySpec, wh_json:get_values(Attachments));
@@ -228,6 +232,10 @@ copy_doc(Src, Dst, CopySpec, CopyFun, Options) ->
             end;
         Error -> Error
     end.
+
+-spec copy_transform('undefined' | fun(), wh_json:object(), wh_json:object()) -> wh_json:object().
+copy_transform('undefined', _SourceDoc, DestinationDoc) -> DestinationDoc;
+copy_transform(Fun, SourceDoc, DestinationDoc) -> Fun(SourceDoc, DestinationDoc).
 
 -spec copy_attachments(map(), map(), copy_doc(), {wh_json:json_terms(), wh_json:keys()}) ->
                               {'ok', ne_binary()} |

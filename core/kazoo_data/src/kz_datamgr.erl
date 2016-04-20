@@ -53,8 +53,8 @@
          ,all_design_docs/1
          ,all_docs/2
          ,all_design_docs/2
-         ,copy_doc/3, copy_doc/4, copy_doc/5
-         ,move_doc/3, move_doc/4, move_doc/5
+         ,copy_doc/4, copy_doc/5
+         ,move_doc/4, move_doc/5
         ]).
 
 %% attachments
@@ -1075,20 +1075,12 @@ maybe_convert_dbname(DbName) ->
         'false' -> {'ok', wh_util:to_binary(DbName)}
     end.
 
--spec copy_doc(ne_binary(), ne_binary(), wh_proplist()) ->
-                      {'ok', wh_json:object()} |
-                      data_error().
 -spec copy_doc(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
                       {'ok', wh_json:object()} |
                       data_error().
 -spec copy_doc(ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
                       {'ok', wh_json:object()} |
                       data_error().
-
-copy_doc(FromDB, FromId, Options) ->
-    ToId = wh_util:rand_hex_binary(16),
-    copy_doc(FromDB, FromId, FromDB, ToId, Options).
-
 copy_doc(FromDB, FromId, ToDB, Options) ->
     copy_doc(FromDB, FromId, ToDB, FromId, Options).
 
@@ -1102,19 +1094,12 @@ copy_doc(FromDB, FromId, ToDB, ToId, Options) ->
                         },
     kzs_doc:copy_doc(Src, Dst, CopySpec, Options).
 
--spec move_doc(ne_binary(), ne_binary(), wh_proplist()) ->
-                      {'ok', wh_json:object()} |
-                      data_error().
 -spec move_doc(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
                       {'ok', wh_json:object()} |
                       data_error().
 -spec move_doc(ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
                       {'ok', wh_json:object()} |
                       data_error().
-move_doc(FromDB, FromId, Options) ->
-    ToId = wh_util:rand_hex_binary(16),
-    move_doc(FromDB, FromId, FromDB, ToId, Options).
-
 move_doc(FromDB, FromId, ToDB, Options) ->
     move_doc(FromDB, FromId, ToDB, FromId, Options).
 
