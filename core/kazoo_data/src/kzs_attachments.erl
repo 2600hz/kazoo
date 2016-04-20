@@ -51,9 +51,6 @@ do_fetch_attachment_from_handler([{Handler, Props}], DbName, DocId, AName) ->
                                {'ok', reference()} |
                                data_error().
 stream_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Caller) ->
-    %% OPEN CACHE DOC
-    %% CHECK STUB
-    %% MAYBE PROXY
     App:stream_attachment(Conn, DbName, DocId, AName, Caller).
 
 -spec put_attachment(map(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
