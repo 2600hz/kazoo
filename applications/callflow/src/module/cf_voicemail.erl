@@ -1263,7 +1263,7 @@ new_message(AttachmentName, Length, #mailbox{mailbox_number=BoxNum
                                              ,after_notify_action=Action
                                             }=Box, Call) ->
     AccountId = whapps_call:account_id(Call),
-    NewMsgProps = [{{<<"Box-Id">>, BoxId}
+    NewMsgProps = [{<<"Box-Id">>, BoxId}
                    ,{<<"OwnerId">>, OwnerId}
                    ,{<<"Length">>, Length}
                    ,{<<"Transcribe-Voicemail">>, MaybeTranscribe}

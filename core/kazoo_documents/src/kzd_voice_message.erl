@@ -172,6 +172,7 @@ set_metadata(Metadata, JObj) ->
     wh_json:set_value(?KEY_METADATA, Metadata, JObj).
 
 -spec utc_seconds(doc()) -> pos_integer().
+utc_seconds(JObj) ->
   wh_json:get_integer_value(?KEY_UTC_SEC, JObj).
 
 %%--------------------------------------------------------------------
