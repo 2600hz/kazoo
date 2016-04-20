@@ -13,7 +13,6 @@
 -export([find_numbers/3]).
 -export([acquire_number/1]).
 -export([disconnect_number/1]).
--export([get_number_data/1]).
 -export([is_number_billable/1]).
 -export([should_lookup_cnam/0]).
 
@@ -57,24 +56,6 @@
 -type to_json_ret() :: {'ok', wh_json:object()} | {'error', any()}.
 
 %%% API
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Query the system for a quantity of available numbers in a rate center
-%% @end
-%%--------------------------------------------------------------------
--spec get_number_data(ne_binary()) -> wh_json:object().
-get_number_data(<<"+", Rest/binary>>) ->
-    get_number_data(Rest);
-get_number_data(<<"1", Rest/binary>>) ->
-    get_number_data(Rest);
-get_number_data(Number) ->
-    Resp = soap("queryDID", Number),
-    case to_json('get_number_data', Number, Resp) of
-        {'ok', JObj} -> JObj;
-        {'error', _R} -> wh_json:new()
-    end.
 
 %% @public
 -spec is_number_billable(wnm_number()) -> boolean().
