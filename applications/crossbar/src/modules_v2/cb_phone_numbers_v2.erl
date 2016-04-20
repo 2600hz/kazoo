@@ -348,8 +348,9 @@ post(Context, ?CHECK) ->
     RespData = format_carriers_check(Unformatted),
     cb_context:set_resp_data(Context, RespData);
 post(Context, ?COLLECTION) ->
+    Results = collection_process(Context, ?HTTP_POST),
     CB = fun() -> post(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
-    set_response(collection_process(Context), Context, CB);
+    set_response(Results, Context, CB);
 post(Context, Number) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
@@ -362,8 +363,9 @@ post(Context, Number) ->
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context, ?COLLECTION) ->
+    Results = collection_process(Context, ?HTTP_PUT),
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
-    set_response(collection_process(Context), Context, CB);
+    set_response(Results, Context, CB);
 put(Context, Number) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
@@ -398,9 +400,8 @@ put(Context, Number, ?RESERVE) ->
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, ?COLLECTION) ->
-    Numbers = wh_json:get_value(<<"numbers">>, cb_context:req_data(Context), []),
-    Results = collection_process(Context, Numbers, <<"delete">>),
-    set_response({'ok', Results}, Context);
+    Results = collection_process(Context, ?HTTP_DELETE),
+    set_response(Results, Context);
 delete(Context, Number) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ],
@@ -811,8 +812,6 @@ set_response(Result, Context) ->
                   {binary(), binary()}.
 -type cb() :: fun(() -> cb_context:context()).
 -spec set_response(result(), cb_context:context(), cb()) -> cb_context:context().
-set_response({'ok', {'ok', Doc}}, Context, _) ->
-    crossbar_util:response(Doc, Context);
 set_response({'ok', Thing}, Context, _) ->
     case knm_number:is_number(Thing) of
         'true' -> crossbar_util:response(knm_number:to_public_json(Thing), Context);
@@ -900,24 +899,18 @@ accumulate_resp(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec collection_process(cb_context:context()) -> process_result().
--spec collection_process(cb_context:context(), ne_binary() | ne_binaries()) -> process_result().
-collection_process(Context) ->
+-spec collection_process(cb_context:context(), ne_binary()) -> process_result().
+collection_process(Context, Action) ->
     Numbers = wh_json:get_value(<<"numbers">>, cb_context:req_data(Context), []),
-    Result = collection_process(Context, Numbers, 'undefined'),
+    Result = collection_process(Context, Action, Numbers),
     collection_process_result(Context, Result).
 
-collection_process(Context, ?ACTIVATE) ->
-    Numbers = wh_json:get_value(<<"numbers">>, cb_context:req_data(Context), []),
-    Result = collection_process(Context, Numbers, ?ACTIVATE),
-    collection_process_result(Context, Result).
-
--spec collection_process(cb_context:context(), ne_binaries(), api_binary()) ->
+-spec collection_process(cb_context:context(), ne_binary(), ne_binaries()) ->
                                 wh_json:object().
-collection_process(Context, Numbers, Action) ->
+collection_process(Context, Action, Numbers) ->
     lists:foldl(
       fun(Number, Acc) ->
-              case collection_action(Context, Number, Action) of
+              case number_action(Context, Action, Number) of
                   {'ok', Thing} ->
                       JObj = case wh_json:is_json_object(Thing) of
                                  'true' -> Thing;
@@ -957,32 +950,22 @@ collection_process_result(Context, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec collection_action(cb_context:context(), ne_binary(), ne_binary()) ->
-                               knm_number_return() |
-                               {'ok', wh_json:object()}.
-collection_action(Context, Number, ?ACTIVATE) ->
+-spec number_action(cb_context:context(), ne_binary(), ne_binary()) ->
+                           knm_number_return().
+number_action(Context, ?ACTIVATE, Number) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
                ,{'dry_run', not cb_context:accepting_charges(Context)}
                ,{'public_fields', wh_json:delete_key(<<"numbers">>, cb_context:doc(Context))}
               ],
-    case knm_number:move(Number, cb_context:account_id(Context), Options) of
-        {'ok', KNum} ->
-            wh_json:delete_key(<<"numbers">>, knm_number:to_public_json(KNum));
-        _Else -> _Else
-    end;
-collection_action(Context, Number, _) ->
-    number_action(Context, Number, cb_context:req_verb(Context)).
-
--spec number_action(cb_context:context(), path_token(), http_method()) ->
-                           knm_number_return().
-number_action(Context, Number, ?HTTP_PUT) ->
+    knm_number:move(Number, cb_context:account_id(Context), Options);
+number_action(Context, ?HTTP_PUT, Number) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
                ,{'dry_run', not cb_context:accepting_charges(Context)}
                ,{'public_fields', wh_json:delete_key(<<"numbers">>, cb_context:doc(Context))}
               ],
     knm_number:create(Number, Options);
-number_action(Context, Number, ?HTTP_POST) ->
+number_action(Context, ?HTTP_POST, Number) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
                ,{'dry_run', not cb_context:accepting_charges(Context)}
               ],
@@ -990,7 +973,7 @@ number_action(Context, Number, ?HTTP_POST) ->
     Routines = [{fun knm_phone_number:update_doc/2, ToMerge}
                ],
     knm_number:update(Number, Routines, Options);
-number_action(Context, Number, ?HTTP_DELETE) ->
+number_action(Context, ?HTTP_DELETE, Number) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ],
     knm_number:release(Number, Options).

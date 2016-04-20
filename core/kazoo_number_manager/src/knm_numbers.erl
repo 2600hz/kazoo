@@ -23,7 +23,9 @@
 
 -include("knm.hrl").
 
--type numbers_return() :: [{ne_binary(), knm_number_return()} | {'error', any()}].
+-type numbers_return() :: [ {ne_binary(), knm_number_return()} |
+                            {'error', any()}
+                          ].
 
 %%--------------------------------------------------------------------
 %% @public
