@@ -91,11 +91,11 @@ curl -v -X GET \
                 "created": 63624719324,
                 "features": {},
                 "state": "in_service",
-                "updated": 63624719325,
-                "used_by": ""
+                "updated": 63624719325
             }
         }
     },
+    "page_size": 2,
     "request_id": "923fce7eec4d13d5e7df09ca6fbbcadd",
     "revision": "19-d21bca301d4721b03f368b73de35f813",
     "status": "success"
@@ -417,14 +417,51 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers
 ```
 
-#### Change
+#### Fix issues
 
 > POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/fix
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/fix
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "casquade_quantity": 0,
+        "numbers": {
+            "+14152338421": {
+                "assigned_to": "{ACCOUNT_ID}",
+                "created": 63627334163,
+                "features": {},
+                "state": "in_service",
+                "updated": 63627447350
+            },
+            "+14155555555": {
+                "assigned_to": "{ACCOUNT_ID}",
+                "created": 63602230185,
+                "features": {},
+                "state": "in_service",
+                "updated": 63602230212,
+                "used_by": "callflow"
+            },
+            "+14158865100": {
+                "assigned_to": "{ACCOUNT_ID}",
+                "created": 63624719324,
+                "features": {},
+                "state": "in_service",
+                "updated": 63624719325
+            }
+        }
+    },
+    "page_size": 2,
+    "request_id": "923fce7eec4d13d5e7df09ca6fbbcadd",
+    "revision": "19-d21bca301d4721b03f368b73de35f813",
+    "status": "success"
+}
 ```
 
 #### Fetch
@@ -541,24 +578,6 @@ curl -X GET -H 'Content-Type: application/json' http://{{SERVER}}:8000/v2/phone_
      ,"request_id": {{REQUEST_ID}}
      ,"revision": "undefined"
      ,"status": "success"
-}
-```
-
-
-#### Fix Phone Numbers
-
-##### Request
-
-- Verb: `POST`
-- Url: `/v2/accounts/{{ACCOUNT_ID}}/phone_numbers/fix`
-- Payload: none
-
-##### Response
-
-```json
-{
-    "data": {}
-    "status": "success"
 }
 ```
 
@@ -838,13 +857,3 @@ curl -X PUT -H "Content-Type: application/json" -H "X-Auth-Token: {{AUTH_TOKEN}}
     "status": "success"
 }
 ```
-
-### Fix
-
-#### Request
-
-`GET` `http://{{SERVER}}/v2/accounts/{{account_id}}/phone_numbers/fix`
-
-#### Response
-
-[SEE](#user-content-list-accounts-phone-numbers)

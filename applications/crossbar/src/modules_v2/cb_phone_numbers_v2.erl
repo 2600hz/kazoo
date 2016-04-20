@@ -297,13 +297,7 @@ validate(Context, Number) ->
 
 -spec validate_number(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_number(Context, Number, ?HTTP_GET) ->
-    Options = [{'auth_by', cb_context:auth_account_id(Context)}
-              ],
-    case knm_number:get(Number, Options) of
-        {'ok', KNMNumber} ->
-            crossbar_util:response(knm_number:to_public_json(KNMNumber), Context);
-        {'error', _JObj} -> reply_number_not_found(Context)
-    end;
+    summary(Context, Number);
 validate_number(Context, _Number, ?HTTP_POST) ->
     validate_request(Context);
 validate_number(Context, _Number, ?HTTP_PUT) ->
@@ -370,7 +364,8 @@ classified_number(Context, Number, Classifier) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?FIX) ->
-    %% TODO
+    AccountDb = cb_context:account_db(Context),
+    'ok' = knm_maintenance:fix_account_numbers(AccountDb),
     summary(Context);
 post(Context, ?COLLECTION) ->
     CB = fun() -> post(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
@@ -448,7 +443,21 @@ delete(Context, Number) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Lists numbers on GET /v2/accounts/{{ACCOUNT_ID}}/phone_numbers[/{{DID}}]
+%% @doc Lists number on GET /v2/accounts/{{ACCOUNT_ID}}/phone_numbers/{{DID}}
+%%--------------------------------------------------------------------
+-spec summary(cb_context:context(), ne_binary()) -> cb_context:context().
+summary(Context, Number) ->
+    Options = [{'auth_by', cb_context:auth_account_id(Context)}
+              ],
+    case knm_number:get(Number, Options) of
+        {'ok', KNMNumber} ->
+            crossbar_util:response(knm_number:to_public_json(KNMNumber), Context);
+        {'error', _JObj} -> reply_number_not_found(Context)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Lists numbers on GET /v2/accounts/{{ACCOUNT_ID}}/phone_numbers
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
