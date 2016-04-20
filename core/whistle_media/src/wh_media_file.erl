@@ -12,11 +12,16 @@
 
 -include("whistle_media.hrl").
 
--spec get_uri(ne_binaries() | ne_binary(), wh_json:object()) ->
+
+-type build_uri() :: ne_binaries() | ne_binary() |  media_store_path().
+
+-spec get_uri(build_uri(), wh_json:object()) ->
                      {'ok', ne_binary()} |
                      {'error', 'not_found'} |
                      {'error', 'no_data'} |
                      {'error', 'no_stream_strategy'}.
+get_uri(#media_store_path{}=Store, JObj) ->
+     maybe_proxy(JObj, Store);
 get_uri(Media, JObj) when is_binary(Media) ->
     wh_util:put_callid(JObj),
     Paths = [Path
