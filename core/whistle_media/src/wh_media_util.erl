@@ -225,7 +225,7 @@ prompt_id(<<"/system_media/", PromptId/binary>>, Lang) ->
 prompt_id(PromptId, 'undefined') -> PromptId;
 prompt_id(PromptId, <<>>) -> PromptId;
 prompt_id(PromptId, Lang) ->
-    kz_http_util:urlencode(<<Lang/binary, "/", PromptId/binary>>).
+    <<Lang/binary, "/", PromptId/binary>>.
 
 -spec get_prompt(ne_binary()) -> api_binary().
 -spec get_prompt(ne_binary(), api_binary() | whapps_call:call()) ->

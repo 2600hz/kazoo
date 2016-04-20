@@ -13,6 +13,7 @@
          ,import_prompt/1, import_prompt/2
          ,set_account_language/2
          ,refresh/0
+         ,fix_media_names/0
         ]).
 
 -include("whistle_media.hrl").
@@ -361,3 +362,13 @@ maybe_remove_media_doc(AccountDb, File, MediaJObj) ->
 remove_media_doc(AccountDb, MediaJObj) ->
     {'ok', _Doc} = kz_datamgr:del_doc(AccountDb, MediaJObj),
     io:format("removed media doc ~s~n", [wh_doc:id(MediaJObj)]).
+
+fix_media_names() ->
+    {'ok', JObjs} = kz_datamgr:all_docs(?WH_MEDIA_DB),
+    [kz_datamgr:move_doc(?WH_MEDIA_DB
+                        ,wh_doc:id(JObj)
+                        ,?WH_MEDIA_DB
+                        ,NewDocId, ['override_existing_document'
+                                   ,{'transform', fun(_, B) -> wh_json:set_value(<<"name">>, NewDocId, B) end}
+                                   ]
+                        ) || JObj <- JObjs, wh_doc:id(JObj) =/= (NewDocId = kz_http_util:urldecode(wh_doc:id(JObj)))].
