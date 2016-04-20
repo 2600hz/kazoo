@@ -325,14 +325,56 @@ curl -v -X PUT \
 }
 ```
 
-#### Change
+#### Check availability of phone numbers
+
+This API check if the numbers are still available for purchase.
+
+- IN <- List of numbers
+- OUT -> JSON; Key = Number, Value = status
 
 > POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/check
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"numbers": [{PHONENUMBER1}, {PHONENUMBER2}]}}'
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/check
+```
+
+##### Response
+
+###### Success
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "{PHONENUMBER1}": "success",
+        "{PHONENUMBER2}": "error"
+    }
+    "request_id": "3934255dbf74ac0ff38443450ce8753d",
+    "revision": "undefined",
+    "status": "success"
+}
+```
+
+###### Failure
+
+When server encounters an error `"data": {}` is returned.
+
+It may be due to:
+
+* Number not being handled by carrier `other`
+* `phonebook` being unresponsive
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {},
+    "request_id": "feaf1bc6fb1c4e3531840d188ea67344",
+    "revision": "undefined",
+    "status": "success"
+}
 ```
 
 #### Change
@@ -492,45 +534,6 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection/activate
 ```
 
-
-#### Check Phone Numbers availability
-
-This API check if the numbers are still available for purchase.
-
-- IN <- List of numbers
-- OUT -> JSON; Key = Number, Value = status
-
-##### Request
-
-- Verb: `POST`
-- Url: `/accounts/{{ACCOUNT_ID}}/phone_numbers/check`
-- Payload:
-
-```json
-{
-    "data": {
-        "numbers": [
-            "+14159383408",
-            "+14156715576"
-        ]
-    }
-}
-```
-
-##### Response
-
-```json
-{
-    "data": {
-        "+14159383408": "success"
-        "+14156715576": "error"
-    }
-    "revision": "undefined"
-    "request_id": "3934255dbf74ac0ff38443450ce8753d"
-    "status": "success"
-    "auth_token": "7797206dda2166f139b18eee58e64c79"
-}
-```
 
 #### Check classifier for a number
 
