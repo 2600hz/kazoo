@@ -65,12 +65,11 @@ delete_attachment(#server{}=Conn, DbName, DocId, AName, Options) ->
 attachment_url(#server{}=Conn, DbName, DocId, AName, Options) ->
     case whapps_config:get_is_true(?CONFIG_CAT, <<"use_bigcouch_direct">>, 'true') of
         'true' ->
-            Url = list_to_binary([kz_couch_util:db_url(Conn, DbName)
-                                 ,"/", DocId
-                                 ,"/", AName
-                                 , maybe_add_revision(Options)
-                                 ]),
-            {'ok', Url};
+            list_to_binary([kz_couch_util:db_url(Conn, DbName)
+                           ,"/", kz_http_util:urlencode(DocId)
+                           ,"/", kz_http_util:urlencode(AName)
+                           , maybe_add_revision(Options)
+                           ]);
         'false' ->
             {'proxy', {DbName, DocId, AName, Options}}
     end.
