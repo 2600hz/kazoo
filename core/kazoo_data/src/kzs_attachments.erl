@@ -116,4 +116,4 @@ attachment_url(#{att_proxy := 'true'}, DbName, DocId, AttachmentId, 'undefined',
 attachment_url(#{server := {App, Conn}}, DbName, DocId, AttachmentId, 'undefined', Options) ->
     App:attachment_url(Conn, DbName, DocId, AttachmentId, Options);
 attachment_url(_, DbName, DocId, AttachmentId, Handler, Options) ->
-    {'proxy', {DbName, DocId, AttachmentId, Handler, Options}}.
+    {'proxy', {DbName, DocId, AttachmentId, [{'handler', Handler} | Options]}}.
