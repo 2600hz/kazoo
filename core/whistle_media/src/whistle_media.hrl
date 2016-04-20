@@ -56,9 +56,8 @@
 -record(media_store_path,
         {db :: ne_binary()
         ,id :: ne_binary()
-        ,type :: ne_binary()
-        ,rev :: ne_binary()
         ,att :: ne_binary()
+        ,opt = [] :: wh_proplist()
         }).
 
 -type media_store_path() :: #media_store_path{}.

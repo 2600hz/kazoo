@@ -30,16 +30,16 @@ get_uri(Paths, JObj) ->
         {'ok', #media_store_path{}=Store} -> maybe_proxy(JObj, Store)
     end.
 
--spec maybe_prepare_proxy(ne_binary()) -> 'ok' | 'error'.
-maybe_prepare_proxy(URI) ->
-    case wh_util:to_binary(props:get_value('path', uri_parser:parse(wh_util:to_list(URI), []), <<>>)) of
-        <<"/single/", Rest/binary>> -> prepare_proxy(binary:split(Rest, <<"/">>, ['global', 'trim']));
-        <<"/continuous/", Rest/binary>> -> prepare_proxy(binary:split(Rest, <<"/">>, ['global', 'trim']));
-        _Else -> 'ok'
-    end.
+-spec maybe_prepare_proxy(ne_binary(), media_store_path()) -> 'ok' | 'error'.
+maybe_prepare_proxy(<<"single">>, Store) -> prepare_proxy(Store);
+maybe_prepare_proxy(<<"continuous">>, Store) -> prepare_proxy(Store);
+maybe_prepare_proxy(_, _ ) -> 'ok'.
 
--spec prepare_proxy(ne_binaries()) -> 'ok' | 'error'.
-prepare_proxy([Db, Id, _Type, _Rev, Attachment]) ->
+-spec prepare_proxy(media_store_path()) -> 'ok' | 'error'.
+prepare_proxy(#media_store_path{db = Db
+                               ,id = Id
+                               ,att = Attachment
+                               }) ->
     case wh_media_cache_sup:find_file_server(Db, Id, Attachment) =:= {'error', 'no_file_server'} of
         'true' -> start_media_file_cache(Db, Id, Attachment);
         'false' -> lager:debug("existing file server for ~s/~s/~s", [Db, Id, Attachment])
@@ -60,11 +60,11 @@ start_media_file_cache(Db, Id, Attachment) ->
           {'error', 'no_stream_strategy'}.
 maybe_proxy(JObj, #media_store_path{db = Db
                                     ,id = Id
-                                    ,type = Type
                                     ,att = Attachment
+                                    ,opt = Options
                                    }=Store) ->
-    case kz_datamgr:attachment_url(Db, {Type, Id}, Attachment) of
-        {'ok', _}=URI -> URI;
+    case kz_datamgr:attachment_url(Db, Id, Attachment, Options) of
+        {'ok', URI} -> URI;
         {'proxy', _} -> proxy_uri(JObj, Store)
     end.
 
@@ -73,27 +73,22 @@ maybe_proxy(JObj, #media_store_path{db = Db
               {'error', 'no_stream_strategy'}.
 proxy_uri(JObj, #media_store_path{db = Db
                                   ,id = Id
-                                  ,type = Type
-                                  ,rev = Rev
                                   ,att = Attachment
-                                 }) ->
+                                  ,opt=Options
+                                 }=Store) ->
+    StreamType = wh_media_util:convert_stream_type(wh_json:get_value(<<"Stream-Type">>, JObj)),
+    _ = maybe_prepare_proxy(StreamType, Store),
     Host = wh_network_utils:get_hostname(),
     Port = whapps_config:get_binary(?CONFIG_CAT, <<"proxy_port">>, 24517),
-    StreamType = wh_media_util:convert_stream_type(wh_json:get_value(<<"Stream-Type">>, JObj)),
     Permissions = case StreamType =:= <<"store">> of
                       'true' -> 'proxy_store';
                       'false' -> 'proxy_playback'
                   end,
-    URL = <<(wh_media_util:base_url(Host, Port, Permissions))/binary
-             ,StreamType/binary
-              ,"/", Db/binary
-              ,"/", Id/binary
-              ,"/", Type/binary
-              ,"/", Rev/binary
-              ,"/", Attachment/binary
-          >>,
-    _ = maybe_prepare_proxy(URL),
-    {'ok', URL}.
+    Path = base64:encode(term_to_binary({Db, Id, Attachment, Options})),
+    <<(wh_media_util:base_url(Host, Port, Permissions))/binary
+      ,StreamType/binary
+      ,"/", Path/binary
+    >>.
 
 
 
@@ -113,42 +108,35 @@ find_attachment([Db, Id]) ->
 find_attachment([Db, Id, 'first']) ->
     maybe_find_attachment(Db, Id);
 find_attachment([Db, Id, Attachment]) ->
-    find_attachment([Db, Id, <<"unknown">>, Attachment]);
-find_attachment([Db, Id, Type, Attachment]) ->
-    {'ok', Rev} = kz_datamgr:lookup_doc_rev(Db, {Type, Id}),
-    find_attachment([Db, Id, Type, Rev, Attachment]);
-find_attachment([Db = ?MEDIA_DB, Id, Type, Rev, Attachment]) ->
+    find_attachment([Db, Id, Attachment, []]);
+find_attachment([Db = ?MEDIA_DB, Id, Attachment, Options]) ->
     {'ok', #media_store_path{db = Db
                             ,id = Id
-                            ,type = Type
-                            ,rev = Rev
                             ,att = Attachment
+                            ,opt = Options
                             }
     };
-find_attachment([?MATCH_ACCOUNT_RAW(Account), Id, Type, Rev, Attachment]) ->
+find_attachment([?MATCH_ACCOUNT_RAW(Account), Id, Attachment, Options]) ->
     AccountDb =  wh_util:format_account_id(Account, 'encoded'),
     {'ok', #media_store_path{db = AccountDb
                             ,id = Id
-                            ,type = Type
-                            ,rev = Rev
                             ,att = Attachment
+                            ,opt = Options
                             }
     };
-find_attachment([?MATCH_ACCOUNT_UNENCODED(Account), Id, Type, Rev, Attachment]) ->
+find_attachment([?MATCH_ACCOUNT_UNENCODED(Account), Id, Attachment, Options]) ->
     AccountDb =  wh_util:format_account_id(Account, 'encoded'),
     {'ok', #media_store_path{db = AccountDb
                             ,id = Id
-                            ,type = Type
-                            ,rev = Rev
                             ,att = Attachment
+                            ,opt = Options
                             }
     };
-find_attachment([Db, Id, Type, Rev, Attachment]) ->
+find_attachment([Db, Id, Attachment, Options]) ->
     {'ok', #media_store_path{db = Db
                             ,id = Id
-                            ,type = Type
-                            ,rev = Rev
                             ,att = Attachment
+                            ,opt = Options
                             }
     }.
 
@@ -185,5 +173,7 @@ maybe_find_attachment(Db, Id, JObj) ->
         [AttachmentName | _] ->
             AccountId = wh_util:format_account_id(Db, 'raw'),
             lager:debug("found first attachment ~s on ~s in ~s", [AttachmentName, Id, Db]),
-            find_attachment([AccountId, Id, wh_doc:type(JObj), wh_doc:revision(JObj), AttachmentName])
+            find_attachment([AccountId, Id, AttachmentName, [{'doc_type', wh_doc:type(JObj)}
+                                                             ,{'rev', wh_doc:revision(JObj)}
+                                                            ]])
     end.

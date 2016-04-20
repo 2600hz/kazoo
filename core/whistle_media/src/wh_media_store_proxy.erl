@@ -21,6 +21,7 @@
 init({_Transport, _Proto}, Req0, _Opts) ->
     wh_util:put_callid(wh_util:rand_hex_binary(16)),
     case cowboy_req:path_info(Req0) of
+        {[_]=PathTokens, Req1} -> is_authentic(PathTokens, Req1);
         {[_, _, _, _, _]=PathTokens, Req1} -> is_authentic(PathTokens, Req1);
         {_Else, Req1} ->
             lager:debug("unexpected path: ~p", [_Else]),
@@ -146,13 +147,12 @@ unauthorized_body() ->
 
 -spec handle(cowboy_req:req(), ne_binaries()) ->
                     {'ok', cowboy_req:req(), 'ok'}.
-handle(Req0, [Db, Id, Type, Rev, Attachment]) ->
-    DbName = wh_util:to_binary(http_uri:encode(wh_util:to_list(Db))),
-    Path = #media_store_path{db = DbName
+handle(Req0, [Url]) ->
+   {Db, Id, Attachment, Options} = binary_to_term(base64:decode(Url)),    
+    Path = #media_store_path{db = Db
                             ,id = Id
-                            ,type = Type
-                            ,rev = Rev
                             ,att = Attachment
+                            ,opt = Options
                             },
     is_appropriate_content_type(Path, Req0).
 
@@ -214,15 +214,13 @@ ensure_extension_present(#media_store_path{att=Attachment}=Path, CT, Req0) ->
                           {'ok', cowboy_req:req(), 'ok'}.
 try_to_store(#media_store_path{db=Db
                               ,id=Id
-                              ,type=Type
-                              ,rev=Rev
                               ,att=Attachment
+                              ,opt=Opts
                               }, CT, Req0) ->
     {'ok', Contents, Req1} = cowboy_req:body(Req0),
     Options = [{'content_type', wh_util:to_list(CT)}
                ,{'content_length', byte_size(Contents)}
-               ,{'doc_type', Type}
-               ,{'rev', Rev}
+               | Opts
               ],
     lager:debug("putting ~s onto ~s(~s): ~s", [Attachment, Id, Db, CT]),
     case kz_datamgr:put_attachment(Db, Id, Attachment, Contents, Options) of
@@ -233,22 +231,6 @@ try_to_store(#media_store_path{db=Db
             lager:debug("unable to store file: ~p", [Reason]),
             {'ok', failure(Reason, Req1), 'ok'}
     end.
-
-%% -spec maybe_resolve_conflict(ne_binary(), ne_binary(), ne_binary(), binary(), wh_proplist(), cowboy_req:req()) ->
-%%                                     {'ok', cowboy_req:req(), 'ok'}.
-%% maybe_resolve_conflict(DbName, Id, Attachment, Contents, Options, Req0) ->
-%%     timer:sleep(5 * ?MILLISECONDS_IN_SECOND),
-%%     lager:debug("putting ~s onto ~s(~s): ~-800p", [Attachment, Id, DbName, Options]),
-%%     case kz_datamgr:put_attachment(DbName, Id, Attachment, Contents, Options) of
-%%         {'ok', JObj} ->
-%%             lager:debug("successfully stored ~p ~p ~p", [DbName, Id, Attachment]),
-%%             {'ok', success(JObj, Req0), 'ok'};
-%%         {'error', 'conflict'} ->
-%%             maybe_resolve_conflict(DbName, Id, Attachment, Contents, Options, Req0);
-%%         {'error', Reason} ->
-%%             lager:debug("unable to store file: ~p", [Reason]),
-%%             {'ok', failure(Reason, Req0), 'ok'}
-%%     end.
 
 -spec success(wh_json:object(), cowboy_req:req()) -> cowboy_req:req().
 success(JObj, Req0) ->

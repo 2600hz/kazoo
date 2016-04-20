@@ -477,8 +477,7 @@ store_url(#state{doc_db=Db
                  ,format=_Ext
                  ,should_store={'true', 'local'}
                 }, _Rev) ->
-    {'ok', Url} = wh_media_url:store(Db, {<<"call_recording">>, MediaId}, MediaName), %, Options),
-    Url.
+    wh_media_url:store(Db, {<<"call_recording">>, MediaId}, MediaName).
 
 -spec should_store_recording() -> store_url().
 -spec should_store_recording(api_binary()) -> store_url().

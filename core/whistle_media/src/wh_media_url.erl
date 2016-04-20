@@ -14,7 +14,7 @@
 -include("whistle_media.hrl").
 
 -spec playback(api_binary(), wh_json:object()) ->
-                      {'ok', ne_binary()} |
+                      ne_binary() |
                       {'error', any()}.
 playback('undefined', _) ->
     {'error', 'invalid_media_name'};
@@ -36,21 +36,16 @@ playback(Media, JObj) ->
     wh_media_file:get_uri(Media, JObj).
 
 -spec store(ne_binary(), kazoo_data:docid(), ne_binary()) ->
-                   {'ok', ne_binary()} |
+                   ne_binary() |
                    {'error', any()}.
-store(Db, {Type, Id}, Attachment) ->
-    JObj = wh_json:from_list([{<<"Stream-Type">>, <<"store">>}]),
-    wh_media_file:get_uri([Db, Id, Type, Attachment], JObj);
 store(Db, Id, Attachment) ->
-    JObj = wh_json:from_list([{<<"Stream-Type">>, <<"store">>}]),
-    wh_media_file:get_uri([Db, Id, Attachment], JObj).
+    store(Db, Id, Attachment, []).
 
 -spec store(ne_binary(), kazoo_data:docid(), ne_binary(), wh_proplist()) ->
-                   {'ok', ne_binary()} |
+                   ne_binary() |
                    {'error', any()}.
+store(Db, {Type, Id}, Attachment, Options) ->
+    store(Db, Id, Attachment, [{'doc_type', Type} | Options]);
 store(Db, Id, Attachment, Options) ->
     JObj = wh_json:from_list([{<<"Stream-Type">>, <<"store">>}]),
-    Rev = props:get_value('rev', Options),
-    Type = props:get_value('doc_type', Options),
-    wh_media_file:get_uri([Db, Id, Type, Rev, Attachment], JObj).
-
+    wh_media_file:get_uri([Db, Id, Attachment, Options], JObj).
