@@ -287,10 +287,7 @@ is_blacklisted(JObj) ->
             is_number_blacklisted(Blacklist, wh_json:get_value(<<"Caller-ID-Number">>, JObj))
     end.
 
--spec is_number_blacklisted(wh_json:object(), api_binary()) -> boolean().
-is_number_blacklisted(_Blacklist, 'undefined') ->
-    lager:debug("no caller id number to check in blacklists"),
-    'false';
+-spec is_number_blacklisted(wh_json:object(), ne_binary()) -> boolean().
 is_number_blacklisted(Blacklist, Number) ->
     Normalized = wnm_util:normalize_number(Number),
     case wh_json:get_value(Normalized, Blacklist) of
