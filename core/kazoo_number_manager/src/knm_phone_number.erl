@@ -253,14 +253,27 @@ authorized_release(PhoneNumber) ->
 -spec to_public_json(knm_phone_number()) -> wh_json:object().
 to_public_json(Number) ->
     JObj = to_json(Number),
-    ToLeak = wh_json:from_list(
-               props:filter_empty(
-                 wh_json:to_proplist(
-                   wh_json:private_fields(JObj)
-                  )
-                )
-              ),
-    wh_json:set_value(<<"_read_only">>, ToLeak, wh_json:public_fields(JObj)).
+    State = {<<"state">>, state(Number)},
+    UsedBy = {<<"used_by">>, used_by(Number)},
+    ReadOnly =
+        wh_json:from_list(
+          props:filter_empty(
+            [ {<<"created">>, wh_doc:created(JObj)}
+            , {<<"modified">>, wh_doc:modified(JObj)}
+            , State
+            , UsedBy
+            , {<<"module">>, module_name(Number)}
+            ])
+         ),
+    Root =
+        wh_json:from_list(
+          props:filter_empty(
+            [ State
+            , UsedBy
+              | wh_json:to_proplist(wh_json:public_fields(JObj))
+            ])
+         ),
+    wh_json:set_value(<<"_read_only">>, ReadOnly, Root).
 
 %%--------------------------------------------------------------------
 %% @public
