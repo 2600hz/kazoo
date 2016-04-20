@@ -291,7 +291,7 @@ validate(Context, ?CLASSIFIERS) ->
 validate(Context, ?LOCALITY) ->
     find_locality(Context);
 validate(Context, ?CHECK) ->
-    check_number(Context, cb_context:req_value(Context, <<"numbers">>));
+    validate_check(Context, cb_context:req_value(Context, <<"numbers">>));
 validate(Context, Number) ->
     validate_number(Context, Number, cb_context:req_verb(Context)).
 
@@ -367,6 +367,11 @@ post(Context, ?FIX) ->
     AccountDb = cb_context:account_db(Context),
     'ok' = knm_maintenance:fix_account_numbers(AccountDb),
     summary(Context);
+post(Context, ?CHECK) ->
+    Numbers = cb_context:req_value(Context, <<"numbers">>),
+    Unformatted = knm_carriers:check(Numbers),
+    RespData = format_carriers_check(Unformatted),
+    cb_context:set_resp_data(Context, RespData);
 post(Context, ?COLLECTION) ->
     CB = fun() -> post(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
     set_response(collection_process(Context), Context, CB);
@@ -613,8 +618,8 @@ find_locality(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec check_number(cb_context:context(), any()) -> cb_context:context().
-check_number(Context, 'undefined') ->
+-spec validate_check(cb_context:context(), any()) -> cb_context:context().
+validate_check(Context, 'undefined') ->
     cb_context:add_validation_error(
       <<"numbers">>
       ,<<"required">>
@@ -622,7 +627,7 @@ check_number(Context, 'undefined') ->
                          ])
       ,Context
      );
-check_number(Context, []) ->
+validate_check(Context, []) ->
     cb_context:add_validation_error(
       <<"numbers">>
       ,<<"minimum">>
@@ -630,13 +635,9 @@ check_number(Context, []) ->
                          ])
       ,Context
      );
-check_number(Context, Numbers) when is_list(Numbers) ->
-    Unformatted = knm_carriers:check(Numbers),
-    cb_context:set_resp_data(
-      cb_context:set_resp_status(Context, 'success')
-      ,format_carriers_check(Unformatted)
-     );
-check_number(Context, E) ->
+validate_check(Context, Numbers) when is_list(Numbers) ->
+    cb_context:set_resp_status(Context, 'success');
+validate_check(Context, E) ->
     cb_context:add_validation_error(
       <<"numbers">>
       ,<<"type">>
@@ -649,7 +650,8 @@ check_number(Context, E) ->
 %% @private
 -spec format_carriers_check(list()) -> wh_json:object().
 -spec format_carriers_check(list(), wh_json:object()) -> wh_json:object().
-format_carriers_check(Checked) -> format_carriers_check(Checked, wh_json:new()).
+format_carriers_check(Checked) ->
+    format_carriers_check(Checked, wh_json:new()).
 format_carriers_check([], JObj) -> JObj;
 format_carriers_check([{_Module, {'ok', ModuleResults}}|Rest], JObj) ->
     JObj1 =
