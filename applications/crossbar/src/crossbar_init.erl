@@ -41,9 +41,8 @@ api_version_constraint(<<"v", ApiVersion/binary>>) ->
     catch
         _:_ -> lager:debug("not routing to version ~s", [ApiVersion]), 'false'
     end;
-api_version_constraint(_NotVersion) ->
-    lager:debug("not routing version ~s", [_NotVersion]),
-    'false'.
+api_version_constraint(NotVersion) ->
+    lists:member(NotVersion, ?INBOUND_HOOKS).
 
 %%--------------------------------------------------------------------
 %% @public

@@ -44,7 +44,7 @@
 -define(DATA_SCHEMA
         ,wh_json:from_list([{<<"type">>, <<"object">>}
                             ,{<<"description">>, <<"The request data to be processed">>}
-                            ,{<<"required">>, 'false'}
+                            ,{<<"required">>, 'true'}
                            ])
        ).
 
@@ -257,7 +257,7 @@ handle_url_encoded_body(Context, Req, QS, ReqBody, JObj) ->
 set_request_data_in_context(Context, Req, 'undefined', QS) ->
     set_valid_data_in_context(Context, Req, wh_json:new(), QS);
 set_request_data_in_context(Context, Req, JObj, QS) ->
-    case is_valid_request_envelope(JObj) of
+    case is_valid_request_envelope(Context, JObj) of
         'true' -> set_valid_data_in_context(Context, Req, JObj, QS);
         Errors ->
             lager:info("failed to validate json request, invalid request"),
@@ -536,8 +536,15 @@ normalize_envelope_keys_foldl(K, V, JObj) -> wh_json:set_value(wh_json:normalize
 %% Determines if the request envelope is valid
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_request_envelope( wh_json:object()) -> 'true' | jesse_error:error().
-is_valid_request_envelope(Envelope) ->
+-spec is_valid_request_envelope(wh_json:object(), cb_context:context()) -> 'true' | jesse_error:error().
+is_valid_request_envelope(Envelope, Context) ->
+    case lists:member(cb_context:api_version(Context), ?NO_ENVELOPE_VERSIONS) of
+        'true' -> 'true';
+        'false' -> validate_request_envelope(Envelope)
+    end.
+
+-spec validate_request_envelope(wh_json:object()) -> 'true' | jesse_error:error().
+validate_request_envelope(Envelope) ->
     case wh_json_schema:validate(?ENVELOPE_SCHEMA
                                 ,Envelope
                                 )
