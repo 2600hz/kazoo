@@ -16,7 +16,7 @@
 
          ,media_url/2
 
-         ,get_db/1
+         ,get_db/1, get_db/2
          ,get_range_view/2
          ,filter_message_metadata/2
         ]).
@@ -37,9 +37,23 @@
                            ,93
                           )
        ).
-
+-spec get_db(ne_binary()) -> ne_binary().
 get_db(AccountId) ->
     wh_util:format_account_id(AccountId, 'encoded').
+
+-spec get_db(ne_binary(), kazoo_data:docid() | wh_json:object()) -> ne_binary().
+get_db(AccountId, {_, ?MATCH_MODB_PREFIX(Year, Month, _)}) ->
+    get_db(AccountId, Year, Month);
+get_db(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _)) ->
+    get_db(AccountId, Year, Month);
+get_db(AccountId, ?JSON_WRAPPER(_)=Doc) ->
+    get_db(AccountId, wh_doc:id(Doc));
+get_db(AccountId, _DocId) ->
+    get_db(AccountId).
+
+-spec get_db(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+get_db(AccountId, Year, Month) ->
+    kazoo_modb:get_modb(AccountId, wh_util:to_integer(Year), wh_util:to_integer(Month)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -69,6 +83,8 @@ new_message(AttachmentName, BoxNum, Timezone, Call, Props) ->
     case store_recording(AttachmentName, MediaUrl, Call, Props) of
         {'ok', _JObj} -> notify_and_save(Call, MediaId, Length, Props);
         {'error', Call1} ->
+            % Db = get_db(whapps_call:account_id(Call), MediaId),
+            % _ = kz_datamgr:del_doc(Db, MediaId),
             Msg = io_lib:format("failed to store voicemail media ~s in voicemail box ~s of account ~s"
                                 ,[MediaId, BoxId, whapps_call:account_id(Call1)]
                                ),
@@ -118,6 +134,7 @@ store_recording(AttachmentName, Url, Call, Props) ->
                                  {'error', whapps_call:call()}.
 try_store_recording(_, _, 0, Call) -> {'error', Call};
 try_store_recording(AttachmentName, Url, Tries, Call) ->
+    lager:error("trying to store voicemail media to url ~s", [Url]),
     case whapps_call_command:store_file(<<"/tmp/", AttachmentName/binary>>, Url, Call) of
         {'ok', _}=OK -> OK;
         Other ->
@@ -142,7 +159,7 @@ retry_store(AttachmentName, Url, Tries, Call, Error) ->
                             'ok'.
 notify_and_save(Call, MediaId, Length, Props) ->
     BoxId = props:get_value(<<"Box-Id">>, Props),
-    NotifyAction = props:get_value(<<"After-Notify-Action">>, Props),
+    NotifyAction = props:get_atom_value(<<"After-Notify-Action">>, Props),
 
     case publish_voicemail_saved_notify(MediaId, BoxId, Call, Length, Props) of
         {'ok', JObjs} ->
@@ -151,24 +168,14 @@ notify_and_save(Call, MediaId, Length, Props) ->
         {'timeout', JObjs} ->
             case get_completed_msg(JObjs) of
                 ?EMPTY_JSON_OBJECT ->
-                    lager:info("timed out waiting for resp"),
-                    save_meta(Length, Call, MediaId, BoxId);
+                    lager:info("timed out waiting for voicemail new notification resp"),
+                    save_meta(Length, NotifyAction, Call, MediaId, BoxId);
                 JObj ->
                     maybe_save_meta(Length, NotifyAction, Call, MediaId, JObj, BoxId)
             end;
         {'error', _E} ->
-            lager:debug("notification error: ~p", [_E]),
-            save_meta(Length, Call, MediaId, BoxId)
-    end.
-
--spec collecting(wh_json:objects()) -> boolean().
-collecting([JObj|_]) ->
-    case wapi_notifications:notify_update_v(JObj)
-        andalso wh_json:get_value(<<"Status">>, JObj)
-    of
-        <<"completed">> -> 'true';
-        <<"failed">> -> 'true';
-        _ -> 'false'
+            lager:debug("voicemail new notification error: ~p", [_E]),
+            save_meta(Length, NotifyAction, Call, MediaId, BoxId)
     end.
 
 -spec get_completed_msg(wh_json:objects()) -> wh_json:object().
@@ -183,45 +190,79 @@ get_completed_msg([JObj|JObjs], Acc) ->
         _ -> get_completed_msg(JObjs, Acc)
     end.
 
--spec maybe_save_meta(pos_integer(), ne_binary(), whapps_call:call(), ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
+-spec maybe_save_meta(pos_integer(), atom(), whapps_call:call(), ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
 maybe_save_meta(Length, 'nothing', Call, MediaId, _UpdateJObj, BoxId) ->
-    save_meta(Length, Call, MediaId, BoxId);
+    save_meta(Length, 'nothing', Call, MediaId, BoxId);
 
 maybe_save_meta(Length, Action, Call, MediaId, UpdateJObj, BoxId) ->
     case wh_json:get_value(<<"Status">>, UpdateJObj) of
         <<"completed">> ->
-            case Action of
-                'delete' ->
-                    lager:debug("attachment was sent out via notification, deleteing media file"),
-                    {'ok', _} = kzv_media:del_doc(whapps_call:account_id(Call), MediaId);
-                'save' ->
-                    lager:debug("attachment was sent out via notification, saving media file"),
-                    update_folder(?VM_FOLDER_SAVED, MediaId, whapps_call:account_id(Call))
-            end;
+            save_meta(Length, Action, Call, MediaId, BoxId);
         <<"failed">> ->
             lager:debug("attachment failed to send out via notification: ~s", [wh_json:get_value(<<"Failure-Message">>, UpdateJObj)]),
-            save_meta(Length, Call, MediaId, BoxId)
+            save_meta(Length, Action, Call, MediaId, BoxId)
     end.
 
 
--spec save_meta(pos_integer(), whapps_call:call(), ne_binary(), ne_binary()) -> 'ok'.
-save_meta(Length, Call, MediaId, BoxId) ->
+-spec save_meta(pos_integer(), atom(), whapps_call:call(), ne_binary(), ne_binary()) -> 'ok'.
+save_meta(Length, Action, Call, MediaId, BoxId) ->
+    AccountId = whapps_call:account_id(Call),
     CIDNumber = get_caller_id_number(Call),
     CIDName = get_caller_id_name(Call),
     Timestamp = new_timestamp(),
+
     Metadata = kzd_voice_message:create_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp),
 
-    {'ok', _BoxJObj} = save_metadata(Metadata, whapps_call:account_id(Call), MediaId),
-    lager:debug("stored voicemail metadata for ~s", [MediaId]),
+    case Action of
+        'delete' ->
+            lager:debug("attachment was sent out via notification, deleteing media file"),
+            UpdatedMetadata = apply_folder(?VM_FOLDER_DELETED, Metadata),
+            {'ok', _JObj} = do_save_metadata(UpdatedMetadata, AccountId, MediaId),
+            'ok';
+        'save' ->
+            lager:debug("attachment was sent out via notification, saving media file"),
+            UpdatedMetadata = apply_folder(?VM_FOLDER_SAVED, Metadata),
+            {'ok', _JObj} = do_save_metadata(UpdatedMetadata, AccountId, MediaId),
+            'ok';
+        'nothing' ->
+            {'ok', _JObj} = do_save_metadata(Metadata, AccountId, MediaId),
+            lager:debug("stored voicemail metadata for ~s", [MediaId]),
+            publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp)
+    end.
 
-    publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec message_doc(ne_binary(), kazoo_data:docid()) -> wh_json:object().
+-spec do_save_metadata(wh_json:object(), ne_binary(), ne_binary()) ->
+                           {'ok', wh_json:object()} |
+                           {'error', any()}.
+do_save_metadata(NewMessage, AccountId, MessageId) ->
+    Fun = [fun(JObj) ->
+              kzd_voice_message:set_metadata(NewMessage, JObj)
+           end
+          ],
+
+    case update_message_doc(AccountId, MessageId, Fun) of
+        {'ok', _}=OK -> OK;
+        {'error', 'conflict'} ->
+            lager:info("saving resulted in a conflict, trying again"),
+            do_save_metadata(NewMessage, AccountId, MessageId);
+        {'error', R}=E ->
+            lager:info("error while storing voicemail metadata: ~p", [R]),
+            E
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec message_doc(ne_binary(), kazoo_data:docid()) ->
+                           {'ok', wh_json:object()} |
+                           {'error', any()}.
 message_doc(AccountId, {_, ?MATCH_MODB_PREFIX(Year, Month, _)}=DocId) ->
     open_modb_doc(AccountId, DocId, Year, Month);
 message_doc(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _)=DocId) ->
@@ -294,30 +335,6 @@ message(AccountId, MessageId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec save_metadata(wh_json:object(), ne_binary(), ne_binary()) ->
-                           {'ok', wh_json:object()} |
-                           {'error', atom()}.
-save_metadata(NewMessage, AccountId, MessageId) ->
-    Fun = [fun(JObj) ->
-              kzd_voice_message:set_metadata(NewMessage, JObj)
-           end
-          ],
-
-    case update_message_doc(AccountId, MessageId, Fun) of
-        {'ok', _}=OK -> OK;
-        {'error', 'conflict'} ->
-            lager:info("saving resulted in a conflict, trying again"),
-            save_metadata(NewMessage, AccountId, MessageId);
-        {'error', R}=E ->
-            lager:info("error while storing voicemail metadata: ~p", [R]),
-            E
-    end.
-
-%%--------------------------------------------------------------------
 %% @public
 %% @doc Folder operations
 %% @end
@@ -325,9 +342,16 @@ save_metadata(NewMessage, AccountId, MessageId) ->
 -spec set_folder(ne_binary(), wh_json:object(), ne_binary()) -> any().
 set_folder(Folder, Message, AccountId) ->
     MessageId = kzd_voice_message:media_id(Message),
+    FromFolder = kzd_voice_message:folder(Message),
     lager:info("setting folder for message ~s to ~s", [MessageId, Folder]),
-    not (kzd_voice_message:folder(Message) =:= Folder) andalso
-        update_folder(Folder, MessageId, AccountId).
+    maybe_set_folder(FromFolder, Folder, MessageId, AccountId).
+
+-spec maybe_set_folder(ne_binary(), ne_binary(), wh_json:object(), ne_binary()) -> any().
+maybe_set_folder(FromFolder, FromFolder, ?MATCH_MODB_PREFIX(_Year, _Month, _)=MessageId, AccountId) ->
+    update_message_doc(AccountId, MessageId, []);
+maybe_set_folder(FromFolder, FromFolder, _, _) -> 'ok';
+maybe_set_folder(_FromFolder, ToFolder, MessageId, AccountId) ->
+    update_folder(ToFolder, MessageId, AccountId).
 
 -spec update_folder(ne_binary(), ne_binary(), ne_binary()) ->
                            {'ok', wh_json:object()} |
@@ -336,7 +360,7 @@ update_folder(_, 'undefined', _) ->
     {'error', 'attachment_undefined'};
 update_folder(Folder, MessageId, AccountId) ->
     Fun = [fun(JObj) ->
-               update_folder1(JObj, Folder)
+               apply_folder(Folder, JObj)
            end
           ],
 
@@ -349,6 +373,14 @@ update_folder(Folder, MessageId, AccountId) ->
             lager:info("error while updating folder ~s ~p", [Folder, R]),
             E
     end.
+
+-spec apply_folder(ne_binary(), wh_json:object()) -> wh_json:object().
+apply_folder(?VM_FOLDER_DELETED, Doc) ->
+    Metadata = kzd_voice_message:set_folder_deleted(kzd_voice_message:metadata(Doc)),
+    wh_json:set_value(<<"pvt_deleted">>, <<"true">>, kzd_voice_message:set_metadata(Metadata, Doc));
+apply_folder(Folder, Doc) ->
+    Metadata = kzd_voice_message:set_folder(Folder, kzd_voice_message:metadata(Doc)),
+    kzd_voice_message:set_metadata(Metadata, Doc).
 
 update_message_doc(AccountId, DocId, Fun) ->
     case message_doc(AccountId, DocId) of
@@ -368,7 +400,7 @@ move_to_modb(AccountId, DocId, JObj, Funs) ->
     Created = wh_doc:created(JObj),
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Created),
 
-    FromDb = wh_util:format_account_id(AccountId, 'encoded'),
+    FromDb = get_db(AccountId),
     FromId = wh_doc:id(JObj),
     ToDb = kazoo_modb:get_modb(AccountId, Year, Month),
     ToId = <<(wh_util:to_binary(Year))/binary
@@ -376,7 +408,7 @@ move_to_modb(AccountId, DocId, JObj, Funs) ->
               ,"-"
               ,(wh_util:rand_hex_binary(16))/binary
            >>,
-    io:format("FromDb ~p FromId ~p ToDb ~p ToId ~p ~n~n", [FromDb, FromId, ToDb, ToId]),
+    % io:format("FromDb ~p FromId ~p ToDb ~p ToId ~p ~n~n", [FromDb, FromId, ToDb, ToId]),
     case kz_datamgr:copy_doc(FromDb, FromId, ToDb, ToId, []) of
         {'ok', _} ->
             SourceId = kzd_voice_message:source_id(JObj),
@@ -416,8 +448,7 @@ try_populate_metadata(AccountId, OldId, NewId, VMBox, Funs) ->
     end.
 
 try_update_mailbox(AccountId, NewVMBox, NewMsgJObj) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case kz_datamgr:save_doc(AccountDb, NewVMBox) of
+    case kz_datamgr:save_doc(get_db(AccountId), NewVMBox) of
         {'ok', _} -> {'ok', NewMsgJObj};
         {'error', R}=E ->
             lager:debug("could not update mailbox ~s: ~s", [wh_doc:id(NewVMBox), R]),
@@ -429,19 +460,10 @@ update_media_id(MediaId, JObj) ->
     kzd_voice_message:set_metadata(Metadata, JObj).
 
 maybe_delete_media_doc(AccountId, Id, {'ok', _}=Doc) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    _ = kz_datamgr:del_doc(AccountDb, Id),
+    _ = kz_datamgr:del_doc(get_db(AccountId), Id),
     Doc;
 maybe_delete_media_doc(_, _, {'error', _}=E) ->
     E.
-
--spec update_folder1(wh_json:object(), ne_binary()) -> wh_json:object().
-update_folder1(Doc, <<"deleted">>) ->
-    Metadata = kzd_voice_message:set_folder_deleted(kzd_voice_message:metadata(Doc)),
-    wh_json:set_value(<<"pvt_deleted">>, <<"true">>, kzd_voice_message:set_metadata(Metadata, Doc));
-update_folder1(Doc, Folder) ->
-    Metadata = kzd_voice_message:set_folder(Folder, kzd_voice_message:metadata(Doc)),
-    kzd_voice_message:set_metadata(Metadata, Doc).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -494,18 +516,10 @@ folder_view_option(BoxId, Folders) ->
 media_url(AccountId, ?JSON_WRAPPER(_)=Message) ->
     media_url(AccountId, kzd_voice_message:media_id(Message));
 media_url(AccountId, MessageId) ->
-    case message(AccountId, MessageId) of
+    case message_doc(AccountId, MessageId) of
         {'ok', Message} ->
             lager:debug("MESSAGE ~p", [Message]),
-            ?MATCH_MODB_PREFIX(Year,Month,_) = wh_doc:id(Message),
-            [AName | _] = wh_doc:attachment_names(Message),
-            Url = list_to_binary(
-                    [kazoo_modb:get_modb(wh_doc:account_id(Message), Year, Month)
-                     ,wh_doc:id(Message)
-                     ,AName
-                     ,[{'doc_type', wh_doc:type(Message)}]
-                    ]),
-            wh_media_url:playback(Url, Message);
+            wh_media_url:playback(Message, Message);
         {'error', _} -> <<>>
     end.
 
@@ -523,8 +537,7 @@ open_modb_doc(AccountId, DocId, Year, Month) ->
 
 -spec open_accountdb_doc(ne_binary(), kazoo_data:docid()) -> wh_json:object().
 open_accountdb_doc(AccountId, DocId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case kz_datamgr:open_doc(AccountDb, DocId) of
+    case kz_datamgr:open_doc(get_db(AccountId), DocId) of
         {'ok', _}=OK -> OK;
         {'error', _}=E -> E
     end.
@@ -583,91 +596,6 @@ get_range_view(AccountId, ViewOpts) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_transcribe(ne_binary(), ne_binary(), boolean()) ->
-                              api_object().
-maybe_transcribe(AccountId, MediaId, 'true') ->
-    Db = get_db(AccountId),
-    {'ok', MediaDoc} = kz_datamgr:open_doc(Db, MediaId),
-    case wh_doc:attachment_names(MediaDoc) of
-        [] ->
-            lager:warning("no audio attachments on media doc ~s: ~p", [MediaId, MediaDoc]),
-            'undefined';
-        [AttachmentId|_] ->
-            case kz_datamgr:fetch_attachment(Db, MediaId, AttachmentId) of
-                {'ok', Bin} ->
-                    lager:info("transcribing first attachment ~s", [AttachmentId]),
-                    maybe_transcribe(Db, MediaDoc, Bin, wh_doc:attachment_content_type(MediaDoc, AttachmentId));
-                {'error', _E} ->
-                    lager:info("error fetching vm: ~p", [_E]),
-                    'undefined'
-            end
-    end;
-maybe_transcribe(_, _, 'false') -> 'undefined'.
-
--spec maybe_transcribe(ne_binary(), wh_json:object(), binary(), api_binary()) ->
-                              api_object().
-maybe_transcribe(_, _, _, 'undefined') -> 'undefined';
-maybe_transcribe(_, _, <<>>, _) -> 'undefined';
-maybe_transcribe(Db, MediaDoc, Bin, ContentType) ->
-    case whapps_speech:asr_freeform(Bin, ContentType) of
-        {'ok', Resp} ->
-            lager:info("transcription resp: ~p", [Resp]),
-            MediaDoc1 = wh_json:set_value(<<"transcription">>, Resp, MediaDoc),
-            _ = kz_datamgr:ensure_saved(Db, MediaDoc1),
-            is_valid_transcription(wh_json:get_value(<<"result">>, Resp)
-                                   ,wh_json:get_value(<<"text">>, Resp)
-                                   ,Resp
-                                  );
-        {'error', _E} ->
-            lager:info("error transcribing: ~p", [_E]),
-            'undefined'
-    end.
-
-
--spec is_valid_transcription(api_binary(), binary(), wh_json:object()) ->
-                                    api_object().
-is_valid_transcription(<<"success">>, ?NE_BINARY, Resp) -> Resp;
-is_valid_transcription(_Res, _Txt, _) ->
-    lager:info("not valid transcription: ~s: '~s'", [_Res, _Txt]),
-    'undefined'.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Returns the Universal Coordinated Time (UTC) reported by the
-%% underlying operating system (local time is used if universal
-%% time is not available) as number of gregorian seconds starting
-%% with year 0.
-%% @end
-%%--------------------------------------------------------------------
--spec new_timestamp() -> gregorian_seconds().
-new_timestamp() -> wh_util:current_tstamp().
-
--spec get_caller_id_name(whapps_call:call()) -> ne_binary().
-get_caller_id_name(Call) ->
-    CallerIdName = whapps_call:caller_id_name(Call),
-    case whapps_call:kvs_fetch('prepend_cid_name', Call) of
-        'undefined' -> CallerIdName;
-        Prepend -> Pre = <<(wh_util:to_binary(Prepend))/binary, CallerIdName/binary>>,
-                   wh_util:truncate_right_binary(Pre,
-                           kzd_schema_caller_id:external_name_max_length())
-    end.
-
--spec get_caller_id_number(whapps_call:call()) -> ne_binary().
-get_caller_id_number(Call) ->
-    CallerIdNumber = whapps_call:caller_id_number(Call),
-    case whapps_call:kvs_fetch('prepend_cid_number', Call) of
-        'undefined' -> CallerIdNumber;
-        Prepend -> Pre = <<(wh_util:to_binary(Prepend))/binary, CallerIdNumber/binary>>,
-                   wh_util:truncate_right_binary(Pre,
-                           kzd_schema_caller_id:external_name_max_length())
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec publish_voicemail_saved_notify(ne_binary(), ne_binary(), whapps_call:call(), pos_integer(), wh_proplist()) ->
                                     {'ok', wh_json:object()} |
                                     {'timeout', wh_json:object()} |
@@ -720,3 +648,97 @@ publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp) ->
            ],
     wapi_notifications:publish_voicemail_saved(Prop),
     lager:debug("published voicemail_saved for ~s", [BoxId]).
+
+-spec collecting(wh_json:objects()) -> boolean().
+collecting([JObj|_]) ->
+    case wapi_notifications:notify_update_v(JObj)
+        andalso wh_json:get_value(<<"Status">>, JObj)
+    of
+        <<"completed">> -> 'true';
+        <<"failed">> -> 'true';
+        _ -> 'false'
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_transcribe(ne_binary(), ne_binary(), boolean()) ->
+                              api_object().
+maybe_transcribe(AccountId, MediaId, 'true') ->
+    Db = get_db(AccountId, MediaId),
+    {'ok', MediaDoc} = kz_datamgr:open_doc(Db, MediaId),
+    case wh_doc:attachment_names(MediaDoc) of
+        [] ->
+            lager:warning("no audio attachments on media doc ~s: ~p", [MediaId, MediaDoc]),
+            'undefined';
+        [AttachmentId|_] ->
+            case kz_datamgr:fetch_attachment(Db, MediaId, AttachmentId) of
+                {'ok', Bin} ->
+                    lager:info("transcribing first attachment ~s", [AttachmentId]),
+                    maybe_transcribe(Db, MediaDoc, Bin, wh_doc:attachment_content_type(MediaDoc, AttachmentId));
+                {'error', _E} ->
+                    lager:info("error fetching vm: ~p", [_E]),
+                    'undefined'
+            end
+    end;
+maybe_transcribe(_, _, 'false') -> 'undefined'.
+
+-spec maybe_transcribe(ne_binary(), wh_json:object(), binary(), api_binary()) ->
+                              api_object().
+maybe_transcribe(_, _, _, 'undefined') -> 'undefined';
+maybe_transcribe(_, _, <<>>, _) -> 'undefined';
+maybe_transcribe(Db, MediaDoc, Bin, ContentType) ->
+    case whapps_speech:asr_freeform(Bin, ContentType) of
+        {'ok', Resp} ->
+            lager:info("transcription resp: ~p", [Resp]),
+            MediaDoc1 = wh_json:set_value(<<"transcription">>, Resp, MediaDoc),
+            _ = kz_datamgr:ensure_saved(Db, MediaDoc1),
+            is_valid_transcription(wh_json:get_value(<<"result">>, Resp)
+                                   ,wh_json:get_value(<<"text">>, Resp)
+                                   ,Resp
+                                  );
+        {'error', _E} ->
+            lager:info("error transcribing: ~p", [_E]),
+            'undefined'
+    end.
+
+-spec is_valid_transcription(api_binary(), binary(), wh_json:object()) ->
+                                    api_object().
+is_valid_transcription(<<"success">>, ?NE_BINARY, Resp) -> Resp;
+is_valid_transcription(_Res, _Txt, _) ->
+    lager:info("not valid transcription: ~s: '~s'", [_Res, _Txt]),
+    'undefined'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Returns the Universal Coordinated Time (UTC) reported by the
+%% underlying operating system (local time is used if universal
+%% time is not available) as number of gregorian seconds starting
+%% with year 0.
+%% @end
+%%--------------------------------------------------------------------
+-spec new_timestamp() -> gregorian_seconds().
+new_timestamp() -> wh_util:current_tstamp().
+
+-spec get_caller_id_name(whapps_call:call()) -> ne_binary().
+get_caller_id_name(Call) ->
+    CallerIdName = whapps_call:caller_id_name(Call),
+    case whapps_call:kvs_fetch('prepend_cid_name', Call) of
+        'undefined' -> CallerIdName;
+        Prepend -> Pre = <<(wh_util:to_binary(Prepend))/binary, CallerIdName/binary>>,
+                   wh_util:truncate_right_binary(Pre,
+                           kzd_schema_caller_id:external_name_max_length())
+    end.
+
+-spec get_caller_id_number(whapps_call:call()) -> ne_binary().
+get_caller_id_number(Call) ->
+    CallerIdNumber = whapps_call:caller_id_number(Call),
+    case whapps_call:kvs_fetch('prepend_cid_number', Call) of
+        'undefined' -> CallerIdNumber;
+        Prepend -> Pre = <<(wh_util:to_binary(Prepend))/binary, CallerIdNumber/binary>>,
+                   wh_util:truncate_right_binary(Pre,
+                           kzd_schema_caller_id:external_name_max_length())
+    end.
