@@ -50,32 +50,8 @@
 
 -define(PHONE_NUMBERS_CONFIG_CAT, <<"crossbar.phone_numbers">>).
 
--define(FIND_NUMBER_PREFIX
-        ,wh_json:from_list([{<<"required">>, 'true'}
-                            ,{<<"type">>, <<"string">>}
-                            ,{<<"minLength">>, 3}
-                            ,{<<"maxLength">>, 10}
-                           ])
-       ).
--define(FIND_NUMBER_QUANTITY
-        ,wh_json:from_list([{<<"default">>, 1}
-                            ,{<<"type">>, <<"integer">>}
-                            ,{<<"minimum">>, 1}
-                           ])
-       ).
-
--define(FIND_NUMBER_PROPERTIES
-        ,wh_json:from_list([{<<"prefix">>, ?FIND_NUMBER_PREFIX}
-                            ,{<<"quantity">>, ?FIND_NUMBER_QUANTITY}
-                           ])
-       ).
-
--define(FIND_NUMBER_SCHEMA
-        ,wh_json:from_list([{<<"$schema">>, <<"http://json-schema.org/draft-03/schema#">>}
-                            ,{<<"id">>, <<"find_number">>}
-                            ,{<<"properties">>, ?FIND_NUMBER_PROPERTIES}
-                           ])
-       ).
+-define(SCHEMA_PHONE_NUMBERS, <<"phone_numbers">>).
+-define(SCHEMA_FIND_NUMBERS, <<"find_numbers">>).
 
 -define(DEFAULT_COUNTRY, <<"US">>).
 -define(KEY_PHONEBOOK_FREE_URL, <<"phonebook_url">>).
@@ -513,6 +489,7 @@ normalize_view_results(JObj, Acc) ->
 -spec find_numbers(cb_context:context()) -> cb_context:context().
 find_numbers(Context) ->
     JObj = get_find_numbers_req(Context),
+    Context1 = cb_context:set_req_data(Context, JObj),
     Prefix = wh_json:get_ne_value(?PREFIX, JObj),
     Quantity = wh_json:get_value(<<"quantity">>, JObj, 1),
     OnSuccess =
@@ -523,11 +500,7 @@ find_numbers(Context) ->
                                     ,{fun cb_context:set_resp_status/2, 'success'}
                                    ])
         end,
-
-    cb_context:validate_request_data(?FIND_NUMBER_SCHEMA
-                                     ,cb_context:set_req_data(Context, JObj)
-                                     ,OnSuccess
-                                    ).
+    cb_context:validate_request_data(?SCHEMA_FIND_NUMBERS, Context1, OnSuccess).
 
 -spec get_find_numbers_req(cb_context:context()) -> wh_json:object().
 get_find_numbers_req(Context) ->
@@ -841,7 +814,7 @@ identify(Context, Number) ->
 %%--------------------------------------------------------------------
 -spec validate_request(cb_context:context()) -> cb_context:context().
 validate_request(Context) ->
-    cb_context:validate_request_data(?KNM_PHONE_NUMBERS_DOC, Context).
+    cb_context:validate_request_data(?SCHEMA_PHONE_NUMBERS, Context).
 
 %%--------------------------------------------------------------------
 %% @private
