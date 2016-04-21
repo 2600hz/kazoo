@@ -189,8 +189,8 @@ handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     Routines = [fun create_uuid/1
                 ,fun set_app/1
                 ,fun maybe_update_endpoints/1
-                ,fun build_originate_args/1
                 ,fun get_originate_action/1
+                ,fun build_originate_args/1
                 ,fun update_dialstrings/1
                ],
     Return = lists:foldl(fun(F, #state{} = S) -> F(S);
@@ -461,19 +461,23 @@ build_originate_args(#state{originate_req=JObj
                 ],
     NewState = State#state{dialstrings=build_originate_args_from_endpoints(Endpoints, JObj, FetchId)},
     case wh_json:is_true(<<"Originate-Immediate">>, JObj) of
-        'true' -> NewState;
-        'false' -> originate_ready(NewState)
+        'true' ->
+            gen_listener:cast(self(), {'originate_execute'}),
+            NewState;
+        'false' ->
+            originate_ready(NewState)
     end;
 build_originate_args(#state{originate_req=JObj
                             ,app = ?ORIGINATE_EAVESDROP
                             ,fetch_id=FetchId
                             ,dialstrings='undefined'
                            }=State) ->
-    State#state{dialstrings=build_originate_args(State, JObj, FetchId)};
+    originate_ready(State#state{dialstrings=build_originate_args(State, JObj, FetchId)});
 build_originate_args(#state{originate_req=JObj
                             ,fetch_id=FetchId
                             ,dialstrings='undefined'
                            }=State) ->
+    gen_listener:cast(self(), {'originate_execute'}),
     State#state{dialstrings=build_originate_args(State, JObj, FetchId)}.
 
 -spec update_dialstrings(state()) -> state().
@@ -491,7 +495,7 @@ originate_ready(#state{node = _Node} = State) ->
                      }=State1} ->
             CtrlQ = gen_listener:queue_name(Pid),
             _ = publish_originate_ready(CtrlQ, UUID, JObj, Q, ServerId),
-            {'noreply', State1#state{tref=start_abandon_timer()}};
+            {'noreply', update_dialstrings(State1#state{tref=start_abandon_timer()})};
         {'error', _E} ->
             lager:debug("failed to start control process: ~p", [_E]),
             {'stop', 'normal', State}

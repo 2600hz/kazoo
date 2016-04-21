@@ -255,9 +255,9 @@ handle_cast('init', #state{node=Node
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), 'sanity_check'),
     {'noreply', State#state{sanity_check_tref=TRef}};
 handle_cast('check_commands', #state{call_id = CallId} = State) ->
-    case wh_cache:fetch_local(?ECALLMGR_CMDS_CACHE, CallId) of
+    case kz_cache:fetch_local(?ECALLMGR_CMDS_CACHE, CallId) of
         {'ok', Commands} ->
-            wh_cache:erase_local(?ECALLMGR_CMDS_CACHE, CallId),
+            kz_cache:erase_local(?ECALLMGR_CMDS_CACHE, CallId),
             NewState = lists:foldl(fun handle_dialplan/2, State, Commands),
             {'noreply', NewState};
         _ ->

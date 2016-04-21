@@ -55,7 +55,7 @@
 %%--------------------------------------------------------------------
 -spec start_link(api_binary(), ne_binary(), ne_binary(), wh_json:object()) -> startlink_ret().
 start_link('undefined', ResourceType, LoopbackId, Endpoint) ->
-    CallId = <<"loopback-", (couch_mgr:get_uuid())/binary>>,
+    CallId = <<"loopback-", (kz_datamgr:get_uuid())/binary>>,
     start_link(CallId, ResourceType, LoopbackId, Endpoint);
 start_link(<<"loopback-", _/binary>> = CallId, ResourceType, LoopbackId, Endpoint) ->
     Bindings = [{'call', [{'callid', CallId}]}
@@ -173,12 +173,13 @@ handle_cast({'gen_listener', {'created_queue', CtrlQ}}, #state{call_id = CallId
     RespCCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, Resp, wh_json:new()),
     RespCallVars = wh_json:get_value(<<"Custom-Call-Vars">>, Resp, wh_json:new()),
     ServerId = wh_json:get_value(<<"Server-ID">>, Resp),
-    RouteWin = [{<<"Call-ID">>, CallId}
-                ,{<<"Custom-Channel-Vars">>, CCVs}
-                ,{<<"Server-ID">>, ServerId}
+    RouteWin = [{<<"Msg-ID">>, CallId}
+                ,{<<"Call-ID">>, CallId}
                 ,{<<"Control-Queue">>, CtrlQ}
+                ,{<<"Custom-Channel-Vars">>, CCVs}
                 | wh_api:default_headers(<<"dialplan">>, <<"route_win">>
                                          ,?APP_NAME, ?APP_VERSION)],
+    lager:debug("sending route win to ~p", [ServerId]),
     wh_amqp_worker:cast(RouteWin, fun(Payload) -> wapi_route:publish_win(ServerId, Payload) end),
     {'noreply', NewState#state{channel_vars = [RespCCVs, EndpointCCVs | CCVs]
                                ,call_vars = [RespCallVars | CallVars]
@@ -262,21 +263,21 @@ maybe_reply(#state{reply_to = ReplyTo
 handle_call_command(<<"bridge">>, Pid, _, JObj) ->
     gen_server:cast(Pid, {'call_command', JObj});
 handle_call_command(_, _, LoopbackId, JObj) ->
-    wh_cache:store_local(?ECALLMGR_CMDS_CACHE, LoopbackId, [JObj | stored_commands(LoopbackId)]).
+    kz_cache:store_local(?ECALLMGR_CMDS_CACHE, LoopbackId, [JObj | stored_commands(LoopbackId)]).
 
 -spec stored_commands(ne_binary()) -> wh_json:objects().
 stored_commands(LoopbackId) ->
-    case wh_cache:fetch_local(?ECALLMGR_CMDS_CACHE, LoopbackId) of
+    case kz_cache:fetch_local(?ECALLMGR_CMDS_CACHE, LoopbackId) of
         {'error', 'not_found'} -> [];
         {'ok', Commands} -> Commands
     end.
 
 -spec set_channel_id(ne_binary(), ne_binary()) -> 'ok'.
 set_channel_id(LoopbackId, UUID) ->
-    case wh_cache:fetch_local(?ECALLMGR_CMDS_CACHE, LoopbackId) of
+    case kz_cache:fetch_local(?ECALLMGR_CMDS_CACHE, LoopbackId) of
         {'error', 'not_found'} -> 'ok';
         {'ok', Commands} ->
-            wh_cache:store_local(?ECALLMGR_CMDS_CACHE, UUID, [wh_json:set_value(<<"Call-ID">>, UUID, Cmd) || Cmd <- lists:reverse(Commands)]),
-            wh_cache:erase_local(?ECALLMGR_CMDS_CACHE, LoopbackId),
+            kz_cache:store_local(?ECALLMGR_CMDS_CACHE, UUID, [wh_json:set_value(<<"Call-ID">>, UUID, Cmd) || Cmd <- lists:reverse(Commands)]),
+            kz_cache:erase_local(?ECALLMGR_CMDS_CACHE, LoopbackId),
             'ok'
     end.
