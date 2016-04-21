@@ -1001,7 +1001,7 @@ overwrite_temporary_unavailable_greeting(AttachmentName
             record_temporary_unavailable_greeting(tmp_file(), Box, Call);
         {'ok', 'save'} ->
             lager:info("selected item: store recorded temporary greetings"),
-            _ = store_recording(AttachmentName, MediaId, Call),
+            _ = store_recording(AttachmentName, MediaId, Box, Call),
             'ok' = update_doc([<<"media">>, <<"temporary_unavailable">>], MediaId, Box, Call),
             _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
             Box;
@@ -1068,7 +1068,7 @@ overwrite_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=Med
         {'ok', 'record'} ->
             record_unavailable_greeting(tmp_file(), Box, Call);
         {'ok', 'save'} ->
-            _ = store_recording(AttachmentName, MediaId, Call),
+            _ = store_recording(AttachmentName, MediaId, Box, Call),
             'ok' = update_doc([<<"media">>, <<"unavailable">>], MediaId, Box, Call),
             _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
             Box;
@@ -1111,7 +1111,7 @@ record_name(AttachmentName, #mailbox{owner_id=OwnerId}=Box, Call) ->
     lager:info("owner_id (~s) set on mailbox, saving into owner's doc", [OwnerId]),
     record_name(AttachmentName, Box, Call, OwnerId).
 
-record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call, _DocId) ->
+record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call, DocId) ->
     lager:info("recording name as ~s in ~s", [AttachmentName, MediaId]),
     Tone = wh_json:from_list([{<<"Frequencies">>, [<<"440">>]}
                               ,{<<"Duration-ON">>, <<"500">>}
@@ -1125,7 +1125,8 @@ record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call, _DocId) -
         {'ok', 'record'} ->
             record_name(tmp_file(), Box, Call);
         {'ok', 'save'} ->
-            _ = store_recording(AttachmentName, MediaId, Call),
+            _ = store_recording(AttachmentName, MediaId, Box, Call),
+            'ok' = update_doc(?RECORDED_NAME_KEY, MediaId, DocId, Call),
             _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
             Box;
         {'ok', 'no_selection'} ->
@@ -1606,11 +1607,12 @@ review_recording(AttachmentName, AllowOperator
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec store_recording(ne_binary(), ne_binary(), whapps_call:call()) -> boolean() | 'error'.
-store_recording(AttachmentName, DocId, Call) ->
-    lager:debug("storing recording ~s in doc ~s", [AttachmentName, DocId]),
-    Fun = fun() -> get_new_attachment_url(AttachmentName, DocId, Call) end,
-    case try_store_recording(AttachmentName, DocId, Fun, Call) of
+-spec store_recording(ne_binary(), ne_binary(), mailbox(), whapps_call:call()) -> boolean() | 'error'.
+store_recording(AttachmentName, DocId, Box, Call) ->
+    Url = get_new_attachment_url(AttachmentName, DocId, Box, Call),
+
+    lager:debug("storing recording ~s in doc ~s with url ~s", [AttachmentName, DocId, Url]),
+    case try_store_recording(AttachmentName, DocId, Url, Call) of
         'ok' ->
             check_attachment_length(AttachmentName, DocId, Call);
         {'error', _}=Err -> Err
@@ -1649,7 +1651,7 @@ try_store_recording(AttachmentName, DocId, Url, Call) ->
 
 try_store_recording(_, _, _, 0, Call) -> {'error', Call};
 try_store_recording(AttachmentName, DocId, Url, Tries, Call) ->
-    case whapps_call_command:b_store_vm(AttachmentName, Url, <<"put">>, [wh_json:new()], 'true', Call) of
+    case whapps_call_command:store_file(<<"/tmp/", AttachmentName/binary>>, Url, Call) of
         {'ok', JObj} ->
             verify_stored_recording(AttachmentName, DocId, Url, Tries, Call, JObj);
         Other ->
@@ -1700,17 +1702,16 @@ min_recording_length(Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_new_attachment_url(ne_binary(), ne_binary(), whapps_call:call()) -> ne_binary().
-get_new_attachment_url(AttachmentName, MediaId, Call) ->
+-spec get_new_attachment_url(ne_binary(), ne_binary(), mailbox(), whapps_call:call()) -> ne_binary().
+get_new_attachment_url(AttachmentName, MediaId, #mailbox{owner_id=OwnerId}, Call) ->
     AccountDb = whapps_call:account_db(Call),
     _ = case kz_datamgr:open_doc(AccountDb, MediaId) of
             {'ok', JObj} ->
                 maybe_remove_attachments(AccountDb, MediaId, JObj);
             {'error', _} -> 'ok'
         end,
-%%    {'ok', URL} = wh_media_url:store(AccountDb, MediaId, AttachmentName),
-%%    URL.
-    kz_datamgr:attachment_url(AccountDb, MediaId, AttachmentName, [{'doc_type', <<"voicemail">>}]).
+    Opts = props:filter_undefined([{'doc_owner', OwnerId}]),
+    wh_media_url:store(AccountDb, {<<"media">>, MediaId}, AttachmentName, Opts).
 
 -spec maybe_remove_attachments(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 maybe_remove_attachments(AccountDb, MediaId, JObj) ->
