@@ -51,11 +51,8 @@ get_db(AccountId) ->
 %%    ,{<<"Length">>, Length}
 %%    ,{<<"Transcribe-Voicemail">>, MaybeTranscribe}
 %%    ,{<<"After-Notify-Action">>, Action}
-%%    ,{<<"Default-Storage">>, ?MAILBOX_DEFAULT_STORAGE}
 %%    ,{<<"Default-Extension">>, ?DEFAULT_VM_EXTENSION}
 %%    ,{<<"Retry-Storage-Times">>, ?MAILBOX_RETRY_STORAGE_TIMES(AccountId)}
-%%    ,{<<"Retry-Local-Storage">>, ?MAILBOX_RETRY_LOCAL_STORAGE_REMOTE_FAILS(AccountId)}
-%%    ,{<<"Defualt-Min-MSG-Length">>, min_recording_length(Call)}
 %%  ]
 %% @end
 %%--------------------------------------------------------------------
@@ -63,17 +60,14 @@ get_db(AccountId) ->
 new_message(AttachmentName, BoxNum, Timezone, Call, Props) ->
     BoxId = props:get_value(<<"Box-Id">>, Props),
     Length = props:get_value(<<"Length">>, Props),
-    ExternalStorage = props:get_value(<<"Default-Storage">>, Props),
 
     lager:debug("saving new ~bms voicemail media and metadata", [Length]),
 
     {MediaId, MediaUrl} = create_message_doc(AttachmentName, BoxNum, Call, Timezone, Props),
 
-    case store_recording(AttachmentName, MediaId, MediaUrl, Call, Props, ExternalStorage) of
-        'true' -> notify_and_save(Call, MediaId, Length, Props);
-        'false' ->
-            lager:warning("failed to store voicemail media: ~p", [MediaId]),
-            kz_datamgr:del_doc(whapps_call:account_db(Call), MediaId);
+    lager:debug("storing voicemail media recording ~s in doc ~s", [AttachmentName, MediaId]),
+    case store_recording(AttachmentName, MediaUrl, Call, Props) of
+        {'ok', _JObj} -> notify_and_save(Call, MediaId, Length, Props);
         {'error', Call1} ->
             Msg = io_lib:format("failed to store voicemail media ~s in voicemail box ~s of account ~s"
                                 ,[MediaId, BoxId, whapps_call:account_id(Call1)]
@@ -93,12 +87,16 @@ create_message_doc(AttachmentName, BoxNum, Call, Timezone, Props) ->
     {Year, Month, _} = erlang:date(),
     Db = kazoo_modb:get_modb(whapps_call:account_id(Call), Year, Month),
 
-    [Id, _] = binary:split(AttachmentName, <<".">>),
-    MediaId = <<Year/binary, Month/binary, "-", Id/binary>>,
+    MediaId = <<(wh_util:to_binary(Year))/binary
+                ,(wh_util:pad_month(Month))/binary
+                ,"-"
+                ,(wh_util:rand_hex_binary(16))/binary
+              >>,
     Doc = kzd_voice_message:new(Db, MediaId, AttachmentName, BoxNum, Timezone, Props),
     {'ok', _} = kz_datamgr:save_doc(Db, Doc),
 
-    MediaUrl = kz_datamgr:attachment_url(Db, MediaId, AttachmentName, [{'doc_type', <<"voice_message">>}]),
+    Opts = props:filter_undefined([{'doc_owner', props:get_value(<<"OwnerId">>, Props)}]),
+    MediaUrl = wh_media_url:store(Db, {<<"voice_message">>, MediaId}, AttachmentName, Opts),
 
     {MediaId, MediaUrl}.
 
@@ -107,112 +105,33 @@ create_message_doc(AttachmentName, BoxNum, Call, Timezone, Props) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec store_recording(ne_binary(), ne_binary(), ne_binary(), whapps_call:call(), wh_proplist()) -> boolean() | 'error'.
-store_recording(AttachmentName, DocId, Url, Call, Props) ->
-    lager:debug("storing voicemail media recording ~s in doc ~s", [AttachmentName, DocId]),
-    case try_store_recording(AttachmentName, DocId, Url, Call, Props) of
-        'ok' ->
-            check_attachment_length(AttachmentName, DocId, Call, Props);
-        {'error', _}=Err ->
-            Err
-    end.
-
--spec store_recording(ne_binary(), ne_binary(), ne_binary(), whapps_call:call(), wh_proplist(), api_binary()) -> boolean() | 'error'.
-store_recording(AttachmentName, DocId, Url, Call, Props, _) ->
-    store_recording(AttachmentName, DocId, Url, Call, Props).
-% store_recording(AttachmentName, DocId, Url, Call, Props, StorageUrl) ->
-%     Url = get_media_url(AttachmentName, DocId, Call, OwnerId, StorageUrl),
-%     lager:debug("storing recording ~s at ~s", [AttachmentName, Url]),
-%     case try_store_recording(AttachmentName, DocId, Url, Call, Props) of
-%         'ok' ->
-%             case update_doc(<<"external_media_url">>, Url, DocId, Call) of
-%                 'ok' -> 'true';
-%                 {'error', _}=Err -> Err
-%             end;
-%         {'error', _}=Err ->
-%             case ?MAILBOX_RETRY_LOCAL_STORAGE_REMOTE_FAILS(whapps_call:account_id(Call)) of
-%                 'true' -> store_recording(AttachmentName, DocId, Url, Call, Props);
-%                 'false' -> Err
-%             end
-%     end.
-
--spec try_store_recording(ne_binary(), ne_binary(), ne_binary(), whapps_call:call(), wh_proplist()) ->
-                                 'ok' | {'error', whapps_call:call()}.
-try_store_recording(AttachmentName, DocId, Url, Call, Props) ->
+-spec store_recording(ne_binary(), ne_binary(), whapps_call:call(), wh_proplist()) ->
+                                 {'ok', wh_json:object()} |
+                                 {'error', whapps_call:call()}.
+store_recording(AttachmentName, Url, Call, Props) ->
     Tries = props:get_value(<<"Retry-Storage-Times">>, Props),
     Funs = [{fun whapps_call:kvs_store/3, 'media_url', Url}],
-    try_store_recording(AttachmentName, DocId, Url, Tries, whapps_call:exec(Funs, Call), Props).
+    try_store_recording(AttachmentName, Url, Tries, whapps_call:exec(Funs, Call)).
 
--spec try_store_recording(ne_binary(), ne_binary(), ne_binary(), integer(), whapps_call:call(), wh_proplist()) ->
-                                 'ok' | {'error', whapps_call:call()}.
-try_store_recording(_, _, _, 0, Call, _) -> {'error', Call};
-try_store_recording(AttachmentName, DocId, Url, Tries, Call, Props) ->
-    case whapps_call_command:b_store_vm(AttachmentName, Url, <<"put">>, [wh_json:new()], 'true', Call) of
-        {'ok', JObj} ->
-            verify_stored_recording(AttachmentName, DocId, Url, Tries, Call, JObj, Props);
+-spec try_store_recording(ne_binary(), ne_binary(), integer(), whapps_call:call()) ->
+                                 {'ok', wh_json:object()} |
+                                 {'error', whapps_call:call()}.
+try_store_recording(_, _, 0, Call) -> {'error', Call};
+try_store_recording(AttachmentName, Url, Tries, Call) ->
+    case whapps_call_command:store_file(<<"/tmp/", AttachmentName/binary>>, Url, Call) of
+        {'ok', _}=OK -> OK;
         Other ->
-            lager:error("error trying to store voicemail media, retrying ~B more times", [Tries - 1]),
-            retry_store(AttachmentName, DocId, Url, Tries, Call, Other, Props)
+            lager:error("error trying to store voicemail media, retrying ~B more times: ~p", [Tries - 1, Other]),
+            retry_store(AttachmentName, Url, Tries, Call, Other)
     end.
 
-% -spec get_media_url(ne_binary(), ne_binary(), whapps_call:call(), api_binary(), ne_binary()) -> ne_binary().
-% get_media_url(AttachmentName, DocId, Call, OwnerId, StorageUrl) ->
-%     AccountId = whapps_call:account_id(Call),
-%     <<StorageUrl/binary
-%       ,"/", AccountId/binary
-%       ,"/", (wh_util:to_binary(OwnerId))/binary
-%       ,"/", DocId/binary
-%       ,"/", AttachmentName/binary
-%     >>.
-
--spec retry_store(ne_binary(), ne_binary(), ne_binary(), pos_integer(), whapps_call:call(), any(), wh_proplist()) ->
-                         'ok' | {'error', whapps_call:call()}.
-retry_store(AttachmentName, DocId, Url, Tries, Call, Error, Props) ->
+-spec retry_store(ne_binary(), ne_binary(), pos_integer(), whapps_call:call(), any()) ->
+                                 {'ok', wh_json:object()} |
+                                 {'error', whapps_call:call()}.
+retry_store(AttachmentName, Url, Tries, Call, Error) ->
     timer:sleep(2000),
     Call1 = whapps_call:kvs_store('error_details', Error, Call),
-    try_store_recording(AttachmentName, DocId, Url, Tries - 1, Call1, Props).
-
--spec verify_stored_recording(ne_binary(), ne_binary(), ne_binary(), pos_integer(), whapps_call:call(), wh_json:object(), wh_proplist()) ->
-                                     'ok' |
-                                     {'error', whapps_call:call()}.
-verify_stored_recording(AttachmentName, DocId, Url, Tries, Call, JObj, Props) ->
-    case wh_json:get_value(<<"Application-Response">>, JObj) of
-        <<"success">> ->
-            lager:debug("storing ~s into ~s was successful", [AttachmentName, DocId]);
-        _Response ->
-            case check_attachment_length(AttachmentName, DocId, Call, Props) of
-                'true' ->
-                    lager:debug("attachment ~s exists on ~s, saved!", [AttachmentName, DocId]);
-                'false' ->
-                    lager:debug("attachment ~s isn't on ~s, retry necessary", [AttachmentName, DocId]),
-                    retry_store(AttachmentName, DocId, Url, Tries, Call, JObj, Props);
-                {'error', Call1} ->
-                    lager:debug("error fetching ~s, will retry store", [DocId]),
-                    retry_store(AttachmentName, DocId, Url, Tries, Call1, JObj, Props)
-            end
-    end.
-
--spec check_attachment_length(ne_binary(), ne_binary(), whapps_call:call(), wh_proplist()) ->
-                                     boolean() |
-                                     {'error', whapps_call:call()}.
-check_attachment_length(AttachmentName, DocId, Call, Props) ->
-    AccountId = whapps_call:account_id(Call),
-    MinLength = props:get_value(<<"Defualt-Min-MSG-Length">>, Props),
-
-    case message_doc(AccountId, DocId) of
-        {'ok', JObj} ->
-            case wh_doc:attachment_length(JObj, AttachmentName) of
-                'undefined' ->
-                    Err = io_lib:format("voicemail media ~s is missing from doc ~s", [AttachmentName, DocId]),
-                    lager:debug(Err),
-                    {'error', whapps_call:kvs_store('error_details', {'error', Err}, Call)};
-                AttachmentLength ->
-                    lager:info("voicemail media length is ~B and must be larger than ~B to be stored", [AttachmentLength, MinLength]),
-                    is_integer(AttachmentLength) andalso AttachmentLength > MinLength
-            end;
-        {'error', _}=Err ->
-            {'error', whapps_call:kvs_store('error_details', Err, Call) }
-    end.
+    try_store_recording(AttachmentName, Url, Tries - 1, Call1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -290,8 +209,7 @@ save_meta(Length, Call, MediaId, BoxId) ->
     CIDNumber = get_caller_id_number(Call),
     CIDName = get_caller_id_name(Call),
     Timestamp = new_timestamp(),
-    ExternalMediaUrl = external_media_url(whapps_call:account_id(Call), MediaId),
-    Metadata = kzd_voice_message:create_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, ExternalMediaUrl, Timestamp),
+    Metadata = kzd_voice_message:create_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp),
 
     {'ok', _BoxJObj} = save_metadata(Metadata, whapps_call:account_id(Call), MediaId),
     lager:debug("stored voicemail metadata for ~s", [MediaId]),
@@ -571,20 +489,24 @@ folder_view_option(BoxId, Folders) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec media_url(ne_binary(), ne_binary() | wh_json:object()) -> binary().
+%% temp fix to unblock
+%% you need to get the full doc here
 media_url(AccountId, ?JSON_WRAPPER(_)=Message) ->
     media_url(AccountId, kzd_voice_message:media_id(Message));
 media_url(AccountId, MessageId) ->
     case message(AccountId, MessageId) of
         {'ok', Message} ->
-            kzd_voice_message:external_media_url(Message, list_to_binary(["/", get_db(AccountId), "/", MessageId]));
+            lager:debug("MESSAGE ~p", [Message]),
+            ?MATCH_MODB_PREFIX(Year,Month,_) = wh_doc:id(Message),
+            [AName | _] = wh_doc:attachment_names(Message),
+            Url = list_to_binary(
+                    [kazoo_modb:get_modb(wh_doc:account_id(Message), Year, Month)
+                     ,wh_doc:id(Message)
+                     ,AName
+                     ,[{'doc_type', wh_doc:type(Message)}]
+                    ]),
+            wh_media_url:playback(Url, Message);
         {'error', _} -> <<>>
-    end.
-
--spec external_media_url(ne_binary(), ne_binary()) -> api_binary().
-external_media_url(AccountId, MediaId) ->
-    case message_doc(AccountId, MediaId) of
-        {'ok', JObj} -> kzd_voice_message:external_media_url(JObj);
-        {'error', _} -> 'undefined'
     end.
 
 %%--------------------------------------------------------------------

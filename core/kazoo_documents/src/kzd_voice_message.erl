@@ -8,10 +8,9 @@
 %%%-------------------------------------------------------------------
 -module(kzd_voice_message).
 
--export([new/0, new/6, create_metadata_object/7
+-export([new/0, new/6, create_metadata_object/6
          ,count_messages/1, count_messages/2
          ,type/0
-         ,external_media_url/1, external_media_url/2, set_external_media_url/2
          ,folder/1, folder/2, set_folder/2, set_folder_saved/1, set_folder_deleted/1, filter_folder/2
          ,media_id/1, set_media_id/2
          ,metadata/1, metadata/2, set_metadata/2
@@ -35,7 +34,6 @@
 -define(KEY_MEDIA_FILENAME, <<"media_filename">>).
 -define(KEY_STREAMABLE, <<"streamable">>).
 -define(KEY_UTC_SEC, <<"utc_seconds">>).
--define(KEY_EXTERNAL_MEDIA_URL, <<"external_media_url">>).
 -define(KEY_MEDIA_ID, <<"media_id">>).
 
 -define(KEY_METADATA, <<"metadata">>).
@@ -76,7 +74,6 @@ new(Db, DocId, AttachmentName, BoxNum, Timezone, Props) ->
                ,{?KEY_MEDIA_FILENAME, AttachmentName}
                ,{?KEY_STREAMABLE, 'true'}
                ,{?KEY_UTC_SEC, UtcSeconds}
-               ,{?KEY_EXTERNAL_MEDIA_URL, props:get_value(<<"Default-External-Storage">>, Props)}
               ]),
     wh_doc:update_pvt_parameters(wh_json:from_list(DocProps), Db, [{'type', type()}]).
 
@@ -100,9 +97,9 @@ message_name(BoxNum, {{Y,M,D},{H,I,S}}, TZ) ->
                     ,wh_util:to_binary(S), TZ
                    ]).
 
--spec create_metadata_object(pos_integer(), whapps_call:call(), ne_binary(), ne_binary(), ne_binary(), api_binary(), gregorian_seconds()) ->
+-spec create_metadata_object(pos_integer(), whapps_call:call(), ne_binary(), ne_binary(), ne_binary(), gregorian_seconds()) ->
                                     doc().
-create_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, ExternalMediaUrl, Timestamp) ->
+create_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp) ->
     wh_json:from_list(
         props:filter_undefined(
             [{?KEY_META_TIMESTAMP, Timestamp}
@@ -114,27 +111,11 @@ create_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, ExternalMediaU
              ,{?VM_KEY_FOLDER, ?VM_FOLDER_NEW}
              ,{?KEY_META_LENGTH, Length}
              ,{?KEY_MEDIA_ID, MediaId}
-             ,{?KEY_EXTERNAL_MEDIA_URL, ExternalMediaUrl}
             ])
         ).
 
 -spec type() -> ne_binary().
 type() -> ?PVT_TYPE.
-
--spec external_media_url(doc()) -> api_binary().
--spec external_media_url(doc(), Default) -> ne_binary() | Default.
-external_media_url(JObj) ->
-    external_media_url(JObj, 'undefined').
-
-external_media_url(JObj, Default) ->
-    case wh_json:get_value([?KEY_METADATA, ?KEY_EXTERNAL_MEDIA_URL], JObj) of
-        'undefined' -> wh_json:get_value(?KEY_EXTERNAL_MEDIA_URL, JObj, Default);
-        ExternalMediaUrl -> ExternalMediaUrl
-    end.
-
--spec set_external_media_url(api_binary(), doc()) -> doc().
-set_external_media_url(ExternalMediaUrl, JObj) ->
-    wh_json:set_value([?KEY_EXTERNAL_MEDIA_URL], ExternalMediaUrl, JObj).
 
 -spec folder(doc()) -> api_binary().
 folder(JObj) ->

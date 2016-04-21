@@ -27,7 +27,6 @@
 -define(KEY_MAX_MESSAGE_LENGTH, <<"max_message_length">>).
 -define(KEY_MIN_MESSAGE_SIZE, <<"min_message_size">>).
 -define(KEY_MAX_BOX_NUMBER_LENGTH, <<"max_box_number_length">>).
--define(KEY_EXTERNAL_STORAGE, <<"external_storage">>).
 -define(KEY_EXTENSION, <<"extension">>).
 -define(KEY_MAX_PIN_LENGTH, <<"max_pin_length">>).
 -define(KEY_DELETE_AFTER_NOTIFY, <<"delete_after_notify">>).
@@ -53,10 +52,6 @@
                                    ,[?KEY_VOICEMAIL, ?KEY_MAX_BOX_NUMBER_LENGTH]
                                    ,15
                                   )).
--define(MAILBOX_DEFAULT_STORAGE
-        ,whapps_config:get(?CF_CONFIG_CAT
-                           ,[?KEY_VOICEMAIL, ?KEY_EXTERNAL_STORAGE]
-                          )).
 -define(DEFAULT_VM_EXTENSION
         ,whapps_config:get(?CF_CONFIG_CAT
                            ,[?KEY_VOICEMAIL, ?KEY_EXTENSION]
@@ -88,11 +83,6 @@
         ,whapps_account_config:get_global(AccountId, ?CF_CONFIG_CAT
                                           ,[?KEY_VOICEMAIL, <<"storage_retry_times">>]
                                           ,5
-                                         )).
--define(MAILBOX_RETRY_LOCAL_STORAGE_REMOTE_FAILS(AccountId)
-        ,whapps_account_config:get_global(AccountId, ?CF_CONFIG_CAT
-                                          ,[?KEY_VOICEMAIL, <<"storage_retry_local_on_remote_failure">>]
-                                          ,'true'
                                          )).
 
 -record(keys, {
@@ -149,6 +139,7 @@
           ,message_count = 0 :: non_neg_integer()
           ,max_message_count = 0 :: non_neg_integer()
           ,max_message_length :: pos_integer()
+          ,min_message_length = ?MAILBOX_DEFAULT_MSG_MIN_LENGTH :: pos_integer()
           ,keys = #keys{} :: vm_keys()
           ,transcribe_voicemail = 'false' :: boolean()
           ,notifications :: wh_json:object()
@@ -1120,7 +1111,7 @@ record_name(AttachmentName, #mailbox{owner_id=OwnerId}=Box, Call) ->
     lager:info("owner_id (~s) set on mailbox, saving into owner's doc", [OwnerId]),
     record_name(AttachmentName, Box, Call, OwnerId).
 
-record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call, DocId) ->
+record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call, _DocId) ->
     lager:info("recording name as ~s in ~s", [AttachmentName, MediaId]),
     Tone = wh_json:from_list([{<<"Frequencies">>, [<<"440">>]}
                               ,{<<"Duration-ON">>, <<"500">>}
@@ -1135,7 +1126,6 @@ record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call, DocId) ->
             record_name(tmp_file(), Box, Call);
         {'ok', 'save'} ->
             _ = store_recording(AttachmentName, MediaId, Call),
-            'ok' = update_doc(?RECORDED_NAME_KEY, MediaId, DocId, Call),
             _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
             Box;
         {'ok', 'no_selection'} ->
@@ -1255,6 +1245,8 @@ collect_pin(Interdigit, Call, NoopId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec new_message(ne_binary(), pos_integer(), mailbox(), whapps_call:call()) -> any().
+new_message(_AttachmentName, Length, #mailbox{min_message_length=MinLength}, _Call)
+    when Length < MinLength -> 'ok';
 new_message(AttachmentName, Length, #mailbox{mailbox_number=BoxNum
                                              ,mailbox_id=BoxId
                                              ,timezone=Timezone
@@ -1268,16 +1260,11 @@ new_message(AttachmentName, Length, #mailbox{mailbox_number=BoxNum
                    ,{<<"Length">>, Length}
                    ,{<<"Transcribe-Voicemail">>, MaybeTranscribe}
                    ,{<<"After-Notify-Action">>, Action}
-                   ,{<<"Default-External-Storage">>, ?MAILBOX_DEFAULT_STORAGE}
                    ,{<<"Default-Extension">>, ?DEFAULT_VM_EXTENSION}
                    ,{<<"Retry-Storage-Times">>, ?MAILBOX_RETRY_STORAGE_TIMES(AccountId)}
-                   ,{<<"Retry-Local-Storage">>, ?MAILBOX_RETRY_LOCAL_STORAGE_REMOTE_FAILS(AccountId)}
-                   ,{<<"Defualt-Min-MSG-Length">>, min_recording_length(Call)}
                   ],
-    % case store_recording(AttachmentName, MediaId, Call, Box, ?MAILBOX_DEFAULT_STORAGE) of
     case kz_vm_message:new_message(AttachmentName, BoxNum, Timezone, Call, NewMsgProps) of
         'ok' -> send_mwi_update(Box, Call);
-                % update_mailbox(Box, Call, MediaId, Length);
         {'error', Call1, Msg} ->
             system_report(Msg, Call1)
     end.
@@ -1358,8 +1345,8 @@ get_mailbox_profile(Data, Call) ->
                          kzd_voicemail_box:is_setup(MailboxJObj, 'false')
                      ,max_message_count =
                          wh_util:to_integer(MaxMessageCount)
-                     ,max_message_length =
-                         find_max_message_length([Data, MailboxJObj])
+                     ,max_message_length = find_max_message_length([Data, MailboxJObj])
+                     ,min_message_length = min_recording_length(Call)
                      ,message_count =
                          MsgCount
                      ,transcribe_voicemail =
