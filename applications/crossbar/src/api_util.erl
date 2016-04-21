@@ -44,7 +44,7 @@
 -define(DATA_SCHEMA
         ,wh_json:from_list([{<<"type">>, <<"object">>}
                             ,{<<"description">>, <<"The request data to be processed">>}
-                            ,{<<"required">>, 'true'}
+                            ,{<<"required">>, 'false'}
                            ])
        ).
 
@@ -142,25 +142,6 @@ get_cors_headers(Allow) ->
                           {cb_context:context(), cowboy_req:req()} |
                           halt_return().
 get_req_data(Context, Req0) ->
-    {Method, Req1} = cowboy_req:method(Req0),
-    maybe_get_req_data(Context
-                      ,Req1
-                      ,Method
-                      ).
-
--spec maybe_get_req_data(cb_context:context(), cowboy_req:req(), http_method()) ->
-                                {cb_context:context(), cowboy_req:req()} |
-                                halt_return().
-maybe_get_req_data(Context, Req0, ?HTTP_GET) ->
-    {QS, Req1} = get_query_string_data(Req0),
-    set_empty_request(Context, Req1, QS);
-maybe_get_req_data(Context, Req0, ?HTTP_DELETE) ->
-    {QS, Req1} = get_query_string_data(Req0),
-    set_empty_request(Context, Req1, QS);
-maybe_get_req_data(Context, Req0, ?HTTP_OPTIONS) ->
-    {QS, Req1} = get_query_string_data(Req0),
-    set_empty_request(Context, Req1, QS);
-maybe_get_req_data(Context, Req0, _Verb) ->
     {QS, Req1} = get_query_string_data(Req0),
     get_req_data(Context, get_content_type(Req1), QS).
 
@@ -193,8 +174,8 @@ get_parsed_content_type({'ok', {Main, Sub, _Opts}, Req}) ->
 
 get_req_data(Context, {'undefined', Req0}, QS) ->
     lager:debug("undefined content type when getting req data, assuming application/json"),
-    {JSON, Req1} = get_json_body(Req0),
-    set_request_data_in_context(Context, Req1, JSON, QS);
+    {Body, Req1} = get_request_body(Req0),
+    try_json(Body, QS, Context, Req1);
 get_req_data(Context, {<<"multipart/form-data">>, Req}, QS) ->
     lager:debug("multipart/form-data content type when getting req data"),
     maybe_extract_multipart(cb_context:set_query_string(Context, QS), Req, QS);
@@ -204,15 +185,14 @@ get_req_data(Context, {<<"application/x-www-form-urlencoded">>, Req1}, QS) ->
     lager:debug("application/x-www-form-urlencoded content type when getting req data"),
     handle_failed_multipart(cb_context:set_query_string(Context, QS), Req1, QS);
 
-get_req_data(Context, {<<"application/json">>, Req1}, QS) ->
+get_req_data(Context, {<<"application/json">>, Req0}, QS) ->
     lager:debug("application/json content type when getting req data"),
-    {JSON, Req2} = get_json_body(Req1),
-
-    set_request_data_in_context(Context, Req2, JSON, QS);
-get_req_data(Context, {<<"application/x-json">>, Req1}, QS) ->
+    {Body, Req1} = get_request_body(Req0),
+    try_json(Body, QS, Context, Req1);
+get_req_data(Context, {<<"application/x-json">>, Req0}, QS) ->
     lager:debug("application/x-json content type when getting req data"),
-    {JSON, Req2} = get_json_body(Req1),
-    set_request_data_in_context(Context, Req2, JSON, QS);
+    {Body, Req1} = get_request_body(Req0),
+    try_json(Body, QS, Context, Req1);
 get_req_data(Context, {<<"application/base64">>, Req1}, QS) ->
     lager:debug("application/base64 content type when getting req data"),
     decode_base64(cb_context:set_query_string(Context, QS), <<"application/base64">>, Req1);
@@ -278,7 +258,7 @@ set_request_data_in_context(Context, Req, JObj, QS) ->
     case is_valid_request_envelope(JObj) of
         'true' -> set_valid_data_in_context(Context, Req, JObj, QS);
         Errors ->
-            lager:info("failed to find 'data' in envelope, invalid request"),
+            lager:info("failed to validate json request, invalid request"),
             ?MODULE:halt(Req, cb_context:failed(Context, Errors))
     end.
 
@@ -292,16 +272,6 @@ set_valid_data_in_context(Context, Req, JObj, QS) ->
               ],
     {cb_context:setters(Context, Setters), Req}.
 
--spec set_empty_request(cb_context:context(), cowboy_req:req(), wh_json:object()) ->
-                               {cb_context:context(), cowboy_req:req()}.
-set_empty_request(Context, Req, QS) ->
-    lager:debug("no request body to parse"),
-    Setters = [{fun cb_context:set_req_json/2, wh_json:new()}
-              ,{fun cb_context:set_req_data/2, wh_json:new()}
-              ,{fun cb_context:set_query_string/2, QS}
-              ],
-    {cb_context:setters(Context, Setters), Req}.
-
 -spec try_json(ne_binary(), wh_json:object(), cb_context:context(), cowboy_req:req()) ->
                       {cb_context:context(), cowboy_req:req()} |
                       halt_return().
@@ -311,28 +281,44 @@ try_json(ReqBody, QS, Context, Req) ->
             lager:debug("was able to parse as JSON"),
             set_request_data_in_context(Context, Req1, JObj, QS)
     catch
-        'throw':_R ->
-            lager:debug("failed to get JSON too: ~p", [_R]),
-            halt_on_invalid_envelope(Req, Context);
-        _E:_R ->
-            lager:warning("failed to get json body: ~s: ~p", [_E, _R]),
+        'throw':Reason ->
+            lager:debug("failed to get JSON too: ~p", [Reason]),
+            halt_on_invalid_envelope(Reason, Req, Context);
+        _E:Reason ->
+            lager:warning("failed to get json body: ~s: ~p", [_E, Reason]),
             halt_on_invalid_envelope(Req, Context)
     end.
 
--spec halt_on_invalid_envelope(cowboy_req:req(), cb_context:context()) ->
+-spec halt_on_invalid_envelope(any(), cowboy_req:req(), cb_context:context()) ->
                                       halt_return().
-halt_on_invalid_envelope(Req, Context) ->
+halt_on_invalid_envelope({'error', {Loc, Msg}}, Req, Context) ->
+    Text = wh_util:to_binary(io_lib:format("~s near char # ~b", [Msg,  Loc])),
     ?MODULE:halt(Req
-                 ,cb_context:add_validation_error(<<"data">>
-                                                 ,<<"required">>
+                 ,cb_context:add_validation_error(<<"json">>
+                                                 ,<<"invalid">>
                                                  ,wh_json:from_list(
-                                                    [{<<"message">>, <<"All JSON requests must include the 'data' key at the top level">>}
-                                                    ,{<<"target">>, <<"data">>}
+                                                    [{<<"message">>, Text}
+                                                    ,{<<"target">>, <<"body">>}
+                                                    ]
+                                                   )
+                                                 ,cb_context:set_resp_error_code(Context, 400)
+                                                 )
+                );
+halt_on_invalid_envelope(_, Req, Context) ->
+    ?MODULE:halt(Req
+                 ,cb_context:add_validation_error(<<"json">>
+                                                 ,<<"invalid">>
+                                                 ,wh_json:from_list(
+                                                    [{<<"message">>, <<"All JSON must be valid">>}
+                                                    ,{<<"target">>, <<"body">>}
                                                     ]
                                                    )
                                                  ,cb_context:set_resp_error_code(Context, 400)
                                                  )
                 ).
+
+halt_on_invalid_envelope(Req, Context) ->
+    halt_on_invalid_envelope('undefined', Req, Context).
 
 -spec get_url_encoded_body(ne_binary()) -> wh_json:object().
 get_url_encoded_body(ReqBody) ->
@@ -519,12 +505,7 @@ get_request_body(_Req0, Body, {'ok', Data, Req1}) ->
 
 -type get_json_return() :: {api_object(), cowboy_req:req()} |
                            {{'malformed', ne_binary()}, cowboy_req:req()}.
--spec get_json_body(cowboy_req:req()) -> get_json_return().
 -spec get_json_body(binary(), cowboy_req:req()) -> get_json_return().
-
-get_json_body(Req0) ->
-    {Body, Req1} = get_request_body(Req0),
-    get_json_body(Body, Req1).
 
 get_json_body(<<>>, Req) -> {'undefined', Req};
 get_json_body(ReqBody, Req) -> decode_json_body(ReqBody, Req).
