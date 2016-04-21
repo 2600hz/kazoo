@@ -645,12 +645,12 @@ apply_responder(#kz_responder{module=M
 
 -spec log_undefined(atom(), atom(), non_neg_integer(), list()) -> 'ok'.
 log_undefined(M, F, Length, [{M, F, _Args,_}|_]) ->
-    lager:error("undefined function ~s:~s/~b", [M, F, Length]);
+    lager:debug("undefined function ~s:~s/~b", [M, F, Length]);
 log_undefined(M, F, Length, [{RealM, RealF, RealArgs,_}|_]) ->
-    lager:error("undefined function ~s:~s/~b", [RealM, RealF, length(RealArgs)]),
-    lager:error("in call ~s:~s/~b", [M, F, Length]);
+    lager:debug("undefined function ~s:~s/~b", [RealM, RealF, length(RealArgs)]),
+    lager:debug("in call ~s:~s/~b", [M, F, Length]);
 log_undefined(M, F, Length, ST) ->
-    lager:error("undefined function ~s:~s/~b", [M, F, Length]),
+    lager:debug("undefined function ~s:~s/~b", [M, F, Length]),
     wh_util:log_stacktrace(ST).
 
 log_function_clause(M, F, Length, [{M, F, _Args, _}|_]) ->
