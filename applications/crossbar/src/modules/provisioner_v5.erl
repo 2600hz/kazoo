@@ -636,7 +636,7 @@ get_schema() ->
     case wh_json_schema:load(?SCHEMA) of
         {'ok', SchemaJObj} -> SchemaJObj;
         {'error', _E} ->
-            lager:debug("failed to find schema ~s: ~p", [?SCHEMA, _E]),
+            lager:error("failed to find schema ~s: ~p", [?SCHEMA, _E]),
             'undefined'
     end.
 
