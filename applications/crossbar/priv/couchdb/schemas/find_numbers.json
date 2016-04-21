@@ -1,0 +1,17 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "find_numbers",
+    "properties": {
+        "prefix": {
+            "maxLength": 10,
+            "minLength": 3,
+            "required": true,
+            "type": "string"
+        },
+        "quantity": {
+            "default": 1,
+            "minimum": 1,
+            "type": "integer"
+        }
+    }
+}

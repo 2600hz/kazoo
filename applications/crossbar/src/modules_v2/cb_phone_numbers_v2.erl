@@ -36,6 +36,7 @@
 -define(CLASSIFIERS, <<"classifiers">>).
 -define(IDENTIFY, <<"identify">>).
 -define(COLLECTION, <<"collection">>).
+-define(COLLECTION_NUMBERS, <<"numbers">>).
 -define(FIX, <<"fix">>).
 -define(MIME_TYPES, [{<<"application">>, <<"pdf">>}
                      ,{<<"application">>, <<"x-gzip">>}
@@ -50,32 +51,8 @@
 
 -define(PHONE_NUMBERS_CONFIG_CAT, <<"crossbar.phone_numbers">>).
 
--define(FIND_NUMBER_PREFIX
-        ,wh_json:from_list([{<<"required">>, 'true'}
-                            ,{<<"type">>, <<"string">>}
-                            ,{<<"minLength">>, 3}
-                            ,{<<"maxLength">>, 10}
-                           ])
-       ).
--define(FIND_NUMBER_QUANTITY
-        ,wh_json:from_list([{<<"default">>, 1}
-                            ,{<<"type">>, <<"integer">>}
-                            ,{<<"minimum">>, 1}
-                           ])
-       ).
-
--define(FIND_NUMBER_PROPERTIES
-        ,wh_json:from_list([{<<"prefix">>, ?FIND_NUMBER_PREFIX}
-                            ,{<<"quantity">>, ?FIND_NUMBER_QUANTITY}
-                           ])
-       ).
-
--define(FIND_NUMBER_SCHEMA
-        ,wh_json:from_list([{<<"$schema">>, <<"http://json-schema.org/draft-03/schema#">>}
-                            ,{<<"id">>, <<"find_number">>}
-                            ,{<<"properties">>, ?FIND_NUMBER_PROPERTIES}
-                           ])
-       ).
+-define(SCHEMA_PHONE_NUMBERS, <<"phone_numbers">>).
+-define(SCHEMA_FIND_NUMBERS, <<"find_numbers">>).
 
 -define(DEFAULT_COUNTRY, <<"US">>).
 -define(KEY_PHONEBOOK_FREE_URL, <<"phonebook_url">>).
@@ -283,15 +260,21 @@ validate(Context, ?FIX) ->
 validate(Context, ?PREFIX) ->
     find_prefix(Context);
 validate(Context, ?COLLECTION) ->
-    validate_collection(Context, cb_context:req_verb(Context));
+    validate_collection_request(Context);
 validate(Context, ?CLASSIFIERS) ->
     cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
                              ,knm_converters:available_classifiers()
                             );
 validate(Context, ?LOCALITY) ->
-    find_locality(Context);
+    Numbers = cb_context:req_value(Context, ?COLLECTION_NUMBERS),
+    Context1 = validate_collection_request(Context, Numbers),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            fetch_locality(Context1);
+        _ -> Context1
+    end;
 validate(Context, ?CHECK) ->
-    validate_check(Context, cb_context:req_value(Context, <<"numbers">>));
+    validate_collection_request(Context);
 validate(Context, Number) ->
     validate_number(Context, Number, cb_context:req_verb(Context)).
 
@@ -305,16 +288,8 @@ validate_number(Context, _Number, ?HTTP_PUT) ->
 validate_number(Context, _Number, ?HTTP_DELETE) ->
     validate_delete(Context).
 
--spec validate_collection(cb_context:context(), http_method()) -> cb_context:context().
-validate_collection(Context, ?HTTP_PUT) ->
-    validate_request(Context);
-validate_collection(Context, ?HTTP_POST) ->
-    validate_request(Context);
-validate_collection(Context, ?HTTP_DELETE) ->
-    validate_delete(Context).
-
 validate(Context, ?COLLECTION, ?ACTIVATE) ->
-    validate_request(Context);
+    validate_collection_request(Context);
 validate(Context, ?CLASSIFIERS, Number) ->
     classify_number(Context, Number);
 validate(Context, _Number, ?ACTIVATE) ->
@@ -368,7 +343,7 @@ post(Context, ?FIX) ->
     'ok' = knm_maintenance:fix_account_numbers(AccountDb),
     summary(Context);
 post(Context, ?CHECK) ->
-    Numbers = cb_context:req_value(Context, <<"numbers">>),
+    Numbers = cb_context:req_value(Context, ?COLLECTION_NUMBERS),
     Unformatted = knm_carriers:check(Numbers),
     RespData = format_carriers_check(Unformatted),
     cb_context:set_resp_data(Context, RespData);
@@ -513,6 +488,7 @@ normalize_view_results(JObj, Acc) ->
 -spec find_numbers(cb_context:context()) -> cb_context:context().
 find_numbers(Context) ->
     JObj = get_find_numbers_req(Context),
+    Context1 = cb_context:set_req_data(Context, JObj),
     Prefix = wh_json:get_ne_value(?PREFIX, JObj),
     Quantity = wh_json:get_value(<<"quantity">>, JObj, 1),
     OnSuccess =
@@ -523,11 +499,7 @@ find_numbers(Context) ->
                                     ,{fun cb_context:set_resp_status/2, 'success'}
                                    ])
         end,
-
-    cb_context:validate_request_data(?FIND_NUMBER_SCHEMA
-                                     ,cb_context:set_req_data(Context, JObj)
-                                     ,OnSuccess
-                                    ).
+    cb_context:validate_request_data(?SCHEMA_FIND_NUMBERS, Context1, OnSuccess).
 
 -spec get_find_numbers_req(cb_context:context()) -> wh_json:object().
 get_find_numbers_req(Context) ->
@@ -566,88 +538,41 @@ find_prefix(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% resource.
-%% @end
+%% @doc Validates a collection-type numbers field.
 %%--------------------------------------------------------------------
--spec find_locality(cb_context:context()) -> cb_context:context().
-find_locality(Context) ->
-    case cb_context:req_value(Context, <<"numbers">>) of
-        'undefined' ->
-            cb_context:add_validation_error(
-                <<"numbers">>
-                ,<<"required">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"list of numbers missing">>}
-                 ])
-                ,Context
-            );
-        [] ->
-            cb_context:add_validation_error(
-                <<"numbers">>
-                ,<<"minimum">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"minimum 1 number required">>}
-                 ])
-                ,Context
-            );
-        Numbers when is_list(Numbers) ->
-            Url = get_url(cb_context:req_value(Context, <<"quality">>)),
-            case fetch_locality(Numbers, Url) of
-                {'error', E} ->
-                    crossbar_util:response('error', E, 500, Context);
-                {'ok', Localities} ->
-                    cb_context:set_resp_data(
-                      cb_context:set_resp_status(Context, 'success')
-                      ,Localities
-                     )
-            end;
-        _E ->
-            cb_context:add_validation_error(
-                <<"numbers">>
-                ,<<"type">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"numbers must be a list">>}
-                 ])
-                ,Context
-            )
-    end.
+-spec validate_collection_request(cb_context:context()) -> cb_context:context().
+-spec validate_collection_request(cb_context:context(), any()) -> cb_context:context().
+validate_collection_request(Context) ->
+    Numbers = wh_json:get_value(?COLLECTION_NUMBERS, cb_context:req_data(Context)),
+    validate_collection_request(Context, Numbers).
+validate_collection_request(Context, 'undefined') ->
+    Msg = wh_json:from_list([{<<"message">>, <<"list of numbers missing">>}
+                            ]),
+    cb_context:add_validation_error(?COLLECTION_NUMBERS, <<"required">>, Msg, Context);
+validate_collection_request(Context, []) ->
+    Msg = wh_json:from_list([{<<"message">>, <<"minimum 1 number required">>}
+                            ]),
+    cb_context:add_validation_error(?COLLECTION_NUMBERS, <<"minimum">>, Msg, Context);
+validate_collection_request(Context, Numbers)
+  when is_list(Numbers) ->
+    UniqNomalised = lists:usort([knm_converters:normalize(N) || N <- Numbers]),
+    case length(Numbers) == length(UniqNomalised) of
+        'true' -> cb_context:set_resp_status(Context, 'success');
+        'false' ->
+            Msg = wh_json:from_list([{<<"message">>, <<"some numbers appear twice">>}
+                                    ]),
+            cb_context:add_validation_error(?COLLECTION_NUMBERS, <<"uniqueItems">>, Msg, Context)
+    end;
+validate_collection_request(Context, _E) ->
+    Msg = wh_json:from_list([{<<"message">>, <<"numbers must be a list">>}
+                            ]),
+    cb_context:add_validation_error(?COLLECTION_NUMBERS, <<"type">>, Msg, Context).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate_check(cb_context:context(), any()) -> cb_context:context().
-validate_check(Context, 'undefined') ->
-    cb_context:add_validation_error(
-      <<"numbers">>
-      ,<<"required">>
-      ,wh_json:from_list([{<<"message">>, <<"list of numbers missing">>}
-                         ])
-      ,Context
-     );
-validate_check(Context, []) ->
-    cb_context:add_validation_error(
-      <<"numbers">>
-      ,<<"minimum">>
-      ,wh_json:from_list([{<<"message">>, <<"minimum 1 number required">>}
-                         ])
-      ,Context
-     );
-validate_check(Context, Numbers) when is_list(Numbers) ->
-    cb_context:set_resp_status(Context, 'success');
-validate_check(Context, E) ->
-    cb_context:add_validation_error(
-      <<"numbers">>
-      ,<<"type">>
-      ,wh_json:from_list([{<<"message">>, <<"numbers must be a list">>}
-                          ,{<<"cause">>, E}
-                         ])
-      ,Context
-     ).
-
-%% @private
 -spec format_carriers_check(list()) -> wh_json:object().
 -spec format_carriers_check(list(), wh_json:object()) -> wh_json:object().
 format_carriers_check(Checked) ->
@@ -665,10 +590,6 @@ format_carriers_check([{_Module, {'ok', ModuleResults}}|Rest], JObj) ->
     format_carriers_check(Rest, JObj1);
 format_carriers_check([_|Rest], JObj) ->
     format_carriers_check(Rest, JObj).
-
--spec get_url(any()) -> ne_binary().
-get_url(<<"high">>) -> ?KEY_PHONEBOOK_PAID_URL;
-get_url(_) -> ?KEY_PHONEBOOK_FREE_URL.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -703,6 +624,25 @@ get_prefix(City) ->
 %% @doc Tries to fill [Number,locality] field with info from phonebook.
 %% @end
 %%--------------------------------------------------------------------
+-spec fetch_locality(cb_context:context()) -> cb_context:context().
+fetch_locality(Context) ->
+    Numbers = cb_context:req_value(Context, ?COLLECTION_NUMBERS),
+    Url = get_url(cb_context:req_value(Context, <<"quality">>)),
+    case fetch_locality(Numbers, Url) of
+        {'ok', Localities} ->
+            cb_context:set_resp_data(
+              cb_context:set_resp_status(Context, 'success')
+              ,Localities
+             );
+        {'error', E} ->
+            crossbar_util:response('error', E, 500, Context)
+    end.
+
+-spec get_url(any()) -> ne_binary().
+get_url(<<"high">>) -> ?KEY_PHONEBOOK_PAID_URL;
+get_url(_) -> ?KEY_PHONEBOOK_FREE_URL.
+
+%% @private
 -spec maybe_update_locality(cb_context:context()) -> cb_context:context().
 maybe_update_locality(Context) ->
     Numbers = wh_json:get_value(<<"numbers">>, cb_context:resp_data(Context)),
@@ -841,7 +781,7 @@ identify(Context, Number) ->
 %%--------------------------------------------------------------------
 -spec validate_request(cb_context:context()) -> cb_context:context().
 validate_request(Context) ->
-    cb_context:validate_request_data(?KNM_PHONE_NUMBERS_DOC, Context).
+    cb_context:validate_request_data(?SCHEMA_PHONE_NUMBERS, Context).
 
 %%--------------------------------------------------------------------
 %% @private

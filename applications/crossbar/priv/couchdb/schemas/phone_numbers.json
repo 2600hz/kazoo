@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-03/schema#",
-    "_id": "numbers",
+    "_id": "phone_numbers",
     "description": "Schema for a number",
     "name": "Number",
     "properties": {
