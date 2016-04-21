@@ -786,9 +786,7 @@ validate_request(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load an instance from the database
-%% @end
+%% @doc Always validate DELETEs
 %%--------------------------------------------------------------------
 -spec validate_delete(cb_context:context()) -> cb_context:context().
 validate_delete(Context) ->
@@ -812,12 +810,14 @@ set_response(Result, Context) ->
                   {'dry_run', ne_binary(), wh_json:object()} |
                   {binary(), binary()}.
 -type cb() :: fun(() -> cb_context:context()).
+
 -spec set_response(result(), cb_context:context(), cb()) -> cb_context:context().
 set_response({'ok', Thing}, Context, _) ->
     case knm_number:is_number(Thing) of
         'true' -> crossbar_util:response(knm_number:to_public_json(Thing), Context);
         'false' -> crossbar_util:response(Thing, Context)
     end;
+
 set_response({?COLLECTION, ServicesList, ResultJObj}, Context, CB) ->
     case wh_json:get_value(<<"error">>, ResultJObj) of
         'undefined' ->
@@ -833,14 +833,17 @@ set_response({?COLLECTION, ServicesList, ResultJObj}, Context, CB) ->
         Errors ->
             crossbar_util:response_400(<<"client error">>, Errors, Context)
     end;
+
 set_response({'dry_run', Services, _ActivationCharges}, Context, CB) ->
     RespJObj = wh_services:dry_run(Services),
     case wh_json:is_empty(RespJObj) of
         'true' -> CB();
         'false' -> crossbar_util:response_402(RespJObj, Context)
     end;
+
 set_response({'error', 'not_found'}, Context, _) ->
     reply_number_not_found(Context);
+
 set_response({'error', Data}, Context, _) ->
     case wh_json:is_json_object(Data) of
         'true' ->
@@ -852,12 +855,15 @@ set_response({'error', Data}, Context, _) ->
             lager:debug("error: ~p", [Data]),
             crossbar_util:response_400(<<"client error">>, Data, Context)
     end;
+
 set_response({'invalid', Reason}, Context, _) ->
     lager:debug("invalid: ~p", [Reason]),
     cb_context:add_validation_error(<<"address">>, <<"invalid">>, Reason, Context);
+
 set_response({Error, Reason}, Context, _) ->
     lager:debug("error ~p: ~p", [Error, Reason]),
     cb_context:add_system_error(Error, Reason, Context);
+
 set_response(_Else, Context, _) ->
     lager:debug("unexpected response: ~p", [_Else]),
     cb_context:add_system_error('unspecified_fault', Context).
