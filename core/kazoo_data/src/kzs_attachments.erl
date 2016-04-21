@@ -110,6 +110,7 @@ external_attachment(DbName, JObj, Att, Props) ->
                                {'ok', wh_json:object()} |
                                data_error().
 delete_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Options) ->
+    kzs_cache:flush_cache_doc(DbName, DocId),
     App:delete_attachment(Conn, DbName, DocId, AName, Options).
 
 attachment_url(#{att_proxy := 'true'}, DbName, DocId, AttachmentId, 'undefined', Options) ->
