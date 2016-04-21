@@ -433,12 +433,14 @@ prompt_language(<<_/binary>> = AccountId, Default) ->
              )
     end.
 
+-spec store_path_from_doc(wh_json:object()) -> media_store_path() | {'error', 'no_attachments'}.
 store_path_from_doc(JObj) ->
     case wh_doc:attachment_names(JObj) of
         [] -> {'error', 'no_attachments'};
         [AName | _] -> store_path_from_doc(JObj, AName)
     end.
 
+-spec store_path_from_doc(wh_json:object(), ne_binary()) -> media_store_path().
 store_path_from_doc(JObj, AName) ->
     Opts = [{'doc_type', wh_doc:type(JObj)}
             ,{'doc_owner', wh_json:get_value(<<"owner_id">>, JObj)}
