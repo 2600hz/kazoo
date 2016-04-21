@@ -18,6 +18,7 @@
 
          ,get_db/1
          ,get_range_view/2
+         ,filter_message_metadata/2
         ]).
 
 -include("kz_voicemail.hrl").
@@ -69,7 +70,7 @@ new_message(AttachmentName, BoxNum, Timezone, Call, Props) ->
     {MediaId, MediaUrl} = create_message_doc(AttachmentName, BoxNum, Call, Timezone, Props),
 
     case store_recording(AttachmentName, MediaId, MediaUrl, Call, Props, ExternalStorage) of
-        'true' -> update_mailbox(Call, MediaId, Length, Props);
+        'true' -> notify_and_save(Call, MediaId, Length, Props);
         'false' ->
             lager:warning("failed to store voicemail media: ~p", [MediaId]),
             kz_datamgr:del_doc(whapps_call:account_db(Call), MediaId);
@@ -218,9 +219,9 @@ check_attachment_length(AttachmentName, DocId, Call, Props) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec update_mailbox(whapps_call:call(), ne_binary(), integer(), wh_proplist()) ->
+-spec notify_and_save(whapps_call:call(), ne_binary(), integer(), wh_proplist()) ->
                             'ok'.
-update_mailbox(Call, MediaId, Length, Props) ->
+notify_and_save(Call, MediaId, Length, Props) ->
     BoxId = props:get_value(<<"Box-Id">>, Props),
     NotifyAction = props:get_value(<<"After-Notify-Action">>, Props),
 
@@ -307,8 +308,43 @@ message_doc(AccountId, {_, ?MATCH_MODB_PREFIX(Year, Month, _)}=DocId) ->
     open_modb_doc(AccountId, DocId, Year, Month);
 message_doc(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _)=DocId) ->
     open_modb_doc(AccountId, DocId, Year, Month);
-message_doc(AccountId, DocId) ->
-    open_accountdb_doc(AccountId, DocId).
+message_doc(AccountId, MediaId) ->
+    case open_accountdb_doc(AccountId, MediaId) of
+        {'ok', MediaJObj} ->
+            SourceId = kzd_voice_message:source_id(MediaJObj),
+            case fetch_vmbox_messages(AccountId, SourceId) of
+                {'ok', VMBoxMsgs} ->
+                    merge_metadata(MediaId, MediaJObj, VMBoxMsgs);
+                {'error', _}=E ->
+                    E
+            end;
+        {'error', _}=E ->
+            lager:warning("failed to load message doc ~s", [MediaId]),
+            E
+    end.
+
+merge_metadata(MediaId, MediaJObj, VMBoxMsgs) ->
+    case filter_message_metadata(MediaId, VMBoxMsgs) of
+        {'error', _}=E -> E;
+        {Metadata, _} -> {'ok', kzd_voice_message:set_metadata(Metadata, MediaJObj)}
+    end.
+
+filter_message_metadata(_MediaId, []) ->
+    lager:warning("found media doc ~s but messages in vmbox is empty", [_MediaId]),
+    {'error', 'not_found'};
+filter_message_metadata(MediaId, [H|T]) ->
+    filter_message_metadata(MediaId, kzd_voice_message:media_id(H), H, T, []).
+
+filter_message_metadata(MediaId, MediaId, Msg, [], Acc) ->
+    {Msg, Acc};
+filter_message_metadata(_MediaId, _, _, [], _) ->
+    lager:warning("found media doc ~s but could not find metadata in vmbox", [_MediaId]),
+    {'error', 'not_found'};
+filter_message_metadata(MediaId, MediaId, Msg, Tail, Acc) ->
+    {Msg, lists:flatten([Acc | Tail])};
+filter_message_metadata(MediaId, _, _, [H|T], Acc) ->
+    filter_message_metadata(MediaId, kzd_voice_message:media_id(H), H, T, [H|Acc]).
+
 
 %%--------------------------------------------------------------------
 %% @public
@@ -336,7 +372,6 @@ message(AccountId, MessageId) ->
         {'ok', []} -> {'error', 'not_found'};
         {'ok', Msg} -> {'ok', kzd_voice_message:metadata(Msg)};
         {'error', _}=E ->
-            lager:warning("failed to load voicemail message ~s", [MessageId]),
             E
     end.
 
@@ -349,9 +384,10 @@ message(AccountId, MessageId) ->
                            {'ok', wh_json:object()} |
                            {'error', atom()}.
 save_metadata(NewMessage, AccountId, MessageId) ->
-    Fun = fun(JObj) ->
+    Fun = [fun(JObj) ->
               kzd_voice_message:set_metadata(NewMessage, JObj)
-          end,
+           end
+          ],
 
     case update_message_doc(AccountId, MessageId, Fun) of
         {'ok', _}=OK -> OK;
@@ -368,7 +404,7 @@ save_metadata(NewMessage, AccountId, MessageId) ->
 %% @doc Folder operations
 %% @end
 %%--------------------------------------------------------------------
--spec set_folder(ne_binary(), ne_binary(), ne_binary()) -> any().
+-spec set_folder(ne_binary(), wh_json:object(), ne_binary()) -> any().
 set_folder(Folder, Message, AccountId) ->
     MessageId = kzd_voice_message:media_id(Message),
     lager:info("setting folder for message ~s to ~s", [MessageId, Folder]),
@@ -381,9 +417,10 @@ set_folder(Folder, Message, AccountId) ->
 update_folder(_, 'undefined', _) ->
     {'error', 'attachment_undefined'};
 update_folder(Folder, MessageId, AccountId) ->
-    Fun = fun(JObj) ->
-              update_folder1(JObj, Folder)
-          end,
+    Fun = [fun(JObj) ->
+               update_folder1(JObj, Folder)
+           end
+          ],
 
     case update_message_doc(AccountId, MessageId, Fun) of
         {'ok', _}=OK ->OK;
@@ -398,27 +435,87 @@ update_folder(Folder, MessageId, AccountId) ->
 update_message_doc(AccountId, DocId, Fun) ->
     case message_doc(AccountId, DocId) of
         {'ok', JObj} -> do_update_message_doc(AccountId, DocId, JObj, Fun);
-        {'error', R}=E ->
-            lager:info("failed to open voicemail message ~s: ~p", [DocId, R]),
+        {'error', _}=E ->
             E
     end.
 
-do_update_message_doc(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _), JObj, Fun) ->
-    kazoo_modb:save_doc(AccountId, Fun(JObj), Year, Month);
-do_update_message_doc(AccountId, DocId, JObj, Fun) ->
-    NewJObj = Fun(JObj),
-    move_to_modb(AccountId, DocId, NewJObj).
+do_update_message_doc(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _), JObj, Funs) ->
+    NewJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Funs),
+    kazoo_modb:save_doc(AccountId, NewJObj, Year, Month);
+do_update_message_doc(AccountId, DocId, JObj, Funs) ->
+    move_to_modb(AccountId, DocId, JObj, Funs).
 
 % TODO: delete old doc from accountdb
-move_to_modb(AccountId, _DocId, JObj) ->
-    UtcSeconds = kzd_voice_message:utc_seconds(JObj),
-    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(UtcSeconds),
-    [IdPart, _] = binary:split(wh_json:get_value(<<"media_filename">>, JObj), <<".">>),
+move_to_modb(AccountId, DocId, JObj, Funs) ->
+    Created = wh_doc:created(JObj),
+    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Created),
 
-    NewId = <<Year/binary, Month/binary, "-", IdPart/binary>>,
-    NewJObj = wh_json:set_value(<<"_id">>, NewId, wh_json:delete_key(<<"_rev">>, JObj)),
+    FromDb = wh_util:format_account_id(AccountId, 'encoded'),
+    FromId = wh_doc:id(JObj),
+    ToDb = kazoo_modb:get_modb(AccountId, Year, Month),
+    ToId = <<(wh_util:to_binary(Year))/binary
+              ,(wh_util:pad_month(Month))/binary
+              ,"-"
+              ,(wh_util:rand_hex_binary(16))/binary
+           >>,
+    io:format("FromDb ~p FromId ~p ToDb ~p ToId ~p ~n~n", [FromDb, FromId, ToDb, ToId]),
+    case kz_datamgr:copy_doc(FromDb, FromId, ToDb, ToId, []) of
+        {'ok', _} ->
+            SourceId = kzd_voice_message:source_id(JObj),
+            Result = populate_metadata_from_vmbox(AccountId, SourceId, FromId, ToId, Funs),
+            maybe_delete_media_doc(AccountId, FromId, Result);
+        {'error', _}=E ->
+            lager:warning("failed to copy voice message ~s to modb", [DocId]),
+            E
+    end.
 
-    kazoo_modb:save_doc(AccountId, NewJObj, Year, Month).
+% populate_metadata_from_vmbox(AccountId, BoxId, OldId, NewId) ->
+%     populate_metadata_from_vmbox(AccountId, BoxId, OldId, NewId, []).
+
+populate_metadata_from_vmbox(AccountId, BoxId, OldId, NewId, Funs) ->
+    case open_accountdb_doc(AccountId, BoxId) of
+        {'ok', VMBox} ->
+            try_populate_metadata(AccountId, OldId, NewId, VMBox, Funs);
+        {'error', _}=E ->
+            lager:warning("failed to populate voice message metadata ~s from vmbox", [OldId]),
+            E
+    end.
+
+try_populate_metadata(AccountId, OldId, NewId, VMBox, Funs) ->
+    Messages = wh_json:get_value(?VM_KEY_MESSAGES, VMBox, []),
+    {Metadata, NewMessages} = filter_message_metadata(OldId, Messages),
+    Methods = [fun(JObj) -> kzd_voice_message:set_metadata(Metadata, JObj) end
+               ,fun(JObj) -> update_media_id(NewId, JObj) end
+               ,fun(JObj) -> wh_json:set_value(<<"pvt_type">>, kzd_voice_message:type(), JObj) end
+               | Funs
+              ],
+    case update_message_doc(AccountId, NewId, Methods) of
+        {'ok', JObj} ->
+            try_update_mailbox(AccountId, wh_json:set_value(?VM_KEY_MESSAGES, NewMessages, VMBox), JObj);
+        {'error', _}=E ->
+            lager:warning("failed to populate voice message metadata ~s from vmbox", [OldId]),
+            E
+    end.
+
+try_update_mailbox(AccountId, NewVMBox, NewMsgJObj) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case kz_datamgr:save_doc(AccountDb, NewVMBox) of
+        {'ok', _} -> {'ok', NewMsgJObj};
+        {'error', R}=E ->
+            lager:debug("could not update mailbox ~s: ~s", [wh_doc:id(NewVMBox), R]),
+            E
+    end.
+
+update_media_id(MediaId, JObj) ->
+    Metadata = kzd_voice_message:set_media_id(MediaId, kzd_voice_message:metadata(JObj)),
+    kzd_voice_message:set_metadata(Metadata, JObj).
+
+maybe_delete_media_doc(AccountId, Id, {'ok', _}=Doc) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    _ = kz_datamgr:del_doc(AccountDb, Id),
+    Doc;
+maybe_delete_media_doc(_, _, {'error', _}=E) ->
+    E.
 
 -spec update_folder1(wh_json:object(), ne_binary()) -> wh_json:object().
 update_folder1(Doc, <<"deleted">>) ->
@@ -514,7 +611,7 @@ fetch_vmbox_messages(AccountId, BoxId) ->
     case open_accountdb_doc(AccountId, BoxId) of
         {'ok', BoxJObj} -> {'ok', wh_json:get_value(?VM_KEY_MESSAGES, BoxJObj, [])};
         {'error', _}=E ->
-            lager:debug("error fetching voicemail messages for ~s from accountdb ~s", [BoxId, AccountId]),
+            lager:debug("error fetching voicemail messages for ~s from accountid ~s", [BoxId, AccountId]),
             E
     end.
 

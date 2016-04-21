@@ -13,8 +13,9 @@
          ,type/0
          ,external_media_url/1, external_media_url/2, set_external_media_url/2
          ,folder/1, folder/2, set_folder/2, set_folder_saved/1, set_folder_deleted/1, filter_folder/2
-         ,media_id/1
+         ,media_id/1, set_media_id/2
          ,metadata/1, metadata/2, set_metadata/2
+         ,source_id/1
          ,utc_seconds/1
         ]).
 
@@ -159,6 +160,10 @@ set_folder_deleted(JObj) ->
 media_id(JObj) ->
     wh_json:get_value(?KEY_MEDIA_ID, JObj).
 
+-spec set_media_id(ne_binary(), doc()) -> doc().
+set_media_id(MediaId, JObj) ->
+    wh_json:set_value(?KEY_MEDIA_ID, MediaId, JObj).
+
 -spec metadata(doc()) -> doc().
 metadata(JObj) ->
     metadata(JObj, 'undefined').
@@ -173,7 +178,11 @@ set_metadata(Metadata, JObj) ->
 
 -spec utc_seconds(doc()) -> pos_integer().
 utc_seconds(JObj) ->
-  wh_json:get_integer_value(?KEY_UTC_SEC, JObj).
+    wh_json:get_integer_value(?KEY_UTC_SEC, JObj).
+
+-spec source_id(doc()) -> ne_binary().
+source_id(JObj) ->
+    wh_json:get_value(?KEY_SOURCE_ID, JObj).
 
 %%--------------------------------------------------------------------
 %% @private
