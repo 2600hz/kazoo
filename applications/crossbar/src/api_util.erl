@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2016, 2600Hz
+%%% @copyright (C) 2012-2015, 2600Hz
 %%% @doc
 %%% Moved util functions out of v1_resource so only REST-related calls
 %%% are in there.
@@ -152,9 +152,6 @@ get_req_data(Context, Req0) ->
                                 {cb_context:context(), cowboy_req:req()} |
                                 halt_return().
 maybe_get_req_data(Context, Req0, ?HTTP_GET) ->
-    {QS, Req1} = get_query_string_data(Req0),
-    set_empty_request(Context, Req1, QS);
-maybe_get_req_data(Context, Req0, ?HTTP_DELETE) ->
     {QS, Req1} = get_query_string_data(Req0),
     set_empty_request(Context, Req1, QS);
 maybe_get_req_data(Context, Req0, ?HTTP_OPTIONS) ->
