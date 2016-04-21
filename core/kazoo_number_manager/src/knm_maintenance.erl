@@ -125,7 +125,7 @@ phone_number_from_dirty_json(NormalizedNumber, JObj) ->
             , {?PVT_USED_BY, wh_json:get_first_defined([?PVT_USED_BY, <<"used_by">>], JObj)}
             , {?PVT_STATE, State}
             , {?PVT_PORTED_IN, ?NUMBER_STATE_PORT_IN == State}
-            , {?PVT_MODULE_NAME, wh_json:get_first_defined([?PVT_MODULE_NAME, <<"module_name">>], JObj)}
+            , {?PVT_MODULE_NAME, wh_json:get_first_defined([?PVT_MODULE_NAME, <<"module_name">>], JObj, knm_carriers:default_carrier())}
             , {?PVT_CARRIER_DATA, wh_json:get_first_defined([?PVT_CARRIER_DATA, <<"module_data">>], JObj)}
             , {?PVT_AUTH_BY, wh_json:get_first_defined([?PVT_AUTH_BY, <<"authorizing_account">>], JObj)}
             ])
