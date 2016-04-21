@@ -807,6 +807,7 @@ set_response(Result, Context) ->
     set_response(Result, Context, fun() -> Context end).
 
 -type result() :: {'ok', wh_json:object()} |
+                  {ne_binary(), [wh_services:services()], wh_json:object()} |
                   knm_number_return() |
                   {'dry_run', ne_binary(), wh_json:object()} |
                   {binary(), binary()}.
@@ -817,11 +818,20 @@ set_response({'ok', Thing}, Context, _) ->
         'true' -> crossbar_util:response(knm_number:to_public_json(Thing), Context);
         'false' -> crossbar_util:response(Thing, Context)
     end;
-set_response({'dry_run', ?COLLECTION, JObj}, Context, CB) ->
-    RespJObj = dry_run_response(?COLLECTION, JObj),
-    case wh_json:is_empty(RespJObj) of
-        'true' -> CB();
-        'false' -> crossbar_util:response_402(RespJObj, Context)
+set_response({?COLLECTION, ServicesList, ResultJObj}, Context, CB) ->
+    case wh_json:get_value(<<"error">>, ResultJObj) of
+        'undefined' ->
+            case ServicesList of
+                [] -> crossbar_util:response(ResultJObj, Context);
+                _ ->
+                    RespJObj = fold_dry_runs(ServicesList),
+                    case wh_json:is_empty(RespJObj) of
+                        'true' -> CB();
+                        'false' -> crossbar_util:response_402(RespJObj, Context)
+                    end
+            end;
+        Errors ->
+            crossbar_util:response_400(<<"client error">>, Errors, Context)
     end;
 set_response({'dry_run', Services, _ActivationCharges}, Context, CB) ->
     RespJObj = wh_services:dry_run(Services),
@@ -829,6 +839,8 @@ set_response({'dry_run', Services, _ActivationCharges}, Context, CB) ->
         'true' -> CB();
         'false' -> crossbar_util:response_402(RespJObj, Context)
     end;
+set_response({'error', 'not_found'}, Context, _) ->
+    reply_number_not_found(Context);
 set_response({'error', Data}, Context, _) ->
     case wh_json:is_json_object(Data) of
         'true' ->
@@ -838,10 +850,7 @@ set_response({'error', Data}, Context, _) ->
             cb_context:add_system_error(Code, Msg, Data, Context);
         'false' ->
             lager:debug("error: ~p", [Data]),
-            case Data of
-                'not_found' -> reply_number_not_found(Context);
-                _ -> crossbar_util:response_400(<<"client error">>, Data, Context)
-            end
+            crossbar_util:response_400(<<"client error">>, Data, Context)
     end;
 set_response({'invalid', Reason}, Context, _) ->
     lager:debug("invalid: ~p", [Reason]),
@@ -866,80 +875,37 @@ reply_number_not_found(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec dry_run_response(wh_proplist()) -> wh_json:object().
-dry_run_response(Props) ->
-    case props:get_value('services', Props) of
-        'undefined' -> wh_json:new();
-        Services ->
-            wh_services:dry_run(Services)
-    end.
-
--spec dry_run_response(ne_binary(), wh_json:object()) -> wh_json:object().
-dry_run_response(?COLLECTION, JObj) ->
-    case wh_json:get_value(<<"error">>, JObj) of
-        'undefined' -> accumulate_resp(wh_json:get_value(<<"charges">>, JObj, wh_json:new()));
-        _ -> JObj
-    end.
-
--spec accumulate_resp(wh_json:object()) -> wh_json:object().
-accumulate_resp(JObj) ->
-    [Resp|_] =
-        wh_json:foldl(
-            fun(_, Value, Acc) ->
-                [dry_run_response(Value)|Acc]
-            end
-            ,[]
-            ,JObj
-        ),
-    Resp.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+-type process_result() :: {wh_services:services(), wh_json:object()}.
 -spec collection_process(cb_context:context(), ne_binary()) -> process_result().
 collection_process(Context, Action) ->
     ReqData = cb_context:req_data(Context),
     Numbers = wh_json:get_value(<<"numbers">>, ReqData),
     Context1 = cb_context:set_req_data(Context, wh_json:delete_key(<<"numbers">>, ReqData)),
-    Result = collection_process(Context1, Action, Numbers),
-    collection_process_result(Context, Result).
+    {ServicesList, ResultJObj} =
+        collection_process(Context1, Action, Numbers),
+    {?COLLECTION, ServicesList, ResultJObj}.
 
--spec collection_process(cb_context:context(), ne_binary(), ne_binaries()) ->
-                                wh_json:object().
+-spec collection_process(cb_context:context(), ne_binary(), ne_binaries()) -> process_result().
 collection_process(Context, Action, Numbers) ->
     lists:foldl(
       fun
-          ({Number, {'ok', KNMNumber}}, Acc) ->
+          ({Number, {'ok', KNMNumber}}, {ServicesAcc, JObjAcc}) ->
               JObj = knm_number:to_public_json(KNMNumber),
-              wh_json:set_value([<<"success">>, Number], JObj, Acc);
-          ({Number, {'dry_run', _Services, ActivationCharges}}, Acc) ->
-              wh_json:set_value([<<"charges">>, Number], ActivationCharges, Acc);
-          ({Number, {'error', KNMError}}, Acc) ->
-              wh_json:set_value([<<"error">>, Number], KNMError, Acc)
+              {ServicesAcc
+              ,wh_json:set_value([<<"success">>, Number], JObj, JObjAcc)
+              };
+          ({Number, {'dry_run', Services, ActivationCharges}}, {ServicesAcc, JObjAcc}) ->
+              {[Services | ServicesAcc]
+              ,wh_json:set_value([<<"charges">>, Number], ActivationCharges, JObjAcc)
+              };
+          ({Number, {'error', KNMError}}, {ServicesAcc, JObjAcc}) ->
+              {ServicesAcc
+              ,wh_json:set_value([<<"error">>, Number], KNMError, JObjAcc)
+              }
       end
-      ,wh_json:new()
+      ,{[], wh_json:new()}
       ,numbers_action(Context, Action, Numbers)
      ).
-
-
--type process_result() :: {'ok', wh_json:object()} |
-                          {'error', any()} |
-                          {'dry_run', ne_binary(), wh_json:object()}.
-
--spec collection_process_result(cb_context:context(), wh_json:object()) -> process_result().
-collection_process_result(Context, JObj) ->
-    case wh_json:get_value(<<"error">>, JObj) of
-        'undefined' ->
-            case not cb_context:accepting_charges(Context) of
-                'true' -> {'dry_run', ?COLLECTION, JObj};
-                'false' -> {'ok', JObj}
-            end;
-        Error ->
-            {'error', Error}
-    end.
 
 %% @private
 -spec numbers_action(cb_context:context(), ne_binary(), ne_binaries()) ->
@@ -968,6 +934,11 @@ numbers_action(Context, ?HTTP_DELETE, Numbers) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ],
     knm_numbers:release(Numbers, Options).
+
+-spec fold_dry_runs([wh_services:services(), ...]) -> wh_json:object().
+fold_dry_runs(ServicesList) ->
+    F = fun (Services, _Acc) -> wh_services:dry_run(Services) end,
+    lists:foldl(F, [], ServicesList).
 
 %%--------------------------------------------------------------------
 %% @private
