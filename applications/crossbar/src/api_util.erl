@@ -55,6 +55,8 @@
                           ])
        ).
 
+-define(DEFAULT_JSON_ERROR_MSG, <<"All JSON must be valid">>).
+
 -type halt_return() :: {'halt', cowboy_req:req(), cb_context:context()}.
 
 %%--------------------------------------------------------------------
@@ -277,39 +279,27 @@ set_valid_data_in_context(Context, Req, JObj, QS) ->
                       halt_return().
 try_json(ReqBody, QS, Context, Req) ->
     try get_json_body(ReqBody, Req) of
+        {{'malformed', Msg}, Req1} ->
+            halt_on_invalid_envelope(Msg, Req1, Context);
         {JObj, Req1} ->
             lager:debug("was able to parse as JSON"),
             set_request_data_in_context(Context, Req1, JObj, QS)
     catch
-        'throw':Reason ->
-            lager:debug("failed to get JSON too: ~p", [Reason]),
-            halt_on_invalid_envelope(Reason, Req, Context);
         _E:Reason ->
             lager:warning("failed to get json body: ~s: ~p", [_E, Reason]),
             halt_on_invalid_envelope(Req, Context)
     end.
 
--spec halt_on_invalid_envelope(any(), cowboy_req:req(), cb_context:context()) ->
+-spec halt_on_invalid_envelope(cowboy_req:req(), cb_context:context()) ->
                                       halt_return().
-halt_on_invalid_envelope({'error', {Loc, Msg}}, Req, Context) ->
-    Text = wh_util:to_binary(io_lib:format("~s near char # ~b", [Msg,  Loc])),
+-spec halt_on_invalid_envelope(ne_binary(), cowboy_req:req(), cb_context:context()) ->
+                                      halt_return().
+halt_on_invalid_envelope(Msg, Req, Context) ->
     ?MODULE:halt(Req
                  ,cb_context:add_validation_error(<<"json">>
                                                  ,<<"invalid">>
                                                  ,wh_json:from_list(
-                                                    [{<<"message">>, Text}
-                                                    ,{<<"target">>, <<"body">>}
-                                                    ]
-                                                   )
-                                                 ,cb_context:set_resp_error_code(Context, 400)
-                                                 )
-                );
-halt_on_invalid_envelope(_, Req, Context) ->
-    ?MODULE:halt(Req
-                 ,cb_context:add_validation_error(<<"json">>
-                                                 ,<<"invalid">>
-                                                 ,wh_json:from_list(
-                                                    [{<<"message">>, <<"All JSON must be valid">>}
+                                                    [{<<"message">>, Msg}
                                                     ,{<<"target">>, <<"body">>}
                                                     ]
                                                    )
@@ -318,7 +308,7 @@ halt_on_invalid_envelope(_, Req, Context) ->
                 ).
 
 halt_on_invalid_envelope(Req, Context) ->
-    halt_on_invalid_envelope('undefined', Req, Context).
+    halt_on_invalid_envelope(?DEFAULT_JSON_ERROR_MSG, Req, Context).
 
 -spec get_url_encoded_body(ne_binary()) -> wh_json:object().
 get_url_encoded_body(ReqBody) ->
@@ -512,14 +502,17 @@ get_json_body(ReqBody, Req) -> decode_json_body(ReqBody, Req).
 
 -spec decode_json_body(binary(), cowboy_req:req()) -> get_json_return().
 decode_json_body(ReqBody, Req) ->
-    try wh_json:decode(ReqBody) of
+    try wh_json:unsafe_decode(ReqBody) of
         JObj ->
             lager:debug("request has a json payload: ~s", [ReqBody]),
             {normalize_envelope_keys(JObj), Req}
     catch
-        'throw':{'invalid_json',{{'error',{ErrLine, ErrMsg}}, _JSON}} ->
+        'throw':{'invalid_json',{'error',{ErrLine, ErrMsg}}, _JSON} ->
             lager:debug("failed to decode json near ~p: ~s", [ErrLine, ErrMsg]),
-            {{'malformed', <<(wh_util:to_binary(ErrMsg))/binary, " (around ", (wh_util:to_binary(ErrLine))/binary>>}, Req}
+            {{'malformed', <<(wh_util:to_binary(ErrMsg))/binary, " around ", (wh_util:to_binary(ErrLine))/binary>>}, Req};
+        _E:_R ->
+            lager:debug("unknown catch from json decode ~p : ~p", [_E, _R]),
+            throw(_R)
     end.
 
 %%--------------------------------------------------------------------
