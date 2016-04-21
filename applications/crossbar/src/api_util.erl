@@ -257,7 +257,7 @@ handle_url_encoded_body(Context, Req, QS, ReqBody, JObj) ->
 set_request_data_in_context(Context, Req, 'undefined', QS) ->
     set_valid_data_in_context(Context, Req, wh_json:new(), QS);
 set_request_data_in_context(Context, Req, JObj, QS) ->
-    case is_valid_request_envelope(Context, JObj) of
+    case is_valid_request_envelope(JObj, Context) of
         'true' -> set_valid_data_in_context(Context, Req, JObj, QS);
         Errors ->
             lager:info("failed to validate json request, invalid request"),
