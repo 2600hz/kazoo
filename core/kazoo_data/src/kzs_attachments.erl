@@ -115,6 +115,7 @@ delete_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Options) ->
 attachment_url(#{att_proxy := 'true'}, DbName, DocId, AttachmentId, 'undefined', Options) ->
     {'proxy', {DbName, DocId, AttachmentId, Options}};
 attachment_url(#{server := {App, Conn}}, DbName, DocId, AttachmentId, 'undefined', Options) ->
+    kzs_cache:flush_cache_doc(DbName, DocId),
     App:attachment_url(Conn, DbName, DocId, AttachmentId, Options);
 attachment_url(_, DbName, DocId, AttachmentId, Handler, Options) ->
     {'proxy', {DbName, DocId, AttachmentId, [{'handler', Handler} | Options]}}.
