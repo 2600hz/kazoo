@@ -18,7 +18,6 @@
 
          ,get_db/1, get_db/2
          ,get_range_view/2
-         ,filter_message_metadata/2
         ]).
 
 -include("kz_voicemail.hrl").
@@ -68,8 +67,6 @@ get_db(AccountId, Year, Month) ->
 %%    ,{<<"Length">>, Length}
 %%    ,{<<"Transcribe-Voicemail">>, MaybeTranscribe}
 %%    ,{<<"After-Notify-Action">>, Action}
-%%    ,{<<"Default-Extension">>, ?DEFAULT_VM_EXTENSION}
-%%    ,{<<"Retry-Storage-Times">>, ?MAILBOX_RETRY_STORAGE_TIMES(AccountId)}
 %%  ]
 %% @end
 %%--------------------------------------------------------------------
@@ -82,22 +79,23 @@ new_message(AttachmentName, BoxNum, Timezone, Call, Props) ->
 
     {MediaId, MediaUrl} = create_message_doc(AttachmentName, BoxNum, Call, Timezone, Props),
 
+    Msg = io_lib:format("failed to store voicemail media ~s in voicemail box ~s of account ~s"
+                        ,[MediaId, BoxId, whapps_call:account_id(Call)]
+                       ),
+    Funs = [{fun whapps_call:kvs_store/3, 'mailbox_id', BoxId}
+            ,{fun whapps_call:kvs_store/3, 'attachment_name', AttachmentName}
+            ,{fun whapps_call:kvs_store/3, 'media_id', MediaId}
+            ,{fun whapps_call:kvs_store/3, 'media_length', Length}
+           ],
+
     lager:debug("storing voicemail media recording ~s in doc ~s", [AttachmentName, MediaId]),
-    case store_recording(AttachmentName, MediaUrl, Call, Props) of
-        {'ok', _JObj} -> notify_and_save(Call, MediaId, Length, Props);
+    case store_recording(AttachmentName, MediaUrl, whapps_call:exec(Funs, Call)) of
+        'ok' ->
+            _ = notify_and_save(Call, MediaId, Length, Props),
+            'ok';
         {'error', Call1} ->
-            % Db = get_db(whapps_call:account_id(Call), MediaId),
-            % _ = kz_datamgr:del_doc(Db, MediaId),
-            Msg = io_lib:format("failed to store voicemail media ~s in voicemail box ~s of account ~s"
-                                ,[MediaId, BoxId, whapps_call:account_id(Call1)]
-                               ),
             lager:critical(Msg),
-            Funs = [{fun whapps_call:kvs_store/3, 'mailbox_id', BoxId}
-                    ,{fun whapps_call:kvs_store/3, 'attachment_name', AttachmentName}
-                    ,{fun whapps_call:kvs_store/3, 'media_id', MediaId}
-                    ,{fun whapps_call:kvs_store/3, 'media_length', Length}
-                   ],
-            {'error', whapps_call:exec(Funs, Call1), Msg}
+            {'error', Call1, Msg}
     end.
 
 -spec create_message_doc(ne_binary(), ne_binary(), whapps_call:call(), ne_binary(), wh_proplist()) ->
@@ -112,10 +110,8 @@ create_message_doc(AttachmentName, BoxNum, Call, Timezone, Props) ->
                 ,(wh_util:rand_hex_binary(16))/binary
               >>,
     Doc = kzd_voice_message:new(Db, MediaId, AttachmentName, BoxNum, Timezone, Props),
-    {'ok', _} = kz_datamgr:save_doc(Db, Doc),
-
-    Opts = props:filter_undefined([{'doc_owner', props:get_value(<<"OwnerId">>, Props)}]),
-    MediaUrl = wh_media_url:store(Db, {<<"voice_message">>, MediaId}, AttachmentName, Opts),
+    {'ok', JObj} = kz_datamgr:save_doc(Db, Doc),
+    MediaUrl = wh_media_url:store(JObj, AttachmentName),
 
     {MediaId, MediaUrl}.
 
@@ -124,42 +120,22 @@ create_message_doc(AttachmentName, BoxNum, Call, Timezone, Props) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec store_recording(ne_binary(), ne_binary(), whapps_call:call(), wh_proplist()) ->
-                                 {'ok', wh_json:object()} |
+-spec store_recording(ne_binary(), ne_binary(), whapps_call:call()) ->
+                                 'ok' |
                                  {'error', whapps_call:call()}.
-store_recording(AttachmentName, Url, Call, Props) ->
-    Tries = props:get_value(<<"Retry-Storage-Times">>, Props),
-    Funs = [{fun whapps_call:kvs_store/3, 'media_url', Url}],
-    try_store_recording(AttachmentName, Url, Tries, whapps_call:exec(Funs, Call)).
-
--spec try_store_recording(ne_binary(), ne_binary(), integer(), whapps_call:call()) ->
-                                 {'ok', wh_json:object()} |
-                                 {'error', whapps_call:call()}.
-try_store_recording(_, _, 0, Call) -> {'error', Call};
-try_store_recording(AttachmentName, Url, Tries, Call) ->
+store_recording(AttachmentName, Url, Call) ->
     lager:error("trying to store voicemail media to url ~s", [Url]),
     case whapps_call_command:store_file(<<"/tmp/", AttachmentName/binary>>, Url, Call) of
-        {'ok', _}=OK -> OK;
-        Other ->
-            lager:error("error trying to store voicemail media, retrying ~B more times: ~p", [Tries - 1, Other]),
-            retry_store(AttachmentName, Url, Tries, Call, Other)
+        'ok' -> 'ok';
+        {'error', _} -> {'error', Call}
     end.
-
--spec retry_store(ne_binary(), ne_binary(), non_neg_integer(), whapps_call:call(), any()) ->
-                                 {'ok', wh_json:object()} |
-                                 {'error', whapps_call:call()}.
-retry_store(AttachmentName, Url, Tries, Call, Error) ->
-    timer:sleep(2000),
-    Call1 = whapps_call:kvs_store('error_details', Error, Call),
-    try_store_recording(AttachmentName, Url, Tries - 1, Call1).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec notify_and_save(whapps_call:call(), ne_binary(), integer(), wh_proplist()) ->
-                            'ok'.
+-spec notify_and_save(whapps_call:call(), ne_binary(), integer(), wh_proplist()) -> 'ok' | db_return().
 notify_and_save(Call, MediaId, Length, Props) ->
     BoxId = props:get_value(<<"Box-Id">>, Props),
     NotifyAction = props:get_atom_value(<<"After-Notify-Action">>, Props),
@@ -193,7 +169,12 @@ get_completed_msg([JObj|JObjs], Acc) ->
         _ -> get_completed_msg(JObjs, Acc)
     end.
 
--spec maybe_save_meta(pos_integer(), atom(), whapps_call:call(), ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_save_meta(pos_integer(), atom(), whapps_call:call(), ne_binary(), wh_json:object(), ne_binary()) -> 'ok' | db_return().
 maybe_save_meta(Length, 'nothing', Call, MediaId, _UpdateJObj, BoxId) ->
     save_meta(Length, 'nothing', Call, MediaId, BoxId);
 
@@ -206,8 +187,7 @@ maybe_save_meta(Length, Action, Call, MediaId, UpdateJObj, BoxId) ->
             save_meta(Length, Action, Call, MediaId, BoxId)
     end.
 
-
--spec save_meta(pos_integer(), atom(), whapps_call:call(), ne_binary(), ne_binary()) -> 'ok'.
+-spec save_meta(pos_integer(), atom(), whapps_call:call(), ne_binary(), ne_binary()) -> 'ok' | db_return().
 save_meta(Length, Action, Call, MediaId, BoxId) ->
     AccountId = whapps_call:account_id(Call),
     CIDNumber = get_caller_id_number(Call),
@@ -220,28 +200,18 @@ save_meta(Length, Action, Call, MediaId, BoxId) ->
         'delete' ->
             lager:debug("attachment was sent out via notification, deleteing media file"),
             UpdatedMetadata = apply_folder(?VM_FOLDER_DELETED, Metadata),
-            {'ok', _JObj} = do_save_metadata(UpdatedMetadata, AccountId, MediaId),
-            'ok';
+            {'ok', _} = do_save_metadata(UpdatedMetadata, AccountId, MediaId);
         'save' ->
             lager:debug("attachment was sent out via notification, saving media file"),
             UpdatedMetadata = apply_folder(?VM_FOLDER_SAVED, Metadata),
-            {'ok', _JObj} = do_save_metadata(UpdatedMetadata, AccountId, MediaId),
-            'ok';
+            {'ok', _} = do_save_metadata(UpdatedMetadata, AccountId, MediaId);
         'nothing' ->
-            {'ok', _JObj} = do_save_metadata(Metadata, AccountId, MediaId),
+            {'ok', _} = do_save_metadata(Metadata, AccountId, MediaId),
             lager:debug("stored voicemail metadata for ~s", [MediaId]),
             publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp)
     end.
 
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec do_save_metadata(wh_json:object(), ne_binary(), ne_binary()) ->
-                           {'ok', wh_json:object()} |
-                           {'error', any()}.
+-spec do_save_metadata(wh_json:object(), ne_binary(), ne_binary()) -> db_return().
 do_save_metadata(NewMessage, AccountId, MessageId) ->
     Fun = [fun(JObj) ->
               kzd_voice_message:set_metadata(NewMessage, JObj)
@@ -259,13 +229,12 @@ do_save_metadata(NewMessage, AccountId, MessageId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
-%% @doc
+%% @public
+%% @doc fetch whole message doc from db. It will take care if the message
+%% message is stil in accountdb, it will merge metadata from vmbox
 %% @end
 %%--------------------------------------------------------------------
--spec message_doc(ne_binary(), kazoo_data:docid()) ->
-                           {'ok', wh_json:object()} |
-                           {'error', any()}.
+-spec message_doc(ne_binary(), kazoo_data:docid()) -> db_return().
 message_doc(AccountId, {_, ?MATCH_MODB_PREFIX(Year, Month, _)}=DocId) ->
     open_modb_doc(AccountId, DocId, Year, Month);
 message_doc(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _)=DocId) ->
@@ -285,32 +254,16 @@ message_doc(AccountId, MediaId) ->
             E
     end.
 
+-spec merge_metadata(ne_binary(), wh_json:object(), wh_json:objects()) -> db_return().
 merge_metadata(MediaId, MediaJObj, VMBoxMsgs) ->
-    case filter_message_metadata(MediaId, VMBoxMsgs) of
+    case kzd_voice_message:filter_vmbox_messages(MediaId, VMBoxMsgs) of
         {'error', _}=E -> E;
         {Metadata, _} -> {'ok', kzd_voice_message:set_metadata(Metadata, MediaJObj)}
     end.
 
-filter_message_metadata(_MediaId, []) ->
-    lager:warning("found media doc ~s but messages in vmbox is empty", [_MediaId]),
-    {'error', 'not_found'};
-filter_message_metadata(MediaId, [H|T]) ->
-    filter_message_metadata(MediaId, kzd_voice_message:media_id(H), H, T, []).
-
-filter_message_metadata(MediaId, MediaId, Msg, [], Acc) ->
-    {Msg, Acc};
-filter_message_metadata(_MediaId, _, _, [], _) ->
-    lager:warning("found media doc ~s but could not find metadata in vmbox", [_MediaId]),
-    {'error', 'not_found'};
-filter_message_metadata(MediaId, MediaId, Msg, Tail, Acc) ->
-    {Msg, lists:flatten([Acc | Tail])};
-filter_message_metadata(MediaId, _, _, [H|T], Acc) ->
-    filter_message_metadata(MediaId, kzd_voice_message:media_id(H), H, T, [H|Acc]).
-
-
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
+%% @doc fetch all messages for vmbox
 %% @end
 %%--------------------------------------------------------------------
 -spec messages(ne_binary(), ne_binary()) -> wh_json:objects().
@@ -323,12 +276,11 @@ messages(AccountId, BoxId) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
+%% @doc fetch message metadata from db, will take care of previous
+%% message metadata in vmbox.
 %% @end
 %%--------------------------------------------------------------------
--spec message(ne_binary(), ne_binary()) ->
-                            {'ok', wh_json:object()} |
-                            {'error', any()}.
+-spec message(ne_binary(), ne_binary()) -> db_return().
 message(AccountId, MessageId) ->
     case message_doc(AccountId, MessageId) of
         {'ok', []} -> {'error', 'not_found'};
@@ -351,14 +303,13 @@ set_folder(Folder, Message, AccountId) ->
 
 -spec maybe_set_folder(ne_binary(), ne_binary(), wh_json:object(), ne_binary()) -> any().
 maybe_set_folder(FromFolder, FromFolder, ?MATCH_MODB_PREFIX(_Year, _Month, _)=MessageId, AccountId) ->
+    lager:info("folder is same, but doc is in accountdb, move it to modb"),
     update_message_doc(AccountId, MessageId, []);
 maybe_set_folder(FromFolder, FromFolder, _, _) -> 'ok';
 maybe_set_folder(_FromFolder, ToFolder, MessageId, AccountId) ->
     update_folder(ToFolder, MessageId, AccountId).
 
--spec update_folder(ne_binary(), ne_binary(), ne_binary()) ->
-                           {'ok', wh_json:object()} |
-                           {'error', any()}.
+-spec update_folder(ne_binary(), ne_binary(), ne_binary()) -> db_return() | {'error', 'attachment_undefined'}.
 update_folder(_, 'undefined', _) ->
     {'error', 'attachment_undefined'};
 update_folder(Folder, MessageId, AccountId) ->
@@ -385,6 +336,11 @@ apply_folder(Folder, Doc) ->
     Metadata = kzd_voice_message:set_folder(Folder, kzd_voice_message:metadata(Doc)),
     kzd_voice_message:set_metadata(Metadata, Doc).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Update message docs and do migration if necessary
+%% @end
+%%--------------------------------------------------------------------
 -type update_funs() :: [fun((wh_json:object()) -> wh_json:object())].
 
 -spec update_message_doc(ne_binary(), ne_binary(), update_funs()) -> db_return().
@@ -420,7 +376,7 @@ move_to_modb(AccountId, DocId, JObj, Funs) ->
               ,"-"
               ,(wh_util:rand_hex_binary(16))/binary
            >>,
-    io:format("FromDb ~p FromId ~p ToDb ~p ToId ~p ~n~n", [FromDb, FromId, ToDb, ToId]),
+    % io:format("FromDb ~p FromId ~p ToDb ~p ToId ~p ~n~n", [FromDb, FromId, ToDb, ToId]),
     TransformFuns = [fun(DestDoc) -> update_media_id(ToId, DestDoc) end
                      ,fun(DestDoc) -> wh_json:set_value(<<"pvt_type">>, kzd_voice_message:type(), DestDoc) end
                      | Funs
@@ -442,7 +398,7 @@ update_mailbox(AccountId, BoxId, OldId) ->
     case open_accountdb_doc(AccountId, BoxId) of
         {'ok', VMBox} ->
             Messages = wh_json:get_value(?VM_KEY_MESSAGES, VMBox, []),
-            {_, NewMessages} = filter_message_metadata(OldId, Messages),
+            {_, NewMessages} = kzd_voice_message:filter_vmbox_messages(OldId, Messages),
             NewBoxJObj = wh_json:set_value(?VM_KEY_MESSAGES, NewMessages, VMBox),
             case kz_datamgr:save_doc(get_db(AccountId), NewBoxJObj) of
                 {'ok', _}=OK -> OK;
@@ -471,11 +427,13 @@ count(AccountId, BoxId) ->
     {New, Saved} = count_per_folder(AccountId, BoxId),
     New + Saved.
 
-count_by_owner(AccountDb, OwnerId) ->
+count_by_owner(?MATCH_ACCOUNT_ENCODED(_)=AccountDb, OwnerId) ->
     AccountId = wh_util:format_account_id(AccountDb),
+    count_by_owner(AccountId, OwnerId);
+count_by_owner(AccountId, OwnerId) ->
     ViewOpts = [{'key', [OwnerId, <<"vmbox">>]}],
 
-    case kz_datamgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOpts) of
+    case kz_datamgr:get_results(get_db(AccountId), <<"cf_attributes/owned">>, ViewOpts) of
         {'ok', [Owned|_]} ->
             VMBoxId = wh_json:get_value(<<"value">>, Owned),
             count_per_folder(AccountId, VMBoxId);

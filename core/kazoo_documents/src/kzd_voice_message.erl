@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2015, 2600Hz
+%%% @copyright (C) 2016, 2600Hz
 %%% @doc
 %%% Voicemail message document manipulation
 %%% @end
@@ -10,6 +10,7 @@
 
 -export([new/0, new/6, create_metadata_object/6
          ,count_messages/1, count_messages/2
+         ,filter_vmbox_messages/2
          ,type/0
          ,folder/1, folder/2, set_folder/2, set_folder_saved/1, set_folder_deleted/1, filter_folder/2
          ,media_id/1, set_media_id/2
@@ -30,7 +31,6 @@
 -define(KEY_SOURCE_TYPE, <<"source_type">>).
 -define(KEY_SOURCE_ID, <<"source_id">>).
 -define(KEY_MEDIA_SOURCE, <<"media_source">>).
--define(KEY_MEDIA_TYPE, <<"media_type">>).
 -define(KEY_MEDIA_FILENAME, <<"media_filename">>).
 -define(KEY_STREAMABLE, <<"streamable">>).
 -define(KEY_UTC_SEC, <<"utc_seconds">>).
@@ -70,7 +70,6 @@ new(Db, DocId, AttachmentName, BoxNum, Timezone, Props) ->
                ,{?KEY_SOURCE_TYPE, ?KEY_VOICEMAIL}
                ,{?KEY_SOURCE_ID, props:get_value(<<"Box-Id">>, Props)}
                ,{?KEY_MEDIA_SOURCE, <<"recording">>}
-               ,{?KEY_MEDIA_TYPE, props:get_value(<<"Default-Extension">>, Props)}
                ,{?KEY_MEDIA_FILENAME, AttachmentName}
                ,{?KEY_STREAMABLE, 'true'}
                ,{?KEY_UTC_SEC, UtcSeconds}
@@ -78,15 +77,15 @@ new(Db, DocId, AttachmentName, BoxNum, Timezone, Props) ->
     wh_doc:update_pvt_parameters(wh_json:from_list(DocProps), Db, [{'type', type()}]).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
 -spec message_name(ne_binary(), wh_datetime()) -> ne_binary().
--spec message_name(ne_binary(), wh_datetime(), string()) -> ne_binary().
 message_name(BoxNum, DT) ->
     message_name(BoxNum, DT, "").
 
+-spec message_name(ne_binary(), wh_datetime(), string()) -> ne_binary().
 message_name(BoxNum, {{Y,M,D},{H,I,S}}, TZ) ->
     list_to_binary(["mailbox ", BoxNum, " message "
                     ,wh_util:to_binary(M), "-"
@@ -166,7 +165,7 @@ source_id(JObj) ->
     wh_json:get_value(?KEY_SOURCE_ID, JObj).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc Filter messages based on specific folder
 %% @end
 %%--------------------------------------------------------------------
@@ -175,7 +174,7 @@ filter_folder(Messages, Folder) ->
     [M || M <- Messages, folder(M) =:= Folder].
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc Count count_per_folder view result
 %% @end
 %%--------------------------------------------------------------------
@@ -189,10 +188,9 @@ count_messages(ViewResults) ->
     {props:get_integer_value(<<"new">>, Props, 0)
      ,props:get_integer_value(<<"saved">>, Props, 0)
     }.
-    % lists:sum([wh_json:get_integer_value(<<"value">>, Message) || Message <- Messages]).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc Count message list in specific folder(s)
 %% @end
 %%--------------------------------------------------------------------
@@ -206,3 +204,31 @@ count_messages(Messages, Folders) when is_list(Folders) ->
               ]);
 count_messages(Messages, Folder) ->
     count_messages(Messages, [Folder]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc filter messages in vmbox based on media_id
+%% returns a tuple of founded message and a new vmbox message list which
+%% founded message is removed.
+%% @end
+%%--------------------------------------------------------------------
+-type message_filter_ret() :: {wh_json:object(), wh_json:objects()} | {'error', 'not_found'}.
+
+-spec filter_vmbox_messages(ne_binary(), wh_json:objects()) -> message_filter_ret().
+filter_vmbox_messages(_MediaId, []) ->
+    lager:warning("found media doc ~s but messages in vmbox is empty", [_MediaId]),
+    {'error', 'not_found'};
+filter_vmbox_messages(MediaId, [H|T]) ->
+    filter_vmbox_messages(MediaId, kzd_voice_message:media_id(H), H, T, []).
+
+-spec filter_vmbox_messages(ne_binary(), ne_binary(), wh_json:object(), wh_json:objects(), wh_json:objects()) ->
+                                message_filter_ret().
+filter_vmbox_messages(MediaId, MediaId, Msg, [], Acc) ->
+    {Msg, Acc};
+filter_vmbox_messages(_MediaId, _, _, [], _) ->
+    lager:warning("found media doc ~s but could not find metadata in vmbox", [_MediaId]),
+    {'error', 'not_found'};
+filter_vmbox_messages(MediaId, MediaId, Msg, Tail, Acc) ->
+    {Msg, lists:flatten([Acc | Tail])};
+filter_vmbox_messages(MediaId, _, _, [H|T], Acc) ->
+    filter_vmbox_messages(MediaId, kzd_voice_message:media_id(H), H, T, [H|Acc]).

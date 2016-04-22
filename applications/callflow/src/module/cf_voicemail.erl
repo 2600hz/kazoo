@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% "data":{
 %%%   "action":"compose"|"check"
@@ -478,7 +478,7 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=B
                 andalso review_recording(AttachmentName, 'true', Box, Call)
             of
                 'false' ->
-                    cf_util:start_task(fun new_message/4, [AttachmentName, Length, Box], Call);
+                    new_message(AttachmentName, Length, Box, Call);
                 {'ok', 'record'} ->
                     record_voicemail(tmp_file(), Box, Call);
                 {'ok', _Selection} ->
@@ -994,22 +994,28 @@ overwrite_temporary_unavailable_greeting(AttachmentName
                 ]
                 ,Call
                ),
-    _ = whapps_call_command:b_record(AttachmentName, Call),
-    case review_recording(AttachmentName, 'false', Box, Call) of
-        {'ok', 'record'} ->
-            lager:info("selected item: record new temporary greetings"),
-            record_temporary_unavailable_greeting(tmp_file(), Box, Call);
-        {'ok', 'save'} ->
-            lager:info("selected item: store recorded temporary greetings"),
-            _ = store_recording(AttachmentName, MediaId, Box, Call),
-            'ok' = update_doc([<<"media">>, <<"temporary_unavailable">>], MediaId, Box, Call),
-            _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
-            Box;
-        {'ok', 'no_selection'} ->
-            lager:info("selected item: no selection"),
-            _ = whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
-            'ok';
-        {'branch', _}=B -> B
+    case whapps_call_command:b_record(AttachmentName, Call) of
+        {'ok', Msg} ->
+            case review_recording(AttachmentName, 'false', Box, Call) of
+                {'ok', 'record'} ->
+                    lager:info("selected item: record new temporary greetings"),
+                    record_temporary_unavailable_greeting(tmp_file(), Box, Call);
+                {'ok', 'save'} ->
+                    lager:info("selected item: store recorded temporary greetings"),
+                    Length = wh_json:get_integer_value(<<"Length">>, Msg, 0),
+                    _ = store_recording(AttachmentName, Length, MediaId, Box, Call),
+                    'ok' = update_doc([<<"media">>, <<"temporary_unavailable">>], MediaId, Box, Call),
+                    _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
+                    Box;
+                {'ok', 'no_selection'} ->
+                    lager:info("selected item: no selection"),
+                    _ = whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
+                    'ok';
+                {'branch', _}=B -> B
+            end;
+        {'error', _R} ->
+            lager:info("error while attempting to record temporary unavailable recording: ~p", [_R])
+
     end.
 
 %%--------------------------------------------------------------------
@@ -1063,19 +1069,24 @@ overwrite_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=Med
                                               ]
                                               ,Call
                                              ),
-    _ = whapps_call_command:b_record(AttachmentName, Call),
-    case review_recording(AttachmentName, 'false', Box, Call) of
-        {'ok', 'record'} ->
-            record_unavailable_greeting(tmp_file(), Box, Call);
-        {'ok', 'save'} ->
-            _ = store_recording(AttachmentName, MediaId, Box, Call),
-            'ok' = update_doc([<<"media">>, <<"unavailable">>], MediaId, Box, Call),
-            _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
-            Box;
-        {'ok', 'no_selection'} ->
-            _ = whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
-            'ok';
-        {'branch', _}=B -> B
+    case whapps_call_command:b_record(AttachmentName, Call) of
+        {'ok', Msg} ->
+            case review_recording(AttachmentName, 'false', Box, Call) of
+                {'ok', 'record'} ->
+                    record_unavailable_greeting(tmp_file(), Box, Call);
+                {'ok', 'save'} ->
+                    Length = wh_json:get_integer_value(<<"Length">>, Msg, 0),
+                    _ = store_recording(AttachmentName, Length, MediaId, Box, Call),
+                    'ok' = update_doc([<<"media">>, <<"unavailable">>], MediaId, Box, Call),
+                    _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
+                    Box;
+                {'ok', 'no_selection'} ->
+                    _ = whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
+                    'ok';
+                {'branch', _}=B -> B
+            end;
+        {'error', _R} ->
+            lager:info("error while attempting to record unavailable recording: ~p", [_R])
     end.
 
 %%--------------------------------------------------------------------
@@ -1120,19 +1131,24 @@ record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call, DocId) ->
     _NoopId = whapps_call_command:audio_macro([{'prompt',  <<"vm-record_name">>}
                                                ,{'tones', [Tone]}
                                               ], Call),
-    _ = whapps_call_command:b_record(AttachmentName, Call),
-    case review_recording(AttachmentName, 'false', Box, Call) of
-        {'ok', 'record'} ->
-            record_name(tmp_file(), Box, Call);
-        {'ok', 'save'} ->
-            _ = store_recording(AttachmentName, MediaId, Box, Call),
-            'ok' = update_doc(?RECORDED_NAME_KEY, MediaId, DocId, Call),
-            _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
-            Box;
-        {'ok', 'no_selection'} ->
-            _ = whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
-            'ok';
-        {'branch', _}=B -> B
+    case whapps_call_command:b_record(AttachmentName, Call) of
+        {'ok', Msg} ->
+            case review_recording(AttachmentName, 'false', Box, Call) of
+                {'ok', 'record'} ->
+                    record_name(tmp_file(), Box, Call);
+                {'ok', 'save'} ->
+                    Length = wh_json:get_integer_value(<<"Length">>, Msg, 0),
+                    _ = store_recording(AttachmentName, Length, MediaId, Box, Call),
+                    'ok' = update_doc(?RECORDED_NAME_KEY, MediaId, DocId, Call),
+                    _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
+                    Box;
+                {'ok', 'no_selection'} ->
+                    _ = whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
+                    'ok';
+                {'branch', _}=B -> B
+            end;
+        {'error', _R} ->
+            lager:info("error while attempting to record recording name: ~p", [_R])
     end.
 
 %%--------------------------------------------------------------------
@@ -1246,8 +1262,9 @@ collect_pin(Interdigit, Call, NoopId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec new_message(ne_binary(), pos_integer(), mailbox(), whapps_call:call()) -> any().
-new_message(_AttachmentName, Length, #mailbox{min_message_length=MinLength}, _Call)
-    when Length < MinLength -> 'ok';
+new_message(_, Length, #mailbox{min_message_length=MinLength}, _)
+                                when Length < MinLength ->
+    lager:info("attachment length is ~B and must be larger than ~B to be stored", [Length, MinLength]);
 new_message(AttachmentName, Length, #mailbox{mailbox_number=BoxNum
                                              ,mailbox_id=BoxId
                                              ,timezone=Timezone
@@ -1255,14 +1272,11 @@ new_message(AttachmentName, Length, #mailbox{mailbox_number=BoxNum
                                              ,transcribe_voicemail=MaybeTranscribe
                                              ,after_notify_action=Action
                                             }=Box, Call) ->
-    AccountId = whapps_call:account_id(Call),
     NewMsgProps = [{<<"Box-Id">>, BoxId}
                    ,{<<"OwnerId">>, OwnerId}
                    ,{<<"Length">>, Length}
                    ,{<<"Transcribe-Voicemail">>, MaybeTranscribe}
                    ,{<<"After-Notify-Action">>, Action}
-                   ,{<<"Default-Extension">>, ?DEFAULT_VM_EXTENSION}
-                   ,{<<"Retry-Storage-Times">>, ?MAILBOX_RETRY_STORAGE_TIMES(AccountId)}
                   ],
     case kz_vm_message:new_message(AttachmentName, BoxNum, Timezone, Call, NewMsgProps) of
         'ok' -> send_mwi_update(Box, Call);
@@ -1607,101 +1621,22 @@ review_recording(AttachmentName, AllowOperator
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec store_recording(ne_binary(), ne_binary(), mailbox(), whapps_call:call()) -> boolean() | 'error'.
-store_recording(AttachmentName, DocId, Box, Call) ->
+-spec store_recording(ne_binary(), non_neg_integer(), ne_binary(), mailbox(), whapps_call:call()) -> 'ok' | {'error', whapps_call:call()}.
+store_recording(_, Length, _, #mailbox{min_message_length=MinLength}, _)
+                                when Length < MinLength ->
+    lager:info("attachment length is ~B and must be larger than ~B to be stored", [Length, MinLength]);
+store_recording(AttachmentName, _Length, DocId, Box, Call) ->
     Url = get_new_attachment_url(AttachmentName, DocId, Box, Call),
+    Call1 = whapps_call:kvs_store('media_url', Url, Call),
 
     lager:debug("storing recording ~s in doc ~s with url ~s", [AttachmentName, DocId, Url]),
-    case try_store_recording(AttachmentName, DocId, Url, Call) of
-        'ok' ->
-            check_attachment_length(AttachmentName, DocId, Call);
-        {'error', _}=Err -> Err
+    case whapps_call_command:store_file(<<"/tmp/", AttachmentName/binary>>, Url, Call1) of
+        'ok' -> 'ok';
+        {'error', _R}=E ->
+            lager:error("error trying to store media recording: ~p", [_R]),
+            {'error', whapps_call:kvs_store('error_details', {'error', E}, Call1)}
     end.
 
--spec check_attachment_length(ne_binary(), ne_binary(), whapps_call:call()) ->
-                                     boolean() |
-                                     {'error', whapps_call:call()}.
-check_attachment_length(AttachmentName, DocId, Call) ->
-    AccountDb = whapps_call:account_db(Call),
-    MinLength = min_recording_length(Call),
-
-    case kz_datamgr:open_doc(AccountDb, DocId) of
-        {'ok', JObj} ->
-            case wh_doc:attachment_length(JObj, AttachmentName) of
-                'undefined' ->
-                    Err = io_lib:format("attachment ~s is missing from doc ~s", [AttachmentName, DocId]),
-                    lager:debug(Err),
-                    {'error', whapps_call:kvs_store('error_details', {'error', Err}, Call)};
-                AttachmentLength ->
-                    lager:info("attachment length is ~B and must be larger than ~B to be stored", [AttachmentLength, MinLength]),
-                    is_integer(AttachmentLength) andalso AttachmentLength > MinLength
-            end;
-        {'error', _}=Err ->
-            {'error', whapps_call:kvs_store('error_details', Err, Call) }
-    end.
-
--spec try_store_recording(ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) ->
-                                 'ok' | {'error', whapps_call:call()}.
--spec try_store_recording(ne_binary(), ne_binary(), ne_binary(), integer(), whapps_call:call()) ->
-                                 'ok' | {'error', whapps_call:call()}.
-try_store_recording(AttachmentName, DocId, Url, Call) ->
-    Tries = ?MAILBOX_RETRY_STORAGE_TIMES(whapps_call:account_id(Call)),
-    Funs = [{fun whapps_call:kvs_store/3, 'media_url', Url}],
-    try_store_recording(AttachmentName, DocId, Url, Tries, whapps_call:exec(Funs, Call)).
-
-try_store_recording(_, _, _, 0, Call) -> {'error', Call};
-try_store_recording(AttachmentName, DocId, Url, Tries, Call) ->
-    case whapps_call_command:store_file(<<"/tmp/", AttachmentName/binary>>, Url, Call) of
-        {'ok', JObj} ->
-            verify_stored_recording(AttachmentName, DocId, Url, Tries, Call, JObj);
-        Other ->
-            lager:error("error trying to store voicemail media, retrying ~B more times", [Tries - 1]),
-            retry_store(AttachmentName, DocId, Url, Tries, Call, Other)
-    end.
-
--spec retry_store(ne_binary(), ne_binary(), ne_binary(), pos_integer(), whapps_call:call(), any()) ->
-                         'ok' | {'error', whapps_call:call()}.
-retry_store(AttachmentName, DocId, Url, Tries, Call, Error) ->
-    timer:sleep(2000),
-    Call1 = whapps_call:kvs_store('error_details', Error, Call),
-    try_store_recording(AttachmentName, DocId, Url, Tries - 1, Call1).
-
--spec verify_stored_recording(ne_binary(), ne_binary(), ne_binary(), pos_integer(), whapps_call:call(), wh_json:object()) ->
-                                     'ok' |
-                                     {'error', whapps_call:call()}.
-verify_stored_recording(AttachmentName, DocId, Url, Tries, Call, JObj) ->
-    case wh_json:get_value(<<"Application-Response">>, JObj) of
-        <<"success">> ->
-            lager:debug("storing ~s into ~s was successful", [AttachmentName, DocId]);
-        _Response ->
-            case check_attachment_length(AttachmentName, DocId, Call) of
-                'true' ->
-                    lager:debug("attachment ~s exists on ~s, saved!", [AttachmentName, DocId]);
-                'false' ->
-                    lager:debug("attachment ~s isn't on ~s, retry necessary", [AttachmentName, DocId]),
-                    retry_store(AttachmentName, DocId, Url, Tries, Call, JObj);
-                {'error', Call1} ->
-                    lager:debug("error fetching ~s, will retry store", [DocId]),
-                    retry_store(AttachmentName, DocId, Url, Tries, Call1, JObj)
-            end
-    end.
-
--spec min_recording_length(whapps_call:call()) -> integer().
-min_recording_length(Call) ->
-    case whapps_account_config:get(whapps_call:account_id(Call)
-                                   ,?CF_CONFIG_CAT
-                                   ,[?KEY_VOICEMAIL, ?KEY_MIN_MESSAGE_SIZE]
-                                  )
-    of
-        'undefined' -> ?MAILBOX_DEFAULT_MSG_MIN_LENGTH;
-        MML -> wh_util:to_integer(MML)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec get_new_attachment_url(ne_binary(), ne_binary(), mailbox(), whapps_call:call()) -> ne_binary().
 get_new_attachment_url(AttachmentName, MediaId, #mailbox{owner_id=OwnerId}, Call) ->
     AccountDb = whapps_call:account_db(Call),
@@ -1720,6 +1655,22 @@ maybe_remove_attachments(AccountDb, MediaId, JObj) ->
         {'true', Removed} ->
             kz_datamgr:save_doc(AccountDb, Removed),
             lager:debug("doc ~s has existing attachments, removing", [MediaId])
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec min_recording_length(whapps_call:call()) -> integer().
+min_recording_length(Call) ->
+    case whapps_account_config:get(whapps_call:account_id(Call)
+                                   ,?CF_CONFIG_CAT
+                                   ,[?KEY_VOICEMAIL, ?KEY_MIN_MESSAGE_SIZE]
+                                  )
+    of
+        'undefined' -> ?MAILBOX_DEFAULT_MSG_MIN_LENGTH;
+        MML -> wh_util:to_integer(MML)
     end.
 
 %%--------------------------------------------------------------------
