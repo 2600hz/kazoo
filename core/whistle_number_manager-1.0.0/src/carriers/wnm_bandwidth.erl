@@ -13,7 +13,6 @@
 -export([find_numbers/3]).
 -export([acquire_number/1]).
 -export([disconnect_number/1]).
--export([get_number_data/1]).
 -export([is_number_billable/1]).
 -export([should_lookup_cnam/0]).
 
@@ -78,30 +77,6 @@
 -define(TOLLFREE_PASSWORD,
         whapps_config:get_string(?WNM_BW_CONFIG_CAT, <<"tollfree_password">>, <<"tollfree-password">>)).
 -define(BW_URL_V1, "https://api.bandwidth.com/public/voip/v1_1/NumberManagementService.asmx").
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Query the Bandwidth.com system for a quanity of available numbers
-%% in a rate center
-%% @end
-%%--------------------------------------------------------------------
--spec get_number_data(ne_binary()) -> wh_json:object().
-get_number_data(<<"+", Rest/binary>>) ->
-    get_number_data(Rest);
-get_number_data(<<"1", Rest/binary>>) ->
-    get_number_data(Rest);
-get_number_data(Number) ->
-    Props = [{'getType', ["10digit"]}
-             ,{'getValue', [wh_util:to_list(Number)]}
-            ],
-    case make_numbers_request('getTelephoneNumber', Props) of
-        {'error', _} -> wh_json:new();
-        {'ok', Xml} ->
-            Response = xmerl_xpath:string("/getResponse/telephoneNumber", Xml),
-            number_search_response_to_json(Response)
-    end.
-
 
 %% @public
 -spec is_number_billable(wnm_number()) -> 'true'.
@@ -283,7 +258,7 @@ disconnect_number(Number) -> Number.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Make a REST request to Bandwidth.com Numbers API to preform the
+%% Make a REST request to Bandwidth.com Numbers API to perform the
 %% given verb (purchase, search, provision, etc).
 %% @end
 %%--------------------------------------------------------------------
@@ -368,7 +343,7 @@ handle_ibrowse_response({'error', _}=E) ->
 %% Convert a number order response to json
 %% @end
 %%--------------------------------------------------------------------
--spec number_order_response_to_json(iolist()) -> wh_json:object().
+-spec number_order_response_to_json(xml_el() | xml_els()) -> wh_json:object().
 number_order_response_to_json([]) ->
     wh_json:new();
 number_order_response_to_json([Xml]) ->
@@ -392,7 +367,7 @@ number_order_response_to_json(Xml) ->
 %% Convert a number search response XML entity to json
 %% @end
 %%--------------------------------------------------------------------
--spec number_search_response_to_json(iolist()) -> wh_json:object().
+-spec number_search_response_to_json(xml_el() | xml_els()) -> wh_json:object().
 number_search_response_to_json([]) ->
     wh_json:new();
 number_search_response_to_json([Xml]) ->

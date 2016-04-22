@@ -30,7 +30,7 @@ This document has the following parameters.
 * numbers_api_url: This is the API URL to use when issuing activation or standard number searches to Bandwidth.  There is little reason to change this from the default.
 * developer_key: This is the API key provided to you from Bandwidth to access the "numbers_api_url" above.  You must update this for the module to work properly.
 * debug: If this parameter is set to 'true' then each request and reply from Bandwidth will be written as a text file to /tmp/bandwidth.log for developers.
-* enable_provisioning: If this parameter is set to 'true' then the ability to active numbers will be enabled.  If set to 'false' then the module will only preform number searches.
+* enable_provisioning: If this parameter is set to 'true' then the ability to active numbers will be enabled.  If set to 'false' then the module will only perform number searches.
 * sandbox_provisioning: This parameter is intended to be used with 'enable_provisioning'.  If set to 'true' then all number provisioning will pretend to be successful without actually activating.
 * order_name_prefix: This is an arbitrary string that is added to the "order-id" of a number provisioning request to bandwidth to identify which numbers where purchased by the Kazoo system.
 * endpoints: This is an array of IP addresses that should be provided in the number provisioning request to bandwidth.  It should be the available Kamailio servers in the zone (or cluster if the zone is not redundant).
