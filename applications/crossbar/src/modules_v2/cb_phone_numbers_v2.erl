@@ -385,15 +385,9 @@ put(Context, Number, ?ACTIVATE) ->
                ,{'dry_run', not cb_context:accepting_charges(Context)}
                ,{'public_fields', cb_context:doc(Context)}
               ],
-    AccountId = cb_context:account_id(Context),
-    case knm_number:buy(Number, AccountId, Options) of
-        {'error', _}=Error ->
-            set_response(Error, Context);
-        {'ok', _} ->
-            NewOptions = [{'dry_run', cb_context:accepting_charges(Context)} | Options],
-            Result = knm_number:buy(Number, AccountId, NewOptions),
-            set_response(Result, Context)
-    end;
+    Result = knm_number:move(Number, cb_context:account_id(Context), Options),
+    CB = fun() -> put(cb_context:set_accepting_charges(Context), Number, ?ACTIVATE) end,
+    set_response(Result, Context, CB);
 put(Context, Number, ?RESERVE) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}

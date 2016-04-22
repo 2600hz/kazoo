@@ -16,7 +16,6 @@
          ,release/1, release/2
          ,change_state/1, change_state/2
          ,assigned_to_app/1, assigned_to_app/2
-         ,buy/3
          ,free/1
          ,emergency_enabled/1
         ]).
@@ -199,16 +198,6 @@ do_assigned_to_app([], _Options, Acc) -> Acc;
 do_assigned_to_app([{Num, App}|Props], Options, Acc) ->
     Return = knm_number:assign_to_app(Num, App, Options),
     do_assigned_to_app(Props, Options, [{Num, Return}|Acc]).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec buy(ne_binaries(), ne_binary(), knm_number_options:options()) ->
-                 numbers_return().
-buy(Nums, Account, Options) ->
-    [{Num,knm_number:buy(Num, Account, Options)} || Num <- Nums].
 
 %%--------------------------------------------------------------------
 %% @public

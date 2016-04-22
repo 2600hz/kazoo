@@ -288,7 +288,7 @@ default_carrier() ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Create a list of all available carrier modules
+%% Buy a number from its carrier module
 %% @end
 %%--------------------------------------------------------------------
 -spec acquire(knm_number:knm_number()) -> knm_number:knm_number().
