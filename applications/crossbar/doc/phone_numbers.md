@@ -694,14 +694,47 @@ curl -v -X POST \
 ```
 
 
-#### Fetch
+#### Return which account a number belongs to
 
 > GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/identify
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/identify
+```
+
+##### Responses
+
+###### Success
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "account_id": "009afc511c97b2ae693c6cc4920988e8",
+        "number": "{PHONENUMBER}"
+    },
+    "request_id": "f8cee053b9992435924eaa1554d7555d",
+    "revision": "undefined",
+    "status": "success"
+}
+```
+
+###### Number not found or not enough privileges
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "message": "bad identifier",
+        "not_found": "The number could not be found"
+    },
+    "error": "404",
+    "message": "bad_identifier",
+    "request_id": "8c3fa68c1ebf758ca4e1628e2048fb16",
+    "status": "error"
+}
 ```
 
 
