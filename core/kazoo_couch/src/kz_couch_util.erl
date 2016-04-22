@@ -204,6 +204,7 @@ format_error({'ok', "500", _Headers, Body}) ->
             'server_error'
     end;
 format_error('timeout') -> 'timeout';
+format_error('not_found') -> 'not_found';
 format_error(E) ->
     lager:warning("unformatted error: ~p", [E]),
     E.
