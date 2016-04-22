@@ -49,7 +49,7 @@ handle_audio_req(OffnetReq) ->
 handle_audio_req(Number, OffnetReq) ->
     case stepswitch_util:lookup_number(Number) of
         {'ok', AccountId, Props} ->
-            maybe_force_outbound(knm_number:set_account_id(Props, AccountId), OffnetReq);
+            maybe_force_outbound(knm_number_options:set_account_id(Props, AccountId), OffnetReq);
         _ -> maybe_bridge(Number, OffnetReq)
     end.
 
@@ -71,7 +71,8 @@ handle_originate_req(OffnetReq) ->
 handle_originate_req(Number, JObj) ->
     case stepswitch_util:lookup_number(Number) of
         {'ok', AccountId, Props} ->
-            maybe_force_originate_outbound(knm_number:set_account_id(Props, AccountId), JObj);
+            NewProps = knm_number_options:set_account_id(Props, AccountId),
+            maybe_force_originate_outbound(NewProps, JObj);
         _ -> maybe_originate(Number, JObj)
     end.
 
@@ -80,13 +81,13 @@ maybe_add_call_id('undefined', JObj) ->
     wh_json:set_value(<<"Outbound-Call-ID">>, wh_util:rand_hex_binary(8), JObj);
 maybe_add_call_id(_, JObj) -> JObj.
 
--spec maybe_force_originate_outbound(knm_number:number_options(), wh_json:object()) -> any().
+-spec maybe_force_originate_outbound(knm_number_options:extra_options(), wh_json:object()) -> any().
 maybe_force_originate_outbound(Props, JObj) ->
-    case knm_number:should_force_outbound(Props)
+    case knm_number_options:should_force_outbound(Props)
         orelse wh_json:is_true(<<"Force-Outbound">>, JObj, 'false')
     of
         'false' -> local_originate(Props, JObj);
-        'true' -> maybe_originate(knm_number:number(Props), JObj)
+        'true' -> maybe_originate(knm_number_options:number(Props), JObj)
     end.
 
 %%--------------------------------------------------------------------
@@ -101,7 +102,7 @@ handle_sms_req(OffnetReq) ->
     lager:debug("received outbound sms resource request for ~s", [Number]),
     case stepswitch_util:lookup_number(Number) of
         {'ok', AccountId, Props} ->
-            maybe_force_outbound_sms(knm_number:set_account_id(Props, AccountId), OffnetReq);
+            maybe_force_outbound_sms(knm_number_options:set_account_id(Props, AccountId), OffnetReq);
         _ -> maybe_sms(Number, OffnetReq)
     end.
 
@@ -111,13 +112,13 @@ handle_sms_req(OffnetReq) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_force_outbound(knm_number:number_options(), wapi_offnet_resource:req()) -> any().
+-spec maybe_force_outbound(knm_number_options:extra_options(), wapi_offnet_resource:req()) -> any().
 maybe_force_outbound(Props, OffnetReq) ->
-    case knm_number:should_force_outbound(Props)
+    case knm_number_options:should_force_outbound(Props)
         orelse wapi_offnet_resource:force_outbound(OffnetReq, 'false')
     of
         'false' -> local_extension(Props, OffnetReq);
-        'true' -> maybe_bridge(knm_number:number(Props), OffnetReq)
+        'true' -> maybe_bridge(knm_number_options:number(Props), OffnetReq)
     end.
 
 %%--------------------------------------------------------------------
@@ -126,13 +127,13 @@ maybe_force_outbound(Props, OffnetReq) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_force_outbound_sms(knm_number:number_options(), wapi_offnet_resource:req()) -> any().
+-spec maybe_force_outbound_sms(knm_number_options:extra_options(), wapi_offnet_resource:req()) -> any().
 maybe_force_outbound_sms(Props, OffnetReq) ->
-    case knm_number:should_force_outbound(Props)
+    case knm_number_options:should_force_outbound(Props)
         orelse wapi_offnet_resource:force_outbound(OffnetReq, 'false')
     of
         'false' -> local_sms(Props, OffnetReq);
-        'true' -> maybe_sms(knm_number:number(Props), OffnetReq)
+        'true' -> maybe_sms(knm_number_options:number(Props), OffnetReq)
     end.
 
 %%--------------------------------------------------------------------
@@ -181,7 +182,7 @@ maybe_sms(Number, OffnetReq) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec local_extension(knm_number:number_options(), wapi_offnet_resource:req()) ->
+-spec local_extension(knm_number_options:extra_options(), wapi_offnet_resource:req()) ->
                              sup_startchild_ret().
 local_extension(Props, OffnetReq) ->
     stepswitch_request_sup:local_extension(Props, OffnetReq).
@@ -192,7 +193,7 @@ local_extension(Props, OffnetReq) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec local_sms(knm_number:number_options(), wapi_offnet_resource:req()) -> 'ok'.
+-spec local_sms(knm_number_options:extra_options(), wapi_offnet_resource:req()) -> 'ok'.
 local_sms(Props, OffnetReq) ->
     stepswitch_local_sms:local_message_handling(Props, OffnetReq).
 
@@ -209,7 +210,7 @@ maybe_originate(Number, OffnetReq) ->
         Endpoints -> stepswitch_request_sup:originate(Endpoints, OffnetReq)
     end.
 
--spec local_originate(knm_number:number_options(), wh_json:object()) -> any().
+-spec local_originate(knm_number_options:extra_options(), wh_json:object()) -> any().
 local_originate(Props, JObj) ->
     Endpoints = [create_loopback_endpoint(Props, JObj)],
     J = wh_json:set_values([{<<"Simplify-Loopback">>, <<"false">>}
@@ -235,12 +236,12 @@ get_account_realm(AccountId) ->
         _ -> AccountId
     end.
 
--spec create_loopback_endpoint(knm_number:number_options(), wh_json:object()) -> any().
+-spec create_loopback_endpoint(knm_number_options:extra_options(), wh_json:object()) -> any().
 create_loopback_endpoint(Props, JObj) ->
     {CIDNum, CIDName} = local_originate_caller_id(JObj),
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
-    Number = knm_number:number(Props),
-    AccountId = knm_number:account_id(Props),
+    Number = knm_number_options:number(Props),
+    AccountId = knm_number_options:account_id(Props),
     Realm = get_account_realm(AccountId),
     CCVs = props:filter_undefined(
                    [{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception">>, <<Number/binary, "@", Realm/binary>>}

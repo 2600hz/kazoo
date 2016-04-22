@@ -750,34 +750,24 @@ handle_phonebook_resp(Resp) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Attempt to load a summarized listing of all instances of this
-%% resource.
 %% @end
 %%--------------------------------------------------------------------
 -spec identify(cb_context:context(), ne_binary()) -> cb_context:context().
 identify(Context, Number) ->
     case knm_number:lookup_account(Number) of
-        {'error', 'not_reconcilable'} ->
-            cb_context:add_system_error(
-                'bad_identifier'
-                ,wh_json:from_list([{<<"cause">>, Number}])
-                ,Context
-            );
-        {'error', E} ->
-            set_response({wh_util:to_binary(E), <<>>}, Context);
-        {'ok', AccountId, Options} ->
-            JObj = wh_json:set_values([{<<"account_id">>, AccountId}
-                                       ,{<<"number">>, knm_number:number(Options)}
-                                      ]
-                                      ,wh_json:new()
-                                     ),
-            set_response({'ok', JObj}, Context)
+        {'ok', AccountId, NumberOptions} ->
+            JObj = wh_json:from_list(
+                    [ {<<"account_id">>, AccountId}
+                    , {<<"number">>, knm_number_options:number(NumberOptions)}
+                    ]),
+            crossbar_util:response(JObj, Context);
+        {'error', _R}=Error ->
+            set_response(Error, Context)
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_request(cb_context:context()) -> cb_context:context().

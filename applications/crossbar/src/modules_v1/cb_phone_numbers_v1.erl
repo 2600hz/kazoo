@@ -354,7 +354,7 @@ identify(Context, Number) ->
             set_response({wh_util:to_binary(E), <<>>}, Number, Context);
         {'ok', AccountId, Options} ->
             JObj = wh_json:set_values([{<<"account_id">>, AccountId}
-                                       ,{<<"number">>, knm_number:number(Options)}
+                                       ,{<<"number">>, knm_number_options:number(Options)}
                                       ]
                                       ,wh_json:new()
                                      ),

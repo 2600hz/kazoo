@@ -408,21 +408,20 @@ get_inbound_destination(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_number(ne_binary()) ->
-                           {'ok', ne_binary(), wh_proplist()} |
-                           {'error', any()}.
+-spec lookup_number(ne_binary()) -> {'ok', ne_binary(), knm_number_options:extra_options()} |
+                                    {'error', any()}.
 lookup_number(Number) ->
     Num = knm_converters:normalize(Number),
     case kz_cache:fetch_local(?DOODLE_CACHE, cache_key_number(Num)) of
         {'ok', {AccountId, Props}} ->
             lager:debug("cached number ~s is associated with account ~s", [Num, AccountId]),
             {'ok', AccountId, Props};
-        {'error', 'not_found'} -> fetch_number(Num)
+        {'error', 'not_found'} ->
+            fetch_number(Num)
     end.
 
--spec fetch_number(ne_binary()) ->
-                          {'ok', ne_binary(), wh_proplist()} |
-                          {'error', any()}.
+-spec fetch_number(ne_binary()) -> {'ok', ne_binary(), knm_number_options:extra_options()} |
+                                   {'error', any()}.
 fetch_number(Num) ->
     case knm_number:lookup_account(Num) of
         {'ok', AccountId, Props} ->

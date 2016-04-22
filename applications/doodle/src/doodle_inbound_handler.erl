@@ -97,10 +97,10 @@ send_route_win(FetchId, CallId, JObj) ->
 %% determine the e164 format of the inbound number
 %% @end
 %%--------------------------------------------------------------------
--spec set_account_id(ne_binary(), wh_proplist(), wh_json:object()) ->
+-spec set_account_id(ne_binary(), knm_number_options:extra_options(), wh_json:object()) ->
                             wh_json:object().
 set_account_id(_Inception, NumberProps, JObj) ->
-    AccountId = knm_number:account_id(NumberProps),
+    AccountId = knm_number_options:account_id(NumberProps),
     AccountRealm = wh_util:get_account_realm(AccountId),
     wh_json:set_values(
       props:filter_undefined(
@@ -111,7 +111,7 @@ set_account_id(_Inception, NumberProps, JObj) ->
       ,JObj
      ).
 
--spec set_inception(ne_binary(), wh_proplist(), wh_json:object()) ->
+-spec set_inception(ne_binary(), knm_number_options:extra_options(), wh_json:object()) ->
                            wh_json:object().
 set_inception(<<"off-net">>, _, JObj) ->
     Request = wh_json:get_value(<<"From">>, JObj),
@@ -119,10 +119,10 @@ set_inception(<<"off-net">>, _, JObj) ->
 set_inception(_Inception, _, JObj) ->
     wh_json:delete_keys([<<"Inception">>, ?CCV(<<"Inception">>)], JObj).
 
--spec set_mdn(ne_binary(), wh_proplist(), wh_json:object()) ->
+-spec set_mdn(ne_binary(), knm_number_options:extra_options(), wh_json:object()) ->
                      wh_json:object().
 set_mdn(<<"on-net">>, NumberProps, JObj) ->
-    Number = knm_number:number(NumberProps),
+    Number = knm_number_options:number(NumberProps),
     case doodle_util:lookup_mdn(Number) of
         {'ok', Id, OwnerId} ->
             wh_json:set_values(
@@ -141,7 +141,7 @@ set_mdn(<<"on-net">>, NumberProps, JObj) ->
     end;
 set_mdn(_Inception, _NumberProps, JObj) -> JObj.
 
--spec set_static(ne_binary(), wh_proplist(), wh_json:object()) ->
+-spec set_static(ne_binary(), knm_number_options:extra_options(), wh_json:object()) ->
                         wh_json:object().
 set_static(_Inception, _, JObj) ->
     wh_json:set_values([{<<"Resource-Type">>, <<"sms">>}
@@ -151,12 +151,12 @@ set_static(_Inception, _, JObj) ->
                        ,JObj
                       ).
 
--spec delete_headers(ne_binary(), wh_proplist(), wh_json:object()) ->
+-spec delete_headers(ne_binary(), knm_number_options:extra_options(), wh_json:object()) ->
                             wh_json:object().
 delete_headers(_, _, JObj) ->
     wh_api:remove_defaults(JObj).
 
--spec set_realm(ne_binary(), wh_proplist(), wh_json:object()) ->
+-spec set_realm(ne_binary(), knm_number_options:extra_options(), wh_json:object()) ->
                        wh_json:object().
 set_realm(_, _, JObj) ->
     Realm = wh_json:get_value(?CCV(<<"Account-Realm">>), JObj),

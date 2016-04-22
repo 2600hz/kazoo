@@ -21,6 +21,17 @@
          ,default/0
         ]).
 
+-export([account_id/1, set_account_id/2
+         ,has_pending_port/1
+         ,inbound_cnam_enabled/1
+         ,is_local_number/1
+         ,number/1
+         ,prepend/1
+         ,ringback_media_id/1
+         ,should_force_outbound/1
+         ,transfer_media_id/1
+        ]).
+
 -include("knm.hrl").
 
 -type option() :: {'assign_to', ne_binary()} |
@@ -35,7 +46,21 @@
 
 -type options() :: [option()].
 
--export_type([option/0, options/0]).
+-type extra_option() :: {'account_id', ne_binary()} | %%api
+                        {'force_outbound', boolean()} |
+                        {'inbound_cnam', boolean()} |
+                        {'local', boolean()} |
+                        {'number', ne_binary()} | %%api
+                        {'pending_port', boolean()} |
+                        {'prepend', api_binary()} | %%|false
+                        {'ringback_media', api_binary()} |
+                        {'transfer_media', api_binary()}.
+
+-type extra_options() :: [extra_option()].
+
+-export_type([option/0, options/0
+             ,extra_option/0, extra_options/0
+             ]).
 
 -spec default() -> options().
 default() ->
@@ -104,3 +129,48 @@ should_delete(Options) ->
     should_delete(Options, 'false').
 should_delete(Options, Default) ->
     props:is_true('should_delete', Options, Default).
+
+
+%%--------------------------------------------------------------------
+%% Public get/set extra_options()
+%%--------------------------------------------------------------------
+-spec account_id(extra_options()) -> ne_binary().
+account_id(Props) when is_list(Props) ->
+    props:get_ne_binary_value('account_id', Props).
+
+-spec set_account_id(extra_options(), ne_binary()) -> extra_options().
+set_account_id(Props, AccountId=?MATCH_ACCOUNT_RAW(_)) when is_list(Props) ->
+    props:set_value('account_id', AccountId, Props).
+
+-spec has_pending_port(extra_options()) -> boolean().
+has_pending_port(Props) when is_list(Props) ->
+    props:get_is_true('pending_port', Props).
+
+-spec inbound_cnam_enabled(extra_options()) -> boolean().
+inbound_cnam_enabled(Props) when is_list(Props) ->
+    props:get_is_true('inbound_cnam', Props).
+
+-spec is_local_number(extra_options()) -> boolean().
+is_local_number(Props) when is_list(Props) ->
+    props:get_is_true('local', Props).
+
+-spec number(extra_options()) -> ne_binary().
+number(Props) when is_list(Props) ->
+    props:get_ne_binary_value('number', Props).
+
+-spec prepend(extra_options()) -> api_binary().
+prepend(Props) when is_list(Props) ->
+    props:get_value('prepend', Props).
+
+-spec ringback_media_id(extra_options()) -> api_binary().
+ringback_media_id(Props) when is_list(Props) ->
+    props:get_value('ringback_media', Props).
+
+-spec should_force_outbound(extra_options()) -> boolean().
+should_force_outbound(Props) when is_list(Props) ->
+    props:get_is_true('force_outbound', Props).
+
+-spec transfer_media_id(extra_options()) -> api_binary().
+transfer_media_id(Props) when is_list(Props) ->
+    props:get_value('transfer_media', Props).
+%%--------------------------------------------------------------------

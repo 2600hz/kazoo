@@ -23,7 +23,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {number_props = [] :: knm_number:number_options()
+-record(state, {number_props = [] :: knm_number_options:extra_options()
                 ,resource_req :: wapi_offnet_resource:req()
                 ,request_handler :: pid()
                 ,control_queue :: api_binary()
@@ -45,7 +45,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(knm_number:number_options(), wapi_offnet_resource:req()) -> startlink_ret().
+-spec start_link(knm_number_options:extra_options(), wapi_offnet_resource:req()) -> startlink_ret().
 start_link(NumberProps, OffnetReq) ->
     CallId = wapi_offnet_resource:call_id(OffnetReq),
     Bindings = [{'call', [{'callid', CallId}
@@ -232,8 +232,8 @@ build_local_extension(#state{number_props=Props
                             }) ->
     {CIDNum, CIDName} = local_extension_caller_id(JObj),
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
-    Number = knm_number:number(Props),
-    AccountId = knm_number:account_id(Props),
+    Number = knm_number_options:number(Props),
+    AccountId = knm_number_options:account_id(Props),
     OriginalAccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     {CEDNum, CEDName} = local_extension_callee_id(JObj, Number),
 
