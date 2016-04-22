@@ -427,14 +427,57 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
 ```
 
-#### Fetch
+#### List classifiers
 
 > GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "caribbean": {
+            "friendly_name": "Caribbean",
+            "pretty_print": "SS(###) ### - ####",
+            "regex": "^\\+?1((?:684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340)\\d{7})$"
+        },
+        "did_us": {
+            "friendly_name": "US DID",
+            "pretty_print": "SS(###) ### - ####",
+            "regex": "^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$"
+        },
+        "emergency": {
+            "friendly_name": "Emergency Dispatcher",
+            "regex": "^(911)$"
+        },
+        "international": {
+            "friendly_name": "International",
+            "regex": "^(011\\d*)$|^(00\\d*)$"
+        },
+        "toll_us": {
+            "friendly_name": "US Toll",
+            "pretty_print": "SS(###) ### - ####",
+            "regex": "^\\+1(900\\d{7})$"
+        },
+        "tollfree_us": {
+            "friendly_name": "US TollFree",
+            "pretty_print": "SS(###) ### - ####",
+            "regex": "^\\+1((?:800|888|877|866|855)\\d{7})$"
+        },
+        "unknown": {
+            "friendly_name": "Unknown",
+            "regex": "^(.*)$"
+        }
+    },
+    "request_id": "3a7cf0257c33fa959263dec20b184fe5",
+    "revision": "undefined",
+    "status": "success"
+}
 ```
 
 #### Fix issues
@@ -514,14 +557,31 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/activate
 ```
 
-#### Fetch
+#### Classify a number
 
 > GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers/{PHONENUMBER}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers/{PHONENUMBER}
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "e164": "+1{PHONENUMBER}",
+        "friendly_name": "US DID",
+        "name": "did_us",
+        "number": "{PHONENUMBER}",
+        "pretty_print": "SS(###) ### - ####",
+        "regex": "^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$"
+    },
+    "request_id": "89bd26ad10ea97ad789fbde584be9568",
+    "revision": "undefined",
+    "status": "success"
+}
 ```
 
 #### Create
@@ -534,33 +594,6 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection/activate
 ```
 
-
-#### Check classifier for a number
-
-##### Request
-
-```shell
-curl -X GET -H 'Content-Type: application/json' http://{{SERVER}}:8000/v2/phone_numbers/classifiers/4158867900
-```
-
-##### Response
-
-```json
-{
-    "auth_token": "{{AUTH_TOKEN}}"
-     ,"data": {
-         "e164": "+14158867900"
-         ,"friendly_name": "US DID"
-         ,"name": "did_us"
-         ,"number": "4158867900"
-         ,"pretty_print": "SS(###) ##### - ####"
-         ,"regex": "^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$"
-     }
-     ,"request_id": {{REQUEST_ID}}
-     ,"revision": "undefined"
-     ,"status": "success"
-}
-```
 
 #### Activate a new phone number
 
@@ -686,76 +719,6 @@ curl -X PUT -H "Content-Type: application/json" -H "X-Auth-Token: {{AUTH_TOKEN}}
 }
 ```
 
-
-### Load classifiers
-
-#### Request
-
-`GET` `http://{{SERVER}}/v2/accounts/{{account_id}}/phone_numbers/classifiers`
-
-#### Response
-
-```json
-{
-    "data": {
-        "tollfree_us": {
-            "regex": "^\\\\+1((?:800|888|877|866|855)\\\\d{7})$",
-            "friendly_name": "US TollFree",
-            "pretty_print": "SS(###) ### - ####"
-        },
-        "toll_us": {
-            "regex": "^\\\\+1(900\\\\d{7})$",
-            "friendly_name": "US Toll",
-            "pretty_print": "SS(###) ### - ####"
-        },
-        "emergency": {
-            "regex": "^(911)$",
-            "friendly_name": "Emergency Dispatcher"
-        },
-        "caribbean": {
-            "regex": "^\\\\+?1((?:684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340)\\\\d{7})$",
-            "friendly_name": "Caribbean",
-            "pretty_print": "SS(###) ### - ####"
-        },
-        "did_us": {
-            "regex": "^\\\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$",
-            "friendly_name": "US DID",
-            "pretty_print": "SS(###) ### - ####"
-        },
-        "international": {
-            "regex": "^(011\\\\d*)$|^(00\\\\d*)$",
-            "friendly_name": "International"
-        },
-        "unknown": {
-            "regex": "^(.*)$",
-            "friendly_name": "Unknown"
-        }
-    },
-    "status": "success"
-}
-```
-
-### Classify a number
-
-#### Request
-
-`GET` `http://{{SERVER}}/v2/accounts/{{account_id}}/phone_numbers/classifiers/{{NUMBER}}`
-
-#### Response
-
-```json
-{
-    "data": {
-        "regex": "^\\\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$",
-        "friendly_name": "US DID",
-        "pretty_print": "SS(###) ### - ####",
-        "e164": "+14158551292",
-        "number": "4158551292",
-        "name": "did_us"
-    },
-    "status": "success"
-}
-```
 
 ### Locality
 
