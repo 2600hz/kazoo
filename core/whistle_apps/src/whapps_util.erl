@@ -58,6 +58,7 @@
         ]).
 
 -export([media_local_store_url/2]).
+-export([system_report/2, system_report/3]).
 
 -include("whistle_apps.hrl").
 
@@ -686,3 +687,22 @@ media_local_store_url(Call, JObj) ->
     MediaId = wh_doc:id(JObj),
     MediaName = wh_json:get_value(<<"name">>, JObj),
     kz_datamgr:attachment_url(AccountDb, MediaId, MediaName).
+
+-spec system_report({text(), text()} | text(), whapps_call:call()) -> 'ok'.
+system_report({Subject, Msg}, Call) ->
+    system_report(Subject, Msg, Call);
+system_report(Msg, Call) ->
+    system_report(Msg, Msg, Call).
+
+-spec system_report(text(), text(), whapps_call:call()) -> 'ok'.
+system_report(Subject, Msg, Call) ->
+    AppName = whapps_call:application_name(Call),
+    AppVersion = whapps_call:application_version(Call),
+    Notify = props:filter_undefined(
+               [{<<"Subject">>, Subject}
+                ,{<<"Message">>, iolist_to_binary(Msg)}
+                ,{<<"Details">>, whapps_call:to_json(Call)}
+                ,{<<"Account-ID">>, whapps_call:account_id(Call)}
+                | wh_api:default_headers(AppName, AppVersion)
+               ]),
+    wh_amqp_worker:cast(Notify, fun wapi_notifications:publish_system_alert/1).
