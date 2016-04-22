@@ -358,17 +358,6 @@ send_mwi_update(New, Saved, Username, Realm, JObj) ->
     whapps_util:amqp_pool_send(Command, fun wapi_presence:publish_mwi_update/1).
 
 %%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec vm_count_by_owner(ne_binary(), api_binary()) -> {non_neg_integer(), non_neg_integer()}.
-vm_count_by_owner(_AccountDb, 'undefined') -> {0, 0};
-vm_count_by_owner(<<_/binary>> = AccountDb, <<_/binary>> = OwnerId) ->
-    kz_vm_message:count_by_owner(AccountDb, OwnerId).
-
-%%--------------------------------------------------------------------
 %% @public
 %% @doc
 %%
@@ -1049,6 +1038,11 @@ start_task(Fun, Args, Call) ->
     SpawnInfo = {'cf_task', [Fun, Args]},
     cf_exe:add_event_listener(Call, SpawnInfo).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec mailbox(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} |
                                            {'error', any()}.
 mailbox(AccountDb, VMNumber) ->
@@ -1089,9 +1083,22 @@ get_mailbox(AccountDb, VMNumber) ->
 
 -spec vm_count(wh_json:object()) -> {non_neg_integer(), non_neg_integer()}.
 vm_count(JObj) ->
-    Messages = wh_json:get_value(?VM_KEY_MESSAGES, JObj, []),
-    {vc_sum(Messages, ?VM_FOLDER_NEW), vc_sum(Messages, ?VM_FOLDER_SAVED)}.
+    AccountId = wh_doc:account_id(JObj),
+    BoxId = wh_doc:id(JObj),
 
--spec vc_sum(wh_json:objects(), ne_binary()) -> non_neg_integer().
-vc_sum(Ms, F) ->
-    lists:sum([1 || M <- Ms, wh_json:get_value(?VM_KEY_FOLDER, M) =:= F]).
+    Messages = wh_json:get_value(?VM_KEY_MESSAGES, JObj, []),
+    New = kzd_voice_message:count_messages(Messages, ?VM_FOLDER_NEW),
+    Saved = kzd_voice_message:count_messages(Messages, ?VM_FOLDER_SAVED),
+
+    kz_vm_message:count_modb_messages(AccountId, BoxId, {New, Saved}).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec vm_count_by_owner(ne_binary(), api_binary()) -> {non_neg_integer(), non_neg_integer()}.
+vm_count_by_owner(_AccountDb, 'undefined') -> {0, 0};
+vm_count_by_owner(<<_/binary>> = AccountDb, <<_/binary>> = OwnerId) ->
+    kz_vm_message:count_by_owner(AccountDb, OwnerId).
+

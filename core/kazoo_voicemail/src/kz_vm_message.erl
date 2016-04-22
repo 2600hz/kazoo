@@ -11,7 +11,7 @@
 -export([new_message/5
          ,message_doc/2
          ,message/2, messages/2
-         ,count/2, count_per_folder/2, count_by_owner/2
+         ,count/2, count_per_folder/2, count_by_owner/2, count_modb_messages/3
          ,set_folder/3, update_folder/3
 
          ,media_url/2

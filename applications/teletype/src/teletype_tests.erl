@@ -19,7 +19,7 @@
 voicemail_to_email(AccountId) ->
     case find_vmboxes(AccountId) of
         [] -> lager:debug("no voicemail boxes in account ~s", [AccountId]);
-        VMBoxes -> find_vmbox_with_messages(AccountId, VMBoxes)
+        VMBoxes -> find_vmbox_messages(AccountId, VMBoxes)
     end.
 
 find_vmboxes(AccountId) ->
@@ -31,24 +31,25 @@ find_vmboxes(AccountId) ->
             []
     end.
 
-find_vmbox_with_messages(_AccountId, []) ->
+find_vmbox_messages(_AccountId, []) ->
     lager:debug("no vmboxes had messages in ~p", [_AccountId]);
-find_vmbox_with_messages(AccountId, [Box|Boxes]) ->
-    case wh_json:get_value([<<"doc">>, <<"messages">>], Box) of
-        [] -> find_vmbox_with_messages(AccountId, Boxes);
-        _Ms -> voicemail_to_email(AccountId, wh_json:get_value(<<"doc">>, Box))
+find_vmbox_messages(AccountId, [Box|Boxes]) ->
+    case kz_vm_message:messages(AccountId, Box) of
+        [] -> find_vmbox_messages(AccountId, Boxes);
+        Ms -> voicemail_to_email(AccountId, wh_json:get_value(<<"doc">>, Box), Ms)
     end.
 
 voicemail_to_email(AccountId, <<_/binary>> = VoicemailBoxId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     {'ok', VMBox} = kz_datamgr:open_cache_doc(AccountDb
-                                             ,VoicemailBoxId
-                                            ),
-    voicemail_to_email(AccountId, VMBox);
-voicemail_to_email(AccountId, VMBox) ->
-    MediaId = wh_json:get_value([<<"messages">>, 1, <<"media_id">>], VMBox),
-    Length = wh_json:get_value([<<"messages">>, 1, <<"length">>], VMBox),
-    CallId = wh_json:get_value([<<"messages">>, 1, <<"call_id">>], VMBox),
+                                              ,VoicemailBoxId
+                                             ),
+    find_vmbox_messages(AccountId, [VMBox]).
+
+voicemail_to_email(AccountId, VMBox,  [Message|_]) ->
+    MediaId = wh_json:get_value(<<"media_id">>, Message),
+    Length = wh_json:get_value(<<"length">>, Message),
+    CallId = wh_json:get_value(<<"call_id">>, Message),
 
     Prop = [{<<"From-User">>, <<"TestFromUser">>}
             ,{<<"From-Realm">>, <<"TestFromRealm">>}
