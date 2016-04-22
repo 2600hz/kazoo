@@ -130,6 +130,9 @@
          ,make_dir/1
         ]).
 
+-export([calling_app/0, calling_app_version/0]).
+-export([get_app/1]).
+
 -include_lib("kernel/include/inet.hrl").
 
 -include_lib("whistle/include/wh_types.hrl").
@@ -1253,14 +1256,8 @@ current_unix_tstamp() ->
 %% fetch and cache the whistle version from the VERSION file in whistle's root folder
 -spec whistle_version() -> ne_binary().
 whistle_version() ->
-    VersionFile = filename:join([code:lib_dir('whistle'), "..", "..", "VERSION"]),
-    case file:open(VersionFile, ['read']) of
-        {'ok', File} ->
-            {'ok', Line} = file:read_line(File),
-            _ = file:close(File),
-            ?MODULE:to_binary(string:strip(Line, 'right', $\n));
-        _ -> <<"unknown">>
-    end.
+    {_, _, Version} = get_app('whistle'),
+    to_binary(Version).
 
 -spec write_pid(ne_binary() | nonempty_string() | iolist()) -> 'ok' | {'error', atom()}.
 write_pid(FileName) ->
@@ -1526,6 +1523,31 @@ anonymous_caller_id_name() ->
 -spec anonymous_caller_id_number() -> ne_binary().
 anonymous_caller_id_number() ->
     <<"0000000000">>.
+
+%% for core apps that want to know which app is calling 
+-spec calling_app() -> ne_binary().
+calling_app() ->
+    {'current_stacktrace', Modules} = erlang:process_info(self(),current_stacktrace),
+    {Module, _, _, _} = lists:nth(3, Modules),
+    {'ok', App} = application:get_application(Module),
+    to_binary(App).
+
+-spec calling_app_version() -> {ne_binary(), ne_binary()}.
+calling_app_version() ->
+    {'current_stacktrace', Modules} = erlang:process_info(self(),current_stacktrace),
+    {Module, _, _, _} = lists:nth(3, Modules),
+    {'ok', App} = application:get_application(Module),
+    {App, _, Version} = get_app(App),
+    {to_binary(App), to_binary(Version)}.
+
+-spec get_app(atom() | ne_binary()) -> {atom(), string(), string()} | 'undefined'.
+get_app(<<_/binary>> = AppName) ->
+    get_app(to_atom(AppName));
+get_app(AppName) ->
+    case [App || {Name, _, _}=App <- application:loaded_applications(), Name =:= AppName] of
+        [] -> 'undefined';
+        [Ret | _] -> Ret
+    end.
 
 -ifdef(TEST).
 
