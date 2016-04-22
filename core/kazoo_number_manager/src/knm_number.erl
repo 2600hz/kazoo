@@ -226,21 +226,17 @@ save_phone_number(Number) ->
       ,knm_phone_number:save(phone_number(Number))
      ).
 
--spec dry_run_or_number(knm_number()) ->
-                               dry_run_return() |
-                               knm_number().
+-spec dry_run_or_number(knm_number()) -> knm_number() |
+                                         dry_run_return().
 dry_run_or_number(Number) ->
     case knm_phone_number:dry_run(phone_number(Number)) of
-        'true' -> dry_run_response(Number);
-        'false' -> Number
+        'false' -> Number;
+        'true' ->
+            {'dry_run'
+            ,services(Number)
+            ,knm_services:phone_number_activation_charges(Number)
+            }
     end.
-
--spec dry_run_response(knm_number()) -> dry_run_return().
-dry_run_response(Number) ->
-    {'dry_run'
-     ,services(Number)
-     ,knm_services:phone_number_activation_charges(Number)
-    }.
 
 -spec ensure_can_create(ne_binary(), knm_number_options:options()) -> 'true'.
 ensure_can_create(Num, Options) ->
@@ -409,7 +405,7 @@ save(Number) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Note: option 'assign_to' needs to be non-empty
+%% Note: option 'assign_to' needs to be set.
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile(ne_binary(), knm_number_options:options()) ->
@@ -628,7 +624,6 @@ buy(Num, Account, Options) ->
 acquire(Number, Account) ->
     'true' = ensure_state(phone_number(Number), ?NUMBER_STATE_DISCOVERY),
     AcquiredNumber = knm_carriers:acquire(Number),
-    Num = knm_phone_number:number(phone_number(Number)),
     Updates =
         [ {fun knm_phone_number:set_assigned_to/2, wh_util:format_account_id(Account)}
         , {fun knm_phone_number:set_state/2, ?NUMBER_STATE_IN_SERVICE}
