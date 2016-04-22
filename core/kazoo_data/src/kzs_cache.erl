@@ -23,6 +23,14 @@
 
 -include("kz_data.hrl").
 
+-define(DEFAULT_NO_CACHING_TYPES, [<<"media">>, <<"private_media">>, <<"call_recording">>
+                                   ,<<"fax">>, <<"voice_mail">>
+                                  ]).
+-define(NO_CACHING_TYPES, whapps_config:get(?CONFIG_CAT
+                                            ,<<"no_caching_doc_types">>
+                                           ,?DEFAULT_NO_CACHING_TYPES
+                                            )).
+
 -spec open_cache_doc(text(), ne_binary(), wh_proplist()) ->
                             {'ok', wh_json:object()} |
                             data_error() |
@@ -101,11 +109,13 @@ cache_if_not_media(CacheProps, DbName, DocId, CacheValue) ->
     %%   message bus anytime a http_put is issued (or maybe if the store
     %%   url is built in media IF everything uses that helper function,
     %    which is not currently the case...)
-    case wh_doc:type(CacheValue) of
-        <<"media">> -> 'ok';
-        <<"private_media">> -> 'ok';
-        _Else ->
-            kz_cache:store_local(?KZ_DATA_CACHE, {?MODULE, DbName, DocId}, CacheValue, CacheProps)
+    case lists:member(wh_doc:type(CacheValue), ?NO_CACHING_TYPES) of
+        'true' -> 'ok';
+        'false' -> kz_cache:store_local(?KZ_DATA_CACHE
+                                        ,{?MODULE, DbName, DocId}
+                                        ,CacheValue
+                                        ,CacheProps
+                                       )
     end.
 
 -spec flush_cache_doc(ne_binary() | db(), ne_binary() | wh_json:object()) -> 'ok'.

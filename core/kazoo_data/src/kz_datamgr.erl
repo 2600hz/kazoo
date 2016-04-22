@@ -908,7 +908,7 @@ attachment_url(DbName, {DocType, DocId}, AttachmentId, Options) when ?VALID_DBNA
     attachment_url(DbName, DocId, AttachmentId, maybe_add_doc_type(DocType, Options));
 attachment_url(DbName, DocId, AttachmentId, Options) when ?VALID_DBNAME ->
     Plan = kzs_plan:plan(DbName, Options),
-    case kzs_cache:open_cache_doc(Plan, DbName, DocId, Options) of
+    case kzs_doc:open_doc(Plan, DbName, DocId, Options) of
         {'ok', JObj} ->
             NewOptions = [{'rev', wh_doc:revision(JObj)}
                           | maybe_add_doc_type(wh_doc:type(JObj), Options)
