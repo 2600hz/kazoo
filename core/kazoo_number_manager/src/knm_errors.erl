@@ -158,11 +158,9 @@ to_json('no_change_required', _, Cause) ->
 to_json('invalid_state_transition', _, Cause) ->
     Message = <<"invalid state transition">>,
     build_error(400, 'invalid_state_transition', Message, Cause);
-to_json('by_carrier', Num, {Carrier,_Cause}) ->
-    lager:debug("carrier ~s fault: ~p", [Carrier, _Cause]),
-    BinCarrier = wh_util:to_binary(Carrier),
-    Message = <<"fault by carrier ", BinCarrier/binary>>,
-    build_error(500, 'unspecified_fault', Message, Num);
+to_json('by_carrier', Num, {_Carrier,_Cause}) ->
+    lager:debug("carrier ~s fault: ~p", [_Carrier, _Cause]),
+    build_error(500, 'unspecified_fault', <<"fault by carrier">>, Num);
 to_json(Reason, _, Cause) ->
     build_error(500, 'unspecified_fault', Reason, Cause).
 

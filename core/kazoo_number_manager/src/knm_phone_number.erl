@@ -262,7 +262,6 @@ to_public_json(Number) ->
             , {<<"modified">>, wh_doc:modified(JObj)}
             , State
             , UsedBy
-            , {<<"module">>, module_name(Number)}
             ])
          ),
     Root =
