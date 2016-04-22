@@ -44,6 +44,17 @@ currently, inbound calls from carriers don't have a Authorizing-ID but if the de
 The b-leg will have the Authorizing-ID set to the device that redirect the call.
 Restrictions will still be applied based on the device that redirected the call.
 
+#### Blacklist changes
+
+In the 3.x series, a `raw_numbers` attribute was allowed, ostensibly to match anonymous caller IDs. This has been removed and a more proper solution has been put in place. You can still add anonymous caller ID to your blacklists, or you can configure the account/system to block them via the `block_anonymous_caller_id` key:
+
+```shell
+# Account
+#> sup whapps_account_config set {ACCOUNT_ID} stepswitch block_anonymous_caller_id true
+# System
+#> sup whapps_config set_default stepswitch block_anonymous_caller_id true
+```
+
 ## Upcoming
 
 ### May 2016
