@@ -35,6 +35,7 @@
          ,action = 'receive' :: 'receive' | 'transmit'
          ,owner_id :: api_binary()
          ,faxbox_id :: api_binary()
+         ,fax_doc :: api_object()
          ,storage :: fax_storage()
          ,fax_option :: api_binary()
          ,fax_result :: api_object()
@@ -432,9 +433,9 @@ end_receive_fax(JObj, #state{call=Call}=State) ->
 -spec maybe_store_fax(wh_json:object(), state()) -> handle_cast_return().
 maybe_store_fax(JObj, #state{storage=#fax_storage{id=FaxId}}=State) ->
     case store_fax(JObj, State) of
-        {'ok', FaxId} ->
+        {'ok', FaxDoc} ->
             lager:debug("fax stored successfully into ~s", [FaxId]),
-            store_attachment(State#state{fax_result=JObj});
+            store_attachment(State#state{fax_doc=FaxDoc, fax_result=JObj});
         {'error', Error} ->
             lager:debug("store fax other resp: ~p", [Error]),
             notify_failure(JObj, Error, State),
@@ -442,14 +443,12 @@ maybe_store_fax(JObj, #state{storage=#fax_storage{id=FaxId}}=State) ->
     end.
 
 -spec store_fax(wh_json:object(), state() ) ->
-                       {'ok', ne_binary()} |
+                       {'ok', wh_json:object()} |
                        {'error', any()}.
-store_fax(JObj, #state{storage=#fax_storage{id=FaxDocId
-                                            ,attachment_id=_AttachmentId
-                                           }
+store_fax(JObj, #state{storage=#fax_storage{attachment_id=_AttachmentId}
                       }=State) ->
     case create_fax_doc(JObj, State) of
-        {'ok', _Doc} -> {'ok', FaxDocId};
+        {'ok', _Doc} = OK -> OK;
         Error -> Error
     end.
 
@@ -461,8 +460,10 @@ get_fs_filename(#state{storage=#fax_storage{attachment_id=AttachmentId}}) ->
 -spec store_attachment(state()) -> handle_cast_return().
 store_attachment(#state{call=Call
                         ,fax_result=FaxResultObj
+                        ,storage=#fax_storage{attachment_id=AttachmentId}
+                        ,fax_doc=FaxDoc
                        }=State) ->
-    FaxUrl = attachment_url(State),
+    FaxUrl = wh_media_url:store(FaxDoc, AttachmentId),
     FaxFile = get_fs_filename(State),
     case whapps_call_command:store_file(FaxFile, FaxUrl, Call) of
         'ok' ->
@@ -530,14 +531,6 @@ rx_result(JObj) ->
         wh_json:get_value(<<"Application-Data">>, JObj, wh_json:new())
        )
      ).
-
--spec attachment_url(state()) -> ne_binary().
-attachment_url(#state{storage=#fax_storage{id=FaxDocId
-                                           ,attachment_id=AttachmentId
-                                           ,db=AccountDb
-                                          }
-                     }) ->
-    wh_media_url:store(AccountDb, {<<"fax">>, FaxDocId}, AttachmentId).
 
 -spec fax_fields(wh_json:object()) -> wh_json:object().
 fax_fields(JObj) ->
