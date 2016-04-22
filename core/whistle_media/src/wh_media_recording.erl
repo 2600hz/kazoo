@@ -552,15 +552,8 @@ store({DirName, MediaName}, StoreUrl, Call) ->
     Filename = filename:join(DirName, MediaName),
     case whapps_call_command:store_file(Filename, StoreUrl, Call) of
         {'error', 'timeout'} -> gen_server:cast(self(), 'store_failed');
-        {'ok', JObj} -> check_store_result(wh_json:get_value(<<"Result">>, JObj), JObj)
+        'ok' -> gen_server:cast(self(), 'store_succeeded')
     end.
-
--spec check_store_result(ne_binary(), wh_json:object()) -> 'ok'.
-check_store_result(<<"success">>, _JObj) ->
-    gen_server:cast(self(), 'store_succeeded');
-check_store_result(<<"error">>, JObj) ->
-    lager:debug("error ~s received for store", [wh_json:get_value(<<"Error">>, JObj)]),
-    gen_server:cast(self(), 'store_failed').
 
 -spec stop_recording(pid()) -> 'ok'.
 stop_recording(Pid) ->

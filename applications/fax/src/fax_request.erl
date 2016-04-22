@@ -466,24 +466,11 @@ store_attachment(#state{call=Call
     FaxUrl = attachment_url(State),
     FaxFile = get_fs_filename(State),
     case whapps_call_command:store_file(FaxFile, FaxUrl, Call) of
-        {'ok', _JObj} ->
+        'ok' ->
             notify_success(FaxResultObj, State),
             {'stop', 'normal', State};
         {'error', Error} ->
-             maybe_retry_storage(Error, State#state{fax_store_count=Count+1})
-    end.
-
--spec maybe_retry_storage(binary(), state()) ->
-                                 {'noreply', state()} |
-                                 {'stop', 'normal', state()}.
-maybe_retry_storage(Error, #state{fax_store_count=Count
-                                 ,fax_result=JObj
-                                 }=State) ->
-    lager:debug("fax store error ~s - ~p",[Error, JObj]),
-    case Count < whapps_config:get_integer(?CONFIG_CAT, <<"max_storage_retry">>, 5) of
-        'true' -> store_attachment(State);
-        'false' ->
-            notify_failure(JObj, Error, State),
+            notify_failure(FaxResultObj, Error, State),
             {'stop', 'normal', State}
     end.
 
