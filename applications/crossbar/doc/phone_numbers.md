@@ -135,7 +135,6 @@ curl -v -X DELETE \
         "_read_only": {
             "created": 63627848588,
             "modified": 63627848588,
-            "module_name": "knm_local",
             "state": "available"
         },
         "id": "{PHONENUMBER}",
@@ -187,7 +186,6 @@ curl -v -X GET \
         "_read_only": {
             "created": 63627848989,
             "modified": 63627848989,
-            "module_name": "knm_local",
             "state": "reserved"
         },
         "id": "{PHONENUMBER}",
@@ -240,7 +238,6 @@ curl -v -X POST \
         "_read_only": {
             "created": 63627848989,
             "modified": 63627848989,
-            "module_name": "knm_local",
             "state": "reserved"
         },
         "id": "{PHONENUMBER}",
@@ -280,7 +277,6 @@ curl -v -X PUT \
         "_read_only": {
             "created": 63627848989,
             "modified": 63627848989,
-            "module_name": "knm_local",
             "state": "reserved"
         },
         "id": "{PHONENUMBER}",
@@ -425,7 +421,6 @@ curl -v -X DELETE \
                 "_read_only": {
                     "created": 63628473168,
                     "modified": 63628473168,
-                    "module": "knm_local",
                     "state": "available"
                 },
                 "id": "{PHONENUMBER1}",
@@ -435,7 +430,6 @@ curl -v -X DELETE \
                 "_read_only": {
                     "created": 63628473168,
                     "modified": 63628473168,
-                    "module": "knm_local",
                     "state": "available"
                 },
                 "id": "{PHONENUMBER2}",
@@ -445,7 +439,6 @@ curl -v -X DELETE \
                 "_read_only": {
                     "created": 63628473168,
                     "modified": 63628473168,
-                    "module": "knm_local",
                     "state": "available"
                 },
                 "id": "{PHONENUMBER3}",
@@ -480,7 +473,6 @@ curl -v -X POST \
                 "_read_only": {
                     "created": 63628454912,
                     "modified": 63628454912,
-                    "module": "knm_local",
                     "state": "reserved"
                 },
                 "id": "{PHONENUMBER1}",
@@ -491,7 +483,6 @@ curl -v -X POST \
                 "_read_only": {
                     "created": 63628454912,
                     "modified": 63628454912,
-                    "module": "knm_local",
                     "state": "reserved"
                 },
                 "id": "{PHONENUMBER2}",
@@ -531,7 +522,6 @@ curl -v -X PUT \
                 "_read_only": {
                     "created": 63628454912,
                     "modified": 63628454912,
-                    "module": "knm_local",
                     "state": "reserved"
                 },
                 "id": "{PHONENUMBER1}",
@@ -541,7 +531,6 @@ curl -v -X PUT \
                 "_read_only": {
                     "created": 63628454912,
                     "modified": 63628454912,
-                    "module": "knm_local",
                     "state": "reserved"
                 },
                 "id": "{PHONENUMBER2}",
@@ -551,7 +540,6 @@ curl -v -X PUT \
                 "_read_only": {
                     "created": 63628454912,
                     "modified": 63628454912,
-                    "module": "knm_local",
                     "state": "reserved"
                 },
                 "id": "{PHONENUMBER3}",
@@ -739,7 +727,6 @@ curl -v -X PUT \
         "_read_only": {
             "created": 63628027112,
             "modified": 63628027112,
-            "module_name": "knm_bandwidth",
             "state": "in_service"
         },
         "id": "{PHONENUMBER}",
@@ -777,7 +764,7 @@ curl -v -X PUT \
         "cause": "{PHONENUMBER}",
         "code": 500,
         "error": "unspecified_fault",
-        "message": "fault by carrier knm_bandwidth"
+        "message": "fault by carrier"
     },
     "error": "500",
     "message": "unspecified_fault",
@@ -840,7 +827,6 @@ curl -v -X PUT \
                 "_read_only": {
                     "created": 63628542222,
                     "modified": 63628542222,
-                    "module": "knm_local",
                     "state": "in_service"
                 },
                 "id": "{PHONENUMBER1}",
@@ -850,7 +836,6 @@ curl -v -X PUT \
                 "_read_only": {
                     "created": 63628542222,
                     "modified": 63628542222,
-                    "module": "knm_local",
                     "state": "in_service"
                 },
                 "id": "{PHONENUMBER2}",
