@@ -233,7 +233,7 @@ api_post(Url, Body, AdditionalHeaders) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Make a REST request to Bandwidth.com Numbers API to preform the
+%% Make a REST request to Bandwidth.com Numbers API to perform the
 %% given verb (purchase, search, provision, etc).
 %% @end
 %%--------------------------------------------------------------------
