@@ -348,8 +348,9 @@ post(Context, ?CHECK) ->
     RespData = format_carriers_check(Unformatted),
     cb_context:set_resp_data(Context, RespData);
 post(Context, ?COLLECTION) ->
+    Results = collection_process(Context, ?HTTP_POST),
     CB = fun() -> post(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
-    set_response(collection_process(Context), Context, CB);
+    set_response(Results, Context, CB);
 post(Context, Number) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
@@ -362,8 +363,9 @@ post(Context, Number) ->
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context, ?COLLECTION) ->
+    Results = collection_process(Context, ?HTTP_PUT),
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
-    set_response(collection_process(Context), Context, CB);
+    set_response(Results, Context, CB);
 put(Context, Number) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
@@ -398,9 +400,8 @@ put(Context, Number, ?RESERVE) ->
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, ?COLLECTION) ->
-    Numbers = wh_json:get_value(<<"numbers">>, cb_context:req_data(Context), []),
-    Results = collection_process(Context, Numbers, <<"delete">>),
-    set_response({'ok', Results}, Context);
+    Results = collection_process(Context, ?HTTP_DELETE),
+    set_response(Results, Context);
 delete(Context, Number) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ],
@@ -785,9 +786,7 @@ validate_request(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load an instance from the database
-%% @end
+%% @doc Always validate DELETEs
 %%--------------------------------------------------------------------
 -spec validate_delete(cb_context:context()) -> cb_context:context().
 validate_delete(Context) ->
@@ -806,30 +805,45 @@ set_response(Result, Context) ->
     set_response(Result, Context, fun() -> Context end).
 
 -type result() :: {'ok', wh_json:object()} |
+                  {ne_binary(), [wh_services:services()], wh_json:object()} |
                   knm_number_return() |
                   {'dry_run', ne_binary(), wh_json:object()} |
                   {binary(), binary()}.
 -type cb() :: fun(() -> cb_context:context()).
+
 -spec set_response(result(), cb_context:context(), cb()) -> cb_context:context().
-set_response({'ok', {'ok', Doc}}, Context, _) ->
-    crossbar_util:response(Doc, Context);
 set_response({'ok', Thing}, Context, _) ->
     case knm_number:is_number(Thing) of
         'true' -> crossbar_util:response(knm_number:to_public_json(Thing), Context);
         'false' -> crossbar_util:response(Thing, Context)
     end;
-set_response({'dry_run', ?COLLECTION, JObj}, Context, CB) ->
-    RespJObj = dry_run_response(?COLLECTION, JObj),
-    case wh_json:is_empty(RespJObj) of
-        'true' -> CB();
-        'false' -> crossbar_util:response_402(RespJObj, Context)
+
+set_response({?COLLECTION, ServicesList, ResultJObj}, Context, CB) ->
+    case wh_json:get_value(<<"error">>, ResultJObj) of
+        'undefined' ->
+            case ServicesList of
+                [] -> crossbar_util:response(ResultJObj, Context);
+                _ ->
+                    RespJObj = fold_dry_runs(ServicesList),
+                    case wh_json:is_empty(RespJObj) of
+                        'true' -> CB();
+                        'false' -> crossbar_util:response_402(RespJObj, Context)
+                    end
+            end;
+        Errors ->
+            crossbar_util:response_400(<<"client error">>, Errors, Context)
     end;
+
 set_response({'dry_run', Services, _ActivationCharges}, Context, CB) ->
     RespJObj = wh_services:dry_run(Services),
     case wh_json:is_empty(RespJObj) of
         'true' -> CB();
         'false' -> crossbar_util:response_402(RespJObj, Context)
     end;
+
+set_response({'error', 'not_found'}, Context, _) ->
+    reply_number_not_found(Context);
+
 set_response({'error', Data}, Context, _) ->
     case wh_json:is_json_object(Data) of
         'true' ->
@@ -839,17 +853,17 @@ set_response({'error', Data}, Context, _) ->
             cb_context:add_system_error(Code, Msg, Data, Context);
         'false' ->
             lager:debug("error: ~p", [Data]),
-            case Data of
-                'not_found' -> reply_number_not_found(Context);
-                _ -> crossbar_util:response_400(<<"client error">>, Data, Context)
-            end
+            crossbar_util:response_400(<<"client error">>, Data, Context)
     end;
+
 set_response({'invalid', Reason}, Context, _) ->
     lager:debug("invalid: ~p", [Reason]),
     cb_context:add_validation_error(<<"address">>, <<"invalid">>, Reason, Context);
+
 set_response({Error, Reason}, Context, _) ->
     lager:debug("error ~p: ~p", [Error, Reason]),
     cb_context:add_system_error(Error, Reason, Context);
+
 set_response(_Else, Context, _) ->
     lager:debug("unexpected response: ~p", [_Else]),
     cb_context:add_system_error('unspecified_fault', Context).
@@ -867,133 +881,70 @@ reply_number_not_found(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec dry_run_response(wh_proplist()) -> wh_json:object().
-dry_run_response(Props) ->
-    case props:get_value('services', Props) of
-        'undefined' -> wh_json:new();
-        Services ->
-            wh_services:dry_run(Services)
-    end.
+-type process_result() :: {wh_services:services(), wh_json:object()}.
+-spec collection_process(cb_context:context(), ne_binary()) -> process_result().
+collection_process(Context, Action) ->
+    ReqData = cb_context:req_data(Context),
+    Numbers = wh_json:get_value(<<"numbers">>, ReqData),
+    Context1 = cb_context:set_req_data(Context, wh_json:delete_key(<<"numbers">>, ReqData)),
+    {ServicesList, ResultJObj} =
+        collection_process(Context1, Action, Numbers),
+    {?COLLECTION, ServicesList, ResultJObj}.
 
--spec dry_run_response(ne_binary(), wh_json:object()) -> wh_json:object().
-dry_run_response(?COLLECTION, JObj) ->
-    case wh_json:get_value(<<"error">>, JObj) of
-        'undefined' -> accumulate_resp(wh_json:get_value(<<"charges">>, JObj, wh_json:new()));
-        _ -> JObj
-    end.
-
--spec accumulate_resp(wh_json:object()) -> wh_json:object().
-accumulate_resp(JObj) ->
-    [Resp|_] =
-        wh_json:foldl(
-            fun(_, Value, Acc) ->
-                [dry_run_response(Value)|Acc]
-            end
-            ,[]
-            ,JObj
-        ),
-    Resp.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec collection_process(cb_context:context()) -> process_result().
--spec collection_process(cb_context:context(), ne_binary() | ne_binaries()) -> process_result().
-collection_process(Context) ->
-    Numbers = wh_json:get_value(<<"numbers">>, cb_context:req_data(Context), []),
-    Result = collection_process(Context, Numbers, 'undefined'),
-    collection_process_result(Context, Result).
-
-collection_process(Context, ?ACTIVATE) ->
-    Numbers = wh_json:get_value(<<"numbers">>, cb_context:req_data(Context), []),
-    Result = collection_process(Context, Numbers, ?ACTIVATE),
-    collection_process_result(Context, Result).
-
--spec collection_process(cb_context:context(), ne_binaries(), api_binary()) ->
-                                wh_json:object().
-collection_process(Context, Numbers, Action) ->
+-spec collection_process(cb_context:context(), ne_binary(), ne_binaries()) -> process_result().
+collection_process(Context, Action, Numbers) ->
     lists:foldl(
-      fun(Number, Acc) ->
-              case collection_action(Context, Number, Action) of
-                  {'ok', Thing} ->
-                      JObj = case wh_json:is_json_object(Thing) of
-                                 'true' -> Thing;
-                                 'false' -> knm_number:to_public_json(Thing)
-                             end,
-                      wh_json:set_value([<<"success">>, Number], JObj, Acc);
-                  {'dry_run', _Services, ActivationCharges} ->
-                      wh_json:set_value([<<"charges">>, Number], ActivationCharges, Acc);
-                  {'error', KNMError} ->
-                      wh_json:set_value([<<"error">>, Number], KNMError, Acc)
-              end
+      fun
+          ({Number, {'ok', KNMNumber}}, {ServicesAcc, JObjAcc}) ->
+              JObj = knm_number:to_public_json(KNMNumber),
+              {ServicesAcc
+              ,wh_json:set_value([<<"success">>, Number], JObj, JObjAcc)
+              };
+          ({Number, {'dry_run', Services, ActivationCharges}}, {ServicesAcc, JObjAcc}) ->
+              {[Services | ServicesAcc]
+              ,wh_json:set_value([<<"charges">>, Number], ActivationCharges, JObjAcc)
+              };
+          ({Number, {'error', KNMError}}, {ServicesAcc, JObjAcc}) ->
+              {ServicesAcc
+              ,wh_json:set_value([<<"error">>, Number], KNMError, JObjAcc)
+              }
       end
-      ,wh_json:new()
-      ,Numbers
+      ,{[], wh_json:new()}
+      ,numbers_action(Context, Action, Numbers)
      ).
 
-
--type process_result() :: {'ok', wh_json:object()} |
-                          {'error', any()} |
-                          {'dry_run', ne_binary(), wh_json:object()}.
-
--spec collection_process_result(cb_context:context(), wh_json:object()) -> process_result().
-collection_process_result(Context, JObj) ->
-    case wh_json:get_value(<<"error">>, JObj) of
-        'undefined' ->
-            case not cb_context:accepting_charges(Context) of
-                'true' -> {'dry_run', ?COLLECTION, JObj};
-                'false' -> {'ok', JObj}
-            end;
-        Error ->
-            {'error', Error}
-    end.
-
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec collection_action(cb_context:context(), ne_binary(), ne_binary()) ->
-                               knm_number_return() |
-                               {'ok', wh_json:object()}.
-collection_action(Context, Number, ?ACTIVATE) ->
+-spec numbers_action(cb_context:context(), ne_binary(), ne_binaries()) ->
+                            knm_number_return().
+numbers_action(Context, ?ACTIVATE, Numbers) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
                ,{'dry_run', not cb_context:accepting_charges(Context)}
-               ,{'public_fields', wh_json:delete_key(<<"numbers">>, cb_context:doc(Context))}
+               ,{'public_fields', cb_context:req_data(Context)}
               ],
-    case knm_number:move(Number, cb_context:account_id(Context), Options) of
-        {'ok', KNum} ->
-            wh_json:delete_key(<<"numbers">>, knm_number:to_public_json(KNum));
-        _Else -> _Else
-    end;
-collection_action(Context, Number, _) ->
-    number_action(Context, Number, cb_context:req_verb(Context)).
-
--spec number_action(cb_context:context(), path_token(), http_method()) ->
-                           knm_number_return().
-number_action(Context, Number, ?HTTP_PUT) ->
+    knm_numbers:move(Numbers, cb_context:account_id(Context), Options);
+numbers_action(Context, ?HTTP_PUT, Numbers) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
                ,{'dry_run', not cb_context:accepting_charges(Context)}
-               ,{'public_fields', wh_json:delete_key(<<"numbers">>, cb_context:doc(Context))}
+               ,{'public_fields', cb_context:req_data(Context)}
               ],
-    knm_number:create(Number, Options);
-number_action(Context, Number, ?HTTP_POST) ->
-    Options = [{'auth_by', cb_context:auth_account_id(Context)}
-               ,{'dry_run', not cb_context:accepting_charges(Context)}
+    knm_numbers:create(Numbers, Options);
+numbers_action(Context, ?HTTP_POST, Numbers) ->
+    Options = [{'assign_to', cb_context:account_id(Context)}
+               ,{'auth_by', cb_context:auth_account_id(Context)}
               ],
-    ToMerge = wh_json:delete_key(<<"numbers">>, cb_context:doc(Context)),
-    Routines = [{fun knm_phone_number:update_doc/2, ToMerge}
+    Routines = [{fun knm_phone_number:update_doc/2, cb_context:req_data(Context)}
                ],
-    knm_number:update(Number, Routines, Options);
-number_action(Context, Number, ?HTTP_DELETE) ->
+    knm_numbers:update(Numbers, Routines, Options);
+numbers_action(Context, ?HTTP_DELETE, Numbers) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ],
-    knm_number:release(Number, Options).
+    knm_numbers:release(Numbers, Options).
+
+-spec fold_dry_runs([wh_services:services(), ...]) -> wh_json:object().
+fold_dry_runs(ServicesList) ->
+    F = fun (Services, _Acc) -> wh_services:dry_run(Services) end,
+    lists:foldl(F, [], ServicesList).
 
 %%--------------------------------------------------------------------
 %% @private

@@ -113,6 +113,7 @@ curl -v -X GET \
     * Account document must be showing `pvt_wnm_allow_additions` as `true`
     * Or auth must be done via master account.
 
+
 #### Remove a number from the account owning it
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
@@ -161,6 +162,7 @@ curl -v -X DELETE \
     "status": "error"
 }
 ```
+
 
 #### List an account's specific phone number
 
@@ -219,7 +221,8 @@ Possible reasons for failure:
 }
 ```
 
-#### Change
+
+#### Update public fields of a number
 
 > POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
 
@@ -249,6 +252,7 @@ curl -v -X POST \
     "status": "success"
 }
 ```
+
 
 #### Add a number to the database
 
@@ -325,6 +329,7 @@ curl -v -X PUT \
 }
 ```
 
+
 #### Check availability of phone numbers
 
 This API check if the numbers are still available for purchase.
@@ -377,6 +382,7 @@ It may be due to:
 }
 ```
 
+
 #### Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/locality
@@ -386,6 +392,7 @@ curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/locality
 ```
+
 
 #### Fetch
 
@@ -397,35 +404,193 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/prefix
 ```
 
-#### Remove
+
+#### Remove a list of numbers from the database
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data":{"numbers": ["{PHONENUMBER1}", "{PHONENUMBER2}", "{PHONENUMBER3}"]}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
 ```
 
-#### Change
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "success": {
+            "{PHONENUMBER1": {
+                "_read_only": {
+                    "created": 63628473168,
+                    "modified": 63628473168,
+                    "module": "knm_local",
+                    "state": "available"
+                },
+                "id": "{PHONENUMBER1}",
+                "state": "available"
+            },
+            "{PHONENUMBER2}": {
+                "_read_only": {
+                    "created": 63628473168,
+                    "modified": 63628473168,
+                    "module": "knm_local",
+                    "state": "available"
+                },
+                "id": "{PHONENUMBER2}",
+                "state": "available"
+            },
+            "{PHONENUMBER3}": {
+                "_read_only": {
+                    "created": 63628473168,
+                    "modified": 63628473168,
+                    "module": "knm_local",
+                    "state": "available"
+                },
+                "id": "{PHONENUMBER3}",
+                "state": "available"
+            }
+        }
+    },
+    "request_id": "144493e2280213db59b81f7377fbff48",
+    "revision": "undefined",
+    "status": "success"
+}
+```
+
+
+#### Update public fields of a list of numbers
 
 > POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"numbers": ["{PHONENUMBER1}", "{PHONENUMBER2}"], "myfield": 1337}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
 ```
 
-#### Create
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "success": {
+            "{PHONENUMBER1}": {
+                "_read_only": {
+                    "created": 63628454912,
+                    "modified": 63628454912,
+                    "module": "knm_local",
+                    "state": "reserved"
+                },
+                "id": "{PHONENUMBER1}",
+                "myfield": 1337,
+                "state": "reserved"
+            },
+            "{PHONENUMBER2}": {
+                "_read_only": {
+                    "created": 63628454912,
+                    "modified": 63628454912,
+                    "module": "knm_local",
+                    "state": "reserved"
+                },
+                "id": "{PHONENUMBER2}",
+                "myfield": 1337,
+                "state": "reserved"
+            }
+        }
+    },
+    "request_id": "58191a05bcbbf528009fc5f4f0fe7ce5",
+    "revision": "undefined",
+    "status": "success"
+}
+```
+
+
+#### Add a list of numbers to the database
 
 > PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data":{"numbers": ["{PHONENUMBER1}", "{PHONENUMBER2}", "{PHONENUMBER3}"]}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
 ```
+
+##### Responses
+
+###### Success
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "success": {
+            "{PHONENUMBER1}": {
+                "_read_only": {
+                    "created": 63628454912,
+                    "modified": 63628454912,
+                    "module": "knm_local",
+                    "state": "reserved"
+                },
+                "id": "{PHONENUMBER1}",
+                "state": "reserved"
+            },
+            "{PHONENUMBER2}": {
+                "_read_only": {
+                    "created": 63628454912,
+                    "modified": 63628454912,
+                    "module": "knm_local",
+                    "state": "reserved"
+                },
+                "id": "{PHONENUMBER2}",
+                "state": "reserved"
+            },
+            "{PHONENUMBER3}": {
+                "_read_only": {
+                    "created": 63628454912,
+                    "modified": 63628454912,
+                    "module": "knm_local",
+                    "state": "reserved"
+                },
+                "id": "{PHONENUMBER3}",
+                "state": "reserved"
+            }
+        }
+    },
+    "request_id": "f0e0f0abdabaa2f0bb39d83ad3e3f3c6",
+    "revision": "undefined",
+    "status": "success"
+}
+```
+
+###### Failure
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "{PHONENUMBER2}": {
+            "cause": "{PHONENUMBER2}",
+            "code": 409,
+            "error": "number_exists",
+            "message": "number {PHONENUMBER2} already exists"
+        },
+        "{PHONENUMBER3}": {
+            "cause": "{PHONENUMBER3}",
+            "code": 409,
+            "error": "number_exists",
+            "message": "number {PHONENUMBER3} already exists"
+        }
+    },
+    "error": "400",
+    "message": "client error",
+    "request_id": "34fded1acd0c8a440515fc6d42e409b6",
+    "status": "error"
+}
+```
+
 
 #### List classifiers
 
@@ -480,6 +645,7 @@ curl -v -X GET \
 }
 ```
 
+
 #### Fix issues
 
 > POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/fix
@@ -527,6 +693,7 @@ curl -v -X POST \
 }
 ```
 
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/identify
@@ -536,6 +703,7 @@ curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/identify
 ```
+
 
 #### Create
 
@@ -547,6 +715,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/reserve
 ```
 
+
 #### Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/activate
@@ -556,6 +725,7 @@ curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/activate
 ```
+
 
 #### Classify a number
 
@@ -584,14 +754,74 @@ curl -v -X GET \
 }
 ```
 
-#### Create
+
+#### Buy a list of numbers
+
+Note: numbers must have appeared as part of the results of a numbers search.
 
 > PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/collection/activate
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data":{"numbers": ["{PHONENUMBER1}", "{PHONENUMBER2}"]}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection/activate
+```
+
+##### Responses
+
+###### Success
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "success": {
+            "{PHONENUMBER1}": {
+                "_read_only": {
+                    "created": 63628542222,
+                    "modified": 63628542222,
+                    "module": "knm_local",
+                    "state": "in_service"
+                },
+                "id": "{PHONENUMBER1}",
+                "state": "in_service"
+            },
+            "{PHONENUMBER2}": {
+                "_read_only": {
+                    "created": 63628542222,
+                    "modified": 63628542222,
+                    "module": "knm_local",
+                    "state": "in_service"
+                },
+                "id": "{PHONENUMBER2}",
+                "state": "in_service"
+            }
+        }
+    },
+    "request_id": "1fd30d420f3c4f601e05f8f9eb041e46",
+    "revision": "undefined",
+    "status": "success"
+}
+```
+
+###### Number not found or other error
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "{PHONENUMBER2}": {
+            "code": 500,
+            "error": "unspecified_fault",
+            "message": "missing_provider_url"
+        }
+    },
+    "error": "400",
+    "message": "client error",
+    "request_id": "892b3cc884bd913cd3912c5b4c757421",
+    "status": "error"
+}
 ```
 
 
@@ -601,6 +831,7 @@ curl -v -X PUT \
 curl -X PUT -H "Content-Type: application/json" -H "X-Auth-Token: {{AUTH_TOKEN}}" \
     http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/phone_numbers/{{NUMBER}}/activate -d '{}'
 ```
+
 
 #### E911
 
