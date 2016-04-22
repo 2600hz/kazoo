@@ -172,7 +172,7 @@ acquire_and_provision_number(Number) ->
             ],
     case make_numbers_request('basicNumberOrder', Props) of
         {'error', Error} ->
-            knm_errors:unspecified(Error, Number);
+            knm_errors:by_carrier(?MODULE, Error, Number);
         {'ok', Xml} ->
             Response = xmerl_xpath:string("/numberOrderResponse/numberOrder", Xml),
             Data = number_order_response_to_json(Response),

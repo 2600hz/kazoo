@@ -378,15 +378,15 @@ put(Context, Number) ->
 
 put(Context, ?COLLECTION, ?ACTIVATE) ->
     Results = collection_process(Context, ?ACTIVATE),
-    CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), ?COLLECTION, ?ACTIVATE) end,
+    CB = fun() -> put(cb_context:set_accepting_charges(Context), ?COLLECTION, ?ACTIVATE) end,
     set_response(Results, Context, CB);
 put(Context, Number, ?ACTIVATE) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
                ,{'dry_run', not cb_context:accepting_charges(Context)}
                ,{'public_fields', cb_context:doc(Context)}
               ],
-    Result = knm_number:buy(Number, cb_context:account_id(Context), Options),
-    CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number, ?ACTIVATE) end,
+    Result = knm_number:move(Number, cb_context:account_id(Context), Options),
+    CB = fun() -> put(cb_context:set_accepting_charges(Context), Number, ?ACTIVATE) end,
     set_response(Result, Context, CB);
 put(Context, Number, ?RESERVE) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
@@ -395,7 +395,7 @@ put(Context, Number, ?RESERVE) ->
                ,{'public_fields', cb_context:doc(Context)}
               ],
     Result = knm_number:reserve(Number, Options),
-    CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number, ?RESERVE) end,
+    CB = fun() -> put(cb_context:set_accepting_charges(Context), Number, ?RESERVE) end,
     set_response(Result, Context, CB).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().

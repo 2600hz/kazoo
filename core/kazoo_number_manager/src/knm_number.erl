@@ -18,7 +18,6 @@
          %% TODO: delete/1,2 (calls knm_phone_number:delete/1
          ,assign_to_app/2, assign_to_app/3
          ,lookup_account/1
-         ,buy/2, buy/3
          ,save/1
          ,reconcile/2
          ,reserve/2
@@ -226,21 +225,17 @@ save_phone_number(Number) ->
       ,knm_phone_number:save(phone_number(Number))
      ).
 
--spec dry_run_or_number(knm_number()) ->
-                               dry_run_return() |
-                               knm_number().
+-spec dry_run_or_number(knm_number()) -> knm_number() |
+                                         dry_run_return().
 dry_run_or_number(Number) ->
     case knm_phone_number:dry_run(phone_number(Number)) of
-        'true' -> dry_run_response(Number);
-        'false' -> Number
+        'false' -> Number;
+        'true' ->
+            {'dry_run'
+            ,services(Number)
+            ,knm_services:phone_number_activation_charges(Number)
+            }
     end.
-
--spec dry_run_response(knm_number()) -> dry_run_return().
-dry_run_response(Number) ->
-    {'dry_run'
-     ,services(Number)
-     ,knm_services:phone_number_activation_charges(Number)
-    }.
 
 -spec ensure_can_create(ne_binary(), knm_number_options:options()) -> 'true'.
 ensure_can_create(Num, Options) ->
@@ -343,7 +338,6 @@ move_to(Number, MoveTo) ->
     PhoneNumber = phone_number(Number),
     MovedPhoneNumber = knm_phone_number:set_assign_to(PhoneNumber, AccountId),
     MovedNumber = set_phone_number(Number, MovedPhoneNumber),
-
     Routines = [fun knm_number_states:to_in_service/1
                 ,fun save_number/1
                 ,fun dry_run_or_number/1
@@ -409,7 +403,7 @@ save(Number) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Note: option 'assign_to' needs to be non-empty
+%% Note: option 'assign_to' needs to be set.
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile(ne_binary(), knm_number_options:options()) ->
@@ -602,28 +596,6 @@ lookup_account(Num) ->
                 Else -> Else
             end
     end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Has a carrier module buy the number.
-%% Note: number has to be in numbers db first hand.
-%% @end
-%%--------------------------------------------------------------------
--spec buy(ne_binary(), ne_binary()) -> knm_number_return().
--spec buy(ne_binary(), ne_binary(), knm_number_options:options()) -> knm_number_return().
-buy(Num, Account) ->
-    %% Note: do not use default options here (auths anyone)
-    buy(Num, Account, []).
-
-buy(Num, Account, Options) ->
-    {'ok', Number} = ?MODULE:get(Num, Options),
-    AcquiredNumber = knm_carriers:acquire(Number),
-    Updates = [ {fun knm_phone_number:set_assigned_to/2, wh_util:format_account_id(Account)}
-              , {fun knm_phone_number:set_state/2, ?NUMBER_STATE_IN_SERVICE}
-              ],
-    update_phone_number(AcquiredNumber, Updates).
-
 
 %%--------------------------------------------------------------------
 %% Public get/set number_options()

@@ -110,7 +110,6 @@ to_in_service(Number, ?NUMBER_STATE_RESERVED) ->
     apply_transitions(Number, Routines);
 to_in_service(Number, ?NUMBER_STATE_IN_SERVICE) ->
     PhoneNumber = knm_number:phone_number(Number),
-
     AssignTo = knm_phone_number:assign_to(PhoneNumber),
     case knm_phone_number:assigned_to(PhoneNumber) of
         AssignTo -> Number;

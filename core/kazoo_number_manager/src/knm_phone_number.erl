@@ -425,7 +425,7 @@ assign_to(#knm_phone_number{assign_to=AssignTo}) ->
 -spec set_assign_to(knm_phone_number(), api_binary()) -> knm_phone_number().
 set_assign_to(N, 'undefined') ->
     N#knm_phone_number{assign_to = 'undefined'};
-set_assign_to(N, AssignTo=?NE_BINARY) ->
+set_assign_to(N, AssignTo=?MATCH_ACCOUNT_RAW(_)) ->
     N#knm_phone_number{assign_to=AssignTo}.
 
 %%--------------------------------------------------------------------
@@ -440,7 +440,7 @@ assigned_to(#knm_phone_number{assigned_to=AssignedTo}) ->
 -spec set_assigned_to(knm_phone_number(), api_binary()) -> knm_phone_number().
 set_assigned_to(N, 'undefined') ->
     N#knm_phone_number{assigned_to = 'undefined'};
-set_assigned_to(N, AssignedTo=?NE_BINARY) ->
+set_assigned_to(N, AssignedTo=?MATCH_ACCOUNT_RAW(_)) ->
     N#knm_phone_number{assigned_to=AssignedTo}.
 
 %%--------------------------------------------------------------------
@@ -453,7 +453,7 @@ prev_assigned_to(#knm_phone_number{prev_assigned_to=PrevAssignedTo}) ->
     PrevAssignedTo.
 
 -spec set_prev_assigned_to(knm_phone_number(), ne_binary()) -> knm_phone_number().
-set_prev_assigned_to(N, PrevAssignedTo=?NE_BINARY) ->
+set_prev_assigned_to(N, PrevAssignedTo=?MATCH_ACCOUNT_RAW(_)) ->
     N#knm_phone_number{prev_assigned_to=PrevAssignedTo}.
 
 %%--------------------------------------------------------------------
@@ -679,23 +679,24 @@ set_options(Number, Options) when is_list(Options) ->
 %%--------------------------------------------------------------------
 -spec is_authorized(knm_phone_number()) -> boolean().
 -ifdef(TEST).
-is_authorized(#knm_phone_number{auth_by= ?KNM_DEFAULT_AUTH_BY}) -> 'true';
-is_authorized(#knm_phone_number{assigned_to=AssignedTo
-                                ,auth_by=AuthBy
+is_authorized(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}) -> 'true';
+is_authorized(#knm_phone_number{assigned_to = AssignedTo
+                               ,auth_by = AuthBy
                                }) ->
     ?LOG_DEBUG("is authz ~s ~s", [AuthBy, AssignedTo]),
     (AssignedTo =:= ?RESELLER_ACCOUNT_ID orelse AssignedTo =:= ?MASTER_ACCOUNT_ID)
         andalso (AuthBy =:= ?RESELLER_ACCOUNT_ID orelse AuthBy =:= ?MASTER_ACCOUNT_ID).
 -else.
-is_authorized(#knm_phone_number{auth_by= ?KNM_DEFAULT_AUTH_BY}) ->
+is_authorized(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}) ->
     lager:info("bypassing auth"),
     'true';
-is_authorized(#knm_phone_number{assigned_to=AssignedTo
-                                ,auth_by=AuthBy
+is_authorized(#knm_phone_number{assigned_to = AssignedTo
+                               ,auth_by = AuthBy
                                }) ->
     ?LOG_DEBUG("is authz ~s ~s", [AuthBy, AssignedTo]),
     wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true').
 -endif.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc

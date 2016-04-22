@@ -195,7 +195,7 @@ to_numbers({'ok',JObjs}, AccountId) ->
 -spec maybe_return(to_json_ret(), knm_number:knm_number()) ->
                           knm_number:knm_number().
 maybe_return({'error', Reason}, N) ->
-    knm_errors:unspecified(Reason, N);
+    knm_errors:by_carrier(?MODULE, Reason, N);
 maybe_return({'ok', JObj}, N) ->
     case <<"100">> == wh_json:get_value(<<"code">>, JObj) of
         'true' -> N;
