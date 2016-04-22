@@ -37,6 +37,9 @@
                            ,93
                           )
        ).
+
+-type db_return() :: {'ok', wh_json:object()} | {'error', any()}.
+
 -spec get_db(ne_binary()) -> ne_binary().
 get_db(AccountId) ->
     wh_util:format_account_id(AccountId, 'encoded').
@@ -382,20 +385,29 @@ apply_folder(Folder, Doc) ->
     Metadata = kzd_voice_message:set_folder(Folder, kzd_voice_message:metadata(Doc)),
     kzd_voice_message:set_metadata(Metadata, Doc).
 
-update_message_doc(AccountId, DocId, Fun) ->
+-type update_funs() :: [fun((wh_json:object()) -> wh_json:object())].
+
+-spec update_message_doc(ne_binary(), ne_binary(), update_funs()) -> db_return().
+update_message_doc(AccountId, DocId, Funs) ->
     case message_doc(AccountId, DocId) of
-        {'ok', JObj} -> do_update_message_doc(AccountId, DocId, JObj, Fun);
+        {'ok', JObj} -> do_update_message_doc(AccountId, DocId, JObj, Funs);
         {'error', _}=E ->
             E
     end.
 
+-spec do_update_message_doc(ne_binary(), ne_binary(), wh_json:object(), update_funs()) -> db_return().
 do_update_message_doc(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _), JObj, Funs) ->
     NewJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Funs),
     kazoo_modb:save_doc(AccountId, NewJObj, Year, Month);
 do_update_message_doc(AccountId, DocId, JObj, Funs) ->
     move_to_modb(AccountId, DocId, JObj, Funs).
 
-% TODO: delete old doc from accountdb
+%%--------------------------------------------------------------------
+%% @public
+%% @doc Migration methods
+%% @end
+%%--------------------------------------------------------------------
+-spec move_to_modb(ne_binary(), ne_binary(), wh_json:object(), update_funs()) -> db_return().
 move_to_modb(AccountId, DocId, JObj, Funs) ->
     Created = wh_doc:created(JObj),
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Created),
@@ -408,62 +420,46 @@ move_to_modb(AccountId, DocId, JObj, Funs) ->
               ,"-"
               ,(wh_util:rand_hex_binary(16))/binary
            >>,
-    % io:format("FromDb ~p FromId ~p ToDb ~p ToId ~p ~n~n", [FromDb, FromId, ToDb, ToId]),
-    case kz_datamgr:copy_doc(FromDb, FromId, ToDb, ToId, []) of
-        {'ok', _} ->
-            SourceId = kzd_voice_message:source_id(JObj),
-            Result = populate_metadata_from_vmbox(AccountId, SourceId, FromId, ToId, Funs),
-            maybe_delete_media_doc(AccountId, FromId, Result);
+    io:format("FromDb ~p FromId ~p ToDb ~p ToId ~p ~n~n", [FromDb, FromId, ToDb, ToId]),
+    TransformFuns = [fun(DestDoc) -> update_media_id(ToId, DestDoc) end
+                     ,fun(DestDoc) -> wh_json:set_value(<<"pvt_type">>, kzd_voice_message:type(), DestDoc) end
+                     | Funs
+                    ],
+    Options = [{'transform', fun(_, B) -> lists:foldl(fun(F, J) -> F(J) end, B, TransformFuns) end}],
+    case kz_datamgr:move_doc(FromDb, FromId, ToDb, ToId, Options) of
+        {'ok', _}=M ->
+            BoxId = kzd_voice_message:source_id(JObj),
+            _ = update_mailbox(AccountId, BoxId, FromId),
+            _ = kz_datamgr:del_doc(get_db(AccountId), FromId),
+            M;
         {'error', _}=E ->
-            lager:warning("failed to copy voice message ~s to modb", [DocId]),
+            lager:warning("failed to move voice message ~s to modb", [DocId]),
             E
     end.
 
-% populate_metadata_from_vmbox(AccountId, BoxId, OldId, NewId) ->
-%     populate_metadata_from_vmbox(AccountId, BoxId, OldId, NewId, []).
-
-populate_metadata_from_vmbox(AccountId, BoxId, OldId, NewId, Funs) ->
+-spec update_mailbox(ne_binary(), ne_binary(), ne_binary()) -> db_return().
+update_mailbox(AccountId, BoxId, OldId) ->
     case open_accountdb_doc(AccountId, BoxId) of
         {'ok', VMBox} ->
-            try_populate_metadata(AccountId, OldId, NewId, VMBox, Funs);
-        {'error', _}=E ->
-            lager:warning("failed to populate voice message metadata ~s from vmbox", [OldId]),
+            Messages = wh_json:get_value(?VM_KEY_MESSAGES, VMBox, []),
+            {_, NewMessages} = filter_message_metadata(OldId, Messages),
+            NewBoxJObj = wh_json:set_value(?VM_KEY_MESSAGES, NewMessages, VMBox),
+            case kz_datamgr:save_doc(get_db(AccountId), NewBoxJObj) of
+                {'ok', _}=OK -> OK;
+                {'error', 'conflict'} -> update_mailbox(AccountId, BoxId, OldId);
+                {'error', _R}=E ->
+                    lager:debug("could not update mailbox ~s: ~s", [BoxId, _R]),
+                    E
+            end;
+        {'error', _R}=E ->
+            lager:warning("failed to open mailbox for update ~s: ~s", [BoxId, _R]),
             E
     end.
 
-try_populate_metadata(AccountId, OldId, NewId, VMBox, Funs) ->
-    Messages = wh_json:get_value(?VM_KEY_MESSAGES, VMBox, []),
-    {Metadata, NewMessages} = filter_message_metadata(OldId, Messages),
-    Methods = [fun(JObj) -> kzd_voice_message:set_metadata(Metadata, JObj) end
-               ,fun(JObj) -> update_media_id(NewId, JObj) end
-               ,fun(JObj) -> wh_json:set_value(<<"pvt_type">>, kzd_voice_message:type(), JObj) end
-               | Funs
-              ],
-    case update_message_doc(AccountId, NewId, Methods) of
-        {'ok', JObj} ->
-            try_update_mailbox(AccountId, wh_json:set_value(?VM_KEY_MESSAGES, NewMessages, VMBox), JObj);
-        {'error', _}=E ->
-            lager:warning("failed to populate voice message metadata ~s from vmbox", [OldId]),
-            E
-    end.
-
-try_update_mailbox(AccountId, NewVMBox, NewMsgJObj) ->
-    case kz_datamgr:save_doc(get_db(AccountId), NewVMBox) of
-        {'ok', _} -> {'ok', NewMsgJObj};
-        {'error', R}=E ->
-            lager:debug("could not update mailbox ~s: ~s", [wh_doc:id(NewVMBox), R]),
-            E
-    end.
-
+-spec update_media_id(ne_binary(), wh_json:object()) -> wh_json:object().
 update_media_id(MediaId, JObj) ->
     Metadata = kzd_voice_message:set_media_id(MediaId, kzd_voice_message:metadata(JObj)),
     kzd_voice_message:set_metadata(Metadata, JObj).
-
-maybe_delete_media_doc(AccountId, Id, {'ok', _}=Doc) ->
-    _ = kz_datamgr:del_doc(get_db(AccountId), Id),
-    Doc;
-maybe_delete_media_doc(_, _, {'error', _}=E) ->
-    E.
 
 %%--------------------------------------------------------------------
 %% @public
