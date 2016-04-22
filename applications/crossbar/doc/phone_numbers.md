@@ -718,6 +718,8 @@ curl -v -X PUT \
 
 #### Buy a number once searched for
 
+Note: one is not charged if number is already in service.
+
 > PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/activate
 
 ```shell
@@ -749,36 +751,19 @@ curl -v -X PUT \
 }
 ```
 
-###### Number was not returned in previous search results
+###### Number was not returned in previous search results or other error
 
 ```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "message": "bad identifier",
-        "not_found": "The number could not be found"
+        "code": 500,
+        "error": "unspecified_fault",
+        "message": "missing_provider_url"
     },
-    "error": "404",
-    "message": "bad_identifier",
-    "request_id": "ff8fabea35650b4850154c7eb3f1d769",
-    "status": "error"
-}
-```
-
-###### Number already in service
-
-```json
-{
-    "auth_token": "{AUTH_TOKEN}",
-    "data": {
-        "cause": "{PHONENUMBER}",
-        "code": 409,
-        "error": "number_exists",
-        "message": "number {PHONENUMBER} already exists"
-    },
-    "error": "409",
-    "message": "number_exists",
-    "request_id": "a5afb2f5708019192920d0d95f703c13",
+    "error": "500",
+    "message": "unspecified_fault",
+    "request_id": "9a1deab4464a3dbd1d5b5b9d93d8d790",
     "status": "error"
 }
 ```
@@ -789,17 +774,17 @@ curl -v -X PUT \
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "cause": "db.SaveTelephoneNumberRequest: There is no TelephoneNumber with the ID: 166C0CE6-2225-4D15-90C9-7B6BFB0ABCB5. Save operation failed.",
+        "cause": "{PHONENUMBER}",
         "code": 500,
         "error": "unspecified_fault",
         "message": "fault by carrier knm_bandwidth"
     },
     "error": "500",
     "message": "unspecified_fault",
-    "request_id": "c289d4d8e2fce94f35a7c3ec9a2a9805",
+    "request_id": "0800ba14b0dfce2417185eb15c3a8f96",
     "status": "error"
 }
-
+```
 
 #### Classify a number
 
