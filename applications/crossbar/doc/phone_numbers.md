@@ -705,14 +705,69 @@ curl -v -X GET \
 ```
 
 
-#### Create
+#### Move a number to the reserved state
 
 > PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/reserve
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/reserve
+```
+
+##### Responses
+
+###### Success
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "_read_only": {
+            "created": 63628556896,
+            "modified": 63628556896,
+            "state": "reserved"
+        },
+        "id": "{PHONENUMBER}",
+        "state": "reserved"
+    },
+    "request_id": "86d675b8d76e35f69328922d5607f200",
+    "revision": "undefined",
+    "status": "success"
+}
+```
+
+###### Number already in reserved state
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "code": 400,
+        "error": "no_change_required",
+        "message": "no change required"
+    },
+    "error": "400",
+    "message": "no_change_required",
+    "request_id": "e26c4a9d57890f73a37762990b469592",
+    "status": "error"
+}
+```
+
+###### Number does not exist
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "message": "bad identifier",
+        "not_found": "The number could not be found"
+    },
+    "error": "404",
+    "message": "bad_identifier",
+    "request_id": "b36a44a38086ec1b630790e5645b8045",
+    "status": "error"
+}
 ```
 
 

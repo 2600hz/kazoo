@@ -195,20 +195,17 @@ create_phone_number(Number) ->
 reserve(Num, Options) ->
     case ?MODULE:get(Num, Options) of
         {'ok', Number} ->
-            States = [?NUMBER_STATE_RESERVED, ?NUMBER_STATE_DISCOVERY, ?NUMBER_STATE_AVAILABLE],
-            State = knm_phone_number:state(phone_number(Number)),
-            case lists:member(State, States) of
-                'true' ->
-                    Routines = [fun knm_number_states:to_reserved/1
-                                ,fun save_number/1
-                                ,fun dry_run_or_number/1
-                               ],
-                    apply_number_routines(Number, Routines);
-                'false' ->
-                    {'error', {'invalid_state_transition', State}}
-            end;
-        _Other -> _Other
+            attempt(fun do_reserve/1, [Number]);
+        {'error', _R}=E -> E
     end.
+
+-spec do_reserve(knm_number()) -> knm_number_return().
+do_reserve(Number) ->
+    Routines = [fun knm_number_states:to_reserved/1
+               ,fun save_number/1
+               ,fun dry_run_or_number/1
+               ],
+    apply_number_routines(Number, Routines).
 
 -spec save_number(knm_number()) -> knm_number().
 save_number(Number) ->
@@ -328,11 +325,10 @@ move(Num, MoveTo, Options) ->
             PN = knm_phone_number:new(Num, Options),
             Number = set_phone_number(new(), PN),
             attempt(fun move_to/2, [Number, MoveTo]);
-        {'error', _E}=E -> E
+        {'error', _R}=E -> E
     end.
 
--spec move_to(knm_number:knm_number(), ne_binary()) ->
-                     knm_number_return().
+-spec move_to(knm_number(), ne_binary()) -> knm_number_return().
 move_to(Number, MoveTo) ->
     AccountId = wh_util:format_account_id(MoveTo),
     PhoneNumber = phone_number(Number),
@@ -560,8 +556,7 @@ assign_to_app(Num, App, Options) ->
             maybe_update_assignment(Number, App)
     end.
 
--spec maybe_update_assignment(knm_number:knm_number(), api_binary()) ->
-                                     knm_number_return().
+-spec maybe_update_assignment(knm_number(), api_binary()) -> knm_number_return().
 maybe_update_assignment(Number, NewApp) ->
     PhoneNumber = phone_number(Number),
     case knm_phone_number:used_by(PhoneNumber) of
