@@ -283,7 +283,7 @@ receive_io_results() ->
 receive_io_results(Acc) ->
     receive
         {'io_result', Result} -> receive_io_results([Result|Acc])
-    after 50 -> iolist_to_binary(Acc)
+    after 50 -> iolist_to_binary(lists:reverse(Acc))
     end.
 
 -spec aggregate_results(cb_context:context()) -> cb_context:context().
