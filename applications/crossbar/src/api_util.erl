@@ -260,7 +260,7 @@ set_request_data_in_context(Context, Req, 'undefined', QS) ->
 set_request_data_in_context(Context, Req, JObj, QS) ->
     case is_valid_request_envelope(JObj, Context) of
         'true' ->
-            lager:debug("request json is valid", [JObj]),
+            lager:debug("request json is valid : ~p", [JObj]),
             set_valid_data_in_context(Context, Req, JObj, QS);
         Errors ->
             lager:info("failed to validate json request, invalid request"),
