@@ -79,11 +79,13 @@ find_numbers(Search, Quantity, _) ->
     {'ok', Result} = search(<<"npaNxx=", NpaNxx/binary, "&enableTNDetail=true&quantity=", UseQuantity/binary>>),
     process_search_response(Result).
 
+-spec process_tollfree_response(xml_el()) -> {'ok', wh_json:object()}.
 process_tollfree_response(Result) ->
     Results   = xmerl_xpath:string("TelephoneNumberList/TelephoneNumber", Result),
     Formatted = [tollfree_search_response_to_json(X) || X <- Results],
     {'ok', wh_json:from_list(Formatted)}.
 
+-spec process_search_response(xml_el()) -> {'ok', wh_json:object()}.
 process_search_response(Result) ->
     Numbers   = xmerl_xpath:string("TelephoneNumberDetailList/TelephoneNumberDetail", Result),
     Formatted = [search_response_to_json(X) || X <- Numbers],
@@ -121,11 +123,11 @@ acquire_number(#number{auth_by = AuthBy
             end,
 
             Props = [
-                {'Name', [wh_util:to_list(ON)]},
-                {'CustomerOrderId', [wh_util:to_list(ExtRef)]},
-                {'SiteId', [wh_util:to_list(Site)]},
-                {'PeerId', [wh_util:to_list(Peer)]},
-                {'ExistingTelephoneNumberOrderType',[
+                {'Name', [wh_util:to_list(ON)]}
+               ,{'CustomerOrderId', [wh_util:to_list(ExtRef)]}
+               ,{'SiteId', [wh_util:to_list(Site)]}
+               ,{'PeerId', [wh_util:to_list(Peer)]}
+               ,{'ExistingTelephoneNumberOrderType',[
                     {'TelephoneNumberList', [{'TelephoneNumber', [Num]}]}
                 ]}
             ],
@@ -154,6 +156,7 @@ acquire_number(#number{auth_by = AuthBy
 -spec disconnect_number(wnm_number()) -> wnm_number().
 disconnect_number(Number) -> Number.
 
+-spec sites() -> 'ok'.
 sites() ->
     AccountId   = whapps_config:get_string(?WNM_BW_CONFIG_CAT, <<"account_id">>),
     SiteUrl     = lists:flatten(io_lib:format("~s/accounts/~s/sites", [?BW_BASE_URL, AccountId])),
@@ -164,11 +167,13 @@ sites() ->
     [process_site(X) || X <- Sites],
     io:format("done.~n").
 
+-spec process_site(xml_el()) -> 'ok'.
 process_site(Site) ->
     Id   = wh_util:get_xml_value("Site/Id/text()", Site),
     Name = wh_util:get_xml_value("Site/Name/text()", Site),
     io:format("Id: ~p Name: ~p~n",[Id, Name]).
 
+-spec peers(binary()) -> 'ok'.
 peers(SiteId) ->
     AccountId = whapps_config:get_string(?WNM_BW_CONFIG_CAT, <<"account_id">>),
     PeerUrl   = lists:flatten(io_lib:format("~s/accounts/~s/sites/~s/sippeers", [?BW_BASE_URL, AccountId, SiteId])),
@@ -179,17 +184,21 @@ peers(SiteId) ->
     [process_peer(X) || X <- Peers],
     io:format("done.~n").
 
+-spec process_peer(xml_el()) -> 'ok'.
 process_peer(Peer) ->
     Id   = wh_util:get_xml_value("SipPeer/PeerId/text()", Peer),
     Name = wh_util:get_xml_value("SipPeer/PeerName/text()", Peer),
     io:format("Id: ~p Name: ~p~n", [Id, Name]).
 
+-type api_res() :: {'ok', xml_el()} | {'error', atom()}.
+-spec search(string()) -> api_res().
 search(Params) ->
     AccountId = whapps_config:get_string(?WNM_BW_CONFIG_CAT, <<"account_id">>),
     SearchUrl = lists:flatten(io_lib:format("~s/accounts/~s/availableNumbers?~s", [?BW_BASE_URL, AccountId, Params])),
 
     api_get(SearchUrl).
 
+-spec api_get(string()) -> api_res().
 api_get(Url) ->
     Username = whapps_config:get_string(?WNM_BW_CONFIG_CAT, <<"api_username">>),
     Password = whapps_config:get_string(?WNM_BW_CONFIG_CAT, <<"api_password">>),
@@ -197,6 +206,7 @@ api_get(Url) ->
 
     handle_ibrowse_response(Response).
 
+-spec api_post(string(), binary(), list()) -> api_res().
 api_post(Url, Body, AdditionalHeaders) ->
     Username = whapps_config:get_string(?WNM_BW_CONFIG_CAT, <<"api_username">>),
     Password = whapps_config:get_string(?WNM_BW_CONFIG_CAT, <<"api_password">>),
@@ -220,7 +230,6 @@ api_post(Url, Body, AdditionalHeaders) ->
 
     handle_ibrowse_response(Response).
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -229,6 +238,7 @@ api_post(Url, Body, AdditionalHeaders) ->
 %% @end
 %%--------------------------------------------------------------------
 
+-spec handle_ibrowse_response({'ok', string(), any(), string()} | {'error', any()}) -> api_res().
 handle_ibrowse_response({'ok', "401", _, _Response}) ->
     ?DEBUG_APPEND("Response:~n401~n~s~n", [_Response]),
     lager:debug("bandwidth.com request error: 401 (unauthenticated)"),
@@ -288,9 +298,9 @@ number_order_response_to_json([Xml]) ->
     number_order_response_to_json(Xml);
 number_order_response_to_json(Xml) ->
     Props = [
-        {<<"order_id">>, wh_util:get_xml_value("id/text()", Xml)},
-        {<<"order_name">>, wh_util:get_xml_value("Name/text()", Xml)},
-        {<<"number">>, wh_util:get_xml_value("TelephoneNumberList/TelephoneNumber/text()", Xml)}
+        {<<"order_id">>, wh_util:get_xml_value("id/text()", Xml)}
+       ,{<<"order_name">>, wh_util:get_xml_value("Name/text()", Xml)}
+       ,{<<"number">>, wh_util:get_xml_value("TelephoneNumberList/TelephoneNumber/text()", Xml)}
     ],
     wh_json:from_list(props:filter_undefined(Props)).
 
@@ -300,7 +310,7 @@ number_order_response_to_json(Xml) ->
 %% Convert a number search response XML entity to json
 %% @end
 %%--------------------------------------------------------------------
--spec search_response_to_json(xml_el()) -> wh_json:object().
+-spec search_response_to_json(xml_el() | xml_els()) -> wh_json:object().
 search_response_to_json([]) ->
     wh_json:new();
 search_response_to_json([Xml]) ->
@@ -308,8 +318,8 @@ search_response_to_json([Xml]) ->
 search_response_to_json(Xml) ->
     Number = wh_util:get_xml_value("//FullNumber/text()", Xml),
     Props = [
-        {<<"number">>, Number},
-        {<<"rate_center">>, rate_center_to_json(Xml)}
+        {<<"number">>, Number}
+       ,{<<"rate_center">>, rate_center_to_json(Xml)}
     ],
 
     {Number, wh_json:from_list(props:filter_undefined(Props))}.
@@ -329,16 +339,16 @@ tollfree_search_response_to_json(Xml) ->
 %% Convert a rate center XML entity to json
 %% @end
 %%--------------------------------------------------------------------
--spec rate_center_to_json(list()) -> wh_json:object().
+-spec rate_center_to_json(xml_el() | xml_els()) -> wh_json:object().
 rate_center_to_json([]) ->
     wh_json:new();
 rate_center_to_json([Xml]) ->
     rate_center_to_json(Xml);
 rate_center_to_json(Xml) ->
     Props = [
-        {<<"name">>, wh_util:get_xml_value("//RateCenter/text()", Xml)},
-        {<<"lata">>, wh_util:get_xml_value("//LATA/text()", Xml)},
-        {<<"state">>, wh_util:get_xml_value("//State/text()", Xml)}
+        {<<"name">>, wh_util:get_xml_value("//RateCenter/text()", Xml)}
+       ,{<<"lata">>, wh_util:get_xml_value("//LATA/text()", Xml)}
+       ,{<<"state">>, wh_util:get_xml_value("//State/text()", Xml)}
     ],
 
     wh_json:from_list(props:filter_undefined(Props)).

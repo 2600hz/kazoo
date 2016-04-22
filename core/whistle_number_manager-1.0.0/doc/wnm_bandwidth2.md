@@ -33,7 +33,7 @@ This document has the following parameters.
 * site_id: the site-id to use when purchasing numbers
 * sip_peer: the sip peer to use when purchasing numbers
 * debug: If this parameter is set to 'true' then each request and reply from Bandwidth will be written as a text file to /tmp/bandwidth.log for developers.
-* enable_provisioning: If this parameter is set to 'true' then the ability to active numbers will be enabled.  If set to 'false' then the module will only preform number searches.
+* enable_provisioning: If this parameter is set to 'true' then the ability to active numbers will be enabled.  If set to 'false' then the module will only perform number searches.
 * sandbox_provisioning: This parameter is intended to be used with 'enable_provisioning'.  If set to 'true' then all number provisioning will pretend to be successful without actually activating.
 * order_name_prefix: This is an arbitrary string that is added to the "order-id" of a number provisioning request to bandwidth to identify which numbers where purchased by the Kazoo system.
 
@@ -64,7 +64,7 @@ There are sup commands that will list the Site-ID's and Sip-Peers that are assoc
 
 This will list all sites for your account by ID and Name. Then you may use:
 
-# sup wnm_bandwidth2 peers <SITEID>
+# sup wnm_bandwidth2 peers {SITE_ID}
 
 To list all sip_peers that are configured for a given site.
 

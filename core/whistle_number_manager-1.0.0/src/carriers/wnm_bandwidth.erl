@@ -343,7 +343,7 @@ handle_ibrowse_response({'error', _}=E) ->
 %% Convert a number order response to json
 %% @end
 %%--------------------------------------------------------------------
--spec number_order_response_to_json(iolist()) -> wh_json:object().
+-spec number_order_response_to_json(xml_el() | xml_els()) -> wh_json:object().
 number_order_response_to_json([]) ->
     wh_json:new();
 number_order_response_to_json([Xml]) ->
@@ -367,7 +367,7 @@ number_order_response_to_json(Xml) ->
 %% Convert a number search response XML entity to json
 %% @end
 %%--------------------------------------------------------------------
--spec number_search_response_to_json(iolist()) -> wh_json:object().
+-spec number_search_response_to_json(xml_el() | xml_els()) -> wh_json:object().
 number_search_response_to_json([]) ->
     wh_json:new();
 number_search_response_to_json([Xml]) ->
