@@ -1524,7 +1524,7 @@ anonymous_caller_id_name() ->
 anonymous_caller_id_number() ->
     <<"0000000000">>.
 
-%% for core apps that want to know which app is calling 
+%% for core apps that want to know which app is calling
 -spec calling_app() -> ne_binary().
 calling_app() ->
     {'current_stacktrace', Modules} = erlang:process_info(self(),current_stacktrace),
