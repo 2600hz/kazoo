@@ -10,12 +10,12 @@
 
 -export([get/1, get/2
          ,create/1, create/2
-         ,move/1 ,move/2
-         ,update/1 ,update/2, update/3
+         ,move/1, move/2, move/3
+         ,update/1, update/2, update/3
          ,reconcile/2
-         ,release/1 ,release/2
-         ,change_state/1 ,change_state/2
-         ,assigned_to_app/1 ,assigned_to_app/2
+         ,release/1, release/2
+         ,change_state/1, change_state/2
+         ,assigned_to_app/1, assigned_to_app/2
          ,buy/3
          ,free/1
          ,emergency_enabled/1
@@ -75,11 +75,16 @@ do_create([{Num, Data}|Props], Acc) ->
                   numbers_return().
 -spec move(wh_proplist(), knm_number_options:options()) ->
                   numbers_return().
+-spec move(ne_binaries(), ne_binary(), knm_number_options:options()) ->
+                  numbers_return().
 move(Props) ->
     move(Props, knm_number_options:default()).
 
 move(Props, Options) ->
     do_move(Props, Options, []).
+
+move(Nums, MoveTo, Options) ->
+    [{Num, knm_number:move(Num, MoveTo, Options)} || Num <- Nums].
 
 -spec do_move(wh_proplist(), knm_number_options:options(), numbers_return()) ->
                      numbers_return().

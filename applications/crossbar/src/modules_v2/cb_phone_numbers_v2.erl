@@ -921,7 +921,7 @@ numbers_action(Context, ?ACTIVATE, Numbers) ->
                ,{'dry_run', not cb_context:accepting_charges(Context)}
                ,{'public_fields', cb_context:req_data(Context)}
               ],
-    knm_numbers:buy(Numbers, cb_context:account_id(Context), Options);
+    knm_numbers:move(Numbers, cb_context:account_id(Context), Options);
 numbers_action(Context, ?HTTP_PUT, Numbers) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}

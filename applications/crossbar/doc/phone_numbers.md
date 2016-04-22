@@ -113,6 +113,7 @@ curl -v -X GET \
     * Account document must be showing `pvt_wnm_allow_additions` as `true`
     * Or auth must be done via master account.
 
+
 #### Remove a number from the account owning it
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
@@ -161,6 +162,7 @@ curl -v -X DELETE \
     "status": "error"
 }
 ```
+
 
 #### List an account's specific phone number
 
@@ -219,6 +221,7 @@ Possible reasons for failure:
 }
 ```
 
+
 #### Update public fields of a number
 
 > POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
@@ -249,6 +252,7 @@ curl -v -X POST \
     "status": "success"
 }
 ```
+
 
 #### Add a number to the database
 
@@ -325,6 +329,7 @@ curl -v -X PUT \
 }
 ```
 
+
 #### Check availability of phone numbers
 
 This API check if the numbers are still available for purchase.
@@ -377,6 +382,7 @@ It may be due to:
 }
 ```
 
+
 #### Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/locality
@@ -387,6 +393,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/locality
 ```
 
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/prefix
@@ -396,6 +403,7 @@ curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/prefix
 ```
+
 
 #### Remove a list of numbers from the database
 
@@ -451,6 +459,7 @@ curl -v -X DELETE \
 }
 ```
 
+
 #### Update public fields of a list of numbers
 
 > POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
@@ -496,6 +505,7 @@ curl -v -X POST \
     "status": "success"
 }
 ```
+
 
 #### Add a list of numbers to the database
 
@@ -635,6 +645,7 @@ curl -v -X GET \
 }
 ```
 
+
 #### Fix issues
 
 > POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/fix
@@ -682,6 +693,7 @@ curl -v -X POST \
 }
 ```
 
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/identify
@@ -691,6 +703,7 @@ curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/identify
 ```
+
 
 #### Create
 
@@ -702,6 +715,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/reserve
 ```
 
+
 #### Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/activate
@@ -711,6 +725,7 @@ curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/activate
 ```
+
 
 #### Classify a number
 
@@ -739,14 +754,74 @@ curl -v -X GET \
 }
 ```
 
-#### Create
+
+#### Buy a list of numbers
+
+Note: numbers must have appeared as part of the results of a numbers search.
 
 > PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/collection/activate
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data":{"numbers": ["{PHONENUMBER1}", "{PHONENUMBER2}"]}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection/activate
+```
+
+##### Responses
+
+###### Success
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "success": {
+            "{PHONENUMBER1}": {
+                "_read_only": {
+                    "created": 63628542222,
+                    "modified": 63628542222,
+                    "module": "knm_local",
+                    "state": "in_service"
+                },
+                "id": "{PHONENUMBER1}",
+                "state": "in_service"
+            },
+            "{PHONENUMBER2}": {
+                "_read_only": {
+                    "created": 63628542222,
+                    "modified": 63628542222,
+                    "module": "knm_local",
+                    "state": "in_service"
+                },
+                "id": "{PHONENUMBER2}",
+                "state": "in_service"
+            }
+        }
+    },
+    "request_id": "1fd30d420f3c4f601e05f8f9eb041e46",
+    "revision": "undefined",
+    "status": "success"
+}
+```
+
+###### Number not found or other error
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "{PHONENUMBER2}": {
+            "code": 500,
+            "error": "unspecified_fault",
+            "message": "missing_provider_url"
+        }
+    },
+    "error": "400",
+    "message": "client error",
+    "request_id": "892b3cc884bd913cd3912c5b4c757421",
+    "status": "error"
+}
 ```
 
 
@@ -756,6 +831,7 @@ curl -v -X PUT \
 curl -X PUT -H "Content-Type: application/json" -H "X-Auth-Token: {{AUTH_TOKEN}}" \
     http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/phone_numbers/{{NUMBER}}/activate -d '{}'
 ```
+
 
 #### E911
 
