@@ -970,7 +970,6 @@ leaks_private_fields_safely(JObj) ->
             ,{<<"modified">>, wh_doc:modified(JObj)}
             ,State
             ,UsedBy
-            ,{<<"module">>, wh_json:get_value(<<"pvt_module_name">>, JObj)}
             ])
          ),
     Root =
