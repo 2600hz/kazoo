@@ -34,17 +34,6 @@
          ,is_number/1
         ]).
 
--export([account_id/1, set_account_id/2
-         ,has_pending_port/1
-         ,inbound_cnam_enabled/1
-         ,is_local_number/1
-         ,number/1
-         ,prepend/1
-         ,ringback_media_id/1
-         ,should_force_outbound/1
-         ,transfer_media_id/1
-        ]).
-
 
 -ifdef(TEST).
 -export([attempt/2]).
@@ -68,22 +57,9 @@
 
 -export_type([knm_number/0
               ,knm_numbers/0
-              ,number_options/0
               ,knm_number_return/0
               ,dry_run_return/0
              ]).
-
--type number_option() :: {'account_id', ne_binary()} | %%api
-                         {'force_outbound', boolean()} |
-                         {'inbound_cnam', boolean()} |
-                         {'local', boolean()} |
-                         {'number', ne_binary()} | %%api
-                         {'pending_port', boolean()} |
-                         {'prepend', api_binary()} | %%|false
-                         {'ringback_media', api_binary()} |
-                         {'transfer_media', api_binary()}.
-
--type number_options() :: [number_option()].
 
 -type lookup_error() :: 'not_reconcilable' |
                         'not_found' |
@@ -91,7 +67,7 @@
                         {'not_in_service', ne_binary()} |
                         {'account_disabled', ne_binary()}.
 
--type lookup_account_return() :: {'ok', ne_binary(), number_options()} |
+-type lookup_account_return() :: {'ok', ne_binary(), knm_number_options:extra_options()} |
                                  {'error', lookup_error()}.
 
 %%--------------------------------------------------------------------
@@ -596,50 +572,6 @@ lookup_account(Num) ->
                 Else -> Else
             end
     end.
-
-%%--------------------------------------------------------------------
-%% Public get/set number_options()
-%%--------------------------------------------------------------------
--spec account_id(number_options()) -> ne_binary().
-account_id(Props) when is_list(Props) ->
-    props:get_ne_binary_value('account_id', Props).
-
--spec set_account_id(number_options(), ne_binary()) -> number_options().
-set_account_id(Props, AccountId=?NE_BINARY) when is_list(Props) ->
-    props:set_value('account_id', AccountId, Props).
-
--spec has_pending_port(number_options()) -> boolean().
-has_pending_port(Props) when is_list(Props) ->
-    props:get_is_true('pending_port', Props).
-
--spec inbound_cnam_enabled(number_options()) -> boolean().
-inbound_cnam_enabled(Props) when is_list(Props) ->
-    props:get_is_true('inbound_cnam', Props).
-
--spec is_local_number(number_options()) -> boolean().
-is_local_number(Props) when is_list(Props) ->
-    props:get_is_true('local', Props).
-
--spec number(number_options()) -> ne_binary().
-number(Props) when is_list(Props) ->
-    props:get_ne_binary_value('number', Props).
-
--spec prepend(number_options()) -> api_binary().
-prepend(Props) when is_list(Props) ->
-    props:get_value('prepend', Props).
-
--spec ringback_media_id(number_options()) -> api_binary().
-ringback_media_id(Props) when is_list(Props) ->
-    props:get_value('ringback_media', Props).
-
--spec should_force_outbound(number_options()) -> boolean().
-should_force_outbound(Props) when is_list(Props) ->
-    props:get_is_true('force_outbound', Props).
-
--spec transfer_media_id(number_options()) -> api_binary().
-transfer_media_id(Props) when is_list(Props) ->
-    props:get_value('transfer_media', Props).
-%%--------------------------------------------------------------------
 
 
 %%%===================================================================

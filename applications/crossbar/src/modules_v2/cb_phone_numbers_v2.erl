@@ -758,7 +758,7 @@ identify(Context, Number) ->
         {'ok', AccountId, NumberOptions} ->
             JObj = wh_json:from_list(
                     [ {<<"account_id">>, AccountId}
-                    , {<<"number">>, knm_number:number(NumberOptions)}
+                    , {<<"number">>, knm_number_options:number(NumberOptions)}
                     ]),
             crossbar_util:response(JObj, Context);
         {'error', _R}=Error ->

@@ -69,10 +69,10 @@ maybe_relay_request(JObj) ->
 %% determine the e164 format of the inbound number
 %% @end
 %%--------------------------------------------------------------------
--spec set_account_id(knm_number:number_properties(), wh_json:object()) ->
+-spec set_account_id(knm_number_options:extra_options(), wh_json:object()) ->
                             wh_json:object().
 set_account_id(NumberProps, JObj) ->
-    AccountId = knm_number:account_id(NumberProps),
+    AccountId = knm_number_options:account_id(NumberProps),
     wh_json:set_value(?CCV(<<"Account-ID">>), AccountId, JObj).
 
 %%--------------------------------------------------------------------
@@ -81,7 +81,7 @@ set_account_id(NumberProps, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_ignore_display_updates(knm_number:number_properties(), wh_json:object()) ->
+-spec set_ignore_display_updates(knm_number_options:extra_options(), wh_json:object()) ->
                                         wh_json:object().
 set_ignore_display_updates(_, JObj) ->
     wh_json:set_value(?CCV(<<"Ignore-Display-Updates">>), <<"true">>, JObj).
@@ -92,7 +92,7 @@ set_ignore_display_updates(_, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_inception(knm_number:number_properties(), wh_json:object()) ->
+-spec set_inception(knm_number_options:extra_options(), wh_json:object()) ->
                            wh_json:object().
 set_inception(_, JObj) ->
     Request = wh_json:get_value(<<"Request">>, JObj),
@@ -104,9 +104,9 @@ set_inception(_, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_find_resource(knm_number:number_properties(), wh_json:object()) ->
+-spec maybe_find_resource(knm_number_options:extra_options(), wh_json:object()) ->
                                  wh_json:object().
-maybe_find_resource(_NumberProps, JObj) ->
+maybe_find_resource(_, JObj) ->
     case stepswitch_resources:reverse_lookup(JObj) of
         {'error', 'not_found'} -> JObj;
         {'ok', ResourceProps} ->
@@ -150,15 +150,17 @@ maybe_add_t38_settings(JObj, ResourceProps) ->
         _ -> JObj
     end.
 
--spec maybe_format_destination(knm_number:number_properties(), wh_json:object()) -> wh_json:object().
-maybe_format_destination(_NumberProps, JObj) ->
+-spec maybe_format_destination(knm_number_options:extra_options(), wh_json:object()) ->
+                                      wh_json:object().
+maybe_format_destination(_, JObj) ->
     case wh_json:get_value(?CCV(<<"Resource-ID">>), JObj) of
         'undefined' -> JObj;
         ResourceId ->
             case stepswitch_resources:get_props(ResourceId) of
                 'undefined' -> JObj;
                 Resource ->
-                    stepswitch_formatters:apply(JObj, props:get_value(<<"Formatters">>, Resource, wh_json:new()), 'inbound')
+                    Formatters = props:get_value(<<"Formatters">>, Resource, wh_json:new()),
+                    stepswitch_formatters:apply(JObj, Formatters, 'inbound')
             end
     end.
 
@@ -168,10 +170,10 @@ maybe_format_destination(_NumberProps, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_set_ringback(knm_number:number_properties(), wh_json:object()) ->
+-spec maybe_set_ringback(knm_number_options:extra_options(), wh_json:object()) ->
                                 wh_json:object().
 maybe_set_ringback(NumberProps, JObj) ->
-    case knm_number:ringback_media_id(NumberProps) of
+    case knm_number_options:ringback_media_id(NumberProps) of
         'undefined' -> JObj;
         MediaId ->
             wh_json:set_value(?CCV(<<"Ringback-Media">>), MediaId, JObj)
@@ -183,10 +185,10 @@ maybe_set_ringback(NumberProps, JObj) ->
 %% determine the e164 format of the inbound number
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_set_transfer_media(knm_number:number_properties(), wh_json:object()) ->
+-spec maybe_set_transfer_media(knm_number_options:extra_options(), wh_json:object()) ->
                                       wh_json:object().
 maybe_set_transfer_media(NumberProps, JObj) ->
-    case knm_number:transfer_media_id(NumberProps) of
+    case knm_number_options:transfer_media_id(NumberProps) of
         'undefined' -> JObj;
         MediaId ->
             wh_json:set_value(?CCV(<<"Transfer-Media">>), MediaId, JObj)
@@ -199,10 +201,10 @@ maybe_set_transfer_media(NumberProps, JObj) ->
 %% account and authorizing  ID
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_lookup_cnam(knm_number:number_properties(), wh_json:object()) ->
+-spec maybe_lookup_cnam(knm_number_options:extra_options(), wh_json:object()) ->
                                wh_json:object().
 maybe_lookup_cnam(NumberProps, JObj) ->
-    case knm_number:inbound_cnam_enabled(NumberProps) of
+    case knm_number_options:inbound_cnam_enabled(NumberProps) of
         'false' -> JObj;
         'true' -> stepswitch_cnam:lookup(JObj)
     end.
@@ -212,10 +214,10 @@ maybe_lookup_cnam(NumberProps, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_add_prepend(knm_number:number_properties(), wh_json:object()) ->
+-spec maybe_add_prepend(knm_number_options:extra_options(), wh_json:object()) ->
                                wh_json:object().
 maybe_add_prepend(NumberProps, JObj) ->
-    case knm_number:prepend(NumberProps) of
+    case knm_number_options:prepend(NumberProps) of
         'undefined' -> JObj;
         Prepend -> wh_json:set_value(<<"Prepend-CID-Name">>, Prepend, JObj)
     end.
@@ -226,9 +228,9 @@ maybe_add_prepend(NumberProps, JObj) ->
 %% relay a route request once populated with the new properties
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_blacklisted(knm_number:number_properties(), wh_json:object()) ->
-                           wh_json:object().
-maybe_blacklisted(_NumberProps, JObj) ->
+-spec maybe_blacklisted(knm_number_options:extra_options(), wh_json:object()) ->
+                               wh_json:object().
+maybe_blacklisted(_, JObj) ->
     case is_blacklisted(JObj) of
         'true' -> JObj;
         'false' ->
@@ -253,11 +255,11 @@ relay_request(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_transition_port_in(knm_number:number_properties(), wh_json:object()) -> any().
+-spec maybe_transition_port_in(knm_number_options:extra_options(), wh_json:object()) -> any().
 maybe_transition_port_in(NumberProps, JObj) ->
-    case knm_number:has_pending_port(NumberProps) of
+    case knm_number_options:has_pending_port(NumberProps) of
         'false' -> 'ok';
-        'true' -> transition_port_in(knm_number:number(NumberProps), JObj)
+        'true' -> transition_port_in(knm_number_options:number(NumberProps), JObj)
     end.
 
 -spec transition_port_in(ne_binary(), api_object()) -> any().

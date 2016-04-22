@@ -219,10 +219,10 @@ get_endpoint_data(State) ->
             throw('unknown_account')
     end.
 
--spec get_endpoint_data(ts_callflow:state(), wh_json:object(), ne_binary(), ne_binary(), wh_proplist()) ->
-                                {'endpoint', wh_json:object()}.
+-spec get_endpoint_data(ts_callflow:state(), wh_json:object(), ne_binary(), ne_binary(), knm_number_options:extra_options()) ->
+                               {'endpoint', wh_json:object()}.
 get_endpoint_data(State, JObj, ToDID, AccountId, NumberProps) ->
-    ForceOut = knm_number:should_force_outbound(NumberProps),
+    ForceOut = knm_number_options:should_force_outbound(NumberProps),
     lager:info("building endpoint for account id ~s with force out ~s", [AccountId, ForceOut]),
     RoutingData1 = routing_data(ToDID, AccountId),
 
