@@ -1195,6 +1195,7 @@ execute_exten_handle_ccvs(DP, _Node, UUID, JObj) ->
              || {K, V} <- ChannelVars, not execute_exten_is_original_ccv(K)] ++ DP
     end.
 
+-spec execute_exten_is_original_ccv(ne_binary()) -> boolean().
 execute_exten_is_original_ccv(<<?CHANNEL_VARS_EXT, _/binary>>) -> 'true';
 execute_exten_is_original_ccv(_) -> 'false'.
 
