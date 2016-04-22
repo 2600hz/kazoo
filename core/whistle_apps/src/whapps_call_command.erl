@@ -217,8 +217,8 @@
 -define(DEFAULT_MESSAGE_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"message_timeout">>, 5 * ?MILLISECONDS_IN_SECOND)).
 -define(DEFAULT_APPLICATION_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"application_timeout">>, 500 * ?MILLISECONDS_IN_SECOND)).
 
--define(DEFAULT_STORAGE_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"storage_timeout_ms">>, 5 * ?MILLISECONDS_IN_MINUTE)).
--define(DEFAULT_STORAGE_RETRIES, whapps_config:get_integer(?CONFIG_CAT, <<"storage_retries">>, 5)).
+-define(STORAGE_TIMEOUT(App), whapps_config:get_integer(?CONFIG_CAT, [<<"store_file">>, wh_util:to_binary(App), <<"save_timeout_ms">>], 5 * ?MILLISECONDS_IN_MINUTE, <<"default">>)).
+-define(STORAGE_RETRIES(App), whapps_config:get_integer(?CONFIG_CAT, [<<"store_file">>, wh_util:to_binary(App), <<"retries">>], 5, <<"default">>)).
 
 -spec default_collect_timeout() -> pos_integer().
 default_collect_timeout() ->
@@ -240,13 +240,13 @@ default_message_timeout() ->
 default_application_timeout() ->
     ?DEFAULT_APPLICATION_TIMEOUT.
 
--spec default_storage_timeout() -> pos_integer().
-default_storage_timeout() ->
-    ?DEFAULT_STORAGE_TIMEOUT.
+-spec storage_timeout(ne_binary()) -> pos_integer().
+storage_timeout(App) ->
+    ?STORAGE_TIMEOUT(App).
 
--spec default_storage_retries() -> pos_integer().
-default_storage_retries() ->
-    ?DEFAULT_STORAGE_RETRIES.
+-spec storage_retries(ne_binary()) -> pos_integer().
+storage_retries(App) ->
+    ?STORAGE_RETRIES(App).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -2934,12 +2934,14 @@ store_file_args(Filename, Url) ->
 
 -spec store_file(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok' | {'error', any()}.
 store_file(Filename, Url, Call) ->
-    store_file(Filename, Url, default_storage_retries(), default_storage_timeout(), Call).
+    App = wh_util:calling_app(),
+    store_file(Filename, Url, storage_retries(App), storage_timeout(App), Call).
 
 -spec store_file(ne_binary(), ne_binary(), pos_integer(), whapps_call:call()) ->
           'ok' | {'error', any()}.
 store_file(Filename, Url, Tries, Call) ->
-    store_file(Filename, Url, Tries, default_storage_timeout(), Call).
+    App = wh_util:calling_app(),
+    store_file(Filename, Url, Tries, storage_timeout(App), Call).
 
 -spec store_file(ne_binary(), ne_binary(), pos_integer(), wh_timeout(), whapps_call:call()) ->
           'ok' | {'error', any()}.
@@ -2950,8 +2952,7 @@ store_file(Filename, Url, Tries, Timeout, Call) ->
                                 [Filename, whapps_call:switch_nodename(Call)]);
               ErrorMsg -> ErrorMsg
           end,
-    AppName = whapps_call:application_name(Call),
-    AppVersion = whapps_call:application_version(Call),
+    {AppName, AppVersion} = wh_util:calling_app_version(),
     API = [{<<"Command">>, <<"send_http">>}
            ,{<<"Args">>, wh_json:from_list(store_file_args(Filename, Url))}
            ,{<<"FreeSWITCH-Node">>, whapps_call:switch_nodename(Call)}
