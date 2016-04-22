@@ -679,6 +679,8 @@ expire_object({[#registration{id=Id}=Reg], Continuation}) ->
 maybe_resp_to_query(JObj) ->
     case wh_json:get_value(<<"Node">>, JObj)
         =:= wh_util:to_binary(node())
+        andalso wh_json:get_value(<<"App-Name">>, JObj)
+        =:= ?APP_NAME
     of
         'false' -> resp_to_query(JObj);
         'true' ->
