@@ -680,7 +680,6 @@ set_options(Number, Options) when is_list(Options) ->
 -spec is_authorized(knm_phone_number()) -> boolean().
 -ifdef(TEST).
 is_authorized(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}) -> 'true';
-is_authorized(#knm_phone_number{assigned_to = 'undefined'}) -> 'true';
 is_authorized(#knm_phone_number{assigned_to = AssignedTo
                                ,auth_by = AuthBy
                                }) ->
@@ -690,9 +689,6 @@ is_authorized(#knm_phone_number{assigned_to = AssignedTo
 -else.
 is_authorized(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}) ->
     lager:info("bypassing auth"),
-    'true';
-is_authorized(#knm_phone_number{assigned_to = 'undefined'}) ->
-    lager:debug("assigned_to was undefined, authorizing"),
     'true';
 is_authorized(#knm_phone_number{assigned_to = AssignedTo
                                ,auth_by = AuthBy
