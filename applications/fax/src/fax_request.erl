@@ -460,7 +460,6 @@ get_fs_filename(#state{storage=#fax_storage{attachment_id=AttachmentId}}) ->
 
 -spec store_attachment(state()) -> handle_cast_return().
 store_attachment(#state{call=Call
-                        ,fax_store_count=Count
                         ,fax_result=FaxResultObj
                        }=State) ->
     FaxUrl = attachment_url(State),
