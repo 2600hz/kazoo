@@ -180,8 +180,16 @@ filter_folder(Messages, Folder) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec count_messages(wh_json:objects()) -> non_neg_integer().
-count_messages(Messages) ->
-    lists:sum([wh_json:get_integer_value(<<"value">>, Message) || Message <- Messages]).
+count_messages(ViewResults) ->
+    Props = [{wh_json:get_value([<<"key">>, 2], MessageCount)
+              ,wh_json:get_integer_value(<<"value">>, MessageCount)
+             }
+             || MessageCount <- ViewResults
+            ],
+    {props:get_integer_value(<<"new">>, Props, 0)
+     ,props:get_integer_value(<<"saved">>, Props, 0)
+    }.
+    % lists:sum([wh_json:get_integer_value(<<"value">>, Message) || Message <- Messages]).
 
 %%--------------------------------------------------------------------
 %% @private

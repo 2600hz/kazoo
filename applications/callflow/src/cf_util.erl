@@ -366,26 +366,7 @@ send_mwi_update(New, Saved, Username, Realm, JObj) ->
 -spec vm_count_by_owner(ne_binary(), api_binary()) -> {non_neg_integer(), non_neg_integer()}.
 vm_count_by_owner(_AccountDb, 'undefined') -> {0, 0};
 vm_count_by_owner(<<_/binary>> = AccountDb, <<_/binary>> = OwnerId) ->
-    ViewOptions = ['reduce'
-                   ,'group'
-                   ,{'group_level', 2}
-                   ,{'startkey', [OwnerId]}
-                   ,{'endkey', [OwnerId, wh_json:new()]}
-                  ],
-    case kz_datamgr:get_results(AccountDb, <<"cf_attributes/vm_count_by_owner">>, ViewOptions) of
-        {'ok', MessageCounts} ->
-            Props = [{wh_json:get_value([<<"key">>, 2], MessageCount)
-                      ,wh_json:get_integer_value(<<"value">>, MessageCount)
-                     }
-                     || MessageCount <- MessageCounts
-                    ],
-            {props:get_integer_value(<<"new">>, Props, 0)
-             ,props:get_integer_value(<<"saved">>, Props, 0)
-            };
-        {'error', _R} ->
-            lager:info("unable to lookup vm counts by owner: ~p", [_R]),
-            {0, 0}
-    end.
+    kz_vm_message:count_by_owner(AccountDb, OwnerId).
 
 %%--------------------------------------------------------------------
 %% @public

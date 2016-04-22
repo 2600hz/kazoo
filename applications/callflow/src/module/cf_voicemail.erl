@@ -1309,7 +1309,7 @@ get_mailbox_profile(Data, Call) ->
             {NameMediaId, OwnerId} = owner_info(AccountDb, MailboxJObj),
 
             MaxMessageCount = max_message_count(Call),
-            MsgCount = kz_vm_message:count_all(whapps_call:account_id(Call), Id),
+            MsgCount = kz_vm_message:count(whapps_call:account_id(Call), Id),
 
             lager:info("mailbox limited to ~p voicemail messages (has ~b currently)"
                        ,[MaxMessageCount, MsgCount]

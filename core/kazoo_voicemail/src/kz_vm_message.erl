@@ -11,7 +11,7 @@
 -export([new_message/5
          ,message_doc/2
          ,message/2, messages/2
-         ,count_all/2
+         ,count/2, count_per_folder/2, count_by_owner/2
          ,set_folder/3, update_folder/3
 
          ,media_url/2
@@ -142,7 +142,7 @@ try_store_recording(AttachmentName, Url, Tries, Call) ->
             retry_store(AttachmentName, Url, Tries, Call, Other)
     end.
 
--spec retry_store(ne_binary(), ne_binary(), pos_integer(), whapps_call:call(), any()) ->
+-spec retry_store(ne_binary(), ne_binary(), non_neg_integer(), whapps_call:call(), any()) ->
                                  {'ok', wh_json:object()} |
                                  {'error', whapps_call:call()}.
 retry_store(AttachmentName, Url, Tries, Call, Error) ->
@@ -470,40 +470,52 @@ maybe_delete_media_doc(_, _, {'error', _}=E) ->
 %% @doc Count non-deleted messages
 %% @end
 %%--------------------------------------------------------------------
--spec count_all(ne_binary(), ne_binary()) -> non_neg_integer().
-count_all(AccountId, BoxId) ->
+-spec count(ne_binary(), ne_binary()) -> {non_neg_integer(), non_neg_integer()}.
+count(AccountId, BoxId) ->
+    {New, Saved} = count_per_folder(AccountId, BoxId),
+    New + Saved.
+
+count_by_owner(AccountDb, OwnerId) ->
+    AccountId = wh_util:format_account_id(AccountDb),
+    ViewOpts = [{'key', [OwnerId, <<"vmbox">>]}],
+
+    case kz_datamgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOpts) of
+        {'ok', [Owned|_]} ->
+            VMBoxId = wh_json:get_value(<<"value">>, Owned),
+            count_per_folder(AccountId, VMBoxId);
+        {'error', _R} ->
+            lager:info("unable to lookup vm counts by owner: ~p", [_R]),
+            {0, 0}
+    end.
+
+-spec count_per_folder(ne_binary(), ne_binary()) -> {non_neg_integer(), non_neg_integer()}.
+count_per_folder(AccountId, BoxId) ->
     % first count messages from vmbox for backward compatibility
     case fetch_vmbox_messages(AccountId, BoxId) of
         {'ok', Msgs} ->
-            C = kzd_voice_message:count_messages(Msgs, [?VM_FOLDER_NEW, ?VM_FOLDER_SAVED]),
-            count_modb_messages(AccountId, BoxId, C);
-        _ -> count_modb_messages(AccountId, BoxId, 0)
+            New = kzd_voice_message:count_messages(Msgs, [?VM_FOLDER_NEW]),
+            Saved = kzd_voice_message:count_messages(Msgs, [?VM_FOLDER_SAVED]),
+            count_modb_messages(AccountId, BoxId, {New, Saved});
+        _ -> count_modb_messages(AccountId, BoxId, {0, 0})
     end.
 
 -spec count_modb_messages(ne_binary(), ne_binary(), non_neg_integer()) -> non_neg_integer().
-count_modb_messages(AccountId, BoxId, AccountDbCount) ->
-    case count_per_folder(AccountId, BoxId, [?VM_FOLDER_NEW, ?VM_FOLDER_SAVED]) of
-        [] -> AccountDbCount;
-        ViewResults -> kzd_voice_message:count_messages(ViewResults) + AccountDbCount
+count_modb_messages(AccountId, BoxId, {ANew, ASaved}=AccountDbCounts) ->
+    FolderViewOpts = ['reduce'
+                      ,'group'
+                      ,{'group_level', 2}
+                      ,{'startkey', [BoxId]}
+                      ,{'endkey', [BoxId, wh_json:new()]}
+                     ],
+    ViewOptions = get_range_view(AccountId, FolderViewOpts),
+
+    case results_from_modbs(AccountId, ?MODB_COUNT_VIEW, ViewOptions, []) of
+        [] ->
+            AccountDbCounts;
+        Results ->
+            {MNew, MSaved} = kzd_voice_message:count_messages(Results),
+            {ANew + MNew, ASaved + MSaved}
     end.
-
--spec count_per_folder(ne_binary(), ne_binary(), ne_binary() | ne_binaries()) ->
-                                {'ok', wh_json:objects()} |
-                                {'error', any()}.
-count_per_folder(AccountId, BoxId, <<_/binary>>=Folder) ->
-    count_per_folder(AccountId, BoxId, [Folder]);
-count_per_folder(AccountId, BoxId, Folders) ->
-    FolderViewOpts = folder_view_option(BoxId, Folders),
-    ViewOpts = get_range_view(AccountId, FolderViewOpts),
-
-    do_fetch_from_modbs(AccountId, ?MODB_COUNT_VIEW, ViewOpts, []).
-
--spec folder_view_option(ne_binary(), ne_binaries()) -> wh_proplist().
-folder_view_option(BoxId, [<<_/binary>>=Folder]) ->
-    [{'key', [BoxId, Folder]}, 'reduce', 'group'];
-folder_view_option(BoxId, Folders) ->
-    [{'keys', lists:foldl(fun(F, Acc) -> [[BoxId, F] | Acc] end, [], Folders)}, 'reduce', 'group'].
-
 
 %%--------------------------------------------------------------------
 %% @public
@@ -511,14 +523,11 @@ folder_view_option(BoxId, Folders) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec media_url(ne_binary(), ne_binary() | wh_json:object()) -> binary().
-%% temp fix to unblock
-%% you need to get the full doc here
 media_url(AccountId, ?JSON_WRAPPER(_)=Message) ->
     media_url(AccountId, kzd_voice_message:media_id(Message));
 media_url(AccountId, MessageId) ->
     case message_doc(AccountId, MessageId) of
         {'ok', Message} ->
-            lager:debug("MESSAGE ~p", [Message]),
             wh_media_url:playback(Message, Message);
         {'error', _} -> <<>>
     end.
@@ -557,22 +566,22 @@ fetch_modb_messages(AccountId, DocId, VMBoxMsg) ->
     ViewOptsList = get_range_view(AccountId, ViewOpts),
 
     ModbResults = [kzd_voice_message:metadata(wh_json:get_value(<<"doc">>, Msg))
-                   || Msg <- do_fetch_from_modbs(AccountId, ?MODB_LISTING_BY_MAILBOX, ViewOptsList, [])
+                   || Msg <- results_from_modbs(AccountId, ?MODB_LISTING_BY_MAILBOX, ViewOptsList, [])
                       ,Msg =/= []
                   ],
     VMBoxMsg ++ ModbResults.
 
-do_fetch_from_modbs(_, _, [], ViewResults) ->
+results_from_modbs(_, _, [], ViewResults) ->
     ViewResults;
-do_fetch_from_modbs(AccountId, View, [ViewOpts|ViewOptsList], Acc) ->
+results_from_modbs(AccountId, View, [ViewOpts|ViewOptsList], Acc) ->
     case kazoo_modb:get_results(AccountId, View, ViewOpts) of
-        {'ok', []} -> do_fetch_from_modbs(AccountId, View, ViewOptsList, Acc);
-        {'ok', Msgs} -> do_fetch_from_modbs(AccountId, View, ViewOptsList, Msgs ++ Acc);
+        {'ok', []} -> results_from_modbs(AccountId, View, ViewOptsList, Acc);
+        {'ok', Msgs} -> results_from_modbs(AccountId, View, ViewOptsList, Msgs ++ Acc);
         {'error', _}=_E ->
             lager:debug("error when fetching voicemail message for ~s from modb ~s"
                         ,[props:get_value('key', ViewOpts), props:get_value('modb', ViewOpts)]
                        ),
-            do_fetch_from_modbs(AccountId, View, ViewOptsList, Acc)
+            results_from_modbs(AccountId, View, ViewOptsList, Acc)
     end.
 
 -spec get_range_view(ne_binary(), wh_proplist()) -> wh_proplists().
