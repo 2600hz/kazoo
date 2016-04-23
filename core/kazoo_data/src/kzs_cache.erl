@@ -24,7 +24,7 @@
 -include("kz_data.hrl").
 
 -define(DEFAULT_NO_CACHING_TYPES, [<<"media">>, <<"private_media">>, <<"call_recording">>
-                                   ,<<"fax">>, <<"voice_mail">>
+                                   ,<<"fax">>, <<"vm">>
                                   ]).
 -define(NO_CACHING_TYPES, whapps_config:get(?CONFIG_CAT
                                             ,<<"no_caching_doc_types">>
@@ -109,7 +109,8 @@ cache_if_not_media(CacheProps, DbName, DocId, CacheValue) ->
     %%   message bus anytime a http_put is issued (or maybe if the store
     %%   url is built in media IF everything uses that helper function,
     %    which is not currently the case...)
-    case lists:member(wh_doc:type(CacheValue), ?NO_CACHING_TYPES) of
+    case kzs_util:db_classification(DbName) =/= 'system'
+        andalso lists:member(wh_doc:type(CacheValue), ?NO_CACHING_TYPES) of
         'true' -> 'ok';
         'false' -> kz_cache:store_local(?KZ_DATA_CACHE
                                         ,{?MODULE, DbName, DocId}
