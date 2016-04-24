@@ -17,9 +17,9 @@
 -export([format_error/1]).
 
 %% System manipulation
--export([db_exists/1
+-export([db_exists/1, db_exists/2, db_exists_all/1
          ,db_info/0, db_info/1
-         ,db_create/1
+         ,db_create/1, db_create/2
          ,db_compact/1
          ,db_view_cleanup/1
          ,db_view_update/2, db_view_update/3
@@ -252,6 +252,38 @@ db_exists(DbName) when ?VALID_DBNAME ->
 db_exists(DbName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> db_exists(Db);
+        {'error', _}=E -> E
+    end.
+
+-spec db_exists(text(), api_binary() | wh_proplist()) -> boolean().
+db_exists(DbName, 'undefined') ->
+    db_exists(DbName);
+db_exists(DbName, Type)
+  when ?VALID_DBNAME andalso is_binary(Type) ->
+    case add_doc_type_from_view(Type, []) of
+        [] -> db_exists(DbName, [{'doc_type', Type}]);
+        Options -> db_exists(DbName, Options)
+    end;
+db_exists(DbName, Options) when ?VALID_DBNAME ->
+    kzs_db:db_exists(kzs_plan:plan(DbName, Options), DbName);
+db_exists(DbName, Options) ->
+    case maybe_convert_dbname(DbName) of
+        {'ok', Db} -> db_exists(Db, Options);
+        {'error', _}=E -> E
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Detemine if a database exists, also checks other connections
+%% @end
+%%--------------------------------------------------------------------
+-spec db_exists_all(text()) -> boolean().
+db_exists_all(DbName) when ?VALID_DBNAME ->
+    kzs_db:db_exists_all(kzs_plan:plan(DbName), DbName);
+db_exists_all(DbName) ->
+    case maybe_convert_dbname(DbName) of
+        {'ok', Db} -> db_exists_all(Db);
         {'error', _}=E -> E
     end.
 
@@ -1143,9 +1175,12 @@ maybe_add_doc_type_from_view(ViewName, Options) ->
 
 -spec add_doc_type_from_view(ne_binary(), wh_proplist()) -> wh_proplist().
 add_doc_type_from_view(View, Options) ->
-    [ViewType, ViewName | _] = binary:split(View, <<"/">>, ['global']),
-    case kzs_view:doc_type_from_view(ViewType, ViewName) of
-        'undefined' -> Options;
-        [DocType | _] -> [{'doc_type', DocType} | Options];
-        DocType -> [{'doc_type', DocType} | Options]
+    case binary:split(View, <<"/">>, ['global']) of
+        [ViewType, ViewName] ->
+            case kzs_view:doc_type_from_view(ViewType, ViewName) of
+                'undefined' -> Options;
+                [DocType | _] -> [{'doc_type', DocType} | Options];
+                DocType -> [{'doc_type', DocType} | Options]
+            end;
+        _ -> Options
     end.

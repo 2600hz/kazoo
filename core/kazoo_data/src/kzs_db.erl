@@ -18,7 +18,7 @@
          ,db_view_update/4
          ,db_info/1
          ,db_info/2
-         ,db_exists/2
+         ,db_exists/2, db_exists_all/2
          ,db_archive/3
          ,db_list/2
         ]).
@@ -91,19 +91,29 @@ db_info(#{server := {App, Conn}}) -> App:db_info(Conn).
 db_info(#{server := {App, Conn}}, DbName) -> App:db_info(Conn, DbName).
 
 -spec db_exists(map(), ne_binary()) -> boolean().
-db_exists(#{server := {App, Conn}}=Map, DbName) ->
-    case kz_cache:peek_local(?KZ_DP_CACHE, {'database', DbName}) of
+db_exists(#{server := {App, Conn}}, DbName) ->
+    case kz_cache:fetch_local(?KZ_DP_CACHE, {'database', {App, Conn}, DbName}) of
         {'ok', Exists} -> Exists;
-        _ -> Exists = App:db_exists(Conn, DbName) andalso
-                          db_exists_all(DbName, maps:get('others', Map, [])),
+        _ -> Exists = App:db_exists(Conn, DbName),
+             Props = [{'origin', {'db', DbName}}],
+             kz_cache:store_local(?KZ_DP_CACHE, {'database', {App, Conn}, DbName}, Exists, Props),
+             Exists
+    end.
+
+-spec db_exists_all(map(), ne_binary()) -> boolean().
+db_exists_all(#{server := Server}=Map, DbName) ->
+    case kz_cache:fetch_local(?KZ_DP_CACHE, {'database', DbName}) of
+        {'ok', Exists} -> Exists;
+        _ -> Exists = db_exists(Server, DbName) andalso
+                          db_exists_others(DbName, maps:get('others', Map, [])),
              Props = [{'origin', {'db', DbName}}],
              kz_cache:store_local(?KZ_DP_CACHE, {'database', DbName}, Exists, Props),
              Exists
     end.
 
--spec db_exists_all(ne_binary(), list()) -> boolean().
-db_exists_all(_, []) -> 'true';
-db_exists_all(DbName, Others) ->
+-spec db_exists_others(ne_binary(), list()) -> boolean().
+db_exists_others(_, []) -> 'true';
+db_exists_others(DbName, Others) ->
     lists:all(fun({_Tag, M}) -> db_exists(#{server => M}, DbName) end, Others).
 
 -spec db_archive(map(), ne_binary(), ne_binary()) -> boolean().
