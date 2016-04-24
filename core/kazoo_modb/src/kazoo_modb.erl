@@ -55,7 +55,7 @@ get_results(Account, View, ViewOptions, Retry) ->
 get_results_not_found(Account, View, ViewOptions, Retry) ->
     AccountMODb = get_modb(Account, ViewOptions),
     EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
-    case kz_datamgr:db_exists(EncodedMODb) of
+    case kz_datamgr:db_exists_all(EncodedMODb) of
         'true' ->
             refresh_views(AccountMODb),
             get_results(Account, View, ViewOptions, Retry-1);
@@ -235,7 +235,7 @@ maybe_create(<<"account%2F", AccountId/binary>>) ->
 -spec create(ne_binary()) -> 'ok'.
 create(AccountMODb) ->
     EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
-    do_create(AccountMODb, kz_datamgr:db_exists(EncodedMODb)).
+    do_create(AccountMODb, kz_datamgr:db_exists_all(EncodedMODb)).
 
 -spec do_create(ne_binary(), boolean()) -> 'ok'.
 do_create(_AccountMODb, 'true') -> 'ok';
@@ -360,7 +360,7 @@ get_range(AccountId, From, To) ->
                                         ,{FromYear, FromMonth}
                                         ,{ToYear, ToMonth}
                                        ),
-        kz_datamgr:db_exists(MODb)
+        kz_datamgr:db_exists_all(MODb)
     ].
 
 -type year_month_tuple() :: {wh_year(), wh_month()}.
