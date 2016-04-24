@@ -1,17 +1,11 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2016, 2600Hz
 %%% @doc
-%%% data adapter behaviour
+%%% kazoo data utils
 %%% @end
 %%% @contributors
 %%%-----------------------------------------------------------------------------
 -module(kzs_util).
-
-
-%% -export([maybe_add_rev/3
-%%          ,maybe_add_pvt_type/3
-%%          ,db_classification/1
-%%         ]).
 
 -export([db_classification/1
         ]).
