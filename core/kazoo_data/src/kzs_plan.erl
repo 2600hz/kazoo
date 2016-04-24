@@ -253,7 +253,7 @@ att_post_handler(#{}) -> 'external'.
 
 -spec fetch_dataplans(ne_binaries()) -> map().
 fetch_dataplans([Key | Keys]) ->
-    case kz_cache:peek_local(?KZ_DP_CACHE, Keys) of
+    case kz_cache:fetch_local(?KZ_DP_CACHE, Keys) of
         {'ok', Plan} -> Plan;
         {'error', 'not_found'} ->
             Plan = fetch_dataplans(Keys, fetch_dataplan(Key)),
