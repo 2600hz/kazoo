@@ -298,7 +298,7 @@ dump_local(Srv, ShowValue) ->
 -spec dump_table(ets:tid(), boolean()) -> 'ok'.
 dump_table(Tab, ShowValue) ->
     Now = wh_util:current_tstamp(),
-    io:format("Table ~p~n", [Tab]),
+    io:format("Table ~p~n", [ets:info(Tab, 'name')]),
     _ = [display_cache_obj(CacheObj, ShowValue, Now)
          || CacheObj <- ets:match_object(Tab, #cache_obj{_ = '_'})
         ],
@@ -353,41 +353,33 @@ wait_for_key_local(Srv, Key, Timeout) ->
 -spec handle_document_change(wh_json:object(), wh_proplist()) -> 'ok' | 'false'.
 handle_document_change(JObj, Props) ->
     'true' = wapi_conf:doc_update_v(JObj),
-    Srv = props:get_value('server', Props),
+    %% Change Next line to
+    %% Srv = props:get_value('server', Props),
+    %% for sending the rease to the mailbox
+    %%
+    Srv = Props,
+
     Db = wh_json:get_value(<<"Database">>, JObj),
     Type = wh_json:get_value(<<"Type">>, JObj),
     Id = wh_json:get_value(<<"ID">>, JObj),
 
-    _Keys = maybe_erase_changed(Srv, Db, Type, Id
-                               ,props:get_value('pointer_tab', Props)
-                               ),
+    _Keys = handle_document_change(Srv, Db, Type, Id
+                                   ,props:get_value('pointer_tab', Props)
+                                  ),
     _Keys =/= [] andalso
         lager:debug("removed ~p keys for ~s/~s/~s", [length(_Keys), Db, Id, Type]).
 
--spec maybe_erase_changed(pid(), ne_binary(), ne_binary(), ne_binary(), ets:tid()) -> list().
-maybe_erase_changed(Srv, Db, Type, Id, PointerTab) ->
-    MatchSpec = [{#cache_obj{origin = {'db', Db}, _ = '_'}
-                 ,[]
-                 ,['$_']
-                 }
-                ,{#cache_obj{origin = {'db', Db, Type}, _ = '_'}
-                 ,[]
-                 ,['$_']
-                 }
-                ,{#cache_obj{origin = {'db', Db, Id}, _ = '_'}
-                 ,[]
-                 ,['$_']
-                 }
-                ,{#cache_obj{origin = {'type', Type, Id}, _ = '_'}
-                 ,[]
-                 ,['$_']
-                 }
-                ,{#cache_obj{origin = {'type', Type}, _ = '_'}
-                 ,[]
-                 ,['$_']
-                 }
-                ],
-
+-spec handle_document_change(pid() | wh_proplist(), ne_binary(), ne_binary(), ne_binary(), ets:tid()) -> list().
+handle_document_change(Srv, Db, <<"database">>, _Id, PointerTab) ->
+    MatchSpec = match_db_changed(Db),
+    lists:foldl(fun(Obj, Removed) ->
+                        erase_changed(Obj, Removed, Srv)
+                end
+               ,[]
+               ,ets:select(PointerTab, MatchSpec)
+               );
+handle_document_change(Srv, Db, Type, Id, PointerTab) ->
+    MatchSpec = match_doc_changed(Db, Type, Id),
     lists:foldl(fun(Obj, Removed) ->
                         erase_changed(Obj, Removed, Srv)
                 end
@@ -395,16 +387,73 @@ maybe_erase_changed(Srv, Db, Type, Id, PointerTab) ->
                ,ets:select(PointerTab, MatchSpec)
                ).
 
--spec erase_changed(cache_obj(), list(), pid()) -> list().
+-spec match_db_changed(ne_binary()) -> ets:match_spec().
+match_db_changed(Db) ->
+    [{#cache_obj{origin = {'db', Db}, _ = '_'}
+      ,[]
+      ,['$_']
+     }
+     ,{#cache_obj{origin = {'db', Db, '_'}, _ = '_'}
+       ,[]
+       ,['$_']
+      }
+     ,{#cache_obj{origin = {'type', <<"database">>, Db}, _ = '_'}
+       ,[]
+       ,['$_']
+      }
+    ].
+
+-spec match_doc_changed(ne_binary(), ne_binary(), ne_binary()) -> ets:match_spec().
+match_doc_changed(Db, Type, Id) ->
+    [{#cache_obj{origin = {'db', Db}, _ = '_'}
+      ,[]
+      ,['$_']
+     }
+     ,{#cache_obj{origin = {'db', Db, Type}, _ = '_'}
+       ,[]
+       ,['$_']
+      }
+     ,{#cache_obj{origin = {'db', Db, Id}, _ = '_'}
+       ,[]
+       ,['$_']
+      }
+     ,{#cache_obj{origin = {'type', Type, Id}, _ = '_'}
+       ,[]
+       ,['$_']
+      }
+     ,{#cache_obj{origin = {'type', Type}, _ = '_'}
+       ,[]
+       ,['$_']
+      }
+    ].
+
+-spec erase_changed(cache_obj(), list(), pid() | wh_proplist()) -> list().
 erase_changed(#cache_obj{key=Key}, Removed, Srv) ->
     case lists:member(Key, Removed) of
         'true' -> Removed;
-        'false' ->
+        'false' when is_pid(Srv) ->
             lager:debug("removing updated cache object ~-300p", [Key]),
             gen_listener:cast(Srv, {'erase', Key}),
+            [Key | Removed];
+        'false' when is_list(Srv) ->
+            lager:debug("removing updated cache object ~-300p", [Key]),
+            erase_changed(Key, Srv),
             [Key | Removed]
     end.
 
+-spec erase_changed(any(), wh_proplist()) -> 'true'.
+erase_changed(Key, Props) ->
+    Tab = props:get_value('object_tab', Props),
+    PointerTab = props:get_value('pointer_tab', Props),
+    MonitorTab = props:get_value('monitor_tab', Props),
+    erase_changed(Key, Tab, PointerTab, MonitorTab).
+
+-spec erase_changed(any(), ets:tid(), ets:tid(), ets:tid()) -> 'true'.
+erase_changed(Key, Tab, PointerTab, MonitorTab) ->
+    maybe_exec_erase_callbacks(Tab, Key),
+    maybe_remove_object(Tab, Key),
+    maybe_remove_object(PointerTab, Key),
+    maybe_remove_object(MonitorTab, Key).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -545,12 +594,7 @@ handle_cast({'erase', Key}, #state{tab=Tab
                                   ,pointer_tab=PointerTab
                                   ,monitor_tab=MonitorTab
                                   }=State) ->
-    maybe_exec_erase_callbacks(Tab, Key),
-
-    maybe_remove_object(Tab, Key),
-    maybe_remove_object(PointerTab, Key),
-    maybe_remove_object(MonitorTab, Key),
-
+    erase_changed(Key, Tab, PointerTab, MonitorTab),
     {'noreply', State};
 
 handle_cast({'flush'}, #state{tab=Tab
@@ -642,7 +686,7 @@ handle_info({'timeout', Ref, ?EXPIRE_PERIOD_MSG}
                     ,monitor_tab=MonitorTab
                    }=State
            ) ->
-    _ = [expire_objects(T) || T <- [Tab, PointerTab, MonitorTab]],
+   _ = expire_objects(Tab, [PointerTab, MonitorTab]),
     {'noreply', State#state{expire_period_ref=start_expire_period_timer(Period)}};
 handle_info(_Info, State) ->
     {'noreply', State}.
@@ -710,27 +754,10 @@ get_props_callback(Props) ->
     end.
 
 -spec get_props_origin(wh_proplist()) -> 'undefined' | origin_tuple() | origin_tuples().
-get_props_origin(Props) -> maybe_add_db_origin(props:get_value('origin', Props)).
+get_props_origin(Props) -> props:get_value('origin', Props).
 
--spec maybe_add_db_origin(wh_proplist()) -> 'undefined' | origin_tuple() | origin_tuples().
-maybe_add_db_origin(Props) when is_list(Props) -> maybe_add_db_origin(Props, []);
-maybe_add_db_origin({'db', Db}) ->
-    [{'db',Db}, {'type', <<"database">>, Db}];
-maybe_add_db_origin({'db', Db, Id}) ->
-    [{'db',Db,Id}, {'type', <<"database">>, Db}];
-maybe_add_db_origin(Props) -> Props.
-
--spec maybe_add_db_origin(wh_proplist(), wh_proplist()) -> 'undefined' | origin_tuple() | origin_tuples().
-maybe_add_db_origin([], Acc) -> lists:reverse(props:unique(Acc));
-maybe_add_db_origin([{'db', Db} | Props], Acc) ->
-    maybe_add_db_origin(Props, [{'type', <<"database">>, Db}, {'db',Db} |Acc]);
-maybe_add_db_origin([{'db', Db, Id} | Props], Acc) ->
-    maybe_add_db_origin(Props, [{'type', <<"database">>, Db}, {'db',Db,Id} |Acc]);
-maybe_add_db_origin([P | Props], Acc) ->
-    maybe_add_db_origin(Props, [P |Acc]).
-
--spec expire_objects(ets:tid()) -> non_neg_integer().
-expire_objects(Tab) ->
+-spec expire_objects(ets:tid(), [ets:tid()]) -> non_neg_integer().
+expire_objects(Tab, AuxTables) ->
     Now = wh_util:current_tstamp(),
     FindSpec = [{#cache_obj{key = '$1'
                             ,value = '$2'
@@ -746,7 +773,9 @@ expire_objects(Tab) ->
                 }],
     Objects = ets:select(Tab, FindSpec),
     _ = maybe_exec_expired_callbacks(Objects),
-    maybe_remove_objects(Tab, [K || {_, K, _} <- Objects]),
+    Keys = [K || {_, K, _} <- Objects],
+    maybe_remove_objects(Tab, Keys),
+    lists:foreach(fun(Aux) -> maybe_remove_objects(Aux, Keys) end, AuxTables),
     length(Objects).
 
 -spec maybe_exec_expired_callbacks([{callback_fun(), any(), any()}]) -> 'ok'.
