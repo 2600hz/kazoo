@@ -30,13 +30,24 @@
                                             ,<<"no_caching_doc_types">>
                                            ,?DEFAULT_NO_CACHING_TYPES
                                             )).
+-define(DEFAULT_CACHE_PERIOD, 15 * ?SECONDS_IN_MINUTE).
+-define(DEFAULT_CACHING_POLICY, wh_json:from_list(
+          [{<<"deprecated">>, ?DEFAULT_CACHE_PERIOD}
+           ,{<<"aggregate">>, ?DEFAULT_CACHE_PERIOD}
+           ,{<<"numbers">>, ?DEFAULT_CACHE_PERIOD}
+           ,{<<"modb">>, ?DEFAULT_CACHE_PERIOD}
+           ,{<<"account">>, ?DEFAULT_CACHE_PERIOD}
+           ,{<<"system">>, ?DEFAULT_CACHE_PERIOD}
+           ,{<<"system_config">>, 'infinity'}
+           ,{<<"system_data">>, 'infinity'}
+          ])).
 
 -spec open_cache_doc(text(), ne_binary(), wh_proplist()) ->
                             {'ok', wh_json:object()} |
                             data_error() |
                             {'error', 'not_found'}.
 open_cache_doc(DbName, DocId, Options) ->
-    case kz_cache:peek_local(?KZ_DATA_CACHE, {?MODULE, DbName, DocId}) of
+    case kz_cache:fetch_local(?KZ_DATA_CACHE, {?MODULE, DbName, DocId}) of
         {'ok', {'error', _}=E} -> E;
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
@@ -55,7 +66,7 @@ open_cache_doc(DbName, DocId, Options) ->
                             data_error() |
                             {'error', 'not_found'}.
 open_cache_doc(Server, DbName, DocId, Options) ->
-    case kz_cache:peek_local(?KZ_DATA_CACHE, {?MODULE, DbName, DocId}) of
+    case kz_cache:fetch_local(?KZ_DATA_CACHE, {?MODULE, DbName, DocId}) of
         {'ok', {'error', _}=E} -> E;
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
@@ -91,7 +102,9 @@ maybe_cache_failure(DbName, DocId, _Options, {'error', ErrorCode}=Error, ErrorCo
 
 -spec add_to_doc_cache(ne_binary(), ne_binary(), wh_json:object() | data_error()) -> 'ok'.
 add_to_doc_cache(DbName, DocId, CacheValue) ->
-    CacheProps = [{'origin', {'db', DbName, DocId}}],
+    CacheProps = [{'origin', {'db', DbName, DocId}}
+                  ,{'expires', expires_policy_value(DbName, CacheValue)}
+                 ],
     case wh_json:is_json_object(CacheValue) of
         'true' ->
            cache_if_not_media(CacheProps, DbName, DocId, CacheValue);
@@ -117,6 +130,29 @@ cache_if_not_media(CacheProps, DbName, DocId, CacheValue) ->
                                         ,CacheValue
                                         ,CacheProps
                                        )
+    end.
+
+-spec expires_policy_value(ne_binary(), wh_json:object()) -> wh_timeout().
+expires_policy_value(DbName, CacheValue) ->
+    Classification = wh_util:to_binary(kzs_util:db_classification(DbName)),
+    Type = wh_doc:type(CacheValue, <<"no_type">>),
+    expires_policy_value(DbName, Classification, Type).
+
+-spec expires_policy_value(ne_binary(), ne_binary(), ne_binary()) -> wh_timeout().
+expires_policy_value(<<"system_config">>, _, _) -> 'infinity';
+expires_policy_value(<<"system_data">>, _, _) -> 'infinity';
+expires_policy_value(DbName, Classification, Type) ->
+    CachePolicy = whapps_config:get(?CONFIG_CAT, <<"cache_policy">>, ?DEFAULT_CACHING_POLICY),
+    case wh_json:get_first_defined([[DbName, Type]
+                                   ,[DbName, <<"any">>]
+                                   ,[Classification, Type]
+                                   ,[Classification, <<"any">>]
+                                   ,[DbName]
+                                   ,[Type]
+                                   ,[Classification]
+                                   ], CachePolicy) of
+        <<"infinity">> -> 'infinity';
+        Timeout -> wh_util:to_integer(Timeout)
     end.
 
 -spec flush_cache_doc(ne_binary() | db(), ne_binary() | wh_json:object()) -> 'ok'.
