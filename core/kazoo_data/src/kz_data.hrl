@@ -8,6 +8,8 @@
 -define(KZ_DP_CACHE, 'kazoo_data_plan_cache').
 
 -define(CONFIG_CAT, <<"datamgr">>).
+-define(APP_NAME, <<"datamgr">>).
+-define(APP_VERSION, <<"4.0.0">>).
 
 -record(data_connection, {id = wh_util:current_tstamp()
                           ,app :: atom() | '$1'
