@@ -238,7 +238,7 @@ handle_response({'error', Error}) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Build <code>Authorization</code> header using <code>basic_auth</code> option
+%% @doc Build Authorization header using basic_auth option
 %%--------------------------------------------------------------------
 -spec maybe_basic_auth(wh_proplist(), wh_proplist()) -> {wh_proplist(), wh_proplist()}.
 maybe_basic_auth(Headers, Options) ->

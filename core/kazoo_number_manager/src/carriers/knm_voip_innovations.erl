@@ -333,9 +333,9 @@ soap_request(Action, Body) ->
                ,{"Content-Type", "text/xml;charset=UTF-8"}
               ],
     HTTPOptions = [{'ssl', [{'verify', 'verify_none'}]}
-                   ,{'timeout', 180 * ?MILLISECONDS_IN_SECOND}
-                   ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
-                  , {'body_format', 'string'}
+                  ,{'timeout', 180 * ?MILLISECONDS_IN_SECOND}
+                  ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
+                  ,{'body_format', 'string'}
                   ],
     ?DEBUG_WRITE("Request:~n~s ~s~n~p~n~s~n", ['post', Url, Headers, Body]),
     UnicodeBody = unicode:characters_to_binary(Body),
