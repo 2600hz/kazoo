@@ -78,7 +78,7 @@
                     ,expires :: wh_timeout() | '_' | '$3'
                     ,timestamp = wh_util:current_tstamp() :: gregorian_seconds() | '_' | '$4'
                     ,callback :: callback_fun() | '_' | '$2' | '$3' | '$5'
-                    ,origin :: origin_tuple() | origin_tuples() | '$1' | '_' | {'db', ne_binary(), '_'} 
+                    ,origin :: origin_tuple() | origin_tuples() | '$1' | '_' | {'db', ne_binary(), '_'}
                    }).
 
 -type cache_obj() :: #cache_obj{}.
