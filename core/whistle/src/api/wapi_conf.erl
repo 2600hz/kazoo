@@ -42,6 +42,7 @@
                                            ,<<"Rev">>
                                            ,<<"Type">>
                                            ,<<"Version">>
+                                           ,<<"Origin-Cache">>
                                           ]).
 -define(CONF_DOC_UPDATE_VALUES, [{<<"Event-Category">>, ?WAPI_CONF_CATEGORY}
                                  ,{<<"Event-Name">>, [?DOC_EDITED
