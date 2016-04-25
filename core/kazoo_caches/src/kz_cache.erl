@@ -228,7 +228,8 @@ fetch_local(Srv, K) ->
     case peek_local(Srv, K) of
         {'error', 'not_found'}=E -> E;
         {'ok', Value} ->
-            gen_server:cast(Srv, {'update_timestamp', K, wh_util:current_tstamp()}),
+            ets:update_element(Srv, K, {#cache_obj.timestamp, wh_util:current_tstamp()}),
+%            gen_server:cast(Srv, {'update_timestamp', K, }),
             {'ok', Value}
     end.
 
@@ -371,8 +372,11 @@ handle_document_change(Db, <<"database">>, _Id, #state{pointer_tab=PointerTab}=S
                ,[]
                ,ets:select(PointerTab, MatchSpec)
                );
-handle_document_change(Db, Type, Id, #state{pointer_tab=PointerTab}=State) ->
+handle_document_change(Db, Type, Id, #state{pointer_tab=PointerTab, tab=Tab}=State) ->
+    lager:debug("search for ~p : ~p : ~p : ~p", [ets:info(Tab, 'name'), Db, Type, Id]),
     MatchSpec = match_doc_changed(Db, Type, Id),
+    Objects = ets:select(PointerTab, MatchSpec),
+    lager:debug("select for ~p returned ~b objects", [ets:info(Tab, 'name'), length(Objects)]),
     lists:foldl(fun(Obj, Removed) ->
                         erase_changed(Obj, Removed, State)
                 end
@@ -460,7 +464,13 @@ init([Name, ExpirePeriod, Props]) ->
     wapi_conf:declare_exchanges(),
 
     Tab = ets:new(Name
-                 ,['set', 'protected', 'named_table', {'keypos', #cache_obj.key}]
+                 ,['set', 'named_table'
+                  , {'keypos', #cache_obj.key}
+%%                  , 'protected'
+                  , 'public'
+                  , {write_concurrency, 'true'}
+                  , {read_concurrency, 'true'}
+                  ]
                  ),
     PointerTab = ets:new(pointer_tab(Name)
                          ,['bag', 'protected', {'keypos', #cache_obj.key}]
@@ -684,16 +694,17 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(JObj, #state{}=State) ->
-    case wapi_conf:doc_update_v(JObj) of
+handle_event(JObj, #state{tab=Tab}=State) ->
+    case (V=wapi_conf:doc_update_v(JObj)) andalso
+             (wh_api:node(JObj) =/= wh_util:to_binary(node()) orelse
+              wh_json:get_atom_value(<<"Origin-Cache">>, JObj) =/= ets:info(Tab, 'name')
+             )
+    of
         'true' -> handle_document_change(JObj, State);
-        'false' -> lager:error("message didn't validate : ~p", [JObj])
+        'false' when V -> 'ok';
+        'false' -> lager:error("payload invalid for wapi_conf : ~p", [JObj])
     end,
     'ignore'.
-%%     {'reply', [{'object_tab', Tab}
-%%               ,{'pointer_tab', PointerTab}
-%%               ,{'monitor_tab', MonitorTab}
-%%               ]}.
 
 %%--------------------------------------------------------------------
 %% @private
