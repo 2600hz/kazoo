@@ -157,8 +157,7 @@ bind_q(Q, Props) ->
     bind_q(Q, Props, props:get_value('restrict_to', Props)).
 
 bind_q(Q, Props, 'undefined') ->
-    bind_for_doc_changes(Q, Props),
-    bind_for_doc_type_changes(Q, Props);
+    bind_for_doc_changes(Q, Props);
 bind_q(Q, Props, ['doc_updates'|Restrict]) ->
     bind_for_doc_changes(Q, Props),
     bind_q(Q, Props, Restrict);
