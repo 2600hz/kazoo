@@ -110,13 +110,13 @@ open_doc(Account, DocId, Year, Month) ->
     AccountMODb = get_modb(Account, Year, Month),
     couch_open(AccountMODb, DocId).
 
--spec couch_open(ne_binary(), ne_binary()) ->
+-spec couch_open(ne_binary(), kazoo_data:docid()) ->
                         {'ok', wh_json:object()} |
                         {'error', atom()}.
 couch_open(AccountMODb, DocId) ->
     couch_open(AccountMODb, DocId, []).
 
--spec couch_open(ne_binary(), ne_binary(), wh_proplist()) ->
+-spec couch_open(ne_binary(), kazoo_data:docid(), wh_proplist()) ->
                         {'ok', wh_json:object()} |
                         {'error', atom()}.
 couch_open(AccountMODb, DocId, Options) ->
