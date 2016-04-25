@@ -20,7 +20,7 @@
          ,add_routine/1
         ]).
 -export([maybe_delete/2]).
--export([get_range/3]).
+-export([get_range/3, get_range/4]).
 -export([get_year_month_sequence/3, get_year_month_sequence/4]).
 
 %%--------------------------------------------------------------------
@@ -55,7 +55,7 @@ get_results(Account, View, ViewOptions, Retry) ->
 get_results_not_found(Account, View, ViewOptions, Retry) ->
     AccountMODb = get_modb(Account, ViewOptions),
     EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
-    case kz_datamgr:db_exists_all(EncodedMODb) of
+    case kz_datamgr:db_exists(EncodedMODb, View) of
         'true' ->
             refresh_views(AccountMODb),
             get_results(Account, View, ViewOptions, Retry-1);
@@ -352,7 +352,12 @@ delete_if_orphaned(AccountMODb, 'true') ->
 %% @public
 -spec get_range(ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
                        ne_binaries().
+-spec get_range(ne_binary(), ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
+                       ne_binaries().
 get_range(AccountId, From, To) ->
+    get_range(<<"any">>, AccountId, From, To).
+
+get_range(Type, AccountId, From, To) ->
     {{FromYear, FromMonth, _}, _} = calendar:gregorian_seconds_to_datetime(From),
     {{ToYear,   ToMonth,   _}, _} = calendar:gregorian_seconds_to_datetime(To),
     [MODb
@@ -360,7 +365,7 @@ get_range(AccountId, From, To) ->
                                         ,{FromYear, FromMonth}
                                         ,{ToYear, ToMonth}
                                        ),
-        kz_datamgr:db_exists_all(MODb)
+        kz_datamgr:db_exists(MODb, Type)
     ].
 
 -type year_month_tuple() :: {wh_year(), wh_month()}.
