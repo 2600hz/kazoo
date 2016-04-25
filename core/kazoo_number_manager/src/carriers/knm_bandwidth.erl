@@ -15,7 +15,6 @@
 -export([find_numbers/3]).
 -export([acquire_number/1]).
 -export([disconnect_number/1]).
--export([get_number_data/1]).
 -export([is_number_billable/1]).
 -export([should_lookup_cnam/0]).
 
@@ -191,29 +190,6 @@ acquire_and_provision_number(Number) ->
 -spec disconnect_number(knm_number:knm_number()) ->
                                knm_number:knm_number().
 disconnect_number(Number) -> Number.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Query the Bandwidth.com system for a quanity of available numbers
-%% in a rate center
-%% @end
-%%--------------------------------------------------------------------
--spec get_number_data(ne_binary()) -> wh_json:object().
-get_number_data(<<"+", Rest/binary>>) ->
-    get_number_data(Rest);
-get_number_data(<<"1", Rest/binary>>) ->
-    get_number_data(Rest);
-get_number_data(Number) ->
-    Props = [{'getType', ["10digit"]}
-             ,{'getValue', [wh_util:to_list(Number)]}
-            ],
-    case make_numbers_request('getTelephoneNumber', Props) of
-        {'error', _} -> wh_json:new();
-        {'ok', Xml} ->
-            Response = xmerl_xpath:string("/getResponse/telephoneNumber", Xml),
-            number_search_response_to_json(Response)
-    end.
 
 %%--------------------------------------------------------------------
 %% @public
