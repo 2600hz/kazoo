@@ -139,10 +139,10 @@ handle_reg_success(JObj, _Props) ->
     insert_registration(Registration).
 
 -spec handle_reg_query(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_reg_query(JObj, _Props) ->
+handle_reg_query(JObj, Props) ->
     'true' = wapi_registration:query_req_v(JObj),
     _ = wh_util:put_callid(JObj),
-    maybe_resp_to_query(JObj).
+    maybe_resp_to_query(JObj, props:get_value('registrar_age', Props)).
 
 -spec handle_reg_flush(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_reg_flush(JObj, _Props) ->
@@ -381,11 +381,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call('registrar_age', _, #state{started=Started}=State) ->
-    wh_util:put_callid(?LOG_SYSTEM_ID),
-    {'reply', wh_util:current_tstamp() - Started, State};
 handle_call(_Msg, _From, State) ->
-    wh_util:put_callid(?LOG_SYSTEM_ID),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -487,9 +483,8 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Props}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, _State) ->
-    wh_util:put_callid(?LOG_SYSTEM_ID),
-    {'reply', []}.
+handle_event(_JObj, #state{started=Started}) ->
+    {'reply', [{'registrar_age', wh_util:current_tstamp() - Started}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -675,17 +670,17 @@ expire_object({[#registration{id=Id}=Reg], Continuation}) ->
     _ = ets:delete(?MODULE, Id),
     expire_object(ets:select(Continuation)).
 
--spec maybe_resp_to_query(wh_json:object()) -> 'ok'.
-maybe_resp_to_query(JObj) ->
+-spec maybe_resp_to_query(wh_json:object(), integer()) -> 'ok'.
+maybe_resp_to_query(JObj, RegistrarAge) ->
     case wh_json:get_value(<<"Node">>, JObj)
         =:= wh_util:to_binary(node())
         andalso wh_json:get_value(<<"App-Name">>, JObj)
         =:= ?APP_NAME
     of
-        'false' -> resp_to_query(JObj);
+        'false' -> resp_to_query(JObj,  RegistrarAge);
         'true' ->
             Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                    ,{<<"Registrar-Age">>, gen_server:call(?SERVER, 'registrar_age')}
+                    ,{<<"Registrar-Age">>,  RegistrarAge}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             wapi_registration:publish_query_err(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
@@ -728,8 +723,8 @@ build_query_spec_maybe_username(Realm, JObj) ->
             }
     end.
 
--spec resp_to_query(wh_json:object()) -> 'ok'.
-resp_to_query(JObj) ->
+-spec resp_to_query(wh_json:object(), integer()) -> 'ok'.
+resp_to_query(JObj, RegistrarAge) ->
     Fields = wh_json:get_value(<<"Fields">>, JObj, []),
     CountOnly = wh_json:is_true(<<"Count-Only">>, JObj, 'false'),
 
@@ -742,13 +737,13 @@ resp_to_query(JObj) ->
     case SelectFun(?MODULE, MatchSpec) of
         [] ->
             Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                    ,{<<"Registrar-Age">>, gen_server:call(?SERVER, 'registrar_age')}
+                    ,{<<"Registrar-Age">>, RegistrarAge}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             wapi_registration:publish_query_err(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
         [_|_]=Registrations ->
             Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                    ,{<<"Registrar-Age">>, gen_server:call(?SERVER, 'registrar_age')}
+                    ,{<<"Registrar-Age">>, RegistrarAge}
                     ,{<<"Fields">>, [filter(Fields, wh_json:from_list(to_props(Registration)))
                                      || Registration <- Registrations
                                     ]
@@ -758,7 +753,7 @@ resp_to_query(JObj) ->
             wapi_registration:publish_query_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
         Count when is_integer(Count) ->
             Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                    ,{<<"Registrar-Age">>, gen_server:call(?SERVER, 'registrar_age')}
+                    ,{<<"Registrar-Age">>, RegistrarAge}
                     ,{<<"Fields">>, []}
                     ,{<<"Count">>, Count}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
