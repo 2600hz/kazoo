@@ -55,9 +55,10 @@
 -define(NOTIFY_KEY(Key), {'monitor_key', Key}).
 
 -define(BINDINGS, [{'self', []}]).
--define(RESPONDERS, [{{?MODULE, 'handle_document_change'}
-                      ,[{<<"configuration">>, <<"*">>}]
-                     }]).
+%% -define(RESPONDERS, [{{?MODULE, 'handle_document_change'}
+%%                       ,[{<<"configuration">>, <<"*">>}]
+%%                      }]).
+-define(RESPONDERS, []).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
@@ -350,38 +351,30 @@ wait_for_key_local(Srv, Key, Timeout) ->
         {_, Ref, _} -> {'error', 'timeout'}
     end.
 
--spec handle_document_change(wh_json:object(), wh_proplist()) -> 'ok' | 'false'.
-handle_document_change(JObj, Props) ->
-    'true' = wapi_conf:doc_update_v(JObj),
-    %% Change Next line to
-    %% Srv = props:get_value('server', Props),
-    %% for sending the rease to the mailbox
-    %%
-    Srv = Props,
-
+-spec handle_document_change(wh_json:object(), state()) -> 'ok' | 'false'.
+handle_document_change(JObj, #state{}=State) ->
     Db = wh_json:get_value(<<"Database">>, JObj),
     Type = wh_json:get_value(<<"Type">>, JObj),
     Id = wh_json:get_value(<<"ID">>, JObj),
 
-    _Keys = handle_document_change(Srv, Db, Type, Id
-                                   ,props:get_value('pointer_tab', Props)
-                                  ),
+    _Keys = handle_document_change(Db, Type, Id, State),
     _Keys =/= [] andalso
         lager:debug("removed ~p keys for ~s/~s/~s", [length(_Keys), Db, Id, Type]).
 
--spec handle_document_change(pid() | wh_proplist(), ne_binary(), ne_binary(), ne_binary(), ets:tid()) -> list().
-handle_document_change(Srv, Db, <<"database">>, _Id, PointerTab) ->
+-spec handle_document_change(ne_binary(), ne_binary(), ne_binary(), state()) -> list().
+
+handle_document_change(Db, <<"database">>, _Id, #state{pointer_tab=PointerTab}=State) ->
     MatchSpec = match_db_changed(Db),
     lists:foldl(fun(Obj, Removed) ->
-                        erase_changed(Obj, Removed, Srv)
+                        erase_changed(Obj, Removed, State)
                 end
                ,[]
                ,ets:select(PointerTab, MatchSpec)
                );
-handle_document_change(Srv, Db, Type, Id, PointerTab) ->
+handle_document_change(Db, Type, Id, #state{pointer_tab=PointerTab}=State) ->
     MatchSpec = match_doc_changed(Db, Type, Id),
     lists:foldl(fun(Obj, Removed) ->
-                        erase_changed(Obj, Removed, Srv)
+                        erase_changed(Obj, Removed, State)
                 end
                ,[]
                ,ets:select(PointerTab, MatchSpec)
@@ -427,26 +420,18 @@ match_doc_changed(Db, Type, Id) ->
       }
     ].
 
--spec erase_changed(cache_obj(), list(), pid() | wh_proplist()) -> list().
-erase_changed(#cache_obj{key=Key}, Removed, Srv) ->
+-spec erase_changed(cache_obj(), list(), state()) -> list().
+erase_changed(#cache_obj{key=Key}, Removed, #state{tab=Tab
+                                                   ,pointer_tab=PointerTab
+                                                   ,monitor_tab=MonitorTab
+                                                  }) ->
     case lists:member(Key, Removed) of
         'true' -> Removed;
-        'false' when is_pid(Srv) ->
+        'false' ->
             lager:debug("removing updated cache object ~-300p", [Key]),
-            gen_listener:cast(Srv, {'erase', Key}),
-            [Key | Removed];
-        'false' when is_list(Srv) ->
-            lager:debug("removing updated cache object ~-300p", [Key]),
-            erase_changed(Key, Srv),
+            erase_changed(Key, Tab, PointerTab, MonitorTab),
             [Key | Removed]
     end.
-
--spec erase_changed(any(), wh_proplist()) -> 'true'.
-erase_changed(Key, Props) ->
-    Tab = props:get_value('object_tab', Props),
-    PointerTab = props:get_value('pointer_tab', Props),
-    MonitorTab = props:get_value('monitor_tab', Props),
-    erase_changed(Key, Tab, PointerTab, MonitorTab).
 
 -spec erase_changed(any(), ets:tid(), ets:tid(), ets:tid()) -> 'true'.
 erase_changed(Key, Tab, PointerTab, MonitorTab) ->
@@ -699,14 +684,16 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, #state{tab=Tab
-                           ,pointer_tab=PointerTab
-                           ,monitor_tab=MonitorTab
-                          }) ->
-    {'reply', [{'object_tab', Tab}
-              ,{'pointer_tab', PointerTab}
-              ,{'monitor_tab', MonitorTab}
-              ]}.
+handle_event(JObj, #state{}=State) ->
+    case wapi_conf:doc_update_v(JObj) of
+        'true' -> handle_document_change(JObj, State);
+        'false' -> lager:error("message didn't validate : ~p", [JObj])
+    end,
+    'ignore'.
+%%     {'reply', [{'object_tab', Tab}
+%%               ,{'pointer_tab', PointerTab}
+%%               ,{'monitor_tab', MonitorTab}
+%%               ]}.
 
 %%--------------------------------------------------------------------
 %% @private
