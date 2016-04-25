@@ -785,27 +785,19 @@ distribute_event(JObj, BasicDeliver, State) ->
 
 -spec distribute_event(wh_proplist(), wh_json:object(), basic_deliver(), state()) -> 'ok'.
 distribute_event(Props, JObj, BasicDeliver, #state{responders=Responders
-                                                           ,consumer_key=ConsumerKey
-                                                           ,params=Params
-                                                          }) ->
-    Spawn = props:is_true('spawn_handle_event', Params, 'false'),
+                                                   ,consumer_key=ConsumerKey
+                                                  }) ->
     Key = wh_util:get_event_type(JObj),
-    _ = [distribute_event(Spawn, JObj, ConsumerKey, Module, Fun, Props, BasicDeliver)
+    _ = [proc_lib:spawn(?MODULE, 'client_handle_event', [JObj
+                                                         ,ConsumerKey
+                                                         ,Module, Fun
+                                                         ,Props
+                                                         ,BasicDeliver
+                                                        ])
          || {Evt, {Module, Fun}} <- Responders,
             maybe_event_matches_key(Key, Evt)
         ],
     'ok'.
-
--spec distribute_event(boolean(), wh_json:object(), wh_amqp_channel:consumer_pid(), atom(), atom(), wh_proplist(), basic_deliver()) -> any().
-distribute_event('true', JObj, ConsumerKey, Module, Fun, Props, BasicDeliver) ->
-    proc_lib:spawn(?MODULE, 'client_handle_event', [JObj
-                                                    ,ConsumerKey
-                                                    ,Module, Fun
-                                                    ,Props
-                                                    ,BasicDeliver
-                                                   ]);
-distribute_event('false', JObj, ConsumerKey, Module, Fun, Props, BasicDeliver) ->
-    client_handle_event(JObj, ConsumerKey, Module, Fun, Props, BasicDeliver).
 
 -spec client_handle_event(wh_json:object(), wh_amqp_channel:consumer_pid(), atom(), atom(), wh_proplist(), basic_deliver()) -> any().
 client_handle_event(JObj, ConsumerKey, Module, Fun, Props, BasicDeliver) ->
