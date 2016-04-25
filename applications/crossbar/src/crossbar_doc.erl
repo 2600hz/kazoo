@@ -1278,7 +1278,7 @@ lowerbound(DocTimestamp, QSTimestamp) ->
 -spec should_filter(wh_json:object(), ne_binary(), wh_json:json_term()) -> boolean().
 should_filter(Val, Val) -> 'true';
 should_filter(Val, FilterVal) ->
-    try wh_json:decode(FilterVal) of
+    try wh_json:unsafe_decode(FilterVal) of
         List when is_list(List) ->
             lists:member(Val, List);
         _Data ->
