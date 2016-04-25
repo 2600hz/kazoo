@@ -101,10 +101,10 @@ db_exists(#{server := {App, Conn}}, DbName) ->
     end.
 
 -spec db_exists_all(map(), ne_binary()) -> boolean().
-db_exists_all(#{server := Server}=Map, DbName) ->
+db_exists_all(Map, DbName) ->
     case kz_cache:fetch_local(?KZ_DP_CACHE, {'database', DbName}) of
         {'ok', Exists} -> Exists;
-        _ -> Exists = db_exists(Server, DbName) andalso
+        _ -> Exists = db_exists(Map, DbName) andalso
                           db_exists_others(DbName, maps:get('others', Map, [])),
              Props = [{'origin', {'db', DbName}}],
              kz_cache:store_local(?KZ_DP_CACHE, {'database', DbName}, Exists, Props),
