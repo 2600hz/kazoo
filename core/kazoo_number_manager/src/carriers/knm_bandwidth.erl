@@ -149,7 +149,7 @@ acquire_and_provision_number(Number) ->
                     [{'endPoints', [{'host', [wh_util:to_list(E)]} || E <- Endpoints]}]
             end,
     OrderName = lists:flatten([?BW_ORDER_NAME_PREFIX, "-", integer_to_list(wh_util:current_tstamp())]),
-    AcquireFor = case wh_util:is_empty(AuthBy) of
+    AcquireFor = case wh_util:is_empty(AssignedTo) of
                      'true' -> "no_assigned_account";
                      'false' -> binary_to_list(AssignedTo)
                  end,
