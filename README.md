@@ -136,7 +136,7 @@ If you have a non-US deployment, please consider sharing your system configurati
 ### Do you know other languages?
 
 * Help us write some automated testing tools
-* Check out our Javascript/HTML/CSS [GUI](https://github.com/2600Hz/kazoo-ui)
+* Check out our Javascript/HTML/CSS [GUI](https://github.com/2600Hz/monster-ui)
 * Check out our REST APIs and help us create SDKs in your favorite languages ([PHP](https://github.com/2600Hz/kazoo-php-sdk) | [RUBY](https://github.com/2600Hz/kazoo-ruby-sdk))
 * Check out our Pivot APIs and help us create SDKs in your favorite languages
 * Check out our AMQP APIs and create a WhApp in your favorite language
