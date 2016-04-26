@@ -355,7 +355,7 @@ message(AccountId, MessageId) ->
 -spec set_folder(ne_binary(), wh_json:object(), ne_binary()) -> any().
 set_folder(Folder, Message, AccountId) ->
     MessageId = kzd_voice_message:media_id(Message),
-    FromFolder = kzd_voice_message:folder(Message),
+    FromFolder = kzd_voice_message:folder(Message, ?VM_FOLDER_NEW),
     lager:info("setting folder for message ~s to ~s", [MessageId, Folder]),
     maybe_set_folder(FromFolder, Folder, MessageId, AccountId).
 
