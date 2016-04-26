@@ -23,6 +23,7 @@
          ,get_db/1, get_db/2
          ,get_range_view/2
 
+         ,migrate/0, migrate/1, migrate/2
          ,cleanup_heard_voicemail/1
         ]).
 
@@ -779,8 +780,41 @@ get_caller_id_number(Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%
+%% @doc Migrate all messages in vmbox into the new modb format
+%% @end
+%%--------------------------------------------------------------------
+-spec migrate() -> 'ok'.
+migrate() ->
+    [migrate(Id)|| Id <- whapps_utill:get_all_accounts('raw')].
+
+-spec migrate(ne_binary()) -> 'ok'.
+migrate(AccountId) ->
+    AccountDb = get_db(AccountId),
+    case kz_datamgr:get_results(AccountDb, ?BOX_MESSAGES_CB_LIST, []) of
+        {'ok', []} -> lager:debug("no voicemail boxes in ~s", [AccountDb]);
+        {'ok', View} ->
+            _ = [migrate(AccountId, wh_json:get_value(<<"value">>, V)) || V <- View],
+            lager:debug("migrated all messages of ~b mail boxes in ~s to modbs", [length(View), AccountDb]);
+        {'error', _E} ->
+            lager:debug("failed to get voicemail boxes in ~s: ~p", [AccountDb, _E])
+    end.
+
+-spec migrate(ne_binary(), ne_binary() | wh_json:object()) -> 'ok'.
+migrate(AccountId, ?JSON_WRAPPER(_)=Box) ->
+    migrate(AccountId, wh_json:get_value(<<"id">>, Box));
+migrate(AccountId, BoxId) ->
+    Msgs = messages(AccountId, BoxId),
+    _ = [maybe_migrate_to_modb(AccountId, kzd_voice_message:media_id(M)) || M <- Msgs],
+    'ok'.
+
+-spec maybe_migrate_to_modb(ne_binary(), ne_binary()) -> 'ok'.
+maybe_migrate_to_modb(_AccountId, ?MATCH_MODB_PREFIX(_, _, _)) -> 'ok';
+maybe_migrate_to_modb(AccountId, Id) ->
+    _ = update_message_doc(AccountId, Id),
+    'ok'.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Clean old heard voice messages from db
 %% @end
 %%--------------------------------------------------------------------
 -spec cleanup_heard_voicemail(ne_binary()) -> 'ok'.
@@ -810,14 +844,13 @@ cleanup_heard_voicemail(AccountId, Timestamp, Boxes) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%
+%% @doc Filter out old messages in vmbox and soft delete them
 %% @end
 %%--------------------------------------------------------------------
 -spec cleanup_voicemail_box(ne_binary(), pos_integer(), wh_json:object()) -> 'ok'.
 cleanup_voicemail_box(AccountId, Timestamp, Box) ->
     BoxId = wh_json:get_value(<<"id">>, Box),
-    Msgs = kz_vm_message:messages(AccountId, BoxId),
+    Msgs = messages(AccountId, BoxId),
     case
         lists:partition(
             fun(Msg) ->
@@ -838,12 +871,6 @@ cleanup_voicemail_box(AccountId, Timestamp, Box) ->
             lager:debug("updated messages in voicemail box ~s", [BoxId])
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec delete_old_message(ne_binary(), wh_json:object()) -> {'ok', wh_json:object()} | {'error', _}.
 delete_old_message(AccountId, Msg) ->
-    {'ok', _} = kz_vm_message:set_folder(<<"deleted">>, Msg, AccountId).
+    {'ok', _} = set_folder(<<"deleted">>, Msg, AccountId).
