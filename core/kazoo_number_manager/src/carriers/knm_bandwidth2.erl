@@ -357,14 +357,14 @@ search_response_to_KNM(Xml, AccountId) ->
                ,{<<"rate_center">>, rate_center_to_json(Xml)}
                ])
             ),
-    PhoneNumber = knm_phone_number:newly_found(Num, ?MODULE, AccountId, JObj),
+    {'ok', PhoneNumber} = knm_phone_number:newly_found(Num, ?MODULE, AccountId, JObj),
     knm_number:set_phone_number(knm_number:new(), PhoneNumber).
 
 %% @private
 -spec tollfree_search_response_to_KNM(xml_el(), ne_binary()) -> knm_number:knm_number().
 tollfree_search_response_to_KNM(Xml, AccountId) ->
     Num = wh_util:get_xml_value("//TelephoneNumber/text()", Xml),
-    PhoneNumber = knm_phone_number:newly_found(Num, ?MODULE, AccountId, wh_json:new()),
+    {'ok', PhoneNumber} = knm_phone_number:newly_found(Num, ?MODULE, AccountId, wh_json:new()),
     knm_number:set_phone_number(knm_number:new(), PhoneNumber).
 
 %%--------------------------------------------------------------------

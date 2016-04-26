@@ -234,18 +234,8 @@ response_to_numbers(JObj, Options) ->
 -spec response_pair_to_number(ne_binary(), wh_json:object(), knm_number:knm_numbers(), api_binary()) ->
                                      knm_number:knm_numbers().
 response_pair_to_number(DID, CarrierData, Acc, AccountId) ->
-    NormalizedNum = knm_converters:normalize(DID),
-    NumberDb = knm_converters:to_db(NormalizedNum),
-
-    Updates = [{fun knm_phone_number:set_number/2, NormalizedNum}
-               ,{fun knm_phone_number:set_number_db/2, NumberDb}
-               ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
-               ,{fun knm_phone_number:set_carrier_data/2, CarrierData}
-               ,{fun knm_phone_number:set_number_db/2, NumberDb}
-               ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
-               ,{fun knm_phone_number:set_assign_to/2, AccountId}
-              ],
-    {'ok', PhoneNumber} = knm_phone_number:setters(knm_phone_number:new(), Updates),
+    {'ok', PhoneNumber} =
+        knm_phone_number:newly_found(DID, ?MODULE, AccountId, CarrierData),
     [knm_number:set_phone_number(knm_number:new(), PhoneNumber)
      | Acc
     ].

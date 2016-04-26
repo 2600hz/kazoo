@@ -96,27 +96,18 @@ process_numbers_search_resp(Xml, Options) ->
     TelephoneNumbers = "/numberSearchResponse/telephoneNumbers/telephoneNumber",
     AccountId = props:get_value(<<"account_id">>, Options),
 
-    {'ok', [found_number_to_object(Number, AccountId)
+    {'ok', [found_number_to_KNM(Number, AccountId)
             || Number <- xmerl_xpath:string(TelephoneNumbers, Xml)
            ]
     }.
 
--spec found_number_to_object(xml_el() | xml_els(), api_binary()) ->
-                                    knm_number:knm_number().
-found_number_to_object(Found, AccountId) ->
+-spec found_number_to_KNM(xml_el() | xml_els(), api_binary()) ->
+                                 knm_number:knm_number().
+found_number_to_KNM(Found, AccountId) ->
     JObj = number_search_response_to_json(Found),
     Num = wh_json:get_value(<<"e164">>, JObj),
-    NormalizedNum = knm_converters:normalize(Num),
-    NumberDb = knm_converters:to_db(NormalizedNum),
-
-    Updates = [{fun knm_phone_number:set_number/2, NormalizedNum}
-               ,{fun knm_phone_number:set_number_db/2, NumberDb}
-               ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
-               ,{fun knm_phone_number:set_carrier_data/2, JObj}
-               ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
-               ,{fun knm_phone_number:set_assign_to/2, AccountId}
-              ],
-    {'ok', PhoneNumber} = knm_phone_number:setters(knm_phone_number:new(), Updates),
+    {'ok', PhoneNumber} =
+        knm_phone_number:newly_found(Num, ?MODULE, AccountId, JObj),
     knm_number:set_phone_number(knm_number:new(), PhoneNumber).
 
 %%--------------------------------------------------------------------

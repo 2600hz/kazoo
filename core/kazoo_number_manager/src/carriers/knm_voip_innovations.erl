@@ -161,16 +161,9 @@ to_numbers({'error',_R}=Error, _) ->
 to_numbers({'ok',JObjs}, AccountId) ->
     {'ok',
      [ begin
-           NormalizedNum = wh_json:get_value(<<"e164">>, JObj),
-           NumberDb = knm_converters:to_db(NormalizedNum),
-           Updates = [{fun knm_phone_number:set_number/2, NormalizedNum}
-                      ,{fun knm_phone_number:set_number_db/2, NumberDb}
-                      ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
-                      ,{fun knm_phone_number:set_carrier_data/2, JObj}
-                      ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
-                      ,{fun knm_phone_number:set_assign_to/2, AccountId}
-                     ],
-           {'ok', PhoneNumber} = knm_phone_number:setters(knm_phone_number:new(), Updates),
+           Num = wh_json:get_value(<<"e164">>, JObj),
+           {'ok', PhoneNumber} =
+               knm_phone_number:newly_found(Num, ?MODULE, AccountId, JObj),
            knm_number:set_phone_number(knm_number:new(), PhoneNumber)
        end
        || JObj <- JObjs ]

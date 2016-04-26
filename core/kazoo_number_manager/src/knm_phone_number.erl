@@ -84,39 +84,39 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec new(ne_binary()) -> knm_phone_number().
--spec new(ne_binary(), knm_number_options:options()) -> knm_phone_number().
 new(DID) ->
     new(DID, knm_number_options:default()).
 
+-spec new(ne_binary(), knm_number_options:options()) -> knm_phone_number().
 new(DID, Options) ->
     NormalizedNum = knm_converters:normalize(DID),
-    NumberDb = knm_converters:to_db(NormalizedNum),
-    #knm_phone_number{number = NormalizedNum
-                     ,number_db = NumberDb
-                     ,assign_to = knm_number_options:assign_to(Options)
-                     ,state = ?NUMBER_STATE_DISCOVERY
-                     ,module_name = ?CARRIER_OTHER
-                     ,carrier_data = wh_json:new()
-                     ,auth_by = knm_number_options:auth_by(Options)
-                     ,dry_run = knm_number_options:dry_run(Options)
-                     ,doc = knm_number_options:public_fields(Options)
-                     }.
-
--spec newly_found(ne_binary(), module(), ne_binary(), wh_json:object()) -> knm_phone_number().
-newly_found(Num=?NE_BINARY, Carrier, AssignTo=?NE_BINARY, Data=?JSON_WRAPPER(_))
-  when is_atom(Carrier) ->
-    NormalizedNum = knm_converters:normalize(Num),
-    AccountId = wh_util:format_account_id(AssignTo),
     {'ok', PhoneNumber} =
         setters(new(),
                 [{fun set_number/2, NormalizedNum}
                 ,{fun set_number_db/2, knm_converters:to_db(NormalizedNum)}
-                ,{fun set_module_name/2, wh_util:to_binary(Carrier)}
-                ,{fun set_carrier_data/2, Data}
+                ,{fun set_assign_to/2, knm_number_options:assign_to(Options)}
                 ,{fun set_state/2, ?NUMBER_STATE_DISCOVERY}
-                ,{fun set_assign_to/2, AccountId}
+                ,{fun set_module_name/2, ?CARRIER_OTHER}
+                ,{fun set_carrier_data/2, wh_json:new()}
+                ,{fun set_auth_by/2, knm_number_options:auth_by(Options)}
+                ,{fun set_dry_run/2, knm_number_options:dry_run(Options)}
+                ,{fun set_doc/2, knm_number_options:public_fields(Options)}
                 ]),
     PhoneNumber.
+
+-spec newly_found(ne_binary(), module(), ne_binary(), wh_json:object()) ->
+                         knm_phone_number_return().
+newly_found(Num=?NE_BINARY, Carrier, AssignTo=?NE_BINARY, Data=?JSON_WRAPPER(_))
+  when is_atom(Carrier) ->
+    NormalizedNum = knm_converters:normalize(Num),
+    setters(new(),
+            [{fun set_number/2, NormalizedNum}
+            ,{fun set_number_db/2, knm_converters:to_db(NormalizedNum)}
+            ,{fun set_module_name/2, wh_util:to_binary(Carrier)}
+            ,{fun set_carrier_data/2, Data}
+            ,{fun set_state/2, ?NUMBER_STATE_DISCOVERY}
+            ,{fun set_assign_to/2, wh_util:format_account_id(AssignTo)}
+            ]).
 
 %%--------------------------------------------------------------------
 %% @public
