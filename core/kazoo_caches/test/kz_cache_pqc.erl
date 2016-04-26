@@ -5,9 +5,7 @@
 -ifdef(PROPER).
 
 -include_lib("proper/include/proper.hrl").
--include_lib("eunit/include/eunit.hrl").
 
--include_lib("whistle/include/wh_log.hrl").
 -include_lib("kazoo_caches/include/kazoo_caches.hrl").
 
 -behaviour(proper_statem).
@@ -34,11 +32,11 @@ correct() ->
            ,?TRAPEXIT(
                begin
                    wh_util:put_callid(?MODULE),
+                   kz_cache:stop_local(?SERVER),
                    {'ok', P} = kz_cache:start_link(?SERVER, [{'origin_bindings', [[]]}]),
                    {History, State, Result} = run_commands(?MODULE, Cmds),
                    kz_cache:stop_local(P),
-                   ?WHENFAIL(io:format('user'
-                                      ,"Final State of ~p: ~p\nFailing Cmds: ~p\n"
+                   ?WHENFAIL(io:format("Final State of ~p: ~p\nFailing Cmds: ~p\n"
                                       ,[P, State, zip(Cmds, History)]
                                       )
                             ,aggregate(command_names(Cmds), Result =:= 'ok')
@@ -51,11 +49,11 @@ correct_parallel() ->
     ?FORALL(Cmds
             ,parallel_commands(?MODULE),
             begin
+                kz_cache:stop_local(?SERVER),
                 {'ok', P} = kz_cache:start_link(?SERVER, [{'origin_bindings', [[]]}]),
                 {Sequential, Parallel, Result} = run_parallel_commands(?MODULE, Cmds),
                 kz_cache:stop_local(P),
-                ?WHENFAIL(io:format('user'
-                                   ,"Failing Cmds: ~p\nS: ~p\nP: ~p\n"
+                ?WHENFAIL(io:format("Failing Cmds: ~p\nS: ~p\nP: ~p\n"
                                    ,[Cmds, Sequential, Parallel]
                                    )
                          ,aggregate(command_names(Cmds), Result =:= 'ok')
@@ -71,7 +69,7 @@ command(#state{}=_Model) ->
     frequency([{5, {'call', 'kz_cache', 'store_local', [?SERVER, key(), value(), [{'expires', range(4,10)}]]}}
               ,{1, {'call', 'kz_cache', 'peek_local', [?SERVER, key()]}}
               ,{1, {'call', 'kz_cache', 'fetch_local', [?SERVER, key()]}}
-              ,{1, {'call', 'kz_cache', 'erase_local', [?SERVER, key()]}}
+              ,{5, {'call', 'kz_cache', 'erase_local', [?SERVER, key()]}}
               ,{2, {'call', 'timer', 'sleep', [range(1000,5000)]}}
               ]).
 
@@ -135,24 +133,36 @@ postcondition(#state{cache=Cache}
              ,{'call', 'kz_cache', 'fetch_local', [?SERVER, Key]}
              ,{'ok', Value}
              ) ->
-    {'value', Obj} = lists:keysearch(Key, #cache_obj.key, Cache),
-    Obj#cache_obj.value =:= Value;
+    case lists:keysearch(Key, #cache_obj.key, Cache) of
+        'false' -> 'false';
+        {'value', Obj} ->
+            Obj#cache_obj.value =:= Value
+    end;
 postcondition(#state{cache=Cache}
              ,{'call', 'kz_cache', 'fetch_local', [?SERVER, Key]}
              ,{'error', 'not_found'}
              ) ->
-    'false' =:= lists:keysearch(Key, #cache_obj.key, Cache);
+    case lists:keysearch(Key, #cache_obj.key, Cache) of
+        'false' -> 'true';
+        {'value', _} -> 'false'
+    end;
 postcondition(#state{cache=Cache}
              ,{'call', 'kz_cache', 'peek_local', [?SERVER, Key]}
              ,{'ok', Value}
              ) ->
-    {'value', Obj} = lists:keysearch(Key, #cache_obj.key, Cache),
-    Obj#cache_obj.value =:= Value;
+    case lists:keysearch(Key, #cache_obj.key, Cache) of
+        'false' -> 'false';
+        {'value', Obj} ->
+            Obj#cache_obj.value =:= Value
+    end;
 postcondition(#state{cache=Cache}
              ,{'call', 'kz_cache', 'peek_local', [?SERVER, Key]}
              ,{'error', 'not_found'}
              ) ->
-    'false' =:= lists:keysearch(Key, #cache_obj.key, Cache);
+    case lists:keysearch(Key, #cache_obj.key, Cache) of
+        'false' -> 'true';
+        {'value', _} -> 'false'
+    end;
 postcondition(#state{}
              ,{'call', 'kz_cache', 'erase_local', [?SERVER, _Key]}
              ,'ok'
