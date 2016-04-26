@@ -134,7 +134,7 @@ Select the correct timezone
 
 Symlink the timezone file to make the configuration change persistent
 ```
-# ln -sf /usr/share/zoneinfo/<region>/<tzfile> /etc/localtime
+# ln -sf /usr/share/zoneinfo/UTC /etc/localtime
 ```
 
 Enable NTP
