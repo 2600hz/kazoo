@@ -561,20 +561,12 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'store', #cache_obj{key=Key
-                                ,value=Value
-                                ,origin=Origins
-                                }=CacheObj
-            }
-           ,#state{tab=Tab
-                  ,pointer_tab=PointerTab
-                  }=State
-           ) ->
-    ets:insert(Tab, CacheObj#cache_obj{origin='undefined'}),
-    insert_origin_pointers(Origins, CacheObj, PointerTab),
-    {'noreply', maybe_exec_store_callbacks(State, Key, Value)};
+handle_cast({'store', CacheObj}, State) ->
+    State1 = handle_store(CacheObj, State),
+    {'noreply', State1};
 
 handle_cast({'update_timestamp', Key, Timestamp}, #state{tab=Tab}=State) ->
+    lager:debug("bumping ~p to ~p", [Key, Timestamp]),
     ets:update_element(Tab, Key, {#cache_obj.timestamp, Timestamp}),
     {'noreply', State};
 
@@ -653,7 +645,12 @@ handle_cast({'wh_nodes', {'new', #wh_node{node=Node}}}
 
     lager:debug("new node ~s, flush everything from ~s", [Node, Name]),
     {'noreply', State};
-handle_cast(_, State) ->
+handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
+    {'noreply', State};
+handle_cast({'gen_listener',{'is_consuming', _IsConsuming}}, State) ->
+    {'noreply', State};
+handle_cast(_Msg, State) ->
+    lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -674,9 +671,11 @@ handle_info({'timeout', Ref, ?EXPIRE_PERIOD_MSG}
                     ,monitor_tab=MonitorTab
                    }=State
            ) ->
-   _ = expire_objects(Tab, [PointerTab, MonitorTab]),
+    _Expired = expire_objects(Tab, [PointerTab, MonitorTab]),
+    _Expired > 0 andalso lager:debug("expired ~p objects", [_Expired]),
     {'noreply', State#state{expire_period_ref=start_expire_period_timer(Period)}};
 handle_info(_Info, State) ->
+    lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -711,6 +710,7 @@ handle_event(JObj, #state{tab=Tab}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{tab=Tab}) ->
+    lager:debug("terminating ~p(~p)", [self(), Tab]),
     ets:delete(Tab).
 
 %%--------------------------------------------------------------------
@@ -748,6 +748,7 @@ get_props_callback(Props) ->
 get_props_origin(Props) -> props:get_value('origin', Props).
 
 -spec expire_objects(ets:tid(), [ets:tid()]) -> non_neg_integer().
+-spec expire_objects(ets:tid(), [ets:tid()], list()) -> non_neg_integer().
 expire_objects(Tab, AuxTables) ->
     Now = wh_util:current_tstamp(),
     FindSpec = [{#cache_obj{key = '$1'
@@ -762,9 +763,13 @@ expire_objects(Tab, AuxTables) ->
                   ]
                  ,[{{'$5', '$1', '$2'}}]
                 }],
-    Objects = ets:select(Tab, FindSpec),
+    expire_objects(Tab, AuxTables, ets:select(Tab, FindSpec)).
+
+expire_objects(_Tab, _AuxTables, []) -> 0;
+expire_objects(Tab, AuxTables, Objects) ->
     _ = maybe_exec_expired_callbacks(Objects),
     Keys = [K || {_, K, _} <- Objects],
+    lager:debug("expiring keys ~p", [Keys]),
     maybe_remove_objects(Tab, Keys),
     lists:foreach(fun(Aux) -> maybe_remove_objects(Aux, Keys) end, AuxTables),
     length(Objects).
@@ -891,3 +896,39 @@ insert_origin_pointer(Origin, #cache_obj{key=Key}=CacheObj, PointerTab) ->
                                  ,expires='infinity'
                                  }
               ).
+
+handle_store(#cache_obj{key=Key
+                       ,value=Value
+                       ,origin=Origins
+                       ,expires=Expires
+                       }=CacheObj
+            ,#state{tab=Tab
+                   ,pointer_tab=PointerTab
+                   }=State
+            ) ->
+    lager:debug("storing ~p for ~ps", [Key, Expires]),
+    'true' = ets:insert(Tab, CacheObj#cache_obj{origin='undefined'}),
+    lager:debug("inserted ~p", [Key]),
+    insert_origin_pointers(Origins, CacheObj, PointerTab),
+    lager:debug("inserted origin pointers for ~p", [Key]),
+    State1 = maybe_exec_store_callbacks(State, Key, Value),
+    lager:debug("exec store callbacks"),
+    maybe_update_expire_period(State1, Expires).
+
+maybe_update_expire_period(#state{expire_period=ExpirePeriod
+                                  ,expire_period_ref=Ref
+                                 }=State
+                          ,Expires)
+  when Expires < ExpirePeriod ->
+    lager:debug("updating expires period to smaller ~p (from ~p)", [Expires, ExpirePeriod]),
+    NewRef = case erlang:read_timer(Ref) of
+                 Left when Left =< Expires -> Ref;
+                 _Left ->
+                     lager:debug("cancelling timer with ~p left", [_Left]),
+                     erlang:cancel_timer(Ref),
+                     start_expire_period_timer(Expires)
+             end,
+    State#state{expire_period=Expires
+               ,expire_period_ref=NewRef
+               };
+maybe_update_expire_period(State, _Expires) -> State.
