@@ -115,6 +115,7 @@ handle_subscribe(JObj, _Props) ->
 -spec handle_kamailio_subscribe(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_kamailio_subscribe(JObj, _Props) ->
     'true' = wapi_omnipresence:subscribe_v(JObj),
+    wh_util:put_callid(JObj),
     case gen_server:call(?SERVER, {'subscribe', JObj}) of
         'invalid' -> 'ok';
         {Count, {'unsubscribe', _}} ->
@@ -253,6 +254,7 @@ handle_call({'subscribe', #omnip_subscription{}=Sub}, _From,  #state{other_nodes
 handle_call({'subscribe', Props}, _From, State) when is_list(Props) ->
     handle_call({'subscribe', wh_json:from_list(Props)}, _From, State);
 handle_call({'subscribe', JObj}, _From, State) ->
+    wh_util:put_callid(JObj),
     handle_call({'subscribe', subscribe_to_record(JObj)}, _From, State);
 handle_call({'notify', JObj}, _From, State) ->
     {'reply', notify_update(JObj), State};
