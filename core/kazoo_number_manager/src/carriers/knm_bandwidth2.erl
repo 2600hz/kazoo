@@ -106,7 +106,7 @@ find_numbers(Search, Quantity, Options) ->
     {'ok', Result} = search(Params),
     process_search_response(Result, Options).
 
--spec process_tollfree_response(xml_el(), wh_proplist()) ->
+-spec process_tollfree_response(ne_binary(), wh_proplist()) ->
                                        {'ok', knm_number:knm_numbers()}.
 process_tollfree_response(Result, Options) ->
     AccountId = props:get_value(<<"account_id">>, Options),
@@ -115,7 +115,7 @@ process_tollfree_response(Result, Options) ->
            ]
     }.
 
--spec process_search_response(xml_el(), wh_proplist()) ->
+-spec process_search_response(ne_binary(), wh_proplist()) ->
                                      {'ok', knm_number:knm_numbers()}.
 process_search_response(Result, Options) ->
     AccountId = props:get_value(<<"account_id">>, Options),
@@ -227,7 +227,7 @@ url(RelativePath) ->
 search(Params) ->
     api_get(url(["availableNumbers?", Params])).
 
--spec auth() -> {ne_binary(), ne_binary()}.
+-spec auth() -> {'basic_auth', {ne_binary(), ne_binary()}}.
 auth() ->
     {'basic_auth', {?BW2_API_USERNAME, ?BW2_API_PASSWORD}}.
 
