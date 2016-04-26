@@ -672,10 +672,14 @@ randomize_list(T, List) ->
 %%--------------------------------------------------------------------
 -spec put_callid(wh_json:object() | wh_proplist() | ne_binary() | atom()) ->
                         api_binary().
-put_callid(?NE_BINARY = CallId) -> erlang:put('callid', CallId);
-put_callid(Atom) when is_atom(Atom) -> erlang:put('callid', Atom);
-put_callid(Prop) when is_list(Prop) -> erlang:put('callid', callid(Prop));
-put_callid(JObj) -> erlang:put('callid', callid(JObj)).
+put_callid(?NE_BINARY = CallId) ->
+    lager:md([{'callid', CallId}]), erlang:put('callid', CallId);
+put_callid(Atom) when is_atom(Atom) ->
+    lager:md([{'callid', Atom}]), erlang:put('callid', Atom);
+put_callid(Prop) when is_list(Prop) ->
+    lager:md([{'callid', callid(Prop)}]), erlang:put('callid', callid(Prop));
+put_callid(JObj) ->
+    lager:md([{'callid', callid(JObj)}]), erlang:put('callid', callid(JObj)).
 
 -spec get_callid() -> ne_binary().
 get_callid() -> erlang:get('callid').
