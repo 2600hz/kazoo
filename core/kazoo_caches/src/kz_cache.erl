@@ -192,11 +192,11 @@ store_local(Srv, K, V, Props) when is_atom(Srv) ->
         Pid -> store_local(Pid, K, V, Props)
     end;
 store_local(Srv, K, V, Props) when is_pid(Srv) ->
-    gen_server:cast(Srv, {'store', #cache_obj{key=K
-                                              ,value=V
-                                              ,expires=get_props_expires(Props)
-                                              ,callback=get_props_callback(Props)
-                                              ,origin=get_props_origin(Props)
+    gen_server:call(Srv, {'store', #cache_obj{key=K
+                                             ,value=V
+                                             ,expires=get_props_expires(Props)
+                                             ,callback=get_props_callback(Props)
+                                             ,origin=get_props_origin(Props)
                                              }}).
 
 -spec peek_local(atom(), any()) -> {'ok', any()} |
