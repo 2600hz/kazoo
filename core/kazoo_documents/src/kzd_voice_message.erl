@@ -178,7 +178,7 @@ filter_folder(Messages, Folder) ->
 %% @doc Count count_per_folder view result
 %% @end
 %%--------------------------------------------------------------------
--spec count_non_deleted_messages(wh_json:objects()) -> non_neg_integer().
+-spec count_non_deleted_messages(wh_json:objects()) -> {non_neg_integer(), non_neg_integer()}.
 count_non_deleted_messages(ViewRes) ->
     Props = [{wh_json:get_value([<<"key">>, 2], Msg)
               ,wh_json:get_integer_value(<<"value">>, Msg)

@@ -491,7 +491,7 @@ update_media_id(MediaId, JObj) ->
 %% @doc Count non-deleted messages
 %% @end
 %%--------------------------------------------------------------------
--spec count(ne_binary(), ne_binary()) -> {non_neg_integer(), non_neg_integer()}.
+-spec count(ne_binary(), ne_binary()) -> non_neg_integer().
 count(AccountId, BoxId) ->
     {New, Saved} = count_per_folder(AccountId, BoxId),
     New + Saved.
@@ -522,7 +522,7 @@ count_per_folder(AccountId, BoxId) ->
         _ -> count_modb_messages(AccountId, BoxId, {0, 0})
     end.
 
--spec count_modb_messages(ne_binary(), ne_binary(), non_neg_integer()) -> non_neg_integer().
+-spec count_modb_messages(ne_binary(), ne_binary(), non_neg_integer()) -> {non_neg_integer(), non_neg_integer()}.
 count_modb_messages(AccountId, BoxId, {ANew, ASaved}=AccountDbCounts) ->
     Opts = ['reduce'
             ,'group'
@@ -796,7 +796,7 @@ cleanup_heard_voicemail(AccountId) ->
         {'ok', View} ->
             cleanup_heard_voicemail(AccountId
                                     ,Today - DurationS
-                                    ,[{wh_json:get_value(<<"value">>, V)} || V <- View]
+                                    ,[wh_json:get_value(<<"value">>, V) || V <- View]
                                    ),
             lager:debug("cleaned up ~b voicemail boxes in ~s", [length(View), AccountDb]);
         {'error', _E} ->
@@ -814,8 +814,8 @@ cleanup_heard_voicemail(AccountId, Timestamp, Boxes) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec cleanup_voicemail_box(ne_binary(), pos_integer(), {wh_json:object(), wh_json:objects()}) -> 'ok'.
-cleanup_voicemail_box(AccountId, Timestamp, {Box, Msgs}) ->
+-spec cleanup_voicemail_box(ne_binary(), pos_integer(), wh_json:object()) -> 'ok'.
+cleanup_voicemail_box(AccountId, Timestamp, Box) ->
     BoxId = wh_json:get_value(<<"id">>, Box),
     Msgs = kz_vm_message:messages(AccountId, BoxId),
     case
