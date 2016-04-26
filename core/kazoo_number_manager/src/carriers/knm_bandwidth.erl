@@ -31,32 +31,36 @@
 -define(BW_NUMBER_URL
         ,whapps_config:get_string(?KNM_BW_CONFIG_CAT
                                   ,<<"numbers_api_url">>
-                                  ,<<"https://api.bandwidth.com/public/v2/numbers.api">>
+                                  ,"https://api.bandwidth.com/public/v2/numbers.api"
                                  )
        ).
 
 -define(BW_CDR_URL
         ,whapps_config:get_string(?KNM_BW_CONFIG_CAT
                                   ,<<"cdrs_api_url">>
-                                  ,<<"https://api.bandwidth.com/api/public/v2/cdrs.api">>
+                                  ,"https://api.bandwidth.com/api/public/v2/cdrs.api"
                                  )
        ).
 
--ifdef(TEST).
--define(BW_DEBUG, 'false').
--else.
--define(BW_DEBUG
-        ,whapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"debug">>, 'false')
+-define(BW_DEBUG, whapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"debug">>, 'false')).
+-define(BW_DEBUG_FILE, "/tmp/bandwidth.com.xml").
+-define(BW_DEBUG(Format, Args),
+        _ = ?BW_DEBUG andalso
+        file:write_file(?BW_DEBUG_FILE, io_lib:format(Format, Args), ['append'])
        ).
--endif.
 
--define(BW_DEBUG(Format, Args)
-        ,?BW_DEBUG
-        andalso file:write_file("/tmp/bandwidth.com.xml"
-                                ,io_lib:format(Format, Args)
-                                ,['append']
-                               )
-       ).
+-define(IS_SANDBOX_PROVISIONING_TRUE,
+        whapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"sandbox_provisioning">>, 'true')).
+-define(IS_PROVISIONING_ENABLED,
+        whapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"enable_provisioning">>, 'true')).
+-define(BW_ORDER_NAME_PREFIX,
+        whapps_config:get_string(?KNM_BW_CONFIG_CAT, <<"order_name_prefix">>, "Kazoo")).
+
+-define(BW_ENDPOINTS, whapps_config:get(?KNM_BW_CONFIG_CAT, <<"endpoints">>)).
+-define(BW_DEVELOPER_KEY, whapps_config:get_string(?KNM_BW_CONFIG_CAT, <<"developer_key">>, "")).
+
+
+%%% API
 
 %%--------------------------------------------------------------------
 %% @public
@@ -119,8 +123,8 @@ found_number_to_KNM(Found, AccountId) ->
 -spec acquire_number(knm_number:knm_number()) ->
                             knm_number:knm_number().
 acquire_number(Number) ->
-    Debug = whapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"sandbox_provisioning">>, 'true'),
-    case whapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"enable_provisioning">>, 'true') of
+    Debug = ?IS_SANDBOX_PROVISIONING_TRUE,
+    case ?IS_PROVISIONING_ENABLED of
         'false' when Debug ->
             lager:debug("allowing sandbox provisioning"),
             Number;
@@ -137,25 +141,20 @@ acquire_and_provision_number(Number) ->
     AuthBy = knm_phone_number:auth_by(PhoneNumber),
     AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
     Id = wh_json:get_string_value(<<"number_id">>, knm_phone_number:carrier_data(PhoneNumber)),
-    Hosts = case whapps_config:get(?KNM_BW_CONFIG_CAT, <<"endpoints">>) of
+    Hosts = case ?BW_ENDPOINTS of
                 'undefined' -> [];
                 Endpoint when is_binary(Endpoint) ->
                     [{'endPoints', [{'host', [wh_util:to_list(Endpoint)]}]}];
                 Endpoints ->
                     [{'endPoints', [{'host', [wh_util:to_list(E)]} || E <- Endpoints]}]
             end,
-    OrderNamePrefix = whapps_config:get_binary(?KNM_BW_CONFIG_CAT, <<"order_name_prefix">>, <<"Kazoo">>),
-    OrderName = list_to_binary([OrderNamePrefix, "-", wh_util:to_binary(wh_util:current_tstamp())]),
-    ExtRef = case wh_util:is_empty(AuthBy) of
-                 'true' -> "no_authorizing_account";
-                 'false' -> wh_util:to_list(AuthBy)
-             end,
+    OrderName = lists:flatten([?BW_ORDER_NAME_PREFIX, "-", integer_to_list(wh_util:current_tstamp())]),
     AcquireFor = case wh_util:is_empty(AuthBy) of
                      'true' -> "no_assigned_account";
-                     'false' -> wh_util:to_list(AssignedTo)
+                     'false' -> binary_to_list(AssignedTo)
                  end,
-    Props = [{'orderName', [wh_util:to_list(OrderName)]}
-             ,{'extRefID', [wh_util:to_list(ExtRef)]}
+    Props = [{'orderName', [OrderName]}
+             ,{'extRefID', [binary_to_list(AuthBy)]}
              ,{'numberIDs', [{'id', [Id]}]}
              ,{'subscriber', [wh_util:to_list(AcquireFor)]}
              | Hosts
@@ -224,8 +223,7 @@ make_numbers_request('areaCodeNumberSearch', _Props) ->
 -else.
 make_numbers_request(Verb, Props) ->
     lager:debug("making ~s request to bandwidth.com ~s", [Verb, ?BW_NUMBER_URL]),
-    DevKey = whapps_config:get_string(?KNM_BW_CONFIG_CAT, <<"developer_key">>, <<>>),
-    Request = [{'developerKey', [DevKey]}
+    Request = [{'developerKey', [?BW_DEVELOPER_KEY]}
                | Props
               ],
     Body = unicode:characters_to_binary(
