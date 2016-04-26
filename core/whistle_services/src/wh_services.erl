@@ -1355,7 +1355,7 @@ get_reseller_id([]) ->
     {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
     MasterAccountId;
 get_reseller_id([Parent|Ancestors]) ->
-    case kz_datamgr:open_cache_doc(?WH_SERVICES_DB, Parent) of
+    case kz_datamgr:open_cache_doc(?WH_SERVICES_DB, Parent, ['cache_failures']) of
         {'error', _R} ->
             lager:debug("failed to open services doc ~s durning reseller search: ~p", [Parent, _R]),
             get_reseller_id(Ancestors);
@@ -1367,7 +1367,7 @@ get_reseller_id(<<_/binary>> = Account) ->
         {'ok', AccountJObj} ->
             get_reseller_id(lists:reverse(kz_account:tree(AccountJObj)));
         {'error', _R} ->
-            lager:info("unable to open account definition for ~s: ~p", [Account, _R]),
+%%            lager:info("unable to open account definition for ~s: ~p", [Account, _R]),
             get_reseller_id([])
     end.
 

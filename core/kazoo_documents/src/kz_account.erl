@@ -109,7 +109,7 @@ fetch('undefined') ->
 fetch(<<_/binary>> = Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    kz_datamgr:open_cache_doc(AccountDb, AccountId).
+    kz_datamgr:open_cache_doc(AccountDb, AccountId, ['cache_failures']).
 
 %%--------------------------------------------------------------------
 %% @public
