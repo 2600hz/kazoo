@@ -408,7 +408,7 @@ load_vmbox_summary(Context) ->
 load_vmbox(DocId, Context) ->
     case kz_vm_message:load_vmbox(cb_context:account_id(Context), DocId) of
         {'ok', JObj} -> crossbar_doc:handle_json_success(JObj, Context);
-        {'error', Error} -> cb_context:handle_couch_mgr_errors(Error, DocId, Context)
+        {'error', Error} -> crossbar_doc:handle_couch_mgr_errors(Error, DocId, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -437,7 +437,7 @@ load_message(MediaId, UpdateJObj, Context) ->
         {'ok', Message} ->
             load_message_metadata(Message, UpdateJObj, crossbar_doc:handle_json_success(Message, Context));
         {'error', Error} ->
-            {'false', cb_context:handle_couch_mgr_errors(Error, MediaId, Context)}
+            {'false', crossbar_doc:handle_couch_mgr_errors(Error, MediaId, Context)}
     end.
 
 %%--------------------------------------------------------------------
@@ -509,7 +509,7 @@ load_attachment_from_message(MediaId, Context, Update, Timezone) ->
                                   ),
     case kz_datamgr:fetch_attachment(wh_doc:account_db(Doc), MediaId, AttachmentId) of
         {'error', Error} ->
-            {'false', cb_context:handle_couch_mgr_errors(Error, MediaId, Context)};
+            {'false', crossbar_doc:handle_couch_mgr_errors(Error, MediaId, Context)};
         {'ok', AttachBin} ->
             lager:debug("Sending file with filename ~s", [Filename]),
             Setters = [{fun cb_context:set_resp_data/2, AttachBin}
