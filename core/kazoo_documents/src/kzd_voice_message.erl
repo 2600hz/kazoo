@@ -45,7 +45,7 @@
 -define(KEY_META_CALL_ID, <<"call_id">>).
 -define(KEY_META_LENGTH, <<"length">>).
 
--define(PVT_TYPE, <<"voice_message">>).
+-define(PVT_TYPE, <<"vmm">>).
 
 -spec new() -> doc().
 new() ->
