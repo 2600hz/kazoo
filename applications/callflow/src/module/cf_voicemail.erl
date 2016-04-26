@@ -21,7 +21,6 @@
 -export([handle/2]).
 -export([new_message/4]).
 
--define(KEY_MEDIA_ID, <<"media_id">>).
 -define(KEY_VOICEMAIL, <<"voicemail">>).
 -define(KEY_MAX_MESSAGE_COUNT, <<"max_message_count">>).
 -define(KEY_MAX_MESSAGE_LENGTH, <<"max_message_length">>).
@@ -79,11 +78,6 @@
                            ,'false'
                           )
        ).
--define(MAILBOX_RETRY_STORAGE_TIMES(AccountId)
-        ,whapps_account_config:get_global(AccountId, ?CF_CONFIG_CAT
-                                          ,[?KEY_VOICEMAIL, <<"storage_retry_times">>]
-                                          ,5
-                                         )).
 
 -record(keys, {
           %% Compose Voicemail
@@ -747,8 +741,8 @@ play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{timezone=Timezone
         {'ok', 'keep'} ->
             lager:info("caller chose to save the message"),
             _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
-            _ = kz_vm_message:set_folder(?VM_FOLDER_SAVED, H, AccountId),
-            play_messages(T, [H|PrevMessages], Count, Box, Call);
+            NMessage = kz_vm_message:set_folder(?VM_FOLDER_SAVED, H, AccountId),
+            play_messages(T, [NMessage|PrevMessages], Count, Box, Call);
         {'ok', 'prev'} ->
             lager:info("caller chose to listen to previous message"),
             play_prev_message(Messages, PrevMessages, Count, Box, Call);

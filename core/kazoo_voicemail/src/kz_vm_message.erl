@@ -11,10 +11,14 @@
 -export([new_message/5
          ,message_doc/2
          ,message/2, messages/2
-         ,count/2, count_per_folder/2, count_by_owner/2, count_modb_messages/3
+         ,count/2, count_per_folder/2, count_modb_messages/3
+         ,count_by_owner/2, vmbox_summary/1
          ,set_folder/3, update_folder/3
 
          ,media_url/2
+
+         ,load_vmbox/2
+         ,update_message_doc/2, update_message_doc/3
 
          ,get_db/1, get_db/2
          ,get_range_view/2
@@ -25,19 +29,21 @@
 
 -define(CF_CONFIG_CAT, <<"callflow">>).
 -define(KEY_VOICEMAIL, <<"voicemail">>).
--define(KEY_MAX_RETAIN_DAYS, <<"max_message_retain_days">>).
+-define(KEY_RETENTION_DURATION, <<"message_retention_duration">>).
 
 -define(MODB_LISTING_BY_MAILBOX, <<"vm_messages/listing_by_mailbox">>).
 -define(MODB_COUNT_VIEW, <<"vm_messages/count_per_folder">>).
+-define(BOX_MESSAGES_CB_LIST, <<"vmboxes/crossbar_listing">>).
+-define(COUNT_BY_VMBOX, <<"vm_messages/count_by_vmbox">>).
 
--define(MAX_RETAIN_DAYS
+-define(RETENTION_DURATION
         ,whapps_config:get(?CF_CONFIG_CAT
-                           ,[?KEY_VOICEMAIL, ?KEY_MAX_RETAIN_DAYS]
-                           ,93
+                           ,[?KEY_VOICEMAIL, ?KEY_RETENTION_DURATION]
+                           ,93 %% 93 days(3 months)
                           )
        ).
 
--type db_return() :: {'ok', wh_json:object()} | {'error', any()}.
+-type db_ret() :: {'ok', wh_json:object() | wh_json:objects()} | {'error', any()}.
 
 -spec get_db(ne_binary()) -> ne_binary().
 get_db(AccountId) ->
@@ -124,7 +130,7 @@ create_message_doc(AttachmentName, BoxNum, Call, Timezone, Props) ->
                                  'ok' |
                                  {'error', whapps_call:call()}.
 store_recording(AttachmentName, Url, Call) ->
-    lager:error("trying to store voicemail media to url ~s", [Url]),
+    lager:debug("storing recording ~s at ~s", [AttachmentName, Url]),
     case whapps_call_command:store_file(<<"/tmp/", AttachmentName/binary>>, Url, Call) of
         'ok' -> 'ok';
         {'error', _} -> {'error', Call}
@@ -135,7 +141,7 @@ store_recording(AttachmentName, Url, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec notify_and_save(whapps_call:call(), ne_binary(), integer(), wh_proplist()) -> 'ok' | db_return().
+-spec notify_and_save(whapps_call:call(), ne_binary(), integer(), wh_proplist()) -> 'ok' | db_ret().
 notify_and_save(Call, MediaId, Length, Props) ->
     BoxId = props:get_value(<<"Box-Id">>, Props),
     NotifyAction = props:get_atom_value(<<"After-Notify-Action">>, Props),
@@ -174,7 +180,7 @@ get_completed_msg([JObj|JObjs], Acc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_save_meta(pos_integer(), atom(), whapps_call:call(), ne_binary(), wh_json:object(), ne_binary()) -> 'ok' | db_return().
+-spec maybe_save_meta(pos_integer(), atom(), whapps_call:call(), ne_binary(), wh_json:object(), ne_binary()) -> 'ok' | db_ret().
 maybe_save_meta(Length, 'nothing', Call, MediaId, _UpdateJObj, BoxId) ->
     save_meta(Length, 'nothing', Call, MediaId, BoxId);
 
@@ -187,7 +193,7 @@ maybe_save_meta(Length, Action, Call, MediaId, UpdateJObj, BoxId) ->
             save_meta(Length, Action, Call, MediaId, BoxId)
     end.
 
--spec save_meta(pos_integer(), atom(), whapps_call:call(), ne_binary(), ne_binary()) -> 'ok' | db_return().
+-spec save_meta(pos_integer(), atom(), whapps_call:call(), ne_binary(), ne_binary()) -> 'ok' | db_ret().
 save_meta(Length, Action, Call, MediaId, BoxId) ->
     AccountId = whapps_call:account_id(Call),
     CIDNumber = get_caller_id_number(Call),
@@ -200,19 +206,19 @@ save_meta(Length, Action, Call, MediaId, BoxId) ->
         'delete' ->
             lager:debug("attachment was sent out via notification, deleteing media file"),
             UpdatedMetadata = apply_folder(?VM_FOLDER_DELETED, Metadata),
-            {'ok', _} = do_save_metadata(UpdatedMetadata, AccountId, MediaId);
+            {'ok', _} = save_metadata(UpdatedMetadata, AccountId, MediaId);
         'save' ->
             lager:debug("attachment was sent out via notification, saving media file"),
             UpdatedMetadata = apply_folder(?VM_FOLDER_SAVED, Metadata),
-            {'ok', _} = do_save_metadata(UpdatedMetadata, AccountId, MediaId);
+            {'ok', _} = save_metadata(UpdatedMetadata, AccountId, MediaId);
         'nothing' ->
-            {'ok', _} = do_save_metadata(Metadata, AccountId, MediaId),
+            {'ok', _} = save_metadata(Metadata, AccountId, MediaId),
             lager:debug("stored voicemail metadata for ~s", [MediaId]),
             publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp)
     end.
 
--spec do_save_metadata(wh_json:object(), ne_binary(), ne_binary()) -> db_return().
-do_save_metadata(NewMessage, AccountId, MessageId) ->
+-spec save_metadata(wh_json:object(), ne_binary(), ne_binary()) -> db_ret().
+save_metadata(NewMessage, AccountId, MessageId) ->
     Fun = [fun(JObj) ->
               kzd_voice_message:set_metadata(NewMessage, JObj)
            end
@@ -222,7 +228,7 @@ do_save_metadata(NewMessage, AccountId, MessageId) ->
         {'ok', _}=OK -> OK;
         {'error', 'conflict'} ->
             lager:info("saving resulted in a conflict, trying again"),
-            do_save_metadata(NewMessage, AccountId, MessageId);
+            save_metadata(NewMessage, AccountId, MessageId);
         {'error', R}=E ->
             lager:info("error while storing voicemail metadata: ~p", [R]),
             E
@@ -234,7 +240,7 @@ do_save_metadata(NewMessage, AccountId, MessageId) ->
 %% message is stil in accountdb, it will merge metadata from vmbox
 %% @end
 %%--------------------------------------------------------------------
--spec message_doc(ne_binary(), kazoo_data:docid()) -> db_return().
+-spec message_doc(ne_binary(), kazoo_data:docid()) -> db_ret().
 message_doc(AccountId, {_, ?MATCH_MODB_PREFIX(Year, Month, _)}=DocId) ->
     open_modb_doc(AccountId, DocId, Year, Month);
 message_doc(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _)=DocId) ->
@@ -254,12 +260,64 @@ message_doc(AccountId, MediaId) ->
             E
     end.
 
--spec merge_metadata(ne_binary(), wh_json:object(), wh_json:objects()) -> db_return().
+-spec merge_metadata(ne_binary(), wh_json:object(), wh_json:objects()) -> db_ret().
 merge_metadata(MediaId, MediaJObj, VMBoxMsgs) ->
     case kzd_voice_message:filter_vmbox_messages(MediaId, VMBoxMsgs) of
         {'error', _}=E -> E;
         {Metadata, _} -> {'ok', kzd_voice_message:set_metadata(Metadata, MediaJObj)}
     end.
+
+-spec load_vmbox(ne_binary(), ne_binary()) -> db_ret().
+load_vmbox(AccountId, BoxId) ->
+    case open_accountdb_doc(AccountId, BoxId) of
+        {'ok', JObj} ->
+            VmMessages = wh_json:get_value(?VM_KEY_MESSAGES, JObj, []),
+            AllMsg = fetch_modb_messages(AccountId, BoxId, VmMessages),
+            {'ok', wh_json:set_value(?VM_KEY_MESSAGES, AllMsg, JObj)};
+        {'error', _R}=E ->
+            lager:debug("failed to open vmbox ~s: ~p", [BoxId, _R]),
+            E
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc Get vmbox summary view results from accountdb and merge it with
+%% MODB vmbox counts
+%% @end
+%%--------------------------------------------------------------------
+-spec vmbox_summary(ne_binary()) -> db_ret().
+vmbox_summary(AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case kz_datamgr:get_results(AccountDb, ?BOX_MESSAGES_CB_LIST, []) of
+        {'ok', JObjs} ->
+            Res = [wh_json:get_value(<<"value">>, JObj) || JObj <- JObjs],
+            MODBRes = modb_count_summary(AccountId),
+            {'ok', merge_summary_results(Res, MODBRes)};
+        {'error', _R}=E ->
+            lager:debug("error fetching vmbox_summary for account ~s: ~p", [AccountId, _R]),
+            E
+    end.
+
+-spec modb_count_summary(ne_binary()) -> wh_json:objects().
+modb_count_summary(AccountId) ->
+    Opts = ['reduce', 'group'],
+    ViewOptsList = get_range_view(AccountId, Opts),
+    [Res || Res <- results_from_modbs(AccountId, ?COUNT_BY_VMBOX, ViewOptsList, []), Res =/= []].
+
+-spec merge_summary_results(wh_json:objects(), wh_json:objects()) -> wh_json:objects().
+merge_summary_results(BoxSummary, MODBSummary) ->
+    lists:foldl(fun(JObj, Acc) ->
+                    BoxId = wh_json:get_value(<<"id">>, JObj),
+                    case wh_json:find_value(<<"key">>, BoxId, MODBSummary) of
+                        'undefined' ->
+                            [JObj | Acc];
+                        J ->
+                            BCount = wh_json:get_integer_value(?VM_KEY_MESSAGES, JObj, 0),
+                            MCount = wh_json:get_integer_value(<<"value">>, J, 0),
+                            [wh_json:set_value(?VM_KEY_MESSAGES, BCount + MCount, JObj) | Acc]
+                    end
+                end
+                , [], BoxSummary).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -280,7 +338,7 @@ messages(AccountId, BoxId) ->
 %% message metadata in vmbox.
 %% @end
 %%--------------------------------------------------------------------
--spec message(ne_binary(), ne_binary()) -> db_return().
+-spec message(ne_binary(), ne_binary()) -> db_ret().
 message(AccountId, MessageId) ->
     case message_doc(AccountId, MessageId) of
         {'ok', []} -> {'error', 'not_found'};
@@ -302,14 +360,14 @@ set_folder(Folder, Message, AccountId) ->
     maybe_set_folder(FromFolder, Folder, MessageId, AccountId).
 
 -spec maybe_set_folder(ne_binary(), ne_binary(), wh_json:object(), ne_binary()) -> any().
-maybe_set_folder(FromFolder, FromFolder, ?MATCH_MODB_PREFIX(_Year, _Month, _)=MessageId, AccountId) ->
+maybe_set_folder(FromFolder, FromFolder, ?MATCH_MODB_PREFIX(_, _, _), _) -> 'ok';
+maybe_set_folder(FromFolder, FromFolder, MessageId, AccountId) ->
     lager:info("folder is same, but doc is in accountdb, move it to modb"),
-    update_message_doc(AccountId, MessageId, []);
-maybe_set_folder(FromFolder, FromFolder, _, _) -> 'ok';
+    update_message_doc(AccountId, MessageId);
 maybe_set_folder(_FromFolder, ToFolder, MessageId, AccountId) ->
     update_folder(ToFolder, MessageId, AccountId).
 
--spec update_folder(ne_binary(), ne_binary(), ne_binary()) -> db_return() | {'error', 'attachment_undefined'}.
+-spec update_folder(ne_binary(), ne_binary(), ne_binary()) -> db_ret() | {'error', 'attachment_undefined'}.
 update_folder(_, 'undefined', _) ->
     {'error', 'attachment_undefined'};
 update_folder(Folder, MessageId, AccountId) ->
@@ -319,7 +377,7 @@ update_folder(Folder, MessageId, AccountId) ->
           ],
 
     case update_message_doc(AccountId, MessageId, Fun) of
-        {'ok', _}=OK ->OK;
+        {'ok', J} -> {'ok', kzd_voice_message:metadata(J)};
         {'error', 'conflict'} ->
             lager:info("updating folder resulted in a conflict, trying again"),
             update_folder(Folder, MessageId, AccountId);
@@ -343,7 +401,11 @@ apply_folder(Folder, Doc) ->
 %%--------------------------------------------------------------------
 -type update_funs() :: [fun((wh_json:object()) -> wh_json:object())].
 
--spec update_message_doc(ne_binary(), ne_binary(), update_funs()) -> db_return().
+-spec update_message_doc(ne_binary(), ne_binary()) -> db_ret().
+update_message_doc(AccountId, DocId) ->
+    update_message_doc(AccountId, DocId, []).
+
+-spec update_message_doc(ne_binary(), ne_binary(), update_funs()) -> db_ret().
 update_message_doc(AccountId, DocId, Funs) ->
     case message_doc(AccountId, DocId) of
         {'ok', JObj} -> do_update_message_doc(AccountId, DocId, JObj, Funs);
@@ -351,7 +413,7 @@ update_message_doc(AccountId, DocId, Funs) ->
             E
     end.
 
--spec do_update_message_doc(ne_binary(), ne_binary(), wh_json:object(), update_funs()) -> db_return().
+-spec do_update_message_doc(ne_binary(), ne_binary(), wh_json:object(), update_funs()) -> db_ret().
 do_update_message_doc(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _), JObj, Funs) ->
     NewJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Funs),
     kazoo_modb:save_doc(AccountId, NewJObj, Year, Month);
@@ -363,7 +425,7 @@ do_update_message_doc(AccountId, DocId, JObj, Funs) ->
 %% @doc Migration methods
 %% @end
 %%--------------------------------------------------------------------
--spec move_to_modb(ne_binary(), ne_binary(), wh_json:object(), update_funs()) -> db_return().
+-spec move_to_modb(ne_binary(), ne_binary(), wh_json:object(), update_funs()) -> db_ret().
 move_to_modb(AccountId, DocId, JObj, Funs) ->
     Created = wh_doc:created(JObj),
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Created),
@@ -376,8 +438,9 @@ move_to_modb(AccountId, DocId, JObj, Funs) ->
               ,"-"
               ,(wh_util:rand_hex_binary(16))/binary
            >>,
-    % io:format("FromDb ~p FromId ~p ToDb ~p ToId ~p ~n~n", [FromDb, FromId, ToDb, ToId]),
-    TransformFuns = [fun(DestDoc) -> update_media_id(ToId, DestDoc) end
+    % io:format("FromDb ~p FromId ~p ToDb ~p ToId ~p JObj ~p~n~n", [FromDb, FromId, ToDb, ToId, JObj]),
+    TransformFuns = [fun(DestDoc) -> kzd_voice_message:set_metadata(kzd_voice_message:metadata(JObj), DestDoc) end
+                     ,fun(DestDoc) -> update_media_id(ToId, DestDoc) end
                      ,fun(DestDoc) -> wh_json:set_value(<<"pvt_type">>, kzd_voice_message:type(), DestDoc) end
                      | Funs
                     ],
@@ -393,7 +456,7 @@ move_to_modb(AccountId, DocId, JObj, Funs) ->
             E
     end.
 
--spec update_mailbox(ne_binary(), ne_binary(), ne_binary()) -> db_return().
+-spec update_mailbox(ne_binary(), ne_binary(), ne_binary()) -> db_ret().
 update_mailbox(AccountId, BoxId, OldId) ->
     case open_accountdb_doc(AccountId, BoxId) of
         {'ok', VMBox} ->
@@ -455,13 +518,13 @@ count_per_folder(AccountId, BoxId) ->
 
 -spec count_modb_messages(ne_binary(), ne_binary(), non_neg_integer()) -> non_neg_integer().
 count_modb_messages(AccountId, BoxId, {ANew, ASaved}=AccountDbCounts) ->
-    FolderViewOpts = ['reduce'
-                      ,'group'
-                      ,{'group_level', 2}
-                      ,{'startkey', [BoxId]}
-                      ,{'endkey', [BoxId, wh_json:new()]}
-                     ],
-    ViewOptions = get_range_view(AccountId, FolderViewOpts),
+    Opts = ['reduce'
+            ,'group'
+            ,{'group_level', 2}
+            ,{'startkey', [BoxId]}
+            ,{'endkey', [BoxId, wh_json:new()]}
+           ],
+    ViewOptions = get_range_view(AccountId, Opts),
 
     case results_from_modbs(AccountId, ?MODB_COUNT_VIEW, ViewOptions, []) of
         [] ->
@@ -541,7 +604,7 @@ results_from_modbs(AccountId, View, [ViewOpts|ViewOptsList], Acc) ->
 -spec get_range_view(ne_binary(), wh_proplist()) -> wh_proplists().
 get_range_view(AccountId, ViewOpts) ->
     To = wh_util:current_tstamp(),
-    MaxRange = ?SECONDS_IN_DAY * ?MAX_RETAIN_DAYS + ?SECONDS_IN_HOUR,
+    MaxRange = ?SECONDS_IN_DAY * ?RETENTION_DURATION + ?SECONDS_IN_HOUR,
     From = To - MaxRange,
 
     [ begin

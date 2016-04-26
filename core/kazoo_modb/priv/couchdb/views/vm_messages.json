@@ -2,6 +2,10 @@
     "_id": "_design/vm_messages",
     "language": "javascript",
     "views": {
+        "count_by_vmbox": {
+            "map": "function(doc) { if (doc.pvt_type != 'voice_message' || doc.pvt_deleted) return; emit(doc.source_id, 1); }",
+            "reduce": "_count"
+        },
         "count_per_folder": {
             "map": "function(doc) { if (doc.pvt_type != 'voice_message' || doc.pvt_deleted) return; emit([doc.source_id, doc.metadata.folder], 1); }",
             "reduce": "_count"
