@@ -522,7 +522,7 @@ count_per_folder(AccountId, BoxId) ->
         _ -> count_modb_messages(AccountId, BoxId, {0, 0})
     end.
 
--spec count_modb_messages(ne_binary(), ne_binary(), non_neg_integer()) -> {non_neg_integer(), non_neg_integer()}.
+-spec count_modb_messages(ne_binary(), ne_binary(), {non_neg_integer(), non_neg_integer()}) -> {non_neg_integer(), non_neg_integer()}.
 count_modb_messages(AccountId, BoxId, {ANew, ASaved}=AccountDbCounts) ->
     Opts = ['reduce'
             ,'group'
