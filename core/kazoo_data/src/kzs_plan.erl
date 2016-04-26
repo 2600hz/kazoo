@@ -252,13 +252,14 @@ att_post_handler(#{<<"stub">> := 'true'}) -> 'stub';
 att_post_handler(#{}) -> 'external'.
 
 -spec fetch_dataplans(ne_binaries()) -> map().
-fetch_dataplans([Key | Keys]) ->
-    case kz_cache:fetch_local(?KZ_DP_CACHE, Keys) of
+fetch_dataplans([Key | Keys]=KPlan) ->
+    case kz_cache:fetch_local(?KZ_DP_CACHE, {KPlan}) of
         {'ok', Plan} -> Plan;
         {'error', 'not_found'} ->
+            lager:debug("creating new dataplan ~p", [KPlan]),
             Plan = fetch_dataplans(Keys, fetch_dataplan(Key)),
             CacheProps = [{'origin', [{'db', ?KZ_DATA_DB, K } || K <- Keys]}],
-            kz_cache:store_local(?KZ_DP_CACHE, Keys, Plan, CacheProps),
+            kz_cache:store_local(?KZ_DP_CACHE, {KPlan}, Plan, CacheProps),
             Plan
     end.
 
