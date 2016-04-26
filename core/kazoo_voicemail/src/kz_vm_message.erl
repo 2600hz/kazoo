@@ -13,7 +13,7 @@
          ,message/2, messages/2
          ,count/2, count_per_folder/2, count_modb_messages/3
          ,count_by_owner/2, vmbox_summary/1
-         ,set_folder/3, update_folder/3
+         ,set_folder/3
 
          ,media_url/2
 
@@ -22,6 +22,8 @@
 
          ,get_db/1, get_db/2
          ,get_range_view/2
+
+         ,cleanup_heard_voicemail/1
         ]).
 
 -include("kz_voicemail.hrl").
@@ -33,14 +35,18 @@
 
 -define(MODB_LISTING_BY_MAILBOX, <<"vm_messages/listing_by_mailbox">>).
 -define(MODB_COUNT_VIEW, <<"vm_messages/count_per_folder">>).
--define(BOX_MESSAGES_CB_LIST, <<"vmboxes/crossbar_listing">>).
 -define(COUNT_BY_VMBOX, <<"vm_messages/count_by_vmbox">>).
+-define(BOX_MESSAGES_CB_LIST, <<"vmboxes/crossbar_listing">>).
 
 -define(RETENTION_DURATION
-        ,whapps_config:get(?CF_CONFIG_CAT
+        ,whapps_config:get_integer(?CF_CONFIG_CAT
                            ,[?KEY_VOICEMAIL, ?KEY_RETENTION_DURATION]
                            ,93 %% 93 days(3 months)
                           )
+       ).
+
+-define(RETENTION_DAYS(Duration)
+        ,?SECONDS_IN_DAY * Duration + ?SECONDS_IN_HOUR
        ).
 
 -type db_ret() :: {'ok', wh_json:object() | wh_json:objects()} | {'error', any()}.
@@ -438,7 +444,7 @@ move_to_modb(AccountId, DocId, JObj, Funs) ->
               ,"-"
               ,(wh_util:rand_hex_binary(16))/binary
            >>,
-    % io:format("FromDb ~p FromId ~p ToDb ~p ToId ~p JObj ~p~n~n", [FromDb, FromId, ToDb, ToId, JObj]),
+
     TransformFuns = [fun(DestDoc) -> kzd_voice_message:set_metadata(kzd_voice_message:metadata(JObj), DestDoc) end
                      ,fun(DestDoc) -> update_media_id(ToId, DestDoc) end
                      ,fun(DestDoc) -> wh_json:set_value(<<"pvt_type">>, kzd_voice_message:type(), DestDoc) end
@@ -510,8 +516,8 @@ count_per_folder(AccountId, BoxId) ->
     % first count messages from vmbox for backward compatibility
     case fetch_vmbox_messages(AccountId, BoxId) of
         {'ok', Msgs} ->
-            New = kzd_voice_message:count_messages(Msgs, [?VM_FOLDER_NEW]),
-            Saved = kzd_voice_message:count_messages(Msgs, [?VM_FOLDER_SAVED]),
+            New = kzd_voice_message:count_folder(Msgs, [?VM_FOLDER_NEW]),
+            Saved = kzd_voice_message:count_folder(Msgs, [?VM_FOLDER_SAVED]),
             count_modb_messages(AccountId, BoxId, {New, Saved});
         _ -> count_modb_messages(AccountId, BoxId, {0, 0})
     end.
@@ -530,7 +536,7 @@ count_modb_messages(AccountId, BoxId, {ANew, ASaved}=AccountDbCounts) ->
         [] ->
             AccountDbCounts;
         Results ->
-            {MNew, MSaved} = kzd_voice_message:count_messages(Results),
+            {MNew, MSaved} = kzd_voice_message:count_non_deleted_messages(Results),
             {ANew + MNew, ASaved + MSaved}
     end.
 
@@ -568,6 +574,7 @@ open_accountdb_doc(AccountId, DocId) ->
         {'error', _}=E -> E
     end.
 
+-spec fetch_vmbox_messages(ne_binary(), ne_binary()) -> db_ret().
 fetch_vmbox_messages(AccountId, BoxId) ->
     case open_accountdb_doc(AccountId, BoxId) of
         {'ok', BoxJObj} -> {'ok', wh_json:get_value(?VM_KEY_MESSAGES, BoxJObj, [])};
@@ -576,6 +583,7 @@ fetch_vmbox_messages(AccountId, BoxId) ->
             E
     end.
 
+-spec fetch_modb_messages(ne_binary(), ne_binary(), wh_json:objects()) -> wh_json:objects().
 fetch_modb_messages(AccountId, DocId, VMBoxMsg) ->
     ViewOpts = [{'key', DocId}
                 ,'include_docs'
@@ -588,7 +596,8 @@ fetch_modb_messages(AccountId, DocId, VMBoxMsg) ->
                   ],
     VMBoxMsg ++ ModbResults.
 
-results_from_modbs(_, _, [], ViewResults) ->
+-spec results_from_modbs(ne_binary(), ne_binary(), wh_proplist(), wh_json:objects()) -> wh_json:objects().
+results_from_modbs(_AccountId, _View, [], ViewResults) ->
     ViewResults;
 results_from_modbs(AccountId, View, [ViewOpts|ViewOptsList], Acc) ->
     case kazoo_modb:get_results(AccountId, View, ViewOpts) of
@@ -604,8 +613,7 @@ results_from_modbs(AccountId, View, [ViewOpts|ViewOptsList], Acc) ->
 -spec get_range_view(ne_binary(), wh_proplist()) -> wh_proplists().
 get_range_view(AccountId, ViewOpts) ->
     To = wh_util:current_tstamp(),
-    MaxRange = ?SECONDS_IN_DAY * ?RETENTION_DURATION + ?SECONDS_IN_HOUR,
-    From = To - MaxRange,
+    From = To - ?RETENTION_DAYS(?RETENTION_DURATION),
 
     [ begin
           {AccountId, Year, Month} = kazoo_modb_util:split_account_mod(MODB),
@@ -768,3 +776,74 @@ get_caller_id_number(Call) ->
                    wh_util:truncate_right_binary(Pre,
                            kzd_schema_caller_id:external_name_max_length())
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec cleanup_heard_voicemail(ne_binary()) -> 'ok'.
+cleanup_heard_voicemail(AccountId) ->
+    Today = wh_util:current_tstamp(),
+    Duration = ?RETENTION_DURATION,
+    DurationS = ?RETENTION_DAYS(Duration),
+    lager:debug("retaining messages for ~p days, delete those older for ~s", [Duration, AccountId]),
+
+    AccountDb = get_db(AccountId),
+    case kz_datamgr:get_results(AccountDb, ?BOX_MESSAGES_CB_LIST, []) of
+        {'ok', []} -> lager:debug("no voicemail boxes in ~s", [AccountDb]);
+        {'ok', View} ->
+            cleanup_heard_voicemail(AccountId
+                                    ,Today - DurationS
+                                    ,[{wh_json:get_value(<<"value">>, V)} || V <- View]
+                                   ),
+            lager:debug("cleaned up ~b voicemail boxes in ~s", [length(View), AccountDb]);
+        {'error', _E} ->
+            lager:debug("failed to get voicemail boxes in ~s: ~p", [AccountDb, _E])
+    end.
+
+-spec cleanup_heard_voicemail(ne_binary(), pos_integer(), wh_proplist()) -> 'ok'.
+cleanup_heard_voicemail(AccountId, Timestamp, Boxes) ->
+    _ = [cleanup_voicemail_box(AccountId, Timestamp, Box) || Box <- Boxes],
+    'ok'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec cleanup_voicemail_box(ne_binary(), pos_integer(), {wh_json:object(), wh_json:objects()}) -> 'ok'.
+cleanup_voicemail_box(AccountId, Timestamp, {Box, Msgs}) ->
+    BoxId = wh_json:get_value(<<"id">>, Box),
+    Msgs = kz_vm_message:messages(AccountId, BoxId),
+    case
+        lists:partition(
+            fun(Msg) ->
+                %% must be old enough, and not in the NEW folder
+                wh_json:get_integer_value(<<"timestamp">>, Msg) < Timestamp
+                    andalso wh_json:get_value(<<"folder">>, Msg) =/= <<"new">>
+            end
+            ,Msgs
+        )
+    of
+        {[], _} ->
+            lager:debug("there are no old messages to remove from ~s", [BoxId]);
+        {Older, _} ->
+            lager:debug("there are ~b old messages to remove", [length(Older)]),
+
+            _ = [catch delete_old_message(AccountId, Msg) || Msg <- Older],
+            lager:debug("soft-deleted old messages"),
+            lager:debug("updated messages in voicemail box ~s", [BoxId])
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec delete_old_message(ne_binary(), wh_json:object()) -> {'ok', wh_json:object()} | {'error', _}.
+delete_old_message(AccountId, Msg) ->
+    {'ok', _} = kz_vm_message:set_folder(<<"deleted">>, Msg, AccountId).

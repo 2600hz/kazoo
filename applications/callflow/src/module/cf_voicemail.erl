@@ -553,8 +553,8 @@ main_menu(#mailbox{keys=#keys{hear_new=HearNew
     _ = whapps_call_command:b_flush(Call),
 
     Messages = kz_vm_message:messages(whapps_call:account_id(Call), BoxId),
-    New = kzd_voice_message:count_messages(Messages, ?VM_FOLDER_NEW),
-    Saved = kzd_voice_message:count_messages(Messages, ?VM_FOLDER_SAVED),
+    New = kzd_voice_message:count_folder(Messages, ?VM_FOLDER_NEW),
+    Saved = kzd_voice_message:count_folder(Messages, ?VM_FOLDER_SAVED),
 
     lager:debug("mailbox has ~p new and ~p saved messages", [New, Saved]),
     NoopId = whapps_call_command:audio_macro(message_count_prompts(New, Saved)
@@ -605,8 +605,8 @@ main_menu(#mailbox{keys=#keys{hear_new=HearNew
     _ = whapps_call_command:b_flush(Call),
 
     Messages = kz_vm_message:messages(whapps_call:account_id(Call), BoxId),
-    New = kzd_voice_message:count_messages(Messages, ?VM_FOLDER_NEW),
-    Saved = kzd_voice_message:count_messages(Messages, ?VM_FOLDER_SAVED),
+    New = kzd_voice_message:count_folder(Messages, ?VM_FOLDER_NEW),
+    Saved = kzd_voice_message:count_folder(Messages, ?VM_FOLDER_SAVED),
 
     lager:debug("mailbox has ~p new and ~p saved messages", [New, Saved]),
     NoopId = whapps_call_command:audio_macro(message_count_prompts(New, Saved)
@@ -741,7 +741,7 @@ play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{timezone=Timezone
         {'ok', 'keep'} ->
             lager:info("caller chose to save the message"),
             _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
-            NMessage = kz_vm_message:set_folder(?VM_FOLDER_SAVED, H, AccountId),
+            {'ok', NMessage} = kz_vm_message:set_folder(?VM_FOLDER_SAVED, H, AccountId),
             play_messages(T, [NMessage|PrevMessages], Count, Box, Call);
         {'ok', 'prev'} ->
             lager:info("caller chose to listen to previous message"),
@@ -1778,8 +1778,8 @@ send_mwi_update(#mailbox{owner_id=OwnerId
                          ,mailbox_id=BoxId}, Call) ->
     _ = wh_util:spawn(fun cf_util:unsolicited_owner_mwi_update/2, [AccountDb, OwnerId]),
     Messages = kz_vm_message:messages(whapps_call:account_id(Call), BoxId),
-    New = kzd_voice_message:count_messages(Messages, ?VM_FOLDER_NEW),
-    Saved = kzd_voice_message:count_messages(Messages, ?VM_FOLDER_SAVED),
+    New = kzd_voice_message:count_folder(Messages, ?VM_FOLDER_NEW),
+    Saved = kzd_voice_message:count_folder(Messages, ?VM_FOLDER_SAVED),
     _ = wh_util:spawn(fun send_mwi_update/4, [New, Saved, BoxNumber, Call]),
     lager:debug("sent MWI updates for vmbox ~s in account ~s (~b/~b)", [BoxNumber, whapps_call:account_id(Call), New, Saved]).
 

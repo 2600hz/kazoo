@@ -21,7 +21,6 @@
          ,post/2, post/4
          ,patch/2
          ,delete/2, delete/3, delete/4
-         ,cleanup_heard_voicemail/1
 
          ,migrate/1
          ,acceptable_content_types/0
@@ -47,7 +46,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.post.vmboxes">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.vmboxes">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.vmboxes">>, ?MODULE, 'delete'),
-    _ = crossbar_bindings:bind(crossbar_cleanup:binding_account(), ?MODULE, 'cleanup_heard_voicemail').
+    _ = crossbar_bindings:bind(crossbar_cleanup:binding_account(), 'kz_vm_message', 'cleanup_heard_voicemail').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -608,88 +607,6 @@ update_mwi(Context, 'success') ->
     Context;
 update_mwi(Context, _Status) ->
     Context.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec cleanup_heard_voicemail(ne_binary()) -> 'ok'.
--spec cleanup_heard_voicemail(ne_binary(), pos_integer()) -> 'ok'.
--spec cleanup_heard_voicemail(ne_binary(), pos_integer(), wh_proplist()) -> 'ok'.
-cleanup_heard_voicemail(Account) ->
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case whapps_account_config:get_global(AccountDb
-                                          ,<<"callflow">>
-                                          ,[<<"voicemail">>, <<"message_retention_duration">>]
-                                          ,30 %% 30 days
-                                  )
-    of
-        'undefined' -> lager:debug("no limit to voicemail retention");
-        Duration ->
-            lager:debug("retaining messages for ~p days, delete those older for ~s", [Duration, Account]),
-            cleanup_heard_voicemail(AccountDb, wh_util:to_integer(Duration))
-    end.
-
-cleanup_heard_voicemail(AccountDb, Duration) ->
-    Today = wh_util:current_tstamp(),
-    DurationS = Duration * ?SECONDS_IN_DAY,
-    case kz_datamgr:get_results(AccountDb, ?CB_LIST, []) of
-        {'ok', []} -> lager:debug("no voicemail boxes in ~s", [AccountDb]);
-        {'ok', View} ->
-            cleanup_heard_voicemail(wh_util:format_account_id(AccountDb)
-                                    ,Today - DurationS
-                                    ,[{wh_json:get_value(<<"value">>, V)} || V <- View]
-                                   ),
-            lager:debug("cleaned up ~b voicemail boxes in ~s", [length(View), AccountDb]);
-        {'error', _E} ->
-            lager:debug("failed to get voicemail boxes in ~s: ~p", [AccountDb, _E])
-    end.
-
-cleanup_heard_voicemail(AccountDb, Timestamp, Boxes) ->
-    _ = [cleanup_voicemail_box(AccountDb, Timestamp, Box) || Box <- Boxes],
-    'ok'.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec cleanup_voicemail_box(ne_binary(), pos_integer(), {wh_json:object(), wh_json:objects()}) -> 'ok'.
-cleanup_voicemail_box(AccountId, Timestamp, {Box, Msgs}) ->
-    BoxId = wh_json:get_value(<<"id">>, Box),
-    Msgs = kz_vm_message:messages(AccountId, BoxId),
-    case
-        lists:partition(
-            fun(Msg) ->
-                %% must be old enough, and not in the NEW folder
-                wh_json:get_integer_value(<<"timestamp">>, Msg) < Timestamp
-                    andalso wh_json:get_value(<<"folder">>, Msg) =/= <<"new">>
-            end
-            ,Msgs
-        )
-    of
-        {[], _} ->
-            lager:debug("there are no old messages to remove from ~s", [BoxId]);
-        {Older, _} ->
-            lager:debug("there are ~b old messages to remove", [length(Older)]),
-
-            _ = [catch delete_old_message(AccountId, Msg) || Msg <- Older],
-            lager:debug("soft-deleted old messages"),
-            lager:debug("updated messages in voicemail box ~s", [BoxId])
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec delete_old_message(ne_binary(), wh_json:object()) -> {'ok', wh_json:object()} | {'error', _}.
-delete_old_message(AccountId, Msg) ->
-    {'ok', _} = kz_vm_message:set_folder(<<"deleted">>, Msg, AccountId).
 
 %%--------------------------------------------------------------------
 %% @private

@@ -9,7 +9,7 @@
 -module(kzd_voice_message).
 
 -export([new/0, new/6, create_metadata_object/6
-         ,count_messages/1, count_messages/2
+         ,count_non_deleted_messages/1, count_folder/2
          ,filter_vmbox_messages/2
          ,type/0
          ,folder/1, folder/2, set_folder/2, set_folder_saved/1, set_folder_deleted/1, filter_folder/2
@@ -178,8 +178,8 @@ filter_folder(Messages, Folder) ->
 %% @doc Count count_per_folder view result
 %% @end
 %%--------------------------------------------------------------------
--spec count_messages(wh_json:objects()) -> non_neg_integer().
-count_messages(ViewRes) ->
+-spec count_non_deleted_messages(wh_json:objects()) -> non_neg_integer().
+count_non_deleted_messages(ViewRes) ->
     Props = [{wh_json:get_value([<<"key">>, 2], Msg)
               ,wh_json:get_integer_value(<<"value">>, Msg)
              }
@@ -194,16 +194,16 @@ count_messages(ViewRes) ->
 %% @doc Count message list in specific folder(s)
 %% @end
 %%--------------------------------------------------------------------
--spec count_messages(wh_json:objects(), ne_binary() | ne_binaries()) -> non_neg_integer().
-count_messages(Messages, Folders) when is_list(Folders) ->
+-spec count_folder(wh_json:objects(), ne_binary() | ne_binaries()) -> non_neg_integer().
+count_folder(Messages, Folders) when is_list(Folders) ->
     lists:sum([1 || Message <- Messages,
                     begin
                         F = wh_json:get_value(?VM_KEY_FOLDER, Message),
                         lists:member(F, Folders)
                     end
               ]);
-count_messages(Messages, Folder) ->
-    count_messages(Messages, [Folder]).
+count_folder(Messages, Folder) ->
+    count_folder(Messages, [Folder]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -219,7 +219,7 @@ filter_vmbox_messages(_MediaId, []) ->
     lager:warning("found media doc ~s but messages in vmbox is empty", [_MediaId]),
     {'error', 'not_found'};
 filter_vmbox_messages(MediaId, [H|T]) ->
-    filter_vmbox_messages(MediaId, kzd_voice_message:media_id(H), H, T, []).
+    filter_vmbox_messages(MediaId, media_id(H), H, T, []).
 
 -spec filter_vmbox_messages(ne_binary(), ne_binary(), wh_json:object(), wh_json:objects(), wh_json:objects()) ->
                                 message_filter_ret().
@@ -231,4 +231,4 @@ filter_vmbox_messages(_MediaId, _, _, [], _) ->
 filter_vmbox_messages(MediaId, MediaId, Msg, Tail, Acc) ->
     {Msg, lists:flatten([Acc | Tail])};
 filter_vmbox_messages(MediaId, _, _, [H|T], Acc) ->
-    filter_vmbox_messages(MediaId, kzd_voice_message:media_id(H), H, T, [H|Acc]).
+    filter_vmbox_messages(MediaId, media_id(H), H, T, [H|Acc]).

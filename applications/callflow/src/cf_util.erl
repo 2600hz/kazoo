@@ -1087,8 +1087,8 @@ vm_count(JObj) ->
     BoxId = wh_doc:id(JObj),
 
     Messages = wh_json:get_value(?VM_KEY_MESSAGES, JObj, []),
-    New = kzd_voice_message:count_messages(Messages, ?VM_FOLDER_NEW),
-    Saved = kzd_voice_message:count_messages(Messages, ?VM_FOLDER_SAVED),
+    New = kzd_voice_message:count_folder(Messages, ?VM_FOLDER_NEW),
+    Saved = kzd_voice_message:count_folder(Messages, ?VM_FOLDER_SAVED),
 
     kz_vm_message:count_modb_messages(AccountId, BoxId, {New, Saved}).
 
