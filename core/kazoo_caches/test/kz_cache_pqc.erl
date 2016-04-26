@@ -1,3 +1,5 @@
+%% This test requires a running Kazoo node
+%% invoke with `proper:quickcheck(kz_cache_pqc:correct())` or `parallel_correct`
 -module(kz_cache_pqc).
 
 -ifdef(PROPER).
@@ -25,30 +27,6 @@
 -record(state, {cache = [] :: cache_objs()
                 ,now_ms = 0 :: pos_integer()
                }).
-
-%% sequential_test_() ->
-%%     {"Running sequential PropEr tests"
-%%     ,{'timeout'
-%%      ,50000
-%%      ,?_assertEqual('true'
-%%                    ,proper:quickcheck(?MODULE:correct()
-%%                                      ,[{'to_file', 'user'}]
-%%                                      )
-%%                    )
-%%      }
-%%     }.
-
-%% parallel_test_() ->
-%%     {"Running parallel PropEr tests"
-%%      ,{'timeout'
-%%        ,50000
-%%        ,?_assertEqual('true'
-%%                       ,proper:quickcheck(?MODULE:correct_parallel()
-%%                                         ,[{'to_file', 'user'}]
-%%                                         )
-%%                      )
-%%       }
-%%     }.
 
 correct() ->
     ?FORALL(Cmds
@@ -100,8 +78,6 @@ command(#state{}=_Model) ->
 next_state(#state{cache=Cache, now_ms=NowMs}=Model, _V
           ,{'call', 'kz_cache', 'store_local', [?SERVER, Key, Value, Props]}
           ) ->
-    lager:debug("ns: store_local ~p ~p", [Key, Value]),
-    lager:debug("ns: old cache: ~p", [Cache]),
     Obj = #cache_obj{key=Key
                     ,value=Value
                     ,timestamp=NowMs
@@ -116,7 +92,6 @@ next_state(#state{}=Model, _V
           ,{'call', 'kz_cache', 'peek_local', [?SERVER, _Key]}
           ) ->
     %% nothing about our state changes when peeking
-    lager:debug("ns: peek_local ~p", [_Key]),
     Model;
 next_state(#state{cache=Cache
                  ,now_ms=NowMs
@@ -126,10 +101,8 @@ next_state(#state{cache=Cache
     %% bump the timestamp if the key exists
     case lists:keysearch(Key, #cache_obj.key, Cache) of
         'false' ->
-            lager:debug("ns: key ~p not fetched, no change", [Key]),
             Model;
         {'value', #cache_obj{}=Obj} ->
-            lager:debug("ns: key ~p fetched, bumping timestamp to ~p", [Key, NowMs]),
             Model#state{cache=lists:keyreplace(Key, #cache_obj.key, Cache, Obj#cache_obj{timestamp=NowMs})}
     end;
 next_state(#state{cache=Cache}=Model, _V
@@ -137,10 +110,8 @@ next_state(#state{cache=Cache}=Model, _V
           ) ->
     case lists:keytake(Key, #cache_obj.key, Cache) of
         'false' ->
-            lager:debug("ns: key ~p not found to erase", [Key]),
             Model;
         {'value', _Old, Cache1} ->
-            lager:debug("removed ~p from cache, now ~p", [_Old, Cache1]),
             Model#state{cache=Cache1}
     end;
 next_state(#state{cache=Cache
@@ -149,7 +120,6 @@ next_state(#state{cache=Cache
           ,{'call', 'timer', 'sleep', [SleptMs]}
           ) ->
     NowMs = ThenMs + SleptMs,
-    lager:debug("ns: sleeping ~pms (moving now to ~p", [SleptMs, NowMs]),
     Model#state{cache=lists:foldl(fun(Obj, Acc) -> maybe_expire(Obj, Acc, NowMs) end, [], Cache)
                ,now_ms=NowMs
                }.
@@ -165,9 +135,7 @@ postcondition(#state{cache=Cache}
              ,{'call', 'kz_cache', 'fetch_local', [?SERVER, Key]}
              ,{'ok', Value}
              ) ->
-    lager:debug("pc: fetching ~p got back ~p, ~p stored", [Key, Value, lists:keysearch(Key, #cache_obj.key, Cache)]),
     {'value', Obj} = lists:keysearch(Key, #cache_obj.key, Cache),
-    lager:debug("pc: fetched ~p ~p", [Obj, Obj#cache_obj.value =:= Value]),
     Obj#cache_obj.value =:= Value;
 postcondition(#state{cache=Cache}
              ,{'call', 'kz_cache', 'fetch_local', [?SERVER, Key]}
@@ -178,9 +146,7 @@ postcondition(#state{cache=Cache}
              ,{'call', 'kz_cache', 'peek_local', [?SERVER, Key]}
              ,{'ok', Value}
              ) ->
-    lager:debug("pc: peeking ~p got back ~p, ~p stored", [Key, Value, lists:keysearch(Key, #cache_obj.key, Cache)]),
     {'value', Obj} = lists:keysearch(Key, #cache_obj.key, Cache),
-    lager:debug("pc: peeked ~p ~p", [Obj, Obj#cache_obj.value =:= Value]),
     Obj#cache_obj.value =:= Value;
 postcondition(#state{cache=Cache}
              ,{'call', 'kz_cache', 'peek_local', [?SERVER, Key]}
@@ -200,17 +166,14 @@ postcondition(#state{}
 
 maybe_expire(#cache_obj{expires=Expiry
                        ,timestamp=TStamp
-                       ,key=_Key
                        }=Obj
             ,NewCache
             ,NowMs
             ) ->
     case (Expiry*1000) + TStamp of
         Expired when Expired < NowMs ->
-            lager:debug("ns: ~p: expiring ~p: ~p(~p)~n", [self(), _Key, TStamp, Expiry]),
             NewCache;
         _Expires ->
-            lager:debug("ns: not expiring ~p", [Obj]),
             [Obj | NewCache]
     end.
 
