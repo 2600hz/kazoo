@@ -13,6 +13,7 @@
 
 -export([start_link/0, start_link/1
          ,start_link/2, start_link/3
+         ,stop_local/1
         ]).
 -export([store/2, store/3]).
 -export([peek/1]).
@@ -124,6 +125,11 @@ start_link(Name, ExpirePeriod, Props) ->
                                     ,[Name, ExpirePeriod, Props]
                                    )
     end.
+
+-spec stop_local(pid()) -> 'ok'.
+stop_local(Srv) ->
+    catch gen_server:call(Srv, 'stop'),
+    'ok'.
 
 -spec maybe_add_db_binding(wh_proplists()) -> wh_proplists().
 maybe_add_db_binding([]) -> [];
@@ -536,6 +542,12 @@ handle_call({'wait_for_key', Key, Timeout}
             ets:insert(MonitorTab, CacheObj),
             {'reply', {'ok', Ref}, State#state{has_monitors='true'}}
     end;
+handle_call('stop', _From, State) ->
+    lager:debug("recv stop from ~p", [_From]),
+    {'stop', 'normal', State};
+handle_call({'store', CacheObj}, _From, State) ->
+    State1 = handle_store(CacheObj, State),
+    {'reply', 'ok', State1};
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
