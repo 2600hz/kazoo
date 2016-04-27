@@ -29,9 +29,19 @@
          ,code_change/3
         ]).
 
--type location() :: {integer(), integer()} | integer().
--type info() :: {location(), atom(), iolist()}.
--type infos() :: {string(), [info()]}.
+%% copied from erlydtl.erl
+-type position() :: non_neg_integer().
+-type location() :: none | position() | {Line::position(), Column::position()}.
+-type info() :: {location()
+                 ,Module::atom()
+                 ,ErrorDesc::term()
+                }.
+
+-type error_info() :: {File::list()
+                       ,[info()]
+                      }.
+-type errors() :: list(error_info()).
+-type warnings() :: list(error_info()).
 
 -spec start_link(any()) -> startlink_ret().
 start_link(Args) ->
@@ -197,12 +207,12 @@ render_template(TemplateModule, TemplateData) ->
             {'error', R}
     end.
 
--spec log_errors(infos(), binary()) -> 'ok'.
+-spec log_errors(errors(), binary()) -> 'ok'.
 log_errors(Es, Template) ->
     _ = [log_infos("error", Module, Errors, Template) || {Module, Errors} <- Es],
     'ok'.
 
--spec log_warnings(infos(), binary()) -> 'ok'.
+-spec log_warnings(warnings(), binary()) -> 'ok'.
 log_warnings(Ws, Template) ->
     _ = [log_infos("warning", Module, Warnings, Template) || {Module, Warnings} <- Ws],
     'ok'.

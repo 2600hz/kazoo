@@ -42,6 +42,7 @@
                                            ,<<"Rev">>
                                            ,<<"Type">>
                                            ,<<"Version">>
+                                           ,<<"Origin-Cache">>
                                           ]).
 -define(CONF_DOC_UPDATE_VALUES, [{<<"Event-Category">>, ?WAPI_CONF_CATEGORY}
                                  ,{<<"Event-Name">>, [?DOC_EDITED
@@ -157,8 +158,7 @@ bind_q(Q, Props) ->
     bind_q(Q, Props, props:get_value('restrict_to', Props)).
 
 bind_q(Q, Props, 'undefined') ->
-    bind_for_doc_changes(Q, Props),
-    bind_for_doc_type_changes(Q, Props);
+    bind_for_doc_changes(Q, Props);
 bind_q(Q, Props, ['doc_updates'|Restrict]) ->
     bind_for_doc_changes(Q, Props),
     bind_q(Q, Props, Restrict);

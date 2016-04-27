@@ -88,7 +88,7 @@ init([Db, Id, Attachment, CallId]) ->
                                     {'stop', _} |
                                     {'ok', state()}.
 maybe_start_file_cache(Db, Id, Attachment) ->
-    case kz_datamgr:open_doc(Db, Id) of
+    case kz_datamgr:open_cache_doc(Db, Id) of
         {'error', 'not_found'} ->
             lager:warning("failed to find '~s' in '~s'", [Id, Db]),
             {'stop', 'not_found'};

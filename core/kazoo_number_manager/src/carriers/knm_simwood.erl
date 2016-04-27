@@ -32,8 +32,8 @@
        ).
 
 -define(SW_ACCOUNT_ID, whapps_config:get_string(?KNM_SW_CONFIG_CAT, <<"simwood_account_id">>, <<>>)).
--define(SW_AUTH_USERNAME, whapps_config:get_string(?KNM_SW_CONFIG_CAT, <<"auth_username">>, <<>>)).
--define(SW_AUTH_PASSWORD, whapps_config:get_string(?KNM_SW_CONFIG_CAT, <<"auth_password">>, <<>>)).
+-define(SW_AUTH_USERNAME, whapps_config:get_binary(?KNM_SW_CONFIG_CAT, <<"auth_username">>, <<>>)).
+-define(SW_AUTH_PASSWORD, whapps_config:get_binary(?KNM_SW_CONFIG_CAT, <<"auth_password">>, <<>>)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -66,7 +66,7 @@ acquire_number(Number) ->
     URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/allocated/">>, wh_util:to_binary(Num)]),
     case query_simwood(URL, 'put') of
         {'ok', _Body} -> Number;
-        {'error', Error} -> knm_errors:unspecified(Error, Number)
+        {'error', Error} -> knm_errors:by_carrier(?MODULE, Error, Number)
     end.
 
 %%--------------------------------------------------------------------
@@ -87,7 +87,7 @@ disconnect_number(Number) ->
     URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/allocated/">>, wh_util:to_binary(Num)]),
     case query_simwood(URL, 'delete') of
         {'ok', _Body} -> Number;
-        {'error', Error} -> knm_errors:unspecified(Error, Number)
+        {'error', Error} -> knm_errors:by_carrier(?MODULE, Error, Number)
     end.
 
 %%--------------------------------------------------------------------

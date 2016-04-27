@@ -9,15 +9,19 @@
 -module(wh_media_file).
 
 -export([get_uri/2]).
--export([maybe_prepare_proxy/1]).
 
 -include("whistle_media.hrl").
 
--spec get_uri(ne_binaries() | ne_binary(), wh_json:object()) ->
+
+-type build_uri() :: ne_binaries() | ne_binary() |  media_store_path().
+
+-spec get_uri(build_uri(), wh_json:object()) ->
                      {'ok', ne_binary()} |
                      {'error', 'not_found'} |
                      {'error', 'no_data'} |
                      {'error', 'no_stream_strategy'}.
+get_uri(#media_store_path{}=Store, JObj) ->
+     maybe_proxy(JObj, Store);
 get_uri(Media, JObj) when is_binary(Media) ->
     wh_util:put_callid(JObj),
     Paths = [Path
@@ -28,21 +32,19 @@ get_uri(Media, JObj) when is_binary(Media) ->
 get_uri(Paths, JObj) ->
     case find_attachment(Paths) of
         {'error', _}=E -> E;
-        {'ok', #media_store_path{}=Store} ->
-            media_manager_proxy_uri(JObj, Store)
-%            maybe_local_haproxy_uri(JObj, Db, Id, Attachment)
+        {'ok', #media_store_path{}=Store} -> maybe_proxy(JObj, Store)
     end.
 
--spec maybe_prepare_proxy(ne_binary()) -> 'ok' | 'error'.
-maybe_prepare_proxy(URI) ->
-    case wh_util:to_binary(props:get_value('path', uri_parser:parse(wh_util:to_list(URI), []), <<>>)) of
-        <<"/single/", Rest/binary>> -> prepare_proxy(binary:split(Rest, <<"/">>, ['global', 'trim']));
-        <<"/continuous/", Rest/binary>> -> prepare_proxy(binary:split(Rest, <<"/">>, ['global', 'trim']));
-        _Else -> 'ok'
-    end.
+-spec maybe_prepare_proxy(ne_binary(), media_store_path()) -> 'ok' | 'error'.
+maybe_prepare_proxy(<<"single">>, Store) -> prepare_proxy(Store);
+maybe_prepare_proxy(<<"continuous">>, Store) -> prepare_proxy(Store);
+maybe_prepare_proxy(_, _ ) -> 'ok'.
 
--spec prepare_proxy(ne_binaries()) -> 'ok' | 'error'.
-prepare_proxy([Db, Id, _Type, _Rev, Attachment]) ->
+-spec prepare_proxy(media_store_path()) -> 'ok' | 'error'.
+prepare_proxy(#media_store_path{db = Db
+                               ,id = Id
+                               ,att = Attachment
+                               }) ->
     case wh_media_cache_sup:find_file_server(Db, Id, Attachment) =:= {'error', 'no_file_server'} of
         'true' -> start_media_file_cache(Db, Id, Attachment);
         'false' -> lager:debug("existing file server for ~s/~s/~s", [Db, Id, Attachment])
@@ -58,55 +60,93 @@ start_media_file_cache(Db, Id, Attachment) ->
             throw(E)
     end.
 
+-spec maybe_proxy(wh_json:object(), media_store_path()) ->
+          {'ok', ne_binary()} |
+          {'error', 'no_stream_strategy'}.
+maybe_proxy(JObj, #media_store_path{db = Db
+                                    ,id = Id
+                                    ,att = Attachment
+                                    ,opt = Options
+                                   }=Store) ->
+    case kz_datamgr:attachment_url(Db, Id, Attachment, Options) of
+        {'error', 'not_found'} -> <<>>;
+        {'proxy', _} -> proxy_uri(JObj, Store);
+        <<_/binary>> = URI -> URI
+    end.
+
+-spec proxy_uri(wh_json:object(), media_store_path()) ->
+          {'ok', ne_binary()} |
+              {'error', 'no_stream_strategy'}.
+proxy_uri(JObj, #media_store_path{db = Db
+                                  ,id = Id
+                                  ,att = Attachment
+                                  ,opt=Options
+                                 }=Store) ->
+    StreamType = wh_media_util:convert_stream_type(wh_json:get_value(<<"Stream-Type">>, JObj)),
+    _ = maybe_prepare_proxy(StreamType, Store),
+    Host = wh_network_utils:get_hostname(),
+    Port = whapps_config:get_binary(?CONFIG_CAT, <<"proxy_port">>, 24517),
+    Permissions = case StreamType =:= <<"store">> of
+                      'true' -> 'proxy_store';
+                      'false' -> 'proxy_playback'
+                  end,
+    Path = base64:encode(term_to_binary({Db, Id, Attachment, Options})),
+    <<(wh_media_util:base_url(Host, Port, Permissions))/binary
+      ,StreamType/binary
+      ,"/", Path/binary
+    >>.
+
+
+
 -spec find_attachment(ne_binaries() | ne_binary()) ->
                              {'ok', media_store_path()} |
                              {'error', 'not_found'}.
+find_attachment(Media) when is_binary(Media) ->
+    Paths = [Path
+             || Path <- binary:split(Media, <<"/">>, ['global', 'trim']),
+                (not wh_util:is_empty(Path))
+            ],
+    find_attachment(Paths);
 find_attachment([Id]) ->
     find_attachment([?WH_MEDIA_DB, Id]);
 find_attachment([Db, Id]) ->
     find_attachment([Db, Id, 'first']);
 find_attachment([Db, Id, 'first']) ->
     maybe_find_attachment(Db, Id);
+find_attachment([?WH_MEDIA_DB=Db, Lang, Id]) ->
+    find_attachment([Db, <<Lang/binary, "/", Id/binary>>, 'first']);
 find_attachment([Db, Id, Attachment]) ->
-    find_attachment([Db, Id, <<"unknown">>, Attachment]);
-find_attachment([Db, Id, Type, Attachment]) ->
-    find_attachment([Db, Id, Type, <<"unknown">>, Attachment]);
-find_attachment([Db = ?MEDIA_DB, Id, Type, Rev, Attachment]) ->
+    find_attachment([Db, Id, Attachment, []]);
+find_attachment([Db = ?MEDIA_DB, Id, Attachment, Options]) ->
     {'ok', #media_store_path{db = Db
                             ,id = Id
-                            ,type = Type
-                            ,rev = Rev
                             ,att = Attachment
+                            ,opt = Options
                             }
     };
-find_attachment([?MATCH_ACCOUNT_RAW(Account), Id, Type, Rev, Attachment]) ->
+find_attachment([?MATCH_ACCOUNT_RAW(Account), Id, Attachment, Options]) ->
     AccountDb =  wh_util:format_account_id(Account, 'encoded'),
     {'ok', #media_store_path{db = AccountDb
                             ,id = Id
-                            ,type = Type
-                            ,rev = Rev
                             ,att = Attachment
+                            ,opt = Options
                             }
     };
-find_attachment([?MATCH_ACCOUNT_UNENCODED(Account), Id, Type, Rev, Attachment]) ->
+find_attachment([?MATCH_ACCOUNT_UNENCODED(Account), Id, Attachment, Options]) ->
     AccountDb =  wh_util:format_account_id(Account, 'encoded'),
     {'ok', #media_store_path{db = AccountDb
                             ,id = Id
-                            ,type = Type
-                            ,rev = Rev
                             ,att = Attachment
+                            ,opt = Options
                             }
     };
-find_attachment([Db, Id, Type, Rev, Attachment]) ->
+find_attachment([Db, Id, Attachment, Options]) ->
     {'ok', #media_store_path{db = Db
                             ,id = Id
-                            ,type = Type
-                            ,rev = Rev
                             ,att = Attachment
+                            ,opt = Options
                             }
-    };
-find_attachment(Id) when not is_list(Id) ->
-    find_attachment([Id]).
+    }.
 
 -spec maybe_find_attachment(ne_binary(), ne_binary()) ->
                                    {'ok', {ne_binary(), ne_binary(), ne_binary()}} |
@@ -141,55 +181,7 @@ maybe_find_attachment(Db, Id, JObj) ->
         [AttachmentName | _] ->
             AccountId = wh_util:format_account_id(Db, 'raw'),
             lager:debug("found first attachment ~s on ~s in ~s", [AttachmentName, Id, Db]),
-            find_attachment([AccountId, Id, wh_doc:type(JObj), wh_doc:revision(JObj), AttachmentName])
+            find_attachment([AccountId, Id, AttachmentName, [{'doc_type', wh_doc:type(JObj)}
+                                                             ,{'rev', wh_doc:revision(JObj)}
+                                                            ]])
     end.
-
-%% -spec maybe_local_haproxy_uri(wh_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
-%%                                      {'ok', ne_binary()} |
-%%                                      {'error', 'no_stream_strategy'}.
-%% maybe_local_haproxy_uri(JObj, Db, Id, Attachment) ->
-%%     case whapps_config:get_is_true(?CONFIG_CAT, <<"use_bigcouch_direct">>, 'true') of
-%%         'false' -> maybe_media_manager_proxy_uri(JObj, Db, Id, Attachment);
-%%         'true' ->
-%%             Url = kz_datamgr:attachment_url(Db, Id, Attachment),
-%%             {'ok', Url}
-%%     end.
-%%
-%% -spec maybe_media_manager_proxy_uri(wh_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
-%%                                            {'ok', ne_binary()} |
-%%                                            {'error', 'no_stream_strategy'}.
-%% maybe_media_manager_proxy_uri(JObj, Db, Id, Attachment) ->
-%%     case whapps_config:get_is_true(?CONFIG_CAT, <<"use_media_proxy">>, 'true') of
-%%         'false' ->
-%%             lager:warning("unable to build URL for media ~s ~s ~s", [Db, Id, Attachment]),
-%%             {'error', 'no_stream_strategy'};
-%%         'true' ->
-%%             lager:debug("using media manager as proxy"),
-%%             media_manager_proxy_uri(JObj, Db, Id, Attachment)
-%%     end.
-
--spec media_manager_proxy_uri(wh_json:object(), media_store_path()) ->
-          {'ok', ne_binary()} |
-          {'error', 'no_stream_strategy'}.
-media_manager_proxy_uri(JObj, #media_store_path{db = Db
-                                                ,id = Id
-                                                ,type = Type
-                                                ,rev = Rev
-                                                ,att = Attachment
-                                               }) ->
-    Host = wh_network_utils:get_hostname(),
-    Port = whapps_config:get_binary(?CONFIG_CAT, <<"proxy_port">>, 24517),
-    StreamType = wh_media_util:convert_stream_type(wh_json:get_value(<<"Stream-Type">>, JObj)),
-    Permissions = case StreamType =:= <<"store">> of
-                      'true' -> 'proxy_store';
-                      'false' -> 'proxy_playback'
-                  end,
-    {'ok', <<(wh_media_util:base_url(Host, Port, Permissions))/binary
-             ,StreamType/binary
-             ,"/", Db/binary
-             ,"/", Id/binary
-             ,"/", Type/binary
-             ,"/", Rev/binary
-             ,"/", Attachment/binary
-           >>
-    }.

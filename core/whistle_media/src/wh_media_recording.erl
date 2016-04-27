@@ -72,8 +72,6 @@
                }).
 -type state() :: #state{}.
 
--define(STORAGE_TIMEOUT, whapps_config:get(?WHM_CONFIG_CAT, <<"storage_timeout_ms">>, 5 * ?MILLISECONDS_IN_MINUTE)).
-
 -define(STORAGE_RETRY_TIMES(AccountId)
         ,whapps_account_config:get_global(AccountId, ?WHM_CONFIG_CAT
                                           ,[<<"call_recording">>, <<"storage_retry_times">>]
@@ -476,14 +474,10 @@ get_url(Data) ->
 store_url(#state{doc_db=Db
                  ,doc_id=MediaId
                  ,media={_,MediaName}
-                 ,format=Ext
+                 ,format=_Ext
                  ,should_store={'true', 'local'}
-                }, Rev) ->
-    Options = [{'rev', Rev}
-               ,{'content_type', kz_mime:from_extension(Ext)}
-               ,{'doc_type', <<"call_recording">>}
-              ],
-    kz_datamgr:attachment_url(Db, MediaId, MediaName, Options).
+                }, _Rev) ->
+    wh_media_url:store(Db, {<<"call_recording">>, MediaId}, MediaName).
 
 -spec should_store_recording() -> store_url().
 -spec should_store_recording(api_binary()) -> store_url().
@@ -555,27 +549,11 @@ start_recording(Call, MediaName, TimeLimit, MediaRecorder, SampleRate, RecordMin
 
 -spec store({ne_binary(), ne_binary()}, ne_binary(), whapps_call:call()) -> 'ok'.
 store({DirName, MediaName}, StoreUrl, Call) ->
-    Args = [{<<"File-Name">>, filename:join(DirName, MediaName)}
-            ,{<<"Url">>, StoreUrl}
-            ,{<<"Http-Method">>, <<"put">>}
-           ],
-    API = [{<<"Command">>, <<"send_http">>}
-           ,{<<"Args">>, wh_json:from_list(Args)}
-           ,{<<"FreeSWITCH-Node">>, whapps_call:kvs_fetch(<<"FreeSwitch-Node">>, Call)}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    case wh_amqp_worker:call(API, fun wapi_switch:publish_command/1, fun wapi_switch:fs_reply_v/1, ?STORAGE_TIMEOUT) of
+    Filename = filename:join(DirName, MediaName),
+    case whapps_call_command:store_file(Filename, StoreUrl, Call) of
         {'error', 'timeout'} -> gen_server:cast(self(), 'store_failed');
-        {'ok', JObj} -> check_store_result(wh_json:get_value(<<"Result">>, JObj), JObj)
-    end,
-    'ok'.
-
--spec check_store_result(ne_binary(), wh_json:object()) -> 'ok'.
-check_store_result(<<"success">>, _JObj) ->
-    gen_server:cast(self(), 'store_succeeded');
-check_store_result(<<"error">>, JObj) ->
-    lager:debug("error ~s received for store", [wh_json:get_value(<<"Error">>, JObj)]),
-    gen_server:cast(self(), 'store_failed').
+        'ok' -> gen_server:cast(self(), 'store_succeeded')
+    end.
 
 -spec stop_recording(pid()) -> 'ok'.
 stop_recording(Pid) ->

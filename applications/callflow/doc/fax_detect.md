@@ -4,7 +4,7 @@ Title: Fax Detect
 Language: en-US
 */
 
-# Fax Detect 
+# Fax Detect
 
 Fax Detect allows the detection of FAX/VOICE in a call.
 

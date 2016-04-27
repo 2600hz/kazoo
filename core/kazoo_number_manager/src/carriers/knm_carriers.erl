@@ -119,8 +119,7 @@ process_number_result(Number, Acc) ->
 process_number_result(Number, Acc, ?CARRIER_OTHER) ->
     [found_number_to_jobj(Number) | Acc];
 process_number_result(Number, Acc, Carrier) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    DID = knm_phone_number:number(PhoneNumber),
+    DID = knm_phone_number:number(knm_number:phone_number(Number)),
     check_for_existing_did(Number, Acc, Carrier, knm_phone_number:fetch(DID)).
 
 -spec check_for_existing_did(knm_number:knm_number(), wh_json:objects(), ne_binary(), knm_phone_number_return()) ->
@@ -289,24 +288,25 @@ default_carrier() ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Create a list of all available carrier modules
+%% Buy a number from its carrier module
 %% @end
 %%--------------------------------------------------------------------
 -spec acquire(knm_number:knm_number()) -> knm_number:knm_number().
--spec acquire(knm_number:knm_number(), ne_binary(), boolean()) ->
-                     knm_number:knm_number().
 acquire(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     Module = knm_phone_number:module_name(PhoneNumber),
     DryRun = knm_phone_number:dry_run(PhoneNumber),
     acquire(Number, Module, DryRun).
 
-acquire(Number, _Mod, 'true') ->
-    Number;
+-spec acquire(knm_number:knm_number(), ne_binary(), boolean()) ->
+                     knm_number:knm_number().
 acquire(Number, 'undefined', _DryRun) ->
     knm_errors:carrier_not_specified(Number);
+acquire(Number, _Mod, 'true') ->
+    Number;
 acquire(Number, ?NE_BINARY = Mod, 'false') ->
     Module = carrier_module(Mod),
+    lager:debug("contacting carrier ~s", [Module]),
     Module:acquire_number(Number).
 
 %%--------------------------------------------------------------------

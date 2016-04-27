@@ -17,11 +17,12 @@
 -export([format_error/1]).
 
 %% System manipulation
--export([db_exists/1
+-export([db_exists/1, db_exists/2, db_exists_all/1
          ,db_info/0, db_info/1
-         ,db_create/1
+         ,db_create/1, db_create/2
          ,db_compact/1
          ,db_view_cleanup/1
+         ,db_view_update/2, db_view_update/3
          ,db_delete/1
          ,db_replicate/1
          ,db_archive/1, db_archive/2
@@ -52,8 +53,8 @@
          ,all_design_docs/1
          ,all_docs/2
          ,all_design_docs/2
-         ,copy_doc/3, copy_doc/4, copy_doc/5
-         ,move_doc/3, move_doc/4, move_doc/5
+         ,copy_doc/4, copy_doc/5
+         ,move_doc/4, move_doc/5
         ]).
 
 %% attachments
@@ -254,6 +255,38 @@ db_exists(DbName) ->
         {'error', _}=E -> E
     end.
 
+-spec db_exists(text(), api_binary() | wh_proplist()) -> boolean().
+db_exists(DbName, 'undefined') ->
+    db_exists(DbName);
+db_exists(DbName, Type)
+  when ?VALID_DBNAME andalso is_binary(Type) ->
+    case add_doc_type_from_view(Type, []) of
+        [] -> db_exists(DbName, [{'doc_type', Type}]);
+        Options -> db_exists(DbName, Options)
+    end;
+db_exists(DbName, Options) when ?VALID_DBNAME ->
+    kzs_db:db_exists(kzs_plan:plan(DbName, Options), DbName);
+db_exists(DbName, Options) ->
+    case maybe_convert_dbname(DbName) of
+        {'ok', Db} -> db_exists(Db, Options);
+        {'error', _}=E -> E
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Detemine if a database exists, also checks other connections
+%% @end
+%%--------------------------------------------------------------------
+-spec db_exists_all(text()) -> boolean().
+db_exists_all(DbName) when ?VALID_DBNAME ->
+    kzs_db:db_exists_all(kzs_plan:plan(DbName), DbName);
+db_exists_all(DbName) ->
+    case maybe_convert_dbname(DbName) of
+        {'ok', Db} -> db_exists_all(Db);
+        {'error', _}=E -> E
+    end.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -316,6 +349,20 @@ db_view_cleanup(DbName) when ?VALID_DBNAME ->
 db_view_cleanup(DbName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> db_view_cleanup(Db);
+        {'error', _}=E -> E
+    end.
+
+-spec db_view_update(ne_binary(), wh_proplist()) -> boolean().
+-spec db_view_update(ne_binary(), wh_proplist(), boolean()) -> boolean().
+
+db_view_update(DbName, Views) ->
+    db_view_update(DbName, Views, 'false').
+
+db_view_update(DbName, Views, Remove) when ?VALID_DBNAME ->
+    kzs_db:db_view_update(kzs_plan:plan(DbName), DbName, Views, Remove);
+db_view_update(DbName, Views, Remove) ->
+    case maybe_convert_dbname(DbName) of
+        {'ok', Db} -> db_view_update(Db, Views, Remove);
         {'error', _}=E -> E
     end.
 
@@ -879,27 +926,27 @@ delete_attachment(DbName, DocId, AName, Options) ->
         {'error', _}=E -> E
     end.
 
--spec attachment_url(text(), docid(), ne_binary()) -> ne_binary().
--spec attachment_url(text(), docid(), ne_binary(), wh_proplist()) -> ne_binary().
+-spec attachment_url(text(), docid(), ne_binary()) -> {'ok', ne_binary()}
+                                                    | {'proxy', tuple()}
+                                                    | {'error', any()}.
+-spec attachment_url(text(), docid(), ne_binary(), wh_proplist()) -> {'ok', ne_binary()}
+                                                                   | {'proxy', tuple()}
+                                                                   | {'error', any()}.
 
 attachment_url(DbName, DocId, AttachmentId) ->
-    case filename:extension(AttachmentId) of
-        [] -> attachment_url(DbName, DocId, AttachmentId, []);
-        Ext ->
-            Options = [{'content_type', kz_mime:from_extension(Ext)}],
-            attachment_url(DbName, DocId, AttachmentId, Options)
-    end.
+    attachment_url(DbName, DocId, AttachmentId, []).
 
 attachment_url(DbName, {DocType, DocId}, AttachmentId, Options) when ?VALID_DBNAME ->
     attachment_url(DbName, DocId, AttachmentId, maybe_add_doc_type(DocType, Options));
 attachment_url(DbName, DocId, AttachmentId, Options) when ?VALID_DBNAME ->
-    case attachment_options(DbName, DocId, Options) of
-        {'ok', NewOptions} -> kzs_attachments:attachment_url(kzs_plan:plan(DbName, NewOptions)
-                                                             ,DbName
-                                                             ,DocId
-                                                             ,AttachmentId
-                                                             ,NewOptions
-                                                            );
+    Plan = kzs_plan:plan(DbName, Options),
+    case kzs_doc:open_doc(Plan, DbName, DocId, Options) of
+        {'ok', JObj} ->
+            NewOptions = [{'rev', wh_doc:revision(JObj)}
+                          | maybe_add_doc_type(wh_doc:type(JObj), Options)
+                         ],
+            Handler = wh_doc:attachment_property(JObj, AttachmentId, <<"handler">>),
+            kzs_attachments:attachment_url(Plan, DbName, DocId, AttachmentId, Handler, NewOptions);
         {'error', _} = Error -> Error
     end;
 attachment_url(DbName, DocId, AttachmentId, Options) ->
@@ -918,7 +965,7 @@ attachment_options(DbName, DocId, Options) ->
     attachment_options(DbName, DocId, Options, RequiredOptions).
 
 attachment_options(DbName, DocId, Options, RequiredOptions) ->
-    Fun = fun() -> case open_doc(DbName, DocId, Options) of
+    Fun = fun() -> case open_cache_doc(DbName, DocId, Options) of
                        {'ok', JObj} -> JObj;
                        _ -> wh_json:new()
                    end
@@ -959,8 +1006,13 @@ add_required_options(Options, RequiredOptions, JObj) ->
 add_required_option({Key, Fun}, {JObj, Options}=Acc) ->
     case props:is_defined(Key, Options) of
         'true' -> Acc;
-        'false' -> {JObj, props:filter_undefined([{Key, Fun(JObj)} | Options])}
-    end.
+        'false' ->
+            Value = case Fun(JObj) of
+                        'undefined' -> <<"UNKNOWN">>;
+                        V -> V
+                    end,
+            {JObj, [{Key, Value} | Options]}
+end.
 
 %%%===================================================================
 %%% View Functions
@@ -1055,20 +1107,12 @@ maybe_convert_dbname(DbName) ->
         'false' -> {'ok', wh_util:to_binary(DbName)}
     end.
 
--spec copy_doc(ne_binary(), ne_binary(), wh_proplist()) ->
-                      {'ok', wh_json:object()} |
-                      data_error().
 -spec copy_doc(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
                       {'ok', wh_json:object()} |
                       data_error().
 -spec copy_doc(ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
                       {'ok', wh_json:object()} |
                       data_error().
-
-copy_doc(FromDB, FromId, Options) ->
-    ToId = wh_util:rand_hex_binary(16),
-    copy_doc(FromDB, FromId, FromDB, ToId, Options).
-
 copy_doc(FromDB, FromId, ToDB, Options) ->
     copy_doc(FromDB, FromId, ToDB, FromId, Options).
 
@@ -1082,19 +1126,12 @@ copy_doc(FromDB, FromId, ToDB, ToId, Options) ->
                         },
     kzs_doc:copy_doc(Src, Dst, CopySpec, Options).
 
--spec move_doc(ne_binary(), ne_binary(), wh_proplist()) ->
-                      {'ok', wh_json:object()} |
-                      data_error().
 -spec move_doc(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
                       {'ok', wh_json:object()} |
                       data_error().
 -spec move_doc(ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
                       {'ok', wh_json:object()} |
                       data_error().
-move_doc(FromDB, FromId, Options) ->
-    ToId = wh_util:rand_hex_binary(16),
-    move_doc(FromDB, FromId, FromDB, ToId, Options).
-
 move_doc(FromDB, FromId, ToDB, Options) ->
     move_doc(FromDB, FromId, ToDB, FromId, Options).
 
@@ -1138,9 +1175,12 @@ maybe_add_doc_type_from_view(ViewName, Options) ->
 
 -spec add_doc_type_from_view(ne_binary(), wh_proplist()) -> wh_proplist().
 add_doc_type_from_view(View, Options) ->
-    [ViewType, ViewName | _] = binary:split(View, <<"/">>, ['global']),
-    case kzs_view:doc_type_from_view(ViewType, ViewName) of
-        'undefined' -> Options;
-        [DocType | _] -> [{'doc_type', DocType} | Options];
-        DocType -> [{'doc_type', DocType} | Options]
+    case binary:split(View, <<"/">>, ['global']) of
+        [ViewType, ViewName] ->
+            case kzs_view:doc_type_from_view(ViewType, ViewName) of
+                'undefined' -> Options;
+                [DocType | _] -> [{'doc_type', DocType} | Options];
+                DocType -> [{'doc_type', DocType} | Options]
+            end;
+        _ -> Options
     end.

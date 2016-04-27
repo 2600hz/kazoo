@@ -92,11 +92,13 @@
 
          %% Special accessors
          ,req_value/2, req_value/3
-         ,accepting_charges/1
+         ,accepting_charges/1, set_accepting_charges/1
          ,req_param/2, req_param/3
         ]).
 
--include("./crossbar.hrl").
+-include("crossbar.hrl").
+
+-define(KEY_ACCEPT_CHARGES, <<"accept_charges">>).
 
 -type context() :: #cb_context{}.
 -type setter_fun_1() :: fun((context()) -> context()).
@@ -122,8 +124,8 @@ new() -> #cb_context{}.
 is_context(#cb_context{}) -> 'true';
 is_context(_) -> 'false'.
 
--spec req_value(context(), wh_json:key()) -> wh_json:json_term().
--spec req_value(context(), wh_json:key(), Default) -> wh_json:json_term() | Default.
+-spec req_value(context(), wh_json:keys()) -> wh_json:json_term().
+-spec req_value(context(), wh_json:keys(), Default) -> wh_json:json_term() | Default.
 req_value(#cb_context{}=Context, Key) ->
     req_value(Context, Key, 'undefined').
 req_value(#cb_context{req_data=ReqData
@@ -137,7 +139,12 @@ req_value(#cb_context{req_data=ReqData
 
 -spec accepting_charges(context()) -> boolean().
 accepting_charges(Context) ->
-    wh_util:is_true(req_value(Context, <<"accept_charges">>, 'false')).
+    wh_util:is_true(req_value(Context, ?KEY_ACCEPT_CHARGES, 'false')).
+
+-spec set_accepting_charges(context()) -> context().
+set_accepting_charges(#cb_context{req_json = ReqJObj} = Context) ->
+    NewReqJObj = wh_json:set_value(?KEY_ACCEPT_CHARGES, 'true', ReqJObj),
+    set_req_json(Context, NewReqJObj).
 
 %% Accessors
 -spec account_id(context()) -> api_binary().
@@ -583,19 +590,32 @@ validate_request_data(<<_/binary>> = Schema, Context) ->
             validate_request_data(SchemaJObj, Context)
     end;
 validate_request_data(SchemaJObj, Context) ->
-    case wh_json_schema:validate(SchemaJObj
-                                 ,wh_json:public_fields(req_data(Context))
-                                )
+    Strict = whapps_config:get_is_true(?CONFIG_CAT, <<"schema_strict_validation">>, 'false'),
+    try wh_json_schema:validate(SchemaJObj
+                               ,wh_json:public_fields(req_data(Context))
+                               )
     of
         {'ok', JObj} ->
             passed(
               set_doc(Context, wh_json_schema:add_defaults(JObj, SchemaJObj))
              );
-        {'error', Errors} ->
+        {'error', Errors} when Strict ->
             lager:debug("request data did not validate against ~s: ~p", [wh_doc:id(SchemaJObj)
                                                                          ,Errors
                                                                         ]),
-            failed(Context, Errors)
+            failed(Context, Errors);
+        {'error', Errors} ->
+            maybe_fix_js_types(Context, SchemaJObj, Errors)
+    catch
+        'error':'function_clause' ->
+            ST = erlang:get_stacktrace(),
+            lager:debug("function clause failure"),
+            wh_util:log_stacktrace(ST),
+            Context#cb_context{resp_status='fatal'
+                              ,resp_error_code=500
+                              ,resp_data=wh_json:new()
+                              ,resp_error_msg= <<"validation failed to run on the server">>
+                              }
     end.
 
 validate_request_data(Schema, Context, OnSuccess) ->
@@ -710,6 +730,35 @@ failed_error({'data_invalid'
          ])
       ,Context
      );
+failed_error({'data_invalid'
+              ,FailedSchemaJObj
+              ,'wrong_size'
+              ,FailedValue
+              ,FailedKeyPath
+             }, Context) ->
+    Minimum = wh_json:get_value(<<"minItems">>, FailedSchemaJObj),
+    Maximum = wh_json:get_value(<<"maxItems">>, FailedSchemaJObj),
+
+    case length(FailedValue) of
+        N when N < Minimum ->
+            failed_error({'data_invalid'
+                          ,FailedSchemaJObj
+                          ,'wrong_min_items'
+                          ,FailedValue
+                          ,FailedKeyPath
+                         }
+                        ,Context
+                        );
+        N when N > Maximum ->
+            failed_error({'data_invalid'
+                          ,FailedSchemaJObj
+                          ,'wrong_max_items'
+                          ,FailedValue
+                          ,FailedKeyPath
+                         }
+                        ,Context
+                        )
+    end;
 failed_error({'data_invalid'
               ,FailedSchemaJObj
               ,'wrong_min_items'
@@ -1187,3 +1236,39 @@ build_error_message(_Version, Message) when is_binary(Message) ->
     wh_json:from_list([{<<"message">>, Message}]);
 build_error_message(_Version, JObj) ->
     JObj.
+
+-spec maybe_fix_js_types(cb_context:context(), wh_json:object(), jesse_error:error_reasons()) ->
+                                cb_context:context().
+maybe_fix_js_types(Context, SchemaJObj, Errors) ->
+    JObj = req_data(Context),
+    case lists:foldl(fun maybe_fix_js_type/2, JObj, Errors) of
+        JObj ->
+            lager:debug("request data did not validate against ~s: ~p", [wh_doc:id(SchemaJObj)
+                                                                         ,Errors
+                                                                        ]),
+            failed(Context, Errors);
+        NewJObj ->
+            validate_request_data(SchemaJObj, set_req_data(Context, NewJObj))
+    end.
+
+-spec maybe_fix_js_type(jesse_error:error_reason(), wh_json:object()) ->
+                               wh_json:object().
+maybe_fix_js_type({'data_invalid', SchemaJObj, 'wrong_type', Value, Key}, JObj) ->
+    case wh_json:get_value(<<"type">>, SchemaJObj) of
+        <<"integer">> -> maybe_fix_js_integer(Key, Value, JObj);
+        _Type -> JObj
+    end;
+maybe_fix_js_type(_, JObj) -> JObj.
+
+-spec maybe_fix_js_integer(wh_json:key(), wh_json:json_term(), wh_json:object()) ->
+                                  wh_json:object().
+maybe_fix_js_integer(Key, Value, JObj) ->
+    try wh_util:to_integer(Value) of
+        V -> wh_json:set_value(Key, V, JObj)
+    catch
+        _E:_R ->
+            lager:debug("error converting value to integer ~p : ~p : ~p"
+                       ,[Value, _E, _R]
+                       ),
+            JObj
+    end.

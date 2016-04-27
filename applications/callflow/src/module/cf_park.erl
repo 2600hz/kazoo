@@ -628,8 +628,8 @@ ringback_timeout(Data, SlotNumber) ->
 -spec callback_timeout(wh_json:object(), ne_binary()) -> integer().
 callback_timeout(Data, SlotNumber) ->
     JObj = slot_configuration(Data, SlotNumber),
-    DefaultRingbackTime = wh_json:get_integer_value(<<"default_callback_timeout">>, Data, ?DEFAULT_CALLBACK_TM),
-    wh_json:get_integer_value(<<"callback_timeout">>, JObj, DefaultRingbackTime).
+    DefaultCallbackTime = wh_json:get_integer_value(<<"default_callback_timeout">>, Data, ?DEFAULT_CALLBACK_TM),
+    wh_json:get_integer_value(<<"callback_timeout">>, JObj, DefaultCallbackTime).
 
 -spec unanswered_action(ne_binary(), wh_json:object(), wh_json:object(), whapps_call:call()) -> 'ok'.
 unanswered_action(SlotNumber, Slot, Data, Call) ->
@@ -643,10 +643,14 @@ unanswered_action(SlotNumber, Slot, Data, Call) ->
 
 -spec presence_type(ne_binary(), wh_json:object(), whapps_call:call()) -> ne_binary().
 presence_type(SlotNumber, Data, Call) ->
-    case wh_json:get_value(?PRESENCE_TYPE_KEY, slot_configuration(Data, SlotNumber)) of
-        'undefined' -> ?ACCOUNT_PARKED_TYPE(whapps_call:account_id(Call));
-        Type -> Type
-    end.
+    JObj = slot_configuration(Data, SlotNumber),
+    DefaultPresenceType =
+        wh_json:get_ne_binary_value(
+          <<"default_presence_type">>
+          ,Data
+          ,?ACCOUNT_PARKED_TYPE(whapps_call:account_id(Call))
+         ),
+    wh_json:get_ne_binary_value(<<"presence_type">>, JObj, DefaultPresenceType).
 
 -spec slots_configuration(wh_json:object()) -> wh_json:object().
 slots_configuration(Data) ->

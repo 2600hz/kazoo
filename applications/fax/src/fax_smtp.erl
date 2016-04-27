@@ -277,7 +277,8 @@ maybe_faxbox_log(#state{faxbox=JObj, account_id=AccountId}=State) ->
 maybe_faxbox_log(AccountId, JObj, State) ->
     case wh_json:is_true(<<"log_errors">>, JObj, 'false')
         orelse ( whapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"log_faxbox_errors">>, 'true')
-                 andalso wh_json:is_true(<<"log_errors">>, JObj, 'true') )
+                 andalso wh_json:is_true(<<"log_errors">>, JObj, 'true')
+               )
     of
         'true' -> faxbox_log(State);
         'false' -> maybe_system_report(State)
@@ -441,7 +442,7 @@ check_permissions(#state{from=From
         'false' ->
             Error = wh_util:to_binary(
                       io_lib:format("address ~s is not allowed on faxbox ~s"
-                                    ,[From, wh_doc:id(FaxBoxDoc)]
+                                   ,[From, wh_doc:id(FaxBoxDoc)]
                                    )
                      ),
             lager:debug(Error),

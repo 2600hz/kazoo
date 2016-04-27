@@ -603,7 +603,7 @@ maybe_publish_channel_state(Props, Node) ->
     %%   CDRs.  The long-term strategy is to round-robin CDR events from mod_kazoo.
     case props:is_true(<<"Publish-Channel-State">>, Props, 'true')
         andalso ecallmgr_config:get_boolean(<<"publish_channel_state">>, 'true', Node) of
-        'false' -> 'ok';
+        'false' -> lager:debug("not publishing channel state");
         'true' ->
             case ecallmgr_config:get_boolean(<<"restrict_channel_state_publisher">>, 'false') of
                 'false' -> ecallmgr_call_events:process_channel_event(Props);

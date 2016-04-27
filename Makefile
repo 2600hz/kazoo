@@ -4,7 +4,7 @@ ELVIS = $(ROOT)/utils/elvis/elvis
 
 KAZOODIRS = core/Makefile applications/Makefile
 
-.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release tar-release release read-release-cookie elvis
+.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis
 
 all: compile rel/dev-vm.args
 
@@ -40,6 +40,9 @@ test: ACTION = test
 test: ERLC_OPTS += -DPROPER
 test: $(KAZOODIRS)
 
+check: ERLC_OPTS += -DPROPER
+check: compile-test eunit clean-kazoo kazoo
+
 clean-deps:
 	$(if $(wildcard deps/), $(MAKE) -C deps/ clean)
 	$(if $(wildcard deps/), rm -r deps/)
@@ -71,6 +74,8 @@ clean-release:
 
 build-release: clean-release rel/relx.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release --relname 'kazoo'
+build-ci-release: clean-release rel/relx.config rel/vm.args
+	$(RELX) --config rel/relx.config -V 2 release --relname 'kazoo' --sys_config rel/ci-sys.config
 tar-release: rel/relx.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release tar --relname 'kazoo'
 rel/relx.config: rel/relx.config.src

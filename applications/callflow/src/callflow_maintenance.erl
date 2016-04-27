@@ -273,12 +273,12 @@ update_doc(Key, Value, Id, Db) ->
 
 -spec account_set_classifier_inherit(ne_binary(), ne_binary()) -> 'ok'.
 account_set_classifier_inherit(Classifier, Account) ->
-    {'ok', AccountDb} = whapps_util:get_accounts_by_name(normalize_account_name(Account)),
+    {'ok', AccountDb} = whapps_util:get_accounts_by_name(wh_util:normalize_account_name(Account)),
     set_account_classifier_action(<<"inherit">>, Classifier, AccountDb).
 
 -spec account_set_classifier_deny(ne_binary(), ne_binary()) -> 'ok'.
 account_set_classifier_deny(Classifier, Account) ->
-    {'ok', AccountDb} = whapps_util:get_accounts_by_name(normalize_account_name(Account)),
+    {'ok', AccountDb} = whapps_util:get_accounts_by_name(wh_util:normalize_account_name(Account)),
     set_account_classifier_action(<<"deny">>, Classifier, AccountDb).
 
 -spec all_accounts_set_classifier_inherit(ne_binary()) -> 'ok'.
@@ -379,31 +379,15 @@ is_classifier(Classifier) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Normalize the account name by converting the name to lower case
-%% and then removing all non-alphanumeric characters.
-%%
-%% Function taken from cb_user_auth.erl. It is possibly worth to move it to util and export.
-%%
-%% This can possibly return an empty binary.
-%% @end
-%%--------------------------------------------------------------------
--spec normalize_account_name(api_binary()) -> api_binary().
-normalize_account_name(AccountName) ->
-    wh_util:normalize_account_name(AccountName).
-
-%%--------------------------------------------------------------------
 %% @public
 %% @doc
 %%        Lists call restrictions on all levels of an account
 %%        Usage: sup callflow_maintenance list_account_restrictions accountname
 %% @end
 %%--------------------------------------------------------------------
-
 -spec list_account_restrictions(ne_binary()) -> 'ok'.
 list_account_restrictions(Account) ->
-    {'ok', AccountDb} = whapps_util:get_accounts_by_name(normalize_account_name(Account)),
+    {'ok', AccountDb} = whapps_util:get_accounts_by_name(wh_util:normalize_account_name(Account)),
     DbNameEncoded = wh_util:format_account_id(AccountDb,'encoded'),
     io:format("\nAccount level classifiers:\n\n"),
     print_call_restrictions(DbNameEncoded, wh_util:format_account_id(AccountDb,'raw')),

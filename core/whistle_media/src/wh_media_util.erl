@@ -22,6 +22,7 @@
          ,prompt_id/1, prompt_id/2
          ,prompt_path/1, prompt_path/2
         ]).
+-export([store_path_from_doc/1, store_path_from_doc/2]).
 
 -include("whistle_media.hrl").
 
@@ -225,7 +226,7 @@ prompt_id(<<"/system_media/", PromptId/binary>>, Lang) ->
 prompt_id(PromptId, 'undefined') -> PromptId;
 prompt_id(PromptId, <<>>) -> PromptId;
 prompt_id(PromptId, Lang) ->
-    kz_http_util:urlencode(<<Lang/binary, "/", PromptId/binary>>).
+    <<Lang/binary, "/", PromptId/binary>>.
 
 -spec get_prompt(ne_binary()) -> api_binary().
 -spec get_prompt(ne_binary(), api_binary() | whapps_call:call()) ->
@@ -431,3 +432,21 @@ prompt_language(<<_/binary>> = AccountId, Default) ->
               whapps_account_config:get(AccountId, ?WHM_CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, wh_util:to_lower_binary(Default))
              )
     end.
+
+-spec store_path_from_doc(wh_json:object()) -> media_store_path() | {'error', 'no_attachments'}.
+store_path_from_doc(JObj) ->
+    case wh_doc:attachment_names(JObj) of
+        [] -> {'error', 'no_attachments'};
+        [AName | _] -> store_path_from_doc(JObj, AName)
+    end.
+
+-spec store_path_from_doc(wh_json:object(), ne_binary()) -> media_store_path().
+store_path_from_doc(JObj, AName) ->
+    Opts = [{'doc_type', wh_doc:type(JObj)}
+            ,{'doc_owner', wh_json:get_value(<<"owner_id">>, JObj)}
+           ],
+    #media_store_path{db = wh_doc:account_db(JObj)
+                     ,id = wh_doc:id(JObj)
+                     ,att = AName
+                     ,opt = props:filter_undefined(Opts)
+                     }.

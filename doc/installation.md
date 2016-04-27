@@ -1,47 +1,95 @@
-/*
-Section: Kazoo
-Title: Installation
-*/
-
 # Kazoo Installation Guide
 
-**NOTE: This document is a work in progress**
+This is a guide to installing Kazoo on a Debian 8 (Jessie) base installation. Other GNU/Linux distros should work similarly, though the dependencies may differ a bit.
 
-## Installation requirements
+## Dependencies
 
-The simplest Kazoo installation only requires a single server.  Naturally to take full advantage of the distributed capabilities offered by Kazoo you will need multiple servers to form a cluster.  The basic requirements for a Kazoo server (single or multiple server deployment) are:
+### Packages Required
 
-* CentOS (64bit)
-* root access
-* internet access
+```shell
+#> sudo apt-get install build-essential libxslt-dev \
+    zip unzip expat zlib1g-dev libssl-dev curl \
+    libncurses5-dev git-core libexpat1-dev
+```
+
+### Erlang
+
+Kazoo 4 targets Erlang 18+. There are a couple ways to install Erlang:
+
+* From source. I prefer to use a tool like [kerl](https://github.com/yrashk/kerl) to manage my installations. If you want to play around with multiple versions of Erlang while hacking on Kazoo, this is probably the best way.
+
+```shell
+$ curl -O https://raw.githubusercontent.com/yrashk/kerl/master/kerl
+$ chmod a+x kerl
+$ mv kerl /usr/bin
+$ kerl list releases
+$ kerl build 18.2 r18.2 # this takes a while
+$ kerl install r18.2 /usr/lib/erlang
+$ . /usr/lib/erlang/activate
+```
+
+* Install from the [Erlang Solutions](https://www.erlang-solutions.com/resources/download.html) packages. These tend to be kept up-to-date better than the default distro's packages.
+
+## Building Kazoo
+
+### Short version
+
+```
+$ cd /opt
+$ git clone https://github.com/2600Hz/kazoo.git
+$ cd kazoo
+$ make
+```
+
+### Longer version
+
+* Once the dependencies are installed above, including Erlang 18+, clone the Kazoo repo: `git clone https://github.com/2600Hz/kazoo.git`
+* Enter the kazoo directory and build the project with `make`
+* When developing, one can `cd` into any app directory (within `applications/` or `core/`) and run:
+    * `make` (`make all` or `make clean`)
+    * `make xref` to look for calls to undefined functions (uses [Xref](http://www.erlang.org/doc/apps/tools/xref_chapter.html))
+    * `make dialyze` to statically type-check the app (uses [Dialyzer](http://www.erlang.org/doc/man/dialyzer.html))
+    * `make test` runs the app / sub-apps test suite, if any.
+        * **Note:** make sure to `make clean all` after running your tests, as test BEAMs are generated in `ebin/`!
+* To run the full test suite it is advised to
+    1. `cd` into the root of the project
+    1. `make compile-test` to compile every app with the `TEST` macro defined
+        * *This way apps can call code from other apps in a kind of `TEST` mode*
+    1. `make eunit` (instead of `make test`) to run the test suite without recompiling each app
+    1. `make proper` to run the test suite, including property-based tests (uses [PropEr](https://github.com/manopapad/proper))
+* `make build-release` will generate a [deployable release](http://learnyousomeerlang.com/release-is-the-word)
+    * [More on using releases with Kazoo](https://github.com/2600Hz/kazoo/blob/master/doc/engineering/releases.md)
+* `make sup_completion` creates `sup.bash`: a Bash completion file for the SUP command
+
+# Bigger Picture
 
 ## Server components
 
 There are six major components to a Kazoo system, they can all be installed on one server or split arbitrarily over any number of servers.  This guide will provide examples for installing either a single server, or three server cluster.  The components and their functions are:
 
-* Kazoo
+* [Kazoo](https://github.com/2600hz/kazoo)
   * Provides all application logic for the system, the brains of the operation.
-* RabbitMQ 
+* [RabbitMQ](https://github.com/rabbitmq/rabbitmq-server)
   * Messaging system using AMQP, it provides command and control as well as allows examination of running system state.
-* Kamailio
+* [Kamailio](https://www.kamailio.org/w/)
   * Provides the SIP processing for the system.  For the purposes of this guide we will assume that it is always installed on the same server as Kazoo.
-* Freeswitch
-  * Provides all media handling for calls.  In a multiple server cluster there will typically be dedicated Freeswitch servers.
-* Bigcouch
-  * Provides the database for configuration and reporting for a cluster.  Typically you will want Bigcouch running on multiple servers in a cluster for redundancy purposes.
-* HAProxy
-  * Provides load balancing and request distribution.  Also routes internal system connections between components and Bigcouch.
-* Monster-UI
+* [FreeSWITCH](https://freeswitch.org/)
+  * Provides all media handling for calls.  In a multiple server cluster there will typically be dedicated FreeSWITCH servers.
+* [CouchDB](https://couchdb.apache.org/)
+  * Provides the database for configuration and reporting for a cluster.  Typically you will want CouchDB running on multiple servers in a cluster for redundancy purposes.
+* [HAProxy](http://www.haproxy.org/)
+  * Provides load balancing and request distribution.  Also routes internal system connections between components and CouchDB.
+* [Monster-UI](https://github.com/2600hz/monster-ui/)
   * Provides the Kazoo web interface for configuration and monitoring of the system.
 
 ## Cluster design considerations
 
 There are a few concerns that should be planned for when designing a Kazoo cluster.
 
-* Design in enough bigcouch servers from the start
+* Design in enough CouchDB servers from the start
   * It is difficult to add additional database servers once the cluster has been deployed, as such you should plan in advance and add the maximum number of bigcouch servers that you forsee needing in the near future of the cluster from the start.
-* Each zone should have it's own Freeswitch server
-  * Freeswitch servers may not be shared between zones
+* Each zone should have it's own FreeSWITCH server
+  * FreeSWITCH servers may not be shared between zones
 
 ## Pre-Installation
 
@@ -86,7 +134,7 @@ Select the correct timezone
 
 Symlink the timezone file to make the configuration change persistent
 ```
-# ln -sf /usr/share/zoneinfo/<region>/<tzfile> /etc/localtime
+# ln -sf /usr/share/zoneinfo/UTC /etc/localtime
 ```
 
 Enable NTP
@@ -417,18 +465,16 @@ Add acl entries for SIP servers
 
 ## Validate installation
 
-### Check database
+### Check CouchDB
 
 On all servers, curl the database ip/port to verify that it is reachable:
-```
-# curl localhost:15984
-```
-You should see something similar to:
-```
-{"couchdb":"Welcome","version":"1.1.1","bigcouch":"0.4.2"}
+
+```shell
+#> curl localhost:5984
+{"couchdb":"Welcome", "uuid":"0d13a8a56e2fbd9338531c4063c41910", "version":"1.6.1", "vendor":{"version":"12.04", "name":"Ubuntu"}}
 ```
 
-### Check Freeswitch
+### Check FreeSWITCH
 
 Connect to the cli and verify that you have at least one profile running, also verify that BOTH ecallmgr nodes are connected
 ```
@@ -478,5 +524,3 @@ Verify that the status shows nodes for BOTH Server 1 and Server 3
 ## Notes / Credits
 
 This guide was created using the (very good) guide at http://www.powerpbx.org/content/kazoo-v3-single-or-multiple-server-voip-telephony-platform-install-guide-v1 as a template / starting point.
-
-

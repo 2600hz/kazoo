@@ -302,7 +302,7 @@ load_view(View, Options, Context, StartKey, PageSize, FilterFun) ->
                                 ,start_key=StartKey
                                 ,page_size=PageSize
                                 ,filter_fun=FilterFun
-                                ,dbs=lists:filter(fun kz_datamgr:db_exists/1
+                                ,dbs=lists:filter(fun(Db) -> kz_datamgr:db_exists(Db, View) end
                                                   ,props:get_value('databases', Options, [cb_context:account_db(Context)])
                                                  )
                                 ,direction=view_sort_direction(Options)
@@ -1278,7 +1278,7 @@ lowerbound(DocTimestamp, QSTimestamp) ->
 -spec should_filter(wh_json:object(), ne_binary(), wh_json:json_term()) -> boolean().
 should_filter(Val, Val) -> 'true';
 should_filter(Val, FilterVal) ->
-    try wh_json:decode(FilterVal) of
+    try wh_json:unsafe_decode(FilterVal) of
         List when is_list(List) ->
             lists:member(Val, List);
         _Data ->

@@ -29,9 +29,8 @@ exec_cmd(<<"send_http">>, Args, JObj, Node) ->
     lager:debug("received http_send command"),
     Url = wh_json:get_ne_binary_value(<<"Url">>, Args),
     File = wh_json:get_value(<<"File-Name">>, Args),
-    Filename = ecallmgr_util:recording_filename(File),
     Method = <<"http_", (wh_json:get_value(<<"Http-Method">>, Args, <<"put">>))/binary>>,
-    send_http(Node, Filename, Url, Method, JObj);
+    send_http(Node, File, Url, Method, JObj);
 
 exec_cmd(Cmd, _Args, JObj, _Node) ->
     reply_error(<<Cmd/binary, " not_implemented">>, JObj).

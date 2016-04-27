@@ -124,6 +124,7 @@ publish(Action, Db, Doc) ->
 
     Props =
         [{<<"ID">>, Id}
+        ,{<<"Origin-Cache">>, ?KZ_DATA_CACHE}
         ,{<<"Type">>, Type}
         ,{<<"Database">>, Db}
         ,{<<"Rev">>, wh_doc:revision(Doc)}
@@ -133,8 +134,8 @@ publish(Action, Db, Doc) ->
         ,{<<"Is-Soft-Deleted">>, IsSoftDeleted}
          | wh_api:default_headers(<<"configuration">>
                                  ,EventName
-                                 ,?CONFIG_CAT
-                                 ,<<"1.0.0">>
+                                 ,?APP_NAME
+                                 ,?APP_VERSION
                                  )
         ],
     Fun = fun(P) -> wapi_conf:publish_doc_update(Action, Db, Type, Id, P) end,

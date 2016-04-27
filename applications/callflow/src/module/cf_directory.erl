@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz
+%%% @copyright (C) 2011-2016, 2600Hz
 %%% @doc
 %%% The basic flow of a directory call:
 %%% 1) Prompt: Please enter the first few letters of the person's
@@ -219,7 +219,13 @@ maybe_match_user(Call, U, MatchNum) ->
             lager:info("nothing pressed during user prompts, wait for something"),
             case whapps_call_command:wait_for_dtmf(?TIMEOUT_DTMF) of
                 {'ok', <<>>} -> maybe_match_user(Call, U, MatchNum);
-                {'ok', DTMF} -> interpret_user_match_dtmf(DTMF)
+                {'ok', DTMF} -> interpret_user_match_dtmf(DTMF);
+                {'error', 'timeout'} ->
+                    lager:info("failed to receive DTMF from caller, try again"),
+                    maybe_match_user(Call, U, MatchNum);
+                {'error', 'channel_hungup'} ->
+                    lager:info("channel hungup, we're done"),
+                    cf_exe:stop(Call)
             end;
         {'ok', DTMF} -> interpret_user_match_dtmf(DTMF)
     end.

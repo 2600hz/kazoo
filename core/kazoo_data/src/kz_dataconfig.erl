@@ -11,20 +11,24 @@
 -export([connection/0, connection/1]).
 
 
+-spec ensure_driver_app(map()) -> any().
 ensure_driver_app(#{app := App}) ->
     application:ensure_all_started(App);
 ensure_driver_app(#{driver := App}) ->
     application:ensure_all_started(App).
 
+-spec is_driver_app(atom()) -> boolean().
 is_driver_app(App) ->
     Funs = kz_data:behaviour_info(callbacks),
     lists:all(fun({Fun, Arity}) -> erlang:function_exported(App, Fun, Arity) end, Funs).
 
+-spec connection() -> data_connection().
 connection() ->
     [Section] = wh_config:get('data', 'config', ['bigcouch']),
     Props = props:get_value('generic', wh_config:get(Section), []),
     connection(connection_options(Props)).
 
+-spec connection_options(wh_proplist()) -> wh_proplist().
 connection_options(Props) ->
     case props:get_value('connect_options', Props) of
         'undefined' -> Props;
@@ -33,6 +37,7 @@ connection_options(Props) ->
             [{'connect_options', Options} | props:delete('connect_options', Props)]
     end.
 
+-spec connection(wh_proplist() | map()) -> data_connection().
 connection(List) when is_list(List) ->
     connection(maps:from_list(props:filter_undefined(List)));
 connection(#{driver := App}=Map)

@@ -30,7 +30,7 @@
          ,validate/1, validate/2, validate/3
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(CB_LIST, <<"recordings/crossbar_listing">>).
 -define(CB_LIST_BY_OWNERID, <<"recordings/listing_by_user">>).
@@ -75,7 +75,7 @@ allowed_methods(_RecordingId, ?ATTACHMENT) -> [?HTTP_GET].
 %% @public
 %% @doc
 %% Does the path point to a valid resource
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.

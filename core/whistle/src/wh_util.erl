@@ -130,11 +130,15 @@
          ,make_dir/1
         ]).
 
+-export([calling_app/0, calling_app_version/0]).
+-export([get_app/1]).
+
 -include_lib("kernel/include/inet.hrl").
 
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
+-include_lib("whistle/include/wh_api.hrl").
 
 -define(WHISTLE_VERSION_CACHE_KEY, {?MODULE, 'whistle_version'}).
 
@@ -209,16 +213,18 @@ change_syslog_log_level(L) ->
 %% @doc
 %% Given a representation of an account return it in a 'encoded',
 %% unencoded or 'raw' format.
+%% Note: accepts MODbs as well as account IDs/DBs
+%% Note: if given (Account, GregorianSeconds), it will return
+%%   an MODb in the 'encoded' format.
 %% @end
 %%--------------------------------------------------------------------
 -type account_format() :: 'unencoded' | 'encoded' | 'raw'.
--spec format_account_id(ne_binaries() | api_binary()) -> api_binary().
--spec format_account_id(ne_binaries() | api_binary(), account_format()) ->
-                               api_binary().
--spec format_account_id(ne_binaries() | api_binary(), wh_year() | ne_binary(), wh_month() | ne_binary()) ->
-                               api_binary().
+-spec format_account_id(api_binary()) -> api_binary().
+-spec format_account_id(api_binary(), account_format()) -> api_binary();
+                       (api_binary(), gregorian_seconds()) -> api_binary(). %% MODb!
 
-format_account_id(Doc) -> format_account_id(Doc, 'raw').
+format_account_id(Account) ->
+    format_account_id(Account, 'raw').
 
 format_account_id('undefined', _Encoding) -> 'undefined';
 format_account_id(DbName, Timestamp)
@@ -228,13 +234,12 @@ format_account_id(DbName, Timestamp)
     format_account_id(DbName, Year, Month);
 format_account_id(<<"accounts">>, _) -> <<"accounts">>;
 
-%% Short-circuit IDs already in encoding
-format_account_id(?MATCH_ACCOUNT_RAW(AccountId), 'raw') ->
+format_account_id(?MATCH_ACCOUNT_RAW(_)=AccountId, 'raw') ->
     AccountId;
-format_account_id(?MATCH_ACCOUNT_UNENCODED(_) = AccountId, 'unencoded') ->
-    AccountId;
-format_account_id(?MATCH_ACCOUNT_ENCODED(_) = AccountId, 'encoded') ->
-    AccountId;
+format_account_id(?MATCH_ACCOUNT_ENCODED(_)=AccountDb, 'encoded') ->
+    AccountDb;
+format_account_id(?MATCH_ACCOUNT_UNENCODED(_)=AccountDbUn, 'unencoded') ->
+    AccountDbUn;
 
 format_account_id(AccountId, 'raw') ->
     raw_account_id(AccountId);
@@ -245,6 +250,9 @@ format_account_id(AccountId, 'encoded') ->
     ?MATCH_ACCOUNT_RAW(A,B,Rest) = raw_account_id(AccountId),
     to_binary(["account%2F", A, "%2F", B, "%2F", Rest]).
 
+%% @private
+%% Returns account_id() | any()
+%% Passes input along if not account_id() | account_db() | account_db_unencoded().
 -spec raw_account_id(ne_binary()) -> ne_binary().
 raw_account_id(?MATCH_ACCOUNT_RAW(AccountId)) ->
     AccountId;
@@ -268,6 +276,9 @@ raw_account_id(Other) ->
             Other
     end.
 
+%% @private
+%% (modb()) -> modb_id() when modb() :: modb_id() | modb_db() | modb_db_unencoded()
+%% Crashes if given anything else.
 -spec raw_account_modb(ne_binary()) -> ne_binary().
 raw_account_modb(?MATCH_MODB_SUFFIX_RAW(_, _, _) = AccountId) ->
     AccountId;
@@ -276,6 +287,15 @@ raw_account_modb(?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, Year, Month)) ->
 raw_account_modb(?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, Year, Month)) ->
     ?MATCH_MODB_SUFFIX_RAW(A, B, Rest, Year, Month).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given a representation of an account, build an MODb in an 'encoded' format.
+%% Note: accepts MODbs as well as account IDs/DBs
+%% @end
+%%--------------------------------------------------------------------
+-spec format_account_id(api_binary(), wh_year() | ne_binary(), wh_month() | ne_binary()) ->
+                               api_binary().
 format_account_id('undefined', _Year, _Month) -> 'undefined';
 format_account_id(AccountId, Year, Month) when not is_integer(Year) ->
     format_account_id(AccountId, to_integer(Year), Month);
@@ -286,9 +306,17 @@ format_account_id(Account, Year, Month) when is_integer(Year),
     ?MATCH_ACCOUNT_RAW(A,B,Rest) = raw_account_id(Account),
     ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, to_binary(Year), pad_month(Month)).
 
--spec format_account_mod_id(ne_binary()) -> ne_binary().
--spec format_account_mod_id(ne_binary(), gregorian_seconds() | wh_now()) -> ne_binary().
--spec format_account_mod_id(ne_binary(), wh_year() | ne_binary(), wh_month() | ne_binary()) -> ne_binary().
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given a representation of an account, build an MODb in an 'encoded' format.
+%% Note: accepts MODbs as well as account IDs/DBs
+%% @end
+%%--------------------------------------------------------------------
+-spec format_account_mod_id(api_binary()) -> api_binary().
+-spec format_account_mod_id(api_binary(), gregorian_seconds() | wh_now()) -> api_binary().
+-spec format_account_mod_id(api_binary(), wh_year() | ne_binary(), wh_month() | ne_binary()) ->
+                                   api_binary().
 format_account_mod_id(Account) ->
     format_account_mod_id(Account, os:timestamp()).
 
@@ -302,11 +330,26 @@ format_account_mod_id(AccountId, Timestamp) when is_integer(Timestamp) ->
 format_account_mod_id(AccountId, Year, Month) ->
     format_account_id(AccountId, Year, Month).
 
--spec format_account_db(ne_binaries() | api_binary() | wh_json:object()) -> api_binary().
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given a representation of an account return it in a 'encoded' format.
+%% Note: accepts MODbs as well as account IDs/DBs
+%% @end
+%%--------------------------------------------------------------------
+-spec format_account_db(api_binary()) -> api_binary().
 format_account_db(AccountId) ->
     format_account_id(AccountId, 'encoded').
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given a representation of an MODb return the MODb in the specified format.
+%% Note: crashes if given anything but an MODb (in any format).
+%% @end
+%%--------------------------------------------------------------------
 -spec format_account_modb(ne_binary()) -> ne_binary().
+-spec format_account_modb(ne_binary(), account_format()) -> ne_binary().
 format_account_modb(AccountId) ->
     format_account_modb(AccountId, 'raw').
 format_account_modb(AccountId, 'raw') ->
@@ -326,13 +369,22 @@ pad_month(Month) when Month < 10 ->
 pad_month(Month) ->
     to_binary(Month).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Normalize the account name by converting the name to lower case
+%% and then removing all non-alphanumeric characters.
+%%
+%% This can possibly return an empty binary.
+%% @end
+%%--------------------------------------------------------------------
 -spec normalize_account_name(api_binary()) -> api_binary().
 normalize_account_name('undefined') -> 'undefined';
 normalize_account_name(AccountName) ->
     << <<Char>>
-       || <<Char>> <= ?MODULE:to_lower_binary(AccountName),
+       || <<Char>> <= to_lower_binary(AccountName),
           (Char >= $a andalso Char =< $z)
-              orelse (Char >= $0 andalso Char =< $9)
+              or (Char >= $0 andalso Char =< $9)
     >>.
 
 %%--------------------------------------------------------------------
@@ -352,8 +404,8 @@ is_in_account_hierarchy(CheckFor, InAccount) ->
 is_in_account_hierarchy('undefined', _, _) -> 'false';
 is_in_account_hierarchy(_, 'undefined', _) -> 'false';
 is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
-    CheckId = ?MODULE:format_account_id(CheckFor, 'raw'),
-    AccountId = ?MODULE:format_account_id(InAccount, 'raw'),
+    CheckId = format_account_id(CheckFor),
+    AccountId = format_account_id(InAccount),
     case (IncludeSelf andalso AccountId =:= CheckId)
         orelse kz_account:fetch(AccountId)
     of
@@ -517,11 +569,8 @@ account_update(Account, UpdateFun) ->
 %%--------------------------------------------------------------------
 -spec get_account_realm(api_binary()) -> api_binary().
 -spec get_account_realm(api_binary(), ne_binary()) -> api_binary().
-get_account_realm(AccountId) ->
-    get_account_realm(
-      ?MODULE:format_account_id(AccountId, 'encoded')
-      ,?MODULE:format_account_id(AccountId, 'raw')
-     ).
+get_account_realm(Account) ->
+    get_account_realm(format_account_db(Account), format_account_id(Account)).
 
 get_account_realm('undefined', _) -> 'undefined';
 get_account_realm(Db, AccountId) ->
@@ -623,18 +672,22 @@ randomize_list(T, List) ->
 %%--------------------------------------------------------------------
 -spec put_callid(wh_json:object() | wh_proplist() | ne_binary() | atom()) ->
                         api_binary().
-put_callid(?NE_BINARY = CallId) -> erlang:put('callid', CallId);
-put_callid(Atom) when is_atom(Atom) -> erlang:put('callid', Atom);
-put_callid(Prop) when is_list(Prop) -> erlang:put('callid', callid(Prop));
-put_callid(JObj) -> erlang:put('callid', callid(JObj)).
+put_callid(?NE_BINARY = CallId) ->
+    lager:md([{'callid', CallId}]), erlang:put('callid', CallId);
+put_callid(Atom) when is_atom(Atom) ->
+    lager:md([{'callid', Atom}]), erlang:put('callid', Atom);
+put_callid(Prop) when is_list(Prop) ->
+    lager:md([{'callid', callid(Prop)}]), erlang:put('callid', callid(Prop));
+put_callid(JObj) ->
+    lager:md([{'callid', callid(JObj)}]), erlang:put('callid', callid(JObj)).
 
 -spec get_callid() -> ne_binary().
 get_callid() -> erlang:get('callid').
 
 callid(Prop) when is_list(Prop) ->
-    props:get_first_defined([<<"Call-ID">>, <<"Msg-ID">>], Prop, ?LOG_SYSTEM_ID);
+    props:get_first_defined([?KEY_LOG_ID, <<"Call-ID">>, ?KEY_MSG_ID], Prop, ?LOG_SYSTEM_ID);
 callid(JObj) ->
-    wh_json:get_first_defined([<<"Call-ID">>, <<"Msg-ID">>], JObj, ?LOG_SYSTEM_ID).
+    wh_json:get_first_defined([?KEY_LOG_ID, <<"Call-ID">>, ?KEY_MSG_ID], JObj, ?LOG_SYSTEM_ID).
 
 -spec spawn(fun(() -> any())) -> pid().
 -spec spawn(fun(), list()) -> pid().
@@ -1207,14 +1260,8 @@ current_unix_tstamp() ->
 %% fetch and cache the whistle version from the VERSION file in whistle's root folder
 -spec whistle_version() -> ne_binary().
 whistle_version() ->
-    VersionFile = filename:join([code:lib_dir('whistle'), "..", "..", "VERSION"]),
-    case file:open(VersionFile, ['read']) of
-        {'ok', File} ->
-            {'ok', Line} = file:read_line(File),
-            _ = file:close(File),
-            ?MODULE:to_binary(string:strip(Line, 'right', $\n));
-        _ -> <<"unknown">>
-    end.
+    {_, _, Version} = get_app('whistle'),
+    to_binary(Version).
 
 -spec write_pid(ne_binary() | nonempty_string() | iolist()) -> 'ok' | {'error', atom()}.
 write_pid(FileName) ->
@@ -1480,6 +1527,31 @@ anonymous_caller_id_name() ->
 -spec anonymous_caller_id_number() -> ne_binary().
 anonymous_caller_id_number() ->
     <<"0000000000">>.
+
+%% for core apps that want to know which app is calling
+-spec calling_app() -> ne_binary().
+calling_app() ->
+    {'current_stacktrace', Modules} = erlang:process_info(self(),current_stacktrace),
+    {Module, _, _, _} = lists:nth(3, Modules),
+    {'ok', App} = application:get_application(Module),
+    to_binary(App).
+
+-spec calling_app_version() -> {ne_binary(), ne_binary()}.
+calling_app_version() ->
+    {'current_stacktrace', Modules} = erlang:process_info(self(),current_stacktrace),
+    {Module, _, _, _} = lists:nth(3, Modules),
+    {'ok', App} = application:get_application(Module),
+    {App, _, Version} = get_app(App),
+    {to_binary(App), to_binary(Version)}.
+
+-spec get_app(atom() | ne_binary()) -> {atom(), string(), string()} | 'undefined'.
+get_app(<<_/binary>> = AppName) ->
+    get_app(to_atom(AppName));
+get_app(AppName) ->
+    case [App || {Name, _, _}=App <- application:loaded_applications(), Name =:= AppName] of
+        [] -> 'undefined';
+        [Ret | _] -> Ret
+    end.
 
 -ifdef(TEST).
 

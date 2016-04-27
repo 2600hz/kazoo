@@ -59,7 +59,7 @@
 
 ### Cloud-Based Telecommunications For Everyone
 
-Welcome to Kazoo, an ambitious project to bring cloud-based VoIP and telecommunications to everyone. Our goal is to provide the world with a free, open telecommunications software platform. Released under the [OSI-approved MPL 1.1 open source software license](//opensource.org/licenses/MPL-1.1), we're building upon strong FOSS components like [GNU](//www.gnu.org/)/[Linux](//en.wikipedia.org/wiki/Linux), [Erlang](//www.erlang.org/), [FreeSWITCH](//freeswitch.org), [CouchDB](//couchdb.apache.org) \(specifically [BigCouch](//bigcouch.cloudant.com)), and [RabbitMQ](//www.rabbitmq.com). Our project is a great example of the wonderful things that can happen when software is open.
+Welcome to Kazoo, an ambitious project to bring cloud-based VoIP and telecommunications to everyone. Our goal is to provide the world with a free, open telecommunications software platform. Released under the [OSI-approved MPL 1.1 open source software license](https://opensource.org/licenses/MPL-1.1), we're building upon strong FOSS components like [GNU](https://www.gnu.org/)/[Linux](https://en.wikipedia.org/wiki/Linux), [Erlang](https://www.erlang.org/), [FreeSWITCH](https://freeswitch.org), [Apache CouchDB](https://couchdb.apache.org/), and [RabbitMQ](https://www.rabbitmq.com). Our project is a great example of the wonderful things that can happen when software is open.
 
 ### What is Kazoo?
 
@@ -76,7 +76,7 @@ network. In practical terms that means you can create your own phone service
 in the cloud. Or on a server in your mother's basement. Or in a distributed
 cluster of servers around the globe. It's up to you.
 
-### Who is 2600hz?
+### Who is 2600Hz?
 
 We're a bunch of crazy engineers who dreamt of a world where business
 communications wasn't so complicated. So we abandoned the old infrastructure
@@ -94,91 +94,61 @@ We are an exciting team of experienced and knowledgeable thought leaders in
 the enterprise communications space. Our experience ranges from hosting and
 managing services to carrier-grade termination, software design and
 professional services. Let us know how we can help you and, in return, we will
-ensure 2600hz is always leading the way in cloud telecom.
+ensure 2600Hz is always leading the way in cloud telecom.
 
 ## Who Can Contribute?
 
-_Everyone can!_
+**Everyone can!**
 
 ### Not a coder?
 
-No problem!  We have many different places where folks can chip in time. These include (but aren't limited to):
+No problem! We have many different places where folks can chip in time. These include (but aren't limited to):
 
 * Maintaining and expanding the documentation
 * Blogging, tweeting, and other forms of publicizing your usage of and love for the platform, community, code, company, etc.
 * Join us in real time and help other community members:
-    * [![2600Hz IRC](https://img.shields.io/badge/irc-%232600hz-orange.svg)](https://webchat.freenode.net/?channels=2600hz)
-    * our [Users mailing list](//groups.google.com/forum/?fromgroups#!forum/2600hz-users)
-    * our [Developers mailing list](//groups.google.com/forum/?fromgroups#!forum/2600hz-dev)
-    * our [Forum](//forum.2600hz.com/)
-* Contribute scripts to the [community repo](//github.com/2600hz/community-scripts)
+    * [![2600Hz IRC](https://img.shields.io/badge/irc-%232600hz-orange.svg)](https://webchat.freenode.net/?channels=2600Hz)
+    * our [Users mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600Hz-users)
+    * our [Developers mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600Hz-dev)
+    * our [Forum](http://forum.2600Hz.com/)
+* Contribute scripts to the [community repo]https://github.com/2600Hz/community-scripts)
 * Help with building RPMs, DEBs, and other system packages
-* Browse the open [Issues](//2600hz.atlassian.net/browse/KAZOO) and test bugs to see if they're valid
+* Browse the open [Issues](https://2600Hz.atlassian.net/browse/KAZOO) and test bugs to see if they're valid
 * Make a sugestion!
 
 ### Internationalization Help
 
 Translation efforts are always appreciated. We're working on redesigning how our back- and front-ends handle the world's languages and hope to make it easy to contribute translations. Stay tuned for more; please let us know of your interest and be sure to join the mailing lists so you can receive announcements regarding internationalization efforts.
 
-If you have a non-US deployment, please consider sharing your system configuration!  We are trying to build [examples](//github.com/2600hz/kazoo/tree/master/applications/crossbar/doc/internationalization) for every locality and fix any deficiencies.
+If you have a non-US deployment, please consider sharing your system configuration!  We are trying to build [examples]https://github.com/2600Hz/kazoo/tree/master/applications/crossbar/doc/internationalization) for every locality and fix any deficiencies.
 
 ### I know me some Erlang! How can I contribute?
 
 * Clone the repo
-    * If you're completely new to Git, read Github's [great introduction](//help.github.com/articles/fork-a-repo/) to forking repos
+    * If you're completely new to Git, read Github's [great introduction](https://help.github.com/articles/fork-a-repo/) to forking repos
 * Squash a bug, build a feature, etc
-    * Browse the [ticket queue](//2600hz.atlassian.net/browse/KAZOO) and find one you'd like to tackle.
-    * Feel free to drop a line to the [dev mailing list](//groups.google.com/forum/?fromgroups#!forum/2600hz-dev) letting us know you're taking on a ticket, especially if you have questions.
-* Once you feel the code is ready for inclusion, issue a [pull request](//help.github.com/articles/using-pull-requests/)!
+    * Browse the [ticket queue](https://2600Hz.atlassian.net/browse/KAZOO) and find one you'd like to tackle.
+    * Feel free to drop a line to the [dev mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600Hz-dev) letting us know you're taking on a ticket, especially if you have questions.
+* Once you feel the code is ready for inclusion, issue a [pull request](https://help.github.com/articles/using-pull-requests/)!
     * Please keep your pull requests focused and specific to the task at hand
     * If, in the course of your work you add/modify/delete code unrelated to the core task, create a new ticket describing why you've made these additional changes, and issue a separate pull request.
 
 ### Do you know other languages?
 
 * Help us write some automated testing tools
-* Check out our Javascript/HTML/CSS [GUI](//github.com/2600hz/kazoo-ui)
-* Check out our REST APIs and help us create SDKs in your favorite languages ([PHP](//github.com/2600hz/kazoo-php-sdk) | [RUBY](//github.com/2600hz/kazoo-ruby-sdk))
+* Check out our Javascript/HTML/CSS [GUI]https://github.com/2600Hz/kazoo-ui)
+* Check out our REST APIs and help us create SDKs in your favorite languages ([PHP]https://github.com/2600Hz/kazoo-php-sdk) | [RUBY]https://github.com/2600Hz/kazoo-ruby-sdk))
 * Check out our Pivot APIs and help us create SDKs in your favorite languages
 * Check out our AMQP APIs and create a WhApp in your favorite language
-* Help out with the [configuration scripts](//github.com/2600hz/kazoo-configs)
+* Help out with the [configuration scripts]https://github.com/2600Hz/kazoo-configs)
 
-## Build Dependencies
+## Building Kazoo
 
-* erlang ≥ 18.2
-* python2
-* libxslt
-* gcc-c++
-* zip
-* unzip
-* expat-devel
-* zlib-devel
-* openssl-devel
-* libxml-devel
-* make
-* nc
-
-## How to Build
-
-* Once the dependencies are all here, after a fresh `git clone https://github.com/2600hz/kazoo.git` just `make`.
-* When developing, one can `cd` into any app directory (within `applications/` or `core/`) and run:
-    * `make` (`make all` or `make clean`)
-    * `make xref` to look for calls to undefined functions (uses [Xref](http://www.erlang.org/doc/apps/tools/xref_chapter.html))
-    * `make dialyze` to statically type-check the app (uses [Dialyzer](http://www.erlang.org/doc/man/dialyzer.html))
-    * `make test` runs the app / sub-apps test suite, if any.
-        * **Note:** make sure to `make clean all` after running your tests, as test BEAMs are generated in `ebin/`!
-* To run the full test suite it is advised to
-    1. `cd` into the root of the project
-    1. `make compile-test` to compile every app with the `TEST` macro defined
-    1. `make eunit` (instead of `make test`) to run the test suite without recompiling each app
-    * *This way apps can call code from other apps that was compiled with the `TEST` macro defined*
-* `make build-release` will generate a [deployable release](http://learnyousomeerlang.com/release-is-the-word)
-    * [More on using releases with Kazoo](https://github.com/2600hz/kazoo/blob/master/doc/engineering/releases.md)
-* `make sup_completion` creates `sup.bash`: a Bash completion file for the SUP command
+See the [installation](./doc/installation.md) page to build.
 
 ## Learn More
 
 * Join us at [KazooCon!](http://kazoocon.com/)
-* Visit http://2600hz.org
-* Read more at http://wiki.2600hz.org
-* Bugs and feature requests http://tickets.2600hz.org
-* [![2600Hz IRC](https://img.shields.io/badge/irc-%232600hz-orange.svg)](https://webchat.freenode.net/?channels=2600hz)
+* Visit [the community site](http://2600hz.org)
+* Bugs and feature requests can be found [here](http://tickets.2600hz.org)
+* [![2600Hz IRC](https://img.shields.io/badge/irc-%232600Hz-orange.svg)](https://webchat.freenode.net/?channels=2600Hz)

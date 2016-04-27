@@ -10,55 +10,48 @@
 
 -include("blackhole.hrl").
 
--export([open/3
-        ,recv/4
-        ,close/3
-        ,handle_info/4
-        ]).
+-export([
+    open/3,
+    recv/4,
+    close/3
+]).
 
 -type cb_return() :: {'ok', bh_context:context()}.
-%%%===================================================================
-%%% API
-%%%===================================================================
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec open(pid(), ne_binary(), any()) -> cb_return().
-open(SessionPid, SessionId, _Opts) ->
-    lager:debug("opening socket ~p", [SessionId]),
-    Context = bh_context:new(SessionPid, SessionId),
-    _ = blackhole_tracking:add_socket(Context),
-    {'ok', Context}.
+-spec open(pid(), binary(), any()) -> cb_return().
+open(Pid, Id, Ipaddr) ->
+    IPBin = wh_util:to_binary(inet_parse:ntoa(Ipaddr)),
+    lager:debug("opening socket (~p) ~p, peer: ~p", [Pid, Id, IPBin]),
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec recv(ne_binary(), ne_binary(), any(), bh_context:context()) -> cb_return().
-recv(_SessionPid, SessionId, {'message', <<>>, Message}, State) ->
-    lager:debug("received message ~p on socket ~p", [Message, SessionId]),
-    {'ok', State};
-recv(_SessionPid, _SessionId, {'event', _Ignore, <<"subscribe">>, SubscriptionJObj}, Context) ->
+    Context  = bh_context:new(Pid, Id),
+    Context1 = bh_context:set_source(Context, IPBin),
+
+    blackhole_tracking:add_socket(Context1),
+    {'ok', Context1}.
+
+-spec recv(pid(), binary(), {binary(), wh_json:object()}, bc_context:context()) -> cb_return().
+recv(_SessionPid, _SessionId, {<<"subscribe">>, SubscriptionJObj}, Context) ->
     lager:debug("maybe add binding for session: ~p. Data: ~p", [_SessionId, SubscriptionJObj]),
     maybe_subscribe(Context, SubscriptionJObj);
-recv(SessionPid, SessionId, {'event', _Ignore, <<"unsubscribe">>, SubscriptionJObj}, Context) ->
+
+recv(SessionPid, SessionId, {<<"unsubscribe">>, SubscriptionJObj}, Context) ->
     lager:debug("maybe remove binding for session: ~p. Data: ~p", [SessionId, SubscriptionJObj]),
     unsubscribe(Context, SubscriptionJObj, SessionPid, SessionId);
-recv(_SessionPid, _SessionId, {'event', _Ignore, <<"send_amqp">>, Data}, Context) ->
+
+recv(_SessionPid, _SessionId, {<<"send_amqp">>, Data}, Context) ->
     lager:debug("received send_amqp event on socket ~p with data payload", [_SessionId]),
     amqp_send(Context, Data),
     {'ok', Context};
-recv(_SessionPid, _SessionId, {'event', _Ignore, _Event, _Data}, Context) ->
+
+recv(_SessionPid, _SessionId, {_Event, _Data}, Context) ->
     lager:debug("received event: ~p on socket ~p with data payload", [_Event, _SessionId]),
     {'ok', Context};
+
 recv(_SessionPid, SessionId, Message, Context) ->
     lager:info("receive unknown message ~p on socket ~p", [Message, SessionId]),
     {'ok', Context}.
 
+-spec amqp_send(bh_context:context(), wh_json:object()) -> 'ok'.
 amqp_send(Context, Data) ->
     case blackhole_util:is_authorized(Context) of
         'true' ->
@@ -89,20 +82,6 @@ close(SessionPid, SessionId, Context) ->
     Filter = fun (A, B, C, D) -> filter_bindings(SessionPid, A, B, C, D) end,
     blackhole_bindings:filter(Filter),
     'ok'.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec handle_info(ne_binary(), ne_binary(), any(), bh_context:context()) -> {'ok', bh_context:context()}.
-handle_info(_SessionPid, _SessionId, {'peer_ip', Ip}, Context) ->
-    IPBin = wh_util:to_binary(inet_parse:ntoa(Ip)),
-    lager:debug("setting source ip to ~s for ~s", [IPBin, _SessionId]),
-    {'ok', bh_context:set_source(Context, IPBin)};
-handle_info(_SessionPid, _SessionId, _Msg, Context) ->
-    lager:debug("unhandle message ~p", [_Msg]),
-    {'ok', Context}.
 
 %%%===================================================================
 %%% Internal functions

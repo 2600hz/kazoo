@@ -58,6 +58,7 @@
         ]).
 
 -export([media_local_store_url/2]).
+-export([system_report/2, system_report/3]).
 
 -include("whistle_apps.hrl").
 
@@ -518,43 +519,12 @@ get_view_json(Path) ->
 %%--------------------------------------------------------------------
 -spec update_views(ne_binary(), wh_proplist()) -> 'ok'.
 -spec update_views(ne_binary(), wh_proplist(), boolean()) -> 'ok'.
--spec update_views(wh_json:objects(), ne_binary(), wh_proplist(), boolean()) -> 'ok'.
 
 update_views(Db, Views) ->
     update_views(Db, Views, 'false').
 
 update_views(Db, Views, Remove) ->
-    case kz_datamgr:all_design_docs(Db, ['include_docs']) of
-        {'ok', Found} -> update_views(Found, Db, Views, Remove);
-        {'error', _R} ->
-            lager:debug("unable to fetch current design docs: ~p", [_R])
-    end.
-
-update_views([], _, [], _) -> 'ok';
-update_views([], Db, [{Id,View}|Views], Remove) ->
-    lager:debug("adding view '~s' to '~s'", [Id, Db]),
-    _ = kz_datamgr:ensure_saved(Db, View),
-    update_views([], Db, Views, Remove);
-update_views([Found|Finds], Db, Views, Remove) ->
-    Id = wh_doc:id(Found),
-    Doc = wh_json:get_value(<<"doc">>, Found),
-    RawDoc = wh_doc:delete_revision(Doc),
-    case props:get_value(Id, Views) of
-        'undefined' when Remove ->
-            lager:debug("removing view '~s' from '~s'", [Id, Db]),
-            _ = kz_datamgr:del_doc(Db, Doc),
-            update_views(Finds, Db, props:delete(Id, Views), Remove);
-        'undefined' ->
-            update_views(Finds, Db, props:delete(Id, Views), Remove);
-        View1 when View1 =:= RawDoc ->
-            lager:debug("view '~s' matches the raw doc, skipping", [Id]),
-            update_views(Finds, Db, props:delete(Id, Views), Remove);
-        View2 ->
-            lager:debug("updating view '~s' in '~s'", [Id, Db]),
-            Rev = wh_doc:revision(Doc),
-            _ = kz_datamgr:ensure_saved(Db, wh_doc:set_revision(View2, Rev)),
-            update_views(Finds, Db, props:delete(Id, Views), Remove)
-    end.
+    kz_datamgr:db_view_update(Db, Views, Remove).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -717,3 +687,22 @@ media_local_store_url(Call, JObj) ->
     MediaId = wh_doc:id(JObj),
     MediaName = wh_json:get_value(<<"name">>, JObj),
     kz_datamgr:attachment_url(AccountDb, MediaId, MediaName).
+
+-spec system_report({text(), text()} | text(), whapps_call:call()) -> 'ok'.
+system_report({Subject, Msg}, Call) ->
+    system_report(Subject, Msg, Call);
+system_report(Msg, Call) ->
+    system_report(Msg, Msg, Call).
+
+-spec system_report(text(), text(), whapps_call:call()) -> 'ok'.
+system_report(Subject, Msg, Call) ->
+    AppName = whapps_call:application_name(Call),
+    AppVersion = whapps_call:application_version(Call),
+    Notify = props:filter_undefined(
+               [{<<"Subject">>, Subject}
+                ,{<<"Message">>, iolist_to_binary(Msg)}
+                ,{<<"Details">>, whapps_call:to_json(Call)}
+                ,{<<"Account-ID">>, whapps_call:account_id(Call)}
+                | wh_api:default_headers(AppName, AppVersion)
+               ]),
+    wh_amqp_worker:cast(Notify, fun wapi_notifications:publish_system_alert/1).

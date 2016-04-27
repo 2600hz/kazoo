@@ -1,4 +1,5 @@
--ifndef(KZ_CACHES_HRL).
+-ifndef(KZ_WEB_HRL).
+
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
@@ -26,5 +27,5 @@
                   ,'sync'
                  ]).
 
--define(KZ_CACHES_HRL, 'true').
+-define(KZ_WEB_HRL, 'true').
 -endif.

@@ -18,6 +18,7 @@
          ,type/0
          ,devices/1
          ,fetch/2
+         ,fax_settings/1
         ]).
 
 -include("kz_documents.hrl").
@@ -204,7 +205,8 @@ timezone(JObj) ->
     timezone(JObj, 'undefined').
 timezone(JObj, Default) ->
     case wh_json:get_value(?KEY_TIMEZONE, JObj, Default) of
-        <<"inherit">> -> Default;  %% UI-1808
+        <<"inherit">> -> kz_account:timezone(wh_doc:account_id(JObj));  %% UI-1808
+        'undefined' -> kz_account:timezone(wh_doc:account_id(JObj));
         TZ -> TZ
     end.
 
@@ -262,3 +264,13 @@ fetch(<<_/binary>> = AccountId, <<_/binary>> = UserId) ->
     kz_datamgr:open_cache_doc(AccountDb, UserId);
 fetch(_, _) ->
     {'error', 'invalid_parametres'}.
+
+-spec fax_settings(doc()) -> doc().
+fax_settings(JObj) ->
+    FaxSettings = wh_json:get_json_value(?FAX_SETTINGS_KEY, JObj, wh_json:new()),
+    UserFaxSettings = case wh_json:get_value(?FAX_TIMEZONE_KEY, FaxSettings) of
+        'undefined' -> wh_json:set_value(?FAX_TIMEZONE_KEY, timezone(JObj), FaxSettings);
+        _ -> FaxSettings
+    end,
+    AccountFaxSettings = kz_account:fax_settings(wh_doc:account_id(JObj)),
+    wh_json:merge_jobjs(UserFaxSettings, AccountFaxSettings).

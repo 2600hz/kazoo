@@ -74,9 +74,7 @@ find_numbers(Number, Quantity, Options) ->
                            {'error', any()} |
                            {'ok', wh_json:object()}.
 check_numbers(Numbers, _Props) ->
-    FormatedNumbers = [(knm_converters:default_converter()):to_npan(Number)
-                       || Number <- Numbers
-                      ],
+    FormatedNumbers = [knm_converters:to_npan(Number) || Number <- Numbers],
     case whapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>) of
         'undefined' ->
             {'error', 'not_available'};
@@ -142,9 +140,9 @@ acquire_number(Number) ->
                 {'ok', _Status, _Headers, Body} ->
                     lager:error("number lookup failed to ~s with ~s: ~s"
                                 ,[Uri, _Status, Body]),
-                    knm_errors:unspecified('lookup_failed', Number);
+                    knm_errors:by_carrier(?MODULE, 'lookup_failed', Number);
                 {'error', Reason} ->
-                    knm_errors:unspecified(Reason, Number)
+                    knm_errors:by_carrier(?MODULE, Reason, Number)
             end
     end.
 
@@ -398,7 +396,7 @@ format_acquire_resp(Number, Body) ->
                        );
         Error ->
             lager:error("number lookup resp error: ~p", [Error]),
-            knm_errors:unspecified('lookup_resp_error', Number)
+            knm_errors:by_carrier(?MODULE, 'lookup_resp_error', Number)
     end.
 
 %%--------------------------------------------------------------------

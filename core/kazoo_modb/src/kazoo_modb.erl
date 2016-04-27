@@ -20,7 +20,7 @@
          ,add_routine/1
         ]).
 -export([maybe_delete/2]).
--export([get_range/3]).
+-export([get_range/3, get_range/4]).
 -export([get_year_month_sequence/3, get_year_month_sequence/4]).
 
 %%--------------------------------------------------------------------
@@ -55,7 +55,7 @@ get_results(Account, View, ViewOptions, Retry) ->
 get_results_not_found(Account, View, ViewOptions, Retry) ->
     AccountMODb = get_modb(Account, ViewOptions),
     EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
-    case kz_datamgr:db_exists(EncodedMODb) of
+    case kz_datamgr:db_exists(EncodedMODb, View) of
         'true' ->
             refresh_views(AccountMODb),
             get_results(Account, View, ViewOptions, Retry-1);
@@ -110,13 +110,13 @@ open_doc(Account, DocId, Year, Month) ->
     AccountMODb = get_modb(Account, Year, Month),
     couch_open(AccountMODb, DocId).
 
--spec couch_open(ne_binary(), ne_binary()) ->
+-spec couch_open(ne_binary(), kazoo_data:docid()) ->
                         {'ok', wh_json:object()} |
                         {'error', atom()}.
 couch_open(AccountMODb, DocId) ->
     couch_open(AccountMODb, DocId, []).
 
--spec couch_open(ne_binary(), ne_binary(), wh_proplist()) ->
+-spec couch_open(ne_binary(), kazoo_data:docid(), wh_proplist()) ->
                         {'ok', wh_json:object()} |
                         {'error', atom()}.
 couch_open(AccountMODb, DocId, Options) ->
@@ -235,7 +235,7 @@ maybe_create(<<"account%2F", AccountId/binary>>) ->
 -spec create(ne_binary()) -> 'ok'.
 create(AccountMODb) ->
     EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
-    do_create(AccountMODb, kz_datamgr:db_exists(EncodedMODb)).
+    do_create(AccountMODb, kz_datamgr:db_exists_all(EncodedMODb)).
 
 -spec do_create(ne_binary(), boolean()) -> 'ok'.
 do_create(_AccountMODb, 'true') -> 'ok';
@@ -352,7 +352,12 @@ delete_if_orphaned(AccountMODb, 'true') ->
 %% @public
 -spec get_range(ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
                        ne_binaries().
+-spec get_range(ne_binary(), ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
+                       ne_binaries().
 get_range(AccountId, From, To) ->
+    get_range(<<"any">>, AccountId, From, To).
+
+get_range(Type, AccountId, From, To) ->
     {{FromYear, FromMonth, _}, _} = calendar:gregorian_seconds_to_datetime(From),
     {{ToYear,   ToMonth,   _}, _} = calendar:gregorian_seconds_to_datetime(To),
     [MODb
@@ -360,7 +365,7 @@ get_range(AccountId, From, To) ->
                                         ,{FromYear, FromMonth}
                                         ,{ToYear, ToMonth}
                                        ),
-        kz_datamgr:db_exists(MODb)
+        kz_datamgr:db_exists(MODb, Type)
     ].
 
 -type year_month_tuple() :: {wh_year(), wh_month()}.

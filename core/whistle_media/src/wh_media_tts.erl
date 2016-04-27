@@ -21,7 +21,6 @@ get_uri(<<"tts://", Text/binary>>, JObj) ->
     Port = whapps_config:get_binary(?CONFIG_CAT, <<"proxy_port">>, 24517),
     StreamType = wh_media_util:convert_stream_type(wh_json:get_value(<<"Stream-Type">>, JObj)),
 
-    {'ok', <<(wh_media_util:base_url(Host, Port))/binary, StreamType/binary
-             ,"/tts/", (wh_util:binary_md5(Text))/binary, ".", Format/binary
-           >>
-    }.
+    <<(wh_media_util:base_url(Host, Port))/binary, StreamType/binary
+      ,"/tts/", (wh_util:binary_md5(Text))/binary, ".", Format/binary
+    >>.

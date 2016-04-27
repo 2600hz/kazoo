@@ -13,6 +13,7 @@
          ,import_prompt/1, import_prompt/2
          ,set_account_language/2
          ,refresh/0
+         ,fix_media_names/0
         ]).
 
 -include("whistle_media.hrl").
@@ -361,3 +362,22 @@ maybe_remove_media_doc(AccountDb, File, MediaJObj) ->
 remove_media_doc(AccountDb, MediaJObj) ->
     {'ok', _Doc} = kz_datamgr:del_doc(AccountDb, MediaJObj),
     io:format("removed media doc ~s~n", [wh_doc:id(MediaJObj)]).
+
+filter_media_names(JObj) ->
+    wh_doc:id(JObj) =/= kz_http_util:urldecode(wh_doc:id(JObj)).
+
+fix_media_name(JObj) ->
+    FromId = wh_doc:id(JObj),
+    ToId = kz_http_util:urldecode(wh_doc:id(JObj)),
+    Options = [{'transform', fun(_, B) -> wh_json:set_value(<<"name">>, ToId, B) end}],
+    case kz_datamgr:move_doc(?WH_MEDIA_DB, FromId, ?WH_MEDIA_DB, ToId, Options) of
+        {'ok', _} -> lager:info("renamed media doc from ~s to ~s", [FromId, ToId]);
+        {'error', Error} -> lager:info("error renaming media doc from ~s to ~s : ~p", [FromId, ToId, Error])
+    end.
+
+fix_media_names() ->
+    {'ok', JObjs} = kz_datamgr:all_docs(?WH_MEDIA_DB),
+    case [ JObj || JObj <- JObjs, filter_media_names(JObj)] of
+        [] -> whapps_config:set(?WHM_CONFIG_CAT, <<"fix_media_names">>, 'false');
+        List -> lists:foreach(fun fix_media_name/1, List)
+    end.

@@ -9,44 +9,52 @@
 
 -include("kz_data.hrl").
 
--callback new_connection(ne_binary()) -> {atom(), #{}}.
--callback format_error(_) -> any().
+-type connection() :: any().
+-type options() :: wh_proplist().
+-type document() :: wh_json:object().
+-type documents() :: [document()].
+
+-export_type([connection/0, options/0, document/0, documents/0]).
+
+-callback new_connection(ne_binary()) -> connection().
+-callback format_error(any()) -> any().
+
 
 %% Connection operations
--callback get_db(_, _) -> any().
--callback server_url(_) -> any().
--callback db_url(_, _) -> any().
--callback server_info(_) -> any().
+-callback get_db(connection(), ne_binary()) -> any().
+-callback server_url(connection()) -> ne_binary().
+-callback db_url(connection(), ne_binary()) -> ne_binary().
+-callback server_info(connection()) -> any().
 
 %% DB operations
--callback db_create(_, _, _) -> any().
--callback db_delete(_, _) -> any().
--callback db_view_cleanup(_, _) -> any().
--callback db_info(_) -> any().
--callback db_info(_, _) -> any().
--callback db_exists(_, _) -> boolean().
--callback db_archive(_, _, _) -> any().
--callback db_list(_, _) -> any().
+-callback db_create(connection(), ne_binary(), options()) -> any().
+-callback db_delete(connection(), ne_binary()) -> any().
+-callback db_view_cleanup(connection(), ne_binary()) -> any().
+-callback db_info(connection()) -> any().
+-callback db_info(connection(), ne_binary()) -> any().
+-callback db_exists(connection(), ne_binary()) -> boolean().
+-callback db_archive(connection(), ne_binary(), ne_binary()) -> any().
+-callback db_list(connection(), options()) -> any().
 
 %% Document operations
--callback open_doc(_, _, _, _) -> any().
--callback lookup_doc_rev(_, _, _) -> any().
--callback save_doc(_, _, _, _) -> any().
--callback save_docs(_, _, _, _) -> any().
--callback del_doc(_, _, _, _) -> any().
--callback del_docs(_, _, _, _) -> any().
--callback ensure_saved(_, _, _, _) -> any().
+-callback open_doc(connection(), ne_binary(), ne_binary(), options()) -> any().
+-callback lookup_doc_rev(connection(), ne_binary(), ne_binary()) -> any().
+-callback save_doc(connection(), ne_binary(), document(), options()) -> any().
+-callback save_docs(connection(), ne_binary(), documents(), options()) -> any().
+-callback del_doc(connection(), ne_binary(), document(), options()) -> any().
+-callback del_docs(connection(), ne_binary(), documents(), options()) -> any().
+-callback ensure_saved(connection(), ne_binary(), document(), options()) -> any().
 
 %% Attachment-related
--callback fetch_attachment(_, _, _, _) -> any().
--callback stream_attachment(_, _, _, _, _) -> any().
--callback put_attachment(_, _, _, _, _, _) -> any().
--callback delete_attachment(_, _, _, _, _) -> any().
--callback attachment_url(_, _, _, _, _) -> any().
+-callback fetch_attachment(connection(), ne_binary(), ne_binary(), ne_binary()) -> any().
+-callback stream_attachment(connection(), ne_binary(), ne_binary(), ne_binary(), pid()) -> any().
+-callback put_attachment(connection(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), options()) -> any().
+-callback delete_attachment(connection(), ne_binary(), ne_binary(), ne_binary(), options()) -> any().
+-callback attachment_url(connection(), ne_binary(), ne_binary(), ne_binary(), options()) -> any().
 
 %% View-related
--callback design_info(_, _, _) -> any().
--callback all_design_docs(_, _, _) -> any().
--callback get_results(_, _, _, _) -> any().
--callback get_results_count(_, _, _, _) -> any().
--callback all_docs(_, _, _) -> any().
+-callback design_info(connection(), ne_binary(), ne_binary()) -> any().
+-callback all_design_docs(connection(), ne_binary(), options()) -> any().
+-callback get_results(connection(), ne_binary(), ne_binary(), options()) -> any().
+-callback get_results_count(connection(), ne_binary(), ne_binary(), options()) -> any().
+-callback all_docs(connection(), ne_binary(), options()) -> any().

@@ -30,5 +30,5 @@ start(_Type, _Args) ->
 -spec stop(any()) -> any().
 stop(_State) ->
     _ = cowboy:stop_listener('blackhole'),
-    _ = cowboy:stop_listener('socketio_http_listener'),
+    _ = cowboy:stop_listener('blackhole_http_listener'),
     'ok'.

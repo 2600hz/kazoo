@@ -3334,6 +3334,22 @@
             "required": true,
             "type": "object"
         },
+        "ips": {
+            "description": "IP addresses assigned to the account",
+            "name": "IP Addresses",
+            "properties": {
+                "ips": {
+                    "description": "List of IP addresses",
+                    "items": {
+                        "description": "IP address",
+                        "type": "string"
+                    },
+                    "minItems": 1,
+                    "required": false,
+                    "type": "array"
+                }
+            }
+        },
         "ledgers": {
             "description": "ledgers document",
             "name": "ledgers",
@@ -4187,7 +4203,7 @@
             "required": true,
             "type": "object"
         },
-        "numbers": {
+        "phone_numbers": {
             "description": "Schema for a number",
             "name": "Number",
             "properties": {
@@ -4416,238 +4432,6 @@
                             },
                             "required": false,
                             "type": "object"
-                        }
-                    },
-                    "required": false,
-                    "type": "object"
-                }
-            },
-            "required": true,
-            "type": "object"
-        },
-        "phone_numbers": {
-            "description": "Schema for a phone_number",
-            "name": "Phone Number",
-            "properties": {
-                "cnam": {
-                    "properties": {
-                        "display_name": {
-                            "maxLength": 15,
-                            "minLength": 1,
-                            "name": "Display Name",
-                            "required": false,
-                            "type": "string"
-                        },
-                        "inbound_lookup": {
-                            "name": "Inbound Lookup",
-                            "required": false,
-                            "type": "boolean"
-                        }
-                    },
-                    "required": false,
-                    "type": "object"
-                },
-                "dash_e911": {
-                    "description": "E911 information for the phone number",
-                    "properties": {
-                        "activated_time": {
-                            "description": "The time stamp e911 was provisioned",
-                            "name": "Activated Time (e911)",
-                            "required": false,
-                            "type": "string"
-                        },
-                        "caller_name": {
-                            "description": "The name that will show to emergency services",
-                            "name": "Caller Name (e911)",
-                            "required": false,
-                            "type": "string"
-                        },
-                        "extended_address": {
-                            "description": "The suit/floor/apt. address where the number is in service",
-                            "name": "Extended Address(e911)",
-                            "required": false,
-                            "type": "string"
-                        },
-                        "latitude": {
-                            "description": "The e911 provisioning system calculated service address latitude",
-                            "name": "Latitude (e911)",
-                            "required": false,
-                            "type": "string"
-                        },
-                        "legacy_data": {
-                            "description": "Legacy E911 information",
-                            "properties": {
-                                "house_number": {
-                                    "description": "The name that will show to emergency services",
-                                    "name": "House Number",
-                                    "required": false,
-                                    "type": "string"
-                                },
-                                "predirectional": {
-                                    "description": "The name that will show to emergency services",
-                                    "name": "Predirectional",
-                                    "required": false,
-                                    "type": "string"
-                                },
-                                "streetname": {
-                                    "description": "The name that will show to emergency services",
-                                    "name": "Street Name",
-                                    "required": false,
-                                    "type": "string"
-                                },
-                                "suite": {
-                                    "description": "The name that will show to emergency services",
-                                    "name": "Suite",
-                                    "required": false,
-                                    "type": "string"
-                                }
-                            },
-                            "required": false,
-                            "type": "object"
-                        },
-                        "locality": {
-                            "description": "The locality (city) where the number is in service",
-                            "name": "Locality (e911)",
-                            "required": false,
-                            "type": "string"
-                        },
-                        "location_id": {
-                            "description": "The e911 provisioning system internal id for this service address",
-                            "name": "Location ID(e911)",
-                            "required": false,
-                            "type": "string"
-                        },
-                        "longitude": {
-                            "description": "The e911 provisioning system calculated service address longitude",
-                            "name": "Longitude (e911)",
-                            "required": false,
-                            "type": "string"
-                        },
-                        "plus_four": {
-                            "description": "The extended zip/postal code where the number is in service",
-                            "name": "Plus Four (e911)",
-                            "required": false,
-                            "type": "string"
-                        },
-                        "postal_code": {
-                            "description": "The zip/postal code where the number is in service",
-                            "name": "Postal Code (e911)",
-                            "required": false,
-                            "type": "string"
-                        },
-                        "region": {
-                            "description": "The region (state) where the number is in service",
-                            "name": "Region (e911)",
-                            "required": false,
-                            "type": "string"
-                        },
-                        "status": {
-                            "description": "The e911 provisioning system status for this service address",
-                            "enum": [
-                                "INVALID",
-                                "GEOCODED",
-                                "PROVISIONED",
-                                "REMOVED",
-                                "ERROR"
-                            ],
-                            "name": "Status (e911)",
-                            "required": false,
-                            "type": "string"
-                        },
-                        "street_address": {
-                            "description": "The street address where the number is in service",
-                            "name": "Street Address(e911)",
-                            "required": false,
-                            "type": "string"
-                        }
-                    },
-                    "required": false,
-                    "type": "object"
-                },
-                "porting": {
-                    "description": "Porting (in) information for the phone number",
-                    "properties": {
-                        "billing_account_id": {
-                            "description": "The account id the losing carrier has on file",
-                            "name": "Billing Account ID",
-                            "required": false,
-                            "type": "string"
-                        },
-                        "billing_extended_address": {
-                            "description": "The suit/floor/apt. address the losing carrier has on file",
-                            "name": "Billing Extended Address",
-                            "required": false,
-                            "type": "string"
-                        },
-                        "billing_locality": {
-                            "description": "The locality (city) the losing carrier has on file",
-                            "name": "Billing Locality",
-                            "required": false,
-                            "type": "string"
-                        },
-                        "billing_name": {
-                            "description": "The name or company name the losing carrier has on file",
-                            "name": "Billing Name",
-                            "required": false,
-                            "type": "string"
-                        },
-                        "billing_postal_code": {
-                            "description": "The zip/postal code the losing carrier has on file",
-                            "name": "Billing Postal Code",
-                            "required": false,
-                            "type": "string"
-                        },
-                        "billing_region": {
-                            "description": "The region (state) the losing carrier has on file",
-                            "name": "Billing Region",
-                            "required": false,
-                            "type": "string"
-                        },
-                        "billing_street_address": {
-                            "description": "The street address the losing carrier has on file",
-                            "name": "Billing Street Address",
-                            "required": false,
-                            "type": "string"
-                        },
-                        "billing_telephone_number": {
-                            "description": "The BTN of the account the number belongs to",
-                            "name": "Billing Telephone Number",
-                            "required": false,
-                            "type": "string"
-                        },
-                        "comments": {
-                            "description": "An array of comments",
-                            "items": {
-                                "required": false,
-                                "type": "string"
-                            },
-                            "name": "Comments",
-                            "required": false,
-                            "type": "array"
-                        },
-                        "customer_contact": {
-                            "description": "The phone number that can be used to contact the owner of the number",
-                            "name": "Customer Contact",
-                            "required": false,
-                            "type": "string"
-                        },
-                        "port_id": {
-                            "description": "The id of the port request",
-                            "name": "Port ID",
-                            "required": false,
-                            "type": "string"
-                        },
-                        "requested_port_date": {
-                            "description": "The requested port date",
-                            "name": "Request Port Date",
-                            "required": false,
-                            "type": "string"
-                        },
-                        "service_provider": {
-                            "description": "The name of the losing carrier",
-                            "name": "Service Provider",
-                            "required": false,
-                            "type": "string"
                         }
                     },
                     "required": false,
@@ -5052,6 +4836,81 @@
                     },
                     "required": true,
                     "type": "object"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "qubicle_queues": {
+            "description": "Qubicle queues",
+            "name": "Qubicle Call Queue",
+            "properties": {
+                "agent_connect_timeout": {
+                    "default": 15,
+                    "description": "Amount of time in seconds that qubicle will wait for the agent to successfully answer a call.",
+                    "minimum": 1,
+                    "name": "Agent Connect Timeout",
+                    "required": false,
+                    "type": "integer"
+                },
+                "agent_wrapup_time": {
+                    "default": 2,
+                    "description": "Pre-defined wait period applied after an agent handles a customer call",
+                    "minimum": 0,
+                    "name": "Agent Wrapup Time",
+                    "required": false,
+                    "type": "integer"
+                },
+                "hold_treatment": {
+                    "description": "Media ID (or appropriate media URI) of media to play while caller is on hold.",
+                    "name": "Hold Treatment",
+                    "required": false,
+                    "type": "string"
+                },
+                "queue_name": {
+                    "description": "A friendly name for the queue",
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "name": "Name",
+                    "required": true,
+                    "type": "string"
+                },
+                "queue_router": {
+                    "default": "route_round_robin",
+                    "description": "The queue router used for routing and delivering calls to recipients",
+                    "enum": [
+                        "route_round_robin",
+                        "route_most_idle"
+                    ],
+                    "name": "Router",
+                    "required": false,
+                    "type": "string"
+                },
+                "queue_timeout": {
+                    "default": 3600,
+                    "description": "The maximum amount of time in seconds that a call will wait in queue.",
+                    "minimum": 10,
+                    "name": "Queue Timeout",
+                    "required": false,
+                    "type": "integer"
+                },
+                "queue_type": {
+                    "default": "queue_basic",
+                    "description": "The type of queue",
+                    "enum": [
+                        "queue_basic"
+                    ],
+                    "name": "Type",
+                    "required": true,
+                    "type": "string"
+                },
+                "tick_time": {
+                    "default": 1000,
+                    "description": "The time between delivery ticks in milliseconds",
+                    "minimum": 250,
+                    "name": "Tick Time",
+                    "required": false,
+                    "type": "integer"
                 }
             },
             "required": true,
@@ -7842,33 +7701,33 @@
         "/v2/accounts/{ACCOUNT_ID}/faxes/inbox": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}": {
             "delete": {},
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}/attachment": {
+        "/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}/attachment": {
             "delete": {},
             "get": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/faxes/incoming": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAXJOB_ID}/attachment": {
             "delete": {},
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}/attachment": {
+        "/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAX_ID}": {
             "delete": {},
             "get": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/faxes/outbox": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}": {
             "delete": {},
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}/attachment": {
+        "/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}/attachment": {
             "delete": {},
             "get": {}
         },
@@ -7876,7 +7735,7 @@
             "get": {},
             "put": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}": {
             "delete": {},
             "get": {},
             "patch": {},
@@ -7885,7 +7744,7 @@
         "/v2/accounts/{ACCOUNT_ID}/faxes/smtplog": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/faxes/smtplog/{_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/faxes/smtplog/{ATTEMPT_ID}": {
             "get": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/freeswitch": {
@@ -7922,7 +7781,16 @@
             "get": {},
             "post": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/ips/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/ips/assigned": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/ips/hosts": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/ips/zones": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/ips/{IP}": {
             "delete": {},
             "get": {},
             "post": {}
@@ -8116,7 +7984,19 @@
         "/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/reserve": {
             "put": {}
         },
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}": {
+            "delete": {},
+            "get": {},
+            "post": {},
+            "put": {}
+        },
         "/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/activate": {
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/identify": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/reserve": {
             "put": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/pivot/debug": {

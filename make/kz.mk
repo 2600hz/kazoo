@@ -5,7 +5,7 @@
 ## pipefail enforces that the command fails even when run through a pipe
 SHELL = /bin/bash -o pipefail
 
-ERLC_OPTS += +debug_info -Iinclude -Isrc
+ERLC_OPTS += +debug_info -Iinclude -Isrc +'{parse_transform, lager_transform}'
 ## Use pedantic flags when compiling apps from applications/ & core/
 ERLC_OPTS += -Werror +warn_export_all +warn_unused_import +warn_unused_vars
 
@@ -25,7 +25,7 @@ compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json
 
 ebin/$(PROJECT).app: $(wildcard $(SOURCES))
 	@mkdir -p ebin/
-	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $(SOURCES)
+	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $?
 	@sed "s/{modules, \[\]}/{modules, \[`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`\]}/" src/$(PROJECT).app.src > $@
 
 

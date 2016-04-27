@@ -159,6 +159,6 @@ allowed_if_sys_admin_mod(IsSysAdmin, Context) ->
 -spec is_sys_admin_mod(cb_context:context()) -> boolean().
 is_sys_admin_mod(Context) ->
     Nouns = cb_context:req_nouns(Context),
-    lists:any(fun(E) -> E end
+    lists:any(fun wh_util:identity/1
               ,[props:get_value(Mod, Nouns) =/= 'undefined' || Mod <- ?SYS_ADMIN_MODS]
              ).

@@ -11,7 +11,7 @@
 %%%-------------------------------------------------------------------
 -module(whapps_call_command).
 
--include("./whapps_call_command.hrl").
+-include("whapps_call_command.hrl").
 
 -export([presence/2, presence/3, presence/4, presence/5]).
 -export([channel_status/1, channel_status/2
@@ -191,6 +191,8 @@
 
 -export([get_outbound_t38_settings/1, get_outbound_t38_settings/2]).
 -export([get_inbound_t38_settings/1, get_inbound_t38_settings/2]).
+-export([audio_level/4]).
+-export([store_file/3, store_file/4]).
 
 -type audio_macro_prompt() :: {'play', binary()} | {'play', binary(), binaries()} |
                               {'prompt', binary()} | {'prompt', binary(), ne_binaries()} |
@@ -215,6 +217,9 @@
 -define(DEFAULT_MESSAGE_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"message_timeout">>, 5 * ?MILLISECONDS_IN_SECOND)).
 -define(DEFAULT_APPLICATION_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"application_timeout">>, 500 * ?MILLISECONDS_IN_SECOND)).
 
+-define(STORAGE_TIMEOUT(App), whapps_config:get_integer(?CONFIG_CAT, [<<"store_file">>, wh_util:to_binary(App), <<"save_timeout_ms">>], 5 * ?MILLISECONDS_IN_MINUTE, <<"default">>)).
+-define(STORAGE_RETRIES(App), whapps_config:get_integer(?CONFIG_CAT, [<<"store_file">>, wh_util:to_binary(App), <<"retries">>], 5, <<"default">>)).
+
 -spec default_collect_timeout() -> pos_integer().
 default_collect_timeout() ->
     ?DEFAULT_COLLECT_TIMEOUT.
@@ -234,6 +239,14 @@ default_message_timeout() ->
 -spec default_application_timeout() -> pos_integer().
 default_application_timeout() ->
     ?DEFAULT_APPLICATION_TIMEOUT.
+
+-spec storage_timeout(ne_binary()) -> pos_integer().
+storage_timeout(App) ->
+    ?STORAGE_TIMEOUT(App).
+
+-spec storage_retries(ne_binary()) -> pos_integer().
+storage_retries(App) ->
+    ?STORAGE_RETRIES(App).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1525,6 +1538,15 @@ b_store_vm(MediaName, Transfer, Method, Headers, SuppressReport, Call) ->
               ],
     send_command(Command, Call),
     wait_for_headless_application(<<"store_vm">>).
+
+audio_level(Call, Mode, Action, Level) ->
+    Command = [{<<"Application-Name">>, <<"audio_level">>}
+               ,{<<"Action">>, Action}
+               ,{<<"Level">>, Level}
+               ,{<<"Mode">>, Mode}
+               ,{<<"Insert-At">>, <<"now">>}
+              ],
+    send_command(Command, Call).
 
 
 %%--------------------------------------------------------------------
@@ -2902,3 +2924,86 @@ wait_for_unparked_call(Call, Timeout) ->
                     wait_for_unparked_call(Call, wh_util:decr_timeout(Timeout, Start))
             end
     end.
+
+-spec store_file_args(ne_binary(), ne_binary()) -> wh_proplist().
+store_file_args(Filename, Url) ->
+    [{<<"File-Name">>, Filename}
+     ,{<<"Url">>, Url}
+     ,{<<"Http-Method">>, <<"put">>}
+    ].
+
+-spec store_file(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok' | {'error', any()}.
+store_file(Filename, Url, Call) ->
+    App = wh_util:calling_app(),
+    store_file(Filename, Url, storage_retries(App), storage_timeout(App), Call).
+
+-spec store_file(ne_binary(), ne_binary(), pos_integer(), whapps_call:call()) ->
+          'ok' | {'error', any()}.
+store_file(Filename, Url, Tries, Call) ->
+    App = wh_util:calling_app(),
+    store_file(Filename, Url, Tries, storage_timeout(App), Call).
+
+-spec store_file(ne_binary(), ne_binary(), pos_integer(), wh_timeout(), whapps_call:call()) ->
+          'ok' | {'error', any()}.
+store_file(Filename, Url, Tries, Timeout, Call) ->
+    Msg = case whapps_call:kvs_fetch('alert_msg', Call) of
+              'undefined' ->
+                  io_lib:format("error storing file ~s from media server ~s",
+                                [Filename, whapps_call:switch_nodename(Call)]);
+              ErrorMsg -> ErrorMsg
+          end,
+    {AppName, AppVersion} = wh_util:calling_app_version(),
+    API = [{<<"Command">>, <<"send_http">>}
+           ,{<<"Args">>, wh_json:from_list(store_file_args(Filename, Url))}
+           ,{<<"FreeSWITCH-Node">>, whapps_call:switch_nodename(Call)}
+           | wh_api:default_headers(AppName, AppVersion)
+          ],
+    do_store_file(Tries, Timeout, API, Msg, Call).
+
+-spec do_store_file(pos_integer(), wh_timeout(), wh_json:object()
+                   ,ne_binary(), whapps_call:call()) ->
+          'ok' | {'error', any()}.
+do_store_file(Tries, Timeout, API, Msg, Call) ->
+    case wh_amqp_worker:call(API, fun wapi_switch:publish_command/1, fun wapi_switch:fs_reply_v/1, Timeout) of
+        {'ok', JObj} ->
+            case wh_json:get_ne_binary_value(<<"Result">>, JObj) of
+                <<"success">> -> 'ok';
+                <<"error">> ->
+                    Error = wh_json:get_ne_binary_value(<<"Error">>, JObj),
+                    retry_store_file(Tries, Timeout, API, Msg, Error, Call);
+                _Other ->
+                    Error = io_lib:format("unhandled return ('~s') from store file", [_Other]),
+                    retry_store_file(Tries, Timeout, API, Msg, Error, Call)
+            end;
+        {'returned', _JObj, _Basic} ->
+            Error = io_lib:format("message returned from amqp. is ~s down ?"
+                                  ,[whapps_call:switch_nodename(Call)]
+                                 ),
+            Funs = [{fun whapps_call:kvs_store/3, 'basic_return', wh_json:to_proplist(_Basic)}],
+            retry_store_file(Tries, Timeout, API, Msg, Error, whapps_call:exec(Funs, Call));
+        {'timeout', _JObj} ->
+            Error = io_lib:format("timeout publishing message to amqp. is ~s down ?"
+                                  ,[whapps_call:switch_nodename(Call)]
+                                 ),
+            retry_store_file(Tries, Timeout, API, Msg, Error, Call);
+        {'error', Err} ->
+            Error = io_lib:format("error publishing message to amqp. is ~s down ? : ~p"
+                                  ,[whapps_call:switch_nodename(Call), Err]
+                                 ),
+            retry_store_file(Tries, Timeout, API, Msg, Error, Call)
+    end.
+
+-spec retry_store_file(integer(), wh_timeout(), wh_json:object()
+                      ,ne_binary(), ne_binary(), whapps_call:call()) ->
+          'ok' | {'error', any()}.
+retry_store_file(0, _Timeout, _API, Msg, Error, Call) ->
+    lager:critical("~s : ~s", [Msg, Error]),
+    Funs = [{fun whapps_call:kvs_store/3, 'error_details', Error}
+            ,{fun whapps_call:kvs_store/3, 'media_server', whapps_call:switch_nodename(Call)}
+           ],
+    whapps_util:system_report(Msg, Error, whapps_call:exec(Funs, Call)),
+    {'error', Error};
+retry_store_file(Tries, Timeout, API, Msg, Error, Call) ->
+    lager:critical("~s : ~s", [Msg, Error]),
+    timer:sleep(5 * ?MILLISECONDS_IN_SECOND),
+    do_store_file(Tries - 1, Timeout, API, Msg, Call).

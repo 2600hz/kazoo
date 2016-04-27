@@ -21,6 +21,7 @@
          ,assign_failure/2
          ,database_error/2
          ,number_is_porting/1
+         ,by_carrier/3
         ]).
 
 -export([to_json/1, to_json/2, to_json/3
@@ -101,18 +102,23 @@ multiple_choice(Number, Update) ->
 assign_failure(PhoneNumber, E) ->
     throw({'error', 'assign_failure', PhoneNumber, E}).
 
--spec database_error(kz_data:data_errors(), knm_phone_number:knm_phone_number() | ne_binary()) ->
+-spec database_error(kz_data:data_errors(), knm_phone_number:knm_phone_number()) ->
                             no_return().
 database_error(E, PhoneNumber) ->
     throw({'error'
            ,'database_error'
-           ,E
            ,PhoneNumber
+           ,E
           }).
 
 -spec number_is_porting(ne_binary()) -> no_return().
 number_is_porting(Num) ->
     throw({'error', 'number_is_porting', Num}).
+
+-spec by_carrier(module(), ne_binary() | atom(), kn()) ->
+                        no_return().
+by_carrier(Carrier, E, Number) ->
+    throw({'error', 'by_carrier', Number, {Carrier,E}}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -131,28 +137,31 @@ to_json(Reason)->
 to_json(Reason, Num)->
     to_json(Reason, Num, 'undefined').
 
-to_json('number_is_porting', Num, _Cause) ->
+to_json('number_is_porting', Num=?NE_BINARY, _) ->
     Message = <<"number ", Num/binary, " is porting">>,
     build_error(400, 'number_is_porting', Message, Num);
-to_json('number_exists', Num, _Cause) ->
+to_json('number_exists', Num=?NE_BINARY, _) ->
     Message = <<"number ", Num/binary, " already exists">>,
      build_error(409, 'number_exists', Message, Num);
-to_json('not_found', Num, _Cause) ->
+to_json('not_found', Num=?NE_BINARY, _) ->
     Message = <<"number ", Num/binary, " not found">>,
     build_error(404, 'not_found', Message, Num);
-to_json('not_reconcilable', Num, _Cause) ->
+to_json('not_reconcilable', Num=?NE_BINARY, _) ->
     Message = <<"number ", Num/binary, " is not reconcilable">>,
     build_error(404, 'not_found', Message, Num);
-to_json('unauthorized', _Num, Cause) ->
+to_json('unauthorized', _, Cause) ->
     Message = <<"requestor is unauthorized to perform operation">>,
     build_error(403, 'forbidden', Message, Cause);
-to_json('no_change_required', _Num, Cause) ->
+to_json('no_change_required', _, Cause) ->
     Message = <<"no change required">>,
     build_error(400, 'no_change_required', Message, Cause);
-to_json('invalid_state_transition', _Num, Cause) ->
+to_json('invalid_state_transition', _, Cause) ->
     Message = <<"invalid state transition">>,
     build_error(400, 'invalid_state_transition', Message, Cause);
-to_json(Reason, _Num, Cause) ->
+to_json('by_carrier', Num, {_Carrier,_Cause}) ->
+    lager:debug("carrier ~s fault: ~p", [_Carrier, _Cause]),
+    build_error(500, 'unspecified_fault', <<"fault by carrier">>, Num);
+to_json(Reason, _, Cause) ->
     build_error(500, 'unspecified_fault', Reason, Cause).
 
 %%%===================================================================

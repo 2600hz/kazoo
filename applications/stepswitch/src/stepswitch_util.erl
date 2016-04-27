@@ -81,21 +81,20 @@ get_outbound_destination(OffnetReq) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_number(ne_binary()) ->
-                           {'ok', ne_binary(), knm_number:number_properties()} |
-                           {'error', any()}.
+-spec lookup_number(ne_binary()) -> {'ok', ne_binary(), knm_number_options:extra_options()} |
+                                    {'error', any()}.
 lookup_number(Number) ->
     Num = knm_converters:normalize(Number),
     case kz_cache:fetch_local(?STEPSWITCH_CACHE, cache_key_number(Num)) of
         {'ok', {AccountId, Props}} ->
             lager:debug("found number properties in stepswitch cache"),
             {'ok', AccountId, Props};
-        {'error', 'not_found'} -> fetch_number(Num)
+        {'error', 'not_found'} ->
+            fetch_number(Num)
     end.
 
--spec fetch_number(ne_binary()) ->
-                          {'ok', ne_binary(), knm_number:number_properties()} |
-                          {'error', any()}.
+-spec fetch_number(ne_binary()) -> {'ok', ne_binary(), knm_number_options:extra_options()} |
+                                   {'error', any()}.
 fetch_number(Num) ->
     case knm_number:lookup_account(Num) of
         {'ok', AccountId, Props} ->

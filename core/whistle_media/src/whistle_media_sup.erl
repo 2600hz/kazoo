@@ -17,7 +17,8 @@
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?CACHE('media_mgr_cache')
+-define(CHILDREN, [?WORKER_APP_INIT('whistle_media_init', 20 * ?SECONDS_IN_MINUTE)
+                   ,?CACHE('media_mgr_cache')
                    ,?WORKER_ARGS('kazoo_etsmgr_srv'
                                 ,[
                                   [{'table_id', wh_media_map:table_id()}

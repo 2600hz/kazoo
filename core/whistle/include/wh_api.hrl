@@ -48,6 +48,7 @@
 -define(KEY_MSG_REPLY_ID, <<"Msg-Reply-ID">>).
 -define(KEY_NODE, <<"Node">>).
 -define(KEY_SERVER_ID, <<"Server-ID">>).
+-define(KEY_LOG_ID, <<"System-Log-ID">>).
 
 %% Default Headers
 %% All messages MUST include the DEFAULT_HEADERS list.
@@ -60,7 +61,7 @@
 -define(OPTIONAL_DEFAULT_HEADERS, [<<"Raw-Headers">>, <<"Destination-Server">>
                                    ,<<"Geo-Location">>, <<"Access-Group">>
                                    ,?KEY_NODE, ?KEY_SERVER_ID
-                                   ,<<"Defer-Response">>
+                                   ,<<"Defer-Response">>, ?KEY_LOG_ID
                                   ]).
 -define(DEFAULT_VALUES, [{?KEY_NODE, wh_util:to_binary(node())}
                          ,{?KEY_MSG_ID, wh_util:rand_hex_binary(16)}

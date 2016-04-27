@@ -457,8 +457,8 @@ send_request(CallId, Self, PublishFun, ReqProps)
   when is_function(PublishFun, 1) ->
     wh_util:put_callid(CallId),
     Props = props:insert_values(
-              [{<<"Server-ID">>, Self}
-               | maybe_send_call_id(CallId)
+              [{?KEY_SERVER_ID, Self}
+               ,{?KEY_LOG_ID, CallId}
               ]
               ,props:filter(fun request_proplist_filter/1, ReqProps)
              ),
@@ -467,12 +467,6 @@ send_request(CallId, Self, PublishFun, ReqProps)
     catch
         _:E -> {'error', E}
     end.
-
--spec maybe_send_call_id(api_binary()) -> wh_proplist().
-maybe_send_call_id('undefined') -> [];
-maybe_send_call_id(?LOG_SYSTEM_ID) -> [];
-maybe_send_call_id(CallId) ->
-    [{<<"Call-ID">>, CallId}].
 
 -spec request_proplist_filter({wh_proplist_key(), wh_proplist_value()}) -> boolean().
 request_proplist_filter({<<"Server-ID">>, Value}) ->
@@ -591,13 +585,16 @@ handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout, Acc}
             lager:debug("failed to send request: ~p", [Err]),
             {'reply', {'error', Err}, reset(State), 'hibernate'}
     end;
-handle_call({'publish', _ReqProp, _, _, _}, _, #state{flow='false'}=State) ->
+handle_call({'publish', ReqProp, _, _, _}, _, #state{flow='false'}=State) ->
+    _ = wh_util:put_callid(ReqProp),
     lager:debug("flow control is active and server put us in waiting"),
     {'reply', {'error', 'flow_control'}, reset(State)};
-handle_call({'publish', _ReqProp, _}, _From, #state{queue='undefined'}=State) ->
+handle_call({'publish', ReqProp, _}, _From, #state{queue='undefined'}=State) ->
+    _ = wh_util:put_callid(ReqProp),
     lager:debug("unable to publish message prior to queue creation"),
     {'reply', {'error', 'not_ready'}, reset(State), 'hibernate'};
 handle_call({'publish', ReqProp, PublishFun}, {Pid, _}=From, #state{confirms=C}=State) ->
+    _ = wh_util:put_callid(ReqProp),
     try PublishFun(ReqProp) of
         'ok' when C =:= 'true' ->
             lager:debug("published message ~s for ~p", [wh_api:msg_id(ReqProp), Pid]),
@@ -612,25 +609,25 @@ handle_call({'publish', ReqProp, PublishFun}, {Pid, _}=From, #state{confirms=C}=
             lager:debug("published message ~s for ~p", [wh_api:msg_id(ReqProp), Pid]),
             {'reply', 'ok', reset(State)};
         {'error', _E}=Err ->
-            lager:debug("failed to publish message ~s for ~p: ~p", [wh_api:msg_id(ReqProp), Pid, _E]),
+            lager:error("failed to publish message ~s for ~p: ~p", [wh_api:msg_id(ReqProp), Pid, _E]),
             {'reply', Err, reset(State)};
         Other ->
-            lager:debug("publisher fun returned ~p instead of 'ok'", [Other]),
+            lager:error("publisher fun returned ~p instead of 'ok'", [Other]),
             {'reply', {'error', Other}, reset(State)}
     catch
         'error':'badarg' ->
             ST = erlang:get_stacktrace(),
-            lager:debug("badarg error when publishing:"),
+            lager:error("badarg error when publishing:"),
             wh_util:log_stacktrace(ST),
             {'reply', {'error', 'badarg'}, reset(State)};
         'error':'function_clause' ->
             ST = erlang:get_stacktrace(),
-            lager:debug("function clause error when publishing:"),
+            lager:error("function clause error when publishing:"),
             wh_util:log_stacktrace(ST),
-            lager:debug("pub fun: ~p", [PublishFun]),
+            lager:error("pub fun: ~p", [PublishFun]),
             {'reply', {'error', 'function_clause'}, reset(State)};
         _E:R ->
-            lager:debug("error when publishing: ~s:~p", [_E, R]),
+            lager:error("error when publishing: ~s:~p", [_E, R]),
             {'reply', {'error', R}, reset(State)}
     end;
 handle_call(_Request, _From, State) ->

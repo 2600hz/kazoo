@@ -53,7 +53,7 @@ handle_media_req(JObj, _Props) ->
     case wh_media_url:playback(MediaName, JObj) of
         {'error', ErrorMessage} ->
             send_error_resp(JObj, ErrorMessage);
-        {'ok', StreamURL} ->
+        StreamURL ->
             send_media_resp(JObj, StreamURL)
     end.
 

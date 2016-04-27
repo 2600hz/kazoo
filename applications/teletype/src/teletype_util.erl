@@ -700,7 +700,7 @@ find_address(DataJObj, _TemplateMetaJObj, ConfigCat, Key, ?EMAIL_ADMINS) ->
     lager:debug("looking for admin emails for '~s'", [Key]),
     {Key, find_admin_emails(DataJObj, ConfigCat, Key)}.
 
--spec find_address(wh_json:key(), wh_json:object(), wh_json:object()) ->
+-spec find_address(wh_json:keys(), wh_json:object(), wh_json:object()) ->
                           api_binaries().
 find_address(Key, DataJObj, TemplateMetaJObj) ->
     case wh_json:get_ne_value(Key, DataJObj) of

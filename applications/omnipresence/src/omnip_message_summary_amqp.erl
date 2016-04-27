@@ -88,7 +88,10 @@ handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
-handle_cast({'omnipresence',{'subscribe_notify', <<"message-summary">>, User, _Subscription}}, State) ->
+handle_cast({'omnipresence',{'subscribe_notify', <<"message-summary">>, User,
+                             #omnip_subscription{call_id=CallId}=_Subscription
+                            }}, State) ->
+    wh_util:put_callid(CallId),
     [Username, Realm] = binary:split(User, <<"@">>),
     Query = [{<<"Username">>, Username}
              ,{<<"Realm">>, Realm}
@@ -97,9 +100,11 @@ handle_cast({'omnipresence',{'subscribe_notify', <<"message-summary">>, User, _S
     wh_amqp_worker:cast(Query, fun wapi_presence:publish_mwi_query/1),
     {'noreply', State};
 handle_cast({'omnipresence',{'mwi_update', JObj}}, State) ->
+    wh_util:put_callid(JObj),
     _ = wh_util:spawn(fun mwi_event/1, [JObj]),
     {'noreply', State};
 handle_cast({'omnipresence',{'presence_reset', JObj}}, State) ->
+    wh_util:put_callid(JObj),
     _ = wh_util:spawn(fun presence_reset/1, [JObj]),
     {'noreply', State};
 handle_cast({'omnipresence', _}, State) ->

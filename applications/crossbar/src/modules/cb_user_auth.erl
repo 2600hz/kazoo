@@ -169,19 +169,6 @@ create_auth_resp(Context, _AccountId, _AuthToken, _AuthAccountId) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Normalize the account name by converting the name to lower case
-%% and then removing all non-alphanumeric characters.
-%%
-%% This can possibly return an empty binary.
-%% @end
-%%--------------------------------------------------------------------
--spec normalize_account_name(api_binary()) -> api_binary().
-normalize_account_name(AccountName) ->
-    wh_util:normalize_account_name(AccountName).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% This function determines if the credentials are valid based on the
 %% provided hash method
 %%
@@ -197,7 +184,7 @@ maybe_authenticate_user(Context) ->
     JObj = cb_context:doc(Context),
     Credentials = wh_json:get_value(<<"credentials">>, JObj),
     Method = wh_json:get_value(<<"method">>, JObj, <<"md5">>),
-    AccountName = normalize_account_name(wh_json:get_value(<<"account_name">>, JObj)),
+    AccountName = wh_util:normalize_account_name(wh_json:get_value(<<"account_name">>, JObj)),
     PhoneNumber = wh_json:get_ne_value(<<"phone_number">>, JObj),
     AccountRealm = wh_json:get_first_defined([<<"account_realm">>, <<"realm">>], JObj),
     case find_account(PhoneNumber, AccountRealm, AccountName, Context) of
@@ -323,7 +310,7 @@ load_md5_results(Context, JObj) ->
 -spec maybe_recover_user_password(cb_context:context()) -> cb_context:context().
 maybe_recover_user_password(Context) ->
     JObj = cb_context:doc(Context),
-    AccountName = normalize_account_name(wh_json:get_value(<<"account_name">>, JObj)),
+    AccountName = wh_util:normalize_account_name(wh_json:get_value(<<"account_name">>, JObj)),
     PhoneNumber = wh_json:get_ne_value(<<"phone_number">>, JObj),
     AccountRealm = wh_json:get_first_defined([<<"account_realm">>, <<"realm">>], JObj),
     case find_account(PhoneNumber, AccountRealm, AccountName, Context) of

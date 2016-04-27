@@ -122,7 +122,7 @@ fetch(?TEST_IN_SERVICE_NUM, Options) ->
 fetch(?TEST_IN_SERVICE_WITH_HISTORY_NUM, Options) ->
     handle_fetched_result(?IN_SERVICE_WITH_HISTORY_NUMBER, Options);
 fetch(?BW_EXISTING_DID, Options) ->
-    handle_fetched_result(?BW_EXISTING_DID, Options);
+    handle_fetched_result(?BW_EXISTING_JSON, Options);
 fetch(_DID, _Options) ->
     {'error', 'not_found'}.
 -else.
@@ -154,6 +154,7 @@ handle_fetched_result(JObj, Options) ->
 %%--------------------------------------------------------------------
 -spec save(knm_phone_number()) -> knm_phone_number().
 save(#knm_phone_number{dry_run='true'}=PhoneNumber) ->
+    lager:debug("dry_run-ing btw"),
     PhoneNumber;
 save(#knm_phone_number{dry_run='false'}=PhoneNumber) ->
     Routines = [fun save_to_number_db/1
@@ -169,6 +170,7 @@ save(#knm_phone_number{dry_run='false'}=PhoneNumber) ->
 %%--------------------------------------------------------------------
 -spec delete(knm_phone_number()) -> knm_phone_number_return().
 delete(#knm_phone_number{dry_run='true'}=Number) ->
+    lager:debug("dry_run-ing btw"),
     {'ok', Number};
 delete(#knm_phone_number{dry_run='false'}=Number) ->
     Routines = [fun(PhoneNumber) ->
@@ -192,6 +194,8 @@ release(PhoneNumber) ->
     release(PhoneNumber, state(PhoneNumber)).
 
 release(PhoneNumber, ?NUMBER_STATE_RELEASED) ->
+    PhoneNumber;
+release(PhoneNumber, ?NUMBER_STATE_DELETED) ->
     PhoneNumber;
 release(PhoneNumber, ?NUMBER_STATE_RESERVED) ->
     authorize_release(PhoneNumber);
@@ -244,16 +248,31 @@ authorized_release(PhoneNumber) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% @end
+%% @doc Returns same fields view phone_numbers.json returns.
 %%--------------------------------------------------------------------
 -spec to_public_json(knm_phone_number()) -> wh_json:object().
 to_public_json(Number) ->
-    ToLeak = props:filter_empty(
-               [{<<"used_by">>, used_by(Number)}
-               ,{<<"features">>, features(Number)}
-               ]),
-    wh_json:set_values(ToLeak, wh_json:public_fields(to_json(Number))).
+    JObj = to_json(Number),
+    State = {<<"state">>, state(Number)},
+    UsedBy = {<<"used_by">>, used_by(Number)},
+    ReadOnly =
+        wh_json:from_list(
+          props:filter_empty(
+            [ {<<"created">>, wh_doc:created(JObj)}
+            , {<<"modified">>, wh_doc:modified(JObj)}
+            , State
+            , UsedBy
+            ])
+         ),
+    Root =
+        wh_json:from_list(
+          props:filter_empty(
+            [ State
+            , UsedBy
+              | wh_json:to_proplist(wh_json:public_fields(JObj))
+            ])
+         ),
+    wh_json:set_value(<<"_read_only">>, ReadOnly, Root).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -280,6 +299,9 @@ to_json(#knm_phone_number{doc=JObj}=N) ->
          ,{?PVT_MODIFIED, Now}
          ,{?PVT_CREATED, wh_doc:created(JObj, Now)}
          ,{?PVT_TYPE, <<"number">>}
+         | wh_json:to_proplist(
+             wh_json:delete_key(<<"id">>, wh_json:public_fields(JObj))
+            )
         ])
      ).
 
@@ -291,20 +313,20 @@ to_json(#knm_phone_number{doc=JObj}=N) ->
 -spec from_json(wh_json:object()) -> knm_phone_number().
 from_json(JObj) ->
     #knm_phone_number{
-       number=wh_doc:id(JObj)
-       ,number_db=wh_json:get_value(?PVT_DB_NAME, JObj)
-       ,assigned_to=wh_json:get_value(?PVT_ASSIGNED_TO, JObj)
-       ,prev_assigned_to=wh_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)
-       ,used_by=wh_json:get_value(?PVT_USED_BY, JObj)
-       ,features=wh_json:get_value(?PVT_FEATURES, JObj)
+       number = wh_doc:id(JObj)
+       ,number_db = wh_json:get_value(?PVT_DB_NAME, JObj)
+       ,assigned_to = wh_json:get_value(?PVT_ASSIGNED_TO, JObj)
+       ,prev_assigned_to = wh_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)
+       ,used_by = wh_json:get_value(?PVT_USED_BY, JObj)
+       ,features = wh_json:get_value(?PVT_FEATURES, JObj, wh_json:new())
        ,state = wh_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)
-       ,reserve_history=wh_json:get_value(?PVT_RESERVE_HISTORY, JObj)
-       ,ported_in=wh_json:get_value(?PVT_PORTED_IN, JObj)
-       ,module_name=wh_json:get_value(?PVT_MODULE_NAME, JObj)
-       ,carrier_data=wh_json:get_value(?PVT_CARRIER_DATA, JObj)
-       ,region=wh_json:get_value(?PVT_REGION, JObj)
-       ,auth_by=wh_json:get_value(?PVT_AUTH_BY, JObj)
-       ,doc=JObj
+       ,reserve_history = wh_json:get_value(?PVT_RESERVE_HISTORY, JObj, [])
+       ,ported_in = wh_json:is_true(?PVT_PORTED_IN, JObj, 'false')
+       ,module_name = wh_json:get_value(?PVT_MODULE_NAME, JObj)
+       ,carrier_data = wh_json:get_value(?PVT_CARRIER_DATA, JObj)
+       ,region = wh_json:get_value(?PVT_REGION, JObj)
+       ,auth_by = wh_json:get_value(?PVT_AUTH_BY, JObj)
+       ,doc = wh_json:delete_key(<<"id">>, wh_json:public_fields(JObj))
       }.
 
 %%--------------------------------------------------------------------
@@ -402,7 +424,7 @@ assign_to(#knm_phone_number{assign_to=AssignTo}) ->
 -spec set_assign_to(knm_phone_number(), api_binary()) -> knm_phone_number().
 set_assign_to(N, 'undefined') ->
     N#knm_phone_number{assign_to = 'undefined'};
-set_assign_to(N, AssignTo=?NE_BINARY) ->
+set_assign_to(N, AssignTo=?MATCH_ACCOUNT_RAW(_)) ->
     N#knm_phone_number{assign_to=AssignTo}.
 
 %%--------------------------------------------------------------------
@@ -417,7 +439,7 @@ assigned_to(#knm_phone_number{assigned_to=AssignedTo}) ->
 -spec set_assigned_to(knm_phone_number(), api_binary()) -> knm_phone_number().
 set_assigned_to(N, 'undefined') ->
     N#knm_phone_number{assigned_to = 'undefined'};
-set_assigned_to(N, AssignedTo=?NE_BINARY) ->
+set_assigned_to(N, AssignedTo=?MATCH_ACCOUNT_RAW(_)) ->
     N#knm_phone_number{assigned_to=AssignedTo}.
 
 %%--------------------------------------------------------------------
@@ -425,12 +447,12 @@ set_assigned_to(N, AssignedTo=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec prev_assigned_to(knm_phone_number()) -> ne_binary().
+-spec prev_assigned_to(knm_phone_number()) -> api_binary().
 prev_assigned_to(#knm_phone_number{prev_assigned_to=PrevAssignedTo}) ->
     PrevAssignedTo.
 
 -spec set_prev_assigned_to(knm_phone_number(), ne_binary()) -> knm_phone_number().
-set_prev_assigned_to(N, PrevAssignedTo=?NE_BINARY) ->
+set_prev_assigned_to(N, PrevAssignedTo=?MATCH_ACCOUNT_RAW(_)) ->
     N#knm_phone_number{prev_assigned_to=PrevAssignedTo}.
 
 %%--------------------------------------------------------------------
@@ -438,7 +460,7 @@ set_prev_assigned_to(N, PrevAssignedTo=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec used_by(knm_phone_number()) -> ne_binary().
+-spec used_by(knm_phone_number()) -> api_binary().
 used_by(#knm_phone_number{used_by=UsedBy}) -> UsedBy.
 
 -spec set_used_by(knm_phone_number(), ne_binary()) -> knm_phone_number().
@@ -609,8 +631,8 @@ set_doc(N, JObj=?JSON_WRAPPER(_)) ->
     N#knm_phone_number{doc=JObj}.
 
 -spec update_doc(knm_phone_number(), wh_json:object()) -> knm_phone_number().
-update_doc(N, JObj=?JSON_WRAPPER(_)) ->
-    Updated = wh_json:merge_jobjs(doc(N), wh_json:public_fields(JObj)),
+update_doc(N=#knm_phone_number{doc = Doc}, JObj=?JSON_WRAPPER(_)) ->
+    Updated = wh_json:merge_jobjs(JObj, Doc),
     N#knm_phone_number{doc = Updated}.
 
 %%--------------------------------------------------------------------
@@ -656,23 +678,24 @@ set_options(Number, Options) when is_list(Options) ->
 %%--------------------------------------------------------------------
 -spec is_authorized(knm_phone_number()) -> boolean().
 -ifdef(TEST).
-is_authorized(#knm_phone_number{auth_by= ?KNM_DEFAULT_AUTH_BY}) -> 'true';
-is_authorized(#knm_phone_number{assigned_to=AssignedTo
-                                ,auth_by=AuthBy
+is_authorized(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}) -> 'true';
+is_authorized(#knm_phone_number{assigned_to = AssignedTo
+                               ,auth_by = AuthBy
                                }) ->
     ?LOG_DEBUG("is authz ~s ~s", [AuthBy, AssignedTo]),
     (AssignedTo =:= ?RESELLER_ACCOUNT_ID orelse AssignedTo =:= ?MASTER_ACCOUNT_ID)
         andalso (AuthBy =:= ?RESELLER_ACCOUNT_ID orelse AuthBy =:= ?MASTER_ACCOUNT_ID).
 -else.
-is_authorized(#knm_phone_number{auth_by= ?KNM_DEFAULT_AUTH_BY}) ->
+is_authorized(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}) ->
     lager:info("bypassing auth"),
     'true';
-is_authorized(#knm_phone_number{assigned_to=AssignedTo
-                                ,auth_by=AuthBy
+is_authorized(#knm_phone_number{assigned_to = AssignedTo
+                               ,auth_by = AuthBy
                                }) ->
     ?LOG_DEBUG("is authz ~s ~s", [AuthBy, AssignedTo]),
     wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true').
 -endif.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -781,7 +804,7 @@ unassign(PhoneNumber, PrevAssignedTo) ->
 
 -spec do_unassign(knm_phone_number(), ne_binary()) -> knm_phone_number().
 do_unassign(PhoneNumber, PrevAssignedTo) ->
-    AccountDb = wh_util:format_account_id(PrevAssignedTo, 'encoded'),
+    AccountDb = wh_util:format_account_db(PrevAssignedTo),
     case kz_datamgr:del_doc(AccountDb, to_json(PhoneNumber)) of
         {'error', E} ->
             lager:error("failed to unassign number ~s from ~s"
@@ -799,9 +822,8 @@ do_unassign(PhoneNumber, PrevAssignedTo) ->
                                    {'ok', wh_json:object()} |
                                    {'error', any()}.
 get_number_in_account(AccountId, Num) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = wh_util:format_account_db(AccountId),
     kz_datamgr:open_cache_doc(AccountDb, Num).
-
 -endif.
 
 %%--------------------------------------------------------------------
@@ -828,13 +850,10 @@ maybe_remove_number_from_account(Number) ->
     AssignedTo = assigned_to(Number),
     case wh_util:is_empty(AssignedTo) of
         'true' ->
-            lager:debug("assigned_to is is empty for ~s, ignoring"
-                        ,[number(Number)]
-                       ),
+            lager:debug("assigned_to is is empty for ~s, ignoring", [number(Number)]),
             {'ok', Number};
         'false' ->
-            AccountDb = wh_util:format_account_id(AssignedTo, 'encoded'),
-            case kz_datamgr:del_doc(AccountDb, to_json(Number)) of
+            case kz_datamgr:del_doc(wh_util:format_account_db(AssignedTo), to_json(Number)) of
                 {'error', _R}=E -> E;
                 {'ok', _} -> {'ok', Number}
             end

@@ -85,6 +85,7 @@
 
 -export([encode/1]).
 -export([decode/1, decode/2]).
+-export([unsafe_decode/1, unsafe_decode/2]).
 
 %% not for public use
 -export([prune/2, no_prune/2]).
@@ -107,6 +108,28 @@ new() -> ?JSON_WRAPPER([]).
 -spec encode(json_term()) -> text().
 encode(JObj) -> jiffy:encode(JObj).
 
+-spec unsafe_decode(iolist() | ne_binary()) -> json_term().
+-spec unsafe_decode(iolist() | ne_binary(), ne_binary()) -> json_term().
+
+unsafe_decode(Thing) when is_list(Thing) orelse is_binary(Thing) ->
+    unsafe_decode(Thing, <<"application/json">>).
+
+unsafe_decode(JSON, <<"application/json">>) ->
+    try jiffy:decode(JSON) of
+        JObj -> JObj
+    catch
+        'throw':{'error',{_Loc, 'invalid_string'}}=Error ->
+            lager:debug("invalid string(near char ~p) in input, checking for unicode", [_Loc]),
+            case try_converting(JSON) of
+                JSON -> throw({'invalid_json', Error, JSON});
+                Converted -> unsafe_decode(Converted)
+            end;
+        'throw':Error ->
+            throw({'invalid_json', Error, JSON});
+        _Error:_Reason ->
+            throw({'invalid_json', {'error', {0, 'decoder_exit'}}, JSON})
+    end.
+
 -spec decode(iolist() | ne_binary()) -> json_term().
 -spec decode(iolist() | ne_binary(), ne_binary()) -> json_term().
 
@@ -114,23 +137,12 @@ decode(Thing) when is_list(Thing) orelse is_binary(Thing) ->
     decode(Thing, <<"application/json">>).
 
 decode(JSON, <<"application/json">>) ->
-    try jiffy:decode(JSON) of
+    try unsafe_decode(JSON) of
         JObj -> JObj
     catch
-        'throw':{'error',{_Loc, 'invalid_string'}} ->
-            lager:debug("invalid string(near char ~p) in input, checking for unicode", [_Loc]),
-            try_converting(JSON);
-        'throw':{'invalid_json',{{'error',{1, Err}}, _Text}} ->
-            lager:debug("~s: ~s", [Err, _Text]),
-            new();
-        'throw':{'invalid_json',{{'error',{Loc, Err}}, Text}} ->
-            Size = erlang:byte_size(Text),
-            Part = binary:part(Text, Loc, Size-Loc),
-            lager:debug("~s near char # ~b of ~b ('~s'): ~s", [Err, Loc, Size, Part, Text]),
-            log_big_binary(iolist_to_binary(JSON)),
-            try_converting(JSON);
-        'throw':_E ->
-            lager:debug("thrown decoder error: ~p", [_E]),
+        _:{'invalid_json', {'error', {_Loc, _Msg}}, _JSON} ->
+            lager:debug("decode error ~s near char # ~b", [_Msg, _Loc]),
+            log_big_binary(JSON),
             new()
     end.
 
@@ -141,24 +153,24 @@ try_converting(JSON) ->
             case unicode:characters_to_binary(JSON, 'latin1', 'utf8') of
                 Converted when is_binary(Converted) ->
                     case unicode:bom_to_encoding(Converted) of
-                        {'latin1', 0} -> new();
-                        _ -> decode(Converted)
+                        {'latin1', 0} -> JSON;
+                        _ -> Converted
                     end;
                 _O ->
                     lager:debug("failed to char_to_bin: ~p", [_O]),
-                    new()
+                    JSON
             end;
         _Enc ->
             lager:debug("unknown encoding: ~p", [_Enc]),
-            new()
+            JSON
     end.
 
--spec log_big_binary(ne_binary()) -> 'ok'.
-log_big_binary(<<Bin:900/binary, Rest/binary>>) ->
-    lager:debug("bin: ~s", [wh_util:hexencode_binary(Bin)]),
+-spec log_big_binary(binary()) -> 'ok'.
+log_big_binary(<<Bin:500/binary, Rest/binary>>) ->
+    lager:debug("bin: ~w", [Bin]),
     log_big_binary(Rest);
 log_big_binary(Bin) ->
-    lager:debug("bin: ~s", [wh_util:hexencode_binary(Bin)]).
+    lager:debug("bin: ~w", [Bin]).
 
 -spec is_empty(any()) -> boolean().
 is_empty(MaybeJObj) ->

@@ -1,4 +1,4 @@
--ifndef(WH_MEDIA_HRL).
+-ifndef(WHISTLE_MEDIA_HRL).
 
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_media.hrl").
@@ -56,12 +56,11 @@
 -record(media_store_path,
         {db :: ne_binary()
         ,id :: ne_binary()
-        ,type :: ne_binary()
-        ,rev :: ne_binary()
         ,att :: ne_binary()
+        ,opt = [] :: wh_proplist()
         }).
 
 -type media_store_path() :: #media_store_path{}.
 
--define(WH_MEDIA_HRL, 'true').
+-define(WHISTLE_MEDIA_HRL, 'true').
 -endif.

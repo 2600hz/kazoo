@@ -21,13 +21,14 @@ init({_Transport, _Proto}, Req0, _Opts) ->
     case cowboy_req:path_info(Req0) of
         {[<<"tts">>, Id], Req1} ->
             init_from_tts(Id, Req1);
-        {[?MEDIA_DB = Db, Id, Type, Rev, Attachment], Req1} ->
-            EncodedId = wh_util:to_binary(http_uri:encode(wh_util:to_list(Id))),
-            init_from_doc(Db, EncodedId, Type, Rev, Attachment, Req1);
-        {[Db, Id, Type, Rev, Attachment], Req1} ->
-            AccountDb = wh_util:to_binary(http_uri:encode(wh_util:to_list(Db))),
-            EncodedId = wh_util:to_binary(http_uri:encode(wh_util:to_list(Id))),
-            init_from_doc(AccountDb, EncodedId, Type, Rev, Attachment, Req1)
+        {[Url], Req1} ->
+%%             EncodedId = wh_util:to_binary(http_uri:encode(wh_util:to_list(Id))),
+%%             init_from_doc(Db, EncodedId, Type, Rev, Attachment, Req1);
+%%         {[Db, Id, Type, Rev, Attachment], Req1} ->
+%%             AccountDb = wh_util:to_binary(http_uri:encode(wh_util:to_list(Db))),
+%%             EncodedId = wh_util:to_binary(http_uri:encode(wh_util:to_list(Id))),
+%%            init_from_doc(AccountDb, EncodedId, Type, Rev, Attachment, Req1)
+            init_from_doc(Url, Req1)
     end.
 
 init_from_tts(Id, Req) ->
@@ -41,7 +42,8 @@ init_from_tts(Id, Req) ->
             {'shutdown', Req1, 'ok'}
     end.
 
-init_from_doc(Db, Id, _Type, _Rev, Attachment, Req) ->
+init_from_doc(Url, Req) ->
+    {Db, Id, Attachment, _Options} = binary_to_term(base64:decode(Url)),
     lager:debug("fetching ~s/~s/~s", [Db, Id, Attachment]),
     case wh_media_cache_sup:find_file_server(Db, Id, Attachment) of
         {'ok', Pid} ->

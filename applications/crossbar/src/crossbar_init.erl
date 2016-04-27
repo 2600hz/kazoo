@@ -14,7 +14,7 @@
          ,start_mod/1, stop_mod/1
         ]).
 
--include("./crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(USE_COMPRESSION, whapps_config:get_is_true(?CONFIG_CAT, <<"compress_response_body">>, 'true')).
 
@@ -41,9 +41,8 @@ api_version_constraint(<<"v", ApiVersion/binary>>) ->
     catch
         _:_ -> lager:debug("not routing to version ~s", [ApiVersion]), 'false'
     end;
-api_version_constraint(_NotVersion) ->
-    lager:debug("not routing version ~s", [_NotVersion]),
-    'false'.
+api_version_constraint(NotVersion) ->
+    lists:member(NotVersion, ?INBOUND_HOOKS).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -132,7 +131,9 @@ maybe_start_plaintext(Dispatch) ->
 
             %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
             try cowboy:start_http('api_resource', Workers
-                                  ,[{'port', Port}]
+                                  ,[{'ip', {0,0,0,0,0,0,0,0}}
+                                    ,{'port', Port}
+                                   ]
                                   ,[{'env', [{'dispatch', Dispatch}
                                              ,{'timeout', ReqTimeout}
                                             ]}

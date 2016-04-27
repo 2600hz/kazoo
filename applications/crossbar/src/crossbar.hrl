@@ -24,6 +24,11 @@
 -define(VERSION_SUPPORTED, [?VERSION_1, ?VERSION_2]).
 -define(CURRENT_VERSION, ?VERSION_2).
 
+-define(INBOUND_HOOK, <<"hooks">>).
+
+-define(NO_ENVELOPE_VERSIONS, [?INBOUND_HOOK]).
+-define(INBOUND_HOOKS, [?INBOUND_HOOK]).
+
 -define(CACHE_TTL, whapps_config:get_integer(<<"crossbar">>, <<"cache_ttl">>, 300)).
 
 -define(CROSSBAR_DEFAULT_CONTENT_TYPE, {<<"application">>, <<"json">>, []}).

@@ -142,6 +142,7 @@
 -define(WORKER_ARGS_TYPE(I, Args, Type), {I, {I, 'start_link', Args}, Type, 5 * ?MILLISECONDS_IN_SECOND, 'worker', [I]}).
 -define(WORKER_NAME_ARGS(I, N, Args), {N, {I, 'start_link', Args}, 'permanent', 5 * ?MILLISECONDS_IN_SECOND, 'worker', [I]}).
 -define(WORKER_NAME_ARGS_TYPE(N, I, Args, Type), {N, {I, 'start_link', Args}, Type, 5 * ?MILLISECONDS_IN_SECOND, 'worker', [I]}).
+-define(WORKER_APP_INIT(I, T), {I, {I, 'start_link', []}, 'temporary', T * ?MILLISECONDS_IN_SECOND, 'worker', [I]}).
 
 -define(SUPER(I), {I, {I, 'start_link', []}, 'permanent', 'infinity', 'supervisor', [I]}).
 -define(SUPER_TYPE(I, Type), {I, {I, 'start_link', []}, Type, 'infinity', 'supervisor', [I]}).
@@ -260,7 +261,7 @@
        ).
 
 -define(MATCH_ACCOUNT_RAW(A, B, Rest),
-        <<(A):2/binary, (B):2/binary, (Rest)/binary>>  %% FIXME: add mising size
+        <<(A):2/binary, (B):2/binary, (Rest)/binary>>  %% FIXME: add missing size (Rest:28)
        ).
 -define(MATCH_ACCOUNT_UNENCODED(A, B, Rest),
         <<"account/", (A):2/binary, "/", (B):2/binary, "/", (Rest):28/binary>>
@@ -294,7 +295,7 @@
        ).
 
 %% FIXME: replace these with the above ones, actually matching: "account..."
-%%   and then add MATCH_MODB_SUFFIX_encoded/3.
+%% FIXME: add MATCH_MODB_SUFFIX_encoded/3
 -define(MATCH_MODB_SUFFIX_RAW(Account, Year, Month),
         <<(Account):32/binary, "-", (Year):4/binary, (Month):2/binary>>
        ).
@@ -306,10 +307,10 @@
        ).
 
 -define(MATCH_MODB_PREFIX(Year, Month, Account),
-        <<(Year):4/binary, (Month):2/binary, "-", (Account)/binary>>  %% FIXME: add mising size
+        <<(Year):4/binary, (Month):2/binary, "-", (Account)/binary>>  %% FIXME: add missing size
        ).
 -define(MATCH_MODB_PREFIX_M1(Year, Month, Account),
-        <<(Year):4/binary, (Month):1/binary, "-", (Account)/binary>>  %% FIXME: add mising size
+        <<(Year):4/binary, (Month):1/binary, "-", (Account)/binary>>  %% FIXME: add missing size
        ).
 
 %% WH_NODES types

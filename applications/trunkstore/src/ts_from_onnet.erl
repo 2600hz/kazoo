@@ -33,10 +33,10 @@ start_amqp(State) ->
 
 maybe_onnet_data(State) ->
     JObj = ts_callflow:get_request_data(State),
-    {ToUser, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"outbound_user_field">>),
-    ToDID = knm_converters:normalize(ToUser),
     CallID = ts_callflow:get_aleg_id(State),
     AccountId = ts_callflow:get_account_id(State),
+    {ToUser, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"outbound_user_field">>),
+    ToDID = knm_converters:normalize(ToUser, AccountId),
     FromUser = wh_json:get_value(<<"Caller-ID-Name">>, JObj),
 
     lager:info("on-net request from ~s(~s) to ~s", [FromUser, AccountId, ToDID]),
