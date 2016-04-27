@@ -27,6 +27,7 @@
         ]).
 -export([lock_db/0, lock_db/1, is_locked/0]).
 -export([flush/0, flush/1, flush/2, flush/3]).
+-export([zone/0]).
 
 -type config_category() :: ne_binary() | nonempty_string() | atom().
 -type config_key() :: ne_binary() | nonempty_string() | atom() | [config_key(),...].
@@ -257,10 +258,20 @@ get_value(Category, Node, Keys, Default, JObj) ->
 -spec get_zone_value(config_category(), config_key(), config_key(), Default, wh_json:object()) ->
                          Default | any().
 get_zone_value(Category, _Node, Keys, Default, JObj) ->
-    Zone = wh_util:to_binary(wh_nodes:local_zone()),
+    Zone = zone(),
     case wh_json:get_value([Zone | Keys], JObj) of
         'undefined' -> get_default_value(Category, Keys, Default, JObj);
         Else -> Else
+    end.
+
+-spec zone() -> ne_binary().
+zone() ->
+    case application:get_env('whistle_config', 'zone') of
+        'undefined' ->
+            Zone = wh_util:to_binary(wh_nodes:local_zone()),
+            application:set_env('whistle_config', 'zone', Zone),
+            Zone;
+        {'ok', Zone} -> Zone
     end.
 
 -spec get_default_value(config_category(), config_key(), Default, wh_json:object()) ->
