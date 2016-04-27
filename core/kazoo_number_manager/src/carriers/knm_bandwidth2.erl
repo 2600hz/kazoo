@@ -62,6 +62,8 @@
 -define(BW2_SITE_ID,
         whapps_config:get_string(?KNM_BW2_CONFIG_CAT, <<"site_id">>, "")).
 
+-type weird() :: xml_el() | xml_els() | string().
+
 
 %%% API
 
@@ -89,14 +91,18 @@ find_numbers(<<"8", Second:1/binary, _/binary>>, Quantity, Options) ->
                "&enableTNDetail=true&quantity=", integer_to_list(Quantity)
              ],
     {'ok', Result} = search(Params),
-    process_tollfree_response(Result, Options);
+    AccountId = props:get_value(<<"account_id">>, Options),
+    {'ok', [tollfree_search_response_to_KNM(X, AccountId)
+            || X <- xmerl_xpath:string("TelephoneNumberList/TelephoneNumber", Result)
+           ]
+    };
 
 find_numbers(<<NPA:3/binary>>, Quantity, Options) ->
     Params = [ "areaCode=", binary_to_list(NPA)
              , "&enableTNDetail=true&quantity=", integer_to_list(Quantity)
              ],
     {'ok', Result} = search(Params),
-    process_search_response(Result, Options);
+    {'ok', process_search_response(Result, Options)};
 
 find_numbers(Search, Quantity, Options) ->
     NpaNxx = wh_util:truncate_right_binary(Search, 6),
@@ -104,25 +110,14 @@ find_numbers(Search, Quantity, Options) ->
              , "&enableTNDetail=true&quantity=", integer_to_list(Quantity)
              ],
     {'ok', Result} = search(Params),
-    process_search_response(Result, Options).
+    {'ok', process_search_response(Result, Options)}.
 
--spec process_tollfree_response(ne_binary(), wh_proplist()) ->
-                                       {'ok', knm_number:knm_numbers()}.
-process_tollfree_response(Result, Options) ->
-    AccountId = props:get_value(<<"account_id">>, Options),
-    {'ok', [tollfree_search_response_to_KNM(X, AccountId)
-            || X <- xmerl_xpath:string("TelephoneNumberList/TelephoneNumber", Result)
-           ]
-    }.
-
--spec process_search_response(ne_binary(), wh_proplist()) ->
-                                     {'ok', knm_number:knm_numbers()}.
+-spec process_search_response(xml_el(), wh_proplist()) -> knm_number:knm_numbers().
 process_search_response(Result, Options) ->
     AccountId = props:get_value(<<"account_id">>, Options),
-    {'ok', [search_response_to_KNM(X, AccountId)
-            || X <- xmerl_xpath:string("TelephoneNumberDetailList/TelephoneNumberDetail", Result)
-           ]
-    }.
+    [search_response_to_KNM(X, AccountId)
+     || X <- xmerl_xpath:string("TelephoneNumberDetailList/TelephoneNumberDetail", Result)
+    ].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -191,7 +186,7 @@ sites() ->
     _ = [process_site(X) || X <- Sites],
     io:format("done.~n").
 
--spec process_site(xml_el()) -> 'ok'.
+-spec process_site(weird()) -> 'ok'.
 process_site(Site) ->
     Id   = wh_util:get_xml_value("Site/Id/text()", Site),
     Name = wh_util:get_xml_value("Site/Name/text()", Site),
@@ -206,7 +201,7 @@ peers(SiteId) ->
     _ = [process_peer(X) || X <- Peers],
     io:format("done.~n").
 
--spec process_peer(xml_el()) -> 'ok'.
+-spec process_peer(weird()) -> 'ok'.
 process_peer(Peer) ->
     Id   = wh_util:get_xml_value("SipPeer/PeerId/text()", Peer),
     Name = wh_util:get_xml_value("SipPeer/PeerName/text()", Peer),
@@ -221,7 +216,7 @@ url(RelativePath) ->
         | RelativePath
       ]).
 
--type api_res() :: {'ok', xml_el()} | {'error', atom()}.
+-type api_res() :: {'ok', weird()} | {'error', atom()}.
 
 -spec search([nonempty_string()]) -> api_res().
 search(Params) ->
@@ -332,7 +327,7 @@ handle_response({'error', _}=E) ->
 %% Convert a number order response to json
 %% @end
 %%--------------------------------------------------------------------
--spec number_order_response_to_json(iolist()) -> wh_json:object().
+-spec number_order_response_to_json(weird()) -> wh_json:object().
 number_order_response_to_json([]) ->
     wh_json:new();
 number_order_response_to_json([Xml]) ->
@@ -346,7 +341,7 @@ number_order_response_to_json(Xml) ->
         ])).
 
 %% @private
--spec search_response_to_KNM(xml_el() | xml_els(), ne_binary()) -> knm_number:knm_number().
+-spec search_response_to_KNM(weird(), ne_binary()) -> knm_number:knm_number().
 search_response_to_KNM([Xml], AccountId) ->
     search_response_to_KNM(Xml, AccountId);
 search_response_to_KNM(Xml, AccountId) ->
@@ -361,7 +356,7 @@ search_response_to_KNM(Xml, AccountId) ->
     knm_number:set_phone_number(knm_number:new(), PhoneNumber).
 
 %% @private
--spec tollfree_search_response_to_KNM(xml_el(), ne_binary()) -> knm_number:knm_number().
+-spec tollfree_search_response_to_KNM(weird(), ne_binary()) -> knm_number:knm_number().
 tollfree_search_response_to_KNM(Xml, AccountId) ->
     Num = wh_util:get_xml_value("//TelephoneNumber/text()", Xml),
     {'ok', PhoneNumber} = knm_phone_number:newly_found(Num, ?MODULE, AccountId, wh_json:new()),
@@ -373,7 +368,7 @@ tollfree_search_response_to_KNM(Xml, AccountId) ->
 %% Convert a rate center XML entity to json
 %% @end
 %%--------------------------------------------------------------------
--spec rate_center_to_json(xml_el() | xml_els()) -> wh_json:object().
+-spec rate_center_to_json(weird()) -> wh_json:object().
 rate_center_to_json([]) ->
     wh_json:new();
 rate_center_to_json([Xml]) ->
@@ -393,8 +388,8 @@ rate_center_to_json(Xml) ->
 %% error text
 %% @end
 %%--------------------------------------------------------------------
--spec verify_response(xml_el()) -> {'ok', ne_binary()} |
-                                   {'error', api_binary() | ne_binaries()}.
+-spec verify_response(weird()) -> {'ok', weird()} |
+                                  {'error', any()}.
 verify_response(Xml) ->
     case wh_util:get_xml_value("/*/status/text()", Xml) =:= <<"success">>
         orelse wh_util:get_xml_value("//LoginResponse/LoginResult/text()", Xml) =/= 'undefined'
