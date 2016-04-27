@@ -443,7 +443,7 @@ find_emergency_number(OffnetReq) ->
 ensure_valid_emergency_number(OffnetReq) ->
     AccountId = wapi_offnet_resource:account_id(OffnetReq),
     lager:debug("ensuring emergency caller is valid for account ~s", [AccountId]),
-    Numbers = valid_emergency_numbers(AccountId),
+    Numbers = knm_numbers:emergency_enabled(AccountId),
     Emergency = bridge_emergency_cid_number(OffnetReq),
     Outbound = bridge_outbound_cid_number(OffnetReq),
     case {lists:member(Emergency, Numbers), lists:member(Outbound, Numbers)} of
@@ -467,13 +467,6 @@ find_valid_emergency_number([]) ->
 find_valid_emergency_number([Number|_]) ->
     lager:info("found alternative emergency caller id number ~s", [Number]),
     Number.
-
--spec valid_emergency_numbers(ne_binary()) -> ne_binaries().
-valid_emergency_numbers(AccountId) ->
-    case knm_numbers:emergency_enabled(AccountId) of
-        {'ok', Numbers} -> Numbers;
-        {'error', _R} -> []
-    end.
 
 -spec default_emergency_number(ne_binary()) -> ne_binary().
 default_emergency_number(Requested) ->

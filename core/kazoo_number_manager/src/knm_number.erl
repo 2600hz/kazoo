@@ -169,7 +169,7 @@ create_phone_number(Number) ->
 %%--------------------------------------------------------------------
 -spec reserve(ne_binary(), knm_number_options:options()) -> knm_number_return().
 reserve(Num, Options) ->
-    case ?MODULE:get(Num, Options) of
+    case get(Num, Options) of
         {'ok', Number} ->
             attempt(fun do_reserve/1, [Number]);
         {'error', _R}=E -> E
@@ -329,7 +329,7 @@ update(Num, Routines) ->
     update(Num, Routines, knm_number_options:default()).
 
 update(Num, Routines, Options) ->
-    case ?MODULE:get(Num, Options) of
+    case get(Num, Options) of
         {'error', _R}=E -> E;
         {'ok', Number} ->
             update_phone_number(Number, Routines)
@@ -460,7 +460,7 @@ release(Num) ->
     release(Num, knm_number_options:default()).
 
 release(Num, Options) ->
-    case ?MODULE:get(Num, Options) of
+    case get(Num, Options) of
         {'error', _R}=E -> E;
         {'ok', Number} ->
             attempt(fun release_number/2, [Number, Options])
@@ -526,7 +526,7 @@ assign_to_app(Num, App) ->
     assign_to_app(Num, App, knm_number_options:default()).
 
 assign_to_app(Num, App, Options) ->
-    case ?MODULE:get(Num, Options) of
+    case get(Num, Options) of
         {'error', _R}=E -> E;
         {'ok', Number} ->
             maybe_update_assignment(Number, App)

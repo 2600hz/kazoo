@@ -41,14 +41,7 @@ get(Nums) ->
     get(Nums, knm_number_options:default()).
 
 get(Nums, Options) ->
-    do_get(Nums, Options, []).
-
--spec do_get(ne_binaries(), knm_number_options:options(), numbers_return()) ->
-                    numbers_return().
-do_get([], _Options, Acc) -> Acc;
-do_get([Num|Nums], Options, Acc) ->
-    Return = knm_number:get(Num, Options),
-    do_get(Nums, Options, [{Num, Return}|Acc]).
+    [{Num, knm_number:get(Num, Options)} || Num <- Nums].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -223,25 +216,21 @@ free(Account=?NE_BINARY) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc Find an account's numbers that have emergency services enabled
+%% @doc Find an account's phone numbers that have emergency services enabled
 %%--------------------------------------------------------------------
--spec emergency_enabled(ne_binary()) -> {'ok', knm_number:knm_numbers()} |
-                                        {'error', any()}.
-emergency_enabled(Account = ?NE_BINARY) ->
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case kz_datamgr:open_cache_doc(AccountDb, ?KNM_PHONE_NUMBERS_DOC) of
-        {'ok', JObj} ->
-            Numbers = wh_json:get_keys(wh_json:public_fields(JObj)),
-            Options = [{'assigned_to', wh_util:format_account_id(Account)}
-                      ],
-            PhoneNumbers = fetch(Numbers, Options),
-            EnabledNumbers =
-                [PhoneNumber || PhoneNumber <- PhoneNumbers,
-                                knm_providers:has_emergency_services(PhoneNumber)],
-            {'ok', EnabledNumbers};
-        {'error', _R}=Error ->
-            Error
-    end.
+-spec emergency_enabled(ne_binary()) -> ne_binaries().
+emergency_enabled(AccountId=?MATCH_ACCOUNT_RAW(_)) ->
+    AccountDb = wh_util:format_account_db(AccountId),
+    Numbers =
+        [Num || {Num, ShortJObj} <- account_listing(AccountDb),
+                AccountId == wh_json:get_value(<<"assigned_to">>, ShortJObj)
+        ],
+    [knm_number:phone_number(
+       knm_phone_number:number(KNMNumber)
+      )
+     || {'ok', KNMNumber} <- ?MODULE:get(Numbers),
+        knm_providers:has_emergency_services(KNMNumber)
+    ].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -260,22 +249,3 @@ account_listing(AccountDb = ?MATCH_ACCOUNT_ENCODED(_,_,_)) ->
         {'error', _R} ->
             lager:debug("error listing numbers for ~s: ~p", [AccountDb, _R])
     end.
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
-
--spec fetch(ne_binaries(), knm_number_options:opions()) ->
-                   knm_number:knm_numbers().
-fetch(Numbers, Options) ->
-    lists:foldl(
-      fun (Number, Acc) ->
-              case knm_phone_number:fetch(Number, Options) of
-                  {'ok', PN} ->
-                      [knm_number:set_phone_number(knm_number:new(), PN) | Acc];
-                  _Else -> Acc
-              end
-      end
-      ,[]
-      ,Numbers
-     ).

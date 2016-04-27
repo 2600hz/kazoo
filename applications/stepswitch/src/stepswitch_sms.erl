@@ -487,22 +487,16 @@ maybe_emergency_cid_number(OffnetReq) ->
             stepswitch_bridge:bridge_emergency_cid_number(OffnetReq)
     end.
 
--spec emergency_cid_number(wapi_offnet_resource:req()) ->
-                                  ne_binary().
+-spec emergency_cid_number(wapi_offnet_resource:req()) -> ne_binary().
 emergency_cid_number(OffnetReq) ->
-    Account = wapi_offnet_resource:account_id(OffnetReq),
+    AccountId = wapi_offnet_resource:account_id(OffnetReq),
     Candidates = [wapi_offnet_resource:emergency_caller_id_number(OffnetReq)
                   ,wapi_offnet_resource:outbound_caller_id_number(OffnetReq)
                  ],
     Requested = stepswitch_bridge:bridge_emergency_cid_number(OffnetReq),
     lager:debug("ensuring requested CID is emergency enabled: ~s", [Requested]),
-    case knm_numbers:emergency_enabled(Account) of
-        {'ok', EnabledNumbers} ->
-            emergency_cid_number(Requested, Candidates, EnabledNumbers);
-        {'error', _R} ->
-            lager:error("unable to fetch emergency numbers from account ~s: ~p", [Account, _R]),
-            emergency_cid_number(Requested, Candidates, [])
-    end.
+    EnabledNumbers = knm_numbers:emergency_enabled(AccountId),
+    emergency_cid_number(Requested, Candidates, EnabledNumbers).
 
 -spec emergency_cid_number(ne_binary(), api_binaries(), ne_binaries()) -> ne_binary().
 %% if there are no emergency enabled numbers then either use the global system default
