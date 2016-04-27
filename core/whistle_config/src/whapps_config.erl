@@ -264,16 +264,6 @@ get_zone_value(Category, _Node, Keys, Default, JObj) ->
         Else -> Else
     end.
 
--spec zone() -> ne_binary().
-zone() ->
-    case application:get_env('whistle_config', 'zone') of
-        'undefined' ->
-            Zone = wh_util:to_binary(wh_nodes:local_zone()),
-            application:set_env('whistle_config', 'zone', Zone),
-            Zone;
-        {'ok', Zone} -> Zone
-    end.
-
 -spec get_default_value(config_category(), config_key(), Default, wh_json:object()) ->
                                  Default | _.
 get_default_value(Category, Keys, Default, JObj) ->
@@ -286,6 +276,16 @@ get_default_value(Category, Keys, Default, JObj) ->
     end.
 
 -endif.
+
+-spec zone() -> ne_binary().
+zone() ->
+    case application:get_env('whistle_config', 'zone') of
+        'undefined' ->
+            Zone = wh_util:to_binary(wh_nodes:local_zone()),
+            application:set_env('whistle_config', 'zone', Zone),
+            Zone;
+        {'ok', Zone} -> Zone
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @public
