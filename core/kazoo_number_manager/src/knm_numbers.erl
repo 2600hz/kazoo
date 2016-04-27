@@ -225,11 +225,8 @@ emergency_enabled(AccountId=?MATCH_ACCOUNT_RAW(_)) ->
         [Num || {Num, ShortJObj} <- account_listing(AccountDb),
                 AccountId == wh_json:get_value(<<"assigned_to">>, ShortJObj)
         ],
-    [knm_number:phone_number(
-       knm_phone_number:number(KNMNumber)
-      )
-     || {'ok', KNMNumber} <- ?MODULE:get(Numbers),
-        knm_providers:has_emergency_services(KNMNumber)
+    [Num || {Num, {'ok', KNMNumber}} <- ?MODULE:get(Numbers),
+            knm_providers:has_emergency_services(KNMNumber)
     ].
 
 %%--------------------------------------------------------------------
