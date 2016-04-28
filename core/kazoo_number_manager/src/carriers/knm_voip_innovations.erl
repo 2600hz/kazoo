@@ -388,7 +388,6 @@ handle_response({'ok', Code, _Headers, "<?xml"++_=Response}) ->
     catch
         _:R ->
             lager:debug("failed to decode xml: ~p", [R]),
-            lager:debug("st: ~p", [erlang:get_stacktrace()]),
             {'error', 'empty_response'}
     end;
 handle_response({'ok', Code, _Headers, _Response}) ->
