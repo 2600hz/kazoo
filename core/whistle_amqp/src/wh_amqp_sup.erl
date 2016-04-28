@@ -22,7 +22,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(CONFIG_SECTION, wh_config:get_node_section_name()).
+-define(CONFIG_SECTION, 'amqp').
 
 -define(POOL_NAME, 'wh_amqp_pool').
 
