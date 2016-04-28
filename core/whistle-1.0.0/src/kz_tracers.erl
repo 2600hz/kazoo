@@ -5,8 +5,10 @@
 %% cat /path/to/eflame.trace.out | grep -v 'SLEEP' | ./flamegraph.riak-color.pl > /var/www/html/flame.svg
 
 -export([add_trace/1, add_trace/2
-         ,gen_load/1
+         ,gen_load/1, gen_load/2
         ]).
+
+-include_lib("whistle_couch/src/wh_couch.hrl").
 
 add_trace(Pid) ->
     add_trace(Pid, 100*1000).
@@ -28,13 +30,17 @@ add_trace(Pid, CollectFor) ->
     'ok'.
 
 gen_load(N) ->
-    Start = os:timestamp(),
-    PidRefs = [spawn_monitor(fun() -> do_load_gen(X) end) || X <- lists:seq(1, N)],
-    wait_for_refs(Start, {0, 'ok'}, PidRefs).
+    gen_load(N, 1000).
+gen_load(N, D) ->
+    {A1, A2, A3} = Start = os:timestamp(),
+    random:seed(A1, A2, A3),
+
+    PidRefs = [spawn_monitor(fun() -> do_load_gen(D) end) || _ <- lists:seq(1, N)],
+    wait_for_refs(Start, cache_data(), PidRefs).
 
 wait_for_refs(Start, MaxMailbox, []) ->
     case cache_data() of
-        [{message_queue_len, 0} | _] ->
+        {0, _} ->
             io:format("finished test after ~pms: ~p~n", [wh_util:elapsed_ms(Start), MaxMailbox]);
         _ -> timer:sleep(1000),
              wait_for_refs(Start, MaxMailbox, [])
@@ -45,9 +51,7 @@ wait_for_refs(Start, {M, G}, [{Pid, Ref}|R]=PRs) ->
             wait_for_refs(Start, {M, G}, R)
     after 1000 ->
             case cache_data() of
-                [{message_queue_len, N}
-                 ,{current_function, F}
-                ] when N > M ->
+                {N, F} when N > M ->
                     io:format("new max message queue size ~p (~p)~n", [N, F]),
                     wait_for_refs(Start, {N, F}, PRs);
                 _ ->
@@ -55,26 +59,49 @@ wait_for_refs(Start, {M, G}, [{Pid, Ref}|R]=PRs) ->
             end
     end.
 
-do_load_gen(1) ->
-    %% add_trace(whereis(whistle_couch_cache)),
-    do_load_gen();
-do_load_gen(_) ->
-    do_load_gen().
-
-do_load_gen() ->
+do_load_gen(Ds) ->
     AccountId = wh_util:rand_hex_binary(16),
     AccountDb = wh_util:format_account_db(AccountId),
     'true' = couch_mgr:db_create(AccountDb),
 
-    io:format("building ~p~n", [AccountDb]),
+    io:format("building ~p with ~p docs~n", [AccountDb, Ds]),
 
-    Docs = [new_doc(AccountDb, Doc) || Doc <- lists:seq(1,1000)],
+    Docs = [new_doc(AccountDb, Doc) || Doc <- lists:seq(1,Ds)],
 
-    Start = os:timestamp(),
+    {A1, A2, A3} = Start = os:timestamp(),
+    random:seed(A1, A2, A3),
 
-    _Result = (catch do_stuff_to_docs(Start, AccountDb, Docs)),
+    case random:uniform(100) of
+        42 ->
+            io:format("unlucky account ~s getting deleted early: ", [AccountDb]);
+        _N ->
+            catch do_stuff_to_docs(Start, AccountDb, Docs)
+    end,
+
     couch_mgr:db_delete(AccountDb),
-    io:format("deleted ~s~nafter ~p~n", [AccountDb, _Result]).
+    timer:sleep(1000),
+    verify_no_docs(Docs),
+    io:format("cleaned up ~s~n", [AccountDb]).
+
+verify_no_docs(Docs) ->
+    case lists:all(fun verify_no_doc/1, Docs) of
+        'true' ->
+            io:format("all docs successfully flushed~n");
+        'false' ->
+            io:format("flushing failed~n")
+    end.
+
+verify_no_doc(Doc) ->
+    case wh_cache:peek_local(?WH_COUCH_CACHE
+                             ,{'couch_util'
+                               ,wh_doc:account_db(Doc)
+                               ,wh_doc:id(Doc)
+                              }
+                            )
+    of
+        {'error', 'not_found'} -> 'true';
+        {'ok', _} -> 'false'
+    end.
 
 new_doc(AccountDb, Ref) ->
     Doc = wh_doc:update_pvt_parameters(
@@ -109,24 +136,23 @@ perform_ops(Start, AccountDb, Ops) ->
                     ).
 
 cache_data() ->
-    erlang:process_info(whereis(whistle_couch_cache)
-                       ,[message_queue_len, current_function]
-                       ).
+    [{'message_queue_len', N}
+     ,{'current_function', F}
+    ] = erlang:process_info(whereis(?WH_COUCH_CACHE)
+                           ,['message_queue_len', 'current_function']
+                           ),
+    {N, F}.
 
 wait_for_cache(Start) ->
     wait_for_cache(Start, {0, 'ok'}).
 
 wait_for_cache(Start, {N, F}) ->
     case cache_data() of
-        [{message_queue_len, M}
-         ,{current_function, G}
-        ] when M > N ->
+        {M, G} when M > N ->
             io:format("~p new max msg queue size ~p (~p)~n", [Start, M, G]),
             timer:sleep(1000),
             wait_for_cache(Start, {M, G});
-        [{message_queue_len, 0}
-        ,{current_function, _F}
-        ] ->
+        {0, _F} ->
             io:format("~pms done (in ~p)~n", [wh_util:elapsed_ms(Start), _F]);
         _ ->
             timer:sleep(1000),
