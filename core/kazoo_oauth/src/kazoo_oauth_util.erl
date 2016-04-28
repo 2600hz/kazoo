@@ -203,7 +203,7 @@ verify_token(ProviderId, AccessToken) when is_binary(ProviderId) ->
         {'error', _}=Error -> Error
     end;
 verify_token(#oauth_provider{tokeninfo_url=TokenInfoUrl}, AccessToken) ->
-    URL = <<TokenInfoUrl/binary,AccessToken/binary>>,
+    URL = <<TokenInfoUrl/binary, AccessToken/binary>>,
     case kz_http:get(wh_util:to_list(URL)) of
         {'ok', 200, _RespHeaders, RespXML} ->
             JObj = wh_json:decode(RespXML),

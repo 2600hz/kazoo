@@ -166,7 +166,7 @@ query_vitelity(URI) ->
     lager:debug("querying ~s", [URI]),
     case kz_http:post(wh_util:to_list(URI)) of
         {'ok', _RespCode, _RespHeaders, RespXML} ->
-            lager:debug("recv ~s: ~s", [_RespCode, RespXML]),
+            lager:debug("recv ~p: ~s", [_RespCode, RespXML]),
             {'ok', RespXML};
         {'error', _R}=E ->
             lager:debug("error querying: ~p", [_R]),

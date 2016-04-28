@@ -138,7 +138,7 @@ acquire_number(Number) ->
                 {'ok', 200, _Headers, Body} ->
                     format_acquire_resp(Number, wh_json:decode(Body));
                 {'ok', _Status, _Headers, Body} ->
-                    lager:error("number lookup failed to ~s with ~s: ~s"
+                    lager:error("number lookup failed to ~s with ~p: ~s"
                                 ,[Uri, _Status, Body]),
                     knm_errors:by_carrier(?MODULE, 'lookup_failed', Number);
                 {'error', Reason} ->
@@ -235,7 +235,7 @@ handle_number_query_results({'error', _Reason}, _Options) ->
 handle_number_query_results({'ok', 200, _Headers, Body}, Options) ->
     format_numbers_resp(wh_json:decode(Body), Options);
 handle_number_query_results({'ok', _Status, _Headers, _Body}, _Options) ->
-    lager:error("number query failed with ~s: ~s", [_Status, _Body]),
+    lager:error("number query failed with ~p: ~s", [_Status, _Body]),
     {'error', 'not_available'}.
 
 -spec format_numbers_resp(wh_json:object(), wh_proplist()) ->

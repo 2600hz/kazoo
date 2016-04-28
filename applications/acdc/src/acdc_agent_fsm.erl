@@ -1708,7 +1708,7 @@ notify(Uri, Headers, Method, Body, Opts) ->
     URI = wh_util:to_list(Uri),
     case kz_http:req(Method, URI, Headers, Body, Options) of
         {'ok', _Status, _ResponseHeaders, _ResponseBody} ->
-            lager:debug("~s req to ~s: ~s", [Method, Uri, _Status]);
+            lager:debug("~s req to ~s: ~p", [Method, Uri, _Status]);
         {'error', _E} ->
             lager:debug("failed to send request to ~s: ~p", [Uri, _E])
     end.
