@@ -224,7 +224,7 @@ fetch_local(Srv, K) ->
 erase_local(Srv, K) ->
     case peek_local(Srv, K) of
         {'error', 'not_found'} -> 'ok';
-        {'ok', _} -> gen_server:cast(Srv, {'erase', K})
+        {'ok', _} -> gen_server:call(Srv, {'erase', K})
     end.
 
 -spec flush_local(atom()) -> 'ok'.
@@ -339,8 +339,15 @@ wait_for_key_local(Srv, Key, Timeout) ->
         {_, Ref, _} -> {'error', 'timeout'}
     end.
 
--spec handle_document_change(wh_json:object(), state()) -> 'ok' | 'false'.
-handle_document_change(JObj, #state{}=State) ->
+-spec handle_document_change(wh_json:object(), wh_proplist()) -> 'ok' | 'false'.
+handle_document_change(JObj, Props) ->
+    'true' = wapi_conf:doc_update_v(JObj),
+    %% Change Next line to
+    %% Srv = props:get_value('server', Props),
+    %% for sending the erase to the mailbox
+    %%
+    Srv = Props,
+
     Db = wh_json:get_value(<<"Database">>, JObj),
     Type = wh_json:get_value(<<"Type">>, JObj),
     Id = wh_json:get_value(<<"ID">>, JObj),
@@ -451,19 +458,13 @@ init([Name, ExpirePeriod, Props]) ->
     wapi_conf:declare_exchanges(),
 
     Tab = ets:new(Name
-                 ,['set', 'named_table'
-                  , {'keypos', #cache_obj.key}
-%%                  , 'protected'
-                  , 'public'
-                  , {write_concurrency, 'true'}
-                  , {read_concurrency, 'true'}
-                  ]
+                 ,['set', 'public', 'named_table', {'keypos', #cache_obj.key}]
                  ),
     PointerTab = ets:new(pointer_tab(Name)
-                         ,['bag', 'protected', {'keypos', #cache_obj.key}]
+                         ,['bag', 'public', {'keypos', #cache_obj.key}]
                         ),
     MonitorTab = ets:new(monitor_tab(Name)
-                         ,['bag', 'protected', {'keypos', #cache_obj.key}]
+                         ,['bag', 'public', {'keypos', #cache_obj.key}]
                         ),
 
     _ = case props:get_value('new_node_flush', Props) of
@@ -548,6 +549,13 @@ handle_call('stop', _From, State) ->
 handle_call({'store', CacheObj}, _From, State) ->
     State1 = handle_store(CacheObj, State),
     {'reply', 'ok', State1};
+handle_call({'erase', Key}, _From, #state{tab=Tab
+                                         ,pointer_tab=PointerTab
+                                         ,monitor_tab=MonitorTab
+                                         }=State) ->
+    erase_changed(Key, Tab, PointerTab, MonitorTab),
+    {'reply', 'ok', State};
+
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -897,6 +905,7 @@ insert_origin_pointer(Origin, #cache_obj{key=Key}=CacheObj, PointerTab) ->
                                  }
               ).
 
+-spec handle_store(cache_obj(), state()) -> state().
 handle_store(#cache_obj{key=Key
                        ,value=Value
                        ,origin=Origins
@@ -915,6 +924,7 @@ handle_store(#cache_obj{key=Key
     lager:debug("exec store callbacks"),
     maybe_update_expire_period(State1, Expires).
 
+-spec maybe_update_expire_period(state(), integer()) -> state().
 maybe_update_expire_period(#state{expire_period=ExpirePeriod
                                   ,expire_period_ref=Ref
                                  }=State
