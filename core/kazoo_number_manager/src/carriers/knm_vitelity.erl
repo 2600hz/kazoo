@@ -280,7 +280,7 @@ query_vitelity(Prefix, Quantity, URI) ->
     lager:debug("querying ~s", [URI]),
     case kz_http:post(wh_util:to_list(URI)) of
         {'ok', _RespCode, _RespHeaders, RespXML} ->
-            lager:debug("recv ~s: ~s", [_RespCode, RespXML]),
+            lager:debug("recv ~p: ~s", [_RespCode, RespXML]),
             process_xml_resp(Prefix, Quantity, RespXML);
         {'error', _R} ->
             lager:debug("error querying: ~p", [_R]),
