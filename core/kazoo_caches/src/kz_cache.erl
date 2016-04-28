@@ -34,7 +34,6 @@
 -export([wait_for_key_local/2
          ,wait_for_key_local/3
         ]).
--export([handle_document_change/2]).
 
 -export([init/1
          ,handle_call/3
@@ -56,9 +55,6 @@
 -define(NOTIFY_KEY(Key), {'monitor_key', Key}).
 
 -define(BINDINGS, [{'self', []}]).
-%% -define(RESPONDERS, [{{?MODULE, 'handle_document_change'}
-%%                       ,[{<<"configuration">>, <<"*">>}]
-%%                      }]).
 -define(RESPONDERS, []).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
@@ -339,105 +335,6 @@ wait_for_key_local(Srv, Key, Timeout) ->
         {_, Ref, _} -> {'error', 'timeout'}
     end.
 
--spec handle_document_change(wh_json:object(), wh_proplist()) -> 'ok' | 'false'.
-handle_document_change(JObj, Props) ->
-    'true' = wapi_conf:doc_update_v(JObj),
-    %% Change Next line to
-    %% Srv = props:get_value('server', Props),
-    %% for sending the erase to the mailbox
-    %%
-    Srv = Props,
-
-    Db = wh_json:get_value(<<"Database">>, JObj),
-    Type = wh_json:get_value(<<"Type">>, JObj),
-    Id = wh_json:get_value(<<"ID">>, JObj),
-
-    _Keys = handle_document_change(Db, Type, Id, State),
-    _Keys =/= [] andalso
-        lager:debug("removed ~p keys for ~s/~s/~s", [length(_Keys), Db, Id, Type]).
-
--spec handle_document_change(ne_binary(), ne_binary(), ne_binary(), state()) -> list().
-
-handle_document_change(Db, <<"database">>, _Id, #state{pointer_tab=PointerTab}=State) ->
-    MatchSpec = match_db_changed(Db),
-    lists:foldl(fun(Obj, Removed) ->
-                        erase_changed(Obj, Removed, State)
-                end
-               ,[]
-               ,ets:select(PointerTab, MatchSpec)
-               );
-handle_document_change(Db, Type, Id, #state{pointer_tab=PointerTab, tab=Tab}=State) ->
-    lager:debug("search for ~p : ~p : ~p : ~p", [ets:info(Tab, 'name'), Db, Type, Id]),
-    MatchSpec = match_doc_changed(Db, Type, Id),
-    Objects = ets:select(PointerTab, MatchSpec),
-    lager:debug("select for ~p returned ~b objects", [ets:info(Tab, 'name'), length(Objects)]),
-    lists:foldl(fun(Obj, Removed) ->
-                        erase_changed(Obj, Removed, State)
-                end
-               ,[]
-               ,ets:select(PointerTab, MatchSpec)
-               ).
-
--spec match_db_changed(ne_binary()) -> ets:match_spec().
-match_db_changed(Db) ->
-    [{#cache_obj{origin = {'db', Db}, _ = '_'}
-      ,[]
-      ,['$_']
-     }
-     ,{#cache_obj{origin = {'db', Db, '_'}, _ = '_'}
-       ,[]
-       ,['$_']
-      }
-     ,{#cache_obj{origin = {'type', <<"database">>, Db}, _ = '_'}
-       ,[]
-       ,['$_']
-      }
-    ].
-
--spec match_doc_changed(ne_binary(), ne_binary(), ne_binary()) -> ets:match_spec().
-match_doc_changed(Db, Type, Id) ->
-    [{#cache_obj{origin = {'db', Db}, _ = '_'}
-      ,[]
-      ,['$_']
-     }
-     ,{#cache_obj{origin = {'db', Db, Type}, _ = '_'}
-       ,[]
-       ,['$_']
-      }
-     ,{#cache_obj{origin = {'db', Db, Id}, _ = '_'}
-       ,[]
-       ,['$_']
-      }
-     ,{#cache_obj{origin = {'type', Type, Id}, _ = '_'}
-       ,[]
-       ,['$_']
-      }
-     ,{#cache_obj{origin = {'type', Type}, _ = '_'}
-       ,[]
-       ,['$_']
-      }
-    ].
-
--spec erase_changed(cache_obj(), list(), state()) -> list().
-erase_changed(#cache_obj{key=Key}, Removed, #state{tab=Tab
-                                                   ,pointer_tab=PointerTab
-                                                   ,monitor_tab=MonitorTab
-                                                  }) ->
-    case lists:member(Key, Removed) of
-        'true' -> Removed;
-        'false' ->
-            lager:debug("removing updated cache object ~-300p", [Key]),
-            erase_changed(Key, Tab, PointerTab, MonitorTab),
-            [Key | Removed]
-    end.
-
--spec erase_changed(any(), ets:tid(), ets:tid(), ets:tid()) -> 'true'.
-erase_changed(Key, Tab, PointerTab, MonitorTab) ->
-    maybe_exec_erase_callbacks(Tab, Key),
-    maybe_remove_object(Tab, Key),
-    maybe_remove_object(PointerTab, Key),
-    maybe_remove_object(MonitorTab, Key).
-
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -549,11 +446,8 @@ handle_call('stop', _From, State) ->
 handle_call({'store', CacheObj}, _From, State) ->
     State1 = handle_store(CacheObj, State),
     {'reply', 'ok', State1};
-handle_call({'erase', Key}, _From, #state{tab=Tab
-                                         ,pointer_tab=PointerTab
-                                         ,monitor_tab=MonitorTab
-                                         }=State) ->
-    erase_changed(Key, Tab, PointerTab, MonitorTab),
+handle_call({'erase', Key}, _From, #state{}=State) ->
+    erase_changed(Key, State),
     {'reply', 'ok', State};
 
 handle_call(_Request, _From, State) ->
@@ -578,11 +472,8 @@ handle_cast({'update_timestamp', Key, Timestamp}, #state{tab=Tab}=State) ->
     ets:update_element(Tab, Key, {#cache_obj.timestamp, Timestamp}),
     {'noreply', State};
 
-handle_cast({'erase', Key}, #state{tab=Tab
-                                  ,pointer_tab=PointerTab
-                                  ,monitor_tab=MonitorTab
-                                  }=State) ->
-    erase_changed(Key, Tab, PointerTab, MonitorTab),
+handle_cast({'erase', Key}, #state{}=State) ->
+    erase_changed(Key, State),
     {'noreply', State};
 
 handle_cast({'flush'}, #state{tab=Tab
@@ -942,3 +833,98 @@ maybe_update_expire_period(#state{expire_period=ExpirePeriod
                ,expire_period_ref=NewRef
                };
 maybe_update_expire_period(State, _Expires) -> State.
+
+-spec handle_document_change(wh_json:object(), state()) -> 'ok' | 'false'.
+handle_document_change(JObj, State) ->
+    'true' = wapi_conf:doc_update_v(JObj),
+
+    Db = wh_json:get_value(<<"Database">>, JObj),
+    Type = wh_json:get_value(<<"Type">>, JObj),
+    Id = wh_json:get_value(<<"ID">>, JObj),
+
+    _Keys = handle_document_change(Db, Type, Id, State),
+    _Keys =/= [] andalso
+        lager:debug("removed ~p keys for ~s/~s/~s", [length(_Keys), Db, Id, Type]).
+
+-spec handle_document_change(ne_binary(), ne_binary(), ne_binary(), state()) ->
+                                    list().
+handle_document_change(Db, <<"database">>, _Id, #state{pointer_tab=PTab}=State) ->
+    MatchSpec = match_db_changed(Db),
+    lists:foldl(fun(Obj, Removed) ->
+                        erase_changed(Obj, Removed, State)
+                end
+               ,[]
+               ,ets:select(PTab, MatchSpec)
+               );
+handle_document_change(Db, Type, Id
+                      ,#state{pointer_tab=PTab}=State
+                      ) ->
+    MatchSpec = match_doc_changed(Db, Type, Id),
+    Objects = ets:select(PTab, MatchSpec),
+
+    lists:foldl(fun(Obj, Removed) ->
+                        erase_changed(Obj, Removed, State)
+                end
+               ,[]
+               ,Objects
+               ).
+
+-spec match_db_changed(ne_binary()) -> ets:match_spec().
+match_db_changed(Db) ->
+    [{#cache_obj{origin = {'db', Db}, _ = '_'}
+     ,[]
+     ,['$_']
+     }
+    ,{#cache_obj{origin = {'db', Db, '_'}, _ = '_'}
+     ,[]
+     ,['$_']
+     }
+    ,{#cache_obj{origin = {'type', <<"database">>, Db}, _ = '_'}
+     ,[]
+     ,['$_']
+     }
+    ].
+
+-spec match_doc_changed(ne_binary(), ne_binary(), ne_binary()) -> ets:match_spec().
+match_doc_changed(Db, Type, Id) ->
+    [{#cache_obj{origin = {'db', Db}, _ = '_'}
+     ,[]
+     ,['$_']
+     }
+    ,{#cache_obj{origin = {'db', Db, Type}, _ = '_'}
+     ,[]
+     ,['$_']
+     }
+    ,{#cache_obj{origin = {'db', Db, Id}, _ = '_'}
+     ,[]
+     ,['$_']
+     }
+    ,{#cache_obj{origin = {'type', Type, Id}, _ = '_'}
+     ,[]
+     ,['$_']
+     }
+    ,{#cache_obj{origin = {'type', Type}, _ = '_'}
+     ,[]
+     ,['$_']
+     }
+    ].
+
+-spec erase_changed(cache_obj(), list(), state()) -> list().
+erase_changed(#cache_obj{key=Key}, Removed, State) ->
+    case lists:member(Key, Removed) of
+        'true' -> Removed;
+        'false' ->
+            lager:debug("removing updated cache object ~-300p", [Key]),
+            'true' = erase_changed(Key, State),
+            [Key | Removed]
+    end.
+
+-spec erase_changed(any(), state()) -> 'true'.
+erase_changed(Key, #state{tab=Tab
+                         ,pointer_tab=PointerTab
+                         ,monitor_tab=MonitorTab
+                         }) ->
+    maybe_exec_erase_callbacks(Tab, Key),
+    maybe_remove_object(Tab, Key),
+    maybe_remove_object(PointerTab, Key),
+    maybe_remove_object(MonitorTab, Key).
