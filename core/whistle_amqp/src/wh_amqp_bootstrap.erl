@@ -158,7 +158,7 @@ get_config() ->
 %%         [Zone] -> get_from_zone(Zone);
 %%         _Else -> get_from_amqp()
 %%     end.
-%% 
+%%
 %% -spec get_from_amqp() -> wh_proplist().
 %% get_from_amqp() ->
 %%     [{'local', wh_config:get('amqp', 'uri', [?DEFAULT_AMQP_URI])}].
