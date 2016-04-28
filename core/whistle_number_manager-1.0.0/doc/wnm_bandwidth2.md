@@ -40,7 +40,7 @@ This document has the following parameters.
 Example:
 ```
 {
-   "_id": "number_manager.bandwidth",
+   "_id": "number_manager.bandwidth2",
    "default": {
        "account_id": "20902288",
        "api_username": "XXXXXX",
@@ -50,7 +50,7 @@ Example:
        "debug": false,
        "sandbox_provisioning": false,
        "enable_provisioning": true,
-       "order_name_prefix": "East coast Kazoo",
+       "order_name_prefix": "East coast Kazoo"
    }
 }
 
