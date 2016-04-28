@@ -35,29 +35,42 @@ gen_load(N, D) ->
     {A1, A2, A3} = Start = os:timestamp(),
     random:seed(A1, A2, A3),
 
-    PidRefs = [spawn_monitor(fun() -> do_load_gen(D) end) || _ <- lists:seq(1, N)],
-    wait_for_refs(Start, cache_data(), PidRefs).
+    {PointerTab, MonitorTab} = gen_listener:call(?KZ_DATA_CACHE, {'tables'}),
+    Tables = [?KZ_DATA_CACHE, PointerTab, MonitorTab],
+    table_status(Tables),
 
-wait_for_refs(Start, MaxMailbox, []) ->
+    PidRefs = [spawn_monitor(fun() -> do_load_gen(D) end) || _ <- lists:seq(1, N)],
+    wait_for_refs(Start
+                 ,cache_data()
+                 ,Tables
+                 ,PidRefs
+                 ).
+
+wait_for_refs(Start, MaxMailbox, Tables, []) ->
     case cache_data() of
         {0, _} ->
-            io:format("finished test after ~pms: ~p~n", [wh_util:elapsed_ms(Start), MaxMailbox]);
+            io:format("finished test after ~pms: ~p~n", [wh_util:elapsed_ms(Start), MaxMailbox]),
+            table_status(Tables);
         _ -> timer:sleep(1000),
-             wait_for_refs(Start, MaxMailbox, [])
+             wait_for_refs(Start, MaxMailbox, Tables, [])
     end;
-wait_for_refs(Start, {M, G}, [{Pid, Ref}|R]=PRs) ->
+wait_for_refs(Start, {M, G}, Tables, [{Pid, Ref}|R]=PRs) ->
     receive
         {'DOWN', Ref, 'process', Pid, _Reason} ->
-            wait_for_refs(Start, {M, G}, R)
+            wait_for_refs(Start, {M, G}, Tables, R)
     after 1000 ->
             case cache_data() of
                 {N, F} when N > M ->
                     io:format("new max message queue size ~p (~p)~n", [N, F]),
-                    wait_for_refs(Start, {N, F}, PRs);
+                    table_status(Tables),
+                    wait_for_refs(Start, {N, F}, Tables, PRs);
                 _ ->
-                    wait_for_refs(Start, {M, G}, PRs)
+                    wait_for_refs(Start, {M, G}, Tables, PRs)
             end
     end.
+
+table_status(Ts) ->
+    io:format("tables: ~p ~p ~p~n", [{T, ets:info(T, 'size')} || T <- Ts]).
 
 do_load_gen(Ds) ->
     AccountId = wh_util:rand_hex_binary(16),
