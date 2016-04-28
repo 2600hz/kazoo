@@ -34,9 +34,9 @@
 -define(KEY_VOICEMAIL, <<"voicemail">>).
 -define(KEY_RETENTION_DURATION, <<"message_retention_duration">>).
 
--define(MODB_LISTING_BY_MAILBOX, <<"vm_messages/listing_by_mailbox">>).
--define(MODB_COUNT_VIEW, <<"vm_messages/count_per_folder">>).
--define(COUNT_BY_VMBOX, <<"vm_messages/count_by_vmbox">>).
+-define(MODB_LISTING_BY_MAILBOX, <<"mailbox_messages/listing_by_mailbox">>).
+-define(MODB_COUNT_VIEW, <<"mailbox_messages/count_per_folder">>).
+-define(COUNT_BY_VMBOX, <<"mailbox_messages/count_by_vmbox">>).
 -define(BOX_MESSAGES_CB_LIST, <<"vmboxes/crossbar_listing">>).
 
 -define(RETENTION_DURATION

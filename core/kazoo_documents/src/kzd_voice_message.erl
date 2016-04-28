@@ -45,7 +45,7 @@
 -define(KEY_META_CALL_ID, <<"call_id">>).
 -define(KEY_META_LENGTH, <<"length">>).
 
--define(PVT_TYPE, <<"vmm">>).
+-define(PVT_TYPE, <<"mailbox_message">>).
 
 -spec new() -> doc().
 new() ->
@@ -66,7 +66,7 @@ new(Db, DocId, AttachmentName, BoxNum, Timezone, Props) ->
     DocProps = props:filter_undefined(
               [{<<"_id">>, DocId}
                ,{?KEY_NAME, Name}
-               ,{?KEY_DESC, <<"voicemail message media">>}
+               ,{?KEY_DESC, <<"mailbox message media">>}
                ,{?KEY_SOURCE_TYPE, ?KEY_VOICEMAIL}
                ,{?KEY_SOURCE_ID, props:get_value(<<"Box-Id">>, Props)}
                ,{?KEY_MEDIA_SOURCE, <<"recording">>}

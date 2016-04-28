@@ -1,17 +1,17 @@
 {
-    "_id": "_design/vm_messages",
+    "_id": "_design/mailbox_messages",
     "language": "javascript",
     "views": {
         "count_by_vmbox": {
-            "map": "function(doc) { if (doc.pvt_type != 'vmm' || doc.pvt_deleted) return; emit(doc.source_id, 1); }",
+            "map": "function(doc) { if (doc.pvt_type != 'mailbox_message' || doc.pvt_deleted) return; emit(doc.source_id, 1); }",
             "reduce": "_count"
         },
         "count_per_folder": {
-            "map": "function(doc) { if (doc.pvt_type != 'vmm' || doc.pvt_deleted) return; emit([doc.source_id, doc.metadata.folder], 1); }",
+            "map": "function(doc) { if (doc.pvt_type != 'mailbox_message' || doc.pvt_deleted) return; emit([doc.source_id, doc.metadata.folder], 1); }",
             "reduce": "_count"
         },
         "listing_by_mailbox": {
-            "map": "function(doc) { if (doc.pvt_type != 'vmm' || doc.pvt_deleted) return; emit(doc.source_id, {'_id': doc._id, 'name': doc.name, 'caller_id_number': doc.metadata.caller_id_number}); }"
+            "map": "function(doc) { if (doc.pvt_type != 'mailbox_message' || doc.pvt_deleted) return; emit(doc.source_id, {'_id': doc._id, 'name': doc.name, 'caller_id_number': doc.metadata.caller_id_number}); }"
         }
     }
 }
