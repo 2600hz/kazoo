@@ -212,7 +212,7 @@ format_error({'ok', 500, _Headers, Body}) ->
     end;
 format_error({'bad_response',{500, _Headers, Body}}) ->
     wh_json:get_first_defined([<<"reason">>, <<"error">>], wh_json:decode(Body), 'unknown_error');
-format_error({'bad_response',{Code, _Headers, Body}}) ->
+format_error({'bad_response',{Code, _Headers, _Body}}) ->
     io_lib:format("response code ~b not expected", [Code]);
 format_error('timeout') -> 'timeout';
 format_error('not_found') -> 'not_found';
