@@ -10,6 +10,7 @@
 -type origin_tuple() :: {'db', ne_binary(), ne_binary()} | %% {db, Database, PvtType or Id}
                         {'type', ne_binary(), ne_binary()} | %% {type, PvtType, Id}
                         {'db', ne_binary()} | %% {db, Database}
+                        {'db', ne_binary(), ne_binary() | '_'} | %% {db, Database, Type}
                         {'database', ne_binary()} | %% {database, Database} added for notify db create/delete
                         {'type', ne_binary()}. %% {type, PvtType}
 -type origin_tuples() :: [origin_tuple()].
