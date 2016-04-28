@@ -30,6 +30,8 @@
 -include("kz_voicemail.hrl").
 -include_lib("whistle/src/wh_json.hrl").
 
+-define(APP_NAME, <<"callflow">>).
+-define(APP_VERSION, <<"4.0.0">> ).
 -define(CF_CONFIG_CAT, <<"callflow">>).
 -define(KEY_VOICEMAIL, <<"voicemail">>).
 -define(KEY_RETENTION_DURATION, <<"message_retention_duration">>).
@@ -50,6 +52,11 @@
         ,?SECONDS_IN_DAY * Duration + ?SECONDS_IN_HOUR
        ).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc Generate database name based on DocId
+%% @end
+%%--------------------------------------------------------------------
 -type db_ret() :: {'ok', wh_json:object() | wh_json:objects()} | {'error', any()}.
 
 -spec get_db(ne_binary()) -> ne_binary().
@@ -104,7 +111,7 @@ new_message(AttachmentName, BoxNum, Timezone, Call, Props) ->
     lager:debug("storing voicemail media recording ~s in doc ~s", [AttachmentName, MediaId]),
     case store_recording(AttachmentName, MediaUrl, whapps_call:exec(Funs, Call)) of
         'ok' ->
-            _ = notify_and_save(Call, MediaId, Length, Props),
+            _ = notify_and_save_meta(Call, MediaId, Length, Props),
             'ok';
         {'error', Call1} ->
             lager:critical(Msg),
@@ -148,8 +155,8 @@ store_recording(AttachmentName, Url, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec notify_and_save(whapps_call:call(), ne_binary(), integer(), wh_proplist()) -> 'ok' | db_ret().
-notify_and_save(Call, MediaId, Length, Props) ->
+-spec notify_and_save_meta(whapps_call:call(), ne_binary(), integer(), wh_proplist()) -> 'ok' | db_ret().
+notify_and_save_meta(Call, MediaId, Length, Props) ->
     BoxId = props:get_value(<<"Box-Id">>, Props),
     NotifyAction = props:get_atom_value(<<"After-Notify-Action">>, Props),
 
@@ -207,7 +214,7 @@ save_meta(Length, Action, Call, MediaId, BoxId) ->
     CIDName = get_caller_id_name(Call),
     Timestamp = new_timestamp(),
 
-    Metadata = kzd_box_message:create_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp),
+    Metadata = kzd_box_message:build_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp),
 
     case Action of
         'delete' ->
@@ -396,7 +403,7 @@ update_folder(Folder, MessageId, AccountId) ->
 -spec apply_folder(ne_binary(), wh_json:object()) -> wh_json:object().
 apply_folder(?VM_FOLDER_DELETED, Doc) ->
     Metadata = kzd_box_message:set_folder_deleted(kzd_box_message:metadata(Doc)),
-    wh_json:set_value(<<"pvt_deleted">>, <<"true">>, kzd_box_message:set_metadata(Metadata, Doc));
+    wh_doc:set_soft_deleted(kzd_box_message:set_metadata(Metadata, Doc), 'true');
 apply_folder(Folder, Doc) ->
     Metadata = kzd_box_message:set_folder(Folder, kzd_box_message:metadata(Doc)),
     kzd_box_message:set_metadata(Metadata, Doc).
@@ -537,7 +544,7 @@ count_modb_messages(AccountId, BoxId, {ANew, ASaved}=AccountDbCounts) ->
         [] ->
             AccountDbCounts;
         Results ->
-            {MNew, MSaved} = kzd_box_message:count_non_deleted_messages(Results),
+            {MNew, MSaved} = kzd_box_message:normalize_count(Results),
             {ANew + MNew, ASaved + MSaved}
     end.
 

@@ -8,8 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(kzd_box_message).
 
--export([new/0, new/6, create_metadata_object/6
-         ,count_non_deleted_messages/1, count_folder/2
+-export([new/0, new/6, build_metadata_object/6
+         ,count_folder/2, normalize_count/1
          ,filter_vmbox_messages/2
          ,type/0
          ,folder/1, folder/2, set_folder/2, set_folder_saved/1, set_folder_deleted/1, filter_folder/2
@@ -47,10 +47,22 @@
 
 -define(PVT_TYPE, <<"mailbox_message">>).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc Generate a mailbox message doc
+%% @end
+%%--------------------------------------------------------------------
 -spec new() -> doc().
 new() ->
     wh_json:from_list([{?PVT_TYPE, type()}]).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc Generate a mailbox message doc with the given properties
+%% expected options in Props:
+%%    [{<<"Box-Id">>, BoxId}]
+%% @end
+%%--------------------------------------------------------------------
 -spec new(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> doc().
 new(Db, DocId, AttachmentName, BoxNum, Timezone, Props) ->
     UtcSeconds = wh_util:current_tstamp(),
@@ -77,7 +89,7 @@ new(Db, DocId, AttachmentName, BoxNum, Timezone, Props) ->
     wh_doc:update_pvt_parameters(wh_json:from_list(DocProps), Db, [{'type', type()}]).
 
 %%--------------------------------------------------------------------
-%% @public
+%% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -96,9 +108,14 @@ message_name(BoxNum, {{Y,M,D},{H,I,S}}, TZ) ->
                     ,wh_util:to_binary(S), TZ
                    ]).
 
--spec create_metadata_object(pos_integer(), whapps_call:call(), ne_binary(), ne_binary(), ne_binary(), gregorian_seconds()) ->
+%%--------------------------------------------------------------------
+%% @public
+%% @doc Build message metadata
+%% @end
+%%--------------------------------------------------------------------
+-spec build_metadata_object(pos_integer(), whapps_call:call(), ne_binary(), ne_binary(), ne_binary(), gregorian_seconds()) ->
                                     doc().
-create_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp) ->
+build_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp) ->
     wh_json:from_list(
         props:filter_undefined(
             [{?KEY_META_TIMESTAMP, Timestamp}
@@ -113,6 +130,11 @@ create_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp) ->
             ])
         ).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc Accessors methods
+%% @end
+%%--------------------------------------------------------------------
 -spec type() -> ne_binary().
 type() -> ?PVT_TYPE.
 
@@ -175,11 +197,11 @@ filter_folder(Messages, Folder) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc Count count_per_folder view result
+%% @doc Count mailbox_messages/count_per_folder view results
 %% @end
 %%--------------------------------------------------------------------
--spec count_non_deleted_messages(wh_json:objects()) -> {non_neg_integer(), non_neg_integer()}.
-count_non_deleted_messages(ViewRes) ->
+-spec normalize_count(wh_json:objects()) -> {non_neg_integer(), non_neg_integer()}.
+normalize_count(ViewRes) ->
     Props = [{wh_json:get_value([<<"key">>, 2], Msg)
               ,wh_json:get_integer_value(<<"value">>, Msg)
              }
@@ -207,9 +229,8 @@ count_folder(Messages, Folder) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc filter messages in vmbox based on media_id
-%% returns a tuple of founded message and a new vmbox message list which
-%% founded message is removed.
+%% @doc Given the media_id of a message, filter the message out of messages in vmbox
+%% and return a tuple of deleted message and messages list
 %% @end
 %%--------------------------------------------------------------------
 -type message_filter_ret() :: {wh_json:object(), wh_json:objects()} | {'error', 'not_found'}.

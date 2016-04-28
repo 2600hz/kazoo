@@ -27,10 +27,11 @@
         ]).
 
 -include("crossbar.hrl").
+-include_lib("kazoo_documents/include/kazoo_documents.hrl").
 
 -define(CB_LIST, <<"vmboxes/crossbar_listing">>).
 
--define(MESSAGES_RESOURCE, <<"messages">>).
+-define(MESSAGES_RESOURCE, ?VM_KEY_MESSAGES).
 -define(BIN_DATA, <<"raw">>).
 -define(MEDIA_MIME_TYPES, [{<<"application">>, <<"octet-stream">>}]).
 
@@ -199,8 +200,8 @@ delete(Context, _DocId) ->
     update_mwi(C).
 
 delete(Context, DocId, ?MESSAGES_RESOURCE) ->
-    Messages = wh_json:get_ne_value(<<"messages">>, cb_context:doc(Context), []),
-    _ = [kz_vm_message:set_folder(<<"deleted">>, M, cb_context:account_id(Context)) || M <- Messages],
+    Messages = wh_json:get_ne_value(?VM_KEY_MESSAGES, cb_context:doc(Context), []),
+    _ = [kz_vm_message:set_folder(?VM_FOLDER_DELETED, M, cb_context:account_id(Context)) || M <- Messages],
     C = load_vmbox(DocId, Context),
     update_mwi(C).
 
@@ -240,7 +241,7 @@ validate_message(Context, _DocId, MediaId, ?HTTP_POST) ->
     {_, C} = load_message(MediaId, 'undefined', Context),
     C;
 validate_message(Context, _DocId, MediaId, ?HTTP_DELETE) ->
-    Update = wh_json:from_list([{<<"folder">>, <<"deleted">>}]),
+    Update = wh_json:from_list([{?VM_KEY_FOLDER, ?VM_FOLDER_DELETED}]),
     {_, C} = load_message(MediaId, Update, Context),
     C.
 
@@ -256,14 +257,14 @@ validate_messages(Context, DocId, ?HTTP_DELETE) ->
     Context1 = load_vmbox(DocId, Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            Messages = wh_json:get_ne_value(<<"messages">>, cb_context:doc(Context1), []),
-            Filter = cb_context:req_value(Context, <<"folder">>, <<"all">>),
+            Messages = wh_json:get_ne_value(?VM_KEY_MESSAGES, cb_context:doc(Context1), []),
+            Filter = cb_context:req_value(Context, ?VM_KEY_FOLDER, <<"all">>),
 
             Deleted = delete_messages(Messages, Filter),
 
             cb_context:update_doc(
                 Context1
-                ,fun(Doc) -> wh_json:set_value(<<"messages">>, Deleted, Doc) end
+                ,fun(Doc) -> wh_json:set_value(?VM_KEY_MESSAGES, Deleted, Doc) end
             );
         _Status -> Context1
     end.
@@ -284,11 +285,11 @@ delete_messages([], _Filter, Deleted) ->
 delete_messages([Mess|Messages], <<"all">> = Filter, Deleted) ->
     delete_messages(Messages, Filter, [Mess|Deleted]);
 delete_messages([Mess|Messages], Filter, Deleted) ->
-    case wh_json:get_value(<<"folder">>, Mess) of
+    case kzd_box_message:folder(Mess) of
         Filter ->
             delete_messages(Messages, Filter, [Mess|Deleted]);
         _ ->
-            delete_messages(Messages, Filter, [Mess|Deleted])
+            delete_messages(Messages, Filter, Deleted)
     end.
 
 %%--------------------------------------------------------------------
@@ -450,14 +451,14 @@ load_message(MediaId, UpdateJObj, Context) ->
                                         {boolean(), cb_context:context()}.
 load_message_metadata(Message, UpdateJObj, Context) ->
     CurrentMetaData = kzd_box_message:metadata(Message, wh_json:new()),
-    CurrentFolder = kzd_box_message:folder(CurrentMetaData, <<"new">>),
+    CurrentFolder = kzd_box_message:folder(CurrentMetaData, ?VM_FOLDER_NEW),
 
     RequestedFolder = cb_context:req_value(Context
-                                           ,<<"folder">>
-                                           ,wh_json:get_value(<<"folder">>, UpdateJObj, CurrentFolder)
+                                           ,?VM_KEY_FOLDER
+                                           ,kzd_box_message:folder(UpdateJObj, CurrentFolder)
                                           ),
     lager:debug("ensuring message is in folder ~s", [RequestedFolder]),
-    MetaData = wh_json:merge_jobjs(wh_json:set_value(<<"folder">>, RequestedFolder, UpdateJObj)
+    MetaData = wh_json:merge_jobjs(kzd_box_message:set_folder(RequestedFolder, UpdateJObj)
                                    ,CurrentMetaData
                                   ),
     {CurrentFolder =/= RequestedFolder
