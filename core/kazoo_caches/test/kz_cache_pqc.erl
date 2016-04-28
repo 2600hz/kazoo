@@ -1,5 +1,5 @@
 %% This test requires a running Kazoo node
-%% invoke with `proper:quickcheck(kz_cache_pqc:correct())` or `parallel_correct`
+%% invoke with `proper:quickcheck(kz_cache_pqc:correct())` or `correct_parallel`
 -module(kz_cache_pqc).
 
 -ifdef(PROPER).
