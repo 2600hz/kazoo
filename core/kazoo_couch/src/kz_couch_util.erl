@@ -52,16 +52,23 @@ retry504s(_Fun, 3) ->
 retry504s(Fun, Cnt) ->
     whistle_stats:increment_counter(<<"bigcouch-request">>),
     case catch Fun() of
-        {'error', {'ok', "504", _, _}} ->
+        {'error', {'ok', 504, _, _}} ->
             whistle_stats:increment_counter(<<"bigcouch-504-error">>),
             timer:sleep(100 * (Cnt+1)),
             retry504s(Fun, Cnt+1);
         {'error', {'ok', ErrCode, _Hdrs, _Body}} ->
             whistle_stats:increment_counter(<<"bigcouch-other-error">>),
             {'error', wh_util:to_integer(ErrCode)};
-        {'error', _Other}=E ->
+        %%% couchbeam doesn't pass 202 as acceptable
+        {'error', {'bad_response',{202, _Headers, Body}}} ->
+            {'ok', wh_json:decode(Body)};
+        {'error', {'bad_response',{_Code, _Headers, _Body}}=Response} ->
             whistle_stats:increment_counter(<<"bigcouch-other-error">>),
-            E;
+            lager:critical("response code ~b not expected : ~p", [_Code, _Body]),
+            {'error', format_error(Response)};
+        {'error', Other} ->
+            whistle_stats:increment_counter(<<"bigcouch-other-error">>),
+            {'error', format_error(Other)};
         {'ok', _Other}=OK -> OK;
         {'EXIT', _E} ->
             ST = erlang:get_stacktrace(),
@@ -196,16 +203,21 @@ format_error({'conn_failed', {'error', 'system_limit'}}) ->
 format_error({'conn_failed',{'error','econnrefused'}}) ->
     lager:warning("connection is being refused"),
     'econnrefused';
-format_error({'ok', "500", _Headers, Body}) ->
+format_error({'ok', 500, _Headers, Body}) ->
     case wh_json:get_value(<<"error">>, wh_json:decode(Body)) of
         <<"timeout">> -> 'server_timeout';
         _Error ->
             lager:warning("server error: ~s", [Body]),
             'server_error'
     end;
+format_error({'bad_response',{500, _Headers, Body}}) ->
+    wh_json:get_first_defined([<<"reason">>, <<"error">>], wh_json:decode(Body), 'unknown_error');
+format_error({'bad_response',{Code, _Headers, _Body}}) ->
+    io_lib:format("response code ~b not expected", [Code]);
 format_error('timeout') -> 'timeout';
 format_error('not_found') -> 'not_found';
 format_error({'error', 'connect_timeout'}) -> 'connect_timeout';
+format_error({'http_error', 500, Msg}) -> Msg;
 format_error({'error', Error}) -> Error;
 format_error(E) ->
     lager:warning("unformatted error: ~p", [E]),

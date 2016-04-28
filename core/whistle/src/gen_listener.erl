@@ -373,7 +373,7 @@ execute(Srv, Function) when is_function(Function) ->
 init_state([Module, Params, ModuleState]) ->
     process_flag('trap_exit', 'true'),
     put('callid', Module),
-    lager:debug("continuing as a gen_listener proc"),
+    lager:debug("continuing as a gen_listener proc : ~s", [Module]),
     init(Module, Params, ModuleState, 'undefined').
 
 -spec init([atom() | wh_proplist(),...]) ->
@@ -383,7 +383,7 @@ init_state([Module, Params, ModuleState]) ->
 init([Module, Params, InitArgs]) ->
     process_flag('trap_exit', 'true'),
     put('callid', Module),
-    lager:debug("starting new gen_listener proc"),
+    lager:debug("starting new gen_listener proc : ~s", [Module]),
     case erlang:function_exported(Module, 'init', 1)
         andalso Module:init(InitArgs)
     of
@@ -1116,8 +1116,8 @@ federated_queue_name(Params) ->
     case wh_util:is_empty(QueueName) of
         'true' -> QueueName;
         'false' ->
-            [Zone] = wh_config:get(wh_config:get_node_section_name(), 'zone'),
-            <<QueueName/binary, "-", (wh_util:to_binary(Zone))/binary>>
+            Zone = wh_config:zone('binary'),
+            <<QueueName/binary, "-", Zone/binary>>
     end.
 
 -spec handle_amqp_channel_available(state()) -> state().

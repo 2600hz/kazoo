@@ -257,7 +257,7 @@ get_value(Category, Node, Keys, Default, JObj) ->
 -spec get_zone_value(config_category(), config_key(), config_key(), Default, wh_json:object()) ->
                          Default | any().
 get_zone_value(Category, _Node, Keys, Default, JObj) ->
-    Zone = wh_util:to_binary(wh_nodes:local_zone()),
+    Zone = wh_config:zone(),
     case wh_json:get_value([Zone | Keys], JObj) of
         'undefined' -> get_default_value(Category, Keys, Default, JObj);
         Else -> Else

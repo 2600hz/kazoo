@@ -1013,7 +1013,7 @@ find_schema(<<_/binary>> = Schema) ->
     case wh_json_schema:load(Schema) of
         {'ok', SchemaJObj} -> SchemaJObj;
         {'error', _E} ->
-            lager:debug("failed to find schema ~s: ~p", [Schema, _E]),
+            lager:error("failed to find schema ~s: ~p", [Schema, _E]),
             'undefined'
     end.
 

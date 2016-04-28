@@ -102,6 +102,7 @@ maybe_cache_failure(DbName, DocId, _Options, {'error', ErrorCode}=Error, ErrorCo
 
 -spec add_to_doc_cache(ne_binary(), ne_binary(), wh_json:object() | data_error()) -> 'ok'.
 add_to_doc_cache(DbName, DocId, CacheValue) ->
+    kz_cache:erase_local(?KZ_DATA_CACHE, {?MODULE, DbName, DocId}),
     CacheProps = [{'origin', {'db', DbName, DocId}}
                   ,{'expires', expires_policy_value(DbName, CacheValue)}
                  ],

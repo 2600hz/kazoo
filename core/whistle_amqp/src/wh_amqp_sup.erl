@@ -22,13 +22,13 @@
 
 -define(SERVER, ?MODULE).
 
--define(CONFIG_SECTION, wh_config:get_node_section_name()).
+-define(CONFIG_SECTION, 'amqp').
 
 -define(POOL_NAME, 'wh_amqp_pool').
 
--define(DEFAULT_POOL_SIZE, 5).
+-define(DEFAULT_POOL_SIZE, 150).
 -define(DEFAULT_POOL_OVERFLOW, 100).
--define(DEFAULT_POOL_THRESHOLD, 1).
+-define(DEFAULT_POOL_THRESHOLD, 5).
 
 %%% Move the section to whistle_apps or ecallmgr for per-vm control
 

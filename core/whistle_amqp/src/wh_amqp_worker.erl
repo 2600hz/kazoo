@@ -113,6 +113,7 @@
                 ,confirms = 'false' :: boolean()
                 ,flow = 'undefined' :: boolean() | 'undefined'
                 ,acc = 'undefined' :: any()
+                ,defer = 'undefined' :: 'undefined' | {any(), {pid(), reference()}}
                }).
 
 %%%===================================================================
@@ -512,12 +513,14 @@ init([Args]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({'request', _ReqProp, _, _, _}, _, #state{flow='false'}=State) ->
+handle_call(Call, From, #state{queue='undefined'}=State)
+  when is_tuple(Call) ->
+    wh_util:put_callid(element(2, Call)),
+    lager:debug("unable to publish message prior to queue creation - defering"),
+    {'noreply', State#state{defer={Call,From}}};
+handle_call(_, _, #state{flow='false'}=State) ->
     lager:debug("flow control is active and server put us in waiting"),
     {'reply', {'error', 'flow_control'}, reset(State)};
-handle_call({'request', _ReqProp, _, _, _}, _, #state{queue='undefined'}=State) ->
-    lager:debug("unable to publish request prior to queue creation"),
-    {'reply', {'error', 'not_ready'}, reset(State)};
 handle_call({'request', ReqProp, PublishFun, VFun, Timeout}
             ,{ClientPid, _}=From
             ,#state{queue=Q}=State
@@ -542,18 +545,11 @@ handle_call({'request', ReqProp, PublishFun, VFun, Timeout}
                 ,req_start_time = os:timestamp()
                 ,callid = CallId
                }
-             ,'hibernate'
             };
         {'error', Err} ->
             lager:debug("failed to send request: ~p", [Err]),
-            {'reply', {'error', Err}, reset(State), 'hibernate'}
+            {'reply', {'error', Err}, reset(State)}
     end;
-handle_call({'call_collect', _ReqProp, _, _, _, _}, _, #state{flow='false'}=State) ->
-    lager:debug("flow control is active and server put us in waiting"),
-    {'reply', {'error', 'flow_control'}, reset(State)};
-handle_call({'call_collect', _ReqProp, _, _, _, _}, _, #state{queue='undefined'}=State) ->
-    lager:debug("unable to publish collect request prior to queue creation"),
-    {'reply', {'error', 'not_ready'}, reset(State)};
 handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout, Acc}
             ,{ClientPid, _}=From
             ,#state{queue=Q}=State
@@ -579,20 +575,11 @@ handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout, Acc}
                 ,req_start_time = os:timestamp()
                 ,callid = CallId
                }
-             ,'hibernate'
             };
         {'error', Err} ->
             lager:debug("failed to send request: ~p", [Err]),
-            {'reply', {'error', Err}, reset(State), 'hibernate'}
+            {'reply', {'error', Err}, reset(State)}
     end;
-handle_call({'publish', ReqProp, _, _, _}, _, #state{flow='false'}=State) ->
-    _ = wh_util:put_callid(ReqProp),
-    lager:debug("flow control is active and server put us in waiting"),
-    {'reply', {'error', 'flow_control'}, reset(State)};
-handle_call({'publish', ReqProp, _}, _From, #state{queue='undefined'}=State) ->
-    _ = wh_util:put_callid(ReqProp),
-    lager:debug("unable to publish message prior to queue creation"),
-    {'reply', {'error', 'not_ready'}, reset(State), 'hibernate'};
 handle_call({'publish', ReqProp, PublishFun}, {Pid, _}=From, #state{confirms=C}=State) ->
     _ = wh_util:put_callid(ReqProp),
     try PublishFun(ReqProp) of
@@ -604,7 +591,7 @@ handle_call({'publish', ReqProp, PublishFun}, {Pid, _}=From, #state{confirms=C}=
                                     ,req_timeout_ref = start_req_timeout(default_timeout())
                                     ,req_start_time = os:timestamp()
                                    }
-             ,'hibernate'};
+            };
         'ok' ->
             lager:debug("published message ~s for ~p", [wh_api:msg_id(ReqProp), Pid]),
             {'reply', 'ok', reset(State)};
@@ -631,7 +618,7 @@ handle_call({'publish', ReqProp, PublishFun}, {Pid, _}=From, #state{confirms=C}=
             {'reply', {'error', R}, reset(State)}
     end;
 handle_call(_Request, _From, State) ->
-    {'reply', {'error', 'not_implemented'}, State, 'hibernate'}.
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -643,8 +630,18 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
-    {'noreply', State#state{queue=Q}, 'hibernate'};
+handle_cast({'gen_listener', {'created_queue', Q}}, #state{defer='undefined'}=State) ->
+    {'noreply', State#state{queue=Q}};
+handle_cast({'gen_listener', {'created_queue', Q}}, #state{defer={Call,From}}=State) ->
+    wh_util:put_callid(element(2, Call)),
+    lager:debug("resuming defered call"),
+    case handle_call(Call, From, State#state{queue=Q}) of
+        {'reply', Reply, NewState} ->
+            gen_server:reply(From, Reply),
+            {'noreply', NewState};
+        {'noreply', _, NewState} ->
+            {'noreply', NewState}
+    end;
 handle_cast({'set_negative_threshold', NegThreshold}, State) ->
     lager:debug("set negative threshold to ~p", [NegThreshold]),
     {'noreply', State#state{neg_resp_threshold = NegThreshold}, 'hibernate'};
