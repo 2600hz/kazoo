@@ -66,11 +66,11 @@ initial_state() ->
           }.
 
 command(#state{}=_Model) ->
-    frequency([{5, {'call', 'kz_cache', 'store_local', [?SERVER, key(), value(), [{'expires', range(4,10)}]]}}
+    frequency([{10, {'call', 'kz_cache', 'store_local', [?SERVER, key(), value(), [{'expires', range(4,10)}]]}}
               ,{1, {'call', 'kz_cache', 'peek_local', [?SERVER, key()]}}
               ,{1, {'call', 'kz_cache', 'fetch_local', [?SERVER, key()]}}
               ,{5, {'call', 'kz_cache', 'erase_local', [?SERVER, key()]}}
-              ,{2, {'call', 'timer', 'sleep', [range(1000,5000)]}}
+              ,{2, {'call', 'timer', 'sleep', [range(1000,15000)]}}
               ]).
 
 next_state(#state{cache=Cache, now_ms=NowMs}=Model, _V
