@@ -92,7 +92,7 @@ verify_no_docs(Docs) ->
     end.
 
 verify_no_doc(Doc) ->
-    case wh_cache:peek_local(?KZ_DATA_CACHE
+    case kz_cache:peek_local(?KZ_DATA_CACHE
                              ,{'couch_util'
                                ,wh_doc:account_db(Doc)
                                ,wh_doc:id(Doc)
