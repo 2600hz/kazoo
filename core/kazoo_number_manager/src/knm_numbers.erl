@@ -16,13 +16,17 @@
          ,release/1, release/2
          ,change_state/1, change_state/2
          ,assigned_to_app/1, assigned_to_app/2
+
          ,free/1
          ,emergency_enabled/1
+
+         ,account_listing/1
         ]).
 
 -include("knm.hrl").
 
--type numbers_return() :: [ {ne_binary(), knm_number_return()} ].
+-type number_return() :: {ne_binary(), knm_number_return()}.
+-type numbers_return() :: [number_return()].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -37,14 +41,7 @@ get(Nums) ->
     get(Nums, knm_number_options:default()).
 
 get(Nums, Options) ->
-    do_get(Nums, Options, []).
-
--spec do_get(ne_binaries(), knm_number_options:options(), numbers_return()) ->
-                    numbers_return().
-do_get([], _Options, Acc) -> Acc;
-do_get([Num|Nums], Options, Acc) ->
-    Return = knm_number:get(Num, Options),
-    do_get(Nums, Options, [{Num, Return}|Acc]).
+    [{Num, knm_number:get(Num, Options)} || Num <- Nums].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -205,101 +202,47 @@ do_assigned_to_app([{Num, App}|Props], Options, Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec free(ne_binary()) -> 'ok'.
-free(AccountId)
-  when is_binary(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case kz_datamgr:open_cache_doc(AccountDb, ?KNM_PHONE_NUMBERS_DOC) of
-        {'ok', JObj} ->
-            free_numbers(AccountId, JObj);
-        {'error', _E} ->
-            lager:debug("failed to open ~s in ~s: ~p"
-                        ,[?KNM_PHONE_NUMBERS_DOC, AccountId, _E]
-                       )
-    end.
-
--spec free_numbers(ne_binary(), wh_json:object()) -> 'ok'.
-free_numbers(AccountId, JObj) ->
-    _ = [maybe_free_number(AccountId, DID)
-         || DID <- wh_json:get_public_keys(JObj)],
+free(Account=?NE_BINARY) ->
+    AccountDb = wh_util:format_account_db(Account),
+    {Numbers, _NumbersData} = lists:unzip(account_listing(AccountDb)),
+    _ = [case Result of
+             {Num, {'ok', _PhoneNumber}} ->
+                 lager:debug("successfully released ~s from ~s", [Num, Account]);
+             {Num, {'error', _R}} ->
+                 lager:error("error when releasing ~s from ~s: ~p", [Num, Account, _R])
+         end
+         || Result <- release(Numbers)],
     'ok'.
-
--spec maybe_free_number(ne_binary(), ne_binary()) -> 'ok'.
-maybe_free_number(AccountId, DID) ->
-    case knm_number:get(DID) of
-        {'error', _E} ->
-            lager:debug("failed to release ~s for account ~s: ~p", [DID, AccountId, _E]);
-        {'ok', Number} ->
-            check_to_free_number(AccountId, Number)
-    end.
-
--spec check_to_free_number(ne_binary(), knm_number:knm_number()) -> 'ok'.
-check_to_free_number(AccountId, Number) ->
-    To = knm_phone_number:assigned_to(knm_number:phone_number(Number)),
-    check_to_free_number(AccountId, Number, To).
-
--spec check_to_free_number(ne_binary(), knm_number:knm_number(), api_binary()) -> 'ok'.
-check_to_free_number(AccountId, Number, AccountId) ->
-    try knm_number_states:to_state(Number, ?NUMBER_STATE_RELEASED) of
-        _Number ->
-            lager:debug("released ~s for account ~s"
-                        ,[knm_phone_number:number(knm_number:phone_number(Number))
-                          ,AccountId
-                         ]
-                       )
-    catch
-        'throw':_R ->
-            lager:debug("failed to release ~s for account ~s: ~p"
-                        ,[knm_phone_number:number(knm_number:phone_number(Number))
-                          ,AccountId
-                          ,_R
-                         ]
-                       )
-    end;
-check_to_free_number(_AccountId, Number, _OtherAccountId) ->
-    lager:debug("not releasing ~s for account ~s; it is assigned to account ~s"
-                ,[knm_phone_number:number(knm_number:phone_number(Number))
-                  ,_AccountId
-                  ,_OtherAccountId
-                 ]
-               ).
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc Find an account's numbers that have emergency services enabled
+%% @doc Find an account's phone numbers that have emergency services enabled
 %%--------------------------------------------------------------------
--spec emergency_enabled(ne_binary()) -> {'ok', knm_number:knm_numbers()} |
-                                        {'error', any()}.
-emergency_enabled(Account = ?NE_BINARY) ->
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case kz_datamgr:open_cache_doc(AccountDb, ?KNM_PHONE_NUMBERS_DOC) of
-        {'ok', JObj} ->
-            Numbers = wh_json:get_keys(wh_json:public_fields(JObj)),
-            Options = [{'assigned_to', wh_util:format_account_id(Account)}
-                      ],
-            PhoneNumbers = fetch(Numbers, Options),
-            EnabledNumbers =
-                [PhoneNumber || PhoneNumber <- PhoneNumbers,
-                                knm_providers:has_emergency_services(PhoneNumber)],
-            {'ok', EnabledNumbers};
-        {'error', _R}=Error ->
-            Error
+-spec emergency_enabled(ne_binary()) -> ne_binaries().
+emergency_enabled(AccountId=?MATCH_ACCOUNT_RAW(_)) ->
+    AccountDb = wh_util:format_account_db(AccountId),
+    Numbers =
+        [Num || {Num, ShortJObj} <- account_listing(AccountDb),
+                AccountId == wh_json:get_value(<<"assigned_to">>, ShortJObj)
+        ],
+    [Num || {Num, {'ok', KNMNumber}} <- ?MODULE:get(Numbers),
+            knm_providers:has_emergency_services(KNMNumber)
+    ].
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc Use a view to list an account's phone numbers & statuses
+%%--------------------------------------------------------------------
+-spec account_listing(ne_binary()) -> [{ne_binary(), wh_json:object()}].
+account_listing(AccountDb = ?MATCH_ACCOUNT_ENCODED(_,_,_)) ->
+    case kz_datamgr:get_results(AccountDb, <<"phone_numbers/crossbar_listing">>) of
+        {'ok', []} ->
+            lager:debug("account ~s holds no numbers", [AccountDb]),
+            [];
+        {'ok', JObjs} ->
+            [{wh_doc:id(JObj)
+             ,wh_json:get_value(<<"value">>, JObj)
+             } || JObj <- JObjs];
+        {'error', _R} ->
+            lager:debug("error listing numbers for ~s: ~p", [AccountDb, _R])
     end.
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
-
--spec fetch(ne_binaries(), knm_number_options:opions()) ->
-                   knm_number:knm_numbers().
-fetch(Numbers, Options) ->
-    lists:foldl(
-      fun (Number, Acc) ->
-              case knm_phone_number:fetch(Number, Options) of
-                  {'ok', PN} ->
-                      [knm_number:set_phone_number(knm_number:new(), PN) | Acc];
-                  _Else -> Acc
-              end
-      end
-      ,[]
-      ,Numbers
-     ).
