@@ -275,7 +275,10 @@ fetch_dataplan(Keys)
 fetch_dataplan(Id) ->
     case kz_datamgr:open_cache_doc(?KZ_DATA_DB, Id, ['cache_failures']) of
         {'ok', JObj} -> JObj;
-        {'error', _} when Id =:= ?SYSTEM_DATAPLAN -> default_dataplan();
+        {'error', _} when Id =:= ?SYSTEM_DATAPLAN ->
+            JObj = default_dataplan(),
+            kz_datamgr:add_to_doc_cache(?KZ_DATA_DB, Id, JObj),
+            JObj;
         {'error', _} -> wh_json:new()
     end.
 
