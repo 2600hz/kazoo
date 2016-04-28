@@ -30,6 +30,7 @@
          ,receive_fax/1, receive_fax_v/1
          ,store_fax/1, store_fax_v/1
          ,execute_extension/1, execute_extension_v/1
+         ,break/1, break_v/1
          ,play/1, play_v/1, playstop/1, playstop_v/1
          ,tts/1, tts_v/1
          ,record/1, record_v/1
@@ -406,6 +407,25 @@ play(JObj) -> play(wh_json:to_proplist(JObj)).
 play_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?PLAY_REQ_HEADERS, ?PLAY_REQ_VALUES, ?PLAY_REQ_TYPES);
 play_v(JObj) -> play_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Moves to the next step in callflow - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec break(api_terms()) -> api_formatter_return().
+break(Prop) when is_list(Prop) ->
+  case break_v(Prop) of
+    'true' -> wh_api:build_message(Prop, ?BREAK_REQ_HEADERS, ?OPTIONAL_BREAK_REQ_HEADERS);
+    'false' -> {'error', "Proplist failed validation for break"}
+  end;
+break(JObj) -> break(wh_json:to_proplist(JObj)).
+
+-spec break_v(api_terms()) -> boolean().
+break_v(Prop) when is_list(Prop) ->
+  wh_api:validate(Prop, ?BREAK_REQ_HEADERS, ?BREAK_REQ_VALUES, ?BREAK_REQ_TYPES);
+break_v(JObj) -> break_v(wh_json:to_proplist(JObj)).
+
 
 %%--------------------------------------------------------------------
 %% @doc Stop media from playing - see wiki

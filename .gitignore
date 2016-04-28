@@ -33,3 +33,6 @@ core/whistle/mime.types
 
 applications/*/priv/archive_data/*
 
+*.iml
+.idea/
+
