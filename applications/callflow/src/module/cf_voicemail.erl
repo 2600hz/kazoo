@@ -553,8 +553,8 @@ main_menu(#mailbox{keys=#keys{hear_new=HearNew
     _ = whapps_call_command:b_flush(Call),
 
     Messages = kz_vm_message:messages(whapps_call:account_id(Call), BoxId),
-    New = kzd_voice_message:count_folder(Messages, ?VM_FOLDER_NEW),
-    Saved = kzd_voice_message:count_folder(Messages, ?VM_FOLDER_SAVED),
+    New = kzd_box_message:count_folder(Messages, ?VM_FOLDER_NEW),
+    Saved = kzd_box_message:count_folder(Messages, ?VM_FOLDER_SAVED),
 
     lager:debug("mailbox has ~p new and ~p saved messages", [New, Saved]),
     NoopId = whapps_call_command:audio_macro(message_count_prompts(New, Saved)
@@ -577,14 +577,14 @@ main_menu(#mailbox{keys=#keys{hear_new=HearNew
             send_mwi_update(Box, Call);
         {'ok', HearNew} ->
             lager:info("playing all messages in folder: ~s", [?VM_FOLDER_NEW]),
-            Folder = kzd_voice_message:filter_folder(Messages, ?VM_FOLDER_NEW),
+            Folder = kzd_box_message:filter_folder(Messages, ?VM_FOLDER_NEW),
             case play_messages(Folder, New, Box, Call) of
                 'ok' -> send_mwi_update(Box, Call);
                 _Else -> main_menu(Box, Call)
             end;
         {'ok', HearSaved} ->
             lager:info("playing all messages in folder: ~s", [?VM_FOLDER_SAVED]),
-            Folder = kzd_voice_message:filter_folder(Messages, ?VM_FOLDER_SAVED),
+            Folder = kzd_box_message:filter_folder(Messages, ?VM_FOLDER_SAVED),
             case play_messages(Folder, Saved, Box, Call) of
                 'ok' -> send_mwi_update(Box, Call);
                 _Else ->  main_menu(Box, Call)
@@ -605,8 +605,8 @@ main_menu(#mailbox{keys=#keys{hear_new=HearNew
     _ = whapps_call_command:b_flush(Call),
 
     Messages = kz_vm_message:messages(whapps_call:account_id(Call), BoxId),
-    New = kzd_voice_message:count_folder(Messages, ?VM_FOLDER_NEW),
-    Saved = kzd_voice_message:count_folder(Messages, ?VM_FOLDER_SAVED),
+    New = kzd_box_message:count_folder(Messages, ?VM_FOLDER_NEW),
+    Saved = kzd_box_message:count_folder(Messages, ?VM_FOLDER_SAVED),
 
     lager:debug("mailbox has ~p new and ~p saved messages", [New, Saved]),
     NoopId = whapps_call_command:audio_macro(message_count_prompts(New, Saved)
@@ -628,14 +628,14 @@ main_menu(#mailbox{keys=#keys{hear_new=HearNew
             send_mwi_update(Box, Call);
         {'ok', HearNew} ->
             lager:info("playing all messages in folder: ~s", [?VM_FOLDER_NEW]),
-            Folder = kzd_voice_message:filter_folder(Messages, ?VM_FOLDER_NEW),
+            Folder = kzd_box_message:filter_folder(Messages, ?VM_FOLDER_NEW),
             case play_messages(Folder, New, Box, Call) of
                 'ok' -> send_mwi_update(Box, Call);
                 _Else -> main_menu(Box, Call)
             end;
         {'ok', HearSaved} ->
             lager:info("playing all messages in folder: ~s", [?VM_FOLDER_SAVED]),
-            Folder = kzd_voice_message:filter_folder(Messages, ?VM_FOLDER_SAVED),
+            Folder = kzd_box_message:filter_folder(Messages, ?VM_FOLDER_SAVED),
             case play_messages(Folder, Saved, Box, Call) of
                 'ok' -> send_mwi_update(Box, Call);
                 _Else ->  main_menu(Box, Call)
@@ -1778,8 +1778,8 @@ send_mwi_update(#mailbox{owner_id=OwnerId
                          ,mailbox_id=BoxId}, Call) ->
     _ = wh_util:spawn(fun cf_util:unsolicited_owner_mwi_update/2, [AccountDb, OwnerId]),
     Messages = kz_vm_message:messages(whapps_call:account_id(Call), BoxId),
-    New = kzd_voice_message:count_folder(Messages, ?VM_FOLDER_NEW),
-    Saved = kzd_voice_message:count_folder(Messages, ?VM_FOLDER_SAVED),
+    New = kzd_box_message:count_folder(Messages, ?VM_FOLDER_NEW),
+    Saved = kzd_box_message:count_folder(Messages, ?VM_FOLDER_SAVED),
     _ = wh_util:spawn(fun send_mwi_update/4, [New, Saved, BoxNumber, Call]),
     lager:debug("sent MWI updates for vmbox ~s in account ~s (~b/~b)", [BoxNumber, whapps_call:account_id(Call), New, Saved]).
 

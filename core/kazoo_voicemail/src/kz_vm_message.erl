@@ -122,7 +122,7 @@ create_message_doc(AttachmentName, BoxNum, Call, Timezone, Props) ->
                 ,"-"
                 ,(wh_util:rand_hex_binary(16))/binary
               >>,
-    Doc = kzd_voice_message:new(Db, MediaId, AttachmentName, BoxNum, Timezone, Props),
+    Doc = kzd_box_message:new(Db, MediaId, AttachmentName, BoxNum, Timezone, Props),
     {'ok', JObj} = kz_datamgr:save_doc(Db, Doc),
     MediaUrl = wh_media_url:store(JObj, AttachmentName),
 
@@ -207,7 +207,7 @@ save_meta(Length, Action, Call, MediaId, BoxId) ->
     CIDName = get_caller_id_name(Call),
     Timestamp = new_timestamp(),
 
-    Metadata = kzd_voice_message:create_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp),
+    Metadata = kzd_box_message:create_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp),
 
     case Action of
         'delete' ->
@@ -227,7 +227,7 @@ save_meta(Length, Action, Call, MediaId, BoxId) ->
 -spec save_metadata(wh_json:object(), ne_binary(), ne_binary()) -> db_ret().
 save_metadata(NewMessage, AccountId, MessageId) ->
     Fun = [fun(JObj) ->
-              kzd_voice_message:set_metadata(NewMessage, JObj)
+              kzd_box_message:set_metadata(NewMessage, JObj)
            end
           ],
 
@@ -255,7 +255,7 @@ message_doc(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _)=DocId) ->
 message_doc(AccountId, MediaId) ->
     case open_accountdb_doc(AccountId, MediaId) of
         {'ok', MediaJObj} ->
-            SourceId = kzd_voice_message:source_id(MediaJObj),
+            SourceId = kzd_box_message:source_id(MediaJObj),
             case fetch_vmbox_messages(AccountId, SourceId) of
                 {'ok', VMBoxMsgs} ->
                     merge_metadata(MediaId, MediaJObj, VMBoxMsgs);
@@ -269,9 +269,9 @@ message_doc(AccountId, MediaId) ->
 
 -spec merge_metadata(ne_binary(), wh_json:object(), wh_json:objects()) -> db_ret().
 merge_metadata(MediaId, MediaJObj, VMBoxMsgs) ->
-    case kzd_voice_message:filter_vmbox_messages(MediaId, VMBoxMsgs) of
+    case kzd_box_message:filter_vmbox_messages(MediaId, VMBoxMsgs) of
         {'error', _}=E -> E;
-        {Metadata, _} -> {'ok', kzd_voice_message:set_metadata(Metadata, MediaJObj)}
+        {Metadata, _} -> {'ok', kzd_box_message:set_metadata(Metadata, MediaJObj)}
     end.
 
 -spec load_vmbox(ne_binary(), ne_binary()) -> db_ret().
@@ -349,7 +349,7 @@ messages(AccountId, BoxId) ->
 message(AccountId, MessageId) ->
     case message_doc(AccountId, MessageId) of
         {'ok', []} -> {'error', 'not_found'};
-        {'ok', Msg} -> {'ok', kzd_voice_message:metadata(Msg)};
+        {'ok', Msg} -> {'ok', kzd_box_message:metadata(Msg)};
         {'error', _}=E ->
             E
     end.
@@ -361,8 +361,8 @@ message(AccountId, MessageId) ->
 %%--------------------------------------------------------------------
 -spec set_folder(ne_binary(), wh_json:object(), ne_binary()) -> any().
 set_folder(Folder, Message, AccountId) ->
-    MessageId = kzd_voice_message:media_id(Message),
-    FromFolder = kzd_voice_message:folder(Message, ?VM_FOLDER_NEW),
+    MessageId = kzd_box_message:media_id(Message),
+    FromFolder = kzd_box_message:folder(Message, ?VM_FOLDER_NEW),
     lager:info("setting folder for message ~s to ~s", [MessageId, Folder]),
     maybe_set_folder(FromFolder, Folder, MessageId, AccountId).
 
@@ -384,7 +384,7 @@ update_folder(Folder, MessageId, AccountId) ->
           ],
 
     case update_message_doc(AccountId, MessageId, Fun) of
-        {'ok', J} -> {'ok', kzd_voice_message:metadata(J)};
+        {'ok', J} -> {'ok', kzd_box_message:metadata(J)};
         {'error', 'conflict'} ->
             lager:info("updating folder resulted in a conflict, trying again"),
             update_folder(Folder, MessageId, AccountId);
@@ -395,11 +395,11 @@ update_folder(Folder, MessageId, AccountId) ->
 
 -spec apply_folder(ne_binary(), wh_json:object()) -> wh_json:object().
 apply_folder(?VM_FOLDER_DELETED, Doc) ->
-    Metadata = kzd_voice_message:set_folder_deleted(kzd_voice_message:metadata(Doc)),
-    wh_json:set_value(<<"pvt_deleted">>, <<"true">>, kzd_voice_message:set_metadata(Metadata, Doc));
+    Metadata = kzd_box_message:set_folder_deleted(kzd_box_message:metadata(Doc)),
+    wh_json:set_value(<<"pvt_deleted">>, <<"true">>, kzd_box_message:set_metadata(Metadata, Doc));
 apply_folder(Folder, Doc) ->
-    Metadata = kzd_voice_message:set_folder(Folder, kzd_voice_message:metadata(Doc)),
-    kzd_voice_message:set_metadata(Metadata, Doc).
+    Metadata = kzd_box_message:set_folder(Folder, kzd_box_message:metadata(Doc)),
+    kzd_box_message:set_metadata(Metadata, Doc).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -446,15 +446,15 @@ move_to_modb(AccountId, DocId, JObj, Funs) ->
               ,(wh_util:rand_hex_binary(16))/binary
            >>,
 
-    TransformFuns = [fun(DestDoc) -> kzd_voice_message:set_metadata(kzd_voice_message:metadata(JObj), DestDoc) end
+    TransformFuns = [fun(DestDoc) -> kzd_box_message:set_metadata(kzd_box_message:metadata(JObj), DestDoc) end
                      ,fun(DestDoc) -> update_media_id(ToId, DestDoc) end
-                     ,fun(DestDoc) -> wh_json:set_value(<<"pvt_type">>, kzd_voice_message:type(), DestDoc) end
+                     ,fun(DestDoc) -> wh_json:set_value(<<"pvt_type">>, kzd_box_message:type(), DestDoc) end
                      | Funs
                     ],
     Options = [{'transform', fun(_, B) -> lists:foldl(fun(F, J) -> F(J) end, B, TransformFuns) end}],
     case kz_datamgr:move_doc(FromDb, FromId, ToDb, ToId, Options) of
         {'ok', _}=M ->
-            BoxId = kzd_voice_message:source_id(JObj),
+            BoxId = kzd_box_message:source_id(JObj),
             _ = update_mailbox(AccountId, BoxId, FromId),
             _ = kz_datamgr:del_doc(get_db(AccountId), FromId),
             M;
@@ -468,7 +468,7 @@ update_mailbox(AccountId, BoxId, OldId) ->
     case open_accountdb_doc(AccountId, BoxId) of
         {'ok', VMBox} ->
             Messages = wh_json:get_value(?VM_KEY_MESSAGES, VMBox, []),
-            {_, NewMessages} = kzd_voice_message:filter_vmbox_messages(OldId, Messages),
+            {_, NewMessages} = kzd_box_message:filter_vmbox_messages(OldId, Messages),
             NewBoxJObj = wh_json:set_value(?VM_KEY_MESSAGES, NewMessages, VMBox),
             case kz_datamgr:save_doc(get_db(AccountId), NewBoxJObj) of
                 {'ok', _}=OK -> OK;
@@ -484,8 +484,8 @@ update_mailbox(AccountId, BoxId, OldId) ->
 
 -spec update_media_id(ne_binary(), wh_json:object()) -> wh_json:object().
 update_media_id(MediaId, JObj) ->
-    Metadata = kzd_voice_message:set_media_id(MediaId, kzd_voice_message:metadata(JObj)),
-    kzd_voice_message:set_metadata(Metadata, JObj).
+    Metadata = kzd_box_message:set_media_id(MediaId, kzd_box_message:metadata(JObj)),
+    kzd_box_message:set_metadata(Metadata, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -517,8 +517,8 @@ count_per_folder(AccountId, BoxId) ->
     % first count messages from vmbox for backward compatibility
     case fetch_vmbox_messages(AccountId, BoxId) of
         {'ok', Msgs} ->
-            New = kzd_voice_message:count_folder(Msgs, [?VM_FOLDER_NEW]),
-            Saved = kzd_voice_message:count_folder(Msgs, [?VM_FOLDER_SAVED]),
+            New = kzd_box_message:count_folder(Msgs, [?VM_FOLDER_NEW]),
+            Saved = kzd_box_message:count_folder(Msgs, [?VM_FOLDER_SAVED]),
             count_modb_messages(AccountId, BoxId, {New, Saved});
         _ -> count_modb_messages(AccountId, BoxId, {0, 0})
     end.
@@ -537,7 +537,7 @@ count_modb_messages(AccountId, BoxId, {ANew, ASaved}=AccountDbCounts) ->
         [] ->
             AccountDbCounts;
         Results ->
-            {MNew, MSaved} = kzd_voice_message:count_non_deleted_messages(Results),
+            {MNew, MSaved} = kzd_box_message:count_non_deleted_messages(Results),
             {ANew + MNew, ASaved + MSaved}
     end.
 
@@ -548,7 +548,7 @@ count_modb_messages(AccountId, BoxId, {ANew, ASaved}=AccountDbCounts) ->
 %%--------------------------------------------------------------------
 -spec media_url(ne_binary(), ne_binary() | wh_json:object()) -> binary().
 media_url(AccountId, ?JSON_WRAPPER(_)=Message) ->
-    media_url(AccountId, kzd_voice_message:media_id(Message));
+    media_url(AccountId, kzd_box_message:media_id(Message));
 media_url(AccountId, MessageId) ->
     case message_doc(AccountId, MessageId) of
         {'ok', Message} ->
@@ -591,7 +591,7 @@ fetch_modb_messages(AccountId, DocId, VMBoxMsg) ->
                ],
     ViewOptsList = get_range_view(AccountId, ViewOpts),
 
-    ModbResults = [kzd_voice_message:metadata(wh_json:get_value(<<"doc">>, Msg))
+    ModbResults = [kzd_box_message:metadata(wh_json:get_value(<<"doc">>, Msg))
                    || Msg <- results_from_modbs(AccountId, ?MODB_LISTING_BY_MAILBOX, ViewOptsList, [])
                       ,Msg =/= []
                   ],
@@ -804,7 +804,7 @@ migrate(AccountId, ?JSON_WRAPPER(_)=Box) ->
     migrate(AccountId, wh_json:get_value(<<"id">>, Box));
 migrate(AccountId, BoxId) ->
     Msgs = messages(AccountId, BoxId),
-    _ = [maybe_migrate_to_modb(AccountId, kzd_voice_message:media_id(M)) || M <- Msgs],
+    _ = [maybe_migrate_to_modb(AccountId, kzd_box_message:media_id(M)) || M <- Msgs],
     'ok'.
 
 -spec maybe_migrate_to_modb(ne_binary(), ne_binary()) -> 'ok'.

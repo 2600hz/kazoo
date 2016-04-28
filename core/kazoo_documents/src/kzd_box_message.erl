@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2016, 2600Hz
 %%% @doc
-%%% Voicemail message document manipulation
+%%% Mailbox message document manipulation
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(kzd_voice_message).
+-module(kzd_box_message).
 
 -export([new/0, new/6, create_metadata_object/6
          ,count_non_deleted_messages/1, count_folder/2

@@ -449,8 +449,8 @@ load_message(MediaId, UpdateJObj, Context) ->
 -spec load_message_metadata(wh_json:object(), wh_json:object(), cb_context:context()) ->
                                         {boolean(), cb_context:context()}.
 load_message_metadata(Message, UpdateJObj, Context) ->
-    CurrentMetaData = kzd_voice_message:metadata(Message, wh_json:new()),
-    CurrentFolder = kzd_voice_message:folder(CurrentMetaData, <<"new">>),
+    CurrentMetaData = kzd_box_message:metadata(Message, wh_json:new()),
+    CurrentFolder = kzd_box_message:folder(CurrentMetaData, <<"new">>),
 
     RequestedFolder = cb_context:req_value(Context
                                            ,<<"folder">>
@@ -462,7 +462,7 @@ load_message_metadata(Message, UpdateJObj, Context) ->
                                   ),
     {CurrentFolder =/= RequestedFolder
      ,cb_context:set_resp_data(
-        cb_context:set_doc(Context, kzd_voice_message:set_metadata(MetaData, Message))
+        cb_context:set_doc(Context, kzd_box_message:set_metadata(MetaData, Message))
         ,MetaData
        )}.
 
@@ -499,7 +499,7 @@ load_message_binary(DocId, MediaId, Context) ->
                                               {boolean(), cb_context:context()}.
 load_attachment_from_message(MediaId, Context, Update, Timezone) ->
     Doc = cb_context:doc(Context),
-    VMMetaJObj = kzd_voice_message:metadata(Doc),
+    VMMetaJObj = kzd_box_message:metadata(Doc),
 
     [AttachmentId] = wh_doc:attachment_names(Doc),
     Filename = generate_media_name(wh_json:get_value(<<"caller_id_number">>, VMMetaJObj)
