@@ -130,7 +130,8 @@
          ,make_dir/1
         ]).
 
--export([calling_app/0, calling_app_version/0]).
+-export([calling_app/0, calling_app/1]).
+-export([calling_app_version/0, calling_app_version/1]).
 -export([get_app/1]).
 
 -include_lib("kernel/include/inet.hrl").
@@ -1530,16 +1531,22 @@ anonymous_caller_id_number() ->
 
 %% for core apps that want to know which app is calling
 -spec calling_app() -> ne_binary().
-calling_app() ->
+calling_app() -> calling_app(3).
+
+-spec calling_app(pos_integer()) -> ne_binary().
+calling_app(Level) ->
     {'current_stacktrace', Modules} = erlang:process_info(self(),current_stacktrace),
-    {Module, _, _, _} = lists:nth(3, Modules),
+    {Module, _, _, _} = lists:nth(Level, Modules),
     {'ok', App} = application:get_application(Module),
     to_binary(App).
 
 -spec calling_app_version() -> {ne_binary(), ne_binary()}.
-calling_app_version() ->
+calling_app_version() -> calling_app_version(3).
+
+-spec calling_app_version(pos_integer()) -> {ne_binary(), ne_binary()}.
+calling_app_version(Level) ->
     {'current_stacktrace', Modules} = erlang:process_info(self(),current_stacktrace),
-    {Module, _, _, _} = lists:nth(3, Modules),
+    {Module, _, _, _} = lists:nth(Level, Modules),
     {'ok', App} = application:get_application(Module),
     {App, _, Version} = get_app(App),
     {to_binary(App), to_binary(Version)}.
