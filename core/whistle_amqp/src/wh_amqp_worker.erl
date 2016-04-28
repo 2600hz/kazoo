@@ -515,7 +515,7 @@ init([Args]) ->
 %%--------------------------------------------------------------------
 handle_call(Call, From, #state{queue='undefined'}=State)
   when is_tuple(Call) ->
-    wh_util:put_callid(element(2, Call)), 
+    wh_util:put_callid(element(2, Call)),
     lager:debug("unable to publish message prior to queue creation - defering"),
     {'noreply', State#state{defer={Call,From}}};
 handle_call(_, _, #state{flow='false'}=State) ->
@@ -633,8 +633,8 @@ handle_call(_Request, _From, State) ->
 handle_cast({'gen_listener', {'created_queue', Q}}, #state{defer='undefined'}=State) ->
     {'noreply', State#state{queue=Q}};
 handle_cast({'gen_listener', {'created_queue', Q}}, #state{defer={Call,From}}=State) ->
-    wh_util:put_callid(element(2, Call)), 
-    lager:debug("resuming defered call"),    
+    wh_util:put_callid(element(2, Call)),
+    lager:debug("resuming defered call"),
     case handle_call(Call, From, State#state{queue=Q}) of
         {'reply', Reply, NewState} ->
             gen_server:reply(From, Reply),
