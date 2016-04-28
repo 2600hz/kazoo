@@ -62,6 +62,8 @@ retry504s(Fun, Cnt) ->
         %%% couchbeam doesn't pass 202 as acceptable
         {'error', {'bad_response',{202, _Headers, Body}}} ->
             {'ok', wh_json:decode(Body)};
+        {'error', {'bad_response',{204, _Headers, _Body}}} ->
+            {'ok', wh_json:new()};
         {'error', {'bad_response',{_Code, _Headers, _Body}}=Response} ->
             whistle_stats:increment_counter(<<"bigcouch-other-error">>),
             lager:critical("response code ~b not expected : ~p", [_Code, _Body]),
