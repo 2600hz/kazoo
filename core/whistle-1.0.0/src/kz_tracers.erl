@@ -29,17 +29,24 @@ add_trace(Pid, CollectFor) ->
 gen_load(N) ->
     Start = os:timestamp(),
     PidRefs = [spawn_monitor(fun() -> do_load_gen(X) end) || X <- lists:seq(1, N)],
-    wait_for_refs(Start, PidRefs).
+    wait_for_refs(Start, {0, 'ok'}, PidRefs).
 
-wait_for_refs(Start, []) ->
-    io:format("finished test after ~pms", [wh_util:elapsed_ms(Start)]);
-wait_for_refs(Start, [{Pid, Ref}|R]=PRs) ->
+wait_for_refs(Start, MaxMailbox, []) ->
+    io:format("finished test after ~pms: ~p~n", [wh_util:elapsed_ms(Start), MaxMailbox]);
+wait_for_refs(Start, {M, G}, [{Pid, Ref}|R]=PRs) ->
     receive
         {'DOWN', Ref, 'process', Pid, _Reason} ->
-            wait_for_refs(Start, R)
+            wait_for_refs(Start, {M, G}, R)
     after 1000 ->
-            cache_status(Start),
-            wait_for_refs(Start, PRs)
+            case cache_data() of
+                [{message_queue_len, N}
+                 ,{current_function, F}
+                ] when N > M ->
+                    cache_status(Start),
+                    wait_for_refs(Start, {N, F}, PRs);
+                _ ->
+                    wait_for_refs(Start, {M, G}, PRs)
+            end
     end.
 
 do_load_gen(1) ->
@@ -96,19 +103,17 @@ perform_ops(Start, AccountDb, Ops) ->
 cache_status(Start) ->
     io:format("~p proc info: ~p~n"
              ,[wh_util:elapsed_ms(Start)
-              ,erlang:process_info(whereis(whistle_couch_cache)
-                                  ,[message_queue_len, current_function]
-                                  )
+              ,cache_data()
               ]
              ).
 
+cache_data() ->
+    erlang:process_info(whereis(whistle_couch_cache)
+                       ,[message_queue_len, current_function]
+                       ).
+
 wait_for_cache(Start) ->
-    case erlang:process_info(whereis(whistle_couch_cache)
-                            ,[message_queue_len
-                             ,current_function
-                             ]
-                            )
-    of
+    case cache_data() of
         [{message_queue_len, 0}
          ,{current_function, _F}
         ] ->
