@@ -845,10 +845,10 @@ b_echo(Call) ->
 %%--------------------------------------------------------------------
 -spec break(whapps_call:call()) -> 'ok'.
 break(Call) ->
-  Command = [{<<"Application-Name">>, <<"hangup">>}
-    ,{<<"Insert-At">>, <<"now">>}
-  ],
-  send_command(Command, Call).
+    Command = [{<<"Application-Name">>, <<"break">>}
+               ,{<<"Insert-At">>, <<"now">>}
+              ],
+    send_command(Command, Call).
 
 %%--------------------------------------------------------------------
 %% @public
