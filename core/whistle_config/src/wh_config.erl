@@ -16,6 +16,8 @@
          ,get_raw_string/2, get_raw_string/3
          ,get_node_section_name/0
          ,set/3, unset/2
+         ,get_section/1
+         ,zone/0, zone/1
         ]).
 
 -include("whistle_config.hrl").
@@ -184,9 +186,18 @@ find_values(Section, Key) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_sections(section(), wh_proplist()) -> wh_proplist().
+get_sections('zone' = Section, Prop) ->
+    Sections = proplists:get_all_values(Section, Prop),
+    format_sections(Sections, 'name', []);
 get_sections(Section, Prop) ->
     Sections = proplists:get_all_values(Section, Prop),
     format_sections(Sections).
+
+-spec get_section(section()) -> wh_proplist().
+get_section(Section) ->
+    {'ok', Prop} = load(),
+    Sections = proplists:get_all_values(Section, Prop),
+    format_sections(Sections, '__no_zone_filter', []).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -195,13 +206,17 @@ get_sections(Section, Prop) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec format_sections(wh_proplist()) -> wh_proplist().
-format_sections(Sections) -> format_sections(Sections, []).
+format_sections(Sections) -> format_sections(Sections, 'zone', []).
 
-format_sections([], Acc) -> local_sections(Acc);
-format_sections([Section | T], Acc) ->
-    case props:get_value('host', Section, 'generic') of
-        'generic' -> format_sections(T, [{'generic', Section} | Acc]);
-        Host -> format_sections(T, [{wh_util:to_binary(Host), Section} | Acc])
+-spec format_sections(wh_proplist(), atom(), wh_proplist()) -> wh_proplist().
+format_sections([], _, Acc) -> local_sections(lists:reverse(Acc));
+format_sections([Section | T], ZoneFilter, Acc) ->
+    case props:get_value('host', Section, 'zone') of
+        'zone' -> case props:get_value(ZoneFilter, Section, 'generic') of
+                      'generic' -> format_sections(T, ZoneFilter, [{'generic', Section} | Acc]);
+                      Zone -> format_sections(T, ZoneFilter, [{{'zone', wh_util:to_atom(Zone, 'true')}, Section} | Acc])
+                  end;
+        Host -> format_sections(T, ZoneFilter, [{wh_util:to_binary(Host), Section} | Acc])
     end.
 
 %%--------------------------------------------------------------------
@@ -213,13 +228,20 @@ format_sections([Section | T], Acc) ->
 -spec local_sections(wh_proplist()) -> wh_proplist().
 local_sections(Sections) -> local_sections(Sections, []).
 
-local_sections([], Acc) -> Acc;
+-spec local_sections(wh_proplist(), wh_proplist()) -> wh_proplist().
+local_sections([], Acc) ->
+    props:get_first_defined(['zones', 'generics'], Acc, []);
 local_sections([Section | T], Acc) ->
     case is_local_section(Section) of
         {'true', _} -> [Section];
-        {'false', 'generic'} -> local_sections(T, [Section | Acc]);
+        {'false', 'generic'} -> local_sections(T, add_section('generics', Section, Acc));
+        {'false', 'zone'} -> local_sections(T, add_section('zones', Section, Acc));
         {'false', _} -> local_sections(T, Acc)
     end.
+
+-spec add_section(atom(), wh_proplist(), wh_proplist()) -> wh_proplist().
+add_section(Group, Value, Props) ->
+    props:set_value(Group, [Value | props:get_value(Group, Props, [])], Props).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -229,15 +251,19 @@ local_sections([Section | T], Acc) ->
 %%--------------------------------------------------------------------
 -spec is_local_section({ne_binary(), any()}) -> {'false', 'generic'} |
                                                 {boolean(), ne_binary()}.
+is_local_section({'generic', _}) ->
+    {'false', 'generic'};
+is_local_section({{'zone', Zone}, _}) ->
+    LocalZone = zone(),
+    case Zone =:= LocalZone of
+        'true' -> {'false', 'zone'};
+        'false' -> {'false', Zone}
+    end;
 is_local_section({SectionHost, _}) ->
     LocalHost = wh_util:to_binary(wh_network_utils:get_hostname()),
-    case SectionHost of
-        'generic' -> {'false', 'generic'};
-        SH ->
-            case SH =:= LocalHost of
-                'true' -> {'true', LocalHost};
-                'false' -> {'false', SectionHost}
-            end
+    case SectionHost =:= LocalHost of
+        'true' -> {'true', LocalHost};
+        'false' -> {'false', SectionHost}
     end.
 
 %%--------------------------------------------------------------------
@@ -250,8 +276,7 @@ is_local_section({SectionHost, _}) ->
 get_values(Key, Sections) -> get_values(Sections, Key, []).
 
 get_values([], _, []) -> [];
-get_values([], _, Acc) ->
-    lists:reverse(Acc);
+get_values([], _, Acc) -> Acc;
 get_values([{_, Values} | T], Key, Acc) ->
     V = proplists:get_all_values(Key, Values),
     get_values(T, Key, lists:append(V, Acc)).
@@ -265,7 +290,28 @@ get_values([{_, Values} | T], Key, Acc) ->
 
 -spec load() -> {'ok', wh_proplist()}.
 load() ->
-    case application:get_env('whistle_config', 'wh_config') of
-        'undefined' -> {'ok', ?SECTION_DEFAULTS};
-        {'ok', _}=X -> X
+    case erlang:get('$_App_Settings') of
+        'undefined' ->
+            case application:get_env('whistle_config', 'wh_config') of
+                'undefined' -> {'ok', ?SECTION_DEFAULTS};
+                {'ok', _}=X -> X
+            end;
+        Settings ->
+            erlang:put('$_App_Settings', 'undefined'),
+            {'ok', Settings}
     end.
+
+-spec zone() -> atom().
+zone() ->
+    case application:get_env('whistle_config', 'zone') of
+        'undefined' ->
+            [Local] = get(wh_config:get_node_section_name(), 'zone', ['local']),
+            Zone = wh_util:to_atom(Local, 'true'),
+            application:set_env('whistle_config', 'zone', Zone),
+            Zone;
+        {'ok', Zone} -> Zone
+    end.
+
+-spec zone(atom()) -> ne_binary() | atom().
+zone('binary') -> wh_util:to_binary(zone());
+zone(_) -> zone().
