@@ -106,6 +106,9 @@ send_cmd(Node, UUID, "call_pickup", Target) ->
 send_cmd(Node, UUID, "hangup", _) ->
     lager:debug("terminate call on node ~s", [Node]),
     freeswitch:api(Node, 'uuid_kill', wh_util:to_list(UUID));
+send_cmd(Node, UUID, "break", _) ->
+    lager:debug("break call on node ~s", [Node]),
+    freeswitch:api(Node, 'uuid_break', wh_util:to_list(UUID));
 send_cmd(Node, _UUID, "audio_level", Args) ->
     lager:debug("execute on node ~s: uuid_audio ~p", [Node, Args]),
     freeswitch:api(Node, 'uuid_audio', wh_util:to_list(iolist_to_binary(Args)));

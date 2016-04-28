@@ -98,6 +98,12 @@ get_fs_app(Node, UUID, JObj, <<"play">>) ->
         'true' -> play(Node, UUID, JObj)
     end;
 
+get_fs_app(_Node, _UUID, JObj, <<"break">>) ->
+    case wapi_dialplan:break_v(JObj) of
+        'false' -> {'error', <<"break failed to execute as JObj did not validate">>};
+        'true' -> {<<"break">>, <<>>}
+    end;
+
 get_fs_app(_Node, _UUID, JObj, <<"playstop">>) ->
     case wapi_dialplan:playstop_v(JObj) of
         'false' -> {'error', <<"playstop failed to execute as JObj did not validate">>};

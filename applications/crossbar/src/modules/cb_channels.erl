@@ -200,6 +200,8 @@ maybe_execute_command(Context, Transferor, <<"transfer">>) ->
     maybe_transfer(Context, Transferor);
 maybe_execute_command(Context, CallId, <<"hangup">>) ->
     maybe_hangup(Context, CallId);
+maybe_execute_command(Context, CallId, <<"break">>) ->
+    maybe_break(Context, CallId);
 maybe_execute_command(Context, CallId, <<"callflow">>) ->
     maybe_callflow(Context, CallId);
 maybe_execute_command(Context, _CallId, _Command) ->
@@ -442,6 +444,17 @@ maybe_hangup(Context, CallId) ->
     lager:debug("attempting to hangup ~s", [CallId]),
     wh_amqp_worker:cast(API, fun wapi_metaflow:publish_req/1),
     crossbar_util:response_202(<<"hangup initiated">>, Context).
+
+-spec maybe_break(cb_context:context(), ne_binary()) -> cb_context:context().
+maybe_break(Context, CallId) ->
+    API = [{<<"Call-ID">>, CallId}
+           ,{<<"Action">>, <<"break">>}
+           ,{<<"Data">>, wh_json:new()}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    lager:debug("attempting to break ~s", [CallId]),
+    wh_amqp_worker:cast(API, fun wapi_metaflow:publish_req/1),
+    crossbar_util:response_202(<<"break initiated">>, Context).
 
 -spec maybe_callflow(cb_context:context(), ne_binary()) -> cb_context:context().
 maybe_callflow(Context, CallId) ->
