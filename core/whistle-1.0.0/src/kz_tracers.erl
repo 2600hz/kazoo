@@ -96,7 +96,6 @@ new_doc(AccountDb, Ref) ->
 do_stuff_to_docs(Start, _AccountDb, []) ->
     wait_for_cache(Start);
 do_stuff_to_docs(Start, AccountDb, Docs) ->
-    cache_status(Start),
     Ops = [{op(), Doc} || Doc <- Docs],
     perform_ops(Start, AccountDb, Ops).
 
@@ -108,13 +107,6 @@ perform_ops(Start, AccountDb, Ops) ->
                                 ,Ops
                                 )
                     ).
-
-cache_status(Start) ->
-    io:format("~p proc info: ~p~n"
-             ,[wh_util:elapsed_ms(Start)
-              ,cache_data()
-              ]
-             ).
 
 cache_data() ->
     erlang:process_info(whereis(whistle_couch_cache)
