@@ -153,18 +153,26 @@ add_brokers([Broker|Brokers], ZoneName) ->
 
 -spec get_config() -> wh_proplist().
 get_config() ->
-    case wh_config:get(wh_config:get_node_section_name(), 'zone') of
-        [Zone] -> get_from_zone(Zone);
-        _Else -> get_from_amqp()
-    end.
+    get_from_zone(wh_config:zone()).
+%%     case wh_config:get(wh_config:get_node_section_name(), 'zone') of
+%%         [Zone] -> get_from_zone(Zone);
+%%         _Else -> get_from_amqp()
+%%     end.
+%% 
+%% -spec get_from_amqp() -> wh_proplist().
+%% get_from_amqp() ->
+%%     [{'local', wh_config:get('amqp', 'uri', [?DEFAULT_AMQP_URI])}].
 
--spec get_from_amqp() -> wh_proplist().
-get_from_amqp() ->
-    [{'local', wh_config:get('amqp', 'uri', [?DEFAULT_AMQP_URI])}].
+-spec get_zones() -> wh_proplist().
+get_zones() ->
+    case wh_config:get_section('zone') of
+        [] -> wh_config:get_section('amqp');
+        Zones -> Zones
+    end.
 
 -spec get_from_zone(atom()) -> wh_proplist().
 get_from_zone(ZoneName) ->
-    Zones = wh_config:get('zone'),
+    Zones = get_zones(),
     Props = dict:to_list(get_from_zone(ZoneName, Zones, dict:new())),
     case props:get_value('local', Props, []) of
         [] -> [{'local', wh_config:get('amqp', 'uri', [?DEFAULT_AMQP_URI])}|Props];
@@ -174,7 +182,7 @@ get_from_zone(ZoneName) ->
 -spec get_from_zone(atom(), wh_proplist(), dict:dict()) -> dict:dict().
 get_from_zone(_, [], Dict) -> Dict;
 get_from_zone(ZoneName, [{_, Zone}|Zones], Dict) ->
-    case props:get_value('name', Zone) of
+    case props:get_first_defined(['name', 'zone'], Zone) of
         'undefined' -> get_from_zone(ZoneName, Zones, Dict);
         ZoneName ->
             get_from_zone(ZoneName, Zones, import_zone('local', Zone, Dict));
@@ -185,6 +193,13 @@ get_from_zone(ZoneName, [{_, Zone}|Zones], Dict) ->
 -spec import_zone(atom(), wh_proplist(), dict:dict()) -> dict:dict().
 import_zone(_, [], Dict) -> Dict;
 import_zone(ZoneName, [{'amqp_uri', URI}|Props], Dict) ->
+    case dict:find(ZoneName, Dict) of
+        'error' ->
+            import_zone(ZoneName, Props, dict:store(ZoneName, [URI], Dict));
+         _ ->
+            import_zone(ZoneName, Props, dict:append(ZoneName, URI, Dict))
+    end;
+import_zone(ZoneName, [{'uri', URI}|Props], Dict) ->
     case dict:find(ZoneName, Dict) of
         'error' ->
             import_zone(ZoneName, Props, dict:store(ZoneName, [URI], Dict));
