@@ -36,10 +36,10 @@ send_hangup_req(CallId) ->
 
 -spec send_break_req(ne_binary()) -> 'ok'.
 send_break_req(CallId) ->
-  API = [{<<"Call-ID">>, CallId}
-    ,{<<"Action">>, <<"break">>}
-    ,{<<"Data">>, wh_json:new()}
-    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-  ],
-  lager:debug("attempting to break ~s", [CallId]),
-  wh_amqp_worker:cast(API, fun wapi_metaflow:publish_req/1).
+    API = [{<<"Call-ID">>, CallId}
+           ,{<<"Action">>, <<"break">>}
+           ,{<<"Data">>, wh_json:new()}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    lager:debug("attempting to break ~s", [CallId]),
+    wh_amqp_worker:cast(API, fun wapi_metaflow:publish_req/1).
