@@ -13,6 +13,7 @@
 
 -export([start_link/0, start_link/1
          ,start_link/2, start_link/3
+         ,stop_local/1
         ]).
 -export([store/2, store/3]).
 -export([peek/1]).
@@ -44,8 +45,27 @@
          ,code_change/3
         ]).
 
--include("../include/wh_types.hrl").
--include("../include/wh_log.hrl").
+-include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_log.hrl").
+
+-type callback_fun() :: fun((any(), any(), 'flush' | 'erase' | 'expire') -> any()).
+-type callback_funs() :: [callback_fun()].
+-type origin_tuple() :: {'db', ne_binary(), ne_binary()} | %% {db, Database, PvtType or Id}
+                        {'type', ne_binary(), ne_binary()} | %% {type, PvtType, Id}
+                        {'db', ne_binary()} | %% {db, Database}
+                        {'database', ne_binary()} | %% {database, Database} added for notify db create/delete
+                        {'type', ne_binary()}. %% {type, PvtType}
+-type origin_tuples() :: [origin_tuple()].
+
+-record(cache_obj, {key :: any()| '_' | '$1'
+                    ,value :: any() | '_' | '$1' | '$2'
+                    ,expires :: wh_timeout() | '_' | '$3'
+                    ,timestamp = wh_util:current_tstamp() :: gregorian_seconds() | '_' | '$4'
+                    ,callback :: callback_fun() | '_' | '$2' | '$3' | '$5'
+                    ,origin :: origin_tuple() | origin_tuples() | '$1' | '_'
+                   }).
+
+-type cache_obj() :: #cache_obj{}.
 
 -define(SERVER, ?MODULE).
 -define(EXPIRES, ?SECONDS_IN_HOUR). %% an hour
@@ -65,24 +85,6 @@
 
 -define(DATABASE_BINDING, [{'type', <<"database">>}]).
 
--type callback_fun() :: fun((_, _, 'flush' | 'erase' | 'expire') -> _).
--type callback_funs() :: [callback_fun()].
--type origin_tuple() :: {'db', ne_binary(), ne_binary()} | %% {db, Database, PvtType or Id}
-                        {'type', ne_binary(), ne_binary()} | %% {type, PvtType, Id}
-                        {'db', ne_binary()} | %% {db, Database}
-                        {'database', ne_binary()} | %% {database, Database} added for notify db create/delete
-                        {'type', ne_binary()}. %% {type, PvtType}
--type origin_tuples() :: [origin_tuple()].
--record(cache_obj, {key :: any()| '_' | '$1'
-                    ,value :: any() | '_' | '$1' | '$2'
-                    ,expires :: wh_timeout() | '_' | '$3'
-                    ,timestamp = wh_util:current_tstamp() :: gregorian_seconds() | '_' | '$4'
-                    ,callback :: callback_fun() | '_' | '$2' | '$3' | '$5'
-                    ,origin :: origin_tuple() | origin_tuples() | '$1' | '_'
-                    ,type = 'normal' :: 'normal' | 'monitor' | 'pointer' | '_'
-                   }).
--type cache_obj() :: #cache_obj{}.
-
 -type store_options() :: [{'origin', origin_tuple() | origin_tuples()} |
                           {'expires', wh_timeout()} |
                           {'callback', 'undefined' | callback_fun()}
@@ -91,6 +93,8 @@
 
 -record(state, {name :: atom()
                 ,tab :: ets:tid()
+                ,pointer_tab :: ets:tid()
+                ,monitor_tab :: ets:tid()
                 ,new_channel_flush = 'false' :: boolean()
                 ,channel_reconnect_flush = 'false' :: boolean()
                 ,new_node_flush = 'false' :: boolean()
@@ -107,11 +111,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 -spec start_link(atom()) -> startlink_ret().
@@ -144,6 +144,11 @@ start_link(Name, ExpirePeriod, Props) ->
                                     ,[Name, ExpirePeriod, Props]
                                    )
     end.
+
+-spec stop_local(pid()) -> 'ok'.
+stop_local(Srv) ->
+    catch gen_server:call(Srv, 'stop'),
+    'ok'.
 
 -spec maybe_add_db_binding(wh_proplists()) -> wh_proplists().
 maybe_add_db_binding([]) -> [];
@@ -206,11 +211,11 @@ store_local(Srv, K, V, Props) when is_atom(Srv) ->
         Pid -> store_local(Pid, K, V, Props)
     end;
 store_local(Srv, K, V, Props) when is_pid(Srv) ->
-    gen_server:cast(Srv, {'store', #cache_obj{key=K
-                                              ,value=V
-                                              ,expires=get_props_expires(Props)
-                                              ,callback=get_props_callback(Props)
-                                              ,origin=get_props_origin(Props)
+    gen_server:call(Srv, {'store', #cache_obj{key=K
+                                             ,value=V
+                                             ,expires=get_props_expires(Props)
+                                             ,callback=get_props_callback(Props)
+                                             ,origin=get_props_origin(Props)
                                              }}).
 
 -spec peek_local(atom(), any()) -> {'ok', any()} |
@@ -227,17 +232,17 @@ peek_local(Srv, K) ->
                                     {'error', 'not_found'}.
 fetch_local(Srv, K) ->
     case peek_local(Srv, K) of
-        {'error', _}=E -> E;
-        {'ok', _Value}=OK ->
+        {'error', 'not_found'}=E -> E;
+        {'ok', Value} ->
             gen_server:cast(Srv, {'update_timestamp', K, wh_util:current_tstamp()}),
-            OK
+            {'ok', Value}
     end.
 
 -spec erase_local(atom(), any()) -> 'ok'.
 erase_local(Srv, K) ->
     case peek_local(Srv, K) of
-        {'ok', _} -> gen_server:cast(Srv, {'erase', K});
-        {'error', 'not_found'} -> 'ok'
+        {'error', 'not_found'} -> 'ok';
+        {'ok', _} -> gen_server:call(Srv, {'erase', K})
     end.
 
 -spec flush_local(atom()) -> 'ok'.
@@ -246,16 +251,18 @@ flush_local(Srv) ->
 
 -spec fetch_keys_local(atom()) -> list().
 fetch_keys_local(Srv) ->
-    MatchSpec = [{#cache_obj{key = '$1', type = 'normal', _ = '_'}
-                  ,[]
-                  ,['$1']
+    MatchSpec = [{#cache_obj{key = '$1'
+                            ,_ = '_'
+                            }
+                 ,[]
+                 ,['$1']
                  }],
     ets:select(Srv, MatchSpec).
 
 -spec filter_erase_local(atom(), fun((any(), any()) -> boolean())) ->
                                 non_neg_integer().
 filter_erase_local(Srv, Pred) when is_function(Pred, 2) ->
-    ets:foldl(fun(#cache_obj{key=K, value=V, type = 'normal'}, Count) ->
+    ets:foldl(fun(#cache_obj{key=K, value=V}, Count) ->
                       case Pred(K, V) of
                           'true' -> erase_local(Srv, K), Count+1;
                           'false' -> Count
@@ -268,58 +275,70 @@ filter_erase_local(Srv, Pred) when is_function(Pred, 2) ->
 
 -spec filter_local(atom(), fun((any(), any()) -> boolean())) -> [{any(), any()}].
 filter_local(Srv, Pred) when is_function(Pred, 2) ->
-    ets:foldl(fun(#cache_obj{key=K, value=V, type = 'normal'}, Acc) ->
+    ets:foldl(fun(#cache_obj{key=K, value=V}, Acc) ->
                       case Pred(K, V) of
                           'true' -> [{K, V}|Acc];
                           'false' -> Acc
                       end;
                  (_, Acc) -> Acc
-              end, [], Srv).
+              end
+             ,[]
+             ,Srv
+             ).
 
 -spec dump_local(text()) -> 'ok'.
 dump_local(Srv) -> dump_local(Srv, 'false').
 
--spec dump_local(text(), text()) -> 'ok'.
+-spec dump_local(text(), text() | boolean()) -> 'ok'.
 dump_local(Srv, ShowValue) when not is_atom(Srv) ->
     dump_local(wh_util:to_atom(Srv), ShowValue);
-dump_local(Srv, ShowValue) when not is_atom(ShowValue) ->
-    dump_local(Srv, wh_util:to_atom(ShowValue));
+dump_local(Srv, ShowValue) when not is_boolean(ShowValue) ->
+    dump_local(Srv, wh_util:to_boolean(ShowValue));
 dump_local(Srv, ShowValue) ->
-    Now = wh_util:current_tstamp(),
-    _ = [begin
-             io:format("Key: ~300p~n", [Key]),
-             case Type =/= 'normal' of
-                 'true' -> io:format("Value: ~300p~n", [Value]);
-                 'false' -> 'ok'
-             end,
-             io:format("Type: ~s~n", [Type]),
-             io:format("Expires: ~30p~n", [Expires]),
-             case is_number(Expires) of
-                 'true' ->
-                     io:format("Remaining: ~30p~n", [(Timestamp
-                                                      + Expires)
-                                                     - Now
-                                                    ]);
-                 'false' -> 'ok'
-             end,
-             io:format("Origin: ~300p~n", [Origin]),
-             io:format("Callback: ~s~n", [Callback =/= 'undefined']),
-             case Type =:= 'normal'  andalso ShowValue of
-                 'true' -> io:format("Value: ~p~n", [Value]);
-                 'false' -> 'ok'
-             end,
-             io:format("~n", [])
-         end
-         || #cache_obj{type=Type
-                       ,key=Key
-                       ,value=Value
-                       ,timestamp=Timestamp
-                       ,expires=Expires
-                       ,origin=Origin
-                       ,callback=Callback
-                      } <- ets:match_object(Srv, #cache_obj{_ = '_'})
+    {PointerTab, MonitorTab} = gen_listener:call(Srv, {'tables'}),
+
+    _ = [dump_table(Tab, ShowValue)
+         || Tab <- [Srv, PointerTab, MonitorTab]
         ],
     'ok'.
+
+-spec dump_table(ets:tid(), boolean()) -> 'ok'.
+dump_table(Tab, ShowValue) ->
+    Now = wh_util:current_tstamp(),
+    io:format("Table ~p~n", [ets:info(Tab, 'name')]),
+    _ = [display_cache_obj(CacheObj, ShowValue, Now)
+         || CacheObj <- ets:match_object(Tab, #cache_obj{_ = '_'})
+        ],
+    'ok'.
+
+-spec display_cache_obj(cache_obj(), boolean(), gregorian_seconds()) -> 'ok'.
+display_cache_obj(#cache_obj{key=Key
+                            ,value=Value
+                            ,timestamp=Timestamp
+                            ,expires=Expires
+                            ,origin=Origin
+                            ,callback=Callback
+                            }
+                 ,ShowValue
+                 ,Now
+                 ) ->
+    io:format("Key: ~300p~n", [Key]),
+    io:format("Expires: ~30p~n", [Expires]),
+    case is_number(Expires) of
+        'true' ->
+            io:format("Remaining: ~30p~n", [(Timestamp
+                                             + Expires)
+                                            - Now
+                                           ]);
+        'false' -> 'ok'
+    end,
+    io:format("Origin: ~300p~n", [Origin]),
+    io:format("Callback: ~s~n", [Callback =/= 'undefined']),
+    case ShowValue of
+        'true' -> io:format("Value: ~p~n", [Value]);
+        'false' -> 'ok'
+    end,
+    io:format("~n", []).
 
 -spec wait_for_key_local(atom(), any()) -> {'ok', any()} |
                                            {'error', 'timeout'}.
@@ -338,63 +357,110 @@ wait_for_key_local(Srv, Key, Timeout) ->
         {_, Ref, _} -> {'error', 'timeout'}
     end.
 
--spec handle_document_change(wh_json:object(), wh_proplist()) -> any().
+-spec handle_document_change(wh_json:object(), wh_proplist()) -> 'ok' | 'false'.
 handle_document_change(JObj, Props) ->
     'true' = wapi_conf:doc_update_v(JObj),
-    Srv = props:get_value('server', Props),
+    %% Change Next line to
+    %% Srv = props:get_value('server', Props),
+    %% for sending the rease to the mailbox
+    %%
+    Srv = Props,
+
     Db = wh_json:get_value(<<"Database">>, JObj),
     Type = wh_json:get_value(<<"Type">>, JObj),
     Id = wh_json:get_value(<<"ID">>, JObj),
 
-    maybe_erase_changed(Srv, Db, Type, Id, props:get_value('table_id', Props)).
+    _Keys = handle_document_change(Srv, Db, Type, Id
+                                   ,props:get_value('pointer_tab', Props)
+                                  ),
+    _Keys =/= [] andalso
+        lager:debug("removed ~p keys for ~s/~s/~s", [length(_Keys), Db, Id, Type]).
 
--spec maybe_erase_changed(pid(), ne_binary(), ne_binary(), ne_binary(), atom()) -> any().
-maybe_erase_changed(Srv, Db, Type, Id, Tab) ->
-    MatchSpec = [{#cache_obj{origin = {'db', Db}, _ = '_'}
-                 ,[]
-                 ,['$_']
-                 }
-                ,{#cache_obj{origin = {'db', Db, Type}, _ = '_'}
-                 ,[]
-                 ,['$_']
-                 }
-                ,{#cache_obj{origin = {'db', Db, Id}, _ = '_'}
-                 ,[]
-                 ,['$_']
-                 }
-                ,{#cache_obj{origin = {'type', Type, Id}, _ = '_'}
-                 ,[]
-                 ,['$_']
-                 }
-                ,{#cache_obj{origin = {'type', Type}, _ = '_'}
-                 ,[]
-                 ,['$_']
-                 }
-                ],
+-spec handle_document_change(pid() | wh_proplist(), ne_binary(), ne_binary(), ne_binary(), ets:tid()) -> list().
+handle_document_change(Srv, Db, <<"database">>, _Id, PointerTab) ->
+    MatchSpec = match_db_changed(Db),
     lists:foldl(fun(Obj, Removed) ->
                         erase_changed(Obj, Removed, Srv)
                 end
                ,[]
-               ,ets:select(Tab, MatchSpec)
+               ,ets:select(PointerTab, MatchSpec)
+               );
+handle_document_change(Srv, Db, Type, Id, PointerTab) ->
+    MatchSpec = match_doc_changed(Db, Type, Id),
+    lists:foldl(fun(Obj, Removed) ->
+                        erase_changed(Obj, Removed, Srv)
+                end
+               ,[]
+               ,ets:select(PointerTab, MatchSpec)
                ).
 
--spec erase_changed(cache_obj(), list(), pid()) -> list().
-erase_changed(#cache_obj{type='pointer', value=Key}, Removed, Srv) ->
+-spec match_db_changed(ne_binary()) -> ets:match_spec().
+match_db_changed(Db) ->
+    [{#cache_obj{origin = {'db', Db}, _ = '_'}
+      ,[]
+      ,['$_']
+     }
+     ,{#cache_obj{origin = {'db', Db, '_'}, _ = '_'}
+       ,[]
+       ,['$_']
+      }
+     ,{#cache_obj{origin = {'type', <<"database">>, Db}, _ = '_'}
+       ,[]
+       ,['$_']
+      }
+    ].
+
+-spec match_doc_changed(ne_binary(), ne_binary(), ne_binary()) -> ets:match_spec().
+match_doc_changed(Db, Type, Id) ->
+    [{#cache_obj{origin = {'db', Db}, _ = '_'}
+      ,[]
+      ,['$_']
+     }
+     ,{#cache_obj{origin = {'db', Db, Type}, _ = '_'}
+       ,[]
+       ,['$_']
+      }
+     ,{#cache_obj{origin = {'db', Db, Id}, _ = '_'}
+       ,[]
+       ,['$_']
+      }
+     ,{#cache_obj{origin = {'type', Type, Id}, _ = '_'}
+       ,[]
+       ,['$_']
+      }
+     ,{#cache_obj{origin = {'type', Type}, _ = '_'}
+       ,[]
+       ,['$_']
+      }
+    ].
+
+-spec erase_changed(cache_obj(), list(), pid() | wh_proplist()) -> list().
+erase_changed(#cache_obj{key=Key}, Removed, Srv) ->
     case lists:member(Key, Removed) of
         'true' -> Removed;
-        'false' ->
-            lager:debug("removing updated cache pointer ~-300p", [Key]),
-            gen_listener:cast(Srv, {'erase', Key}),
-            [Key | Removed]
-    end;
-erase_changed(#cache_obj{type='normal', key=Key}, Removed, Srv) ->
-    case lists:member(Key, Removed) of
-        'true' -> Removed;
-        'false' ->
+        'false' when is_pid(Srv) ->
             lager:debug("removing updated cache object ~-300p", [Key]),
             gen_listener:cast(Srv, {'erase', Key}),
+            [Key | Removed];
+        'false' when is_list(Srv) ->
+            lager:debug("removing updated cache object ~-300p", [Key]),
+            erase_changed(Key, Srv),
             [Key | Removed]
     end.
+
+-spec erase_changed(any(), wh_proplist()) -> 'true'.
+erase_changed(Key, Props) ->
+    Tab = props:get_value('object_tab', Props),
+    PointerTab = props:get_value('pointer_tab', Props),
+    MonitorTab = props:get_value('monitor_tab', Props),
+    erase_changed(Key, Tab, PointerTab, MonitorTab).
+
+-spec erase_changed(any(), ets:tid(), ets:tid(), ets:tid()) -> 'true'.
+erase_changed(Key, Tab, PointerTab, MonitorTab) ->
+    maybe_exec_erase_callbacks(Tab, Key),
+    maybe_remove_object(Tab, Key),
+    maybe_remove_object(PointerTab, Key),
+    maybe_remove_object(MonitorTab, Key).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -415,7 +481,16 @@ init([Name, ExpirePeriod, Props]) ->
     wh_util:put_callid(Name),
     wapi_conf:declare_exchanges(),
 
-    Tab = ets:new(Name, ['set', 'protected', 'named_table', {'keypos', #cache_obj.key}]),
+    Tab = ets:new(Name
+                 ,['set', 'public', 'named_table', {'keypos', #cache_obj.key}]
+                 ),
+    PointerTab = ets:new(pointer_tab(Name)
+                         ,['bag', 'public', {'keypos', #cache_obj.key}]
+                        ),
+    MonitorTab = ets:new(monitor_tab(Name)
+                         ,['bag', 'public', {'keypos', #cache_obj.key}]
+                        ),
+
     _ = case props:get_value('new_node_flush', Props) of
             'true' -> wh_nodes:notify_new();
             _ -> 'ok'
@@ -426,6 +501,8 @@ init([Name, ExpirePeriod, Props]) ->
         end,
     {'ok', #state{name=Name
                   ,tab=Tab
+                  ,pointer_tab=PointerTab
+                  ,monitor_tab=MonitorTab
                   ,new_channel_flush=props:get_value('new_channel_flush', Props)
                   ,channel_reconnect_flush=props:get_value('channel_reconnect_flush', Props)
                   ,new_node_flush=props:get_value('new_node_flush', Props)
@@ -434,6 +511,18 @@ init([Name, ExpirePeriod, Props]) ->
                   ,expire_period_ref=start_expire_period_timer(ExpirePeriod)
                   ,props=Props
                  }}.
+
+-spec pointer_tab(atom()) -> atom().
+pointer_tab(Tab) ->
+    to_tab(Tab, "_pointers").
+
+-spec monitor_tab(atom()) -> atom().
+monitor_tab(Tab) ->
+    to_tab(Tab, "_monitors").
+
+-spec to_tab(atom(), list()) -> atom().
+to_tab(Tab, Suffix) ->
+    wh_util:to_atom(wh_util:to_list(Tab) ++ Suffix, 'true').
 
 %%--------------------------------------------------------------------
 %% @private
@@ -449,7 +538,20 @@ init([Name, ExpirePeriod, Props]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({'wait_for_key', Key, Timeout}, {Pid, _}, #state{tab=Tab}=State) ->
+-spec monitor_response_fun(pid(), reference()) -> fun().
+monitor_response_fun(Pid, Ref) ->
+    fun(_, Value, Reason) -> Pid ! {Reason, Ref, Value} end.
+
+handle_call({'tables'}, _From, #state{pointer_tab=PointerTab
+                                      ,monitor_tab=MonitorTab
+                                     }=State) ->
+    {'reply', {PointerTab, MonitorTab}, State};
+handle_call({'wait_for_key', Key, Timeout}
+           ,{Pid, _}
+           ,#state{tab=Tab
+                  ,monitor_tab=MonitorTab
+                  }=State
+           ) ->
     Ref = make_ref(),
     try ets:lookup_element(Tab, Key, #cache_obj.value) of
         Value ->
@@ -457,16 +559,27 @@ handle_call({'wait_for_key', Key, Timeout}, {Pid, _}, #state{tab=Tab}=State) ->
             {'reply', {'ok', Ref}, State}
     catch
         'error':'badarg' ->
-            Fun = fun(_, V, Reason) ->  Pid ! {Reason, Ref, V} end,
-            CacheObj = #cache_obj{key=Ref
-                                  ,value=Key
-                                  ,expires=Timeout
-                                  ,callback=Fun
-                                  ,type='monitor'
+            CacheObj = #cache_obj{key=Key
+                                 ,value=Ref
+                                 ,expires=Timeout
+                                 ,callback=monitor_response_fun(Pid, Ref)
                                  },
-            ets:insert(Tab, CacheObj),
+            ets:insert(MonitorTab, CacheObj),
             {'reply', {'ok', Ref}, State#state{has_monitors='true'}}
-        end;
+    end;
+handle_call('stop', _From, State) ->
+    lager:debug("recv stop from ~p", [_From]),
+    {'stop', 'normal', State};
+handle_call({'store', CacheObj}, _From, State) ->
+    State1 = handle_store(CacheObj, State),
+    {'reply', 'ok', State1};
+handle_call({'erase', Key}, _From, #state{tab=Tab
+                                         ,pointer_tab=PointerTab
+                                         ,monitor_tab=MonitorTab
+                                         }=State) ->
+    erase_changed(Key, Tab, PointerTab, MonitorTab),
+    {'reply', 'ok', State};
+
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -480,61 +593,96 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'store', #cache_obj{key=Key
-                                 ,value=Value
-                                 ,origin=[Origin|Origins]
-                                }=CacheObj}
-            ,#state{tab=Tab}=State) ->
-    ets:insert(Tab, CacheObj#cache_obj{origin=Origin}),
-    insert_origin_pointers(Origins, CacheObj, Tab),
-    {'noreply', maybe_exec_store_callbacks(State, Key, Value, Tab)};
-handle_cast({'store', #cache_obj{key=Key
-                                 ,value=Value
-                                }=CacheObj}
-            ,#state{tab=Tab}=State) ->
-    ets:insert(Tab, CacheObj),
-    {'noreply', maybe_exec_store_callbacks(State, Key, Value, Tab)};
+handle_cast({'store', CacheObj}, State) ->
+    State1 = handle_store(CacheObj, State),
+    {'noreply', State1};
+
 handle_cast({'update_timestamp', Key, Timestamp}, #state{tab=Tab}=State) ->
+    lager:debug("bumping ~p to ~p", [Key, Timestamp]),
     ets:update_element(Tab, Key, {#cache_obj.timestamp, Timestamp}),
     {'noreply', State};
-handle_cast({'erase', Key}, #state{tab=Tab}=State) ->
-    maybe_exec_erase_callbacks(Key, Tab),
-    _Removed = maybe_remove_object(Key, Tab),
-    log_removed(_Removed, Key),
+
+handle_cast({'erase', Key}, #state{tab=Tab
+                                  ,pointer_tab=PointerTab
+                                  ,monitor_tab=MonitorTab
+                                  }=State) ->
+    erase_changed(Key, Tab, PointerTab, MonitorTab),
     {'noreply', State};
-handle_cast({'flush'}, #state{tab=Tab}=State) ->
+
+handle_cast({'flush'}, #state{tab=Tab
+                             ,pointer_tab=PointerTab
+                             ,monitor_tab=MonitorTab
+                             }=State) ->
     maybe_exec_flush_callbacks(Tab),
+    maybe_exec_flush_callbacks(PointerTab),
+    maybe_exec_flush_callbacks(MonitorTab),
+
     ets:delete_all_objects(Tab),
+    ets:delete_all_objects(PointerTab),
+    ets:delete_all_objects(MonitorTab),
+
     {'noreply', State};
-handle_cast({'wh_amqp_channel', {'new_channel', 'false'}}, #state{name=Name
-                                                                  ,tab=Tab
-                                                                  ,new_channel_flush='true'
-                                                                 }=State) ->
+
+handle_cast({'wh_amqp_channel', {'new_channel', 'false'}}
+           ,#state{name=Name
+                  ,tab=Tab
+                  ,pointer_tab=PointerTab
+                  ,monitor_tab=MonitorTab
+                  ,new_channel_flush='true'
+                  }=State
+           ) ->
     ets:delete_all_objects(Tab),
+    ets:delete_all_objects(PointerTab),
+    ets:delete_all_objects(MonitorTab),
     lager:debug("new channel, flush everything from ~s", [Name]),
     {'noreply', State};
-handle_cast({'wh_amqp_channel', {'new_channel', 'true'}}, #state{name=Name
-                                                                 ,tab=Tab
-                                                                 ,channel_reconnect_flush='true'
-                                                                }=State) ->
+handle_cast({'wh_amqp_channel', {'new_channel', 'true'}}
+           ,#state{name=Name
+                  ,tab=Tab
+                  ,pointer_tab=PointerTab
+                  ,monitor_tab=MonitorTab
+                  ,channel_reconnect_flush='true'
+                  }=State
+           ) ->
     ets:delete_all_objects(Tab),
+    ets:delete_all_objects(PointerTab),
+    ets:delete_all_objects(MonitorTab),
+
     lager:debug("reconnected channel, flush everything from ~s", [Name]),
     {'noreply', State};
-handle_cast({'wh_nodes', {'expire', #wh_node{node=Node}}}, #state{name=Name
-                                                   ,tab=Tab
-                                                   ,expire_node_flush='true'
-                                                  }=State) ->
+handle_cast({'wh_nodes', {'expire', #wh_node{node=Node}}}
+           ,#state{name=Name
+                  ,tab=Tab
+                  ,pointer_tab=PointerTab
+                  ,monitor_tab=MonitorTab
+                  ,expire_node_flush='true'
+                  }=State
+           ) ->
     ets:delete_all_objects(Tab),
+    ets:delete_all_objects(PointerTab),
+    ets:delete_all_objects(MonitorTab),
+
     lager:debug("node ~s has expired, flush everything from ~s", [Node, Name]),
     {'noreply', State};
-handle_cast({'wh_nodes', {'new', #wh_node{node=Node}}}, #state{name=Name
-                                                ,tab=Tab
-                                                ,new_node_flush='true'
-                                               }=State) ->
+handle_cast({'wh_nodes', {'new', #wh_node{node=Node}}}
+           ,#state{name=Name
+                  ,tab=Tab
+                  ,pointer_tab=PointerTab
+                  ,monitor_tab=MonitorTab
+                  ,new_node_flush='true'
+                  }=State) ->
     ets:delete_all_objects(Tab),
+    ets:delete_all_objects(PointerTab),
+    ets:delete_all_objects(MonitorTab),
+
     lager:debug("new node ~s, flush everything from ~s", [Node, Name]),
     {'noreply', State};
-handle_cast(_, State) ->
+handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
+    {'noreply', State};
+handle_cast({'gen_listener',{'is_consuming', _IsConsuming}}, State) ->
+    {'noreply', State};
+handle_cast(_Msg, State) ->
+    lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -551,15 +699,15 @@ handle_info({'timeout', Ref, ?EXPIRE_PERIOD_MSG}
             ,#state{expire_period_ref=Ref
                     ,expire_period=Period
                     ,tab=Tab
+                    ,pointer_tab=PointerTab
+                    ,monitor_tab=MonitorTab
                    }=State
            ) ->
-    case expire_objects(Tab) > 0 of
-        'true' ->
-            {'noreply', State#state{expire_period_ref=start_expire_period_timer(Period)}};
-        'false' ->
-            {'noreply', State#state{expire_period_ref=start_expire_period_timer(Period)}}
-    end;
+    _Expired = expire_objects(Tab, [PointerTab, MonitorTab]),
+    _Expired > 0 andalso lager:debug("expired ~p objects", [_Expired]),
+    {'noreply', State#state{expire_period_ref=start_expire_period_timer(Period)}};
 handle_info(_Info, State) ->
+    lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -570,8 +718,14 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, #state{tab=Tab}=_State) ->
-    {'reply', [{'table_id', Tab}]}.
+handle_event(_JObj, #state{tab=Tab
+                           ,pointer_tab=PointerTab
+                           ,monitor_tab=MonitorTab
+                          }) ->
+    {'reply', [{'object_tab', Tab}
+              ,{'pointer_tab', PointerTab}
+              ,{'monitor_tab', MonitorTab}
+              ]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -585,6 +739,7 @@ handle_event(_JObj, #state{tab=Tab}=_State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{tab=Tab}) ->
+    lager:debug("terminating ~p(~p)", [self(), Tab]),
     ets:delete(Tab).
 
 %%--------------------------------------------------------------------
@@ -619,27 +774,11 @@ get_props_callback(Props) ->
     end.
 
 -spec get_props_origin(wh_proplist()) -> 'undefined' | origin_tuple() | origin_tuples().
-get_props_origin(Props) -> maybe_add_db_origin(props:get_value('origin', Props)).
+get_props_origin(Props) -> props:get_value('origin', Props).
 
--spec maybe_add_db_origin(wh_proplist()) -> 'undefined' | origin_tuple() | origin_tuples().
-maybe_add_db_origin(Props) when is_list(Props) -> maybe_add_db_origin(Props, []);
-maybe_add_db_origin({'db', Db}) ->
-    [{'db',Db}, {'type', <<"database">>, Db}];
-maybe_add_db_origin({'db', Db, Id}) ->
-    [{'db',Db,Id}, {'type', <<"database">>, Db}];
-maybe_add_db_origin(Props) -> Props.
-
--spec maybe_add_db_origin(wh_proplist(), wh_proplist()) -> 'undefined' | origin_tuple() | origin_tuples().
-maybe_add_db_origin([], Acc) -> lists:reverse(props:unique(Acc));
-maybe_add_db_origin([{'db', Db} | Props], Acc) ->
-    maybe_add_db_origin(Props, [{'type', <<"database">>, Db}, {'db',Db} |Acc]);
-maybe_add_db_origin([{'db', Db, Id} | Props], Acc) ->
-    maybe_add_db_origin(Props, [{'type', <<"database">>, Db}, {'db',Db,Id} |Acc]);
-maybe_add_db_origin([P | Props], Acc) ->
-    maybe_add_db_origin(Props, [P |Acc]).
-
--spec expire_objects(atom()) -> non_neg_integer().
-expire_objects(Tab) ->
+-spec expire_objects(ets:tid(), [ets:tid()]) -> non_neg_integer().
+-spec expire_objects(ets:tid(), [ets:tid()], list()) -> non_neg_integer().
+expire_objects(Tab, AuxTables) ->
     Now = wh_util:current_tstamp(),
     FindSpec = [{#cache_obj{key = '$1'
                             ,value = '$2'
@@ -653,63 +792,68 @@ expire_objects(Tab) ->
                   ]
                  ,[{{'$5', '$1', '$2'}}]
                 }],
-    Objects = ets:select(Tab, FindSpec),
-    _ = maybe_exec_expired_callbacks(Objects, Tab),
-    maybe_remove_objects([K || {_, K, _} <- Objects], Tab),
+    expire_objects(Tab, AuxTables, ets:select(Tab, FindSpec)).
+
+expire_objects(_Tab, _AuxTables, []) -> 0;
+expire_objects(Tab, AuxTables, Objects) ->
+    _ = maybe_exec_expired_callbacks(Objects),
+    Keys = [K || {_, K, _} <- Objects],
+    lager:debug("expiring keys ~p", [Keys]),
+    maybe_remove_objects(Tab, Keys),
+    lists:foreach(fun(Aux) -> maybe_remove_objects(Aux, Keys) end, AuxTables),
     length(Objects).
 
--spec maybe_exec_expired_callbacks(list(), atom()) -> 'ok'.
-maybe_exec_expired_callbacks([], _) -> 'ok';
-maybe_exec_expired_callbacks([{Fun, K, V}|Objects], Tab) when is_function(Fun, 3) ->
-    _ = wh_util:spawn(fun() -> Fun(K, V, 'expire') end),
-    maybe_exec_expired_callbacks(Objects, Tab);
-maybe_exec_expired_callbacks([_|Objects], Tab) ->
-    maybe_exec_expired_callbacks(Objects, Tab).
+-spec maybe_exec_expired_callbacks([{callback_fun(), any(), any()}]) -> 'ok'.
+maybe_exec_expired_callbacks(Objects) ->
+    [exec_expired_callback(Fun, K, V)
+     || {Fun, K, V} <- Objects,
+        is_function(Fun, 3)
+    ],
+    'ok'.
 
--spec maybe_remove_objects(list(), atom()) -> 'ok'.
-maybe_remove_objects([], _) -> 'ok';
-maybe_remove_objects(Objects, Tab) ->
-    _Removed = [maybe_remove_object(Object, Tab) || Object <- Objects],
-    lager:debug("removed ~b objects", [lists:sum(_Removed)]).
+-spec exec_expired_callback(callback_fun(), any(), any()) -> 'ok'.
+exec_expired_callback(Fun, K, V) ->
+    _ = wh_util:spawn(Fun, [K, V, 'expire']),
+    'ok'.
 
--spec maybe_remove_object(any(), atom()) -> non_neg_integer().
-maybe_remove_object(#cache_obj{key = Key}, Tab) ->
-    maybe_remove_object(Key, Tab);
-maybe_remove_object(Key, Tab) ->
-    DeleteSpec =
-        [{#cache_obj{value = Key
-                     ,type = 'pointer'
-                     ,_ = '_'
-                    }
-          ,[]
-          ,['true']
-         }
-         ,{#cache_obj{key = Key
-                      ,type = 'normal'
-                      ,_ = '_'
-                     }
-           ,[]
-           ,['true']
-          }],
-    ets:select_delete(Tab, DeleteSpec).
+-spec maybe_remove_objects(ets:tid(), list()) -> 'ok'.
+maybe_remove_objects(Tab, Objects) ->
+    _ = [maybe_remove_object(Tab, Object) || Object <- Objects],
+    'ok'.
 
--spec maybe_exec_erase_callbacks(any(), atom()) -> 'ok'.
-maybe_exec_erase_callbacks(Key, Tab) ->
+-spec maybe_remove_object(ets:tid(), cache_obj() | any()) -> 'true'.
+maybe_remove_object(Tab, #cache_obj{key = Key}) ->
+    maybe_remove_object(Tab, Key);
+maybe_remove_object(Tab, Key) ->
+    ets:delete(Tab, Key).
+
+-spec maybe_exec_erase_callbacks(ets:tid(), cache_obj() | any()) -> 'ok'.
+maybe_exec_erase_callbacks(_Tab
+                          ,#cache_obj{callback=Fun
+                                     ,value=Value
+                                     ,key=Key
+                                     }
+                          ) when is_function(Fun, 3) ->
+    wh_util:spawn(Fun, [Key, Value, 'erase']),
+    'ok';
+maybe_exec_erase_callbacks(_Tab, #cache_obj{}) -> 'ok';
+maybe_exec_erase_callbacks(Tab, Key) ->
     try ets:lookup_element(Tab, Key, #cache_obj.callback) of
         Fun when is_function(Fun, 3) ->
-            wh_util:spawn(fun() -> exec_erase_callback(Key, Tab, Fun) end),
+            wh_util:spawn(fun exec_erase_callbacks/3, [Tab, Key, Fun]),
             'ok';
-        _Callback -> 'ok'
+        _Else -> 'ok'
     catch
         'error':'badarg' -> 'ok'
     end.
 
--spec exec_erase_callback(any(), atom(), callback_fun()) -> any().
-exec_erase_callback(Key, Tab, Fun) ->
+-spec exec_erase_callbacks(ets:tid(), any(), callback_fun()) ->
+                                  any().
+exec_erase_callbacks(Tab, Key, Fun) ->
     Value = ets:lookup_element(Tab, Key, #cache_obj.value),
     Fun(Key, Value, 'erase').
 
--spec maybe_exec_flush_callbacks(atom()) -> 'ok'.
+-spec maybe_exec_flush_callbacks(ets:tid()) -> 'ok'.
 maybe_exec_flush_callbacks(Tab) ->
     MatchSpec =
         [{#cache_obj{key = '$1'
@@ -720,78 +864,100 @@ maybe_exec_flush_callbacks(Tab) ->
           ,[{'=/=', '$3', 'undefined'}]
           ,[{{'$3', '$1', '$2'}}]
          }],
-    _ = [wh_util:spawn(fun() -> Callback(K, V, 'flush') end)
+    _ = [wh_util:spawn(Callback, [K, V, 'flush'])
          || {Callback, K, V} <- ets:select(Tab, MatchSpec),
             is_function(Callback, 3)
         ],
     'ok'.
 
--spec maybe_exec_store_callbacks(state(), any(), any(), atom()) -> state().
-maybe_exec_store_callbacks(#state{has_monitors='false'}=State, _, _, _) -> State;
-maybe_exec_store_callbacks(State, Key, Value, Tab) ->
-    MatchSpec = [{#cache_obj{value = Key
+-spec maybe_exec_store_callbacks(state(), any(), any()) -> state().
+maybe_exec_store_callbacks(#state{has_monitors='false'}=State, _, _) -> State;
+maybe_exec_store_callbacks(#state{monitor_tab=MonitorTab}=State, Key, Value) ->
+    MatchSpec = [{#cache_obj{key = Key
                              ,callback = '$2'
-                             ,type = 'monitor'
                              ,_ = '_'
                             }
                   ,[]
                   ,['$2']
                  }],
-    _ = case ets:select(Tab, MatchSpec) of
+    _ = case ets:select(MonitorTab, MatchSpec) of
             [] -> 'ok';
             Callbacks ->
-                exec_store_callback(Callbacks, Key, Value, Tab)
+                exec_store_callback(Callbacks, Key, Value),
+                delete_monitor_callbacks(MonitorTab, Key)
         end,
-    State#state{has_monitors=has_monitors(Tab)}.
+    State#state{has_monitors=has_monitors(MonitorTab)}.
 
--spec has_monitors(atom()) -> boolean().
-has_monitors(Tab) ->
-    MatchSpec = [{#cache_obj{type = 'monitor'
-                             ,_ = '_'
-                            }
-                  ,[]
-                  ,['true']
-                 }],
-    ets:select_count(Tab, MatchSpec) =/= 0.
+-spec has_monitors(ets:tid()) -> boolean().
+has_monitors(MonitorTab) ->
+    ets:info(MonitorTab, 'size') > 0.
 
--spec exec_store_callback(callback_funs(), any(), any(), atom()) -> 'ok'.
-exec_store_callback([], Key, _, Tab) ->
-    _ = delete_monitor_callbacks(Key, Tab),
-    'ok';
-exec_store_callback([Callback|Callbacks], Key, Value, Tab) ->
-    wh_util:spawn(fun() -> Callback(Key, Value, 'store') end),
-    exec_store_callback(Callbacks, Key, Value, Tab).
+-spec exec_store_callback(callback_funs(), any(), any()) -> 'ok'.
+exec_store_callback(Callbacks, Key, Value) ->
+    Args = [Key, Value, 'store'],
+    _Pids = [wh_util:spawn(Callback, Args) || Callback <- Callbacks],
+    'ok'.
 
--spec delete_monitor_callbacks(any(), atom()) -> non_neg_integer().
-delete_monitor_callbacks(Key, Tab) ->
-    DeleteSpec = [{#cache_obj{value = Key
-                              ,type = 'monitor'
-                              ,_ = '_'
-                             }
-                   ,[]
-                   ,['true']
-                  }
-                 ],
-    ets:select_delete(Tab, DeleteSpec).
+-spec delete_monitor_callbacks(ets:tid(), any()) -> 'true'.
+delete_monitor_callbacks(MonitorTab, Key) ->
+    ets:delete(MonitorTab, Key).
 
 -spec start_expire_period_timer(pos_integer()) -> reference().
 start_expire_period_timer(ExpirePeriod) ->
     erlang:start_timer(ExpirePeriod, self(), ?EXPIRE_PERIOD_MSG).
 
--spec insert_origin_pointers(origin_tuples(), cache_obj(), atom()) -> 'ok'.
-insert_origin_pointers([], _, _) -> 'ok';
-insert_origin_pointers([Origin|Origins], #cache_obj{key=Key}=CacheObj, Tab) ->
-    Ref = make_ref(),
-    ets:insert(Tab, CacheObj#cache_obj{key=Ref
-                                       ,value=Key
-                                       ,origin=Origin
-                                       ,type='pointer'
-                                       ,callback='undefined'
-                                       ,expires='infinity'
-                                      }),
-    insert_origin_pointers(Origins, CacheObj, Tab).
+-spec insert_origin_pointers('undefined' | origin_tuple() | origin_tuples()
+                            ,cache_obj(), ets:tid()) -> 'ok'.
+insert_origin_pointers('undefined', _CacheObj, _PointerTab) -> 'ok';
+insert_origin_pointers(Origin, CacheObj, PointerTab) when is_tuple(Origin) ->
+    insert_origin_pointer(Origin, CacheObj, PointerTab);
+insert_origin_pointers(Origins, CacheObj, PointerTab) when is_list(Origins) ->
+    [insert_origin_pointer(Origin, CacheObj, PointerTab) || Origin <- Origins],
+    'ok'.
 
--spec log_removed(integer(), ne_binary()) -> 'ok'.
-log_removed(0, _Key) -> 'ok';
-log_removed(Removed, Key) ->
-    lager:debug("removed ~b objects for ~p", [Removed, Key]).
+-spec insert_origin_pointer(origin_tuple(), cache_obj(), ets:tid()) -> 'true'.
+insert_origin_pointer(Origin, #cache_obj{key=Key}=CacheObj, PointerTab) ->
+    ets:insert(PointerTab
+              ,CacheObj#cache_obj{key=Key
+                                 ,value=Key
+                                 ,origin=Origin
+                                 ,callback='undefined'
+                                 ,expires='infinity'
+                                 }
+              ).
+
+handle_store(#cache_obj{key=Key
+                       ,value=Value
+                       ,origin=Origins
+                       ,expires=Expires
+                       }=CacheObj
+            ,#state{tab=Tab
+                   ,pointer_tab=PointerTab
+                   }=State
+            ) ->
+    lager:debug("storing ~p for ~ps", [Key, Expires]),
+    'true' = ets:insert(Tab, CacheObj#cache_obj{origin='undefined'}),
+    lager:debug("inserted ~p", [Key]),
+    insert_origin_pointers(Origins, CacheObj, PointerTab),
+    lager:debug("inserted origin pointers for ~p", [Key]),
+    State1 = maybe_exec_store_callbacks(State, Key, Value),
+    lager:debug("exec store callbacks"),
+    maybe_update_expire_period(State1, Expires).
+
+maybe_update_expire_period(#state{expire_period=ExpirePeriod
+                                  ,expire_period_ref=Ref
+                                 }=State
+                          ,Expires)
+  when Expires < ExpirePeriod ->
+    lager:debug("updating expires period to smaller ~p (from ~p)", [Expires, ExpirePeriod]),
+    NewRef = case erlang:read_timer(Ref) of
+                 Left when Left =< Expires -> Ref;
+                 _Left ->
+                     lager:debug("cancelling timer with ~p left", [_Left]),
+                     erlang:cancel_timer(Ref),
+                     start_expire_period_timer(Expires)
+             end,
+    State#state{expire_period=Expires
+               ,expire_period_ref=NewRef
+               };
+maybe_update_expire_period(State, _Expires) -> State.
