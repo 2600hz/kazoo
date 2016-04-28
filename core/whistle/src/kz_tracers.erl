@@ -8,7 +8,7 @@
          ,gen_load/1, gen_load/2
         ]).
 
--include_lib("whistle_couch/src/wh_couch.hrl").
+-include_lib("kazoo_data/src/kz_data.hrl").
 
 add_trace(Pid) ->
     add_trace(Pid, 100*1000).
@@ -62,7 +62,7 @@ wait_for_refs(Start, {M, G}, [{Pid, Ref}|R]=PRs) ->
 do_load_gen(Ds) ->
     AccountId = wh_util:rand_hex_binary(16),
     AccountDb = wh_util:format_account_db(AccountId),
-    'true' = couch_mgr:db_create(AccountDb),
+    'true' = kz_datamgr:db_create(AccountDb),
 
     io:format("building ~p with ~p docs~n", [AccountDb, Ds]),
 
@@ -78,7 +78,7 @@ do_load_gen(Ds) ->
             catch do_stuff_to_docs(Start, AccountDb, Docs)
     end,
 
-    couch_mgr:db_delete(AccountDb),
+    kz_datamgr:db_delete(AccountDb),
     timer:sleep(Ds * 10),
     verify_no_docs(Docs),
     io:format("cleaned up ~s~n", [AccountDb]).
@@ -92,7 +92,7 @@ verify_no_docs(Docs) ->
     end.
 
 verify_no_doc(Doc) ->
-    case wh_cache:peek_local(?WH_COUCH_CACHE
+    case wh_cache:peek_local(?KZ_DATA_CACHE
                              ,{'couch_util'
                                ,wh_doc:account_db(Doc)
                                ,wh_doc:id(Doc)
@@ -116,8 +116,8 @@ new_doc(AccountDb, Ref) ->
                               ])
                                       ,AccountDb
            ),
-    {'ok', Saved} = couch_mgr:save_doc(AccountDb, Doc),
-    {'ok', _Loaded} = couch_mgr:open_cache_doc(AccountDb, wh_doc:id(Saved)),
+    {'ok', Saved} = kz_datamgr:save_doc(AccountDb, Doc),
+    {'ok', _Loaded} = kz_datamgr:open_cache_doc(AccountDb, wh_doc:id(Saved)),
     Saved.
 
 do_stuff_to_docs(Start, _AccountDb, []) ->
@@ -138,7 +138,7 @@ perform_ops(Start, AccountDb, Ops) ->
 cache_data() ->
     [{'message_queue_len', N}
      ,{'current_function', F}
-    ] = erlang:process_info(whereis(?WH_COUCH_CACHE)
+    ] = erlang:process_info(whereis(?KZ_DATA_CACHE)
                            ,['message_queue_len', 'current_function']
                            ),
     {N, F}.
@@ -162,11 +162,11 @@ wait_for_cache(Start, {N, F}) ->
 perform_op({'edit', Doc}, Acc, AccountDb) ->
     Inc = wh_json:get_integer_value(<<"inc">>, Doc, 0),
     Edited = wh_json:set_value(<<"inc">>, Inc+1, Doc),
-    {'ok', Saved} = couch_mgr:save_doc(AccountDb, Edited),
-    {'ok', _Loaded} = couch_mgr:open_cache_doc(AccountDb, wh_doc:id(Saved)),
+    {'ok', Saved} = kz_datamgr:save_doc(AccountDb, Edited),
+    {'ok', _Loaded} = kz_datamgr:open_cache_doc(AccountDb, wh_doc:id(Saved)),
     [Saved | Acc];
 perform_op({'delete', Doc}, Acc, AccountDb) ->
-    couch_mgr:del_doc(AccountDb, Doc),
+    kz_datamgr:del_doc(AccountDb, Doc),
     Acc;
 perform_op({'noop', Doc}, Acc, _AccountDb) ->
     [Doc | Acc].
