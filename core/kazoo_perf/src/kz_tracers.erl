@@ -33,7 +33,7 @@ gen_load(N) ->
     gen_load(N, 1000).
 gen_load(N, D) ->
     {A1, A2, A3} = Start = os:timestamp(),
-    random:seed(A1, A2, A3),
+    _ = random:seed(A1, A2, A3),
 
     {PointerTab, MonitorTab} = gen_listener:call(?KZ_DATA_CACHE, {'tables'}),
     Tables = [?KZ_DATA_CACHE, PointerTab, MonitorTab],
@@ -82,7 +82,7 @@ do_load_gen(Ds) ->
     Docs = [new_doc(AccountDb, Doc) || Doc <- lists:seq(1,Ds)],
 
     {A1, A2, A3} = Start = os:timestamp(),
-    random:seed(A1, A2, A3),
+    _ = random:seed(A1, A2, A3),
 
     case random:uniform(100) of
         42 ->

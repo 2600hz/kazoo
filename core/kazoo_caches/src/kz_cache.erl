@@ -826,7 +826,7 @@ maybe_update_expire_period(#state{expire_period=ExpirePeriod
                  Left when Left =< Expires -> Ref;
                  _Left ->
                      lager:debug("cancelling timer with ~p left", [_Left]),
-                     erlang:cancel_timer(Ref),
+                     _ = erlang:cancel_timer(Ref),
                      start_expire_period_timer(Expires)
              end,
     State#state{expire_period=Expires
