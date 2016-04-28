@@ -6,7 +6,6 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(whistle_media_sup).
-
 -behaviour(supervisor).
 
 -include("whistle_media.hrl").
@@ -19,7 +18,6 @@
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?SUPER('wh_media_cache_sup')
                    ,?WORKER_APP_INIT('whistle_media_init', 20 * ?SECONDS_IN_MINUTE)
-                   ,?CACHE(?CACHE_NAME)
                    ,?WORKER_ARGS('kazoo_etsmgr_srv'
                                  ,[
                                    [{'table_id', wh_media_map:table_id()}

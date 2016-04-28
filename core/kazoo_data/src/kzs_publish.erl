@@ -124,7 +124,7 @@ publish(Action, Db, Doc) ->
 
     Props =
         [{<<"ID">>, Id}
-        ,{<<"Origin-Cache">>, ?KZ_DATA_CACHE}
+        ,{<<"Origin-Cache">>, ?CACHE_NAME}
         ,{<<"Type">>, Type}
         ,{<<"Database">>, Db}
         ,{<<"Rev">>, wh_doc:revision(Doc)}

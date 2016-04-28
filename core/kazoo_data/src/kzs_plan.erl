@@ -19,7 +19,7 @@
 -define(DATAPLAN_FILE_LOCATION, "defaults").
 
 flush() ->
-    kz_cache:flush_local(?KZ_DP_CACHE).
+    kz_cache:flush_local(?KAZOO_DATA_PLAN_CACHE).
 
 plan() ->
     system_dataplan().
@@ -269,13 +269,13 @@ att_post_handler(#{}) -> 'external'.
 
 -spec fetch_dataplans(ne_binaries()) -> map().
 fetch_dataplans([Key | Keys]=KPlan) ->
-    case kz_cache:fetch_local(?KZ_DP_CACHE, {KPlan}) of
+    case kz_cache:fetch_local(?KAZOO_DATA_PLAN_CACHE, {KPlan}) of
         {'ok', Plan} -> Plan;
         {'error', 'not_found'} ->
             lager:debug("creating new dataplan ~p", [KPlan]),
             Plan = fetch_dataplans(Keys, fetch_dataplan(Key)),
             CacheProps = [{'origin', [{'db', ?KZ_DATA_DB, K } || K <- Keys]}],
-            kz_cache:store_local(?KZ_DP_CACHE, {KPlan}, Plan, CacheProps),
+            kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, {KPlan}, Plan, CacheProps),
             Plan
     end.
 
