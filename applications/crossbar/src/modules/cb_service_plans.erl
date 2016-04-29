@@ -141,6 +141,7 @@ validate(Context, ?OVERRIDE) ->
             crossbar_doc:load(
                 cb_context:account_id(Context)
                 ,cb_context:set_account_db(Context, ?WH_SERVICES_DB)
+                ,?TYPE_CHECK_OPTION(kzd_services:type())
             );
         'false' -> cb_context:add_system_error('forbidden', Context)
     end;
@@ -151,7 +152,7 @@ validate(Context, ?AVAILABLE, PlanId) ->
     AccountId = cb_context:account_id(Context),
     ResellerId = wh_services:find_reseller_id(AccountId),
     ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
-    crossbar_doc:load(PlanId, cb_context:set_account_db(Context, ResellerDb)).
+    crossbar_doc:load(PlanId, cb_context:set_account_db(Context, ResellerDb), ?TYPE_CHECK_OPTION(<<"service_plan">>)).
 
 -spec validate_service_plan(cb_context:context(), http_method()) -> cb_context:context().
 -spec validate_service_plan(cb_context:context(), path_token(), http_method()) -> cb_context:context().
@@ -420,28 +421,4 @@ check_plan_ids(Context, ResellerId, PlanIds) ->
                            cb_context:context().
 check_plan_id(Context, PlanId, ResellerId) ->
     ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
-    Context1 = crossbar_doc:load(PlanId, cb_context:set_account_db(Context, ResellerDb)),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            is_service_plan(Context1, PlanId, cb_context:doc(Context1));
-        _Status -> Context1
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec is_service_plan(cb_context:context(), path_token(), wh_json:object()) ->
-                             cb_context:context().
-is_service_plan(Context, PlanId, JObj) ->
-    case wh_doc:type(JObj) =:= <<"service_plan">> of
-        'true' -> cb_context:set_resp_status(Context, 'success');
-        'false' ->
-            cb_context:add_system_error(
-              'bad_identifier'
-              ,wh_json:from_list([{<<"cause">>, PlanId}])
-              ,Context
-             )
-    end.
+    crossbar_doc:load(PlanId, cb_context:set_account_db(Context, ResellerDb), ?TYPE_CHECK_OPTION(<<"service_plan">>)).

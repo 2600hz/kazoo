@@ -11,11 +11,11 @@
 
 -export([load/2, load/3
          ,load_from_file/2
-         ,load_merge/2, load_merge/3
+         ,load_merge/2, load_merge/3, load_merge/4
          ,merge/3
          ,patch_and_validate/3
          ,load_view/3, load_view/4, load_view/5, load_view/6
-         ,load_attachment/3, load_docs/2
+         ,load_attachment/3, load_attachment/4, load_docs/2
          ,save/1, save/2
          ,delete/1, delete/2
          ,save_attachment/4, save_attachment/5
@@ -141,16 +141,18 @@ load(DocId, Context, Options) ->
     load(DocId, Context, Options, cb_context:resp_status(Context)).
 
 load(_DocId, Context, _Options, 'error') -> Context;
-load(DocId, Context, Opts, _RespStatus) when is_binary(DocId) ->
-    OpenFun = case props:get_is_true('use_cache', Opts, 'true') of
-                  'true' ->  fun kz_datamgr:open_cache_doc/3;
-                  'false' -> fun kz_datamgr:open_doc/3
-              end,
-    case OpenFun(cb_context:account_db(Context), DocId, Opts) of
+load(DocId, Context, Options, _RespStatus) when is_binary(DocId) ->
+    OpenFun = get_open_function(Options),
+    case OpenFun(cb_context:account_db(Context), DocId, Options) of
         {'error', Error} ->
             handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', JObj} ->
-            handle_successful_load(Context, JObj)
+            case check_document_type(DocId, Context, JObj, Options) of
+                'true' -> handle_successful_load(Context, JObj);
+                'false' ->
+                    ErrorCause = wh_json:from_list([{<<"cause">>, DocId}]),
+                    cb_context:add_system_error('bad_identifier', ErrorCause, Context)
+            end
     end;
 load([], Context, _Options, _RespStatus) ->
     cb_context:add_system_error('bad_identifier',  Context);
@@ -160,10 +162,77 @@ load([_|_]=IDs, Context, Opts, _RespStatus) ->
         {'error', Error} -> handle_couch_mgr_errors(Error, IDs, Context);
         {'ok', JObjs} ->
             Docs = extract_included_docs(JObjs),
-            cb_context:store(handle_couch_mgr_success(Docs, Context)
-                             ,'db_doc'
-                             ,Docs
-                            )
+            case check_document_type(IDs, Context, Docs, Opts) of
+                'true' ->
+                    cb_context:store(handle_couch_mgr_success(Docs, Context), 'db_doc', Docs);
+                'false' ->
+                    ErrorCause = wh_json:from_list([{<<"cause">>, IDs}]),
+                    cb_context:add_system_error('bad_identifier', ErrorCause, Context)
+            end
+    end.
+
+-spec get_open_function(wh_proplist()) -> function().
+get_open_function(Options) ->
+    case props:get_is_true('use_cache', Options, 'true') of
+        'true' ->  fun kz_datamgr:open_cache_doc/3;
+        'false' -> fun kz_datamgr:open_doc/3
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Returns 'true' or 'false' if the requested document type is matched
+%% against the actual document type or the name of the last resource
+%% that request it. It first checks expected type is matched with document
+%% type, if it fails it checks document type with the name of the
+%% last resource. If the document doesn't have a `pvt_type`
+%% property or the resource requested that expected type to be `any`,
+%% it will return `true`.
+%% @end
+%%--------------------------------------------------------------------
+-spec check_document_type(ne_binary() | ne_binaries(), cb_context:context(), wh_json:object(), wh_proplist()) ->
+                                  boolean().
+check_document_type(DocId, Context, JObj, Options) when is_binary(DocId) ->
+    JObjType = wh_doc:type(JObj),
+    ExpectedType = props:get_value(?OPTION_EXPECTED_TYPE, Options),
+    [{Noun, _}| _] = cb_context:req_nouns(Context),
+    ReqType = normalize_requested_resource_name(Noun),
+    document_type_match(JObjType, ExpectedType, ReqType);
+check_document_type([], _Context, _JObjs, _Options) ->
+    'true';
+check_document_type([DocId|DocIds], Context, [JObj|JObjs], Options) ->
+    case check_document_type(DocId, Context, JObj, Options) of
+        'true' -> check_document_type(DocIds, Context, JObjs, Options);
+        'false' -> 'false'
+    end.
+
+-spec document_type_match(api_binary(), api_binary(), ne_binary()) -> boolean().
+document_type_match('undefined', _ExpectedType, _ReqType) ->
+    lager:debug("document doesn't have type, requested type is ~p", [_ReqType]),
+    'true';
+document_type_match(_JObjType, 'any', _) -> 'true';
+document_type_match(ExpectedType, ExpectedType, _) -> 'true';
+document_type_match(ReqType, _, ReqType) ->
+    lager:debug("expected type is not specified, checking against requested type ~p", [ReqType]),
+    'true';
+document_type_match(_JObjType, _ExpectedType, _ReqType) ->
+    lager:warning("the document type ~s does not match the expected type ~s nor the requested type ~s"
+              ,[_JObjType, _ExpectedType, _ReqType]),
+    'false'.
+
+-spec normalize_requested_resource_name(ne_binary()) -> ne_binary().
+normalize_requested_resource_name(Name) ->
+    case props:get_value(Name, ?SPECIAL_EXPECTED_TYPE) of
+        'undefined' -> depluralize_resource_name(Name);
+        Special -> Special
+    end.
+
+-spec depluralize_resource_name(ne_binary()) -> ne_binary().
+depluralize_resource_name(Name) ->
+    Size = byte_size(Name) - 1,
+    case Name of
+        <<Bin:Size/binary, "s">> -> Bin;
+        Bin -> Bin
     end.
 
 -spec handle_successful_load(cb_context:context(), wh_json:object()) -> cb_context:context().
@@ -213,26 +282,31 @@ load_from_file(Db, File) ->
 %%--------------------------------------------------------------------
 -spec load_merge(ne_binary(), cb_context:context()) ->
                         cb_context:context().
--spec load_merge(ne_binary(), wh_json:object(), cb_context:context()) ->
+-spec load_merge(ne_binary(), cb_context:context(), wh_proplist()) ->
                         cb_context:context().
--spec load_merge(ne_binary(), wh_json:object(), cb_context:context(), api_object()) ->
+-spec load_merge(ne_binary(), wh_json:object(), cb_context:context(), wh_proplist()) ->
+                        cb_context:context().
+-spec load_merge(ne_binary(), wh_json:object(), cb_context:context(), wh_proplist(), api_object()) ->
                         cb_context:context().
 
 load_merge(DocId, Context) ->
-    load_merge(DocId, cb_context:doc(Context), Context).
+    load_merge(DocId, cb_context:doc(Context), Context, []).
 
-load_merge(DocId, DataJObj, Context) ->
-    load_merge(DocId, DataJObj, Context, cb_context:load_merge_bypass(Context)).
+load_merge(DocId, Context, Options) ->
+    load_merge(DocId, cb_context:doc(Context), Context, Options).
 
-load_merge(DocId, DataJObj, Context, 'undefined') ->
-    Context1 = load(DocId, Context),
+load_merge(DocId, DataJObj, Context, Options) ->
+    load_merge(DocId, DataJObj, Context, Options, cb_context:load_merge_bypass(Context)).
+
+load_merge(DocId, DataJObj, Context, Options, 'undefined') ->
+    Context1 = load(DocId, Context, Options),
     case cb_context:resp_status(Context1) of
         'success' ->
             lager:debug("loaded doc ~s(~s), merging", [DocId, wh_doc:revision(cb_context:doc(Context1))]),
             merge(DataJObj, cb_context:doc(Context1), Context1);
         _Status -> Context1
     end;
-load_merge(_DocId, _DataJObj, Context, BypassJObj) ->
+load_merge(_DocId, _DataJObj, Context, _Options, BypassJObj) ->
     handle_couch_mgr_success(BypassJObj, Context).
 
 -spec merge(wh_json:object(), wh_json:object(), cb_context:context()) ->
@@ -246,7 +320,7 @@ merge(DataJObj, JObj, Context) ->
 -spec patch_and_validate(ne_binary(), cb_context:context(), validate_fun()) ->
                                 cb_context:context().
 patch_and_validate(Id, Context, ValidateFun) ->
-    Context1 = ?MODULE:load(Id, Context),
+    Context1 = ?MODULE:load(Id, Context, ?TYPE_CHECK_OPTION_ANY),
     Context2 = case cb_context:resp_status(Context1) of
                    'success' ->
                        PubJObj = wh_doc:public_fields(cb_context:req_data(Context)),
@@ -461,15 +535,15 @@ load_docs(Context, Filter) when is_function(Filter, 2) ->
 %%--------------------------------------------------------------------
 -spec load_attachment(kazoo_data:docid() | wh_json:object(), ne_binary(), cb_context:context()) ->
                              cb_context:context().
-load_attachment({DocType, DocId}, AName, Context) ->
-    load_attachment(DocId, AName, [{'doc_type', DocType}], Context);
-load_attachment(DocId, AName, Context) when is_binary(DocId) ->
-    load_attachment(DocId, AName, [], Context);
 load_attachment(Doc, AName, Context) ->
-    load_attachment({wh_doc:type(Doc), wh_doc:id(Doc)}, AName, Context).
+    load_attachment(Doc, AName, Context).
 
--spec load_attachment(ne_binary(), ne_binary(), wh_proplist(), cb_context:context()) ->
+-spec load_attachment(kazoo_data:docid() | wh_json:object(), ne_binary(), wh_proplist(), cb_context:context()) ->
                              cb_context:context().
+load_attachment({DocType, DocId}, AName, Options, Context) ->
+    load_attachment(DocId, AName, [{'doc_type', DocType} | Options], Context);
+load_attachment(Doc={_}, AName, Options, Context) ->
+    load_attachment({wh_doc:type(Doc), wh_doc:id(Doc)}, AName, Options, Context);
 load_attachment(DocId, AName, Options, Context) ->
     case kz_datamgr:fetch_attachment(cb_context:account_db(Context), DocId, AName, Options) of
         {'error', Error} -> handle_couch_mgr_errors(Error, DocId, Context);
@@ -602,7 +676,7 @@ save_attachment(DocId, Name, Contents, Context, Options) ->
     case kz_datamgr:put_attachment(cb_context:account_db(Context), DocId, AName, Contents, Opts1) of
         {'error', 'conflict'=Error} ->
             lager:debug("saving attachment resulted in a conflict, checking for validity"),
-            Context1 = load(DocId, Context, [{'use_cache', 'false'}]),
+            Context1 = load(DocId, Context, [{'use_cache', 'false'} | Options]),
             case wh_doc:attachment(cb_context:doc(Context1), AName) of
                 'undefined' ->
                     lager:debug("attachment does appear to be missing, reporting error"),

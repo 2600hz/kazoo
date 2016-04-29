@@ -267,7 +267,7 @@ validate_collection_fold(Resource, C) ->
                                           {'ok', cb_context:context()} |
                                           {'error', 'not_found' | wh_json:object()}.
 validate_collection_resource(Resource, Context, ?HTTP_POST) ->
-    C1 = crossbar_doc:load(wh_doc:id(Resource), Context),
+    C1 = crossbar_doc:load(wh_doc:id(Resource), Context, ?TYPE_CHECK_OPTION(<<"resource">>)),
     case cb_context:resp_status(C1) of
         'success' -> validate_collection_resource_patch(Resource, C1);
         _Status -> {'error', 'not_found'}
@@ -384,15 +384,15 @@ do_delete(Context, ResourceId, _AccountDb) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    crossbar_doc:load(Id, Context).
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"resource">>)).
 
 -spec read_job(cb_context:context(), ne_binary()) -> cb_context:context().
 read_job(Context, ?MATCH_MODB_PREFIX(Year,Month,_) = JobId) ->
     Modb = cb_context:account_modb(Context, wh_util:to_integer(Year), wh_util:to_integer(Month)),
-    leak_job_fields(crossbar_doc:load(JobId, cb_context:set_account_db(Context, Modb)));
+    leak_job_fields(crossbar_doc:load(JobId, cb_context:set_account_db(Context, Modb), ?TYPE_CHECK_OPTION(<<"resource">>)));
 read_job(Context, ?MATCH_MODB_PREFIX_M1(Year,Month,_) = JobId) ->
     Modb = cb_context:account_modb(Context, wh_util:to_integer(Year), wh_util:to_integer(Month)),
-    leak_job_fields(crossbar_doc:load(JobId, cb_context:set_account_db(Context, Modb)));
+    leak_job_fields(crossbar_doc:load(JobId, cb_context:set_account_db(Context, Modb), ?TYPE_CHECK_OPTION(<<"resource">>)));
 read_job(Context, JobId) ->
     lager:debug("invalid job id format: ~s", [JobId]),
     crossbar_util:response_bad_identifier(JobId, Context).
@@ -510,7 +510,7 @@ update_local(Context, Id) ->
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context, wh_doc:set_type(cb_context:doc(Context), <<"resource">>));
 on_successful_validation(Id, Context) ->
-    crossbar_doc:load_merge(Id, Context).
+    crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"resource">>)).
 
 
 -spec on_successful_local_validation(api_binary(), cb_context:context()) -> cb_context:context().

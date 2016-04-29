@@ -86,15 +86,15 @@ validate_acls(Context, ?HTTP_DELETE) ->
     validate_delete_acls(thing_doc(Context)).
 
 -spec thing_doc(cb_context:context()) -> cb_context:context().
--spec thing_doc(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec thing_doc(cb_context:context(), ne_binary(), api_binary()) -> cb_context:context().
 thing_doc(Context) ->
     case cb_context:req_nouns(Context) of
         [{<<"access_lists">>, []}, {<<"accounts">>, [AccountId]} | _] ->
             lager:debug("loading access lists from account: '~s'", [AccountId]),
-            thing_doc(Context, AccountId);
+            thing_doc(Context, AccountId, kz_account:type());
         [{<<"access_lists">>, []}, {<<"devices">>, [DeviceId]} | _] ->
             lager:debug("loading access lists from device: '~s'", [DeviceId]),
-            thing_doc(Context, DeviceId);
+            thing_doc(Context, DeviceId, kz_device:type());
         _Nouns ->
             cb_context:add_system_error(
               'faulty_request'
@@ -103,8 +103,8 @@ thing_doc(Context) ->
              )
     end.
 
-thing_doc(Context, ThingId) ->
-    Context1 = crossbar_doc:load(ThingId, Context),
+thing_doc(Context, ThingId, Type) ->
+    Context1 = crossbar_doc:load(ThingId, Context, ?TYPE_CHECK_OPTION(Type)),
     case cb_context:resp_status(Context1) of
         'success' -> Context1;
         _Status ->

@@ -223,7 +223,7 @@ create_conference(Context) ->
 %%--------------------------------------------------------------------
 -spec load_conference(ne_binary(), cb_context:context()) -> cb_context:context().
 load_conference(DocId, Context) ->
-    crossbar_doc:load(DocId, Context).
+    crossbar_doc:load(DocId, Context, ?TYPE_CHECK_OPTION(<<"conference">>)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -354,7 +354,7 @@ on_successful_validation('undefined', Context) ->
                        ,wh_doc:set_type(cb_context:doc(Context), <<"conference">>)
                       );
 on_successful_validation(DocId, Context) ->
-    crossbar_doc:load_merge(DocId, Context).
+    crossbar_doc:load_merge(DocId, Context, ?TYPE_CHECK_OPTION(<<"conference">>)).
 
 %%--------------------------------------------------------------------
 %% @private

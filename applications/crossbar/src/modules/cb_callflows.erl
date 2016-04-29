@@ -155,7 +155,7 @@ load_callflow_summary(Context) ->
 %%--------------------------------------------------------------------
 -spec load_callflow(ne_binary(), cb_context:context()) -> cb_context:context().
 load_callflow(DocId, Context) ->
-    Context1 = crossbar_doc:load(DocId, Context),
+    Context1 = crossbar_doc:load(DocId, Context, ?TYPE_CHECK_OPTION(kzd_callflow:type())),
     case cb_context:resp_status(Context1) of
         'success' ->
             Meta = get_metadata(wh_json:get_value(<<"flow">>, cb_context:doc(Context1))
@@ -275,7 +275,7 @@ on_successful_validation('undefined', Context) ->
                                        )
                       );
 on_successful_validation(CallflowId, Context) ->
-    crossbar_doc:load_merge(CallflowId, Context).
+    crossbar_doc:load_merge(CallflowId, Context, ?TYPE_CHECK_OPTION(kzd_callflow:type())).
 
 -spec validate_callflow_elements(cb_context:context()) -> cb_context:context().
 -spec validate_callflow_elements(cb_context:context(), wh_json:object()) -> cb_context:context().

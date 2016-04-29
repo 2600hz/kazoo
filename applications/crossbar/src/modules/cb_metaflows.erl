@@ -100,7 +100,7 @@ thing_doc(Context) ->
     end.
 
 thing_doc(Context, ThingId) ->
-    Context1 = crossbar_doc:load(ThingId, Context),
+    Context1 = crossbar_doc:load(ThingId, Context, ?TYPE_CHECK_OPTION_ANY),
     case cb_context:resp_status(Context1) of
         'success' -> cb_context:doc(Context1);
         _Status ->

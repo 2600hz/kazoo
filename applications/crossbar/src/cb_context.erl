@@ -456,7 +456,7 @@ add_content_types_accepted(#cb_context{}=Context, {_, _}=NewCTA) ->
 
 -spec add_attachment_content_type(context(), ne_binary(), ne_binary()) -> context().
 add_attachment_content_type(#cb_context{}=Context, DocId, AttachmentId) ->
-    Context1 = crossbar_doc:load(DocId, Context),
+    Context1 = crossbar_doc:load(DocId, Context, ?TYPE_CHECK_OPTION_ANY),
     case resp_status(Context1) of
         'success' ->
             maybe_add_content_type_provided(Context1, AttachmentId);

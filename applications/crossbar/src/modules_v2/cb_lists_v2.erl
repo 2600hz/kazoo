@@ -27,6 +27,8 @@
 -define(ENTRIES, <<"entries">>).
 -define(VCARD, <<"vcard">>).
 -define(PHOTO, <<"photo">>).
+-define(TYPE_LIST, <<"list">>).
+-define(TYPE_LIST_ENTRY, <<"list_entry">>).
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -45,7 +47,7 @@ migrate(AccountDb, [List | Lists]) ->
     Entries = wh_json:to_proplist(wh_json:get_value([<<"doc">>, <<"entries">>], List, wh_json:new())),
 
     MigrateEntryFun = fun({Id, Entry}) ->
-                              wh_json:set_values([{<<"pvt_type">>, <<"list_entry">>}
+                              wh_json:set_values([{<<"pvt_type">>, ?TYPE_LIST_ENTRY}
                                                   ,{<<"list_entry_old_id">>, Id}
                                                   ,{<<"list_id">>, DocId}]
                                                  ,Entry)
@@ -146,14 +148,14 @@ validate(Context, ListId, ?ENTRIES, EntryId, ?VCARD) ->
 validate_req(?HTTP_GET, Context, []) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_list/2);
 validate_req(?HTTP_PUT, Context, []) ->
-    validate_doc('undefined', <<"list">>, Context);
+    validate_doc('undefined', ?TYPE_LIST, Context);
 
 validate_req(?HTTP_GET, Context, [ListId]) ->
-    crossbar_doc:load(ListId, Context);
+    crossbar_doc:load(ListId, Context, ?TYPE_CHECK_OPTION(?TYPE_LIST));
 validate_req(?HTTP_DELETE, Context, [ListId]) ->
     crossbar_doc:load_view(<<"lists/entries">>, [{'key', ListId}], Context);
 validate_req(?HTTP_POST, Context, [ListId]) ->
-    validate_doc(ListId, <<"list">>, Context);
+    validate_doc(ListId, ?TYPE_LIST, Context);
 validate_req(?HTTP_PATCH, Context, [ListId] = Path) ->
     crossbar_doc:patch_and_validate(ListId, Context, fun(_Id, C) -> validate_req(?HTTP_POST, C, Path) end);
 
@@ -161,21 +163,21 @@ validate_req(?HTTP_GET, Context, [ListId, ?ENTRIES]) ->
     crossbar_doc:load_view(<<"lists/entries">>, [{'key', ListId}], Context);
 validate_req(?HTTP_PUT, Context, [ListId, ?ENTRIES]) ->
     ReqData = wh_json:set_values([{<<"list_id">>, ListId}], cb_context:req_data(Context)),
-    validate_doc('undefined', <<"list_entry">>, cb_context:set_req_data(Context, ReqData));
+    validate_doc('undefined', ?TYPE_LIST_ENTRY, cb_context:set_req_data(Context, ReqData));
 validate_req(?HTTP_DELETE, Context, [ListId, ?ENTRIES]) ->
     crossbar_doc:load_view(<<"lists/entries">>, [{'key', ListId}], Context);
 
 validate_req(?HTTP_GET, Context, [_ListId, ?ENTRIES, EntryId]) ->
-    crossbar_doc:load(EntryId, Context);
+    crossbar_doc:load(EntryId, Context, ?TYPE_CHECK_OPTION(?TYPE_LIST_ENTRY));
 validate_req(?HTTP_DELETE, Context, [_ListId, ?ENTRIES, EntryId]) ->
-    crossbar_doc:load(EntryId, Context);
+    crossbar_doc:load(EntryId, Context, ?TYPE_CHECK_OPTION(?TYPE_LIST_ENTRY));
 validate_req(?HTTP_POST, Context, [_ListId, ?ENTRIES, EntryId]) ->
-    validate_doc(EntryId, <<"list_entry">>, Context);
+    validate_doc(EntryId, ?TYPE_LIST_ENTRY, Context);
 validate_req(?HTTP_PATCH, Context, [_ListId, ?ENTRIES, EntryId] = Path) ->
     crossbar_doc:patch_and_validate(EntryId, Context, fun(_Id, C) -> validate_req(?HTTP_POST, C, Path) end);
 
 validate_req(?HTTP_GET, Context, [_ListId, ?ENTRIES, EntryId, ?VCARD]) ->
-    Context1 = crossbar_doc:load(EntryId, Context),
+    Context1 = crossbar_doc:load(EntryId, Context, ?TYPE_CHECK_OPTION(?TYPE_LIST_ENTRY)),
     JObj = cb_context:doc(Context1),
     JProfile = wh_json:get_value(<<"profile">>, JObj),
     JObj1 = wh_json:merge_jobjs(JObj, JProfile),
@@ -201,7 +203,7 @@ validate_doc(Id, Type, Context) ->
 -spec delete(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 delete(Context, ListId) ->
     delete(Context, ListId, ?ENTRIES),
-    Context1 = crossbar_doc:load(ListId, Context),
+    Context1 = crossbar_doc:load(ListId, Context, ?TYPE_CHECK_OPTION(?TYPE_LIST_ENTRY)),
     crossbar_doc:delete(Context1).
 delete(Context, _ListId, ?ENTRIES) ->
     Docs = [wh_json:get_value(<<"id">>, Entry) || Entry <- cb_context:doc(Context)],
@@ -227,20 +229,20 @@ save(Context, _, ?ENTRIES, EntryId, ?PHOTO) ->
     cb_users_v2:post(Context, EntryId, ?PHOTO).
 
 -spec type_schema_name(ne_binary()) -> ne_binary().
-type_schema_name(<<"list">>) -> <<"lists">>;
-type_schema_name(<<"list_entry">>) -> <<"list_entries">>.
+type_schema_name(?TYPE_LIST) -> <<"lists">>;
+type_schema_name(?TYPE_LIST_ENTRY) -> <<"list_entries">>.
 
 -spec on_successfull_validation(api_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
 on_successfull_validation('undefined', Type, Context) ->
     Doc = wh_json:set_values([{<<"pvt_type">>, Type}], cb_context:doc(Context)),
     cb_context:set_doc(Context, Doc);
-on_successfull_validation(Id, _Type, Context) ->
-    crossbar_doc:load_merge(Id, Context).
+on_successfull_validation(Id, Type, Context) ->
+    crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(Type)).
 
 -spec set_org(wh_json:object(), cb_context:context()) -> wh_json:object().
 set_org(JObj, Context) ->
     ListId = wh_json:get_value(<<"list_id">>, JObj),
-    Context1 = crossbar_doc:load(ListId, Context),
+    Context1 = crossbar_doc:load(ListId, Context, ?TYPE_CHECK_OPTION(?TYPE_LIST_ENTRY)),
     set_org(JObj, Context1, cb_context:resp_status(Context1), ListId).
 
 -spec set_org(wh_json:object(), cb_context:context(), crossbar_status(), ne_binary()) -> wh_json:object().
@@ -259,7 +261,7 @@ set_org(JObj, _, _, ListId) ->
 set_photo(JObj, Context) ->
     %% This code is copied from cb_users_v2. May be move it to crossbar_doc?
     DocId = wh_json:get_value(<<"_id">>, cb_context:doc(Context)),
-    Attach = crossbar_doc:load_attachment(DocId, ?PHOTO, Context),
+    Attach = crossbar_doc:load_attachment(DocId, ?PHOTO, ?TYPE_CHECK_OPTION(?TYPE_LIST_ENTRY), Context),
     case cb_context:resp_status(Attach) of
         'error' -> JObj;
         'success' ->

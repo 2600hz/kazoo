@@ -196,7 +196,7 @@ post(Context, DocId) ->
     Context1 = crossbar_doc:save(cb_context:set_doc(Context, Doc)),
     case cb_context:resp_status(Context1) of
         'success' ->
-            Opts = [{'content_type', <<"application/json">>}],
+            Opts = [{'content_type', <<"application/json">>} | ?TYPE_CHECK_OPTION(<<"provisioner_template">>)],
             Context2 = crossbar_doc:save_attachment(DocId, ?TEMPLATE_ATTCH, wh_json:encode(Template), Context, Opts),
             case cb_context:resp_status(Context2) of
                 'success' ->
@@ -218,7 +218,7 @@ put(Context) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             DocId = wh_doc:id(cb_context:doc(Context1)),
-            Opts = [{'content_type', <<"application/json">>}],
+            Opts = [{'content_type', <<"application/json">>} | ?TYPE_CHECK_OPTION(<<"provisioner_template">>)],
             Context2 = crossbar_doc:save_attachment(DocId, ?TEMPLATE_ATTCH, wh_json:encode(Template), Context, Opts),
             case cb_context:resp_status(Context2) of
                 'success' ->
@@ -238,7 +238,7 @@ post(Context, DocId, ?IMAGE_REQ) ->
     [{_, JObj}] = cb_context:req_files(Context),
     Contents = wh_json:get_value(<<"contents">>, JObj),
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], JObj, <<"application/octet-stream">>),
-    Opts = [{'content_type', CT}],
+    Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(<<"provisioner_template">>)],
     crossbar_doc:save_attachment(DocId, ?IMAGE_REQ, Contents, Context, Opts).
 
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
@@ -246,7 +246,7 @@ put(Context, DocId, ?IMAGE_REQ) ->
     [{_, JObj}] = cb_context:req_files(Context),
     Contents = wh_json:get_value(<<"contents">>, JObj),
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], JObj, <<"application/octet-stream">>),
-    Opts = [{'content_type', CT}],
+    Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(<<"provisioner_template">>)],
     crossbar_doc:save_attachment(DocId, ?IMAGE_REQ, Contents, Context, Opts).
 
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
@@ -265,7 +265,7 @@ delete(Context, DocId, ?IMAGE_REQ) ->
 %%--------------------------------------------------------------------
 -spec load_template_image(path_token(), cb_context:context()) -> cb_context:context().
 load_template_image(DocId, Context) ->
-    crossbar_doc:load_attachment(DocId, ?IMAGE_REQ, Context).
+    crossbar_doc:load_attachment(DocId, ?IMAGE_REQ, ?TYPE_CHECK_OPTION(<<"provisioner_template">>), Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -324,10 +324,10 @@ create_provisioner_template(Context) ->
 -spec load_provisioner_template(ne_binary(), cb_context:context()) -> cb_context:context().
 load_provisioner_template(DocId, Context) ->
     %% see note at top of file
-    Context1 = crossbar_doc:load(DocId, Context),
+    Context1 = crossbar_doc:load(DocId, Context, ?TYPE_CHECK_OPTION(<<"provisioner_template">>)),
     case cb_context:resp_status(Context1) of
         'success' ->
-            Context2 = crossbar_doc:load_attachment(DocId, ?TEMPLATE_ATTCH, Context),
+            Context2 = crossbar_doc:load_attachment(DocId, ?TEMPLATE_ATTCH, ?TYPE_CHECK_OPTION(<<"provisioner_template">>), Context),
             case cb_context:resp_status(Context2) of
                 'success' ->
                     Template = wh_json:decode(cb_context:resp_data(Context2)),
@@ -364,7 +364,7 @@ on_successful_validation('undefined', Context) ->
                                                        ], cb_context:doc(Context))),
     provisioner_util:get_provision_defaults(C);
 on_successful_validation(DocId, Context) ->
-    crossbar_doc:load_merge(DocId, Context).
+    crossbar_doc:load_merge(DocId, Context, ?TYPE_CHECK_OPTION(<<"provisioner_template">>)).
 
 %%--------------------------------------------------------------------
 %% @private

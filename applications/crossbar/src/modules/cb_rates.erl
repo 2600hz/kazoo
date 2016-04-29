@@ -205,7 +205,7 @@ create(Context) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    crossbar_doc:load(Id, Context).
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"rate">>)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -246,7 +246,7 @@ on_successful_validation('undefined', Context) ->
                      ),
     cb_context:set_doc(Context, Doc);
 on_successful_validation(Id, Context) ->
-    crossbar_doc:load_merge(Id, Context).
+    crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"rate">>)).
 
 -spec doc_updates({fun(), ne_binary()} | fun(), wh_json:object()) ->
                          wh_json:object().

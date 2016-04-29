@@ -296,7 +296,7 @@ post(Context, UserId, ?PHOTO) ->
     Headers = wh_json:get_value(<<"headers">>, FileObj),
     CT = wh_json:get_value(<<"content_type">>, Headers),
     Content = wh_json:get_value(<<"contents">>, FileObj),
-    Opts = [{'content_type', CT}],
+    Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(kzd_user:type())],
     crossbar_doc:save_attachment(UserId, ?PHOTO, Content, Context, Opts).
 
 -spec put(cb_context:context()) -> cb_context:context().
@@ -382,7 +382,7 @@ convert_to_vcard(Context) ->
 -spec set_photo(wh_json:object(), cb_context:context()) -> wh_json:object().
 set_photo(JObj, Context) ->
     UserId = wh_doc:id(cb_context:doc(Context)),
-    Attach = crossbar_doc:load_attachment(UserId, ?PHOTO, Context),
+    Attach = crossbar_doc:load_attachment(UserId, ?PHOTO, ?TYPE_CHECK_OPTION(kzd_user:type()), Context),
     case cb_context:resp_status(Attach) of
         'error' -> JObj;
         'success' ->
@@ -399,7 +399,8 @@ set_photo(JObj, Context) ->
 set_org(JObj, Context) ->
     case wh_json:get_value(<<"org">>
                            ,cb_context:doc(crossbar_doc:load(cb_context:account_id(Context)
-                                                             ,Context)))
+                                                             ,Context
+                                                             ,?TYPE_CHECK_OPTION(kzd_user:type()))))
     of
         'undefined' -> JObj;
         Val -> wh_json:set_value(<<"org">>, Val, JObj)
@@ -555,7 +556,7 @@ load_user_summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_user(api_binary(), cb_context:context()) -> cb_context:context().
-load_user(UserId, Context) -> crossbar_doc:load(UserId, Context).
+load_user(UserId, Context) -> crossbar_doc:load(UserId, Context, ?TYPE_CHECK_OPTION(kzd_user:type())).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -635,7 +636,7 @@ on_successful_validation('undefined', Context) ->
                                                 )
                             );
 on_successful_validation(UserId, Context) ->
-    maybe_import_credintials(UserId, crossbar_doc:load_merge(UserId, Context)).
+    maybe_import_credintials(UserId, crossbar_doc:load_merge(UserId, Context, ?TYPE_CHECK_OPTION(kzd_user:type()))).
 
 -spec maybe_import_credintials(api_binary(), cb_context:context()) -> cb_context:context().
 maybe_import_credintials(UserId, Context) ->

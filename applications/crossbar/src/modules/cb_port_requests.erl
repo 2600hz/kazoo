@@ -369,7 +369,7 @@ put(Context, Id, ?PORT_ATTACHMENT) ->
     Contents = wh_json:get_value(<<"contents">>, FileJObj),
 
     CT = wh_json:get_string_value([<<"headers">>, <<"content_type">>], FileJObj),
-    Opts = [{'content_type', CT}],
+    Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(<<"port_request">>)],
 
     crossbar_doc:save_attachment(Id
                                  ,cb_modules_util:attachment_name(Filename, CT)
@@ -470,7 +470,7 @@ post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     [{_Filename, FileJObj}] = cb_context:req_files(Context),
     Contents = wh_json:get_value(<<"contents">>, FileJObj),
     CT = wh_json:get_string_value([<<"headers">>, <<"content_type">>], FileJObj),
-    Opts = [{'content_type', CT}],
+    Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(<<"port_request">>)],
 
     case wh_doc:attachment(cb_context:doc(Context), AttachmentId) of
         'undefined' -> lager:debug("no attachment named ~s", [AttachmentId]);
@@ -525,7 +525,9 @@ delete(Context, Id, ?PORT_ATTACHMENT, AttachmentName) ->
 %%--------------------------------------------------------------------
 -spec load_port_request(cb_context:context(), ne_binary()) -> cb_context:context().
 load_port_request(Context, Id) ->
-    crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)).
+    crossbar_doc:load(Id
+                      ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+                      ,?TYPE_CHECK_OPTION(<<"port_request">>)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -963,7 +965,9 @@ summary_attachments(Context, Id) ->
 on_successful_validation(Context, 'undefined') ->
     on_successful_validation(Context, 'undefined', 'true');
 on_successful_validation(Context, Id) ->
-    Context1 = crossbar_doc:load_merge(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)),
+    Context1 = crossbar_doc:load_merge(Id
+                                       ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+                                       ,?TYPE_CHECK_OPTION(<<"port_request">>)),
     on_successful_validation(Context1, Id, can_update_port_request(Context1)).
 
 on_successful_validation(Context, Id, 'true') ->
@@ -1143,6 +1147,7 @@ load_attachment(AttachmentId, Context) ->
     cb_context:add_resp_headers(
       crossbar_doc:load_attachment(cb_context:doc(Context)
                                    ,AttachmentId
+                                   ,?TYPE_CHECK_OPTION(<<"port_request">>)
                                    ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
                                   )
       ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
@@ -1497,7 +1502,9 @@ remove_phone_number(Number, _, {_, Acc}) ->
 get_phone_numbers_doc(Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    Context1 = crossbar_doc:load(?KNM_PHONE_NUMBERS_DOC, cb_context:set_account_db(Context, AccountDb)),
+    Context1 = crossbar_doc:load(?KNM_PHONE_NUMBERS_DOC
+                                 ,cb_context:set_account_db(Context, AccountDb)
+                                 ,?TYPE_CHECK_OPTION(<<"phone_numbers">>)),
     case cb_context:resp_status(Context1) of
         'success' ->
             {'ok', cb_context:doc(Context1)};

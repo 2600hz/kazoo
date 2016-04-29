@@ -338,7 +338,7 @@ load_users_device_summary(Context, UserId) ->
 validate_request('undefined', Context) ->
     maybe_check_mdn('undefined', Context);
 validate_request(DeviceId, Context) ->
-    Context1 = crossbar_doc:load(DeviceId, Context),
+    Context1 = crossbar_doc:load(DeviceId, Context, ?TYPE_CHECK_OPTION(kz_device:type())),
     case cb_context:resp_status(Context1) of
         'success' -> maybe_check_mdn(DeviceId, Context1);
         _Else -> Context1
@@ -624,7 +624,7 @@ on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, <<"device">>}],
     cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context)));
 on_successful_validation(DeviceId, Context) ->
-    crossbar_doc:load_merge(DeviceId, Context).
+    crossbar_doc:load_merge(DeviceId, Context, ?TYPE_CHECK_OPTION(kz_device:type())).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -634,7 +634,7 @@ on_successful_validation(DeviceId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_device(ne_binary(), cb_context:context()) -> cb_context:context().
 load_device(DeviceId, Context) ->
-    crossbar_doc:load(DeviceId, Context).
+    crossbar_doc:load(DeviceId, Context, ?TYPE_CHECK_OPTION(kz_device:type())).
 
 %%--------------------------------------------------------------------
 %% @private

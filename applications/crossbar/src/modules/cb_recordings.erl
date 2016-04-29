@@ -120,7 +120,7 @@ validate(Context) ->
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, <<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId) ->
     Ctx = cb_context:set_account_modb(Context, wh_util:to_integer(Year), wh_util:to_integer(Month)),
-    crossbar_doc:load({<<"call_recording">>, DocId}, Ctx).
+    crossbar_doc:load({<<"call_recording">>, DocId}, Ctx, ?TYPE_CHECK_OPTION(<<"call_recording">>)).
 
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, DocId, ?ATTACHMENT) ->
@@ -164,13 +164,13 @@ load_recording_binary(<<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId, 
 
 -spec do_load_recording_binary(ne_binary(), cb_context:context()) -> cb_context:context().
 do_load_recording_binary(DocId, Context) ->
-    Context1 = crossbar_doc:load({<<"call_recording">>, DocId}, Context),
+    Context1 = crossbar_doc:load({<<"call_recording">>, DocId}, Context, ?TYPE_CHECK_OPTION(<<"call_recording">>)),
     case cb_context:resp_status(Context1) of
         'success' ->
             case wh_doc:attachment_names(cb_context:doc(Context1)) of
                 [] -> cb_context:add_system_error('bad_identifier', [{'details', DocId}], Context1);
                 [AName | _] ->
-                    Ctx = crossbar_doc:load_attachment({<<"call_recording">>, DocId}, AName, Context),
+                    Ctx = crossbar_doc:load_attachment({<<"call_recording">>, DocId}, AName, ?TYPE_CHECK_OPTION(<<"call_recording">>), Context),
                     set_resp_headers(Ctx, AName)
             end;
         _Status -> Context1

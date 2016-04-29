@@ -227,7 +227,7 @@ validate_patch(Context, Id) ->
         'success' ->
             PatchJObj = wh_doc:public_fields(cb_context:req_data(Context)),
             JObj = wh_json:merge_jobjs(PatchJObj, cb_context:doc(Context)),
-            OnValidateReqDataSuccess = fun(C) -> crossbar_doc:load_merge(Id, C) end,
+            OnValidateReqDataSuccess = fun(C) -> crossbar_doc:load_merge(Id, C, ?TYPE_CHECK_OPTION(kzd_webhook:type())) end,
             cb_context:validate_request_data(<<"webhooks">>, cb_context:set_req_data(Context, JObj), OnValidateReqDataSuccess);
         _Status -> Context
     end.
@@ -347,7 +347,7 @@ reenable_validation_error(Context) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    Context1 = crossbar_doc:load(Id, Context),
+    Context1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(kzd_webhook:type())),
     case cb_context:resp_status(Context1) of
         'success' -> maybe_leak_pvt_fields(Context1);
         _Status -> Context1
@@ -532,7 +532,7 @@ on_successful_validation('undefined', Context) ->
                                           )
                       );
 on_successful_validation(Id, Context) ->
-    crossbar_doc:load_merge(Id, Context).
+    crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(kzd_webhook:type())).
 
 %%--------------------------------------------------------------------
 %% @private

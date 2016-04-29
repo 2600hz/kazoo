@@ -487,7 +487,7 @@ maybe_update_tts(Context, Text, Voice, 'success') ->
                                      )
                                     ,MediaId
                                    ),
-            crossbar_doc:load(MediaId, Context)
+            crossbar_doc:load(MediaId, Context, ?TYPE_CHECK_OPTION(kzd_media:type()))
     catch
         _E:_R ->
             lager:debug("creating tts excepted: ~s: ~p", [_E, _R]),
@@ -523,7 +523,7 @@ maybe_merge_tts(Context, MediaId, Text, Voice, 'success') ->
                                      )
                                     ,MediaId
                                    ),
-            crossbar_doc:load_merge(MediaId, wh_json:public_fields(JObj), Context)
+            crossbar_doc:load_merge(MediaId, wh_json:public_fields(JObj), Context, ?TYPE_CHECK_OPTION(kzd_media:type()))
     end;
 maybe_merge_tts(Context, _MediaId, _Text, _Voice, _Status) ->
     Context.
@@ -813,9 +813,9 @@ load_media_meta(Context, MediaId) ->
     load_media_meta(Context, MediaId, cb_context:account_id(Context)).
 
 load_media_meta(Context, MediaId, 'undefined') ->
-    crossbar_doc:load(MediaId, cb_context:set_account_db(Context, ?WH_MEDIA_DB));
+    crossbar_doc:load(MediaId, cb_context:set_account_db(Context, ?WH_MEDIA_DB), ?TYPE_CHECK_OPTION(kzd_media:type()));
 load_media_meta(Context, MediaId, _AccountId) ->
-    crossbar_doc:load(MediaId, Context).
+    crossbar_doc:load(MediaId, Context, ?TYPE_CHECK_OPTION(kzd_media:type())).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -836,7 +836,7 @@ on_successful_validation('undefined', Context) ->
             ],
     cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context)));
 on_successful_validation(MediaId, Context) ->
-    Context1 = crossbar_doc:load_merge(MediaId, Context),
+    Context1 = crossbar_doc:load_merge(MediaId, Context, ?TYPE_CHECK_OPTION(kzd_media:type())),
     maybe_validate_prompt(MediaId, Context1, cb_context:resp_status(Context1)).
 
 -spec maybe_validate_prompt(ne_binary(), cb_context:context(), crossbar_status()) ->
@@ -913,7 +913,11 @@ load_media_binary(Context, MediaId) ->
                 [] -> crossbar_util:response_bad_identifier(MediaId, Context);
                 [Attachment|_] ->
                     cb_context:add_resp_headers(
-                      crossbar_doc:load_attachment(cb_context:doc(Context1), Attachment, Context1)
+                      crossbar_doc:load_attachment(cb_context:doc(Context1)
+                                                   ,Attachment
+                                                   ,?TYPE_CHECK_OPTION(kzd_media:type())
+                                                   ,Context1
+                                                  )
                       ,[{<<"Content-Disposition">>, <<"attachment; filename=", Attachment/binary>>}
                         ,{<<"Content-Type">>, wh_doc:attachment_content_type(cb_context:doc(Context1), Attachment)}
                         ,{<<"Content-Length">>, wh_doc:attachment_length(cb_context:doc(Context1), Attachment)}
@@ -943,7 +947,7 @@ update_media_binary(Context, MediaId, [{Filename, FileObj}|Files]) ->
     Contents = wh_json:get_value(<<"contents">>, FileObj),
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj),
     lager:debug("file content type: ~s", [CT]),
-    Opts = [{'content_type', CT}],
+    Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(kzd_media:type())],
 
     update_media_binary(
       crossbar_doc:save_attachment(MediaId
@@ -966,7 +970,7 @@ update_media_binary(Context, MediaId, [{Filename, FileObj}|Files]) ->
 delete_media_binary(MediaId, Context, 'undefined') ->
     delete_media_binary(MediaId, cb_context:set_account_db(Context, ?WH_MEDIA_DB), <<"ignore">>);
 delete_media_binary(MediaId, Context, _AccountId) ->
-    Context1 = crossbar_doc:load(MediaId, Context),
+    Context1 = crossbar_doc:load(MediaId, Context, ?TYPE_CHECK_OPTION(kzd_media:type())),
     case cb_context:resp_status(Context1) of
         'success' ->
             case wh_doc:attachment_names(cb_context:doc(Context1)) of

@@ -110,7 +110,7 @@ fetch_all_hotdesks(Context) ->
 
 -spec fetch_user_hotdesks(ne_binary(), cb_context:context()) -> cb_context:context().
 fetch_user_hotdesks(DeviceId, Context) ->
-    Context1 = crossbar_doc:load(DeviceId, Context),
+    Context1 = crossbar_doc:load(DeviceId, Context, ?TYPE_CHECK_OPTION(kz_device:type())),
     case cb_context:resp_status(Context1) of
         'success' ->
             JObj = cb_context:doc(Context1),

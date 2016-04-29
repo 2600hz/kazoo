@@ -157,7 +157,7 @@ validate_get_rate_limits(Context, ThingId) ->
     case get_rate_limits_id_for_thing(Context, ThingId) of
         'undefined' -> crossbar_util:response('fatal', <<"data collection error">>, 503, Context);
         [] -> crossbar_doc:handle_json_success(wh_json:new(), Context);
-        [RateLimitsId] -> crossbar_doc:load(RateLimitsId, Context);
+        [RateLimitsId] -> crossbar_doc:load(RateLimitsId, Context, ?TYPE_CHECK_OPTION(<<"rate_limits">>));
         RateLimitsIds ->
             lager:error("Found more than one result, please check ids(from db ~s): ~p"
                         ,[cb_context:account_db(Context), RateLimitsIds]
@@ -172,7 +172,7 @@ validate_delete_rate_limits(Context, ThingId) ->
     case get_rate_limits_id_for_thing(Context, ThingId) of
         'undefined' -> crossbar_util:response('fatal', <<"data collection error">>, 503, Context);
         [] -> crossbar_doc:handle_json_success(wh_json:new(), Context);
-        [RateLimitsId] -> crossbar_doc:load(RateLimitsId, Context);
+        [RateLimitsId] -> crossbar_doc:load(RateLimitsId, Context, ?TYPE_CHECK_OPTION(<<"rate_limits">>));
         RateLimitsIds ->
             lager:error("Found more than one result, please check ids(from db ~s): ~p"
                         ,[cb_context:account_db(Context), RateLimitsIds]
@@ -195,7 +195,7 @@ validate_set_rate_limits(Context, ThingId) ->
     case get_rate_limits_id_for_thing(Context, ThingId) of
         'undefined' -> crossbar_util:response('fatal', <<"data collection error">>, 503, Context);
         [] -> Context;
-        [RateLimitsId] -> crossbar_doc:load_merge(RateLimitsId, Context);
+        [RateLimitsId] -> crossbar_doc:load_merge(RateLimitsId, Context, ?TYPE_CHECK_OPTION(<<"rate_limits">>));
         RateLimitsIds ->
             lager:error("Found more than one result, please check ids(from db ~s): ~p"
                         ,[cb_context:account_db(Context), RateLimitsIds]
