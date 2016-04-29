@@ -130,9 +130,9 @@
          ,make_dir/1
         ]).
 
--export([calling_app/0, calling_app/1]).
--export([calling_app_version/0, calling_app_version/1]).
--export([calling_process/0, calling_process/1]).
+-export([calling_app/0]).
+-export([calling_app_version/0]).
+-export([calling_process/0]).
 -export([get_app/1]).
 
 -include_lib("kernel/include/inet.hrl").
@@ -1531,37 +1531,52 @@ anonymous_caller_id_number() ->
     <<"0000000000">>.
 
 %% for core apps that want to know which app is calling
--spec calling_app() -> ne_binary().
-calling_app() -> calling_app(3).
 
--spec calling_app(pos_integer()) -> ne_binary().
-calling_app(Level) ->
-    {'current_stacktrace', Modules} = erlang:process_info(self(),current_stacktrace),
-    {Module, _, _, _} = lists:nth(Level, Modules),
+-spec process_fold([tuple()], atom()) -> tuple() | atom().
+process_fold([], App) -> App;
+process_fold([{M, _, _, _}=Mod | Others], App) ->
+    {'ok', ModApp} = application:get_application(M),
+    process_fold(ModApp, App, Mod, Others).
+
+-spec process_fold(atom(), atom(), tuple(), [tuple()]) -> tuple() | atom().
+process_fold(App, App, _, Others) ->
+    process_fold(Others, App);
+process_fold(App, _, M, _) -> {App, M}.
+
+-spec calling_app() -> ne_binary().
+calling_app() ->
+    Modules = erlang:process_info(self(),current_stacktrace),
+    {'current_stacktrace', [_Me, {Module, _, _, _} | Start]} = Modules,
     {'ok', App} = application:get_application(Module),
-    to_binary(App).
+    case process_fold(Start, App) of
+        App -> to_binary(App);
+        {Parent, _MFA} -> to_binary(Parent)
+    end.
 
 -spec calling_app_version() -> {ne_binary(), ne_binary()}.
-calling_app_version() -> calling_app_version(3).
-
--spec calling_app_version(pos_integer()) -> {ne_binary(), ne_binary()}.
-calling_app_version(Level) ->
-    {'current_stacktrace', Modules} = erlang:process_info(self(),current_stacktrace),
-    {Module, _, _, _} = lists:nth(Level, Modules),
+calling_app_version() ->
+    Modules = erlang:process_info(self(),current_stacktrace),
+    {'current_stacktrace', [_Me, {Module, _, _, _} | Start]} = Modules,
     {'ok', App} = application:get_application(Module),
-    {App, _, Version} = get_app(App),
-    {to_binary(App), to_binary(Version)}.
+    NewApp = case process_fold(Start, App) of
+                 App -> App;
+                 {Parent, _MFA} -> Parent
+             end,
+    {NewApp, _, Version} = get_app(NewApp),
+    {to_binary(NewApp), to_binary(Version)}.
 
 -spec calling_process() -> map().
-calling_process() -> calling_process(3).
-
--spec calling_process(pos_integer()) -> map().
-calling_process(Level) ->
-    {'current_stacktrace', Modules} = erlang:process_info(self(),current_stacktrace),
-    {Module, Function, Arity, [{file, Filename}, {line, Line}]} = lists:nth(Level, Modules),
+calling_process() ->
+    Modules = erlang:process_info(self(),current_stacktrace),
+    {'current_stacktrace', [_Me, {Module, _, _, _}=M | Start]} = Modules,
     {'ok', App} = application:get_application(Module),
-    #{app => App
-      ,module => Module
+    {NewApp, {Mod, Function, Arity, [{file, Filename}, {line, Line}]}} =
+        case process_fold(Start, App) of
+            App -> {App, M};
+            {Parent, MFA } -> {Parent, MFA}
+        end,
+    #{app => NewApp
+      ,module => Mod
       ,function => Function
       ,arity => Arity
       ,file => Filename
