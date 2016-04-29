@@ -47,7 +47,7 @@ Key | Description | Type | Default | Required
 `record_on_answer` | Whether to delay starting the recording until the call is answered | `boolean` |   | `false`
 `record_sample_rate` | Sampling rate of the recording, in Hz | `integer` |   | `false`
 `time_limit` | Limit, in seconds, of how long to record the call | `integer` |   | `false`
-`url` | What URL to use as a base for where to send the recording after it finishes | `string` |   | `false`
+`url` | What URL to use as a base for where to send the recording after it finishes (stores locally if not included) | `string` |   | `false`
 
 ##### Callflow action - Record Caller
 
@@ -58,4 +58,4 @@ Key | Description | Type | Default | Required
 `format` | What format to store the recording on disk | `string('mp3', 'wav')` |   | `false`
 `method` | What HTTP method to use when sending the recording | `string('put', 'post')` |   | `false`
 `time_limit` | Time limit, in seconds, for the recording | `integer` | `3600` | `false`
-`url` | The URL to use when sending the recording for storage | `string` |   | `true`
+`url` | The URL to use when sending the recording for storage (stores locally if not included) | `string` |   | `false`

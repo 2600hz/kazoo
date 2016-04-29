@@ -32,7 +32,7 @@
         "url": {
             "description": "The URL to use when sending the recording for storage",
             "name": "URL",
-            "required": true,
+            "required": false,
             "type": "string"
         }
     },

@@ -108,7 +108,7 @@
 -define(CONSUME_OPTIONS, []).
 -define(MAX_RECORDING_LIMIT, wh_media_util:max_recording_time_limit()).
 -define(CHECK_CHANNEL_STATUS_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
--define(RECORDING_ID_KEY, [<<"recording_id">>, <<"Recording-ID">>]).
+-define(RECORDING_ID_KEY, <<"Recording-ID">>).
 
 -spec start_link(whapps_call:call(), wh_json:object()) -> startlink_ret().
 start_link(Call, Data) ->
@@ -177,7 +177,7 @@ init([Call, Data]) ->
     DocId = ?MATCH_MODB_PREFIX(wh_util:to_binary(Year), wh_util:pad_month(Month), RecordingId),
     InteractionId = whapps_call:custom_channel_var(?CALL_INTERACTION_ID, Call),
     DefaultMediaName = get_media_name(wh_util:rand_hex_binary(16), Format),
-    MediaName = wh_json:get_first_defined(?RECORDING_ID_KEY, Data, DefaultMediaName),
+    MediaName = wh_json:get_value(?RECORDING_ID_KEY, Data, DefaultMediaName),
     Url = get_url(Data),
     ShouldStore = should_store_recording(Url),
 

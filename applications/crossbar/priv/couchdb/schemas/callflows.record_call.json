@@ -49,12 +49,6 @@
             "required": false,
             "type": "integer"
         },
-        "recording_id": {
-            "description": "Name the media file that will be generated from the call",
-            "name": "Recording ID",
-            "required": false,
-            "type": "string"
-        },
         "time_limit": {
             "default": 3600,
             "description": "Time limit, in seconds, for the recording",
@@ -67,7 +61,7 @@
         "url": {
             "description": "The URL to use when sending the recording for storage",
             "name": "URL",
-            "required": true,
+            "required": false,
             "type": "string"
         }
     },
