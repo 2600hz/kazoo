@@ -122,7 +122,7 @@ build_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp) ->
              ,{?KEY_META_FROM, whapps_call:from(Call)}
              ,{?KEY_META_TO, whapps_call:to(Call)}
              ,{?KEY_META_CID_NUMBER, CIDNumber}
-             ,{?KEY_META_CID_NUMBER, CIDName}
+             ,{?KEY_META_CID_NAME, CIDName}
              ,{?KEY_META_CALL_ID, whapps_call:call_id(Call)}
              ,{?VM_KEY_FOLDER, ?VM_FOLDER_NEW}
              ,{?KEY_META_LENGTH, Length}

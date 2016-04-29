@@ -628,7 +628,7 @@ find_methods_in_clause({'call', _, {'atom', _, 'content_types_provided_for_provi
     ] ++ Acc;
 find_methods_in_clause({'call', _, {'atom', _, 'content_types_provided_for_vm_download'}, _Args}, Acc) ->
     [wh_util:join_binary([Type, SubType], <<"/">>)
-     || {Type, SubType} <- cb_vmboxes:acceptable_content_types()
+     || {Type, SubType} <- cb_vmboxes_v2:acceptable_content_types()
     ] ++ Acc;
 find_methods_in_clause({'call', _, {'atom', _, 'content_types_provided_get'}, _Args}, Acc) ->
     [wh_util:join_binary([Type, SubType], <<"/">>)

@@ -12,13 +12,14 @@
          ,message_doc/2
          ,message/2, messages/2
          ,count/2, count_per_folder/2, count_modb_messages/3
-         ,count_by_owner/2, vmbox_summary/1
+         ,count_by_owner/2
          ,set_folder/3
 
          ,media_url/2
 
-         ,load_vmbox/2
+         ,load_vmbox/2, load_vmbox/3, vmbox_summary/1
          ,update_message_doc/2, update_message_doc/3
+         ,find_message_differences/3
 
          ,get_db/1, get_db/2
          ,get_range_view/2
@@ -281,22 +282,37 @@ merge_metadata(MediaId, MediaJObj, VMBoxMsgs) ->
         {Metadata, _} -> {'ok', kzd_box_message:set_metadata(Metadata, MediaJObj)}
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc fetch vmbox doc from db. It will include metadata if IncludeMessages
+%% set to true, otherwise would delete it from doc.
+%% @end
+%%--------------------------------------------------------------------
 -spec load_vmbox(ne_binary(), ne_binary()) -> db_ret().
 load_vmbox(AccountId, BoxId) ->
+    load_vmbox(AccountId, BoxId, 'true').
+
+-spec load_vmbox(ne_binary(), ne_binary(), boolean()) -> db_ret().
+load_vmbox(AccountId, BoxId, IncludeMessages) ->
     case open_accountdb_doc(AccountId, BoxId) of
-        {'ok', JObj} ->
-            VmMessages = wh_json:get_value(?VM_KEY_MESSAGES, JObj, []),
-            AllMsg = fetch_modb_messages(AccountId, BoxId, VmMessages),
-            {'ok', wh_json:set_value(?VM_KEY_MESSAGES, AllMsg, JObj)};
+        {'ok', JObj} -> maybe_include_messages(AccountId, BoxId, JObj, IncludeMessages);
         {'error', _R}=E ->
             lager:debug("failed to open vmbox ~s: ~p", [BoxId, _R]),
             E
     end.
 
+-spec maybe_include_messages(ne_binary(), ne_binary(), wh_json:object(), boolean()) -> {'ok', wh_json:object()}.
+maybe_include_messages(AccountId, BoxId, JObj, 'true') ->
+    VmMessages = wh_json:get_value(?VM_KEY_MESSAGES, JObj, []),
+    AllMsg = fetch_modb_messages(AccountId, BoxId, VmMessages),
+    {'ok', wh_json:set_value(?VM_KEY_MESSAGES, AllMsg, JObj)};
+maybe_include_messages(_AccountId, _BoxId, JObj, _) ->
+    {'ok', wh_json:delete_key(?VM_KEY_MESSAGES, JObj)}.
+
 %%--------------------------------------------------------------------
 %% @public
-%% @doc Get vmbox summary view results from accountdb and merge it with
-%% MODB vmbox counts
+%% @doc Get vmbox summary view results from accountdb and merge
+%% its message count with MODB vmbox count
 %% @end
 %%--------------------------------------------------------------------
 -spec vmbox_summary(ne_binary()) -> db_ret().
@@ -547,6 +563,42 @@ count_modb_messages(AccountId, BoxId, {ANew, ASaved}=AccountDbCounts) ->
             {MNew, MSaved} = kzd_box_message:normalize_count(Results),
             {ANew + MNew, ASaved + MSaved}
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc Try to find changes made into messages list and return a tuple of
+%% messages that changed and messages that are not changed and must go
+%% into vmbox messages list.
+%% @end
+%%--------------------------------------------------------------------
+-spec find_message_differences(ne_binary(), ne_binary(), wh_json:objects()) ->
+                                {wh_json:objects(), wh_json:objects()}.
+find_message_differences(AccountId, BoxId, DirtyJObj) ->
+    Messages = messages(AccountId, BoxId),
+    find_message_differences(DirtyJObj, Messages).
+
+find_message_differences(ReqJ, Messages) ->
+    Fun = fun(MsgJ, {DiffAcc, VMMsgAcc}) ->
+              MessageId = kzd_box_message:media_id(MsgJ),
+              case wh_json:find_value(<<"media_id">>, MessageId, ReqJ) of
+                  'undefined' ->
+                      {[MsgJ | DiffAcc], VMMsgAcc};
+                  J ->
+                      case wh_json:are_identical(MsgJ, J) of
+                          'true' -> {DiffAcc, maybe_add_to_vmbox(MsgJ, VMMsgAcc)};
+                          'false' -> {[J | DiffAcc], VMMsgAcc}
+                      end
+              end
+          end,
+    lists:foldl(Fun , {[], []}, Messages).
+
+maybe_add_to_vmbox(M, Acc) ->
+    maybe_add_to_vmbox(M, kzd_box_message:media_id(M), Acc).
+
+maybe_add_to_vmbox(_M, ?MATCH_MODB_PREFIX(_Year, _Month, _), Acc) ->
+    Acc;
+maybe_add_to_vmbox(M, _Id, Acc) ->
+    [M | Acc].
 
 %%--------------------------------------------------------------------
 %% @public

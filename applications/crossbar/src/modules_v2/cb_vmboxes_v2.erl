@@ -10,7 +10,7 @@
 %%%   Karl Anderson
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(cb_vmboxes).
+-module(cb_vmboxes_v2).
 
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3, allowed_methods/4
@@ -39,14 +39,14 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"*.content_types_provided.vmboxes">>, ?MODULE, 'content_types_provided'),
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.vmboxes">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.vmboxes">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.validate.vmboxes">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.vmboxes">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.vmboxes">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"*.execute.patch.vmboxes">>, ?MODULE, 'patch'),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.vmboxes">>, ?MODULE, 'delete'),
+    _ = crossbar_bindings:bind(<<"v2_resource.content_types_provided.vmboxes">>, ?MODULE, 'content_types_provided'),
+    _ = crossbar_bindings:bind(<<"v2_resource.allowed_methods.vmboxes">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"v2_resource.resource_exists.vmboxes">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"v2_resource.validate.vmboxes">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"v2_resource.execute.put.vmboxes">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"v2_resource.execute.post.vmboxes">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"v2_resource.execute.patch.vmboxes">>, ?MODULE, 'patch'),
+    _ = crossbar_bindings:bind(<<"v2_resource.execute.delete.vmboxes">>, ?MODULE, 'delete'),
     _ = crossbar_bindings:bind(crossbar_cleanup:binding_account(), 'kz_vm_message', 'cleanup_heard_voicemail').
 
 %%--------------------------------------------------------------------
@@ -172,7 +172,10 @@ validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId, ?BIN_DATA) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 post(Context, _DocId) ->
-    C = crossbar_doc:save(Context),
+    DbDoc = cb_context:fetch(Context, 'db_doc'),
+    Props = [{<<"messages">>, wh_json:get_value(<<"messages">>, DbDoc, [])}],
+    Context1 = cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context))),
+    C = crossbar_doc:save(Context1),
     update_mwi(C).
 post(Context, _DocId, ?MESSAGES_RESOURCE, MediaId) ->
     C = update_message_doc(MediaId, Context),
@@ -195,12 +198,15 @@ put(Context) ->
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 -spec delete(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
-delete(Context, _DocId) ->
+delete(Context, DocId) ->
+    AccountId = cb_context:account_id(Context),
+    Messages = kz_vm_message:messages(AccountId, DocId),
+    _ = [kz_vm_message:set_folder(?VM_FOLDER_DELETED, M, AccountId) || M <- Messages],
     C = crossbar_doc:delete(Context),
     update_mwi(C).
 
 delete(Context, DocId, ?MESSAGES_RESOURCE) ->
-    Messages = wh_json:get_ne_value(?VM_KEY_MESSAGES, cb_context:doc(Context), []),
+    Messages = cb_context:resp_data(Context),
     _ = [kz_vm_message:set_folder(?VM_FOLDER_DELETED, M, cb_context:account_id(Context)) || M <- Messages],
     C = load_vmbox(DocId, Context),
     update_mwi(C).
@@ -216,7 +222,10 @@ delete(Context, _DocId, ?MESSAGES_RESOURCE, MediaId) ->
 %%--------------------------------------------------------------------
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, _Id) ->
-    crossbar_doc:save(Context).
+    DbDoc = cb_context:fetch(Context, 'db_doc'),
+    Props = [{<<"messages">>, wh_json:get_value(<<"messages">>, DbDoc, [])}],
+    Context1 = cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context))),
+    crossbar_doc:save(Context1).
 
 %%%===================================================================
 %%% Internal functions
@@ -254,20 +263,14 @@ validate_message(Context, _DocId, MediaId, ?HTTP_DELETE) ->
 validate_messages(Context, DocId, ?HTTP_GET) ->
     load_message_summary(DocId, Context);
 validate_messages(Context, DocId, ?HTTP_DELETE) ->
-    Context1 = load_vmbox(DocId, Context),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            Messages = wh_json:get_ne_value(?VM_KEY_MESSAGES, cb_context:doc(Context1), []),
-            Filter = cb_context:req_value(Context, ?VM_KEY_FOLDER, <<"all">>),
+    Messages = kz_vm_message:messages(cb_context:account_id(Context), DocId),
+    Filter = cb_context:req_value(Context, ?VM_KEY_FOLDER, <<"all">>),
+    Deleted = delete_messages(Messages, Filter),
 
-            Deleted = delete_messages(Messages, Filter),
-
-            cb_context:update_doc(
-                Context1
-                ,fun(Doc) -> wh_json:set_value(?VM_KEY_MESSAGES, Deleted, Doc) end
-            );
-        _Status -> Context1
-    end.
+    cb_context:set_resp_data(
+        cb_context:set_resp_status(Context, 'success')
+        ,Deleted
+    ).
 
 
 %%--------------------------------------------------------------------
@@ -300,7 +303,13 @@ delete_messages([Mess|Messages], Filter, Deleted) ->
 %%--------------------------------------------------------------------
 -spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(VMBoxId, Context) ->
-    validate_unique_vmbox(VMBoxId, Context).
+    ValidateFuns = [fun validate_unique_vmbox/2
+                    ,fun check_vmbox_schema/2
+                   ],
+    lists:foldl(fun(F, C) -> F(VMBoxId, C) end
+                ,Context
+                ,ValidateFuns
+               ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -313,19 +322,18 @@ validate_request(VMBoxId, Context) ->
 validate_unique_vmbox(VMBoxId, Context) ->
     validate_unique_vmbox(VMBoxId, Context, cb_context:account_db(Context)).
 
-validate_unique_vmbox(VMBoxId, Context, 'undefined') ->
-    check_vmbox_schema(VMBoxId, Context);
+validate_unique_vmbox(_VMBoxId, Context, 'undefined') ->
+    Context;
 validate_unique_vmbox(VMBoxId, Context, _AccountDb) ->
     case check_uniqueness(VMBoxId, Context) of
-        'true' -> check_vmbox_schema(VMBoxId, Context);
+        'true' -> Context;
         'false' ->
-            C = cb_context:add_validation_error(
-                  <<"mailbox">>
-                  ,<<"unique">>
-                  ,wh_json:from_list([{<<"message">>, <<"Invalid mailbox number or already exists">>}])
-                  ,Context
-                 ),
-            check_vmbox_schema(VMBoxId, C)
+            cb_context:add_validation_error(
+              <<"mailbox">>
+              ,<<"unique">>
+              ,wh_json:from_list([{<<"message">>, <<"Invalid mailbox number or already exists">>}])
+              ,Context
+             )
     end.
 
 %%--------------------------------------------------------------------
@@ -371,10 +379,12 @@ maybe_migrate_notification_emails(Context) ->
 -spec on_successful_validation(api_binary(), cb_context:context()) ->
                                       cb_context:context().
 on_successful_validation('undefined', Context) ->
-    Props = [{<<"pvt_type">>, kzd_voicemail_box:type()}],
+    Props = [{<<"pvt_type">>, kzd_voicemail_box:type()}
+             ,{?VM_KEY_MESSAGES, []}
+            ],
     cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context)));
 on_successful_validation(VMBoxId, Context) ->
-    crossbar_doc:load_merge(VMBoxId, Context, ?TYPE_CHECK_OPTION(kzd_voicemail_box:type())).
+    crossbar_doc:load_merge(VMBoxId, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -407,7 +417,7 @@ load_vmbox_summary(Context) ->
 %%--------------------------------------------------------------------
 -spec load_vmbox(ne_binary(), cb_context:context()) -> cb_context:context().
 load_vmbox(DocId, Context) ->
-    case kz_vm_message:load_vmbox(cb_context:account_id(Context), DocId) of
+    case kz_vm_message:load_vmbox(cb_context:account_id(Context), DocId, 'false') of
         {'ok', JObj} -> crossbar_doc:handle_json_success(JObj, Context);
         {'error', Error} -> crossbar_doc:handle_couch_mgr_errors(Error, DocId, Context)
     end.
