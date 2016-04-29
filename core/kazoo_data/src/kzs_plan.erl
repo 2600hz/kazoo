@@ -172,12 +172,7 @@ dataplan_connections(Map, Index) ->
       || {_, #{<<"connection">> := C}} <- maps:to_list(Map)
     ].
 
--spec dataplan_match(ne_binary(), map()) -> map().
 -spec dataplan_match(ne_binary(), map(), api_binary()) -> map().
-
-dataplan_match(Classification, Plan) ->
-    dataplan_match(Classification, Plan, 'undefined').
-
 dataplan_match(Classification, Plan, AccountId) ->
     #{<<"plan">> := #{Classification := #{<<"connection">> := CCon
                                          ,<<"attachments">> := CAtt
