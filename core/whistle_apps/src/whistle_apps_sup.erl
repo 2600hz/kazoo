@@ -20,15 +20,8 @@
 
 -define(SERVER, ?MODULE).
 
--define(ORIGIN_BINDINGS, [[{'type', <<"account">>}
-                          ]
-                         ]).
-
--define(CACHE_GETBY_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
-
--define(CHILDREN, [?CACHE_ARGS(?WHAPPS_GETBY_CACHE, ?CACHE_GETBY_PROPS)
+-define(CHILDREN, [?SUPER('wh_hooks_listener_sup')
                    ,?WORKER('wh_nodes')
-                   ,?WORKER('wh_hooks_listener')
                    ,?WORKER('whistle_apps_init')
                    ,?WORKER('whapps_controller')
                   ]).

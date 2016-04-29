@@ -9,7 +9,7 @@
 
 -define(CONFIG_CAT, <<"crossbar">>).
 
--define(CROSSBAR_CACHE, 'crossbar_cache').
+-define(CACHE_NAME, 'crossbar_cache').
 
 -define(MAINTENANCE_VIEW_FILE, <<"views/maintenance.json">>).
 -define(ACCOUNTS_AGG_VIEW_FILE, <<"views/accounts.json">>).

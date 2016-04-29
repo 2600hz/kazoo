@@ -16,7 +16,7 @@
 -export([start_link/0]).
 -export([init/1]).
 
--define(CHILDREN, [?CACHE(?REG_CACHE)
+-define(CHILDREN, [?CACHE(?CACHE_NAME)
                    ,?WORKER('registrar_init')
                    ,?SUPER('registrar_shared_listener_sup')
                   ]).

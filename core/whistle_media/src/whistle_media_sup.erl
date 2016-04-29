@@ -6,10 +6,9 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(whistle_media_sup).
-
 -behaviour(supervisor).
 
--include_lib("whistle/include/wh_types.hrl").
+-include("whistle_media.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -17,18 +16,17 @@
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?WORKER_APP_INIT('whistle_media_init', 20 * ?SECONDS_IN_MINUTE)
-                   ,?CACHE('media_mgr_cache')
+-define(CHILDREN, [?SUPER('wh_media_cache_sup')
+                   ,?WORKER_APP_INIT('whistle_media_init', 20 * ?SECONDS_IN_MINUTE)
                    ,?WORKER_ARGS('kazoo_etsmgr_srv'
-                                ,[
-                                  [{'table_id', wh_media_map:table_id()}
-                                  ,{'table_options', wh_media_map:table_options()}
-                                  ,{'find_me_function', fun wh_media_map:find_me_function/0}
-                                  ,{'gift_data', wh_media_map:gift_data()}
-                                  ]
-                                 ])
+                                 ,[
+                                   [{'table_id', wh_media_map:table_id()}
+                                    ,{'table_options', wh_media_map:table_options()}
+                                    ,{'find_me_function', fun wh_media_map:find_me_function/0}
+                                    ,{'gift_data', wh_media_map:gift_data()}
+                                   ]
+                                  ])
                    ,?WORKER('wh_media_map')
-                   ,?SUPER('wh_media_cache_sup')
                    ,?WORKER('wh_media_proxy')
                   ]).
 

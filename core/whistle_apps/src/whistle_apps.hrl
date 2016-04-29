@@ -5,7 +5,6 @@
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_system_config.hrl").
 -include_lib("whistle/include/kz_system_config.hrl").
--include_lib("kazoo_caches/include/kazoo_caches.hrl").
 
 -define(DEFAULT_WHAPPS, ['blackhole'
                          ,'callflow'
@@ -30,8 +29,6 @@
                          ,'trunkstore'
                          ,'webhooks'
                         ]).
-
--define(WHAPPS_GETBY_CACHE, 'whapps_getby_cache').
 
 -define(WHISTLE_APPS_HRL, 'true').
 -endif.

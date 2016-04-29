@@ -1,25 +1,23 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, VoIP, INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(dth_sup).
-
+-module(wh_hooks_listener_sup).
 -behaviour(supervisor).
-
--include("dth.hrl").
-
--define(SERVER, ?MODULE).
 
 -export([start_link/0]).
 -export([init/1]).
 
-%% Helper macro for declaring children of supervisor
--define(CHILDREN, [?CACHE(?CACHE_NAME)
-                   ,?WORKER('dth_listener')
+-include("whistle_apps.hrl").
+-include("wh_hooks.hrl").
+
+-define(SERVER, ?MODULE).
+
+-define(CHILDREN, [?WORKER('wh_hooks_listener')
+                   ,?CACHE(?HOOKS_CACHE_NAME)
                   ]).
 
 %% ===================================================================
@@ -49,10 +47,9 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init(any()) -> sup_init_ret().
 init([]) ->
-    wh_util:set_startup(),
     RestartStrategy = 'one_for_one',
-    MaxRestarts = 5,
-    MaxSecondsBetweenRestarts = 10,
+    MaxRestarts = 25,
+    MaxSecondsBetweenRestarts = 1,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 

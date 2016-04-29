@@ -98,7 +98,7 @@ constrain_weight(W) -> W.
                         {'error', 'no_did_found' | atom()}.
 lookup_did(DID, AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case kz_cache:fetch_local(?TRUNKSTORE_CACHE
+    case kz_cache:fetch_local(?CACHE_NAME
                               ,{'lookup_did', DID, AccountId}
                              )
     of
@@ -116,7 +116,7 @@ lookup_did(DID, AccountId) ->
                     lager:info("cache miss for ~s, found result with id ~s", [DID, wh_doc:id(ViewJObj)]),
                     ValueJObj = wh_json:get_value(<<"value">>, ViewJObj),
                     Resp = wh_json:set_value(<<"id">>, wh_doc:id(ViewJObj), ValueJObj),
-                    kz_cache:store_local(?TRUNKSTORE_CACHE
+                    kz_cache:store_local(?CACHE_NAME
                                          ,{'lookup_did', DID, AccountId}
                                          ,Resp
                                          ,CacheProps
@@ -127,7 +127,7 @@ lookup_did(DID, AccountId) ->
                     lager:info("cache miss for ~s, found multiple results, using first with id ~s", [DID, wh_doc:id(ViewJObj)]),
                     ValueJObj = wh_json:get_value(<<"value">>, ViewJObj),
                     Resp = wh_json:set_value(<<"id">>, wh_doc:id(ViewJObj), ValueJObj),
-                    kz_cache:store_local(?TRUNKSTORE_CACHE
+                    kz_cache:store_local(?CACHE_NAME
                                          ,{'lookup_did', DID, AccountId}
                                          ,Resp
                                          ,CacheProps
@@ -173,7 +173,7 @@ lookup_user_flags('undefined', _, AccountId, DID) ->
     end;
 lookup_user_flags(Name, Realm, AccountId, _) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case kz_cache:fetch_local(?TRUNKSTORE_CACHE
+    case kz_cache:fetch_local(?CACHE_NAME
                               ,{'lookup_user_flags', Realm, Name, AccountId}
                              )
     of
@@ -200,7 +200,7 @@ lookup_user_flags(Name, Realm, AccountId, _) ->
                     {'ok', AccountJObj} = kz_account:fetch(AccountId),
                     Restriction = wh_json:get_value(<<"call_restriction">>, AccountJObj, wh_json:new()),
                     FlagsJObj = wh_json:set_value(<<"call_restriction">>, Restriction, JObj),
-                    kz_cache:store_local(?TRUNKSTORE_CACHE
+                    kz_cache:store_local(?CACHE_NAME
                                          ,{'lookup_user_flags', Realm, Name, AccountId}
                                          ,FlagsJObj
                                         ),

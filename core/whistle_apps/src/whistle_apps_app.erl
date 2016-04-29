@@ -7,7 +7,6 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(whistle_apps_app).
-
 -behaviour(application).
 
 -include_lib("whistle/include/wh_types.hrl").
@@ -25,7 +24,7 @@ start() ->
 
 %% @public
 %% @doc Implement the application start behaviour
--spec start(application:start_type(), any()) -> startlink_ret().
+-spec start(application:start_type(), any()) -> startapp_ret().
 start(_StartType, _StartArgs) ->
     whistle_apps_sup:start_link().
 

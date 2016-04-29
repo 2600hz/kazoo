@@ -6,7 +6,7 @@
 
 -define(APP_NAME, <<"cdr">>).
 -define(APP_VERSION, <<"4.0.0">>).
--define(CDR_CACHE, 'cdr_cache').
+
 -define(MAX_RETRIES, 3).
 
 -define(CONFIG_CAT, <<"cdr">>).

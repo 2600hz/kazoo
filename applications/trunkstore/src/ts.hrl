@@ -12,7 +12,7 @@
 %% couch params for the trunk store and its views
 -define(TS_DB, <<"ts">>).
 
--define(TRUNKSTORE_CACHE, 'trunkstore_cache').
+-define(CACHE_NAME, 'trunkstore_cache').
 
 %% cdr doc store
 -define(TS_CDR_PREFIX, <<"ts_cdr">>).

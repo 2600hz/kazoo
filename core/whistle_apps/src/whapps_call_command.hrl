@@ -1,4 +1,5 @@
 -ifndef(WHAPPS_CALL_COMMAND_HRL).
+
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("kazoo_caches/include/kazoo_caches.hrl").

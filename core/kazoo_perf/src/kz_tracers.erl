@@ -35,8 +35,8 @@ gen_load(N, D) ->
     {A1, A2, A3} = Start = os:timestamp(),
     _ = random:seed(A1, A2, A3),
 
-    {PointerTab, MonitorTab} = gen_listener:call(?KZ_DATA_CACHE, {'tables'}),
-    Tables = [?KZ_DATA_CACHE, PointerTab, MonitorTab],
+    {PointerTab, MonitorTab} = gen_listener:call(?CACHE_NAME, {'tables'}),
+    Tables = [?CACHE_NAME, PointerTab, MonitorTab],
     table_status(Tables),
 
     PidRefs = [spawn_monitor(fun() -> do_load_gen(D) end) || _ <- lists:seq(1, N)],
@@ -105,7 +105,7 @@ verify_no_docs(Docs) ->
     end.
 
 verify_no_doc(Doc) ->
-    case kz_cache:peek_local(?KZ_DATA_CACHE
+    case kz_cache:peek_local(?CACHE_NAME
                              ,{'couch_util'
                                ,wh_doc:account_db(Doc)
                                ,wh_doc:id(Doc)
@@ -151,7 +151,7 @@ perform_ops(Start, AccountDb, Ops) ->
 cache_data() ->
     [{'message_queue_len', N}
      ,{'current_function', F}
-    ] = erlang:process_info(whereis(?KZ_DATA_CACHE)
+    ] = erlang:process_info(whereis(?CACHE_NAME)
                            ,['message_queue_len', 'current_function']
                            ),
     {N, F}.

@@ -63,7 +63,7 @@ handle_push(JObj, _Props) ->
 
     lager:debug("pushing for token ~s(~s) to module ~s", [Token, TokenType, Module]),
 
-    kz_cache:store_local(?PUSHER_CACHE
+    kz_cache:store_local(?CACHE_NAME
                          ,Token
                          ,JObj
                          ,[{'expires', 20}]
@@ -92,7 +92,7 @@ maybe_process_reg_success(UA, JObj) ->
 
 maybe_process_reg_success('undefined', _UA, _JObj, _Params) -> 'ok';
 maybe_process_reg_success(Token, UA, JObj, Params) ->
-    case kz_cache:fetch_local(?PUSHER_CACHE, Token) of
+    case kz_cache:fetch_local(?CACHE_NAME, Token) of
         {'error', 'not_found'} -> maybe_update_push_token(UA, JObj, Params);
         {'ok', TokenJObj} -> send_reply(Token, TokenJObj)
     end.
@@ -146,7 +146,7 @@ build_push_fold(K, V, Acc, JObj, Params) ->
 
 -spec send_reply(ne_binary(), wh_json:object()) -> 'ok'.
 send_reply(Token, JObj) ->
-    kz_cache:erase_local(?PUSHER_CACHE, Token),
+    kz_cache:erase_local(?CACHE_NAME, Token),
     Queue = wh_json:get_value(<<"Server-ID">>, JObj),
     Payload = [{<<"Token-ID">>, Token}
                ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}

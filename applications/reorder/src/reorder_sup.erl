@@ -9,7 +9,7 @@
 
 -behaviour(supervisor).
 
--include_lib("whistle/include/wh_types.hrl").
+-include("reorder.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -17,8 +17,7 @@
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?CACHE('reorder_cache')
-                   ,?WORKER('reorder_listener')
+-define(CHILDREN, [?WORKER('reorder_listener')
                   ]).
 
 %% ===================================================================

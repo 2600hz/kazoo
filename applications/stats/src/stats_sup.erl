@@ -13,11 +13,11 @@
 -export([start_link/0]).
 -export([init/1]).
 
--include_lib("whistle/include/wh_types.hrl").
+-include("stats.hrl").
 
 -define(SERVER, ?MODULE).
 
--define(CHILDREN, [?CACHE('stats_cache')
+-define(CHILDREN, [?CACHE(?CACHE_NAME)
                    ,?WORKER('stats_listener')
                   ]).
 

@@ -336,7 +336,7 @@ do_save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
                 {'ok', JObj}=Ok ->
                     lager:info("successfully stored call parking data for slot ~s", [SlotNumber]),
                     CacheProps = [{'origin', {'db', AccountDb, ?DB_DOC_NAME}}],
-                    kz_cache:store_local(?CALLFLOW_CACHE, ?PARKED_CALLS_KEY(AccountDb), JObj, CacheProps),
+                    kz_cache:store_local(?CACHE_NAME, ?PARKED_CALLS_KEY(AccountDb), JObj, CacheProps),
                     Ok;
                 {'error', 'conflict'} ->
                     maybe_resolve_conflict(SlotNumber, Slot, ParkedCalls, Call)
@@ -359,12 +359,12 @@ maybe_resolve_conflict(SlotNumber, Slot, ParkedCalls, Call) ->
             {'ok', JObj2}=Ok = kz_datamgr:save_doc(AccountDb, UpdatedJObj),
             lager:info("conflict when attempting to store call parking data for slot ~s due to a different slot update", [SlotNumber]),
             CacheProps = [{'origin', {'db', AccountDb, ?DB_DOC_NAME}}],
-            kz_cache:store_local(?CALLFLOW_CACHE, ?PARKED_CALLS_KEY(AccountDb), JObj2, CacheProps),
+            kz_cache:store_local(?CACHE_NAME, ?PARKED_CALLS_KEY(AccountDb), JObj2, CacheProps),
             Ok;
         CurrentParkedCall ->
             lager:debug("attempt to store parking data conflicted with a recent update to slot ~s", [SlotNumber]),
             CacheProps = [{'origin', {'db', AccountDb, ?DB_DOC_NAME}}],
-            kz_cache:store_local(?CALLFLOW_CACHE, ?PARKED_CALLS_KEY(AccountDb), JObj1, CacheProps),
+            kz_cache:store_local(?CACHE_NAME, ?PARKED_CALLS_KEY(AccountDb), JObj1, CacheProps),
             case whapps_call_command:b_channel_status(CurrentParkedCall) of
                 {'ok', _} ->
                     lager:debug("slot ~s is now occupied by ~s", [SlotNumber, CurrentParkedCall]),
@@ -416,7 +416,7 @@ update_call_id(Replaces, ParkedCalls, Call, Loops) ->
                     {'ok', SlotNumber, UpdatedSlot};
                 {'error', 'conflict'} ->
                     AccountDb = whapps_call:account_db(Call),
-                    kz_cache:erase_local(?CALLFLOW_CACHE, ?PARKED_CALLS_KEY(AccountDb)),
+                    kz_cache:erase_local(?CACHE_NAME, ?PARKED_CALLS_KEY(AccountDb)),
                     update_call_id(Replaces, get_parked_calls(Call), Call);
                 {'error', _R} ->
                     lager:info("failed to update parking slot with call id ~s: ~p", [Replaces, _R]),
@@ -505,7 +505,7 @@ get_parked_calls(Call) ->
 
 -spec get_parked_calls(ne_binary(), ne_binary()) -> wh_json:object().
 get_parked_calls(AccountDb, AccountId) ->
-    case kz_cache:peek_local(?CALLFLOW_CACHE, ?PARKED_CALLS_KEY(AccountDb)) of
+    case kz_cache:peek_local(?CACHE_NAME, ?PARKED_CALLS_KEY(AccountDb)) of
         {'ok', JObj} -> JObj;
         {'error', 'not_found'} ->
             fetch_parked_calls(AccountDb, AccountId)

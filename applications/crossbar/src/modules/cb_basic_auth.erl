@@ -68,7 +68,7 @@ authenticate(_Context, _TokenType) -> 'false'.
 check_basic_token(_Context, <<>>) -> 'false';
 check_basic_token(_Context, 'undefined') -> 'false';
 check_basic_token(Context, AuthToken) ->
-   case kz_cache:peek_local(?CROSSBAR_CACHE, {'basic_auth', AuthToken}) of
+   case kz_cache:peek_local(?CACHE_NAME, {'basic_auth', AuthToken}) of
         {'ok', JObj} -> is_expired(Context, JObj);
         {'error', 'not_found'} -> maybe_check_credentials(Context, AuthToken)
     end.
@@ -134,7 +134,7 @@ is_expired(Context, JObj) ->
             EndpointId = wh_doc:id(JObj),
             CacheProps = [{'origin', {'db', AccountDb, EndpointId}}],
             AuthToken = cb_context:auth_token(Context),
-            kz_cache:store_local(?CROSSBAR_CACHE, {'basic_auth', AuthToken}, JObj, CacheProps),
+            kz_cache:store_local(?CACHE_NAME, {'basic_auth', AuthToken}, JObj, CacheProps),
             {'true', set_auth_doc(Context, JObj)};
         {'true', Expired} ->
             _ = wh_util:spawn(fun wh_util:maybe_disable_account/1, [AccountId]),

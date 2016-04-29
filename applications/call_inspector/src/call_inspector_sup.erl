@@ -17,8 +17,7 @@
 -define(SERVER, ?MODULE).
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?CACHE('call_inspector_cache')
-                   ,?SUPER('ci_analyzers_sup')
+-define(CHILDREN, [?SUPER('ci_analyzers_sup')
                    ,?SUPER('ci_parsers_sup')
                    ,?WORKER('ci_datastore')
                    ,?WORKER('ci_listener')

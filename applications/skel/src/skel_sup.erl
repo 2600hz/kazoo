@@ -17,7 +17,7 @@
 -define(SERVER, ?MODULE).
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?CACHE('skel_cache')
+-define(CHILDREN, [?CACHE(?CACHE_NAME)
                    ,?WORKER('skel_listener')
                   ]).
 

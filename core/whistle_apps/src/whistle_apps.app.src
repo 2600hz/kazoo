@@ -4,7 +4,7 @@
   ,{id, "9fd3b140-8727-11e0-9d78-0800200c9a66"}
   ,{vsn, "4.0.0"}
   ,{modules, []}
-  ,{registered, [whistle_apps_sup, wh_hooks_listener, wh_nodes, wh_hooks_shared_listener, whapps_sup]}
+  ,{registered, [whistle_apps_sup, wh_hooks_cache, wh_hooks_listener, wh_hooks_listener_sup, wh_nodes, wh_hooks_shared_listener, whapps_sup]}
   ,{applications, [ kernel
                   , stdlib
 

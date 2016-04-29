@@ -47,7 +47,7 @@
                             data_error() |
                             {'error', 'not_found'}.
 open_cache_doc(DbName, DocId, Options) ->
-    case kz_cache:fetch_local(?KZ_DATA_CACHE, {?MODULE, DbName, DocId}) of
+    case kz_cache:fetch_local(?CACHE_NAME, {?MODULE, DbName, DocId}) of
         {'ok', {'error', _}=E} -> E;
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
@@ -66,7 +66,7 @@ open_cache_doc(DbName, DocId, Options) ->
                             data_error() |
                             {'error', 'not_found'}.
 open_cache_doc(Server, DbName, DocId, Options) ->
-    case kz_cache:fetch_local(?KZ_DATA_CACHE, {?MODULE, DbName, DocId}) of
+    case kz_cache:fetch_local(?CACHE_NAME, {?MODULE, DbName, DocId}) of
         {'ok', {'error', _}=E} -> E;
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
@@ -102,7 +102,7 @@ maybe_cache_failure(DbName, DocId, _Options, {'error', ErrorCode}=Error, ErrorCo
 
 -spec add_to_doc_cache(ne_binary(), ne_binary(), wh_json:object() | data_error()) -> 'ok'.
 add_to_doc_cache(DbName, DocId, CacheValue) ->
-    kz_cache:erase_local(?KZ_DATA_CACHE, {?MODULE, DbName, DocId}),
+    kz_cache:erase_local(?CACHE_NAME, {?MODULE, DbName, DocId}),
     CacheProps = [{'origin', {'db', DbName, DocId}}
                   ,{'expires', expires_policy_value(DbName, CacheValue)}
                  ],
@@ -110,7 +110,7 @@ add_to_doc_cache(DbName, DocId, CacheValue) ->
         'true' ->
            cache_if_not_media(CacheProps, DbName, DocId, CacheValue);
         'false' ->
-            kz_cache:store_local(?KZ_DATA_CACHE, {?MODULE, DbName, DocId}, CacheValue, CacheProps)
+            kz_cache:store_local(?CACHE_NAME, {?MODULE, DbName, DocId}, CacheValue, CacheProps)
     end.
 
 -spec cache_if_not_media(wh_proplist(), ne_binary(), ne_binary(), wh_json:object() | data_error()) -> 'ok'.
@@ -126,7 +126,7 @@ cache_if_not_media(CacheProps, DbName, DocId, CacheValue) ->
     case kzs_util:db_classification(DbName) =/= 'system'
         andalso lists:member(wh_doc:type(CacheValue), ?NO_CACHING_TYPES) of
         'true' -> 'ok';
-        'false' -> kz_cache:store_local(?KZ_DATA_CACHE
+        'false' -> kz_cache:store_local(?CACHE_NAME
                                         ,{?MODULE, DbName, DocId}
                                         ,CacheValue
                                         ,CacheProps
@@ -166,23 +166,23 @@ flush_cache_doc(Db, Doc) when is_binary(Db) ->
 flush_cache_doc(#db{name=Name}, Doc, Options) ->
     flush_cache_doc(wh_util:to_binary(Name), Doc, Options);
 flush_cache_doc(DbName, DocId, _Options) when is_binary(DocId) ->
-    kz_cache:erase_local(?KZ_DATA_CACHE, {?MODULE, DbName, DocId});
+    kz_cache:erase_local(?CACHE_NAME, {?MODULE, DbName, DocId});
 flush_cache_doc(DbName, Doc, Options) ->
     flush_cache_doc(DbName, wh_doc:id(Doc), Options).
 
 -spec flush_cache_docs() -> 'ok'.
-flush_cache_docs() -> kz_cache:flush_local(?KZ_DATA_CACHE).
+flush_cache_docs() -> kz_cache:flush_local(?CACHE_NAME).
 
 -spec flush_cache_docs(ne_binary() | db()) -> 'ok'.
 flush_cache_docs(#db{name=Name}) ->
     flush_cache_docs(wh_util:to_binary(Name));
 flush_cache_docs(DbName) ->
     Filter = fun({?MODULE, DbName1, _DocId}=K, _) when DbName1 =:= DbName ->
-                     kz_cache:erase_local(?KZ_DATA_CACHE, K),
+                     kz_cache:erase_local(?CACHE_NAME, K),
                      'true';
                 (_, _) -> 'false'
              end,
-    _ = kz_cache:filter_local(?KZ_DATA_CACHE, Filter),
+    _ = kz_cache:filter_local(?CACHE_NAME, Filter),
     'ok'.
 
 -spec flush_cache_docs(ne_binary() | db(), ne_binaries() | wh_json:objects()) -> 'ok'.

@@ -92,23 +92,25 @@ db_info(#{server := {App, Conn}}, DbName) -> App:db_info(Conn, DbName).
 
 -spec db_exists(map(), ne_binary()) -> boolean().
 db_exists(#{server := {App, Conn}}, DbName) ->
-    case kz_cache:fetch_local(?KZ_DP_CACHE, {'database', {App, Conn}, DbName}) of
+    case kz_cache:fetch_local(?KAZOO_DATA_PLAN_CACHE, {'database', {App, Conn}, DbName}) of
         {'ok', Exists} -> Exists;
-        _ -> Exists = App:db_exists(Conn, DbName),
-             Props = [{'origin', {'db', DbName}}],
-             kz_cache:store_local(?KZ_DP_CACHE, {'database', {App, Conn}, DbName}, Exists, Props),
-             Exists
+        _ ->
+            Exists = App:db_exists(Conn, DbName),
+            Props = [{'origin', {'db', DbName}}],
+            kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, {'database', {App, Conn}, DbName}, Exists, Props),
+            Exists
     end.
 
 -spec db_exists_all(map(), ne_binary()) -> boolean().
 db_exists_all(Map, DbName) ->
-    case kz_cache:fetch_local(?KZ_DP_CACHE, {'database', DbName}) of
+    case kz_cache:fetch_local(?KAZOO_DATA_PLAN_CACHE, {'database', DbName}) of
         {'ok', Exists} -> Exists;
-        _ -> Exists = db_exists(Map, DbName) andalso
-                          db_exists_others(DbName, maps:get('others', Map, [])),
-             Props = [{'origin', {'db', DbName}}],
-             kz_cache:store_local(?KZ_DP_CACHE, {'database', DbName}, Exists, Props),
-             Exists
+        _ ->
+            Exists = db_exists(Map, DbName) andalso
+                db_exists_others(DbName, maps:get('others', Map, [])),
+            Props = [{'origin', {'db', DbName}}],
+            kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, {'database', DbName}, Exists, Props),
+            Exists
     end.
 
 -spec db_exists_others(ne_binary(), list()) -> boolean().

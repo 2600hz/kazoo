@@ -16,8 +16,7 @@
 -export([start_link/0]).
 -export([init/1]).
 
--define(CHILDREN, [?CACHE(?CONFERENCE_CACHE)
-                   ,?SUPER('conf_participant_sup')
+-define(CHILDREN, [?SUPER('conf_participant_sup')
                    ,?WORKER('conference_shared_listener')
                    ,?WORKER('conference_listener')
                   ]).
