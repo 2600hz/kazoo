@@ -3,6 +3,8 @@ DEPS = lager eiconv gen_smtp amqp_client cowboy jesse jiffy certifi couchbeam ws
        nklib gproc poolboy syslog lager_syslog eflame hep ecsv reloader \
 	proper recon
 
+BUILD_DEPS = parse_trans
+
 dep_escalus = hex 2.6.4
 dep_exml = git https://github.com/paulgray/exml 2.2.1
 dep_eiconv = git https://github.com/zotonic/eiconv
@@ -25,3 +27,6 @@ dep_ecsv = git https://github.com/lazedo/ecsv 0.2.1
 
 ### for scripts/dev-start-*.sh
 dep_reloader = git https://github.com/oinksoft/reloader
+
+### build
+dep_parse_trans = git https://github.com/lazedo/parse_trans

@@ -8,9 +8,11 @@ Filter = ['rabbitmq_codegen'
           ,'.erlang.mk'
           ,'.settings'
           ,'skel'
-         ],  
+          ,'parse_trans'
+         ],
 Base = lists:filter(fun(A) -> not lists:member(A, Filter) end, Apps ++ Core ++ Deps),
 Based = [{A, 'load'} || A <- lists:sort(Base) ],
+Included = [runtime_tools,wx,observer],
 
 Config = "/etc/kazoo/app.config", %% SHOULD rename app.config to sys.config as OTP prefers it.
 case filelib:is_regular(Config) of
@@ -30,7 +32,7 @@ end ++
 , {vm_args, "rel/vm.args"}
 
 , {release, {kazoo,"4.0.0"}
-  , Based
+  , Included ++ Based
   }
 
 ].
