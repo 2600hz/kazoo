@@ -844,7 +844,8 @@ get_caller_id_number(Call) ->
 %%--------------------------------------------------------------------
 -spec migrate() -> 'ok'.
 migrate() ->
-    [migrate(Id)|| Id <- whapps_utill:get_all_accounts('raw')].
+    _ = [migrate(Id)|| Id <- whapps_util:get_all_accounts('raw')],
+    'ok'.
 
 -spec migrate(ne_binary()) -> 'ok'.
 migrate(AccountId) ->
