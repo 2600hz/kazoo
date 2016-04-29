@@ -741,9 +741,9 @@ maybe_revert_publish('false') ->
 save_docs(DbName, Docs) when is_list(Docs) ->
     save_docs(DbName, Docs, []).
 
-save_docs(DbName, Docs, Options) when is_list(Docs) andalso ?VALID_DBNAME ->
+save_docs(DbName, [Doc|_]=Docs, Options) when is_list(Docs) andalso ?VALID_DBNAME ->
     OldSetting = maybe_toggle_publish(Options),
-    Result = [kzs_doc:save_doc(kzs_plan:plan(DbName, Doc), DbName, Doc, Options) || Doc <- Docs],
+    Result = kzs_doc:save_docs(kzs_plan:plan(DbName, Doc), DbName, Docs, Options),
     maybe_revert_publish(OldSetting),
     Result;
 save_docs(DbName, Docs, Options) when is_list(Docs) ->
