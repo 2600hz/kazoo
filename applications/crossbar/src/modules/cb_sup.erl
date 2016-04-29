@@ -248,7 +248,7 @@ validate(Context, ModuleBin, FunctionBin, Args) ->
 validate_sup(Context, Module, Function, Args) ->
     OldGroupLeader = group_leader(),
     group_leader(whereis(?MODULE), self()),
-    lager:debug("attempting ~s_maintenance:~s/~p"
+    lager:debug("attempting ~s:~s/~p"
                 ,[Module, Function, length(Args)]),
     try apply(Module, Function, Args) of
         'no_return' ->
@@ -268,7 +268,7 @@ validate_sup(Context, Module, Function, Args) ->
     catch
         _E:_R ->
             group_leader(OldGroupLeader, self()),
-            lager:debug("failed to run ~p_maintenance:~p/~p: ~s: ~p", [Module, Function, length(Args), _E, _R]),
+            lager:debug("failed to run ~p:~p/~p: ~s: ~p", [Module, Function, length(Args), _E, _R]),
             Context
     end.
 
