@@ -665,6 +665,9 @@ attempt_disconnect_number(#number{module_name=ModuleName}=Number) ->
     try ModuleName:disconnect_number(Number) of
         #number{}=N -> N#number{reserve_history=ordsets:new()}
     catch
+        'error':'undef' ->
+            lager:debug("non-existant number module ~s, allowing disconnect", [ModuleName]),
+            Number#number{reserve_history=ordsets:new()};
         _E:_R ->
             lager:debug("failed to disconnect via ~s: ~s: ~p", [ModuleName, _E, _R]),
             error_carrier_fault(<<"Failed to disconnect number">>, Number)
