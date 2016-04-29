@@ -261,7 +261,7 @@ message_doc(AccountId, {_, ?MATCH_MODB_PREFIX(Year, Month, _)}=DocId) ->
 message_doc(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _)=DocId) ->
     open_modb_doc(AccountId, DocId, Year, Month);
 message_doc(AccountId, MediaId) ->
-    case open_accountdb_doc(AccountId, MediaId) of
+    case open_accountdb_doc(AccountId, MediaId, kzd_box_message:type()) of
         {'ok', MediaJObj} ->
             SourceId = kzd_box_message:source_id(MediaJObj),
             case fetch_vmbox_messages(AccountId, SourceId) of
@@ -294,7 +294,7 @@ load_vmbox(AccountId, BoxId) ->
 
 -spec load_vmbox(ne_binary(), ne_binary(), boolean()) -> db_ret().
 load_vmbox(AccountId, BoxId, IncludeMessages) ->
-    case open_accountdb_doc(AccountId, BoxId) of
+    case open_accountdb_doc(AccountId, BoxId, kzd_voicemail_box:type()) of
         {'ok', JObj} -> maybe_include_messages(AccountId, BoxId, JObj, IncludeMessages);
         {'error', _R}=E ->
             lager:debug("failed to open vmbox ~s: ~p", [BoxId, _R]),
@@ -488,7 +488,7 @@ move_to_modb(AccountId, DocId, JObj, Funs) ->
 
 -spec update_mailbox(ne_binary(), ne_binary(), ne_binary()) -> db_ret().
 update_mailbox(AccountId, BoxId, OldId) ->
-    case open_accountdb_doc(AccountId, BoxId) of
+    case open_accountdb_doc(AccountId, BoxId, kzd_voicemail_box:type()) of
         {'ok', VMBox} ->
             Messages = wh_json:get_value(?VM_KEY_MESSAGES, VMBox, []),
             {_, NewMessages} = kzd_box_message:filter_vmbox_messages(OldId, Messages),
@@ -627,16 +627,28 @@ open_modb_doc(AccountId, DocId, Year, Month) ->
         {'error', _}=E -> E
     end.
 
--spec open_accountdb_doc(ne_binary(), kazoo_data:docid()) -> wh_json:object().
-open_accountdb_doc(AccountId, DocId) ->
+-spec open_accountdb_doc(ne_binary(), kazoo_data:docid(), ne_binary()) -> wh_json:object().
+open_accountdb_doc(AccountId, DocId, Type) ->
     case kz_datamgr:open_doc(get_db(AccountId), DocId) of
-        {'ok', _}=OK -> OK;
+        {'ok', D} -> check_doc_type(D, Type, wh_doc:type(D));
         {'error', _}=E -> E
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Protect against returning wrong doc when expected type is not matched
+%% (especially for requests from crossbar)
+%% @end
+%%--------------------------------------------------------------------
+-spec check_doc_type(wh_json:object(), ne_binary(), ne_binary()) -> db_ret().
+check_doc_type(Doc, Type, Type) ->
+    {'ok', Doc};
+check_doc_type(_Doc, _ExpectedType, _DocType) ->
+    {'error', 'not_found'}.
+
 -spec fetch_vmbox_messages(ne_binary(), ne_binary()) -> db_ret().
 fetch_vmbox_messages(AccountId, BoxId) ->
-    case open_accountdb_doc(AccountId, BoxId) of
+    case open_accountdb_doc(AccountId, BoxId, kzd_voicemail_box:type()) of
         {'ok', BoxJObj} -> {'ok', wh_json:get_value(?VM_KEY_MESSAGES, BoxJObj, [])};
         {'error', _}=E ->
             lager:debug("error fetching voicemail messages for ~s from accountid ~s", [BoxId, AccountId]),
