@@ -84,10 +84,10 @@ system_dataplan(DBName, _Classification)
     #{tag => SysTag, server => kz_dataconnections:get_server(SysTag)};
 system_dataplan(_DBName, 'numbers') ->
     Plan = fetch_dataplan([?SYSTEM_DATAPLAN]),
-    dataplan_match(<<"system">>, <<"numbers">>, Plan);
+    dataplan_type_match(<<"system">>, <<"numbers">>, Plan);
 system_dataplan(DBName, _Classification) ->
     Plan = fetch_dataplan([?SYSTEM_DATAPLAN]),
-    dataplan_match(<<"system">>, DBName, Plan).
+    dataplan_type_match(<<"system">>, DBName, Plan).
 
 account_dataplan(AccountDb) ->
     AccountId = wh_util:format_account_id(AccountDb),
@@ -95,7 +95,7 @@ account_dataplan(AccountDb) ->
                           ,reseller_id(AccountId)
                           ,AccountId
                           ]),
-    dataplan_match(<<"account">>, Plan).
+    dataplan_match(<<"account">>, Plan, AccountId).
 
 account_dataplan(AccountDb, 'undefined') ->
     account_dataplan(AccountDb);
@@ -105,7 +105,7 @@ account_dataplan(AccountDb, DocType) ->
                           ,reseller_id(AccountId)
                           ,AccountId
                           ]),
-    dataplan_match(<<"account">>, DocType, Plan).
+    dataplan_type_match(<<"account">>, DocType, Plan, AccountId).
 
 account_dataplan(AccountDb, DocType, 'undefined') ->
     account_dataplan(AccountDb, DocType);
@@ -116,7 +116,7 @@ account_dataplan(AccountDb, DocType, DocOwner) ->
                           ,AccountId
                           ,DocOwner
                           ]),
-    dataplan_match(<<"account">>, DocType, Plan).
+    dataplan_type_match(<<"account">>, DocType, Plan, AccountId).
 
 account_modb_dataplan(AccountMODB) ->
     AccountId = wh_util:format_account_id(AccountMODB),
@@ -124,7 +124,7 @@ account_modb_dataplan(AccountMODB) ->
                           ,reseller_id(AccountId)
                           ,AccountId
                           ]),
-    dataplan_match(<<"modb">>, Plan).
+    dataplan_match(<<"modb">>, Plan, AccountId).
 
 account_modb_dataplan(AccountMODB, 'undefined') ->
     account_modb_dataplan(AccountMODB);
@@ -134,7 +134,7 @@ account_modb_dataplan(AccountMODB, DocType) ->
                           ,reseller_id(AccountId)
                           ,AccountId
                           ]),
-    dataplan_match(<<"modb">>, DocType, Plan).
+    dataplan_type_match(<<"modb">>, DocType, Plan, AccountId).
 
 account_modb_dataplan(AccountMODB, DocType, 'undefined') ->
     account_modb_dataplan(AccountMODB, DocType);
@@ -145,7 +145,7 @@ account_modb_dataplan(AccountMODB, DocType, DocOwner) ->
                           ,AccountId
                           ,DocOwner
                           ]),
-    dataplan_match(<<"modb">>, DocType, Plan).
+    dataplan_type_match(<<"modb">>, DocType, Plan, AccountId).
 
 reseller_id(AccountId) ->
     case get('$plan_reseller') of
@@ -173,7 +173,12 @@ dataplan_connections(Map, Index) ->
     ].
 
 -spec dataplan_match(ne_binary(), map()) -> map().
+-spec dataplan_match(ne_binary(), map(), api_binary()) -> map().
+
 dataplan_match(Classification, Plan) ->
+    dataplan_match(Classification, Plan, 'undefined').
+
+dataplan_match(Classification, Plan, AccountId) ->
     #{<<"plan">> := #{Classification := #{<<"connection">> := CCon
                                          ,<<"attachments">> := CAtt
                                          ,<<"types">> := Types
@@ -195,6 +200,8 @@ dataplan_match(Classification, Plan) ->
             #{tag => Tag
              ,server => Server
              ,others => Others
+             ,classification => Classification
+             ,account_id => AccountId
              };
         AttConnection ->
             #{AttConnection := #{<<"handler">> := AttHandlerBin
@@ -210,11 +217,18 @@ dataplan_match(Classification, Plan) ->
              ,att_proxy => 'true'
              ,att_post_handler => att_post_handler(CAtt)
              ,att_handler => {AttHandler, kzs_util:map_keys_to_atoms(Params)}
+             ,classification => Classification
+             ,account_id => AccountId
              }
     end.
 
--spec dataplan_match(ne_binary(), ne_binary(), map()) -> map().
-dataplan_match(Classification, DocType, Plan) ->
+-spec dataplan_type_match(ne_binary(), ne_binary(), map()) -> map().
+-spec dataplan_type_match(ne_binary(), ne_binary(), map(), api_binary()) -> map().
+
+dataplan_type_match(Classification, DocType, Plan) ->
+    dataplan_type_match(Classification, DocType, Plan, 'undefined').
+
+dataplan_type_match(Classification, DocType, Plan, AccountId) ->    
     #{<<"plan">> := #{Classification := #{<<"types">> := Types
                                          ,<<"connection">> := CCon
                                          ,<<"attachments">> := CAtt
@@ -232,7 +246,11 @@ dataplan_match(Classification, DocType, Plan) ->
     TypeAttMap = maps:merge(CAtt, maps:get(<<"attachments">>, TypeMap, #{})),
     case maps:get(<<"handler">>, TypeAttMap, 'undefined') of
         'undefined' ->
-            #{tag => Tag, server => Server};
+            #{tag => Tag, server => Server
+             ,classification => Classification
+             ,doc_type => DocType
+             ,account_id => AccountId
+             };
         AttConnection ->
             #{AttConnection := #{<<"handler">> := AttHandlerBin
                                 ,<<"settings">> := AttSettings
@@ -245,6 +263,9 @@ dataplan_match(Classification, DocType, Plan) ->
              ,att_proxy => 'true'
              ,att_post_handler => att_post_handler(TypeAttMap)
              ,att_handler => {AttHandler, kzs_util:map_keys_to_atoms(Params)}
+             ,classification => Classification
+             ,doc_type => DocType
+             ,account_id => AccountId
              }
     end.
 
