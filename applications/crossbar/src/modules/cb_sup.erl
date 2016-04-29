@@ -215,7 +215,10 @@ module_name(ModuleBin) ->
     %% NOTE: the unsafe convertion to an atom is not an issue
     %%   in this module, despite coming from a user, because
     %%   only the system admin has access...
-    Module = wh_util:to_atom(<<ModuleBin/binary, "_maintenance">>, 'true'),
+    Module = case ModuleBin of
+                 <<_, "_maintenance">> -> wh_util:to_atom(ModuleBin, 'true');
+                 _ -> wh_util:to_atom(<<ModuleBin/binary, "_maintenance">>, 'true')
+             end,
     try Module:module_info() of
         _ -> Module
     catch
@@ -248,7 +251,7 @@ validate(Context, ModuleBin, FunctionBin, Args) ->
 validate_sup(Context, Module, Function, Args) ->
     OldGroupLeader = group_leader(),
     group_leader(whereis(?MODULE), self()),
-    lager:debug("attempting ~s_maintenance:~s/~p"
+    lager:debug("attempting ~s:~s/~p"
                 ,[Module, Function, length(Args)]),
     try apply(Module, Function, Args) of
         'no_return' ->
@@ -268,7 +271,7 @@ validate_sup(Context, Module, Function, Args) ->
     catch
         _E:_R ->
             group_leader(OldGroupLeader, self()),
-            lager:debug("failed to run ~p_maintenance:~p/~p: ~s: ~p", [Module, Function, length(Args), _E, _R]),
+            lager:debug("failed to run ~p:~p/~p: ~s: ~p", [Module, Function, length(Args), _E, _R]),
             Context
     end.
 
