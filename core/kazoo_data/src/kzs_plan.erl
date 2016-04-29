@@ -223,7 +223,7 @@ dataplan_match(Classification, Plan, AccountId) ->
 dataplan_type_match(Classification, DocType, Plan) ->
     dataplan_type_match(Classification, DocType, Plan, 'undefined').
 
-dataplan_type_match(Classification, DocType, Plan, AccountId) ->    
+dataplan_type_match(Classification, DocType, Plan, AccountId) ->
     #{<<"plan">> := #{Classification := #{<<"types">> := Types
                                          ,<<"connection">> := CCon
                                          ,<<"attachments">> := CAtt

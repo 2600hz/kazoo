@@ -132,6 +132,7 @@
 
 -export([calling_app/0, calling_app/1]).
 -export([calling_app_version/0, calling_app_version/1]).
+-export([calling_process/0, calling_process/1]).
 -export([get_app/1]).
 
 -include_lib("kernel/include/inet.hrl").
@@ -1550,6 +1551,22 @@ calling_app_version(Level) ->
     {'ok', App} = application:get_application(Module),
     {App, _, Version} = get_app(App),
     {to_binary(App), to_binary(Version)}.
+
+-spec calling_process() -> map().
+calling_process() -> calling_process(3).
+
+-spec calling_process(pos_integer()) -> map().
+calling_process(Level) ->
+    {'current_stacktrace', Modules} = erlang:process_info(self(),current_stacktrace),
+    {Module, Function, Arity, [{file, Filename}, {line, Line}]} = lists:nth(Level, Modules),
+    {'ok', App} = application:get_application(Module),
+    #{app => App
+      ,module => Module
+      ,function => Function
+      ,arity => Arity
+      ,file => Filename
+      ,line => Line
+     }.
 
 -spec get_app(atom() | ne_binary()) -> {atom(), string(), string()} | 'undefined'.
 get_app(<<_/binary>> = AppName) ->
