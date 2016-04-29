@@ -8,6 +8,7 @@
 -module(kzs_util).
 
 -export([db_classification/1
+         ,map_keys_to_atoms/1
         ]).
 
 -include("kz_data.hrl").
@@ -56,3 +57,11 @@ db_classification(?KZ_DATA_DB) -> 'system';
 db_classification(_Database) ->
     lager:debug("unknown type for database ~s", [_Database]),
     'undefined'.
+
+map_keys_to_atoms(Map) ->
+    maps:fold(fun map_keys_to_atoms_fold/3, #{}, Map).
+
+map_keys_to_atoms_fold(K, V, Acc) when is_map(V) ->
+    Acc#{wh_util:to_atom(K, 'true') => map_keys_to_atoms(V)};
+map_keys_to_atoms_fold(K, V, Acc) ->
+    Acc#{wh_util:to_atom(K, 'true') => V}.

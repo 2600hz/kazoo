@@ -209,7 +209,7 @@ dataplan_match(Classification, Plan) ->
              ,others => Others
              ,att_proxy => 'true'
              ,att_post_handler => att_post_handler(CAtt)
-             ,att_handler => {AttHandler, map_keys_to_atoms(Params)}
+             ,att_handler => {AttHandler, kzs_util:map_keys_to_atoms(Params)}
              }
     end.
 
@@ -244,7 +244,7 @@ dataplan_match(Classification, DocType, Plan) ->
              ,server => Server
              ,att_proxy => 'true'
              ,att_post_handler => att_post_handler(TypeAttMap)
-             ,att_handler => {AttHandler, map_keys_to_atoms(Params)}
+             ,att_handler => {AttHandler, kzs_util:map_keys_to_atoms(Params)}
              }
     end.
 
@@ -305,7 +305,7 @@ maybe_start_connection(Tag, Params) ->
 
 -spec start_connection(atom(), map()) -> {atom(), server()}.
 start_connection(Tag, Params) ->
-    Connection = kz_dataconfig:connection(map_keys_to_atoms(Params#{tag => Tag})),
+    Connection = kz_dataconfig:connection(kzs_util:map_keys_to_atoms(Params#{tag => Tag})),
     kz_dataconnections:add(Connection),
     case kz_dataconnections:wait_for_connection(Tag, ?NEW_CONNECTION_TIMEOUT) of
         'no_connection' ->
@@ -313,11 +313,3 @@ start_connection(Tag, Params) ->
             {Tag, {'kazoo_dataconnection_error', #{}}};
         'ok' -> {Tag, kz_dataconnections:get_server(Tag)}
     end.
-
-map_keys_to_atoms(Map) ->
-    maps:fold(fun map_keys_to_atoms_fold/3, #{}, Map).
-
-map_keys_to_atoms_fold(K, V, Acc) when is_map(V) ->
-    Acc#{wh_util:to_atom(K, 'true') => map_keys_to_atoms(V)};
-map_keys_to_atoms_fold(K, V, Acc) ->
-    Acc#{wh_util:to_atom(K, 'true') => V}.
