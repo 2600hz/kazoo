@@ -316,7 +316,10 @@ to_map_fold(JObj, #{}=Map) ->
 recursive_to_map(?JSON_WRAPPER(Props)) ->
     maps:from_list([{K, recursive_to_map(V)} || {K, V} <- Props]);
 recursive_to_map(Props) when is_list(Props) ->
-    maps:from_list([recursive_to_map(V) || V <- Props]);
+    case [recursive_to_map(V) || V <- Props] of
+        [{_,_}|_]=Recur -> maps:from_list(Recur);
+        Else -> Else
+    end;
 recursive_to_map(Else) -> Else.
 
 %% Convert {key1:val1,key2:[v2_1, v2_2],key3:{k3_1:v3_1}} =>
