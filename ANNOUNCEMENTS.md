@@ -4,24 +4,6 @@ This file will serve as a reference point for upcoming announcements, both of th
 
 ## Versions
 
-### 3.22
-
-#### FreeSWITCH 1.4.26+ / 1.6+
-
-To upgrade to Kazoo-FreeSWITCH 1.4.26+ or FreeSWITCH 1.6+ you must set the system_config/ecallmgr parameter `use_kazoo_dptools` to TRUE.  Failure to do so may cause inconsistent channel information among eCallMgr nodes connected to the same FreeSWITCH instance.  If you are using Kazoo-FreeSWITCH 1.4.x builds prior to .26 this parameter should be left as its default, FALSE.
-
-#### Monster UI Enabled Applications
-
-The enabled Monster UI applications were moved from an object on the account document to its own document with the id `apps_store`.  When you run `sup whapps_maintenance migrate` this will automatically preform this operation but until it is complete users logging into Monster UI may not see their previously enabled applications.  Once the migration is complete the change should be transparent to end-users.
-
-#### Company Directory PDF
-
-If you plan to support the new API to download the company directory as a PDF you will need to install 'htmldoc' on any server running crossbar.
-
-#### Default WebRTC Port change
-
-The default ports that Kamailio listens to for the WebRTC websocket have changed, this was due to a port conflict on all-in-one installs with TLS enabled Kazoo APIs. The standard HTTP websocket port was 8080 and is now 5064.  The TLS HTTP websocket port was 8443 and is now 5065.  If you would like to continue using the old ports please update "/etc/kazoo/kamailio/local.cfg" after an update to kazoo-configs 3.22.12+
-
 ### 4.0
 
 #### Erlang Version Support
@@ -54,6 +36,40 @@ In the 3.x series, a `raw_numbers` attribute was allowed, ostensibly to match an
 # System
 #> sup whapps_config set_default stepswitch block_anonymous_caller_id true
 ```
+
+#### Voicemail Messages
+
+All new voicemail messages will be stored in the account MODbs.  A new system configuration parameter was added to support how many months of voicemail messages should be considered when accessing a voicemail box.  Additionally, the v2 vmboxes API will no longer return the messages array and the manipulation the messages array on the v1 vmboxes API is strongly discuraged.  The existing messages API should be used to manage messages in a voicemail box.  We will provide more detailed information regarding this shortly.
+
+#### Removing socket.io support from Websockets
+
+The Blackhole application providing websocket support currently utilizes the socket.io client libraries.  Due to the poor support for this server side in Erlang as well as the judgement that this provides little benifit it has been removed.  The websockets now provide messaging without the socket.io overhead.  More documentation will be available shortly.  Please note that we still consider websockets beta functionality.
+
+#### System media has been moved
+
+The media prompts that we used to keep in the code repository for historical reasons has been moved the kazoo-prompts repository.
+
+#### Consistent naming (removal of references to whistle)
+
+All instances of whistle or variations such as wh_ have been replaced with kazoo or kz_.  This will include all maintenance functions as well as init.d/systemd scripts.  A script is provided to convert any custom code but will require in-depth testing.
+
+### 3.22
+
+#### FreeSWITCH 1.4.26+ / 1.6+
+
+To upgrade to Kazoo-FreeSWITCH 1.4.26+ or FreeSWITCH 1.6+ you must set the system_config/ecallmgr parameter `use_kazoo_dptools` to TRUE.  Failure to do so may cause inconsistent channel information among eCallMgr nodes connected to the same FreeSWITCH instance.  If you are using Kazoo-FreeSWITCH 1.4.x builds prior to .26 this parameter should be left as its default, FALSE.
+
+#### Monster UI Enabled Applications
+
+The enabled Monster UI applications were moved from an object on the account document to its own document with the id `apps_store`.  When you run `sup whapps_maintenance migrate` this will automatically preform this operation but until it is complete users logging into Monster UI may not see their previously enabled applications.  Once the migration is complete the change should be transparent to end-users.
+
+#### Company Directory PDF
+
+If you plan to support the new API to download the company directory as a PDF you will need to install 'htmldoc' on any server running crossbar.
+
+#### Default WebRTC Port change
+
+The default ports that Kamailio listens to for the WebRTC websocket have changed, this was due to a port conflict on all-in-one installs with TLS enabled Kazoo APIs. The standard HTTP websocket port was 8080 and is now 5064.  The TLS HTTP websocket port was 8443 and is now 5065.  If you would like to continue using the old ports please update "/etc/kazoo/kamailio/local.cfg" after an update to kazoo-configs 3.22.12+
 
 ## Upcoming
 
