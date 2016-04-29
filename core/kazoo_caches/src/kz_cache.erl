@@ -10,10 +10,11 @@
 -module(kz_cache).
 -behaviour(gen_listener).
 
--export([start_link/0, start_link/1
-         ,start_link/2, start_link/3
+-export([start_link/1
+         ,start_link/2
+         ,start_link/3
         ]).
--export([stop_local/1].)
+-export([stop_local/1]).
 -export([store/2, store/3]).
 -export([peek/1]).
 -export([fetch/1, fetch_keys/0]).
