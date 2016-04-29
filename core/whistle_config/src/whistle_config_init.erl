@@ -54,7 +54,7 @@ load_file(File) ->
 -spec set_env() -> 'ok'.
 set_env() ->
     AppEnv = load_file(),
-    lager:debug("setting config env ~p", [AppEnv]),
+    lager:notice("loaded settings : ~p", [AppEnv]),
     set_zone(AppEnv),
     application:set_env('whistle_config', 'wh_config', AppEnv).
 
@@ -62,6 +62,7 @@ set_zone(AppEnv) ->
     erlang:put('$_App_Settings', AppEnv),
     [Local] = wh_config:get(wh_config:get_node_section_name(), 'zone', ['local']),
     Zone = wh_util:to_atom(Local, 'true'),
+    lager:notice("setting zone to ~p", [Zone]),
     application:set_env('whistle_config', 'zone', Zone).
 
 
