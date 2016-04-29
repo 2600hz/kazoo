@@ -19,7 +19,7 @@
         [{formatter, lager_default_formatter}
          ,{formatter_config, ?DEFAULT_TRACE_OUTPUT_FORMAT}
         ]
-       ).                        
+       ).
 
 trace_file() ->
     trace_file([{'function', '*'}]).
