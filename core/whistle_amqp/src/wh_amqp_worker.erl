@@ -639,7 +639,7 @@ handle_cast({'gen_listener', {'created_queue', Q}}, #state{defer={Call,From}}=St
         {'reply', Reply, NewState} ->
             gen_server:reply(From, Reply),
             {'noreply', NewState};
-        {'noreply', _, NewState} ->
+        {'noreply', NewState} ->
             {'noreply', NewState}
     end;
 handle_cast({'set_negative_threshold', NegThreshold}, State) ->
