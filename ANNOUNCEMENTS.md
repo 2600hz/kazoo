@@ -39,7 +39,7 @@ In the 3.x series, a `raw_numbers` attribute was allowed, ostensibly to match an
 
 #### Voicemail Messages
 
-All new voicemail messages will be stored in the account MODbs.  A new system configuration parameter was added to support how many months of voicemail messages should be considered when accessing a voicemail box.  Additionally, the v2 vmboxes API will no longer return the messages array and the manipulation the messages array on the v1 vmboxes API is strongly discuraged.  The existing messages API should be used to manage messages in a voicemail box.  We will provide more detailed information regarding this shortly.
+All new voicemail messages will be stored in the account MODbs. A new system configuration parameter `message_retention_duration` was added to support how many months of voicemail messages should be considered when accessing a voicemail box. Additionally, the v2 vmboxes API will no longer return the messages array and the manipulation in the messages array on the v1 vmboxes API is strongly discuraged. The existing messages API should be used to manage messages in a voicemail box. For more information about this change please see documentation for the new kazoo_voicemail core application and crossbar voicemail documentation.
 
 #### Removing socket.io support from Websockets
 

@@ -2,7 +2,7 @@
 
 This modules tries to make a common abstraction over where voicemail message is stored.
 
-Starting Kazoo 4.0 all new voicemail messages will be stored in the account MODbs alongside their message media recording. All previous voicemail message will be moved to MODbs when updating their properties(changing their folder).
+Starting with Kazoo 4.0 all new voicemail messages will be stored in the account MODbs alongside their message media recording. All previous voicemail message will be moved to MODbs when updating their properties(changing their folder).
 
 Additionally, the v2 vmboxes API will no longer return the messages array and the manipulation the messages array on the v1 vmboxes API is strongly discuraged. For more information on vmboxes API see crossbar voicemail documentation.
 
