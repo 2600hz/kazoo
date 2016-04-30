@@ -4,139 +4,67 @@
     "description": "Schema for mailbox message",
     "name": "Mailbox Message",
     "properties": {
-        "description": {
-            "description": "A breif description of the message",
-            "maxLength": 128,
-            "minLength": 1,
-            "name": "Description",
+        "call_id": {
+            "description": "The SIP call-id",
+            "name": "Call ID",
             "required": false,
             "type": "string"
         },
-        "media_filename": {
-            "description": "Filename of the message's media",
-            "maxLength": 128,
-            "minLength": 1,
-            "name": "Media Filename",
+        "caller_id_name": {
+            "description": "The reported caller id name",
+            "maxLength": 35,
+            "name": "Caller ID Name",
             "required": false,
             "type": "string"
         },
-        "media_source": {
-            "default": "upload",
-            "description": "Defines the source of the media",
+        "caller_id_number": {
+            "description": "The reported caller id number",
+            "maxLength": 35,
+            "name": "Caller ID Number",
+            "required": false,
+            "type": "string"
+        },
+        "folder": {
+            "description": "The folder the message belongs to",
             "enum": [
-                "recording",
-                "upload",
-                "tts"
+                "deleted",
+                "saved",
+                "new"
             ],
-            "name": "Media Source",
+            "name": "Folder",
             "required": false,
             "type": "string"
         },
-        "metadata": {
-            "default": {},
-            "description": "The message that have been left in the mailbox",
-            "name": "Metadata",
-            "properties": {
-                "call_id": {
-                    "description": "The SIP call-id",
-                    "name": "Call ID",
-                    "required": false,
-                    "type": "string"
-                },
-                "caller_id_name": {
-                    "description": "The reported caller id name",
-                    "maxLength": 35,
-                    "name": "Caller ID Name",
-                    "required": false,
-                    "type": "string"
-                },
-                "caller_id_number": {
-                    "description": "The reported caller id number",
-                    "maxLength": 35,
-                    "name": "Caller ID Number",
-                    "required": false,
-                    "type": "string"
-                },
-                "folder": {
-                    "description": "The folder the message belongs to",
-                    "enum": [
-                        "deleted",
-                        "saved",
-                        "new"
-                    ],
-                    "name": "Folder",
-                    "required": false,
-                    "type": "string"
-                },
-                "from": {
-                    "description": "The SIP from header",
-                    "name": "From",
-                    "required": false,
-                    "type": "string"
-                },
-                "length": {
-                    "name": "Length",
-                    "required": false,
-                    "type": "integer"
-                },
-                "media_id": {
-                    "description": "The ID of the message media object",
-                    "maxLength": 39,
-                    "minLength": 39,
-                    "name": "Media ID",
-                    "required": false,
-                    "type": "string"
-                },
-                "timestamp": {
-                    "description": "The UTC timestamp, in gregorian seconds, that the message was left on",
-                    "name": "Timestamp",
-                    "required": false,
-                    "type": "integer"
-                },
-                "to": {
-                    "description": "The SIP to header",
-                    "name": "To",
-                    "required": false,
-                    "type": "string"
-                }
-            },
+        "from": {
+            "description": "The SIP from header",
+            "name": "From",
             "required": false,
-            "type": "object"
+            "type": "string"
         },
-        "name": {
-            "description": "A friendly name for the message",
-            "maxLength": 128,
-            "minLength": 1,
-            "name": "Name",
+        "length": {
+            "name": "Length",
+            "required": false,
+            "type": "integer"
+        },
+        "media_id": {
+            "description": "The ID of the message media object",
+            "maxLength": 39,
+            "minLength": 39,
+            "name": "Media ID",
             "required": true,
             "type": "string"
         },
-        "source_id": {
-            "description": "If the media was generated from a callflow module, this is ID of the properties",
-            "maxLength": 32,
-            "minLength": 32,
-            "name": "Source ID",
-            "required": false,
-            "type": "string"
-        },
-        "source_type": {
-            "description": "If the media was generated from a callflow module, this is the module name",
-            "name": "Source Type",
-            "required": false,
-            "type": "string"
-        },
-        "streamable": {
-            "default": true,
-            "description": "Determines if the media can be streamed",
-            "name": "Streamable",
-            "required": false,
-            "type": "boolean"
-        },
-        "utc_seconds": {
-            "description": "UTC timestamp, in gregorian seconds, of when the message was generated",
-            "name": "Timestamp (Gregorian seconds)",
+        "timestamp": {
+            "description": "The UTC timestamp, in gregorian seconds, that the message was left on",
+            "name": "Timestamp",
             "required": false,
             "type": "integer"
+        },
+        "to": {
+            "description": "The SIP to header",
+            "name": "To",
+            "required": false,
+            "type": "string"
         }
     },
     "required": true,
