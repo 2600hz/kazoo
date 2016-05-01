@@ -274,7 +274,9 @@ fetch_dataplans([Key | Keys]=KPlan) ->
         {'error', 'not_found'} ->
             lager:debug("creating new dataplan ~p", [KPlan]),
             Plan = fetch_dataplans(Keys, fetch_dataplan(Key)),
-            CacheProps = [{'origin', [{'db', ?KZ_DATA_DB, K } || K <- Keys]}],
+            CacheProps = [{'origin', [{'db', ?KZ_DATA_DB, K } || K <- KPlan]}
+                          ,{'expires','infinity'}
+                         ],
             kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, {KPlan}, Plan, CacheProps),
             Plan
     end.
