@@ -24,7 +24,7 @@
 -include("kz_data.hrl").
 
 -define(DEFAULT_NO_CACHING_TYPES, [<<"media">>, <<"private_media">>, <<"call_recording">>
-                                   ,<<"fax">>, <<"vm">>
+                                   ,<<"fax">>, <<"mailbox_message">>
                                   ]).
 -define(NO_CACHING_TYPES, whapps_config:get(?CONFIG_CAT
                                             ,<<"no_caching_doc_types">>
