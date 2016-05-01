@@ -57,7 +57,7 @@ tree(N, Mod, Fun, Ari, Args) ->
        {tree,list,
         {attr,N,[],none},
         {list, Args,
-         none}}]}}. 
+         none}}]}}.
 
 yup(Mod, Fun, Ari, Form) ->
     N = erl_syntax:get_pos(Form),
