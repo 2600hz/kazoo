@@ -6,12 +6,13 @@
   ,{registered, [callflow_cache, cf_event_handler_sup, callflow_sup, cf_exe_sup]}
   ,{applications, [ kernel
                   , stdlib
-		  , crypto
+                  , crypto
 
                   , whistle_apps
                   , whistle_amqp
                   , kazoo_data
                   , kazoo_token_buckets
+                  , kazoo_voicemail
 
                   , lager
                   ]}

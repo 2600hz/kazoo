@@ -152,11 +152,12 @@ email_attachments(DataJObj, Macros) ->
 email_attachments(_DataJObj, _Macros, 'true') -> [];
 email_attachments(DataJObj, Macros, 'false') ->
     VMId = wh_json:get_value(<<"voicemail_name">>, DataJObj),
-    AccountDb = wh_json:get_value(<<"account_db">>, DataJObj),
-    {'ok', VMJObj} = kz_datamgr:open_doc(AccountDb, VMId),
+    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    DB = kz_vm_message:get_db(AccountId, VMId),
+    {'ok', VMJObj} = kz_vm_message:message_doc(AccountId, VMId),
 
     {[AttachmentMeta], [AttachmentId]} = wh_json:get_values(wh_doc:attachments(VMJObj)),
-    {'ok', AttachmentBin} = kz_datamgr:fetch_attachment(AccountDb, VMId, AttachmentId),
+    {'ok', AttachmentBin} = kz_datamgr:fetch_attachment(DB, VMId, AttachmentId),
 
     [{wh_json:get_value(<<"content_type">>, AttachmentMeta)
       ,get_file_name(VMJObj, Macros)

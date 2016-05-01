@@ -143,7 +143,7 @@ create_template_props(Event, Timezone, Account) ->
                            ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, Event)}
                            ,{<<"magic_hash">>, magic_hash(Event)}
                           ])}
-     ,{<<"account_db">>, wh_doc:account_db(Account)}
+     ,{<<"account_id">>, wh_doc:account_id(Account)}
     ].
 
 -spec magic_hash(wh_json:object()) -> api_binary().
@@ -172,15 +172,16 @@ magic_hash(Event) ->
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
     Voicemail = props:get_value(<<"voicemail">>, Props),
     Service = props:get_value(<<"service">>, Props),
-    DB = props:get_value(<<"account_db">>, Props),
+    AccountId = props:get_value(<<"account_id">>, Props),
     DocId = props:get_value(<<"media">>, Voicemail),
+    DB = kz_vm_message:get_db(AccountId, DocId),
 
     From = props:get_value(<<"send_from">>, Service),
 
     {ContentTypeParams, CharsetString} = notify_util:get_charset_params(Service),
 
     lager:debug("attempting to attach media ~s in ~s", [DocId, DB]),
-    {'ok', VMJObj} = kz_datamgr:open_doc(DB, DocId),
+    {'ok', VMJObj} = kz_vm_message:message_doc(AccountId, DocId),
 
     [AttachmentId] = wh_doc:attachment_names(VMJObj),
     lager:debug("attachment id ~s", [AttachmentId]),

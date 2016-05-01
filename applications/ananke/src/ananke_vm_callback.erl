@@ -50,9 +50,8 @@ check(AccountId, VMBoxId) ->
     end.
 
 has_unread(AccountId, VMBoxId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    {'ok', VMBox} = kz_datamgr:open_cache_doc(AccountDb, VMBoxId),
-    length([X || X <- wh_json:get_value(<<"messages">>, VMBox, []), wh_json:get_value(<<"folder">>, X) =:= <<"new">>]) > 0.
+    {New, _} = kz_vm_message:count_per_folder(AccountId, VMBoxId),
+    New > 0.
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, Props) ->
