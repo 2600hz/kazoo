@@ -1,5 +1,5 @@
 %%%----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% Callflow gen server for CRUD
 %%%
@@ -188,21 +188,26 @@ validate_request(CallflowId, Context) ->
     catch
         _E:_R ->
             lager:debug("failed to convert all numbers to e164: ~s: ~p", [_E, _R]),
-            C = cb_context:add_validation_error(
-                  <<"numbers">>
-                  ,<<"type">>
-                  ,wh_json:from_list(
-                     [{<<"message">>, <<"Value is not of type array">>}
-                      ,{<<"cause">>, OriginalNumbers}
-                     ])
-                  ,Context
-                 ),
-            validate_unique_numbers(
-              CallflowId
-              ,[]
-              ,cb_context:set_req_data(C, wh_json:set_value(<<"numbers">>, [], JObj))
-             )
+            Context1 = error_numbers_not_array(Context, OriginalNumbers),
+            validate_unique_numbers(CallflowId
+                                   ,[]
+                                   ,cb_context:set_req_data(Context1
+                                                           ,wh_json:set_value(<<"numbers">>, [], JObj)
+                                                           )
+                                   )
     end.
+
+-spec error_numbers_not_array(cb_context:context(), wh_json:json_term()) ->
+                                     cb_context:context().
+error_numbers_not_array(Context, OriginalNumbers) ->
+    cb_context:add_validation_error(<<"numbers">>
+                                   ,<<"type">>
+                                   ,wh_json:from_list(
+                                      [{<<"message">>, <<"Value is not of type array">>}
+                                      ,{<<"cause">>, OriginalNumbers}
+                                      ])
+                                   ,Context
+                                   ).
 
 -spec normalize_numbers(ne_binaries()) -> ne_binaries().
 normalize_numbers(Ns) ->
