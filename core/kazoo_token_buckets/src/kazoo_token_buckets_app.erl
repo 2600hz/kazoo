@@ -17,7 +17,7 @@
 %% @public
 %% @doc Implement the application start behaviour
 %%--------------------------------------------------------------------
--spec start(application:start_type(), any()) -> startlink_ret().
+-spec start(application:start_type(), any()) -> startapp_ret().
 start(_Type, _Args) ->
     kazoo_token_buckets_sup:start_link().
 
