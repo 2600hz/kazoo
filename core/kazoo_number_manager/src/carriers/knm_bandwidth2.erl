@@ -78,7 +78,7 @@ is_number_billable(_Number) -> 'true'.
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--type search_ret() :: {'ok', kz_json:object()} | {'error', any()}.
+-type search_ret() :: {'ok', knm_number:knm_numbers()} | {'error', any()}.
 -spec find_numbers(ne_binary(), pos_integer(), kz_proplist()) -> search_ret().
 find_numbers(<<"+", Rest/binary>>, Quantity, Options) ->
     find_numbers(Rest, Quantity, Options);
@@ -220,7 +220,7 @@ url(RelativePath) ->
 
 -spec search([nonempty_string()]) -> api_res().
 search(Params) ->
-    api_get(url(["availableNumbers?", Params])).
+    api_get(url(["availableNumbers?" | Params])).
 
 -spec auth() -> {'basic_auth', {ne_binary(), ne_binary()}}.
 auth() ->
