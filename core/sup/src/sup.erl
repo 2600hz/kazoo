@@ -48,15 +48,15 @@ main(CommandLineArgs, Loops) ->
                     stderr("Command failed: ~s", [String]),
                     halt(1);
                 'no_return' ->
-                    erlang:halt(0);
+                    halt(0);
                 Result when Verbose ->
                     String = io_lib:print(Result, 1, ?MAX_CHARS, -1),
                     stdout("Result: ~s", [String]),
-                    erlang:halt(0);
+                    halt(0);
                 Result ->
                     String = io_lib:print(Result, 1, ?MAX_CHARS, -1),
                     stdout("~s", [String]),
-                    erlang:halt(0)
+                    halt(0)
             end
     end.
 
@@ -72,9 +72,6 @@ get_target(Options, Verbose) ->
             Target;
         'pang' ->
             stderr("Connection to service failed!", []),
-            print_ping_failed(Target, Cookie);
-        Else ->
-            stderr("Connection to service failed: ~p", [Else]),
             print_ping_failed(Target, Cookie)
     end.
 
