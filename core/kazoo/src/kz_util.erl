@@ -1535,7 +1535,10 @@ anonymous_caller_id_number() ->
 -spec process_fold([tuple()], atom()) -> tuple() | atom().
 process_fold([], App) -> App;
 process_fold([{M, _, _, _}=Mod | Others], App) ->
-    {'ok', ModApp} = application:get_application(M),
+    ModApp = case application:get_application(M) of
+                 {'ok', KModApp} -> KModApp;
+                 'undefined' -> M
+             end,
     process_fold(ModApp, App, Mod, Others).
 
 -spec process_fold(atom(), atom(), tuple(), [tuple()]) -> tuple() | atom().
@@ -1569,7 +1572,10 @@ calling_app_version() ->
 calling_process() ->
     Modules = erlang:process_info(self(),current_stacktrace),
     {'current_stacktrace', [_Me, {Module, _, _, _}=M | Start]} = Modules,
-    {'ok', App} = application:get_application(Module),
+    App = case application:get_application(Module) of
+              {'ok', KApp} -> KApp;
+              'undefined' -> Module
+          end,
     {NewApp, {Mod, Function, Arity, [{file, Filename}, {line, Line}]}} =
         case process_fold(Start, App) of
             App -> {App, M};
