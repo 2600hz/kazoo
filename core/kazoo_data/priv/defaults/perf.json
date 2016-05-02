@@ -33,6 +33,16 @@
                 "format": "debug",
                 "level": "debug"
             },
+            "ensure_saved": {
+                "arity": 4,
+                "dictionary": [
+                    "plan",
+                    "database"
+                ],
+                "enabled": true,
+                "format": "debug",
+                "level": "debug"
+            },
             "open_doc": {
                 "arity": 4,
                 "dictionary": [

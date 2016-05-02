@@ -74,6 +74,8 @@ transform({kzs_doc=Mod, {save_doc=Fun, 4=Ari}}, Form) ->
     yup(Mod, Fun, Ari, Form);
 transform({kzs_doc=Mod, {save_docs=Fun, 4=Ari}}, Form) ->
     yup(Mod, Fun, Ari, Form);
+transform({kzs_doc=Mod, {ensure_saved=Fun, 4=Ari}}, Form) ->
+    yup(Mod, Fun, Ari, Form);
 transform({kzs_doc=Mod, {del_doc=Fun, 4=Ari}}, Form) ->
     yup(Mod, Fun, Ari, Form);
 transform({kzs_doc=Mod, {del_docs=Fun, 4=Ari}}, Form) ->
