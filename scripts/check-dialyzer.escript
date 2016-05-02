@@ -136,6 +136,10 @@ filter(W) ->
         {warn_not_called, {"src/wh_amqp_assignments.erl",_}, {unused_fun,[add_consumer_to_channel,3]}} -> 'false';
         {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[ExistingAssignment = {'wh_amqp_assignment', _, _, _, _, _, _, _, _, _, _, _}], _}",_]}} -> 'false';
         {warn_matching, {"src/wh_amqp_history.erl",_}, {pattern_match,["pattern <{[{'wh_amqp_history', Timestamp, _, Command}], Continuation}, NewTag>",_]}} -> 'false';
+
+        {warn_matching, {"src/whistle_amqp_maintenance.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', _, _, _, _, _, _, _, _, _, _, _}], Continuation}", _]}} -> 'false';
+        {warn_not_called, {"src/whistle_amqp_maintenance.erl",_}, {unused_fun,[log_invalid_assignment,1]}} -> 'false';
+
         {warn_matching, {"src/whistle_amqp_maintenance.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', {_, _, _}, 'undefined', 'undefined', _, Channel, ChannelRef, Connection, <<_:8/integer-unit:1,_/binary-unit:8>>, 'undefined', _, _}], Continuation}",_]}} -> 'false';
         {warn_matching, {"src/whistle_amqp_maintenance.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', {_, _, _}, Consumer, ConsumerRef, 'float', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined', _, _}], Continuation}",_]}} -> 'false';
         {warn_matching, {"src/whistle_amqp_maintenance.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', {_, _, _}, Consumer, ConsumerRef, 'sticky', 'undefined', 'undefined', 'undefined', <<_:8/integer-unit:1,_/binary-unit:8>>, 'undefined', _, _}], Continuation}",_]}} -> 'false';
