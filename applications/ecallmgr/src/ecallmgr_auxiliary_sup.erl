@@ -37,6 +37,7 @@
                    ,?CACHE(?ECALLMGR_INTERACTION_CACHE)
                    ,?SUPER('ecallmgr_originate_sup')
                    ,?WORKER('ecallmgr_registrar')
+                   ,?WORKER('ecallmgr_balance_crawler_fsm')
                   ]).
 
 %% ===================================================================

@@ -20,6 +20,8 @@
          ,details/1
         ]).
 -export([show_all/0]).
+-export([per_minute_accounts/0]).
+-export([per_minute_channels/1]).
 -export([flush_node/1]).
 -export([new/1]).
 -export([destroy/2]).
@@ -142,6 +144,42 @@ show_all() ->
     ets:foldl(fun(Channel, Acc) ->
                       [ecallmgr_fs_channel:to_json(Channel) | Acc]
               end, [], ?CHANNELS_TBL).
+
+-spec per_minute_accounts() -> ne_binaries().
+per_minute_accounts() ->
+    MatchSpec = [
+                 {#channel{account_id = '$1'
+                           ,account_billing = <<"per_minute">>
+                           ,reseller_id = '$2'
+                           ,reseller_billing = <<"per_minute">>
+                           ,_ = '_'}
+                  ,[{'andalso', {'=/=', '$1', 'undefined'}, {'=/=', '$2', 'undefined'}}]
+                  ,['$$']
+                 }
+                 ,{#channel{reseller_id = '$1', reseller_billing = <<"per_minute">>, _ = '_'}
+                   ,[{'=/=', '$1', 'undefined'}]
+                   ,['$$']
+                  }
+                 ,{#channel{account_id = '$1', account_billing = <<"per_minute">>, _ = '_'}
+                   ,[{'=/=', '$1', 'undefined'}]
+                   ,['$$']
+                  }
+                ],
+    lists:usort(lists:flatten(ets:select(?CHANNELS_TBL, MatchSpec))).
+
+-spec per_minute_channels(ne_binary()) -> [{ne_binary(), ne_binary()}].
+per_minute_channels(AccountId) ->
+    MatchSpec = [
+                 {#channel{node = '$1', uuid = '$2', reseller_id = AccountId, reseller_billing = <<"per_minute">>, _ = '_'}
+                   ,[]
+                   ,[{{'$1', '$2'}}]
+                  }
+                 ,{#channel{node = '$1', uuid = '$2', account_id = AccountId, account_billing = <<"per_minute">>, _ = '_'}
+                   ,[]
+                   ,[{{'$1', '$2'}}]
+                  }
+                ],
+    ets:select(?CHANNELS_TBL, MatchSpec).
 
 -spec flush_node(string() | binary() | atom()) -> 'ok'.
 flush_node(Node) ->
