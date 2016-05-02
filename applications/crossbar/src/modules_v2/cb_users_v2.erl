@@ -35,7 +35,6 @@
 -include("crossbar.hrl").
 
 -define(CB_LIST, <<"users/crossbar_listing">>).
--define(LIST_BY_USERNAME, <<"users/list_by_username">>).
 -define(LIST_BY_PRESENCE_ID, <<"devices/listing_by_presence_id">>).
 
 -define(VCARD, <<"vcard">>).

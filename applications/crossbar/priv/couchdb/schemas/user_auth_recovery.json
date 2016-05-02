@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "user_auth_recovery",
-    "description": "Provides an auth-token via user credentials",
+    "description": "Send a reset-your-password email via user credentials",
     "name": "Password Recovery",
     "properties": {
         "account_name": {
@@ -23,6 +23,13 @@
             "maxLength": 64,
             "minLength": 1,
             "required": false,
+            "type": "string"
+        },
+        "ui_url": {
+            "description": "The UI's root URL",
+            "maxLength": 2000,
+            "minLength": 14,
+            "required": true,
             "type": "string"
         },
         "username": {

@@ -18,7 +18,6 @@
 
 -include("crossbar.hrl").
 
--define(USERNAME_LIST, <<"users/list_by_username">>).
 -define(DEFAULT_LANGUAGE, <<"en-US">>).
 
 %%%===================================================================
@@ -161,7 +160,7 @@ maybe_load_username(Account, Context) ->
     ViewOptions = [{'key', Username}
                    ,'include_docs'
                   ],
-    case kz_datamgr:get_results(AccountDb, ?USERNAME_LIST, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, ?LIST_BY_USERNAME, ViewOptions) of
         {'ok', [User]} ->
             case wh_json:is_false([<<"doc">>, <<"enabled">>], JObj) of
                 'false' ->
