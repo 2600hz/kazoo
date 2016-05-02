@@ -150,7 +150,7 @@
                           ,days_past_due :: api_binary()
                           ,failure_count :: api_binary()
                           ,merchant_account_id :: api_binary()
-                          ,never_expires = 'true' :: boolean()
+                          ,never_expires = 'true' :: api_boolean()
                           ,next_bill_amount :: api_binary()
                           ,next_cycle_amount :: api_binary()
                           ,next_bill_date :: api_binary()  %% Read only
@@ -166,11 +166,11 @@
                           ,discounts = [] :: bt_discounts()
                           ,descriptor :: api_binary()
                           ,transactions :: api_binary()
-                          ,do_not_inherit = 'true' :: boolean()
-                          ,start_immediately = 'true' :: boolean()
-                          ,prorate_charges = 'true' :: boolean()
-                          ,revert_on_prorate_fail = 'true' :: boolean()
-                          ,replace_add_ons = 'false' :: boolean()
+                          ,do_not_inherit = 'true' :: api_boolean()
+                          ,start_immediately = 'true' :: api_boolean()
+                          ,prorate_charges = 'true' :: api_boolean()
+                          ,revert_on_prorate_fail = 'true' :: api_boolean()
+                          ,replace_add_ons = 'false' :: api_boolean()
                           ,create = 'false' :: boolean()
                          }).
 -type bt_subscription() :: #bt_subscription{}.
