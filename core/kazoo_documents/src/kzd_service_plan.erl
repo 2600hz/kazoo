@@ -35,7 +35,7 @@
 
 -include("kz_documents.hrl").
 
--type doc() :: wh_json:object().
+-type doc() :: kz_json:object().
 -type docs() :: [doc()].
 -type api_doc() :: api_object().
 -export_type([doc/0
@@ -49,7 +49,7 @@
 -define(BOOKKEEPERS, <<"bookkeepers">>).
 
 -spec new() -> doc().
-new() -> wh_json:new().
+new() -> kz_json:new().
 
 -spec all_items_key() -> ne_binary().
 all_items_key() -> ?ALL.
@@ -59,18 +59,18 @@ all_items_key() -> ?ALL.
 account_id(Plan) ->
     account_id(Plan, 'undefined').
 account_id(Plan, Default) ->
-    wh_json:get_value(<<"account_id">>, Plan, Default).
+    kz_json:get_value(<<"account_id">>, Plan, Default).
 
--spec overrides(doc()) -> wh_json:object().
--spec overrides(doc(), Default) -> wh_json:object() | Default.
+-spec overrides(doc()) -> kz_json:object().
+-spec overrides(doc(), Default) -> kz_json:object() | Default.
 overrides(Plan) ->
-    overrides(Plan, wh_json:new()).
+    overrides(Plan, kz_json:new()).
 overrides(Plan, Default) ->
-    wh_json:get_json_value(<<"overrides">>, Plan, Default).
+    kz_json:get_json_value(<<"overrides">>, Plan, Default).
 
--spec merge_overrides(doc(), wh_json:object()) -> doc().
+-spec merge_overrides(doc(), kz_json:object()) -> doc().
 merge_overrides(Plan, Overrides) ->
-    wh_json:merge_recursive(Plan, wh_json:from_list([{?PLAN, Overrides}])).
+    kz_json:merge_recursive(Plan, kz_json:from_list([{?PLAN, Overrides}])).
 
 -spec item_activation_charge(doc(), ne_binary(), ne_binary()) -> api_float().
 -spec item_activation_charge(doc(), ne_binary(), ne_binary(), Default) -> float() | Default.
@@ -78,10 +78,10 @@ item_activation_charge(Plan, Category, Item) ->
     item_activation_charge(Plan, Category, Item, 0).
 item_activation_charge(Plan, Category, Item, Default) ->
     kzd_item_plan:activation_charge(
-        wh_json:get_json_value(
+        kz_json:get_json_value(
             [?PLAN, Category, Item]
             ,Plan
-            ,wh_json:new()
+            ,kz_json:new()
         )
         ,Default
     ).
@@ -95,34 +95,34 @@ category_activation_charge(Plan, Category, Default) ->
 
 -spec categories(doc()) -> ne_binaries().
 categories(Plan) ->
-    wh_json:get_keys(?PLAN, Plan).
+    kz_json:get_keys(?PLAN, Plan).
 
 -spec category(doc(), ne_binary()) -> api_object().
 -spec category(doc(), ne_binary(), Default) -> api_object() | Default.
 category(Plan, CategoryId) ->
     category(Plan, CategoryId, 'undefined').
 category(Plan, CategoryId, Default) ->
-    wh_json:get_json_value([?PLAN, CategoryId], Plan, Default).
+    kz_json:get_json_value([?PLAN, CategoryId], Plan, Default).
 
 -spec items(doc(), ne_binary()) -> ne_binaries().
 items(Plan, Category) ->
-    wh_json:get_keys([?PLAN, Category], Plan).
+    kz_json:get_keys([?PLAN, Category], Plan).
 
 -spec item(doc(), ne_binary(), ne_binary()) -> api_object().
 item(Plan, CategoryId, ItemId) ->
-    wh_json:get_json_value([?PLAN, CategoryId, ItemId], Plan).
+    kz_json:get_json_value([?PLAN, CategoryId, ItemId], Plan).
 
--spec bookkeepers(doc()) -> wh_json:object().
+-spec bookkeepers(doc()) -> kz_json:object().
 bookkeepers(Plan) ->
-    wh_json:get_json_value(?BOOKKEEPERS, Plan, wh_json:new()).
+    kz_json:get_json_value(?BOOKKEEPERS, Plan, kz_json:new()).
 
 -spec bookkeeper_ids(doc()) -> ne_binaries().
 bookkeeper_ids(Plan) ->
-    wh_json:get_keys(?BOOKKEEPERS, Plan).
+    kz_json:get_keys(?BOOKKEEPERS, Plan).
 
--spec bookkeeper(doc(), ne_binary()) -> wh_json:object().
+-spec bookkeeper(doc(), ne_binary()) -> kz_json:object().
 bookkeeper(Plan, BookkeeperId) ->
-    wh_json:get_json_value(BookkeeperId, bookkeepers(Plan), wh_json:new()).
+    kz_json:get_json_value(BookkeeperId, bookkeepers(Plan), kz_json:new()).
 
 -spec item_minimum(doc(), ne_binary(), ne_binary()) -> integer().
 -spec item_minimum(doc(), ne_binary(), ne_binary(), Default) -> integer() | Default.
@@ -130,9 +130,9 @@ item_minimum(Plan, CategoryId, ItemId) ->
     item_minimum(Plan, CategoryId, ItemId, 0).
 item_minimum(Plan, CategoryId, ItemId, Default) ->
     kzd_item_plan:minimum(
-      wh_json:get_json_value([?PLAN, CategoryId, ItemId]
+      kz_json:get_json_value([?PLAN, CategoryId, ItemId]
                              ,Plan
-                             ,wh_json:new()
+                             ,kz_json:new()
                             )
       ,Default
      ).
@@ -140,10 +140,10 @@ item_minimum(Plan, CategoryId, ItemId, Default) ->
 -spec item_name(doc(), ne_binary(), ne_binary()) -> ne_binary().
 item_name(Plan, CategoryId, ItemId) ->
     kzd_item_plan:name(
-        wh_json:get_json_value(
+        kz_json:get_json_value(
             [?PLAN, CategoryId, ItemId]
             ,Plan
-            ,wh_json:new()
+            ,kz_json:new()
         )
      ).
 
@@ -153,35 +153,35 @@ item_exceptions(Plan, CategoryId, ItemId) ->
     item_exceptions(Plan, CategoryId, ItemId, []).
 item_exceptions(Plan, CategoryId, ItemId, Default) ->
     kzd_item_plan:exceptions(
-        wh_json:get_json_value(
+        kz_json:get_json_value(
             [?PLAN, CategoryId, ItemId]
             ,Plan
-            ,wh_json:new()
+            ,kz_json:new()
         )
         ,Default
      ).
 
--spec item_plan(doc(), ne_binary(), ne_binary()) -> wh_json:object().
--spec item_plan(doc(), ne_binary(), ne_binary(), Default) -> wh_json:object() | Default.
+-spec item_plan(doc(), ne_binary(), ne_binary()) -> kz_json:object().
+-spec item_plan(doc(), ne_binary(), ne_binary(), Default) -> kz_json:object() | Default.
 item_plan(Plan, CategoryId, ItemId) ->
-    item_plan(Plan, CategoryId, ItemId, wh_json:new()).
+    item_plan(Plan, CategoryId, ItemId, kz_json:new()).
 item_plan(Plan, CategoryId, ItemId, Default) ->
-    wh_json:get_json_value([?PLAN, CategoryId, ItemId], Plan, Default).
+    kz_json:get_json_value([?PLAN, CategoryId, ItemId], Plan, Default).
 
--spec category_plan(doc(), ne_binary()) -> wh_json:object().
--spec category_plan(doc(), ne_binary(), Default) -> wh_json:object() | Default.
+-spec category_plan(doc(), ne_binary()) -> kz_json:object().
+-spec category_plan(doc(), ne_binary(), Default) -> kz_json:object() | Default.
 category_plan(Plan, CategoryId) ->
-    category_plan(Plan, CategoryId, wh_json:new()).
+    category_plan(Plan, CategoryId, kz_json:new()).
 category_plan(Plan, CategoryId, Default) ->
     item_plan(Plan, CategoryId, ?ALL, Default).
 
--spec plan(doc()) -> wh_json:object().
--spec plan(doc(), Default) -> wh_json:object() | Default.
+-spec plan(doc()) -> kz_json:object().
+-spec plan(doc(), Default) -> kz_json:object() | Default.
 plan(Plan) ->
-    plan(Plan, wh_json:new()).
+    plan(Plan, kz_json:new()).
 plan(Plan, Default) ->
-    wh_json:get_json_value(?PLAN, Plan, Default).
+    kz_json:get_json_value(?PLAN, Plan, Default).
 
--spec set_plan(doc(), wh_json:object()) -> doc().
+-spec set_plan(doc(), kz_json:object()) -> doc().
 set_plan(Plan, P) ->
-    wh_json:set_value(?PLAN, P, Plan).
+    kz_json:set_value(?PLAN, P, Plan).

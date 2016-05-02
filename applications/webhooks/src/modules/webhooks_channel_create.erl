@@ -12,11 +12,11 @@
 
 -include("webhooks.hrl").
 
--define(ID, wh_util:to_binary(?MODULE)).
+-define(ID, kz_util:to_binary(?MODULE)).
 -define(NAME, <<"channel_create">>).
 -define(DESC, <<"Events when new calls start">>).
 -define(METADATA
-        ,wh_json:from_list([{<<"_id">>, ?ID}
+        ,kz_json:from_list([{<<"_id">>, ?ID}
                             ,{<<"name">>, ?NAME}
                             ,{<<"description">>, ?DESC}
                            ])

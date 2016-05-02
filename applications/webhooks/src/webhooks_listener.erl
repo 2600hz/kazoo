@@ -23,7 +23,7 @@
         ]).
 
 -include("webhooks.hrl").
--include_lib("whistle/include/wapi_conf.hrl").
+-include_lib("kazoo/include/kapi_conf.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -59,26 +59,26 @@ start_link() ->
                             ,[]
                            ).
 
--spec handle_config(wh_json:object(), wh_proplist()) -> 'ok'.
--spec handle_config(wh_json:object(), pid(), ne_binary()) -> 'ok'.
+-spec handle_config(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_config(kz_json:object(), pid(), ne_binary()) -> 'ok'.
 handle_config(JObj, Props) ->
-    'true' = wapi_conf:doc_update_v(JObj),
+    'true' = kapi_conf:doc_update_v(JObj),
     handle_config(JObj
                   ,props:get_value('server', Props)
-                  ,wh_api:event_name(JObj)
+                  ,kz_api:event_name(JObj)
                  ).
 
 handle_config(JObj, Srv, ?DOC_CREATED) ->
-    case wapi_conf:get_doc(JObj) of
+    case kapi_conf:get_doc(JObj) of
         'undefined' -> find_and_add_hook(JObj, Srv);
         Hook -> webhooks_util:load_hook(Srv, Hook)
     end;
 handle_config(JObj, Srv, ?DOC_EDITED) ->
-    case wapi_conf:get_id(JObj) of
+    case kapi_conf:get_id(JObj) of
         'undefined' -> find_and_update_hook(JObj, Srv);
         HookId ->
             {'ok', Hook} = kz_datamgr:open_doc(?KZ_WEBHOOKS_DB, HookId),
-            case (not wapi_conf:get_is_soft_deleted(JObj))
+            case (not kapi_conf:get_is_soft_deleted(JObj))
                 andalso kzd_webhook:is_enabled(Hook)
 
             of
@@ -87,19 +87,19 @@ handle_config(JObj, Srv, ?DOC_EDITED) ->
                 'false' ->
                     gen_listener:cast(Srv, {'remove_hook', webhooks_util:jobj_to_rec(Hook)})
             end,
-            webhooks_disabler:flush_failures(wapi_conf:get_account_id(JObj), HookId)
+            webhooks_disabler:flush_failures(kapi_conf:get_account_id(JObj), HookId)
     end;
 handle_config(JObj, Srv, ?DOC_DELETED) ->
-    case wapi_conf:get_doc(JObj) of
+    case kapi_conf:get_doc(JObj) of
         'undefined' -> find_and_remove_hook(JObj, Srv);
         Hook ->
             gen_listener:cast(Srv, {'remove_hook', webhooks_util:jobj_to_rec(Hook)}),
-            webhooks_disabler:flush_failures(wapi_conf:get_account_id(JObj)
-                                             ,wh_doc:id(JObj)
+            webhooks_disabler:flush_failures(kapi_conf:get_account_id(JObj)
+                                             ,kz_doc:id(JObj)
                                             )
     end.
 
--spec find_and_add_hook(wh_json:object(), pid()) -> 'ok'.
+-spec find_and_add_hook(kz_json:object(), pid()) -> 'ok'.
 find_and_add_hook(JObj, Srv) ->
     case find_hook(JObj) of
         {'ok', Hook} ->
@@ -108,7 +108,7 @@ find_and_add_hook(JObj, Srv) ->
             lager:debug("failed to add hook ~s: ~p", [webhooks_util:hook_id(JObj), _E])
     end.
 
--spec find_and_update_hook(wh_json:object(), pid()) -> 'ok'.
+-spec find_and_update_hook(kz_json:object(), pid()) -> 'ok'.
 find_and_update_hook(JObj, Srv) ->
     case find_hook(JObj) of
         {'ok', Hook} ->
@@ -117,16 +117,16 @@ find_and_update_hook(JObj, Srv) ->
             lager:debug("failed to update hook ~s: ~p", [webhooks_util:hook_id(JObj), _E])
     end.
 
--spec find_and_remove_hook(wh_json:object(), pid()) -> 'ok'.
+-spec find_and_remove_hook(kz_json:object(), pid()) -> 'ok'.
 find_and_remove_hook(JObj, Srv) ->
     gen_listener:cast(Srv, {'remove_hook', webhooks_util:hook_id(JObj)}).
 
--spec find_hook(wh_json:object()) ->
-                       {'ok', wh_json:object()} |
+-spec find_hook(kz_json:object()) ->
+                       {'ok', kz_json:object()} |
                        {'error', any()}.
 find_hook(JObj) ->
     kz_datamgr:open_cache_doc(?KZ_WEBHOOKS_DB
-                             ,wapi_conf:get_id(JObj)
+                             ,kapi_conf:get_id(JObj)
                             ).
 
 %%%===================================================================
@@ -146,7 +146,7 @@ find_hook(JObj) ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -214,9 +214,9 @@ handle_cast(_Msg, State) ->
 handle_info({'ETS-TRANSFER', _TblId, _From, _Data}, State) ->
     lager:info("write access to table '~p' available", [_TblId]),
     Self = self(),
-    _ = wh_util:spawn(
+    _ = kz_util:spawn(
           fun() ->
-                  wh_util:put_callid(?MODULE),
+                  kz_util:put_callid(?MODULE),
                   webhooks_util:load_hooks(Self),
                   webhooks_util:init_webhooks()
           end),

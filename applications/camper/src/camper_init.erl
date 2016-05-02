@@ -27,8 +27,8 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    wapi_call:declare_exchanges(),
-    wapi_offnet_resource:declare_exchanges(),
-    wapi_resource:declare_exchanges(),
-    wapi_delegate:declare_exchanges(),
-    wapi_dialplan:declare_exchanges().
+    kapi_call:declare_exchanges(),
+    kapi_offnet_resource:declare_exchanges(),
+    kapi_resource:declare_exchanges(),
+    kapi_delegate:declare_exchanges(),
+    kapi_dialplan:declare_exchanges().

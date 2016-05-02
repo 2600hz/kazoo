@@ -13,11 +13,11 @@
 
 -include("webhooks.hrl").
 
--define(ID, wh_util:to_binary(?MODULE)).
+-define(ID, kz_util:to_binary(?MODULE)).
 -define(NAME, <<"callflow">>).
 -define(DESC, <<"Fire a webhook from a callflow">>).
 -define(METADATA
-        ,wh_json:from_list([{<<"_id">>, ?ID}
+        ,kz_json:from_list([{<<"_id">>, ?ID}
                             ,{<<"name">>, ?NAME}
                             ,{<<"description">>, ?DESC}
                            ])
@@ -39,9 +39,9 @@ bindings_and_responders() ->
       ]
     }.
 
--spec handle_event(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_event(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_event(JObj, _Props) ->
-    'true' = wapi_notifications:webhook_v(JObj),
-    Hook = webhooks_util:from_json(wh_json:get_value(<<"Hook">>, JObj)),
-    Data = wh_json:get_value(<<"Data">>, JObj),
+    'true' = kapi_notifications:webhook_v(JObj),
+    Hook = webhooks_util:from_json(kz_json:get_value(<<"Hook">>, JObj)),
+    Data = kz_json:get_value(<<"Data">>, JObj),
     webhooks_util:fire_hooks(Data, [Hook]).

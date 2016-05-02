@@ -12,7 +12,7 @@
 
 -include("knm.hrl").
 
--callback find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
+-callback find_numbers(ne_binary(), pos_integer(), kz_proplist()) ->
     {'error', any()} |
     {'bulk', knm_number:knm_numbers()} |
     {'ok', knm_number:knm_numbers()}.

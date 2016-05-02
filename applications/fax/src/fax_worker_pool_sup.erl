@@ -19,7 +19,7 @@
 
 -define(CHILDREN, [?WORKER_NAME_ARGS('poolboy', ?FAX_WORKER_POOL, [[{'name', {'local', ?FAX_WORKER_POOL}}
                                                                     ,{'worker_module', 'fax_worker'}
-                                                                    ,{'size', whapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 5)}
+                                                                    ,{'size', kapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 5)}
                                                                     ,{'max_overflow', 0}
                                                                    ]
                                                                   ]

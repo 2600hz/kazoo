@@ -35,7 +35,7 @@
        ).
 
 -define(DISPATCH_FILE, [code:lib_dir('crossbar', 'priv'), "/dispatch.conf"]).
--define(DEFAULT_LOG_DIR, wh_util:to_binary(code:lib_dir('crossbar', 'log'))).
+-define(DEFAULT_LOG_DIR, kz_util:to_binary(code:lib_dir('crossbar', 'log'))).
 
 %% ===================================================================
 %% API functions
@@ -93,5 +93,5 @@ upgrade() ->
 %%--------------------------------------------------------------------
 -spec init(any()) -> sup_init_ret().
 init([]) ->
-    wh_util:set_startup(),
+    kz_util:set_startup(),
     {'ok', {{'one_for_one', 10, 10}, ?CHILDREN}}.

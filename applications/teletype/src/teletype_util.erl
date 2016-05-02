@@ -73,14 +73,14 @@ send_email(Emails, Subject, RenderedTemplates, Attachments) ->
         {'ok', Receipt} ->
             maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, 'undefined');
         {'error', Reason} = E ->
-            maybe_log_smtp(Emails, Subject, RenderedTemplates, 'undefined', wh_util:to_binary(Reason)),
+            maybe_log_smtp(Emails, Subject, RenderedTemplates, 'undefined', kz_util:to_binary(Reason)),
             E
     end.
 
 -spec maybe_log_smtp(email_map(), ne_binary(), list(), api_binary(), api_binary()) -> 'ok'.
 -spec maybe_log_smtp(email_map(), ne_binary(), list(), api_binary(), api_binary(), boolean()) -> 'ok'.
 maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error) ->
-    Skip = wh_util:is_true(get('skip_smtp_log')),
+    Skip = kz_util:is_true(get('skip_smtp_log')),
     maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, Skip).
 
 maybe_log_smtp(_Emails, _Subject, _RenderedTemplates, _Receipt, _Error, 'true') ->
@@ -97,26 +97,26 @@ maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, 'false') ->
 log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
     AccountDb = kazoo_modb:get_modb(AccountId),
     Doc = props:filter_undefined(
-            [{<<"rendered_templates">>, wh_json:from_list(RenderedTemplates)}
+            [{<<"rendered_templates">>, kz_json:from_list(RenderedTemplates)}
              ,{<<"subject">>, Subject}
-             ,{<<"emails">>, wh_json:from_list(props:filter_undefined(Emails))}
+             ,{<<"emails">>, kz_json:from_list(props:filter_undefined(Emails))}
              ,{<<"receipt">>, Receipt}
              ,{<<"error">>, Error}
              ,{<<"pvt_type">>, <<"notify_smtp_log">>}
              ,{<<"account_id">>, AccountId}
              ,{<<"account_db">>, AccountDb}
-             ,{<<"pvt_created">>, wh_util:current_tstamp()}
+             ,{<<"pvt_created">>, kz_util:current_tstamp()}
              ,{<<"template_id">>, get('template_id')}
              ,{<<"template_account_id">>, get('template_account_id')}
              ,{<<"_id">>, make_smtplog_id(AccountDb)}
             ]),
     lager:debug("attempting to save notify smtp log"),
-    _ = kazoo_modb:save_doc(AccountDb, wh_json:from_list(Doc)),
+    _ = kazoo_modb:save_doc(AccountDb, kz_json:from_list(Doc)),
     'ok'.
 
 -spec make_smtplog_id(ne_binary()) -> ne_binary().
 make_smtplog_id(?MATCH_MODB_SUFFIX_ENCODED(_Account, Year, Month)) ->
-    ?MATCH_MODB_PREFIX(Year, Month, wh_util:rand_hex_binary(16)).
+    ?MATCH_MODB_PREFIX(Year, Month, kz_util:rand_hex_binary(16)).
 
 -spec email_body(rendered_templates()) -> mimemail:mimetuple().
 email_body(RenderedTemplates) ->
@@ -127,7 +127,7 @@ email_body(RenderedTemplates) ->
      ,add_rendered_templates_to_email(RenderedTemplates)
     }.
 
--spec email_parameters(wh_proplist(), wh_proplist()) -> wh_proplist().
+-spec email_parameters(kz_proplist(), kz_proplist()) -> kz_proplist().
 email_parameters([], Params) ->
     lists:reverse(props:filter_empty(Params));
 email_parameters([{_Key, 'undefined'}|T], Params) ->
@@ -157,7 +157,7 @@ relay_email(To, From, {_Type
         _E:_R ->
             ST = erlang:get_stacktrace(),
             lager:warning("failed to encode email: ~s: ~p", [_E, _R]),
-            wh_util:log_stacktrace(ST),
+            kz_util:log_stacktrace(ST),
             {'error', 'email_encoding_failed'}
     end.
 
@@ -165,7 +165,7 @@ relay_email(To, From, {_Type
 maybe_relay_to_bcc(_From, _Encoded, 'undefined') -> 'ok';
 maybe_relay_to_bcc(_From, _Encoded, []) -> 'ok';
 maybe_relay_to_bcc(From, Encoded, Bcc) ->
-    case whapps_config:get_is_true(?APP_NAME, <<"iterate_over_bcc">>, 'true') of
+    case kapps_config:get_is_true(?APP_NAME, <<"iterate_over_bcc">>, 'true') of
         'true' -> relay_to_bcc(From, Encoded, Bcc);
         'false' -> 'ok'
     end.
@@ -201,8 +201,8 @@ relay_encoded_email(To, From, Encoded) ->
                                  ,{'receipt', Receipt}
                                  ,#email_receipt{to=To
                                                  ,from=From
-                                                 ,timestamp=wh_util:current_tstamp()
-                                                 ,call_id=wh_util:get_callid()
+                                                 ,timestamp=kz_util:current_tstamp()
+                                                 ,call_id=kz_util:get_callid()
                                                 }
                                  ,[{'expires', ?MILLISECONDS_IN_HOUR}]
                                 ),
@@ -221,21 +221,21 @@ relay_encoded_email(To, From, Encoded) ->
     end.
 
 log_email_send_error({'function_clause', Stacktrace}) ->
-    wh_util:log_stacktrace(Stacktrace);
+    kz_util:log_stacktrace(Stacktrace);
 log_email_send_error(Reason) ->
     lager:debug("exit relaying message: ~p", [Reason]).
 
--spec smtp_options() -> wh_proplist().
+-spec smtp_options() -> kz_proplist().
 smtp_options() ->
-    Relay = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"relay">>, <<"localhost">>)),
-    Username = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"username">>)),
-    Password = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"password">>)),
-    Auth = whapps_config:get(<<"smtp_client">>, <<"auth">>, <<"never">>),
-    Port = whapps_config:get_integer(<<"smtp_client">>, <<"port">>, 25),
-    Retries = whapps_config:get_integer(<<"smtp_client">>, <<"retries">>, 1),
-    NoMxLookups = whapps_config:get_is_true(<<"smtp_client">>, <<"no_mx_lookups">>, 'true'),
-    TLS = whapps_config:get(<<"smtp_client">>, <<"tls">>),
-    SSL = whapps_config:get_is_true(<<"smtp_client">>, <<"use_ssl">>, 'false'),
+    Relay = kz_util:to_list(kapps_config:get(<<"smtp_client">>, <<"relay">>, <<"localhost">>)),
+    Username = kz_util:to_list(kapps_config:get(<<"smtp_client">>, <<"username">>)),
+    Password = kz_util:to_list(kapps_config:get(<<"smtp_client">>, <<"password">>)),
+    Auth = kapps_config:get(<<"smtp_client">>, <<"auth">>, <<"never">>),
+    Port = kapps_config:get_integer(<<"smtp_client">>, <<"port">>, 25),
+    Retries = kapps_config:get_integer(<<"smtp_client">>, <<"retries">>, 1),
+    NoMxLookups = kapps_config:get_is_true(<<"smtp_client">>, <<"no_mx_lookups">>, 'true'),
+    TLS = kapps_config:get(<<"smtp_client">>, <<"tls">>),
+    SSL = kapps_config:get_is_true(<<"smtp_client">>, <<"use_ssl">>, 'false'),
 
     lager:debug("relaying via ~s", [Relay]),
 
@@ -289,7 +289,7 @@ add_rendered_templates_to_email(RenderedTemplates) ->
 add_rendered_templates_to_email([], Acc) -> Acc;
 add_rendered_templates_to_email([{ContentType, Content}|Rs], Acc) ->
     [Type, SubType] = binary:split(ContentType, <<"/">>),
-    CTEncoding = whapps_config:get_ne_binary(?NOTIFY_CONFIG_CAT,
+    CTEncoding = kapps_config:get_ne_binary(?NOTIFY_CONFIG_CAT,
                                              [<<"mime-encoding">>
                                               ,ContentType
                                               ,<<"content_transfer_encoding">>
@@ -312,11 +312,11 @@ add_rendered_templates_to_email([{ContentType, Content}|Rs], Acc) ->
 default_content_transfer_encoding(<<"text/html">>) -> <<"base64">>;
 default_content_transfer_encoding(_) -> <<"7BIT">>.
 
--spec system_params() -> wh_proplist().
+-spec system_params() -> kz_proplist().
 system_params() ->
-    [{<<"hostname">>, wh_util:to_binary(net_adm:localhost())}].
+    [{<<"hostname">>, kz_util:to_binary(net_adm:localhost())}].
 
--spec account_params(wh_json:object()) -> wh_proplist().
+-spec account_params(kz_json:object()) -> kz_proplist().
 account_params(DataJObj) ->
     case find_account_id(DataJObj) of
         'undefined' ->
@@ -327,7 +327,7 @@ account_params(DataJObj) ->
             find_account_params(DataJObj, AccountId)
     end.
 
--spec find_account_params(wh_json:object(), ne_binary()) -> wh_proplist().
+-spec find_account_params(kz_json:object(), ne_binary()) -> kz_proplist().
 find_account_params(DataJObj, AccountId) ->
     case open_doc(<<"account">>, AccountId, DataJObj) of
         {'ok', AccountJObj} ->
@@ -343,9 +343,9 @@ find_account_params(DataJObj, AccountId) ->
     end.
 
 -spec default_from_address(ne_binary()) -> ne_binary().
--spec default_from_address(wh_json:object(), ne_binary()) -> ne_binary().
+-spec default_from_address(kz_json:object(), ne_binary()) -> ne_binary().
 default_from_address(ConfigCat) ->
-    default_from_address(wh_json:new(), ConfigCat).
+    default_from_address(kz_json:new(), ConfigCat).
 default_from_address(JObj, ConfigCat) ->
     default_system_value(JObj, ConfigCat
                          ,<<"send_from">>, <<"default_from">>
@@ -353,25 +353,25 @@ default_from_address(JObj, ConfigCat) ->
                         ).
 
 -spec default_reply_to(ne_binary()) -> api_binary().
--spec default_reply_to(wh_json:object(), ne_binary()) -> api_binary().
+-spec default_reply_to(kz_json:object(), ne_binary()) -> api_binary().
 default_reply_to(ConfigCat) ->
-    default_reply_to(wh_json:new(), ConfigCat).
+    default_reply_to(kz_json:new(), ConfigCat).
 default_reply_to(JObj, ConfigCat) ->
     default_system_value(JObj, ConfigCat
                          ,<<"reply_to">>, <<"default_reply_to">>
                          ,'undefined'
                         ).
 
--spec default_system_value(wh_json:object(), ne_binary(), wh_json:key(), wh_json:key(), wh_json:json_term()) ->
-                                  wh_json:json_term().
+-spec default_system_value(kz_json:object(), ne_binary(), kz_json:key(), kz_json:key(), kz_json:json_term()) ->
+                                  kz_json:json_term().
 default_system_value(JObj, ConfigCat, JSONKey, ConfigKey, ConfigDefault) ->
-    case wh_json:get_ne_value(JSONKey, JObj) of
+    case kz_json:get_ne_value(JSONKey, JObj) of
         'undefined' ->
-            whapps_config:get(ConfigCat, ConfigKey, ConfigDefault);
+            kapps_config:get(ConfigCat, ConfigKey, ConfigDefault);
         Value -> Value
     end.
 
--spec render_subject(ne_binary(), wh_proplist()) -> binary().
+-spec render_subject(ne_binary(), kz_proplist()) -> binary().
 render_subject(Template, Macros) ->
     render(<<"subject">>, Template, Macros).
 
@@ -392,9 +392,9 @@ sort_templates({K1, _}, {K2, _}) ->
     props:get_value(K1, ?TEMPLATE_RENDERING_ORDER, 1) =<
         props:get_value(K2, ?TEMPLATE_RENDERING_ORDER, 1).
 
--spec find_account_id(wh_json:object()) -> api_binary().
+-spec find_account_id(kz_json:object()) -> api_binary().
 find_account_id(JObj) ->
-    wh_json:get_first_defined([<<"account_id">>
+    kz_json:get_first_defined([<<"account_id">>
                                ,[<<"account">>, <<"_id">>]
                                ,<<"pvt_account_id">>
                                ,<<"_id">>, <<"id">>
@@ -403,7 +403,7 @@ find_account_id(JObj) ->
                               ,JObj
                              ).
 
--spec find_account_db(ne_binary(), wh_json:object()) -> api_binary().
+-spec find_account_db(ne_binary(), kz_json:object()) -> api_binary().
 find_account_db(<<"account">>, JObj) -> find_account_db_from_id(JObj);
 find_account_db(<<"user">>, JObj) -> find_account_db_from_id(JObj);
 find_account_db(<<"fax">>, JObj) -> find_account_db(JObj);
@@ -411,29 +411,29 @@ find_account_db(<<"port_request">>, _JObj) -> ?KZ_PORT_REQUESTS_DB;
 find_account_db(<<"webhook">>, _JObj) -> ?KZ_WEBHOOKS_DB;
 find_account_db(_, JObj) -> find_account_db_from_id(JObj).
 
--spec find_account_db(wh_json:object()) -> api_binary().
+-spec find_account_db(kz_json:object()) -> api_binary().
 find_account_db(JObj) ->
     PossibleDbs = [<<"account_db">>, <<"pvt_account_db">>, <<"Account-DB">>],
-    case wh_json:get_first_defined(PossibleDbs, JObj) of
+    case kz_json:get_first_defined(PossibleDbs, JObj) of
         'undefined' -> find_account_db_from_id(JObj);
         Db -> Db
     end.
 
--spec find_account_db_from_id(wh_json:object()) -> api_binary().
+-spec find_account_db_from_id(kz_json:object()) -> api_binary().
 find_account_db_from_id(JObj) ->
     case find_account_id(JObj) of
         'undefined' -> 'undefined';
-        Id -> wh_util:format_account_id(Id, 'encoded')
+        Id -> kz_util:format_account_id(Id, 'encoded')
     end.
 
--spec send_update(wh_json:object(), ne_binary()) -> 'ok'.
--spec send_update(wh_json:object(), ne_binary(), api_binary()) -> 'ok'.
+-spec send_update(kz_json:object(), ne_binary()) -> 'ok'.
+-spec send_update(kz_json:object(), ne_binary(), api_binary()) -> 'ok'.
 -spec send_update(api_binary(), ne_binary(), ne_binary(), api_binary()) -> 'ok'.
 send_update(DataJObj, Status) ->
     send_update(DataJObj, Status, 'undefined').
 send_update(DataJObj, Status, Message) ->
-    send_update(wh_json:get_first_defined([<<"server_id">>, <<"Server-ID">>], DataJObj)
-                ,wh_json:get_value(<<"msg_id">>, DataJObj)
+    send_update(kz_json:get_first_defined([<<"server_id">>, <<"Server-ID">>], DataJObj)
+                ,kz_json:get_value(<<"msg_id">>, DataJObj)
                 ,Status
                 ,Message
                ).
@@ -445,21 +445,21 @@ send_update(RespQ, MsgId, Status, Msg) ->
              [{<<"Status">>, Status}
               ,{<<"Failure-Message">>, Msg}
               ,{<<"Msg-ID">>, MsgId}
-              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     lager:debug("notification update (~s) sending to ~s", [Status, RespQ]),
-    wh_amqp_worker:cast(Prop, fun(P) -> wapi_notifications:publish_notify_update(RespQ, P) end).
+    kz_amqp_worker:cast(Prop, fun(P) -> kapi_notifications:publish_notify_update(RespQ, P) end).
 
 -spec find_account_rep_email(api_object() | ne_binary()) -> api_binaries().
 find_account_rep_email('undefined') -> 'undefined';
 find_account_rep_email(<<_/binary>> = AccountId) ->
-    case wh_services:is_reseller(AccountId) of
+    case kz_services:is_reseller(AccountId) of
         'true' ->
             lager:debug("finding admin email for reseller account ~s", [AccountId]),
             find_account_admin_email(AccountId);
         'false' ->
             lager:debug("finding admin email for reseller of account ~s", [AccountId]),
-            find_account_admin_email(wh_services:find_reseller_id(AccountId))
+            find_account_admin_email(kz_services:find_reseller_id(AccountId))
     end;
 find_account_rep_email(AccountJObj) ->
     find_account_rep_email(
@@ -470,7 +470,7 @@ find_account_rep_email(AccountJObj) ->
 -spec find_account_admin_email(ne_binary(), api_binary()) -> api_binaries().
 find_account_admin_email('undefined') -> 'undefined';
 find_account_admin_email(AccountId) ->
-    find_account_admin_email(AccountId, wh_services:find_reseller_id(AccountId)).
+    find_account_admin_email(AccountId, kz_services:find_reseller_id(AccountId)).
 
 find_account_admin_email(AccountId, AccountId) ->
     case query_account_for_admin_emails(AccountId) of
@@ -486,7 +486,7 @@ find_account_admin_email(AccountId, ResellerId) ->
 
 -spec query_account_for_admin_emails(ne_binary()) -> ne_binaries().
 query_account_for_admin_emails(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     ViewOptions = [{'key', <<"user">>}
                    ,'include_docs'
                   ],
@@ -495,7 +495,7 @@ query_account_for_admin_emails(AccountId) ->
         {'ok', Users} ->
             [Email
              || Admin <- filter_for_admins(Users),
-                (Email = wh_json:get_ne_value([<<"doc">>, <<"email">>], Admin)) =/= 'undefined'
+                (Email = kz_json:get_ne_value([<<"doc">>, <<"email">>], Admin)) =/= 'undefined'
             ];
         {'error', _E} ->
             lager:debug("failed to find users in ~s: ~p", [AccountId, _E]),
@@ -506,7 +506,7 @@ query_account_for_admin_emails(AccountId) ->
 -spec find_account_admin(ne_binary(), ne_binary()) -> api_object().
 find_account_admin('undefined') -> 'undefined';
 find_account_admin(<<_/binary>> = AccountId) ->
-    find_account_admin(AccountId, wh_services:find_reseller_id(AccountId)).
+    find_account_admin(AccountId, kz_services:find_reseller_id(AccountId)).
 
 find_account_admin(AccountId, AccountId) ->
     query_for_account_admin(AccountId);
@@ -518,7 +518,7 @@ find_account_admin(AccountId, ResellerId) ->
 
 -spec query_for_account_admin(ne_binary()) -> api_object().
 query_for_account_admin(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     ViewOptions = [{'key', <<"user">>}
                    ,'include_docs'
                   ],
@@ -534,17 +534,17 @@ query_for_account_admin(AccountId) ->
             'undefined'
     end.
 
--spec filter_for_admins(wh_json:objects()) -> wh_json:objects().
+-spec filter_for_admins(kz_json:objects()) -> kz_json:objects().
 filter_for_admins(Users) ->
     [User
      || User <- Users,
-        wh_json:get_value([<<"doc">>, <<"priv_level">>], User) =:= <<"admin">>
+        kz_json:get_value([<<"doc">>, <<"priv_level">>], User) =:= <<"admin">>
     ].
 
--spec should_handle_notification(wh_json:object()) -> boolean().
--spec should_handle_notification(wh_json:object(), boolean()) -> boolean().
+-spec should_handle_notification(kz_json:object()) -> boolean().
+-spec should_handle_notification(kz_json:object(), boolean()) -> boolean().
 should_handle_notification(JObj) ->
-    DataJObj = wh_json:normalize(JObj),
+    DataJObj = kz_json:normalize(JObj),
     should_handle_notification(DataJObj, is_preview(JObj)).
 
 should_handle_notification(_JObj, 'true') -> 'true';
@@ -557,7 +557,7 @@ should_handle_notification(JObj, 'false') ->
 -spec should_handle_system() -> boolean().
 should_handle_system() ->
     lager:debug("should system handle notification"),
-    whapps_config:get(?NOTIFY_CONFIG_CAT
+    kapps_config:get(?NOTIFY_CONFIG_CAT
                       ,<<"notification_app">>
                       ,?APP_NAME
                      )
@@ -588,7 +588,7 @@ should_handle_account(_Account, _Preference) ->
 
 -spec should_handle_reseller(ne_binary()) -> boolean().
 should_handle_reseller(Account) ->
-    ResellerId = wh_services:find_reseller_id(Account),
+    ResellerId = kz_services:find_reseller_id(Account),
 
     lager:debug("should reseller ~s handle notification", [ResellerId]),
     case kz_account:fetch(ResellerId) of
@@ -599,14 +599,14 @@ should_handle_reseller(Account) ->
 
 -define(MOD_CONFIG_CAT(Key), <<(?NOTIFY_CONFIG_CAT)/binary, ".", Key/binary>>).
 
--spec is_notice_enabled(api_binary(), wh_json:object(), ne_binary()) -> boolean().
+-spec is_notice_enabled(api_binary(), kz_json:object(), ne_binary()) -> boolean().
 is_notice_enabled('undefined', _ApiJObj, TemplateKey) ->
     is_notice_enabled_default(TemplateKey);
 is_notice_enabled(AccountId, ApiJObj, TemplateKey) ->
-    case wh_json:is_true(<<"Preview">>, ApiJObj, 'false') of
+    case kz_json:is_true(<<"Preview">>, ApiJObj, 'false') of
         'true' -> 'true';
         'false' ->
-            ResellerAccountId = wh_services:find_reseller_id(AccountId),
+            ResellerAccountId = kz_services:find_reseller_id(AccountId),
             is_account_notice_enabled(AccountId, TemplateKey, ResellerAccountId)
     end.
 
@@ -615,7 +615,7 @@ is_account_notice_enabled('undefined', TemplateKey, _ResellerAccountId) ->
     lager:debug("no account id to check, checking system config for ~s", [TemplateKey]),
     is_notice_enabled_default(TemplateKey);
 is_account_notice_enabled(AccountId, TemplateKey, ResellerAccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     TemplateId = teletype_templates:doc_id(TemplateKey),
 
     case kz_datamgr:open_cache_doc(AccountDb, TemplateId) of
@@ -636,7 +636,7 @@ is_account_notice_enabled(AccountId, TemplateKey, ResellerAccountId) ->
 -spec is_notice_enabled_default(ne_binary()) -> boolean().
 is_notice_enabled_default(TemplateKey) ->
     TemplateId = teletype_templates:doc_id(TemplateKey),
-    case kz_datamgr:open_cache_doc(?WH_CONFIG_DB, TemplateId) of
+    case kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, TemplateId) of
         {'ok', TemplateJObj} ->
             lager:debug("system has ~s, checking if enabled", [TemplateId]),
             kz_notification:is_enabled(TemplateJObj);
@@ -654,9 +654,9 @@ get_parent_account_id(AccountId) ->
             'undefined'
     end.
 
--spec find_addresses(wh_json:object(), wh_json:object(), ne_binary()) ->
+-spec find_addresses(kz_json:object(), kz_json:object(), ne_binary()) ->
                             email_map().
--spec find_addresses(wh_json:object(), wh_json:object(), ne_binary(), wh_json:keys(), email_map()) ->
+-spec find_addresses(kz_json:object(), kz_json:object(), ne_binary(), kz_json:keys(), email_map()) ->
                             email_map().
 find_addresses(DataJObj, TemplateMetaJObj, ConfigCat) ->
     AddressKeys = [<<"to">>, <<"cc">>, <<"bcc">>, <<"from">>, <<"reply_to">>],
@@ -672,24 +672,24 @@ find_addresses(DataJObj, TemplateMetaJObj, ConfigCat, [Key|Keys], Acc) ->
       ,[find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key)|Acc]
      ).
 
--spec find_address(wh_json:object(), wh_json:object(), ne_binary(), wh_json:key()) ->
-                          {wh_json:key(), api_binaries()}.
--spec find_address(wh_json:object(), wh_json:object(), ne_binary(), wh_json:key(), api_binary()) ->
-                          {wh_json:key(), api_binaries()}.
+-spec find_address(kz_json:object(), kz_json:object(), ne_binary(), kz_json:key()) ->
+                          {kz_json:key(), api_binaries()}.
+-spec find_address(kz_json:object(), kz_json:object(), ne_binary(), kz_json:key(), api_binary()) ->
+                          {kz_json:key(), api_binaries()}.
 find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key) ->
     find_address(
       DataJObj
       ,TemplateMetaJObj
       ,ConfigCat
       ,Key
-      ,wh_json:find([Key, <<"type">>]
+      ,kz_json:find([Key, <<"type">>]
                     ,[DataJObj, TemplateMetaJObj]
                    )
      ).
 
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, 'undefined') ->
     lager:debug("email type for '~s' not defined in template, checking just the key", [Key]),
-    {Key, wh_json:find(Key, [DataJObj, TemplateMetaJObj])};
+    {Key, kz_json:find(Key, [DataJObj, TemplateMetaJObj])};
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_SPECIFIED) ->
     lager:debug("checking template for '~s' email addresses", [Key]),
     {Key, find_address([Key, <<"email_addresses">>], DataJObj, TemplateMetaJObj)};
@@ -700,15 +700,15 @@ find_address(DataJObj, _TemplateMetaJObj, ConfigCat, Key, ?EMAIL_ADMINS) ->
     lager:debug("looking for admin emails for '~s'", [Key]),
     {Key, find_admin_emails(DataJObj, ConfigCat, Key)}.
 
--spec find_address(wh_json:keys(), wh_json:object(), wh_json:object()) ->
+-spec find_address(kz_json:keys(), kz_json:object(), kz_json:object()) ->
                           api_binaries().
 find_address(Key, DataJObj, TemplateMetaJObj) ->
-    case wh_json:get_ne_value(Key, DataJObj) of
-        'undefined' -> wh_json:get_ne_value(Key, TemplateMetaJObj);
+    case kz_json:get_ne_value(Key, DataJObj) of
+        'undefined' -> kz_json:get_ne_value(Key, TemplateMetaJObj);
         Emails -> Emails
     end.
 
--spec find_admin_emails(wh_json:object(), ne_binary(), wh_json:key()) ->
+-spec find_admin_emails(kz_json:object(), ne_binary(), kz_json:key()) ->
                                api_binaries().
 find_admin_emails(DataJObj, ConfigCat, Key) ->
     case ?MODULE:find_account_rep_email(
@@ -721,9 +721,9 @@ find_admin_emails(DataJObj, ConfigCat, Key) ->
         Emails -> Emails
     end.
 
--spec find_default(ne_binary(), wh_json:key()) -> api_binaries().
+-spec find_default(ne_binary(), kz_json:key()) -> api_binaries().
 find_default(ConfigCat, Key) ->
-    case whapps_config:get(ConfigCat, <<"default_", Key/binary>>) of
+    case kapps_config:get(ConfigCat, <<"default_", Key/binary>>) of
         'undefined' ->
             lager:debug("no default in ~s for default_~s", [ConfigCat, Key]),
             'undefined';
@@ -734,8 +734,8 @@ find_default(ConfigCat, Key) ->
         Emails -> Emails
     end.
 
--spec open_doc(ne_binary(), api_binary(), wh_json:object()) ->
-                      {'ok', wh_json:object()} |
+-spec open_doc(ne_binary(), api_binary(), kz_json:object()) ->
+                      {'ok', kz_json:object()} |
                       {'error', any()}.
 open_doc(Type, 'undefined', DataJObj) ->
     maybe_load_preview(Type, {'error', 'empty_doc_id'}, is_preview(DataJObj));
@@ -750,7 +750,7 @@ open_doc(Type, DocId, DataJObj) ->
 -type read_file_error() :: file:posix() | 'badarg' | 'terminated' | 'system_limit'.
 
 -spec maybe_load_preview(ne_binary(), E, boolean()) ->
-                                {'ok', wh_json:object()} |
+                                {'ok', kz_json:object()} |
                                 {'error', read_file_error()} | E.
 maybe_load_preview(_Type, Error, 'false') ->
     Error;
@@ -758,7 +758,7 @@ maybe_load_preview(Type, _Error, 'true') ->
     read_doc(Type).
 
 -spec read_doc(ne_binary()) ->
-                      {'ok', wh_json:object()} |
+                      {'ok', kz_json:object()} |
                       {'error', read_file_error()}.
 read_doc(File) ->
     AppDir = code:lib_dir('teletype'),
@@ -766,21 +766,21 @@ read_doc(File) ->
     case file:read_file(PreviewFile) of
         {'ok', JSON} ->
             lager:debug("read preview data from ~s: ~s", [PreviewFile, JSON]),
-            {'ok', wh_json:decode(JSON)};
+            {'ok', kz_json:decode(JSON)};
         {'error', _Reason}=E ->
             lager:debug("failed to read preview data from ~s: ~p", [PreviewFile, _Reason]),
             E
     end.
 
--spec is_preview(wh_json:object()) -> boolean().
+-spec is_preview(kz_json:object()) -> boolean().
 is_preview(DataJObj) ->
-    wh_json:is_true(<<"preview">>, DataJObj, 'false').
+    kz_json:is_true(<<"preview">>, DataJObj, 'false').
 
--spec public_proplist(wh_json:key(), wh_json:object()) -> wh_proplist().
+-spec public_proplist(kz_json:key(), kz_json:object()) -> kz_proplist().
 public_proplist(Key, JObj) ->
-    wh_json:to_proplist(
-      wh_json:public_fields(
-        wh_json:get_value(Key, JObj, wh_json:new())
+    kz_json:to_proplist(
+      kz_json:public_fields(
+        kz_json:get_value(Key, JObj, kz_json:new())
        )
      ).
 

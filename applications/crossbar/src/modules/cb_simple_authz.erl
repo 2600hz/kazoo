@@ -41,7 +41,7 @@ init() -> crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize').
 authorize(Context) ->
     authorize(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
-authorize(Context, Verb, [{?WH_ACCOUNTS_DB, []}]) ->
+authorize(Context, Verb, [{?KZ_ACCOUNTS_DB, []}]) ->
     case cb_modules_util:is_superduper_admin(Context) of
         'true' -> 'true';
         'false' -> Verb =:= ?HTTP_PUT
@@ -90,7 +90,7 @@ account_is_descendant('false', _Context, 'undefined') ->
 account_is_descendant('false', Context, AuthAccountId) ->
     Nouns = cb_context:req_nouns(Context),
     %% get the accounts/.... component from the URL
-    case props:get_value(?WH_ACCOUNTS_DB, Nouns) of
+    case props:get_value(?KZ_ACCOUNTS_DB, Nouns) of
         %% if the URL did not have the accounts noun then this module denies access
         'undefined' ->
             lager:debug("not authorizing, no accounts in request"),
@@ -159,6 +159,6 @@ allowed_if_sys_admin_mod(IsSysAdmin, Context) ->
 -spec is_sys_admin_mod(cb_context:context()) -> boolean().
 is_sys_admin_mod(Context) ->
     Nouns = cb_context:req_nouns(Context),
-    lists:any(fun wh_util:identity/1
+    lists:any(fun kz_util:identity/1
               ,[props:get_value(Mod, Nouns) =/= 'undefined' || Mod <- ?SYS_ADMIN_MODS]
              ).

@@ -38,6 +38,6 @@ stop(_State) ->
 
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    _ = wapi_authn:declare_exchanges(),
-    _ = wapi_route:declare_exchanges(),
-    wapi_self:declare_exchanges().
+    _ = kapi_authn:declare_exchanges(),
+    _ = kapi_route:declare_exchanges(),
+    kapi_self:declare_exchanges().

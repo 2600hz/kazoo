@@ -63,7 +63,7 @@
 -define(DATABASE_BINDING, [{'type', <<"database">>}]).
 
 -type store_options() :: [{'origin', origin_tuple() | origin_tuples()} |
-                          {'expires', wh_timeout()} |
+                          {'expires', kz_timeout()} |
                           {'callback', 'undefined' | callback_fun()}
                          ] | [].
 -export_type([store_options/0]).
@@ -76,9 +76,9 @@
                 ,channel_reconnect_flush = 'false' :: boolean()
                 ,new_node_flush = 'false' :: boolean()
                 ,expire_node_flush = 'false' :: boolean()
-                ,expire_period = ?EXPIRE_PERIOD :: wh_timeout()
+                ,expire_period = ?EXPIRE_PERIOD :: kz_timeout()
                 ,expire_period_ref :: reference()
-                ,props = [] :: wh_proplist()
+                ,props = [] :: kz_proplist()
                 ,has_monitors = 'false' :: boolean()
                }).
 -type state() :: #state{}.
@@ -91,7 +91,7 @@
 %% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(atom()) -> startlink_ret().
--spec start_link(atom(), wh_proplist()) -> startlink_ret().
+-spec start_link(atom(), kz_proplist()) -> startlink_ret().
 
 start_link(Name) when is_atom(Name) ->
     start_link(Name, ?EXPIRE_PERIOD, []).
@@ -123,14 +123,14 @@ stop_local(Srv) ->
     catch gen_server:call(Srv, 'stop'),
     'ok'.
 
--spec maybe_add_db_binding(wh_proplists()) -> wh_proplists().
+-spec maybe_add_db_binding(kz_proplists()) -> kz_proplists().
 maybe_add_db_binding([]) -> [];
 maybe_add_db_binding([[]]) -> [[]];
 maybe_add_db_binding(BindingProps) ->
     [?DATABASE_BINDING | BindingProps].
 
 -spec store(any(), any()) -> 'ok'.
--spec store(any(), any(), wh_proplist()) -> 'ok'.
+-spec store(any(), any(), kz_proplist()) -> 'ok'.
 
 store(K, V) -> store(K, V, []).
 
@@ -164,7 +164,7 @@ dump(ShowValue) -> dump_local(?SERVER, ShowValue).
 
 -spec wait_for_key(any()) -> {'ok', any()} |
                              {'error', 'timeout'}.
--spec wait_for_key(any(), wh_timeout()) -> {'ok', any()} |
+-spec wait_for_key(any(), kz_timeout()) -> {'ok', any()} |
                                            {'error', 'timeout'}.
 
 wait_for_key(Key) -> wait_for_key(Key, ?DEFAULT_WAIT_TIMEOUT).
@@ -173,7 +173,7 @@ wait_for_key(Key, Timeout) -> wait_for_key_local(?SERVER, Key, Timeout).
 
 %% Local cache API
 -spec store_local(server_ref(), any(), any()) -> 'ok'.
--spec store_local(server_ref(), any(), any(), wh_proplist()) -> 'ok'.
+-spec store_local(server_ref(), any(), any(), kz_proplist()) -> 'ok'.
 
 store_local(Srv, K, V) -> store_local(Srv, K, V, []).
 
@@ -207,7 +207,7 @@ fetch_local(Srv, K) ->
     case peek_local(Srv, K) of
         {'error', 'not_found'}=E -> E;
         {'ok', Value} ->
-            ets:update_element(Srv, K, {#cache_obj.timestamp, wh_util:current_tstamp()}),
+            ets:update_element(Srv, K, {#cache_obj.timestamp, kz_util:current_tstamp()}),
 %            gen_server:cast(Srv, {'update_timestamp', K, }),
             {'ok', Value}
     end.
@@ -265,9 +265,9 @@ dump_local(Srv) -> dump_local(Srv, 'false').
 
 -spec dump_local(text(), text() | boolean()) -> 'ok'.
 dump_local(Srv, ShowValue) when not is_atom(Srv) ->
-    dump_local(wh_util:to_atom(Srv), ShowValue);
+    dump_local(kz_util:to_atom(Srv), ShowValue);
 dump_local(Srv, ShowValue) when not is_boolean(ShowValue) ->
-    dump_local(Srv, wh_util:to_boolean(ShowValue));
+    dump_local(Srv, kz_util:to_boolean(ShowValue));
 dump_local(Srv, ShowValue) ->
     {PointerTab, MonitorTab} = gen_listener:call(Srv, {'tables'}),
 
@@ -278,7 +278,7 @@ dump_local(Srv, ShowValue) ->
 
 -spec dump_table(ets:tid(), boolean()) -> 'ok'.
 dump_table(Tab, ShowValue) ->
-    Now = wh_util:current_tstamp(),
+    Now = kz_util:current_tstamp(),
     io:format("Table ~p~n", [ets:info(Tab, 'name')]),
     _ = [display_cache_obj(CacheObj, ShowValue, Now)
          || CacheObj <- ets:match_object(Tab, #cache_obj{_ = '_'})
@@ -316,7 +316,7 @@ display_cache_obj(#cache_obj{key=Key
 
 -spec wait_for_key_local(atom(), any()) -> {'ok', any()} |
                                            {'error', 'timeout'}.
--spec wait_for_key_local(atom(), any(), wh_timeout()) ->
+-spec wait_for_key_local(atom(), any(), kz_timeout()) ->
                                 {'ok', any()} |
                                 {'error', 'timeout'}.
 wait_for_key_local(Srv, Key) ->
@@ -347,8 +347,8 @@ wait_for_key_local(Srv, Key, Timeout) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Name, ExpirePeriod, Props]) ->
-    wh_util:put_callid(Name),
-    wapi_conf:declare_exchanges(),
+    kz_util:put_callid(Name),
+    kapi_conf:declare_exchanges(),
 
     Tab = ets:new(Name
                  ,['set', 'public', 'named_table', {'keypos', #cache_obj.key}]
@@ -361,11 +361,11 @@ init([Name, ExpirePeriod, Props]) ->
                         ),
 
     _ = case props:get_value('new_node_flush', Props) of
-            'true' -> wh_nodes:notify_new();
+            'true' -> kz_nodes:notify_new();
             _ -> 'ok'
         end,
     _ = case props:get_value('expire_node_flush', Props) of
-            'true' -> wh_nodes:notify_expire();
+            'true' -> kz_nodes:notify_expire();
             _ -> 'ok'
         end,
     {'ok', #state{name=Name
@@ -391,7 +391,7 @@ monitor_tab(Tab) ->
 
 -spec to_tab(atom(), string()) -> atom().
 to_tab(Tab, Suffix) ->
-    wh_util:to_atom(wh_util:to_list(Tab) ++ Suffix, 'true').
+    kz_util:to_atom(kz_util:to_list(Tab) ++ Suffix, 'true').
 
 %%--------------------------------------------------------------------
 %% @private
@@ -486,7 +486,7 @@ handle_cast({'flush'}, #state{tab=Tab
 
     {'noreply', State};
 
-handle_cast({'wh_amqp_channel', {'new_channel', 'false'}}
+handle_cast({'kz_amqp_channel', {'new_channel', 'false'}}
            ,#state{name=Name
                   ,tab=Tab
                   ,pointer_tab=PointerTab
@@ -499,7 +499,7 @@ handle_cast({'wh_amqp_channel', {'new_channel', 'false'}}
     ets:delete_all_objects(MonitorTab),
     lager:debug("new channel, flush everything from ~s", [Name]),
     {'noreply', State};
-handle_cast({'wh_amqp_channel', {'new_channel', 'true'}}
+handle_cast({'kz_amqp_channel', {'new_channel', 'true'}}
            ,#state{name=Name
                   ,tab=Tab
                   ,pointer_tab=PointerTab
@@ -513,7 +513,7 @@ handle_cast({'wh_amqp_channel', {'new_channel', 'true'}}
 
     lager:debug("reconnected channel, flush everything from ~s", [Name]),
     {'noreply', State};
-handle_cast({'wh_nodes', {'expire', #wh_node{node=Node}}}
+handle_cast({'kz_nodes', {'expire', #kz_node{node=Node}}}
            ,#state{name=Name
                   ,tab=Tab
                   ,pointer_tab=PointerTab
@@ -527,7 +527,7 @@ handle_cast({'wh_nodes', {'expire', #wh_node{node=Node}}}
 
     lager:debug("node ~s has expired, flush everything from ~s", [Node, Name]),
     {'noreply', State};
-handle_cast({'wh_nodes', {'new', #wh_node{node=Node}}}
+handle_cast({'kz_nodes', {'new', #kz_node{node=Node}}}
            ,#state{name=Name
                   ,tab=Tab
                   ,pointer_tab=PointerTab
@@ -582,14 +582,14 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(JObj, #state{tab=Tab}=State) ->
-    case (V=wapi_conf:doc_update_v(JObj)) andalso
-             (wh_api:node(JObj) =/= wh_util:to_binary(node()) orelse
-              wh_json:get_atom_value(<<"Origin-Cache">>, JObj) =/= ets:info(Tab, 'name')
+    case (V=kapi_conf:doc_update_v(JObj)) andalso
+             (kz_api:node(JObj) =/= kz_util:to_binary(node()) orelse
+              kz_json:get_atom_value(<<"Origin-Cache">>, JObj) =/= ets:info(Tab, 'name')
              )
     of
         'true' -> handle_document_change(JObj, State);
         'false' when V -> 'ok';
-        'false' -> lager:error("payload invalid for wapi_conf : ~p", [JObj])
+        'false' -> lager:error("payload invalid for kapi_conf : ~p", [JObj])
     end,
     'ignore'.
 
@@ -622,7 +622,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec get_props_expires(wh_proplist()) -> wh_timeout().
+-spec get_props_expires(kz_proplist()) -> kz_timeout().
 get_props_expires(Props) ->
     case props:get_value('expires', Props) of
         'undefined' -> ?EXPIRES;
@@ -632,20 +632,20 @@ get_props_expires(Props) ->
             Expires
     end.
 
--spec get_props_callback(wh_proplist()) -> 'undefined' | callback_fun().
+-spec get_props_callback(kz_proplist()) -> 'undefined' | callback_fun().
 get_props_callback(Props) ->
     case props:get_value('callback', Props) of
         'undefined' -> 'undefined';
         Fun when is_function(Fun, 3) -> Fun
     end.
 
--spec get_props_origin(wh_proplist()) -> 'undefined' | origin_tuple() | origin_tuples().
+-spec get_props_origin(kz_proplist()) -> 'undefined' | origin_tuple() | origin_tuples().
 get_props_origin(Props) -> props:get_value('origin', Props).
 
 -spec expire_objects(ets:tid(), [ets:tid()]) -> non_neg_integer().
 -spec expire_objects(ets:tid(), [ets:tid()], list()) -> non_neg_integer().
 expire_objects(Tab, AuxTables) ->
-    Now = wh_util:current_tstamp(),
+    Now = kz_util:current_tstamp(),
     FindSpec = [{#cache_obj{key = '$1'
                             ,value = '$2'
                             ,expires = '$3'
@@ -679,7 +679,7 @@ maybe_exec_expired_callbacks(Objects) ->
 
 -spec exec_expired_callback(callback_fun(), any(), any()) -> 'ok'.
 exec_expired_callback(Fun, K, V) ->
-    _ = wh_util:spawn(Fun, [K, V, 'expire']),
+    _ = kz_util:spawn(Fun, [K, V, 'expire']),
     'ok'.
 
 -spec maybe_remove_objects(ets:tid(), list()) -> 'ok'.
@@ -700,13 +700,13 @@ maybe_exec_erase_callbacks(_Tab
                                      ,key=Key
                                      }
                           ) when is_function(Fun, 3) ->
-    wh_util:spawn(Fun, [Key, Value, 'erase']),
+    kz_util:spawn(Fun, [Key, Value, 'erase']),
     'ok';
 maybe_exec_erase_callbacks(_Tab, #cache_obj{}) -> 'ok';
 maybe_exec_erase_callbacks(Tab, Key) ->
     try ets:lookup_element(Tab, Key, #cache_obj.callback) of
         Fun when is_function(Fun, 3) ->
-            wh_util:spawn(fun exec_erase_callbacks/3, [Tab, Key, Fun]),
+            kz_util:spawn(fun exec_erase_callbacks/3, [Tab, Key, Fun]),
             'ok';
         _Else -> 'ok'
     catch
@@ -730,7 +730,7 @@ maybe_exec_flush_callbacks(Tab) ->
           ,[{'=/=', '$3', 'undefined'}]
           ,[{{'$3', '$1', '$2'}}]
          }],
-    _ = [wh_util:spawn(Callback, [K, V, 'flush'])
+    _ = [kz_util:spawn(Callback, [K, V, 'flush'])
          || {Callback, K, V} <- ets:select(Tab, MatchSpec),
             is_function(Callback, 3)
         ],
@@ -761,7 +761,7 @@ has_monitors(MonitorTab) ->
 -spec exec_store_callback(callback_funs(), any(), any()) -> 'ok'.
 exec_store_callback(Callbacks, Key, Value) ->
     Args = [Key, Value, 'store'],
-    _Pids = [wh_util:spawn(Callback, Args) || Callback <- Callbacks],
+    _Pids = [kz_util:spawn(Callback, Args) || Callback <- Callbacks],
     'ok'.
 
 -spec delete_monitor_callbacks(ets:tid(), any()) -> 'true'.
@@ -830,13 +830,13 @@ maybe_update_expire_period(#state{expire_period=ExpirePeriod
                };
 maybe_update_expire_period(State, _Expires) -> State.
 
--spec handle_document_change(wh_json:object(), state()) -> 'ok' | 'false'.
+-spec handle_document_change(kz_json:object(), state()) -> 'ok' | 'false'.
 handle_document_change(JObj, State) ->
-    'true' = wapi_conf:doc_update_v(JObj),
+    'true' = kapi_conf:doc_update_v(JObj),
 
-    Db = wh_json:get_value(<<"Database">>, JObj),
-    Type = wh_json:get_value(<<"Type">>, JObj),
-    Id = wh_json:get_value(<<"ID">>, JObj),
+    Db = kz_json:get_value(<<"Database">>, JObj),
+    Type = kz_json:get_value(<<"Type">>, JObj),
+    Id = kz_json:get_value(<<"ID">>, JObj),
 
     _Keys = handle_document_change(Db, Type, Id, State),
     _Keys =/= [] andalso

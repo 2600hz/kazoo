@@ -25,15 +25,15 @@
 -define(KNM_SW_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".simwood">>).
 
 -define(SW_NUMBER_URL
-        ,whapps_config:get_string(?KNM_SW_CONFIG_CAT
+        ,kapps_config:get_string(?KNM_SW_CONFIG_CAT
                                   ,<<"numbers_api_url">>
                                   ,<<"https://api.simwood.com/v3/numbers">>
                                  )
        ).
 
--define(SW_ACCOUNT_ID, whapps_config:get_string(?KNM_SW_CONFIG_CAT, <<"simwood_account_id">>, <<>>)).
--define(SW_AUTH_USERNAME, whapps_config:get_binary(?KNM_SW_CONFIG_CAT, <<"auth_username">>, <<>>)).
--define(SW_AUTH_PASSWORD, whapps_config:get_binary(?KNM_SW_CONFIG_CAT, <<"auth_password">>, <<>>)).
+-define(SW_ACCOUNT_ID, kapps_config:get_string(?KNM_SW_CONFIG_CAT, <<"simwood_account_id">>, <<>>)).
+-define(SW_AUTH_USERNAME, kapps_config:get_binary(?KNM_SW_CONFIG_CAT, <<"auth_username">>, <<>>)).
+-define(SW_AUTH_PASSWORD, kapps_config:get_binary(?KNM_SW_CONFIG_CAT, <<"auth_password">>, <<>>)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -41,12 +41,12 @@
 %% Query Simwood.com for available numbers
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
+-spec find_numbers(ne_binary(), pos_integer(), kz_proplist()) ->
                           {'ok', knm_number:knm_numbers()}.
 find_numbers(Prefix, Quantity, Options) ->
     URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/available/standard/">>, sw_quantity(Quantity), "?pattern=", Prefix, "*"]),
     {'ok', Body} = query_simwood(URL, 'get'),
-    process_response(wh_json:decode(Body), Options).
+    process_response(kz_json:decode(Body), Options).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -63,7 +63,7 @@ acquire_number(Number) ->
             <<$+, N/binary>> -> N;
             N -> N
         end,
-    URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/allocated/">>, wh_util:to_binary(Num)]),
+    URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/allocated/">>, kz_util:to_binary(Num)]),
     case query_simwood(URL, 'put') of
         {'ok', _Body} -> Number;
         {'error', Error} -> knm_errors:by_carrier(?MODULE, Error, Number)
@@ -84,7 +84,7 @@ disconnect_number(Number) ->
             <<$+, N/binary>> -> N;
             N -> N
         end,
-    URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/allocated/">>, wh_util:to_binary(Num)]),
+    URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/allocated/">>, kz_util:to_binary(Num)]),
     case query_simwood(URL, 'delete') of
         {'ok', _Body} -> Number;
         {'error', Error} -> knm_errors:by_carrier(?MODULE, Error, Number)
@@ -125,7 +125,7 @@ query_simwood(URL, Verb) ->
                    ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
                    ,{'basic_auth', {?SW_AUTH_USERNAME, ?SW_AUTH_PASSWORD}}
                   ],
-    case kz_http:req(Verb, wh_util:to_binary(URL), [], [], HTTPOptions) of
+    case kz_http:req(Verb, kz_util:to_binary(URL), [], [], HTTPOptions) of
         {'ok', _Resp, _RespHeaders, Body} ->
             lager:debug("Simwood response ~p: ~p", [_Resp, Body]),
             {'ok', Body};
@@ -150,21 +150,21 @@ sw_quantity(_Quantity) -> <<"100">>.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec process_response(wh_json:objects(), wh_proplist()) ->
+-spec process_response(kz_json:objects(), kz_proplist()) ->
                               {'ok', knm_number:knm_numbers()}.
 process_response(JObjs, Options) ->
     AccountId = props:get_value(<<"account_id">>, Options),
     {'ok', [response_jobj_to_number(JObj, AccountId) || JObj <- JObjs]}.
 
--spec response_jobj_to_number(wh_json:object(), api_binary()) ->
+-spec response_jobj_to_number(kz_json:object(), api_binary()) ->
                               knm_number:knm_number().
 response_jobj_to_number(JObj, AccountId) ->
-    Num = wh_json:get_value(<<"number">>, JObj),
+    Num = kz_json:get_value(<<"number">>, JObj),
     NormalizedNum = knm_converters:normalize(Num),
     NumberDb = knm_converters:to_db(NormalizedNum),
     Updates = [{fun knm_phone_number:set_number/2, NormalizedNum}
                ,{fun knm_phone_number:set_number_db/2, NumberDb}
-               ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
+               ,{fun knm_phone_number:set_module_name/2, kz_util:to_binary(?MODULE)}
                ,{fun knm_phone_number:set_carrier_data/2, JObj}
                ,{fun knm_phone_number:set_number_db/2, NumberDb}
                ,{fun knm_phone_number:set_assign_to/2, AccountId}

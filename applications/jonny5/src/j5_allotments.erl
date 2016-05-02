@@ -29,9 +29,9 @@ maybe_consume_allotment('undefined', Request, _) ->
     Request;
 maybe_consume_allotment(Allotment, Request, Limits) ->
     AccountId = j5_limits:account_id(Limits),
-    Amount = wh_json:get_integer_value(<<"amount">>, Allotment, 0),
-    Minimum = wh_json:get_integer_value(<<"minimum">>, Allotment, 0),
-    ConsumeGroup = wh_json:get_value(<<"group_consume">>, Allotment, []),
+    Amount = kz_json:get_integer_value(<<"amount">>, Allotment, 0),
+    Minimum = kz_json:get_integer_value(<<"minimum">>, Allotment, 0),
+    ConsumeGroup = kz_json:get_value(<<"group_consume">>, Allotment, []),
     GroupConsumed = maybe_group_consumed(ConsumeGroup, Allotment, Limits, 0),
     case allotment_consumed_so_far(Allotment, Limits) of
         {'error', _R} when GroupConsumed > (Amount - Minimum) ->
@@ -49,14 +49,14 @@ maybe_consume_allotment(Allotment, Request, Limits) ->
             lager:debug("account ~s has ~ws remaining of their allotment"
                         ,[AccountId, Amount - Consumed - GroupConsumed]
                        ),
-            Classification = wh_json:get_value(<<"classification">>, Allotment),
+            Classification = kz_json:get_value(<<"classification">>, Allotment),
             j5_request:authorize(<<"allotment_", Classification/binary>>, Request, Limits)
     end.
 
--spec maybe_group_consumed(binaries(), wh_json:object(), j5_limits:limits(), non_neg_integer()) -> non_neg_integer().
+-spec maybe_group_consumed(binaries(), kz_json:object(), j5_limits:limits(), non_neg_integer()) -> non_neg_integer().
 maybe_group_consumed([], _Allotment, _Limits, Acc) -> Acc;
 maybe_group_consumed([Member|Group], Allotment, Limits, Acc) when is_binary(Member) ->
-    NewAllotment = wh_json:set_value(<<"classification">>, Member, Allotment),
+    NewAllotment = kz_json:set_value(<<"classification">>, Member, Allotment),
     case allotment_consumed_so_far(NewAllotment, Limits) of
         {'error', _R} -> maybe_group_consumed(Group, Allotment, Limits, Acc);
         Consumed -> maybe_group_consumed(Group, Allotment, Limits, Acc+Consumed)
@@ -85,24 +85,24 @@ maybe_reconcile_allotment(Request, Limits) ->
             reconcile_allotment(AllotmentSeconds, Allotment, Request, Limits)
     end.
 
--spec get_allotment_seconds(non_neg_integer(), wh_json:object()) -> non_neg_integer().
+-spec get_allotment_seconds(non_neg_integer(), kz_json:object()) -> non_neg_integer().
 get_allotment_seconds(BillingSeconds, Allotment) ->
-    NoConsumeTime = wh_json:get_integer_value(<<"no_consume_time">>, Allotment, 0),
-    Increment = wh_json:get_integer_value(<<"increment">>, Allotment, 1),
-    Minimum = wh_json:get_integer_value(<<"minimum">>, Allotment, 0),
+    NoConsumeTime = kz_json:get_integer_value(<<"no_consume_time">>, Allotment, 0),
+    Increment = kz_json:get_integer_value(<<"increment">>, Allotment, 1),
+    Minimum = kz_json:get_integer_value(<<"minimum">>, Allotment, 0),
     case BillingSeconds > NoConsumeTime of
         'true' -> wht_util:calculate_cost(60, Increment, Minimum, 0, BillingSeconds);
         'false' -> 0
     end.
 
--spec reconcile_allotment(non_neg_integer(), wh_json:object(), j5_request:request(), j5_limits:limits()) ->
+-spec reconcile_allotment(non_neg_integer(), kz_json:object(), j5_request:request(), j5_limits:limits()) ->
                                  'ok'.
 reconcile_allotment(0, _, _, _) -> 'ok';
 reconcile_allotment(Seconds, Allotment, Request, Limits) ->
     CallId = j5_request:call_id(Request),
     AccountId = j5_limits:account_id(Limits),
-    LedgerDb = wh_util:format_account_mod_id(AccountId),
-    Timestamp = wh_util:current_tstamp(),
+    LedgerDb = kz_util:format_account_mod_id(AccountId),
+    Timestamp = kz_util:current_tstamp(),
     Id = <<CallId/binary, "-allotment-consumption">>,
     lager:debug("adding allotment debit ~s to ledger ~s for ~wsec"
                 ,[Id, LedgerDb, Seconds]
@@ -113,8 +113,8 @@ reconcile_allotment(Seconds, Allotment, Request, Limits) ->
           ,{<<"account_id">>, AccountId}
           ,{<<"seconds">>, abs(Seconds)}
           ,{<<"call_id">>, CallId}
-          ,{<<"name">>, wh_json:get_value(<<"name">>, Allotment)}
-          ,{<<"classification">>, wh_json:get_value(<<"classification">>, Allotment)}
+          ,{<<"name">>, kz_json:get_value(<<"name">>, Allotment)}
+          ,{<<"classification">>, kz_json:get_value(<<"classification">>, Allotment)}
           ,{<<"request">>, j5_request:to_jobj(Request)}
           ,{<<"pvt_created">>, Timestamp}
           ,{<<"pvt_modified">>, Timestamp}
@@ -123,7 +123,7 @@ reconcile_allotment(Seconds, Allotment, Request, Limits) ->
           ,{<<"pvt_type">>, <<"allotment_consumption">>}
           ]
          ),
-    _ = kz_datamgr:save_doc(LedgerDb, wh_json:from_list(Props)),
+    _ = kz_datamgr:save_doc(LedgerDb, kz_json:from_list(Props)),
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -156,9 +156,9 @@ find_allotment_by_classification(Classification, Limits) ->
     lager:debug("checking if account ~s has any allotments for ~s"
                 ,[j5_limits:account_id(Limits), Classification]
                ),
-    case wh_json:get_value(Classification, Allotments) of
+    case kz_json:get_value(Classification, Allotments) of
         'undefined' -> 'undefined';
-        Allotment -> wh_json:set_value(<<"classification">>, Classification, Allotment)
+        Allotment -> kz_json:set_value(<<"classification">>, Classification, Allotment)
     end.
 
 %%--------------------------------------------------------------------
@@ -167,12 +167,12 @@ find_allotment_by_classification(Classification, Limits) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec allotment_consumed_so_far(wh_json:object(), j5_limits:limits()) ->
+-spec allotment_consumed_so_far(kz_json:object(), j5_limits:limits()) ->
                                        integer() |
                                        {'error', any()}.
 allotment_consumed_so_far(Allotment, Limits) ->
-    Classification = wh_json:get_value(<<"classification">>, Allotment),
-    Cycle = wh_json:get_ne_value(<<"cycle">>, Allotment, <<"monthly">>),
+    Classification = kz_json:get_value(<<"classification">>, Allotment),
+    Cycle = kz_json:get_ne_value(<<"cycle">>, Allotment, <<"monthly">>),
     CycleStart = cycle_start(Cycle),
     CycleSpan = cycle_span(Cycle),
     CycleEnd = CycleStart + CycleSpan,
@@ -188,7 +188,7 @@ allotment_consumed_so_far(Allotment, Limits) ->
 allotment_consumed_so_far(_, _, _, _, Attempts) when Attempts > 2 -> 0;
 allotment_consumed_so_far(CycleStart, CycleEnd, Classification, Limits, Attempts) ->
     AccountId = j5_limits:account_id(Limits),
-    LedgerDb = wh_util:format_account_mod_id(AccountId),
+    LedgerDb = kz_util:format_account_mod_id(AccountId),
     ViewOptions = [{'startkey', [Classification, CycleStart]}
                    ,{'endkey', [Classification, CycleEnd]}
                    ,{'reduce', 'false'}
@@ -204,15 +204,15 @@ allotment_consumed_so_far(CycleStart, CycleEnd, Classification, Limits, Attempts
             Error
     end.
 
--spec sum_allotment_consumed_so_far(wh_json:objects(), non_neg_integer()) -> non_neg_integer().
+-spec sum_allotment_consumed_so_far(kz_json:objects(), non_neg_integer()) -> non_neg_integer().
 sum_allotment_consumed_so_far(JObjs, CycleStart) ->
     sum_allotment_consumed_so_far(JObjs, CycleStart, 0).
 
--spec sum_allotment_consumed_so_far(wh_json:objects(), non_neg_integer(), non_neg_integer()) -> non_neg_integer().
+-spec sum_allotment_consumed_so_far(kz_json:objects(), non_neg_integer(), non_neg_integer()) -> non_neg_integer().
 sum_allotment_consumed_so_far([], _, Seconds) -> Seconds;
 sum_allotment_consumed_so_far([JObj|JObjs], CycleStart, Seconds) ->
-    [_, Timestamp] = wh_json:get_value(<<"key">>, JObj),
-    Duration = wh_json:get_value(<<"value">>, JObj),
+    [_, Timestamp] = kz_json:get_value(<<"key">>, JObj),
+    Duration = kz_json:get_value(<<"value">>, JObj),
     case (Timestamp - Duration) > CycleStart of
         'true' ->
             sum_allotment_consumed_so_far(JObjs, CycleStart, Seconds + Duration);

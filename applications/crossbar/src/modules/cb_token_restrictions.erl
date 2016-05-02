@@ -101,11 +101,11 @@ on_successful_validation(Context) ->
 
 -spec add_pvt_type(cb_context:context()) -> cb_context:context().
 add_pvt_type(Context) ->
-    cb_context:set_doc(Context, wh_doc:set_type(cb_context:doc(Context), ?PVT_TYPE)).
+    cb_context:set_doc(Context, kz_doc:set_type(cb_context:doc(Context), ?PVT_TYPE)).
 
 -spec add_doc_id(cb_context:context()) -> cb_context:context().
 add_doc_id(Context) ->
-    cb_context:set_doc(Context, wh_doc:set_id(cb_context:doc(Context), ?CB_ACCOUNT_TOKEN_RESTRICTIONS)).
+    cb_context:set_doc(Context, kz_doc:set_id(cb_context:doc(Context), ?CB_ACCOUNT_TOKEN_RESTRICTIONS)).
 
 -spec post(cb_context:context()) -> cb_context:context().
 post(Context) ->
@@ -128,7 +128,7 @@ authorize(Context) ->
         'false' -> 'false';
         'true' ->
             lager:info("denying access"),
-            Cause = wh_json:from_list(
+            Cause = kz_json:from_list(
                       [{<<"cause">>, <<"access denied by token restrictions">>}]
                      ),
             {'halt', cb_context:add_system_error('forbidden', Cause, Context)}
@@ -137,13 +137,13 @@ authorize(Context) ->
 -spec maybe_deny_access(cb_context:context()) -> boolean().
 maybe_deny_access(Context) ->
     AuthDoc = cb_context:auth_doc(Context),
-    case wh_json:get_json_value(<<"restrictions">>, AuthDoc) of
+    case kz_json:get_json_value(<<"restrictions">>, AuthDoc) of
         'undefined' -> 'false';
         Restrictions ->
             maybe_deny_access(Context, Restrictions)
     end.
 
--spec maybe_deny_access(cb_context:context(), wh_json:object()) -> boolean().
+-spec maybe_deny_access(cb_context:context(), kz_json:object()) -> boolean().
 maybe_deny_access(Context, Restrictions) ->
     MatchFuns = [fun match_endpoint/2
                  ,fun match_account/2
@@ -168,9 +168,9 @@ match_endpoint(Context, Restrictions) ->
 -spec match_request_endpoint(api_object(), ne_binary()) ->
                                     api_object().
 match_request_endpoint(Restrictions, ?CATCH_ALL = ReqEndpoint) ->
-    wh_json:get_value(ReqEndpoint, Restrictions);
+    kz_json:get_value(ReqEndpoint, Restrictions);
 match_request_endpoint(Restrictions, ReqEndpoint) ->
-    case wh_json:get_value(ReqEndpoint, Restrictions) of
+    case kz_json:get_value(ReqEndpoint, Restrictions) of
         'undefined' -> match_request_endpoint(Restrictions, ?CATCH_ALL);
         EndpointRestrictions -> EndpointRestrictions
     end.
@@ -182,7 +182,7 @@ match_account(Context, EndpointRestrictions) ->
     AllowedAccounts = allowed_accounts(Context),
     find_endpoint_restrictions_by_account(AllowedAccounts, EndpointRestrictions).
 
--spec find_endpoint_restrictions_by_account(ne_binaries(), wh_json:objects()) ->
+-spec find_endpoint_restrictions_by_account(ne_binaries(), kz_json:objects()) ->
                                                    api_object().
 find_endpoint_restrictions_by_account(_Accounts, []) ->
     'undefined';
@@ -190,10 +190,10 @@ find_endpoint_restrictions_by_account(AllowedAccounts
                                       ,[Restriction|Restrictions]
                                      ) ->
     case maybe_match_accounts(AllowedAccounts
-                              ,wh_json:get_value(<<"allowed_accounts">>, Restriction)
+                              ,kz_json:get_value(<<"allowed_accounts">>, Restriction)
                              )
     of
-        'true' -> wh_json:get_value(<<"rules">>, Restriction);
+        'true' -> kz_json:get_value(<<"rules">>, Restriction);
         'false' ->
             find_endpoint_restrictions_by_account(AllowedAccounts, Restrictions)
     end.
@@ -226,7 +226,7 @@ allowed_accounts(?AUTH_ACCOUNT_ID, ?ACCOUNT_ID = AccountId) ->
 allowed_accounts('undefined', _AccountId) -> [?CATCH_ALL];
 allowed_accounts(_AuthAccountId, 'undefined') -> [?CATCH_ALL];
 allowed_accounts(AuthAccountId, AccountId) ->
-    case wh_util:is_in_account_hierarchy(AuthAccountId, AccountId) of
+    case kz_util:is_in_account_hierarchy(AuthAccountId, AccountId) of
         'true' -> [?CATCH_ALL, AccountId, <<"{DESCENDANT_ACCOUNT_ID}">>];
         'false' -> [?CATCH_ALL, AccountId]
     end.
@@ -237,17 +237,17 @@ allowed_accounts(AuthAccountId, AccountId) ->
 match_arguments(_Context, 'undefined') -> [];
 match_arguments(Context, RulesJObj) ->
     [{_, ReqParams}|_] = cb_context:req_nouns(Context),
-    RuleKeys = wh_json:get_keys(RulesJObj),
+    RuleKeys = kz_json:get_keys(RulesJObj),
     match_argument_patterns(ReqParams, RulesJObj, RuleKeys).
 
--spec match_argument_patterns(req_nouns(), wh_json:object(), ne_binaries()) ->
+-spec match_argument_patterns(req_nouns(), kz_json:object(), ne_binaries()) ->
                                      http_methods().
 match_argument_patterns(_ReqParams, _RulesJObj, []) -> [];
 match_argument_patterns(ReqParams, RulesJObj, RuleKeys) ->
     case match_rules(ReqParams, RuleKeys) of
         'undefined' -> [];
         MatchedRuleKey ->
-            wh_json:get_value(MatchedRuleKey, RulesJObj, [])
+            kz_json:get_value(MatchedRuleKey, RulesJObj, [])
     end.
 
 -spec match_rules(ne_binaries(), ne_binaries()) -> api_binary().

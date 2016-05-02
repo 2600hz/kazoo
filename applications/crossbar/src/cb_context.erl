@@ -124,8 +124,8 @@ new() -> #cb_context{}.
 is_context(#cb_context{}) -> 'true';
 is_context(_) -> 'false'.
 
--spec req_value(context(), wh_json:keys()) -> wh_json:json_term().
--spec req_value(context(), wh_json:keys(), Default) -> wh_json:json_term() | Default.
+-spec req_value(context(), kz_json:keys()) -> kz_json:json_term().
+-spec req_value(context(), kz_json:keys(), Default) -> kz_json:json_term() | Default.
 req_value(#cb_context{}=Context, Key) ->
     req_value(Context, Key, 'undefined').
 req_value(#cb_context{req_data=ReqData
@@ -135,15 +135,15 @@ req_value(#cb_context{req_data=ReqData
           ,Key
           ,Default
          ) ->
-    wh_json:find(Key, [ReqData, QS, JObj], Default).
+    kz_json:find(Key, [ReqData, QS, JObj], Default).
 
 -spec accepting_charges(context()) -> boolean().
 accepting_charges(Context) ->
-    wh_util:is_true(req_value(Context, ?KEY_ACCEPT_CHARGES, 'false')).
+    kz_util:is_true(req_value(Context, ?KEY_ACCEPT_CHARGES, 'false')).
 
 -spec set_accepting_charges(context()) -> context().
 set_accepting_charges(#cb_context{req_json = ReqJObj} = Context) ->
-    NewReqJObj = wh_json:set_value(?KEY_ACCEPT_CHARGES, 'true', ReqJObj),
+    NewReqJObj = kz_json:set_value(?KEY_ACCEPT_CHARGES, 'true', ReqJObj),
     set_req_json(Context, NewReqJObj).
 
 %% Accessors
@@ -152,8 +152,8 @@ set_accepting_charges(#cb_context{req_json = ReqJObj} = Context) ->
 -spec user_id(context()) -> api_binary().
 -spec device_id(context()) -> api_binary().
 -spec account_modb(context()) -> api_binary().
--spec account_modb(context(), wh_now() | wh_timeout()) -> api_binary().
--spec account_modb(context(), wh_year(), wh_month()) -> api_binary().
+-spec account_modb(context(), kz_now() | kz_timeout()) -> api_binary().
+-spec account_modb(context(), kz_year(), kz_month()) -> api_binary().
 -spec account_realm(context()) -> api_binary().
 -spec account_doc(context()) -> api_object().
 -spec profile_id(context()) -> api_binary().
@@ -196,7 +196,7 @@ auth_account_doc(Context) ->
     end.
 
 auth_user_id(#cb_context{auth_doc='undefined'}) -> 'undefined';
-auth_user_id(#cb_context{auth_doc=JObj}) -> wh_json:get_value(<<"owner_id">>, JObj).
+auth_user_id(#cb_context{auth_doc=JObj}) -> kz_json:get_value(<<"owner_id">>, JObj).
 req_verb(#cb_context{req_verb=ReqVerb}) -> ReqVerb.
 req_data(#cb_context{req_data=ReqData}) -> ReqData.
 req_files(#cb_context{req_files=ReqFiles}) -> ReqFiles.
@@ -205,7 +205,7 @@ req_headers(#cb_context{req_headers=Hs}) -> Hs.
 req_header(#cb_context{req_headers=Hs}, K) -> props:get_value(K, Hs).
 query_string(#cb_context{query_json=Q}) -> Q.
 req_param(#cb_context{}=Context, K) -> req_param(Context, K, 'undefined').
-req_param(#cb_context{query_json=JObj}, K, Default) -> wh_json:get_value(K, JObj, Default).
+req_param(#cb_context{query_json=JObj}, K, Default) -> kz_json:get_value(K, JObj, Default).
 client_ip(#cb_context{client_ip=IP}) -> IP.
 req_id(#cb_context{req_id=ReqId}) -> ReqId.
 doc(#cb_context{doc=Doc}) -> Doc.
@@ -241,7 +241,7 @@ should_paginate(#cb_context{should_paginate='undefined'}=Context) ->
             not crossbar_doc:has_qs_filter(Context);
         ShouldPaginate ->
             lager:debug("request has paginate flag: ~s", [ShouldPaginate]),
-            wh_util:is_true(ShouldPaginate)
+            kz_util:is_true(ShouldPaginate)
     end;
 should_paginate(#cb_context{should_paginate=Should}) -> Should.
 
@@ -272,32 +272,32 @@ setters_fold(F, C) when is_function(F, 1) -> F(C).
 -spec set_user_id(context(), ne_binary()) -> context().
 -spec set_device_id(context(), ne_binary()) -> context().
 -spec set_auth_token(context(), ne_binary()) -> context().
--spec set_auth_doc(context(), wh_json:object()) -> context().
+-spec set_auth_doc(context(), kz_json:object()) -> context().
 -spec set_auth_account_id(context(), ne_binary()) -> context().
 -spec set_req_verb(context(), http_method()) -> context().
--spec set_req_data(context(), wh_json:object() | ne_binary()) -> context().
+-spec set_req_data(context(), kz_json:object() | ne_binary()) -> context().
 -spec set_req_files(context(), req_files()) -> context().
 -spec set_req_nouns(context(), req_nouns()) -> context().
 -spec set_req_headers(context(), cowboy:http_headers()) -> context().
--spec set_query_string(context(), wh_json:object()) -> context().
+-spec set_query_string(context(), kz_json:object()) -> context().
 -spec set_req_id(context(), ne_binary()) -> context().
--spec set_doc(context(), api_object() | wh_json:objects()) -> context().
+-spec set_doc(context(), api_object() | kz_json:objects()) -> context().
 -spec set_load_merge_bypass(context(), api_binary()) -> context().
--spec set_start(context(), wh_now()) -> context().
+-spec set_start(context(), kz_now()) -> context().
 -spec set_resp_data(context(), resp_data()) -> context().
 -spec set_resp_status(context(), crossbar_status()) -> context().
--spec set_resp_expires(context(), wh_datetime()) -> context().
+-spec set_resp_expires(context(), kz_datetime()) -> context().
 -spec set_api_version(context(), ne_binary()) -> context().
 -spec set_resp_etag(context(), api_binary()) -> context().
--spec set_resp_envelope(context(), wh_json:object()) -> context().
--spec set_resp_headers(context(), wh_proplist()) -> context().
--spec add_resp_headers(context(), wh_proplist()) -> context().
+-spec set_resp_envelope(context(), kz_json:object()) -> context().
+-spec set_resp_headers(context(), kz_proplist()) -> context().
+-spec add_resp_headers(context(), kz_proplist()) -> context().
 -spec set_resp_header(context(), ne_binary(), ne_binary()) -> context().
 -spec add_resp_header(context(), ne_binary(), ne_binary()) -> context().
 -spec set_allow_methods(context(), http_methods()) -> context().
 -spec set_allowed_methods(context(), http_methods()) -> context().
 -spec set_method(context(), http_method()) -> context().
--spec set_req_json(context(), wh_json:object()) -> context().
+-spec set_req_json(context(), kz_json:object()) -> context().
 -spec set_content_types_accepted(context(), crossbar_content_handlers()) -> context().
 -spec set_content_types_provided(context(), crossbar_content_handlers()) -> context().
 -spec set_languages_provided(context(), ne_binaries()) -> context().
@@ -306,7 +306,7 @@ setters_fold(F, C) when is_function(F, 1) -> F(C).
 -spec set_resp_error_msg(context(), api_binary()) -> context().
 -spec set_magic_pathed(context(), boolean()) -> context().
 -spec set_should_paginate(context(), boolean()) -> context().
--spec set_validation_errors(context(), wh_json:object()) -> context().
+-spec set_validation_errors(context(), kz_json:object()) -> context().
 -spec set_port(context(), integer()) -> context().
 -spec set_raw_host(context(), binary()) -> context().
 -spec set_raw_path(context(), binary()) -> context().
@@ -387,9 +387,9 @@ set_languages_provided(#cb_context{}=Context, LP) ->
 set_encodings_provided(#cb_context{}=Context, EP) ->
     Context#cb_context{encodings_provided=EP}.
 set_magic_pathed(#cb_context{}=Context, MP) ->
-    Context#cb_context{magic_pathed=wh_util:is_true(MP)}.
+    Context#cb_context{magic_pathed=kz_util:is_true(MP)}.
 set_should_paginate(#cb_context{}=Context, SP) ->
-    Context#cb_context{should_paginate=wh_util:is_true(SP)}.
+    Context#cb_context{should_paginate=kz_util:is_true(SP)}.
 
 set_resp_error_code(#cb_context{}=Context, Code) ->
     Context#cb_context{resp_error_code=Code}.
@@ -408,9 +408,9 @@ add_resp_headers(#cb_context{resp_headers=RespHeaders}=Context, Headers) ->
 add_resp_header(#cb_context{resp_headers=RespHeaders}=Context, K, V) ->
     Context#cb_context{resp_headers=add_resp_header_fold({K, V}, RespHeaders)}.
 
--spec add_resp_header_fold({ne_binary(), any()}, wh_proplist()) -> wh_proplist().
+-spec add_resp_header_fold({ne_binary(), any()}, kz_proplist()) -> kz_proplist().
 add_resp_header_fold({K, V}, Hs) ->
-    props:set_value(wh_util:to_lower_binary(K), V, Hs).
+    props:set_value(kz_util:to_lower_binary(K), V, Hs).
 
 set_validation_errors(#cb_context{}=Context, Errors) ->
     Context#cb_context{validation_errors=Errors}.
@@ -465,7 +465,7 @@ add_attachment_content_type(#cb_context{}=Context, DocId, AttachmentId) ->
 
 -spec maybe_add_content_type_provided(context(), ne_binary()) -> context().
 maybe_add_content_type_provided(Context, AttachmentId) ->
-    case wh_doc:attachment_content_type(doc(Context), AttachmentId) of
+    case kz_doc:attachment_content_type(doc(Context), AttachmentId) of
         'undefined' -> Context;
         ContentType ->
             lager:debug("found content type ~s", [ContentType]),
@@ -511,7 +511,7 @@ fetch(#cb_context{storage=Storage}, Key, Default) ->
 %%--------------------------------------------------------------------
 -spec put_reqid(context()) -> api_binary().
 put_reqid(#cb_context{req_id=ReqId}) ->
-    wh_util:put_callid(ReqId).
+    kz_util:put_callid(ReqId).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -522,7 +522,7 @@ put_reqid(#cb_context{req_id=ReqId}) ->
 has_errors(#cb_context{validation_errors=JObj
                        ,resp_status='success'
                       }) ->
-    (not wh_util:is_empty(JObj));
+    (not kz_util:is_empty(JObj));
 has_errors(#cb_context{}) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -551,16 +551,16 @@ response(#cb_context{resp_error_code=Code
                      ,resp_data=DataJObj
                      ,validation_errors=ValidationJObj
                     }) ->
-    ErrorCode = try wh_util:to_integer(Code) of
+    ErrorCode = try kz_util:to_integer(Code) of
                     C -> C
                 catch
                     _:_ -> 500
                 end,
-    ErrorMsg = case wh_util:is_empty(Msg) of
-                   'false' -> wh_util:to_binary(Msg);
+    ErrorMsg = case kz_util:is_empty(Msg) of
+                   'false' -> kz_util:to_binary(Msg);
                    'true' -> <<"generic_error">>
                end,
-    ErrorData = case {wh_util:is_empty(ValidationJObj), wh_util:is_empty(DataJObj)} of
+    ErrorData = case {kz_util:is_empty(ValidationJObj), kz_util:is_empty(DataJObj)} of
                     {'false', _} -> ValidationJObj;
                     {_, _} -> DataJObj
                 end,
@@ -590,17 +590,17 @@ validate_request_data(<<_/binary>> = Schema, Context) ->
             validate_request_data(SchemaJObj, Context)
     end;
 validate_request_data(SchemaJObj, Context) ->
-    Strict = whapps_config:get_is_true(?CONFIG_CAT, <<"schema_strict_validation">>, 'false'),
-    try wh_json_schema:validate(SchemaJObj
-                               ,wh_json:public_fields(req_data(Context))
+    Strict = kapps_config:get_is_true(?CONFIG_CAT, <<"schema_strict_validation">>, 'false'),
+    try kz_json_schema:validate(SchemaJObj
+                               ,kz_json:public_fields(req_data(Context))
                                )
     of
         {'ok', JObj} ->
             passed(
-              set_doc(Context, wh_json_schema:add_defaults(JObj, SchemaJObj))
+              set_doc(Context, kz_json_schema:add_defaults(JObj, SchemaJObj))
              );
         {'error', Errors} when Strict ->
-            lager:debug("request data did not validate against ~s: ~p", [wh_doc:id(SchemaJObj)
+            lager:debug("request data did not validate against ~s: ~p", [kz_doc:id(SchemaJObj)
                                                                          ,Errors
                                                                         ]),
             failed(Context, Errors);
@@ -610,10 +610,10 @@ validate_request_data(SchemaJObj, Context) ->
         'error':'function_clause' ->
             ST = erlang:get_stacktrace(),
             lager:debug("function clause failure"),
-            wh_util:log_stacktrace(ST),
+            kz_util:log_stacktrace(ST),
             Context#cb_context{resp_status='fatal'
                               ,resp_error_code=500
-                              ,resp_data=wh_json:new()
+                              ,resp_data=kz_json:new()
                               ,resp_error_msg= <<"validation failed to run on the server">>
                               }
     end.
@@ -649,13 +649,13 @@ failed_error({'data_invalid'
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    Minimum = wh_json:get_value(<<"minLength">>, FailedSchemaJObj),
-    MinLen = wh_util:to_binary(Minimum),
+    Minimum = kz_json:get_value(<<"minLength">>, FailedSchemaJObj),
+    MinLen = kz_util:to_binary(Minimum),
 
     add_validation_error(
       FailedKeyPath
       ,<<"minLength">>
-      ,wh_json:from_list(
+      ,kz_json:from_list(
          [{<<"message">>, <<"String must be at least ", MinLen/binary, " characters">>}
           ,{<<"target">>, Minimum}
          ])
@@ -667,13 +667,13 @@ failed_error({'data_invalid'
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    Maximum = wh_json:get_value(<<"maxLength">>, FailedSchemaJObj),
-    MaxLen = wh_util:to_binary(Maximum),
+    Maximum = kz_json:get_value(<<"maxLength">>, FailedSchemaJObj),
+    MaxLen = kz_util:to_binary(Maximum),
 
     add_validation_error(
       FailedKeyPath
       ,<<"maxLength">>
-      ,wh_json:from_list(
+      ,kz_json:from_list(
          [{<<"message">>, <<"String must not be more than ", MaxLen/binary, " characters">>}
           ,{<<"target">>, Maximum}
          ])
@@ -688,9 +688,9 @@ failed_error({'data_invalid'
     add_validation_error(
       FailedKeyPath
       ,<<"enum">>
-      ,wh_json:from_list(
+      ,kz_json:from_list(
          [{<<"message">>, <<"Value not found in enumerated list of values">>}
-          ,{<<"target">>, wh_json:get_value(<<"enum">>, FailedSchemaJObj, [])}
+          ,{<<"target">>, kz_json:get_value(<<"enum">>, FailedSchemaJObj, [])}
          ])
       ,Context
      );
@@ -700,13 +700,13 @@ failed_error({'data_invalid'
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    Minimum = wh_json:get_first_defined([<<"minimum">>, <<"exclusiveMinimum">>], FailedSchemaJObj),
-    Min = wh_util:to_binary(Minimum),
+    Minimum = kz_json:get_first_defined([<<"minimum">>, <<"exclusiveMinimum">>], FailedSchemaJObj),
+    Min = kz_util:to_binary(Minimum),
 
     add_validation_error(
       FailedKeyPath
       ,<<"minimum">>
-      ,wh_json:from_list(
+      ,kz_json:from_list(
          [{<<"message">>, <<"Value must be at least ", Min/binary>>}
           ,{<<"target">>, Minimum}
          ])
@@ -718,13 +718,13 @@ failed_error({'data_invalid'
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    Maximum = wh_json:get_first_defined([<<"maximum">>, <<"exclusiveMaximum">>], FailedSchemaJObj),
-    Max = wh_util:to_binary(Maximum),
+    Maximum = kz_json:get_first_defined([<<"maximum">>, <<"exclusiveMaximum">>], FailedSchemaJObj),
+    Max = kz_util:to_binary(Maximum),
 
     add_validation_error(
       FailedKeyPath
       ,<<"maximum">>
-      ,wh_json:from_list(
+      ,kz_json:from_list(
          [{<<"message">>, <<"Value must be at most ", Max/binary>>}
           ,{<<"target">>, Maximum}
          ])
@@ -736,8 +736,8 @@ failed_error({'data_invalid'
               ,FailedValue
               ,FailedKeyPath
              }, Context) ->
-    Minimum = wh_json:get_value(<<"minItems">>, FailedSchemaJObj),
-    Maximum = wh_json:get_value(<<"maxItems">>, FailedSchemaJObj),
+    Minimum = kz_json:get_value(<<"minItems">>, FailedSchemaJObj),
+    Maximum = kz_json:get_value(<<"maxItems">>, FailedSchemaJObj),
 
     case length(FailedValue) of
         N when N < Minimum ->
@@ -765,13 +765,13 @@ failed_error({'data_invalid'
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    Minimum = wh_json:get_value(<<"minItems">>, FailedSchemaJObj),
-    Min = wh_util:to_binary(Minimum),
+    Minimum = kz_json:get_value(<<"minItems">>, FailedSchemaJObj),
+    Min = kz_util:to_binary(Minimum),
 
     add_validation_error(
       FailedKeyPath
       ,<<"minItems">>
-      ,wh_json:from_list(
+      ,kz_json:from_list(
          [{<<"message">>, <<"The list must have at least ", Min/binary, " items">>}
           ,{<<"target">>, Minimum}
          ])
@@ -783,13 +783,13 @@ failed_error({'data_invalid'
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    Maximum = wh_json:get_value(<<"maxItems">>, FailedSchemaJObj),
-    Max = wh_util:to_binary(Maximum),
+    Maximum = kz_json:get_value(<<"maxItems">>, FailedSchemaJObj),
+    Max = kz_util:to_binary(Maximum),
 
     add_validation_error(
       FailedKeyPath
       ,<<"maxItems">>
-      ,wh_json:from_list(
+      ,kz_json:from_list(
          [{<<"message">>, <<"The list is more than ", Max/binary, " items">>}
           ,{<<"target">>, Maximum}
          ])
@@ -801,13 +801,13 @@ failed_error({'data_invalid'
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    Minimum = wh_json:get_value(<<"minProperties">>, FailedSchemaJObj),
-    Min = wh_util:to_binary(Minimum),
+    Minimum = kz_json:get_value(<<"minProperties">>, FailedSchemaJObj),
+    Min = kz_util:to_binary(Minimum),
 
     add_validation_error(
       FailedKeyPath
       ,<<"minProperties">>
-      ,wh_json:from_list(
+      ,kz_json:from_list(
          [{<<"message">>, <<"The object must have at least ", Min/binary, " keys">>}
           ,{<<"target">>, Minimum}
          ])
@@ -824,7 +824,7 @@ failed_error({'data_invalid'
     add_validation_error(
       FailedKeyPath
       ,<<"uniqueItems">>
-      ,wh_json:from_list([{<<"message">>, <<"List of items is not unique">>}])
+      ,kz_json:from_list([{<<"message">>, <<"List of items is not unique">>}])
       ,Context
      );
 failed_error({'data_invalid'
@@ -836,7 +836,7 @@ failed_error({'data_invalid'
     add_validation_error(
       FailedKeyPath
       ,<<"additionalProperties">>
-      ,wh_json:from_list(
+      ,kz_json:from_list(
          [{<<"message">>, <<"Strict checking of data is enabled; only include schema-defined properties">>}]
         )
       ,Context
@@ -850,7 +850,7 @@ failed_error({'data_invalid'
     add_validation_error(
       FailedKeyPath
       ,<<"additionalItems">>
-      ,wh_json:from_list(
+      ,kz_json:from_list(
          [{<<"message">>, <<"Strict checking of data is enabled; only include schema-defined items">>}]
         )
       ,Context
@@ -861,11 +861,11 @@ failed_error({'data_invalid'
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    Pattern = wh_json:get_value(<<"pattern">>, FailedSchemaJObj),
+    Pattern = kz_json:get_value(<<"pattern">>, FailedSchemaJObj),
     add_validation_error(
       FailedKeyPath
       ,<<"pattern">>
-      ,wh_json:from_list(
+      ,kz_json:from_list(
          [{<<"message">>, <<"Failed to match pattern '", Pattern/binary, "'">>}
           ,{<<"target">>, Pattern}
          ])
@@ -880,7 +880,7 @@ failed_error({'data_invalid'
     add_validation_error(
       FailedKeyPath
       ,<<"required">>
-      ,wh_json:from_list(
+      ,kz_json:from_list(
          [{<<"message">>, <<"Field is required but missing">>}]
         )
       ,Context
@@ -894,7 +894,7 @@ failed_error({'data_invalid'
     add_validation_error(
       FailedKeyPath
       ,<<"dependencies">>
-      ,wh_json:from_list([{<<"message">>, <<"Dependencies were not validated">>}])
+      ,kz_json:from_list([{<<"message">>, <<"Dependencies were not validated">>}])
       ,Context
      );
 failed_error({'data_invalid'
@@ -903,11 +903,11 @@ failed_error({'data_invalid'
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    DivBy = wh_json:get_binary_value(<<"divisibleBy">>, FailedSchemaJObj),
+    DivBy = kz_json:get_binary_value(<<"divisibleBy">>, FailedSchemaJObj),
     add_validation_error(
       FailedKeyPath
       ,<<"divisibleBy">>
-      ,wh_json:from_list(
+      ,kz_json:from_list(
          [{<<"message">>, <<"Value not divisible by ", DivBy/binary>>}
           ,{<<"target">>, DivBy}
          ])
@@ -923,7 +923,7 @@ failed_error({'data_invalid'
     add_validation_error(
       FailedKeyPath
       ,<<"disallow">>
-      ,wh_json:from_list(
+      ,kz_json:from_list(
          [{<<"message">>, <<"Value is disallowed by ", Disallow/binary>>}
           ,{<<"target">>, Disallow}
          ])
@@ -939,7 +939,7 @@ failed_error({'data_invalid'
     add_validation_error(
       FailedKeyPath
       ,<<"type">>
-      ,wh_json:from_list(
+      ,kz_json:from_list(
          [{<<"message">>, <<"Value did not match type(s): ", Types/binary>>}
           ,{<<"target">>, Types}
          ])
@@ -954,7 +954,7 @@ failed_error({'data_invalid'
     add_validation_error(
       [FailedKeyPath, FailKey]
       ,<<"required">>
-      ,wh_json:from_list(
+      ,kz_json:from_list(
          [{<<"message">>, <<"Field is required but missing">>}]
         )
       ,Context
@@ -971,23 +971,23 @@ failed_error({'data_invalid'
     lager:debug("failed keypath: ~p", [FailedKeyPath]),
     add_validation_error(
       FailedKeyPath
-      ,wh_util:to_binary(FailMsg)
-      ,wh_json:from_list([{<<"message">>, <<"failed to validate">>}])
+      ,kz_util:to_binary(FailMsg)
+      ,kz_json:from_list([{<<"message">>, <<"failed to validate">>}])
       ,Context
      ).
 
--spec get_disallow(wh_json:object()) -> ne_binary().
+-spec get_disallow(kz_json:object()) -> ne_binary().
 get_disallow(JObj) ->
-    case wh_json:get_value(<<"disallow">>, JObj) of
+    case kz_json:get_value(<<"disallow">>, JObj) of
         <<_/binary>> = Disallow -> Disallow;
-        Disallows when is_list(Disallows) -> wh_util:join_binary(Disallows)
+        Disallows when is_list(Disallows) -> kz_util:join_binary(Disallows)
     end.
 
--spec get_types(wh_json:object()) -> ne_binary().
+-spec get_types(kz_json:object()) -> ne_binary().
 get_types(JObj) ->
-    case wh_json:get_first_defined([<<"type">>, <<"types">>], JObj) of
+    case kz_json:get_first_defined([<<"type">>, <<"types">>], JObj) of
         <<_/binary>> = Type -> Type;
-        Types when is_list(Types) -> wh_util:join_binary(Types);
+        Types when is_list(Types) -> kz_util:join_binary(Types);
         _TypeSchema -> <<"type schema">>
     end.
 
@@ -999,18 +999,18 @@ passed(Context) ->
     passed(Context, 'success').
 
 passed(#cb_context{req_data=Data}=Context, Status) ->
-    case wh_doc:id(Data) of
+    case kz_doc:id(Data) of
         'undefined' ->
             Context#cb_context{resp_status = Status};
         Id ->
             Context#cb_context{resp_status = Status
-                               ,doc = wh_doc:set_id(doc(Context), Id)
+                               ,doc = kz_doc:set_id(doc(Context), Id)
                               }
     end.
 
 -spec find_schema(ne_binary()) -> api_object().
 find_schema(<<_/binary>> = Schema) ->
-    case wh_json_schema:load(Schema) of
+    case kz_json_schema:load(Schema) of
         {'ok', SchemaJObj} -> SchemaJObj;
         {'error', _E} ->
             lager:error("failed to find schema ~s: ~p", [Schema, _E]),
@@ -1024,7 +1024,7 @@ find_schema(<<_/binary>> = Schema) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec add_system_error(atom() | binary(), context()) -> context().
--spec add_system_error(atom() | binary(), ne_binary() | wh_json:object(), context()) -> context().
+-spec add_system_error(atom() | binary(), ne_binary() | kz_json:object(), context()) -> context().
 add_system_error('too_many_requests', Context) ->
     build_system_error(429, 'too_many_requests', <<"too many requests">>, Context);
 add_system_error('no_credit', Context) ->
@@ -1068,42 +1068,42 @@ add_system_error('not_found', Context) ->
 add_system_error('disabled', Context) ->
     build_system_error(400, 'disabled', <<"entity disabled">>, Context);
 add_system_error(Error, Context) ->
-    build_system_error(500, Error, wh_util:to_binary(Error), Context).
+    build_system_error(500, Error, kz_util:to_binary(Error), Context).
 
 add_system_error(Error, <<_/binary>>=Message, Context) ->
-    JObj = wh_json:from_list([{<<"message">>, Message}]),
+    JObj = kz_json:from_list([{<<"message">>, Message}]),
     add_system_error(Error, JObj, Context);
 add_system_error(Error, Props, Context) when is_list(Props) ->
-    JObj = wh_json:from_list(Props),
+    JObj = kz_json:from_list(Props),
     add_system_error(Error, JObj, Context);
 add_system_error('bad_identifier'=Error, JObj, Context) ->
-    J = wh_json:set_value(<<"message">>, <<"bad identifier">>, JObj),
+    J = kz_json:set_value(<<"message">>, <<"bad identifier">>, JObj),
     build_system_error(404, Error, J, Context);
 add_system_error('not_found', JObj, Context) ->
     add_system_error('bad_identifier', JObj, Context);
 add_system_error('invalid_bulk_type'=Error, JObj, Context) ->
     %% TODO: JObj is expected to have a type key!!
-    Type = wh_json:get_value(<<"type">>, JObj),
-    Message = <<"bulk operations do not support documents of type ", (wh_util:to_binary(Type))/binary>>,
-    J = wh_json:set_value(<<"message">>, Message, JObj),
+    Type = kz_json:get_value(<<"type">>, JObj),
+    Message = <<"bulk operations do not support documents of type ", (kz_util:to_binary(Type))/binary>>,
+    J = kz_json:set_value(<<"message">>, Message, JObj),
     build_system_error(400, Error, J, Context);
 add_system_error('forbidden'=Error, JObj, Context) ->
-    J = wh_json:set_value(<<"message">>, <<"forbidden">>, JObj),
+    J = kz_json:set_value(<<"message">>, <<"forbidden">>, JObj),
     build_system_error(403, Error, J, Context);
 add_system_error('timeout'=Error, JObj, Context) ->
-    J = wh_json:set_value(<<"message">>, <<"timeout">>, JObj),
+    J = kz_json:set_value(<<"message">>, <<"timeout">>, JObj),
     build_system_error(500, Error, J, Context);
 add_system_error('invalid_method'=Error, JObj, Context) ->
-    J = wh_json:set_value(<<"message">>, <<"invalid method">>, JObj),
+    J = kz_json:set_value(<<"message">>, <<"invalid method">>, JObj),
     build_system_error(405, Error, J, Context);
 add_system_error('bad_gateway'=Error, JObj, Context) ->
     build_system_error(502, Error, JObj, Context);
 add_system_error('multiple_choice'=Error, JObj, Context) ->
     build_system_error(400, Error, JObj, Context);
 add_system_error(Error, JObj, Context) ->
-    case wh_json:get_ne_value(<<"message">>, JObj) of
+    case kz_json:get_ne_value(<<"message">>, JObj) of
         'undefined' ->
-            J = wh_json:set_value(<<"message">>, <<"unknown failure">>, JObj),
+            J = kz_json:set_value(<<"message">>, <<"unknown failure">>, JObj),
             build_system_error(500, Error, J, Context);
         _Else ->
             build_system_error(500, Error, JObj, Context)
@@ -1118,7 +1118,7 @@ add_system_error(Code, Error, JObj, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec build_system_error(integer(), atom() | ne_binary(), ne_binary() | wh_json:object(), cb_context:context()) ->
+-spec build_system_error(integer(), atom() | ne_binary(), ne_binary() | kz_json:object(), cb_context:context()) ->
                                 cb_context:context().
 build_system_error(Code, Error, JObj, Context) ->
     ApiVersion = ?MODULE:api_version(Context),
@@ -1126,7 +1126,7 @@ build_system_error(Code, Error, JObj, Context) ->
     Context#cb_context{resp_status='error'
                        ,resp_error_code=Code
                        ,resp_data=Message
-                       ,resp_error_msg=wh_util:to_binary(Error)
+                       ,resp_error_msg=kz_util:to_binary(Error)
                       }.
 
 %%--------------------------------------------------------------------
@@ -1216,34 +1216,34 @@ add_depreciated_validation_error(Property, Code, Message, Context, ErrCode, ErrM
     JObj = cb_context:validation_errors(Context),
     Error = build_error_message(ApiVersion, Message),
 
-    Key = wh_util:join_binary(Property, <<".">>),
-    Context#cb_context{validation_errors=wh_json:set_value([Key, Code], Error, JObj)
+    Key = kz_util:join_binary(Property, <<".">>),
+    Context#cb_context{validation_errors=kz_json:set_value([Key, Code], Error, JObj)
                        ,resp_status='error'
                        ,resp_error_code=ErrCode
-                       ,resp_data=wh_json:new()
+                       ,resp_data=kz_json:new()
                        ,resp_error_msg=ErrMsg
                       }.
 
--spec build_error_message('v1', ne_binary() | wh_json:object()) ->
+-spec build_error_message('v1', ne_binary() | kz_json:object()) ->
                                  ne_binary();
-                         (ne_binary(), ne_binary() | wh_json:object()) ->
-                                 wh_json:object().
+                         (ne_binary(), ne_binary() | kz_json:object()) ->
+                                 kz_json:object().
 build_error_message(?VERSION_1, Message) when is_binary(Message) ->
     Message;
 build_error_message(?VERSION_1, JObj) ->
-    wh_json:get_value(<<"message">>, JObj);
+    kz_json:get_value(<<"message">>, JObj);
 build_error_message(_Version, Message) when is_binary(Message) ->
-    wh_json:from_list([{<<"message">>, Message}]);
+    kz_json:from_list([{<<"message">>, Message}]);
 build_error_message(_Version, JObj) ->
     JObj.
 
--spec maybe_fix_js_types(cb_context:context(), wh_json:object(), jesse_error:error_reasons()) ->
+-spec maybe_fix_js_types(cb_context:context(), kz_json:object(), jesse_error:error_reasons()) ->
                                 cb_context:context().
 maybe_fix_js_types(Context, SchemaJObj, Errors) ->
     JObj = req_data(Context),
     case lists:foldl(fun maybe_fix_js_type/2, JObj, Errors) of
         JObj ->
-            lager:debug("request data did not validate against ~s: ~p", [wh_doc:id(SchemaJObj)
+            lager:debug("request data did not validate against ~s: ~p", [kz_doc:id(SchemaJObj)
                                                                          ,Errors
                                                                         ]),
             failed(Context, Errors);
@@ -1251,20 +1251,20 @@ maybe_fix_js_types(Context, SchemaJObj, Errors) ->
             validate_request_data(SchemaJObj, set_req_data(Context, NewJObj))
     end.
 
--spec maybe_fix_js_type(jesse_error:error_reason(), wh_json:object()) ->
-                               wh_json:object().
+-spec maybe_fix_js_type(jesse_error:error_reason(), kz_json:object()) ->
+                               kz_json:object().
 maybe_fix_js_type({'data_invalid', SchemaJObj, 'wrong_type', Value, Key}, JObj) ->
-    case wh_json:get_value(<<"type">>, SchemaJObj) of
+    case kz_json:get_value(<<"type">>, SchemaJObj) of
         <<"integer">> -> maybe_fix_js_integer(Key, Value, JObj);
         _Type -> JObj
     end;
 maybe_fix_js_type(_, JObj) -> JObj.
 
--spec maybe_fix_js_integer(wh_json:key(), wh_json:json_term(), wh_json:object()) ->
-                                  wh_json:object().
+-spec maybe_fix_js_integer(kz_json:key(), kz_json:json_term(), kz_json:object()) ->
+                                  kz_json:object().
 maybe_fix_js_integer(Key, Value, JObj) ->
-    try wh_util:to_integer(Value) of
-        V -> wh_json:set_value(Key, V, JObj)
+    try kz_util:to_integer(Value) of
+        V -> kz_json:set_value(Key, V, JObj)
     catch
         _E:_R ->
             lager:debug("error converting value to integer ~p : ~p : ~p"

@@ -71,11 +71,11 @@ content_types_provided(Context, PT1, PT2) ->
     content_types_provided_for_provisioner(Context, PT1, PT2, cb_context:req_verb(Context)).
 
 content_types_provided_for_provisioner(Context, DocId, ?IMAGE_REQ, ?HTTP_GET) ->
-    Db = wh_util:format_account_id(cb_context:auth_account_id(Context), 'encoded'),
+    Db = kz_util:format_account_id(cb_context:auth_account_id(Context), 'encoded'),
     case kz_datamgr:open_doc(Db, DocId) of
         {'error', _} -> Context;
         {'ok', JObj} ->
-            CT = wh_doc:attachment_content_type(JObj, ?IMAGE_REQ, <<"application/octet-stream">>),
+            CT = kz_doc:attachment_content_type(JObj, ?IMAGE_REQ, <<"application/octet-stream">>),
             [Type, SubType] = binary:split(CT, <<"/">>),
             lager:debug("found attachement of content type: ~s/~s~n", [Type, SubType]),
             cb_context:set_content_types_provided(Context, [{'to_binary', [{Type, SubType}]}])
@@ -183,17 +183,17 @@ validate_verb(Context, DocId, ?IMAGE_REQ, ?HTTP_DELETE) ->
 post(Context, DocId) ->
     %% see note at top of file
     JObj = cb_context:doc(Context),
-    Template = wh_json:get_value(<<"template">>, JObj),
-    Doc = wh_json:delete_key(<<"template">>, JObj),
+    Template = kz_json:get_value(<<"template">>, JObj),
+    Doc = kz_json:delete_key(<<"template">>, JObj),
     Context1 = crossbar_doc:save(cb_context:set_doc(Context, Doc)),
     case cb_context:resp_status(Context1) of
         'success' ->
             SavedResp = cb_context:resp_data(Context1),
             Opts = [{'content_type', <<"application/json">>} | ?TYPE_CHECK_OPTION(<<"provisioner_template">>)],
-            Ctx2 = crossbar_doc:save_attachment(DocId, ?TEMPLATE_ATTCH, wh_json:encode(Template), Context, Opts),
+            Ctx2 = crossbar_doc:save_attachment(DocId, ?TEMPLATE_ATTCH, kz_json:encode(Template), Context, Opts),
             case cb_context:resp_status(Ctx2) of
                 'success' ->
-                    cb_context:set_resp_data(Context1, wh_json:set_value(<<"template">>, Template, SavedResp));
+                    cb_context:set_resp_data(Context1, kz_json:set_value(<<"template">>, Template, SavedResp));
                 _Error -> Ctx2
             end;
         _Error -> Context1
@@ -203,19 +203,19 @@ post(Context, DocId) ->
 put(Context) ->
     %% see note at top of file
     JObj = cb_context:doc(Context),
-    Template = wh_json:get_value(<<"template">>, JObj),
-    Doc = wh_json:delete_key(<<"template">>, JObj),
+    Template = kz_json:get_value(<<"template">>, JObj),
+    Doc = kz_json:delete_key(<<"template">>, JObj),
     Context1 = crossbar_doc:save(cb_context:set_doc(Context, Doc)),
     case cb_context:resp_status(Context1) of
         'success' ->
             SavedDoc  = cb_context:doc(Context1),
             SavedResp = cb_context:resp_data(Context1),
-            DocId = wh_doc:id(SavedDoc),
+            DocId = kz_doc:id(SavedDoc),
             Opts = [{'content_type', <<"application/json">>} | ?TYPE_CHECK_OPTION(<<"provisioner_template">>)],
-            Ctx2 = crossbar_doc:save_attachment(DocId, ?TEMPLATE_ATTCH, wh_json:encode(Template), Context, Opts),
+            Ctx2 = crossbar_doc:save_attachment(DocId, ?TEMPLATE_ATTCH, kz_json:encode(Template), Context, Opts),
             case cb_context:resp_status(Ctx2) of
                 'success' ->
-                    cb_context:set_resp_data(Context1, wh_json:set_value(<<"template">>, Template, SavedResp));
+                    cb_context:set_resp_data(Context1, kz_json:set_value(<<"template">>, Template, SavedResp));
                 Else -> Else
             end;
         Else -> Else
@@ -228,16 +228,16 @@ delete(Context, _) ->
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, DocId, ?IMAGE_REQ) ->
     [{_, JObj}] = cb_context:req_files(Context),
-    Contents = wh_json:get_value(<<"contents">>, JObj),
-    CT = wh_json:get_value([<<"headers">>, <<"content_type">>], JObj, <<"application/octet-stream">>),
+    Contents = kz_json:get_value(<<"contents">>, JObj),
+    CT = kz_json:get_value([<<"headers">>, <<"content_type">>], JObj, <<"application/octet-stream">>),
     Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(<<"provisioner_template">>)],
     crossbar_doc:save_attachment(DocId, ?IMAGE_REQ, Contents, Context, Opts).
 
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context, DocId, ?IMAGE_REQ) ->
     [{_, JObj}] = cb_context:req_files(Context),
-    Contents = wh_json:get_value(<<"contents">>, JObj),
-    CT = wh_json:get_value([<<"headers">>, <<"content_type">>], JObj, <<"application/octet-stream">>),
+    Contents = kz_json:get_value(<<"contents">>, JObj),
+    CT = kz_json:get_value([<<"headers">>, <<"content_type">>], JObj, <<"application/octet-stream">>),
     Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(<<"provisioner_template">>)],
     crossbar_doc:save_attachment(DocId, ?IMAGE_REQ, Contents, Context, Opts).
 
@@ -273,17 +273,17 @@ upload_template_image(Context, []) ->
     cb_context:add_validation_error(
         <<"file">>
         ,<<"required">>
-        ,wh_json:from_list([
+        ,kz_json:from_list([
             {<<"message">>, <<"please provide an image file">>}
          ])
         ,Context
     );
 upload_template_image(Context, [{_, _}]) ->
-    crossbar_util:response(wh_json:new(), Context);
+    crossbar_util:response(kz_json:new(), Context);
 upload_template_image(Context, [_|_]) ->
    cb_context:add_validation_error(<<"file">>
                                   ,<<"maxItems">>
-                                  ,wh_json:from_list([{<<"message">>, <<"Please provide a single image file">>}])
+                                  ,kz_json:from_list([{<<"message">>, <<"Please provide a single image file">>}])
                                   ,Context
                                   ).
 
@@ -325,8 +325,8 @@ load_provisioner_template(DocId, Context) ->
             Ctx2 = crossbar_doc:load_attachment(DocId, ?TEMPLATE_ATTCH, ?TYPE_CHECK_OPTION(<<"provisioner_template">>), Context),
             case cb_context:resp_status(Ctx2) of
                 'success' ->
-                    Template = wh_json:decode(cb_context:resp_data(Ctx2)),
-                    cb_context:set_resp_data(Context1, wh_json:set_value(<<"template">>, Template, RespJObj));
+                    Template = kz_json:decode(cb_context:resp_data(Ctx2)),
+                    cb_context:set_resp_data(Context1, kz_json:set_value(<<"template">>, Template, RespJObj));
                 Else -> Else
             end;
         Else -> Else
@@ -352,7 +352,7 @@ update_provisioner_template(DocId, Context) ->
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     provisioner_util:get_provision_defaults(
-      cb_context:set_doc(Context, wh_json:set_values([{<<"pvt_type">>, <<"provisioner_template">>}
+      cb_context:set_doc(Context, kz_json:set_values([{<<"pvt_type">>, <<"provisioner_template">>}
                                                       ,{<<"pvt_provider">>, <<"provisioner.net">>}
                                                       ,{<<"pvt_provisioner_type">>, <<"local">>}
                                                      ], cb_context:doc(Context))
@@ -366,6 +366,6 @@ on_successful_validation(DocId, Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj) | Acc].
+    [kz_json:get_value(<<"value">>, JObj) | Acc].

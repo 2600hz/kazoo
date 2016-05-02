@@ -11,13 +11,13 @@
 
 -spec push(regids(),message(),string()) -> {'error',any()} | {'noreply','unknown'} | {'ok',result()}.
 push(RegIds, Message, Key) ->
-    JObj = wh_json:set_value(<<"registration_ids">>, RegIds, Message),
-    Request = wh_json:encode(JObj),
+    JObj = kz_json:set_value(<<"registration_ids">>, RegIds, Message),
+    Request = kz_json:encode(JObj),
     ApiKey = string:concat("key=", Key),
 
     try httpc:request(post, {?BASEURL, [{"Authorization", ApiKey}], "application/json", Request}, [], []) of
         {ok, {{_, 200, _}, _Headers, Body}} ->
-            {ok, wh_json:decode(Body)};
+            {ok, kz_json:decode(Body)};
         {ok, {{_, 400, _}, _, _}} -> {error, json_error};
         {ok, {{_, 401, _}, _, _}} -> {error, auth_error};
         {ok, {{_, Code, _}, Headers, _}} when Code >= 500 andalso Code =< 599 ->

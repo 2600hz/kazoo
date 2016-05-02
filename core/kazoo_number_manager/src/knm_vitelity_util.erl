@@ -55,13 +55,13 @@ get_query_value(Key, Options) ->
 get_query_value(Key, Options) ->
     case props:get_value(Key, Options) of
         'undefined' ->
-            whapps_config:get(?KNM_VITELITY_CONFIG_CAT, Key);
+            kapps_config:get(?KNM_VITELITY_CONFIG_CAT, Key);
         Value -> Value
     end.
 -endif.
 
 -spec default_options() -> qs_options().
--spec default_options(wh_proplist()) -> qs_options().
+-spec default_options(kz_proplist()) -> qs_options().
 default_options() ->
      default_options([]).
 default_options(Options) ->
@@ -72,7 +72,7 @@ default_options(Options) ->
 -spec build_uri(query_options()) -> ne_binary().
 build_uri(Options) ->
     URI = props:get_value('uri', Options),
-    QS = wh_util:to_binary(
+    QS = kz_util:to_binary(
            props:to_querystring(
              props:filter_undefined(
                props:get_value('qs', Options)
@@ -115,7 +115,7 @@ xml_el_to_binary('undefined') -> 'undefined';
 xml_el_to_binary(#xmlElement{content=Content}) ->
     kz_xml:texts_to_binary(Content).
 
--spec xml_els_to_proplist(xml_els()) -> wh_proplist().
+-spec xml_els_to_proplist(xml_els()) -> kz_proplist().
 xml_els_to_proplist(Els) ->
     [KV || El <- Els,
            begin
@@ -124,7 +124,7 @@ xml_els_to_proplist(Els) ->
            end
     ].
 
--spec xml_el_to_kv_pair(xml_el()) -> {ne_binary(), api_binary() | wh_json:object()}.
+-spec xml_el_to_kv_pair(xml_el()) -> {ne_binary(), api_binary() | kz_json:object()}.
 xml_el_to_kv_pair(#xmlElement{name='did'
                               ,content=Value
                              }) ->
@@ -150,12 +150,12 @@ xml_el_to_kv_pair(#xmlElement{name=Name
                              }) ->
     case kz_xml:elements(Value) of
         [] ->
-            {wh_util:to_binary(Name)
+            {kz_util:to_binary(Name)
              ,kz_xml:texts_to_binary(Value)
             };
         Els ->
-            {wh_util:to_binary(Name)
-             ,wh_json:from_list(xml_els_to_proplist(Els))
+            {kz_util:to_binary(Name)
+             ,kz_json:from_list(xml_els_to_proplist(Els))
             }
     end.
 
@@ -164,7 +164,7 @@ xml_el_to_kv_pair(#xmlElement{name=Name
                             {'error', any()}.
 query_vitelity(URI) ->
     lager:debug("querying ~s", [URI]),
-    case kz_http:post(wh_util:to_list(URI)) of
+    case kz_http:post(kz_util:to_list(URI)) of
         {'ok', _RespCode, _RespHeaders, RespXML} ->
             lager:debug("recv ~p: ~s", [_RespCode, RespXML]),
             {'ok', RespXML};
@@ -235,5 +235,5 @@ get_short_state(FullState) ->
               ,{<<"wisconsin">>, <<"WI">>}
               ,{<<"wyoming">>, <<"WY">>}
              ],
-    State = wh_util:to_lower_binary(FullState),
+    State = kz_util:to_lower_binary(FullState),
     props:get_value(State, States).

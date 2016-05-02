@@ -22,43 +22,43 @@
 
 -define(PRONOUNCED_NAME_KEY, [<<"name_pronounced">>, <<"media_id">>]).
 
--spec get_user_id(whapps_call:call()) -> api_binary().
+-spec get_user_id(kapps_call:call()) -> api_binary().
 get_user_id(Call) ->
-    case whapps_call:authorizing_type(Call) of
-        <<"user">> -> whapps_call:authorizing_id(Call);
+    case kapps_call:authorizing_type(Call) of
+        <<"user">> -> kapps_call:authorizing_id(Call);
         <<"device">> -> get_user_id_from_device(Call);
         _Type -> 'undefined'
     end.
 
--spec get_user_id_from_device(whapps_call:call()) -> api_binary().
+-spec get_user_id_from_device(kapps_call:call()) -> api_binary().
 get_user_id_from_device(Call) ->
-    case kz_datamgr:open_cache_doc(whapps_call:account_db(Call)
-                                  ,whapps_call:authorizing_id(Call)
+    case kz_datamgr:open_cache_doc(kapps_call:account_db(Call)
+                                  ,kapps_call:authorizing_id(Call)
                                  )
     of
-        {'ok', DeviceDoc} -> wh_json:get_value(<<"owner_id">>, DeviceDoc);
+        {'ok', DeviceDoc} -> kz_json:get_value(<<"owner_id">>, DeviceDoc);
         _ -> 'undefined'
     end.
 
--spec lookup_name(whapps_call:call()) -> name_pronounced_media() | 'undefined'.
+-spec lookup_name(kapps_call:call()) -> name_pronounced_media() | 'undefined'.
 lookup_name(Call) ->
     case get_user_id(Call) of
         'undefined' -> 'undefined';
         UserId -> lookup_user_name(Call, UserId)
     end.
 
--spec lookup_user_name(whapps_call:call(), ne_binary()) -> name_pronounced_media() | 'undefined'.
+-spec lookup_user_name(kapps_call:call(), ne_binary()) -> name_pronounced_media() | 'undefined'.
 lookup_user_name(Call, UserId) ->
-    case kz_datamgr:open_cache_doc(whapps_call:account_db(Call), UserId) of
+    case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), UserId) of
         {'ok', UserDoc} ->
-            case wh_json:get_value(?PRONOUNCED_NAME_KEY, UserDoc) of
+            case kz_json:get_value(?PRONOUNCED_NAME_KEY, UserDoc) of
                 'undefined' -> 'undefined';
-                DocId -> {'media_doc_id', whapps_call:account_db(Call), DocId}
+                DocId -> {'media_doc_id', kapps_call:account_db(Call), DocId}
             end;
         _ -> 'undefined'
     end.
 
--spec record(whapps_call:call()) -> name_pronounced().
+-spec record(kapps_call:call()) -> name_pronounced().
 record(Call) ->
     RecordName = list_to_binary(["conf_announce_",kz_datamgr:get_uuid(), ".mp3"]),
 
@@ -82,24 +82,24 @@ while(Predicate, GeneratorFun, _, 'true') ->
 while(_, _, Value, 'false') ->
     Value.
 
--spec user_discards_or_not_error(whapps_call_command:collect_digits_return()) -> boolean().
+-spec user_discards_or_not_error(kapps_call_command:collect_digits_return()) -> boolean().
 user_discards_or_not_error({'ok', Digit}) ->
     Digit =/= <<"1">>;
 user_discards_or_not_error(_) ->
     'false'.
 
--spec record_name(ne_binary(), whapps_call:call()) -> whapps_call_command:collect_digits_return().
+-spec record_name(ne_binary(), kapps_call:call()) -> kapps_call_command:collect_digits_return().
 record_name(RecordName, Call) ->
     lager:debug("recording name"),
-    Tone = wh_json:from_list([{<<"Frequencies">>, [<<"440">>]}
+    Tone = kz_json:from_list([{<<"Frequencies">>, [<<"440">>]}
                               ,{<<"Duration-ON">>, <<"500">>}
                               ,{<<"Duration-OFF">>, <<"100">>}
                              ]),
-    _ = whapps_call_command:audio_macro([{'prompt', <<"conf-announce_your_name">>}
+    _ = kapps_call_command:audio_macro([{'prompt', <<"conf-announce_your_name">>}
                                          ,{'tones', [Tone]}
                                         ], Call),
-    whapps_call_command:b_record(RecordName, ?ANY_DIGIT, <<"60">>, Call),
-    Force = whapps_config:get_is_true(?CONFIG_CAT, <<"review_name">>, 'false'),
+    kapps_call_command:b_record(RecordName, ?ANY_DIGIT, <<"60">>, Call),
+    Force = kapps_config:get_is_true(?CONFIG_CAT, <<"review_name">>, 'false'),
     case Force of
         'true' ->
             review(RecordName, Call);
@@ -107,35 +107,35 @@ record_name(RecordName, Call) ->
             {'ok', <<"1">>}
     end.
 
--spec prepare_media_doc(ne_binary(), whapps_call:call()) -> api_binary().
+-spec prepare_media_doc(ne_binary(), kapps_call:call()) -> api_binary().
 prepare_media_doc(RecordName, Call) ->
     UserId = get_user_id(Call),
-    AccountDb = whapps_call:account_db(Call),
+    AccountDb = kapps_call:account_db(Call),
     Props = props:filter_undefined(
               [{<<"name">>, RecordName}
                ,{<<"description">>, <<"conference: user's pronounced name">>}
                ,{<<"source_type">>, <<"call to conference">>}
-               ,{<<"source_id">>, whapps_call:fetch_id(Call)}
+               ,{<<"source_id">>, kapps_call:fetch_id(Call)}
                ,{<<"owner_id">>, UserId}
                ,{<<"media_source">>, <<"recording">>}
                ,{<<"streamable">>, 'true'}
               ]),
-    Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), AccountDb, [{'type', <<"media">>}]),
+    Doc = kz_doc:update_pvt_parameters(kz_json:from_list(Props), AccountDb, [{'type', <<"media">>}]),
     case kz_datamgr:save_doc(AccountDb, Doc) of
-        {'ok', MediaJObj} when not is_list(MediaJObj) -> wh_doc:id(MediaJObj);
+        {'ok', MediaJObj} when not is_list(MediaJObj) -> kz_doc:id(MediaJObj);
         _ -> 'undefined'
     end.
 
--spec save_recording(ne_binary(), ne_binary(), whapps_call:call()) -> name_pronounced_ids().
+-spec save_recording(ne_binary(), ne_binary(), kapps_call:call()) -> name_pronounced_ids().
 save_recording(RecordName, MediaDocId, Call) ->
     UserId = get_user_id(Call),
-    AccountDb = whapps_call:account_db(Call),
-    AccountId = whapps_call:account_id(Call),
-    whapps_call_command:b_store(RecordName, get_new_attachment_url(RecordName, MediaDocId, Call), Call),
+    AccountDb = kapps_call:account_db(Call),
+    AccountId = kapps_call:account_id(Call),
+    kapps_call_command:b_store(RecordName, get_new_attachment_url(RecordName, MediaDocId, Call), Call),
     case kz_datamgr:open_cache_doc(AccountDb, UserId) of
         {'ok', UserJObj} ->
             lager:debug("Updating user's doc"),
-            JObj1 = wh_json:set_value(?PRONOUNCED_NAME_KEY, MediaDocId, UserJObj),
+            JObj1 = kz_json:set_value(?PRONOUNCED_NAME_KEY, MediaDocId, UserJObj),
             kz_datamgr:save_doc(AccountDb, JObj1),
             {'media_doc_id', AccountId, MediaDocId};
         {'error', _Err} ->
@@ -143,45 +143,45 @@ save_recording(RecordName, MediaDocId, Call) ->
             {'temp_doc_id', AccountId, MediaDocId}
     end.
 
--spec save_pronounced_name(ne_binary(), whapps_call:call()) -> name_pronounced().
+-spec save_pronounced_name(ne_binary(), kapps_call:call()) -> name_pronounced().
 save_pronounced_name(RecordName, Call) ->
     case prepare_media_doc(RecordName, Call) of
         'undefined' -> 'undefined';
         MediaDocId -> save_recording(RecordName, MediaDocId, Call)
     end.
 
--spec get_new_attachment_url(ne_binary(), ne_binary(), whapps_call:call()) -> ne_binary().
+-spec get_new_attachment_url(ne_binary(), ne_binary(), kapps_call:call()) -> ne_binary().
 get_new_attachment_url(AttachmentName, MediaId, Call) ->
-    AccountDb = whapps_call:account_db(Call),
+    AccountDb = kapps_call:account_db(Call),
     _ = case kz_datamgr:open_doc(AccountDb, MediaId) of
             {'ok', JObj} -> maybe_remove_attachments(Call, JObj);
             {'error', _} -> 'ok'
         end,
-    {'ok', URL} = wh_media_url:store(AccountDb, MediaId, AttachmentName),
+    {'ok', URL} = kz_media_url:store(AccountDb, MediaId, AttachmentName),
     URL.
 
--spec maybe_remove_attachments(whapps_call:call(), wh_json:object()) -> 'ok'.
+-spec maybe_remove_attachments(kapps_call:call(), kz_json:object()) -> 'ok'.
 maybe_remove_attachments(Call, JObj) ->
-    case wh_doc:maybe_remove_attachments(JObj) of
+    case kz_doc:maybe_remove_attachments(JObj) of
         {'false', _} -> 'ok';
         {'true', Removed} ->
-            {'ok', _Saved} = kz_datamgr:save_doc(whapps_call:account_db(Call), Removed),
+            {'ok', _Saved} = kz_datamgr:save_doc(kapps_call:account_db(Call), Removed),
             lager:debug("removed attachments from media doc ~s (now ~s)"
-                        ,[wh_doc:id(_Saved), wh_doc:revision(_Saved)]
+                        ,[kz_doc:id(_Saved), kz_doc:revision(_Saved)]
                        )
     end.
 
--spec review(ne_binary(), whapps_call:call()) -> whapps_call_command:collect_digits_return().
+-spec review(ne_binary(), kapps_call:call()) -> kapps_call_command:collect_digits_return().
 review(RecordName, Call) ->
     lager:debug("review record"),
-    NoopId = whapps_call_command:audio_macro([{'prompt', <<"conf-your_announcment">>}
+    NoopId = kapps_call_command:audio_macro([{'prompt', <<"conf-your_announcment">>}
                                               ,{'play', RecordName}
                                               ,{'prompt', <<"conf-review">>}
                                              ], Call),
 
-    whapps_call_command:collect_digits(1
-                                       ,whapps_call_command:default_collect_timeout()
-                                       ,whapps_call_command:default_interdigit_timeout()
+    kapps_call_command:collect_digits(1
+                                       ,kapps_call_command:default_collect_timeout()
+                                       ,kapps_call_command:default_interdigit_timeout()
                                        ,NoopId
                                        ,Call
                                       ).

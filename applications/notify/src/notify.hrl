@@ -1,9 +1,9 @@
 -ifndef(NOTIFY_HRL).
 
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_databases.hrl").
--include_lib("whistle/include/wh_amqp.hrl").
--include_lib("whistle/include/wh_log.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo/include/kz_databases.hrl").
+-include_lib("kazoo/include/kz_amqp.hrl").
+-include_lib("kazoo/include/kz_log.hrl").
 -include("notify_templates.hrl").
 
 -define(NOTIFY_CONFIG_CAT, <<"notify">>).

@@ -90,7 +90,7 @@ validate_request(Context, ?HTTP_GET, [{<<"templates">>, _}]) ->
 validate_request(Context, ?HTTP_PUT, [{<<"templates">>, _}], TemplateName) ->
     case cb_context:resp_status(load_template_db(TemplateName, Context)) of
         'success' -> cb_context:add_system_error('datastore_conflict', Context);
-        _Else     -> crossbar_util:response(wh_json:new(), Context)
+        _Else     -> crossbar_util:response(kz_json:new(), Context)
     end;
 validate_request(Context, ?HTTP_DELETE, [{<<"templates">>, _}], TemplateName) ->
     load_template_db(TemplateName, Context);
@@ -103,7 +103,7 @@ put(Context, TemplateName) ->
 delete(Context, TemplateName) ->
     DbName = format_template_name(TemplateName, 'encoded'),
     case kz_datamgr:db_delete(DbName) of
-        'true' -> crossbar_util:response(wh_json:new(), Context);
+        'true' -> crossbar_util:response(kz_json:new(), Context);
         'false' -> cb_context:add_system_error('datastore_fault', Context)
     end.
 
@@ -111,7 +111,7 @@ account_created(Context) ->
     JObj = cb_context:doc(Context),
     AccountId = cb_context:account_id(Context),
     AccountDb = cb_context:account_db(Context),
-    import_template(wh_json:get_value(<<"template">>, JObj), AccountId, AccountDb).
+    import_template(kz_json:get_value(<<"template">>, JObj), AccountId, AccountDb).
 
 %%%===================================================================
 %%% Internal functions
@@ -215,7 +215,7 @@ import_template(TemplateName, AccountId, AccountDb) ->
         {'ok', Docs} ->
             Ids = [Id || Doc <- Docs,
                          begin
-                             Id = wh_doc:id(Doc),
+                             Id = kz_doc:id(Doc),
                              not is_design_doc_id(Id)
                          end
                   ],
@@ -239,23 +239,23 @@ import_template_docs([], _, _, _) -> 'ok';
 import_template_docs([Id|Ids], TemplateDb, AccountId, AccountDb) ->
     case kz_datamgr:open_doc(TemplateDb, Id) of
         {'ok', JObj} ->
-            Routines = [fun(J) -> wh_doc:set_account_id(J, AccountId) end
-                        ,fun(J) -> wh_doc:set_account_db(J, AccountDb) end
-                        ,fun wh_doc:delete_revision/1
-                        ,fun wh_doc:delete_attachments/1
+            Routines = [fun(J) -> kz_doc:set_account_id(J, AccountId) end
+                        ,fun(J) -> kz_doc:set_account_db(J, AccountDb) end
+                        ,fun kz_doc:delete_revision/1
+                        ,fun kz_doc:delete_attachments/1
                        ],
             _ = kz_datamgr:ensure_saved(AccountDb, lists:foldr(fun(F, J) -> F(J) end, JObj, Routines)),
-            Attachments = wh_doc:attachment_names(JObj),
+            Attachments = kz_doc:attachment_names(JObj),
             _ = import_template_attachments(Attachments, JObj, TemplateDb, AccountDb, Id),
             import_template_docs(Ids, TemplateDb, AccountId, AccountDb);
         {'error', _} -> import_template_docs(Ids, TemplateDb, AccountId, AccountDb)
     end.
 
--spec import_template_attachments(ne_binaries(), wh_json:object(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec import_template_attachments(ne_binaries(), kz_json:object(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 import_template_attachments([], _, _, _, _) -> 'ok';
 import_template_attachments([Attachment|Attachments], JObj, TemplateDb, AccountDb, Id) ->
     {'ok', Bin} = kz_datamgr:fetch_attachment(TemplateDb, Id, Attachment),
-    ContentType = wh_doc:attachment_content_type(JObj, Attachment),
+    ContentType = kz_doc:attachment_content_type(JObj, Attachment),
     Opts = [{'content_type', ContentType}],
     _ = kz_datamgr:put_attachment(AccountDb, Id, Attachment, Bin, Opts),
     import_template_attachments(Attachments, JObj, TemplateDb, AccountDb, Id).

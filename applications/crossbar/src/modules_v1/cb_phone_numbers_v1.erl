@@ -48,7 +48,7 @@
 -define(PHONE_NUMBERS_CONFIG_CAT, <<"crossbar.phone_numbers">>).
 -define(FIND_NUMBER_SCHEMA, "{\"$schema\": \"http://json-schema.org/draft-03/schema#\", \"id\": \"http://json-schema.org/draft-03/schema#\", \"properties\": {\"prefix\": {\"required\": \"true\", \"type\": \"string\", \"minLength\": 3, \"maxLength\": 10}, \"quantity\": {\"default\": 1, \"type\": \"integer\", \"minimum\": 1}}}").
 
--define(MAX_TOKENS, whapps_config:get_integer(?PHONE_NUMBERS_CONFIG_CAT, <<"activations_per_day">>, 100)).
+-define(MAX_TOKENS, kapps_config:get_integer(?PHONE_NUMBERS_CONFIG_CAT, <<"activations_per_day">>, 100)).
 
 %%%===================================================================
 %%% API
@@ -83,10 +83,10 @@ populate_phone_numbers(Context) ->
             ,{<<"pvt_account_id">>, AccountId}
             ,{<<"pvt_vsn">>, <<"1">>}
             ,{<<"pvt_type">>, ?KNM_PHONE_NUMBERS_DOC}
-            ,{<<"pvt_modified">>, wh_util:current_tstamp()}
-            ,{<<"pvt_created">>, wh_util:current_tstamp()}
+            ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+            ,{<<"pvt_created">>, kz_util:current_tstamp()}
            ],
-    _ = kz_datamgr:save_doc(AccountDb, wh_json:from_list(PVTs)),
+    _ = kz_datamgr:save_doc(AccountDb, kz_json:from_list(PVTs)),
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -151,11 +151,11 @@ billing(Context) ->
 billing(Context, ?HTTP_GET, [{?KNM_PHONE_NUMBERS_DOC, _}|_]) ->
     Context;
 billing(Context, _, [{?KNM_PHONE_NUMBERS_DOC, _}|_]) ->
-    try wh_services:allow_updates(cb_context:account_id(Context)) of
+    try kz_services:allow_updates(cb_context:account_id(Context)) of
         'true' -> Context
     catch
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
     end;
 billing(Context, _, _) ->
     Context.
@@ -280,7 +280,7 @@ put(Context, Number, ?ACTIVATE) ->
               ],
     Result = case knm_number:move(Number, cb_context:account_id(Context), Options) of
                  {'ok', KNum} ->
-                     {'ok', wh_json:delete_key(<<"numbers">>, knm_number:to_public_json(KNum))};
+                     {'ok', kz_json:delete_key(<<"numbers">>, knm_number:to_public_json(KNum))};
                  _Else -> _Else
              end,
     set_response(Result, Number, Context);
@@ -306,7 +306,7 @@ delete(Context, Number) ->
 summary(Context) ->
     Context1 = crossbar_doc:load(?KNM_PHONE_NUMBERS_DOC, Context, ?TYPE_CHECK_OPTION(?KNM_PHONE_NUMBERS_DOC)),
     case cb_context:resp_error_code(Context1) of
-        404 -> crossbar_util:response(wh_json:new(), Context1);
+        404 -> crossbar_util:response(kz_json:new(), Context1);
         _ -> cb_context:set_resp_data(Context1, clean_summary(Context1))
     end.
 
@@ -319,16 +319,16 @@ summary(Context) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec clean_summary(cb_context:context()) -> wh_json:object().
+-spec clean_summary(cb_context:context()) -> kz_json:object().
 clean_summary(Context) ->
     JObj = cb_context:resp_data(Context),
     AccountId = cb_context:account_id(Context),
-    Routines = [fun(J) -> wh_json:delete_key(<<"id">>, J) end
-                ,fun(J) -> wh_json:set_value(<<"numbers">>, J, wh_json:new()) end
+    Routines = [fun(J) -> kz_json:delete_key(<<"id">>, J) end
+                ,fun(J) -> kz_json:set_value(<<"numbers">>, J, kz_json:new()) end
                 ,fun(J) ->
-                    Service =  wh_services:fetch(AccountId),
-                    Quantity = wh_services:cascade_category_quantity(?KNM_PHONE_NUMBERS_DOC, [], Service),
-                    wh_json:set_value(<<"casquade_quantity">>, Quantity, J)
+                    Service =  kz_services:fetch(AccountId),
+                    Quantity = kz_services:cascade_category_quantity(?KNM_PHONE_NUMBERS_DOC, [], Service),
+                    kz_json:set_value(<<"casquade_quantity">>, Quantity, J)
                 end
                ],
     lists:foldl(fun(F, J) -> F(J) end, JObj, Routines).
@@ -347,16 +347,16 @@ identify(Context, Number) ->
         {'error', 'not_reconcilable'} ->
             cb_context:add_system_error(
                 'bad_identifier'
-                ,wh_json:from_list([{<<"cause">>, Number}])
+                ,kz_json:from_list([{<<"cause">>, Number}])
                 ,Context
             );
         {'error', E} ->
-            set_response({wh_util:to_binary(E), <<>>}, Number, Context);
+            set_response({kz_util:to_binary(E), <<>>}, Number, Context);
         {'ok', AccountId, Options} ->
-            JObj = wh_json:set_values([{<<"account_id">>, AccountId}
+            JObj = kz_json:set_values([{<<"account_id">>, AccountId}
                                        ,{<<"number">>, knm_number_options:number(Options)}
                                       ]
-                                      ,wh_json:new()
+                                      ,kz_json:new()
                                      ),
             set_response({'ok', JObj}, Number, Context)
     end.
@@ -390,17 +390,17 @@ find_numbers(Context) ->
                                              ,{fun cb_context:set_resp_status/2, 'success'}
                                             ])
                 end,
-    cb_context:validate_request_data(wh_json:decode(?FIND_NUMBER_SCHEMA)
+    cb_context:validate_request_data(kz_json:decode(?FIND_NUMBER_SCHEMA)
                                      ,cb_context:set_req_data(Context, JObj)
                                      ,OnSuccess
                                     ).
 
--spec get_find_numbers_req(cb_context:context()) -> wh_json:object().
+-spec get_find_numbers_req(cb_context:context()) -> kz_json:object().
 get_find_numbers_req(Context) ->
     JObj = cb_context:query_string(Context),
     AccountId = cb_context:auth_account_id(Context),
-    Quantity = wh_json:get_integer_value(<<"quantity">>, JObj, 1),
-    wh_json:set_values([{<<"quantity">>, Quantity}
+    Quantity = kz_json:get_integer_value(<<"quantity">>, JObj, 1),
+    kz_json:set_values([{<<"quantity">>, Quantity}
                        ,{<<"Account-ID">>, AccountId}
                        ], JObj).
 
@@ -410,17 +410,17 @@ get_find_numbers_req(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_numbers(wh_json:object()) -> ne_binaries().
+-spec get_numbers(kz_json:object()) -> ne_binaries().
 get_numbers(QueryString) ->
-    Prefix = wh_json:get_ne_value(<<"prefix">>, QueryString),
-    Quantity = wh_json:get_ne_value(<<"quantity">>, QueryString, 1),
+    Prefix = kz_json:get_ne_value(<<"prefix">>, QueryString),
+    Quantity = kz_json:get_ne_value(<<"quantity">>, QueryString, 1),
     lists:reverse(
         lists:foldl(
             fun(JObj, Acc) ->
-                [wh_json:get_value(<<"number">>, JObj)|Acc]
+                [kz_json:get_value(<<"number">>, JObj)|Acc]
             end
             ,[]
-            ,knm_carriers:find(Prefix, Quantity, wh_json:to_proplist(QueryString))
+            ,knm_carriers:find(Prefix, Quantity, kz_json:to_proplist(QueryString))
         )
     ).
 
@@ -453,7 +453,7 @@ validate_delete(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_response({'ok', wh_json:object()} |
+-spec set_response({'ok', kz_json:object()} |
                    knm_number_return() |
                    {binary(), binary()}
                   ,binary()
@@ -467,7 +467,7 @@ set_response({'ok', Doc}, _, Context) ->
         'false' -> crossbar_util:response(Doc, Context)
     end;
 set_response({'error', Data}, _, Context) ->
-    case wh_json:is_json_object(Data) of
+    case kz_json:is_json_object(Data) of
         'true' ->
             Code = knm_errors:code(Data),
             Msg = knm_errors:error(Data),
@@ -478,33 +478,33 @@ set_response({'error', Data}, _, Context) ->
             crossbar_util:response_400(<<"client error">>, Data, Context)
     end;
 set_response({Error, Reason}, _, Context) ->
-    crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context);
+    crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context);
 set_response(_Else, _, Context) ->
     lager:debug("unexpected response: ~p", [_Else]),
     cb_context:add_system_error('unspecified_fault', Context).
 
--spec collection_process(cb_context:context()) -> wh_json:object().
--spec collection_process(cb_context:context(), ne_binary() | ne_binaries()) -> wh_json:object().
+-spec collection_process(cb_context:context()) -> kz_json:object().
+-spec collection_process(cb_context:context(), ne_binary() | ne_binaries()) -> kz_json:object().
 collection_process(Context) ->
-    Numbers = wh_json:get_value(<<"numbers">>, cb_context:req_data(Context), []),
+    Numbers = kz_json:get_value(<<"numbers">>, cb_context:req_data(Context), []),
     collection_process(Context, Numbers).
 
 collection_process(Context, ?ACTIVATE) ->
-    Numbers = wh_json:get_value(<<"numbers">>, cb_context:req_data(Context), []),
+    Numbers = kz_json:get_value(<<"numbers">>, cb_context:req_data(Context), []),
     collection_process(Context, Numbers, ?ACTIVATE);
 collection_process(Context, Numbers) ->
-    Temp = wh_json:from_list([{<<"success">>, wh_json:new()}
-                             ,{<<"error">>, wh_json:new()}
+    Temp = kz_json:from_list([{<<"success">>, kz_json:new()}
+                             ,{<<"error">>, kz_json:new()}
                              ]),
     lists:foldl(
       fun(Number, Acc) ->
               case collection_action(Context, cb_context:req_verb(Context), Number) of
                   {'ok', KNum} ->
                       JObj = knm_number:to_public_json(KNum),
-                      wh_json:set_value([<<"success">>, Number], JObj, Acc);
+                      kz_json:set_value([<<"success">>, Number], JObj, Acc);
                   {'error', KNMError} ->
-                      JObj = wh_json:set_value(<<"reason">>, knm_errors:cause(KNMError), wh_json:new()),
-                      wh_json:set_value([<<"error">>, Number], JObj, Acc)
+                      JObj = kz_json:set_value(<<"reason">>, knm_errors:cause(KNMError), kz_json:new()),
+                      kz_json:set_value([<<"error">>, Number], JObj, Acc)
               end
       end
                ,Temp
@@ -512,18 +512,18 @@ collection_process(Context, Numbers) ->
      ).
 
 collection_process(Context, Numbers, Action) ->
-    Base = wh_json:from_list([{<<"success">>, wh_json:new()}
-                             ,{<<"error">>, wh_json:new()}
+    Base = kz_json:from_list([{<<"success">>, kz_json:new()}
+                             ,{<<"error">>, kz_json:new()}
                              ]
                             ),
     lists:foldl(
       fun(Number, Acc) ->
               case collection_action(Context, cb_context:req_verb(Context), Number, Action) of
                   {'ok', JObj} ->
-                      wh_json:set_value([<<"success">>, Number], JObj, Acc);
+                      kz_json:set_value([<<"success">>, Number], JObj, Acc);
                   {'error', KNMError} ->
-                      JObj = wh_json:set_value(<<"reason">>, knm_errors:cause(KNMError), wh_json:new()),
-                      wh_json:set_value([<<"error">>, Number], JObj, Acc)
+                      JObj = kz_json:set_value(<<"reason">>, knm_errors:cause(KNMError), kz_json:new()),
+                      kz_json:set_value([<<"error">>, Number], JObj, Acc)
               end
       end
       ,Base
@@ -533,19 +533,19 @@ collection_process(Context, Numbers, Action) ->
 -spec collection_action(cb_context:context(), http_method(), ne_binary()) -> knm_number_return().
 -spec collection_action(cb_context:context(), http_method(), ne_binary(), ne_binary()) ->
                                   knm_number_return() |
-                                  {'ok', wh_json:object()}.
+                                  {'ok', kz_json:object()}.
 
 collection_action(Context, ?HTTP_PUT, Number) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
-               ,{'public_fields', wh_json:delete_key(<<"numbers">>, cb_context:doc(Context))}
+               ,{'public_fields', kz_json:delete_key(<<"numbers">>, cb_context:doc(Context))}
               ],
     knm_number:create(Number, Options);
 collection_action(Context, ?HTTP_POST, Number) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
               ],
-    ToMerge = wh_json:delete_key(<<"numbers">>, cb_context:doc(Context)),
+    ToMerge = kz_json:delete_key(<<"numbers">>, cb_context:doc(Context)),
     knm_number:update(Number, [{fun knm_phone_number:update_doc/2, ToMerge}], Options);
 collection_action(Context, ?HTTP_DELETE, Number) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
@@ -554,11 +554,11 @@ collection_action(Context, ?HTTP_DELETE, Number) ->
 
 collection_action(Context, ?HTTP_PUT, Number, ?ACTIVATE) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
-               ,{'public_fields', wh_json:delete_key(<<"numbers">>, cb_context:doc(Context))}
+               ,{'public_fields', kz_json:delete_key(<<"numbers">>, cb_context:doc(Context))}
               ],
     case knm_number:move(Number, cb_context:account_id(Context), Options) of
         {'ok', KNum} ->
-            wh_json:delete_key(<<"numbers">>, knm_number:to_public_json(KNum));
+            kz_json:delete_key(<<"numbers">>, knm_number:to_public_json(KNum));
         _Else -> _Else
     end.
 

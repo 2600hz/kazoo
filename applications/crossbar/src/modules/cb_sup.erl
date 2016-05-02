@@ -53,7 +53,7 @@ start_link() ->
     proc_lib:start_link(?SERVER, 'init_io', [self()]).
 
 init_io(Parent) ->
-    wh_util:put_callid(<<"cb_sup_io_server">>),
+    kz_util:put_callid(<<"cb_sup_io_server">>),
     register(?SERVER, self()),
     lager:debug("Acking to ~p", [Parent]),
     Debug = sys:debug_options([]),
@@ -199,7 +199,7 @@ does_resource_exist(ModuleBin, FunctionBin, Args) ->
     Arity = erlang:length(Args),
 
     try {module_name(ModuleBin)
-         ,wh_util:to_atom(FunctionBin)
+         ,kz_util:to_atom(FunctionBin)
         }
     of
         {Module, Function} ->
@@ -215,7 +215,7 @@ module_name(ModuleBin) ->
     %% NOTE: the unsafe convertion to an atom is not an issue
     %%   in this module, despite coming from a user, because
     %%   only the system admin has access...
-    Module = wh_util:to_atom(<<ModuleBin/binary, "_maintenance">>, 'true'),
+    Module = kz_util:to_atom(<<ModuleBin/binary, "_maintenance">>, 'true'),
     try Module:module_info() of
         _ -> Module
     catch
@@ -241,9 +241,9 @@ validate(Context) -> Context.
 validate(Context, ModuleBin) ->
     validate_sup(Context, module_name(ModuleBin), 'status', []).
 validate(Context, ModuleBin, FunctionBin) ->
-    validate_sup(Context, module_name(ModuleBin), wh_util:to_atom(FunctionBin), []).
+    validate_sup(Context, module_name(ModuleBin), kz_util:to_atom(FunctionBin), []).
 validate(Context, ModuleBin, FunctionBin, Args) ->
-    validate_sup(Context, module_name(ModuleBin), wh_util:to_atom(FunctionBin), Args).
+    validate_sup(Context, module_name(ModuleBin), kz_util:to_atom(FunctionBin), Args).
 
 validate_sup(Context, Module, Function, Args) ->
     OldGroupLeader = group_leader(),

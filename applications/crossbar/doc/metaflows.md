@@ -156,8 +156,8 @@ Here, `{THINGS}` would be "callflows", "users", "devices", etc, and `{THING_ID}`
 
 Metaflows can be configured to be started without needing to attach them to a device, user, etc. You can configure default metaflows on an account or across the system.
 
-To start a metaflow handler for an account: `sup whapps_account_config set {ACCOUNT_ID} metaflows default_metaflow true`
+To start a metaflow handler for an account: `sup kapps_account_config set {ACCOUNT_ID} metaflows default_metaflow true`
 
-To start a metaflow for all accounts: `sup whapps_config set_default metaflows default_metaflow true`
+To start a metaflow for all accounts: `sup kapps_config set_default metaflows default_metaflow true`
 
 Now, this in and of itself isn't too useful

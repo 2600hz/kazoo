@@ -10,8 +10,8 @@
 -include("kz_data.hrl").
 
 -type connection() :: any().
--type options() :: wh_proplist().
--type document() :: wh_json:object().
+-type options() :: kz_proplist().
+-type document() :: kz_json:object().
 -type documents() :: [document()].
 
 -export_type([connection/0, options/0, document/0, documents/0]).

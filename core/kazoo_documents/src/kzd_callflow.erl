@@ -15,7 +15,7 @@
 
 -include("kz_documents.hrl").
 
--type doc() :: wh_json:object().
+-type doc() :: kz_json:object().
 -export_type([doc/0]).
 
 -define(FEATURE_CODE, <<"featurecode">>).
@@ -29,7 +29,7 @@
 %%--------------------------------------------------------------------
 -spec new() -> doc().
 new() ->
-    wh_json:from_list([{<<"pvt_type">>, type()}]).
+    kz_json:from_list([{<<"pvt_type">>, type()}]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -47,9 +47,9 @@ type() -> ?PVT_TYPE.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_feature_code(wh_json:object()) -> boolean().
+-spec is_feature_code(kz_json:object()) -> boolean().
 is_feature_code(JObj) ->
-    case wh_json:get_value(?FEATURE_CODE, JObj, 'false') of
+    case kz_json:get_value(?FEATURE_CODE, JObj, 'false') of
         'false' -> 'false';
         _ -> 'true'
     end.

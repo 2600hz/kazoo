@@ -13,16 +13,16 @@
         ]).
 
 -include("blackhole.hrl").
--include_lib("whistle/include/wapi_conf.hrl").
+-include_lib("kazoo/include/kapi_conf.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(bh_context:context(), wh_json:object()) -> 'ok'.
+-spec handle_event(bh_context:context(), kz_json:object()) -> 'ok'.
 handle_event(Context, EventJObj) ->
-    wh_util:put_callid(EventJObj),
+    kz_util:put_callid(EventJObj),
     lager:debug("handle_event fired for ~s ~s", [bh_context:account_id(Context), bh_context:websocket_session_id(Context)]),
     blackhole_data_emitter:emit(
         bh_context:websocket_pid(Context)
@@ -51,7 +51,7 @@ add_amqp_binding(Binding, Context) ->
 add_amqp_binding(_Binding, Context, Action, Type) ->
     lager:debug("adding amqp binding: ~s", [_Binding]),
     AccountId = bh_context:account_id(Context),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     Keys = [[{'action', Action}, {'db', AccountDb}, {'doc_type', Type}]],
     blackhole_listener:add_binding(
         'conf'
@@ -72,7 +72,7 @@ rm_amqp_binding(Binding, Context) ->
     lager:debug("removing amqp binding: ~s", [Binding]),
     [Action, _, Type|_] = binary:split(Binding, <<".">>, ['global']),
     AccountId = bh_context:account_id(Context),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     Keys = [[{'action', Action}, {'db', AccountDb}, {'doc_type', Type}]],
     blackhole_listener:remove_binding(
         'conf'
@@ -88,8 +88,8 @@ rm_amqp_binding(Binding, Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec event_name(wh_json:object()) -> ne_binary().
+-spec event_name(kz_json:object()) -> ne_binary().
 event_name(EventJObj) ->
-    EventName = wh_api:event_name(EventJObj),
-    DocType = wh_json:get_value(<<"Type">>, EventJObj),
+    EventName = kz_api:event_name(EventJObj),
+    DocType = kz_json:get_value(<<"Type">>, EventJObj),
     <<EventName/binary, "_", DocType/binary>>.

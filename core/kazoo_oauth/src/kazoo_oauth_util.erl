@@ -31,17 +31,17 @@ get_oauth_provider(ProviderId) ->
 
 oauth_provider_from_jobj(ProviderId, JObj) ->
     #oauth_provider{name=ProviderId
-                    ,auth_url= wh_json:get_value(<<"oauth_url">>, JObj)
-                    ,tokeninfo_url= wh_json:get_value(<<"tokeninfo_url">>, JObj)
-                    ,profile_url= wh_json:get_value(<<"profile_url">>, JObj)
-                    ,servers= wh_json:get_value(<<"servers">>, JObj)
-                    ,scopes= wh_json:get_value(<<"scopes">>, JObj)
+                    ,auth_url= kz_json:get_value(<<"oauth_url">>, JObj)
+                    ,tokeninfo_url= kz_json:get_value(<<"tokeninfo_url">>, JObj)
+                    ,profile_url= kz_json:get_value(<<"profile_url">>, JObj)
+                    ,servers= kz_json:get_value(<<"servers">>, JObj)
+                    ,scopes= kz_json:get_value(<<"scopes">>, JObj)
                    }.
 
 get_oauth_app(AppId) ->
     case kz_datamgr:open_doc(?KZ_OAUTH_DB, AppId) of
         {'ok', JObj} ->
-            ProviderId = wh_json:get_value(<<"pvt_oauth_provider">>, JObj),
+            ProviderId = kz_json:get_value(<<"pvt_oauth_provider">>, JObj),
             case get_oauth_provider(ProviderId) of
                 {'ok', Provider} -> {'ok', oauth_app_from_jobj(AppId, Provider, JObj)};
                 E -> E
@@ -51,15 +51,15 @@ get_oauth_app(AppId) ->
 
 oauth_app_from_jobj(AppId, Provider, JObj) ->
     #oauth_app{name = AppId
-               ,account_id = wh_doc:account_id(JObj)
-               ,secret = wh_json:get_first_defined([<<"pvt_secret">>, <<"client_secret">>], JObj)
-               ,user_prefix = wh_json:get_value(<<"pvt_user_prefix">>, JObj)
+               ,account_id = kz_doc:account_id(JObj)
+               ,secret = kz_json:get_first_defined([<<"pvt_secret">>, <<"client_secret">>], JObj)
+               ,user_prefix = kz_json:get_value(<<"pvt_user_prefix">>, JObj)
                ,provider = Provider}.
 
 get_oauth_service_app(AppId) ->
     case kz_datamgr:open_doc(?KZ_OAUTH_DB, AppId) of
         {'ok', JObj} ->
-            ProviderId = wh_json:get_value(<<"pvt_oauth_provider">>, JObj),
+            ProviderId = kz_json:get_value(<<"pvt_oauth_provider">>, JObj),
             {'ok', Provider} = get_oauth_provider(ProviderId),
             load_service_app_keys(
               oauth_service_from_jobj(AppId, Provider, JObj)
@@ -71,9 +71,9 @@ get_oauth_service_app(AppId) ->
 
 oauth_service_from_jobj(AppId, Provider, JObj) ->
     #oauth_service_app{name = AppId
-                       ,account_id = wh_doc:account_id(JObj)
-                       ,email = wh_json:get_value(<<"email">>, JObj)
-                       ,public_key_fingerprints = wh_json:get_value(<<"public_key_fingerprints">>, JObj)
+                       ,account_id = kz_doc:account_id(JObj)
+                       ,email = kz_json:get_value(<<"email">>, JObj)
+                       ,public_key_fingerprints = kz_json:get_value(<<"public_key_fingerprints">>, JObj)
                        ,provider = Provider}.
 
 -spec load_service_app_keys(oauth_service_app()) ->
@@ -106,8 +106,8 @@ pem_to_rsa(PemFileContents) ->
     [RSAEntry] = public_key:pem_decode(PemFileContents),
     public_key:pem_entry_decode(RSAEntry).
 
--spec jwt(oauth_service_app(), wh_json:json_term()) -> ne_binary().
--spec jwt(oauth_service_app(), wh_json:json_term(), ne_binary()) -> ne_binary().
+-spec jwt(oauth_service_app(), kz_json:json_term()) -> ne_binary().
+-spec jwt(oauth_service_app(), kz_json:json_term(), ne_binary()) -> ne_binary().
 jwt(#oauth_service_app{email=AccountEmail}=App, Scope) ->
     jwt(App, Scope, AccountEmail).
 
@@ -118,14 +118,14 @@ jwt(#oauth_service_app{private_key=PrivateKey
     ,Scope
     ,EMail
    ) ->
-    JObj = wh_json:from_list([{<<"iss">>, EMail}
+    JObj = kz_json:from_list([{<<"iss">>, EMail}
                               ,{<<"aud">>, URL}
                               ,{<<"scope">>, Scope}
-                              ,{<<"iat">>, wh_util:current_unix_tstamp()-500}
-                              ,{<<"exp">>, wh_util:current_unix_tstamp()+(2 * ?MILLISECONDS_IN_SECOND)}
+                              ,{<<"iat">>, kz_util:current_unix_tstamp()-500}
+                              ,{<<"exp">>, kz_util:current_unix_tstamp()+(2 * ?MILLISECONDS_IN_SECOND)}
                              ]),
 
-    JWT64 = base64:encode(wh_json:encode(JObj)),
+    JWT64 = base64:encode(kz_json:encode(JObj)),
     JWT64_HEADER = <<"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9">>,
     JWT_FOR_SIGN = <<JWT64_HEADER/binary, ".", JWT64/binary>>,
     JWT_SIGNATURE = public_key:sign(JWT_FOR_SIGN, 'sha256', PrivateKey),
@@ -138,8 +138,8 @@ jwt(#oauth_service_app{private_key=PrivateKey
 token(DocId) when is_binary(DocId) ->
     case kz_datamgr:open_cache_doc(?KZ_OAUTH_DB, DocId) of
         {'ok', JObj} ->
-            Tok = #oauth_refresh_token{token=wh_json:get_value(<<"refresh_token">>, JObj)},
-            AppId = wh_json:get_value(<<"app">>, JObj),
+            Tok = #oauth_refresh_token{token=kz_json:get_value(<<"refresh_token">>, JObj)},
+            AppId = kz_json:get_value(<<"app">>, JObj),
             token(AppId, Tok);
         {'error', _R}=Error ->
             lager:debug("unable to get oauth doc ~s: ~p", [DocId, _R]),
@@ -157,7 +157,7 @@ token(AppId, UserId) when is_binary(AppId) ->
     end;
 token(#oauth_app{}=App, DocId) when is_binary(DocId) ->
     case kz_datamgr:open_doc(?KZ_OAUTH_DB, DocId) of
-        {'ok', JObj} -> token(App, #oauth_refresh_token{token=wh_json:get_value(<<"refresh_token">>, JObj)});
+        {'ok', JObj} -> token(App, #oauth_refresh_token{token=kz_json:get_value(<<"refresh_token">>, JObj)});
         {'error', _R}=Error ->
             lager:debug("unable to get oauth user id ~s: ~p", [DocId, _R]),
             Error
@@ -171,22 +171,22 @@ token(#oauth_app{name=AppId
      ) ->
     lager:debug("getting token : refresh ~p",[RefreshToken]),
     Headers = [{"Content-Type","application/x-www-form-urlencoded"}],
-    Fields = [{"client_id", wh_util:to_list(AppId)}
-              ,{"client_secret",wh_util:to_list(Secret)}
+    Fields = [{"client_id", kz_util:to_list(AppId)}
+              ,{"client_secret",kz_util:to_list(Secret)}
               ,{"grant_type","refresh_token"}
-              ,{"refresh_token",wh_util:to_list(RefreshToken)}
+              ,{"refresh_token",kz_util:to_list(RefreshToken)}
              ],
     Body = string:join(lists:append(lists:map(fun({K,V}) -> [string:join([K,V], "=")] end, Fields)), "&"),
-    case kz_http:post(wh_util:to_list(AUTH_URL), Headers, Body) of
+    case kz_http:post(kz_util:to_list(AUTH_URL), Headers, Body) of
         {'ok', 200, _RespHeaders, RespXML} ->
-            JObj = wh_json:decode(RespXML),
-            Token = wh_json:get_value(<<"access_token">>, JObj),
-            Type = wh_json:get_value(<<"token_type">>, JObj),
-            Expires = wh_json:get_integer_value(<<"expires_in">>, JObj),
+            JObj = kz_json:decode(RespXML),
+            Token = kz_json:get_value(<<"access_token">>, JObj),
+            Type = kz_json:get_value(<<"token_type">>, JObj),
+            Expires = kz_json:get_integer_value(<<"expires_in">>, JObj),
             {'ok', #oauth_token{token=Token
                                 ,type=Type
                                 ,expires=Expires
-                                ,issued=wh_util:current_tstamp()
+                                ,issued=kz_util:current_tstamp()
                                }
             };
         Else ->
@@ -204,10 +204,10 @@ verify_token(ProviderId, AccessToken) when is_binary(ProviderId) ->
     end;
 verify_token(#oauth_provider{tokeninfo_url=TokenInfoUrl}, AccessToken) ->
     URL = <<TokenInfoUrl/binary, AccessToken/binary>>,
-    case kz_http:get(wh_util:to_list(URL)) of
+    case kz_http:get(kz_util:to_list(URL)) of
         {'ok', 200, _RespHeaders, RespXML} ->
-            JObj = wh_json:decode(RespXML),
-            case wh_json:get_value(<<"error">>, JObj) of
+            JObj = kz_json:decode(RespXML),
+            case kz_json:get_value(<<"error">>, JObj) of
                 'undefined' -> {'ok',JObj};
                 _ -> {'error', JObj}
             end;
@@ -220,7 +220,7 @@ verify_token(#oauth_provider{tokeninfo_url=TokenInfoUrl}, AccessToken) ->
 refresh_token(Token) ->
     #oauth_refresh_token{token=Token}.
 
--spec refresh_token(api_binary() | oauth_app(), api_binary(), api_binary(), wh_proplist() ) ->
+-spec refresh_token(api_binary() | oauth_app(), api_binary(), api_binary(), kz_proplist() ) ->
                            {'ok', api_object()} |
                            {'error', any()}.
 refresh_token(AppId, Scope, AuthorizationCode, ExtraHeaders)
@@ -233,7 +233,7 @@ refresh_token(AppId, Scope, AuthorizationCode, ExtraHeaders)
 refresh_token(App, Scope, AuthorizationCode, ExtraHeaders) ->
     refresh_token(App, Scope, AuthorizationCode, ExtraHeaders, <<"postmessage">>).
 
--spec refresh_token(oauth_app(), api_binary(), api_binary(), wh_proplist(), api_binary()) ->
+-spec refresh_token(oauth_app(), api_binary(), api_binary(), kz_proplist(), api_binary()) ->
                            {'ok', api_object()} |
                            {'error', any()}.
 refresh_token(#oauth_app{name=ClientId
@@ -250,10 +250,10 @@ refresh_token(#oauth_app{name=ClientId
               ,{"scope", Scope}
               ,{"code", AuthorizationCode}
              ],
-    Body = string:join(lists:append(lists:map(fun({K,V}) -> [string:join([K, wh_util:to_list(V)], "=") ] end, Fields)),"&"),
-    case kz_http:post(wh_util:to_list(URL), Headers, Body) of
+    Body = string:join(lists:append(lists:map(fun({K,V}) -> [string:join([K, kz_util:to_list(V)], "=") ] end, Fields)),"&"),
+    case kz_http:post(kz_util:to_list(URL), Headers, Body) of
         {'ok', 200, _RespHeaders, RespXML} ->
-            {'ok', wh_json:decode(RespXML)};
+            {'ok', kz_json:decode(RespXML)};
         Else ->
             lager:debug("unable to get new oauth token: ~p", [Else]),
             {'error', Else}

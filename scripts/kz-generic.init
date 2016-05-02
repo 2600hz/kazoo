@@ -67,7 +67,7 @@ case "$1" in
         ;;
     status)
         export HOME=${KZ_DIR}
-        sup -n${KZ_APP} whistle_maintenance nodes
+        sup -n${KZ_APP} kazoo_maintenance nodes
         RETVAL=$?
         ;;
     restart|reload)

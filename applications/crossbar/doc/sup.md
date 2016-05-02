@@ -35,8 +35,8 @@ The important differences are:
   </thead>
   <tbody>
     <tr>
-      <td>`sup whistle_maintenance syslog_level debug`</td>
-      <td>`curl /v1/sup/whistle/syslog_level/debug`</td>
+      <td>`sup kazoo_maintenance syslog_level debug`</td>
+      <td>`curl /v1/sup/kazoo/syslog_level/debug`</td>
     </tr>
   </tbody>
 </table>

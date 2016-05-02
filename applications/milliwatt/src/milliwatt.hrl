@@ -9,10 +9,10 @@
 -ifndef(MILLIWATT_HRL).
 
 %% Typical includes needed
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_log.hrl").
--include_lib("whistle/include/wh_api.hrl").
--include_lib("whistle/include/wh_databases.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo/include/kz_log.hrl").
+-include_lib("kazoo/include/kz_api.hrl").
+-include_lib("kazoo/include/kz_databases.hrl").
 
 -define(APP_NAME, <<"milliwatt">>).
 -define(APP_VERSION, <<"4.0.0">>).

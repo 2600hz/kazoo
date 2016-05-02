@@ -39,7 +39,7 @@
 
 -include("kz_documents.hrl").
 
--type doc() :: wh_json:object().
+-type doc() :: kz_json:object().
 -export_type([doc/0]).
 
 %%--------------------------------------------------------------------
@@ -49,7 +49,7 @@
 %%--------------------------------------------------------------------
 -spec new() -> doc().
 new() ->
-    wh_doc:set_type(wh_json:new(), ?PVT_TYPE).
+    kz_doc:set_type(kz_json:new(), ?PVT_TYPE).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -66,7 +66,7 @@ type() -> ?PVT_TYPE.
 %%--------------------------------------------------------------------
 -spec id(doc()) -> api_binary().
 id(JObj) ->
-    wh_doc:id(JObj).
+    kz_doc:id(JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -78,7 +78,7 @@ id(JObj) ->
 fetch('undefined') ->
     {'error', 'invalid_db_name'};
 fetch(<<_/binary>> = AlertId) ->
-    kz_datamgr:open_cache_doc(?WH_ALERTS_DB, AlertId).
+    kz_datamgr:open_cache_doc(?KZ_ALERTS_DB, AlertId).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -95,10 +95,10 @@ title(JObj) ->
     title(JObj, 'undefined').
 
 title(JObj, Default) ->
-    wh_json:get_value(?TITLE, JObj, Default).
+    kz_json:get_value(?TITLE, JObj, Default).
 
 set_title(JObj, Title) ->
-    wh_json:set_value(?TITLE, Title, JObj).
+    kz_json:set_value(?TITLE, Title, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -115,10 +115,10 @@ category(JObj) ->
     category(JObj, 'undefined').
 
 category(JObj, Default) ->
-    wh_json:get_value(?CATEGORY, JObj, Default).
+    kz_json:get_value(?CATEGORY, JObj, Default).
 
 set_category(JObj, Category) ->
-    wh_json:set_value(?CATEGORY, Category, JObj).
+    kz_json:set_value(?CATEGORY, Category, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -135,10 +135,10 @@ message(JObj) ->
     message(JObj, 'undefined').
 
 message(JObj, Default) ->
-    wh_json:get_value(?MESSAGE, JObj, Default).
+    kz_json:get_value(?MESSAGE, JObj, Default).
 
 set_message(JObj, Message) ->
-    wh_json:set_value(?MESSAGE, Message, JObj).
+    kz_json:set_value(?MESSAGE, Message, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -146,19 +146,19 @@ set_message(JObj, Message) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec metadata() -> ne_binary().
--spec metadata(doc()) -> wh_json:object().
--spec metadata(doc(), Default) ->  wh_json:object() | Default.
+-spec metadata(doc()) -> kz_json:object().
+-spec metadata(doc(), Default) ->  kz_json:object() | Default.
 metadata() ->
     ?METADATA.
 
 metadata(JObj) ->
-    metadata(JObj, wh_json:new()).
+    metadata(JObj, kz_json:new()).
 
 metadata(JObj, Default) ->
-    wh_json:get_value(?METADATA, JObj, Default).
+    kz_json:get_value(?METADATA, JObj, Default).
 
 set_metadata(JObj, Metadata) ->
-    wh_json:set_value(?METADATA, Metadata, JObj).
+    kz_json:set_value(?METADATA, Metadata, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -175,10 +175,10 @@ level(JObj) ->
     level(JObj, <<"info">>).
 
 level(JObj, Default) ->
-    wh_json:get_value(?LEVEL, JObj, Default).
+    kz_json:get_value(?LEVEL, JObj, Default).
 
 set_level(JObj, Level) ->
-    wh_json:set_value(?LEVEL, Level, JObj).
+    kz_json:set_value(?LEVEL, Level, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -186,19 +186,19 @@ set_level(JObj, Level) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec from() -> ne_binary().
--spec from(doc()) -> wh_json:objects().
--spec from(doc(), Default) ->  wh_json:objects() | Default.
+-spec from(doc()) -> kz_json:objects().
+-spec from(doc(), Default) ->  kz_json:objects() | Default.
 from() ->
     ?FROM.
 
 from(JObj) ->
-    from(JObj, wh_json:new()).
+    from(JObj, kz_json:new()).
 
 from(JObj, Default) ->
-    wh_json:get_value(?FROM, JObj, Default).
+    kz_json:get_value(?FROM, JObj, Default).
 
 set_from(JObj, From) ->
-    wh_json:set_value(?FROM, From, JObj).
+    kz_json:set_value(?FROM, From, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -206,8 +206,8 @@ set_from(JObj, From) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec to() -> ne_binary().
--spec to(doc()) -> wh_json:objects().
--spec to(doc(), Default) ->  wh_json:objects() | Default.
+-spec to(doc()) -> kz_json:objects().
+-spec to(doc(), Default) ->  kz_json:objects() | Default.
 to() ->
     ?TO.
 
@@ -215,10 +215,10 @@ to(JObj) ->
     to(JObj, []).
 
 to(JObj, Default) ->
-    wh_json:get_value(?TO, JObj, Default).
+    kz_json:get_value(?TO, JObj, Default).
 
 set_to(JObj, To) ->
-    wh_json:set_value(?TO, To, JObj).
+    kz_json:set_value(?TO, To, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -226,19 +226,19 @@ set_to(JObj, To) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec expiration_date() -> ne_binary().
--spec expiration_date(doc()) -> wh_json:object().
--spec expiration_date(doc(), Default) ->  wh_json:object() | Default.
+-spec expiration_date(doc()) -> kz_json:object().
+-spec expiration_date(doc(), Default) ->  kz_json:object() | Default.
 expiration_date() ->
     ?EXPIRATION_DATE.
 
 expiration_date(JObj) ->
-    expiration_date(JObj, wh_json:new()).
+    expiration_date(JObj, kz_json:new()).
 
 expiration_date(JObj, Default) ->
-    wh_json:get_value(?EXPIRATION_DATE, JObj, Default).
+    kz_json:get_value(?EXPIRATION_DATE, JObj, Default).
 
 set_expiration_date(JObj, ExpDate) ->
-    wh_json:set_value(?EXPIRATION_DATE, ExpDate, JObj).
+    kz_json:set_value(?EXPIRATION_DATE, ExpDate, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -247,7 +247,7 @@ set_expiration_date(JObj, ExpDate) ->
 %%--------------------------------------------------------------------
 -spec expired(doc()) -> boolean().
 expired(JObj) ->
-    wh_json:get_value(?EXPIRATION_DATE, JObj) < wh_util:current_tstamp().
+    kz_json:get_value(?EXPIRATION_DATE, JObj) < kz_util:current_tstamp().
 
 %%%===================================================================
 %%% Internal functions

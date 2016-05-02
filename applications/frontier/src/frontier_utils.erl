@@ -45,10 +45,10 @@ extract_username(Entity) ->
         [_JustRealm] -> 'undefined'
     end.
 
--spec is_device(wh_json:object()) -> boolean().
+-spec is_device(kz_json:object()) -> boolean().
 is_device(JObj) ->
-    <<"device">> =:= wh_json:get_value([<<"value">>, <<"type">>], JObj).
+    <<"device">> =:= kz_json:get_value([<<"value">>, <<"type">>], JObj).
 
--spec is_realm(wh_json:object()) -> boolean().
+-spec is_realm(kz_json:object()) -> boolean().
 is_realm(JObj) ->
-    <<"realm">> =:= wh_json:get_value([<<"value">>, <<"type">>], JObj).
+    <<"realm">> =:= kz_json:get_value([<<"value">>, <<"type">>], JObj).

@@ -18,7 +18,7 @@
 
 -export([handle/2]).
 
--spec name_mapping() -> wh_proplist().
+-spec name_mapping() -> kz_proplist().
 name_mapping() ->
     [{<<"call_priority">>, <<"Call-Priority">>}].
 
@@ -28,11 +28,11 @@ name_mapping() ->
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    Name = props:get_value(wh_json:get_value(<<"variable">>, Data), name_mapping()),
+    Name = props:get_value(kz_json:get_value(<<"variable">>, Data), name_mapping()),
     {'branch_keys', Keys} = cf_exe:get_branch_keys(Call),
-    Value = whapps_call:custom_channel_var(Name, Call),
+    Value = kapps_call:custom_channel_var(Name, Call),
     case lists:member(Value, Keys) of
         'true' ->
             lager:info("trying '~s'", [Value]),

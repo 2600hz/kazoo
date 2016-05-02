@@ -155,4 +155,4 @@ maybe_deny_access(Context, ReqParams) ->
      ).
 
 auth_doc(Restrictions) ->
-    wh_json:from_list([{<<"restrictions">>, Restrictions}]).
+    kz_json:from_list([{<<"restrictions">>, Restrictions}]).

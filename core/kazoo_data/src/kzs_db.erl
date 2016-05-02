@@ -66,8 +66,8 @@ db_delete(#{}=Map, DbName) ->
 do_db_delete(#{server := {App, Conn}}, DbName) ->
     App:db_delete(Conn, DbName).
 
--spec db_replicate(map(), wh_json:object() | wh_proplist()) ->
-                                {'ok', wh_json:object()} |
+-spec db_replicate(map(), kz_json:object() | kz_proplist()) ->
+                                {'ok', kz_json:object()} |
                                 data_error().
 db_replicate(#{server := {App, Conn}}, Prop) ->
     App:db_replicate(Conn,Prop).
@@ -87,7 +87,7 @@ do_db_view_cleanup(#{server := {App, Conn}}, DbName) ->
 -spec db_info(map()) -> {'ok', ne_binaries()} |data_error().
 db_info(#{server := {App, Conn}}) -> App:db_info(Conn).
 
--spec db_info(map(), ne_binary()) -> {'ok', wh_json:object()} | data_error().
+-spec db_info(map(), ne_binary()) -> {'ok', kz_json:object()} | data_error().
 db_info(#{server := {App, Conn}}, DbName) -> App:db_info(Conn, DbName).
 
 -spec db_exists(map(), ne_binary()) -> boolean().
@@ -138,7 +138,7 @@ db_list_all_fold({_Tag, Server}, {Options, DBs}) ->
     {'ok', DBList} = db_list(Server, Options),
     {Options, lists:usort(DBs ++ DBList)}.
 
--spec db_view_update(map(), ne_binary(), wh_proplist(), boolean()) -> boolean().
+-spec db_view_update(map(), ne_binary(), kz_proplist(), boolean()) -> boolean().
 db_view_update(#{}=Map, DbName, Views, Remove) ->
     Others = maps:get('others', Map, []),
     do_db_view_update(Map, DbName, Views, Remove) andalso
@@ -146,7 +146,7 @@ db_view_update(#{}=Map, DbName, Views, Remove) ->
                           do_db_view_update(#{server => M1}, DbName, Views, Remove)
                   end, Others).
 
--spec do_db_view_update(map(), ne_binary(), wh_proplist(), boolean()) -> boolean().
+-spec do_db_view_update(map(), ne_binary(), kz_proplist(), boolean()) -> boolean().
 do_db_view_update(#{}=Server, Db, Views, Remove) ->
     case kzs_view:all_design_docs(Server, Db, ['include_docs']) of
         {'ok', Found} -> update_views(Found, Db, Views, Remove, Server);
@@ -154,7 +154,7 @@ do_db_view_update(#{}=Server, Db, Views, Remove) ->
             lager:debug("unable to fetch current design docs: ~p", [_R])
     end.
 
--spec update_views(wh_json:objects(), ne_binary(), wh_proplist(), boolean(), map()) -> boolean().
+-spec update_views(kz_json:objects(), ne_binary(), kz_proplist(), boolean(), map()) -> boolean().
 
 update_views([], _, [], _, _) -> 'true';
 update_views([], Db, [{Id,View}|Views], Remove, Server) ->
@@ -162,9 +162,9 @@ update_views([], Db, [{Id,View}|Views], Remove, Server) ->
     _ = kzs_doc:ensure_saved(Server, Db, View, []),
     update_views([], Db, Views, Remove, Server);
 update_views([Found|Finds], Db, Views, Remove, Server) ->
-    Id = wh_doc:id(Found),
-    Doc = wh_json:get_value(<<"doc">>, Found),
-    RawDoc = wh_doc:delete_revision(Doc),
+    Id = kz_doc:id(Found),
+    Doc = kz_json:get_value(<<"doc">>, Found),
+    RawDoc = kz_doc:delete_revision(Doc),
     case props:get_value(Id, Views) of
         'undefined' when Remove ->
             lager:debug("removing view '~s' from '~s'", [Id, Db]),
@@ -177,7 +177,7 @@ update_views([Found|Finds], Db, Views, Remove, Server) ->
             update_views(Finds, Db, props:delete(Id, Views), Remove, Server);
         View2 ->
             lager:debug("updating view '~s' in '~s'", [Id, Db]),
-            Rev = wh_doc:revision(Doc),
-            _ = kzs_doc:ensure_saved(Server, Db, wh_doc:set_revision(View2, Rev), []),
+            Rev = kz_doc:revision(Doc),
+            _ = kzs_doc:ensure_saved(Server, Db, kz_doc:set_revision(View2, Rev), []),
             update_views(Finds, Db, props:delete(Id, Views), Remove, Server)
     end.

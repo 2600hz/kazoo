@@ -21,8 +21,8 @@
 %%--------------------------------------------------------------------
 -spec refresh_database() -> 'ok'.
 refresh_database() ->
-    _ = kz_datamgr:db_create(?WH_DEDICATED_IP_DB),
-    _ = kz_datamgr:revise_docs_from_folder(?WH_DEDICATED_IP_DB
+    _ = kz_datamgr:db_create(?KZ_DEDICATED_IP_DB),
+    _ = kz_datamgr:revise_docs_from_folder(?KZ_DEDICATED_IP_DB
                                           ,'kazoo_ips'
                                           ,"views"
                                          ),

@@ -30,7 +30,7 @@
 -type created_uuid() :: {'fs' | 'api', ne_binary()}.
 -record(state, {node :: atom()
                 ,server_id :: api_binary()
-                ,originate_req = wh_json:new() :: wh_json:object()
+                ,originate_req = kz_json:new() :: kz_json:object()
                 ,uuid :: created_uuid()
                 ,action :: api_binary()
                 ,app :: api_binary()
@@ -38,7 +38,7 @@
                 ,queue :: api_binary()
                 ,control_pid :: api_pid()
                 ,tref :: api_reference()
-                ,fetch_id = wh_util:rand_hex_binary(16)
+                ,fetch_id = kz_util:rand_hex_binary(16)
                }).
 -type state() :: #state{}.
 
@@ -66,7 +66,7 @@
 %% @public
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(atom(), wh_json:object()) -> startlink_ret().
+-spec start_link(atom(), kz_json:object()) -> startlink_ret().
 start_link(Node, JObj) ->
     gen_listener:start_link(?SERVER
                             ,[{'bindings', ?BINDINGS}
@@ -83,14 +83,14 @@ start_link(Node, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call_events(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_call_events(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_call_events(JObj, Props) ->
     Srv = props:get_value('server', Props),
-    case props:get_value('uuid', Props) =:=  wh_json:get_binary_value(<<"Call-ID">>, JObj)
-        andalso wh_json:get_value(<<"Event-Name">>, JObj)
+    case props:get_value('uuid', Props) =:=  kz_json:get_binary_value(<<"Call-ID">>, JObj)
+        andalso kz_json:get_value(<<"Event-Name">>, JObj)
     of
         <<"CHANNEL_EXECUTE_COMPLETE">> ->
-            case wh_json:get_value(<<"Application-Name">>, JObj) of
+            case kz_json:get_value(<<"Application-Name">>, JObj) of
                 <<"bridge">> ->
                     gen_listener:cast(Srv, {'bridge_execute_complete', JObj});
                 _Else -> 'ok'
@@ -106,13 +106,13 @@ handle_call_events(JObj, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_originate_execute(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_originate_execute(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_originate_execute(JObj, Props) ->
-    'true' = wapi_dialplan:originate_execute_v(JObj),
+    'true' = kapi_dialplan:originate_execute_v(JObj),
     Srv = props:get_value('server', Props),
     UUID = props:get_value('uuid', Props),
     lager:debug("recv originate_execute for ~s", [UUID]),
-    _ = case wh_json:get_ne_binary_value(<<"Server-ID">>, JObj) of
+    _ = case kz_json:get_ne_binary_value(<<"Server-ID">>, JObj) of
             'undefined' -> 'ok';
             ServerId ->
                 gen_listener:cast(Srv, {'update_server_id', ServerId})
@@ -136,10 +136,10 @@ handle_originate_execute(JObj, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, JObj]) ->
-    _ = wh_util:put_callid(JObj),
-    ServerId = wh_json:get_ne_binary_value(<<"Server-ID">>, JObj),
+    _ = kz_util:put_callid(JObj),
+    ServerId = kz_json:get_ne_binary_value(<<"Server-ID">>, JObj),
     _ = bind_to_events(freeswitch:version(Node), Node),
-    case wapi_resource:originate_req_v(JObj) of
+    case kapi_resource:originate_req_v(JObj) of
         'false' ->
             Error = <<"originate failed to execute as JObj did not validate">>,
             publish_error(Error, 'undefined', JObj, ServerId),
@@ -200,9 +200,9 @@ handle_cast({'create_uuid'}, #state{node=Node
                                     ,uuid='undefined'
                                    }=State) ->
     UUID = {_, Id} = create_uuid(JObj, Node),
-    wh_util:put_callid(Id),
+    kz_util:put_callid(Id),
     lager:debug("created uuid ~p", [UUID]),
-    case wh_json:is_true(<<"Start-Control-Process">>, JObj, 'true')
+    case kz_json:is_true(<<"Start-Control-Process">>, JObj, 'true')
         andalso start_control_process(State#state{uuid=UUID}) of
         'false' ->
             gen_listener:cast(self(), {'build_originate_args'}),
@@ -220,7 +220,7 @@ handle_cast({'get_originate_action'}, #state{originate_req=JObj
                                              ,node=Node
                                             }=State) ->
     gen_listener:cast(self(), {'build_originate_args'}),
-    ApplicationName = wh_json:get_value(<<"Application-Name">>, JObj),
+    ApplicationName = kz_json:get_value(<<"Application-Name">>, JObj),
     Action = get_originate_action(ApplicationName, JObj),
     UseNode = maybe_update_node(JObj, Node),
     lager:debug("maybe updating node from ~s to ~s", [Node, UseNode]),
@@ -240,12 +240,12 @@ handle_cast({'build_originate_args'}, #state{originate_req=JObj
                                              ,fetch_id=FetchId
                                              ,dialstrings='undefined'
                                             }=State) ->
-    case wh_json:is_true(<<"Originate-Immediate">>, JObj) of
+    case kz_json:is_true(<<"Originate-Immediate">>, JObj) of
         'true' -> gen_listener:cast(self(), {'originate_execute'});
         'false' -> gen_listener:cast(self(), {'originate_ready'})
     end,
     Endpoints = [update_endpoint(Endpoint, State)
-                 || Endpoint <- wh_json:get_ne_value(<<"Endpoints">>, JObj, [])
+                 || Endpoint <- kz_json:get_ne_value(<<"Endpoints">>, JObj, [])
                 ],
     {'noreply', State#state{dialstrings=build_originate_args_from_endpoints(?ORIGINATE_PARK, Endpoints, JObj, FetchId)}};
 handle_cast({'build_originate_args'}, #state{originate_req=JObj
@@ -289,7 +289,7 @@ handle_cast({'originate_execute'}, #state{dialstrings=Dialstrings
                                           ,server_id=ServerId
                                           ,control_pid=CtrlPid
                                          }=State) ->
-    ControlDisabled = wh_json:is_false(<<"Start-Control-Process">>, JObj, 'false'),
+    ControlDisabled = kz_json:is_false(<<"Start-Control-Process">>, JObj, 'false'),
     case originate_execute(Node, Dialstrings, find_originate_timeout(JObj)) of
         {'ok', UUID} when is_pid(CtrlPid) ->
             lager:debug("originate completed for: ~s with ctrl ~p", [UUID, CtrlPid]),
@@ -309,7 +309,7 @@ handle_cast({'originate_execute'}, #state{dialstrings=Dialstrings
             _ = publish_originate_resp(ServerId, JObj, CallId),
             {'stop', 'normal', State#state{control_pid='undefined'}};
         {'ok', CallId} ->
-            wh_util:put_callid(CallId),
+            kz_util:put_callid(CallId),
             lager:debug("originate is executing, waiting for completion"),
             erlang:monitor_node(Node, 'true'),
             bind_to_call_events(CallId),
@@ -435,23 +435,23 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec get_originate_action(ne_binary(), wh_json:object()) -> ne_binary().
+-spec get_originate_action(ne_binary(), kz_json:object()) -> ne_binary().
 get_originate_action(<<"fax">>, JObj) ->
     lager:debug("got originate with action fax"),
-    Data = wh_json:get_value(<<"Application-Data">>, JObj),
+    Data = kz_json:get_value(<<"Application-Data">>, JObj),
     <<"&txfax(${http_get(", Data/binary, ")})">>;
 get_originate_action(<<"transfer">>, JObj) ->
-    get_transfer_action(JObj, wh_json:get_value([<<"Application-Data">>, <<"Route">>], JObj));
+    get_transfer_action(JObj, kz_json:get_value([<<"Application-Data">>, <<"Route">>], JObj));
 get_originate_action(<<"bridge">>, JObj) ->
     lager:debug("got originate with action bridge"),
-    CallId = wh_json:get_binary_value(<<"Existing-Call-ID">>, JObj),
+    CallId = kz_json:get_binary_value(<<"Existing-Call-ID">>, JObj),
     intercept_unbridged_only(CallId, JObj);
 get_originate_action(<<"eavesdrop">>, JObj) ->
     lager:debug("got originate with action eavesdrop"),
-    EavesdropCallId = wh_json:get_binary_value(<<"Eavesdrop-Call-ID">>, JObj),
+    EavesdropCallId = kz_json:get_binary_value(<<"Eavesdrop-Call-ID">>, JObj),
     case ecallmgr_fs_channel:node(EavesdropCallId) of
         {'error', _} ->
-            lager:debug("failed to find channel ~p in node list", [wh_json:get_value(<<"Eavesdrop-Call-ID">>, JObj)]),
+            lager:debug("failed to find channel ~p in node list", [kz_json:get_value(<<"Eavesdrop-Call-ID">>, JObj)]),
             <<"error">>;
         {'ok', N} ->
             gen_listener:cast(self(), {'maybe_update_node', N}),
@@ -461,7 +461,7 @@ get_originate_action(_, _) ->
     lager:debug("got originate with action park"),
     ?ORIGINATE_PARK.
 
--spec get_transfer_action(wh_json:object(), api_binary()) -> ne_binary().
+-spec get_transfer_action(kz_json:object(), api_binary()) -> ne_binary().
 get_transfer_action(_JObj, 'undefined') -> <<"error">>;
 get_transfer_action(JObj, Route) ->
     Context = ?DEFAULT_FREESWITCH_CONTEXT,
@@ -470,29 +470,29 @@ get_transfer_action(JObj, Route) ->
                     ," XML ", Context, "' inline"
                    ]).
 
--spec intercept_unbridged_only(ne_binary() | 'undefined', wh_json:object()) -> ne_binary().
+-spec intercept_unbridged_only(ne_binary() | 'undefined', kz_json:object()) -> ne_binary().
 intercept_unbridged_only('undefined', JObj) ->
     get_bridge_action(JObj);
 intercept_unbridged_only(ExistingCallId, JObj) ->
-    case wh_json:is_true(<<"Intercept-Unbridged-Only">>, JObj, 'true') of
+    case kz_json:is_true(<<"Intercept-Unbridged-Only">>, JObj, 'true') of
         'true' ->
             <<" 'set:intercept_unbridged_only=true,intercept:", ExistingCallId/binary, "' inline ">>;
         'false' ->
             <<" 'set:intercept_unbridged_only=false,intercept:", ExistingCallId/binary, "' inline ">>
     end.
 
--spec get_bridge_action(wh_json:object()) -> ne_binary().
+-spec get_bridge_action(kz_json:object()) -> ne_binary().
 get_bridge_action(JObj) ->
-    Data = wh_json:get_value(<<"Application-Data">>, JObj),
+    Data = kz_json:get_value(<<"Application-Data">>, JObj),
     case ecallmgr_util:build_channel(Data) of
         {'error', _} -> <<"error">>;
         {'ok', Channel} ->
             list_to_binary(["'m:^:", get_unset_vars(JObj), "bridge:", Channel, "' inline"])
     end.
 
--spec maybe_update_node(wh_json:object(), atom()) -> atom().
+-spec maybe_update_node(kz_json:object(), atom()) -> atom().
 maybe_update_node(JObj, Node) ->
-    case wh_json:get_binary_value(<<"Existing-Call-ID">>, JObj) of
+    case kz_json:get_binary_value(<<"Existing-Call-ID">>, JObj) of
         'undefined' -> Node;
         CallId ->
             case ecallmgr_fs_channel:node(CallId) of
@@ -501,22 +501,22 @@ maybe_update_node(JObj, Node) ->
             end
     end.
 
--spec get_eavesdrop_action(wh_json:object()) -> ne_binary().
+-spec get_eavesdrop_action(kz_json:object()) -> ne_binary().
 get_eavesdrop_action(JObj) ->
-    {CallId, Group} = case wh_json:get_value(<<"Eavesdrop-Group-ID">>, JObj) of
-                          'undefined' -> {wh_json:get_binary_value(<<"Eavesdrop-Call-ID">>, JObj), <<>>};
+    {CallId, Group} = case kz_json:get_value(<<"Eavesdrop-Group-ID">>, JObj) of
+                          'undefined' -> {kz_json:get_binary_value(<<"Eavesdrop-Call-ID">>, JObj), <<>>};
                           ID -> {<<"all">>, <<"eavesdrop_require_group=", ID/binary, ",">>}
                       end,
-    case wh_json:get_value(<<"Eavesdrop-Mode">>, JObj) of
+    case kz_json:get_value(<<"Eavesdrop-Mode">>, JObj) of
         <<"whisper">> -> <<Group/binary, "queue_dtmf:w2@500,eavesdrop:", CallId/binary, " inline">>;
         <<"full">> -> <<Group/binary, "queue_dtmf:w3@500,eavesdrop:", CallId/binary, " inline">>;
         <<"listen">> -> <<Group/binary, "eavesdrop:", CallId/binary, " inline">>;
         'undefined' -> <<Group/binary, "eavesdrop:", CallId/binary, " inline">>
     end.
 
--spec build_originate_args(ne_binary(), state(), wh_json:object(), ne_binary()) -> api_binary().
+-spec build_originate_args(ne_binary(), state(), kz_json:object(), ne_binary()) -> api_binary().
 build_originate_args(Action, State, JObj, FetchId) ->
-    case wh_json:get_value(<<"Endpoints">>, JObj, []) of
+    case kz_json:get_value(<<"Endpoints">>, JObj, []) of
         [] ->
             lager:warning("no endpoints defined in originate request"),
             'undefined';
@@ -529,7 +529,7 @@ build_originate_args(Action, State, JObj, FetchId) ->
             build_originate_args_from_endpoints(Action, UpdatedEndpoints, JObj, FetchId)
     end.
 
--spec build_originate_args_from_endpoints(ne_binary(), wh_json:objects(), wh_json:object(), ne_binary()) ->
+-spec build_originate_args_from_endpoints(ne_binary(), kz_json:objects(), kz_json:object(), ne_binary()) ->
                                                  ne_binary().
 build_originate_args_from_endpoints(Action, Endpoints, JObj, FetchId) ->
     lager:debug("building originate command arguments"),
@@ -541,24 +541,24 @@ build_originate_args_from_endpoints(Action, Endpoints, JObj, FetchId) ->
 
     list_to_binary([ChannelVars, DialStrings, " ", Action]).
 
--spec get_channel_vars(wh_json:object(), ne_binary()) -> iolist().
+-spec get_channel_vars(kz_json:object(), ne_binary()) -> iolist().
 get_channel_vars(JObj, FetchId) ->
     CCVs = [{[<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], FetchId}
-            ,{[<<"Custom-Channel-Vars">>, <<"Ecallmgr-Node">>], wh_util:to_binary(node())}
+            ,{[<<"Custom-Channel-Vars">>, <<"Ecallmgr-Node">>], kz_util:to_binary(node())}
             ,{[<<"Custom-Channel-Vars">>, <<?CALL_INTERACTION_ID>>], ?CALL_INTERACTION_DEFAULT}
            ],
     Vars = maybe_add_loopback(JObj, CCVs),
-    J = wh_json:set_values(Vars, JObj),
+    J = kz_json:set_values(Vars, JObj),
     ecallmgr_fs_xml:get_channel_vars(J).
 
--spec maybe_add_loopback(wh_json:object(), wh_proplist()) -> wh_proplist().
+-spec maybe_add_loopback(kz_json:object(), kz_proplist()) -> kz_proplist().
 maybe_add_loopback(JObj, Props) ->
-    case wh_json:get_binary_boolean(<<"Simplify-Loopback">>, JObj) of
+    case kz_json:get_binary_boolean(<<"Simplify-Loopback">>, JObj) of
         'undefined' -> Props;
-        SimpliFly -> add_loopback(wh_util:is_true(SimpliFly)) ++ Props
+        SimpliFly -> add_loopback(kz_util:is_true(SimpliFly)) ++ Props
     end.
 
--spec add_loopback(boolean()) -> wh_proplist().
+-spec add_loopback(boolean()) -> kz_proplist().
 add_loopback('true') ->
     [{<<"Simplify-Loopback">>, 'true'}
      ,{<<"Loopback-Bowout">>, 'true'}
@@ -575,21 +575,21 @@ originate_execute(Node, Dialstrings, Timeout) ->
     lager:debug("executing originate on ~s: ~s", [Node, Dialstrings]),
     case freeswitch:api(Node
                         ,'originate'
-                        ,wh_util:to_list(Dialstrings)
+                        ,kz_util:to_list(Dialstrings)
                         ,Timeout*?MILLISECONDS_IN_SECOND
                        )
     of
         {'ok', <<"+OK ", ID/binary>>} ->
-            UUID = wh_util:strip_binary(binary:replace(ID, <<"\n">>, <<>>)),
+            UUID = kz_util:strip_binary(binary:replace(ID, <<"\n">>, <<>>)),
             Media = get('hold_media'),
-            _Pid = wh_util:spawn(fun set_music_on_hold/3, [Node, UUID, Media]),
+            _Pid = kz_util:spawn(fun set_music_on_hold/3, [Node, UUID, Media]),
             {'ok', UUID};
         {'ok', Other} ->
             lager:debug("recv other 'ok': ~s", [Other]),
-            {'error', wh_util:strip_binary(binary:replace(Other, <<"\n">>, <<>>))};
+            {'error', kz_util:strip_binary(binary:replace(Other, <<"\n">>, <<>>))};
         {'error', Error} when is_binary(Error) ->
             lager:debug("error originating: ~s", [Error]),
-            {'error', wh_util:strip_binary(binary:replace(Error, <<"\n">>, <<>>))};
+            {'error', kz_util:strip_binary(binary:replace(Error, <<"\n">>, <<>>))};
         {'error', _Reason} ->
             lager:debug("error originating: ~p", [_Reason]),
             {'error', <<"unspecified">>}
@@ -616,51 +616,51 @@ unbind_from_call_events() ->
 
 -spec update_uuid(api_binary(), ne_binary()) -> 'ok'.
 update_uuid(OldUUID, NewUUID) ->
-    wh_util:put_callid(NewUUID),
+    kz_util:put_callid(NewUUID),
     lager:debug("updating call id from ~s to ~s", [OldUUID, NewUUID]),
     unbind_from_call_events(),
     bind_to_call_events(NewUUID),
     'ok'.
 
 -spec create_uuid(atom()) -> created_uuid().
--spec create_uuid(wh_json:object(), atom()) -> created_uuid().
--spec create_uuid(wh_json:object(), wh_json:object(), atom()) -> created_uuid().
+-spec create_uuid(kz_json:object(), atom()) -> created_uuid().
+-spec create_uuid(kz_json:object(), kz_json:object(), atom()) -> created_uuid().
 
 create_uuid(Node) ->
     case freeswitch:api(Node, 'create_uuid', " ") of
         {'ok', UUID} ->
-            wh_util:put_callid(UUID),
+            kz_util:put_callid(UUID),
             lager:debug("FS generated our uuid: ~s", [UUID]),
             {'fs', UUID};
         {'error', _E} ->
             lager:debug("unable to get a uuid from ~s: ~p", [Node, _E]),
-            {'fs', wh_util:rand_hex_binary(18)}
+            {'fs', kz_util:rand_hex_binary(18)}
     end.
 
 create_uuid(JObj, Node) ->
-    case wh_json:get_binary_value(<<"Outbound-Call-ID">>, JObj) of
+    case kz_json:get_binary_value(<<"Outbound-Call-ID">>, JObj) of
         'undefined' -> create_uuid(Node);
         CallId -> {'api', CallId}
     end.
 
 create_uuid(Endpoint, JObj, Node) ->
-    case wh_json:get_binary_value(<<"Outbound-Call-ID">>, Endpoint) of
+    case kz_json:get_binary_value(<<"Outbound-Call-ID">>, Endpoint) of
         'undefined' -> create_uuid(JObj, Node);
         CallId -> {'api', CallId}
     end.
 
--spec get_unset_vars(wh_json:object()) -> iolist().
+-spec get_unset_vars(kz_json:object()) -> iolist().
 get_unset_vars(JObj) ->
     %% Refactor (Karl wishes he had unit tests here for you to use)
-    ExportProps = [{K, <<>>} || K <- wh_json:get_value(<<"Export-Custom-Channel-Vars">>, JObj, [])],
+    ExportProps = [{K, <<>>} || K <- kz_json:get_value(<<"Export-Custom-Channel-Vars">>, JObj, [])],
     Export = [K || KV <- lists:foldr(fun ecallmgr_fs_xml:get_channel_vars/2
                                      ,[]
-                                     ,[{<<"Custom-Channel-Vars">>, wh_json:from_list(ExportProps)}]
+                                     ,[{<<"Custom-Channel-Vars">>, kz_json:from_list(ExportProps)}]
                                     ),
                    ([K, _] = string:tokens(binary_to_list(KV), "=")) =/= 'undefined'
              ],
     case ["unset:" ++ K
-          || KV <- lists:foldr(fun ecallmgr_fs_xml:get_channel_vars/2, [], wh_json:to_proplist(JObj))
+          || KV <- lists:foldr(fun ecallmgr_fs_xml:get_channel_vars/2, [], kz_json:to_proplist(JObj))
                  ,not lists:member(begin [K, _] = string:tokens(binary_to_list(KV), "="), K end, Export)]
     of
         [] -> "";
@@ -695,77 +695,77 @@ maybe_fix_fs_auto_answer_bug(Export) ->
             "^unset:sip_h_Call-Info^unset:sip_h_Alert-Info^unset:alert_info^unset:sip_invite_params^set:sip_auto_answer=false"
     end.
 
--spec publish_error(ne_binary(), created_uuid() | api_binary(), wh_json:object(), api_binary()) -> 'ok'.
+-spec publish_error(ne_binary(), created_uuid() | api_binary(), kz_json:object(), api_binary()) -> 'ok'.
 publish_error(_, _, _, 'undefined') -> 'ok';
 publish_error(Error, {_, UUID}, Request, ServerId) ->
     publish_error(Error, UUID, Request, ServerId);
 publish_error(Error, UUID, Request, ServerId) ->
     lager:debug("originate error: ~s", [Error]),
-    E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request)}
+    E = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, Request)}
          ,{<<"Call-ID">>, UUID}
          ,{<<"Request">>, Request}
          ,{<<"Error-Message">>, cleanup_error(Error)}
-         | wh_api:default_headers(<<"error">>, <<"originate_resp">>, ?APP_NAME, ?APP_VERSION)
+         | kz_api:default_headers(<<"error">>, <<"originate_resp">>, ?APP_NAME, ?APP_VERSION)
         ],
-    wh_api:publish_error(ServerId, props:filter_undefined(E)).
+    kz_api:publish_error(ServerId, props:filter_undefined(E)).
 
 -spec cleanup_error(ne_binary()) -> ne_binary().
 cleanup_error(<<"-ERR ", E/binary>>) -> E;
 cleanup_error(E) -> E.
 
--spec publish_originate_ready(ne_binary(), created_uuid() | ne_binary(), wh_json:object(), api_binary(), api_binary()) -> 'ok'.
+-spec publish_originate_ready(ne_binary(), created_uuid() | ne_binary(), kz_json:object(), api_binary(), api_binary()) -> 'ok'.
 publish_originate_ready(CtrlQ, {_, UUID}, Request, Q, ServerId) ->
     publish_originate_ready(CtrlQ, UUID, Request, Q, ServerId);
 publish_originate_ready(CtrlQ, UUID, Request, Q, ServerId) ->
     lager:debug("originate command is ready, waiting for originate_execute"),
-    Props = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request, UUID)}
+    Props = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, Request, UUID)}
              ,{<<"Call-ID">>, UUID}
              ,{<<"Control-Queue">>, CtrlQ}
-             | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
             ],
-    wapi_dialplan:publish_originate_ready(ServerId, Props).
+    kapi_dialplan:publish_originate_ready(ServerId, Props).
 
--spec publish_originate_resp(api_binary(), wh_json:object()) -> 'ok'.
+-spec publish_originate_resp(api_binary(), kz_json:object()) -> 'ok'.
 publish_originate_resp('undefined', _) -> 'ok';
 publish_originate_resp(ServerId, JObj) ->
-    Resp = wh_json:set_values([{<<"Event-Category">>, <<"resource">>}
+    Resp = kz_json:set_values([{<<"Event-Category">>, <<"resource">>}
                                ,{<<"Event-Name">>, <<"originate_resp">>}
                               ], JObj),
-    wapi_resource:publish_originate_resp(ServerId, Resp).
+    kapi_resource:publish_originate_resp(ServerId, Resp).
 
--spec publish_originate_resp(api_binary(), wh_json:object(), ne_binary()) -> 'ok'.
+-spec publish_originate_resp(api_binary(), kz_json:object(), ne_binary()) -> 'ok'.
 publish_originate_resp('undefined', _JObj, _UUID) -> 'ok';
 publish_originate_resp(ServerId, JObj, UUID) ->
-    Resp = wh_json:set_values([{<<"Event-Category">>, <<"resource">>}
+    Resp = kz_json:set_values([{<<"Event-Category">>, <<"resource">>}
                               ,{<<"Application-Response">>, <<"SUCCESS">>}
                               ,{<<"Event-Name">>, <<"originate_resp">>}
                               ,{<<"Call-ID">>, UUID}
                               ], JObj),
-    wapi_resource:publish_originate_resp(ServerId, Resp).
+    kapi_resource:publish_originate_resp(ServerId, Resp).
 
--spec publish_originate_started(api_binary(), ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
+-spec publish_originate_started(api_binary(), ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
 publish_originate_started('undefined', _, _, _) -> 'ok';
 publish_originate_started(ServerId, CallId, JObj, CtrlQ) ->
-    Resp = wh_json:from_list(
+    Resp = kz_json:from_list(
              props:filter_undefined(
                [{<<"Call-ID">>, CallId}
-                ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
                 ,{<<"Control-Queue">>, CtrlQ}
-                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ])),
-    wapi_resource:publish_originate_started(ServerId, Resp).
+    kapi_resource:publish_originate_started(ServerId, Resp).
 
--spec publish_originate_uuid(api_binary(), created_uuid() | ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
+-spec publish_originate_uuid(api_binary(), created_uuid() | ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
 publish_originate_uuid('undefined', _, _, _) -> 'ok';
 publish_originate_uuid(ServerId, UUID, JObj, CtrlQueue) ->
     Resp = props:filter_undefined(
              [{<<"Outbound-Call-ID">>, UUID}
-              ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+              ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
               ,{<<"Outbound-Call-Control-Queue">>, CtrlQueue}
-              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     lager:debug("sent originate_uuid to ~s", [ServerId]),
-    wapi_resource:publish_originate_uuid(ServerId, Resp).
+    kapi_resource:publish_originate_uuid(ServerId, Resp).
 
 -spec maybe_send_originate_uuid(created_uuid(), pid(), state()) -> 'ok'.
 maybe_send_originate_uuid({'fs', UUID}, Pid, #state{server_id=ServerId
@@ -775,22 +775,22 @@ maybe_send_originate_uuid({'fs', UUID}, Pid, #state{server_id=ServerId
     publish_originate_uuid(ServerId, UUID, JObj, CtlQ);
 maybe_send_originate_uuid(_, _, _) -> 'ok'.
 
--spec find_originate_timeout(wh_json:object()) -> pos_integer().
+-spec find_originate_timeout(kz_json:object()) -> pos_integer().
 find_originate_timeout(JObj) ->
-    OTimeout = case wh_json:get_integer_value(<<"Timeout">>, JObj) of
+    OTimeout = case kz_json:get_integer_value(<<"Timeout">>, JObj) of
                    'undefined' -> 10;
                    LT when LT > 0 -> LT;
                    _ -> 10
                end,
     find_max_endpoint_timeout(
-      wh_json:get_value(<<"Endpoints">>, JObj, [])
+      kz_json:get_value(<<"Endpoints">>, JObj, [])
       ,OTimeout
      ).
 
--spec find_max_endpoint_timeout(wh_json:objects(), pos_integer()) -> pos_integer().
+-spec find_max_endpoint_timeout(kz_json:objects(), pos_integer()) -> pos_integer().
 find_max_endpoint_timeout([], T) -> T;
 find_max_endpoint_timeout([EP|EPs], T) ->
-    case wh_json:get_integer_value(<<"Endpoint-Timeout">>, EP) of
+    case kz_json:get_integer_value(<<"Endpoint-Timeout">>, EP) of
         'undefined' -> find_max_endpoint_timeout(EPs, T);
         Timeout when Timeout > T -> find_max_endpoint_timeout(EPs, Timeout);
         _ -> find_max_endpoint_timeout(EPs, T)
@@ -806,7 +806,7 @@ start_control_process(#state{originate_req=JObj
                              ,fetch_id=FetchId
                              ,control_pid='undefined'
                             }=State) ->
-    case ecallmgr_call_sup:start_control_process(Node, Id, FetchId, ServerId, wh_json:new()) of
+    case ecallmgr_call_sup:start_control_process(Node, Id, FetchId, ServerId, kz_json:new()) of
         {'ok', CtrlPid} when is_pid(CtrlPid) ->
             _ = maybe_send_originate_uuid(UUID, CtrlPid, State),
             kz_cache:store_local(?ECALLMGR_UTIL_CACHE, {Id, 'start_listener'}, 'true'),
@@ -825,7 +825,7 @@ start_control_process(#state{control_pid=_Pid
 
 -spec maybe_start_call_handlers(created_uuid(), state()) -> 'ok'.
 maybe_start_call_handlers(UUID, #state{originate_req=JObj}=State) ->
-    case wh_json:is_true(<<"Start-Control-Process">>, JObj, 'true')
+    case kz_json:is_true(<<"Start-Control-Process">>, JObj, 'true')
              andalso start_control_process(State#state{uuid=UUID}) of
         'false' -> 'ok';
         {'ok', #state{control_pid=_Pid}} ->
@@ -838,13 +838,13 @@ maybe_start_call_handlers(UUID, #state{originate_req=JObj}=State) ->
 start_abandon_timer() ->
     erlang:send_after(?REPLY_TIMEOUT, self(), {'abandon_originate'}).
 
--spec update_endpoint(wh_json:object(), state()) -> wh_json:object().
+-spec update_endpoint(kz_json:object(), state()) -> kz_json:object().
 update_endpoint(Endpoint, #state{node=Node
                                  ,originate_req=JObj
                                  ,uuid=GlobalUUID
                                 }=State) ->
     {_, Id} = UUID =
-        case wh_json:get_value(<<"Outbound-Call-ID">>, Endpoint) of
+        case kz_json:get_value(<<"Outbound-Call-ID">>, Endpoint) of
             'undefined' -> create_uuid(Endpoint, JObj, Node);
             OutboundCallId -> {'api', OutboundCallId}
         end,
@@ -857,18 +857,18 @@ update_endpoint(Endpoint, #state{node=Node
                                                        })
     end,
 
-    fix_hold_media(wh_json:set_value(<<"origination_uuid">>, Id, Endpoint)).
+    fix_hold_media(kz_json:set_value(<<"origination_uuid">>, Id, Endpoint)).
 
 -spec uuid_matches(created_uuid(), created_uuid()) -> boolean().
 uuid_matches({_, UUID}, {_, UUID}) -> 'true';
 uuid_matches(_, _) -> 'false'.
 
--spec fix_hold_media(wh_json:object()) -> wh_json:object().
+-spec fix_hold_media(kz_json:object()) -> kz_json:object().
 fix_hold_media(Endpoint) ->
-    put('hold_media', wh_json:get_value(<<"Hold-Media">>, Endpoint)),
-    wh_json:delete_key(<<"Hold-Media">>, Endpoint).
+    put('hold_media', kz_json:get_value(<<"Hold-Media">>, Endpoint)),
+    kz_json:delete_key(<<"Hold-Media">>, Endpoint).
 
--spec should_update_uuid(api_binary(), wh_proplist()) -> boolean().
+-spec should_update_uuid(api_binary(), kz_proplist()) -> boolean().
 should_update_uuid(OldUUID, Props) ->
     case props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)) of
         <<"loopback::bowout">> ->

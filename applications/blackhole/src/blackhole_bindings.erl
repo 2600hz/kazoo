@@ -76,11 +76,11 @@ fold(Routing, Payload) ->
 %% Helper functions for working on a result set of bindings
 %% @end
 %%-------------------------------------------------------------------
--spec any(wh_proplist()) -> boolean().
+-spec any(kz_proplist()) -> boolean().
 any(Res) when is_list(Res) ->
     kazoo_bindings:any(Res, fun check_bool/1).
 
--spec all(wh_proplist()) -> boolean().
+-spec all(kz_proplist()) -> boolean().
 all(Res) when is_list(Res) ->
     kazoo_bindings:all(Res, fun check_bool/1).
 
@@ -114,7 +114,7 @@ filter_out_failed({'halt', _}) -> 'true';
 filter_out_failed({'false', _}) -> 'false';
 filter_out_failed('false') -> 'false';
 filter_out_failed({'EXIT', _}) -> 'false';
-filter_out_failed(Term) -> not wh_util:is_empty(Term).
+filter_out_failed(Term) -> not kz_util:is_empty(Term).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -128,7 +128,7 @@ filter_out_succeeded({'halt', _}) -> 'true';
 filter_out_succeeded({'false', _}) -> 'true';
 filter_out_succeeded('false') -> 'true';
 filter_out_succeeded({'EXIT', _}) -> 'true';
-filter_out_succeeded(Term) -> wh_util:is_empty(Term).
+filter_out_succeeded(Term) -> kz_util:is_empty(Term).
 
 -type bind_result() :: 'ok' |
                        {'error', 'exists'}.
@@ -174,9 +174,9 @@ modules_loaded() -> kazoo_bindings:modules_loaded().
 -spec init() -> 'ok'.
 init() ->
     lager:debug("initializing blackhole bindings"),
-    wh_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?LOG_SYSTEM_ID),
     _ = [init_mod(Mod)
-         || Mod <- whapps_config:get(?BLACKHOLE_CONFIG_CAT, <<"autoload_modules">>, ?DEFAULT_MODULES)
+         || Mod <- kapps_config:get(?BLACKHOLE_CONFIG_CAT, <<"autoload_modules">>, ?DEFAULT_MODULES)
         ],
     'ok'.
 
@@ -186,7 +186,7 @@ init_mod(ModuleName) ->
 
 maybe_init_mod(ModuleName) ->
     lager:debug("trying to init module: ~p", [ModuleName]),
-    try (wh_util:to_atom(ModuleName, 'true')):init() of
+    try (kz_util:to_atom(ModuleName, 'true')):init() of
         _ -> 'ok'
     catch
         _E:_R ->

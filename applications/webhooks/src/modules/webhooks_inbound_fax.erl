@@ -13,11 +13,11 @@
 
 -include("webhooks.hrl").
 
--define(ID, wh_util:to_binary(?MODULE)).
+-define(ID, kz_util:to_binary(?MODULE)).
 -define(NAME, <<"inbound_fax">>).
 -define(DESC, <<"Inbound faxes (or errors if they occur)">>).
 -define(METADATA
-        ,wh_json:from_list([{<<"_id">>, ?ID}
+        ,kz_json:from_list([{<<"_id">>, ?ID}
                             ,{<<"name">>, ?NAME}
                             ,{<<"description">>, ?DESC}
                            ])
@@ -52,24 +52,24 @@ init() ->
 bindings_and_responders() ->
     {?BINDINGS, ?RESPONDERS}.
 
--spec handle_event(wh_json:object(), wh_proplist()) -> 'ok'.
--spec handle_event(wh_json:object(), wh_proplist(), ne_binary()) -> 'ok'.
+-spec handle_event(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_event(kz_json:object(), kz_proplist(), ne_binary()) -> 'ok'.
 handle_event(JObj, Props) ->
-    EventName = wh_json:get_value(<<"Event-Name">>, JObj),
+    EventName = kz_json:get_value(<<"Event-Name">>, JObj),
     handle_event(JObj, Props, EventName).
 
 handle_event(JObj, _Props, ?NAME = EventName) ->
-    'true' = wapi_notifications:fax_inbound_v(JObj),
-    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
+    'true' = kapi_notifications:fax_inbound_v(JObj),
+    AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
     Formatted = format_inbound_fax_event(JObj),
     maybe_send_event(EventName, AccountId, Formatted);
 handle_event(JObj, _Props, <<"inbound_fax_error">>) ->
-    'true' = wapi_notifications:fax_inbound_error_v(JObj),
-    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
+    'true' = kapi_notifications:fax_inbound_error_v(JObj),
+    AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
     Formatted = format_inbound_fax_event(JObj),
     maybe_send_event(?NAME, AccountId, Formatted).
 
--spec maybe_send_event(ne_binary(), api_binary(), wh_json:object()) -> 'ok'.
+-spec maybe_send_event(ne_binary(), api_binary(), kz_json:object()) -> 'ok'.
 maybe_send_event(_EventName, 'undefined', _JObj) -> 'ok';
 maybe_send_event(EventName, AccountId, JObj) ->
     case webhooks_util:find_webhooks(EventName, AccountId) of
@@ -77,7 +77,7 @@ maybe_send_event(EventName, AccountId, JObj) ->
         Hooks -> webhooks_util:fire_hooks(JObj, Hooks)
     end.
 
--spec format_inbound_fax_event(wh_json:object()) -> wh_json:object().
+-spec format_inbound_fax_event(kz_json:object()) -> kz_json:object().
 format_inbound_fax_event(JObj) ->
     RemoveKeys = [<<"Fax-Notifications">>
                   ,<<"Node">>
@@ -87,7 +87,7 @@ format_inbound_fax_event(JObj) ->
                   ,<<"Event-Category">>
                   ,<<"Fax-Info">>
                  ],
-    FaxInfo = wh_json:normalize_jobj(wh_json:get_value(<<"Fax-Info">>, JObj, wh_json:new())),
-    wh_json:merge_jobjs(FaxInfo
-                        ,wh_json:normalize_jobj(JObj, RemoveKeys, [])
+    FaxInfo = kz_json:normalize_jobj(kz_json:get_value(<<"Fax-Info">>, JObj, kz_json:new())),
+    kz_json:merge_jobjs(FaxInfo
+                        ,kz_json:normalize_jobj(JObj, RemoveKeys, [])
                        ).

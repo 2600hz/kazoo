@@ -42,9 +42,9 @@
 
 -define(WSD_ID, ?WSD_ENABLED andalso {'file', <<(get('callid'))/binary, "_transfer">>}).
 
--define(WSD_EVT(Fr, T, E), ?WSD_ENABLED andalso webseq:evt(?WSD_ID, Fr, T, <<(wh_util:to_binary(?LINE))/binary, "-", E/binary>>)).
+-define(WSD_EVT(Fr, T, E), ?WSD_ENABLED andalso webseq:evt(?WSD_ID, Fr, T, <<(kz_util:to_binary(?LINE))/binary, "-", E/binary>>)).
 
--define(WSD_NOTE(W, D, N), ?WSD_ENABLED andalso webseq:note(?WSD_ID, W, D, <<(wh_util:to_binary(?LINE))/binary, "-", N/binary>>)).
+-define(WSD_NOTE(W, D, N), ?WSD_ENABLED andalso webseq:note(?WSD_ID, W, D, <<(kz_util:to_binary(?LINE))/binary, "-", N/binary>>)).
 
 -define(WSD_TITLE(T), ?WSD_ENABLED andalso webseq:title(?WSD_ID, T)).
 
@@ -58,8 +58,8 @@
                 ,target_a_leg :: api_binary() %% loopback-a
                 ,target_b_leg :: api_binary() %% loopback-b
                 ,target_legs = [] :: ne_binaries()
-                ,call :: whapps_call:call()
-                ,target_call = whapps_call:new() :: whapps_call:call()
+                ,call :: kapps_call:call()
+                ,target_call = kapps_call:new() :: kapps_call:call()
                 ,takeback_dtmf :: ne_binary()
                 ,transferor_dtmf = <<>> :: binary()
                 ,ringback :: api_binary()
@@ -71,14 +71,14 @@
 -type state() :: #state{}.
 
 -define(DEFAULT_TAKEBACK_DTMF
-        ,whapps_config:get(?CONFIG_CAT, [<<"transfer">>, <<"default_takeback_dtmf">>], <<"*1">>)
+        ,kapps_config:get(?CONFIG_CAT, [<<"transfer">>, <<"default_takeback_dtmf">>], <<"*1">>)
        ).
 
 -define(DEFAULT_TARGET_TIMEOUT
-        ,whapps_config:get_integer(?CONFIG_CAT, [<<"transfer">>, <<"default_target_timeout_ms">>], 20 * ?MILLISECONDS_IN_SECOND)
+        ,kapps_config:get_integer(?CONFIG_CAT, [<<"transfer">>, <<"default_target_timeout_ms">>], 20 * ?MILLISECONDS_IN_SECOND)
        ).
 
--define(DEFAULT_RINGBACK, whapps_config:get(<<"ecallmgr">>, <<"default_ringback">>)).
+-define(DEFAULT_RINGBACK, kapps_config:get(<<"ecallmgr">>, <<"default_ringback">>)).
 
 -define(TRANSFEROR_CALL_EVENTS, [<<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
                                  ,<<"DTMF">>
@@ -96,13 +96,13 @@
                              ,<<"LEG_CREATED">>, <<"LEG_DESTROYED">>
                             ]).
 
--spec handle(wh_json:object(), whapps_call:call()) -> no_return().
+-spec handle(kz_json:object(), kapps_call:call()) -> no_return().
 handle(Data, Call) ->
-    whapps_call:put_callid(Call),
-    Transferor = wh_json:get_value(<<"dtmf_leg">>, Data),
+    kapps_call:put_callid(Call),
+    Transferor = kz_json:get_value(<<"dtmf_leg">>, Data),
     Transferee =
-        case whapps_call:call_id(Call) of
-            Transferor -> whapps_call:other_leg_call_id(Call);
+        case kapps_call:call_id(Call) of
+            Transferor -> kapps_call:other_leg_call_id(Call);
             CallId -> CallId
         end,
 
@@ -122,11 +122,11 @@ handle(Data, Call) ->
     try gen_fsm:enter_loop(?MODULE, [], 'pre_originate'
                            ,#state{transferor=Transferor
                                    ,transferee=Transferee
-                                   ,call=whapps_call:set_controller_queue(konami_event_listener:queue_name(), Call)
-                                   ,takeback_dtmf=wh_json:get_value(<<"takeback_dtmf">>, Data, ?DEFAULT_TAKEBACK_DTMF)
-                                   ,ringback=to_tonestream(wh_json:get_value(<<"ringback">>, Data, ?DEFAULT_RINGBACK))
+                                   ,call=kapps_call:set_controller_queue(konami_event_listener:queue_name(), Call)
+                                   ,takeback_dtmf=kz_json:get_value(<<"takeback_dtmf">>, Data, ?DEFAULT_TAKEBACK_DTMF)
+                                   ,ringback=to_tonestream(kz_json:get_value(<<"ringback">>, Data, ?DEFAULT_RINGBACK))
                                    ,moh=find_moh(Data, Call)
-                                   ,extension=get_extension(wh_json:get_first_defined([<<"captures">>, <<"target">>], Data))
+                                   ,extension=get_extension(kz_json:get_first_defined([<<"captures">>, <<"target">>], Data))
                                   }
                           )
     of
@@ -136,7 +136,7 @@ handle(Data, Call) ->
         _E:_R ->
             ST = erlang:get_stacktrace(),
             lager:info("FSM terminated abnormally: ~s: ~p", [_E, _R]),
-            wh_util:log_stacktrace(ST)
+            kz_util:log_stacktrace(ST)
     end.
 
 -spec get_extension(ne_binaries() | ne_binary()) -> ne_binary().
@@ -152,10 +152,10 @@ pre_originate(?EVENT(UUID, <<"CHANNEL_UNBRIDGE">>, _Evt)
                      }=State
              )
   when UUID =:= Transferee orelse UUID =:= Transferor ->
-    MOHToPlay = wh_media_util:media_path(MOH, Call),
+    MOHToPlay = kz_media_util:media_path(MOH, Call),
     lager:info("putting transferee ~s on hold with MOH ~s", [Transferee, MOHToPlay]),
-    HoldCommand = whapps_call_command:hold_command(MOHToPlay, Transferee),
-    whapps_call_command:send_command(HoldCommand, Call),
+    HoldCommand = kapps_call_command:hold_command(MOHToPlay, Transferee),
+    kapps_call_command:send_command(HoldCommand, Call),
 
     lager:info("ok, now we need to originate to the requested number ~s", [Extension]),
 
@@ -213,9 +213,9 @@ attended_wait(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
             lager:info("transferor and target ~s are connected, moving to attended_answer", [Target]),
             ?WSD_EVT(Transferor, Target, <<"Bridged to target">>),
             {'next_state', 'attended_answer', State#state{
-                                                target_call=whapps_call:exec(
-                                                              [{fun whapps_call:set_call_id/2, Target}
-                                                               ,{fun whapps_call:set_other_leg_call_id/2, Transferor}
+                                                target_call=kapps_call:exec(
+                                                              [{fun kapps_call:set_call_id/2, Target}
+                                                               ,{fun kapps_call:set_other_leg_call_id/2, Transferor}
                                                               ]
                                                               ,TargetCall
                                                              )
@@ -271,9 +271,9 @@ attended_wait(?EVENT(TargetA, <<"originate_uuid">>, Evt)
                       ,target_call=TargetCall
                      }=State
              ) ->
-    Node = wh_json:get_value(<<"Node">>, Evt),
+    Node = kz_json:get_value(<<"Node">>, Evt),
     lager:info("recv control for target 'a' ~s from node ~s", [TargetA, Node]),
-    TargetCall1 = whapps_call:from_originate_uuid(Evt, TargetCall),
+    TargetCall1 = kapps_call:from_originate_uuid(Evt, TargetCall),
     ?WSD_NOTE(TargetA, 'right', <<"control for target recv">>),
     {'next_state', 'attended_wait', State#state{target_call=TargetCall1
                                                 ,event_node=Node
@@ -378,7 +378,7 @@ attended_wait(?EVENT(TargetB, <<"CHANNEL_ANSWER">>, _Evt)
 attended_wait(?EVENT(TargetB, <<"CHANNEL_ANSWER">>, _Evt)
               ,#state{target_b_leg=TargetB}=State
              ) ->
-    lager:debug("target 'b' ~s answered: ~s", [TargetB, wh_json:encode(_Evt)]),
+    lager:debug("target 'b' ~s answered: ~s", [TargetB, kz_json:encode(_Evt)]),
     ?WSD_NOTE(TargetB, 'right', <<"answered">>),
     {'next_state', 'attended_wait', State};
 attended_wait(?EVENT(TargetB, <<"LEG_CREATED">>, Evt)
@@ -507,7 +507,7 @@ partial_wait(?EVENT(Target, <<"originate_uuid">>, Evt)
             ) ->
     lager:info("recv control for target ~s", [Target]),
     ?WSD_NOTE(Target, 'right', <<"control for target recv">>),
-    {'next_state', 'partial_wait', State#state{target_call=whapps_call:from_originate_uuid(Evt, TargetCall)}};
+    {'next_state', 'partial_wait', State#state{target_call=kapps_call:from_originate_uuid(Evt, TargetCall)}};
 
 partial_wait(?EVENT(TargetB, <<"CHANNEL_ANSWER">>, _Evt)
               ,#state{target_b_leg=TargetB
@@ -521,7 +521,7 @@ partial_wait(?EVENT(TargetB, <<"CHANNEL_ANSWER">>, _Evt)
 partial_wait(?EVENT(TargetB, <<"CHANNEL_ANSWER">>, _Evt)
               ,#state{target_b_leg=TargetB}=State
              ) ->
-    lager:debug("target 'b' ~s answered: ~s", [TargetB, wh_json:encode(_Evt)]),
+    lager:debug("target 'b' ~s answered: ~s", [TargetB, kz_json:encode(_Evt)]),
     ?WSD_NOTE(TargetB, 'right', <<"answered">>),
     {'next_state', 'partial_wait', State};
 
@@ -627,7 +627,7 @@ attended_answer(?EVENT(Target, <<"originate_uuid">>, Evt)
                ) ->
     lager:info("recv control for target ~s", [Target]),
     ?WSD_NOTE(Target, 'right', <<"control for target recv">>),
-    TargetCall1 = whapps_call:from_originate_uuid(Evt, TargetCall),
+    TargetCall1 = kapps_call:from_originate_uuid(Evt, TargetCall),
     {'next_state', 'attended_answer', State#state{target_call=TargetCall1}};
 attended_answer(?EVENT(Target, <<"CHANNEL_BRIDGE">>, Evt)
                 ,#state{transferor=Transferor
@@ -945,7 +945,7 @@ handle_info({'amqp_msg', JObj}, StateName, #state{event_node=EventNode
                                                   ,target=Target
                                                  }=State) ->
     case {kz_call_event:call_id(JObj)
-          ,wh_api:node(JObj)
+          ,kz_api:node(JObj)
          }
     of
         {_CallId, 'undefined'} -> send_event(JObj);
@@ -978,19 +978,19 @@ handle_info({'timeout', Ref, 'purgatory'}
     lager:info("target ~s hungup, sorry transferee ~s"
                ,[Target, _Transferee]
               ),
-    whapps_call_command:hangup(Call),
+    kapps_call_command:hangup(Call),
     {'stop', 'normal', State};
 handle_info(_Info, StateName, State) ->
     lager:info("unhandled msg in ~s: ~p", [StateName, _Info]),
     {'next_state', StateName, State}.
 
--spec send_event(wh_json:object()) -> 'ok'.
+-spec send_event(kz_json:object()) -> 'ok'.
 send_event(JObj) ->
     gen_fsm:send_event(self()
-                       ,?EVENT(wh_json:get_first_defined([<<"Call-ID">>
+                       ,?EVENT(kz_json:get_first_defined([<<"Call-ID">>
                                                           ,<<"Outbound-Call-ID">>
                                                          ], JObj)
-                               ,wh_json:get_value(<<"Event-Name">>, JObj)
+                               ,kz_json:get_value(<<"Event-Name">>, JObj)
                                ,JObj
                               )
                       ).
@@ -1002,7 +1002,7 @@ terminate(_Reason, _StateName, #state{transferor=Transferor
     konami_event_listener:rm_call_binding(Transferor, ?TRANSFEROR_CALL_EVENTS),
     konami_event_listener:rm_call_binding(Transferee, ?TRANSFEREE_CALL_EVENTS),
     konami_event_listener:rm_call_binding(Target, ?TARGET_CALL_EVENTS),
-    ?WSD_NOTE(Transferor, 'right', <<"eot while in ", (wh_util:to_binary(_StateName))/binary>>),
+    ?WSD_NOTE(Transferor, 'right', <<"eot while in ", (kz_util:to_binary(_StateName))/binary>>),
     ?WSD_STOP(),
     lager:info("fsm terminating while in ~s: ~p", [_StateName, _Reason]).
 
@@ -1019,31 +1019,31 @@ add_transferor_bindings(CallId) ->
 add_transferee_bindings(CallId) ->
     konami_event_listener:add_call_binding(CallId, ?TRANSFEREE_CALL_EVENTS).
 
--spec originate_to_extension(ne_binary(), ne_binary(), whapps_call:call()) -> ne_binary().
+-spec originate_to_extension(ne_binary(), ne_binary(), kapps_call:call()) -> ne_binary().
 originate_to_extension(Extension, TransferorLeg, Call) ->
-    MsgId = wh_util:rand_hex_binary(4),
+    MsgId = kz_util:rand_hex_binary(4),
 
     CallerIdNumber = caller_id_number(Call, TransferorLeg),
 
     CCVs = props:filter_undefined(
-             [{<<"Account-ID">>, whapps_call:account_id(Call)}
-              ,{<<"Authorizing-Type">>, whapps_call:authorizing_type(Call)}
-              ,{<<"Authorizing-ID">>, whapps_call:authorizing_id(Call)}
+             [{<<"Account-ID">>, kapps_call:account_id(Call)}
+              ,{<<"Authorizing-Type">>, kapps_call:authorizing_type(Call)}
+              ,{<<"Authorizing-ID">>, kapps_call:authorizing_id(Call)}
               ,{<<"Channel-Authorized">>, 'true'}
-              ,{<<"From-URI">>, <<CallerIdNumber/binary, "@", (whapps_call:account_realm(Call))/binary>>}
+              ,{<<"From-URI">>, <<CallerIdNumber/binary, "@", (kapps_call:account_realm(Call))/binary>>}
               ,{<<"Metaflow-App">>, ?APP_NAME}
               ,{<<"Ignore-Early-Media">>, 'true'}
              ]),
 
     TargetCallId = create_call_id(),
 
-    Endpoint = wh_json:from_list(
+    Endpoint = kz_json:from_list(
                  props:filter_undefined(
                    [{<<"Invite-Format">>, <<"loopback">>}
                     ,{<<"Route">>,  Extension}
                     ,{<<"To-DID">>, Extension}
-                    ,{<<"To-Realm">>, whapps_call:account_realm(Call)}
-                    ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+                    ,{<<"To-Realm">>, kapps_call:account_realm(Call)}
+                    ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
                     ,{<<"Outbound-Call-ID">>, TargetCallId}
                     ,{<<"Outbound-Caller-ID-Name">>, caller_id_name(Call, TransferorLeg)}
                     ,{<<"Outbound-Caller-ID-Number">>, caller_id_number(Call, TransferorLeg)}
@@ -1058,7 +1058,7 @@ originate_to_extension(Extension, TransferorLeg, Call) ->
                  ,{<<"Dial-Endpoint-Method">>, <<"single">>}
                  ,{<<"Msg-ID">>, MsgId}
                  ,{<<"Continue-On-Fail">>, 'true'}
-                 ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+                 ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
                  ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>
                                                       ,<<"Authorizing-Type">>, <<"Authorizing-ID">>
                                                       ,<<"Channel-Authorized">>, <<"Metaflow-App">>
@@ -1075,7 +1075,7 @@ originate_to_extension(Extension, TransferorLeg, Call) ->
                  ,{<<"Resource-Type">>, <<"originate">>}
                  ,{<<"Originate-Immediate">>, 'true'}
                  ,{<<"Simplify-Loopback">>, 'true'}
-                 | wh_api:default_headers(konami_event_listener:queue_name(), ?APP_NAME, ?APP_VERSION)
+                 | kz_api:default_headers(konami_event_listener:queue_name(), ?APP_NAME, ?APP_VERSION)
                 ]),
     ?WSD_NOTE(TargetCallId, 'right', <<"originating to target ", Extension/binary>>),
     konami_event_listener:originate(Request),
@@ -1083,7 +1083,7 @@ originate_to_extension(Extension, TransferorLeg, Call) ->
 
 -spec create_call_id() -> ne_binary().
 create_call_id() ->
-    TargetCallId = <<"konami-transfer-", (wh_util:rand_hex_binary(4))/binary>>,
+    TargetCallId = <<"konami-transfer-", (kz_util:rand_hex_binary(4))/binary>>,
     bind_target_call_events(TargetCallId),
     TargetCallId.
 
@@ -1091,21 +1091,21 @@ create_call_id() ->
 bind_target_call_events(CallId) ->
     konami_event_listener:add_call_binding(CallId, ?TARGET_CALL_EVENTS).
 
--spec caller_id_name(whapps_call:call(), ne_binary()) -> ne_binary().
+-spec caller_id_name(kapps_call:call(), ne_binary()) -> ne_binary().
 caller_id_name(Call, CallerLeg) ->
-    case whapps_call:call_id(Call) of
-        CallerLeg -> whapps_call:caller_id_name(Call);
-        _CalleeLeg -> whapps_call:callee_id_name(Call)
+    case kapps_call:call_id(Call) of
+        CallerLeg -> kapps_call:caller_id_name(Call);
+        _CalleeLeg -> kapps_call:callee_id_name(Call)
     end.
 
--spec caller_id_number(whapps_call:call(), ne_binary()) -> ne_binary().
+-spec caller_id_number(kapps_call:call(), ne_binary()) -> ne_binary().
 caller_id_number(Call, CallerLeg) ->
-    case whapps_call:call_id_direct(Call) of
-        CallerLeg -> whapps_call:caller_id_number(Call);
-        _CalleeLeg -> whapps_call:callee_id_number(Call)
+    case kapps_call:call_id_direct(Call) of
+        CallerLeg -> kapps_call:caller_id_number(Call);
+        _CalleeLeg -> kapps_call:callee_id_number(Call)
     end.
 
--spec connect_transferee_to_target(ne_binary(), whapps_call:call()) -> 'ok'.
+-spec connect_transferee_to_target(ne_binary(), kapps_call:call()) -> 'ok'.
 connect_transferee_to_target(Target, Call) ->
     issue_transferee_event(Target, Call),
     Flags = [{<<"Target-Call-ID">>, Target}
@@ -1119,7 +1119,7 @@ connect_transferee_to_target(Target, Call) ->
     konami_util:listen_on_other_leg(Call, ?TARGET_CALL_EVENTS),
     connect(Flags, Call).
 
--spec connect_transferor_to_target(ne_binary(), whapps_call:call()) -> 'ok'.
+-spec connect_transferor_to_target(ne_binary(), kapps_call:call()) -> 'ok'.
 connect_transferor_to_target(Transferor, TargetCall) ->
     Flags = [{<<"Target-Call-ID">>, Transferor}
              ,{<<"Continue-On-Fail">>, 'true'}
@@ -1130,12 +1130,12 @@ connect_transferor_to_target(Transferor, TargetCall) ->
              ,{<<"B-Leg-Events">>, ?TRANSFEROR_CALL_EVENTS}
             ],
     konami_util:listen_on_other_leg(TargetCall, ?TRANSFEROR_CALL_EVENTS),
-    lager:debug("connecting transferor to target ~s, hangup is ~s", [whapps_call:call_id(TargetCall), 'false']),
+    lager:debug("connecting transferor to target ~s, hangup is ~s", [kapps_call:call_id(TargetCall), 'false']),
     connect(Flags, TargetCall).
 
--spec connect_to_transferee(whapps_call:call()) -> 'ok'.
+-spec connect_to_transferee(kapps_call:call()) -> 'ok'.
 connect_to_transferee(Call) ->
-    Flags = [{<<"Target-Call-ID">>, whapps_call:other_leg_call_id(Call)}
+    Flags = [{<<"Target-Call-ID">>, kapps_call:other_leg_call_id(Call)}
              ,{<<"Continue-On-Fail">>, 'false'}
              ,{<<"Continue-On-Cancel">>, 'false'}
              ,{<<"Park-After-Pickup">>, 'false'}
@@ -1143,16 +1143,16 @@ connect_to_transferee(Call) ->
              ,{<<"B-Leg-Events">>, ?TRANSFEROR_CALL_EVENTS}
             ],
     lager:debug("reconnecting transferor/ee: ~s and ~s, hangup is ~s"
-                ,[whapps_call:call_id(Call)
-                  ,whapps_call:other_leg_call_id(Call)
+                ,[kapps_call:call_id(Call)
+                  ,kapps_call:other_leg_call_id(Call)
                   ,'true'
                  ]),
     connect(Flags, Call).
 
--spec connect(wh_proplist(), whapps_call:call()) -> 'ok'.
+-spec connect(kz_proplist(), kapps_call:call()) -> 'ok'.
 connect(Flags, Call) ->
     Command = [{<<"Application-Name">>, <<"connect_leg">>}
-               ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+               ,{<<"Call-ID">>, kapps_call:call_id(Call)}
                ,{<<"Insert-At">>, <<"now">>}
                | Flags
               ],
@@ -1160,10 +1160,10 @@ connect(Flags, Call) ->
                ,props:get_value(<<"Target-Call-ID">>, Command)
                ,<<"Connect Legs">>
               ),
-    whapps_call_command:send_command(Command, Call).
+    kapps_call_command:send_command(Command, Call).
 
 -type dtmf_next_state() :: 'attended_wait' | 'attended_answer' | 'takeback'.
--spec handle_transferor_dtmf(wh_json:object(), dtmf_next_state(), state()) ->
+-spec handle_transferor_dtmf(kz_json:object(), dtmf_next_state(), state()) ->
                                     {'stop', 'normal', state()} |
                                     {'next_state', dtmf_next_state(), state()}.
 handle_transferor_dtmf(Evt
@@ -1176,12 +1176,12 @@ handle_transferor_dtmf(Evt
                                ,target=_Target
                               }=State
                       ) ->
-    Digit = wh_json:get_value(<<"DTMF-Digit">>, Evt),
+    Digit = kz_json:get_value(<<"DTMF-Digit">>, Evt),
     lager:info("recv transferor dtmf '~s', adding to '~s'", [Digit, DTMFs]),
 
     Collected = <<DTMFs/binary, Digit/binary>>,
 
-    case wh_util:suffix_binary(TakebackDTMF, Collected) of
+    case kz_util:suffix_binary(TakebackDTMF, Collected) of
         'true' ->
             lager:info("takeback dtmf sequence (~s) engaged!", [TakebackDTMF]),
             ?WSD_NOTE(_Transferor, 'right', <<"takeback sequence engaged">>),
@@ -1191,10 +1191,10 @@ handle_transferor_dtmf(Evt
             {'next_state', NextState, State#state{transferor_dtmf=Collected}}
     end.
 
--spec unbridge(whapps_call:call()) -> 'ok'.
--spec unbridge(whapps_call:call(), ne_binary()) -> 'ok'.
+-spec unbridge(kapps_call:call()) -> 'ok'.
+-spec unbridge(kapps_call:call(), ne_binary()) -> 'ok'.
 unbridge(Call) ->
-    unbridge(Call, whapps_call:call_id(Call)).
+    unbridge(Call, kapps_call:call_id(Call)).
 unbridge(Call, CallId) ->
     Command = [{<<"Application-Name">>, <<"unbridge">>}
                ,{<<"Insert-At">>, <<"now">>}
@@ -1202,23 +1202,23 @@ unbridge(Call, CallId) ->
                ,{<<"Call-ID">>, CallId}
               ],
     ?WSD_NOTE(CallId, 'right', <<"unbridging">>),
-    whapps_call_command:send_command(Command, Call).
+    kapps_call_command:send_command(Command, Call).
 
--spec pattern_builder(wh_json:object()) -> wh_json:object().
+-spec pattern_builder(kz_json:object()) -> kz_json:object().
 pattern_builder(DefaultJObj) ->
     io:format("Let's add a transfer metaflow using a regex to capture the extension/DID~n", []),
 
     pattern_builder_regex(DefaultJObj).
 
--spec pattern_builder_regex(wh_json:object()) -> wh_json:object().
+-spec pattern_builder_regex(kz_json:object()) -> kz_json:object().
 pattern_builder_regex(DefaultJObj) ->
     {'ok', [Regex]} = io:fread("First, what regex should invoke the 'transfer'? ", "~s"),
     case re:compile(Regex) of
         {'ok', _} ->
-            K = [<<"patterns">>, wh_util:to_binary(Regex)],
-            case pattern_builder_check(wh_json:get_value(K, DefaultJObj)) of
-                'undefined' -> wh_json:delete_key(K, DefaultJObj);
-                PatternJObj -> wh_json:set_value(K, PatternJObj, DefaultJObj)
+            K = [<<"patterns">>, kz_util:to_binary(Regex)],
+            case pattern_builder_check(kz_json:get_value(K, DefaultJObj)) of
+                'undefined' -> kz_json:delete_key(K, DefaultJObj);
+                PatternJObj -> kz_json:set_value(K, PatternJObj, DefaultJObj)
             end;
         {'error', _E} ->
             io:format("We were unable to compile the regex supplied: ~p~n", [_E]),
@@ -1227,9 +1227,9 @@ pattern_builder_regex(DefaultJObj) ->
 
 -spec pattern_builder_check(api_object()) -> api_object().
 pattern_builder_check('undefined') ->
-    builder_takeback_dtmf(wh_json:new(), 'undefined');
+    builder_takeback_dtmf(kz_json:new(), 'undefined');
 pattern_builder_check(PatternJObj) ->
-    io:format("  Existing config for this pattern: ~s~n", [wh_json:encode(PatternJObj)]),
+    io:format("  Existing config for this pattern: ~s~n", [kz_json:encode(PatternJObj)]),
     io:format("  e. Edit Pattern~n", []),
     io:format("  d. Delete Pattern~n", []),
     {'ok', [Option]} = io:fread("What would you like to do: ", "~s"),
@@ -1241,23 +1241,23 @@ pattern_builder_check(PatternJObj) ->
                           end
                         ).
 
--spec number_builder(wh_json:object()) -> wh_json:object().
+-spec number_builder(kz_json:object()) -> kz_json:object().
 number_builder(DefaultJObj) ->
     io:format("Let's add a transfer metaflow to a specific extension/DID~n", []),
 
     {'ok', [Number]} = io:fread("First, what number should invoke 'transfer'? ", "~d"),
 
-    K = [<<"numbers">>, wh_util:to_binary(Number)],
-    case number_builder_check(wh_json:get_value(K, DefaultJObj)) of
-        'undefined' -> wh_json:delete_key(K, DefaultJObj);
-        NumberJObj -> wh_json:set_value(K, NumberJObj, DefaultJObj)
+    K = [<<"numbers">>, kz_util:to_binary(Number)],
+    case number_builder_check(kz_json:get_value(K, DefaultJObj)) of
+        'undefined' -> kz_json:delete_key(K, DefaultJObj);
+        NumberJObj -> kz_json:set_value(K, NumberJObj, DefaultJObj)
     end.
 
 -spec number_builder_check(api_object()) -> api_object().
 number_builder_check('undefined') ->
-    builder_target(wh_json:new());
+    builder_target(kz_json:new());
 number_builder_check(NumberJObj) ->
-    io:format("  Existing config for this number: ~s~n", [wh_json:encode(NumberJObj)]),
+    io:format("  Existing config for this number: ~s~n", [kz_json:encode(NumberJObj)]),
     io:format("  e. Edit Number~n", []),
     io:format("  d. Delete Number~n", []),
     {'ok', [Option]} = io:fread("What would you like to do: ", "~s"),
@@ -1268,9 +1268,9 @@ number_builder_check(NumberJObj) ->
                         ).
 
 -type check_fun() :: fun((api_object()) -> api_object()).
--type build_fun() :: fun((wh_json:object()) -> wh_json:object()).
+-type build_fun() :: fun((kz_json:object()) -> kz_json:object()).
 
--spec builder_check_option(wh_json:object(), string(), check_fun(), build_fun()) -> api_object().
+-spec builder_check_option(kz_json:object(), string(), check_fun(), build_fun()) -> api_object().
 builder_check_option(JObj, "e", _CheckFun, BuilderFun) ->
     BuilderFun(JObj);
 builder_check_option(_JObj, "d", _CheckFun, _BuilderFun) ->
@@ -1279,82 +1279,82 @@ builder_check_option(JObj, _Option, CheckFun, _BuilderFun) ->
     io:format("invalid selection~n", []),
     CheckFun(JObj).
 
--spec builder_target(wh_json:object()) -> wh_json:object().
+-spec builder_target(kz_json:object()) -> kz_json:object().
 builder_target(JObj) ->
     {'ok', [Target]} = io:fread("What is the target extension/DID to transfer to? ", "~s"),
-    builder_takeback_dtmf(JObj, wh_util:to_binary(Target)).
+    builder_takeback_dtmf(JObj, kz_util:to_binary(Target)).
 
--spec builder_takeback_dtmf(wh_json:object(), api_binary()) -> wh_json:object().
+-spec builder_takeback_dtmf(kz_json:object(), api_binary()) -> kz_json:object().
 builder_takeback_dtmf(JObj, Target) ->
     {'ok', [Takeback]} = io:fread("What is the takeback DTMF ('n' to use the default)? ", "~s"),
-    builder_moh(JObj, Target, wh_util:to_binary(Takeback)).
+    builder_moh(JObj, Target, kz_util:to_binary(Takeback)).
 
--spec builder_moh(wh_json:object(), api_binary(), ne_binary()) -> wh_json:object().
+-spec builder_moh(kz_json:object(), api_binary(), ne_binary()) -> kz_json:object().
 builder_moh(JObj, Target, Takeback) ->
     {'ok', [MOH]} = io:fread("Any custom music-on-hold ('n' for none, 'h' for help')? ", "~s"),
-    metaflow_jobj(JObj, Target, Takeback, wh_util:to_binary(MOH)).
+    metaflow_jobj(JObj, Target, Takeback, kz_util:to_binary(MOH)).
 
--spec metaflow_jobj(wh_json:object(), api_binary(), api_binary(), api_binary()) -> wh_json:object().
+-spec metaflow_jobj(kz_json:object(), api_binary(), api_binary(), api_binary()) -> kz_json:object().
 metaflow_jobj(JObj, Target, Takeback, <<"h">>) ->
     io:format("To set a system_media file as MOH, enter: /system_media/{MEDIA_ID}~n", []),
     io:format("To set an account's media file as MOH, enter: /{ACCOUNT_ID}/{MEDIA_ID}~n", []),
     io:format("To set an third-party HTTP url, enter: http://other.server.com/moh.mp3~n~n", []),
     builder_moh(JObj, Target, Takeback);
 metaflow_jobj(JObj, Target, Takeback, MOH) ->
-    wh_json:set_values([{<<"module">>, <<"transfer">>}
+    kz_json:set_values([{<<"module">>, <<"transfer">>}
                         ,{<<"data">>, transfer_data(Target, Takeback, MOH)}
                        ], JObj).
 
--spec transfer_data(api_binary(), api_binary(), api_binary()) -> wh_json:object().
+-spec transfer_data(api_binary(), api_binary(), api_binary()) -> kz_json:object().
 transfer_data(Target, Takeback, <<"n">>) ->
     transfer_data(Target, Takeback, 'undefined');
 transfer_data(Target, <<"n">>, MOH) ->
     transfer_data(Target, 'undefined', MOH);
 transfer_data(Target, Takeback, MOH) ->
-    wh_json:from_list(
+    kz_json:from_list(
       props:filter_undefined(
         [{<<"target">>, Target}
          ,{<<"takeback_dtmf">>, Takeback}
          ,{<<"moh">>, MOH}
         ])).
 
--spec find_moh(wh_json:object(), whapps_call:call()) -> api_binary().
--spec find_moh(whapps_call:call()) -> api_binary().
+-spec find_moh(kz_json:object(), kapps_call:call()) -> api_binary().
+-spec find_moh(kapps_call:call()) -> api_binary().
 find_moh(Data, Call) ->
-    case wh_json:get_value(<<"moh">>, Data) of
+    case kz_json:get_value(<<"moh">>, Data) of
         'undefined' -> find_moh(Call);
         MOH -> MOH
     end.
 find_moh(Call) ->
-    {'ok', JObj} = kz_account:fetch(whapps_call:account_id(Call)),
-    wh_json:get_value([<<"music_on_hold">>, <<"media_id">>], JObj).
+    {'ok', JObj} = kz_account:fetch(kapps_call:account_id(Call)),
+    kz_json:get_value([<<"music_on_hold">>, <<"media_id">>], JObj).
 
--spec issue_transferee_event(ne_binary(), whapps_call:call()) -> 'ok'.
+-spec issue_transferee_event(ne_binary(), kapps_call:call()) -> 'ok'.
 issue_transferee_event(Target, Call) ->
     API =
         [{<<"Event-Name">>, <<"CHANNEL_TRANSFEREE">>}
-         ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+         ,{<<"Call-ID">>, kapps_call:call_id(Call)}
          ,{<<"DISPOSITION">>, <<"SUCCESS">>}
          ,{<<"Raw-Application-Name">>,<<"sofia::transferee">>}
-         %%,{<<"Direction">>, whapps_call:direction(Call)}
-         ,{<<"Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
-         ,{<<"Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
-         ,{<<"Callee-ID-Name">>, whapps_call:callee_id_name(Call)}
-         ,{<<"Callee-ID-Number">>, whapps_call:callee_id_number(Call)}
-         ,{<<"Other-Leg-Call-ID">>, whapps_call:other_leg_call_id(Call)}
-         ,{<<"Custom-Channel-Vars">>, whapps_call:custom_channel_vars(Call)}
+         %%,{<<"Direction">>, kapps_call:direction(Call)}
+         ,{<<"Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
+         ,{<<"Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
+         ,{<<"Callee-ID-Name">>, kapps_call:callee_id_name(Call)}
+         ,{<<"Callee-ID-Number">>, kapps_call:callee_id_number(Call)}
+         ,{<<"Other-Leg-Call-ID">>, kapps_call:other_leg_call_id(Call)}
+         ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
          ,{<<"Target-Call-ID">>, Target}
-         | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+         | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
-    wapi_call:publish_event(API).
+    kapi_call:publish_event(API).
 
-%% We need to figure out which whapps call to issue the connect_leg against
+%% We need to figure out which kapps call to issue the connect_leg against
 %% When the A-leg is the transferor, its ecallmgr control will be down at this
 %% point so use Target's call record; otherwise use the A-leg's.
--spec how_to_transfer(whapps_call:call(), whapps_call:call(), ne_binary(), ne_binary(), ne_binary()) ->
-                             {ne_binary(), whapps_call:call()}.
+-spec how_to_transfer(kapps_call:call(), kapps_call:call(), ne_binary(), ne_binary(), ne_binary()) ->
+                             {ne_binary(), kapps_call:call()}.
 how_to_transfer(OriginalCall, TargetCall, Transferor, Target, Transferee) ->
-    case whapps_call:call_id(OriginalCall) of
+    case kapps_call:call_id(OriginalCall) of
         Transferor ->
             lager:debug("transferor ~s is in control, but has died; use target call", [Transferor]),
             konami_util:listen_on_other_leg(TargetCall, ?TRANSFEREE_CALL_EVENTS),
@@ -1364,34 +1364,34 @@ how_to_transfer(OriginalCall, TargetCall, Transferor, Target, Transferee) ->
             {Target, OriginalCall}
     end.
 
--spec hangup_target(whapps_call:call()) -> 'ok'.
+-spec hangup_target(kapps_call:call()) -> 'ok'.
 hangup_target(Call) ->
-    ?WSD_NOTE(whapps_call:call_id(Call), 'right', <<"hangup sent">>),
-    whapps_call_command:hangup(Call).
+    ?WSD_NOTE(kapps_call:call_id(Call), 'right', <<"hangup sent">>),
+    kapps_call_command:hangup(Call).
 
 -spec to_tonestream(api_binary()) -> api_binary().
 to_tonestream('undefined') -> 'undefined';
 to_tonestream(<<"tone_stream://", _/binary>> = TS) -> <<TS/binary, ";loops=-1">>;
 to_tonestream(Ringback) -> <<"tone_stream://", Ringback/binary, ";loops=-1">>.
 
--spec maybe_start_transferor_ringback(whapps_call:call(), ne_binary(), api_binary()) -> 'ok'.
+-spec maybe_start_transferor_ringback(kapps_call:call(), ne_binary(), api_binary()) -> 'ok'.
 maybe_start_transferor_ringback(_Call, _Transferor, 'undefined') -> 'ok';
 maybe_start_transferor_ringback(Call, Transferor, Ringback) ->
-    Command = whapps_call_command:play_command(Ringback, Transferor),
+    Command = kapps_call_command:play_command(Ringback, Transferor),
     lager:debug("playing ringback on ~s to ~s", [Transferor, Ringback]),
-    whapps_call_command:send_command(wh_json:set_values([{<<"Insert-At">>, <<"now">>}], Command), Call).
+    kapps_call_command:send_command(kz_json:set_values([{<<"Insert-At">>, <<"now">>}], Command), Call).
 
 -spec maybe_cancel_timer(api_reference()) -> 'ok'.
 maybe_cancel_timer('undefined') -> 'ok';
 maybe_cancel_timer(Ref) -> erlang:cancel_timer(Ref).
 
--spec suppress_event(wh_json:object(), api_binary(), ne_binary()) -> 'ok'.
+-spec suppress_event(kz_json:object(), api_binary(), ne_binary()) -> 'ok'.
 suppress_event(JObj, _EventNode, _OtherNode) ->
     lager:debug("supressing event ~s from ~s (we want events from ~s): ~s"
                 ,[kz_call_event:event_name(JObj)
                   ,_OtherNode
                   ,_EventNode
-                  ,wh_json:encode(JObj)
+                  ,kz_json:encode(JObj)
                  ]).
 
 -type connect_to() :: 'transferee' | 'transferor'.
@@ -1414,7 +1414,7 @@ handle_real_target(#state{target_a_leg=TargetA
 
     konami_event_listener:add_call_binding(ReplacementId, ?TARGET_CALL_EVENTS),
 
-    State1 = State#state{target_call=whapps_call:set_call_id(ReplacementId, TargetCall)
+    State1 = State#state{target_call=kapps_call:set_call_id(ReplacementId, TargetCall)
                          ,target=ReplacementId
                          ,purgatory_ref='undefined'
                         },

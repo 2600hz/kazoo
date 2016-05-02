@@ -23,9 +23,9 @@
 -define(U_CONFIG_CAT, <<"crossbar.ubiquiti">>).
 
 -define(VERSION, <<"1">>).
--define(EXPIRES, whapps_config:get_integer(?U_CONFIG_CAT, <<"api_token_expires_s">>, 1800)).
--define(SECRET, whapps_config:get(?U_CONFIG_CAT, <<"api_secret">>)).
--define(SALT_LENGTH, whapps_config:get_integer(?U_CONFIG_CAT, <<"salt_length">>, 20)).
+-define(EXPIRES, kapps_config:get_integer(?U_CONFIG_CAT, <<"api_token_expires_s">>, 1800)).
+-define(SECRET, kapps_config:get(?U_CONFIG_CAT, <<"api_secret">>)).
+-define(SALT_LENGTH, kapps_config:get_integer(?U_CONFIG_CAT, <<"salt_length">>, 20)).
 
 -spec create_api_token(ne_binary()) -> ne_binary().
 -spec create_api_token(ne_binary(), ne_binary()) -> ne_binary().
@@ -33,8 +33,8 @@ create_api_token(ProviderId) ->
     create_api_token(ProviderId, ?SECRET).
 
 create_api_token(ProviderId, <<_/binary>> = Secret) ->
-    Salt = wh_util:rand_hex_binary(?SALT_LENGTH),
-    ExpireTime = wh_util:current_unix_tstamp() + ?EXPIRES,
+    Salt = kz_util:rand_hex_binary(?SALT_LENGTH),
+    ExpireTime = kz_util:current_unix_tstamp() + ?EXPIRES,
     make_api_token(ProviderId, ExpireTime, Salt, Secret);
 create_api_token(_ProviderId, 'undefined') ->
     throw({'error', 'no_api_secret'}).
@@ -42,7 +42,7 @@ create_api_token(_ProviderId, 'undefined') ->
 -spec make_api_token(ne_binary(), integer(), ne_binary(), ne_binary()) -> ne_binary().
 make_api_token(ProviderId, Timestamp, Salt, Secret) ->
     TimestampHex = encode_timestamp(Timestamp),
-    wh_util:join_binary(
+    kz_util:join_binary(
       [?VERSION % Version
        ,Salt
        ,TimestampHex
@@ -53,7 +53,7 @@ make_api_token(ProviderId, Timestamp, Salt, Secret) ->
 
 -spec encode_timestamp(integer()) -> ne_binary().
 encode_timestamp(Timestamp) when is_integer(Timestamp) ->
-    wh_util:to_lower_binary(integer_to_list(Timestamp, 16)).
+    kz_util:to_lower_binary(integer_to_list(Timestamp, 16)).
 
 -spec decode_timestamp(ne_binary()) -> integer().
 decode_timestamp(<<_/binary>> = TimestampHex) ->
@@ -61,8 +61,8 @@ decode_timestamp(<<_/binary>> = TimestampHex) ->
 
 -spec auth_hash(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
 auth_hash(ProviderId, TimestampHex, Salt, Secret) ->
-    Auth = wh_util:to_lower_binary(
-             wh_util:hexencode_binary(
+    Auth = kz_util:to_lower_binary(
+             kz_util:hexencode_binary(
                crypto:hash('sha', [Salt, Secret])
               )
             ),
@@ -74,9 +74,9 @@ auth_hash(ProviderId, TimestampHex, Salt, Secret) ->
 
     Hash = crypto:hash('sha', PreHash),
 
-    wh_util:hexencode_binary(Hash).
+    kz_util:hexencode_binary(Hash).
 
 -spec split_api_token(ne_binary()) -> {ne_binary(), integer(), ne_binary()}.
 split_api_token(Token) ->
-    [?VERSION, Salt, TimestampHex, Auth] = binary:split(wh_util:to_lower_binary(Token), <<":">>, ['global']),
+    [?VERSION, Salt, TimestampHex, Auth] = binary:split(kz_util:to_lower_binary(Token), <<":">>, ['global']),
     {Salt, decode_timestamp(TimestampHex), Auth}.

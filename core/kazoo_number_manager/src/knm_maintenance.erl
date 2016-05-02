@@ -16,10 +16,10 @@
         ]).
 
 -define(TIME_BETWEEN_ACCOUNTS_MS
-       ,whapps_config:get_integer(?KNM_CONFIG_CAT, <<"time_between_accounts_ms">>, ?MILLISECONDS_IN_SECOND)).
+       ,kapps_config:get_integer(?KNM_CONFIG_CAT, <<"time_between_accounts_ms">>, ?MILLISECONDS_IN_SECOND)).
 
 -define(TIME_BETWEEN_NUMBERS_MS
-       ,whapps_config:get_integer(?KNM_CONFIG_CAT, <<"time_between_numbers_ms">>, ?MILLISECONDS_IN_SECOND)).
+       ,kapps_config:get_integer(?KNM_CONFIG_CAT, <<"time_between_numbers_ms">>, ?MILLISECONDS_IN_SECOND)).
 
 -define(LOG(Format, Args),
         lager:debug(Format, Args),
@@ -53,7 +53,7 @@ fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(_)) ->
     foreach_pause_in_between(?TIME_BETWEEN_NUMBERS_MS, fun maybe_fix_number/1, ToFix),
     kz_datamgr:flush_cache_doc(AccountDb, ?KNM_PHONE_NUMBERS_DOC);
 fix_account_numbers(Account = ?NE_BINARY) ->
-    fix_account_numbers(wh_util:format_account_db(Account)).
+    fix_account_numbers(kz_util:format_account_db(Account)).
 
 %%%===================================================================
 %%% Internal functions
@@ -86,15 +86,15 @@ get_phone_numbers(AccountDb) ->
         {'ok', JObj} ->
             [ #{ key => Key
                , old => phone_number_from_dirty_json(knm_converters:normalize(Key)
-                                                    ,wh_json:get_value(Key, JObj))
+                                                    ,kz_json:get_value(Key, JObj))
                , fetched => fetch_number(Key)
                , account_db => AccountDb
-               , account_id => wh_util:format_account_id(AccountDb)
+               , account_id => kz_util:format_account_id(AccountDb)
                , trunkstore_numbers => TrunkstoreNumbers
                , callflow_numbers => CallflowNumbers
                , fixes => []
                }
-              || Key <- wh_json:get_keys(wh_json:public_fields(JObj)),
+              || Key <- kz_json:get_keys(kz_json:public_fields(JObj)),
                  knm_converters:is_reconcilable(Key)
             ];
         {'error', _R} ->
@@ -112,26 +112,26 @@ fetch_number(Number) ->
             knm_phone_number:new()
     end.
 
--spec phone_number_from_dirty_json(ne_binary(), wh_json:object()) -> knm_phone_number:knm_phone_number().
+-spec phone_number_from_dirty_json(ne_binary(), kz_json:object()) -> knm_phone_number:knm_phone_number().
 phone_number_from_dirty_json(NormalizedNumber, JObj) ->
-    State = wh_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY, <<"state">>], JObj),
+    State = kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY, <<"state">>], JObj),
     LessDirtyJObj =
-        wh_json:from_list(
+        kz_json:from_list(
           props:filter_empty(
             [ {<<"_id">>, NormalizedNumber}
             , {?PVT_DB_NAME, knm_converters:to_db(NormalizedNumber)}
-            , {?PVT_ASSIGNED_TO, wh_json:get_first_defined([?PVT_ASSIGNED_TO, <<"assigned_to">>], JObj)}
-            , {?PVT_PREVIOUSLY_ASSIGNED_TO, wh_json:get_first_defined([?PVT_PREVIOUSLY_ASSIGNED_TO, <<"previously_assigned_to">>], JObj)}
-            , {?PVT_USED_BY, wh_json:get_first_defined([?PVT_USED_BY, <<"used_by">>], JObj)}
+            , {?PVT_ASSIGNED_TO, kz_json:get_first_defined([?PVT_ASSIGNED_TO, <<"assigned_to">>], JObj)}
+            , {?PVT_PREVIOUSLY_ASSIGNED_TO, kz_json:get_first_defined([?PVT_PREVIOUSLY_ASSIGNED_TO, <<"previously_assigned_to">>], JObj)}
+            , {?PVT_USED_BY, kz_json:get_first_defined([?PVT_USED_BY, <<"used_by">>], JObj)}
             , {?PVT_STATE, State}
             , {?PVT_PORTED_IN, ?NUMBER_STATE_PORT_IN == State}
-            , {?PVT_MODULE_NAME, wh_json:get_first_defined([?PVT_MODULE_NAME, <<"module_name">>], JObj, knm_carriers:default_carrier())}
-            , {?PVT_CARRIER_DATA, wh_json:get_first_defined([?PVT_CARRIER_DATA, <<"module_data">>], JObj)}
-            , {?PVT_AUTH_BY, wh_json:get_first_defined([?PVT_AUTH_BY, <<"authorizing_account">>], JObj)}
+            , {?PVT_MODULE_NAME, kz_json:get_first_defined([?PVT_MODULE_NAME, <<"module_name">>], JObj, knm_carriers:default_carrier())}
+            , {?PVT_CARRIER_DATA, kz_json:get_first_defined([?PVT_CARRIER_DATA, <<"module_data">>], JObj)}
+            , {?PVT_AUTH_BY, kz_json:get_first_defined([?PVT_AUTH_BY, <<"authorizing_account">>], JObj)}
             ])
          ),
     knm_phone_number:from_json(
-      wh_json:set_value(<<"from_fix">>, wh_json:public_fields(JObj), LessDirtyJObj)
+      kz_json:set_value(<<"from_fix">>, kz_json:public_fields(JObj), LessDirtyJObj)
      ).
 
 -spec maybe_fix_number(number_to_fix()) -> 'ok'.
@@ -179,7 +179,7 @@ remove_old('false', AccountDb, Key) ->
         {'error', _R} ->
             ?LOG("[~s] failed to open phone_numbers doc: ~p", [Key, _R]);
         {'ok', JObj} ->
-            NewJObj = wh_json:delete_key(Key, JObj),
+            NewJObj = kz_json:delete_key(Key, JObj),
             case kz_datamgr:ensure_saved(AccountDb, NewJObj) of
                 {'ok', _} -> ?LOG("[~s] phone_numbers doc fixed, number removed", [Key]);
                 {'error', _R2} -> ?LOG("[~s] phone_numbers doc failed to fix: ~p", [Key, _R2])

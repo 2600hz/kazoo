@@ -19,7 +19,7 @@
 -define(FAX_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax">>).
 
 -define(TEMPLATE_MACROS
-        ,wh_json:from_list(
+        ,kz_json:from_list(
            [?MACRO_VALUE(<<"call_id">>, <<"call_id">>, <<"Call ID">>, <<"Call ID of the fax transmission">>)
             ,?MACRO_VALUE(<<"fax.total_pages">>, <<"fax_total_pages">>, <<"Total Pages">>, <<"Total number of pages received">>)
             ,?MACRO_VALUE(<<"fax.id">>, <<"fax_id">>, <<"Fax ID">>, <<"Crossbar ID of the fax transmission">>)
@@ -50,7 +50,7 @@
 
 -spec init() -> 'ok'.
 init() ->
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
                                            ,{'text', ?TEMPLATE_TEXT}
                                            ,{'html', ?TEMPLATE_HTML}
@@ -64,31 +64,31 @@ init() ->
                                            ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]).
 
--spec handle_fax_outbound(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_fax_outbound(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_fax_outbound(JObj, _Props) ->
-    'true' = wapi_notifications:fax_outbound_v(JObj),
-    wh_util:put_callid(JObj),
+    'true' = kapi_notifications:fax_outbound_v(JObj),
+    kz_util:put_callid(JObj),
 
     lager:debug("processing fax outbound to email ~p", [JObj]),
 
     %% Gather data for template
-    DataJObj = wh_json:normalize(JObj),
-    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    DataJObj = kz_json:normalize(JObj),
+    AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
         'false' -> lager:debug("notification handling not configured for this account");
         'true' -> process_req(DataJObj)
     end.
 
--spec process_req(wh_json:object()) -> 'ok'.
+-spec process_req(kz_json:object()) -> 'ok'.
 process_req(DataJObj) ->
     FaxJObj = teletype_fax_util:get_fax_doc(DataJObj),
     OwnerJObj = get_owner_doc(FaxJObj, DataJObj),
 
     Macros = build_template_data(
-               wh_json:set_values([{<<"account">>, teletype_util:account_params(DataJObj)}
-                                   ,{<<"fax">>, wh_doc:public_fields(FaxJObj)}
-                                   ,{<<"owner">>, wh_doc:public_fields(OwnerJObj)}
+               kz_json:set_values([{<<"account">>, teletype_util:account_params(DataJObj)}
+                                   ,{<<"fax">>, kz_doc:public_fields(FaxJObj)}
+                                   ,{<<"owner">>, kz_doc:public_fields(OwnerJObj)}
                                   ]
                                   ,DataJObj
                                  )),
@@ -100,7 +100,7 @@ process_req(DataJObj) ->
     {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, teletype_util:find_account_id(DataJObj)),
 
     Subject = teletype_util:render_subject(
-                wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
+                kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
                 ,Macros
                ),
     lager:debug("rendered subject: ~s", [Subject]),
@@ -109,7 +109,7 @@ process_req(DataJObj) ->
         case teletype_util:is_preview(DataJObj) of
             'true' -> DataJObj;
             'false' ->
-                wh_json:set_value(<<"to">>, to_email_addresses(FaxJObj), DataJObj)
+                kz_json:set_value(<<"to">>, to_email_addresses(FaxJObj), DataJObj)
         end,
 
     Emails = teletype_util:find_addresses(EmailsJObj
@@ -123,17 +123,17 @@ process_req(DataJObj) ->
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
 
--spec get_owner_doc(wh_json:object(), wh_json:object()) -> wh_json:object().
+-spec get_owner_doc(kz_json:object(), kz_json:object()) -> kz_json:object().
 get_owner_doc(FaxJObj, DataJObj) ->
-    OwnerId = wh_json:get_value(<<"owner_id">>, FaxJObj),
+    OwnerId = kz_json:get_value(<<"owner_id">>, FaxJObj),
     case teletype_util:open_doc(<<"user">>, OwnerId, DataJObj) of
         {'ok', OwnerJObj} -> OwnerJObj;
-        {'error', _} -> wh_json:new()
+        {'error', _} -> kz_json:new()
     end.
 
--spec build_template_data(wh_json:object()) -> wh_proplist().
+-spec build_template_data(kz_json:object()) -> kz_proplist().
 build_template_data(DataJObj) ->
-    [{<<"account">>, wh_json:get_value(<<"account">>, DataJObj)}
+    [{<<"account">>, kz_json:get_value(<<"account">>, DataJObj)}
      ,{<<"fax">>, build_fax_template_data(DataJObj)}
      ,{<<"system">>, teletype_util:system_params()}
      ,{<<"caller_id">>, caller_id_data(DataJObj)}
@@ -141,56 +141,56 @@ build_template_data(DataJObj) ->
      ,{<<"date_called">>, date_called_data(DataJObj)}
      ,{<<"from">>, from_data(DataJObj)}
      ,{<<"to">>, to_data(DataJObj)}
-     ,{<<"call_id">>, wh_json:get_value(<<"call_id">>, DataJObj)}
+     ,{<<"call_id">>, kz_json:get_value(<<"call_id">>, DataJObj)}
     ].
 
--spec caller_id_data(wh_json:object()) -> wh_proplist().
+-spec caller_id_data(kz_json:object()) -> kz_proplist().
 caller_id_data(DataJObj) ->
     props:filter_undefined(
-      [{<<"name">>, wh_json:get_value(<<"caller_id_name">>, DataJObj)}
-       ,{<<"number">>, wh_json:get_value(<<"caller_id_number">>, DataJObj)}
+      [{<<"name">>, kz_json:get_value(<<"caller_id_name">>, DataJObj)}
+       ,{<<"number">>, kz_json:get_value(<<"caller_id_number">>, DataJObj)}
       ]).
 
--spec callee_id_data(wh_json:object()) -> wh_proplist().
+-spec callee_id_data(kz_json:object()) -> kz_proplist().
 callee_id_data(DataJObj) ->
     props:filter_undefined(
-      [{<<"name">>, wh_json:get_value(<<"callee_id_name">>, DataJObj)}
-       ,{<<"number">>, wh_json:get_value(<<"callee_id_number">>, DataJObj)}
+      [{<<"name">>, kz_json:get_value(<<"callee_id_name">>, DataJObj)}
+       ,{<<"number">>, kz_json:get_value(<<"callee_id_number">>, DataJObj)}
       ]).
 
--spec date_called_data(wh_json:object()) -> wh_proplist().
+-spec date_called_data(kz_json:object()) -> kz_proplist().
 date_called_data(DataJObj) ->
-    DateCalled = wh_json:get_integer_value(<<"fax_timestamp">>, DataJObj, wh_util:current_tstamp()),
+    DateCalled = kz_json:get_integer_value(<<"fax_timestamp">>, DataJObj, kz_util:current_tstamp()),
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
-    Timezone = wh_json:get_value([<<"fax">>, <<"tx_result">>, <<"timezone">>], DataJObj, <<"UTC">>),
-    ClockTimezone = whapps_config:get(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
+    Timezone = kz_json:get_value([<<"fax">>, <<"tx_result">>, <<"timezone">>], DataJObj, <<"UTC">>),
+    ClockTimezone = kapps_config:get(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
 
     props:filter_undefined(
       [{<<"utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
        ,{<<"local">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
       ]).
 
--spec from_data(wh_json:object()) -> wh_proplist().
+-spec from_data(kz_json:object()) -> kz_proplist().
 from_data(DataJObj) ->
-    FromE164 = wh_json:get_value(<<"caller_id_number">>, DataJObj),
+    FromE164 = kz_json:get_value(<<"caller_id_number">>, DataJObj),
 
     props:filter_undefined(
       [{<<"user">>, knm_util:pretty_print(FromE164)}
-       ,{<<"realm">>, wh_json:get_value(<<"from_realm">>, DataJObj)}
+       ,{<<"realm">>, kz_json:get_value(<<"from_realm">>, DataJObj)}
       ]).
 
--spec to_data(wh_json:object()) -> wh_proplist().
+-spec to_data(kz_json:object()) -> kz_proplist().
 to_data(DataJObj) ->
-    ToE164 = wh_json:get_value(<<"callee_id_number">>, DataJObj),
+    ToE164 = kz_json:get_value(<<"callee_id_number">>, DataJObj),
     props:filter_undefined(
       [{<<"user">>, knm_util:pretty_print(ToE164)}
-       ,{<<"realm">>, wh_json:get_value(<<"to_realm">>, DataJObj)}
+       ,{<<"realm">>, kz_json:get_value(<<"to_realm">>, DataJObj)}
       ]).
 
--spec to_email_addresses(wh_json:object()) -> api_binaries().
+-spec to_email_addresses(kz_json:object()) -> api_binaries().
 to_email_addresses(DataJObj) ->
     to_email_addresses(DataJObj
-                       ,wh_json:get_first_defined([[<<"to">>, <<"email_addresses">>]
+                       ,kz_json:get_first_defined([[<<"to">>, <<"email_addresses">>]
                                                    ,[<<"fax">>, <<"email">>, <<"send_to">>]
                                                    ,[<<"fax_notifications">>, <<"email">>, <<"send_to">>]
                                                    ,[<<"notifications">>, <<"email">>, <<"send_to">>]
@@ -201,13 +201,13 @@ to_email_addresses(DataJObj) ->
                                                  )
                       ).
 
--spec to_email_addresses(wh_json:object(), ne_binary() | api_binaries()) -> api_binaries().
+-spec to_email_addresses(kz_json:object(), ne_binary() | api_binaries()) -> api_binaries().
 to_email_addresses(_DataJObj, <<_/binary>> = Email) ->
     [Email];
 to_email_addresses(_DataJObj, [_|_] = Emails) ->
     Emails;
 to_email_addresses(DataJObj, _) ->
-    case teletype_util:find_account_rep_email(wh_json:get_value(<<"account">>, DataJObj)) of
+    case teletype_util:find_account_rep_email(kz_json:get_value(<<"account">>, DataJObj)) of
         'undefined' ->
             lager:debug("failed to find account rep email, using defaults"),
             default_to_addresses();
@@ -218,17 +218,17 @@ to_email_addresses(DataJObj, _) ->
 
 -spec default_to_addresses() -> api_binaries().
 default_to_addresses() ->
-    case whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>) of
+    case kapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>) of
         'undefined' -> 'undefined';
         <<_/binary>> = Email -> [Email];
         [_|_]=Emails -> Emails
     end.
 
--spec build_fax_template_data(wh_json:object()) -> wh_proplist().
+-spec build_fax_template_data(kz_json:object()) -> kz_proplist().
 build_fax_template_data(DataJObj) ->
-    FaxJObj = wh_json:get_value(<<"fax">>, DataJObj),
+    FaxJObj = kz_json:get_value(<<"fax">>, DataJObj),
     props:filter_undefined(
-      [{<<"id">>, wh_json:get_value(<<"fax_id">>, DataJObj)}
-       ,{<<"media">>, wh_json:get_value(<<"fax_name">>, DataJObj)}
-       | wh_json:to_proplist(wh_json:get_value(<<"tx_result">>, FaxJObj, wh_json:new()))
+      [{<<"id">>, kz_json:get_value(<<"fax_id">>, DataJObj)}
+       ,{<<"media">>, kz_json:get_value(<<"fax_name">>, DataJObj)}
+       | kz_json:to_proplist(kz_json:get_value(<<"tx_result">>, FaxJObj, kz_json:new()))
       ]).

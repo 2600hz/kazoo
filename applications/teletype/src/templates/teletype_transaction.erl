@@ -18,7 +18,7 @@
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?NOTIFY_CONFIG_CAT)/binary>>).
 
 -define(TEMPLATE_MACROS
-        ,wh_json:from_list(
+        ,kz_json:from_list(
            [?MACRO_VALUE(<<"plan.id">>, <<"plan_id">>, <<"Plan ID">>, <<"Plan ID">>)
             ,?MACRO_VALUE(<<"plan.category">>, <<"plan_category">>, <<"Plan Category">>, <<"Plan Category">>)
             ,?MACRO_VALUE(<<"plan.item">>, <<"plan_item">>, <<"Plan Item">>, <<"Plan Item">>)
@@ -78,7 +78,7 @@
 
 -spec init() -> 'ok'.
 init() ->
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
                                            ,{'text', ?TEMPLATE_TEXT}
                                            ,{'html', ?TEMPLATE_HTML}
@@ -92,35 +92,35 @@ init() ->
                                            ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]).
 
--spec handle_transaction(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_transaction(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_transaction(JObj, _Props) ->
-    'true' = wapi_notifications:transaction_v(JObj),
-    wh_util:put_callid(JObj),
+    'true' = kapi_notifications:transaction_v(JObj),
+    kz_util:put_callid(JObj),
 
     %% Gather data for template
-    DataJObj = wh_json:normalize(JObj),
-    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    DataJObj = kz_json:normalize(JObj),
+    AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
         'false' -> lager:debug("notification handling not configured for this account");
         'true' -> handle_req(DataJObj)
     end.
 
--spec service_plan_data(wh_json:object()) -> wh_proplist().
+-spec service_plan_data(kz_json:object()) -> kz_proplist().
 service_plan_data(DataJObj) ->
     case teletype_util:is_preview(DataJObj) of
         'true' -> [];
         'false' -> teletype_util:public_proplist(<<"service_plan">>, DataJObj)
     end.
 
--spec transaction_data(wh_json:object()) -> wh_proplist().
+-spec transaction_data(kz_json:object()) -> kz_proplist().
 transaction_data(DataJObj) ->
     case teletype_util:is_preview(DataJObj) of
         'true' -> [];
         'false' -> teletype_util:public_proplist(<<"transaction">>, DataJObj)
     end.
 
--spec handle_req(wh_json:object()) -> 'ok'.
+-spec handle_req(kz_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:account_params(DataJObj)}
@@ -135,7 +135,7 @@ handle_req(DataJObj) ->
     {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, AccountId),
 
     Subject = teletype_util:render_subject(
-                wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])
+                kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])
                 ,Macros
                ),
 

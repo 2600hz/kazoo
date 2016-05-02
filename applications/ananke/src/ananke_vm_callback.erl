@@ -41,8 +41,8 @@ check(AccountId, VMBoxId) ->
             lager:info("no unread messages");
         'true' ->
             lager:info("found unread messages"),
-            AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-            handle_req(wh_json:from_list([{<<"Account-ID">>, AccountId}
+            AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+            handle_req(kz_json:from_list([{<<"Account-ID">>, AccountId}
                                            ,{<<"Account-DB">>, AccountDb}
                                            ,{<<"Voicemail-Box">>, VMBoxId}
                                           ]),
@@ -53,14 +53,14 @@ has_unread(AccountId, VMBoxId) ->
     {New, _} = kz_vm_message:count_per_folder(AccountId, VMBoxId),
     New > 0.
 
--spec handle_req(wh_json:object(), wh_proplist()) -> any().
+-spec handle_req(kz_json:object(), kz_proplist()) -> any().
 handle_req(JObj, Props) ->
     'true' = props:get_value(<<"skip_verification">>, Props, 'false')
-                orelse wapi_notifications:voicemail_saved_v(JObj),
-    _ = wh_util:put_callid(JObj),
-    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
-    AccountDb = wh_json:get_value(<<"Account-DB">>, JObj),
-    VMBoxId = wh_json:get_value(<<"Voicemail-Box">>, JObj),
+                orelse kapi_notifications:voicemail_saved_v(JObj),
+    _ = kz_util:put_callid(JObj),
+    AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
+    AccountDb = kz_json:get_value(<<"Account-DB">>, JObj),
+    VMBoxId = kz_json:get_value(<<"Voicemail-Box">>, JObj),
     lager:debug("handling new voicemail in ~p", [VMBoxId]),
     {'ok', VMBoxJObj} = kz_datamgr:open_cache_doc(AccountDb, VMBoxId),
     case kzd_voicemail_box:owner_id(VMBoxJObj) of
@@ -69,20 +69,20 @@ handle_req(JObj, Props) ->
         UserId ->
             lager:debug("voicemail owner is ~p", [UserId]),
             {'ok', UserJObj} = kz_datamgr:open_cache_doc(AccountDb, UserId),
-            {'ok', AccountJObj} = kz_datamgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
+            {'ok', AccountJObj} = kz_datamgr:open_cache_doc(?KZ_ACCOUNTS_DB, AccountId),
 
             OptionsPath = [<<"notify">>, <<"callback">>],
-            VMBoxNotifyJObj = wh_json:get_value(OptionsPath, VMBoxJObj),
-            UserNotifyJObj = wh_json:get_value([<<"voicemail">> | OptionsPath], UserJObj),
-            AccountNotifyJObj = wh_json:get_value([<<"voicemail">> | OptionsPath], AccountJObj),
+            VMBoxNotifyJObj = kz_json:get_value(OptionsPath, VMBoxJObj),
+            UserNotifyJObj = kz_json:get_value([<<"voicemail">> | OptionsPath], UserJObj),
+            AccountNotifyJObj = kz_json:get_value([<<"voicemail">> | OptionsPath], AccountJObj),
 
-            Realm = wh_json:get_value(<<"To-Realm">>, JObj),
+            Realm = kz_json:get_value(<<"To-Realm">>, JObj),
 
-            Mailbox = wh_json:get_value(<<"mailbox">>, VMBoxJObj),
+            Mailbox = kz_json:get_value(<<"mailbox">>, VMBoxJObj),
             VMNumber = get_voicemail_number(AccountDb, Mailbox),
             Number = get_first_defined([{<<"number">>, VMBoxNotifyJObj}
                                         ,{<<"number">>, UserNotifyJObj}]),
-            IsDisabled = wh_util:is_true(
+            IsDisabled = kz_util:is_true(
                               get_first_defined([{<<"disabled">>, VMBoxNotifyJObj}
                                                  ,{<<"disabled">>, UserNotifyJObj}])),
 
@@ -114,31 +114,31 @@ get_voicemail_number(AccountDb, Mailbox) ->
             'undefined'
     end.
 
--spec is_voicemail_cf(wh_json:object()) -> boolean().
+-spec is_voicemail_cf(kz_json:object()) -> boolean().
 is_voicemail_cf(JObj) ->
     FlowJObj = get_cf_flow(JObj),
-    IsFlow = wh_json:is_json_object(FlowJObj) andalso not wh_json:is_empty(FlowJObj),
+    IsFlow = kz_json:is_json_object(FlowJObj) andalso not kz_json:is_empty(FlowJObj),
     case {IsFlow
           ,IsFlow
-            andalso wh_json:get_value(<<"module">>, FlowJObj) =:= <<"voicemail">>
-            andalso wh_json:get_value([<<"data">>, <<"action">>], FlowJObj) =:= <<"check">>}
+            andalso kz_json:get_value(<<"module">>, FlowJObj) =:= <<"voicemail">>
+            andalso kz_json:get_value([<<"data">>, <<"action">>], FlowJObj) =:= <<"check">>}
     of
         {'false', _} -> 'false';
         {'true', 'true'} -> 'true';
         _ -> is_voicemail_cf(FlowJObj)
     end.
 
--spec get_cf_flow(wh_json:object()) -> api_object().
+-spec get_cf_flow(kz_json:object()) -> api_object().
 get_cf_flow(JObj) ->
-    case wh_json:get_value([<<"children">>, <<"_">>], JObj) of
+    case kz_json:get_value([<<"children">>, <<"_">>], JObj) of
         'undefined' ->
-            wh_json:get_value([<<"doc">>, <<"flow">>], JObj);
+            kz_json:get_value([<<"doc">>, <<"flow">>], JObj);
         FlowJObj -> FlowJObj
     end.
 
--spec get_callflow_number(wh_json:object(), ne_binary()) -> api_binary().
+-spec get_callflow_number(kz_json:object(), ne_binary()) -> api_binary().
 get_callflow_number(Callflow, _Mailbox) ->
-    case wh_json:get_value([<<"doc">>, <<"numbers">>], Callflow, ['undefined']) of
+    case kz_json:get_value([<<"doc">>, <<"numbers">>], Callflow, ['undefined']) of
         [] -> 'undefined';
         [Number | _] -> Number
     end.
@@ -169,7 +169,7 @@ start_caller(#args{callback_number = Number
         {'error', Error} -> lager:warning("error: ~p", [Error])
     end.
 
--spec build_originate_req(#args{}) -> wh_proplist().
+-spec build_originate_req(#args{}) -> kz_proplist().
 build_originate_req(#args{callback_number = CallbackNumber
                           ,vm_number = VMNumber
                           ,account_id = AccountId
@@ -178,7 +178,7 @@ build_originate_req(#args{callback_number = CallbackNumber
                           ,realm = Realm
                          }) ->
 
-    CustomChannelVars = wh_json:from_list([{<<"Account-ID">>, AccountId}
+    CustomChannelVars = kz_json:from_list([{<<"Account-ID">>, AccountId}
                                            ,{<<"Owner-ID">>, UserId}
                                            ,{<<"AutoAnswer">>, 'true'}
                                            ,{<<"Authorizing-ID">>, UserId}
@@ -197,7 +197,7 @@ build_originate_req(#args{callback_number = CallbackNumber
                ],
 
     ApplicationName = <<"transfer">>,
-    ApplicationData = wh_json:from_list([{<<"Route">>, VMNumber}
+    ApplicationData = kz_json:from_list([{<<"Route">>, VMNumber}
                                          ,{<<"Custom-Channel-Vars">>, CustomChannelVars}
                                         ]),
 
@@ -206,24 +206,24 @@ build_originate_req(#args{callback_number = CallbackNumber
        ,{<<"Application-Data">>, ApplicationData}
        ,{<<"Originate-Immediate">>, 'true'}
        ,{<<"Ignore-Early-Media">>, 'true'}
-       ,{<<"Endpoints">>, [wh_json:from_list(Endpoint)]}
+       ,{<<"Endpoints">>, [kz_json:from_list(Endpoint)]}
        ,{<<"Dial-Endpoint-Method">>, <<"single">>}
        ,{<<"Continue-On-Fail">>, 'false'}
        ,{<<"Custom-Channel-Vars">>, CustomChannelVars}
        ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Account-Realm">>
                                            ,<<"Authorizing-ID">>, <<"Authorizing-Type">>
                                            ,<<"Owner-ID">>]}
-       | wh_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
+       | kz_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
       ],
     props:filter_undefined(R).
 
--spec get_first_defined([{ne_binary(), wh_json:object()}]) -> api_binary().
+-spec get_first_defined([{ne_binary(), kz_json:object()}]) -> api_binary().
 get_first_defined(Props) ->
     get_first_defined(Props, 'undefined').
 
--spec get_first_defined([{ne_binary(), wh_json:object()}], any()) -> binary() | any().
+-spec get_first_defined([{ne_binary(), kz_json:object()}], any()) -> binary() | any().
 get_first_defined([{Keys, JObj} | Rest], Default) ->
-    case wh_json:get_value(Keys, JObj) of
+    case kz_json:get_value(Keys, JObj) of
         'undefined' ->
             get_first_defined(Rest, Default);
         Val ->
@@ -232,7 +232,7 @@ get_first_defined([{Keys, JObj} | Rest], Default) ->
 get_first_defined([], Default) ->
     Default.
 
--spec get_schedule(wh_json:object(), wh_json:object(), wh_json:object()) -> pos_integers().
+-spec get_schedule(kz_json:object(), kz_json:object(), kz_json:object()) -> pos_integers().
 get_schedule(VMBoxJObj, UserJObj, AccountJObj) ->
     case get_first_defined([{<<"schedule">>, VMBoxJObj}
                             ,{<<"schedule">>, UserJObj}
@@ -254,36 +254,36 @@ get_schedule_from_attempts_interval(Attempts, Interval) when is_integer(Attempts
 get_schedule_from_attempts_interval(_Attempts, _Interval) ->
     [].
 
--spec get_interval(wh_json:object(), wh_json:object(), wh_json:object()) -> integer().
+-spec get_interval(kz_json:object(), kz_json:object(), kz_json:object()) -> integer().
 get_interval(VMBoxJObj, UserJObj, AccountJObj) ->
-    DefaultInterval = whapps_config:get_binary(?CONFIG_CAT
+    DefaultInterval = kapps_config:get_binary(?CONFIG_CAT
                                                ,[<<"voicemail">>, <<"notify">>, <<"callback">>, <<"interval_s">>]
                                                ,5*60),
-    wh_util:to_integer(
+    kz_util:to_integer(
       get_first_defined([{<<"interval_s">>, VMBoxJObj}
                          ,{<<"interval_s">>, UserJObj}
                          ,{<<"interval_s">>, AccountJObj}
                         ]
                         ,DefaultInterval)).
 
--spec get_attempts(wh_json:object(), wh_json:object(), wh_json:object()) -> integer().
+-spec get_attempts(kz_json:object(), kz_json:object(), kz_json:object()) -> integer().
 get_attempts(VMBoxJObj, UserJObj, AccountJObj) ->
-    DefaultTries = whapps_config:get_binary(?CONFIG_CAT
+    DefaultTries = kapps_config:get_binary(?CONFIG_CAT
                                             ,[<<"voicemail">>, <<"notify">>, <<"callback">>, <<"attempts">>]
                                             ,5),
-    wh_util:to_integer(
+    kz_util:to_integer(
       get_first_defined([{<<"attempts">>, VMBoxJObj}
                          ,{<<"attempts">>, UserJObj}
                          ,{<<"attempts">>, AccountJObj}
                         ]
                         ,DefaultTries)).
 
--spec get_callback_timeout(wh_json:object(), wh_json:object(), wh_json:object()) -> integer().
+-spec get_callback_timeout(kz_json:object(), kz_json:object(), kz_json:object()) -> integer().
 get_callback_timeout(VMBoxJObj, UserJObj, AccountJObj) ->
-    DefaultCallTimeout = whapps_config:get_binary(?CONFIG_CAT
+    DefaultCallTimeout = kapps_config:get_binary(?CONFIG_CAT
                                                   ,[<<"voicemail">>, <<"notify">>, <<"callback">>, <<"timeout_s">>]
                                                   ,20),
-    wh_util:to_integer(
+    kz_util:to_integer(
       get_first_defined([{<<"timeout_s">>, VMBoxJObj}
                          ,{<<"timeout_s">>, UserJObj}
                          ,{<<"timeout_s">>, AccountJObj}

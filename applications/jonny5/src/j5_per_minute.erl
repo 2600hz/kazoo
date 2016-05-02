@@ -64,7 +64,7 @@ maybe_credit_available(Amount, Limits) -> maybe_credit_available(Amount, Limits,
 maybe_credit_available(Amount, Limits, IsReal) ->
     AccountId = j5_limits:account_id(Limits),
     Balance = wht_util:current_balance(AccountId),
-    PerMinuteCost = case wh_util:is_true(IsReal) of
+    PerMinuteCost = case kz_util:is_true(IsReal) of
         'true' -> j5_channels:real_per_minute_cost(AccountId);
         'false' -> j5_channels:per_minute_cost(AccountId)
     end,
@@ -133,30 +133,30 @@ create_debit_transaction(Event, Amount, Request, Limits) ->
     Routines = [fun(T) ->
                         case j5_request:account_id(Request) of
                             LedgerId ->
-                                wh_transaction:set_reason(<<"per_minute_call">>, T);
+                                kz_transaction:set_reason(<<"per_minute_call">>, T);
                             AccountId ->
-                                T1 = wh_transaction:set_reason(<<"sub_account_per_minute_call">>, T),
-                                wh_transaction:set_sub_account_info(AccountId, T1)
+                                T1 = kz_transaction:set_reason(<<"sub_account_per_minute_call">>, T),
+                                kz_transaction:set_sub_account_info(AccountId, T1)
                         end
                 end
-                ,fun(T) -> wh_transaction:set_event(Event, T) end
-                ,fun(T) -> wh_transaction:set_call_id(j5_request:call_id(Request), T) end
-                ,fun(T) ->  wh_transaction:set_description(<<"per minute call">>, T) end
+                ,fun(T) -> kz_transaction:set_event(Event, T) end
+                ,fun(T) -> kz_transaction:set_call_id(j5_request:call_id(Request), T) end
+                ,fun(T) ->  kz_transaction:set_description(<<"per minute call">>, T) end
                 ,fun(T) when Event =:= <<"end">> ->
-                         wh_transaction:set_metadata(metadata(Request), T);
+                         kz_transaction:set_metadata(metadata(Request), T);
                     (T) -> T
                  end
                ],
-    wh_transaction:save(
+    kz_transaction:save(
       lists:foldl(fun(F, T) -> F(T) end
-                  ,wh_transaction:debit(LedgerId, Amount)
+                  ,kz_transaction:debit(LedgerId, Amount)
                   ,Routines
                  )
      ).
 
--spec metadata(j5_request:request()) -> wh_json:object().
+-spec metadata(j5_request:request()) -> kz_json:object().
 metadata(Request) ->
-    wh_json:from_list(
+    kz_json:from_list(
       [{<<"direction">>, j5_request:call_direction(Request)}
        ,{<<"duration">>, j5_request:billing_seconds(Request)}
        ,{<<"account_id">>, j5_request:account_id(Request)}

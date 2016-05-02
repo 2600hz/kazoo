@@ -2,7 +2,7 @@
 %%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
 %%% A really simple escript to accept RPC request and push them
-%%% into a running whistle virtual machine.
+%%% into a running kazoo virtual machine.
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
@@ -11,16 +11,16 @@
 
 -export([main/1]).
 
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_log.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo/include/kz_log.hrl").
 
--define(WHAPPS_VM_ARGS, ["/etc/kazoo/vm.args"
-                         ,"/opt/kazoo/whistle_apps/conf/vm.args"
-                         ,"/opt/whistle/whistle/whistle_apps/conf/vm.args"
+-define(KAPPS_VM_ARGS, ["/etc/kazoo/vm.args"
+                         ,"/opt/kazoo/kazoo_apps/conf/vm.args"
+                         ,"/opt/kazoo/kazoo/kazoo_apps/conf/vm.args"
                         ]).
 -define(ECALL_VM_ARGS, ["/etc/kazoo/vm.args"
                         ,"/opt/kazoo/ecallmgr/conf/vm.args"
-                        ,"/opt/whistle/whistle/ecallmgr/conf/vm.args"
+                        ,"/opt/kazoo/kazoo/ecallmgr/conf/vm.args"
                        ]).
 -define(MAX_CHARS, round(math:pow(2012, 80))).
 
@@ -88,24 +88,24 @@ get_target(Options, Verbose) ->
 -spec get_cookie(proplist(), string()) -> 'ok'.
 get_cookie(Options, Node) ->
     Cookie = case {Node, props:get_value('cookie', Options, "")} of
-                 {"whistle_apps", ""} -> maybe_get_cookie('whistle_apps');
+                 {"kazoo_apps", ""} -> maybe_get_cookie('kazoo_apps');
                  {"ecallmgr", ""} -> maybe_get_cookie('ecallmgr');
                  {_, ""} -> print_no_setcookie();
                  {_, C} -> C
              end,
     lager:debug("cookie found: '~p'", [Cookie]),
-    erlang:set_cookie(node(), wh_util:to_atom(Cookie, 'true')),
+    erlang:set_cookie(node(), kz_util:to_atom(Cookie, 'true')),
     Cookie.
 
-maybe_get_cookie('whistle_apps') ->
-    case wh_config:get_atom('whistle_apps', 'cookie') of
+maybe_get_cookie('kazoo_apps') ->
+    case kz_config:get_atom('kazoo_apps', 'cookie') of
         [] ->
-            list_to_atom(get_cookie_from_vmargs(?WHAPPS_VM_ARGS));
+            list_to_atom(get_cookie_from_vmargs(?KAPPS_VM_ARGS));
         [Cookie|_] ->
             Cookie
     end;
 maybe_get_cookie('ecallmgr') ->
-    case wh_config:get_atom('ecallmgr', 'cookie') of
+    case kz_config:get_atom('ecallmgr', 'cookie') of
         [] ->
             list_to_atom(get_cookie_from_vmargs(?ECALL_VM_ARGS));
         [Cookie|_] ->
@@ -168,9 +168,9 @@ print_no_setcookie() ->
 print_ping_failed(Target, Cookie) ->
     io:format(standard_io, "Failed to connect to service '~s' with cookie '~s'~n", [Target, Cookie]),
     io:format(standard_io, "  Possible fixes:~n", []),
-    io:format(standard_io, "    * Ensure the whistle service you are trying to connect to is running on the host~n", []),
-    io:format(standard_io, "    * Ensure that you are using the same cookie as the whistle node, \"./sup -c <cookie>\"~n", []),
-    io:format(standard_io, "    * Verify that the hostname being used is a whistle node~n", []),
+    io:format(standard_io, "    * Ensure the kazoo service you are trying to connect to is running on the host~n", []),
+    io:format(standard_io, "    * Ensure that you are using the same cookie as the kazoo node, \"./sup -c <cookie>\"~n", []),
+    io:format(standard_io, "    * Verify that the hostname being used is a kazoo node~n", []),
     halt(1).
 
 -spec print_unresolvable_host(string()) -> no_return().
@@ -178,7 +178,7 @@ print_unresolvable_host(Host) ->
     io:format(standard_io, "If you can not run \"ping ~s\" then this program will not be able to connect.~n", [Host]),
     io:format(standard_io, "  Possible fixes:~n", []),
     io:format(standard_io, "    * Use \"./sup -h <hostname>\" argument of this script to specify a different host~n", []),
-    io:format(standard_io, "    * Add \"{IP_OF_WHISTLE_NODE}  ~s\" to your /etc/hosts file~n", [Host]),
+    io:format(standard_io, "    * Add \"{IP_OF_KAZOO_NODE}  ~s\" to your /etc/hosts file~n", [Host]),
     io:format(standard_io, "    * Create a DNS record for \"~s\"~n", [Host]),
     halt(1).
 
@@ -188,11 +188,11 @@ display_help(Return) ->
     getopt:usage(OptSpecList, "sup", "[args ...]"),
     erlang:halt(Return).
 
--spec option_spec_list() -> wh_proplist().
+-spec option_spec_list() -> kz_proplist().
 option_spec_list() ->
     [{help, $?, "help", undefined, "Show the program options"},
      {host, $h, "host", {string, net_adm:localhost()}, "System hostname, defaults to system hostname"},
-     {node, $n, "node", {string, "whistle_apps"}, "Node name, default \"whistle_apps\""},
+     {node, $n, "node", {string, "kazoo_apps"}, "Node name, default \"kazoo_apps\""},
      {cookie, $c, "cookie", {string, ""}, "Erlang cookie"},
      {timeout, $t, "timeout", integer, "Command timeout, default 5"},
      {verbose, $v, "verbose", undefined, "Be verbose"},

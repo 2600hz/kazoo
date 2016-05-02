@@ -40,16 +40,16 @@ init() ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req(wh_json:object(), proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
-    'true' = wapi_notifications:new_account_v(JObj),
-    wh_util:put_callid(JObj),
+    'true' = kapi_notifications:new_account_v(JObj),
+    kz_util:put_callid(JObj),
 
     lager:debug("a new account has been created, sending email notification"),
 
-    AccountDb = case {wh_json:get_value(<<"Account-DB">>, JObj), wh_json:get_value(<<"Account-ID">>, JObj)} of
+    AccountDb = case {kz_json:get_value(<<"Account-DB">>, JObj), kz_json:get_value(<<"Account-ID">>, JObj)} of
                     {'undefined', 'undefined'} -> 'undefined';
-                    {'undefined', Id1} -> wh_util:format_account_id(Id1, 'encoded');
+                    {'undefined', Id1} -> kz_util:format_account_id(Id1, 'encoded');
                     {Id2, _} -> Id2
                 end,
 
@@ -62,16 +62,16 @@ handle_req(JObj, _Props) ->
 
     lager:debug("creating new account notice"),
 
-    CustomTxtTemplate = wh_json:get_value([<<"notifications">>, <<"new_account">>, <<"email_text_template">>], Account),
+    CustomTxtTemplate = kz_json:get_value([<<"notifications">>, <<"new_account">>, <<"email_text_template">>], Account),
     {'ok', TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
 
-    CustomHtmlTemplate = wh_json:get_value([<<"notifications">>, <<"new_account">>, <<"email_html_template">>], Account),
+    CustomHtmlTemplate = kz_json:get_value([<<"notifications">>, <<"new_account">>, <<"email_html_template">>], Account),
     {'ok', HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
 
-    CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"new_account">>, <<"email_subject_template">>], Account),
+    CustomSubjectTemplate = kz_json:get_value([<<"notifications">>, <<"new_account">>, <<"email_subject_template">>], Account),
     {'ok', Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
 
-    To = wh_json:get_value(<<"email">>, Admin, whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>)),
+    To = kz_json:get_value(<<"email">>, Admin, kapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>)),
     RepEmail = notify_util:get_rep_email(Account),
 
     _ = build_and_send_email(TxtBody, HTMLBody, Subject, To, Props),
@@ -83,19 +83,19 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props(wh_json:object(), wh_json:object(), wh_json:object(), wh_json:objects()) ->
-                                   wh_proplist().
+-spec create_template_props(kz_json:object(), kz_json:object(), kz_json:object(), kz_json:objects()) ->
+                                   kz_proplist().
 create_template_props(Event, Admin, Account, AllDocs) ->
-    Owners = [{wh_json:get_value([<<"doc">>, <<"_id">>], J1), wh_json:get_value(<<"doc">>, J1)}
+    Owners = [{kz_json:get_value([<<"doc">>, <<"_id">>], J1), kz_json:get_value(<<"doc">>, J1)}
               || J1 <- AllDocs,
-                 wh_json:get_value([<<"doc">>, <<"pvt_type">>], J1) =:= <<"user">>
+                 kz_json:get_value([<<"doc">>, <<"pvt_type">>], J1) =:= <<"user">>
              ],
     DevicesWithOwners = [begin
-                             J3 = wh_json:get_value(<<"doc">>, J2),
-                             wh_json:set_value(<<"user">>, props:get_value(wh_json:get_value(<<"owner_id">>, J3), Owners), J3)
+                             J3 = kz_json:get_value(<<"doc">>, J2),
+                             kz_json:set_value(<<"user">>, props:get_value(kz_json:get_value(<<"owner_id">>, J3), Owners), J3)
                          end
                          || J2 <- AllDocs,
-                            wh_json:get_value([<<"doc">>, <<"pvt_type">>], J2) =:= <<"device">>
+                            kz_json:get_value([<<"doc">>, <<"pvt_type">>], J2) =:= <<"device">>
                         ],
     [{<<"account">>, notify_util:json_to_template_props(Account)}
      ,{<<"devices">>, notify_util:json_to_template_props(DevicesWithOwners)}
@@ -110,7 +110,7 @@ create_template_props(Event, Admin, Account, AllDocs) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), api_binary() | ne_binaries(), wh_proplist()) ->
+-spec build_and_send_email(iolist(), iolist(), iolist(), api_binary() | ne_binaries(), kz_proplist()) ->
                                   'ok' | {'error', any()}.
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
     _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
@@ -119,8 +119,8 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     From = props:get_value(<<"send_from">>, Service),
 
     {ContentTypeParams, CharsetString} = notify_util:get_charset_params(Service),
-    PlainTransferEncoding = whapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"text_content_transfer_encoding">>, <<"7BIT">>),
-    HTMLTransferEncoding = whapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"html_content_transfer_encoding">>, <<"7BIT">>),
+    PlainTransferEncoding = kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"text_content_transfer_encoding">>, <<"7BIT">>),
+    HTMLTransferEncoding = kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"html_content_transfer_encoding">>, <<"7BIT">>),
 
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
@@ -154,12 +154,12 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_account(wh_json:objects()) -> wh_json:object().
+-spec find_account(kz_json:objects()) -> kz_json:object().
 find_account([]) ->
-    wh_json:new();
+    kz_json:new();
 find_account([Doc|Docs]) ->
-    JObj = wh_json:get_value(<<"doc">>, Doc),
-    case wh_doc:type(JObj) of
+    JObj = kz_json:get_value(<<"doc">>, Doc),
+    case kz_doc:type(JObj) of
         <<"account">> -> JObj;
         _ -> find_account(Docs)
     end.
@@ -170,12 +170,12 @@ find_account([Doc|Docs]) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_admin(wh_json:objects()) -> wh_json:object().
-find_admin([]) -> wh_json:new();
+-spec find_admin(kz_json:objects()) -> kz_json:object().
+find_admin([]) -> kz_json:new();
 find_admin([Doc|Docs]) ->
-    JObj = wh_json:get_value(<<"doc">>, Doc),
-    case wh_doc:type(JObj) =:= <<"user">>
-        andalso wh_json:get_value(<<"priv_level">>, JObj) =:= <<"admin">>
+    JObj = kz_json:get_value(<<"doc">>, Doc),
+    case kz_doc:type(JObj) =:= <<"user">>
+        andalso kz_json:get_value(<<"priv_level">>, JObj) =:= <<"admin">>
     of
         'true' -> JObj;
         'false' -> find_admin(Docs)

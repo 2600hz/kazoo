@@ -64,7 +64,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     {'ok', #state{stat_timer_ref=start_timer()}}.
 
 %%--------------------------------------------------------------------
@@ -109,7 +109,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(?STAT_CHECK_MSG, State) ->
-    _P = wh_util:spawn(fun check_stats/0),
+    _P = kz_util:spawn(fun check_stats/0),
     {'noreply', State#state{stat_timer_ref=start_timer()}, 'hibernate'};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
@@ -144,7 +144,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% @public
 -spec hangups_to_monitor() -> ne_binaries().
 hangups_to_monitor() ->
-    whapps_config:get(?APP_NAME
+    kapps_config:get(?APP_NAME
                      ,<<"hangups_to_monitor">>
                      ,[<<"WRONG_CALL_STATE">>
                        ,<<"NO_ROUTE_DESTINATION">>
@@ -163,7 +163,7 @@ start_timer() ->
 
 -spec check_stats() -> 'ok'.
 check_stats() ->
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     lists:foreach(fun check_stats/1, hangups_to_monitor()).
 
 check_stats(HC) ->
@@ -189,7 +189,7 @@ maybe_alert(_HangupCause, _Stats, 'count') -> 'false';
 maybe_alert(_HangupCause, _Stats, 'mean') -> 'false';
 maybe_alert(HangupCause, Stats, Key) ->
     ConfigName = hangups_util:meter_name(HangupCause),
-    Threshold  = whapps_config:get_float(ConfigName, folsom_field(Key)),
+    Threshold  = kapps_config:get_float(ConfigName, folsom_field(Key)),
     Value      = props:get_value(Key, Stats),
     maybe_alert_on_threshold(Value, Threshold, Key).
 
@@ -202,8 +202,8 @@ maybe_alert_on_threshold(Value, Threshold, Key) ->
 send_alert(HangupCause) ->
     lager:debug("hangup cause ~s past threshold, system alerting", [HangupCause]),
     Meter = hangups_util:meter_name(HangupCause),
-    wh_notify:detailed_alert("~s alerted past configured threshold"
-                            , [wh_util:to_lower_binary(HangupCause)]
+    kz_notify:detailed_alert("~s alerted past configured threshold"
+                            , [kz_util:to_lower_binary(HangupCause)]
                             , hangups_query_listener:meter_resp(Meter)
                             ).
 

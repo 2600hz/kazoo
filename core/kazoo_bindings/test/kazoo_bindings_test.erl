@@ -24,7 +24,7 @@
 - include_lib("proper/include/proper.hrl").
 -endif.
 -include_lib("eunit/include/eunit.hrl").
--include_lib("whistle/include/wh_types.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
 
 %% EUNIT and PropEr TESTING %%
 -spec binding_matches(ne_binary(), ne_binary()) -> boolean().
@@ -90,7 +90,7 @@ prop_expands() ->
     ?FORALL(Paths
             ,expanded_paths(),
             ?WHENFAIL(io:format("Failed on ~p~n", [Paths])
-                      ,lists:all(fun wh_util:identity/1,
+                      ,lists:all(fun kz_util:identity/1,
                                  [binding_matches(Pattern, Expanded) =:= Expected
                                   || {Pattern, Expanded, Expected} <- Paths
                                  ])

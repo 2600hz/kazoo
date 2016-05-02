@@ -32,14 +32,14 @@ decode_base64(Base64) ->
 
 -spec get_content_type(ne_binary()) -> api_binary().
 get_content_type(MediaType) ->
-    get_content_type(MediaType, wh_util:truncate_left_binary(MediaType, 6)).
+    get_content_type(MediaType, kz_util:truncate_left_binary(MediaType, 6)).
 
 get_content_type(MediaType, <<"base64">>) ->
-    get_content_type(wh_util:truncate_right_binary(MediaType, byte_size(MediaType) - 7), 'undefined');
+    get_content_type(kz_util:truncate_right_binary(MediaType, byte_size(MediaType) - 7), 'undefined');
 get_content_type(MediaType, _) ->
     case cowboy_http:nonempty_list(MediaType, fun cowboy_http:media_range/2) of
         [{{Type, SubType, _Options}, _, _}] ->
-            wh_util:join_binary([Type, SubType], <<"/">>);
+            kz_util:join_binary([Type, SubType], <<"/">>);
         {'error', 'badarg'} -> 'undefined'
     end.
 

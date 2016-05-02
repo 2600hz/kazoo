@@ -57,15 +57,15 @@ keycert_fold(_Entry, KeyCert) ->
     KeyCert.
 
 -spec user_agent_push_properties(ne_binary()) -> api_object().
--spec user_agent_push_properties(ne_binary(), wh_json:objects()) -> api_object().
+-spec user_agent_push_properties(ne_binary(), kz_json:objects()) -> api_object().
 user_agent_push_properties(UserAgent) ->
-    UAs = whapps_config:get(?CONFIG_CAT, <<"User-Agents">>, wh_json:new()),
-    {Vs, _Ks} = wh_json:get_values(UAs),
+    UAs = kapps_config:get(?CONFIG_CAT, <<"User-Agents">>, kz_json:new()),
+    {Vs, _Ks} = kz_json:get_values(UAs),
     user_agent_push_properties(UserAgent, Vs).
 
 user_agent_push_properties(_UserAgent, []) -> 'undefined';
 user_agent_push_properties(UserAgent, [JObj|UAs]) ->
-    case re:run(UserAgent, wh_json:get_value(<<"regex">>, JObj, <<"^$">>)) of
+    case re:run(UserAgent, kz_json:get_value(<<"regex">>, JObj, <<"^$">>)) of
         'nomatch' -> user_agent_push_properties(UserAgent, UAs);
-        _ -> wh_json:get_value(<<"properties">>, JObj, wh_json:new())
+        _ -> kz_json:get_value(<<"properties">>, JObj, kz_json:new())
     end.

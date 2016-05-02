@@ -64,28 +64,28 @@ start_link() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(ApiJObj, _Props) ->
-    'true' = wapi_blackhole:get_req_v(ApiJObj),
-    wh_util:put_callid(ApiJObj),
+    'true' = kapi_blackhole:get_req_v(ApiJObj),
+    kz_util:put_callid(ApiJObj),
 
-    Node = wh_json:get_binary_value(<<"Node">>, ApiJObj),
+    Node = kz_json:get_binary_value(<<"Node">>, ApiJObj),
     RespData =
         handle_get_req_data(
-            wh_json:get_value(<<"Account-ID">>, ApiJObj)
-            ,wh_json:get_value(<<"Socket-ID">>, ApiJObj)
+            kz_json:get_value(<<"Account-ID">>, ApiJObj)
+            ,kz_json:get_value(<<"Socket-ID">>, ApiJObj)
             ,Node
         ),
     case RespData of
         'ok' -> 'ok';
         RespData ->
-            RespQ = wh_json:get_value(<<"Server-ID">>, ApiJObj),
+            RespQ = kz_json:get_value(<<"Server-ID">>, ApiJObj),
             Resp = [{<<"Data">>, RespData}
-                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, ApiJObj)}
-                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                    ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, ApiJObj)}
+                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             lager:debug("sending reply ~p to ~s",[RespData, Node]),
-            wapi_blackhole:publish_get_resp(RespQ, Resp)
+            kapi_blackhole:publish_get_resp(RespQ, Resp)
     end.
 
 %%--------------------------------------------------------------------
@@ -283,7 +283,7 @@ handle_get_req_data(AccountId, 'undefined', Node) ->
             [];
         Contexts ->
             ToDelete = [<<"account_id">>, <<"auth_token">>, <<"req_id">>, <<"auth_account_id">>],
-            [wh_json:delete_keys(ToDelete, bh_context:to_json(Context))
+            [kz_json:delete_keys(ToDelete, bh_context:to_json(Context))
              || Context <- Contexts]
     end;
 handle_get_req_data('undefined', SocketId, Node) ->

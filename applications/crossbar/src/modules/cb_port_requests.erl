@@ -53,7 +53,7 @@
 -define(DESCENDANTS, <<"descendants">>).
 
 -define(UNFINISHED_PORT_REQUEST_LIFETIME
-        ,whapps_config:get_integer(?MY_CONFIG_CAT, <<"unfinished_port_request_lifetime_s">>, ?SECONDS_IN_DAY * 30)
+        ,kapps_config:get_integer(?MY_CONFIG_CAT, <<"unfinished_port_request_lifetime_s">>, ?SECONDS_IN_DAY * 30)
        ).
 
 -define(PATH_TOKEN_LOA, <<"loa">>).
@@ -93,10 +93,10 @@ init() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec cleanup(ne_binary()) -> 'ok'.
--spec cleanup(ne_binary(), wh_json:objects()) -> 'ok'.
+-spec cleanup(ne_binary(), kz_json:objects()) -> 'ok'.
 
 cleanup(?KZ_PORT_REQUESTS_DB = Db) ->
-    ModifiedBefore = wh_util:current_tstamp() - ?UNFINISHED_PORT_REQUEST_LIFETIME,
+    ModifiedBefore = kz_util:current_tstamp() - ?UNFINISHED_PORT_REQUEST_LIFETIME,
     ViewOpts = [{'startkey', [0]}
                 ,{'endkey', [ModifiedBefore]}
                 ,{'limit', kz_datamgr:max_bulk_insert()}
@@ -112,9 +112,9 @@ cleanup(_) -> 'ok'.
 cleanup(Db, OldPortRequests) ->
     lager:debug("checking ~b old port requests", [length(OldPortRequests)]),
 
-    Deletable = [wh_json:get_value(<<"doc">>, OldPortRequest)
+    Deletable = [kz_json:get_value(<<"doc">>, OldPortRequest)
                  || OldPortRequest <- OldPortRequests,
-                    should_delete_port_request(wh_json:get_value(<<"key">>, OldPortRequest))
+                    should_delete_port_request(kz_json:get_value(<<"key">>, OldPortRequest))
                 ],
     lager:debug("found ~p deletable", [length(Deletable)]),
     kz_datamgr:del_docs(Db, Deletable),
@@ -214,7 +214,7 @@ resource_exists(_Id, ?PORT_ATTACHMENT, _AttachmentId) -> 'true'.
 %% Of the form {atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
 %% @end
 %%--------------------------------------------------------------------
--spec acceptable_content_types() -> wh_proplist().
+-spec acceptable_content_types() -> kz_proplist().
 acceptable_content_types() -> ?ATTACHMENT_MIME_TYPES.
 
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
@@ -334,7 +334,7 @@ validate(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
 -spec get(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 get(Context, Id, ?PATH_TOKEN_LOA) ->
     lager:debug("load LOA for ~s", [Id]),
-    cb_context:set_resp_data(Context, wh_json:encode(cb_context:doc(Context))).
+    cb_context:set_resp_data(Context, kz_json:encode(cb_context:doc(Context))).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -357,18 +357,18 @@ update_port_request_for_save(Context) ->
                         ]
                       ).
 
--spec add_pvt_fields(cb_context:context(), wh_json:object()) ->
-                            wh_json:object().
+-spec add_pvt_fields(cb_context:context(), kz_json:object()) ->
+                            kz_json:object().
 add_pvt_fields(Context, PortRequest) ->
     Tree = kz_account:tree(cb_context:account_doc(Context)),
-    wh_json:set_value(<<"pvt_tree">>, Tree, PortRequest).
+    kz_json:set_value(<<"pvt_tree">>, Tree, PortRequest).
 
 put(Context, Id, ?PORT_ATTACHMENT) ->
     [{Filename, FileJObj}] = cb_context:req_files(Context),
 
-    Contents = wh_json:get_value(<<"contents">>, FileJObj),
+    Contents = kz_json:get_value(<<"contents">>, FileJObj),
 
-    CT = wh_json:get_string_value([<<"headers">>, <<"content_type">>], FileJObj),
+    CT = kz_json:get_string_value([<<"headers">>, <<"content_type">>], FileJObj),
     Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(<<"port_request">>)],
 
     crossbar_doc:save_attachment(Id
@@ -436,9 +436,9 @@ patch(Context, Id, ?PORT_CANCELED) ->
 -spec do_patch(cb_context:context(), path_token()) -> cb_context:context().
 do_patch(Context, _Id) ->
     UpdatedDoc =
-        wh_json:merge_recursive(
+        kz_json:merge_recursive(
             cb_context:doc(Context)
-            ,wh_json:public_fields(cb_context:req_data(Context))
+            ,kz_json:public_fields(cb_context:req_data(Context))
         ),
     Setters = [fun update_port_request_for_save/1
               ,{fun cb_context:set_doc/2, UpdatedDoc}
@@ -468,11 +468,11 @@ post(Context, Id) ->
 
 post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     [{_Filename, FileJObj}] = cb_context:req_files(Context),
-    Contents = wh_json:get_value(<<"contents">>, FileJObj),
-    CT = wh_json:get_string_value([<<"headers">>, <<"content_type">>], FileJObj),
+    Contents = kz_json:get_value(<<"contents">>, FileJObj),
+    CT = kz_json:get_string_value([<<"headers">>, <<"content_type">>], FileJObj),
     Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(<<"port_request">>)],
 
-    case wh_doc:attachment(cb_context:doc(Context), AttachmentId) of
+    case kz_doc:attachment(cb_context:doc(Context), AttachmentId) of
         'undefined' -> lager:debug("no attachment named ~s", [AttachmentId]);
         _AttachmentMeta ->
             lager:debug("deleting old attachment ~s", [AttachmentId]),
@@ -549,7 +549,7 @@ validate_load_summary(Context, ?PORT_CANCELED = Type) ->
 validate_load_summary(Context, <<_/binary>> = Type) ->
     lager:debug("loading summary for ~s", [Type]),
     load_summary(cb_context:set_should_paginate(Context, 'false')
-                  ,[{'startkey', [cb_context:account_id(Context), Type, wh_json:new()]}
+                  ,[{'startkey', [cb_context:account_id(Context), Type, kz_json:new()]}
                     ,{'endkey', [cb_context:account_id(Context), Type]}
                    ]
                  ).
@@ -743,7 +743,7 @@ load_summary_by_range(Context, Type, From, To, Normalize) ->
 load_summary_fold(Context, Type) ->
     Summary = cb_context:resp_data(Context),
     Props =
-        [{'startkey', [cb_context:account_id(Context), Type, wh_json:new()]}
+        [{'startkey', [cb_context:account_id(Context), Type, kz_json:new()]}
         ,{'endkey', [cb_context:account_id(Context), Type]}
         ,{'normalize', 'false'}
         ],
@@ -807,13 +807,13 @@ maybe_normalize_summary_results(Context, 'true') ->
 normalize_summary_results(Context) ->
     Dict = lists:foldl(
              fun(JObj, D) ->
-                     AccountId = wh_json:get_value(<<"account_id">>, JObj),
+                     AccountId = kz_json:get_value(<<"account_id">>, JObj),
                      dict:append_list(AccountId, [JObj], D)
              end, dict:new(), cb_context:resp_data(Context)),
     Names = get_account_names(dict:fetch_keys(Dict)),
     cb_context:set_resp_data(
       Context,
-      [wh_json:from_list(
+      [kz_json:from_list(
          [{<<"account_id">>, AccountId}
           ,{<<"account_name">>, props:get_value(AccountId, Names, <<"unknown">>)}
           ,{<<"port_requests">>, JObjs}
@@ -823,12 +823,12 @@ normalize_summary_results(Context) ->
       ]
      ).
 
--spec get_account_names(ne_binaries()) -> wh_proplist().
+-spec get_account_names(ne_binaries()) -> kz_proplist().
 get_account_names(Keys) ->
-    case kz_datamgr:get_results(?WH_ACCOUNTS_DB, ?ACCOUNTS_BY_SIMPLE_ID, Keys) of
+    case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ?ACCOUNTS_BY_SIMPLE_ID, Keys) of
         {'ok', JObjs} ->
-            [{wh_json:get_value(<<"id">>, JObj)
-              ,wh_json:get_value([<<"value">>, <<"name">>], JObj)
+            [{kz_json:get_value(<<"id">>, JObj)
+              ,kz_json:get_value([<<"value">>, <<"name">>], JObj)
              }
              || JObj <- JObjs
             ];
@@ -884,10 +884,10 @@ build_keys_from_account(E164, [AccountId]) ->
     [[AccountId, E164]];
 build_keys_from_account(E164, [AccountId, ?PORT_DESCENDANTS]) ->
     ViewOptions = [{'startkey', [AccountId]}
-                   ,{'endkey', [AccountId, wh_json:new()]}
+                   ,{'endkey', [AccountId, kz_json:new()]}
                   ],
     case kz_datamgr:get_results(
-           ?WH_ACCOUNTS_DB
+           ?KZ_ACCOUNTS_DB
            ,?AGG_VIEW_DESCENDANTS
            ,ViewOptions
           )
@@ -905,10 +905,10 @@ build_keys_from_account(E164, [AccountId, ?PORT_DESCENDANTS]) ->
              )
     end.
 
--spec build_descendant_key(wh_json:object(), descendant_keys(), ne_binary()) ->
+-spec build_descendant_key(kz_json:object(), descendant_keys(), ne_binary()) ->
                                   descendant_keys().
 build_descendant_key(JObj, Acc, E164) ->
-    [[wh_doc:id(JObj), E164]
+    [[kz_doc:id(JObj), E164]
      |Acc
     ].
 
@@ -917,24 +917,24 @@ build_descendant_key(JObj, Acc, E164) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) ->
-                                    wh_json:objects().
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
+                                    kz_json:objects().
 normalize_view_results(Res, Acc) ->
     [leak_pvt_fields(
        Res
-       ,knm_port_request:public_fields(wh_json:get_value(<<"doc">>, Res))
+       ,knm_port_request:public_fields(kz_json:get_value(<<"doc">>, Res))
       )
      | Acc
     ].
 
--spec leak_pvt_fields(wh_json:object(), wh_json:object()) -> wh_json:object().
+-spec leak_pvt_fields(kz_json:object(), kz_json:object()) -> kz_json:object().
 leak_pvt_fields(Res, JObj) ->
     Fields = [{[<<"doc">>, <<"pvt_account_id">>], <<"account_id">>}],
     lists:foldl(
       fun({Field, Key}, J) ->
-              case wh_json:get_ne_value(Field, Res) of
+              case kz_json:get_ne_value(Field, Res) of
                   'undefined' -> J;
-                  Value -> wh_json:set_value(Key, Value, J)
+                  Value -> kz_json:set_value(Key, Value, J)
               end
       end
       ,JObj
@@ -949,7 +949,7 @@ leak_pvt_fields(Res, JObj) ->
 -spec summary_attachments(cb_context:context(), ne_binary()) -> cb_context:context().
 summary_attachments(Context, Id) ->
     Context1 = load_port_request(Context, Id),
-    As = wh_doc:attachments(cb_context:doc(Context1), wh_json:new()),
+    As = kz_doc:attachments(cb_context:doc(Context1), kz_json:new()),
     cb_context:set_resp_data(Context1
                              ,knm_port_request:normalize_attachments(As)
                             ).
@@ -972,7 +972,7 @@ on_successful_validation(Context, Id) ->
 
 on_successful_validation(Context, Id, 'true') ->
     JObj = cb_context:doc(Context),
-    Numbers = wh_json:get_keys(wh_json:get_value(<<"numbers">>, JObj)),
+    Numbers = kz_json:get_keys(kz_json:get_value(<<"numbers">>, JObj)),
 
     Context1 = lists:foldl(fun(Number, ContextAcc) ->
                                    check_number_portability(Id, Number, ContextAcc)
@@ -988,7 +988,7 @@ on_successful_validation(Context, Id, 'true') ->
         _ -> Context1
     end;
 on_successful_validation(Context, _Id, 'false') ->
-    PortState = wh_json:get_value(?PORT_PVT_STATE, cb_context:doc(Context)),
+    PortState = kz_json:get_value(?PORT_PVT_STATE, cb_context:doc(Context)),
     lager:debug(
       "port state ~s is not valid for updating a port request"
       ,[PortState]
@@ -997,7 +997,7 @@ on_successful_validation(Context, _Id, 'false') ->
     cb_context:add_validation_error(
       PortState
       ,<<"type">>
-      ,wh_json:from_list(
+      ,kz_json:from_list(
          [{<<"message">>, <<"Updating port requests not allowed in current port state">>}
           ,{<<"cause">>, PortState}
          ])
@@ -1033,7 +1033,7 @@ successful_validation(Context, 'undefined') ->
     Unconf = [{<<"pvt_type">>, <<"port_request">>}
               ,{?PORT_PVT_STATE, ?PORT_UNCONFIRMED}
              ],
-    cb_context:set_doc(Context, wh_json:set_values(Unconf, Normalized));
+    cb_context:set_doc(Context, kz_json:set_values(Unconf, Normalized));
 successful_validation(Context, _Id) ->
     Normalized = knm_port_request:normalize_numbers(cb_context:doc(Context)),
     cb_context:set_doc(Context, Normalized).
@@ -1045,7 +1045,7 @@ successful_validation(Context, _Id) ->
 %%--------------------------------------------------------------------
 -spec check_number_portability(api_binary(), ne_binary(), cb_context:context()) ->
                                       cb_context:context().
--spec check_number_portability(api_binary(), ne_binary(), cb_context:context(), ne_binary(), wh_json:object()) ->
+-spec check_number_portability(api_binary(), ne_binary(), cb_context:context(), ne_binary(), kz_json:object()) ->
                                       cb_context:context().
 check_number_portability(PortId, Number, Context) ->
     E164 = knm_converters:normalize(Number),
@@ -1066,8 +1066,8 @@ check_number_portability(PortId, Number, Context) ->
     end.
 
 check_number_portability(PortId, Number, Context, E164, PortReq) ->
-    case {wh_json:get_value(<<"value">>, PortReq) =:= cb_context:account_id(Context)
-          ,wh_doc:id(PortReq) =:= PortId
+    case {kz_json:get_value(<<"value">>, PortReq) =:= cb_context:account_id(Context)
+          ,kz_doc:id(PortReq) =:= PortId
          }
     of
         {'true', 'true'} ->
@@ -1079,14 +1079,14 @@ check_number_portability(PortId, Number, Context, E164, PortReq) ->
         {'true', 'false'} ->
             lager:debug(
               "number ~s(~s) is on a different port request in this account(~s): ~s"
-              ,[E164, Number, cb_context:account_id(Context), wh_doc:id(PortReq)]
+              ,[E164, Number, cb_context:account_id(Context), kz_doc:id(PortReq)]
              ),
-            Message = <<"Number is on a port request already: ", (wh_doc:id(PortReq))/binary>>,
+            Message = <<"Number is on a port request already: ", (kz_doc:id(PortReq))/binary>>,
             number_validation_error(Context, Number, Message);
         {'false', _} ->
             lager:debug(
               "number ~s(~s) is on existing port request for other account(~s)"
-              ,[E164, Number, wh_json:get_value(<<"value">>, PortReq)]
+              ,[E164, Number, kz_json:get_value(<<"value">>, PortReq)]
              ),
             number_validation_error(Context, Number, <<"Number is being ported for a different account">>)
     end.
@@ -1094,7 +1094,7 @@ check_number_portability(PortId, Number, Context, E164, PortReq) ->
 -spec number_validation_error(cb_context:context(), ne_binary(), ne_binary()) ->
                                      cb_context:context().
 number_validation_error(Context, Number, Message) ->
-    JObj = wh_json:from_list([{<<"message">>, Message}
+    JObj = kz_json:from_list([{<<"message">>, Message}
                               ,{<<"cause">>, Number}
                              ]),
     cb_context:add_validation_error(Number, <<"type">>, JObj, Context).
@@ -1119,7 +1119,7 @@ check_number_existence(E164, Number, Context) ->
             cb_context:set_resp_status(Context, 'success');
         {'error', E} ->
             lager:debug("number ~s error-ed when looking up: ~p", [E164, E]),
-            number_validation_error(Context, Number, wh_util:to_binary(E))
+            number_validation_error(Context, Number, kz_util:to_binary(E))
     end.
 
 %%--------------------------------------------------------------------
@@ -1151,8 +1151,8 @@ load_attachment(AttachmentId, Context) ->
                                    ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
                                   )
       ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
-        ,{<<"Content-Type">>, wh_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)}
-        ,{<<"Content-Length">>, wh_doc:attachment_length(cb_context:doc(Context), AttachmentId)}
+        ,{<<"Content-Type">>, kz_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)}
+        ,{<<"Content-Length">>, kz_doc:attachment_length(cb_context:doc(Context), AttachmentId)}
        ]).
 
 %%--------------------------------------------------------------------
@@ -1175,7 +1175,7 @@ maybe_move_state(Context, Id, PortState) ->
             cb_context:add_validation_error(
               <<"port_state">>
               ,<<"enum">>
-              ,wh_json:from_list(
+              ,kz_json:from_list(
                  [{<<"message">>, <<"Cannot move to new state from current state">>}
                   ,{<<"cause">>, PortState}
                  ])
@@ -1184,7 +1184,7 @@ maybe_move_state(Context, Id, PortState) ->
         {'error', 'failed_to_charge'} ->
             cb_context:add_system_error('no_credit', Context);
         {'errors', Errors} ->
-            JObj = wh_json:from_list([{<<"message">>, wh_json:from_list(Errors)}]),
+            JObj = kz_json:from_list([{<<"message">>, kz_json:from_list(Errors)}]),
             cb_context:add_system_error('transition_errors', JObj, Context)
     end.
 
@@ -1218,7 +1218,7 @@ find_template(ResellerId) ->
 find_template(ResellerId, 'undefined') ->
     find_template(ResellerId);
 find_template(ResellerId, CarrierName) ->
-    TemplateName = <<(wh_util:to_lower_binary(wh_util:uri_encode(CarrierName)))/binary, ".tmpl">>,
+    TemplateName = <<(kz_util:to_lower_binary(kz_util:uri_encode(CarrierName)))/binary, ".tmpl">>,
     lager:debug("looking for carrier template ~s or plain template for reseller ~s"
                 ,[TemplateName, ResellerId]
                ),
@@ -1236,8 +1236,8 @@ find_template(ResellerId, CarrierName) ->
 maybe_send_port_comment_notification(Context, Id) ->
     DbDoc = cb_context:fetch(Context, 'db_doc'),
     ReqData = cb_context:req_data(Context),
-    DbDocComments = wh_json:get_value(<<"comments">>, DbDoc),
-    ReqDataComments = wh_json:get_value(<<"comments">>, ReqData),
+    DbDocComments = kz_json:get_value(<<"comments">>, DbDoc),
+    ReqDataComments = kz_json:get_value(<<"comments">>, ReqData),
     case has_new_comment(DbDocComments, ReqDataComments) of
         'false' -> lager:debug("no new comments in ~s, ignoring", [Id]);
         'true' ->
@@ -1260,8 +1260,8 @@ has_new_comment([], [_|_]) -> 'true';
 has_new_comment(_, 'undefined') -> 'false';
 has_new_comment(_, []) -> 'false';
 has_new_comment(OldComments, NewComments) ->
-    OldTime = wh_json:get_value(<<"timestamp">>, lists:last(OldComments)),
-    NewTime = wh_json:get_value(<<"timestamp">>, lists:last(NewComments)),
+    OldTime = kz_json:get_value(<<"timestamp">>, lists:last(OldComments)),
+    NewTime = kz_json:get_value(<<"timestamp">>, lists:last(NewComments)),
 
     OldTime < NewTime.
 
@@ -1298,7 +1298,7 @@ send_port_notification(Context, Id, State, Fun) ->
             _ = revert_patch(Context),
             cb_context:add_system_error(
               'bad_gateway'
-              ,wh_json:from_list([{<<"message">>, <<"failed to send port ", State/binary,  " email">>}])
+              ,kz_json:from_list([{<<"message">>, <<"failed to send port ", State/binary,  " email">>}])
               ,Context
              )
     end.
@@ -1313,9 +1313,9 @@ revert_patch(Context) ->
     Doc = cb_context:doc(Context),
     DBDoc = cb_context:fetch(Context, 'db_doc'),
 
-    Rev = wh_doc:revision(Doc),
+    Rev = kz_doc:revision(Doc),
 
-    RevertedDoc = wh_doc:set_revision(DBDoc, Rev),
+    RevertedDoc = kz_doc:set_revision(DBDoc, Rev),
 
     crossbar_doc:save(cb_context:set_doc(Context, RevertedDoc)).
 
@@ -1330,9 +1330,9 @@ send_port_comment_notification(Context, Id) ->
            ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
            ,{<<"Port-Request-ID">>, Id}
            ,{<<"Version">>, cb_context:api_version(Context)}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    wh_amqp_worker:cast(Req, fun wapi_notifications:publish_port_comment/1).
+    kz_amqp_worker:cast(Req, fun kapi_notifications:publish_port_comment/1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1345,9 +1345,9 @@ send_port_request_notification(Context, Id) ->
            ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
            ,{<<"Port-Request-ID">>, Id}
            ,{<<"Version">>, cb_context:api_version(Context)}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    wh_amqp_worker:cast(Req, fun wapi_notifications:publish_port_request/1).
+    kz_amqp_worker:cast(Req, fun kapi_notifications:publish_port_request/1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1360,9 +1360,9 @@ send_port_pending_notification(Context, Id) ->
            ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
            ,{<<"Port-Request-ID">>, Id}
            ,{<<"Version">>, cb_context:api_version(Context)}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    wh_amqp_worker:cast(Req, fun wapi_notifications:publish_port_pending/1).
+    kz_amqp_worker:cast(Req, fun kapi_notifications:publish_port_pending/1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1374,9 +1374,9 @@ send_port_rejected_notification(Context, Id) ->
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
            ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
            ,{<<"Port-Request-ID">>, Id}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    wh_amqp_worker:cast(Req, fun wapi_notifications:publish_port_rejected/1).
+    kz_amqp_worker:cast(Req, fun kapi_notifications:publish_port_rejected/1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1388,9 +1388,9 @@ send_port_cancel_notification(Context, Id) ->
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
            ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
            ,{<<"Port-Request-ID">>, Id}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    wh_amqp_worker:cast(Req, fun wapi_notifications:publish_port_cancel/1).
+    kz_amqp_worker:cast(Req, fun kapi_notifications:publish_port_cancel/1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1402,9 +1402,9 @@ send_ported_notification(Context, Id) ->
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
            ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
            ,{<<"Port-Request-ID">>, Id}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    wh_amqp_worker:cast(Req, fun wapi_notifications:publish_ported/1).
+    kz_amqp_worker:cast(Req, fun kapi_notifications:publish_ported/1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1416,9 +1416,9 @@ send_port_scheduled_notification(Context, Id) ->
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
            ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
            ,{<<"Port-Request-ID">>, Id}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    wh_amqp_worker:cast(Req, fun wapi_notifications:publish_port_scheduled/1).
+    kz_amqp_worker:cast(Req, fun kapi_notifications:publish_port_scheduled/1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1426,7 +1426,7 @@ send_port_scheduled_notification(Context, Id) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec add_to_phone_numbers_doc(cb_context:context()) -> 'ok' | 'error'.
--spec add_to_phone_numbers_doc(cb_context:context(), wh_json:object()) -> 'ok' | 'error'.
+-spec add_to_phone_numbers_doc(cb_context:context(), kz_json:object()) -> 'ok' | 'error'.
 add_to_phone_numbers_doc(Context) ->
     case get_phone_numbers_doc(Context) of
         {'error', _R} -> 'error';
@@ -1439,21 +1439,21 @@ add_to_phone_numbers_doc(Context, JObj) ->
     Now = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
 
     PhoneNumbersJObj =
-        wh_json:foldl(
+        kz_json:foldl(
           fun(Number, _, Acc) ->
                   NumberJObj = build_number_properties(AccountId, Now),
-                  wh_json:set_value(Number, NumberJObj, Acc)
+                  kz_json:set_value(Number, NumberJObj, Acc)
           end
           ,JObj
-          ,wh_json:get_value(<<"numbers">>, cb_context:doc(Context), wh_json:new())
+          ,kz_json:get_value(<<"numbers">>, cb_context:doc(Context), kz_json:new())
          ),
     save_phone_numbers_doc(Context, PhoneNumbersJObj).
 
--spec build_number_properties(ne_binary(), gregorian_seconds()) -> wh_json:object().
+-spec build_number_properties(ne_binary(), gregorian_seconds()) -> kz_json:object().
 build_number_properties(AccountId, Now) ->
-    wh_json:from_list(
+    kz_json:from_list(
       [{<<"state">>, ?NUMBER_STATE_PORT_IN}
-       ,{<<"features">>, wh_json:new()}
+       ,{<<"features">>, kz_json:new()}
        ,{<<"assigned_to">>, AccountId}
        ,{<<"created">>, Now}
        ,{<<"updated">>, Now}
@@ -1465,7 +1465,7 @@ build_number_properties(AccountId, Now) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec remove_from_phone_numbers_doc(cb_context:context()) -> 'ok' | 'error'.
--spec remove_from_phone_numbers_doc(cb_context:context(), wh_json:object()) -> 'ok' | 'error'.
+-spec remove_from_phone_numbers_doc(cb_context:context(), kz_json:object()) -> 'ok' | 'error'.
 remove_from_phone_numbers_doc(Context) ->
     case get_phone_numbers_doc(Context) of
         {'error', _R}-> 'ok';
@@ -1475,9 +1475,9 @@ remove_from_phone_numbers_doc(Context) ->
 
 remove_from_phone_numbers_doc(Context, JObj) ->
     {Updated, PhoneNumbersJObj} =
-        wh_json:foldl(fun remove_phone_number/3
+        kz_json:foldl(fun remove_phone_number/3
                       ,{'false', JObj}
-                      ,wh_json:get_value(<<"numbers">>, cb_context:doc(Context), wh_json:new())
+                      ,kz_json:get_value(<<"numbers">>, cb_context:doc(Context), kz_json:new())
                      ),
     case Updated of
         'true' ->
@@ -1486,10 +1486,10 @@ remove_from_phone_numbers_doc(Context, JObj) ->
             lager:debug("no numbers removed, not updating")
     end.
 
--spec remove_phone_number(wh_json:key(), wh_json:json_term(), {boolean(), wh_json:object()}) ->
-                                 {'true', wh_json:object()}.
+-spec remove_phone_number(kz_json:key(), kz_json:json_term(), {boolean(), kz_json:object()}) ->
+                                 {'true', kz_json:object()}.
 remove_phone_number(Number, _, {_, Acc}) ->
-    {'true', wh_json:delete_key(Number, Acc)}.
+    {'true', kz_json:delete_key(Number, Acc)}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1497,11 +1497,11 @@ remove_phone_number(Number, _, {_, Acc}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_phone_numbers_doc(cb_context:context()) ->
-                                   {'ok', wh_json:object()} |
+                                   {'ok', kz_json:object()} |
                                    {'error', any()}.
 get_phone_numbers_doc(Context) ->
     AccountId = cb_context:account_id(Context),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     Context1 = crossbar_doc:load(?KNM_PHONE_NUMBERS_DOC
                                  ,cb_context:set_account_db(Context, AccountDb)
                                  ,?TYPE_CHECK_OPTION(<<"phone_numbers">>)),
@@ -1518,14 +1518,14 @@ get_phone_numbers_doc(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec save_phone_numbers_doc(cb_context:context(), wh_json:object()) -> 'ok' | 'error'.
+-spec save_phone_numbers_doc(cb_context:context(), kz_json:object()) -> 'ok' | 'error'.
 save_phone_numbers_doc(Context, JObj) ->
     AccountId = cb_context:account_id(Context),
     Context1 =
         cb_context:setters(
           Context
           ,[{fun cb_context:set_doc/2, JObj}
-            ,{fun cb_context:set_account_db/2, wh_util:format_account_id(AccountId, 'encoded')}
+            ,{fun cb_context:set_account_db/2, kz_util:format_account_id(AccountId, 'encoded')}
            ]
          ),
 
@@ -1542,35 +1542,35 @@ save_phone_numbers_doc(Context, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec generate_loa_from_port(cb_context:context(), wh_json:object()) ->
+-spec generate_loa_from_port(cb_context:context(), kz_json:object()) ->
                                     cb_context:context().
 generate_loa_from_port(Context, PortRequest) ->
     AccountId = cb_context:account_id(Context),
 
-    ResellerId = wh_services:find_reseller_id(AccountId),
+    ResellerId = kz_services:find_reseller_id(AccountId),
     ResellerDoc = cb_context:account_doc(cb_context:set_account_id(Context, ResellerId)),
 
     AccountDoc = cb_context:account_doc(Context),
 
-    Numbers = [knm_util:pretty_print(N) || N <- wh_json:get_keys(<<"numbers">>, PortRequest)],
+    Numbers = [knm_util:pretty_print(N) || N <- kz_json:get_keys(<<"numbers">>, PortRequest)],
 
-    QRCode = create_qr_code(cb_context:account_id(Context), wh_doc:id(PortRequest)),
+    QRCode = create_qr_code(cb_context:account_id(Context), kz_doc:id(PortRequest)),
 
     generate_loa_from_template(Context
                                ,props:filter_undefined(
-                                  [{<<"reseller">>, wh_json:to_proplist(ResellerDoc)}
-                                   ,{<<"account">>, wh_json:to_proplist(AccountDoc)}
+                                  [{<<"reseller">>, kz_json:to_proplist(ResellerDoc)}
+                                   ,{<<"account">>, kz_json:to_proplist(AccountDoc)}
                                    ,{<<"numbers">>, Numbers}
-                                   ,{<<"bill">>, wh_json:to_proplist(wh_json:get_value(<<"bill">>, PortRequest, wh_json:new()))}
-                                   ,{<<"request">>, wh_json:to_proplist(PortRequest)}
+                                   ,{<<"bill">>, kz_json:to_proplist(kz_json:get_value(<<"bill">>, PortRequest, kz_json:new()))}
+                                   ,{<<"request">>, kz_json:to_proplist(PortRequest)}
                                    ,{<<"qr_code">>, QRCode}
                                    ,{<<"type">>, <<"loa">>}
                                   ])
                                ,ResellerId
-                               ,wh_json:get_value(<<"carrier">>, PortRequest)
+                               ,kz_json:get_value(<<"carrier">>, PortRequest)
                               ).
 
--spec generate_loa_from_template(cb_context:context(), wh_proplist(), ne_binary(), api_binary()) ->
+-spec generate_loa_from_template(cb_context:context(), kz_proplist(), ne_binary(), api_binary()) ->
                                         cb_context:context().
 generate_loa_from_template(Context, TemplateData, ResellerId, Carrier) ->
     Template = find_template(ResellerId, Carrier),
@@ -1583,7 +1583,7 @@ generate_loa_from_template(Context, TemplateData, ResellerId, Carrier) ->
              )
     end.
 
--spec create_qr_code(api_binary(), api_binary()) -> wh_proplist() | 'undefined'.
+-spec create_qr_code(api_binary(), api_binary()) -> kz_proplist() | 'undefined'.
 create_qr_code('undefined', _) -> 'undefined';
 create_qr_code(_, 'undefined') -> 'undefined';
 create_qr_code(AccountId, PortRequestId) ->
@@ -1591,7 +1591,7 @@ create_qr_code(AccountId, PortRequestId) ->
     CHL = <<AccountId/binary, "-", PortRequestId/binary>>,
     Url = <<"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=", CHL/binary, "&choe=UTF-8">>,
 
-    case kz_http:get(wh_util:to_list(Url)) of
+    case kz_http:get(kz_util:to_list(Url)) of
         {'ok', 200, _RespHeaders, RespBody} ->
             lager:debug("generated QR code from ~s: ~s", [Url, RespBody]),
             [{<<"image">>, base64:encode(RespBody)}];

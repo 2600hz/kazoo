@@ -18,7 +18,7 @@ Manipulate documents in the system\_config database via Crossbar. You must be su
 
 ##### Get node-specific config
 
-    curl -v -H "content-type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/system_configs/abc123/whistle_apps@server.com
+    curl -v -H "content-type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/system_configs/abc123/kazoo_apps@server.com
 
 ##### Update default config
 

@@ -25,7 +25,7 @@
                          ]).
 
 -define(CHILDREN, [ ?WORKER(module(Module))
-                    || Module <- whapps_config:get(?CONFIG_CAT, <<"modules">>, ?DEFAULT_MODULES)
+                    || Module <- kapps_config:get(?CONFIG_CAT, <<"modules">>, ?DEFAULT_MODULES)
                   ]).
 
 %% ===================================================================
@@ -34,13 +34,13 @@
 
 -spec start_module(ne_binary()) -> sup_startchild_ret().
 start_module(Module) ->
-    supervisor:start_child(?SERVER, ?WORKER(wh_util:to_atom(Module, 'true'))).
+    supervisor:start_child(?SERVER, ?WORKER(kz_util:to_atom(Module, 'true'))).
 
 -spec stop_module(ne_binary()) -> 'ok' | {'error', any()}.
 stop_module(Module) ->
-    case supervisor:terminate_child(?SERVER, wh_util:to_atom(Module, 'true')) of
+    case supervisor:terminate_child(?SERVER, kz_util:to_atom(Module, 'true')) of
         'ok' ->
-            _ = supervisor:delete_child(?SERVER, wh_util:to_atom(Module, 'true')),
+            _ = supervisor:delete_child(?SERVER, kz_util:to_atom(Module, 'true')),
             'ok';
         {'error', _}=E -> E
     end.
@@ -90,4 +90,4 @@ module(<<"omnip_presence">>) ->
 module(<<"omnip_message_summary">>) ->
     module(<<"omnip_message_summary_amqp">>);
 module(Module) ->
-    wh_util:to_atom(Module, 'true').
+    kz_util:to_atom(Module, 'true').

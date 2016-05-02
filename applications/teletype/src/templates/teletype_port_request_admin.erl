@@ -18,7 +18,7 @@
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
 -define(TEMPLATE_MACROS
-        ,wh_json:from_list(
+        ,kz_json:from_list(
            ?PORT_REQUEST_MACROS
            ++ ?ACCOUNT_MACROS
           )
@@ -38,7 +38,7 @@
 
 -spec init() -> 'ok'.
 init() ->
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
                                            ,{'text', ?TEMPLATE_TEXT}
                                            ,{'html', ?TEMPLATE_HTML}
@@ -52,43 +52,43 @@ init() ->
                                            ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]).
 
--spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
-    'true' = wapi_notifications:port_request_v(JObj),
-    wh_util:put_callid(JObj),
+    'true' = kapi_notifications:port_request_v(JObj),
+    kz_util:put_callid(JObj),
 
     %% Gather data for template
-    DataJObj = wh_json:normalize(JObj),
-    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    DataJObj = kz_json:normalize(JObj),
+    AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
         'false' -> lager:debug("notification handling not configured for this account");
         'true' -> process_req(DataJObj)
     end.
 
--spec process_req(wh_json:object()) -> 'ok'.
+-spec process_req(kz_json:object()) -> 'ok'.
 process_req(DataJObj) ->
-    PortReqId = wh_json:get_value(<<"port_request_id">>, DataJObj),
+    PortReqId = kz_json:get_value(<<"port_request_id">>, DataJObj),
     {'ok', PortReqJObj} = teletype_util:open_doc(<<"port_request">>, PortReqId, DataJObj),
 
-    ReqData = wh_json:set_value(<<"port_request">>
+    ReqData = kz_json:set_value(<<"port_request">>
                                 ,teletype_port_utils:fix_port_request_data(PortReqJObj)
                                 ,DataJObj
                                ),
 
     case teletype_util:is_preview(DataJObj) of
         'false' -> handle_port_request(teletype_port_utils:fix_email(ReqData));
-        'true' -> handle_port_request(wh_json:merge_jobjs(DataJObj, ReqData))
+        'true' -> handle_port_request(kz_json:merge_jobjs(DataJObj, ReqData))
     end.
 
--spec handle_port_request(wh_json:object()) -> 'ok'.
+-spec handle_port_request(kz_json:object()) -> 'ok'.
 handle_port_request(DataJObj) ->
     Macros =
         props:filter_undefined(
           [{<<"system">>, teletype_util:system_params()}
            ,{<<"account">>, teletype_util:account_params(DataJObj)}
-           ,{<<"port_request">>, port_request_data(wh_json:get_value(<<"port_request">>, DataJObj))}
-           ,{<<"account_tree">>, account_tree(wh_json:get_value(<<"account_id">>, DataJObj))}
+           ,{<<"port_request">>, port_request_data(kz_json:get_value(<<"port_request">>, DataJObj))}
+           ,{<<"account_tree">>, account_tree(kz_json:get_value(<<"account_id">>, DataJObj))}
           ]),
 
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
@@ -100,7 +100,7 @@ handle_port_request(DataJObj) ->
 
     Subject =
         teletype_util:render_subject(
-          wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
+          kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
           ,Macros
          ),
 
@@ -115,8 +115,8 @@ handle_port_request(DataJObj) ->
             teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
 
--spec account_tree(ne_binary()) -> wh_proplist().
--spec account_tree(ne_binaries(), wh_proplist()) -> wh_proplist().
+-spec account_tree(ne_binary()) -> kz_proplist().
+-spec account_tree(ne_binaries(), kz_proplist()) -> kz_proplist().
 account_tree(AccountId) ->
     {'ok', AccountJObj} = kz_account:fetch(AccountId),
     account_tree(kz_account:tree(AccountJObj), []).
@@ -135,27 +135,27 @@ maybe_set_emails(DataJObj) ->
                 ,Fs
                ).
 
--spec maybe_set_from(wh_json:object()) -> wh_json:object().
+-spec maybe_set_from(kz_json:object()) -> kz_json:object().
 maybe_set_from(DataJObj) ->
-    SystemFrom = wh_util:to_binary(node()),
-    PortRequest = wh_json:get_value(<<"port_request">>, DataJObj),
-    DefaultFrom = wh_json:get_value(<<"from">>, DataJObj, SystemFrom),
+    SystemFrom = kz_util:to_binary(node()),
+    PortRequest = kz_json:get_value(<<"port_request">>, DataJObj),
+    DefaultFrom = kz_json:get_value(<<"from">>, DataJObj, SystemFrom),
 
-    Initiator = wh_json:get_value([<<"notifications">>, <<"email">>, <<"send_to">>], PortRequest, DefaultFrom),
-    wh_json:set_value(<<"from">>, Initiator, DataJObj).
+    Initiator = kz_json:get_value([<<"notifications">>, <<"email">>, <<"send_to">>], PortRequest, DefaultFrom),
+    kz_json:set_value(<<"from">>, Initiator, DataJObj).
 
--spec maybe_set_to(wh_json:object()) -> wh_json:object().
+-spec maybe_set_to(kz_json:object()) -> kz_json:object().
 maybe_set_to(DataJObj) ->
-    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
-    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+    AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
+    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
     case find_port_authority(MasterAccountId, AccountId) of
         'undefined' -> DataJObj;
         <<_/binary>> = To ->
             lager:debug("found port authority: ~p", [To]),
-            wh_json:set_value(<<"to">>, [To], DataJObj);
+            kz_json:set_value(<<"to">>, [To], DataJObj);
         [_|_] = To ->
             lager:debug("found port authority: ~p", [To]),
-            wh_json:set_value(<<"to">>, To, DataJObj)
+            kz_json:set_value(<<"to">>, To, DataJObj)
     end.
 
 -spec find_port_authority(ne_binary(), ne_binary()) -> api_binary() | ne_binaries().
@@ -163,7 +163,7 @@ find_port_authority(MasterAccountId, MasterAccountId) ->
     case kz_whitelabel:fetch(MasterAccountId) of
         {'error', _R} ->
             lager:debug("failed to find master account ~s, using system value", [MasterAccountId]),
-            whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>);
+            kapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>);
         {'ok', JObj} ->
             lager:debug("getting master account's port authority"),
             kz_whitelabel:port_authority(JObj)
@@ -171,7 +171,7 @@ find_port_authority(MasterAccountId, MasterAccountId) ->
 find_port_authority(MasterAccountId, AccountId) ->
     case kz_whitelabel:fetch(AccountId) of
         {'error', _R} ->
-            ResellerId = wh_services:get_reseller_id(AccountId),
+            ResellerId = kz_services:get_reseller_id(AccountId),
             lager:debug("failed to find whitelabel for ~s, checking ~s", [AccountId, ResellerId]),
             find_port_authority(MasterAccountId, ResellerId);
       {'ok', JObj} ->
@@ -179,33 +179,33 @@ find_port_authority(MasterAccountId, AccountId) ->
             kz_whitelabel:port_authority(JObj)
     end.
 
--spec port_request_data(wh_json:object()) -> wh_proplist().
+-spec port_request_data(kz_json:object()) -> kz_proplist().
 port_request_data(PortRequestJObj) ->
-    PublicJObj = wh_json:public_fields(PortRequestJObj),
-    wh_json:to_proplist(
-      wh_json:foldl(fun port_request_data_fold/3, wh_json:new(), PublicJObj)
+    PublicJObj = kz_json:public_fields(PortRequestJObj),
+    kz_json:to_proplist(
+      kz_json:foldl(fun port_request_data_fold/3, kz_json:new(), PublicJObj)
      ).
 
--spec port_request_data_fold(wh_json:key(), wh_json:json_term(), wh_json:object()) ->
-                                    wh_json:object().
+-spec port_request_data_fold(kz_json:key(), kz_json:json_term(), kz_json:object()) ->
+                                    kz_json:object().
 port_request_data_fold(<<"name">> = K, V, Acc) ->
-    wh_json:set_value(K, V, Acc);
+    kz_json:set_value(K, V, Acc);
 port_request_data_fold(<<"port_state">> = K, V, Acc) ->
-    wh_json:set_value(K, V, Acc);
+    kz_json:set_value(K, V, Acc);
 port_request_data_fold(<<"id">> = K, V, Acc) ->
-    wh_json:set_value(K, V, Acc);
+    kz_json:set_value(K, V, Acc);
 port_request_data_fold(<<"account_id">> = K, V, Acc) ->
-    wh_json:set_value(K, V, Acc);
+    kz_json:set_value(K, V, Acc);
 port_request_data_fold(<<"transfer_date">>, Date, Acc) ->
-    wh_json:set_value(<<"requested_port_date">>, wh_util:iso8601({Date, {0,0,0}}), Acc);
+    kz_json:set_value(<<"requested_port_date">>, kz_util:iso8601({Date, {0,0,0}}), Acc);
 port_request_data_fold(<<"bill_", _/binary>> = K, V, Acc) ->
-    wh_json:set_value(K, V, Acc);
+    kz_json:set_value(K, V, Acc);
 port_request_data_fold(<<"numbers">> = K, Numbers, Acc) ->
-    wh_json:set_value(K, wh_util:join_binary(Numbers, <<", ">>), Acc);
+    kz_json:set_value(K, kz_util:join_binary(Numbers, <<", ">>), Acc);
 port_request_data_fold(<<"notifications">>, NJObj, Acc) ->
-    wh_json:set_value(<<"customer_contact">>, wh_json:get_value([<<"email">>, <<"send_to">>], NJObj), Acc);
+    kz_json:set_value(<<"customer_contact">>, kz_json:get_value([<<"email">>, <<"send_to">>], NJObj), Acc);
 port_request_data_fold(<<"carrier">>, V, Acc) ->
-    wh_json:set_value(<<"service_provider">>, V, Acc);
+    kz_json:set_value(<<"service_provider">>, V, Acc);
 port_request_data_fold(_K, _V, Acc) ->
     lager:debug("ignoring ~s", [_K]),
     Acc.

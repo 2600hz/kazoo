@@ -30,14 +30,14 @@
           ,{'xmlns', "http://www.bandwidth.com/api/"}
          ]).
 -define(BW_NUMBER_URL
-        ,whapps_config:get_string(?KNM_BW_CONFIG_CAT
+        ,kapps_config:get_string(?KNM_BW_CONFIG_CAT
                                   ,<<"numbers_api_url">>
                                   ,<<"https://api.bandwidth.com/public/v2/numbers.api">>
                                  )
        ).
 
 -define(BW_CDR_URL
-        ,whapps_config:get_string(?KNM_BW_CONFIG_CAT
+        ,kapps_config:get_string(?KNM_BW_CONFIG_CAT
                                   ,<<"cdrs_api_url">>
                                   ,<<"https://api.bandwidth.com/api/public/v2/cdrs.api">>
                                  )
@@ -47,7 +47,7 @@
 -define(BW_DEBUG, 'false').
 -else.
 -define(BW_DEBUG
-        ,whapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"debug">>, 'false')
+        ,kapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"debug">>, 'false')
        ).
 -endif.
 
@@ -66,7 +66,7 @@
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
+-spec find_numbers(ne_binary(), pos_integer(), kz_proplist()) ->
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
 find_numbers(<<"+", Rest/binary>>, Quanity, Options) ->
@@ -74,8 +74,8 @@ find_numbers(<<"+", Rest/binary>>, Quanity, Options) ->
 find_numbers(<<"1", Rest/binary>>, Quanity, Options) ->
     find_numbers(Rest, Quanity, Options);
 find_numbers(<<NPA:3/binary>>, Quanity, Options) ->
-    Props = [{'areaCode', [wh_util:to_list(NPA)]}
-             ,{'maxQuantity', [wh_util:to_list(Quanity)]}
+    Props = [{'areaCode', [kz_util:to_list(NPA)]}
+             ,{'maxQuantity', [kz_util:to_list(Quanity)]}
             ],
     case make_numbers_request('areaCodeNumberSearch', Props) of
         {'error', _}=E -> E;
@@ -83,15 +83,15 @@ find_numbers(<<NPA:3/binary>>, Quanity, Options) ->
     end;
 find_numbers(Search, Quanity, Options) ->
     NpaNxx = binary:part(Search, 0, (case size(Search) of L when L < 6 -> L; _ -> 6 end)),
-    Props = [{'npaNxx', [wh_util:to_list(NpaNxx)]}
-             ,{'maxQuantity', [wh_util:to_list(Quanity)]}
+    Props = [{'npaNxx', [kz_util:to_list(NpaNxx)]}
+             ,{'maxQuantity', [kz_util:to_list(Quanity)]}
             ],
     case make_numbers_request('npaNxxNumberSearch', Props) of
         {'error', _}=E -> E;
         {'ok', Xml} -> process_numbers_search_resp(Xml, Options)
     end.
 
--spec process_numbers_search_resp(xml_el(), wh_proplist()) ->
+-spec process_numbers_search_resp(xml_el(), kz_proplist()) ->
                                          {'ok', knm_number:knm_numbers()}.
 process_numbers_search_resp(Xml, Options) ->
     TelephoneNumbers = "/numberSearchResponse/telephoneNumbers/telephoneNumber",
@@ -106,13 +106,13 @@ process_numbers_search_resp(Xml, Options) ->
                                     knm_number:knm_number().
 found_number_to_object(Found, AccountId) ->
     JObj = number_search_response_to_json(Found),
-    Num = wh_json:get_value(<<"e164">>, JObj),
+    Num = kz_json:get_value(<<"e164">>, JObj),
     NormalizedNum = knm_converters:normalize(Num),
     NumberDb = knm_converters:to_db(NormalizedNum),
 
     Updates = [{fun knm_phone_number:set_number/2, NormalizedNum}
                ,{fun knm_phone_number:set_number_db/2, NumberDb}
-               ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
+               ,{fun knm_phone_number:set_module_name/2, kz_util:to_binary(?MODULE)}
                ,{fun knm_phone_number:set_carrier_data/2, JObj}
                ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
                ,{fun knm_phone_number:set_assign_to/2, AccountId}
@@ -129,8 +129,8 @@ found_number_to_object(Found, AccountId) ->
 -spec acquire_number(knm_number:knm_number()) ->
                             knm_number:knm_number().
 acquire_number(Number) ->
-    Debug = whapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"sandbox_provisioning">>, 'true'),
-    case whapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"enable_provisioning">>, 'true') of
+    Debug = kapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"sandbox_provisioning">>, 'true'),
+    case kapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"enable_provisioning">>, 'true') of
         'false' when Debug ->
             lager:debug("allowing sandbox provisioning"),
             Number;
@@ -146,28 +146,28 @@ acquire_and_provision_number(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     AuthBy = knm_phone_number:auth_by(PhoneNumber),
     AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
-    Id = wh_json:get_string_value(<<"number_id">>, knm_phone_number:carrier_data(PhoneNumber)),
-    Hosts = case whapps_config:get(?KNM_BW_CONFIG_CAT, <<"endpoints">>) of
+    Id = kz_json:get_string_value(<<"number_id">>, knm_phone_number:carrier_data(PhoneNumber)),
+    Hosts = case kapps_config:get(?KNM_BW_CONFIG_CAT, <<"endpoints">>) of
                 'undefined' -> [];
                 Endpoint when is_binary(Endpoint) ->
-                    [{'endPoints', [{'host', [wh_util:to_list(Endpoint)]}]}];
+                    [{'endPoints', [{'host', [kz_util:to_list(Endpoint)]}]}];
                 Endpoints ->
-                    [{'endPoints', [{'host', [wh_util:to_list(E)]} || E <- Endpoints]}]
+                    [{'endPoints', [{'host', [kz_util:to_list(E)]} || E <- Endpoints]}]
             end,
-    OrderNamePrefix = whapps_config:get_binary(?KNM_BW_CONFIG_CAT, <<"order_name_prefix">>, <<"Kazoo">>),
-    OrderName = list_to_binary([OrderNamePrefix, "-", wh_util:to_binary(wh_util:current_tstamp())]),
-    ExtRef = case wh_util:is_empty(AuthBy) of
+    OrderNamePrefix = kapps_config:get_binary(?KNM_BW_CONFIG_CAT, <<"order_name_prefix">>, <<"Kazoo">>),
+    OrderName = list_to_binary([OrderNamePrefix, "-", kz_util:to_binary(kz_util:current_tstamp())]),
+    ExtRef = case kz_util:is_empty(AuthBy) of
                  'true' -> "no_authorizing_account";
-                 'false' -> wh_util:to_list(AuthBy)
+                 'false' -> kz_util:to_list(AuthBy)
              end,
-    AcquireFor = case wh_util:is_empty(AuthBy) of
+    AcquireFor = case kz_util:is_empty(AuthBy) of
                      'true' -> "no_assigned_account";
-                     'false' -> wh_util:to_list(AssignedTo)
+                     'false' -> kz_util:to_list(AssignedTo)
                  end,
-    Props = [{'orderName', [wh_util:to_list(OrderName)]}
-             ,{'extRefID', [wh_util:to_list(ExtRef)]}
+    Props = [{'orderName', [kz_util:to_list(OrderName)]}
+             ,{'extRefID', [kz_util:to_list(ExtRef)]}
              ,{'numberIDs', [{'id', [Id]}]}
-             ,{'subscriber', [wh_util:to_list(AcquireFor)]}
+             ,{'subscriber', [kz_util:to_list(AcquireFor)]}
              | Hosts
             ],
     case make_numbers_request('basicNumberOrder', Props) of
@@ -199,17 +199,17 @@ disconnect_number(Number) -> Number.
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec get_number_data(ne_binary()) -> wh_json:object().
+-spec get_number_data(ne_binary()) -> kz_json:object().
 get_number_data(<<"+", Rest/binary>>) ->
     get_number_data(Rest);
 get_number_data(<<"1", Rest/binary>>) ->
     get_number_data(Rest);
 get_number_data(Number) ->
     Props = [{'getType', ["10digit"]}
-             ,{'getValue', [wh_util:to_list(Number)]}
+             ,{'getValue', [kz_util:to_list(Number)]}
             ],
     case make_numbers_request('getTelephoneNumber', Props) of
-        {'error', _} -> wh_json:new();
+        {'error', _} -> kz_json:new();
         {'ok', Xml} ->
             Response = xmerl_xpath:string("/getResponse/telephoneNumber", Xml),
             number_search_response_to_json(Response)
@@ -242,7 +242,7 @@ should_lookup_cnam() -> 'true'.
 %% given verb (purchase, search, provision, ect).
 %% @end
 %%--------------------------------------------------------------------
--spec make_numbers_request(atom(), wh_proplist()) ->
+-spec make_numbers_request(atom(), kz_proplist()) ->
                                   {'ok', any()} |
                                   {'error', any()}.
 
@@ -257,7 +257,7 @@ make_numbers_request('areaCodeNumberSearch', _Props) ->
 -else.
 make_numbers_request(Verb, Props) ->
     lager:debug("making ~s request to bandwidth.com ~s", [Verb, ?BW_NUMBER_URL]),
-    DevKey = whapps_config:get_string(?KNM_BW_CONFIG_CAT, <<"developer_key">>, <<>>),
+    DevKey = kapps_config:get_string(?KNM_BW_CONFIG_CAT, <<"developer_key">>, <<>>),
     Request = [{'developerKey', [DevKey]}
                | Props
               ],
@@ -324,9 +324,9 @@ make_numbers_request(Verb, Props) ->
 %% @private
 %% @doc Convert a number order response to json
 %%--------------------------------------------------------------------
--spec number_order_response_to_json(any()) -> wh_json:object().
+-spec number_order_response_to_json(any()) -> kz_json:object().
 number_order_response_to_json([]) ->
-    wh_json:new();
+    kz_json:new();
 number_order_response_to_json([Xml]) ->
     number_order_response_to_json(Xml);
 number_order_response_to_json(Xml) ->
@@ -342,7 +342,7 @@ number_order_response_to_json(Xml) ->
                               )
               }
             ],
-    wh_json:from_list(props:filter_undefined(Props)).
+    kz_json:from_list(props:filter_undefined(Props)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -350,9 +350,9 @@ number_order_response_to_json(Xml) ->
 %% Convert a number search response XML entity to json
 %% @end
 %%--------------------------------------------------------------------
--spec number_search_response_to_json(xml_el() | xml_els()) -> wh_json:object().
+-spec number_search_response_to_json(xml_el() | xml_els()) -> kz_json:object().
 number_search_response_to_json([]) ->
-    wh_json:new();
+    kz_json:new();
 number_search_response_to_json([Xml]) ->
     number_search_response_to_json(Xml);
 number_search_response_to_json(Xml) ->
@@ -364,13 +364,13 @@ number_search_response_to_json(Xml) ->
              ,{<<"status">>, get_cleaned("status/text()", Xml)}
              ,{<<"rate_center">>, rate_center_to_json(xmerl_xpath:string("rateCenter", Xml))}
             ],
-    wh_json:from_list(props:filter_undefined(Props)).
+    kz_json:from_list(props:filter_undefined(Props)).
 
--spec get_cleaned(wh_deeplist(), xml_el()) -> api_binary().
+-spec get_cleaned(kz_deeplist(), xml_el()) -> api_binary().
 get_cleaned(Path, Xml) ->
-    case wh_util:get_xml_value(Path, Xml) of
+    case kz_util:get_xml_value(Path, Xml) of
         'undefined' -> 'undefined';
-        V -> wh_util:strip_binary(V, [$\s, $\n])
+        V -> kz_util:strip_binary(V, [$\s, $\n])
     end.
 
 %%--------------------------------------------------------------------
@@ -379,9 +379,9 @@ get_cleaned(Path, Xml) ->
 %% Convert a rate center XML entity to json
 %% @end
 %%--------------------------------------------------------------------
--spec rate_center_to_json(list()) -> wh_json:object().
+-spec rate_center_to_json(list()) -> kz_json:object().
 rate_center_to_json([]) ->
-    wh_json:new();
+    kz_json:new();
 rate_center_to_json([Xml]) ->
     rate_center_to_json(Xml);
 rate_center_to_json(Xml) ->
@@ -389,7 +389,7 @@ rate_center_to_json(Xml) ->
              ,{<<"lata">>, get_cleaned("lata/text()", Xml)}
              ,{<<"state">>, get_cleaned("state/text()", Xml)}
             ],
-    wh_json:from_list(props:filter_undefined(Props)).
+    kz_json:from_list(props:filter_undefined(Props)).
 
 %%--------------------------------------------------------------------
 %% @private

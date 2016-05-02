@@ -11,7 +11,7 @@ other whapp-specific requests.
 ** The Listener
 
 Generally speaking, most action starts at the listener. The listener typically
-builds on top of the gen_listener pattern (found in lib/whistle-1.0.0/src) to
+builds on top of the gen_listener pattern (found in lib/kazoo-1.0.0/src) to
 abstract the AMQP connection and reception of payloads off the message bus.
 Instead, the gen_listener behaviour allows the implementing module to specify
 the types of events to pull off the AMQP bus, and the handler modules/functions
@@ -45,8 +45,8 @@ The full example first:
 
 **** Bindings
 
-The AMQP APIs available can be found in the modules in lib/whistle-1.0.0/api/
-(prefixed with wapi_) and define the bindings needed to receive AMQP payloads of
+The AMQP APIs available can be found in the modules in lib/kazoo-1.0.0/api/
+(prefixed with kapi_) and define the bindings needed to receive AMQP payloads of
 a certain type.
 
 For instance, to receive route requests, one would add the 'route' binding and
@@ -59,13 +59,13 @@ payloads sent directly to our queue, one would configure the bindings list like:
   }
 #+end_src
 
-These two 2-tuples will cause the gen_listener to call wapi_route:bind_q/2 and
-wapi_self:bind_q/2 with the listener's queue. When shutting down the listener,
+These two 2-tuples will cause the gen_listener to call kapi_route:bind_q/2 and
+kapi_self:bind_q/2 with the listener's queue. When shutting down the listener,
 the unbind_q/2 variants will be called to cleanup the AMQP bindings.
 
-Some of the wapi modules allow parameters to be passed in the second element of
+Some of the kapi modules allow parameters to be passed in the second element of
 the tuple, changing either what bindings are added, or the binding key used. For
-instance, in lib/whistle-1.0.0/src/api/wapi_route.erl, one can see in the
+instance, in lib/kazoo-1.0.0/src/api/kapi_route.erl, one can see in the
 bind_q/2 function that one could specify a realm, which would restrict the route
 requests received by this listener to just the realm.
 
@@ -107,7 +107,7 @@ want to use a named queue, include the name as the second element:
 
 queue_options: Another parameter that can be omitted from the list of configs
 sent to gen_listener, use this if you need different values than in
-lib/whistle_amqp-1.0.0/src/amqp_util.erl, the new_queue/2 function. This list
+lib/kazoo_amqp-1.0.0/src/amqp_util.erl, the new_queue/2 function. This list
 controls how the broker creates the queue.
 
 consume_options: Ommitable as well, these options control how consupmtion from
@@ -137,6 +137,6 @@ argument to the handler module(s)' functions (the first being the AMQP payload.
 
 ** Other setup
 
-Add the whapp directory name to whistle_apps/rebar.config to make sure it gets
+Add the whapp directory name to kazoo_apps/rebar.config to make sure it gets
 compiled by default when running 'rebar compile' from either the root or
-whistle_apps directory.
+kazoo_apps directory.

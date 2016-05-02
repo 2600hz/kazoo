@@ -27,13 +27,13 @@
         ]).
 
 -include("stepswitch.hrl").
--include_lib("whistle/include/wapi_offnet_resource.hrl").
+-include_lib("kazoo/include/kapi_offnet_resource.hrl").
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 
 -define(SERVER, ?MODULE).
 
--record(state, {endpoints = [] :: wh_json:objects()
-                ,resource_req :: wapi_offnet_resource:req()
+-record(state, {endpoints = [] :: kz_json:objects()
+                ,resource_req :: kapi_offnet_resource:req()
                 ,request_handler :: pid()
                 ,control_queue :: api_binary()
                 ,response_queue :: api_binary()
@@ -68,9 +68,9 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(wh_json:objects(), wapi_offnet_resource:req()) -> startlink_ret().
+-spec start_link(kz_json:objects(), kapi_offnet_resource:req()) -> startlink_ret().
 start_link(Endpoints, OffnetReq) ->
-    CallId = wapi_offnet_resource:call_id(OffnetReq),
+    CallId = kapi_offnet_resource:call_id(OffnetReq),
     Bindings = [?CALL_BINDING(CallId)
                 ,{'self', []}
                ],
@@ -97,18 +97,18 @@ start_link(Endpoints, OffnetReq) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Endpoints, OffnetReq]) ->
-    wapi_offnet_resource:put_callid(OffnetReq),
-    case wapi_offnet_resource:control_queue(OffnetReq) of
+    kapi_offnet_resource:put_callid(OffnetReq),
+    case kapi_offnet_resource:control_queue(OffnetReq) of
         'undefined' -> {'stop', 'normal'};
         ControlQ ->
             {'ok', #state{endpoints=Endpoints
                           ,resource_req=OffnetReq
                           ,request_handler=self()
                           ,control_queue=ControlQ
-                          ,response_queue=wapi_offnet_resource:server_id(OffnetReq)
+                          ,response_queue=kapi_offnet_resource:server_id(OffnetReq)
                           ,timeout=erlang:send_after(30000, self(), 'bridge_timeout')
-                          ,call_id=wapi_offnet_resource:call_id(OffnetReq)
-                          ,call_ids=[wapi_offnet_resource:call_id(OffnetReq)]
+                          ,call_id=kapi_offnet_resource:call_id(OffnetReq)
+                          ,call_ids=[kapi_offnet_resource:call_id(OffnetReq)]
                          }}
     end.
 
@@ -140,7 +140,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'wh_amqp_channel', _}, State) ->
+handle_cast({'kz_amqp_channel', _}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{queue=Q}};
@@ -150,7 +150,7 @@ handle_cast({'gen_listener', {'is_consuming', 'true'}}, State) ->
 handle_cast({'bridge_result', _Props}, #state{response_queue='undefined'}=State) ->
     {'stop', 'normal', State};
 handle_cast({'bridge_result', Props}, #state{response_queue=ResponseQ}=State) ->
-    wapi_offnet_resource:publish_resp(ResponseQ, Props),
+    kapi_offnet_resource:publish_resp(ResponseQ, Props),
     {'stop', 'normal', State};
 handle_cast({'bridged', _CallId}, #state{timeout='undefined'}=State) ->
     {'noreply', State};
@@ -179,7 +179,7 @@ handle_info('bridge_timeout', #state{timeout='undefined'}=State) ->
 handle_info('bridge_timeout', #state{response_queue=ResponseQ
                                      ,resource_req=OffnetReq
                                     }=State) ->
-    wapi_offnet_resource:publish_resp(ResponseQ, bridge_timeout(OffnetReq)),
+    kapi_offnet_resource:publish_resp(ResponseQ, bridge_timeout(OffnetReq)),
     {'stop', 'normal', State#state{timeout='undefined'}};
 handle_info(_Info, State) ->
     lager:debug("unhandled info: ~p", [_Info]),
@@ -199,9 +199,9 @@ handle_event(JObj, #state{request_handler=RequestHandler
                          }) ->
     case get_event_type(JObj) of
         {<<"error">>, _, _} ->
-            <<"bridge">> = wh_json:get_value([<<"Request">>, <<"Application-Name">>], JObj),
+            <<"bridge">> = kz_json:get_value([<<"Request">>, <<"Application-Name">>], JObj),
             lager:debug("channel execution error while waiting for bridge: ~s"
-                        ,[wh_util:to_binary(wh_json:encode(JObj))]
+                        ,[kz_util:to_binary(kz_json:encode(JObj))]
                        ),
             gen_listener:cast(RequestHandler, {'bridge_result', bridge_error(JObj, OffnetReq)});
         {<<"call_event">>, <<"CHANNEL_TRANSFEREE">>, _} ->
@@ -218,7 +218,7 @@ handle_event(JObj, #state{request_handler=RequestHandler
             gen_listener:add_binding(RequestHandler, ?CALL_BINDING(ReplacedBy));
         {<<"call_event">>, <<"CHANNEL_DESTROY">>, CallId} ->
             lager:debug("channel was destroyed while waiting for bridge"),
-            Result = case wh_json:get_value(<<"Disposition">>, JObj)
+            Result = case kz_json:get_value(<<"Disposition">>, JObj)
                          =:= <<"SUCCESS">>
                      of
                          'true' -> bridge_success(JObj, OffnetReq);
@@ -226,9 +226,9 @@ handle_event(JObj, #state{request_handler=RequestHandler
                      end,
             gen_listener:cast(RequestHandler, {'bridge_result', Result});
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, CallId} ->
-            <<"bridge">> = wh_json:get_value(<<"Application-Name">>, JObj),
+            <<"bridge">> = kz_json:get_value(<<"Application-Name">>, JObj),
             lager:debug("channel execute complete for bridge"),
-            Result = case wh_json:get_value(<<"Disposition">>, JObj)
+            Result = case kz_json:get_value(<<"Disposition">>, JObj)
                          =:= <<"SUCCESS">>
                      of
                          'true' -> bridge_success(JObj, OffnetReq);
@@ -236,7 +236,7 @@ handle_event(JObj, #state{request_handler=RequestHandler
                      end,
             gen_listener:cast(RequestHandler, {'bridge_result', Result});
         {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
-            OtherLeg = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
+            OtherLeg = kz_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
             gen_listener:cast(RequestHandler, {'bridged', OtherLeg});
         _ -> 'ok'
     end,
@@ -280,7 +280,7 @@ maybe_bridge(#state{endpoints=Endpoints
         'false' ->
             Name = bridge_outbound_cid_name(OffnetReq),
             Number = bridge_outbound_cid_number(OffnetReq),
-            wapi_dialplan:publish_command(
+            kapi_dialplan:publish_command(
               ControlQ
               ,build_bridge(State, Number, Name)
              ),
@@ -295,14 +295,14 @@ maybe_bridge_emergency(#state{resource_req=OffnetReq
     %%   are assuming it was for a local resource (at the
     %%   time of this commit offnet DB is still in use)
     Name = bridge_emergency_cid_name(OffnetReq),
-    case wapi_offnet_resource:hunt_account_id(OffnetReq) of
+    case kapi_offnet_resource:hunt_account_id(OffnetReq) of
         'undefined' ->
             Number = find_emergency_number(OffnetReq),
             maybe_deny_emergency_bridge(State, Number, Name);
         _Else ->
             Number = bridge_emergency_cid_number(OffnetReq),
             lager:debug("not enforcing emergency caller id validation when using resource from account ~s", [_Else]),
-            wapi_dialplan:publish_command(
+            kapi_dialplan:publish_command(
               ControlQ
               ,build_bridge(State, Number, Name)
              ),
@@ -311,7 +311,7 @@ maybe_bridge_emergency(#state{resource_req=OffnetReq
 
 -spec maybe_deny_emergency_bridge(state(), api_binary(), api_binary()) -> 'ok'.
 maybe_deny_emergency_bridge(State, 'undefined', Name) ->
-    case whapps_config:get_is_true(
+    case kapps_config:get_is_true(
            ?SS_CONFIG_CAT
            ,<<"deny_invalid_emergency_cid">>
            ,'false'
@@ -320,19 +320,19 @@ maybe_deny_emergency_bridge(State, 'undefined', Name) ->
         'false' ->
             maybe_deny_emergency_bridge(
               State
-              ,default_emergency_number(wh_util:anonymous_caller_id_number())
+              ,default_emergency_number(kz_util:anonymous_caller_id_number())
               ,Name
              );
         'true' -> deny_emergency_bridge(State)
     end;
 maybe_deny_emergency_bridge(#state{control_queue=ControlQ}=State, Number, Name) ->
-    wapi_dialplan:publish_command(
+    kapi_dialplan:publish_command(
       ControlQ
       ,build_bridge(State, Number, Name)
      ),
     lager:debug("sent bridge command to ~s", [ControlQ]).
 
--spec build_bridge(state(), api_binary(), api_binary()) -> wh_proplist().
+-spec build_bridge(state(), api_binary(), api_binary()) -> kz_proplist().
 build_bridge(#state{endpoints=Endpoints
                     ,resource_req=OffnetReq
                     ,queue=Q
@@ -341,20 +341,20 @@ build_bridge(#state{endpoints=Endpoints
             ,Name
             ) ->
     lager:debug("set outbound caller id to ~s '~s'", [Number, Name]),
-    AccountId = wapi_offnet_resource:account_id(OffnetReq),
+    AccountId = kapi_offnet_resource:account_id(OffnetReq),
     CCVs =
-        wh_json:set_values(
+        kz_json:set_values(
           props:filter_undefined(
             [{<<"Ignore-Display-Updates">>, <<"true">>}
              ,{<<"Account-ID">>, AccountId}
              ,{<<"From-URI">>, bridge_from_uri(Number, OffnetReq)}
-             ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
+             ,{<<"Reseller-ID">>, kz_services:find_reseller_id(AccountId)}
             ])
-          ,wapi_offnet_resource:custom_channel_vars(OffnetReq, wh_json:new())
+          ,kapi_offnet_resource:custom_channel_vars(OffnetReq, kz_json:new())
          ),
     FmtEndpoints = stepswitch_util:format_endpoints(Endpoints, Name, Number, OffnetReq),
-    IgnoreEarlyMedia = wh_json:is_true(<<"Require-Ignore-Early-Media">>, CCVs, 'false')
-        orelse wapi_offnet_resource:ignore_early_media(OffnetReq, 'false'),
+    IgnoreEarlyMedia = kz_json:is_true(<<"Require-Ignore-Early-Media">>, CCVs, 'false')
+        orelse kapi_offnet_resource:ignore_early_media(OffnetReq, 'false'),
 
     props:filter_undefined(
       [{<<"Application-Name">>, <<"bridge">>}
@@ -364,29 +364,29 @@ build_bridge(#state{endpoints=Endpoints
        ,{<<"Caller-ID-Number">>, Number}
        ,{<<"Caller-ID-Name">>, Name}
        ,{<<"Custom-Channel-Vars">>, CCVs}
-       ,{<<"Timeout">>, wapi_offnet_resource:timeout(OffnetReq)}
+       ,{<<"Timeout">>, kapi_offnet_resource:timeout(OffnetReq)}
        ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
-       ,{<<"Media">>, wapi_offnet_resource:media(OffnetReq)}
-       ,{<<"Hold-Media">>, wapi_offnet_resource:hold_media(OffnetReq)}
-       ,{<<"Presence-ID">>, wapi_offnet_resource:presence_id(OffnetReq)}
-       ,{<<"Ringback">>, wapi_offnet_resource:ringback(OffnetReq)}
-       ,{<<"Call-ID">>, wapi_offnet_resource:call_id(OffnetReq)}
-       ,{<<"Fax-Identity-Number">>, wapi_offnet_resource:fax_identity_number(OffnetReq, Number)}
-       ,{<<"Fax-Identity-Name">>, wapi_offnet_resource:fax_identity_name(OffnetReq, Name)}
-       ,{<<"Outbound-Callee-ID-Number">>, wapi_offnet_resource:outbound_callee_id_number(OffnetReq)}
-       ,{<<"Outbound-Callee-ID-Name">>, wapi_offnet_resource:outbound_callee_id_name(OffnetReq)}
-       ,{<<"B-Leg-Events">>, wapi_offnet_resource:b_leg_events(OffnetReq, [])}
+       ,{<<"Media">>, kapi_offnet_resource:media(OffnetReq)}
+       ,{<<"Hold-Media">>, kapi_offnet_resource:hold_media(OffnetReq)}
+       ,{<<"Presence-ID">>, kapi_offnet_resource:presence_id(OffnetReq)}
+       ,{<<"Ringback">>, kapi_offnet_resource:ringback(OffnetReq)}
+       ,{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetReq)}
+       ,{<<"Fax-Identity-Number">>, kapi_offnet_resource:fax_identity_number(OffnetReq, Number)}
+       ,{<<"Fax-Identity-Name">>, kapi_offnet_resource:fax_identity_name(OffnetReq, Name)}
+       ,{<<"Outbound-Callee-ID-Number">>, kapi_offnet_resource:outbound_callee_id_number(OffnetReq)}
+       ,{<<"Outbound-Callee-ID-Name">>, kapi_offnet_resource:outbound_callee_id_name(OffnetReq)}
+       ,{<<"B-Leg-Events">>, kapi_offnet_resource:b_leg_events(OffnetReq, [])}
        ,{<<"Endpoints">>, FmtEndpoints}
-       | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+       | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
--spec bridge_from_uri(api_binary(), wapi_offnet_resource:req()) ->
+-spec bridge_from_uri(api_binary(), kapi_offnet_resource:req()) ->
                              api_binary().
 bridge_from_uri(Number, OffnetReq) ->
     Realm = stepswitch_util:default_realm(OffnetReq),
 
-    case (whapps_config:get_is_true(?SS_CONFIG_CAT, <<"format_from_uri">>, 'false')
-          orelse wapi_offnet_resource:format_from_uri(OffnetReq)
+    case (kapps_config:get_is_true(?SS_CONFIG_CAT, <<"format_from_uri">>, 'false')
+          orelse kapi_offnet_resource:format_from_uri(OffnetReq)
          )
         andalso (is_binary(Number) andalso is_binary(Realm))
     of
@@ -397,37 +397,37 @@ bridge_from_uri(Number, OffnetReq) ->
             FromURI
     end.
 
--spec bridge_outbound_cid_name(wapi_offnet_resource:req()) -> api_binary().
+-spec bridge_outbound_cid_name(kapi_offnet_resource:req()) -> api_binary().
 bridge_outbound_cid_name(OffnetReq) ->
-    case wapi_offnet_resource:outbound_caller_id_name(OffnetReq) of
-        'undefined' -> wapi_offnet_resource:emergency_caller_id_name(OffnetReq);
+    case kapi_offnet_resource:outbound_caller_id_name(OffnetReq) of
+        'undefined' -> kapi_offnet_resource:emergency_caller_id_name(OffnetReq);
         Name -> Name
     end.
 
--spec bridge_outbound_cid_number(wapi_offnet_resource:req()) -> api_binary().
+-spec bridge_outbound_cid_number(kapi_offnet_resource:req()) -> api_binary().
 bridge_outbound_cid_number(OffnetReq) ->
-    case wapi_offnet_resource:outbound_caller_id_number(OffnetReq) of
-        'undefined' -> wapi_offnet_resource:emergency_caller_id_number(OffnetReq);
+    case kapi_offnet_resource:outbound_caller_id_number(OffnetReq) of
+        'undefined' -> kapi_offnet_resource:emergency_caller_id_number(OffnetReq);
         Number -> Number
     end.
 
--spec bridge_emergency_cid_name(wapi_offnet_resource:req()) -> api_binary().
+-spec bridge_emergency_cid_name(kapi_offnet_resource:req()) -> api_binary().
 bridge_emergency_cid_name(OffnetReq) ->
-    case wapi_offnet_resource:emergency_caller_id_name(OffnetReq) of
-        'undefined' -> wapi_offnet_resource:outbound_caller_id_name(OffnetReq);
+    case kapi_offnet_resource:emergency_caller_id_name(OffnetReq) of
+        'undefined' -> kapi_offnet_resource:outbound_caller_id_name(OffnetReq);
         Name -> Name
     end.
 
--spec bridge_emergency_cid_number(wapi_offnet_resource:req()) -> api_binary().
+-spec bridge_emergency_cid_number(kapi_offnet_resource:req()) -> api_binary().
 bridge_emergency_cid_number(OffnetReq) ->
-    case wapi_offnet_resource:emergency_caller_id_number(OffnetReq) of
-        'undefined' -> wapi_offnet_resource:outbound_caller_id_number(OffnetReq);
+    case kapi_offnet_resource:emergency_caller_id_number(OffnetReq) of
+        'undefined' -> kapi_offnet_resource:outbound_caller_id_number(OffnetReq);
         Number -> Number
     end.
 
--spec find_emergency_number(wapi_offnet_resource:req()) -> api_binary().
+-spec find_emergency_number(kapi_offnet_resource:req()) -> api_binary().
 find_emergency_number(OffnetReq) ->
-    case whapps_config:get_is_true(
+    case kapps_config:get_is_true(
            ?SS_CONFIG_CAT
            ,<<"ensure_valid_emergency_cid">>
            ,'false'
@@ -439,9 +439,9 @@ find_emergency_number(OffnetReq) ->
             bridge_emergency_cid_number(OffnetReq)
     end.
 
--spec ensure_valid_emergency_number(wapi_offnet_resource:req()) -> api_binary().
+-spec ensure_valid_emergency_number(kapi_offnet_resource:req()) -> api_binary().
 ensure_valid_emergency_number(OffnetReq) ->
-    AccountId = wapi_offnet_resource:account_id(OffnetReq),
+    AccountId = kapi_offnet_resource:account_id(OffnetReq),
     lager:debug("ensuring emergency caller is valid for account ~s", [AccountId]),
     Numbers = knm_numbers:emergency_enabled(AccountId),
     Emergency = bridge_emergency_cid_number(OffnetReq),
@@ -471,80 +471,80 @@ find_valid_emergency_number([Number|_]) ->
 -spec default_emergency_number(ne_binary()) -> ne_binary().
 default_emergency_number(Requested) ->
     Key = <<"default_emergency_cid_number">>,
-    case whapps_config:get_non_empty(?SS_CONFIG_CAT, Key) of
+    case kapps_config:get_non_empty(?SS_CONFIG_CAT, Key) of
         'undefined' -> Requested;
         Else -> Else
     end.
 
--spec contains_emergency_endpoints(wh_json:objects()) -> boolean().
+-spec contains_emergency_endpoints(kz_json:objects()) -> boolean().
 contains_emergency_endpoints([]) -> 'false';
 contains_emergency_endpoints([Endpoint|Endpoints]) ->
-    case wh_json:is_true([<<"Custom-Channel-Vars">>, <<"Emergency-Resource">>], Endpoint) of
+    case kz_json:is_true([<<"Custom-Channel-Vars">>, <<"Emergency-Resource">>], Endpoint) of
         'true' ->
             lager:debug("endpoints contain an emergency resource", []),
             'true';
         'false' -> contains_emergency_endpoints(Endpoints)
     end.
 
--spec bridge_timeout(wapi_offnet_resource:req()) -> wh_proplist().
+-spec bridge_timeout(kapi_offnet_resource:req()) -> kz_proplist().
 bridge_timeout(OffnetReq) ->
     lager:debug("attempt to connect to resources timed out"),
-    [{<<"Call-ID">>, wapi_offnet_resource:call_id(OffnetReq)}
-     ,{<<"Msg-ID">>, wapi_offnet_resource:msg_id(OffnetReq)}
+    [{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetReq)}
+     ,{<<"Msg-ID">>, kapi_offnet_resource:msg_id(OffnetReq)}
      ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}
      ,{<<"Response-Code">>, <<"sip:500">>}
      ,{<<"Error-Message">>, <<"bridge request timed out">>}
-     ,{<<"To-DID">>, wapi_offnet_resource:to_did(OffnetReq)}
-     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+     ,{<<"To-DID">>, kapi_offnet_resource:to_did(OffnetReq)}
+     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec bridge_error(wh_json:object(), wapi_offnet_resource:req()) -> wh_proplist().
+-spec bridge_error(kz_json:object(), kapi_offnet_resource:req()) -> kz_proplist().
 bridge_error(JObj, OffnetReq) ->
-    lager:debug("error during outbound request: ~s", [wh_util:to_binary(wh_json:encode(JObj))]),
-    [{<<"Call-ID">>, wapi_offnet_resource:call_id(OffnetReq)}
-     ,{<<"Msg-ID">>, wapi_offnet_resource:msg_id(OffnetReq)}
+    lager:debug("error during outbound request: ~s", [kz_util:to_binary(kz_json:encode(JObj))]),
+    [{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetReq)}
+     ,{<<"Msg-ID">>, kapi_offnet_resource:msg_id(OffnetReq)}
      ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}
      ,{<<"Response-Code">>, <<"sip:500">>}
-     ,{<<"Error-Message">>, wh_json:get_value(<<"Error-Message">>, JObj, <<"failed to process request">>)}
-     ,{<<"To-DID">>, wapi_offnet_resource:to_did(OffnetReq)}
-     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+     ,{<<"Error-Message">>, kz_json:get_value(<<"Error-Message">>, JObj, <<"failed to process request">>)}
+     ,{<<"To-DID">>, kapi_offnet_resource:to_did(OffnetReq)}
+     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec bridge_success(wh_json:object(), wapi_offnet_resource:req()) -> wh_proplist().
+-spec bridge_success(kz_json:object(), kapi_offnet_resource:req()) -> kz_proplist().
 bridge_success(JObj, OffnetReq) ->
     lager:debug("outbound request successfully completed"),
-    [{<<"Call-ID">>, wapi_offnet_resource:call_id(OffnetReq)}
-     ,{<<"Msg-ID">>, wapi_offnet_resource:msg_id(OffnetReq)}
+    [{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetReq)}
+     ,{<<"Msg-ID">>, kapi_offnet_resource:msg_id(OffnetReq)}
      ,{<<"Response-Message">>, <<"SUCCESS">>}
      ,{<<"Response-Code">>, <<"sip:200">>}
      ,{<<"Resource-Response">>, JObj}
-     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec bridge_failure(wh_json:object(), wapi_offnet_resource:req()) -> wh_proplist().
+-spec bridge_failure(kz_json:object(), kapi_offnet_resource:req()) -> kz_proplist().
 bridge_failure(JObj, OffnetReq) ->
     lager:debug("resources for outbound request failed: ~s"
-                ,[wh_json:get_value(<<"Disposition">>, JObj)]
+                ,[kz_json:get_value(<<"Disposition">>, JObj)]
                ),
-    [{<<"Call-ID">>, wapi_offnet_resource:call_id(OffnetReq)}
-     ,{<<"Msg-ID">>, wapi_offnet_resource:msg_id(OffnetReq)}
-     ,{<<"Response-Message">>, wh_json:get_first_defined([<<"Application-Response">>
+    [{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetReq)}
+     ,{<<"Msg-ID">>, kapi_offnet_resource:msg_id(OffnetReq)}
+     ,{<<"Response-Message">>, kz_json:get_first_defined([<<"Application-Response">>
                                                           ,<<"Hangup-Cause">>
                                                          ], JObj)}
-     ,{<<"Response-Code">>, wh_json:get_value(<<"Hangup-Code">>, JObj)}
+     ,{<<"Response-Code">>, kz_json:get_value(<<"Hangup-Code">>, JObj)}
      ,{<<"Resource-Response">>, JObj}
-     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec bridge_not_configured(wapi_offnet_resource:req()) -> wh_proplist().
+-spec bridge_not_configured(kapi_offnet_resource:req()) -> kz_proplist().
 bridge_not_configured(OffnetReq) ->
-    [{<<"Call-ID">>, wapi_offnet_resource:call_id(OffnetReq)}
-     ,{<<"Msg-ID">>, wapi_offnet_resource:msg_id(OffnetReq)}
+    [{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetReq)}
+     ,{<<"Msg-ID">>, kapi_offnet_resource:msg_id(OffnetReq)}
      ,{<<"Response-Message">>, <<"MANDATORY_IE_MISSING">>}
      ,{<<"Response-Code">>, <<"sip:403">>}
      ,{<<"Error-Message">>, <<"services not configured">>}
-     ,{<<"To-DID">>, wapi_offnet_resource:to_did(OffnetReq)}
-     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+     ,{<<"To-DID">>, kapi_offnet_resource:to_did(OffnetReq)}
+     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
 -spec deny_emergency_bridge(state()) -> 'ok'.
@@ -557,42 +557,42 @@ deny_emergency_bridge(#state{resource_req=OffnetReq
     Result = bridge_not_configured(OffnetReq),
     gen_listener:cast(self(), {'bridge_result', Result}).
 
--spec send_deny_emergency_notification(wapi_offnet_resource:req()) -> 'ok'.
+-spec send_deny_emergency_notification(kapi_offnet_resource:req()) -> 'ok'.
 send_deny_emergency_notification(OffnetReq) ->
     Props =
-        [{<<"Call-ID">>, wapi_offnet_resource:call_id(OffnetReq)}
-         ,{<<"Account-ID">>, wapi_offnet_resource:account_id(OffnetReq)}
-         ,{?KEY_E_CALLER_ID_NUMBER, wapi_offnet_resource:emergency_caller_id_number(OffnetReq)}
-         ,{?KEY_E_CALLER_ID_NAME, wapi_offnet_resource:emergency_caller_id_name(OffnetReq)}
-         ,{?KEY_OUTBOUND_CALLER_ID_NUMBER, wapi_offnet_resource:outbound_caller_id_number(OffnetReq)}
-         ,{?KEY_OUTBOUND_CALLER_ID_NAME, wapi_offnet_resource:outbound_caller_id_name(OffnetReq)}
-         | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+        [{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetReq)}
+         ,{<<"Account-ID">>, kapi_offnet_resource:account_id(OffnetReq)}
+         ,{?KEY_E_CALLER_ID_NUMBER, kapi_offnet_resource:emergency_caller_id_number(OffnetReq)}
+         ,{?KEY_E_CALLER_ID_NAME, kapi_offnet_resource:emergency_caller_id_name(OffnetReq)}
+         ,{?KEY_OUTBOUND_CALLER_ID_NUMBER, kapi_offnet_resource:outbound_caller_id_number(OffnetReq)}
+         ,{?KEY_OUTBOUND_CALLER_ID_NAME, kapi_offnet_resource:outbound_caller_id_name(OffnetReq)}
+         | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
-    wapi_notifications:publish_denied_emergency_bridge(Props).
+    kapi_notifications:publish_denied_emergency_bridge(Props).
 
--spec send_deny_emergency_response(wapi_offnet_resource:req(), ne_binary()) ->
+-spec send_deny_emergency_response(kapi_offnet_resource:req(), ne_binary()) ->
                                           {'ok', ne_binary()} |
                                           {'error', 'no_response'}.
 send_deny_emergency_response(OffnetReq, ControlQ) ->
-    CallId = wapi_offnet_resource:call_id(OffnetReq),
-    Code = whapps_config:get_ne_binary(
+    CallId = kapi_offnet_resource:call_id(OffnetReq),
+    Code = kapps_config:get_ne_binary(
              ?SS_CONFIG_CAT
              ,<<"deny_emergency_bridge_code">>
              ,486
             ),
-    Cause = whapps_config:get_ne_binary(
+    Cause = kapps_config:get_ne_binary(
               ?SS_CONFIG_CAT
               ,<<"deny_emergency_bridge_cause">>
               ,<<"Emergency service not configured">>
              ),
-    Media = whapps_config:get_ne_binary(
+    Media = kapps_config:get_ne_binary(
               ?SS_CONFIG_CAT
               ,<<"deny_emergency_bridge_media">>
               ,<<"prompt://system_media/stepswitch-emergency_not_configured/">>
              ),
-    wh_call_response:send(CallId, ControlQ, Code, Cause, Media).
+    kz_call_response:send(CallId, ControlQ, Code, Cause, Media).
 
--spec get_event_type(wh_json:object()) -> {ne_binary(), ne_binary(), ne_binary()}.
+-spec get_event_type(kz_json:object()) -> {ne_binary(), ne_binary(), ne_binary()}.
 get_event_type(JObj) ->
-    {C, E} = whapps_util:get_event_type(JObj),
+    {C, E} = kapps_util:get_event_type(JObj),
     {C, E, kz_call_event:call_id(JObj)}.

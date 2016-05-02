@@ -122,7 +122,7 @@ check_list_schema(ListId, Context) ->
     case cb_context:req_value(Context, <<"entries">>) of
         'undefined' ->
             OnSuccess = fun(C) -> on_successful_validation(ListId, C) end,
-            NewReq = wh_json:filter(fun filter_list_req_data/1
+            NewReq = kz_json:filter(fun filter_list_req_data/1
                                     ,cb_context:req_data(Context)
                                    ),
             NewContext = cb_context:set_req_data(Context, NewReq),
@@ -143,7 +143,7 @@ filter_list_req_data(_) -> 'false'.
 on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, <<"list">>}],
     cb_context:set_doc(Context
-                       ,wh_json:set_values(Props, cb_context:doc(Context))
+                       ,kz_json:set_values(Props, cb_context:doc(Context))
                       );
 on_successful_validation(ListId, Context) ->
     crossbar_doc:load_merge(ListId, Context, ?TYPE_CHECK_OPTION(<<"list">>)).
@@ -151,12 +151,12 @@ on_successful_validation(ListId, Context) ->
 -spec check_list_entry_schema(path_token(), api_binary(), cb_context:context()) -> cb_context:context().
 check_list_entry_schema(ListId, EntryId, Context) ->
     OnSuccess = fun(C) -> entry_schema_success(C, ListId, EntryId) end,
-    ReqData = wh_json:set_value(<<"list_id">>, ListId, cb_context:req_data(Context)),
+    ReqData = kz_json:set_value(<<"list_id">>, ListId, cb_context:req_data(Context)),
     cb_context:validate_request_data(<<"list_entries">>, cb_context:set_req_data(Context, ReqData), OnSuccess).
 
 -spec entry_schema_success(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 entry_schema_success(Context, ListId, EntryId) ->
-    Pattern = wh_json:get_value(<<"pattern">>, cb_context:doc(Context)),
+    Pattern = kz_json:get_value(<<"pattern">>, cb_context:doc(Context)),
     case is_binary(Pattern) andalso re:compile(Pattern) of
         {'ok', _CompiledRe} ->
             on_entry_successful_validation(ListId, EntryId, Context);
@@ -167,7 +167,7 @@ entry_schema_success(Context, ListId, EntryId) ->
             cb_context:add_validation_error(
                 <<"pattern">>
                 ,<<"type">>
-                ,wh_json:from_list([
+                ,kz_json:from_list([
                     {<<"message">>, iolist_to_binary(Reason)}
                     ,{<<"cause">>, Pattern}
                 ])
@@ -179,7 +179,7 @@ entry_schema_success(Context, ListId, EntryId) ->
                                             cb_context:context().
 on_entry_successful_validation(_ListId, 'undefined', Context) ->
     cb_context:set_doc(Context
-                       ,wh_json:set_values([{<<"pvt_type">>, <<"list_entry">>}]
+                       ,kz_json:set_values([{<<"pvt_type">>, <<"list_entry">>}]
                                            ,cb_context:doc(Context)));
 on_entry_successful_validation(_ListId, EntryId, Context) ->
     crossbar_doc:load_merge(EntryId, Context, ?TYPE_CHECK_OPTION(<<"list_entry">>)).
@@ -218,40 +218,40 @@ delete(Context, _ListId, _EntryId) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) ->
-                                    wh_json:objects().
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
+                                    kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
+    [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 -spec load_lists(cb_context:context()) -> cb_context:context().
 load_lists(Context) ->
     Entries = cb_context:doc(crossbar_doc:load_view(<<"lists/entries">>
                                                     ,[]
-                                                    ,cb_context:set_query_string(Context, wh_json:new())
+                                                    ,cb_context:set_query_string(Context, kz_json:new())
                                                     ,fun normalize_view_results/2)),
     crossbar_doc:load_view(?CB_LIST
                            ,[]
                            ,Context
                            ,load_entries_and_normalize(Entries)).
 
--spec load_entries_and_normalize(wh_json:objects()) -> fun((wh_json:object(), wh_json:objects()) -> boolean()).
+-spec load_entries_and_normalize(kz_json:objects()) -> fun((kz_json:object(), kz_json:objects()) -> boolean()).
 load_entries_and_normalize(AllEntries) ->
     fun(JObj, Acc) ->
-            Val = wh_json:get_value(<<"value">>, JObj),
-            ListId = wh_json:get_value(<<"id">>, Val),
+            Val = kz_json:get_value(<<"value">>, JObj),
+            ListId = kz_json:get_value(<<"id">>, Val),
             ListEntries = lists:filter(filter_entries_by_list_id(ListId), AllEntries),
-            [wh_json:set_value(<<"entries">>, entries_from_list(ListEntries), Val)|Acc]
+            [kz_json:set_value(<<"entries">>, entries_from_list(ListEntries), Val)|Acc]
     end.
 
--spec filter_entries_by_list_id(ne_binary()) -> fun((wh_json:object()) -> boolean()).
+-spec filter_entries_by_list_id(ne_binary()) -> fun((kz_json:object()) -> boolean()).
 filter_entries_by_list_id(Id) ->
     fun(Entry) ->
-            wh_json:get_value(<<"list_id">>, Entry) =:= Id
+            kz_json:get_value(<<"list_id">>, Entry) =:= Id
     end.
 
--spec entries_from_list(wh_json:objects()) -> wh_json:object().
+-spec entries_from_list(kz_json:objects()) -> kz_json:object().
 entries_from_list(Entries) ->
-    wh_json:from_list([{wh_json:get_value(<<"_id">>, X), wh_json:public_fields(X)}
+    kz_json:from_list([{kz_json:get_value(<<"_id">>, X), kz_json:public_fields(X)}
                        || X <- Entries
                       ]).
 
@@ -263,5 +263,5 @@ load_list(Context, ListId) ->
                                                     ,fun normalize_view_results/2)),
     Context1 = crossbar_doc:load(ListId, Context, ?TYPE_CHECK_OPTION(<<"list">>)),
     Doc = cb_context:doc(Context1),
-    Doc1 = wh_json:public_fields(wh_json:set_value(<<"entries">>, entries_from_list(Entries), Doc)),
+    Doc1 = kz_json:public_fields(kz_json:set_value(<<"entries">>, entries_from_list(Entries), Doc)),
     cb_context:set_resp_data(Context1, Doc1).

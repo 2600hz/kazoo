@@ -1,7 +1,7 @@
 -ifndef(KZ_WEB_HRL).
 
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_log.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo/include/kz_log.hrl").
 
 -define(APP_NAME, <<"kazoo_web">>).
 -define(APP_VERSION, <<"4.0.0">> ).

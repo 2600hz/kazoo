@@ -27,7 +27,7 @@
 
 -include("kz_documents.hrl").
 
--type doc() :: wh_json:object().
+-type doc() :: kz_json:object().
 -export_type([doc/0]).
 
 -define(IS_ENABLED, <<"enabled">>).
@@ -46,13 +46,13 @@
 is_enabled(Hook) ->
     is_enabled(Hook, 'true').
 is_enabled(Hook, Default) ->
-    wh_json:is_true(?IS_ENABLED, Hook, Default).
+    kz_json:is_true(?IS_ENABLED, Hook, Default).
 
 -spec enable(doc()) -> doc().
 enable(Hook) ->
-    wh_json:set_value(?IS_ENABLED
+    kz_json:set_value(?IS_ENABLED
                       ,'true'
-                      ,wh_json:delete_key(?DISABLED_MESSAGE, Hook)
+                      ,kz_json:delete_key(?DISABLED_MESSAGE, Hook)
                      ).
 
 -spec disable(doc()) -> doc().
@@ -60,7 +60,7 @@ enable(Hook) ->
 disable(Hook) ->
     disable(Hook, 'undefined').
 disable(Hook, Reason) ->
-    wh_json:set_values(
+    kz_json:set_values(
       props:filter_undefined(
         [{?IS_ENABLED, 'false'}
          ,{?DISABLED_MESSAGE, Reason}
@@ -73,7 +73,7 @@ disable(Hook, Reason) ->
 disabled_message(Hook) ->
     disabled_message(Hook, 'undefined').
 disabled_message(Hook, Default) ->
-    wh_json:get_value(?DISABLED_MESSAGE, Hook, Default).
+    kz_json:get_value(?DISABLED_MESSAGE, Hook, Default).
 
 -spec is_auto_disabled(doc()) -> boolean().
 is_auto_disabled(Hook) ->
@@ -85,40 +85,40 @@ is_auto_disabled(Hook) ->
 type() -> ?TYPE.
 
 type(Hook) ->
-    wh_doc:type(Hook).
+    kz_doc:type(Hook).
 
 -spec name(doc()) -> api_binary().
 -spec name(doc(), Default) -> ne_binary() | Default.
 name(Hook) ->
     name(Hook, 'undefined').
 name(Hook, Default) ->
-    wh_json:get_value(?NAME, Hook, Default).
+    kz_json:get_value(?NAME, Hook, Default).
 
 -spec set_name(doc(), ne_binary()) -> doc().
 set_name(Hook, Name) ->
-    wh_json:set_value(?NAME, Name, Hook).
+    kz_json:set_value(?NAME, Name, Hook).
 
 -spec uri(doc()) -> api_binary().
 -spec uri(doc(), Default) -> ne_binary() | Default.
 uri(Hook) ->
     uri(Hook, 'undefined').
 uri(Hook, Default) ->
-    wh_json:get_value(?URI, Hook, Default).
+    kz_json:get_value(?URI, Hook, Default).
 
 -spec set_uri(doc(), ne_binary()) -> doc().
 set_uri(Hook, Uri) ->
-    wh_json:set_value(?URI, Uri, Hook).
+    kz_json:set_value(?URI, Uri, Hook).
 
 -spec event(doc()) -> api_binary().
 -spec event(doc(), Default) -> ne_binary() | Default.
 event(Hook) ->
     event(Hook, 'undefined').
 event(Hook, Default) ->
-    wh_json:get_value(?EVENT, Hook, Default).
+    kz_json:get_value(?EVENT, Hook, Default).
 
 -spec set_event(doc(), ne_binary()) -> doc().
 set_event(Hook, Event) ->
-    wh_json:set_value(?EVENT, Event, Hook).
+    kz_json:set_value(?EVENT, Event, Hook).
 
 -type http_verb() :: 'get' | 'post'.
 
@@ -127,9 +127,9 @@ set_event(Hook, Event) ->
 verb(Hook) ->
     verb(Hook, 'get').
 verb(Hook, Default) ->
-    case wh_json:get_value(?VERB, Hook) of
+    case kz_json:get_value(?VERB, Hook) of
         'undefined' -> Default;
-        Verb -> safe_verbs(wh_util:to_lower_binary(Verb), Default)
+        Verb -> safe_verbs(kz_util:to_lower_binary(Verb), Default)
     end.
 
 -spec safe_verbs(api_binary(), http_verb() | Default) ->
@@ -140,11 +140,11 @@ safe_verbs(_Verb, Default) -> Default.
 
 -spec set_verb(doc(), ne_binary() | http_verb()) -> doc().
 set_verb(Hook, <<_/binary>> = Verb) ->
-    wh_json:set_value(?VERB, safe_verbs(Verb, 'get'), Hook);
+    kz_json:set_value(?VERB, safe_verbs(Verb, 'get'), Hook);
 set_verb(Hook, Verb) when Verb =:= 'get'
                           orelse Verb =:= 'post'
                           ->
-    wh_json:set_value(?VERB, Verb, Hook).
+    kz_json:set_value(?VERB, Verb, Hook).
 
 -type retry_range() :: 1..5.
 
@@ -154,7 +154,7 @@ retries(Hook) ->
     retries(Hook, 3).
 retries(Hook, Default) ->
     constrain_retries(
-      wh_json:get_integer_value(?RETRIES, Hook, Default)
+      kz_json:get_integer_value(?RETRIES, Hook, Default)
      ).
 
 -spec constrain_retries(integer()) -> retry_range().
@@ -164,26 +164,26 @@ constrain_retries(N) when is_integer(N) -> N.
 
 -spec set_retries(doc(), integer()) -> doc().
 set_retries(Hook, Retries) when is_integer(Retries) ->
-    wh_json:set_value(?RETRIES, constrain_retries(Retries), Hook).
+    kz_json:set_value(?RETRIES, constrain_retries(Retries), Hook).
 
 -spec custom_data(doc()) -> api_object().
--spec custom_data(doc(), Default) -> wh_json:object() | Default.
+-spec custom_data(doc(), Default) -> kz_json:object() | Default.
 custom_data(Hook) ->
     custom_data(Hook, 'undefined').
 custom_data(Hook, Default) ->
-    wh_json:get_ne_json_value(?CUSTOM_DATA, Hook, Default).
+    kz_json:get_ne_json_value(?CUSTOM_DATA, Hook, Default).
 
 -spec set_custom_data(doc(), api_object()) -> doc().
 set_custom_data(Hook, Custom) ->
-    wh_json:set_value(?CUSTOM_DATA, Custom, Hook).
+    kz_json:set_value(?CUSTOM_DATA, Custom, Hook).
 
 -spec modifiers(doc()) -> api_object().
--spec modifiers(doc(), Default) -> wh_json:object() | Default.
+-spec modifiers(doc(), Default) -> kz_json:object() | Default.
 modifiers(Hook) ->
     modifiers(Hook, 'undefined').
 modifiers(Hook, Default) ->
-    wh_json:get_ne_json_value(?MODIFIERS, Hook, Default).
+    kz_json:get_ne_json_value(?MODIFIERS, Hook, Default).
 
 -spec set_modifiers(doc(), api_object()) -> doc().
 set_modifiers(Hook, Modifiers) ->
-    wh_json:set_value(?MODIFIERS, Modifiers, Hook).
+    kz_json:set_value(?MODIFIERS, Modifiers, Hook).

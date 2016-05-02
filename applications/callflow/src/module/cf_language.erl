@@ -20,14 +20,14 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    Lang = wh_json:get_value(<<"language">>, Data),
+    Lang = kz_json:get_value(<<"language">>, Data),
     lager:info("setting call's language to '~s'", [Lang]),
-    Call1 = whapps_call:set_language(Lang, Call),
+    Call1 = kapps_call:set_language(Lang, Call),
 
-    whapps_call_command:set(
-      wh_json:from_list([{<<"default_language">>, Lang}])
+    kapps_call_command:set(
+      kz_json:from_list([{<<"default_language">>, Lang}])
       ,'undefined'
       ,Call1
      ),

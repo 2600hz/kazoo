@@ -36,7 +36,7 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec new(wh_json:object()) -> sup_startchild_ret().
+-spec new(kz_json:object()) -> sup_startchild_ret().
 new(JObj) ->
     supervisor:start_child(?SERVER, [JObj]).
 

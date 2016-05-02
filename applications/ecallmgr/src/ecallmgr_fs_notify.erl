@@ -26,7 +26,7 @@
 
 -record(state, {
           node :: atom()
-          ,options :: wh_proplist()
+          ,options :: kz_proplist()
          }).
 
 -define(MWI_BODY, "Messages-Waiting: ~s\r\nMessage-Account: ~s\r\nVoice-Message: ~b/~b (~b/~b)\r\n\r\n").
@@ -69,7 +69,7 @@
 %% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(atom()) -> startlink_ret().
--spec start_link(atom(), wh_proplist()) -> startlink_ret().
+-spec start_link(atom(), kz_proplist()) -> startlink_ret().
 start_link(Node) -> start_link(Node, []).
 start_link(Node, Options) ->
     gen_listener:start_link(?SERVER
@@ -81,12 +81,12 @@ start_link(Node, Options) ->
                              ]
                             ,[Node, Options]).
 
--spec presence_probe(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec presence_probe(kz_json:object(), kz_proplist()) -> 'ok'.
 presence_probe(JObj, _Props) ->
-    'true' = wapi_presence:probe_v(JObj),
-    _ = wh_util:put_callid(JObj),
-    Username = wh_json:get_value(<<"Username">>, JObj),
-    Realm = wh_json:get_value(<<"Realm">>, JObj),
+    'true' = kapi_presence:probe_v(JObj),
+    _ = kz_util:put_callid(JObj),
+    Username = kz_json:get_value(<<"Username">>, JObj),
+    Realm = kz_json:get_value(<<"Realm">>, JObj),
     State = case ecallmgr_registrar:get_registration(Realm, Username) of
                 'undefined' -> <<"offline">>;
                 _Else -> <<"online">>
@@ -98,17 +98,17 @@ resp_to_probe(State, User, Realm) ->
     PresenceId = <<User/binary, "@", Realm/binary>>,
     PresenceUpdate = [{<<"Presence-ID">>, PresenceId}
                       ,{<<"State">>, State}
-                      ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:hash(md5, PresenceId))}
-                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                      ,{<<"Call-ID">>, kz_util:to_hex_binary(crypto:hash(md5, PresenceId))}
+                      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                      ],
-    wh_amqp_worker:cast(PresenceUpdate, fun wapi_presence:publish_update/1).
+    kz_amqp_worker:cast(PresenceUpdate, fun kapi_presence:publish_update/1).
 
--spec check_sync_api(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec check_sync_api(kz_json:object(), kz_proplist()) -> 'ok'.
 check_sync_api(JObj, _Props) ->
-    'true' = wapi_switch:check_sync_v(JObj),
-    wh_util:put_callid(JObj),
-    check_sync(wapi_switch:check_sync_username(JObj)
-               ,wapi_switch:check_sync_realm(JObj)
+    'true' = kapi_switch:check_sync_v(JObj),
+    kz_util:put_callid(JObj),
+    check_sync(kapi_switch:check_sync_username(JObj)
+               ,kapi_switch:check_sync_realm(JObj)
               ).
 
 -spec check_sync(ne_binary(), ne_binary()) -> 'ok'.
@@ -118,8 +118,8 @@ check_sync(Username, Realm) ->
         {'error', 'not_found'} ->
             lager:warning("failed to find contact for ~s@~s, not sending check-sync", [Username, Realm]);
         {'ok', Registration} ->
-            Contact = wh_json:get_first_defined([<<"Bridge-RURI">>, <<"Contact">>], Registration),
-            [Node|_] = wh_util:shuffle_list(ecallmgr_fs_nodes:connected()),
+            Contact = kz_json:get_first_defined([<<"Bridge-RURI">>, <<"Contact">>], Registration),
+            [Node|_] = kz_util:shuffle_list(ecallmgr_fs_nodes:connected()),
             lager:info("calling check sync on ~s for ~s@~s and contact ~s", [Node, Username, Realm, Contact]),
             case ensure_contact_user(Contact, Username, Realm) of
                 'undefined' ->
@@ -144,11 +144,11 @@ send_check_sync(Node, Username, Realm, Contact) ->
     Resp = freeswitch:sendevent(Node, 'NOTIFY', Headers),
     lager:info("send check-sync to '~s@~s' via ~s: ~p", [Username, Realm, Node, Resp]).
 
--spec mwi_update(wh_json:object(), wh_proplist()) -> no_return().
+-spec mwi_update(kz_json:object(), kz_proplist()) -> no_return().
 mwi_update(JObj, Props) ->
-    _ = wh_util:put_callid(JObj),
-    'true' = wapi_presence:mwi_update_v(JObj),
-    [Username, Realm] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
+    _ = kz_util:put_callid(JObj),
+    'true' = kapi_presence:mwi_update_v(JObj),
+    [Username, Realm] = binary:split(kz_json:get_value(<<"To">>, JObj), <<"@">>),
     case ecallmgr_registrar:lookup_registration(Realm, Username) of
         {'error', 'not_found'} ->
             lager:warning("failed to find registration for ~s@~s, dropping MWI update", [Username, Realm]);
@@ -157,25 +157,25 @@ mwi_update(JObj, Props) ->
             send_mwi_update(JObj, Username, Realm, Node, Registration)
     end.
 
--spec send_mwi_update(wh_json:object(), ne_binary(), ne_binary(), atom(), wh_json:object()) -> 'ok'.
+-spec send_mwi_update(kz_json:object(), ne_binary(), ne_binary(), atom(), kz_json:object()) -> 'ok'.
 send_mwi_update(JObj, Username, Realm, Node, Registration) ->
-    ToURI = #uri{user=wh_json:get_value(<<"To-User">>, Registration, Username)
-                 ,domain=wh_json:get_value(<<"To-Host">>, Registration, Realm)
+    ToURI = #uri{user=kz_json:get_value(<<"To-User">>, Registration, Username)
+                 ,domain=kz_json:get_value(<<"To-Host">>, Registration, Realm)
                 },
     To = kzsip_uri:uri(ToURI),
     ToAccount = kzsip_uri:ruri(ToURI),
-    From = kzsip_uri:uri(#uri{user=wh_json:get_value(<<"From-User">>, Registration, Username)
-                                  ,domain=wh_json:get_value(<<"From-Host">>, Registration, Realm)
+    From = kzsip_uri:uri(#uri{user=kz_json:get_value(<<"From-User">>, Registration, Username)
+                                  ,domain=kz_json:get_value(<<"From-Host">>, Registration, Realm)
                                  }),
-    NewMessages = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
+    NewMessages = kz_json:get_integer_value(<<"Messages-New">>, JObj, 0),
     Body = io_lib:format(?MWI_BODY, [case NewMessages of 0 -> "no"; _ -> "yes" end
                                      ,ToAccount
                                      ,NewMessages
-                                     ,wh_json:get_integer_value(<<"Messages-Saved">>, JObj, 0)
-                                     ,wh_json:get_integer_value(<<"Messages-Urgent">>, JObj, 0)
-                                     ,wh_json:get_integer_value(<<"Messages-Urgent-Saved">>, JObj, 0)
+                                     ,kz_json:get_integer_value(<<"Messages-Saved">>, JObj, 0)
+                                     ,kz_json:get_integer_value(<<"Messages-Urgent">>, JObj, 0)
+                                     ,kz_json:get_integer_value(<<"Messages-Urgent-Saved">>, JObj, 0)
                                     ]),
-    RegistrationContact = wh_json:get_first_defined([<<"Bridge-RURI">>, <<"Contact">>], Registration),
+    RegistrationContact = kz_json:get_first_defined([<<"Bridge-RURI">>, <<"Contact">>], Registration),
     case ensure_contact_user(RegistrationContact, Username, Realm) of
         'undefined' ->
             lager:error("invalid contact : ~p : ~p", [RegistrationContact, Registration]);
@@ -188,31 +188,31 @@ send_mwi_update(JObj, Username, Realm, Node, Registration) ->
                        ,{"from-uri", From}
                        ,{"event-string", "message-summary"}
                        ,{"content-type", "application/simple-message-summary"}
-                       ,{"content-length", wh_util:to_list(length(Body))}
+                       ,{"content-length", kz_util:to_list(length(Body))}
                        ,{"body", lists:flatten(Body)}
                       ],
             Resp = freeswitch:sendevent(Node, 'NOTIFY', Headers),
             lager:debug("sent MWI update to '~s' via ~s: ~p", [Contact, Node, Resp])
     end.
 
--spec register_overwrite(wh_json:object(), wh_proplist()) -> no_return().
+-spec register_overwrite(kz_json:object(), kz_proplist()) -> no_return().
 register_overwrite(JObj, Props) ->
     Node = props:get_value('node', Props),
-    Username = wh_json:get_binary_value(<<"Username">>, JObj, <<"unknown">>),
-    Realm = wh_json:get_binary_value(<<"Realm">>, JObj, <<"unknown">>),
+    Username = kz_json:get_binary_value(<<"Username">>, JObj, <<"unknown">>),
+    Realm = kz_json:get_binary_value(<<"Realm">>, JObj, <<"unknown">>),
     PrevContact = ensure_contact_user(
-                    wh_json:get_value(<<"Previous-Contact">>, JObj)
+                    kz_json:get_value(<<"Previous-Contact">>, JObj)
                     ,Username
                     ,Realm
                    ),
     NewContact = ensure_contact_user(
-                   wh_json:get_value(<<"Contact">>, JObj)
+                   kz_json:get_value(<<"Contact">>, JObj)
                    ,Username
                    ,Realm
                   ),
     SipUri = kzsip_uri:uri(#uri{user=Username, domain=Realm}),
-    PrevBody = wh_util:to_list(<<"Replaced-By:", (wh_util:to_binary(NewContact))/binary>>),
-    NewBody = wh_util:to_list(<<"Overwrote:", (wh_util:to_binary(PrevContact))/binary>>),
+    PrevBody = kz_util:to_list(<<"Replaced-By:", (kz_util:to_binary(NewContact))/binary>>),
+    NewBody = kz_util:to_list(<<"Overwrote:", (kz_util:to_binary(PrevContact))/binary>>),
     PrevContactHeaders = [{"profile", ?DEFAULT_FS_PROFILE}
                           ,{"contact", PrevContact}
                           ,{"contact-uri", PrevContact}
@@ -220,7 +220,7 @@ register_overwrite(JObj, Props) ->
                           ,{"from-uri", SipUri}
                           ,{"event-str", "registration-overwrite"}
                           ,{"content-type", "text/plain"}
-                          ,{"content-length", wh_util:to_list(length(PrevBody))}
+                          ,{"content-length", kz_util:to_list(length(PrevBody))}
                           ,{"body", PrevBody}
                          ],
     NewContactHeaders = [{"profile", ?DEFAULT_FS_PROFILE}
@@ -230,7 +230,7 @@ register_overwrite(JObj, Props) ->
                          ,{"from-uri", SipUri}
                          ,{"event-str", "registration-overwrite"}
                          ,{"content-type", "text/plain"}
-                         ,{"content-length", wh_util:to_list(length(NewBody))}
+                         ,{"content-length", kz_util:to_list(length(NewBody))}
                          ,{"body", NewBody}
                         ],
     case PrevContact of

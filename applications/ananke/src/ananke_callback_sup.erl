@@ -25,9 +25,9 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec start_child(any(), wh_proplist(), pos_integers()) ->
+-spec start_child(any(), kz_proplist(), pos_integers()) ->
     sup_startchild_ret().
--spec start_child(any(), wh_proplist(), pos_integers(), check_fun()) ->
+-spec start_child(any(), kz_proplist(), pos_integers(), check_fun()) ->
     sup_startchild_ret().
 start_child(Id, OriginateReq, Schedule) ->
     start_child(Id, [OriginateReq, Schedule]).
@@ -65,7 +65,7 @@ delete_child(Id) ->
 
 -spec delete_child(any(), non_neg_integer()) -> 'ok'.
 delete_child(Id, Timeout) ->
-    _ = wh_util:spawn(delete_child_after_timeout(Id, Timeout)),
+    _ = kz_util:spawn(delete_child_after_timeout(Id, Timeout)),
     'ok'.
 
 -spec init([]) -> sup_init_ret().

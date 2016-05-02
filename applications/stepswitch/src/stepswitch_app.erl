@@ -8,7 +8,7 @@
 
 -behaviour(application).
 
--include_lib("whistle/include/wh_types.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
 
 -export([start/2, stop/1]).
 
@@ -32,11 +32,11 @@ stop(_State) ->
 
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    _ = wapi_authn:declare_exchanges(),
-    _ = wapi_call:declare_exchanges(),
-    _ = wapi_dialplan:declare_exchanges(),
-    _ = wapi_offnet_resource:declare_exchanges(),
-    _ = wapi_resource:declare_exchanges(),
-    _ = wapi_route:declare_exchanges(),
-    _ = wapi_sms:declare_exchanges(),
-    wapi_self:declare_exchanges().
+    _ = kapi_authn:declare_exchanges(),
+    _ = kapi_call:declare_exchanges(),
+    _ = kapi_dialplan:declare_exchanges(),
+    _ = kapi_offnet_resource:declare_exchanges(),
+    _ = kapi_resource:declare_exchanges(),
+    _ = kapi_route:declare_exchanges(),
+    _ = kapi_sms:declare_exchanges(),
+    kapi_self:declare_exchanges().

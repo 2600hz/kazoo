@@ -14,19 +14,19 @@
 -spec init() -> 'ok'.
 init() -> 'ok'.
 
--spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(ApiJObj, _Props) ->
-    'true' = wapi_sysconf:flush_req_v(ApiJObj),
-    wh_util:put_callid(ApiJObj),
+    'true' = kapi_sysconf:flush_req_v(ApiJObj),
+    kz_util:put_callid(ApiJObj),
 
-    Category = wh_json:get_value(<<"Category">>, ApiJObj),
-    Node = wh_json:get_value(<<"Node">>, ApiJObj),
+    Category = kz_json:get_value(<<"Category">>, ApiJObj),
+    Node = kz_json:get_value(<<"Node">>, ApiJObj),
 
-    case wh_json:get_value(<<"Key">>, ApiJObj) of
+    case kz_json:get_value(<<"Key">>, ApiJObj) of
         'undefined' ->
             lager:debug("flushing ~s entirely", [Category]),
-            whapps_config:flush(Category);
+            kapps_config:flush(Category);
         Key ->
             lager:debug("flushing ~s[~s.~s]", [Category, Node, Key]),
-            whapps_config:flush(Category, Key, Node)
+            kapps_config:flush(Category, Key, Node)
     end.

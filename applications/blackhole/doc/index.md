@@ -11,7 +11,7 @@ Language: en-US
 ## Setting up
 
 1. Start the Blackhole Crossbar module
-    * `sup whapps_controller restart_app blackhole`
+    * `sup kapps_controller restart_app blackhole`
 1. Find your Account ID (e.g. `4b31dd1d32ce6d249897c06332375d65`)
 1. [Obtain an Auth Token](https://2600hz.atlassian.net/wiki/display/APIs/Generating+an+Authentication+Token) (e.g. `7b70f69a2a4976d80bfa0382894d1553`)
 1. Copy the **Example Client** code into an HTML file (named e.g. `kazoo_example_ws_client.html`)
@@ -128,7 +128,7 @@ send({ action: 'unsubscribe', auth_token: '{AUTH_TOKEN}' });
 
 The Blackhole application listens to events from AMQP.
 It will send an event to you through Websockets if there is an active binding that matches this event.
-To learn more about how they are routed from your Kazoo cluster to this app, [read on on `wh_hook`](https://github.com/2600hz/kazoo/tree/master/core/whistle_apps/src).
+To learn more about how they are routed from your Kazoo cluster to this app, [read on on `kz_hook`](https://github.com/2600hz/kazoo/tree/master/core/kazoo_apps/src).
 
 Events are plain AMQP event messages.
 Here are a few complete `call.*.*` JSON events:
@@ -192,7 +192,7 @@ Here are a few complete `call.*.*` JSON events:
             "Account-Name": "wefwefwefwef",
             "Account-Realm": "wefwefwefwef.2600hz.com",
             "Application-Name": "callflow",
-            "Application-Node": "whistle_apps@wef.2600hz.com",
+            "Application-Node": "kazoo_apps@wef.2600hz.com",
             "Authorizing-ID": "d509114b66efabf32dfd78dc464b46dd",
             "Authorizing-Type": "device",
             "Bridge-ID": "at6dmu4ffk97vnlp6qfq",
@@ -247,7 +247,7 @@ Here are a few complete `call.*.*` JSON events:
             "Account-Name": "wefwefwefwef",
             "Account-Realm": "wefwefwefwef.2600hz.com",
             "Application-Name": "callflow",
-            "Application-Node": "whistle_apps@wef.2600hz.com",
+            "Application-Node": "kazoo_apps@wef.2600hz.com",
             "Authorizing-ID": "d509114b66efabf32dfd78dc464b46dd",
             "Authorizing-Type": "device",
             "Bridge-ID": "at6dmu4ffk97vnlp6qfq",

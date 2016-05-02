@@ -37,7 +37,7 @@
         ]).
 
 -include("jonny5.hrl").
--include_lib("whistle_apps/include/wh_hooks.hrl").
+-include_lib("kazoo_apps/include/kz_hooks.hrl").
 
 -record(state, {sync_ref :: api_reference()
                 ,sync_timer:: api_reference()
@@ -58,7 +58,7 @@
                   ,reseller_billing :: api_binary() | '$1' | '_'
                   ,reseller_allotment = 'false' :: boolean() | '_'
                   ,soft_limit = 'false' :: boolean() | '_'
-                  ,timestamp = wh_util:current_tstamp() :: pos_integer() | '_'
+                  ,timestamp = kz_util:current_tstamp() :: pos_integer() | '_'
                   ,answered_timestamp :: api_pos_integer() | '$1' | '_'
                   ,rate :: api_binary() | '_'
                   ,rate_increment :: api_binary() | '_'
@@ -405,7 +405,7 @@ account(AccountId) ->
                 ],
     ets:select(?TAB, MatchSpec).
 
--spec to_props(channel()) -> wh_proplist().
+-spec to_props(channel()) -> kz_proplist().
 to_props(#channel{call_id=CallId
                   ,other_leg_call_id=OtherLeg
                   ,direction=Direction
@@ -449,26 +449,26 @@ to_props(#channel{call_id=CallId
       ]
      ).
 
--spec authorized(wh_json:object()) -> 'ok'.
+-spec authorized(kz_json:object()) -> 'ok'.
 authorized(JObj) -> gen_server:cast(?SERVER, {'authorized', JObj}).
 
--spec handle_authz_resp(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_authz_resp(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_authz_resp(JObj, _Props) ->
-    'true' = wapi_authz:authz_resp_v(JObj),
-    case wh_json:is_true(<<"Is-Authorized">>, JObj) of
+    'true' = kapi_authz:authz_resp_v(JObj),
+    case kz_json:is_true(<<"Is-Authorized">>, JObj) of
         'true' -> authorized(JObj);
         'false' -> 'ok'
     end.
 
--spec handle_rate_resp(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_rate_resp(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_rate_resp(JObj, Props) ->
-    'true' = wapi_rate:resp_v(JObj),
+    'true' = kapi_rate:resp_v(JObj),
     Srv = props:get_value('server', Props),
     gen_server:cast(Srv, {'rate_resp', JObj}).
 
--spec handle_channel_destroy(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_channel_destroy(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_channel_destroy(JObj, Props) ->
-    'true' = wapi_call:event_v(JObj),
+    'true' = kapi_call:event_v(JObj),
     CallId = kz_call_event:call_id(JObj),
     Srv = props:get_value('server', Props),
     gen_server:cast(Srv, {'remove', CallId}).
@@ -489,8 +489,8 @@ handle_channel_destroy(JObj, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    wh_hooks:register(),
-    wh_nodes:notify_expire(),
+    kz_hooks:register(),
+    kz_nodes:notify_expire(),
     _ = ets:new(?TAB, ['set'
                        ,'protected'
                        ,'named_table'
@@ -527,18 +527,18 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({'rate_resp', JObj}, State) ->
     Props = props:filter_undefined(
-              [{#channel.rate, wh_json:get_value(<<"Rate">>, JObj)}
-               ,{#channel.rate_increment, wh_json:get_value(<<"Rate-Increment">>, JObj)}
-               ,{#channel.rate_minimum, wh_json:get_value(<<"Rate-Minimum">>, JObj)}
-               ,{#channel.rate_nocharge_time, wh_json:get_value(<<"Rate-NoCharge-Time">>, JObj)}
-               ,{#channel.discount_percentage, wh_json:get_value(<<"Discount-Percentage">>, JObj)}
-               ,{#channel.surcharge, wh_json:get_value(<<"Surcharge">>, JObj)}
-               ,{#channel.rate_name, wh_json:get_value(<<"Rate-Name">>, JObj)}
-               ,{#channel.rate_id, wh_json:get_value(<<"Rate-ID">>, JObj)}
-               ,{#channel.base_cost, wh_json:get_value(<<"Base-Cost">>, JObj)}
+              [{#channel.rate, kz_json:get_value(<<"Rate">>, JObj)}
+               ,{#channel.rate_increment, kz_json:get_value(<<"Rate-Increment">>, JObj)}
+               ,{#channel.rate_minimum, kz_json:get_value(<<"Rate-Minimum">>, JObj)}
+               ,{#channel.rate_nocharge_time, kz_json:get_value(<<"Rate-NoCharge-Time">>, JObj)}
+               ,{#channel.discount_percentage, kz_json:get_value(<<"Discount-Percentage">>, JObj)}
+               ,{#channel.surcharge, kz_json:get_value(<<"Surcharge">>, JObj)}
+               ,{#channel.rate_name, kz_json:get_value(<<"Rate-Name">>, JObj)}
+               ,{#channel.rate_id, kz_json:get_value(<<"Rate-ID">>, JObj)}
+               ,{#channel.base_cost, kz_json:get_value(<<"Base-Cost">>, JObj)}
               ]
              ),
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    CallId = kz_json:get_value(<<"Call-ID">>, JObj),
     _ = ets:update_element(?TAB, CallId, Props),
     {'noreply', State};
 handle_cast('synchronize_channels', #state{sync_ref=SyncRef}=State) ->
@@ -547,7 +547,7 @@ handle_cast('synchronize_channels', #state{sync_ref=SyncRef}=State) ->
 handle_cast('flush_channels', State) ->
     _ = ets:delete_all_objects(?TAB),
     {'noreply', State};
-handle_cast({'wh_nodes', {'expire', #wh_node{node=NodeName, whapps=Whapps}}}
+handle_cast({'kz_nodes', {'expire', #kz_node{node=NodeName, kapps=Whapps}}}
             ,#state{sync_ref=SyncRef}=State
            ) ->
     case props:get_value(<<"ecallmgr">>, Whapps) of
@@ -577,9 +577,9 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'synchronize_channels', SyncRef}, #state{sync_ref=SyncRef}=State) ->
-    Req = wh_api:default_headers(?APP_NAME, ?APP_VERSION),
-    _ = case wh_amqp_worker:call_collect(Req
-                                         ,fun wapi_call:publish_query_channels_req/1
+    Req = kz_api:default_headers(?APP_NAME, ?APP_VERSION),
+    _ = case kz_amqp_worker:call_collect(Req
+                                         ,fun kapi_call:publish_query_channels_req/1
                                          ,{'ecallmgr', 'true'}
                                         )
         of
@@ -599,12 +599,12 @@ handle_info(?HOOK_EVT(_, <<"CHANNEL_CREATE">>, JObj), State) ->
     _ = ets:insert_new(?TAB, from_jobj(JObj)),
     {'noreply', State};
 handle_info(?HOOK_EVT(_, <<"CHANNEL_ANSWER">>, JObj), State) ->
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    Props = [{#channel.answered_timestamp, wh_util:current_tstamp()}],
+    CallId = kz_json:get_value(<<"Call-ID">>, JObj),
+    Props = [{#channel.answered_timestamp, kz_util:current_tstamp()}],
     _ = ets:update_element(?TAB, CallId, Props),
     {'noreply', State};
 handle_info(?HOOK_EVT(_, <<"CHANNEL_DESTROY">>, JObj), State) ->
-    _ = ets:delete(?TAB, wh_json:get_value(<<"Call-ID">>, JObj)),
+    _ = ets:delete(?TAB, kz_json:get_value(<<"Call-ID">>, JObj)),
     {'noreply', State};
 handle_info(_Info, State) ->
     {'noreply', State}.
@@ -648,43 +648,43 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec from_jobj(wh_json:object()) -> channel().
+-spec from_jobj(kz_json:object()) -> channel().
 from_jobj(JObj) ->
-    AccountId = wh_json:get_first_defined(
+    AccountId = kz_json:get_first_defined(
                        [<<"Account-ID">>
                        ,[<<"Custom-Channel-Vars">>, <<"Account-ID">>]
                        ], JObj
                       ),
-    AccountBilling = wh_json:get_first_defined(
+    AccountBilling = kz_json:get_first_defined(
                        [<<"Account-Billing">>
                        ,[<<"Custom-Channel-Vars">>, <<"Account-Billing">>]
                        ], JObj
                       ),
-    ResellerId = wh_json:get_first_defined(
+    ResellerId = kz_json:get_first_defined(
                        [<<"Reseller-ID">>
                        ,[<<"Custom-Channel-Vars">>, <<"Reseller-ID">>]
                        ], JObj
                       ),
-    ResellerBilling = wh_json:get_first_defined(
+    ResellerBilling = kz_json:get_first_defined(
                        [<<"Reseller-Billing">>
                        ,[<<"Custom-Channel-Vars">>, <<"Reseller-Billing">>]
                        ], JObj
                       ),
-    SoftLimit = wh_json:get_first_defined(
+    SoftLimit = kz_json:get_first_defined(
                        [<<"Soft-Limit">>
                        ,[<<"Custom-Channel-Vars">>, <<"Soft-Limit">>]
                        ], JObj
                       ),
-    #channel{call_id = wh_json:get_value(<<"Call-ID">>, JObj)
-             ,other_leg_call_id = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj)
-             ,direction = wh_json:get_value(<<"Call-Direction">>, JObj)
+    #channel{call_id = kz_json:get_value(<<"Call-ID">>, JObj)
+             ,other_leg_call_id = kz_json:get_value(<<"Other-Leg-Call-ID">>, JObj)
+             ,direction = kz_json:get_value(<<"Call-Direction">>, JObj)
              ,account_id = AccountId
              ,account_billing = AccountBilling
              ,account_allotment = is_allotment(AccountBilling)
              ,reseller_id = ResellerId
              ,reseller_billing = ResellerBilling
              ,reseller_allotment = is_allotment(ResellerBilling)
-             ,soft_limit = wh_util:is_true(SoftLimit)
+             ,soft_limit = kz_util:is_true(SoftLimit)
             }.
 
 -spec is_allotment(ne_binary()) -> boolean().
@@ -711,19 +711,19 @@ j5_channel_ids() ->
       ets:select(?TAB, [{#channel{call_id='$1', _='_'}, [], ['$1']}])
      ).
 
--spec ecallmgr_channel_ids(wh_json:objects()) -> sets:set().
+-spec ecallmgr_channel_ids(kz_json:objects()) -> sets:set().
 ecallmgr_channel_ids(JObjs) ->
     ecallmgr_channel_ids(JObjs, sets:new()).
 
--spec ecallmgr_channel_ids(wh_json:objects(), sets:set()) -> sets:set().
+-spec ecallmgr_channel_ids(kz_json:objects(), sets:set()) -> sets:set().
 ecallmgr_channel_ids([], ChannelIds) -> ChannelIds;
 ecallmgr_channel_ids([JObj|JObjs], ChannelIds) ->
-    Channels = wh_json:get_value(<<"Channels">>, JObj),
+    Channels = kz_json:get_value(<<"Channels">>, JObj),
     ecallmgr_channel_ids(
       JObjs
       ,lists:foldl(fun(ChannelId, Ids) ->
                            sets:add_element(ChannelId, Ids)
-                   end, ChannelIds, wh_json:get_keys(Channels))
+                   end, ChannelIds, kz_json:get_keys(Channels))
      ).
 
 -spec fix_channel_disparity(sets:set(), sets:set()) -> 'ok'.
@@ -750,7 +750,7 @@ start_channel_sync_timer(State) ->
 
 -spec sum_allotment_consumed(non_neg_integer(), non_neg_integer(), non_neg_integers()) -> non_neg_integer().
 sum_allotment_consumed(CycleStart, Span, Matches) ->
-    sum_allotment_consumed(CycleStart, Span, wh_util:current_tstamp(), 0, Matches).
+    sum_allotment_consumed(CycleStart, Span, kz_util:current_tstamp(), 0, Matches).
 
 -spec sum_allotment_consumed(non_neg_integer(), non_neg_integer(), non_neg_integer(), non_neg_integer(), non_neg_integers()) -> non_neg_integer().
 sum_allotment_consumed(_, _, _, Seconds, []) -> Seconds;
@@ -778,9 +778,9 @@ call_cost(Channel) -> call_cost(Channel, 60).
 call_cost(#channel{answered_timestamp='undefined'}=Channel, Seconds) ->
     wht_util:call_cost(billing_jobj(Seconds, Channel));
 call_cost(#channel{answered_timestamp=Timestamp}=Channel, Seconds) ->
-    BillingSeconds = wh_util:current_tstamp() - Timestamp + Seconds,
+    BillingSeconds = kz_util:current_tstamp() - Timestamp + Seconds,
     wht_util:call_cost(billing_jobj(BillingSeconds, Channel)).
 
--spec billing_jobj(non_neg_integer(), channel()) -> wh_json:object().
+-spec billing_jobj(non_neg_integer(), channel()) -> kz_json:object().
 billing_jobj(BillingSeconds, Channel) ->
-    wh_json:from_list([{<<"Billing-Seconds">>, BillingSeconds} | to_props(Channel)]).
+    kz_json:from_list([{<<"Billing-Seconds">>, BillingSeconds} | to_props(Channel)]).

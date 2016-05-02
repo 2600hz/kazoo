@@ -63,7 +63,7 @@ resource_exists() -> 'true'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
-    Doc = wh_json:from_list(whapps_config:get_all_kvs(<<"dialplans">>)),
+    Doc = kz_json:from_list(kapps_config:get_all_kvs(<<"dialplans">>)),
     cb_context:setters(Context, [{fun cb_context:set_resp_data/2, Doc}
                                  ,{fun cb_context:set_resp_status/2, 'success'}
                                 ]).

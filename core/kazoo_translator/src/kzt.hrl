@@ -1,12 +1,12 @@
 -ifndef(KZT_HRL).
 
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_log.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo/include/kz_log.hrl").
 
--type ok_return() :: {'ok', whapps_call:call()}.
--type stop_return() :: {'stop', whapps_call:call()}.
--type usurp_return() :: {'usurp', whapps_call:call()}.
--type request_return() :: {'request', whapps_call:call()}.
+-type ok_return() :: {'ok', kapps_call:call()}.
+-type stop_return() :: {'stop', kapps_call:call()}.
+-type usurp_return() :: {'usurp', kapps_call:call()}.
+-type request_return() :: {'request', kapps_call:call()}.
 
 -type exec_element_return() ::
         ok_return() |
@@ -35,9 +35,9 @@
 -define(APP_NAME, <<"translator">>).
 -define(APP_VERSION, <<"4.0.0">>).
 
--define(DEFAULT_TTS_ENGINE, whapps_config:get_binary(?TTS_CONFIG_CAT, <<"tts_provider">>, <<"flite">>)).
--define(DEFAULT_TTS_LANG, whapps_config:get_binary(?TTS_CONFIG_CAT, <<"tts_language">>, <<"en-US">>)).
--define(DEFAULT_TTS_VOICE, whapps_config:get_binary(?TTS_CONFIG_CAT, <<"tts_voice">>, <<"male">>)).
+-define(DEFAULT_TTS_ENGINE, kapps_config:get_binary(?TTS_CONFIG_CAT, <<"tts_provider">>, <<"flite">>)).
+-define(DEFAULT_TTS_LANG, kapps_config:get_binary(?TTS_CONFIG_CAT, <<"tts_language">>, <<"en-US">>)).
+-define(DEFAULT_TTS_VOICE, kapps_config:get_binary(?TTS_CONFIG_CAT, <<"tts_voice">>, <<"male">>)).
 
 -define(KZT_HRL, 'true').
 -endif.
