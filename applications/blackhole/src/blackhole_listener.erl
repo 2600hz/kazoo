@@ -58,11 +58,11 @@ start_link() ->
                               ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
                              ], []).
 
--spec handle_amqp_event(wh_json:object(), wh_proplist(), gen_listener:basic_deliver() | ne_binary()) -> any().
+-spec handle_amqp_event(kz_json:object(), kz_proplist(), gen_listener:basic_deliver() | ne_binary()) -> any().
 handle_amqp_event(EventJObj, Props, #'basic.deliver'{routing_key=RoutingKey}) ->
     handle_amqp_event(EventJObj, Props, RoutingKey);
 handle_amqp_event(EventJObj, _Props, <<_/binary>> = RoutingKey) ->
-    lager:debug("recv event ~p (~s)", [wh_util:get_event_type(EventJObj), RoutingKey]),
+    lager:debug("recv event ~p (~s)", [kz_util:get_event_type(EventJObj), RoutingKey]),
     blackhole_bindings:map(RoutingKey, EventJObj).
 
 -spec add_call_binding(ne_binary()) -> 'ok'.
@@ -73,11 +73,11 @@ add_call_binding(AccountId) ->
 remove_call_binding(AccountId) ->
     gen_listener:cast(?SERVER, {'remove_call_binding', AccountId}).
 
--spec add_binding(atom(), wh_proplist()) -> 'ok'.
+-spec add_binding(atom(), kz_proplist()) -> 'ok'.
 add_binding(Wapi, Options) ->
     gen_listener:add_binding(?SERVER, Wapi, Options).
 
--spec remove_binding(atom(), wh_proplist()) -> 'ok'.
+-spec remove_binding(atom(), kz_proplist()) -> 'ok'.
 remove_binding(Wapi, Options) ->
     gen_listener:rm_binding(?SERVER, Wapi, Options).
 
@@ -127,7 +127,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({'add_call_binding', AccountId}, State) ->
-    wh_hooks:register(AccountId),
+    kz_hooks:register(AccountId),
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State};
@@ -146,17 +146,17 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(?HOOK_EVT(ne_binary(), ne_binary(), wh_json:object()), state()) ->
+-spec handle_info(?HOOK_EVT(ne_binary(), ne_binary(), kz_json:object()), state()) ->
                          {'noreply', state()}.
 handle_info(?HOOK_EVT(_AccountId, EventType, JObj), State) ->
-    _ = wh_util:spawn(fun handle_amqp_event/3, [JObj, [], call_routing(EventType, JObj)]),
+    _ = kz_util:spawn(fun handle_amqp_event/3, [JObj, [], call_routing(EventType, JObj)]),
     {'noreply', State};
 handle_info(_Info, State) ->
     {'noreply', State}.
 
--spec call_routing(ne_binary(), wh_json:object()) -> ne_binary().
+-spec call_routing(ne_binary(), kz_json:object()) -> ne_binary().
 call_routing(EventType, JObj) ->
-    wapi_call:event_routing_key(EventType, wh_json:get_value(<<"Call-ID">>, JObj)).
+    kapi_call:event_routing_key(EventType, kz_json:get_value(<<"Call-ID">>, JObj)).
 
 %%--------------------------------------------------------------------
 %% @private

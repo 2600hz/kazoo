@@ -26,7 +26,7 @@ find_numbers(Options) ->
     MatchPrefix =
         fun (Result) ->
                 Size = byte_size(Prefix),
-                Number = wh_json:get_value(<<"number">>, Result),
+                Number = kz_json:get_value(<<"number">>, Result),
                 case Number of
                     <<"+1", Prefix:Size/binary, _/binary>> -> 'true';
                     _Else -> 'false'
@@ -47,7 +47,7 @@ find_tollfree_numbers(Options) ->
     MatchPrefix =
         fun (Result) ->
                 Size = byte_size(Prefix),
-                Number = wh_json:get_value(<<"number">>, Result),
+                Number = kz_json:get_value(<<"number">>, Result),
                 case Number of
                     <<"+1", Prefix:Size/binary, _/binary>> -> 'true';
                     _Else -> 'false'

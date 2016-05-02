@@ -21,16 +21,16 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    lager:info("receive fax for owner: ~s", [wh_json:get_value(<<"owner_id">>, Data)]),
+    lager:info("receive fax for owner: ~s", [kz_json:get_value(<<"owner_id">>, Data)]),
     Props = props:filter_undefined(
               props:filter_empty(
-                [{<<"Call">>, whapps_call:to_json(Call)}
+                [{<<"Call">>, kapps_call:to_json(Call)}
                  ,{<<"Action">>, <<"receive">>}
-                 ,{<<"Owner-ID">>, wh_json:get_value(<<"owner_id">>, Data)}
-                 ,{<<"Fax-T38-Option">>, wh_json:get_value([<<"media">>, <<"fax_option">>], Data)}
-                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                 ,{<<"Owner-ID">>, kz_json:get_value(<<"owner_id">>, Data)}
+                 ,{<<"Fax-T38-Option">>, kz_json:get_value([<<"media">>, <<"fax_option">>], Data)}
+                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ])),
-    wapi_fax:publish_req(Props),
+    kapi_fax:publish_req(Props),
     cf_exe:control_usurped(Call).

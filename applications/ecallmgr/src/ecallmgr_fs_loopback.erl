@@ -21,15 +21,15 @@
 -define(LOOPBACK_FILTERED, "Filtered-By-Loopback").
 
 
--spec filter(atom(), ne_binary(), wh_proplist()) -> wh_proplist().
+-spec filter(atom(), ne_binary(), kz_proplist()) -> kz_proplist().
 filter(Node, UUID, Props) ->
     filter(?IS_LOOPBACK(Props), Node, UUID, Props, 'false').
 
--spec filter(atom(), ne_binary(), wh_proplist(), boolean()) -> wh_proplist().
+-spec filter(atom(), ne_binary(), kz_proplist(), boolean()) -> kz_proplist().
 filter(Node, UUID, Props, Update) ->
     filter(?IS_LOOPBACK(Props), Node, UUID, Props, Update).
 
--spec filter(boolean(), atom(), ne_binary(), wh_proplist(), boolean()) -> wh_proplist().
+-spec filter(boolean(), atom(), ne_binary(), kz_proplist(), boolean()) -> kz_proplist().
 filter('false', _Node, _UUID, Props, _) -> Props;
 filter('true', Node, UUID, Props, Update) ->
     case lists:foldl(fun filter_loopback/2, [], Props) of
@@ -44,24 +44,24 @@ filter('true', Node, UUID, Props, Update) ->
             maybe_update_ccvs(Update, Funs, updated_props(Filtered, UpdateCCVs))
     end.
 
--spec updated_props(wh_proplist(), wh_proplist()) -> wh_proplist().
+-spec updated_props(kz_proplist(), kz_proplist()) -> kz_proplist().
 updated_props(Filtered, New) ->
     Filtered ++ New ++ [ {<<"variable_", K/binary>>, V} || {K, V} <- New].
 
--spec maybe_update_ccvs(boolean(), fun(), wh_proplist()) -> wh_proplist().
+-spec maybe_update_ccvs(boolean(), fun(), kz_proplist()) -> kz_proplist().
 maybe_update_ccvs('false', _Fun, Filtered) -> Filtered;
 maybe_update_ccvs('true', Fun, Filtered) ->
-    wh_util:spawn(Fun),
+    kz_util:spawn(Fun),
     Filtered.
 
--spec filter_loopback({ne_binary(), any()}, wh_proplist()) -> wh_proplist().
+-spec filter_loopback({ne_binary(), any()}, kz_proplist()) -> kz_proplist().
 filter_loopback({<<?CHANNEL_VAR_PREFIX, ?CHANNEL_LOOPBACK_HEADER_PREFIX, K/binary>>, V}, Acc) ->
     [{<<?CHANNEL_VAR_PREFIX, K/binary>>, V} | Acc];
 filter_loopback({<<"variable_", ?CHANNEL_VAR_PREFIX, ?CHANNEL_LOOPBACK_HEADER_PREFIX, K/binary>>, V}, Acc) ->
     [{<<?CHANNEL_VAR_PREFIX, K/binary>>, V} | Acc];
 filter_loopback(_, Acc) -> Acc.
 
--spec filter_props({ne_binary(), any()}, {wh_proplist(), wh_proplist()}) -> {wh_proplist(), wh_proplist()}.
+-spec filter_props({ne_binary(), any()}, {kz_proplist(), kz_proplist()}) -> {kz_proplist(), kz_proplist()}.
 filter_props({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, _V}, {Clear, Filtered}) ->
     {[<<?CHANNEL_VAR_PREFIX, Key/binary>> | Clear], Filtered};
 filter_props({<<?CHANNEL_VAR_PREFIX, Key/binary>>, _V}, {Clear, Filtered}) ->

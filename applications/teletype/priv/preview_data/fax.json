@@ -27,9 +27,9 @@
     "pvt_account_db": "account%2F00%2F00%2F0000000000000000000000000000-201410",
     "pvt_account_id": "00000000000000000000000000000000",
     "pvt_created": 63581844096,
-    "pvt_job_node": "whistle_apps@server.net",
+    "pvt_job_node": "kazoo_apps@server.net",
     "pvt_modified": 63581844096,
-    "pvt_node": "whistle_apps@server.net",
+    "pvt_node": "kazoo_apps@server.net",
     "pvt_type": "fax",
     "rx_result": {
         "bad_rows": "0",

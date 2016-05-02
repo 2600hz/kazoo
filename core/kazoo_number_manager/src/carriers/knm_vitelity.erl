@@ -29,7 +29,7 @@
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
+-spec find_numbers(ne_binary(), pos_integer(), kz_proplist()) ->
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
 find_numbers(Prefix, Quantity, Options) ->
@@ -207,7 +207,7 @@ local_options(Prefix, Options) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find(ne_binary(), pos_integer(), wh_proplist(), knm_vitelity_util:query_options()) ->
+-spec find(ne_binary(), pos_integer(), kz_proplist(), knm_vitelity_util:query_options()) ->
                   {'ok', knm_number:knm_numbers()} |
                   {'error', any()}.
 find(Prefix, Quantity, Options, VitelityOptions) ->
@@ -220,18 +220,18 @@ find(Prefix, Quantity, Options, VitelityOptions) ->
         {'ok', JObj} -> response_to_numbers(JObj, Options)
     end.
 
--spec response_to_numbers(wh_json:object(), wh_proplist()) ->
+-spec response_to_numbers(kz_json:object(), kz_proplist()) ->
                                  {'ok', knm_number:knm_numbers()}.
 response_to_numbers(JObj, Options) ->
     AccountId = props:get_value(<<"account_id">>, Options),
     {'ok'
-     ,wh_json:foldl(fun(K, V, Acc) -> response_pair_to_number(K, V, Acc, AccountId) end
+     ,kz_json:foldl(fun(K, V, Acc) -> response_pair_to_number(K, V, Acc, AccountId) end
                     ,[]
                     ,JObj
                    )
     }.
 
--spec response_pair_to_number(ne_binary(), wh_json:object(), knm_number:knm_numbers(), api_binary()) ->
+-spec response_pair_to_number(ne_binary(), kz_json:object(), knm_number:knm_numbers(), api_binary()) ->
                                      knm_number:knm_numbers().
 response_pair_to_number(DID, CarrierData, Acc, AccountId) ->
     {'ok', PhoneNumber} =
@@ -249,14 +249,14 @@ response_pair_to_number(DID, CarrierData, Acc, AccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec query_vitelity(ne_binary(), pos_integer(), ne_binary()) ->
-                            {'ok', wh_json:object()} |
+                            {'ok', kz_json:object()} |
                             {'error', any()}.
 -ifdef(TEST).
 query_vitelity(Prefix, Quantity, URI) ->
     {'ok'
      ,{'http', [], _Host, _Port, _Path, [$? | QueryString]}
-    } = http_uri:parse(wh_util:to_list(URI)),
-    Options = cow_qs:parse_qs(wh_util:to_binary(QueryString)),
+    } = http_uri:parse(kz_util:to_list(URI)),
+    Options = cow_qs:parse_qs(kz_util:to_binary(QueryString)),
 
     XML =
         case props:get_value(<<"cmd">>, Options) of
@@ -268,7 +268,7 @@ query_vitelity(Prefix, Quantity, URI) ->
 -else.
 query_vitelity(Prefix, Quantity, URI) ->
     lager:debug("querying ~s", [URI]),
-    case kz_http:post(wh_util:to_list(URI)) of
+    case kz_http:post(kz_util:to_list(URI)) of
         {'ok', _RespCode, _RespHeaders, RespXML} ->
             lager:debug("recv ~p: ~s", [_RespCode, RespXML]),
             process_xml_resp(Prefix, Quantity, RespXML);
@@ -285,7 +285,7 @@ query_vitelity(Prefix, Quantity, URI) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec process_xml_resp(ne_binary(), pos_integer(), text()) ->
-                              {'ok', wh_json:object()} |
+                              {'ok', kz_json:object()} |
                               {'error', any()}.
 process_xml_resp(Prefix, Quantity, XML) ->
     try xmerl_scan:string(XML) of
@@ -303,7 +303,7 @@ process_xml_resp(Prefix, Quantity, XML) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec process_xml_content_tag(ne_binary(), pos_integer(), xml_el()) ->
-                                     {'ok', wh_json:object()} |
+                                     {'ok', kz_json:object()} |
                                      {'error', any()}.
 process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
                                                       ,content=Children
@@ -324,10 +324,10 @@ process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
 %% @end
 %%--------------------------------------------------------------------
 -spec process_xml_numbers(ne_binary(), pos_integer(), 'undefined' | xml_el()) ->
-                                 {'ok', wh_json:object()} |
+                                 {'ok', kz_json:object()} |
                                  {'error', any()}.
--spec process_xml_numbers(ne_binary(), pos_integer(), 'undefined' | xml_els(), wh_proplist()) ->
-                                 {'ok', wh_json:object()} |
+-spec process_xml_numbers(ne_binary(), pos_integer(), 'undefined' | xml_els(), kz_proplist()) ->
+                                 {'ok', kz_json:object()} |
                                  {'error', any()}.
 process_xml_numbers(_Prefix, _Quantity, 'undefined') ->
     {'error', 'no_numbers'};
@@ -337,20 +337,20 @@ process_xml_numbers(Prefix, Quantity, #xmlElement{name='numbers'
     process_xml_numbers(Prefix, Quantity, kz_xml:elements(Content), []).
 
 process_xml_numbers(_Prefix, 0, _Els, Acc) ->
-    {'ok', wh_json:from_list(Acc)};
+    {'ok', kz_json:from_list(Acc)};
 process_xml_numbers(_Prefix, _Quantity, [#xmlElement{name='response'
                                                      ,content=Reason
                                                     }
                                          |_], _Acc) ->
     {'error', kz_xml:texts_to_binary(Reason)};
 process_xml_numbers(_Prefix, _Quantity, [], Acc) ->
-    {'ok', wh_json:from_list(Acc)};
+    {'ok', kz_json:from_list(Acc)};
 process_xml_numbers(Prefix, Quantity, [El|Els], Acc) ->
     JObj = xml_did_to_json(El),
 
     case number_matches_prefix(JObj, Prefix) of
         'true' ->
-            N = wh_json:get_value(<<"number">>, JObj),
+            N = kz_json:get_value(<<"number">>, JObj),
             process_xml_numbers(Prefix, Quantity-1, Els, [{N, JObj}|Acc]);
         'false' ->
             process_xml_numbers(Prefix, Quantity, Els, Acc)
@@ -362,12 +362,12 @@ process_xml_numbers(Prefix, Quantity, [El|Els], Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec number_matches_prefix(wh_json:object(), ne_binary()) -> boolean().
+-spec number_matches_prefix(kz_json:object(), ne_binary()) -> boolean().
 number_matches_prefix(JObj, Prefix) ->
     PrefixLen = byte_size(Prefix),
-    CountryCode = wh_json:get_value(<<"country_code">>, JObj, <<"+1">>),
+    CountryCode = kz_json:get_value(<<"country_code">>, JObj, <<"+1">>),
     CountryCodeLen = byte_size(CountryCode),
-    case wh_json:get_value(<<"number">>, JObj) of
+    case kz_json:get_value(<<"number">>, JObj) of
         <<Prefix:PrefixLen/binary, _/binary>> -> 'true';
         <<CountryCode:CountryCodeLen/binary, Prefix:PrefixLen/binary, _/binary>> -> 'true';
         _N -> 'false'
@@ -379,11 +379,11 @@ number_matches_prefix(JObj, Prefix) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec xml_did_to_json(xml_el()) -> wh_json:object().
+-spec xml_did_to_json(xml_el()) -> kz_json:object().
 xml_did_to_json(#xmlElement{name='did'
                             ,content=[#xmlText{}]=DID
                            }) ->
-    wh_json:from_list([{<<"number">>
+    kz_json:from_list([{<<"number">>
                         ,knm_converters:normalize(
                            kz_xml:texts_to_binary(DID)
                           )
@@ -392,14 +392,14 @@ xml_did_to_json(#xmlElement{name='did'
 xml_did_to_json(#xmlElement{name='did'
                             ,content=DIDInfo
                            }) ->
-    wh_json:from_list(
+    kz_json:from_list(
       knm_vitelity_util:xml_els_to_proplist(
         kz_xml:elements(DIDInfo)
        ));
 xml_did_to_json(#xmlElement{name='number'
                            ,content=DIDInfo
                            }) ->
-    wh_json:from_list(
+    kz_json:from_list(
       knm_vitelity_util:xml_els_to_proplist(
         kz_xml:elements(DIDInfo)
        )).
@@ -450,7 +450,7 @@ get_routesip() ->
     <<"1.2.3.4">>.
 -else.
 get_routesip() ->
-    case whapps_config:get(knm_vitelity_util:config_cat(), <<"routesip">>) of
+    case kapps_config:get(knm_vitelity_util:config_cat(), <<"routesip">>) of
         [Route|_] -> Route;
         Route -> Route
     end.
@@ -466,7 +466,7 @@ get_routesip() ->
                             knm_number:knm_number().
 query_vitelity(Number, URI) ->
     ?LOG_DEBUG("querying ~s", [URI]),
-    case kz_http:post(wh_util:to_list(URI)) of
+    case kz_http:post(kz_util:to_list(URI)) of
         {'ok', _RespCode, _RespHeaders, RespXML} ->
             ?LOG_DEBUG("recv ~p: ~s", [_RespCode, RespXML]),
             process_xml_resp(Number, RespXML);

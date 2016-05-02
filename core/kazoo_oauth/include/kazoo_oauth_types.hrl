@@ -1,7 +1,7 @@
 -ifndef(KAZOO_OAUTH_TYPES_HRL).
 
 %% Typical includes needed
--include_lib("whistle/include/wh_types.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
 -include_lib("public_key/include/public_key.hrl").
 
 -record(oauth_token, {token :: ne_binary()

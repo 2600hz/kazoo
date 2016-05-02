@@ -23,7 +23,7 @@
 
 -include("kz_documents.hrl").
 
--type doc() :: wh_json:object().
+-type doc() :: kz_json:object().
 -export_type([doc/0]).
 
 -define(KEY_EMAIL, <<"email">>).
@@ -38,16 +38,16 @@
 email(User) ->
     email(User, 'undefined').
 email(User, Default) ->
-    wh_json:get_value(?KEY_EMAIL, User, Default).
+    kz_json:get_value(?KEY_EMAIL, User, Default).
 
 -spec voicemail_notification_enabled(doc()) -> boolean().
 -spec voicemail_notification_enabled(doc(), Default) -> boolean() | Default.
 voicemail_notification_enabled(User) ->
     voicemail_notification_enabled(User, 'false').
 voicemail_notification_enabled(User, Default) ->
-    wh_json:is_true(<<"vm_to_email_enabled">>, User, Default).
+    kz_json:is_true(<<"vm_to_email_enabled">>, User, Default).
 
--spec to_vcard(wh_json:object()) -> binary().
+-spec to_vcard(kz_json:object()) -> binary().
 to_vcard(JObj) ->
     %% TODO add SOUND, AGENT (X-ASSISTANT), X-MANAGER
     Fields = [<<"BEGIN">>
@@ -72,14 +72,14 @@ to_vcard(JObj) ->
                                  ,[card_field(Key, JObj) || Key <- Fields]
                                 ),
     PackedFields = lists:reverse(
-                     [wh_util:join_binary([X, Y], <<":">>) ||
+                     [kz_util:join_binary([X, Y], <<":">>) ||
                          {X, Y} <- NotEmptyFields
                      ]
                     ),
     DividedFields = lists:reverse(
                       lists:foldl(fun vcard_field_divide_by_length/2, [], PackedFields)
                      ),
-    wh_util:join_binary(DividedFields, <<"\n">>).
+    kz_util:join_binary(DividedFields, <<"\n">>).
 
 -spec vcard_escape_chars(binary()) -> binary().
 vcard_escape_chars(Val) ->
@@ -104,13 +104,13 @@ vcard_fields_acc([], Acc) ->
 
 -spec vcard_normalize_val(binary() | {char(), binaries()}) -> binary().
 vcard_normalize_val({Separator, Vals}) when is_list(Vals) ->
-    wh_util:join_binary([vcard_escape_chars(X) || X <- Vals, not wh_util:is_empty(X)], Separator);
+    kz_util:join_binary([vcard_escape_chars(X) || X <- Vals, not kz_util:is_empty(X)], Separator);
 vcard_normalize_val(Val) when is_binary(Val) ->
     vcard_escape_chars(Val).
 
 -spec vcard_normalize_type(list() | {ne_binary(), ne_binary()} | ne_binary()) -> ne_binary().
-vcard_normalize_type(T) when is_list(T) -> wh_util:join_binary([vcard_normalize_type(X) || X <- T], <<";">>);
-vcard_normalize_type({T, V}) -> wh_util:join_binary([T, V], <<"=">>);
+vcard_normalize_type(T) when is_list(T) -> kz_util:join_binary([vcard_normalize_type(X) || X <- T], <<";">>);
+vcard_normalize_type({T, V}) -> kz_util:join_binary([T, V], <<"=">>);
 vcard_normalize_type(T) -> T.
 
 -type vcard_val() :: binary() | {char(), binaries()} | 'undefined'.
@@ -119,7 +119,7 @@ vcard_normalize_type(T) -> T.
 -type vcard_field_token() :: {vcard_type(), vcard_val()}.
 -type vcard_field() :: vcard_field_token() | [vcard_field_token()].
 
--spec card_field(ne_binary(), wh_json:object()) -> vcard_field().
+-spec card_field(ne_binary(), kz_json:object()) -> vcard_field().
 card_field(Key = <<"BEGIN">>, _) ->
     {Key, <<"VCARD">>};
 card_field(Key = <<"VERSION">>, _) ->
@@ -127,57 +127,57 @@ card_field(Key = <<"VERSION">>, _) ->
 card_field(Key = <<"END">>, _) ->
     {Key, <<"VCARD">>};
 card_field(Key = <<"FN">>, JObj) ->
-    FirstName = wh_json:get_value(<<"first_name">>, JObj),
-    LastName = wh_json:get_value(<<"last_name">>, JObj),
-    MiddleName = wh_json:get_value(<<"middle_name">>, JObj),
+    FirstName = kz_json:get_value(<<"first_name">>, JObj),
+    LastName = kz_json:get_value(<<"last_name">>, JObj),
+    MiddleName = kz_json:get_value(<<"middle_name">>, JObj),
     {Key
-     ,wh_util:join_binary([X || X <- [FirstName, MiddleName, LastName],
-                                not wh_util:is_empty(X)
+     ,kz_util:join_binary([X || X <- [FirstName, MiddleName, LastName],
+                                not kz_util:is_empty(X)
                           ]
                           ,<<" ">>
                          )
     };
 card_field(Key = <<"N">>, JObj) ->
-    FirstName = wh_json:get_value(<<"first_name">>, JObj),
-    LastName = wh_json:get_value(<<"last_name">>, JObj),
-    MiddleName = wh_json:get_value(<<"middle_name">>, JObj),
+    FirstName = kz_json:get_value(<<"first_name">>, JObj),
+    LastName = kz_json:get_value(<<"last_name">>, JObj),
+    MiddleName = kz_json:get_value(<<"middle_name">>, JObj),
     {Key, {$;, [LastName, FirstName, MiddleName]}};
 card_field(Key = <<"ORG">>, JObj) ->
-    {Key, wh_json:get_value(<<"org">>, JObj)};
+    {Key, kz_json:get_value(<<"org">>, JObj)};
 card_field(Key = <<"PHOTO">>, JObj) ->
-    case wh_json:get_value(<<"photo">>, JObj) of
+    case kz_json:get_value(<<"photo">>, JObj) of
         'undefined' -> {Key, 'undefined'};
         PhotoJObj ->
-            [{CT, PhotoBin}] = wh_json:to_proplist(PhotoJObj),
+            [{CT, PhotoBin}] = kz_json:to_proplist(PhotoJObj),
             TypeType = content_type_to_type(CT),
             Data = base64:encode(PhotoBin),
             {[Key, {<<"ENCODING">>, <<"B">>}, {<<"TYPE">>, TypeType}], Data}
     end;
 card_field(Key = <<"ADR">>, JObj) ->
-    Addresses = lists:map(fun normalize_address/1, wh_json:get_value(<<"addresses">>, JObj, [])),
+    Addresses = lists:map(fun normalize_address/1, kz_json:get_value(<<"addresses">>, JObj, [])),
     [{[Key, {<<"TYPE">>, Type}], Address} || {Type, Address} <- Addresses];
 card_field(Key = <<"TEL">>, JObj) ->
-    CallerId = wh_json:get_value(<<"caller_id">>, JObj, wh_json:new()),
-    Internal = wh_json:get_value(<<"internal">>, CallerId),
-    External = wh_json:get_value(<<"external">>, CallerId),
+    CallerId = kz_json:get_value(<<"caller_id">>, JObj, kz_json:new()),
+    Internal = kz_json:get_value(<<"internal">>, CallerId),
+    External = kz_json:get_value(<<"external">>, CallerId),
 
     [{Key, Internal}
      ,{Key, External}
     ];
 card_field(Key = <<"EMAIL">>, JObj) ->
-    {Key, wh_json:get_value(<<"email">>, JObj)};
+    {Key, kz_json:get_value(<<"email">>, JObj)};
 card_field(Key = <<"BDAY">>, JObj) ->
-    {Key, wh_json:get_value(<<"birthday">>, JObj)};
+    {Key, kz_json:get_value(<<"birthday">>, JObj)};
 card_field(Key = <<"NOTE">>, JObj) ->
-    {Key, wh_json:get_value(<<"note">>, JObj)};
+    {Key, kz_json:get_value(<<"note">>, JObj)};
 card_field(Key = <<"TITLE">>, JObj) ->
-    {Key, wh_json:get_value(<<"title">>, JObj)};
+    {Key, kz_json:get_value(<<"title">>, JObj)};
 card_field(Key = <<"ROLE">>, JObj) ->
-    {Key, wh_json:get_value(<<"role">>, JObj)};
+    {Key, kz_json:get_value(<<"role">>, JObj)};
 card_field(Key = <<"TZ">>, JObj) ->
-    {Key, wh_json:get_value(?KEY_TIMEZONE, JObj)};
+    {Key, kz_json:get_value(?KEY_TIMEZONE, JObj)};
 card_field(Key = <<"NICKNAME">>, JObj) ->
-    {Key, {$,, wh_json:get_value(<<"nicknames">>, JObj, [])}}.
+    {Key, {$,, kz_json:get_value(<<"nicknames">>, JObj, [])}}.
 
 -spec content_type_to_type(ne_binary()) -> ne_binary().
 content_type_to_type(<<"image/jpeg">>) -> <<"JPEG">>.
@@ -190,23 +190,23 @@ vcard_field_divide_by_length(<<Row:75/binary, Rest/binary>>, Acc) ->
 vcard_field_divide_by_length(Row, Acc) ->
     [Row | Acc].
 
--spec normalize_address(wh_json:object()) -> {ne_binary(), binary()}.
+-spec normalize_address(kz_json:object()) -> {ne_binary(), binary()}.
 normalize_address(JObj) ->
-    Types = case wh_json:get_value(<<"types">>, JObj) of
+    Types = case kz_json:get_value(<<"types">>, JObj) of
                 'undefined' -> [<<"intl">>, <<"postal">>, <<"parcel">>, <<"work">>];
                 T -> T
             end,
-    Address = wh_json:get_value(<<"address">>, JObj),
-    {wh_util:join_binary(Types, <<",">>), Address}.
+    Address = kz_json:get_value(<<"address">>, JObj),
+    {kz_util:join_binary(Types, <<",">>), Address}.
 
--spec timezone(wh_json:object()) -> api_binary().
--spec timezone(wh_json:object(), Default) -> ne_binary() | Default.
+-spec timezone(kz_json:object()) -> api_binary().
+-spec timezone(kz_json:object(), Default) -> ne_binary() | Default.
 timezone(JObj) ->
     timezone(JObj, 'undefined').
 timezone(JObj, Default) ->
-    case wh_json:get_value(?KEY_TIMEZONE, JObj, Default) of
-        <<"inherit">> -> kz_account:timezone(wh_doc:account_id(JObj));  %% UI-1808
-        'undefined' -> kz_account:timezone(wh_doc:account_id(JObj));
+    case kz_json:get_value(?KEY_TIMEZONE, JObj, Default) of
+        <<"inherit">> -> kz_account:timezone(kz_doc:account_id(JObj));  %% UI-1808
+        'undefined' -> kz_account:timezone(kz_doc:account_id(JObj));
         TZ -> TZ
     end.
 
@@ -215,13 +215,13 @@ timezone(JObj, Default) ->
 presence_id(UserJObj) ->
     presence_id(UserJObj, 'undefined').
 presence_id(UserJObj, Default) ->
-    wh_json:get_binary_value(?KEY_PRESENCE_ID, UserJObj, Default).
+    kz_json:get_binary_value(?KEY_PRESENCE_ID, UserJObj, Default).
 
 -spec set_presence_id(doc(), ne_binary()) -> doc().
 set_presence_id(UserJObj, Id) ->
-    wh_json:set_value(
+    kz_json:set_value(
       ?KEY_PRESENCE_ID
-      ,wh_util:to_binary(Id)
+      ,kz_util:to_binary(Id)
       ,UserJObj
      ).
 
@@ -230,29 +230,29 @@ set_presence_id(UserJObj, Id) ->
 is_enabled(JObj) ->
     is_enabled(JObj, 'true').
 is_enabled(JObj, Default) ->
-    wh_json:is_true(?KEY_IS_ENABLED, JObj, Default).
+    kz_json:is_true(?KEY_IS_ENABLED, JObj, Default).
 
 -spec enable(doc()) -> doc().
 enable(JObj) ->
-    wh_json:set_value(?KEY_IS_ENABLED, 'true', JObj).
+    kz_json:set_value(?KEY_IS_ENABLED, 'true', JObj).
 
 -spec disable(doc()) -> doc().
 disable(JObj) ->
-    wh_json:set_value(?KEY_IS_ENABLED, 'false', JObj).
+    kz_json:set_value(?KEY_IS_ENABLED, 'false', JObj).
 
 -spec type() -> ne_binary().
 type() -> ?PVT_TYPE.
 
 devices(UserJObj) ->
-    AccountDb = wh_doc:account_db(UserJObj),
-    UserId = wh_doc:id(UserJObj),
+    AccountDb = kz_doc:account_db(UserJObj),
+    UserId = kz_doc:id(UserJObj),
 
     ViewOptions = [{'startkey', [UserId]}
-                   ,{'endkey', [UserId, wh_json:new()]}
+                   ,{'endkey', [UserId, kz_json:new()]}
                    ,'include_docs'
                   ],
     case kz_datamgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
-        {'ok', JObjs} -> [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs];
+        {'ok', JObjs} -> [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs];
         {'error', _R} ->
             lager:warning("unable to find documents owned by ~s: ~p", [UserId, _R]),
             []
@@ -260,17 +260,17 @@ devices(UserJObj) ->
 
 -spec fetch(ne_binary(), ne_binary()) -> {'ok', doc()} | {'error', any()}.
 fetch(<<_/binary>> = AccountId, <<_/binary>> = UserId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     kz_datamgr:open_cache_doc(AccountDb, UserId);
 fetch(_, _) ->
     {'error', 'invalid_parametres'}.
 
 -spec fax_settings(doc()) -> doc().
 fax_settings(JObj) ->
-    FaxSettings = wh_json:get_json_value(?FAX_SETTINGS_KEY, JObj, wh_json:new()),
-    UserFaxSettings = case wh_json:get_value(?FAX_TIMEZONE_KEY, FaxSettings) of
-        'undefined' -> wh_json:set_value(?FAX_TIMEZONE_KEY, timezone(JObj), FaxSettings);
+    FaxSettings = kz_json:get_json_value(?FAX_SETTINGS_KEY, JObj, kz_json:new()),
+    UserFaxSettings = case kz_json:get_value(?FAX_TIMEZONE_KEY, FaxSettings) of
+        'undefined' -> kz_json:set_value(?FAX_TIMEZONE_KEY, timezone(JObj), FaxSettings);
         _ -> FaxSettings
     end,
-    AccountFaxSettings = kz_account:fax_settings(wh_doc:account_id(JObj)),
-    wh_json:merge_jobjs(UserFaxSettings, AccountFaxSettings).
+    AccountFaxSettings = kz_account:fax_settings(kz_doc:account_id(JObj)),
+    kz_json:merge_jobjs(UserFaxSettings, AccountFaxSettings).

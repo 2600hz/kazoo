@@ -9,7 +9,7 @@
 -module(notify_first_occurrence).
 
 -include("notify.hrl").
--include_lib("whistle/include/wh_databases.hrl").
+-include_lib("kazoo/include/kz_databases.hrl").
 
 -export([init/0]).
 -export([send/2]).
@@ -48,17 +48,17 @@ send(Occurrence, Account) ->
 
     Props = create_template_props(Account, Occurrence),
 
-    CustomTxtTemplate = wh_json:get_value([<<"notifications">>, <<"first_occurrence">>, <<"email_text_template">>], Account),
+    CustomTxtTemplate = kz_json:get_value([<<"notifications">>, <<"first_occurrence">>, <<"email_text_template">>], Account),
     {ok, TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
 
-    CustomHtmlTemplate = wh_json:get_value([<<"notifications">>, <<"first_occurrence">>, <<"email_html_template">>], Account),
+    CustomHtmlTemplate = kz_json:get_value([<<"notifications">>, <<"first_occurrence">>, <<"email_html_template">>], Account),
     {ok, HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
 
-    CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"first_occurrence">>, <<"email_subject_template">>], Account),
+    CustomSubjectTemplate = kz_json:get_value([<<"notifications">>, <<"first_occurrence">>, <<"email_subject_template">>], Account),
     {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
 
-    To = wh_json:get_value([<<"notifications">>, <<"first_occurrence">>, <<"send_to">>], Account
-                           ,whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>)),
+    To = kz_json:get_value([<<"notifications">>, <<"first_occurrence">>, <<"send_to">>], Account
+                           ,kapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>)),
     RepEmail = notify_util:get_rep_email(Account),
 
     _ = build_and_send_email(TxtBody, HTMLBody, Subject, To, Props),
@@ -70,13 +70,13 @@ send(Occurrence, Account) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props(wh_json:object(), ne_binary()) -> proplist().
+-spec create_template_props(kz_json:object(), ne_binary()) -> proplist().
 create_template_props(Account, Occurrence) ->
     Admin = notify_util:find_admin(Account),
     [{<<"event">>, Occurrence}
      ,{<<"account">>, notify_util:json_to_template_props(Account)}
      ,{<<"admin">>, notify_util:json_to_template_props(Admin)}
-     ,{<<"service">>, notify_util:get_service_props(wh_json:new(), Account, ?MOD_CONFIG_CAT)}
+     ,{<<"service">>, notify_util:get_service_props(kz_json:new(), Account, ?MOD_CONFIG_CAT)}
     ].
 
 %%--------------------------------------------------------------------
@@ -85,7 +85,7 @@ create_template_props(Account, Occurrence) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), api_binary() | ne_binaries(), wh_proplist()) -> any().
+-spec build_and_send_email(iolist(), iolist(), iolist(), api_binary() | ne_binaries(), kz_proplist()) -> any().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
     _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
@@ -93,8 +93,8 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     From = props:get_value(<<"send_from">>, Service),
 
     {ContentTypeParams, CharsetString} = notify_util:get_charset_params(Service),
-    PlainTransferEncoding = whapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"text_content_transfer_encoding">>, <<"7BIT">>),
-    HTMLTransferEncoding = whapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"html_content_transfer_encoding">>, <<"7BIT">>),
+    PlainTransferEncoding = kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"text_content_transfer_encoding">>, <<"7BIT">>),
+    HTMLTransferEncoding = kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"html_content_transfer_encoding">>, <<"7BIT">>),
 
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>

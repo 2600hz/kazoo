@@ -141,7 +141,7 @@ delete(Context, _) ->
 -spec registration_update(cb_context:context()) -> 'ok'.
 registration_update(Context) ->
     crossbar_util:flush_registrations(
-      wh_util:get_account_realm(cb_context:account_id(Context))
+      kz_util:get_account_realm(cb_context:account_id(Context))
      ).
 
 %%--------------------------------------------------------------------
@@ -178,14 +178,14 @@ track_assignment('delete', Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec  get_numbers(wh_json:object()) -> ne_binaries().
+-spec  get_numbers(kz_json:object()) -> ne_binaries().
 get_numbers(JObj) ->
-    Servers = wh_json:get_value(<<"servers">>, JObj, []),
+    Servers = kz_json:get_value(<<"servers">>, JObj, []),
     lists:foldl(fun get_numbers_fold/2, [], Servers).
 
--spec get_numbers_fold(wh_json:object(), ne_binaries()) -> ne_binaries().
+-spec get_numbers_fold(kz_json:object(), ne_binaries()) -> ne_binaries().
 get_numbers_fold(Server, Acc) ->
-    wh_json:get_keys(wh_json:get_value(<<"DIDs">>, Server, wh_json:new())) ++ Acc.
+    kz_json:get_keys(kz_json:get_value(<<"DIDs">>, Server, kz_json:new())) ++ Acc.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -239,7 +239,7 @@ validate_patch(Id, Context) ->
 %%--------------------------------------------------------------------
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    cb_context:set_doc(Context, wh_doc:set_type(cb_context:doc(Context), <<"sys_info">>));
+    cb_context:set_doc(Context, kz_doc:set_type(cb_context:doc(Context), <<"sys_info">>));
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"sys_info">>)).
 
@@ -264,6 +264,6 @@ summary(Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_doc:id(JObj) | Acc].
+    [kz_doc:id(JObj) | Acc].

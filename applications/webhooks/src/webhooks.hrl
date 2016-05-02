@@ -1,8 +1,8 @@
 -ifndef(WEBHOOKS_HRL).
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_log.hrl").
--include_lib("whistle/include/wh_databases.hrl").
--include_lib("whistle_apps/include/wh_hooks.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo/include/kz_log.hrl").
+-include_lib("kazoo/include/kz_databases.hrl").
+-include_lib("kazoo_apps/include/kz_hooks.hrl").
 
 -define(APP_NAME, <<"webhooks">>).
 -define(APP_VERSION, <<"4.0.0">>).
@@ -18,8 +18,8 @@
           ,hook_id :: ne_binary() | '_'
           ,retries = 3 :: hook_retries() | '_'
           ,account_id :: ne_binary() | '_' | '$1'
-          ,custom_data :: wh_json:object() | '_'
-          ,modifiers :: wh_json:object() | '_'
+          ,custom_data :: kz_json:object() | '_'
+          ,modifiers :: kz_json:object() | '_'
          }).
 -type webhook() :: #webhook{}.
 -type webhooks() :: [webhook()].

@@ -68,7 +68,7 @@
 
 -define(PVT_TYPE, <<"account">>).
 
--type doc() :: wh_json:object().
+-type doc() :: kz_json:object().
 -export_type([doc/0]).
 
 %%--------------------------------------------------------------------
@@ -78,7 +78,7 @@
 %%--------------------------------------------------------------------
 -spec new() -> doc().
 new() ->
-    wh_doc:set_type(wh_json:new(), ?PVT_TYPE).
+    kz_doc:set_type(kz_json:new(), ?PVT_TYPE).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -95,7 +95,7 @@ type() -> ?PVT_TYPE.
 %%--------------------------------------------------------------------
 -spec id(doc()) -> api_binary().
 id(JObj) ->
-    wh_doc:id(JObj).
+    kz_doc:id(JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -107,8 +107,8 @@ id(JObj) ->
 fetch('undefined') ->
     {'error', 'invalid_db_name'};
 fetch(<<_/binary>> = Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountDb = kz_util:format_account_id(Account, 'encoded'),
     kz_datamgr:open_cache_doc(AccountDb, AccountId, ['cache_failures']).
 
 %%--------------------------------------------------------------------
@@ -121,7 +121,7 @@ fetch(<<_/binary>> = Account) ->
 name(JObj) ->
     name(JObj, 'undefined').
 name(JObj, Default) ->
-    wh_json:get_value(?NAME, JObj, Default).
+    kz_json:get_value(?NAME, JObj, Default).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -130,7 +130,7 @@ name(JObj, Default) ->
 %%--------------------------------------------------------------------
 -spec set_name(doc(), ne_binary()) -> doc().
 set_name(JObj, Name) ->
-    wh_json:set_value(?NAME, Name, JObj).
+    kz_json:set_value(?NAME, Name, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -142,7 +142,7 @@ set_name(JObj, Name) ->
 realm(JObj) ->
     realm(JObj, 'undefined').
 realm(JObj, Default) ->
-    wh_json:get_ne_value(?REALM, JObj, Default).
+    kz_json:get_ne_value(?REALM, JObj, Default).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -151,7 +151,7 @@ realm(JObj, Default) ->
 %%--------------------------------------------------------------------
 -spec set_realm(doc(), ne_binary()) -> doc().
 set_realm(JObj, Realm) ->
-    wh_json:set_value(?REALM, Realm, JObj).
+    kz_json:set_value(?REALM, Realm, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -160,7 +160,7 @@ set_realm(JObj, Realm) ->
 %%--------------------------------------------------------------------
 -spec language(doc()) -> api_binary().
 language(JObj) ->
-    wh_json:get_value(?LANGUAGE, JObj).
+    kz_json:get_value(?LANGUAGE, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -169,7 +169,7 @@ language(JObj) ->
 %%--------------------------------------------------------------------
 -spec set_language(doc(), ne_binary()) -> doc().
 set_language(JObj, Language) ->
-    wh_json:set_value(?LANGUAGE, Language, JObj).
+    kz_json:set_value(?LANGUAGE, Language, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -189,9 +189,9 @@ timezone(AccountId, Default)
     {'ok', JObj} = fetch(AccountId),
     timezone(JObj, Default);
 timezone(JObj, Default) ->
-    case wh_json:get_value(?TIMEZONE, JObj, Default) of
-        <<"inherit">> -> parent_timezone(wh_doc:account_id(JObj), parent_account_id(JObj));
-        'undefined' -> parent_timezone(wh_doc:account_id(JObj), parent_account_id(JObj));
+    case kz_json:get_value(?TIMEZONE, JObj, Default) of
+        <<"inherit">> -> parent_timezone(kz_doc:account_id(JObj), parent_account_id(JObj));
+        'undefined' -> parent_timezone(kz_doc:account_id(JObj), parent_account_id(JObj));
         TZ -> TZ
     end.
 
@@ -207,7 +207,7 @@ parent_timezone(_AccountId, ParentId) -> timezone(ParentId).
 %%--------------------------------------------------------------------
 -spec set_timezone(doc(), ne_binary()) -> doc().
 set_timezone(JObj, Timezone) ->
-    wh_json:set_value(?TIMEZONE, Timezone, JObj).
+    kz_json:set_value(?TIMEZONE, Timezone, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -220,14 +220,14 @@ low_balance_threshold(JObj) ->
 
 -spec low_balance_threshold(doc(), Default) -> float() | Default.
 low_balance_threshold(JObj, Default) ->
-    case wh_json:get_float_value(?LOW_BALANCE_THRESHOLD, JObj) of
+    case kz_json:get_float_value(?LOW_BALANCE_THRESHOLD, JObj) of
         'undefined' -> topup_threshold(JObj, Default);
         Threshold -> Threshold
     end.
 
 -spec set_low_balance_threshold(doc(), float()) -> doc().
 set_low_balance_threshold(JObj, Threshold) ->
-    wh_json:set_value(?LOW_BALANCE_THRESHOLD, Threshold, JObj).
+    kz_json:set_value(?LOW_BALANCE_THRESHOLD, Threshold, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -236,15 +236,15 @@ set_low_balance_threshold(JObj, Threshold) ->
 %%--------------------------------------------------------------------
 -spec low_balance_sent(doc()) -> boolean().
 low_balance_sent(JObj) ->
-    wh_json:is_true(?LOW_BALANCE_SENT, JObj).
+    kz_json:is_true(?LOW_BALANCE_SENT, JObj).
 
 -spec set_low_balance_sent(doc()) -> doc().
 set_low_balance_sent(JObj) ->
-    wh_json:set_value(?LOW_BALANCE_SENT, 'true', JObj).
+    kz_json:set_value(?LOW_BALANCE_SENT, 'true', JObj).
 
 -spec reset_low_balance_sent(doc()) -> doc().
 reset_low_balance_sent(JObj) ->
-    wh_json:set_value(?LOW_BALANCE_SENT, 'false', JObj).
+    kz_json:set_value(?LOW_BALANCE_SENT, 'false', JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -253,19 +253,19 @@ reset_low_balance_sent(JObj) ->
 %%--------------------------------------------------------------------
 -spec low_balance_enabled(doc()) -> boolean().
 low_balance_enabled(JObj) ->
-    wh_json:is_true(?LOW_BALANCE_ENABLED, JObj).
+    kz_json:is_true(?LOW_BALANCE_ENABLED, JObj).
 
 -spec set_low_balance_enabled(doc()) -> doc().
 set_low_balance_enabled(JObj) ->
-    wh_json:set_value(?LOW_BALANCE_ENABLED, 'true', JObj).
+    kz_json:set_value(?LOW_BALANCE_ENABLED, 'true', JObj).
 
 -spec reset_low_balance_enabled(doc()) -> doc().
 reset_low_balance_enabled(JObj) ->
-    wh_json:set_value(?LOW_BALANCE_ENABLED, 'false', JObj).
+    kz_json:set_value(?LOW_BALANCE_ENABLED, 'false', JObj).
 
 -spec low_balance_enabled_exists(doc()) -> boolean().
 low_balance_enabled_exists(JObj) ->
-    wh_json:get_ne_value(?LOW_BALANCE_ENABLED, JObj) =/= 'undefined'.
+    kz_json:get_ne_value(?LOW_BALANCE_ENABLED, JObj) =/= 'undefined'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -274,20 +274,20 @@ low_balance_enabled_exists(JObj) ->
 %%--------------------------------------------------------------------
 -spec low_balance_tstamp(doc()) -> api_number().
 low_balance_tstamp(JObj) ->
-    wh_json:get_integer_value(?LOW_BALANCE_TSTAMP, JObj).
+    kz_json:get_integer_value(?LOW_BALANCE_TSTAMP, JObj).
 
 -spec set_low_balance_tstamp(doc()) -> doc().
 set_low_balance_tstamp(JObj) ->
-    TStamp = wh_util:current_tstamp(),
+    TStamp = kz_util:current_tstamp(),
     set_low_balance_tstamp(JObj, TStamp).
 
 -spec set_low_balance_tstamp(doc(), number()) -> doc().
 set_low_balance_tstamp(JObj, TStamp) ->
-    wh_json:set_value(?LOW_BALANCE_TSTAMP, TStamp, JObj).
+    kz_json:set_value(?LOW_BALANCE_TSTAMP, TStamp, JObj).
 
 -spec remove_low_balance_tstamp(doc()) -> doc().
 remove_low_balance_tstamp(JObj) ->
-    wh_json:delete_key(?LOW_BALANCE_TSTAMP, JObj).
+    kz_json:delete_key(?LOW_BALANCE_TSTAMP, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -300,11 +300,11 @@ topup_threshold(JObj) ->
 
 -spec topup_threshold(doc(), Default) -> float() | Default.
 topup_threshold(JObj, Default) ->
-    wh_json:get_float_value(?TOPUP_THRESHOLD, JObj, Default).
+    kz_json:get_float_value(?TOPUP_THRESHOLD, JObj, Default).
 
 -spec set_topup_threshold(doc(), float()) -> doc().
 set_topup_threshold(JObj, Threshold) ->
-    wh_json:set_value(?TOPUP_THRESHOLD, Threshold, JObj).
+    kz_json:set_value(?TOPUP_THRESHOLD, Threshold, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -328,7 +328,7 @@ parent_account_id(JObj) ->
 tree(JObj) ->
     tree(JObj, []).
 tree(JObj, Default) ->
-    wh_json:get_list_value(?TREE, JObj, Default).
+    kz_json:get_list_value(?TREE, JObj, Default).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -337,7 +337,7 @@ tree(JObj, Default) ->
 %%--------------------------------------------------------------------
 -spec set_tree(doc(), ne_binaries()) -> doc().
 set_tree(JObj, Tree) ->
-    wh_json:set_value(?TREE, Tree, JObj).
+    kz_json:set_value(?TREE, Tree, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -346,7 +346,7 @@ set_tree(JObj, Tree) ->
 %%--------------------------------------------------------------------
 -spec notification_preference(doc()) -> api_binary().
 notification_preference(JObj) ->
-    wh_json:get_value(?NOTIFY_PREF, JObj).
+    kz_json:get_value(?NOTIFY_PREF, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -355,7 +355,7 @@ notification_preference(JObj) ->
 %%--------------------------------------------------------------------
 -spec set_notification_preference(doc(), ne_binary()) -> doc().
 set_notification_preference(JObj, Pref) ->
-    wh_json:set_value(?NOTIFY_PREF, Pref, JObj).
+    kz_json:set_value(?NOTIFY_PREF, Pref, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -364,7 +364,7 @@ set_notification_preference(JObj, Pref) ->
 %%--------------------------------------------------------------------
 -spec is_enabled(doc()) -> boolean().
 is_enabled(JObj) ->
-    wh_json:is_true(?IS_ENABLED, JObj, 'true').
+    kz_json:is_true(?IS_ENABLED, JObj, 'true').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -373,7 +373,7 @@ is_enabled(JObj) ->
 %%--------------------------------------------------------------------
 -spec enable(doc()) -> doc().
 enable(JObj) ->
-    wh_json:set_value(?IS_ENABLED, 'true', JObj).
+    kz_json:set_value(?IS_ENABLED, 'true', JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -382,7 +382,7 @@ enable(JObj) ->
 %%--------------------------------------------------------------------
 -spec disable(doc()) -> doc().
 disable(JObj) ->
-    wh_json:set_value(?IS_ENABLED, 'false', JObj).
+    kz_json:set_value(?IS_ENABLED, 'false', JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -391,7 +391,7 @@ disable(JObj) ->
 %%--------------------------------------------------------------------
 -spec api_key(doc()) -> api_binary().
 api_key(JObj) ->
-    wh_json:get_value(?API_KEY, JObj).
+    kz_json:get_value(?API_KEY, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -400,7 +400,7 @@ api_key(JObj) ->
 %%--------------------------------------------------------------------
 -spec set_api_key(doc(), ne_binary()) -> doc().
 set_api_key(JObj, ApiKey) ->
-    wh_json:set_value(?API_KEY, ApiKey, JObj).
+    kz_json:set_value(?API_KEY, ApiKey, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -409,7 +409,7 @@ set_api_key(JObj, ApiKey) ->
 %%--------------------------------------------------------------------
 -spec is_superduper_admin(doc()) -> boolean().
 is_superduper_admin(JObj) ->
-    wh_json:is_true(?IS_SUPERDUPER_ADMIN, JObj).
+    kz_json:is_true(?IS_SUPERDUPER_ADMIN, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -418,7 +418,7 @@ is_superduper_admin(JObj) ->
 %%--------------------------------------------------------------------
 -spec set_superduper_admin(doc(), boolean()) -> doc().
 set_superduper_admin(JObj, IsAdmin) ->
-    wh_json:set_value(?IS_SUPERDUPER_ADMIN, IsAdmin, JObj).
+    kz_json:set_value(?IS_SUPERDUPER_ADMIN, IsAdmin, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -427,11 +427,11 @@ set_superduper_admin(JObj, IsAdmin) ->
 %%--------------------------------------------------------------------
 -spec allow_number_additions(doc()) -> boolean().
 allow_number_additions(JObj) ->
-    wh_json:is_true(?ALLOW_NUMBER_ADDITIONS, JObj).
+    kz_json:is_true(?ALLOW_NUMBER_ADDITIONS, JObj).
 
 -spec set_allow_number_additions(doc(), boolean()) -> doc().
 set_allow_number_additions(JObj, IsAllowed) ->
-    wh_json:set_value(?ALLOW_NUMBER_ADDITIONS, wh_util:is_true(IsAllowed), JObj).
+    kz_json:set_value(?ALLOW_NUMBER_ADDITIONS, kz_util:is_true(IsAllowed), JObj).
 
 -spec trial_expiration(doc()) -> api_integer().
 -spec trial_expiration(doc(), Default) -> integer() | Default.
@@ -439,7 +439,7 @@ trial_expiration(JObj) ->
     trial_expiration(JObj, 'undefined').
 
 trial_expiration(JObj, Default) ->
-    wh_json:get_integer_value(?KEY_TRIAL_EXPIRATION, JObj, Default).
+    kz_json:get_integer_value(?KEY_TRIAL_EXPIRATION, JObj, Default).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -448,8 +448,8 @@ trial_expiration(JObj, Default) ->
 %%--------------------------------------------------------------------
 -spec set_trial_expiration(doc(), gregorian_seconds()) -> doc().
 set_trial_expiration(JObj, Expiration) ->
-    JObj1 = wh_json:delete_key(?KEY_TRIAL_ACCOUNT, JObj),
-    wh_json:set_value(?KEY_TRIAL_EXPIRATION, Expiration, JObj1).
+    JObj1 = kz_json:delete_key(?KEY_TRIAL_ACCOUNT, JObj),
+    kz_json:set_value(?KEY_TRIAL_EXPIRATION, Expiration, JObj1).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -459,11 +459,11 @@ set_trial_expiration(JObj, Expiration) ->
 -spec trial_time_left(doc()) -> integer().
 -spec trial_time_left(doc(), gregorian_seconds()) -> integer().
 trial_time_left(JObj) ->
-    trial_time_left(JObj, wh_util:current_tstamp()).
+    trial_time_left(JObj, kz_util:current_tstamp()).
 trial_time_left(JObj, Now) ->
     case trial_expiration(JObj) of
         'undefined' -> 0;
-        Expiration -> wh_util:elapsed_s(Now, Expiration)
+        Expiration -> kz_util:elapsed_s(Now, Expiration)
     end.
 
 %%--------------------------------------------------------------------
@@ -473,7 +473,7 @@ trial_time_left(JObj, Now) ->
 %%--------------------------------------------------------------------
 -spec trial_has_expired(doc()) -> boolean().
 trial_has_expired(JObj) ->
-    trial_has_expired(JObj, wh_util:current_tstamp()).
+    trial_has_expired(JObj, kz_util:current_tstamp()).
 trial_has_expired(JObj, Now) ->
     trial_expiration(JObj) =/= 'undefined' andalso
         trial_time_left(JObj, Now) =< 0.
@@ -498,7 +498,7 @@ is_expired(JObj) ->
 %%--------------------------------------------------------------------
 -spec is_trial_account(doc()) -> boolean().
 is_trial_account(JObj) ->
-    wh_json:is_true(?KEY_TRIAL_ACCOUNT, JObj, 'false').
+    kz_json:is_true(?KEY_TRIAL_ACCOUNT, JObj, 'false').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -507,7 +507,7 @@ is_trial_account(JObj) ->
 %%--------------------------------------------------------------------
 -spec is_reseller(doc()) -> boolean().
 is_reseller(JObj) ->
-    wh_json:is_true(?RESELLER, JObj).
+    kz_json:is_true(?RESELLER, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -516,7 +516,7 @@ is_reseller(JObj) ->
 %%--------------------------------------------------------------------
 -spec promote(doc()) -> doc().
 promote(JObj) ->
-    wh_json:set_value(?RESELLER, 'true', JObj).
+    kz_json:set_value(?RESELLER, 'true', JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -526,7 +526,7 @@ promote(JObj) ->
 -spec demote(doc()) -> doc().
 demote(JObj) ->
     io:format("demote~n", []),
-    wh_json:set_value(?RESELLER, 'false', JObj).
+    kz_json:set_value(?RESELLER, 'false', JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -535,7 +535,7 @@ demote(JObj) ->
 %%--------------------------------------------------------------------
 -spec reseller_id(doc()) -> doc().
 reseller_id(JObj) ->
-    wh_json:get_value(?RESELLER_ID, JObj).
+    kz_json:get_value(?RESELLER_ID, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -544,7 +544,7 @@ reseller_id(JObj) ->
 %%--------------------------------------------------------------------
 -spec set_reseller_id(doc(), ne_binary()) -> doc().
 set_reseller_id(JObj, ResellerId) ->
-    wh_json:set_value(?RESELLER_ID, ResellerId, JObj).
+    kz_json:set_value(?RESELLER_ID, ResellerId, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -552,11 +552,11 @@ set_reseller_id(JObj, ResellerId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec dial_plan(doc()) -> api_object().
--spec dial_plan(doc(), Default) -> wh_json:object() | Default.
+-spec dial_plan(doc(), Default) -> kz_json:object() | Default.
 dial_plan(JObj) ->
     dial_plan(JObj, 'undefined').
 dial_plan(JObj, Default) ->
-    wh_json:get_json_value(?KEY_DIAL_PLAN, JObj, Default).
+    kz_json:get_json_value(?KEY_DIAL_PLAN, JObj, Default).
 
 -spec fax_settings(doc() | ne_binary()) -> doc().
 fax_settings(AccountId)
@@ -566,8 +566,8 @@ fax_settings(AccountId)
         {'error', _} -> ?SYSTEM_FAX_SETTINGS
     end;
 fax_settings(JObj) ->
-    FaxSettings = wh_json:get_json_value(?FAX_SETTINGS_KEY, JObj, ?DEFAULT_FAX_SETTINGS),
-    case wh_json:get_value(?FAX_TIMEZONE_KEY, FaxSettings) of
-        'undefined' -> wh_json:set_value(?FAX_TIMEZONE_KEY, timezone(JObj), FaxSettings);
+    FaxSettings = kz_json:get_json_value(?FAX_SETTINGS_KEY, JObj, ?DEFAULT_FAX_SETTINGS),
+    case kz_json:get_value(?FAX_TIMEZONE_KEY, FaxSettings) of
+        'undefined' -> kz_json:set_value(?FAX_TIMEZONE_KEY, timezone(JObj), FaxSettings);
         _ -> FaxSettings
     end.

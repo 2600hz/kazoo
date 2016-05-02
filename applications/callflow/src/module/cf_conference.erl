@@ -20,19 +20,19 @@
 %% stop when successful.
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Command =
         props:filter_undefined(
-          [{<<"Call">>, whapps_call:to_json(Call)}
-           ,{<<"Conference-ID">>, wh_doc:id(Data)}
-           ,{<<"Moderator">>, wh_json:get_binary_boolean(<<"moderator">>, Data)}
-           ,{<<"Play-Welcome">>, wh_json:is_true([<<"welcome_prompt">>, <<"play">>], Data, 'true')}
-           ,{<<"Play-Welcome-Media">>, wh_json:get_ne_value([<<"welcome_prompt">>, <<"media_id">>], Data)}
-           ,{<<"Conference-Doc">>, wh_json:get_value(<<"config">>, Data)}
-           ,{<<"Play-Exit-Tone">>, wh_json:get_ne_value([<<"play_exit_tone">>], Data)}
-           ,{<<"Play-Entry-Tone">>, wh_json:get_ne_value([<<"play_entry_tone">>], Data)}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          [{<<"Call">>, kapps_call:to_json(Call)}
+           ,{<<"Conference-ID">>, kz_doc:id(Data)}
+           ,{<<"Moderator">>, kz_json:get_binary_boolean(<<"moderator">>, Data)}
+           ,{<<"Play-Welcome">>, kz_json:is_true([<<"welcome_prompt">>, <<"play">>], Data, 'true')}
+           ,{<<"Play-Welcome-Media">>, kz_json:get_ne_value([<<"welcome_prompt">>, <<"media_id">>], Data)}
+           ,{<<"Conference-Doc">>, kz_json:get_value(<<"config">>, Data)}
+           ,{<<"Play-Exit-Tone">>, kz_json:get_ne_value([<<"play_exit_tone">>], Data)}
+           ,{<<"Play-Entry-Tone">>, kz_json:get_ne_value([<<"play_entry_tone">>], Data)}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ]),
-    wapi_conference:publish_discovery_req(Command),
+    kapi_conference:publish_discovery_req(Command),
     cf_exe:control_usurped(Call).

@@ -24,9 +24,9 @@
 %% Get allowed apps from service plans
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_apps(ne_binary()) -> wh_json:objects().
+-spec allowed_apps(ne_binary()) -> kz_json:objects().
 allowed_apps(AccountId) ->
-    ServicePlan = wh_services:service_plan_json(AccountId),
+    ServicePlan = kz_services:service_plan_json(AccountId),
     case has_all_apps_in_service_plan(ServicePlan) of
         'true' ->
             DefaultApps = load_default_apps(),
@@ -44,7 +44,7 @@ allowed_apps(AccountId) ->
 %%--------------------------------------------------------------------
 -spec allowed_app(ne_binary(), ne_binary()) -> api_object().
 allowed_app(AccountId, AppId) ->
-    FindApp = fun(App) -> AppId == wh_doc:id(App) end,
+    FindApp = fun(App) -> AppId == kz_doc:id(App) end,
     case lists:filter(FindApp, allowed_apps(AccountId)) of
         [App] -> App;
         [] -> 'undefined'
@@ -62,10 +62,10 @@ is_authorized(AccountId, UserId, AppId) ->
             lager:error("failed to fetch apps store doc in ~s : ~p", [AccountId, _R]),
             'false';
         {'ok', Doc} ->
-            AppJObj = wh_json:get_value(AppId, kzd_apps_store:apps(Doc)),
-            AllowedType = wh_json:get_value(<<"allowed_users">>, AppJObj, <<"specific">>),
+            AppJObj = kz_json:get_value(AppId, kzd_apps_store:apps(Doc)),
+            AllowedType = kz_json:get_value(<<"allowed_users">>, AppJObj, <<"specific">>),
             SpecificIds = get_specific_ids(
-                            wh_json:get_value(<<"users">>, AppJObj, [])
+                            kz_json:get_value(<<"users">>, AppJObj, [])
                            ),
             case {AllowedType, SpecificIds} of
                 {<<"all">>, _} -> 'true';
@@ -80,14 +80,14 @@ is_authorized(AccountId, UserId, AppId) ->
             end
     end.
 
--spec get_specific_ids(wh_json:objects()) -> ne_binaries().
+-spec get_specific_ids(kz_json:objects()) -> ne_binaries().
 get_specific_ids(Users) ->
     get_specific_ids(Users, []).
 
--spec get_specific_ids(wh_json:objects(), ne_binaries()) -> ne_binaries().
+-spec get_specific_ids(kz_json:objects(), ne_binaries()) -> ne_binaries().
 get_specific_ids([], UserIds) -> UserIds;
 get_specific_ids([User|Users], UserIds) ->
-    case wh_json:get_ne_value(<<"id">>, User) of
+    case kz_json:get_ne_value(<<"id">>, User) of
         'undefined' -> get_specific_ids(Users, UserIds);
         UserId -> get_specific_ids(Users, [UserId|UserIds])
     end.
@@ -97,9 +97,9 @@ get_specific_ids([User|Users], UserIds) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec load_default_apps() -> wh_json:objects().
+-spec load_default_apps() -> kz_json:objects().
 load_default_apps() ->
-    {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
+    {'ok', MasterAccountDb} = kapps_util:get_master_account_db(),
     case kz_datamgr:get_results(MasterAccountDb, ?CB_APPS_STORE_LIST, ['include_docs']) of
         {'error', _E} ->
             lager:error("failed to lookup apps in ~s", [MasterAccountDb]),
@@ -113,10 +113,10 @@ load_default_apps() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec create_apps_store_doc(ne_binary()) -> {'ok', wh_json:object()} | {'error', any()}.
+-spec create_apps_store_doc(ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 create_apps_store_doc(Account) ->
     Doc = kzd_apps_store:new(Account),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    AccountDb = kz_util:format_account_id(Account, 'encoded'),
     kz_datamgr:save_doc(AccountDb, Doc).
 
 %%%===================================================================
@@ -128,7 +128,7 @@ create_apps_store_doc(Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_apps_store_doc(ne_binary()) -> {'ok', wh_json:object()} | {'error', any()}.
+-spec get_apps_store_doc(ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 get_apps_store_doc(Account) ->
     case kzd_apps_store:fetch(Account) of
         {'error', 'not_found'} ->
@@ -143,13 +143,13 @@ get_apps_store_doc(Account) ->
 %%--------------------------------------------------------------------
 -spec get_user_priv_level(ne_binary(), ne_binary()) -> binary().
 get_user_priv_level(AccountId, UserId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:open_cache_doc(AccountDb, UserId) of
         {'error', _R} ->
             lager:error("failed to open user ~s in ~s", [UserId, AccountDb]),
             'undefined';
         {'ok', JObj} ->
-            wh_json:get_value(<<"priv_level">>, JObj)
+            kz_json:get_value(<<"priv_level">>, JObj)
     end.
 
 %%--------------------------------------------------------------------
@@ -161,7 +161,7 @@ get_user_priv_level(AccountId, UserId) ->
 has_all_apps_in_service_plan(ServicePlan) ->
     %% If the "ui_apps" key is empty, return true
     %% else "ui_apps._all.enabled" == true
-    wh_util:is_empty(kzd_service_plan:category(ServicePlan, ?PLAN_CATEGORY))
+    kz_util:is_empty(kzd_service_plan:category(ServicePlan, ?PLAN_CATEGORY))
         orelse kzd_item_plan:is_enabled(kzd_service_plan:category_plan(ServicePlan, ?PLAN_CATEGORY)).
 
 %%--------------------------------------------------------------------
@@ -169,13 +169,13 @@ has_all_apps_in_service_plan(ServicePlan) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_apps(ne_binary(), wh_json:objects()) -> wh_json:objects().
--spec filter_apps(ne_binary(), wh_json:objects(), wh_json:object()) -> wh_json:objects().
+-spec filter_apps(ne_binary(), kz_json:objects()) -> kz_json:objects().
+-spec filter_apps(ne_binary(), kz_json:objects(), kz_json:object()) -> kz_json:objects().
 filter_apps(AccountId, Apps) ->
     case get_apps_store_doc(AccountId) of
         {'error', _R} ->
             lager:error("failed to fetch apps store doc in ~s : ~p", [AccountId, _R]),
-            filter_apps(AccountId, Apps, wh_json:new());
+            filter_apps(AccountId, Apps, kz_json:new());
         {'ok', Doc} ->
             filter_apps(AccountId, Apps, Doc)
     end.
@@ -200,13 +200,13 @@ filter_apps(AccountId, Apps, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec add_permissions(wh_json:object(), wh_json:object()) -> wh_json:object().
+-spec add_permissions(kz_json:object(), kz_json:object()) -> kz_json:object().
 add_permissions(App, JObj) ->
     AppsPerm = kzd_apps_store:apps(JObj),
-    case wh_json:get_ne_value(wh_doc:id(App), AppsPerm) of
+    case kz_json:get_ne_value(kz_doc:id(App), AppsPerm) of
         'undefined' -> App;
         AppPerm ->
-            wh_json:merge_recursive([kzd_app:publish(App), AppPerm])
+            kz_json:merge_recursive([kzd_app:publish(App), AppPerm])
     end.
 
 %%--------------------------------------------------------------------
@@ -214,24 +214,24 @@ add_permissions(App, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec is_blacklisted(wh_json:object(), wh_json:object()) -> boolean().
+-spec is_blacklisted(kz_json:object(), kz_json:object()) -> boolean().
 is_blacklisted(App, JObj) ->
     Blacklist = kzd_apps_store:blacklist(JObj),
-    lists:member(wh_doc:id(App), Blacklist).
+    lists:member(kz_doc:id(App), Blacklist).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec is_filtered(ne_binary(), wh_json:object()) -> boolean().
--spec is_filtered(ne_binary(), wh_json:object(), ne_binary()) -> boolean().
+-spec is_filtered(ne_binary(), kz_json:object()) -> boolean().
+-spec is_filtered(ne_binary(), kz_json:object(), ne_binary()) -> boolean().
 is_filtered(AccountId, App) ->
-    is_filtered(AccountId, App, wh_json:get_value(<<"name">>, App)).
+    is_filtered(AccountId, App, kz_json:get_value(<<"name">>, App)).
 
 is_filtered(AccountId, _App, <<"port">>) ->
     lager:debug("filtering port application"),
-    ResellerId = wh_services:find_reseller_id(AccountId),
+    ResellerId = kz_services:find_reseller_id(AccountId),
     MaybeHide =
         case kz_whitelabel:fetch(ResellerId) of
             {'error', 'not_found'} -> 'false';
@@ -252,10 +252,10 @@ is_filtered(_AccountId, _App, _Name) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_set_account(ne_binary(), wh_json:object()) -> wh_json:object().
+-spec maybe_set_account(ne_binary(), kz_json:object()) -> kz_json:object().
 maybe_set_account(Account, Doc) ->
-    JObj = wh_json:get_value(<<"doc">>, Doc),
-    case {wh_doc:account_db(JObj), wh_doc:account_id(JObj)} of
+    JObj = kz_json:get_value(<<"doc">>, Doc),
+    case {kz_doc:account_db(JObj), kz_doc:account_id(JObj)} of
         {'undefined', _} -> set_account(Account, JObj);
         {_, 'undefined'} -> set_account(Account, JObj);
         {_, _} -> JObj
@@ -266,12 +266,12 @@ maybe_set_account(Account, Doc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_account(ne_binary(), wh_json:object()) -> wh_json:object().
+-spec set_account(ne_binary(), kz_json:object()) -> kz_json:object().
 set_account(Account, JObj) ->
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    AccountDb = kz_util:format_account_id(Account, 'encoded'),
     Corrected =
-        wh_json:set_values(
-          [{<<"pvt_account_id">>, wh_util:format_account_id(Account, 'raw')}
+        kz_json:set_values(
+          [{<<"pvt_account_id">>, kz_util:format_account_id(Account, 'raw')}
            ,{<<"pvt_account_db">>, AccountDb}
           ], JObj),
     case kz_datamgr:save_doc(AccountDb, Corrected) of
@@ -286,19 +286,19 @@ set_account(Account, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_plan_apps(kzd_service_plan:doc()) -> wh_json:object().
+-spec get_plan_apps(kzd_service_plan:doc()) -> kz_json:object().
 get_plan_apps(ServicePlan) ->
-    Apps = kzd_service_plan:category(ServicePlan, ?PLAN_CATEGORY, wh_json:new()),
-    wh_json:delete_key(<<"_all">>, Apps).
+    Apps = kzd_service_plan:category(ServicePlan, ?PLAN_CATEGORY, kz_json:new()),
+    kz_json:delete_key(<<"_all">>, Apps).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec find_enabled_apps(wh_json:object()) -> wh_json:objects().
+-spec find_enabled_apps(kz_json:object()) -> kz_json:objects().
 find_enabled_apps(PlanAppsJObj) ->
-    wh_json:foldl(
+    kz_json:foldl(
         fun find_enabled_apps_fold/3
         ,[]
         ,PlanAppsJObj
@@ -309,9 +309,9 @@ find_enabled_apps(PlanAppsJObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec find_enabled_apps_fold(ne_binary(), kzd_item_plan:doc(), wh_json:objects()) -> wh_json:objects().
+-spec find_enabled_apps_fold(ne_binary(), kzd_item_plan:doc(), kz_json:objects()) -> kz_json:objects().
 find_enabled_apps_fold(AppName, PlanApp, Acc) ->
-    AppId = wh_json:get_value(<<"app_id">>, PlanApp),
+    AppId = kz_json:get_value(<<"app_id">>, PlanApp),
     case (not kzd_item_plan:is_enabled(PlanApp))
         orelse find_app(AppId, PlanApp)
     of
@@ -323,7 +323,7 @@ find_enabled_apps_fold(AppName, PlanApp, Acc) ->
             Acc;
         AppJObj ->
             lager:debug("including app ~s(~s) from plan", [AppName, AppId]),
-            [wh_json:delete_key(<<"published">>, AppJObj)|Acc]
+            [kz_json:delete_key(<<"published">>, AppJObj)|Acc]
     end.
 
 %%--------------------------------------------------------------------
@@ -331,10 +331,10 @@ find_enabled_apps_fold(AppName, PlanApp, Acc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec find_app(ne_binary(), wh_json:object()) -> api_object().
+-spec find_app(ne_binary(), kz_json:object()) -> api_object().
 find_app(AppId, PlanApp) ->
-    Account = wh_json:get_first_defined([<<"account_db">>, <<"account_id">>], PlanApp),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    Account = kz_json:get_first_defined([<<"account_db">>, <<"account_id">>], PlanApp),
+    AccountDb = kz_util:format_account_id(Account, 'encoded'),
     case kz_datamgr:open_cache_doc(AccountDb, AppId) of
         {'ok', JObj} -> JObj;
         {'error', _R} ->

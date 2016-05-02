@@ -25,23 +25,23 @@ get_cdr_doc_id(Timestamp, CallId) ->
 
 -spec get_cdr_doc_id(pos_integer(), pos_integer(), api_binary()) -> ne_binary().
 get_cdr_doc_id(Year, Month, CallId) ->
-    <<(wh_util:to_binary(Year))/binary
-      ,(wh_util:pad_month(Month))/binary
+    <<(kz_util:to_binary(Year))/binary
+      ,(kz_util:pad_month(Month))/binary
       ,"-"
       ,CallId/binary
     >>.
 
--spec save_cdr(api_binary(), wh_json:object()) ->
-                      'ok' | wh_std_return().
-save_cdr(?WH_ANONYMOUS_CDR_DB=Db, Doc) ->
-    case whapps_config:get_is_true(?CONFIG_CAT, <<"store_anonymous">>, 'false') of
+-spec save_cdr(api_binary(), kz_json:object()) ->
+                      'ok' | kz_std_return().
+save_cdr(?KZ_ANONYMOUS_CDR_DB=Db, Doc) ->
+    case kapps_config:get_is_true(?CONFIG_CAT, <<"store_anonymous">>, 'false') of
         'false' -> lager:debug("ignoring storage for anonymous cdr");
         'true' -> save_cdr(Db, Doc, 0)
     end;
 save_cdr(AccountMOD, Doc) ->
     save_cdr(AccountMOD, Doc, 0).
 
--spec save_cdr(api_binary(), wh_json:object(), 0..?MAX_RETRIES) ->
+-spec save_cdr(api_binary(), kz_json:object(), 0..?MAX_RETRIES) ->
                       {'error', any()} | 'ok'.
 save_cdr(_, _, ?MAX_RETRIES) ->
     {'error', 'max_retries'};

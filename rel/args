@@ -29,4 +29,4 @@
 ##-env ERL_MAX_PORTS 4096
 
 -s lager
--s whistle_apps_app
+-s kazoo_apps_app

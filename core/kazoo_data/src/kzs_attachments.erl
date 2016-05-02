@@ -30,7 +30,7 @@
 fetch_attachment(#{}=Server, DbName, DocId, AName) ->
     case kzs_cache:open_cache_doc(Server, DbName, DocId, []) of
         {'ok', Doc} ->
-            case wh_doc:attachment(Doc, AName) of
+            case kz_doc:attachment(Doc, AName) of
                 'undefined' -> {'error', 'not_found'};
                 Att -> do_fetch_attachment(Server, DbName, DocId, AName, Att)
             end;
@@ -38,13 +38,13 @@ fetch_attachment(#{}=Server, DbName, DocId, AName) ->
     end.
 
 do_fetch_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Att) ->
-    case wh_json:get_value(<<"handler">>, Att) of
+    case kz_json:get_value(<<"handler">>, Att) of
         'undefined' -> App:fetch_attachment(Conn, DbName, DocId, AName);
-        Handler -> do_fetch_attachment_from_handler(wh_json:to_proplist(Handler), DbName, DocId, AName)
+        Handler -> do_fetch_attachment_from_handler(kz_json:to_proplist(Handler), DbName, DocId, AName)
     end.
 
 do_fetch_attachment_from_handler([{Handler, Props}], DbName, DocId, AName) ->
-    Module = wh_util:to_atom(Handler, 'true'),
+    Module = kz_util:to_atom(Handler, 'true'),
     Module:fetch_attachment(Props, DbName, DocId, AName).
 
 -spec stream_attachment(map(), ne_binary(), ne_binary(), ne_binary(), pid()) ->
@@ -53,8 +53,8 @@ do_fetch_attachment_from_handler([{Handler, Props}], DbName, DocId, AName) ->
 stream_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Caller) ->
     App:stream_attachment(Conn, DbName, DocId, AName, Caller).
 
--spec put_attachment(map(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
-                            {'ok', wh_json:object()} |
+-spec put_attachment(map(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) ->
+                            {'ok', kz_json:object()} |
                             data_error().
 put_attachment(#{att_handler := {Handler, Params}}=Map
               ,DbName, DocId, AName, Contents, Options) ->
@@ -72,20 +72,20 @@ put_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Contents, Options
 
 
 attachment_from_handler(AName, AttHandler, Size, CT) ->
-    Props = [{<<"content_type">>, wh_util:to_binary(CT)}
+    Props = [{<<"content_type">>, kz_util:to_binary(CT)}
             ,{<<"length">>, Size}
             ,{<<"stub">>, false}
             ,{<<"handler">>, AttHandler}
             ],
-    wh_json:set_value(AName, wh_json:from_list(Props), wh_json:new()).
+    kz_json:set_value(AName, kz_json:from_list(Props), kz_json:new()).
 
 attachment_handler_jobj(Handler, Props) ->
-    JObj = wh_json:from_list(props:get_value('attachment', Props, [])),
-    wh_json:set_value(wh_util:to_binary(Handler), JObj, wh_json:new()).
+    JObj = kz_json:from_list(props:get_value('attachment', Props, [])),
+    kz_json:set_value(kz_util:to_binary(Handler), JObj, kz_json:new()).
 
--spec handle_put_attachment(map(), wh_json:object(), ne_binary(), ne_binary(), ne_binary(), ne_binary()
-                           , wh_proplist(), wh_proplist()) ->
-                            {'ok', wh_json:object()} |
+-spec handle_put_attachment(map(), kz_json:object(), ne_binary(), ne_binary(), ne_binary(), ne_binary()
+                           , kz_proplist(), kz_proplist()) ->
+                            {'ok', kz_json:object()} |
                             data_error().
 
 handle_put_attachment(#{att_post_handler := 'stub'
@@ -101,13 +101,13 @@ handle_put_attachment(#{att_post_handler := 'external'}, Att, DbName, DocId, _AN
     end.
 
 external_attachment(DbName, JObj, Att, Props) ->
-    Atts = wh_json:merge_jobjs(Att, wh_json:get_value(?KEY_STUB_ATTACHMENTS, JObj, wh_json:new())),
-    kz_datamgr:save_doc(DbName, wh_json:set_values([{?KEY_STUB_ATTACHMENTS, Atts}
+    Atts = kz_json:merge_jobjs(Att, kz_json:get_value(?KEY_STUB_ATTACHMENTS, JObj, kz_json:new())),
+    kz_datamgr:save_doc(DbName, kz_json:set_values([{?KEY_STUB_ATTACHMENTS, Atts}
                                                     | props:get_value('document', Props, [])
                                                    ], JObj)).
 
--spec delete_attachment(map(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
-                               {'ok', wh_json:object()} |
+-spec delete_attachment(map(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) ->
+                               {'ok', kz_json:object()} |
                                data_error().
 delete_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Options) ->
     kzs_cache:flush_cache_doc(DbName, DocId),

@@ -63,16 +63,16 @@ start_link() ->
                                       ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
                                      ], []).
 
--spec handle_printer_start(wh_json:object(), wh_proplist()) -> sup_startchild_ret().
+-spec handle_printer_start(kz_json:object(), kz_proplist()) -> sup_startchild_ret().
 handle_printer_start(JObj, _Props) ->
-    'true' = wapi_xmpp:event_v(JObj),
-    PrinterId = wh_json:get_value(<<"Application-Data">>, JObj),
+    'true' = kapi_xmpp:event_v(JObj),
+    PrinterId = kz_json:get_value(<<"Application-Data">>, JObj),
     fax_xmpp_sup:start_printer(PrinterId).
 
--spec handle_printer_stop(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_printer_stop(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_printer_stop(JObj, _Props) ->
-    'true' = wapi_xmpp:event_v(JObj),
-    PrinterId = wh_json:get_value(<<"Application-Data">>, JObj),
+    'true' = kapi_xmpp:event_v(JObj),
+    PrinterId = kz_json:get_value(<<"Application-Data">>, JObj),
     fax_xmpp_sup:stop_printer(PrinterId).
 
 %%%===================================================================
@@ -123,7 +123,7 @@ handle_call(_Request, _From, State) ->
 handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
-    _ = wh_util:spawn(fun start_all_printers/0),
+    _ = kz_util:spawn(fun start_all_printers/0),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -176,12 +176,12 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 
 start_all_printers() ->
-    {'ok', Results} = kz_datamgr:get_results(?WH_FAXES_DB, <<"faxbox/cloud">>),
+    {'ok', Results} = kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxbox/cloud">>),
     [ send_start_printer(Id, Jid)
        || {Id, Jid, <<"claimed">>}
-              <- [{wh_doc:id(Result)
-                   ,wh_json:get_value([<<"value">>,<<"xmpp_jid">>], Result)
-                   ,wh_json:get_value([<<"value">>,<<"state">>], Result)
+              <- [{kz_doc:id(Result)
+                   ,kz_json:get_value([<<"value">>,<<"xmpp_jid">>], Result)
+                   ,kz_json:get_value([<<"value">>,<<"state">>], Result)
                   }
                   || Result <- Results
                  ]
@@ -195,6 +195,6 @@ send_start_printer(PrinterId, JID) ->
                  ,{<<"Application-Event">>, <<"init">>}
                  ,{<<"Application-Data">>, PrinterId}
                  ,{<<"JID">>, JID}
-                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
-    wh_amqp_worker:cast(Payload, fun wapi_xmpp:publish_event/1).
+    kz_amqp_worker:cast(Payload, fun kapi_xmpp:publish_event/1).

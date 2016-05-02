@@ -24,7 +24,7 @@
 -record(state, {}).
 
 
-%% NOTE: do not replace CHANNEL_DESTROY bindings with wh_hooks (which federate)
+%% NOTE: do not replace CHANNEL_DESTROY bindings with kz_hooks (which federate)
 %%   as that will cause duplicate credit/debits at the end of the call since
 %%   the round-robin shared queue thing wont work.
 -define(RESPONDERS, [{'j5_authz_req', [{<<"authz">>, <<"authz_req">>}]}

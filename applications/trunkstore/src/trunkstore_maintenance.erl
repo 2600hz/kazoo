@@ -24,7 +24,7 @@ flush() ->
     kz_cache:flush_local(?CACHE_NAME).
 
 flush(Account) ->
-    AccountId = wh_util:format_account_id(Account),
+    AccountId = kz_util:format_account_id(Account),
 
     Flush = kz_cache:filter_local(?CACHE_NAME
                                   ,fun(Key, _Value) -> is_ts_cache_object(Key, AccountId) end
@@ -43,14 +43,14 @@ i_understand_migrate() ->
             lager:info("ts database not found or ts_account/crossbar_listing view missing");
         {'ok', TSAccts} ->
             lager:info("trying ~b ts accounts", [length(TSAccts)]),
-            _ = [maybe_migrate(wh_doc:set_revision(wh_json:get_value(<<"doc">>, Acct), <<>>))
+            _ = [maybe_migrate(kz_doc:set_revision(kz_json:get_value(<<"doc">>, Acct), <<>>))
                  || Acct <- TSAccts
                 ],
             lager:info("migration complete")
     end.
 
 maybe_migrate(AcctJObj) ->
-    Realm = wh_json:get_value([<<"account">>, <<"auth_realm">>], AcctJObj),
+    Realm = kz_json:get_value([<<"account">>, <<"auth_realm">>], AcctJObj),
     case account_exists_with_realm(Realm) of
         {'true', AcctDB, AcctID} ->
             lager:info("account with realm ~s exists in ~s", [Realm, AcctDB]),
@@ -73,7 +73,7 @@ move_doc(AcctDB, AcctID, TSJObj) ->
         'false' ->
             {'ok', AcctTSJObj} = create_ts_doc(AcctDB, AcctID, TSJObj),
             {'ok', _} = create_credit_doc(AcctDB, AcctID, AcctTSJObj),
-            _ = whapps_maintenance:refresh(AcctID),
+            _ = kapps_maintenance:refresh(AcctID),
             'ok'
     end.
 
@@ -86,18 +86,18 @@ has_ts_doc(AcctDB) ->
 
 create_ts_doc(AcctDB, AcctID, TSJObj) ->
     lager:info("creating the ts doc in ~s", [AcctDB]),
-    JObj = wh_json:set_values([{<<"pvt_type">>, <<"sys_info">>}
+    JObj = kz_json:set_values([{<<"pvt_type">>, <<"sys_info">>}
                                ,{<<"pvt_account_db">>, AcctDB}
                                ,{<<"pvt_account_id">>, AcctID}
-                              ], wh_json:delete_key(<<"_id">>, wh_doc:delete_revision(TSJObj))),
-    lager:info("saving ts doc ~s into ~s", [wh_doc:id(TSJObj), AcctDB]),
+                              ], kz_json:delete_key(<<"_id">>, kz_doc:delete_revision(TSJObj))),
+    lager:info("saving ts doc ~s into ~s", [kz_doc:id(TSJObj), AcctDB]),
     {'ok', _} = kz_datamgr:save_doc(AcctDB, JObj).
 
 create_credit_doc(AcctDB, AcctID, TSJObj) ->
-    Credit = wh_json:get_value([<<"account">>, <<"credits">>, <<"prepay">>], TSJObj, 0.0),
-    Units = wht_util:dollars_to_units(wh_util:to_float(Credit)),
+    Credit = kz_json:get_value([<<"account">>, <<"credits">>, <<"prepay">>], TSJObj, 0.0),
+    Units = wht_util:dollars_to_units(kz_util:to_float(Credit)),
     lager:info("Putting ~p units", [Units]),
-    Transaction = wh_json:from_list([{<<"amount">>, Units}
+    Transaction = kz_json:from_list([{<<"amount">>, Units}
                                      ,{<<"pvt_type">>, <<"credit">>}
                                      ,{<<"pvt_description">>, <<"initial account balance">>}
                                      ,{<<"pvt_account_db">>, AcctDB}
@@ -106,13 +106,13 @@ create_credit_doc(AcctDB, AcctID, TSJObj) ->
     kz_datamgr:save_doc(AcctDB, Transaction).
 
 account_exists_with_realm(Realm) ->
-    ViewOptions = [{<<"key">>, wh_util:to_lower_binary(Realm)}],
-    case kz_datamgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_realm">>, ViewOptions) of
+    ViewOptions = [{<<"key">>, kz_util:to_lower_binary(Realm)}],
+    case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_realm">>, ViewOptions) of
         {'ok', []} -> 'false';
         {'ok', [AcctObj]} ->
             {'true'
-             ,wh_json:get_value([<<"value">>, <<"account_db">>], AcctObj)
-             ,wh_json:get_value([<<"value">>, <<"account_id">>], AcctObj)};
+             ,kz_json:get_value([<<"value">>, <<"account_db">>], AcctObj)
+             ,kz_json:get_value([<<"value">>, <<"account_id">>], AcctObj)};
         {'error', _E} ->
             lager:info("failed to lookup account view: ~p", [_E]),
             'ignore'
@@ -120,7 +120,7 @@ account_exists_with_realm(Realm) ->
 
 create_account(Realm) ->
     AcctID = kz_datamgr:get_uuid(),
-    AcctDB = wh_util:format_account_id(AcctID, 'encoded'),
+    AcctDB = kz_util:format_account_id(AcctID, 'encoded'),
     case kz_datamgr:db_create(AcctDB) of
         'true' ->
             lager:info("created account db: ~s", [AcctDB]),
@@ -137,9 +137,9 @@ create_account(Realm) ->
     end.
 
 create_account_doc(Realm, AcctID, AcctDB) ->
-    lager:info("creating the account doc in ~s and ~s", [AcctDB, ?WH_ACCOUNTS_DB]),
-    Default = whapps_config:get(<<"crossbar.accounts">>, <<"default_parent">>, <<>>),
-    Doc = wh_json:from_list([{<<"realm">>, Realm}
+    lager:info("creating the account doc in ~s and ~s", [AcctDB, ?KZ_ACCOUNTS_DB]),
+    Default = kapps_config:get(<<"crossbar.accounts">>, <<"default_parent">>, <<>>),
+    Doc = kz_json:from_list([{<<"realm">>, Realm}
                              ,{<<"name">>, Realm}
                              ,{<<"pvt_account_id">>, AcctID}
                              ,{<<"pvt_account_db">>, AcctDB}
@@ -151,7 +151,7 @@ create_account_doc(Realm, AcctID, AcctDB) ->
                             ]),
     case kz_datamgr:save_doc(AcctDB, Doc) of
         {'ok', _} ->
-            {'ok', _} = kz_datamgr:save_doc(?WH_ACCOUNTS_DB, Doc);
+            {'ok', _} = kz_datamgr:save_doc(?KZ_ACCOUNTS_DB, Doc);
         {'error', _E} ->
             lager:info("failed to save account doc into ~s: ~p", [AcctDB, _E]),
             'ignore'
@@ -169,7 +169,7 @@ clear_old_calls(Super) ->
     [begin
          {'dictionary', D} = erlang:process_info(P, 'dictionary'),
          C = proplists:get_value('callid', D),
-         case whapps_call_command:channel_status(C) of
+         case kapps_call_command:channel_status(C) of
              {'error', _} -> {P, C, exit(P, 'kill')};
              _ -> {P, C, 'ok'}
          end
@@ -191,9 +191,9 @@ classifier_deny(Classifier, UserR) ->
 set_classifier_action(Action, Classifier, UserR) ->
     io:format("Classifier: ~p",[Classifier]),
     Classifiers = knm_converters:available_classifiers(),
-    case lists:member(Classifier, wh_json:get_keys(Classifiers)) of
+    case lists:member(Classifier, kz_json:get_keys(Classifiers)) of
         'false' ->
-            io:format("\nNo ~p classifier among configured classifiers ~p\n",[Classifier, wh_json:get_keys(Classifiers)]),
+            io:format("\nNo ~p classifier among configured classifiers ~p\n",[Classifier, kz_json:get_keys(Classifiers)]),
             exit(no_such_classifier);
         _ ->
             io:format("  ... found\n")
@@ -202,7 +202,7 @@ set_classifier_action(Action, Classifier, UserR) ->
     case account_exists_with_realm(Realm) of
         {'true', AcctDB, AcctID} ->
             {'ok', Opts} = ts_util:lookup_user_flags(User, Realm, AcctID),
-            TSDocId = wh_doc:id(Opts),
+            TSDocId = kz_doc:id(Opts),
             kz_datamgr:update_doc(AcctDB, TSDocId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
             io:format("Success\n");
         'false' ->

@@ -80,7 +80,7 @@ validate(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate_hotdesks(cb_context:context(), http_method(), wh_proplist()) -> cb_context:context().
+-spec validate_hotdesks(cb_context:context(), http_method(), kz_proplist()) -> cb_context:context().
 validate_hotdesks(Context, ?HTTP_GET, [{<<"hotdesks">>, _}, {<<"users">>, [UserId]}|_]) ->
     fetch_device_hotdesks(UserId, Context);
 validate_hotdesks(Context, ?HTTP_GET, [{<<"hotdesks">>, _}, {<<"devices">>, [DeviceId]}|_]) ->
@@ -94,10 +94,10 @@ validate_hotdesks(Context, ?HTTP_GET, _) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) ->
-                                    wh_json:objects().
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
+                                    kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
+    [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -114,8 +114,8 @@ fetch_user_hotdesks(DeviceId, Context) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             JObj = cb_context:doc(Context1),
-            Users = wh_json:get_value([<<"hotdesk">>, <<"users">>], JObj, wh_json:new()),
-            fetch_users(wh_json:get_keys(Users), Context1);
+            Users = kz_json:get_value([<<"hotdesk">>, <<"users">>], JObj, kz_json:new()),
+            fetch_users(kz_json:get_keys(Users), Context1);
         _Else -> Context1
     end.
 

@@ -27,7 +27,7 @@
 -export([record_to_json/1]).
 
 -import('braintree_util', [make_doc_xml/2]).
--import('wh_util', [get_xml_value/2]).
+-import('kz_util', [get_xml_value/2]).
 
 -include_lib("braintree/include/braintree.hrl").
 
@@ -45,10 +45,10 @@ url() ->
     "/payment_methods/".
 
 url(Token) ->
-    "/payment_methods/" ++ wh_util:to_list(Token).
+    "/payment_methods/" ++ kz_util:to_list(Token).
 
 url(Token, _) ->
-    "/payment_methods/credit_card/" ++ wh_util:to_list(Token).
+    "/payment_methods/credit_card/" ++ kz_util:to_list(Token).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -161,9 +161,9 @@ expired(#bt_card{expired=Expired}) -> Expired.
 -spec expiring(text(), text()) -> [bt_xml()].
 expiring(Start, End) ->
     Url = lists:append(["/payment_methods/all/expiring?start="
-                        ,wh_util:to_list(Start)
+                        ,kz_util:to_list(Start)
                         ,"&end="
-                        ,wh_util:to_list(End)
+                        ,kz_util:to_list(End)
                        ]),
     Xml = braintree_request:post(Url, <<>>),
     [xml_to_record(Item)
@@ -191,7 +191,7 @@ make_default(#bt_card{}=Card, Value) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec xml_to_record(bt_xml()) -> bt_card().
--spec xml_to_record(bt_xml(), wh_deeplist()) -> bt_card().
+-spec xml_to_record(bt_xml(), kz_deeplist()) -> bt_card().
 
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/credit-card").
@@ -203,11 +203,11 @@ xml_to_record(Xml, Base) ->
              ,card_type = get_xml_value([Base, "/card-type/text()"], Xml)
              ,created_at = get_xml_value([Base, "/created-at/text()"], Xml)
              ,updated_at = get_xml_value([Base, "/updated-at/text()"], Xml)
-             ,default = wh_util:is_true(get_xml_value([Base, "/default/text()"], Xml))
+             ,default = kz_util:is_true(get_xml_value([Base, "/default/text()"], Xml))
              ,expiration_date = get_xml_value([Base, "/expiration-date/text()"], Xml)
              ,expiration_month = get_xml_value([Base, "/expiration-month/text()"], Xml)
              ,expiration_year = get_xml_value([Base, "/expiration-year/text()"], Xml)
-             ,expired = wh_util:is_true(get_xml_value([Base, "/expired/text()"], Xml))
+             ,expired = kz_util:is_true(get_xml_value([Base, "/expired/text()"], Xml))
              ,customer_location = get_xml_value([Base, "/customer-location/text()"], Xml)
              ,last_four = get_xml_value([Base, "/last-4/text()"], Xml)
              ,customer_id = get_xml_value([Base, "/customer-id/text()"], Xml)
@@ -221,8 +221,8 @@ xml_to_record(Xml, Base) ->
 %% Convert the given record to XML
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml(bt_card()) -> wh_proplist() | bt_xml().
--spec record_to_xml(bt_card(), boolean()) -> wh_proplist() | bt_xml().
+-spec record_to_xml(bt_card()) -> kz_proplist() | bt_xml().
+-spec record_to_xml(bt_card(), boolean()) -> kz_proplist() | bt_xml().
 
 record_to_xml(Card) ->
     record_to_xml(Card, 'false').
@@ -302,18 +302,18 @@ record_to_xml(#bt_card{}=Card, ToString) ->
 json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->
     #bt_card{token = create_or_get_json_id(JObj)
-             ,cardholder_name = wh_json:get_binary_value(<<"cardholder_name">>, JObj)
-             ,expiration_date = wh_json:get_binary_value(<<"expiration_date">>, JObj)
-             ,expiration_month = wh_json:get_binary_value(<<"expiration_month">>, JObj)
-             ,expiration_year = wh_json:get_binary_value(<<"expiration_year">>, JObj)
-             ,customer_id = wh_json:get_binary_value(<<"customer_id">>, JObj)
-             ,number = wh_json:get_binary_value(<<"number">>, JObj)
-             ,cvv = wh_json:get_binary_value(<<"cvv">>, JObj)
-             ,billing_address_id = wh_json:get_binary_value(<<"billing_address_id">>, JObj)
-             ,billing_address = braintree_address:json_to_record(wh_json:get_value(<<"billing_address">>, JObj))
-             ,update_existing = wh_json:get_binary_value(<<"update_existing">>, JObj)
-             ,verify = wh_json:is_true(<<"verify">>, JObj, 'true')
-             ,make_default = wh_json:is_true(<<"make_default">>, JObj, 'true')
+             ,cardholder_name = kz_json:get_binary_value(<<"cardholder_name">>, JObj)
+             ,expiration_date = kz_json:get_binary_value(<<"expiration_date">>, JObj)
+             ,expiration_month = kz_json:get_binary_value(<<"expiration_month">>, JObj)
+             ,expiration_year = kz_json:get_binary_value(<<"expiration_year">>, JObj)
+             ,customer_id = kz_json:get_binary_value(<<"customer_id">>, JObj)
+             ,number = kz_json:get_binary_value(<<"number">>, JObj)
+             ,cvv = kz_json:get_binary_value(<<"cvv">>, JObj)
+             ,billing_address_id = kz_json:get_binary_value(<<"billing_address_id">>, JObj)
+             ,billing_address = braintree_address:json_to_record(kz_json:get_value(<<"billing_address">>, JObj))
+             ,update_existing = kz_json:get_binary_value(<<"update_existing">>, JObj)
+             ,verify = kz_json:is_true(<<"verify">>, JObj, 'true')
+             ,make_default = kz_json:is_true(<<"make_default">>, JObj, 'true')
             }.
 
 %%--------------------------------------------------------------------
@@ -322,7 +322,7 @@ json_to_record(JObj) ->
 %% Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_json(bt_card()) -> wh_json:object().
+-spec record_to_json(bt_card()) -> kz_json:object().
 record_to_json(#bt_card{}=Card) ->
     Props =[{<<"id">>, Card#bt_card.token}
             ,{<<"bin">>, Card#bt_card.bin}
@@ -343,7 +343,7 @@ record_to_json(#bt_card{}=Card) ->
             ,{<<"billing_address">>, braintree_address:record_to_json(Card#bt_card.billing_address)}
             ,{<<"billing_address_id">>, Card#bt_card.billing_address_id}
            ],
-    wh_json:from_list(props:filter_undefined(Props)).
+    kz_json:from_list(props:filter_undefined(Props)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -352,9 +352,9 @@ record_to_json(#bt_card{}=Card) ->
 %% a uuid to use during creation.
 %% @end
 %%--------------------------------------------------------------------
--spec create_or_get_json_id(wh_json:object()) -> api_binary().
+-spec create_or_get_json_id(kz_json:object()) -> api_binary().
 create_or_get_json_id(JObj) ->
-    case wh_json:get_value(<<"number">>, JObj) of
-        'undefined' -> wh_doc:id(JObj);
-         _ ->          wh_doc:id(JObj, wh_util:rand_hex_binary(16))
+    case kz_json:get_value(<<"number">>, JObj) of
+        'undefined' -> kz_doc:id(JObj);
+         _ ->          kz_doc:id(JObj, kz_util:rand_hex_binary(16))
     end.

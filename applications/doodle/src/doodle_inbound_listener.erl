@@ -142,7 +142,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'send_outbound', Payload}, State) ->
-    wapi_sms:publish_outbound(Payload),
+    kapi_sms:publish_outbound(Payload),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("inbound listener unhandled info: ~p", [_Info]),
@@ -174,7 +174,7 @@ terminate('shutdown', _State) ->
     lager:debug("inbound listener terminating");
 terminate(Reason, #state{connection=Connection}) ->
     lager:error("inbound listener unexpected termination : ~p", [Reason]),
-    wh_util:spawn(fun()->
+    kz_util:spawn(fun()->
                           timer:sleep(10000),
                           doodle_inbound_listener_sup:start_inbound_listener(Connection)
                   end).

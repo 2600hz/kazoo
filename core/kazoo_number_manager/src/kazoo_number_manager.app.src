@@ -11,9 +11,9 @@
                  , kazoo_documents
                  , kazoo_web
                  , kazoo_xml
-                 , whistle
-                 , whistle_services
-                 , whistle_transactions
+                 , kazoo
+                 , kazoo_services
+                 , kazoo_transactions
 
                  , lager
                  , cowlib

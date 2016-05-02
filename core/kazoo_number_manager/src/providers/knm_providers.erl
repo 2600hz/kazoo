@@ -63,7 +63,7 @@ provider_modules() ->
     ?DEFAULT_PROVIDER_MODULES.
 -else.
 provider_modules() ->
-    whapps_config:get(?KNM_CONFIG_CAT, <<"providers">>, ?DEFAULT_PROVIDER_MODULES).
+    kapps_config:get(?KNM_CONFIG_CAT, <<"providers">>, ?DEFAULT_PROVIDER_MODULES).
 -endif.
 
 exec(Number, Action) ->
@@ -84,7 +84,7 @@ exec(Num, Action, Providers) ->
 -spec apply_action(knm_number:knm_number(), exec_action(), ne_binary()) ->
                           {'true', any()} | 'false'.
 apply_action(Number, Action, Provider) ->
-    case wh_util:try_load_module(<<"knm_", Provider/binary>>) of
+    case kz_util:try_load_module(<<"knm_", Provider/binary>>) of
         'false' ->
             lager:debug("provider ~s is unknown, skipping", [Provider]),
             'false';

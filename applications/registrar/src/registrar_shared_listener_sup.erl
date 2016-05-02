@@ -43,7 +43,7 @@ start_link() ->
 
 -spec start_listeners() -> 'ok'.
 start_listeners() ->
-    start_listeners(whapps_config:get_integer(?CONFIG_CAT, <<"listeners">>, 1)).
+    start_listeners(kapps_config:get_integer(?CONFIG_CAT, <<"listeners">>, 1)).
 
 -spec start_listeners(integer()) -> 'ok'.
 start_listeners(Count) ->

@@ -26,7 +26,7 @@
 
 -record(state, {
           node :: atom()
-          ,options :: wh_proplist()
+          ,options :: kz_proplist()
          }).
 
 -define(BINDINGS(Node), [{'sms', [{'route_id', Node}
@@ -57,10 +57,10 @@
 %% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(atom()) -> startlink_ret().
--spec start_link(atom(), wh_proplist()) -> startlink_ret().
+-spec start_link(atom(), kz_proplist()) -> startlink_ret().
 start_link(Node) -> start_link(Node, []).
 start_link(Node, Options) ->
-    NodeBin = wh_util:to_binary(Node),
+    NodeBin = kz_util:to_binary(Node),
     gen_listener:start_link(?SERVER
                             ,[{'responders', ?RESPONDERS}
                               ,{'bindings', ?BINDINGS(NodeBin)}
@@ -134,7 +134,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'event', Props}, #state{node=Node}=State) ->
-    _ = wh_util:spawn(fun process_fs_event/2, [Node, Props]),
+    _ = kz_util:spawn(fun process_fs_event/2, [Node, Props]),
     {'noreply', State, 'hibernate'};
 handle_info({'EXIT', _, _}, State) ->
     {'noreply', State};
@@ -182,42 +182,42 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec handle_message_route(wh_json:object(), wh_proplist()) -> no_return().
+-spec handle_message_route(kz_json:object(), kz_proplist()) -> no_return().
 handle_message_route(JObj, Props) ->
-    _ = wh_util:put_callid(JObj),
+    _ = kz_util:put_callid(JObj),
     Node = props:get_value('node', Props),
-    Endpoints = wh_json:get_ne_value(<<"Endpoints">>, JObj, []),
-    case wapi_sms:message_v(JObj) of
+    Endpoints = kz_json:get_ne_value(<<"Endpoints">>, JObj, []),
+    case kapi_sms:message_v(JObj) of
         'false' -> send_error(Node, JObj, <<"sms failed to execute as JObj did not validate">>);
         'true' when Endpoints =:= [] -> send_error(Node, JObj, <<"sms request had no endpoints">>);
         'true' -> send_message(JObj, Props, Endpoints)
     end.
 
--spec send_message(wh_json:object(), wh_proplist(), wh_json:objects()) -> no_return().
+-spec send_message(kz_json:object(), kz_proplist(), kz_json:objects()) -> no_return().
 send_message(JObj, Props, [Endpoint]) ->
     Node = props:get_value('node', Props),
     case format_endpoint(Endpoint, Props, JObj) of
         {'error', E} ->
             send_error(Node, JObj, E);
         {'ok', EndpointProps} ->
-            lager:debug("sending sms message ~s to freeswitch", [wh_json:get_value(<<"Call-ID">>, JObj)]),
+            lager:debug("sending sms message ~s to freeswitch", [kz_json:get_value(<<"Call-ID">>, JObj)]),
             EvtProps = lists:append(build_message_headers(JObj, Endpoint), EndpointProps),
             freeswitch:sendevent_custom(Node, 'SMS::SEND_MESSAGE', EvtProps)
     end.
 
--spec build_message_headers(wh_json:object(), wh_json:object()) -> wh_proplist().
+-spec build_message_headers(kz_json:object(), kz_json:object()) -> kz_proplist().
 build_message_headers(JObj, Endpoint) ->
-    Body = wh_json:get_value(<<"Body">>, JObj),
-    MessageId = wh_json:get_value(<<"Message-ID">>, JObj),
-    MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
-    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    CIDNumber = wh_json:get_value(<<"Caller-ID-Number">>, JObj),
-    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
-    ToRealm = wh_json:get_value(<<"To-Realm">>, Endpoint),
+    Body = kz_json:get_value(<<"Body">>, JObj),
+    MessageId = kz_json:get_value(<<"Message-ID">>, JObj),
+    MsgId = kz_json:get_value(<<"Msg-ID">>, JObj),
+    ServerId = kz_json:get_value(<<"Server-ID">>, JObj),
+    CallId = kz_json:get_value(<<"Call-ID">>, JObj),
+    CIDNumber = kz_json:get_value(<<"Caller-ID-Number">>, JObj),
+    CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+    ToRealm = kz_json:get_value(<<"To-Realm">>, Endpoint),
 
-    FromURI = get_uri(wh_json:get_value(<<"From-URI">>, CCVs)),
-    Realm = wh_json:get_value(<<"Account-Realm">>, CCVs),
+    FromURI = get_uri(kz_json:get_value(<<"From-URI">>, CCVs)),
+    Realm = kz_json:get_value(<<"Account-Realm">>, CCVs),
 
     FromFull = case {ToRealm, FromURI} of
                    {'undefined', 'undefined'} ->
@@ -232,23 +232,23 @@ build_message_headers(JObj, Endpoint) ->
                 ,{"proto", "sip"}
                 ,{"blocking", "true"}
                 ,{"dest_proto", "sip"}
-                ,{"from", wh_util:to_list(CIDNumber)}
-                ,{"from_full", wh_util:to_list(FromFull)}
-                ,{"content-length", wh_util:to_list(size(Body))}
+                ,{"from", kz_util:to_list(CIDNumber)}
+                ,{"from_full", kz_util:to_list(FromFull)}
+                ,{"content-length", kz_util:to_list(size(Body))}
                 ,{"type", "text/plain"}
                 ,{"body", Body}
-                ,{"Call-ID", wh_util:to_list(CallId)}
-                ,{"Unique-ID", wh_util:to_list(CallId)}
-                ,{"Server-ID", wh_util:to_list(ServerId)}
-                ,{"Message-ID", wh_util:to_list(MessageId)}
-                ,{"Msg-ID", wh_util:to_list(MsgId)}
-                ,{"sip_h_X-Kazoo-Bounce", wh_util:to_list(wh_util:rand_hex_binary(12))}
+                ,{"Call-ID", kz_util:to_list(CallId)}
+                ,{"Unique-ID", kz_util:to_list(CallId)}
+                ,{"Server-ID", kz_util:to_list(ServerId)}
+                ,{"Message-ID", kz_util:to_list(MessageId)}
+                ,{"Msg-ID", kz_util:to_list(MsgId)}
+                ,{"sip_h_X-Kazoo-Bounce", kz_util:to_list(kz_util:rand_hex_binary(12))}
                ]),
-    wh_json:foldl(fun headers_foldl/3, Header, CCVs).
+    kz_json:foldl(fun headers_foldl/3, Header, CCVs).
 
--spec headers_foldl(wh_json:key(), wh_json:json_term(), wh_proplist()) -> wh_proplist().
+-spec headers_foldl(kz_json:key(), kz_json:json_term(), kz_proplist()) -> kz_proplist().
 headers_foldl(K, V, Acc) ->
-    [{wh_util:to_list(?GET_CCV(K)), wh_util:to_list(V)} | Acc].
+    [{kz_util:to_list(?GET_CCV(K)), kz_util:to_list(V)} | Acc].
 
 -spec get_uri(api_binary()) -> api_binary().
 get_uri('undefined') -> 'undefined';
@@ -256,47 +256,47 @@ get_uri(<<"<sip", _/binary>>=Uri) -> Uri;
 get_uri(<<"sip", _/binary>>=Uri) -> Uri;
 get_uri(Uri) -> <<"<sip:", Uri/binary, ">">>.
 
--spec send_error(atom(), wh_json:object(), any()) -> any().
+-spec send_error(atom(), kz_json:object(), any()) -> any().
 send_error(Node, JObj, Err) ->
-    ServerId =  wh_json:get_value(<<"Server-ID">>, JObj),
+    ServerId =  kz_json:get_value(<<"Server-ID">>, JObj),
     Payload =
-        [{<<"Error-Description">>, wh_util:to_binary(Err)}
+        [{<<"Error-Description">>, kz_util:to_binary(Err)}
          ,{<<"Status">>, <<"Error">>}
          ,{<<"Delivery-Result-Code">>, <<"503">>}
-         ,{<<"Delivery-Result-Text">>, wh_util:to_binary(Err)}
+         ,{<<"Delivery-Result-Text">>, kz_util:to_binary(Err)}
          ,{<<"Delivery-Failure">>, 'true'}
-         ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-         ,{<<"Message-ID">>, wh_json:get_value(<<"Message-ID">>, JObj)}
-         ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-         ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
-         ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj)}
-             | wh_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
+         ,{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, JObj)}
+         ,{<<"Message-ID">>, kz_json:get_value(<<"Message-ID">>, JObj)}
+         ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+         ,{<<"Switch-Nodename">>, kz_util:to_binary(Node)}
+         ,{<<"Custom-Channel-Vars">>, kz_json:get_value(<<"Custom-Channel-Vars">>, JObj)}
+             | kz_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
         ],
-    wh_amqp_worker:cast(Payload, fun(A) -> wapi_sms:publish_targeted_delivery(ServerId, A) end).
+    kz_amqp_worker:cast(Payload, fun(A) -> kapi_sms:publish_targeted_delivery(ServerId, A) end).
 
--spec format_endpoint(wh_json:object(), wh_proplist(), wh_json:object()) ->
-                             {'ok', wh_proplist()} |
+-spec format_endpoint(kz_json:object(), kz_proplist(), kz_json:object()) ->
+                             {'ok', kz_proplist()} |
                              {'error', ne_binary()}.
--spec format_endpoint(wh_json:object(), wh_proplist(), wh_json:object(), ne_binary()) ->
-                             {'ok', wh_proplist()} |
+-spec format_endpoint(kz_json:object(), kz_proplist(), kz_json:object(), ne_binary()) ->
+                             {'ok', kz_proplist()} |
                              {'error', ne_binary()}.
 format_endpoint(Endpoint, Props, JObj) ->
     format_endpoint(
       Endpoint
       ,Props
       ,JObj
-      ,wh_json:get_value(<<"Invite-Format">>, Endpoint)
+      ,kz_json:get_value(<<"Invite-Format">>, Endpoint)
      ).
 
 format_endpoint(Endpoint, Props, JObj, <<"route">>) ->
-    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
-    case wh_json:is_true(<<"Bounce-Back">>, CCVs, 'false') of
+    CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+    case kz_json:is_true(<<"Bounce-Back">>, CCVs, 'false') of
         'true' -> format_bounce_endpoint(Endpoint, Props, JObj);
         'false' -> format_route_endpoint(Endpoint, Props, JObj)
     end;
 format_endpoint(Endpoint, _Props, _JObj, <<"username">>) ->
-    Realm = wh_json:get_value(<<"To-Realm">>, Endpoint),
-    Username = wh_json:get_value(<<"To-Username">>, Endpoint),
+    Realm = kz_json:get_value(<<"To-Realm">>, Endpoint),
+    Username = kz_json:get_value(<<"To-Username">>, Endpoint),
     ToURI = <<Username/binary, "@", Realm/binary>>,
     case ecallmgr_registrar:lookup_original_contact(Realm, Username) of
         {'ok', Contact} ->
@@ -305,35 +305,35 @@ format_endpoint(Endpoint, _Props, _JObj, <<"username">>) ->
                   ,port=ToPort
                  }=_ToContact] = kzsip_uri:uris(Contact),
             {'ok', props:filter_empty(
-                     [{"to", wh_util:to_list(ToURI)}
-                      ,{"to_sip_ip", wh_util:to_list(ToIP)}
-                      ,{"to_sip_port", wh_util:to_list(ToPort)}
+                     [{"to", kz_util:to_list(ToURI)}
+                      ,{"to_sip_ip", kz_util:to_list(ToIP)}
+                      ,{"to_sip_port", kz_util:to_list(ToPort)}
                      ])};
         {'error', _Err}=E ->
             lager:debug("failed to find original contact for ~s@~s: ~p", [Username, Realm, _Err]),
             E
     end.
 
--spec format_route_endpoint(wh_json:object(), wh_proplist(), wh_json:object()) ->
-                                   {'ok', wh_proplist()} |
+-spec format_route_endpoint(kz_json:object(), kz_proplist(), kz_json:object()) ->
+                                   {'ok', kz_proplist()} |
                                    {'error', ne_binary()}.
 format_route_endpoint(Endpoint, _Props, _JObj) ->
-    ToURI = wh_json:get_value(<<"Route">>, Endpoint),
+    ToURI = kz_json:get_value(<<"Route">>, Endpoint),
     [#uri{user=_ToUser
           ,domain=ToIP
           ,port=ToPort
          }=_ToContact] = kzsip_uri:uris(ToURI),
     {'ok', props:filter_empty(
-             [{"to", wh_util:to_list(ToURI)}
-              ,{"to_sip_ip", wh_util:to_list(ToIP)}
-              ,{"to_sip_port", wh_util:to_list(ToPort)}
+             [{"to", kz_util:to_list(ToURI)}
+              ,{"to_sip_ip", kz_util:to_list(ToIP)}
+              ,{"to_sip_port", kz_util:to_list(ToPort)}
              ])}.
 
--spec format_bounce_endpoint(wh_json:object(), wh_proplist(), wh_json:object()) -> {'ok', wh_proplist()} | {'error', ne_binary()}.
+-spec format_bounce_endpoint(kz_json:object(), kz_proplist(), kz_json:object()) -> {'ok', kz_proplist()} | {'error', ne_binary()}.
 format_bounce_endpoint(Endpoint, Props, JObj) ->
-    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
-    ToDID = wh_json:get_value(<<"To-DID">>, Endpoint),
-    ToRealm = wh_json:get_value(<<"Bounce-Realm">>, CCVs),
+    CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+    ToDID = kz_json:get_value(<<"To-DID">>, Endpoint),
+    ToRealm = kz_json:get_value(<<"Bounce-Realm">>, CCVs),
     To = <<ToDID/binary, "@", ToRealm/binary>>,
     Node = props:get_value('node', Props),
     ToURI = ecallmgr_fs_node:sip_url(Node),
@@ -342,12 +342,12 @@ format_bounce_endpoint(Endpoint, Props, JObj) ->
           ,port=ToPort
          }=_ToContact] = kzsip_uri:uris(ToURI),
     {'ok', props:filter_empty(
-      [{"to", wh_util:to_list(To)}
-       ,{"to_sip_ip", wh_util:to_list(ToIP)}
-       ,{"to_sip_port", wh_util:to_list(ToPort)}
+      [{"to", kz_util:to_list(To)}
+       ,{"to_sip_ip", kz_util:to_list(ToIP)}
+       ,{"to_sip_port", kz_util:to_list(ToPort)}
       ])}.
 
--spec process_fs_event(atom(), wh_proplist()) -> any().
+-spec process_fs_event(atom(), kz_proplist()) -> any().
 process_fs_event(Node, Props) ->
     process_fs_event(
       props:get_value(<<"Event-Name">>, Props),
@@ -355,7 +355,7 @@ process_fs_event(Node, Props) ->
       Node,
       lists:usort(Props)).
 
--spec process_fs_event(ne_binary(), ne_binary(), atom(), wh_proplist()) -> any().
+-spec process_fs_event(ne_binary(), ne_binary(), atom(), kz_proplist()) -> any().
 process_fs_event(<<"CUSTOM">>, <<"KZ::DELIVERY_REPORT">>, Node, Props) ->
     process_fs_event(<<"CUSTOM">>, <<"SMS::DELIVERY_REPORT">>, Node, Props);
 process_fs_event(<<"CUSTOM">>, <<"SMS::DELIVERY_REPORT">>, Node, Props) ->
@@ -364,18 +364,18 @@ process_fs_event(<<"CUSTOM">>, <<"SMS::DELIVERY_REPORT">>, Node, Props) ->
     BaseProps = props:filter_empty(props:filter_undefined(
         [{<<"Call-ID">>, CallId}
          ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, Props)}
-         ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
+         ,{<<"Switch-Nodename">>, kz_util:to_binary(Node)}
          ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
          ,{<<"Delivery-Result-Code">>, props:get_value(<<"Delivery-Result-Code">>, Props)}
          ,{<<"Delivery-Failure">>, props:get_value(<<"Delivery-Failure">>, Props)}
-         ,{<<"Custom-Channel-Vars">>, wh_json:from_list( get_ccvs(Props)) }
+         ,{<<"Custom-Channel-Vars">>, kz_json:from_list( get_ccvs(Props)) }
          ,{<<"Msg-ID">>, props:get_value(<<"Msg-ID">>, Props)}
          ,{<<"Status">>, props:get_value(<<"Status">>, Props)}
-             | wh_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
         ])),
     lager:debug("received delivery event for message ~s",[CallId]),
     EventProps = get_event_uris(Props, BaseProps),
-    wh_amqp_worker:cast(EventProps, fun(A) -> wapi_sms:publish_targeted_delivery(ServerId, A) end);
+    kz_amqp_worker:cast(EventProps, fun(A) -> kapi_sms:publish_targeted_delivery(ServerId, A) end);
 
 process_fs_event(_EventName, _SubClass, _Node, _Props) ->
     lager:debug("Event ~s/~s not processed on node ~s",[_EventName, _SubClass, _Node]).
@@ -387,7 +387,7 @@ get_event_uris(Props, EventProps) ->
                         lists:append(Acc, get_event_uris_props(T, Props))
                 end, EventProps, Uris).
 
--spec get_event_uris_props(tuple() | ne_binary(), wh_proplist() | ne_binary()) -> wh_proplist().
+-spec get_event_uris_props(tuple() | ne_binary(), kz_proplist() | ne_binary()) -> kz_proplist().
 get_event_uris_props({K, F}, Props) ->
     get_event_uris_props( get_uri( props:get_value(F, Props) ), K);
 get_event_uris_props('undefined', _) -> [];
@@ -401,6 +401,6 @@ get_event_uris_props(Uri, Base) ->
 is_ccv({?GET_CCV(_K), _V}) -> 'true';
 is_ccv(_) -> 'false'.
 
--spec get_ccvs(wh_proplist()) -> wh_proplist().
+-spec get_ccvs(kz_proplist()) -> kz_proplist().
 get_ccvs(Props) ->
     [ {K, V} || {?GET_CCV(K), V} <- lists:filter(fun is_ccv/1, Props)].

@@ -7,8 +7,8 @@
   {applications, [ kernel
                  , stdlib
 
-                 , whistle
-                 , whistle_amqp
+                 , kazoo
+                 , kazoo_amqp
                  , kazoo_data
                  , kazoo_web
 

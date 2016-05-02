@@ -30,11 +30,11 @@
 %% @end
 %%--------------------------------------------------------------------
 
--spec get_results(ne_binary(), ne_binary(), wh_proplist()) ->
-                         {'ok', wh_json:objects()} |
+-spec get_results(ne_binary(), ne_binary(), kz_proplist()) ->
+                         {'ok', kz_json:objects()} |
                          {'error', atom()}.
--spec get_results(ne_binary(), ne_binary(), wh_proplist(), non_neg_integer()) ->
-                         {'ok', wh_json:objects()} |
+-spec get_results(ne_binary(), ne_binary(), kz_proplist(), non_neg_integer()) ->
+                         {'ok', kz_json:objects()} |
                          {'error', atom()}.
 get_results(Account, View, ViewOptions) ->
     get_results(Account, View, ViewOptions, 3).
@@ -43,18 +43,18 @@ get_results(_Account, _View, _ViewOptions, Retry) when Retry =< 0 ->
     {'error', 'retries_exceeded'};
 get_results(Account, View, ViewOptions, Retry) ->
     AccountMODb = get_modb(Account, ViewOptions),
-    EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
+    EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     case kz_datamgr:get_results(EncodedMODb, View, ViewOptions) of
         {'error', 'not_found'} ->
             get_results_not_found(Account, View, ViewOptions, Retry);
         Results -> Results
     end.
 
--spec get_results_not_found(ne_binary(), ne_binary(), wh_proplist(), integer()) ->
-                                   {'ok', wh_json:objects()}.
+-spec get_results_not_found(ne_binary(), ne_binary(), kz_proplist(), integer()) ->
+                                   {'ok', kz_json:objects()}.
 get_results_not_found(Account, View, ViewOptions, Retry) ->
     AccountMODb = get_modb(Account, ViewOptions),
-    EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
+    EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     case kz_datamgr:db_exists(EncodedMODb, View) of
         'true' ->
             refresh_views(AccountMODb),
@@ -63,8 +63,8 @@ get_results_not_found(Account, View, ViewOptions, Retry) ->
             get_results_missing_db(Account, View, ViewOptions, Retry)
     end.
 
--spec get_results_missing_db(ne_binary(), ne_binary(), wh_proplist(), integer()) ->
-                                    {'ok', wh_json:objects()}.
+-spec get_results_missing_db(ne_binary(), ne_binary(), kz_proplist(), integer()) ->
+                                    {'ok', kz_json:objects()}.
 get_results_missing_db(Account, View, ViewOptions, Retry) ->
     AccountMODb = get_modb(Account, ViewOptions),
     case maybe_create(AccountMODb) of
@@ -79,19 +79,19 @@ get_results_missing_db(Account, View, ViewOptions, Retry) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec open_doc(ne_binary(), kazoo_data:docid()) ->
-                      {'ok', wh_json:object()} |
+                      {'ok', kz_json:object()} |
                       {'error', atom()}.
--spec open_doc(ne_binary(), kazoo_data:docid(), integer() | wh_proplist()) ->
-                      {'ok', wh_json:object()} |
+-spec open_doc(ne_binary(), kazoo_data:docid(), integer() | kz_proplist()) ->
+                      {'ok', kz_json:object()} |
                       {'error', atom()}.
--spec open_doc(ne_binary(), kazoo_data:docid(), wh_year() | ne_binary(), wh_month() | ne_binary()) ->
-                      {'ok', wh_json:object()} |
+-spec open_doc(ne_binary(), kazoo_data:docid(), kz_year() | ne_binary(), kz_month() | ne_binary()) ->
+                      {'ok', kz_json:object()} |
                       {'error', atom()}.
 open_doc(Account, {_, ?MATCH_MODB_PREFIX(Year,Month,_)} = DocId) ->
-    AccountMODb = get_modb(Account, wh_util:to_integer(Year), wh_util:to_integer(Month)),
+    AccountMODb = get_modb(Account, kz_util:to_integer(Year), kz_util:to_integer(Month)),
     couch_open(AccountMODb, DocId);
 open_doc(Account, ?MATCH_MODB_PREFIX(Year,Month,_) = DocId) ->
-    AccountMODb = get_modb(Account, wh_util:to_integer(Year), wh_util:to_integer(Month)),
+    AccountMODb = get_modb(Account, kz_util:to_integer(Year), kz_util:to_integer(Month)),
     couch_open(AccountMODb, DocId);
 open_doc(Account, DocId) ->
     AccountMODb = get_modb(Account),
@@ -111,16 +111,16 @@ open_doc(Account, DocId, Year, Month) ->
     couch_open(AccountMODb, DocId).
 
 -spec couch_open(ne_binary(), kazoo_data:docid()) ->
-                        {'ok', wh_json:object()} |
+                        {'ok', kz_json:object()} |
                         {'error', atom()}.
 couch_open(AccountMODb, DocId) ->
     couch_open(AccountMODb, DocId, []).
 
--spec couch_open(ne_binary(), kazoo_data:docid(), wh_proplist()) ->
-                        {'ok', wh_json:object()} |
+-spec couch_open(ne_binary(), kazoo_data:docid(), kz_proplist()) ->
+                        {'ok', kz_json:object()} |
                         {'error', atom()}.
 couch_open(AccountMODb, DocId, Options) ->
-    EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
+    EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     case kz_datamgr:open_doc(EncodedMODb, DocId, Options) of
         {'ok', _}=Ok -> Ok;
         {'error', _E}=Error ->
@@ -134,14 +134,14 @@ couch_open(AccountMODb, DocId, Options) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec save_doc(ne_binary(), wh_json:object()) ->
-                      {'ok', wh_json:object()} |
+-spec save_doc(ne_binary(), kz_json:object()) ->
+                      {'ok', kz_json:object()} |
                       {'error', atom()}.
--spec save_doc(ne_binary(), wh_json:object(), integer()) ->
-                      {'ok', wh_json:object()} |
+-spec save_doc(ne_binary(), kz_json:object(), integer()) ->
+                      {'ok', kz_json:object()} |
                       {'error', atom()}.
--spec save_doc(ne_binary(), wh_json:object(), integer(), integer()) ->
-                      {'ok', wh_json:object()} |
+-spec save_doc(ne_binary(), kz_json:object(), integer(), integer()) ->
+                      {'ok', kz_json:object()} |
                       {'error', atom()}.
 save_doc(Account, Doc) ->
     AccountMODb = get_modb(Account),
@@ -155,14 +155,14 @@ save_doc(Account, Doc, Year, Month) ->
     AccountMODb = get_modb(Account, Year, Month),
     couch_save(AccountMODb, Doc, 3).
 
--spec couch_save(ne_binary(), wh_json:object(), integer()) ->
-                        {'ok', wh_json:object()} |
+-spec couch_save(ne_binary(), kz_json:object(), integer()) ->
+                        {'ok', kz_json:object()} |
                         {'error', atom()}.
 couch_save(AccountMODb, _Doc, 0) ->
     lager:error("failed to save doc in ~p", AccountMODb),
     {'error', 'doc_save_failed'};
 couch_save(AccountMODb, Doc, Retry) ->
-     EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
+     EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     case kz_datamgr:save_doc(EncodedMODb, Doc) of
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
@@ -181,9 +181,9 @@ couch_save(AccountMODb, Doc, Retry) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_modb(ne_binary()) -> ne_binary().
--spec get_modb(ne_binary(), wh_proplist() | gregorian_seconds() | wh_now()) ->
+-spec get_modb(ne_binary(), kz_proplist() | gregorian_seconds() | kz_now()) ->
                       ne_binary().
--spec get_modb(ne_binary(), wh_year() | ne_binary(), wh_month() | ne_binary()) ->
+-spec get_modb(ne_binary(), kz_year() | ne_binary(), kz_month() | ne_binary()) ->
                       ne_binary().
 get_modb(?MATCH_MODB_SUFFIX_RAW(_,_,_) = AccountMODb) ->
     AccountMODb;
@@ -205,12 +205,12 @@ get_modb(Account, Props) when is_list(Props) ->
         {Month, Year} -> get_modb(Account, Year, Month)
     end;
 get_modb(Account, Timestamp) ->
-    wh_util:format_account_mod_id(Account, Timestamp).
+    kz_util:format_account_mod_id(Account, Timestamp).
 
 get_modb(?MATCH_MODB_SUFFIX_RAW(_,_,_) = AccountMODb, _Year, _Month) ->
     AccountMODb;
 get_modb(Account, Year, Month) ->
-    wh_util:format_account_mod_id(Account, Year, Month).
+    kz_util:format_account_mod_id(Account, Year, Month).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -221,7 +221,7 @@ get_modb(Account, Year, Month) ->
 -spec maybe_create(ne_binary()) -> boolean().
 maybe_create(?MATCH_MODB_SUFFIX_RAW(_,Year,Month) = AccountMODb) ->
     {Y, M, _} = erlang:date(),
-    case {wh_util:to_binary(Y), wh_util:pad_month(M)} of
+    case {kz_util:to_binary(Y), kz_util:pad_month(M)} of
         {Year, Month} ->
             create(AccountMODb),
             'true';
@@ -234,14 +234,14 @@ maybe_create(<<"account%2F", AccountId/binary>>) ->
 
 -spec create(ne_binary()) -> 'ok'.
 create(AccountMODb) ->
-    EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
+    EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     do_create(AccountMODb, kz_datamgr:db_exists_all(EncodedMODb)).
 
 -spec do_create(ne_binary(), boolean()) -> 'ok'.
 do_create(_AccountMODb, 'true') -> 'ok';
 do_create(AccountMODb, 'false') ->
     lager:debug("create modb ~p", [AccountMODb]),
-    EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
+    EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     _ = kz_datamgr:db_create(EncodedMODb),
     _ = refresh_views(EncodedMODb),
     create_routines(AccountMODb).
@@ -249,12 +249,12 @@ do_create(AccountMODb, 'false') ->
 -spec refresh_views(ne_binary()) -> 'ok'.
 refresh_views(AccountMODb) ->
     lager:debug("init modb ~p", [AccountMODb]),
-    EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
+    EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     Views = get_modb_views(),
-    _ = whapps_util:update_views(EncodedMODb, Views, 'true'),
+    _ = kapps_util:update_views(EncodedMODb, Views, 'true'),
     'ok'.
 
--spec get_modb_views() -> wh_proplist().
+-spec get_modb_views() -> kz_proplist().
 get_modb_views() ->
     case get('account_modb_views') of
         'undefined' ->
@@ -264,9 +264,9 @@ get_modb_views() ->
         Views -> Views
     end.
 
--spec fetch_modb_views() -> wh_proplist().
+-spec fetch_modb_views() -> kz_proplist().
 fetch_modb_views() ->
-    whapps_util:get_views_json(?MODULE, "views").
+    kapps_util:get_views_json(?MODULE, "views").
 
 %%--------------------------------------------------------------------
 %% @private
@@ -276,23 +276,23 @@ fetch_modb_views() ->
 %%--------------------------------------------------------------------
 -spec create_routines(ne_binary()) -> 'ok'.
 create_routines(AccountMODb) ->
-    Routines = whapps_config:get(?CONFIG_CAT, <<"routines">>, []),
+    Routines = kapps_config:get(?CONFIG_CAT, <<"routines">>, []),
     _ = [run_routine(AccountMODb, Routine) || Routine <- Routines],
     'ok'.
 
 -spec run_routine(ne_binary(), ne_binary()) -> any().
 run_routine(AccountMODb, Routine) ->
-    Module = wh_util:to_atom(Routine),
+    Module = kz_util:to_atom(Routine),
     _ = Module:modb(AccountMODb).
 
 -spec add_routine(ne_binary() | atom()) -> 'ok'.
 add_routine(Module) ->
-    Routine = wh_util:to_binary(Module),
-    Routines = whapps_config:get(?CONFIG_CAT, <<"routines">>, []),
+    Routine = kz_util:to_binary(Module),
+    Routines = kapps_config:get(?CONFIG_CAT, <<"routines">>, []),
     case lists:member(Routine, Routines) of
         'true' -> 'ok';
         'false' ->
-            whapps_config:set_default(?CONFIG_CAT, <<"routines">>, [Routine | Routines]),
+            kapps_config:set_default(?CONFIG_CAT, <<"routines">>, [Routine | Routines]),
             'ok'
     end.
 
@@ -316,14 +316,14 @@ maybe_archive_modb(AccountMODb) ->
             lager:info("account modb ~s still current enough to keep", [AccountMODb])
     end.
 
--spec should_archive(ne_binary(), wh_year(), wh_month()) -> boolean().
+-spec should_archive(ne_binary(), kz_year(), kz_month()) -> boolean().
 should_archive(AccountMODb, Year, Month) ->
     case kazoo_modb_util:split_account_mod(AccountMODb) of
         {_AccountId, Year, Month} -> 'false';
         {_AccountId, ModbYear, ModbMonth} ->
             Months = (Year * 12) + Month,
             ModbMonths = (ModbYear * 12) + ModbMonth,
-            (Months - ModbMonths) > whapps_config:get_integer(?CONFIG_CAT, <<"active_modbs">>, 6)
+            (Months - ModbMonths) > kapps_config:get_integer(?CONFIG_CAT, <<"active_modbs">>, 6)
     end.
 
 %%--------------------------------------------------------------------
@@ -331,13 +331,13 @@ should_archive(AccountMODb, Year, Month) ->
 %% Delete an modb if it is no longer associated with its account.
 %% (That is: orphaned).
 %% AccountMODb must be 'encoded' otherwise kz_datamgr:db_delete/1 will fail.
-%% AccountIds should be whapps_util:get_all_accounts('raw').
+%% AccountIds should be kapps_util:get_all_accounts('raw').
 %% Returns whether AccountMODb has been deleted.
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_delete(ne_binary(), [ne_binary()]) -> boolean().
 maybe_delete(AccountMODb, AccountIds) ->
-    AccountId = wh_util:format_account_id(AccountMODb, 'raw'),
+    AccountId = kz_util:format_account_id(AccountMODb, 'raw'),
     IsOrphaned = not lists:member(AccountId, AccountIds),
     delete_if_orphaned(AccountMODb, IsOrphaned).
 
@@ -368,7 +368,7 @@ get_range(Type, AccountId, From, To) ->
         kz_datamgr:db_exists(MODb, Type)
     ].
 
--type year_month_tuple() :: {wh_year(), wh_month()}.
+-type year_month_tuple() :: {kz_year(), kz_month()}.
 
 %% @public
 -spec get_year_month_sequence(ne_binary(), year_month_tuple(), year_month_tuple()) ->
@@ -377,7 +377,7 @@ get_year_month_sequence(Account, From, To) ->
     get_year_month_sequence(Account, From, To, []).
 
 %% @public
--spec get_year_month_sequence(ne_binary(), year_month_tuple(), year_month_tuple(), wh_proplist()) ->
+-spec get_year_month_sequence(ne_binary(), year_month_tuple(), year_month_tuple(), kz_proplist()) ->
                                      ne_binaries().
 get_year_month_sequence(Account, Tuple, Tuple, Range) ->
     ToMODbId = fun ({Year,Month}, Acc) -> [get_modb(Account, Year, Month)|Acc] end,

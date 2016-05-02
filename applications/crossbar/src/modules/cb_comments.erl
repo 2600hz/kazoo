@@ -256,13 +256,13 @@ read(Context, Id) ->
 -spec create(cb_context:context()) -> cb_context:context().
 create(Context) ->
     Doc = cb_context:doc(Context),
-    Comments = wh_json:get_value(?COMMENTS, Doc, []),
+    Comments = kz_json:get_value(?COMMENTS, Doc, []),
 
     ReqData = cb_context:req_data(Context),
-    NewComments = wh_json:get_value(?COMMENTS, ReqData, []),
+    NewComments = kz_json:get_value(?COMMENTS, ReqData, []),
 
     Doc1 =
-        wh_json:set_value(
+        kz_json:set_value(
           ?COMMENTS
           ,lists:append(Comments, NewComments)
           ,Doc
@@ -277,7 +277,7 @@ create(Context) ->
 -spec update(cb_context:context(), ne_binary()) -> cb_context:context().
 update(Context, Id) ->
     Doc = cb_context:doc(Context),
-    Comments = wh_json:get_value(?COMMENTS, Doc, []),
+    Comments = kz_json:get_value(?COMMENTS, Doc, []),
     Number = id_to_number(Id),
 
     Comment = cb_context:req_data(Context),
@@ -285,7 +285,7 @@ update(Context, Id) ->
     Head1 = lists:delete(lists:last(Head), Head),
 
     Doc1 =
-        wh_json:set_value(
+        kz_json:set_value(
           ?COMMENTS
           ,lists:append([Head1, [Comment], Tail])
           ,Doc
@@ -301,7 +301,7 @@ update(Context, Id) ->
 -spec remove(cb_context:context(), ne_binary()) -> cb_context:context().
 remove(Context) ->
     Doc =
-        wh_json:set_value(
+        kz_json:set_value(
           ?COMMENTS
           ,[]
           ,cb_context:doc(Context)
@@ -310,11 +310,11 @@ remove(Context) ->
 
 remove(Context, Id) ->
     Doc = cb_context:doc(Context),
-    Comments = wh_json:get_value(?COMMENTS, Doc, []),
+    Comments = kz_json:get_value(?COMMENTS, Doc, []),
     Number = id_to_number(Id),
     Comment = lists:nth(Number, Comments),
     Doc1 =
-        wh_json:set_value(
+        kz_json:set_value(
           ?COMMENTS
           ,lists:delete(Comment, Comments)
           ,Doc
@@ -345,7 +345,7 @@ check_comment_number(Context, Id) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             Doc = cb_context:doc(Context1),
-            Comments = wh_json:get_value(?COMMENTS, Doc, []),
+            Comments = kz_json:get_value(?COMMENTS, Doc, []),
             Number = id_to_number(Id),
             case erlang:length(Comments) of
                 Length when Length < Number ->
@@ -385,10 +385,10 @@ load_doc(Context, _Type, _) ->
 -spec only_return_comments(cb_context:context()) -> cb_context:context().
 only_return_comments(Context) ->
     Doc = cb_context:doc(Context),
-    Comments = wh_json:get_value(?COMMENTS, Doc, []),
+    Comments = kz_json:get_value(?COMMENTS, Doc, []),
     cb_context:set_resp_data(
       Context
-      ,wh_json:from_list([{?COMMENTS, Comments}])
+      ,kz_json:from_list([{?COMMENTS, Comments}])
      ).
 
 %%--------------------------------------------------------------------
@@ -400,7 +400,7 @@ only_return_comments(Context) ->
                                  cb_context:context().
 only_return_comment(Context, Id) ->
     Doc = cb_context:doc(Context),
-    Comments = wh_json:get_value(?COMMENTS, Doc, []),
+    Comments = kz_json:get_value(?COMMENTS, Doc, []),
     Number = id_to_number(Id),
     cb_context:set_resp_data(
       Context
@@ -413,7 +413,7 @@ only_return_comment(Context, Id) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec id_to_number(ne_binary()) -> pos_integer().
-id_to_number(Id) -> wh_util:to_integer(Id) + 1.
+id_to_number(Id) -> kz_util:to_integer(Id) + 1.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -432,6 +432,6 @@ send_port_comment_notification(Context, Id) ->
            ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
            ,{<<"Port-Request-ID">>, Id}
            ,{<<"Version">>, cb_context:api_version(Context)}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    wh_amqp_worker:cast(Req, fun wapi_notifications:publish_port_comment/1).
+    kz_amqp_worker:cast(Req, fun kapi_notifications:publish_port_comment/1).

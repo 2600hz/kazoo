@@ -16,12 +16,12 @@
 
 exec(Call) ->
     lager:info("milliwatt execute action echo", []),
-    whapps_call_command:answer(Call),
-    whapps_call_command:echo(Call),
+    kapps_call_command:answer(Call),
+    kapps_call_command:echo(Call),
     timer:sleep(get_duration()),
-    whapps_call_command:hangup(Call).
+    kapps_call_command:hangup(Call).
 
 -spec get_duration() -> integer().
 get_duration() ->
-    JObj = whapps_config:get_non_empty(?CONFIG_CAT, <<"echo">>),
-    wh_json:get_integer_value(<<"duration">>, JObj, ?DURATION).
+    JObj = kapps_config:get_non_empty(?CONFIG_CAT, <<"echo">>),
+    kz_json:get_integer_value(<<"duration">>, JObj, ?DURATION).

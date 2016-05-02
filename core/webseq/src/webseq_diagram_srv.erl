@@ -65,9 +65,9 @@ trunc(Srv) -> gen_server:cast(Srv, 'trunc').
 -spec rotate(server_ref()) -> 'ok'.
 rotate(Srv) -> gen_server:cast(Srv, 'rotate').
 
--spec process_pid(wh_json:object()) -> api_binary().
+-spec process_pid(kz_json:object()) -> api_binary().
 process_pid(P) ->
-    ProcId = wh_json:get_value(<<"Process-ID">>, P),
+    ProcId = kz_json:get_value(<<"Process-ID">>, P),
     case re:run(ProcId, <<".*(\<.*\>)">>, [{'capture', [1], 'binary'}]) of
         {'match', [M]} -> M;
         {'match', M} -> iolist_to_binary(M);
@@ -80,9 +80,9 @@ reg_who(Srv, P, W) -> gen_server:cast(Srv, {'reg_who', P, W}).
 -spec who(server_ref(), ne_binary() | pid()) -> ne_binary().
 who(Srv, P) ->
     case catch gen_server:call(Srv, {'who', P}) of
-        {'EXIT', _} when is_pid(P) -> wh_util:to_binary(pid_to_list(P));
+        {'EXIT', _} when is_pid(P) -> kz_util:to_binary(pid_to_list(P));
         {'EXIT', _} -> P;
-        'undefined' when is_pid(P) -> wh_util:to_binary(pid_to_list(P));
+        'undefined' when is_pid(P) -> kz_util:to_binary(pid_to_list(P));
         'undefined' -> P;
         W -> W
     end.
@@ -99,7 +99,7 @@ init([Type]) ->
 init({'file', <<_/binary>>=Filename}) ->
     init({'file', Filename, Filename});
 init({'file', Name, PreFilename}=Type) ->
-    wh_util:put_callid(Name),
+    kz_util:put_callid(Name),
 
     Filename = create_filename(PreFilename),
 
@@ -119,9 +119,9 @@ init({'file', Name, PreFilename}=Type) ->
             {'stop', E}
     end;
 init({'db', Database}) ->
-    init({'db', wh_util:rand_hex_binary(4), Database});
+    init({'db', kz_util:rand_hex_binary(4), Database});
 init({'db', Name, Database}=Type) ->
-    wh_util:put_callid(Name),
+    kz_util:put_callid(Name),
 
     case kz_datamgr:db_exists(Database) of
         'true' ->
@@ -138,7 +138,7 @@ init({'db', Name, Database}=Type) ->
 handle_call('stop', _, State) ->
     {'stop', 'normal', 'ok', State};
 handle_call({'who', P}, _, #state{who_registry=Who}=State) when is_pid(P) ->
-    PBin = wh_util:to_binary(pid_to_list(P)),
+    PBin = kz_util:to_binary(pid_to_list(P)),
     case dict:find(PBin, Who) of
         {'ok', V} -> {'reply', V, State};
         'error' -> {'reply', P, State}
@@ -181,7 +181,7 @@ handle_cast('rotate', #state{type={'db', Name, Database}}=State) ->
     {'noreply', State};
 
 handle_cast({'reg_who', P, W}, #state{who_registry=Who}=State) when is_pid(P) ->
-    PBin = wh_util:to_binary(pid_to_list(P)),
+    PBin = kz_util:to_binary(pid_to_list(P)),
     {'noreply', State#state{who_registry=dict:store(PBin, W, Who)}};
 handle_cast(_Msg, S) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -202,16 +202,16 @@ terminate(_Reason, #state{io_device=IO}) ->
     gproc:goodbye(),
     lager:debug("webseq terminating: ~p", [_Reason]).
 
--spec webseq_doc(ne_binary(), text(), text()) -> wh_json:object().
+-spec webseq_doc(ne_binary(), text(), text()) -> kz_json:object().
 webseq_doc(Name, Str, Args) ->
     Line = iolist_to_binary(io_lib:format(Str, Args)),
-    wh_json:from_list([{<<"line">>, Line}
+    kz_json:from_list([{<<"line">>, Line}
                        ,{<<"name">>, Name}
                       ]).
 
 -spec write_to_db(ne_binary(), ne_binary(), text(), text()) -> 'ok'.
 write_to_db(Database, Name, Str, Args) ->
-    Doc = wh_doc:update_pvt_parameters(
+    Doc = kz_doc:update_pvt_parameters(
             webseq_doc(Name, Str, Args)
             ,Database
             ,[{'type', <<"webseq">>}]
@@ -227,7 +227,7 @@ write_to_db(Database, Name, Str, Args) ->
                         {'ok', file:io_device()} |
                         {'error', any()}.
 start_file(Filename) ->
-    _ = file:rename(Filename, iolist_to_binary([Filename, ".", wh_util:to_binary(wh_util:current_tstamp())])),
+    _ = file:rename(Filename, iolist_to_binary([Filename, ".", kz_util:to_binary(kz_util:current_tstamp())])),
     file:open(Filename, ['append', 'raw', 'delayed_write']).
 
 -spec trunc_database(ne_binary(), ne_binary()) -> 'ok'.
@@ -247,7 +247,7 @@ trunc_database(Database, Name) ->
     end.
 
 -spec get_docs_by_name(ne_binary(), ne_binary()) ->
-                              {'ok', wh_json:objects()} |
+                              {'ok', kz_json:objects()} |
                               {'error', any()}.
 get_docs_by_name(Database, Name) ->
     get_docs_by_name(Database, Name, []).
@@ -270,23 +270,23 @@ rotate_db(Database, Name) ->
             throw(E)
     end.
 
--spec rotate_db(ne_binary(), ne_binary(), wh_json:objects()) -> {'ok', wh_json:objects()}.
+-spec rotate_db(ne_binary(), ne_binary(), kz_json:objects()) -> {'ok', kz_json:objects()}.
 rotate_db(Database, Name, Docs) ->
-    RotatedName = <<Name/binary, ".", (wh_util:rand_hex_binary(3))/binary>>,
-    Rotated = [rotate_doc(RotatedName, wh_json:get_value(<<"doc">>, Doc)) || Doc <- Docs],
+    RotatedName = <<Name/binary, ".", (kz_util:rand_hex_binary(3))/binary>>,
+    Rotated = [rotate_doc(RotatedName, kz_json:get_value(<<"doc">>, Doc)) || Doc <- Docs],
     {'ok', _} = kz_datamgr:save_docs(Database, Rotated).
 
--spec rotate_doc(ne_binary(), wh_json:object()) -> wh_json:object().
+-spec rotate_doc(ne_binary(), kz_json:object()) -> kz_json:object().
 rotate_doc(RotatedName, Doc) ->
-    wh_json:set_value(<<"name">>, RotatedName
-                      ,wh_doc:update_pvt_parameters(Doc, 'undefined')
+    kz_json:set_value(<<"name">>, RotatedName
+                      ,kz_doc:update_pvt_parameters(Doc, 'undefined')
                      ).
 
 -spec init_db(ne_binary()) -> 'ok'.
 init_db(Database) ->
     lager:debug("refreshing ~s", [Database]),
-    Views = whapps_util:get_views_json('webseq', "views"),
-    _ = whapps_util:update_views(Database, Views, 'true'),
+    Views = kapps_util:get_views_json('webseq', "views"),
+    _ = kapps_util:update_views(Database, Views, 'true'),
     lager:debug("refreshed ~s", [Database]).
 
 create_filename(<<"/", _/binary>> = Filename) ->

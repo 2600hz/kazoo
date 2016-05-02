@@ -3,13 +3,13 @@
 cd $(dirname $0)
 
 if [ -z "$1" ]; then
-    REMOTE_SHELL="whistle_apps@$(hostname -f)"
+    REMOTE_SHELL="kazoo_apps@$(hostname -f)"
 else
     REMOTE_SHELL="$1"
 fi
 
 if [ -z "$2" ]; then
-    SHELL_NAME="whistle_con_$(date +%s)@$(hostname -f)"
+    SHELL_NAME="kazoo_con_$(date +%s)@$(hostname -f)"
 else
     SHELL_NAME="$2"
 fi

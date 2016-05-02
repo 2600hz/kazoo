@@ -28,7 +28,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {call :: whapps_call:call()}).
+-record(state, {call :: kapps_call:call()}).
 -type state() :: #state{}.
 
 %% By convention, we put the options here in macros, but not required.
@@ -51,9 +51,9 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the listener and binds to the call channel destroy events
 %%--------------------------------------------------------------------
--spec start_link(whapps_call:call()) -> startlink_ret().
+-spec start_link(kapps_call:call()) -> startlink_ret().
 start_link(Call) ->
-    gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS(whapps_call:call_id(Call))}
+    gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS(kapps_call:call_id(Call))}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}       % optional to include
                                       ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
@@ -67,9 +67,9 @@ start_link(Call) ->
 %% CHANNEL_DESTROY.
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call_event(wh_json:object(), wh_proplist()) -> any().
+-spec handle_call_event(kz_json:object(), kz_proplist()) -> any().
 handle_call_event(JObj, Props) ->
-    case wh_util:get_event_type(JObj) of
+    case kz_util:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
             gen_listener:cast(props:get_value('server', Props), {'end_hook', JObj});
         {<<"call_event">>, <<"CHANNEL_TRANSFEROR">>} ->
@@ -87,10 +87,10 @@ handle_call_event(JObj, Props) ->
 %% @doc
 %% Initializes the listener, and sends the init hook
 %%--------------------------------------------------------------------
--spec init([whapps_call:call()]) -> {'ok', state()}.
+-spec init([kapps_call:call()]) -> {'ok', state()}.
 init([Call]) ->
     %% ReferredBy is interesting because we use it to tell if the call was forwarded
-    ReferredBy = whapps_call:custom_channel_var(<<"Referred-By">>, Call),
+    ReferredBy = kapps_call:custom_channel_var(<<"Referred-By">>, Call),
 
     %% send the init hook only if we were not a forwarded call
     case ReferredBy of
@@ -149,7 +149,7 @@ handle_info(Info, State) ->
 %% Allows listener to pass options to handlers
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(wh_json:object(), state()) -> {'reply', []}.
+-spec handle_event(kz_json:object(), state()) -> {'reply', []}.
 handle_event(_JObj, _State) ->
     {'reply', []}.
 

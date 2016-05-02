@@ -46,8 +46,8 @@
 -define(FILL_TIME, <<"second">>).
 -define(FILL_TIME(App), is_binary(App) andalso ?FILL_TIME).
 -else.
--define(FILL_TIME, whapps_config:get_binary(?APP_NAME, <<"tokens_fill_time">>, <<"second">>)).
--define(FILL_TIME(App), whapps_config:get(?APP_NAME, [App, <<"tokens_fill_time">>], ?FILL_TIME)).
+-define(FILL_TIME, kapps_config:get_binary(?APP_NAME, <<"tokens_fill_time">>, <<"second">>)).
+-define(FILL_TIME(App), kapps_config:get(?APP_NAME, [App, <<"tokens_fill_time">>], ?FILL_TIME)).
 -endif.
 
 -define(TOKEN_FILL_TIME, 'fill_er_up').
@@ -158,7 +158,7 @@ normalize_fill_time(_) -> 'second'.
 %% @end
 %%--------------------------------------------------------------------
 init([Max, FillRate, FillAsBlock, FillTime]) ->
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     lager:debug("starting token bucket with ~b max, filling at ~b/~s, in a block: ~s"
                 ,[Max, FillRate,FillTime, FillAsBlock]
                ),
@@ -231,7 +231,7 @@ handle_cast({'credit', Req}, #state{tokens=Current
             {'noreply', State#state{tokens=N}}
     end;
 handle_cast({'name', Name}, State) ->
-    wh_util:put_callid(Name),
+    kz_util:put_callid(Name),
     lager:debug("updated name to ~p", [Name]),
     {'noreply', State};
 handle_cast('stop', State) ->

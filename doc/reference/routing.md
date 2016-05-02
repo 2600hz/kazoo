@@ -208,21 +208,21 @@ SUP commands later will help you inspect that cache.
 ## How to set authz up
 
 * Enable authorization on calls
-   `sup whapps_config set_default ecallmgr authz_enabled true`
-   `sup whapps_config flush ecallmgr`
+   `sup kapps_config set_default ecallmgr authz_enabled true`
+   `sup kapps_config flush ecallmgr`
    `sup -necallmgr ecallmgr_config flush`
 * Authorize local resource usage
-   `sup whapps_config set_default ecallmgr authz_local_resources true`
-   `sup whapps_config flush ecallmgr`
+   `sup kapps_config set_default ecallmgr authz_local_resources true`
+   `sup kapps_config flush ecallmgr`
    `sup -necallmgr ecallmgr_config flush`
 * Dry Run authz attempts (useful when testing authz)
-   `sup whapps_config set_default ecallmgr authz_dry_run true`
+   `sup kapps_config set_default ecallmgr authz_dry_run true`
    Still allows a call that would have been denied
 * Required a rate to continue call
-  `sup whapps_config set_default ecallmgr {DIRECTION}_rate_required true`
+  `sup kapps_config set_default ecallmgr {DIRECTION}_rate_required true`
   If enabled, ensures a rate is found for the leg; otherwise kills the channel
 * Default Authz action (if authz request fails)
-  `sup whapps_config set_default ecallmgr authz_default_action deny`
+  `sup kapps_config set_default ecallmgr authz_default_action deny`
   Alternative is `allow`
 
 -----
@@ -286,8 +286,8 @@ sup jonny5_maintenance limits_summary [{ACCOUNT_ID}]
 
 Credit in Kazoo is not tied to a billing system. Administrators can add or remove funds from an account as they need:
 
-* `sup whistle_services_maintenance credit {ACCOUNT_ID} 5.0`
-* `sup whistle_services_maintenance debit {ACCOUNT_ID} 5.0`
+* `sup kazoo_services_maintenance credit {ACCOUNT_ID} 5.0`
+* `sup kazoo_services_maintenance debit {ACCOUNT_ID} 5.0`
 
 Each command above will add/remove 5 dollars to/from the account.
 

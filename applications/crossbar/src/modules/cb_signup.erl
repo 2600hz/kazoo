@@ -74,7 +74,7 @@ start_link() ->
     {'ok', proc_lib:spawn_link(?MODULE, 'init_it', [])}.
 
 init_it() ->
-    wh_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?LOG_SYSTEM_ID),
     State = init_state(),
     cleanup_loop(State).
 
@@ -167,7 +167,7 @@ post(Context, _) ->
     case activate_signup(JObj) of
         {'ok', Account, User} ->
             _ = kz_datamgr:del_doc(?SIGNUP_DB, JObj),
-            NewRespData = wh_json:from_list([{<<"account">>, Account}
+            NewRespData = kz_json:from_list([{<<"account">>, Account}
                                              ,{<<"user">>, User}
                                             ]),
             cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
@@ -202,11 +202,11 @@ put(Context) ->
 -spec validate_new_signup(cb_context:context()) -> cb_context:context().
 validate_new_signup(Context) ->
     JObj = cb_context:req_data(Context),
-    {AccountErrors, Account} = validate_account(wh_json:get_value(<<"account">>, JObj), Context),
-    {UserErrors, User} = validate_user(wh_json:get_value(<<"user">>, JObj), Context),
+    {AccountErrors, Account} = validate_account(kz_json:get_value(<<"account">>, JObj), Context),
+    {UserErrors, User} = validate_user(kz_json:get_value(<<"user">>, JObj), Context),
     case {AccountErrors, UserErrors} of
         {[], []} ->
-            NewDoc = wh_json:from_list([{<<"pvt_user">>, User}
+            NewDoc = kz_json:from_list([{<<"pvt_user">>, User}
                                         ,{<<"pvt_account">>, Account}
                                         ,{<<"pvt_activation_key">>, create_activation_key()}
                                        ]),
@@ -214,7 +214,7 @@ validate_new_signup(Context) ->
                                          ,{fun cb_context:set_resp_status/2, 'success'}
                                         ]);
         _Else ->
-            crossbar_util:response_invalid_data(wh_json:from_list([{<<"account">>, AccountErrors}
+            crossbar_util:response_invalid_data(kz_json:from_list([{<<"account">>, AccountErrors}
                                                                    ,{<<"user">>, UserErrors}
                                                                   ]), Context)
     end.
@@ -231,7 +231,7 @@ validate_account('undefined', _) ->
     lager:debug("signup did not contain an account definition"),
     {[<<"account">>], 'undefined'};
 validate_account(Account, Context) ->
-    case is_unique_realm(wh_json:get_value(<<"realm">>, Account))
+    case is_unique_realm(kz_json:get_value(<<"realm">>, Account))
         andalso crossbar_maintenance:create_account(cb_context:set_req_data(Context, Account)) of
         'false' ->
             {[<<"duplicate realm">>], 'undefined'};
@@ -275,7 +275,7 @@ validate_user(User, Context) ->
 -spec create_activation_key() -> ne_binary().
 create_activation_key() ->
     ActivationKey =
-        wh_util:to_hex_binary(crypto:rand_bytes(32)),
+        kz_util:to_hex_binary(crypto:rand_bytes(32)),
     lager:debug("created new activation key ~s", [ActivationKey]),
     ActivationKey.
 
@@ -297,7 +297,7 @@ check_activation_key(ActivationKey, Context) ->
         {'ok', [JObj|_]} ->
             lager:debug("activation key is valid"),
             cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
-                                         ,{fun cb_context:set_doc/2, wh_json:get_value(<<"doc">>, JObj)}
+                                         ,{fun cb_context:set_doc/2, kz_json:get_value(<<"doc">>, JObj)}
                                         ]);
         _ ->
             lager:debug("db error while looking up activation key"),
@@ -310,13 +310,13 @@ check_activation_key(ActivationKey, Context) ->
 %% Activate signup document by creating an account and user
 %% @end
 %%--------------------------------------------------------------------
--spec activate_signup(wh_json:object()) ->
-                             {'ok', wh_json:object(), wh_json:object()} |
+-spec activate_signup(kz_json:object()) ->
+                             {'ok', kz_json:object(), kz_json:object()} |
                              {'error', 'creation_failed' | 'account_undefined' | 'user_undefined'}.
 activate_signup(JObj) ->
-    case activate_account(wh_json:get_value(<<"pvt_account">>, JObj)) of
+    case activate_account(kz_json:get_value(<<"pvt_account">>, JObj)) of
         {'ok', Account} ->
-            activate_user(Account, wh_json:get_value(<<"pvt_user">>, JObj));
+            activate_user(Account, kz_json:get_value(<<"pvt_user">>, JObj));
         {'error', _}=E ->
             E
     end.
@@ -328,7 +328,7 @@ activate_signup(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec activate_account(api_object()) ->
-                              {'ok', wh_json:object()} |
+                              {'ok', kz_json:object()} |
                               {'error', 'creation_failed' | 'account_undefined'}.
 activate_account('undefined') ->
     {'error', 'account_undefined'};
@@ -339,7 +339,7 @@ activate_account(Account) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             JObj = cb_context:doc(Context1),
-            AccountId = wh_doc:id(JObj),
+            AccountId = kz_doc:id(JObj),
             lager:debug("created new account ~s", [AccountId]),
             {'ok', JObj};
         _ ->
@@ -354,14 +354,14 @@ activate_account(Account) ->
 %% an account and user, ensure the user exists locally (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec activate_user(wh_json:object(), api_object()) ->
-                           {'ok', wh_json:object(), wh_json:object()} |
+-spec activate_user(kz_json:object(), api_object()) ->
+                           {'ok', kz_json:object(), kz_json:object()} |
                            {'error', 'user_undefined' | 'creation_failed'}.
 activate_user(_, 'undefined') ->
     {'error', 'user_undefined'};
 activate_user(Account, User) ->
-    AccountId = wh_doc:id(Account),
-    Db = wh_util:format_account_id(AccountId, 'encoded'),
+    AccountId = kz_doc:id(Account),
+    Db = kz_util:format_account_id(AccountId, 'encoded'),
     Event = <<"*.execute.put.users">>,
     Payload = [cb_context:setters(cb_context:new(), [{fun cb_context:set_doc/2, User}
                                                      ,{fun cb_context:set_account_db/2, Db}
@@ -370,7 +370,7 @@ activate_user(Account, User) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             JObj = cb_context:resp_data(Context1),
-            UserId = wh_doc:id(JObj),
+            UserId = kz_doc:id(JObj),
             lager:debug("created new user ~s in account ~s", [UserId, AccountId]),
             {'ok', Account, JObj};
         _ ->
@@ -409,7 +409,7 @@ send_activation_email(Context
     JObj = cb_context:doc(Context),
     ReqId = cb_context:req_id(Context),
     Props = template_props(Context),
-    To = wh_json:get_value([<<"pvt_user">>, <<"email">>], JObj),
+    To = kz_json:get_value([<<"pvt_user">>, <<"email">>], JObj),
     Subject = case SubjectTmpl:render(Props) of
                   {'ok', S} -> S;
                   _ -> <<"Confirm your account activation">>
@@ -417,7 +417,7 @@ send_activation_email(Context
     From = case FromTmpl:render(Props) of
                {'ok', F} -> F;
                _ ->
-                   <<"no_reply@", (wh_util:to_binary(net_adm:localhost()))/binary>>
+                   <<"no_reply@", (kz_util:to_binary(net_adm:localhost()))/binary>>
            end,
     Email = {<<"multipart">>, <<"alternative">> %% Content Type / Sub Type
                  ,[ %% Headers
@@ -432,7 +432,7 @@ send_activation_email(Context
     lager:debug("sending activation email to ~s", [To]),
     gen_smtp_client:send({From, [To], Encoded}
                          ,[{'relay', "localhost"}]
-                         ,fun(X) -> wh_util:put_callid(ReqId),
+                         ,fun(X) -> kz_util:put_callid(ReqId),
                                     lager:debug("sending email to ~s resulted in ~p", [To, X])
                           end).
 
@@ -443,7 +443,7 @@ send_activation_email(Context
 %% if they have been provided
 %% @end
 %%--------------------------------------------------------------------
--spec create_body(#state{}, wh_proplist(), [mail_message_body()]) -> [mail_message_body()].
+-spec create_body(#state{}, kz_proplist(), [mail_message_body()]) -> [mail_message_body()].
 create_body(#state{activation_email_html=Tmpl}=State, Props, Body) when Tmpl =/= 'undefined' ->
     case Tmpl:render(Props) of
         {'ok', Content} ->
@@ -477,26 +477,26 @@ create_body(_, _, Body) ->
 %% create a proplist to provide to the templates during render
 %% @end
 %%--------------------------------------------------------------------
--spec template_props(cb_context:context()) -> [{ne_binary(), wh_proplist() | ne_binary()},...].
+-spec template_props(cb_context:context()) -> [{ne_binary(), kz_proplist() | ne_binary()},...].
 template_props(Context) ->
     JObj = cb_context:doc(Context),
     Data = cb_context:req_data(Context),
     RawHost = Context#cb_context.raw_host,
     Port = Context#cb_context.port,
-    ApiHost = list_to_binary(["http://", RawHost, ":", wh_util:to_list(Port), "/"]),
+    ApiHost = list_to_binary(["http://", RawHost, ":", kz_util:to_list(Port), "/"]),
     %% remove the redundant request data
-    Req = wh_json:delete_keys([<<"account">>, <<"user">>], Data),
+    Req = kz_json:delete_keys([<<"account">>, <<"user">>], Data),
 
     %% create props to expose to the template
     props:filter_undefined(
-      [{<<"account">>, wh_json:to_proplist(<<"pvt_account">>, JObj)}
-       ,{<<"user">>, wh_json:to_proplist(<<"pvt_user">>, JObj)}
-       ,{<<"request">>, wh_json:to_proplist(Req)}
+      [{<<"account">>, kz_json:to_proplist(<<"pvt_account">>, JObj)}
+       ,{<<"user">>, kz_json:to_proplist(<<"pvt_user">>, JObj)}
+       ,{<<"request">>, kz_json:to_proplist(Req)}
        ,{<<"api_url">>, [{<<"host">>, ApiHost}
                          ,{<<"path">>, <<"v1/signup/">>}
                         ]}
        ,{<<"host">>, RawHost}
-       ,{<<"activation_key">>, wh_json:get_value(<<"pvt_activation_key">>, JObj, <<>>)}
+       ,{<<"activation_key">>, kz_json:get_value(<<"pvt_activation_key">>, JObj, <<>>)}
       ]).
 
 %%--------------------------------------------------------------------
@@ -510,7 +510,7 @@ template_props(Context) ->
 is_unique_realm('undefined') -> 'false';
 is_unique_realm(<<>>) -> 'false';
 is_unique_realm(Realm) ->
-    case whapps_util:get_account_by_realm(Realm) of
+    case kapps_util:get_account_by_realm(Realm) of
         {'ok', _} -> 'false';
         {'error', _} ->
             case kz_datamgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_REALM, [{'key', Realm}]) of
@@ -538,7 +538,7 @@ cleanup_signups(#state{signup_lifespan=Lifespan}) ->
     of
         {'ok', Expired} ->
             _ = kz_datamgr:del_docs(?SIGNUP_DB
-                                   ,[wh_json:get_value(<<"doc">>, JObj) || JObj <- Expired]
+                                   ,[kz_json:get_value(<<"doc">>, JObj) || JObj <- Expired]
                                   ),
             'ok';
         _Else -> 'ok'

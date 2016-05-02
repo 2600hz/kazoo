@@ -38,19 +38,19 @@
 -define(DEFAULT_CONTENT_TYPE_HDR, <<"application/json">>).
 
 -define(HTTP_ACCEPT_HEADER
-        ,whapps_config:get_string(?CONFIG_CAT, <<"http_accept_header">>, ?DEFAULT_ACCEPT_HDR)
+        ,kapps_config:get_string(?CONFIG_CAT, <<"http_accept_header">>, ?DEFAULT_ACCEPT_HDR)
        ).
 -define(HTTP_USER_AGENT
-        ,whapps_config:get_string(?CONFIG_CAT, <<"http_user_agent_header">>, ?DEFAULT_USER_AGENT_HDR)
+        ,kapps_config:get_string(?CONFIG_CAT, <<"http_user_agent_header">>, ?DEFAULT_USER_AGENT_HDR)
        ).
 -define(HTTP_CONTENT_TYPE
-        ,whapps_config:get_string(?CONFIG_CAT, <<"http_content_type_header">>, ?DEFAULT_CONTENT_TYPE_HDR)
+        ,kapps_config:get_string(?CONFIG_CAT, <<"http_content_type_header">>, ?DEFAULT_CONTENT_TYPE_HDR)
        ).
 -define(HTTP_CONNECT_TIMEOUT_MS
-        ,whapps_config:get_integer(?CONFIG_CAT, <<"http_connect_timeout_ms">>, 500)
+        ,kapps_config:get_integer(?CONFIG_CAT, <<"http_connect_timeout_ms">>, 500)
        ).
 -define(DISABLE_NORMALIZE
-        ,whapps_config:get_is_true(?CONFIG_CAT, <<"disable_normalize">>, 'false')
+        ,kapps_config:get_is_true(?CONFIG_CAT, <<"disable_normalize">>, 'false')
        ).
 
 -define(CACHE_KEY(Number), {'cnam', Number}).
@@ -67,20 +67,20 @@ start_link(_) ->
     _ = ssl:start(),
     gen_server:start_link(?SERVER, [], []).
 
--spec lookup(wh_json:object() | ne_binary()) -> wh_json:object().
+-spec lookup(kz_json:object() | ne_binary()) -> kz_json:object().
 lookup(<<_/binary>> = Number) ->
     Num = case ?DISABLE_NORMALIZE of
         'false' -> knm_converters:normalize(Number);
         'true'  -> Number
     end,
-    lookup(wh_json:set_values([{<<"phone_number">>, wh_util:uri_encode(Num)}
+    lookup(kz_json:set_values([{<<"phone_number">>, kz_util:uri_encode(Num)}
                                ,{<<"Caller-ID-Number">>, Num}
                               ]
-                              ,wh_json:new()
+                              ,kz_json:new()
                              )
           );
 lookup(JObj) ->
-    Number = wh_json:get_value(<<"Caller-ID-Number">>, JObj,  wh_util:anonymous_caller_id_number()),
+    Number = kz_json:get_value(<<"Caller-ID-Number">>, JObj,  kz_util:anonymous_caller_id_number()),
     Num = case ?DISABLE_NORMALIZE of
               'false' -> knm_converters:normalize(Number);
               'true'  -> Number
@@ -93,18 +93,18 @@ lookup(JObj) ->
             update_request(JObj, CNAM, 'false')
     end.
 
--spec set_phone_number(ne_binary(), wh_json:object()) -> wh_json:object().
+-spec set_phone_number(ne_binary(), kz_json:object()) -> kz_json:object().
 set_phone_number(Num, JObj) ->
-    wh_json:set_value(<<"phone_number">>, wh_util:uri_encode(Num), JObj).
+    kz_json:set_value(<<"phone_number">>, kz_util:uri_encode(Num), JObj).
 
--spec update_request(wh_json:object(), api_binary(), boolean()) -> wh_json:object().
+-spec update_request(kz_json:object(), api_binary(), boolean()) -> kz_json:object().
 update_request(JObj, 'undefined', _) -> JObj;
 update_request(JObj, CNAM, FromCache) ->
     Props = [{<<"Caller-ID-Name">>, CNAM}
              ,{[<<"Custom-Channel-Vars">>, <<"Caller-ID-Name">>], CNAM}
              ,{[<<"Custom-Channel-Vars">>, <<"CNAM-From-Cache">>], FromCache}
             ],
-    wh_json:set_values(Props, JObj).
+    kz_json:set_values(Props, JObj).
 
 -spec flush() -> non_neg_integer().
 flush() ->
@@ -130,7 +130,7 @@ flush_entries(_, _) -> 'false'.
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    TemplateName = wh_util:to_atom(kz_datamgr:get_uuid(), 'true'),
+    TemplateName = kz_util:to_atom(kz_datamgr:get_uuid(), 'true'),
     {'ok', TemplateName}.
 
 %%--------------------------------------------------------------------
@@ -225,10 +225,10 @@ code_change(_OldVsn, TemplateName, _Extra) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_template_props(api_object()) -> 'undefined' | wh_proplist().
+-spec json_to_template_props(api_object()) -> 'undefined' | kz_proplist().
 json_to_template_props('undefined') -> 'undefined';
 json_to_template_props(JObj) ->
-    normalize_proplist(wh_json:recursive_to_proplist(JObj)).
+    normalize_proplist(kz_json:recursive_to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -236,12 +236,12 @@ json_to_template_props(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_proplist(wh_proplist()) -> wh_proplist().
+-spec normalize_proplist(kz_proplist()) -> kz_proplist().
 normalize_proplist(Props) ->
     [normalize_proplist_element(Elem) || Elem <- Props].
 
--spec normalize_proplist_element({wh_proplist_key(), wh_proplist_value()}) ->
-                                        {wh_proplist_key(), wh_proplist_value()}.
+-spec normalize_proplist_element({kz_proplist_key(), kz_proplist_value()}) ->
+                                        {kz_proplist_key(), kz_proplist_value()}.
 normalize_proplist_element({K, V}) when is_list(V) ->
     {normalize_value(K), normalize_proplist(V)};
 normalize_proplist_element({K, V}) when is_binary(V) ->
@@ -253,24 +253,24 @@ normalize_proplist_element(Else) ->
 
 -spec normalize_value(binary()) -> binary().
 normalize_value(Value) ->
-    binary:replace(wh_util:to_lower_binary(Value), <<"-">>, <<"_">>, ['global']).
+    binary:replace(kz_util:to_lower_binary(Value), <<"-">>, <<"_">>, ['global']).
 
 -spec cache_key(ne_binary()) -> {'cnam', ne_binary()}.
 cache_key(Number) -> ?CACHE_KEY(Number).
 
--spec fetch_cnam(ne_binary(), wh_json:object()) -> api_binary().
+-spec fetch_cnam(ne_binary(), kz_json:object()) -> api_binary().
 fetch_cnam(Number, JObj) ->
     case make_request(Number, JObj) of
         'undefined' -> 'undefined';
         CNAM ->
-            CacheProps = [{'expires', whapps_config:get_integer(?CONFIG_CAT, <<"cnam_expires">>, ?DEFAULT_EXPIRES)}],
+            CacheProps = [{'expires', kapps_config:get_integer(?CONFIG_CAT, <<"cnam_expires">>, ?DEFAULT_EXPIRES)}],
             kz_cache:store_local(?CACHE_NAME, cache_key(Number), CNAM, CacheProps),
             CNAM
     end.
 
--spec make_request(ne_binary(), wh_json:object()) -> api_binary().
+-spec make_request(ne_binary(), kz_json:object()) -> api_binary().
 make_request(Number, JObj) ->
-    Url = wh_util:to_list(get_http_url(JObj)),
+    Url = kz_util:to_list(get_http_url(JObj)),
     case kz_http:req(get_http_method()
                      ,Url
                      ,get_http_headers()
@@ -286,7 +286,7 @@ make_request(Number, JObj) ->
             'undefined';
         {'ok', Status, _, ResponseBody} when size(ResponseBody) > 18 ->
             lager:debug("cnam lookup for ~s returned ~p: ~s", [Number, Status, ResponseBody]),
-            wh_util:truncate_right_binary(ResponseBody, 18);
+            kz_util:truncate_right_binary(ResponseBody, 18);
         {'ok', Status, _, ResponseBody} ->
             lager:debug("cnam lookup for ~s returned ~p: ~s", [Number, Status, ResponseBody]),
             ResponseBody;
@@ -295,9 +295,9 @@ make_request(Number, JObj) ->
             'undefined'
     end.
 
--spec get_http_url(wh_json:object()) -> ne_binary().
+-spec get_http_url(kz_json:object()) -> ne_binary().
 get_http_url(JObj) ->
-    Template = whapps_config:get_binary(?CONFIG_CAT, <<"http_url">>, ?DEFAULT_URL),
+    Template = kapps_config:get_binary(?CONFIG_CAT, <<"http_url">>, ?DEFAULT_URL),
     {'ok', SrcUrl} = render(JObj, Template),
     Url = iolist_to_binary(SrcUrl),
 
@@ -312,10 +312,10 @@ get_http_url(JObj) ->
             end
     end.
 
--spec get_http_body(wh_json:object()) -> list().
+-spec get_http_body(kz_json:object()) -> list().
 get_http_body(JObj) ->
-    Template = whapps_config:get_binary(?CONFIG_CAT, <<"http_body">>, ?DEFAULT_CONTENT),
-    case wh_util:is_empty(Template) of
+    Template = kapps_config:get_binary(?CONFIG_CAT, <<"http_body">>, ?DEFAULT_CONTENT),
+    case kz_util:is_empty(Template) of
         'true' -> [];
         'false' ->
             {'ok', Body} = render(JObj, Template),
@@ -330,14 +330,14 @@ get_http_headers() ->
               ],
     maybe_enable_auth(Headers).
 
--spec get_http_options(ne_binary()) -> wh_proplist().
+-spec get_http_options(ne_binary()) -> kz_proplist().
 get_http_options(Url) ->
     Defaults = [{'connect_timeout', ?HTTP_CONNECT_TIMEOUT_MS}
                 ,{'timeout', 1500}
                ],
     maybe_enable_ssl(Url, Defaults).
 
--spec maybe_enable_ssl(ne_binary(), wh_proplist()) -> wh_proplist().
+-spec maybe_enable_ssl(ne_binary(), kz_proplist()) -> kz_proplist().
 maybe_enable_ssl(<<"https", _/binary>>, Props) ->
     [{'ssl', [{'verify', 'verify_none'}]}|Props];
 maybe_enable_ssl(_, Props) -> Props.
@@ -345,9 +345,9 @@ maybe_enable_ssl(_, Props) -> Props.
 -spec maybe_enable_auth([{nonempty_string(), nonempty_string()}]) ->
                                [{nonempty_string(), nonempty_string()}].
 maybe_enable_auth(Props) ->
-    Username = whapps_config:get_string(?CONFIG_CAT, <<"http_basic_auth_username">>, <<>>),
-    Password = whapps_config:get_string(?CONFIG_CAT, <<"http_basic_auth_password">>, <<>>),
-    case wh_util:is_empty(Username) orelse wh_util:is_empty(Password) of
+    Username = kapps_config:get_string(?CONFIG_CAT, <<"http_basic_auth_username">>, <<>>),
+    Password = kapps_config:get_string(?CONFIG_CAT, <<"http_basic_auth_password">>, <<>>),
+    case kz_util:is_empty(Username) orelse kz_util:is_empty(Password) of
         'true' -> Props;
         'false' -> [basic_auth(Username, Password) | Props]
     end.
@@ -360,13 +360,13 @@ basic_auth(Username, Password) ->
 
 -spec get_http_method() -> 'get' | 'put' | 'post'.
 get_http_method() ->
-    case whapps_config:get_binary(?CONFIG_CAT, <<"http_method">>, ?DEFAULT_METHOD) of
+    case kapps_config:get_binary(?CONFIG_CAT, <<"http_method">>, ?DEFAULT_METHOD) of
         <<"post">> -> 'post';
         <<"put">> -> 'put';
         _Else -> 'get'
     end.
 
--spec render(wh_json:object(), ne_binary()) -> {'ok', iolist()} |
+-spec render(kz_json:object(), ne_binary()) -> {'ok', iolist()} |
                                                {'error', 'timeout'}.
 render(JObj, Template) ->
     case catch poolboy:checkout(?STEPSWITCH_CNAM_POOL, 'false', 1000) of

@@ -34,19 +34,19 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec child_name(wapi_offnet_resource:req()) -> ne_binary().
+-spec child_name(kapi_offnet_resource:req()) -> ne_binary().
 child_name(OffnetReq) ->
-    <<(wapi_offnet_resource:call_id(OffnetReq))/binary
-      ,"-", (wh_util:rand_hex_binary(3))/binary
+    <<(kapi_offnet_resource:call_id(OffnetReq))/binary
+      ,"-", (kz_util:rand_hex_binary(3))/binary
     >>.
 
--spec outbound_child_name(wapi_offnet_resource:req()) -> ne_binary().
+-spec outbound_child_name(kapi_offnet_resource:req()) -> ne_binary().
 outbound_child_name(OffnetReq) ->
-    <<(wapi_offnet_resource:outbound_call_id(OffnetReq))/binary
-      ,"-", (wh_util:rand_hex_binary(3))/binary
+    <<(kapi_offnet_resource:outbound_call_id(OffnetReq))/binary
+      ,"-", (kz_util:rand_hex_binary(3))/binary
     >>.
 
--spec bridge(wh_json:objects(), wapi_offnet_resource:req()) -> sup_startchild_ret().
+-spec bridge(kz_json:objects(), kapi_offnet_resource:req()) -> sup_startchild_ret().
 bridge(Endpoints, OffnetReq) ->
     supervisor:start_child(?SERVER
                            ,?WORKER_NAME_ARGS_TYPE(child_name(OffnetReq)
@@ -56,7 +56,7 @@ bridge(Endpoints, OffnetReq) ->
                                                   )
                           ).
 
--spec local_extension(knm_number_options:extra_options(), wapi_offnet_resource:req()) ->
+-spec local_extension(knm_number_options:extra_options(), kapi_offnet_resource:req()) ->
                              sup_startchild_ret().
 local_extension(Props, OffnetReq) ->
     supervisor:start_child(?SERVER
@@ -67,7 +67,7 @@ local_extension(Props, OffnetReq) ->
                                                   )
                           ).
 
--spec originate(wh_json:objects(), wapi_offnet_resource:req()) -> sup_startchild_ret().
+-spec originate(kz_json:objects(), kapi_offnet_resource:req()) -> sup_startchild_ret().
 originate(Endpoints, OffnetReq) ->
     supervisor:start_child(?SERVER
                            ,?WORKER_NAME_ARGS_TYPE(outbound_child_name(OffnetReq)
@@ -77,7 +77,7 @@ originate(Endpoints, OffnetReq) ->
                                                   )
                           ).
 
--spec sms(wh_json:objects(), wapi_offnet_resource:req()) -> sup_startchild_ret().
+-spec sms(kz_json:objects(), kapi_offnet_resource:req()) -> sup_startchild_ret().
 sms(Endpoints, OffnetReq) ->
     supervisor:start_child(?SERVER
                            ,?WORKER_NAME_ARGS_TYPE(child_name(OffnetReq)

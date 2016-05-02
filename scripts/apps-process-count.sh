@@ -2,7 +2,7 @@
 
 cd $(dirname $0)
 
-NODE="whistle_apps"
+NODE="kazoo_apps"
 HOSTNAME=$(/bin/hostname)
 REMOTE_SHELL="${NODE}@${HOSTNAME}"
 SUP="../utils/sup/sup"

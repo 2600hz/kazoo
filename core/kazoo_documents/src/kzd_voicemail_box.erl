@@ -27,7 +27,7 @@
 
 -include("kz_documents.hrl").
 
--type doc() :: wh_json:object().
+-type doc() :: kz_json:object().
 -export_type([doc/0]).
 
 -define(KEY_NOTIFY_EMAILS, <<"notify_email_addresses">>).
@@ -46,7 +46,7 @@
 
 -spec new() -> doc().
 new() ->
-    wh_json:from_list([{<<"pvt_type">>, type()}]).
+    kz_json:from_list([{<<"pvt_type">>, type()}]).
 
 -spec type() -> ne_binary().
 type() -> ?PVT_TYPE.
@@ -56,9 +56,9 @@ type() -> ?PVT_TYPE.
 notification_emails(Box) ->
     notification_emails(Box, []).
 notification_emails(Box, Default) ->
-    case wh_json:get_value(?KEY_NOTIFY_EMAILS, Box) of
+    case kz_json:get_value(?KEY_NOTIFY_EMAILS, Box) of
         'undefined' ->
-            case wh_json:get_value(?KEY_OLD_NOTIFY_EMAILS, Box, Default) of
+            case kz_json:get_value(?KEY_OLD_NOTIFY_EMAILS, Box, Default) of
                 Email when is_binary(Email) -> [Email];
                 Emails -> Emails
             end;
@@ -67,16 +67,16 @@ notification_emails(Box, Default) ->
 
 -spec set_notification_emails(doc(), api_binaries()) -> doc().
 set_notification_emails(Box, 'undefined') ->
-    wh_json:delete_key(?KEY_NOTIFY_EMAILS, Box);
+    kz_json:delete_key(?KEY_NOTIFY_EMAILS, Box);
 set_notification_emails(Box, Emails) ->
-    wh_json:set_value(?KEY_NOTIFY_EMAILS, Emails, Box).
+    kz_json:set_value(?KEY_NOTIFY_EMAILS, Emails, Box).
 
 -spec owner_id(doc()) -> api_binary().
 -spec owner_id(doc(), Default) -> ne_binary() | Default.
 owner_id(Box) ->
     owner_id(Box, 'undefined').
 owner_id(Box, Default) ->
-    wh_json:get_value(?KEY_OWNER_ID, Box, Default).
+    kz_json:get_value(?KEY_OWNER_ID, Box, Default).
 
 -spec owner(doc()) -> kzd_user:doc() | 'undefined'.
 -spec owner(doc(), ne_binary()) -> kzd_user:doc() | 'undefined'.
@@ -87,7 +87,7 @@ owner(Box) ->
     end.
 
 owner(Box, OwnerId) ->
-    case kz_datamgr:open_cache_doc(wh_doc:account_db(Box), OwnerId) of
+    case kz_datamgr:open_cache_doc(kz_doc:account_db(Box), OwnerId) of
         {'ok', OwnerJObj} -> OwnerJObj;
         {'error', 'not_found'} -> 'undefined'
     end.
@@ -97,7 +97,7 @@ owner(Box, OwnerId) ->
 timezone(Box) ->
     timezone(Box, 'undefined').
 timezone(Box, Default) ->
-    case wh_json:get_value(?KEY_TIMEZONE, Box) of
+    case kz_json:get_value(?KEY_TIMEZONE, Box) of
         'undefined'   -> owner_timezone(Box, Default);
         <<"inherit">> -> owner_timezone(Box, Default);  %% UI-1808
         TZ -> TZ
@@ -120,7 +120,7 @@ owner_timezone(Box, Default, OwnerJObj) ->
 
 -spec account_timezone(doc(), Default) -> ne_binary() | Default.
 account_timezone(Box, Default) ->
-    {'ok', AccountJObj} = kz_account:fetch(wh_doc:account_id(Box)),
+    {'ok', AccountJObj} = kz_account:fetch(kz_doc:account_id(Box)),
     kz_account:timezone(AccountJObj, Default).
 
 -spec skip_instructions(doc()) -> boolean().
@@ -128,46 +128,46 @@ account_timezone(Box, Default) ->
 skip_instructions(Box) ->
     skip_instructions(Box, 'false').
 skip_instructions(Box, Default) ->
-    wh_json:is_true(?KEY_SKIP_INSTRUCTIONS, Box, Default).
+    kz_json:is_true(?KEY_SKIP_INSTRUCTIONS, Box, Default).
 
 -spec skip_greeting(doc()) -> boolean().
 -spec skip_greeting(doc(), Default) -> boolean() | Default.
 skip_greeting(Box) ->
     skip_greeting(Box, 'false').
 skip_greeting(Box, Default) ->
-    wh_json:is_true(?KEY_SKIP_GREETING, Box, Default).
+    kz_json:is_true(?KEY_SKIP_GREETING, Box, Default).
 
 -spec pin(doc()) -> api_binary().
 -spec pin(doc(), Default) -> ne_binary() | Default.
 pin(Box) ->
     pin(Box, 'undefined').
 pin(Box, Default) ->
-    wh_json:get_binary_value(?KEY_PIN, Box, Default).
+    kz_json:get_binary_value(?KEY_PIN, Box, Default).
 
 -spec mailbox_number(doc()) -> api_binary().
 -spec mailbox_number(doc(), Default) -> ne_binary() | Default.
 mailbox_number(Box) ->
     mailbox_number(Box, 'undefined').
 mailbox_number(Box, Default) ->
-    wh_json:get_binary_value(?KEY_MAILBOX_NUMBER, Box, Default).
+    kz_json:get_binary_value(?KEY_MAILBOX_NUMBER, Box, Default).
 
 -spec pin_required(doc()) -> boolean().
 -spec pin_required(doc(), Default) -> boolean() | Default.
 pin_required(Box) ->
     pin_required(Box, 'false').
 pin_required(Box, Default) ->
-    wh_json:is_true(?KEY_PIN_REQUIRED, Box, Default).
+    kz_json:is_true(?KEY_PIN_REQUIRED, Box, Default).
 
 -spec check_if_owner(doc()) -> boolean().
 -spec check_if_owner(doc(), Default) -> boolean() | Default.
 check_if_owner(Box) ->
     check_if_owner(Box, 'false').
 check_if_owner(Box, Default) ->
-    wh_json:is_true(?KEY_CHECK_IF_OWNER, Box, Default).
+    kz_json:is_true(?KEY_CHECK_IF_OWNER, Box, Default).
 
 -spec is_setup(doc()) -> boolean().
 -spec is_setup(doc(), Default) -> boolean() | Default.
 is_setup(Box) ->
     is_setup(Box, 'false').
 is_setup(Box, Default) ->
-    wh_json:is_true(?KEY_IS_SETUP, Box, Default).
+    kz_json:is_true(?KEY_IS_SETUP, Box, Default).

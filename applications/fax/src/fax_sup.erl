@@ -20,7 +20,7 @@
 -export([init/1]).
 
 
--define(ORIGIN_BINDINGS, [[{'db', ?WH_FAXES_DB}, {'type', <<"faxbox">>}]
+-define(ORIGIN_BINDINGS, [[{'db', ?KZ_FAXES_DB}, {'type', <<"faxbox">>}]
                          ]).
 
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}
@@ -86,7 +86,7 @@ smtp_sessions() ->
 %%--------------------------------------------------------------------
 -spec init(any()) -> sup_init_ret().
 init([]) ->
-    wh_util:set_startup(),
+    kz_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,

@@ -42,14 +42,14 @@
 
 -define(SERVER, ?MODULE).
 
--define(MAX_TOKENS, whapps_config:get_integer(?APP_NAME, [?DEFAULT_APP, <<"max_bucket_tokens">>], 100)).
+-define(MAX_TOKENS, kapps_config:get_integer(?APP_NAME, [?DEFAULT_APP, <<"max_bucket_tokens">>], 100)).
 -define(MAX_TOKENS(App)
-        ,whapps_config:get_integer(?APP_NAME, [App, <<"max_bucket_tokens">>], ?MAX_TOKENS)
+        ,kapps_config:get_integer(?APP_NAME, [App, <<"max_bucket_tokens">>], ?MAX_TOKENS)
        ).
 
--define(FILL_RATE, whapps_config:get_integer(?APP_NAME, <<"tokens_fill_rate">>, 10)).
+-define(FILL_RATE, kapps_config:get_integer(?APP_NAME, <<"tokens_fill_rate">>, 10)).
 -define(FILL_RATE(App)
-        ,whapps_config:get_integer(?APP_NAME, [App, <<"tokens_fill_rate">>], ?FILL_RATE)
+        ,kapps_config:get_integer(?APP_NAME, [App, <<"tokens_fill_rate">>], ?FILL_RATE)
        ).
 
 -record(state, {table_id :: ets:tid()
@@ -59,7 +59,7 @@
 -record(bucket, {key :: {ne_binary(), ne_binary()} | '_'
                  ,srv :: pid() | '$1' | '$2' | '_'
                  ,ref :: reference() | '$2' | '_'
-                 ,accessed = wh_util:now_s(os:timestamp()) :: gregorian_seconds() | '$1' | '_'
+                 ,accessed = kz_util:now_s(os:timestamp()) :: gregorian_seconds() | '$1' | '_'
                 }).
 -type bucket() :: #bucket{}.
 
@@ -240,7 +240,7 @@ print_bucket_info(#bucket{key={CurrentApp, Name}
                 ,Name
                 ,pid_to_list(P)
                 ,integer_to_list(kz_token_bucket:tokens(P))
-                ,wh_util:pretty_print_elapsed_s(wh_util:elapsed_s(Accessed))
+                ,kz_util:pretty_print_elapsed_s(kz_util:elapsed_s(Accessed))
                ]
              ),
     CurrentApp;
@@ -279,7 +279,7 @@ gift_data() -> 'ok'.
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     {'ok', #state{inactivity_timer_ref=start_inactivity_timer()}}.
 
 %%--------------------------------------------------------------------
@@ -334,7 +334,7 @@ handle_cast(_Req, #state{table_id='undefined'}=State) ->
     lager:debug("ignoring req: ~p", [_Req]),
     {'noreply', State};
 handle_cast({'bucket_accessed', Key}, State) ->
-    ets:update_element(table_id(), Key, {#bucket.accessed, wh_util:now_s(os:timestamp())}),
+    ets:update_element(table_id(), Key, {#bucket.accessed, kz_util:now_s(os:timestamp())}),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
@@ -369,7 +369,7 @@ handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{table_id=Tbl}=State) 
     end,
     {'noreply', State};
 handle_info(?INACTIVITY_MSG, #state{inactivity_timer_ref=_OldRef}=State) ->
-    _Pid = wh_util:spawn(fun check_for_inactive_buckets/0),
+    _Pid = kz_util:spawn(fun check_for_inactive_buckets/0),
     {'noreply', State#state{inactivity_timer_ref=start_inactivity_timer()}};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -416,8 +416,8 @@ start_inactivity_timer() ->
 
 -spec check_for_inactive_buckets() -> 'ok'.
 check_for_inactive_buckets() ->
-    wh_util:put_callid(?MODULE),
-    Now = wh_util:now_s(os:timestamp()),
+    kz_util:put_callid(?MODULE),
+    Now = kz_util:now_s(os:timestamp()),
     InactivityTimeout = ?INACTIVITY_TIMEOUT_S,
 
     MS = [{#bucket{accessed='$1'
@@ -429,11 +429,11 @@ check_for_inactive_buckets() ->
           }],
     case [begin
               kz_token_bucket:stop(Srv),
-              wh_util:to_binary(Srv)
+              kz_util:to_binary(Srv)
           end
           || Srv <- ets:select(?MODULE:table_id(), MS)
          ]
     of
         [] -> 'ok';
-        L -> lager:debug("stopped servers ~s", [wh_util:join_binary(L)])
+        L -> lager:debug("stopped servers ~s", [kz_util:join_binary(L)])
     end.

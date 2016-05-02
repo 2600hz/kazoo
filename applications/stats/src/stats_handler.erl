@@ -20,7 +20,7 @@
 -include("stats.hrl").
 
 handle_req(JObj, _Props) ->
-    Items = wh_json:recursive_to_proplist(JObj),
+    Items = kz_json:recursive_to_proplist(JObj),
     store_items(props:get_value(<<"nodename">>,Items), table_def(), Items).
 
 handle_event(JObj, Props) ->
@@ -94,7 +94,7 @@ collect_items([{Domain, Items} | Rest], Db) ->
            ],
     collect_items(Rest, lists:keystore(Domain, 1, Db, {Domain, NewData})).
 
-send(Payload) when is_list(Payload) -> send(wh_json:encode(Payload));
+send(Payload) when is_list(Payload) -> send(kz_json:encode(Payload));
 send(Payload) -> amqp_util:targeted_publish(<<"statistics">>, Payload).
 
 get_next(Table,Row,Col) when is_list(Col), is_list(Row), is_binary(Table) ->

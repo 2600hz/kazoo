@@ -75,7 +75,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', #state{}}.
 init([]) ->
-    wh_util:spawn(fun load_schedules/0),
+    kz_util:spawn(fun load_schedules/0),
     %% we should wait about 7-10 seconds before gen_leader syncronization
     %% and leader election
     %% after gen_leader syncronization this task will be scheduled only once
@@ -115,7 +115,7 @@ handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast('load_schedules', State) ->
-    Schedules = whapps_config:get(?CONFIG_CAT, <<"schedules">>, []),
+    Schedules = kapps_config:get(?CONFIG_CAT, <<"schedules">>, []),
     NormalizedSchedules = lists:map(fun normalize_schedule/1, Schedules),
     _ = lists:foreach(fun schedule/1, NormalizedSchedules),
     {'noreply', State};
@@ -144,7 +144,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(wh_json:object(), #state{}) -> {'reply', []}.
+-spec handle_event(kz_json:object(), #state{}) -> {'reply', []}.
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
@@ -181,19 +181,19 @@ code_change(_OldVsn, State, _Extra) ->
 -type time() :: amqp_cron_task:oneshot() | amqp_cron_task:cron() | amqp_cron_task:sleeper().
 -type time_token_value() :: 'all' | integer() | integers().
 -type amqp_cron_callback() :: {atom(), atom(), list()} | {fun(), list()}.
--spec normalize_schedule(wh_json:object()) -> {ne_binary(), time(), amqp_cron_callback()}.
+-spec normalize_schedule(kz_json:object()) -> {ne_binary(), time(), amqp_cron_callback()}.
 normalize_schedule(Schedule) ->
-    Action = wh_json:get_value(<<"action">>, Schedule),
-    ActionType = wh_json:get_value(<<"type">>, Action),
+    Action = kz_json:get_value(<<"action">>, Schedule),
+    ActionType = kz_json:get_value(<<"type">>, Action),
     ActionFun = action_fun(ActionType, Action),
     TimeSchedule = time_schedule(Schedule),
     ActionName = action_name(ActionType, Action, TimeSchedule),
     {ActionName, TimeSchedule, ActionFun}.
 
--spec time_schedule(wh_json:object()) -> time().
+-spec time_schedule(kz_json:object()) -> time().
 time_schedule(Schedule) ->
     GetTimeTokenFun = get_time_token_value(Schedule),
-    case wh_json:get_value(<<"type">>, Schedule) of
+    case kz_json:get_value(<<"type">>, Schedule) of
         <<"every">> ->
             [Minutes, Hours, MonthDays, Monthes, Weekdays] = lists:map(GetTimeTokenFun
                                                                        ,[{<<"minutes">>, 'all'}
@@ -231,63 +231,63 @@ schedule({Name, Time, Action}) ->
     lager:info("scheduling ~p", [Name]),
     amqp_cron:schedule_task(Name, Time, Action).
 
--spec get_time_token_value(wh_json:object()) -> fun(({ne_binary(), any()}) -> time_token_value()).
+-spec get_time_token_value(kz_json:object()) -> fun(({ne_binary(), any()}) -> time_token_value()).
 get_time_token_value(JObj) ->
     fun({TokenName, Default}) ->
             parse_time_token(TokenName, JObj, Default)
     end.
 
--spec parse_time_token(ne_binary(), wh_json:object(), time_token_value()) -> time_token_value().
+-spec parse_time_token(ne_binary(), kz_json:object(), time_token_value()) -> time_token_value().
 parse_time_token(TokenName, Schedule, Default) ->
-    case wh_json:get_value(TokenName, Schedule, Default) of
+    case kz_json:get_value(TokenName, Schedule, Default) of
         <<"all">> ->
             'all';
         'all' ->
             'all';
         Tokens when is_list(Tokens) ->
-            [wh_util:to_integer(X) || X <- Tokens];
+            [kz_util:to_integer(X) || X <- Tokens];
         Token ->
-            wh_util:to_integer(Token)
+            kz_util:to_integer(Token)
     end.
 
--spec action_fun(ne_binary(), wh_json:object()) -> amqp_cron_callback().
+-spec action_fun(ne_binary(), kz_json:object()) -> amqp_cron_callback().
 action_fun(<<"check_voicemail">>, JObj) ->
-    AccountId = wh_json:get_value(<<"account_id">>, JObj),
-    VmboxId = wh_json:get_value(<<"vmbox_id">>, JObj),
+    AccountId = kz_json:get_value(<<"account_id">>, JObj),
+    VmboxId = kz_json:get_value(<<"vmbox_id">>, JObj),
     {'ananke_vm_callback', 'check', [AccountId, VmboxId]};
 action_fun(Type, _JObj) ->
     {fun unknown_type/1, [Type]}.
 
--spec action_name(ne_binary(), wh_json:object(), time()) -> ne_binary().
+-spec action_name(ne_binary(), kz_json:object(), time()) -> ne_binary().
 action_name(ActionType, Action, Times) ->
     ActionSuffix = action_suffixes(ActionType, Action),
-    wh_util:join_binary([ActionType | ActionSuffix] ++ [time_suffix(Times)], "-").
+    kz_util:join_binary([ActionType | ActionSuffix] ++ [time_suffix(Times)], "-").
 
--spec action_suffixes(ne_binary(), wh_json:object()) -> ne_binaries().
+-spec action_suffixes(ne_binary(), kz_json:object()) -> ne_binaries().
 action_suffixes(<<"check_voicemail">>, JObj) ->
-    [wh_json:get_value(<<"account_id">>, JObj), wh_json:get_value(<<"vmbox_id">>, JObj)];
+    [kz_json:get_value(<<"account_id">>, JObj), kz_json:get_value(<<"vmbox_id">>, JObj)];
 action_suffixes(_Type, _JObj) ->
     [].
 
 -spec time_suffix(time()) -> ne_binary().
 time_suffix({'cron', {Minutes, Hours, MonthDays, Monthes, Weekdays}}) ->
-    wh_util:join_binary(
+    kz_util:join_binary(
       lists:map(fun time_tokens_to_binary/1
                 ,[Minutes, Hours, MonthDays, Monthes, Weekdays])
       , "-");
 time_suffix({'oneshot', {{Year, Month, Day}, {Hour, Minute, Second}}}) ->
-    wh_util:join_binary(
-      lists:map(fun wh_util:to_binary/1
+    kz_util:join_binary(
+      lists:map(fun kz_util:to_binary/1
                 ,[Year, Month, Day, Hour, Minute, Second])
       , "-");
 time_suffix({'sleeper', MilliSeconds}) ->
-    wh_util:to_binary(MilliSeconds).
+    kz_util:to_binary(MilliSeconds).
 
 -spec time_tokens_to_binary(time_token_value()) -> ne_binary().
 time_tokens_to_binary('all') ->
     <<"all">>;
 time_tokens_to_binary(Tokens) when is_list(Tokens) ->
-    wh_util:join_binary([wh_util:to_binary(X) || X <- Tokens], ",").
+    kz_util:join_binary([kz_util:to_binary(X) || X <- Tokens], ",").
 
 -spec unknown_type(api_binary()) -> 'ok'.
 unknown_type(Type) ->

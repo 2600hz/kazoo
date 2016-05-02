@@ -45,24 +45,24 @@
 %%%===================================================================
 %%% Startup and shutdown of request
 %%%===================================================================
--spec init({'tcp' | 'ssl', 'http'}, cowboy_req:req(), wh_proplist()) ->
+-spec init({'tcp' | 'ssl', 'http'}, cowboy_req:req(), kz_proplist()) ->
                   {'upgrade', 'protocol', 'cowboy_rest'}.
 init({'tcp', 'http'}, _Req, _Opts) ->
     {'upgrade', 'protocol', 'cowboy_rest'};
 init({'ssl', 'http'}, _Req, _Opts) ->
     {'upgrade', 'protocol', 'cowboy_rest'}.
 
--spec rest_init(cowboy_req:req(), wh_proplist()) ->
+-spec rest_init(cowboy_req:req(), kz_proplist()) ->
                        {'ok', cowboy_req:req(), cb_context:context()}.
 rest_init(Req0, Opts) ->
     ReqId = case cowboy_req:header(<<"x-request-id">>, Req0) of
                 {'undefined', _} -> kz_datamgr:get_uuid();
-                {UserReqId, _} -> wh_util:to_binary(UserReqId)
+                {UserReqId, _} -> kz_util:to_binary(UserReqId)
             end,
-    wh_util:put_callid(ReqId),
+    kz_util:put_callid(ReqId),
     ProfileId = case cowboy_req:header(<<"x-profile-id">>, Req0) of
                     {'undefined', _} -> 'undefined';
-                    {ProfId, _} -> wh_util:to_binary(ProfId)
+                    {ProfId, _} -> kz_util:to_binary(ProfId)
                 end,
     {Host, Req1} = cowboy_req:host(Req0),
     {Port, Req2} = cowboy_req:port(Req1),
@@ -74,19 +74,19 @@ rest_init(Req0, Opts) ->
     {Version, Req7} = find_version(Path, Req6),
 
     ClientIP = case cowboy_req:header(<<"x-forwarded-for">>, Req7) of
-                   {'undefined', _} -> wh_network_utils:iptuple_to_binary(Peer);
-                   {ForwardIP, _} -> maybe_allow_proxy_req(wh_network_utils:iptuple_to_binary(Peer), ForwardIP)
+                   {'undefined', _} -> kz_network_utils:iptuple_to_binary(Peer);
+                   {ForwardIP, _} -> maybe_allow_proxy_req(kz_network_utils:iptuple_to_binary(Peer), ForwardIP)
                end,
 
     {Headers, _} = cowboy_req:headers(Req7),
 
     Setters = [{fun cb_context:set_req_id/2, ReqId}
               ,{fun cb_context:set_req_headers/2, Headers}
-              ,{fun cb_context:set_raw_host/2, wh_util:to_binary(Host)}
-              ,{fun cb_context:set_port/2, wh_util:to_integer(Port)}
-              ,{fun cb_context:set_raw_path/2, wh_util:to_binary(Path)}
-              ,{fun cb_context:set_raw_qs/2, wh_util:to_binary(QS)}
-              ,{fun cb_context:set_method/2, wh_util:to_binary(Method)}
+              ,{fun cb_context:set_raw_host/2, kz_util:to_binary(Host)}
+              ,{fun cb_context:set_port/2, kz_util:to_integer(Port)}
+              ,{fun cb_context:set_raw_path/2, kz_util:to_binary(Path)}
+              ,{fun cb_context:set_raw_qs/2, kz_util:to_binary(QS)}
+              ,{fun cb_context:set_method/2, kz_util:to_binary(Method)}
               ,{fun cb_context:set_resp_status/2, 'fatal'}
               ,{fun cb_context:set_resp_error_msg/2, <<"init failed">>}
               ,{fun cb_context:set_resp_error_code/2, 500}
@@ -114,7 +114,7 @@ rest_init(Req0, Opts) ->
 
 -spec metrics() -> {non_neg_integer(), non_neg_integer()}.
 metrics() ->
-    {wh_util:bin_usage(), wh_util:mem_usage()}.
+    {kz_util:bin_usage(), kz_util:mem_usage()}.
 
 find_version(Path, Req) ->
     case cowboy_req:binding('version', Req) of
@@ -134,7 +134,7 @@ maybe_allow_proxy_req(Peer, ForwardIP) ->
     case is_proxied(Peer) of
         true ->
             lager:info("request is from expected reverse proxy: ~s", [ForwardIP]),
-            wh_util:to_binary(ForwardIP);
+            kz_util:to_binary(ForwardIP);
         false ->
             lager:warning("request with \"X-Forwarded-For: ~s\" header, but peer (~s) is not allowed as proxy"
                          ,[ForwardIP, Peer]
@@ -145,18 +145,18 @@ maybe_allow_proxy_req(Peer, ForwardIP) ->
 -spec is_proxied(ne_binary()) -> boolean().
 -spec is_proxied(ne_binary(), ne_binaries()) -> boolean().
 is_proxied(Peer) ->
-    Proxies = whapps_config:get_non_empty(?APP_NAME, <<"reverse_proxies">>, []),
+    Proxies = kapps_config:get_non_empty(?APP_NAME, <<"reverse_proxies">>, []),
     is_proxied(Peer, Proxies).
 
 is_proxied(_Peer, []) -> 'false';
 is_proxied(Peer, [Proxy|Rest]) ->
-    case wh_network_utils:verify_cidr(Peer, wh_network_utils:to_cidr(Proxy)) of
+    case kz_network_utils:verify_cidr(Peer, kz_network_utils:to_cidr(Proxy)) of
         'true' -> 'true';
         'false' -> is_proxied(Peer, Rest)
     end.
 
 to_version(<<"v", Int/binary>>=Version) ->
-    try wh_util:to_integer(Int) of
+    try kz_util:to_integer(Int) of
         _ -> Version
     catch
         _:_ -> ?VERSION_1
@@ -179,7 +179,7 @@ rest_terminate(Req, Context) ->
 
 rest_terminate(Req, Context, ?HTTP_OPTIONS) ->
     lager:info("OPTIONS request fulfilled in ~p ms"
-               ,[wh_util:elapsed_ms(cb_context:start(Context))]
+               ,[kz_util:elapsed_ms(cb_context:start(Context))]
               ),
     _ = api_util:finish_request(Req, Context);
 rest_terminate(Req, Context, Verb) ->
@@ -187,7 +187,7 @@ rest_terminate(Req, Context, Verb) ->
     {BBin, BMem} = cb_context:fetch(Context, 'metrics'),
 
     lager:info("~s request fulfilled in ~p ms ~s mem ~s bin"
-               ,[Verb, wh_util:elapsed_ms(cb_context:start(Context))
+               ,[Verb, kz_util:elapsed_ms(cb_context:start(Context))
                  ,pretty_metric(AMem - BMem)
                  ,pretty_metric(ABin - BBin)
                 ]
@@ -197,16 +197,16 @@ rest_terminate(Req, Context, Verb) ->
 -spec pretty_metric(integer()) -> ne_binary().
 -spec pretty_metric(integer(), boolean()) -> ne_binary().
 pretty_metric(N) ->
-    pretty_metric(N, whapps_config:get_is_true(?CONFIG_CAT, <<"pretty_metrics">>, 'true')).
+    pretty_metric(N, kapps_config:get_is_true(?CONFIG_CAT, <<"pretty_metrics">>, 'true')).
 
 pretty_metric(N, 'false') ->
-    wh_util:to_binary(N);
+    kz_util:to_binary(N);
 pretty_metric(N, 'true') when N < 0 ->
     NegN = N * -1,
-    PrettyN = wh_util:pretty_print_bytes(NegN),
+    PrettyN = kz_util:pretty_print_bytes(NegN),
     <<"-", PrettyN/binary>>;
 pretty_metric(N, 'true') ->
-    wh_util:pretty_print_bytes(N).
+    kz_util:pretty_print_bytes(N).
 
 %%%===================================================================
 %%% CowboyHTTPRest API Callbacks
@@ -270,7 +270,7 @@ find_allowed_methods(Req0, Context) ->
     {Method, Req1} = cowboy_req:method(Req0),
     AllowMethods = api_util:allow_methods(Responses
                                           ,cb_context:req_verb(Context)
-                                          ,wh_util:to_binary(Method)
+                                          ,kz_util:to_binary(Method)
                                          ),
     maybe_add_cors_headers(Req1, cb_context:set_allow_methods(Context, AllowMethods)).
 
@@ -406,7 +406,7 @@ options(Req0, Context) ->
             {'ok', Req1, Context}
     end.
 
--type content_type_callbacks() :: [{{ne_binary(), ne_binary(), wh_proplist()}, atom()} |
+-type content_type_callbacks() :: [{{ne_binary(), ne_binary(), kz_proplist()}, atom()} |
                                    {ne_binary(), atom()}
                                    ].
 -spec content_types_provided(cowboy_req:req(), cb_context:context()) ->
@@ -678,7 +678,7 @@ to_json(Req0, Context0, 'undefined') ->
     [{Mod, _Params}|_] = cb_context:req_nouns(Context0),
     Verb = cb_context:req_verb(Context0),
     Event = api_util:create_event_name(Context0, [<<"to_json">>
-                                                      ,wh_util:to_lower_binary(Verb)
+                                                      ,kz_util:to_lower_binary(Verb)
                                                   ,Mod
                                                  ]),
     {Req1, Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
@@ -737,7 +737,7 @@ to_fun(Context, Major, Minor, Default) ->
         [F|_] -> F
     end.
 
--spec accept_matches_provided(ne_binary(), ne_binary(), wh_proplist()) -> boolean().
+-spec accept_matches_provided(ne_binary(), ne_binary(), kz_proplist()) -> boolean().
 accept_matches_provided(Major, Minor, CTPs) ->
     lists:any(fun({Pri, Sec}) ->
                       Pri =:= Major
@@ -754,7 +754,7 @@ to_csv(Req, Context) ->
     [{Mod, _Params}|_] = cb_context:req_nouns(Context),
     Verb = cb_context:req_verb(Context),
     Event = api_util:create_event_name(Context, [<<"to_csv">>
-                                                 ,wh_util:to_lower_binary(Verb)
+                                                 ,kz_util:to_lower_binary(Verb)
                                                  ,Mod
                                                 ]),
     {Req1, Context1} = crossbar_bindings:fold(Event, {Req, Context}),
@@ -781,7 +781,7 @@ to_pdf(Req, Context) ->
     [{Mod, _Params}|_] = cb_context:req_nouns(Context),
     Verb = cb_context:req_verb(Context),
     Event = api_util:create_event_name(Context, [<<"to_pdf">>
-                                                 ,wh_util:to_lower_binary(Verb)
+                                                 ,kz_util:to_lower_binary(Verb)
                                                  ,Mod
                                                 ]),
     {Req1, Context1} = crossbar_bindings:fold(Event, {Req, Context}),
@@ -807,7 +807,7 @@ accept_override(Context) ->
 -spec maybe_flatten_jobj(cb_context:context()) -> iolist().
 maybe_flatten_jobj(Context) ->
     case props:get_all_values(<<"identifier">>
-                              ,wh_json:to_proplist(cb_context:query_string(Context))
+                              ,kz_json:to_proplist(cb_context:query_string(Context))
                              )
     of
         [] ->
@@ -817,8 +817,8 @@ maybe_flatten_jobj(Context) ->
                        ],
             lists:foldl(fun fold_over_funs/2, cb_context:resp_data(Context), Routines);
         Identifier ->
-            Depth = wh_json:get_integer_value(<<"depth">>, cb_context:query_string(Context), 1),
-            JObj = wh_json:flatten(cb_context:resp_data(Context), Depth, Identifier),
+            Depth = kz_json:get_integer_value(<<"depth">>, cb_context:query_string(Context), 1),
+            JObj = kz_json:flatten(cb_context:resp_data(Context), Depth, Identifier),
             Routines = [fun(J) -> check_integrity(J) end
                         ,fun(J) -> create_csv_header(J) end
                         ,fun(J) -> json_objs_to_csv(J) end
@@ -827,33 +827,33 @@ maybe_flatten_jobj(Context) ->
     end.
 fold_over_funs(F, J) -> F(J).
 
--spec check_integrity(list()) -> wh_json:objects().
+-spec check_integrity(list()) -> kz_json:objects().
 check_integrity(JObjs) ->
     Headers = get_headers(JObjs),
     check_integrity(JObjs, Headers, []).
 
--spec check_integrity(wh_json:objects(), ne_binaries(), wh_json:objects()) -> wh_json:objects().
+-spec check_integrity(kz_json:objects(), ne_binaries(), kz_json:objects()) -> kz_json:objects().
 check_integrity([], _, Acc) ->
     lists:reverse(Acc);
 check_integrity([JObj|JObjs], Headers, Acc) ->
     NJObj = lists:foldl(
               fun(Header, J) ->
-                      case wh_json:get_value(Header, J) of
+                      case kz_json:get_value(Header, J) of
                           'undefined' ->
-                              wh_json:set_value(Header, <<>>, J);
+                              kz_json:set_value(Header, <<>>, J);
                           _ -> J
                       end
               end, JObj, Headers),
-    NJObj1 = wh_json:from_list(lists:keysort(1, wh_json:to_proplist(NJObj))),
+    NJObj1 = kz_json:from_list(lists:keysort(1, kz_json:to_proplist(NJObj))),
     check_integrity(JObjs, Headers, [NJObj1|Acc]).
 
--spec get_headers(wh_json:objects()) -> ne_binaries().
+-spec get_headers(kz_json:objects()) -> ne_binaries().
 get_headers(JObjs) ->
     lists:foldl(fun fold_over_objects/2, [], JObjs).
 
--spec fold_over_objects(wh_json:object(), ne_binaries()) -> ne_binaries().
+-spec fold_over_objects(kz_json:object(), ne_binaries()) -> ne_binaries().
 fold_over_objects(JObj, Headers) ->
-    lists:foldl(fun fold_over_keys/2, Headers, wh_json:get_keys(JObj)).
+    lists:foldl(fun fold_over_keys/2, Headers, kz_json:get_keys(JObj)).
 
 -spec fold_over_keys(ne_binary(), ne_binaries()) -> ne_binaries().
 fold_over_keys(Key, Hs) ->
@@ -862,44 +862,44 @@ fold_over_keys(Key, Hs) ->
         'true' -> Hs
     end.
 
--spec create_csv_header(list()) -> wh_json:objects().
+-spec create_csv_header(list()) -> kz_json:objects().
 create_csv_header([]) -> [];
 create_csv_header([JObj|_]=JObjs) -> [JObj|JObjs].
 
--spec json_objs_to_csv(wh_json:objects()) -> iolist().
+-spec json_objs_to_csv(kz_json:objects()) -> iolist().
 json_objs_to_csv([]) -> [];
 json_objs_to_csv([J|JObjs]) ->
     [csv_header(J), [json_to_csv(JObj) || JObj <- JObjs]].
 
--spec csv_header(wh_json:object()) -> iolist().
+-spec csv_header(kz_json:object()) -> iolist().
 csv_header(JObj) ->
-    csv_ize(wh_json:get_keys(JObj)).
+    csv_ize(kz_json:get_keys(JObj)).
 
--spec csv_ize(wh_json:keys()) -> iolist().
+-spec csv_ize(kz_json:keys()) -> iolist().
 csv_ize([F|Rest]) ->
-    [<<"\"">>, wh_util:to_binary(F), <<"\"">>
+    [<<"\"">>, kz_util:to_binary(F), <<"\"">>
      ,[[<<",\"">>, try_to_binary(V), <<"\"">>] || V <- Rest]
      ,<<"\n">>
     ].
 
 -spec try_to_binary(any()) -> binary().
 try_to_binary(Value) ->
-    try wh_util:to_binary(Value) of
+    try kz_util:to_binary(Value) of
         V -> V
     catch
         _E:_R -> <<"">>
    end.
 
--spec json_to_csv(wh_json:object()) -> iolist().
+-spec json_to_csv(kz_json:object()) -> iolist().
 json_to_csv(JObj) ->
-    {Vs, _} = wh_json:get_values(correct_jobj(JObj)),
+    {Vs, _} = kz_json:get_values(correct_jobj(JObj)),
     csv_ize(Vs).
 
--spec correct_jobj(wh_json:object()) -> wh_json:object().
+-spec correct_jobj(kz_json:object()) -> kz_json:object().
 correct_jobj(JObj) ->
-    Prop = wh_json:to_proplist(JObj),
+    Prop = kz_json:to_proplist(JObj),
     L = lists:map(fun(X) -> correct_proplist(X) end, Prop),
-    wh_json:from_list(L).
+    kz_json:from_list(L).
 
 correct_proplist({K}) -> {K, <<>>};
 correct_proplist(T) -> T.
@@ -917,7 +917,7 @@ generate_etag(Req0, Context0) ->
     case cb_context:resp_etag(Context1) of
         'automatic' ->
             {Content, _} = api_util:create_resp_content(Req1, Context1),
-            Tag = wh_util:to_hex_binary(crypto:hash('md5', Content)),
+            Tag = kz_util:to_hex_binary(crypto:hash('md5', Content)),
             {list_to_binary([$", Tag, $"]), Req1, cb_context:set_resp_etag(Context1, Tag)};
         'undefined' ->
             {'undefined', Req1, cb_context:set_resp_etag(Context1, 'undefined')};
@@ -926,7 +926,7 @@ generate_etag(Req0, Context0) ->
     end.
 
 -spec expires(cowboy_req:req(), cb_context:context()) ->
-                     {wh_datetime(), cowboy_req:req(), cb_context:context()}.
+                     {kz_datetime(), cowboy_req:req(), cb_context:context()}.
 expires(Req, Context) ->
     Event = api_util:create_event_name(Context, <<"expires">>),
     crossbar_bindings:fold(Event, {cb_context:resp_expires(Context), Req, Context}).

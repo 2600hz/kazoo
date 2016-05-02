@@ -17,17 +17,17 @@ start(MCall, AcctId, AgentCallId) ->
             ,{<<"Account-ID">>, AcctId}
             ,{<<"Endpoint-ID">>, <<"5381e0c5caa8d34eec06e0f75d0b4189">>}
             ,{<<"Eavesdrop-Call-ID">>, AgentCallId}
-            ,{<<"Outbound-Caller-ID-Name">>, whapps_call:caller_id_name(MCall)}
-            ,{<<"Outbound-Caller-ID-Number">>, whapps_call:caller_id_number(MCall)}
-            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ,{<<"Outbound-Caller-ID-Name">>, kapps_call:caller_id_name(MCall)}
+            ,{<<"Outbound-Caller-ID-Number">>, kapps_call:caller_id_number(MCall)}
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     eavesdrop_req(Prop).
 
 eavesdrop_req(Prop) ->
     lager:debug("Sending eavs ~p", [Prop]),
-    case whapps_util:amqp_pool_request(Prop
-                                       ,fun wapi_resource:publish_eavesdrop_req/1
-                                       ,fun wapi_resource:eavesdrop_resp_v/1
+    case kapps_util:amqp_pool_request(Prop
+                                       ,fun kapi_resource:publish_eavesdrop_req/1
+                                       ,fun kapi_resource:eavesdrop_resp_v/1
                                        ,2000
                                       )
     of

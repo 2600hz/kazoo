@@ -69,9 +69,9 @@
 -record(node, {node :: atom()
                ,cookie :: atom()
                ,connected = 'false' :: boolean()
-               ,started = wh_util:current_tstamp() :: gregorian_seconds()
+               ,started = kz_util:current_tstamp() :: gregorian_seconds()
                ,client_version :: api_binary()
-               ,options = [] :: wh_proplist()
+               ,options = [] :: kz_proplist()
               }).
 -type fs_node() :: #node{}.
 
@@ -107,8 +107,8 @@ start_link() ->
 
 %% returns 'ok' or {'error', some_error_atom_explaining_more}
 -spec add(atom()) -> 'ok' | {'error', 'no_connection'}.
--spec add(atom(), wh_proplist() | atom()) -> 'ok' | {'error', 'no_connection'}.
--spec add(atom(), atom(), wh_proplist() | atom()) -> 'ok' | {'error', 'no_connection'}.
+-spec add(atom(), kz_proplist() | atom()) -> 'ok' | {'error', 'no_connection'}.
+-spec add(atom(), atom(), kz_proplist() | atom()) -> 'ok' | {'error', 'no_connection'}.
 
 add(Node) -> add(Node, []).
 
@@ -134,7 +134,7 @@ nodeup(Node) -> gen_server:cast(?SERVER, {'fs_nodeup', Node}).
 -spec remove(atom()) -> 'ok'.
 remove(Node) -> gen_server:cast(?SERVER, {'rm_fs_node', Node}).
 
--spec connected() -> atoms() | wh_proplist_kv(atom(), gregorian_seconds()).
+-spec connected() -> atoms() | kz_proplist_kv(atom(), gregorian_seconds()).
 connected() ->
     connected('false').
 
@@ -167,7 +167,7 @@ is_node_up(Node) -> gen_server:call(?SERVER, {'is_node_up', Node}).
 
 -spec sip_url(text()) -> api_binary().
 sip_url(Node) when not is_atom(Node) ->
-    sip_url(wh_util:to_atom(Node, 'true'));
+    sip_url(kz_util:to_atom(Node, 'true'));
 sip_url(Node) ->
     case [ecallmgr_fs_node:sip_url(Srv)
           || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'})
@@ -180,7 +180,7 @@ sip_url(Node) ->
 
 -spec sip_external_ip(text()) -> api_binary().
 sip_external_ip(Node) when not is_atom(Node) ->
-    sip_external_ip(wh_util:to_atom(Node, 'true'));
+    sip_external_ip(kz_util:to_atom(Node, 'true'));
 sip_external_ip(Node) ->
     case [ecallmgr_fs_node:sip_external_ip(Srv)
           || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'})
@@ -206,7 +206,7 @@ details() ->
     print_details(gen_server:call(?SERVER, 'nodes')).
 
 details(NodeName) when not is_atom(NodeName) ->
-    details(wh_util:to_atom(NodeName, 'true'));
+    details(kz_util:to_atom(NodeName, 'true'));
 details(NodeName) ->
     case gen_server:call(?SERVER, {'node', NodeName}) of
         {'error', 'not_found'} ->
@@ -215,7 +215,7 @@ details(NodeName) ->
             print_details([{'undefined', Node}])
     end.
 
--spec has_capability(atom(), ne_binary() | wh_json:object()) -> boolean().
+-spec has_capability(atom(), ne_binary() | kz_json:object()) -> boolean().
 has_capability(Node, Capability) when is_binary(Capability) ->
     MatchSpec = [{#capability{node='$1'
                               ,name='$2'
@@ -232,7 +232,7 @@ has_capability(Node, Capability) when is_binary(Capability) ->
         [Loaded] -> Loaded
     end;
 has_capability(Node, Capability) ->
-    has_capability(Node, wh_json:get_value(<<"capability">>, Capability)).
+    has_capability(Node, kz_json:get_value(<<"capability">>, Capability)).
 
 -spec remove_capabilities(atom()) -> non_neg_integer().
 remove_capabilities(Node) ->
@@ -276,9 +276,9 @@ get_capability(Node, Capability, Format) ->
     format_capability(Format, ets:select(?CAPABILITY_TBL, MatchSpec)).
 
 -spec get_capabilities(atom()) ->
-                              wh_json:objects() | capabilities().
+                              kz_json:objects() | capabilities().
 -spec get_capabilities(atom(), 'json' | 'record') ->
-                              wh_json:objects() | capabilities().
+                              kz_json:objects() | capabilities().
 get_capabilities(Node) ->
     get_capabilities(Node, 'json').
 
@@ -291,7 +291,7 @@ get_capabilities(Node, Format) ->
                  }],
     format_capabilities(Format, ets:select(?CAPABILITY_TBL, MatchSpec)).
 
--spec format_capabilities('json' | 'record', capabilities()) -> capabilities() | wh_json:objects().
+-spec format_capabilities('json' | 'record', capabilities()) -> capabilities() | kz_json:objects().
 format_capabilities('record', Results) -> Results;
 format_capabilities('json', Results) ->
     [capability_to_json(Result) || Result <- Results].
@@ -305,7 +305,7 @@ format_capability(_, []) -> 'undefined'.
 set_capability(Node, Capability, Toggle) when is_boolean(Toggle) ->
     gen_server:call(?SERVER, {'set_capability', Node, Capability, Toggle}).
 
--spec add_capability(atom(), wh_json:object()) -> 'ok'.
+-spec add_capability(atom(), kz_json:object()) -> 'ok'.
 add_capability(Node, Capability) ->
     case has_capability(Node, Capability) of
         'true' -> 'ok';
@@ -317,17 +317,17 @@ capability_to_json(#capability{node=Node
                                ,module=Module
                                ,is_loaded=IsLoaded
                               }) ->
-    wh_json:from_list([{<<"node">>, wh_util:to_binary(Node)}
+    kz_json:from_list([{<<"node">>, kz_util:to_binary(Node)}
                        ,{<<"capability">>, Capability}
                        ,{<<"module">>, Module}
                        ,{<<"is_loaded">>, IsLoaded}
                       ]).
 
--spec handle_fs_xml_flush(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_fs_xml_flush(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_fs_xml_flush(JObj, _Props) ->
-    'true' = wapi_switch:fs_xml_flush_v(JObj),
-    Username = wh_json:get_value(<<"Username">>, JObj),
-    Realm = wh_json:get_value(<<"Realm">>, JObj, <<>>),
+    'true' = kapi_switch:fs_xml_flush_v(JObj),
+    Username = kz_json:get_value(<<"Username">>, JObj),
+    Realm = kz_json:get_value(<<"Realm">>, JObj, <<>>),
     flush(Username, Realm).
 
 %%%===================================================================
@@ -346,13 +346,13 @@ handle_fs_xml_flush(JObj, _Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    wh_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?LOG_SYSTEM_ID),
     process_flag('trap_exit', 'true'),
     lager:debug("starting new fs handler"),
     _ = ets:new('sip_subscriptions', ['set', 'public', 'named_table', {'keypos', #sip_subscription.key}]),
     _ = ets:new(?CAPABILITY_TBL, ['bag', 'protected', 'named_table', {'keypos', #capability.node}]),
     _ = erlang:send_after(?EXPIRE_CHECK, self(), 'expire_sip_subscriptions'),
-    InitPidRef = wh_util:spawn_monitor(fun start_preconfigured_servers/0, []),
+    InitPidRef = kz_util:spawn_monitor(fun start_preconfigured_servers/0, []),
     {'ok', #state{init_pidref=InitPidRef}}.
 
 %%--------------------------------------------------------------------
@@ -397,7 +397,7 @@ handle_call({'connected_nodes', 'true'}, _From, #state{nodes=Nodes}=State) ->
            ],
     {'reply', Resp, State};
 handle_call({'add_fs_node', NodeName, Cookie, Options}, From, State) ->
-    _ = wh_util:spawn(
+    _ = kz_util:spawn(
           fun() ->
                   try maybe_add_node(NodeName, Cookie, Options, State) of
                       Reply ->
@@ -418,9 +418,9 @@ handle_call({'node', Node}, _From, #state{nodes=Nodes}=State) ->
     end;
 handle_call({'add_capability', Node, Capability}, _, State) ->
     ets:insert(?CAPABILITY_TBL, #capability{node=Node
-                                            ,name=wh_json:get_value(<<"capability">>, Capability)
-                                            ,module=wh_json:get_value(<<"module">>, Capability)
-                                            ,is_loaded=wh_json:is_true(<<"is_loaded">>, Capability)
+                                            ,name=kz_json:get_value(<<"capability">>, Capability)
+                                            ,module=kz_json:get_value(<<"module">>, Capability)
+                                            ,is_loaded=kz_json:is_true(<<"is_loaded">>, Capability)
                                            }),
     {'reply', 'ok', State};
 handle_call({'set_capability', Node, Name, Toggle}, _, State) ->
@@ -446,7 +446,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({'fs_nodeup', NodeName}, State) ->
-    _ = wh_util:spawn(fun maybe_handle_nodeup/2, [NodeName, State]),
+    _ = kz_util:spawn(fun maybe_handle_nodeup/2, [NodeName, State]),
     {'noreply', State};
 handle_cast({'update_node', #node{node=NodeName, connected=Connected}=Node}
             ,#state{nodes=Nodes}=State) ->
@@ -461,7 +461,7 @@ handle_cast({'remove_capabilities', NodeName}, State) ->
     lager:debug("removed ~p capabilities from ~s", [_Rm, NodeName]),
     {'noreply', State};
 handle_cast({'rm_fs_node', NodeName}, State) ->
-    _ = wh_util:spawn(fun maybe_rm_fs_node/2, [NodeName, State]),
+    _ = kz_util:spawn(fun maybe_rm_fs_node/2, [NodeName, State]),
     {'noreply', State};
 handle_cast(_Cast, State) ->
     lager:debug("unhandled cast: ~p", [_Cast]),
@@ -478,7 +478,7 @@ handle_cast(_Cast, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info('expire_sip_subscriptions', Cache) ->
-    Now = wh_util:current_tstamp(),
+    Now = kz_util:current_tstamp(),
     DeleteSpec = [{#sip_subscription{expires = '$1', timestamp = '$2', _ = '_'},
                    [{'>', {'const', Now}, {'+', '$2', '$1'}}],
                    ['true']}
@@ -487,7 +487,7 @@ handle_info('expire_sip_subscriptions', Cache) ->
     _ = erlang:send_after(?EXPIRE_CHECK, self(), 'expire_sip_subscriptions'),
     {'noreply', Cache};
 handle_info({'nodedown', NodeName}, State) ->
-    _ = wh_util:spawn(fun maybe_handle_nodedown/2, [NodeName, State]),
+    _ = kz_util:spawn(fun maybe_handle_nodedown/2, [NodeName, State]),
     call_control_fs_nodedown(NodeName),
     {'noreply', State};
 handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{init_pidref={Pid, Ref}}=State) ->
@@ -575,7 +575,7 @@ maybe_handle_nodedown(NodeName, #state{nodes=Nodes}=State) ->
         _Else -> 'ok'
     end.
 
--spec maybe_add_node(text(), text(), wh_proplist(), state()) ->
+-spec maybe_add_node(text(), text(), kz_proplist(), state()) ->
                             'ok' | {'error', any()}.
 maybe_add_node(NodeName, Cookie, Options, #state{self=Srv, nodes=Nodes}) ->
     case dict:find(NodeName, Nodes) of
@@ -681,7 +681,7 @@ maybe_start_node_handlers(#node{node=NodeName
         _:Reason ->
             ST = erlang:get_stacktrace(),
             lager:warning("exception starting node ~s handlers: ~p", [NodeName, Reason]),
-            wh_util:log_stacktrace(ST),
+            kz_util:log_stacktrace(ST),
             {'error', Reason}
     end.
 
@@ -713,11 +713,11 @@ close_node(#node{node=NodeName}) ->
     _ = ecallmgr_fs_sup:remove_node(NodeName),
     ecallmgr_fs_pinger_sup:remove_node(NodeName).
 
--spec create_node(text(), text(), wh_proplist()) -> fs_node().
+-spec create_node(text(), text(), kz_proplist()) -> fs_node().
 create_node(NodeName, Cookie, Options) when not is_atom(NodeName) ->
-    create_node(wh_util:to_atom(NodeName, 'true'), Cookie, Options);
+    create_node(kz_util:to_atom(NodeName, 'true'), Cookie, Options);
 create_node(NodeName, Cookie, Options) when not is_atom(Cookie) ->
-    create_node(NodeName, wh_util:to_atom(Cookie, 'true'), Options);
+    create_node(NodeName, kz_util:to_atom(Cookie, 'true'), Options);
 create_node(NodeName, Cookie, Options) ->
     #node{node=NodeName
           ,cookie=get_fs_cookie(Cookie, Options)
@@ -725,9 +725,9 @@ create_node(NodeName, Cookie, Options) ->
           ,options=Options
          }.
 
--spec get_fs_cookie(atom(), wh_proplist()) -> atom().
+-spec get_fs_cookie(atom(), kz_proplist()) -> atom().
 get_fs_cookie('undefined', Props) ->
-    wh_util:to_atom(props:get_value('cookie', Props, erlang:get_cookie()));
+    kz_util:to_atom(props:get_value('cookie', Props, erlang:get_cookie()));
 get_fs_cookie(Cookie, _) when is_atom(Cookie) ->
     Cookie.
 
@@ -759,7 +759,7 @@ start_node_stats(#node{}) ->
 
 -spec start_preconfigured_servers() -> 'ok'.
 start_preconfigured_servers() ->
-    wh_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?LOG_SYSTEM_ID),
     case ecallmgr_config:get(<<"fs_nodes">>) of
         [] ->
             lager:info("no preconfigured servers available. Is the sysconf whapp running?"),
@@ -768,7 +768,7 @@ start_preconfigured_servers() ->
             start_preconfigured_servers();
         Nodes when is_list(Nodes) ->
             lager:info("successfully retrieved FreeSWITCH nodes to connect with, doing so..."),
-            _ = [wh_util:spawn(fun start_node_from_config/1, [N]) || N <- Nodes],
+            _ = [kz_util:spawn(fun start_node_from_config/1, [N]) || N <- Nodes],
             'ok';
         'undefined' ->
             lager:debug("failed to receive a response for node configs"),
@@ -783,11 +783,11 @@ start_preconfigured_servers() ->
     end.
 
 start_node_from_config(MaybeJObj) ->
-    case wh_json:is_json_object(MaybeJObj) of
-        'false' -> ?MODULE:add(wh_util:to_atom(MaybeJObj, 'true'));
+    case kz_json:is_json_object(MaybeJObj) of
+        'false' -> ?MODULE:add(kz_util:to_atom(MaybeJObj, 'true'));
         'true' ->
-            {[Cookie], [Node]} = wh_json:get_values(MaybeJObj),
-            try ?MODULE:add(wh_util:to_atom(Node, 'true'), wh_util:to_atom(Cookie, 'true')) of
+            {[Cookie], [Node]} = kz_json:get_values(MaybeJObj),
+            try ?MODULE:add(kz_util:to_atom(Node, 'true'), kz_util:to_atom(Cookie, 'true')) of
                 _OK -> lager:debug("added ~s(~s) successfully: ~p", [Node, Cookie, _OK])
             catch
                 _E:_R -> lager:debug("failed to add ~s(~s): ~s: ~p", [Node, Cookie, _E, _R])
@@ -834,12 +834,12 @@ print_node_details(Node) ->
     lists:foreach(fun print_capability/1, Capabilities).
 
 print_capability(Capability) ->
-    IsLoaded = case wh_json:is_true(<<"is_loaded">>, Capability) of
+    IsLoaded = case kz_json:is_true(<<"is_loaded">>, Capability) of
                    'true' -> <<>>;
                    'false' -> <<" not">>
                end,
-    io:format("  ~-12s provided by ~s, is~s available~n", [wh_json:get_value(<<"capability">>, Capability)
-                                                           ,wh_json:get_value(<<"module">>, Capability)
+    io:format("  ~-12s provided by ~s, is~s available~n", [kz_json:get_value(<<"capability">>, Capability)
+                                                           ,kz_json:get_value(<<"module">>, Capability)
                                                            ,IsLoaded
                                                           ]).
 

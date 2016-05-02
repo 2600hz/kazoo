@@ -13,11 +13,11 @@
 
 -include("webhooks.hrl").
 
--define(ID, wh_util:to_binary(?MODULE)).
+-define(ID, kz_util:to_binary(?MODULE)).
 -define(NAME, <<"skel">>).
 -define(DESC, <<"Example webhook module">>).
 -define(METADATA
-        ,wh_json:from_list([{<<"_id">>, ?ID}
+        ,kz_json:from_list([{<<"_id">>, ?ID}
                             ,{<<"name">>, ?NAME}
                             ,{<<"description">>, ?DESC}
                            ])
@@ -39,7 +39,7 @@ bindings_and_responders() ->
       ]
     }.
 
--spec handle_event(wh_json:object(), wh_proplist()) -> any().
+-spec handle_event(kz_json:object(), kz_proplist()) -> any().
 handle_event(JObj, _Props) ->
-    wh_util:put_callid(JObj),
+    kz_util:put_callid(JObj),
     lager:debug("event handled").

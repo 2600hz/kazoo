@@ -56,7 +56,7 @@ add(#data_connection{}=Connection) ->
 
 -spec wait_for_connection() -> 'ok' | 'no_connection'.
 -spec wait_for_connection(any()) -> 'ok' | 'no_connection'.
--spec wait_for_connection(any(), wh_timeout()) -> 'ok' | 'no_connection'.
+-spec wait_for_connection(any(), kz_timeout()) -> 'ok' | 'no_connection'.
 
 wait_for_connection() ->
     wait_for_connection('local').
@@ -70,12 +70,12 @@ wait_for_connection(Tag, Timeout) ->
     try test_conn(Tag) of
         {'error', _E} ->
             timer:sleep(random:uniform(?MILLISECONDS_IN_SECOND) + 100),
-            wait_for_connection(Tag, wh_util:decr_timeout(Timeout, Start));
+            wait_for_connection(Tag, kz_util:decr_timeout(Timeout, Start));
         {'ok', Info} -> lager:info("connected to ~s : ~p", [Tag, Info])
     catch
         'error':{'badmatch','$end_of_table'} ->
             timer:sleep(random:uniform(?MILLISECONDS_IN_SECOND) + 100),
-            wait_for_connection(Tag, wh_util:decr_timeout(Timeout, Start))
+            wait_for_connection(Tag, kz_util:decr_timeout(Timeout, Start))
     end.
 
 
@@ -99,9 +99,9 @@ get_server(Tag) ->
         _ -> 'undefined'
     end.
 
--spec test_conn() -> {'ok', wh_json:object()} |
+-spec test_conn() -> {'ok', kz_json:object()} |
                      {'error', any()}.
--spec test_conn(term()) -> {'ok', wh_json:object()} |
+-spec test_conn(term()) -> {'ok', kz_json:object()} |
                            {'error', any()}.
 
 test_conn() -> test_conn('local').
@@ -128,7 +128,7 @@ test_conn(Tag) ->
 %%--------------------------------------------------------------------
 init([]) ->
     process_flag('trap_exit', 'true'),
-    wh_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?LOG_SYSTEM_ID),
     _ = ets:new(?MODULE, ['ordered_set'
                           ,{'read_concurrency', 'true'}
                           ,{'keypos', #data_connection.id}

@@ -21,8 +21,8 @@
 
 -define(U_CONFIG_CAT, <<"crossbar.ubiquiti">>).
 
--define(UBIQUITI_AUTH_TOKENS, whapps_config:get_integer(?U_CONFIG_CAT, <<"tokens_per_request">>, 35)).
--define(UBIQUITI_PROVIDER_ID, whapps_config:get(?U_CONFIG_CAT, <<"sso_provider_id">>)).
+-define(UBIQUITI_AUTH_TOKENS, kapps_config:get_integer(?U_CONFIG_CAT, <<"tokens_per_request">>, 35)).
+-define(UBIQUITI_PROVIDER_ID, kapps_config:get(?U_CONFIG_CAT, <<"sso_provider_id">>)).
 
 -define(SSO_STAGING_URI, <<"https://sso-stage.ubnt.com/api/sso/v1/">>).
 -define(SSO_PROD_URI, <<"https://sso.ubnt.com/api/sso/v1/">>).
@@ -33,15 +33,15 @@
 
 -define(SSO_PROVIDER, <<"ubiquiti">>).
 
--define(SSO_ENV, whapps_config:get(?U_CONFIG_CAT, <<"sso_environment">>, ?SSO_STAGING_ENV)).
--define(SSO_URL, whapps_config:get(?U_CONFIG_CAT, [?SSO_ENV, ?SSO_URL_KEY])).
+-define(SSO_ENV, kapps_config:get(?U_CONFIG_CAT, <<"sso_environment">>, ?SSO_STAGING_ENV)).
+-define(SSO_URL, kapps_config:get(?U_CONFIG_CAT, [?SSO_ENV, ?SSO_URL_KEY])).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 init() ->
-    _ProdURI = whapps_config:get(?U_CONFIG_CAT, [?SSO_PROD_ENV, ?SSO_URL_KEY], ?SSO_PROD_URI),
-    _StagURI = whapps_config:get(?U_CONFIG_CAT, [?SSO_STAGING_ENV, ?SSO_URL_KEY], ?SSO_STAGING_URI),
+    _ProdURI = kapps_config:get(?U_CONFIG_CAT, [?SSO_PROD_ENV, ?SSO_URL_KEY], ?SSO_PROD_URI),
+    _StagURI = kapps_config:get(?U_CONFIG_CAT, [?SSO_STAGING_ENV, ?SSO_URL_KEY], ?SSO_STAGING_URI),
 
     lager:debug("SSO Environment: ~s", [?SSO_ENV]),
     lager:debug("SSO URI: ~s", [?SSO_URL]),
@@ -136,9 +136,9 @@ put(Context) ->
 maybe_authenticate_user(Context) ->
     LoginURL = crossbar_util:get_path(?SSO_URL, <<"login">>),
 
-    case kz_http:post(wh_util:to_list(LoginURL)
+    case kz_http:post(kz_util:to_list(LoginURL)
                       ,[{"Content-Type","application/json"}]
-                      ,wh_json:encode(login_req(Context))
+                      ,kz_json:encode(login_req(Context))
                      )
     of
         {'ok', 200, RespHeaders, RespBody} ->
@@ -154,39 +154,39 @@ maybe_authenticate_user(Context) ->
             crossbar_util:response('error', <<"failed to query Ubiquiti SSO service">>, 500, Context)
     end.
 
--spec login_req(cb_context:context()) -> wh_json:object().
+-spec login_req(cb_context:context()) -> kz_json:object().
 login_req(Context) ->
     Data = cb_context:req_data(Context),
-    wh_json:set_value(<<"user">>
-                      ,wh_json:get_value(<<"username">>, Data)
-                      ,wh_json:delete_key(<<"username">>, Data)
+    kz_json:set_value(<<"user">>
+                      ,kz_json:get_value(<<"username">>, Data)
+                      ,kz_json:delete_key(<<"username">>, Data)
                      ).
 
--spec auth_response(cb_context:context(), wh_proplist(), binary()) -> wh_json:object().
+-spec auth_response(cb_context:context(), kz_proplist(), binary()) -> kz_json:object().
 auth_response(_Context, _RespHeaders, RespBody) ->
-    RespJObj = wh_json:decode(RespBody),
-    UUID = wh_json:get_value(<<"uuid">>, RespJObj),
+    RespJObj = kz_json:decode(RespBody),
+    UUID = kz_json:get_value(<<"uuid">>, RespJObj),
 
     maybe_add_account_information(UUID
-                                  ,wh_json:from_list(
-                                     [{<<"sso">>, wh_json:set_value(<<"provider">>, ?SSO_PROVIDER, RespJObj)}]
+                                  ,kz_json:from_list(
+                                     [{<<"sso">>, kz_json:set_value(<<"provider">>, ?SSO_PROVIDER, RespJObj)}]
                                     )
                                  ).
 
--spec maybe_add_account_information(api_binary(), wh_json:object()) -> wh_json:object().
+-spec maybe_add_account_information(api_binary(), kz_json:object()) -> kz_json:object().
 maybe_add_account_information('undefined', AuthResponse) ->
     AuthResponse;
 maybe_add_account_information(UUID, AuthResponse) ->
     Options = [{'key', [?SSO_PROVIDER, UUID]}],
-    case kz_datamgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_sso">>, Options) of
+    case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_sso">>, Options) of
         {'ok', []} -> AuthResponse;
         {'ok', [AccountJObj]} ->
-            AccountId = wh_json:get_value(<<"account_id">>, AccountJObj),
+            AccountId = kz_json:get_value(<<"account_id">>, AccountJObj),
             lager:debug("found account as ~s", [AccountId]),
 
-            wh_json:set_values([{<<"account_id">>, AccountId}
-                                ,{<<"is_reseller">>, wh_services:is_reseller(AccountId)}
-                                ,{<<"reseller_id">>, wh_services:find_reseller_id(AccountId)}
+            kz_json:set_values([{<<"account_id">>, AccountId}
+                                ,{<<"is_reseller">>, kz_services:is_reseller(AccountId)}
+                                ,{<<"reseller_id">>, kz_services:find_reseller_id(AccountId)}
                                ]
                                ,AuthResponse
                               );

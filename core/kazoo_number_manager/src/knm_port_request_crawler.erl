@@ -28,7 +28,7 @@
 
 -define(MOD_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".port_request">>).
 -define(CLEANUP_ROUNDTRIP_TIME,
-        whapps_config:get_integer(?MOD_CONFIG_CAT, <<"crawler_delay_time_ms">>, ?MILLISECONDS_IN_MINUTE)).
+        kapps_config:get_integer(?MOD_CONFIG_CAT, <<"crawler_delay_time_ms">>, ?MILLISECONDS_IN_MINUTE)).
 
 -record(state, {cleanup_ref :: reference()}).
 
@@ -68,7 +68,7 @@ cleanup_timer() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     lager:debug("started ~s", [?MODULE]),
     {'ok', #state{cleanup_ref=cleanup_timer()}}.
 
@@ -117,7 +117,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'timeout', Ref, _Msg}, #state{cleanup_ref=Ref}=State) ->
-    _P = wh_util:spawn(fun knm_port_request:send_submitted_requests/0),
+    _P = kz_util:spawn(fun knm_port_request:send_submitted_requests/0),
     {'noreply', State#state{cleanup_ref=cleanup_timer()}};
 handle_info(_Msg, State) ->
     lager:debug("unhandled msg: ~p", [_Msg]),

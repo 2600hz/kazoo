@@ -32,7 +32,7 @@
 
 -type http_body() :: string() | binary().
 
--type httpc_result() :: {any(), wh_proplist(), http_body()} |
+-type httpc_result() :: {any(), kz_proplist(), http_body()} |
                         {string(), string() | binary()} |
                         reference().
 
@@ -43,14 +43,14 @@
                                any()
                      }.
 
--type httpc_request() :: {string(), wh_proplist()} |
-                         {string(), wh_proplist(), string(), http_body()}.
+-type httpc_request() :: {string(), kz_proplist()} |
+                         {string(), kz_proplist(), string(), http_body()}.
 
 -type req_id() :: {'http_req_id', reference()} |
                   {'ok', reference()} |
                   reference().
 
--type ret() :: {'ok', pos_integer(), wh_proplist(), string() | binary()} |
+-type ret() :: {'ok', pos_integer(), kz_proplist(), string() | binary()} |
                {'ok', 'saved_to_file'} |
                {'error', any()} |
                req_id().
@@ -63,8 +63,8 @@
 %% @doc Send synchronous request
 %%--------------------------------------------------------------------
 -spec get(string()) -> ret().
--spec get(string(), wh_proplist()) -> ret().
--spec get(string(), wh_proplist(), wh_proplist()) -> ret().
+-spec get(string(), kz_proplist()) -> ret().
+-spec get(string(), kz_proplist(), kz_proplist()) -> ret().
 get(Url) ->
     req('get', Url, [], [], []).
 get(Url, Headers) ->
@@ -73,8 +73,8 @@ get(Url, Headers, Options) ->
     req('get', Url, Headers, [], Options).
 
 -spec options(string()) -> ret().
--spec options(string(), wh_proplist()) -> ret().
--spec options(string(), wh_proplist(), wh_proplist()) -> ret().
+-spec options(string(), kz_proplist()) -> ret().
+-spec options(string(), kz_proplist(), kz_proplist()) -> ret().
 options(Url) ->
     req('options', Url, [], [], []).
 options(Url, Headers) ->
@@ -83,8 +83,8 @@ options(Url, Headers, Options) ->
     req('options', Url, Headers, [], Options).
 
 -spec head(string()) -> ret().
--spec head(string(), wh_proplist()) -> ret().
--spec head(string(), wh_proplist(), wh_proplist()) -> ret().
+-spec head(string(), kz_proplist()) -> ret().
+-spec head(string(), kz_proplist(), kz_proplist()) -> ret().
 head(Url) ->
     req('head', Url, [], [], []).
 head(Url, Headers) ->
@@ -93,8 +93,8 @@ head(Url, Headers, Options) ->
     req('head', Url, Headers, [], Options).
 
 -spec trace(string()) -> ret().
--spec trace(string(), wh_proplist()) -> ret().
--spec trace(string(), wh_proplist(), wh_proplist()) -> ret().
+-spec trace(string(), kz_proplist()) -> ret().
+-spec trace(string(), kz_proplist(), kz_proplist()) -> ret().
 trace(Url) ->
     req('trace', Url, [], [], []).
 trace(Url, Headers) ->
@@ -103,9 +103,9 @@ trace(Url, Headers, Options) ->
     req('trace', Url, Headers, [], Options).
 
 -spec delete(string()) -> ret().
--spec delete(string(), wh_proplist()) -> ret().
--spec delete(string(), wh_proplist(), http_body()) -> ret().
--spec delete(string(), wh_proplist(), http_body(), wh_proplist()) -> ret().
+-spec delete(string(), kz_proplist()) -> ret().
+-spec delete(string(), kz_proplist(), http_body()) -> ret().
+-spec delete(string(), kz_proplist(), http_body(), kz_proplist()) -> ret().
 delete(Url) ->
     req('delete', Url, [], [], []).
 delete(Url, Headers) ->
@@ -116,9 +116,9 @@ delete(Url, Headers, Body, Options) ->
     req('delete', Url, Headers, Body, Options).
 
 -spec post(string()) -> ret().
--spec post(string(), wh_proplist()) -> ret().
--spec post(string(), wh_proplist(), http_body()) -> ret().
--spec post(string(), wh_proplist(), http_body(), wh_proplist()) -> ret().
+-spec post(string(), kz_proplist()) -> ret().
+-spec post(string(), kz_proplist(), http_body()) -> ret().
+-spec post(string(), kz_proplist(), http_body(), kz_proplist()) -> ret().
 post(Url) ->
     req('post', Url, [], [], []).
 post(Url, Headers) ->
@@ -129,9 +129,9 @@ post(Url, Headers, Body, Options) ->
     req('post', Url, Headers, Body, Options).
 
 -spec put(string()) -> ret().
--spec put(string(), wh_proplist()) -> ret().
--spec put(string(), wh_proplist(), http_body()) -> ret().
--spec put(string(), wh_proplist(), http_body(), wh_proplist()) -> ret().
+-spec put(string(), kz_proplist()) -> ret().
+-spec put(string(), kz_proplist(), http_body()) -> ret().
+-spec put(string(), kz_proplist(), http_body(), kz_proplist()) -> ret().
 put(Url) ->
     req('put', Url, [], [], []).
 put(Url, Headers) ->
@@ -147,9 +147,9 @@ put(Url, Headers, Body, Options) ->
 %%--------------------------------------------------------------------
 -spec req(string()) -> ret().
 -spec req(method(), string()) -> ret().
--spec req(method(), string(), wh_proplist()) -> ret().
--spec req(method(), string(), wh_proplist(), http_body()) -> ret().
--spec req(method(), string(), wh_proplist(), http_body(), wh_proplist()) -> ret().
+-spec req(method(), string(), kz_proplist()) -> ret().
+-spec req(method(), string(), kz_proplist(), http_body()) -> ret().
+-spec req(method(), string(), kz_proplist(), http_body(), kz_proplist()) -> ret().
 req(Url) ->
     req('get', Url, [], [], []).
 req(Method, Url) ->
@@ -169,9 +169,9 @@ req(Method, Url, Hdrs, Body, Opts) ->
 %%--------------------------------------------------------------------
 -spec async_req(pid(), string()) -> ret().
 -spec async_req(pid(), method(), string()) -> ret().
--spec async_req(pid(), method(), string(), wh_proplist()) -> ret().
--spec async_req(pid(), method(), string(), wh_proplist(), http_body()) -> ret().
--spec async_req(pid(), method(), string(), wh_proplist(), http_body(), wh_proplist()) -> ret().
+-spec async_req(pid(), method(), string(), kz_proplist()) -> ret().
+-spec async_req(pid(), method(), string(), kz_proplist(), http_body()) -> ret().
+-spec async_req(pid(), method(), string(), kz_proplist(), http_body(), kz_proplist()) -> ret().
 async_req(Pid, Url) ->
     async_req(Pid, 'get', Url, [], [], []).
 async_req(Pid, Method, Url) ->
@@ -194,7 +194,7 @@ async_req(Pid, Method, Url, Hdrs, Body, Opts) ->
 %% @private
 %% @doc Send request using httpc and handle its response
 %%--------------------------------------------------------------------
--spec execute_request(method(), tuple(), wh_proplist()) -> ret().
+-spec execute_request(method(), tuple(), kz_proplist()) -> ret().
 execute_request(Method, Request, Opts) ->
     HTTPOptions = get_options(?HTTP_OPTIONS, Opts),
     Opts1 = get_options(?OPTIONS, Opts),
@@ -240,7 +240,7 @@ handle_response({'error', Error}) ->
 %% @private
 %% @doc Build Authorization header using basic_auth option
 %%--------------------------------------------------------------------
--spec maybe_basic_auth(wh_proplist(), wh_proplist()) -> {wh_proplist(), wh_proplist()}.
+-spec maybe_basic_auth(kz_proplist(), kz_proplist()) -> {kz_proplist(), kz_proplist()}.
 maybe_basic_auth(Headers, Options) ->
     case props:get_value('basic_auth', Options) of
         'undefined' -> {Headers, Options};
@@ -253,12 +253,12 @@ maybe_basic_auth(Headers, Options) ->
 %% @private
 %% @doc Build httpc request argument based on method
 %%--------------------------------------------------------------------
--spec build_request(method(), string(), wh_proplist(), http_body()) -> httpc_request().
+-spec build_request(method(), string(), kz_proplist(), http_body()) -> httpc_request().
 build_request(Method, Url, Headers, _Body) when (Method == 'options');
                                                 (Method == 'get');
                                                 (Method == 'head');
                                                 (Method == 'trace') ->
-    {wh_util:to_list(Url), ensure_string_headers(Headers)};
+    {kz_util:to_list(Url), ensure_string_headers(Headers)};
 build_request(Method, Url, Headers, Body) when (Method == 'post');
                                                (Method == 'put');
                                                (Method == 'delete') ->
@@ -271,10 +271,10 @@ build_request(Method, Url, Headers, Body) when (Method == 'post');
                                           ]
                                           ,Headers
                                           ,""),
-    {wh_util:to_list(Url), ensure_string_headers(Headers), wh_util:to_list(ContentType), Body}.
+    {kz_util:to_list(Url), ensure_string_headers(Headers), kz_util:to_list(ContentType), Body}.
 
 ensure_string_headers(Headers) ->
-    [{wh_util:to_list(K), wh_util:to_list(V)} || {K,V} <- Headers].
+    [{kz_util:to_list(K), kz_util:to_list(V)} || {K,V} <- Headers].
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Get options out of a propslist based on options type
@@ -282,6 +282,6 @@ ensure_string_headers(Headers) ->
 %% which type of options should be returned.
 %% @end
 %%--------------------------------------------------------------------
--spec get_options(list(), wh_proplist()) -> wh_proplist().
+-spec get_options(list(), kz_proplist()) -> kz_proplist().
 get_options(Type, Options) ->
     [{K, V} || {K, V} <- Options, lists:member(K, Type)].
