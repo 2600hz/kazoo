@@ -23,7 +23,7 @@
 
 -define(HIDDEN_APPS
         ,['amqp_client','apns','asn1'
-          ,'braintree'
+          ,'bear','braintree'
           ,'certifi','compiler','cowboy','cowlib','couchbeam','crypto'
           ,'eflame','escalus','exml'
           ,'folsom'
@@ -32,7 +32,8 @@
           ,'idna','inets'
           ,'kazoo_bindings','kazoo_caches','kazoo_couch','kazoo_data'
           ,'kazoo_documents','kazoo_etsmgr','kazoo_modb','kazoo_number_manager'
-          ,'kazoo_oauth','kazoo_token_buckets','kazoo_web','kazoo_xml','kernel'
+          ,'kazoo_oauth','kazoo_token_buckets','kazoo_voicemail','kazoo_web'
+          ,'kazoo_xml','kernel'
           ,'lager','lager_syslog'
           ,'mimerl'
           ,'nksip'
