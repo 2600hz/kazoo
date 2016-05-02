@@ -34,12 +34,12 @@ save(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     CurrentState = knm_phone_number:state(PhoneNumber),
     Doc = knm_phone_number:doc(PhoneNumber),
-    State = wh_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], Doc),
+    State = kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], Doc),
     save(Number, CurrentState, State).
 
 save(Number, ?NUMBER_STATE_PORT_IN, ?NUMBER_STATE_IN_SERVICE) ->
     Features = knm_phone_number:features(knm_number:phone_number(Number)),
-    Port = wh_json:get_ne_value(?PORT_KEY, Features, wh_json:new()),
+    Port = kz_json:get_ne_value(?PORT_KEY, Features, kz_json:new()),
     _ = publish_ported(Number, Port),
     Number;
 save(Number, _CurrentState, ?NUMBER_STATE_PORT_IN) ->
@@ -76,7 +76,7 @@ has_emergency_services(_Number) -> 'false'.
                                 knm_number:knm_number().
 maybe_port_feature(Number) ->
     Doc = knm_phone_number:doc(knm_number:phone_number(Number)),
-    case wh_json:get_ne_value([?PVT_FEATURES, ?PORT_KEY], Doc) of
+    case kz_json:get_ne_value([?PVT_FEATURES, ?PORT_KEY], Doc) of
         'undefined' ->
             knm_services:deactivate_feature(Number, ?PORT_KEY);
         Port ->
@@ -84,9 +84,9 @@ maybe_port_feature(Number) ->
             maybe_port_changed(Number1, Port)
     end.
 
--spec maybe_port_changed(knm_number:knm_number(), wh_json:object()) ->
+-spec maybe_port_changed(knm_number:knm_number(), kz_json:object()) ->
                                 knm_number:knm_number().
--spec maybe_port_changed(knm_number:knm_number(), wh_json:object(), boolean()) ->
+-spec maybe_port_changed(knm_number:knm_number(), kz_json:object(), boolean()) ->
                                 knm_number:knm_number().
 maybe_port_changed(Number, Port) ->
     DryRun = knm_phone_number:dry_run(knm_number:phone_number(Number)),
@@ -95,11 +95,11 @@ maybe_port_changed(Number, Port) ->
 maybe_port_changed(Number, _Port, 'true') -> Number;
 maybe_port_changed(Number, Port, 'false') ->
     CurrentPort = knm_phone_number:feature(knm_number:phone_number(Number), ?PORT_KEY),
-    case wh_json:are_identical(CurrentPort, Port) of
+    case kz_json:are_identical(CurrentPort, Port) of
         'true' -> Number;
         'false' ->
             lager:debug("port information has been changed: ~s"
-                        ,[wh_json:encode(Port)]
+                        ,[kz_json:encode(Port)]
                        ),
             _ = publish_port_update(Number, Port),
             Number
@@ -111,7 +111,7 @@ maybe_port_changed(Number, Port, 'false') ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec publish_port_update(knm_number:knm_number(), wh_json:object()) -> 'ok'.
+-spec publish_port_update(knm_number:knm_number(), kz_json:object()) -> 'ok'.
 publish_port_update(Number, Port) ->
     PhoneNumber = knm_number:phone_number(Number),
     Notify = [{<<"Account-ID">>,  knm_phone_number:assigned_to(PhoneNumber)}
@@ -120,9 +120,9 @@ publish_port_update(Number, Port) ->
               ,{<<"Number">>, knm_phone_number:number(PhoneNumber)}
               ,{<<"Authorized-By">>, knm_phone_number:auth_by(PhoneNumber)}
               ,{<<"Port">>, Port}
-              | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
+              | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
-    wapi_notifications:publish_port_request(Notify).
+    kapi_notifications:publish_port_request(Notify).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -130,7 +130,7 @@ publish_port_update(Number, Port) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec publish_ported(knm_number:knm_number(), wh_json:object()) -> 'ok'.
+-spec publish_ported(knm_number:knm_number(), kz_json:object()) -> 'ok'.
 publish_ported(Number, Port) ->
     PhoneNumber = knm_number:phone_number(Number),
     Notify = [{<<"Account-ID">>,  knm_phone_number:assigned_to(PhoneNumber)}
@@ -139,6 +139,6 @@ publish_ported(Number, Port) ->
               ,{<<"Number">>, knm_phone_number:number(PhoneNumber)}
               ,{<<"Authorized-By">>, knm_phone_number:auth_by(PhoneNumber)}
               ,{<<"Port">>, Port}
-              | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
+              | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
-    wapi_notifications:publish_ported(Notify).
+    kapi_notifications:publish_ported(Notify).

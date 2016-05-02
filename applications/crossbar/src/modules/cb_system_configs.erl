@@ -35,8 +35,8 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = kz_datamgr:db_create(?WH_CONFIG_DB),
-    _ = kz_datamgr:revise_doc_from_file(?WH_CONFIG_DB, 'crossbar', <<"views/system_config.json">>),
+    _ = kz_datamgr:db_create(?KZ_CONFIG_DB),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_CONFIG_DB, 'crossbar', <<"views/system_config.json">>),
 
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.system_configs">>, ?MODULE, 'allowed_methods'),
@@ -172,7 +172,7 @@ delete(Context, _Id) ->
     Context1 = crossbar_doc:delete(Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            cb_context:set_resp_data(Context1, wh_json:new());
+            cb_context:set_resp_data(Context1, kz_json:new());
         _Status -> Context1
     end.
 
@@ -180,7 +180,7 @@ delete(Context, Id, <<"default">>) ->
     delete(Context, Id);
 delete(Context, _Id, Node) ->
     save(
-      cb_context:set_doc(Context, wh_json:delete_key(Node, cb_context:doc(Context)))
+      cb_context:set_doc(Context, kz_json:delete_key(Node, cb_context:doc(Context)))
       ,<<"default">>
      ).
 
@@ -189,7 +189,7 @@ save(Context, Node) ->
     Context1 = crossbar_doc:save(Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            cb_context:set_resp_data(Context1, wh_json:get_value(Node, cb_context:doc(Context1)));
+            cb_context:set_resp_data(Context1, kz_json:get_value(Node, cb_context:doc(Context1)));
         _Status ->
             Context1
     end.
@@ -203,22 +203,22 @@ save(Context, Node) ->
 -spec create(cb_context:context()) -> cb_context:context().
 create(Context) ->
     Doc = cb_context:req_data(Context),
-    case wh_doc:id(Doc) of
+    case kz_doc:id(Doc) of
         'undefined' ->
             lager:debug("no id on doc ~p", [Doc]),
             cb_context:add_validation_error(
                 <<"id">>
                 ,<<"required">>
-                ,wh_json:from_list([
+                ,kz_json:from_list([
                     {<<"message">>, <<"id is required to create a system_config resource">>}
                  ])
                 ,Context
             );
         Id ->
-            SysDoc = wh_json:from_list([{<<"_id">>, Id}
-                                        ,{<<"default">>, wh_json:delete_key(<<"id">>, Doc)}
+            SysDoc = kz_json:from_list([{<<"_id">>, Id}
+                                        ,{<<"default">>, kz_json:delete_key(<<"id">>, Doc)}
                                        ]),
-            lager:debug("trying to create ~s/~s: ~p", [?WH_CONFIG_DB, Id, SysDoc]),
+            lager:debug("trying to create ~s/~s: ~p", [?KZ_CONFIG_DB, Id, SysDoc]),
             cb_context:set_resp_status(cb_context:set_doc(Context, SysDoc), 'success')
     end.
 
@@ -233,7 +233,7 @@ create(Context) ->
 read(Id, Context, Node) ->
     Context1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"config">>)),
     cb_context:set_resp_data(Context1
-                             ,wh_json:get_value(Node, cb_context:doc(Context1), wh_json:new())
+                             ,kz_json:get_value(Node, cb_context:doc(Context1), kz_json:new())
                             ).
 
 -spec read_for_delete(ne_binary(), cb_context:context()) ->
@@ -262,7 +262,7 @@ update(Id, Context, Node) ->
 
 update(_Id, Node, Context, 'success') ->
     cb_context:set_doc(Context
-                       ,wh_json:set_value(Node, cb_context:req_data(Context), cb_context:doc(Context))
+                       ,kz_json:set_value(Node, cb_context:req_data(Context), cb_context:doc(Context))
                       );
 update(_Id, _Node, Context, _Status) ->
     Context.
@@ -288,13 +288,13 @@ summary(Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), ne_binaries()) -> ne_binaries().
+-spec normalize_view_results(kz_json:object(), ne_binaries()) -> ne_binaries().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"key">>, JObj) | Acc].
+    [kz_json:get_value(<<"key">>, JObj) | Acc].
 
 -spec update_db(cb_context:context()) -> cb_context:context().
 update_db(Context) ->
     cb_context:setters(Context
-                       ,[{fun cb_context:set_account_db/2, ?WH_CONFIG_DB}
+                       ,[{fun cb_context:set_account_db/2, ?KZ_CONFIG_DB}
                          ,{fun cb_context:set_account_id/2, cb_context:auth_account_id(Context)}
                         ]).

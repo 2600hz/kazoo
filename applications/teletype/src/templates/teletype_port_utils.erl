@@ -21,44 +21,44 @@ is_comment_private([]) -> 'false';
 is_comment_private([_|_]=Comments) ->
     is_comment_private(lists:last(Comments));
 is_comment_private(Comment) ->
-    wh_json:is_true(<<"superduper_comment">>, Comment, 'false').
+    kz_json:is_true(<<"superduper_comment">>, Comment, 'false').
 
--spec get_attachments(wh_json:object()) -> attachments().
--spec get_attachments(wh_json:object(), boolean()) -> attachments().
+-spec get_attachments(kz_json:object()) -> attachments().
+-spec get_attachments(kz_json:object(), boolean()) -> attachments().
 get_attachments(DataJObj) ->
     get_attachments(DataJObj, teletype_util:is_preview(DataJObj)).
 
 get_attachments(_DataJObj, 'true') -> [];
 get_attachments(DataJObj, 'false') ->
-    PortReqId = wh_json:get_value(<<"port_request_id">>, DataJObj),
-    Doc = wh_json:get_value(<<"port_request">>, DataJObj),
+    PortReqId = kz_json:get_value(<<"port_request_id">>, DataJObj),
+    Doc = kz_json:get_value(<<"port_request">>, DataJObj),
     lists:foldl(
       fun(Name, Acc) -> get_attachment_fold(Name, Acc, PortReqId, Doc) end
       ,[]
-      ,wh_doc:attachment_names(Doc)
+      ,kz_doc:attachment_names(Doc)
      ).
 
--spec get_attachment_fold(wh_json:key(), attachments(), ne_binary(), wh_json:object()) ->
+-spec get_attachment_fold(kz_json:key(), attachments(), ne_binary(), kz_json:object()) ->
                                  attachments().
 get_attachment_fold(Name, Acc, PortReqId, Doc) ->
     {'ok', Attachment} = kz_datamgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, PortReqId, Name),
-    ContentType = wh_doc:attachment_content_type(Doc, Name),
+    ContentType = kz_doc:attachment_content_type(Doc, Name),
     {_, BinAttachment} = kz_attachment:decode_base64(Attachment),
     [{ContentType, Name, BinAttachment}|Acc].
 
--spec fix_email(wh_json:object()) -> wh_json:object().
--spec fix_email(wh_json:object(), boolean()) -> wh_json:object().
+-spec fix_email(kz_json:object()) -> kz_json:object().
+-spec fix_email(kz_json:object(), boolean()) -> kz_json:object().
 fix_email(ReqData) ->
     fix_email(ReqData, 'false').
 
 fix_email(ReqData, OnlyAdmin) ->
-    AccountId = wh_json:get_value(<<"account_id">>, ReqData),
+    AccountId = kz_json:get_value(<<"account_id">>, ReqData),
     Emails = get_emails(ReqData, AccountId, OnlyAdmin),
-    wh_json:set_value(<<"to">>, Emails, ReqData).
+    kz_json:set_value(<<"to">>, Emails, ReqData).
 
--spec get_emails(wh_json:object(), api_binary(), boolean()) -> ne_binaries().
+-spec get_emails(kz_json:object(), api_binary(), boolean()) -> ne_binaries().
 get_emails(_ReqData, AccountId, 'true') ->
-    ResellerId = wh_services:find_reseller_id(AccountId),
+    ResellerId = kz_services:find_reseller_id(AccountId),
 
     ResellerEmail = find_reseller_port_email(ResellerId),
     AdminEmails = teletype_util:find_account_admin_email(ResellerId),
@@ -69,7 +69,7 @@ get_emails(_ReqData, AccountId, 'true') ->
         {ResellerEmail, _} -> [ResellerEmail]
     end;
 get_emails(ReqData, AccountId, 'false') ->
-    ResellerId = wh_services:find_reseller_id(AccountId),
+    ResellerId = kz_services:find_reseller_id(AccountId),
 
     ResellerEmail = find_reseller_port_email(ResellerId),
     AdminEmails = teletype_util:find_account_admin_email(ResellerId),
@@ -89,15 +89,15 @@ find_reseller_port_email(AccountId) ->
             kz_whitelabel:port_email(JObj)
     end.
 
--spec get_port_req_email(wh_json:object()) -> ne_binaries().
+-spec get_port_req_email(kz_json:object()) -> ne_binaries().
 get_port_req_email(ReqData) ->
     Key = [<<"port_request">>, <<"notifications">>, <<"email">>, <<"send_to">>],
-    case wh_json:get_value(Key, ReqData) of
+    case kz_json:get_value(Key, ReqData) of
         <<_/binary>> =Email -> [Email];
         [_|_]=Emails -> Emails
     end.
 
--spec fix_port_request_data(wh_json:object()) -> wh_json:object().
+-spec fix_port_request_data(kz_json:object()) -> kz_json:object().
 fix_port_request_data(JObj) ->
     Routines = [fun fix_numbers/1
                 ,fun fix_billing/1
@@ -106,55 +106,55 @@ fix_port_request_data(JObj) ->
                ],
     lists:foldl(fun(F, J) -> F(J) end, JObj, Routines).
 
--spec fix_numbers(wh_json:object()) -> wh_json:object().
+-spec fix_numbers(kz_json:object()) -> kz_json:object().
 fix_numbers(JObj) ->
     Numbers =
-        wh_json:foldl(
+        kz_json:foldl(
           fun fix_number_fold/3
           ,[]
-          ,wh_json:get_value(<<"numbers">>, JObj, wh_json:new())
+          ,kz_json:get_value(<<"numbers">>, JObj, kz_json:new())
          ),
-    wh_json:set_value(<<"numbers">>, Numbers, JObj).
+    kz_json:set_value(<<"numbers">>, Numbers, JObj).
 
--spec fix_number_fold(wh_json:object(), any(), wh_json:keys()) -> wh_json:keys().
+-spec fix_number_fold(kz_json:object(), any(), kz_json:keys()) -> kz_json:keys().
 fix_number_fold(Number, _Value, Acc) ->
     [Number|Acc].
 
--spec fix_billing(wh_json:object()) -> wh_json:object().
+-spec fix_billing(kz_json:object()) -> kz_json:object().
 fix_billing(JObj) ->
-    wh_json:foldl(
+    kz_json:foldl(
       fun fix_billing_fold/3
-      ,wh_json:delete_key(<<"bill">>, JObj)
-      ,wh_json:get_value(<<"bill">>, JObj)
+      ,kz_json:delete_key(<<"bill">>, JObj)
+      ,kz_json:get_value(<<"bill">>, JObj)
      ).
 
--spec fix_billing_fold(wh_json:key(), wh_json:json_term(), wh_json:object()) ->
-                              wh_json:object().
+-spec fix_billing_fold(kz_json:key(), kz_json:json_term(), kz_json:object()) ->
+                              kz_json:object().
 fix_billing_fold(Key, Value, Acc) ->
-    wh_json:set_value(<<"bill_", Key/binary>>, Value, Acc).
+    kz_json:set_value(<<"bill_", Key/binary>>, Value, Acc).
 
--spec fix_comments(wh_json:object()) -> wh_json:object().
+-spec fix_comments(kz_json:object()) -> kz_json:object().
 fix_comments(JObj) ->
-    case wh_json:get_value(<<"comments">>, JObj) of
+    case kz_json:get_value(<<"comments">>, JObj) of
         'undefined' ->
-            wh_json:delete_key(<<"comments">>, JObj);
+            kz_json:delete_key(<<"comments">>, JObj);
         [] ->
-            wh_json:delete_key(<<"comments">>, JObj);
+            kz_json:delete_key(<<"comments">>, JObj);
         Comments ->
             LastComment = lists:last(Comments),
 
-            Timestamp = wh_json:get_integer_value(<<"timestamp">>, LastComment),
+            Timestamp = kz_json:get_integer_value(<<"timestamp">>, LastComment),
             {Date, _Time} = calendar:gregorian_seconds_to_datetime(Timestamp),
-            Comment = wh_json:set_value(<<"timestamp">>, Date, LastComment),
+            Comment = kz_json:set_value(<<"timestamp">>, Date, LastComment),
 
-            wh_json:set_value(
+            kz_json:set_value(
               <<"comment">>
-              ,wh_json:to_proplist(Comment)
-              ,wh_json:delete_key(<<"comments">>, JObj)
+              ,kz_json:to_proplist(Comment)
+              ,kz_json:delete_key(<<"comments">>, JObj)
              )
     end.
 
--spec fix_dates(wh_json:object()) -> wh_json:object().
+-spec fix_dates(kz_json:object()) -> kz_json:object().
 fix_dates(JObj) ->
     lists:foldl(
       fun fix_date_fold/2
@@ -162,11 +162,11 @@ fix_dates(JObj) ->
       ,[<<"transfer_date">>, <<"scheduled_date">>]
      ).
 
--spec fix_date_fold(wh_json:key(), wh_json:object()) -> wh_json:object().
+-spec fix_date_fold(kz_json:key(), kz_json:object()) -> kz_json:object().
 fix_date_fold(Key, JObj) ->
-    case wh_json:get_integer_value(Key, JObj) of
+    case kz_json:get_integer_value(Key, JObj) of
         'undefined' -> JObj;
         Timestamp ->
             {Date, _Time} = calendar:gregorian_seconds_to_datetime(Timestamp),
-            wh_json:set_value(Key, Date, JObj)
+            kz_json:set_value(Key, Date, JObj)
     end.

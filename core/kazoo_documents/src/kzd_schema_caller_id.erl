@@ -10,7 +10,7 @@
 
 -export([external_name_max_length/0]).
 
--include_lib("whistle/include/wh_types.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
 
 -define (SCHEMA_NAME, <<"caller_id">>).
 -define (SCHEMA_PATH_PATTERN(K1, K2), [<<"properties">>, K1, <<"properties">>, K2]).

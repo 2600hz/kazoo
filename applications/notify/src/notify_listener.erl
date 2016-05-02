@@ -103,7 +103,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    wh_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?LOG_SYSTEM_ID),
     lager:debug("starting new notify server"),
     {'ok', #state{}}.
 
@@ -165,7 +165,7 @@ handle_event(JObj, _State) ->
     of
         'false' -> 'ignore';
         'true' ->
-            lager:debug("handling notification for ~p", [wh_util:get_event_type(JObj)]),
+            lager:debug("handling notification for ~p", [kz_util:get_event_type(JObj)]),
             {'reply', []}
     end.
 
@@ -194,42 +194,42 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
--spec should_handle_port(wh_json:object()) -> boolean().
+-spec should_handle_port(kz_json:object()) -> boolean().
 should_handle_port(JObj) ->
-    case wh_util:get_event_type(JObj) of
+    case kz_util:get_event_type(JObj) of
         {<<"notification">>, <<"port_request">>} ->
-            wh_json:get_value(<<"Port-Request-ID">>, JObj) =:= 'undefined';
+            kz_json:get_value(<<"Port-Request-ID">>, JObj) =:= 'undefined';
         {<<"notification">>, <<"ported">>} ->
-            wh_json:get_value(<<"Port-Request-ID">>, JObj) =:= 'undefined';
+            kz_json:get_value(<<"Port-Request-ID">>, JObj) =:= 'undefined';
         _Else -> 'false'
     end.
 
--spec should_handle(wh_json:object()) -> boolean().
+-spec should_handle(kz_json:object()) -> boolean().
 should_handle(JObj) ->
-    case wh_json:get_first_defined([<<"Account-ID">>, <<"Account-DB">>], JObj) of
+    case kz_json:get_first_defined([<<"Account-ID">>, <<"Account-DB">>], JObj) of
         'undefined' -> should_handle_system();
         Account -> should_handle_account(Account)
     end.
 
 -spec should_handle_system() -> boolean().
 should_handle_system() ->
-    whapps_config:get(?NOTIFY_CONFIG_CAT
+    kapps_config:get(?NOTIFY_CONFIG_CAT
                       ,<<"notification_app">>
                       ,?APP_NAME
                      ) =:= ?APP_NAME.
 
 -spec should_handle_account(ne_binary()) -> boolean().
 should_handle_account(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountId = kz_util:format_account_id(Account, 'raw'),
     case kz_account:fetch(Account) of
         {'ok', AccountJObj} ->
             kz_account:notification_preference(AccountJObj) =:= 'undefined'
-                andalso should_handle_reseller(wh_services:find_reseller_id(AccountId));
+                andalso should_handle_reseller(kz_services:find_reseller_id(AccountId));
         {'error', _E} -> 'false'
     end.
 
 should_handle_reseller(ResellerId) ->
-    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
     should_handle_reseller(ResellerId, MasterAccountId).
 
 should_handle_reseller(MasterAccountId, MasterAccountId) ->

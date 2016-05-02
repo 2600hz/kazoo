@@ -52,7 +52,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     lager:debug("omnipresence event message-summary amqp package started"),
     {'ok', #state{}}.
 
@@ -91,21 +91,21 @@ handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
 handle_cast({'omnipresence',{'subscribe_notify', <<"message-summary">>, User,
                              #omnip_subscription{call_id=CallId}=_Subscription
                             }}, State) ->
-    wh_util:put_callid(CallId),
+    kz_util:put_callid(CallId),
     [Username, Realm] = binary:split(User, <<"@">>),
     Query = [{<<"Username">>, Username}
              ,{<<"Realm">>, Realm}
-             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
-    wh_amqp_worker:cast(Query, fun wapi_presence:publish_mwi_query/1),
+    kz_amqp_worker:cast(Query, fun kapi_presence:publish_mwi_query/1),
     {'noreply', State};
 handle_cast({'omnipresence',{'mwi_update', JObj}}, State) ->
-    wh_util:put_callid(JObj),
-    _ = wh_util:spawn(fun mwi_event/1, [JObj]),
+    kz_util:put_callid(JObj),
+    _ = kz_util:spawn(fun mwi_event/1, [JObj]),
     {'noreply', State};
 handle_cast({'omnipresence',{'presence_reset', JObj}}, State) ->
-    wh_util:put_callid(JObj),
-    _ = wh_util:spawn(fun presence_reset/1, [JObj]),
+    kz_util:put_callid(JObj),
+    _ = kz_util:spawn(fun presence_reset/1, [JObj]),
     {'noreply', State};
 handle_cast({'omnipresence', _}, State) ->
     {'noreply', State};
@@ -166,25 +166,25 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec mwi_event(wh_json:object()) -> 'ok'.
+-spec mwi_event(kz_json:object()) -> 'ok'.
 mwi_event(JObj) ->
     handle_update(JObj).
 
--spec handle_update(wh_json:object()) -> 'ok'.
+-spec handle_update(kz_json:object()) -> 'ok'.
 handle_update(JObj) ->
-    To = wh_json:get_value(<<"To">>, JObj),
+    To = kz_json:get_value(<<"To">>, JObj),
     case omnip_util:is_valid_uri(To) of
         'true' -> handle_update(JObj, To);
         'false' -> lager:warning("mwi handler ignoring update from invalid To: ~s", [To])
     end.
 
--spec handle_update(wh_json:object(), ne_binary()) -> 'ok'.
+-spec handle_update(kz_json:object(), ne_binary()) -> 'ok'.
 handle_update(JObj, To) ->
     [ToUsername, ToRealm] = binary:split(To, <<"@">>),
-    MessagesNew = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
-    MessagesSaved = wh_json:get_integer_value(<<"Messages-Saved">>, JObj, 0),
-    MessagesUrgent = wh_json:get_integer_value(<<"Messages-Urgent">>, JObj, 0),
-    MessagesUrgentSaved = wh_json:get_integer_value(<<"Messages-Urgent-Saved">>, JObj, 0),
+    MessagesNew = kz_json:get_integer_value(<<"Messages-New">>, JObj, 0),
+    MessagesSaved = kz_json:get_integer_value(<<"Messages-Saved">>, JObj, 0),
+    MessagesUrgent = kz_json:get_integer_value(<<"Messages-Urgent">>, JObj, 0),
+    MessagesUrgentSaved = kz_json:get_integer_value(<<"Messages-Urgent-Saved">>, JObj, 0),
     MessagesWaiting = case MessagesNew of 0 -> <<"no">>; _ -> <<"yes">> end,
     Update = props:filter_undefined(
                [{<<"To">>, <<"sip:", To/binary>>}
@@ -200,13 +200,13 @@ handle_update(JObj, To) ->
                 ,{<<"Messages-Saved">>, MessagesSaved}
                 ,{<<"Messages-Urgent">>, MessagesUrgent}
                 ,{<<"Messages-Urgent-Saved">>, MessagesUrgentSaved}
-                ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
                 ,{<<"Event-Package">>, <<"message-summary">>}
-                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     maybe_send_update(To, Update).
 
--spec maybe_send_update(ne_binary(), wh_proplist()) -> 'ok'.
+-spec maybe_send_update(ne_binary(), kz_proplist()) -> 'ok'.
 maybe_send_update(User, Props) ->
     case omnip_subscriptions:get_stalkers(?MWI_EVENT, User) of
         {'ok', Stalkers} ->
@@ -215,23 +215,23 @@ maybe_send_update(User, Props) ->
             lager:debug("no ~s subscriptions for ~s",[?MWI_EVENT, User])
     end.
 
--spec send_update(binaries(), wh_proplist()) -> 'ok'.
+-spec send_update(binaries(), kz_proplist()) -> 'ok'.
 send_update(Stalkers, Props) ->
-    {'ok', Worker} = wh_amqp_worker:checkout_worker(),
-    _ = [wh_amqp_worker:cast(Props
-                             ,fun(P) -> wapi_omnipresence:publish_update(S, P) end
+    {'ok', Worker} = kz_amqp_worker:checkout_worker(),
+    _ = [kz_amqp_worker:cast(Props
+                             ,fun(P) -> kapi_omnipresence:publish_update(S, P) end
                              ,Worker
                             )
          || S <- Stalkers
         ],
-    wh_amqp_worker:checkin_worker(Worker).
+    kz_amqp_worker:checkin_worker(Worker).
 
--spec presence_reset(wh_json:object()) -> any().
+-spec presence_reset(kz_json:object()) -> any().
 presence_reset(JObj) ->
-    Username = wh_json:get_value(<<"Username">>, JObj),
-    Realm = wh_json:get_value(<<"Realm">>, JObj),
+    Username = kz_json:get_value(<<"Username">>, JObj),
+    Realm = kz_json:get_value(<<"Realm">>, JObj),
     Query = [{<<"Username">>, Username}
              ,{<<"Realm">>, Realm}
-             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
-    wh_amqp_worker:cast(Query, fun wapi_presence:publish_mwi_query/1).
+    kz_amqp_worker:cast(Query, fun kapi_presence:publish_mwi_query/1).

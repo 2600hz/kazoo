@@ -8,7 +8,7 @@
 
 -export([push/3, push/4, sync_push/3, sync_push/4]).
 
--include_lib("whistle/include/wh_log.hrl").
+-include_lib("kazoo/include/kz_log.hrl").
 
 -define(SERVER, ?MODULE).
 -define(RETRY, 3).
@@ -25,7 +25,7 @@
 
 -spec start(atom(), any()) -> {ok, undefined | pid()} | {error, any()}.
 start(Name, Key) when is_binary(Key) ->
-    start(Name, wh_util:to_list(Key));
+    start(Name, kz_util:to_list(Key));
 start(Name, Key) ->
     gcm_sup:start_child(Name, Key).
 
@@ -56,7 +56,7 @@ start_link(Name, Key) ->
     gen_server:start_link({local, Name}, ?MODULE, [Key], []).
 
 init([Key]) ->
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     lager:debug("starting with key ~s", [Key]),
     {ok, #state{key=Key}}.
 

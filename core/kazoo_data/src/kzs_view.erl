@@ -24,23 +24,23 @@
 -spec design_compact(map(), ne_binary(), ne_binary()) -> boolean().
 design_compact(#{server := {App, Conn}}, DbName, Design) -> App:design_compact(Conn, DbName, Design).
 
--spec design_info(map(), ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | data_error().
+-spec design_info(map(), ne_binary(), ne_binary()) -> {'ok', kz_json:object()} | data_error().
 design_info(#{server := {App, Conn}}, DBName, Design) -> App:design_info(Conn, DBName, Design).
 
 -spec all_design_docs(map(), ne_binary(), view_options()) ->
-                             {'ok', wh_json:objects()} |
+                             {'ok', kz_json:objects()} |
                              data_error().
 all_design_docs(#{server := {App, Conn}}, DBName, Options) ->
     App:all_design_docs(Conn, DBName, Options).
 
 -spec all_docs(map(), ne_binary(), view_options()) ->
-                      {'ok', wh_json:objects()} |
+                      {'ok', kz_json:objects()} |
                       data_error().
 all_docs(#{server := {App, Conn}}, DbName, Options) ->
     App:all_docs(Conn, DbName, Options).
 
 -spec get_results(map(), ne_binary(), ne_binary(), view_options()) ->
-                         {'ok', wh_json:objects() | wh_json:keys()} |
+                         {'ok', kz_json:objects() | kz_json:keys()} |
                          data_error().
 get_results(#{server := {App, Conn}}, DbName, DesignDoc, ViewOptions) ->
     App:get_results(Conn, DbName, DesignDoc, ViewOptions).

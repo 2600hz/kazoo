@@ -42,23 +42,23 @@
 
 -export_type([state/0]).
 
--spec init(wh_json:object(), api_binary() | api_binaries()) ->
+-spec init(kz_json:object(), api_binary() | api_binaries()) ->
                   state() |
                   {'error', 'not_ts_account'}.
 init(RouteReqJObj, Type) ->
-    CallID = wh_json:get_value(<<"Call-ID">>, RouteReqJObj),
-    wh_util:put_callid(CallID),
+    CallID = kz_json:get_value(<<"Call-ID">>, RouteReqJObj),
+    kz_util:put_callid(CallID),
     case is_trunkstore_acct(RouteReqJObj, Type) of
         'false' ->
             lager:info("request is not for a trunkstore account"),
             {'error', 'not_ts_account'};
         'true' ->
-            AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], RouteReqJObj),
+            AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], RouteReqJObj),
             #ts_callflow_state{
                aleg_callid=CallID
                ,route_req_jobj=RouteReqJObj
                ,acctid=AccountId
-               ,acctdb=wh_util:format_account_id(AccountId, 'encoded')
+               ,acctdb=kz_util:format_account_id(AccountId, 'encoded')
               }
     end.
 
@@ -67,7 +67,7 @@ start_amqp(#ts_callflow_state{}=State) ->
     %% Trunkstore is pre-gen_listener so do it
     %% manually till it can be refactored
     Q = amqp_util:new_queue(),
-    _ = wapi_self:bind_q(Q, []),
+    _ = kapi_self:bind_q(Q, []),
     _ = amqp_util:basic_consume(Q, [{'exclusive', 'false'}]),
     lager:info("started AMQP with queue ~s", [Q]),
     State#ts_callflow_state{my_q=Q}.
@@ -77,16 +77,16 @@ send_park(#ts_callflow_state{my_q=Q
                              ,route_req_jobj=JObj
                              ,acctid=AccountId
                             }=State) ->
-    Resp = [{<<"Msg-ID">>, wh_api:msg_id(JObj)}
+    Resp = [{<<"Msg-ID">>, kz_api:msg_id(JObj)}
             ,{<<"Routes">>, []}
             ,{<<"Pre-Park">>, pre_park_action()}
             ,{<<"Method">>, <<"park">>}
-            ,{<<"From-Realm">>, wh_util:get_account_realm(AccountId)}
-            ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())}
-            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+            ,{<<"From-Realm">>, kz_util:get_account_realm(AccountId)}
+            ,{<<"Custom-Channel-Vars">>, kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())}
+            | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
            ],
     lager:info("trunkstore knows how to route this call, sending park route response"),
-    wapi_route:publish_resp(wh_api:server_id(JObj), Resp),
+    kapi_route:publish_resp(kz_api:server_id(JObj), Resp),
     State.
 
 -spec wait_for_win(state()) -> {'won' | 'lost', state()}.
@@ -97,12 +97,12 @@ wait_for_win(#ts_callflow_state{aleg_callid=CallID
         #'basic.consume_ok'{} -> wait_for_win(State);
         %% call events come from callevt exchange, ignore for now
         {#'basic.deliver'{exchange = <<"targeted">>}, #amqp_msg{payload=Payload}} ->
-            WinJObj = wh_json:decode(Payload),
-            'true' = wapi_route:win_v(WinJObj),
-            CallID = wapi_route:call_id(WinJObj),
-            CallctlQ = wapi_route:control_queue(WinJObj),
+            WinJObj = kz_json:decode(Payload),
+            'true' = kapi_route:win_v(WinJObj),
+            CallID = kapi_route:call_id(WinJObj),
+            CallctlQ = kapi_route:control_queue(WinJObj),
             lager:info("callflow has received a route win, taking control of the call"),
-            wapi_call:bind_q(Q, [{'callid', CallID}]),
+            kapi_call:bind_q(Q, [{'callid', CallID}]),
             {'won', State#ts_callflow_state{callctl_q=CallctlQ}}
     after ?WAIT_FOR_WIN_TIMEOUT ->
             lager:info("timed out(~b) waiting for route_win, going down", [?WAIT_FOR_WIN_TIMEOUT]),
@@ -114,20 +114,20 @@ wait_for_bridge(State) ->
     receive
         #'basic.consume_ok'{} -> wait_for_bridge(State);
         {_, #amqp_msg{payload=Payload}} ->
-            JObj = wh_json:decode(Payload),
+            JObj = kz_json:decode(Payload),
             case process_event_for_bridge(State, JObj) of
                 'ignore' -> wait_for_bridge(State);
                 {'error', _}=Error -> Error;
                 {'hangup', _}=Hangup -> Hangup
             end;
-        {'$gen_cast',{'wh_amqp_assignment',_}} ->
+        {'$gen_cast',{'kz_amqp_assignment',_}} ->
             wait_for_bridge(State);
         _E ->
             lager:info("unexpected msg: ~p", [_E]),
             wait_for_bridge(State)
     end.
 
--spec process_event_for_bridge(state(), wh_json:object()) ->
+-spec process_event_for_bridge(state(), kz_json:object()) ->
                                       'ignore' | {'hangup' | 'error', state()}.
 process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg
                                             ,callctl_q=CtlQ
@@ -140,22 +140,22 @@ process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg
                     lager:info("offnet bridge has completed successfully"),
                     {'hangup', State};
                 'false' ->
-                    Failure = wh_json:get_first_defined([<<"Error-Message">>
+                    Failure = kz_json:get_first_defined([<<"Error-Message">>
                                                          ,<<"Response-Code">>
                                                         ]
                                                         ,JObj
                                                        ),
                     lager:info("offnet failed: ~s ~s"
-                               ,[Failure, wh_json:get_value(<<"Response-Message">>, JObj)]
+                               ,[Failure, kz_json:get_value(<<"Response-Message">>, JObj)]
                               ),
                     {'error', State}
             end;
         {<<"resource">>, <<"resource_error">>, _} ->
-            Code = wh_json:get_value(<<"Failure-Code">>, JObj, <<"486">>),
-            Message = wh_json:get_value(<<"Failure-Message">>, JObj),
+            Code = kz_json:get_value(<<"Failure-Code">>, JObj, <<"486">>),
+            Message = kz_json:get_value(<<"Failure-Message">>, JObj),
             lager:info("offnet failed: ~s ~s", [Code, Message]),
             %% send failure code to Call
-            _ = wh_call_response:send(ALeg, CtlQ, Code, Message),
+            _ = kz_call_response:send(ALeg, CtlQ, Code, Message),
             {'hangup', State};
         {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
             lager:info("channel hungup before bridge"),
@@ -166,12 +166,12 @@ process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg
                     lager:info("bridge completed successfully"),
                     {'hangup', State};
                 'false' ->
-                    lager:info("bridge failed: ~s",[wh_json:encode(JObj)]),
+                    lager:info("bridge failed: ~s",[kz_json:encode(JObj)]),
                     {'error', State}
              end;
         {<<"error">>, _, <<"bridge">>} ->
             lager:debug("channel execution error while waiting for bridge: ~s"
-                        ,[wh_json:encode(JObj)]
+                        ,[kz_json:encode(JObj)]
                        ),
             {'error', State};
         {<<"call_event">>,<<"CHANNEL_EXECUTE_COMPLETE">>,<<"answer">>} ->
@@ -179,14 +179,14 @@ process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg
             lager:info("channel was answered"),
             'ignore';
         {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
-            BLeg = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
+            BLeg = kz_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
             lager:debug("channel ~s bridged to ~s", [ALeg, BLeg]),
             'ignore';
         _Unhandled ->
             'ignore'
     end.
 
--spec was_bridge_successful(wh_json:object()) -> boolean().
+-spec was_bridge_successful(kz_json:object()) -> boolean().
 was_bridge_successful(JObj) ->
     is_success(<<"Disposition">>, JObj)
         orelse is_success([<<"Application-Response">>
@@ -196,22 +196,22 @@ was_bridge_successful(JObj) ->
                           ,<<"UNSPECIFIED">>
                          ).
 
--spec is_success(ne_binary(), wh_json:object()) -> boolean().
--spec is_success(ne_binaries(), wh_json:object(), ne_binary()) -> boolean().
+-spec is_success(ne_binary(), kz_json:object()) -> boolean().
+-spec is_success(ne_binaries(), kz_json:object(), ne_binary()) -> boolean().
 is_success(Key, JObj) ->
-    wh_json:get_value(Key, JObj) =:= <<"SUCCESS">>.
+    kz_json:get_value(Key, JObj) =:= <<"SUCCESS">>.
 is_success(Key, JObj, Default) ->
-    wh_json:get_first_defined(Key, JObj, Default) =:= <<"SUCCESS">>.
+    kz_json:get_first_defined(Key, JObj, Default) =:= <<"SUCCESS">>.
 
--spec get_event_type(wh_json:object()) ->
+-spec get_event_type(kz_json:object()) ->
                             {api_binary(), api_binary(), api_binary()}.
 get_event_type(JObj) ->
-    {C, N} = wh_util:get_event_type(JObj),
+    {C, N} = kz_util:get_event_type(JObj),
     {C, N, get_app(JObj)}.
 
 get_app(JObj) ->
-    case wh_json:get_value(<<"Application-Name">>, JObj) of
-        'undefined' -> wh_json:get_value([<<"Request">>, <<"Application-Name">>], JObj);
+    case kz_json:get_value(<<"Application-Name">>, JObj) of
+        'undefined' -> kz_json:get_value([<<"Request">>, <<"Application-Name">>], JObj);
         App -> App
     end.
 
@@ -224,36 +224,36 @@ send_hangup(#ts_callflow_state{callctl_q=CtlQ
     Command = [{<<"Application-Name">>, <<"hangup">>}
                ,{<<"Call-ID">>, CallID}
                ,{<<"Insert-At">>, <<"now">>}
-               | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
     lager:info("Sending hangup to ~s: ~p", [CtlQ, Command]),
-    wapi_dialplan:publish_command(CtlQ, Command).
+    kapi_dialplan:publish_command(CtlQ, Command).
 
 send_hangup(#ts_callflow_state{callctl_q = <<>>}, _) -> 'ok';
 send_hangup(#ts_callflow_state{callctl_q = 'undefined'}, _) -> 'ok';
 send_hangup(#ts_callflow_state{callctl_q=CtlQ
                                ,aleg_callid=CallId}, Code) ->
     lager:debug("responding to aleg with ~p", [Code]),
-    wh_call_response:send(CallId, CtlQ, Code).
+    kz_call_response:send(CallId, CtlQ, Code).
 
 %%%-----------------------------------------------------------------------------
 %%% Data access functions
 %%%-----------------------------------------------------------------------------
--spec get_request_data(state()) -> wh_json:object().
+-spec get_request_data(state()) -> kz_json:object().
 get_request_data(#ts_callflow_state{route_req_jobj=JObj}) -> JObj.
 
--spec get_custom_channel_vars(state()) -> wh_json:object().
+-spec get_custom_channel_vars(state()) -> kz_json:object().
 get_custom_channel_vars(#ts_callflow_state{route_req_jobj=JObj}) ->
-    wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()).
+    kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()).
 
 -spec get_custom_sip_headers(state()) -> api_object().
 get_custom_sip_headers(#ts_callflow_state{route_req_jobj=JObj}) ->
-    wh_json:get_value(<<"Custom-SIP-Headers">>, JObj).
+    kz_json:get_value(<<"Custom-SIP-Headers">>, JObj).
 
--spec set_endpoint_data(state(), wh_json:object()) -> state().
+-spec set_endpoint_data(state(), kz_json:object()) -> state().
 set_endpoint_data(State, Data) -> State#ts_callflow_state{ep_data=Data}.
 
--spec get_endpoint_data(state()) -> wh_json:object().
+-spec get_endpoint_data(state()) -> kz_json:object().
 get_endpoint_data(#ts_callflow_state{ep_data=EP}) -> EP.
 
 -spec set_account_id(state(), ne_binary()) -> state().
@@ -275,13 +275,13 @@ get_bleg_id(#ts_callflow_state{bleg_callid=ALeg}) -> ALeg.
 -spec get_call_cost(state()) -> float().
 get_call_cost(#ts_callflow_state{call_cost=Cost}) -> Cost.
 
--spec set_failover(state(), wh_json:object()) -> state().
+-spec set_failover(state(), kz_json:object()) -> state().
 set_failover(State, Failover) -> State#ts_callflow_state{failover=Failover}.
 
 -spec get_failover(state()) -> api_object().
 get_failover(#ts_callflow_state{failover=Fail}) -> Fail.
 
--spec is_trunkstore_acct(wh_json:object(), api_binary() | api_binaries()) -> boolean().
+-spec is_trunkstore_acct(kz_json:object(), api_binary() | api_binaries()) -> boolean().
 is_trunkstore_acct(JObj, [Type|Types]) ->
     case is_trunkstore_acct(JObj, Type) of
         'true' -> 'true';
@@ -289,11 +289,11 @@ is_trunkstore_acct(JObj, [Type|Types]) ->
     end;
 is_trunkstore_acct(_JObj, []) -> 'false';
 is_trunkstore_acct(JObj, Type) ->
-    Type =:= wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-Type">>], JObj).
+    Type =:= kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-Type">>], JObj).
 
 -spec pre_park_action() -> ne_binary().
 pre_park_action() ->
-    case whapps_config:get_is_true(<<"trunkstore">>, <<"ring_ready_offnet">>, 'true') of
+    case kapps_config:get_is_true(<<"trunkstore">>, <<"ring_ready_offnet">>, 'true') of
         'false' -> <<"none">>;
         'true' -> <<"ring_ready">>
     end.

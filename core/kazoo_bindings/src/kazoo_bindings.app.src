@@ -7,7 +7,7 @@
   {applications, [ kernel
                  , stdlib
 
-                 , whistle
+                 , kazoo
                  , kazoo_etsmgr
 
                  , lager

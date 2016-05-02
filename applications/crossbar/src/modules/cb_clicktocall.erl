@@ -37,7 +37,7 @@
 -define(CB_LIST, <<"click2call/crossbar_listing">>).
 -define(HISTORY_LIST, <<"clicktocall/history_listing">>).
 -define(PVT_TYPE, <<"click2call">>).
--define(CONNECT_C2C_URL, [{<<"clicktocall">>, [_, ?CONNECT_CALL]}, {?WH_ACCOUNTS_DB, [_]}]).
+-define(CONNECT_C2C_URL, [{<<"clicktocall">>, [_, ?CONNECT_CALL]}, {?KZ_ACCOUNTS_DB, [_]}]).
 -define(SUCCESSFUL_HANGUP_CAUSES, [<<"NORMAL_CLEARING">>, <<"ORIGINATOR_CANCEL">>, <<"SUCCESS">>]).
 
 %%%===================================================================
@@ -132,7 +132,7 @@ is_auth_required(Context) ->
     Nouns = cb_context:req_nouns(Context),
     [C2CID, _] = props:get_value(<<"clicktocall">>, Nouns),
     JObj = cb_context:doc(crossbar_doc:load(C2CID, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE))),
-    wh_json:is_true(<<"auth_required">>, JObj, 'true').
+    kz_json:is_true(<<"auth_required">>, JObj, 'true').
 
 -spec is_c2c_url(cb_context:context(), req_nouns()) -> boolean().
 is_c2c_url(Context, ?CONNECT_C2C_URL) ->
@@ -205,13 +205,13 @@ delete(Context, _) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
+    [kz_json:get_value(<<"value">>, JObj)|Acc].
 
--spec normalize_history_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_history_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_history_results(JObj, Acc) ->
-    [wh_json:get_value(<<"doc">>, JObj)|Acc].
+    [kz_json:get_value(<<"doc">>, JObj)|Acc].
 
 -spec load_c2c_summary(cb_context:context()) -> cb_context:context().
 load_c2c_summary(Context) ->
@@ -256,8 +256,8 @@ establish_c2c(C2CId, Context) ->
 
 -spec maybe_migrate_history(ne_binary()) -> 'ok'.
 maybe_migrate_history(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountDb = kz_util:format_account_id(Account, 'encoded'),
 
     case kz_datamgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
         {'ok', []} -> 'ok';
@@ -265,30 +265,30 @@ maybe_migrate_history(Account) ->
         {'error', _} -> 'ok'
     end.
 
--spec migrate_histories(ne_binary(), ne_binary(), wh_json:objects()) -> 'ok'.
+-spec migrate_histories(ne_binary(), ne_binary(), kz_json:objects()) -> 'ok'.
 migrate_histories(AccountId, AccountDb, C2Cs) ->
-    _ = [migrate_history(AccountId, AccountDb, wh_json:get_value(<<"doc">>, C2C)) || C2C <- C2Cs],
+    _ = [migrate_history(AccountId, AccountDb, kz_json:get_value(<<"doc">>, C2C)) || C2C <- C2Cs],
     'ok'.
 
--spec migrate_history(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+-spec migrate_history(ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
 migrate_history(AccountId, AccountDb, C2C) ->
-    case wh_json:get_value(<<"pvt_history">>, C2C, []) of
+    case kz_json:get_value(<<"pvt_history">>, C2C, []) of
         [] -> 'ok';
         History ->
-            Id = wh_doc:id(C2C),
+            Id = kz_doc:id(C2C),
             _ = [save_history_item(AccountId, HistoryItem, Id) || HistoryItem <- History],
-            _Resp = kz_datamgr:ensure_saved(AccountDb, wh_json:delete_key(<<"pvt_history">>, C2C)),
+            _Resp = kz_datamgr:ensure_saved(AccountDb, kz_json:delete_key(<<"pvt_history">>, C2C)),
             lager:debug("removed history from c2c ~s in ~s: ~p", [Id
                                                                   ,AccountId
                                                                   ,_Resp
                                                                  ])
     end.
 
--spec save_history_item(ne_binary(), wh_json:object(), ne_binary()) -> any().
+-spec save_history_item(ne_binary(), kz_json:object(), ne_binary()) -> any().
 save_history_item(AccountId, HistoryItem, C2CId) ->
-    Timestamp = wh_json:get_integer_value(<<"timestamp">>, HistoryItem, wh_util:current_tstamp()),
-    AccountModb = wh_util:format_account_mod_id(AccountId, Timestamp),
-    JObj = wh_doc:update_pvt_parameters(wh_json:set_value(<<"pvt_clicktocall_id">>, C2CId, HistoryItem)
+    Timestamp = kz_json:get_integer_value(<<"timestamp">>, HistoryItem, kz_util:current_tstamp()),
+    AccountModb = kz_util:format_account_mod_id(AccountId, Timestamp),
+    JObj = kz_doc:update_pvt_parameters(kz_json:set_value(<<"pvt_clicktocall_id">>, C2CId, HistoryItem)
                                         ,AccountModb
                                         ,[{'type', <<"c2c_history">>}
                                           ,{'account_id', AccountId}
@@ -299,7 +299,7 @@ save_history_item(AccountId, HistoryItem, C2CId) ->
 -spec clear_history_set_type(cb_context:context()) -> cb_context:context().
 clear_history_set_type(Context) ->
     cb_context:set_doc(Context
-                       ,wh_doc:update_pvt_parameters(cb_context:doc(Context)
+                       ,kz_doc:update_pvt_parameters(cb_context:doc(Context)
                                                      ,cb_context:account_db(Context)
                                                      ,[{'type', ?PVT_TYPE}]
                                                     )
@@ -321,7 +321,7 @@ originate_call(_C2CId, Context, 'undefined') ->
     cb_context:add_validation_error(
       <<"contact">>
       ,<<"required">>
-      ,wh_json:from_list([{<<"message">>, Message}])
+      ,kz_json:from_list([{<<"message">>, Message}])
       ,Context
      );
 originate_call(C2CId, Context, Contact) ->
@@ -329,26 +329,26 @@ originate_call(C2CId, Context, Contact) ->
     AccountId = cb_context:account_id(Context),
     AccountModb = cb_context:account_modb(Context),
     Request = build_originate_req(Contact, Context),
-    _Pid = wh_util:spawn(
+    _Pid = kz_util:spawn(
              fun() ->
-                     wh_util:put_callid(ReqId),
+                     kz_util:put_callid(ReqId),
                      Status = exec_originate(Request),
                      lager:debug("got status ~p", [Status]),
 
-                     JObj = wh_json:from_list(
+                     JObj = kz_json:from_list(
                               [{<<"pvt_clicktocall_id">>, C2CId}
                                | create_c2c_history_item(Status, Contact)
                               ]
                              ),
                      HistoryItem =
-                         wh_doc:update_pvt_parameters(JObj
+                         kz_doc:update_pvt_parameters(JObj
                                                       ,AccountModb
                                                       ,[{'account_id', AccountId}
                                                         ,{'type', <<"c2c_history">>}
                                                        ]),
                      kazoo_modb:save_doc(AccountId, HistoryItem)
              end),
-    JObj = wh_json:normalize(wh_json:from_list(wh_api:remove_defaults(Request))),
+    JObj = kz_json:normalize(kz_json:from_list(kz_api:remove_defaults(Request))),
     lager:debug("attempting call in ~p", [JObj]),
     crossbar_util:response_202(<<"processing request">>, JObj, cb_context:set_resp_data(Context, Request)).
 
@@ -357,37 +357,37 @@ originate_call(C2CId, Context, Contact) ->
                             {'error', ne_binary()}.
 exec_originate(Request) ->
     handle_originate_resp(
-      wh_amqp_worker:call_collect(Request
-                                  ,fun wapi_resource:publish_originate_req/1
+      kz_amqp_worker:call_collect(Request
+                                  ,fun kapi_resource:publish_originate_req/1
                                   ,fun is_resp/1
                                   ,20 * ?MILLISECONDS_IN_SECOND
                                  )
      ).
 
--spec handle_originate_resp({'ok', wh_json:objects()} |
-                            {'returned', wh_json:object(), wh_json:object()} |
+-spec handle_originate_resp({'ok', kz_json:objects()} |
+                            {'returned', kz_json:object(), kz_json:object()} |
                             {'error', _} |
                             {'timeout', _}
                            ) ->
                                    {'success', ne_binary()} |
                                    {'error', ne_binary()}.
 handle_originate_resp({'ok', [Resp|_]}) ->
-    AppResponse = wh_json:get_first_defined([<<"Application-Response">>
+    AppResponse = kz_json:get_first_defined([<<"Application-Response">>
                                              ,<<"Hangup-Cause">>
                                              ,<<"Error-Message">>
                                             ], Resp),
     case lists:member(AppResponse, ?SUCCESSFUL_HANGUP_CAUSES) of
         'true' ->
-            {'success', wh_json:get_value(<<"Call-ID">>, Resp)};
+            {'success', kz_json:get_value(<<"Call-ID">>, Resp)};
         'false' when AppResponse =:= 'undefined' ->
-            {'success', wh_json:get_value(<<"Call-ID">>, Resp)};
+            {'success', kz_json:get_value(<<"Call-ID">>, Resp)};
         'false' ->
             lager:debug("app response ~s not successful: ~p", [AppResponse, Resp]),
             {'error', AppResponse}
     end;
 handle_originate_resp({'returned', _JObj, Return}) ->
-    case {wh_json:get_value(<<"code">>, Return)
-          ,wh_json:get_value(<<"message">>, Return)
+    case {kz_json:get_value(<<"code">>, Return)
+          ,kz_json:get_value(<<"message">>, Return)
          }
     of
         {312, _Msg} ->
@@ -409,13 +409,13 @@ handle_originate_resp({'timeout', _T}) ->
 build_originate_req(Contact, Context) ->
     AccountId = cb_context:account_id(Context),
     JObj = cb_context:doc(Context),
-    Exten = knm_converters:normalize(wh_json:get_binary_value(<<"extension">>, JObj)),
-    CalleeName = wh_json:get_binary_value(<<"outbound_callee_id_name">>, JObj, Exten),
-    CalleeNumber = knm_converters:normalize(wh_json:get_binary_value(<<"outbound_callee_id_number">>, JObj, Exten)),
-    FriendlyName = wh_json:get_ne_value(<<"name">>, JObj, <<>>),
-    OutboundNumber = wh_json:get_value(<<"caller_id_number">>, JObj, Contact),
-    AutoAnswer = wh_json:is_true(<<"auto_answer">>, cb_context:query_string(Context), 'true'),
-    {Caller, Callee} = get_caller_callee(wh_json:get_value(<<"dial_first">>, JObj, <<"extension">>)
+    Exten = knm_converters:normalize(kz_json:get_binary_value(<<"extension">>, JObj)),
+    CalleeName = kz_json:get_binary_value(<<"outbound_callee_id_name">>, JObj, Exten),
+    CalleeNumber = knm_converters:normalize(kz_json:get_binary_value(<<"outbound_callee_id_number">>, JObj, Exten)),
+    FriendlyName = kz_json:get_ne_value(<<"name">>, JObj, <<>>),
+    OutboundNumber = kz_json:get_value(<<"caller_id_number">>, JObj, Contact),
+    AutoAnswer = kz_json:is_true(<<"auto_answer">>, cb_context:query_string(Context), 'true'),
+    {Caller, Callee} = get_caller_callee(kz_json:get_value(<<"dial_first">>, JObj, <<"extension">>)
                                          ,#contact{number = OutboundNumber
                                                    ,name = FriendlyName
                                                    ,route = Contact}
@@ -428,7 +428,7 @@ build_originate_req(Contact, Context) ->
 
     CCVs = [{<<"Account-ID">>, AccountId}
             ,{<<"Auto-Answer-Loopback">>, AutoAnswer}
-            ,{<<"Authorizing-ID">>, wh_doc:id(JObj)}
+            ,{<<"Authorizing-ID">>, kz_doc:id(JObj)}
             ,{<<"Inherit-Codec">>, <<"false">>}
             ,{<<"Authorizing-Type">>, <<"device">>}
             ,{<<"Loopback-Request-URI">>, <<OutboundNumber/binary, "@", (kz_account:realm(AccountDoc))/binary>>}
@@ -441,31 +441,31 @@ build_originate_req(Contact, Context) ->
                 ,{<<"Route">>,  Callee#contact.route}
                 ,{<<"To-DID">>, Callee#contact.route}
                 ,{<<"To-Realm">>, kz_account:realm(AccountDoc)}
-                ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+                ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
                ],
 
-    MsgId = wh_json:get_value(<<"msg_id">>, JObj, wh_util:rand_hex_binary(16)),
-    CallId = <<(wh_util:rand_hex_binary(18))/binary, "-clicktocall">>,
+    MsgId = kz_json:get_value(<<"msg_id">>, JObj, kz_util:rand_hex_binary(16)),
+    CallId = <<(kz_util:rand_hex_binary(18))/binary, "-clicktocall">>,
     props:filter_undefined(
       [{<<"Application-Name">>, <<"transfer">>}
-       ,{<<"Application-Data">>, wh_json:from_list([{<<"Route">>, Caller#contact.route}])}
+       ,{<<"Application-Data">>, kz_json:from_list([{<<"Route">>, Caller#contact.route}])}
        ,{<<"Msg-ID">>, MsgId}
-       ,{<<"Endpoints">>, [wh_json:from_list(Endpoint)]}
-       ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, JObj, 30)}
+       ,{<<"Endpoints">>, [kz_json:from_list(Endpoint)]}
+       ,{<<"Timeout">>, kz_json:get_value(<<"timeout">>, JObj, 30)}
        ,{<<"Ignore-Early-Media">>, get_ignore_early_media(JObj)}
-       ,{<<"Media">>, wh_json:get_value(<<"media">>, JObj)}
-       ,{<<"Hold-Media">>, wh_json:get_value([<<"music_on_hold">>, <<"media_id">>], JObj)}
-       ,{<<"Presence-ID">>, wh_json:get_value(<<"presence_id">>, JObj)}
+       ,{<<"Media">>, kz_json:get_value(<<"media">>, JObj)}
+       ,{<<"Hold-Media">>, kz_json:get_value([<<"music_on_hold">>, <<"media_id">>], JObj)}
+       ,{<<"Presence-ID">>, kz_json:get_value(<<"presence_id">>, JObj)}
        ,{<<"Outbound-Callee-ID-Name">>, Callee#contact.name}
        ,{<<"Outbound-Callee-ID-Number">>, Callee#contact.number}
        ,{<<"Outbound-Caller-ID-Name">>, Caller#contact.name}
        ,{<<"Outbound-Caller-ID-Number">>, Caller#contact.number}
        ,{<<"Outbound-Call-ID">>, CallId}
-       ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, JObj)}
+       ,{<<"Ringback">>, kz_json:get_value(<<"ringback">>, JObj)}
        ,{<<"Dial-Endpoint-Method">>, <<"single">>}
        ,{<<"Continue-On-Fail">>, 'true'}
-       ,{<<"Custom-SIP-Headers">>, wh_json:get_value(<<"custom_sip_headers">>, JObj)}
-       ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+       ,{<<"Custom-SIP-Headers">>, kz_json:get_value(<<"custom_sip_headers">>, JObj)}
+       ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
        ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>
                                             ,<<"Auto-Answer-Loopback">>, <<"Loopback-Request-URI">>
                                             ,<<"From-URI">>, <<"Request-URI">>
@@ -473,37 +473,37 @@ build_originate_req(Contact, Context) ->
        ,{<<"Simplify-Loopback">>, <<"false">>}
        ,{<<"Loopback-Bowout">>, <<"false">>}
        ,{<<"Start-Control-Process">>, <<"false">>}
-       | wh_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
+       | kz_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
 -spec get_caller_callee(ne_binary(), #contact{}, #contact{}) -> {#contact{}, #contact{}}.
 get_caller_callee(<<"extension">>, Contact, Extension) -> {Contact, Extension};
 get_caller_callee(<<"contact">>, Contact, Extension) -> {Extension, Contact}.
 
--spec get_ignore_early_media(wh_json:object()) -> boolean().
+-spec get_ignore_early_media(kz_json:object()) -> boolean().
 get_ignore_early_media(JObj) ->
-    wh_util:is_true(wh_json:get_value([<<"media">>, <<"ignore_early_media">>], JObj, 'true')).
+    kz_util:is_true(kz_json:get_value([<<"media">>, <<"ignore_early_media">>], JObj, 'true')).
 
--spec is_resp(wh_json:objects() | wh_json:object()) -> boolean().
+-spec is_resp(kz_json:objects() | kz_json:object()) -> boolean().
 is_resp([JObj|_]) -> is_resp(JObj);
 is_resp(JObj) ->
-    wapi_resource:originate_resp_v(JObj)
-        orelse wh_api:error_resp_v(JObj).
+    kapi_resource:originate_resp_v(JObj)
+        orelse kz_api:error_resp_v(JObj).
 
 -spec get_c2c_contact(api_binary()) -> api_binary().
 get_c2c_contact('undefined') -> 'undefined';
 get_c2c_contact(Contact) ->
     knm_converters:normalize(kz_http_util:urlencode(Contact)).
 
--spec create_c2c_history_item({'success', ne_binary()} | {'error', ne_binary()}, ne_binary()) -> wh_proplist().
+-spec create_c2c_history_item({'success', ne_binary()} | {'error', ne_binary()}, ne_binary()) -> kz_proplist().
 create_c2c_history_item({'success', CallId}, Contact) ->
-    [{<<"timestamp">>, wh_util:current_tstamp()}
+    [{<<"timestamp">>, kz_util:current_tstamp()}
      ,{<<"contact">>, Contact}
      ,{<<"call_id">>, CallId}
      ,{<<"result">>, <<"success">>}
     ];
 create_c2c_history_item({'error', Error}, Contact) ->
-    [{<<"timestamp">>, wh_util:current_tstamp()}
+    [{<<"timestamp">>, kz_util:current_tstamp()}
      ,{<<"contact">>, Contact}
      ,{<<"result">>, <<"error">>}
      ,{<<"cause">>, Error}

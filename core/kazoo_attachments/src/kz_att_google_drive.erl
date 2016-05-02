@@ -50,31 +50,31 @@ encode_multipart_headers([{K, V} | Headers], Encoded) ->
 put_attachment(#{oauth_doc_id := TokenDocId, folder_id := Folder}, _DbName, _DocId, AName, Contents, Options) ->
     {'ok', Token} = kazoo_oauth_util:token(TokenDocId),
     CT = kz_mime:from_filename(AName),
-    JObj = wh_json:from_list(
+    JObj = kz_json:from_list(
              props:filter_empty(
                [{<<"mimeType">>, CT}
               ,{<<"name">>, AName}
               ,{<<"parents">>, [Folder]}
               ,{<<"description">>, props:get_value('description', Options)}
-              ,{<<"appProperties">>, wh_json:from_list(props:get_value('metadata', Options, [])) }
-              ,{<<"properties">>, wh_json:from_list(props:get_value('metadata', Options, [])) }
+              ,{<<"appProperties">>, kz_json:from_list(props:get_value('metadata', Options, [])) }
+              ,{<<"properties">>, kz_json:from_list(props:get_value('metadata', Options, [])) }
              ])),
-    JsonPart = {wh_json:encode(JObj), [{<<"Content-Type">>, <<"application/json">>}] },
+    JsonPart = {kz_json:encode(JObj), [{<<"Content-Type">>, <<"application/json">>}] },
     FilePart = {base64:encode(Contents), [{<<"Content-Type">>, CT},{<<"Content-Transfer-Encoding">>, <<"base64">>}] },
-    Boundary = <<"------", (wh_util:rand_hex_binary(16))/binary>>,
+    Boundary = <<"------", (kz_util:rand_hex_binary(16))/binary>>,
 
     Body = encode_multipart([JsonPart, FilePart], Boundary),
-    ContentType = wh_util:to_list(<<"multipart/related; boundary=", Boundary/binary>>),
+    ContentType = kz_util:to_list(<<"multipart/related; boundary=", Boundary/binary>>),
     Headers = [{<<"Authorization">>, kazoo_oauth_util:authorization_header(Token)}
                ,{<<"Content-Type">>, ContentType}
               ],
     case kz_http:post(?DRV_MULTIPART_FILE_URL, Headers, Body) of
         {'ok', 200, ResponseHeaders, ResponseBody} ->
-            ContentId = wh_json:get_value(<<"id">>, wh_json:decode(ResponseBody)),
+            ContentId = kz_json:get_value(<<"id">>, kz_json:decode(ResponseBody)),
             Data = base64:encode(term_to_binary({TokenDocId, ContentId})),
             Metadata = [ convert_kv(KV) || KV <- ResponseHeaders, filter_kv(KV)],
             {'ok', [{'attachment', [{<<"gdrive">>, Data}
-                                   ,{<<"metadata">>, wh_json:from_list(Metadata)}
+                                   ,{<<"metadata">>, kz_json:from_list(Metadata)}
                                    ]}
                    ]};
         _E ->
@@ -87,14 +87,14 @@ filter_kv(_KV) -> 'false'.
 
 convert_kv({K, V})
   when is_list(K) ->
-    convert_kv({wh_util:to_binary(K), V});
+    convert_kv({kz_util:to_binary(K), V});
 convert_kv({K, V})
   when is_list(V) ->
-    convert_kv({K, wh_util:to_binary(V)});
+    convert_kv({K, kz_util:to_binary(V)});
 convert_kv(KV) -> KV.
 
 fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->
-    case wh_json:get_value(<<"gdrive">>, HandlerProps) of
+    case kz_json:get_value(<<"gdrive">>, HandlerProps) of
         'undefined' -> {'error', 'invalid_data'};
         GData ->
             {TokenDocId, ContentId} = binary_to_term(base64:decode(GData)),

@@ -84,7 +84,7 @@ It has business logic that can find and report a bad exchange.
 
 First ensure the `call_inspector` application is up and running:
 
-    sup whapps_controller [re]start_app call_inspector
+    sup kapps_controller [re]start_app call_inspector
 
 ### Display a list of active parsers
 

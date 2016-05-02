@@ -46,9 +46,9 @@
 -include("knm.hrl").
 
 -record(knm_number, {knm_phone_number :: knm_phone_number:knm_phone_number()
-                     ,services :: wh_services:services()
+                     ,services :: kz_services:services()
                      ,billing_id :: api_binary()
-                     ,transactions = [] :: wh_transaction:transactions()
+                     ,transactions = [] :: kz_transaction:transactions()
                      ,errors = [] :: list()
                      ,charges = [] :: [{ne_binary(), integer()}]
                     }).
@@ -164,7 +164,7 @@ create_phone_number(Number) ->
 %% @public
 %% @doc
 %% Fetches then transition an existing number to the reserved state.
-%% Similar to wh_number_manager:reserve_number
+%% Similar to kz_number_manager:reserve_number
 %% @end
 %%--------------------------------------------------------------------
 -spec reserve(ne_binary(), knm_number_options:options()) -> knm_number_return().
@@ -306,7 +306,7 @@ move(Num, MoveTo, Options) ->
 
 -spec move_to(knm_number(), ne_binary()) -> knm_number_return().
 move_to(Number, MoveTo) ->
-    AccountId = wh_util:format_account_id(MoveTo),
+    AccountId = kz_util:format_account_id(MoveTo),
     PhoneNumber = phone_number(Number),
     MovedPhoneNumber = knm_phone_number:set_assign_to(PhoneNumber, AccountId),
     MovedNumber = set_phone_number(Number, MovedPhoneNumber),
@@ -593,7 +593,7 @@ fetch_account_from_number(NormalizedNum) ->
 -spec check_number(knm_phone_number:knm_phone_number()) -> lookup_account_return().
 check_number(PhoneNumber) ->
     AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
-    case wh_util:is_empty(AssignedTo) of
+    case kz_util:is_empty(AssignedTo) of
         'true' -> {'error', 'unassigned'};
         'false' ->
             States = [?NUMBER_STATE_PORT_IN, ?NUMBER_STATE_IN_SERVICE, ?NUMBER_STATE_PORT_OUT],
@@ -612,7 +612,7 @@ check_number(PhoneNumber) ->
 -spec check_account(knm_phone_number:knm_phone_number()) -> lookup_account_return().
 check_account(PhoneNumber) ->
     AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
-    case wh_util:is_account_enabled(AssignedTo) of
+    case kz_util:is_account_enabled(AssignedTo) of
         'false' -> {'error', {'account_disabled', AssignedTo}};
         'true' ->
             Module = knm_phone_number:module_name(PhoneNumber),
@@ -639,9 +639,9 @@ check_account(PhoneNumber) ->
 -spec feature_prepend(knm_phone_number:knm_phone_number()) -> api_binary().
 feature_prepend(PhoneNumber) ->
     Prepend = knm_phone_number:feature(PhoneNumber, <<"prepend">>),
-    case wh_json:is_true(<<"enabled">>, Prepend) of
+    case kz_json:is_true(<<"enabled">>, Prepend) of
         'false' -> 'undefined';
-        'true' -> wh_json:get_ne_value(<<"name">>, Prepend)
+        'true' -> kz_json:get_ne_value(<<"name">>, Prepend)
     end.
 
 %%--------------------------------------------------------------------
@@ -655,9 +655,9 @@ feature_inbound_cname(PhoneNumber) ->
         'undefined' -> 'false';
         _ ->
             Mod = knm_phone_number:module_name(PhoneNumber),
-            Module = wh_util:to_atom(Mod, 'true'),
+            Module = kz_util:to_atom(Mod, 'true'),
             try Module:should_lookup_cnam() of
-                Boolean -> wh_util:is_true(Boolean)
+                Boolean -> kz_util:is_true(Boolean)
             catch
                 _E:_R -> 'true'
             end
@@ -671,7 +671,7 @@ feature_inbound_cname(PhoneNumber) ->
 -spec find_early_ringback(knm_phone_number:knm_phone_number()) -> api_binary().
 find_early_ringback(PhoneNumber) ->
     RingBack = knm_phone_number:feature(PhoneNumber, <<"ringback">>),
-    wh_json:get_ne_value(<<"early">>, RingBack).
+    kz_json:get_ne_value(<<"early">>, RingBack).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -681,7 +681,7 @@ find_early_ringback(PhoneNumber) ->
 -spec find_transfer_ringback(knm_phone_number:knm_phone_number()) -> api_binary().
 find_transfer_ringback(PhoneNumber) ->
     RingBack = knm_phone_number:feature(PhoneNumber, <<"ringback">>),
-    wh_json:get_ne_value(<<"transfer">>, RingBack).
+    kz_json:get_ne_value(<<"transfer">>, RingBack).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -694,13 +694,13 @@ is_force_outbound(PhoneNumber) ->
     Module = knm_phone_number:module_name(PhoneNumber),
     State = knm_phone_number:state(PhoneNumber),
     ForceOutbound = force_outbound_feature(PhoneNumber),
-    is_force_outbound(State, Module, wh_util:is_true(ForceOutbound)).
+    is_force_outbound(State, Module, kz_util:is_true(ForceOutbound)).
 
 is_force_outbound(?NUMBER_STATE_PORT_IN, Module, _ForceOutbound) ->
-    whapps_config:get_is_true(?KNM_CONFIG_CAT, <<"force_port_in_outbound">>, 'true')
+    kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"force_port_in_outbound">>, 'true')
         orelse force_module_outbound(Module);
 is_force_outbound(?NUMBER_STATE_PORT_OUT, Module, _ForceOutbound) ->
-    whapps_config:get_is_true(?KNM_CONFIG_CAT, <<"force_port_out_outbound">>, 'true')
+    kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"force_port_out_outbound">>, 'true')
         orelse force_module_outbound(Module);
 is_force_outbound(_State, ?CARRIER_LOCAL, _ForceOutbound) ->
     force_local_outbound();
@@ -711,7 +711,7 @@ is_force_outbound(_State, _Module, ForceOutbound) ->
 force_outbound_feature(PhoneNumber) ->
     case knm_phone_number:feature(PhoneNumber, <<"force_outbound">>) of
         'undefined' -> default_force_outbound();
-        FO -> wh_util:is_true(FO)
+        FO -> kz_util:is_true(FO)
     end.
 
 %%--------------------------------------------------------------------
@@ -730,7 +730,7 @@ force_module_outbound(_Mod) -> 'false'.
 %%--------------------------------------------------------------------
 -spec force_local_outbound() -> boolean().
 force_local_outbound() ->
-    whapps_config:get_is_true(?KNM_CONFIG_CAT, <<"force_local_outbound">>, 'true').
+    kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"force_local_outbound">>, 'true').
 
 %%--------------------------------------------------------------------
 %% @private
@@ -739,7 +739,7 @@ force_local_outbound() ->
 %%--------------------------------------------------------------------
 -spec default_force_outbound() -> boolean().
 default_force_outbound() ->
-    whapps_config:get_is_true(?KNM_CONFIG_CAT, <<"default_force_outbound">>, 'false').
+    kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"default_force_outbound">>, 'false').
 
 %%--------------------------------------------------------------------
 %% @private
@@ -760,7 +760,7 @@ fetch_account_from_ports(NormalizedNum, Error) ->
             lager:debug("no port for ~s: ~p", [NormalizedNum, Error]),
             Error;
         {'ok', [Port]} ->
-            AccountId = wh_json:get_value(<<"value">>, Port),
+            AccountId = kz_json:get_value(<<"value">>, Port),
             Props = [{'force_outbound', 'true'}
                      ,{'pending_port', 'true'}
                      ,{'local', 'true'}
@@ -802,10 +802,10 @@ phone_number(#knm_number{knm_phone_number=PhoneNumber}) -> PhoneNumber.
 set_phone_number(Number, PhoneNumber) ->
     Number#knm_number{knm_phone_number=PhoneNumber}.
 
--spec services(knm_number()) -> wh_services:services() | 'undefined'.
+-spec services(knm_number()) -> kz_services:services() | 'undefined'.
 services(#knm_number{services=Services}) -> Services.
 
--spec set_services(knm_number(), wh_services:services()) -> knm_number().
+-spec set_services(knm_number(), kz_services:services()) -> knm_number().
 set_services(#knm_number{}=Number, Services) ->
     Number#knm_number{services=Services}.
 
@@ -817,10 +817,10 @@ billing_id(#knm_number{billing_id=BillingId}) ->
 set_billing_id(#knm_number{}=Number, BillingId) ->
     Number#knm_number{billing_id=BillingId}.
 
--spec transactions(knm_number()) -> wh_transaction:transactions().
+-spec transactions(knm_number()) -> kz_transaction:transactions().
 transactions(#knm_number{transactions=Transactions}) -> Transactions.
 
--spec add_transaction(knm_number(), wh_transaction:transaction()) -> knm_number().
+-spec add_transaction(knm_number(), kz_transaction:transaction()) -> knm_number().
 add_transaction(#knm_number{transactions=Transactions}=Number, Transaction) ->
     Number#knm_number{transactions=[Transaction|Transactions]}.
 
@@ -835,7 +835,7 @@ charges(#knm_number{charges=Charges}, Key) ->
 set_charges(#knm_number{charges=Charges}=Number, Key, Amount) ->
     Number#knm_number{charges=props:set_value(Key, Amount, Charges)}.
 
--spec to_public_json(knm_number()) -> wh_json:object().
+-spec to_public_json(knm_number()) -> kz_json:object().
 to_public_json(#knm_number{}=Number) ->
     knm_phone_number:to_public_json(phone_number(Number)).
 

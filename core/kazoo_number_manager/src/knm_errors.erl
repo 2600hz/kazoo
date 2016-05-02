@@ -39,7 +39,7 @@
 -define(MESSAGE, <<"message">>).
 
 -type reason() :: atom() | ne_binary().
--type error() :: wh_json:object().
+-type error() :: kz_json:object().
 
 -type kn() :: knm_number:knm_number().
 -type kpn() :: knm_phone_number:knm_phone_number().
@@ -87,12 +87,12 @@ unspecified(Error, Number) ->
 not_enough_credit(Number, Units) ->
     throw({'error', 'not_enough_credit', Number, Units}).
 
--spec invalid(kn(), wh_json:object()) ->
+-spec invalid(kn(), kz_json:object()) ->
                      no_return().
 invalid(Number, Reason) ->
     throw({'error', 'invalid', Number, Reason}).
 
--spec multiple_choice(kn(), wh_json:object()) ->
+-spec multiple_choice(kn(), kz_json:object()) ->
                              no_return().
 multiple_choice(Number, Update) ->
     throw({'error', 'multiple_choice', Number, Update}).
@@ -176,9 +176,9 @@ to_json(Reason, _, Cause) ->
 -spec build_error(integer(), atom(), api_binary(), api_binary()) ->
                          error().
 build_error(Code, Error, Message, Cause) ->
-    wh_json:from_list(
-      [{?CODE, wh_util:to_integer(Code)}
-       | [{K, wh_util:to_binary(V)}
+    kz_json:from_list(
+      [{?CODE, kz_util:to_integer(Code)}
+       | [{K, kz_util:to_binary(V)}
           || {K, V} <- [{?ERROR, Error}
                         ,{?CAUSE, Cause}
                         ,{?MESSAGE, Message}
@@ -190,16 +190,16 @@ build_error(Code, Error, Message, Cause) ->
 
 -spec code(error()) -> api_integer().
 code(JObj) ->
-    wh_json:get_value(?CODE, JObj).
+    kz_json:get_value(?CODE, JObj).
 
 -spec error(error()) -> api_binary().
 error(JObj) ->
-    wh_json:get_value(?ERROR, JObj).
+    kz_json:get_value(?ERROR, JObj).
 
 -spec cause(error()) -> api_binary().
 cause(JObj) ->
-    wh_json:get_value(?CAUSE, JObj).
+    kz_json:get_value(?CAUSE, JObj).
 
 -spec message(error()) -> api_binary().
 message(JObj) ->
-    wh_json:get_value(?MESSAGE, JObj).
+    kz_json:get_value(?MESSAGE, JObj).

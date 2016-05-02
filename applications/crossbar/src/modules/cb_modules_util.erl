@@ -48,7 +48,7 @@ range_view_options(Context) ->
 range_view_options(Context, MaxRange) ->
     range_view_options(Context, MaxRange, <<"created">>).
 range_view_options(Context, MaxRange, Key) ->
-    TStamp =  wh_util:current_tstamp(),
+    TStamp =  kz_util:current_tstamp(),
     RangeTo = range_to(Context, TStamp, Key),
     RangeFrom = range_from(Context, RangeTo, MaxRange, Key),
     range_view_options(Context, MaxRange, Key, RangeFrom, RangeTo).
@@ -58,7 +58,7 @@ range_view_options(Context, MaxRange, Key, RangeFrom, RangeTo) ->
             cb_context:add_validation_error(
               <<Key/binary, "_from">>
               ,<<"date_range">>
-              ,wh_json:from_list(
+              ,kz_json:from_list(
                  [{<<"message">>, <<Key/binary, "_from is prior to ", Key/binary, "_to">>}
                   ,{<<"cause">>, RangeFrom}
                  ])
@@ -66,13 +66,13 @@ range_view_options(Context, MaxRange, Key, RangeFrom, RangeTo) ->
              );
         N when N > MaxRange ->
             Message = <<Key/binary, "_to is more than "
-                        ,(wh_util:to_binary(MaxRange))/binary
+                        ,(kz_util:to_binary(MaxRange))/binary
                         ," seconds from ", Key/binary, "_from"
                       >>,
             cb_context:add_validation_error(
               <<Key/binary, "_from">>
               ,<<"date_range">>
-              ,wh_json:from_list(
+              ,kz_json:from_list(
                  [{<<"message">>, Message}
                   ,{<<"cause">>, RangeTo}
                  ])
@@ -82,13 +82,13 @@ range_view_options(Context, MaxRange, Key, RangeFrom, RangeTo) ->
     end.
 
 -spec range_modb_view_options(cb_context:context()) ->
-                                     {'ok', wh_proplist()} |
+                                     {'ok', kz_proplist()} |
                                      cb_context:context().
 range_modb_view_options(Context) ->
     range_modb_view_options(Context, 'undefined', 'undefined').
 
 -spec range_modb_view_options(cb_context:context(), api_binaries()) ->
-                                     {'ok', wh_proplist()} |
+                                     {'ok', kz_proplist()} |
                                      cb_context:context().
 range_modb_view_options(Context, PrefixKeys) ->
     range_modb_view_options(Context, PrefixKeys, 'undefined').
@@ -138,16 +138,16 @@ range_to(Context, TStamp, Key) ->
     case crossbar_doc:start_key(Context) of
         'undefined' ->
             lager:debug("building ~s_to from req value", [Key]),
-            wh_util:to_integer(cb_context:req_value(Context, <<Key/binary, "_to">>, TStamp));
+            kz_util:to_integer(cb_context:req_value(Context, <<Key/binary, "_to">>, TStamp));
         StartKey ->
             lager:debug("found startkey ~p as ~s_to", [StartKey, Key]),
-            wh_util:to_integer(StartKey)
+            kz_util:to_integer(StartKey)
     end.
 
 -spec range_from(cb_context:context(), pos_integer(), pos_integer(), ne_binary()) -> pos_integer().
 range_from(Context, CreatedTo, MaxRange, Key) ->
     lager:debug("building ~s_from from req value", [Key]),
-    wh_util:to_integer(cb_context:req_value(Context, <<Key/binary, "_from">>, CreatedTo - MaxRange)).
+    kz_util:to_integer(cb_context:req_value(Context, <<Key/binary, "_from">>, CreatedTo - MaxRange)).
 
 -type binding() :: {ne_binary(), atom()}.
 -type bindings() :: [binding(),...].
@@ -161,18 +161,18 @@ bind(Module, Bindings) ->
 -spec pass_hashes(ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
 pass_hashes(Username, Password) ->
     Creds = list_to_binary([Username, ":", Password]),
-    SHA1 = wh_util:to_hex_binary(crypto:hash('sha', Creds)),
-    MD5 = wh_util:to_hex_binary(crypto:hash('md5', Creds)),
+    SHA1 = kz_util:to_hex_binary(crypto:hash('sha', Creds)),
+    MD5 = kz_util:to_hex_binary(crypto:hash('md5', Creds)),
     {MD5, SHA1}.
 
 -spec update_mwi(api_binary(), ne_binary()) -> pid().
 update_mwi(OwnerId, AccountDb) ->
-    wh_util:spawn(fun() ->
+    kz_util:spawn(fun() ->
                           timer:sleep(?MILLISECONDS_IN_SECOND),
                           cf_util:unsolicited_owner_mwi_update(AccountDb, OwnerId)
                   end).
 
--spec get_devices_owned_by(ne_binary(), ne_binary()) -> wh_json:objects().
+-spec get_devices_owned_by(ne_binary(), ne_binary()) -> kz_json:objects().
 get_devices_owned_by(OwnerID, DB) ->
     case kz_datamgr:get_results(DB
                                ,<<"cf_attributes/owned">>
@@ -182,7 +182,7 @@ get_devices_owned_by(OwnerID, DB) ->
     of
         {'ok', JObjs} ->
             lager:debug("found ~b devices owned by ~s", [length(JObjs), OwnerID]),
-            [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs];
+            [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs];
         {'error', _R} ->
             lager:debug("unable to fetch devices: ~p", [_R]),
             []
@@ -204,37 +204,37 @@ maybe_originate_quickcall(Context) ->
             originate_quickcall(Endpoints, Call, Context)
     end.
 
--spec create_call_from_context(cb_context:context()) -> whapps_call:call().
+-spec create_call_from_context(cb_context:context()) -> kapps_call:call().
 create_call_from_context(Context) ->
     Routines =
         props:filter_undefined(
-          [{fun whapps_call:set_account_db/2, cb_context:account_db(Context)}
-           ,{fun whapps_call:set_account_id/2, cb_context:account_id(Context)}
-           ,{fun whapps_call:set_resource_type/2, <<"audio">>}
-           ,{fun whapps_call:set_owner_id/2, wh_json:get_ne_value(<<"owner_id">>, cb_context:doc(Context))}
+          [{fun kapps_call:set_account_db/2, cb_context:account_db(Context)}
+           ,{fun kapps_call:set_account_id/2, cb_context:account_id(Context)}
+           ,{fun kapps_call:set_resource_type/2, <<"audio">>}
+           ,{fun kapps_call:set_owner_id/2, kz_json:get_ne_value(<<"owner_id">>, cb_context:doc(Context))}
            | request_specific_extraction_funs(Context)
           ]),
-    whapps_call:exec(Routines, whapps_call:new()).
+    kapps_call:exec(Routines, kapps_call:new()).
 
--spec request_specific_extraction_funs(cb_context:context()) -> whapps_call:exec_funs().
+-spec request_specific_extraction_funs(cb_context:context()) -> kapps_call:exec_funs().
 -spec request_specific_extraction_funs_from_nouns(cb_context:context(), req_nouns()) ->
-                                                         whapps_call:exec_funs().
+                                                         kapps_call:exec_funs().
 request_specific_extraction_funs(Context) ->
     request_specific_extraction_funs_from_nouns(Context, cb_context:req_nouns(Context)).
 
 request_specific_extraction_funs_from_nouns(Context, ?DEVICES_QCALL_NOUNS(DeviceId, Number)) ->
     NumberURI = build_number_uri(Context, Number),
-    [{fun whapps_call:set_authorizing_id/2, DeviceId}
-     ,{fun whapps_call:set_authorizing_type/2, <<"device">>}
-     ,{fun whapps_call:set_request/2, NumberURI}
-     ,{fun whapps_call:set_to/2, NumberURI}
+    [{fun kapps_call:set_authorizing_id/2, DeviceId}
+     ,{fun kapps_call:set_authorizing_type/2, <<"device">>}
+     ,{fun kapps_call:set_request/2, NumberURI}
+     ,{fun kapps_call:set_to/2, NumberURI}
     ];
 request_specific_extraction_funs_from_nouns(Context, ?USERS_QCALL_NOUNS(UserId, Number)) ->
     NumberURI = build_number_uri(Context, Number),
-    [{fun whapps_call:set_authorizing_id/2, UserId}
-     ,{fun whapps_call:set_authorizing_type/2, <<"user">>}
-     ,{fun whapps_call:set_request/2, NumberURI}
-     ,{fun whapps_call:set_to/2, NumberURI}
+    [{fun kapps_call:set_authorizing_id/2, UserId}
+     ,{fun kapps_call:set_authorizing_type/2, <<"user">>}
+     ,{fun kapps_call:set_request/2, NumberURI}
+     ,{fun kapps_call:set_to/2, NumberURI}
     ];
 request_specific_extraction_funs_from_nouns(_Context, _ReqNouns) ->
     [].
@@ -254,7 +254,7 @@ filter_number_regex(Number, Regex) ->
 -spec build_number_uri(cb_context:context(), ne_binary()) -> ne_binary().
 build_number_uri(Context, Number) ->
     QueryStr  = cb_context:query_string(Context),
-    FilterVal = wh_json:get_value(<<"number_filter">>, QueryStr, <<"true">>),
+    FilterVal = kz_json:get_value(<<"number_filter">>, QueryStr, <<"true">>),
 
     UseNumber = case FilterVal of
         <<"false">> -> Number;
@@ -262,16 +262,16 @@ build_number_uri(Context, Number) ->
         FilterRegex -> filter_number_regex(Number, FilterRegex)
     end,
 
-    Realm = wh_util:get_account_realm(cb_context:account_id(Context)),
+    Realm = kz_util:get_account_realm(cb_context:account_id(Context)),
     <<UseNumber/binary, "@", Realm/binary>>.
 
--spec get_endpoints(whapps_call:call(), cb_context:context()) -> wh_json:objects().
--spec get_endpoints(whapps_call:call(), cb_context:context(), req_nouns()) -> wh_json:objects().
+-spec get_endpoints(kapps_call:call(), cb_context:context()) -> kz_json:objects().
+-spec get_endpoints(kapps_call:call(), cb_context:context(), req_nouns()) -> kz_json:objects().
 get_endpoints(Call, Context) ->
     get_endpoints(Call, Context, cb_context:req_nouns(Context)).
 
 get_endpoints(Call, Context, ?DEVICES_QCALL_NOUNS(_DeviceId, Number)) ->
-    Properties = wh_json:from_list([{<<"can_call_self">>, 'true'}
+    Properties = kz_json:from_list([{<<"can_call_self">>, 'true'}
                                     ,{<<"suppress_clid">>, 'true'}
                                     ,{<<"source">>, 'cb_devices'}
                                    ]),
@@ -281,7 +281,7 @@ get_endpoints(Call, Context, ?DEVICES_QCALL_NOUNS(_DeviceId, Number)) ->
         {'ok', Endpoints} -> Endpoints
     end;
 get_endpoints(Call, _Context, ?USERS_QCALL_NOUNS(_UserId, Number)) ->
-    Properties = wh_json:from_list([{<<"can_call_self">>, 'true'}
+    Properties = kz_json:from_list([{<<"can_call_self">>, 'true'}
                                    ,{<<"suppress_clid">>, 'true'}
                                    ,{<<"source">>, 'cb_users'}
                                    ]),
@@ -297,33 +297,33 @@ get_endpoints(Call, _Context, ?USERS_QCALL_NOUNS(_UserId, Number)) ->
 get_endpoints(_Call, _Context, _ReqNouns) ->
     [].
 
--spec aleg_cid(ne_binary(), whapps_call:call()) -> whapps_call:call().
+-spec aleg_cid(ne_binary(), kapps_call:call()) -> kapps_call:call().
 aleg_cid(Number, Call) ->
-    Routines = [{fun whapps_call:set_custom_channel_var/3, <<"Retain-CID">>, <<"true">>}
-               ,{fun whapps_call:set_caller_id_name/2, <<"QuickCall">>}
-               ,{fun whapps_call:set_caller_id_number/2, wh_util:to_binary(Number)}
+    Routines = [{fun kapps_call:set_custom_channel_var/3, <<"Retain-CID">>, <<"true">>}
+               ,{fun kapps_call:set_caller_id_name/2, <<"QuickCall">>}
+               ,{fun kapps_call:set_caller_id_number/2, kz_util:to_binary(Number)}
                ],
-    whapps_call:exec(Routines, Call).
+    kapps_call:exec(Routines, Call).
 
--spec originate_quickcall(wh_json:objects(), whapps_call:call(), cb_context:context()) ->
+-spec originate_quickcall(kz_json:objects(), kapps_call:call(), cb_context:context()) ->
                                  cb_context:context().
 originate_quickcall(Endpoints, Call, Context) ->
-    AutoAnswer = wh_json:is_true(<<"auto_answer">>, cb_context:query_string(Context), 'true'),
+    AutoAnswer = kz_json:is_true(<<"auto_answer">>, cb_context:query_string(Context), 'true'),
     CCVs = [{<<"Account-ID">>, cb_context:account_id(Context)}
             ,{<<"Retain-CID">>, <<"true">>}
             ,{<<"Inherit-Codec">>, <<"false">>}
-            ,{<<"Authorizing-Type">>, whapps_call:authorizing_type(Call)}
-            ,{<<"Authorizing-ID">>, whapps_call:authorizing_id(Call)}
+            ,{<<"Authorizing-Type">>, kapps_call:authorizing_type(Call)}
+            ,{<<"Authorizing-ID">>, kapps_call:authorizing_id(Call)}
            ],
-    MsgId = case wh_util:is_empty(cb_context:req_id(Context)) of
-                'true' -> wh_util:rand_hex_binary(16);
+    MsgId = case kz_util:is_empty(cb_context:req_id(Context)) of
+                'true' -> kz_util:rand_hex_binary(16);
                 'false' -> cb_context:req_id(Context)
             end,
 
     {DefaultCIDNumber, DefaultCIDName} = cf_attributes:caller_id(<<"external">>, Call),
 
     Request =
-        wh_json:from_list(
+        kz_json:from_list(
           [{<<"Application-Name">>, <<"transfer">>}
           ,{<<"Application-Data">>, get_application_data(Context)}
           ,{<<"Msg-ID">>, MsgId}
@@ -332,47 +332,47 @@ originate_quickcall(Endpoints, Call, Context) ->
           ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Context)}
           ,{<<"Media">>, get_media(Context)}
           ,{<<"Outbound-Caller-ID-Name">>, <<"Device QuickCall">>}
-          ,{<<"Outbound-Caller-ID-Number">>, whapps_call:request_user(Call)}
+          ,{<<"Outbound-Caller-ID-Number">>, kapps_call:request_user(Call)}
           ,{<<"Outbound-Callee-ID-Name">>, get_cid_name(Context, DefaultCIDName)}
           ,{<<"Outbound-Callee-ID-Number">>, get_cid_number(Context, DefaultCIDNumber)}
           ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
           ,{<<"Continue-On-Fail">>, 'false'}
-          ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+          ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
           ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
-           | wh_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
           ]),
-    wh_amqp_worker:cast(Request, fun wapi_resource:publish_originate_req/1),
-    JObj = wh_json:normalize(wh_api:remove_defaults(Request)),
+    kz_amqp_worker:cast(Request, fun kapi_resource:publish_originate_req/1),
+    JObj = kz_json:normalize(kz_api:remove_defaults(Request)),
     crossbar_util:response_202(<<"quickcall initiated">>, JObj, cb_context:set_resp_data(Context, Request)).
 
--spec update_quickcall_endpoints(boolean(), wh_json:objects()) -> wh_json:objects().
+-spec update_quickcall_endpoints(boolean(), kz_json:objects()) -> kz_json:objects().
 update_quickcall_endpoints(AutoAnswer, [Endpoint]) ->
-    WithAA = wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Auto-Answer">>], AutoAnswer, Endpoint),
+    WithAA = kz_json:set_value([<<"Custom-Channel-Vars">>, <<"Auto-Answer">>], AutoAnswer, Endpoint),
     [set_quickcall_outbound_call_id(WithAA)];
 update_quickcall_endpoints(_AutoAnswer, Endpoints) ->
     [set_quickcall_outbound_call_id(Endpoint) || Endpoint <- Endpoints].
 
--spec set_quickcall_outbound_call_id(wh_json:object()) -> wh_json:object().
+-spec set_quickcall_outbound_call_id(kz_json:object()) -> kz_json:object().
 set_quickcall_outbound_call_id(Endpoint) ->
-    CallId = <<(wh_util:rand_hex_binary(18))/binary, "-quickcall">>,
-    wh_json:set_value(<<"Outbound-Call-ID">>, CallId, Endpoint).
+    CallId = <<(kz_util:rand_hex_binary(18))/binary, "-quickcall">>,
+    kz_json:set_value(<<"Outbound-Call-ID">>, CallId, Endpoint).
 
--spec get_application_data(cb_context:context()) -> wh_json:object().
--spec get_application_data_from_nouns(req_nouns()) -> wh_json:object().
+-spec get_application_data(cb_context:context()) -> kz_json:object().
+-spec get_application_data_from_nouns(req_nouns()) -> kz_json:object().
 get_application_data(Context) ->
     get_application_data_from_nouns(cb_context:req_nouns(Context)).
 
 get_application_data_from_nouns(?DEVICES_QCALL_NOUNS(_DeviceId, Number)) ->
-    wh_json:from_list([{<<"Route">>, Number}]);
+    kz_json:from_list([{<<"Route">>, Number}]);
 get_application_data_from_nouns(?USERS_QCALL_NOUNS(_UserId, Number)) ->
-    wh_json:from_list([{<<"Route">>, Number}]);
+    kz_json:from_list([{<<"Route">>, Number}]);
 get_application_data_from_nouns(_Nouns) ->
-    wh_json:from_list([{<<"Route">>, <<"0">>}]).
+    kz_json:from_list([{<<"Route">>, <<"0">>}]).
 
 -define(DEFAULT_TIMEOUT_S, 30).
 -spec get_timeout(cb_context:context()) -> pos_integer().
 get_timeout(Context) ->
-    try wh_util:to_integer(cb_context:req_value(Context, <<"timeout">>, ?DEFAULT_TIMEOUT_S)) of
+    try kz_util:to_integer(cb_context:req_value(Context, <<"timeout">>, ?DEFAULT_TIMEOUT_S)) of
         Timeout when is_integer(Timeout), Timeout > 3 -> Timeout;
         _ -> ?DEFAULT_TIMEOUT_S
     catch
@@ -381,7 +381,7 @@ get_timeout(Context) ->
 
 -spec get_ignore_early_media(cb_context:context()) -> boolean().
 get_ignore_early_media(Context) ->
-    wh_util:is_true(cb_context:req_value(Context, <<"ignore-early-media">>, 'true')).
+    kz_util:is_true(cb_context:req_value(Context, <<"ignore-early-media">>, 'true')).
 
 -spec get_media(cb_context:context()) -> ne_binary().
 get_media(Context) ->
@@ -394,14 +394,14 @@ get_media(Context) ->
 get_cid_name(Context, Default) ->
     case cb_context:req_value(Context, <<"cid-name">>, Default) of
         'undefined' -> 'undefined';
-        CIDName -> wh_util:uri_decode(CIDName)
+        CIDName -> kz_util:uri_decode(CIDName)
     end.
 
 -spec get_cid_number(cb_context:context(), api_binary()) -> api_binary().
 get_cid_number(Context, Default) ->
     case cb_context:req_value(Context, <<"cid-number">>, Default) of
         'undefined' -> 'undefined';
-        CIDNumber -> wh_util:uri_decode(CIDNumber)
+        CIDNumber -> kz_util:uri_decode(CIDNumber)
     end.
 
 %%--------------------------------------------------------------------
@@ -441,13 +441,13 @@ is_superduper_admin(Context) ->
 -spec attachment_name(ne_binary(), text()) -> ne_binary().
 attachment_name(Filename, CT) ->
     Generators = [fun(A) ->
-                          case wh_util:is_empty(A) of
-                              'true' -> wh_util:to_hex_binary(crypto:rand_bytes(16));
+                          case kz_util:is_empty(A) of
+                              'true' -> kz_util:to_hex_binary(crypto:rand_bytes(16));
                               'false' -> A
                           end
                   end
                   ,fun(A) ->
-                           case wh_util:is_empty(filename:extension(A)) of
+                           case kz_util:is_empty(filename:extension(A)) of
                                'false' -> A;
                                'true' ->
                                    <<A/binary, ".", (kz_mime:to_extension(CT))/binary>>
@@ -479,8 +479,8 @@ bucket_name(IP, AccountId) ->
     <<IP/binary, "/", AccountId/binary>>.
 
 -spec token_cost(cb_context:context()) -> non_neg_integer().
--spec token_cost(cb_context:context(), non_neg_integer() | wh_json:key() | wh_json:keys()) -> non_neg_integer().
--spec token_cost(cb_context:context(), non_neg_integer(), wh_json:keys()) -> non_neg_integer().
+-spec token_cost(cb_context:context(), non_neg_integer() | kz_json:key() | kz_json:keys()) -> non_neg_integer().
+-spec token_cost(cb_context:context(), non_neg_integer(), kz_json:keys()) -> non_neg_integer().
 
 token_cost(Context) ->
     token_cost(Context, 1).
@@ -493,7 +493,7 @@ token_cost(Context, Default) ->
     token_cost(Context, Default, []).
 
 token_cost(Context, Default, Suffix) when is_integer(Default), Default >= 0 ->
-    Costs = whapps_config:get(?CONFIG_CAT, <<"token_costs">>, 1),
+    Costs = kapps_config:get(?CONFIG_CAT, <<"token_costs">>, 1),
     find_token_cost(Costs
                     ,Default
                     ,Suffix
@@ -502,9 +502,9 @@ token_cost(Context, Default, Suffix) when is_integer(Default), Default >= 0 ->
                     ,cb_context:account_id(Context)
                    ).
 
--spec find_token_cost(wh_json:object() | non_neg_integer()
+-spec find_token_cost(kz_json:object() | non_neg_integer()
                       ,non_neg_integer()
-                      ,wh_json:keys()
+                      ,kz_json:keys()
                       ,req_nouns()
                       ,http_method()
                       ,api_binary()
@@ -528,20 +528,20 @@ find_token_cost(JObj, Default, Suffix, [{Endpoint, _}|_], ReqVerb, AccountId) ->
            ],
     get_token_cost(JObj, Default, Keys).
 
--spec get_token_cost(wh_json:object(), non_neg_integer(), wh_json:keys()) ->
+-spec get_token_cost(kz_json:object(), non_neg_integer(), kz_json:keys()) ->
                             non_neg_integer().
 get_token_cost(JObj, Default, Keys) ->
-    case wh_json:get_first_defined(Keys, JObj) of
+    case kz_json:get_first_defined(Keys, JObj) of
         'undefined' -> Default;
-        V -> wh_util:to_integer(V)
+        V -> kz_util:to_integer(V)
     end.
 
 %% @public
 -spec take_sync_field(cb_context:context()) -> cb_context:context().
 take_sync_field(Context) ->
     Doc = cb_context:doc(Context),
-    ShouldSync = wh_json:is_true(<<"sync">>, Doc, 'false'),
-    CleansedDoc = wh_json:delete_key(<<"sync">>, Doc),
+    ShouldSync = kz_json:is_true(<<"sync">>, Doc, 'false'),
+    CleansedDoc = kz_json:delete_key(<<"sync">>, Doc),
     cb_context:setters(Context, [{fun cb_context:store/3, 'sync', ShouldSync}
                                  ,{fun cb_context:set_doc/2, CleansedDoc}
                                 ]).
@@ -549,7 +549,7 @@ take_sync_field(Context) ->
 %% @public
 -spec remove_plaintext_password(cb_context:context()) -> cb_context:context().
 remove_plaintext_password(Context) ->
-    Doc = wh_json:delete_keys(
+    Doc = kz_json:delete_keys(
             [<<"password">>,
              <<"confirm_password">>
             ], cb_context:doc(Context)

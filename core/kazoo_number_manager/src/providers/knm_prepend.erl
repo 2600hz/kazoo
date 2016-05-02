@@ -75,20 +75,20 @@ has_emergency_services(_Number) -> 'false'.
 update_prepend(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     Features = knm_phone_number:features(PhoneNumber),
-    CurrentPrepend = wh_json:get_ne_value(?PREPEND_KEY, Features),
+    CurrentPrepend = kz_json:get_ne_value(?PREPEND_KEY, Features),
 
     Doc = knm_phone_number:doc(PhoneNumber),
-    Prepend = wh_json:get_ne_value([?PVT_FEATURES ,?PREPEND_KEY], Doc),
+    Prepend = kz_json:get_ne_value([?PVT_FEATURES ,?PREPEND_KEY], Doc),
 
-    NotChanged = wh_json:are_identical(CurrentPrepend, Prepend),
+    NotChanged = kz_json:are_identical(CurrentPrepend, Prepend),
 
-    case wh_util:is_empty(Prepend) of
+    case kz_util:is_empty(Prepend) of
         'true' ->
             knm_services:deactivate_feature(Number, ?PREPEND_KEY);
         'false' when NotChanged  ->
             knm_services:deactivate_feature(Number, ?PREPEND_KEY);
         'false' ->
-            case wh_json:is_true(<<"enabled">>, Prepend) of
+            case kz_json:is_true(<<"enabled">>, Prepend) of
                 'false' ->
                     knm_services:deactivate_feature(Number, ?PREPEND_KEY);
                 'true' ->

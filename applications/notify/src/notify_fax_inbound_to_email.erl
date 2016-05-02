@@ -28,34 +28,34 @@ init() ->
     {'ok', _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
     lager:debug("init done for ~s", [?MODULE]).
 
--spec handle_req(wh_json:object(), wh_proplist()) -> any().
+-spec handle_req(kz_json:object(), kz_proplist()) -> any().
 handle_req(JObj, _Props) ->
-    'true' = wapi_notifications:fax_inbound_v(JObj),
+    'true' = kapi_notifications:fax_inbound_v(JObj),
 
-    _ = wh_util:put_callid(JObj),
+    _ = kz_util:put_callid(JObj),
 
     lager:debug("new fax left, sending to email if enabled"),
 
-    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
-    FaxId = wh_json:get_value(<<"Fax-ID">>, JObj),
+    AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
+    FaxId = kz_json:get_value(<<"Fax-ID">>, JObj),
     lager:debug("account-id: ~s, fax-id: ~s", [AccountId, FaxId]),
     {'ok', FaxDoc} = kazoo_modb:open_doc(AccountId, FaxId),
 
-    Emails = wh_json:get_value([<<"notifications">>,<<"email">>,<<"send_to">>], FaxDoc, []),
+    Emails = kz_json:get_value([<<"notifications">>,<<"email">>,<<"send_to">>], FaxDoc, []),
 
     {'ok', AcctObj} = kz_account:fetch(AccountId),
     Docs = [FaxDoc, JObj, AcctObj],
     Props = create_template_props(JObj, Docs, AcctObj),
 
-    CustomTxtTemplate = wh_json:get_value([<<"notifications">>
+    CustomTxtTemplate = kz_json:get_value([<<"notifications">>
                                            ,<<"inbound_fax_to_email">>
                                            ,<<"email_text_template">>
                                           ], AcctObj),
-    CustomHtmlTemplate = wh_json:get_value([<<"notifications">>
+    CustomHtmlTemplate = kz_json:get_value([<<"notifications">>
                                             ,<<"inbound_fax_to_email">>
                                             ,<<"email_html_template">>
                                            ], AcctObj),
-    CustomSubjectTemplate = wh_json:get_value([<<"notifications">>
+    CustomSubjectTemplate = kz_json:get_value([<<"notifications">>
                                                ,<<"inbound_fax_to_email">>
                                                ,<<"email_subject_template">>
                                               ], AcctObj),
@@ -70,7 +70,7 @@ handle_req(JObj, _Props) ->
         C:R ->
             lager:debug("failed: ~s:~p", [C, R]),
             ST = erlang:get_stacktrace(),
-            wh_util:log_stacktrace(ST)
+            kz_util:log_stacktrace(ST)
     end.
 
 %%--------------------------------------------------------------------
@@ -79,20 +79,20 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props(wh_json:object(), wh_json:objects(), wh_json:object()) -> wh_proplist().
+-spec create_template_props(kz_json:object(), kz_json:objects(), kz_json:object()) -> kz_proplist().
 create_template_props(Event, [FaxDoc | _Others]=_Docs, Account) ->
-    Now = wh_util:current_tstamp(),
+    Now = kz_util:current_tstamp(),
 
-    CIDName = wh_json:get_value(<<"Caller-ID-Name">>, Event),
-    CIDNum = wh_json:get_value(<<"Caller-ID-Number">>, Event),
-    ToName = wh_json:get_value(<<"Callee-ID-Name">>, Event),
-    ToNum = wh_json:get_value(<<"Callee-ID-Number">>, Event),
-    ToE164 = wh_json:get_value(<<"To-User">>, Event),
-    FromE164 = wh_json:get_value(<<"From-User">>, Event),
-    DateCalled = wh_json:get_integer_value(<<"Fax-Timestamp">>, Event, Now),
+    CIDName = kz_json:get_value(<<"Caller-ID-Name">>, Event),
+    CIDNum = kz_json:get_value(<<"Caller-ID-Number">>, Event),
+    ToName = kz_json:get_value(<<"Callee-ID-Name">>, Event),
+    ToNum = kz_json:get_value(<<"Callee-ID-Number">>, Event),
+    ToE164 = kz_json:get_value(<<"To-User">>, Event),
+    FromE164 = kz_json:get_value(<<"From-User">>, Event),
+    DateCalled = kz_json:get_integer_value(<<"Fax-Timestamp">>, Event, Now),
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
-    Timezone = wh_util:to_list(wh_json:get_value([<<"rx_result">>,<<"timezone">>], FaxDoc, <<"UTC">>)),
-    ClockTimezone = whapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
+    Timezone = kz_util:to_list(kz_json:get_value([<<"rx_result">>,<<"timezone">>], FaxDoc, <<"UTC">>)),
+    ClockTimezone = kapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
     [{<<"account">>, notify_util:json_to_template_props(Account)}
      ,{<<"service">>, notify_util:get_service_props(Event, Account, ?MOD_CONFIG_CAT)}
      ,{<<"fax">>, [{<<"caller_id_number">>, knm_util:pretty_print(CIDNum)}
@@ -102,20 +102,20 @@ create_template_props(Event, [FaxDoc | _Others]=_Docs, Account) ->
                    ,{<<"date_called_utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
                    ,{<<"date_called">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
                    ,{<<"from_user">>, knm_util:pretty_print(FromE164)}
-                   ,{<<"from_realm">>, wh_json:get_value(<<"From-Realm">>, Event)}
+                   ,{<<"from_realm">>, kz_json:get_value(<<"From-Realm">>, Event)}
                    ,{<<"to_user">>, knm_util:pretty_print(ToE164)}
-                   ,{<<"to_realm">>, wh_json:get_value(<<"To-Realm">>, Event)}
-                   ,{<<"fax_id">>, wh_json:get_value(<<"Fax-ID">>, Event)}
-                   ,{<<"fax_media">>, wh_json:get_value(<<"Fax-Name">>, Event)}
-                   ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, Event)}
-                   | fax_values(wh_json:get_value(<<"Fax-Info">>, Event))
+                   ,{<<"to_realm">>, kz_json:get_value(<<"To-Realm">>, Event)}
+                   ,{<<"fax_id">>, kz_json:get_value(<<"Fax-ID">>, Event)}
+                   ,{<<"fax_media">>, kz_json:get_value(<<"Fax-Name">>, Event)}
+                   ,{<<"call_id">>, kz_json:get_value(<<"Call-ID">>, Event)}
+                   | fax_values(kz_json:get_value(<<"Fax-Info">>, Event))
                   ]}
-     ,{<<"account_db">>, wh_doc:account_db(FaxDoc)}
+     ,{<<"account_db">>, kz_doc:account_db(FaxDoc)}
     ].
 
 fax_values(Event) ->
-    [{wh_json:normalize_key(K), V}
-     || {<<"Fax-", K/binary>>, V} <- wh_json:to_proplist(Event)
+    [{kz_json:normalize_key(K), V}
+     || {<<"Fax-", K/binary>>, V} <- kz_json:to_proplist(Event)
     ].
 
 %%--------------------------------------------------------------------
@@ -124,7 +124,7 @@ fax_values(Event) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist()) -> any().
+-spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), kz_proplist()) -> any().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
     _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
 build_and_send_email(_TxtBody, _HTMLBody, _Subject, 'undefined', _Props) ->

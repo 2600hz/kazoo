@@ -37,8 +37,8 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link(wh_json:object()) -> startlink_ret().
--spec start_link(whapps_call:call(), ne_binary()) -> startlink_ret().
+-spec start_link(kz_json:object()) -> startlink_ret().
+-spec start_link(kapps_call:call(), ne_binary()) -> startlink_ret().
 start_link(AgentJObj) ->
     supervisor:start_link(?SERVER, [AgentJObj]).
 start_link(ThiefCall, QueueId) ->
@@ -71,7 +71,7 @@ status(Supervisor) ->
             ?MODULE:stop(Supervisor)
     end.
 
--define(AGENT_INFO_FIELDS, whapps_config:get(?CONFIG_CAT, <<"agent_info_fields">>
+-define(AGENT_INFO_FIELDS, kapps_config:get(?CONFIG_CAT, <<"agent_info_fields">>
                                                  ,[<<"first_name">>, <<"last_name">>, <<"username">>, <<"email">>]
                                             )).
 

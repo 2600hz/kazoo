@@ -18,7 +18,7 @@
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
 -define(TEMPLATE_MACROS
-        ,wh_json:from_list(
+        ,kz_json:from_list(
            [?MACRO_VALUE(<<"last_registration.username">>, <<"last_registration_username">>, <<"SIP Username">>, <<"SIP username">>)
             ,?MACRO_VALUE(<<"last_registration.status">>, <<"last_registration_status">>, <<"Status">>, <<"Status">>)
             ,?MACRO_VALUE(<<"last_registration.user_agent">>, <<"last_registration_user_agent">>, <<"SIP User Agent">>, <<"SIP User Agent">>)
@@ -53,7 +53,7 @@
 
 -spec init() -> 'ok'.
 init() ->
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
                                            ,{'text', ?TEMPLATE_TEXT}
                                            ,{'html', ?TEMPLATE_HTML}
@@ -67,34 +67,34 @@ init() ->
                                            ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]).
 
--spec handle_deregister(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_deregister(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_deregister(JObj, _Props) ->
-    'true' = wapi_notifications:deregister_v(JObj),
-    wh_util:put_callid(JObj),
+    'true' = kapi_notifications:deregister_v(JObj),
+    kz_util:put_callid(JObj),
 
     %% Gather data for template
-    DataJObj = wh_json:normalize(JObj),
-    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    DataJObj = kz_json:normalize(JObj),
+    AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
         'false' -> lager:debug("notification handling not configured for this account");
         'true' -> handle_req(DataJObj)
     end.
 
--spec handle_req(wh_json:object()) -> 'ok'.
+-spec handle_req(kz_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:account_params(DataJObj)}
-              ,{<<"last_registration">>, wh_json:to_proplist(DataJObj)}
+              ,{<<"last_registration">>, kz_json:to_proplist(DataJObj)}
              ],
 
     %% Load templates
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
 
-    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, wh_json:get_value(<<"account_id">>, DataJObj)),
+    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, kz_json:get_value(<<"account_id">>, DataJObj)),
 
     Subject = teletype_util:render_subject(
-                wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
+                kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
                 ,Macros
                ),
 

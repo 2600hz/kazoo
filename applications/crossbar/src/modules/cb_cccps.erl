@@ -108,7 +108,7 @@ validate(Context, _Id, ?AUTODIAL) ->
 validate_cccps(Context, ?HTTP_GET) ->
     summary(Context);
 validate_cccps(Context, ?HTTP_PUT) ->
-    case wh_json:get_value(<<"cid">>, cb_context:req_data(Context)) of
+    case kz_json:get_value(<<"cid">>, cb_context:req_data(Context)) of
         'undefined' ->
             check_pin(Context);
         _ ->
@@ -117,11 +117,11 @@ validate_cccps(Context, ?HTTP_PUT) ->
 
 -spec validate_cccp(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_cccp(Context, ?AUTODIAL, ?HTTP_PUT) ->
-    JObj = wh_json:from_list([{<<"Number">>, wh_json:get_value(<<"a_leg_number">>, cb_context:req_data(Context))}
-                              ,{<<"B-Leg-Number">>, wh_json:get_value(<<"b_leg_number">>, cb_context:req_data(Context))}
-                              ,{<<"Outbound-Caller-ID-Number">>, wh_json:get_value(<<"outbound_cid">>, cb_context:req_data(Context))}
+    JObj = kz_json:from_list([{<<"Number">>, kz_json:get_value(<<"a_leg_number">>, cb_context:req_data(Context))}
+                              ,{<<"B-Leg-Number">>, kz_json:get_value(<<"b_leg_number">>, cb_context:req_data(Context))}
+                              ,{<<"Outbound-Caller-ID-Number">>, kz_json:get_value(<<"outbound_cid">>, cb_context:req_data(Context))}
                               ,{<<"Account-ID">>, cb_context:account_id(Context)}
-                              ,{<<"Callback-Delay">>, wh_json:get_value(<<"callback_delay">>, cb_context:req_data(Context))}
+                              ,{<<"Callback-Delay">>, kz_json:get_value(<<"callback_delay">>, cb_context:req_data(Context))}
                              ]),
     cccp_callback_sup:new(JObj),
     cb_context:set_resp_status(Context, 'success');
@@ -172,7 +172,7 @@ delete(Context, _) ->
     Context2 = crossbar_doc:delete(Context),
     case cb_context:resp_status(Context2) of
         'success' ->
-            _ = kz_datamgr:del_doc(?KZ_CCCPS_DB, wh_doc:id(cb_context:doc(Context2))),
+            _ = kz_datamgr:del_doc(?KZ_CCCPS_DB, kz_doc:id(cb_context:doc(Context2))),
             Context2;
         _ ->
             Context2
@@ -230,7 +230,7 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    cb_context:set_doc(Context, wh_doc:set_type(cb_context:doc(Context), <<"cccp">>));
+    cb_context:set_doc(Context, kz_doc:set_type(cb_context:doc(Context), <<"cccp">>));
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"cccp">>)).
 
@@ -240,9 +240,9 @@ on_successful_validation(Id, Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
+    [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -261,12 +261,12 @@ check_pin(Context) ->
 -spec check_cid(cb_context:context()) -> cb_context:context().
 check_cid(Context) ->
     ReqData = cb_context:req_data(Context),
-    CID = wh_json:get_value(<<"cid">>, ReqData),
+    CID = kz_json:get_value(<<"cid">>, ReqData),
     case knm_converters:is_reconcilable(CID) of
         'false' ->
             error_number_is_not_reconcilable(Context, CID);
         'true' ->
-            ReqData2 = wh_json:set_value(<<"cid">>, knm_converters:normalize(CID), ReqData),
+            ReqData2 = kz_json:set_value(<<"cid">>, knm_converters:normalize(CID), ReqData),
             Context2 = cb_context:set_req_data(Context, ReqData2),
             case unique_cid(Context2) of
                 'empty' -> create(Context2);
@@ -280,7 +280,7 @@ error_pin_exists(Context) ->
     cb_context:add_validation_error(
       <<"cccp">>
       ,<<"unique">>
-      ,wh_json:from_list(
+      ,kz_json:from_list(
          [{<<"message">>, <<"Pin already exists">>}]
         )
       ,Context
@@ -292,7 +292,7 @@ error_number_is_not_reconcilable(Context, CID) ->
     cb_context:add_validation_error(
       <<"cccp">>
       ,<<"unique">>
-      ,wh_json:from_list(
+      ,kz_json:from_list(
          [{<<"message">>, <<"Number is non reconcilable">>}
           ,{<<"cause">>, CID}
          ])
@@ -303,7 +303,7 @@ error_cid_exists(Context, CID) ->
     cb_context:add_validation_error(
       <<"cccp">>
       ,<<"unique">>
-      ,wh_json:from_list(
+      ,kz_json:from_list(
          [{<<"message">>, <<"CID already exists">>}
           ,{<<"cause">>, CID}
          ])
@@ -315,10 +315,10 @@ error_cid_exists(Context, CID) ->
                         'empty' |
                         'error'.
 unique_cid(Context) ->
-    CID = wh_json:get_value(<<"cid">>, cb_context:req_data(Context)),
+    CID = kz_json:get_value(<<"cid">>, cb_context:req_data(Context)),
     cccp_util:authorize(CID, <<"cccps/cid_listing">>).
 
 -spec unique_pin(cb_context:context()) -> {'ok', list()} | 'empty' | 'error'.
 unique_pin(Context) ->
-    Pin = wh_json:get_value(<<"pin">>, cb_context:req_data(Context)),
+    Pin = kz_json:get_value(<<"pin">>, cb_context:req_data(Context)),
     cccp_util:authorize(Pin, <<"cccps/pin_listing">>).

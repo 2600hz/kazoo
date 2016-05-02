@@ -1,7 +1,7 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
-%%% Util functions used by whistle_couch
+%%% Util functions used by kazoo_couch
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
@@ -22,7 +22,7 @@
 -export([maybe_add_rev/3]).
 
 -include("kz_couch.hrl").
--include_lib("whistle/include/wapi_conf.hrl").
+-include_lib("kazoo/include/kapi_conf.hrl").
 
 
 
@@ -35,7 +35,7 @@
 %%------------------------------------------------------------------------------
 -type retry504_ret() :: _.
 %% 'ok' | ne_binary() |
-%% {'ok', wh_json:object() | wh_json:objects() |
+%% {'ok', kz_json:object() | kz_json:objects() |
 %%  binary() | ne_binaries() | boolean() | integer()
 %% } |
 %% couchbeam_error() |
@@ -47,36 +47,36 @@ retry504s(Fun) when is_function(Fun, 0) ->
     retry504s(Fun, 0).
 retry504s(_Fun, 3) ->
     lager:debug("504 retry failed"),
-    whistle_stats:increment_counter(<<"bigcouch-504-error">>),
+    kazoo_stats:increment_counter(<<"bigcouch-504-error">>),
     {'error', 'timeout'};
 retry504s(Fun, Cnt) ->
-    whistle_stats:increment_counter(<<"bigcouch-request">>),
+    kazoo_stats:increment_counter(<<"bigcouch-request">>),
     case catch Fun() of
         {'error', {'ok', 504, _, _}} ->
-            whistle_stats:increment_counter(<<"bigcouch-504-error">>),
+            kazoo_stats:increment_counter(<<"bigcouch-504-error">>),
             timer:sleep(100 * (Cnt+1)),
             retry504s(Fun, Cnt+1);
         {'error', {'ok', ErrCode, _Hdrs, _Body}} ->
-            whistle_stats:increment_counter(<<"bigcouch-other-error">>),
-            {'error', wh_util:to_integer(ErrCode)};
+            kazoo_stats:increment_counter(<<"bigcouch-other-error">>),
+            {'error', kz_util:to_integer(ErrCode)};
         %%% couchbeam doesn't pass 202 as acceptable
         {'error', {'bad_response',{202, _Headers, Body}}} ->
-            {'ok', wh_json:decode(Body)};
+            {'ok', kz_json:decode(Body)};
         {'error', {'bad_response',{204, _Headers, _Body}}} ->
-            {'ok', wh_json:new()};
+            {'ok', kz_json:new()};
         {'error', {'bad_response',{_Code, _Headers, _Body}}=Response} ->
-            whistle_stats:increment_counter(<<"bigcouch-other-error">>),
+            kazoo_stats:increment_counter(<<"bigcouch-other-error">>),
             lager:critical("response code ~b not expected : ~p", [_Code, _Body]),
             {'error', format_error(Response)};
         {'error', Other} ->
-            whistle_stats:increment_counter(<<"bigcouch-other-error">>),
+            kazoo_stats:increment_counter(<<"bigcouch-other-error">>),
             {'error', format_error(Other)};
         {'ok', _Other}=OK -> OK;
         {'EXIT', _E} ->
             ST = erlang:get_stacktrace(),
             lager:debug("exception running fun: ~p", [_E]),
-            wh_util:log_stacktrace(ST),
-            whistle_stats:increment_counter(<<"bigcouch-other-error">>),
+            kz_util:log_stacktrace(ST),
+            kazoo_stats:increment_counter(<<"bigcouch-other-error">>),
             retry504s(Fun, Cnt+1);
         OK -> OK
     end.
@@ -99,7 +99,7 @@ new_connection(#kz_couch_connection{host=Host
 new_connection(#{}=Map) ->
     new_connection(maps:fold(fun connection_parse/3, #kz_couch_connection{}, Map)).
 
--spec maybe_add_auth(string(), string(), wh_proplist()) -> wh_proplist().
+-spec maybe_add_auth(string(), string(), kz_proplist()) -> kz_proplist().
 maybe_add_auth("", _Pass, Options) -> Options;
 maybe_add_auth(User, Pass, Options) ->
     [{'basic_auth', {User, Pass}} | Options].
@@ -118,7 +118,7 @@ convert_options(Options) ->
 
 convert_option({K, V}) ->
     case lists:member(K, ?ATOM_OPTIONS) of
-        'true' -> {K, wh_util:to_atom(V, 'true')};
+        'true' -> {K, kz_util:to_atom(V, 'true')};
         'false' when is_map(V) -> {K, maps:to_list(V)};
         'false' -> {K, V}
     end.
@@ -138,17 +138,17 @@ connection_parse(K, V, #kz_couch_connection{options=Options}=Conn) ->
     Conn#kz_couch_connection{options = [{K, V} | Options]}.
 
 
--spec get_new_conn(nonempty_string() | ne_binary(), pos_integer(), wh_proplist()) ->
+-spec get_new_conn(nonempty_string() | ne_binary(), pos_integer(), kz_proplist()) ->
                           {'ok', server()} |
                           {'error', 'timeout'} |
                           {'error', 'ehostunreach'}.
 get_new_conn(Host, Port, Opts) ->
-    Conn = couchbeam:server_connection(wh_util:to_list(Host), Port, "", Opts),
+    Conn = couchbeam:server_connection(kz_util:to_list(Host), Port, "", Opts),
     lager:debug("new connection to host ~s:~b, testing: ~p", [Host, Port, Conn]),
     case server_info(Conn) of
         {'ok', ConnData} ->
-            CouchVersion = wh_json:get_ne_binary_value(<<"version">>, ConnData),
-            BigCouchVersion = wh_json:get_ne_binary_value(<<"bigcouch">>, ConnData),
+            CouchVersion = kz_json:get_ne_binary_value(<<"version">>, ConnData),
+            BigCouchVersion = kz_json:get_ne_binary_value(<<"bigcouch">>, ConnData),
             lager:info("connected successfully to ~s:~b", [Host, Port]),
             lager:debug("responding CouchDB version: ~p", [CouchVersion]),
             lager:debug("responding BigCouch version: ~p", [BigCouchVersion]),
@@ -171,7 +171,7 @@ add_couch_version(_, 'undefined', #server{options=Options}=Conn) ->
 add_couch_version(_, _, #server{options=Options}=Conn) ->
     Conn#server{options = [{driver_version, 'bigcouch'} | Options]}.
 
--spec server_info(server()) -> {'ok', wh_json:object()} |
+-spec server_info(server()) -> {'ok', kz_json:object()} |
                                {'error', any()}.
 server_info(#server{}=Conn) -> couchbeam:server_info(Conn).
 
@@ -206,14 +206,14 @@ format_error({'conn_failed',{'error','econnrefused'}}) ->
     lager:warning("connection is being refused"),
     'econnrefused';
 format_error({'ok', 500, _Headers, Body}) ->
-    case wh_json:get_value(<<"error">>, wh_json:decode(Body)) of
+    case kz_json:get_value(<<"error">>, kz_json:decode(Body)) of
         <<"timeout">> -> 'server_timeout';
         _Error ->
             lager:warning("server error: ~s", [Body]),
             'server_error'
     end;
 format_error({'bad_response',{500, _Headers, Body}}) ->
-    wh_json:get_first_defined([<<"reason">>, <<"error">>], wh_json:decode(Body), 'unknown_error');
+    kz_json:get_first_defined([<<"reason">>, <<"error">>], kz_json:decode(Body), 'unknown_error');
 format_error({'bad_response',{Code, _Headers, _Body}}) ->
     io_lib:format("response code ~b not expected", [Code]);
 format_error('timeout') -> 'timeout';
@@ -226,7 +226,7 @@ format_error(E) ->
     lager:warning("unformatted error: ~p", [E]),
     E.
 
--spec maybe_add_rev(couchbeam_db(), ne_binary(), wh_proplist()) -> wh_proplist().
+-spec maybe_add_rev(couchbeam_db(), ne_binary(), kz_proplist()) -> kz_proplist().
 maybe_add_rev(#db{name=_Name}=Db, DocId, Options) ->
     case props:get_value('rev', Options) =:= 'undefined'
         andalso do_fetch_rev(Db, DocId)
@@ -252,7 +252,7 @@ maybe_add_rev(#db{name=_Name}=Db, DocId, Options) ->
                           ne_binary() |
                           couchbeam_error().
 do_fetch_rev(#db{}=Db, DocId) ->
-    case wh_util:is_empty(DocId) of
+    case kz_util:is_empty(DocId) of
         'true' -> {'error', 'empty_doc_id'};
         'false' -> ?RETRY_504(couchbeam:lookup_doc_rev(Db, DocId))
     end.

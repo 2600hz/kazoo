@@ -7,6 +7,6 @@
   {applications, [ kernel
                  , stdlib
 
-                 , whistle
+                 , kazoo
                  ]}
  ]}.

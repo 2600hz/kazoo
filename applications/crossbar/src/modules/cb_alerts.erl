@@ -95,7 +95,7 @@ validate(Context, Id) ->
 %%--------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    Context1 = cb_context:set_account_db(Context, ?WH_ALERTS_DB),
+    Context1 = cb_context:set_account_db(Context, ?KZ_ALERTS_DB),
     crossbar_doc:save(Context1).
 
 %%--------------------------------------------------------------------
@@ -146,14 +146,14 @@ validate_alert(Context, Id, ?HTTP_DELETE) ->
 %%--------------------------------------------------------------------
 -spec create(cb_context:context()) -> cb_context:context().
 create(Context) ->
-    Props = wh_json:to_proplist(cb_context:req_data(Context)),
+    Props = kz_json:to_proplist(cb_context:req_data(Context)),
 
     Title = props:get_value(kzd_alert:title(), Props),
     Msg = props:get_value(kzd_alert:message(), Props),
     From = props:get_value(kzd_alert:from(), Props),
     To = props:get_value(kzd_alert:to(), Props),
 
-    case whapps_alert:create(Title, Msg, From, To, Props) of
+    case kapps_alert:create(Title, Msg, From, To, Props) of
         {'required', Item} ->
             cb_context:add_validation_error(
                 Item
@@ -179,7 +179,7 @@ create(Context) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    Context1 = cb_context:set_account_db(Context, ?WH_ALERTS_DB),
+    Context1 = cb_context:set_account_db(Context, ?KZ_ALERTS_DB),
     crossbar_doc:load(Id, Context1, ?TYPE_CHECK_OPTION(<<"alert">>)).
 
 %%--------------------------------------------------------------------
@@ -207,7 +207,7 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 -spec load_summary(cb_context:context()) -> cb_context:context().
 load_summary(Context) ->
-    Context1 = cb_context:set_account_db(Context, ?WH_ALERTS_DB),
+    Context1 = cb_context:set_account_db(Context, ?KZ_ALERTS_DB),
     crossbar_doc:load_view(
         ?AVAILABLE_LIST
         ,[{'keys', view_keys(Context1)}]
@@ -230,7 +230,7 @@ fix_envelope(Context) ->
     Setters = [
         {fun cb_context:set_resp_data/2, Alerts}
         ,{fun cb_context:set_resp_envelope/2
-          ,wh_json:set_value(<<"page_size">>, erlang:length(Alerts), RespEnv)}
+          ,kz_json:set_value(<<"page_size">>, erlang:length(Alerts), RespEnv)}
     ],
     cb_context:setters(Context, Setters).
 
@@ -240,14 +240,14 @@ fix_envelope(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_alerts(wh_json:objects()) -> wh_json:objects().
+-spec filter_alerts(kz_json:objects()) -> kz_json:objects().
 filter_alerts(Alerts) ->
     lists:filter(
         fun(Alert) ->
             case kzd_alert:expired(Alert) of
                 'false' -> 'true';
                 'true' ->
-                    _ = wh_util:spawn(fun whapps_alert:delete/1, [kzd_alert:id(Alert)]),
+                    _ = kz_util:spawn(fun kapps_alert:delete/1, [kzd_alert:id(Alert)]),
                     'false'
             end
         end
@@ -266,7 +266,7 @@ view_keys(Context) ->
     AuthDoc = cb_context:auth_doc(Context),
 
     AccountId = cb_context:account_id(Context),
-    OwnerId = wh_json:get_value(<<"owner_id">>, AuthDoc),
+    OwnerId = kz_json:get_value(<<"owner_id">>, AuthDoc),
 
     IsAdmin = is_user_admin(AccountId, OwnerId),
 
@@ -280,7 +280,7 @@ view_keys(Context) ->
             end
         end
         ,fun(K) ->
-            case wh_services:is_reseller(AccountId) of
+            case kz_services:is_reseller(AccountId) of
                 'false' -> K;
                 'true' -> [[<<"resellers">>, <<"all">>], [<<"resellers">>, <<"users">>]|K]
             end
@@ -317,11 +317,11 @@ view_keys(Context) ->
 -spec is_user_admin(ne_binary(), api_binary()) -> boolean().
 is_user_admin(_Account, 'undefined') -> 'false';
 is_user_admin(Account, UserId) ->
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    AccountDb = kz_util:format_account_id(Account, 'encoded'),
     case kz_datamgr:open_cache_doc(AccountDb, UserId) of
         {'error', _} -> 'false';
         {'ok', JObj} ->
-            case wh_json:get_value(<<"priv_level">>, JObj) of
+            case kz_json:get_value(<<"priv_level">>, JObj) of
                 <<"admin">> -> 'true';
                 _ -> 'false'
             end
@@ -350,6 +350,6 @@ add_descendants(Descendant, 'true', Keys) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
+    [kz_json:get_value(<<"value">>, JObj)|Acc].

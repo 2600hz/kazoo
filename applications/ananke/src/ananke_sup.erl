@@ -53,7 +53,7 @@ start_supervisor(Id) ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
-    wh_util:set_startup(),
+    kz_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
@@ -68,9 +68,9 @@ init([]) ->
 
 %% This is only for simple configurations.
 %% At the first start one node will be added to config.
-%% After that all whistle_apps nodes will try to syncronize with it.
+%% After that all kazoo_apps nodes will try to syncronize with it.
 -spec get_amqp_cron_nodes() -> atoms().
 get_amqp_cron_nodes() ->
-    lists:map(fun(X) -> wh_util:to_atom(wh_util:to_list(X), 'true') end
-              ,whapps_config:get(?CONFIG_CAT, <<"nodes">>, [node()])
+    lists:map(fun(X) -> kz_util:to_atom(kz_util:to_list(X), 'true') end
+              ,kapps_config:get(?CONFIG_CAT, <<"nodes">>, [node()])
               ) -- [node()].

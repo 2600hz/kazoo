@@ -24,11 +24,11 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(api_binary()) -> {'ok', wh_json:object()} | {'error', any()}.
+-spec fetch(api_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 fetch('undefined') ->
     {'error', 'account_id_undefined'};
 fetch(Account) ->
-    AccoundDb = wh_util:format_account_id(Account, 'encoded'),
+    AccoundDb = kz_util:format_account_id(Account, 'encoded'),
     kz_datamgr:open_cache_doc(AccoundDb, ?ID).
 
 %%--------------------------------------------------------------------
@@ -36,22 +36,22 @@ fetch(Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec new(ne_binary()) -> wh_json:object().
+-spec new(ne_binary()) -> kz_json:object().
 new(Account) ->
     Routines = [
-        fun(JObj) -> wh_doc:set_id(JObj, ?ID) end
+        fun(JObj) -> kz_doc:set_id(JObj, ?ID) end
         ,fun(JObj) ->
-            AccountId = wh_util:format_account_id(Account, 'raw'),
-            wh_doc:set_account_id(JObj, AccountId)
+            AccountId = kz_util:format_account_id(Account, 'raw'),
+            kz_doc:set_account_id(JObj, AccountId)
         end
         ,fun(JObj) ->
-            AccountDb = wh_util:format_account_id(Account, 'encoded'),
-            wh_doc:set_account_db(JObj, AccountDb)
+            AccountDb = kz_util:format_account_id(Account, 'encoded'),
+            kz_doc:set_account_db(JObj, AccountDb)
         end
     ],
     lists:foldl(
         fun(F, JObj) -> F(JObj) end
-        ,wh_json:new()
+        ,kz_json:new()
         ,Routines
     ).
 
@@ -68,17 +68,17 @@ id() -> ?ID.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec apps(wh_json:object()) -> wh_json:object().
--spec apps(wh_json:object(), any()) -> wh_json:object().
+-spec apps(kz_json:object()) -> kz_json:object().
+-spec apps(kz_json:object(), any()) -> kz_json:object().
 apps(JObj) ->
-    wh_json:get_value(?APPS, JObj, wh_json:new()).
+    kz_json:get_value(?APPS, JObj, kz_json:new()).
 
 apps(JObj, Default) ->
-    wh_json:get_value(?APPS, JObj, Default).
+    kz_json:get_value(?APPS, JObj, Default).
 
--spec set_apps(wh_json:object(), any()) -> wh_json:object().
+-spec set_apps(kz_json:object(), any()) -> kz_json:object().
 set_apps(JObj, Data) ->
-    wh_json:set_value(?APPS, Data, JObj).
+    kz_json:set_value(?APPS, Data, JObj).
 
 
 %%--------------------------------------------------------------------
@@ -86,14 +86,14 @@ set_apps(JObj, Data) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec blacklist(wh_json:object()) -> ne_binaries().
--spec blacklist(wh_json:object(), Default) -> ne_binaries() | Default.
+-spec blacklist(kz_json:object()) -> ne_binaries().
+-spec blacklist(kz_json:object(), Default) -> ne_binaries() | Default.
 blacklist(JObj) ->
-    wh_json:get_value(?BLACKLIST, JObj, []).
+    kz_json:get_value(?BLACKLIST, JObj, []).
 
 blacklist(JObj, Default) ->
-    wh_json:get_value(?BLACKLIST, JObj, Default).
+    kz_json:get_value(?BLACKLIST, JObj, Default).
 
--spec set_blacklist(wh_json:object(), wh_json:json_term()) -> wh_json:object().
+-spec set_blacklist(kz_json:object(), kz_json:json_term()) -> kz_json:object().
 set_blacklist(JObj, Data) ->
-    wh_json:set_value(?BLACKLIST, Data, JObj).
+    kz_json:set_value(?BLACKLIST, Data, JObj).

@@ -9,7 +9,7 @@
 -module(kzd_domains_test).
 
 -include_lib("eunit/include/eunit.hrl").
--include_lib("whistle/include/wh_databases.hrl").
+-include_lib("kazoo/include/kz_databases.hrl").
 
 -define(DOMAIN, <<"2600hz.com">>).
 
@@ -63,7 +63,7 @@ init() ->
 
     LoaderFun = fun A(?DOMAINS_SCHEMA) -> DomainsSchema;
                     A(?HOSTS_SCHEMA) -> DomainHostsSchema;
-                    A(X) when not is_binary(X) -> A(wh_util:to_binary(X));
+                    A(X) when not is_binary(X) -> A(kz_util:to_binary(X));
                     A(X) -> io:format("error: schema ~p not found", [X]),
                           'undefined'
                 end,
@@ -79,7 +79,7 @@ load(AppPath, Filename) ->
                                ]),
     {'ok', SchemaFile} = file:read_file(SchemaPath),
 
-    wh_json:decode(SchemaFile).
+    kz_json:decode(SchemaFile).
 
 stop(_) -> 'ok'.
 
@@ -97,13 +97,13 @@ cname(#state{domains=DomainsSchema
             ,loader_fun=LoaderFun
            }
     ) ->
-    CNAME = wh_json:decode(?CNAME),
+    CNAME = kz_json:decode(?CNAME),
 
     Hosts = kzd_domains:cname_hosts(CNAME),
 
     [{"Validate cname property in domains object"
       ,?_assertEqual({'ok', CNAME}
-                     ,wh_json_schema:validate(DomainsSchema
+                     ,kz_json_schema:validate(DomainsSchema
                                               ,CNAME
                                               ,[{'schema_loader_fun', LoaderFun}]
                                              )
@@ -139,7 +139,7 @@ fail_cname(#state{domains=DomainsSchema
                  ,loader_fun=LoaderFun
                 }
          ) ->
-    CNAME = wh_json:decode(?FAIL_CNAME),
+    CNAME = kz_json:decode(?FAIL_CNAME),
 
     Hosts = kzd_domains:cname_hosts(CNAME),
 
@@ -153,7 +153,7 @@ fail_cname(#state{domains=DomainsSchema
                         }
                        ]
                      }
-                     ,wh_json_schema:validate(DomainsSchema
+                     ,kz_json_schema:validate(DomainsSchema
                                               ,CNAME
                                               ,[{'schema_loader_fun', LoaderFun}]
                                              )
@@ -171,13 +171,13 @@ fail_cname(#state{domains=DomainsSchema
 a_record(#state{domains=DomainsSchema
                 ,loader_fun=LoaderFun
                }) ->
-    A_RECORD = wh_json:decode(?A_RECORD),
+    A_RECORD = kz_json:decode(?A_RECORD),
 
     Hosts = kzd_domains:a_record_hosts(A_RECORD),
 
     [{"Validate a_record property in domains object"
       ,?_assertEqual({'ok', A_RECORD}
-                     ,wh_json_schema:validate(DomainsSchema
+                     ,kz_json_schema:validate(DomainsSchema
                                               ,A_RECORD
                                               ,[{'schema_loader_fun', LoaderFun}]
                                              )
@@ -213,13 +213,13 @@ validate_a_record_host(A_RECORD, Host) ->
 naptr(#state{domains=DomainsSchema
              ,loader_fun=LoaderFun
             }) ->
-    NAPTR = wh_json:decode(?NAPTR),
+    NAPTR = kz_json:decode(?NAPTR),
 
     Hosts = kzd_domains:naptr_hosts(NAPTR),
 
     [{"Validate naptr property in domains object"
       ,?_assertEqual({'ok', NAPTR}
-                     ,wh_json_schema:validate(DomainsSchema
+                     ,kz_json_schema:validate(DomainsSchema
                                               ,NAPTR
                                               ,[{'schema_loader_fun', LoaderFun}]
                                              )
@@ -266,13 +266,13 @@ validate_mapping(Mapping, Type) ->
 srv(#state{domains=DomainsSchema
              ,loader_fun=LoaderFun
             }) ->
-    SRV = wh_json:decode(?SRV),
+    SRV = kz_json:decode(?SRV),
 
     Hosts = kzd_domains:srv_hosts(SRV),
 
     [{"Validate srv property in domains object"
       ,?_assertEqual({'ok', SRV}
-                     ,wh_json_schema:validate(DomainsSchema
+                     ,kz_json_schema:validate(DomainsSchema
                                               ,SRV
                                               ,[{'schema_loader_fun', LoaderFun}]
                                              )
@@ -315,7 +315,7 @@ default(#state{domains=DomainsSchema
               }) ->
     Default = kzd_domains:default(),
 
-    case wh_json_schema:validate(DomainsSchema
+    case kz_json_schema:validate(DomainsSchema
                                  ,Default
                                  ,[{'schema_loader_fun', LoaderFun}]
                                 )

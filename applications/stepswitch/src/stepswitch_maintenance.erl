@@ -32,9 +32,9 @@
 %%--------------------------------------------------------------------
 -spec reverse_lookup(text()) -> 'ok'.
 reverse_lookup(Thing) when not is_binary(Thing) ->
-    reverse_lookup(wh_util:to_binary(Thing));
+    reverse_lookup(kz_util:to_binary(Thing));
 reverse_lookup(Thing) ->
-    JObj = wh_json:from_list([{<<"From-Network-Addr">>, Thing}
+    JObj = kz_json:from_list([{<<"From-Network-Addr">>, Thing}
                               ,{<<"Auth-Realm">>, Thing}
                              ]),
     case stepswitch_resources:reverse_lookup(JObj) of
@@ -42,10 +42,10 @@ reverse_lookup(Thing) ->
         {'error', 'not_found'} -> io:format("resource not found~n")
     end.
 
--spec pretty_print_lookup(wh_proplist()) -> 'ok'.
+-spec pretty_print_lookup(kz_proplist()) -> 'ok'.
 pretty_print_lookup([]) -> 'ok';
 pretty_print_lookup([{Key, Value}|Props]) ->
-    io:format("~-19s: ~s~n", [Key, wh_util:to_binary(Value)]),
+    io:format("~-19s: ~s~n", [Key, kz_util:to_binary(Value)]),
     pretty_print_lookup(Props).
 
 %%--------------------------------------------------------------------
@@ -59,23 +59,23 @@ number_tree(DID) ->
     case stepswitch_util:lookup_number(DID) of
         {'error', _} -> io:format("DID ~s was not found~n", [DID]);
         {'ok', AccountId, _Props} ->
-            case kz_datamgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
+            case kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, AccountId) of
                 {'ok', AccountDoc} -> number_tree(DID, AccountDoc);
                 {'error', _E} -> io:format("failed to find account doc for ~s(~s)~n", [AccountId, DID])
             end
     end.
 
--spec number_tree(ne_binary(), wh_json:object()) -> 'ok'.
+-spec number_tree(ne_binary(), kz_json:object()) -> 'ok'.
 number_tree(DID, AccountDoc) ->
     io:format("~s tree ", [DID]),
     print_tree(kz_account:tree(AccountDoc)),
-    io:format(" ~s(~s)~n", [kz_account:name(AccountDoc), wh_doc:id(AccountDoc)]).
+    io:format(" ~s(~s)~n", [kz_account:name(AccountDoc), kz_doc:id(AccountDoc)]).
 
 -spec print_tree(ne_binaries()) -> 'ok'.
 print_tree([]) -> 'ok';
 print_tree([AccountId|Tree]) ->
     {'ok', AccountDoc} = kz_datamgr:open_cache_doc(<<"accounts">>, AccountId),
-    io:format(" ~s(~s) ->", [kz_account:name(AccountDoc), wh_doc:id(AccountDoc)]),
+    io:format(" ~s(~s) ->", [kz_account:name(AccountDoc), kz_doc:id(AccountDoc)]),
     print_tree(Tree).
 
 %%--------------------------------------------------------------------
@@ -105,7 +105,7 @@ pretty_print_resource([{Key, Values}|Props]) when is_list(Values) ->
     io:format("~s~n", [Key]),
     print_condensed_list(Values);
 pretty_print_resource([{Key, Value}|Props]) ->
-    io:format("~-19s: ~s~n", [Key, wh_util:to_binary(Value)]),
+    io:format("~-19s: ~s~n", [Key, kz_util:to_binary(Value)]),
     pretty_print_resource(Props).
 
 %%--------------------------------------------------------------------
@@ -131,10 +131,10 @@ cnam_flush() ->
 refresh() ->
     lager:debug("ensuring database ~s exists", [?RESOURCES_DB]),
     kz_datamgr:db_create(?RESOURCES_DB),
-    Views = [whapps_util:get_view_json('crossbar', <<"views/resources.json">>)
-             | whapps_util:get_views_json('stepswitch', "views")
+    Views = [kapps_util:get_view_json('crossbar', <<"views/resources.json">>)
+             | kapps_util:get_views_json('stepswitch', "views")
             ],
-    whapps_util:update_views(?RESOURCES_DB, Views, 'true'),
+    kapps_util:update_views(?RESOURCES_DB, Views, 'true'),
     case catch kz_datamgr:all_docs(?RESOURCES_DB, ['include_docs']) of
         {'error', _} -> 'ok';
         {'EXIT', _E} ->
@@ -144,8 +144,8 @@ refresh() ->
                                    ,[Doc
                                      || JObj <- JObjs,
                                         begin
-                                            Doc = wh_json:get_value(<<"doc">>, JObj),
-                                            wh_doc:type(Doc) =:= <<"route">>
+                                            Doc = kz_json:get_value(<<"doc">>, JObj),
+                                            kz_doc:type(Doc) =:= <<"route">>
                                         end
                                     ]),
             'ok'
@@ -170,10 +170,10 @@ lookup_number(Number) ->
             io:format("number not found~n")
     end.
 
--spec pretty_print_number_props(wh_proplist()) -> 'ok'.
+-spec pretty_print_number_props(kz_proplist()) -> 'ok'.
 pretty_print_number_props([]) -> 'ok';
 pretty_print_number_props([{Key, Value}|Props]) ->
-    io:format("~-19s: ~s~n", [wh_util:to_binary(Key), wh_util:to_binary(Value)]),
+    io:format("~-19s: ~s~n", [kz_util:to_binary(Key), kz_util:to_binary(Value)]),
     pretty_print_number_props(Props).
 
 %%--------------------------------------------------------------------
@@ -190,7 +190,7 @@ reload_resources() ->
 
 -spec reload_resources(ne_binary()) -> 'ok'.
 reload_resources(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountId = kz_util:format_account_id(Account, 'raw'),
     stepswitch_resources:fetch_local_resources(AccountId),
     'ok'.
 
@@ -205,31 +205,31 @@ process_number(Number) -> process_number(Number, 'undefined').
 
 -spec process_number(text(), text() | 'undefined') -> any().
 process_number(Num, 'undefined') ->
-    JObj = wh_json:from_list([{<<"To-DID">>, wh_util:to_binary(Num)}]),
+    JObj = kz_json:from_list([{<<"To-DID">>, kz_util:to_binary(Num)}]),
     Number = stepswitch_util:get_outbound_destination(JObj),
     Endpoints = stepswitch_resources:endpoints(Number
-                                               ,wapi_offnet_resource:jobj_to_req(JObj)
+                                               ,kapi_offnet_resource:jobj_to_req(JObj)
                                               ),
     pretty_print_endpoints(Endpoints);
 process_number(Num, AccountId) ->
-    JObj = wh_json:from_list([{<<"Account-ID">>, wh_util:to_binary(AccountId)}
-                              ,{<<"Hunt-Account-ID">>, wh_util:to_binary(AccountId)}
-                              ,{<<"To-DID">>, wh_util:to_binary(Num)}
+    JObj = kz_json:from_list([{<<"Account-ID">>, kz_util:to_binary(AccountId)}
+                              ,{<<"Hunt-Account-ID">>, kz_util:to_binary(AccountId)}
+                              ,{<<"To-DID">>, kz_util:to_binary(Num)}
                              ]),
     Number = stepswitch_util:get_outbound_destination(JObj),
     Endpoints = stepswitch_resources:endpoints(Number
-                                               ,wapi_offnet_resource:jobj_to_req(JObj)
+                                               ,kapi_offnet_resource:jobj_to_req(JObj)
                                               ),
     pretty_print_endpoints(Endpoints).
 
--spec pretty_print_endpoints(wh_json:objects()) -> any().
+-spec pretty_print_endpoints(kz_json:objects()) -> any().
 pretty_print_endpoints([]) -> 'ok';
 pretty_print_endpoints([Endpoint|Endpoints]) ->
-    _ = pretty_print_endpoint(wh_json:to_proplist(Endpoint)),
+    _ = pretty_print_endpoint(kz_json:to_proplist(Endpoint)),
     io:format("~n"),
     pretty_print_endpoints(Endpoints).
 
--spec pretty_print_endpoint(wh_proplist()) -> any().
+-spec pretty_print_endpoint(kz_proplist()) -> any().
 pretty_print_endpoint([]) -> 'ok';
 pretty_print_endpoint([{_, []}|Props]) ->
     pretty_print_endpoint(Props);
@@ -241,12 +241,12 @@ pretty_print_endpoint([{<<"Custom-Channel-Vars">>, JObj}|Props]) ->
     _ = pretty_print_endpoint(Props),
     io:format("Custom-Channel-Vars~n"),
     [io:format("    ~-15s: ~s~n", [Key
-                                   ,wh_util:to_binary(Value)
+                                   ,kz_util:to_binary(Value)
                                   ])
-     || {Key, Value} <- wh_json:to_proplist(JObj)
+     || {Key, Value} <- kz_json:to_proplist(JObj)
     ];
 pretty_print_endpoint([{Key, Value}|Props]) ->
-    io:format("~-19s: ~s~n", [Key, wh_util:to_binary(Value)]),
+    io:format("~-19s: ~s~n", [Key, kz_util:to_binary(Value)]),
     pretty_print_endpoint(Props).
 
 %%--------------------------------------------------------------------
@@ -258,26 +258,26 @@ pretty_print_endpoint([{Key, Value}|Props]) ->
 -spec print_condensed_list(list()) -> 'ok'.
 print_condensed_list([E1, E2, E3]) ->
     io:format("    | ~-20s | ~-20s | ~-20s|~n"
-              ,[wh_util:to_binary(E1)
-                ,wh_util:to_binary(E2)
-                ,wh_util:to_binary(E3)
+              ,[kz_util:to_binary(E1)
+                ,kz_util:to_binary(E2)
+                ,kz_util:to_binary(E3)
                ]);
 print_condensed_list([E1, E2]) ->
     io:format("    | ~-20s | ~-20s | ~-20s|~n"
-              ,[wh_util:to_binary(E1)
-                ,wh_util:to_binary(E2)
+              ,[kz_util:to_binary(E1)
+                ,kz_util:to_binary(E2)
                 ,<<>>
                ]);
 print_condensed_list([E1]) ->
     io:format("    | ~-20s | ~-20s | ~-20s|~n"
-              ,[wh_util:to_binary(E1)
+              ,[kz_util:to_binary(E1)
                 ,<<>>
                 ,<<>>
                ]);
 print_condensed_list([E1, E2, E3 | Rest]) ->
     io:format("    | ~-20s | ~-20s | ~-20s|~n"
-              ,[wh_util:to_binary(E1)
-                ,wh_util:to_binary(E2)
-                ,wh_util:to_binary(E3)
+              ,[kz_util:to_binary(E1)
+                ,kz_util:to_binary(E2)
+                ,kz_util:to_binary(E3)
                ]),
     print_condensed_list(Rest).

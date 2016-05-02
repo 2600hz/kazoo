@@ -1,7 +1,7 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
-%%% Util functions used by whistle_couch
+%%% Util functions used by kazoo_couch
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
@@ -42,28 +42,28 @@ db_create(#server{}=Conn, DbName) ->
 
 -spec db_create(server(), ne_binary(), db_create_options()) -> boolean().
 db_create(#server{}=Conn, DbName, Options) ->
-    case couchbeam:create_db(Conn, wh_util:to_list(DbName), [], Options) of
+    case couchbeam:create_db(Conn, kz_util:to_list(DbName), [], Options) of
         {'error', _} -> 'false';
         {'ok', _} -> 'true'
     end.
 
 -spec db_delete(server(), ne_binary()) -> boolean().
 db_delete(#server{}=Conn, DbName) ->
-    case couchbeam:delete_db(Conn, wh_util:to_list(DbName)) of
+    case couchbeam:delete_db(Conn, kz_util:to_list(DbName)) of
         {'error', _} -> 'false';
         {'ok', _} -> 'true'
     end.
 
--spec db_replicate(server(), wh_json:object() | wh_proplist()) ->
-                                {'ok', wh_json:object()} |
+-spec db_replicate(server(), kz_json:object() | kz_proplist()) ->
+                                {'ok', kz_json:object()} |
                                 couchbeam_error().
 db_replicate(#server{}=Conn, Prop) when is_list(Prop) ->
-    couchbeam:replicate(Conn, wh_json:from_list(Prop));
+    couchbeam:replicate(Conn, kz_json:from_list(Prop));
 db_replicate(#server{}=Conn, JObj) ->
     couchbeam:replicate(Conn, JObj).
 
 -spec db_list(server(), view_options()) ->
-          {'ok', wh_json:objects() | ne_binaries()} | couchbeam_error().
+          {'ok', kz_json:objects() | ne_binaries()} | couchbeam_error().
 db_list(#server{}=Conn, Options) ->
     couchbeam:all_dbs(Conn, Options).
 
@@ -78,14 +78,14 @@ db_info(#server{}=Conn) ->
     ?RETRY_504(couchbeam:all_dbs(Conn)).
 
 -spec db_info(server(), ne_binary()) ->
-                     {'ok', wh_json:object()} |
+                     {'ok', kz_json:object()} |
                      couchbeam_error().
 db_info(#server{}=Conn, DbName) ->
     ?RETRY_504(couchbeam:db_info(get_db(Conn, DbName))).
 
 -spec db_exists(server(), ne_binary()) -> boolean().
 db_exists(#server{}=Conn, DbName) ->
-    couchbeam:db_exists(Conn, wh_util:to_list(DbName)).
+    couchbeam:db_exists(Conn, kz_util:to_list(DbName)).
 
 -spec db_archive(server(), ne_binary(), ne_binary()) -> 'ok'.
 db_archive(#server{}=Conn, DbName, Filename) ->
@@ -94,8 +94,8 @@ db_archive(#server{}=Conn, DbName, Filename) ->
     {'ok', File} = file:open(Filename, ['write']),
     'ok' = file:write(File, <<"[">>),
     io:format("archiving to ~s~n", [Filename]),
-    MaxDocs = whapps_config:get_integer(?CONFIG_CAT, <<"max_concurrent_docs_to_archive">>, 500),
-    archive(Db, File, MaxDocs, wh_json:get_integer_value(<<"doc_count">>, DbInfo), 0),
+    MaxDocs = kapps_config:get_integer(?CONFIG_CAT, <<"max_concurrent_docs_to_archive">>, 500),
+    archive(Db, File, MaxDocs, kz_json:get_integer_value(<<"doc_count">>, DbInfo), 0),
     'ok' = file:write(File, <<"]">>),
     file:close(File).
 
@@ -137,12 +137,12 @@ archive(Db, File, MaxDocs, N, Pos) ->
             archive(Db, File, MaxDocs, N, Pos)
     end.
 
--spec archive_docs(file:io_device(), wh_json:objects()) -> 'ok'.
+-spec archive_docs(file:io_device(), kz_json:objects()) -> 'ok'.
 archive_docs(_, []) -> 'ok';
 archive_docs(File, [Doc]) ->
-    'ok' = file:write(File, [wh_json:encode(Doc), $\n]);
+    'ok' = file:write(File, [kz_json:encode(Doc), $\n]);
 archive_docs(File, [Doc|Docs]) ->
-    'ok' = file:write(File, [wh_json:encode(Doc), $,, $\n]),
+    'ok' = file:write(File, [kz_json:encode(Doc), $,, $\n]),
     archive_docs(File, Docs).
 
 %% Internal DB-related functions -----------------------------------------------

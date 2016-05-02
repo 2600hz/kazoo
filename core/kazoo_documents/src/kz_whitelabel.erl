@@ -26,29 +26,29 @@
 
 -include("kz_documents.hrl").
 
--spec fetch(api_binary()) -> {'ok', wh_json:object()} | {'error', any()}.
+-spec fetch(api_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 fetch('undefined') ->
     {'error', 'account_id_undefined'};
 fetch(Account) ->
-    AccoundDb = wh_util:format_account_id(Account, 'encoded'),
+    AccoundDb = kz_util:format_account_id(Account, 'encoded'),
     kz_datamgr:open_cache_doc(AccoundDb, ?ID).
 
--spec port_hide(wh_json:object()) -> boolean().
+-spec port_hide(kz_json:object()) -> boolean().
 port_hide(JObj) ->
-    wh_json:is_true(?PORT_HIDE, JObj).
+    kz_json:is_true(?PORT_HIDE, JObj).
 
--spec port_email(wh_json:object()) -> api_binary().
+-spec port_email(kz_json:object()) -> api_binary().
 port_email(JObj) ->
-    wh_json:get_ne_binary_value(?PORT_EMAIL, JObj).
+    kz_json:get_ne_binary_value(?PORT_EMAIL, JObj).
 
--spec port_authority(wh_json:object()) -> api_binary().
+-spec port_authority(kz_json:object()) -> api_binary().
 port_authority(JObj) ->
-    wh_json:get_ne_binary_value(?PORT_AUTHORITY, JObj).
+    kz_json:get_ne_binary_value(?PORT_AUTHORITY, JObj).
 
--spec port_loa(wh_json:object()) -> api_binary().
+-spec port_loa(kz_json:object()) -> api_binary().
 port_loa(JObj) ->
-    wh_json:get_ne_binary_value(?PORT_LOA, JObj).
+    kz_json:get_ne_binary_value(?PORT_LOA, JObj).
 
--spec port_resporg(wh_json:object()) -> api_binary().
+-spec port_resporg(kz_json:object()) -> api_binary().
 port_resporg(JObj) ->
-    wh_json:get_ne_binary_value(?PORT_RESPORG, JObj).
+    kz_json:get_ne_binary_value(?PORT_RESPORG, JObj).

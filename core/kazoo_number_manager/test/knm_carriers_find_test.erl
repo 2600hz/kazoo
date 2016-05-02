@@ -78,10 +78,10 @@ verify_block(PhoneNumber, JObj, DID, Activation) ->
       }
 
      ,{"Verify JObj number is start number"
-       ,?_assertEqual(DID, wh_json:get_value(<<"number">>, JObj))
+       ,?_assertEqual(DID, kz_json:get_value(<<"number">>, JObj))
       }
      ,{"Verify JObj activation charge"
-       ,?_assertEqual(Activation, wh_json:get_value(<<"activation_charge">>, JObj))
+       ,?_assertEqual(Activation, kz_json:get_value(<<"activation_charge">>, JObj))
       }
     ].
 
@@ -110,7 +110,7 @@ verify_number_results(Results) ->
 verify_number_result(Result, {Tests, N}) ->
     {[{"Verify result DID"
        ,?_assertEqual(<<"+1415886790", (N+$0)>>
-                      ,wh_json:get_value(<<"number">>, Result)
+                      ,kz_json:get_value(<<"number">>, Result)
                      )
       }
       ,{"Verify result activation charge"
@@ -123,13 +123,13 @@ verify_number_result(Result, {Tests, N}) ->
 
 activation_charge_test(Result, ?START_BLOCK) ->
     {"Verify start of range activation"
-     ,?_assertEqual(5.0, wh_json:get_value(<<"activation_charge">>, Result))
+     ,?_assertEqual(5.0, kz_json:get_value(<<"activation_charge">>, Result))
     };
 activation_charge_test(Result, ?END_BLOCK) ->
     {"Verify end of range activation"
-     ,?_assertEqual('undefined', wh_json:get_value(<<"activation_charge">>, Result))
+     ,?_assertEqual('undefined', kz_json:get_value(<<"activation_charge">>, Result))
     };
 activation_charge_test(Result, _DID) ->
     {"Verify inner range activation"
-     ,?_assertEqual(1.0, wh_json:get_value(<<"activation_charge">>, Result))
+     ,?_assertEqual(1.0, kz_json:get_value(<<"activation_charge">>, Result))
     }.

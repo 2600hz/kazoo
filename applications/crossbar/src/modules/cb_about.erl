@@ -69,18 +69,18 @@ validate(Context) ->
 %% @private
 %% @doc
 %%
-%% Display the current version of whistle
+%% Display the current version of kazoo
 %% @end
 %%--------------------------------------------------------------------
 -spec display_version(cb_context:context()) -> cb_context:context().
 display_version(Context) ->
     crossbar_util:response(
-      wh_json:from_list(
-        [{<<"version">>, wh_util:whistle_version()}
+      kz_json:from_list(
+        [{<<"version">>, kz_util:kazoo_version()}
          ,{<<"used_memory">>, erlang:memory('total')}
          ,{<<"processes">>, erlang:system_info('process_count')}
          ,{<<"ports">>, length(erlang:ports())}
-         ,{<<"erlang_version">>, wh_util:to_binary(erlang:system_info('otp_release'))}
+         ,{<<"erlang_version">>, kz_util:to_binary(erlang:system_info('otp_release'))}
         ]
        )
       ,Context

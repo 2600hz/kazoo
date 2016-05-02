@@ -13,7 +13,7 @@
 
 sort_wdays_test() ->
     Sorted = [<<"monday">>, <<"tuesday">>, <<"wednesday">>, <<"thursday">>, <<"friday">>, <<"saturday">>, <<"sunday">>],
-    Shuffled = wh_util:shuffle_list(Sorted),
+    Shuffled = kz_util:shuffle_list(Sorted),
     ?assertEqual(Sorted, cf_temporal_route:sort_wdays(Shuffled)).
 
 daily_recurrence_test() ->

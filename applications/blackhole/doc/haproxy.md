@@ -17,12 +17,12 @@ listen kazoo-crossbar-https
         option httplog
         option dontlognull
         acl is_blackhole path_beg /socket.io/
-        use_backend whapps-blackhole if is_blackhole
-        default_backend whapps-crossbar
+        use_backend kapps-blackhole if is_blackhole
+        default_backend kapps-crossbar
 ```
 
 ```
-backend whapps-blackhole
+backend kapps-blackhole
   balance source
     mode http
     option forwardfor

@@ -1,7 +1,7 @@
 -ifndef(KAZOO_LEDGER_HRL).
 
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_log.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo/include/kz_log.hrl").
 
 -define(AMOUNT, <<"amount">>).
 -define(DESC, <<"description">>).
@@ -22,7 +22,7 @@
 -define(PVT_LEDGER_TYPE, <<"pvt_ledger_type">>).
 -define(PVT_TYPE, <<"ledger">>).
 
--type ledger() :: wh_json:object().
+-type ledger() :: kz_json:object().
 
 -define(KAZOO_LEDGER_HRL, 'true').
 -endif.

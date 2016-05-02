@@ -70,7 +70,7 @@ start_link(FSMPid, AcctId, QueueId, Priority) ->
     gen_listener:start_link(?SERVER
                             ,[{'bindings', ?SHARED_QUEUE_BINDINGS(AcctId, QueueId)}
                               ,{'responders', ?RESPONDERS}
-                              ,{'queue_name', wapi_acdc_queue:shared_queue_name(AcctId, QueueId)}
+                              ,{'queue_name', kapi_acdc_queue:shared_queue_name(AcctId, QueueId)}
                               | ?SHARED_BINDING_OPTIONS(Priority)
                              ]
                             ,[FSMPid]
@@ -106,7 +106,7 @@ deliveries(Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 init([FSMPid]) ->
-    wh_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?LOG_SYSTEM_ID),
 
     lager:debug("shared queue proc started, sending messages to FSM ~p", [FSMPid]),
     {'ok', #state{fsm_pid=FSMPid}}.

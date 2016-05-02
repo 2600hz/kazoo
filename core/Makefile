@@ -25,7 +25,7 @@ test: ACTION = test
 test: $(MAKEDIRS)
 
 first:
-	$(MAKE) -C whistle/ $(ACTION)
+	$(MAKE) -C kazoo/ $(ACTION)
 	$(MAKE) -C kazoo_data/ $(ACTION)
 
 $(MAKEDIRS): first

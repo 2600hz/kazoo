@@ -73,62 +73,62 @@
                    }).
 -type interface() :: #interface{}.
 
--define(DEFAULT_FS_COMMANDS, [wh_json:from_list([{<<"load">>, <<"mod_sofia">>}])
-                              ,wh_json:from_list([{<<"reloadacl">>, <<>>}])
+-define(DEFAULT_FS_COMMANDS, [kz_json:from_list([{<<"load">>, <<"mod_sofia">>}])
+                              ,kz_json:from_list([{<<"reloadacl">>, <<>>}])
                              ]).
 
--define(DEFAULT_CAPABILITIES, [wh_json:from_list([{<<"module">>, <<"mod_conference">>}
+-define(DEFAULT_CAPABILITIES, [kz_json:from_list([{<<"module">>, <<"mod_conference">>}
                                                   ,{<<"is_loaded">>, 'false'}
                                                   ,{<<"capability">>, <<"conference">>}
                                                  ])
-                               ,wh_json:from_list([{<<"module">>, <<"mod_channel_move">>}
+                               ,kz_json:from_list([{<<"module">>, <<"mod_channel_move">>}
                                                    ,{<<"is_loaded">>, 'false'}
                                                    ,{<<"capability">>, <<"channel_move">>}
                                                   ])
-                               ,wh_json:from_list([{<<"module">>, <<"mod_http_cache">>}
+                               ,kz_json:from_list([{<<"module">>, <<"mod_http_cache">>}
                                                    ,{<<"is_loaded">>, 'false'}
                                                    ,{<<"capability">>, <<"http_cache">>}
                                                   ])
-                               ,wh_json:from_list([{<<"module">>, <<"mod_dptools">>}
+                               ,kz_json:from_list([{<<"module">>, <<"mod_dptools">>}
                                                    ,{<<"is_loaded">>, 'false'}
                                                    ,{<<"capability">>, <<"dialplan">>}
                                                   ])
-                               ,wh_json:from_list([{<<"module">>, <<"mod_sofia">>}
+                               ,kz_json:from_list([{<<"module">>, <<"mod_sofia">>}
                                                    ,{<<"is_loaded">>, 'false'}
                                                    ,{<<"capability">>, <<"sip">>}
                                                   ])
-                               ,wh_json:from_list([{<<"module">>, <<"mod_spandsp">>}
+                               ,kz_json:from_list([{<<"module">>, <<"mod_spandsp">>}
                                                    ,{<<"is_loaded">>, 'false'}
                                                    ,{<<"capability">>, <<"fax">>}
                                                   ])
-                               ,wh_json:from_list([{<<"module">>, <<"mod_flite">>}
+                               ,kz_json:from_list([{<<"module">>, <<"mod_flite">>}
                                                    ,{<<"is_loaded">>, 'false'}
                                                    ,{<<"capability">>, <<"tts">>}
                                                   ])
-                               ,wh_json:from_list([{<<"module">>, <<"mod_freetdm">>}
+                               ,kz_json:from_list([{<<"module">>, <<"mod_freetdm">>}
                                                    ,{<<"is_loaded">>, 'false'}
                                                    ,{<<"capability">>, <<"freetdm">>}
                                                   ])
-                               ,wh_json:from_list([{<<"module">>, <<"mod_skypopen">>}
+                               ,kz_json:from_list([{<<"module">>, <<"mod_skypopen">>}
                                                    ,{<<"is_loaded">>, 'false'}
                                                    ,{<<"capability">>, <<"skype">>}
                                                   ])
-                               ,wh_json:from_list([{<<"module">>, <<"mod_dingaling">>}
+                               ,kz_json:from_list([{<<"module">>, <<"mod_dingaling">>}
                                                    ,{<<"is_loaded">>, 'false'}
                                                    ,{<<"capability">>, <<"xmpp">>}
                                                   ])
-                               ,wh_json:from_list([{<<"module">>, <<"mod_skinny">>}
+                               ,kz_json:from_list([{<<"module">>, <<"mod_skinny">>}
                                                    ,{<<"is_loaded">>, 'false'}
                                                    ,{<<"capability">>, <<"skinny">>}
                                                   ])
-                               ,wh_json:from_list([{<<"module">>, <<"mod_sms">>}
+                               ,kz_json:from_list([{<<"module">>, <<"mod_sms">>}
                                                    ,{<<"is_loaded">>, 'false'}
                                                    ,{<<"capability">>, <<"sms">>}
                                                   ])
                               ]).
 
 -record(state, {node :: atom()
-                ,options = []             :: wh_proplist()
+                ,options = []             :: kz_proplist()
                 ,interface = #interface{} :: interface()
                 ,start_cmds_pid_ref       :: pid_ref() | 'undefined'
                }).
@@ -155,12 +155,12 @@
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
--define(YR_TO_MICRO(Y), wh_util:to_integer(Y)*365*24*3600*1000000).
--define(DAY_TO_MICRO(D), wh_util:to_integer(D)*24*3600*1000000).
--define(HR_TO_MICRO(Hr), wh_util:to_integer(Hr)*3600*1000000).
--define(MIN_TO_MICRO(Min), wh_util:to_integer(Min)*60*1000000).
--define(SEC_TO_MICRO(Sec), wh_util:to_integer(Sec)*1000000).
--define(MILLI_TO_MICRO(Mil), wh_util:to_integer(Mil)*1000).
+-define(YR_TO_MICRO(Y), kz_util:to_integer(Y)*365*24*3600*1000000).
+-define(DAY_TO_MICRO(D), kz_util:to_integer(D)*24*3600*1000000).
+-define(HR_TO_MICRO(Hr), kz_util:to_integer(Hr)*3600*1000000).
+-define(MIN_TO_MICRO(Min), kz_util:to_integer(Min)*60*1000000).
+-define(SEC_TO_MICRO(Sec), kz_util:to_integer(Sec)*1000000).
+-define(MILLI_TO_MICRO(Mil), kz_util:to_integer(Mil)*1000).
 
 -define(FS_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 
@@ -190,12 +190,12 @@
 %% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(atom()) -> startlink_ret().
--spec start_link(atom(), wh_proplist()) -> startlink_ret().
+-spec start_link(atom(), kz_proplist()) -> startlink_ret().
 start_link(Node) -> start_link(Node, []).
 start_link(Node, Options) ->
-    QueueName = <<(wh_util:to_binary(Node))/binary
+    QueueName = <<(kz_util:to_binary(Node))/binary
                   ,"-"
-                  ,(wh_util:to_binary(?MODULE))/binary
+                  ,(kz_util:to_binary(?MODULE))/binary
                 >>,
     gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
                                       ,{'bindings', ?BINDINGS(Node)}
@@ -225,7 +225,7 @@ hostname(Srv) ->
     case fs_node(Srv) of
         'undefined' -> 'undefined';
         Node ->
-            [_, Hostname] = binary:split(wh_util:to_binary(Node), <<"@">>),
+            [_, Hostname] = binary:split(kz_util:to_binary(Node), <<"@">>),
             Hostname
     end.
 
@@ -237,9 +237,9 @@ sip_url(Srv) ->
 sip_external_ip(Srv) ->
     gen_server:call(find_srv(Srv), 'sip_external_ip').
 
--spec handle_reload_acls(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_reload_acls(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_reload_acls(JObj, Props) ->
-    'true' = wapi_switch:reload_acls_v(JObj),
+    'true' = kapi_switch:reload_acls_v(JObj),
 
     Node = props:get_value('node', Props),
     case freeswitch:bgapi(Node, 'reloadacl', "") of
@@ -247,9 +247,9 @@ handle_reload_acls(JObj, Props) ->
         {'error', _E} -> lager:debug("reloadacl failed with error: ~p", [_E])
     end.
 
--spec handle_reload_gateways(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_reload_gateways(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_reload_gateways(JObj, Props) ->
-    'true' = wapi_switch:reload_gateways_v(JObj),
+    'true' = kapi_switch:reload_gateways_v(JObj),
 
     Node = props:get_value('node', Props),
     Args = ["profile "
@@ -273,7 +273,7 @@ fs_node(Srv) ->
 
 -spec find_srv(fs_node()) -> pid().
 find_srv(Pid) when is_pid(Pid) -> Pid;
-find_srv(Node) when is_binary(Node) -> find_srv(wh_util:to_atom(Node));
+find_srv(Node) when is_binary(Node) -> find_srv(kz_util:to_atom(Node));
 find_srv(Node) when is_atom(Node) ->
     ecallmgr_fs_node_sup:node_srv(ecallmgr_fs_sup:find_node(Node)).
 
@@ -301,7 +301,7 @@ fetch_timeout(_Node) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Options]) ->
-    wh_util:put_callid(Node),
+    kz_util:put_callid(Node),
     process_flag('priority', 'high'), %% Living dangerously!
     lager:info("starting new fs node listener for ~s", [Node]),
     gproc:reg({'p', 'l', 'fs_node'}),
@@ -352,17 +352,17 @@ handle_cast('sync_interface', #state{node=Node
                                     }=State) ->
     {'noreply', State#state{interface=node_interface(Node, Interface)}};
 handle_cast('sync_capabilities', #state{node=Node}=State) ->
-    _Pid = wh_util:spawn(fun probe_capabilities/1, [Node]),
+    _Pid = kz_util:spawn(fun probe_capabilities/1, [Node]),
     lager:debug("syncing capabilities in ~p", [_Pid]),
     {'noreply', State};
 handle_cast('sync_channels', #state{node=Node}=State) ->
-    Channels = [wh_json:get_value(<<"uuid">>, J)
+    Channels = [kz_json:get_value(<<"uuid">>, J)
                 || J <- channels_as_json(Node)
                ],
     _ = ecallmgr_fs_channels:sync(Node, Channels),
     {'noreply', State};
 handle_cast('sync_registrations', #state{node=Node}=State) ->
-    _Pid = wh_util:spawn(fun maybe_replay_registrations/1, [Node]),
+    _Pid = kz_util:spawn(fun maybe_replay_registrations/1, [Node]),
     lager:debug("syncing registrations in ~p", [_Pid]),
     {'noreply', State};
 handle_cast(_Req, State) ->
@@ -440,13 +440,13 @@ code_change(_OldVsn, State, _Extra) ->
 -type cmd_results() :: [cmd_result()] |
                        {'error', 'retry'}.
 
--spec run_start_cmds(atom(), wh_proplist()) -> pid_ref().
+-spec run_start_cmds(atom(), kz_proplist()) -> pid_ref().
 run_start_cmds(Node, Options) ->
-    wh_util:spawn_monitor(fun run_start_cmds/3, [Node, Options, self()]).
+    kz_util:spawn_monitor(fun run_start_cmds/3, [Node, Options, self()]).
 
--spec run_start_cmds(atom(), wh_proplist(), pid()) -> any().
+-spec run_start_cmds(atom(), kz_proplist(), pid()) -> any().
 run_start_cmds(Node, Options, Parent) ->
-    wh_util:put_callid(Node),
+    kz_util:put_callid(Node),
     timer:sleep(ecallmgr_config:get_integer(<<"fs_cmds_wait_ms">>, 5 * ?MILLISECONDS_IN_SECOND, Node)),
 
     run_start_cmds(Node, Options, Parent, is_restarting(Node)).
@@ -466,17 +466,17 @@ is_restarting(Node) ->
 is_restarting_status(UP) ->
     case re:run(UP, <<"UP (\\d+) years, (\\d+) days, (\\d+) hours, (\\d+) minutes, (\\d+) seconds, (\\d+) milliseconds, (\\d+) microseconds">>, [{'capture', 'all_but_first', 'binary'}]) of
         {'match', [Years, Days, Hours, Minutes, Seconds, _Mille, _Micro]} ->
-            Uptime = (wh_util:to_integer(Years) * ?SECONDS_IN_YEAR)
-                + (wh_util:to_integer(Days) * ?SECONDS_IN_DAY)
-                + (wh_util:to_integer(Hours) * ?SECONDS_IN_HOUR)
-                + (wh_util:to_integer(Minutes) * ?SECONDS_IN_MINUTE)
-                + wh_util:to_integer(Seconds),
+            Uptime = (kz_util:to_integer(Years) * ?SECONDS_IN_YEAR)
+                + (kz_util:to_integer(Days) * ?SECONDS_IN_DAY)
+                + (kz_util:to_integer(Hours) * ?SECONDS_IN_HOUR)
+                + (kz_util:to_integer(Minutes) * ?SECONDS_IN_MINUTE)
+                + kz_util:to_integer(Seconds),
             lager:debug("node has been up for ~b s (considered restarting: ~s)", [Uptime, Uptime < ?UPTIME_S]),
             Uptime < ?UPTIME_S;
         'nomatch' -> 'false'
     end.
 
--spec run_start_cmds(atom(), wh_proplist(), pid(), boolean() | wh_json:objects()) -> 'ok'.
+-spec run_start_cmds(atom(), kz_proplist(), pid(), boolean() | kz_json:objects()) -> 'ok'.
 run_start_cmds(Node, Options, Parent, 'true') ->
     lager:debug("node ~s is considered restarting", [Node]),
     run_start_cmds(Node, Options, Parent
@@ -508,38 +508,38 @@ sync(Parent) ->
     sync_registrations(Parent),
     sync_capabilities(Parent).
 
--spec process_cmds(atom(), wh_proplist(), wh_json:object() | ne_binaries()) -> cmd_results().
+-spec process_cmds(atom(), kz_proplist(), kz_json:object() | ne_binaries()) -> cmd_results().
 process_cmds(_Node, _Options, []) ->
-    lager:info("no freeswitch commands to run, seems suspect. Is your ecallmgr connected to the same AMQP as the whapps running sysconf?"),
+    lager:info("no freeswitch commands to run, seems suspect. Is your ecallmgr connected to the same AMQP as the kapps running sysconf?"),
     [];
 process_cmds(Node, Options, Cmds) when is_list(Cmds) ->
     lists:foldl(fun(Cmd, Acc) -> process_cmd(Node, Options, Cmd, Acc) end, [], Cmds);
 process_cmds(Node, Options, Cmds) ->
-    case wh_json:is_json_object(Cmds) of
+    case kz_json:is_json_object(Cmds) of
         'true' -> process_cmd(Node, Options, Cmds, []);
         'false' ->
             lager:debug("recv something other than a list for fs_cmds: ~p", [Cmds]),
             {'error', 'retry'}
     end.
 
--spec process_cmd(atom(), wh_proplist(), wh_json:object(), cmd_results()) -> cmd_results().
+-spec process_cmd(atom(), kz_proplist(), kz_json:object(), cmd_results()) -> cmd_results().
 process_cmd(Node, Options, JObj, Acc0) ->
-    wh_json:foldl(fun(ApiCmd, ApiArg, Acc) ->
+    kz_json:foldl(fun(ApiCmd, ApiArg, Acc) ->
                         lager:debug("process ~s: ~s: ~s", [Node, ApiCmd, ApiArg]),
                         process_cmd(Node, Options, ApiCmd, ApiArg, Acc)
                 end, Acc0, JObj).
 
--spec process_cmd(atom(), wh_proplist(), ne_binary(), wh_json:json_term(), cmd_results()) -> cmd_results().
--spec process_cmd(atom(), wh_proplist(), ne_binary(), wh_json:json_term(), cmd_results(), 'list'|'binary') -> cmd_results().
+-spec process_cmd(atom(), kz_proplist(), ne_binary(), kz_json:json_term(), cmd_results()) -> cmd_results().
+-spec process_cmd(atom(), kz_proplist(), ne_binary(), kz_json:json_term(), cmd_results(), 'list'|'binary') -> cmd_results().
 process_cmd(Node, Options, ApiCmd0, ApiArg, Acc) ->
     process_cmd(Node, Options, ApiCmd0, ApiArg, Acc, 'binary').
 process_cmd(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat) ->
     execute_command(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat).
 
--spec execute_command(atom(), wh_proplist(), ne_binary(), wh_json:json_term(), cmd_results(), 'list'|'binary') ->
+-spec execute_command(atom(), kz_proplist(), ne_binary(), kz_json:json_term(), cmd_results(), 'list'|'binary') ->
                              cmd_results().
 execute_command(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat) ->
-    ApiCmd = wh_util:to_atom(ApiCmd0, ?FS_CMD_SAFELIST),
+    ApiCmd = kz_util:to_atom(ApiCmd0, ?FS_CMD_SAFELIST),
     lager:debug("exec ~s on ~s", [ApiCmd, Node]),
     case freeswitch:bgapi(Node, ApiCmd, format_args(ArgFormat, ApiArg)) of
         {'ok', BGApiID} ->
@@ -558,8 +558,8 @@ execute_command(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat) ->
     end.
 
 -spec format_args('list'|'binary', api_terms()) -> api_terms().
-format_args('list', Args) -> wh_util:to_list(Args);
-format_args('binary', Args) -> wh_util:to_binary(Args).
+format_args('list', Args) -> kz_util:to_list(Args);
+format_args('binary', Args) -> kz_util:to_binary(Args).
 
 -spec process_resp(atom(), api_terms(), ne_binaries(), cmd_results()) -> cmd_results().
 process_resp(ApiCmd, ApiArg, [<<>>|Resps], Acc) ->
@@ -606,7 +606,7 @@ print_api_response({'error', {Cmd, Args}, Res}) ->
 print_api_response({'timeout', {Cmd, Arg}}) ->
     lager:info("timeout: ~s(~s)", [Cmd, Arg]).
 
--spec channels_as_json(atom()) -> wh_json:objects().
+-spec channels_as_json(atom()) -> kz_json:objects().
 channels_as_json(Node) ->
     case freeswitch:api(Node, 'show', "channels as delim |||") of
         {'ok', Lines} ->
@@ -614,7 +614,7 @@ channels_as_json(Node) ->
                 [<<>>|_] -> [];
                 [Header|Rest] ->
                     Keys = binary:split(Header, <<"|||">>, ['global']),
-                    [wh_json:from_list(lists:zip(Keys, Values))
+                    [kz_json:from_list(lists:zip(Keys, Values))
                      || Line <- Rest,
                         ((Values = binary:split(Line, <<"|||">>, ['global'])) =/= [Line])
                     ]
@@ -622,7 +622,7 @@ channels_as_json(Node) ->
         {'error', _} -> []
     end.
 
--spec interface_from_props(wh_proplist()) -> interface().
+-spec interface_from_props(kz_proplist()) -> interface().
 interface_from_props(Props) ->
     #interface{name=props:get_value(<<"Name">>, Props, ?DEFAULT_FS_PROFILE)
                ,domain_name=props:get_value(<<"DomainName">>, Props)
@@ -656,35 +656,35 @@ interface_from_props(Props) ->
                ,interface_props=Props
               }.
 
--spec split_codes(ne_binary(), wh_proplist()) -> ne_binaries().
+-spec split_codes(ne_binary(), kz_proplist()) -> ne_binaries().
 split_codes(Key, Props) ->
     [Codec
      || Codec <- binary:split(props:get_value(Key, Props, <<>>), <<",">>, ['global'])
-            ,not wh_util:is_empty(Codec)
+            ,not kz_util:is_empty(Codec)
     ].
 
 -spec probe_capabilities(atom()) -> 'ok'.
--spec probe_capabilities(atom(), wh_json:objects()) -> 'ok'.
+-spec probe_capabilities(atom(), kz_json:objects()) -> 'ok'.
 probe_capabilities(Node) ->
     probe_capabilities(Node, ecallmgr_config:get(<<"capabilities">>, ?DEFAULT_CAPABILITIES)).
 probe_capabilities(Node, PossibleCapabilities) ->
-    wh_util:put_callid(Node),
+    kz_util:put_callid(Node),
     lists:foreach(fun(Capability) ->
                             maybe_add_capability(Node, Capability)
                     end, PossibleCapabilities).
 
--spec maybe_add_capability(atom(), wh_json:object()) -> any().
+-spec maybe_add_capability(atom(), kz_json:object()) -> any().
 maybe_add_capability(Node, Capability) ->
-    Module = wh_json:get_value(<<"module">>, Capability),
+    Module = kz_json:get_value(<<"module">>, Capability),
     lager:debug("probing ~s about ~s", [Node, Module]),
-    case freeswitch:api(Node, 'module_exists', wh_util:to_binary(Module)) of
+    case freeswitch:api(Node, 'module_exists', kz_util:to_binary(Module)) of
         {'ok', Maybe} ->
-            case wh_util:is_true(Maybe) of
+            case kz_util:is_true(Maybe) of
                 'true' ->
                     lager:debug("adding capability of ~s", [Module]),
-                    ecallmgr_fs_nodes:add_capability(Node, wh_json:set_value(<<"is_loaded">>, 'true', Capability));
+                    ecallmgr_fs_nodes:add_capability(Node, kz_json:set_value(<<"is_loaded">>, 'true', Capability));
                 'false' ->
-                    ecallmgr_fs_nodes:add_capability(Node, wh_json:set_value(<<"is_loaded">>, 'false', Capability))
+                    ecallmgr_fs_nodes:add_capability(Node, kz_json:set_value(<<"is_loaded">>, 'false', Capability))
             end;
         {'error', _E} ->
             lager:debug("failed to probe node ~s: ~p", [Node, _E])
@@ -692,25 +692,25 @@ maybe_add_capability(Node, Capability) ->
 
 -spec maybe_replay_registrations(atom()) -> 'ok'.
 maybe_replay_registrations(Node) ->
-    wh_util:put_callid(Node),
+    kz_util:put_callid(Node),
     replay_registration(Node, get_registrations(Node)).
 
--spec replay_registration(atom(), [wh_proplist()]) -> 'ok'.
+-spec replay_registration(atom(), [kz_proplist()]) -> 'ok'.
 replay_registration(_Node, [[]]) -> 'ok';
 replay_registration(_Node, []) -> 'ok';
 replay_registration(Node, [Reg | Regs]) ->
-    Payload = [{<<"FreeSWITCH-Nodename">>, wh_util:to_binary(Node)}
-               ,{<<"Event-Timestamp">>, round(wh_util:current_tstamp())}
+    Payload = [{<<"FreeSWITCH-Nodename">>, kz_util:to_binary(Node)}
+               ,{<<"Event-Timestamp">>, round(kz_util:current_tstamp())}
                | lists:map(fun({K,{F, V}}) when is_function(F,1) ->
                                    {K, F(props:get_value(V, Reg))};
                               ({K,V}) ->
                                    {K, props:get_value(V, Reg)}
                            end, ?REPLAY_REG_MAP)
-               ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     lager:debug("replaying registration: ~p",[Payload]),
-    wh_amqp_worker:cast(Payload
-                        ,fun wapi_registration:publish_success/1
+    kz_amqp_worker:cast(Payload
+                        ,fun kapi_registration:publish_success/1
                        ),
     replay_registration(Node, Regs).
 
@@ -720,8 +720,8 @@ replay_profile(V) ->
 
 -spec replay_expires(ne_binary()) -> pos_integer().
 replay_expires(V) ->
-    wh_util:unix_seconds_to_gregorian_seconds(wh_util:to_integer(V)) -
-        (wh_util:current_tstamp() +
+    kz_util:unix_seconds_to_gregorian_seconds(kz_util:to_integer(V)) -
+        (kz_util:current_tstamp() +
              ecallmgr_config:get_integer(<<"expires_deviation_time">>, 0)
         ).
 
@@ -729,7 +729,7 @@ replay_expires(V) ->
 replay_contact(V) ->
     <<"<", (lists:nth(3, binary:split(V, <<"/">>, ['global'] ) ))/binary, ">">>.
 
--spec get_registrations(atom()) -> [wh_proplist()].
+-spec get_registrations(atom()) -> [kz_proplist()].
 get_registrations(Node) ->
     case freeswitch:api(Node, 'show', "registrations") of
         {'ok', Response} ->
@@ -741,7 +741,7 @@ get_registrations(Node) ->
         _Else -> [[]]
     end.
 
--spec get_registration_details(list()) -> [wh_proplist()].
+-spec get_registration_details(list()) -> [kz_proplist()].
 get_registration_details([Header, _, _, _| _] = Lines) ->
     [begin
          {Res, _Total} = lists:mapfoldl(
@@ -765,6 +765,6 @@ node_interface(Node, CurrInterface) ->
             interface_from_props(Props)
     end.
 
--spec interface(atom() | binary()) -> wh_proplist().
+-spec interface(atom() | binary()) -> kz_proplist().
 interface(Node) ->
     gen_server:call(find_srv(Node), 'interface_props').

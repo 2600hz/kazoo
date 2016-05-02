@@ -17,7 +17,7 @@
 
 -include("kz_data.hrl").
 
--spec server_info(map() | server()) -> {'ok', wh_json:object()} |
+-spec server_info(map() | server()) -> {'ok', kz_json:object()} |
                                {'error', any()}.
 server_info(#{server := {App, Conn}}) -> App:server_info(Conn);
 server_info({App, Conn}) -> App:server_info(Conn).
@@ -51,7 +51,7 @@ format_error({'conn_failed',{'error','econnrefused'}}) ->
     lager:warning("connection is being refused"),
     'econnrefused';
 format_error({'ok', "500", _Headers, Body}) ->
-    case wh_json:get_value(<<"error">>, wh_json:decode(Body)) of
+    case kz_json:get_value(<<"error">>, kz_json:decode(Body)) of
         <<"timeout">> -> 'server_timeout';
         _Error ->
             lager:warning("server error: ~s", [Body]),

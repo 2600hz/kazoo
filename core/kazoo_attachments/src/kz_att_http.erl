@@ -31,7 +31,7 @@ put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
     Url = list_to_binary([BaseUrl, "/", format_url(Fields, JObj, Args)]),
     Headers = [{'content_type', props:get_value('content_type', Options, kz_mime:from_filename(AName))}],
 
-    case kz_http:req(wh_util:to_atom(Verb, 'true'), Url, Headers, Contents) of
+    case kz_http:req(kz_util:to_atom(Verb, 'true'), Url, Headers, Contents) of
         {'ok', 200, _Headers, _Body} ->
             {'ok', [{'attachment', [{<<"url">>, Url}]}
                      | add_document_url_field(DocUrlField, Url)
@@ -43,7 +43,7 @@ add_document_url_field('undefined', _) -> [];
 add_document_url_field(DocUrlField, Url) -> [{'document', [{DocUrlField, Url}]}].
 
 fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->
-    case wh_json:get_value(<<"url">>, HandlerProps) of
+    case kz_json:get_value(<<"url">>, HandlerProps) of
         'undefined' -> {'error', 'invalid_data'};
         Url ->
             case kz_http:get(Url) of
@@ -54,7 +54,7 @@ fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->
     end.
 
 format_url(Fields, JObj, Args) ->
-    wh_util:join_binary(
+    kz_util:join_binary(
       lists:reverse(
         lists:foldl(fun(F, Acc) -> format_url_field(JObj, Args, F, Acc) end, [], Fields)
         ), <<"/">>).
@@ -65,7 +65,7 @@ format_url_field(_JObj, Args, <<":", Arg/binary>>, Fields) ->
         V -> [V | Fields]
     end;
 format_url_field(JObj, _Args, Field, Fields) ->
-    case wh_json:get_value(Field, JObj) of
+    case kz_json:get_value(Field, JObj) of
         'undefined' -> Fields;
         V -> [V | Fields]
     end.

@@ -128,7 +128,7 @@ handle_cast('blacklist_refresh', #state{wsdl_model='undefined'}=State) ->
     {'noreply', State#state{wsdl_model=maybe_init_model()}};
 handle_cast('blacklist_refresh', #state{wsdl_model=WSDL}=State) ->
     gen_listener:delayed_cast(self(), 'blacklist_refresh', ?BLACKLIST_REFRESH),
-    _ = wh_util:spawn(fun refresh_blacklist/1, [WSDL]),
+    _ = kz_util:spawn(fun refresh_blacklist/1, [WSDL]),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
@@ -201,15 +201,15 @@ refresh_blacklist_response(Response) ->
     lager:debug("Entries: ~p", [BlockListEntries]),
     kz_cache:store_local(?CACHE_NAME, dth_util:blacklist_cache_key(), BlockListEntries).
 
--spec get_blocklist_entries(#'p:GetBlockListResponse'{}) -> wh_json:object().
+-spec get_blocklist_entries(#'p:GetBlockListResponse'{}) -> kz_json:object().
 get_blocklist_entries(#'p:GetBlockListResponse'{
                          'GetBlockListResult'=#'p:ArrayOfBlockListEntry'{
                            'BlockListEntry'='undefined'
                           }}) ->
-    wh_json:new();
+    kz_json:new();
 get_blocklist_entries(#'p:GetBlockListResponse'{
                          'GetBlockListResult'=#'p:ArrayOfBlockListEntry'{
                            'BlockListEntry'=Entries
                           }}) when is_list(Entries) ->
     %% do some formatting of the entries to be [{ID, Reason}]
-    wh_json:from_list([{wh_util:to_binary(ID), wh_util:to_binary(Reason)} || #'p:BlockListEntry'{'CustomerID'=ID, 'BlockReason'=Reason} <- Entries]).
+    kz_json:from_list([{kz_util:to_binary(ID), kz_util:to_binary(Reason)} || #'p:BlockListEntry'{'CustomerID'=ID, 'BlockReason'=Reason} <- Entries]).

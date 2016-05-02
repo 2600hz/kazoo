@@ -50,7 +50,7 @@ start_link() ->
                             ,[]
                            ).
 
--spec handle_message(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_message(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_message(JObj, _Props) ->
     lager:debug("recv message ~p", [JObj]).
 

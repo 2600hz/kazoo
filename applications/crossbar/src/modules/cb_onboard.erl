@@ -93,9 +93,9 @@ validate(Context, ?HTTP_PUT) ->
                   ,fun(R) -> create_braintree_cards(JObj, Context, R) end
                   ,fun(R) -> create_account(JObj, Context, R) end
                  ],
-    case lists:foldr(fun(F, Acc) -> F(Acc) end, {[], wh_json:new()}, Generators) of
+    case lists:foldr(fun(F, Acc) -> F(Acc) end, {[], kz_json:new()}, Generators) of
         {P, Failures} ->
-            case wh_json:is_empty(Failures) of
+            case kz_json:is_empty(Failures) of
                 'true' ->
                     cb_context:setters(Context, [{fun cb_context:set_doc/2, lists:flatten(P)}
                                                  ,{fun cb_context:set_resp_status/2, 'success'}
@@ -118,9 +118,9 @@ put(Context) ->
 %% Any errors will also be collected.
 %% @end
 %%--------------------------------------------------------------------
--spec create_extensions(wh_json:object(), cb_context:context(), {proplist(), wh_json:object()}) -> {proplist(), wh_json:object()}.
+-spec create_extensions(kz_json:object(), cb_context:context(), {proplist(), kz_json:object()}) -> {proplist(), kz_json:object()}.
 create_extensions(JObj, Context, Results) ->
-    Extensions = wh_json:get_value(<<"extensions">>, JObj, []),
+    Extensions = kz_json:get_value(<<"extensions">>, JObj, []),
     create_extensions(Extensions, 1, Context, Results).
 
 create_extensions([], _, _, Results) ->
@@ -131,12 +131,12 @@ create_extensions([Exten|Extens], Iteration, Context, {PassAcc, FailAcc}) ->
                   ,fun(R) -> create_device(Exten, Iteration, Context, R) end
                   ,fun(R) -> create_user(Exten, Iteration, Context, R) end
                  ],
-    {P, F} = lists:foldr(fun(F, Acc) -> F(Acc) end, {[], wh_json:new()}, Generators),
-    case wh_json:is_empty(F) of
+    {P, F} = lists:foldr(fun(F, Acc) -> F(Acc) end, {[], kz_json:new()}, Generators),
+    case kz_json:is_empty(F) of
         'true' ->
             create_extensions(Extens, Iteration + 1, Context, {[P|PassAcc], FailAcc});
         'false' ->
-            Failures = wh_json:set_value([<<"extensions">>, wh_util:to_binary(Iteration)], F, FailAcc),
+            Failures = kz_json:set_value([<<"extensions">>, kz_util:to_binary(Iteration)], F, FailAcc),
             create_extensions(Extens, Iteration + 1, Context, {[P|PassAcc], Failures})
     end.
 
@@ -148,21 +148,21 @@ create_extensions([Exten|Extens], Iteration, Context, {PassAcc, FailAcc}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_account(wh_json:object(), cb_context:context(), {proplist(), wh_json:object()}) ->
-                            {proplist(), wh_json:object()}.
+-spec create_account(kz_json:object(), cb_context:context(), {proplist(), kz_json:object()}) ->
+                            {proplist(), kz_json:object()}.
 create_account(JObj, Context, {Pass, Fail}) ->
-    Account = wh_json:get_value(<<"account">>, JObj, wh_json:new()),
-    Generators = [fun(J) -> wh_doc:set_id(J, kz_datamgr:get_uuid()) end
+    Account = kz_json:get_value(<<"account">>, JObj, kz_json:new()),
+    Generators = [fun(J) -> kz_doc:set_id(J, kz_datamgr:get_uuid()) end
                  ],
     NewReqData = lists:foldr(fun(F, J) -> F(J) end, Account, Generators),
     Payload = [cb_context:setters(Context, [{fun cb_context:set_req_data/2, NewReqData}
-                                            ,{fun cb_context:set_req_nouns/2, [{?WH_ACCOUNTS_DB, []}]}
+                                            ,{fun cb_context:set_req_nouns/2, [{?KZ_ACCOUNTS_DB, []}]}
                                            ])
               ],
     Context1 = crossbar_bindings:fold(<<"*.validate.accounts">>, Payload),
     case cb_context:response(Context1) of
-        {'ok', _} -> {[{?WH_ACCOUNTS_DB, Context1}|Pass], Fail};
-        {'error', {_, _, Errors}} -> {Pass, wh_json:set_value(<<"account">>, Errors, Fail)}
+        {'ok', _} -> {[{?KZ_ACCOUNTS_DB, Context1}|Pass], Fail};
+        {'error', {_, _, Errors}} -> {Pass, kz_json:set_value(<<"account">>, Errors, Fail)}
     end.
 
 %%--------------------------------------------------------------------
@@ -173,15 +173,15 @@ create_account(JObj, Context, {Pass, Fail}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_phone_numbers(wh_json:object(), cb_context:context(), {proplist(), wh_json:object()}) ->
-                                  {proplist(), wh_json:object()}.
+-spec create_phone_numbers(kz_json:object(), cb_context:context(), {proplist(), kz_json:object()}) ->
+                                  {proplist(), kz_json:object()}.
 create_phone_numbers(JObj, Context, Results) ->
-    PhoneNumbers = wh_json:get_value(<<"phone_numbers">>, JObj),
+    PhoneNumbers = kz_json:get_value(<<"phone_numbers">>, JObj),
     lists:foldr(fun(Number, R) ->
                         create_phone_number(Number
-                                            ,wh_json:get_value([<<"phone_numbers">>, Number], JObj)
+                                            ,kz_json:get_value([<<"phone_numbers">>, Number], JObj)
                                             ,Context, R)
-                end, Results, wh_json:get_keys(PhoneNumbers)).
+                end, Results, kz_json:get_keys(PhoneNumbers)).
 
 create_phone_number(Number, Properties, Context, {Pass, Fail}) ->
     Payload = [cb_context:setters(Context, [{fun cb_context:set_req_data/2, Properties}
@@ -193,7 +193,7 @@ create_phone_number(Number, Properties, Context, {Pass, Fail}) ->
     Context1 = crossbar_bindings:fold(<<"*.validate.phone_numbers">>, Payload),
     case cb_context:response(Context1) of
         {'ok', _} -> {[{<<"phone_numbers">>, cb_context:store(Context1, 'number', Number)}|Pass], Fail};
-        {'error', {_, _, Errors}} -> {Pass, wh_json:set_value(<<"phone_numbers">>, Errors, Fail)}
+        {'error', {_, _, Errors}} -> {Pass, kz_json:set_value(<<"phone_numbers">>, Errors, Fail)}
     end.
 
 %%--------------------------------------------------------------------
@@ -204,18 +204,18 @@ create_phone_number(Number, Properties, Context, {Pass, Fail}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_braintree_cards(wh_json:object(), cb_context:context(), {proplist(), wh_json:object()}) -> {proplist(), wh_json:object()}.
+-spec create_braintree_cards(kz_json:object(), cb_context:context(), {proplist(), kz_json:object()}) -> {proplist(), kz_json:object()}.
 create_braintree_cards(JObj, Context, {Pass, Fail}) ->
     Account = get_context_jobj(<<"accounts">>, Pass),
-    case wh_doc:id(Account) of
+    case kz_doc:id(Account) of
         'undefined' ->
-            Error = wh_json:set_value([<<"account_id">>, <<"required">>], <<"account failed validation">>, wh_json:new()),
-            {Pass, wh_json:set_value(<<"braintree">>, Error, Fail)};
+            Error = kz_json:set_value([<<"account_id">>, <<"required">>], <<"account failed validation">>, kz_json:new()),
+            {Pass, kz_json:set_value(<<"braintree">>, Error, Fail)};
         AccountId ->
-            Customer = wh_json:get_value(<<"braintree">>, JObj, wh_json:new()),
+            Customer = kz_json:get_value(<<"braintree">>, JObj, kz_json:new()),
             Generators = [fun(J) ->
-                                  case wh_json:get_ne_value(<<"credit_card">>, J) of
-                                      'undefined' -> wh_json:set_value(<<"credit_card">>, wh_json:new(), J);
+                                  case kz_json:get_ne_value(<<"credit_card">>, J) of
+                                      'undefined' -> kz_json:set_value(<<"credit_card">>, kz_json:new(), J);
                                       _Else -> J
                                   end
                           end
@@ -230,7 +230,7 @@ create_braintree_cards(JObj, Context, {Pass, Fail}) ->
             Context1 = crossbar_bindings:fold(<<"*.validate.braintree">>, Payload),
             case cb_context:response(Context1) of
                 {'ok', _} -> {[{<<"braintree">>, Context1}|Pass], Fail};
-                {'error', {_, _, Errors}} -> {Pass, wh_json:set_value(<<"braintree">>, Errors, Fail)}
+                {'error', {_, _, Errors}} -> {Pass, kz_json:set_value(<<"braintree">>, Errors, Fail)}
             end
     end.
 
@@ -242,38 +242,38 @@ create_braintree_cards(JObj, Context, {Pass, Fail}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_user(wh_json:object(), pos_integer(), cb_context:context(), {proplist(), wh_json:object()})
-                       -> {proplist(), wh_json:object()}.
+-spec create_user(kz_json:object(), pos_integer(), cb_context:context(), {proplist(), kz_json:object()})
+                       -> {proplist(), kz_json:object()}.
 create_user(JObj, Iteration, Context, {Pass, Fail}) ->
-    User = wh_json:get_value(<<"user">>, JObj, wh_json:new()),
-    Generators = [fun(J) -> wh_doc:set_id(J, kz_datamgr:get_uuid()) end
+    User = kz_json:get_value(<<"user">>, JObj, kz_json:new()),
+    Generators = [fun(J) -> kz_doc:set_id(J, kz_datamgr:get_uuid()) end
                   ,fun(J) when Iteration =:= 1 ->
                            %% ensure the first user is a admin
-                           wh_json:set_value(<<"priv_level">>, <<"admin">>, J);
+                           kz_json:set_value(<<"priv_level">>, <<"admin">>, J);
                       (J) -> J
                    end
                   ,fun(J) ->
-                           case wh_json:get_ne_value(<<"first_name">>, J) of
+                           case kz_json:get_ne_value(<<"first_name">>, J) of
                                'undefined' ->
-                                   wh_json:set_value(<<"first_name">>, <<"User">>, J);
+                                   kz_json:set_value(<<"first_name">>, <<"User">>, J);
                                _ -> J
                            end
                    end
                   ,fun(J) ->
-                           case wh_json:get_ne_value(<<"last_name">>, J) of
+                           case kz_json:get_ne_value(<<"last_name">>, J) of
                                'undefined' ->
-                                   wh_json:set_value(<<"last_name">>, wh_util:to_binary(Iteration), J);
+                                   kz_json:set_value(<<"last_name">>, kz_util:to_binary(Iteration), J);
                                _ -> J
                            end
                    end
                   ,fun(J) ->
-                           case wh_json:get_ne_value(<<"username">>, User) of
+                           case kz_json:get_ne_value(<<"username">>, User) of
                                'undefined' ->
-                                   Email = wh_json:get_ne_value(<<"email">>, J),
-                                   FirstName = wh_json:get_ne_value(<<"first_name">>, J),
-                                   LastName = wh_json:get_ne_value(<<"last_name">>, J),
+                                   Email = kz_json:get_ne_value(<<"email">>, J),
+                                   FirstName = kz_json:get_ne_value(<<"first_name">>, J),
+                                   LastName = kz_json:get_ne_value(<<"last_name">>, J),
                                    Username = generate_username(Email, FirstName, LastName),
-                                   wh_json:set_value(<<"username">>, Username, J);
+                                   kz_json:set_value(<<"username">>, Username, J);
                                _Else -> J
                            end
                    end
@@ -283,7 +283,7 @@ create_user(JObj, Iteration, Context, {Pass, Fail}) ->
     Context1 = crossbar_bindings:fold(<<"*.validate.users">>, Payload),
     case cb_context:response(Context1) of
         {'ok', _} -> {[{<<"users">>, cb_context:store(Context1, 'iteration', Iteration)}|Pass], Fail};
-        {'error', {_, _, Errors}} -> {Pass, wh_json:set_value(<<"users">>, Errors, Fail)}
+        {'error', {_, _, Errors}} -> {Pass, kz_json:set_value(<<"users">>, Errors, Fail)}
     end.
 
 %%--------------------------------------------------------------------
@@ -294,26 +294,26 @@ create_user(JObj, Iteration, Context, {Pass, Fail}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_device(wh_json:object(), pos_integer(), cb_context:context(), {proplist(), wh_json:object()})
-                         -> {proplist(), wh_json:object()}.
+-spec create_device(kz_json:object(), pos_integer(), cb_context:context(), {proplist(), kz_json:object()})
+                         -> {proplist(), kz_json:object()}.
 create_device(JObj, Iteration, Context, {Pass, Fail}) ->
-    Device = wh_json:get_value(<<"device">>, JObj, wh_json:new()),
-    Generators = [fun(J) -> wh_doc:set_id(J, kz_datamgr:get_uuid()) end
+    Device = kz_json:get_value(<<"device">>, JObj, kz_json:new()),
+    Generators = [fun(J) -> kz_doc:set_id(J, kz_datamgr:get_uuid()) end
                   ,fun(J) ->
                            User = get_context_jobj(<<"users">>, Pass),
-                           case wh_doc:id(User) of
+                           case kz_doc:id(User) of
                                'undefined' -> J;
-                               OwnerId -> wh_json:set_value(<<"owner_id">>, OwnerId, J)
+                               OwnerId -> kz_json:set_value(<<"owner_id">>, OwnerId, J)
                            end
                    end
                   ,fun(J) ->
-                           case wh_json:get_ne_value(<<"name">>, J) of
+                           case kz_json:get_ne_value(<<"name">>, J) of
                                'undefined' ->
                                    User = get_context_jobj(<<"users">>, Pass),
-                                   FirstName = wh_json:get_value(<<"first_name">>, User, <<"User">>),
-                                   LastName = wh_json:get_value(<<"last_name">>, User, wh_util:to_binary(Iteration)),
+                                   FirstName = kz_json:get_value(<<"first_name">>, User, <<"User">>),
+                                   LastName = kz_json:get_value(<<"last_name">>, User, kz_util:to_binary(Iteration)),
                                    Name = list_to_binary([FirstName, " ", LastName, "'s Device"]),
-                                   wh_json:set_value(<<"name">>, Name, J);
+                                   kz_json:set_value(<<"name">>, Name, J);
                                _ ->
                                    J
                            end
@@ -321,8 +321,8 @@ create_device(JObj, Iteration, Context, {Pass, Fail}) ->
                   ,fun(J) ->
                            case kz_device:sip_username(J) of
                                'undefined' ->
-                                   Strength = whapps_config:get_integer(?OB_CONFIG_CAT, <<"device_username_strength">>, 3),
-                                   kz_device:set_sip_username(J, list_to_binary(["user_", wh_util:rand_hex_binary(Strength)]));
+                                   Strength = kapps_config:get_integer(?OB_CONFIG_CAT, <<"device_username_strength">>, 3),
+                                   kz_device:set_sip_username(J, list_to_binary(["user_", kz_util:rand_hex_binary(Strength)]));
                                _ ->
                                    J
                            end
@@ -330,8 +330,8 @@ create_device(JObj, Iteration, Context, {Pass, Fail}) ->
                   ,fun(J) ->
                            case kz_device:sip_password(J) of
                                'undefined' ->
-                                   Strength = whapps_config:get_integer(?OB_CONFIG_CAT, <<"device_pwd_strength">>, 6),
-                                   kz_device:set_sip_password(J, wh_util:rand_hex_binary(Strength));
+                                   Strength = kapps_config:get_integer(?OB_CONFIG_CAT, <<"device_pwd_strength">>, 6),
+                                   kz_device:set_sip_password(J, kz_util:rand_hex_binary(Strength));
                                _ ->
                                    J
                            end
@@ -342,7 +342,7 @@ create_device(JObj, Iteration, Context, {Pass, Fail}) ->
     Context1 = crossbar_bindings:fold(<<"*.validate.devices">>, Payload),
     case cb_context:response(Context1) of
         {'ok', _} -> {[{<<"devices">>, cb_context:store(Context1, 'iteration', Iteration)}|Pass], Fail};
-        {'error', {_, _, Errors}} -> {Pass, wh_json:set_value(<<"devices">>, Errors, Fail)}
+        {'error', {_, _, Errors}} -> {Pass, kz_json:set_value(<<"devices">>, Errors, Fail)}
     end.
 
 %%--------------------------------------------------------------------
@@ -353,35 +353,35 @@ create_device(JObj, Iteration, Context, {Pass, Fail}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_vmbox(wh_json:object(), pos_integer(), cb_context:context(), {proplist(), wh_json:object()})
-                        -> {proplist(), wh_json:object()}.
+-spec create_vmbox(kz_json:object(), pos_integer(), cb_context:context(), {proplist(), kz_json:object()})
+                        -> {proplist(), kz_json:object()}.
 create_vmbox(JObj, Iteration, Context, {Pass, Fail}) ->
-    VMBox = wh_json:get_value(<<"vmbox">>, JObj, wh_json:new()),
-    Generators = [fun(J) -> wh_doc:set_id(J, kz_datamgr:get_uuid()) end
+    VMBox = kz_json:get_value(<<"vmbox">>, JObj, kz_json:new()),
+    Generators = [fun(J) -> kz_doc:set_id(J, kz_datamgr:get_uuid()) end
                   ,fun(J) ->
                            User = get_context_jobj(<<"users">>, Pass),
-                           case wh_doc:id(User) of
+                           case kz_doc:id(User) of
                                'undefined' -> J;
-                               OwnerId -> wh_json:set_value(<<"owner_id">>, OwnerId, J)
+                               OwnerId -> kz_json:set_value(<<"owner_id">>, OwnerId, J)
                            end
                    end
                   ,fun(J) ->
-                           case wh_json:get_ne_value(<<"mailbox">>, J) of
+                           case kz_json:get_ne_value(<<"mailbox">>, J) of
                                'undefined' ->
-                                   StartExten = whapps_config:get_integer(?OB_CONFIG_CAT, <<"default_vm_start_exten">>, 3 * ?MILLISECONDS_IN_SECOND),
-                                   wh_json:set_value(<<"mailbox">>, wh_util:to_binary(StartExten + Iteration), J);
+                                   StartExten = kapps_config:get_integer(?OB_CONFIG_CAT, <<"default_vm_start_exten">>, 3 * ?MILLISECONDS_IN_SECOND),
+                                   kz_json:set_value(<<"mailbox">>, kz_util:to_binary(StartExten + Iteration), J);
                                _ ->
                                    J
                            end
                    end
                   ,fun(J) ->
-                           case wh_json:get_ne_value(<<"name">>, J) of
+                           case kz_json:get_ne_value(<<"name">>, J) of
                                'undefined' ->
                                    User = get_context_jobj(<<"users">>, Pass),
-                                   FirstName = wh_json:get_value(<<"first_name">>, User, <<"User">>),
-                                   LastName = wh_json:get_value(<<"last_name">>, User, wh_util:to_binary(Iteration)),
+                                   FirstName = kz_json:get_value(<<"first_name">>, User, <<"User">>),
+                                   LastName = kz_json:get_value(<<"last_name">>, User, kz_util:to_binary(Iteration)),
                                    Name = list_to_binary([FirstName, " ", LastName, "'s Voicemail"]),
-                                   wh_json:set_value(<<"name">>, Name, J);
+                                   kz_json:set_value(<<"name">>, Name, J);
                                _ ->
                                    J
                            end
@@ -392,7 +392,7 @@ create_vmbox(JObj, Iteration, Context, {Pass, Fail}) ->
     Context1 = crossbar_bindings:fold(<<"*.validate.vmboxes">>, Payload),
     case cb_context:response(Context1) of
         {'ok', _} -> {[{<<"vmboxes">>, cb_context:store(Context1, 'iteration', Iteration)}|Pass], Fail};
-        {'error', {_, _, Errors}} -> {Pass, wh_json:set_value(<<"vmboxes">>, Errors, Fail)}
+        {'error', {_, _, Errors}} -> {Pass, kz_json:set_value(<<"vmboxes">>, Errors, Fail)}
     end.
 
 %%--------------------------------------------------------------------
@@ -403,31 +403,31 @@ create_vmbox(JObj, Iteration, Context, {Pass, Fail}) ->
 %% to the error json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_exten_callflow(wh_json:object(), pos_integer(), cb_context:context(), {proplist(), wh_json:object()})
-                                 -> {proplist(), wh_json:object()}.
+-spec create_exten_callflow(kz_json:object(), pos_integer(), cb_context:context(), {proplist(), kz_json:object()})
+                                 -> {proplist(), kz_json:object()}.
 create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
-    Callflow = wh_json:get_value(<<"callflow">>, JObj, wh_json:new()),
+    Callflow = kz_json:get_value(<<"callflow">>, JObj, kz_json:new()),
     Generators = [fun(J) ->
                           User = get_context_jobj(<<"users">>, Pass),
                           VMBox = get_context_jobj(<<"vmboxes">>, Pass),
-                          DefaultFlow = whapps_config:get_string(?OB_CONFIG_CAT, <<"default_extension_callflow">>
-                                                                     ,wh_util:to_binary(?DEFAULT_FLOW)),
-                          Flow = wh_json:decode(io_lib:format(DefaultFlow, [wh_doc:id(User)
-                                                                            ,wh_doc:id(VMBox)
+                          DefaultFlow = kapps_config:get_string(?OB_CONFIG_CAT, <<"default_extension_callflow">>
+                                                                     ,kz_util:to_binary(?DEFAULT_FLOW)),
+                          Flow = kz_json:decode(io_lib:format(DefaultFlow, [kz_doc:id(User)
+                                                                            ,kz_doc:id(VMBox)
                                                                            ])),
-                          wh_json:set_value(<<"flow">>, Flow, J)
+                          kz_json:set_value(<<"flow">>, Flow, J)
                   end
-                  ,fun(J) -> wh_doc:set_id(J, kz_datamgr:get_uuid()) end
+                  ,fun(J) -> kz_doc:set_id(J, kz_datamgr:get_uuid()) end
                   ,fun(J) ->
-                           case [Num || Num <- wh_json:get_ne_value(<<"numbers">>, J, [])
-                                            , not wh_util:is_empty(Num)]
+                           case [Num || Num <- kz_json:get_ne_value(<<"numbers">>, J, [])
+                                            , not kz_util:is_empty(Num)]
                            of
                                [] ->
-                                   StartExten = whapps_config:get_integer(?OB_CONFIG_CAT
+                                   StartExten = kapps_config:get_integer(?OB_CONFIG_CAT
                                                                           ,<<"default_callflow_start_exten">>
                                                                               ,2 * ?MILLISECONDS_IN_SECOND),
-                                   wh_json:set_value(<<"numbers">>, [wh_util:to_binary(StartExten + Iteration)], J);
-                               Numbers -> wh_json:set_value(<<"numbers">>, Numbers, J)
+                                   kz_json:set_value(<<"numbers">>, [kz_util:to_binary(StartExten + Iteration)], J);
+                               Numbers -> kz_json:set_value(<<"numbers">>, Numbers, J)
                            end
                    end
                  ],
@@ -436,7 +436,7 @@ create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
     Context1 = crossbar_bindings:fold(<<"*.validate.callflows">>, Payload),
     case cb_context:response(Context1) of
         {'ok', _} -> {[{<<"callflows">>, cb_context:store(Context1, 'iteration', Iteration)}|Pass], Fail};
-        {'error', {_, _, Errors}} -> {Pass, wh_json:set_value(<<"callflows">>, Errors, Fail)}
+        {'error', {_, _, Errors}} -> {Pass, kz_json:set_value(<<"callflows">>, Errors, Fail)}
     end.
 
 %%--------------------------------------------------------------------
@@ -448,10 +448,10 @@ create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec populate_new_account(proplist(), cb_context:context()) -> cb_context:context().
--spec populate_new_account(proplist(), ne_binary(), wh_json:object()) -> wh_json:object().
+-spec populate_new_account(proplist(), ne_binary(), kz_json:object()) -> kz_json:object().
 
 populate_new_account(Props, _) ->
-    Context = props:get_value(?WH_ACCOUNTS_DB, Props),
+    Context = props:get_value(?KZ_ACCOUNTS_DB, Props),
     Context1 = crossbar_bindings:fold(<<"*.execute.put.accounts">>, [cb_context:set_resp_status(Context, 'error')]),
     AccountDb = cb_context:account_db(Context1),
     AccountId = cb_context:account_id(Context1),
@@ -461,19 +461,19 @@ populate_new_account(Props, _) ->
                                           ,{fun cb_context:set_account_db/2, 'undefined'}
                                          ]);
         {'ok', _} ->
-            Results = populate_new_account(prepare_props(Props), AccountDb, wh_json:new()),
-            case wh_json:get_ne_value(<<"errors">>, Results) of
+            Results = populate_new_account(prepare_props(Props), AccountDb, kz_json:new()),
+            case kz_json:get_ne_value(<<"errors">>, Results) of
                 'undefined' ->
                     lager:debug("new account created ~s (~s)", [AccountId, AccountDb]),
                     notfy_new_account(cb_context:doc(Context1)),
-                    cb_context:set_doc(Context1, wh_json:set_value(<<"account_id">>, AccountId, Results));
+                    cb_context:set_doc(Context1, kz_json:set_value(<<"account_id">>, AccountId, Results));
                 Failures ->
                     lager:debug("account creation errors: ~p", [Failures]),
                     catch (crossbar_bindings:fold(<<"*.execute.delete.accounts">>, [Context1, AccountId])),
-                    Ctx2 = cb_context:setters(Context1, [{fun cb_context:set_doc/2, wh_json:delete_key(<<"owner_id">>, Results)}
+                    Ctx2 = cb_context:setters(Context1, [{fun cb_context:set_doc/2, kz_json:delete_key(<<"owner_id">>, Results)}
                                                          ,{fun cb_context:set_account_id/2, 'undefined'}
                                                          ,{fun cb_context:set_account_db/2, 'undefined'}
-                                                         ,{fun cb_context:set_resp_data/2, wh_json:new()}
+                                                         ,{fun cb_context:set_resp_data/2, kz_json:new()}
                                                         ]),
                     crossbar_util:response_invalid_data(Failures, Ctx2)
             end
@@ -484,7 +484,7 @@ populate_new_account([], _, Results) ->
 
 populate_new_account([{<<"phone_numbers">>, Context}|Props], AccountDb, Results) ->
     Number = cb_context:fetch(Context, 'number'),
-    AccountId = wh_util:format_account_id(AccountDb, 'raw'),
+    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
     Payload = [cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'error'}
                                             ,{fun cb_context:set_account_db/2, AccountDb}
                                             ,{fun cb_context:set_auth_account_id/2, AccountId}
@@ -498,11 +498,11 @@ populate_new_account([{<<"phone_numbers">>, Context}|Props], AccountDb, Results)
         {'ok', _} -> populate_new_account(Props, AccountDb, Results);
         {'error', {_, _, Errors}} ->
             populate_new_account(Props, AccountDb
-                                 ,wh_json:set_value([<<"errors">>, <<"phone_numbers">>, Number], Errors, Results))
+                                 ,kz_json:set_value([<<"errors">>, <<"phone_numbers">>, Number], Errors, Results))
     end;
 
 populate_new_account([{<<"braintree">>, Context}|Props], AccountDb, Results) ->
-    AccountId = wh_util:format_account_id(AccountDb, 'raw'),
+    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
     Payload = [cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'error'}
                                             ,{fun cb_context:set_account_db/2, AccountDb}
                                             ,{fun cb_context:set_account_id/2, AccountId}
@@ -515,7 +515,7 @@ populate_new_account([{<<"braintree">>, Context}|Props], AccountDb, Results) ->
         {'ok', _} -> populate_new_account(Props, AccountDb, Results);
         {'error', {_, _, Errors}} ->
             populate_new_account(Props, AccountDb
-                                 ,wh_json:set_value([<<"errors">>, <<"braintree">>], Errors, Results))
+                                 ,kz_json:set_value([<<"errors">>, <<"braintree">>], Errors, Results))
     end;
 
 populate_new_account([{Event, Context}|Props], AccountDb, Results) ->
@@ -527,22 +527,22 @@ populate_new_account([{Event, Context}|Props], AccountDb, Results) ->
     JObj = cb_context:doc(Context1),
     case cb_context:response(Context1) of
         {'ok', _} ->
-            case wh_json:get_value(<<"priv_level">>, JObj) of
+            case kz_json:get_value(<<"priv_level">>, JObj) of
                 <<"admin">> ->
                     populate_new_account(Props, AccountDb
-                                         ,wh_json:set_value(<<"owner_id">>, wh_doc:id(JObj), Results));
+                                         ,kz_json:set_value(<<"owner_id">>, kz_doc:id(JObj), Results));
                 _ ->
                     populate_new_account(Props, AccountDb, Results)
             end;
         {'error', {_, _, Errors}} ->
             populate_new_account(Props, AccountDb
-                                 ,wh_json:set_value([<<"errors">>, Event, wh_util:to_binary(Iteration)], Errors, Results))
+                                 ,kz_json:set_value([<<"errors">>, Event, kz_util:to_binary(Iteration)], Errors, Results))
     end.
 
 prepare_props(Props) ->
     lists:sort(fun({<<"braintree">>, _}, {_, _}) -> 'true';
                   (_, _) -> 'false'
-               end, proplists:delete(?WH_ACCOUNTS_DB, Props)).
+               end, proplists:delete(?KZ_ACCOUNTS_DB, Props)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -551,11 +551,11 @@ prepare_props(Props) ->
 %% context records for a specific key.
 %% @end
 %%--------------------------------------------------------------------
--spec get_context_jobj(ne_binary(), proplist()) -> wh_json:object().
+-spec get_context_jobj(ne_binary(), proplist()) -> kz_json:object().
 get_context_jobj(Key, Pass) ->
     case props:get_value(Key, Pass) of
         Context when is_tuple(Context) -> cb_context:doc(Context);
-        _ -> wh_json:new()
+        _ -> kz_json:new()
     end.
 
 %%--------------------------------------------------------------------
@@ -572,19 +572,19 @@ create_response(Context) ->
             crossbar_util:response_invalid_data(JObj, Context);
         AccountId ->
             Token = [{<<"account_id">>, AccountId}
-                     ,{<<"owner_id">>, wh_json:get_value(<<"owner_id">>, JObj)}
+                     ,{<<"owner_id">>, kz_json:get_value(<<"owner_id">>, JObj)}
                      ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
                      ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-                     ,{<<"method">>, wh_util:to_binary(?MODULE)}
+                     ,{<<"method">>, kz_util:to_binary(?MODULE)}
                     ],
-            case kz_datamgr:save_doc(?KZ_TOKEN_DB, wh_json:from_list(Token)) of
+            case kz_datamgr:save_doc(?KZ_TOKEN_DB, kz_json:from_list(Token)) of
                 {'ok', Doc} ->
-                    AuthToken = wh_doc:id(Doc),
+                    AuthToken = kz_doc:id(Doc),
                     lager:debug("created new local auth token ~s", [AuthToken]),
                     Context1 = cb_context:setters(Context, [{fun cb_context:set_auth_token/2, AuthToken}
                                                             ,{fun cb_context:set_auth_doc/2, Doc}
                                                            ]),
-                    crossbar_util:response(wh_json:set_value(<<"auth_token">>, AuthToken, JObj), Context1);
+                    crossbar_util:response(kz_json:set_value(<<"auth_token">>, AuthToken, JObj), Context1);
                 {'error', R} ->
                     lager:debug("could not create new local auth token, ~p", [R]),
                     crossbar_util:response('error', 'undefined', 400, JObj, Context)
@@ -597,24 +597,24 @@ create_response(Context) ->
 %% Attempt to create a token and save it to the token db
 %% @end
 %%--------------------------------------------------------------------
--spec notfy_new_account(wh_json:object()) -> 'ok'.
+-spec notfy_new_account(kz_json:object()) -> 'ok'.
 notfy_new_account(JObj) ->
     Notify = [{<<"Account-Name">>, kz_account:name(JObj)}
               ,{<<"Account-Realm">>, kz_account:realm(JObj)}
               ,{<<"Account-API-Key">>, kz_account:api_key(JObj)}
-              ,{<<"Account-ID">>, wh_doc:account_id(JObj)}
-              ,{<<"Account-DB">>, wh_doc:account_db(JObj)}
-              | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
+              ,{<<"Account-ID">>, kz_doc:account_id(JObj)}
+              ,{<<"Account-DB">>, kz_doc:account_db(JObj)}
+              | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
-    wapi_notifications:publish_new_account(Notify).
+    kapi_notifications:publish_new_account(Notify).
 
 -spec generate_username(api_binary(), api_binary(), api_binary()) ->
                                ne_binary().
 generate_username('undefined', 'undefined', _) ->
-    wh_util:rand_hex_binary(3);
+    kz_util:rand_hex_binary(3);
 generate_username('undefined', _, 'undefined') ->
-    wh_util:rand_hex_binary(3);
+    kz_util:rand_hex_binary(3);
 generate_username('undefined', <<FirstLetter:1/binary, _/binary>>, LastName) ->
-    <<FirstLetter/binary, (wh_util:to_binary(LastName))/binary>>;
+    <<FirstLetter/binary, (kz_util:to_binary(LastName))/binary>>;
 generate_username(Email, _, _) ->
     Email.

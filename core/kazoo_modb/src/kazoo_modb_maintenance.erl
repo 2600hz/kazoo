@@ -22,7 +22,7 @@
 -include("kazoo_modb.hrl").
 
 -spec delete_modbs(ne_binary()) -> 'ok' | 'no_return'.
--spec delete_modbs(ne_binary() | wh_year(), ne_binary() | wh_month()) -> 'ok' | 'no_return'.
+-spec delete_modbs(ne_binary() | kz_year(), ne_binary() | kz_month()) -> 'ok' | 'no_return'.
 delete_modbs(Period) ->
     Regex = <<"(2[0-9]{3})(0[1-9]|1[0-2])">>,
     case re:run(Period, Regex, [{'capture', 'all', 'binary'}]) of
@@ -33,9 +33,9 @@ delete_modbs(Period) ->
     end.
 
 delete_modbs(<<_/binary>> = Year, Month) ->
-    delete_modbs(wh_util:to_integer(Year), Month);
+    delete_modbs(kz_util:to_integer(Year), Month);
 delete_modbs(Year, <<_/binary>> = Month) ->
-    delete_modbs(Year, wh_util:to_integer(Month));
+    delete_modbs(Year, kz_util:to_integer(Month));
 delete_modbs(Year, Month) when is_integer(Year),
                                is_integer(Month),
                                Year > 2000 andalso Year < 2999,
@@ -45,12 +45,12 @@ delete_modbs(Year, Month) when is_integer(Year),
             io:format("request to delete the current MODB (~p~p) denied~n", [Year, Month]);
         {CurrYear, CurrMonth, _} when (CurrYear * 12 + CurrMonth) > (Year * 12 + Month) ->
             io:format("deleting all MODBs equal to or older than ~p/~p~n", [Year, Month]),
-            delete_older_modbs(Year, Month, whapps_util:get_all_account_mods());
+            delete_older_modbs(Year, Month, kapps_util:get_all_account_mods());
         {_CurrYear, _CurrMonth, _} ->
             io:format("request to delete future MODBs (~p~p) denied~n", [Year, Month])
     end.
 
--spec delete_older_modbs(wh_year(), wh_month(), ne_binaries()) -> 'no_return'.
+-spec delete_older_modbs(kz_year(), kz_month(), ne_binaries()) -> 'no_return'.
 delete_older_modbs(Year, Month, AccountModbs) ->
     Months = (Year * 12) + Month,
     _ = [delete_modb(AccountModb) || AccountModb <- AccountModbs, should_delete(AccountModb, Months)],
@@ -63,7 +63,7 @@ should_delete(AccountModb, Months) ->
 
 -spec delete_modb(ne_binary()) -> 'ok'.
 delete_modb(?MATCH_MODB_SUFFIX_UNENCODED(_,_,_) = AccountModb) ->
-    delete_modb(wh_util:format_account_db(AccountModb));
+    delete_modb(kz_util:format_account_db(AccountModb));
 delete_modb(?MATCH_MODB_SUFFIX_ENCODED(_,_,_) = AccountModb) ->
     'ok' = kz_datamgr:db_archive(AccountModb),
     _Deleted = kz_datamgr:db_delete(AccountModb),
@@ -73,25 +73,25 @@ delete_modb(?MATCH_MODB_SUFFIX_ENCODED(_,_,_) = AccountModb) ->
 -spec archive_modbs() -> 'no_return'.
 -spec archive_modbs(text()) -> 'no_return'.
 archive_modbs() ->
-    do_archive_modbs(whapps_util:get_all_account_mods(), 'undefined').
+    do_archive_modbs(kapps_util:get_all_account_mods(), 'undefined').
 archive_modbs(AccountId) ->
-    do_archive_modbs(whapps_util:get_account_mods(AccountId), wh_util:to_binary(AccountId)).
+    do_archive_modbs(kapps_util:get_account_mods(AccountId), kz_util:to_binary(AccountId)).
 
 -spec do_archive_modbs(ne_binaries(), api_binary()) -> 'no_return'.
 do_archive_modbs(MODbs, AccountId) ->
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     _ = [kazoo_modb:maybe_archive_modb(MODb) || MODb <- MODbs],
-    Keep = whapps_config:get_integer(?CONFIG_CAT, <<"active_modbs">>, 6),
+    Keep = kapps_config:get_integer(?CONFIG_CAT, <<"active_modbs">>, 6),
     From = case AccountId =:= 'undefined' of 'true' -> <<"all">>; 'false' -> AccountId end,
     io:format("archived ~s MODbs more than ~b months old~n", [From, Keep]),
     'no_return'.
 
 -spec verify_rollups() -> 'ok'.
 -spec verify_rollups(ne_binary()) -> 'ok'.
--spec verify_rollups(ne_binary(), wh_year(), wh_month()) -> 'ok'.
--spec verify_rollups(ne_binary(), wh_year(), wh_month(), ne_binary(), wh_json:object()) -> 'ok'.
+-spec verify_rollups(ne_binary(), kz_year(), kz_month()) -> 'ok'.
+-spec verify_rollups(ne_binary(), kz_year(), kz_month(), ne_binary(), kz_json:object()) -> 'ok'.
 verify_rollups() ->
-    Accounts = whapps_util:get_all_accounts(),
+    Accounts = kapps_util:get_all_accounts(),
     Total = erlang:length(Accounts),
     _ = lists:foldr(fun verify_db_rollup/2, {1, Total}, Accounts),
     'ok'.
@@ -110,7 +110,7 @@ verify_rollups(Account) ->
     verify_rollups(Account, Y, M).
 
 verify_rollups(AccountDb, Year, Month) ->
-    AccountId = wh_util:format_account_id(AccountDb, 'raw'),
+    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
     case kazoo_modb:open_doc(AccountDb, <<"monthly_rollup">>, Year, Month) of
         {'ok', JObj} ->
             verify_rollups(AccountDb, Year, Month, AccountId, JObj);
@@ -122,8 +122,8 @@ verify_rollups(AccountDb, Year, Month) ->
 
 verify_rollups(AccountDb, Year, Month, AccountId, JObj) ->
     Balance = wht_util:previous_balance(AccountDb
-                                        ,wh_util:to_binary(Year)
-                                        ,wh_util:pad_month(Month)
+                                        ,kz_util:to_binary(Year)
+                                        ,kz_util:pad_month(Month)
                                        ),
     case rollup_balance(JObj) of
         Balance ->
@@ -138,12 +138,12 @@ verify_rollups(AccountDb, Year, Month, AccountId, JObj) ->
 
 -spec fix_rollup(ne_binary()) -> 'ok'.
 fix_rollup(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountId = kz_util:format_account_id(Account, 'raw'),
     {Y, M, _} = erlang:date(),
     {PYear, PMonth} =  kazoo_modb_util:prev_year_month(Y, M),
     Balance = wht_util:previous_balance(AccountId
-                                        ,wh_util:to_binary(PYear)
-                                        ,wh_util:pad_month(PMonth)
+                                        ,kz_util:to_binary(PYear)
+                                        ,kz_util:pad_month(PMonth)
                                        ),
     AccountMODb = kazoo_modb:get_modb(AccountId),
     lager:debug("rolling up ~p credits to ~s", [Balance, AccountMODb]),
@@ -151,7 +151,7 @@ fix_rollup(Account) ->
 
 -spec rollup_accounts() -> 'ok'.
 rollup_accounts() ->
-    Accounts = whapps_util:get_all_accounts(),
+    Accounts = kapps_util:get_all_accounts(),
     Total = length(Accounts),
     _ = lists:foldr(fun rollup_account_fold/2, {1, Total}, Accounts),
     'ok'.
@@ -167,7 +167,7 @@ rollup_account_fold(AccountDb, {Current, Total}) ->
 
 -spec rollup_account(ne_binary()) -> 'ok'.
 rollup_account(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountId = kz_util:format_account_id(Account, 'raw'),
     Balance = wht_util:get_balance_from_account(AccountId, []),
     rollup_account(AccountId, Balance).
 
@@ -179,10 +179,10 @@ rollup_account(AccountId, Balance) ->
                ),
     wht_util:rollup(AccountMODb, Balance).
 
--spec rollup_balance(wh_json:object()) -> integer().
+-spec rollup_balance(kz_json:object()) -> integer().
 rollup_balance(JObj) ->
-    Balance = wh_json:get_integer_value(<<"pvt_amount">>, JObj, 0),
-    case wh_doc:type(JObj) of
+    Balance = kz_json:get_integer_value(<<"pvt_amount">>, JObj, 0),
+    case kz_doc:type(JObj) of
         <<"credit">> -> Balance;
         <<"debit">> -> Balance * -1
     end.

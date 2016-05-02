@@ -26,7 +26,7 @@
         ]).
 
 -include("fax.hrl").
--include_lib("whistle/include/wapi_conf.hrl").
+-include_lib("kazoo/include/kapi_conf.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -87,10 +87,10 @@ start_link() ->
                                       ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
                                      ], []).
 
--spec new_request(wh_json:object(), wh_proplist()) -> sup_startchild_ret().
+-spec new_request(kz_json:object(), kz_proplist()) -> sup_startchild_ret().
 new_request(JObj, _Props) ->
-    'true' = wapi_fax:req_v(JObj),
-    fax_requests_sup:new(whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)), JObj).
+    'true' = kapi_fax:req_v(JObj),
+    fax_requests_sup:new(kapps_call:from_json(kz_json:get_value(<<"Call">>, JObj)), JObj).
 
 %%%===================================================================
 %%% gen_server callbacks

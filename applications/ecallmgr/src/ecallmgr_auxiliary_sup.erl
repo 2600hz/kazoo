@@ -11,7 +11,7 @@
 -behaviour(supervisor).
 
 -include("ecallmgr.hrl").
--include_lib("whistle/include/wh_databases.hrl").
+-include_lib("kazoo/include/kz_databases.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -25,7 +25,7 @@
                                                 ]
                             }
                            ]).
--define(CACHE_UTIL_PROPS, [{'origin_bindings', [[{'db', ?WH_CONFIG_DB}]
+-define(CACHE_UTIL_PROPS, [{'origin_bindings', [[{'db', ?KZ_CONFIG_DB}]
                                                 ,[{'type', <<"media">>}]
                                                ]
                            }

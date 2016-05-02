@@ -218,7 +218,7 @@ send_message(
 %% @doc  Generates an "unique" and valid message Id
 -spec message_id() -> binary().
 message_id() ->
-  {_, _, MicroSecs} = wh_util:now(),
+  {_, _, MicroSecs} = kz_util:now(),
   Secs = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
   First = Secs rem 65536,
   Last = MicroSecs rem 65536,

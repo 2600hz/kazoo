@@ -1,0 +1,13 @@
+{application, kazoo
+ ,[
+   {description, "Kazoo Helpers"}
+   ,{vsn, "4.0.0"}
+   ,{modules, []}
+   ,{registered, [ ]}
+   ,{applications, [ kernel
+                   , stdlib
+                   , crypto
+
+                   , lager
+                   ]}
+  ]}.

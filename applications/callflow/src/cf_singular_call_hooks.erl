@@ -48,10 +48,10 @@
 %% and if so, then we know the call should be hooked.
 %% We then can start the event listener, which will send init and end hooks.
 %%
-%% @spec maybe_hook_call(whapps_call:call()) -> ok.
+%% @spec maybe_hook_call(kapps_call:call()) -> ok.
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_hook_call(whapps_call:call()) -> boolean().
+-spec maybe_hook_call(kapps_call:call()) -> boolean().
 maybe_hook_call(Call) ->
     %% Never invoke anything if we are disabled
     case should_hook(Call) of
@@ -68,32 +68,32 @@ maybe_hook_call(Call) ->
 %% Sends an initial request signifying the start of this entire conversation
 %% in a hook to a preconfigured URL.
 %%
-%% @spec send_init_hook(whapps_call:call()) -> boolean().
+%% @spec send_init_hook(kapps_call:call()) -> boolean().
 %% @end
 %%--------------------------------------------------------------------
--spec send_init_hook(whapps_call:call()) -> boolean().
+-spec send_init_hook(kapps_call:call()) -> boolean().
 send_init_hook(Call) ->
     lager:debug("===CALL STARTED===", []),
     lager:debug("Event: init", []),
-    lager:debug("Call-ID: ~s", [whapps_call:call_id_direct(Call)]),
-    lager:debug("To: ~s", [knm_converters:normalize(whapps_call:to_user(Call))]),
-    lager:debug("From: ~s", [knm_converters:normalize(whapps_call:caller_id_number(Call))]),
+    lager:debug("Call-ID: ~s", [kapps_call:call_id_direct(Call)]),
+    lager:debug("To: ~s", [knm_converters:normalize(kapps_call:to_user(Call))]),
+    lager:debug("From: ~s", [knm_converters:normalize(kapps_call:caller_id_number(Call))]),
     lager:debug("Inception: ~s", [get_inception(Call)]),
     lager:debug("================", []),
 
     Prop = [{<<"Event">>, <<"init">>}
-            ,{<<"Call-ID">>, whapps_call:call_id(Call)}
-            ,{<<"To">>, knm_converters:normalize(whapps_call:to_user(Call))}
-            ,{<<"From">>, knm_converters:normalize(whapps_call:caller_id_number(Call))}
+            ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+            ,{<<"To">>, knm_converters:normalize(kapps_call:to_user(Call))}
+            ,{<<"From">>, knm_converters:normalize(kapps_call:caller_id_number(Call))}
             ,{<<"Inception">>, get_inception(Call)}
             ],
 
-    JObj = wh_json:from_list(props:filter_undefined(Prop)),
+    JObj = kz_json:from_list(props:filter_undefined(Prop)),
     URI = binary_to_list(get_hook_url()),
 
     case kz_http:post(URI
                      ,[{"Content-Type", "application/json"}]
-                     ,wh_json:encode(JObj)
+                     ,kz_json:encode(JObj)
                      ,[{'connect_timeout', 5000}, {'timeout', 5000}]
                     )
     of
@@ -110,46 +110,46 @@ send_init_hook(Call) ->
 %% Sends a request signifying the end of this entire conversation in a
 %% hook to a preconfigured URL.
 %%
-%% @spec send_end_hook(whapps_call:call(), wh_json:object()) -> boolean().
+%% @spec send_end_hook(kapps_call:call(), kz_json:object()) -> boolean().
 %% @end
 %%--------------------------------------------------------------------
--spec send_end_hook(whapps_call:call(), wh_json:object()) -> boolean().
+-spec send_end_hook(kapps_call:call(), kz_json:object()) -> boolean().
 send_end_hook(Call, Event) ->
     lager:debug("===CALL ENDED===", []),
     lager:debug("Event: end", []),
-    lager:debug("Call-ID: ~s", [whapps_call:call_id_direct(Call)]),
-    lager:debug("To: ~s", [knm_converters:normalize(whapps_call:to_user(Call))]),
-    lager:debug("From: ~s", [knm_converters:normalize(whapps_call:caller_id_number(Call))]),
+    lager:debug("Call-ID: ~s", [kapps_call:call_id_direct(Call)]),
+    lager:debug("To: ~s", [knm_converters:normalize(kapps_call:to_user(Call))]),
+    lager:debug("From: ~s", [knm_converters:normalize(kapps_call:caller_id_number(Call))]),
     lager:debug("Inception: ~s", [get_inception(Call)]),
-    lager:debug("CallDuration: ~s", [wh_json:get_value(<<"Duration-Seconds">>, Event)]),
-    lager:debug("HangupReason: ~s", [wh_json:get_value(<<"Hangup-Cause">>, Event)]),
-    lager:debug("Disposition: ~s", [wh_json:get_value(<<"Disposition">>, Event)]),
+    lager:debug("CallDuration: ~s", [kz_json:get_value(<<"Duration-Seconds">>, Event)]),
+    lager:debug("HangupReason: ~s", [kz_json:get_value(<<"Hangup-Cause">>, Event)]),
+    lager:debug("Disposition: ~s", [kz_json:get_value(<<"Disposition">>, Event)]),
     lager:debug("================", []),
 
-    ReferredBy = whapps_call:custom_channel_var(<<"Referred-By">>, Call),
+    ReferredBy = kapps_call:custom_channel_var(<<"Referred-By">>, Call),
     CallID =
         case ReferredBy of
-            'undefined' -> whapps_call:call_id_direct(Call);
+            'undefined' -> kapps_call:call_id_direct(Call);
             % if we were a forwarded call, refer to the original call id (bridge id)
-            _ -> whapps_call:custom_channel_var(<<"Bridge-ID">>, Call)
+            _ -> kapps_call:custom_channel_var(<<"Bridge-ID">>, Call)
         end,
 
     Prop = [{<<"Event">>, <<"destroy">>}
             ,{<<"Call-ID">>, CallID}
-            ,{<<"To">>, knm_converters:normalize(whapps_call:to_user(Call))}
-            ,{<<"From">>, knm_converters:normalize(whapps_call:caller_id_number(Call))}
+            ,{<<"To">>, knm_converters:normalize(kapps_call:to_user(Call))}
+            ,{<<"From">>, knm_converters:normalize(kapps_call:caller_id_number(Call))}
             ,{<<"Inception">>, get_inception(Call)}
-            ,{<<"Duration-Seconds">>, wh_json:get_value(<<"Duration-Seconds">>, Event)}
-            ,{<<"Hangup-Cause">>, wh_json:get_value(<<"Hangup-Cause">>, Event)}
-            ,{<<"Disposition">>, wh_json:get_value(<<"Disposition">>, Event)}
+            ,{<<"Duration-Seconds">>, kz_json:get_value(<<"Duration-Seconds">>, Event)}
+            ,{<<"Hangup-Cause">>, kz_json:get_value(<<"Hangup-Cause">>, Event)}
+            ,{<<"Disposition">>, kz_json:get_value(<<"Disposition">>, Event)}
            ],
 
-    JObj = wh_json:from_list(props:filter_undefined(Prop)),
+    JObj = kz_json:from_list(props:filter_undefined(Prop)),
     URI = binary_to_list(get_hook_url()),
 
     case kz_http:post(URI
                      ,[{"Content-Type", "application/json"}]
-                     ,wh_json:encode(JObj)
+                     ,kz_json:encode(JObj)
                      ,[{'connect_timeout', 5000}, {'timeout', 5000}]
                     )
     of
@@ -166,7 +166,7 @@ send_end_hook(Call, Event) ->
 %% Checks if there is a non-empty hook url and that the call is singular (or a transfer)
 %% @end
 %%--------------------------------------------------------------------
--spec should_hook(whapps_call:call()) -> boolean().
+-spec should_hook(kapps_call:call()) -> boolean().
 should_hook(Call) ->
     is_enabled() andalso call_is_singular(Call).
 
@@ -182,7 +182,7 @@ should_hook(Call) ->
 %%--------------------------------------------------------------------
 -spec is_enabled() -> boolean().
 is_enabled() ->
-    (not wh_util:is_empty(get_hook_url())).
+    (not kz_util:is_empty(get_hook_url())).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -191,14 +191,14 @@ is_enabled() ->
 %% has an existing bridge. We also check the presence of referredby and
 %% want to send the hook if it is a call transfer
 %%
-%% @spec call_is_singular(whapps_call:call()) -> boolean().
+%% @spec call_is_singular(kapps_call:call()) -> boolean().
 %% @end
 %%--------------------------------------------------------------------
--spec call_is_singular(whapps_call:call()) -> boolean().
+-spec call_is_singular(kapps_call:call()) -> boolean().
 call_is_singular(Call) ->
-    BridgeID = whapps_call:custom_channel_var(<<"Bridge-ID">>, Call),
-    ReferredBy = whapps_call:custom_channel_var(<<"Referred-By">>, Call),
-    CallID = whapps_call:call_id_direct(Call),
+    BridgeID = kapps_call:custom_channel_var(<<"Bridge-ID">>, Call),
+    ReferredBy = kapps_call:custom_channel_var(<<"Referred-By">>, Call),
+    CallID = kapps_call:call_id_direct(Call),
     (BridgeID =:= 'undefined')
         orelse (BridgeID =:= CallID)
         orelse (ReferredBy =/= 'undefined').
@@ -206,14 +206,14 @@ call_is_singular(Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Gets where the call was started. If whapps_call returns undefined, it was on net.
+%% Gets where the call was started. If kapps_call returns undefined, it was on net.
 %%
-%% @spec get_inception(whapps_call:call()) -> ne_binary().
+%% @spec get_inception(kapps_call:call()) -> ne_binary().
 %% @end
 %%--------------------------------------------------------------------
--spec get_inception(whapps_call:call()) -> ne_binary().
+-spec get_inception(kapps_call:call()) -> ne_binary().
 get_inception(Call) ->
-    case whapps_call:inception(Call) of
+    case kapps_call:inception(Call) of
         'undefined' -> <<"onnet">>;
         _Else -> <<"offnet">>
     end.
@@ -228,4 +228,4 @@ get_inception(Call) ->
 %%--------------------------------------------------------------------
 -spec get_hook_url() -> ne_binary().
 get_hook_url() ->
-    whapps_config:get_binary(?CF_CONFIG_CAT, <<"singular_call_hook_url">>, <<"">>).
+    kapps_config:get_binary(?CF_CONFIG_CAT, <<"singular_call_hook_url">>, <<"">>).

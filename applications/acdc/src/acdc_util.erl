@@ -35,7 +35,7 @@
 
 -spec queue_presence_update(ne_binary(), ne_binary()) -> 'ok'.
 queue_presence_update(AcctId, QueueId) ->
-    case wapi_acdc_queue:queue_size(AcctId, QueueId) of
+    case kapi_acdc_queue:queue_size(AcctId, QueueId) of
         0 -> presence_update(AcctId, QueueId, ?PRESENCE_GREEN);
         N when is_integer(N), N > 0 -> presence_update(AcctId, QueueId, ?PRESENCE_RED_FLASH);
         _N -> lager:debug("queue size for ~s(~s): ~p", [QueueId, AcctId, _N])
@@ -54,12 +54,12 @@ presence_update(AcctId, PresenceId, State) ->
     presence_update(AcctId, PresenceId, State, 'undefined').
 presence_update(AcctId, PresenceId, State, CallId) ->
     {'ok', AcctDoc} = kz_account:fetch(AcctId),
-    To = <<PresenceId/binary, "@", (wh_json:get_value(<<"realm">>, AcctDoc))/binary>>,
+    To = <<PresenceId/binary, "@", (kz_json:get_value(<<"realm">>, AcctDoc))/binary>>,
 
     lager:debug("sending presence update '~s' to '~s'", [State, To]),
-    whapps_call_command:presence(State, To, CallId).
+    kapps_call_command:presence(State, To, CallId).
 
--spec send_cdr(ne_binary(), wh_json:object()) -> 'ok'.
+-spec send_cdr(ne_binary(), kz_json:object()) -> 'ok'.
 send_cdr(Url, JObj) ->
     send_cdr(Url, JObj, 3).
 send_cdr('undefined', _JObj, _Retries) ->
@@ -67,9 +67,9 @@ send_cdr('undefined', _JObj, _Retries) ->
 send_cdr(Url, _JObj, 0) ->
     lager:debug("trying to send cdr to ~s failed retry count", [Url]);
 send_cdr(Url, JObj, Retries) ->
-    case kz_http:post(wh_util:to_list(Url)
+    case kz_http:post(kz_util:to_list(Url)
                      ,[{"Content-Type", "application/json"}]
-                     , wh_json:encode(JObj)
+                     , kz_json:encode(JObj)
                      ,[{'timeout', 1000}]
                     ) of
         {'ok', _StatusCode, _RespHeaders, _RespBody} ->
@@ -80,55 +80,55 @@ send_cdr(Url, JObj, Retries) ->
     end.
 
 %% Returns the list of agents configured for the queue
--spec agents_in_queue(ne_binary(), ne_binary()) -> wh_json:keys().
+-spec agents_in_queue(ne_binary(), ne_binary()) -> kz_json:keys().
 agents_in_queue(AcctDb, QueueId) ->
     case kz_datamgr:get_results(AcctDb, <<"queues/agents_listing">>, [{'key', QueueId}]) of
         {'ok', []} -> [];
         {'error', _E} -> lager:debug("failed to lookup agents for ~s: ~p", [QueueId, _E]), [];
-        {'ok', As} -> [wh_json:get_value(<<"value">>, A) || A <- As]
+        {'ok', As} -> [kz_json:get_value(<<"value">>, A) || A <- As]
     end.
 
--spec agent_devices(ne_binary(), ne_binary()) -> wh_json:objects().
+-spec agent_devices(ne_binary(), ne_binary()) -> kz_json:objects().
 agent_devices(AcctDb, AgentId) ->
     case kz_datamgr:get_results(AcctDb, <<"cf_attributes/owned">>, [{'key', [AgentId, <<"device">>]}
                                                                    ,'include_docs'
                                                                   ])
     of
-        {'ok', Devices} -> [wh_json:get_value(<<"doc">>, Dev) || Dev <- Devices];
+        {'ok', Devices} -> [kz_json:get_value(<<"doc">>, Dev) || Dev <- Devices];
         {'error', _} -> []
     end.
 
--spec get_endpoints(whapps_call:call(), ne_binary() | kz_datamgr:get_results_return()) ->
-                           wh_json:objects().
+-spec get_endpoints(kapps_call:call(), ne_binary() | kz_datamgr:get_results_return()) ->
+                           kz_json:objects().
 get_endpoints(Call, ?NE_BINARY = AgentId) ->
     cf_user:get_endpoints(AgentId, [], Call).
 
 %% Handles subscribing/unsubscribing from call events
--spec bind_to_call_events(api_binary() | {api_binary(), any()} | whapps_call:call()) -> 'ok'.
+-spec bind_to_call_events(api_binary() | {api_binary(), any()} | kapps_call:call()) -> 'ok'.
 bind_to_call_events(Call) ->
     bind_to_call_events(Call, self()).
 
--spec bind_to_call_events(api_binary() | {api_binary(), any()} | whapps_call:call(), pid()) -> 'ok'.
+-spec bind_to_call_events(api_binary() | {api_binary(), any()} | kapps_call:call(), pid()) -> 'ok'.
 bind_to_call_events('undefined', _) -> 'ok';
 bind_to_call_events(?NE_BINARY = CallId, Pid) ->
     gen_listener:add_binding(Pid, 'call', [{'callid', CallId}]);
 bind_to_call_events({CallId, _}, Pid) -> bind_to_call_events(CallId, Pid);
-bind_to_call_events(Call, Pid) -> bind_to_call_events(whapps_call:call_id(Call), Pid).
+bind_to_call_events(Call, Pid) -> bind_to_call_events(kapps_call:call_id(Call), Pid).
 
--spec unbind_from_call_events(api_binary() | {api_binary(), any()} | whapps_call:call()) -> 'ok'.
+-spec unbind_from_call_events(api_binary() | {api_binary(), any()} | kapps_call:call()) -> 'ok'.
 unbind_from_call_events(Call) ->
     unbind_from_call_events(Call, self()).
 
--spec unbind_from_call_events(api_binary() | {api_binary(), any()} | whapps_call:call(), pid()) -> 'ok'.
+-spec unbind_from_call_events(api_binary() | {api_binary(), any()} | kapps_call:call(), pid()) -> 'ok'.
 unbind_from_call_events('undefined', _Pid) -> 'ok';
 unbind_from_call_events(?NE_BINARY = CallId, Pid) ->
     gen_listener:rm_binding(Pid, 'call', [{'callid', CallId}]);
 unbind_from_call_events({CallId, _}, Pid) -> unbind_from_call_events(CallId, Pid);
-unbind_from_call_events(Call, Pid) -> unbind_from_call_events(whapps_call:call_id(Call), Pid).
+unbind_from_call_events(Call, Pid) -> unbind_from_call_events(kapps_call:call_id(Call), Pid).
 
 -spec proc_id() -> ne_binary().
 -spec proc_id(pid()) -> ne_binary().
 -spec proc_id(pid(), atom() | ne_binary()) -> ne_binary().
 proc_id() -> proc_id(self()).
 proc_id(Pid) -> proc_id(Pid, node()).
-proc_id(Pid, Node) -> list_to_binary([wh_util:to_binary(Node), "-", pid_to_list(Pid)]).
+proc_id(Pid, Node) -> list_to_binary([kz_util:to_binary(Node), "-", pid_to_list(Pid)]).

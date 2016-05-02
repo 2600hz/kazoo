@@ -1,5 +1,5 @@
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_log.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo/include/kz_log.hrl").
 
 -type bt_result() :: {'ok', any()}.
 -type bt_xml() :: any(). %%  record_proplist() | braintree_util:char_to_bin_res().
@@ -14,7 +14,7 @@
                               'io_fault' |
                               'api_error'.
 
--define(BT_DEBUG, whapps_config:get_is_true(<<"braintree">>, <<"debug">>, 'false')).
+-define(BT_DEBUG, kapps_config:get_is_true(<<"braintree">>, <<"debug">>, 'false')).
 
 -define(BT_XML_PROLOG, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>").
 -define(BT_API_VERSION, 2).

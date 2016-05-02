@@ -39,7 +39,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec make_doc_xml(wh_proplist(), atom()) -> char_to_bin_res().
+-spec make_doc_xml(kz_proplist(), atom()) -> char_to_bin_res().
 make_doc_xml(Props, Root) ->
     Xml = xmerl:export_simple([doc_xml_simple(Props, Root)], 'xmerl_xml'
                               ,[{'prolog', ?BT_XML_PROLOG}]
@@ -65,16 +65,16 @@ props_to_xml([{K, Attr, [{_, _}|_]=V}|T], Xml) ->
 props_to_xml([{K, Attr, [{_, _, _}|_]=V}|T], Xml) ->
     props_to_xml(T, [{K, Attr, props_to_xml(V, [])}|Xml]);
 props_to_xml([{K, Attr, V}|T], Xml) when is_boolean(V) ->
-    props_to_xml(T, [{K, [{'type', "boolean"}|Attr], [wh_util:to_list(V)]}|Xml]);
+    props_to_xml(T, [{K, [{'type', "boolean"}|Attr], [kz_util:to_list(V)]}|Xml]);
 props_to_xml([{K, Attr, V}|T], Xml) ->
-    props_to_xml(T, [{K, Attr, [wh_util:to_list(V)]}|Xml]);
+    props_to_xml(T, [{K, Attr, [kz_util:to_list(V)]}|Xml]);
 
 props_to_xml([{K, [{_, _}|_]=V}|T], Xml) ->
     props_to_xml(T, [{K, props_to_xml(V, [])}|Xml]);
 props_to_xml([{K, V}|T], Xml) when is_boolean(V) ->
-    props_to_xml(T, [{K, [{'type', "boolean"}], [wh_util:to_list(V)]}|Xml]);
+    props_to_xml(T, [{K, [{'type', "boolean"}], [kz_util:to_list(V)]}|Xml]);
 props_to_xml([{K, V}|T], Xml) ->
-    props_to_xml(T, [{K, [wh_util:to_list(V)]}|Xml]).
+    props_to_xml(T, [{K, [kz_util:to_list(V)]}|Xml]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -82,13 +82,13 @@ props_to_xml([{K, V}|T], Xml) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec bt_error_to_json(bt_error()) -> wh_json:object().
+-spec bt_error_to_json(bt_error()) -> kz_json:object().
 bt_error_to_json(BtError) ->
     Props = [{<<"code">>, BtError#bt_error.code}
              ,{<<"message">>, BtError#bt_error.message}
              ,{<<"attribute">>, BtError#bt_error.attribute}
             ],
-    wh_json:from_list(props:filter_undefined(Props)).
+    kz_json:from_list(props:filter_undefined(Props)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -96,7 +96,7 @@ bt_error_to_json(BtError) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec bt_verification_to_json(bt_verification()) -> wh_json:object().
+-spec bt_verification_to_json(bt_verification()) -> kz_json:object().
 bt_verification_to_json(BtVerification) ->
     Props = [{<<"verification_status">>, BtVerification#bt_verification.verification_status}
              ,{<<"processor_response_code">>, BtVerification#bt_verification.processor_response_code}
@@ -107,7 +107,7 @@ bt_verification_to_json(BtVerification) ->
              ,{<<"street_response_code">>, BtVerification#bt_verification.street_response_code}
              ,{<<"gateway_rejection_reason">>, BtVerification#bt_verification.gateway_rejection_reason}
             ],
-    wh_json:from_list(props:filter_undefined(Props)).
+    kz_json:from_list(props:filter_undefined(Props)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -115,13 +115,13 @@ bt_verification_to_json(BtVerification) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec bt_api_error_to_json(bt_api_error()) -> wh_json:object().
+-spec bt_api_error_to_json(bt_api_error()) -> kz_json:object().
 bt_api_error_to_json(BtApiError) ->
     Props = [{<<"errors">>, [bt_error_to_json(Error) || Error <- BtApiError#bt_api_error.errors]}
              ,{<<"verification">>, bt_verification_to_json(BtApiError#bt_api_error.verification)}
              ,{<<"message">>, BtApiError#bt_api_error.message}
             ],
-    wh_json:from_list(props:filter_undefined(Props)).
+    kz_json:from_list(props:filter_undefined(Props)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -133,7 +133,7 @@ bt_api_error_to_json(BtApiError) ->
 error_no_payment_token() ->
     Error = <<"No credit card found">>,
     lager:debug("~s", [Error]),
-    throw({'no_payment_token', wh_json:from_list([{<<"no_payment_token">>, Error}])}).
+    throw({'no_payment_token', kz_json:from_list([{<<"no_payment_token">>, Error}])}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -145,7 +145,7 @@ error_no_payment_token() ->
 error_authentication() ->
     Error = <<"Failed to authenticate with the card processor">>,
     lager:debug("~s", [Error]),
-    throw({'authentication', wh_json:from_list([{<<"authentication">>, Error}])}).
+    throw({'authentication', kz_json:from_list([{<<"authentication">>, Error}])}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -157,7 +157,7 @@ error_authentication() ->
 error_authorization() ->
     Error = <<"Failed to authorize with the card processor">>,
     lager:debug("~s", [Error]),
-    throw({'authorization', wh_json:from_list([{<<"authorization">>, Error}])}).
+    throw({'authorization', kz_json:from_list([{<<"authorization">>, Error}])}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -169,7 +169,7 @@ error_authorization() ->
 error_not_found(Object) ->
     Error = <<Object/binary, " not found">>,
     lager:debug("~s", [Error]),
-    throw({'not_found', wh_json:from_list([{<<"not_found">>, Error}])}).
+    throw({'not_found', kz_json:from_list([{<<"not_found">>, Error}])}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -181,7 +181,7 @@ error_not_found(Object) ->
 error_upgrade_required() ->
     Error = <<"Card processor requires API library upgrade">>,
     lager:warning("~s", [Error]),
-    throw({'upgrade_required', wh_json:from_list([{<<"upgrade_required">>, Error}])}).
+    throw({'upgrade_required', kz_json:from_list([{<<"upgrade_required">>, Error}])}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -193,7 +193,7 @@ error_upgrade_required() ->
 error_server_error() ->
     Error = <<"Card processor server error">>,
     lager:debug("~s", [Error]),
-    throw({'server_error', wh_json:from_list([{<<"server_error">>, Error}])}).
+    throw({'server_error', kz_json:from_list([{<<"server_error">>, Error}])}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -205,7 +205,7 @@ error_server_error() ->
 error_maintenance() ->
     Error = <<"Card processor currently down for maintenance">>,
     lager:debug("~s", [Error]),
-    throw({'maintenance', wh_json:from_list([{<<"maintenance">>, Error}])}).
+    throw({'maintenance', kz_json:from_list([{<<"maintenance">>, Error}])}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -216,8 +216,8 @@ error_maintenance() ->
 -spec error_api(bt_api_error()) -> no_return().
 error_api(ApiError) ->
     JObj = bt_api_error_to_json(ApiError),
-    lager:debug("~s", [wh_json:encode(JObj)]),
-    throw({'api_error', wh_json:from_list([{<<"api_error">>, JObj}])}).
+    lager:debug("~s", [kz_json:encode(JObj)]),
+    throw({'api_error', kz_json:from_list([{<<"api_error">>, JObj}])}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -229,7 +229,7 @@ error_api(ApiError) ->
 error_io_fault() ->
     Error = <<"Unable to establish communication with card processor">>,
     lager:debug("~s", [Error]),
-    throw({'io_fault', wh_json:from_list([{<<"io_fault">>, Error}])}).
+    throw({'io_fault', kz_json:from_list([{<<"io_fault">>, Error}])}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -239,9 +239,9 @@ error_io_fault() ->
 %%--------------------------------------------------------------------
 -spec error_min_amount(number() | ne_binary()) -> no_return().
 error_min_amount(Amount) ->
-    Error = <<"Unable to process a transaction for less than $", (wh_util:to_binary(Amount))/binary>>,
+    Error = <<"Unable to process a transaction for less than $", (kz_util:to_binary(Amount))/binary>>,
     lager:debug("~s", [Error]),
-    throw({'min_amount', wh_json:from_list([{<<"min_amount">>, Error}])}).
+    throw({'min_amount', kz_json:from_list([{<<"min_amount">>, Error}])}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -251,6 +251,6 @@ error_min_amount(Amount) ->
 %%--------------------------------------------------------------------
 -spec error_max_amount(number() | ne_binary()) -> no_return().
 error_max_amount(Amount) ->
-    Error = <<"Unable to process a transaction for more than $", (wh_util:to_binary(Amount))/binary>>,
+    Error = <<"Unable to process a transaction for more than $", (kz_util:to_binary(Amount))/binary>>,
     lager:debug("~s", [Error]),
-    throw({'max_amount', wh_json:from_list([{<<"max_amount">>, Error}])}).
+    throw({'max_amount', kz_json:from_list([{<<"max_amount">>, Error}])}).

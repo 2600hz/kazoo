@@ -1,12 +1,12 @@
 {
-    "_id": "whistle-support-device-611",
+    "_id": "kazoo-support-device-611",
     "caller_id": {
         "external": {
             "name": "Ayudame",
             "number": "611"
         }
     },
-    "name": "Whistle Support Line",
+    "name": "Kazoo Support Line",
     "sip": {
         "invite_format": "route",
         "route": "sip:support@2600hz.com"

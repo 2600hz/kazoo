@@ -1,0 +1,250 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2012-2013, 2600Hz
+%%% @doc
+%%%
+%%% @end
+%%% @contributors
+%%%   Karl Anderson
+%%%-------------------------------------------------------------------
+-module(kapps_conference_command).
+
+-include("kapps_call_command.hrl").
+
+-export([search/1]).
+-export([deaf_participant/2]).
+-export([participant_energy/3]).
+-export([kick/1, kick/2]).
+-export([participants/1]).
+-export([lock/1]).
+-export([mute_participant/2]).
+-export([prompt/2, prompt/3]).
+-export([play_command/1, play_command/2]).
+-export([play/2, play/3]).
+-export([record/1, recordstop/1]).
+-export([relate_participants/3, relate_participants/4]).
+-export([stop_play/1, stop_play/2, stop_play/3]).
+-export([undeaf_participant/2]).
+-export([unlock/1]).
+-export([unmute_participant/2]).
+-export([participant_volume_in/3]).
+-export([participant_volume_out/3]).
+
+-export([send_command/2]).
+-export([macro/2]).
+
+-spec search(kapps_conference:conference()) ->
+                    {'ok', kz_json:object()} |
+                    {'error', any()}.
+search(Conference) ->
+    AppName = kapps_conference:application_name(Conference),
+    AppVersion = kapps_conference:application_version(Conference),
+    ConferenceId = kapps_conference:id(Conference),
+    Req = [{<<"Conference-ID">>, ConferenceId}
+           | kz_api:default_headers(AppName, AppVersion)
+          ],
+    ReqResp = kapps_util:amqp_pool_collect(Req
+                                            ,fun kapi_conference:publish_search_req/1
+                                            ,{'ecallmgr', fun kapi_conference:search_resp_v/1, 'true'}
+                                           ),
+    lager:debug("searching for conference ~s", [ConferenceId]),
+    case ReqResp of
+        {'error', _R}=E ->
+            lager:info("received error while searching for ~s: ~-800p", [ConferenceId, _R]),
+            E;
+        {_, JObjs} -> conference_search_filter(JObjs, ConferenceId)
+    end.
+
+-spec conference_search_filter(kz_json:objects(), ne_binary()) ->
+                                      {'ok', kz_json:object()} |
+                                      {'error', 'not_found'}.
+conference_search_filter([], ConferenceId) ->
+    lager:info("received invalid conference search response for ~s", [ConferenceId]),
+    {'error', 'not_found'};
+conference_search_filter([JObj|JObjs], ConferenceId) ->
+    case kapi_conference:search_resp_v(JObj) of
+        'true' ->
+            lager:info("received valid conference search response for ~s", [ConferenceId]),
+            {'ok', JObj};
+        'false' ->
+            conference_search_filter(JObjs, ConferenceId)
+    end.
+
+-spec deaf_participant(non_neg_integer(), kapps_conference:conference()) -> 'ok'.
+deaf_participant(ParticipantId, Conference) ->
+    Command = [{<<"Application-Name">>, <<"deaf_participant">>}
+               ,{<<"Participant">>, ParticipantId}
+              ],
+    send_command(Command, Conference).
+
+-spec participant_energy(non_neg_integer(),  ne_binary(), kapps_conference:conference()) -> 'ok'.
+participant_energy(ParticipantId, EnergyLevel, Conference) ->
+    Command = [{<<"Application-Name">>, <<"participant_energy">>}
+               ,{<<"Participant">>, ParticipantId}
+               ,{<<"Energy-Level">>, EnergyLevel}
+              ],
+    send_command(Command, Conference).
+
+-spec kick(kapps_conference:conference()) -> 'ok'.
+-spec kick(non_neg_integer() | 'undefined', kapps_conference:conference()) -> 'ok'.
+
+kick(Conference) ->
+    kick('undefined', Conference).
+kick(ParticipantId, Conference) ->
+    Command = [{<<"Application-Name">>, <<"kick">>}
+               ,{<<"Participant">>, ParticipantId}
+              ],
+    send_command(Command, Conference).
+
+-spec participants(kapps_conference:conference()) -> 'ok'.
+participants(Conference) ->
+    Command = [{<<"Application-Name">>, <<"participants">>}],
+    send_command(Command, Conference).
+
+-spec lock(kapps_conference:conference()) -> 'ok'.
+lock(Conference) ->
+    Command = [{<<"Application-Name">>, <<"lock">>}],
+    send_command(Command, Conference).
+
+-spec mute_participant(non_neg_integer(), kapps_conference:conference()) -> 'ok'.
+mute_participant(ParticipantId, Conference) ->
+    Command = [{<<"Application-Name">>, <<"mute_participant">>}
+               ,{<<"Participant">>, ParticipantId}
+              ],
+    send_command(Command, Conference).
+
+-spec prompt(ne_binary(), kapps_conference:conference()) -> 'ok'.
+-spec prompt(ne_binary(), non_neg_integer() | 'undefined', kapps_conference:conference()) -> 'ok'.
+
+prompt(Media, Conference) ->
+    prompt(Media, 'undefined', Conference).
+prompt(Media, ParticipantId, Conference) ->
+    play(kz_media_util:get_prompt(Media, kapps_conference:call(Conference)), ParticipantId, Conference).
+
+-spec play_command(ne_binary()) -> kz_proplist().
+-spec play_command(ne_binary(), non_neg_integer() | 'undefined') -> kz_proplist().
+
+play_command(Media) ->
+    play_command(Media, 'undefined').
+play_command(Media, ParticipantId) ->
+    [{<<"Application-Name">>, <<"play">>}
+     ,{<<"Media-Name">>, Media}
+     ,{<<"Participant">>, ParticipantId}
+    ].
+
+-spec play(ne_binary(), kapps_conference:conference()) -> 'ok'.
+-spec play(ne_binary(), non_neg_integer() | 'undefined', kapps_conference:conference()) -> 'ok'.
+
+play(Media, Conference) ->
+    play(Media, 'undefined', Conference).
+play(Media, ParticipantId, Conference) ->
+    Command = play_command(Media, ParticipantId),
+    send_command(Command, Conference).
+
+-spec record(kapps_conference:conference()) -> 'ok'.
+record(Conference) ->
+    Command = [{<<"Application-Name">>, <<"record">>}],
+    send_command(Command, Conference).
+
+-spec recordstop(kapps_conference:conference()) -> 'ok'.
+recordstop(Conference) ->
+    Command = [{<<"Application-Name">>, <<"recordstop">>}],
+    send_command(Command, Conference).
+
+-spec relate_participants(non_neg_integer(), non_neg_integer(), kapps_conference:conference()) -> 'ok'.
+-spec relate_participants(non_neg_integer(), non_neg_integer(), api_binary(), kapps_conference:conference()) -> 'ok'.
+
+relate_participants(ParticipantId, OtherParticipantId, Conference) ->
+    relate_participants(ParticipantId, OtherParticipantId, 'undefined', Conference).
+
+relate_participants(ParticipantId, OtherParticipantId, Relationship, Conference) ->
+    Command = [{<<"Application-Name">>, <<"relate_participants">>}
+               ,{<<"Participant">>, ParticipantId}
+               ,{<<"Other-Participant">>, OtherParticipantId}
+               ,{<<"Relationship">>, Relationship}
+              ],
+    send_command(Command, Conference).
+
+-spec stop_play(kapps_conference:conference()) -> 'ok'.
+-spec stop_play(non_neg_integer() | 'undefined', kapps_conference:conference()) -> 'ok'.
+-spec stop_play(non_neg_integer() | 'undefined', api_binary(), kapps_conference:conference()) -> 'ok'.
+
+stop_play(Conference) ->
+    stop_play('undefined', Conference).
+
+stop_play(ParticipantId, Conference) ->
+    stop_play(ParticipantId, undefined, Conference).
+
+stop_play(ParticipantId, Affects, Conference) ->
+    Command = [{<<"Application-Name">>, <<"stop_play">>}
+               ,{<<"Participant">>, ParticipantId}
+               ,{<<"Affects">>, Affects}
+              ],
+    send_command(Command, Conference).
+
+-spec undeaf_participant(non_neg_integer(), kapps_conference:conference()) -> 'ok'.
+undeaf_participant(ParticipantId, Conference) ->
+    Command = [{<<"Application-Name">>, <<"undeaf_participant">>}
+               ,{<<"Participant">>, ParticipantId}
+              ],
+    send_command(Command, Conference).
+
+-spec unlock(kapps_conference:conference()) -> 'ok'.
+unlock(Conference) ->
+    Command = [{<<"Application-Name">>, <<"unlock">>}],
+    send_command(Command, Conference).
+
+-spec unmute_participant(non_neg_integer(), kapps_conference:conference()) -> 'ok'.
+unmute_participant(ParticipantId, Conference) ->
+    Command = [{<<"Application-Name">>, <<"unmute_participant">>}
+               ,{<<"Participant">>, ParticipantId}
+              ],
+    send_command(Command, Conference).
+
+-spec participant_volume_in(non_neg_integer(),  ne_binary(), kapps_conference:conference()) -> 'ok'.
+participant_volume_in(ParticipantId, VolumeIn, Conference) ->
+    Command = [{<<"Application-Name">>, <<"participant_energy">>}
+               ,{<<"Participant">>, ParticipantId}
+               ,{<<"Volume-In-Level">>, VolumeIn}
+              ],
+    send_command(Command, Conference).
+
+-spec participant_volume_out(non_neg_integer(),  ne_binary(), kapps_conference:conference()) -> 'ok'.
+participant_volume_out(ParticipantId, VolumeOut,Conference) ->
+    Command = [{<<"Application-Name">>, <<"participant_energy">>}
+               ,{<<"Participant">>, ParticipantId}
+               ,{<<"Volume-Out-Level">>, VolumeOut}
+              ],
+    send_command(Command, Conference).
+
+-spec send_command(api_terms(), kapps_conference:conference()) -> 'ok'.
+send_command([_|_]=Command, Conference) ->
+    Q = kapps_conference:controller_queue(Conference),
+    ConferenceId = kapps_conference:id(Conference),
+    AppName = kapps_conference:application_name(Conference),
+    AppVersion = kapps_conference:application_version(Conference),
+    Focus = kapps_conference:focus(Conference),
+    Prop = Command ++ [{<<"Conference-ID">>, ConferenceId}
+                       | kz_api:default_headers(Q, <<"conference">>, <<"command">>, AppName, AppVersion)
+                      ],
+    lager:debug("prop ~p", [Prop]),
+    case kz_util:is_empty(Focus) of
+        'true' -> kapi_conference:publish_command(ConferenceId, Prop);
+        'false' -> kapi_conference:publish_targeted_command(Focus, Prop)
+    end;
+send_command(JObj, Conference) -> send_command(kz_json:to_proplist(JObj), Conference).
+
+macro(Commands, Conference) ->
+    Values = [{<<"Event-Category">>, <<"conference">>}
+              ,{<<"Event-Name">>, <<"command">>}
+              ,{<<"Conference-ID">>, kapps_conference:id(Conference)}
+              ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ],
+    JsonCommands = lists:reverse(lists:foldl(fun(Command, Acc) ->
+        [kz_json:from_list(props:filter_undefined(Command ++ Values)) | Acc]
+    end, [], Commands)),
+    Prop = [{<<"Application-Name">>, <<"play_macro">>}
+            ,{<<"Commands">>, JsonCommands}
+            | Values
+           ],
+    send_command(Prop, Conference).

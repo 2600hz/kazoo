@@ -1,7 +1,7 @@
 -ifndef(WEBSEQ_HRL).
 
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_log.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo/include/kz_log.hrl").
 
 -type diagram_type() :: {'file', Filename::ne_binary()} |
                         {'file', Name::ne_binary(), Filename::ne_binary()} |

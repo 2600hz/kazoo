@@ -1,7 +1,7 @@
 -ifndef(KAZOO_MOD_HRL).
 
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_log.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo/include/kz_log.hrl").
 
 -define(CONFIG_CAT, <<"modb">>).
 

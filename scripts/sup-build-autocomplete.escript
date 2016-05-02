@@ -14,9 +14,9 @@
                            ,"crossbar_bindings"
                            ,"ecallmgr_config"
                            ,"notify_account_crawler"
-                           ,"whapps_account_config"
-                           ,"whapps_config"
-                           ,"whapps_controller"
+                           ,"kapps_account_config"
+                           ,"kapps_config"
+                           ,"kapps_controller"
                           ]).
 
 %% API

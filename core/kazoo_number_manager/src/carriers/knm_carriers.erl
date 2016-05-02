@@ -33,7 +33,7 @@
 -define(DEFAULT_CARRIER_MODULE,
         (fun () ->
                  case
-                     whapps_config:get_binary(?KNM_CONFIG_CAT
+                     kapps_config:get_binary(?KNM_CONFIG_CAT
                                               ,<<"available_module_name">>
                                               ,?CARRIER_LOCAL
                                              )
@@ -45,7 +45,7 @@
        ).
 -define(CARRIER_MODULES,
         (fun () ->
-                 Ms = whapps_config:get(?KNM_CONFIG_CAT
+                 Ms = kapps_config:get(?KNM_CONFIG_CAT
                                         ,<<"carrier_modules">>
                                         ,?DEFAULT_CARRIER_MODULES
                                        ),
@@ -62,9 +62,9 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec find(ne_binary()) -> wh_json:objects().
--spec find(ne_binary(), integer()) -> wh_json:objects().
--spec find(ne_binary(), integer(), wh_proplist()) -> wh_json:objects().
+-spec find(ne_binary()) -> kz_json:objects().
+-spec find(ne_binary(), integer()) -> kz_json:objects().
+-spec find(ne_binary(), integer(), kz_proplist()) -> kz_json:objects().
 
 find(Num) ->
     find(Num, 1).
@@ -81,8 +81,8 @@ find(Num, Quantity, Options) ->
                 ,available_carriers(Options)
                ).
 
--spec find_fold(atom(), wh_json:objects(), ne_binary(), non_neg_integer(), wh_proplist()) ->
-                       wh_json:objects().
+-spec find_fold(atom(), kz_json:objects(), ne_binary(), non_neg_integer(), kz_proplist()) ->
+                       kz_json:objects().
 find_fold(Carrier, Acc, NormalizedNumber, Quantity, Options) ->
     try Carrier:find_numbers(NormalizedNumber, Quantity, Options) of
         {'ok', Numbers} -> process_carrier_results(Acc, Numbers);
@@ -98,20 +98,20 @@ find_fold(Carrier, Acc, NormalizedNumber, Quantity, Options) ->
             Acc
     end.
 
--spec process_bulk_carrier_results(wh_json:objects(), knm_number:knm_numbers()) ->
-                                          wh_json:objects().
+-spec process_bulk_carrier_results(kz_json:objects(), knm_number:knm_numbers()) ->
+                                          kz_json:objects().
 process_bulk_carrier_results(Acc, Numbers) ->
     found_numbers_to_jobjs(Numbers) ++ Acc.
 
--spec process_carrier_results(wh_json:objects(), knm_number:knm_numbers()) ->
-                                     wh_json:objects().
+-spec process_carrier_results(kz_json:objects(), knm_number:knm_numbers()) ->
+                                     kz_json:objects().
 process_carrier_results(Acc, []) -> Acc;
 process_carrier_results(Acc, Numbers) ->
     Results = lists:foldl(fun process_number_result/2, [], Numbers),
     lists:reverse(Results, Acc).
 
--spec process_number_result(knm_number:knm_number(), wh_json:objects()) ->
-                                   wh_json:objects().
+-spec process_number_result(knm_number:knm_number(), kz_json:objects()) ->
+                                   kz_json:objects().
 process_number_result(Number, Acc) ->
     PhoneNumber = knm_number:phone_number(Number),
     process_number_result(Number, Acc, knm_phone_number:module_name(PhoneNumber)).
@@ -122,8 +122,8 @@ process_number_result(Number, Acc, Carrier) ->
     DID = knm_phone_number:number(knm_number:phone_number(Number)),
     check_for_existing_did(Number, Acc, Carrier, knm_phone_number:fetch(DID)).
 
--spec check_for_existing_did(knm_number:knm_number(), wh_json:objects(), ne_binary(), knm_phone_number_return()) ->
-                                    wh_json:objects().
+-spec check_for_existing_did(knm_number:knm_number(), kz_json:objects(), ne_binary(), knm_phone_number_return()) ->
+                                    kz_json:objects().
 check_for_existing_did(Number, Acc, _Carrier, {'error', 'not_found'}) ->
     create_discovery(Number, Acc);
 check_for_existing_did(_Number, Acc, _Carrier, {'error', _}) ->
@@ -138,8 +138,8 @@ check_for_existing_did(Number, Acc, Carrier, {'ok', ExistingPhoneNumber}) ->
              )
     end.
 
--spec create_discovery(knm_number:knm_number(), wh_json:objects()) ->
-                              wh_json:objects().
+-spec create_discovery(knm_number:knm_number(), kz_json:objects()) ->
+                              kz_json:objects().
 create_discovery(Number, Acc) ->
     DiscoveryUpdates =
         [{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}],
@@ -148,8 +148,8 @@ create_discovery(Number, Acc) ->
     DiscoveryNumber = knm_number:set_phone_number(Number, PhoneNumber),
     collect_if_saved(DiscoveryNumber, Acc).
 
--spec collect_if_saved(knm_number:knm_number(), wh_json:objects()) ->
-                              wh_json:objects().
+-spec collect_if_saved(knm_number:knm_number(), kz_json:objects()) ->
+                              kz_json:objects().
 collect_if_saved(DiscoveryNumber, Acc) ->
     case knm_number:save(DiscoveryNumber) of
         {'ok', SavedNumber} ->
@@ -172,32 +172,32 @@ transition_existing_to_discovery(Number, ExistingPhoneNumber, Carrier) ->
          ),
     knm_number:set_phone_number(Number, PhoneNumber).
 
--spec check_existing_phone_number(knm_number:knm_number(), wh_json:objects(), knm_phone_number:knm_phone_number()) ->
-                                         wh_json:objects().
+-spec check_existing_phone_number(knm_number:knm_number(), kz_json:objects(), knm_phone_number:knm_phone_number()) ->
+                                         kz_json:objects().
 check_existing_phone_number(Number, Acc, PhoneNumber) ->
     case lists:member(knm_phone_number:state(PhoneNumber), ?KNM_AVAILABLE_STATES) of
         'true' -> [found_number_to_jobj(Number) | Acc];
         'false' -> Acc
     end.
 
--spec found_numbers_to_jobjs(knm_number:knm_numbers()) -> wh_json:objects().
+-spec found_numbers_to_jobjs(knm_number:knm_numbers()) -> kz_json:objects().
 found_numbers_to_jobjs(Numbers) ->
     [found_number_to_jobj(Number) || Number <- Numbers].
 
--spec found_number_to_jobj(knm_number:knm_number()) -> wh_json:object().
+-spec found_number_to_jobj(knm_number:knm_number()) -> kz_json:object().
 found_number_to_jobj(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     found_number_to_jobj(PhoneNumber, knm_phone_number:module_name(PhoneNumber)).
 
 -spec found_number_to_jobj(knm_phone_number:knm_phone_number(), ne_binary()) ->
-                                  wh_json:object().
+                                  kz_json:object().
 found_number_to_jobj(PhoneNumber, ?CARRIER_MANAGED) ->
     CarrierData = knm_phone_number:carrier_data(PhoneNumber),
-    wh_json:from_list(
+    kz_json:from_list(
       props:filter_undefined(
               [{<<"number">>, knm_phone_number:number(PhoneNumber)}
-               ,{<<"rate">>, wh_json:get_value(<<"rate">>, CarrierData, <<"1">>)}
-               ,{<<"activation_charge">>, wh_json:get_value(<<"activation_charge">>, CarrierData, <<"0">>)}
+               ,{<<"rate">>, kz_json:get_value(<<"rate">>, CarrierData, <<"1">>)}
+               ,{<<"activation_charge">>, kz_json:get_value(<<"activation_charge">>, CarrierData, <<"0">>)}
               ])
      );
 found_number_to_jobj(PhoneNumber, _Carrier) ->
@@ -205,7 +205,7 @@ found_number_to_jobj(PhoneNumber, _Carrier) ->
     CarrierData = knm_phone_number:carrier_data(PhoneNumber),
     AssignTo = knm_phone_number:assign_to(PhoneNumber),
 
-    wh_json:set_values(
+    kz_json:set_values(
       props:filter_undefined(
         [{<<"number">>, DID}
          ,{<<"activation_charge">>, activation_charge(DID, AssignTo)}
@@ -222,7 +222,7 @@ activation_charge(_Number, _AccountId) -> 1.0.
 -else.
 activation_charge(_DID, 'undefined') -> 'undefined';
 activation_charge(DID, AccountId) ->
-    wh_services:activation_charges(<<"phone_numbers">>
+    kz_services:activation_charges(<<"phone_numbers">>
                                    ,knm_converters:classify(DID)
                                    ,AccountId
                                   ).
@@ -232,12 +232,12 @@ activation_charge(DID, AccountId) ->
 %% @public
 %% @doc Normalize then query the various providers for available numbers.
 %%--------------------------------------------------------------------
--type checked_numbers() :: [{module(), {'ok', wh_json:object()} |
+-type checked_numbers() :: [{module(), {'ok', kz_json:object()} |
                              {'error', any()} |
                              {'EXIT', any()}
                             }].
 -spec check(ne_binaries()) -> checked_numbers().
--spec check(ne_binaries(), wh_proplist()) -> checked_numbers().
+-spec check(ne_binaries(), kz_proplist()) -> checked_numbers().
 check(Numbers) ->
     check(Numbers, []).
 
@@ -256,7 +256,7 @@ check(Numbers, Options) ->
 available_carriers() ->
     [Module
      || M <- ?CARRIER_MODULES,
-        (Module = wh_util:try_load_module(M)) =/= 'false'
+        (Module = kz_util:try_load_module(M)) =/= 'false'
     ].
 
 -ifdef(TEST).
@@ -266,7 +266,7 @@ available_carriers(Options) ->
         [] -> available_carriers();
         Cs -> [Module
                || C <- Cs,
-                  (Module = wh_util:try_load_module(C)) =/= 'false'
+                  (Module = kz_util:try_load_module(C)) =/= 'false'
               ]
     end.
 -else.
@@ -278,7 +278,7 @@ available_carriers(_Options) ->
 default_carriers() ->
     [Module
      || M <- ?DEFAULT_CARRIER_MODULES,
-        (Module = wh_util:try_load_module(M)) =/= 'false'
+        (Module = kz_util:try_load_module(M)) =/= 'false'
     ].
 
 -spec default_carrier() -> ne_binary().
@@ -323,7 +323,7 @@ disconnect(Number) ->
 
 -spec carrier_module(knm_number:knm_number() | ne_binary()) -> atom().
 carrier_module(?NE_BINARY = Module) ->
-    wh_util:to_atom(Module, 'true');
+    kz_util:to_atom(Module, 'true');
 carrier_module(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     carrier_module(knm_phone_number:module_name(PhoneNumber)).

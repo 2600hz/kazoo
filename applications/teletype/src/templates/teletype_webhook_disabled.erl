@@ -18,7 +18,7 @@
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
 -define(TEMPLATE_MACROS
-        ,wh_json:from_list(
+        ,kz_json:from_list(
            [?MACRO_VALUE(<<"hook.id">>, <<"hook_id">>, <<"Hook ID">>, <<"Hook ID">>)
             ,?MACRO_VALUE(<<"hook.name">>, <<"hook_name">>, <<"Hook Name">>, <<"Hook Name">>)
             ,?MACRO_VALUE(<<"hook.uri">>, <<"hook_uri">>, <<"Hook URI">>, <<"Hook URI">>)
@@ -42,7 +42,7 @@
 
 -spec init() -> 'ok'.
 init() ->
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
                                            ,{'text', ?TEMPLATE_TEXT}
                                            ,{'html', ?TEMPLATE_HTML}
@@ -56,32 +56,32 @@ init() ->
                                            ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]).
 
--spec handle_webhook_disabled(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_webhook_disabled(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_webhook_disabled(JObj, _Props) ->
-    'true' = wapi_notifications:webhook_disabled_v(JObj),
-    wh_util:put_callid(JObj),
+    'true' = kapi_notifications:webhook_disabled_v(JObj),
+    kz_util:put_callid(JObj),
 
     %% Gather data for template
-    DataJObj = wh_json:normalize(JObj),
-    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    DataJObj = kz_json:normalize(JObj),
+    AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
     teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
         orelse teletype_util:stop_processing("template ~s not enabled for account ~s", [?TEMPLATE_ID, AccountId]),
 
-    HookId = wh_json:get_value(<<"hook_id">>, DataJObj),
+    HookId = kz_json:get_value(<<"hook_id">>, DataJObj),
 
     lager:debug("looking for hook ~s in account ~s", [HookId, AccountId]),
 
     {'ok', HookJObj} = teletype_util:open_doc(<<"webhook">>, HookId, DataJObj),
 
-    ReqData = wh_json:set_value(<<"hook">>, HookJObj, DataJObj),
-    process_req(wh_json:merge_jobjs(DataJObj, ReqData)).
+    ReqData = kz_json:set_value(<<"hook">>, HookJObj, DataJObj),
+    process_req(kz_json:merge_jobjs(DataJObj, ReqData)).
 
--spec process_req(wh_json:object()) -> 'ok'.
+-spec process_req(kz_json:object()) -> 'ok'.
 process_req(DataJObj) ->
     teletype_util:send_update(DataJObj, <<"pending">>),
     Macros = [{<<"account">>, teletype_util:account_params(DataJObj)}
-              ,{<<"hook">>, hook_data(wh_json:get_value(<<"hook">>, DataJObj))}
+              ,{<<"hook">>, hook_data(kz_json:get_value(<<"hook">>, DataJObj))}
              ],
 
     %% Populate templates
@@ -93,7 +93,7 @@ process_req(DataJObj) ->
                                              ),
 
     Subject = teletype_util:render_subject(
-                wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
+                kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
                 ,Macros
                ),
 
@@ -104,10 +104,10 @@ process_req(DataJObj) ->
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
 
--spec hook_data(kzd_webhook:doc()) -> wh_proplist().
+-spec hook_data(kzd_webhook:doc()) -> kz_proplist().
 hook_data(HookJObj) ->
     props:filter_undefined(
-      [{<<"id">>, wh_doc:id(HookJObj)}
+      [{<<"id">>, kz_doc:id(HookJObj)}
        ,{<<"name">>, kzd_webhook:name(HookJObj)}
        ,{<<"uri">>, kzd_webhook:uri(HookJObj)}
        ,{<<"event">>, kzd_webhook:event(HookJObj)}

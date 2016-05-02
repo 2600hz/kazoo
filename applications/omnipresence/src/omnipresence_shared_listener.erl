@@ -22,7 +22,7 @@
         ]).
 
 -include("omnipresence.hrl").
--include_lib("whistle_apps/include/wh_hooks.hrl").
+-include_lib("kazoo_apps/include/kz_hooks.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -115,7 +115,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     gen_listener:cast(self(), 'find_subscriptions_srv'),
     lager:debug("omnipresence_listener started"),
     {'ok', #state{}}.

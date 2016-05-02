@@ -59,7 +59,7 @@ agent status: **ready**
 Agent process receives a `member_connect_req` message off the message bus. Agent publishes a `member_connect_resp` to the requesting queue's AMQP queue and enters the **waiting** state.
 
 agent status: **waiting**
-Agent process receives `member_connect_win`, including the `whapps_call` json payload. Agent process publishes a bridge_req to the call control process. Agent publishes `agent_state_change` to other agent processes monitoring this `agent_id`. Agent process enters the **ringing** state.
+Agent process receives `member_connect_win`, including the `kapps_call` json payload. Agent process publishes a bridge_req to the call control process. Agent publishes `agent_state_change` to other agent processes monitoring this `agent_id`. Agent process enters the **ringing** state.
 
 agent status: **ringing**
 Agent process receives (eventually) the successful bridge event. Agent enters the **answered** state. Send the queue a `member_connected` message.

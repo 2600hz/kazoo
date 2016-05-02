@@ -8,10 +8,10 @@
                    , stdlib
                    , crypto
 
-                   , whistle
+                   , kazoo
                    , kazoo_data
-                   , whistle_config
-                   , whistle_services
+                   , kazoo_config
+                   , kazoo_services
                    , kazoo_modb
 
                    , cowboy

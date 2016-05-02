@@ -10,8 +10,8 @@
 -include_lib("eunit/include/eunit.hrl").
 
 changed_endpoints_test() ->
-    X = wh_json:from_list([{<<"_id">>, <<"x">>}]),
-    Y = wh_json:from_list([{<<"_id">>, <<"y">>}]),
+    X = kz_json:from_list([{<<"_id">>, <<"x">>}]),
+    Y = kz_json:from_list([{<<"_id">>, <<"y">>}]),
 
     ?assertEqual({[], []}, acdc_agent_fsm:changed_endpoints([], [])),
     ?assertEqual({[], []}, acdc_agent_fsm:changed_endpoints([X], [X])),

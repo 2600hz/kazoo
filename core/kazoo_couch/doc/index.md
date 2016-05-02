@@ -1,8 +1,8 @@
 /*
-Section: Whistle Couch
-Title: Whistle Couch
+Section: Kazoo Couch
+Title: Kazoo Couch
 Language: en-US
 */
 
-# Whistle Couch *The Whistle Core Couch/BigCouch Manager*
+# Kazoo Couch *The Kazoo Core Couch/BigCouch Manager*
 Relax!

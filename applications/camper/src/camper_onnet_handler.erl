@@ -23,7 +23,7 @@
         ]).
 
 -include("camper.hrl").
--include_lib("whistle_apps/include/wh_hooks.hrl").
+-include_lib("kazoo_apps/include/kz_hooks.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -62,7 +62,7 @@ set_requests(S, Val) ->
 set_requestor_queues(S, Val) ->
     S#state{'requestor_queues' = Val}.
 
--spec add_request(wh_json:object()) -> 'ok'.
+-spec add_request(kz_json:object()) -> 'ok'.
 add_request(JObj) ->
     gen_server:cast(?SERVER, {'add_request', JObj}).
 
@@ -125,18 +125,18 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({'add_request', JObj}, GlobalState) ->
-    AccountDb = wh_json:get_value(<<"Account-DB">>, JObj),
-    AccountId = wh_util:format_account_id(AccountDb, 'raw'),
-    Dev = {wh_json:get_value(<<"Authorizing-ID">>, JObj)
-           ,wh_json:get_value(<<"Authorizing-Type">>, JObj)
+    AccountDb = kz_json:get_value(<<"Account-DB">>, JObj),
+    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+    Dev = {kz_json:get_value(<<"Authorizing-ID">>, JObj)
+           ,kz_json:get_value(<<"Authorizing-Type">>, JObj)
           },
-    Exten = wh_json:get_value(<<"Number">>, JObj),
-    Targets = wh_json:get_value(<<"Targets">>, JObj, []),
-    Timeout = timer:minutes(wh_json:get_value(<<"Timeout">>
+    Exten = kz_json:get_value(<<"Number">>, JObj),
+    Targets = kz_json:get_value(<<"Targets">>, JObj, []),
+    Timeout = timer:minutes(kz_json:get_value(<<"Timeout">>
                                               ,JObj
-                                              ,whapps_config:get(?APP_NAME, ?TIMEOUT, ?DEFAULT_TIMEOUT)
+                                              ,kapps_config:get(?APP_NAME, ?TIMEOUT, ?DEFAULT_TIMEOUT)
                                              )),
-    wh_hooks:register(AccountId, <<"CHANNEL_DESTROY">>),
+    kz_hooks:register(AccountId, <<"CHANNEL_DESTROY">>),
     NewGlobal = with_state(AccountId
                           ,GlobalState
                           ,fun(Local) ->
@@ -214,12 +214,12 @@ handle_request(SIPName, Requestor, Local) ->
 
 -spec originate_call({ne_binary(), ne_binary()}, ne_binary(), ne_binary()) -> 'ok'.
 originate_call({Id, Type}, Exten, AccountDb) ->
-    Routines = [fun(C) -> whapps_call:set_account_db(AccountDb, C) end
-                ,fun(C) -> whapps_call:set_account_id(wh_util:format_account_id(AccountDb, 'raw'), C) end
-                ,fun(C) -> whapps_call:set_authorizing_id(Id, C) end
-                ,fun(C) -> whapps_call:set_authorizing_type(Type, C) end
+    Routines = [fun(C) -> kapps_call:set_account_db(AccountDb, C) end
+                ,fun(C) -> kapps_call:set_account_id(kz_util:format_account_id(AccountDb, 'raw'), C) end
+                ,fun(C) -> kapps_call:set_authorizing_id(Id, C) end
+                ,fun(C) -> kapps_call:set_authorizing_type(Type, C) end
                ],
-    Call = lists:foldl(fun(F, C) -> F(C) end, whapps_call:new(), Routines),
+    Call = lists:foldl(fun(F, C) -> F(C) end, kapps_call:new(), Routines),
     case get_endpoints(Call, Id, Type) of
         [] ->
             lager:debug("Can't find endpoints");
@@ -227,18 +227,18 @@ originate_call({Id, Type}, Exten, AccountDb) ->
             originate_quickcall(Endpoints, Exten, Call)
     end.
 
--spec originate_quickcall(wh_json:objects(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec originate_quickcall(kz_json:objects(), ne_binary(), kapps_call:call()) -> 'ok'.
 originate_quickcall(Endpoints, Exten, Call) ->
-    CCVs = [{<<"Account-ID">>, whapps_call:account_id(Call)}
+    CCVs = [{<<"Account-ID">>, kapps_call:account_id(Call)}
             ,{<<"Retain-CID">>, <<"true">>}
             ,{<<"Inherit-Codec">>, <<"false">>}
-            ,{<<"Authorizing-Type">>, whapps_call:authorizing_type(Call)}
-            ,{<<"Authorizing-ID">>, whapps_call:authorizing_id(Call)}
+            ,{<<"Authorizing-Type">>, kapps_call:authorizing_type(Call)}
+            ,{<<"Authorizing-ID">>, kapps_call:authorizing_id(Call)}
            ],
-    MsgId = wh_util:rand_hex_binary(16),
+    MsgId = kz_util:rand_hex_binary(16),
 
     Request = [{<<"Application-Name">>, <<"transfer">>}
-               ,{<<"Application-Data">>, wh_json:from_list([{<<"Route">>, Exten}])}
+               ,{<<"Application-Data">>, kz_json:from_list([{<<"Route">>, Exten}])}
                ,{<<"Msg-ID">>, MsgId}
                ,{<<"Endpoints">>, Endpoints}
                ,{<<"Timeout">>, ?RINGING_TIMEOUT}
@@ -246,16 +246,16 @@ originate_quickcall(Endpoints, Exten, Call) ->
                ,{<<"Outbound-Caller-ID-Number">>, Exten}
                ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
                ,{<<"Continue-On-Fail">>, 'false'}
-               ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+               ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
                ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
-               | wh_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
+               | kz_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
               ],
-    wapi_resource:publish_originate_req(props:filter_undefined(Request)),
+    kapi_resource:publish_originate_req(props:filter_undefined(Request)),
     lager:debug("Originate request published").
 
--spec get_endpoints(whapps_call:call(), ne_binary(), ne_binary()) -> wh_json:objects().
+-spec get_endpoints(kapps_call:call(), ne_binary(), ne_binary()) -> kz_json:objects().
 get_endpoints(Call, EndpointId, <<"device">>) ->
-    Properties = wh_json:from_list([{<<"can_call_self">>, 'true'}
+    Properties = kz_json:from_list([{<<"can_call_self">>, 'true'}
                                     ,{<<"suppress_clid">>, 'true'}
                                    ]),
     case cf_endpoint:build(EndpointId, Properties, Call) of
@@ -264,7 +264,7 @@ get_endpoints(Call, EndpointId, <<"device">>) ->
         {'ok', Endpoints} -> Endpoints
     end;
 get_endpoints(Call, UserId, <<"user">>) ->
-    Properties = wh_json:from_list([{<<"can_call_self">>, 'true'}
+    Properties = kz_json:from_list([{<<"can_call_self">>, 'true'}
                                     ,{<<"suppress_clid">>, 'true'}
                                    ]),
     lists:foldl(fun(EndpointId, Acc) ->
@@ -321,8 +321,8 @@ maybe_update_queues(SIPNames, Requestor, Queues) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(?HOOK_EVT(_AccountId, _, JObj), State) ->
-    AcctId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
-    SIPName = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Username">>], JObj),
+    AcctId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
+    SIPName = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Username">>], JObj),
     lager:debug("available device: ~s(~s)", [SIPName, AcctId]),
     ?MODULE:available_device(AcctId, SIPName),
     {'noreply', State};

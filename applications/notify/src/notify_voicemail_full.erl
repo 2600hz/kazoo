@@ -41,10 +41,10 @@ init() ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
-    'true' = wapi_notifications:voicemail_full_v(JObj),
-    wh_util:put_callid(JObj),
+    'true' = kapi_notifications:voicemail_full_v(JObj),
+    kz_util:put_callid(JObj),
     lager:debug("voicemail full notice, sending to email if enabled"),
     {'ok', Account} = notify_util:get_account_doc(JObj),
     case is_notice_enabled(Account) of
@@ -52,24 +52,24 @@ handle_req(JObj, _Props) ->
         'false' -> 'ok'
     end.
 
--spec send(wh_json:object(), wh_json:object()) -> 'ok'.
+-spec send(kz_json:object(), kz_json:object()) -> 'ok'.
 send(JObj, Account) ->
     lager:debug("a vm_full notice has been received, sending email notification"),
 
     Props = create_template_props(JObj),
 
-    CustomTxtTemplate = wh_json:get_value([<<"notifications">>, <<"vm_full">>, <<"email_text_template">>], Account),
+    CustomTxtTemplate = kz_json:get_value([<<"notifications">>, <<"vm_full">>, <<"email_text_template">>], Account),
     {'ok', TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
 
-    CustomHtmlTemplate = wh_json:get_value([<<"notifications">>, <<"vm_full">>, <<"email_html_template">>], Account),
+    CustomHtmlTemplate = kz_json:get_value([<<"notifications">>, <<"vm_full">>, <<"email_html_template">>], Account),
     {'ok', HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
 
-    CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"vm_full">>, <<"email_subject_template">>], Account),
+    CustomSubjectTemplate = kz_json:get_value([<<"notifications">>, <<"vm_full">>, <<"email_subject_template">>], Account),
     {'ok', Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
 
-    AccountDb = wh_json:get_value(<<"Account-DB">>, JObj),
+    AccountDb = kz_json:get_value(<<"Account-DB">>, JObj),
 
-    VMBoxId = wh_json:get_value(<<"Voicemail-Box">>, JObj),
+    VMBoxId = kz_json:get_value(<<"Voicemail-Box">>, JObj),
     lager:debug("loading vm box ~s", [VMBoxId]),
     {'ok', VMBox} = kz_datamgr:open_cache_doc(AccountDb, VMBoxId),
 
@@ -82,14 +82,14 @@ send(JObj, Account) ->
 
     build_and_send_email(TxtBody, HTMLBody, Subject, Emails, Props).
 
--spec get_user_email(wh_json:object(), wh_json:object()) -> api_binary().
+-spec get_user_email(kz_json:object(), kz_json:object()) -> api_binary().
 get_user_email(UserJObj, Account) ->
-    case wh_json:get_first_defined([<<"email">>, <<"username">>], UserJObj) of
+    case kz_json:get_first_defined([<<"email">>, <<"username">>], UserJObj) of
         'undefined' -> get_rep_email(Account);
         Email -> Email
     end.
 
--spec get_rep_email(wh_json:object()) -> api_binary().
+-spec get_rep_email(kz_json:object()) -> api_binary().
 get_rep_email(Account) ->
     case notify_util:get_rep_email(Account) of
         'undefined' -> get_sys_admin_email();
@@ -98,15 +98,15 @@ get_rep_email(Account) ->
 
 -spec get_sys_admin_email() -> api_binary().
 get_sys_admin_email() ->
-    whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>).
+    kapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>).
 
 -spec get_owner(ne_binary(), kzd_voicemail_box:doc(), api_binary()) ->
                        {'ok', kzd_user:doc()}.
 get_owner(AccountDb, VMBox) ->
     get_owner(AccountDb, VMBox, kzd_voicemail_box:owner_id(VMBox)).
 get_owner(_AccountDb, _VMBox, 'undefined') ->
-    lager:debug("no owner of voicemail box ~s, using empty owner", [wh_doc:id(_VMBox)]),
-    {'ok', wh_json:new()};
+    lager:debug("no owner of voicemail box ~s, using empty owner", [kz_doc:id(_VMBox)]),
+    {'ok', kz_json:new()};
 get_owner(AccountDb, _VMBox, OwnerId) ->
     lager:debug("attempting to load owner: ~s", [OwnerId]),
     {'ok', _} = kz_datamgr:open_cache_doc(AccountDb, OwnerId).
@@ -121,32 +121,32 @@ maybe_add_user_email(BoxEmails, UserEmail) -> [UserEmail | BoxEmails].
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props(wh_json:object()) -> wh_proplist().
+-spec create_template_props(kz_json:object()) -> kz_proplist().
 create_template_props(JObj) ->
-    AccountDb = wh_json:get_value(<<"Account-DB">>, JObj),
+    AccountDb = kz_json:get_value(<<"Account-DB">>, JObj),
     {'ok', AccountJObj} = kz_account:fetch(AccountDb),
 
     [{<<"service">>, notify_util:get_service_props(JObj, AccountJObj, ?MOD_CONFIG_CAT)}
      ,{<<"voicemail">>, [{<<"name">>, get_vm_name(JObj)}
-                         ,{<<"box">>, wh_json:get_value(<<"Voicemail-Box">>, JObj)}
-                         ,{<<"number">>, wh_json:get_value(<<"Voicemail-Number">>, JObj)}
-                         ,{<<"max_message_count">>, wh_json:get_value(<<"Max-Message-Count">>, JObj)}
-                         ,{<<"message_count">>, wh_json:get_value(<<"Message-Count">>, JObj)}
+                         ,{<<"box">>, kz_json:get_value(<<"Voicemail-Box">>, JObj)}
+                         ,{<<"number">>, kz_json:get_value(<<"Voicemail-Number">>, JObj)}
+                         ,{<<"max_message_count">>, kz_json:get_value(<<"Max-Message-Count">>, JObj)}
+                         ,{<<"message_count">>, kz_json:get_value(<<"Message-Count">>, JObj)}
                         ]}
      ,{<<"custom">>, notify_util:json_to_template_props(JObj)}
     ].
 
--spec get_vm_name(wh_json:object()) -> binary().
+-spec get_vm_name(kz_json:object()) -> binary().
 get_vm_name(JObj) ->
     case get_vm_doc(JObj) of
         'error' -> <<>>;
-        VMDoc -> wh_json:get_binary_value(<<"name">>, VMDoc)
+        VMDoc -> kz_json:get_binary_value(<<"name">>, VMDoc)
     end.
 
--spec get_vm_doc(wh_json:object()) -> wh_json:object() | 'error'.
+-spec get_vm_doc(kz_json:object()) -> kz_json:object() | 'error'.
 get_vm_doc(JObj) ->
-    VMId = wh_json:get_value(<<"Voicemail-Box">>, JObj),
-    AccoundDB = wh_json:get_value(<<"Account-DB">>, JObj),
+    VMId = kz_json:get_value(<<"Voicemail-Box">>, JObj),
+    AccoundDB = kz_json:get_value(<<"Account-DB">>, JObj),
     case kz_datamgr:open_cache_doc(AccoundDB, VMId) of
         {'ok', VMDoc} -> VMDoc;
         {'error', _E} ->
@@ -160,7 +160,7 @@ get_vm_doc(JObj) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist()) -> 'ok'.
+-spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), kz_proplist()) -> 'ok'.
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
     _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
@@ -184,17 +184,17 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
             },
     notify_util:send_email(From, To, Email).
 
--spec is_notice_enabled(wh_json:object()) -> boolean().
+-spec is_notice_enabled(kz_json:object()) -> boolean().
 is_notice_enabled(JObj) ->
-    case  wh_json:get_value([<<"notifications">>
+    case  kz_json:get_value([<<"notifications">>
                              ,<<"voicemail_full">>
                              ,<<"enabled">>
                             ], JObj)
     of
         'undefined' -> is_notice_enabled_default();
-        Value -> wh_util:is_true(Value)
+        Value -> kz_util:is_true(Value)
     end.
 
 -spec is_notice_enabled_default() -> boolean().
 is_notice_enabled_default() ->
-    whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_enabled">>, 'false').
+    kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_enabled">>, 'false').
