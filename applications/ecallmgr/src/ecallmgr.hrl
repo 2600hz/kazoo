@@ -379,7 +379,7 @@
 -define(DEFAULT_RESPONSE_CODE, <<"488">>).
 
 -define(FS_CMD_SAFELIST, ["load", "set", "uuid_dump", "uuid_record"
-                          ,"uuid_kill", "uuid_break", "uuid_getvar", "show"
+                          ,"uuid_kill", "uuid_getvar", "show"
                           ,"uuid_exists", "reload", "reloadxml"
                           ,"reloadacl"
                          ]).
