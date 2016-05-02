@@ -23,11 +23,11 @@ convert(FromFormat, FromFormat, Bin) ->
 convert(FromFormat0, ToFormat0, Bin) ->
     FromFormat = valid_format(FromFormat0),
     ToFormat = valid_format(ToFormat0),
-    Filename = wh_util:rand_hex_binary(8),
+    Filename = kz_util:rand_hex_binary(8),
     FromFile = <<"/tmp/", Filename/binary, ".", FromFormat/binary>>,
     ToFile = <<"/tmp/", Filename/binary, ".", ToFormat/binary>>,
     'ok' = file:write_file(FromFile, Bin),
-    ConvertCmd = whapps_config:get_binary(?FAX_CONFIG_CAT, <<"tiff_to_pdf_conversion_command">>, ?TIFF_TO_PDF_CMD),
+    ConvertCmd = kapps_config:get_binary(?FAX_CONFIG_CAT, <<"tiff_to_pdf_conversion_command">>, ?TIFF_TO_PDF_CMD),
     Cmd = io_lib:format(ConvertCmd, [ToFile, FromFile]),
     lager:debug("running conversion command: ~s", [Cmd]),
     Response = case os:cmd(Cmd) of
@@ -44,32 +44,32 @@ convert(FromFormat0, ToFormat0, Bin) ->
                        lager:debug("could not convert file ~s : ~p", [FromFile, Else]),
                        {'error', Else}
                end,
-    _ = wh_util:delete_file(FromFile),
-    _ = wh_util:delete_file(ToFile),
+    _ = kz_util:delete_file(FromFile),
+    _ = kz_util:delete_file(ToFile),
     Response.
 
 valid_format(<<"tiff">>) -> <<"tif">>;
 valid_format(Format) -> Format.
 
--spec get_fax_doc(wh_json:object()) -> wh_json:object().
--spec get_fax_doc(wh_json:object(), boolean()) -> wh_json:object().
+-spec get_fax_doc(kz_json:object()) -> kz_json:object().
+-spec get_fax_doc(kz_json:object(), boolean()) -> kz_json:object().
 get_fax_doc(DataJObj) ->
     get_fax_doc(DataJObj, teletype_util:is_preview(DataJObj)).
 
 get_fax_doc(DataJObj, 'true') ->
-    FaxId = wh_json:get_value(<<"fax_id">>, DataJObj),
+    FaxId = kz_json:get_value(<<"fax_id">>, DataJObj),
     case teletype_util:open_doc(<<"fax">>, FaxId, DataJObj) of
         {'ok', JObj} -> JObj;
-        {'error', _E} -> wh_json:new()
+        {'error', _E} -> kz_json:new()
     end;
 get_fax_doc(DataJObj, 'false') ->
-    FaxId = wh_json:get_value(<<"fax_id">>, DataJObj),
+    FaxId = kz_json:get_value(<<"fax_id">>, DataJObj),
     case teletype_util:open_doc(<<"fax">>, FaxId, DataJObj) of
         {'ok', JObj} -> JObj;
         {'error', _E} -> get_fax_doc_from_modb(DataJObj, FaxId)
     end.
 
--spec get_fax_doc_from_modb(wh_json:object(), ne_binary()) -> wh_json:object().
+-spec get_fax_doc_from_modb(kz_json:object(), ne_binary()) -> kz_json:object().
 get_fax_doc_from_modb(DataJObj, FaxId) ->
     AccountId = teletype_util:find_account_id(DataJObj),
     case kazoo_modb:open_doc(AccountId, {<<"fax">>, FaxId}) of
@@ -80,8 +80,8 @@ get_fax_doc_from_modb(DataJObj, FaxId) ->
             throw({'error', 'no_fax_id'})
     end.
 
--spec get_attachments(wh_json:object(), wh_proplist()) -> attachments().
--spec maybe_get_attachments(wh_json:object(), wh_proplist(), boolean()) -> attachments().
+-spec get_attachments(kz_json:object(), kz_proplist()) -> attachments().
+-spec maybe_get_attachments(kz_json:object(), kz_proplist(), boolean()) -> attachments().
 get_attachments(DataJObj, Macros) ->
     maybe_get_attachments(DataJObj, Macros, teletype_util:is_preview(DataJObj)).
 
@@ -99,9 +99,9 @@ maybe_get_attachments(DataJObj, Macros, 'false') ->
             maybe_convert_attachment(Macros, ContentType, Bin)
     end.
 
--spec maybe_convert_attachment(wh_proplist(), ne_binary(), binary()) -> attachments().
+-spec maybe_convert_attachment(kz_proplist(), ne_binary(), binary()) -> attachments().
 maybe_convert_attachment(Macros, ContentType, Bin) ->
-    ToFormat = whapps_config:get(?FAX_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>),
+    ToFormat = kapps_config:get(?FAX_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>),
     FromFormat = from_format_from_content_type(ContentType),
     lager:debug("converting from ~s to ~s", [FromFormat, ToFormat]),
 
@@ -130,7 +130,7 @@ content_type_from_extension(Ext) ->
     {Type, SubType, _} = cow_mimetypes:all(Ext),
     <<Type/binary, "/", SubType/binary>>.
 
--spec get_file_name(wh_proplist(), ne_binary()) -> ne_binary().
+-spec get_file_name(kz_proplist(), ne_binary()) -> ne_binary().
 get_file_name(Macros, Ext) ->
     CallerIdMacros = props:get_value(<<"caller_id">>, Macros),
     CallerID =
@@ -139,25 +139,25 @@ get_file_name(Macros, Ext) ->
              }
         of
             {'undefined', 'undefined'} -> <<"Unknown">>;
-            {'undefined', Num} -> wh_util:to_binary(Num);
-            {Name, _} -> wh_util:to_binary(Name)
+            {'undefined', Num} -> kz_util:to_binary(Num);
+            {Name, _} -> kz_util:to_binary(Name)
         end,
     LocalDateTime = props:get_value([<<"date_called">>, <<"local">>], Macros, <<"0000-00-00_00-00-00">>),
-    FName = list_to_binary([CallerID, "_", wh_util:pretty_print_datetime(LocalDateTime), ".", Ext]),
-    re:replace(wh_util:to_lower_binary(FName), <<"\\s+">>, <<"_">>, [{'return', 'binary'}, 'global']).
+    FName = list_to_binary([CallerID, "_", kz_util:pretty_print_datetime(LocalDateTime), ".", Ext]),
+    re:replace(kz_util:to_lower_binary(FName), <<"\\s+">>, <<"_">>, [{'return', 'binary'}, 'global']).
 
 -spec get_attachment_binary(ne_binary(), api_binary()) ->
                                    {'ok', ne_binary(), binary()} |
                                    {'error', 'no_attachment'}.
 get_attachment_binary(Db, Id) ->
     case kz_datamgr:open_cache_doc(Db, {<<"fax">>, Id}) of
-        {'error', 'not_found'} when Db =/= ?WH_FAXES_DB ->
-            get_attachment_binary(?WH_FAXES_DB, Id);
+        {'error', 'not_found'} when Db =/= ?KZ_FAXES_DB ->
+            get_attachment_binary(?KZ_FAXES_DB, Id);
         {'error', 'not_found'} ->
             lager:debug("no attachment binary to send"),
             {'error', 'no_attachment'};
         {'ok', FaxJObj} ->
-            case wh_doc:attachment(FaxJObj) of
+            case kz_doc:attachment(FaxJObj) of
                 'undefined' ->
                     {'error', 'no_attachment'};
                 _AttachmentJObj ->
@@ -165,15 +165,15 @@ get_attachment_binary(Db, Id) ->
             end
     end.
 
--spec get_attachment_binary(ne_binary(), ne_binary(), wh_json:object()) ->
+-spec get_attachment_binary(ne_binary(), ne_binary(), kz_json:object()) ->
                                    {'ok', ne_binary(), binary()} |
                                    {'error', 'no_attachment'}.
 get_attachment_binary(Db, Id, FaxJObj) ->
-    [AttachmentName] = wh_doc:attachment_names(FaxJObj),
+    [AttachmentName] = kz_doc:attachment_names(FaxJObj),
 
     case kz_datamgr:fetch_attachment(Db, {<<"fax">>, Id}, AttachmentName) of
         {'ok', Bin} ->
-            get_attachment(wh_doc:attachment_content_type(FaxJObj, AttachmentName), Bin);
+            get_attachment(kz_doc:attachment_content_type(FaxJObj, AttachmentName), Bin);
         {'error', _E} ->
             lager:debug("failed to fetch attachment ~s: ~p", [AttachmentName, _E]),
             {'error', 'no_attachment'}
@@ -185,9 +185,9 @@ get_attachment('undefined', Bin) ->
 get_attachment(ContentType, Bin) ->
     {'ok', ContentType, Bin}.
 
--spec fax_db(wh_json:object()) -> ne_binary().
+-spec fax_db(kz_json:object()) -> ne_binary().
 fax_db(DataJObj) ->
     case teletype_util:find_account_db(DataJObj) of
-        'undefined' -> ?WH_FAXES_DB;
+        'undefined' -> ?KZ_FAXES_DB;
         Db -> Db
     end.

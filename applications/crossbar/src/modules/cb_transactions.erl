@@ -17,7 +17,7 @@
         ]).
 
 -include("crossbar.hrl").
--include_lib("whistle_transactions/include/whistle_transactions.hrl").
+-include_lib("kazoo_transactions/include/kazoo_transactions.hrl").
 
 -define(CURRENT_BALANCE, <<"current_balance">>).
 -define(MONTHLY, <<"monthly_recurring">>).
@@ -49,15 +49,15 @@ to_csv({Req, Context}) ->
     JObjs = flatten(cb_context:resp_data(Context), []),
     {Req, cb_context:set_resp_data(Context, JObjs)}.
 
--spec flatten(wh_json:objects(), wh_json:objects()) -> wh_json:objects().
+-spec flatten(kz_json:objects(), kz_json:objects()) -> kz_json:objects().
 flatten([], Results) ->
     wht_util:collapse_call_transactions(Results);
 flatten([JObj|JObjs], Results) ->
-    Metadata = wh_json:get_ne_value(<<"metadata">>, JObj),
-    case wh_json:is_json_object(Metadata) of
+    Metadata = kz_json:get_ne_value(<<"metadata">>, JObj),
+    case kz_json:is_json_object(Metadata) of
         'true' ->
-            Props = wh_json:to_proplist(Metadata),
-            flatten(JObjs, [wh_json:set_values(Props, JObj)|Results]);
+            Props = kz_json:to_proplist(Metadata),
+            flatten(JObjs, [kz_json:set_values(Props, JObj)|Results]);
         'false' ->
             flatten(JObjs, [JObj|Results])
     end;
@@ -133,9 +133,9 @@ delete(Context, ?DEBIT) ->
 -spec maybe_debit_billing_id(cb_context:context()) -> cb_context:context().
 maybe_debit_billing_id(Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
-    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
 
-    case wh_services:find_reseller_id(cb_context:account_id(Context)) of
+    case kz_services:find_reseller_id(cb_context:account_id(Context)) of
         MasterAccountId ->
             lager:debug("invoking a bookkeeper to remove requested credit"),
             maybe_create_debit_tansaction(Context);
@@ -144,7 +144,7 @@ maybe_debit_billing_id(Context) ->
             maybe_create_debit_tansaction(Context);
         ResellerId ->
             lager:debug("sub-accounts of non-master resellers must contact the reseller to change their credit"),
-            Resp = wh_json:from_list(
+            Resp = kz_json:from_list(
                      [{<<"message">>, <<"Please contact your phone provider to remove credit.">>}
                       ,{<<"cause">>, ResellerId}
                      ]),
@@ -158,40 +158,40 @@ maybe_create_debit_tansaction(Context) ->
             lager:error("failed to create debit transaction : ~p", [_R]),
             cb_context:add_system_error(
               'transaction_failed'
-              ,wh_json:from_list(
+              ,kz_json:from_list(
                  [{<<"message">>, <<"failed to create debit transaction">>}
-                  ,{<<"cause">>, wh_util:error_to_binary(Error)}
+                  ,{<<"cause">>, kz_util:error_to_binary(Error)}
                  ])
               ,Context
              );
         {'ok', Transaction} ->
             cb_context:set_resp_data(
               Context
-              ,wh_transaction:to_public_json(Transaction)
+              ,kz_transaction:to_public_json(Transaction)
              )
     end.
 
 -spec create_debit_tansaction(cb_context:context()) ->
-                                     {'ok', wh_transaction:transaction()} |
+                                     {'ok', kz_transaction:transaction()} |
                                      {'error', _}.
 create_debit_tansaction(Context) ->
     AccountId = cb_context:account_id(Context),
     JObj = cb_context:req_data(Context),
-    Amount = wh_json:get_float_value(<<"amount">>, JObj),
+    Amount = kz_json:get_float_value(<<"amount">>, JObj),
     Units = wht_util:dollars_to_units(Amount),
     Meta =
-        wh_json:from_list(
+        kz_json:from_list(
           [{<<"auth_account_id">>, cb_context:auth_account_id(Context)}]
          ),
-    Reason = wh_json:get_value(<<"reason">>, JObj, <<"admin_discretion">>),
+    Reason = kz_json:get_value(<<"reason">>, JObj, <<"admin_discretion">>),
 
-    Routines = [fun(Tr) -> wh_transaction:set_reason(Reason, Tr) end
-                ,fun(Tr) -> wh_transaction:set_metadata(Meta, Tr) end
-                ,fun wh_transaction:save/1
+    Routines = [fun(Tr) -> kz_transaction:set_reason(Reason, Tr) end
+                ,fun(Tr) -> kz_transaction:set_metadata(Meta, Tr) end
+                ,fun kz_transaction:save/1
                ],
     lists:foldl(
       fun(F, Tr) -> F(Tr) end
-      ,wh_transaction:debit(AccountId, Units)
+      ,kz_transaction:debit(AccountId, Units)
       ,Routines
      ).
 
@@ -213,7 +213,7 @@ validate_transactions(Context, ?HTTP_GET) ->
 
 validate_transaction(Context, ?CURRENT_BALANCE, ?HTTP_GET) ->
     Balance = wht_util:units_to_dollars(wht_util:current_balance(cb_context:account_id(Context))),
-    JObj = wh_json:from_list([{<<"balance">>, Balance}]),
+    JObj = kz_json:from_list([{<<"balance">>, Balance}]),
     cb_context:setters(Context
                        ,[{fun cb_context:set_resp_status/2, 'success'}
                          ,{fun cb_context:set_resp_data/2, JObj}
@@ -241,12 +241,12 @@ validate_transaction(Context, _PathToken, _Verb) ->
 -spec validate_debit(cb_context:context()) -> cb_context:context().
 -spec validate_debit(cb_context:context(), api_float()) -> cb_context:context().
 validate_debit(Context) ->
-    Amount = wh_json:get_float_value(<<"amount">>, cb_context:req_data(Context)),
+    Amount = kz_json:get_float_value(<<"amount">>, cb_context:req_data(Context)),
 
     case cb_modules_util:is_superduper_admin(Context) of
         'true' -> validate_debit(Context, Amount);
         'false' ->
-            case wh_services:is_reseller(cb_context:auth_account_id(Context)) of
+            case kz_services:is_reseller(cb_context:auth_account_id(Context)) of
                 'true' -> validate_debit(Context, Amount);
                 'false' -> cb_context:add_system_error('forbidden', Context)
             end
@@ -257,7 +257,7 @@ validate_debit(Context, 'undefined') ->
     cb_context:add_validation_error(
       <<"amount">>
       ,<<"required">>
-      ,wh_json:from_list([{<<"message">>, Message}])
+      ,kz_json:from_list([{<<"message">>, Message}])
       ,Context
      );
 validate_debit(Context, Amount) when Amount =< 0 ->
@@ -265,7 +265,7 @@ validate_debit(Context, Amount) when Amount =< 0 ->
     cb_context:add_validation_error(
       <<"amount">>
       ,<<"minimum">>
-      ,wh_json:from_list([{<<"message">>, Message}])
+      ,kz_json:from_list([{<<"message">>, Message}])
       ,Context
      );
 validate_debit(Context, Amount) ->
@@ -279,7 +279,7 @@ validate_debit(Context, Amount) ->
             cb_context:add_validation_error(
               <<"amount">>
               ,<<"minimum">>
-              ,wh_json:from_list(
+              ,kz_json:from_list(
                  [{<<"message">>, Message}
                   ,{<<"cause">>, FuturAmount}
                  ])
@@ -297,36 +297,36 @@ validate_debit(Context, Amount) ->
                                 cb_context:context().
 
 fetch_transactions(Context, From, To, 'undefined') ->
-    case wh_transactions:fetch(cb_context:account_id(Context), From, To) of
+    case kz_transactions:fetch(cb_context:account_id(Context), From, To) of
         {'error', _R}=Error -> send_resp(Error, Context);
         {'ok', Transactions} ->
-            JObjs = wh_transactions:to_public_json(Transactions),
+            JObjs = kz_transactions:to_public_json(Transactions),
             send_resp({'ok', JObjs}, Context)
     end;
 fetch_transactions(Context, From, To, <<"only_calls">>) ->
-    case wh_transactions:fetch_local(cb_context:account_id(Context), From, To) of
+    case kz_transactions:fetch_local(cb_context:account_id(Context), From, To) of
         {'error', _R}=Error -> send_resp(Error, Context);
         {'ok', Transactions} ->
-            JObjs = [wh_transaction:to_public_json(Transaction)
-                     || Transaction <- wh_transactions:filter_for_per_minute(Transactions)
+            JObjs = [kz_transaction:to_public_json(Transaction)
+                     || Transaction <- kz_transactions:filter_for_per_minute(Transactions)
                     ],
             send_resp({'ok', JObjs}, Context)
     end;
 fetch_transactions(Context, From, To, Reason)
   when Reason =:= <<"only_bookkeeper">>; Reason =:= <<"no_calls">> ->
-    case wh_transactions:fetch_bookkeeper(cb_context:account_id(Context), From, To) of
+    case kz_transactions:fetch_bookkeeper(cb_context:account_id(Context), From, To) of
         {'error', _R}=Error -> send_resp(Error, Context);
         {'ok', Transactions} ->
-            Filtered = wh_transactions:filter_by_reason(Reason, Transactions),
-            JObjs = wh_transactions:to_public_json(Filtered),
+            Filtered = kz_transactions:filter_by_reason(Reason, Transactions),
+            JObjs = kz_transactions:to_public_json(Filtered),
             send_resp({'ok', JObjs}, Context)
     end;
 fetch_transactions(Context, From, To, Reason) ->
-    case wh_transactions:fetch(cb_context:account_id(Context), From, To) of
+    case kz_transactions:fetch(cb_context:account_id(Context), From, To) of
         {'error', _R}=Error -> send_resp(Error, Context);
         {'ok', Transactions} ->
-            Filtered = wh_transactions:filter_by_reason(Reason, Transactions),
-            JObjs = wh_transactions:to_public_json(Filtered),
+            Filtered = kz_transactions:filter_by_reason(Reason, Transactions),
+            JObjs = kz_transactions:to_public_json(Filtered),
             send_resp({'ok', JObjs}, Context)
     end.
 
@@ -339,12 +339,12 @@ fetch_transactions(Context, From, To, Reason) ->
 -spec fetch_monthly_recurring(cb_context:context(), gregorian_seconds(), gregorian_seconds(), api_binary()) ->
                                      cb_context:context().
 fetch_monthly_recurring(Context, From, To, Reason) ->
-    case wh_bookkeeper_braintree:transactions(cb_context:account_id(Context), From, To) of
+    case kz_bookkeeper_braintree:transactions(cb_context:account_id(Context), From, To) of
         {'error', _}=E -> send_resp(E, Context);
         {'ok', Transactions} ->
-            JObjs = [wh_transaction:to_public_json(Transaction)
-                     || Transaction <- wh_transactions:filter_by_reason(Reason, Transactions),
-                        wh_transaction:code(Transaction) =:= ?CODE_MONTHLY_RECURRING
+            JObjs = [kz_transaction:to_public_json(Transaction)
+                     || Transaction <- kz_transactions:filter_by_reason(Reason, Transactions),
+                        kz_transaction:code(Transaction) =:= ?CODE_MONTHLY_RECURRING
                     ],
             send_resp({'ok', JObjs}, Context)
     end.
@@ -358,7 +358,7 @@ fetch_monthly_recurring(Context, From, To, Reason) ->
 -spec filter_subscriptions(cb_context:context()) -> cb_context:context().
 filter_subscriptions(Context) ->
     AccountId = cb_context:account_id(Context),
-    case wh_service_transactions:current_billing_period(AccountId, 'subscriptions') of
+    case kz_service_transactions:current_billing_period(AccountId, 'subscriptions') of
         'not_found' ->
             send_resp({'error', <<"no data found in braintree">>}, Context);
         'unknow_error' ->
@@ -374,7 +374,7 @@ filter_subscriptions(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec filter_subscription(wh_json:object()) -> wh_json:object().
+-spec filter_subscription(kz_json:object()) -> kz_json:object().
 filter_subscription(BSubscription) ->
     Routines = [fun clean_braintree_subscription/1
                 ,fun correct_date_braintree_subscription/1
@@ -387,7 +387,7 @@ filter_subscription(BSubscription) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec clean_braintree_subscription(wh_json:object()) -> wh_json:object().
+-spec clean_braintree_subscription(kz_json:object()) -> kz_json:object().
 clean_braintree_subscription(BSubscription) ->
     RemoveKeys = [<<"billing_dom">>
                   ,<<"failure_count">>
@@ -403,7 +403,7 @@ clean_braintree_subscription(BSubscription) ->
                   ,<<"replace_add_ons">>
                   ,<<"create">>
                  ],
-    wh_json:delete_keys(RemoveKeys, BSubscription).
+    kz_json:delete_keys(RemoveKeys, BSubscription).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -411,7 +411,7 @@ clean_braintree_subscription(BSubscription) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec correct_date_braintree_subscription(wh_json:object()) -> wh_json:object().
+-spec correct_date_braintree_subscription(kz_json:object()) -> kz_json:object().
 correct_date_braintree_subscription(BSubscription) ->
     Keys = [<<"billing_first_date">>
             ,<<"billing_end_date">>
@@ -420,15 +420,15 @@ correct_date_braintree_subscription(BSubscription) ->
            ],
     lists:foldl(fun correct_date_braintree_subscription_fold/2, BSubscription, Keys).
 
--spec correct_date_braintree_subscription_fold(ne_binary(), wh_json:object()) -> wh_json:object().
+-spec correct_date_braintree_subscription_fold(ne_binary(), kz_json:object()) -> kz_json:object().
 correct_date_braintree_subscription_fold(Key, BSub) ->
-    case wh_json:get_value(Key, BSub, 'null') of
+    case kz_json:get_value(Key, BSub, 'null') of
         'null' -> BSub;
         Value ->
             [Y, M, D | _] = string:tokens(binary_to_list(Value), "-"),
             DateTime = {{list_to_integer(Y), list_to_integer(M), list_to_integer(D)}, {0, 0, 0}},
             Timestamp = calendar:datetime_to_gregorian_seconds(DateTime),
-            wh_json:set_value(Key, Timestamp, BSub)
+            kz_json:set_value(Key, Timestamp, BSub)
     end.
 
 %%--------------------------------------------------------------------
@@ -446,6 +446,6 @@ send_resp({'ok', JObj}, Context) ->
 send_resp({'error', Details}, Context) ->
     cb_context:add_system_error(
       'bad_identifier'
-      ,wh_json:from_list([{<<"cause">>, Details}])
+      ,kz_json:from_list([{<<"cause">>, Details}])
       ,Context
      ).

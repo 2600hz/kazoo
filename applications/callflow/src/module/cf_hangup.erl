@@ -11,7 +11,7 @@
 %% API
 -export([handle/2]).
 
--spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(_Data, Call) ->
-    whapps_call_command:queued_hangup(Call),
+    kapps_call_command:queued_hangup(Call),
     cf_exe:hard_stop(Call).

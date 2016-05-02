@@ -1,7 +1,7 @@
 -ifndef(KNM_NUMBER_MANAGER_HRL).
 
--include_lib("whistle/include/wh_log.hrl").
--include_lib("whistle/include/wh_types.hrl").
+-include_lib("kazoo/include/kz_log.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
 
 -define(KNM_DEFAULT_AUTH_BY, <<"system">>).
 
@@ -10,7 +10,7 @@
         {'error', any()}.
 
 -type dry_run_return() ::
-        {'dry_run', wh_services:services(), non_neg_integer()}.
+        {'dry_run', kz_services:services(), non_neg_integer()}.
 
 -type knm_number_return() ::
         {'ok', knm_number:knm_number()} |

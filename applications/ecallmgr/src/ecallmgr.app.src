@@ -8,10 +8,10 @@
                   , stdlib
                   , crypto
 
-                  , whistle_apps
-                  , whistle_config
-                  , whistle_amqp
-                  , whistle_stats
+                  , kazoo_apps
+                  , kazoo_config
+                  , kazoo_amqp
+                  , kazoo_stats
                   , kazoo_web
 
                   , lager

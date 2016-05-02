@@ -1,11 +1,11 @@
 -ifndef(STEPSWITCH_HRL).
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_log.hrl").
--include_lib("whistle/include/wh_databases.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo/include/kz_log.hrl").
+-include_lib("kazoo/include/kz_databases.hrl").
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 
--define(ROUTES_DB, ?WH_OFFNET_DB).
--define(RESOURCES_DB, ?WH_OFFNET_DB).
+-define(ROUTES_DB, ?KZ_OFFNET_DB).
+-define(RESOURCES_DB, ?KZ_OFFNET_DB).
 -define(LOCAL_RESOURCES_VIEW, <<"resources/crossbar_listing">>).
 
 -define(LIST_ROUTES_BY_NUMBER, <<"routes/listing_by_number">>).
@@ -26,11 +26,11 @@
 -type direction() :: 'inbound' | 'outbound' | 'both'.
 
 -define(DEFAULT_AMQP_EXCHANGE_OPTIONS
-        ,wh_json:from_list([{'passive', 'true'}])
+        ,kz_json:from_list([{'passive', 'true'}])
        ).
 
 -define(RULES_HONOR_DIVERSION
-        ,whapps_config:get_is_true(?SS_CONFIG_CAT, <<"cid_rules_honor_diversions">>, 'false')
+        ,kapps_config:get_is_true(?SS_CONFIG_CAT, <<"cid_rules_honor_diversions">>, 'false')
        ).
 
 -define(STEPSWITCH_HRL, 'true').

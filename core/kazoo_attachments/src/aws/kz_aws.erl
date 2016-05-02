@@ -295,7 +295,7 @@ get_credentials_from_metadata(Config) ->
                 {error, Reason} ->
                     {error, Reason};
                 {ok, Json} ->
-                    Creds = wh_json:decode(Json),
+                    Creds = kz_json:decode(Json),
                     Record = #metadata_credentials
                         {access_key_id = binary_to_list(proplists:get_value(<<"AccessKeyId">>, Creds)),
                          secret_access_key = binary_to_list(proplists:get_value(<<"SecretAccessKey">>, Creds)),
@@ -472,7 +472,7 @@ get_service_status(ServiceNames) when is_list(ServiceNames) ->
         "/data.json", "", [], default_config()),
 
     case get_filtered_statuses(ServiceNames,
-            proplists:get_value(<<"current">>, wh_json:decode(Json)))
+            proplists:get_value(<<"current">>, kz_json:decode(Json)))
     of
         [] -> ok;
         ReturnStatuses -> ReturnStatuses

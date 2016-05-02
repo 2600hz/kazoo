@@ -21,7 +21,7 @@
 
 -include("kz_documents.hrl").
 
--type doc() :: wh_json:object().
+-type doc() :: kz_json:object().
 -export_type([doc/0]).
 
 -define(KEY_VOICEMAIL, <<"voicemail">>).
@@ -54,7 +54,7 @@
 %%--------------------------------------------------------------------
 -spec new() -> doc().
 new() ->
-    wh_json:from_list([{?PVT_TYPE, type()}]).
+    kz_json:from_list([{?PVT_TYPE, type()}]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -63,9 +63,9 @@ new() ->
 %%    [{<<"Box-Id">>, BoxId}]
 %% @end
 %%--------------------------------------------------------------------
--spec new(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> doc().
+-spec new(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> doc().
 new(Db, DocId, AttachmentName, BoxNum, Timezone, Props) ->
-    UtcSeconds = wh_util:current_tstamp(),
+    UtcSeconds = kz_util:current_tstamp(),
     UtcDateTime = calendar:gregorian_seconds_to_datetime(UtcSeconds),
     Name = case localtime:utc_to_local(UtcDateTime, Timezone) of
                {'error', 'unknown_tz'} ->
@@ -86,26 +86,26 @@ new(Db, DocId, AttachmentName, BoxNum, Timezone, Props) ->
                ,{?KEY_STREAMABLE, 'true'}
                ,{?KEY_UTC_SEC, UtcSeconds}
               ]),
-    wh_doc:update_pvt_parameters(wh_json:from_list(DocProps), Db, [{'type', type()}]).
+    kz_doc:update_pvt_parameters(kz_json:from_list(DocProps), Db, [{'type', type()}]).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec message_name(ne_binary(), wh_datetime()) -> ne_binary().
+-spec message_name(ne_binary(), kz_datetime()) -> ne_binary().
 message_name(BoxNum, DT) ->
     message_name(BoxNum, DT, "").
 
--spec message_name(ne_binary(), wh_datetime(), string()) -> ne_binary().
+-spec message_name(ne_binary(), kz_datetime(), string()) -> ne_binary().
 message_name(BoxNum, {{Y,M,D},{H,I,S}}, TZ) ->
     list_to_binary(["mailbox ", BoxNum, " message "
-                    ,wh_util:to_binary(M), "-"
-                    ,wh_util:to_binary(D), "-"
-                    ,wh_util:to_binary(Y), " "
-                    ,wh_util:to_binary(H), ":"
-                    ,wh_util:to_binary(I), ":"
-                    ,wh_util:to_binary(S), TZ
+                    ,kz_util:to_binary(M), "-"
+                    ,kz_util:to_binary(D), "-"
+                    ,kz_util:to_binary(Y), " "
+                    ,kz_util:to_binary(H), ":"
+                    ,kz_util:to_binary(I), ":"
+                    ,kz_util:to_binary(S), TZ
                    ]).
 
 %%--------------------------------------------------------------------
@@ -113,17 +113,17 @@ message_name(BoxNum, {{Y,M,D},{H,I,S}}, TZ) ->
 %% @doc Build message metadata
 %% @end
 %%--------------------------------------------------------------------
--spec build_metadata_object(pos_integer(), whapps_call:call(), ne_binary(), ne_binary(), ne_binary(), gregorian_seconds()) ->
+-spec build_metadata_object(pos_integer(), kapps_call:call(), ne_binary(), ne_binary(), ne_binary(), gregorian_seconds()) ->
                                     doc().
 build_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp) ->
-    wh_json:from_list(
+    kz_json:from_list(
         props:filter_undefined(
             [{?KEY_META_TIMESTAMP, Timestamp}
-             ,{?KEY_META_FROM, whapps_call:from(Call)}
-             ,{?KEY_META_TO, whapps_call:to(Call)}
+             ,{?KEY_META_FROM, kapps_call:from(Call)}
+             ,{?KEY_META_TO, kapps_call:to(Call)}
              ,{?KEY_META_CID_NUMBER, CIDNumber}
              ,{?KEY_META_CID_NAME, CIDName}
-             ,{?KEY_META_CALL_ID, whapps_call:call_id(Call)}
+             ,{?KEY_META_CALL_ID, kapps_call:call_id(Call)}
              ,{?VM_KEY_FOLDER, ?VM_FOLDER_NEW}
              ,{?KEY_META_LENGTH, Length}
              ,{?KEY_MEDIA_ID, MediaId}
@@ -144,27 +144,27 @@ folder(JObj) ->
 
 -spec folder(doc(), Default) -> ne_binary() | Default.
 folder(JObj, Default) ->
-    wh_json:get_value(?VM_KEY_FOLDER, JObj, Default).
+    kz_json:get_value(?VM_KEY_FOLDER, JObj, Default).
 
 -spec set_folder(api_binary(), doc()) -> doc().
 set_folder(Folder, JObj) ->
-    wh_json:set_value(?VM_KEY_FOLDER, Folder, JObj).
+    kz_json:set_value(?VM_KEY_FOLDER, Folder, JObj).
 
 -spec set_folder_saved(doc()) -> doc().
 set_folder_saved(JObj) ->
-    wh_json:set_value(?VM_KEY_FOLDER, ?VM_FOLDER_SAVED, JObj).
+    kz_json:set_value(?VM_KEY_FOLDER, ?VM_FOLDER_SAVED, JObj).
 
 -spec set_folder_deleted(doc()) -> doc().
 set_folder_deleted(JObj) ->
-    wh_json:set_value(?VM_KEY_FOLDER, ?VM_FOLDER_DELETED, JObj).
+    kz_json:set_value(?VM_KEY_FOLDER, ?VM_FOLDER_DELETED, JObj).
 
 -spec media_id(doc()) -> api_binary().
 media_id(JObj) ->
-    wh_json:get_value(?KEY_MEDIA_ID, JObj).
+    kz_json:get_value(?KEY_MEDIA_ID, JObj).
 
 -spec set_media_id(ne_binary(), doc()) -> doc().
 set_media_id(MediaId, JObj) ->
-    wh_json:set_value(?KEY_MEDIA_ID, MediaId, JObj).
+    kz_json:set_value(?KEY_MEDIA_ID, MediaId, JObj).
 
 -spec metadata(doc()) -> doc().
 metadata(JObj) ->
@@ -172,26 +172,26 @@ metadata(JObj) ->
 
 -spec metadata(doc(), doc()) -> api_object().
 metadata(JObj, Default) ->
-    wh_json:get_value(?KEY_METADATA, JObj, Default).
+    kz_json:get_value(?KEY_METADATA, JObj, Default).
 
 -spec set_metadata(doc(), doc()) -> doc().
 set_metadata(Metadata, JObj) ->
-    wh_json:set_value(?KEY_METADATA, Metadata, JObj).
+    kz_json:set_value(?KEY_METADATA, Metadata, JObj).
 
 -spec utc_seconds(doc()) -> pos_integer().
 utc_seconds(JObj) ->
-    wh_json:get_integer_value(?KEY_UTC_SEC, JObj).
+    kz_json:get_integer_value(?KEY_UTC_SEC, JObj).
 
 -spec source_id(doc()) -> ne_binary().
 source_id(JObj) ->
-    wh_json:get_value(?KEY_SOURCE_ID, JObj).
+    kz_json:get_value(?KEY_SOURCE_ID, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc Filter messages based on specific folder
 %% @end
 %%--------------------------------------------------------------------
--spec filter_folder(wh_json:objects(), ne_binary()) -> wh_json:objects().
+-spec filter_folder(kz_json:objects(), ne_binary()) -> kz_json:objects().
 filter_folder(Messages, Folder) ->
     [M || M <- Messages, folder(M) =:= Folder].
 
@@ -200,10 +200,10 @@ filter_folder(Messages, Folder) ->
 %% @doc Count mailbox_messages/count_per_folder view results
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_count(wh_json:objects()) -> {non_neg_integer(), non_neg_integer()}.
+-spec normalize_count(kz_json:objects()) -> {non_neg_integer(), non_neg_integer()}.
 normalize_count(ViewRes) ->
-    Props = [{wh_json:get_value([<<"key">>, 2], Msg)
-              ,wh_json:get_integer_value(<<"value">>, Msg)
+    Props = [{kz_json:get_value([<<"key">>, 2], Msg)
+              ,kz_json:get_integer_value(<<"value">>, Msg)
              }
              || Msg <- ViewRes
             ],
@@ -216,11 +216,11 @@ normalize_count(ViewRes) ->
 %% @doc Count message list in specific folder(s)
 %% @end
 %%--------------------------------------------------------------------
--spec count_folder(wh_json:objects(), ne_binary() | ne_binaries()) -> non_neg_integer().
+-spec count_folder(kz_json:objects(), ne_binary() | ne_binaries()) -> non_neg_integer().
 count_folder(Messages, Folders) when is_list(Folders) ->
     lists:sum([1 || Message <- Messages,
                     begin
-                        F = wh_json:get_value(?VM_KEY_FOLDER, Message),
+                        F = kz_json:get_value(?VM_KEY_FOLDER, Message),
                         lists:member(F, Folders)
                     end
               ]);
@@ -233,16 +233,16 @@ count_folder(Messages, Folder) ->
 %% and return a tuple of deleted message and messages list
 %% @end
 %%--------------------------------------------------------------------
--type message_filter_ret() :: {wh_json:object(), wh_json:objects()} | {'error', 'not_found'}.
+-type message_filter_ret() :: {kz_json:object(), kz_json:objects()} | {'error', 'not_found'}.
 
--spec filter_vmbox_messages(ne_binary(), wh_json:objects()) -> message_filter_ret().
+-spec filter_vmbox_messages(ne_binary(), kz_json:objects()) -> message_filter_ret().
 filter_vmbox_messages(_MediaId, []) ->
     lager:warning("found media doc ~s but messages in vmbox is empty", [_MediaId]),
     {'error', 'not_found'};
 filter_vmbox_messages(MediaId, [H|T]) ->
     filter_vmbox_messages(MediaId, media_id(H), H, T, []).
 
--spec filter_vmbox_messages(ne_binary(), ne_binary(), wh_json:object(), wh_json:objects(), wh_json:objects()) ->
+-spec filter_vmbox_messages(ne_binary(), ne_binary(), kz_json:object(), kz_json:objects(), kz_json:objects()) ->
                                 message_filter_ret().
 filter_vmbox_messages(MediaId, MediaId, Msg, [], Acc) ->
     {Msg, Acc};

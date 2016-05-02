@@ -12,7 +12,7 @@
 %% Application callbacks
 -export([start/2, stop/1]).
 
--include_lib("whistle/include/wh_types.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
 
 
 %% ===================================================================
@@ -33,11 +33,11 @@ start(_Type, _Args) ->
 %%--------------------------------------------------------------------
 -spec stop(any()) -> any().
 stop(_State) ->
-    _ = wh_media_proxy:stop(),
+    _ = kz_media_proxy:stop(),
     'ok'.
 
 
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    _ = wapi_media:declare_exchanges(),
-    wapi_self:declare_exchanges().
+    _ = kapi_media:declare_exchanges(),
+    kapi_self:declare_exchanges().

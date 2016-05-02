@@ -96,11 +96,11 @@ resource_exists(_SchemaName, ?VALIDATION_PATH_TOKEN) -> 'true'.
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
-    lager:debug("load summary of schemas from ~s", [?WH_SCHEMA_DB]),
-    summary(cb_context:set_account_db(Context, ?WH_SCHEMA_DB)).
+    lager:debug("load summary of schemas from ~s", [?KZ_SCHEMA_DB]),
+    summary(cb_context:set_account_db(Context, ?KZ_SCHEMA_DB)).
 
 validate(Context, Id) ->
-    read(Id, cb_context:set_account_db(Context, ?WH_SCHEMA_DB)).
+    read(Id, cb_context:set_account_db(Context, ?KZ_SCHEMA_DB)).
 
 validate(Context, Id, ?VALIDATION_PATH_TOKEN) ->
     cb_context:validate_request_data(Id, Context, fun on_success/1).
@@ -144,9 +144,9 @@ summary(Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    case wh_doc:id(JObj) of
+    case kz_doc:id(JObj) of
         <<"_design/", _/binary>> -> Acc;
         ID -> [ID | Acc]
     end.

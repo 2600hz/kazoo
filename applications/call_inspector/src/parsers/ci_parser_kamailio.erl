@@ -64,7 +64,7 @@ start_link(Args) ->
 %%--------------------------------------------------------------------
 init({'parser_args', LogFile, LogIP, LogPort} = Args) ->
     ParserId = ci_parsers_util:make_name(Args),
-    _ = wh_util:put_callid(ParserId),
+    _ = kz_util:put_callid(ParserId),
     NewDev = ci_parsers_util:open_file(LogFile),
     State = #state{parser_id = ParserId
                    ,logfile = LogFile
@@ -279,7 +279,7 @@ cleanse_data_and_get_timestamp(Data0) ->
                 ,Data0
                ).
 
--spec cleanse_data_fold({ne_binary() | wh_now()} | ne_binary()
+-spec cleanse_data_fold({ne_binary() | kz_now()} | ne_binary()
                         ,cleanse_acc()
                        ) -> cleanse_acc().
 cleanse_data_fold({RawTimestamp}, {Acc, TS}) ->

@@ -1,8 +1,8 @@
 -ifndef(KZ_COUCH_HRL).
--include_lib("whistle/include/wh_types.hrl"). % get the whistle types
--include_lib("whistle/include/wh_log.hrl").
--include_lib("whistle/include/wh_databases.hrl").
--include_lib("whistle/include/kz_system_config.hrl").
+-include_lib("kazoo/include/kz_types.hrl"). % get the kazoo types
+-include_lib("kazoo/include/kz_log.hrl").
+-include_lib("kazoo/include/kz_databases.hrl").
+-include_lib("kazoo/include/kz_system_config.hrl").
 -include_lib("couchbeam/include/couchbeam.hrl").
 
 -define(TIMEOUT, ?MILLISECONDS_IN_HOUR). %% check every hour
@@ -55,12 +55,12 @@
          ,do_compaction = 'false' :: boolean()
          }).
 
--record(kz_couch_connection, {id = wh_util:current_tstamp()
+-record(kz_couch_connection, {id = kz_util:current_tstamp()
                               ,host = "localhost"
                               ,port = ?DEFAULT_PORT
                               ,username = ""
                               ,password = ""
-                              ,options = [] :: wh_proplist()
+                              ,options = [] :: kz_proplist()
                               ,connected = 'false'
                               ,ready = 'false'
                               ,admin = 'false'
@@ -71,12 +71,12 @@
 
 -type couchbeam_db() :: #db{}.
 
--record(wh_copy_doc, {source_dbname  :: ne_binary()
+-record(kz_copy_doc, {source_dbname  :: ne_binary()
                       ,source_doc_id  :: ne_binary()
                       ,dest_dbname = 'undefined' :: api_binary()
                       ,dest_doc_id = 'undefined' :: api_binary()
                      }).
--type copy_doc() :: #wh_copy_doc{}.
+-type copy_doc() :: #kz_copy_doc{}.
 
 -define(NO_OPTIONS, [cookie, admin_port, compact_automatically]).
 -define(ATOM_OPTIONS, [pool, pool_name]).

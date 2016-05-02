@@ -10,12 +10,12 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--define(DOC, wh_json:set_values([{<<"first_name">>, "F"}
+-define(DOC, kz_json:set_values([{<<"first_name">>, "F"}
                                  ,{<<"last_name">>, "L"}
                                  ,{<<"email">>, <<"email@example.com">>}
                                  ,{<<"vm_to_email_enabled">>, 'true'}]
-                                , wh_json:new())).
--define(EMPTY, wh_json:new()).
+                                , kz_json:new())).
+-define(EMPTY, kz_json:new()).
 
 email_test() ->
     ?assertEqual(<<"email@example.com">>,   kzd_user:email(?DOC)),

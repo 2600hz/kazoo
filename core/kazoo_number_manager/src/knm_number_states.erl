@@ -24,7 +24,7 @@
 
 -spec to_state(ne_binary() | kn(), ne_binary()) ->
                       kn().
--spec to_state(ne_binary() | kn(), ne_binary(), wh_proplist()) ->
+-spec to_state(ne_binary() | kn(), ne_binary(), kz_proplist()) ->
                       kn().
 to_state(DID, ToState) ->
     to_state(DID, ToState, knm_number_options:default()).
@@ -138,7 +138,7 @@ authorize(Number) ->
        ).
 -else.
 -define(ACCT_HIERARCHY(AuthBy, AssignTo, Bool)
-        ,wh_util:is_in_account_hierarchy(AuthBy, AssignTo, Bool)
+        ,kz_util:is_in_account_hierarchy(AuthBy, AssignTo, Bool)
        ).
 -endif.
 
@@ -287,7 +287,7 @@ apply_transitions(Number, Routines) ->
 
 -spec is_authorized_operation(ne_binary(), ne_binary()) -> boolean().
 is_authorized_operation(CheckFor, InAccount) ->
-     wh_util:is_in_account_hierarchy(
+     kz_util:is_in_account_hierarchy(
        CheckFor
        ,InAccount
       ).

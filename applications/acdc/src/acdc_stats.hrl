@@ -5,12 +5,12 @@
 
 -define(VALID_STATUSES, [<<"waiting">>, <<"handled">>, <<"abandoned">>, <<"processed">>]).
 
--define(MAX_RESULT_SET, whapps_config:get_integer(?CONFIG_CAT, <<"max_result_set">>, 25)).
+-define(MAX_RESULT_SET, kapps_config:get_integer(?CONFIG_CAT, <<"max_result_set">>, 25)).
 
 -record(agent_miss, {
           agent_id :: api_binary()
           ,miss_reason :: api_binary()
-          ,miss_timestamp = wh_util:current_tstamp() :: pos_integer()
+          ,miss_timestamp = kz_util:current_tstamp() :: pos_integer()
          }).
 -type agent_miss() :: #agent_miss{}.
 -type agent_misses() :: [agent_miss()].
@@ -23,7 +23,7 @@
 
           ,agent_id :: api_binary() | '$3' | '_' % the handling agent
 
-          ,entered_timestamp = wh_util:current_tstamp() :: pos_integer() | '$1' | '$5' | '_'
+          ,entered_timestamp = kz_util:current_tstamp() :: pos_integer() | '$1' | '$5' | '_'
           ,abandoned_timestamp :: api_integer() | '_'
           ,handled_timestamp :: api_integer() | '_'
           ,processed_timestamp :: api_integer() | '_'

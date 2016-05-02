@@ -10,7 +10,7 @@
 -define(VM_KEY_MESSAGES, <<"messages">>).
 -define(VM_KEY_FOLDER, <<"folder">>).
 
--include_lib("whistle/include/wh_databases.hrl").
+-include_lib("kazoo/include/kz_databases.hrl").
 
 -define(KAZOO_DOCUMENTS_HRL, 'true').
 -endif.

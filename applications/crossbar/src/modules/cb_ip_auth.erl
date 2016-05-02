@@ -86,10 +86,10 @@ authenticate_nouns(Context, _Nouns) ->
 authenticate_ip(Context, IpKey) ->
     ViewOptions = [{'key', IpKey}],
     lager:debug("attemping to authenticate ip ~s", [IpKey]),
-    case wh_json:is_empty(IpKey)
+    case kz_json:is_empty(IpKey)
         orelse crossbar_doc:load_view(?AGG_VIEW_IP
                                       ,ViewOptions
-                                      ,cb_context:set_account_db(Context, ?WH_ACCOUNTS_DB)
+                                      ,cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB)
                                      )
     of
         'true' ->
@@ -161,10 +161,10 @@ put(Context) ->
 on_successful_validation(Context) ->
     IpKey = cb_context:client_ip(Context),
     ViewOptions = [{'key', IpKey}],
-    case wh_json:is_empty(IpKey)
+    case kz_json:is_empty(IpKey)
         orelse crossbar_doc:load_view(?AGG_VIEW_IP
                                       ,ViewOptions
-                                      ,cb_context:set_account_db(Context, ?WH_ACCOUNTS_DB)
+                                      ,cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB)
                                      )
     of
         'true' ->
@@ -173,9 +173,9 @@ on_successful_validation(Context) ->
             on_successful_load(Context1, cb_context:resp_status(Context1), cb_context:doc(Context1))
     end.
 
--spec on_successful_load(cb_context:context(), crossbar_status(), wh_json:objects()) -> cb_context:context().
+-spec on_successful_load(cb_context:context(), crossbar_status(), kz_json:objects()) -> cb_context:context().
 on_successful_load(Context, 'success', [Doc]) ->
-    lager:debug("found IP key belongs to account ~p", [wh_json:get_value(<<"value">>, Doc)]),
+    lager:debug("found IP key belongs to account ~p", [kz_json:get_value(<<"value">>, Doc)]),
     cb_context:set_doc(Context, Doc);
 on_successful_load(Context, _Status, _Doc) ->
     Context.
@@ -187,10 +187,10 @@ on_successful_load(Context, _Status, _Doc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_fake_token(cb_context:context()) -> cb_context:context().
--spec create_fake_token(cb_context:context(), wh_json:object()) -> cb_context:context().
+-spec create_fake_token(cb_context:context(), kz_json:object()) -> cb_context:context().
 create_fake_token(Context) ->
     JObj = cb_context:doc(Context),
-    case wh_json:is_empty(JObj) of
+    case kz_json:is_empty(JObj) of
         'true' ->
             lager:debug("refusing to create auth token for an empty doc"),
             cb_context:add_system_error('invalid_credentials', Context);
@@ -199,15 +199,15 @@ create_fake_token(Context) ->
     end.
 
 create_fake_token(Context, JObj) ->
-    AccountId = wh_json:get_value([<<"value">>, <<"account_id">>], JObj),
-    AuthToken = wh_util:rand_hex_binary(12),
+    AccountId = kz_json:get_value([<<"value">>, <<"account_id">>], JObj),
+    AuthToken = kz_util:rand_hex_binary(12),
     Token = [{<<"account_id">>, AccountId}
-             ,{<<"method">>, wh_util:to_binary(?MODULE)}
+             ,{<<"method">>, kz_util:to_binary(?MODULE)}
              ,{<<"_id">>, AuthToken}
             ],
     crossbar_util:response(crossbar_util:response_auth(JObj)
                            ,cb_context:setters(Context
                                                ,[{fun cb_context:set_auth_token/2, AuthToken}
-                                                 ,{fun cb_context:set_auth_doc/2, wh_json:from_list(Token)}
+                                                 ,{fun cb_context:set_auth_doc/2, kz_json:from_list(Token)}
                                                  ,{fun cb_context:set_auth_account_id/2, AccountId}
                                                 ])).

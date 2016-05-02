@@ -48,7 +48,7 @@ get(Nums, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec create(wh_proplist()) -> numbers_return().
+-spec create(kz_proplist()) -> numbers_return().
 create(Props) ->
     do_create(Props, []).
 
@@ -56,7 +56,7 @@ create(Props) ->
 create(Nums, Options) ->
     [{Num, knm_number:create(Num, Options)} || Num <- Nums].
 
--spec do_create(wh_proplist(), numbers_return()) -> numbers_return().
+-spec do_create(kz_proplist(), numbers_return()) -> numbers_return().
 do_create([], Acc) -> Acc;
 do_create([{Num, Data}|Props], Acc) ->
     Return = knm_number:create(Num, Data),
@@ -67,9 +67,9 @@ do_create([{Num, Data}|Props], Acc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec move(wh_proplist()) ->
+-spec move(kz_proplist()) ->
                   numbers_return().
--spec move(wh_proplist(), knm_number_options:options()) ->
+-spec move(kz_proplist(), knm_number_options:options()) ->
                   numbers_return().
 -spec move(ne_binaries(), ne_binary(), knm_number_options:options()) ->
                   numbers_return().
@@ -82,7 +82,7 @@ move(Props, Options) ->
 move(Nums, MoveTo, Options) ->
     [{Num, knm_number:move(Num, MoveTo, Options)} || Num <- Nums].
 
--spec do_move(wh_proplist(), knm_number_options:options(), numbers_return()) ->
+-spec do_move(kz_proplist(), knm_number_options:options(), numbers_return()) ->
                      numbers_return().
 do_move([], _Options, Acc) -> Acc;
 do_move([{Num, MoveTo}|Props], Options, Acc) ->
@@ -94,9 +94,9 @@ do_move([{Num, MoveTo}|Props], Options, Acc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec update(wh_proplist()) ->
+-spec update(kz_proplist()) ->
                     numbers_return().
--spec update(wh_proplist(), knm_number_options:options()) ->
+-spec update(kz_proplist(), knm_number_options:options()) ->
                     numbers_return().
 -spec update(ne_binaries(), knm_phone_number:set_functions(), knm_number_options:options()) ->
                     numbers_return().
@@ -109,7 +109,7 @@ update(Props, Options) ->
 update(Nums, Routines, Options) ->
     [{Num, knm_number:update(Num, Routines, Options)} || Num <- Nums].
 
--spec do_update(wh_proplist(), knm_number_options:options(), numbers_return()) ->
+-spec do_update(kz_proplist(), knm_number_options:options(), numbers_return()) ->
                        numbers_return().
 do_update([], _Options, Acc) -> Acc;
 do_update([{Num, Data}|Props], Options, Acc) ->
@@ -153,9 +153,9 @@ release(Nums, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec change_state(wh_proplist()) ->
+-spec change_state(kz_proplist()) ->
                           numbers_return().
--spec change_state(wh_proplist(), knm_number_options:options()) ->
+-spec change_state(kz_proplist(), knm_number_options:options()) ->
                           numbers_return().
 change_state(Props) ->
     change_state(Props, knm_number_options:default()).
@@ -163,7 +163,7 @@ change_state(Props) ->
 change_state(Props, Options) ->
     do_change_state(Props, Options, []).
 
--spec do_change_state(wh_proplist(), knm_number_options:options(), numbers_return()) ->
+-spec do_change_state(kz_proplist(), knm_number_options:options(), numbers_return()) ->
                              numbers_return().
 do_change_state([], _Options, Acc) -> Acc;
 do_change_state([{Num, State}|Props], Options, Acc) ->
@@ -179,9 +179,9 @@ do_change_state([{Num, State}|Props], Options, Acc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec assigned_to_app(wh_proplist()) ->
+-spec assigned_to_app(kz_proplist()) ->
                              numbers_return().
--spec assigned_to_app(wh_proplist(), knm_number_options:options()) ->
+-spec assigned_to_app(kz_proplist(), knm_number_options:options()) ->
                              numbers_return().
 assigned_to_app(Props) ->
     assigned_to_app(Props, knm_number_options:default()).
@@ -189,7 +189,7 @@ assigned_to_app(Props) ->
 assigned_to_app(Props, Options) ->
     do_assigned_to_app(Props, Options, []).
 
--spec do_assigned_to_app(wh_proplist(), knm_number_options:options(), numbers_return()) ->
+-spec do_assigned_to_app(kz_proplist(), knm_number_options:options(), numbers_return()) ->
                                 numbers_return().
 do_assigned_to_app([], _Options, Acc) -> Acc;
 do_assigned_to_app([{Num, App}|Props], Options, Acc) ->
@@ -203,7 +203,7 @@ do_assigned_to_app([{Num, App}|Props], Options, Acc) ->
 %%--------------------------------------------------------------------
 -spec free(ne_binary()) -> 'ok'.
 free(Account=?NE_BINARY) ->
-    AccountDb = wh_util:format_account_db(Account),
+    AccountDb = kz_util:format_account_db(Account),
     {Numbers, _NumbersData} = lists:unzip(account_listing(AccountDb)),
     _ = [case Result of
              {Num, {'ok', _PhoneNumber}} ->
@@ -220,10 +220,10 @@ free(Account=?NE_BINARY) ->
 %%--------------------------------------------------------------------
 -spec emergency_enabled(ne_binary()) -> ne_binaries().
 emergency_enabled(AccountId=?MATCH_ACCOUNT_RAW(_)) ->
-    AccountDb = wh_util:format_account_db(AccountId),
+    AccountDb = kz_util:format_account_db(AccountId),
     Numbers =
         [Num || {Num, ShortJObj} <- account_listing(AccountDb),
-                AccountId == wh_json:get_value(<<"assigned_to">>, ShortJObj)
+                AccountId == kz_json:get_value(<<"assigned_to">>, ShortJObj)
         ],
     [Num || {Num, {'ok', KNMNumber}} <- ?MODULE:get(Numbers),
             knm_providers:has_emergency_services(KNMNumber)
@@ -233,15 +233,15 @@ emergency_enabled(AccountId=?MATCH_ACCOUNT_RAW(_)) ->
 %% @public
 %% @doc Use a view to list an account's phone numbers & statuses
 %%--------------------------------------------------------------------
--spec account_listing(ne_binary()) -> [{ne_binary(), wh_json:object()}].
+-spec account_listing(ne_binary()) -> [{ne_binary(), kz_json:object()}].
 account_listing(AccountDb = ?MATCH_ACCOUNT_ENCODED(_,_,_)) ->
     case kz_datamgr:get_results(AccountDb, <<"phone_numbers/crossbar_listing">>) of
         {'ok', []} ->
             lager:debug("account ~s holds no numbers", [AccountDb]),
             [];
         {'ok', JObjs} ->
-            [{wh_doc:id(JObj)
-             ,wh_json:get_value(<<"value">>, JObj)
+            [{kz_doc:id(JObj)
+             ,kz_json:get_value(<<"value">>, JObj)
              } || JObj <- JObjs];
         {'error', _R} ->
             lager:debug("error listing numbers for ~s: ~p", [AccountDb, _R])

@@ -272,7 +272,7 @@ code_change(_OldVsn, State, _Extra) ->  {ok, State}.
 %% Private functions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 build_payload(Params, Extra, Content_Available) ->
-  wh_json:encode(
+  kz_json:encode(
     {[{<<"aps">>, do_build_payload(Params, Content_Available)} | Extra]}).
 
 do_build_payload(Params, Content_Available) when Content_Available ->

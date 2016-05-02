@@ -25,10 +25,10 @@ tollfree_tests() ->
     [Result] = knm_carriers:find(?TEST_CREATE_TOLL, Limit, [{<<"tollfree">>, 'true'} | Options]),
 
     [{"Verify found number"
-      ,?_assertEqual(?TEST_CREATE_TOLL, wh_json:get_value(<<"number">>, Result))
+      ,?_assertEqual(?TEST_CREATE_TOLL, kz_json:get_value(<<"number">>, Result))
      }
      ,{"Verify activation charge found"
-       ,?_assertEqual(1.0, wh_json:get_value(<<"activation_charge">>, Result))
+       ,?_assertEqual(1.0, kz_json:get_value(<<"activation_charge">>, Result))
       }
     ].
 

@@ -17,9 +17,9 @@
 
 -include("callflow.hrl").
 
--spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(_Data, Call) ->
-    _ = whapps_call_command:b_answer(Call),
-    _ = whapps_call_command:audio_level(Call, <<"write">>, <<"start">>, <<"-4">>),
-    _ = whapps_call_command:wait_for_hangup(),
+    _ = kapps_call_command:b_answer(Call),
+    _ = kapps_call_command:audio_level(Call, <<"write">>, <<"start">>, <<"-4">>),
+    _ = kapps_call_command:wait_for_hangup(),
     cf_exe:stop(Call).

@@ -17,10 +17,10 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(_Data, Call) ->
     %% Data is the "data" object from the JSON payload
-    %% Call is the current whapps_call record
+    %% Call is the current kapps_call record
 
     %% Give control back to cf_exe process
     cf_exe:continue(Call).

@@ -17,7 +17,7 @@
 
 -include("kz_documents.hrl").
 
--type doc() :: wh_json:object().
+-type doc() :: kz_json:object().
 -export_type([doc/0]).
 
 -define(PVT_TYPE, <<"media">>).
@@ -26,7 +26,7 @@
 
 -spec new() -> doc().
 new() ->
-    wh_json:from_list([{<<"pvt_type">>, type()}]).
+    kz_json:from_list([{<<"pvt_type">>, type()}]).
 
 -spec type() -> ne_binary().
 type() -> ?PVT_TYPE.
@@ -36,7 +36,7 @@ type() -> ?PVT_TYPE.
 prompt_id(Doc) ->
     prompt_id(Doc, 'undefined').
 prompt_id(Doc, Default) ->
-    wh_json:get_binary_value(?PROMPT_ID, Doc, Default).
+    kz_json:get_binary_value(?PROMPT_ID, Doc, Default).
 
 -spec is_prompt(doc()) -> boolean().
 is_prompt(Doc) ->
@@ -47,4 +47,4 @@ is_prompt(Doc) ->
 language(Doc) ->
     language(Doc, 'undefined').
 language(Doc, Default) ->
-    wh_json:get_binary_value(?LANGUAGE, Doc, Default).
+    kz_json:get_binary_value(?LANGUAGE, Doc, Default).

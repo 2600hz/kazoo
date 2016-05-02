@@ -56,12 +56,12 @@ shuffle(List) ->
 reorder_dialog(RefParser, Data1, Chunks) ->
     Reordered = ci_chunk:do_reorder_dialog(RefParser, Chunks),
 
-    %% JObjs = wh_json:encode(lists:map(fun ci_chunk:to_json/1,Reordered)),
+    %% JObjs = kz_json:encode(lists:map(fun ci_chunk:to_json/1,Reordered)),
     %% file:write_file("/tmp/ci__"++binary_to_list(ci_chunk:call_id(hd(Chunks)))++"__n.json",
     %%                 io_lib:format("~s\n",[JObjs])
     %%                ),
 
-    Labels = [wh_json:get_value(<<"label">>, Data1(I)) || I <- lists:seq(1, Data1('count'))],
+    Labels = [kz_json:get_value(<<"label">>, Data1(I)) || I <- lists:seq(1, Data1('count'))],
     LabelsReordered = [ci_chunk:label(Chunk) || Chunk <- Reordered],
     [ ?_assertEqual(RefParser, ci_chunk:pick_ref_parser(Chunks))
     , ?_assertEqual(Data1('count'), length(Reordered))

@@ -51,13 +51,13 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(api_binary(), api_binary()) -> {'ok', wh_json:object()} | {'error', any()}.
+-spec fetch(api_binary(), api_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 fetch('undefined', _) ->
     {'error', 'account_id_undefined'};
 fetch(_, 'undefined') ->
     {'error', 'app_id_undefined'};
 fetch(Account, Id) ->
-    AccoundDb = wh_util:format_account_id(Account, 'encoded'),
+    AccoundDb = kz_util:format_account_id(Account, 'encoded'),
     kz_datamgr:open_cache_doc(AccoundDb, Id).
 
 %%--------------------------------------------------------------------
@@ -65,140 +65,140 @@ fetch(Account, Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec id(wh_json:object()) -> ne_binary().
+-spec id(kz_json:object()) -> ne_binary().
 id(JObj) ->
-    wh_doc:id(JObj).
+    kz_doc:id(JObj).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec is_published(wh_json:object()) -> boolean().
+-spec is_published(kz_json:object()) -> boolean().
 is_published(JObj) ->
-    wh_json:is_true(?PUBLISHED, JObj, 'true').
+    kz_json:is_true(?PUBLISHED, JObj, 'true').
 
--spec publish(wh_json:object()) -> wh_json:object().
+-spec publish(kz_json:object()) -> kz_json:object().
 publish(JObj) ->
-    wh_json:set_value(?PUBLISHED, 'true', JObj).
+    kz_json:set_value(?PUBLISHED, 'true', JObj).
 
--spec unpublish(wh_json:object()) -> wh_json:object().
+-spec unpublish(kz_json:object()) -> kz_json:object().
 unpublish(JObj) ->
-    wh_json:set_value(?PUBLISHED, 'false', JObj).
+    kz_json:set_value(?PUBLISHED, 'false', JObj).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec name(wh_json:object()) -> ne_binary().
+-spec name(kz_json:object()) -> ne_binary().
 name(JObj) ->
-    wh_json:get_ne_binary_value(?NAME, JObj).
+    kz_json:get_ne_binary_value(?NAME, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec i18n(wh_json:object()) -> wh_json:object().
+-spec i18n(kz_json:object()) -> kz_json:object().
 i18n(JObj) ->
-    wh_json:get_json_value(?I18N, JObj).
+    kz_json:get_json_value(?I18N, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec tags(wh_json:object()) -> ne_binaries().
+-spec tags(kz_json:object()) -> ne_binaries().
 tags(JObj) ->
-    wh_json:get_list_value(?TAGS, JObj).
+    kz_json:get_list_value(?TAGS, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec icon(wh_json:object()) -> ne_binary().
+-spec icon(kz_json:object()) -> ne_binary().
 icon(JObj) ->
-    wh_json:get_ne_binary_value(?ICON, JObj).
+    kz_json:get_ne_binary_value(?ICON, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec api_url(wh_json:object()) -> ne_binary().
+-spec api_url(kz_json:object()) -> ne_binary().
 api_url(JObj) ->
-    wh_json:get_ne_binary_value(?API_URL, JObj).
+    kz_json:get_ne_binary_value(?API_URL, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec source_url(wh_json:object()) -> ne_binary().
+-spec source_url(kz_json:object()) -> ne_binary().
 source_url(JObj) ->
-    wh_json:get_ne_binary_value(?API_URL, JObj).
+    kz_json:get_ne_binary_value(?API_URL, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec author(wh_json:object()) -> ne_binary().
+-spec author(kz_json:object()) -> ne_binary().
 author(JObj) ->
-    wh_json:get_ne_binary_value(?AUTHOR, JObj).
+    kz_json:get_ne_binary_value(?AUTHOR, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec version(wh_json:object()) -> ne_binary().
+-spec version(kz_json:object()) -> ne_binary().
 version(JObj) ->
-    wh_json:get_ne_binary_value(?VERSION, JObj).
+    kz_json:get_ne_binary_value(?VERSION, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec license(wh_json:object()) -> ne_binary().
+-spec license(kz_json:object()) -> ne_binary().
 license(JObj) ->
-    wh_json:get_ne_binary_value(?LICENSE, JObj).
+    kz_json:get_ne_binary_value(?LICENSE, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec price(wh_json:object()) -> api_float().
+-spec price(kz_json:object()) -> api_float().
 price(JObj) ->
-    wh_json:get_float_value(?PRICE, JObj).
+    kz_json:get_float_value(?PRICE, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec screenshots(wh_json:object()) -> ne_binaries().
+-spec screenshots(kz_json:object()) -> ne_binaries().
 screenshots(JObj) ->
-    wh_json:get_list_value(?SCREENSHOTS, JObj).
+    kz_json:get_list_value(?SCREENSHOTS, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec urls(wh_json:object()) -> wh_json:object().
+-spec urls(kz_json:object()) -> kz_json:object().
 urls(JObj) ->
-    wh_json:get_json_value(?URLS, JObj).
+    kz_json:get_json_value(?URLS, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec account_id(wh_json:object()) -> ne_binary().
+-spec account_id(kz_json:object()) -> ne_binary().
 account_id(JObj) ->
-    wh_doc:account_id(JObj).
+    kz_doc:account_id(JObj).

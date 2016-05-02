@@ -39,5 +39,5 @@ stop(_State) ->
 
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    _ = wapi_sysconf:declare_exchanges(),
-    wapi_self:declare_exchanges().
+    _ = kapi_sysconf:declare_exchanges(),
+    kapi_self:declare_exchanges().

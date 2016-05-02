@@ -23,16 +23,16 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    whapps_call_command:answer(Call),
+    kapps_call_command:answer(Call),
 
-    NoopId = whapps_call_command:tts(
-               wh_json:get_value(<<"text">>, Data)
-               ,wh_json:get_value(<<"voice">>, Data)
-               ,wh_json:get_value(<<"language">>, Data)
+    NoopId = kapps_call_command:tts(
+               kz_json:get_value(<<"text">>, Data)
+               ,kz_json:get_value(<<"voice">>, Data)
+               ,kz_json:get_value(<<"language">>, Data)
                ,?ANY_DIGIT
-               ,wh_json:get_value(<<"engine">>, Data)
+               ,kz_json:get_value(<<"engine">>, Data)
                ,Call
               ),
 

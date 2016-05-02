@@ -41,9 +41,9 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(whapps_call:call()) -> startlink_ret().
+-spec start_link(kapps_call:call()) -> startlink_ret().
 start_link(Call) ->
-    CallId = whapps_call:call_id(Call),
+    CallId = kapps_call:call_id(Call),
     Bindings = [{'call', [{'callid', CallId}]}
                ,{'self', []}
                ],
@@ -71,9 +71,9 @@ start_link(Call) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init([whapps_call:call()]) -> {'ok', state()}.
+-spec init([kapps_call:call()]) -> {'ok', state()}.
 init([Call]) ->
-    CallUpdate = whapps_call:kvs_store('server_pid', self(), Call),
+    CallUpdate = kapps_call:kvs_store('server_pid', self(), Call),
     {'ok', #state{call=CallUpdate}}.
 
 %%--------------------------------------------------------------------
@@ -104,9 +104,9 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({'gen_listener',{'created_queue',Queue}}, #state{call=Call}=State) ->
-    {'noreply', State#state{call=whapps_call:set_controller_queue(Queue, Call)}};
+    {'noreply', State#state{call=kapps_call:set_controller_queue(Queue, Call)}};
 handle_cast({'gen_listener',{'is_consuming', 'true'}}, #state{call=Call}=State) ->
-    whapps_call_command:answer(Call),
+    kapps_call_command:answer(Call),
     {'noreply', State};
 handle_cast({'call_update', CallUpdate}, State) ->
     {'noreply', State#state{call=CallUpdate}};
@@ -170,9 +170,9 @@ code_change(_OldVsn, State, _Extra) ->
 
 handle_answer(JObj, Props) ->
     Srv = props:get_value('server', Props),
-    case wh_util:get_event_type(JObj) of
+    case kz_util:get_event_type(JObj) of
         {<<"call_event">>,<<"CHANNEL_ANSWER">>} ->
-            CallUpdate = whapps_call:kvs_store('consumer_pid', self(), props:get_value('call', Props)),
+            CallUpdate = kapps_call:kvs_store('consumer_pid', self(), props:get_value('call', Props)),
             gen_listener:cast(Srv, {'call_update', CallUpdate}),
             process_call(CallUpdate);
         {<<"call_event">>,<<"CHANNEL_DESTROY">>} ->
@@ -180,9 +180,9 @@ handle_answer(JObj, Props) ->
         _ -> 'ok'
     end.
 
--spec process_call(whapps_call:call()) -> 'ok'.
+-spec process_call(kapps_call:call()) -> 'ok'.
 process_call(Call) ->
-    CID = knm_converters:normalize(whapps_call:caller_id_number(Call)),
+    CID = knm_converters:normalize(kapps_call:caller_id_number(Call)),
     case cccp_util:authorize(CID, <<"cccps/cid_listing">>) of
         [AccountId, OutboundCID, AuthDocId] ->
             dial(AccountId, OutboundCID, AuthDocId, Call);
@@ -190,39 +190,39 @@ process_call(Call) ->
             pin_collect(Call)
     end.
 
--spec dial(ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec dial(ne_binary(), ne_binary(), ne_binary(), kapps_call:call()) -> 'ok'.
 dial(AccountId, OutboundCID, AuthDocId, Call) ->
-    CallUpdate = whapps_call:kvs_store('auth_doc_id', AuthDocId, Call),
-    gen_listener:cast(whapps_call:kvs_fetch('server_pid', CallUpdate), {'call_update', CallUpdate}),
+    CallUpdate = kapps_call:kvs_store('auth_doc_id', AuthDocId, Call),
+    gen_listener:cast(kapps_call:kvs_fetch('server_pid', CallUpdate), {'call_update', CallUpdate}),
     {'num_to_dial', ToDID} = cccp_util:get_number(CallUpdate),
-    cccp_util:bridge(whapps_call:call_id(CallUpdate), ToDID, ToDID, <<>>, whapps_call:control_queue(CallUpdate), AccountId, OutboundCID),
+    cccp_util:bridge(kapps_call:call_id(CallUpdate), ToDID, ToDID, <<>>, kapps_call:control_queue(CallUpdate), AccountId, OutboundCID),
     cccp_util:store_last_dialed(ToDID, AuthDocId).
 
--spec pin_collect(whapps_call:call()) -> 'ok'.
+-spec pin_collect(kapps_call:call()) -> 'ok'.
 pin_collect(Call) ->
     pin_collect(Call, 3).
 pin_collect(Call, 0) ->
-    whapps_call_command:hangup(Call);
+    kapps_call_command:hangup(Call);
 pin_collect(Call, Retries) ->
-    case whapps_call_command:b_prompt_and_collect_digits(9, 12, <<"disa-enter_pin">>, 3, Call) of
+    case kapps_call_command:b_prompt_and_collect_digits(9, 12, <<"disa-enter_pin">>, 3, Call) of
         {'ok', <<>>} ->
-            whapps_call_command:b_prompt(<<"disa-invalid_pin">>, Call),
+            kapps_call_command:b_prompt(<<"disa-invalid_pin">>, Call),
             pin_collect(Call, Retries - 1);
         {'ok', EnteredPin} ->
             handle_entered_pin(Call, Retries, EnteredPin);
         _ ->
             lager:info("No pin entered."),
-            whapps_call_command:b_prompt(<<"disa-invalid_pin">>, Call),
+            kapps_call_command:b_prompt(<<"disa-invalid_pin">>, Call),
             pin_collect(Call, Retries - 1)
     end.
 
--spec handle_entered_pin(whapps_call:call(), integer(), ne_binary()) -> 'ok'.
+-spec handle_entered_pin(kapps_call:call(), integer(), ne_binary()) -> 'ok'.
 handle_entered_pin(Call, Retries, EnteredPin) ->
     case cccp_util:authorize(EnteredPin, <<"cccps/pin_listing">>) of
         [AccountId, OutboundCID, AuthDocId] ->
             dial(AccountId, OutboundCID, AuthDocId, Call);
         _ ->
             lager:info("Wrong Pin entered."),
-            whapps_call_command:b_prompt(<<"disa-invalid_pin">>, Call),
+            kapps_call_command:b_prompt(<<"disa-invalid_pin">>, Call),
             pin_collect(Call, Retries - 1)
     end.

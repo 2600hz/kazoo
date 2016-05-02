@@ -119,7 +119,7 @@ validate(Context) ->
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, <<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId) ->
-    Ctx = cb_context:set_account_modb(Context, wh_util:to_integer(Year), wh_util:to_integer(Month)),
+    Ctx = cb_context:set_account_modb(Context, kz_util:to_integer(Year), kz_util:to_integer(Month)),
     crossbar_doc:load({<<"call_recording">>, DocId}, Ctx, ?TYPE_CHECK_OPTION(<<"call_recording">>)).
 
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
@@ -141,15 +141,15 @@ recording_summary(Context) ->
         Ctx -> Ctx
     end.
 
--spec normalize_view_results(wh_json:object(), wh_json:objects()) ->
-                                             wh_json:objects().
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
+                                             kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:public_fields(wh_json:get_value(<<"doc">>, JObj))|Acc].
+    [kz_json:public_fields(kz_json:get_value(<<"doc">>, JObj))|Acc].
 
 -spec get_view_and_filter(cb_context:context()) -> {ne_binary(), api_binaries(), api_binaries()}.
 get_view_and_filter(Context) ->
     case cb_context:user_id(Context) of
-        'undefined' -> {?CB_LIST, [], [wh_json:new()]};
+        'undefined' -> {?CB_LIST, [], [kz_json:new()]};
         UserId -> {?CB_LIST_BY_OWNERID, [UserId], 'undefined'}
     end.
 
@@ -160,14 +160,14 @@ get_view_and_filter(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 load_recording_binary(<<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId, Context) ->
-    do_load_recording_binary(DocId, cb_context:set_account_modb(Context, wh_util:to_integer(Year), wh_util:to_integer(Month))).
+    do_load_recording_binary(DocId, cb_context:set_account_modb(Context, kz_util:to_integer(Year), kz_util:to_integer(Month))).
 
 -spec do_load_recording_binary(ne_binary(), cb_context:context()) -> cb_context:context().
 do_load_recording_binary(DocId, Context) ->
     Context1 = crossbar_doc:load({<<"call_recording">>, DocId}, Context, ?TYPE_CHECK_OPTION(<<"call_recording">>)),
     case cb_context:resp_status(Context1) of
         'success' ->
-            case wh_doc:attachment_names(cb_context:doc(Context1)) of
+            case kz_doc:attachment_names(cb_context:doc(Context1)) of
                 [] -> cb_context:add_system_error('bad_identifier', [{'details', DocId}], Context1);
                 [AName | _] ->
                     Ctx = crossbar_doc:load_attachment({<<"call_recording">>, DocId}, AName, ?TYPE_CHECK_OPTION(<<"call_recording">>), Context),
@@ -183,7 +183,7 @@ set_resp_headers(Context, AName) ->
 
 -spec get_disposition(ne_binary(), cb_context:context()) -> ne_binary().
 get_disposition(MediaName, Context) ->
-    case wh_json:is_true(<<"inline">>, cb_context:query_string(Context), 'false') of
+    case kz_json:is_true(<<"inline">>, cb_context:query_string(Context), 'false') of
         'false' -> <<"attachment; filename=", MediaName/binary>>;
         'true' -> <<"inline; filename=", MediaName/binary>>
     end.

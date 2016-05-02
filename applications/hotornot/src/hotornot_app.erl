@@ -38,5 +38,5 @@ stop(_State) ->
 
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    _ = wapi_rate:declare_exchanges(),
-    wapi_self:declare_exchanges().
+    _ = kapi_rate:declare_exchanges(),
+    kapi_self:declare_exchanges().

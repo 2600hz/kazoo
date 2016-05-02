@@ -77,9 +77,9 @@ set_reason(Analysis, Reason) ->
 reason(#ci_analysis{reason=Reason}) ->
     Reason.
 
--spec to_json(analysis()) -> wh_json:object().
+-spec to_json(analysis()) -> kz_json:object().
 to_json(#ci_analysis{}=Analysis) ->
-    wh_json:from_list(
+    kz_json:from_list(
       props:filter_undefined(
         [{<<"originate_type">>, originate_type(Analysis)}
          ,{<<"terminate_type">>, terminate_type(Analysis)}

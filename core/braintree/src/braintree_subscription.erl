@@ -35,7 +35,7 @@
 -export([is_cancelled/1]).
 -export([is_expired/1]).
 
--import('wh_util', [get_xml_value/2]).
+-import('kz_util', [get_xml_value/2]).
 
 -include_lib("braintree/include/braintree.hrl").
 
@@ -61,13 +61,13 @@ url() ->
     "/subscriptions/".
 
 url(SubscriptionId) ->
-    lists:append(["/subscriptions/", wh_util:to_list(SubscriptionId)]).
+    lists:append(["/subscriptions/", kz_util:to_list(SubscriptionId)]).
 
 url(SubscriptionId, Options) ->
     lists:append(["/subscriptions/"
-                  ,wh_util:to_list(SubscriptionId)
+                  ,kz_util:to_list(SubscriptionId)
                   ,"/"
-                  ,wh_util:to_list(Options)
+                  ,kz_util:to_list(Options)
                  ]).
 
 %%--------------------------------------------------------------------
@@ -92,7 +92,7 @@ new(SubscriptionId, PlanId, PaymentToken) ->
 %% @private
 -spec new_subscription_id() -> ne_binary().
 new_subscription_id() ->
-    wh_util:rand_hex_binary(16).
+    kz_util:rand_hex_binary(16).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -151,12 +151,12 @@ update_addon_amount(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Amou
             case lists:keyfind(AddOnId, #bt_addon.inherited_from, AddOns) of
                 'false' -> braintree_util:error_not_found(<<"Add-On">>);
                 #bt_addon{}=AddOn ->
-                    AddOn1 = AddOn#bt_addon{amount=wh_util:to_binary(Amount)},
+                    AddOn1 = AddOn#bt_addon{amount=kz_util:to_binary(Amount)},
                     Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.inherited_from, AddOns, AddOn1)}
             end;
         #bt_addon{}=AddOn ->
             AddOn1 = AddOn#bt_addon{existing_id=AddOnId
-                                    ,amount=wh_util:to_binary(Amount)
+                                    ,amount=kz_util:to_binary(Amount)
                                    },
             Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.id, AddOns, AddOn1)}
     end.
@@ -191,12 +191,12 @@ update_discount_amount(#bt_subscription{discounts=Discounts}=Subscription, Disco
             case lists:keyfind(DiscountId, #bt_discount.inherited_from, Discounts) of
                 'false' -> braintree_util:error_not_found(<<"Discount">>);
                 #bt_discount{}=Discount ->
-                    Discount1 = Discount#bt_discount{amount=wh_util:to_binary(Amount)},
+                    Discount1 = Discount#bt_discount{amount=kz_util:to_binary(Amount)},
                     Subscription#bt_subscription{discounts=lists:keyreplace(DiscountId, #bt_discount.inherited_from, Discounts, Discount1)}
             end;
         #bt_discount{}=Discount ->
             Discount1 = Discount#bt_discount{existing_id=DiscountId
-                                             ,amount=wh_util:to_binary(Amount)
+                                             ,amount=kz_util:to_binary(Amount)
                                             },
             Subscription#bt_subscription{discounts=lists:keyreplace(DiscountId, #bt_discount.id, Discounts, Discount1)}
     end.
@@ -309,7 +309,7 @@ reset_discounts(#bt_subscription{discounts=Discounts}=Subscription) ->
 -spec update_addon_quantity(subscription() | ne_binary(), ne_binary(), integer() | api_binary()) ->
                                    subscription().
 update_addon_quantity(Subscription, AddOnId, Quantity) when not is_integer(Quantity) ->
-    update_addon_quantity(Subscription, AddOnId, wh_util:to_integer(Quantity));
+    update_addon_quantity(Subscription, AddOnId, kz_util:to_integer(Quantity));
 update_addon_quantity(<<_/binary>> = SubscriptionId, AddOnId, Quantity) ->
     Subscription = find(SubscriptionId),
     update_addon_quantity(Subscription, AddOnId, Quantity);
@@ -349,11 +349,11 @@ increment_addon_quantity(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId)
                     AddOn = #bt_addon{inherited_from=AddOnId, quantity=1},
                     Subscription#bt_subscription{add_ons=[AddOn|AddOns]};
                 #bt_addon{quantity=Quantity}=AddOn ->
-                    AddOn1 = AddOn#bt_addon{quantity=wh_util:to_integer(Quantity) + 1},
+                    AddOn1 = AddOn#bt_addon{quantity=kz_util:to_integer(Quantity) + 1},
                     Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.inherited_from, AddOns, AddOn1)}
             end;
         #bt_addon{quantity=Quantity}=AddOn ->
-            AddOn1 = AddOn#bt_addon{existing_id=AddOnId, quantity=wh_util:to_integer(Quantity) + 1},
+            AddOn1 = AddOn#bt_addon{existing_id=AddOnId, quantity=kz_util:to_integer(Quantity) + 1},
             Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.id, AddOns, AddOn1)}
     end;
 increment_addon_quantity(SubscriptionId, AddOnId) ->
@@ -368,7 +368,7 @@ increment_addon_quantity(SubscriptionId, AddOnId) ->
 %%--------------------------------------------------------------------
 -spec update_discount_quantity(subscription() | ne_binary(), ne_binary(), api_integer()) -> subscription().
 update_discount_quantity(Subscription, DiscountId, Quantity) when not is_integer(Quantity) ->
-    update_discount_quantity(Subscription, DiscountId, wh_util:to_integer(Quantity));
+    update_discount_quantity(Subscription, DiscountId, kz_util:to_integer(Quantity));
 update_discount_quantity(#bt_subscription{discounts=Discounts}=Subscription, DiscountId, Quantity) ->
     case lists:keyfind(DiscountId, #bt_discount.id, Discounts) of
         'false' ->
@@ -403,11 +403,11 @@ increment_discount_quantity(#bt_subscription{discounts=Discounts}=Subscription, 
                     Discount = #bt_discount{inherited_from=DiscountId, quantity=1},
                     Subscription#bt_subscription{discounts=[Discount|Discounts]};
                 #bt_discount{quantity=Quantity}=Discount ->
-                    Discount1 = Discount#bt_discount{quantity=wh_util:to_integer(Quantity) + 1},
+                    Discount1 = Discount#bt_discount{quantity=kz_util:to_integer(Quantity) + 1},
                     Subscription#bt_subscription{discounts=lists:keyreplace(DiscountId, #bt_discount.inherited_from, Discounts, Discount1)}
             end;
         #bt_discount{quantity=Quantity}=Discount ->
-            Discount1 = Discount#bt_discount{existing_id=DiscountId, quantity=wh_util:to_integer(Quantity) + 1},
+            Discount1 = Discount#bt_discount{existing_id=DiscountId, quantity=kz_util:to_integer(Quantity) + 1},
             Subscription#bt_subscription{discounts=lists:keyreplace(DiscountId, #bt_discount.id, Discounts, Discount1)}
     end;
 increment_discount_quantity(SubscriptionId, DiscountId) ->
@@ -464,7 +464,7 @@ is_expired(#bt_subscription{}) -> 'false'.
 %% @end
 %%--------------------------------------------------------------------
 -spec xml_to_record(bt_xml()) -> subscription().
--spec xml_to_record(bt_xml(), wh_deeplist()) -> subscription().
+-spec xml_to_record(bt_xml(), kz_deeplist()) -> subscription().
 
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/subscription").
@@ -483,7 +483,7 @@ xml_to_record(Xml, Base) ->
                      ,days_past_due = get_xml_value([Base, "/days-past-due/text()"], Xml)
                      ,failure_count = get_xml_value([Base, "/failure-count/text()"], Xml)
                      ,merchant_account_id = get_xml_value([Base, "/merchant-account-id/text()"], Xml)
-                     ,never_expires = wh_util:is_true(get_xml_value([Base, "/never-expires/text()"], Xml))
+                     ,never_expires = kz_util:is_true(get_xml_value([Base, "/never-expires/text()"], Xml))
                      ,next_bill_amount = get_xml_value([Base, "/next-bill-amount/text()"], Xml)
                      ,next_cycle_amount = get_xml_value([Base, "/next-billing-period-amount/text()"], Xml)
                      ,next_bill_date = get_xml_value([Base, "/next-billing-date/text()"], Xml)
@@ -565,7 +565,7 @@ record_to_xml(#bt_subscription{}=Subscription, ToString) ->
 %% Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_json(subscription()) -> wh_json:object().
+-spec record_to_json(subscription()) -> kz_json:object().
 record_to_json(Subscription) ->
     Props = [{<<"id">>, Subscription#bt_subscription.id}
              ,{<<"balance">>, Subscription#bt_subscription.balance}
@@ -598,7 +598,7 @@ record_to_json(Subscription) ->
              ,{<<"replace_add_ons">>, Subscription#bt_subscription.replace_add_ons}
              ,{<<"create">>, Subscription#bt_subscription.create}
             ],
-    wh_json:from_list(props:filter_undefined(Props)).
+    kz_json:from_list(props:filter_undefined(Props)).
 
 
 %%--------------------------------------------------------------------
@@ -607,9 +607,9 @@ record_to_json(Subscription) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec should_prorate(subscription(), wh_proplist()) -> wh_proplist().
+-spec should_prorate(subscription(), kz_proplist()) -> kz_proplist().
 should_prorate(#bt_subscription{prorate_charges=Value}, Props) ->
-    case whapps_config:get_is_true(<<"braintree">>, <<"should_prorate">>, 'true') of
+    case kapps_config:get_is_true(<<"braintree">>, <<"should_prorate">>, 'true') of
         'true' -> update_options('prorate-charges', Value, Props);
         'false' -> Props
     end.
@@ -620,7 +620,7 @@ should_prorate(#bt_subscription{prorate_charges=Value}, Props) ->
 %% Determine the necessary steps to change the add ons
 %% @end
 %%--------------------------------------------------------------------
--spec update_options(any(), any(), wh_proplist()) -> wh_proplist().
+-spec update_options(any(), any(), kz_proplist()) -> kz_proplist().
 update_options(_, 'undefined', Props) -> Props;
 update_options(Key, Value, Props) ->
     case props:get_value('options', Props) of
@@ -702,7 +702,7 @@ create_discount_changes(Discounts) ->
 %% Determine the necessary steps to change the add ons
 %% @end
 %%--------------------------------------------------------------------
--spec append_items(atom(), ne_binary() | wh_proplist(), changes()) -> changes().
+-spec append_items(atom(), ne_binary() | kz_proplist(), changes()) -> changes().
 append_items(Change, Item, Changes) ->
     case lists:keyfind(Change, 1, Changes) of
         'false' ->

@@ -153,11 +153,11 @@ delete(Context, _) ->
 %%--------------------------------------------------------------------
 -spec create(ne_binary(), cb_context:context()) -> cb_context:context().
 create(Config, Context) ->
-    Id = <<(?WH_ACCOUNT_CONFIGS)/binary, Config/binary>>,
+    Id = <<(?KZ_ACCOUNT_CONFIGS)/binary, Config/binary>>,
     case kz_datamgr:lookup_doc_rev(cb_context:account_db(Context), Id) of
         {'ok', _} -> cb_context:add_system_error('datastore_conflict', Context);
         {'error', _} ->
-            JObj = wh_doc:set_id(cb_context:req_data(Context), Id),
+            JObj = kz_doc:set_id(cb_context:req_data(Context), Id),
             Context1 = cb_context:set_req_data(Context, JObj),
             cb_context:validate_request_data(<<"configs">>, Context1)
     end.
@@ -170,7 +170,7 @@ create(Config, Context) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Config, Context) ->
-    Id = <<(?WH_ACCOUNT_CONFIGS)/binary, Config/binary>>,
+    Id = <<(?KZ_ACCOUNT_CONFIGS)/binary, Config/binary>>,
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"config">>)).
 
 %%--------------------------------------------------------------------
@@ -182,7 +182,7 @@ read(Config, Context) ->
 %%--------------------------------------------------------------------
 -spec update(ne_binary(), cb_context:context()) -> cb_context:context().
 update(Config, Context) ->
-    Id = <<(?WH_ACCOUNT_CONFIGS)/binary, Config/binary>>,
+    Id = <<(?KZ_ACCOUNT_CONFIGS)/binary, Config/binary>>,
     validate_request_data(Id, Context).
 
 %%--------------------------------------------------------------------
@@ -194,7 +194,7 @@ update(Config, Context) ->
 %%--------------------------------------------------------------------
 -spec validate_patch(ne_binary(), cb_context:context()) -> cb_context:context().
 validate_patch(Config, Context) ->
-    Id = <<(?WH_ACCOUNT_CONFIGS)/binary, Config/binary>>,
+    Id = <<(?KZ_ACCOUNT_CONFIGS)/binary, Config/binary>>,
     crossbar_doc:patch_and_validate(Id, Context, fun validate_request_data/2).
 
 %%--------------------------------------------------------------------

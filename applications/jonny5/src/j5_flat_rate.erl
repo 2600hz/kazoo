@@ -19,8 +19,8 @@
 -define(WHITELIST, ?DEFAULT_WHITELIST).
 -define(BLACKLIST, ?DEFAULT_BLACKLIST).
 -else.
--define(WHITELIST, whapps_config:get(<<"jonny5">>, <<"flat_rate_whitelist">>, ?DEFAULT_WHITELIST)).
--define(BLACKLIST, whapps_config:get(<<"jonny5">>, <<"flat_rate_blacklist">>, ?DEFAULT_BLACKLIST)).
+-define(WHITELIST, kapps_config:get(<<"jonny5">>, <<"flat_rate_whitelist">>, ?DEFAULT_WHITELIST)).
+-define(BLACKLIST, kapps_config:get(<<"jonny5">>, <<"flat_rate_blacklist">>, ?DEFAULT_BLACKLIST)).
 -endif.
 
 %%--------------------------------------------------------------------
@@ -64,11 +64,11 @@ eligible_for_flat_rate(Request) ->
     Number = knm_converters:normalize(j5_request:number(Request)),
     TrunkWhitelist = ?WHITELIST,
     TrunkBlacklist = ?BLACKLIST,
-    (wh_util:is_empty(TrunkWhitelist)
+    (kz_util:is_empty(TrunkWhitelist)
      orelse re:run(Number, TrunkWhitelist) =/= 'nomatch'
     )
         andalso
-          (wh_util:is_empty(TrunkBlacklist)
+          (kz_util:is_empty(TrunkBlacklist)
            orelse re:run(Number, TrunkBlacklist) =:= 'nomatch'
           ).
 

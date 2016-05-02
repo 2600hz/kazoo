@@ -53,7 +53,7 @@ start_link(TableId, TableOptions) ->
 -spec init(list()) -> {'ok', #state{}}.
 init([TableId, TableOptions]) ->
     process_flag('trap_exit', 'true'),
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     gen_server:cast(self(), {'begin', TableId, TableOptions}),
 
     lager:debug("started etsmgr for stats for ~s", [TableId]),

@@ -27,11 +27,11 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    CallerIdNumber = whapps_call:caller_id_number(Call),
-    ListId = wh_doc:id(Data),
-    AccountDb = whapps_call:account_db(Call),
+    CallerIdNumber = kapps_call:caller_id_number(Call),
+    ListId = kz_doc:id(Data),
+    AccountDb = kapps_call:account_db(Call),
     lager:debug("comparing caller id ~s with match list ~s entries in ~s", [CallerIdNumber, ListId, AccountDb]),
     case is_matching_prefix(AccountDb, ListId, CallerIdNumber)
          orelse is_matching_regexp(AccountDb, ListId, CallerIdNumber)
@@ -53,7 +53,7 @@ is_matching_prefix(AccountDb, ListId, Number) ->
 is_matching_regexp(AccountDb, ListId, Number) ->
     case kz_datamgr:get_results(AccountDb, <<"lists/regexps_in_list">>, [{'key', ListId}]) of
         {'ok', Regexps} ->
-            Patterns = [wh_json:get_value(<<"value">>, X) || X <- Regexps],
+            Patterns = [kz_json:get_value(<<"value">>, X) || X <- Regexps],
             match_regexps(Patterns, Number);
         _ ->
             'false'
@@ -85,7 +85,7 @@ build_keys(<<>>, _, Acc) -> Acc.
 %% Handle a caller id "match" condition
 %% @end
 %%--------------------------------------------------------------------
--spec handle_match(whapps_call:call()) -> 'ok'.
+-spec handle_match(kapps_call:call()) -> 'ok'.
 handle_match(Call) ->
     case is_callflow_child(<<"match">>, Call) of
         'true' -> 'ok';
@@ -98,7 +98,7 @@ handle_match(Call) ->
 %% Handle a caller id "no match" condition
 %% @end
 %%--------------------------------------------------------------------
--spec handle_no_match(whapps_call:call()) -> 'ok'.
+-spec handle_no_match(kapps_call:call()) -> 'ok'.
 handle_no_match(Call) ->
     case is_callflow_child(<<"nomatch">>, Call) of
         'true' -> 'ok';
@@ -111,7 +111,7 @@ handle_no_match(Call) ->
 %% Check if the given node name is a callflow child
 %% @end
 %%--------------------------------------------------------------------
--spec is_callflow_child(ne_binary(), whapps_call:call()) -> boolean().
+-spec is_callflow_child(ne_binary(), kapps_call:call()) -> boolean().
 is_callflow_child(Name, Call) ->
     lager:debug("Looking for callflow child ~s", [Name]),
     case cf_exe:attempt(Name, Call) of

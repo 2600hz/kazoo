@@ -9,11 +9,11 @@
                  , crypto
                  , inets
 
-                 , whistle
-                 , whistle_amqp
+                 , kazoo
+                 , kazoo_amqp
                  , kazoo_data
                  , kazoo_modb
-                 , whistle_apps
+                 , kazoo_apps
                  , webseq
                  , kazoo_web
 

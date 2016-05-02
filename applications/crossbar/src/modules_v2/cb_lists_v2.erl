@@ -34,27 +34,27 @@
 %%%===================================================================
 -spec maybe_migrate(ne_binary()) -> 'ok'.
 maybe_migrate(Account) ->
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    AccountDb = kz_util:format_account_id(Account, 'encoded'),
     case kz_datamgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
         {'ok', []} -> 'ok';
         {'ok', Lists} -> migrate(AccountDb, Lists);
         {'error', _} -> 'ok'
     end.
 
--spec migrate(ne_binary(), wh_json:objects()) -> 'ok'.
+-spec migrate(ne_binary(), kz_json:objects()) -> 'ok'.
 migrate(AccountDb, [List | Lists]) ->
-    DocId = wh_json:get_value(<<"id">>, List),
-    Entries = wh_json:to_proplist(wh_json:get_value([<<"doc">>, <<"entries">>], List, wh_json:new())),
+    DocId = kz_json:get_value(<<"id">>, List),
+    Entries = kz_json:to_proplist(kz_json:get_value([<<"doc">>, <<"entries">>], List, kz_json:new())),
 
     MigrateEntryFun = fun({Id, Entry}) ->
-                              wh_json:set_values([{<<"pvt_type">>, ?TYPE_LIST_ENTRY}
+                              kz_json:set_values([{<<"pvt_type">>, ?TYPE_LIST_ENTRY}
                                                   ,{<<"list_entry_old_id">>, Id}
                                                   ,{<<"list_id">>, DocId}]
                                                  ,Entry)
                       end,
     Entries1 = lists:map(MigrateEntryFun, Entries),
     kz_datamgr:save_doc(AccountDb, Entries1),
-    Doc = wh_json:delete_key(<<"entries">>, wh_json:get_value(<<"doc">>, List)),
+    Doc = kz_json:delete_key(<<"entries">>, kz_json:get_value(<<"doc">>, List)),
     kz_datamgr:save_doc(AccountDb, Doc),
     migrate(AccountDb, Lists);
 migrate(_AccountDb, []) ->
@@ -162,7 +162,7 @@ validate_req(?HTTP_PATCH, Context, [ListId] = Path) ->
 validate_req(?HTTP_GET, Context, [ListId, ?ENTRIES]) ->
     crossbar_doc:load_view(<<"lists/entries">>, [{'key', ListId}], Context);
 validate_req(?HTTP_PUT, Context, [ListId, ?ENTRIES]) ->
-    ReqData = wh_json:set_values([{<<"list_id">>, ListId}], cb_context:req_data(Context)),
+    ReqData = kz_json:set_values([{<<"list_id">>, ListId}], cb_context:req_data(Context)),
     validate_doc('undefined', ?TYPE_LIST_ENTRY, cb_context:set_req_data(Context, ReqData));
 validate_req(?HTTP_DELETE, Context, [ListId, ?ENTRIES]) ->
     crossbar_doc:load_view(<<"lists/entries">>, [{'key', ListId}], Context);
@@ -179,14 +179,14 @@ validate_req(?HTTP_PATCH, Context, [_ListId, ?ENTRIES, EntryId] = Path) ->
 validate_req(?HTTP_GET, Context, [_ListId, ?ENTRIES, EntryId, ?VCARD]) ->
     Context1 = crossbar_doc:load(EntryId, Context, ?TYPE_CHECK_OPTION(?TYPE_LIST_ENTRY)),
     JObj = cb_context:doc(Context1),
-    JProfile = wh_json:get_value(<<"profile">>, JObj),
-    JObj1 = wh_json:merge_jobjs(JObj, JProfile),
-    JObj2 = wh_json:set_values(
+    JProfile = kz_json:get_value(<<"profile">>, JObj),
+    JObj1 = kz_json:merge_jobjs(JObj, JProfile),
+    JObj2 = kz_json:set_values(
               props:filter_empty(
-                [{<<"first_name">>, wh_json:get_value(<<"firstname">>, JObj1)}
-                 ,{<<"last_name">>, wh_json:get_value(<<"lastname">>, JObj1)}
-                 ,{<<"middle_name">>, wh_json:get_value(<<"middlename">>, JObj1)}
-                 ,{<<"nicknames">>, [wh_json:get_value(<<"displayname">>, JObj1)]}])
+                [{<<"first_name">>, kz_json:get_value(<<"firstname">>, JObj1)}
+                 ,{<<"last_name">>, kz_json:get_value(<<"lastname">>, JObj1)}
+                 ,{<<"middle_name">>, kz_json:get_value(<<"middlename">>, JObj1)}
+                 ,{<<"nicknames">>, [kz_json:get_value(<<"displayname">>, JObj1)]}])
               ,JObj1),
     JObj3 = set_org(JObj2, Context1),
     JObj4 = set_photo(JObj3, Context1),
@@ -206,8 +206,8 @@ delete(Context, ListId) ->
     Context1 = crossbar_doc:load(ListId, Context, ?TYPE_CHECK_OPTION(?TYPE_LIST_ENTRY)),
     crossbar_doc:delete(Context1).
 delete(Context, _ListId, ?ENTRIES) ->
-    Docs = [wh_json:get_value(<<"id">>, Entry) || Entry <- cb_context:doc(Context)],
-    AccountDb = wh_util:format_account_id(cb_context:account_db(Context), 'encoded'),
+    Docs = [kz_json:get_value(<<"id">>, Entry) || Entry <- cb_context:doc(Context)],
+    AccountDb = kz_util:format_account_id(cb_context:account_db(Context), 'encoded'),
     %% do we need 'soft' delete as in crossbar_doc?
     kz_datamgr:del_docs(AccountDb, Docs),
     Context.
@@ -234,42 +234,42 @@ type_schema_name(?TYPE_LIST_ENTRY) -> <<"list_entries">>.
 
 -spec on_successfull_validation(api_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
 on_successfull_validation('undefined', Type, Context) ->
-    Doc = wh_json:set_values([{<<"pvt_type">>, Type}], cb_context:doc(Context)),
+    Doc = kz_json:set_values([{<<"pvt_type">>, Type}], cb_context:doc(Context)),
     cb_context:set_doc(Context, Doc);
 on_successfull_validation(Id, Type, Context) ->
     crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(Type)).
 
--spec set_org(wh_json:object(), cb_context:context()) -> wh_json:object().
+-spec set_org(kz_json:object(), cb_context:context()) -> kz_json:object().
 set_org(JObj, Context) ->
-    ListId = wh_json:get_value(<<"list_id">>, JObj),
+    ListId = kz_json:get_value(<<"list_id">>, JObj),
     Context1 = crossbar_doc:load(ListId, Context, ?TYPE_CHECK_OPTION(?TYPE_LIST_ENTRY)),
     set_org(JObj, Context1, cb_context:resp_status(Context1), ListId).
 
--spec set_org(wh_json:object(), cb_context:context(), crossbar_status(), ne_binary()) -> wh_json:object().
+-spec set_org(kz_json:object(), cb_context:context(), crossbar_status(), ne_binary()) -> kz_json:object().
 set_org(JObj, Context, 'success', _) ->
-    case wh_json:get_value(<<"org">>, cb_context:doc(Context)) of
+    case kz_json:get_value(<<"org">>, cb_context:doc(Context)) of
         'undefined' -> JObj;
-        Val -> wh_json:set_value(<<"org">>, Val, JObj)
+        Val -> kz_json:set_value(<<"org">>, Val, JObj)
     end;
 set_org(JObj, _, _, ListId) ->
     lager:debug("failed to load list ~p while loading list entry ~p",
-                [ListId, wh_json:get_value(<<"id">>, JObj)]
+                [ListId, kz_json:get_value(<<"id">>, JObj)]
                ),
     JObj.
 
--spec set_photo(wh_json:object(), cb_context:context()) -> wh_json:object().
+-spec set_photo(kz_json:object(), cb_context:context()) -> kz_json:object().
 set_photo(JObj, Context) ->
     %% This code is copied from cb_users_v2. May be move it to crossbar_doc?
-    DocId = wh_json:get_value(<<"_id">>, cb_context:doc(Context)),
+    DocId = kz_json:get_value(<<"_id">>, cb_context:doc(Context)),
     Attach = crossbar_doc:load_attachment(DocId, ?PHOTO, ?TYPE_CHECK_OPTION(?TYPE_LIST_ENTRY), Context),
     case cb_context:resp_status(Attach) of
         'error' -> JObj;
         'success' ->
             Data = cb_context:resp_data(Attach),
-            CT = wh_doc:attachment_content_type(cb_context:doc(Context), ?PHOTO),
-            wh_json:set_value(?PHOTO, wh_json:from_list([{CT, Data}]), JObj)
+            CT = kz_doc:attachment_content_type(cb_context:doc(Context), ?PHOTO),
+            kz_json:set_value(?PHOTO, kz_json:from_list([{CT, Data}]), JObj)
     end.
 
--spec normalize_list(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_list(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_list(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj) | Acc].
+    [kz_json:get_value(<<"value">>, JObj) | Acc].

@@ -121,7 +121,7 @@ debug_summary(Context) ->
 fix_req_pagination(Context) ->
     QS = cb_context:query_string(Context),
     Size = crossbar_doc:pagination_page_size(Context),
-    cb_context:set_query_string(Context, wh_json:set_value(<<"page_size">>, Size*2 +1, QS)).
+    cb_context:set_query_string(Context, kz_json:set_value(<<"page_size">>, Size*2 +1, QS)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -135,7 +135,7 @@ debug_read(Context, CallId) ->
     Context1 =
         crossbar_doc:load_view(
           ?CB_DEBUG_LIST
-          ,[{'endkey', [CallId, wh_json:new()]}
+          ,[{'endkey', [CallId, kz_json:new()]}
             ,{'startkey', [CallId]}
             ,'include_docs'
            ]
@@ -158,8 +158,8 @@ debug_read(Context, CallId) ->
 get_modb(Context) ->
     AccountId = cb_context:account_id(Context),
     case cb_context:req_value(Context, <<"created_from">>) of
-        'undefined' -> wh_util:format_account_mod_id(AccountId);
-        From -> wh_util:format_account_mod_id(AccountId, wh_util:to_integer(From))
+        'undefined' -> kz_util:format_account_mod_id(AccountId);
+        From -> kz_util:format_account_mod_id(AccountId, kz_util:to_integer(From))
     end.
 
 %%--------------------------------------------------------------------
@@ -168,9 +168,9 @@ get_modb(Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
+    [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -190,7 +190,7 @@ maybe_normalize_debug_results(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_debug_results(cb_context:context()) -> cb_context:context().
--spec normalize_debug_results(cb_context:context(), wh_proplist()) -> wh_json:objects().
+-spec normalize_debug_results(cb_context:context(), kz_proplist()) -> kz_json:objects().
 normalize_debug_results(Context) ->
     Dict =
         lists:foldl(
@@ -207,7 +207,7 @@ normalize_debug_results(Context) ->
      ).
 
 normalize_debug_results(Context, List) ->
-    Size = wh_util:to_integer((crossbar_doc:pagination_page_size(Context)-1)/2),
+    Size = kz_util:to_integer((crossbar_doc:pagination_page_size(Context)-1)/2),
     FinalList =
         case erlang:length(List) > Size of
             'false' -> List;
@@ -222,13 +222,13 @@ normalize_debug_results(Context, List) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_debug_results_fold(wh_json:object(), dict:dict()) -> dict:dict().
+-spec normalize_debug_results_fold(kz_json:object(), dict:dict()) -> dict:dict().
 normalize_debug_results_fold(JObj, Dict) ->
-    CallId = wh_json:get_value(<<"call_id">>, JObj),
+    CallId = kz_json:get_value(<<"call_id">>, JObj),
     case dict:find(CallId, Dict) of
         'error' -> dict:store(CallId, JObj, Dict);
         {'ok', Value} ->
-            dict:store(CallId, wh_json:merge_jobjs(Value, JObj), Dict)
+            dict:store(CallId, kz_json:merge_jobjs(Value, JObj), Dict)
     end.
 
 %%--------------------------------------------------------------------
@@ -243,7 +243,7 @@ fix_page_size(Context) ->
     Size = erlang:length(RespData),
     cb_context:set_resp_envelope(
       Context
-      ,wh_json:set_value(<<"page_size">>, Size, RespEnv)
+      ,kz_json:set_value(<<"page_size">>, Size, RespEnv)
      ).
 
 %%--------------------------------------------------------------------
@@ -251,16 +251,16 @@ fix_page_size(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_debug_read(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_debug_read(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_debug_read(JObj, Acc) ->
-    [leak_pvt_field(wh_json:get_value(<<"doc">>, JObj)) | Acc].
+    [leak_pvt_field(kz_json:get_value(<<"doc">>, JObj)) | Acc].
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec leak_pvt_field(wh_json:object()) -> wh_json:object().
+-spec leak_pvt_field(kz_json:object()) -> kz_json:object().
 leak_pvt_field(JObj) ->
     Routines = [fun leak_pvt_created/2
                 ,fun leak_pvt_node/2
@@ -271,11 +271,11 @@ leak_pvt_field(JObj) ->
       ,Routines
      ).
 
--spec leak_pvt_created(wh_json:object(), wh_json:object()) -> wh_json:object().
+-spec leak_pvt_created(kz_json:object(), kz_json:object()) -> kz_json:object().
 leak_pvt_created(JObj, Acc) ->
-    wh_json:set_value(<<"created">>, wh_doc:created(JObj), Acc).
+    kz_json:set_value(<<"created">>, kz_doc:created(JObj), Acc).
 
--spec leak_pvt_node(wh_json:object(), wh_json:object()) -> wh_json:object().
+-spec leak_pvt_node(kz_json:object(), kz_json:object()) -> kz_json:object().
 leak_pvt_node(JObj, Acc) ->
-    Node = wh_json:get_value([<<"pvt_node">>], JObj),
-    wh_json:set_value(<<"node">>, Node, Acc).
+    Node = kz_json:get_value([<<"pvt_node">>], JObj),
+    kz_json:set_value(<<"node">>, Node, Acc).

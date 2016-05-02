@@ -23,10 +23,10 @@
 -export([record_to_json/1]).
 -export([json_to_record/1]).
 
--define(MIN_AMOUNT, whapps_config:get_float(<<"braintree">>, <<"min_amount">>, 5.00)).
+-define(MIN_AMOUNT, kapps_config:get_float(<<"braintree">>, <<"min_amount">>, 5.00)).
 
 -import('braintree_util', [make_doc_xml/2]).
--import('wh_util', [get_xml_value/2]).
+-import('kz_util', [get_xml_value/2]).
 
 -include_lib("braintree/include/braintree.hrl").
 
@@ -44,13 +44,13 @@ url() ->
     "/transactions/".
 
 url(TransactionId) ->
-    lists:append(["/transactions/", wh_util:to_list(TransactionId)]).
+    lists:append(["/transactions/", kz_util:to_list(TransactionId)]).
 
 url(TransactionId, Options) ->
     lists:append(["/transactions/"
-                  ,wh_util:to_list(TransactionId)
+                  ,kz_util:to_list(TransactionId)
                   ,"/"
-                  ,wh_util:to_list(Options)
+                  ,kz_util:to_list(Options)
                  ]).
 
 %%--------------------------------------------------------------------
@@ -112,8 +112,8 @@ find_by_customer(CustomerId, Min, Max) ->
 -spec create(ne_binary(), bt_transaction()) -> bt_transaction().
 
 create(#bt_transaction{amount=Amount}=Transaction) ->
-    MaxAmount = whapps_config:get_float(<<"braintree">>, <<"max_amount">>, 200.00),
-    case wh_util:to_float(Amount) >  MaxAmount of
+    MaxAmount = kapps_config:get_float(<<"braintree">>, <<"max_amount">>, 200.00),
+    case kz_util:to_float(Amount) >  MaxAmount of
         'true' -> braintree_util:error_max_amount(MaxAmount);
         'false' -> 'ok'
     end,
@@ -142,19 +142,19 @@ sale(CustomerId, Transaction) ->
                                      }).
 
 -spec quick_sale(ne_binary(), number() | ne_binary()) -> bt_transaction().
--spec quick_sale(ne_binary(), number() | ne_binary(), wh_proplist()) -> bt_transaction().
+-spec quick_sale(ne_binary(), number() | ne_binary(), kz_proplist()) -> bt_transaction().
 quick_sale(CustomerId, Amount) ->
-    case wh_util:to_float(Amount) < ?MIN_AMOUNT of
+    case kz_util:to_float(Amount) < ?MIN_AMOUNT of
         'true' -> braintree_util:error_min_amount(?MIN_AMOUNT);
-        'false' -> sale(CustomerId, #bt_transaction{amount=wh_util:to_binary(Amount)})
+        'false' -> sale(CustomerId, #bt_transaction{amount=kz_util:to_binary(Amount)})
     end.
 
 quick_sale(CustomerId, Amount, Props) ->
-    case wh_util:to_float(Amount) < ?MIN_AMOUNT of
+    case kz_util:to_float(Amount) < ?MIN_AMOUNT of
         'true' -> braintree_util:error_min_amount(?MIN_AMOUNT);
         'false' ->
-            Transaction = json_to_record(wh_json:from_list(Props)),
-            sale(CustomerId, Transaction#bt_transaction{amount=wh_util:to_binary(Amount)})
+            Transaction = json_to_record(kz_json:from_list(Props)),
+            sale(CustomerId, Transaction#bt_transaction{amount=kz_util:to_binary(Amount)})
     end.
 
 %%--------------------------------------------------------------------
@@ -175,7 +175,7 @@ credit(CustomerId, Transaction) ->
 
 -spec quick_credit(ne_binary(), ne_binary()) -> bt_transaction().
 quick_credit(CustomerId, Amount) ->
-    credit(CustomerId, #bt_transaction{amount=wh_util:to_binary(Amount)
+    credit(CustomerId, #bt_transaction{amount=kz_util:to_binary(Amount)
                                        ,settle='false'
                                        ,tax_exempt='false'
                                       }).
@@ -221,7 +221,7 @@ refund(TransactionId, Amount) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec xml_to_record(bt_xml()) -> bt_transaction().
--spec xml_to_record(bt_xml(), wh_deeplist()) -> bt_transaction().
+-spec xml_to_record(bt_xml(), kz_deeplist()) -> bt_transaction().
 
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/transaction").
@@ -254,7 +254,7 @@ xml_to_record(Xml, Base) ->
                     ,processor_response_code = get_xml_value([Base, "/processor-response-code/text()"], Xml)
                     ,processor_response_text = get_xml_value([Base, "/processor-response-text/text()"], Xml)
                     ,tax_amount = get_xml_value([Base, "/tax-amount/text()"], Xml)
-                    ,tax_exempt = wh_util:is_true(get_xml_value([Base, "/tax-exempt/text()"], Xml))
+                    ,tax_exempt = kz_util:is_true(get_xml_value([Base, "/tax-exempt/text()"], Xml))
                     ,billing_address = BillingAddress
                     ,shipping_address = braintree_address:xml_to_record(Xml, [Base, "/shipping"])
                     ,customer = braintree_customer:xml_to_record(Xml, [Base, "/customer"])
@@ -271,7 +271,7 @@ xml_to_record(Xml, Base) ->
                    ,is_recurring = props:get_value('is_recurring', StatusHistory)
                    }.
 
--spec get_status_history(bt_xml(), wh_deeplist()) -> wh_proplist().
+-spec get_status_history(bt_xml(), kz_deeplist()) -> kz_proplist().
 get_status_history(Xml, Base) ->
     HistoryPath = lists:flatten([Base, "/status-history/status-event"]),
     History = xmerl_xpath:string(HistoryPath, Xml),
@@ -401,7 +401,7 @@ record_to_xml(#bt_transaction{}=Transaction, ToString) ->
 %% Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_json(bt_transaction()) -> wh_json:object().
+-spec record_to_json(bt_transaction()) -> kz_json:object().
 record_to_json(#bt_transaction{}=Transaction) ->
     Props = [{<<"id">>, Transaction#bt_transaction.id}
              ,{<<"status">>, Transaction#bt_transaction.status}
@@ -444,56 +444,56 @@ record_to_json(#bt_transaction{}=Transaction) ->
              ,{<<"is_automatic">>, Transaction#bt_transaction.is_automatic}
              ,{<<"is_recurring">>, Transaction#bt_transaction.is_recurring}
             ],
-    wh_json:from_list(props:filter_undefined(Props)).
+    kz_json:from_list(props:filter_undefined(Props)).
 
 -spec json_to_record(api_object()) -> bt_transaction() | 'undefined'.
 json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->
     #bt_transaction{
-       id = wh_doc:id(JObj)
-       ,status = wh_json:get_binary_value(<<"status">>, JObj)
-       ,type = wh_json:get_binary_value(<<"type">>, JObj)
-       ,currency_code = wh_json:get_binary_value(<<"currency_code">>, JObj)
-       ,amount = wh_json:get_binary_value(<<"amount">>, JObj)
-       ,merchant_account_id = wh_json:get_binary_value(<<"merchant_account_id">>, JObj)
-       ,order_id = wh_json:get_binary_value(<<"order_id">>, JObj)
-       ,purchase_order = wh_json:get_binary_value(<<"purchase_order">>, JObj)
-       ,created_at = wh_json:get_binary_value(<<"created_at">>, JObj)
-       ,update_at = wh_json:get_binary_value(<<"update_at">>, JObj)
-       ,refund_id = wh_json:get_binary_value(<<"refund_id">>, JObj)
-       ,refund_ids = wh_json:get_binary_value(<<"refund_ids">>, JObj)
-       ,refunded_transaction = wh_json:get_binary_value(<<"refunded_transaction">>, JObj)
-       ,settlement_batch = wh_json:get_binary_value(<<"settlement_batch">>, JObj)
-       ,avs_error_code = wh_json:get_binary_value(<<"avs_error_code">>, JObj)
-       ,avs_postal_response = wh_json:get_binary_value(<<"avs_postal_response">>, JObj)
-       ,avs_street_response = wh_json:get_binary_value(<<"avs_street_response">>, JObj)
-       ,ccv_response_code = wh_json:get_binary_value(<<"ccv_response_code">>, JObj)
-       ,gateway_rejection = wh_json:get_binary_value(<<"gateway_rejection">>, JObj)
-       ,processor_authorization_code = wh_json:get_binary_value(<<"processor_authorization_code">>, JObj)
-       ,processor_response_code = wh_json:get_binary_value(<<"processor_response_code">>, JObj)
-       ,processor_response_text = wh_json:get_binary_value(<<"processor_response_text">>, JObj)
-       ,tax_amount = wh_json:get_binary_value(<<"tax_amount">>, JObj)
-       ,tax_exempt = wh_json:get_value(<<"tax_exempt">>, JObj, 'false')
-       ,billing_address = braintree_address:json_to_record(wh_json:get_value(<<"billing_address">>, JObj))
-       ,shipping_address_id  = wh_json:get_binary_value(<<"shipping_address_id">>, JObj)
-       ,shipping_address = braintree_address:json_to_record(wh_json:get_value(<<"shipping_address">>, JObj))
-       ,customer_id = wh_json:get_binary_value(<<"customer_id">>, JObj)
-       ,customer = braintree_customer:json_to_record(wh_json:get_value(<<"customer">>, JObj))
-       ,payment_token = wh_json:get_binary_value(<<"payment_token">>, JObj)
-       ,card = braintree_card:json_to_record(wh_json:get_value(<<"customer">>, JObj))
-       ,subscription_id = wh_json:get_binary_value(<<"subscription_id">>, JObj)
+       id = kz_doc:id(JObj)
+       ,status = kz_json:get_binary_value(<<"status">>, JObj)
+       ,type = kz_json:get_binary_value(<<"type">>, JObj)
+       ,currency_code = kz_json:get_binary_value(<<"currency_code">>, JObj)
+       ,amount = kz_json:get_binary_value(<<"amount">>, JObj)
+       ,merchant_account_id = kz_json:get_binary_value(<<"merchant_account_id">>, JObj)
+       ,order_id = kz_json:get_binary_value(<<"order_id">>, JObj)
+       ,purchase_order = kz_json:get_binary_value(<<"purchase_order">>, JObj)
+       ,created_at = kz_json:get_binary_value(<<"created_at">>, JObj)
+       ,update_at = kz_json:get_binary_value(<<"update_at">>, JObj)
+       ,refund_id = kz_json:get_binary_value(<<"refund_id">>, JObj)
+       ,refund_ids = kz_json:get_binary_value(<<"refund_ids">>, JObj)
+       ,refunded_transaction = kz_json:get_binary_value(<<"refunded_transaction">>, JObj)
+       ,settlement_batch = kz_json:get_binary_value(<<"settlement_batch">>, JObj)
+       ,avs_error_code = kz_json:get_binary_value(<<"avs_error_code">>, JObj)
+       ,avs_postal_response = kz_json:get_binary_value(<<"avs_postal_response">>, JObj)
+       ,avs_street_response = kz_json:get_binary_value(<<"avs_street_response">>, JObj)
+       ,ccv_response_code = kz_json:get_binary_value(<<"ccv_response_code">>, JObj)
+       ,gateway_rejection = kz_json:get_binary_value(<<"gateway_rejection">>, JObj)
+       ,processor_authorization_code = kz_json:get_binary_value(<<"processor_authorization_code">>, JObj)
+       ,processor_response_code = kz_json:get_binary_value(<<"processor_response_code">>, JObj)
+       ,processor_response_text = kz_json:get_binary_value(<<"processor_response_text">>, JObj)
+       ,tax_amount = kz_json:get_binary_value(<<"tax_amount">>, JObj)
+       ,tax_exempt = kz_json:get_value(<<"tax_exempt">>, JObj, 'false')
+       ,billing_address = braintree_address:json_to_record(kz_json:get_value(<<"billing_address">>, JObj))
+       ,shipping_address_id  = kz_json:get_binary_value(<<"shipping_address_id">>, JObj)
+       ,shipping_address = braintree_address:json_to_record(kz_json:get_value(<<"shipping_address">>, JObj))
+       ,customer_id = kz_json:get_binary_value(<<"customer_id">>, JObj)
+       ,customer = braintree_customer:json_to_record(kz_json:get_value(<<"customer">>, JObj))
+       ,payment_token = kz_json:get_binary_value(<<"payment_token">>, JObj)
+       ,card = braintree_card:json_to_record(kz_json:get_value(<<"customer">>, JObj))
+       ,subscription_id = kz_json:get_binary_value(<<"subscription_id">>, JObj)
        ,add_ons = [braintree_addon:json_to_record(Addon)
-                   || Addon <- wh_json:get_value(<<"add_ons">>, JObj, [])
+                   || Addon <- kz_json:get_value(<<"add_ons">>, JObj, [])
                   ]
        ,discounts = [braintree_discount:json_to_record(Discount)
-                     || Discount <- wh_json:get_value(<<"discounts">>, JObj, [])
+                     || Discount <- kz_json:get_value(<<"discounts">>, JObj, [])
                     ]
-       ,descriptor = wh_json:get_binary_value(<<"descriptor">>, JObj)
-       ,store_in_vault = wh_json:get_value(<<"store_in_vault">>, JObj, 'false')
-       ,store_on_success = wh_json:get_value(<<"store_on_success">>, JObj, 'false')
-       ,change_billing_address = wh_json:get_value(<<"change_billing_address">>, JObj, 'false')
-       ,store_shipping_address = wh_json:get_value(<<"store_shipping_address">>, JObj, 'false')
-       ,is_api = wh_json:is_true(<<"is_api">>, JObj)
-       ,is_automatic = wh_json:is_true(<<"is_automatic">>, JObj)
-       ,is_recurring = wh_json:is_true(<<"is_recurring">>, JObj)
+       ,descriptor = kz_json:get_binary_value(<<"descriptor">>, JObj)
+       ,store_in_vault = kz_json:get_value(<<"store_in_vault">>, JObj, 'false')
+       ,store_on_success = kz_json:get_value(<<"store_on_success">>, JObj, 'false')
+       ,change_billing_address = kz_json:get_value(<<"change_billing_address">>, JObj, 'false')
+       ,store_shipping_address = kz_json:get_value(<<"store_shipping_address">>, JObj, 'false')
+       ,is_api = kz_json:is_true(<<"is_api">>, JObj)
+       ,is_automatic = kz_json:is_true(<<"is_automatic">>, JObj)
+       ,is_recurring = kz_json:is_true(<<"is_recurring">>, JObj)
       }.

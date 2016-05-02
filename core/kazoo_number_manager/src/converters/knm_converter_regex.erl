@@ -16,13 +16,13 @@
         ]).
 
 -define(DEFAULT_E164_CONVERTERS, [{<<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>
-                                   ,wh_json:from_list([{<<"prefix">>, <<"+1">>}])
+                                   ,kz_json:from_list([{<<"prefix">>, <<"+1">>}])
                                   }
                                   ,{<<"^011(\\d*)$|^00(\\d*)$">>
-                                    ,wh_json:from_list([{<<"prefix">>, <<"+">>}])
+                                    ,kz_json:from_list([{<<"prefix">>, <<"+">>}])
                                    }
                                   ,{<<"^[2-9]\\d{7,}$">>
-                                    ,wh_json:from_list([{<<"prefix">>, <<"+">>}])
+                                    ,kz_json:from_list([{<<"prefix">>, <<"+">>}])
                                    }
                                  ]).
 
@@ -45,7 +45,7 @@ normalize(?NE_BINARY = Num, 'undefined') ->
 normalize(?NE_BINARY = Num, AccountId) ->
     to_e164(Num, AccountId).
 
--spec normalize(ne_binary(), ne_binary(), wh_json:object()) ->
+-spec normalize(ne_binary(), ne_binary(), kz_json:object()) ->
                        ne_binary().
 normalize(?NE_BINARY = Num, AccountId, DialPlan) ->
     to_e164_from_account_dialplan(Num, AccountId, DialPlan).
@@ -87,12 +87,12 @@ to_1npan(Num) ->
 to_e164(<<"+",_/binary>> = N) -> N;
 to_e164(Number) ->
     Converters = get_e164_converters(),
-    Regexes = wh_json:get_keys(Converters),
+    Regexes = kz_json:get_keys(Converters),
     maybe_convert_to_e164(Regexes, Converters, Number).
 
 to_e164(<<"+",_/binary>> = N, _AccountId) -> N;
 to_e164(Number, Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountId = kz_util:format_account_id(Account, 'raw'),
     case kz_account:fetch(AccountId) of
         {'ok', JObj} ->
             to_e164_from_account_dialplan(Number, AccountId, kz_account:dial_plan(JObj));
@@ -103,7 +103,7 @@ to_e164(Number, Account) ->
 -spec to_e164_from_account(ne_binary(), ne_binary()) -> ne_binary().
 to_e164_from_account(Number, ?NE_BINARY = AccountId) ->
     Converters = get_e164_converters(AccountId),
-    Regexes = wh_json:get_keys(Converters),
+    Regexes = kz_json:get_keys(Converters),
     maybe_convert_to_e164(Regexes, Converters, Number).
 
 to_e164_from_account_dialplan(Number, AccountId, 'undefined') ->
@@ -112,7 +112,7 @@ to_e164_from_account_dialplan(Number, AccountId, DialPlan) ->
     to_e164_from_account_dialplan_regexes(Number
                                           ,AccountId
                                           ,DialPlan
-                                          ,wh_json:get_keys(DialPlan)
+                                          ,kz_json:get_keys(DialPlan)
                                          ).
 
 to_e164_from_account_dialplan_regexes(Number, AccountId, _DialPlan, []) ->
@@ -129,8 +129,8 @@ apply_dialplan(Number, DialPlan, [Regex|Rs]) ->
             Number;
         {'match', Captures} ->
             Root = lists:last(Captures),
-            Prefix = wh_json:get_binary_value([Regex, <<"prefix">>], DialPlan, <<>>),
-            Suffix = wh_json:get_binary_value([Regex, <<"suffix">>], DialPlan, <<>>),
+            Prefix = kz_json:get_binary_value([Regex, <<"prefix">>], DialPlan, <<>>),
+            Suffix = kz_json:get_binary_value([Regex, <<"suffix">>], DialPlan, <<>>),
             <<Prefix/binary, Root/binary, Suffix/binary>>
     end.
 
@@ -140,14 +140,14 @@ apply_dialplan(Number, DialPlan, [Regex|Rs]) ->
 %% @end
 %%--------------------------------------------------------------------
 
--spec get_e164_converters() -> wh_json:object().
+-spec get_e164_converters() -> kz_json:object().
 -ifdef(TEST).
 get_e164_converters() ->
-    wh_json:from_list(?DEFAULT_E164_CONVERTERS).
+    kz_json:from_list(?DEFAULT_E164_CONVERTERS).
 -else.
 get_e164_converters() ->
-    Default = wh_json:from_list(?DEFAULT_E164_CONVERTERS),
-    try whapps_config:get(?KNM_CONFIG_CAT
+    Default = kz_json:from_list(?DEFAULT_E164_CONVERTERS),
+    try kapps_config:get(?KNM_CONFIG_CAT
                           ,?KEY_E164_CONVERTERS
                           ,Default
                          )
@@ -158,10 +158,10 @@ get_e164_converters() ->
     end.
 -endif.
 
--spec get_e164_converters(ne_binary()) -> wh_json:object().
+-spec get_e164_converters(ne_binary()) -> kz_json:object().
 get_e164_converters(AccountId) ->
-    Default = wh_json:from_list(?DEFAULT_E164_CONVERTERS),
-    try whapps_account_config:get_global(AccountId
+    Default = kz_json:from_list(?DEFAULT_E164_CONVERTERS),
+    try kapps_account_config:get_global(AccountId
                                          ,?KNM_CONFIG_CAT
                                          ,?KEY_E164_CONVERTERS
                                          ,Default
@@ -177,7 +177,7 @@ get_e164_converters(AccountId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_convert_to_e164(ne_binaries(), wh_json:object(), ne_binary()) -> ne_binary().
+-spec maybe_convert_to_e164(ne_binaries(), kz_json:object(), ne_binary()) -> ne_binary().
 maybe_convert_to_e164([], _, Number) -> Number;
 maybe_convert_to_e164([Regex|Regexs], Converters, Number) ->
     case re:run(Number, Regex, [{'capture', 'all', 'binary'}]) of
@@ -185,7 +185,7 @@ maybe_convert_to_e164([Regex|Regexs], Converters, Number) ->
             maybe_convert_to_e164(Regexs, Converters, Number);
         {'match', Captures} ->
             Root = lists:last(Captures),
-            Prefix = wh_json:get_binary_value([Regex, <<"prefix">>], Converters, <<>>),
-            Suffix = wh_json:get_binary_value([Regex, <<"suffix">>], Converters, <<>>),
+            Prefix = kz_json:get_binary_value([Regex, <<"prefix">>], Converters, <<>>),
+            Suffix = kz_json:get_binary_value([Regex, <<"suffix">>], Converters, <<>>),
             <<Prefix/binary, Root/binary, Suffix/binary>>
     end.

@@ -1,7 +1,7 @@
 -ifndef(TELETYPE_HRL).
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_log.hrl").
--include_lib("whistle/include/wh_databases.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo/include/kz_log.hrl").
+-include_lib("kazoo/include/kz_databases.hrl").
 
 -define(APP_NAME, <<"teletype">>).
 -define(APP_VERSION, <<"4.0.0">> ).
@@ -25,15 +25,15 @@
 %% {"to"/"cc"/etc, [Address,...]}
 -type email_map() :: [{ne_binary(), ne_binaries()}].
 
--type init_param() :: {'macros', wh_json:object()} |
+-type init_param() :: {'macros', kz_json:object()} |
                       {'text', ne_binary()} |
                       {'html', ne_binary()} |
                       {'subject', ne_binary()} |
                       {'category', ne_binary()} |
                       {'friendly_name', ne_binary()} |
-                      {'to', wh_json:object()} |
-                      {'cc', wh_json:object()} |
-                      {'bcc', wh_json:object()} |
+                      {'to', kz_json:object()} |
+                      {'cc', kz_json:object()} |
+                      {'bcc', kz_json:object()} |
                       {'from', ne_binary()} |
                       {'reply_to', api_binary()}.
 -type init_params() :: [init_param(),...].
@@ -46,18 +46,18 @@
 -define(EMAIL_ADMINS, <<"admins">>).
 
 -define(CONFIGURED_EMAILS(Type, Addresses)
-        ,wh_json:from_list(
+        ,kz_json:from_list(
            props:filter_undefined(
              [{<<"type">>, Type}
               ,{<<"email_addresses">>, Addresses}
              ])
           )
        ).
--define(CONFIGURED_EMAILS(Type), wh_json:from_list([{<<"type">>, Type}])).
+-define(CONFIGURED_EMAILS(Type), kz_json:from_list([{<<"type">>, Type}])).
 
 -define(MACRO_VALUE(Key, Label, Name, Description)
         ,{Key
-          ,wh_json:from_list([{<<"i18n_label">>, Label}
+          ,kz_json:from_list([{<<"i18n_label">>, Label}
                               ,{<<"friendly_name">>, Name}
                               ,{<<"description">>, Description}
                              ])

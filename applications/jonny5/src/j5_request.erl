@@ -78,8 +78,8 @@
                   ,billing_seconds = 0 :: non_neg_integer()
                   ,answered_time = 0 :: non_neg_integer()
                   ,timestamp = 0 :: gregorian_seconds()
-                  ,request_jobj = wh_json:new() :: wh_json:object()
-                  ,request_ccvs = wh_json:new() :: wh_json:object()
+                  ,request_jobj = kz_json:new() :: kz_json:object()
+                  ,request_ccvs = kz_json:new() :: kz_json:object()
                  }).
 -opaque request() :: #request{}.
 -export_type([request/0]).
@@ -90,51 +90,51 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec from_jobj(wh_json:object()) -> request().
+-spec from_jobj(kz_json:object()) -> request().
 from_jobj(JObj) ->
-    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
+    CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
 
-    Request = wh_json:get_value(<<"Request">>, JObj),
+    Request = kz_json:get_value(<<"Request">>, JObj),
     [Num|_] = binary:split(Request, <<"@">>),
     Number = request_number(Num, CCVs),
 
-    #request{account_id = wh_json:get_ne_value(<<"Account-ID">>, CCVs)
-             ,account_billing = wh_json:get_ne_value(<<"Account-Billing">>, CCVs, <<"limits_enforced">>)
-             ,reseller_id = wh_json:get_ne_value(<<"Reseller-ID">>, CCVs)
-             ,reseller_billing = wh_json:get_ne_value(<<"Reseller-Billing">>, CCVs, <<"limits_enforced">>)
-             ,call_id = wh_json:get_ne_value(<<"Call-ID">>, JObj)
-             ,call_direction = wh_json:get_value(<<"Call-Direction">>, JObj)
-             ,other_leg_call_id = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj)
-             ,sip_to = wh_json:get_ne_value(<<"To">>, JObj)
-             ,sip_from = wh_json:get_ne_value(<<"From">>, JObj)
+    #request{account_id = kz_json:get_ne_value(<<"Account-ID">>, CCVs)
+             ,account_billing = kz_json:get_ne_value(<<"Account-Billing">>, CCVs, <<"limits_enforced">>)
+             ,reseller_id = kz_json:get_ne_value(<<"Reseller-ID">>, CCVs)
+             ,reseller_billing = kz_json:get_ne_value(<<"Reseller-Billing">>, CCVs, <<"limits_enforced">>)
+             ,call_id = kz_json:get_ne_value(<<"Call-ID">>, JObj)
+             ,call_direction = kz_json:get_value(<<"Call-Direction">>, JObj)
+             ,other_leg_call_id = kz_json:get_value(<<"Other-Leg-Call-ID">>, JObj)
+             ,sip_to = kz_json:get_ne_value(<<"To">>, JObj)
+             ,sip_from = kz_json:get_ne_value(<<"From">>, JObj)
              ,sip_request = Request
-             ,message_id = wh_api:msg_id(JObj)
-             ,server_id = wh_api:server_id(JObj)
-             ,node = wh_api:node(JObj)
-             ,billing_seconds = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj, 0)
-             ,answered_time = wh_json:get_integer_value(<<"Answered-Seconds">>, JObj, 0)
-             ,timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj, wh_util:current_tstamp())
+             ,message_id = kz_api:msg_id(JObj)
+             ,server_id = kz_api:server_id(JObj)
+             ,node = kz_api:node(JObj)
+             ,billing_seconds = kz_json:get_integer_value(<<"Billing-Seconds">>, JObj, 0)
+             ,answered_time = kz_json:get_integer_value(<<"Answered-Seconds">>, JObj, 0)
+             ,timestamp = kz_json:get_integer_value(<<"Timestamp">>, JObj, kz_util:current_tstamp())
              ,classification = knm_converters:classify(Number)
              ,number = Number
              ,request_jobj = JObj
              ,request_ccvs = CCVs
             }.
 
--spec from_ccvs(request(), wh_proplist()) -> request().
+-spec from_ccvs(request(), kz_proplist()) -> request().
 from_ccvs(#request{request_ccvs=ReqCCVs
                    ,request_jobj=ReqJObj
                   }=Request, CCVs) ->
-    NewCCVs = wh_json:set_values(CCVs, ReqCCVs),
+    NewCCVs = kz_json:set_values(CCVs, ReqCCVs),
 
     Request#request{account_id=props:get_value(<<"Account-ID">>, CCVs)
                     ,request_ccvs=NewCCVs
-                    ,request_jobj=wh_json:set_value(<<"Custom-Channel-Vars">>, NewCCVs, ReqJObj)
+                    ,request_jobj=kz_json:set_value(<<"Custom-Channel-Vars">>, NewCCVs, ReqJObj)
                    }.
 
 
--spec request_number(ne_binary(), wh_json:object()) -> ne_binary().
+-spec request_number(ne_binary(), kz_json:object()) -> ne_binary().
 request_number(Number, CCVs) ->
-    case wh_json:get_first_defined([<<"E164-Destination">>
+    case kz_json:get_first_defined([<<"E164-Destination">>
                                     ,<<"Original-Number">>
                                    ], CCVs
                                   ) of
@@ -144,7 +144,7 @@ request_number(Number, CCVs) ->
             Original
     end.
 
--spec ccvs(request()) -> wh_json:object().
+-spec ccvs(request()) -> kz_json:object().
 ccvs(#request{request_ccvs=CCVs}) -> CCVs.
 
 %%--------------------------------------------------------------------
@@ -153,7 +153,7 @@ ccvs(#request{request_ccvs=CCVs}) -> CCVs.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec to_jobj(request()) -> wh_json:object().
+-spec to_jobj(request()) -> kz_json:object().
 to_jobj(Request) ->
     Props =
         props:filter_undefined(
@@ -170,7 +170,7 @@ to_jobj(Request) ->
           ,{<<"classification">>, classification(Request)}
           ]
          ),
-    wh_json:from_list(Props).
+    kz_json:from_list(Props).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -504,4 +504,4 @@ call_cost(#request{request_jobj=JObj}) ->
 
 -spec caller_network_address(request()) -> api_binary().
 caller_network_address(#request{request_jobj=JObj}) ->
-    wh_json:get_value(<<"From-Network-Addr">>, JObj).
+    kz_json:get_value(<<"From-Network-Addr">>, JObj).

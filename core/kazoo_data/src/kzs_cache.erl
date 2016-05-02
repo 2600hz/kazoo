@@ -26,12 +26,12 @@
 -define(DEFAULT_NO_CACHING_TYPES, [<<"media">>, <<"private_media">>, <<"call_recording">>
                                    ,<<"fax">>, <<"mailbox_message">>
                                   ]).
--define(NO_CACHING_TYPES, whapps_config:get(?CONFIG_CAT
+-define(NO_CACHING_TYPES, kapps_config:get(?CONFIG_CAT
                                             ,<<"no_caching_doc_types">>
                                            ,?DEFAULT_NO_CACHING_TYPES
                                             )).
 -define(DEFAULT_CACHE_PERIOD, 15 * ?SECONDS_IN_MINUTE).
--define(DEFAULT_CACHING_POLICY, wh_json:from_list(
+-define(DEFAULT_CACHING_POLICY, kz_json:from_list(
           [{<<"deprecated">>, ?DEFAULT_CACHE_PERIOD}
            ,{<<"aggregate">>, ?DEFAULT_CACHE_PERIOD}
            ,{<<"numbers">>, ?DEFAULT_CACHE_PERIOD}
@@ -42,8 +42,8 @@
            ,{<<"system_data">>, 'infinity'}
           ])).
 
--spec open_cache_doc(text(), ne_binary(), wh_proplist()) ->
-                            {'ok', wh_json:object()} |
+-spec open_cache_doc(text(), ne_binary(), kz_proplist()) ->
+                            {'ok', kz_json:object()} |
                             data_error() |
                             {'error', 'not_found'}.
 open_cache_doc(DbName, DocId, Options) ->
@@ -61,8 +61,8 @@ open_cache_doc(DbName, DocId, Options) ->
             end
     end.
 
--spec open_cache_doc(map(), text(), ne_binary(), wh_proplist()) ->
-                            {'ok', wh_json:object()} |
+-spec open_cache_doc(map(), text(), ne_binary(), kz_proplist()) ->
+                            {'ok', kz_json:object()} |
                             data_error() |
                             {'error', 'not_found'}.
 open_cache_doc(Server, DbName, DocId, Options) ->
@@ -80,12 +80,12 @@ open_cache_doc(Server, DbName, DocId, Options) ->
             end
     end.
 
--spec remove_cache_options(wh_proplist()) -> wh_proplist().
+-spec remove_cache_options(kz_proplist()) -> kz_proplist().
 remove_cache_options(Options) ->
     props:delete_keys(['cache_failures'], Options).
 
--spec maybe_cache_failure(ne_binary(), ne_binary(), wh_proplist(), data_error()) -> 'ok'.
--spec maybe_cache_failure(ne_binary(), ne_binary(), wh_proplist(), data_error(), atoms()) -> 'ok'.
+-spec maybe_cache_failure(ne_binary(), ne_binary(), kz_proplist(), data_error()) -> 'ok'.
+-spec maybe_cache_failure(ne_binary(), ne_binary(), kz_proplist(), data_error(), atoms()) -> 'ok'.
 maybe_cache_failure(DbName, DocId, Options, Error) ->
     case props:get_value('cache_failures', Options) of
         ErrorCodes when is_list(ErrorCodes) ->
@@ -100,20 +100,20 @@ maybe_cache_failure(DbName, DocId, _Options, {'error', ErrorCode}=Error, ErrorCo
         'false' -> 'ok'
     end.
 
--spec add_to_doc_cache(ne_binary(), ne_binary(), wh_json:object() | data_error()) -> 'ok'.
+-spec add_to_doc_cache(ne_binary(), ne_binary(), kz_json:object() | data_error()) -> 'ok'.
 add_to_doc_cache(DbName, DocId, CacheValue) ->
     kz_cache:erase_local(?CACHE_NAME, {?MODULE, DbName, DocId}),
     CacheProps = [{'origin', {'db', DbName, DocId}}
                   ,{'expires', expires_policy_value(DbName, CacheValue)}
                  ],
-    case wh_json:is_json_object(CacheValue) of
+    case kz_json:is_json_object(CacheValue) of
         'true' ->
            cache_if_not_media(CacheProps, DbName, DocId, CacheValue);
         'false' ->
             kz_cache:store_local(?CACHE_NAME, {?MODULE, DbName, DocId}, CacheValue, CacheProps)
     end.
 
--spec cache_if_not_media(wh_proplist(), ne_binary(), ne_binary(), wh_json:object() | data_error()) -> 'ok'.
+-spec cache_if_not_media(kz_proplist(), ne_binary(), ne_binary(), kz_json:object() | data_error()) -> 'ok'.
 cache_if_not_media(CacheProps, DbName, DocId, CacheValue) ->
     %% NOTE: this is currently necessary because when a http_put is issued to
     %%   freeswitch and the media is uploaded it goes directly to bigcouch
@@ -124,7 +124,7 @@ cache_if_not_media(CacheProps, DbName, DocId, CacheValue) ->
     %%   url is built in media IF everything uses that helper function,
     %    which is not currently the case...)
     case kzs_util:db_classification(DbName) =/= 'system'
-        andalso lists:member(wh_doc:type(CacheValue), ?NO_CACHING_TYPES) of
+        andalso lists:member(kz_doc:type(CacheValue), ?NO_CACHING_TYPES) of
         'true' -> 'ok';
         'false' -> kz_cache:store_local(?CACHE_NAME
                                         ,{?MODULE, DbName, DocId}
@@ -133,18 +133,18 @@ cache_if_not_media(CacheProps, DbName, DocId, CacheValue) ->
                                        )
     end.
 
--spec expires_policy_value(ne_binary(), wh_json:object()) -> wh_timeout().
+-spec expires_policy_value(ne_binary(), kz_json:object()) -> kz_timeout().
 expires_policy_value(DbName, CacheValue) ->
-    Classification = wh_util:to_binary(kzs_util:db_classification(DbName)),
-    Type = wh_doc:type(CacheValue, <<"no_type">>),
+    Classification = kz_util:to_binary(kzs_util:db_classification(DbName)),
+    Type = kz_doc:type(CacheValue, <<"no_type">>),
     expires_policy_value(DbName, Classification, Type).
 
--spec expires_policy_value(ne_binary(), ne_binary(), ne_binary()) -> wh_timeout().
+-spec expires_policy_value(ne_binary(), ne_binary(), ne_binary()) -> kz_timeout().
 expires_policy_value(<<"system_config">>, _, _) -> 'infinity';
 expires_policy_value(<<"system_data">>, _, _) -> 'infinity';
 expires_policy_value(DbName, Classification, Type) ->
-    CachePolicy = whapps_config:get(?CONFIG_CAT, <<"cache_policy">>, ?DEFAULT_CACHING_POLICY),
-    case wh_json:get_first_defined([[DbName, Type]
+    CachePolicy = kapps_config:get(?CONFIG_CAT, <<"cache_policy">>, ?DEFAULT_CACHING_POLICY),
+    case kz_json:get_first_defined([[DbName, Type]
                                    ,[DbName, <<"any">>]
                                    ,[Classification, Type]
                                    ,[Classification, <<"any">>]
@@ -153,29 +153,29 @@ expires_policy_value(DbName, Classification, Type) ->
                                    ,[Classification]
                                    ], CachePolicy) of
         <<"infinity">> -> 'infinity';
-        Timeout -> wh_util:to_integer(Timeout)
+        Timeout -> kz_util:to_integer(Timeout)
     end.
 
--spec flush_cache_doc(ne_binary() | db(), ne_binary() | wh_json:object()) -> 'ok'.
+-spec flush_cache_doc(ne_binary() | db(), ne_binary() | kz_json:object()) -> 'ok'.
 flush_cache_doc(#db{name=Name}, Doc) ->
     flush_cache_doc(#db{name=Name}, Doc, []);
 flush_cache_doc(Db, Doc) when is_binary(Db) ->
     flush_cache_doc(Db, Doc, []).
 
--spec flush_cache_doc(ne_binary() | db(), ne_binary() | wh_json:object(), wh_proplist()) -> 'ok'.
+-spec flush_cache_doc(ne_binary() | db(), ne_binary() | kz_json:object(), kz_proplist()) -> 'ok'.
 flush_cache_doc(#db{name=Name}, Doc, Options) ->
-    flush_cache_doc(wh_util:to_binary(Name), Doc, Options);
+    flush_cache_doc(kz_util:to_binary(Name), Doc, Options);
 flush_cache_doc(DbName, DocId, _Options) when is_binary(DocId) ->
     kz_cache:erase_local(?CACHE_NAME, {?MODULE, DbName, DocId});
 flush_cache_doc(DbName, Doc, Options) ->
-    flush_cache_doc(DbName, wh_doc:id(Doc), Options).
+    flush_cache_doc(DbName, kz_doc:id(Doc), Options).
 
 -spec flush_cache_docs() -> 'ok'.
 flush_cache_docs() -> kz_cache:flush_local(?CACHE_NAME).
 
 -spec flush_cache_docs(ne_binary() | db()) -> 'ok'.
 flush_cache_docs(#db{name=Name}) ->
-    flush_cache_docs(wh_util:to_binary(Name));
+    flush_cache_docs(kz_util:to_binary(Name));
 flush_cache_docs(DbName) ->
     Filter = fun({?MODULE, DbName1, _DocId}=K, _) when DbName1 =:= DbName ->
                      kz_cache:erase_local(?CACHE_NAME, K),
@@ -185,11 +185,11 @@ flush_cache_docs(DbName) ->
     _ = kz_cache:filter_local(?CACHE_NAME, Filter),
     'ok'.
 
--spec flush_cache_docs(ne_binary() | db(), ne_binaries() | wh_json:objects()) -> 'ok'.
+-spec flush_cache_docs(ne_binary() | db(), ne_binaries() | kz_json:objects()) -> 'ok'.
 flush_cache_docs(Db, Docs) ->
     flush_cache_docs(Db, Docs, []).
 
--spec flush_cache_docs(ne_binary() | db(), ne_binaries() | wh_json:objects(), wh_proplist()) -> 'ok'.
+-spec flush_cache_docs(ne_binary() | db(), ne_binaries() | kz_json:objects(), kz_proplist()) -> 'ok'.
 flush_cache_docs(Db, Docs, Options) ->
     _ = [flush_cache_doc(Db, Doc, Options)
          || Doc <- Docs

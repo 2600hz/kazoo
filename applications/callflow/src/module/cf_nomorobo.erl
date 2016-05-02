@@ -52,7 +52,7 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> any().
+-spec handle(kz_json:object(), kapps_call:call()) -> any().
 handle(Data, Call) ->
     case nomorobo_score(Data, Call) of
         'undefined' ->
@@ -61,7 +61,7 @@ handle(Data, Call) ->
             continue_to_score(Call, Score)
     end.
 
--spec nomorobo_score(wh_json:object(), whapps_call:call()) ->
+-spec nomorobo_score(kz_json:object(), kapps_call:call()) ->
                             api_integer().
 nomorobo_score(Data, Call) ->
     URI = nomorobo_uri(Call),
@@ -83,22 +83,22 @@ nomorobo_score(Data, Call) ->
             'undefined'
     end.
 
--spec nomorobo_req(ne_binary(), wh_json:object()) -> kz_http:ret().
+-spec nomorobo_req(ne_binary(), kz_json:object()) -> kz_http:ret().
 nomorobo_req(URI, Data) ->
-    Username = wh_json:get_binary_value(<<"username">>, Data),
-    Password = wh_json:get_binary_value(<<"password">>, Data),
+    Username = kz_json:get_binary_value(<<"username">>, Data),
+    Password = kz_json:get_binary_value(<<"password">>, Data),
     Options = [{'basic_auth', {Username, Password}}
                ,{'ssl', [{'verify', 'verify_none'}]}
               ],
 
-    kz_http:get(wh_util:to_list(URI), [], Options).
+    kz_http:get(kz_util:to_list(URI), [], Options).
 
--spec nomorobo_uri(whapps_call:call()) -> ne_binary().
+-spec nomorobo_uri(kapps_call:call()) -> ne_binary().
 nomorobo_uri(Call) ->
     lists:foldl(fun uri_replace/2
                 ,?URL
-                ,[{<<"{TO}">>, knm_converters:to_npan(whapps_call:request_user(Call))}
-                  ,{<<"{FROM}">>, knm_converters:to_npan(whapps_call:caller_id_number(Call))}
+                ,[{<<"{TO}">>, knm_converters:to_npan(kapps_call:request_user(Call))}
+                  ,{<<"{FROM}">>, knm_converters:to_npan(kapps_call:caller_id_number(Call))}
                  ]).
 
 -spec uri_replace({ne_binary(), ne_binary()}, ne_binary()) -> ne_binary().
@@ -106,8 +106,8 @@ uri_replace({S, R}, U) -> binary:replace(U, S, R).
 
 -spec nomorobo_score_from_resp(binary()) -> api_integer().
 nomorobo_score_from_resp(Body) ->
-    try wh_json:decode(Body) of
-        JObj -> trunc(wh_json:get_float_value(<<"score">>, JObj) * 10)
+    try kz_json:decode(Body) of
+        JObj -> trunc(kz_json:get_float_value(<<"score">>, JObj) * 10)
     catch
         _E:_R ->
             lager:debug("failed to decode JSON: ~s: ~p", [_E, _R]),
@@ -115,7 +115,7 @@ nomorobo_score_from_resp(Body) ->
             'undefined'
     end.
 
--spec continue_to_score(whapps_call:call(), integer()) -> 'ok'.
+-spec continue_to_score(kapps_call:call(), integer()) -> 'ok'.
 continue_to_score(Call, Score) ->
     Keys = nomorobo_branches(cf_exe:get_all_branch_keys(Call)),
     Branch = nomorobo_branch(Score, Keys),
@@ -128,7 +128,7 @@ nomorobo_branch(Score, [Lo|Keys]) ->
 
 -spec branch_to_binary(integer()) -> ne_binary().
 branch_to_binary(-1) -> <<"_">>;
-branch_to_binary(I) -> wh_util:to_binary(I).
+branch_to_binary(I) -> kz_util:to_binary(I).
 
 nomorobo_branch(_Score, Branch, []) -> Branch;
 nomorobo_branch(Score, _Lo, [K|Ks]) when K =< Score ->
@@ -136,7 +136,7 @@ nomorobo_branch(Score, _Lo, [K|Ks]) when K =< Score ->
 nomorobo_branch(Score, Lo, [_K|Ks]) ->
     nomorobo_branch(Score, Lo, Ks).
 
--spec continue_to_default(whapps_call:call()) -> 'ok'.
+-spec continue_to_default(kapps_call:call()) -> 'ok'.
 continue_to_default(Call) ->
     case nomorobo_branches(cf_exe:get_all_branch_keys(Call)) of
         [-1|_] ->
@@ -160,7 +160,7 @@ nomorobo_branches([], Branches) ->
 nomorobo_branches([<<"_">>|Keys], Branches) ->
     nomorobo_branches(Keys, [-1 | Branches]);
 nomorobo_branches([Key|Keys], Branches) ->
-    try wh_util:to_integer(Key) of
+    try kz_util:to_integer(Key) of
         I -> nomorobo_branches(Keys, [I | Branches])
     catch
         'error':'badarg' ->

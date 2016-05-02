@@ -16,7 +16,7 @@
 
 -include("blackhole.hrl").
 
--spec handle_event(bh_context:context(), wh_json:object()) -> 'ok'.
+-spec handle_event(bh_context:context(), kz_json:object()) -> 'ok'.
 handle_event(Context, EventJObj) ->
     lager:debug("handling conference event ~s", [get_response_key(EventJObj)]),
     blackhole_data_emitter:emit(bh_context:websocket_pid(Context)
@@ -46,4 +46,4 @@ rm_amqp_binding(Binding, _Context) ->
 %%% Internal functions
 %%%==================================================================
 get_response_key(JObj) ->
-    wh_json:get_first_defined([<<"Application-Name">>, <<"Event-Name">>], JObj).
+    kz_json:get_first_defined([<<"Application-Name">>, <<"Event-Name">>], JObj).

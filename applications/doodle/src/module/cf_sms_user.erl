@@ -22,17 +22,17 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call1) ->
-    UserId = wh_doc:id(Data),
+    UserId = kz_doc:id(Data),
     Funs = [{fun doodle_util:set_callee_id/2, UserId}
-            ,{fun whapps_call:kvs_store/3, <<"target_owner_id">>, UserId}
+            ,{fun kapps_call:kvs_store/3, <<"target_owner_id">>, UserId}
            ],
-    Call = whapps_call:exec(Funs, Call1),
+    Call = kapps_call:exec(Funs, Call1),
     {Endpoints, Dnd} = get_endpoints(UserId, Data, Call),
-    Strategy = wh_json:get_binary_value(<<"sms_strategy">>, Data, <<"single">>),
+    Strategy = kz_json:get_binary_value(<<"sms_strategy">>, Data, <<"single">>),
     case Endpoints =/= []
-        andalso whapps_sms_command:b_send_sms(Endpoints, Strategy, Call)
+        andalso kapps_sms_command:b_send_sms(Endpoints, Strategy, Call)
     of
         'false' when Dnd =:= 0 ->
             lager:notice("user ~s has no endpoints", [UserId]),
@@ -47,25 +47,25 @@ handle(Data, Call1) ->
             maybe_handle_bridge_failure(Reason, Call)
     end.
 
--spec handle_result(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec handle_result(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle_result(JObj, Call1) ->
     Status = doodle_util:sms_status(JObj),
     Call = doodle_util:set_flow_status(Status, Call1),
     handle_result_status(Call, Status).
 
--spec handle_result_status(whapps_call:call(), ne_binary()) -> 'ok'.
+-spec handle_result_status(kapps_call:call(), ne_binary()) -> 'ok'.
 handle_result_status(Call, <<"pending">>) ->
     doodle_util:maybe_reschedule_sms(Call);
 handle_result_status(Call, _Status) ->
     lager:info("completed successful message to the user"),
     doodle_exe:continue(Call).
 
--spec maybe_handle_bridge_failure(any(), whapps_call:call()) -> 'ok'.
+-spec maybe_handle_bridge_failure(any(), kapps_call:call()) -> 'ok'.
 maybe_handle_bridge_failure({_ , R}=Reason, Call) ->
     case doodle_util:handle_bridge_failure(Reason, Call) of
         'not_found' ->
             doodle_util:maybe_reschedule_sms(
-              doodle_util:set_flow_status(<<"pending">>, wh_util:to_binary(R), Call)
+              doodle_util:set_flow_status(<<"pending">>, kz_util:to_binary(R), Call)
               );
         'ok' -> 'ok'
     end.
@@ -78,11 +78,11 @@ maybe_handle_bridge_failure({_ , R}=Reason, Call) ->
 %% Send to endpoint in determined order
 %% @end
 %%--------------------------------------------------------------------
--spec get_endpoints(api_binary(), wh_json:object(), whapps_call:call()) ->
-                           {wh_json:objects(), non_neg_integer()}.
+-spec get_endpoints(api_binary(), kz_json:object(), kapps_call:call()) ->
+                           {kz_json:objects(), non_neg_integer()}.
 get_endpoints('undefined', _, _) -> {[], 0};
 get_endpoints(UserId, Data, Call) ->
-    Params = wh_json:set_value(<<"source">>, ?MODULE, Data),
+    Params = kz_json:set_value(<<"source">>, ?MODULE, Data),
     EndpointIds = cf_attributes:owned_by(UserId, <<"device">>, Call),
     {Endpoints, DndCount} = lists:foldr(fun(EndpointId, {Acc, Dnd}) ->
                         case cf_endpoint:build(EndpointId, Params, Call) of
@@ -97,11 +97,11 @@ get_endpoints(UserId, Data, Call) ->
     SortedEndpoints = sort_endpoints_by_type(Endpoints),
     {SortedEndpoints, DndCount}.
 
--spec sort_endpoints_by_type(wh_json:objects()) -> wh_json:objects().
+-spec sort_endpoints_by_type(kz_json:objects()) -> kz_json:objects().
 sort_endpoints_by_type(Endpoints) ->
     lists:sort(fun(EndpointA, EndpointB) ->
-            EndpointAValue = endpoint_type_sort_value(wh_json:get_value(<<"Endpoint-Type">>, EndpointA)),
-            EndpointBValue = endpoint_type_sort_value(wh_json:get_value(<<"Endpoint-Type">>, EndpointB)),
+            EndpointAValue = endpoint_type_sort_value(kz_json:get_value(<<"Endpoint-Type">>, EndpointA)),
+            EndpointBValue = endpoint_type_sort_value(kz_json:get_value(<<"Endpoint-Type">>, EndpointB)),
             (EndpointAValue < EndpointBValue)
         end,
         Endpoints).

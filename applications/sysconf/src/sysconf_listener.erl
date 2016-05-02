@@ -117,12 +117,12 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'document_changes', _, _}, State) ->
-    whapps_config:flush(),
-    lager:info("system configuration was updated, flushing whapps config cache"),
+    kapps_config:flush(),
+    lager:info("system configuration was updated, flushing kapps config cache"),
     {'noreply', State};
 handle_info({'document_deleted', _}, State) ->
-    whapps_config:flush(),
-    lager:info("system configuration was updated, flushing whapps config cache"),
+    kapps_config:flush(),
+    lager:info("system configuration was updated, flushing kapps config cache"),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),

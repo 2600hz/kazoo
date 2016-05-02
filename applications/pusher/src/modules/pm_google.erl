@@ -24,7 +24,7 @@ start_link() ->
 
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     lager:debug("starting server"),
     {'ok', #state{tab=ets:new(?MODULE, [])}}.
 
@@ -35,7 +35,7 @@ handle_call(_Request, _From, State) ->
 -spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'push', JObj}, #state{tab=ETS}=State) ->
     lager:debug("process a push"),
-    TokenApp = wh_json:get_value(<<"Token-App">>, JObj),
+    TokenApp = kz_json:get_value(<<"Token-App">>, JObj),
     maybe_send_push_notification(get_gcm(TokenApp, ETS), JObj),
     {'noreply', State};
 handle_cast('stop', State) ->
@@ -54,12 +54,12 @@ terminate(_Reason, #state{tab=ETS}) ->
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
--spec maybe_send_push_notification(api_pid(), wh_json:object()) -> any().
+-spec maybe_send_push_notification(api_pid(), kz_json:object()) -> any().
 maybe_send_push_notification('undefined', _JObj) -> lager:debug("no pid to send push");
 maybe_send_push_notification(Pid, JObj) ->
-    TokenID = wh_json:get_value(<<"Token-ID">>, JObj),
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    Message = wh_json:from_list([{<<"data">>,wh_json:from_list([{<<"Call-ID">>, CallId}])}]),
+    TokenID = kz_json:get_value(<<"Token-ID">>, JObj),
+    CallId = kz_json:get_value(<<"Call-ID">>, JObj),
+    Message = kz_json:from_list([{<<"data">>,kz_json:from_list([{<<"Call-ID">>, CallId}])}]),
 
     lager:debug("pushing to ~p: ~s: ~p", [Pid, TokenID, Message]),
 
@@ -76,14 +76,14 @@ get_gcm(App, ETS) ->
 -spec maybe_load_gcm(api_binary(), ets:tid()) -> api_pid().
 maybe_load_gcm(App, ETS) ->
     lager:debug("loading gcm secret for ~s", [App]),
-    maybe_load_gcm(App, ETS, whapps_config:get_binary(?CONFIG_CAT, <<"google">>, 'undefined', App)).
+    maybe_load_gcm(App, ETS, kapps_config:get_binary(?CONFIG_CAT, <<"google">>, 'undefined', App)).
 
 -spec maybe_load_gcm(api_binary(), ets:tid(), api_binary()) -> api_pid().
 maybe_load_gcm(App, _, 'undefined') ->
     lager:debug("google pusher secret for app ~s not found", [App]),
     'undefined';
 maybe_load_gcm(App, ETS, Secret) ->
-    case gcm:start(wh_util:to_atom(App, 'true'), Secret) of
+    case gcm:start(kz_util:to_atom(App, 'true'), Secret) of
         {'ok', Pid} ->
             ets:insert(ETS, {App, Pid}),
             Pid;

@@ -31,8 +31,8 @@
 
 -define(SERVER, ?MODULE).
 
--define(IS_ENABLED, whapps_config:get_is_true(?APP_NAME, <<"balance_crawler_enabled">>, 'false')).
--define(CRAWLER_CYCLE_MS, whapps_config:get_integer(?APP_NAME, <<"balance_crawler_cycle_ms">>, ?MILLISECONDS_IN_MINUTE)).
+-define(IS_ENABLED, kapps_config:get_is_true(?APP_NAME, <<"balance_crawler_enabled">>, 'false')).
+-define(CRAWLER_CYCLE_MS, kapps_config:get_integer(?APP_NAME, <<"balance_crawler_cycle_ms">>, ?MILLISECONDS_IN_MINUTE)).
 
 -type fsm_events() :: 'start_cycle' | 'worker_stop'.
 -type fsm_state() :: 'idle' | 'working' | 'worker_timeout'.
@@ -57,7 +57,7 @@ start_link() ->
 %%====================================================================
 init(_Args) ->
     process_flag('trap_exit', 'true'),
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     gen_fsm:send_event(self(), 'start_cycle'),
     {'ok', 'idle', 'undefined'}.
 
@@ -106,4 +106,4 @@ worker_timeout('worker_stop', _OldWorkerPid) ->
 %%====================================================================
 spawn_worker() ->
     gen_fsm:send_event_after(?CRAWLER_CYCLE_MS, 'start_cycle'),
-    wh_util:spawn_link(fun j5_balance_crawler_worker:start/0).
+    kz_util:spawn_link(fun j5_balance_crawler_worker:start/0).

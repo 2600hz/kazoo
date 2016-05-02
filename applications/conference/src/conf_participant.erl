@@ -60,7 +60,7 @@
 -define(CONSUME_OPTIONS, []).
 
 -record(participant, {participant_id = 0 :: non_neg_integer()
-                      ,call :: whapps_call:call()
+                      ,call :: kapps_call:call()
                       ,moderator = 'false' :: boolean()
                       ,muted = 'false' :: boolean()
                       ,deaf = 'false' :: boolean()
@@ -68,8 +68,8 @@
                       ,call_event_consumers = [] :: pids()
                       ,in_conference = 'false' :: boolean()
                       ,join_attempts = 0 :: non_neg_integer()
-                      ,conference :: whapps_conference:conference()
-                      ,discovery_event = wh_json:new() :: wh_json:object()
+                      ,conference :: kapps_conference:conference()
+                      ,discovery_event = kz_json:new() :: kz_json:object()
                       ,last_dtmf = <<>> :: binary()
                       ,server = self() :: pid()
                       ,remote = 'false' :: boolean()
@@ -85,7 +85,7 @@
 %% @doc Starts the server
 %%--------------------------------------------------------------------
 start_link(Call) ->
-    CallId = whapps_call:call_id(Call),
+    CallId = kapps_call:call_id(Call),
     Bindings = [{'call', [{'callid', CallId}]}
                 ,{'self', []}
                ],
@@ -96,28 +96,28 @@ start_link(Call) ->
                                       ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], [Call]).
 
--spec conference(pid()) -> {'ok', whapps_conference:conference()}.
+-spec conference(pid()) -> {'ok', kapps_conference:conference()}.
 conference(Srv) -> gen_listener:call(Srv, {'get_conference'}).
 
--spec set_conference(whapps_conference:conference(), pid()) -> 'ok'.
+-spec set_conference(kapps_conference:conference(), pid()) -> 'ok'.
 set_conference(Conference, Srv) -> gen_listener:cast(Srv, {'set_conference', Conference}).
 
--spec discovery_event(pid()) -> {'ok', wh_json:object()}.
+-spec discovery_event(pid()) -> {'ok', kz_json:object()}.
 discovery_event(Srv) -> gen_listener:call(Srv, {'get_discovery_event'}).
 
--spec set_discovery_event(wh_json:object(), pid()) -> 'ok'.
+-spec set_discovery_event(kz_json:object(), pid()) -> 'ok'.
 set_discovery_event(DE, Srv) -> gen_listener:cast(Srv, {'set_discovery_event', DE}).
 
 -spec set_name_pronounced(conf_pronounced_name:name_pronounced(), pid()) -> 'ok'.
 set_name_pronounced(Name, Srv) -> gen_listener:cast(Srv, {'set_name_pronounced', Name}).
 
--spec call(pid()) -> {'ok', whapps_call:call()}.
+-spec call(pid()) -> {'ok', kapps_call:call()}.
 call(Srv) -> gen_listener:call(Srv, {'get_call'}).
 
 -spec join_local(pid()) -> 'ok'.
 join_local(Srv) -> gen_listener:cast(Srv, 'join_local').
 
--spec join_remote(pid(), wh_json:object()) -> 'ok'.
+-spec join_remote(pid(), kz_json:object()) -> 'ok'.
 join_remote(Srv, JObj) -> gen_listener:cast(Srv, {'join_remote', JObj}).
 
 -spec mute(pid()) -> 'ok'.
@@ -147,13 +147,13 @@ dtmf(Srv, Digit) -> gen_listener:cast(Srv,{'dtmf', Digit}).
 -spec consume_call_events(pid()) -> 'ok'.
 consume_call_events(Srv) -> gen_listener:cast(Srv, {'add_consumer', self()}).
 
--spec relay_amqp(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec relay_amqp(kz_json:object(), kz_proplist()) -> 'ok'.
 relay_amqp(JObj, Props) ->
-    _ = [whapps_call_command:relay_event(Pid, JObj)
+    _ = [kapps_call_command:relay_event(Pid, JObj)
          || Pid <- props:get_value('call_event_consumers', Props, []),
             is_pid(Pid)
         ],
-    Digit = wh_json:get_value(<<"DTMF-Digit">>, JObj),
+    Digit = kz_json:get_value(<<"DTMF-Digit">>, JObj),
     case is_binary(Digit) of
         'false' -> 'ok';
         'true' ->
@@ -161,21 +161,21 @@ relay_amqp(JObj, Props) ->
             dtmf(Srv, Digit)
     end.
 
--spec handle_participants_event(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_participants_event(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_participants_event(JObj, Props) ->
-    'true' = wapi_conference:participants_event_v(JObj),
-    _ = [whapps_call_command:relay_event(Pid, JObj)
+    'true' = kapi_conference:participants_event_v(JObj),
+    _ = [kapps_call_command:relay_event(Pid, JObj)
          || Pid <- props:get_value('call_event_consumers', Props, []),
             is_pid(Pid)
         ],
     Srv = props:get_value('server', Props),
     gen_listener:cast(Srv, {'sync_participant', JObj}).
 
--spec handle_conference_error(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_conference_error(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_conference_error(JObj, Props) ->
-    'true' = wapi_conference:conference_error_v(JObj),
+    'true' = kapi_conference:conference_error_v(JObj),
     lager:debug("conference error: ~p", [JObj]),
-    case wh_json:get_value([<<"Request">>, <<"Application-Name">>], JObj) of
+    case kz_json:get_value([<<"Request">>, <<"Application-Name">>], JObj) of
         <<"participants">> ->
             Srv = props:get_value('server', Props),
             gen_listener:cast(Srv, {'sync_participant', []});
@@ -199,7 +199,7 @@ handle_conference_error(JObj, Props) ->
 %%--------------------------------------------------------------------
 init([Call]) ->
     process_flag('trap_exit', 'true'),
-    whapps_call:put_callid(Call),
+    kapps_call:put_callid(Call),
     {'ok', #participant{call=Call}}.
 
 %%--------------------------------------------------------------------
@@ -242,23 +242,23 @@ handle_cast('hungup', #participant{in_conference='true'
                                   }=Participant
            ) ->
     play_hangup_announce(Participant),
-    _ = whapps_call_command:hangup(Call),
+    _ = kapps_call_command:hangup(Call),
     {'stop', {'shutdown', 'hungup'}, Participant};
 handle_cast('hungup', #participant{in_conference='false'
                                    ,call=Call
                                   }=Participant) ->
     play_hangup_announce(Participant),
-    _ = whapps_call_command:hangup(Call),
+    _ = kapps_call_command:hangup(Call),
     {'stop', {'shutdown', 'hungup'}, Participant};
 handle_cast({'gen_listener', {'created_queue', Q}}, #participant{conference='undefined'
                                                                  ,call=Call
                                                                 }=P) ->
-    {'noreply', P#participant{call=whapps_call:set_controller_queue(Q, Call)}};
+    {'noreply', P#participant{call=kapps_call:set_controller_queue(Q, Call)}};
 handle_cast({'gen_listener', {'created_queue', Q}}, #participant{conference=Conference
                                                                  ,call=Call
                                                                 }=P) ->
-    {'noreply', P#participant{call=whapps_call:set_controller_queue(Q, Call)
-                              ,conference=whapps_conference:set_controller_queue(Q, Conference)
+    {'noreply', P#participant{call=kapps_call:set_controller_queue(Q, Call)
+                              ,conference=kapps_conference:set_controller_queue(Q, Conference)
                              }};
 handle_cast('hangup', Participant) ->
     lager:debug("received in-conference command, hangup participant"),
@@ -272,7 +272,7 @@ handle_cast({'remove_consumer', C}, #participant{call_event_consumers=Cs}=P) ->
     lager:debug("removing call event consumer ~p", [C]),
     {'noreply', P#participant{call_event_consumers=[C1 || C1 <- Cs, C=/=C1]}};
 handle_cast({'set_conference', Conference}, Participant) ->
-    ConferenceId = whapps_conference:id(Conference),
+    ConferenceId = kapps_conference:id(Conference),
     lager:debug("received conference data for conference ~s", [ConferenceId]),
     gen_listener:add_binding(self(), 'conference', [{'restrict_to', [{'conference', ConferenceId}]}]),
     {'noreply', Participant#participant{conference=Conference}};
@@ -300,7 +300,7 @@ handle_cast('join_local', #participant{call=Call
 handle_cast({'join_remote', JObj}, #participant{call=Call
                                                 ,conference=Conference
                                                }=Participant) ->
-    Route = binary:replace(wh_json:get_value(<<"Switch-URL">>, JObj)
+    Route = binary:replace(kz_json:get_value(<<"Switch-URL">>, JObj)
                            ,<<"mod_sofia">>
                            ,<<"conference">>
                           ),
@@ -326,15 +326,15 @@ handle_cast('mute', #participant{participant_id=ParticipantId
                                  ,conference=Conference
                                 }=Participant) ->
     lager:debug("received in-conference command, muting participant ~p", [ParticipantId]),
-    whapps_conference_command:mute_participant(ParticipantId, Conference),
-    whapps_conference_command:prompt(<<"conf-muted">>, ParticipantId, Conference),
+    kapps_conference_command:mute_participant(ParticipantId, Conference),
+    kapps_conference_command:prompt(<<"conf-muted">>, ParticipantId, Conference),
     {'noreply', Participant#participant{muted='true'}};
 handle_cast('unmute', #participant{participant_id=ParticipantId
                                    ,conference=Conference
                                   }=Participant) ->
     lager:debug("received in-conference command, unmuting participant ~p", [ParticipantId]),
-    whapps_conference_command:unmute_participant(ParticipantId, Conference),
-    whapps_conference_command:prompt(<<"conf-unmuted">>, ParticipantId, Conference),
+    kapps_conference_command:unmute_participant(ParticipantId, Conference),
+    kapps_conference_command:prompt(<<"conf-unmuted">>, ParticipantId, Conference),
     {'noreply', Participant#participant{muted='false'}};
 handle_cast('toggle_mute', #participant{muted='true'}=Participant) ->
     unmute(self()),
@@ -346,15 +346,15 @@ handle_cast('deaf', #participant{participant_id=ParticipantId
                                  ,conference=Conference
                                 }=Participant) ->
     lager:debug("received in-conference command, making participant ~p deaf", [ParticipantId]),
-    whapps_conference_command:deaf_participant(ParticipantId, Conference),
-    whapps_conference_command:prompt(<<"conf-deaf">>, ParticipantId, Conference),
+    kapps_conference_command:deaf_participant(ParticipantId, Conference),
+    kapps_conference_command:prompt(<<"conf-deaf">>, ParticipantId, Conference),
     {'noreply', Participant#participant{deaf='true'}};
 handle_cast('undeaf', #participant{participant_id=ParticipantId
                                    ,conference=Conference
                                   }=Participant) ->
     lager:debug("received in-conference command, making participant ~p undeaf", [ParticipantId]),
-    whapps_conference_command:undeaf_participant(ParticipantId, Conference),
-    whapps_conference_command:prompt(<<"conf-undeaf">>, ParticipantId, Conference),
+    kapps_conference_command:undeaf_participant(ParticipantId, Conference),
+    kapps_conference_command:prompt(<<"conf-undeaf">>, ParticipantId, Conference),
     {'noreply', Participant#participant{deaf='false'}};
 handle_cast('toggle_deaf', #participant{deaf='true'}=Participant) ->
     undeaf(self()),
@@ -393,9 +393,9 @@ handle_event(JObj, #participant{call_event_consumers=Consumers
                                 ,call=Call
                                 ,server=Srv
                                }) ->
-    CallId = whapps_call:call_id(Call),
-    case {whapps_util:get_event_type(JObj)
-          ,wh_json:get_value(<<"Call-ID">>, JObj)
+    CallId = kapps_call:call_id(Call),
+    case {kapps_util:get_event_type(JObj)
+          ,kz_json:get_value(<<"Call-ID">>, JObj)
          }
     of
         {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
@@ -427,7 +427,7 @@ terminate(_Reason, #participant{name_pronounced = Name}) ->
 
 -spec maybe_clear(conf_pronounced_name:name_pronounced()) -> 'ok'.
 maybe_clear({'temp_doc_id', AccountId, MediaId}) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     lager:debug("deleting doc: ~s/~s", [AccountDb, MediaId]),
     kz_datamgr:del_doc(AccountDb, MediaId),
     'ok';
@@ -447,69 +447,69 @@ code_change(_OldVsn, Participant, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec find_participant(wh_proplist(), ne_binary()) ->
-                              {'ok', wh_json:object()} |
+-spec find_participant(kz_proplist(), ne_binary()) ->
+                              {'ok', kz_json:object()} |
                               {'error', 'not_found'}.
 find_participant([], _) -> {'error', 'not_found'};
 find_participant([Participant|Participants], CallId) ->
-    case wh_json:get_value(<<"Call-ID">>, Participant) of
+    case kz_json:get_value(<<"Call-ID">>, Participant) of
         CallId -> {'ok', Participant};
         _Else -> find_participant(Participants, CallId)
     end.
 
--spec sync_participant(wh_json:objects(), whapps_call:call(), participant()) ->
+-spec sync_participant(kz_json:objects(), kapps_call:call(), participant()) ->
                               participant().
 sync_participant(JObj, Call, #participant{in_conference='false'
                                           ,conference=Conference
                                          }=Participant) ->
-    Participants = wh_json:get_value(<<"Participants">>, JObj, []),
-    IsModerator = whapps_conference:moderator(Conference),
-    case find_participant(Participants, whapps_call:call_id(Call)) of
+    Participants = kz_json:get_value(<<"Participants">>, JObj, []),
+    IsModerator = kapps_conference:moderator(Conference),
+    case find_participant(Participants, kapps_call:call_id(Call)) of
         {'ok', Moderator} when IsModerator ->
-            Focus = wh_json:get_value(<<"Focus">>, JObj),
-            C = whapps_conference:set_focus(Focus, Conference),
+            Focus = kz_json:get_value(<<"Focus">>, JObj),
+            C = kapps_conference:set_focus(Focus, Conference),
             sync_moderator(Moderator, Call, Participant#participant{conference=C});
         {'ok', Member} ->
-            Focus = wh_json:get_value(<<"Focus">>, JObj),
-            C = whapps_conference:set_focus(Focus, Conference),
+            Focus = kz_json:get_value(<<"Focus">>, JObj),
+            C = kapps_conference:set_focus(Focus, Conference),
             sync_member(Member, Call, Participant#participant{conference=C});
         {'error', 'not_found'} ->
             lager:debug("caller not found in the list of conference participants"),
-            Focus = wh_json:get_value(<<"Focus">>, JObj),
-            C = whapps_conference:set_focus(Focus, Conference),
+            Focus = kz_json:get_value(<<"Focus">>, JObj),
+            C = kapps_conference:set_focus(Focus, Conference),
             Participant#participant{conference=C}
     end;
 sync_participant(JObj, Call, #participant{in_conference='true'}=Participant) ->
-    Participants = wh_json:get_value(<<"Participants">>, JObj, []),
-    case find_participant(Participants, whapps_call:call_id(Call)) of
+    Participants = kz_json:get_value(<<"Participants">>, JObj, []),
+    case find_participant(Participants, kapps_call:call_id(Call)) of
         {'ok', Participator} ->
             lager:debug("caller has is still in the conference"),
             Participant#participant{in_conference='true'
-                                    ,muted=(not wh_json:is_true(<<"Speak">>, Participator))
-                                    ,deaf=(not wh_json:is_true(<<"Hear">>, Participator))
+                                    ,muted=(not kz_json:is_true(<<"Speak">>, Participator))
+                                    ,deaf=(not kz_json:is_true(<<"Hear">>, Participator))
                                    };
         {'error', 'not_found'} ->
             lager:debug("participant is not present in conference anymore, terminating"),
             Participant
     end.
 
--spec sync_moderator(wh_json:object(), whapps_call:call(), participant()) -> participant().
+-spec sync_moderator(kz_json:object(), kapps_call:call(), participant()) -> participant().
 sync_moderator(JObj, Call, #participant{conference=Conference
                                         ,discovery_event=DiscoveryEvent
                                        }=Participant) ->
-    ParticipantId = wh_json:get_value(<<"Participant-ID">>, JObj),
+    ParticipantId = kz_json:get_value(<<"Participant-ID">>, JObj),
     lager:debug("caller has joined the local conference as moderator ~p", [ParticipantId]),
-    Deaf = not wh_json:is_true(<<"Hear">>, JObj),
-    Muted = not wh_json:is_true(<<"Speak">>, JObj),
+    Deaf = not kz_json:is_true(<<"Hear">>, JObj),
+    Muted = not kz_json:is_true(<<"Speak">>, JObj),
     gen_listener:cast(self(), 'play_announce'),
-    whapps_conference:moderator_join_muted(Conference)
+    kapps_conference:moderator_join_muted(Conference)
         andalso gen_listener:cast(self(), 'mute'),
-    whapps_conference:moderator_join_deaf(Conference)
+    kapps_conference:moderator_join_deaf(Conference)
         andalso gen_listener:cast(self(), 'deaf'),
-    _ = wh_util:spawn(fun notify_requestor/4, [whapps_call:controller_queue(Call)
+    _ = kz_util:spawn(fun notify_requestor/4, [kapps_call:controller_queue(Call)
                                                ,ParticipantId
                                                ,DiscoveryEvent
-                                               ,whapps_conference:id(Conference)
+                                               ,kapps_conference:id(Conference)
                                               ]),
     Participant#participant{in_conference='true'
                             ,muted=Muted
@@ -517,23 +517,23 @@ sync_moderator(JObj, Call, #participant{conference=Conference
                             ,participant_id=ParticipantId
                            }.
 
--spec sync_member(wh_json:object(), whapps_call:call(), participant()) -> participant().
+-spec sync_member(kz_json:object(), kapps_call:call(), participant()) -> participant().
 sync_member(JObj, Call, #participant{conference=Conference
                                      ,discovery_event=DiscoveryEvent
                                     }=Participant) ->
-    ParticipantId = wh_json:get_value(<<"Participant-ID">>, JObj),
+    ParticipantId = kz_json:get_value(<<"Participant-ID">>, JObj),
     lager:debug("caller has joined the local conference as member ~p", [ParticipantId]),
-    Deaf = not wh_json:is_true(<<"Hear">>, JObj),
-    Muted = not wh_json:is_true(<<"Speak">>, JObj),
+    Deaf = not kz_json:is_true(<<"Hear">>, JObj),
+    Muted = not kz_json:is_true(<<"Speak">>, JObj),
     gen_listener:cast(self(), 'play_announce'),
-    whapps_conference:member_join_muted(Conference)
+    kapps_conference:member_join_muted(Conference)
         andalso gen_listener:cast(self(), 'mute'),
-    whapps_conference:member_join_deaf(Conference)
+    kapps_conference:member_join_deaf(Conference)
         andalso gen_listener:cast(self(), 'deaf'),
-    _ = wh_util:spawn(fun notify_requestor/4, [whapps_call:controller_queue(Call)
+    _ = kz_util:spawn(fun notify_requestor/4, [kapps_call:controller_queue(Call)
                                                ,ParticipantId
                                                ,DiscoveryEvent
-                                               ,whapps_conference:id(Conference)
+                                               ,kapps_conference:id(Conference)
                                               ]),
     Participant#participant{in_conference='true'
                             ,muted=Muted
@@ -541,17 +541,17 @@ sync_member(JObj, Call, #participant{conference=Conference
                             ,participant_id=ParticipantId
                            }.
 
--spec notify_requestor(ne_binary(), ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
+-spec notify_requestor(ne_binary(), ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
 notify_requestor(MyQ, MyId, DiscoveryEvent, ConferenceId) ->
-    case wh_json:get_value(<<"Server-ID">>, DiscoveryEvent) of
+    case kz_json:get_value(<<"Server-ID">>, DiscoveryEvent) of
         'undefined' -> 'ok';
         <<>> -> 'ok';
         RequestorQ ->
             Resp = [{<<"Conference-ID">>, ConferenceId}
                     ,{<<"Participant-ID">>, MyId}
-                    | wh_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
+                    | kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
                    ],
-            wapi_conference:publish_discovery_resp(RequestorQ, Resp)
+            kapi_conference:publish_discovery_resp(RequestorQ, Resp)
     end.
 
 -spec play_announce(participant()) -> 'ok'.
@@ -560,29 +560,29 @@ play_announce(#participant{name_pronounced='undefined'
                            ,remote='false'
                           }) ->
     lager:debug("skipping name announce"),
-    Moderator = case whapps_conference:moderator(Conference) of
+    Moderator = case kapps_conference:moderator(Conference) of
         'true' -> 'moderator';
         'false' -> 'member'
     end,
     case play_entry_tone(Moderator, Conference) of
         'false' -> 'ok';
-        Command -> whapps_conference_command:send_command(Command, Conference)
+        Command -> kapps_conference_command:send_command(Command, Conference)
     end;
 play_announce(#participant{conference=Conference
                            ,name_pronounced={_, AccountId, MediaId}
                           }) ->
-    lager:debug("playing announcement ~s to conference ~s", [MediaId, whapps_conference:id(Conference)]),
-    Recording = wh_media_util:media_path(MediaId, AccountId),
-    RecordingCommand = whapps_conference_command:play_command(Recording),
-    PromptCommand = whapps_conference_command:play_command(wh_media_util:get_prompt(<<"conf-has_joined">>, whapps_conference:call(Conference))),
+    lager:debug("playing announcement ~s to conference ~s", [MediaId, kapps_conference:id(Conference)]),
+    Recording = kz_media_util:media_path(MediaId, AccountId),
+    RecordingCommand = kapps_conference_command:play_command(Recording),
+    PromptCommand = kapps_conference_command:play_command(kz_media_util:get_prompt(<<"conf-has_joined">>, kapps_conference:call(Conference))),
 
-    Moderator = case whapps_conference:moderator(Conference) of
+    Moderator = case kapps_conference:moderator(Conference) of
         'true' -> 'moderator';
         'false' -> 'member'
     end,
     case play_entry_tone(Moderator, Conference) of
-        'false' -> whapps_conference_command:macro([RecordingCommand, PromptCommand], Conference);
-        Command -> whapps_conference_command:macro([Command, RecordingCommand, PromptCommand], Conference)
+        'false' -> kapps_conference_command:macro([RecordingCommand, PromptCommand], Conference);
+        Command -> kapps_conference_command:macro([Command, RecordingCommand, PromptCommand], Conference)
     end;
 play_announce(_) -> 'ok'.
 
@@ -594,32 +594,32 @@ play_hangup_announce(#participant{conference=Conference
                                  }) ->
     case play_exit_tone(Conference) of
         'false' -> 'ok';
-        Command -> whapps_conference_command:send_command(Command, Conference)
+        Command -> kapps_conference_command:send_command(Command, Conference)
     end;
 play_hangup_announce(#participant{conference=Conference
                                   ,name_pronounced={_, AccountId, MediaId}
                                  }) ->
-    lager:debug("playing announcement ~s to conference ~s", [MediaId, whapps_conference:id(Conference)]),
-    Recording = wh_media_util:media_path(MediaId, AccountId),
-    RecordingCommand = whapps_conference_command:play_command(Recording),
-    PromptCommand = whapps_conference_command:play_command(wh_media_util:get_prompt(<<"conf-has_left">>, whapps_conference:call(Conference))),
+    lager:debug("playing announcement ~s to conference ~s", [MediaId, kapps_conference:id(Conference)]),
+    Recording = kz_media_util:media_path(MediaId, AccountId),
+    RecordingCommand = kapps_conference_command:play_command(Recording),
+    PromptCommand = kapps_conference_command:play_command(kz_media_util:get_prompt(<<"conf-has_left">>, kapps_conference:call(Conference))),
 
     case play_exit_tone(Conference) of
-        'false' -> whapps_conference_command:macro([RecordingCommand, PromptCommand], Conference);
-        Command -> whapps_conference_command:macro([Command, RecordingCommand, PromptCommand], Conference)
+        'false' -> kapps_conference_command:macro([RecordingCommand, PromptCommand], Conference);
+        Command -> kapps_conference_command:macro([Command, RecordingCommand, PromptCommand], Conference)
     end.
 
--spec bridge_to_conference(ne_binary(), whapps_conference:conference(), whapps_call:call()) -> 'ok'.
+-spec bridge_to_conference(ne_binary(), kapps_conference:conference(), kapps_call:call()) -> 'ok'.
 bridge_to_conference(Route, Conference, Call) ->
     lager:debug("briding to conference running at '~s'", [Route]),
-    Endpoint = wh_json:from_list([{<<"Invite-Format">>, <<"route">>}
+    Endpoint = kz_json:from_list([{<<"Invite-Format">>, <<"route">>}
                                   ,{<<"Route">>, Route}
-                                  ,{<<"Auth-User">>, whapps_conference:bridge_username(Conference)}
-                                  ,{<<"Auth-Password">>, whapps_conference:bridge_password(Conference)}
-                                  ,{<<"Outbound-Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
-                                  ,{<<"Outbound-Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
+                                  ,{<<"Auth-User">>, kapps_conference:bridge_username(Conference)}
+                                  ,{<<"Auth-Password">>, kapps_conference:bridge_password(Conference)}
+                                  ,{<<"Outbound-Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
+                                  ,{<<"Outbound-Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
                                   ,{<<"Ignore-Early-Media">>, <<"true">>}
-                                  ,{<<"To-URI">>, <<"sip:", (whapps_conference:id(Conference))/binary
+                                  ,{<<"To-URI">>, <<"sip:", (kapps_conference:id(Conference))/binary
                                                     ,"@", (get_account_realm(Call))/binary
                                                   >>
                                    }
@@ -631,11 +631,11 @@ bridge_to_conference(Route, Conference, Call) ->
                ,{<<"Ignore-Early-Media">>, <<"false">>}
                ,{<<"Hold-Media">>, <<"silence">>}
               ],
-    whapps_call_command:send_command(Command, Call).
+    kapps_call_command:send_command(Command, Call).
 
--spec get_account_realm(whapps_call:call()) -> ne_binary().
+-spec get_account_realm(kapps_call:call()) -> ne_binary().
 get_account_realm(Call) ->
-    case whapps_call:account_id(Call) of
+    case kapps_call:account_id(Call) of
         'undefined' -> <<"unknown">>;
         AccountId ->
             case kz_account:fetch(AccountId) of
@@ -646,51 +646,51 @@ get_account_realm(Call) ->
             end
     end.
 
--spec send_conference_command(whapps_conference:conference(), whapps_call:call()) -> 'ok'.
+-spec send_conference_command(kapps_conference:conference(), kapps_call:call()) -> 'ok'.
 send_conference_command(Conference, Call) ->
     {Mute, Deaf} =
-        case whapps_conference:moderator(Conference) of
+        case kapps_conference:moderator(Conference) of
             'true' ->
-                {whapps_conference:moderator_join_muted(Conference)
-                 ,whapps_conference:moderator_join_deaf(Conference)
+                {kapps_conference:moderator_join_muted(Conference)
+                 ,kapps_conference:moderator_join_deaf(Conference)
                 };
             'false' ->
-                {whapps_conference:member_join_muted(Conference)
-                 ,whapps_conference:member_join_deaf(Conference)
+                {kapps_conference:member_join_muted(Conference)
+                 ,kapps_conference:member_join_deaf(Conference)
                 }
         end,
-    ProfileName = case whapps_conference:profile(Conference) of
-                      <<"undefined">> -> whapps_conference:id(Conference);
+    ProfileName = case kapps_conference:profile(Conference) of
+                      <<"undefined">> -> kapps_conference:id(Conference);
                       Name -> Name
                   end,
-    whapps_call_command:conference(whapps_conference:id(Conference)
+    kapps_call_command:conference(kapps_conference:id(Conference)
                                    ,Mute
                                    ,Deaf
-                                   ,whapps_conference:moderator(Conference)
+                                   ,kapps_conference:moderator(Conference)
                                    ,ProfileName
                                    ,Call
                                   ).
 
 %% @private
--spec play_exit_tone(whapps_conference:conference()) -> wh_proplist() | 'false'.
+-spec play_exit_tone(kapps_conference:conference()) -> kz_proplist() | 'false'.
 play_exit_tone(Conference) ->
-    case whapps_conference:play_exit_tone(Conference) of
+    case kapps_conference:play_exit_tone(Conference) of
         'false' -> 'false';
-        Media = ?NE_BINARY -> whapps_conference_command:play_command(Media);
-        _Else -> whapps_conference_command:play_command(?EXIT_TONE)
+        Media = ?NE_BINARY -> kapps_conference_command:play_command(Media);
+        _Else -> kapps_conference_command:play_command(?EXIT_TONE)
     end.
 
 %% @private
--spec play_entry_tone('member' | 'moderator', whapps_conference:conference()) -> wh_proplist() | 'false'.
+-spec play_entry_tone('member' | 'moderator', kapps_conference:conference()) -> kz_proplist() | 'false'.
 play_entry_tone('member', Conference) ->
     play_entry_tone_media(?ENTRY_TONE, Conference);
 play_entry_tone('moderator', Conference) ->
     play_entry_tone_media(?MOD_ENTRY_TONE, Conference).
 
--spec play_entry_tone_media(ne_binary(), whapps_conference:conference()) -> wh_proplist() | 'false'.
+-spec play_entry_tone_media(ne_binary(), kapps_conference:conference()) -> kz_proplist() | 'false'.
 play_entry_tone_media(Tone, Conference) ->
-    case whapps_conference:play_entry_tone(Conference) of
+    case kapps_conference:play_entry_tone(Conference) of
         'false' -> 'false';
-        Media = ?NE_BINARY -> whapps_conference_command:play_command(Media);
-        _Else -> whapps_conference_command:play_command(Tone)
+        Media = ?NE_BINARY -> kapps_conference_command:play_command(Media);
+        _Else -> kapps_conference_command:play_command(Tone)
     end.

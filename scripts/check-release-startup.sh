@@ -4,10 +4,10 @@
 
 echo 'Checking the startup of the release...'
 
-rel=${REL:-whistle_apps}  # whistle_apps | ecallmgr | ...
+rel=${REL:-kazoo_apps}  # kazoo_apps | ecallmgr | ...
 [[ $rel != *@* ]] && rel=$rel@127.0.0.1
 
-[[ $rel != whistle_apps* ]] && export KAZOO_APPS='ecallmgr'
+[[ $rel != kazoo_apps* ]] && export KAZOO_APPS='ecallmgr'
 
 function stop() {
     erl -noshell -setcookie change_me -name stopper@${rel##*@} -eval "ok = rpc:call('$rel', init, stop, [])." -s init stop

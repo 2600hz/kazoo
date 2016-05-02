@@ -10,8 +10,8 @@
                   , crypto
                   , public_key
                   , lager
-                  , whistle_config
-                  , whistle_amqp
+                  , kazoo_config
+                  , kazoo_amqp
                   ]}
   ,{mod, {kazoo_data_app, []}}
  ]}.

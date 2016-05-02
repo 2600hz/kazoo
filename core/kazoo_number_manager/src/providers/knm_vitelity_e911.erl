@@ -79,8 +79,8 @@ has_emergency_services(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_location(wh_json:object()) ->
-                               {'ok', wh_json:object()} |
+-spec is_valid_location(kz_json:object()) ->
+                               {'ok', kz_json:object()} |
                                {'error', ne_binary()}.
 is_valid_location(Location) ->
     case knm_vitelity_util:query_vitelity(
@@ -98,7 +98,7 @@ is_valid_location(Location) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_location(ne_binary() | knm_number:knm_number()) ->
-                          {'ok', wh_json:object()} |
+                          {'ok', kz_json:object()} |
                           {'error', any()}.
 get_location(DID) when is_binary(DID) ->
     case knm_vitelity_util:query_vitelity(
@@ -135,34 +135,34 @@ maybe_update_e911(Number) ->
 maybe_update_e911(Number, 'true') ->
     PhoneNumber = knm_number:phone_number(Number),
     Features = knm_phone_number:features(PhoneNumber),
-    CurrentE911 = wh_json:get_ne_value(?VITELITY_KEY, Features),
+    CurrentE911 = kz_json:get_ne_value(?VITELITY_KEY, Features),
 
     Doc = knm_phone_number:doc(PhoneNumber),
-    E911 = wh_json:get_ne_value([?PVT_FEATURES, ?VITELITY_KEY], Doc),
+    E911 = kz_json:get_ne_value([?PVT_FEATURES, ?VITELITY_KEY], Doc),
 
-    NotChanged = wh_json:are_identical(CurrentE911, E911),
+    NotChanged = kz_json:are_identical(CurrentE911, E911),
 
-    case wh_util:is_empty(E911) of
+    case kz_util:is_empty(E911) of
         'true' ->
             lager:debug("dry run: remove vitelity e911 information"),
             knm_services:deactivate_feature(Number, ?VITELITY_KEY);
         'false' when NotChanged  ->
             knm_services:deactivate_feature(Number, ?VITELITY_KEY);
         'false' ->
-            lager:debug("dry run: change vitelity e911 information: ~s", [wh_json:encode(E911)]),
+            lager:debug("dry run: change vitelity e911 information: ~s", [kz_json:encode(E911)]),
             knm_services:activate_feature(Number, ?VITELITY_KEY)
     end;
 maybe_update_e911(Number, 'false') ->
     PhoneNumber = knm_number:phone_number(Number),
     Features = knm_phone_number:features(PhoneNumber),
-    CurrentE911 = wh_json:get_ne_value(?VITELITY_KEY, Features),
+    CurrentE911 = kz_json:get_ne_value(?VITELITY_KEY, Features),
 
     Doc = knm_phone_number:doc(PhoneNumber),
-    E911 = wh_json:get_ne_value([?PVT_FEATURES, ?VITELITY_KEY], Doc),
+    E911 = kz_json:get_ne_value([?PVT_FEATURES, ?VITELITY_KEY], Doc),
 
-    NotChanged = wh_json:are_identical(CurrentE911, E911),
+    NotChanged = kz_json:are_identical(CurrentE911, E911),
 
-    case wh_util:is_empty(E911) of
+    case kz_util:is_empty(E911) of
         'true' ->
             lager:debug("vitelity e911 information has been removed, updating vitelity"),
             _ = remove_number(Number),
@@ -170,7 +170,7 @@ maybe_update_e911(Number, 'false') ->
         'false' when NotChanged  ->
             knm_services:deactivate_feature(Number, ?VITELITY_KEY);
         'false' ->
-            lager:debug("vitelity e911 information has been changed: ~s", [wh_json:encode(E911)]),
+            lager:debug("vitelity e911 information has been changed: ~s", [kz_json:encode(E911)]),
             Number1 = knm_services:activate_feature(Number, ?VITELITY_KEY),
             case update_e911(Number1, E911) of
                 {'ok', Data} ->
@@ -191,7 +191,7 @@ maybe_update_e911(Number, 'false') ->
 %% @end
 %%--------------------------------------------------------------------
 -spec remove_number(knm_number:knm_number()) ->
-                           {'ok', wh_json:object() | ne_binary()} |
+                           {'ok', kz_json:object() | ne_binary()} |
                            {'error', ne_binary()}.
 remove_number(Number) ->
     DID = knm_phone_number:number(knm_number:phone_number(Number)),
@@ -243,8 +243,8 @@ get_location_options(DID) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_e911(knm_number:knm_number(), wh_json:object()) ->
-                         {'ok', wh_json:object() | ne_binary()} |
+-spec update_e911(knm_number:knm_number(), kz_json:object()) ->
+                         {'ok', kz_json:object() | ne_binary()} |
                          {'error', ne_binary()}.
 update_e911(Number, Address) ->
     case knm_vitelity_util:query_vitelity(
@@ -261,23 +261,23 @@ update_e911(Number, Address) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec e911_options(knm_number:knm_number(), wh_json:object()) ->
+-spec e911_options(knm_number:knm_number(), kz_json:object()) ->
                           knm_vitelity_util:query_options().
 e911_options(Number, AddressJObj) ->
     PhoneNumber = knm_number:phone_number(Number),
     AccountId = knm_phone_number:assigned_to(PhoneNumber),
     DID = knm_phone_number:number(PhoneNumber),
-    State = knm_vitelity_util:get_short_state(wh_json:get_value(<<"region">>, AddressJObj)),
-    {UnitType, UnitNumber} = get_unit(wh_json:get_value(<<"extended_address">>, AddressJObj)),
+    State = knm_vitelity_util:get_short_state(kz_json:get_value(<<"region">>, AddressJObj)),
+    {UnitType, UnitNumber} = get_unit(kz_json:get_value(<<"extended_address">>, AddressJObj)),
     [{'qs', props:filter_undefined(
               [{'did', knm_converters:to_npan(DID)}
-               ,{'name', wh_json:get_value(<<"customer_name">>, AddressJObj, get_account_name(AccountId))}
-               ,{'address', wh_json:get_value(<<"street_address">>, AddressJObj)}
+               ,{'name', kz_json:get_value(<<"customer_name">>, AddressJObj, get_account_name(AccountId))}
+               ,{'address', kz_json:get_value(<<"street_address">>, AddressJObj)}
                ,{'unittype', UnitType}
                ,{'unitnumber', UnitNumber}
-               ,{'city', wh_json:get_value(<<"locality">>, AddressJObj)}
+               ,{'city', kz_json:get_value(<<"locality">>, AddressJObj)}
                ,{'state', State}
-               ,{'zip', wh_json:get_value(<<"postal_code">>, AddressJObj)}
+               ,{'zip', kz_json:get_value(<<"postal_code">>, AddressJObj)}
                ,{'xml', <<"yes">>}
                ,{'cmd', <<"e911send">>}
                | knm_vitelity_util:default_options()
@@ -312,7 +312,7 @@ get_account_name(AccountId) ->
         {'error', _Error} ->
             lager:error('error opening account doc ~p', [AccountId]),
             'undefined';
-        {'ok', JObj} -> wh_json:get_ne_binary_value(<<"name">>, JObj, 'undefined')
+        {'ok', JObj} -> kz_json:get_ne_binary_value(<<"name">>, JObj, 'undefined')
     end.
 
 %%--------------------------------------------------------------------
@@ -321,15 +321,15 @@ get_account_name(AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec location_options(wh_json:object()) ->
+-spec location_options(kz_json:object()) ->
                               knm_vitelity_util:query_options().
 location_options(AddressJObj) ->
-    State = knm_vitelity_util:get_short_state(wh_json:get_value(<<"region">>, AddressJObj)),
-    [{'qs', [{'name', wh_json:get_value(<<"customer_name">>, AddressJObj)}
-             ,{'address', wh_json:get_value(<<"street_address">>, AddressJObj)}
-             ,{'city', wh_json:get_value(<<"locality">>, AddressJObj)}
+    State = knm_vitelity_util:get_short_state(kz_json:get_value(<<"region">>, AddressJObj)),
+    [{'qs', [{'name', kz_json:get_value(<<"customer_name">>, AddressJObj)}
+             ,{'address', kz_json:get_value(<<"street_address">>, AddressJObj)}
+             ,{'city', kz_json:get_value(<<"locality">>, AddressJObj)}
              ,{'state', State}
-             ,{'zip', wh_json:get_value(<<"postal_code">>, AddressJObj)}
+             ,{'zip', kz_json:get_value(<<"postal_code">>, AddressJObj)}
              ,{'xml', <<"yes">>}
              ,{'cmd', <<"e911checkaddress">>}
              | knm_vitelity_util:default_options()
@@ -344,7 +344,7 @@ location_options(AddressJObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec process_xml_resp(text()) ->
-                              {'ok', wh_json:object() | ne_binary()} |
+                              {'ok', kz_json:object() | ne_binary()} |
                               {'error', ne_binary()}.
 process_xml_resp(RespXML) ->
     try xmerl_scan:string(RespXML) of
@@ -363,7 +363,7 @@ process_xml_resp(RespXML) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec process_xml_content_tag(xml_el()) ->
-                                     {'ok', wh_json:object() | ne_binary()} |
+                                     {'ok', kz_json:object() | ne_binary()} |
                                      {'error', ne_binary()}.
 process_xml_content_tag(#xmlElement{name='content'
                                     ,content=Children
@@ -382,12 +382,12 @@ process_xml_content_tag(#xmlElement{name='content'
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec xml_resp(xml_els()) -> wh_json:object() | ne_binary().
+-spec xml_resp(xml_els()) -> kz_json:object() | ne_binary().
 xml_resp([#xmlElement{name='info'
                      ,content=Content
                     }
           |_]) ->
-    wh_json:from_list(
+    kz_json:from_list(
       knm_vitelity_util:xml_els_to_proplist(
         kz_xml:elements(Content)
        ));

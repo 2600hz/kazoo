@@ -34,7 +34,7 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec start_participant(whapps_call:call()) -> sup_startchild_ret().
+-spec start_participant(kapps_call:call()) -> sup_startchild_ret().
 start_participant(Call) ->
     supervisor:start_child(?SERVER, [Call]).
 

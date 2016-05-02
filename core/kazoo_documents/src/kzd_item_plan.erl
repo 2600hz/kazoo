@@ -25,7 +25,7 @@
 
 -include("kz_documents.hrl").
 
--type doc() :: wh_json:object().
+-type doc() :: kz_json:object().
 -type api_doc() :: api_object().
 -export_type([doc/0
               ,api_doc/0
@@ -45,94 +45,94 @@
 -define(CUMULATIVE, <<"cumulative">>).
 -define(ENABLED, <<"enabled">>).
 
--spec keys(doc()) -> wh_json:keys().
+-spec keys(doc()) -> kz_json:keys().
 keys(ItemPlan) ->
-    wh_json:get_keys(ItemPlan).
+    kz_json:get_keys(ItemPlan).
 
 -spec minimum(doc()) -> integer().
 -spec minimum(doc(), Default) -> integer() | Default.
 minimum(ItemPlan) ->
     minimum(ItemPlan, 0).
 minimum(ItemPlan, Default) ->
-    wh_json:get_integer_value(?MINIMUM, ItemPlan, Default).
+    kz_json:get_integer_value(?MINIMUM, ItemPlan, Default).
 
--spec flat_rates(doc()) -> wh_json:object().
--spec flat_rates(doc(), Default) -> wh_json:object() | Default.
+-spec flat_rates(doc()) -> kz_json:object().
+-spec flat_rates(doc(), Default) -> kz_json:object() | Default.
 flat_rates(ItemPlan) ->
-    flat_rates(ItemPlan, wh_json:new()).
+    flat_rates(ItemPlan, kz_json:new()).
 flat_rates(ItemPlan, Default) ->
-    wh_json:get_json_value(?FLAT_RATES, ItemPlan, Default).
+    kz_json:get_json_value(?FLAT_RATES, ItemPlan, Default).
 
--spec rates(doc()) -> wh_json:object().
--spec rates(doc(), Default) -> wh_json:object() | Default.
+-spec rates(doc()) -> kz_json:object().
+-spec rates(doc(), Default) -> kz_json:object() | Default.
 rates(ItemPlan) ->
-    rates(ItemPlan, wh_json:new()).
+    rates(ItemPlan, kz_json:new()).
 rates(ItemPlan, Default) ->
-    wh_json:get_json_value(?RATES, ItemPlan, Default).
+    kz_json:get_json_value(?RATES, ItemPlan, Default).
 
 -spec rate(doc()) -> api_float().
 -spec rate(doc(), Default) -> float() | Default.
 rate(ItemPlan) ->
     rate(ItemPlan, 'undefined').
 rate(ItemPlan, Default) ->
-    wh_json:get_float_value(?RATE, ItemPlan, Default).
+    kz_json:get_float_value(?RATE, ItemPlan, Default).
 
 -spec exceptions(doc()) -> ne_binaries().
 -spec exceptions(doc(), Default) -> float() | Default.
 exceptions(ItemPlan) ->
     exceptions(ItemPlan, []).
 exceptions(ItemPlan, Default) ->
-    wh_json:get_value(?EXCEPTIONS, ItemPlan, Default).
+    kz_json:get_value(?EXCEPTIONS, ItemPlan, Default).
 
 -spec should_cascade(doc()) -> boolean().
 -spec should_cascade(doc(), Default) -> boolean() | Default.
 should_cascade(ItemPlan) ->
     should_cascade(ItemPlan, 'false').
 should_cascade(ItemPlan, Default) ->
-    wh_json:is_true(?CASCADE, ItemPlan, Default).
+    kz_json:is_true(?CASCADE, ItemPlan, Default).
 
 -spec masquerade_as(doc()) -> api_binary().
 -spec masquerade_as(doc(), Default) -> ne_binary() | Default.
 masquerade_as(ItemPlan) ->
     masquerade_as(ItemPlan, 'undefined').
 masquerade_as(ItemPlan, Default) ->
-    wh_json:get_value(?MASQUERADE, ItemPlan, Default).
+    kz_json:get_value(?MASQUERADE, ItemPlan, Default).
 
 -spec name(doc()) -> api_binary().
 name(ItemPlan) ->
-    case wh_json:get_value(?NAME, ItemPlan) of
+    case kz_json:get_value(?NAME, ItemPlan) of
         'undefined' -> masquerade_as(ItemPlan);
         Name -> Name
     end.
 
--spec discounts(doc()) -> wh_json:object().
--spec discounts(doc(), Default) -> wh_json:object() | Default.
+-spec discounts(doc()) -> kz_json:object().
+-spec discounts(doc(), Default) -> kz_json:object() | Default.
 discounts(ItemPlan) ->
-    discounts(ItemPlan, wh_json:new()).
+    discounts(ItemPlan, kz_json:new()).
 discounts(ItemPlan, Default) ->
-    wh_json:get_json_value(?DISCOUNTS, ItemPlan, Default).
+    kz_json:get_json_value(?DISCOUNTS, ItemPlan, Default).
 
 -spec single_discount(doc()) -> api_object().
--spec single_discount(doc(), Default) -> wh_json:object() | Default.
+-spec single_discount(doc(), Default) -> kz_json:object() | Default.
 single_discount(ItemPlan) ->
     single_discount(ItemPlan, 'undefined').
 single_discount(ItemPlan, Default) ->
-    wh_json:get_json_value([?DISCOUNTS, ?SINGLE], ItemPlan, Default).
+    kz_json:get_json_value([?DISCOUNTS, ?SINGLE], ItemPlan, Default).
 
 -spec cumulative_discount(doc()) -> api_object().
--spec cumulative_discount(doc(), Default) -> wh_json:object() | Default.
+-spec cumulative_discount(doc(), Default) -> kz_json:object() | Default.
 cumulative_discount(ItemPlan) ->
     cumulative_discount(ItemPlan, 'undefined').
 cumulative_discount(ItemPlan, Default) ->
-    wh_json:get_json_value([?DISCOUNTS, ?CUMULATIVE], ItemPlan, Default).
+    kz_json:get_json_value([?DISCOUNTS, ?CUMULATIVE], ItemPlan, Default).
 
 -spec activation_charge(doc()) -> api_object().
--spec activation_charge(doc(), Default) -> wh_json:object() | Default.
+-spec activation_charge(doc(), Default) -> kz_json:object() | Default.
 activation_charge(ItemPlan) ->
     activation_charge(ItemPlan, 0).
 activation_charge(ItemPlan, Default) ->
-    wh_json:get_float_value(?ACTIVATION_CHARGE, ItemPlan, Default).
+    kz_json:get_float_value(?ACTIVATION_CHARGE, ItemPlan, Default).
 
 -spec is_enabled(doc()) -> boolean().
 is_enabled(ItemPlan) ->
-    wh_json:is_true(?ENABLED, ItemPlan).
+    kz_json:is_true(?ENABLED, ItemPlan).

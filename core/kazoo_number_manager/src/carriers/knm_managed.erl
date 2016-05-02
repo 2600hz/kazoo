@@ -20,7 +20,7 @@
 
 -include("knm.hrl").
 
--define(WH_MANAGED, <<"numbers%2Fmanaged">>).
+-define(KZ_MANAGED, <<"numbers%2Fmanaged">>).
 -define(MANAGED_VIEW_FILE, <<"views/managed.json">>).
 
 %%--------------------------------------------------------------------
@@ -30,7 +30,7 @@
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
+-spec find_numbers(ne_binary(), pos_integer(), kz_proplist()) ->
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
 find_numbers(<<"+", _/binary>>=Number, Quantity, Opts) ->
@@ -45,7 +45,7 @@ find_numbers(Number, Quantity, Opts) ->
 find_numbers_in_account(Number, Quantity, AccountId) ->
     case do_find_numbers_in_account(Number, Quantity, AccountId) of
         {'error', 'not_available'}=Error ->
-            case wh_services:find_reseller_id(AccountId) of
+            case kz_services:find_reseller_id(AccountId) of
                 AccountId -> Error;
                 ResellerId ->
                     find_numbers_in_account(Number, Quantity, ResellerId)
@@ -62,7 +62,7 @@ do_find_numbers_in_account(Number, Quantity, AccountId) ->
                    ,{'limit', Quantity}
                    ,'include_docs'
                   ],
-    case kz_datamgr:get_results(?WH_MANAGED, <<"numbers/status">>, ViewOptions) of
+    case kz_datamgr:get_results(?KZ_MANAGED, <<"numbers/status">>, ViewOptions) of
         {'ok', []} ->
             lager:debug("found no available managed numbers for account ~p", [AccountId]),
             {'error', 'not_available'};
@@ -74,15 +74,15 @@ do_find_numbers_in_account(Number, Quantity, AccountId) ->
             E
     end.
 
--spec format_numbers_resp(wh_json:objects()) ->
+-spec format_numbers_resp(kz_json:objects()) ->
                                  knm_number:knm_numbers().
 format_numbers_resp(JObjs) ->
     [format_number_resp(JObj) || JObj <- JObjs].
 
--spec format_number_resp(wh_json:object()) -> knm_number:knm_number().
+-spec format_number_resp(kz_json:object()) -> knm_number:knm_number().
 format_number_resp(JObj) ->
-    Doc = wh_json:get_value(<<"doc">>, JObj),
-    Updates = [{fun knm_phone_number:set_number/2, wh_doc:id(Doc)}
+    Doc = kz_json:get_value(<<"doc">>, JObj),
+    Updates = [{fun knm_phone_number:set_number/2, kz_doc:id(Doc)}
                ,{fun knm_phone_number:set_carrier_data/2, Doc}
                ,{fun knm_phone_number:set_module_name/2, ?CARRIER_MANAGED}
               ],
@@ -136,31 +136,31 @@ generate_numbers(AccountId, Number, Quantity)
     generate_numbers(AccountId, Number+1, Quantity-1).
 
 -spec import_numbers(ne_binary(), ne_binaries()) ->
-                            wh_json:object().
--spec import_numbers(ne_binary(), ne_binaries(), wh_json:object()) ->
-                            wh_json:object().
+                            kz_json:object().
+-spec import_numbers(ne_binary(), ne_binaries(), kz_json:object()) ->
+                            kz_json:object().
 
 import_numbers(_AccountId, Numbers) ->
-    import_numbers(_AccountId, Numbers, wh_json:new()).
+    import_numbers(_AccountId, Numbers, kz_json:new()).
 
 import_numbers(_AccountId, [], JObj) -> JObj;
 import_numbers(AccountId, [Number | Numbers], JObj) ->
     NewJObj = case save_doc(AccountId, Number) of
                   {'ok', _Doc} ->
-                      wh_json:set_value([<<"success">>, Number], wh_json:new(), JObj);
+                      kz_json:set_value([<<"success">>, Number], kz_json:new(), JObj);
                   {'error', Reason} ->
-                      Error = wh_json:from_list([{<<"reason">>, Reason}
+                      Error = kz_json:from_list([{<<"reason">>, Reason}
                                                  ,{<<"message">>, <<"error adding number to couchdb">>}
                                                 ]),
-                      wh_json:set_value([<<"errors">>, Number], Error, JObj)
+                      kz_json:set_value([<<"errors">>, Number], Error, JObj)
               end,
     import_numbers(AccountId, Numbers, NewJObj).
 
 -spec save_doc(ne_binary(), pos_integer() | ne_binary()) ->
-                      {'ok', wh_json:object()} |
+                      {'ok', kz_json:object()} |
                       {'error', any()}.
 save_doc(AccountId, Number) ->
-    JObj = wh_json:from_list([{<<"_id">>,<<"+",(wh_util:to_binary(Number))/binary>>}
+    JObj = kz_json:from_list([{<<"_id">>,<<"+",(kz_util:to_binary(Number))/binary>>}
                               ,{<<"pvt_account_id">>, AccountId}
                               ,{?PVT_STATE, ?NUMBER_STATE_AVAILABLE}
                               ,{<<"pvt_type">>, <<"number">>}
@@ -168,18 +168,18 @@ save_doc(AccountId, Number) ->
     save_doc(JObj).
 
 save_doc(JObj) ->
-    case kz_datamgr:save_doc(?WH_MANAGED, JObj) of
+    case kz_datamgr:save_doc(?KZ_MANAGED, JObj) of
         {'error', 'not_found'} ->
             create_managed_db(),
             save_doc(JObj);
         R -> R
     end.
 
--spec update_doc(knm_number:knm_number(), wh_proplist()) ->
+-spec update_doc(knm_number:knm_number(), kz_proplist()) ->
                         knm_number:knm_number().
 update_doc(Number, UpdateProps) ->
     Doc = knm_phone_number:doc(knm_number:phone_number(Number)),
-    case kz_datamgr:update_doc(?WH_MANAGED, wh_doc:id(Doc), UpdateProps) of
+    case kz_datamgr:update_doc(?KZ_MANAGED, kz_doc:id(Doc), UpdateProps) of
         {'error', Error} ->
             knm_errors:unspecified(Error, Number);
         {'ok', UpdatedDoc} ->
@@ -191,8 +191,8 @@ update_doc(Number, UpdateProps) ->
 
 -spec create_managed_db() -> 'ok'.
 create_managed_db() ->
-    kz_datamgr:db_create(?WH_MANAGED),
-    _ = kz_datamgr:revise_doc_from_file(?WH_MANAGED, 'kazoo_number_manager', ?MANAGED_VIEW_FILE),
+    kz_datamgr:db_create(?KZ_MANAGED),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_MANAGED, 'kazoo_number_manager', ?MANAGED_VIEW_FILE),
     'ok'.
 
 -spec should_lookup_cnam() -> 'true'.

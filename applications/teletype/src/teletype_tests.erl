@@ -23,7 +23,7 @@ voicemail_to_email(AccountId) ->
     end.
 
 find_vmboxes(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:get_results(AccountDb, <<"vmboxes/crossbar_listing">>, ['include_docs']) of
         {'ok', VMBoxes} -> VMBoxes;
         {'error', _E} ->
@@ -36,42 +36,42 @@ find_vmbox_messages(_AccountId, []) ->
 find_vmbox_messages(AccountId, [Box|Boxes]) ->
     case kz_vm_message:messages(AccountId, Box) of
         [] -> find_vmbox_messages(AccountId, Boxes);
-        Ms -> voicemail_to_email(AccountId, wh_json:get_value(<<"doc">>, Box), Ms)
+        Ms -> voicemail_to_email(AccountId, kz_json:get_value(<<"doc">>, Box), Ms)
     end.
 
 voicemail_to_email(AccountId, <<_/binary>> = VoicemailBoxId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     {'ok', VMBox} = kz_datamgr:open_cache_doc(AccountDb
                                               ,VoicemailBoxId
                                              ),
     find_vmbox_messages(AccountId, [VMBox]).
 
 voicemail_to_email(AccountId, VMBox,  [Message|_]) ->
-    MediaId = wh_json:get_value(<<"media_id">>, Message),
-    Length = wh_json:get_value(<<"length">>, Message),
-    CallId = wh_json:get_value(<<"call_id">>, Message),
+    MediaId = kz_json:get_value(<<"media_id">>, Message),
+    Length = kz_json:get_value(<<"length">>, Message),
+    CallId = kz_json:get_value(<<"call_id">>, Message),
 
     Prop = [{<<"From-User">>, <<"TestFromUser">>}
             ,{<<"From-Realm">>, <<"TestFromRealm">>}
             ,{<<"To-User">>, <<"TestToUser">>}
             ,{<<"To-Realm">>, <<"TestToRealm">>}
-            ,{<<"Account-DB">>, wh_util:format_account_id(AccountId, 'encoded')}
+            ,{<<"Account-DB">>, kz_util:format_account_id(AccountId, 'encoded')}
             ,{<<"Account-ID">>, AccountId}
-            ,{<<"Voicemail-Box">>, wh_doc:id(VMBox)}
+            ,{<<"Voicemail-Box">>, kz_doc:id(VMBox)}
             ,{<<"Voicemail-Name">>, MediaId}
             ,{<<"Caller-ID-Number">>, <<"CallerIdNumber">>}
             ,{<<"Caller-ID-Name">>, <<"CallerIdName">>}
-            ,{<<"Voicemail-Timestamp">>, wh_util:current_tstamp()}
+            ,{<<"Voicemail-Timestamp">>, kz_util:current_tstamp()}
             ,{<<"Voicemail-Length">>, Length}
             ,{<<"Call-ID">>, CallId}
-            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
-    whapps_util:amqp_pool_collect(Prop
-                                  ,fun wapi_notifications:publish_voicemail/1
+    kapps_util:amqp_pool_collect(Prop
+                                  ,fun kapi_notifications:publish_voicemail/1
                                   ,5 * ?MILLISECONDS_IN_SECOND
                                  ).
 skel(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:get_results(AccountDb, <<"users/crossbar_listing">>, ['include_docs']) of
         {'ok', Users} -> find_user_for_skel(AccountId, Users);
         {'error', _E} -> lager:debug("failed to find users for ~s: ~p", [AccountId, _E])
@@ -80,7 +80,7 @@ skel(AccountId) ->
 find_user_for_skel(_AccountId, []) ->
     lager:debug("no users found for ~s", [_AccountId]);
 find_user_for_skel(AccountId, [User|Users]) ->
-    case wh_json:get_first_defined([[<<"doc">>, <<"email">>]
+    case kz_json:get_first_defined([[<<"doc">>, <<"email">>]
                                     ,[<<"doc">>, <<"username">>]
                                    ]
                                    ,User
@@ -92,7 +92,7 @@ find_user_for_skel(AccountId, [User|Users]) ->
 
 find_user_for_skel(AccountId, User, Users, PotentialEmail) ->
     case binary:split(PotentialEmail, <<"@">>) of
-        [_U, _D] -> skel(AccountId, wh_doc:id(User));
+        [_U, _D] -> skel(AccountId, kz_doc:id(User));
         _ -> find_user_for_skel(AccountId, Users)
     end.
 
@@ -100,38 +100,38 @@ skel(AccountId, <<_/binary>> = UserId) ->
     Req = [{<<"Account-ID">>, AccountId}
            ,{<<"User-ID">>, UserId}
            ,{<<"Preview">>, 'true'}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    wh_amqp_worker:cast(Req, fun wapi_notifications:publish_skel/1).
+    kz_amqp_worker:cast(Req, fun kapi_notifications:publish_skel/1).
 
 voicemail_full(AccountId) ->
     case find_vmboxes(AccountId) of
         [] -> lager:debug("there are no voicemail boxes in ~s", [AccountId]);
-        [Box|_] -> voicemail_full(AccountId, wh_json:get_value(<<"doc">>, Box))
+        [Box|_] -> voicemail_full(AccountId, kz_json:get_value(<<"doc">>, Box))
     end.
 
 voicemail_full(AccountId, <<_/binary>> = BoxId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     {'ok', Box} = kz_datamgr:open_cache_doc(AccountDb, BoxId),
     voicemail_full(AccountId, Box);
 voicemail_full(AccountId, Box) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     Props = [{<<"Account-DB">>, AccountDb}
              ,{<<"Account-ID">>, AccountId}
-             ,{<<"Voicemail-Box">>, wh_doc:id(Box)}
-             ,{<<"Voicemail-Number">>, wh_json:get_value(<<"mailbox">>, Box)}
+             ,{<<"Voicemail-Box">>, kz_doc:id(Box)}
+             ,{<<"Voicemail-Number">>, kz_json:get_value(<<"mailbox">>, Box)}
              ,{<<"Max-Message-Count">>, 1}
              ,{<<"Message-Count">>, 2}
              ,{<<"Preview">>, 'true'}
-             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
-    wh_amqp_worker:call_collect(Props
-                                ,fun wapi_notifications:publish_voicemail_full/1
+    kz_amqp_worker:call_collect(Props
+                                ,fun kapi_notifications:publish_voicemail_full/1
                                 ,5 * ?MILLISECONDS_IN_SECOND
                                ).
 
 fax_inbound_to_email(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:get_results(AccountDb, <<"faxes/crossbar_listing">>, ['include_docs']) of
         {'ok', Faxes} -> find_fax_with_attachment(AccountId, Faxes);
         {'error', _E} ->
@@ -141,39 +141,39 @@ fax_inbound_to_email(AccountId) ->
 find_fax_with_attachment(_AccountId, []) ->
     lager:debug("failed to find fax with attachment in ~s", [_AccountId]);
 find_fax_with_attachment(AccountId, [Fax|Faxes]) ->
-    case wh_doc:attachment_names(wh_json:get_value(<<"doc">>, Fax)) of
+    case kz_doc:attachment_names(kz_json:get_value(<<"doc">>, Fax)) of
         [] -> find_fax_with_attachment(AccountId, Faxes);
-        _As -> fax_inbound_to_email(AccountId, wh_json:get_value(<<"doc">>, Fax))
+        _As -> fax_inbound_to_email(AccountId, kz_json:get_value(<<"doc">>, Fax))
     end.
 
 fax_inbound_to_email(AccountId, <<_/binary>> = FaxId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     {'ok', Fax} = kz_datamgr:open_cache_doc(AccountDb, FaxId),
     fax_inbound_to_email(AccountId, Fax);
 fax_inbound_to_email(AccountId, Fax) ->
     Message = props:filter_undefined(
-                [{<<"Fax-ID">>, wh_doc:id(Fax)}
-                 ,{<<"Owner-ID">>, wh_json:get_value(<<"owner_id">>, Fax)}
-                 ,{<<"FaxBox-ID">>, wh_json:get_value(<<"faxbox_id">>, Fax)}
+                [{<<"Fax-ID">>, kz_doc:id(Fax)}
+                 ,{<<"Owner-ID">>, kz_json:get_value(<<"owner_id">>, Fax)}
+                 ,{<<"FaxBox-ID">>, kz_json:get_value(<<"faxbox_id">>, Fax)}
                  ,{<<"Account-ID">>, AccountId}
                  | notify_fields(Fax)
                 ]),
-    lager:debug("publishing fax inbound to email req for ~s/~s", [AccountId, wh_doc:id(Fax)]),
-    wh_amqp_worker:call_collect(Message, fun wapi_notifications:publish_fax_inbound/1, 2 * ?MILLISECONDS_IN_SECOND).
+    lager:debug("publishing fax inbound to email req for ~s/~s", [AccountId, kz_doc:id(Fax)]),
+    kz_amqp_worker:call_collect(Message, fun kapi_notifications:publish_fax_inbound/1, 2 * ?MILLISECONDS_IN_SECOND).
 
--spec notify_fields(wh_json:object()) -> wh_proplist().
+-spec notify_fields(kz_json:object()) -> kz_proplist().
 notify_fields(JObj) ->
     props:filter_empty(
       [{<<"From-User">>, <<"FromUser">>}
        ,{<<"From-Realm">>, <<"FromRealm">>}
        ,{<<"To-User">>, <<"ToUser">>}
        ,{<<"To-Realm">>, <<"ToRealm">>}
-       ,{<<"Fax-Info">>, wh_json:get_value(<<"rx_results">>, JObj)}
+       ,{<<"Fax-Info">>, kz_json:get_value(<<"rx_results">>, JObj)}
        ,{<<"Caller-ID-Number">>, <<"CID-Number">>}
        ,{<<"Caller-ID-Name">>, <<"CID-Name">>}
        ,{<<"Callee-ID-Number">>, <<"Callee-Number">>}
        ,{<<"Callee-ID-Name">>, <<"Callee-Name">>}
-       ,{<<"Call-ID">>, wh_json:get_value(<<"call_id">>, JObj)}
-       ,{<<"Fax-Timestamp">>, wh_util:current_tstamp()}
-       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+       ,{<<"Call-ID">>, kz_json:get_value(<<"call_id">>, JObj)}
+       ,{<<"Fax-Timestamp">>, kz_util:current_tstamp()}
+       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).

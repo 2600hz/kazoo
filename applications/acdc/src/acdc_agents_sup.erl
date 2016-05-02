@@ -47,14 +47,14 @@ start_link() ->
 status() ->
     lager:info("ACDc Agents Status"),
     Ws = workers(),
-    _ = wh_util:spawn(fun() -> [acdc_agent_sup:status(Sup) || Sup <- Ws] end),
+    _ = kz_util:spawn(fun() -> [acdc_agent_sup:status(Sup) || Sup <- Ws] end),
     'ok'.
 
--spec new(wh_json:object()) -> sup_startchild_ret().
+-spec new(kz_json:object()) -> sup_startchild_ret().
 -spec new(ne_binary(), ne_binary()) -> sup_startchild_ret().
 new(JObj) ->
-    case find_agent_supervisor(wh_doc:account_id(JObj)
-                               ,wh_doc:id(JObj)
+    case find_agent_supervisor(kz_doc:account_id(JObj)
+                               ,kz_doc:id(JObj)
                               )
     of
         'undefined' -> supervisor:start_child(?SERVER, [JObj]);
@@ -64,7 +64,7 @@ new(JObj) ->
 new(AcctId, AgentId) ->
     case find_agent_supervisor(AcctId, AgentId) of
         'undefined' ->
-            {'ok', Agent} = kz_datamgr:open_doc(wh_util:format_account_id(AcctId, 'encoded'), AgentId),
+            {'ok', Agent} = kz_datamgr:open_doc(kz_util:format_account_id(AcctId, 'encoded'), AgentId),
             supervisor:start_child(?SERVER, [Agent]);
         P when is_pid(P) -> lager:debug("agent already started here: ~p", [P])
     end.
@@ -75,7 +75,7 @@ new(AcctId, AgentId, AgentJObj, Queues) ->
         P when is_pid(P) -> lager:debug("agent already started here: ~p", [P])
     end.
 
--spec new_thief(whapps_call:call(), ne_binary()) -> sup_startchild_ret().
+-spec new_thief(kapps_call:call(), ne_binary()) -> sup_startchild_ret().
 new_thief(Call, QueueId) -> supervisor:start_child(?SERVER, [Call, QueueId]).
 
 -spec workers() -> pids().

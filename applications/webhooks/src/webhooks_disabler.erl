@@ -35,7 +35,7 @@ start_link() ->
 
 -spec init(any()) -> {'ok', reference()}.
 init(_) ->
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     {'ok', start_check_timer()}.
 
 handle_call(_Request, _From, State) ->
@@ -45,7 +45,7 @@ handle_cast(_Msg, State) ->
     {'noreply', State}.
 
 handle_info({'timeout', Ref, ?EXPIRY_MSG}, Ref) ->
-    _ = wh_util:spawn(fun check_failed_attempts/0),
+    _ = kz_util:spawn(fun check_failed_attempts/0),
     {'noreply', start_check_timer()};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
@@ -75,12 +75,12 @@ find_failures() ->
     Keys = kz_cache:fetch_keys_local(?CACHE_NAME),
     find_failures(Keys).
 
--spec flush_hooks(wh_json:objects()) -> non_neg_integer().
+-spec flush_hooks(kz_json:objects()) -> non_neg_integer().
 flush_hooks(HookJObjs) ->
     lists:sum(
       [flush_failures(
-         wh_doc:account_id(HookJObj)
-         ,wh_doc:id(HookJObj)
+         kz_doc:account_id(HookJObj)
+         ,kz_doc:id(HookJObj)
         )
        || HookJObj <- HookJObjs
       ]
@@ -132,7 +132,7 @@ check_failures(Failures) ->
 
 -spec check_failure(ne_binary(), ne_binary(), pos_integer()) -> 'ok'.
 check_failure(AccountId, HookId, Count) ->
-    try wh_util:to_integer(whapps_account_config:get_global(AccountId, ?APP_NAME, ?FAILURE_COUNT_KEY, 6)) of
+    try kz_util:to_integer(kapps_account_config:get_global(AccountId, ?APP_NAME, ?FAILURE_COUNT_KEY, 6)) of
         N when N =< Count ->
             disable_hook(AccountId, HookId);
         _ -> 'ok'
@@ -173,6 +173,6 @@ filter_cache(AccountId, HookId) ->
 send_notification(AccountId, HookId) ->
     API = [{<<"Account-ID">>, AccountId}
            ,{<<"Hook-ID">>, HookId}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    wh_amqp_worker:cast(API, fun wapi_notifications:publish_webhook_disabled/1).
+    kz_amqp_worker:cast(API, fun kapi_notifications:publish_webhook_disabled/1).

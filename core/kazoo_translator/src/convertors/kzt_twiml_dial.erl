@@ -16,10 +16,10 @@
 
 -include("kzt.hrl").
 
--spec exec(whapps_call:call(), xml_els() | xml_texts(), xml_attribs()) ->
-                  {'ok' | 'stop', whapps_call:call()}.
+-spec exec(kapps_call:call(), xml_els() | xml_texts(), xml_attribs()) ->
+                  {'ok' | 'stop', kapps_call:call()}.
 exec(Call, [#xmlText{type='text'}|_]=DialMeTxts, Attrs) ->
-    whapps_call_command:answer(Call),
+    kapps_call_command:answer(Call),
 
     case knm_converters:normalize(cleanup_dial_me(kz_xml:texts_to_binary(DialMeTxts))) of
         <<>> ->
@@ -54,7 +54,7 @@ exec(Call, [#xmlElement{name='Conference'
                         ,content=ConfIdTxts
                         ,attributes=ConfAttrs
                        }], DialAttrs) ->
-    whapps_call_command:answer(Call),
+    kapps_call_command:answer(Call),
 
     ConfId = conference_id(ConfIdTxts),
     lager:info("dialing into conference '~s'", [ConfId]),
@@ -69,12 +69,12 @@ exec(Call, [#xmlElement{name='Conference'
                               ]),
 
     ConfDoc = build_conference_doc(ConfId, ConfProps),
-    ConfReq = [{<<"Call">>, whapps_call:to_json(Call)}
+    ConfReq = [{<<"Call">>, kapps_call:to_json(Call)}
                ,{<<"Conference-Doc">>, ConfDoc}
                ,{<<"Moderator">>, props:get_is_true('startConferenceOnEnter', ConfProps, 'true')}
-               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
-    wapi_conference:publish_discovery_req(ConfReq),
+    kapi_conference:publish_discovery_req(ConfReq),
 
     lager:debug("published conference request"),
 
@@ -145,14 +145,14 @@ dial_me(Call, Attrs, DialMe) ->
 
     Props = kz_xml:attributes_to_proplist(Attrs),
 
-    Call1 = setup_call_for_dial(whapps_call:set_request(request_id(DialMe, Call), Call)
+    Call1 = setup_call_for_dial(kapps_call:set_request(request_id(DialMe, Call), Call)
                                 ,Props
                                ),
 
     OffnetProps = [{<<"Timeout">>, kzt_util:get_call_timeout(Call1)}
                    ,{<<"Media">>, media_processing(Call1)}
                    ,{<<"Force-Outbound">>, force_outbound(Props)}
-                   ,{<<"Server-ID">>, whapps_call:controller_queue(Call1)}
+                   ,{<<"Server-ID">>, kapps_call:controller_queue(Call1)}
                   ],
     'ok' = kzt_util:offnet_req(OffnetProps, Call1),
 
@@ -168,22 +168,22 @@ send_bridge_command(EPs, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
          ,{<<"Timeout">>, Timeout}
          ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
          ,{<<"Dial-Endpoint-Method">>, Strategy}
-         | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+         | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
-    whapps_call_command:send_command(B, Call).
+    kapps_call_command:send_command(B, Call).
 
--spec setup_call_for_dial(whapps_call:call(), wh_proplist()) -> whapps_call:call().
+-spec setup_call_for_dial(kapps_call:call(), kz_proplist()) -> kapps_call:call().
 setup_call_for_dial(Call, Props) ->
-    Setters = [{fun whapps_call:set_caller_id_number/2, caller_id(Props, Call)}
+    Setters = [{fun kapps_call:set_caller_id_number/2, caller_id(Props, Call)}
                ,{fun kzt_util:set_hangup_dtmf/2, hangup_dtmf(Props)}
                ,{fun kzt_util:set_record_call/2, should_record_call(Props)}
                ,{fun kzt_util:set_call_timeout/2, kzt_twiml_util:timeout_s(Props)}
                ,{fun kzt_util:set_call_time_limit/2, timelimit_s(Props)}
               ],
-    whapps_call:exec(Setters, Call).
+    kapps_call:exec(Setters, Call).
 
--spec maybe_end_dial(whapps_call:call(), wh_proplist()) ->
-                            {'ok' | 'stop' | 'request', whapps_call:call()}.
+-spec maybe_end_dial(kapps_call:call(), kz_proplist()) ->
+                            {'ok' | 'stop' | 'request', kapps_call:call()}.
 maybe_end_dial(Call, Props) ->
     maybe_end_dial(Call, Props, kzt_twiml_util:action_url(Props)).
 
@@ -199,7 +199,7 @@ maybe_end_dial(Call, Props, ActionUrl) ->
     Setters = [{fun kzt_util:set_voice_uri_method/2, Method}
                ,{fun kzt_util:set_voice_uri/2, NewUri}
               ],
-    {'request', whapps_call:exec(Setters, Call)}.
+    {'request', kapps_call:exec(Setters, Call)}.
 
 -spec cleanup_dial_me(binary()) -> binary().
 cleanup_dial_me(<<_/binary>> = Txt) ->
@@ -216,10 +216,10 @@ is_numeric_or_plus(_) -> 'false'.
 %% capture the failed B-leg and continue processing the TwiML (if any).
 force_outbound(Props) -> props:get_is_true('continueOnFail', Props, 'true').
 
--spec xml_elements_to_endpoints(whapps_call:call(), xml_els()) ->
-                                       wh_json:objects().
--spec xml_elements_to_endpoints(whapps_call:call(), xml_els(), wh_json:objects()) ->
-                                       wh_json:objects().
+-spec xml_elements_to_endpoints(kapps_call:call(), xml_els()) ->
+                                       kz_json:objects().
+-spec xml_elements_to_endpoints(kapps_call:call(), xml_els(), kz_json:objects()) ->
+                                       kz_json:objects().
 xml_elements_to_endpoints(Call, EPs) ->
     xml_elements_to_endpoints(Call, EPs, []).
 
@@ -246,7 +246,7 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='User'
     UserId = kz_xml:texts_to_binary(UserIdTxt),
     lager:debug("maybe adding user ~s to ring group", [UserId]),
 
-    case cf_user:get_endpoints(UserId, wh_json:new(), Call) of
+    case cf_user:get_endpoints(UserId, kz_json:new(), Call) of
         [] ->
             lager:debug("no user endpoints built for ~s, skipping", [UserId]),
             xml_elements_to_endpoints(Call, EPs, Acc);
@@ -267,12 +267,12 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Number'
 
     lager:debug("maybe add number ~s: send ~s", [DialMe, SendDigits]),
 
-    CallFwd = wh_json:from_list([{<<"number">>, DialMe}
+    CallFwd = kz_json:from_list([{<<"number">>, DialMe}
                                  ,{<<"require_keypress">>, 'false'}
                                  ,{<<"substribute">>, 'true'}
                                 ]),
-    Endpoint = wh_json:from_list([{<<"call_forward">>, CallFwd}]),
-    EP = cf_endpoint:create_call_fwd_endpoint(Endpoint, wh_json:new(), Call),
+    Endpoint = kz_json:from_list([{<<"call_forward">>, CallFwd}]),
+    EP = cf_endpoint:create_call_fwd_endpoint(Endpoint, kz_json:new(), Call),
 
     xml_elements_to_endpoints(Call, EPs, [EP|Acc]);
 
@@ -296,11 +296,11 @@ xml_elements_to_endpoints(Call, [_Xml|EPs], Acc) ->
     lager:debug("unknown endpoint, skipping: ~p", [_Xml]),
     xml_elements_to_endpoints(Call, EPs, Acc).
 
--spec sip_uri(whapps_call:call(), ne_binary()) -> wh_json:object().
+-spec sip_uri(kapps_call:call(), ne_binary()) -> kz_json:object().
 sip_uri(Call, URI) ->
     lager:debug("maybe adding SIP endpoint: ~s", [knm_sip:encode(URI)]),
     SIPDevice = sip_device(URI),
-    cf_endpoint:create_sip_endpoint(SIPDevice, wh_json:new(), Call).
+    cf_endpoint:create_sip_endpoint(SIPDevice, kz_json:new(), Call).
 
 -spec sip_device(ne_binary()) -> kz_device:doc().
 sip_device(URI) ->
@@ -310,9 +310,9 @@ sip_device(URI) ->
                   ,{fun kz_device:set_sip_route/2, knm_sip:encode(URI)}
                  ]).
 
-request_id(N, Call) -> iolist_to_binary([N, <<"@">>, whapps_call:from_realm(Call)]).
+request_id(N, Call) -> iolist_to_binary([N, <<"@">>, kapps_call:from_realm(Call)]).
 
--spec media_processing(whapps_call:call()) -> ne_binary().
+-spec media_processing(kapps_call:call()) -> ne_binary().
 -spec media_processing(boolean(), api_binary()) -> ne_binary().
 media_processing(Call) ->
     media_processing(kzt_util:get_record_call(Call), kzt_util:get_hangup_dtmf(Call)).
@@ -324,7 +324,7 @@ get_max_participants(Props) when is_list(Props) ->
     get_max_participants(props:get_integer_value('maxParticipants', Props, 40));
 get_max_participants(N) when is_integer(N), N =< 40, N > 0 -> N.
 
--spec dial_timeout(wh_proplist() | pos_integer()) -> pos_integer().
+-spec dial_timeout(kz_proplist() | pos_integer()) -> pos_integer().
 dial_timeout(Props) when is_list(Props) ->
     dial_timeout(props:get_integer_value('timeout', Props, 20));
 dial_timeout(T) when is_integer(T), T > 0 -> T.
@@ -336,13 +336,13 @@ dial_strategy(Props) ->
         <<"single">> -> <<"single">>
     end.
 
--spec caller_id(wh_proplist(), whapps_call:call()) -> ne_binary().
+-spec caller_id(kz_proplist(), kapps_call:call()) -> ne_binary().
 caller_id(Props, Call) ->
-    wh_util:to_binary(
-      props:get_value('callerId', Props, whapps_call:caller_id_number(Call))
+    kz_util:to_binary(
+      props:get_value('callerId', Props, kapps_call:caller_id_number(Call))
      ).
 
--spec hangup_dtmf(wh_proplist() | api_binary()) -> api_binary().
+-spec hangup_dtmf(kz_proplist() | api_binary()) -> api_binary().
 hangup_dtmf(Props) when is_list(Props) ->
     case props:get_value('hangupOnStar', Props) of
         'true' -> <<"*">>;
@@ -354,15 +354,15 @@ hangup_dtmf(DTMF) ->
         'false' -> 'undefined'
     end.
 
-should_record_call(Props) -> wh_util:is_true(props:get_value('record', Props, 'false')).
+should_record_call(Props) -> kz_util:is_true(props:get_value('record', Props, 'false')).
 timelimit_s(Props) -> props:get_integer_value('timeLimit', Props, 14400).
 
 
--spec build_conference_doc(ne_binary(), wh_proplist()) -> wh_json:object().
+-spec build_conference_doc(ne_binary(), kz_proplist()) -> kz_json:object().
 build_conference_doc(ConfId, ConfProps) ->
     StartOnEnter = props:is_true('startConferenceOnEnter', ConfProps),
 
-    wh_json:from_list([{<<"name">>, ConfId}
+    kz_json:from_list([{<<"name">>, ConfId}
                        ,{<<"play_welcome">>, 'false'}
                        ,{<<"play_entry_tone">>, props:is_true('beep', ConfProps, 'true')}
                        ,{<<"member">>, member_flags(ConfProps, StartOnEnter)}
@@ -377,31 +377,31 @@ require_moderator('undefined') -> 'false';
 require_moderator('true') -> 'false';
 require_moderator('false') -> 'true'.
 
-member_flags(_, 'true') -> wh_json:new();
+member_flags(_, 'true') -> kz_json:new();
 member_flags(ConfProps, _) ->
-    wh_json:from_list([{<<"join_muted">>, props:is_true('muted', ConfProps, 'false')}
+    kz_json:from_list([{<<"join_muted">>, props:is_true('muted', ConfProps, 'false')}
                        ,{<<"join_deaf">>, props:is_true('deaf', ConfProps, 'false')}
                        ,{<<"play_name">>, props:is_true('play_name', ConfProps, 'false')}
                        ,{<<"play_entry_prompt">>, props:is_true('play_entry_prompt', ConfProps, 'true')}
                       ]).
 
 moderator_flags(ConfProps, 'true') ->
-    wh_json:from_list([{<<"join_muted">>, props:is_true('muted', ConfProps, 'false')}
+    kz_json:from_list([{<<"join_muted">>, props:is_true('muted', ConfProps, 'false')}
                        ,{<<"join_deaf">>, props:is_true('deaf', ConfProps, 'false')}
                        ,{<<"play_name">>, props:is_true('play_name', ConfProps, 'false')}
                        ,{<<"play_entry_prompt">>, props:is_true('play_entry_prompt', ConfProps, 'true')}
                       ]);
-moderator_flags(_, _) -> wh_json:new().
+moderator_flags(_, _) -> kz_json:new().
 
 conference_id(Txts) ->
     Id = kz_xml:texts_to_binary(Txts),
-    MD5 = wh_util:to_hex_binary(erlang:md5(Id)),
+    MD5 = kz_util:to_hex_binary(erlang:md5(Id)),
     lager:debug("conf name: ~s (~s)", [Id, MD5]),
     MD5.
 
 
 add_conference_profile(Call, ConfProps) ->
-    Profile = wh_json:from_list(
+    Profile = kz_json:from_list(
                 props:filter_undefined(
                   [{<<"rate">>, props:get_integer_value('rate', ConfProps, 8000)}
                    ,{<<"caller-controls">>, props:get_integer_value('callerControls', ConfProps, 8000)}
@@ -416,8 +416,8 @@ add_conference_profile(Call, ConfProps) ->
                    ,{<<"annouce-count">>, props:get_integer_value('announceCount', ConfProps)}
                    ,{<<"caller-controls">>, props:get_value('callerControls', ConfProps, <<"default">>)}
                    ,{<<"moderator-controls">>, props:get_value('callerControls', ConfProps, <<"default">>)}
-                   ,{<<"caller-id-name">>, props:get_value('callerIdName', ConfProps, wh_util:anonymous_caller_id_name())}
-                   ,{<<"caller-id-number">>, props:get_value('callerIdNumber', ConfProps, wh_util:anonymous_caller_id_number())}
+                   ,{<<"caller-id-name">>, props:get_value('callerIdName', ConfProps, kz_util:anonymous_caller_id_name())}
+                   ,{<<"caller-id-number">>, props:get_value('callerIdNumber', ConfProps, kz_util:anonymous_caller_id_number())}
                    %,{<<"suppress-events">>, <<>>} %% add events to make FS less chatty
                    ,{<<"moh-sound">>, props:get_value('waitUrl', ConfProps, <<"http://com.twilio.music.classical.s3.amazonaws.com/Mellotroniac_-_Flight_Of_Young_Hearts_Flute.mp3">>)}
                   ])),

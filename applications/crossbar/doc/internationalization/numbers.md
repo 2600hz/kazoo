@@ -213,8 +213,8 @@ Changes made via Crossbar *should* flush the appropriate caches automatically. I
 Execute on VMs running:
 
 * Crossbar
-    * `sup whistle_couch_maintenance flush [{ACCOUNT_ID} [{DOCUMENT_ID}]]`
+    * `sup kazoo_couch_maintenance flush [{ACCOUNT_ID} [{DOCUMENT_ID}]]`
 * Callflow
     * `sup callflow_maintenance flush`
 
-If you make a change to `system_config`, execute `sup whapps_config flush [{CONFIG_DOC}]`
+If you make a change to `system_config`, execute `sup kapps_config flush [{CONFIG_DOC}]`

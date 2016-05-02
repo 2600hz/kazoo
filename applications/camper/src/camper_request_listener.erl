@@ -66,14 +66,14 @@ start_link() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_camper_req(wh_json:object(), wh_proplist(), gen_listener:basic_deliver()) -> any().
+-spec handle_camper_req(kz_json:object(), kz_proplist(), gen_listener:basic_deliver()) -> any().
 handle_camper_req(JObj, _Props, #'basic.deliver'{'routing_key' = Key}) ->
     case binary:split(Key, <<".">>, ['global']) of
         [_, ?APP_NAME, <<"offnet">>] ->
-            Msg = wh_json:get_value(<<"Delegate-Message">>, JObj),
+            Msg = kz_json:get_value(<<"Delegate-Message">>, JObj),
             camper_offnet_handler:add_request(Msg);
         [_, ?APP_NAME, <<"onnet">>] ->
-            Msg = wh_json:get_value(<<"Delegate-Message">>, JObj),
+            Msg = kz_json:get_value(<<"Delegate-Message">>, JObj),
             camper_onnet_handler:add_request(Msg)
     end.
 

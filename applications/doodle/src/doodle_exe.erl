@@ -51,8 +51,8 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
--record(state, {call = whapps_call:new() :: whapps_call:call()
-                ,flow = wh_json:new() :: wh_json:object()
+-record(state, {call = kapps_call:new() :: kapps_call:call()
+                ,flow = kz_json:new() :: kz_json:object()
                 ,cf_module_pid :: {pid(), reference()} | 'undefined'
                 ,cf_module_old_pid :: {pid(), reference()} | 'undefined'
                 ,status = <<"sane">> :: ne_binary()
@@ -68,9 +68,9 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(whapps_call:call()) -> startlink_ret().
+-spec start_link(kapps_call:call()) -> startlink_ret().
 start_link(Call) ->
-    CallId = whapps_call:call_id(Call),
+    CallId = kapps_call:call_id(Call),
     Bindings = [{'sms', [{'message_id', CallId}
                          ,{'restrict_to', ['delivery']}
                         ]
@@ -84,124 +84,124 @@ start_link(Call) ->
                                       ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], [Call]).
 
--spec get_call(pid() | whapps_call:call()) -> {'ok', whapps_call:call()}.
+-spec get_call(pid() | kapps_call:call()) -> {'ok', kapps_call:call()}.
 get_call(Srv) when is_pid(Srv) ->
     gen_server:call(Srv, 'get_call', ?MILLISECONDS_IN_SECOND);
 get_call(Call) ->
-    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     get_call(Srv).
 
--spec set_call(whapps_call:call()) -> 'ok'.
+-spec set_call(kapps_call:call()) -> 'ok'.
 set_call(Call) ->
-    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     gen_server:cast(Srv, {'set_call', Call}).
 
--spec update_call(whapps_call:call()) -> 'ok'.
+-spec update_call(kapps_call:call()) -> 'ok'.
 update_call(Call) ->
-    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     gen_server:cast(Srv, {'update_call', Call}).
 
--spec continue(whapps_call:call() | pid()) -> 'ok'.
--spec continue(ne_binary(), whapps_call:call() | pid()) -> 'ok'.
+-spec continue(kapps_call:call() | pid()) -> 'ok'.
+-spec continue(ne_binary(), kapps_call:call() | pid()) -> 'ok'.
 continue(Srv) -> continue(<<"_">>, Srv).
 
 continue(Key, Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, {'continue', Key});
 continue(Key, Call) ->
     update_call(Call),
-    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     continue(Key, Srv).
 
--spec branch(wh_json:object(), whapps_call:call() | pid()) -> 'ok'.
+-spec branch(kz_json:object(), kapps_call:call() | pid()) -> 'ok'.
 branch(Flow, Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, {'branch', Flow});
 branch(Flow, Call) ->
     update_call(Call),
-    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     branch(Flow, Srv).
 
 add_event_listener(Srv, {_,_}=SpawnInfo) when is_pid(Srv) ->
     gen_listener:cast(Srv, {'add_event_listener', SpawnInfo});
 add_event_listener(Call, {_,_}=SpawnInfo) ->
-    add_event_listener(whapps_call:kvs_fetch('consumer_pid', Call), SpawnInfo).
+    add_event_listener(kapps_call:kvs_fetch('consumer_pid', Call), SpawnInfo).
 
--spec stop(whapps_call:call() | pid()) -> 'ok'.
+-spec stop(kapps_call:call() | pid()) -> 'ok'.
 stop(Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, 'stop');
 stop(Call) ->
     update_call(Call),
-    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     stop(Srv).
 
--spec transfer(whapps_call:call() | pid()) -> 'ok'.
+-spec transfer(kapps_call:call() | pid()) -> 'ok'.
 transfer(Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, 'transfer');
 transfer(Call) ->
     update_call(Call),
-    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     transfer(Srv).
 
--spec control_usurped(whapps_call:call() | pid()) -> 'ok'.
+-spec control_usurped(kapps_call:call() | pid()) -> 'ok'.
 control_usurped(Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, 'control_usurped');
 control_usurped(Call) ->
     update_call(Call),
-    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     control_usurped(Srv).
 
--spec callid_update(ne_binary(), whapps_call:call() | pid()) -> 'ok'.
+-spec callid_update(ne_binary(), kapps_call:call() | pid()) -> 'ok'.
 callid_update(CallId, Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, {'callid_update', CallId});
 callid_update(CallId, Call) ->
-    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     callid_update(CallId, Srv).
 
--spec callid(whapps_call:call() | pid()) -> ne_binary().
--spec callid(api_binary(), whapps_call:call()) -> ne_binary().
+-spec callid(kapps_call:call() | pid()) -> ne_binary().
+-spec callid(api_binary(), kapps_call:call()) -> ne_binary().
 
 callid(Srv) when is_pid(Srv) ->
     CallId = gen_server:call(Srv, 'callid', ?MILLISECONDS_IN_SECOND),
-    wh_util:put_callid(CallId),
+    kz_util:put_callid(CallId),
     CallId;
 callid(Call) ->
-    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     callid(Srv).
 
 callid(_, Call) ->
     callid(Call).
 
--spec queue_name(whapps_call:call() | pid()) -> ne_binary().
+-spec queue_name(kapps_call:call() | pid()) -> ne_binary().
 queue_name(Srv) when is_pid(Srv) ->
     gen_listener:queue_name(Srv);
 queue_name(Call) ->
-    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     queue_name(Srv).
 
--spec control_queue(whapps_call:call() | pid()) -> ne_binary().
--spec control_queue(api_binary(), whapps_call:call() | pid()) -> ne_binary().
+-spec control_queue(kapps_call:call() | pid()) -> ne_binary().
+-spec control_queue(api_binary(), kapps_call:call() | pid()) -> ne_binary().
 
 control_queue(Srv) when is_pid(Srv) -> gen_listener:call(Srv, 'control_queue_name');
-control_queue(Call) -> control_queue(whapps_call:kvs_fetch('consumer_pid', Call)).
+control_queue(Call) -> control_queue(kapps_call:kvs_fetch('consumer_pid', Call)).
 control_queue(_, Call) -> control_queue(Call).
 
--spec get_branch_keys(whapps_call:call() | pid()) -> {'branch_keys', wh_json:keys()}.
+-spec get_branch_keys(kapps_call:call() | pid()) -> {'branch_keys', kz_json:keys()}.
 get_branch_keys(Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, 'get_branch_keys');
 get_branch_keys(Call) ->
-    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     get_branch_keys(Srv).
 
--spec get_all_branch_keys(whapps_call:call() | pid()) -> {'branch_keys', wh_json:keys()}.
+-spec get_all_branch_keys(kapps_call:call() | pid()) -> {'branch_keys', kz_json:keys()}.
 get_all_branch_keys(Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, {'get_branch_keys', 'all'});
 get_all_branch_keys(Call) ->
-    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     get_all_branch_keys(Srv).
 
--spec attempt(whapps_call:call() | pid()) ->
+-spec attempt(kapps_call:call() | pid()) ->
                      {'attempt_resp', 'ok'} |
                      {'attempt_resp', {'error', any()}}.
--spec attempt(wh_json:key(), whapps_call:call() | pid()) ->
+-spec attempt(kz_json:key(), kapps_call:call() | pid()) ->
                      {'attempt_resp', 'ok'} |
                      {'attempt_resp', {'error', any()}}.
 attempt(Srv) -> attempt(<<"_">>, Srv).
@@ -209,29 +209,29 @@ attempt(Srv) -> attempt(<<"_">>, Srv).
 attempt(Key, Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, {'attempt', Key});
 attempt(Key, Call) ->
-    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     attempt(Key, Srv).
 
--spec wildcard_is_empty(whapps_call:call() | pid()) -> boolean().
+-spec wildcard_is_empty(kapps_call:call() | pid()) -> boolean().
 wildcard_is_empty(Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, 'wildcard_is_empty');
 wildcard_is_empty(Call) ->
-    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     wildcard_is_empty(Srv).
 
--spec relay_amqp(wh_json:object(), wh_proplist()) -> any().
+-spec relay_amqp(kz_json:object(), kz_proplist()) -> any().
 relay_amqp(JObj, Props) ->
     Pids = case props:get_value('cf_module_pid', Props) of
                P when is_pid(P) -> [P | props:get_value('cf_event_pids', Props, [])];
                _ -> props:get_value('cf_event_pids', Props, [])
            end,
-    [whapps_call_command:relay_event(Pid, JObj) || Pid <- Pids, is_pid(Pid)].
+    [kapps_call_command:relay_event(Pid, JObj) || Pid <- Pids, is_pid(Pid)].
 
--spec send_amqp(pid() | whapps_call:call(), api_terms(), wh_amqp_worker:publish_fun()) -> 'ok'.
+-spec send_amqp(pid() | kapps_call:call(), api_terms(), kz_amqp_worker:publish_fun()) -> 'ok'.
 send_amqp(Srv, API, PubFun) when is_pid(Srv), is_function(PubFun, 1) ->
     gen_listener:cast(Srv, {'send_amqp', API, PubFun});
 send_amqp(Call, API, PubFun) when is_function(PubFun, 1) ->
-    send_amqp(whapps_call:kvs_fetch('consumer_pid', Call), API, PubFun).
+    send_amqp(kapps_call:kvs_fetch('consumer_pid', Call), API, PubFun).
 
 %%%===================================================================
 %%% gen_listener callbacks
@@ -250,8 +250,8 @@ send_amqp(Call, API, PubFun) when is_function(PubFun, 1) ->
 %%--------------------------------------------------------------------
 init([Call]) ->
     process_flag('trap_exit', 'true'),
-    CallId = whapps_call:call_id(Call),
-    wh_util:put_callid(CallId),
+    CallId = kapps_call:call_id(Call),
+    kz_util:put_callid(CallId),
     gen_listener:cast(self(), 'initialize'),
     {'ok', #state{call=Call}}.
 
@@ -272,25 +272,25 @@ init([Call]) ->
 handle_call('get_call', _From, #state{call=Call}=State) ->
     {'reply', {'ok', Call}, State};
 handle_call('callid', _From, #state{call=Call}=State) ->
-    {'reply', whapps_call:call_id_direct(Call), State};
+    {'reply', kapps_call:call_id_direct(Call), State};
 handle_call('control_queue_name', _From, #state{call=Call}=State) ->
-    {'reply', whapps_call:control_queue_direct(Call), State};
+    {'reply', kapps_call:control_queue_direct(Call), State};
 handle_call('get_branch_keys', _From, #state{flow = Flow}=State) ->
-    Children = wh_json:get_value(<<"children">>, Flow, wh_json:new()),
-    Reply = {'branch_keys', lists:delete(<<"_">>, wh_json:get_keys(Children))},
+    Children = kz_json:get_value(<<"children">>, Flow, kz_json:new()),
+    Reply = {'branch_keys', lists:delete(<<"_">>, kz_json:get_keys(Children))},
     {'reply', Reply, State};
 handle_call({'get_branch_keys', 'all'}, _From, #state{flow = Flow}=State) ->
-    Children = wh_json:get_value(<<"children">>, Flow, wh_json:new()),
-    Reply = {'branch_keys', wh_json:get_keys(Children)},
+    Children = kz_json:get_value(<<"children">>, Flow, kz_json:new()),
+    Reply = {'branch_keys', kz_json:get_keys(Children)},
     {'reply', Reply, State};
 handle_call({'attempt', Key}, _From, #state{flow=Flow}=State) ->
-    case wh_json:get_value([<<"children">>, Key], Flow) of
+    case kz_json:get_value([<<"children">>, Key], Flow) of
         'undefined' ->
             lager:info("attempted 'undefined' child ~s", [Key]),
             Reply = {'attempt_resp', {'error', 'undefined'}},
             {'reply', Reply, State};
         NewFlow ->
-            case wh_json:is_empty(NewFlow) of
+            case kz_json:is_empty(NewFlow) of
                 'true' ->
                     lager:info("attempted empty child ~s", [Key]),
                     Reply = {'attempt_resp', {'error', 'empty'}},
@@ -302,9 +302,9 @@ handle_call({'attempt', Key}, _From, #state{flow=Flow}=State) ->
             end
     end;
 handle_call('wildcard_is_empty', _From, #state{flow = Flow}=State) ->
-    case wh_json:get_value([<<"children">>, <<"_">>], Flow) of
+    case kz_json:get_value([<<"children">>, <<"_">>], Flow) of
         'undefined' -> {'reply', 'true', State};
-        ChildFlow -> {'reply', wh_json:is_empty(ChildFlow), State}
+        ChildFlow -> {'reply', kz_json:is_empty(ChildFlow), State}
     end;
 handle_call(_Request, _From, State) ->
     Reply = {'error', 'unimplemented'},
@@ -323,16 +323,16 @@ handle_call(_Request, _From, State) ->
 handle_cast({'set_call', Call}, State) ->
     {'noreply', State#state{call=Call}};
 handle_cast({'update_call', NewCall}, #state{call=OldCall, queue=Q}=State) ->
-    Action = whapps_call:kvs_fetch('cf_last_action', OldCall),
-    Call1 = whapps_call:set_controller_queue(Q, NewCall),
-    Call = whapps_call:kvs_store('cf_last_action', Action, Call1),
+    Action = kapps_call:kvs_fetch('cf_last_action', OldCall),
+    Call1 = kapps_call:set_controller_queue(Q, NewCall),
+    Call = kapps_call:kvs_store('cf_last_action', Action, Call1),
     {'noreply', State#state{call=Call}};
 
 handle_cast({'continue', Key}, #state{flow=Flow
                                      }=State) ->
     lager:info("continuing to child '~s'", [Key]),
 
-    case wh_json:get_value([<<"children">>, Key], Flow) of
+    case kz_json:get_value([<<"children">>, Key], Flow) of
         'undefined' when Key =:= <<"_">> ->
             lager:info("wildcard child does not exist, we are lost...hanging up"),
             ?MODULE:stop(self()),
@@ -342,7 +342,7 @@ handle_cast({'continue', Key}, #state{flow=Flow
             ?MODULE:continue(self()),
             {'noreply', State};
         NewFlow ->
-            case wh_json:is_empty(NewFlow) of
+            case kz_json:is_empty(NewFlow) of
                 'false' -> {'noreply', launch_cf_module(State#state{flow=NewFlow})};
                 'true' ->
                     ?MODULE:stop(self()),
@@ -350,7 +350,7 @@ handle_cast({'continue', Key}, #state{flow=Flow
             end
     end;
 handle_cast('stop', #state{call=Call}=State) ->
-    _ = wh_util:spawn(fun doodle_util:save_sms/1, [whapps_call:clear_helpers(Call)]),
+    _ = kz_util:spawn(fun doodle_util:save_sms/1, [kapps_call:clear_helpers(Call)]),
     {'stop', 'normal', State};
 handle_cast('transfer', State) ->
     {'stop', {'shutdown', 'transfer'}, State};
@@ -360,17 +360,17 @@ handle_cast({'branch', NewFlow}, State) ->
     lager:info("callflow has been branched"),
     {'noreply', launch_cf_module(State#state{flow=NewFlow})};
 handle_cast({'callid_update', NewCallId}, #state{call=Call}=State) ->
-    wh_util:put_callid(NewCallId),
-    PrevCallId = whapps_call:call_id_direct(Call),
+    kz_util:put_callid(NewCallId),
+    PrevCallId = kapps_call:call_id_direct(Call),
     lager:info("updating callid to ~s (from ~s), catch you on the flip side", [NewCallId, PrevCallId]),
     lager:info("removing call event bindings for ~s", [PrevCallId]),
     gen_listener:rm_binding(self(), 'call', [{'callid', PrevCallId}]),
     lager:info("binding to new call events"),
     gen_listener:add_binding(self(), 'call', [{'callid', NewCallId}]),
-    {'noreply', State#state{call=whapps_call:set_call_id(NewCallId, Call)}};
+    {'noreply', State#state{call=kapps_call:set_call_id(NewCallId, Call)}};
 handle_cast({'add_event_listener', {M, A}}, #state{call=Call}=State) ->
     lager:debug("trying to start evt listener ~s: ~p", [M, A]),
-    try doodle_event_handler_sup:new(event_listener_name(Call, M), M, [whapps_call:clear_helpers(Call) | A]) of
+    try doodle_event_handler_sup:new(event_listener_name(Call, M), M, [kapps_call:clear_helpers(Call) | A]) of
         {'ok', P} when is_pid(P) ->
             lager:debug("started event listener ~p from ~s", [P, M]),
             {'noreply', State};
@@ -384,10 +384,10 @@ handle_cast({'add_event_listener', {M, A}}, #state{call=Call}=State) ->
     end;
 handle_cast('initialize', #state{call=Call}) ->
     log_call_information(Call),
-    Flow = whapps_call:kvs_fetch('cf_flow', Call),
-    Updaters = [fun(C) -> whapps_call:kvs_store('consumer_pid', self(), C) end
-                ,fun(C) -> whapps_call:call_id_helper(fun ?MODULE:callid/2, C) end
-                ,fun(C) -> whapps_call:control_queue_helper(fun ?MODULE:control_queue/2, C) end
+    Flow = kapps_call:kvs_fetch('cf_flow', Call),
+    Updaters = [fun(C) -> kapps_call:kvs_store('consumer_pid', self(), C) end
+                ,fun(C) -> kapps_call:call_id_helper(fun ?MODULE:callid/2, C) end
+                ,fun(C) -> kapps_call:control_queue_helper(fun ?MODULE:control_queue/2, C) end
                ],
     CallWithHelpers = lists:foldr(fun(F, C) -> F(C) end, Call, Updaters),
     {'noreply', #state{call=CallWithHelpers
@@ -395,7 +395,7 @@ handle_cast('initialize', #state{call=Call}) ->
                       }};
 handle_cast({'gen_listener', {'created_queue', Q}}, #state{call=Call}=State) ->
     {'noreply', launch_cf_module(State#state{queue=Q
-                                             ,call=whapps_call:set_controller_queue(Q, Call)
+                                             ,call=kapps_call:set_controller_queue(Q, Call)
                                             })};
 handle_cast({'send_amqp', API, PubFun}, #state{queue=Q}=State) ->
     send_amqp_message(API, PubFun, Q),
@@ -407,7 +407,7 @@ handle_cast(_Msg, State) ->
     {'noreply', State}.
 
 event_listener_name(Call, Module) ->
-    <<(whapps_call:call_id_direct(Call))/binary, "-", (wh_util:to_binary(Module))/binary>>.
+    <<(kapps_call:call_id_direct(Call))/binary, "-", (kz_util:to_binary(Module))/binary>>.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -423,13 +423,13 @@ handle_info({'DOWN', Ref, 'process', Pid, 'normal'}, #state{cf_module_pid={Pid, 
                                                             ,call=Call
                                                            }=State) ->
     erlang:demonitor(Ref, ['flush']),
-    lager:debug("cf module ~s down normally", [whapps_call:kvs_fetch('cf_last_action', Call)]),
+    lager:debug("cf module ~s down normally", [kapps_call:kvs_fetch('cf_last_action', Call)]),
     {'noreply', State#state{cf_module_pid='undefined'}};
 handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{cf_module_pid={Pid, Ref}
                                                            ,call=Call
                                                           }=State) ->
     erlang:demonitor(Ref, ['flush']),
-    LastAction = whapps_call:kvs_fetch('cf_last_action', Call),
+    LastAction = kapps_call:kvs_fetch('cf_last_action', Call),
     lager:error("action ~s died unexpectedly: ~p", [LastAction, _Reason]),
     ?MODULE:continue(self()),
     {'noreply', State#state{cf_module_pid='undefined'}};
@@ -439,13 +439,13 @@ handle_info({'EXIT', Pid, 'normal'}, #state{cf_module_pid={Pid, Ref}
                                             ,call=Call
                                            }=State) ->
     erlang:demonitor(Ref, ['flush']),
-    lager:debug("cf module ~s down normally", [whapps_call:kvs_fetch('cf_last_action', Call)]),
+    lager:debug("cf module ~s down normally", [kapps_call:kvs_fetch('cf_last_action', Call)]),
     {'noreply', State#state{cf_module_pid='undefined'}};
 handle_info({'EXIT', Pid, _Reason}, #state{cf_module_pid={Pid, Ref}
                                            ,call=Call
                                           }=State) ->
     erlang:demonitor(Ref, ['flush']),
-    LastAction = whapps_call:kvs_fetch('cf_last_action', Call),
+    LastAction = kapps_call:kvs_fetch('cf_last_action', Call),
     lager:error("action ~s died unexpectedly: ~p", [LastAction, _Reason]),
     ?MODULE:continue(self()),
     {'noreply', State#state{cf_module_pid='undefined'}};
@@ -453,13 +453,13 @@ handle_info({'EXIT', Pid, 'normal'}, #state{cf_module_old_pid={Pid, Ref}
                                             ,call=Call
                                            }=State) ->
     erlang:demonitor(Ref, ['flush']),
-    lager:debug("cf module ~s down normally", [whapps_call:kvs_fetch('cf_last_action', Call)]),
+    lager:debug("cf module ~s down normally", [kapps_call:kvs_fetch('cf_last_action', Call)]),
     {'noreply', State#state{cf_module_old_pid='undefined'}};
 handle_info({'EXIT', Pid, _Reason}, #state{cf_module_old_pid={Pid, Ref}
                                            ,call=Call
                                           }=State) ->
     erlang:demonitor(Ref, ['flush']),
-    LastAction = whapps_call:kvs_fetch('cf_last_action', Call),
+    LastAction = kapps_call:kvs_fetch('cf_last_action', Call),
     lager:error("action ~s died unexpectedly: ~p", [LastAction, _Reason]),
     {'noreply', State#state{cf_module_old_pid='undefined'}};
 handle_info(_Msg, State) ->
@@ -475,40 +475,40 @@ handle_event(JObj, #state{cf_module_pid=PidRef
                           ,call=Call
                           ,self=Self
                          }) ->
-    CallId = whapps_call:call_id_direct(Call),
-    SmsId = whapps_call:kvs_fetch(<<"sms_docid">>, Call),
-    Others = whapps_call:kvs_fetch('cf_event_pids', [], Call),
-    case {whapps_util:get_event_type(JObj), wh_json:get_value(<<"Call-ID">>, JObj)} of
+    CallId = kapps_call:call_id_direct(Call),
+    SmsId = kapps_call:kvs_fetch(<<"sms_docid">>, Call),
+    Others = kapps_call:kvs_fetch('cf_event_pids', [], Call),
+    case {kapps_util:get_event_type(JObj), kz_json:get_value(<<"Call-ID">>, JObj)} of
         {{<<"call_event">>, <<"CHANNEL_TRANSFEREE">>}, _} ->
-            ExeFetchId = whapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
-            TransferFetchId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
+            ExeFetchId = kapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
+            TransferFetchId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
             _ = case ExeFetchId =:= TransferFetchId of
                     'false' -> 'ok';
                     'true' -> transfer(Call)
                 end,
             'ignore';
         {{<<"call_event">>, <<"CHANNEL_REPLACED">>}, _} ->
-            ExeFetchId = whapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
-            TransferFetchId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
+            ExeFetchId = kapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
+            TransferFetchId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
             case ExeFetchId =:= TransferFetchId of
                 'false' -> 'ignore';
                 'true' ->
-                    ReplacedBy = wh_json:get_value(<<"Replaced-By">>, JObj),
+                    ReplacedBy = kz_json:get_value(<<"Replaced-By">>, JObj),
                     callid_update(ReplacedBy, Call),
                     {'reply', [{'cf_module_pid', get_pid(PidRef)}
                                ,{'cf_event_pids', Others}
                               ]}
             end;
         {{<<"call_event">>, <<"usurp_control">>}, CallId} ->
-            _ = case whapps_call:custom_channel_var(<<"Fetch-ID">>, Call)
-                    =:= wh_json:get_value(<<"Fetch-ID">>, JObj)
+            _ = case kapps_call:custom_channel_var(<<"Fetch-ID">>, Call)
+                    =:= kz_json:get_value(<<"Fetch-ID">>, JObj)
                 of
                     'false' -> control_usurped(Self);
                     'true' -> 'ok'
                 end,
             'ignore';
         {{<<"error">>, _}, _} ->
-            case wh_json:get_value([<<"Request">>, <<"Call-ID">>], JObj) of
+            case kz_json:get_value([<<"Request">>, <<"Call-ID">>], JObj) of
                 CallId -> {'reply', [{'cf_module_pid', get_pid(PidRef)}
                                      ,{'cf_event_pids', Others}
                                     ]};
@@ -565,13 +565,13 @@ terminate(_Reason, #state{call=Call
     hangup_call(Call),
     lager:info("callflow execution has been stopped: ~p", [_Reason]).
 
--spec hangup_call(whapps_call:call()) -> 'ok'.
+-spec hangup_call(kapps_call:call()) -> 'ok'.
 hangup_call(Call) ->
     Cmd = [{<<"Event-Name">>, <<"command">>}
            ,{<<"Event-Category">>, <<"call">>}
            ,{<<"Application-Name">>, <<"hangup">>}
           ],
-    send_command(Cmd, whapps_call:control_queue_direct(Call), whapps_call:call_id_direct(Call)).
+    send_command(Cmd, kapps_call:control_queue_direct(Call), kapps_call:call_id_direct(Call)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -600,13 +600,13 @@ launch_cf_module(#state{call=Call
                         ,flow=Flow
                         ,cf_module_pid=OldPidRef
                        }=State) ->
-    Module = <<(cf_module_prefix(Call))/binary, (wh_json:get_value(<<"module">>, Flow))/binary>>,
-    Data = wh_json:get_value(<<"data">>, Flow, wh_json:new()),
+    Module = <<(cf_module_prefix(Call))/binary, (kz_json:get_value(<<"module">>, Flow))/binary>>,
+    Data = kz_json:get_value(<<"data">>, Flow, kz_json:new()),
     {PidRef, Action} = maybe_start_cf_module(Module, Data, Call),
     _ = cf_link(PidRef),
     State#state{cf_module_pid=PidRef
                 ,cf_module_old_pid=OldPidRef
-                ,call=whapps_call:kvs_store('cf_last_action', Action, Call)
+                ,call=kapps_call:kvs_store('cf_last_action', Action, Call)
                }.
 
 -spec cf_link('undefined' | pid_ref()) -> 'true'.
@@ -614,18 +614,18 @@ cf_link('undefined') -> 'true';
 cf_link(PidRef) ->
     link(get_pid(PidRef)).
 
--spec cf_module_prefix(whapps_call:call()) -> ne_binary().
+-spec cf_module_prefix(kapps_call:call()) -> ne_binary().
 cf_module_prefix(Call) ->
-    cf_module_prefix(Call, whapps_call:resource_type(Call)).
+    cf_module_prefix(Call, kapps_call:resource_type(Call)).
 
--spec cf_module_prefix(whapps_call:call(), ne_binary()) -> ne_binary().
+-spec cf_module_prefix(kapps_call:call(), ne_binary()) -> ne_binary().
 cf_module_prefix(_Call, <<"sms">>) -> <<"cf_sms_">>;
 cf_module_prefix(_Call, _) -> <<"cf_">>.
 
--spec maybe_start_cf_module(ne_binary(), wh_proplist(), whapps_call:call()) ->
+-spec maybe_start_cf_module(ne_binary(), kz_proplist(), kapps_call:call()) ->
                                    {pid_ref() | 'undefined', atom()}.
 maybe_start_cf_module(ModuleBin, Data, Call) ->
-    CFModule = wh_util:to_atom(ModuleBin, 'true'),
+    CFModule = kz_util:to_atom(ModuleBin, 'true'),
     try CFModule:module_info('exports') of
         _ ->
             lager:info("moving to action '~s'", [CFModule]),
@@ -635,7 +635,7 @@ maybe_start_cf_module(ModuleBin, Data, Call) ->
             cf_module_skip(ModuleBin, Call)
     end.
 
--spec cf_module_skip(CFModule, whapps_call:call()) ->
+-spec cf_module_skip(CFModule, kapps_call:call()) ->
                             {'undefined', CFModule}.
 cf_module_skip(CFModule, _Call) ->
     lager:error("unknown callflow action '~s', skipping to next action", [CFModule]),
@@ -649,67 +649,67 @@ cf_module_skip(CFModule, _Call) ->
 %% point 'handle' having set the callid on the new process first
 %% @end
 %%--------------------------------------------------------------------
--spec spawn_cf_module(CFModule, list(), whapps_call:call()) ->
+-spec spawn_cf_module(CFModule, list(), kapps_call:call()) ->
                              {pid_ref(), CFModule}.
 spawn_cf_module(CFModule, Data, Call) ->
-    AMQPConsumer = wh_amqp_channel:consumer_pid(),
-    {wh_util:spawn_monitor(fun cf_module_task/4, [CFModule, Data, Call, AMQPConsumer])
+    AMQPConsumer = kz_amqp_channel:consumer_pid(),
+    {kz_util:spawn_monitor(fun cf_module_task/4, [CFModule, Data, Call, AMQPConsumer])
      ,CFModule
     }.
 
 %% @private
--spec cf_module_task(atom(), list(), whapps_call:call(), pid()) -> any().
+-spec cf_module_task(atom(), list(), kapps_call:call(), pid()) -> any().
 cf_module_task(CFModule, Data, Call, AMQPConsumer) ->
-    _ = wh_amqp_channel:consumer_pid(AMQPConsumer),
-    wh_util:put_callid(whapps_call:call_id_direct(Call)),
+    _ = kz_amqp_channel:consumer_pid(AMQPConsumer),
+    kz_util:put_callid(kapps_call:call_id_direct(Call)),
     try CFModule:handle(Data, Call) of
         _ -> 'ok'
     catch
         _E:R ->
             ST = erlang:get_stacktrace(),
             lager:info("action ~s died unexpectedly (~s): ~p", [CFModule, _E, R]),
-            wh_util:log_stacktrace(ST),
+            kz_util:log_stacktrace(ST),
             throw(R)
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% unlike the whapps_call_command this send command does not call the
+%% unlike the kapps_call_command this send command does not call the
 %% functions of this module to form the headers, nor does it set
 %% the reply queue.  Used when this module is terminating to send
 %% a hangup command without relying on the (now terminated) doodle_exe.
 %% @end
 %%--------------------------------------------------------------------
--spec send_amqp_message(api_terms(), wh_amqp_worker:publish_fun(), ne_binary()) -> 'ok'.
+-spec send_amqp_message(api_terms(), kz_amqp_worker:publish_fun(), ne_binary()) -> 'ok'.
 send_amqp_message(API, PubFun, Q) ->
     PubFun(add_server_id(API, Q)).
 
--spec send_command(wh_proplist(), api_binary(), api_binary()) -> 'ok'.
+-spec send_command(kz_proplist(), api_binary(), api_binary()) -> 'ok'.
 send_command(_, 'undefined', _) -> 'ok';
 send_command(_, _, 'undefined') -> 'ok';
 send_command(Command, ControlQ, CallId) ->
     Props = Command ++ [{<<"Call-ID">>, CallId}
-                       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                       ],
-    whapps_util:amqp_pool_send(Props, fun(P) -> wapi_dialplan:publish_command(ControlQ, P) end).
+    kapps_util:amqp_pool_send(Props, fun(P) -> kapi_dialplan:publish_command(ControlQ, P) end).
 
 -spec add_server_id(api_terms(), ne_binary()) -> api_terms().
 add_server_id(API, Q) when is_list(API) ->
     [{<<"Server-ID">>, Q} | props:delete(<<"Server-ID">>, API)];
 add_server_id(API, Q) ->
-    wh_json:set_value(<<"Server-ID">>, Q, API).
+    kz_json:set_value(<<"Server-ID">>, Q, API).
 
--spec log_call_information(whapps_call:call()) -> 'ok'.
+-spec log_call_information(kapps_call:call()) -> 'ok'.
 log_call_information(Call) ->
-    lager:info("executing callflow ~s", [whapps_call:kvs_fetch('cf_flow_id', Call)]),
-    lager:info("account id ~s", [whapps_call:account_id(Call)]),
-    lager:info("request ~s", [whapps_call:request(Call)]),
-    lager:info("to ~s", [whapps_call:to(Call)]),
-    lager:info("from ~s", [whapps_call:from(Call)]),
-    lager:info("CID ~s ~s", [whapps_call:caller_id_name(Call), whapps_call:caller_id_number(Call)]),
-    case whapps_call:inception(Call) of
+    lager:info("executing callflow ~s", [kapps_call:kvs_fetch('cf_flow_id', Call)]),
+    lager:info("account id ~s", [kapps_call:account_id(Call)]),
+    lager:info("request ~s", [kapps_call:request(Call)]),
+    lager:info("to ~s", [kapps_call:to(Call)]),
+    lager:info("from ~s", [kapps_call:from(Call)]),
+    lager:info("CID ~s ~s", [kapps_call:caller_id_name(Call), kapps_call:caller_id_number(Call)]),
+    case kapps_call:inception(Call) of
         'undefined' -> lager:info("inception on-net: using attributes for an internal call", []);
         _Else -> lager:info("inception ~s: using attributes for an external call", [_Else])
     end,
-    lager:info("authorizing id ~s", [whapps_call:authorizing_id(Call)]).
+    lager:info("authorizing id ~s", [kapps_call:authorizing_id(Call)]).

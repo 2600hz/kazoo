@@ -242,4 +242,4 @@ If you receive a 400 when POSTing with a response like:
      "status": "error"
     }
 
-You will need to run `sup whapps_maintenance refresh system_schemas` to ensure the `domains` schema is available.
+You will need to run `sup kapps_maintenance refresh system_schemas` to ensure the `domains` schema is available.

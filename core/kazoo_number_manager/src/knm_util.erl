@@ -83,9 +83,9 @@ binary_head(Binary) ->
 pretty_print_format(Number) ->
     Classifiers = knm_converters:available_classifiers(),
     Num = knm_converters:normalize(Number),
-    pretty_print_format(Num, wh_json:to_proplist(Classifiers)).
+    pretty_print_format(Num, kz_json:to_proplist(Classifiers)).
 
--spec pretty_print_format(ne_binary(), wh_proplist()) -> api_binary().
+-spec pretty_print_format(ne_binary(), kz_proplist()) -> api_binary().
 pretty_print_format(Num, []) ->
     lager:debug("unable to get pretty print format for number ~s", [Num]),
     maybe_use_us_default(Num);
@@ -96,7 +96,7 @@ pretty_print_format(Num, [{Classification, Classifier}|Classifiers]) ->
             lager:debug("number '~s' is classified as ~s but no pretty print format available", [Num, Classification]),
             maybe_use_us_default(Num);
         _ ->
-            case wh_json:get_value(<<"pretty_print">>, Classifier) of
+            case kz_json:get_value(<<"pretty_print">>, Classifier) of
                 'undefined' -> maybe_use_us_default(Num);
                 Format -> Format
             end
@@ -109,12 +109,12 @@ maybe_use_us_default(<<"+1", _/binary>>) ->
 maybe_use_us_default(_) ->
     'undefined'.
 
--spec get_classifier_regex(ne_binary() | wh_json:object()) ->
+-spec get_classifier_regex(ne_binary() | kz_json:object()) ->
                                   ne_binary().
 get_classifier_regex(Classifier) when is_binary(Classifier) ->
     Classifier;
 get_classifier_regex(JObj) ->
-    wh_json:get_value(<<"regex">>, JObj, <<"^$">>).
+    kz_json:get_value(<<"regex">>, JObj, <<"^$">>).
 
 -spec fixture(file:filename()) -> string().
 fixture(Filename) ->
@@ -123,6 +123,6 @@ fixture(Filename) ->
     read_fixture(file:read_file(Fixture), Fixture).
 
 read_fixture({'ok', Contents}, _F) ->
-    wh_util:to_list(Contents);
+    kz_util:to_list(Contents);
 read_fixture({'error', 'enoent'}, F) ->
     throw({'error', 'missing_fixture', F}).

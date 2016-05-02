@@ -23,8 +23,8 @@ start_link() ->
                                       {'_', [{<<"/fax/[...]">>, 'fax_file_proxy', []}]}
                                      ]),
 
-    Port = whapps_config:get_integer(?CONFIG_CAT, <<"port">>, 30950),
-    Workers = whapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 50),
+    Port = kapps_config:get_integer(?CONFIG_CAT, <<"port">>, 30950),
+    Workers = kapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 50),
     %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
     cowboy:start_http('fax_file', Workers
                       ,[{'port', Port}]
@@ -38,11 +38,11 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    _ = wapi_fax:declare_exchanges(),
-    _ = wapi_xmpp:declare_exchanges(),
-    _ = wapi_conf:declare_exchanges(),
-    _ = wapi_notifications:declare_exchanges(),
-    _ = wapi_offnet_resource:declare_exchanges(),
-    _ = wapi_call:declare_exchanges(),
-    _ = wapi_dialplan:declare_exchanges(),
-    wapi_self:declare_exchanges().
+    _ = kapi_fax:declare_exchanges(),
+    _ = kapi_xmpp:declare_exchanges(),
+    _ = kapi_conf:declare_exchanges(),
+    _ = kapi_notifications:declare_exchanges(),
+    _ = kapi_offnet_resource:declare_exchanges(),
+    _ = kapi_call:declare_exchanges(),
+    _ = kapi_dialplan:declare_exchanges(),
+    kapi_self:declare_exchanges().

@@ -1,9 +1,9 @@
 -ifndef(CROSSBAR_HRL).
 
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_log.hrl").
--include_lib("whistle/include/wh_databases.hrl").
--include_lib("whistle/include/kz_system_config.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo/include/kz_log.hrl").
+-include_lib("kazoo/include/kz_databases.hrl").
+-include_lib("kazoo/include/kz_system_config.hrl").
 
 -include("crossbar_types.hrl").
 
@@ -29,7 +29,7 @@
 -define(NO_ENVELOPE_VERSIONS, [?INBOUND_HOOK]).
 -define(INBOUND_HOOKS, [?INBOUND_HOOK]).
 
--define(CACHE_TTL, whapps_config:get_integer(<<"crossbar">>, <<"cache_ttl">>, 300)).
+-define(CACHE_TTL, kapps_config:get_integer(<<"crossbar">>, <<"cache_ttl">>, 300)).
 
 -define(CROSSBAR_DEFAULT_CONTENT_TYPE, {<<"application">>, <<"json">>, []}).
 
@@ -53,11 +53,11 @@
 -define(QUICKCALL_PATH_TOKEN, <<"quickcall">>).
 -define(DEVICES_QCALL_NOUNS(DeviceId, Number)
         ,[{<<"devices">>, [DeviceId, ?QUICKCALL_PATH_TOKEN, Number]}
-          ,{?WH_ACCOUNTS_DB, [_]}
+          ,{?KZ_ACCOUNTS_DB, [_]}
          ]).
 -define(USERS_QCALL_NOUNS(UserId, Number)
         ,[{<<"users">>, [UserId, ?QUICKCALL_PATH_TOKEN , Number]}
-          ,{?WH_ACCOUNTS_DB, [_]}
+          ,{?KZ_ACCOUNTS_DB, [_]}
          ]).
 
 -define(DEFAULT_MODULES, ['cb_about'
@@ -135,34 +135,34 @@
           ,auth_doc :: api_object()
           ,req_verb = ?HTTP_GET :: http_method() % see ?ALLOWED_METHODS
           ,req_nouns = [{<<"404">>, []}] :: req_nouns() % {module, [id]} most typical
-          ,req_json = wh_json:new() :: req_json()
+          ,req_json = kz_json:new() :: req_json()
           ,req_files = [] :: req_files()
-          ,req_data :: wh_json:json_term()  % the "data" from the request JSON envelope
+          ,req_data :: kz_json:json_term()  % the "data" from the request JSON envelope
           ,req_headers = [] :: cowboy:http_headers()
-          ,query_json = wh_json:new() :: api_object()
+          ,query_json = kz_json:new() :: api_object()
           ,account_id :: api_binary()
           ,user_id :: api_binary()   % Will be loaded in validate stage for endpoints such as /accounts/{acct-id}/users/{user-id}/*
           ,device_id :: api_binary()   % Will be loaded in validate stage for endpoints such as /accounts/{acct-id}/devices/{device-id}/*
           ,reseller_id :: api_binary()
           ,db_name :: api_binary() | ne_binaries()
-          ,doc :: api_object() | wh_json:objects()
-          ,resp_expires = {{1999,1,1},{0,0,0}} :: wh_datetime()
+          ,doc :: api_object() | kz_json:objects()
+          ,resp_expires = {{1999,1,1},{0,0,0}} :: kz_datetime()
           ,resp_etag :: 'automatic' | string() | api_binary()
           ,resp_status = 'error' :: crossbar_status()
-          ,resp_error_msg :: wh_json:key()
+          ,resp_error_msg :: kz_json:key()
           ,resp_error_code :: api_integer()
           ,resp_data :: resp_data()
-          ,resp_headers = [] :: wh_proplist() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
-          ,resp_envelope = wh_json:new() :: wh_json:object()
-          ,start = os:timestamp() :: wh_now()
+          ,resp_headers = [] :: kz_proplist() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
+          ,resp_envelope = kz_json:new() :: kz_json:object()
+          ,start = os:timestamp() :: kz_now()
           ,req_id = ?LOG_SYSTEM_ID :: ne_binary()
-          ,storage = [] :: wh_proplist()
+          ,storage = [] :: kz_proplist()
           ,raw_host = <<>> :: binary()
           ,port = 8000 :: integer()
           ,raw_path = <<>> :: binary()
           ,raw_qs = <<>> :: binary()
           ,method = ?HTTP_GET :: http_method()
-          ,validation_errors = wh_json:new() :: wh_json:object()
+          ,validation_errors = kz_json:new() :: kz_json:object()
           ,client_ip = <<"127.0.0.1">> :: api_binary()
           ,load_merge_bypass :: api_object()
           ,profile_id :: api_binary()
@@ -171,7 +171,7 @@
           ,should_paginate :: api_boolean()
          }).
 
--define(MAX_RANGE, whapps_config:get_integer(?CONFIG_CAT
+-define(MAX_RANGE, kapps_config:get_integer(?CONFIG_CAT
                                             ,<<"maximum_range">>
                                             ,(?SECONDS_IN_DAY * 31 + ?SECONDS_IN_HOUR)
                                             )

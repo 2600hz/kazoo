@@ -140,7 +140,7 @@ load_existing_checks() ->
     ].
 
 existing_in_state(PN, 'false') ->
-    State = wh_util:to_list(knm_phone_number:state(PN)),
+    State = kz_util:to_list(knm_phone_number:state(PN)),
 
     Resp = knm_number:attempt(fun knm_number:ensure_can_load_to_create/1
                               ,[PN]
@@ -152,7 +152,7 @@ existing_in_state(PN, 'false') ->
      | check_error_response(Resp, 409, <<"number_exists">>, ?TEST_AVAILABLE_NUM)
     ];
 existing_in_state(PN, 'true') ->
-    State = wh_util:to_list(knm_phone_number:state(PN)),
+    State = kz_util:to_list(knm_phone_number:state(PN)),
 
     [{lists:flatten(["Ensure number in ", State, " can be 'created'"])
      ,?_assert(knm_number:ensure_can_load_to_create(PN))

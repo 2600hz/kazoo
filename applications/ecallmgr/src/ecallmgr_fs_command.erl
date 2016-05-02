@@ -28,7 +28,7 @@
 %% set channel and call variables in FreeSWITCH
 %% @end
 %%--------------------------------------------------------------------
--spec set(atom(), ne_binary(), wh_proplist()) -> ecallmgr_util:send_cmd_ret().
+-spec set(atom(), ne_binary(), kz_proplist()) -> ecallmgr_util:send_cmd_ret().
 set(_, _, []) -> 'ok';
 set(Node, UUID, Props) ->
     NewProps = maybe_export_vars(Node, UUID, Props),
@@ -41,7 +41,7 @@ set(Node, UUID, Props) ->
 %% set channel and call variables in FreeSWITCH (in background)
 %% @end
 %%--------------------------------------------------------------------
--spec bg_set(atom(), ne_binary(), wh_proplist()) -> ecallmgr_util:send_cmd_ret().
+-spec bg_set(atom(), ne_binary(), kz_proplist()) -> ecallmgr_util:send_cmd_ret().
 bg_set(_, _, []) -> 'ok';
 bg_set(Node, UUID, Props) ->
     NewProps = maybe_export_vars(Node, UUID, Props),
@@ -54,7 +54,7 @@ bg_set(Node, UUID, Props) ->
 %% unset channel and call variables in FreeSWITCH
 %% @end
 %%--------------------------------------------------------------------
--spec unset(atom(), ne_binary(), wh_proplist()) -> ecallmgr_util:send_cmd_ret().
+-spec unset(atom(), ne_binary(), kz_proplist()) -> ecallmgr_util:send_cmd_ret().
 unset(_, _, []) -> 'ok';
 unset(Node, UUID, Props) ->
     AppArgs = process_fs_kv(Node, UUID, Props, 'unset'),
@@ -66,7 +66,7 @@ unset(Node, UUID, Props) ->
 %% unset channel and call variables in FreeSWITCH (in background)
 %% @end
 %%--------------------------------------------------------------------
--spec bg_unset(atom(), ne_binary(), wh_proplist()) -> ecallmgr_util:send_cmd_ret().
+-spec bg_unset(atom(), ne_binary(), kz_proplist()) -> ecallmgr_util:send_cmd_ret().
 bg_unset(_, _, []) -> 'ok';
 bg_unset(Node, UUID, Props) ->
     AppArgs = process_fs_kv(Node, UUID, Props, 'unset'),
@@ -78,7 +78,7 @@ bg_unset(Node, UUID, Props) ->
 %% export channel and call variables in FreeSWITCH
 %% @end
 %%--------------------------------------------------------------------
--spec export(atom(), ne_binary(), wh_proplist()) -> ecallmgr_util:send_cmd_ret().
+-spec export(atom(), ne_binary(), kz_proplist()) -> ecallmgr_util:send_cmd_ret().
 export(_, _, []) -> 'ok';
 export(Node, UUID, Props) ->
     Exports = process_fs_kv(Node, UUID, Props, 'export'),
@@ -96,7 +96,7 @@ export(Node, UUID, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_export(atom(), ne_binary(), wh_proplist()) -> ecallmgr_util:send_cmd_ret().
+-spec bridge_export(atom(), ne_binary(), kz_proplist()) -> ecallmgr_util:send_cmd_ret().
 bridge_export(_, _, []) -> 'ok';
 bridge_export(Node, UUID, Props) ->
     Exports = process_fs_kv(Node, UUID, Props, 'export'),
@@ -113,7 +113,7 @@ bridge_export(Node, UUID, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec record_call(atom(), ne_binary(), wh_proplist()) -> ecallmgr_util:send_cmd_ret().
+-spec record_call(atom(), ne_binary(), kz_proplist()) -> ecallmgr_util:send_cmd_ret().
 record_call(Node, UUID, Args) ->
     lager:debug("execute on node ~p: uuid_record(~p)", [Node, Args]),
     case freeswitch:api(Node, 'uuid_record', Args) of
@@ -123,7 +123,7 @@ record_call(Node, UUID, Args) ->
         {'error', <<"-ERR ", E/binary>>} ->
             lager:debug("error executing uuid_record: ~p", [E]),
             Evt = list_to_binary([ecallmgr_util:create_masquerade_event(<<"record_call">>, <<"RECORD_STOP">>)
-                                  ,",whistle_application_response="
+                                  ,",kazoo_application_response="
                                   ,"'",binary:replace(E, <<"\n">>, <<>>),"'"
                                  ]),
             lager:debug("publishing event: ~p", [Evt]),
@@ -132,7 +132,7 @@ record_call(Node, UUID, Args) ->
         {'error', _Reason}=Error ->
             lager:debug("error executing uuid_record: ~p", [_Reason]),
             Evt = list_to_binary([ecallmgr_util:create_masquerade_event(<<"record_call">>, <<"RECORD_STOP">>)
-                                  ,",whistle_application_response=timeout"
+                                  ,",kazoo_application_response=timeout"
                                  ]),
             lager:debug("publishing event: ~p", [Evt]),
             _ = ecallmgr_util:send_cmd(Node, UUID, "application", Evt),
@@ -140,7 +140,7 @@ record_call(Node, UUID, Args) ->
     end.
 
 %% format channel and call variables
--spec process_fs_kv(atom(), ne_binary(), wh_proplist(), atom()) -> [binary()].
+-spec process_fs_kv(atom(), ne_binary(), kz_proplist(), atom()) -> [binary()].
 process_fs_kv(_, _, [], _) -> [];
 process_fs_kv(Node, UUID, [{K, V}|KVs], Action) ->
     X1 = format_fs_kv(K, V, UUID, Action),
@@ -183,7 +183,7 @@ format_fs_kv(Key, Value, UUID, _) ->
     {K, V} = ecallmgr_util:get_fs_key_and_value(Key, Value, UUID),
     [<<K/binary, "=", V/binary>>].
 
--spec maybe_export_vars(atom(), ne_binary(), wh_proplist()) -> wh_proplist().
+-spec maybe_export_vars(atom(), ne_binary(), kz_proplist()) -> kz_proplist().
 maybe_export_vars(Node, UUID, Props) ->
     lists:foldl(fun({<<"Hold-Media">> = K, V}, Acc) ->
                         export(Node, UUID, [{K, V}]),

@@ -67,7 +67,7 @@ authz_details([]) ->
 authz_details([Channel|Channels]) ->
     io:format("~n", []),
     Props = j5_channels:to_props(Channel),
-    Timestamp = wh_util:current_tstamp(),
+    Timestamp = kz_util:current_tstamp(),
     pretty_print_field(<<"Call ID">>, props:get_value(<<"Call-ID">>, Props)),
     pretty_print_field(<<"Other Leg Call ID">>, props:get_value(<<"Other-Leg-Call-ID">>, Props)),
     pretty_print_field(<<"Direction">>, props:get_value(<<"Direction">>, Props)),
@@ -92,22 +92,22 @@ authz_details([Channel|Channels]) ->
 authz_details(AccountId) ->
     authz_details(j5_channels:account(AccountId)).
 
--spec authz_details_cost(wh_proplist(), non_neg_integer()) -> non_neg_integer().
+-spec authz_details_cost(kz_proplist(), non_neg_integer()) -> non_neg_integer().
 authz_details_cost(Props, Timestamp) ->
     case props:get_integer_value(<<"Answered-Timestamp">>, Props) of
         'undefined' -> 0;
         Answered ->
             BillingSeconds = Timestamp - Answered,
-            JObj = wh_json:from_list([{<<"Billing-Seconds">>, BillingSeconds} | Props]),
+            JObj = kz_json:from_list([{<<"Billing-Seconds">>, BillingSeconds} | Props]),
             wht_util:units_to_dollars(wht_util:call_cost(JObj))
     end.
 
--spec authz_details_duration(ne_binary(), wh_proplist(), non_neg_integer()) -> iolist().
+-spec authz_details_duration(ne_binary(), kz_proplist(), non_neg_integer()) -> iolist().
 authz_details_duration(Key, Props, Timestamp) ->
     case props:get_integer_value(Key, Props) of
         'undefined' -> "0s";
         Created ->
-            [wh_util:to_list(Timestamp - Created), "s"]
+            [kz_util:to_list(Timestamp - Created), "s"]
     end.
 
 -spec limits_summary() -> 'no_return'.
@@ -141,7 +141,7 @@ limits_summary([Limit|Limits]) ->
                       ,[j5_limits:account_id(Limit)
                         ,j5_limits:calls(Limit)
                         ,j5_limits:resource_consuming_calls(Limit)
-                        ,length(wh_json:get_keys(j5_limits:allotments(Limit)))
+                        ,length(kz_json:get_keys(j5_limits:allotments(Limit)))
                         ,j5_limits:inbound_trunks(Limit)
                         ,j5_limits:outbound_trunks(Limit)
                         ,j5_limits:twoway_trunks(Limit)
@@ -163,7 +163,7 @@ limits_summary_prepay(Limit) ->
         'false' -> "disabled";
         'true' ->
             AccountId = j5_limits:account_id(Limit),
-            wh_util:to_list(
+            kz_util:to_list(
               wht_util:units_to_dollars(
                 wht_util:current_balance(AccountId)
                )
@@ -175,7 +175,7 @@ limits_summary_postpay(Limit) ->
     case j5_limits:allow_postpay(Limit) of
         'false' -> "disabled";
         'true' ->
-            wh_util:to_list(
+            kz_util:to_list(
               wht_util:units_to_dollars(
                 j5_limits:max_postpay(Limit)
                )
@@ -192,9 +192,9 @@ limit_summary_header() ->
 
 -spec limits_details(atom() | string() | ne_binary()) -> 'no_return'.
 limits_details(Account) when not is_binary(Account) ->
-    limits_details(wh_util:to_binary(Account));
+    limits_details(kz_util:to_binary(Account));
 limits_details(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountId = kz_util:format_account_id(Account, 'raw'),
     Props = j5_limits:to_props(j5_limits:get(AccountId)),
     io:format("Account Info:~n", []),
     pretty_print_field("  Account ID", props:get_value('account_id', Props)),
@@ -221,20 +221,20 @@ limits_details(Account) ->
     limits_details_allotments(props:get_value('allotments', Props)),
     'no_return'.
 
--spec limits_details_allotments(wh_json:object()) -> 'ok'.
+-spec limits_details_allotments(kz_json:object()) -> 'ok'.
 limits_details_allotments(JObj) ->
-    case wh_json:get_keys(JObj) of
+    case kz_json:get_keys(JObj) of
         [] -> io:format("  -none-~n", []);
         Keys -> limits_details_allotments(Keys, JObj)
     end.
 
--spec limits_details_allotments(ne_binaries(), wh_json:object()) -> 'ok'.
+-spec limits_details_allotments(ne_binaries(), kz_json:object()) -> 'ok'.
 limits_details_allotments([], _) -> 'ok';
 limits_details_allotments([Key|Keys], JObj) ->
     io:format("~n", []),
-    pretty_print_field("  Name", wh_json:get_value([Key, <<"name">>], JObj, Key)),
-    pretty_print_field("  Amount", wh_json:get_value([Key, <<"amount">>], JObj, 0)),
-    pretty_print_field("  Cycle", wh_json:get_value([Key, <<"cycle">>], JObj, <<"monthly">>)),
+    pretty_print_field("  Name", kz_json:get_value([Key, <<"name">>], JObj, Key)),
+    pretty_print_field("  Amount", kz_json:get_value([Key, <<"amount">>], JObj, 0)),
+    pretty_print_field("  Cycle", kz_json:get_value([Key, <<"cycle">>], JObj, <<"monthly">>)),
     limits_details_allotments(Keys, JObj).
 
 -spec pretty_print_field(text(), any()) -> 'ok'.

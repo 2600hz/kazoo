@@ -36,14 +36,14 @@
         ]).
 
 -include("konami.hrl").
--include_lib("whistle_apps/include/wh_hooks.hrl").
+-include_lib("kazoo_apps/include/kz_hooks.hrl").
 
 -define(SERVER, ?MODULE).
 
 -record(state, {cleanup_ref :: reference()}).
 
 -define(CLEANUP_TIMEOUT
-        ,whapps_config:get_integer(?APP_NAME, <<"event_cleanup_timeout_ms">>, ?MILLISECONDS_IN_HOUR)
+        ,kapps_config:get_integer(?APP_NAME, <<"event_cleanup_timeout_ms">>, ?MILLISECONDS_IN_HOUR)
        ).
 
 %% By convention, we put the options here in macros, but not required.
@@ -136,8 +136,8 @@ rm_konami_binding('undefined') -> 'ok';
 rm_konami_binding(<<_/binary>> = CallId) ->
     gen_listener:rm_binding(?SERVER, ?KONAMI_BINDINGS(CallId)).
 
--spec add_call_binding(api_binary() | whapps_call:call()) -> 'ok'.
--spec add_call_binding(api_binary() | whapps_call:call(), ne_binaries() | atoms()) -> 'ok'.
+-spec add_call_binding(api_binary() | kapps_call:call()) -> 'ok'.
+-spec add_call_binding(api_binary() | kapps_call:call(), ne_binaries() | atoms()) -> 'ok'.
 add_call_binding('undefined') -> 'ok';
 add_call_binding(CallId) when is_binary(CallId) ->
     lager:debug("add fsm binding for call ~s: ~p", [CallId, ?TRACKED_CALL_EVENTS]),
@@ -145,9 +145,9 @@ add_call_binding(CallId) when is_binary(CallId) ->
     gen_listener:b_add_binding(?SERVER, ?DYN_BINDINGS(CallId, ?TRACKED_CALL_EVENTS)),
     gen_listener:b_add_binding(?SERVER, ?META_BINDINGS(CallId));
 add_call_binding(Call) ->
-    gen_listener:cast(?SERVER, {'add_account_events', whapps_call:account_id(Call)}),
-    catch gproc:reg(?KONAMI_REG({'fsm', whapps_call:account_id(Call)})),
-    add_call_binding(whapps_call:call_id_direct(Call)).
+    gen_listener:cast(?SERVER, {'add_account_events', kapps_call:account_id(Call)}),
+    catch gproc:reg(?KONAMI_REG({'fsm', kapps_call:account_id(Call)})),
+    add_call_binding(kapps_call:call_id_direct(Call)).
 
 add_call_binding('undefined', _) -> 'ok';
 add_call_binding(CallId, Events) when is_binary(CallId) ->
@@ -156,11 +156,11 @@ add_call_binding(CallId, Events) when is_binary(CallId) ->
     gen_listener:b_add_binding(?SERVER, ?DYN_BINDINGS(CallId, Events)),
     gen_listener:b_add_binding(?SERVER, ?META_BINDINGS(CallId));
 add_call_binding(Call, Events) ->
-    gen_listener:cast(?SERVER, {'add_account_events', whapps_call:account_id(Call)}),
-    catch gproc:reg(?KONAMI_REG({'fsm', whapps_call:account_id(Call)})),
-    add_call_binding(whapps_call:call_id_direct(Call), Events).
+    gen_listener:cast(?SERVER, {'add_account_events', kapps_call:account_id(Call)}),
+    catch gproc:reg(?KONAMI_REG({'fsm', kapps_call:account_id(Call)})),
+    add_call_binding(kapps_call:call_id_direct(Call), Events).
 
--spec rm_call_binding(api_binary() | whapps_call:call()) -> 'ok'.
+-spec rm_call_binding(api_binary() | kapps_call:call()) -> 'ok'.
 rm_call_binding('undefined') -> 'ok';
 rm_call_binding(CallId) ->
     catch gproc:unreg(?KONAMI_REG({'fsm', CallId})),
@@ -198,11 +198,11 @@ really_remove_call_bindings(CallId, Events) ->
     gen_listener:rm_binding(?SERVER, ?DYN_BINDINGS(CallId, Events)),
     gen_listener:rm_binding(?SERVER, ?META_BINDINGS(CallId)).
 
--spec handle_call_event(wh_json:object(), wh_proplist()) -> any().
+-spec handle_call_event(kz_json:object(), kz_proplist()) -> any().
 handle_call_event(JObj, Props) ->
-    'true' = wapi_call:event_v(JObj)
-        orelse wapi_dialplan:error_v(JObj),
-    wh_util:put_callid(JObj),
+    'true' = kapi_call:event_v(JObj)
+        orelse kapi_dialplan:error_v(JObj),
+    kz_util:put_callid(JObj),
     handle_call_event(JObj, Props, kz_call_event:event_name(JObj)).
 
 handle_call_event(JObj, _Props, <<"CHANNEL_DESTROY">> = Event) ->
@@ -216,40 +216,40 @@ handle_call_event(JObj, _Props, Event) ->
     _ = relay_to_fsms(CallId, Event, JObj),
     relay_to_pids(CallId, JObj).
 
--spec handle_originate_event(wh_json:object(), wh_proplist()) -> any().
+-spec handle_originate_event(kz_json:object(), kz_proplist()) -> any().
 handle_originate_event(JObj, _Props) ->
-    CallId = wh_json:get_first_defined([<<"Call-ID">>, <<"Outbound-Call-ID">>], JObj),
+    CallId = kz_json:get_first_defined([<<"Call-ID">>, <<"Outbound-Call-ID">>], JObj),
     relay_to_pids(CallId, JObj).
 
--spec handle_metaflow_req(wh_json:object(), wh_proplist()) -> any().
+-spec handle_metaflow_req(kz_json:object(), kz_proplist()) -> any().
 handle_metaflow_req(JObj, _Props) ->
-    'true' = wapi_metaflow:req_v(JObj),
+    'true' = kapi_metaflow:req_v(JObj),
 
     CallId = kz_call_event:call_id(JObj),
-    Evt = wh_json:from_list(
-            [{<<"module">>, wh_json:get_value(<<"Action">>, JObj)}
-             ,{<<"data">>, wh_json:set_value(<<"dtmf_leg">>
+    Evt = kz_json:from_list(
+            [{<<"module">>, kz_json:get_value(<<"Action">>, JObj)}
+             ,{<<"data">>, kz_json:set_value(<<"dtmf_leg">>
                                              ,CallId
-                                             ,wh_json:get_value(<<"Data">>, JObj, wh_json:new())
+                                             ,kz_json:get_value(<<"Data">>, JObj, kz_json:new())
                                             )
               }
             ]),
     relay_to_fsm(CallId, <<"metaflow_exe">>, Evt).
 
--spec handle_konami(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_konami(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_konami(JObj, _Props) ->
-    handle_konami_api(JObj, wh_json:get_value(<<"Event-Name">>, JObj)).
+    handle_konami_api(JObj, kz_json:get_value(<<"Event-Name">>, JObj)).
 
--spec handle_konami_api(wh_json:object(), ne_binary()) -> 'ok'.
+-spec handle_konami_api(kz_json:object(), ne_binary()) -> 'ok'.
 handle_konami_api(JObj, <<"transferred">> = Event) ->
-    'true' = wapi_konami:transferred_v(JObj),
-    Target = wh_json:get_value(<<"Target">>, JObj),
+    'true' = kapi_konami:transferred_v(JObj),
+    Target = kz_json:get_value(<<"Target">>, JObj),
     relay_to_fsm(Target, Event, JObj).
 
 -spec queue_name() -> ne_binary().
 queue_name() -> gen_listener:queue_name(?SERVER).
 
--spec relay_to_fsms(ne_binary(), ne_binary(), wh_json:object()) -> any().
+-spec relay_to_fsms(ne_binary(), ne_binary(), kz_json:object()) -> any().
 relay_to_fsms(CallId, Event, JObj) ->
     [konami_code_fsm:event(FSM, CallId, Event, JObj)
      || FSM <- fsms_for_callid(CallId)
@@ -272,16 +272,16 @@ fsms() ->
 metaflows() ->
     pids_for_callid('_').
 
--spec relay_to_fsm(ne_binary(), ne_binary(), wh_json:object()) -> any().
+-spec relay_to_fsm(ne_binary(), ne_binary(), kz_json:object()) -> any().
 relay_to_fsm(CallId, Event, JObj) ->
     [FSM | _] = fsms_for_callid(CallId),
     konami_code_fsm:event(FSM, CallId, Event, JObj).
 
--spec relay_to_pids(ne_binary(), wh_json:object()) -> any().
+-spec relay_to_pids(ne_binary(), kz_json:object()) -> any().
 relay_to_pids(CallId, JObj) ->
     [begin
-         whapps_call_command:relay_event(Pid, JObj),
-         lager:debug("relaying ~p to ~p", [wh_util:get_event_type(JObj), Pid])
+         kapps_call_command:relay_event(Pid, JObj),
+         lager:debug("relaying ~p to ~p", [kz_util:get_event_type(JObj), Pid])
      end
      || Pid <- pids_for_callid(CallId)
     ].
@@ -347,7 +347,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({'originate', Req}, State) ->
-    catch wapi_resource:publish_originate_req(Req),
+    catch kapi_resource:publish_originate_req(Req),
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State};
@@ -355,7 +355,7 @@ handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast({'add_account_events', AccountId}, State) ->
     lager:debug("registering for account events for ~s", [AccountId]),
-    wh_hooks:register(AccountId, <<"CHANNEL_ANSWER">>),
+    kz_hooks:register(AccountId, <<"CHANNEL_ANSWER">>),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -375,7 +375,7 @@ handle_info(?HOOK_EVT(AccountId, <<"CHANNEL_ANSWER">> = EventName, Event), State
     _ = relay_to_fsms(AccountId, EventName, Event),
     {'noreply', State};
 handle_info({'timeout', Ref, _Msg}, #state{cleanup_ref=Ref}=State) ->
-    _P = wh_util:spawn(fun cleanup_bindings/1, [self()]),
+    _P = kz_util:spawn(fun cleanup_bindings/1, [self()]),
     {'noreply', State#state{cleanup_ref=cleanup_timer()}};
 handle_info(_Info, State) ->
     {'noreply', State}.
@@ -422,7 +422,7 @@ code_change(_OldVsn, State, _Extra) ->
 -spec cleanup_bindings(server_ref()) -> 'ok'.
 -spec cleanup_bindings(server_ref(), gen_listener:bindings()) -> 'ok'.
 cleanup_bindings(Srv) ->
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     cleanup_bindings(Srv, gen_listener:bindings(Srv)).
 
 cleanup_bindings(_Srv, []) -> 'ok';
@@ -430,7 +430,7 @@ cleanup_bindings(Srv, [{Binding, Props}|Bindings]) ->
     maybe_remove_binding(Srv, Binding, Props, props:get_value('callid', Props)),
     cleanup_bindings(Srv, Bindings).
 
--spec maybe_remove_binding(server_ref(), atom(), wh_proplist(), api_binary()) -> 'ok'.
+-spec maybe_remove_binding(server_ref(), atom(), kz_proplist(), api_binary()) -> 'ok'.
 maybe_remove_binding(_Srv, _Binding, _Props, 'undefined') -> 'ok';
 maybe_remove_binding(Srv, Binding, Props, CallId) ->
     case {fsms_for_callid(CallId), pids_for_callid(CallId)} of

@@ -26,7 +26,7 @@
 
 -define(KNM_VI_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".voip_innovations">>).
 
--define(VI_DEBUG, whapps_config:get_is_true(?KNM_VI_CONFIG_CAT, <<"debug">>, 'false')).
+-define(VI_DEBUG, kapps_config:get_is_true(?KNM_VI_CONFIG_CAT, <<"debug">>, 'false')).
 -define(VI_DEBUG_FILE, "/tmp/voipinnovations.xml").
 -define(DEBUG_WRITE(Format, Args),
         _ = ?VI_DEBUG andalso
@@ -40,9 +40,9 @@
 -define(VI_DEFAULT_NAMESPACE, "http://tempuri.org/").
 
 -define(IS_SANDBOX_PROVISIONING_TRUE,
-       whapps_config:get_is_true(?KNM_VI_CONFIG_CAT, <<"sandbox_provisioning">>, 'false')).
+       kapps_config:get_is_true(?KNM_VI_CONFIG_CAT, <<"sandbox_provisioning">>, 'false')).
 -define(IS_PROVISIONING_ENABLED,
-        whapps_config:get_is_true(?KNM_VI_CONFIG_CAT, <<"enable_provisioning">>, 'true')).
+        kapps_config:get_is_true(?KNM_VI_CONFIG_CAT, <<"enable_provisioning">>, 'true')).
 
 -define(VI_URL_V2, %% (XML POST)
         "https://backoffice.voipinnovations.com/api2.pl").
@@ -53,13 +53,13 @@
 -define(URL_IN_USE,
        case ?IS_SANDBOX_PROVISIONING_TRUE of 'true' -> ?VI_URL_V3_SANDBOX; 'false' -> ?VI_URL_V3 end).
 
--define(VI_LOGIN, whapps_config:get_string(?KNM_VI_CONFIG_CAT, <<"login">>, <<>>)).
--define(VI_PASSWORD, whapps_config:get_string(?KNM_VI_CONFIG_CAT, <<"password">>, <<>>)).
--define(VI_ENDPOINT_GROUP, whapps_config:get_string(?KNM_VI_CONFIG_CAT, <<"endpoint_group">>, <<>>)).
+-define(VI_LOGIN, kapps_config:get_string(?KNM_VI_CONFIG_CAT, <<"login">>, <<>>)).
+-define(VI_PASSWORD, kapps_config:get_string(?KNM_VI_CONFIG_CAT, <<"password">>, <<>>)).
+-define(VI_ENDPOINT_GROUP, kapps_config:get_string(?KNM_VI_CONFIG_CAT, <<"endpoint_group">>, <<>>)).
 
 
 -type soap_response() :: {'ok', xml_el()} | {'error', any()}.
--type to_json_ret() :: {'ok', wh_json:object()} | {'error', any()}.
+-type to_json_ret() :: {'ok', kz_json:object()} | {'error', any()}.
 
 %%% API
 
@@ -69,13 +69,13 @@
 %% Query the system for a quantity of available numbers in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec get_number_data(ne_binary()) -> wh_json:object().
+-spec get_number_data(ne_binary()) -> kz_json:object().
 get_number_data(N) ->
     Number = 'remove +1'(N),
     Resp = soap("queryDID", Number),
     case to_json('get_number_data', Number, Resp) of
         {'ok', JObj} -> JObj;
-        {'error', _R} -> wh_json:new()
+        {'error', _R} -> kz_json:new()
     end.
 
 %% @public
@@ -89,7 +89,7 @@ is_number_billable(_Number) -> 'true'.
 %% Query the system for a quantity of available numbers in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
+-spec find_numbers(ne_binary(), pos_integer(), kz_proplist()) ->
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
 find_numbers(<<"+", Rest/binary>>, Quantity, Options) ->
@@ -177,11 +177,11 @@ to_numbers({'error',_R}=Error, _) ->
 to_numbers({'ok',JObjs}, AccountId) ->
     {'ok',
      [ begin
-           NormalizedNum = wh_json:get_value(<<"e164">>, JObj),
+           NormalizedNum = kz_json:get_value(<<"e164">>, JObj),
            NumberDb = knm_converters:to_db(NormalizedNum),
            Updates = [{fun knm_phone_number:set_number/2, NormalizedNum}
                       ,{fun knm_phone_number:set_number_db/2, NumberDb}
-                      ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
+                      ,{fun knm_phone_number:set_module_name/2, kz_util:to_binary(?MODULE)}
                       ,{fun knm_phone_number:set_carrier_data/2, JObj}
                       ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
                       ,{fun knm_phone_number:set_assign_to/2, AccountId}
@@ -197,10 +197,10 @@ to_numbers({'ok',JObjs}, AccountId) ->
 maybe_return({'error', Reason}, N) ->
     knm_errors:by_carrier(?MODULE, Reason, N);
 maybe_return({'ok', JObj}, N) ->
-    case <<"100">> == wh_json:get_value(<<"code">>, JObj) of
+    case <<"100">> == kz_json:get_value(<<"code">>, JObj) of
         'true' -> N;
         'false' ->
-            Reason = wh_json:get_value(<<"msg">>, JObj),
+            Reason = kz_json:get_value(<<"msg">>, JObj),
             maybe_return({'error', Reason}, N)
     end.
 
@@ -209,34 +209,34 @@ maybe_return({'ok', JObj}, N) ->
 to_json('get_number_data', _Number, {'ok', Xml}) ->
     XPath = xpath("queryDID", ["DIDs", "DID"]),
     [DID] = xmerl_xpath:string(XPath, Xml),
-    Code = wh_util:get_xml_value("//statusCode/text()", DID),
-    Msg = wh_util:get_xml_value("//status/text()", DID),
+    Code = kz_util:get_xml_value("//statusCode/text()", DID),
+    Msg = kz_util:get_xml_value("//status/text()", DID),
     lager:debug("lookup ~s: ~s:~s", [_Number, Code, Msg]),
-    R = [{<<"e164">>, knm_converters:normalize(wh_util:get_xml_value("//tn/text()", DID))}
-        ,{<<"status">>, wh_util:get_xml_value("//availability/text()", DID)}
+    R = [{<<"e164">>, knm_converters:normalize(kz_util:get_xml_value("//tn/text()", DID))}
+        ,{<<"status">>, kz_util:get_xml_value("//availability/text()", DID)}
         ,{<<"msg">>, Msg}
         ,{<<"code">>, Code}
-        ,{<<"expireDate">>, wh_util:get_xml_value("//expireDate/text()", DID)}
-        ,{<<"has411">>, wh_util:is_true(wh_util:get_xml_value("//has411/text()", DID))}
-        ,{<<"has911">>, wh_util:is_true(wh_util:get_xml_value("//has911/text()", DID))}
-        ,{<<"t38">>, wh_util:is_true(wh_util:get_xml_value("//t38/text()", DID))}
-        ,{<<"cnam">>, wh_util:is_true(wh_util:get_xml_value("//cnam/text()", DID))}
-        ,{<<"cnamStorageActive">>, wh_util:is_true(wh_util:get_xml_value("//cnamStorageActive/text()", DID))}
-        ,{<<"cnamStorageAvailability">>, wh_util:is_true(wh_util:get_xml_value("//cnamStorageAvailability/text()", DID))}
+        ,{<<"expireDate">>, kz_util:get_xml_value("//expireDate/text()", DID)}
+        ,{<<"has411">>, kz_util:is_true(kz_util:get_xml_value("//has411/text()", DID))}
+        ,{<<"has911">>, kz_util:is_true(kz_util:get_xml_value("//has911/text()", DID))}
+        ,{<<"t38">>, kz_util:is_true(kz_util:get_xml_value("//t38/text()", DID))}
+        ,{<<"cnam">>, kz_util:is_true(kz_util:get_xml_value("//cnam/text()", DID))}
+        ,{<<"cnamStorageActive">>, kz_util:is_true(kz_util:get_xml_value("//cnamStorageActive/text()", DID))}
+        ,{<<"cnamStorageAvailability">>, kz_util:is_true(kz_util:get_xml_value("//cnamStorageAvailability/text()", DID))}
         ],
-    {'ok', wh_json:from_list(R)};
+    {'ok', kz_json:from_list(R)};
 
 to_json('find_numbers', Quantity, {'ok', Xml}) ->
     XPath = xpath("getDIDs", ["DIDLocators", "DIDLocator"]),
     DIDs = xmerl_xpath:string(XPath, Xml),
     lager:debug("found ~p numbers", [length(DIDs)]),
     {'ok',
-     [ wh_json:from_list(
-         [{<<"e164">>, knm_converters:normalize(wh_util:get_xml_value("//tn/text()", DID))}
-          ,{<<"rate_center">>, wh_util:get_xml_value("//rateCenter/text()", DID)}
-          ,{<<"state">>, wh_util:get_xml_value("//state/text()", DID)}
-          ,{<<"cnam">>, wh_util:is_true(wh_util:get_xml_value("//outboundCNAM/text()", DID))}
-          ,{<<"t38">>, wh_util:is_true(wh_util:get_xml_value("//t38/text()", DID))}
+     [ kz_json:from_list(
+         [{<<"e164">>, knm_converters:normalize(kz_util:get_xml_value("//tn/text()", DID))}
+          ,{<<"rate_center">>, kz_util:get_xml_value("//rateCenter/text()", DID)}
+          ,{<<"state">>, kz_util:get_xml_value("//state/text()", DID)}
+          ,{<<"cnam">>, kz_util:is_true(kz_util:get_xml_value("//outboundCNAM/text()", DID))}
+          ,{<<"t38">>, kz_util:is_true(kz_util:get_xml_value("//t38/text()", DID))}
          ])
        || DID=#xmlElement{} <- lists:sublist(DIDs, Quantity)
      ]
@@ -245,13 +245,13 @@ to_json('find_numbers', Quantity, {'ok', Xml}) ->
 to_json('acquire_number', _Numbers, {'ok', Xml}) ->
     XPath = xpath("assignDID", ["DIDs", "DID"]),
     [JObj] = [ begin
-                   Code = wh_util:get_xml_value("//statusCode/text()", DID),
+                   Code = kz_util:get_xml_value("//statusCode/text()", DID),
                    lager:debug("acquire ~s: ~s:~s",
-                               [wh_util:get_xml_value("//tn/text()", DID)
+                               [kz_util:get_xml_value("//tn/text()", DID)
                                ,Code
-                               ,wh_util:get_xml_value("//status/text()", DID)
+                               ,kz_util:get_xml_value("//status/text()", DID)
                                ]),
-                   wh_json:from_list([{<<"code">>, Code}])
+                   kz_json:from_list([{<<"code">>, Code}])
                end
                || DID=#xmlElement{name = 'DID'}
                       <- xmerl_xpath:string(XPath, Xml)
@@ -261,11 +261,11 @@ to_json('acquire_number', _Numbers, {'ok', Xml}) ->
 to_json('disconnect_number', _Numbers, {'ok', Xml}) ->
     XPath = xpath("releaseDID", ["DIDs", "DID"]),
     [JObj] = [ begin
-                   N = wh_util:get_xml_value("//tn/text()", DID),
-                   Msg = wh_util:get_xml_value("//status/text()", DID),
-                   Code = wh_util:get_xml_value("//statusCode/text()", DID),
+                   N = kz_util:get_xml_value("//tn/text()", DID),
+                   Msg = kz_util:get_xml_value("//status/text()", DID),
+                   Code = kz_util:get_xml_value("//statusCode/text()", DID),
                    lager:debug("disconnect ~s: ~s:~s", [N, Code, Msg]),
-                   wh_json:from_list(
+                   kz_json:from_list(
                      [{<<"code">>, Code}
                       ,{<<"msg">>, Msg}
                       ,{<<"e164">>, knm_converters:normalize(N)}
@@ -401,8 +401,8 @@ handle_response({'error', _}=E) ->
 
 -spec verify_response(xml_el()) -> soap_response().
 verify_response(Xml) ->
-    RespCode = wh_util:get_xml_value("//responseCode/text()", Xml),
-    RespMsg = wh_util:get_xml_value("//responseMessage/text()", Xml),
+    RespCode = kz_util:get_xml_value("//responseCode/text()", Xml),
+    RespMsg = kz_util:get_xml_value("//responseMessage/text()", Xml),
     lager:debug("carrier response: ~s ~s", [RespCode, RespMsg]),
     case RespCode == <<"100">> of
         'true' ->

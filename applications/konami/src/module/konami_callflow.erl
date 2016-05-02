@@ -17,27 +17,27 @@
 
 -define(LIST_BY_NUMBER, <<"callflow/listing_by_number">>).
 
--spec handle(wh_json:object(), whapps_call:call()) ->
-                    {'stop', whapps_call:call()}.
+-spec handle(kz_json:object(), kapps_call:call()) ->
+                    {'stop', kapps_call:call()}.
 handle(Data, Call) ->
     {'ok', CallflowJObj} = callflow(Data, Call),
-    Flow = wh_json:get_value(<<"flow">>, CallflowJObj),
-    API = [{<<"Call">>, whapps_call:to_json(Call)}
+    Flow = kz_json:get_value(<<"flow">>, CallflowJObj),
+    API = [{<<"Call">>, kapps_call:to_json(Call)}
            ,{<<"Flow">>, Flow}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    wapi_callflow:publish_resume(API),
+    kapi_callflow:publish_resume(API),
     {'stop', Call}.
 
 callflow(Data, Call) ->
-    callflow(Data, Call, wh_doc:id(Data)).
+    callflow(Data, Call, kz_doc:id(Data)).
 
 callflow(Data, Call, 'undefined') ->
-    captured_callflow(Call, wh_json:get_first_defined([<<"captures">>
+    captured_callflow(Call, kz_json:get_first_defined([<<"captures">>
                                                        ,<<"collected">>
                                                       ], Data));
 callflow(_Data, Call, CallflowId) ->
-    kz_datamgr:open_cache_doc(whapps_call:account_db(Call)
+    kz_datamgr:open_cache_doc(kapps_call:account_db(Call)
                              ,CallflowId
                             ).
 
@@ -46,7 +46,7 @@ captured_callflow(Call, [Number]) ->
     captured_callflow(Call, Number);
 captured_callflow(Call, Number) ->
     Options = [{'key', Number}, 'include_docs'],
-    case kz_datamgr:get_results(whapps_call:account_db(Call), ?LIST_BY_NUMBER, Options) of
-        {'ok', [JObj]} -> {'ok', wh_json:get_value(<<"doc">>, JObj)};
+    case kz_datamgr:get_results(kapps_call:account_db(Call), ?LIST_BY_NUMBER, Options) of
+        {'ok', [JObj]} -> {'ok', kz_json:get_value(<<"doc">>, JObj)};
         E -> E
     end.

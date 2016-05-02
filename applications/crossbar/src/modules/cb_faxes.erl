@@ -154,7 +154,7 @@ resource_exists(?INBOX, _Id, ?ATTACHMENT) -> 'true';
 resource_exists(?OUTBOX, _Id, ?ATTACHMENT) -> 'true';
 resource_exists(?INCOMING, _Id, ?ATTACHMENT) -> 'true'.
 
--spec acceptable_content_types() -> wh_proplist().
+-spec acceptable_content_types() -> kz_proplist().
 acceptable_content_types() ->
     ?ACCEPTED_MIME_TYPES.
 
@@ -182,18 +182,18 @@ maybe_add_types_accepted(Context, _) -> Context.
 -spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
                                     cb_context:context().
 content_types_provided(Context, ?OUTBOX, ?MATCH_MODB_PREFIX(YYYY,MM,_) = FaxId, ?ATTACHMENT) ->
-    Year  = wh_util:to_integer(YYYY),
-    Month = wh_util:to_integer(MM),
+    Year  = kz_util:to_integer(YYYY),
+    Month = kz_util:to_integer(MM),
     Ctx = cb_context:set_account_modb(Context, Year, Month),
     content_types_provided_for_fax(Ctx, FaxId, cb_context:req_verb(Context));
 content_types_provided(Context, ?INBOX, ?MATCH_MODB_PREFIX(YYYY,MM,_) = FaxId, ?ATTACHMENT) ->
-    Year  = wh_util:to_integer(YYYY),
-    Month = wh_util:to_integer(MM),
+    Year  = kz_util:to_integer(YYYY),
+    Month = kz_util:to_integer(MM),
     Ctx = cb_context:set_account_modb(Context, Year, Month),
     content_types_provided_for_fax(Ctx, FaxId, cb_context:req_verb(Context));
 content_types_provided(Context, ?INCOMING, ?MATCH_MODB_PREFIX(YYYY,MM,_) = FaxId, ?ATTACHMENT) ->
-    Year  = wh_util:to_integer(YYYY),
-    Month = wh_util:to_integer(MM),
+    Year  = kz_util:to_integer(YYYY),
+    Month = kz_util:to_integer(MM),
     Ctx = cb_context:set_account_modb(Context, Year, Month),
     content_types_provided_for_fax(Ctx, FaxId, cb_context:req_verb(Context));
 content_types_provided(Context, ?INCOMING, FaxId, ?ATTACHMENT) ->
@@ -218,10 +218,10 @@ content_types_provided_for_fax(Context, _FaxId, _Verb) ->
 
 -spec content_types_provided_for_fax(cb_context:context()) -> cb_context:context().
 content_types_provided_for_fax(Context) ->
-    case wh_doc:attachment_names(cb_context:doc(Context)) of
+    case kz_doc:attachment_names(cb_context:doc(Context)) of
         [] -> Context;
         [AttachmentId|_] ->
-            CT = wh_doc:attachment_content_type(cb_context:doc(Context), AttachmentId),
+            CT = kz_doc:attachment_content_type(cb_context:doc(Context), AttachmentId),
             [Type, SubType] = binary:split(CT, <<"/">>),
             lager:debug("found attachement of content type: ~s/~s~n", [Type, SubType]),
             cb_context:set_content_types_provided(Context, [{'to_binary', [{Type, SubType}]}])
@@ -243,7 +243,7 @@ content_types_provided_for_fax(Context) ->
 -spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 
 validate(Context) ->
-    create(cb_context:set_account_db(Context, ?WH_FAXES_DB)).
+    create(cb_context:set_account_db(Context, ?KZ_FAXES_DB)).
 
 validate(Context, ?OUTGOING) ->
     validate_outgoing_fax(Context, cb_context:req_verb(Context));
@@ -257,9 +257,9 @@ validate(Context, ?SMTP_LOG) ->
     load_smtp_log(Context).
 
 validate_outgoing_fax(Context, ?HTTP_GET) ->
-    outgoing_summary(cb_context:set_account_db(Context, ?WH_FAXES_DB));
+    outgoing_summary(cb_context:set_account_db(Context, ?KZ_FAXES_DB));
 validate_outgoing_fax(Context, ?HTTP_PUT) ->
-    create(cb_context:set_account_db(Context, ?WH_FAXES_DB)).
+    create(cb_context:set_account_db(Context, ?KZ_FAXES_DB)).
 
 validate(Context, ?SMTP_LOG, Id) ->
     load_smtp_log_doc(Id, Context);
@@ -273,13 +273,13 @@ validate(Context, ?OUTGOING, Id) ->
     validate_outgoing_fax(Context, Id, cb_context:req_verb(Context)).
 
 validate_outgoing_fax(Context, Id, ?HTTP_GET) ->
-    load_outgoing_fax_doc(Id, cb_context:set_account_db(Context, ?WH_FAXES_DB));
+    load_outgoing_fax_doc(Id, cb_context:set_account_db(Context, ?KZ_FAXES_DB));
 validate_outgoing_fax(Context, Id, ?HTTP_POST) ->
-    update(Id, cb_context:set_account_db(Context, ?WH_FAXES_DB));
+    update(Id, cb_context:set_account_db(Context, ?KZ_FAXES_DB));
 validate_outgoing_fax(Context, Id, ?HTTP_PATCH) ->
-    validate_patch(Id, cb_context:set_account_db(Context, ?WH_FAXES_DB));
+    validate_patch(Id, cb_context:set_account_db(Context, ?KZ_FAXES_DB));
 validate_outgoing_fax(Context, Id, ?HTTP_DELETE) ->
-    read(Id, cb_context:set_account_db(Context, ?WH_FAXES_DB)).
+    read(Id, cb_context:set_account_db(Context, ?KZ_FAXES_DB)).
 
 validate(Context, ?INBOX, Id, ?ATTACHMENT) ->
     validate_modb_fax_attachment(Context, Id, cb_context:req_verb(Context));
@@ -347,7 +347,7 @@ delete(Context, _, _Id) ->
 
 -spec delete(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 delete(Context, _, Id, ?ATTACHMENT) ->
-    ANames = wh_doc:attachment_names(cb_context:doc(Context)),
+    ANames = kz_doc:attachment_names(cb_context:doc(Context)),
     lists:foldl(fun(AName, Ctx) ->
                         crossbar_doc:delete_attachment(Id, AName, Ctx)
                 end
@@ -372,8 +372,8 @@ create(Context) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(?MATCH_MODB_PREFIX(YYYY,MM,_) = Id, Context) ->
-    Year  = wh_util:to_integer(YYYY),
-    Month = wh_util:to_integer(MM),
+    Year  = kz_util:to_integer(YYYY),
+    Month = kz_util:to_integer(MM),
     crossbar_doc:load({<<"fax">>, Id}, cb_context:set_account_modb(Context, Year, Month), ?TYPE_CHECK_OPTION(<<"fax">>));
 read(Id, Context) ->
     crossbar_doc:load({<<"fax">>, Id}, Context, ?TYPE_CHECK_OPTION(<<"fax">>)).
@@ -391,22 +391,22 @@ load_outgoing_fax_doc(Id, Context) ->
     Ctx = read(Id, Context),
     crossbar_util:apply_response_map(Ctx, ?OUTGOING_FAX_DOC_MAP).
 
--spec get_delivered_date(wh_json:object()) -> api_integer().
+-spec get_delivered_date(kz_json:object()) -> api_integer().
 get_delivered_date(JObj) ->
-    case wh_json:get_value(<<"pvt_delivered_date">>, JObj) of
+    case kz_json:get_value(<<"pvt_delivered_date">>, JObj) of
         'undefined' ->
-            case wh_json:get_value(<<"pvt_job_status">>, JObj) of
-                <<"completed">> -> wh_doc:modified(JObj);
+            case kz_json:get_value(<<"pvt_job_status">>, JObj) of
+                <<"completed">> -> kz_doc:modified(JObj);
                 _ -> 'undefined'
             end;
         Date -> Date
     end.
 
--spec get_execution_status(ne_binary(), wh_json:object()) -> api_binary().
+-spec get_execution_status(ne_binary(), kz_json:object()) -> api_binary().
 get_execution_status(Id, JObj) ->
-    case wh_json:get_value(<<"pvt_job_status">>, JObj) of
+    case kz_json:get_value(<<"pvt_job_status">>, JObj) of
         <<"processing">> = S ->
-            case wh_json:get_value(<<"pvt_queue">>, JObj) of
+            case kz_json:get_value(<<"pvt_queue">>, JObj) of
                 'undefined' -> S;
                 Q -> get_fax_running_status(Id, Q)
             end;
@@ -415,13 +415,13 @@ get_execution_status(Id, JObj) ->
 
 -spec get_fax_running_status(ne_binary(), ne_binary()) -> ne_binary().
 get_fax_running_status(Id, Q) ->
-    Api = [{<<"Job-ID">>, Id} | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
-    case whapps_util:amqp_pool_request(Api
-                                       ,fun(A) -> wapi_fax:publish_query_status(Q, A) end
-                                       ,fun wapi_fax:status_v/1
+    Api = [{<<"Job-ID">>, Id} | kz_api:default_headers(?APP_NAME, ?APP_VERSION)],
+    case kapps_util:amqp_pool_request(Api
+                                       ,fun(A) -> kapi_fax:publish_query_status(Q, A) end
+                                       ,fun kapi_fax:status_v/1
                                       )
     of
-        {'ok', JObj } -> wh_json:get_value(<<"Status">>, JObj);
+        {'ok', JObj } -> kz_json:get_value(<<"Status">>, JObj);
         _ -> <<"not available">>
     end.
 
@@ -470,12 +470,12 @@ on_successful_validation('undefined', Context) ->
     AccountDb = cb_context:account_db(Context),
     ResellerId = cb_context:reseller_id(Context),
     AuthDoc = cb_context:auth_doc(Context),
-    OwnerId = wh_json:get_value(<<"owner_id">>, AuthDoc),
+    OwnerId = kz_json:get_value(<<"owner_id">>, AuthDoc),
     Timezone = crossbar_util:get_user_timezone(AccountId, OwnerId),
     JobStatus = initial_job_status(cb_context:req_files(Context)),
 
     cb_context:set_doc(Context
-                       ,wh_json:set_values([{<<"pvt_type">>, <<"fax">>}
+                       ,kz_json:set_values([{<<"pvt_type">>, <<"fax">>}
                                             ,{<<"pvt_job_status">>, JobStatus}
                                             ,{<<"attempts">>, 0}
                                             ,{<<"pvt_account_id">>, AccountId}
@@ -497,11 +497,11 @@ initial_job_status(_) -> <<"attaching_docs">>.
 -spec maybe_reset_job(cb_context:context(), crossbar_status()) -> cb_context:context().
 maybe_reset_job(Context, 'success') ->
     JObj = cb_context:doc(Context),
-    case wh_json:get_value(<<"pvt_job_status">>, JObj) of
+    case kz_json:get_value(<<"pvt_job_status">>, JObj) of
         'undefined' -> Context;
         _Else ->
             cb_context:set_doc(Context
-                               ,wh_json:set_values([{<<"pvt_job_status">>, <<"pending">>}
+                               ,kz_json:set_values([{<<"pvt_job_status">>, <<"pending">>}
                                                     ,{<<"attempts">>, 0}
                                                    ]
                                                    ,JObj
@@ -509,22 +509,22 @@ maybe_reset_job(Context, 'success') ->
     end;
 maybe_reset_job(Context, _Status) -> Context.
 
--spec get_filter_doc(cb_context:context()) -> wh_json:object().
+-spec get_filter_doc(cb_context:context()) -> kz_json:object().
 get_filter_doc(Context) ->
     case cb_context:fetch(Context, <<"faxbox">>) of
         'undefined' -> maybe_user_filter_doc(Context);
         JObj -> JObj
     end.
 
--spec maybe_user_filter_doc(cb_context:context()) -> wh_json:object().
+-spec maybe_user_filter_doc(cb_context:context()) -> kz_json:object().
 maybe_user_filter_doc(Context) ->
     case cb_context:user_id(Context) of
-        'undefined' -> wh_json:new();
+        'undefined' -> kz_json:new();
         UserId ->
             Options = [{'id', UserId}
                        ,{'type', <<"user">>}
                       ],
-            wh_doc:update_pvt_parameters(wh_json:new(), 'undefined', Options)
+            kz_doc:update_pvt_parameters(kz_json:new(), 'undefined', Options)
     end.
 
 %%--------------------------------------------------------------------
@@ -554,14 +554,14 @@ inbox_summary(Context) -> fax_modb_summary(Context, ?INBOX).
 -spec outbox_summary(cb_context:context()) -> cb_context:context().
 outbox_summary(Context) -> fax_modb_summary(Context, ?OUTBOX).
 
--spec get_incoming_view_and_filter(wh_json:object(), ne_binary()) ->
+-spec get_incoming_view_and_filter(kz_json:object(), ne_binary()) ->
           {ne_binary(), api_binaries(), api_binaries()}.
 get_incoming_view_and_filter(JObj, Folder) ->
-    Id = wh_doc:id(JObj),
-    case wh_doc:type(JObj) of
+    Id = kz_doc:id(JObj),
+    case kz_doc:type(JObj) of
         <<"faxbox">> -> {?CB_LIST_BY_FAXBOX, [Id, Folder], 'undefined'};
         <<"user">> -> {?CB_LIST_BY_OWNERID, [Id, Folder], 'undefined'};
-        _Else -> {?CB_LIST_BY_FOLDER, [Folder], [wh_json:new()]}
+        _Else -> {?CB_LIST_BY_FOLDER, [Folder], [kz_json:new()]}
     end.
 
 -spec load_smtp_log(cb_context:context()) -> cb_context:context().
@@ -584,7 +584,7 @@ load_smtp_log(Context) ->
 %%--------------------------------------------------------------------
 -spec load_fax_binary(path_token(), cb_context:context()) -> cb_context:context().
 load_fax_binary(?MATCH_MODB_PREFIX(Year,Month,_) = FaxId, Context) ->
-    do_load_fax_binary(FaxId, cb_context:set_account_modb(Context, wh_util:to_integer(Year), wh_util:to_integer(Month)));
+    do_load_fax_binary(FaxId, cb_context:set_account_modb(Context, kz_util:to_integer(Year), kz_util:to_integer(Month)));
 load_fax_binary(FaxId, Context) ->
     do_load_fax_binary(FaxId, Context).
 
@@ -593,8 +593,8 @@ do_load_fax_binary(FaxId, Context) ->
     Context1 = load_fax_meta(FaxId, Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            case wh_doc:attachment_names(cb_context:doc(Context1)) of
-                [] -> cb_context:add_system_error('bad_identifier', wh_json:from_list([{<<"cause">>, FaxId}]), Context1);
+            case kz_doc:attachment_names(cb_context:doc(Context1)) of
+                [] -> cb_context:add_system_error('bad_identifier', kz_json:from_list([{<<"cause">>, FaxId}]), Context1);
                 [AttachmentId|_] ->
                     set_fax_binary(Context1, AttachmentId)
             end;
@@ -607,8 +607,8 @@ set_fax_binary(Context, AttachmentId) ->
                        ,[{fun cb_context:set_resp_etag/2, 'undefined'}
                          ,{fun cb_context:add_resp_headers/2
                            ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
-                             ,{<<"Content-Type">>, wh_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)}
-                             ,{<<"Content-Length">>, wh_doc:attachment_length(cb_context:doc(Context), AttachmentId)}
+                             ,{<<"Content-Type">>, kz_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)}
+                             ,{<<"Content-Length">>, kz_doc:attachment_length(cb_context:doc(Context), AttachmentId)}
                             ]
                           }
                         ]
@@ -623,18 +623,18 @@ set_fax_binary(Context, AttachmentId) ->
 %%--------------------------------------------------------------------
 -spec outgoing_summary(cb_context:context()) -> cb_context:context().
 outgoing_summary(Context) ->
-    JObj = cb_context:fetch(Context, <<"faxbox">>, wh_json:new()),
+    JObj = cb_context:fetch(Context, <<"faxbox">>, kz_json:new()),
     {View, ViewOptions} =
-        case wh_doc:type(JObj) of
+        case kz_doc:type(JObj) of
             <<"faxbox">> ->
                 {?CB_LIST_BY_FAXBOX
-                 ,[{'key', wh_doc:id(JObj)}
+                 ,[{'key', kz_doc:id(JObj)}
                    ,'include_docs'
                   ]};
             _Else ->
                 {?CB_LIST_BY_ACCOUNT
                  ,[{'startkey', [cb_context:account_id(Context)]}
-                   ,{'endkey', [cb_context:account_id(Context), wh_json:new()]}
+                   ,{'endkey', [cb_context:account_id(Context), kz_json:new()]}
                    ,'include_docs'
                   ]}
         end,
@@ -645,10 +645,10 @@ outgoing_summary(Context) ->
                            ,fun normalize_view_results/2
                           ).
 
--spec normalize_view_results(wh_json:object(), wh_json:objects()) ->
-                                    wh_json:objects().
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
+                                    kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
+    [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -656,10 +656,10 @@ normalize_view_results(JObj, Acc) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_incoming_view_results(wh_json:object(), wh_json:objects()) ->
-                                             wh_json:objects().
+-spec normalize_incoming_view_results(kz_json:object(), kz_json:objects()) ->
+                                             kz_json:objects().
 normalize_incoming_view_results(JObj, Acc) ->
-    [wh_json:public_fields(wh_json:get_value(<<"doc">>, JObj))|Acc].
+    [kz_json:public_fields(kz_json:get_value(<<"doc">>, JObj))|Acc].
 
 -spec maybe_save_attachment(cb_context:context()) -> cb_context:context().
 maybe_save_attachment(Context) ->
@@ -670,14 +670,14 @@ maybe_save_attachment(Context, []) -> Context;
 maybe_save_attachment(Context, [{Filename, FileJObj} | _Others]) ->
     save_attachment(Context, Filename, FileJObj).
 
--spec save_attachment(cb_context:context(), binary(), wh_json:object()) -> cb_context:context().
+-spec save_attachment(cb_context:context(), binary(), kz_json:object()) -> cb_context:context().
 save_attachment(Context, Filename, FileJObj) ->
     JObj = cb_context:doc(Context),
-    DocId = wh_doc:id(JObj),
-    Contents = wh_json:get_value(<<"contents">>, FileJObj),
-    CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
+    DocId = kz_doc:id(JObj),
+    Contents = kz_json:get_value(<<"contents">>, FileJObj),
+    CT = kz_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
     Opts = [{'content_type', CT}
-            ,{'rev', wh_doc:revision(JObj)}
+            ,{'rev', kz_doc:revision(JObj)}
             | ?TYPE_CHECK_OPTION(<<"fax">>)
            ],
     set_pending(crossbar_doc:save_attachment(DocId
@@ -693,4 +693,4 @@ save_attachment(Context, Filename, FileJObj) ->
 set_pending(Context, DocId) ->
     Ctx1 = crossbar_doc:load(DocId, Context),
     KVs = [{<<"pvt_job_status">>, <<"pending">>}],
-    crossbar_doc:save(cb_context:set_doc(Ctx1, wh_json:set_values(KVs, cb_context:doc(Ctx1)))).
+    crossbar_doc:save(cb_context:set_doc(Ctx1, kz_json:set_values(KVs, cb_context:doc(Ctx1)))).

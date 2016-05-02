@@ -249,19 +249,19 @@ all_true(Fs) ->
                    (_, Acc) -> Acc
                 end, 'true', Fs).
 
--spec is_valid_mode(cb_context:context(), wh_json:object()) ->
+-spec is_valid_mode(cb_context:context(), kz_json:object()) ->
                            'true' |
                            {'false', cb_context:context()}.
 is_valid_mode(Context, Data) ->
-    Mode = wh_json:get_value(<<"mode">>, Data, <<"listen">>),
-    case wapi_resource:is_valid_mode(Mode) of
+    Mode = kz_json:get_value(<<"mode">>, Data, <<"listen">>),
+    case kapi_resource:is_valid_mode(Mode) of
         'true' -> 'true';
         'false' ->
             {'false'
              ,cb_context:add_validation_error(
                 <<"mode">>
                 ,<<"enum">>
-                ,wh_json:from_list(
+                ,kz_json:from_list(
                    [{<<"message">>, <<"Value not found in enumerated list of values">>}
                     ,{<<"cause">>, Mode}
                    ])
@@ -270,17 +270,17 @@ is_valid_mode(Context, Data) ->
             }
     end.
 
--spec is_valid_call(cb_context:context(), wh_json:object()) ->
+-spec is_valid_call(cb_context:context(), kz_json:object()) ->
                            'true' |
                            {'false', cb_context:context()}.
 is_valid_call(Context, Data) ->
-    case wh_json:get_binary_value(<<"call_id">>, Data) of
+    case kz_json:get_binary_value(<<"call_id">>, Data) of
         'undefined' ->
             {'false'
              ,cb_context:add_validation_error(
                 <<"call_id">>
                 ,<<"required">>
-                ,wh_json:from_list(
+                ,kz_json:from_list(
                    [{<<"message">>, <<"Field is required but missing">>}]
                   )
                 ,Context
@@ -294,14 +294,14 @@ is_valid_call(Context, Data) ->
                             'true' |
                             {'false', cb_context:context()}.
 is_active_call(Context, CallId) ->
-    case whapps_call_command:b_channel_status(CallId) of
+    case kapps_call_command:b_channel_status(CallId) of
         {'error', _E} ->
             lager:debug("is not valid call: ~p", [_E]),
             {'false'
              ,cb_context:add_validation_error(
                 <<"call_id">>
                 ,<<"not_found">>
-                ,wh_json:from_list(
+                ,kz_json:from_list(
                    [{<<"message">>, <<"Call was not found">>}
                     ,{<<"cause">>, CallId}
                    ])
@@ -320,7 +320,7 @@ is_valid_queue(Context, <<_/binary>> = QueueId) ->
              ,cb_context:add_validation_error(
                 <<"queue_id">>
                 ,<<"not_found">>
-                ,wh_json:from_list(
+                ,kz_json:from_list(
                    [{<<"message">>, <<"Queue was not found">>}
                     ,{<<"cause">>, QueueId}
                    ])
@@ -329,14 +329,14 @@ is_valid_queue(Context, <<_/binary>> = QueueId) ->
             }
     end;
 is_valid_queue(Context, QueueJObj) ->
-    case wh_doc:type(QueueJObj) of
+    case kz_doc:type(QueueJObj) of
         <<"queue">> -> 'true';
         _ ->
             {'false'
              ,cb_context:add_validation_error(
                 <<"queue_id">>
                 ,<<"type">>
-                ,wh_json:from_list([{<<"message">>, <<"Id did not represent a queue">>}])
+                ,kz_json:from_list([{<<"message">>, <<"Id did not represent a queue">>}])
                 ,Context
                )
             }
@@ -344,7 +344,7 @@ is_valid_queue(Context, QueueJObj) ->
 
 is_valid_endpoint(Context, DataJObj) ->
     AcctDb = cb_context:account_db(Context),
-    Id = wh_doc:id(DataJObj),
+    Id = kz_doc:id(DataJObj),
     case kz_datamgr:open_cache_doc(AcctDb, Id) of
         {'ok', CallMeJObj} -> is_valid_endpoint_type(Context, CallMeJObj);
         {'error', _} ->
@@ -352,7 +352,7 @@ is_valid_endpoint(Context, DataJObj) ->
              ,cb_context:add_validation_error(
                 <<"id">>
                 ,<<"not_found">>
-                ,wh_json:from_list(
+                ,kz_json:from_list(
                    [{<<"message">>, <<"Id was not found">>}
                     ,{<<"cause">>, Id}
                    ])
@@ -362,14 +362,14 @@ is_valid_endpoint(Context, DataJObj) ->
     end.
 
 is_valid_endpoint_type(Context, CallMeJObj) ->
-    case wh_doc:type(CallMeJObj) of
+    case kz_doc:type(CallMeJObj) of
         <<"device">> -> 'true';
         Type ->
             {'false'
              ,cb_context:add_validation_error(
                 <<"id">>
                 ,<<"type">>
-                ,wh_json:from_list(
+                ,kz_json:from_list(
                    [{<<"message">>, <<"Id did not represent a valid endpoint">>}
                     ,{<<"cause">>, Type}
                    ])
@@ -405,22 +405,22 @@ put(Context, QID, ?EAVESDROP_PATH_TOKEN) ->
            ],
     eavesdrop_req(Context, Prop).
 
--spec default_eavesdrop_req(cb_context:context()) -> wh_proplist().
+-spec default_eavesdrop_req(cb_context:context()) -> kz_proplist().
 default_eavesdrop_req(Context) ->
     [{<<"Eavesdrop-Mode">>, cb_context:req_value(Context, <<"mode">>, <<"listen">>)}
      ,{<<"Account-ID">>, cb_context:account_id(Context)}
      ,{<<"Endpoint-ID">>, cb_context:req_value(Context, <<"id">>)}
-     ,{<<"Endpoint-Timeout">>, wh_util:to_integer(cb_context:req_value(Context, <<"timeout">>, 20))}
+     ,{<<"Endpoint-Timeout">>, kz_util:to_integer(cb_context:req_value(Context, <<"timeout">>, 20))}
      ,{<<"Outbound-Caller-ID-Name">>, cb_context:req_value(Context, <<"caller_id_name">>)}
      ,{<<"Outbound-Caller-ID-Number">>, cb_context:req_value(Context, <<"caller_id_number">>)}
-     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec eavesdrop_req(cb_context:context(), wh_proplist()) -> cb_context:context().
+-spec eavesdrop_req(cb_context:context(), kz_proplist()) -> cb_context:context().
 eavesdrop_req(Context, Prop) ->
-    case whapps_util:amqp_pool_request(props:filter_undefined(Prop)
-                                       ,fun wapi_resource:publish_eavesdrop_req/1
-                                       ,fun wapi_resource:eavesdrop_resp_v/1
+    case kapps_util:amqp_pool_request(props:filter_undefined(Prop)
+                                       ,fun kapi_resource:publish_eavesdrop_req/1
+                                       ,fun kapi_resource:eavesdrop_resp_v/1
                                        ,2 * ?MILLISECONDS_IN_SECOND
                                       )
     of
@@ -428,7 +428,7 @@ eavesdrop_req(Context, Prop) ->
         {'error', 'timeout'} ->
             cb_context:add_system_error(
               'timeout'
-              ,wh_json:from_list([{<<"cause">>, <<"eavesdrop failed to start">>}])
+              ,kz_json:from_list([{<<"cause">>, <<"eavesdrop failed to start">>}])
               ,Context
              );
         {'error', E} -> crossbar_util:response('error', <<"error">>, 500, E, Context)
@@ -443,8 +443,8 @@ eavesdrop_req(Context, Prop) ->
                         ,<<"Event-Category">>
                        ]).
 filter_response_fields(JObj) ->
-    wh_json:set_value(<<"eavesdrop_request_id">>, wh_json:get_value(<<"Msg-ID">>, JObj)
-                      ,wh_json:normalize(wh_api:remove_defaults(JObj))
+    kz_json:set_value(<<"eavesdrop_request_id">>, kz_json:get_value(<<"Msg-ID">>, JObj)
+                      ,kz_json:normalize(kz_api:remove_defaults(JObj))
                      ).
 
 %%--------------------------------------------------------------------
@@ -537,7 +537,7 @@ check_queue_schema(QueueId, Context) ->
 
 on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, <<"queue">>}],
-    cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context)));
+    cb_context:set_doc(Context, kz_json:set_values(Props, cb_context:doc(Context)));
 on_successful_validation(QueueId, Context) ->
     crossbar_doc:load_merge(QueueId, Context, ?TYPE_CHECK_OPTION(<<"queue">>)).
 
@@ -552,7 +552,7 @@ load_queue_agents(Id, Context) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             cb_context:set_resp_data(Context
-                                     ,wh_json:set_value(<<"agents">>
+                                     ,kz_json:set_value(<<"agents">>
                                                         ,cb_context:resp_data(Context1)
                                                         ,cb_context:resp_data(Context)
                                                        )
@@ -604,9 +604,9 @@ add_queue_to_agents_diff(Id, Context, AgentIds) ->
         _Status -> Context1
     end.
 
--spec maybe_add_queue_to_agent(ne_binary(), wh_json:object()) -> wh_json:object().
+-spec maybe_add_queue_to_agent(ne_binary(), kz_json:object()) -> kz_json:object().
 maybe_add_queue_to_agent(Id, A) ->
-    Qs = case wh_json:get_value(<<"queues">>, A) of
+    Qs = case kz_json:get_value(<<"queues">>, A) of
              L when is_list(L) ->
                  case lists:member(Id, L) of
                      'true' -> L;
@@ -614,10 +614,10 @@ maybe_add_queue_to_agent(Id, A) ->
                  end;
              _ -> [Id]
          end,
-    lager:debug("agent ~s adding queues: ~p", [wh_doc:id(A), Qs]),
-    wh_json:set_value(<<"queues">>, Qs, A).
+    lager:debug("agent ~s adding queues: ~p", [kz_doc:id(A), Qs]),
+    kz_json:set_value(<<"queues">>, Qs, A).
 
--spec maybe_rm_agents(ne_binary(), cb_context:context(), wh_json:keys()) -> cb_context:context().
+-spec maybe_rm_agents(ne_binary(), cb_context:context(), kz_json:keys()) -> cb_context:context().
 maybe_rm_agents(_Id, Context, []) ->
     lager:debug("no agents to remove from the queue ~s", [_Id]),
     cb_context:set_resp_status(Context, 'success');
@@ -629,7 +629,7 @@ maybe_rm_agents(Id, Context, AgentIds) ->
 
 -spec rm_queue_from_agents(ne_binary(), cb_context:context()) ->
                                   cb_context:context().
--spec rm_queue_from_agents(ne_binary(), cb_context:context(), wh_json:keys()) ->
+-spec rm_queue_from_agents(ne_binary(), cb_context:context(), kz_json:keys()) ->
                                   cb_context:context().
 rm_queue_from_agents(Id, Context) ->
     Context1 = load_agent_roster(Id, Context),
@@ -654,10 +654,10 @@ rm_queue_from_agents(_Id, Context, _Data) ->
                          ,{fun cb_context:set_doc/2, 'undefined'}
                         ]).
 
--spec maybe_rm_queue_from_agent(ne_binary(), wh_json:object()) -> wh_json:object().
+-spec maybe_rm_queue_from_agent(ne_binary(), kz_json:object()) -> kz_json:object().
 maybe_rm_queue_from_agent(Id, A) ->
-    Qs = wh_json:get_value(<<"queues">>, A, []),
-    wh_json:set_value(<<"queues">>, lists:delete(Id, Qs), A).
+    Qs = kz_json:get_value(<<"queues">>, A, []),
+    kz_json:set_value(<<"queues">>, lists:delete(Id, Qs), A).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -679,18 +679,18 @@ fetch_all_current_queue_stats(Context) ->
             [{<<"Account-ID">>, cb_context:account_id(Context)}
              ,{<<"Status">>, cb_context:req_value(Context, <<"status">>)}
              ,{<<"Agent-ID">>, cb_context:req_value(Context, <<"agent_id">>)}
-             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     fetch_from_amqp(Context, Req).
 
 format_stats(Context, Resp) ->
-    Stats = wh_json:from_list([{<<"current_timestamp">>, wh_util:current_tstamp()}
+    Stats = kz_json:from_list([{<<"current_timestamp">>, kz_util:current_tstamp()}
                                ,{<<"stats">>,
-                                 wh_doc:public_fields(
-                                   wh_json:get_value(<<"Handled">>, Resp, []) ++
-                                       wh_json:get_value(<<"Abandoned">>, Resp, []) ++
-                                       wh_json:get_value(<<"Waiting">>, Resp, []) ++
-                                       wh_json:get_value(<<"Processed">>, Resp, [])
+                                 kz_doc:public_fields(
+                                   kz_json:get_value(<<"Handled">>, Resp, []) ++
+                                       kz_json:get_value(<<"Abandoned">>, Resp, []) ++
+                                       kz_json:get_value(<<"Waiting">>, Resp, []) ++
+                                       kz_json:get_value(<<"Processed">>, Resp, [])
                                   )}
                               ]),
     cb_context:set_resp_status(
@@ -699,21 +699,21 @@ format_stats(Context, Resp) ->
      ).
 
 fetch_ranged_queue_stats(Context, StartRange) ->
-    MaxRange = whapps_config:get_integer(<<"acdc">>, <<"archive_window_s">>, 3600),
+    MaxRange = kapps_config:get_integer(<<"acdc">>, <<"archive_window_s">>, 3600),
 
-    Now = wh_util:current_tstamp(),
+    Now = kz_util:current_tstamp(),
     Past = Now - MaxRange,
 
-    To = wh_util:to_integer(cb_context:req_value(Context, <<"end_range">>, Now)),
+    To = kz_util:to_integer(cb_context:req_value(Context, <<"end_range">>, Now)),
     MaxFrom = To - MaxRange,
 
-    case wh_util:to_integer(StartRange) of
+    case kz_util:to_integer(StartRange) of
         F when F > To ->
             %% start_range is larger than end_range
             cb_context:add_validation_error(
                 <<"end_range">>
                 ,<<"maximum">>
-                ,wh_json:from_list([
+                ,kz_json:from_list([
                     {<<"message">>, <<"value is greater than start_range">>}
                     ,{<<"cause">>, StartRange}
                  ])
@@ -730,25 +730,25 @@ fetch_ranged_queue_stats(Context, StartRange) ->
     end.
 
 fetch_ranged_queue_stats(Context, From, To, 'true') ->
-    lager:debug("ranged query from ~b to ~b(~b) of current stats (now ~b)", [From, To, To-From, wh_util:current_tstamp()]),
+    lager:debug("ranged query from ~b to ~b(~b) of current stats (now ~b)", [From, To, To-From, kz_util:current_tstamp()]),
     Req = props:filter_undefined(
             [{<<"Account-ID">>, cb_context:account_id(Context)}
              ,{<<"Status">>, cb_context:req_value(Context, <<"status">>)}
              ,{<<"Agent-ID">>, cb_context:req_value(Context, <<"agent_id">>)}
              ,{<<"Start-Range">>, From}
              ,{<<"End-Range">>, To}
-             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     fetch_from_amqp(Context, Req);
 fetch_ranged_queue_stats(Context, From, To, 'false') ->
     lager:debug("ranged query from ~b to ~b of archived stats", [From, To]),
     Context.
 
--spec fetch_from_amqp(cb_context:context(), wh_proplist()) -> cb_context:context().
+-spec fetch_from_amqp(cb_context:context(), kz_proplist()) -> cb_context:context().
 fetch_from_amqp(Context, Req) ->
-    case whapps_util:amqp_pool_request(Req
-                                       ,fun wapi_acdc_stats:publish_current_calls_req/1
-                                       ,fun wapi_acdc_stats:current_calls_resp_v/1
+    case kapps_util:amqp_pool_request(Req
+                                       ,fun kapi_acdc_stats:publish_current_calls_req/1
+                                       ,fun kapi_acdc_stats:current_calls_resp_v/1
                                       )
     of
         {'error', _E} ->
@@ -778,12 +778,12 @@ summary(Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
+    [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 normalize_agents_results(JObj, Acc) ->
-    [wh_doc:id(JObj) | Acc].
+    [kz_doc:id(JObj) | Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -797,7 +797,7 @@ activate_account_for_acdc(Context) ->
         {'ok', _} -> 'ok';
         {'error', 'not_found'} ->
             lager:debug("creating account doc ~s in acdc db", [cb_context:account_id(Context)]),
-            Doc = wh_doc:update_pvt_parameters(wh_json:from_list([{<<"_id">>, cb_context:account_id(Context)}])
+            Doc = kz_doc:update_pvt_parameters(kz_json:from_list([{<<"_id">>, cb_context:account_id(Context)}])
                                                ,?KZ_ACDC_DB
                                                ,[{'account_id', cb_context:account_id(Context)}
                                                  ,{'type', <<"acdc_activation">>}

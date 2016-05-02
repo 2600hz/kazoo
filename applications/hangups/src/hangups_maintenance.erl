@@ -30,7 +30,7 @@ hangups_summary() ->
     print_stats(Hangups).
 
 hangup_summary(HangupCause) ->
-    HC = wh_util:to_upper_binary(HangupCause),
+    HC = kz_util:to_upper_binary(HangupCause),
     io:format("checking hangup summary for ~s~n", [HC]),
     Hangups = [{Name, hangups_query_listener:meter_resp(Name)}
                    || Name <- folsom_metrics:get_metrics(),
@@ -39,7 +39,7 @@ hangup_summary(HangupCause) ->
     print_stats(Hangups).
 
 hangup_summary(HangupCause, AccountId) ->
-    HC = wh_util:to_upper_binary(HangupCause),
+    HC = kz_util:to_upper_binary(HangupCause),
     io:format("checking hangup summary for ~s.~s~n", [HC, AccountId]),
     Hangups = [{Name, hangups_query_listener:meter_resp(Name)}
                    || Name <- folsom_metrics:get_metrics(),
@@ -60,7 +60,7 @@ account_summary(AccountId) ->
         ," ~-30s | ~-32s | ~-10s | ~-10s | ~-10s | ~-10s |~n"
        ).
 
--spec print_stats(wh_proplist()) -> 'ok'.
+-spec print_stats(kz_proplist()) -> 'ok'.
 print_stats([]) -> io:format("No data found for request\n");
 print_stats(Stats) ->
     io:format(?STAT_SUMMARY_FORMAT
@@ -68,7 +68,7 @@ print_stats(Stats) ->
              ),
     lists:foreach(fun print_stat/1, lists:keysort(1, Stats)).
 
--spec print_stat({ne_binary(), wh_proplist()}) -> 'ok'.
+-spec print_stat({ne_binary(), kz_proplist()}) -> 'ok'.
 print_stat({Name, Stats}) ->
     AccountId = case hangups_util:meter_account_id(Name) of
                     'undefined' -> <<>>;
@@ -76,7 +76,7 @@ print_stat({Name, Stats}) ->
                 end,
     HangupCause = hangups_util:meter_hangup_cause(Name),
     ConfigName = hangups_util:meter_name(HangupCause),
-    Threshold = whapps_config:get_float(ConfigName, <<"one">>),
+    Threshold = kapps_config:get_float(ConfigName, <<"one">>),
 
     io:format(?STAT_SUMMARY_FORMAT
               ,[HangupCause
@@ -99,7 +99,7 @@ activate_monitors(AccountId, ThresholdOneMinute) ->
     F =
         fun (HangupCause) ->
                 ConfigName = hangups_util:meter_name(HangupCause),
-                case whapps_config:get_float(ConfigName, <<"one">>) of
+                case kapps_config:get_float(ConfigName, <<"one">>) of
                     'undefined' -> set_monitor_threshold(HangupCause, ThresholdOneMinute);
                     _ThresholdAlreadySet -> 'true'
                 end
@@ -110,7 +110,7 @@ activate_monitors(AccountId, ThresholdOneMinute) ->
 %% @public
 -spec set_monitor_threshold(text(), text()) -> boolean().
 set_monitor_threshold(HangupCause, TOM) ->
-    ThresholdOnMinute = wh_util:to_float(TOM),
+    ThresholdOnMinute = kz_util:to_float(TOM),
     update_monitor_thresholds(HangupCause, ThresholdOnMinute)
         andalso set_monitor_threshold(HangupCause, <<"one">>, ThresholdOnMinute).
 
@@ -134,8 +134,8 @@ update_monitor_thresholds(HangupCause, ThresholdOnMinute) ->
 -spec set_monitor_threshold(ne_binary(), ne_binary(), float()) -> boolean().
 -spec set_monitor_threshold(ne_binary(), ne_binary(), float(), boolean()) -> boolean().
 set_monitor_threshold(HangupCause, ThresholdName, T) ->
-    Threshold = wh_util:to_float(T),
-    set_monitor_threshold(wh_util:to_upper_binary(HangupCause)
+    Threshold = kz_util:to_float(T),
+    set_monitor_threshold(kz_util:to_upper_binary(HangupCause)
                           ,ThresholdName
                           ,Threshold
                           ,is_valid_threshold_name(ThresholdName)
@@ -146,12 +146,12 @@ set_monitor_threshold(_HangupCause, ThresholdName, _Threshold, 'false') ->
     'false';
 set_monitor_threshold(HangupCause, ThresholdName, Threshold, 'true') ->
     ConfigName = hangups_util:meter_name(HangupCause),
-    case whapps_config:get_float(ConfigName, ThresholdName) of
+    case kapps_config:get_float(ConfigName, ThresholdName) of
         'undefined' ->
-            whapps_config:set_default(ConfigName, ThresholdName, Threshold),
+            kapps_config:set_default(ConfigName, ThresholdName, Threshold),
             io:format("setting ~s for ~s to ~p~n", [ThresholdName, ConfigName, Threshold]);
         _OldValue ->
-            whapps_config:set_default(ConfigName, ThresholdName, Threshold),
+            kapps_config:set_default(ConfigName, ThresholdName, Threshold),
             io:format("updating ~s for ~s to ~p from ~p~n", [ThresholdName, ConfigName, Threshold, _OldValue])
     end,
     'true'.
