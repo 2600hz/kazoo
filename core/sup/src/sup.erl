@@ -31,7 +31,7 @@ main(CommandLineArgs) ->
 main(CommandLineArgs, Loops) ->
     os:cmd("epmd -daemon"),
     net_kernel:stop(),
-    case net_kernel:start([my_name(), 'longnames']) of
+    case net_kernel:start([my_name(), long_or_short_name()]) of
         {'error', _} when Loops < 3 ->
             stderr("Unable to start command bridge network kernel, try again", []),
             halt(1);
@@ -73,7 +73,7 @@ get_target(Options, Verbose) ->
     Host = get_host(Options),
     Cookie = get_cookie(Options, Node),
     Target = list_to_atom(Node ++ "@" ++ Host),
-    case net_adm:ping(Target) of
+     case net_adm:ping(Target) of
         'pong' ->
             Verbose andalso stdout("Connected to service '~s' with cookie '~s'", [Target, Cookie]),
             Target;
@@ -85,16 +85,18 @@ get_target(Options, Verbose) ->
             print_ping_failed(Target, Cookie)
     end.
 
--spec get_cookie(proplist(), string()) -> 'ok'.
+-spec get_cookie(proplist(), string()) -> atom().
 get_cookie(Options, Node) ->
-    Cookie = case {Node, props:get_value('cookie', Options, "")} of
-                 {"kazoo_apps", ""} -> maybe_get_cookie('kazoo_apps');
-                 {"ecallmgr", ""} -> maybe_get_cookie('ecallmgr');
-                 {_, ""} -> print_no_setcookie();
-                 {_, C} -> C
-             end,
-    lager:debug("cookie found: '~p'", [Cookie]),
-    'true' = erlang:set_cookie(node(), kz_util:to_atom(Cookie, 'true')),
+    CookieStr =
+        case {Node, props:get_value('cookie', Options, "")} of
+            {"kazoo_apps", ""} -> maybe_get_cookie('kazoo_apps');
+            {"ecallmgr", ""} -> maybe_get_cookie('ecallmgr');
+            {_, ""} -> print_no_setcookie();
+            {_, C} -> C
+        end,
+    lager:debug("cookie found: '~p'", [CookieStr]),
+    Cookie = kz_util:to_atom(CookieStr, 'true'),
+    'true' = erlang:set_cookie(node(), Cookie),
     Cookie.
 
 maybe_get_cookie('kazoo_apps') ->
@@ -142,8 +144,19 @@ get_host(Options) ->
 
 -spec my_name() -> atom().
 my_name() ->
-    Localhost = net_adm:localhost(),
-    list_to_atom("sup_" ++ os:getpid() ++ "@" ++ Localhost).
+    list_to_atom("sup_" ++ os:getpid() ++ "@" ++ localhost()).
+
+-spec localhost() -> nonempty_string().
+localhost() ->
+    net_adm:localhost().
+
+-spec long_or_short_name() -> 'longnames' | 'shortnames'.
+long_or_short_name() ->
+    IsDot = fun ($.) -> 'true'; (_) -> 'false' end,
+    case lists:any(IsDot, localhost()) of
+        'true' -> 'longnames';
+        'false' -> 'shortnames'
+    end.
 
 -spec parse_args(string()) -> {'ok', proplist(), list()}.
 parse_args(CommandLineArgs) ->
@@ -164,7 +177,7 @@ print_no_setcookie() ->
     stdout("`sup -c <cookie>`", []),
     halt(1).
 
--spec print_ping_failed(string(), string()) -> no_return().
+-spec print_ping_failed(string(), atom()) -> no_return().
 print_ping_failed(Target, Cookie) ->
     stdout("Failed to connect to service '~s' with cookie '~s'", [Target, Cookie]),
     stdout("  Possible fixes:", []),
@@ -199,7 +212,7 @@ stderr(Format, Things) ->
 -spec option_spec_list() -> kz_proplist().
 option_spec_list() ->
     [{'help', $?, "help", 'undefined', "Show the program options"}
-    ,{'host', $h, "host", {'string', net_adm:localhost()}, "System hostname, defaults to system hostname"}
+    ,{'host', $h, "host", {'string', localhost()}, "System hostname, defaults to system hostname"}
     ,{'node', $n, "node", {'string', "kazoo_apps"}, "Node name, default \"kazoo_apps\""}
     ,{'cookie', $c, "cookie", {'string', ""}, "Erlang cookie"}
     ,{'timeout', $t, "timeout", 'integer', "Command timeout, default 5"}
