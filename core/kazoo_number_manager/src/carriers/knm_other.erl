@@ -265,17 +265,8 @@ format_numbers_resp(JObj, Options) ->
 -spec format_number_resp(ne_binary(), wh_json:object(), knm_number:knm_numbers()) ->
                                 knm_number:knm_number().
 format_number_resp(DID, CarrierData, AccountId) ->
-    NormalizedNum = knm_converters:normalize(DID),
-    NumberDb = knm_converters:to_db(NormalizedNum),
-
-    Updates = [{fun knm_phone_number:set_number/2, NormalizedNum}
-               ,{fun knm_phone_number:set_number_db/2, NumberDb}
-               ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
-               ,{fun knm_phone_number:set_carrier_data/2, CarrierData}
-               ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
-               ,{fun knm_phone_number:set_assign_to/2, AccountId}
-              ],
-    {'ok', PhoneNumber} = knm_phone_number:setters(knm_phone_number:new(), Updates),
+    {'ok', PhoneNumber} =
+        knm_phone_number:newly_found(DID, ?MODULE, AccountId, CarrierData),
     knm_number:set_phone_number(knm_number:new(), PhoneNumber).
 
 %%--------------------------------------------------------------------
@@ -363,16 +354,8 @@ format_block_resp(JObj, Numbers, AccountId, Start, End) ->
 -spec block_resp(wh_json:object(), api_binary(), ne_binary()) ->
                         knm_number:knm_number().
 block_resp(JObj, AccountId, Num) ->
-    NormalizedNum = knm_converters:normalize(Num),
-    NumberDb = knm_converters:to_db(NormalizedNum),
-    Updates = [{fun knm_phone_number:set_number/2, NormalizedNum}
-               ,{fun knm_phone_number:set_number_db/2, NumberDb}
-               ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
-               ,{fun knm_phone_number:set_carrier_data/2, JObj}
-               ,{fun knm_phone_number:set_number_db/2, NumberDb}
-               ,{fun knm_phone_number:set_assign_to/2, AccountId}
-              ],
-    {'ok', PhoneNumber} = knm_phone_number:setters(knm_phone_number:new(), Updates),
+    {'ok', PhoneNumber} =
+        knm_phone_number:newly_found(Num, ?MODULE, AccountId, JObj),
     knm_number:set_phone_number(knm_number:new(), PhoneNumber).
 
 %%--------------------------------------------------------------------

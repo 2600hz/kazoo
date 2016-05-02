@@ -14,7 +14,6 @@
 -export([find_numbers/3]).
 -export([acquire_number/1]).
 -export([disconnect_number/1]).
--export([get_number_data/1]).
 -export([is_number_billable/1]).
 -export([should_lookup_cnam/0]).
 
@@ -62,21 +61,6 @@
 -type to_json_ret() :: {'ok', wh_json:object()} | {'error', any()}.
 
 %%% API
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Query the system for a quantity of available numbers in a rate center
-%% @end
-%%--------------------------------------------------------------------
--spec get_number_data(ne_binary()) -> wh_json:object().
-get_number_data(N) ->
-    Number = 'remove +1'(N),
-    Resp = soap("queryDID", Number),
-    case to_json('get_number_data', Number, Resp) of
-        {'ok', JObj} -> JObj;
-        {'error', _R} -> wh_json:new()
-    end.
 
 %% @public
 -spec is_number_billable(knm_number:knm_number()) -> boolean().
@@ -177,16 +161,9 @@ to_numbers({'error',_R}=Error, _) ->
 to_numbers({'ok',JObjs}, AccountId) ->
     {'ok',
      [ begin
-           NormalizedNum = wh_json:get_value(<<"e164">>, JObj),
-           NumberDb = knm_converters:to_db(NormalizedNum),
-           Updates = [{fun knm_phone_number:set_number/2, NormalizedNum}
-                      ,{fun knm_phone_number:set_number_db/2, NumberDb}
-                      ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
-                      ,{fun knm_phone_number:set_carrier_data/2, JObj}
-                      ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
-                      ,{fun knm_phone_number:set_assign_to/2, AccountId}
-                     ],
-           {'ok', PhoneNumber} = knm_phone_number:setters(knm_phone_number:new(), Updates),
+           Num = wh_json:get_value(<<"e164">>, JObj),
+           {'ok', PhoneNumber} =
+               knm_phone_number:newly_found(Num, ?MODULE, AccountId, JObj),
            knm_number:set_phone_number(knm_number:new(), PhoneNumber)
        end
        || JObj <- JObjs ]
@@ -205,26 +182,6 @@ maybe_return({'ok', JObj}, N) ->
     end.
 
 -spec to_json(atom(), any(), soap_response()) -> to_json_ret().
-
-to_json('get_number_data', _Number, {'ok', Xml}) ->
-    XPath = xpath("queryDID", ["DIDs", "DID"]),
-    [DID] = xmerl_xpath:string(XPath, Xml),
-    Code = wh_util:get_xml_value("//statusCode/text()", DID),
-    Msg = wh_util:get_xml_value("//status/text()", DID),
-    lager:debug("lookup ~s: ~s:~s", [_Number, Code, Msg]),
-    R = [{<<"e164">>, knm_converters:normalize(wh_util:get_xml_value("//tn/text()", DID))}
-        ,{<<"status">>, wh_util:get_xml_value("//availability/text()", DID)}
-        ,{<<"msg">>, Msg}
-        ,{<<"code">>, Code}
-        ,{<<"expireDate">>, wh_util:get_xml_value("//expireDate/text()", DID)}
-        ,{<<"has411">>, wh_util:is_true(wh_util:get_xml_value("//has411/text()", DID))}
-        ,{<<"has911">>, wh_util:is_true(wh_util:get_xml_value("//has911/text()", DID))}
-        ,{<<"t38">>, wh_util:is_true(wh_util:get_xml_value("//t38/text()", DID))}
-        ,{<<"cnam">>, wh_util:is_true(wh_util:get_xml_value("//cnam/text()", DID))}
-        ,{<<"cnamStorageActive">>, wh_util:is_true(wh_util:get_xml_value("//cnamStorageActive/text()", DID))}
-        ,{<<"cnamStorageAvailability">>, wh_util:is_true(wh_util:get_xml_value("//cnamStorageAvailability/text()", DID))}
-        ],
-    {'ok', wh_json:from_list(R)};
 
 to_json('find_numbers', Quantity, {'ok', Xml}) ->
     XPath = xpath("getDIDs", ["DIDLocators", "DIDLocator"]),
@@ -369,9 +326,9 @@ soap_request(Action, Body) ->
                ,{"Content-Type", "text/xml;charset=UTF-8"}
               ],
     HTTPOptions = [{'ssl', [{'verify', 'verify_none'}]}
-                   ,{'timeout', 180 * ?MILLISECONDS_IN_SECOND}
-                   ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
-                  , {'body_format', 'string'}
+                  ,{'timeout', 180 * ?MILLISECONDS_IN_SECOND}
+                  ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
+                  ,{'body_format', 'string'}
                   ],
     ?DEBUG_WRITE("Request:~n~s ~s~n~p~n~s~n", ['post', Url, Headers, Body]),
     UnicodeBody = unicode:characters_to_binary(Body),

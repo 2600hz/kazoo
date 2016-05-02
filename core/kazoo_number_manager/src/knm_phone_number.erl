@@ -13,6 +13,7 @@
          ,delete/1
          ,release/1
          ,new/1, new/2
+         ,newly_found/4
         ]).
 
 -export([to_json/1
@@ -36,7 +37,7 @@
          ,add_reserve_history/2, unwind_reserve_history/1
          ,ported_in/1 ,set_ported_in/2
          ,module_name/1 ,set_module_name/2
-         ,carrier_data/1 ,set_carrier_data/2
+         ,carrier_data/1, set_carrier_data/2, update_carrier_data/2
          ,region/1 ,set_region/2
          ,auth_by/1 ,set_auth_by/2, is_authorized/1
          ,dry_run/1 ,set_dry_run/2
@@ -60,7 +61,7 @@
                            ,reserve_history = [] :: ne_binaries()
                            ,ported_in = 'false' :: boolean()
                            ,module_name :: ne_binary()
-                           ,carrier_data :: wh_json:object()
+                           ,carrier_data = wh_json:new() :: wh_json:object()
                            ,region :: ne_binary()
                            ,auth_by :: api_binary()
                            ,dry_run = 'false' :: boolean()
@@ -83,23 +84,39 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec new(ne_binary()) -> knm_phone_number().
--spec new(ne_binary(), knm_number_options:options()) -> knm_phone_number().
 new(DID) ->
     new(DID, knm_number_options:default()).
 
+-spec new(ne_binary(), knm_number_options:options()) -> knm_phone_number().
 new(DID, Options) ->
     NormalizedNum = knm_converters:normalize(DID),
-    NumberDb = knm_converters:to_db(NormalizedNum),
-    #knm_phone_number{number = NormalizedNum
-                     ,number_db = NumberDb
-                     ,assign_to = knm_number_options:assign_to(Options)
-                     ,state = ?NUMBER_STATE_DISCOVERY
-                     ,module_name = ?CARRIER_OTHER
-                     ,carrier_data = wh_json:new()
-                     ,auth_by = knm_number_options:auth_by(Options)
-                     ,dry_run = knm_number_options:dry_run(Options)
-                     ,doc = knm_number_options:public_fields(Options)
-                     }.
+    {'ok', PhoneNumber} =
+        setters(new(),
+                [{fun set_number/2, NormalizedNum}
+                ,{fun set_number_db/2, knm_converters:to_db(NormalizedNum)}
+                ,{fun set_assign_to/2, knm_number_options:assign_to(Options)}
+                ,{fun set_state/2, ?NUMBER_STATE_DISCOVERY}
+                ,{fun set_module_name/2, ?CARRIER_OTHER}
+                ,{fun set_carrier_data/2, wh_json:new()}
+                ,{fun set_auth_by/2, knm_number_options:auth_by(Options)}
+                ,{fun set_dry_run/2, knm_number_options:dry_run(Options)}
+                ,{fun set_doc/2, knm_number_options:public_fields(Options)}
+                ]),
+    PhoneNumber.
+
+-spec newly_found(ne_binary(), module(), ne_binary(), wh_json:object()) ->
+                         knm_phone_number_return().
+newly_found(Num=?NE_BINARY, Carrier, AssignTo=?NE_BINARY, Data=?JSON_WRAPPER(_))
+  when is_atom(Carrier) ->
+    NormalizedNum = knm_converters:normalize(Num),
+    setters(new(),
+            [{fun set_number/2, NormalizedNum}
+            ,{fun set_number_db/2, knm_converters:to_db(NormalizedNum)}
+            ,{fun set_module_name/2, wh_util:to_binary(Carrier)}
+            ,{fun set_carrier_data/2, Data}
+            ,{fun set_state/2, ?NUMBER_STATE_DISCOVERY}
+            ,{fun set_assign_to/2, wh_util:format_account_id(AssignTo)}
+            ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -563,12 +580,17 @@ set_module_name(N, Name=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec carrier_data(knm_phone_number()) -> api_object().
+-spec carrier_data(knm_phone_number()) -> wh_json:object().
 carrier_data(#knm_phone_number{carrier_data=Data}) -> Data.
 
 -spec set_carrier_data(knm_phone_number(), wh_json:object()) -> knm_phone_number().
 set_carrier_data(N, Data=?JSON_WRAPPER(_)) ->
     N#knm_phone_number{carrier_data=Data}.
+
+-spec update_carrier_data(knm_phone_number(), wh_json:object()) -> knm_phone_number().
+update_carrier_data(N=#knm_phone_number{carrier_data = Data}, JObj=?JSON_WRAPPER(_)) ->
+    Updated = wh_json:merge_jobjs(JObj, Data),
+    N#knm_phone_number{carrier_data = Updated}.
 
 %%--------------------------------------------------------------------
 %% @public

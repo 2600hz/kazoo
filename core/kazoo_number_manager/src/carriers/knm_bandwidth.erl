@@ -15,7 +15,6 @@
 -export([find_numbers/3]).
 -export([acquire_number/1]).
 -export([disconnect_number/1]).
--export([get_number_data/1]).
 -export([is_number_billable/1]).
 -export([should_lookup_cnam/0]).
 
@@ -32,32 +31,36 @@
 -define(BW_NUMBER_URL
         ,whapps_config:get_string(?KNM_BW_CONFIG_CAT
                                   ,<<"numbers_api_url">>
-                                  ,<<"https://api.bandwidth.com/public/v2/numbers.api">>
+                                  ,"https://api.bandwidth.com/public/v2/numbers.api"
                                  )
        ).
 
 -define(BW_CDR_URL
         ,whapps_config:get_string(?KNM_BW_CONFIG_CAT
                                   ,<<"cdrs_api_url">>
-                                  ,<<"https://api.bandwidth.com/api/public/v2/cdrs.api">>
+                                  ,"https://api.bandwidth.com/api/public/v2/cdrs.api"
                                  )
        ).
 
--ifdef(TEST).
--define(BW_DEBUG, 'false').
--else.
--define(BW_DEBUG
-        ,whapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"debug">>, 'false')
+-define(BW_DEBUG, whapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"debug">>, 'false')).
+-define(BW_DEBUG_FILE, "/tmp/bandwidth.com.xml").
+-define(BW_DEBUG(Format, Args),
+        _ = ?BW_DEBUG andalso
+        file:write_file(?BW_DEBUG_FILE, io_lib:format(Format, Args), ['append'])
        ).
--endif.
 
--define(BW_DEBUG(Format, Args)
-        ,?BW_DEBUG
-        andalso file:write_file("/tmp/bandwidth.com.xml"
-                                ,io_lib:format(Format, Args)
-                                ,['append']
-                               )
-       ).
+-define(IS_SANDBOX_PROVISIONING_TRUE,
+        whapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"sandbox_provisioning">>, 'true')).
+-define(IS_PROVISIONING_ENABLED,
+        whapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"enable_provisioning">>, 'true')).
+-define(BW_ORDER_NAME_PREFIX,
+        whapps_config:get_string(?KNM_BW_CONFIG_CAT, <<"order_name_prefix">>, "Kazoo")).
+
+-define(BW_ENDPOINTS, whapps_config:get(?KNM_BW_CONFIG_CAT, <<"endpoints">>)).
+-define(BW_DEVELOPER_KEY, whapps_config:get_string(?KNM_BW_CONFIG_CAT, <<"developer_key">>, "")).
+
+
+%%% API
 
 %%--------------------------------------------------------------------
 %% @public
@@ -97,27 +100,18 @@ process_numbers_search_resp(Xml, Options) ->
     TelephoneNumbers = "/numberSearchResponse/telephoneNumbers/telephoneNumber",
     AccountId = props:get_value(<<"account_id">>, Options),
 
-    {'ok', [found_number_to_object(Number, AccountId)
+    {'ok', [found_number_to_KNM(Number, AccountId)
             || Number <- xmerl_xpath:string(TelephoneNumbers, Xml)
            ]
     }.
 
--spec found_number_to_object(xml_el() | xml_els(), api_binary()) ->
-                                    knm_number:knm_number().
-found_number_to_object(Found, AccountId) ->
+-spec found_number_to_KNM(xml_el() | xml_els(), api_binary()) ->
+                                 knm_number:knm_number().
+found_number_to_KNM(Found, AccountId) ->
     JObj = number_search_response_to_json(Found),
     Num = wh_json:get_value(<<"e164">>, JObj),
-    NormalizedNum = knm_converters:normalize(Num),
-    NumberDb = knm_converters:to_db(NormalizedNum),
-
-    Updates = [{fun knm_phone_number:set_number/2, NormalizedNum}
-               ,{fun knm_phone_number:set_number_db/2, NumberDb}
-               ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
-               ,{fun knm_phone_number:set_carrier_data/2, JObj}
-               ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
-               ,{fun knm_phone_number:set_assign_to/2, AccountId}
-              ],
-    {'ok', PhoneNumber} = knm_phone_number:setters(knm_phone_number:new(), Updates),
+    {'ok', PhoneNumber} =
+        knm_phone_number:newly_found(Num, ?MODULE, AccountId, JObj),
     knm_number:set_phone_number(knm_number:new(), PhoneNumber).
 
 %%--------------------------------------------------------------------
@@ -129,8 +123,8 @@ found_number_to_object(Found, AccountId) ->
 -spec acquire_number(knm_number:knm_number()) ->
                             knm_number:knm_number().
 acquire_number(Number) ->
-    Debug = whapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"sandbox_provisioning">>, 'true'),
-    case whapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"enable_provisioning">>, 'true') of
+    Debug = ?IS_SANDBOX_PROVISIONING_TRUE,
+    case ?IS_PROVISIONING_ENABLED of
         'false' when Debug ->
             lager:debug("allowing sandbox provisioning"),
             Number;
@@ -147,25 +141,20 @@ acquire_and_provision_number(Number) ->
     AuthBy = knm_phone_number:auth_by(PhoneNumber),
     AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
     Id = wh_json:get_string_value(<<"number_id">>, knm_phone_number:carrier_data(PhoneNumber)),
-    Hosts = case whapps_config:get(?KNM_BW_CONFIG_CAT, <<"endpoints">>) of
+    Hosts = case ?BW_ENDPOINTS of
                 'undefined' -> [];
                 Endpoint when is_binary(Endpoint) ->
                     [{'endPoints', [{'host', [wh_util:to_list(Endpoint)]}]}];
                 Endpoints ->
                     [{'endPoints', [{'host', [wh_util:to_list(E)]} || E <- Endpoints]}]
             end,
-    OrderNamePrefix = whapps_config:get_binary(?KNM_BW_CONFIG_CAT, <<"order_name_prefix">>, <<"Kazoo">>),
-    OrderName = list_to_binary([OrderNamePrefix, "-", wh_util:to_binary(wh_util:current_tstamp())]),
-    ExtRef = case wh_util:is_empty(AuthBy) of
-                 'true' -> "no_authorizing_account";
-                 'false' -> wh_util:to_list(AuthBy)
-             end,
-    AcquireFor = case wh_util:is_empty(AuthBy) of
+    OrderName = lists:flatten([?BW_ORDER_NAME_PREFIX, "-", integer_to_list(wh_util:current_tstamp())]),
+    AcquireFor = case wh_util:is_empty(AssignedTo) of
                      'true' -> "no_assigned_account";
-                     'false' -> wh_util:to_list(AssignedTo)
+                     'false' -> binary_to_list(AssignedTo)
                  end,
-    Props = [{'orderName', [wh_util:to_list(OrderName)]}
-             ,{'extRefID', [wh_util:to_list(ExtRef)]}
+    Props = [{'orderName', [OrderName]}
+             ,{'extRefID', [binary_to_list(AuthBy)]}
              ,{'numberIDs', [{'id', [Id]}]}
              ,{'subscriber', [wh_util:to_list(AcquireFor)]}
              | Hosts
@@ -191,29 +180,6 @@ acquire_and_provision_number(Number) ->
 -spec disconnect_number(knm_number:knm_number()) ->
                                knm_number:knm_number().
 disconnect_number(Number) -> Number.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Query the Bandwidth.com system for a quanity of available numbers
-%% in a rate center
-%% @end
-%%--------------------------------------------------------------------
--spec get_number_data(ne_binary()) -> wh_json:object().
-get_number_data(<<"+", Rest/binary>>) ->
-    get_number_data(Rest);
-get_number_data(<<"1", Rest/binary>>) ->
-    get_number_data(Rest);
-get_number_data(Number) ->
-    Props = [{'getType', ["10digit"]}
-             ,{'getValue', [wh_util:to_list(Number)]}
-            ],
-    case make_numbers_request('getTelephoneNumber', Props) of
-        {'error', _} -> wh_json:new();
-        {'ok', Xml} ->
-            Response = xmerl_xpath:string("/getResponse/telephoneNumber", Xml),
-            number_search_response_to_json(Response)
-    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -257,8 +223,7 @@ make_numbers_request('areaCodeNumberSearch', _Props) ->
 -else.
 make_numbers_request(Verb, Props) ->
     lager:debug("making ~s request to bandwidth.com ~s", [Verb, ?BW_NUMBER_URL]),
-    DevKey = whapps_config:get_string(?KNM_BW_CONFIG_CAT, <<"developer_key">>, <<>>),
-    Request = [{'developerKey', [DevKey]}
+    Request = [{'developerKey', [?BW_DEVELOPER_KEY]}
                | Props
               ],
     Body = unicode:characters_to_binary(

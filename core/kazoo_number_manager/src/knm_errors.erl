@@ -115,8 +115,7 @@ database_error(E, PhoneNumber) ->
 number_is_porting(Num) ->
     throw({'error', 'number_is_porting', Num}).
 
--spec by_carrier(module(), ne_binary() | atom(), kn()) ->
-                        no_return().
+-spec by_carrier(module(), ne_binary() | atom(), kn()) -> no_return().
 by_carrier(Carrier, E, Number) ->
     throw({'error', 'by_carrier', Number, {Carrier,E}}).
 
