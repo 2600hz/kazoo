@@ -606,7 +606,11 @@ get_whapp_info('undefined') -> #whapp_info{};
 get_whapp_info(Whapp) when is_atom(Whapp) ->
     get_whapp_info(application_controller:get_master(Whapp));
 get_whapp_info(Master) when is_pid(Master) ->
-    get_whapp_info(application_master:get_child(Master));
+    try
+        get_whapp_info(application_master:get_child(Master))
+    catch
+        _E:_R -> #whapp_info{}
+    end;
 get_whapp_info({Pid, _Module}) when is_pid(Pid) ->
     get_whapp_process_info(erlang:process_info(Pid));
 get_whapp_info(_Arg) ->
@@ -633,10 +637,8 @@ is_ecallmgr_present() ->
     lists:any(fun({'ecallmgr', _, _}) -> 'true';
                  (_) -> 'false'
               end
-              ,application:loaded_applications()
-             )
-        andalso whereis('ecallmgr_fs_nodes') =/= 'undefined'
-        andalso whereis('ecallmgr_fs_channels') =/= 'undefined'.
+              ,application:which_applications()
+             ).
 
 -spec advertise_payload(kz_node()) -> kz_proplist().
 advertise_payload(#kz_node{expires=Expires
