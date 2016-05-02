@@ -1,10 +1,6 @@
 ROOT = ../..
-REBAR = $(ROOT)/utils/rebar/rebar
+PROJECT = sup
 
 all: compile
 
-compile:
-	@$(REBAR) compile
-
-clean:
-	@$(REBAR) clean
+include $(ROOT)/make/kz.mk

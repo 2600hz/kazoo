@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%% A really simple escript to accept RPC request and push them
 %%% into a running kazoo virtual machine.
@@ -33,55 +33,55 @@ main(CommandLineArgs, Loops) ->
     net_kernel:stop(),
     case net_kernel:start([my_name(), 'longnames']) of
         {'error', _} when Loops < 3 ->
-            io:format('standard_error', "Unable to start command bridge network kernel, try again~n", []),
+            stderr("Unable to start command bridge network kernel, try again", []),
             halt(1);
         {'error', _} ->
             main(CommandLineArgs, Loops + 1);
-        _Else ->
+        {'ok', _} ->
             {'ok', Options, Args} = parse_args(CommandLineArgs),
             lists:member('help', Options) andalso display_help(1),
             Verbose = proplists:get_value('verbose', Options) =/= 'undefined',
             Target = get_target(Options, Verbose),
-            Module = list_to_atom(proplists:get_value(module, Options, "nomodule")),
-            Function = list_to_atom(proplists:get_value(function, Options, "nofunction")),
-            Timeout = case proplists:get_value(timeout, Options) of undefined -> infinity; T -> T * 1000 end,
-            Verbose andalso io:format(standard_io, "Running ~s:~s(~s)~n", [Module, Function, string:join(Args, ", ")]),
+            Module = list_to_atom(proplists:get_value('module', Options, "nomodule")),
+            Function = list_to_atom(proplists:get_value('function', Options, "nofunction")),
+            Timeout = case proplists:get_value('timeout', Options) of 'undefined' -> 'infinity'; T -> T * 1000 end,
+            Verbose andalso stdout("Running ~s:~s(~s)", [Module, Function, string:join(Args, ", ")]),
             case rpc:call(Target, Module, Function, [list_to_binary(Arg) || Arg <- Args], Timeout) of
-                {badrpc, {'EXIT',{undef, _}}} ->
-                    io:format(standard_error, "Invalid command or wrong number of arguments, please try again~n", []),
+                {'badrpc', {'EXIT',{'undef', _}}} ->
+                    stderr("Invalid command or wrong number of arguments, please try again", []),
                     halt(1);
-                {badrpc, Reason} ->
+                {'badrpc', Reason} ->
                     String = io_lib:print(Reason, 1, ?MAX_CHARS, -1),
-                    io:format(standard_error, "Command failed: ~s~n", [String]),
+                    stderr("Command failed: ~s", [String]),
                     halt(1);
-                no_return ->
+                'no_return' ->
                     erlang:halt(0);
                 Result when Verbose ->
                     String = io_lib:print(Result, 1, ?MAX_CHARS, -1),
-                    io:format(standard_io, "Result: ~s~n", [String]),
+                    stdout("Result: ~s", [String]),
                     erlang:halt(0);
                 Result ->
                     String = io_lib:print(Result, 1, ?MAX_CHARS, -1),
-                    io:format(standard_io, "~s~n", [String]),
+                    stdout("~s", [String]),
                     erlang:halt(0)
             end
     end.
 
 -spec get_target(proplist(), boolean()) -> atom().
 get_target(Options, Verbose) ->
-    Node = proplists:get_value(node, Options),
+    Node = proplists:get_value('node', Options),
     Host = get_host(Options),
     Cookie = get_cookie(Options, Node),
     Target = list_to_atom(Node ++ "@" ++ Host),
     case net_adm:ping(Target) of
-        pong ->
-            Verbose andalso io:format(standard_io, "Connected to service '~s' with cookie '~s'~n", [Target, Cookie]),
+        'pong' ->
+            Verbose andalso stdout("Connected to service '~s' with cookie '~s'", [Target, Cookie]),
             Target;
-        pang ->
-            io:format(standard_error, "Connection to service failed!~n", []),
+        'pang' ->
+            stderr("Connection to service failed!", []),
             print_ping_failed(Target, Cookie);
         Else ->
-            io:format(standard_error, "Connection to service failed: ~p~n", [Else]),
+            stderr("Connection to service failed: ~p", [Else]),
             print_ping_failed(Target, Cookie)
     end.
 
@@ -94,7 +94,7 @@ get_cookie(Options, Node) ->
                  {_, C} -> C
              end,
     lager:debug("cookie found: '~p'", [Cookie]),
-    erlang:set_cookie(node(), kz_util:to_atom(Cookie, 'true')),
+    'true' = erlang:set_cookie(node(), kz_util:to_atom(Cookie, 'true')),
     Cookie.
 
 maybe_get_cookie('kazoo_apps') ->
@@ -119,24 +119,24 @@ get_cookie_from_vmargs([]) ->
     print_no_setcookie();
 get_cookie_from_vmargs([File|Files]) ->
     case file:read_file(File) of
-        {error, _} -> get_cookie_from_vmargs(Files);
-        {ok, Bin} ->
-            case re:run(Bin, <<"-setcookie (.*)\\n">>, [{capture, [1], list}]) of
-                {match, [Cookie]} -> Cookie;
+        {'error', _} -> get_cookie_from_vmargs(Files);
+        {'ok', Bin} ->
+            case re:run(Bin, <<"-setcookie (.*)\\n">>, [{'capture', [1], 'list'}]) of
+                {'match', [Cookie]} -> Cookie;
                 _Else -> get_cookie_from_vmargs(Files)
             end
     end.
 
 -spec get_host(proplist()) -> string().
 get_host(Options) ->
-    Host = proplists:get_value(host, Options),
+    Host = proplists:get_value('host', Options),
     case inet:gethostbyname(Host) of
-        {ok, _} -> Host;
-        {error,nxdomain} ->
-            io:format(standard_error, "Unable to resolve host '~s'~n", [Host]),
+        {'ok', _} -> Host;
+        {'error', 'nxdomain'} ->
+            stderr("Unable to resolve host '~s'", [Host]),
             print_unresolvable_host(Host);
-        {error, Reason} ->
-            io:format(standard_error, "Unable to resolve host '~s': ~p~n", [Host, Reason]),
+        {'error', Reason} ->
+            stderr("Unable to resolve host '~s': ~p", [Host, Reason]),
             print_unresolvable_host(Host)
     end.
 
@@ -149,37 +149,37 @@ my_name() ->
 parse_args(CommandLineArgs) ->
     OptSpecList = option_spec_list(),
     case getopt:parse(OptSpecList, CommandLineArgs) of
-        {ok, {Options, _}} when not is_list(Options) ->
+        {'ok', {Options, _}} when not is_list(Options) ->
             display_help(1);
-        {ok, {Options, Args}} ->
-            {ok, Options, Args};
-        {error, {_, _}} ->
+        {'ok', {Options, Args}} ->
+            {'ok', Options, Args};
+        {'error', {_, _}} ->
             display_help(1)
     end.
 
 -spec print_no_setcookie() -> no_return().
 print_no_setcookie() ->
-    io:format(standard_io, "Unable to automatically determine cookie~n", []),
-    io:format(standard_io, "Please provide the cookie of the node you are connecting to~n", []),
-    io:format(standard_io, "\"./sup -c <cookie>\"~n", []),
+    stdout("Unable to automatically determine cookie", []),
+    stdout("Please provide the cookie of the node you are connecting to", []),
+    stdout("`sup -c <cookie>`", []),
     halt(1).
 
 -spec print_ping_failed(string(), string()) -> no_return().
 print_ping_failed(Target, Cookie) ->
-    io:format(standard_io, "Failed to connect to service '~s' with cookie '~s'~n", [Target, Cookie]),
-    io:format(standard_io, "  Possible fixes:~n", []),
-    io:format(standard_io, "    * Ensure the kazoo service you are trying to connect to is running on the host~n", []),
-    io:format(standard_io, "    * Ensure that you are using the same cookie as the kazoo node, \"./sup -c <cookie>\"~n", []),
-    io:format(standard_io, "    * Verify that the hostname being used is a kazoo node~n", []),
+    stdout("Failed to connect to service '~s' with cookie '~s'", [Target, Cookie]),
+    stdout("  Possible fixes:", []),
+    stdout("    * Ensure the Kazoo service you are trying to connect to is running on the host", []),
+    stdout("    * Ensure that you are using the same cookie as the Kazoo node, `sup -c <cookie>`", []),
+    stdout("    * Verify that the hostname being used is a Kazoo node", []),
     halt(1).
 
 -spec print_unresolvable_host(string()) -> no_return().
 print_unresolvable_host(Host) ->
-    io:format(standard_io, "If you can not run \"ping ~s\" then this program will not be able to connect.~n", [Host]),
-    io:format(standard_io, "  Possible fixes:~n", []),
-    io:format(standard_io, "    * Use \"./sup -h <hostname>\" argument of this script to specify a different host~n", []),
-    io:format(standard_io, "    * Add \"{IP_OF_KAZOO_NODE}  ~s\" to your /etc/hosts file~n", [Host]),
-    io:format(standard_io, "    * Create a DNS record for \"~s\"~n", [Host]),
+    stdout("If you cannot run `ping ~s` then this program will not be able to connect.", [Host]),
+    stdout("  Possible fixes:", []),
+    stdout("    * Use `sup -h <hostname>` argument of this script to specify a different host", []),
+    stdout("    * Add \"{IP_OF_KAZOO_NODE}  ~s\" to your /etc/hosts file", [Host]),
+    stdout("    * Create a DNS record for \"~s\"", [Host]),
     halt(1).
 
 -spec display_help(non_neg_integer()) -> no_return().
@@ -188,14 +188,22 @@ display_help(Return) ->
     getopt:usage(OptSpecList, "sup", "[args ...]"),
     erlang:halt(Return).
 
+-spec stdout(string(), list()) -> 'ok'.
+stdout(Format, Things) ->
+    io:format('standard_io', Format++"\n", Things).
+
+-spec stderr(string(), list()) -> 'ok'.
+stderr(Format, Things) ->
+    io:format('standard_error', Format++"\n", Things).
+
 -spec option_spec_list() -> kz_proplist().
 option_spec_list() ->
-    [{help, $?, "help", undefined, "Show the program options"},
-     {host, $h, "host", {string, net_adm:localhost()}, "System hostname, defaults to system hostname"},
-     {node, $n, "node", {string, "kazoo_apps"}, "Node name, default \"kazoo_apps\""},
-     {cookie, $c, "cookie", {string, ""}, "Erlang cookie"},
-     {timeout, $t, "timeout", integer, "Command timeout, default 5"},
-     {verbose, $v, "verbose", undefined, "Be verbose"},
-     {module, undefined, undefined, string, "The name of the remote module"},
-     {function, undefined, undefined, string, "The name of the remote module's function"}
+    [{'help', $?, "help", 'undefined', "Show the program options"}
+    ,{'host', $h, "host", {'string', net_adm:localhost()}, "System hostname, defaults to system hostname"}
+    ,{'node', $n, "node", {'string', "kazoo_apps"}, "Node name, default \"kazoo_apps\""}
+    ,{'cookie', $c, "cookie", {'string', ""}, "Erlang cookie"}
+    ,{'timeout', $t, "timeout", 'integer', "Command timeout, default 5"}
+    ,{'verbose', $v, "verbose", 'undefined', "Be verbose"}
+    ,{'module', 'undefined', 'undefined', 'string', "The name of the remote module"}
+    ,{'function', 'undefined', 'undefined', 'string', "The name of the remote module's function"}
     ].
