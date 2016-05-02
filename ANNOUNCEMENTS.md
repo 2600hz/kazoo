@@ -10,7 +10,7 @@ This file will serve as a reference point for upcoming announcements, both of th
 
 Starting with Kazoo 4.0 Erlang support will target 18+ and will not be backward compatible with prior Erlang versions.
 
-#### Consistent naming (removal of references to kazoo)
+#### Consistent naming (removal of references to whistle)
 
 All instances of whistle or variations such as wh_ have been replaced with kazoo or kz_.  This will include all maintenance functions as well as init.d/systemd scripts.  There is a script that can be used to assist with renaming and changing references in code `scripts/wh-to-kz.sh`.
 
