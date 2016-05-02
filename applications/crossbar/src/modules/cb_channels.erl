@@ -229,8 +229,8 @@ summary(Context) ->
     end.
 
 -spec device_summary(cb_context:context(), ne_binary()) -> cb_context:context().
-device_summary(Context, _DeviceId) ->
-    get_channels(Context, [cb_context:doc(Context)], fun wapi_call:publish_query_user_channels_req/1).
+device_summary(Context, DeviceId) ->
+    get_channels(Context, [cb_context:doc(crossbar_doc:load(DeviceId, Context))], fun wapi_call:publish_query_user_channels_req/1).
 
 -spec user_summary(cb_context:context(), ne_binary()) -> cb_context:context().
 user_summary(Context, UserId) ->
