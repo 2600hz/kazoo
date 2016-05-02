@@ -9,6 +9,7 @@
 -define(ECALLMGR_AUTH_CACHE, 'ecallmgr_auth_cache').
 -define(ECALLMGR_CALL_CACHE, 'ecallmgr_call_cache').
 -define(ECALLMGR_INTERACTION_CACHE, 'ecallmgr_interaction_cache').
+-define(ECALLMGR_CMDS_CACHE, 'ecallmgr_loopback_commands').
 
 -define(CHANNELS_TBL, 'ecallmgr_channels').
 

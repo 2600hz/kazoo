@@ -186,8 +186,27 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     lager:debug("starting originate request"),
-    gen_listener:cast(self(), {'get_originate_action'}),
-    {'noreply', State#state{queue=Q}};
+    Routines = [fun create_uuid/1
+                ,fun set_app/1
+                ,fun maybe_update_endpoints/1
+                ,fun get_originate_action/1
+                ,fun build_originate_args/1
+                ,fun update_dialstrings/1
+               ],
+    Return = lists:foldl(fun(F, #state{} = S) -> F(S);
+                            (_, {'break', #state{} = NState}) -> NState;
+                            (_, Ret) -> Ret
+                         end
+                         ,State#state{queue=Q}
+                         ,Routines),
+    case Return of
+        #state{} = NewState ->
+            {'noreply', NewState};
+        {'stop', #state{} = NewState} ->
+            {'stop', 'normal', NewState};
+        Return ->
+            Return
+    end;
 handle_cast({'update_server_id', ServerId}, State) ->
     {'noreply', State#state{server_id=ServerId}, 'hibernate'};
 handle_cast({'maybe_update_node', Node}, #state{node=Node}=State) ->
@@ -195,90 +214,8 @@ handle_cast({'maybe_update_node', Node}, #state{node=Node}=State) ->
 handle_cast({'maybe_update_node', Node}, #state{node=_OldNode}=State) ->
     lager:debug("updating node from ~s to ~s", [_OldNode, Node]),
     {'noreply', State#state{node=Node}, 'hibernate'};
-handle_cast({'create_uuid'}, #state{node=Node
-                                    ,originate_req=JObj
-                                    ,uuid='undefined'
-                                   }=State) ->
-    UUID = {_, Id} = create_uuid(JObj, Node),
-    wh_util:put_callid(Id),
-    lager:debug("created uuid ~p", [UUID]),
-    case wh_json:is_true(<<"Start-Control-Process">>, JObj, 'true')
-        andalso start_control_process(State#state{uuid=UUID}) of
-        'false' ->
-            gen_listener:cast(self(), {'build_originate_args'}),
-            {'noreply', State#state{uuid=UUID}, 'hibernate'};
-        {'ok', #state{control_pid=Pid}=State1} ->
-            lager:debug("started control proc ~p uuid ~p", [Pid, UUID]),
-            maybe_send_originate_uuid(UUID, Pid, State),
-            gen_listener:cast(self(), {'build_originate_args'}),
-            {'noreply', State1, 'hibernate'};
-        {'error', _E} ->
-            lager:debug("failed to start control proc for ~p: ~p", [UUID, _E]),
-            {'stop', 'normal', State}
-    end;
-handle_cast({'get_originate_action'}, #state{originate_req=JObj
-                                             ,node=Node
-                                            }=State) ->
-    gen_listener:cast(self(), {'build_originate_args'}),
-    ApplicationName = wh_json:get_value(<<"Application-Name">>, JObj),
-    Action = get_originate_action(ApplicationName, JObj),
-    UseNode = maybe_update_node(JObj, Node),
-    lager:debug("maybe updating node from ~s to ~s", [Node, UseNode]),
-    lager:debug("originate action: ~s", [Action]),
-    {'noreply', State#state{action=Action
-                            ,app=ApplicationName
-                            ,node=UseNode
-                           }
-    ,'hibernate'
-    };
-handle_cast({'build_originate_args'}, #state{uuid='undefined'}=State) ->
-    gen_listener:cast(self(), {'create_uuid'}),
-    {'noreply', State};
-
-handle_cast({'build_originate_args'}, #state{originate_req=JObj
-                                             ,action = ?ORIGINATE_PARK
-                                             ,fetch_id=FetchId
-                                             ,dialstrings='undefined'
-                                            }=State) ->
-    case wh_json:is_true(<<"Originate-Immediate">>, JObj) of
-        'true' -> gen_listener:cast(self(), {'originate_execute'});
-        'false' -> gen_listener:cast(self(), {'originate_ready'})
-    end,
-    Endpoints = [update_endpoint(Endpoint, State)
-                 || Endpoint <- wh_json:get_ne_value(<<"Endpoints">>, JObj, [])
-                ],
-    {'noreply', State#state{dialstrings=build_originate_args_from_endpoints(?ORIGINATE_PARK, Endpoints, JObj, FetchId)}};
-handle_cast({'build_originate_args'}, #state{originate_req=JObj
-                                             ,action = Action
-                                             ,app = ?ORIGINATE_EAVESDROP
-                                             ,fetch_id=FetchId
-                                             ,dialstrings='undefined'
-                                            }=State) ->
-    gen_listener:cast(self(), {'originate_ready'}),
-    {'noreply', State#state{dialstrings=build_originate_args(Action, State, JObj, FetchId)}};
-handle_cast({'build_originate_args'}, #state{originate_req=JObj
-                                             ,action=Action
-                                             ,fetch_id=FetchId
-                                             ,dialstrings='undefined'
-                                            }=State) ->
-    gen_listener:cast(self(), {'originate_execute'}),
-    {'noreply', State#state{dialstrings=build_originate_args(Action, State, JObj, FetchId)}};
-
-handle_cast({'originate_ready'}, #state{node=_Node}=State) ->
-    case start_control_process(State) of
-        {'ok', #state{control_pid=Pid
-                      ,uuid=UUID
-                      ,originate_req=JObj
-                      ,server_id=ServerId
-                      ,queue=Q
-                     }=State1} ->
-            CtrlQ = gen_listener:queue_name(Pid),
-            _ = publish_originate_ready(CtrlQ, UUID, JObj, Q, ServerId),
-            {'noreply', State1#state{tref=start_abandon_timer()}};
-        {'error', _E} ->
-            lager:debug("failed to start control process: ~p", [_E]),
-            {'stop', 'normal', State}
-    end;
+handle_cast({'originate_ready'}, State) ->
+    originate_ready(State);
 handle_cast({'originate_execute'}, #state{tref=TRef}=State) when is_reference(TRef) ->
     _ = erlang:cancel_timer(TRef),
     handle_cast({'originate_execute'}, State#state{tref='undefined'});
@@ -435,6 +372,135 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec set_app(state()) -> state().
+set_app(#state{originate_req=JObj} = State) ->
+    ApplicationName = wh_json:get_value(<<"Application-Name">>, JObj),
+    State#state{app = ApplicationName}.
+
+-spec maybe_update_endpoints(state()) -> state().
+maybe_update_endpoints(#state{originate_req=JObj} = State) ->
+    case wh_json:get_value(<<"Loopback-Handler">>, JObj) of
+        <<"ecallmgr">> ->
+            lager:debug("trying to resolve loopback endpoints"),
+            update_endpoints(State);
+        _ ->
+            lager:debug("loopback endpoints will be handled by freeswitch"),
+            State
+    end.
+
+-spec update_endpoints(state()) -> state().
+update_endpoints(#state{originate_req=JObj} = State) ->
+    Endpoints = wh_json:get_value(<<"Endpoints">>, JObj, []),
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    ResourceType = wh_json:get_value(<<"Resource-Type">>, JObj, <<"audio">>),
+    DialMethod = wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj),
+    {LoopbackEndpoints, NormalEndpoints} = lists:splitwith(fun is_loopback/1, Endpoints),
+    {NewDialMethod, NormalizedEndpoints} = lists:foldl(normalized_endpoints_acc(CallId, ResourceType)
+                                                       ,{DialMethod, NormalEndpoints}
+                                                       ,LoopbackEndpoints
+                                                      ),
+    NewJObj = wh_json:set_values([{<<"Endpoints">>, NormalizedEndpoints}
+                                  ,{<<"Dial-Endpoint-Method">>, NewDialMethod}
+                                 ]
+                                 ,JObj),
+    State#state{originate_req = NewJObj}.
+
+-spec is_loopback(wh_json:object()) -> boolean().
+is_loopback(JObj) ->
+    wh_json:get_value(<<"Invite-Format">>, JObj) =:= <<"loopback">>.
+
+-spec normalized_endpoints_acc(api_binary(), ne_binary()) ->
+    fun((wh_json:object(), wh_json:objects()) -> wh_json:objects()).
+normalized_endpoints_acc(CallId, ResourceType) ->
+    fun (Endpoint, {DialMethod, Acc}) ->
+            LoopbackId = wh_util:rand_hex_binary(8),
+            {'ok', CtrlPid} = ecallmgr_loopback_control:start_link(CallId, ResourceType, LoopbackId, Endpoint),
+            {'ok', SuggestedDialMethod, NormalizedEndpoints} =
+                try
+                    ecallmgr_loopback_control:get_endpoints(CtrlPid)
+                catch
+                    _:_ ->
+                        {'ok', DialMethod, []}
+                end,
+            {choose_dial_method(DialMethod, SuggestedDialMethod)
+             ,Acc ++ [set_ccv(<<"Loopback-ID">>, LoopbackId, E) || E <- NormalizedEndpoints]
+            }
+    end.
+
+-spec choose_dial_method(api_binary(), api_binary()) -> api_binary().
+choose_dial_method('undefined' = _OldMethod, NewMethod) ->
+    NewMethod;
+choose_dial_method(OldMethod, _NewMethod) ->
+    OldMethod.
+
+-spec set_ccv(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:object().
+set_ccv(Var, Value, Endpoint) ->
+    wh_json:set_value([<<"Custom-Channel-Vars">>, Var], Value, Endpoint).
+
+-spec get_originate_action(state()) -> state().
+get_originate_action(#state{originate_req=JObj
+                            ,node=Node
+                            ,app = ApplicationName
+                           }=State) ->
+    Action = get_originate_action(ApplicationName, JObj),
+    UseNode = maybe_update_node(JObj, Node),
+    lager:debug("maybe updating node from ~s to ~s", [Node, UseNode]),
+    lager:debug("originate action: ~s", [Action]),
+    State#state{action=Action
+                ,node=UseNode
+               }.
+
+-spec build_originate_args(state()) -> state().
+build_originate_args(#state{originate_req=JObj
+                            ,action = ?ORIGINATE_PARK
+                            ,fetch_id=FetchId
+                            ,dialstrings='undefined'
+                           }=State) ->
+    Endpoints = [update_endpoint(Endpoint, State)
+                 || Endpoint <- wh_json:get_ne_value(<<"Endpoints">>, JObj, [])
+                ],
+    NewState = State#state{dialstrings=build_originate_args_from_endpoints(Endpoints, JObj, FetchId)},
+    case wh_json:is_true(<<"Originate-Immediate">>, JObj) of
+        'true' ->
+            gen_listener:cast(self(), {'originate_execute'}),
+            NewState;
+        'false' ->
+            originate_ready(NewState)
+    end;
+build_originate_args(#state{originate_req=JObj
+                            ,app = ?ORIGINATE_EAVESDROP
+                            ,fetch_id=FetchId
+                            ,dialstrings='undefined'
+                           }=State) ->
+    originate_ready(State#state{dialstrings=build_originate_args(State, JObj, FetchId)});
+build_originate_args(#state{originate_req=JObj
+                            ,fetch_id=FetchId
+                            ,dialstrings='undefined'
+                           }=State) ->
+    gen_listener:cast(self(), {'originate_execute'}),
+    State#state{dialstrings=build_originate_args(State, JObj, FetchId)}.
+
+-spec update_dialstrings(state()) -> state().
+update_dialstrings(#state{dialstrings=DialString, action = Action} = State) ->
+    State#state{dialstrings = iolist_to_binary([DialString, " ", Action])}.
+
+-spec originate_ready(state()) -> {'noreply', state()} | {'stop', 'normal', state()}.
+originate_ready(#state{node = _Node} = State) ->
+    case start_control_process(State) of
+        {'ok', #state{control_pid=Pid
+                      ,uuid=UUID
+                      ,originate_req=JObj
+                      ,server_id=ServerId
+                      ,queue=Q
+                     }=State1} ->
+            CtrlQ = gen_listener:queue_name(Pid),
+            _ = publish_originate_ready(CtrlQ, UUID, JObj, Q, ServerId),
+            {'noreply', update_dialstrings(State1#state{tref=start_abandon_timer()})};
+        {'error', _E} ->
+            lager:debug("failed to start control process: ~p", [_E]),
+            {'stop', 'normal', State}
+    end.
+
 -spec get_originate_action(ne_binary(), wh_json:object()) -> ne_binary().
 get_originate_action(<<"fax">>, JObj) ->
     lager:debug("got originate with action fax"),
@@ -514,32 +580,28 @@ get_eavesdrop_action(JObj) ->
         'undefined' -> <<Group/binary, "eavesdrop:", CallId/binary, " inline">>
     end.
 
--spec build_originate_args(ne_binary(), state(), wh_json:object(), ne_binary()) -> api_binary().
-build_originate_args(Action, State, JObj, FetchId) ->
+-spec build_originate_args(state(), wh_json:object(), ne_binary()) -> api_binary().
+build_originate_args(State, JObj, FetchId) ->
     case wh_json:get_value(<<"Endpoints">>, JObj, []) of
         [] ->
             lager:warning("no endpoints defined in originate request"),
             'undefined';
         [Endpoint] ->
             lager:debug("only one endpoint, don't create per-endpoint UUIDs"),
-            build_originate_args_from_endpoints(Action, [update_endpoint(Endpoint, State)], JObj, FetchId);
+            build_originate_args_from_endpoints([update_endpoint(Endpoint, State)], JObj, FetchId);
         Endpoints ->
             lager:debug("multiple endpoints defined, assigning uuids to each"),
             UpdatedEndpoints = [update_endpoint(Endpoint, State) || Endpoint <- Endpoints],
-            build_originate_args_from_endpoints(Action, UpdatedEndpoints, JObj, FetchId)
+            build_originate_args_from_endpoints(UpdatedEndpoints, JObj, FetchId)
     end.
 
--spec build_originate_args_from_endpoints(ne_binary(), wh_json:objects(), wh_json:object(), ne_binary()) ->
-                                                 ne_binary().
-build_originate_args_from_endpoints(Action, Endpoints, JObj, FetchId) ->
+-spec build_originate_args_from_endpoints(wh_json:objects(), wh_json:object(), ne_binary()) -> ne_binary().
+build_originate_args_from_endpoints(Endpoints, JObj, FetchId) ->
     lager:debug("building originate command arguments"),
     DialSeparator = ecallmgr_util:get_dial_separator(JObj, Endpoints),
-
     DialStrings = ecallmgr_util:build_bridge_string(Endpoints, DialSeparator),
-
     ChannelVars = get_channel_vars(JObj, FetchId),
-
-    list_to_binary([ChannelVars, DialStrings, " ", Action]).
+    list_to_binary([ChannelVars, DialStrings]).
 
 -spec get_channel_vars(wh_json:object(), ne_binary()) -> iolist().
 get_channel_vars(JObj, FetchId) ->
@@ -625,8 +687,30 @@ update_uuid(OldUUID, NewUUID) ->
 -spec create_uuid(atom()) -> created_uuid().
 -spec create_uuid(wh_json:object(), atom()) -> created_uuid().
 -spec create_uuid(wh_json:object(), wh_json:object(), atom()) -> created_uuid().
+create_uuid(#state{node=Node
+                   ,originate_req=JObj
+                   ,uuid='undefined'
+                  }=State) ->
+    UUID = {_, Id} = create_uuid(JObj, Node),
+    wh_util:put_callid(Id),
+    lager:debug("created uuid ~p", [UUID]),
+    case wh_json:is_true(<<"Start-Control-Process">>, JObj, 'true')
+        andalso start_control_process(State#state{uuid=UUID}) of
+        'false' ->
+            State#state{uuid=UUID};
+        {'ok', #state{control_pid=Pid}=State1} ->
+            lager:debug("started control proc ~p uuid ~p", [Pid, UUID]),
+            maybe_send_originate_uuid(UUID, Pid, State),
+            State1;
+        {'error', _E} ->
+            lager:debug("failed to start control proc for ~p: ~p", [UUID, _E]),
+            {'stop', 'normal', State}
+    end;
 
-create_uuid(Node) ->
+create_uuid(#state{} = State) ->
+    State;
+
+create_uuid(Node) when is_atom(Node) ->
     case freeswitch:api(Node, 'create_uuid', " ") of
         {'ok', UUID} ->
             wh_util:put_callid(UUID),

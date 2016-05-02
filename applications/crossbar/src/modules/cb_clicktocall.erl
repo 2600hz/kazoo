@@ -414,7 +414,7 @@ build_originate_req(Contact, Context) ->
     CalleeNumber = knm_converters:normalize(wh_json:get_binary_value(<<"outbound_callee_id_number">>, JObj, Exten)),
     FriendlyName = wh_json:get_ne_value(<<"name">>, JObj, <<>>),
     OutboundNumber = wh_json:get_value(<<"caller_id_number">>, JObj, Contact),
-    AutoAnswer = wh_json:is_true(<<"auto_answer">>, cb_context:query_string(Context), 'true'),
+    AutoAnswer = wh_json:is_true(<<"auto_answer">>, cb_context:query_string(Context), 'false'),
     {Caller, Callee} = get_caller_callee(wh_json:get_value(<<"dial_first">>, JObj, <<"extension">>)
                                          ,#contact{number = OutboundNumber
                                                    ,name = FriendlyName
@@ -462,7 +462,7 @@ build_originate_req(Contact, Context) ->
        ,{<<"Outbound-Caller-ID-Number">>, Caller#contact.number}
        ,{<<"Outbound-Call-ID">>, CallId}
        ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, JObj)}
-       ,{<<"Dial-Endpoint-Method">>, <<"single">>}
+       ,{<<"Loopback-Handler">>, <<"ecallmgr">>}
        ,{<<"Continue-On-Fail">>, 'true'}
        ,{<<"Custom-SIP-Headers">>, wh_json:get_value(<<"custom_sip_headers">>, JObj)}
        ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
