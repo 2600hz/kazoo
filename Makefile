@@ -89,10 +89,10 @@ rel/vm.args: rel/args rel/dev-vm.args
 ## More ACTs at //github.com/erlware/relx/priv/templates/extended_bin
 release: ACT ?= console # start | attach | stop | console | foreground
 release: REL ?= whistle_apps # whistle_apps | ecallmgr | …
-release:
 ifneq ($(findstring whistle_apps,$(REL)),whistle_apps)
-	@export KAZOO_APPS='ecallmgr'
+release: export KAZOO_APPS = 'ecallmgr'
 endif
+release:
 	@RELX_REPLACE_OS_VARS=true KZname='-name $(REL)' _rel/kazoo/bin/kazoo $(ACT) "$$@"
 
 
