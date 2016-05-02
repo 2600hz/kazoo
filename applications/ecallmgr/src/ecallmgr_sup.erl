@@ -16,8 +16,7 @@
 -export([start_link/0]).
 -export([init/1]).
 
--define(CHILDREN, [?WORKER('ecallmgr_init')
-                   ,?SUPER('ecallmgr_auxiliary_sup')
+-define(CHILDREN, [?SUPER('ecallmgr_auxiliary_sup')
                    ,?SUPER('ecallmgr_call_sup')
                    ,?SUPER('ecallmgr_fs_sup')
                   ]).
