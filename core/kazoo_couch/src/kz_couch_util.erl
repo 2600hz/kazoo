@@ -217,6 +217,7 @@ format_error({'bad_response',{500, _Headers, Body}}) ->
 format_error({'bad_response',{Code, _Headers, _Body}}) ->
     io_lib:format("response code ~b not expected", [Code]);
 format_error('timeout') -> 'timeout';
+format_error('conflict') -> 'conflict';
 format_error('not_found') -> 'not_found';
 format_error({'error', 'connect_timeout'}) -> 'connect_timeout';
 format_error({'http_error', 500, Msg}) -> Msg;
