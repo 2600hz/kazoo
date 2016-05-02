@@ -6,6 +6,7 @@
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
+%%%   Pierre Fenoll
 %%%------------------------------------------------------------------
 -module(sup).
 
@@ -14,14 +15,6 @@
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 
--define(KAPPS_VM_ARGS, ["/etc/kazoo/vm.args"
-                         ,"/opt/kazoo/kazoo_apps/conf/vm.args"
-                         ,"/opt/kazoo/kazoo/kazoo_apps/conf/vm.args"
-                        ]).
--define(ECALL_VM_ARGS, ["/etc/kazoo/vm.args"
-                        ,"/opt/kazoo/ecallmgr/conf/vm.args"
-                        ,"/opt/kazoo/kazoo/ecallmgr/conf/vm.args"
-                       ]).
 -define(MAX_CHARS, round(math:pow(2012, 80))).
 
 -spec main(string()) -> no_return().
@@ -39,11 +32,11 @@ main(CommandLineArgs, Loops) ->
             main(CommandLineArgs, Loops + 1);
         {'ok', _} ->
             {'ok', Options, Args} = parse_args(CommandLineArgs),
-            lists:member('help', Options) andalso display_help(1),
+            lists:member('help', Options) andalso print_help(),
             Verbose = proplists:get_value('verbose', Options) =/= 'undefined',
             Target = get_target(Options, Verbose),
-            Module = list_to_atom(proplists:get_value('module', Options, "nomodule")),
-            Function = list_to_atom(proplists:get_value('function', Options, "nofunction")),
+            Module = list_to_atom(proplists:get_value('module', Options, 'nomodule')),
+            Function = list_to_atom(proplists:get_value('function', Options, 'nofunction')),
             Timeout = case proplists:get_value('timeout', Options) of 'undefined' -> 'infinity'; T -> T * 1000 end,
             Verbose andalso stdout("Running ~s:~s(~s)", [Module, Function, string:join(Args, ", ")]),
             case rpc:call(Target, Module, Function, [list_to_binary(Arg) || Arg <- Args], Timeout) of
@@ -71,7 +64,7 @@ main(CommandLineArgs, Loops) ->
 get_target(Options, Verbose) ->
     Node = proplists:get_value('node', Options),
     Host = get_host(Options),
-    Cookie = get_cookie(Options, Node),
+    Cookie = get_cookie(Options, list_to_atom(Node)),
     Target = list_to_atom(Node ++ "@" ++ Host),
      case net_adm:ping(Target) of
         'pong' ->
@@ -85,51 +78,23 @@ get_target(Options, Verbose) ->
             print_ping_failed(Target, Cookie)
     end.
 
--spec get_cookie(proplist(), string()) -> atom().
+-spec get_cookie(proplist(), atom()) -> atom().
 get_cookie(Options, Node) ->
     CookieStr =
-        case {Node, props:get_value('cookie', Options, "")} of
-            {"kazoo_apps", ""} -> maybe_get_cookie('kazoo_apps');
-            {"ecallmgr", ""} -> maybe_get_cookie('ecallmgr');
-            {_, ""} -> print_no_setcookie();
-            {_, C} -> C
+        case { props:get_value('cookie', Options, "")
+             , kz_config:get_atom(Node, 'cookie', [])
+             }
+        of
+            {C, []} when C =/= "" -> C;
+            {_, [C]} -> C;
+            {"", []} -> print_no_setcookie()
         end,
     lager:debug("cookie found: '~p'", [CookieStr]),
     Cookie = kz_util:to_atom(CookieStr, 'true'),
     'true' = erlang:set_cookie(node(), Cookie),
     Cookie.
 
-maybe_get_cookie('kazoo_apps') ->
-    case kz_config:get_atom('kazoo_apps', 'cookie') of
-        [] ->
-            list_to_atom(get_cookie_from_vmargs(?KAPPS_VM_ARGS));
-        [Cookie|_] ->
-            Cookie
-    end;
-maybe_get_cookie('ecallmgr') ->
-    case kz_config:get_atom('ecallmgr', 'cookie') of
-        [] ->
-            list_to_atom(get_cookie_from_vmargs(?ECALL_VM_ARGS));
-        [Cookie|_] ->
-            Cookie
-    end;
-maybe_get_cookie(_) ->
-    print_no_setcookie().
-
--spec get_cookie_from_vmargs([string(),...]) -> string().
-get_cookie_from_vmargs([]) ->
-    print_no_setcookie();
-get_cookie_from_vmargs([File|Files]) ->
-    case file:read_file(File) of
-        {'error', _} -> get_cookie_from_vmargs(Files);
-        {'ok', Bin} ->
-            case re:run(Bin, <<"-setcookie (.*)\\n">>, [{'capture', [1], 'list'}]) of
-                {'match', [Cookie]} -> Cookie;
-                _Else -> get_cookie_from_vmargs(Files)
-            end
-    end.
-
--spec get_host(proplist()) -> string().
+-spec get_host(proplist()) -> nonempty_string().
 get_host(Options) ->
     Host = proplists:get_value('host', Options),
     case inet:gethostbyname(Host) of
@@ -160,14 +125,13 @@ long_or_short_name() ->
 
 -spec parse_args(string()) -> {'ok', proplist(), list()}.
 parse_args(CommandLineArgs) ->
-    OptSpecList = option_spec_list(),
-    case getopt:parse(OptSpecList, CommandLineArgs) of
-        {'ok', {Options, _}} when not is_list(Options) ->
-            display_help(1);
-        {'ok', {Options, Args}} ->
+    case getopt:parse(option_spec_list(), CommandLineArgs) of
+        {'ok', {Options, Args}} when is_list(Options) ->
             {'ok', Options, Args};
+        {'ok', {_, _}} ->
+            print_help();
         {'error', {_, _}} ->
-            display_help(1)
+            print_help()
     end.
 
 -spec print_no_setcookie() -> no_return().
@@ -195,11 +159,10 @@ print_unresolvable_host(Host) ->
     stdout("    * Create a DNS record for \"~s\"", [Host]),
     halt(1).
 
--spec display_help(non_neg_integer()) -> no_return().
-display_help(Return) ->
-    OptSpecList = option_spec_list(),
-    getopt:usage(OptSpecList, "sup", "[args ...]"),
-    erlang:halt(Return).
+-spec print_help() -> no_return().
+print_help() ->
+    getopt:usage(option_spec_list(), "sup", "[args ...]"),
+    halt(1).
 
 -spec stdout(string(), list()) -> 'ok'.
 stdout(Format, Things) ->
@@ -209,7 +172,7 @@ stdout(Format, Things) ->
 stderr(Format, Things) ->
     io:format('standard_error', Format++"\n", Things).
 
--spec option_spec_list() -> kz_proplist().
+-spec option_spec_list() -> list().
 option_spec_list() ->
     [{'help', $?, "help", 'undefined', "Show the program options"}
     ,{'host', $h, "host", {'string', localhost()}, "System hostname, defaults to system hostname"}
