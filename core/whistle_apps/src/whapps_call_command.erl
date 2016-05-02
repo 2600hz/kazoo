@@ -41,6 +41,7 @@
         ]).
 -export([answer/1, answer_now/1
          ,hangup/1, hangup/2
+         ,break/1
          ,queued_hangup/1
          ,set/3, set_terminators/2
          ,fetch/1, fetch/2
@@ -834,6 +835,20 @@ echo(Call) -> send_command([{<<"Application-Name">>, <<"echo">>}], Call).
 b_echo(Call) ->
     echo(Call),
     wait_for_message(Call, <<"echo">>).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Produces the low level wh_api request to break the channel.
+%% This request will execute immediately
+%% @end
+%%--------------------------------------------------------------------
+-spec break(whapps_call:call()) -> 'ok'.
+break(Call) ->
+    Command = [{<<"Application-Name">>, <<"break">>}
+               ,{<<"Insert-At">>, <<"now">>}
+              ],
+    send_command(Command, Call).
 
 %%--------------------------------------------------------------------
 %% @public

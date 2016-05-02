@@ -520,6 +520,16 @@
                          ]).
 -define(PLAY_REQ_TYPES, [{<<"Terminators">>, ?IS_TERMINATOR}]).
 
+%% Break Request
+-define(BREAK_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
+-define(OPTIONAL_BREAK_REQ_HEADERS, [<<"Insert-At">>]).
+-define(BREAK_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                           ,{<<"Event-Name">>, <<"command">>}
+                           ,{<<"Application-Name">>, <<"break">>}
+                           ,{<<"Insert-At">>, <<"now">>}
+                          ]).
+-define(BREAK_REQ_TYPES, []).
+
 %% PlayStop Request
 -define(PLAY_STOP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
 -define(OPTIONAL_PLAY_STOP_REQ_HEADERS, [<<"Insert-At">>]).
