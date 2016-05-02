@@ -10,9 +10,9 @@ This file will serve as a reference point for upcoming announcements, both of th
 
 Starting with Kazoo 4.0 Erlang support will target 18+ and will not be backward compatible with prior Erlang versions.
 
-#### Naming switch
+#### Consistent naming (removal of references to kazoo)
 
-Starting with 4.0 all references to whistle will be removed.  There is a script that can be used to assist with renaming and changing references in code `scripts/wh-to-kz.sh`
+All instances of whistle or variations such as wh_ have been replaced with kazoo or kz_.  This will include all maintenance functions as well as init.d/systemd scripts.  There is a script that can be used to assist with renaming and changing references in code `scripts/wh-to-kz.sh`.
 
 #### Number Manager
 
@@ -52,10 +52,6 @@ The Blackhole application providing websocket support currently utilizes the soc
 #### System media has been moved
 
 The media prompts that we used to keep in the code repository for historical reasons has been moved the kazoo-prompts repository.
-
-#### Consistent naming (removal of references to kazoo)
-
-All instances of kazoo or variations such as kz_ have been replaced with kazoo or kz_.  This will include all maintenance functions as well as init.d/systemd scripts.  A script is provided to convert any custom code but will require in-depth testing.
 
 ### 3.22
 
