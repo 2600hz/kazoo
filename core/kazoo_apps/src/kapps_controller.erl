@@ -148,8 +148,13 @@ initialize_kapps() ->
              end,
     StartWhApps = [kz_util:to_atom(WhApp, 'true') || WhApp <- WhApps],
 
-    _ = [start_app(A) || A <- StartWhApps],
+    _ = [start_app(A) || A <- lists:sort(fun sysconf_first/2, StartWhApps)],
     lager:notice("auto-started kapps ~p", [StartWhApps]).
+
+-spec sysconf_first(atom(), atom()) -> boolean().
+sysconf_first('sysconf', _) -> 'true';
+sysconf_first(_, 'sysconf') -> 'false';
+sysconf_first(_, _) -> 'true'.
 
 -spec list_apps() -> atoms().
 list_apps() ->
