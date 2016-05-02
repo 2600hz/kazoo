@@ -318,19 +318,31 @@ acquire(Number, ?NE_BINARY = Mod, 'false') ->
 -spec disconnect(knm_number:knm_number()) ->
                         knm_number:knm_number().
 disconnect(Number) ->
-    Module = carrier_module(Number),
-    Module:disconnect_number(Number).
+    case knm_phone_number:module_name(knm_number:phone_number(Number)) of
+        ?NE_BINARY=Mod ->
+            Module = wh_util:to_atom(Mod, 'true'),
+            lager:debug("contacting carrier ~s", [Module]),
+            Module:disconnect_number(Number);
+        _Mod ->
+            lager:debug("non-existant carrier module ~p, allowing disconnect", [_Mod]),
+            Number
+    end.
 
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec carrier_module(knm_number:knm_number() | ne_binary()) -> atom().
 carrier_module(?NE_BINARY = Module) ->
     wh_util:to_atom(Module, 'true');
 carrier_module(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     carrier_module(knm_phone_number:module_name(PhoneNumber)).
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
 
 %%--------------------------------------------------------------------
 %% @private
