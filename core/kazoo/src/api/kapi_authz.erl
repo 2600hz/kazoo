@@ -144,7 +144,7 @@ authz_resp_v(JObj) ->
 -spec balance_check_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 balance_check_resp(Prop) when is_list(Prop) ->
     case balance_check_resp_v(Prop) of
-        'true' -> 
+        'true' ->
             kz_api:build_message(Prop, ?BALANCE_CHECK_RESP_HEADERS, ?OPTIONAL_BALANCE_CHECK_RESP_HEADERS);
         'false' -> {'error', "Proplist failed validation for authz_resp"}
     end;
