@@ -16,7 +16,7 @@
 -type build_uri() :: ne_binaries() | ne_binary() |  media_store_path().
 
 -spec get_uri(build_uri(), wh_json:object()) ->
-                     {'ok', ne_binary()} |
+                     ne_binary() |
                      {'error', 'not_found'} |
                      {'error', 'no_data'} |
                      {'error', 'no_stream_strategy'}.
@@ -61,8 +61,7 @@ start_media_file_cache(Db, Id, Attachment) ->
     end.
 
 -spec maybe_proxy(wh_json:object(), media_store_path()) ->
-          {'ok', ne_binary()} |
-          {'error', 'no_stream_strategy'}.
+          ne_binary() | {'error', 'no_stream_strategy'}.
 maybe_proxy(JObj, #media_store_path{db = Db
                                     ,id = Id
                                     ,att = Attachment
@@ -75,8 +74,7 @@ maybe_proxy(JObj, #media_store_path{db = Db
     end.
 
 -spec proxy_uri(wh_json:object(), media_store_path()) ->
-          {'ok', ne_binary()} |
-              {'error', 'no_stream_strategy'}.
+          ne_binary() | {'error', 'no_stream_strategy'}.
 proxy_uri(JObj, #media_store_path{db = Db
                                   ,id = Id
                                   ,att = Attachment

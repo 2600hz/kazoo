@@ -239,7 +239,9 @@ local_sections([Section | T], Acc) ->
         {'false', _} -> local_sections(T, Acc)
     end.
 
--spec add_section(atom(), wh_proplist(), wh_proplist()) -> wh_proplist().
+-type section_type() :: {'generic' | {'zone', atom()}, wh_proplist}.
+
+-spec add_section(atom(), section_type(), wh_proplist()) -> wh_proplist().
 add_section(Group, Value, Props) ->
     props:set_value(Group, [Value | props:get_value(Group, Props, [])], Props).
 
@@ -249,8 +251,9 @@ add_section(Group, Value, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_local_section({ne_binary(), any()}) -> {'false', 'generic'} |
-                                                {boolean(), ne_binary()}.
+-spec is_local_section({ne_binary() | atom(), any()}) -> {'false', 'generic'} |
+                                                         {'false', 'zone'} |
+                                                         {boolean(), ne_binary()}.
 is_local_section({'generic', _}) ->
     {'false', 'generic'};
 is_local_section({{'zone', Zone}, _}) ->

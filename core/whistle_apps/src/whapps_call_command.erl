@@ -2960,7 +2960,7 @@ store_file(Filename, Url, Tries, Timeout, Call) ->
           ],
     do_store_file(Tries, Timeout, API, Msg, Call).
 
--spec do_store_file(pos_integer(), wh_timeout(), wh_json:object()
+-spec do_store_file(pos_integer(), wh_timeout(), wh_proplist()
                    ,ne_binary(), whapps_call:call()) ->
           'ok' | {'error', any()}.
 do_store_file(Tries, Timeout, API, Msg, Call) ->
@@ -2970,30 +2970,30 @@ do_store_file(Tries, Timeout, API, Msg, Call) ->
                 <<"success">> -> 'ok';
                 <<"error">> ->
                     Error = wh_json:get_ne_binary_value(<<"Error">>, JObj),
-                    retry_store_file(Tries, Timeout, API, Msg, Error, Call);
+                    retry_store_file(Tries - 1, Timeout, API, Msg, Error, Call);
                 _Other ->
                     Error = io_lib:format("unhandled return ('~s') from store file", [_Other]),
-                    retry_store_file(Tries, Timeout, API, Msg, Error, Call)
+                    retry_store_file(Tries - 1, Timeout, API, Msg, wh_util:to_binary(Error), Call)
             end;
         {'returned', _JObj, _Basic} ->
             Error = io_lib:format("message returned from amqp. is ~s down ?"
                                   ,[whapps_call:switch_nodename(Call)]
                                  ),
             Funs = [{fun whapps_call:kvs_store/3, 'basic_return', wh_json:to_proplist(_Basic)}],
-            retry_store_file(Tries, Timeout, API, Msg, Error, whapps_call:exec(Funs, Call));
+            retry_store_file(Tries - 1, Timeout, API, Msg, wh_util:to_binary(Error), whapps_call:exec(Funs, Call));
         {'timeout', _JObj} ->
             Error = io_lib:format("timeout publishing message to amqp. is ~s down ?"
                                   ,[whapps_call:switch_nodename(Call)]
                                  ),
-            retry_store_file(Tries, Timeout, API, Msg, Error, Call);
+            retry_store_file(Tries - 1, Timeout, API, Msg, wh_util:to_binary(Error), Call);
         {'error', Err} ->
             Error = io_lib:format("error publishing message to amqp. is ~s down ? : ~p"
                                   ,[whapps_call:switch_nodename(Call), Err]
                                  ),
-            retry_store_file(Tries, Timeout, API, Msg, Error, Call)
+            retry_store_file(Tries - 1, Timeout, API, Msg, wh_util:to_binary(Error), Call)
     end.
 
--spec retry_store_file(integer(), wh_timeout(), wh_json:object()
+-spec retry_store_file(integer(), wh_timeout(), wh_proplist()
                       ,ne_binary(), ne_binary(), whapps_call:call()) ->
           'ok' | {'error', any()}.
 retry_store_file(0, _Timeout, _API, Msg, Error, Call) ->
@@ -3006,4 +3006,4 @@ retry_store_file(0, _Timeout, _API, Msg, Error, Call) ->
 retry_store_file(Tries, Timeout, API, Msg, Error, Call) ->
     lager:critical("~s : ~s", [Msg, Error]),
     timer:sleep(5 * ?MILLISECONDS_IN_SECOND),
-    do_store_file(Tries - 1, Timeout, API, Msg, Call).
+    do_store_file(Tries, Timeout, API, Msg, Call).
