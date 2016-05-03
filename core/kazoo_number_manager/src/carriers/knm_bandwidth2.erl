@@ -62,8 +62,6 @@
 -define(BW2_SITE_ID,
         kapps_config:get_string(?KNM_BW2_CONFIG_CAT, <<"site_id">>, "")).
 
--type weird() :: xml_el() | xml_els() | string().
-
 
 %%% API
 
@@ -186,7 +184,7 @@ sites() ->
     _ = [process_site(X) || X <- Sites],
     io:format("done.~n").
 
--spec process_site(weird()) -> 'ok'.
+-spec process_site(xml_el()) -> 'ok'.
 process_site(Site) ->
     Id   = kz_util:get_xml_value("Site/Id/text()", Site),
     Name = kz_util:get_xml_value("Site/Name/text()", Site),
@@ -201,7 +199,7 @@ peers(SiteId) ->
     _ = [process_peer(X) || X <- Peers],
     io:format("done.~n").
 
--spec process_peer(weird()) -> 'ok'.
+-spec process_peer(xml_el()) -> 'ok'.
 process_peer(Peer) ->
     Id   = kz_util:get_xml_value("SipPeer/PeerId/text()", Peer),
     Name = kz_util:get_xml_value("SipPeer/PeerName/text()", Peer),
@@ -216,7 +214,7 @@ url(RelativePath) ->
         | RelativePath
       ]).
 
--type api_res() :: {'ok', weird()} | {'error', atom()}.
+-type api_res() :: {'ok', xml_el()} | {'error', atom()}.
 
 -spec search([nonempty_string()]) -> api_res().
 search(Params) ->
@@ -327,7 +325,7 @@ handle_response({'error', _}=E) ->
 %% Convert a number order response to json
 %% @end
 %%--------------------------------------------------------------------
--spec number_order_response_to_json(weird()) -> kz_json:object().
+-spec number_order_response_to_json(xml_els() | xml_el()) -> kz_json:object().
 number_order_response_to_json([]) ->
     kz_json:new();
 number_order_response_to_json([Xml]) ->
@@ -341,7 +339,7 @@ number_order_response_to_json(Xml) ->
         ])).
 
 %% @private
--spec search_response_to_KNM(weird(), ne_binary()) -> knm_number:knm_number().
+-spec search_response_to_KNM(xml_els() | xml_el(), ne_binary()) -> knm_number:knm_number().
 search_response_to_KNM([Xml], AccountId) ->
     search_response_to_KNM(Xml, AccountId);
 search_response_to_KNM(Xml, AccountId) ->
@@ -356,7 +354,7 @@ search_response_to_KNM(Xml, AccountId) ->
     knm_number:set_phone_number(knm_number:new(), PhoneNumber).
 
 %% @private
--spec tollfree_search_response_to_KNM(weird(), ne_binary()) -> knm_number:knm_number().
+-spec tollfree_search_response_to_KNM(xml_el(), ne_binary()) -> knm_number:knm_number().
 tollfree_search_response_to_KNM(Xml, AccountId) ->
     Num = kz_util:get_xml_value("//TelephoneNumber/text()", Xml),
     {'ok', PhoneNumber} = knm_phone_number:newly_found(Num, ?MODULE, AccountId, kz_json:new()),
@@ -368,7 +366,7 @@ tollfree_search_response_to_KNM(Xml, AccountId) ->
 %% Convert a rate center XML entity to json
 %% @end
 %%--------------------------------------------------------------------
--spec rate_center_to_json(weird()) -> kz_json:object().
+-spec rate_center_to_json(xml_els() | xml_el()) -> kz_json:object().
 rate_center_to_json([]) ->
     kz_json:new();
 rate_center_to_json([Xml]) ->
@@ -388,8 +386,8 @@ rate_center_to_json(Xml) ->
 %% error text
 %% @end
 %%--------------------------------------------------------------------
--spec verify_response(weird()) -> {'ok', weird()} |
-                                  {'error', any()}.
+-spec verify_response(xml_el()) -> {'ok', xml_el()} |
+                                   {'error', any()}.
 verify_response(Xml) ->
     case kz_util:get_xml_value("/*/status/text()", Xml) =:= <<"success">>
         orelse kz_util:get_xml_value("//LoginResponse/LoginResult/text()", Xml) =/= 'undefined'
