@@ -230,7 +230,7 @@ handle_response({'error', {'failed_connect',[{_, _Address}, {_, _, 'econnrefused
     lager:debug("connection refused to ~p", [_Address]),
     {'error', {'failed_connect', 'econnrefused'}};
 handle_response({'error', {'malformed_url', _, Url}}) ->
-    lager:debug("failed to parse the URL ~p", Url),
+    lager:debug("failed to parse URL ~p", [Url]),
     {'error', {'malformed_url', Url}};
 handle_response({'error', Error}) ->
     lager:debug("request failed with ~p", [Error]),
