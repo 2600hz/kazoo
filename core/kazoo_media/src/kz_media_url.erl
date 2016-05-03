@@ -13,6 +13,8 @@
 
 -include("kazoo_media.hrl").
 
+-define(STREAM_TYPE_STORE, kz_json:from_list([{<<"Stream-Type">>, <<"store">>}])).
+
 -type build_media_url() :: api_binary() | binaries() | kz_json:object().
 -type build_media_url_ret() :: ne_binary() | {'error', any()}.
 
@@ -54,10 +56,10 @@ playback(Doc, JObj) ->
 
 -spec store(kz_json:object(), ne_binary()) -> build_media_url_ret().
 store(JObj, AName) ->
-    Opts = [{'doc_type', kz_doc:type(JObj)}
-            ,{'doc_owner', kz_json:get_value(<<"owner_id">>, JObj)}
-           ],
-    store(kz_doc:account_db(JObj), kz_doc:id(JObj), AName, props:filter_undefined(Opts)).
+    case kz_media_util:store_path_from_doc(JObj, AName) of
+        {'error', _} = Error -> Error;
+        Media -> kz_media_file:get_uri(Media, ?STREAM_TYPE_STORE)
+    end.
 
 -spec store(ne_binary(), kazoo_data:docid(), ne_binary()) -> build_media_url_ret().
 store(Db, Id, Attachment) ->
@@ -67,5 +69,4 @@ store(Db, Id, Attachment) ->
 store(Db, {Type, Id}, Attachment, Options) ->
     store(Db, Id, Attachment, [{'doc_type', Type} | Options]);
 store(Db, Id, Attachment, Options) ->
-    JObj = kz_json:from_list([{<<"Stream-Type">>, <<"store">>}]),
-    kz_media_file:get_uri([Db, Id, Attachment, Options], JObj).
+    kz_media_file:get_uri([Db, Id, Attachment, Options], ?STREAM_TYPE_STORE).
