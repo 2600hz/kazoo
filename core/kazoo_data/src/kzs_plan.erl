@@ -18,6 +18,10 @@
 -define(SYSTEM_DATAPLAN, <<"system">>).
 -define(DATAPLAN_FILE_LOCATION, "defaults").
 
+-define(CACHED_SYSTEM_DATAPLAN, fetch_cached_dataplan(?SYSTEM_DATAPLAN, fun fetch_simple_dataplan/1)).
+-define(CACHED_ACCOUNT_DATAPLAN(A), fetch_cached_dataplan(A, fun fetch_account_dataplan/1)).
+-define(CACHED_STORAGE_DATAPLAN(A,B), fetch_cached_dataplan({A, B}, fun fetch_storage_dataplan/1)).
+
 flush() ->
     kz_cache:flush_local(?KAZOO_DATA_PLAN_CACHE).
 
@@ -31,7 +35,7 @@ plan(DbName) ->
 plan(DbName, DocType) when is_binary(DocType) ->
     plan(DbName, DocType, 'undefined');
 plan(DbName, Props) when is_list(Props) ->
-    plan(DbName, props:get_value('doc_type', Props), props:get_first_defined(['doc_storage', 'doc_owner'], Props));
+    plan(DbName, props:get_value('doc_type', Props), props:get_first_defined(['storage_id', 'doc_owner'], Props));
 plan(DbName, Doc) when ?IS_JSON_GUARD(Doc) ->
     plan(DbName, kz_doc:type(Doc));
 plan(DbName, 'undefined')  ->
@@ -83,88 +87,49 @@ system_dataplan(DBName, _Classification)
     SysTag = 'local',
     #{tag => SysTag, server => kz_dataconnections:get_server(SysTag)};
 system_dataplan(_DBName, 'numbers') ->
-    Plan = fetch_dataplan([?SYSTEM_DATAPLAN]),
+    Plan = ?CACHED_SYSTEM_DATAPLAN,
     dataplan_type_match(<<"system">>, <<"numbers">>, Plan);
 system_dataplan(DBName, _Classification) ->
-    Plan = fetch_dataplan([?SYSTEM_DATAPLAN]),
+    Plan = ?CACHED_SYSTEM_DATAPLAN,
     dataplan_type_match(<<"system">>, DBName, Plan).
 
 account_dataplan(AccountDb) ->
     AccountId = kz_util:format_account_id(AccountDb),
-    Plan = fetch_dataplan([?SYSTEM_DATAPLAN
-                          ,reseller_id(AccountId)
-                          ,AccountId
-                          ]),
+    Plan = ?CACHED_ACCOUNT_DATAPLAN(AccountId),
     dataplan_match(<<"account">>, Plan, AccountId).
 
 account_dataplan(AccountDb, 'undefined') ->
     account_dataplan(AccountDb);
 account_dataplan(AccountDb, DocType) ->
     AccountId = kz_util:format_account_id(AccountDb),
-    Plan = fetch_dataplan([?SYSTEM_DATAPLAN
-                          ,reseller_id(AccountId)
-                          ,AccountId
-                          ]),
+    Plan = ?CACHED_ACCOUNT_DATAPLAN(AccountId),
     dataplan_type_match(<<"account">>, DocType, Plan, AccountId).
 
 account_dataplan(AccountDb, DocType, 'undefined') ->
     account_dataplan(AccountDb, DocType);
-account_dataplan(AccountDb, DocType, DocOwner) ->
+account_dataplan(AccountDb, DocType, StorageId) ->
     AccountId = kz_util:format_account_id(AccountDb),
-    Plan = fetch_dataplan([?SYSTEM_DATAPLAN
-                          ,reseller_id(AccountId)
-                          ,AccountId
-                          ,DocOwner
-                          ]),
+    Plan = ?CACHED_STORAGE_DATAPLAN(AccountId, StorageId),
     dataplan_type_match(<<"account">>, DocType, Plan, AccountId).
 
 account_modb_dataplan(AccountMODB) ->
     AccountId = kz_util:format_account_id(AccountMODB),
-    Plan = fetch_dataplan([?SYSTEM_DATAPLAN
-                          ,reseller_id(AccountId)
-                          ,AccountId
-                          ]),
+    Plan = ?CACHED_ACCOUNT_DATAPLAN(AccountId),
     dataplan_match(<<"modb">>, Plan, AccountId).
 
 account_modb_dataplan(AccountMODB, 'undefined') ->
     account_modb_dataplan(AccountMODB);
 account_modb_dataplan(AccountMODB, DocType) ->
     AccountId = kz_util:format_account_id(AccountMODB),
-    Plan = fetch_dataplan([?SYSTEM_DATAPLAN
-                          ,reseller_id(AccountId)
-                          ,AccountId
-                          ]),
+    Plan = ?CACHED_ACCOUNT_DATAPLAN(AccountId),
     dataplan_type_match(<<"modb">>, DocType, Plan, AccountId).
 
 account_modb_dataplan(AccountMODB, DocType, 'undefined') ->
     account_modb_dataplan(AccountMODB, DocType);
-account_modb_dataplan(AccountMODB, DocType, DocOwner) ->
+account_modb_dataplan(AccountMODB, DocType, StorageId) ->
     AccountId = kz_util:format_account_id(AccountMODB),
-    Plan = fetch_dataplan([?SYSTEM_DATAPLAN
-                          ,reseller_id(AccountId)
-                          ,AccountId
-                          ,DocOwner
-                          ]),
+    Plan = ?CACHED_STORAGE_DATAPLAN(AccountId, StorageId),
     dataplan_type_match(<<"modb">>, DocType, Plan, AccountId).
-
-reseller_id(AccountId) ->
-    case get('$plan_reseller') of
-        AccountId -> 'undefined';
-        _ -> put('$plan_reseller', AccountId),
-             case kapps_util:get_master_account_id() of
-                 {'ok', MasterAccountId} ->
-                     ResellerId = reseller_id(AccountId, MasterAccountId),
-                     put('$plan_reseller', 'undefined'),
-                     ResellerId;
-                 {'error', _Err} ->
-                     lager:critical("no master account id when getting account ~s", [AccountId]),
-                     'undefined'
-             end
-    end.
-
-reseller_id(AccountId, AccountId) -> 'undefined';
-reseller_id(AccountId, _MasterAccountId) ->
-    kz_services:find_reseller_id(AccountId).
 
 -spec dataplan_connections(map(),map()) -> [{atom(), server()}].
 dataplan_connections(Map, Index) ->
@@ -264,32 +229,55 @@ dataplan_type_match(Classification, DocType, Plan, AccountId) ->
              }
     end.
 
+-spec att_post_handler(map()) -> atom().
 att_post_handler(#{<<"stub">> := 'true'}) -> 'stub';
 att_post_handler(#{}) -> 'external'.
 
--spec fetch_dataplans(ne_binaries()) -> map().
-fetch_dataplans([Key | Keys]=KPlan) ->
-    case kz_cache:fetch_local(?KAZOO_DATA_PLAN_CACHE, {KPlan}) of
+-type fetch_dataplan_ret() :: {list(), kz_json:object()}.
+
+-spec fetch_simple_dataplan(ne_binary()) -> fetch_dataplan_ret().
+fetch_simple_dataplan(Id) ->
+    {[Id], fetch_dataplan(Id)}.
+
+-spec fetch_account_dataplan(ne_binary()) -> fetch_dataplan_ret().
+fetch_account_dataplan(AccountId) ->
+    SystemJObj = fetch_dataplan(?SYSTEM_DATAPLAN),
+    JObj = fetch_dataplan(AccountId),
+    case kz_json:get_value(<<"pvt_plan_id">>, JObj) of
+        'undefined' ->
+            Keys = [AccountId, ?SYSTEM_DATAPLAN],
+            MergedJObj = kz_json:merge_recursive(SystemJObj, JObj),
+            {Keys, MergedJObj};
+        PlanId ->
+            PlanJObj = kz_json:merge_recursive(SystemJObj, fetch_dataplan(PlanId)),
+            MergedJObj = kz_json:merge_recursive(PlanJObj, JObj),
+            Keys = [AccountId, PlanId, ?SYSTEM_DATAPLAN],
+            {Keys, MergedJObj}
+    end.
+
+-spec fetch_storage_dataplan({ne_binary(), ne_binary()}) -> fetch_dataplan_ret().
+fetch_storage_dataplan({AccountId, StorageId}) ->
+    {Keys, AccountPlan} = fetch_account_dataplan(AccountId),
+    MergedJObj = kz_json:merge_recursive(AccountPlan, fetch_dataplan(StorageId)),
+    {[StorageId | Keys], MergedJObj}.
+
+
+-spec fetch_cached_dataplan(term(), fun()) -> map().
+fetch_cached_dataplan(Key, Fun) ->
+    case kz_cache:fetch_local(?KAZOO_DATA_PLAN_CACHE, {'plan', Key}) of
         {'ok', Plan} -> Plan;
         {'error', 'not_found'} ->
-            lager:debug("creating new dataplan ~p", [KPlan]),
-            Plan = fetch_dataplans(Keys, fetch_dataplan(Key)),
-            CacheProps = [{'origin', [{'db', ?KZ_DATA_DB, K } || K <- KPlan]}
+            lager:debug("creating new dataplan ~p", [Key]),
+            {Keys, PlanJObj} = Fun(Key),
+            Plan = kz_json:to_map(PlanJObj),
+            CacheProps = [{'origin', [{'db', ?KZ_DATA_DB, K } || K <- Keys]}
                           ,{'expires','infinity'}
                          ],
-            kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, {KPlan}, Plan, CacheProps),
+            kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, {'plan', Key}, Plan, CacheProps),
             Plan
     end.
 
-fetch_dataplans([], Plan) -> kz_json:to_map(Plan);
-fetch_dataplans([Key | Keys], Plan) ->
-    NewPlan = fetch_dataplan(Key),
-    MergedPlan = kz_json:merge_recursive(Plan, NewPlan),
-    fetch_dataplans(Keys, MergedPlan).
-
-fetch_dataplan(Keys)
-  when is_list(Keys) ->
-    fetch_dataplans([K || K <- Keys, K =/= 'undefined']);
+-spec fetch_dataplan(ne_binary()) -> kz_json:object().
 fetch_dataplan(Id) ->
     case kz_datamgr:open_cache_doc(?KZ_DATA_DB, Id, ['cache_failures']) of
         {'ok', JObj} -> JObj;
@@ -300,6 +288,7 @@ fetch_dataplan(Id) ->
         {'error', _} -> kz_json:new()
     end.
 
+-spec fetch_dataplan_from_file(ne_binary()) -> kz_json:object().
 fetch_dataplan_from_file(Id) ->
     JObj = kz_json:load_fixture_from_file('kazoo_data'
                                          ,?DATAPLAN_FILE_LOCATION
@@ -308,6 +297,7 @@ fetch_dataplan_from_file(Id) ->
     kzs_cache:add_to_doc_cache(?KZ_DATA_DB, Id, JObj),
      JObj.
 
+-spec default_dataplan() -> kz_json:object().
 default_dataplan() ->
     fetch_dataplan_from_file(?SYSTEM_DATAPLAN).
 
