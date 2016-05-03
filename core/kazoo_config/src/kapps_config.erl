@@ -82,7 +82,7 @@ get_binary(Category, Key, Default, Node) ->
 %% @public
 %% @doc Get a configuration key for a given category and cast it as a atom
 %%-----------------------------------------------------------------------------
--spec get_atom(config_category(), config_key()) -> api_atom().
+-spec get_atom(config_category(), config_key()) -> api(atom()).
 -spec get_atom(config_category(), config_key(), Default) -> atom() | Default.
 -spec get_atom(config_category(), config_key(), Default, ne_binary()) -> atom() | Default.
 

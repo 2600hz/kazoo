@@ -476,7 +476,7 @@ get_lower_binary(Key, JObj, Default) ->
     end.
 
 %% must be an existing atom
--spec get_atom_value(keys(), object() | objects()) -> api_atom().
+-spec get_atom_value(keys(), object() | objects()) -> api(atom()).
 -spec get_atom_value(keys(), object() | objects(), Default) -> atom() | Default.
 get_atom_value(Key, JObj) ->
     get_atom_value(Key, JObj, 'undefined').

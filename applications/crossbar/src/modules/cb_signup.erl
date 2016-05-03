@@ -42,11 +42,11 @@
 
 -record(state, {cleanup_interval = 5 * ?SECONDS_IN_HOUR :: integer() %% once every 5 hours (in seconds)
                 ,signup_lifespan = ?SECONDS_IN_DAY :: integer() %% 24 hours (in seconds)
-                ,register_cmd = 'undefined' :: api_atom()
-                ,activation_email_plain = 'undefined' :: api_atom()
-                ,activation_email_html = 'undefined' :: api_atom()
-                ,activation_email_from = 'undefined' :: api_atom()
-                ,activation_email_subject = 'undefined' :: api_atom()
+                ,register_cmd = 'undefined' :: api(atom())
+                ,activation_email_plain = 'undefined' :: api(atom())
+                ,activation_email_html = 'undefined' :: api(atom())
+                ,activation_email_from = 'undefined' :: api(atom())
+                ,activation_email_subject = 'undefined' :: api(atom())
                }).
 
 %%%===================================================================
