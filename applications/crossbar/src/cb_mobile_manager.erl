@@ -59,7 +59,7 @@ handle_resp(_Error) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec req_uri(ne_binaries()) -> api_list().
+-spec req_uri(ne_binaries()) -> api(list()).
 req_uri(ExplodedPath) ->
     case kapps_config:get_binary(?MOD_CONFIG_CAT, <<"url">>) of
         'undefined' -> 'undefined';

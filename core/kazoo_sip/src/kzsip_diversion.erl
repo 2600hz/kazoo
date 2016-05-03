@@ -50,7 +50,7 @@ new() -> kz_json:new().
 -spec limit(diversion()) -> api_integer().
 -spec privacy(diversion()) -> api(binary()).
 -spec screen(diversion()) -> api(binary()).
--spec extensions(diversion()) -> api_list().
+-spec extensions(diversion()) -> api(list()).
 -spec address(diversion()) -> api(binary()).
 -spec user(diversion()) -> api(binary()).
 

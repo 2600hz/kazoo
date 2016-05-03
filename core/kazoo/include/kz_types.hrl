@@ -51,7 +51,7 @@
 -type api(string()) :: api(string()).
 -type api(reference()) :: api(reference()).
 -type api(pid()) :: api(pid()).
--type api_list() :: api(list()).
+-type api(list()) :: api(list()).
 
 -type api_number() :: api(number()).
 -type api_integer() :: api(integer()).
