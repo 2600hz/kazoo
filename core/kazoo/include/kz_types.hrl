@@ -40,25 +40,6 @@
 
 -type api(T) :: 'undefined' | T.
 
--type api_terms() :: kz_json:object() | kz_proplist().
--type api(binary()) :: api(binary()).
--type api([api(binary())]) :: api([api(binary())]).
--type api(kz_json:object()) :: api(kz_json:object()).
--type api(kz_json:objects()) :: api(kz_json:objects()).
--type api(boolean()) :: api(boolean()).
--type api(atom()) :: api(atom()).
--type api(atoms()) :: api(atoms()).
--type api(string()) :: api(string()).
--type api(reference()) :: api(reference()).
--type api(pid()) :: api(pid()).
--type api(list()) :: api(list()).
-
--type api(number()) :: api(number()).
--type api(integer()) :: api(integer()).
--type api(pos_integer()) :: api(pos_integer()).
--type api_non_neg_integer() :: api(non_neg_integer()).
--type api_float() :: api(float()).
-
 -type kz_deeplist() :: iolist(). %[any() | kz_deeplist()].
 
 -type kz_std_return() :: {'ok', any()} | {'error', any()}.
@@ -116,7 +97,6 @@
 -type kz_iso_week() :: calendar:yearweeknum(). %%{kz_year(), kz_weeknum()}.
 -type gregorian_seconds() :: pos_integer().
 -type unix_seconds() :: pos_integer().
--type api_seconds() :: api(gregorian_seconds()).
 
 -type kz_timeout() :: non_neg_integer() | 'infinity'.
 

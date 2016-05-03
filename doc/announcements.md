@@ -53,6 +53,32 @@ The Blackhole application providing websocket support currently utilizes the soc
 
 The media prompts that we used to keep in the code repository for historical reasons has been moved the kazoo-prompts repository.
 
+#### Kazoo types
+
+Types that were known as `api_SOMETHING()` are replaced with `api(SOMETHING())`.
+Example: `api_binary()` becomes `api(binary())`.
+
+Complete list of said types:
+* `api_binary()` -->  `api(binary())`
+* `api_binaries()` --> `api([api(binary())])`
+* `api_object()` --> `api(kz_json:object())`
+* `api_objects()` --> `api(kz_json:objects())`
+* `api_boolean()` --> `api(boolean())`
+* `api_atom()` --> `api(atom())`
+* `api_atoms()` --> `api(atoms())`
+* `api_string()` --> `api(string())`
+* `api_reference()` --> `api(reference())`
+* `api_pid()` --> `api(pid())`
+* `api_list()` --> `api(list())`
+* `api_number()` --> `api(number())`
+* `api_integer()` --> `api(integer())`
+* `api_pos_integer()` --> `api(pos_integer())`
+* `api_non_neg_integer()` --> `api(non_neg_integer())`
+* `api_float()` --> `api(float())`
+* `api_seconds()` --> `api(gregorian_seconds())`
+
+Note: `api(T)` is defined as `undefined | T`.
+
 ### 3.22
 
 #### FreeSWITCH 1.4.26+ / 1.6+
