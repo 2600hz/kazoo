@@ -1,5 +1,7 @@
 ## Kazoo [![Build Status](https://travis-ci.org/2600hz/kazoo.svg?branch=master)](https://travis-ci.org/2600hz/kazoo) [![Issue Stats](http://issuestats.com/github/2600hz/kazoo/badge/pr)](http://issuestats.com/github/2600hz/kazoo) [![2600Hz IRC](https://img.shields.io/badge/irc-%232600hz-orange.svg)](https://webchat.freenode.net/?channels=2600hz)
 
+**[Periodically check our announcements for important developer updates!](https://github.com/2600hz/kazoo/tree/master/doc/announcements.md)**
+
 ````
     ... ........                                                
     ......+OO=..                                                
@@ -120,7 +122,7 @@ No problem! We have many different places where folks can chip in time. These in
 
 Translation efforts are always appreciated. We're working on redesigning how our back- and front-ends handle the world's languages and hope to make it easy to contribute translations. Stay tuned for more; please let us know of your interest and be sure to join the mailing lists so you can receive announcements regarding internationalization efforts.
 
-If you have a non-US deployment, please consider sharing your system configuration!  We are trying to build [examples]https://github.com/2600Hz/kazoo/tree/master/applications/crossbar/doc/internationalization) for every locality and fix any deficiencies.
+If you have a non-US deployment, please consider sharing your system configuration!  We are trying to build [examples]https://github.com/2600Hz/kazoo/tree/master/doc/internationalization) for every locality and fix any deficiencies.
 
 ### I know me some Erlang! How can I contribute?
 
@@ -137,7 +139,7 @@ If you have a non-US deployment, please consider sharing your system configurati
 
 * Help us write some automated testing tools
 * Check out our Javascript/HTML/CSS [GUI](https://github.com/2600Hz/monster-ui)
-* Check out our REST APIs and help us create SDKs in your favorite languages ([PHP](https://github.com/2600Hz/kazoo-php-sdk) | [RUBY](https://github.com/2600Hz/kazoo-ruby-sdk))
+* Check out our REST APIs and help us create SDKs in your favorite languages ([PHP](https://github.com/2600Hz/kazoo-php-sdk) | [PYTHON](https://github.com/2600hz/kazoo-python-sdk) | [RUBY](https://github.com/2600Hz/kazoo-ruby-sdk)) 
 * Check out our Pivot APIs and help us create SDKs in your favorite languages
 * Check out our AMQP APIs and create a WhApp in your favorite language
 * Help out with the [configuration scripts](https://github.com/2600Hz/kazoo-configs)
@@ -151,4 +153,6 @@ See the [installation](./doc/installation.md) page to build.
 * Join us at [KazooCon!](http://kazoocon.com/)
 * Visit [the community site](http://2600hz.org)
 * Bugs and feature requests can be found [here](http://tickets.2600hz.org)
-* [![2600Hz IRC](https://img.shields.io/badge/irc-%232600Hz-orange.svg)](https://webchat.freenode.net/?channels=2600Hz)
+* [![2600Hz IRC](https://img.shields.io/badge/irc-%232600Hz-orange.svg)](https://webchat.freenode.net/?channels=2600Hz)A
+* [Users mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600Hz-users)
+* [Developers mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600Hz-dev)

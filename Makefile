@@ -4,7 +4,7 @@ ELVIS = $(ROOT)/utils/elvis/elvis
 
 KAZOODIRS = core/Makefile applications/Makefile
 
-.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis
+.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install
 
 all: compile rel/dev-vm.args
 
@@ -95,6 +95,8 @@ endif
 release:
 	@RELX_REPLACE_OS_VARS=true KZname='-name $(REL)' _rel/kazoo/bin/kazoo $(ACT) "$$@"
 
+install: compile build-release
+	cp -a _rel/kazoo /opt
 
 read-release-cookie: REL ?= kazoo_apps
 read-release-cookie:
