@@ -72,6 +72,11 @@ dialyze: $(PLT) compile
 	@$(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE)
 
 
+REBAR = $(ROOT)/deps/rebar3
+$(REBAR):
+	wget 'https://github.com/erlang/rebar3/releases/download/3.1.0/rebar3' -O $@
+	chmod +x $@
+
 xref: TO_XREF = ebin/  #FIXME: set TO_XREF to an app's dependencies' ebin/ directories
 xref: compile
-	@ERL_LIBS=$(ELIBS) $(ROOT)/make/rebar/rebar xref skip_deps=true -C $(ROOT)/make/xref.local.config
+	@ERL_LIBS=$(ELIBS) $(REBAR) xref skip_deps=true -C $(ROOT)/make/xref.local.config
