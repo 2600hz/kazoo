@@ -60,6 +60,28 @@ $ make
 * `make build-release` will generate a [deployable release](http://learnyousomeerlang.com/release-is-the-word)
     * [More on using releases with Kazoo](https://github.com/2600Hz/kazoo/blob/master/doc/engineering/releases.md)
 * `make sup_completion` creates `sup.bash`: a Bash completion file for the SUP command
+    * Copy or symlink this file to `/etc/bash_completion.d/sup.bash`
+
+## SUP
+
+The SUP command (`sup`) is found under `core/sup/priv/sup` and should be copied or symlinked
+to `/usr/bin/sup`. It is a shell file that calls `sup.escript`.
+
+```shell
+ln -s core/sup/priv/sup /usr/bin/sup
+```
+
+Make sure that the path to Kazoo's intallation directory is right (in `/usr/bin/sup`).
+Otherwise you can change it by setting the `KAZOO_ROOT` environment variable (not set by default).
+If one needs `KAZOO_ROOT`, an alias should be created:
+
+```shell
+alias sup='KAZOO_ROOT=/opt/kazoo sup'
+```
+
+It is preferable but not required that one also adds autocompletion to the `sup` command.
+In order to do this, see documentation about `make sup_completion`.
+
 
 # Bigger Picture
 
