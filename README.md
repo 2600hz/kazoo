@@ -153,6 +153,6 @@ See the [installation](./doc/installation.md) page to build.
 * Join us at [KazooCon!](http://kazoocon.com/)
 * Visit [the community site](http://2600hz.org)
 * Bugs and feature requests can be found [here](http://tickets.2600hz.org)
-* [![2600Hz IRC](https://img.shields.io/badge/irc-%232600Hz-orange.svg)](https://webchat.freenode.net/?channels=2600Hz)A
+* [![2600Hz IRC](https://img.shields.io/badge/irc-%232600Hz-orange.svg)](https://webchat.freenode.net/?channels=2600Hz)
 * [Users mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600Hz-users)
 * [Developers mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600Hz-dev)
