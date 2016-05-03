@@ -142,4 +142,4 @@ sup_completion: kazoo
 
 
 elvis:
-	$(ELVIS) rock
+	$(ELVIS) --config make/elvis.config rock
