@@ -663,7 +663,7 @@ notify_watchers(#kz_amqp_assignment{}=Assignment, [Watcher|Watchers]) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_reserve(api_pid(), api(binary()), kz_amqp_type()) -> kz_amqp_assignment().
+-spec maybe_reserve(api(pid()), api(binary()), kz_amqp_type()) -> kz_amqp_assignment().
 maybe_reserve(Consumer, Broker, Type) ->
     Pattern = #kz_amqp_assignment{consumer=Consumer, _='_'},
     case ets:match_object(?TAB, Pattern, 1) of
@@ -681,7 +681,7 @@ maybe_reserve(Consumer, Broker, Type) ->
             ExistingAssignment
     end.
 
--spec reserve(api_pid(), api(binary()), kz_amqp_type()) -> kz_amqp_assignment().
+-spec reserve(api(pid()), api(binary()), kz_amqp_type()) -> kz_amqp_assignment().
 reserve(Consumer, Broker, 'sticky') when Broker =/= 'undefined' ->
     Ref = erlang:monitor('process', Consumer),
     Assignment = #kz_amqp_assignment{consumer=Consumer

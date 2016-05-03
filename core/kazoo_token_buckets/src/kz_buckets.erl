@@ -159,8 +159,8 @@ maybe_start_bucket(App, Key, Count, 'true', BucketFun) ->
         _OK -> consume_tokens(App, Key, Count, 'false', BucketFun)
     end.
 
--spec get_bucket(ne_binary(), ne_binary()) -> api_pid().
--spec get_bucket(ne_binary(), ne_binary(), 'record'|'server') -> api_pid() | bucket().
+-spec get_bucket(ne_binary(), ne_binary()) -> api(pid()).
+-spec get_bucket(ne_binary(), ne_binary(), 'record'|'server') -> api(pid()) | bucket().
 get_bucket(App, Key) ->
     get_bucket(App, Key, 'server').
 

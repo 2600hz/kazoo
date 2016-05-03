@@ -180,12 +180,12 @@
 -type kz_amqp_type() :: 'sticky' | 'float'.
 
 -record(kz_amqp_assignment, {timestamp = os:timestamp() :: kz_now() | '_'
-                             ,consumer :: api_pid() | '$2' | '_'
+                             ,consumer :: api(pid()) | '$2' | '_'
                              ,consumer_ref :: api(reference()) | '_'
                              ,type = 'float' :: kz_amqp_type() | '_'
-                             ,channel :: api_pid() | '$1' | '_'
+                             ,channel :: api(pid()) | '$1' | '_'
                              ,channel_ref :: api(reference()) | '_'
-                             ,connection :: api_pid() | '$1' | '_'
+                             ,connection :: api(pid()) | '$1' | '_'
                              ,broker :: api(binary()) | '$1' | '_'
                              ,assigned :: api(kz_timeout()) | '_'
                              ,reconnect = 'false' :: boolean() | '_'
@@ -202,7 +202,7 @@
                              ,manager :: pid() | '_'
                              ,connection :: pid() | '_'
                              ,connection_ref :: reference() | '_'
-                             ,channel :: api_pid() | '$1' | '_'
+                             ,channel :: api(pid()) | '$1' | '_'
                              ,channel_ref :: api(reference()) | '$1' | '_'
                              ,reconnect_ref :: api(reference()) | '_'
                              ,available = 'false' :: boolean() | '_'
@@ -214,7 +214,7 @@
                             }).
 -type kz_amqp_connection() :: #kz_amqp_connection{}.
 
--record(kz_amqp_connections, {connection :: api_pid() | '$1' | '_'
+-record(kz_amqp_connections, {connection :: api(pid()) | '$1' | '_'
                               ,connection_ref :: api(reference()) | '_'
                               ,broker :: ne_binary() | '$1' | '$2' | '_'
                               ,available='false' :: boolean() | '$1' | '$2' | '_'

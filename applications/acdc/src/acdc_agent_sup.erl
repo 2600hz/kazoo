@@ -88,14 +88,14 @@ print_status([{K, V}|T]) ->
     lager:info("  ~s: ~p", [K, V]),
     print_status(T).
 
--spec listener(pid()) -> api_pid().
+-spec listener(pid()) -> api(pid()).
 listener(Super) ->
     case child_of_type(Super, 'acdc_agent_listener') of
         [] -> 'undefined';
         [P] -> P
     end.
 
--spec fsm(pid()) -> api_pid().
+-spec fsm(pid()) -> api(pid()).
 fsm(Super) ->
     case child_of_type(Super, 'acdc_agent_fsm') of
         [] -> 'undefined';

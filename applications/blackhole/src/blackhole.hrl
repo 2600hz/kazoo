@@ -21,7 +21,7 @@
           ,account_id :: api(binary()) | '_'
           ,bindings = [] :: ne_binaries() | '_'
           ,websocket_session_id :: api(binary()) | '_'
-          ,websocket_pid :: api_pid() | '_'
+          ,websocket_pid :: api(pid()) | '_'
           ,req_id = <<(kz_util:rand_hex_binary(16))/binary, "-bh">> :: ne_binary() | '_'
           ,timestamp :: gregorian_seconds() | '_'
           ,name :: api(binary()) | '_'

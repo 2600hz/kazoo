@@ -50,7 +50,7 @@
 -type api(atoms()) :: api(atoms()).
 -type api(string()) :: api(string()).
 -type api(reference()) :: api(reference()).
--type api_pid() :: api(pid()).
+-type api(pid()) :: api(pid()).
 -type api_list() :: api(list()).
 
 -type api_number() :: api(number()).
@@ -129,7 +129,7 @@
 -type sup_init_ret() :: {'ok', {sup_start_flags(), sup_child_specs()}} |
                         'ignore'.
 
--type sup_child_id() :: api_pid().
+-type sup_child_id() :: api(pid()).
 -type sup_startchild_err() :: 'already_present' |
                               {'already_started', sup_child_id()} |
                               any().

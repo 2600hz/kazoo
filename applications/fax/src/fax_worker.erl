@@ -31,7 +31,7 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {queue_name :: api(binary())
-                ,pool :: api_pid()
+                ,pool :: api(pid())
                 ,job_id :: api(binary())
                 ,job :: api(kz_json:object())
                 ,account_id :: api(binary())

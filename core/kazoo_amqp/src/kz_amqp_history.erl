@@ -41,7 +41,7 @@
                }).
 
 -record(kz_amqp_history, {timestamp = os:timestamp() :: kz_now() | '_'
-                          ,consumer :: api_pid() | '_'
+                          ,consumer :: api(pid()) | '_'
                           ,command :: kz_amqp_command() | '_'
                          }).
 -type kz_amqp_history() :: #kz_amqp_history{}.
@@ -94,7 +94,7 @@ remove(Consumer) when is_pid(Consumer) ->
     gen_server:cast(?SERVER, {'remove', Consumer});
 remove(_) -> 'ok'.
 
--spec get(api_pid()) -> kz_amqp_commands().
+-spec get(api(pid())) -> kz_amqp_commands().
 get('undefined') -> [];
 get(Consumer) ->
     Pattern = #kz_amqp_history{consumer=Consumer

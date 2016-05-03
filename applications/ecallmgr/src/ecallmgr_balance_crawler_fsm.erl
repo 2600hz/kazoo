@@ -36,8 +36,8 @@
 
 -type fsm_events() :: 'start_cycle' | 'worker_stop'.
 -type fsm_state() :: 'idle' | 'working' | 'worker_timeout'.
--type fsm_reply() :: {'next_state', fsm_state(), api_pid()} |
-                    {'next_state', fsm_state(), api_pid(), 'hibernate'}.
+-type fsm_reply() :: {'next_state', fsm_state(), api(pid())} |
+                    {'next_state', fsm_state(), api(pid()), 'hibernate'}.
 
 %%====================================================================
 %% API
@@ -84,19 +84,19 @@ terminate(_Reason, _StateName, _State) ->
 code_change(_OldVsn, StateName, State, _Extra) ->
     {'ok', StateName, State}.
 
--spec idle(fsm_events(), api_pid()) -> fsm_reply().
+-spec idle(fsm_events(), api(pid())) -> fsm_reply().
 idle('start_cycle', 'undefined') ->
     WorkerPid = spawn_worker(?CRAWLER_CYCLE_MS),
     {'next_state', 'working', WorkerPid}.
 
--spec working(fsm_events(), api_pid()) -> fsm_reply().
+-spec working(fsm_events(), api(pid())) -> fsm_reply().
 working('worker_stop', _OldWorkerPid) ->
     {'next_state', 'idle', 'undefined', 'hibernate'};
 working('start_cycle', WorkerPid) ->
     lager:debug("trying start new worker but old worker(~p) still alive, waiting...", [WorkerPid]),
     {'next_state', 'worker_timeout', WorkerPid}.
 
--spec worker_timeout(fsm_events(), api_pid()) -> fsm_reply().
+-spec worker_timeout(fsm_events(), api(pid())) -> fsm_reply().
 worker_timeout('worker_stop', _OldWorkerPid) ->
     WorkerPid = spawn_worker(?CRAWLER_CYCLE_MS),
     {'next_state', 'working', WorkerPid}.

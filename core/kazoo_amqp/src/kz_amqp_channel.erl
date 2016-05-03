@@ -46,7 +46,7 @@ consumer_pid() ->
         _Else -> self()
     end.
 
--spec consumer_pid(pid()) -> api_pid().
+-spec consumer_pid(pid()) -> api(pid()).
 consumer_pid(Pid) when is_pid(Pid) ->
     put('$kz_amqp_consumer_pid', Pid).
 
@@ -96,7 +96,7 @@ release(Pid) when is_pid(Pid) ->
     _ = kz_amqp_history:remove(Pid),
     kz_amqp_assignments:release(Pid).
 
--spec close(api_pid()) -> 'ok'.
+-spec close(api(pid())) -> 'ok'.
 close(Channel) -> close(Channel, []).
 
 close(Channel, []) when is_pid(Channel) ->
@@ -165,7 +165,7 @@ basic_publish(_, #'basic.publish'{exchange=_Exchange, routing_key=_RK}, AmqpMsg)
                 ,[_Exchange, _RK, AmqpMsg#'amqp_msg'.payload]
                ).
 
--spec maybe_split_routing_key(binary()) -> {api_pid(), binary()}.
+-spec maybe_split_routing_key(binary()) -> {api(pid()), binary()}.
 maybe_split_routing_key(<<"consumer://", _/binary>> = RoutingKey) ->
     Size = byte_size(RoutingKey),
     {Start, _} = lists:last(binary:matches(RoutingKey, <<"/">>)),

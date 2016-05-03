@@ -76,7 +76,7 @@ maybe_start_jobs_listener() ->
         Pid -> Pid
     end.
 
--spec jobs_listener_pid() -> api_pid().
+-spec jobs_listener_pid() -> api(pid()).
 jobs_listener_pid() ->
     whereis('cb_jobs_listener').
 

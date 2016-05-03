@@ -63,8 +63,8 @@ is_queue_in_acct(Super, AcctId) ->
         _ -> 'false'
     end.
 
--spec find_queue_supervisor(ne_binary(), ne_binary()) -> api_pid().
--spec find_queue_supervisor(ne_binary(), ne_binary(), pids()) -> api_pid().
+-spec find_queue_supervisor(ne_binary(), ne_binary()) -> api(pid()).
+-spec find_queue_supervisor(ne_binary(), ne_binary(), pids()) -> api(pid()).
 find_queue_supervisor(AcctId, QueueId) ->
     find_queue_supervisor(AcctId, QueueId, workers()).
 

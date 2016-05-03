@@ -302,7 +302,7 @@ table_id() -> ?MODULE.
 table_options() ->
     ['set', 'named_table', 'protected', {'keypos', #kz_binding.binding}].
 
--spec find_me_function() -> api_pid().
+-spec find_me_function() -> api(pid()).
 find_me_function() ->  whereis(?SERVER).
 
 -spec gift_data() -> 'ok'.

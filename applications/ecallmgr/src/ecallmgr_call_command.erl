@@ -23,7 +23,7 @@
 
 -define(RECORD_SOFTWARE, ecallmgr_config:get(<<"recording_software_name">>, <<"2600Hz, Inc.'s Kazoo">>)).
 
--spec exec_cmd(atom(), ne_binary(), kz_json:object(), api_pid()) ->
+-spec exec_cmd(atom(), ne_binary(), kz_json:object(), api(pid())) ->
                       'ok' |
                       'error' |
                       ecallmgr_util:send_cmd_ret() |

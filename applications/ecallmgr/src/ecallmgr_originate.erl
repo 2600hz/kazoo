@@ -36,7 +36,7 @@
                 ,app :: api(binary())
                 ,dialstrings :: api(binary())
                 ,queue :: api(binary())
-                ,control_pid :: api_pid()
+                ,control_pid :: api(pid())
                 ,tref :: api(reference())
                 ,fetch_id = kz_util:rand_hex_binary(16)
                }).

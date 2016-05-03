@@ -137,7 +137,7 @@ table_options() ->
      ,'named_table'
     ].
 
--spec find_me_function() -> api_pid().
+-spec find_me_function() -> api(pid()).
 find_me_function() -> whereis(?SERVER).
 
 -spec gift_data() -> 'ok'.

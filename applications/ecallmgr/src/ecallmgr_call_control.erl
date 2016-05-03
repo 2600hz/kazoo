@@ -160,7 +160,7 @@ queue_name(_) -> 'undefined'.
 other_legs(Srv) ->
     gen_listener:call(Srv, 'other_legs', ?MILLISECONDS_IN_SECOND).
 
--spec event_execute_complete(api_pid(), ne_binary(), ne_binary()) -> 'ok'.
+-spec event_execute_complete(api(pid()), ne_binary(), ne_binary()) -> 'ok'.
 event_execute_complete('undefined', _CallId, _App) -> 'ok';
 event_execute_complete(Srv, CallId, App) ->
     gen_listener:cast(Srv, {'event_execute_complete', CallId, App, kz_json:new()}).

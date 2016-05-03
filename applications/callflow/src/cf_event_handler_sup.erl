@@ -44,7 +44,7 @@ new(Name, M, A) ->
 workers() ->
     [Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?SERVER)].
 
--spec worker(ne_binary()) -> api_pid().
+-spec worker(ne_binary()) -> api(pid()).
 worker(Name) ->
     case [Pid || {Worker, Pid, 'worker', [_]} <- supervisor:which_children(?SERVER), Worker =:= Name] of
         [] -> 'undefined';

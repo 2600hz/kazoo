@@ -198,7 +198,7 @@ send_amqp_sms(Payload, Pool) ->
     end.
 
 -spec maybe_add_broker(api(binary()), api(binary()), api(binary()), ne_binary(), kz_proplist(), ne_binary()) -> 'ok'.
--spec maybe_add_broker(api(binary()), api(binary()), api(binary()), ne_binary(), kz_proplist(), ne_binary(), api_pid()) -> 'ok'.
+-spec maybe_add_broker(api(binary()), api(binary()), api(binary()), ne_binary(), kz_proplist(), ne_binary(), api(pid())) -> 'ok'.
 maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName) ->
     PoolPid = kz_amqp_sup:pool_pid(?SMS_POOL(Exchange, RouteId, BrokerName)),
     maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName, PoolPid).
