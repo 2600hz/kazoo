@@ -31,7 +31,7 @@ plan(DbName) ->
 plan(DbName, DocType) when is_binary(DocType) ->
     plan(DbName, DocType, 'undefined');
 plan(DbName, Props) when is_list(Props) ->
-    plan(DbName, props:get_value('doc_type', Props), props:get_value('doc_owner', Props));
+    plan(DbName, props:get_value('doc_type', Props), props:get_first_defined(['doc_storage', 'doc_owner'], Props));
 plan(DbName, Doc) when ?IS_JSON_GUARD(Doc) ->
     plan(DbName, kz_doc:type(Doc));
 plan(DbName, 'undefined')  ->
