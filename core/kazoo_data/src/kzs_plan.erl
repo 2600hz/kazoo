@@ -157,7 +157,7 @@ reseller_id(AccountId) ->
                      put('$plan_reseller', 'undefined'),
                      ResellerId;
                  {'error', _Err} ->
-                     lager:critical("no master account id whn getting account ~s", [AccountId]),
+                     lager:critical("no master account id when getting account ~s", [AccountId]),
                      'undefined'
              end
     end.
