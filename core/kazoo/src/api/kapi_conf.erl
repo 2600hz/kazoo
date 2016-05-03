@@ -153,7 +153,7 @@ doc_type_update_v(JObj) ->
     doc_type_update_v(kz_json:to_proplist(JObj)).
 
 -spec bind_q(binary(), kz_proplist()) -> 'ok'.
--spec bind_q(binary(), kz_proplist(), api_atoms()) -> 'ok'.
+-spec bind_q(binary(), kz_proplist(), api(atoms())) -> 'ok'.
 bind_q(Q, Props) ->
     bind_q(Q, Props, props:get_value('restrict_to', Props)).
 
@@ -202,7 +202,7 @@ bind_for_doc_types(Q, Props) ->
     end.
 
 -spec unbind_q(binary(), kz_proplist()) -> 'ok'.
--spec unbind_q(binary(), kz_proplist(), api_atoms()) -> 'ok'.
+-spec unbind_q(binary(), kz_proplist(), api(atoms())) -> 'ok'.
 unbind_q(Q, Props) ->
     unbind_q(Q, Props, props:get_value('restrict_to', Props)).
 
