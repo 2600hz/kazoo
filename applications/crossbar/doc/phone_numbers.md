@@ -379,14 +379,101 @@ It may be due to:
 ```
 
 
-#### Change
+#### Get locality information for a collection of numbers
 
 > POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/locality
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data":{"numbers": ["{PHONENUMBER1}", "{PHONENUMBER2}"]}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/locality
+```
+
+##### Responses
+
+###### Success
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "{PHONENUMBER1}": {
+            "carrier": {
+                "company": "T-Mobile USA Inc",
+                "dba": "T-Mobile USA Inc",
+                "id": "6529",
+                "type": "WIRELESS"
+            },
+            "country": "US",
+            "e164_number": "{PHONENUMBER1}",
+            "geocode": {
+                "locality": "California"
+            },
+            "locality": {
+                "alt_postal_codes": [
+                    "94965",
+                    "94941"
+                ],
+                "extended_postal_code": null,
+                "latitude": "37.8725359094361",
+                "locality": "Belvedere",
+                "longitude": "-122.465900466078",
+                "postal_code": "94920",
+                "province": "CA",
+                "switch": "OKLECAZVGT0",
+                "type": "WIRELESS"
+            },
+            "number": "{PHONENUMBER1}",
+            "status": "success"
+        },
+        "{PHONENUMBER2}": {
+            "carrier": {
+                "company": "Bandwidth.com CLEC LLC - CA",
+                "dba": "Bandwidth.com CLEC LLC",
+                "id": "981E",
+                "type": "CLEC"
+            },
+            "country": "US",
+            "e164_number": "{PHONENUMBER2}",
+            "geocode": {
+                "locality": "California"
+            },
+            "locality": {
+                "alt_postal_codes": [
+                    "94939",
+                    "94976"
+                ],
+                "extended_postal_code": null,
+                "latitude": "37.9267845442655",
+                "locality": "Corte Madera",
+                "longitude": "-122.527924297914",
+                "postal_code": "94904",
+                "province": "CA",
+                "switch": "SNFCCA21XUY",
+                "type": "LANDLINE"
+            },
+            "number": "{PHONENUMBER2}",
+            "status": "success"
+        }
+    },
+    "request_id": "22001e34f692908cf0fed818060db6ba",
+    "revision": "undefined",
+    "status": "success"
+}
+```
+
+###### Backend to PhoneBook not set up
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": "Unable to acquire numbers missing carrier url",
+    "error": "500",
+    "message": "init failed",
+    "request_id": "58d565bb44e9da3c5500255940d88e1d",
+    "status": "error"
+}
 ```
 
 
@@ -1068,89 +1155,6 @@ curl -v -X PUT \
                 "streetname": "NATOMA ST",
                 "suite": "APT 116"
             }
-        }
-    },
-    "status": "success"
-}
-```
-
-
-### Locality
-
-#### Request
-
-`POST` `http://{{SERVER}}/v2/accounts/{{account_id}}/phone_numbers/locality`
-
-```json
-{
-    "data": {
-        "numbers": ["{{NUMBER1}}", "{{NUMBER2}}"]
-    }
-}
-```
-
-#### Response
-
-```json
-{
-    "data": {
-        "{{NUMBER1}}": {
-            "country": "US",
-            "number": "{{NUMBER1}}",
-            "e164_number": "{{NUMBER1}}",
-            "geocode": {
-                "locality": "California"
-            },
-            "locality": {
-                "locality": "San Francisco",
-                "province": "CA",
-                "postal_code": "94108",
-                "extended_postal_code": null,
-                "latitude": "37.789973706997",
-                "longitude": "-122.406446128903",
-                "type": "WIRELESS",
-                "alt_postal_codes": [
-                    "94104",
-                    "94103"
-                ],
-                "switch": "098IGUH"
-            },
-            "carrier": {
-                "id": "6529",
-                "type": "WIRELESS",
-                "company": "T-Mobile USA Inc",
-                "dba": "T-Mobile USA Inc"
-            },
-            "status": "success"
-        },
-        "{{NUMBER2}}": {
-            "country": "US",
-            "number": "{{NUMBER2}}",
-            "e164_number": "{{NUMBER2}}",
-            "geocode": {
-                "locality": "San Francisco, CA"
-            },
-            "locality": {
-                "locality": "San Francisco",
-                "province": "CA",
-                "postal_code": "94108",
-                "extended_postal_code": null,
-                "latitude": "37.789973706997",
-                "longitude": "-122.406446128903",
-                "type": "WIRELESS",
-                "alt_postal_codes": [
-                    "94104",
-                    "94103"
-                ],
-                "switch": "098IGUH"
-            },
-            "carrier": {
-                "id": "6529",
-                "type": "WIRELESS",
-                "company": "T-Mobile USA Inc",
-                "dba": "T-Mobile USA Inc"
-            },
-            "status": "success"
         }
     },
     "status": "success"

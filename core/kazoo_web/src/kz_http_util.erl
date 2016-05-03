@@ -41,6 +41,9 @@ urldecode(<<H, R/binary>>, Acc) ->
 %% @doc URL encodes a string
 %%--------------------------------------------------------------------
 -spec urlencode(binary() | atom() | integer() | float() | string()) -> binary().
+urlencode(Source) when is_binary(Source) ->
+    urlencode(Source, <<>>);
+
 urlencode(Source) when is_atom(Source) ->
     urlencode(list_to_binary(atom_to_list(Source)), <<>>);
 
@@ -54,10 +57,7 @@ urlencode(Source) when is_integer(Source) ->
 urlencode(Source) when is_float(Source) ->
     List = float_to_list(Source),
     Proper = string:substr(List, 1, string:chr(List, $.)+2),
-    urlencode(list_to_binary(Proper), <<>>);
-
-urlencode(Source) ->
-    urlencode(Source, <<>>).
+    urlencode(list_to_binary(Proper), <<>>).
 
 -spec urlencode(binary(), binary()) -> binary().
 urlencode(<<>>, Acc) ->
@@ -68,10 +68,10 @@ urlencode(<<$\s, R/binary>>, Acc) ->
 
 urlencode(<<C, R/binary>>, Acc) ->
     case C of
-        $\. -> urlencode(R, <<Acc/binary, C>>);
-        $-  -> urlencode(R, <<Acc/binary, C>>);
-        $~  -> urlencode(R, <<Acc/binary, C>>);
-        $_  -> urlencode(R, <<Acc/binary, C>>);
+        $. -> urlencode(R, <<Acc/binary, C>>);
+        $- -> urlencode(R, <<Acc/binary, C>>);
+        $~ -> urlencode(R, <<Acc/binary, C>>);
+        $_ -> urlencode(R, <<Acc/binary, C>>);
 
         C when C >= $0 andalso C=< $9 -> urlencode(R, <<Acc/binary, C>>);
         C when C >= $a andalso C=< $z -> urlencode(R, <<Acc/binary, C>>);
