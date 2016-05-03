@@ -44,7 +44,7 @@ plan(DbName, DocType)
   when is_atom(DocType) ->
     plan(DbName, kz_util:to_binary(DocType)).
 
--spec plan(ne_binary(), api_binary(), api_binary()) -> map().
+-spec plan(ne_binary(), api(binary()), api(binary())) -> map().
 plan(DbName, 'undefined', 'undefined') ->
     get_dataplan(DbName);
 plan(DbName, DocType, 'undefined') ->
@@ -137,7 +137,7 @@ dataplan_connections(Map, Index) ->
       || {_, #{<<"connection">> := C}} <- maps:to_list(Map)
     ].
 
--spec dataplan_match(ne_binary(), map(), api_binary()) -> map().
+-spec dataplan_match(ne_binary(), map(), api(binary())) -> map().
 dataplan_match(Classification, Plan, AccountId) ->
     #{<<"plan">> := #{Classification := #{<<"connection">> := CCon
                                          ,<<"attachments">> := CAtt
@@ -183,7 +183,7 @@ dataplan_match(Classification, Plan, AccountId) ->
     end.
 
 -spec dataplan_type_match(ne_binary(), ne_binary(), map()) -> map().
--spec dataplan_type_match(ne_binary(), ne_binary(), map(), api_binary()) -> map().
+-spec dataplan_type_match(ne_binary(), ne_binary(), map(), api(binary())) -> map().
 
 dataplan_type_match(Classification, DocType, Plan) ->
     dataplan_type_match(Classification, DocType, Plan, 'undefined').

@@ -145,7 +145,7 @@ lookup_did(DID, AccountId) ->
 lookup_user_flags(Name, Realm, AccountId) ->
     lookup_user_flags(Name, Realm, AccountId, 'undefined').
 
--spec lookup_user_flags(ne_binary(), ne_binary(), ne_binary(), api_binary()) ->
+-spec lookup_user_flags(ne_binary(), ne_binary(), ne_binary(), api(binary())) ->
                                {'ok', kz_json:object()} |
                                {'error', atom()}.
 lookup_user_flags('undefined', _, _, 'undefined') ->
@@ -252,7 +252,7 @@ invite_format(<<"npan">>, To) ->
 invite_format(_, _) ->
     [{<<"Invite-Format">>, <<"username">>}].
 
--spec caller_id(api_objects()) -> {api_binary(), api_binary()}.
+-spec caller_id(api_objects()) -> {api(binary()), api(binary())}.
 caller_id([]) -> {'undefined', 'undefined'};
 caller_id(['undefined'|T]) -> caller_id(T);
 caller_id([CID|T]) ->
@@ -286,7 +286,7 @@ failover(L) ->
     end.
 
 -spec progress_timeout(kz_json:objects() | api_binaries()) ->
-                              kz_json:object() | api_binary().
+                              kz_json:object() | api(binary()).
 progress_timeout(L) -> simple_extract(L).
 
 -spec bypass_media(kz_json:objects() | api_binaries()) -> ne_binary().
@@ -297,15 +297,15 @@ bypass_media(L) ->
     end.
 
 -spec delay(kz_json:objects() | api_binaries()) ->
-                   kz_json:object() | api_binary().
+                   kz_json:object() | api(binary()).
 delay(L) -> simple_extract(L).
 
 -spec ignore_early_media(kz_json:objects() | api_binaries()) ->
-                                kz_json:object() | api_binary().
+                                kz_json:object() | api(binary()).
 ignore_early_media(L) -> simple_extract(L).
 
 -spec ep_timeout(kz_json:objects() | api_binaries()) ->
-                        kz_json:object() | api_binary().
+                        kz_json:object() | api(binary()).
 ep_timeout(L) -> simple_extract(L).
 
 -spec offnet_flags(list()) -> api(list()).
@@ -314,7 +314,7 @@ offnet_flags([H|_]) when is_list(H) -> H;
 offnet_flags([_|T]) -> offnet_flags(T).
 
 -spec simple_extract(kz_json:objects() | api_binaries()) ->
-                            kz_json:object() | api_binary().
+                            kz_json:object() | api(binary()).
 simple_extract([]) -> 'undefined';
 simple_extract(['undefined'|T]) -> simple_extract(T);
 simple_extract([<<>> | T]) -> simple_extract(T);
@@ -327,7 +327,7 @@ simple_extract([JObj | T]) ->
 
 -type cid_type() :: 'external' | 'emergency'.
 
--spec maybe_ensure_cid_valid(cid_type(), api_binary(), ne_binary(), ne_binary()) ->
+-spec maybe_ensure_cid_valid(cid_type(), api(binary()), ne_binary(), ne_binary()) ->
                                     ne_binary().
 maybe_ensure_cid_valid('external', CIDNum, FromUser, AccountId) ->
     case ?VALIDATE_CALLER_ID of
@@ -337,7 +337,7 @@ maybe_ensure_cid_valid('external', CIDNum, FromUser, AccountId) ->
 maybe_ensure_cid_valid('emergency', ECIDNum, _FromUser, _AccountId) ->
     ECIDNum.
 
--spec validate_external_cid(api_binary(), ne_binary(), ne_binary()) -> ne_binary().
+-spec validate_external_cid(api(binary()), ne_binary(), ne_binary()) -> ne_binary().
 validate_external_cid(CIDNum, FromUser, AccountId) ->
     lager:info("ensure_valid_caller_id flag detected, will check whether CID is legal..."),
     case knm_number:lookup_account(CIDNum) of

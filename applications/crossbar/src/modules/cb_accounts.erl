@@ -428,7 +428,7 @@ move_account(Context, AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec prepare_context(api_binary(), cb_context:context()) -> cb_context:context().
+-spec prepare_context(api(binary()), cb_context:context()) -> cb_context:context().
 -spec prepare_context(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 prepare_context('undefined', Context) ->
     cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB);
@@ -448,7 +448,7 @@ prepare_context(Context, AccountId, AccountDb) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request(api_binary(), cb_context:context()) ->
+-spec validate_request(api(binary()), cb_context:context()) ->
                               cb_context:context().
 validate_request(AccountId, Context) ->
     ValidateFuns = [fun ensure_account_has_realm/2
@@ -464,7 +464,7 @@ validate_request(AccountId, Context) ->
                 ,ValidateFuns
                ).
 
--spec ensure_account_has_realm(api_binary(), cb_context:context()) -> cb_context:context().
+-spec ensure_account_has_realm(api(binary()), cb_context:context()) -> cb_context:context().
 ensure_account_has_realm(_AccountId, Context) ->
     JObj = cb_context:req_data(Context),
     case kz_account:realm(JObj) of
@@ -483,7 +483,7 @@ random_realm() ->
     Strength = kapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"random_realm_strength">>, 3),
     list_to_binary([kz_util:rand_hex_binary(Strength), ".", RealmSuffix]).
 
--spec remove_spaces(api_binary(), cb_context:context()) -> cb_context:context().
+-spec remove_spaces(api(binary()), cb_context:context()) -> cb_context:context().
 remove_spaces(_AccountId, Context) ->
     ReqData = lists:foldl(fun remove_spaces_fold/2
                           ,cb_context:req_data(Context)
@@ -500,7 +500,7 @@ remove_spaces_fold(Key, Acc) ->
             kz_json:set_value(Key, NoSpaces, Acc)
     end.
 
--spec cleanup_leaky_keys(api_binary(), cb_context:context()) -> cb_context:context().
+-spec cleanup_leaky_keys(api(binary()), cb_context:context()) -> cb_context:context().
 cleanup_leaky_keys(_AccountId, Context) ->
     RemoveKeys = [<<"wnm_allow_additions">>
                   ,<<"superduper_admin">>
@@ -509,7 +509,7 @@ cleanup_leaky_keys(_AccountId, Context) ->
     ReqData = kz_json:delete_keys(RemoveKeys, cb_context:req_data(Context)),
     cb_context:set_req_data(Context, ReqData).
 
--spec validate_realm_is_unique(api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_realm_is_unique(api(binary()), cb_context:context()) -> cb_context:context().
 validate_realm_is_unique(AccountId, Context) ->
     Realm = kz_account:realm(cb_context:req_data(Context)),
     case is_unique_realm(AccountId, Realm) of
@@ -526,7 +526,7 @@ validate_realm_is_unique(AccountId, Context) ->
              )
     end.
 
--spec validate_account_name_is_unique(api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_account_name_is_unique(api(binary()), cb_context:context()) -> cb_context:context().
 validate_account_name_is_unique(AccountId, Context) ->
     Name = kz_account:name(cb_context:req_data(Context)),
     case maybe_is_unique_account_name(AccountId, Name) of
@@ -543,12 +543,12 @@ validate_account_name_is_unique(AccountId, Context) ->
              )
     end.
 
--spec validate_account_schema(api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_account_schema(api(binary()), cb_context:context()) -> cb_context:context().
 validate_account_schema(AccountId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(AccountId, C) end,
     cb_context:validate_request_data(<<"accounts">>, Context, OnSuccess).
 
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(api(binary()), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     set_private_properties(Context);
 on_successful_validation(AccountId, Context) ->
@@ -559,7 +559,7 @@ on_successful_validation(AccountId, Context) ->
                                   cb_context:context().
 -spec maybe_import_enabled(cb_context:context(), crossbar_status()) ->
                                   cb_context:context().
--spec maybe_import_enabled(cb_context:context(), kz_json:object(), api_binary()) ->
+-spec maybe_import_enabled(cb_context:context(), kz_json:object(), api(binary())) ->
                                   cb_context:context().
 maybe_import_enabled(Context) ->
     case cb_context:auth_account_id(Context) =:= cb_context:account_id(Context) of
@@ -592,12 +592,12 @@ maybe_import_enabled(Context, JObj, IsEnabled) ->
                        ,kz_json:delete_key(<<"enabled">>, JObj1)
                       ).
 
--spec disallow_direct_clients(api_binary(), cb_context:context()) -> cb_context:context().
+-spec disallow_direct_clients(api(binary()), cb_context:context()) -> cb_context:context().
 disallow_direct_clients(AccountId, Context) ->
     AllowDirect = kapps_config:get_is_true(?KZ_ACCOUNTS_DB, 'allow_subaccounts_for_direct', 'true'),
     maybe_disallow_direct_clients(AccountId, Context, AllowDirect).
 
--spec maybe_disallow_direct_clients(api_binary(), cb_context:context(), boolean()) ->
+-spec maybe_disallow_direct_clients(api(binary()), cb_context:context(), boolean()) ->
                                            cb_context:context().
 maybe_disallow_direct_clients(_AccountId, Context, 'true') ->
     Context;
@@ -781,7 +781,7 @@ leak_billing_mode(Context) ->
     end.
 
 -spec leak_notification_preference(cb_context:context()) -> cb_context:context().
--spec leak_notification_preference(cb_context:context(), api_binary()) -> cb_context:context().
+-spec leak_notification_preference(cb_context:context(), api(binary())) -> cb_context:context().
 leak_notification_preference(Context) ->
     leak_notification_preference(Context, kz_account:notification_preference(cb_context:doc(Context))).
 
@@ -973,7 +973,7 @@ fix_envelope_fold(Key, JObj) ->
         V -> kz_json:set_value(Key, V, JObj)
     end.
 
--spec fix_start_key(api_binary() | list()) -> api_binary().
+-spec fix_start_key(api(binary()) | list()) -> api(binary()).
 fix_start_key('undefined') -> 'undefined';
 fix_start_key(<<_/binary>> = StartKey) -> StartKey;
 fix_start_key([StartKey]) -> StartKey;
@@ -1168,7 +1168,7 @@ add_pvt_tree(Context) ->
         Tree -> cb_context:set_doc(Context, kz_account:set_tree(cb_context:doc(Context), Tree))
     end.
 
--spec create_new_tree(cb_context:context() | api_binary()) -> ne_binaries() | 'error'.
+-spec create_new_tree(cb_context:context() | api(binary())) -> ne_binaries() | 'error'.
 create_new_tree('undefined') ->
     case kapps_util:get_master_account_id() of
         {'ok', MasterAccountId} -> [MasterAccountId];
@@ -1419,7 +1419,7 @@ replicate_account_definition(JObj) ->
 %% unique or belongs to the request being made
 %% @end
 %%--------------------------------------------------------------------
--spec is_unique_realm(api_binary(), ne_binary()) -> boolean().
+-spec is_unique_realm(api(binary()), ne_binary()) -> boolean().
 is_unique_realm(AccountId, Realm) ->
     ViewOptions = [{'key', kz_util:to_lower_binary(Realm)}],
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ?AGG_VIEW_REALM, ViewOptions) of
@@ -1435,14 +1435,14 @@ is_unique_realm(AccountId, Realm) ->
 %% This function will determine if the account name is unique
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_is_unique_account_name(api_binary(), ne_binary()) -> boolean().
+-spec maybe_is_unique_account_name(api(binary()), ne_binary()) -> boolean().
 maybe_is_unique_account_name(AccountId, Name) ->
     case kapps_config:get_is_true(?ACCOUNTS_CONFIG_CAT, <<"ensure_unique_name">>, 'true') of
         'true' -> is_unique_account_name(AccountId, Name);
         'false' -> 'true'
     end.
 
--spec is_unique_account_name(api_binary(), ne_binary()) -> boolean().
+-spec is_unique_account_name(api(binary()), ne_binary()) -> boolean().
 is_unique_account_name(AccountId, Name) ->
     AccountName = kz_util:normalize_account_name(Name),
     ViewOptions = [{'key', AccountName}],
@@ -1488,7 +1488,7 @@ notify_new_account(Context, _AuthDoc) ->
 %% be phased out shortly
 %% @end
 %%--------------------------------------------------------------------
--spec support_depreciated_billing_id(api_binary(), api_binary(), cb_context:context()) ->
+-spec support_depreciated_billing_id(api(binary()), api(binary()), cb_context:context()) ->
                                             cb_context:context().
 support_depreciated_billing_id('undefined', _, Context) -> Context;
 support_depreciated_billing_id(BillingId, AccountId, Context) ->

@@ -28,7 +28,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec init(api_binary(), integer()) ->
+-spec init(api(binary()), integer()) ->
                   'ok' |
                   {'error', error()}.
 init(Account, Balance) ->
@@ -44,7 +44,7 @@ init(Account, Balance) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_top_up(api_binary() | kz_account:doc()) ->
+-spec get_top_up(api(binary()) | kz_account:doc()) ->
                         {'error', error()} |
                         {'ok', integer(), integer()}.
 get_top_up(<<_/binary>> = Account) ->

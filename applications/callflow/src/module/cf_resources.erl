@@ -58,7 +58,7 @@ handle(Data, Call) ->
         {Cause, Code} -> handle_bridge_failure(Cause, Code, UpdatedCall)
     end.
 
--spec handle_bridge_failure(api_binary(), api_binary(), kapps_call:call()) -> 'ok'.
+-spec handle_bridge_failure(api(binary()), api(binary()), kapps_call:call()) -> 'ok'.
 handle_bridge_failure(Cause, Code, Call) ->
     lager:info("offnet request error, attempting to find failure branch for ~s:~s", [Code, Cause]),
     case cf_util:handle_bridge_failure(Cause, Code, Call) of
@@ -117,7 +117,7 @@ get_channel_vars(Call) ->
       props:filter_undefined(get_channel_vars(EndpointId, Call))
      ).
 
--spec get_channel_vars(api_binary(), kapps_call:call()) -> kz_proplist().
+-spec get_channel_vars(api(binary()), kapps_call:call()) -> kz_proplist().
 get_channel_vars('undefined', Call) -> [maybe_require_ignore_early_media(Call)];
 get_channel_vars(EndpointId, Call) ->
     case cf_endpoint:get(EndpointId, kapps_call:account_db(Call)) of
@@ -129,7 +129,7 @@ get_channel_vars(EndpointId, Call) ->
         {'error', _} -> [maybe_require_ignore_early_media(Call)]
     end.
 
--spec maybe_require_ignore_early_media(kapps_call:call()) -> {ne_binary(), api_binary()}.
+-spec maybe_require_ignore_early_media(kapps_call:call()) -> {ne_binary(), api(binary())}.
 maybe_require_ignore_early_media(Call) ->
     {<<"Require-Ignore-Early-Media">>, kapps_call:custom_channel_var(<<"Require-Ignore-Early-Media">>, Call)}.
 
@@ -138,14 +138,14 @@ get_bypass_e164(Data) ->
     kz_json:is_true(<<"do_not_normalize">>, Data)
         orelse kz_json:is_true(<<"bypass_e164">>, Data).
 
--spec get_from_uri_realm(kz_json:object(), kapps_call:call()) -> api_binary().
+-spec get_from_uri_realm(kz_json:object(), kapps_call:call()) -> api(binary()).
 get_from_uri_realm(Data, Call) ->
     case kz_json:get_ne_value(<<"from_uri_realm">>, Data) of
         'undefined' -> maybe_get_call_from_realm(Call);
         Realm -> Realm
     end.
 
--spec maybe_get_call_from_realm(kapps_call:call()) -> api_binary().
+-spec maybe_get_call_from_realm(kapps_call:call()) -> api(binary()).
 maybe_get_call_from_realm(Call) ->
     case kapps_call:from_realm(Call) of
         <<"norealm">> -> get_account_realm(Call);
@@ -159,7 +159,7 @@ update_ccvs(Call) ->
              ),
     kapps_call:set_custom_channel_vars(Props, Call).
 
--spec maybe_set_bridge_generate_comfort_noise(kapps_call:call()) -> api_binary().
+-spec maybe_set_bridge_generate_comfort_noise(kapps_call:call()) -> api(binary()).
 maybe_set_bridge_generate_comfort_noise(Call) ->
     case cf_endpoint:get(Call) of
         {'ok', Endpoint} ->
@@ -169,23 +169,23 @@ maybe_set_bridge_generate_comfort_noise(Call) ->
             'undefined'
     end.
 
--spec maybe_has_comfort_noise_option_enabled(kz_json:object()) -> api_binary().
+-spec maybe_has_comfort_noise_option_enabled(kz_json:object()) -> api(binary()).
 maybe_has_comfort_noise_option_enabled(Endpoint) ->
     kz_json:get_ne_binary_value([<<"media">>, <<"bridge_generate_comfort_noise">>], Endpoint).
 
--spec get_account_realm(kapps_call:call()) -> api_binary().
+-spec get_account_realm(kapps_call:call()) -> api(binary()).
 get_account_realm(Call) ->
     case kz_account:fetch(kapps_call:account_id(Call)) of
         {'ok', JObj} -> kz_account:realm(JObj);
         {'error', _} -> 'undefined'
     end.
 
--spec get_caller_id(kz_json:object(), kapps_call:call()) -> {api_binary(), api_binary()}.
+-spec get_caller_id(kz_json:object(), kapps_call:call()) -> {api(binary()), api(binary())}.
 get_caller_id(Data, Call) ->
     Type = kz_json:get_value(<<"caller_id_type">>, Data, <<"external">>),
     cf_attributes:caller_id(Type, Call).
 
--spec get_hunt_account_id(kz_json:object(), kapps_call:call()) -> api_binary().
+-spec get_hunt_account_id(kz_json:object(), kapps_call:call()) -> api(binary()).
 get_hunt_account_id(Data, Call) ->
     case kz_json:is_true(<<"use_local_resources">>, Data, 'true') of
         'false' -> 'undefined';
@@ -268,7 +268,7 @@ get_sip_headers(Data, Call) ->
         'false' -> JObj
     end.
 
--spec get_ignore_early_media(kz_json:object()) -> api_binary().
+-spec get_ignore_early_media(kz_json:object()) -> api(binary()).
 get_ignore_early_media(Data) ->
     kz_util:to_binary(kz_json:is_true(<<"ignore_early_media">>, Data, 'false')).
 
@@ -393,7 +393,7 @@ is_flag_exported(Flag, [{F, 1}|Funs]) ->
     end;
 is_flag_exported(Flag, [_|Funs]) -> is_flag_exported(Flag, Funs).
 
--spec get_inception(kapps_call:call()) -> api_binary().
+-spec get_inception(kapps_call:call()) -> api(binary()).
 get_inception(Call) ->
     kz_json:get_value(<<"Inception">>, kapps_call:custom_channel_vars(Call)).
 
@@ -403,7 +403,7 @@ get_inception(Call) ->
 %% Consume Erlang messages and return on offnet response
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_stepswitch(kapps_call:call()) -> {ne_binary(), api_binary()}.
+-spec wait_for_stepswitch(kapps_call:call()) -> {ne_binary(), api(binary())}.
 wait_for_stepswitch(Call) ->
     case kapps_call_command:receive_event(?DEFAULT_EVENT_WAIT, 'true') of
         {'ok', JObj} ->

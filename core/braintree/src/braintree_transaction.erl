@@ -201,7 +201,7 @@ void(TransactionId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec refund(bt_transaction() | ne_binary()) -> bt_transaction().
--spec refund(bt_transaction() | ne_binary(), api_binary()) -> bt_transaction().
+-spec refund(bt_transaction() | ne_binary(), api(binary())) -> bt_transaction().
 
 refund(TransactionId) ->
     refund(TransactionId, 'undefined').

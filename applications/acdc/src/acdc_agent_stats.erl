@@ -95,7 +95,7 @@ agent_pending_logged_out(AccountId, AgentId) ->
 
 -spec agent_connecting(ne_binary(), ne_binary(), ne_binary()) ->
                               'ok'.
--spec agent_connecting(ne_binary(), ne_binary(), ne_binary(), api_binary(), api_binary()) ->
+-spec agent_connecting(ne_binary(), ne_binary(), ne_binary(), api(binary()), api(binary())) ->
                               'ok'.
 agent_connecting(AccountId, AgentId, CallId) ->
     agent_connecting(AccountId, AgentId, CallId, 'undefined', 'undefined').
@@ -116,7 +116,7 @@ agent_connecting(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
 
 -spec agent_connected(ne_binary(), ne_binary(), ne_binary()) ->
                              'ok'.
--spec agent_connected(ne_binary(), ne_binary(), ne_binary(), api_binary(), api_binary()) ->
+-spec agent_connected(ne_binary(), ne_binary(), ne_binary(), api(binary()), api(binary())) ->
                              'ok'.
 agent_connected(AccountId, AgentId, CallId) ->
     agent_connected(AccountId, AgentId, CallId, 'undefined', 'undefined').

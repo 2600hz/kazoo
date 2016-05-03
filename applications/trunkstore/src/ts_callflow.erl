@@ -42,7 +42,7 @@
 
 -export_type([state/0]).
 
--spec init(kz_json:object(), api_binary() | api_binaries()) ->
+-spec init(kz_json:object(), api(binary()) | api_binaries()) ->
                   state() |
                   {'error', 'not_ts_account'}.
 init(RouteReqJObj, Type) ->
@@ -204,7 +204,7 @@ is_success(Key, JObj, Default) ->
     kz_json:get_first_defined(Key, JObj, Default) =:= <<"SUCCESS">>.
 
 -spec get_event_type(kz_json:object()) ->
-                            {api_binary(), api_binary(), api_binary()}.
+                            {api(binary()), api(binary()), api(binary())}.
 get_event_type(JObj) ->
     {C, N} = kz_util:get_event_type(JObj),
     {C, N, get_app(JObj)}.
@@ -267,8 +267,8 @@ get_account_id(#ts_callflow_state{acctid=ID}) -> ID.
 get_my_queue(#ts_callflow_state{my_q=Q}) -> Q.
 get_control_queue(#ts_callflow_state{callctl_q=CtlQ}) -> CtlQ.
 
--spec get_aleg_id(state()) -> api_binary().
--spec get_bleg_id(state()) -> api_binary().
+-spec get_aleg_id(state()) -> api(binary()).
+-spec get_bleg_id(state()) -> api(binary()).
 get_aleg_id(#ts_callflow_state{aleg_callid=ALeg}) -> ALeg.
 get_bleg_id(#ts_callflow_state{bleg_callid=ALeg}) -> ALeg.
 
@@ -281,7 +281,7 @@ set_failover(State, Failover) -> State#ts_callflow_state{failover=Failover}.
 -spec get_failover(state()) -> api_object().
 get_failover(#ts_callflow_state{failover=Fail}) -> Fail.
 
--spec is_trunkstore_acct(kz_json:object(), api_binary() | api_binaries()) -> boolean().
+-spec is_trunkstore_acct(kz_json:object(), api(binary()) | api_binaries()) -> boolean().
 is_trunkstore_acct(JObj, [Type|Types]) ->
     case is_trunkstore_acct(JObj, Type) of
         'true' -> 'true';

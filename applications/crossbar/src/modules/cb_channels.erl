@@ -192,7 +192,7 @@ update(Context, CallId) ->
     end.
 
 -spec maybe_execute_command(cb_context:context(), ne_binary()) -> cb_context:context().
--spec maybe_execute_command(cb_context:context(), ne_binary(), api_binary()) -> cb_context:context().
+-spec maybe_execute_command(cb_context:context(), ne_binary(), api(binary())) -> cb_context:context().
 maybe_execute_command(Context, CallId) ->
     maybe_execute_command(Context, CallId, cb_context:req_value(Context, <<"action">>)).
 

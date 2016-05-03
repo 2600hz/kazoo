@@ -283,19 +283,19 @@ publish_check_sync(Req, ContentType) ->
                                     ,ContentType
                                    ).
 
--spec check_sync_realm(api_terms()) -> api_binary().
+-spec check_sync_realm(api_terms()) -> api(binary()).
 check_sync_realm(Props) when is_list(Props) ->
     check_sync_value(Props, <<"Realm">>, fun props:get_value/2);
 check_sync_realm(JObj) ->
     check_sync_value(JObj, <<"Realm">>, fun kz_json:get_value/2).
 
--spec check_sync_username(api_terms()) -> api_binary().
+-spec check_sync_username(api_terms()) -> api(binary()).
 check_sync_username(Props) when is_list(Props) ->
     check_sync_value(Props, <<"Username">>, fun props:get_value/2);
 check_sync_username(JObj) ->
     check_sync_value(JObj, <<"Username">>, fun kz_json:get_value/2).
 
--spec check_sync_value(api_terms(), ne_binary(), fun()) -> api_binary().
+-spec check_sync_value(api_terms(), ne_binary(), fun()) -> api(binary()).
 check_sync_value(API, Key, Get) ->
     Get(Key, API).
 
@@ -313,16 +313,16 @@ publish_reply(Queue, Req) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?FSREPLY_COMMAND_VALUES, fun ?MODULE:fs_reply/1),
     amqp_util:targeted_publish(Queue, Payload).
 
--spec check_fs_node(api_terms()) -> api_binary().
+-spec check_fs_node(api_terms()) -> api(binary()).
 check_fs_node(Props) when is_list(Props) ->
     get_value(Props, <<"FreeSWITCH-Node">>, <<"*">>).
 
--spec get_value(api_terms(), ne_binary(), ne_binary()) -> api_binary().
+-spec get_value(api_terms(), ne_binary(), ne_binary()) -> api(binary()).
 get_value(Props, Key, Default) when is_list(Props) ->
     get_value(Props, Key, fun props:get_value/3, Default);
 get_value(JObj, Key, Default) ->
     get_value(JObj, Key, fun kz_json:get_value/3, Default).
 
--spec get_value(api_terms(), ne_binary(), fun(), ne_binary()) -> api_binary().
+-spec get_value(api_terms(), ne_binary(), fun(), ne_binary()) -> api(binary()).
 get_value(API, Key, Get, Default) ->
     Get(Key, API, Default).

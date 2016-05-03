@@ -91,14 +91,14 @@ should_cascade(ItemPlan) ->
 should_cascade(ItemPlan, Default) ->
     kz_json:is_true(?CASCADE, ItemPlan, Default).
 
--spec masquerade_as(doc()) -> api_binary().
+-spec masquerade_as(doc()) -> api(binary()).
 -spec masquerade_as(doc(), Default) -> ne_binary() | Default.
 masquerade_as(ItemPlan) ->
     masquerade_as(ItemPlan, 'undefined').
 masquerade_as(ItemPlan, Default) ->
     kz_json:get_value(?MASQUERADE, ItemPlan, Default).
 
--spec name(doc()) -> api_binary().
+-spec name(doc()) -> api(binary()).
 name(ItemPlan) ->
     case kz_json:get_value(?NAME, ItemPlan) of
         'undefined' -> masquerade_as(ItemPlan);

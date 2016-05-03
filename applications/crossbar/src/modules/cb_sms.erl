@@ -239,7 +239,7 @@ on_successful_validation(Context) ->
 -define(CALLER_ID_INTERNAL, [<<"caller_id">>, <<"internal">>, <<"number">>]).
 -define(CALLER_ID_EXTERNAL, [<<"caller_id">>, <<"external">>, <<"number">>]).
 
--spec get_default_caller_id(cb_context:context(), api_binary()) -> api_binary().
+-spec get_default_caller_id(cb_context:context(), api(binary())) -> api(binary()).
 get_default_caller_id(Context, 'undefined') ->
     {'ok', JObj} = kz_account:fetch(cb_context:account_id(Context)),
     kz_json:get_first_defined(
@@ -315,7 +315,7 @@ filter_number(Number) ->
 -spec is_digit(integer()) -> boolean().
 is_digit(N) -> N >= $0 andalso N =< $9.
 
--spec build_number(ne_binary()) -> {api_binary(), kz_proplist()}.
+-spec build_number(ne_binary()) -> {api(binary()), kz_proplist()}.
 build_number(Number) ->
     N = binary:split(Number, <<",">>, ['global']),
     case length(N) of
@@ -323,8 +323,8 @@ build_number(Number) ->
         _ -> lists:foldl(fun parse_number/2, {'undefined', []}, N)
     end.
 
--spec parse_number(ne_binary(), {api_binary(), kz_proplist()}) ->
-                          {api_binary(), kz_proplist()}.
+-spec parse_number(ne_binary(), {api(binary()), kz_proplist()}) ->
+                          {api(binary()), kz_proplist()}.
 parse_number(<<"TON=", N/binary>>, {Num, Options}) ->
     {Num, [{<<"TON">>, kz_util:to_integer(N) } | Options]};
 parse_number(<<"NPI=", N/binary>>, {Num, Options}) ->

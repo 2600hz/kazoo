@@ -301,7 +301,7 @@ ip(Bin) ->
 get_port(Bin) ->
     extract_ahead(<<"]:">>, 6, <<" at ">>, Bin).
 
--spec extract_ahead(ne_binary(), pos_integer(), ne_binary(), binary()) -> api_binary().
+-spec extract_ahead(ne_binary(), pos_integer(), ne_binary(), binary()) -> api(binary()).
 extract_ahead(Lhs, Span, Rhs, Bin) ->
     case binary:match(Bin, Lhs) of
         {StartS, StartP} ->

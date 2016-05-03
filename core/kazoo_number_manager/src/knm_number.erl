@@ -47,7 +47,7 @@
 
 -record(knm_number, {knm_phone_number :: knm_phone_number:knm_phone_number()
                      ,services :: kz_services:services()
-                     ,billing_id :: api_binary()
+                     ,billing_id :: api(binary())
                      ,transactions = [] :: kz_transaction:transactions()
                      ,errors = [] :: list()
                      ,charges = [] :: [{ne_binary(), integer()}]
@@ -437,7 +437,7 @@ updates_require_save(PhoneNumber, Updaters) ->
 
 -type set_fun() :: fun((knm_phone_number:knm_phone_number(), any()) -> knm_phone_number:knm_phone_number()).
 
--type up_req_el() :: {ne_binary(), api_binary(), set_fun()}.
+-type up_req_el() :: {ne_binary(), api(binary()), set_fun()}.
 -type up_req_els() :: [up_req_el()].
 -type up_req_acc() :: {boolean(), knm_phone_number:knm_phone_number()}.
 
@@ -518,9 +518,9 @@ delete_phone_number(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec assign_to_app(ne_binary(), api_binary()) ->
+-spec assign_to_app(ne_binary(), api(binary())) ->
                            knm_number_return().
--spec assign_to_app(ne_binary(), api_binary(), knm_number_options:options()) ->
+-spec assign_to_app(ne_binary(), api(binary()), knm_number_options:options()) ->
                            knm_number_return().
 assign_to_app(Num, App) ->
     assign_to_app(Num, App, knm_number_options:default()).
@@ -532,7 +532,7 @@ assign_to_app(Num, App, Options) ->
             maybe_update_assignment(Number, App)
     end.
 
--spec maybe_update_assignment(knm_number(), api_binary()) -> knm_number_return().
+-spec maybe_update_assignment(knm_number(), api(binary())) -> knm_number_return().
 maybe_update_assignment(Number, NewApp) ->
     PhoneNumber = phone_number(Number),
     case knm_phone_number:used_by(PhoneNumber) of
@@ -550,7 +550,7 @@ maybe_update_assignment(Number, NewApp) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_account(api_binary()) -> lookup_account_return().
+-spec lookup_account(api(binary())) -> lookup_account_return().
 lookup_account('undefined') -> {'error', 'not_reconcilable'};
 lookup_account(Num) ->
     NormalizedNum = knm_converters:normalize(Num),
@@ -636,7 +636,7 @@ check_account(PhoneNumber) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec feature_prepend(knm_phone_number:knm_phone_number()) -> api_binary().
+-spec feature_prepend(knm_phone_number:knm_phone_number()) -> api(binary()).
 feature_prepend(PhoneNumber) ->
     Prepend = knm_phone_number:feature(PhoneNumber, <<"prepend">>),
     case kz_json:is_true(<<"enabled">>, Prepend) of
@@ -668,7 +668,7 @@ feature_inbound_cname(PhoneNumber) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec find_early_ringback(knm_phone_number:knm_phone_number()) -> api_binary().
+-spec find_early_ringback(knm_phone_number:knm_phone_number()) -> api(binary()).
 find_early_ringback(PhoneNumber) ->
     RingBack = knm_phone_number:feature(PhoneNumber, <<"ringback">>),
     kz_json:get_ne_value(<<"early">>, RingBack).
@@ -678,7 +678,7 @@ find_early_ringback(PhoneNumber) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec find_transfer_ringback(knm_phone_number:knm_phone_number()) -> api_binary().
+-spec find_transfer_ringback(knm_phone_number:knm_phone_number()) -> api(binary()).
 find_transfer_ringback(PhoneNumber) ->
     RingBack = knm_phone_number:feature(PhoneNumber, <<"ringback">>),
     kz_json:get_ne_value(<<"transfer">>, RingBack).
@@ -809,7 +809,7 @@ services(#knm_number{services=Services}) -> Services.
 set_services(#knm_number{}=Number, Services) ->
     Number#knm_number{services=Services}.
 
--spec billing_id(knm_number()) -> api_binary().
+-spec billing_id(knm_number()) -> api(binary()).
 billing_id(#knm_number{billing_id=BillingId}) ->
     BillingId.
 
@@ -854,8 +854,8 @@ attempt(Fun, Args) ->
             {'error', knm_errors:to_json(Reason, num_to_did(Number), Cause)}
     end.
 
--spec num_to_did(api_binary() | knm_number() | knm_phone_number:knm_phone_number()) ->
-                        api_binary().
+-spec num_to_did(api(binary()) | knm_number() | knm_phone_number:knm_phone_number()) ->
+                        api(binary()).
 num_to_did('undefined') -> 'undefined';
 num_to_did(?NE_BINARY = DID) -> DID;
 num_to_did(#knm_number{}=Number) ->

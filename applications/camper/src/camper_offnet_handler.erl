@@ -32,16 +32,16 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {exten :: api_binary()
+-record(state, {exten :: api(binary())
                 ,stored_call :: kapps_call:call()
-                ,queue :: api_binary()
+                ,queue :: api(binary())
                 ,n_try :: non_neg_integer()
                 ,max_tries :: non_neg_integer()
                 ,try_after :: non_neg_integer()
                 ,stop_timer :: api(timer:tref())
-                ,parked_call :: api_binary()
-                ,offnet_ctl_q :: api_binary()
-                ,moh :: api_binary()
+                ,parked_call :: api(binary())
+                ,offnet_ctl_q :: api(binary())
+                ,moh :: api(binary())
                }).
 -type state() :: #state{}.
 

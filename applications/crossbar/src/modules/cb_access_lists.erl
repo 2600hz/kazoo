@@ -86,7 +86,7 @@ validate_acls(Context, ?HTTP_DELETE) ->
     validate_delete_acls(thing_doc(Context)).
 
 -spec thing_doc(cb_context:context()) -> cb_context:context().
--spec thing_doc(cb_context:context(), ne_binary(), api_binary()) -> cb_context:context().
+-spec thing_doc(cb_context:context(), ne_binary(), api(binary())) -> cb_context:context().
 thing_doc(Context) ->
     case cb_context:req_nouns(Context) of
         [{<<"access_lists">>, []}, {<<"accounts">>, [AccountId]} | _] ->

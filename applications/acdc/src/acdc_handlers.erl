@@ -79,7 +79,7 @@ update_agent(Call) ->
     end.
 
 -spec update_acdc_actor(kapps_call:call()) -> any().
--spec update_acdc_actor(kapps_call:call(), api_binary(), api_binary()) -> any().
+-spec update_acdc_actor(kapps_call:call(), api(binary()), api(binary())) -> any().
 update_acdc_actor(Call) ->
     update_acdc_actor(Call
                       ,kapps_call:custom_channel_var(<<"ACDc-ID">>, Call)

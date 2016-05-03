@@ -366,7 +366,7 @@ publish_mwi_update(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?MWI_REQ_VALUES, fun ?MODULE:mwi_update/1),
      amqp_util:presence_publish(mwi_update_routing_key(Req), Payload, ContentType).
 
--spec mwi_update_routing_key(api_terms() | api_binary()) -> ne_binary().
+-spec mwi_update_routing_key(api_terms() | api(binary())) -> ne_binary().
 mwi_update_routing_key(Prop) when is_list(Prop) ->
     mwi_update_routing_key(props:get_value(<<"To">>, Prop));
 mwi_update_routing_key(To) when is_binary(To) ->
@@ -608,7 +608,7 @@ unbind_q(Queue, Props) ->
     RestrictTo = props:get_value('restrict_to', Props),
     unbind_q(Queue, RestrictTo, Props).
 
--spec unbind_q(ne_binary(), api_binary(), kz_proplist()) -> 'ok'.
+-spec unbind_q(ne_binary(), api(binary()), kz_proplist()) -> 'ok'.
 unbind_q(Queue, 'undefined', _) ->
     amqp_util:unbind_q_from_presence(Queue, <<"#">>);
 unbind_q(Queue, ['search_req'|Restrict], Props) ->
@@ -676,7 +676,7 @@ presence_states() -> ?PRESENCE_STATES.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_state(api_binary() | api_terms()) -> boolean().
+-spec is_valid_state(api(binary()) | api_terms()) -> boolean().
 is_valid_state(State) when is_binary(State) ->
     lists:member(State, ?PRESENCE_STATES);
 is_valid_state(Prop) when is_list(Prop) ->

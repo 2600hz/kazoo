@@ -236,7 +236,7 @@ validate_patch(Id, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(api(binary()), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     Doc = lists:foldl(fun doc_updates/2
                       ,cb_context:doc(Context)
@@ -430,7 +430,7 @@ process_row(Row, {Count, JObjs}=Acc) ->
             {Count + 1, [kz_json:from_list(Props) | JObjs]}
     end.
 
--spec get_row_prefix(rate_row()) -> api_binary().
+-spec get_row_prefix(rate_row()) -> api(binary()).
 get_row_prefix([Prefix | _]=_R) ->
     try kz_util:to_integer(Prefix) of
         P -> P
@@ -449,7 +449,7 @@ get_row_iso(_R) ->
     lager:info("iso not found on row: ~p", [_R]),
     <<"XX">>.
 
--spec get_row_description(rate_row()) -> api_binary().
+-spec get_row_description(rate_row()) -> api(binary()).
 get_row_description([_, _, Description | _]) ->
     strip_quotes(kz_util:to_binary(Description));
 get_row_description(_R) ->

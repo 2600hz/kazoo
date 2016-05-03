@@ -229,7 +229,7 @@ record_to_json(#bt_address{}=Address) ->
 %% a uuid to use during creation.
 %% @end
 %%--------------------------------------------------------------------
--spec create_or_get_json_id(kz_json:object()) ->  api_binary().
+-spec create_or_get_json_id(kz_json:object()) ->  api(binary()).
 create_or_get_json_id(JObj) ->
     case kz_json:get_value(<<"street_address">>, JObj) of
         'undefined' -> kz_doc:id(JObj);

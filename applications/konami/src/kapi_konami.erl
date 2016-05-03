@@ -43,7 +43,7 @@ bind_q(Queue, Props) ->
     CallId = props:get_value('callid', Props),
     bind_q(Queue, CallId, props:get_value('restrict_to', Props)).
 
--spec bind_q(ne_binary(), api_binary(), api(kz_proplist())) -> 'ok'.
+-spec bind_q(ne_binary(), api(binary()), api(kz_proplist())) -> 'ok'.
 bind_q(_Queue, 'undefined', 'undefined') -> 'ok';
 bind_q(Queue, CallId, 'undefined') ->
     bind_for_transferred(Queue, CallId);
@@ -61,7 +61,7 @@ unbind_q(Queue, Props) ->
     CallId = props:get_value('callid', Props),
     unbind_q(Queue, CallId, props:get_value('restrict_to', Props)).
 
--spec unbind_q(ne_binary(), api_binary(), api(kz_proplist())) -> 'ok'.
+-spec unbind_q(ne_binary(), api(binary()), api(kz_proplist())) -> 'ok'.
 unbind_q(_Queue, 'undefined', 'undefined') -> 'ok';
 unbind_q(Queue, CallId, 'undefined') ->
     unbind_for_transferred(Queue, CallId);

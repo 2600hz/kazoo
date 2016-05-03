@@ -63,12 +63,12 @@
 -define(SERVER, ?MODULE).
 
 %% Public API
--spec call_waiting(api_binary()
-                   ,api_binary()
-                   ,api_binary()
-                   ,api_binary()
-                   ,api_binary()
-                   ,api_binary()
+-spec call_waiting(api(binary())
+                   ,api(binary())
+                   ,api(binary())
+                   ,api(binary())
+                   ,api(binary())
+                   ,api(binary())
                   ) -> 'ok' | {'error', any()}.
 call_waiting(AccountId, QueueId, CallId, CallerIdName, CallerIdNumber, CallerPriority) ->
     Prop = props:filter_undefined(

@@ -150,7 +150,7 @@ migrate_recorded_name(Db) ->
     end.
 
 -spec do_recorded_name_migration(ne_binary(), kz_json:object()) -> any().
--spec do_recorded_name_migration(ne_binary(), kz_json:object(), api_binary()) -> any().
+-spec do_recorded_name_migration(ne_binary(), kz_json:object(), api(binary())) -> any().
 do_recorded_name_migration(Db, VMBox) ->
     VMBoxId = kz_doc:id(VMBox),
     case kz_json:get_value(?RECORDED_NAME_KEY, VMBox) of

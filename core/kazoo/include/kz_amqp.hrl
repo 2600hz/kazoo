@@ -186,7 +186,7 @@
                              ,channel :: api_pid() | '$1' | '_'
                              ,channel_ref :: api_reference() | '_'
                              ,connection :: api_pid() | '$1' | '_'
-                             ,broker :: api_binary() | '$1' | '_'
+                             ,broker :: api(binary()) | '$1' | '_'
                              ,assigned :: api(kz_timeout()) | '_'
                              ,reconnect = 'false' :: boolean() | '_'
                              ,watchers = sets:new() :: sets:set() | pids() | '_'

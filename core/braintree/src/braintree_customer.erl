@@ -78,7 +78,7 @@ new_subscription(PlanId, Customer) ->
 %% Given a customer record find (if any) the default payment token
 %% @end
 %%--------------------------------------------------------------------
--spec default_payment_token(ne_binary() | customer()) -> api_binary().
+-spec default_payment_token(ne_binary() | customer()) -> api(binary()).
 default_payment_token(#bt_customer{}=Customer) ->
     braintree_card:default_payment_token(get_cards(Customer));
 default_payment_token(CustomerId) ->
@@ -96,7 +96,7 @@ default_payment_card(CustomerId) ->
 %% Get the customer id
 %% @end
 %%--------------------------------------------------------------------
--spec get_id(customer()) -> api_binary().
+-spec get_id(customer()) -> api(binary()).
 get_id(#bt_customer{id=CustomerId}) ->
     CustomerId.
 

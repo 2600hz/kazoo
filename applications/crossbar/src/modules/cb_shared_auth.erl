@@ -228,7 +228,7 @@ create_local_token(Context) ->
 %% the shared token and get the account/user for the token
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate_shared_token(api_binary(), nonempty_string()) ->
+-spec authenticate_shared_token(api(binary()), nonempty_string()) ->
                                        {'ok', string() | binary()} |
                                        {'error', atom()} |
                                        {'forbidden', atom()}.
@@ -269,7 +269,7 @@ import_missing_data(RemoteData) ->
 %% an account and user, ensure the account exists (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_account(api_binary(), api_object()) -> boolean().
+-spec import_missing_account(api(binary()), api_object()) -> boolean().
 import_missing_account('undefined', _Account) ->
     lager:debug("shared auth reply did not define an account id"),
     'false';
@@ -331,7 +331,7 @@ import_missing_account(AccountId, Account) ->
 %% an account and user, ensure the user exists locally (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_user(api_binary(), api_binary(), api_object()) -> boolean().
+-spec import_missing_user(api(binary()), api(binary()), api_object()) -> boolean().
 import_missing_user(_, 'undefined', _) ->
     lager:debug("shared auth reply did not define an user id"),
     'false';

@@ -101,7 +101,7 @@
                 ,agent_id :: ne_binary()
                 ,agent_listener :: server_ref()
                 ,agent_listener_id :: ne_binary()
-                ,agent_name :: api_binary()
+                ,agent_name :: api(binary())
 
                 ,wrapup_timeout = 0 :: integer() % optionally set on win
                 ,wrapup_ref :: reference()
@@ -110,17 +110,17 @@
                 ,pause_ref :: reference()
 
                 ,member_call :: kapps_call:call()
-                ,member_call_id :: api_binary()
-                ,member_call_queue_id :: api_binary()
+                ,member_call_id :: api(binary())
+                ,member_call_queue_id :: api(binary())
                 ,member_call_start :: kz_now()
                 ,caller_exit_key = <<"#">> :: ne_binary()
                 ,queue_notifications :: api_object()
 
-                ,agent_call_id :: api_binary()
-                ,next_status :: api_binary()
-                ,fsm_call_id :: api_binary() % used when no call-ids are available
+                ,agent_call_id :: api(binary())
+                ,next_status :: api(binary())
+                ,fsm_call_id :: api(binary()) % used when no call-ids are available
                 ,endpoints = [] :: kz_json:objects()
-                ,outbound_call_id :: api_binary()
+                ,outbound_call_id :: api(binary())
                 ,max_connect_failures :: kz_timeout()
                 ,connect_failures = 0 :: non_neg_integer()
                 ,agent_state_updates = [] :: list()
@@ -1359,7 +1359,7 @@ start_pause_timer(0) -> 'undefined';
 start_pause_timer(Timeout) ->
     gen_fsm:start_timer(Timeout * 1000, ?PAUSE_MESSAGE).
 
--spec call_id(kz_json:object()) -> api_binary().
+-spec call_id(kz_json:object()) -> api(binary()).
 call_id(JObj) ->
     case kz_json:get_value(<<"Call-ID">>, JObj) of
         'undefined' -> kz_json:get_value([<<"Call">>, <<"Call-ID">>], JObj);
@@ -1527,16 +1527,16 @@ missed_reason(<<"CALL_REJECTED">>) -> <<"rejected">>;
 missed_reason(<<"USER_BUSY">>) -> <<"rejected">>;
 missed_reason(Reason) -> Reason.
 
--spec find_username(kz_json:object()) -> api_binary().
+-spec find_username(kz_json:object()) -> api(binary()).
 find_username(EP) ->
     find_sip_username(EP, kz_device:sip_username(EP)).
 
--spec find_sip_username(kz_json:object(), api_binary()) -> api_binary().
+-spec find_sip_username(kz_json:object(), api(binary())) -> api(binary()).
 find_sip_username(EP, 'undefined') -> kz_json:get_value(<<"To-User">>, EP);
 find_sip_username(_EP, Username) -> Username.
 
--spec find_endpoint_id(kz_json:object()) -> api_binary().
--spec find_endpoint_id(kz_json:object(), api_binary()) -> api_binary().
+-spec find_endpoint_id(kz_json:object()) -> api(binary()).
+-spec find_endpoint_id(kz_json:object(), api(binary())) -> api(binary()).
 
 find_endpoint_id(EP) ->
     find_endpoint_id(EP, kz_doc:id(EP)).
@@ -1585,7 +1585,7 @@ maybe_remove_endpoint(EPId, EPs, AccountId, AgentListener) ->
             EPs1
     end.
 
--spec get_endpoints(kz_json:objects(), server_ref(), kapps_call:call(), api_binary(), api_binary()) ->
+-spec get_endpoints(kz_json:objects(), server_ref(), kapps_call:call(), api(binary()), api(binary())) ->
                            {'ok', kz_json:objects()} |
                            {'error', any()}.
 get_endpoints(OrigEPs, AgentListener, Call, AgentId, QueueId) ->
@@ -1712,14 +1712,14 @@ notify(Uri, Headers, Method, Body, Opts) ->
             lager:debug("failed to send request to ~s: ~p", [Uri, _E])
     end.
 
--spec cdr_url(kz_json:object()) -> api_binary().
+-spec cdr_url(kz_json:object()) -> api(binary()).
 cdr_url(JObj) ->
     case kz_json:get_value([<<"Notifications">>, ?NOTIFY_CDR], JObj) of
         'undefined' -> kz_json:get_ne_value(<<"CDR-Url">>, JObj);
         Url -> Url
     end.
 
--spec recording_url(kz_json:object()) -> api_binary().
+-spec recording_url(kz_json:object()) -> api(binary()).
 recording_url(JObj) ->
     case kz_json:get_value([<<"Notifications">>, ?NOTIFY_RECORDING], JObj) of
         'undefined' -> kz_json:get_ne_value(<<"Recording-URL">>, JObj);

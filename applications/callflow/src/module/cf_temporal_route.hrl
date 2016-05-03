@@ -58,7 +58,7 @@
                    ,local_date = {2011, 1, 1} :: kz_date()
                    ,local_time = {0, 0, 0} :: kz_time()
                    ,routes = [] :: kz_json:keys()
-                   ,timezone :: api_binary()
+                   ,timezone :: api(binary())
                    ,prompts = #prompts{} :: prompts()
                    ,keys = #keys{} :: keys()
                    ,interdigit_timeout = kapps_call_command:default_interdigit_timeout() :: pos_integer()

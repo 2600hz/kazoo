@@ -791,7 +791,7 @@ maybe_transcribe(AccountId, MediaId, 'true') ->
     end;
 maybe_transcribe(_, _, 'false') -> 'undefined'.
 
--spec maybe_transcribe(ne_binary(), kz_json:object(), binary(), api_binary()) ->
+-spec maybe_transcribe(ne_binary(), kz_json:object(), binary(), api(binary())) ->
                               api_object().
 maybe_transcribe(_, _, _, 'undefined') -> 'undefined';
 maybe_transcribe(_, _, <<>>, _) -> 'undefined';
@@ -810,7 +810,7 @@ maybe_transcribe(Db, MediaDoc, Bin, ContentType) ->
             'undefined'
     end.
 
--spec is_valid_transcription(api_binary(), binary(), kz_json:object()) ->
+-spec is_valid_transcription(api(binary()), binary(), kz_json:object()) ->
                                     api_object().
 is_valid_transcription(<<"success">>, ?NE_BINARY, Resp) -> Resp;
 is_valid_transcription(_Res, _Txt, _) ->

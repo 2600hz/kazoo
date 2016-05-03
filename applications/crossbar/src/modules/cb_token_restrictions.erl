@@ -222,7 +222,7 @@ allowed_accounts(Context) ->
 allowed_accounts(?AUTH_ACCOUNT_ID, ?ACCOUNT_ID = AccountId) ->
     [?CATCH_ALL, AccountId, <<"{DESCENDANT_ACCOUNT_ID}">>].
 -else.
--spec allowed_accounts(api_binary(), api_binary()) -> ne_binaries().
+-spec allowed_accounts(api(binary()), api(binary())) -> ne_binaries().
 allowed_accounts('undefined', _AccountId) -> [?CATCH_ALL];
 allowed_accounts(_AuthAccountId, 'undefined') -> [?CATCH_ALL];
 allowed_accounts(AuthAccountId, AccountId) ->
@@ -250,7 +250,7 @@ match_argument_patterns(ReqParams, RulesJObj, RuleKeys) ->
             kz_json:get_value(MatchedRuleKey, RulesJObj, [])
     end.
 
--spec match_rules(ne_binaries(), ne_binaries()) -> api_binary().
+-spec match_rules(ne_binaries(), ne_binaries()) -> api(binary()).
 match_rules(_ReqParams, []) -> 'undefined';
 match_rules(ReqParams, [RuleKey|RuleKeys]) ->
     case does_rule_match(RuleKey, ReqParams) of

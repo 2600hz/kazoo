@@ -410,7 +410,7 @@ publish_reset(Realm, Things) ->
         ],
     'ok'.
 
--spec publish_presence_reset(ne_binary(), api_binary()) -> 'ok'.
+-spec publish_presence_reset(ne_binary(), api(binary())) -> 'ok'.
 publish_presence_reset(_Realm, 'undefined') -> 'ok';
 publish_presence_reset(Realm, PresenceId) ->
     lager:debug("resetting ~s @ ~s", [PresenceId, Realm]),

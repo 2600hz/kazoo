@@ -217,7 +217,7 @@ set_owner(JObj) ->
         {'error', _R} -> JObj
     end.
 
--spec get_owner(api_binary(), ne_binary()) ->
+-spec get_owner(api(binary()), ne_binary()) ->
                        {'ok', kz_json:object()} |
                        {'error', any()}.
 get_owner('undefined', _) -> {'error', 'undefined'};
@@ -392,7 +392,7 @@ get_feature_key(<<"parking">> = Type, Value, Brand, Family, _AccountId) ->
        )
      ).
 
--spec get_line_key(ne_binary(), ne_binary()) -> api_binary().
+-spec get_line_key(ne_binary(), ne_binary()) -> api(binary()).
 get_line_key(<<"yealink">>, _) -> <<"0">>;
 get_line_key(_, _) -> 'undefined'.
 
@@ -459,7 +459,7 @@ settings_audio([Codec|Codecs], [Key|Keys], JObj) ->
 %% Send provisioning request
 %% @end
 %%--------------------------------------------------------------------
--spec send_req(atom(), api_object(), ne_binary(), ne_binary(), api_binary()) -> 'ok'.
+-spec send_req(atom(), api_object(), ne_binary(), ne_binary(), api(binary())) -> 'ok'.
 
 send_req('devices_post', JObj, AuthToken, AccountId, MACAddress) ->
     Data = kz_json:encode(device_payload(JObj)),
@@ -640,7 +640,7 @@ get_schema() ->
             'undefined'
     end.
 
--spec handle_validation_error(jesse_error:error_reasons(), api_binary()) -> 'ok'.
+-spec handle_validation_error(jesse_error:error_reasons(), api(binary())) -> 'ok'.
 handle_validation_error([], AccountId) ->
     lager:error("not sending data to provisioner, data failed to validate in ~s", [AccountId]);
 handle_validation_error([{'data_invalid', _, _Reason, _Key, _Value}|Errors], AccountId) ->

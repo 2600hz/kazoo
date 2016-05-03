@@ -62,8 +62,8 @@
 
 -record(state, {
           node :: atom()
-          ,call_id :: api_binary()
-          ,other_leg :: api_binary()
+          ,call_id :: api(binary())
+          ,other_leg :: api(binary())
           ,other_leg_events = [] :: ne_binaries()
           ,is_node_up = 'true' :: boolean()
           ,failed_node_checks = 0 :: non_neg_integer()
@@ -594,7 +594,7 @@ create_event(Props) ->
 create_event(EventName, Props) ->
     create_event(EventName, get_application_name(Props), Props).
 
--spec create_event(ne_binary(), api_binary(), kz_proplist()) -> kz_proplist().
+-spec create_event(ne_binary(), api(binary()), kz_proplist()) -> kz_proplist().
 create_event(EventName, ApplicationName, Props) ->
     props:filter_undefined(
       [{<<"Event-Name">>, EventName}
@@ -706,7 +706,7 @@ is_masquerade(Props) ->
     end.
 
 %% return a proplist of k/v pairs specific to the event
--spec specific_call_event_props(binary(), api_binary(), kz_proplist()) -> kz_proplist().
+-spec specific_call_event_props(binary(), api(binary()), kz_proplist()) -> kz_proplist().
 specific_call_event_props(<<"CHANNEL_EXECUTE">>, <<"conference">>, Props) ->
     conference_specific(Props);
 specific_call_event_props(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"conference">>, Props) ->
@@ -924,7 +924,7 @@ get_channel_moving(Props) ->
         'true' -> 'true'
     end.
 
--spec get_channel_state(kz_proplist()) -> api_binary().
+-spec get_channel_state(kz_proplist()) -> api(binary()).
 get_channel_state(Props) ->
     case props:get_value(<<"Channel-State">>, Props) of
         'undefined' -> 'undefined';
@@ -932,15 +932,15 @@ get_channel_state(Props) ->
         Other -> Other
     end.
 
--spec get_call_id(kz_proplist()) -> api_binary().
+-spec get_call_id(kz_proplist()) -> api(binary()).
 get_call_id(Props) ->
     kzd_freeswitch:call_id(Props).
 
--spec get_other_leg(kz_proplist()) -> api_binary().
+-spec get_other_leg(kz_proplist()) -> api(binary()).
 get_other_leg(Props) ->
     ecallmgr_fs_channel:get_other_leg(get_call_id(Props), Props).
 
--spec get_event_name(kz_proplist()) -> api_binary().
+-spec get_event_name(kz_proplist()) -> api(binary()).
 get_event_name(Props) ->
     case kzd_freeswitch:application_name(Props) of
         <<"sofia::transferee">> -> <<"CHANNEL_TRANSFEREE">>;
@@ -953,7 +953,7 @@ get_event_name(Props) ->
         _AppName -> get_fs_event_name(Props)
     end.
 
--spec get_fs_event_name(kz_proplist()) -> api_binary().
+-spec get_fs_event_name(kz_proplist()) -> api(binary()).
 get_fs_event_name(Props) ->
     case kzd_freeswitch:event_name(Props) of
         <<"DETECTED_TONE">> ->
@@ -964,7 +964,7 @@ get_fs_event_name(Props) ->
         Event -> Event
     end.
 
--spec get_application_name(kz_proplist()) -> api_binary().
+-spec get_application_name(kz_proplist()) -> api(binary()).
 get_application_name(Props) ->
     case kzd_freeswitch:application_name(Props) of
         <<"sofia::transferee">> -> <<"transfer">>;
@@ -975,7 +975,7 @@ get_application_name(Props) ->
         AppName -> AppName
     end.
 
--spec get_raw_application_name(kz_proplist()) -> api_binary().
+-spec get_raw_application_name(kz_proplist()) -> api(binary()).
 get_raw_application_name(Props) ->
     kzd_freeswitch:raw_application_name(Props).
 
@@ -1052,19 +1052,19 @@ create_trnsf_history_object(_Params) ->
     lager:debug("unhandled transfer type : ~p", [_Params]),
     'undefined'.
 
--spec get_hangup_cause(kz_proplist()) -> api_binary().
+-spec get_hangup_cause(kz_proplist()) -> api(binary()).
 get_hangup_cause(Props) ->
     kzd_freeswitch:hangup_cause(Props).
 
--spec get_disposition(kz_proplist()) -> api_binary().
+-spec get_disposition(kz_proplist()) -> api(binary()).
 get_disposition(Props) ->
     kzd_freeswitch:disposition(Props).
 
--spec get_hangup_code(kz_proplist()) -> api_binary().
+-spec get_hangup_code(kz_proplist()) -> api(binary()).
 get_hangup_code(Props) ->
     kzd_freeswitch:hangup_code(Props).
 
--spec get_billing_seconds(kz_proplist()) -> api_binary().
+-spec get_billing_seconds(kz_proplist()) -> api(binary()).
 get_billing_seconds(Props) ->
     case props:get_integer_value(<<"variable_billmsec">>, Props) of
         'undefined' -> props:get_value(<<"variable_billsec">>, Props);
@@ -1139,7 +1139,7 @@ store_recording(Props, CallId, Node) ->
 media_transfer_method(Props) ->
     kzd_freeswitch:ccv(Props, <<"Media-Transfer-Method">>, <<"put">>).
 
--spec get_is_loopback(api_binary()) -> atom().
+-spec get_is_loopback(api(binary())) -> atom().
 get_is_loopback('undefined') -> 'undefined';
 get_is_loopback(_) -> 'true'.
 

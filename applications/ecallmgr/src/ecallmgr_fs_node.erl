@@ -220,7 +220,7 @@ sync_capabilities(Srv) ->
 sync_registrations(Srv) ->
     gen_server:cast(find_srv(Srv), 'sync_registrations').
 
--spec hostname(pid()) -> api_binary().
+-spec hostname(pid()) -> api(binary()).
 hostname(Srv) ->
     case fs_node(Srv) of
         'undefined' -> 'undefined';
@@ -229,11 +229,11 @@ hostname(Srv) ->
             Hostname
     end.
 
--spec sip_url(fs_node()) -> api_binary().
+-spec sip_url(fs_node()) -> api(binary()).
 sip_url(Srv) ->
     gen_server:call(find_srv(Srv), 'sip_url').
 
--spec sip_external_ip(fs_node()) -> api_binary().
+-spec sip_external_ip(fs_node()) -> api(binary()).
 sip_external_ip(Srv) ->
     gen_server:call(find_srv(Srv), 'sip_external_ip').
 

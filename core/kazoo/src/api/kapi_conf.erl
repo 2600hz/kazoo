@@ -68,15 +68,15 @@
                                 ]).
 -define(DOC_TYPE_UPDATE_TYPES, []).
 
--spec get_account_id(api_terms()) -> api_binary().
+-spec get_account_id(api_terms()) -> api(binary()).
 get_account_id(API) ->
     get_value(API, <<"Account-ID">>).
 
--spec get_action(api_terms()) -> api_binary().
+-spec get_action(api_terms()) -> api(binary()).
 get_action(API) ->
     get_value(API, <<"Action">>).
 
--spec get_account_db(api_terms()) -> api_binary().
+-spec get_account_db(api_terms()) -> api(binary()).
 get_account_db(API) ->
     get_value(API, <<"Account-DB">>).
 
@@ -89,12 +89,12 @@ get_database(API) ->
 get_doc(API) ->
     get_value(API, <<"Doc">>).
 
--spec get_id(api_terms()) -> api_binary().
+-spec get_id(api_terms()) -> api(binary()).
 get_id(API) ->
     get_value(API, <<"ID">>).
 
 %% returns the pvt_type field
--spec get_type(api_terms()) -> api_binary().
+-spec get_type(api_terms()) -> api(binary()).
 get_type(API) ->
     get_value(API, <<"Type">>).
 

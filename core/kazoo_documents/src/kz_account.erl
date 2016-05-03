@@ -93,7 +93,7 @@ type() -> ?PVT_TYPE.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec id(doc()) -> api_binary().
+-spec id(doc()) -> api(binary()).
 id(JObj) ->
     kz_doc:id(JObj).
 
@@ -102,7 +102,7 @@ id(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(api_binary()) -> {'ok', doc()} |
+-spec fetch(api(binary())) -> {'ok', doc()} |
                             {'error', any()}.
 fetch('undefined') ->
     {'error', 'invalid_db_name'};
@@ -116,7 +116,7 @@ fetch(<<_/binary>> = Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec name(doc()) -> api_binary().
+-spec name(doc()) -> api(binary()).
 -spec name(doc(), Default) -> ne_binary() | Default.
 name(JObj) ->
     name(JObj, 'undefined').
@@ -137,7 +137,7 @@ set_name(JObj, Name) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec realm(doc()) -> api_binary().
+-spec realm(doc()) -> api(binary()).
 -spec realm(doc(), Default) -> ne_binary() | Default.
 realm(JObj) ->
     realm(JObj, 'undefined').
@@ -158,7 +158,7 @@ set_realm(JObj, Realm) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec language(doc()) -> api_binary().
+-spec language(doc()) -> api(binary()).
 language(JObj) ->
     kz_json:get_value(?LANGUAGE, JObj).
 
@@ -176,7 +176,7 @@ set_language(JObj, Language) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec timezone(ne_binary() | doc()) -> api_binary().
+-spec timezone(ne_binary() | doc()) -> api(binary()).
 -spec timezone(ne_binary() | doc(), Default) -> ne_binary() | Default.
 timezone(AccountId)
   when is_binary(AccountId) ->
@@ -195,7 +195,7 @@ timezone(JObj, Default) ->
         TZ -> TZ
     end.
 
--spec parent_timezone(ne_binary(), api_binary()) -> ne_binary().
+-spec parent_timezone(ne_binary(), api(binary())) -> ne_binary().
 parent_timezone(AccountId, AccountId) -> ?DEFAULT_TIMEZONE;
 parent_timezone(_AccountId, 'undefined') -> ?DEFAULT_TIMEZONE;
 parent_timezone(_AccountId, ParentId) -> timezone(ParentId).
@@ -311,7 +311,7 @@ set_topup_threshold(JObj, Threshold) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec parent_account_id(doc()) -> api_binary().
+-spec parent_account_id(doc()) -> api(binary()).
 parent_account_id(JObj) ->
     case tree(JObj) of
         [] -> 'undefined';
@@ -344,7 +344,7 @@ set_tree(JObj, Tree) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec notification_preference(doc()) -> api_binary().
+-spec notification_preference(doc()) -> api(binary()).
 notification_preference(JObj) ->
     kz_json:get_value(?NOTIFY_PREF, JObj).
 
@@ -389,7 +389,7 @@ disable(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec api_key(doc()) -> api_binary().
+-spec api_key(doc()) -> api(binary()).
 api_key(JObj) ->
     kz_json:get_value(?API_KEY, JObj).
 

@@ -49,7 +49,7 @@ handle(Data, Call, <<"stop">> = Action) ->
     _ = kapps_call_command:record_call([{<<"Media-Name">>, MediaName}], Action, Call),
     lager:debug("sent command to stop recording").
 
--spec get_action(api_binary()) -> ne_binary().
+-spec get_action(api(binary())) -> ne_binary().
 get_action('undefined') -> <<"start">>;
 get_action(<<"stop">>) -> <<"stop">>;
 get_action(_) -> <<"start">>.

@@ -37,7 +37,7 @@
 %% ====================================================================
 
 -type keycert() :: {api({'PrivateKeyInfo', binary()})
-                    ,api_binary()
+                    ,api(binary())
                    }.
 -spec binary_to_keycert(binary()) -> keycert().
 binary_to_keycert(Binary) ->

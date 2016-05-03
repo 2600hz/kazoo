@@ -57,24 +57,24 @@
 
 -include("jonny5.hrl").
 
--record(request, {account_id :: api_binary()
-                  ,account_billing :: api_binary()
+-record(request, {account_id :: api(binary())
+                  ,account_billing :: api(binary())
                   ,account_authorized = 'false' :: boolean()
-                  ,reseller_id :: api_binary()
-                  ,reseller_billing :: api_binary()
+                  ,reseller_id :: api(binary())
+                  ,reseller_billing :: api(binary())
                   ,reseller_authorized = 'false' :: boolean()
                   ,soft_limit = 'false' :: boolean()
-                  ,call_id :: api_binary()
-                  ,call_direction :: api_binary()
-                  ,other_leg_call_id :: api_binary()
-                  ,sip_to :: api_binary()
-                  ,sip_from :: api_binary()
-                  ,sip_request :: api_binary()
-                  ,message_id :: api_binary()
-                  ,server_id :: api_binary()
-                  ,node :: api_binary()
-                  ,classification :: api_binary()
-                  ,number :: api_binary()
+                  ,call_id :: api(binary())
+                  ,call_direction :: api(binary())
+                  ,other_leg_call_id :: api(binary())
+                  ,sip_to :: api(binary())
+                  ,sip_from :: api(binary())
+                  ,sip_request :: api(binary())
+                  ,message_id :: api(binary())
+                  ,server_id :: api(binary())
+                  ,node :: api(binary())
+                  ,classification :: api(binary())
+                  ,number :: api(binary())
                   ,billing_seconds = 0 :: non_neg_integer()
                   ,answered_time = 0 :: non_neg_integer()
                   ,timestamp = 0 :: gregorian_seconds()
@@ -302,11 +302,11 @@ is_authorized(#request{account_authorized=AccountAuthorized
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_account_id(api_binary(), request()) -> request().
+-spec set_account_id(api(binary()), request()) -> request().
 set_account_id(AccountId, Request) ->
     Request#request{account_id=AccountId}.
 
--spec account_id(request()) -> api_binary().
+-spec account_id(request()) -> api(binary()).
 account_id(#request{account_id=AccountId}) -> AccountId.
 
 %%--------------------------------------------------------------------
@@ -315,11 +315,11 @@ account_id(#request{account_id=AccountId}) -> AccountId.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_reseller_id(api_binary(), request()) -> request().
+-spec set_reseller_id(api(binary()), request()) -> request().
 set_reseller_id(ResellerId, Request) ->
     Request#request{reseller_id=ResellerId}.
 
--spec reseller_id(request()) -> api_binary().
+-spec reseller_id(request()) -> api(binary()).
 reseller_id(#request{reseller_id=ResellerId}) -> ResellerId.
 
 %%--------------------------------------------------------------------
@@ -328,7 +328,7 @@ reseller_id(#request{reseller_id=ResellerId}) -> ResellerId.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec billing(request(), j5_limits:limits()) -> api_binary().
+-spec billing(request(), j5_limits:limits()) -> api(binary()).
 billing(#request{account_billing=AccountBilling
                  ,reseller_id=ResellerId
                  ,reseller_billing=ResellerBilling
@@ -339,10 +339,10 @@ billing(#request{account_billing=AccountBilling
         'false' -> AccountBilling
     end.
 
--spec account_billing(request()) -> api_binary().
+-spec account_billing(request()) -> api(binary()).
 account_billing(#request{account_billing=Billing}) -> Billing.
 
--spec reseller_billing(request()) -> api_binary().
+-spec reseller_billing(request()) -> api(binary()).
 reseller_billing(#request{reseller_billing=Billing}) -> Billing.
 
 %%--------------------------------------------------------------------
@@ -368,7 +368,7 @@ soft_limit(#request{soft_limit=SoftLimit}) -> SoftLimit.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec other_leg_call_id(request()) -> api_binary().
+-spec other_leg_call_id(request()) -> api(binary()).
 other_leg_call_id(#request{other_leg_call_id=CallId}) -> CallId.
 
 %%--------------------------------------------------------------------
@@ -406,7 +406,7 @@ billing_seconds(#request{billing_seconds=BillingSeconds}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec call_direction(request()) -> api_binary().
+-spec call_direction(request()) -> api(binary()).
 call_direction(#request{call_direction=CallDirection}) ->
     CallDirection.
 
@@ -416,7 +416,7 @@ call_direction(#request{call_direction=CallDirection}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec call_id(request()) -> api_binary().
+-spec call_id(request()) -> api(binary()).
 call_id(#request{call_id=CallId}) -> CallId.
 
 %%--------------------------------------------------------------------
@@ -425,7 +425,7 @@ call_id(#request{call_id=CallId}) -> CallId.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec from(request()) -> api_binary().
+-spec from(request()) -> api(binary()).
 from(#request{sip_from=From}) -> From.
 
 %%--------------------------------------------------------------------
@@ -434,7 +434,7 @@ from(#request{sip_from=From}) -> From.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec to(request()) -> api_binary().
+-spec to(request()) -> api(binary()).
 to(#request{sip_to=To}) -> To.
 
 %%--------------------------------------------------------------------
@@ -443,7 +443,7 @@ to(#request{sip_to=To}) -> To.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec message_id(request()) -> api_binary().
+-spec message_id(request()) -> api(binary()).
 message_id(#request{message_id=MessageId}) -> MessageId.
 
 %%--------------------------------------------------------------------
@@ -452,7 +452,7 @@ message_id(#request{message_id=MessageId}) -> MessageId.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec server_id(request()) -> api_binary().
+-spec server_id(request()) -> api(binary()).
 server_id(#request{server_id=ServerId}) -> ServerId.
 
 %%--------------------------------------------------------------------
@@ -461,7 +461,7 @@ server_id(#request{server_id=ServerId}) -> ServerId.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec node(request()) -> api_binary().
+-spec node(request()) -> api(binary()).
 node(#request{node=NodeId}) -> NodeId.
 
 %%--------------------------------------------------------------------
@@ -470,7 +470,7 @@ node(#request{node=NodeId}) -> NodeId.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec classification(request()) -> api_binary().
+-spec classification(request()) -> api(binary()).
 classification(#request{classification=Classification}) -> Classification.
 
 %%--------------------------------------------------------------------
@@ -502,6 +502,6 @@ per_minute_cost(#request{request_jobj=JObj}) ->
 call_cost(#request{request_jobj=JObj}) ->
     wht_util:call_cost(JObj).
 
--spec caller_network_address(request()) -> api_binary().
+-spec caller_network_address(request()) -> api(binary()).
 caller_network_address(#request{request_jobj=JObj}) ->
     kz_json:get_value(<<"From-Network-Addr">>, JObj).

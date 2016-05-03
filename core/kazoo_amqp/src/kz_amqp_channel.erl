@@ -54,14 +54,14 @@ consumer_pid(Pid) when is_pid(Pid) ->
 remove_consumer_pid() ->
     put('$kz_amqp_consumer_pid', 'undefined').
 
--spec consumer_broker() -> api_binary().
+-spec consumer_broker() -> api(binary()).
 consumer_broker() ->
     case get('$kz_amqp_consumer_broker') of
         Broker when is_binary(Broker) -> Broker;
         _Else -> 'undefined'
     end.
 
--spec consumer_broker(ne_binary()) -> api_binary().
+-spec consumer_broker(ne_binary()) -> api(binary()).
 consumer_broker(Broker) when is_binary(Broker) ->
     put('$kz_amqp_consumer_broker', Broker).
 
@@ -72,14 +72,14 @@ remove_consumer_broker() ->
 -spec requisition() -> boolean().
 requisition() -> requisition(consumer_pid()).
 
--spec requisition(pid() | api_binary()) -> boolean().
+-spec requisition(pid() | api(binary())) -> boolean().
 requisition(Consumer) when is_pid(Consumer) ->
     requisition(Consumer, consumer_broker());
 requisition(Broker) ->
     put('$kz_amqp_consumer_broker', Broker),
     requisition(consumer_pid(), Broker).
 
--spec requisition(pid(), api_binary()) -> boolean().
+-spec requisition(pid(), api(binary())) -> boolean().
 requisition(Consumer, Broker) when is_pid(Consumer) ->
     case kz_amqp_assignments:request_channel(Consumer, Broker) of
         #kz_amqp_assignment{channel=Channel}

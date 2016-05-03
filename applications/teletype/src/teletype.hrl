@@ -35,7 +35,7 @@
                       {'cc', kz_json:object()} |
                       {'bcc', kz_json:object()} |
                       {'from', ne_binary()} |
-                      {'reply_to', api_binary()}.
+                      {'reply_to', api(binary())}.
 -type init_params() :: [init_param(),...].
 
 -define(TEXT_PLAIN, <<"text/plain">>).

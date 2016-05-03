@@ -48,11 +48,11 @@
 
                 ,b_digit_timeout_ref :: api_reference()
                 ,b_collected_dtmf = <<>> :: binary()
-                ,b_endpoint_id :: api_binary()
+                ,b_endpoint_id :: api(binary())
                 ,b_leg_armed = 'false' :: boolean()
 
                 ,call_id :: ne_binary()
-                ,other_leg :: api_binary()
+                ,other_leg :: api(binary())
                }).
 -type state() :: #state{}.
 
@@ -498,7 +498,7 @@ add_bleg_dtmf(#state{b_collected_dtmf=Collected
                 ,b_collected_dtmf = <<Collected/binary, DTMF/binary>>
                }.
 
--spec maybe_add_call_event_bindings(api_binary() | kapps_call:call()) -> 'ok'.
+-spec maybe_add_call_event_bindings(api(binary()) | kapps_call:call()) -> 'ok'.
 -spec maybe_add_call_event_bindings(kapps_call:call(), listen_on()) -> 'ok'.
 maybe_add_call_event_bindings('undefined') -> 'ok';
 maybe_add_call_event_bindings(<<_/binary>> = Leg) -> konami_event_listener:add_call_binding(Leg);
@@ -515,7 +515,7 @@ maybe_add_call_event_bindings(Call, 'ab') ->
     konami_event_listener:add_konami_binding(kapps_call:other_leg_call_id(Call)),
     maybe_add_call_event_bindings(Call).
 
--spec b_endpoint_id(kz_json:object(), listen_on()) -> api_binary().
+-spec b_endpoint_id(kz_json:object(), listen_on()) -> api(binary()).
 b_endpoint_id(_JObj, 'a') -> 'undefined';
 b_endpoint_id(JObj, _ListenOn) -> kz_json:get_value(<<"Endpoint-ID">>, JObj).
 

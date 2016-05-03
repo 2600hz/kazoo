@@ -420,12 +420,12 @@ route_req_ccvs(FetchId, Props) ->
 %% check content-type and decode properly
 %% some sip clients send text/html with entities encoded
 %% some other use application/vnd.3gpp.sms
--spec get_body(kz_proplist()) -> api_binary().
+-spec get_body(kz_proplist()) -> api(binary()).
 get_body(Props) ->
     props:get_value(<<"body">>, Props).
 
 -spec get_redirected(kz_proplist()) ->
-                            {api_binary(), api_binary()}.
+                            {api(binary()), api(binary())}.
 get_redirected(Props) ->
     case props:get_value(<<"variable_last_bridge_hangup_cause">>, Props) of
         <<"REDIRECTION_TO_NEW_DESTINATION">> ->

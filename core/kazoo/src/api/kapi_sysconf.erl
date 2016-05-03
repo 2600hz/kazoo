@@ -280,14 +280,14 @@ routing_key_flush() ->
     ?KEY_SYSCONF_FLUSH_REQ.
 
 
--spec get_category(kz_json:object()) -> api_binary().
+-spec get_category(kz_json:object()) -> api(binary()).
 -spec get_category(kz_json:object(), Default) -> ne_binary() | Default.
 get_category(JObj) ->
     get_category(JObj, 'undefined').
 get_category(JObj, Default) ->
     kz_json:get_value(?CAT_KEY, JObj, Default).
 
--spec get_key(kz_json:object()) -> api_binary().
+-spec get_key(kz_json:object()) -> api(binary()).
 -spec get_key(kz_json:object(), Default) -> ne_binary() | Default.
 get_key(JObj) ->
     get_key(JObj, 'undefined').

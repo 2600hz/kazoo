@@ -38,7 +38,7 @@
 normalize(?NE_BINARY = Num) ->
     to_e164(Num).
 
--spec normalize(ne_binary(), api_binary()) ->
+-spec normalize(ne_binary(), api(binary())) ->
                        ne_binary().
 normalize(?NE_BINARY = Num, 'undefined') ->
     to_e164(Num);

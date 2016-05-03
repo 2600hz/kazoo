@@ -16,15 +16,15 @@
 
 -include("ananke.hrl").
 
--record(args, {account_id             :: api_binary()
-               ,user_id               :: api_binary()
-               ,vm_box_id             :: api_binary()
-               ,callback_number       :: api_binary()
+-record(args, {account_id             :: api(binary())
+               ,user_id               :: api(binary())
+               ,vm_box_id             :: api(binary())
+               ,callback_number       :: api(binary())
                ,is_callback_disabled  :: boolean()
-               ,vm_number             :: api_binary()
+               ,vm_number             :: api(binary())
                ,schedule              :: pos_integers()
                ,call_timeout          :: pos_integer()
-               ,realm                 :: api_binary()
+               ,realm                 :: api(binary())
               }).
 
 -spec init() -> 'ok'.
@@ -102,7 +102,7 @@ handle_req(JObj, Props) ->
             maybe_start_caller(StartArgs)
     end.
 
--spec get_voicemail_number(ne_binary(), ne_binary()) -> api_binary().
+-spec get_voicemail_number(ne_binary(), ne_binary()) -> api(binary()).
 get_voicemail_number(AccountDb, Mailbox) ->
     {'ok', Callflows} = kz_datamgr:get_results(AccountDb
                                               ,<<"callflows/crossbar_listing">>
@@ -136,7 +136,7 @@ get_cf_flow(JObj) ->
         FlowJObj -> FlowJObj
     end.
 
--spec get_callflow_number(kz_json:object(), ne_binary()) -> api_binary().
+-spec get_callflow_number(kz_json:object(), ne_binary()) -> api(binary()).
 get_callflow_number(Callflow, _Mailbox) ->
     case kz_json:get_value([<<"doc">>, <<"numbers">>], Callflow, ['undefined']) of
         [] -> 'undefined';
@@ -217,7 +217,7 @@ build_originate_req(#args{callback_number = CallbackNumber
       ],
     props:filter_undefined(R).
 
--spec get_first_defined([{ne_binary(), kz_json:object()}]) -> api_binary().
+-spec get_first_defined([{ne_binary(), kz_json:object()}]) -> api(binary()).
 get_first_defined(Props) ->
     get_first_defined(Props, 'undefined').
 

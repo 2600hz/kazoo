@@ -19,7 +19,7 @@
                 ,call = kapps_call:new() :: kapps_call:call()
                 ,account_id :: ne_binary()
                 ,account_cid :: ne_binary()
-                ,queue :: api_binary()
+                ,queue :: api(binary())
                 ,parked_call_id :: ne_binary()
                 ,offnet_ctl_q :: ne_binary()
                 ,auth_doc_id :: ne_binary()

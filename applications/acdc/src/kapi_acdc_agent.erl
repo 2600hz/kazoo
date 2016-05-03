@@ -157,7 +157,7 @@ stats_req_v(JObj) ->
     stats_req_v(kz_json:to_proplist(JObj)).
 
 -spec stats_req_routing_key(kz_json:object() | kz_proplist() | ne_binary()) -> ne_binary().
--spec stats_req_routing_key(ne_binary(), api_binary()) -> ne_binary().
+-spec stats_req_routing_key(ne_binary(), api(binary())) -> ne_binary().
 stats_req_routing_key(Props) when is_list(Props) ->
     Id = props:get_value(<<"Account-ID">>, Props, <<"*">>),
     AgentId = props:get_value(<<"Agent-ID">>, Props, <<"*">>),

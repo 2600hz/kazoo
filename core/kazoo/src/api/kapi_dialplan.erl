@@ -1086,7 +1086,7 @@ publish_metaflow(API, ContentType) ->
     CallId = metaflow_callid(API),
     amqp_util:kapps_publish(?METAFLOW_ROUTING_KEY(CallId), Payload, ContentType).
 
--spec metaflow_callid(api_terms()) -> api_binary().
+-spec metaflow_callid(api_terms()) -> api(binary()).
 metaflow_callid([_|_]=Props) ->
     kz_json:get_value(<<"Call-ID">>, props:get_value(<<"Call">>, Props));
 metaflow_callid(JObj) ->
@@ -1182,7 +1182,7 @@ declare_exchanges() ->
     amqp_util:callctl_exchange(),
     amqp_util:kapps_exchange().
 
--spec terminators(api_binary()) -> ne_binaries().
+-spec terminators(api(binary())) -> ne_binaries().
 terminators(Bin) when is_binary(Bin) ->
     [<<B>> || <<B>> <= Bin, lists:member(<<B>>, ?ANY_DIGIT)];
 terminators('undefined') -> ?ANY_DIGIT.
@@ -1198,7 +1198,7 @@ terminators_v(_) -> 'false'.
 terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
 
 
--spec offsite_store_url(api_binary(), ne_binary()) -> ne_binary().
+-spec offsite_store_url(api(binary()), ne_binary()) -> ne_binary().
 offsite_store_url('undefined', _) -> throw({'error', <<"URL not defined">>});
 offsite_store_url(Url, MediaName) ->
     iolist_to_binary([kz_util:strip_right_binary(Url, $/), "/", MediaName]).

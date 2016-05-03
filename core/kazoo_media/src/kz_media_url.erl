@@ -15,7 +15,7 @@
 
 -define(STREAM_TYPE_STORE, kz_json:from_list([{<<"Stream-Type">>, <<"store">>}])).
 
--type build_media_url() :: api_binary() | binaries() | kz_json:object().
+-type build_media_url() :: api(binary()) | binaries() | kz_json:object().
 -type build_media_url_ret() :: ne_binary() | {'error', any()}.
 
 -spec playback(build_media_url()) -> build_media_url_ret().

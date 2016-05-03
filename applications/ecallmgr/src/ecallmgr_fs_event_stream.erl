@@ -31,8 +31,8 @@
                 ,port :: inet:port_number()
                 ,socket :: inet:socket()
                 ,idle_alert = 'infinity' :: kz_timeout()
-                ,switch_url :: api_binary()
-                ,switch_uri :: api_binary()
+                ,switch_url :: api(binary())
+                ,switch_uri :: api(binary())
                 ,switch_info = 'false' :: boolean()
                }).
 -type state() :: #state{}.
@@ -322,7 +322,7 @@ maybe_bind(Node, Bindings, Attempts) ->
             maybe_bind(Node, Bindings, Attempts+1)
     end.
 
--spec process_stream(ne_binary(), api_binary(), kz_proplist(), atom()) -> any().
+-spec process_stream(ne_binary(), api(binary()), kz_proplist(), atom()) -> any().
 process_stream(<<"CHANNEL_CREATE">> = EventName, UUID, EventProps, Node) ->
     Props = ecallmgr_fs_loopback:filter(Node, UUID, EventProps, 'true'),
     maybe_send_event(EventName, UUID, Props, Node),
@@ -344,7 +344,7 @@ process_stream(EventName, UUID, EventProps, Node) ->
     maybe_send_event(EventName, UUID, EventProps, Node),
     process_event(EventName, UUID, EventProps, Node).
 
--spec process_event(ne_binary(), api_binary(), kz_proplist(), atom()) -> any().
+-spec process_event(ne_binary(), api(binary()), kz_proplist(), atom()) -> any().
 process_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
     kz_util:put_callid(UUID),
     _ = ecallmgr_fs_channel:new(Props, Node),
@@ -373,7 +373,7 @@ process_event(<<"loopback::bowout">>, _UUID, Props, Node) ->
     gproc:send({'p', 'l', ?LOOPBACK_BOWOUT_REG(ResigningUUID)}, ?LOOPBACK_BOWOUT_MSG(Node, Props));
 process_event(_, _, _, _) -> 'ok'.
 
--spec maybe_send_event(ne_binary(), api_binary(), kz_proplist(), atom()) -> any().
+-spec maybe_send_event(ne_binary(), api(binary()), kz_proplist(), atom()) -> any().
 maybe_send_event(<<"HEARTBEAT">>, _UUID, _Props, _Node) -> 'ok';
 maybe_send_event(<<"CHANNEL_BRIDGE">>=EventName, UUID, Props, Node) ->
     kz_util:put_callid(UUID),
@@ -426,7 +426,7 @@ send_event(EventName, UUID, Props, Node) ->
     gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),
     maybe_send_call_event(UUID, Props, Node).
 
--spec maybe_send_call_event(api_binary(), kz_proplist(), atom()) -> any().
+-spec maybe_send_call_event(api(binary()), kz_proplist(), atom()) -> any().
 maybe_send_call_event('undefined', _, _) -> 'ok';
 maybe_send_call_event(CallId, Props, Node) ->
     gproc:send({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, CallId)}, {'event', [CallId | Props]}).

@@ -49,7 +49,7 @@ update_parked_call_presence(SlotNumber, Slot, ParkedCallId, AccountId) ->
         {'error', _} -> cleanup_slot(SlotNumber, ParkedCallId, kz_util:format_account_db(AccountId))
     end.
 
--spec get_slot_call_id(kz_json:key(), kz_json:object()) -> api_binary().
+-spec get_slot_call_id(kz_json:key(), kz_json:object()) -> api(binary()).
 get_slot_call_id(SlotNumber, ParkedCalls) ->
     kz_json:get_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls).
 
@@ -189,7 +189,7 @@ pickup_event(Call, _Type, _Evt) ->
 %% Determine the appropriate action to park the current call scenario
 %% @end
 %%--------------------------------------------------------------------
--spec park_call(ne_binary(), kz_json:object(), kz_json:object(), api_binary(), kz_json:object(), kapps_call:call()) -> 'ok'.
+-spec park_call(ne_binary(), kz_json:object(), kz_json:object(), api(binary()), kz_json:object(), kapps_call:call()) -> 'ok'.
 park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Data, Call) ->
     lager:info("attempting to park call in slot ~s", [SlotNumber]),
     case {ReferredTo, save_slot(SlotNumber, Slot, ParkedCalls, Call)} of
@@ -240,7 +240,7 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Data, Call) ->
 %% Builds the json object representing the call in the parking slot
 %% @end
 %%--------------------------------------------------------------------
--spec create_slot(api_binary(), ne_binary(), kapps_call:call()) -> kz_json:object().
+-spec create_slot(api(binary()), ne_binary(), kapps_call:call()) -> kz_json:object().
 create_slot(ParkerCallId, PresenceType, Call) ->
     CallId = cf_exe:callid(Call),
     AccountDb = kapps_call:account_db(Call),
@@ -454,7 +454,7 @@ maybe_set_hold_media(JObj, Call) ->
             end
     end.
 
--spec maybe_get_ringback_id(kapps_call:call()) -> api_binary().
+-spec maybe_get_ringback_id(kapps_call:call()) -> api(binary()).
 maybe_get_ringback_id(Call) ->
     Referred = kapps_call:custom_channel_var(<<"Referred-By">>, Call),
     ReOptions = [{'capture', [1], 'binary'}],
@@ -666,7 +666,7 @@ slot_configuration(Data, SlotNumber) ->
 %% Ringback the device that parked the call
 %% @end
 %%--------------------------------------------------------------------
--spec get_endpoint_id(api_binary(), kapps_call:call()) -> api_binary().
+-spec get_endpoint_id(api(binary()), kapps_call:call()) -> api(binary()).
 get_endpoint_id('undefined', _) -> 'undefined';
 get_endpoint_id(Username, Call) ->
     AccountDb = kapps_call:account_db(Call),
@@ -681,7 +681,7 @@ get_endpoint_id(Username, Call) ->
 %% Ringback the device that parked the call
 %% @end
 %%--------------------------------------------------------------------
--spec ringback_parker(api_binary(), ne_binary(), ne_binary(), kz_json:object(), kapps_call:call()) ->
+-spec ringback_parker(api(binary()), ne_binary(), ne_binary(), kz_json:object(), kapps_call:call()) ->
                              'answered' | 'failed' | 'channel_hungup'.
 ringback_parker('undefined', _, _, _, _) -> 'failed';
 ringback_parker(EndpointId, SlotNumber, TmpCID, Data, Call) ->

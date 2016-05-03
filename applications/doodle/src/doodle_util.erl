@@ -67,7 +67,7 @@ set_flow_status(Status, Message, Call) ->
             ],
     kapps_call:kvs_store_proplist(Props, Call).
 
--spec set_flow_error(api_binary() | {binary(), binary()}, kapps_call:call()) -> kapps_call:call().
+-spec set_flow_error(api(binary()) | {binary(), binary()}, kapps_call:call()) -> kapps_call:call().
 set_flow_error({Status, Error}, Call) ->
     Props = [{<<"flow_status">>, Status}
              ,{<<"flow_error">>, Error}
@@ -76,7 +76,7 @@ set_flow_error({Status, Error}, Call) ->
 set_flow_error(Error, Call) ->
     set_flow_error(<<"pending">>, Error, Call).
 
--spec set_flow_error(ne_binary(), api_binary(), kapps_call:call()) -> kapps_call:call().
+-spec set_flow_error(ne_binary(), api(binary()), kapps_call:call()) -> kapps_call:call().
 set_flow_error(Status, Error, Call) ->
     Props = [{<<"flow_status">>, Status}
              ,{<<"flow_error">>, Error}
@@ -88,14 +88,14 @@ clear_flow_error(Call) ->
     Props = [<<"flow_status">>, <<"flow_error">>],
     kapps_call:kvs_erase(Props, Call).
 
--spec get_sms_revision(kapps_call:call()) -> api_binary().
+-spec get_sms_revision(kapps_call:call()) -> api(binary()).
 get_sms_revision(Call) ->
     case kapps_call:kvs_fetch(<<"_rev">>, Call) of
         'undefined' -> kapps_call:custom_channel_var(<<"Doc-Revision">>, Call);
         Rev -> Rev
     end.
 
--spec set_sms_revision(api_binary(), kapps_call:call()) -> kapps_call:call().
+-spec set_sms_revision(api(binary()), kapps_call:call()) -> kapps_call:call().
 set_sms_revision(Rev, Call) ->
     kapps_call:kvs_store(<<"_rev">>, Rev, Call).
 
@@ -109,7 +109,7 @@ save_sms(JObj, Call) ->
     Id = kapps_call:kvs_fetch('sms_docid', kapps_call:custom_channel_var(<<"Doc-ID">>, Call), Call),
     save_sms(JObj, Id, Call).
 
--spec save_sms(kz_json:object(), api_binary(), kapps_call:call()) -> kapps_call:call().
+-spec save_sms(kz_json:object(), api(binary()), kapps_call:call()) -> kapps_call:call().
 save_sms(JObj, 'undefined', Call) ->
     {Year, Month, _} = erlang:date(),
     SmsDocId = kz_util:to_binary(
@@ -128,7 +128,7 @@ save_sms(JObj, DocId, Call) ->
     {'ok', Doc} = kazoo_modb:open_doc(AccountId, DocId, Year, Month),
     save_sms(JObj, DocId, Doc, Call).
 
--spec save_sms(kz_json:object(), api_binary(), kz_json:object(), kapps_call:call()) ->
+-spec save_sms(kz_json:object(), api(binary()), kz_json:object(), kapps_call:call()) ->
                       kapps_call:call().
 save_sms(JObj, ?MATCH_MODB_PREFIX(Year,Month,_) = DocId, Doc, Call) ->
     AccountId = kapps_call:account_id(Call),
@@ -304,7 +304,7 @@ sms_status(JObj) ->
     Status = kz_json:get_value(<<"Status">>, JObj),
     sms_status(DeliveryCode, Status).
 
--spec sms_status(api_binary(), api_binary()) -> ne_binary().
+-spec sms_status(api(binary()), api(binary())) -> ne_binary().
 sms_status(<<"sip:", Code/binary>>, Status) -> sms_status(Code, Status);
 sms_status(<<"200">>, _) -> <<"delivered">>;
 sms_status(<<"202">>, _) -> <<"accepted">>;
@@ -318,7 +318,7 @@ sms_status(_, _) -> <<"pending">>.
 %% certain actions, like cf_sms_offnet and cf_sms_resources
 %% @end
 %%--------------------------------------------------------------------
--spec handle_bridge_failure({'fail' | 'error', kz_json:object() | atom()} | api_binary(), kapps_call:call()) ->
+-spec handle_bridge_failure({'fail' | 'error', kz_json:object() | atom()} | api(binary()), kapps_call:call()) ->
                                    'ok' | 'not_found'.
 handle_bridge_failure({'fail', Reason}, Call) ->
     {Cause, Code} = kapps_util:get_call_termination_reason(Reason),
@@ -335,7 +335,7 @@ handle_bridge_failure(<<_/binary>> = Failure, Call) ->
     end;
 handle_bridge_failure(_, _Call) -> 'not_found'.
 
--spec handle_bridge_failure(api_binary(), api_binary(), kapps_call:call()) ->
+-spec handle_bridge_failure(api(binary()), api(binary()), kapps_call:call()) ->
                                    'ok' | 'not_found'.
 handle_bridge_failure(Cause, Code, Call) ->
     lager:info("attempting to find failure branch for ~s:~s", [Code, Cause]),
@@ -345,11 +345,11 @@ handle_bridge_failure(Cause, Code, Call) ->
         'false' -> 'not_found'
     end.
 
--spec get_caller_id(kz_json:object(), kapps_call:call()) -> {api_binary(), api_binary()}.
+-spec get_caller_id(kz_json:object(), kapps_call:call()) -> {api(binary()), api(binary())}.
 get_caller_id(Data, Call) ->
     get_caller_id(Data, <<"external">>, Call).
 
--spec get_caller_id(kz_json:object(), binary(), kapps_call:call()) -> {api_binary(), api_binary()}.
+-spec get_caller_id(kz_json:object(), binary(), kapps_call:call()) -> {api(binary()), api(binary())}.
 get_caller_id(Data, Default, Call) ->
     Type = kz_json:get_value(<<"caller_id_type">>, Data, Default),
     cf_attributes:caller_id(Type, Call).
@@ -374,7 +374,7 @@ set_caller_id(CIDNumber, CIDName, Call) ->
                ],
     kapps_call:exec(Routines, Call).
 
--spec get_callee_id(binary(), kapps_call:call()) -> {api_binary(), api_binary()}.
+-spec get_callee_id(binary(), kapps_call:call()) -> {api(binary()), api(binary())}.
 get_callee_id(EndpointId, Call) ->
     cf_attributes:callee_id(EndpointId, Call).
 
@@ -439,7 +439,7 @@ cache_key_number(Number) ->
     {'sms_number', Number}.
 
 -spec lookup_mdn(ne_binary()) ->
-                        {'ok', ne_binary(), api_binary()} |
+                        {'ok', ne_binary(), api(binary())} |
                         {'error', any()}.
 lookup_mdn(Number) ->
     Num = knm_converters:normalize(Number),
@@ -451,7 +451,7 @@ lookup_mdn(Number) ->
     end.
 
 -spec fetch_mdn(ne_binary()) ->
-                       {'ok', ne_binary(), api_binary()} |
+                       {'ok', ne_binary(), api(binary())} |
                        {'error', any()}.
 fetch_mdn(Num) ->
     case lookup_number(Num) of
@@ -463,7 +463,7 @@ fetch_mdn(Num) ->
     end.
 
 -spec fetch_mdn_result(ne_binary(), ne_binary()) ->
-                              {'ok', ne_binary(), api_binary()} |
+                              {'ok', ne_binary(), api(binary())} |
                               {'error', 'not_found'}.
 fetch_mdn_result(AccountId, Num) ->
     AccountDb = kz_util:format_account_db(AccountId),
@@ -478,8 +478,8 @@ fetch_mdn_result(AccountId, Num) ->
         {'error', _}=E -> E
     end.
 
--spec cache_mdn_result(ne_binary(), ne_binary(), api_binary()) ->
-                              {'ok', ne_binary(), api_binary()}.
+-spec cache_mdn_result(ne_binary(), ne_binary(), api(binary())) ->
+                              {'ok', ne_binary(), api(binary())}.
 cache_mdn_result(AccountDb, Id, OwnerId) ->
     CacheProps = [{'origin', [{'db', AccountDb, Id}]}],
     kz_cache:store_local(?CACHE_NAME, cache_key_mdn(Id), {Id, OwnerId}, CacheProps),
@@ -500,13 +500,13 @@ mdn_from_e164(Number) -> Number.
 maybe_reschedule_sms(Call) ->
     maybe_reschedule_sms(<<>>, <<>>, Call).
 
--spec maybe_reschedule_sms(api_binary(), kapps_call:call()) -> 'ok'.
+-spec maybe_reschedule_sms(api(binary()), kapps_call:call()) -> 'ok'.
 maybe_reschedule_sms(<<"sip:", Code/binary>>, Call) ->
     maybe_reschedule_sms(Code, <<>>, Call);
 maybe_reschedule_sms(Code, Call) ->
     maybe_reschedule_sms(Code, <<>>, Call).
 
--spec maybe_reschedule_sms(api_binary(), api_binary(), kapps_call:call()) -> 'ok'.
+-spec maybe_reschedule_sms(api(binary()), api(binary()), kapps_call:call()) -> 'ok'.
 maybe_reschedule_sms(Code, 'undefined', Call) ->
     maybe_reschedule_sms(Code, set_flow_error(<<"unknown error">>, Call));
 maybe_reschedule_sms(<<"sip:", Code/binary>>, Message, Call) ->
@@ -514,7 +514,7 @@ maybe_reschedule_sms(<<"sip:", Code/binary>>, Message, Call) ->
 maybe_reschedule_sms(Code, Message, Call) ->
     maybe_reschedule_sms(Code, Message, kapps_call:account_id(Call), set_flow_error(Message, Call)).
 
--spec maybe_reschedule_sms(api_binary(), api_binary(), ne_binary(), kapps_call:call()) -> 'ok'.
+-spec maybe_reschedule_sms(api(binary()), api(binary()), ne_binary(), kapps_call:call()) -> 'ok'.
 maybe_reschedule_sms(Code, Message, AccountId, Call) ->
     put('call', Call),
     Rules = kapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"reschedule">>, kz_json:new()),

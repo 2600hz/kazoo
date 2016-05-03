@@ -29,13 +29,13 @@ config_doc_id() ->
 %% played as part of the error.
 %% @end
 %%--------------------------------------------------------------------
--spec send(ne_binary(), ne_binary(), api_binary()) ->
+-spec send(ne_binary(), ne_binary(), api(binary())) ->
                   {'ok', ne_binary()} |
                   {'error', 'no_response'}.
--spec send(ne_binary() | kapps_call:call(), ne_binary(), api_binary(), api_binary()) ->
+-spec send(ne_binary() | kapps_call:call(), ne_binary(), api(binary()), api(binary())) ->
                   {'ok', ne_binary()} |
                   {'error', 'no_response'}.
--spec send(ne_binary(), ne_binary(), api_binary(), api_binary(), api_binary()) ->
+-spec send(ne_binary(), ne_binary(), api(binary()), api(binary()), api(binary())) ->
                   {'ok', ne_binary()} |
                   {'error', 'no_response'}.
 
@@ -130,7 +130,7 @@ do_send(CallId, CtrlQ, Commands) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec send_default(kapps_call:call(), api_binary()) ->
+-spec send_default(kapps_call:call(), api(binary())) ->
                           {'ok', ne_binary()} |
                           {'error', 'no_response'}.
 send_default(_Call, 'undefined') ->

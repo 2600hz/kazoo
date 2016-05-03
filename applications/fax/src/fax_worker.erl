@@ -30,11 +30,11 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {queue_name :: api_binary()
+-record(state, {queue_name :: api(binary())
                 ,pool :: api_pid()
-                ,job_id :: api_binary()
+                ,job_id :: api(binary())
                 ,job :: api_object()
-                ,account_id :: api_binary()
+                ,account_id :: api(binary())
                 ,status :: binary()
                 ,fax_status :: api_object()
                 ,pages  :: integer()
@@ -467,7 +467,7 @@ code_change(_OldVsn, State, _Extra) ->
 -spec attempt_to_acquire_job(ne_binary(), ne_binary()) ->
                                     {'ok', kz_json:object()} |
                                     {'error', any()}.
--spec attempt_to_acquire_job(kz_json:object(), ne_binary(), api_binary()) ->
+-spec attempt_to_acquire_job(kz_json:object(), ne_binary(), api(binary())) ->
                                     {'ok', kz_json:object()} |
                                     {'error', any()}.
 attempt_to_acquire_job(Id, Q) ->
@@ -693,7 +693,7 @@ apply_reschedule_rules({[Rule | Rules], [Key | Keys]}, JObj) ->
             apply_reschedule_rules({Rules, Keys}, JObj)
     end.
 
--spec get_attempt_value(api_binary() | integer()) -> integer().
+-spec get_attempt_value(api(binary()) | integer()) -> integer().
 get_attempt_value(X) when is_integer(X) -> X;
 get_attempt_value('undefined') -> -1;
 get_attempt_value(<<"any">>) -> -1;
@@ -734,7 +734,7 @@ move_doc(JObj) ->
    {'ok', Doc} = kz_datamgr:move_doc(FromDB, FromId, ToDB, ToId, Options),
     Doc.
 
--spec fax_error(kz_json:object()) -> api_binary().
+-spec fax_error(kz_json:object()) -> api(binary()).
 fax_error(JObj) ->
     kz_json:get_value([<<"Application-Data">>, <<"Fax-Result-Text">>]
                       ,JObj
@@ -979,7 +979,7 @@ send_fax(JobId, JObj, Q, ToDID) ->
     lager:debug("sending fax originate request ~s with call-id ~s", [JobId, CallId]),
     kapi_offnet_resource:publish_req(Request).
 
--spec get_hunt_account_id(ne_binary()) -> api_binary().
+-spec get_hunt_account_id(ne_binary()) -> api(binary()).
 get_hunt_account_id(AccountId) ->
     AccountDb = kz_util:format_account_db(AccountId),
     Options = [{'key', <<"no_match">>}, 'include_docs'],
@@ -988,7 +988,7 @@ get_hunt_account_id(AccountId) ->
         _ -> 'undefined'
     end.
 
--spec maybe_hunt_account_id(api_object()) -> api_binary().
+-spec maybe_hunt_account_id(api_object()) -> api(binary()).
 maybe_hunt_account_id('undefined') -> 'undefined';
 maybe_hunt_account_id(JObj) ->
     case kz_json:get_value([<<"flow">>, <<"module">>], JObj) of
@@ -1004,7 +1004,7 @@ resource_ccvs(JobId) ->
                        ,{<<"Authorizing-Type">>, <<"outbound_fax">>}
                       ]).
 
--spec get_did(kz_json:object()) -> api_binary().
+-spec get_did(kz_json:object()) -> api(binary()).
 get_did(JObj) ->
     case kz_json:is_true(<<"bypass_e164">>, JObj, 'false') of
         'true' -> kz_json:get_value(<<"to_number">>, JObj);

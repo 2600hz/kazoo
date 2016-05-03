@@ -54,7 +54,7 @@ new() -> kz_json:new().
 -spec all_items_key() -> ne_binary().
 all_items_key() -> ?ALL.
 
--spec account_id(doc()) -> api_binary().
+-spec account_id(doc()) -> api(binary()).
 -spec account_id(doc(), Default) -> ne_binary() | Default.
 account_id(Plan) ->
     account_id(Plan, 'undefined').

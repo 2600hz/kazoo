@@ -457,7 +457,7 @@ normalize_available(JObj, Acc) ->
     end.
 
 -spec summary_attempts(cb_context:context()) -> cb_context:context().
--spec summary_attempts(cb_context:context(), api_binary()) -> cb_context:context().
+-spec summary_attempts(cb_context:context(), api(binary())) -> cb_context:context().
 summary_attempts(Context) ->
     summary_attempts(Context, 'undefined').
 
@@ -521,7 +521,7 @@ normalize_attempt_results(JObj, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation(api_binary(), cb_context:context()) ->
+-spec on_successful_validation(api(binary()), cb_context:context()) ->
                                       cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context

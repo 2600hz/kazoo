@@ -348,14 +348,14 @@ get_auth_user_realm(ApiJObj) ->
     [ReqUser, ReqDomain] = binary:split(kz_json:get_value(<<"From">>, ApiJObj), <<"@">>),
     {ReqUser, ReqDomain}.
 
--spec call_id(kz_json:object()) -> api_binary().
+-spec call_id(kz_json:object()) -> api(binary()).
 call_id(JObj) ->
     kz_json:get_value(?KEY_CALL_ID, JObj).
 
--spec fetch_id(kz_json:object()) -> api_binary().
+-spec fetch_id(kz_json:object()) -> api(binary()).
 fetch_id(JObj) ->
     kz_json:get_value(?KEY_FETCH_ID, JObj).
 
--spec control_queue(kz_json:object()) -> api_binary().
+-spec control_queue(kz_json:object()) -> api(binary()).
 control_queue(JObj) ->
     kz_json:get_value(?KEY_CONTROL_QUEUE, JObj).

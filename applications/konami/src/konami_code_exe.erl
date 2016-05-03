@@ -39,7 +39,7 @@ handle(Metaflow, Call) ->
             kz_util:log_stacktrace(ST)
     end.
 
--spec find_child_metaflow(api_binary(), kz_json:object()) -> api_object().
+-spec find_child_metaflow(api(binary()), kz_json:object()) -> api_object().
 find_child_metaflow('undefined', Metaflow) ->
     kz_json:get_value([<<"children">>, <<"_">>], Metaflow);
 find_child_metaflow(Child, Metaflow) ->

@@ -101,7 +101,7 @@ listen_on(Account) ->
             get_attribute(KonamiDoc, <<"listen_on">>, fun listen_on/0, fun constrain_listen_on/1)
     end.
 
--spec constrain_listen_on(api_binary()) -> 'a' | 'b' | 'ab'.
+-spec constrain_listen_on(api(binary())) -> 'a' | 'b' | 'ab'.
 constrain_listen_on(<<"a">>) -> 'a';
 constrain_listen_on(<<"b">>) -> 'b';
 constrain_listen_on(<<"ab">>) -> 'ab';

@@ -72,7 +72,7 @@
 -define(EXPIRES_MISSING_VALUE, 0).
 
 -record(state, {started = kz_util:current_tstamp()
-                ,queue :: api_binary()
+                ,queue :: api(binary())
                }).
 
 -record(registration, {id :: {ne_binary(), ne_binary()} | '_' | '$1'
@@ -88,7 +88,7 @@
                        ,user_agent :: ne_binary() | '_'
                        ,expires = ?EXPIRES_MISSING_VALUE :: non_neg_integer() | '_' | '$1'
                        ,contact :: ne_binary() | '_'
-                       ,previous_contact :: api_binary() | '_'
+                       ,previous_contact :: api(binary()) | '_'
                        ,original_contact :: ne_binary() | '_'
                        ,last_registration = kz_util:current_tstamp() :: gregorian_seconds() | '_' | '$2'
                        ,initial_registration = kz_util:current_tstamp() :: gregorian_seconds() | '_'
@@ -96,16 +96,16 @@
                        ,registrar_hostname :: ne_binary() | '_'
                        ,suppress_unregister = 'true' :: boolean() | '_'
                        ,register_overwrite_notify = 'false' :: boolean() | '_'
-                       ,account_db :: api_binary() | '_'
-                       ,account_id :: api_binary() | '_'
-                       ,authorizing_id :: api_binary() | '_'
-                       ,authorizing_type :: api_binary() | '_'
-                       ,owner_id :: api_binary() | '_'
+                       ,account_db :: api(binary()) | '_'
+                       ,account_id :: api(binary()) | '_'
+                       ,authorizing_id :: api(binary()) | '_'
+                       ,authorizing_type :: api(binary()) | '_'
+                       ,owner_id :: api(binary()) | '_'
                        ,initial = 'true' :: boolean() | '_'
-                       ,account_realm :: api_binary() | '_' | '$2'
-                       ,account_name :: api_binary() | '_'
-                       ,proxy :: api_binary() | '_'
-                       ,bridge_uri :: api_binary() | '_'
+                       ,account_realm :: api(binary()) | '_' | '$2'
+                       ,account_name :: api(binary()) | '_'
+                       ,proxy :: api(binary()) | '_'
+                       ,bridge_uri :: api(binary()) | '_'
                       }).
 
 -type registration() :: #registration{}.
@@ -892,7 +892,7 @@ augment_registration(Reg, JObj) ->
                                     )
      }.
 
--spec fix_contact(api_binary()) -> api_binary().
+-spec fix_contact(api(binary())) -> api(binary()).
 fix_contact('undefined') -> 'undefined';
 fix_contact(Contact) ->
     binary:replace(Contact
@@ -901,7 +901,7 @@ fix_contact(Contact) ->
                    ,['global']
                   ).
 
--spec bridge_uri(api_binary(), api_binary(), binary(), binary()) -> api_binary().
+-spec bridge_uri(api(binary()), api(binary()), binary(), binary()) -> api(binary()).
 bridge_uri(_Contact, 'undefined', _, _) -> 'undefined';
 bridge_uri('undefined', _Proxy, _, _) -> 'undefined';
 bridge_uri(Contact, Proxy, Username, Realm) ->

@@ -266,13 +266,13 @@ add_participant_to_conference(JObj, Conference, Call, Srv) ->
 -spec discovery_failed(kapps_call:call(), api(pid())) -> 'ok'.
 discovery_failed(Call, _) -> kapps_call_command:hangup(Call).
 
--spec validate_conference_id(api_binary(), kapps_call:call()) ->
+-spec validate_conference_id(api(binary()), kapps_call:call()) ->
                                     {'ok', kapps_conference:conference()} |
                                     {'error', any()}.
 validate_conference_id(ConferenceId, Call) ->
     validate_conference_id(ConferenceId, Call, 1).
 
--spec validate_conference_id(api_binary(), kapps_call:call(), pos_integer()) ->
+-spec validate_conference_id(api(binary()), kapps_call:call(), pos_integer()) ->
                                     {'ok', kapps_conference:conference()} |
                                     {'error', any()}.
 validate_conference_id('undefined', Call, Loop) when Loop > 3 ->

@@ -52,9 +52,9 @@
                         {'local', boolean()} |
                         {'number', ne_binary()} | %%api
                         {'pending_port', boolean()} |
-                        {'prepend', api_binary()} | %%|false
-                        {'ringback_media', api_binary()} |
-                        {'transfer_media', api_binary()}.
+                        {'prepend', api(binary())} | %%|false
+                        {'ringback_media', api(binary())} |
+                        {'transfer_media', api(binary())}.
 
 -type extra_options() :: [extra_option()].
 
@@ -77,21 +77,21 @@ dry_run(Options, Default) ->
     _ = R andalso lager:debug("dry_run-ing btw"),
     R.
 
--spec assigned_to(options()) -> api_binary().
+-spec assigned_to(options()) -> api(binary()).
 -spec assigned_to(options(), Default) -> ne_binary() | Default.
 assigned_to(Options) ->
     assigned_to(Options, 'undefined').
 assigned_to(Options, Default) ->
     props:get_binary_value('assigned_to', Options, Default).
 
--spec assign_to(options()) -> api_binary().
+-spec assign_to(options()) -> api(binary()).
 -spec assign_to(options(), Default) -> ne_binary() | Default.
 assign_to(Options) ->
     assign_to(Options, 'undefined').
 assign_to(Options, Default) ->
     props:get_binary_value('assign_to', Options, Default).
 
--spec auth_by(options()) -> api_binary().
+-spec auth_by(options()) -> api(binary()).
 -spec auth_by(options(), Default) -> ne_binary() | Default.
 auth_by(Options) ->
     auth_by(Options, 'undefined').
@@ -102,7 +102,7 @@ auth_by(Options, Default) ->
 public_fields(Options) ->
     props:get_value('public_fields', Options, kz_json:new()).
 
--spec state(options()) -> api_binary().
+-spec state(options()) -> api(binary()).
 -spec state(options(), Default) -> ne_binary() | Default.
 state(Options) ->
     state(Options, 'undefined').
@@ -158,11 +158,11 @@ is_local_number(Props) when is_list(Props) ->
 number(Props) when is_list(Props) ->
     props:get_ne_binary_value('number', Props).
 
--spec prepend(extra_options()) -> api_binary().
+-spec prepend(extra_options()) -> api(binary()).
 prepend(Props) when is_list(Props) ->
     props:get_value('prepend', Props).
 
--spec ringback_media_id(extra_options()) -> api_binary().
+-spec ringback_media_id(extra_options()) -> api(binary()).
 ringback_media_id(Props) when is_list(Props) ->
     props:get_value('ringback_media', Props).
 
@@ -170,7 +170,7 @@ ringback_media_id(Props) when is_list(Props) ->
 should_force_outbound(Props) when is_list(Props) ->
     props:get_is_true('force_outbound', Props).
 
--spec transfer_media_id(extra_options()) -> api_binary().
+-spec transfer_media_id(extra_options()) -> api(binary()).
 transfer_media_id(Props) when is_list(Props) ->
     props:get_value('transfer_media', Props).
 %%--------------------------------------------------------------------

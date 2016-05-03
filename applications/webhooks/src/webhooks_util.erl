@@ -83,7 +83,7 @@ to_json(Hook) ->
        ,{<<"modifiers">>, Hook#webhook.modifiers}
       ]).
 
--spec find_webhooks(ne_binary(), api_binary()) -> webhooks().
+-spec find_webhooks(ne_binary(), api(binary())) -> webhooks().
 find_webhooks(_HookEvent, 'undefined') -> [];
 find_webhooks(HookEvent, AccountId) ->
     MatchSpec = [{#webhook{account_id = '$1'
@@ -277,7 +277,7 @@ failed_hook(#webhook{hook_id=HookId
 %%% Internal functions
 %%%===================================================================
 
--spec save_attempt(kz_json:object(), api_binary()) -> 'ok'.
+-spec save_attempt(kz_json:object(), api(binary())) -> 'ok'.
 save_attempt(Attempt, AccountId) ->
     Now = kz_util:current_tstamp(),
     ModDb = kz_util:format_account_mod_id(AccountId, Now),

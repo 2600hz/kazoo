@@ -39,19 +39,19 @@
           ,from :: binary()
           ,to :: binary()
           ,doc :: api_object()
-          ,filename :: api_binary()
+          ,filename :: api(binary())
           ,content_type :: binary()
           ,peer_ip :: peer()
-          ,owner_id :: api_binary()
-          ,owner_email :: api_binary()
-          ,faxbox_email :: api_binary()
+          ,owner_id :: api(binary())
+          ,owner_email :: api(binary())
+          ,faxbox_email :: api(binary())
           ,faxbox :: api_object()
           ,errors = [] :: ne_binaries()
-          ,original_number :: api_binary()
-          ,number :: api_binary()
-          ,account_id :: api_binary()
-          ,session_id :: api_binary()
-          ,proxy :: api_binary()
+          ,original_number :: api(binary())
+          ,number :: api(binary())
+          ,account_id :: api(binary())
+          ,session_id :: api(binary())
+          ,proxy :: api(binary())
          }).
 
 -type state() :: #state{}.
@@ -822,10 +822,10 @@ maybe_process_image(CT, Body, Size, State) ->
     end.
 
 -spec write_tmp_file(ne_binary(), binary() | mimemail:mimetuple()) ->
-                            {'ok', api_binary()} |
+                            {'ok', api(binary())} |
                             {'error', any()}.
--spec write_tmp_file(api_binary() , ne_binary(), binary() | mimemail:mimetuple()) ->
-                            {'ok', api_binary()} |
+-spec write_tmp_file(api(binary()) , ne_binary(), binary() | mimemail:mimetuple()) ->
+                            {'ok', api(binary())} |
                             {'error', any()}.
 write_tmp_file(Extension, Body) ->
     write_tmp_file('undefined', Extension, Body).

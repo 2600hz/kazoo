@@ -502,7 +502,7 @@ charge_billing_id(Amount, Context) ->
             crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
     end.
 
--spec add_credit_to_account(kz_json:object(), integer(), ne_binary(), ne_binary(), api_binary()) ->
+-spec add_credit_to_account(kz_json:object(), integer(), ne_binary(), ne_binary(), api(binary())) ->
                                    {'ok', kz_transaction:transaction()} |
                                    {'error', any()}.
 add_credit_to_account(BraintreeData, Units, LedgerId, AccountId, OrderId) ->

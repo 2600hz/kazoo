@@ -37,7 +37,7 @@ handle(Data, Call) ->
             cf_exe:continue(kapps_call:set_caller_id_name(CallerName, Call))
     end.
 
--type match_number_result() :: {'stop', api_binary()} | 'continue'.
+-type match_number_result() :: {'stop', api(binary())} | 'continue'.
 -spec match_number_in_lists(ne_binary(), ne_binary(), ne_binaries()) -> match_number_result().
 match_number_in_lists(AccountDb, Number, Lists) ->
     Prefixes = build_keys(Number),
@@ -95,7 +95,7 @@ build_keys(<<D:1/binary, Rest/binary>>, Prefix, Acc) ->
 build_keys(<<>>, _, Acc) -> Acc.
 
 -spec match_regexp_in_list(ne_binary(), ne_binary(), ne_binary()) ->
-    'continue' | {'stop', api_binary()}.
+    'continue' | {'stop', api(binary())}.
 match_regexp_in_list(AccountDb, Number, ListId) when is_binary(ListId) ->
     case kz_datamgr:get_results(AccountDb
                                ,<<"lists/regexps_in_list">>
@@ -108,7 +108,7 @@ match_regexp_in_list(AccountDb, Number, ListId) when is_binary(ListId) ->
             'continue'
     end.
 
--spec match_regexp_in_lists(ne_binary(), ne_binary(), ne_binary() | [ne_binary()]) -> api_binary().
+-spec match_regexp_in_lists(ne_binary(), ne_binary(), ne_binary() | [ne_binary()]) -> api(binary()).
 match_regexp_in_lists(AccountDb, Number, [ListId | Rest]) ->
     case match_regexp_in_list(AccountDb, Number, ListId) of
         'continue' -> match_regexp_in_lists(AccountDb, Number, Rest);
@@ -118,7 +118,7 @@ match_regexp_in_lists(_, _, []) ->
     'undefined'.
 
 -spec match_regexp(kz_json:objects(), ne_binary()) ->
-    'continue' | {'stop', api_binary()}.
+    'continue' | {'stop', api(binary())}.
 match_regexp([Re | Rest], Number) ->
     case re:run(Number, kz_json:get_value(<<"value">>, Re)) of
         'nomatch' -> match_regexp(Rest, Number);

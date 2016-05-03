@@ -86,7 +86,7 @@ get_channel(Consumer, Timeout) when is_pid(Consumer) ->
             request_and_wait(Consumer, kz_amqp_channel:consumer_broker(), Timeout)
     end.
 
--spec request_channel(pid(), api_binary()) -> kz_amqp_assignment().
+-spec request_channel(pid(), api(binary())) -> kz_amqp_assignment().
 request_channel(Consumer, 'undefined') when is_pid(Consumer) ->
     Broker = kz_amqp_connections:primary_broker(),
     gen_server:call(?SERVER, {'request_float', Consumer, Broker});
@@ -359,7 +359,7 @@ maybe_reassign(#kz_amqp_assignment{}=ConsumerAssignment, Broker) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec assign_or_reserve(pid(), api_binary(), kz_amqp_type()) -> kz_amqp_assignment().
+-spec assign_or_reserve(pid(), api(binary()), kz_amqp_type()) -> kz_amqp_assignment().
 assign_or_reserve(Consumer, 'undefined', Type) ->
     %% When there is no primary broker we will not be able to
     %% find a channel so just make a reservation
@@ -663,7 +663,7 @@ notify_watchers(#kz_amqp_assignment{}=Assignment, [Watcher|Watchers]) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_reserve(api_pid(), api_binary(), kz_amqp_type()) -> kz_amqp_assignment().
+-spec maybe_reserve(api_pid(), api(binary()), kz_amqp_type()) -> kz_amqp_assignment().
 maybe_reserve(Consumer, Broker, Type) ->
     Pattern = #kz_amqp_assignment{consumer=Consumer, _='_'},
     case ets:match_object(?TAB, Pattern, 1) of
@@ -681,7 +681,7 @@ maybe_reserve(Consumer, Broker, Type) ->
             ExistingAssignment
     end.
 
--spec reserve(api_pid(), api_binary(), kz_amqp_type()) -> kz_amqp_assignment().
+-spec reserve(api_pid(), api(binary()), kz_amqp_type()) -> kz_amqp_assignment().
 reserve(Consumer, Broker, 'sticky') when Broker =/= 'undefined' ->
     Ref = erlang:monitor('process', Consumer),
     Assignment = #kz_amqp_assignment{consumer=Consumer
@@ -815,8 +815,8 @@ wait_for_assignment(Timeout) ->
         Timeout -> {'error', 'timeout'}
     end.
 
--spec request_and_wait(pid(), api_binary(), 'infinity') -> kz_amqp_assignment();
-                      (pid(), api_binary(), non_neg_integer()) -> kz_amqp_assignment() |
+-spec request_and_wait(pid(), api(binary()), 'infinity') -> kz_amqp_assignment();
+                      (pid(), api(binary()), non_neg_integer()) -> kz_amqp_assignment() |
                                                                   {'error', 'timeout'}.
 request_and_wait(Consumer, Broker, Timeout) when is_pid(Consumer) ->
     case request_channel(Consumer, Broker) of

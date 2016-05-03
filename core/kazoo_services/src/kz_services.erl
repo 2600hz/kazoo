@@ -64,9 +64,9 @@
 -define(QUANTITIES_CASCADE, <<"cascade_quantities">>).
 -define(PLANS, <<"plans">>).
 
--record(kz_services, {account_id :: api_binary()
-                      ,billing_id :: api_binary()
-                      ,current_billing_id :: api_binary()
+-record(kz_services, {account_id :: api(binary())
+                      ,billing_id :: api(binary())
+                      ,current_billing_id :: api(binary())
                       ,new_billing_id = 'false' :: boolean()
                       ,dirty = 'false' :: boolean()
                       ,deleted = 'false' :: boolean()
@@ -333,7 +333,7 @@ save_conflicting_as_dirty(#kz_services{account_id=AccountId}, BackOff) ->
             save_as_dirty(NewServices, BackOff*2)
     end.
 
--spec account_name(ne_binary()) -> api_binary().
+-spec account_name(ne_binary()) -> api(binary()).
 account_name(AccountId) ->
     case kz_account:fetch(AccountId) of
         {'ok', JObj} -> kz_account:name(JObj);
@@ -422,7 +422,7 @@ delete(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_billing_id(api_binary(), ne_binary() | services()) -> api(services()).
+-spec set_billing_id(api(binary()), ne_binary() | services()) -> api(services()).
 set_billing_id('undefined', _) -> 'undefined';
 set_billing_id(BillingId, #kz_services{billing_id=BillingId}) ->
     'undefined';
@@ -607,7 +607,7 @@ to_json(#kz_services{jobj=JObj
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_reseller_id(api_binary()) -> api_binary().
+-spec find_reseller_id(api(binary())) -> api(binary()).
 find_reseller_id('undefined') ->
     case kapps_util:get_master_account_id() of
         {'error', _} -> 'undefined';
@@ -728,8 +728,8 @@ move_to_good_standing(<<_/binary>> = AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile_only(api_binary() | services()) -> 'false' | services().
--spec reconcile(api_binary() | services()) -> 'false' | services().
+-spec reconcile_only(api(binary()) | services()) -> 'false' | services().
+-spec reconcile(api(binary()) | services()) -> 'false' | services().
 
 reconcile_only('undefined') -> 'false';
 reconcile_only(<<_/binary>> = Account) ->
@@ -755,7 +755,7 @@ reconcile(#kz_services{}=Services) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile_only(api_binary() | services(), text()) -> 'false' | services().
+-spec reconcile_only(api(binary()) | services(), text()) -> 'false' | services().
 reconcile_only('undefined', _Module) -> 'false';
 reconcile_only(<<_/binary>> = Account, Module) ->
     reconcile_only(fetch(Account), Module);
@@ -767,7 +767,7 @@ reconcile_only(#kz_services{account_id=AccountId}=CurrentServices, Module) ->
             ServiceModule:reconcile(CurrentServices)
     end.
 
--spec reconcile(api_binary() | services(), text()) -> 'false' | services().
+-spec reconcile(api(binary()) | services(), text()) -> 'false' | services().
 reconcile('undefined', _Module) -> 'false';
 reconcile(<<_/binary>> = Account, Module) ->
     timer:sleep(?MILLISECONDS_IN_SECOND),
@@ -1281,7 +1281,7 @@ populate_service_plans(JObj, ResellerId) ->
     Plans = incorporate_default_service_plan(ResellerId, master_default_service_plan()),
     incorporate_depreciated_service_plans(Plans, JObj).
 
--spec default_service_plan_id(ne_binary()) -> api_binary().
+-spec default_service_plan_id(ne_binary()) -> api(binary()).
 default_service_plan_id(ResellerId) ->
     case kz_datamgr:open_doc(?KZ_SERVICES_DB, ResellerId) of
         {'ok', JObj} -> kz_json:get_value(<<"default_service_plan">>, JObj);
@@ -1290,7 +1290,7 @@ default_service_plan_id(ResellerId) ->
             'undefined'
     end.
 
--spec depreciated_default_service_plan_id(ne_binary()) -> api_binary().
+-spec depreciated_default_service_plan_id(ne_binary()) -> api(binary()).
 depreciated_default_service_plan_id(ResellerId) ->
     ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
     case kz_datamgr:open_doc(ResellerDb, ResellerId) of
@@ -1370,7 +1370,7 @@ get_reseller_id(<<_/binary>> = Account) ->
             get_reseller_id([])
     end.
 
--spec get_reseller_id(ne_binary(), ne_binaries(), kz_json:object()) -> api_binary().
+-spec get_reseller_id(ne_binary(), ne_binaries(), kz_json:object()) -> api(binary()).
 get_reseller_id(Parent, Ancestors, JObj) ->
     case kzd_services:is_reseller(JObj) of
         'false' -> get_reseller_id(Ancestors);

@@ -35,9 +35,9 @@
 
 -type http_method() :: 'get' | 'post'.
 
--record(state, {voice_uri :: api_binary()
-                ,cdr_uri :: api_binary()
-                ,request_format = <<"twiml">> :: api_binary()
+-record(state, {voice_uri :: api(binary())
+                ,cdr_uri :: api(binary())
+                ,request_format = <<"twiml">> :: api(binary())
                 ,method = 'get' :: http_method()
                 ,call :: kapps_call:call()
                 ,request_id :: kz_http:req_id()
@@ -50,7 +50,7 @@
                 ,response_event_handlers = [] :: pids()
                 ,response_ref :: reference() %% monitor ref for the pid
                 ,debug = 'false' :: boolean()
-                ,requester_queue :: api_binary()
+                ,requester_queue :: api(binary())
                }).
 -type state() :: #state{}.
 
@@ -442,7 +442,7 @@ send(Call, Uri, Method, ReqHdrs, ReqBody, Debug) ->
 normalize_resp_headers(Headers) ->
     [{kz_util:to_lower_binary(K), kz_util:to_binary(V)} || {K, V} <- Headers].
 
--spec handle_resp(api_binary(), kapps_call:call(), ne_binary(), binary()) -> 'ok'.
+-spec handle_resp(api(binary()), kapps_call:call(), ne_binary(), binary()) -> 'ok'.
 handle_resp(RequesterQ, Call, CT, RespBody) ->
     kz_util:put_callid(kapps_call:call_id(Call)),
     Srv = kzt_util:get_amqp_listener(Call),
@@ -459,7 +459,7 @@ handle_resp(RequesterQ, Call, CT, RespBody) ->
                                )
     end.
 
--spec process_resp(api_binary(), kapps_call:call(), list() | binary(), binary()) ->
+-spec process_resp(api(binary()), kapps_call:call(), list() | binary(), binary()) ->
                           {'stop', kapps_call:call()} |
                           {'ok', kapps_call:call()} |
                           {'request', kapps_call:call()} |

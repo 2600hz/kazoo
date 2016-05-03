@@ -51,14 +51,14 @@
 -type queue_strategy_state() :: queue:queue() | ne_binaries().
 
 -record(state, {ignored_member_calls = dict:new() :: dict:dict()
-                ,account_id :: api_binary()
-                ,queue_id :: api_binary()
+                ,account_id :: api(binary())
+                ,queue_id :: api(binary())
                 ,supervisor :: pid()
                 ,strategy = 'rr' :: queue_strategy() % round-robin | most-idle
                 ,strategy_state :: queue_strategy_state() % based on the strategy
                 ,known_agents = dict:new() :: dict:dict() % how many agent processes are available {AgentId, Count}
                 ,enter_when_empty = 'true' :: boolean() % allow caller into queue if no agents are logged in
-                ,moh :: api_binary()
+                ,moh :: api(binary())
                }).
 -type mgr_state() :: #state{}.
 
@@ -601,7 +601,7 @@ start_agent_and_worker(WorkersSup, AccountId, QueueId, AgentJObj) ->
     end.
 
 %% Really sophisticated selection algorithm
--spec pick_winner(pid(), kz_json:objects(), queue_strategy(), api_binary()) ->
+-spec pick_winner(pid(), kz_json:objects(), queue_strategy(), api(binary())) ->
                          api({kz_json:objects(), kz_json:objects()}).
 pick_winner(_, [], _, _) ->
     lager:debug("no agent responses are left to choose from"),
@@ -700,7 +700,7 @@ split_agents(AgentId, Rest) ->
                             AgentId =:= kz_json:get_value(<<"Agent-ID">>, R)
                     end, Rest).
 
--spec get_strategy(api_binary()) -> queue_strategy().
+-spec get_strategy(api(binary())) -> queue_strategy().
 get_strategy(<<"round_robin">>) -> 'rr';
 get_strategy(<<"most_idle">>) -> 'mi';
 get_strategy(_) -> 'rr'.

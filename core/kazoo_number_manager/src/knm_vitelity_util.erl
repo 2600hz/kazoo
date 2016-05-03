@@ -41,7 +41,7 @@ api_uri() ->
 config_cat() ->
     ?KNM_VITELITY_CONFIG_CAT.
 
--spec add_options_fold({atom(), api_binary()}, query_options()) ->
+-spec add_options_fold({atom(), api(binary())}, query_options()) ->
                               query_options().
 add_options_fold({_K, 'undefined'}, Options) -> Options;
 add_options_fold({K, V}, Options) ->
@@ -79,15 +79,15 @@ build_uri(Options) ->
               ))),
     <<URI/binary, "?", QS/binary>>.
 
--spec xml_resp_status_msg(xml_els()) -> api_binary().
+-spec xml_resp_status_msg(xml_els()) -> api(binary()).
 xml_resp_status_msg(XmlEls) ->
     xml_el_to_binary(xml_resp_tag(XmlEls, 'status')).
 
--spec xml_resp_error_msg(xml_els()) -> api_binary().
+-spec xml_resp_error_msg(xml_els()) -> api(binary()).
 xml_resp_error_msg(XmlEls) ->
     xml_el_to_binary(xml_resp_tag(XmlEls, 'error')).
 
--spec xml_resp_response_msg(xml_els()) -> api_binary().
+-spec xml_resp_response_msg(xml_els()) -> api(binary()).
 xml_resp_response_msg(XmlEls) ->
     xml_el_to_binary(xml_resp_tag(XmlEls, 'response')).
 
@@ -110,7 +110,7 @@ xml_resp_tag([_|Els], Name) ->
 xml_resp_tag([], _Name) ->
     'undefined'.
 
--spec xml_el_to_binary(api(xml_el())) -> api_binary().
+-spec xml_el_to_binary(api(xml_el())) -> api(binary()).
 xml_el_to_binary('undefined') -> 'undefined';
 xml_el_to_binary(#xmlElement{content=Content}) ->
     kz_xml:texts_to_binary(Content).
@@ -124,7 +124,7 @@ xml_els_to_proplist(Els) ->
            end
     ].
 
--spec xml_el_to_kv_pair(xml_el()) -> {ne_binary(), api_binary() | kz_json:object()}.
+-spec xml_el_to_kv_pair(xml_el()) -> {ne_binary(), api(binary()) | kz_json:object()}.
 xml_el_to_kv_pair(#xmlElement{name='did'
                               ,content=Value
                              }) ->

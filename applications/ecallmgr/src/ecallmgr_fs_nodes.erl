@@ -70,7 +70,7 @@
                ,cookie :: atom()
                ,connected = 'false' :: boolean()
                ,started = kz_util:current_tstamp() :: gregorian_seconds()
-               ,client_version :: api_binary()
+               ,client_version :: api(binary())
                ,options = [] :: kz_proplist()
               }).
 -type fs_node() :: #node{}.
@@ -165,7 +165,7 @@ do_flush(Args) ->
 -spec is_node_up(atom()) -> boolean().
 is_node_up(Node) -> gen_server:call(?SERVER, {'is_node_up', Node}).
 
--spec sip_url(text()) -> api_binary().
+-spec sip_url(text()) -> api(binary()).
 sip_url(Node) when not is_atom(Node) ->
     sip_url(kz_util:to_atom(Node, 'true'));
 sip_url(Node) ->
@@ -178,7 +178,7 @@ sip_url(Node) ->
         _Else -> 'undefined'
     end.
 
--spec sip_external_ip(text()) -> api_binary().
+-spec sip_external_ip(text()) -> api(binary()).
 sip_external_ip(Node) when not is_atom(Node) ->
     sip_external_ip(kz_util:to_atom(Node, 'true'));
 sip_external_ip(Node) ->
@@ -732,7 +732,7 @@ get_fs_cookie(Cookie, _) when is_atom(Cookie) ->
     Cookie.
 
 -spec get_fs_client_version(fs_node()) -> fs_node();
-                           (atom()) -> api_binary().
+                           (atom()) -> api(binary()).
 get_fs_client_version(#node{node=NodeName}=Node) ->
     Node#node{client_version=get_fs_client_version(NodeName)};
 get_fs_client_version(NodeName) ->

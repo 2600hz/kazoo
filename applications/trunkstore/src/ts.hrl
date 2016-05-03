@@ -42,14 +42,14 @@
 -type active_calls() :: [{binary(), 'flat_rate' | 'per_min'}].
 
 -record(ts_callflow_state, {
-          aleg_callid :: api_binary()
-          ,bleg_callid :: api_binary()
+          aleg_callid :: api(binary())
+          ,bleg_callid :: api(binary())
           ,acctid = <<>> :: binary()
           ,acctdb = <<>> :: binary()
           ,route_req_jobj = kz_json:new() :: kz_json:object()
           ,ep_data = kz_json:new() :: kz_json:object() %% data for the endpoint, either an actual endpoint or an offnet request
           ,my_q = <<>> :: binary()
-          ,callctl_q :: api_binary()
+          ,callctl_q :: api(binary())
           ,call_cost = 0.0 :: float()
           ,failover :: kz_json:object()
          }).
@@ -60,8 +60,8 @@
           ,to_domain = <<>> :: binary()
           ,from_user = <<>> :: binary()
           ,from_domain = <<>> :: binary()
-          ,auth_user = <<>> :: api_binary()      % what username did we authenticate with
-          ,auth_realm = <<>> :: api_binary()     % what realm did we auth with
+          ,auth_user = <<>> :: api(binary())      % what username did we authenticate with
+          ,auth_realm = <<>> :: api(binary())     % what realm did we auth with
           ,direction = <<>> :: binary()                  % what direction is the call (relative to client)
           ,server_id = <<>> :: binary()                  % Server of the DID
           ,failover = {} :: tuple()                      % Failover information {type, value}. Type=(sip|e164), Value=("sip:user@domain"|"+1234567890")

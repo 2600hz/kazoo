@@ -220,7 +220,7 @@ find_sip_endpoints(Data, Call) ->
         DeviceId -> [DeviceId]
     end.
 
--spec find_sip_users(api_binary(), kapps_call:call()) -> ne_binaries().
+-spec find_sip_users(api(binary()), kapps_call:call()) -> ne_binaries().
 find_sip_users(GroupId, Call) when is_binary(GroupId) ->
     find_group_endpoints(GroupId, Call).
 

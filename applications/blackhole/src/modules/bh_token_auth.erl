@@ -48,7 +48,7 @@ authenticate(Context) ->
 authenticate(Context, Foo) ->
     lager:debug("wha wha? ~p (~p)", [Context, Foo]).
 
--spec check_auth_token(bh_context:context(), api_binary()) -> {'true', bh_context:context()} |
+-spec check_auth_token(bh_context:context(), api(binary())) -> {'true', bh_context:context()} |
                                                               'false'.
 check_auth_token(Context, AuthToken) ->
     lager:debug("checking auth token: ~s", [AuthToken]),

@@ -23,13 +23,13 @@
         ]).
 
 -record(dial_req, {call :: kapps_call:call()
-                   ,hangup_dtmf :: api_binary()
+                   ,hangup_dtmf :: api(binary())
                    ,collect_dtmf = 'false' :: boolean()
                    ,record_call :: boolean()
                    ,call_timeout :: kz_timeout()
                    ,call_time_limit :: kz_timeout()
                    ,start :: kz_now()
-                   ,call_b_leg :: api_binary()
+                   ,call_b_leg :: api(binary())
                   }).
 -type dial_req() :: #dial_req{}.
 
@@ -44,13 +44,13 @@
 -spec default_on_first_fun(any()) -> 'ok'.
 default_on_first_fun(_) -> 'ok'.
 
--spec collect_dtmfs(kapps_call:call(), api_binary(), kz_timeout(), pos_integer()) ->
+-spec collect_dtmfs(kapps_call:call(), api(binary()), kz_timeout(), pos_integer()) ->
                            collect_dtmfs_return().
--spec collect_dtmfs(kapps_call:call(), api_binary(), kz_timeout(), pos_integer(), function()) ->
+-spec collect_dtmfs(kapps_call:call(), api(binary()), kz_timeout(), pos_integer(), function()) ->
                            collect_dtmfs_return().
--spec collect_dtmfs(kapps_call:call(), api_binary(), kz_timeout(), pos_integer(), function(), binary()) ->
+-spec collect_dtmfs(kapps_call:call(), api(binary()), kz_timeout(), pos_integer(), function(), binary()) ->
                            collect_dtmfs_return().
--spec collect_dtmfs(kapps_call:call(), api_binary(), kz_timeout(), pos_integer(), function(), binary(), kz_json:object()) ->
+-spec collect_dtmfs(kapps_call:call(), api(binary()), kz_timeout(), pos_integer(), function(), binary(), kz_json:object()) ->
                            collect_dtmfs_return().
 
 collect_dtmfs(Call, FinishKey, Timeout, N) ->
@@ -132,7 +132,7 @@ collect_dtmfs(Call, FinishKey, Timeout, N, OnFirstFun, Collected, JObj) ->
             collect_dtmfs(Call, FinishKey, Timeout, N, OnFirstFun, Collected)
     end.
 
--spec handle_dtmf(kapps_call:call(), api_binary(), kz_timeout(), pos_integer(), function(), binary(), api_binary()) ->
+-spec handle_dtmf(kapps_call:call(), api(binary()), kz_timeout(), pos_integer(), function(), binary(), api(binary())) ->
                          collect_dtmfs_return().
 handle_dtmf(Call, FinishKey, _Timeout, _N, _OnFirstFun, _Collected, FinishKey) ->
     lager:info("finish key '~s' pressed", [FinishKey]),
@@ -548,7 +548,7 @@ handle_hangup(Call, _JObj, HangupCause) ->
     {'ok', kapps_call:exec(Updates, Call)}.
 
 -spec maybe_hangup_other_leg(kapps_call:call()) -> 'ok'.
--spec maybe_hangup_other_leg(kapps_call:call(), api_binary()) -> 'ok'.
+-spec maybe_hangup_other_leg(kapps_call:call(), api(binary())) -> 'ok'.
 maybe_hangup_other_leg(Call) ->
     maybe_hangup_other_leg(Call, kapps_call:other_leg_call_id(Call)).
 
@@ -560,7 +560,7 @@ maybe_hangup_other_leg(Call, OtherLeg) ->
           ],
     kapps_call_command:send_command(Req, Call).
 
--spec dial_status(kapps_call:call() | api_binary()) -> ne_binary().
+-spec dial_status(kapps_call:call() | api(binary())) -> ne_binary().
 dial_status(?STATUS_ANSWERED) -> ?STATUS_COMPLETED;
 dial_status(?STATUS_RINGING) -> ?STATUS_NOANSWER;
 dial_status(<<_/binary>>) -> ?STATUS_FAILED;

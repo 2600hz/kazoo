@@ -23,9 +23,9 @@
                                    ]).
 
 -record(fax_storage, {
-         id :: api_binary()
-         ,attachment_id :: api_binary()
-         ,db :: api_binary()
+         id :: api(binary())
+         ,attachment_id :: api(binary())
+         ,db :: api(binary())
          }).
 -type fax_storage() :: #fax_storage{}.
 

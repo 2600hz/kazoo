@@ -33,7 +33,7 @@
 
 -define(PVT_TYPE, <<"user">>).
 
--spec email(doc()) -> api_binary().
+-spec email(doc()) -> api(binary()).
 -spec email(doc(), Default) -> ne_binary() | Default.
 email(User) ->
     email(User, 'undefined').
@@ -199,7 +199,7 @@ normalize_address(JObj) ->
     Address = kz_json:get_value(<<"address">>, JObj),
     {kz_util:join_binary(Types, <<",">>), Address}.
 
--spec timezone(kz_json:object()) -> api_binary().
+-spec timezone(kz_json:object()) -> api(binary()).
 -spec timezone(kz_json:object(), Default) -> ne_binary() | Default.
 timezone(JObj) ->
     timezone(JObj, 'undefined').
@@ -210,7 +210,7 @@ timezone(JObj, Default) ->
         TZ -> TZ
     end.
 
--spec presence_id(doc()) -> api_binary().
+-spec presence_id(doc()) -> api(binary()).
 -spec presence_id(doc(), Default) -> ne_binary() | Default.
 presence_id(UserJObj) ->
     presence_id(UserJObj, 'undefined').

@@ -306,6 +306,6 @@ format_mapping(Mapping, WhitelabelDomain) ->
 mappings(JObj) ->
     kz_json:get_value(?KEY_MAPPINGS, JObj).
 
--spec name(kz_json:object()) -> api_binary().
+-spec name(kz_json:object()) -> api(binary()).
 name(JObj) ->
     kz_json:get_value(?KEY_NAME, JObj).

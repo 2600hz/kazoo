@@ -517,7 +517,7 @@ read(Id, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_request(api(binary()), cb_context:context()) -> cb_context:context().
 validate_request(QueueId, Context) ->
     check_queue_schema(QueueId, Context).
 
@@ -527,7 +527,7 @@ validate_request(QueueId, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_patch(api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_patch(api(binary()), cb_context:context()) -> cb_context:context().
 validate_patch(QueueId, Context) ->
     crossbar_doc:patch_and_validate(QueueId, Context, fun validate_request/2).
 

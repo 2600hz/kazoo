@@ -147,16 +147,16 @@ set_accepting_charges(#cb_context{req_json = ReqJObj} = Context) ->
     set_req_json(Context, NewReqJObj).
 
 %% Accessors
--spec account_id(context()) -> api_binary().
--spec account_db(context()) -> api_binary().
--spec user_id(context()) -> api_binary().
--spec device_id(context()) -> api_binary().
--spec account_modb(context()) -> api_binary().
--spec account_modb(context(), kz_now() | kz_timeout()) -> api_binary().
--spec account_modb(context(), kz_year(), kz_month()) -> api_binary().
--spec account_realm(context()) -> api_binary().
+-spec account_id(context()) -> api(binary()).
+-spec account_db(context()) -> api(binary()).
+-spec user_id(context()) -> api(binary()).
+-spec device_id(context()) -> api(binary()).
+-spec account_modb(context()) -> api(binary()).
+-spec account_modb(context(), kz_now() | kz_timeout()) -> api(binary()).
+-spec account_modb(context(), kz_year(), kz_month()) -> api(binary()).
+-spec account_realm(context()) -> api(binary()).
 -spec account_doc(context()) -> api_object().
--spec profile_id(context()) -> api_binary().
+-spec profile_id(context()) -> api(binary()).
 
 account_id(#cb_context{account_id=AcctId}) -> AcctId.
 user_id(#cb_context{user_id=UserId}) -> UserId.
@@ -282,13 +282,13 @@ setters_fold(F, C) when is_function(F, 1) -> F(C).
 -spec set_query_string(context(), kz_json:object()) -> context().
 -spec set_req_id(context(), ne_binary()) -> context().
 -spec set_doc(context(), api_object() | kz_json:objects()) -> context().
--spec set_load_merge_bypass(context(), api_binary()) -> context().
+-spec set_load_merge_bypass(context(), api(binary())) -> context().
 -spec set_start(context(), kz_now()) -> context().
 -spec set_resp_data(context(), resp_data()) -> context().
 -spec set_resp_status(context(), crossbar_status()) -> context().
 -spec set_resp_expires(context(), kz_datetime()) -> context().
 -spec set_api_version(context(), ne_binary()) -> context().
--spec set_resp_etag(context(), api_binary()) -> context().
+-spec set_resp_etag(context(), api(binary())) -> context().
 -spec set_resp_envelope(context(), kz_json:object()) -> context().
 -spec set_resp_headers(context(), kz_proplist()) -> context().
 -spec add_resp_headers(context(), kz_proplist()) -> context().
@@ -303,7 +303,7 @@ setters_fold(F, C) when is_function(F, 1) -> F(C).
 -spec set_languages_provided(context(), ne_binaries()) -> context().
 -spec set_encodings_provided(context(), ne_binaries()) -> context().
 -spec set_resp_error_code(context(), integer()) -> context().
--spec set_resp_error_msg(context(), api_binary()) -> context().
+-spec set_resp_error_msg(context(), api(binary())) -> context().
 -spec set_magic_pathed(context(), boolean()) -> context().
 -spec set_should_paginate(context(), boolean()) -> context().
 -spec set_validation_errors(context(), kz_json:object()) -> context().
@@ -509,7 +509,7 @@ fetch(#cb_context{storage=Storage}, Key, Default) ->
 %% the process dictionary, where the logger expects it.
 %% @end
 %%--------------------------------------------------------------------
--spec put_reqid(context()) -> api_binary().
+-spec put_reqid(context()) -> api(binary()).
 put_reqid(#cb_context{req_id=ReqId}) ->
     kz_util:put_callid(ReqId).
 

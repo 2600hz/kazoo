@@ -19,7 +19,7 @@
 -export([jwt/2, jwt/3]).
 -export([authorization_header/1]).
 
--spec authorization_header(oauth_token()) -> api_binary().
+-spec authorization_header(oauth_token()) -> api(binary()).
 authorization_header(#oauth_token{type=Type,token=Token}) ->
     <<Type/binary, " ", Token/binary>>.
 
@@ -146,7 +146,7 @@ token(DocId) when is_binary(DocId) ->
             Error
     end.
 
--spec token(api_binary() | oauth_app(), api_binary() | oauth_refresh_token()) ->
+-spec token(api(binary()) | oauth_app(), api(binary()) | oauth_refresh_token()) ->
                    {'ok', oauth_token()} |
                    {'error', any()}.
 token(AppId, UserId) when is_binary(AppId) ->
@@ -194,9 +194,9 @@ token(#oauth_app{name=AppId
             {'error', Else}
     end.
 
--spec verify_token(api_binary() | oauth_provider(), api_binary()) ->
+-spec verify_token(api(binary()) | oauth_provider(), api(binary())) ->
                           {'ok', api_object()} |
-                          {'error', api_binary()}.
+                          {'error', api(binary())}.
 verify_token(ProviderId, AccessToken) when is_binary(ProviderId) ->
     case get_oauth_provider(ProviderId) of
         {'ok', Provider} -> verify_token(Provider, AccessToken);
@@ -220,7 +220,7 @@ verify_token(#oauth_provider{tokeninfo_url=TokenInfoUrl}, AccessToken) ->
 refresh_token(Token) ->
     #oauth_refresh_token{token=Token}.
 
--spec refresh_token(api_binary() | oauth_app(), api_binary(), api_binary(), kz_proplist() ) ->
+-spec refresh_token(api(binary()) | oauth_app(), api(binary()), api(binary()), kz_proplist() ) ->
                            {'ok', api_object()} |
                            {'error', any()}.
 refresh_token(AppId, Scope, AuthorizationCode, ExtraHeaders)
@@ -233,7 +233,7 @@ refresh_token(AppId, Scope, AuthorizationCode, ExtraHeaders)
 refresh_token(App, Scope, AuthorizationCode, ExtraHeaders) ->
     refresh_token(App, Scope, AuthorizationCode, ExtraHeaders, <<"postmessage">>).
 
--spec refresh_token(oauth_app(), api_binary(), api_binary(), kz_proplist(), api_binary()) ->
+-spec refresh_token(oauth_app(), api(binary()), api(binary()), kz_proplist(), api(binary())) ->
                            {'ok', api_object()} |
                            {'error', any()}.
 refresh_token(#oauth_app{name=ClientId

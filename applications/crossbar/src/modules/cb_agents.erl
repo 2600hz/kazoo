@@ -240,7 +240,7 @@ publish_action(Context, AgentId) ->
 
     kz_amqp_worker:cast(Props, Publisher).
 
--spec publish_update(cb_context:context(), api_binary(), function()) -> 'ok'.
+-spec publish_update(cb_context:context(), api(binary()), function()) -> 'ok'.
 publish_update(Context, AgentId, PubFun) ->
     Update = props:filter_undefined(
                [{<<"Account-ID">>, cb_context:account_id(Context)}
@@ -269,7 +269,7 @@ fetch_all_agent_statuses(Context) ->
                                ,cb_context:req_value(Context, <<"status">>)
                               ).
 
--spec fetch_agent_status(api_binary(), cb_context:context()) -> cb_context:context().
+-spec fetch_agent_status(api(binary()), cb_context:context()) -> cb_context:context().
 fetch_agent_status(AgentId, Context) ->
     case kz_util:is_true(cb_context:req_value(Context, <<"recent">>)) of
         'false' ->
@@ -295,7 +295,7 @@ fetch_all_current_agent_stats(Context) ->
                             ,cb_context:req_value(Context, <<"agent_id">>)
                            ).
 
--spec fetch_all_current_stats(cb_context:context(), api_binary()) -> cb_context:context().
+-spec fetch_all_current_stats(cb_context:context(), api(binary())) -> cb_context:context().
 fetch_all_current_stats(Context, AgentId) ->
     Now = kz_util:current_tstamp(),
     Yday = Now - ?SECONDS_IN_DAY,
@@ -309,7 +309,7 @@ fetch_all_current_stats(Context, AgentId) ->
             ]),
     fetch_stats_from_amqp(Context, Req).
 
--spec fetch_all_current_statuses(cb_context:context(), api_binary(), api_binary()) ->
+-spec fetch_all_current_statuses(cb_context:context(), api(binary()), api(binary())) ->
                                         cb_context:context().
 fetch_all_current_statuses(Context, AgentId, Status) ->
     Now = kz_util:current_tstamp(),
@@ -437,7 +437,7 @@ format_stats_fold(Stat, Acc) ->
 
 -spec maybe_add_answered(kz_json:object(), kz_json:object()) ->
                                 [{kz_json:key(), non_neg_integer()}].
--spec maybe_add_answered(kz_json:object(), kz_json:object(), api_binary()) ->
+-spec maybe_add_answered(kz_json:object(), kz_json:object(), api(binary())) ->
                                 [{kz_json:key(), non_neg_integer()}].
 maybe_add_answered(Stat, Acc) ->
     maybe_add_answered(Stat, Acc, kz_json:get_value(<<"status">>, Stat)).
@@ -541,7 +541,7 @@ validate_status_change(Context) ->
     end.
 
 -define(STATUS_CHANGES, [<<"login">>, <<"logout">>, <<"pause">>, <<"resume">>]).
--spec validate_status_change(cb_context:context(), api_binary()) ->
+-spec validate_status_change(cb_context:context(), api(binary())) ->
                                     cb_context:context().
 validate_status_change(Context, S) ->
     case lists:member(S, ?STATUS_CHANGES) of
@@ -559,7 +559,7 @@ validate_status_change(Context, S) ->
              )
     end.
 
--spec check_for_status_error(cb_context:context(), api_binary()) ->
+-spec check_for_status_error(cb_context:context(), api(binary())) ->
                                     cb_context:context().
 check_for_status_error(Context, S) ->
     case lists:member(S, ?STATUS_CHANGES) of

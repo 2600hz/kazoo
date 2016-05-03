@@ -105,7 +105,7 @@ process_numbers_search_resp(Xml, Options) ->
            ]
     }.
 
--spec found_number_to_KNM(xml_el() | xml_els(), api_binary()) ->
+-spec found_number_to_KNM(xml_el() | xml_els(), api(binary())) ->
                                  knm_number:knm_number().
 found_number_to_KNM(Found, AccountId) ->
     JObj = number_search_response_to_json(Found),
@@ -331,7 +331,7 @@ number_search_response_to_json(Xml) ->
             ],
     kz_json:from_list(props:filter_undefined(Props)).
 
--spec get_cleaned(kz_deeplist(), xml_el()) -> api_binary().
+-spec get_cleaned(kz_deeplist(), xml_el()) -> api(binary()).
 get_cleaned(Path, Xml) ->
     case kz_util:get_xml_value(Path, Xml) of
         'undefined' -> 'undefined';
@@ -365,7 +365,7 @@ rate_center_to_json(Xml) ->
 %%--------------------------------------------------------------------
 -spec verify_response(xml_el()) ->
                              {'ok', xml_el()} |
-                             {'error', api_binary() | ne_binaries()}.
+                             {'error', api(binary()) | ne_binaries()}.
 verify_response(Xml) ->
     case get_cleaned("/*/status/text()", Xml) of
         <<"success">> ->

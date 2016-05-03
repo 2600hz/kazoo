@@ -320,12 +320,12 @@ load_interaction_cdr_summary(Context, _Nouns) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--type view_option_fun() :: fun((api_binary(), cb_context:context(), gregorian_seconds(), gregorian_seconds()) -> {'ok', crossbar_doc:view_options()}).
+-type view_option_fun() :: fun((api(binary()), cb_context:context(), gregorian_seconds(), gregorian_seconds()) -> {'ok', crossbar_doc:view_options()}).
 
--spec create_view_options(api_binary(), cb_context:context()) ->
+-spec create_view_options(api(binary()), cb_context:context()) ->
                                  {'ok', crossbar_doc:view_options()} |
                                  cb_context:context().
--spec create_view_options(api_binary(), view_option_fun(), cb_context:context()) ->
+-spec create_view_options(api(binary()), view_option_fun(), cb_context:context()) ->
                                  {'ok', crossbar_doc:view_options()} |
                                  cb_context:context().
 create_view_options(OwnerId, Context) ->
@@ -340,7 +340,7 @@ create_view_options(OwnerId, Fun, Context) ->
         Context1 -> Context1
     end.
 
--spec create_view_options(api_binary(), cb_context:context(), gregorian_seconds(), gregorian_seconds()) ->
+-spec create_view_options(api(binary()), cb_context:context(), gregorian_seconds(), gregorian_seconds()) ->
                                  {'ok', crossbar_doc:view_options()}.
 create_view_options('undefined', Context, CreatedFrom, CreatedTo) ->
     {'ok', [{'startkey', CreatedTo}
@@ -355,7 +355,7 @@ create_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
             ,'descending'
            ]}.
 
--spec create_interaction_view_options(api_binary(), cb_context:context(), pos_integer(), pos_integer()) ->
+-spec create_interaction_view_options(api(binary()), cb_context:context(), pos_integer(), pos_integer()) ->
                                  {'ok', crossbar_doc:view_options()}.
 create_interaction_view_options('undefined', Context, CreatedFrom, CreatedTo) ->
     {'ok', [{'startkey', [CreatedTo]}

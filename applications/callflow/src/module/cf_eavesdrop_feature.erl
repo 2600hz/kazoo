@@ -76,7 +76,7 @@ build_data({'ok', TargetId, _TargetType}, Call) ->
     build_flow_data(Call, []).
 
 -spec build_flow_data(kapps_call:call(), kz_proplist()) -> kz_json:object().
--spec build_flow_data(kapps_call:call(), kz_proplist(), api_binary()) -> kz_json:object().
+-spec build_flow_data(kapps_call:call(), kz_proplist(), api(binary())) -> kz_json:object().
 build_flow_data(Call, Data) ->
     build_flow_data(Call, Data, kapps_call:authorizing_type(Call)).
 build_flow_data(Call, Data, <<"device">>) ->
@@ -100,7 +100,7 @@ get_target_for_extension(Exten, Call) ->
         {'error', _} -> 'error'
     end.
 
--spec maybe_correct_target(target(), api_binary(), kapps_call:call()) ->
+-spec maybe_correct_target(target(), api(binary()), kapps_call:call()) ->
                                   boolean().
 maybe_correct_target(_Target, 'undefined', _Call) ->
     'true';
@@ -118,7 +118,7 @@ find_group_members(GroupId, Call) ->
     end.
 
 -spec lookup_endpoint(api_object()) -> target().
--spec lookup_endpoint(kz_json:object(), api_binary()) -> target().
+-spec lookup_endpoint(kz_json:object(), api(binary())) -> target().
 lookup_endpoint('undefined') -> 'error';
 lookup_endpoint(Flow) ->
     lookup_endpoint(Flow, kz_json:get_value(<<"module">>, Flow)).

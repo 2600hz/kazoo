@@ -77,8 +77,8 @@ send_email(Emails, Subject, RenderedTemplates, Attachments) ->
             E
     end.
 
--spec maybe_log_smtp(email_map(), ne_binary(), list(), api_binary(), api_binary()) -> 'ok'.
--spec maybe_log_smtp(email_map(), ne_binary(), list(), api_binary(), api_binary(), boolean()) -> 'ok'.
+-spec maybe_log_smtp(email_map(), ne_binary(), list(), api(binary()), api(binary())) -> 'ok'.
+-spec maybe_log_smtp(email_map(), ne_binary(), list(), api(binary()), api(binary()), boolean()) -> 'ok'.
 maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error) ->
     Skip = kz_util:is_true(get('skip_smtp_log')),
     maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, Skip).
@@ -93,7 +93,7 @@ maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, 'false') ->
             log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId)
     end.
 
--spec log_smtp(email_map(), ne_binary(), list(), api_binary(), api_binary(), ne_binary()) -> 'ok'.
+-spec log_smtp(email_map(), ne_binary(), list(), api(binary()), api(binary()), ne_binary()) -> 'ok'.
 log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
     AccountDb = kazoo_modb:get_modb(AccountId),
     Doc = props:filter_undefined(
@@ -352,8 +352,8 @@ default_from_address(JObj, ConfigCat) ->
                          ,list_to_binary([<<"no_reply@">>, net_adm:localhost()])
                         ).
 
--spec default_reply_to(ne_binary()) -> api_binary().
--spec default_reply_to(kz_json:object(), ne_binary()) -> api_binary().
+-spec default_reply_to(ne_binary()) -> api(binary()).
+-spec default_reply_to(kz_json:object(), ne_binary()) -> api(binary()).
 default_reply_to(ConfigCat) ->
     default_reply_to(kz_json:new(), ConfigCat).
 default_reply_to(JObj, ConfigCat) ->
@@ -392,7 +392,7 @@ sort_templates({K1, _}, {K2, _}) ->
     props:get_value(K1, ?TEMPLATE_RENDERING_ORDER, 1) =<
         props:get_value(K2, ?TEMPLATE_RENDERING_ORDER, 1).
 
--spec find_account_id(kz_json:object()) -> api_binary().
+-spec find_account_id(kz_json:object()) -> api(binary()).
 find_account_id(JObj) ->
     kz_json:get_first_defined([<<"account_id">>
                                ,[<<"account">>, <<"_id">>]
@@ -403,7 +403,7 @@ find_account_id(JObj) ->
                               ,JObj
                              ).
 
--spec find_account_db(ne_binary(), kz_json:object()) -> api_binary().
+-spec find_account_db(ne_binary(), kz_json:object()) -> api(binary()).
 find_account_db(<<"account">>, JObj) -> find_account_db_from_id(JObj);
 find_account_db(<<"user">>, JObj) -> find_account_db_from_id(JObj);
 find_account_db(<<"fax">>, JObj) -> find_account_db(JObj);
@@ -411,7 +411,7 @@ find_account_db(<<"port_request">>, _JObj) -> ?KZ_PORT_REQUESTS_DB;
 find_account_db(<<"webhook">>, _JObj) -> ?KZ_WEBHOOKS_DB;
 find_account_db(_, JObj) -> find_account_db_from_id(JObj).
 
--spec find_account_db(kz_json:object()) -> api_binary().
+-spec find_account_db(kz_json:object()) -> api(binary()).
 find_account_db(JObj) ->
     PossibleDbs = [<<"account_db">>, <<"pvt_account_db">>, <<"Account-DB">>],
     case kz_json:get_first_defined(PossibleDbs, JObj) of
@@ -419,7 +419,7 @@ find_account_db(JObj) ->
         Db -> Db
     end.
 
--spec find_account_db_from_id(kz_json:object()) -> api_binary().
+-spec find_account_db_from_id(kz_json:object()) -> api(binary()).
 find_account_db_from_id(JObj) ->
     case find_account_id(JObj) of
         'undefined' -> 'undefined';
@@ -427,8 +427,8 @@ find_account_db_from_id(JObj) ->
     end.
 
 -spec send_update(kz_json:object(), ne_binary()) -> 'ok'.
--spec send_update(kz_json:object(), ne_binary(), api_binary()) -> 'ok'.
--spec send_update(api_binary(), ne_binary(), ne_binary(), api_binary()) -> 'ok'.
+-spec send_update(kz_json:object(), ne_binary(), api(binary())) -> 'ok'.
+-spec send_update(api(binary()), ne_binary(), ne_binary(), api(binary())) -> 'ok'.
 send_update(DataJObj, Status) ->
     send_update(DataJObj, Status, 'undefined').
 send_update(DataJObj, Status, Message) ->
@@ -466,8 +466,8 @@ find_account_rep_email(AccountJObj) ->
       find_account_id(AccountJObj)
      ).
 
--spec find_account_admin_email(api_binary()) -> api_binaries().
--spec find_account_admin_email(ne_binary(), api_binary()) -> api_binaries().
+-spec find_account_admin_email(api(binary())) -> api_binaries().
+-spec find_account_admin_email(ne_binary(), api(binary())) -> api_binaries().
 find_account_admin_email('undefined') -> 'undefined';
 find_account_admin_email(AccountId) ->
     find_account_admin_email(AccountId, kz_services:find_reseller_id(AccountId)).
@@ -502,7 +502,7 @@ query_account_for_admin_emails(AccountId) ->
             []
     end.
 
--spec find_account_admin(api_binary()) -> api_object().
+-spec find_account_admin(api(binary())) -> api_object().
 -spec find_account_admin(ne_binary(), ne_binary()) -> api_object().
 find_account_admin('undefined') -> 'undefined';
 find_account_admin(<<_/binary>> = AccountId) ->
@@ -564,7 +564,7 @@ should_handle_system() ->
         =:= ?APP_NAME.
 
 -spec should_handle_account(ne_binary()) -> boolean().
--spec should_handle_account(ne_binary(), api_binary()) -> boolean().
+-spec should_handle_account(ne_binary(), api(binary())) -> boolean().
 should_handle_account(Account) ->
     case kz_account:fetch(Account) of
         {'error', _E} ->
@@ -599,7 +599,7 @@ should_handle_reseller(Account) ->
 
 -define(MOD_CONFIG_CAT(Key), <<(?NOTIFY_CONFIG_CAT)/binary, ".", Key/binary>>).
 
--spec is_notice_enabled(api_binary(), kz_json:object(), ne_binary()) -> boolean().
+-spec is_notice_enabled(api(binary()), kz_json:object(), ne_binary()) -> boolean().
 is_notice_enabled('undefined', _ApiJObj, TemplateKey) ->
     is_notice_enabled_default(TemplateKey);
 is_notice_enabled(AccountId, ApiJObj, TemplateKey) ->
@@ -610,7 +610,7 @@ is_notice_enabled(AccountId, ApiJObj, TemplateKey) ->
             is_account_notice_enabled(AccountId, TemplateKey, ResellerAccountId)
     end.
 
--spec is_account_notice_enabled(api_binary(), ne_binary(), ne_binary()) -> boolean().
+-spec is_account_notice_enabled(api(binary()), ne_binary(), ne_binary()) -> boolean().
 is_account_notice_enabled('undefined', TemplateKey, _ResellerAccountId) ->
     lager:debug("no account id to check, checking system config for ~s", [TemplateKey]),
     is_notice_enabled_default(TemplateKey);
@@ -645,7 +645,7 @@ is_notice_enabled_default(TemplateKey) ->
             'false'
     end.
 
--spec get_parent_account_id(ne_binary()) -> api_binary().
+-spec get_parent_account_id(ne_binary()) -> api(binary()).
 get_parent_account_id(AccountId) ->
     case kz_account:fetch(AccountId) of
         {'ok', JObj} -> kz_account:parent_account_id(JObj);
@@ -674,7 +674,7 @@ find_addresses(DataJObj, TemplateMetaJObj, ConfigCat, [Key|Keys], Acc) ->
 
 -spec find_address(kz_json:object(), kz_json:object(), ne_binary(), kz_json:key()) ->
                           {kz_json:key(), api_binaries()}.
--spec find_address(kz_json:object(), kz_json:object(), ne_binary(), kz_json:key(), api_binary()) ->
+-spec find_address(kz_json:object(), kz_json:object(), ne_binary(), kz_json:key(), api(binary())) ->
                           {kz_json:key(), api_binaries()}.
 find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key) ->
     find_address(
@@ -734,7 +734,7 @@ find_default(ConfigCat, Key) ->
         Emails -> Emails
     end.
 
--spec open_doc(ne_binary(), api_binary(), kz_json:object()) ->
+-spec open_doc(ne_binary(), api(binary()), kz_json:object()) ->
                       {'ok', kz_json:object()} |
                       {'error', any()}.
 open_doc(Type, 'undefined', DataJObj) ->

@@ -69,7 +69,7 @@ maybe_send_push_notification(Pid, JObj) ->
                                     }
                      ).
 
--spec get_apns(api_binary(), ets:tid()) -> api_pid().
+-spec get_apns(api(binary()), ets:tid()) -> api_pid().
 get_apns('undefined', _) -> 'undefined';
 get_apns(App, ETS) ->
     case ets:lookup(ETS, App) of
@@ -77,11 +77,11 @@ get_apns(App, ETS) ->
         [{App, Pid}] -> Pid
     end.
 
--spec maybe_load_apns(api_binary(), ets:tid()) -> api_pid().
+-spec maybe_load_apns(api(binary()), ets:tid()) -> api_pid().
 maybe_load_apns(App, ETS) ->
     maybe_load_apns(App, ETS, kapps_config:get_binary(?CONFIG_CAT, <<"apple">>, 'undefined', App)).
 
--spec maybe_load_apns(api_binary(), ets:tid(), api_binary()) -> api_pid().
+-spec maybe_load_apns(api(binary()), ets:tid(), api(binary())) -> api_pid().
 maybe_load_apns(App, _, 'undefined') ->
     lager:debug("apple pusher certificate for app ~s not found", [App]),
     'undefined';

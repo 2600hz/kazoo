@@ -443,7 +443,7 @@ get_list_value(Key, JObj, Default) ->
         _Else -> Default
     end.
 
--spec get_binary_value(keys(), object() | objects()) -> api_binary().
+-spec get_binary_value(keys(), object() | objects()) -> api(binary()).
 -spec get_binary_value(keys(), object() | objects(), Default) -> binary() | Default.
 get_binary_value(Key, JObj) ->
     get_binary_value(Key, JObj, 'undefined').
@@ -453,7 +453,7 @@ get_binary_value(Key, JObj, Default) ->
         Value -> safe_cast(Value, Default, fun kz_util:to_binary/1)
     end.
 
--spec get_ne_binary_value(keys(), object() | objects()) -> api_binary().
+-spec get_ne_binary_value(keys(), object() | objects()) -> api(binary()).
 -spec get_ne_binary_value(keys(), object() | objects(), Default) -> ne_binary() | Default.
 get_ne_binary_value(Key, JObj) ->
     get_ne_binary_value(Key, JObj, 'undefined').
@@ -464,7 +464,7 @@ get_ne_binary_value(Key, JObj, Default) ->
         Value -> Value
     end.
 
--spec get_lower_binary(keys(), object() | objects()) -> api_binary().
+-spec get_lower_binary(keys(), object() | objects()) -> api(binary()).
 -spec get_lower_binary(keys(), object() | objects(), Default) -> binary() | Default.
 get_lower_binary(Key, JObj) ->
     get_lower_binary(Key, JObj, 'undefined').
@@ -548,7 +548,7 @@ is_true(Key, JObj, Default) ->
         V -> kz_util:is_true(V)
     end.
 
--spec get_binary_boolean(keys(), kz_json:object() | objects()) -> api_binary().
+-spec get_binary_boolean(keys(), kz_json:object() | objects()) -> api(binary()).
 -spec get_binary_boolean(keys(), kz_json:object() | objects(), Default) -> Default | ne_binary().
 get_binary_boolean(Key, JObj) ->
     get_binary_boolean(Key, JObj, 'undefined').

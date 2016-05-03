@@ -103,8 +103,8 @@ is_agent_in_acct(Super, AcctId) ->
 agents_running() ->
     [{W, catch acdc_agent_listener:config(acdc_agent_sup:listener(W))} || W <- workers()].
 
--spec find_agent_supervisor(api_binary(), api_binary()) -> api_pid().
--spec find_agent_supervisor(api_binary(), api_binary(), pids()) -> api_pid().
+-spec find_agent_supervisor(api(binary()), api(binary())) -> api_pid().
+-spec find_agent_supervisor(api(binary()), api(binary()), pids()) -> api_pid().
 find_agent_supervisor(AcctId, AgentId) -> find_agent_supervisor(AcctId, AgentId, workers()).
 
 find_agent_supervisor(_AcctId, _AgentId, []) -> lager:debug("ran out of supers"), 'undefined';

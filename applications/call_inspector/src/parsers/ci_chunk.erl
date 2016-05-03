@@ -47,7 +47,7 @@
                   ,dst_port :: pos_integer()
                   ,parser :: ne_binary()
                   ,label :: ne_binary()
-                  ,c_seq :: api_binary()  %% Parsing Kamailio logs: this can be undefined (DON'T parse them)
+                  ,c_seq :: api(binary())  %% Parsing Kamailio logs: this can be undefined (DON'T parse them)
                  }).
 -type chunk() :: #ci_chunk{}.
 
@@ -78,7 +78,7 @@ setters(#ci_chunk{}=Chunk, Setters) ->
 
 -spec call_id(chunk(), ne_binary()) -> chunk().
 ?SETTER(call_id).
--spec call_id(chunk()) -> api_binary().
+-spec call_id(chunk()) -> api(binary()).
 ?GETTER(call_id).
 
 -spec data(chunk(), ne_binaries()) -> chunk().
@@ -100,7 +100,7 @@ append_data(#ci_chunk{data=D}=Chunk, Data) ->
 -spec src_ip(chunk(), ne_binary()) -> chunk().
 src_ip(#ci_chunk{}=Chunk, Val) ->
     Chunk#ci_chunk{src_ip = resolve(Val)}.
--spec src_ip(chunk()) -> api_binary().
+-spec src_ip(chunk()) -> api(binary()).
 ?GETTER(src_ip).
 
 -spec src_port(chunk(), pos_integer()) -> chunk().
@@ -111,7 +111,7 @@ src_ip(#ci_chunk{}=Chunk, Val) ->
 -spec dst_ip(chunk(), ne_binary()) -> chunk().
 dst_ip(#ci_chunk{}=Chunk, Val) ->
     Chunk#ci_chunk{dst_ip = resolve(Val)}.
--spec dst_ip(chunk()) -> api_binary().
+-spec dst_ip(chunk()) -> api(binary()).
 ?GETTER(dst_ip).
 
 -spec dst_port(chunk(), pos_integer()) -> chunk().
@@ -122,17 +122,17 @@ dst_ip(#ci_chunk{}=Chunk, Val) ->
 -spec parser(chunk(), atom()) -> chunk().
 parser(#ci_chunk{}=Chunk, Parser) ->
     Chunk#ci_chunk{parser = kz_util:to_binary(Parser)}.
--spec parser(chunk()) -> api_binary().
+-spec parser(chunk()) -> api(binary()).
 ?GETTER(parser).
 
 -spec label(chunk(), ne_binary()) -> chunk().
 ?SETTER(label).
--spec label(chunk()) -> api_binary().
+-spec label(chunk()) -> api(binary()).
 ?GETTER(label).
 
 -spec c_seq(chunk(), ne_binary()) -> chunk().
 ?SETTER(c_seq).
--spec c_seq(chunk()) -> api_binary().
+-spec c_seq(chunk()) -> api(binary()).
 ?GETTER(c_seq).
 
 -spec to_json(chunk()) -> kz_json:object().

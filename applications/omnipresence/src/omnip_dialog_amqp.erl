@@ -217,7 +217,7 @@ presence_event(JObj) ->
     State = kz_json:get_value(<<"State">>, JObj),
     maybe_handle_presence_state(JObj, State).
 
--spec maybe_handle_presence_state(kz_json:object(), api_binary()) -> 'ok'.
+-spec maybe_handle_presence_state(kz_json:object(), api(binary())) -> 'ok'.
 maybe_handle_presence_state(_JObj, <<"online">>) -> 'ok';
 maybe_handle_presence_state(_JObj, <<"offline">>) -> 'ok';
 maybe_handle_presence_state(JObj, ?PRESENCE_HANGUP=State) ->

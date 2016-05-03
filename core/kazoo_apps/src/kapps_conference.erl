@@ -69,10 +69,10 @@
 -define(BRIDGE_PWD, kapps_config:get(<<"conferences">>, <<"bridge_password">>, kz_util:rand_hex_binary(12))).
 
 -record(kapps_conference, {
-          id :: api_binary()                                  %% the conference id
-          ,focus :: api_binary()                              %% the conference focus
-          ,profile = <<"undefined">> :: api_binary()          %% conference profile (config settings)
-          ,controller_q :: api_binary()                       %% the controller queue, for responses
+          id :: api(binary())                                  %% the conference id
+          ,focus :: api(binary())                              %% the conference focus
+          ,profile = <<"undefined">> :: api(binary())          %% conference profile (config settings)
+          ,controller_q :: api(binary())                       %% the controller queue, for responses
           ,bridge_username = ?BRIDGE_USER :: ne_binary()      %% the username used for a conference bridge
           ,bridge_password = ?BRIDGE_PWD :: ne_binary()       %% the password used for a conference bridge
           ,member_pins = [] :: ne_binaries()                  %% a list of pins for use by members
@@ -83,7 +83,7 @@
           ,moderator_join_muted = 'false' :: boolean()        %% should the moderator join muted
           ,moderator_join_deaf = 'false' :: boolean()         %% should the moderator join deaf
           ,max_participants = 0 :: non_neg_integer()          %% max number of participants
-          ,max_members_media :: api_binary()                  %% media to play instead of allowing new users to conference
+          ,max_members_media :: api(binary())                  %% media to play instead of allowing new users to conference
           ,require_moderator = 'false' :: boolean()           %% does the conference require a moderator
           ,wait_for_moderator = 'false' :: boolean()          %% can members wait for a moderator
           ,play_name_on_join = 'false' :: boolean()           %% should participants have their name played on join
@@ -244,17 +244,17 @@ update_fold({Fun, Value}, Conference) when is_function(Fun, 2) ->
 update_fold(Fun, Conference) when is_function(Fun, 1) ->
     Fun(Conference).
 
--spec id(kapps_conference:conference()) -> api_binary().
+-spec id(kapps_conference:conference()) -> api(binary()).
 id(#kapps_conference{id=Id}) -> Id.
 
--spec set_id(api_binary(), kapps_conference:conference()) -> kapps_conference:conference().
+-spec set_id(api(binary()), kapps_conference:conference()) -> kapps_conference:conference().
 set_id(Id, Conference) when is_binary(Id); Id =:= 'undefined' ->
     Conference#kapps_conference{id=Id}.
 
--spec profile(kapps_conference:conference()) -> api_binary().
+-spec profile(kapps_conference:conference()) -> api(binary()).
 profile(#kapps_conference{profile=P}) -> P.
 
--spec set_profile(api_binary(), kapps_conference:conference()) -> kapps_conference:conference().
+-spec set_profile(api(binary()), kapps_conference:conference()) -> kapps_conference:conference().
 set_profile(P, Conference) when is_binary(P); P =:= 'undefined' ->
     Conference#kapps_conference{profile=P}.
 
@@ -274,7 +274,7 @@ application_version(#kapps_conference{app_version=AppVersion}) ->
 set_application_version(AppVersion, #kapps_conference{}=Conference) when is_binary(AppVersion) ->
     Conference#kapps_conference{app_version=AppVersion}.
 
--spec focus(kapps_conference:conference()) -> api_binary().
+-spec focus(kapps_conference:conference()) -> api(binary()).
 focus(#kapps_conference{focus=Focus}) ->
     Focus.
 
@@ -282,7 +282,7 @@ focus(#kapps_conference{focus=Focus}) ->
 set_focus(Focus, Conference) when is_binary(Focus) ->
     Conference#kapps_conference{focus=Focus}.
 
--spec controller_queue(kapps_conference:conference()) -> api_binary().
+-spec controller_queue(kapps_conference:conference()) -> api(binary()).
 controller_queue(#kapps_conference{controller_q=ControllerQ}) ->
     ControllerQ.
 
@@ -372,7 +372,7 @@ max_participants(#kapps_conference{max_participants=MaxParticipants}) ->
 set_max_participants(MaxParticipants, Conference) when is_integer(MaxParticipants) ->
     Conference#kapps_conference{max_participants=MaxParticipants}.
 
--spec max_members_media(kapps_conference:conference()) -> api_binary().
+-spec max_members_media(kapps_conference:conference()) -> api(binary()).
 max_members_media(#kapps_conference{max_members_media = Value}) -> Value.
 
 -spec set_max_members_media(ne_binary(), kapps_conference:conference()) -> kapps_conference:conference().

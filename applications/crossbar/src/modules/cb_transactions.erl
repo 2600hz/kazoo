@@ -293,7 +293,7 @@ validate_debit(Context, Amount) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_transactions(cb_context:context(), gregorian_seconds(), gregorian_seconds(), api_binary()) ->
+-spec fetch_transactions(cb_context:context(), gregorian_seconds(), gregorian_seconds(), api(binary())) ->
                                 cb_context:context().
 
 fetch_transactions(Context, From, To, 'undefined') ->
@@ -336,7 +336,7 @@ fetch_transactions(Context, From, To, Reason) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_monthly_recurring(cb_context:context(), gregorian_seconds(), gregorian_seconds(), api_binary()) ->
+-spec fetch_monthly_recurring(cb_context:context(), gregorian_seconds(), gregorian_seconds(), api(binary())) ->
                                      cb_context:context().
 fetch_monthly_recurring(Context, From, To, Reason) ->
     case kz_bookkeeper_braintree:transactions(cb_context:account_id(Context), From, To) of

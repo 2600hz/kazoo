@@ -17,7 +17,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec decode_base64(ne_binary()) -> {api_binary(), ne_binary()}.
+-spec decode_base64(ne_binary()) -> {api(binary()), ne_binary()}.
 decode_base64(Base64) ->
     case binary:split(Base64, <<",">>) of
         %% http://tools.ietf.org/html/rfc4648
@@ -30,7 +30,7 @@ decode_base64(Base64) ->
             {'undefined', corrected_base64_decode(Base64)}
     end.
 
--spec get_content_type(ne_binary()) -> api_binary().
+-spec get_content_type(ne_binary()) -> api(binary()).
 get_content_type(MediaType) ->
     get_content_type(MediaType, kz_util:truncate_left_binary(MediaType, 6)).
 

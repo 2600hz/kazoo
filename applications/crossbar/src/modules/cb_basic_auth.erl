@@ -62,7 +62,7 @@ authenticate(Context, 'basic') ->
     end;
 authenticate(_Context, _TokenType) -> 'false'.
 
--spec check_basic_token(cb_context:context(), api_binary()) ->
+-spec check_basic_token(cb_context:context(), api(binary())) ->
                               'false' |
                               {'true' | 'halt', cb_context:context()}.
 check_basic_token(_Context, <<>>) -> 'false';
@@ -73,7 +73,7 @@ check_basic_token(Context, AuthToken) ->
         {'error', 'not_found'} -> maybe_check_credentials(Context, AuthToken)
     end.
 
--spec maybe_check_credentials(cb_context:context(), api_binary()) ->
+-spec maybe_check_credentials(cb_context:context(), api(binary())) ->
                               'false' |
                               {'true' | 'halt', cb_context:context()}.
 maybe_check_credentials(Context, AuthToken) ->
@@ -84,7 +84,7 @@ maybe_check_credentials(Context, AuthToken) ->
              'false'
     end.
 
--spec check_credentials(cb_context:context(), ne_binary(), api_binary()) ->
+-spec check_credentials(cb_context:context(), ne_binary(), api(binary())) ->
                               'false' |
                               {'true' | 'halt', cb_context:context()}.
 check_credentials(Context, AccountId, Credentials) ->

@@ -335,8 +335,8 @@ response_db_fatal(Context) ->
 %% Retrieves the account realm
 %% @end
 %%--------------------------------------------------------------------
--spec get_account_realm(ne_binary() | cb_context:context()) -> api_binary().
--spec get_account_realm(api_binary(), ne_binary()) -> api_binary().
+-spec get_account_realm(ne_binary() | cb_context:context()) -> api(binary()).
+-spec get_account_realm(api(binary()), ne_binary()) -> api(binary()).
 
 get_account_realm(AccountId) when is_binary(AccountId) ->
     get_account_realm(kz_util:format_account_id(AccountId, 'encoded'), AccountId);
@@ -376,7 +376,7 @@ flush_registrations(<<_/binary>> = Realm) ->
 flush_registrations(Context) ->
     flush_registrations(kz_util:get_account_realm(cb_context:account_id(Context))).
 
--spec flush_registration(api_binary(), ne_binary() | cb_context:context()) -> 'ok'.
+-spec flush_registration(api(binary()), ne_binary() | cb_context:context()) -> 'ok'.
 flush_registration('undefined', _Realm) ->
     lager:debug("did not flush registration: username is undefined");
 flush_registration(Username, <<_/binary>> = Realm) ->
@@ -399,7 +399,7 @@ flush_registration(Context) ->
     Realm = kz_util:get_account_realm(AccountId),
     maybe_flush_registration_on_password(Realm, OldDevice, NewDevice).
 
--spec maybe_flush_registration_on_password(api_binary(), kz_json:object(), kz_json:object()) -> 'ok'.
+-spec maybe_flush_registration_on_password(api(binary()), kz_json:object(), kz_json:object()) -> 'ok'.
 maybe_flush_registration_on_password(Realm, OldDevice, NewDevice) ->
     case kz_device:sip_password(OldDevice) =:= kz_device:sip_password(NewDevice) of
         'true' -> maybe_flush_registration_on_username(Realm, OldDevice, NewDevice);
@@ -408,7 +408,7 @@ maybe_flush_registration_on_password(Realm, OldDevice, NewDevice) ->
             flush_registration(kz_device:sip_username(OldDevice), Realm)
     end.
 
--spec maybe_flush_registration_on_username(api_binary(), kz_json:object(), kz_json:object()) -> 'ok'.
+-spec maybe_flush_registration_on_username(api(binary()), kz_json:object(), kz_json:object()) -> 'ok'.
 maybe_flush_registration_on_username(Realm, OldDevice, NewDevice) ->
     OldUsername = kz_device:sip_username(OldDevice),
 
@@ -420,7 +420,7 @@ maybe_flush_registration_on_username(Realm, OldDevice, NewDevice) ->
             flush_registration(NewUsername, Realm)
     end.
 
--spec maybe_flush_registration_on_ownerid(api_binary(), kz_json:object(), kz_json:object()) -> 'ok'.
+-spec maybe_flush_registration_on_ownerid(api(binary()), kz_json:object(), kz_json:object()) -> 'ok'.
 maybe_flush_registration_on_ownerid(Realm, OldDevice, NewDevice) ->
     OldOwnerId = kz_device:owner_id(OldDevice),
 
@@ -431,7 +431,7 @@ maybe_flush_registration_on_ownerid(Realm, OldDevice, NewDevice) ->
             flush_registration(kz_device:sip_username(OldDevice), Realm)
     end.
 
--spec maybe_flush_registration_on_enabled(api_binary(), kz_json:object(), kz_json:object()) -> 'ok'.
+-spec maybe_flush_registration_on_enabled(api(binary()), kz_json:object(), kz_json:object()) -> 'ok'.
 maybe_flush_registration_on_enabled(Realm, OldDevice, NewDevice) ->
     OldEnabled = kz_device:enabled(OldDevice),
 
@@ -657,7 +657,7 @@ replicate_account_definition(JObj) ->
 %% Flag all descendants of the account id as disabled
 %% @end
 %%--------------------------------------------------------------------
--spec disable_account(api_binary()) -> 'ok' | {'error', any()}.
+-spec disable_account(api(binary())) -> 'ok' | {'error', any()}.
 disable_account('undefined') -> 'ok';
 disable_account(AccountId) ->
     ViewOptions = [{'startkey', [AccountId]}
@@ -678,7 +678,7 @@ disable_account(AccountId) ->
 %% Flag all descendants of the account id as enabled
 %% @end
 %%--------------------------------------------------------------------
--spec enable_account(api_binary()) -> 'ok' | {'error', any()}.
+-spec enable_account(api(binary())) -> 'ok' | {'error', any()}.
 enable_account('undefined') -> ok;
 enable_account(AccountId) ->
     ViewOptions = [{'startkey', [AccountId]}
@@ -701,9 +701,9 @@ enable_account(AccountId) ->
 %%--------------------------------------------------------------------
 -spec response_auth(kz_json:object()) ->
                            kz_json:object().
--spec response_auth(kz_json:object(), api_binary()) ->
+-spec response_auth(kz_json:object(), api(binary())) ->
                            kz_json:object().
--spec response_auth(kz_json:object(), api_binary(), api_binary()) ->
+-spec response_auth(kz_json:object(), api(binary()), api(binary())) ->
                            kz_json:object().
 response_auth(JObj) ->
     response_auth(JObj
@@ -718,7 +718,7 @@ response_auth(JObj, AccountId) ->
 response_auth(JObj, AccountId, UserId) ->
     populate_resp(JObj, AccountId, UserId).
 
--spec populate_resp(kz_json:object(), api_binary(), api_binary()) -> kz_json:object().
+-spec populate_resp(kz_json:object(), api(binary()), api(binary())) -> kz_json:object().
 populate_resp(JObj, 'undefined', _UserId) -> JObj;
 populate_resp(JObj, AccountId, UserId) ->
     kz_json:set_values(
@@ -824,7 +824,7 @@ change_pvt_enabled(State, AccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_language(ne_binary()) -> ne_binary().
--spec get_language(ne_binary(), api_binary()) -> ne_binary().
+-spec get_language(ne_binary(), api(binary())) -> ne_binary().
 get_language(AccountId) ->
     case get_account_lang(AccountId) of
         {'ok', Lang} -> Lang;
@@ -873,7 +873,7 @@ get_account_lang(AccountId) ->
             'error'
     end.
 
--spec get_user_timezone(api_binary(), api_binary()) -> api_binary().
+-spec get_user_timezone(api(binary()), api(binary())) -> api(binary()).
 get_user_timezone(AccountId, 'undefined') ->
     get_account_timezone(AccountId);
 get_user_timezone(AccountId, UserId) ->
@@ -883,7 +883,7 @@ get_user_timezone(AccountId, UserId) ->
         {'error', _E} -> get_account_timezone(AccountId)
     end.
 
--spec get_account_timezone(api_binary()) -> api_binary().
+-spec get_account_timezone(api(binary())) -> api(binary()).
 get_account_timezone('undefined') ->
     'undefined';
 get_account_timezone(AccountId) ->
@@ -995,7 +995,7 @@ get_token_restrictions(AuthModule, AccountId, OwnerId) ->
             get_priv_level_restrictions(Restrictions, PrivLevel)
     end.
 
--spec get_priv_level(ne_binary(), ne_binary()) -> api_binary().
+-spec get_priv_level(ne_binary(), ne_binary()) -> api(binary()).
 %% for api_auth tokens we force "admin" priv_level
 get_priv_level(_AccountId, 'undefined') ->
     kapps_config:get(cb_token_restrictions:config_cat()
@@ -1240,7 +1240,7 @@ refresh_fs_xml(Realm, Doc) ->
     end.
 
 %% @public
--spec get_devices_by_owner(ne_binary(), api_binary()) -> ne_binaries().
+-spec get_devices_by_owner(ne_binary(), api(binary())) -> ne_binaries().
 get_devices_by_owner(_AccountDb, 'undefined') -> [];
 get_devices_by_owner(AccountDb, OwnerId) ->
     ViewOptions = [{'key', [OwnerId, <<"device">>]},

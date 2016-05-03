@@ -52,10 +52,10 @@
 
 -record(knm_phone_number, {number :: ne_binary()
                            ,number_db :: ne_binary()
-                           ,assign_to :: api_binary()
-                           ,assigned_to :: api_binary()
-                           ,prev_assigned_to :: api_binary()
-                           ,used_by :: api_binary()
+                           ,assign_to :: api(binary())
+                           ,assigned_to :: api(binary())
+                           ,prev_assigned_to :: api(binary())
+                           ,used_by :: api(binary())
                            ,features = kz_json:new() :: kz_json:object()
                            ,state :: ne_binary()
                            ,reserve_history = [] :: ne_binaries()
@@ -63,7 +63,7 @@
                            ,module_name :: ne_binary()
                            ,carrier_data = kz_json:new() :: kz_json:object()
                            ,region :: ne_binary()
-                           ,auth_by :: api_binary()
+                           ,auth_by :: api(binary())
                            ,dry_run = 'false' :: boolean()
                            ,locality :: kz_json:object()
                            ,doc = kz_json:new() :: kz_json:object()
@@ -434,11 +434,11 @@ set_number_db(N, NumberDb=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec assign_to(knm_phone_number()) -> api_binary().
+-spec assign_to(knm_phone_number()) -> api(binary()).
 assign_to(#knm_phone_number{assign_to=AssignTo}) ->
     AssignTo.
 
--spec set_assign_to(knm_phone_number(), api_binary()) -> knm_phone_number().
+-spec set_assign_to(knm_phone_number(), api(binary())) -> knm_phone_number().
 set_assign_to(N, 'undefined') ->
     N#knm_phone_number{assign_to = 'undefined'};
 set_assign_to(N, AssignTo=?MATCH_ACCOUNT_RAW(_)) ->
@@ -449,11 +449,11 @@ set_assign_to(N, AssignTo=?MATCH_ACCOUNT_RAW(_)) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec assigned_to(knm_phone_number()) -> api_binary().
+-spec assigned_to(knm_phone_number()) -> api(binary()).
 assigned_to(#knm_phone_number{assigned_to=AssignedTo}) ->
     AssignedTo.
 
--spec set_assigned_to(knm_phone_number(), api_binary()) -> knm_phone_number().
+-spec set_assigned_to(knm_phone_number(), api(binary())) -> knm_phone_number().
 set_assigned_to(N, 'undefined') ->
     N#knm_phone_number{assigned_to = 'undefined'};
 set_assigned_to(N, AssignedTo=?MATCH_ACCOUNT_RAW(_)) ->
@@ -464,7 +464,7 @@ set_assigned_to(N, AssignedTo=?MATCH_ACCOUNT_RAW(_)) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec prev_assigned_to(knm_phone_number()) -> api_binary().
+-spec prev_assigned_to(knm_phone_number()) -> api(binary()).
 prev_assigned_to(#knm_phone_number{prev_assigned_to=PrevAssignedTo}) ->
     PrevAssignedTo.
 
@@ -477,7 +477,7 @@ set_prev_assigned_to(N, PrevAssignedTo=?MATCH_ACCOUNT_RAW(_)) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec used_by(knm_phone_number()) -> api_binary().
+-spec used_by(knm_phone_number()) -> api(binary()).
 used_by(#knm_phone_number{used_by=UsedBy}) -> UsedBy.
 
 -spec set_used_by(knm_phone_number(), ne_binary()) -> knm_phone_number().
@@ -516,7 +516,7 @@ set_feature(N, Feature=?NE_BINARY, Data) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec state(knm_phone_number()) -> api_binary().
+-spec state(knm_phone_number()) -> api(binary()).
 state(#knm_phone_number{state=State}) -> State.
 
 -spec set_state(knm_phone_number(), ne_binary()) -> knm_phone_number().
@@ -566,7 +566,7 @@ set_ported_in(N, Ported) when is_boolean(Ported) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec module_name(knm_phone_number()) -> api_binary().
+-spec module_name(knm_phone_number()) -> api(binary()).
 module_name(#knm_phone_number{module_name = ?CARRIER_LOCAL_LEGACY}) -> ?CARRIER_LOCAL;
 module_name(#knm_phone_number{module_name = Name}) -> Name.
 
@@ -608,7 +608,7 @@ set_region(N, Region=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec auth_by(knm_phone_number()) -> api_binary().
+-spec auth_by(knm_phone_number()) -> api(binary()).
 auth_by(#knm_phone_number{auth_by=AuthBy}) -> AuthBy.
 
 -spec set_auth_by(knm_phone_number(), ne_binary()) -> knm_phone_number().

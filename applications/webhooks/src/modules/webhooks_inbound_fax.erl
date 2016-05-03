@@ -69,7 +69,7 @@ handle_event(JObj, _Props, <<"inbound_fax_error">>) ->
     Formatted = format_inbound_fax_event(JObj),
     maybe_send_event(?NAME, AccountId, Formatted).
 
--spec maybe_send_event(ne_binary(), api_binary(), kz_json:object()) -> 'ok'.
+-spec maybe_send_event(ne_binary(), api(binary()), kz_json:object()) -> 'ok'.
 maybe_send_event(_EventName, 'undefined', _JObj) -> 'ok';
 maybe_send_event(EventName, AccountId, JObj) ->
     case webhooks_util:find_webhooks(EventName, AccountId) of

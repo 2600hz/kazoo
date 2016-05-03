@@ -206,7 +206,7 @@ resource_server_ips(Collector, JObj) ->
         kz_json:is_true(<<"enabled">>, Gateway, 'false')
     ].
 
--spec add_trusted_objects(pid(), api_binary(), ne_binary(), ne_binary(), ne_binaries()) -> 'ok'.
+-spec add_trusted_objects(pid(), api(binary()), ne_binary(), ne_binary(), ne_binaries()) -> 'ok'.
 add_trusted_objects(_Collector, _AccountId, _AuthorizingId, _AuthorizingType, []) -> 'ok';
 add_trusted_objects(Collector, AccountId, AuthorizingId, AuthorizingType, [IP|IPs]) ->
     Props = [{<<"type">>, <<"allow">>}

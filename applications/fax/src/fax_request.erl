@@ -33,16 +33,16 @@
 -record(state, {
           call :: kapps_call:call()
          ,action = 'receive' :: 'receive' | 'transmit'
-         ,owner_id :: api_binary()
-         ,faxbox_id :: api_binary()
+         ,owner_id :: api(binary())
+         ,faxbox_id :: api(binary())
          ,fax_doc :: api_object()
          ,storage :: fax_storage()
-         ,fax_option :: api_binary()
+         ,fax_option :: api(binary())
          ,fax_result :: api_object()
          ,fax_notify = 'undefined' :: api_object()
          ,fax_store_count = 0 :: integer()
-         ,fax_id = 'undefined' :: api_binary()
-         ,account_id = 'undefined' :: api_binary()
+         ,fax_id = 'undefined' :: api(binary())
+         ,account_id = 'undefined' :: api(binary())
          ,fax_status :: api_object()
          ,page = 0  ::integer()
          ,status :: binary()
@@ -352,7 +352,7 @@ get_faxbox_notify_list(FaxBoxDoc, AccountDb) ->
 default_notify(FaxBoxDoc) ->
     kz_json:get_value([<<"notifications">>,<<"inbound">>], FaxBoxDoc, kz_json:new()).
 
--spec maybe_add_owner_to_notify_list(list(), api_binary()) -> kz_json:object().
+-spec maybe_add_owner_to_notify_list(list(), api(binary())) -> kz_json:object().
 maybe_add_owner_to_notify_list(List, 'undefined') ->
     kz_json:set_value([<<"email">>, <<"send_to">>], List, kz_json:new());
 maybe_add_owner_to_notify_list(List, OwnerEmail) ->
@@ -561,7 +561,7 @@ notify_failure(JObj, State) ->
     Reason = kz_json:get_value([<<"Application-Data">>,<<"Fax-Result">>], JObj),
     notify_failure(JObj, Reason, State).
 
--spec notify_failure(kz_json:object(), api_binary(), state()) -> 'ok'.
+-spec notify_failure(kz_json:object(), api(binary()), state()) -> 'ok'.
 notify_failure(JObj, 'undefined', State) ->
     notify_failure(JObj, <<"unknown error">>, State);
 notify_failure(JObj, Reason, #state{call=Call

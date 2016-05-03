@@ -77,7 +77,7 @@
                      ,binding_parts :: ne_binaries() | '_'
                      ,binding_responders = queue:new() :: queue:queue() | '_'
                       %% queue -> [#kz_responder{}]
-                     ,binding_prefix :: api_binary() | '$1' | '_'
+                     ,binding_prefix :: api(binary()) | '$1' | '_'
                     }).
 -type kz_binding() :: #kz_binding{}.
 -type kz_bindings() :: [kz_binding()].
@@ -424,7 +424,7 @@ add_optimized_binding(Binding, Responder, Pieces, Vsn, Action) ->
     Prefix = <<Vsn/binary, ".", Action/binary>>,
     add_binding(Binding, Responder, Pieces, Prefix).
 
--spec add_binding(ne_binary(), kz_responder(), ne_binaries(), api_binary()) -> boolean().
+-spec add_binding(ne_binary(), kz_responder(), ne_binaries(), api(binary())) -> boolean().
 add_binding(Binding, Responder, Pieces, Prefix) ->
     Bind = #kz_binding{binding=Binding
                        ,binding_parts=lists:reverse(Pieces)

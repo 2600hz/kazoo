@@ -109,7 +109,7 @@
                 ,callid :: ne_binary()
                 ,pool_ref :: server_ref()
                 ,defer_response :: api_object()
-                ,queue :: api_binary()
+                ,queue :: api(binary())
                 ,confirms = 'false' :: boolean()
                 ,flow = 'undefined' :: api(boolean())
                 ,acc = 'undefined' :: any()

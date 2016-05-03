@@ -195,7 +195,7 @@ authenticate(Context, 'x-auth-token') ->
     end;
 authenticate(_Context, _TokenType) -> 'false'.
 
--spec check_auth_token(cb_context:context(), api_binary(), boolean()) ->
+-spec check_auth_token(cb_context:context(), api(binary()), boolean()) ->
                               boolean() |
                               {'true', cb_context:context()}.
 check_auth_token(_Context, <<>>, MagicPathed) -> MagicPathed;

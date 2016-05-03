@@ -22,7 +22,7 @@ handle_req(JObj, _Props) ->
     Action = kz_json:get_value(<<"Event-Name">>, JObj),
     handle_doc(Action, Type, Db, Id).
 
--spec handle_doc(api_binary(), api_binary(), api_binary(), api_binary()) -> 'ok'.
+-spec handle_doc(api(binary()), api(binary()), api(binary()), api(binary())) -> 'ok'.
 handle_doc(?DOC_CREATED, <<"sms">>, Db, Id) ->
     doodle_api:handle_api_sms(Db, Id);
 handle_doc(_, <<"device">>, ?MATCH_ACCOUNT_RAW(AccountId), Id) ->

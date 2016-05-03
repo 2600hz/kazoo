@@ -82,19 +82,19 @@
           node :: atom()
          ,call_id :: ne_binary()
          ,command_q = queue:new() :: queue:queue()
-         ,current_app :: api_binary()
+         ,current_app :: api(binary())
          ,current_cmd :: api_object()
          ,start_time = os:timestamp() :: kz_now()
          ,is_call_up = 'true' :: boolean()
          ,is_node_up = 'true' :: boolean()
          ,keep_alive_ref :: api_reference()
          ,other_legs = [] :: ne_binaries()
-         ,last_removed_leg :: api_binary()
+         ,last_removed_leg :: api(binary())
          ,sanity_check_tref :: api_reference()
-         ,msg_id :: api_binary()
-         ,fetch_id :: api_binary()
-         ,controller_q :: api_binary()
-         ,control_q :: api_binary()
+         ,msg_id :: api(binary())
+         ,fetch_id :: api(binary())
+         ,controller_q :: api(binary())
+         ,control_q :: api(binary())
          ,initial_ccvs :: kz_json:object()
          ,node_down_tref :: api_reference()
          }).
@@ -112,7 +112,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(atom(), ne_binary(), api_binary(), api_binary(), kz_json:object()) -> startlink_ret().
+-spec start_link(atom(), ne_binary(), api(binary()), api(binary()), kz_json:object()) -> startlink_ret().
 start_link(Node, CallId, FetchId, ControllerQ, CCVs) ->
     %% We need to become completely decoupled from ecallmgr_call_events
     %% because the call_events process might have been spun up with A->B
@@ -152,7 +152,7 @@ hostname(Srv) ->
     [_, Hostname] = binary:split(kz_util:to_binary(Node), <<"@">>),
     Hostname.
 
--spec queue_name(api(pid())) -> api_binary().
+-spec queue_name(api(pid())) -> api(binary()).
 queue_name(Srv) when is_pid(Srv) -> gen_listener:queue_name(Srv);
 queue_name(_) -> 'undefined'.
 
@@ -598,7 +598,7 @@ force_queue_advance(#state{call_id=CallId
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_execute_complete(api_binary(), kz_json:object(), state()) -> state().
+-spec handle_execute_complete(api(binary()), kz_json:object(), state()) -> state().
 handle_execute_complete('undefined', _, State) -> State;
 handle_execute_complete(<<"noop">>, JObj, #state{msg_id=CurrMsgId}=State) ->
     NoopId = kz_json:get_value(<<"Application-Response">>, JObj),
@@ -637,7 +637,7 @@ handle_execute_complete(AppName, JObj, #state{current_app=CurrApp}=State) ->
         'false' -> State
     end.
 
--spec flush_group_id(queue:queue(), api_binary(), ne_binary()) -> queue:queue().
+-spec flush_group_id(queue:queue(), api(binary()), ne_binary()) -> queue:queue().
 flush_group_id(CmdQ, 'undefined', _) -> CmdQ;
 flush_group_id(CmdQ, GroupId, AppName) ->
     Filter = kz_json:from_list([{<<"Application-Name">>, AppName}
@@ -757,14 +757,14 @@ publish_leg_addition(Props) ->
                                              ),
     ecallmgr_call_events:publish_event(Event).
 
--spec maybe_add_cleg(kz_proplist(), api_binary(), api_binary(), state()) -> state().
+-spec maybe_add_cleg(kz_proplist(), api(binary()), api(binary()), state()) -> state().
 maybe_add_cleg(Props, OtherLeg, LegId, #state{other_legs=Legs}=State) ->
     case lists:member(OtherLeg, Legs) of
         'true' -> add_cleg(Props, OtherLeg, LegId, State);
         'false' -> State
     end.
 
--spec add_cleg(kz_proplist(), api_binary(), api_binary(), state()) -> state().
+-spec add_cleg(kz_proplist(), api(binary()), api(binary()), state()) -> state().
 add_cleg(_Props, _OtherLeg, 'undefined', State) -> State;
 add_cleg(Props, OtherLeg, LegId, #state{other_legs=Legs
                                         ,call_id=CallId
@@ -783,7 +783,7 @@ add_cleg(Props, OtherLeg, LegId, #state{other_legs=Legs
             State#state{other_legs=[LegId|Legs]}
     end.
 
--spec publish_cleg_addition(kz_proplist(), api_binary(), ne_binary()) -> 'ok'.
+-spec publish_cleg_addition(kz_proplist(), api(binary()), ne_binary()) -> 'ok'.
 publish_cleg_addition(Props, OtherLeg, CallId) ->
     Event = ecallmgr_call_events:create_event(<<"LEG_CREATED">>
                                               ,'undefined'
@@ -792,7 +792,7 @@ publish_cleg_addition(Props, OtherLeg, CallId) ->
     Event1 = replace_call_id(Event, OtherLeg, CallId, []),
     ecallmgr_call_events:publish_event(Event1).
 
--spec replace_call_id(kz_proplist(), api_binary(), ne_binary(), kz_proplist()) -> kz_proplist().
+-spec replace_call_id(kz_proplist(), api(binary()), ne_binary(), kz_proplist()) -> kz_proplist().
 replace_call_id([], _Call1, _Call2, Swap) -> Swap;
 replace_call_id([{Key, Call1}|T], Call1, Call2, Swap) ->
     replace_call_id(T, Call1, Call2, [{Key, Call2}|Swap]);

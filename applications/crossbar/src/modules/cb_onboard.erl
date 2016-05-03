@@ -608,7 +608,7 @@ notfy_new_account(JObj) ->
              ],
     kapi_notifications:publish_new_account(Notify).
 
--spec generate_username(api_binary(), api_binary(), api_binary()) ->
+-spec generate_username(api(binary()), api(binary()), api(binary())) ->
                                ne_binary().
 generate_username('undefined', 'undefined', _) ->
     kz_util:rand_hex_binary(3);

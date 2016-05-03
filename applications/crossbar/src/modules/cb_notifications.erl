@@ -594,8 +594,8 @@ accept_values(Context) ->
     Tunneled = cb_context:req_value(Context, <<"accept">>),
     media_values(AcceptValue, Tunneled).
 
--spec media_values(api_binary()) -> media_values().
--spec media_values(api_binary(), api_binary()) -> media_values().
+-spec media_values(api(binary())) -> media_values().
+-spec media_values(api(binary()), api(binary())) -> media_values().
 media_values(Media) ->
     media_values(Media, 'undefined').
 
@@ -1104,7 +1104,7 @@ normalize_available_port(Value, Acc, Context) ->
 system_config_notification_doc(DocId) ->
     kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, DocId).
 
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(api(binary()), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     ReqTemplate = clean_req_doc(cb_context:doc(Context)),
 

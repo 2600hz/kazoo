@@ -41,7 +41,7 @@
 -type api(T) :: 'undefined' | T.
 
 -type api_terms() :: kz_json:object() | kz_proplist().
--type api_binary() :: api(binary()).
+-type api(binary()) :: api(binary()).
 -type api_binaries() :: api([api(binary())]).
 -type api_object() :: api(kz_json:object()).
 -type api_objects() :: api(kz_json:objects()).
@@ -330,11 +330,11 @@
                   ,media_servers = [] :: media_servers() | '_'
                   ,last_heartbeat = kz_util:now_ms(kz_util:now()) :: api(pos_integer()) | '$3' | '_'
                   ,zone :: api(atom()) | '$2' | '_'
-                  ,broker :: api_binary() | '_'
+                  ,broker :: api(binary()) | '_'
                   ,used_memory = 0 :: non_neg_integer() | '_'
                   ,processes = 0 :: non_neg_integer() | '_'
                   ,ports = 0 :: non_neg_integer() | '_'
-                  ,version :: api_binary() | '_'
+                  ,version :: api(binary()) | '_'
                   ,channels = 0 :: non_neg_integer() | '_'
                   ,registrations = 0 :: non_neg_integer() | '_'
                  }).

@@ -221,9 +221,9 @@ change_syslog_log_level(L) ->
 %% @end
 %%--------------------------------------------------------------------
 -type account_format() :: 'unencoded' | 'encoded' | 'raw'.
--spec format_account_id(api_binary()) -> api_binary().
--spec format_account_id(api_binary(), account_format()) -> api_binary();
-                       (api_binary(), gregorian_seconds()) -> api_binary(). %% MODb!
+-spec format_account_id(api(binary())) -> api(binary()).
+-spec format_account_id(api(binary()), account_format()) -> api(binary());
+                       (api(binary()), gregorian_seconds()) -> api(binary()). %% MODb!
 
 format_account_id(Account) ->
     format_account_id(Account, 'raw').
@@ -296,8 +296,8 @@ raw_account_modb(?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, Year, Month)) ->
 %% Note: accepts MODbs as well as account IDs/DBs
 %% @end
 %%--------------------------------------------------------------------
--spec format_account_id(api_binary(), kz_year() | ne_binary(), kz_month() | ne_binary()) ->
-                               api_binary().
+-spec format_account_id(api(binary()), kz_year() | ne_binary(), kz_month() | ne_binary()) ->
+                               api(binary()).
 format_account_id('undefined', _Year, _Month) -> 'undefined';
 format_account_id(AccountId, Year, Month) when not is_integer(Year) ->
     format_account_id(AccountId, to_integer(Year), Month);
@@ -315,10 +315,10 @@ format_account_id(Account, Year, Month) when is_integer(Year),
 %% Note: accepts MODbs as well as account IDs/DBs
 %% @end
 %%--------------------------------------------------------------------
--spec format_account_mod_id(api_binary()) -> api_binary().
--spec format_account_mod_id(api_binary(), gregorian_seconds() | kz_now()) -> api_binary().
--spec format_account_mod_id(api_binary(), kz_year() | ne_binary(), kz_month() | ne_binary()) ->
-                                   api_binary().
+-spec format_account_mod_id(api(binary())) -> api(binary()).
+-spec format_account_mod_id(api(binary()), gregorian_seconds() | kz_now()) -> api(binary()).
+-spec format_account_mod_id(api(binary()), kz_year() | ne_binary(), kz_month() | ne_binary()) ->
+                                   api(binary()).
 format_account_mod_id(Account) ->
     format_account_mod_id(Account, os:timestamp()).
 
@@ -339,7 +339,7 @@ format_account_mod_id(AccountId, Year, Month) ->
 %% Note: accepts MODbs as well as account IDs/DBs
 %% @end
 %%--------------------------------------------------------------------
--spec format_account_db(api_binary()) -> api_binary().
+-spec format_account_db(api(binary())) -> api(binary()).
 format_account_db(AccountId) ->
     format_account_id(AccountId, 'encoded').
 
@@ -380,7 +380,7 @@ pad_month(Month) ->
 %% This can possibly return an empty binary.
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_account_name(api_binary()) -> api_binary().
+-spec normalize_account_name(api(binary())) -> api(binary()).
 normalize_account_name('undefined') -> 'undefined';
 normalize_account_name(AccountName) ->
     << <<Char>>
@@ -397,8 +397,8 @@ normalize_account_name(AccountName) ->
 %% its own hierarchy.
 %% @end
 %%--------------------------------------------------------------------
--spec is_in_account_hierarchy(api_binary(), api_binary()) -> boolean().
--spec is_in_account_hierarchy(api_binary(), api_binary(), boolean()) -> boolean().
+-spec is_in_account_hierarchy(api(binary()), api(binary())) -> boolean().
+-spec is_in_account_hierarchy(api(binary()), api(binary()), boolean()) -> boolean().
 
 is_in_account_hierarchy(CheckFor, InAccount) ->
     is_in_account_hierarchy(CheckFor, InAccount, 'false').
@@ -435,7 +435,7 @@ is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_system_admin(api_binary()) -> boolean().
+-spec is_system_admin(api(binary())) -> boolean().
 is_system_admin('undefined') -> 'false';
 is_system_admin(Account) ->
     case kz_account:fetch(Account) of
@@ -458,7 +458,7 @@ is_system_db(Db) ->
 %% 'false'.
 %% @end
 %%--------------------------------------------------------------------
--spec is_account_enabled(api_binary()) -> boolean().
+-spec is_account_enabled(api(binary())) -> boolean().
 is_account_enabled('undefined') -> 'false';
 is_account_enabled(Account) ->
     case kz_account:fetch(Account) of
@@ -469,7 +469,7 @@ is_account_enabled(Account) ->
             kz_account:is_enabled(JObj)
     end.
 
--spec is_account_expired(api_binary()) -> 'false' | {'true', gregorian_seconds()}.
+-spec is_account_expired(api(binary())) -> 'false' | {'true', gregorian_seconds()}.
 is_account_expired('undefined') -> 'false';
 is_account_expired(Account) ->
     case kz_account:fetch(Account) of
@@ -569,8 +569,8 @@ account_update(Account, UpdateFun) ->
 %% Retrieves the account realm
 %% @end
 %%--------------------------------------------------------------------
--spec get_account_realm(api_binary()) -> api_binary().
--spec get_account_realm(api_binary(), ne_binary()) -> api_binary().
+-spec get_account_realm(api(binary())) -> api(binary()).
+-spec get_account_realm(api(binary()), ne_binary()) -> api(binary()).
 get_account_realm(Account) ->
     get_account_realm(format_account_db(Account), format_account_id(Account)).
 
@@ -673,7 +673,7 @@ randomize_list(T, List) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec put_callid(kz_json:object() | kz_proplist() | ne_binary() | atom()) ->
-                        api_binary().
+                        api(binary()).
 put_callid(?NE_BINARY = CallId) ->
     lager:md([{'callid', CallId}]), erlang:put('callid', CallId);
 put_callid(Atom) when is_atom(Atom) ->
@@ -744,7 +744,7 @@ startup() ->
 %% Given an object, extract the category and name into a tuple
 %% @end
 %%--------------------------------------------------------------------
--spec get_event_type(kz_json:object() | kz_proplist()) -> {api_binary(), api_binary()}.
+-spec get_event_type(kz_json:object() | kz_proplist()) -> {api(binary()), api(binary())}.
 get_event_type(Props) when is_list(Props) ->
     {props:get_value(<<"Event-Category">>, Props)
      ,props:get_value(<<"Event-Name">>, Props)
@@ -760,7 +760,7 @@ get_event_type(JObj) ->
 %% Generic helper to get the text value of a XML path
 %% @end
 %%--------------------------------------------------------------------
--spec get_xml_value(kz_deeplist(), xml_el() | string()) -> api_binary().
+-spec get_xml_value(kz_deeplist(), xml_el() | string()) -> api(binary()).
 get_xml_value(Paths, Xml) ->
     Path = lists:flatten(Paths),
     try xmerl_xpath:string(Path, Xml) of
@@ -773,7 +773,7 @@ get_xml_value(Paths, Xml) ->
     end.
 
 %% @private
--spec extract_xml_values(xml_els()) -> api_binary().
+-spec extract_xml_values(xml_els()) -> api(binary()).
 extract_xml_values([]) -> 'undefined';
 extract_xml_values(Elements) ->
     Values = [case Element of
@@ -878,7 +878,7 @@ uri_encode(String) when is_list(String) ->
 uri_encode(Atom) when is_atom(Atom) ->
     to_atom(http_uri:encode(to_list(Atom)), 'true').
 
--spec resolve_uri(nonempty_string() | api_binary(), nonempty_string() | ne_binary()) -> ne_binary().
+-spec resolve_uri(nonempty_string() | api(binary()), nonempty_string() | ne_binary()) -> ne_binary().
 resolve_uri(Raw, 'undefined') -> to_binary(Raw);
 resolve_uri(_Raw, <<"http", _/binary>> = Abs) -> Abs;
 resolve_uri(<<_/binary>> = RawPath, <<_/binary>> = Relative) ->
@@ -1096,7 +1096,7 @@ is_proplist(_) -> 'false'.
 -spec identity(X) -> X.
 identity(X) -> X.
 
--spec to_lower_binary(any()) -> api_binary().
+-spec to_lower_binary(any()) -> api(binary()).
 to_lower_binary('undefined') -> 'undefined';
 to_lower_binary(Bin) when is_binary(Bin) -> << <<(to_lower_char(B))>> || <<B>> <= Bin>>;
 to_lower_binary(Else) -> to_lower_binary(to_binary(Else)).
@@ -1121,7 +1121,7 @@ to_lower_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % from st
 to_lower_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
 to_lower_char(C) -> C.
 
--spec to_upper_binary(any()) -> api_binary().
+-spec to_upper_binary(any()) -> api(binary()).
 to_upper_binary('undefined') -> 'undefined';
 to_upper_binary(Bin) when is_binary(Bin) -> << <<(to_upper_char(B))>> || <<B>> <= Bin>>;
 to_upper_binary(Else) -> to_upper_binary(to_binary(Else)).

@@ -146,11 +146,11 @@ get_rate_limits_id_for_thing(Context, ThingId) ->
             'undefined'
     end.
 
--spec get_id(kz_json:object()) -> api_binary().
+-spec get_id(kz_json:object()) -> api(binary()).
 get_id(JObj) ->
     kz_doc:id(JObj).
 
--spec validate_get_rate_limits(cb_context:context(), api_binary()) -> cb_context:context().
+-spec validate_get_rate_limits(cb_context:context(), api(binary())) -> cb_context:context().
 validate_get_rate_limits(Context, 'undefined') ->
     crossbar_util:response_faulty_request(Context);
 validate_get_rate_limits(Context, ThingId) ->
@@ -165,7 +165,7 @@ validate_get_rate_limits(Context, ThingId) ->
             crossbar_util:response('fatal', <<"data collection error">>, 503, Context)
     end.
 
--spec validate_delete_rate_limits(cb_context:context(), api_binary()) -> cb_context:context().
+-spec validate_delete_rate_limits(cb_context:context(), api(binary())) -> cb_context:context().
 validate_delete_rate_limits(Context, 'undefined') ->
     crossbar_util:response_faulty_request(Context);
 validate_delete_rate_limits(Context, ThingId) ->
@@ -182,7 +182,7 @@ validate_delete_rate_limits(Context, ThingId) ->
 
 -spec validate_set_rate_limits(cb_context:context()) ->
                                     cb_context:context().
--spec validate_set_rate_limits(cb_context:context(), api_binary()) ->
+-spec validate_set_rate_limits(cb_context:context(), api(binary())) ->
                                     cb_context:context().
 validate_set_rate_limits(Context) ->
     lager:debug("rate limits data is valid, setting on thing"),
@@ -216,7 +216,7 @@ set_pvt_fields(Context) ->
             ],
     cb_context:set_doc(Context, kz_json:set_values(Props, cb_context:doc(Context))).
 
--spec query_name(ne_binary(), kz_json:object()) -> api_binary().
+-spec query_name(ne_binary(), kz_json:object()) -> api(binary()).
 query_name(<<"account">>, JObj) ->
     kz_account:realm(JObj);
 query_name(<<"device">>, JObj) ->

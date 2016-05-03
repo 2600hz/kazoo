@@ -52,15 +52,15 @@
 
 -record(bridge_endpoint, {invite_format = <<"username">> :: ne_binary()
                           ,endpoint_type = <<"sip">> :: ne_binary()
-                          ,ip_address :: api_binary()
-                          ,username :: api_binary()
-                          ,user :: api_binary()
-                          ,realm :: api_binary()
-                          ,number :: api_binary()
-                          ,route :: api_binary()
-                          ,proxy_address :: api_binary()
-                          ,forward_address :: api_binary()
-                          ,transport :: api_binary()
+                          ,ip_address :: api(binary())
+                          ,username :: api(binary())
+                          ,user :: api(binary())
+                          ,realm :: api(binary())
+                          ,number :: api(binary())
+                          ,route :: api(binary())
+                          ,proxy_address :: api(binary())
+                          ,forward_address :: api(binary())
+                          ,transport :: api(binary())
                           ,span = <<"1">> :: ne_binary()
                           ,channel_selection = <<"a">> :: ne_binary()
                           ,interface = <<"RR">> :: ne_binary() % for Skype
@@ -171,7 +171,7 @@ get_sip_to(Props, _) ->
 
 %% retrieves the sip address for the 'from' field
 -spec get_sip_from(kz_proplist()) -> ne_binary().
--spec get_sip_from(kz_proplist(), api_binary()) -> ne_binary().
+-spec get_sip_from(kz_proplist(), api(binary())) -> ne_binary().
 get_sip_from(Props) ->
     get_sip_from(Props, kzd_freeswitch:call_direction(Props)).
 
@@ -229,11 +229,11 @@ get_sip_request(Props) ->
                                     ], Props, ?DEFAULT_REALM), <<"@">>, ['global'])),
     <<User/binary, "@", Realm/binary>>.
 
--spec get_orig_ip(kz_proplist()) -> api_binary().
+-spec get_orig_ip(kz_proplist()) -> api(binary()).
 get_orig_ip(Prop) ->
     props:get_first_defined([<<"X-AUTH-IP">>, <<"ip">>], Prop).
 
--spec get_orig_port(kz_proplist()) -> api_binary().
+-spec get_orig_port(kz_proplist()) -> api(binary()).
 get_orig_port(Prop) ->
     case props:get_first_defined([<<"X-AUTH-PORT">>, <<"port">>], Prop) of
         <<>> -> 'undefined';
@@ -253,7 +253,7 @@ get_sip_interface_from_db([FsPath]) ->
             Else
     end.
 
--spec map_fs_path_to_sip_profile(ne_binary(), kz_json:object()) -> api_binary().
+-spec map_fs_path_to_sip_profile(ne_binary(), kz_json:object()) -> api(binary()).
 map_fs_path_to_sip_profile(FsPath, NetworkMap) ->
     SIPInterfaceObj = kz_json:filter(fun({K, _}) ->
                                kz_network_utils:verify_cidr(FsPath, K)
@@ -302,7 +302,7 @@ maybe_update_referred_ccv(Props, CCVs) ->
         )
      ).
 
--spec update_referred_by_ccv(api_binary(), kz_proplist()) -> kz_proplist().
+-spec update_referred_by_ccv(api(binary()), kz_proplist()) -> kz_proplist().
 update_referred_by_ccv('undefined', CCVs) -> props:delete(<<"Referred-By">>, CCVs);
 update_referred_by_ccv(ReferredBy, CCVs) ->
     props:set_value(
@@ -311,7 +311,7 @@ update_referred_by_ccv(ReferredBy, CCVs) ->
       ,CCVs
      ).
 
--spec update_referred_to_ccv(api_binary(), kz_proplist()) -> kz_proplist().
+-spec update_referred_to_ccv(api(binary()), kz_proplist()) -> kz_proplist().
 update_referred_to_ccv('undefined', CCVs) -> props:delete(<<"Referred-To">>, CCVs);
 update_referred_to_ccv(ReferredTo, CCVs) ->
     props:set_value(
@@ -336,7 +336,7 @@ fix_value("Event-Date-Timestamp", TStamp) ->
     kz_util:microseconds_to_seconds(kz_util:to_integer(TStamp));
 fix_value(_K, V) -> V.
 
--spec unserialize_fs_array(api_binary()) -> ne_binaries().
+-spec unserialize_fs_array(api(binary())) -> ne_binaries().
 unserialize_fs_array('undefined') -> [];
 unserialize_fs_array(<<"ARRAY::", Serialized/binary>>) ->
     binary:split(Serialized, <<"|:">>, ['global']);
@@ -368,7 +368,7 @@ is_node_up(Node, UUID) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_fs_kv(ne_binary(), ne_binary()) -> binary().
--spec get_fs_kv(ne_binary(), ne_binary(), api_binary()) -> binary().
+-spec get_fs_kv(ne_binary(), ne_binary(), api(binary())) -> binary().
 get_fs_kv(Key, Value) ->
     get_fs_kv(Key, Value, 'undefined').
 
@@ -851,7 +851,7 @@ create_masquerade_event(Application, EventName, Boolean) ->
 -spec media_path(ne_binary(), ne_binary(), kz_json:object()) -> ne_binary().
 media_path(MediaName, UUID, JObj) -> media_path(MediaName, 'new', UUID, JObj).
 
--spec media_path(api_binary(), media_types(), ne_binary(), kz_json:object()) -> ne_binary().
+-spec media_path(api(binary()), media_types(), ne_binary(), kz_json:object()) -> ne_binary().
 media_path('undefined', _Type, _UUID, _) -> <<"silence_stream://5">>;
 media_path(<<>>, _Type, _UUID, _) -> <<"silence_stream://5">>;
 media_path(MediaName, Type, UUID, JObj) when not is_binary(MediaName) ->
@@ -1101,7 +1101,7 @@ get_dial_separator(JObj, Endpoints) ->
                        ,Endpoints
                       ).
 
--spec fix_contact(api_binary() | list(), ne_binary(), ne_binary()) -> api_binary().
+-spec fix_contact(api(binary()) | list(), ne_binary(), ne_binary()) -> api(binary()).
 fix_contact('undefined', _, _) -> 'undefined';
 fix_contact(<<";", _/binary>> = OriginalContact, Username, Realm) ->
     fix_contact(<<"sip:", Username/binary, "@", Realm/binary, OriginalContact/binary>>, Username, Realm);

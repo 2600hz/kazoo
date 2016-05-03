@@ -64,7 +64,7 @@ get_string(Category, Key, Default, Node) ->
 %% @public
 %% @doc Get a configuration key for a given category and cast it as a binary
 %%-----------------------------------------------------------------------------
--spec get_binary(config_category(), config_key()) -> api_binary().
+-spec get_binary(config_category(), config_key()) -> api(binary()).
 -spec get_binary(config_category(), config_key(), Default) -> binary() | Default.
 -spec get_binary(config_category(), config_key(), Default, ne_binary()) -> binary() | Default.
 
@@ -187,7 +187,7 @@ get_non_empty(Category, Key, Default, Node) ->
         'false' -> Value
     end.
 
--spec get_ne_binary(config_category(), config_key()) -> api_binary().
+-spec get_ne_binary(config_category(), config_key()) -> api(binary()).
 -spec get_ne_binary(config_category(), config_key(), Default) -> ne_binary() | Default.
 -spec get_ne_binary(config_category(), config_key(), Default, ne_binary()) -> ne_binary() | Default.
 

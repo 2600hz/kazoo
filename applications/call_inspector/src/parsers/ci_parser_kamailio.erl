@@ -324,7 +324,7 @@ rm_newline(Line0) ->
     [Line, <<>>] = binary:split(Line0, <<"\n">>),
     Line.
 
--spec label(ne_binary()) -> api_binary().
+-spec label(ne_binary()) -> api(binary()).
 label(<<"received internal reply ", Label/binary>>) -> Label;
 label(<<"received ", _Protocol:3/binary, " request ", Label/binary>>) -> Label;
 label(<<"external reply ", Label/binary>>) -> Label;
@@ -385,7 +385,7 @@ to_port([_Datum|Data], Default) ->
     to(Data, Default).
 
 
--spec c_seq(ne_binaries()) -> api_binary().
+-spec c_seq(ne_binaries()) -> api(binary()).
 c_seq([<<"cseq ", CSeq/binary>>|_Data]) -> CSeq;
 c_seq([]) -> 'undefined';
 c_seq([_Datum|Data]) -> c_seq(Data).

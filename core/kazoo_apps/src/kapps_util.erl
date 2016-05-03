@@ -533,7 +533,7 @@ update_views(Db, Views, Remove) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_aggregate_device(ne_binary(), api_binary()) -> 'ok'.
+-spec add_aggregate_device(ne_binary(), api(binary())) -> 'ok'.
 add_aggregate_device(_, 'undefined') -> 'ok';
 add_aggregate_device(Db, Device) ->
     DeviceId = kz_doc:id(Device),
@@ -553,7 +553,7 @@ add_aggregate_device(Db, Device) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec rm_aggregate_device(ne_binary(), api_object() | api_binary()) -> 'ok'.
+-spec rm_aggregate_device(ne_binary(), api_object() | api(binary())) -> 'ok'.
 rm_aggregate_device(_, 'undefined') -> 'ok';
 rm_aggregate_device(Db, DeviceId) when is_binary(DeviceId) ->
     case kz_datamgr:open_doc(?KZ_SIP_DB, DeviceId) of
@@ -651,7 +651,7 @@ get_destination(JObj, []) ->
      ,kz_json:get_value(<<"To-Realm">>, JObj)
     }.
 
--spec try_split(api_binary()) ->
+-spec try_split(api(binary())) ->
                        api({ne_binary(), ne_binary()}).
 -spec try_split(ne_binary(), kz_json:object()) ->
                        api({ne_binary(), ne_binary()}).

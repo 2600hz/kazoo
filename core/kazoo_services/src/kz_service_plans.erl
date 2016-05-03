@@ -25,7 +25,7 @@
 
 -include("kazoo_services.hrl").
 
--record(kz_service_plans, {vendor_id :: api_binary()
+-record(kz_service_plans, {vendor_id :: api(binary())
                            ,plans = [] :: kzd_service_plan:docs()
                           }).
 
@@ -53,7 +53,7 @@ from_service_json(ServicesJObj) ->
     ResellerId = find_reseller_id(ServicesJObj),
     get_plans(PlanIds, ResellerId, ServicesJObj).
 
--spec find_reseller_id(kzd_services:doc()) -> api_binary().
+-spec find_reseller_id(kzd_services:doc()) -> api(binary()).
 find_reseller_id(ServicesJObj) ->
     case kzd_services:reseller_id(ServicesJObj) of
         'undefined' -> kz_json:get_value(<<"reseller_id">>, ServicesJObj);

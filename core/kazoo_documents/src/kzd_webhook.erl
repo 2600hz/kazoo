@@ -56,7 +56,7 @@ enable(Hook) ->
                      ).
 
 -spec disable(doc()) -> doc().
--spec disable(doc(), api_binary()) -> doc().
+-spec disable(doc(), api(binary())) -> doc().
 disable(Hook) ->
     disable(Hook, 'undefined').
 disable(Hook, Reason) ->
@@ -68,7 +68,7 @@ disable(Hook, Reason) ->
       ,Hook
      ).
 
--spec disabled_message(doc()) -> api_binary().
+-spec disabled_message(doc()) -> api(binary()).
 -spec disabled_message(doc(), Default) -> ne_binary() | Default.
 disabled_message(Hook) ->
     disabled_message(Hook, 'undefined').
@@ -81,13 +81,13 @@ is_auto_disabled(Hook) ->
         andalso disabled_message(Hook) =/= 'undefined'.
 
 -spec type() -> ne_binary().
--spec type(doc()) -> api_binary().
+-spec type(doc()) -> api(binary()).
 type() -> ?TYPE.
 
 type(Hook) ->
     kz_doc:type(Hook).
 
--spec name(doc()) -> api_binary().
+-spec name(doc()) -> api(binary()).
 -spec name(doc(), Default) -> ne_binary() | Default.
 name(Hook) ->
     name(Hook, 'undefined').
@@ -98,7 +98,7 @@ name(Hook, Default) ->
 set_name(Hook, Name) ->
     kz_json:set_value(?NAME, Name, Hook).
 
--spec uri(doc()) -> api_binary().
+-spec uri(doc()) -> api(binary()).
 -spec uri(doc(), Default) -> ne_binary() | Default.
 uri(Hook) ->
     uri(Hook, 'undefined').
@@ -109,7 +109,7 @@ uri(Hook, Default) ->
 set_uri(Hook, Uri) ->
     kz_json:set_value(?URI, Uri, Hook).
 
--spec event(doc()) -> api_binary().
+-spec event(doc()) -> api(binary()).
 -spec event(doc(), Default) -> ne_binary() | Default.
 event(Hook) ->
     event(Hook, 'undefined').
@@ -132,7 +132,7 @@ verb(Hook, Default) ->
         Verb -> safe_verbs(kz_util:to_lower_binary(Verb), Default)
     end.
 
--spec safe_verbs(api_binary(), http_verb() | Default) ->
+-spec safe_verbs(api(binary()), http_verb() | Default) ->
                         http_verb() | Default.
 safe_verbs(<<"get">>, _Default) -> 'get';
 safe_verbs(<<"post">>, _Default) -> 'post';

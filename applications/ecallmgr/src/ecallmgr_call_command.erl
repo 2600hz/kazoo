@@ -555,21 +555,21 @@ get_fs_app(_Node, _UUID, _JObj, _App) ->
 %% @end
 %%--------------------------------------------------------------------
 
--spec lookup_redirect_server(kz_json:object()) -> api_binary().
+-spec lookup_redirect_server(kz_json:object()) -> api(binary()).
 lookup_redirect_server(JObj) ->
     case kz_json:get_value(<<"Redirect-Server">>, JObj) of
         'undefined' -> fixup_redirect_node(kz_json:get_value(<<"Redirect-Node">>, JObj));
         Server -> Server
     end.
 
--spec fixup_redirect_node(api_binary()) -> api_binary().
+-spec fixup_redirect_node(api(binary())) -> api(binary()).
 fixup_redirect_node('undefined') ->
     'undefined';
 fixup_redirect_node(Node) ->
     SipUrl = ecallmgr_fs_node:sip_url(Node),
     binary:replace(SipUrl, <<"mod_sofia@">>, <<>>).
 
--spec maybe_add_redirect_header(atom(), ne_binary(), api_binary()) -> 'ok'.
+-spec maybe_add_redirect_header(atom(), ne_binary(), api(binary())) -> 'ok'.
 maybe_add_redirect_header(_Node, _UUID, 'undefined') -> 'ok';
 maybe_add_redirect_header(Node, UUID, RedirectServer) ->
     lager:debug("Set X-Redirect-Server to ~s", [RedirectServer]),
@@ -845,7 +845,7 @@ get_eavesdrop_app(Node, UUID, JObj, Target) ->
     ecallmgr_fs_command:export(Node, UUID, Exports),
     {<<"eavesdrop">>, Target}.
 
--type set_headers() :: kz_proplist() | [{ne_binary(), api_binary(), ne_binary()},...].
+-type set_headers() :: kz_proplist() | [{ne_binary(), api(binary()), ne_binary()},...].
 -spec build_set_args(set_headers(), kz_json:object()) ->
                             kz_proplist().
 -spec build_set_args(set_headers(), kz_json:object(), kz_proplist()) ->
@@ -1068,7 +1068,7 @@ chk_store_vm_result(Res, Node, UUID, _, JobId, Reply) ->
     lager:debug("chk_store_result ~p : ~p : ~p", [Res, JobId, Reply]),
     send_store_vm_call_event(Node, UUID, <<"failure">>).
 
--spec send_store_call_event(atom(), ne_binary(), kz_json:object() | ne_binary() | {ne_binary(), api_binary()}) -> 'ok'.
+-spec send_store_call_event(atom(), ne_binary(), kz_json:object() | ne_binary() | {ne_binary(), api(binary())}) -> 'ok'.
 send_store_call_event(Node, UUID, {MediaTransResults, File}) ->
     ChannelProps =
         case ecallmgr_fs_channel:channel_data(Node, UUID) of
@@ -1093,7 +1093,7 @@ maybe_add_ccvs(BaseProps, ChannelProps) ->
                            )
     end.
 
--spec build_base_store_event_props(ne_binary(), kz_proplist(), ne_binary(), api_binary(), ne_binary()) -> kz_proplist().
+-spec build_base_store_event_props(ne_binary(), kz_proplist(), ne_binary(), api(binary()), ne_binary()) -> kz_proplist().
 build_base_store_event_props(UUID, ChannelProps, MediaTransResults, File, App) ->
     Timestamp = kz_util:to_binary(kz_util:current_tstamp()),
     props:filter_undefined(
@@ -1337,7 +1337,7 @@ play_bridged(UUID, JObj, F) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_terminators(api_binary() | ne_binaries() | kz_json:object()) ->
+-spec get_terminators(api(binary()) | ne_binaries() | kz_json:object()) ->
                              api({ne_binary(), ne_binary()}).
 get_terminators('undefined') -> 'undefined';
 get_terminators(Ts) when is_binary(Ts) -> get_terminators([Ts]);
@@ -1353,7 +1353,7 @@ get_terminators([_|_]=Ts) ->
     end;
 get_terminators(JObj) -> get_terminators(kz_json:get_ne_value(<<"Terminators">>, JObj)).
 
--spec set_terminators(atom(), ne_binary(), api_binary() | ne_binaries()) ->
+-spec set_terminators(atom(), ne_binary(), api(binary()) | ne_binaries()) ->
                              ecallmgr_util:send_cmd_ret().
 set_terminators(Node, UUID, Ts) ->
     case get_terminators(Ts) of

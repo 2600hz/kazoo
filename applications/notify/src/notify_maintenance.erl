@@ -268,7 +268,7 @@ module_exists(Module) ->
 %%--------------------------------------------------------------------
 -spec compare_template_system_config(kz_proplist()) -> 'ok'.
 -spec compare_template_system_config(kz_proplist(), kz_json:object()) -> 'ok'.
--spec compare_template_system_config(api_binaries(), api_binary(), api_binary()) ->
+-spec compare_template_system_config(api_binaries(), api(binary()), api(binary())) ->
                                             'default' | 'file' |
                                             'doc' | 'ok'.
 

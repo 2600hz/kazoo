@@ -167,7 +167,7 @@ get_sip_usernames_for_target(TargetId, TargetType, Call) ->
        || DeviceId <- Targets
       ]).
 
--spec get_device_sip_username(ne_binary(), ne_binary()) -> api_binary().
+-spec get_device_sip_username(ne_binary(), ne_binary()) -> api(binary()).
 get_device_sip_username(AccountDb, DeviceId) ->
     {'ok', JObj} = kz_datamgr:open_cache_doc(AccountDb, DeviceId),
     kz_device:sip_username(JObj).

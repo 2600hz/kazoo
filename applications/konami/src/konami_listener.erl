@@ -109,7 +109,7 @@ handle_channel_create(JObj, _Props) ->
                           ,Call
                          ).
 
--spec maybe_start_metaflows(api_binary(), api_binary(), api_binary(), api_binary(), kapps_call:call()) -> 'ok'.
+-spec maybe_start_metaflows(api(binary()), api(binary()), api(binary()), api(binary()), kapps_call:call()) -> 'ok'.
 maybe_start_metaflows('undefined', _AuthorizingType, _AuthorizingId, _OwnerId, _CallId) ->
     lager:debug("no account id for ~s(~s) owned by ~s", [_AuthorizingId, _AuthorizingType, _OwnerId]);
 maybe_start_metaflows(AccountId, <<"device">>, DeviceId, OwnerId, CallId) ->
@@ -123,7 +123,7 @@ maybe_start_metaflows(_AccountId, _AuthorizingType, _AuthorizingId, _OwnerId, _C
                 ,[_AccountId, _AuthorizingId, _AuthorizingType, _OwnerId]
                ).
 
--spec maybe_start_device_metaflows(ne_binary(), api_binary(), kapps_call:call()) -> 'ok'.
+-spec maybe_start_device_metaflows(ne_binary(), api(binary()), kapps_call:call()) -> 'ok'.
 maybe_start_device_metaflows(_AccountId, 'undefined', _Call) -> 'ok';
 maybe_start_device_metaflows(AccountId, DeviceId, Call) ->
     {'ok', Endpoint} = kz_datamgr:open_cache_doc(kapps_call:account_db(Call)
@@ -131,7 +131,7 @@ maybe_start_device_metaflows(AccountId, DeviceId, Call) ->
                                                ),
     maybe_start_metaflows(AccountId, Call, kz_json:get_value(<<"metaflows">>, Endpoint)).
 
--spec maybe_start_user_metaflows(ne_binary(), api_binary(), kapps_call:call()) -> 'ok'.
+-spec maybe_start_user_metaflows(ne_binary(), api(binary()), kapps_call:call()) -> 'ok'.
 maybe_start_user_metaflows(_AccountId, 'undefined', _Call) -> 'ok';
 maybe_start_user_metaflows(AccountId, UserId, Call) ->
     {'ok', User} = kz_datamgr:open_cache_doc(kapps_call:account_db(Call)

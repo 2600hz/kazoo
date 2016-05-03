@@ -215,7 +215,7 @@ get_authn_req_routing(Req) ->
 %% extract the auth user from the API request
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_auth_user(kz_json:object()) -> api_binary().
+-spec get_auth_user(kz_json:object()) -> api(binary()).
 get_auth_user(ApiJObj) ->
     AuthUser = case kz_json:get_value(<<"Auth-User">>, ApiJObj, <<"unknown">>) of
                    <<"unknown">> ->

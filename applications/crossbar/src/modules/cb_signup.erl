@@ -594,7 +594,7 @@ get_configs() ->
                          'cb_signup_email_plain' |
                          'cb_signup_email_subject' |
                          'cb_signup_register_cmd'.
--spec compile_template(string() | api_binary(), template_name()) ->
+-spec compile_template(string() | api(binary()), template_name()) ->
                               api(template_name()).
 compile_template('undefined', _) -> 'undefined';
 compile_template(Template, Name) when not is_binary(Template) ->

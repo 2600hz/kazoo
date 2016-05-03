@@ -159,7 +159,7 @@ available(Connection) when is_pid(Connection) ->
 unavailable(Connection) when is_pid(Connection) ->
     gen_server:cast(?SERVER, {'connection_unavailable', Connection}).
 
--spec arbitrator_broker() -> api_binary().
+-spec arbitrator_broker() -> api(binary()).
 arbitrator_broker() ->
     MatchSpec = [{#kz_amqp_connections{broker='$1'
                                        ,available='true'
@@ -195,7 +195,7 @@ broker_available_connections(Broker) ->
                 ],
     ets:select_count(?TAB, MatchSpec).
 
--spec primary_broker() -> api_binary().
+-spec primary_broker() -> api(binary()).
 primary_broker() ->
     Pattern = #kz_amqp_connections{available='true'
                                    ,zone='local'
@@ -446,7 +446,7 @@ brokers_with_tag(Tag, Available) ->
         lists:member(Tag, Tags)
     ].
 
--spec broker_with_tag(ne_binary()) -> api_binary().
+-spec broker_with_tag(ne_binary()) -> api(binary()).
 broker_with_tag(Tag) ->
     case brokers_with_tag(Tag, 'true') of
         [] -> 'undefined';
@@ -478,7 +478,7 @@ brokers_for_zone(Zone, Available) ->
                 ],
     ets:select(?TAB, MatchSpec).
 
--spec broker_for_zone(atom()) -> api_binary().
+-spec broker_for_zone(atom()) -> api(binary()).
 broker_for_zone(Zone) ->
     case brokers_for_zone(Zone, 'true') of
         [] -> 'undefined';

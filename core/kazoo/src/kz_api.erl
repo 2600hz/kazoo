@@ -61,37 +61,37 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
--spec server_id(kz_json:object()) -> api_binary().
+-spec server_id(kz_json:object()) -> api(binary()).
 server_id(JObj) ->
     kz_json:get_value(?KEY_SERVER_ID, JObj).
 
--spec event_category(kz_json:object()) -> api_binary().
+-spec event_category(kz_json:object()) -> api(binary()).
 event_category(JObj) ->
     kz_json:get_value(?KEY_EVENT_CATEGORY, JObj).
 
--spec event_name(kz_json:object()) -> api_binary().
+-spec event_name(kz_json:object()) -> api(binary()).
 event_name(JObj) ->
     kz_json:get_value(?KEY_EVENT_NAME, JObj).
 
--spec app_name(kz_json:object()) -> api_binary().
+-spec app_name(kz_json:object()) -> api(binary()).
 app_name(JObj) ->
     kz_json:get_value(?KEY_APP_NAME, JObj).
 
--spec app_version(kz_json:object()) -> api_binary().
+-spec app_version(kz_json:object()) -> api(binary()).
 app_version(JObj) ->
     kz_json:get_value(?KEY_APP_VERSION, JObj).
 
--spec node(kz_json:object()) -> api_binary().
+-spec node(kz_json:object()) -> api(binary()).
 node(JObj) ->
     kz_json:get_value(?KEY_NODE, JObj).
 
--spec msg_id(api_terms()) -> api_binary().
+-spec msg_id(api_terms()) -> api(binary()).
 msg_id(Props) when is_list(Props) ->
     props:get_value(?KEY_MSG_ID, Props);
 msg_id(JObj) ->
     kz_json:get_value(?KEY_MSG_ID, JObj).
 
--spec msg_reply_id(api_terms()) -> api_binary().
+-spec msg_reply_id(api_terms()) -> api(binary()).
 msg_reply_id(Props) when is_list(Props) ->
     props:get_value(?KEY_MSG_REPLY_ID, Props, msg_id(Props));
 msg_reply_id(JObj) ->
@@ -106,9 +106,9 @@ msg_reply_id(JObj) ->
 -spec default_headers_v(api_terms()) -> boolean().
 
 -spec default_headers(ne_binary(), ne_binary()) -> kz_proplist().
--spec default_headers(api_binary(), ne_binary(), ne_binary()) -> kz_proplist().
--spec default_headers(api_binary(), ne_binary(), ne_binary(), ne_binary()) -> kz_proplist().
--spec default_headers(api_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> kz_proplist().
+-spec default_headers(api(binary()), ne_binary(), ne_binary()) -> kz_proplist().
+-spec default_headers(api(binary()), ne_binary(), ne_binary(), ne_binary()) -> kz_proplist().
+-spec default_headers(api(binary()), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> kz_proplist().
 
 default_headers(AppName, AppVsn) ->
     default_headers('undefined', AppName, AppVsn).

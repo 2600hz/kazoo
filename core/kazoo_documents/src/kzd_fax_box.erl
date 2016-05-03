@@ -34,7 +34,7 @@ new() ->
 -spec type() -> ne_binary().
 type() -> ?PVT_TYPE.
 
--spec owner_id(doc()) -> api_binary().
+-spec owner_id(doc()) -> api(binary()).
 -spec owner_id(doc(), Default) -> ne_binary() | Default.
 owner_id(Box) ->
     owner_id(Box, 'undefined').
@@ -55,7 +55,7 @@ owner(Box, OwnerId) ->
         {'error', 'not_found'} -> 'undefined'
     end.
 
--spec timezone(doc()) -> api_binary().
+-spec timezone(doc()) -> api(binary()).
 -spec timezone(doc(), Default) -> ne_binary() | Default.
 timezone(Box) ->
     timezone(Box, 'undefined').

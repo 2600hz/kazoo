@@ -104,7 +104,7 @@ handle_new_voicemail(JObj, _Props) ->
             process_req(kz_json:merge_jobjs(DataJObj, ReqData))
     end.
 
--spec maybe_add_user_email(ne_binaries(), api_binary()) -> ne_binaries().
+-spec maybe_add_user_email(ne_binaries(), api(binary())) -> ne_binaries().
 maybe_add_user_email(BoxEmails, 'undefined') -> BoxEmails;
 maybe_add_user_email(BoxEmails, UserEmail) -> [UserEmail | BoxEmails].
 

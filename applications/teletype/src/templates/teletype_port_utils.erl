@@ -56,7 +56,7 @@ fix_email(ReqData, OnlyAdmin) ->
     Emails = get_emails(ReqData, AccountId, OnlyAdmin),
     kz_json:set_value(<<"to">>, Emails, ReqData).
 
--spec get_emails(kz_json:object(), api_binary(), boolean()) -> ne_binaries().
+-spec get_emails(kz_json:object(), api(binary()), boolean()) -> ne_binaries().
 get_emails(_ReqData, AccountId, 'true') ->
     ResellerId = kz_services:find_reseller_id(AccountId),
 
@@ -81,7 +81,7 @@ get_emails(ReqData, AccountId, 'false') ->
         {ResellerEmail, _} -> [ResellerEmail] ++ PortReqEmail
     end.
 
--spec find_reseller_port_email(api_binary()) -> api_binary().
+-spec find_reseller_port_email(api(binary())) -> api(binary()).
 find_reseller_port_email(AccountId) ->
     case kz_whitelabel:fetch(AccountId) of
         {'error', _R} -> 'undefined';

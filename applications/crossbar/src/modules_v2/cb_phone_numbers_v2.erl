@@ -245,7 +245,7 @@ maybe_allow_updates(Context, _Nouns, _Verb) -> Context.
 validate(Context) ->
     validate_phone_numbers(Context, cb_context:req_verb(Context), cb_context:account_id(Context)).
 
--spec validate_phone_numbers(cb_context:context(), http_method(), api_binary()) ->
+-spec validate_phone_numbers(cb_context:context(), http_method(), api(binary())) ->
                                     cb_context:context().
 validate_phone_numbers(Context, ?HTTP_GET, 'undefined') ->
     find_numbers(Context);
@@ -318,7 +318,7 @@ base_classified_number(_Context, Number) ->
      ,{<<"e164">>, knm_converters:normalize(Number)}
     ].
 
--spec classified_number(cb_context:context(), path_token(), api_binary()) -> cb_context:context().
+-spec classified_number(cb_context:context(), path_token(), api(binary())) -> cb_context:context().
 classified_number(Context, Number, Classifier) ->
     ClassifierJObj = kz_json:get_value(Classifier, knm_converters:available_classifiers()),
     BaseData = base_classified_number(Context, Number),

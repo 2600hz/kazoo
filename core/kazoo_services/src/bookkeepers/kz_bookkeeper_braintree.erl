@@ -26,7 +26,7 @@
                            }).
 
 -record(kz_service_updates, {bt_subscriptions = [] :: [update()]
-                             ,account_id :: api_binary()
+                             ,account_id :: api(binary())
                              ,bt_customer :: braintree_customer:customer()
                             }).
 

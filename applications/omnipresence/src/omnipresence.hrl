@@ -24,35 +24,35 @@
 -define(FAKE_CALLID(C), kz_util:to_hex_binary(crypto:hash(md5, C))).
 
 -record(omnip_subscription, {
-          user                                  :: api_binary() | '_' %% user@realm.com
-          ,from                                 :: api_binary() | <<>> | '_' %% user@realm.com
-          ,stalker                              :: api_binary() | '_' | '$2' % amqp queue to publish updates to
+          user                                  :: api(binary()) | '_' %% user@realm.com
+          ,from                                 :: api(binary()) | <<>> | '_' %% user@realm.com
+          ,stalker                              :: api(binary()) | '_' | '$2' % amqp queue to publish updates to
           ,expires = 0                          :: non_neg_integer() | '_' | '$2'
           ,timestamp = kz_util:current_tstamp() :: gregorian_seconds() | '_' | '$1'
           ,protocol = <<"sip">>                 :: ne_binary() | '_' % protocol
-          ,username                             :: api_binary() | '_'
-          ,realm                                :: api_binary() | '_'
-          ,normalized_user                      :: api_binary() | '_' | '$1'
-          ,normalized_from                      :: api_binary() | '_' | '$1'
-          ,event                                :: api_binary() | '_'
-          ,contact                              :: api_binary() | '_'
-          ,call_id                              :: api_binary() | '_'
-          ,subscription_id                      :: api_binary() | '_'
-          ,proxy_route                          :: api_binary() | '_'
+          ,username                             :: api(binary()) | '_'
+          ,realm                                :: api(binary()) | '_'
+          ,normalized_user                      :: api(binary()) | '_' | '$1'
+          ,normalized_from                      :: api(binary()) | '_' | '$1'
+          ,event                                :: api(binary()) | '_'
+          ,contact                              :: api(binary()) | '_'
+          ,call_id                              :: api(binary()) | '_'
+          ,subscription_id                      :: api(binary()) | '_'
+          ,proxy_route                          :: api(binary()) | '_'
           ,version = 1                          :: non_neg_integer() | '_'
           ,last_sequence = 0                    :: non_neg_integer() | '_'
           ,last_reply = 0                       :: non_neg_integer() | '_'
-          ,last_body                            :: api_binary() | '_'
-          ,user_agent                            :: api_binary() | '_'
+          ,last_body                            :: api(binary()) | '_'
+          ,user_agent                            :: api(binary()) | '_'
          }).
 
 -type subscription() :: #omnip_subscription{}.
 -type subscriptions() :: [subscription()].
 
--record(channel, {call_id     :: api_binary()
-                  ,direction  :: api_binary()
-                  ,state      :: api_binary()
-                  ,to         :: api_binary()
+-record(channel, {call_id     :: api(binary())
+                  ,direction  :: api(binary())
+                  ,state      :: api(binary())
+                  ,to         :: api(binary())
                  }).
 
 -type channel() :: #channel{}.

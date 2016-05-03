@@ -25,7 +25,7 @@ get_all_number_dbs() ->
     {'ok', Dbs} = kz_datamgr:db_list(ViewOptions),
     [kz_http_util:urlencode(Db) || Db <- Dbs].
 
--spec pretty_print(api_binary()) -> ne_binary().
+-spec pretty_print(api(binary())) -> ne_binary().
 pretty_print('undefined') -> <<"unknown">>;
 pretty_print(Number) ->
     case pretty_print_format(Number) of
@@ -79,13 +79,13 @@ binary_head(Binary) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec pretty_print_format(ne_binary()) -> api_binary().
+-spec pretty_print_format(ne_binary()) -> api(binary()).
 pretty_print_format(Number) ->
     Classifiers = knm_converters:available_classifiers(),
     Num = knm_converters:normalize(Number),
     pretty_print_format(Num, kz_json:to_proplist(Classifiers)).
 
--spec pretty_print_format(ne_binary(), kz_proplist()) -> api_binary().
+-spec pretty_print_format(ne_binary(), kz_proplist()) -> api(binary()).
 pretty_print_format(Num, []) ->
     lager:debug("unable to get pretty print format for number ~s", [Num]),
     maybe_use_us_default(Num);
@@ -102,7 +102,7 @@ pretty_print_format(Num, [{Classification, Classifier}|Classifiers]) ->
             end
     end.
 
--spec maybe_use_us_default(ne_binary()) -> api_binary().
+-spec maybe_use_us_default(ne_binary()) -> api(binary()).
 maybe_use_us_default(<<"+1", _/binary>>) ->
     lager:debug("using US number default pretty print", []),
     <<"SS(###) ### - ####">>;

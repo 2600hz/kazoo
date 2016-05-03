@@ -147,7 +147,7 @@ folder(JObj) ->
 folder(JObj, Default) ->
     kz_json:get_value(?VM_KEY_FOLDER, JObj, Default).
 
--spec set_folder(api_binary(), doc()) -> doc().
+-spec set_folder(api(binary()), doc()) -> doc().
 set_folder(Folder, JObj) ->
     kz_json:set_value(?VM_KEY_FOLDER, Folder, JObj).
 
@@ -159,7 +159,7 @@ set_folder_saved(JObj) ->
 set_folder_deleted(JObj) ->
     kz_json:set_value(?VM_KEY_FOLDER, ?VM_FOLDER_DELETED, JObj).
 
--spec media_id(doc()) -> api_binary().
+-spec media_id(doc()) -> api(binary()).
 media_id(JObj) ->
     kz_json:get_value(?KEY_MEDIA_ID, JObj).
 

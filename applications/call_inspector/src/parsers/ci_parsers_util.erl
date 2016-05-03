@@ -84,7 +84,7 @@ c_seq(Data) ->
 
 %% Internals
 
--spec sip_field(ne_binaries(), ne_binaries()) -> api_binary().
+-spec sip_field(ne_binaries(), ne_binaries()) -> api(binary()).
 sip_field(_Fields, []) ->
     'undefined';
 sip_field(Fields, [Data|Rest]) ->

@@ -35,11 +35,11 @@
 -record(state, {endpoints = [] :: kz_json:objects()
                 ,resource_req :: kapi_offnet_resource:req()
                 ,request_handler :: pid()
-                ,control_queue :: api_binary()
-                ,response_queue :: api_binary()
-                ,queue :: api_binary()
+                ,control_queue :: api(binary())
+                ,response_queue :: api(binary())
+                ,queue :: api(binary())
                 ,timeout :: reference()
-                ,call_id :: api_binary()
+                ,call_id :: api(binary())
                 ,call_ids :: api_binaries()
                }).
 -type state() :: #state{}.
@@ -309,7 +309,7 @@ maybe_bridge_emergency(#state{resource_req=OffnetReq
             lager:debug("sent bridge command to ~s", [ControlQ])
     end.
 
--spec maybe_deny_emergency_bridge(state(), api_binary(), api_binary()) -> 'ok'.
+-spec maybe_deny_emergency_bridge(state(), api(binary()), api(binary())) -> 'ok'.
 maybe_deny_emergency_bridge(State, 'undefined', Name) ->
     case kapps_config:get_is_true(
            ?SS_CONFIG_CAT
@@ -332,7 +332,7 @@ maybe_deny_emergency_bridge(#state{control_queue=ControlQ}=State, Number, Name) 
      ),
     lager:debug("sent bridge command to ~s", [ControlQ]).
 
--spec build_bridge(state(), api_binary(), api_binary()) -> kz_proplist().
+-spec build_bridge(state(), api(binary()), api(binary())) -> kz_proplist().
 build_bridge(#state{endpoints=Endpoints
                     ,resource_req=OffnetReq
                     ,queue=Q
@@ -380,8 +380,8 @@ build_bridge(#state{endpoints=Endpoints
        | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
--spec bridge_from_uri(api_binary(), kapi_offnet_resource:req()) ->
-                             api_binary().
+-spec bridge_from_uri(api(binary()), kapi_offnet_resource:req()) ->
+                             api(binary()).
 bridge_from_uri(Number, OffnetReq) ->
     Realm = stepswitch_util:default_realm(OffnetReq),
 
@@ -397,35 +397,35 @@ bridge_from_uri(Number, OffnetReq) ->
             FromURI
     end.
 
--spec bridge_outbound_cid_name(kapi_offnet_resource:req()) -> api_binary().
+-spec bridge_outbound_cid_name(kapi_offnet_resource:req()) -> api(binary()).
 bridge_outbound_cid_name(OffnetReq) ->
     case kapi_offnet_resource:outbound_caller_id_name(OffnetReq) of
         'undefined' -> kapi_offnet_resource:emergency_caller_id_name(OffnetReq);
         Name -> Name
     end.
 
--spec bridge_outbound_cid_number(kapi_offnet_resource:req()) -> api_binary().
+-spec bridge_outbound_cid_number(kapi_offnet_resource:req()) -> api(binary()).
 bridge_outbound_cid_number(OffnetReq) ->
     case kapi_offnet_resource:outbound_caller_id_number(OffnetReq) of
         'undefined' -> kapi_offnet_resource:emergency_caller_id_number(OffnetReq);
         Number -> Number
     end.
 
--spec bridge_emergency_cid_name(kapi_offnet_resource:req()) -> api_binary().
+-spec bridge_emergency_cid_name(kapi_offnet_resource:req()) -> api(binary()).
 bridge_emergency_cid_name(OffnetReq) ->
     case kapi_offnet_resource:emergency_caller_id_name(OffnetReq) of
         'undefined' -> kapi_offnet_resource:outbound_caller_id_name(OffnetReq);
         Name -> Name
     end.
 
--spec bridge_emergency_cid_number(kapi_offnet_resource:req()) -> api_binary().
+-spec bridge_emergency_cid_number(kapi_offnet_resource:req()) -> api(binary()).
 bridge_emergency_cid_number(OffnetReq) ->
     case kapi_offnet_resource:emergency_caller_id_number(OffnetReq) of
         'undefined' -> kapi_offnet_resource:outbound_caller_id_number(OffnetReq);
         Number -> Number
     end.
 
--spec find_emergency_number(kapi_offnet_resource:req()) -> api_binary().
+-spec find_emergency_number(kapi_offnet_resource:req()) -> api(binary()).
 find_emergency_number(OffnetReq) ->
     case kapps_config:get_is_true(
            ?SS_CONFIG_CAT
@@ -439,7 +439,7 @@ find_emergency_number(OffnetReq) ->
             bridge_emergency_cid_number(OffnetReq)
     end.
 
--spec ensure_valid_emergency_number(kapi_offnet_resource:req()) -> api_binary().
+-spec ensure_valid_emergency_number(kapi_offnet_resource:req()) -> api(binary()).
 ensure_valid_emergency_number(OffnetReq) ->
     AccountId = kapi_offnet_resource:account_id(OffnetReq),
     lager:debug("ensuring emergency caller is valid for account ~s", [AccountId]),
@@ -460,7 +460,7 @@ ensure_valid_emergency_number(OffnetReq) ->
             find_valid_emergency_number(Numbers)
     end.
 
--spec find_valid_emergency_number(ne_binaries()) -> api_binary().
+-spec find_valid_emergency_number(ne_binaries()) -> api(binary()).
 find_valid_emergency_number([]) ->
     lager:info("no alternative e911 enabled numbers available", []),
     'undefined';

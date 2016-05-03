@@ -25,7 +25,7 @@
 
 -record(state, {subs_pid = 'undefined' :: api_pid()
                 ,subs_ref :: reference()
-                ,queue = 'undefined' :: api_binary()
+                ,queue = 'undefined' :: api(binary())
                 ,consuming = 'false' :: boolean()
                 ,sync = 'false' :: boolean()
                }).

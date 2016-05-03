@@ -402,7 +402,7 @@ get_delivered_date(JObj) ->
         Date -> Date
     end.
 
--spec get_execution_status(ne_binary(), kz_json:object()) -> api_binary().
+-spec get_execution_status(ne_binary(), kz_json:object()) -> api(binary()).
 get_execution_status(Id, JObj) ->
     case kz_json:get_value(<<"pvt_job_status">>, JObj) of
         <<"processing">> = S ->
@@ -464,7 +464,7 @@ validate_patch(Id, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(api(binary()), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = cb_context:account_db(Context),

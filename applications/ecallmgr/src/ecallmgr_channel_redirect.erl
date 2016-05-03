@@ -46,7 +46,7 @@ redirect_via_endpoint(DestNodeURL, UUID) ->
     Contact = binary:replace(DestNodeURL, <<"mod_sofia">>, ToUser),
     send_redirect('undefined', Contact, Channel).
 
--spec send_redirect(api_binary(), ne_binary(), channel()) ->
+-spec send_redirect(api(binary()), ne_binary(), channel()) ->
                            ecallmgr_util:send_cmd_ret().
 send_redirect('undefined', Contact, #channel{node=Node
                                              ,uuid=UUID

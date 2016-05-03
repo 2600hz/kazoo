@@ -63,7 +63,7 @@
                 ,cf_module_pid :: api({pid(), reference()})
                 ,cf_module_old_pid :: api({pid(), reference()})
                 ,status = <<"sane">> :: ne_binary()
-                ,queue :: api_binary()
+                ,queue :: api(binary())
                 ,self = self()
                 ,stop_on_destroy = 'true' :: boolean()
                 ,destroyed = 'false' :: boolean()
@@ -207,7 +207,7 @@ callid_update(CallId, Call) ->
     callid_update(CallId, Srv).
 
 -spec callid(kapps_call:call() | pid()) -> ne_binary().
--spec callid(api_binary(), kapps_call:call()) -> ne_binary().
+-spec callid(api(binary()), kapps_call:call()) -> ne_binary().
 
 callid(Srv) when is_pid(Srv) ->
     CallId = gen_server:call(Srv, 'callid', 1000),
@@ -228,7 +228,7 @@ queue_name(Call) ->
     queue_name(Srv).
 
 -spec control_queue(kapps_call:call() | pid()) -> ne_binary().
--spec control_queue(api_binary(), kapps_call:call() | pid()) -> ne_binary().
+-spec control_queue(api(binary()), kapps_call:call() | pid()) -> ne_binary().
 
 control_queue(Srv) when is_pid(Srv) -> gen_listener:call(Srv, 'control_queue_name');
 control_queue(Call) -> control_queue(kapps_call:kvs_fetch('consumer_pid', Call)).
@@ -704,7 +704,7 @@ cf_module_task(CFModule, Data, Call, AMQPConsumer) ->
 send_amqp_message(API, PubFun, Q) ->
     PubFun(add_server_id(API, Q)).
 
--spec send_command(kz_proplist(), api_binary(), api_binary()) -> 'ok'.
+-spec send_command(kz_proplist(), api(binary()), api(binary())) -> 'ok'.
 send_command(_, 'undefined', _) -> lager:debug("no control queue to send command to");
 send_command(_, _, 'undefined') -> lager:debug("no call id to send command to");
 send_command(Command, ControlQ, CallId) ->

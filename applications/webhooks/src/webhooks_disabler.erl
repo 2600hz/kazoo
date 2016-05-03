@@ -87,7 +87,7 @@ flush_hooks(HookJObjs) ->
      ).
 
 -spec flush_failures(ne_binary()) -> non_neg_integer().
--spec flush_failures(ne_binary(), api_binary()) -> non_neg_integer().
+-spec flush_failures(ne_binary(), api(binary())) -> non_neg_integer().
 flush_failures(AccountId) ->
     flush_failures(AccountId, 'undefined').
 flush_failures(AccountId, HookId) ->
@@ -98,7 +98,7 @@ flush_failures(AccountId, HookId) ->
                                 ,FilterFun
                                ).
 
--spec maybe_remove_failure(tuple(), ne_binary(), api_binary()) -> boolean().
+-spec maybe_remove_failure(tuple(), ne_binary(), api(binary())) -> boolean().
 maybe_remove_failure(?FAILURE_CACHE_KEY(AccountId, HookId, _Timestamp)
                      ,AccountId
                      ,HookId

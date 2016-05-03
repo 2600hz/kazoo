@@ -300,7 +300,7 @@ deny_sbc(Name, IP, 'false') ->
 acl_summary() ->
     list_acls(get_acls(), 'undefined').
 
--spec acl_summary(api_binary() | boolean()) -> 'no_return'.
+-spec acl_summary(api(binary()) | boolean()) -> 'no_return'.
 acl_summary(AsDefault) when not is_boolean(AsDefault) ->
     acl_summary(kz_util:is_true(AsDefault));
 acl_summary('true') ->
@@ -605,7 +605,7 @@ remove_acl(Name, ACLs, ConfigFun) ->
         end,
     maybe_reload_acls(Name, 'remove', 4).
 
--spec list_acls(kz_json:object(), api_binary()) -> 'no_return'.
+-spec list_acls(kz_json:object(), api(binary())) -> 'no_return'.
 list_acls(ACLs, Network) ->
     io:format("+--------------------------------+-------------------+---------------+-------+------------------+----------------------------------+~n", []),
     FormatString = "| ~-30s | ~-17s | ~-13s | ~-5s | ~-16s | ~-32s |~n",

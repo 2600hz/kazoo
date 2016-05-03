@@ -78,9 +78,9 @@
 %% parameters on all crossbar documents
 %% @end
 %%--------------------------------------------------------------------
--spec update_pvt_parameters(kz_json:object(), api_binary()) ->
+-spec update_pvt_parameters(kz_json:object(), api(binary())) ->
                                    kz_json:object().
--spec update_pvt_parameters(kz_json:object(), api_binary(), kz_proplist()) ->
+-spec update_pvt_parameters(kz_json:object(), api(binary()), kz_proplist()) ->
                                    kz_json:object().
 update_pvt_parameters(JObj0, DBName) ->
     update_pvt_parameters(JObj0, DBName, []).
@@ -88,14 +88,14 @@ update_pvt_parameters(JObj0, DBName, Options) ->
     Opts = props:insert_value('now', kz_util:current_tstamp(), Options),
     lists:foldl(fun(Fun, JObj) -> Fun(JObj, DBName, Opts) end, JObj0, ?PVT_FUNS).
 
--spec add_pvt_vsn(kz_json:object(), api_binary(), kz_proplist()) -> kz_json:object().
+-spec add_pvt_vsn(kz_json:object(), api(binary()), kz_proplist()) -> kz_json:object().
 add_pvt_vsn(JObj, _, Options) ->
     case props:get_value('crossbar_doc_vsn', Options) of
         'undefined' -> JObj;
         Vsn -> kz_json:set_value(?KEY_VSN, Vsn, JObj)
     end.
 
--spec add_pvt_account_db(kz_json:object(), api_binary(), kz_proplist()) -> kz_json:object().
+-spec add_pvt_account_db(kz_json:object(), api(binary()), kz_proplist()) -> kz_json:object().
 add_pvt_account_db(JObj, 'undefined', Opts) ->
     case props:get_value('account_db', Opts) of
         'undefined' -> JObj;
@@ -107,7 +107,7 @@ add_pvt_account_db(JObj, DBName, Opts) ->
         Db -> kz_json:set_value(?KEY_ACCOUNT_DB, Db, JObj)
     end.
 
--spec add_pvt_account_id(kz_json:object(), api_binary(), kz_proplist()) -> kz_json:object().
+-spec add_pvt_account_id(kz_json:object(), api(binary()), kz_proplist()) -> kz_json:object().
 add_pvt_account_id(JObj, 'undefined', Opts) ->
     case props:get_value('account_id', Opts) of
         'undefined' -> JObj;
@@ -119,21 +119,21 @@ add_pvt_account_id(JObj, DBName, Opts) ->
         Id -> kz_json:set_value(?KEY_ACCOUNT_ID, Id, JObj)
     end.
 
--spec add_pvt_type(kz_json:object(), api_binary(), kz_proplist()) -> kz_json:object().
+-spec add_pvt_type(kz_json:object(), api(binary()), kz_proplist()) -> kz_json:object().
 add_pvt_type(JObj, _, Options) ->
     case props:get_value('type', Options) of
         'undefined' -> JObj;
         Type -> kz_json:set_value(?KEY_PVT_TYPE, Type, JObj)
     end.
 
--spec add_pvt_node(kz_json:object(), api_binary(), kz_proplist()) -> kz_json:object().
+-spec add_pvt_node(kz_json:object(), api(binary()), kz_proplist()) -> kz_json:object().
 add_pvt_node(JObj, _, Options) ->
     case props:get_value('node', Options) of
         'undefined' -> kz_json:set_value(?KEY_NODE, kz_util:to_binary(node()), JObj);
         Node -> kz_json:set_value(?KEY_NODE, kz_util:to_binary(Node), JObj)
     end.
 
--spec add_pvt_created(kz_json:object(), api_binary(), kz_proplist()) -> kz_json:object().
+-spec add_pvt_created(kz_json:object(), api(binary()), kz_proplist()) -> kz_json:object().
 add_pvt_created(JObj, _, Opts) ->
     case kz_json:get_value(?KEY_REV, JObj) of
         'undefined' ->
@@ -152,7 +152,7 @@ update_pvt_modified(JObj) ->
 set_modified(JObj, Now) ->
     kz_json:set_value(?KEY_MODIFIED, Now, JObj).
 
--spec add_pvt_modified(kz_json:object(), api_binary(), kz_proplist()) -> kz_json:object().
+-spec add_pvt_modified(kz_json:object(), api(binary()), kz_proplist()) -> kz_json:object().
 add_pvt_modified(JObj, _, Opts) ->
     kz_json:set_value(?KEY_MODIFIED, props:get_value('now', Opts), JObj).
 
@@ -261,7 +261,7 @@ attachment(JObj, AName, Default) ->
 attachment_length(JObj, AName) ->
     attachment_property(JObj, AName, <<"length">>).
 
--spec attachment_content_type(kz_json:object(), ne_binary()) -> api_binary().
+-spec attachment_content_type(kz_json:object(), ne_binary()) -> api(binary()).
 -spec attachment_content_type(kz_json:object(), ne_binary(), ne_binary()) -> ne_binary().
 attachment_content_type(JObj, AName) ->
     attachment_property(JObj, AName, <<"content_type">>).
@@ -299,11 +299,11 @@ maybe_remove_attachment(JObj, _AName, 'undefined') -> JObj;
 maybe_remove_attachment(JObj, AName, _AMeta) ->
     kz_json:delete_keys(?KEYS_ATTACHMENTS(AName), JObj).
 
--spec revision(kz_json:object()) -> api_binary().
+-spec revision(kz_json:object()) -> api(binary()).
 revision(JObj) ->
     kz_json:get_first_defined([?KEY_REV, <<"rev">>], JObj).
 
--spec set_revision(kz_json:object(), api_binary()) -> kz_json:object().
+-spec set_revision(kz_json:object(), api(binary())) -> kz_json:object().
 set_revision(JObj, Rev) ->
     kz_json:set_value(?KEY_REV, Rev, JObj).
 
@@ -311,7 +311,7 @@ set_revision(JObj, Rev) ->
 delete_revision(JObj) ->
     kz_json:delete_key(?KEY_REV, JObj).
 
--spec id(kz_json:object()) -> api_binary().
+-spec id(kz_json:object()) -> api(binary()).
 -spec id(kz_json:object(), Default) -> ne_binary() | Default.
 id(JObj) ->
     id(JObj, 'undefined').
@@ -334,7 +334,7 @@ id(JObj, Default) ->
 set_id(JObj, Id) ->
     kz_json:set_value(?KEY_ID, Id, JObj).
 
--spec type(kz_json:object()) -> api_binary().
+-spec type(kz_json:object()) -> api(binary()).
 -spec type(kz_json:object(), Default) -> ne_binary() | Default.
 type(JObj) ->
     type(JObj, 'undefined').
@@ -375,7 +375,7 @@ created(JObj, Default) ->
 set_created(JObj, Timestamp) ->
     kz_json:set_value(?KEY_CREATED, Timestamp, JObj).
 
--spec account_id(kz_json:object()) -> api_binary().
+-spec account_id(kz_json:object()) -> api(binary()).
 -spec account_id(kz_json:object(), Default) -> ne_binary() | Default.
 account_id(JObj) ->
     account_id(JObj, 'undefined').
@@ -386,7 +386,7 @@ account_id(JObj, Default) ->
 set_account_id(JObj, AccountId) ->
     kz_json:set_value(?KEY_ACCOUNT_ID, AccountId, JObj).
 
--spec account_db(kz_json:object()) -> api_binary().
+-spec account_db(kz_json:object()) -> api(binary()).
 -spec account_db(kz_json:object(), Default) -> ne_binary() | Default.
 account_db(JObj) ->
     account_db(JObj, 'undefined').
@@ -397,7 +397,7 @@ account_db(JObj, Default) ->
 set_account_db(JObj, AccountDb) ->
     kz_json:set_value(?KEY_ACCOUNT_DB, AccountDb, JObj).
 
--spec vsn(kz_json:object()) -> api_binary().
+-spec vsn(kz_json:object()) -> api(binary()).
 -spec vsn(kz_json:object(), Default) -> ne_binary() | Default.
 vsn(JObj) ->
     vsn(JObj, 'undefined').

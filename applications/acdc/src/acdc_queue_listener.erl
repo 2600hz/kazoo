@@ -121,7 +121,7 @@ start_link(WorkerSup, MgrPid, AccountId, QueueId) ->
 accept_member_calls(Srv) ->
     gen_listener:cast(Srv, {'accept_member_calls'}).
 
--spec member_connect_req(pid(), kz_json:object(), any(), api_binary()) -> 'ok'.
+-spec member_connect_req(pid(), kz_json:object(), any(), api(binary())) -> 'ok'.
 member_connect_req(Srv, MemberCallJObj, Delivery, Url) ->
     gen_listener:cast(Srv, {'member_connect_req', MemberCallJObj, Delivery, Url}).
 

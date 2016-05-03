@@ -126,18 +126,18 @@ bindings(CallId) ->
         props:get_value('callid', Props) =:= CallId
     ].
 
--spec add_konami_binding(api_binary()) -> 'ok'.
+-spec add_konami_binding(api(binary())) -> 'ok'.
 add_konami_binding('undefined') -> 'ok';
 add_konami_binding(CallId) ->
     gen_listener:add_binding(?SERVER, ?KONAMI_BINDINGS(CallId)).
 
--spec rm_konami_binding(api_binary()) -> 'ok'.
+-spec rm_konami_binding(api(binary())) -> 'ok'.
 rm_konami_binding('undefined') -> 'ok';
 rm_konami_binding(<<_/binary>> = CallId) ->
     gen_listener:rm_binding(?SERVER, ?KONAMI_BINDINGS(CallId)).
 
--spec add_call_binding(api_binary() | kapps_call:call()) -> 'ok'.
--spec add_call_binding(api_binary() | kapps_call:call(), ne_binaries() | atoms()) -> 'ok'.
+-spec add_call_binding(api(binary()) | kapps_call:call()) -> 'ok'.
+-spec add_call_binding(api(binary()) | kapps_call:call(), ne_binaries() | atoms()) -> 'ok'.
 add_call_binding('undefined') -> 'ok';
 add_call_binding(CallId) when is_binary(CallId) ->
     lager:debug("add fsm binding for call ~s: ~p", [CallId, ?TRACKED_CALL_EVENTS]),
@@ -160,7 +160,7 @@ add_call_binding(Call, Events) ->
     catch gproc:reg(?KONAMI_REG({'fsm', kapps_call:account_id(Call)})),
     add_call_binding(kapps_call:call_id_direct(Call), Events).
 
--spec rm_call_binding(api_binary() | kapps_call:call()) -> 'ok'.
+-spec rm_call_binding(api(binary()) | kapps_call:call()) -> 'ok'.
 rm_call_binding('undefined') -> 'ok';
 rm_call_binding(CallId) ->
     catch gproc:unreg(?KONAMI_REG({'fsm', CallId})),
@@ -169,7 +169,7 @@ rm_call_binding(CallId) ->
         'false' -> really_remove_call_bindings(CallId)
     end.
 
--spec rm_call_binding(api_binary(), ne_binaries()) -> 'ok'.
+-spec rm_call_binding(api(binary()), ne_binaries()) -> 'ok'.
 rm_call_binding('undefined', _Evts) -> 'ok';
 rm_call_binding(CallId, Events) ->
     catch gproc:unreg(?KONAMI_REG({'pid', CallId})),
@@ -430,7 +430,7 @@ cleanup_bindings(Srv, [{Binding, Props}|Bindings]) ->
     maybe_remove_binding(Srv, Binding, Props, props:get_value('callid', Props)),
     cleanup_bindings(Srv, Bindings).
 
--spec maybe_remove_binding(server_ref(), atom(), kz_proplist(), api_binary()) -> 'ok'.
+-spec maybe_remove_binding(server_ref(), atom(), kz_proplist(), api(binary())) -> 'ok'.
 maybe_remove_binding(_Srv, _Binding, _Props, 'undefined') -> 'ok';
 maybe_remove_binding(Srv, Binding, Props, CallId) ->
     case {fsms_for_callid(CallId), pids_for_callid(CallId)} of

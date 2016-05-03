@@ -86,7 +86,7 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props(api_binary(), kz_json:object(), kz_json:object()) -> kz_proplist().
+-spec create_template_props(api(binary()), kz_json:object(), kz_json:object()) -> kz_proplist().
 create_template_props(<<"v2">>, NotifyJObj, AccountJObj) ->
     Admin = notify_util:find_admin(kz_json:get_value(<<"Authorized-By">>, NotifyJObj)),
 

@@ -75,11 +75,11 @@
                          {'startkey_fun', startkey_fun()}
                         ].
 
--record(load_view_params, {view :: api_binary()
+-record(load_view_params, {view :: api(binary())
                            ,view_options = [] :: view_options()
                            ,context :: cb_context:context()
                            ,start_key :: startkey()
-                           ,page_size :: non_neg_integer() | api_binary()
+                           ,page_size :: non_neg_integer() | api(binary())
                            ,filter_fun :: filter_fun()
                            ,dbs = [] :: ne_binaries()
                            ,direction = 'ascending' :: direction()
@@ -206,7 +206,7 @@ check_document_type([DocId|DocIds], Context, [JObj|JObjs], Options) ->
         'false' -> 'false'
     end.
 
--spec document_type_match(api_binary(), api_binary(), ne_binary()) -> boolean().
+-spec document_type_match(api(binary()), api(binary()), ne_binary()) -> boolean().
 document_type_match('undefined', _ExpectedType, _ReqType) ->
     lager:debug("document doesn't have type, requested type is ~p", [_ReqType]),
     'true';
@@ -465,8 +465,8 @@ load_view(#load_view_params{view=View
                                                )
     end.
 
--spec limit_by_page_size(api_binary() | pos_integer()) -> api_pos_integer().
--spec limit_by_page_size(cb_context:context(), api_binary() | pos_integer()) -> api_pos_integer().
+-spec limit_by_page_size(api(binary()) | pos_integer()) -> api_pos_integer().
+-spec limit_by_page_size(cb_context:context(), api(binary()) | pos_integer()) -> api_pos_integer().
 limit_by_page_size('undefined') -> 'undefined';
 limit_by_page_size(N) when is_integer(N) -> N+1;
 limit_by_page_size(<<_/binary>> = B) -> limit_by_page_size(kz_util:to_integer(B)).
@@ -751,7 +751,7 @@ delete(Context, 'soft') ->
 delete(Context, 'permanent') ->
     do_delete(Context, cb_context:doc(Context), fun kz_datamgr:del_doc/2).
 
--spec soft_delete(cb_context:context(), api_binary()) -> cb_context:context().
+-spec soft_delete(cb_context:context(), api(binary())) -> cb_context:context().
 soft_delete(Context, Rev) ->
     lager:debug("soft deleting with rev ~s", [Rev]),
     JObj1 = lists:foldl(fun({F, V}, J) -> F(J, V) end
@@ -844,7 +844,7 @@ update_pagination_envelope_params(Context, StartKey, PageSize) ->
                                       ,cb_context:should_paginate(Context)
                                      ).
 
--spec update_pagination_envelope_params(cb_context:context(), any(), api(non_neg_integer()), api_binary()) ->
+-spec update_pagination_envelope_params(cb_context:context(), any(), api(non_neg_integer()), api(binary())) ->
                                                cb_context:context().
 update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey) ->
     update_pagination_envelope_params(Context
@@ -854,7 +854,7 @@ update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey) ->
                                       ,cb_context:should_paginate(Context)
                                      ).
 
--spec update_pagination_envelope_params(cb_context:context(), any(), api(non_neg_integer()), api_binary(), boolean()) ->
+-spec update_pagination_envelope_params(cb_context:context(), any(), api(non_neg_integer()), api(binary()), boolean()) ->
                                                cb_context:context().
 update_pagination_envelope_params(Context, _StartKey, _PageSize, _NextStartKey, 'false') ->
     lager:debug("pagination disabled, removing resp envelope keys"),
@@ -1124,7 +1124,7 @@ version_specific_success(JObjs, Context, _Version) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_couch_mgr_errors(kazoo_data:data_errors(), api_binary() | api_binaries(), cb_context:context()) ->
+-spec handle_couch_mgr_errors(kazoo_data:data_errors(), api(binary()) | api_binaries(), cb_context:context()) ->
                                      cb_context:context().
 handle_couch_mgr_errors('invalid_db_name', _, Context) ->
     lager:debug("datastore ~s not_found", [cb_context:account_db(Context)]),

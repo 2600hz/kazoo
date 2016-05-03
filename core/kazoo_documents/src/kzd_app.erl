@@ -51,7 +51,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(api_binary(), api_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec fetch(api(binary()), api(binary())) -> {'ok', kz_json:object()} | {'error', any()}.
 fetch('undefined', _) ->
     {'error', 'account_id_undefined'};
 fetch(_, 'undefined') ->

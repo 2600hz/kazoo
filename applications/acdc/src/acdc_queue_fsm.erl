@@ -89,8 +89,8 @@
 
           ,caller_exit_key :: ne_binary() % DTMF a caller can press to leave the queue
           ,record_caller = 'false' :: boolean() % record the caller
-          ,recording_url :: api_binary() %% URL of where to POST recordings
-          ,cdr_url :: api_binary() % optional URL to request for extra CDR data
+          ,recording_url :: api(binary()) %% URL of where to POST recordings
+          ,cdr_url :: api(binary()) % optional URL to request for extra CDR data
 
           ,notifications :: api_object()
          }).
@@ -179,7 +179,7 @@ current_call(FSM) ->
 status(FSM) ->
     gen_fsm:sync_send_event(FSM, 'status').
 
--spec cdr_url(pid()) -> api_binary().
+-spec cdr_url(pid()) -> api(binary()).
 cdr_url(FSM) ->
     gen_fsm:sync_send_all_state_event(FSM, 'cdr_url').
 

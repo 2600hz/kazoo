@@ -70,14 +70,14 @@ add_conference_params(ConfigName, Profile) ->
               ]),
     kz_json:set_values(Props, Profile).
 
--spec max_participants(kapps_conference:conference()) -> api_binary().
+-spec max_participants(kapps_conference:conference()) -> api(binary()).
 max_participants(Conference) ->
     case kapps_conference:max_participants(Conference) of
         N when is_integer(N), N > 1 -> N;
         _Else -> 'undefined'
     end.
 
--spec max_members_sound(kapps_conference:conference()) -> api_binary().
+-spec max_members_sound(kapps_conference:conference()) -> api(binary()).
 max_members_sound(Conference) ->
     case kapps_conference:max_members_media(Conference) of
         'undefined' -> kz_media_util:get_prompt(?DEFAULT_MAX_MEMBERS_MEDIA);

@@ -39,7 +39,7 @@ flush() ->
 flush(Key) ->
     flush(Key, '_').
 
--spec flush(api_binary(), atom() | ne_binary()) -> 'ok'.
+-spec flush(api(binary()), atom() | ne_binary()) -> 'ok'.
 flush(Key, 'undefined') ->
     flush(Key);
 flush(Key, Node) when not is_binary(Key), Key =/= 'undefined' ->
@@ -61,7 +61,7 @@ flush(Key, Node) ->
                        ).
 
 -spec flush_default() -> 'ok'.
--spec flush_default(api_binary()) -> 'ok'.
+-spec flush_default(api(binary())) -> 'ok'.
 flush_default() ->
     flush('undefined', <<"default">>).
 flush_default(Key) ->

@@ -226,7 +226,7 @@ config_req_not_handled(Node, Id, Conf) ->
     lager:debug("ignoring conf ~s: ~s", [Conf, Id]),
     freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(NotHandled)).
 
--spec generate_acl_xml(api_object()) -> api_binary().
+-spec generate_acl_xml(api_object()) -> api(binary()).
 generate_acl_xml('undefined') ->
     'undefined';
 generate_acl_xml(SysconfResp) ->
@@ -394,7 +394,7 @@ fix_flite_tts(Profile) ->
     kz_json:set_value(<<"tts-voice">>, ecallmgr_fs_flite:voice(Voice), Profile).
 
 
--spec maybe_fetch_conference_profile(atom(), ne_binary(), api_binary()) -> fs_sendmsg_ret().
+-spec maybe_fetch_conference_profile(atom(), ne_binary(), api(binary())) -> fs_sendmsg_ret().
 maybe_fetch_conference_profile(Node, Id, 'undefined') ->
     lager:debug("failed to lookup undefined conference profile"),
     {'ok', XmlResp} = ecallmgr_fs_xml:not_found(),

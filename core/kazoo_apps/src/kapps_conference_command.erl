@@ -151,7 +151,7 @@ recordstop(Conference) ->
     send_command(Command, Conference).
 
 -spec relate_participants(non_neg_integer(), non_neg_integer(), kapps_conference:conference()) -> 'ok'.
--spec relate_participants(non_neg_integer(), non_neg_integer(), api_binary(), kapps_conference:conference()) -> 'ok'.
+-spec relate_participants(non_neg_integer(), non_neg_integer(), api(binary()), kapps_conference:conference()) -> 'ok'.
 
 relate_participants(ParticipantId, OtherParticipantId, Conference) ->
     relate_participants(ParticipantId, OtherParticipantId, 'undefined', Conference).
@@ -166,7 +166,7 @@ relate_participants(ParticipantId, OtherParticipantId, Relationship, Conference)
 
 -spec stop_play(kapps_conference:conference()) -> 'ok'.
 -spec stop_play(api(non_neg_integer()), kapps_conference:conference()) -> 'ok'.
--spec stop_play(api(non_neg_integer()), api_binary(), kapps_conference:conference()) -> 'ok'.
+-spec stop_play(api(non_neg_integer()), api(binary()), kapps_conference:conference()) -> 'ok'.
 
 stop_play(Conference) ->
     stop_play('undefined', Conference).

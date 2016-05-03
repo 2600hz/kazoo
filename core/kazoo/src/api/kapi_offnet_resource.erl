@@ -259,70 +259,70 @@ resource_type(Req) ->
 resource_type(?REQ_TYPE(JObj), Default) ->
     kz_json:get_ne_value(?KEY_RESOURCE_TYPE, JObj, Default).
 
--spec account_id(req()) -> api_binary().
+-spec account_id(req()) -> api(binary()).
 -spec account_id(req(), Default) -> ne_binary() | Default.
 account_id(Req) ->
     account_id(Req, 'undefined').
 account_id(?REQ_TYPE(JObj), Default) ->
     kz_json:get_ne_value(?KEY_ACCOUNT_ID, JObj, Default).
 
--spec hunt_account_id(req()) -> api_binary().
+-spec hunt_account_id(req()) -> api(binary()).
 -spec hunt_account_id(req(), Default) -> ne_binary() | Default.
 hunt_account_id(Req) ->
     hunt_account_id(Req, 'undefined').
 hunt_account_id(?REQ_TYPE(JObj), Default) ->
     kz_json:get_ne_value(?KEY_HUNT_ACCOUNT_ID, JObj, Default).
 
--spec outbound_call_id(req()) -> api_binary().
+-spec outbound_call_id(req()) -> api(binary()).
 -spec outbound_call_id(req(), Default) -> ne_binary() | Default.
 outbound_call_id(Req) ->
     outbound_call_id(Req, 'undefined').
 outbound_call_id(?REQ_TYPE(JObj), Default) ->
     kz_json:get_ne_value(?KEY_OUTBOUND_CALL_ID, JObj, Default).
 
--spec outbound_caller_id_number(req()) -> api_binary().
+-spec outbound_caller_id_number(req()) -> api(binary()).
 -spec outbound_caller_id_number(req(), Default) -> ne_binary() | Default.
 outbound_caller_id_number(Req) ->
     outbound_caller_id_number(Req, 'undefined').
 outbound_caller_id_number(?REQ_TYPE(JObj), Default) ->
     kz_json:get_ne_value(?KEY_OUTBOUND_CALLER_ID_NUMBER, JObj, Default).
 
--spec outbound_caller_id_name(req()) -> api_binary().
+-spec outbound_caller_id_name(req()) -> api(binary()).
 -spec outbound_caller_id_name(req(), Default) -> ne_binary() | Default.
 outbound_caller_id_name(Req) ->
     outbound_caller_id_name(Req, 'undefined').
 outbound_caller_id_name(?REQ_TYPE(JObj), Default) ->
     kz_json:get_ne_value(?KEY_OUTBOUND_CALLER_ID_NAME, JObj, Default).
 
--spec emergency_caller_id_number(req()) -> api_binary().
+-spec emergency_caller_id_number(req()) -> api(binary()).
 -spec emergency_caller_id_number(req(), Default) -> ne_binary() | Default.
 emergency_caller_id_number(Req) ->
     emergency_caller_id_number(Req, 'undefined').
 emergency_caller_id_number(?REQ_TYPE(JObj), Default) ->
     kz_json:get_ne_value(?KEY_E_CALLER_ID_NUMBER, JObj, Default).
 
--spec emergency_caller_id_name(req()) -> api_binary().
+-spec emergency_caller_id_name(req()) -> api(binary()).
 -spec emergency_caller_id_name(req(), Default) -> ne_binary() | Default.
 emergency_caller_id_name(Req) ->
     emergency_caller_id_name(Req, 'undefined').
 emergency_caller_id_name(?REQ_TYPE(JObj), Default) ->
     kz_json:get_ne_value(?KEY_E_CALLER_ID_NAME, JObj, Default).
 
--spec to_did(req()) -> api_binary().
+-spec to_did(req()) -> api(binary()).
 -spec to_did(req(), Default) -> ne_binary() | Default.
 to_did(Req) ->
     to_did(Req, 'undefined').
 to_did(?REQ_TYPE(JObj), Default) ->
     kz_json:get_ne_value(?KEY_TO_DID, JObj, Default).
 
--spec call_id(req()) -> api_binary().
+-spec call_id(req()) -> api(binary()).
 -spec call_id(req(), Default) -> ne_binary() | Default.
 call_id(Req) ->
     call_id(Req, 'undefined').
 call_id(?REQ_TYPE(JObj), Default) ->
     kz_json:get_ne_value(?KEY_CALL_ID, JObj, Default).
 
--spec control_queue(req()) -> api_binary().
+-spec control_queue(req()) -> api(binary()).
 -spec control_queue(req(), Default) -> ne_binary() | Default.
 control_queue(Req) ->
     control_queue(Req, 'undefined').
@@ -342,7 +342,7 @@ jobj_to_req(JObj) -> ?REQ_TYPE(JObj).
 -spec req_to_jobj(kapi_offnet_resource:req()) -> kz_json:object().
 req_to_jobj(?REQ_TYPE(JObj)) -> JObj.
 
--spec put_callid(req()) -> api_binary().
+-spec put_callid(req()) -> api(binary()).
 put_callid(?REQ_TYPE(JObj)) ->
     kz_util:put_callid(JObj).
 
@@ -378,63 +378,63 @@ ignore_early_media(Req) ->
 ignore_early_media(?REQ_TYPE(JObj), Default) ->
     kz_json:is_true(?KEY_IGNORE_EARLY_MEDIA, JObj, Default).
 
--spec media(req()) -> api_binary().
+-spec media(req()) -> api(binary()).
 -spec media(req(), Default) -> ne_binary() | Default.
 media(Req) ->
     media(Req, 'undefined').
 media(?REQ_TYPE(JObj), Default) ->
     kz_json:get_binary_value(?KEY_MEDIA, JObj, Default).
 
--spec message_id(req()) -> api_binary().
+-spec message_id(req()) -> api(binary()).
 -spec message_id(req(), Default) -> ne_binary() | Default.
 message_id(Req) ->
     message_id(Req, 'undefined').
 message_id(?REQ_TYPE(JObj), Default) ->
     kz_json:get_binary_value(?KEY_MESSAGE_ID, JObj, Default).
 
--spec hold_media(req()) -> api_binary().
+-spec hold_media(req()) -> api(binary()).
 -spec hold_media(req(), Default) -> ne_binary() | Default.
 hold_media(Req) ->
     hold_media(Req, 'undefined').
 hold_media(?REQ_TYPE(JObj), Default) ->
     kz_json:get_binary_value(?KEY_HOLD_MEDIA, JObj, Default).
 
--spec presence_id(req()) -> api_binary().
+-spec presence_id(req()) -> api(binary()).
 -spec presence_id(req(), Default) -> ne_binary() | Default.
 presence_id(Req) ->
     presence_id(Req, 'undefined').
 presence_id(?REQ_TYPE(JObj), Default) ->
     kz_json:get_binary_value(?KEY_PRESENCE_ID, JObj, Default).
 
--spec ringback(req()) -> api_binary().
+-spec ringback(req()) -> api(binary()).
 -spec ringback(req(), Default) -> ne_binary() | Default.
 ringback(Req) ->
     ringback(Req, 'undefined').
 ringback(?REQ_TYPE(JObj), Default) ->
     kz_json:get_binary_value(?KEY_RINGBACK, JObj, Default).
 
--spec fax_identity_number(req()) -> api_binary().
+-spec fax_identity_number(req()) -> api(binary()).
 -spec fax_identity_number(req(), Default) -> ne_binary() | Default.
 fax_identity_number(Req) ->
     fax_identity_number(Req, 'undefined').
 fax_identity_number(?REQ_TYPE(JObj), Default) ->
     kz_json:get_binary_value(?KEY_FAX_IDENTITY_NUMBER, JObj, Default).
 
--spec fax_identity_name(req()) -> api_binary().
+-spec fax_identity_name(req()) -> api(binary()).
 -spec fax_identity_name(req(), Default) -> ne_binary() | Default.
 fax_identity_name(Req) ->
     fax_identity_name(Req, 'undefined').
 fax_identity_name(?REQ_TYPE(JObj), Default) ->
     kz_json:get_binary_value(?KEY_FAX_IDENTITY_NAME, JObj, Default).
 
--spec outbound_callee_id_number(req()) -> api_binary().
+-spec outbound_callee_id_number(req()) -> api(binary()).
 -spec outbound_callee_id_number(req(), Default) -> ne_binary() | Default.
 outbound_callee_id_number(Req) ->
     outbound_callee_id_number(Req, 'undefined').
 outbound_callee_id_number(?REQ_TYPE(JObj), Default) ->
     kz_json:get_ne_value(?KEY_OUTBOUND_CALLEE_ID_NUMBER, JObj, Default).
 
--spec outbound_callee_id_name(req()) -> api_binary().
+-spec outbound_callee_id_name(req()) -> api(binary()).
 -spec outbound_callee_id_name(req(), Default) -> ne_binary() | Default.
 outbound_callee_id_name(Req) ->
     outbound_callee_id_name(Req, 'undefined').
@@ -448,14 +448,14 @@ b_leg_events(Req) ->
 b_leg_events(?REQ_TYPE(JObj), Default) ->
     kz_json:get_list_value(?KEY_B_LEG_EVENTS, JObj, Default).
 
--spec from_uri_realm(req()) -> api_binary().
+-spec from_uri_realm(req()) -> api(binary()).
 -spec from_uri_realm(req(), Default) -> ne_binary() | Default.
 from_uri_realm(Req) ->
     from_uri_realm(Req, 'undefined').
 from_uri_realm(?REQ_TYPE(JObj), Default) ->
     kz_json:get_ne_value(?KEY_FROM_URI_REALM, JObj, Default).
 
--spec account_realm(req()) -> api_binary().
+-spec account_realm(req()) -> api(binary()).
 -spec account_realm(req(), Default) -> ne_binary() | Default.
 account_realm(Req) ->
     account_realm(Req, 'undefined').
@@ -469,7 +469,7 @@ format_from_uri(Req) ->
 format_from_uri(?REQ_TYPE(JObj), Default) ->
     kz_json:is_true(?KEY_FORMAT_FROM_URI, JObj, Default).
 
--spec body(req()) -> api_binary().
+-spec body(req()) -> api(binary()).
 -spec body(req(), Default) -> ne_binary() | Default.
 body(Req) ->
     body(Req, 'undefined').
@@ -490,11 +490,11 @@ t38_enabled(Req) ->
 t38_enabled(?REQ_TYPE(JObj), Default) ->
      kz_json:is_true(?KEY_T38_ENABLED, JObj, Default).
 
--spec msg_id(req()) -> api_binary().
+-spec msg_id(req()) -> api(binary()).
 msg_id(?REQ_TYPE(JObj)) ->
     kz_api:msg_id(JObj).
 
--spec server_id(req()) -> api_binary().
+-spec server_id(req()) -> api(binary()).
 server_id(?REQ_TYPE(JObj)) ->
     kz_api:server_id(JObj).
 

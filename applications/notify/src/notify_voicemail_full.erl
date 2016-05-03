@@ -82,25 +82,25 @@ send(JObj, Account) ->
 
     build_and_send_email(TxtBody, HTMLBody, Subject, Emails, Props).
 
--spec get_user_email(kz_json:object(), kz_json:object()) -> api_binary().
+-spec get_user_email(kz_json:object(), kz_json:object()) -> api(binary()).
 get_user_email(UserJObj, Account) ->
     case kz_json:get_first_defined([<<"email">>, <<"username">>], UserJObj) of
         'undefined' -> get_rep_email(Account);
         Email -> Email
     end.
 
--spec get_rep_email(kz_json:object()) -> api_binary().
+-spec get_rep_email(kz_json:object()) -> api(binary()).
 get_rep_email(Account) ->
     case notify_util:get_rep_email(Account) of
         'undefined' -> get_sys_admin_email();
         RepEmail -> RepEmail
     end.
 
--spec get_sys_admin_email() -> api_binary().
+-spec get_sys_admin_email() -> api(binary()).
 get_sys_admin_email() ->
     kapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>).
 
--spec get_owner(ne_binary(), kzd_voicemail_box:doc(), api_binary()) ->
+-spec get_owner(ne_binary(), kzd_voicemail_box:doc(), api(binary())) ->
                        {'ok', kzd_user:doc()}.
 get_owner(AccountDb, VMBox) ->
     get_owner(AccountDb, VMBox, kzd_voicemail_box:owner_id(VMBox)).
@@ -111,7 +111,7 @@ get_owner(AccountDb, _VMBox, OwnerId) ->
     lager:debug("attempting to load owner: ~s", [OwnerId]),
     {'ok', _} = kz_datamgr:open_cache_doc(AccountDb, OwnerId).
 
--spec maybe_add_user_email(ne_binaries(), api_binary()) -> ne_binaries().
+-spec maybe_add_user_email(ne_binaries(), api(binary())) -> ne_binaries().
 maybe_add_user_email(BoxEmails, 'undefined') -> BoxEmails;
 maybe_add_user_email(BoxEmails, UserEmail) -> [UserEmail | BoxEmails].
 

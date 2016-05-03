@@ -48,27 +48,27 @@
 -define(TAB, ?MODULE).
 -define(SYNC_PERIOD, 900000). %% 15 minutes
 
--record(channel, {call_id :: api_binary() | '$1' | '$2' | '_'
-                  ,other_leg_call_id :: api_binary() | '$2' | '$3' | '_'
-                  ,direction :: api_binary() | '_'
-                  ,account_id :: api_binary() | '$1' | '_'
-                  ,account_billing :: api_binary() | '$1' | '_'
+-record(channel, {call_id :: api(binary()) | '$1' | '$2' | '_'
+                  ,other_leg_call_id :: api(binary()) | '$2' | '$3' | '_'
+                  ,direction :: api(binary()) | '_'
+                  ,account_id :: api(binary()) | '$1' | '_'
+                  ,account_billing :: api(binary()) | '$1' | '_'
                   ,account_allotment = 'false' :: boolean() | '_'
-                  ,reseller_id :: api_binary() | '$1' | '$2' | '_'
-                  ,reseller_billing :: api_binary() | '$1' | '_'
+                  ,reseller_id :: api(binary()) | '$1' | '$2' | '_'
+                  ,reseller_billing :: api(binary()) | '$1' | '_'
                   ,reseller_allotment = 'false' :: boolean() | '_'
                   ,soft_limit = 'false' :: boolean() | '_'
                   ,timestamp = kz_util:current_tstamp() :: pos_integer() | '_'
                   ,answered_timestamp :: api_pos_integer() | '$1' | '_'
-                  ,rate :: api_binary() | '_'
-                  ,rate_increment :: api_binary() | '_'
-                  ,rate_minimum :: api_binary() | '_'
-                  ,rate_nocharge_time :: api_binary() | '_'
-                  ,discount_percentage :: api_binary() | '_'
-                  ,surcharge :: api_binary() | '_'
-                  ,rate_name :: api_binary() | '_'
-                  ,rate_id :: api_binary() | '_'
-                  ,base_cost :: api_binary() | '_'
+                  ,rate :: api(binary()) | '_'
+                  ,rate_increment :: api(binary()) | '_'
+                  ,rate_minimum :: api(binary()) | '_'
+                  ,rate_nocharge_time :: api(binary()) | '_'
+                  ,discount_percentage :: api(binary()) | '_'
+                  ,surcharge :: api(binary()) | '_'
+                  ,rate_name :: api(binary()) | '_'
+                  ,rate_id :: api(binary()) | '_'
+                  ,base_cost :: api(binary()) | '_'
                  }).
 
 -type channel() :: #channel{}.
@@ -691,7 +691,7 @@ from_jobj(JObj) ->
 is_allotment(<<"allotment_", _/binary>>) -> 'true';
 is_allotment(_) -> 'false'.
 
--type unique_channel() :: {ne_binary(), api_binary()}.
+-type unique_channel() :: {ne_binary(), api(binary())}.
 -type unique_channels() :: [unique_channel()].
 
 -spec count_unique_calls(unique_channels()) -> non_neg_integer().

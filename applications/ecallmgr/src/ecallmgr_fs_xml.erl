@@ -632,7 +632,7 @@ arrange_acl_node({_, JObj}, Dict) ->
             orddict:store(AclList, prepend_child(acl_list_el(AclList), NodeEl), Dict)
     end.
 
--spec hunt_context(kz_proplist()) -> api_binary().
+-spec hunt_context(kz_proplist()) -> api(binary()).
 hunt_context(Props) ->
     props:get_value(<<"Hunt-Context">>, Props, ?DEFAULT_FREESWITCH_CONTEXT).
 
@@ -679,7 +679,7 @@ config_el(Name, Desc, Content) ->
                 ,content=Content
                }.
 
--spec channel_el(api_binary(), xml_el() | xml_els()) -> xml_el() | xml_els().
+-spec channel_el(api(binary()), xml_el() | xml_els()) -> xml_el() | xml_els().
 channel_el('undefined', Content) -> Content;
 channel_el(UUID, Content) ->
     channel_el(UUID, <<"channel ", (kz_util:to_binary(UUID))/binary, " tracked by kazoo">>, Content).

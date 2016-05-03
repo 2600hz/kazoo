@@ -112,7 +112,7 @@
 -type federator_listener() :: {ne_binary(), pid()}.
 -type federator_listeners() :: [federator_listener()].
 -record(state, {
-          queue :: api_binary()
+          queue :: api(binary())
          ,is_consuming = 'false' :: boolean()
          ,responders = [] :: listener_utils:responders() %% { {EvtCat, EvtName}, Module }
          ,bindings = [] :: bindings() %% {authentication, [{key, value},...]}
@@ -871,7 +871,7 @@ set_qos(N) when is_integer(N), N >= 0 -> amqp_util:basic_qos(N).
 start_consumer(Q, 'undefined') -> amqp_util:basic_consume(Q, []);
 start_consumer(Q, ConsumeProps) -> amqp_util:basic_consume(Q, ConsumeProps).
 
--spec remove_binding(binding_module(), kz_proplist(), api_binary()) -> any().
+-spec remove_binding(binding_module(), kz_proplist(), api(binary())) -> any().
 remove_binding(Binding, Props, Q) ->
     Wapi = list_to_binary([<<"kapi_">>, kz_util:to_binary(Binding)]),
     lager:debug("trying to remove bindings with ~s:unbind_q(~s, ~p)", [Wapi, Q, Props]),
@@ -1110,7 +1110,7 @@ create_federated_params(FederateBindings, Params) ->
      ,{'consume_options', props:get_value('consume_options', Params, [])}
     ].
 
--spec federated_queue_name(kz_proplist()) -> api_binary().
+-spec federated_queue_name(kz_proplist()) -> api(binary()).
 federated_queue_name(Params) ->
     QueueName = props:get_value('queue_name', Params, <<>>),
     case kz_util:is_empty(QueueName) of

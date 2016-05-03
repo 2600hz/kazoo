@@ -759,7 +759,7 @@ get_zone(JObj, #state{zones=Zones, zone=LocalZone}) ->
 -spec local_zone() -> atom().
 local_zone() -> kz_config:zone().
 
--spec get_amqp_broker(api_binary() | kz_json:object()) -> api_binary().
+-spec get_amqp_broker(api(binary()) | kz_json:object()) -> api(binary()).
 get_amqp_broker('undefined') ->
     kz_util:normalize_amqp_uri(kz_amqp_connections:primary_broker());
 get_amqp_broker(Broker) when is_binary(Broker) -> kz_util:normalize_amqp_uri(Broker);

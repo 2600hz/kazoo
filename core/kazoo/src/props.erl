@@ -183,7 +183,7 @@ get_atom_value(Key, Props, Default) ->
         Val -> kz_util:to_atom(Val)
     end.
 
--spec get_binary_value(kz_proplist_key() | kz_proplist_keys(), kz_proplist()) -> api_binary().
+-spec get_binary_value(kz_proplist_key() | kz_proplist_keys(), kz_proplist()) -> api(binary()).
 -spec get_binary_value(kz_proplist_key() | kz_proplist_keys(), kz_proplist(), Default) ->
                               ne_binary() | Default.
 get_binary_value(Key, Props) ->
@@ -199,7 +199,7 @@ get_binary_value(Key, Props, Default) ->
         V -> kz_util:to_binary(V)
     end.
 
--spec get_ne_binary_value(kz_proplist_key(), kz_proplist()) -> api_binary().
+-spec get_ne_binary_value(kz_proplist_key(), kz_proplist()) -> api(binary()).
 -spec get_ne_binary_value(kz_proplist_key(), kz_proplist(), Default) ->
                               ne_binary() | Default.
 get_ne_binary_value(Key, Props) ->

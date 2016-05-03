@@ -27,8 +27,8 @@
                 ,endpoints = [] :: kz_json:objects()
                 ,resource_req :: kapi_offnet_resource:req()
                 ,request_handler :: pid()
-                ,response_queue :: api_binary()
-                ,queue :: api_binary()
+                ,response_queue :: api(binary())
+                ,queue :: api(binary())
                 ,timeout :: api_reference()
                }).
 
@@ -294,7 +294,7 @@ build_originate(#state{endpoints=Endpoints
        | kz_api:default_headers(Q, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
--spec originate_from_uri(ne_binary(), kz_json:object()) -> api_binary().
+-spec originate_from_uri(ne_binary(), kz_json:object()) -> api(binary()).
 originate_from_uri(CIDNum, OffnetReq) ->
     Realm = kz_json:get_first_defined([<<"From-URI-Realm">>
                                        ,<<"Account-Realm">>
@@ -310,7 +310,7 @@ originate_from_uri(CIDNum, OffnetReq) ->
             FromURI
     end.
 
--spec originate_caller_id(kz_json:object()) -> {api_binary(), api_binary()}.
+-spec originate_caller_id(kz_json:object()) -> {api(binary()), api(binary())}.
 originate_caller_id(OffnetReq) ->
     {kz_json:get_first_defined([<<"Outbound-Caller-ID-Number">>
                                 ,<<"Emergency-Caller-ID-Number">>

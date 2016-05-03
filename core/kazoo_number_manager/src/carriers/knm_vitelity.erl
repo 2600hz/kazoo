@@ -231,7 +231,7 @@ response_to_numbers(JObj, Options) ->
                    )
     }.
 
--spec response_pair_to_number(ne_binary(), kz_json:object(), knm_number:knm_numbers(), api_binary()) ->
+-spec response_pair_to_number(ne_binary(), kz_json:object(), knm_number:knm_numbers(), api(binary())) ->
                                      knm_number:knm_numbers().
 response_pair_to_number(DID, CarrierData, Acc, AccountId) ->
     {'ok', PhoneNumber} =
@@ -444,7 +444,7 @@ purchase_tollfree_options(DID) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_routesip() -> api_binary().
+-spec get_routesip() -> api(binary()).
 -ifdef(TEST).
 get_routesip() ->
     <<"1.2.3.4">>.

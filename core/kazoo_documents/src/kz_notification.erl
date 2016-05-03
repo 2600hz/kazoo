@@ -47,28 +47,28 @@
 -define(EMAIL_TYPE, <<"type">>).
 -define(PVT_TYPE, <<"notification">>).
 
--spec id(doc()) -> api_binary().
+-spec id(doc()) -> api(binary()).
 id(JObj) -> kz_doc:id(JObj).
 
--spec db_id(doc() | ne_binary()) -> api_binary().
+-spec db_id(doc() | ne_binary()) -> api(binary()).
 db_id(<<_/binary>> = Id) ->
     maybe_add_prefix(Id);
 db_id(JObj) ->
     maybe_add_prefix(id(JObj)).
 
--spec resp_id(doc() | ne_binary()) -> api_binary().
+-spec resp_id(doc() | ne_binary()) -> api(binary()).
 resp_id(<<_/binary>> = Id) ->
     maybe_rm_prefix(Id);
 resp_id(JObj) ->
     maybe_rm_prefix(id(JObj)).
 
 -define(ID_PREFIX, "notification.").
--spec maybe_add_prefix(api_binary()) -> api_binary().
+-spec maybe_add_prefix(api(binary())) -> api(binary()).
 maybe_add_prefix('undefined') -> 'undefined';
 maybe_add_prefix(<<?ID_PREFIX, _/binary>> = Id) -> Id;
 maybe_add_prefix(Id) -> <<?ID_PREFIX, Id/binary>>.
 
--spec maybe_rm_prefix(api_binary()) -> api_binary().
+-spec maybe_rm_prefix(api(binary())) -> api(binary()).
 maybe_rm_prefix('undefined') -> 'undefined';
 maybe_rm_prefix(<<?ID_PREFIX, Id/binary>>) -> Id;
 maybe_rm_prefix(Id) -> Id.
@@ -89,7 +89,7 @@ macro(JObj, Key) ->
 set_macro(JObj, Key, Value) ->
     kz_json:set_value([?MACROS, Key], Value, JObj).
 
--spec subject(doc()) -> api_binary().
+-spec subject(doc()) -> api(binary()).
 subject(JObj) ->
     kz_json:get_value(?SUBJECT, JObj).
 
@@ -97,7 +97,7 @@ subject(JObj) ->
 set_subject(JObj, Subject) ->
     kz_json:set_value(?SUBJECT, Subject, JObj).
 
--spec category(doc()) -> api_binary().
+-spec category(doc()) -> api(binary()).
 category(JObj) ->
     kz_json:get_value(?CATEGORY, JObj).
 
@@ -105,7 +105,7 @@ category(JObj) ->
 set_category(JObj, Category) ->
     kz_json:set_value(?CATEGORY, Category, JObj).
 
--spec name(doc()) -> api_binary().
+-spec name(doc()) -> api(binary()).
 name(JObj) ->
     kz_json:get_value(?NAME, JObj).
 
@@ -125,7 +125,7 @@ set_to(JObj, To) ->
 to_email_addresses(JObj) ->
     kz_json:get_value([?TO, ?EMAIL_ADDRESSES], JObj).
 
--spec to_email_type(doc()) -> api_binary().
+-spec to_email_type(doc()) -> api(binary()).
 to_email_type(JObj) ->
     kz_json:get_value([?TO, ?EMAIL_TYPE], JObj).
 
@@ -141,7 +141,7 @@ set_cc(JObj, Cc) ->
 cc_email_addresses(JObj) ->
     kz_json:get_value([?CC, ?EMAIL_ADDRESSES], JObj).
 
--spec cc_email_type(doc()) -> api_binary().
+-spec cc_email_type(doc()) -> api(binary()).
 cc_email_type(JObj) ->
     kz_json:get_value([?CC, ?EMAIL_TYPE], JObj).
 
@@ -157,11 +157,11 @@ set_bcc(JObj, Bcc) ->
 bcc_email_addresses(JObj) ->
     kz_json:get_value([?BCC, ?EMAIL_ADDRESSES], JObj).
 
--spec bcc_email_type(doc()) -> api_binary().
+-spec bcc_email_type(doc()) -> api(binary()).
 bcc_email_type(JObj) ->
     kz_json:get_value([?BCC, ?EMAIL_TYPE], JObj).
 
--spec from(doc()) -> api_binary().
+-spec from(doc()) -> api(binary()).
 from(JObj) ->
     kz_json:get_value(?FROM, JObj).
 
@@ -169,7 +169,7 @@ from(JObj) ->
 set_from(JObj, From) ->
     kz_json:set_value(?FROM, From, JObj).
 
--spec reply_to(doc()) -> api_binary().
+-spec reply_to(doc()) -> api(binary()).
 reply_to(JObj) ->
     kz_json:get_value(?REPLY_TO, JObj).
 
@@ -178,7 +178,7 @@ set_reply_to(JObj, ReplyTo) ->
     kz_json:set_value(?REPLY_TO, ReplyTo, JObj).
 
 -spec set_base_properties(doc()) -> doc().
--spec set_base_properties(doc(), api_binary()) -> doc().
+-spec set_base_properties(doc(), api(binary())) -> doc().
 set_base_properties(JObj) ->
     set_base_properties(JObj, id(JObj)).
 

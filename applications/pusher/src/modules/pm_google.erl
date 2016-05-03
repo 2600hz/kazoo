@@ -65,7 +65,7 @@ maybe_send_push_notification(Pid, JObj) ->
 
     gcm:push(Pid, [TokenID], Message).
 
--spec get_gcm(api_binary(), ets:tid()) -> api_pid().
+-spec get_gcm(api(binary()), ets:tid()) -> api_pid().
 get_gcm('undefined', _) -> 'undefined';
 get_gcm(App, ETS) ->
     case ets:lookup(ETS, App) of
@@ -73,12 +73,12 @@ get_gcm(App, ETS) ->
         [{App, Pid}] -> Pid
     end.
 
--spec maybe_load_gcm(api_binary(), ets:tid()) -> api_pid().
+-spec maybe_load_gcm(api(binary()), ets:tid()) -> api_pid().
 maybe_load_gcm(App, ETS) ->
     lager:debug("loading gcm secret for ~s", [App]),
     maybe_load_gcm(App, ETS, kapps_config:get_binary(?CONFIG_CAT, <<"google">>, 'undefined', App)).
 
--spec maybe_load_gcm(api_binary(), ets:tid(), api_binary()) -> api_pid().
+-spec maybe_load_gcm(api(binary()), ets:tid(), api(binary())) -> api_pid().
 maybe_load_gcm(App, _, 'undefined') ->
     lager:debug("google pusher secret for app ~s not found", [App]),
     'undefined';

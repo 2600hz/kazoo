@@ -55,16 +55,16 @@
 -record(state, {transferor :: ne_binary()
                 ,transferee :: ne_binary()
                 ,target :: ne_binary() %% this is the real b-leg, if any
-                ,target_a_leg :: api_binary() %% loopback-a
-                ,target_b_leg :: api_binary() %% loopback-b
+                ,target_a_leg :: api(binary()) %% loopback-a
+                ,target_b_leg :: api(binary()) %% loopback-b
                 ,target_legs = [] :: ne_binaries()
                 ,call :: kapps_call:call()
                 ,target_call = kapps_call:new() :: kapps_call:call()
                 ,takeback_dtmf :: ne_binary()
                 ,transferor_dtmf = <<>> :: binary()
-                ,ringback :: api_binary()
-                ,moh :: api_binary()
-                ,extension :: api_binary()
+                ,ringback :: api(binary())
+                ,moh :: api(binary())
+                ,extension :: api(binary())
                 ,purgatory_ref :: api_reference()
                 ,event_node :: ne_binary()
                }).
@@ -1284,17 +1284,17 @@ builder_target(JObj) ->
     {'ok', [Target]} = io:fread("What is the target extension/DID to transfer to? ", "~s"),
     builder_takeback_dtmf(JObj, kz_util:to_binary(Target)).
 
--spec builder_takeback_dtmf(kz_json:object(), api_binary()) -> kz_json:object().
+-spec builder_takeback_dtmf(kz_json:object(), api(binary())) -> kz_json:object().
 builder_takeback_dtmf(JObj, Target) ->
     {'ok', [Takeback]} = io:fread("What is the takeback DTMF ('n' to use the default)? ", "~s"),
     builder_moh(JObj, Target, kz_util:to_binary(Takeback)).
 
--spec builder_moh(kz_json:object(), api_binary(), ne_binary()) -> kz_json:object().
+-spec builder_moh(kz_json:object(), api(binary()), ne_binary()) -> kz_json:object().
 builder_moh(JObj, Target, Takeback) ->
     {'ok', [MOH]} = io:fread("Any custom music-on-hold ('n' for none, 'h' for help')? ", "~s"),
     metaflow_jobj(JObj, Target, Takeback, kz_util:to_binary(MOH)).
 
--spec metaflow_jobj(kz_json:object(), api_binary(), api_binary(), api_binary()) -> kz_json:object().
+-spec metaflow_jobj(kz_json:object(), api(binary()), api(binary()), api(binary())) -> kz_json:object().
 metaflow_jobj(JObj, Target, Takeback, <<"h">>) ->
     io:format("To set a system_media file as MOH, enter: /system_media/{MEDIA_ID}~n", []),
     io:format("To set an account's media file as MOH, enter: /{ACCOUNT_ID}/{MEDIA_ID}~n", []),
@@ -1305,7 +1305,7 @@ metaflow_jobj(JObj, Target, Takeback, MOH) ->
                         ,{<<"data">>, transfer_data(Target, Takeback, MOH)}
                        ], JObj).
 
--spec transfer_data(api_binary(), api_binary(), api_binary()) -> kz_json:object().
+-spec transfer_data(api(binary()), api(binary()), api(binary())) -> kz_json:object().
 transfer_data(Target, Takeback, <<"n">>) ->
     transfer_data(Target, Takeback, 'undefined');
 transfer_data(Target, <<"n">>, MOH) ->
@@ -1318,8 +1318,8 @@ transfer_data(Target, Takeback, MOH) ->
          ,{<<"moh">>, MOH}
         ])).
 
--spec find_moh(kz_json:object(), kapps_call:call()) -> api_binary().
--spec find_moh(kapps_call:call()) -> api_binary().
+-spec find_moh(kz_json:object(), kapps_call:call()) -> api(binary()).
+-spec find_moh(kapps_call:call()) -> api(binary()).
 find_moh(Data, Call) ->
     case kz_json:get_value(<<"moh">>, Data) of
         'undefined' -> find_moh(Call);
@@ -1369,12 +1369,12 @@ hangup_target(Call) ->
     ?WSD_NOTE(kapps_call:call_id(Call), 'right', <<"hangup sent">>),
     kapps_call_command:hangup(Call).
 
--spec to_tonestream(api_binary()) -> api_binary().
+-spec to_tonestream(api(binary())) -> api(binary()).
 to_tonestream('undefined') -> 'undefined';
 to_tonestream(<<"tone_stream://", _/binary>> = TS) -> <<TS/binary, ";loops=-1">>;
 to_tonestream(Ringback) -> <<"tone_stream://", Ringback/binary, ";loops=-1">>.
 
--spec maybe_start_transferor_ringback(kapps_call:call(), ne_binary(), api_binary()) -> 'ok'.
+-spec maybe_start_transferor_ringback(kapps_call:call(), ne_binary(), api(binary())) -> 'ok'.
 maybe_start_transferor_ringback(_Call, _Transferor, 'undefined') -> 'ok';
 maybe_start_transferor_ringback(Call, Transferor, Ringback) ->
     Command = kapps_call_command:play_command(Ringback, Transferor),
@@ -1385,7 +1385,7 @@ maybe_start_transferor_ringback(Call, Transferor, Ringback) ->
 maybe_cancel_timer('undefined') -> 'ok';
 maybe_cancel_timer(Ref) -> erlang:cancel_timer(Ref).
 
--spec suppress_event(kz_json:object(), api_binary(), ne_binary()) -> 'ok'.
+-spec suppress_event(kz_json:object(), api(binary()), ne_binary()) -> 'ok'.
 suppress_event(JObj, _EventNode, _OtherNode) ->
     lager:debug("supressing event ~s from ~s (we want events from ~s): ~s"
                 ,[kz_call_event:event_name(JObj)

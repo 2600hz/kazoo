@@ -163,12 +163,12 @@ get_query_string_data(QS0, Req) ->
     {QS, Req}.
 
 -spec get_content_type(cowboy_req:req()) ->
-                              {api_binary(), cowboy_req:req()}.
+                              {api(binary()), cowboy_req:req()}.
 get_content_type(Req) ->
     get_parsed_content_type(cowboy_req:parse_header(<<"content-type">>, Req)).
 
 -spec get_parsed_content_type({'ok', api(content_type()), cowboy_req:req()}) ->
-                                     {api_binary(), cowboy_req:req()}.
+                                     {api(binary()), cowboy_req:req()}.
 get_parsed_content_type({'ok', 'undefined', Req}) ->
     {'undefined', Req};
 get_parsed_content_type({'ok', {Main, Sub, _Opts}, Req}) ->

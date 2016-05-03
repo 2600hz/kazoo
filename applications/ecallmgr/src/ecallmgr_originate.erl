@@ -29,13 +29,13 @@
 
 -type created_uuid() :: {'fs' | 'api', ne_binary()}.
 -record(state, {node :: atom()
-                ,server_id :: api_binary()
+                ,server_id :: api(binary())
                 ,originate_req = kz_json:new() :: kz_json:object()
                 ,uuid :: created_uuid()
-                ,action :: api_binary()
-                ,app :: api_binary()
-                ,dialstrings :: api_binary()
-                ,queue :: api_binary()
+                ,action :: api(binary())
+                ,app :: api(binary())
+                ,dialstrings :: api(binary())
+                ,queue :: api(binary())
                 ,control_pid :: api_pid()
                 ,tref :: api_reference()
                 ,fetch_id = kz_util:rand_hex_binary(16)
@@ -461,7 +461,7 @@ get_originate_action(_, _) ->
     lager:debug("got originate with action park"),
     ?ORIGINATE_PARK.
 
--spec get_transfer_action(kz_json:object(), api_binary()) -> ne_binary().
+-spec get_transfer_action(kz_json:object(), api(binary())) -> ne_binary().
 get_transfer_action(_JObj, 'undefined') -> <<"error">>;
 get_transfer_action(JObj, Route) ->
     Context = ?DEFAULT_FREESWITCH_CONTEXT,
@@ -514,7 +514,7 @@ get_eavesdrop_action(JObj) ->
         'undefined' -> <<Group/binary, "eavesdrop:", CallId/binary, " inline">>
     end.
 
--spec build_originate_args(ne_binary(), state(), kz_json:object(), ne_binary()) -> api_binary().
+-spec build_originate_args(ne_binary(), state(), kz_json:object(), ne_binary()) -> api(binary()).
 build_originate_args(Action, State, JObj, FetchId) ->
     case kz_json:get_value(<<"Endpoints">>, JObj, []) of
         [] ->
@@ -595,7 +595,7 @@ originate_execute(Node, Dialstrings, Timeout) ->
             {'error', <<"unspecified">>}
     end.
 
--spec set_music_on_hold(atom(), ne_binary(), api_binary()) -> 'ok'.
+-spec set_music_on_hold(atom(), ne_binary(), api(binary())) -> 'ok'.
 set_music_on_hold(_, _, 'undefined') -> 'ok';
 set_music_on_hold(Node, UUID, Media) ->
     Resp = ecallmgr_fs_command:set(Node, UUID, [{<<"Hold-Media">>, Media}]),
@@ -614,7 +614,7 @@ unbind_from_call_events() ->
     lager:debug("unbind from call events"),
     gen_listener:rm_binding(self(), 'call', []).
 
--spec update_uuid(api_binary(), ne_binary()) -> 'ok'.
+-spec update_uuid(api(binary()), ne_binary()) -> 'ok'.
 update_uuid(OldUUID, NewUUID) ->
     kz_util:put_callid(NewUUID),
     lager:debug("updating call id from ~s to ~s", [OldUUID, NewUUID]),
@@ -695,7 +695,7 @@ maybe_fix_fs_auto_answer_bug(Export) ->
             "^unset:sip_h_Call-Info^unset:sip_h_Alert-Info^unset:alert_info^unset:sip_invite_params^set:sip_auto_answer=false"
     end.
 
--spec publish_error(ne_binary(), created_uuid() | api_binary(), kz_json:object(), api_binary()) -> 'ok'.
+-spec publish_error(ne_binary(), created_uuid() | api(binary()), kz_json:object(), api(binary())) -> 'ok'.
 publish_error(_, _, _, 'undefined') -> 'ok';
 publish_error(Error, {_, UUID}, Request, ServerId) ->
     publish_error(Error, UUID, Request, ServerId);
@@ -713,7 +713,7 @@ publish_error(Error, UUID, Request, ServerId) ->
 cleanup_error(<<"-ERR ", E/binary>>) -> E;
 cleanup_error(E) -> E.
 
--spec publish_originate_ready(ne_binary(), created_uuid() | ne_binary(), kz_json:object(), api_binary(), api_binary()) -> 'ok'.
+-spec publish_originate_ready(ne_binary(), created_uuid() | ne_binary(), kz_json:object(), api(binary()), api(binary())) -> 'ok'.
 publish_originate_ready(CtrlQ, {_, UUID}, Request, Q, ServerId) ->
     publish_originate_ready(CtrlQ, UUID, Request, Q, ServerId);
 publish_originate_ready(CtrlQ, UUID, Request, Q, ServerId) ->
@@ -725,7 +725,7 @@ publish_originate_ready(CtrlQ, UUID, Request, Q, ServerId) ->
             ],
     kapi_dialplan:publish_originate_ready(ServerId, Props).
 
--spec publish_originate_resp(api_binary(), kz_json:object()) -> 'ok'.
+-spec publish_originate_resp(api(binary()), kz_json:object()) -> 'ok'.
 publish_originate_resp('undefined', _) -> 'ok';
 publish_originate_resp(ServerId, JObj) ->
     Resp = kz_json:set_values([{<<"Event-Category">>, <<"resource">>}
@@ -733,7 +733,7 @@ publish_originate_resp(ServerId, JObj) ->
                               ], JObj),
     kapi_resource:publish_originate_resp(ServerId, Resp).
 
--spec publish_originate_resp(api_binary(), kz_json:object(), ne_binary()) -> 'ok'.
+-spec publish_originate_resp(api(binary()), kz_json:object(), ne_binary()) -> 'ok'.
 publish_originate_resp('undefined', _JObj, _UUID) -> 'ok';
 publish_originate_resp(ServerId, JObj, UUID) ->
     Resp = kz_json:set_values([{<<"Event-Category">>, <<"resource">>}
@@ -743,7 +743,7 @@ publish_originate_resp(ServerId, JObj, UUID) ->
                               ], JObj),
     kapi_resource:publish_originate_resp(ServerId, Resp).
 
--spec publish_originate_started(api_binary(), ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
+-spec publish_originate_started(api(binary()), ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
 publish_originate_started('undefined', _, _, _) -> 'ok';
 publish_originate_started(ServerId, CallId, JObj, CtrlQ) ->
     Resp = kz_json:from_list(
@@ -755,7 +755,7 @@ publish_originate_started(ServerId, CallId, JObj, CtrlQ) ->
                ])),
     kapi_resource:publish_originate_started(ServerId, Resp).
 
--spec publish_originate_uuid(api_binary(), created_uuid() | ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
+-spec publish_originate_uuid(api(binary()), created_uuid() | ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
 publish_originate_uuid('undefined', _, _, _) -> 'ok';
 publish_originate_uuid(ServerId, UUID, JObj, CtrlQueue) ->
     Resp = props:filter_undefined(
@@ -868,7 +868,7 @@ fix_hold_media(Endpoint) ->
     put('hold_media', kz_json:get_value(<<"Hold-Media">>, Endpoint)),
     kz_json:delete_key(<<"Hold-Media">>, Endpoint).
 
--spec should_update_uuid(api_binary(), kz_proplist()) -> boolean().
+-spec should_update_uuid(api(binary()), kz_proplist()) -> boolean().
 should_update_uuid(OldUUID, Props) ->
     case props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)) of
         <<"loopback::bowout">> ->

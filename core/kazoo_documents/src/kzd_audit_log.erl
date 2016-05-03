@@ -68,7 +68,7 @@ audit_account_quantities(JObj, AccountId) ->
 audit_cascase_quantities(JObj, AccountId) ->
     kz_json:get_json_value([?KEY_AUDIT, AccountId, ?KEY_CASCADE_QUANTITIES], JObj).
 
--spec audit_account_name(doc(), ne_binary()) -> api_binary().
+-spec audit_account_name(doc(), ne_binary()) -> api(binary()).
 audit_account_name(JObj, AccountId) ->
     kz_json:get_value([?KEY_AUDIT, AccountId, ?KEY_ACCOUNT_NAME], JObj).
 
@@ -80,24 +80,24 @@ tree(JObj) ->
 authenticating_user(JObj) ->
     kz_json:get_json_value(?KEY_AUTHENTICATING_USER, JObj).
 
--spec authenticating_user_first_name(doc()) -> api_binary().
+-spec authenticating_user_first_name(doc()) -> api(binary()).
 authenticating_user_first_name(JObj) ->
     kz_json:get_value([?KEY_AUTHENTICATING_USER, ?KEY_FIRST_NAME], JObj).
 
--spec authenticating_user_last_name(doc()) -> api_binary().
+-spec authenticating_user_last_name(doc()) -> api(binary()).
 authenticating_user_last_name(JObj) ->
     kz_json:get_value([?KEY_AUTHENTICATING_USER, ?KEY_LAST_NAME], JObj).
 
--spec authenticating_user_account_id(doc()) -> api_binary().
+-spec authenticating_user_account_id(doc()) -> api(binary()).
 authenticating_user_account_id(JObj) ->
     kz_json:get_value([?KEY_AUTHENTICATING_USER, ?KEY_ACCOUNT_ID], JObj).
 
--spec authenticating_user_account_name(doc()) -> api_binary().
+-spec authenticating_user_account_name(doc()) -> api(binary()).
 authenticating_user_account_name(JObj) ->
     kz_json:get_value([?KEY_AUTHENTICATING_USER, ?KEY_ACCOUNT_NAME], JObj).
 
 -spec type() -> ne_binary().
--spec type(doc()) -> api_binary().
+-spec type(doc()) -> api(binary()).
 type() -> ?PVT_TYPE.
 
 type(JObj) -> kz_doc:type(JObj).

@@ -36,15 +36,15 @@ released_state(Default) ->
     kapps_config:get_binary(?KNM_CONFIG_CAT, <<"released_state">>, Default).
 -endif.
 
--spec default_locality_url() -> api_binary().
--spec default_locality_url(api_binary()) -> api_binary().
+-spec default_locality_url() -> api(binary()).
+-spec default_locality_url(api(binary())) -> api(binary()).
 default_locality_url() ->
     default_locality_url('undefined').
 default_locality_url(Default) ->
     kapps_config:get(<<"number_manager.other">>, <<"phonebook_url">>, Default).
 
--spec locality_url() -> api_binary().
--spec locality_url(api_binary()) -> api_binary().
+-spec locality_url() -> api(binary()).
+-spec locality_url(api(binary())) -> api(binary()).
 locality_url() ->
     locality_url(default_locality_url()).
 locality_url(Default) ->

@@ -46,13 +46,13 @@
 
 -define(SERVER, ?MODULE).
 
--type media() :: {api_binary(), ne_binary()}.
+-type media() :: {api(binary()), ne_binary()}.
 
 -type store_url() :: 'false' |
                      {'true', 'local'} |
                      {'true', 'other', ne_binary()}.
 
--record(state, {url                        :: api_binary()
+-record(state, {url                        :: api(binary())
                 ,format                    :: ne_binary()
                 ,sample_rate               :: api(integer())
                 ,media                     :: media()
@@ -408,7 +408,7 @@ get_timelimit(TL) ->
         'false' -> Max
     end.
 
--spec get_format(api_binary()) -> ne_binary().
+-spec get_format(api(binary())) -> ne_binary().
 get_format('undefined') -> kapps_config:get(?WHM_CONFIG_CAT, [<<"call_recording">>, <<"extension">>], <<"mp3">>);
 get_format(<<"mp3">> = MP3) -> MP3;
 get_format(<<"wav">> = WAV) -> WAV;
@@ -462,11 +462,11 @@ maybe_store_recording_meta(#state{doc_db=Db, doc_id=DocId}=State) ->
     end.
 
 
--spec get_media_name(ne_binary(), api_binary()) -> ne_binary().
+-spec get_media_name(ne_binary(), api(binary())) -> ne_binary().
 get_media_name(CallId, Ext) ->
     <<CallId/binary, ".", Ext/binary>>.
 
--spec get_url(kz_json:object()) -> api_binary().
+-spec get_url(kz_json:object()) -> api(binary()).
 get_url(Data) ->
     kz_json:get_value(<<"url">>, Data).
 
@@ -480,7 +480,7 @@ store_url(#state{doc_db=Db
     kz_media_url:store(Db, {<<"call_recording">>, MediaId}, MediaName).
 
 -spec should_store_recording() -> store_url().
--spec should_store_recording(api_binary()) -> store_url().
+-spec should_store_recording(api(binary())) -> store_url().
 should_store_recording(Url) ->
     case kz_util:is_empty(Url) of
         'true' -> should_store_recording();

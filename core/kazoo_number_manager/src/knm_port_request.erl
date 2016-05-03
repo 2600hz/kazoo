@@ -49,7 +49,7 @@ init() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec current_state(kz_json:object()) -> api_binary().
+-spec current_state(kz_json:object()) -> api(binary()).
 current_state(JObj) ->
     kz_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_WAITING).
 
@@ -351,7 +351,7 @@ enable_number(Num) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_send_request(kz_json:object()) -> 'ok'.
--spec maybe_send_request(kz_json:object(), api_binary()) -> 'ok'.
+-spec maybe_send_request(kz_json:object(), api(binary())) -> 'ok'.
 maybe_send_request(JObj) ->
     kz_util:put_callid(kz_doc:id(JObj)),
     AccountId = kz_doc:account_id(JObj),
@@ -530,7 +530,7 @@ migrate_doc(PortRequest) ->
     end.
 
 -spec update_doc(kz_json:object()) -> api_object().
--spec update_doc(kz_json:object(), api_binary()) -> api_object().
+-spec update_doc(kz_json:object(), api(binary())) -> api_object().
 update_doc(PortRequest) ->
     update_doc(PortRequest, kz_doc:account_id(PortRequest)).
 

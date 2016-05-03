@@ -800,7 +800,7 @@ to_pdf(Req, Context, RespData) ->
      ,Context
     }.
 
--spec accept_override(cb_context:context()) -> api_binary().
+-spec accept_override(cb_context:context()) -> api(binary()).
 accept_override(Context) ->
     cb_context:req_value(Context, <<"accept">>).
 

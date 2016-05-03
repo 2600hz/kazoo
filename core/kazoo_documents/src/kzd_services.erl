@@ -57,14 +57,14 @@
 -define(QUANTITIES, <<"quantities">>).
 -define(TRANSACTIONS, <<"transactions">>).
 
--spec billing_id(doc()) -> api_binary().
+-spec billing_id(doc()) -> api(binary()).
 -spec billing_id(doc(), Default) -> ne_binary() | Default.
 billing_id(JObj) ->
     billing_id(JObj, kz_doc:account_id(JObj)).
 billing_id(JObj, Default) ->
     kz_json:get_value(?BILLING_ID, JObj, Default).
 
--spec set_billing_id(doc(), api_binary()) -> doc().
+-spec set_billing_id(doc(), api(binary())) -> doc().
 set_billing_id(JObj, BillingId) ->
     kz_json:set_value(?BILLING_ID, BillingId, JObj).
 
@@ -75,7 +75,7 @@ is_reseller(JObj) ->
 is_reseller(JObj, Default) ->
     kz_json:is_true(?IS_RESELLER, JObj, Default).
 
--spec reseller_id(doc()) -> api_binary().
+-spec reseller_id(doc()) -> api(binary()).
 -spec reseller_id(doc(), Default) -> ne_binary() | Default.
 reseller_id(JObj) ->
     reseller_id(JObj, 'undefined').
@@ -129,8 +129,8 @@ plan(JObj, PlanId) ->
 plan(JObj, PlanId, Default) ->
     kz_json:get_json_value([?PLANS, PlanId], JObj, Default).
 
--spec plan_account_id(doc(), ne_binary()) -> api_binary().
--spec plan_account_id(doc(), ne_binary(), Default) -> api_binary() | Default.
+-spec plan_account_id(doc(), ne_binary()) -> api(binary()).
+-spec plan_account_id(doc(), ne_binary(), Default) -> api(binary()) | Default.
 plan_account_id(JObj, PlanId) ->
     plan_account_id(JObj, PlanId, 'undefined').
 plan_account_id(JObj, PlanId, Default) ->
@@ -175,7 +175,7 @@ transactions(JObj, Default) ->
 set_is_reseller(JObj, IsReseller) ->
     kz_json:set_value(?IS_RESELLER, IsReseller, JObj).
 
--spec set_reseller_id(doc(), api_binary()) -> doc().
+-spec set_reseller_id(doc(), api(binary())) -> doc().
 set_reseller_id(JObj, ResellerId) ->
     kz_json:set_value(?RESELLER_ID, ResellerId, JObj).
 
@@ -183,7 +183,7 @@ set_reseller_id(JObj, ResellerId) ->
 set_is_dirty(JObj, IsDirty) ->
     kz_json:set_value(?IS_DIRTY, IsDirty, JObj).
 
--spec set_status(doc(), api_binary()) -> doc().
+-spec set_status(doc(), api(binary())) -> doc().
 set_status(JObj, Status) ->
     kz_json:set_value(?STATUS, Status, JObj).
 
