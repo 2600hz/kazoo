@@ -166,7 +166,7 @@ channels_query(CallId) ->
                                ,{'ecallmgr', fun kapi_call:query_channels_resp_v/1}
                                ).
 
--spec find_channel(ne_binary(), ne_binary(), kz_json:objects()) -> api_object().
+-spec find_channel(ne_binary(), ne_binary(), kz_json:objects()) -> api(kz_json:object()).
 find_channel(_AccountId, _CallId, []) -> 'undefined';
 find_channel(AccountId, CallId, [StatusJObj|JObjs]) ->
     Channel = kz_json:get_value([<<"Channels">>, CallId], StatusJObj),

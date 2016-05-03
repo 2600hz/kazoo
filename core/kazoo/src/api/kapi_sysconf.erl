@@ -294,7 +294,7 @@ get_key(JObj) ->
 get_key(JObj, Default) ->
     kz_json:get_value(?KEY_KEY, JObj, Default).
 
--spec get_value(kz_json:object()) -> api_object().
+-spec get_value(kz_json:object()) -> api(kz_json:object()).
 -spec get_value(kz_json:object(), Default) -> kz_json:object() | Default.
 get_value(JObj) ->
     get_value(JObj, 'undefined').

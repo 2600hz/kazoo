@@ -551,7 +551,7 @@ set_reseller_id(JObj, ResellerId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec dial_plan(doc()) -> api_object().
+-spec dial_plan(doc()) -> api(kz_json:object()).
 -spec dial_plan(doc(), Default) -> kz_json:object() | Default.
 dial_plan(JObj) ->
     dial_plan(JObj, 'undefined').

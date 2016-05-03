@@ -1225,7 +1225,7 @@ pattern_builder_regex(DefaultJObj) ->
             pattern_builder_regex(DefaultJObj)
     end.
 
--spec pattern_builder_check(api_object()) -> api_object().
+-spec pattern_builder_check(api(kz_json:object())) -> api(kz_json:object()).
 pattern_builder_check('undefined') ->
     builder_takeback_dtmf(kz_json:new(), 'undefined');
 pattern_builder_check(PatternJObj) ->
@@ -1253,7 +1253,7 @@ number_builder(DefaultJObj) ->
         NumberJObj -> kz_json:set_value(K, NumberJObj, DefaultJObj)
     end.
 
--spec number_builder_check(api_object()) -> api_object().
+-spec number_builder_check(api(kz_json:object())) -> api(kz_json:object()).
 number_builder_check('undefined') ->
     builder_target(kz_json:new());
 number_builder_check(NumberJObj) ->
@@ -1267,10 +1267,10 @@ number_builder_check(NumberJObj) ->
                          ,fun builder_target/1
                         ).
 
--type check_fun() :: fun((api_object()) -> api_object()).
+-type check_fun() :: fun((api(kz_json:object())) -> api(kz_json:object())).
 -type build_fun() :: fun((kz_json:object()) -> kz_json:object()).
 
--spec builder_check_option(kz_json:object(), string(), check_fun(), build_fun()) -> api_object().
+-spec builder_check_option(kz_json:object(), string(), check_fun(), build_fun()) -> api(kz_json:object()).
 builder_check_option(JObj, "e", _CheckFun, BuilderFun) ->
     BuilderFun(JObj);
 builder_check_option(_JObj, "d", _CheckFun, _BuilderFun) ->

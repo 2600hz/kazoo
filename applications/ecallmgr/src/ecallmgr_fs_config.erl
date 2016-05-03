@@ -205,7 +205,7 @@ handle_config_req(Node, Id, Conf, Data) ->
     kz_util:put_callid(Id),
     handle_config_req(Node, Id, Conf, Data, ecallmgr_config:get(<<"configuration_handlers">>)).
 
--spec handle_config_req(atom(), ne_binary(), ne_binary(), api(kz_proplist()), api_object() | binary()) -> fs_sendmsg_ret().
+-spec handle_config_req(atom(), ne_binary(), ne_binary(), api(kz_proplist()), api(kz_json:object()) | binary()) -> fs_sendmsg_ret().
 handle_config_req(Node, Id, Conf, _Data, 'undefined') ->
     config_req_not_handled(Node, Id, Conf);
 handle_config_req(Node, Id, Conf, Data, <<_/binary>> = Module) ->
@@ -226,7 +226,7 @@ config_req_not_handled(Node, Id, Conf) ->
     lager:debug("ignoring conf ~s: ~s", [Conf, Id]),
     freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(NotHandled)).
 
--spec generate_acl_xml(api_object()) -> api(binary()).
+-spec generate_acl_xml(api(kz_json:object())) -> api(binary()).
 generate_acl_xml('undefined') ->
     'undefined';
 generate_acl_xml(SysconfResp) ->

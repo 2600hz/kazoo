@@ -92,7 +92,7 @@ send_update(RespQ, MsgId, Status, Msg) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_template_props(api_object() | kz_json:objects()) -> api(kz_proplist()).
+-spec json_to_template_props(api(kz_json:object()) | kz_json:objects()) -> api(kz_proplist()).
 json_to_template_props('undefined') -> 'undefined';
 json_to_template_props(JObj) ->
     normalize_proplist(kz_json:recursive_to_proplist(JObj)).

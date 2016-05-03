@@ -40,7 +40,7 @@
            ,bypass_media = 'false' :: boolean()
            ,caller_id_type = <<"external">> :: ne_binary()
            ,fax_option :: ne_binary() | boolean()
-           ,sip_headers :: api_object()
+           ,sip_headers :: api(kz_json:object())
            ,sip_interface :: api(binary())
            ,progress_timeout = 8 :: 1..100
            ,invite_format = <<"route">> :: ne_binary()

@@ -122,7 +122,7 @@ authenticate(_, _) -> 'false'.
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate_request(cb_context:context(), http_method(), api_object()) -> cb_context:context().
+-spec validate_request(cb_context:context(), http_method(), api(kz_json:object())) -> cb_context:context().
 validate(Context) ->
     validate_request(Context, cb_context:req_verb(Context), cb_context:auth_doc(Context)).
 
@@ -269,7 +269,7 @@ import_missing_data(RemoteData) ->
 %% an account and user, ensure the account exists (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_account(api(binary()), api_object()) -> boolean().
+-spec import_missing_account(api(binary()), api(kz_json:object())) -> boolean().
 import_missing_account('undefined', _Account) ->
     lager:debug("shared auth reply did not define an account id"),
     'false';
@@ -331,7 +331,7 @@ import_missing_account(AccountId, Account) ->
 %% an account and user, ensure the user exists locally (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_user(api(binary()), api(binary()), api_object()) -> boolean().
+-spec import_missing_user(api(binary()), api(binary()), api(kz_json:object())) -> boolean().
 import_missing_user(_, 'undefined', _) ->
     lager:debug("shared auth reply did not define an user id"),
     'false';

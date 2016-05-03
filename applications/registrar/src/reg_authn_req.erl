@@ -162,7 +162,7 @@ create_specific_ccvs(#auth_user{msisdn=MSISDN}, ?GSM_ANY_METHOD) ->
     ];
 create_specific_ccvs(_, _) -> [].
 
--spec create_custom_sip_headers(api(binary()), auth_user()) -> api_object().
+-spec create_custom_sip_headers(api(binary()), auth_user()) -> api(kz_json:object()).
 create_custom_sip_headers(?GSM_ANY_METHOD
                           ,#auth_user{a3a8_kc=KC
                                       ,a3a8_sres=SRES
@@ -183,7 +183,7 @@ create_custom_sip_headers(?GSM_ANY_METHOD
      );
 create_custom_sip_headers(?ANY_AUTH_METHOD, _) -> 'undefined'.
 
--spec create_custom_sip_headers(kz_proplist()) -> api_object().
+-spec create_custom_sip_headers(kz_proplist()) -> api(kz_json:object()).
 create_custom_sip_headers([]) -> 'undefined';
 create_custom_sip_headers(Props) -> kz_json:from_list(Props).
 
@@ -371,7 +371,7 @@ jobj_to_auth_user(JObj, Username, Realm, Req) ->
                          },
     maybe_auth_method(add_account_name(AuthUser), AuthDoc, Req, Method).
 
--spec get_auth_value(kz_json:object()) -> api_object().
+-spec get_auth_value(kz_json:object()) -> api(kz_json:object()).
 get_auth_value(JObj) ->
     kz_json:get_first_defined([[<<"doc">>,<<"sip">>]
                                ,<<"value">>

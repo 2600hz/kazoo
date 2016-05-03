@@ -214,7 +214,7 @@ is_json_term(MaybeJObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec are_identical(api_object(), api_object()) -> boolean().
+-spec are_identical(api(kz_json:object()), api(kz_json:object())) -> boolean().
 are_identical('undefined', 'undefined') -> 'true';
 are_identical('undefined', _) -> 'false';
 are_identical(_, 'undefined') -> 'false';
@@ -366,7 +366,7 @@ encode_kv(Prefix, K, [V|Vs], Sep, Acc) ->
     encode_kv(Prefix, K, Vs, Sep, [ <<"&">>, encode_kv(Prefix, K, Sep, kz_http_util:urlencode(V)) | Acc]);
 encode_kv(_, _, [], _, Acc) -> lists:reverse(Acc).
 
--spec get_json_value(keys(), object()) -> api_object().
+-spec get_json_value(keys(), object()) -> api(kz_json:object()).
 -spec get_json_value(keys(), object(), Default) -> Default | object().
 get_json_value(Key, JObj) -> get_json_value(Key, JObj, 'undefined').
 get_json_value(Key, ?JSON_WRAPPER(_)=JObj, Default) ->
@@ -376,7 +376,7 @@ get_json_value(Key, ?JSON_WRAPPER(_)=JObj, Default) ->
         _ -> Default
     end.
 
--spec get_ne_json_value(keys(), object()) -> api_object().
+-spec get_ne_json_value(keys(), object()) -> api(kz_json:object()).
 -spec get_ne_json_value(keys(), object(), Default) -> Default | object().
 get_ne_json_value(Key, JObj) ->
     get_ne_json_value(Key, JObj, 'undefined').
@@ -637,7 +637,7 @@ find_first_defined([Key|Keys], Docs, Default) ->
 %% Returns the json object or 'undefined'
 %% @end
 %%--------------------------------------------------------------------
--spec find_value(keys(), json_term(), objects()) -> api_object().
+-spec find_value(keys(), json_term(), objects()) -> api(kz_json:object()).
 -spec find_value(keys(), json_term(), objects(), Default) -> object() | Default.
 find_value(Key, Value, JObjs) ->
     find_value(Key, Value, JObjs, 'undefined').

@@ -553,7 +553,7 @@ add_aggregate_device(Db, Device) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec rm_aggregate_device(ne_binary(), api_object() | api(binary())) -> 'ok'.
+-spec rm_aggregate_device(ne_binary(), api(kz_json:object()) | api(binary())) -> 'ok'.
 rm_aggregate_device(_, 'undefined') -> 'ok';
 rm_aggregate_device(Db, DeviceId) when is_binary(DeviceId) ->
     case kz_datamgr:open_doc(?KZ_SIP_DB, DeviceId) of

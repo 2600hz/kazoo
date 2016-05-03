@@ -735,7 +735,7 @@ maybe_get_endpoint_hotdesk_owner(JObj) ->
 maybe_get_endpoint_assigned_owner(JObj) ->
     kz_json:get_ne_value(<<"owner_id">>, JObj).
 
--spec apply_dialplan(ne_binary(), api_object()) -> ne_binary().
+-spec apply_dialplan(ne_binary(), api(kz_json:object())) -> ne_binary().
 apply_dialplan(N, 'undefined') -> N;
 apply_dialplan(Number, DialPlan) ->
     Regexs = kz_json:get_keys(DialPlan),
@@ -788,7 +788,7 @@ may_be_dialplan_suits({Key, Val}, Acc, Names) ->
         'false' -> Acc
     end.
 
--spec encryption_method_map(api_object(), api([api(binary())]) | kz_json:object()) -> api_object().
+-spec encryption_method_map(api(kz_json:object()), api([api(binary())]) | kz_json:object()) -> api(kz_json:object()).
 encryption_method_map(JObj, []) -> JObj;
 encryption_method_map(JObj, [Method|Methods]) ->
     case props:get_value(Method, ?ENCRYPTION_MAP, []) of

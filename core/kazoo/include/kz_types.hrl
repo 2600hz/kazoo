@@ -43,7 +43,7 @@
 -type api_terms() :: kz_json:object() | kz_proplist().
 -type api(binary()) :: api(binary()).
 -type api([api(binary())]) :: api([api(binary())]).
--type api_object() :: api(kz_json:object()).
+-type api(kz_json:object()) :: api(kz_json:object()).
 -type api_objects() :: api(kz_json:objects()).
 -type api_boolean() :: api(boolean()).
 -type api_atom() :: api(atom()).

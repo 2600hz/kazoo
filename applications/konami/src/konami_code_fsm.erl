@@ -34,8 +34,8 @@
 
 -type listen_on() :: 'a' | 'b' | 'ab'.
 
--record(state, {numbers :: api_object()
-                ,patterns :: api_object()
+-record(state, {numbers :: api(kz_json:object())
+                ,patterns :: api(kz_json:object())
                 ,binding_digit = konami_config:binding_digit() :: ne_binary()
                 ,digit_timeout = konami_config:timeout() :: pos_integer()
                 ,call :: api(kapps_call:call())
@@ -326,7 +326,7 @@ digit_timeout(Call, JObj) ->
         Timeout -> Timeout
     end.
 
--spec is_a_leg(kapps_call:call(), api_object() | ne_binary()) -> boolean().
+-spec is_a_leg(kapps_call:call(), api(kz_json:object()) | ne_binary()) -> boolean().
 is_a_leg(_Call, 'undefined') -> 'true';
 is_a_leg(Call, <<_/binary>> = EndpointId) ->
     EndpointId =:= kapps_call:authorizing_id(Call);

@@ -308,7 +308,7 @@ send_error(API, CallId, Reason) ->
                     ],
     gen_listener:cast(self(), {'sms_error', kz_json:from_list(DeliveryProps)}).
 
--spec amqp_exchange_options(api_object()) -> kz_proplist().
+-spec amqp_exchange_options(api(kz_json:object())) -> kz_proplist().
 amqp_exchange_options('undefined') -> [];
 amqp_exchange_options(JObj) ->
     [{kz_util:to_atom(K, 'true'), V}

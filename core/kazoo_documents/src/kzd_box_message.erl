@@ -139,7 +139,7 @@ build_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp) ->
 -spec type() -> ne_binary().
 type() -> ?PVT_TYPE.
 
--spec folder(doc()) -> api_object().
+-spec folder(doc()) -> api(kz_json:object()).
 folder(JObj) ->
     folder(JObj, 'undefined').
 
@@ -171,7 +171,7 @@ set_media_id(MediaId, JObj) ->
 metadata(JObj) ->
     metadata(JObj, 'undefined').
 
--spec metadata(doc(), doc()) -> api_object().
+-spec metadata(doc(), doc()) -> api(kz_json:object()).
 metadata(JObj, Default) ->
     kz_json:get_value(?KEY_METADATA, JObj, Default).
 

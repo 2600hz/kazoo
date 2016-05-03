@@ -153,7 +153,7 @@ order_endpoints(Method, Endpoints)
 order_endpoints(<<"weighted_random">>, Endpoints) ->
     weighted_random_sort(Endpoints).
 
--type endpoint_intermediate() :: {ne_binary(), ne_binary(), group_weight(), api_object()}.
+-type endpoint_intermediate() :: {ne_binary(), ne_binary(), group_weight(), api(kz_json:object())}.
 -type endpoint_intermediates() :: [endpoint_intermediate()].
 
 -spec resolve_endpoint_ids(kz_json:objects(), endpoint_intermediates(), kz_json:object(), kapps_call:call()) ->

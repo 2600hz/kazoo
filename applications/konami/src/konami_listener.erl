@@ -139,7 +139,7 @@ maybe_start_user_metaflows(AccountId, UserId, Call) ->
                                            ),
     maybe_start_metaflows(AccountId, Call, kz_json:get_value(<<"metaflows">>, User)).
 
--spec maybe_start_metaflows(ne_binary(), kapps_call:call(), api_object()) -> 'ok'.
+-spec maybe_start_metaflows(ne_binary(), kapps_call:call(), api(kz_json:object())) -> 'ok'.
 maybe_start_metaflows(_AccountId, _Call, 'undefined') -> 'ok';
 maybe_start_metaflows(_AccountId, _Call, Metaflows) ->
     lager:debug("starting ~p", [Metaflows]).

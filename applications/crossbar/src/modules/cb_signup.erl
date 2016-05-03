@@ -225,8 +225,8 @@ validate_new_signup(Context) ->
 %% Determines if the account realm is unique and if the account is valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_account(api_object(), cb_context:context()) ->
-                              {path_tokens(), api_object()}.
+-spec validate_account(api(kz_json:object()), cb_context:context()) ->
+                              {path_tokens(), api(kz_json:object())}.
 validate_account('undefined', _) ->
     lager:debug("signup did not contain an account definition"),
     {[<<"account">>], 'undefined'};
@@ -249,8 +249,8 @@ validate_account(Account, Context) ->
 %% Determines if the user object is valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_user(api_object(), cb_context:context()) ->
-                           {path_tokens(), api_object()}.
+-spec validate_user(api(kz_json:object()), cb_context:context()) ->
+                           {path_tokens(), api(kz_json:object())}.
 validate_user('undefined', _) ->
     lager:debug("signup did not contain an user definition"),
     {[<<"user">>], 'undefined'};
@@ -327,7 +327,7 @@ activate_signup(JObj) ->
 %% Create the account defined on the signup document
 %% @end
 %%--------------------------------------------------------------------
--spec activate_account(api_object()) ->
+-spec activate_account(api(kz_json:object())) ->
                               {'ok', kz_json:object()} |
                               {'error', 'creation_failed' | 'account_undefined'}.
 activate_account('undefined') ->
@@ -354,7 +354,7 @@ activate_account(Account) ->
 %% an account and user, ensure the user exists locally (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec activate_user(kz_json:object(), api_object()) ->
+-spec activate_user(kz_json:object(), api(kz_json:object())) ->
                            {'ok', kz_json:object(), kz_json:object()} |
                            {'error', 'user_undefined' | 'creation_failed'}.
 activate_user(_, 'undefined') ->

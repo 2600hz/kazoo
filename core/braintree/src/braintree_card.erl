@@ -298,7 +298,7 @@ record_to_xml(#bt_card{}=Card, ToString) ->
 %% Convert a given json object into a record
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_record(api_object()) -> bt_card().
+-spec json_to_record(api(kz_json:object())) -> bt_card().
 json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->
     #bt_card{token = create_or_get_json_id(JObj)

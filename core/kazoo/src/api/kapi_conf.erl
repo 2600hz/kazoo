@@ -85,7 +85,7 @@ get_database(API) ->
     get_value(API, <<"Database">>).
 
 %% returns the public fields of the document
--spec get_doc(api_terms()) -> api_object().
+-spec get_doc(api_terms()) -> api(kz_json:object()).
 get_doc(API) ->
     get_value(API, <<"Doc">>).
 

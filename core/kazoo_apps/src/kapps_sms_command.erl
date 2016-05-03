@@ -181,7 +181,7 @@ send(<<"amqp">>, API, Endpoint, _Timeout) ->
             send(<<"amqp">>, API, FailOver, _Timeout)
     end.
 
--spec amqp_exchange_options(api_object()) -> kz_proplist().
+-spec amqp_exchange_options(api(kz_json:object())) -> kz_proplist().
 amqp_exchange_options('undefined') -> [];
 amqp_exchange_options(JObj) ->
     [{kz_util:to_atom(K, 'true'), V}
@@ -243,7 +243,7 @@ create_sms_endpoints([Endpoint | Others], Endpoints) ->
         NewEndpoint -> create_sms_endpoints(Others, [NewEndpoint | Endpoints])
     end.
 
--spec create_sms_endpoint(kz_json:object(), binary()) -> api_object().
+-spec create_sms_endpoint(kz_json:object(), binary()) -> api(kz_json:object()).
 create_sms_endpoint(Endpoint, <<"amqp">>) -> Endpoint;
 create_sms_endpoint(Endpoint, <<"sip">>) ->
     Realm = kz_json:get_value(<<"To-Realm">>, Endpoint),

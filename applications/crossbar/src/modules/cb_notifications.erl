@@ -789,7 +789,7 @@ note_notification_preference(AccountDb, AccountJObj) ->
             lager:debug("failed to note preference: ~p", [_E])
     end.
 
--spec migrate_template_attachments(cb_context:context(), ne_binary(), api_object()) ->
+-spec migrate_template_attachments(cb_context:context(), ne_binary(), api(kz_json:object())) ->
                                           cb_context:context().
 migrate_template_attachments(Context, _Id, 'undefined') ->
     lager:debug("no attachments to migrate for ~s", [_Id]),

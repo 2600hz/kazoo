@@ -817,7 +817,7 @@ quantity(CategoryId, ItemId, #kz_services{updates=Updates
     ItemQuantity = kzd_services:item_quantity(JObj, CategoryId, ItemId),
     kz_json:get_integer_value([CategoryId, ItemId], Updates, ItemQuantity).
 
--spec diff_quantities(services()) -> api_object().
+-spec diff_quantities(services()) -> api(kz_json:object()).
 diff_quantities(#kz_services{deleted='true'}) -> 'undefined';
 diff_quantities(#kz_services{jobj=JObj
                              ,updates=Updates
@@ -833,7 +833,7 @@ diff_cat_quantities(CategoryId, ItemsJObj, Updates) ->
                   ,ItemsJObj
                  ).
 
--spec diff_quantities(ne_binary(), services()) -> api_object().
+-spec diff_quantities(ne_binary(), services()) -> api(kz_json:object()).
 diff_quantities(_CategoryId, #kz_services{deleted='true'}) -> 'undefined';
 diff_quantities(CategoryId, #kz_services{jobj=JObj
                                          ,updates=Updates

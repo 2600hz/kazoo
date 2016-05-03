@@ -83,7 +83,7 @@
          ,call_id :: ne_binary()
          ,command_q = queue:new() :: queue:queue()
          ,current_app :: api(binary())
-         ,current_cmd :: api_object()
+         ,current_cmd :: api(kz_json:object())
          ,start_time = os:timestamp() :: kz_now()
          ,is_call_up = 'true' :: boolean()
          ,is_node_up = 'true' :: boolean()

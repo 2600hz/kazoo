@@ -837,7 +837,7 @@ conference_specific(Props) ->
             end
     end.
 
--spec maybe_fax_specific(kz_proplist()) -> api_object().
+-spec maybe_fax_specific(kz_proplist()) -> api(kz_json:object()).
 maybe_fax_specific(Props) ->
     case fax_specific(Props) of
         [] -> 'undefined';
@@ -1010,7 +1010,7 @@ get_serialized_history(Props) ->
             History
     end.
 
--spec get_transfer_history(kz_proplist()) -> api_object().
+-spec get_transfer_history(kz_proplist()) -> api(kz_json:object()).
 get_transfer_history(Props) ->
     SerializedHistory = get_serialized_history(Props),
     case [HistJObj

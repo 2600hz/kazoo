@@ -494,7 +494,7 @@ update_bcc(Bcc, Acc) ->
                  ,fun kz_notification:set_bcc/2
                 ).
 
--spec update_field(api_object() | ne_binary(), update_acc(), fun(), fun()) ->
+-spec update_field(api(kz_json:object()) | ne_binary(), update_acc(), fun(), fun()) ->
                           update_acc().
 update_field('undefined', Acc, _GetFun, _SetFun) -> Acc;
 update_field(Value, {_IsUpdated, TemplateJObj}=Acc, GetFun, SetFun) ->

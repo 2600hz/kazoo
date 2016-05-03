@@ -349,7 +349,7 @@ validate_callflow_element(Context, <<"record_call">>, Data) ->
 validate_callflow_element(Context, _Module, _Data) ->
     Context.
 
--spec validate_callflow_children(cb_context:context(), api_object()) ->
+-spec validate_callflow_children(cb_context:context(), api(kz_json:object())) ->
                                         cb_context:context().
 validate_callflow_children(Context, 'undefined') ->
     Context;
@@ -540,7 +540,7 @@ add_number_conflict(Number, JObj, Context) ->
 %% collect addional informat about the objects referenced in the flow
 %% @end
 %%--------------------------------------------------------------------
--spec get_metadata(api_object(), ne_binary(), kz_json:object()) ->
+-spec get_metadata(api(kz_json:object()), ne_binary(), kz_json:object()) ->
                           kz_json:object().
 get_metadata('undefined', _, JObj) -> JObj;
 get_metadata(Flow, Db, JObj) ->

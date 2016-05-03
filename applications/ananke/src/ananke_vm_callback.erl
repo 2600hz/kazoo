@@ -128,7 +128,7 @@ is_voicemail_cf(JObj) ->
         _ -> is_voicemail_cf(FlowJObj)
     end.
 
--spec get_cf_flow(kz_json:object()) -> api_object().
+-spec get_cf_flow(kz_json:object()) -> api(kz_json:object()).
 get_cf_flow(JObj) ->
     case kz_json:get_value([<<"children">>, <<"_">>], JObj) of
         'undefined' ->

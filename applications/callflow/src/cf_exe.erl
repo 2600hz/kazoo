@@ -134,8 +134,8 @@ branch(Flow, Call) ->
     Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     branch(Flow, Srv).
 
--spec next(kapps_call:call() | pid()) -> api_object().
--spec next(ne_binary(), kapps_call:call() | pid()) -> api_object().
+-spec next(kapps_call:call() | pid()) -> api(kz_json:object()).
+-spec next(ne_binary(), kapps_call:call() | pid()) -> api(kz_json:object()).
 next(Srv) -> next(<<"_">>, Srv).
 
 next(Key, Srv) when is_pid(Srv) ->

@@ -771,7 +771,7 @@ collecting([JObj|_]) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_transcribe(ne_binary(), ne_binary(), boolean()) ->
-                              api_object().
+                              api(kz_json:object()).
 maybe_transcribe(AccountId, MediaId, 'true') ->
     Db = get_db(AccountId, MediaId),
     {'ok', MediaDoc} = kz_datamgr:open_doc(Db, MediaId),
@@ -792,7 +792,7 @@ maybe_transcribe(AccountId, MediaId, 'true') ->
 maybe_transcribe(_, _, 'false') -> 'undefined'.
 
 -spec maybe_transcribe(ne_binary(), kz_json:object(), binary(), api(binary())) ->
-                              api_object().
+                              api(kz_json:object()).
 maybe_transcribe(_, _, _, 'undefined') -> 'undefined';
 maybe_transcribe(_, _, <<>>, _) -> 'undefined';
 maybe_transcribe(Db, MediaDoc, Bin, ContentType) ->
@@ -811,7 +811,7 @@ maybe_transcribe(Db, MediaDoc, Bin, ContentType) ->
     end.
 
 -spec is_valid_transcription(api(binary()), binary(), kz_json:object()) ->
-                                    api_object().
+                                    api(kz_json:object()).
 is_valid_transcription(<<"success">>, ?NE_BINARY, Resp) -> Resp;
 is_valid_transcription(_Res, _Txt, _) ->
     lager:info("not valid transcription: ~s: '~s'", [_Res, _Txt]),

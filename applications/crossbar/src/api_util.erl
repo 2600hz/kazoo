@@ -251,7 +251,7 @@ handle_url_encoded_body(Context, Req, QS, ReqBody, JObj) ->
             set_request_data_in_context(Context, Req, JObj, QS)
     end.
 
--spec set_request_data_in_context(cb_context:context(), cowboy_req:req(), api_object(), kz_json:object()) ->
+-spec set_request_data_in_context(cb_context:context(), cowboy_req:req(), api(kz_json:object()), kz_json:object()) ->
                                          {cb_context:context(), cowboy_req:req()} |
                                          halt_return().
 set_request_data_in_context(Context, Req, 'undefined', QS) ->
@@ -494,7 +494,7 @@ get_request_body(_Req0, _Body, {'more', _, Req1}) ->
 get_request_body(_Req0, Body, {'ok', Data, Req1}) ->
     {iolist_to_binary([Body, Data]), Req1}.
 
--type get_json_return() :: {api_object(), cowboy_req:req()} |
+-type get_json_return() :: {api(kz_json:object()), cowboy_req:req()} |
                            {{'malformed', ne_binary()}, cowboy_req:req()}.
 -spec get_json_body(binary(), cowboy_req:req()) -> get_json_return().
 

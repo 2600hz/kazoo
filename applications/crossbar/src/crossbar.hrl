@@ -134,20 +134,20 @@
           ,auth_token = <<>> :: api(binary())
           ,auth_token_type = 'x-auth-token' :: 'x-auth-token' | 'basic' | 'oauth' | 'unknown'
           ,auth_account_id :: api(binary())
-          ,auth_doc :: api_object()
+          ,auth_doc :: api(kz_json:object())
           ,req_verb = ?HTTP_GET :: http_method() % see ?ALLOWED_METHODS
           ,req_nouns = [{<<"404">>, []}] :: req_nouns() % {module, [id]} most typical
           ,req_json = kz_json:new() :: req_json()
           ,req_files = [] :: req_files()
           ,req_data :: kz_json:json_term()  % the "data" from the request JSON envelope
           ,req_headers = [] :: cowboy:http_headers()
-          ,query_json = kz_json:new() :: api_object()
+          ,query_json = kz_json:new() :: api(kz_json:object())
           ,account_id :: api(binary())
           ,user_id :: api(binary())   % Will be loaded in validate stage for endpoints such as /accounts/{acct-id}/users/{user-id}/*
           ,device_id :: api(binary())   % Will be loaded in validate stage for endpoints such as /accounts/{acct-id}/devices/{device-id}/*
           ,reseller_id :: api(binary())
           ,db_name :: api(binary()) | ne_binaries()
-          ,doc :: api_object() | kz_json:objects()
+          ,doc :: api(kz_json:object()) | kz_json:objects()
           ,resp_expires = {{1999,1,1},{0,0,0}} :: kz_datetime()
           ,resp_etag :: 'automatic' | string() | api(binary())
           ,resp_status = 'error' :: crossbar_status()
@@ -166,7 +166,7 @@
           ,method = ?HTTP_GET :: http_method()
           ,validation_errors = kz_json:new() :: kz_json:object()
           ,client_ip = <<"127.0.0.1">> :: api(binary())
-          ,load_merge_bypass :: api_object()
+          ,load_merge_bypass :: api(kz_json:object())
           ,profile_id :: api(binary())
           ,api_version = ?VERSION_1 :: ne_binary()
           ,magic_pathed = 'false' :: boolean()

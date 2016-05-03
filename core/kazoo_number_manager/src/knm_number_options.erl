@@ -98,7 +98,7 @@ auth_by(Options) ->
 auth_by(Options, Default) ->
     props:get_binary_value('auth_by', Options, Default).
 
--spec public_fields(options()) -> api_object().
+-spec public_fields(options()) -> api(kz_json:object()).
 public_fields(Options) ->
     props:get_value('public_fields', Options, kz_json:new()).
 

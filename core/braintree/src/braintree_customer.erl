@@ -335,7 +335,7 @@ record_to_xml(Customer, ToString) ->
 %% Convert a given json object into a record
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_record(api_object()) -> customer().
+-spec json_to_record(api(kz_json:object())) -> customer().
 json_to_record('undefined') -> #bt_customer{};
 json_to_record(JObj) ->
     #bt_customer{id = kz_doc:id(JObj)

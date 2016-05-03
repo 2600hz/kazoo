@@ -234,7 +234,7 @@ get_plan(PlanId, ResellerId, Services, ServicePlans) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_fetch_vendor_plan(ne_binary(), ne_binary(), ne_binary(), kz_json:object()) ->
-                                     api_object().
+                                     api(kz_json:object()).
 maybe_fetch_vendor_plan(PlanId, VendorId, VendorId, Overrides) ->
     case kz_service_plan:fetch(PlanId, VendorId) of
         'undefined' -> 'undefined';

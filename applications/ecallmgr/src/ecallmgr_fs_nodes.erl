@@ -258,9 +258,9 @@ remove_capability(Node, Name) ->
     ets:select_delete(?CAPABILITY_TBL, MatchSpec).
 
 -spec get_capability(atom(), ne_binary()) ->
-                            capability() | api_object().
+                            capability() | api(kz_json:object()).
 -spec get_capability(atom(), ne_binary(), 'json' | 'record') ->
-                            capability() | api_object().
+                            capability() | api(kz_json:object()).
 get_capability(Node, Capability) ->
     get_capability(Node, Capability, 'json').
 get_capability(Node, Capability, Format) ->
@@ -296,7 +296,7 @@ format_capabilities('record', Results) -> Results;
 format_capabilities('json', Results) ->
     [capability_to_json(Result) || Result <- Results].
 
--spec format_capability('json' | 'record', [capability()]) -> api_object() | capability().
+-spec format_capability('json' | 'record', [capability()]) -> api(kz_json:object()) | capability().
 format_capability('record', [Capability]) -> Capability;
 format_capability('json', [Capability]) -> capability_to_json(Capability);
 format_capability(_, []) -> 'undefined'.

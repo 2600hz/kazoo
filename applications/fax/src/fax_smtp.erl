@@ -38,14 +38,14 @@
           options = [] :: list()
           ,from :: binary()
           ,to :: binary()
-          ,doc :: api_object()
+          ,doc :: api(kz_json:object())
           ,filename :: api(binary())
           ,content_type :: binary()
           ,peer_ip :: peer()
           ,owner_id :: api(binary())
           ,owner_email :: api(binary())
           ,faxbox_email :: api(binary())
-          ,faxbox :: api_object()
+          ,faxbox :: api(kz_json:object())
           ,errors = [] :: ne_binaries()
           ,original_number :: api(binary())
           ,number :: api(binary())
@@ -339,7 +339,7 @@ to_proplist(#state{}=State) ->
       ]).
 
 
--spec faxbox_to_proplist(api_object()) -> kz_proplist().
+-spec faxbox_to_proplist(api(kz_json:object())) -> kz_proplist().
 faxbox_to_proplist('undefined') -> [];
 faxbox_to_proplist(JObj) ->
     props:filter_undefined(
@@ -347,7 +347,7 @@ faxbox_to_proplist(JObj) ->
       ]
      ).
 
--spec faxdoc_to_proplist(api_object()) -> kz_proplist().
+-spec faxdoc_to_proplist(api(kz_json:object())) -> kz_proplist().
 faxdoc_to_proplist('undefined') -> [];
 faxdoc_to_proplist(JObj) ->
     props:filter_undefined(

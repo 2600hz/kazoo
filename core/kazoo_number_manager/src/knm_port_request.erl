@@ -522,15 +522,15 @@ prepare_docs_for_migrate(Docs) ->
             (UpdatedDoc = migrate_doc(kz_json:get_value(<<"doc">>, Doc))) =/= 'undefined'
     ].
 
--spec migrate_doc(kz_json:object()) -> api_object().
+-spec migrate_doc(kz_json:object()) -> api(kz_json:object()).
 migrate_doc(PortRequest) ->
     case kz_json:get_value(<<"pvt_tree">>, PortRequest) of
         'undefined' -> update_doc(PortRequest);
         _Tree -> 'undefined'
     end.
 
--spec update_doc(kz_json:object()) -> api_object().
--spec update_doc(kz_json:object(), api(binary())) -> api_object().
+-spec update_doc(kz_json:object()) -> api(kz_json:object()).
+-spec update_doc(kz_json:object(), api(binary())) -> api(kz_json:object()).
 update_doc(PortRequest) ->
     update_doc(PortRequest, kz_doc:account_id(PortRequest)).
 

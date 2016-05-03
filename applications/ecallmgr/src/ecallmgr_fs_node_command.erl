@@ -21,7 +21,7 @@ handle_req(JObj, Props) ->
     Args = kz_json:get_value(<<"Args">>, JObj),
     exec_cmd(Cmd, Args, JObj, Node).
 
--spec exec_cmd(ne_binary(), api_object(), kz_json:object(), atom()) -> 'ok'.
+-spec exec_cmd(ne_binary(), api(kz_json:object()), kz_json:object(), atom()) -> 'ok'.
 exec_cmd(<<"send_http">>, 'undefined', JObj, _Node) ->
     lager:debug("received http_send command with empty arguments"),
     reply_error(<<"no arguments">>, JObj);

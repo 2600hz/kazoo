@@ -236,7 +236,7 @@ get_original_request_user(Call) ->
     [RequestUser, _] = binary:split(Request, <<"@">>),
     RequestUser.
 
--spec get_sip_headers(kz_json:object(), kapps_call:call()) -> api_object().
+-spec get_sip_headers(kz_json:object(), kapps_call:call()) -> api(kz_json:object()).
 get_sip_headers(Data, Call) ->
     Routines = [fun(J) ->
                         Default = kapps_config:get_is_true(?RES_CONFIG_CAT, <<"default_emit_account_id">>, 'false'),

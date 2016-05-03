@@ -77,7 +77,7 @@ handle_reg_success(JObj, _Props) ->
 
     maybe_process_reg_success(UserAgentProperties, JObj).
 
--spec maybe_process_reg_success(api_object(), kz_json:object()) -> 'ok'.
+-spec maybe_process_reg_success(api(kz_json:object()), kz_json:object()) -> 'ok'.
 -spec maybe_process_reg_success(api(binary()), kz_json:object(), kz_json:object(), kz_proplist()) -> 'ok'.
 maybe_process_reg_success('undefined', _JObj) -> 'ok';
 maybe_process_reg_success(UA, JObj) ->

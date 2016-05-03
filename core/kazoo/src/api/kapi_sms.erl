@@ -439,7 +439,7 @@ publish_resume(Req, ContentType) ->
     Exchange = props:get_value(<<"Exchange-ID">>, Req, ?SMS_EXCHANGE),
     amqp_util:basic_publish(Exchange, ?RESUME_ROUTING_KEY(CallId), Payload, ContentType).
 
--spec amqp_options(api_object()) -> kz_proplist().
+-spec amqp_options(api(kz_json:object())) -> kz_proplist().
 amqp_options('undefined') -> [];
 amqp_options(JObj) ->
     [{kz_util:to_atom(K, 'true'), V}

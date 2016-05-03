@@ -195,7 +195,7 @@ token(#oauth_app{name=AppId
     end.
 
 -spec verify_token(api(binary()) | oauth_provider(), api(binary())) ->
-                          {'ok', api_object()} |
+                          {'ok', api(kz_json:object())} |
                           {'error', api(binary())}.
 verify_token(ProviderId, AccessToken) when is_binary(ProviderId) ->
     case get_oauth_provider(ProviderId) of
@@ -221,7 +221,7 @@ refresh_token(Token) ->
     #oauth_refresh_token{token=Token}.
 
 -spec refresh_token(api(binary()) | oauth_app(), api(binary()), api(binary()), kz_proplist() ) ->
-                           {'ok', api_object()} |
+                           {'ok', api(kz_json:object())} |
                            {'error', any()}.
 refresh_token(AppId, Scope, AuthorizationCode, ExtraHeaders)
   when is_binary(AppId) ->
@@ -234,7 +234,7 @@ refresh_token(App, Scope, AuthorizationCode, ExtraHeaders) ->
     refresh_token(App, Scope, AuthorizationCode, ExtraHeaders, <<"postmessage">>).
 
 -spec refresh_token(oauth_app(), api(binary()), api(binary()), kz_proplist(), api(binary())) ->
-                           {'ok', api_object()} |
+                           {'ok', api(kz_json:object())} |
                            {'error', any()}.
 refresh_token(#oauth_app{name=ClientId
                          ,secret=Secret

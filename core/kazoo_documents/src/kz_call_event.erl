@@ -51,8 +51,8 @@ other_leg_destination_number(JObj, Default) ->
 replaced_by(JObj) ->
     kz_json:get_value(<<"Replaced-By">>, JObj).
 
--spec custom_channel_vars(kz_json:object()) -> api_object().
--spec custom_channel_vars(kz_json:object(), Default) -> api_object() | Default.
+-spec custom_channel_vars(kz_json:object()) -> api(kz_json:object()).
+-spec custom_channel_vars(kz_json:object(), Default) -> api(kz_json:object()) | Default.
 custom_channel_vars(JObj) ->
     custom_channel_vars(JObj, 'undefined').
 
@@ -69,7 +69,7 @@ custom_channel_var(JObj, Key) ->
 custom_channel_var(JObj, Key, Default) ->
     kz_json:get_value([<<"Custom-Channel-Vars">>, Key], JObj, Default).
 
--spec custom_sip_headers(kz_json:object()) -> api_object().
+-spec custom_sip_headers(kz_json:object()) -> api(kz_json:object()).
 custom_sip_headers(JObj) ->
     kz_json:get_value(<<"Custom-SIP-Headers">>, JObj).
 

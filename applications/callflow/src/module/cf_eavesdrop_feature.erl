@@ -117,7 +117,7 @@ find_group_members(GroupId, Call) ->
             kz_json:get_keys(<<"endpoints">>, GroupJObj)
     end.
 
--spec lookup_endpoint(api_object()) -> target().
+-spec lookup_endpoint(api(kz_json:object())) -> target().
 -spec lookup_endpoint(kz_json:object(), api(binary())) -> target().
 lookup_endpoint('undefined') -> 'error';
 lookup_endpoint(Flow) ->

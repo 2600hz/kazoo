@@ -158,15 +158,15 @@ maybe_deny_access(Context, Restrictions) ->
                     ,MatchFuns
                    ).
 
--spec match_endpoint(cb_context:context(), api_object()) ->
-                            api_object().
+-spec match_endpoint(cb_context:context(), api(kz_json:object())) ->
+                            api(kz_json:object()).
 match_endpoint(Context, Restrictions) ->
     [{ReqEndpoint, _}|_] = cb_context:req_nouns(Context),
 
     match_request_endpoint(Restrictions, ReqEndpoint).
 
--spec match_request_endpoint(api_object(), ne_binary()) ->
-                                    api_object().
+-spec match_request_endpoint(api(kz_json:object()), ne_binary()) ->
+                                    api(kz_json:object()).
 match_request_endpoint(Restrictions, ?CATCH_ALL = ReqEndpoint) ->
     kz_json:get_value(ReqEndpoint, Restrictions);
 match_request_endpoint(Restrictions, ReqEndpoint) ->
@@ -175,7 +175,7 @@ match_request_endpoint(Restrictions, ReqEndpoint) ->
         EndpointRestrictions -> EndpointRestrictions
     end.
 
--spec match_account(cb_context:context(), api_objects()) -> api_object().
+-spec match_account(cb_context:context(), api_objects()) -> api(kz_json:object()).
 match_account(_Context, 'undefined') -> 'undefined';
 match_account(_Context, []) -> 'undefined';
 match_account(Context, EndpointRestrictions) ->
@@ -183,7 +183,7 @@ match_account(Context, EndpointRestrictions) ->
     find_endpoint_restrictions_by_account(AllowedAccounts, EndpointRestrictions).
 
 -spec find_endpoint_restrictions_by_account(ne_binaries(), kz_json:objects()) ->
-                                                   api_object().
+                                                   api(kz_json:object()).
 find_endpoint_restrictions_by_account(_Accounts, []) ->
     'undefined';
 find_endpoint_restrictions_by_account(AllowedAccounts
@@ -232,7 +232,7 @@ allowed_accounts(AuthAccountId, AccountId) ->
     end.
 -endif.
 
--spec match_arguments(cb_context:context(), api_object()) ->
+-spec match_arguments(cb_context:context(), api(kz_json:object())) ->
                              http_methods().
 match_arguments(_Context, 'undefined') -> [];
 match_arguments(Context, RulesJObj) ->

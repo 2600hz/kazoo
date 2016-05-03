@@ -73,7 +73,7 @@ maybe_rm_prefix('undefined') -> 'undefined';
 maybe_rm_prefix(<<?ID_PREFIX, Id/binary>>) -> Id;
 maybe_rm_prefix(Id) -> Id.
 
--spec macros(doc()) -> api_object().
+-spec macros(doc()) -> api(kz_json:object()).
 macros(JObj) ->
     kz_json:get_value(?MACROS, JObj).
 
@@ -113,7 +113,7 @@ name(JObj) ->
 set_name(JObj, Name) ->
     kz_json:set_value(?NAME, Name, JObj).
 
--spec to(doc()) -> api_object().
+-spec to(doc()) -> api(kz_json:object()).
 to(JObj) ->
     kz_json:get_value(?TO, JObj).
 
@@ -129,7 +129,7 @@ to_email_addresses(JObj) ->
 to_email_type(JObj) ->
     kz_json:get_value([?TO, ?EMAIL_TYPE], JObj).
 
--spec cc(doc()) -> api_object().
+-spec cc(doc()) -> api(kz_json:object()).
 cc(JObj) ->
     kz_json:get_value(?CC, JObj).
 
@@ -145,7 +145,7 @@ cc_email_addresses(JObj) ->
 cc_email_type(JObj) ->
     kz_json:get_value([?CC, ?EMAIL_TYPE], JObj).
 
--spec bcc(doc()) -> api_object().
+-spec bcc(doc()) -> api(kz_json:object()).
 bcc(JObj) ->
     kz_json:get_value(?BCC, JObj).
 

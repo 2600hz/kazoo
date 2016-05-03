@@ -164,7 +164,7 @@ send_default_response(Call, Response) ->
 %% returns the configured response proplist
 %% @end
 %%--------------------------------------------------------------------
--spec get_response(ne_binary(), kapps_call:call()) -> api_object().
+-spec get_response(ne_binary(), kapps_call:call()) -> api(kz_json:object()).
 get_response(Cause, Call) ->
     Default = case default_response(Cause) of
                   'undefined' -> 'undefined';

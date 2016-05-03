@@ -26,7 +26,7 @@
 -include("kz_documents.hrl").
 
 -type doc() :: kz_json:object().
--type api_doc() :: api_object().
+-type api_doc() :: api(kz_json:object()).
 -export_type([doc/0
               ,api_doc/0
              ]).
@@ -112,21 +112,21 @@ discounts(ItemPlan) ->
 discounts(ItemPlan, Default) ->
     kz_json:get_json_value(?DISCOUNTS, ItemPlan, Default).
 
--spec single_discount(doc()) -> api_object().
+-spec single_discount(doc()) -> api(kz_json:object()).
 -spec single_discount(doc(), Default) -> kz_json:object() | Default.
 single_discount(ItemPlan) ->
     single_discount(ItemPlan, 'undefined').
 single_discount(ItemPlan, Default) ->
     kz_json:get_json_value([?DISCOUNTS, ?SINGLE], ItemPlan, Default).
 
--spec cumulative_discount(doc()) -> api_object().
+-spec cumulative_discount(doc()) -> api(kz_json:object()).
 -spec cumulative_discount(doc(), Default) -> kz_json:object() | Default.
 cumulative_discount(ItemPlan) ->
     cumulative_discount(ItemPlan, 'undefined').
 cumulative_discount(ItemPlan, Default) ->
     kz_json:get_json_value([?DISCOUNTS, ?CUMULATIVE], ItemPlan, Default).
 
--spec activation_charge(doc()) -> api_object().
+-spec activation_charge(doc()) -> api(kz_json:object()).
 -spec activation_charge(doc(), Default) -> kz_json:object() | Default.
 activation_charge(ItemPlan) ->
     activation_charge(ItemPlan, 0).

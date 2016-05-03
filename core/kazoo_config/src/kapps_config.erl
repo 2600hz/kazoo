@@ -32,7 +32,7 @@
 -type config_key() :: ne_binary() | nonempty_string() | atom() | [config_key(),...].
 
 -type update_option() :: {'node_specific', boolean()} |
-                         {'pvt_fields', api_object()}.
+                         {'pvt_fields', api(kz_json:object())}.
 -type update_options() :: [update_option()].
 
 -type fetch_ret() :: {'ok', kz_json:object()} |
@@ -387,7 +387,7 @@ update_category(Category, Keys, Value, Node, Options, JObj) ->
             update_category(Category, kz_json:set_value([?KEY_DEFAULT | Keys], Value, JObj), PvtFields)
     end.
 
--spec update_category(config_category(), kz_json:object(), api_object()) ->
+-spec update_category(config_category(), kz_json:object(), api(kz_json:object())) ->
                              {'ok', kz_json:object()}.
 update_category(Category, JObj, PvtFields) ->
     case maybe_save_category(Category, JObj, PvtFields) of
@@ -401,13 +401,13 @@ update_category(Category, JObj, PvtFields) ->
     end.
 
 %% @private
--spec maybe_save_category(ne_binary(), kz_json:object(), api_object()) ->
+-spec maybe_save_category(ne_binary(), kz_json:object(), api(kz_json:object())) ->
                                  {'ok', kz_json:object()} |
                                  {'error', 'conflict'}.
--spec maybe_save_category(ne_binary(), kz_json:object(), api_object(), boolean()) ->
+-spec maybe_save_category(ne_binary(), kz_json:object(), api(kz_json:object()), boolean()) ->
                                  {'ok', kz_json:object()} |
                                  {'error', 'conflict'}.
--spec maybe_save_category(ne_binary(), kz_json:object(), api_object(), boolean(), boolean()) ->
+-spec maybe_save_category(ne_binary(), kz_json:object(), api(kz_json:object()), boolean(), boolean()) ->
                                  {'ok', kz_json:object()} |
                                  {'error', 'conflict'}.
 maybe_save_category(Category, JObj, PvtFields) ->
@@ -443,7 +443,7 @@ maybe_save_category(Category, JObj, PvtFields, Looped, _) ->
             {'ok', JObj1}
     end.
 
--spec update_pvt_fields(config_category(), kz_json:object(), api_object()) ->
+-spec update_pvt_fields(config_category(), kz_json:object(), api(kz_json:object())) ->
                                kz_json:object().
 update_pvt_fields(Category, JObj, 'undefined') ->
     kz_doc:update_pvt_parameters(

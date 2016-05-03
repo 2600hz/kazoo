@@ -155,7 +155,7 @@ set_accepting_charges(#cb_context{req_json = ReqJObj} = Context) ->
 -spec account_modb(context(), kz_now() | kz_timeout()) -> api(binary()).
 -spec account_modb(context(), kz_year(), kz_month()) -> api(binary()).
 -spec account_realm(context()) -> api(binary()).
--spec account_doc(context()) -> api_object().
+-spec account_doc(context()) -> api(kz_json:object()).
 -spec profile_id(context()) -> api(binary()).
 
 account_id(#cb_context{account_id=AcctId}) -> AcctId.
@@ -281,7 +281,7 @@ setters_fold(F, C) when is_function(F, 1) -> F(C).
 -spec set_req_headers(context(), cowboy:http_headers()) -> context().
 -spec set_query_string(context(), kz_json:object()) -> context().
 -spec set_req_id(context(), ne_binary()) -> context().
--spec set_doc(context(), api_object() | kz_json:objects()) -> context().
+-spec set_doc(context(), api(kz_json:object()) | kz_json:objects()) -> context().
 -spec set_load_merge_bypass(context(), api(binary())) -> context().
 -spec set_start(context(), kz_now()) -> context().
 -spec set_resp_data(context(), resp_data()) -> context().
@@ -574,11 +574,11 @@ response(#cb_context{resp_error_code=Code
 %%--------------------------------------------------------------------
 -type after_fun() :: api(fun((context()) -> context())).
 
--spec validate_request_data(ne_binary() | api_object(), context()) ->
+-spec validate_request_data(ne_binary() | api(kz_json:object()), context()) ->
                                    context().
--spec validate_request_data(ne_binary() | api_object(), context(), after_fun()) ->
+-spec validate_request_data(ne_binary() | api(kz_json:object()), context(), after_fun()) ->
                                    context().
--spec validate_request_data(ne_binary() | api_object(), context(), after_fun(), after_fun()) ->
+-spec validate_request_data(ne_binary() | api(kz_json:object()), context(), after_fun(), after_fun()) ->
                                    context().
 validate_request_data('undefined', Context) ->
     passed(Context);
@@ -1008,7 +1008,7 @@ passed(#cb_context{req_data=Data}=Context, Status) ->
                               }
     end.
 
--spec find_schema(ne_binary()) -> api_object().
+-spec find_schema(ne_binary()) -> api(kz_json:object()).
 find_schema(<<_/binary>> = Schema) ->
     case kz_json_schema:load(Schema) of
         {'ok', SchemaJObj} -> SchemaJObj;

@@ -450,7 +450,7 @@ send_update(RespQ, MsgId, Status, Msg) ->
     lager:debug("notification update (~s) sending to ~s", [Status, RespQ]),
     kz_amqp_worker:cast(Prop, fun(P) -> kapi_notifications:publish_notify_update(RespQ, P) end).
 
--spec find_account_rep_email(api_object() | ne_binary()) -> api([api(binary())]).
+-spec find_account_rep_email(api(kz_json:object()) | ne_binary()) -> api([api(binary())]).
 find_account_rep_email('undefined') -> 'undefined';
 find_account_rep_email(<<_/binary>> = AccountId) ->
     case kz_services:is_reseller(AccountId) of
@@ -502,8 +502,8 @@ query_account_for_admin_emails(AccountId) ->
             []
     end.
 
--spec find_account_admin(api(binary())) -> api_object().
--spec find_account_admin(ne_binary(), ne_binary()) -> api_object().
+-spec find_account_admin(api(binary())) -> api(kz_json:object()).
+-spec find_account_admin(ne_binary(), ne_binary()) -> api(kz_json:object()).
 find_account_admin('undefined') -> 'undefined';
 find_account_admin(<<_/binary>> = AccountId) ->
     find_account_admin(AccountId, kz_services:find_reseller_id(AccountId)).
@@ -516,7 +516,7 @@ find_account_admin(AccountId, ResellerId) ->
         Admin -> Admin
     end.
 
--spec query_for_account_admin(ne_binary()) -> api_object().
+-spec query_for_account_admin(ne_binary()) -> api(kz_json:object()).
 query_for_account_admin(AccountId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     ViewOptions = [{'key', <<"user">>}

@@ -34,7 +34,7 @@ flush() ->
 flush(Schema) ->
     kz_datamgr:flush_cache_doc(?KZ_SCHEMA_DB, Schema).
 
--spec add_defaults(api_object() | ne_binary(), ne_binary() | kz_json:object()) -> api_object().
+-spec add_defaults(api(kz_json:object()) | ne_binary(), ne_binary() | kz_json:object()) -> api(kz_json:object()).
 add_defaults(JObj, <<_/binary>> = Schema) ->
     {'ok', SchemaJObj} = load(Schema),
     add_defaults(JObj, SchemaJObj);
@@ -44,7 +44,7 @@ add_defaults(JObj, SchemaJObj) ->
                   ,kz_json:get_value(<<"properties">>, SchemaJObj, kz_json:new())
                  ).
 
--spec add_defaults_foldl(kz_json:key(), kz_json:object(), api_object()) -> api_object().
+-spec add_defaults_foldl(kz_json:key(), kz_json:object(), api(kz_json:object())) -> api(kz_json:object()).
 add_defaults_foldl(SchemaKey, SchemaValue, JObj) ->
     case kz_json:get_value(<<"default">>, SchemaValue) of
         'undefined' ->
@@ -56,7 +56,7 @@ add_defaults_foldl(SchemaKey, SchemaValue, JObj) ->
                                     )
     end.
 
--spec maybe_add_sub_properties(kz_json:key(), kz_json:object(), api_object()) -> api_object().
+-spec maybe_add_sub_properties(kz_json:key(), kz_json:object(), api(kz_json:object())) -> api(kz_json:object()).
 maybe_add_sub_properties(SchemaKey, SchemaValue, JObj) ->
     case kz_json:get_value(<<"type">>, SchemaValue) of
         <<"object">> ->
@@ -87,7 +87,7 @@ maybe_update_data_with_sub(SchemaKey, SchemaValue, JObj) ->
         SubJObj ->  kz_json:set_value(SchemaKey, SubJObj, JObj)
     end.
 
--spec maybe_add_default(kz_json:key(), kz_json:json_term(), api_object()) -> api_object().
+-spec maybe_add_default(kz_json:key(), kz_json:json_term(), api(kz_json:object())) -> api(kz_json:object()).
 maybe_add_default(Key, Default, JObj) ->
     case kz_json:is_json_object(JObj)
         andalso kz_json:get_value(Key, JObj)

@@ -525,7 +525,7 @@ fetch_channel(UUID) ->
         {'ok', Channel} -> Channel
     end.
 
--spec fetch_remote(ne_binary()) -> api_object().
+-spec fetch_remote(ne_binary()) -> api(kz_json:object()).
 fetch_remote(UUID) ->
     Command = [{<<"Call-ID">>, UUID}
                ,{<<"Active-Only">>, <<"true">>}

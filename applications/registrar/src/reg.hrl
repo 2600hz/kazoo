@@ -29,8 +29,8 @@
                     ,a3a8_kc :: api(binary())
                     ,a3a8_sres :: api(binary())
                     ,msisdn :: api(binary())
-                    ,doc :: api_object()
-                    ,request :: api_object()
+                    ,doc :: api(kz_json:object())
+                    ,request :: api(kz_json:object())
                    }).
 -type auth_user() :: #auth_user{}.
 

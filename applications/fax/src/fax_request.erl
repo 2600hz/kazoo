@@ -35,15 +35,15 @@
          ,action = 'receive' :: 'receive' | 'transmit'
          ,owner_id :: api(binary())
          ,faxbox_id :: api(binary())
-         ,fax_doc :: api_object()
+         ,fax_doc :: api(kz_json:object())
          ,storage :: fax_storage()
          ,fax_option :: api(binary())
-         ,fax_result :: api_object()
-         ,fax_notify = 'undefined' :: api_object()
+         ,fax_result :: api(kz_json:object())
+         ,fax_notify = 'undefined' :: api(kz_json:object())
          ,fax_store_count = 0 :: integer()
          ,fax_id = 'undefined' :: api(binary())
          ,account_id = 'undefined' :: api(binary())
-         ,fax_status :: api_object()
+         ,fax_status :: api(kz_json:object())
          ,page = 0  ::integer()
          ,status :: binary()
          }).
@@ -609,15 +609,15 @@ notify_success(JObj, #state{call=Call
                 ]),
     kapi_notifications:publish_fax_inbound(Message).
 
--spec send_error_status(state(), ne_binary(), api_object()) -> 'ok'.
+-spec send_error_status(state(), ne_binary(), api(kz_json:object())) -> 'ok'.
 send_error_status(State, Status, FaxInfo) ->
     send_status(State, Status, ?FAX_ERROR, FaxInfo).
 
--spec send_status(state(), ne_binary(), api_object()) -> 'ok'.
+-spec send_status(state(), ne_binary(), api(kz_json:object())) -> 'ok'.
 send_status(State, Status, FaxInfo) ->
     send_status(State, Status, ?FAX_RECEIVE, FaxInfo).
 
--spec send_status(state(), ne_binary(), ne_binary(), api_object()) -> 'ok'.
+-spec send_status(state(), ne_binary(), ne_binary(), api(kz_json:object())) -> 'ok'.
 send_status(#state{call=Call
                    ,account_id=AccountId
                    ,page=Page

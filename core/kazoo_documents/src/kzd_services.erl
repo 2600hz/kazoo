@@ -199,7 +199,7 @@ set_type(JObj) ->
 set_plans(JObj, Plans) ->
     kz_json:set_value(?PLANS, Plans, JObj).
 
--spec set_plan(doc(), ne_binary(), api_object()) -> doc().
+-spec set_plan(doc(), ne_binary(), api(kz_json:object())) -> doc().
 set_plan(JObj, PlanId, 'undefined') ->
     kz_json:delete_key([?PLANS, PlanId], JObj);
 set_plan(JObj, PlanId, Plan) ->

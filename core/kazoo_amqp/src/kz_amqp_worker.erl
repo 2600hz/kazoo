@@ -108,7 +108,7 @@
                 ,req_start_time :: kz_now()
                 ,callid :: ne_binary()
                 ,pool_ref :: server_ref()
-                ,defer_response :: api_object()
+                ,defer_response :: api(kz_json:object())
                 ,queue :: api(binary())
                 ,confirms = 'false' :: boolean()
                 ,flow = 'undefined' :: api(boolean())

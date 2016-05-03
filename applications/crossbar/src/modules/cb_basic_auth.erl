@@ -114,7 +114,7 @@ check_credentials(Context, AccountId, Credentials, BasicType) ->
         _ -> 'false'
     end.
 
--spec get_credential_doc(ne_binary(), ne_binary(), ne_binary()) -> api_object().
+-spec get_credential_doc(ne_binary(), ne_binary(), ne_binary()) -> api(kz_json:object()).
 get_credential_doc(AccountId, View, Key) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     Options = [{'key', Key}, 'include_docs'],

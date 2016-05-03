@@ -141,7 +141,7 @@ get_digit_pressed(Call) ->
         D -> D
     end.
 
--spec get_digits_pressed(kapps_call:call()) -> api_object().
+-spec get_digits_pressed(kapps_call:call()) -> api(kz_json:object()).
 get_digits_pressed(Call) ->
     kapps_call:kvs_fetch(<<"dtmf_collections">>, Call).
 
@@ -259,7 +259,7 @@ set_dequeued_call_duration(DCS, Call) -> kapps_call:kvs_store(<<"dequeued_call_d
 get_dequeued_call_duration(Call) -> kapps_call:kvs_fetch(<<"dequeued_call_duration">>, Call).
 
 -spec set_media_meta(kz_json:object(), kapps_call:call()) -> kapps_call:call().
--spec get_media_meta(kapps_call:call()) -> api_object().
+-spec get_media_meta(kapps_call:call()) -> api(kz_json:object()).
 set_media_meta(DCS, Call) -> kapps_call:kvs_store(<<"media_meta">>, DCS, Call).
 get_media_meta(Call) -> kapps_call:kvs_fetch(<<"media_meta">>, Call).
 

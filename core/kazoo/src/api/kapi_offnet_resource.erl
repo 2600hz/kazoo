@@ -350,14 +350,14 @@ put_callid(?REQ_TYPE(JObj)) ->
 set_outbound_call_id(?REQ_TYPE(JObj), CallId) ->
     ?REQ_TYPE(kz_json:insert_value(?KEY_OUTBOUND_CALL_ID, CallId, JObj)).
 
--spec custom_channel_vars(req()) -> api_object().
+-spec custom_channel_vars(req()) -> api(kz_json:object()).
 -spec custom_channel_vars(req(), Default) -> kz_json:object() | Default.
 custom_channel_vars(Req) ->
     custom_channel_vars(Req, 'undefined').
 custom_channel_vars(?REQ_TYPE(JObj), Default) ->
     kz_json:get_json_value(?KEY_CCVS, JObj, Default).
 
--spec custom_sip_headers(req()) -> api_object().
+-spec custom_sip_headers(req()) -> api(kz_json:object()).
 -spec custom_sip_headers(req(), Default) -> kz_json:object() | Default.
 custom_sip_headers(Req) ->
     custom_sip_headers(Req, 'undefined').

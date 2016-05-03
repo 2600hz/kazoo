@@ -166,24 +166,24 @@ constrain_retries(N) when is_integer(N) -> N.
 set_retries(Hook, Retries) when is_integer(Retries) ->
     kz_json:set_value(?RETRIES, constrain_retries(Retries), Hook).
 
--spec custom_data(doc()) -> api_object().
+-spec custom_data(doc()) -> api(kz_json:object()).
 -spec custom_data(doc(), Default) -> kz_json:object() | Default.
 custom_data(Hook) ->
     custom_data(Hook, 'undefined').
 custom_data(Hook, Default) ->
     kz_json:get_ne_json_value(?CUSTOM_DATA, Hook, Default).
 
--spec set_custom_data(doc(), api_object()) -> doc().
+-spec set_custom_data(doc(), api(kz_json:object())) -> doc().
 set_custom_data(Hook, Custom) ->
     kz_json:set_value(?CUSTOM_DATA, Custom, Hook).
 
--spec modifiers(doc()) -> api_object().
+-spec modifiers(doc()) -> api(kz_json:object()).
 -spec modifiers(doc(), Default) -> kz_json:object() | Default.
 modifiers(Hook) ->
     modifiers(Hook, 'undefined').
 modifiers(Hook, Default) ->
     kz_json:get_ne_json_value(?MODIFIERS, Hook, Default).
 
--spec set_modifiers(doc(), api_object()) -> doc().
+-spec set_modifiers(doc(), api(kz_json:object())) -> doc().
 set_modifiers(Hook, Modifiers) ->
     kz_json:set_value(?MODIFIERS, Modifiers, Hook).

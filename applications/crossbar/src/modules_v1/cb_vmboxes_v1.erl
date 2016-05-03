@@ -457,7 +457,7 @@ load_message_summary(DocId, Context) ->
 %% Get message by its media ID and its context
 %% @end
 %%--------------------------------------------------------------------
--spec load_message(ne_binary(), api_object(), cb_context:context()) ->
+-spec load_message(ne_binary(), api(kz_json:object()), cb_context:context()) ->
                           {boolean(), cb_context:context()}.
 load_message(MediaId, 'undefined', Context) ->
     load_message(MediaId, kz_json:new(), Context);

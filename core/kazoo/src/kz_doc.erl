@@ -206,7 +206,7 @@ is_private_key(_) -> 'false'.
 private_fields(JObjs) when is_list(JObjs) -> [public_fields(JObj) || JObj <- JObjs];
 private_fields(JObj) -> kz_json:filter(fun({K, _}) -> is_private_key(K) end, JObj).
 
--spec attachments(kz_json:object()) -> api_object().
+-spec attachments(kz_json:object()) -> api(kz_json:object()).
 -spec attachments(kz_json:object(), Default) -> kz_json:object() | Default.
 attachments(JObj) ->
     attachments(JObj, 'undefined').
@@ -218,7 +218,7 @@ attachments(JObj, Default) ->
         A3 -> A3
     end.
 
--spec stub_attachments(kz_json:object()) -> api_object().
+-spec stub_attachments(kz_json:object()) -> api(kz_json:object()).
 -spec stub_attachments(kz_json:object(), Default) -> kz_json:object() | Default.
 stub_attachments(JObj) ->
     stub_attachments(JObj, 'undefined').
@@ -228,7 +228,7 @@ stub_attachments(JObj, Default) ->
         A3 -> A3
     end.
 
--spec external_attachments(kz_json:object()) -> api_object().
+-spec external_attachments(kz_json:object()) -> api(kz_json:object()).
 -spec external_attachments(kz_json:object(), Default) -> kz_json:object() | Default.
 external_attachments(JObj) ->
     external_attachments(JObj, 'undefined').
@@ -242,8 +242,8 @@ external_attachments(JObj, Default) ->
 attachment_names(JObj) ->
     kz_json:get_keys(attachments(JObj, kz_json:new())).
 
--spec attachment(kz_json:object()) -> api_object().
--spec attachment(kz_json:object(), kz_json:key()) -> api_object().
+-spec attachment(kz_json:object()) -> api(kz_json:object()).
+-spec attachment(kz_json:object(), kz_json:key()) -> api(kz_json:object()).
 -spec attachment(kz_json:object(), kz_json:key(), Default) -> kz_json:object() | Default.
 attachment(JObj) ->
     case kz_json:get_values(attachments(JObj, kz_json:new())) of
@@ -289,12 +289,12 @@ maybe_remove_attachments(JObj) ->
         _Attachments -> {'true', kz_json:delete_keys(?KEYS_ATTACHMENTS, JObj)}
     end.
 
--spec maybe_remove_attachments(kz_json:object(), api_object()) -> kz_json:object().
+-spec maybe_remove_attachments(kz_json:object(), api(kz_json:object())) -> kz_json:object().
 maybe_remove_attachments(JObj, 'undefined') -> JObj;
 maybe_remove_attachments(JObj, _Attachments) ->
     kz_json:delete_keys(?KEYS_ATTACHMENTS, JObj).
 
--spec maybe_remove_attachment(kz_json:object(), ne_binary(), api_object()) -> kz_json:object().
+-spec maybe_remove_attachment(kz_json:object(), ne_binary(), api(kz_json:object())) -> kz_json:object().
 maybe_remove_attachment(JObj, _AName, 'undefined') -> JObj;
 maybe_remove_attachment(JObj, AName, _AMeta) ->
     kz_json:delete_keys(?KEYS_ATTACHMENTS(AName), JObj).

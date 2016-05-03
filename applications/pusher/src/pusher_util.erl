@@ -56,8 +56,8 @@ keycert_fold({'PrivateKeyInfo', Bin, 'not_encrypted'}, {'undefined', Cert}) ->
 keycert_fold(_Entry, KeyCert) ->
     KeyCert.
 
--spec user_agent_push_properties(ne_binary()) -> api_object().
--spec user_agent_push_properties(ne_binary(), kz_json:objects()) -> api_object().
+-spec user_agent_push_properties(ne_binary()) -> api(kz_json:object()).
+-spec user_agent_push_properties(ne_binary(), kz_json:objects()) -> api(kz_json:object()).
 user_agent_push_properties(UserAgent) ->
     UAs = kapps_config:get(?CONFIG_CAT, <<"User-Agents">>, kz_json:new()),
     {Vs, _Ks} = kz_json:get_values(UAs),

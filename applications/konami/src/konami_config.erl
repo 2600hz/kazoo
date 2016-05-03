@@ -122,7 +122,7 @@ get_attribute(JObj, K, DefaultFun, FormatterFun) ->
         V -> FormatterFun(V)
     end.
 
--spec konami_doc(ne_binary()) -> api_object().
+-spec konami_doc(ne_binary()) -> api(kz_json:object()).
 konami_doc(Account) ->
     case kz_account:fetch(Account) of
         {'ok', JObj} -> kz_json:get_value(<<"metaflows">>, JObj);

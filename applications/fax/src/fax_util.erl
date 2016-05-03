@@ -91,10 +91,10 @@ save_fax_docs([Doc|Docs], FileContents, CT) ->
         Else -> Else
     end.
 
--spec save_fax_attachment(api_object(), binary(), ne_binary())->
+-spec save_fax_attachment(api(kz_json:object()), binary(), ne_binary())->
                                  {'ok', kz_json:object()} |
                                  {'error', ne_binary()}.
--spec save_fax_attachment(api_object(), binary(), ne_binary(), non_neg_integer())->
+-spec save_fax_attachment(api(kz_json:object()), binary(), ne_binary(), non_neg_integer())->
                                  {'ok', kz_json:object()} |
                                  {'error', ne_binary()}.
 save_fax_attachment(JObj, FileContents, CT) ->

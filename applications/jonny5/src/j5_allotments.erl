@@ -23,7 +23,7 @@ authorize(Request, Limits) ->
     Allotment = find_allotment(Request, Limits),
     maybe_consume_allotment(Allotment, Request, Limits).
 
--spec maybe_consume_allotment(api_object(), j5_request:request(), j5_limits:limits()) -> j5_request:request().
+-spec maybe_consume_allotment(api(kz_json:object()), j5_request:request(), j5_limits:limits()) -> j5_request:request().
 maybe_consume_allotment('undefined', Request, _) ->
     lager:debug("account has no allotment", []),
     Request;
@@ -132,7 +132,7 @@ reconcile_allotment(Seconds, Allotment, Request, Limits) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_allotment(j5_request:request(), j5_limits:limits()) -> api_object().
+-spec find_allotment(j5_request:request(), j5_limits:limits()) -> api(kz_json:object()).
 find_allotment(Request, Limits) ->
     case j5_request:classification(Request) of
         'undefined' -> 'undefined';
@@ -141,7 +141,7 @@ find_allotment(Request, Limits) ->
             find_allotment_by_classification(Direction, Classification, Limits)
     end.
 
--spec find_allotment_by_classification(ne_binary(), ne_binary(), j5_limits:limits()) -> api_object().
+-spec find_allotment_by_classification(ne_binary(), ne_binary(), j5_limits:limits()) -> api(kz_json:object()).
 find_allotment_by_classification(Direction, Classification, Limits) ->
     DirectionalClassification = <<Direction/binary, "_", Classification/binary>>,
     case find_allotment_by_classification(DirectionalClassification, Limits) of
@@ -150,7 +150,7 @@ find_allotment_by_classification(Direction, Classification, Limits) ->
         Allotment -> Allotment
     end.
 
--spec find_allotment_by_classification(ne_binary(), j5_limits:limits()) -> api_object().
+-spec find_allotment_by_classification(ne_binary(), j5_limits:limits()) -> api(kz_json:object()).
 find_allotment_by_classification(Classification, Limits) ->
     Allotments = j5_limits:allotments(Limits),
     lager:debug("checking if account ~s has any allotments for ~s"

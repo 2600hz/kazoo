@@ -9,7 +9,7 @@
 -export([service_token/2]).
 
 
--spec service_token(api(binary()) | oauth_service_app(), api(binary())) -> api_object().
+-spec service_token(api(binary()) | oauth_service_app(), api(binary())) -> api(kz_json:object()).
 service_token('undefined', _) ->
     'undefined';
 service_token(_, 'undefined') ->

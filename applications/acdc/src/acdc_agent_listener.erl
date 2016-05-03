@@ -985,7 +985,7 @@ send_status_update(AcctId, AgentId, 'resume') ->
 idle_time('undefined') -> 'undefined';
 idle_time(T) -> kz_util:elapsed_s(T).
 
--spec call_id(kapps_call:call() | api_object()) -> api(binary()).
+-spec call_id(kapps_call:call() | api(kz_json:object())) -> api(binary()).
 call_id('undefined') -> 'undefined';
 call_id(Call) ->
     case kapps_call:is_call(Call) of

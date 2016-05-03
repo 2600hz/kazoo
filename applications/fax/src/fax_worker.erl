@@ -33,10 +33,10 @@
 -record(state, {queue_name :: api(binary())
                 ,pool :: api_pid()
                 ,job_id :: api(binary())
-                ,job :: api_object()
+                ,job :: api(kz_json:object())
                 ,account_id :: api(binary())
                 ,status :: binary()
-                ,fax_status :: api_object()
+                ,fax_status :: api(kz_json:object())
                 ,pages  :: integer()
                 ,page = 0  :: integer()
                 ,file :: ne_binary()
@@ -773,7 +773,7 @@ notify_fields(JObj, Resp) ->
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
--spec fax_fields(api_object()) -> kz_proplist().
+-spec fax_fields(api(kz_json:object())) -> kz_proplist().
 fax_fields('undefined') -> [];
 fax_fields(JObj) ->
     [{K,V} || {<<"Fax-", _/binary>> = K, V} <- kz_json:to_proplist(JObj)].
@@ -988,7 +988,7 @@ get_hunt_account_id(AccountId) ->
         _ -> 'undefined'
     end.
 
--spec maybe_hunt_account_id(api_object()) -> api(binary()).
+-spec maybe_hunt_account_id(api(kz_json:object())) -> api(binary()).
 maybe_hunt_account_id('undefined') -> 'undefined';
 maybe_hunt_account_id(JObj) ->
     case kz_json:get_value([<<"flow">>, <<"module">>], JObj) of
@@ -1034,11 +1034,11 @@ send_status(State, Status) ->
 send_error_status(State, Status) ->
     send_status(State, Status, ?FAX_ERROR, 'undefined').
 
--spec send_status(state(), ne_binary(), api_object()) -> any().
+-spec send_status(state(), ne_binary(), api(kz_json:object())) -> any().
 send_status(State, Status, FaxInfo) ->
     send_status(State, Status, ?FAX_SEND, FaxInfo).
 
--spec send_status(state(), ne_binary(), ne_binary(), api_object()) -> any().
+-spec send_status(state(), ne_binary(), ne_binary(), api(kz_json:object())) -> any().
 send_status(#state{job=JObj
                    ,page=Page
                    ,job_id=JobId
@@ -1063,7 +1063,7 @@ send_status(#state{job=JObj
                 ]),
     kapi_fax:publish_status(Payload).
 
--spec send_reply_status(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_object()) -> 'ok'.
+-spec send_reply_status(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), api(kz_json:object())) -> 'ok'.
 send_reply_status(Q, MsgId, JobId, Status, AccountId, JObj) ->
     Payload = props:filter_undefined(
                 [{<<"Job-ID">>, JobId}

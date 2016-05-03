@@ -282,7 +282,7 @@ replay_sms(AccountId, DocId) ->
     Rev = kz_doc:revision(Doc),
     replay_sms_flow(AccountId, DocId, Rev, Flow, Schedule).
 
--spec replay_sms_flow(ne_binary(), ne_binary(), ne_binary(), api_object(), api_object()) -> any().
+-spec replay_sms_flow(ne_binary(), ne_binary(), ne_binary(), api(kz_json:object()), api(kz_json:object())) -> any().
 replay_sms_flow(_AccountId, _DocId, _Rev, 'undefined', _) -> 'ok';
 replay_sms_flow(AccountId, <<_:7/binary, CallId/binary>> = DocId, Rev, JObj, Schedule) ->
     lager:debug("replaying sms ~s for account ~s",[DocId, AccountId]),
@@ -297,7 +297,7 @@ replay_sms_flow(AccountId, <<_:7/binary, CallId/binary>> = DocId, Rev, JObj, Sch
     lager:info("doodle received sms resume for ~s of account ~s, taking control", [DocId, AccountId]),
     doodle_route_win:execute_text_flow(JObj, Call).
 
--spec sms_status(api_object()) -> ne_binary().
+-spec sms_status(api(kz_json:object())) -> ne_binary().
 sms_status('undefined') -> <<"pending">>;
 sms_status(JObj) ->
     DeliveryCode = kz_json:get_value(<<"Delivery-Result-Code">>, JObj),

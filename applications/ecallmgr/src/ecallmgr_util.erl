@@ -1092,7 +1092,7 @@ maybe_add_expires_deviation_ms(Expires) when not is_integer(Expires) ->
 maybe_add_expires_deviation_ms(Expires) ->
     maybe_add_expires_deviation(Expires) * ?MILLISECONDS_IN_SECOND.
 
--spec get_dial_separator(api_object() | ne_binary(), kz_json:objects()) -> ne_binary().
+-spec get_dial_separator(api(kz_json:object()) | ne_binary(), kz_json:objects()) -> ne_binary().
 get_dial_separator(?DIAL_METHOD_SIMUL, [_|T]) when T =/= [] -> ?SEPARATOR_SIMULTANEOUS;
 get_dial_separator(?DIAL_METHOD_SINGLE, _Endpoints) -> ?SEPARATOR_SINGLE;
 get_dial_separator('undefined', _Endpoints) -> ?SEPARATOR_SINGLE;

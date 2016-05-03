@@ -685,7 +685,7 @@ send_dtmf_command(DTMFs, Duration) ->
 %%   can not be used to set system settings
 %% @end
 %%--------------------------------------------------------------------
--spec set(api_object(), api_object(), kapps_call:call()) -> 'ok'.
+-spec set(api(kz_json:object()), api(kz_json:object()), kapps_call:call()) -> 'ok'.
 set('undefined', CallVars, Call) -> set(kz_json:new(), CallVars, Call);
 set(ChannelVars, 'undefined', Call) -> set(ChannelVars, kz_json:new(), Call);
 set(ChannelVars, CallVars, Call) ->
@@ -903,7 +903,7 @@ b_hangup('true', Call) ->
 -spec page(kz_json:objects(), integer(), kapps_call:call()) -> 'ok'.
 -spec page(kz_json:objects(), integer(), api(binary()), kapps_call:call()) -> 'ok'.
 -spec page(kz_json:objects(), integer(), api(binary()), api(binary()), kapps_call:call()) -> 'ok'.
--spec page(kz_json:objects(), integer(), api(binary()), api(binary()), api_object(), kapps_call:call()) -> 'ok'.
+-spec page(kz_json:objects(), integer(), api(binary()), api(binary()), api(kz_json:object()), kapps_call:call()) -> 'ok'.
 
 -spec b_page(kz_json:objects(), kapps_call:call()) ->
                     wait_for_application_return().
@@ -913,7 +913,7 @@ b_hangup('true', Call) ->
                     wait_for_application_return().
 -spec b_page(kz_json:objects(), integer(), api(binary()), api(binary()), kapps_call:call()) ->
                     wait_for_application_return().
--spec b_page(kz_json:objects(), integer(), api(binary()), api(binary()), api_object(), kapps_call:call()) ->
+-spec b_page(kz_json:objects(), integer(), api(binary()), api(binary()), api(kz_json:object()), kapps_call:call()) ->
                     wait_for_application_return().
 
 page(Endpoints, Call) ->
@@ -957,8 +957,8 @@ b_page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, Call) ->
 -spec bridge(kz_json:objects(), integer(), api(binary()), kapps_call:call()) -> 'ok'.
 -spec bridge(kz_json:objects(), integer(), api(binary()), api(binary()), kapps_call:call()) -> 'ok'.
 -spec bridge(kz_json:objects(), integer(), api(binary()), api(binary()), api(binary()), kapps_call:call()) -> 'ok'.
--spec bridge(kz_json:objects(), integer(), api(binary()), api(binary()), api(binary()), api_object(), kapps_call:call()) -> 'ok'.
--spec bridge(kz_json:objects(), integer(), api(binary()), api(binary()), api(binary()), api_object(), api(binary()), kapps_call:call()) -> 'ok'.
+-spec bridge(kz_json:objects(), integer(), api(binary()), api(binary()), api(binary()), api(kz_json:object()), kapps_call:call()) -> 'ok'.
+-spec bridge(kz_json:objects(), integer(), api(binary()), api(binary()), api(binary()), api(kz_json:object()), api(binary()), kapps_call:call()) -> 'ok'.
 
 -spec b_bridge(kz_json:objects(), kapps_call:call()) ->
                       kapps_api_bridge_return().
@@ -970,9 +970,9 @@ b_page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, Call) ->
                       kapps_api_bridge_return().
 -spec b_bridge(kz_json:objects(), integer(), api(binary()), api(binary()), api(binary()), kapps_call:call()) ->
                       kapps_api_bridge_return().
--spec b_bridge(kz_json:objects(), integer(), api(binary()), api(binary()), api(binary()), api_object(), kapps_call:call()) ->
+-spec b_bridge(kz_json:objects(), integer(), api(binary()), api(binary()), api(binary()), api(kz_json:object()), kapps_call:call()) ->
                       kapps_api_bridge_return().
--spec b_bridge(kz_json:objects(), integer(), api(binary()), api(binary()), api(binary()), api_object(), api(binary()), kapps_call:call()) ->
+-spec b_bridge(kz_json:objects(), integer(), api(binary()), api(binary()), api(binary()), api(kz_json:object()), api(binary()), kapps_call:call()) ->
                       kapps_api_bridge_return().
 
 bridge_command(Endpoints, Call) ->

@@ -37,7 +37,7 @@
 
 -type doc() :: kz_json:object().
 -type docs() :: [doc()].
--type api_doc() :: api_object().
+-type api_doc() :: api(kz_json:object()).
 -export_type([doc/0
               ,api_doc/0
               ,docs/0
@@ -97,8 +97,8 @@ category_activation_charge(Plan, Category, Default) ->
 categories(Plan) ->
     kz_json:get_keys(?PLAN, Plan).
 
--spec category(doc(), ne_binary()) -> api_object().
--spec category(doc(), ne_binary(), Default) -> api_object() | Default.
+-spec category(doc(), ne_binary()) -> api(kz_json:object()).
+-spec category(doc(), ne_binary(), Default) -> api(kz_json:object()) | Default.
 category(Plan, CategoryId) ->
     category(Plan, CategoryId, 'undefined').
 category(Plan, CategoryId, Default) ->
@@ -108,7 +108,7 @@ category(Plan, CategoryId, Default) ->
 items(Plan, Category) ->
     kz_json:get_keys([?PLAN, Category], Plan).
 
--spec item(doc(), ne_binary(), ne_binary()) -> api_object().
+-spec item(doc(), ne_binary(), ne_binary()) -> api(kz_json:object()).
 item(Plan, CategoryId, ItemId) ->
     kz_json:get_json_value([?PLAN, CategoryId, ItemId], Plan).
 

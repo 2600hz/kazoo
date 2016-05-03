@@ -57,8 +57,8 @@
                          ,event :: api(binary())
                          ,number :: api(binary())
                          ,feature :: api(binary())
-                         ,bookkeeper_info :: api_object()
-                         ,metadata :: api_object()
+                         ,bookkeeper_info :: api(kz_json:object())
+                         ,metadata :: api(kz_json:object())
                          ,pvt_status :: api(binary())
                          ,pvt_reason :: api(binary())
                          ,pvt_code :: api_integer()
@@ -126,7 +126,7 @@ feature(#kz_transaction{feature=Feature}) ->
 bookkeeper_info(#kz_transaction{bookkeeper_info=BookkeeperInfo}) ->
     BookkeeperInfo.
 
--spec metadata(transaction()) -> api_object().
+-spec metadata(transaction()) -> api(kz_json:object()).
 metadata(#kz_transaction{metadata=MetaData}) ->
     MetaData.
 

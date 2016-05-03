@@ -175,7 +175,7 @@ record_to_xml(Address, ToString) ->
 %% Convert a given json object into a record
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_record(api_object()) -> api(bt_address()).
+-spec json_to_record(api(kz_json:object())) -> api(bt_address()).
 json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->
     #bt_address{id = create_or_get_json_id(JObj)
@@ -200,7 +200,7 @@ json_to_record(JObj) ->
 %% Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_json(api(bt_address())) -> api_object().
+-spec record_to_json(api(bt_address())) -> api(kz_json:object()).
 record_to_json('undefined') -> 'undefined';
 record_to_json(#bt_address{}=Address) ->
     Props = [{<<"id">>, Address#bt_address.id}

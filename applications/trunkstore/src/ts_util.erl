@@ -264,7 +264,7 @@ caller_id([CID|T]) ->
         CallerID -> CallerID
     end.
 
--spec sip_headers(api_objects()) -> api_object().
+-spec sip_headers(api_objects()) -> api(kz_json:object()).
 sip_headers([]) -> 'undefined';
 sip_headers(L) when is_list(L) ->
     case [Headers || Headers <- L,
@@ -277,7 +277,7 @@ sip_headers(L) when is_list(L) ->
     end.
 
 -spec failover(kz_json:objects() | api([api(binary())])) ->
-                      api_object().
+                      api(kz_json:object()).
 %% cascade from DID to Srv to Account
 failover(L) ->
     case simple_extract(L) of

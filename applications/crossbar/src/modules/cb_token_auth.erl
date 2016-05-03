@@ -100,7 +100,7 @@ delete(Context) ->
     end.
 
 -spec finish_request(cb_context:context()) -> 'ok'.
--spec finish_request(cb_context:context(), api_object()) -> 'ok'.
+-spec finish_request(cb_context:context(), api(kz_json:object())) -> 'ok'.
 finish_request(Context) ->
     finish_request(Context, cb_context:auth_doc(Context)).
 

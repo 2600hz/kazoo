@@ -352,8 +352,8 @@ get_account_realm(Db, AccountId) ->
         JObj -> kz_account:realm(JObj)
     end.
 
--spec get_account_doc(ne_binary()) -> api_object().
--spec get_account_doc(ne_binary(), ne_binary()) -> api_object().
+-spec get_account_doc(ne_binary()) -> api(kz_json:object()).
+-spec get_account_doc(ne_binary(), ne_binary()) -> api(kz_json:object()).
 get_account_doc(<<_/binary>> = Id) ->
     get_account_doc(kz_util:format_account_id(Id, 'encoded')
                     ,kz_util:format_account_id(Id, 'raw')
@@ -981,7 +981,7 @@ create_auth_token(Context, AuthModule, JObj) ->
     end.
 
 -spec get_token_restrictions(atom(), ne_binary(), ne_binary()) ->
-                                    api_object().
+                                    api(kz_json:object()).
 get_token_restrictions(AuthModule, AccountId, OwnerId) ->
     case kz_util:is_system_admin(AccountId) of
         'true' -> 'undefined';
@@ -1007,7 +1007,7 @@ get_priv_level(AccountId, OwnerId) ->
     {'ok', Doc} = kz_datamgr:open_cache_doc(AccountDB, OwnerId),
     kz_json:get_ne_value(<<"priv_level">>, Doc).
 
--spec get_system_token_restrictions(atom()) -> api_object().
+-spec get_system_token_restrictions(atom()) -> api(kz_json:object()).
 get_system_token_restrictions(AuthModule) ->
     case kapps_config:get(cb_token_restrictions:config_cat(), AuthModule) of
         'undefined' ->
@@ -1015,7 +1015,7 @@ get_system_token_restrictions(AuthModule) ->
         MethodRestrictions -> MethodRestrictions
     end.
 
--spec get_account_token_restrictions(ne_binary(), atom()) -> api_object().
+-spec get_account_token_restrictions(ne_binary(), atom()) -> api(kz_json:object()).
 get_account_token_restrictions(AccountId, AuthModule) ->
     AccountDB = kz_util:format_account_db(AccountId),
     case kz_datamgr:open_cache_doc(AccountDB, ?CB_ACCOUNT_TOKEN_RESTRICTIONS) of
@@ -1029,7 +1029,7 @@ get_account_token_restrictions(AccountId, AuthModule) ->
              )
     end.
 
--spec get_priv_level_restrictions(api_object(), ne_binary()) -> api_object().
+-spec get_priv_level_restrictions(api(kz_json:object()), ne_binary()) -> api(kz_json:object()).
 get_priv_level_restrictions('undefined', _PrivLevel) ->
     'undefined';
 get_priv_level_restrictions(Restrictions, PrivLevel) ->
@@ -1193,7 +1193,7 @@ servers_changed(Servers1, Servers2) ->
                 ,Servers1
                ).
 
--spec server_changed(kz_json:object(), api_object()) -> boolean().
+-spec server_changed(kz_json:object(), api(kz_json:object())) -> boolean().
 server_changed(_Server, 'undefined') ->
     lager:debug("server ~s existence has changed", [kz_json:get_value(<<"server_name">>, _Server)]),
     'true';

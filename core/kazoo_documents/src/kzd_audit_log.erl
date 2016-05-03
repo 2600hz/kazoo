@@ -53,18 +53,18 @@
 audit_account_ids(JObj) ->
     kz_json:get_keys(?KEY_AUDIT, JObj).
 
--spec audit_account_id(doc(), ne_binary()) -> api_object().
+-spec audit_account_id(doc(), ne_binary()) -> api(kz_json:object()).
 -spec audit_account_id(doc(), ne_binary(), Default) -> kz_json:object() | Default.
 audit_account_id(JObj, AccountId) ->
     audit_account_id(JObj, AccountId, 'undefined').
 audit_account_id(JObj, AccountId, Default) ->
     kz_json:get_json_value([?KEY_AUDIT, AccountId], JObj, Default).
 
--spec audit_account_quantities(doc(), ne_binary()) -> api_object().
+-spec audit_account_quantities(doc(), ne_binary()) -> api(kz_json:object()).
 audit_account_quantities(JObj, AccountId) ->
     kz_json:get_json_value([?KEY_AUDIT, AccountId, ?KEY_ACCOUNT_QUANTITIES], JObj).
 
--spec audit_cascase_quantities(doc(), ne_binary()) -> api_object().
+-spec audit_cascase_quantities(doc(), ne_binary()) -> api(kz_json:object()).
 audit_cascase_quantities(JObj, AccountId) ->
     kz_json:get_json_value([?KEY_AUDIT, AccountId, ?KEY_CASCADE_QUANTITIES], JObj).
 
@@ -76,7 +76,7 @@ audit_account_name(JObj, AccountId) ->
 tree(JObj) ->
     kz_json:get_value(?KEY_TREE, JObj).
 
--spec authenticating_user(doc()) -> api_object().
+-spec authenticating_user(doc()) -> api(kz_json:object()).
 authenticating_user(JObj) ->
     kz_json:get_json_value(?KEY_AUTHENTICATING_USER, JObj).
 

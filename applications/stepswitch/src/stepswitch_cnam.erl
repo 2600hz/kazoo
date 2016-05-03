@@ -225,7 +225,7 @@ code_change(_OldVsn, TemplateName, _Extra) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_template_props(api_object()) -> api(kz_proplist()).
+-spec json_to_template_props(api(kz_json:object())) -> api(kz_proplist()).
 json_to_template_props('undefined') -> 'undefined';
 json_to_template_props(JObj) ->
     normalize_proplist(kz_json:recursive_to_proplist(JObj)).

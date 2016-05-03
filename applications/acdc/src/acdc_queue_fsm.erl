@@ -74,7 +74,7 @@
 
           ,member_call :: kapps_call:call()
           ,member_call_start :: non_neg_integer()
-          ,member_call_winner :: api_object() %% who won the call
+          ,member_call_winner :: api(kz_json:object()) %% who won the call
 
           %% Config options
           ,name :: ne_binary()
@@ -92,7 +92,7 @@
           ,recording_url :: api(binary()) %% URL of where to POST recordings
           ,cdr_url :: api(binary()) % optional URL to request for extra CDR data
 
-          ,notifications :: api_object()
+          ,notifications :: api(kz_json:object())
          }).
 -type queue_fsm_state() :: #state{}.
 
@@ -171,7 +171,7 @@ call_event(_, _E, _N, _J) -> 'ok'.
 finish_member_call(FSM) ->
     gen_fsm:send_event(FSM, {'member_finished'}).
 
--spec current_call(pid()) -> api_object().
+-spec current_call(pid()) -> api(kz_json:object()).
 current_call(FSM) ->
     gen_fsm:sync_send_event(FSM, 'current_call').
 
@@ -728,7 +728,7 @@ maybe_stop_timer(ConnRef) ->
     _ = gen_fsm:cancel_timer(ConnRef),
     'ok'.
 
--spec maybe_timeout_winner(pid(), api_object()) -> 'ok'.
+-spec maybe_timeout_winner(pid(), api(kz_json:object())) -> 'ok'.
 maybe_timeout_winner(Srv, 'undefined') ->
     acdc_queue_listener:timeout_member_call(Srv);
 maybe_timeout_winner(Srv, Winner) ->

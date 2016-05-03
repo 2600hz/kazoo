@@ -141,7 +141,7 @@ timeout_agent(Srv, RespJObj) ->
 timeout_member_call(Srv) ->
     timeout_member_call(Srv, 'undefined').
 
--spec timeout_member_call(pid(), api_object()) -> 'ok'.
+-spec timeout_member_call(pid(), api(kz_json:object())) -> 'ok'.
 timeout_member_call(Srv, JObj) ->
     gen_listener:cast(Srv, {'timeout_member_call', JObj}).
 
@@ -532,7 +532,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec maybe_timeout_agent(api_object(), ne_binary(), kapps_call:call(), kz_json:object()) -> 'ok'.
+-spec maybe_timeout_agent(api(kz_json:object()), ne_binary(), kapps_call:call(), kz_json:object()) -> 'ok'.
 maybe_timeout_agent('undefined', _QueueId, _Call, _JObj) -> 'ok';
 maybe_timeout_agent(_AgentId, QueueId, Call, JObj) ->
     lager:debug("timing out winning agent because they should not be able to pick up after the queue timeout"),

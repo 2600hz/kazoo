@@ -166,7 +166,7 @@ get_to_did(_Data, Call, Number) ->
         {'error', _ } -> Number
     end.
 
--spec get_sip_headers(kz_json:object(), kapps_call:call()) -> api_object().
+-spec get_sip_headers(kz_json:object(), kapps_call:call()) -> api(kz_json:object()).
 get_sip_headers(Data, Call) ->
     Routines = [fun(J) ->
                         case kz_json:is_true(<<"emit_account_id">>, Data) of

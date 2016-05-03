@@ -18,8 +18,8 @@
                          ,auth_url :: api(binary())
                          ,tokeninfo_url :: api(binary())
                          ,profile_url :: api(binary())
-                         ,servers :: api_object()
-                         ,scopes :: api_object()
+                         ,servers :: api(kz_json:object())
+                         ,scopes :: api(kz_json:object())
                         }).
 -type oauth_provider() :: #oauth_provider{}.
 

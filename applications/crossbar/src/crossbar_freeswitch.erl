@@ -367,7 +367,7 @@ process_callflows(Number, AccountId, [JObj | JObjs]) ->
     process_callflow(Number, AccountId, Flow),
     process_callflows(Number, AccountId, JObjs).
 
--spec process_callflow(ne_binary(), ne_binary(), api_object()) -> 'ok'.
+-spec process_callflow(ne_binary(), ne_binary(), api(kz_json:object())) -> 'ok'.
 process_callflow(_, _, 'undefined') -> 'ok';
 process_callflow(Number, AccountId, Flow) ->
     Module = kz_json:get_value(<<"module">>, Flow),

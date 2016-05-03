@@ -53,7 +53,7 @@ update_parked_call_presence(SlotNumber, Slot, ParkedCallId, AccountId) ->
 get_slot_call_id(SlotNumber, ParkedCalls) ->
     kz_json:get_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls).
 
--spec get_slot(kz_json:key(), kz_json:object()) -> api_object().
+-spec get_slot(kz_json:key(), kz_json:object()) -> api(kz_json:object()).
 get_slot(SlotNumber, ParkedCalls) ->
     kz_json:get_value([<<"slots">>, SlotNumber], ParkedCalls).
 
@@ -722,12 +722,12 @@ wait_for_ringback(Fun, Timeout, Call) ->
             'failed'
     end.
 
--spec update_presence(api_object()) -> 'ok'.
+-spec update_presence(api(kz_json:object())) -> 'ok'.
 update_presence('undefined') -> 'ok';
 update_presence(Slot) ->
     update_presence(kz_json:get_value(?PRESENCE_TYPE_KEY, Slot, <<"early">>), Slot).
 
--spec update_presence(ne_binary(), api_object()) -> 'ok'.
+-spec update_presence(ne_binary(), api(kz_json:object())) -> 'ok'.
 update_presence(_State, 'undefined') -> 'ok';
 update_presence(State, Slot) ->
     PresenceId = kz_json:get_value(<<"Presence-ID">>, Slot),

@@ -286,7 +286,7 @@ load_from_file(Db, File) ->
                         cb_context:context().
 -spec load_merge(ne_binary(), kz_json:object(), cb_context:context(), kz_proplist()) ->
                         cb_context:context().
--spec load_merge(ne_binary(), kz_json:object(), cb_context:context(), kz_proplist(), api_object()) ->
+-spec load_merge(ne_binary(), kz_json:object(), cb_context:context(), kz_proplist(), api(kz_json:object())) ->
                         cb_context:context().
 
 load_merge(DocId, Context) ->
@@ -1286,7 +1286,7 @@ is_filter_key(_) -> 'false'.
 %% Returns 'true' if all of the requested props are found, 'false' if one is not found
 %% @end
 %%--------------------------------------------------------------------
--spec filter_doc(api_object(), cb_context:context()) -> boolean().
+-spec filter_doc(api(kz_json:object()), cb_context:context()) -> boolean().
 filter_doc('undefined', _Context) ->
     lager:debug("no doc was returned (no include_docs?)"),
     'true';

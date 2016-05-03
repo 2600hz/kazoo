@@ -246,7 +246,7 @@ get_request_data(#ts_callflow_state{route_req_jobj=JObj}) -> JObj.
 get_custom_channel_vars(#ts_callflow_state{route_req_jobj=JObj}) ->
     kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()).
 
--spec get_custom_sip_headers(state()) -> api_object().
+-spec get_custom_sip_headers(state()) -> api(kz_json:object()).
 get_custom_sip_headers(#ts_callflow_state{route_req_jobj=JObj}) ->
     kz_json:get_value(<<"Custom-SIP-Headers">>, JObj).
 
@@ -278,7 +278,7 @@ get_call_cost(#ts_callflow_state{call_cost=Cost}) -> Cost.
 -spec set_failover(state(), kz_json:object()) -> state().
 set_failover(State, Failover) -> State#ts_callflow_state{failover=Failover}.
 
--spec get_failover(state()) -> api_object().
+-spec get_failover(state()) -> api(kz_json:object()).
 get_failover(#ts_callflow_state{failover=Fail}) -> Fail.
 
 -spec is_trunkstore_acct(kz_json:object(), api(binary()) | api([api(binary())])) -> boolean().

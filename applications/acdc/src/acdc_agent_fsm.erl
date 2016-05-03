@@ -114,7 +114,7 @@
                 ,member_call_queue_id :: api(binary())
                 ,member_call_start :: kz_now()
                 ,caller_exit_key = <<"#">> :: ne_binary()
-                ,queue_notifications :: api_object()
+                ,queue_notifications :: api(kz_json:object())
 
                 ,agent_call_id :: api(binary())
                 ,next_status :: api(binary())
@@ -294,7 +294,7 @@ agent_logout(FSM) ->
 -spec refresh(pid(), kz_json:object()) -> 'ok'.
 refresh(FSM, AgentJObj) -> gen_fsm:send_all_state_event(FSM, {'refresh', AgentJObj}).
 
--spec current_call(pid()) -> api_object().
+-spec current_call(pid()) -> api(kz_json:object()).
 current_call(FSM) -> gen_fsm:sync_send_event(FSM, 'current_call').
 
 -spec status(pid()) -> kz_proplist().
@@ -1424,7 +1424,7 @@ clear_call(#state{fsm_call_id=FSMemberCallId
                 ,outbound_call_id = 'undefined'
                }.
 
--spec current_call(api(kapps_call:call()), atom(), ne_binary(), api(kz_now())) -> api_object().
+-spec current_call(api(kapps_call:call()), atom(), ne_binary(), api(kz_now())) -> api(kz_json:object()).
 current_call('undefined', _, _, _) -> 'undefined';
 current_call(Call, AgentState, QueueId, Start) ->
     kz_json:from_list([{<<"call_id">>, kapps_call:call_id(Call)}

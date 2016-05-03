@@ -321,7 +321,7 @@ find_account_info('undefined', _OldDb, AccountId) ->
 find_account_info(OldId, OldDb, _AccountId) ->
     {OldId, OldDb}.
 
--spec merge(kz_json:object(), api_object()) -> kz_json:object().
+-spec merge(kz_json:object(), api(kz_json:object())) -> kz_json:object().
 merge(OldJObj, 'undefined') -> OldJObj;
 merge(OldJObj, JObj) ->
     kz_json:merge_recursive(OldJObj, JObj).
@@ -566,12 +566,12 @@ set_controller_queue(ControllerQ, #kapps_call{}=Call) when is_binary(ControllerQ
 controller_queue(#kapps_call{controller_q=ControllerQ}) ->
     ControllerQ.
 
--spec maybe_format_caller_id(call(), api_object()) -> call().
+-spec maybe_format_caller_id(call(), api(kz_json:object())) -> call().
 maybe_format_caller_id(Call, 'undefined') -> Call;
 maybe_format_caller_id(Call, Format) ->
     set_caller_id_number(maybe_format_caller_id_str(caller_id_number(Call), Format), Call).
 
--spec maybe_format_caller_id_str(ne_binary(), api_object()) -> ne_binary().
+-spec maybe_format_caller_id_str(ne_binary(), api(kz_json:object())) -> ne_binary().
 maybe_format_caller_id_str(Cid, 'undefined') -> Cid;
 maybe_format_caller_id_str(Cid, Format) ->
     Class = knm_converters:classify(Cid),
@@ -581,7 +581,7 @@ maybe_format_caller_id_str(Cid, Format) ->
         UseFormat   -> maybe_reformat_caller_id(Cid, UseFormat)
     end.
 
--spec maybe_reformat_caller_id(ne_binary(), api_object()) -> ne_binary().
+-spec maybe_reformat_caller_id(ne_binary(), api(kz_json:object())) -> ne_binary().
 maybe_reformat_caller_id(CallerId, 'undefined') -> CallerId;
 maybe_reformat_caller_id(CallerId, Format) ->
     Regex = kz_json:get_ne_value(<<"regex">>, Format),

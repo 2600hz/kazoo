@@ -432,7 +432,7 @@ play_welcome(#kapps_conference{play_welcome=ShouldPlay}) ->
 set_play_welcome(ShouldPlay, Conference) when is_boolean(ShouldPlay) ->
     Conference#kapps_conference{play_welcome=ShouldPlay}.
 
--spec conference_doc(kapps_conference:conference()) -> api_object().
+-spec conference_doc(kapps_conference:conference()) -> api(kz_json:object()).
 conference_doc(#kapps_conference{conference_doc=JObj}) -> JObj.
 
 -spec set_conference_doc(kz_json:object(), kapps_conference:conference()) -> kapps_conference:conference().

@@ -195,7 +195,7 @@ merge_attributes(Endpoint, Type, _Keys) ->
     lager:debug("unhandled endpoint type on merge attributes : ~p : ~p", [Type, Endpoint]),
     kz_json:new().
 
--spec merge_attributes(ne_binaries(), api_object(), api_object(), api_object()) ->
+-spec merge_attributes(ne_binaries(), api(kz_json:object()), api(kz_json:object()), api(kz_json:object())) ->
                               kz_json:object().
 merge_attributes([], _AccountDoc, Endpoint, _OwnerDoc) -> Endpoint;
 merge_attributes([<<"call_restriction">>|Keys], Account, Endpoint, Owner) ->
@@ -275,7 +275,7 @@ merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
                                     ),
     merge_attributes(Keys, Account, kz_json:set_value(Key, Merged, Endpoint), Owner).
 
--spec merge_attribute_caller_id(api_object(), api_object(), api_object(), api_object()) -> api_object().
+-spec merge_attribute_caller_id(api(kz_json:object()), api(kz_json:object()), api(kz_json:object()), api(kz_json:object())) -> api(kz_json:object()).
 merge_attribute_caller_id(AccountJObj, AccountJAttr, UserJAttr, EndpointJAttr) ->
     Merging =
         case kz_json:is_true(<<"prefer_device_caller_id">>, AccountJObj, 'false') of
@@ -301,7 +301,7 @@ get_record_call_properties(JObj) ->
             end
     end.
 
--spec merge_value(ne_binaries(), api_object(), kz_json:object(), api_object()) ->
+-spec merge_value(ne_binaries(), api(kz_json:object()), kz_json:object(), api(kz_json:object())) ->
                               kz_json:object().
 merge_value([Key|Keys], Account, Endpoint, Owner) ->
     case kz_json:find(Key, [Owner, Endpoint, Account], 'undefined') of
@@ -503,7 +503,7 @@ flush(Db, Id) ->
 -spec build(api(binary()) | kz_json:object(), kapps_call:call()) ->
                    {'ok', kz_json:objects()} |
                    {'error', build_errors()}.
--spec build(api(binary()) | kz_json:object(), api_object(), kapps_call:call()) ->
+-spec build(api(binary()) | kz_json:object(), api(kz_json:object()), kapps_call:call()) ->
                    {'ok', kz_json:objects()} |
                    {'error', build_errors()}.
 
@@ -960,7 +960,7 @@ maybe_get_t38(Endpoint, Call) ->
              )
     end.
 
--spec maybe_build_failover(kz_json:object(), clid(), kapps_call:call()) -> api_object().
+-spec maybe_build_failover(kz_json:object(), clid(), kapps_call:call()) -> api(kz_json:object()).
 maybe_build_failover(Endpoint, Clid, Call) ->
     CallForward = kz_json:get_value(<<"call_forward">>, Endpoint),
     Number = kz_json:get_value(<<"number">>, CallForward),
@@ -971,14 +971,14 @@ maybe_build_failover(Endpoint, Clid, Call) ->
         'true' -> create_call_fwd_endpoint(Endpoint, kz_json:new(), Call)
     end.
 
--spec maybe_build_push_failover(kz_json:object(), clid(), kapps_call:call()) -> api_object().
+-spec maybe_build_push_failover(kz_json:object(), clid(), kapps_call:call()) -> api(kz_json:object()).
 maybe_build_push_failover(Endpoint, Clid, Call) ->
     case kz_json:get_value(<<"push">>, Endpoint) of
         'undefined' -> 'undefined';
         PushJObj -> build_push_failover(Endpoint, Clid, PushJObj, Call)
     end.
 
--spec build_push_failover(kz_json:object(), clid(), kz_json:object(), kapps_call:call()) -> api_object().
+-spec build_push_failover(kz_json:object(), clid(), kz_json:object(), kapps_call:call()) -> api(kz_json:object()).
 build_push_failover(Endpoint, Clid, PushJObj, Call) ->
     lager:debug("building push failover"),
     SIPJObj = kz_json:get_value(<<"sip">>, Endpoint),
@@ -1289,7 +1289,7 @@ maybe_add_aor(JObj, _, Username, Realm) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec generate_ccvs(kz_json:object(), kapps_call:call()) -> kz_json:object().
--spec generate_ccvs(kz_json:object(), kapps_call:call(), api_object()) -> kz_json:object().
+-spec generate_ccvs(kz_json:object(), kapps_call:call(), api(kz_json:object())) -> kz_json:object().
 
 generate_ccvs(Endpoint, Call) ->
     generate_ccvs(Endpoint, Call, 'undefined').
@@ -1312,7 +1312,7 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
     {_Endpoint, _Call, _CallFwd, JObj} = lists:foldr(fun(F, Acc) -> F(Acc) end, Acc0, CCVFuns),
     JObj.
 
--type ccv_acc() :: {kz_json:object(), kapps_call:call(), api_object(), kz_json:object()}.
+-type ccv_acc() :: {kz_json:object(), kapps_call:call(), api(kz_json:object()), kz_json:object()}.
 
 -spec maybe_retain_caller_id(ccv_acc()) -> ccv_acc().
 maybe_retain_caller_id({_Endpoint, _Call, 'undefined', _JObj}=Acc) ->
