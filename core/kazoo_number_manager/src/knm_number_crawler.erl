@@ -28,15 +28,15 @@
 -include("knm.hrl").
 
 -define(DISCOVERY_EXPIRY
-        ,whapps_config:get_integer(?KNM_CONFIG_CAT, <<"discovery_expiry_d">>, 90)
+        ,kapps_config:get_integer(?KNM_CONFIG_CAT, <<"discovery_expiry_d">>, 90)
        ).
 
 -define(DELETED_EXPIRY
-        ,whapps_config:get_integer(?KNM_CONFIG_CAT, <<"deleted_expiry_d">>, 90)
+        ,kapps_config:get_integer(?KNM_CONFIG_CAT, <<"deleted_expiry_d">>, 90)
        ).
 
 -define(NUMBERS_TO_CRAWL
-        ,whapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, 1000)
+        ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, 1000)
        ).
 
 -record(state, {cleanup_ref :: reference()}).
@@ -60,7 +60,7 @@ stop() ->
     gen_server:cast(?MODULE, 'stop').
 
 crawl_numbers() ->
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     lager:debug("beginning a number crawl"),
     _ = [crawl_number_db(Db) || Db <- knm_util:get_all_number_dbs()],
     lager:debug("finished the number crawl").
@@ -81,7 +81,7 @@ crawl_numbers() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     lager:debug("started ~s", [?MODULE]),
     {'ok', #state{cleanup_ref=cleanup_timer()}}.
 
@@ -130,7 +130,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'timeout', Ref, _Msg}, #state{cleanup_ref=Ref}=State) ->
-    _P = wh_util:spawn(fun crawl_numbers/0),
+    _P = kz_util:spawn(fun crawl_numbers/0),
     {'noreply', State#state{cleanup_ref=cleanup_timer()}};
 handle_info(_Msg, State) ->
     lager:debug("unhandled msg: ~p", [_Msg]),
@@ -166,7 +166,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec cleanup_timer() -> reference().
 cleanup_timer() ->
-    Timeout = whapps_config:get_integer(?KNM_CONFIG_CAT, <<"crawler_timer_ms">>, ?MILLISECONDS_IN_DAY),
+    Timeout = kapps_config:get_integer(?KNM_CONFIG_CAT, <<"crawler_timer_ms">>, ?MILLISECONDS_IN_DAY),
     erlang:start_timer(Timeout, self(), 'ok').
 
 -spec crawl_number_db(ne_binary()) -> 'ok'.
@@ -179,16 +179,16 @@ crawl_number_docs(_Db, {'error', _E}) ->
 crawl_number_docs(Db, {'ok', Docs}) ->
     lager:debug(" starting to crawl '~s'", [Db]),
     _ = [crawl_number_doc(
-           knm_phone_number:from_json(wh_json:get_value(<<"doc">>, Doc))
+           knm_phone_number:from_json(kz_json:get_value(<<"doc">>, Doc))
           )
          || Doc <- Docs,
             is_number_doc(Doc)
         ],
     lager:debug(" finished crawling '~s'", [Db]).
 
--spec is_number_doc(wh_json:object()) -> boolean().
+-spec is_number_doc(kz_json:object()) -> boolean().
 is_number_doc(Doc) ->
-    case wh_doc:id(Doc) of
+    case kz_doc:id(Doc) of
         <<"_design/", _/binary>> -> 'false';
         _Id -> 'true'
     end.
@@ -214,7 +214,7 @@ crawl_number_doc(PhoneNumber) ->
             lager:debug(" '~s' encountered with ~s: ~p"
                         ,[_E, knm_phone_number:number(PhoneNumber), _R]
                        ),
-            wh_util:log_stacktrace(ST)
+            kz_util:log_stacktrace(ST)
     end.
 
 -spec run_crawler_funs(knm_phone_number:knm_phone_number(), functions()) ->
@@ -234,7 +234,7 @@ maybe_remove_discovery(PhoneNumber) ->
 
 maybe_remove_discovery(PhoneNumber, ?NUMBER_STATE_DISCOVERY) ->
     JObj = knm_phone_number:doc(PhoneNumber),
-    maybe_discovery_number_expired(PhoneNumber, wh_doc:created(JObj));
+    maybe_discovery_number_expired(PhoneNumber, kz_doc:created(JObj));
 maybe_remove_discovery(PhoneNumber, _State) ->
     PhoneNumber.
 
@@ -256,7 +256,7 @@ maybe_remove_deleted(PhoneNumber) ->
 
 maybe_remove_deleted(PhoneNumber, ?NUMBER_STATE_DELETED) ->
     JObj = knm_phone_number:doc(PhoneNumber),
-    maybe_deleted_number_expired(PhoneNumber, wh_doc:created(JObj));
+    maybe_deleted_number_expired(PhoneNumber, kz_doc:created(JObj));
 maybe_remove_deleted(PhoneNumber, _State) ->
     PhoneNumber.
 
@@ -270,7 +270,7 @@ maybe_deleted_number_expired(PhoneNumber, Created) ->
 -spec maybe_remove(knm_phone_number:knm_phone_number(), gregorian_seconds(), pos_integer()) ->
                           knm_phone_number:knm_phone_number().
 maybe_remove(PhoneNumber, Created, Expiry) ->
-    Now = wh_util:current_tstamp(),
+    Now = kz_util:current_tstamp(),
     case (Now - Expiry) > Created of
         'true' -> PhoneNumber;
         'false' -> knm_phone_number:delete(PhoneNumber)

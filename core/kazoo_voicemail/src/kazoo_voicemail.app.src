@@ -7,9 +7,9 @@
                    , stdlib
                    , crypto
 
-                   , whistle
+                   , kazoo
                    , kazoo_data
-                   , whistle_config
+                   , kazoo_config
                    , kazoo_modb
                    , kazoo_documents
 

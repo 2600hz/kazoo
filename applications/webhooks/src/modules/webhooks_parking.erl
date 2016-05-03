@@ -14,11 +14,11 @@
 
 -include("webhooks.hrl").
 
--define(ID, wh_util:to_binary(?MODULE)).
+-define(ID, kz_util:to_binary(?MODULE)).
 -define(NAME, <<"parking">>).
 -define(DESC, <<"Events when calls get parked/retrieved">>).
 -define(METADATA
-        ,wh_json:from_list([{<<"_id">>, ?ID}
+        ,kz_json:from_list([{<<"_id">>, ?ID}
                             ,{<<"name">>, ?NAME}
                             ,{<<"description">>, ?DESC}
                            ])
@@ -59,8 +59,8 @@ bindings_and_responders() ->
 %% @end
 %%--------------------------------------------------------------------
 handle(JObj, _Props) ->
-    'true' = wapi_call:event_v(JObj),
-    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
+    'true' = kapi_call:event_v(JObj),
+    AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
     maybe_send_event(AccountId, format(JObj)).
 
 %%--------------------------------------------------------------------
@@ -68,7 +68,7 @@ handle(JObj, _Props) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_send_event(api_binary(), wh_json:object()) -> 'ok'.
+-spec maybe_send_event(api_binary(), kz_json:object()) -> 'ok'.
 maybe_send_event('undefined', _JObj) -> 'ok';
 maybe_send_event(AccountId, JObj) ->
     case webhooks_util:find_webhooks(?NAME, AccountId) of
@@ -81,7 +81,7 @@ maybe_send_event(AccountId, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec format(wh_json:object()) -> wh_json:object().
+-spec format(kz_json:object()) -> kz_json:object().
 format(JObj) ->
     RemoveKeys = [
         <<"Node">>
@@ -91,4 +91,4 @@ format(JObj) ->
         ,<<"Event-Category">>
         ,<<"Custom-Channel-Vars">>
     ],
-    wh_json:normalize_jobj(JObj, RemoveKeys, []).
+    kz_json:normalize_jobj(JObj, RemoveKeys, []).

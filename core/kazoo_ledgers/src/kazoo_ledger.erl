@@ -41,9 +41,9 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec new() -> wh_json:object().
+-spec new() -> kz_json:object().
 new() ->
-    wh_json:new().
+    kz_json:new().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -51,23 +51,23 @@ new() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec save(wh_json:object()) -> {'ok', wh_json:object()} | {'error', any()}.
--spec save(wh_json:object(), ne_binary(), boolean()) -> {'ok', wh_json:object()} | {'error', any()}.
+-spec save(kz_json:object()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec save(kz_json:object(), ne_binary(), boolean()) -> {'ok', kz_json:object()} | {'error', any()}.
 save(Ledger) ->
     AccountId = account_id(Ledger),
-    IsReseller = wh_services:is_reseller(AccountId),
+    IsReseller = kz_services:is_reseller(AccountId),
     JObj =
-        wh_json:set_values([
+        kz_json:set_values([
             {<<"pvt_type">>, ?PVT_TYPE}
-            ,{<<"pvt_modified">>, wh_util:current_tstamp()}
-            ,{<<"pvt_created">>, wh_util:current_tstamp()}
+            ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+            ,{<<"pvt_created">>, kz_util:current_tstamp()}
         ], Ledger),
     save(JObj, AccountId, IsReseller).
 
 save(JObj, AccountId, 'true') ->
     kazoo_modb:save_doc(AccountId, JObj);
 save(JObj, AccountId, 'false') ->
-    ResellerId = wh_services:find_reseller_id(AccountId),
+    ResellerId = kz_services:find_reseller_id(AccountId),
     case kazoo_modb:save_doc(ResellerId, JObj) of
         {'error', _}=Err -> Err;
         {'ok', _} ->
@@ -82,11 +82,11 @@ save(JObj, AccountId, 'false') ->
 %%--------------------------------------------------------------------
 -spec type(ledger()) -> ne_binary().
 type(Ledger) ->
-    wh_json:get_ne_binary_value(?PVT_LEDGER_TYPE, Ledger).
+    kz_json:get_ne_binary_value(?PVT_LEDGER_TYPE, Ledger).
 
 -spec set_type(ledger(), ne_binary()) -> ledger().
 set_type(L, Type) ->
-    wh_json:set_value(?PVT_LEDGER_TYPE, Type, L).
+    kz_json:set_value(?PVT_LEDGER_TYPE, Type, L).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -96,11 +96,11 @@ set_type(L, Type) ->
 %%--------------------------------------------------------------------
 -spec amount(ledger()) -> number().
 amount(Ledger) ->
-    wh_json:get_number_value(?AMOUNT, Ledger).
+    kz_json:get_number_value(?AMOUNT, Ledger).
 
 -spec set_amount(ledger(), number()) -> ledger().
 set_amount(L, Amount) ->
-    wh_json:set_value(?AMOUNT, Amount, L).
+    kz_json:set_value(?AMOUNT, Amount, L).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -110,11 +110,11 @@ set_amount(L, Amount) ->
 %%--------------------------------------------------------------------
 -spec description(ledger()) -> ne_binary().
 description(Ledger) ->
-    wh_json:get_ne_binary_value(?DESC, Ledger).
+    kz_json:get_ne_binary_value(?DESC, Ledger).
 
 -spec set_description(ledger(), ne_binary()) -> ledger().
 set_description(L, Desc) ->
-    wh_json:set_value(?DESC, Desc, L).
+    kz_json:set_value(?DESC, Desc, L).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -122,9 +122,9 @@ set_description(L, Desc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec source(ledger()) -> wh_json:object().
+-spec source(ledger()) -> kz_json:object().
 source(Ledger) ->
-    wh_json:get_json_value(?SRC, Ledger).
+    kz_json:get_json_value(?SRC, Ledger).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -134,11 +134,11 @@ source(Ledger) ->
 %%--------------------------------------------------------------------
 -spec source_service(ledger()) -> ne_binary().
 source_service(Ledger) ->
-    wh_json:get_ne_binary_value(?SRC_SERVICE, Ledger).
+    kz_json:get_ne_binary_value(?SRC_SERVICE, Ledger).
 
 -spec set_source_service(ledger(), ne_binary()) -> ledger().
 set_source_service(L, Service) ->
-    wh_json:set_value(?SRC_SERVICE, Service, L).
+    kz_json:set_value(?SRC_SERVICE, Service, L).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -148,11 +148,11 @@ set_source_service(L, Service) ->
 %%--------------------------------------------------------------------
 -spec source_id(ledger()) -> ne_binary().
 source_id(Ledger) ->
-    wh_json:get_ne_binary_value(?SRC_ID, Ledger).
+    kz_json:get_ne_binary_value(?SRC_ID, Ledger).
 
 -spec set_source_id(ledger(), ne_binary()) -> ledger().
 set_source_id(L, Id) ->
-    wh_json:set_value(?SRC_ID, Id, L).
+    kz_json:set_value(?SRC_ID, Id, L).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -160,9 +160,9 @@ set_source_id(L, Id) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec usage(ledger()) -> wh_json:object().
+-spec usage(ledger()) -> kz_json:object().
 usage(Ledger) ->
-    wh_json:get_json_value(?USAGE, Ledger).
+    kz_json:get_json_value(?USAGE, Ledger).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -172,11 +172,11 @@ usage(Ledger) ->
 %%--------------------------------------------------------------------
 -spec usage_type(ledger()) -> ne_binary().
 usage_type(Ledger) ->
-    wh_json:get_ne_binary_value(?USAGE_TYPE, Ledger).
+    kz_json:get_ne_binary_value(?USAGE_TYPE, Ledger).
 
 -spec set_usage_type(ledger(), ne_binary()) -> ledger().
 set_usage_type(L, Type) ->
-    wh_json:set_value(?USAGE_TYPE, Type, L).
+    kz_json:set_value(?USAGE_TYPE, Type, L).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -186,11 +186,11 @@ set_usage_type(L, Type) ->
 %%--------------------------------------------------------------------
 -spec usage_quantity(ledger()) -> number().
 usage_quantity(Ledger) ->
-    wh_json:get_number_value(?USAGE_QUANTITY, Ledger).
+    kz_json:get_number_value(?USAGE_QUANTITY, Ledger).
 
 -spec set_usage_quantity(ledger(), number()) -> ledger().
 set_usage_quantity(L, Quantity) ->
-    wh_json:set_value(?USAGE_QUANTITY, Quantity, L).
+    kz_json:set_value(?USAGE_QUANTITY, Quantity, L).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -200,11 +200,11 @@ set_usage_quantity(L, Quantity) ->
 %%--------------------------------------------------------------------
 -spec usage_unit(ledger()) -> ne_binary().
 usage_unit(Ledger) ->
-    wh_json:get_ne_binary_value(?USAGE_UNIT, Ledger).
+    kz_json:get_ne_binary_value(?USAGE_UNIT, Ledger).
 
 -spec set_usage_unit(ledger(), ne_binary()) -> ledger().
 set_usage_unit(L, Unit) ->
-    wh_json:set_value(?USAGE_UNIT, Unit, L).
+    kz_json:set_value(?USAGE_UNIT, Unit, L).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -212,9 +212,9 @@ set_usage_unit(L, Unit) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec period(ledger()) -> wh_json:object().
+-spec period(ledger()) -> kz_json:object().
 period(Ledger) ->
-    wh_json:get_json_value(?PERIOD, Ledger).
+    kz_json:get_json_value(?PERIOD, Ledger).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -224,11 +224,11 @@ period(Ledger) ->
 %%--------------------------------------------------------------------
 -spec period_start(ledger()) -> integer().
 period_start(Ledger) ->
-    wh_json:get_integer_value(?PERIOD_START, Ledger).
+    kz_json:get_integer_value(?PERIOD_START, Ledger).
 
 -spec set_period_start(ledger(), integer()) -> ledger().
 set_period_start(L, Start) ->
-    wh_json:set_value(?PERIOD_START, Start, L).
+    kz_json:set_value(?PERIOD_START, Start, L).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -238,11 +238,11 @@ set_period_start(L, Start) ->
 %%--------------------------------------------------------------------
 -spec period_end(ledger()) -> integer().
 period_end(Ledger) ->
-    wh_json:get_integer_value(?PERIOD_END, Ledger).
+    kz_json:get_integer_value(?PERIOD_END, Ledger).
 
 -spec set_period_end(ledger(), integer()) -> ledger().
 set_period_end(L, End) ->
-    wh_json:set_value(?PERIOD_END, End, L).
+    kz_json:set_value(?PERIOD_END, End, L).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -250,9 +250,9 @@ set_period_end(L, End) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec account(ledger()) -> wh_json:object().
+-spec account(ledger()) -> kz_json:object().
 account(Ledger) ->
-    wh_json:get_json_value(?ACCOUNT, Ledger).
+    kz_json:get_json_value(?ACCOUNT, Ledger).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -262,11 +262,11 @@ account(Ledger) ->
 %%--------------------------------------------------------------------
 -spec account_id(ledger()) -> ne_binary().
 account_id(Ledger) ->
-    wh_json:get_ne_binary_value(?ACCOUNT_ID, Ledger).
+    kz_json:get_ne_binary_value(?ACCOUNT_ID, Ledger).
 
 -spec set_account_id(ledger(), ne_binary()) -> ledger().
 set_account_id(L, Start) ->
-    wh_json:set_value(?ACCOUNT_ID, Start, L).
+    kz_json:set_value(?ACCOUNT_ID, Start, L).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -276,11 +276,11 @@ set_account_id(L, Start) ->
 %%--------------------------------------------------------------------
 -spec account_name(ledger()) -> ledger().
 account_name(Ledger) ->
-    wh_json:get_ne_binary_value(?ACCOUNT_NAME, Ledger).
+    kz_json:get_ne_binary_value(?ACCOUNT_NAME, Ledger).
 
 -spec set_account_name(ledger(), ne_binary()) -> ledger().
 set_account_name(L, End) ->
-    wh_json:set_value(?ACCOUNT_NAME, End, L).
+    kz_json:set_value(?ACCOUNT_NAME, End, L).
 
 %% ------------------------------------------------------------------
 %% Internal Function Definitions

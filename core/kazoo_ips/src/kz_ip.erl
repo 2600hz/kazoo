@@ -26,7 +26,7 @@
 -export([is_dedicated_ip/1]).
 -export([is_available/1]).
 
--type ip() :: wh_json:object().
+-type ip() :: kz_json:object().
 -export_type([ip/0]).
 
 %%--------------------------------------------------------------------
@@ -35,7 +35,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec to_json(ip()) -> wh_json:object().
+-spec to_json(ip()) -> kz_json:object().
 to_json(IP) -> IP.
 
 %%--------------------------------------------------------------------
@@ -44,7 +44,7 @@ to_json(IP) -> IP.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec from_json(wh_json:object()) -> ip().
+-spec from_json(kz_json:object()) -> ip().
 from_json(JObj) -> JObj.
 
 %%--------------------------------------------------------------------
@@ -57,8 +57,8 @@ from_json(JObj) -> JObj.
                     {'ok', ip()} |
                     {'error', any()}.
 create(IP, Zone, Host) ->
-    Timestamp = wh_util:current_tstamp(),
-    JObj = wh_json:from_list(
+    Timestamp = kz_util:current_tstamp(),
+    JObj = kz_json:from_list(
              [{<<"_id">>, IP}
               ,{<<"pvt_vsn">>, <<"1">>}
               ,{<<"pvt_status">>, ?AVAILABLE}
@@ -69,7 +69,7 @@ create(IP, Zone, Host) ->
               ,{<<"pvt_created">>, Timestamp}
              ]
             ),
-    case kz_datamgr:save_doc(?WH_DEDICATED_IP_DB, JObj) of
+    case kz_datamgr:save_doc(?KZ_DEDICATED_IP_DB, JObj) of
         {'error', 'not_found'} ->
             kz_ip_utils:refresh_database(
               fun() -> ?MODULE:create(IP, Zone, Host) end
@@ -96,7 +96,7 @@ create(IP, Zone, Host) ->
                    {'ok', ip()} |
                    {'error', any()}.
 fetch(IP) ->
-    case kz_datamgr:open_cache_doc(?WH_DEDICATED_IP_DB, IP) of
+    case kz_datamgr:open_cache_doc(?KZ_DEDICATED_IP_DB, IP) of
         {'ok', JObj} -> {'ok', from_json(JObj)};
         {'error', _R}=E ->
             lager:debug("unable to fetch dedicated ip ~s: ~p"
@@ -126,13 +126,13 @@ assign(Account, IPDoc) ->
         'false' -> {'error', 'already_assigned'};
         'true' ->
             IPJObj = to_json(IPDoc),
-            AccountId = wh_util:format_account_id(Account, 'raw'),
+            AccountId = kz_util:format_account_id(Account, 'raw'),
             Props = [{<<"pvt_assigned_to">>, AccountId}
-                    ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+                    ,{<<"pvt_modified">>, kz_util:current_tstamp()}
                     ,{<<"pvt_status">>, ?ASSIGNED}
                     ],
-            save(wh_json:set_values(Props, IPJObj)
-                ,wh_json:get_ne_binary_value(<<"pvt_assigned_to">>, IPJObj)
+            save(kz_json:set_values(Props, IPJObj)
+                ,kz_json:get_ne_binary_value(<<"pvt_assigned_to">>, IPJObj)
                 )
     end.
 
@@ -154,11 +154,11 @@ release(IP) ->
     'true' = is_dedicated_ip(IP),
     RemoveKeys = [<<"pvt_assigned_to">>],
     Props = [{<<"pvt_status">>, ?AVAILABLE}
-             ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+             ,{<<"pvt_modified">>, kz_util:current_tstamp()}
             ],
     JObj = to_json(IP),
-    save(wh_json:delete_keys(RemoveKeys, wh_json:set_values(Props, JObj))
-        ,wh_json:get_ne_binary_value(<<"pvt_assigned_to">>, JObj)
+    save(kz_json:delete_keys(RemoveKeys, kz_json:set_values(Props, JObj))
+        ,kz_json:get_ne_binary_value(<<"pvt_assigned_to">>, JObj)
         ).
 
 %%--------------------------------------------------------------------
@@ -171,13 +171,13 @@ release(IP) ->
                      {'ok', ip()} |
                     {'error', any()}.
 delete(<<_/binary>> = IP) ->
-    case kz_datamgr:open_doc(?WH_DEDICATED_IP_DB, IP) of
+    case kz_datamgr:open_doc(?KZ_DEDICATED_IP_DB, IP) of
         {'ok', JObj} -> delete(from_json(JObj));
         {'error', _}=E -> E
     end;
 delete(IP) ->
     'true' = is_dedicated_ip(IP),
-    kz_datamgr:del_doc(?WH_DEDICATED_IP_DB, to_json(IP)).
+    kz_datamgr:del_doc(?KZ_DEDICATED_IP_DB, to_json(IP)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -186,7 +186,7 @@ delete(IP) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec ip(ip()) -> ne_binary().
-ip(IP) -> wh_doc:id(IP).
+ip(IP) -> kz_doc:id(IP).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -195,7 +195,7 @@ ip(IP) -> wh_doc:id(IP).
 %% @end
 %%--------------------------------------------------------------------
 -spec zone(ip()) -> ne_binary().
-zone(IP) -> wh_json:get_value(<<"pvt_zone">>, IP).
+zone(IP) -> kz_json:get_value(<<"pvt_zone">>, IP).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -204,7 +204,7 @@ zone(IP) -> wh_json:get_value(<<"pvt_zone">>, IP).
 %% @end
 %%--------------------------------------------------------------------
 -spec modified(ip()) -> ne_binary().
-modified(IP) -> wh_doc:modified(IP).
+modified(IP) -> kz_doc:modified(IP).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -213,7 +213,7 @@ modified(IP) -> wh_doc:modified(IP).
 %% @end
 %%--------------------------------------------------------------------
 -spec created(ip()) -> ne_binary().
-created(IP) -> wh_doc:created(IP).
+created(IP) -> kz_doc:created(IP).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -222,7 +222,7 @@ created(IP) -> wh_doc:created(IP).
 %% @end
 %%--------------------------------------------------------------------
 -spec host(ip()) -> ne_binary().
-host(IP) -> wh_json:get_value(<<"pvt_host">>, IP).
+host(IP) -> kz_json:get_value(<<"pvt_host">>, IP).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -231,7 +231,7 @@ host(IP) -> wh_json:get_value(<<"pvt_host">>, IP).
 %% @end
 %%--------------------------------------------------------------------
 -spec assigned_to(ip()) -> ne_binary().
-assigned_to(IP) -> wh_json:get_value(<<"pvt_assigned_to">>, IP).
+assigned_to(IP) -> kz_json:get_value(<<"pvt_assigned_to">>, IP).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -241,7 +241,7 @@ assigned_to(IP) -> wh_json:get_value(<<"pvt_assigned_to">>, IP).
 %%--------------------------------------------------------------------
 -spec is_dedicated_ip(ip()) -> boolean().
 is_dedicated_ip(IP) ->
-    wh_doc:type(IP) =:= ?PVT_TYPE.
+    kz_doc:type(IP) =:= ?PVT_TYPE.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -256,7 +256,7 @@ is_available(Ip) when is_binary(Ip) ->
         {'error', _}=E -> E
     end;
 is_available(IP) ->
-    wh_json:get_value(<<"pvt_status">>, IP) =:= ?AVAILABLE.
+    kz_json:get_value(<<"pvt_status">>, IP) =:= ?AVAILABLE.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -264,27 +264,27 @@ is_available(IP) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec save(wh_json:object(), api_binary()) ->
+-spec save(kz_json:object(), api_binary()) ->
                   {'ok', ip()} |
                   {'error', any()}.
 save(JObj, PrevAccountId) ->
-    case kz_datamgr:save_doc(?WH_DEDICATED_IP_DB, JObj) of
+    case kz_datamgr:save_doc(?KZ_DEDICATED_IP_DB, JObj) of
         {'ok', J} ->
-            AccountId = wh_json:get_value(<<"pvt_assigned_to">>, J),
+            AccountId = kz_json:get_value(<<"pvt_assigned_to">>, J),
             _ = reconcile_services(PrevAccountId, AccountId),
             {'ok', from_json(J)};
         {'error', _R}=E ->
-            lager:debug("failed to save dedicated ip ~s: ~p", [wh_doc:id(JObj), _R]),
+            lager:debug("failed to save dedicated ip ~s: ~p", [kz_doc:id(JObj), _R]),
             E
     end.
 
--spec reconcile_services(api_binary(), api_binary()) -> 'false' | wh_services:services().
+-spec reconcile_services(api_binary(), api_binary()) -> 'false' | kz_services:services().
 reconcile_services('undefined', AccountId) ->
-    wh_services:reconcile(AccountId, <<"ips">>);
+    kz_services:reconcile(AccountId, <<"ips">>);
 reconcile_services(AccountId, 'undefined') ->
-    wh_services:reconcile(AccountId, <<"ips">>);
+    kz_services:reconcile(AccountId, <<"ips">>);
 reconcile_services(AccountId, AccountId) ->
-    wh_services:reconcile(AccountId, <<"ips">>);
+    kz_services:reconcile(AccountId, <<"ips">>);
 reconcile_services(PrevAccountId, AccountId) ->
-    _ = wh_services:reconcile(PrevAccountId, <<"ips">>),
-    wh_services:reconcile(AccountId, <<"ips">>).
+    _ = kz_services:reconcile(PrevAccountId, <<"ips">>),
+    kz_services:reconcile(AccountId, <<"ips">>).

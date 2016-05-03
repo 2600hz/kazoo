@@ -50,7 +50,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    wh_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?LOG_SYSTEM_ID),
     Connection = kz_dataconfig:connection(),
     kz_dataconnections:add(Connection),
     lager:info("waiting for first connection...", []),

@@ -94,7 +94,7 @@
 
 -export_type([sleeper/0, cron/0, execargs/0, datetime/0, status/0, schedule/0]).
 
--include_lib("whistle/include/wh_types.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
 
 -define(SERVER, ?MODULE).
 

@@ -22,7 +22,7 @@
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".auth">>).
 -define(DEFAULT_BASIC_AUTH_TYPE, <<"md5">>).
 -define(BASIC_AUTH_KEY, <<"basic_auth_type">>).
--define(BASIC_AUTH_TYPE, whapps_config:get_ne_binary(?MOD_CONFIG_CAT, ?BASIC_AUTH_KEY, ?DEFAULT_BASIC_AUTH_TYPE)).
+-define(BASIC_AUTH_TYPE, kapps_config:get_ne_binary(?MOD_CONFIG_CAT, ?BASIC_AUTH_KEY, ?DEFAULT_BASIC_AUTH_TYPE)).
 
 -define(ACCT_MD5_LIST, <<"users/creds_by_md5">>).
 -define(ACCT_SHA1_LIST, <<"users/creds_by_sha">>).
@@ -89,7 +89,7 @@ maybe_check_credentials(Context, AuthToken) ->
                               {'true' | 'halt', cb_context:context()}.
 check_credentials(Context, AccountId, Credentials) ->
     lager:debug("checking credentials '~s' for account '~s'", [Credentials, AccountId]),
-    BasicType = whapps_account_config:get(AccountId, ?MOD_CONFIG_CAT, ?BASIC_AUTH_KEY, ?BASIC_AUTH_TYPE),
+    BasicType = kapps_account_config:get(AccountId, ?MOD_CONFIG_CAT, ?BASIC_AUTH_KEY, ?BASIC_AUTH_TYPE),
     check_credentials(Context, AccountId, Credentials, BasicType).
 
 -spec check_credentials(cb_context:context(), ne_binary(), ne_binary() | {ne_binary(), ne_binary()}, ne_binary()) ->
@@ -116,30 +116,30 @@ check_credentials(Context, AccountId, Credentials, BasicType) ->
 
 -spec get_credential_doc(ne_binary(), ne_binary(), ne_binary()) -> api_object().
 get_credential_doc(AccountId, View, Key) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     Options = [{'key', Key}, 'include_docs'],
     case kz_datamgr:get_results(AccountDb, View, Options) of
-        {'ok', [JObj]} -> wh_json:get_value(<<"doc">>, JObj);
+        {'ok', [JObj]} -> kz_json:get_value(<<"doc">>, JObj);
         _ -> 'undefined'
     end.
 
--spec is_expired(cb_context:context(), wh_json:object()) ->
+-spec is_expired(cb_context:context(), kz_json:object()) ->
                         boolean() |
                         {'halt', cb_context:context()}.
 is_expired(Context, JObj) ->
-    AccountId = wh_doc:account_id(JObj),
-    AccountDb = wh_util:format_account_db(AccountId),
-    case wh_util:is_account_expired(AccountId) of
+    AccountId = kz_doc:account_id(JObj),
+    AccountDb = kz_util:format_account_db(AccountId),
+    case kz_util:is_account_expired(AccountId) of
         'false' ->
-            EndpointId = wh_doc:id(JObj),
+            EndpointId = kz_doc:id(JObj),
             CacheProps = [{'origin', {'db', AccountDb, EndpointId}}],
             AuthToken = cb_context:auth_token(Context),
             kz_cache:store_local(?CACHE_NAME, {'basic_auth', AuthToken}, JObj, CacheProps),
             {'true', set_auth_doc(Context, JObj)};
         {'true', Expired} ->
-            _ = wh_util:spawn(fun wh_util:maybe_disable_account/1, [AccountId]),
+            _ = kz_util:spawn(fun kz_util:maybe_disable_account/1, [AccountId]),
             Cause =
-                wh_json:from_list(
+                kz_json:from_list(
                     [{<<"message">>, <<"account expired">>}
                      ,{<<"cause">>, Expired}
                     ]
@@ -148,10 +148,10 @@ is_expired(Context, JObj) ->
             {'halt', Context1}
     end.
 
--spec set_auth_doc(cb_context:context(), wh_json:object()) ->
+-spec set_auth_doc(cb_context:context(), kz_json:object()) ->
                           cb_context:context().
 set_auth_doc(Context, JObj) ->
     Setters = [{fun cb_context:set_auth_doc/2, JObj}
-               ,{fun cb_context:set_auth_account_id/2 ,wh_doc:account_id(JObj)}
+               ,{fun cb_context:set_auth_account_id/2 ,kz_doc:account_id(JObj)}
               ],
     cb_context:setters(Context, Setters).

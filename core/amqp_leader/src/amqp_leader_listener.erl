@@ -37,7 +37,7 @@
 -define(BINDINGS(Name), [{'leader', [{'name', Name}]}
                         ]).
 -define(RESPONDERS, []).
--define(QUEUE_NAME(Name), wapi_leader:queue(Name)).
+-define(QUEUE_NAME(Name), kapi_leader:queue(Name)).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
@@ -83,8 +83,8 @@ start_link(Name) ->
 %%--------------------------------------------------------------------
 -spec init([atom()]) -> {'ok', state()}.
 init([Name]) ->
-    wh_util:put_callid(wapi_leader:queue(Name, node())),
-    wh_nodes:notify_expire(),
+    kz_util:put_callid(kapi_leader:queue(Name, node())),
+    kz_nodes:notify_expire(),
     {'ok', #state{self = self(), name = Name}}.
 
 %%--------------------------------------------------------------------
@@ -123,7 +123,7 @@ handle_call(_Request, _From, State) ->
 handle_cast({'is_ready', Pid, Ref}, #state{pending = Pending} = State) ->
     NewState = maybe_ready(State#state{pending = [{Pid, Ref} | Pending]}),
     {'noreply', NewState};
-handle_cast({'wh_nodes', {'expire', #wh_node{node = Node}}}, #state{name = Name} = State) ->
+handle_cast({'kz_nodes', {'expire', #kz_node{node = Node}}}, #state{name = Name} = State) ->
     Name ! {'DOWN', Node},
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
@@ -161,14 +161,14 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(wh_json:object(), state()) -> {'reply', []}.
+-spec handle_event(kz_json:object(), state()) -> {'reply', []}.
 handle_event(JObj, #state{name = Name}) ->
-    wh_util:put_callid(wapi_leader:queue(Name, node())),
-    NodeBin = wh_util:to_binary(node()),
-    case wh_json:get_value(<<"Node">>, JObj) of
+    kz_util:put_callid(kapi_leader:queue(Name, node())),
+    NodeBin = kz_util:to_binary(node()),
+    case kz_json:get_value(<<"Node">>, JObj) of
         NodeBin -> 'ok';
         _ ->
-            Msg = erlang:binary_to_term(wh_util:from_hex_binary(wh_json:get_value(<<"Message">>, JObj))),
+            Msg = erlang:binary_to_term(kz_util:from_hex_binary(kz_json:get_value(<<"Message">>, JObj))),
             Name ! Msg
     end,
     {'reply', []}.
@@ -215,7 +215,7 @@ recv_ready(Ref) ->
 
 -spec ready_when_node_is_up() -> 'true'.
 ready_when_node_is_up() ->
-    case wh_nodes:is_up(node()) of
+    case kz_nodes:is_up(node()) of
         'false' ->
             lager:debug("node is not up yet"),
             timer:sleep(1 * ?MILLISECONDS_IN_SECOND),

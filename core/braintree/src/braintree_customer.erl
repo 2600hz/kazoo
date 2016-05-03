@@ -26,7 +26,7 @@
 -export([json_to_record/1]).
 -export([record_to_json/1]).
 
--import('wh_util', [get_xml_value/2]).
+-import('kz_util', [get_xml_value/2]).
 
 -include_lib("braintree/include/braintree.hrl").
 
@@ -49,7 +49,7 @@ url() ->
     "/customers/".
 
 url(CustomerId) ->
-    lists:append(["/customers/", wh_util:to_list(CustomerId)]).
+    lists:append(["/customers/", kz_util:to_list(CustomerId)]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -268,7 +268,7 @@ delete(CustomerId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec xml_to_record(bt_xml()) -> customer().
--spec xml_to_record(bt_xml(), wh_deeplist()) -> customer().
+-spec xml_to_record(bt_xml(), kz_deeplist()) -> customer().
 
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/customer").
@@ -304,8 +304,8 @@ xml_to_record(Xml, Base) ->
 %% Convert the given record to XML
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml(customer()) -> wh_proplist() | bt_xml().
--spec record_to_xml(customer(), boolean()) -> wh_proplist() | bt_xml().
+-spec record_to_xml(customer()) -> kz_proplist() | bt_xml().
+-spec record_to_xml(customer(), boolean()) -> kz_proplist() | bt_xml().
 
 record_to_xml(Customer) ->
     record_to_xml(Customer, 'false').
@@ -338,15 +338,15 @@ record_to_xml(Customer, ToString) ->
 -spec json_to_record(api_object()) -> customer().
 json_to_record('undefined') -> #bt_customer{};
 json_to_record(JObj) ->
-    #bt_customer{id = wh_doc:id(JObj)
-                 ,first_name = wh_json:get_binary_value(<<"first_name">>, JObj)
-                 ,last_name = wh_json:get_binary_value(<<"last_name">>, JObj)
-                 ,company = wh_json:get_binary_value(<<"company">>, JObj)
-                 ,email = wh_json:get_binary_value(<<"email">>, JObj)
-                 ,phone = wh_json:get_binary_value(<<"phone">>, JObj)
-                 ,fax = wh_json:get_binary_value(<<"fax">>, JObj)
-                 ,website = wh_json:get_binary_value(<<"website">>, JObj)
-                 ,credit_cards = [braintree_card:json_to_record(wh_json:get_value(<<"credit_card">>, JObj))]
+    #bt_customer{id = kz_doc:id(JObj)
+                 ,first_name = kz_json:get_binary_value(<<"first_name">>, JObj)
+                 ,last_name = kz_json:get_binary_value(<<"last_name">>, JObj)
+                 ,company = kz_json:get_binary_value(<<"company">>, JObj)
+                 ,email = kz_json:get_binary_value(<<"email">>, JObj)
+                 ,phone = kz_json:get_binary_value(<<"phone">>, JObj)
+                 ,fax = kz_json:get_binary_value(<<"fax">>, JObj)
+                 ,website = kz_json:get_binary_value(<<"website">>, JObj)
+                 ,credit_cards = [braintree_card:json_to_record(kz_json:get_value(<<"credit_card">>, JObj))]
                 }.
 
 %%--------------------------------------------------------------------
@@ -355,7 +355,7 @@ json_to_record(JObj) ->
 %% Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_json(customer()) -> wh_json:object().
+-spec record_to_json(customer()) -> kz_json:object().
 record_to_json(Customer) ->
     Props = [{<<"id">>, Customer#bt_customer.id}
              ,{<<"first_name">>, Customer#bt_customer.first_name}
@@ -374,4 +374,4 @@ record_to_json(Customer) ->
                                  || Address <- Customer#bt_customer.addresses
                                 ]}
             ],
-    wh_json:from_list(props:filter_undefined(Props)).
+    kz_json:from_list(props:filter_undefined(Props)).

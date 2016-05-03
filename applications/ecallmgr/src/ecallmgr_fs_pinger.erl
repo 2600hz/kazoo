@@ -28,14 +28,14 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {node = 'undefined' :: atom()
-                ,options = [] :: wh_proplist()
+                ,options = [] :: kz_proplist()
                 ,timeout = 2 * ?MILLISECONDS_IN_SECOND
                }).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
--spec start_link(atom(), wh_proplist()) -> startlink_ret().
+-spec start_link(atom(), kz_proplist()) -> startlink_ret().
 start_link(Node, Options) ->
     gen_server:start_link(?SERVER, [Node, Options], []).
 
@@ -55,7 +55,7 @@ start_link(Node, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Props]) ->
-    wh_util:put_callid(Node),
+    kz_util:put_callid(Node),
     self() ! 'initialize_pinger',
     lager:info("node ~s not responding, periodically retrying connection", [Node]),
     {'ok', #state{node=Node, options=Props}}.
@@ -103,14 +103,14 @@ handle_cast(_Msg, #state{timeout=Timeout}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info('initialize_pinger', #state{node=Node, options=Props}=State) ->
-    wh_notify:system_alert("node ~s disconnected from ~s", [Node, node()]),
+    kz_notify:system_alert("node ~s disconnected from ~s", [Node, node()]),
     _ = case props:get_value('cookie', Props) of
             'undefined' -> 'ok';
             Cookie when is_atom(Cookie) ->
                 lager:debug("setting cookie to ~s for ~s", [Cookie, Node]),
                 erlang:set_cookie(Node, Cookie)
         end,
-    GracePeriod = wh_util:to_integer(ecallmgr_config:get(<<"node_down_grace_period">>, 10 * ?MILLISECONDS_IN_SECOND)),
+    GracePeriod = kz_util:to_integer(ecallmgr_config:get(<<"node_down_grace_period">>, 10 * ?MILLISECONDS_IN_SECOND)),
     erlang:send_after(GracePeriod, self(), {'flush_channels', Node}),
     self() ! 'check_node_status',
     {'noreply', State};
@@ -124,7 +124,7 @@ handle_info('check_node_status', #state{node=Node, timeout=Timeout}=State) ->
         'pong' ->
             %% give the node a moment to init
             timer:sleep(?MILLISECONDS_IN_SECOND),
-            wh_notify:system_alert("node ~s connected to ~s", [Node, node()]),
+            kz_notify:system_alert("node ~s connected to ~s", [Node, node()]),
             'ok' = ecallmgr_fs_nodes:nodeup(Node),
             {'stop', 'normal', State};
         _Else ->

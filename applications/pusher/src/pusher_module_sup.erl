@@ -20,8 +20,8 @@
 
 -define(SERVER, ?MODULE).
 
--define(CHILDREN, [ ?WORKER(wh_util:to_atom(Mod, 'true'))
-                    || Mod <- whapps_config:get(?CONFIG_CAT, <<"modules">>, [])
+-define(CHILDREN, [ ?WORKER(kz_util:to_atom(Mod, 'true'))
+                    || Mod <- kapps_config:get(?CONFIG_CAT, <<"modules">>, [])
                   ]).
 
 %%%===================================================================

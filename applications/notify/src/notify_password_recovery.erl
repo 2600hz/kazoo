@@ -40,28 +40,28 @@ init() ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
-    'true' = wapi_notifications:pwd_recovery_v(JObj),
-    wh_util:put_callid(JObj),
+    'true' = kapi_notifications:pwd_recovery_v(JObj),
+    kz_util:put_callid(JObj),
 
     lager:debug("request for password reset taken into account, sending email notification"),
 
     {'ok', Account} = notify_util:get_account_doc(JObj),
 
-    To = wh_json:get_value(<<"Email">>, JObj, whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>)),
+    To = kz_json:get_value(<<"Email">>, JObj, kapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>)),
 
     lager:debug("creating notice for request of password reset"),
 
     Props = create_template_props(JObj, Account),
 
-    CustomTxtTemplate = wh_json:get_value([<<"notifications">>, <<"password_recovery">>, <<"email_text_template">>], Account),
+    CustomTxtTemplate = kz_json:get_value([<<"notifications">>, <<"password_recovery">>, <<"email_text_template">>], Account),
     {'ok', TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
 
-    CustomHtmlTemplate = wh_json:get_value([<<"notifications">>, <<"password_recovery">>, <<"email_html_template">>], Account),
+    CustomHtmlTemplate = kz_json:get_value([<<"notifications">>, <<"password_recovery">>, <<"email_html_template">>], Account),
     {'ok', HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
 
-    CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"password_recovery">>, <<"email_subject_template">>], Account),
+    CustomSubjectTemplate = kz_json:get_value([<<"notifications">>, <<"password_recovery">>, <<"email_subject_template">>], Account),
     {'ok', Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
 
     build_and_send_email(TxtBody, HTMLBody, Subject, To, Props).
@@ -72,10 +72,10 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props(wh_json:object(), wh_json:object()) -> wh_proplist().
+-spec create_template_props(kz_json:object(), kz_json:object()) -> kz_proplist().
 create_template_props(Event, Account) ->
-    User = wh_json:delete_key(<<"Request">>, Event),
-    Request = wh_json:get_value(<<"Request">>, Event, wh_json:new()),
+    User = kz_json:delete_key(<<"Request">>, Event),
+    Request = kz_json:get_value(<<"Request">>, Event, kz_json:new()),
     [{<<"user">>, notify_util:json_to_template_props(User)}
      ,{<<"request">>, notify_util:json_to_template_props(Request)}
      ,{<<"account">>, notify_util:json_to_template_props(Account)}
@@ -88,7 +88,7 @@ create_template_props(Event, Account) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist()) ->
+-spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), kz_proplist()) ->
                                   'ok' | {'error', any()}.
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To)->
     _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
@@ -97,8 +97,8 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     From = props:get_value(<<"send_from">>, Service),
 
     {ContentTypeParams, CharsetString} = notify_util:get_charset_params(Service),
-    PlainTransferEncoding = whapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"text_content_transfer_encoding">>, <<"7BIT">>),
-    HTMLTransferEncoding = whapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"html_content_transfer_encoding">>, <<"7BIT">>),
+    PlainTransferEncoding = kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"text_content_transfer_encoding">>, <<"7BIT">>),
+    HTMLTransferEncoding = kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"html_content_transfer_encoding">>, <<"7BIT">>),
 
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>

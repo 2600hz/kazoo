@@ -17,7 +17,7 @@
 
 -include("crossbar.hrl").
 
--define(TRACE_PATH, whapps_config:get(?CONFIG_CAT, <<"trace_path">>, <<"/tmp">>)).
+-define(TRACE_PATH, kapps_config:get(?CONFIG_CAT, <<"trace_path">>, <<"/tmp">>)).
 
 %%%===================================================================
 %%% API
@@ -52,7 +52,7 @@ req_init(ProfileId, InitArgs) ->
     File = list_to_binary([?TRACE_PATH, ProfileId, ".trace"]),
     case fprof:trace(['start'
                       ,'verbose'
-                      ,{'file', wh_util:to_list(File)}
+                      ,{'file', kz_util:to_list(File)}
                      ])
     of
         'ok' -> lager:debug("started trace ~s", [File]);
@@ -70,7 +70,7 @@ req_finish(ProfileId) when is_binary(ProfileId) ->
     lager:debug("now run: erlgrind ~s", [File]),
     lager:debug("then run kcachegrind on the .cgrind file created"),
     fprof:trace(['stop'
-                 ,{'file', wh_util:to_list(File)}
+                 ,{'file', kz_util:to_list(File)}
                 ]);
 req_finish(Context) ->
     req_finish(cb_context:profile_id(Context)).

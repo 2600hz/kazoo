@@ -36,19 +36,19 @@ current_subscriptions() ->
 current_subscriptions(Realm) ->
     print_subscriptions(
       omnip_subscriptions:subscriptions_to_json(
-        omnip_subscriptions:search_for_subscriptions('_', wh_util:to_binary(Realm))
+        omnip_subscriptions:search_for_subscriptions('_', kz_util:to_binary(Realm))
      )).
 
 current_subscriptions(Realm, User) ->
     print_subscriptions(
       omnip_subscriptions:subscriptions_to_json(
         omnip_subscriptions:search_for_subscriptions(
-          '_', wh_util:to_binary(Realm), wh_util:to_binary(User)
+          '_', kz_util:to_binary(Realm), kz_util:to_binary(User)
          ))).
 
 print_subscriptions([]) -> io:format("No subscriptions have been found~n");
 print_subscriptions(Ss) ->
-    Now = wh_util:current_tstamp(),
+    Now = kz_util:current_tstamp(),
     io:format(?SUBSCRIPTION_FORMAT_STR
               ,[<<"Username@Realm">>, <<"From">>, <<"Expires">>, <<"Event">>]
              ),
@@ -56,14 +56,14 @@ print_subscriptions(Ss) ->
     'ok'.
 
 print_subscription(JObj, Now) ->
-    ExpiresIn = wh_json:get_integer_value(<<"expires">>, JObj) -
-        (Now - wh_json:get_integer_value(<<"timestamp">>, JObj)),
+    ExpiresIn = kz_json:get_integer_value(<<"expires">>, JObj) -
+        (Now - kz_json:get_integer_value(<<"timestamp">>, JObj)),
 
     io:format(?SUBSCRIPTION_FORMAT_STR
-              ,[[wh_json:get_value(<<"username">>, JObj), "@", wh_json:get_value(<<"realm">>, JObj)]
-                ,wh_json:get_value(<<"from">>, JObj)
-                ,wh_util:to_binary(ExpiresIn)
-                ,wh_json:get_value(<<"event">>, JObj)
+              ,[[kz_json:get_value(<<"username">>, JObj), "@", kz_json:get_value(<<"realm">>, JObj)]
+                ,kz_json:get_value(<<"from">>, JObj)
+                ,kz_util:to_binary(ExpiresIn)
+                ,kz_json:get_value(<<"event">>, JObj)
                ]).
 
 -spec subscribe(ne_binary(), ne_binary()) -> 'ok'.
@@ -71,17 +71,17 @@ subscribe(Realm, User) ->
     Prop = [{<<"User">>, <<"sip:", User/binary, "@", Realm/binary>>}
             ,{<<"Expires">>, 1}
             ,{<<"Queue">>, <<>>}
-            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
-    case whapps_util:amqp_pool_request_custom(Prop
-                                              ,fun wapi_presence:publish_subscribe/1
-                                              ,fun wapi_presence:update_v/1
+    case kapps_util:amqp_pool_request_custom(Prop
+                                              ,fun kapi_presence:publish_subscribe/1
+                                              ,fun kapi_presence:update_v/1
                                               ,{'presence', [{'restrict_to', ['updates']}]}
                                              )
     of
         {'ok', UpJObj} ->
             io:format("Sent subscription for ~s@~s, recv'd update of state ~s~n"
-                      ,[User, Realm, wh_json:get_value(<<"State">>, UpJObj)]
+                      ,[User, Realm, kz_json:get_value(<<"State">>, UpJObj)]
                      );
         {'error', 'timeout'} ->
             io:format("Timed out waiting for update on subscription for ~s@~s~n", [User, Realm]);
@@ -91,23 +91,23 @@ subscribe(Realm, User) ->
 
 -spec send_mwi_update(ne_binary(), ne_binary() | integer(), ne_binary() | integer() ) -> 'ok'.
 send_mwi_update(User, New, Saved) when is_binary(New) ->
-  send_mwi_update(User, wh_util:to_integer(New), Saved);
+  send_mwi_update(User, kz_util:to_integer(New), Saved);
 send_mwi_update(User, New, Saved) when is_binary(Saved) ->
-  send_mwi_update(User, New, wh_util:to_integer(Saved));
+  send_mwi_update(User, New, kz_util:to_integer(Saved));
 send_mwi_update(User, New, Saved) ->
     Command = [{<<"Messages-New">>, New}
                ,{<<"Messages-Saved">>, Saved}
-               ,{<<"Call-ID">>, wh_util:rand_hex_binary(16) }
+               ,{<<"Call-ID">>, kz_util:rand_hex_binary(16) }
                ,{<<"To">>, User}
-               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
-    whapps_util:amqp_pool_send(Command, fun wapi_presence:publish_mwi_update/1),
+    kapps_util:amqp_pool_send(Command, fun kapi_presence:publish_mwi_update/1),
     'ok'.
 
 -spec list_terminated_callids() -> 'ok'.
 list_terminated_callids() ->
     io:format("Here are the call IDs currently cached as terminated:~n", []),
-    io:format("~s~n", [wh_util:join_binary(
+    io:format("~s~n", [kz_util:join_binary(
                          omnip_subscriptions:cached_terminated_callids()
                          ,<<", ">>
                         )
@@ -120,7 +120,7 @@ reset_subscription(User) ->
 
 -spec reset_subscription(ne_binary(), ne_binary()) -> any().
 reset_subscription(User, Realm) ->
-    JObj = wh_json:from_list(
+    JObj = kz_json:from_list(
              [{<<"Realm">>, Realm}
               ,{<<"Username">>, User}
              ]),

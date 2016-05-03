@@ -55,7 +55,7 @@ check_auth_token(Context, AuthToken) ->
     case kz_datamgr:open_doc(?KZ_TOKEN_DB, AuthToken) of
         {'ok', JObj} ->
             lager:debug("token auth is valid, authenticating"),
-            AccountId = wh_json:get_ne_value(<<"account_id">>, JObj),
+            AccountId = kz_json:get_ne_value(<<"account_id">>, JObj),
             Context1 = bh_context:set_auth_account_id(Context, AccountId),
             {'true', Context1};
         {'error', R} ->

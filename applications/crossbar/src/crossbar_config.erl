@@ -17,7 +17,7 @@
 -include("crossbar.hrl").
 
 -spec flush() -> 'ok'.
-flush() -> whapps_config:flush(?CONFIG_CAT).
+flush() -> kapps_config:flush(?CONFIG_CAT).
 
 -spec autoload_modules() -> ne_binaries().
 -spec autoload_modules(ne_binaries() | atoms()) -> ne_binaries().
@@ -25,12 +25,12 @@ autoload_modules() ->
     autoload_modules([]).
 
 autoload_modules(Default) ->
-    whapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, Default).
+    kapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, Default).
 
--spec set_autoload_modules(ne_binaries() | atoms()) -> {'ok', wh_json:object()}.
+-spec set_autoload_modules(ne_binaries() | atoms()) -> {'ok', kz_json:object()}.
 set_autoload_modules(Modules) ->
-    whapps_config:set(?CONFIG_CAT, <<"autoload_modules">>, Modules).
+    kapps_config:set(?CONFIG_CAT, <<"autoload_modules">>, Modules).
 
--spec set_default_autoload_modules(ne_binaries() | atoms()) -> {'ok', wh_json:object()}.
+-spec set_default_autoload_modules(ne_binaries() | atoms()) -> {'ok', kz_json:object()}.
 set_default_autoload_modules(Modules) ->
-    whapps_config:set_default(?CONFIG_CAT, <<"autoload_modules">>, Modules).
+    kapps_config:set_default(?CONFIG_CAT, <<"autoload_modules">>, Modules).

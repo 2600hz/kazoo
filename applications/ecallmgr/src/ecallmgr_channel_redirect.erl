@@ -23,7 +23,7 @@ redirect(UUID, DestinationNode) ->
     end.
 
 redirect_remote(UUID, ChannelStatusJObj) ->
-    URL = wh_json:get_value(<<"Switch-URL">>, ChannelStatusJObj),
+    URL = kz_json:get_value(<<"Switch-URL">>, ChannelStatusJObj),
 
     case ecallmgr_config:get_boolean(<<"redirect_via_proxy">>, 'true') of
         'true' -> redirect_via_proxy(URL, UUID);

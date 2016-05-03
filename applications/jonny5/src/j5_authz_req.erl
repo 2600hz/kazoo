@@ -11,10 +11,10 @@
 
 -include("jonny5.hrl").
 
--spec handle_req(wh_json:object(), wh_proplist()) -> any().
+-spec handle_req(kz_json:object(), kz_proplist()) -> any().
 handle_req(JObj, _) ->
-    'true' = wapi_authz:authz_req_v(JObj),
-    wh_util:put_callid(JObj),
+    'true' = kapi_authz:authz_req_v(JObj),
+    kz_util:put_callid(JObj),
     maybe_determine_account_id(j5_request:from_jobj(JObj)).
 
 -spec maybe_determine_account_id(j5_request:request()) -> 'ok'.
@@ -33,7 +33,7 @@ determine_account_id(Request) ->
 
 -spec determine_account_id_from_ip(j5_request:request(), ne_binary()) -> 'ok'.
 determine_account_id_from_ip(Request, IP) ->
-    case whapps_util:get_ccvs_by_ip(IP) of
+    case kapps_util:get_ccvs_by_ip(IP) of
         {'ok', AccountCCVs} ->
             maybe_inbound_account_by_ip(j5_request:from_ccvs(Request, AccountCCVs), IP);
         {'error', 'not_found'} ->
@@ -44,7 +44,7 @@ determine_account_id_from_ip(Request, IP) ->
 -spec maybe_inbound_account_by_ip(j5_request:request(), ne_binary()) -> 'ok'.
 maybe_inbound_account_by_ip(Request, IP) ->
     AuthorizingType =
-        wh_json:get_value(<<"Authorizing-Type">>, j5_request:ccvs(Request)),
+        kz_json:get_value(<<"Authorizing-Type">>, j5_request:ccvs(Request)),
     case j5_request:call_direction(Request) =:= <<"inbound">>
         andalso lists:member(AuthorizingType, ?INBOUND_ACCOUNT_TYPES)
     of
@@ -61,7 +61,7 @@ inbound_account_by_ip(Request, IP) ->
                 ,[IP, AccountId]
                ),
     Routines = [fun(R) ->
-                         ResellerId = wh_services:find_reseller_id(AccountId),
+                         ResellerId = kz_services:find_reseller_id(AccountId),
                          j5_request:set_reseller_id(ResellerId, R)
                  end
                 ,fun(R) -> j5_request:authorize_account(<<"limits_disabled">>, R) end
@@ -117,7 +117,7 @@ allow_local_resource(AccountId, Request) ->
                ),
     Routines = [fun(R) -> j5_request:set_account_id(AccountId, R) end
                 ,fun(R) ->
-                         ResellerId = wh_services:find_reseller_id(AccountId),
+                         ResellerId = kz_services:find_reseller_id(AccountId),
                          j5_request:set_reseller_id(ResellerId, R)
                  end
                 ,fun(R) -> j5_request:authorize_account(<<"limits_disabled">>, R) end
@@ -128,7 +128,7 @@ allow_local_resource(AccountId, Request) ->
 -spec should_authz_local(j5_request:request()) -> boolean().
 should_authz_local(Request) ->
     Node = j5_request:node(Request),
-    whapps_config:get_is_true(<<"ecallmgr">>, <<"authz_local_resources">>, 'false', Node).
+    kapps_config:get_is_true(<<"ecallmgr">>, <<"authz_local_resources">>, 'false', Node).
 
 -spec maybe_account_limited(j5_request:request()) -> 'ok'.
 maybe_account_limited(Request) ->
@@ -154,7 +154,7 @@ maybe_determine_reseller_id(Request) ->
 -spec determine_reseller_id(j5_request:request()) -> 'ok'.
 determine_reseller_id(Request) ->
     AccountId = j5_request:account_id(Request),
-    ResellerId = wh_services:find_reseller_id(AccountId),
+    ResellerId = kz_services:find_reseller_id(AccountId),
     maybe_reseller_limited(
       j5_request:set_reseller_id(ResellerId, Request)
      ).
@@ -272,20 +272,20 @@ maybe_get_outbound_flags(AuthType, AuthId, AccountDb) ->
     case lists:member(AuthType, ?AUTZH_TYPES_FOR_OUTBOUND) andalso
              cf_endpoint:get(AuthId, AccountDb)
     of
-        {'ok', Endpoint} -> wh_json:get_value(<<"outbound_flags">>, Endpoint);
+        {'ok', Endpoint} -> kz_json:get_value(<<"outbound_flags">>, Endpoint);
         _ -> 'undefined'
     end.
 
 -spec send_response(j5_request:request()) -> 'ok'.
 send_response(Request) ->
     ServerId  = j5_request:server_id(Request),
-    AccountDb = wh_util:format_account_id(j5_request:account_id(Request), 'encoded'),
-    AuthType  = wh_json:get_value(<<"Authorizing-Type">>, j5_request:ccvs(Request)),
-    AuthId    = wh_json:get_value(<<"Authorizing-ID">>, j5_request:ccvs(Request)),
+    AccountDb = kz_util:format_account_id(j5_request:account_id(Request), 'encoded'),
+    AuthType  = kz_json:get_value(<<"Authorizing-Type">>, j5_request:ccvs(Request)),
+    AuthId    = kz_json:get_value(<<"Authorizing-ID">>, j5_request:ccvs(Request)),
 
     OutboundFlags = maybe_get_outbound_flags(AuthType, AuthId, AccountDb),
 
-    CCVs = wh_json:from_list(
+    CCVs = kz_json:from_list(
              props:filter_undefined(
                [{<<"Account-Trunk-Usage">>, trunk_usage(j5_request:account_id(Request))}
                 ,{<<"Reseller-Trunk-Usage">>, trunk_usage(j5_request:reseller_id(Request))}
@@ -295,26 +295,26 @@ send_response(Request) ->
             ),
 
     Resp = props:filter_undefined(
-             [{<<"Is-Authorized">>, wh_util:to_binary(j5_request:is_authorized(Request))}
+             [{<<"Is-Authorized">>, kz_util:to_binary(j5_request:is_authorized(Request))}
               ,{<<"Account-ID">>, j5_request:account_id(Request)}
               ,{<<"Account-Billing">>, j5_request:account_billing(Request)}
               ,{<<"Reseller-ID">>, j5_request:reseller_id(Request)}
               ,{<<"Reseller-Billing">>, j5_request:reseller_billing(Request)}
               ,{<<"Call-Direction">>, j5_request:call_direction(Request)}
               ,{<<"Other-Leg-Call-ID">>, j5_request:other_leg_call_id(Request)}
-              ,{<<"Soft-Limit">>, wh_util:to_binary(j5_request:soft_limit(Request))}
+              ,{<<"Soft-Limit">>, kz_util:to_binary(j5_request:soft_limit(Request))}
               ,{<<"Msg-ID">>, j5_request:message_id(Request)}
               ,{<<"Call-ID">>, j5_request:call_id(Request)}
               ,{<<"Custom-Channel-Vars">>, CCVs}
-              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
 
-    wapi_authz:publish_authz_resp(ServerId, Resp),
+    kapi_authz:publish_authz_resp(ServerId, Resp),
     case j5_request:is_authorized(Request) of
         'false' -> j5_util:send_system_alert(Request);
         'true' ->
-            wapi_authz:broadcast_authz_resp(Resp),
-            j5_channels:authorized(wh_json:from_list(Resp))
+            kapi_authz:broadcast_authz_resp(Resp),
+            j5_channels:authorized(kz_json:from_list(Resp))
     end.
 
 %% @private
@@ -322,8 +322,8 @@ send_response(Request) ->
 trunk_usage(Id) ->
     Limits = j5_limits:get(Id),
     <<
-      (wh_util:to_binary(j5_limits:inbound_trunks(Limits)))/binary, "/",
-      (wh_util:to_binary(j5_limits:outbound_trunks(Limits)))/binary, "/",
-      (wh_util:to_binary(j5_limits:twoway_trunks(Limits)))/binary, "/",
-      (wh_util:to_binary(j5_limits:burst_trunks(Limits)))/binary
+      (kz_util:to_binary(j5_limits:inbound_trunks(Limits)))/binary, "/",
+      (kz_util:to_binary(j5_limits:outbound_trunks(Limits)))/binary, "/",
+      (kz_util:to_binary(j5_limits:twoway_trunks(Limits)))/binary, "/",
+      (kz_util:to_binary(j5_limits:burst_trunks(Limits)))/binary
     >>.

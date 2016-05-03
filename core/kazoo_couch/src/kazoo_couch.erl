@@ -107,7 +107,7 @@ db_list('couchdb_2', Server, Options) ->
     kz_couch_db:db_list(Server, Options);
 db_list('bigcouch', Server, Options) ->
     {'ok', Results} = kz_couch_view:all_docs(Server, <<"dbs">>, Options),
-    {'ok', [ wh_doc:id(Db) || Db <- Results]};
+    {'ok', [ kz_doc:id(Db) || Db <- Results]};
 db_list('couchdb_1_6', Server, Options) ->
     {'ok', List} = kz_couch_db:db_list(Server, Options),
     {'ok', db_local_filter(List, Options)}.

@@ -12,12 +12,12 @@
 
 -include("kzt.hrl").
 
--spec exec(whapps_call:call(), xml_els() | xml_texts(), xml_attribs()) ->
-                  {'ok', whapps_call:call()} |
-                  {'error', _, whapps_call:call()}.
+-spec exec(kapps_call:call(), xml_els() | xml_texts(), xml_attribs()) ->
+                  {'ok', kapps_call:call()} |
+                  {'error', _, kapps_call:call()}.
 exec(Call, XmlText, Attrs) ->
-    whapps_call_command:answer(Call),
-    SayMe = kz_xml:texts_to_binary(XmlText, whapps_config:get_integer(<<"pivot">>, <<"tts_texts_size">>, ?TTS_SIZE_LIMIT)),
+    kapps_call_command:answer(Call),
+    SayMe = kz_xml:texts_to_binary(XmlText, kapps_config:get_integer(<<"pivot">>, <<"tts_texts_size">>, ?TTS_SIZE_LIMIT)),
 
     Props = kz_xml:attributes_to_proplist(Attrs),
 

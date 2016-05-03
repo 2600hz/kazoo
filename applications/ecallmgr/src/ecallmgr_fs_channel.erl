@@ -54,7 +54,7 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {node = 'undefined' :: atom()
-                ,options = [] :: wh_proplist()
+                ,options = [] :: kz_proplist()
                }).
 
 %%%===================================================================
@@ -65,13 +65,13 @@
 %% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(atom()) -> startlink_ret().
--spec start_link(atom(), wh_proplist()) -> startlink_ret().
+-spec start_link(atom(), kz_proplist()) -> startlink_ret().
 start_link(Node) -> start_link(Node, []).
 start_link(Node, Options) ->
     gen_server:start_link(?SERVER, [Node, Options], []).
 
--type fetch_resp() :: wh_json:object() |
-                      wh_proplist() |
+-type fetch_resp() :: kz_json:object() |
+                      kz_proplist() |
                       channel().
 -type channel_format() :: 'json' | 'proplist' | 'record'.
 
@@ -161,7 +161,7 @@ import_moh(UUID) ->
 set_account_id(UUID, Value) when is_binary(Value) ->
     ecallmgr_fs_channels:update(UUID, #channel.account_id, Value);
 set_account_id(UUID, Value) ->
-    set_account_id(UUID, wh_util:to_binary(Value)).
+    set_account_id(UUID, kz_util:to_binary(Value)).
 
 -spec renew(atom(), ne_binary()) ->
                    {'ok', channel()} |
@@ -173,7 +173,7 @@ renew(Node, UUID) ->
         {'error', _}=E -> E
     end.
 
--spec channel_data(atom(), ne_binary()) -> {'ok', wh_proplist()} |
+-spec channel_data(atom(), ne_binary()) -> {'ok', kz_proplist()} |
                                            {'error', 'timeout' | 'badarg'}.
 channel_data(Node, UUID) ->
     case freeswitch:api(Node, 'uuid_dump', UUID) of
@@ -182,11 +182,11 @@ channel_data(Node, UUID) ->
             {'ok', ecallmgr_util:eventstr_to_proplist(Dump)}
     end.
 
--spec to_json(channel()) -> wh_json:object().
+-spec to_json(channel()) -> kz_json:object().
 to_json(Channel) ->
-    wh_json:from_list(to_props(Channel)).
+    kz_json:from_list(to_props(Channel)).
 
--spec to_props(channel()) -> wh_proplist().
+-spec to_props(channel()) -> kz_proplist().
 to_props(Channel) ->
     props:filter_undefined(
       [{<<"uuid">>, Channel#channel.uuid}
@@ -218,15 +218,15 @@ to_props(Channel) ->
        ,{<<"switch_nodename">>, Channel#channel.node}
        ,{<<"to_tag">>, Channel#channel.to_tag}
        ,{<<"from_tag">>, Channel#channel.from_tag}
-       ,{<<"elapsed_s">>, wh_util:elapsed_s(Channel#channel.timestamp)}
+       ,{<<"elapsed_s">>, kz_util:elapsed_s(Channel#channel.timestamp)}
        ,{<<"interaction_id">>, Channel#channel.interaction_id}
       ]).
 
--spec to_api_json(channel()) -> wh_json:object().
+-spec to_api_json(channel()) -> kz_json:object().
 to_api_json(Channel) ->
-    wh_json:from_list(to_api_props(Channel)).
+    kz_json:from_list(to_api_props(Channel)).
 
--spec to_api_props(channel()) -> wh_proplist().
+-spec to_api_props(channel()) -> kz_proplist().
 to_api_props(Channel) ->
     props:filter_undefined(
       [{<<"Call-ID">>, Channel#channel.uuid}
@@ -247,7 +247,7 @@ to_api_props(Channel) ->
        ,{<<"Realm">>, Channel#channel.realm}
        ,{<<"Username">>, Channel#channel.username}
        ,{<<"Answered">>, Channel#channel.answered}
-       ,{<<"Media-Node">>, wh_util:to_binary(Channel#channel.node)}
+       ,{<<"Media-Node">>, kz_util:to_binary(Channel#channel.node)}
        ,{<<"Timestamp">>, Channel#channel.timestamp}
        ,{<<"Profile">>, Channel#channel.profile}
        ,{<<"Context">>, Channel#channel.context}
@@ -256,11 +256,11 @@ to_api_props(Channel) ->
        ,{<<"To-Tag">>, Channel#channel.to_tag}
        ,{<<"From-Tag">>, Channel#channel.from_tag}
        ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Channel#channel.node)}
-       ,{<<"Elapsed-Seconds">>, wh_util:elapsed_s(Channel#channel.timestamp)}
+       ,{<<"Elapsed-Seconds">>, kz_util:elapsed_s(Channel#channel.timestamp)}
        ,{<<?CALL_INTERACTION_ID>>, Channel#channel.interaction_id}
       ]).
 
--spec channel_ccvs(channel() | wh_json:object() | wh_proplist()) -> wh_proplist().
+-spec channel_ccvs(channel() | kz_json:object() | kz_proplist()) -> kz_proplist().
 channel_ccvs(#channel{}=Channel) ->
     props:filter_undefined(
       [{<<"Account-ID">>, Channel#channel.account_id}
@@ -298,7 +298,7 @@ channel_ccvs([_|_]=Props) ->
        ,{<<?CALL_INTERACTION_ID>>, props:get_value(<<"interaction_id">>, Props)}
       ]);
 channel_ccvs(JObj) ->
-    channel_ccvs(wh_json:to_proplist(JObj)).
+    channel_ccvs(kz_json:to_proplist(JObj)).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -316,7 +316,7 @@ channel_ccvs(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Options]) ->
-    wh_util:put_callid(Node),
+    kz_util:put_callid(Node),
     lager:info("starting new fs channel listener for ~s", [Node]),
     gen_server:cast(self(), 'bind_to_events'),
     {'ok', #state{node=Node, options=Options}}.
@@ -384,14 +384,14 @@ handle_info({'event', [UUID | Props]}, #state{node=Node, options=Options}=State)
                        end;
                    _Value -> Props
                end,
-    _ = wh_util:spawn(fun process_event/4, [UUID, NewProps, Node, self()]),
+    _ = kz_util:spawn(fun process_event/4, [UUID, NewProps, Node, self()]),
     {'noreply', State};
 handle_info({'fetch', 'channels', <<"channel">>, <<"uuid">>, UUID, FetchId, _}, #state{node=Node}=State) ->
-    _ = wh_util:spawn(fun handle_channel_req_legacy/4, [UUID, FetchId, Node, self()]),
+    _ = kz_util:spawn(fun handle_channel_req_legacy/4, [UUID, FetchId, Node, self()]),
     {'noreply', State};
 handle_info({'fetch', 'channels', _, _, _, FetchId, Props}, #state{node=Node}=State) ->
     UUID = props:get_value(<<"replaces-call-id">>, Props),
-    _ = wh_util:spawn(fun handle_channel_req/5, [UUID, FetchId, Props, Node, self()]),
+    _ = kz_util:spawn(fun handle_channel_req/5, [UUID, FetchId, Props, Node, self()]),
     {'noreply', State};
 handle_info({_Fetch, _Section, _Something, _Key, _Value, ID, _Data}, #state{node=Node}=State) ->
     lager:debug("unhandled ~p with fetch id ~p from section ~p for ~p:~p:~p", [_Fetch, ID, _Section, _Something, _Key, _Value]),
@@ -446,7 +446,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec handle_channel_req_legacy(ne_binary(), ne_binary(), atom(), pid()) -> 'ok'.
 handle_channel_req_legacy(UUID, FetchId, Node, Pid) ->
-    wh_amqp_channel:consumer_pid(Pid),
+    kz_amqp_channel:consumer_pid(Pid),
     case fetch_channel(UUID) of
         'undefined' -> channel_not_found(Node, FetchId);
         Channel ->
@@ -456,9 +456,9 @@ handle_channel_req_legacy(UUID, FetchId, Node, Pid) ->
                                             ])
     end.
 
--spec handle_channel_req(ne_binary(), ne_binary(), wh_proplist(), atom(), pid()) -> 'ok'.
+-spec handle_channel_req(ne_binary(), ne_binary(), kz_proplist(), atom(), pid()) -> 'ok'.
 handle_channel_req(UUID, FetchId, Props, Node, Pid) ->
-    wh_amqp_channel:consumer_pid(Pid),
+    kz_amqp_channel:consumer_pid(Pid),
     ForUUID = props:get_value(<<"refer-for-channel-id">>, Props),
     {'ok', ForChannel} = fetch(ForUUID, 'proplist'),
     case fetch_channel(UUID) of
@@ -473,7 +473,7 @@ handle_channel_req(UUID, FetchId, Props, Node, Pid) ->
             build_channel_resp(FetchId, Props, Node, URL, ForChannel, channel_ccvs(Channel))
     end.
 
--spec build_channel_resp(ne_binary(), wh_proplist(), atom(), ne_binary(), wh_proplist(), wh_proplist()) -> 'ok'.
+-spec build_channel_resp(ne_binary(), kz_proplist(), atom(), ne_binary(), kz_proplist(), kz_proplist()) -> 'ok'.
 build_channel_resp(FetchId, Props, Node, URL, Channel, ChannelVars) ->
 %% NOTE
 %% valid properties to return are
@@ -487,7 +487,7 @@ build_channel_resp(FetchId, Props, Node, URL, Channel, ChannelVars) ->
              ]),
     try_channel_resp(FetchId, Node, Resp).
 
--spec channel_resp_dialprefix(wh_proplist(), wh_proplist(), wh_proplist()) -> ne_binary().
+-spec channel_resp_dialprefix(kz_proplist(), kz_proplist(), kz_proplist()) -> ne_binary().
 channel_resp_dialprefix(ReqProps, Channel, ChannelVars) ->
     Props = props:filter_undefined(
               [{<<"sip_invite_domain">>, props:get_value(<<"Realm">>, ChannelVars)}
@@ -501,12 +501,12 @@ channel_resp_dialprefix(ReqProps, Channel, ChannelVars) ->
               ]),
     fs_props_to_binary(Props).
 
--spec fs_props_to_binary(wh_proplist()) -> ne_binary().
+-spec fs_props_to_binary(kz_proplist()) -> ne_binary().
 fs_props_to_binary([{Hk,Hv}|T]) ->
-    Rest = << <<",", K/binary, "='", (wh_util:to_binary(V))/binary, "'">> || {K,V} <- T >>,
-    <<"[", Hk/binary, "='", (wh_util:to_binary(Hv))/binary, "'", Rest/binary, "]">>.
+    Rest = << <<",", K/binary, "='", (kz_util:to_binary(V))/binary, "'">> || {K,V} <- T >>,
+    <<"[", Hk/binary, "='", (kz_util:to_binary(Hv))/binary, "'", Rest/binary, "]">>.
 
--spec try_channel_resp(ne_binary(), atom(), wh_proplist()) -> 'ok'.
+-spec try_channel_resp(ne_binary(), atom(), kz_proplist()) -> 'ok'.
 try_channel_resp(FetchId, Node, Props) ->
     try ecallmgr_fs_xml:sip_channel_xml(Props) of
         {'ok', ConfigXml} ->
@@ -518,7 +518,7 @@ try_channel_resp(FetchId, Node, Props) ->
             channel_not_found(Node, FetchId)
     end.
 
--spec fetch_channel(ne_binary()) -> wh_proplist() | 'undefined'.
+-spec fetch_channel(ne_binary()) -> kz_proplist() | 'undefined'.
 fetch_channel(UUID) ->
     case fetch(UUID, 'proplist') of
         {'error', 'not_found'} -> fetch_remote(UUID);
@@ -529,16 +529,16 @@ fetch_channel(UUID) ->
 fetch_remote(UUID) ->
     Command = [{<<"Call-ID">>, UUID}
                ,{<<"Active-Only">>, <<"true">>}
-               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
-    case wh_amqp_worker:call(Command
-                             ,fun(C) -> wapi_call:publish_channel_status_req(UUID, C) end
-                             ,fun wapi_call:channel_status_resp_v/1
+    case kz_amqp_worker:call(Command
+                             ,fun(C) -> kapi_call:publish_channel_status_req(UUID, C) end
+                             ,fun kapi_call:channel_status_resp_v/1
                             )
     of
         {'error', _} -> 'undefined';
         {'ok', JObj} ->
-            Props = wh_json:recursive_to_proplist(wh_json:normalize(JObj)),
+            Props = kz_json:recursive_to_proplist(kz_json:normalize(JObj)),
             CCVs = props:get_value(<<"custom_channel_vars">>, Props, []),
             Props ++ CCVs
     end.
@@ -548,24 +548,24 @@ channel_not_found(Node, FetchId) ->
     {'ok', Resp} = ecallmgr_fs_xml:not_found(),
     freeswitch:fetch_reply(Node, FetchId, 'channels', iolist_to_binary(Resp)).
 
--spec process_event(api_binary(), wh_proplist(), atom()) -> any().
+-spec process_event(api_binary(), kz_proplist(), atom()) -> any().
 process_event(UUID, Props, Node) ->
     process_event(UUID, Props, Node, self()).
 
--spec process_event(api_binary(), wh_proplist(), atom(), pid()) -> any().
+-spec process_event(api_binary(), kz_proplist(), atom(), pid()) -> any().
 process_event(UUID, Props, Node, Pid) ->
-    wh_util:put_callid(UUID),
-    wh_amqp_channel:consumer_pid(Pid),
+    kz_util:put_callid(UUID),
+    kz_amqp_channel:consumer_pid(Pid),
     EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
 
     process_specific_event(EventName, UUID, Props, Node).
 
--spec process_specific_event(ne_binary(), api_binary(), wh_proplist(), atom()) ->
+-spec process_specific_event(ne_binary(), api_binary(), kz_proplist(), atom()) ->
                                     any().
 process_specific_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
     _ = maybe_publish_channel_state(Props, Node),
     case props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props)
-        =:= wh_util:to_binary(node())
+        =:= kz_util:to_binary(node())
     of
         'true' -> ecallmgr_fs_authz:authorize(Props, UUID, Node);
         'false' -> 'ok'
@@ -596,7 +596,7 @@ process_specific_event(<<"CHANNEL_UNBRIDGE">>, UUID, Props, _) ->
 process_specific_event(_EventName, _UUID, _Props, _Node) ->
     'ok'.
 
--spec maybe_publish_channel_state(wh_proplist(), atom()) -> 'ok'.
+-spec maybe_publish_channel_state(kz_proplist(), atom()) -> 'ok'.
 maybe_publish_channel_state(Props, Node) ->
     %% NOTE: this will significantly reduce AMQP request however if a ecallmgr
     %%   becomes disconnected any calls it previsouly controlled will not produce
@@ -611,9 +611,9 @@ maybe_publish_channel_state(Props, Node) ->
             end
     end.
 
--spec maybe_publish_restricted(wh_proplist()) -> 'ok'.
+-spec maybe_publish_restricted(kz_proplist()) -> 'ok'.
 maybe_publish_restricted(Props) ->
-    EcallmgrNode = wh_util:to_binary(node()),
+    EcallmgrNode = kz_util:to_binary(node()),
 
     case props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props) of
         'undefined' -> ecallmgr_call_events:process_channel_event(Props);
@@ -622,7 +622,7 @@ maybe_publish_restricted(Props) ->
             lager:debug("channel state for call controlled by another ecallmgr(~s), not publishing", [_EventEcallmgr])
     end.
 
--spec props_to_record(wh_proplist(), atom()) -> channel().
+-spec props_to_record(kz_proplist(), atom()) -> channel().
 props_to_record(Props, Node) ->
     UUID = props:get_value(<<"Unique-ID">>, Props),
     CCVs = ecallmgr_util:custom_channel_vars(Props),
@@ -643,13 +643,13 @@ props_to_record(Props, Node) ->
              ,bridge_id=props:get_value(<<"Bridge-ID">>, CCVs, UUID)
              ,reseller_id=props:get_value(<<"Reseller-ID">>, CCVs)
              ,reseller_billing=props:get_value(<<"Reseller-Billing">>, CCVs)
-             ,precedence=wh_util:to_integer(props:get_value(<<"Precedence">>, CCVs, 5))
+             ,precedence=kz_util:to_integer(props:get_value(<<"Precedence">>, CCVs, 5))
              ,realm=props:get_value(<<"Realm">>, CCVs, get_realm(Props))
              ,username=props:get_value(<<"Username">>, CCVs, get_username(Props))
              ,import_moh=props:get_value(<<"variable_hold_music">>, Props) =:= 'undefined'
              ,answered=props:get_value(<<"Answer-State">>, Props) =:= <<"answered">>
              ,node=Node
-             ,timestamp=wh_util:current_tstamp()
+             ,timestamp=kz_util:current_tstamp()
              ,profile=props:get_value(<<"variable_sofia_profile_name">>, Props, ?DEFAULT_FS_PROFILE)
              ,context=props:get_value(<<"Caller-Context">>, Props, ?DEFAULT_FREESWITCH_CONTEXT)
              ,dialplan=props:get_value(<<"Caller-Dialplan">>, Props, ?DEFAULT_FS_DIALPLAN)
@@ -660,12 +660,12 @@ props_to_record(Props, Node) ->
              ,interaction_id=props:get_value(<<?CALL_INTERACTION_ID>>, CCVs)
             }.
 
--spec handling_locally(wh_proplist()) -> boolean().
+-spec handling_locally(kz_proplist()) -> boolean().
 handling_locally(Props) ->
     props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props)
-        =:= wh_util:to_binary(node()).
+        =:= kz_util:to_binary(node()).
 
--spec get_username(wh_proplist()) -> api_binary().
+-spec get_username(kz_proplist()) -> api_binary().
 get_username(Props) ->
     case props:get_first_defined([?GET_CCV(<<"Username">>)
                                   ,<<"variable_user_name">>
@@ -674,10 +674,10 @@ get_username(Props) ->
                                 )
     of
         'undefined' -> 'undefined';
-        Username -> wh_util:to_lower_binary(Username)
+        Username -> kz_util:to_lower_binary(Username)
     end.
 
--spec get_realm(wh_proplist()) -> api_binary().
+-spec get_realm(kz_proplist()) -> api_binary().
 get_realm(Props) ->
     case props:get_first_defined([?GET_CCV(<<"Realm">>)
                                   ,<<"variable_domain_name">>
@@ -686,7 +686,7 @@ get_realm(Props) ->
                                 )
     of
         'undefined' -> 'undefined';
-        Realm -> wh_util:to_lower_binary(Realm)
+        Realm -> kz_util:to_lower_binary(Realm)
     end.
 
 props_to_update(Props) ->
@@ -706,7 +706,7 @@ props_to_update(Props) ->
                             ,{#channel.bridge_id, props:get_value(<<"Bridge-ID">>, CCVs, UUID)}
                             ,{#channel.reseller_id, props:get_value(<<"Reseller-ID">>, CCVs)}
                             ,{#channel.reseller_billing, props:get_value(<<"Reseller-Billing">>, CCVs)}
-                            ,{#channel.precedence, wh_util:to_integer(props:get_value(<<"Precedence">>, CCVs, 5))}
+                            ,{#channel.precedence, kz_util:to_integer(props:get_value(<<"Precedence">>, CCVs, 5))}
                             ,{#channel.realm, props:get_value(<<"Realm">>, CCVs, get_realm(Props))}
                             ,{#channel.username, props:get_value(<<"Username">>, CCVs, get_username(Props))}
                             ,{#channel.import_moh, props:get_value(<<"variable_hold_music">>, Props) =:= 'undefined'}
@@ -720,7 +720,7 @@ props_to_update(Props) ->
                             | update_callee(UUID, Props)
                            ]).
 
--spec update_callee(binary(), wh_proplist()) -> wh_proplist().
+-spec update_callee(binary(), kz_proplist()) -> kz_proplist().
 update_callee(UUID, Props) ->
     {'ok', Channel} = fetch(UUID, 'record'),
     [{#channel.callee_number
@@ -741,11 +741,11 @@ update_callee(UUID, Props) ->
 maybe_update_callee_field(Value, 'undefined') -> Value;
 maybe_update_callee_field(_Value, Existing) -> Existing.
 
--spec get_other_leg(ne_binary(), wh_proplist()) -> api_binary().
+-spec get_other_leg(ne_binary(), kz_proplist()) -> api_binary().
 get_other_leg(UUID, Props) ->
     get_other_leg_name(UUID, Props, props:get_value(<<"Other-Leg-Channel-Name">>, Props)).
 
--spec get_other_leg_name(ne_binary(), wh_proplist(), ne_binary()) -> api_binary().
+-spec get_other_leg_name(ne_binary(), kz_proplist(), ne_binary()) -> api_binary().
 get_other_leg_name(UUID, Props, _ChannelName) ->
     get_other_leg(UUID
                   ,Props
@@ -757,7 +757,7 @@ get_other_leg_name(UUID, Props, _ChannelName) ->
                                           )
                  ).
 
--spec get_other_leg(ne_binary(), wh_proplist(), api_binary()) -> api_binary().
+-spec get_other_leg(ne_binary(), kz_proplist(), api_binary()) -> api_binary().
 get_other_leg(UUID, Props, 'undefined') ->
     maybe_other_bridge_leg(UUID
                            ,Props
@@ -766,7 +766,7 @@ get_other_leg(UUID, Props, 'undefined') ->
                           );
 get_other_leg(_UUID, _Props, OtherLeg) -> OtherLeg.
 
--spec maybe_other_bridge_leg(ne_binary(), wh_proplist(), ne_binary(), ne_binary()) ->
+-spec maybe_other_bridge_leg(ne_binary(), kz_proplist(), ne_binary(), ne_binary()) ->
                                     api_binary().
 maybe_other_bridge_leg(UUID, _Props, UUID, OtherLeg) -> OtherLeg;
 maybe_other_bridge_leg(UUID, _Props, OtherLeg, UUID) -> OtherLeg;
@@ -776,7 +776,7 @@ maybe_other_bridge_leg(UUID, Props, _, _) ->
         BridgeId -> BridgeId
     end.
 
--spec maybe_update_interaction_id(wh_proplist(), atom()) -> 'ok'.
+-spec maybe_update_interaction_id(kz_proplist(), atom()) -> 'ok'.
 maybe_update_interaction_id(Props, Node) ->
     case props:get_value(?GET_CUSTOM_HEADER(<<"Core-UUID">>), Props) of
         'undefined' -> 'ok';
@@ -785,7 +785,7 @@ maybe_update_interaction_id(Props, Node) ->
             maybe_update_interaction_id(Props, Node, {CoreUUID, RemoteUUID})
     end.
 
--spec maybe_update_interaction_id(wh_proplist(), atom(), tuple()) -> 'ok'.
+-spec maybe_update_interaction_id(kz_proplist(), atom(), tuple()) -> 'ok'.
 maybe_update_interaction_id(_Props, _Node, {CoreUUID, CoreUUID}) -> 'ok';
 maybe_update_interaction_id(Props, Node, _) ->
     case props:get_value(?GET_CCV_HEADER(<<"replaces-call-id">>), Props) of
@@ -795,13 +795,13 @@ maybe_update_interaction_id(Props, Node, _) ->
             kz_cache:store_local(?ECALLMGR_INTERACTION_CACHE, CallId, CDR),
             case fetch(CallId) of
                 {'ok', Channel} ->
-                    OtherLeg = wh_json:get_value(<<"other_leg">>, Channel),
+                    OtherLeg = kz_json:get_value(<<"other_leg">>, Channel),
                     ecallmgr_fs_command:set(Node, OtherLeg, [{<<?CALL_INTERACTION_ID>>, CDR}]),
                     'ok';
                 _ -> 'ok'
             end
     end.
 
--spec new(wh_proplist(), atom()) -> 'ok'.
+-spec new(kz_proplist(), atom()) -> 'ok'.
 new(Props, Node) ->
     ecallmgr_fs_channels:new(props_to_record(Props, Node)).

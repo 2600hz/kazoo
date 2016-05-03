@@ -18,7 +18,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get(ne_binary()) -> {'error', any()} | {'ok', wh_json:object()}.
+-spec get(ne_binary()) -> {'error', any()} | {'ok', kz_json:object()}.
 get(Account) ->
     Options = [
         'reduce'
@@ -31,11 +31,11 @@ get(Account) ->
             Data =
                 lists:foldl(
                     fun(JObj, Acc) ->
-                        Key = wh_json:get_value(<<"key">>, JObj),
-                        Value = wh_json:get_value(<<"value">>, JObj),
-                        wh_json:set_value(Key, Value, Acc)
+                        Key = kz_json:get_value(<<"key">>, JObj),
+                        Value = kz_json:get_value(<<"value">>, JObj),
+                        kz_json:set_value(Key, Value, Acc)
                     end
-                    ,wh_json:new()
+                    ,kz_json:new()
                     ,JObjs
                 ),
             {'ok', Data}

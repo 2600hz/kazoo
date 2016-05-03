@@ -41,37 +41,37 @@ init() ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
-    'true' = wapi_notifications:port_cancel_v(JObj),
-    wh_util:put_callid(JObj),
+    'true' = kapi_notifications:port_cancel_v(JObj),
+    kz_util:put_callid(JObj),
 
     lager:debug("an in-progress port has been cancelled, sending email notification"),
 
     {'ok', AccountDoc} = notify_util:get_account_doc(JObj),
-    AccountJObj = wh_doc:public_fields(AccountDoc),
+    AccountJObj = kz_doc:public_fields(AccountDoc),
 
     lager:debug("creating port cancel notice for ~s(~s)", [kz_account:name(AccountJObj)
-                                                           ,wh_doc:account_id(AccountDoc)
+                                                           ,kz_doc:account_id(AccountDoc)
                                                           ]),
 
     Props = create_template_props(JObj, AccountJObj),
 
-    CustomTxtTemplate = wh_json:get_value([<<"notifications">>, <<"port_cancel">>, <<"email_text_template">>], AccountJObj),
+    CustomTxtTemplate = kz_json:get_value([<<"notifications">>, <<"port_cancel">>, <<"email_text_template">>], AccountJObj),
     {'ok', TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
     lager:debug("txt body: ~s", [TxtBody]),
 
-    CustomHtmlTemplate = wh_json:get_value([<<"notifications">>, <<"port_cancel">>, <<"email_html_template">>], AccountJObj),
+    CustomHtmlTemplate = kz_json:get_value([<<"notifications">>, <<"port_cancel">>, <<"email_html_template">>], AccountJObj),
     {'ok', HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
     lager:debug("html body: ~s", [HTMLBody]),
 
-    CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"port_cancel">>, <<"email_subject_template">>], AccountJObj),
+    CustomSubjectTemplate = kz_json:get_value([<<"notifications">>, <<"port_cancel">>, <<"email_subject_template">>], AccountJObj),
     {'ok', Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
     lager:debug("subject: ~s", [Subject]),
 
     case notify_util:get_rep_email(AccountDoc) of
         'undefined' ->
-            SysAdminEmail = whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<>>),
+            SysAdminEmail = kapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<>>),
             build_and_send_email(TxtBody, HTMLBody, Subject, SysAdminEmail, Props);
         RepEmail ->
             build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props)
@@ -83,12 +83,12 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props(wh_json:object(), wh_json:object()) -> wh_proplist().
+-spec create_template_props(kz_json:object(), kz_json:object()) -> kz_proplist().
 create_template_props(NotifyJObj, AccountJObj) ->
-    Admin = notify_util:find_admin(wh_json:get_value(<<"Authorized-By">>, NotifyJObj)),
+    Admin = notify_util:find_admin(kz_json:get_value(<<"Authorized-By">>, NotifyJObj)),
 
     PortDoc = find_port_info(NotifyJObj),
-    PortData = notify_util:json_to_template_props(wh_doc:public_fields(PortDoc)),
+    PortData = notify_util:json_to_template_props(kz_doc:public_fields(PortDoc)),
     Request = props:delete_keys([<<"uploads">>, <<"numbers">>], PortData),
 
     [Number|_]=Numbers = find_numbers(PortData, NotifyJObj),
@@ -102,9 +102,9 @@ create_template_props(NotifyJObj, AccountJObj) ->
      ,{<<"send_from">>, get_send_from(PortDoc, Admin)}
     ].
 
--spec get_send_from(wh_json:object(), wh_json:object()) -> ne_binary().
+-spec get_send_from(kz_json:object(), kz_json:object()) -> ne_binary().
 get_send_from(PortDoc, Admin) ->
-    case wh_json:get_first_defined([<<"email">>
+    case kz_json:get_first_defined([<<"email">>
                                     ,[<<"Port">>, <<"email">>]
                                    ], PortDoc)
     of
@@ -112,43 +112,43 @@ get_send_from(PortDoc, Admin) ->
         Email -> Email
     end.
 
--spec get_admin_send_from(wh_json:object()) -> ne_binary().
+-spec get_admin_send_from(kz_json:object()) -> ne_binary().
 get_admin_send_from(Admin) ->
-    case wh_json:get_ne_value(<<"email">>, Admin) of
+    case kz_json:get_ne_value(<<"email">>, Admin) of
         'undefined' -> get_default_from();
         Email -> Email
     end.
 
 -spec get_default_from() -> ne_binary().
 get_default_from() ->
-    DefaultFrom = wh_util:to_binary(node()),
-    whapps_config:get_binary(?MOD_CONFIG_CAT, <<"default_from">>, DefaultFrom).
+    DefaultFrom = kz_util:to_binary(node()),
+    kapps_config:get_binary(?MOD_CONFIG_CAT, <<"default_from">>, DefaultFrom).
 
--spec find_numbers(wh_proplist(), wh_json:object()) -> ne_binaries().
+-spec find_numbers(kz_proplist(), kz_json:object()) -> ne_binaries().
 find_numbers(PortData, NotifyJObj) ->
     case props:get_value(<<"numbers">>, PortData) of
         'undefined' -> find_numbers(NotifyJObj);
         Ns -> Ns
     end.
 
--spec find_numbers(wh_json:object()) -> ne_binaries().
+-spec find_numbers(kz_json:object()) -> ne_binaries().
 find_numbers(NotifyJObj) ->
-    [wh_json:get_value(<<"Number">>, NotifyJObj)].
+    [kz_json:get_value(<<"Number">>, NotifyJObj)].
 
--spec find_port_info(wh_json:object()) -> wh_json:object().
+-spec find_port_info(kz_json:object()) -> kz_json:object().
 find_port_info(NotifyJObj) ->
-    case wh_json:get_ne_value(<<"Port-Request-ID">>, NotifyJObj) of
+    case kz_json:get_ne_value(<<"Port-Request-ID">>, NotifyJObj) of
         'undefined' -> NotifyJObj;
         PortRequestId ->
             Doc = find_port_doc(PortRequestId),
-            wh_json:set_value(<<"port_id">>, PortRequestId, Doc)
+            kz_json:set_value(<<"port_id">>, PortRequestId, Doc)
     end.
 
--spec find_port_doc(ne_binary()) -> wh_json:object().
+-spec find_port_doc(ne_binary()) -> kz_json:object().
 find_port_doc(PortRequestId) ->
     case kz_datamgr:open_cache_doc(?KZ_PORT_REQUESTS_DB, PortRequestId) of
         {'ok', PortDoc} -> PortDoc;
-        {'error', _} -> wh_json:new()
+        {'error', _} -> kz_json:new()
     end.
 
 %%--------------------------------------------------------------------
@@ -157,7 +157,7 @@ find_port_doc(PortRequestId) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist()) -> 'ok'.
+-spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), kz_proplist()) -> 'ok'.
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To)->
     _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
     'ok';

@@ -146,13 +146,13 @@ fold(Routing, Payload) ->
 %% Helper functions for working on a result set of bindings
 %% @end
 %%-------------------------------------------------------------------
--spec any(wh_proplist(), function()) -> boolean().
+-spec any(kz_proplist(), function()) -> boolean().
 any(Res, F) when is_list(Res),
                  is_function(F, 1)
                  ->
     lists:any(F, Res).
 
--spec all(wh_proplist(), function()) -> boolean().
+-spec all(kz_proplist(), function()) -> boolean().
 all(Res, F) when is_list(Res),
                  is_function(F, 1)
                  ->
@@ -324,7 +324,7 @@ gift_data() -> 'ok'.
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    wh_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?LOG_SYSTEM_ID),
     lager:debug("starting bindings server"),
     {'ok', #state{}}.
 
@@ -599,7 +599,7 @@ fold_bind_results([#kz_responder{module=M
         {'EXIT', _E} ->
             ST = erlang:get_stacktrace(),
             lager:error("~s:~s/~p died unexpectedly: ~p", [M, F, length(Payload), _E]),
-            wh_util:log_stacktrace(ST),
+            kz_util:log_stacktrace(ST),
             fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders);
         Pay1 ->
             fold_bind_results(Responders, [Pay1|Tokens], Route, RespondersLen, ReRunResponders)
@@ -615,7 +615,7 @@ fold_bind_results([#kz_responder{module=M
         _T:_E ->
             ST = erlang:get_stacktrace(),
             lager:error("excepted: ~s: ~p", [_T, _E]),
-            wh_util:log_stacktrace(ST),
+            kz_util:log_stacktrace(ST),
             fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders)
     end;
 fold_bind_results([], Payload, _Route, _RespondersLen, []) ->
@@ -651,14 +651,14 @@ log_undefined(M, F, Length, [{RealM, RealF, RealArgs,_}|_]) ->
     lager:debug("in call ~s:~s/~b", [M, F, Length]);
 log_undefined(M, F, Length, ST) ->
     lager:debug("undefined function ~s:~s/~b", [M, F, Length]),
-    wh_util:log_stacktrace(ST).
+    kz_util:log_stacktrace(ST).
 
 log_function_clause(M, F, Length, [{M, F, _Args, _}|_]) ->
     lager:error("unable to find function clause for ~s:~s/~b", [M, F, Length]);
 log_function_clause(M, F, Length, [{RealM, RealF, RealArgs, Where}|_ST]) ->
     lager:error("unable to find function clause for ~s:~s(~s) in ~s:~p"
                 ,[RealM, RealF
-                  ,wh_util:join_binary([wh_util:to_binary(io_lib:format("~p",[A])) || A <- RealArgs], <<", ">>)
+                  ,kz_util:join_binary([kz_util:to_binary(io_lib:format("~p",[A])) || A <- RealArgs], <<", ">>)
                   ,props:get_value('file', Where), props:get_value('line', Where)
                  ]
                ),
@@ -667,7 +667,7 @@ log_function_clause(M, F, Length, [{RealM, RealF, RealArgs, Where}|_ST]) ->
     'ok';
 log_function_clause(M, F, Lenth, ST) ->
     lager:error("no matching function clause for ~s:~s/~p", [M, F, Lenth]),
-    wh_util:log_stacktrace(ST).
+    kz_util:log_stacktrace(ST).
 
 -spec map_processor(ne_binary(), payload(), kz_bindings()) -> list().
 map_processor(Routing, Payload, Bindings) when not is_list(Payload) ->

@@ -17,13 +17,13 @@
         ]).
 
 -include("crossbar.hrl").
--include_lib("whistle/include/wapi_conf.hrl").
+-include_lib("kazoo/include/kapi_conf.hrl").
 
 -define(CB_LIST, <<"websockets/crossbar_listing">>).
 
 -define(
     TO_JSON(Binding, Event)
-    ,wh_json:from_list([
+    ,kz_json:from_list([
         {<<"binding">>, Binding}
         ,{<<"event">>, Event}
     ])
@@ -44,7 +44,7 @@
 
 -define(
     AVAILABLE
-    ,wh_json:from_list([
+    ,kz_json:from_list([
         {<<"call">>, ?CALL}
         ,{<<"fax">>, [?TO_JSON(<<"fax.status.*">>, <<"fax">>)]}
         ,{<<"object">>, ?OBJECTS}
@@ -225,13 +225,13 @@ read(Id, Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec blackhole_req(cb_context:context(), wh_proplist()) -> cb_context:context().
+-spec blackhole_req(cb_context:context(), kz_proplist()) -> cb_context:context().
 blackhole_req(Context, Props) ->
     Req = [{<<"Msg-ID">>, cb_context:req_id(Context)}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case whapps_util:amqp_pool_collect(Req ++ Props
-                                       ,fun wapi_blackhole:publish_get_req/1
+    case kapps_util:amqp_pool_collect(Req ++ Props
+                                       ,fun kapi_blackhole:publish_get_req/1
                                        ,{'blackhole', 'true'}
                                       )
     of
@@ -248,8 +248,8 @@ blackhole_req(Context, Props) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec blackhole_resp(cb_context:context(), wh_json:objects()) -> cb_context:context().
--spec blackhole_resp(cb_context:context(), wh_json:objects(), any()) -> cb_context:context().
+-spec blackhole_resp(cb_context:context(), kz_json:objects()) -> cb_context:context().
+-spec blackhole_resp(cb_context:context(), kz_json:objects(), any()) -> cb_context:context().
 blackhole_resp(Context, JObjs) ->
     blackhole_resp(Context, JObjs, []).
 
@@ -258,7 +258,7 @@ blackhole_resp(Context, [], RespData) ->
                                  ,{fun cb_context:set_resp_data/2, RespData}
                                 ]);
 blackhole_resp(Context, [JObj|JObjs], RespData) ->
-    case wh_json:get_value(<<"Data">>, JObj) of
+    case kz_json:get_value(<<"Data">>, JObj) of
         'undefined' ->
             blackhole_resp(Context, JObjs, RespData);
         Data when is_list(Data) ->

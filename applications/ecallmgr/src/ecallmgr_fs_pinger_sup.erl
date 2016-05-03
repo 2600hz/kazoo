@@ -33,7 +33,7 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec add_node(atom(), wh_proplist()) -> sup_startchild_ret().
+-spec add_node(atom(), kz_proplist()) -> sup_startchild_ret().
 add_node(Node, Options) ->
     ChildSpec = ?WORKER_NAME_ARGS_TYPE(Node, 'ecallmgr_fs_pinger', [Node, Options], 'transient'),
     supervisor:start_child(?SERVER, ChildSpec).

@@ -30,60 +30,60 @@
 -define(RECONCILE_REGEX, ?DEFAULT_RECONCILE_REGEX).
 
 -else.
--define(DEFAULT_CONVERTER, whapps_config:get(?KNM_CONFIG_CAT, <<"converter">>, ?DEFAULT_CONVERTER_B)).
+-define(DEFAULT_CONVERTER, kapps_config:get(?KNM_CONFIG_CAT, <<"converter">>, ?DEFAULT_CONVERTER_B)).
 
 -define(RECONCILE_REGEX,
-        whapps_config:get_binary(?KNM_CONFIG_CAT, ?KEY_RECONCILE_REGEX, ?DEFAULT_RECONCILE_REGEX)).
+        kapps_config:get_binary(?KNM_CONFIG_CAT, ?KEY_RECONCILE_REGEX, ?DEFAULT_RECONCILE_REGEX)).
 
 -endif.
 
--define(CONVERTER_MOD, wh_util:to_atom(<<"knm_converter_", (?DEFAULT_CONVERTER)/binary>>, 'true')).
+-define(CONVERTER_MOD, kz_util:to_atom(<<"knm_converter_", (?DEFAULT_CONVERTER)/binary>>, 'true')).
 
 -define(DEFAULT_RECONCILE_REGEX, <<"^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*$">>).
 -define(KEY_RECONCILE_REGEX, <<"reconcile_regex">>).
 
 -define(CLASSIFIER_TOLLFREE_US
-        ,wh_json:from_list([{<<"regex">>, <<"^\\+1((?:800|888|877|866|855)\\d{7})$">>}
+        ,kz_json:from_list([{<<"regex">>, <<"^\\+1((?:800|888|877|866|855)\\d{7})$">>}
                             ,{<<"friendly_name">>, <<"US TollFree">>}
                             ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
                            ])
        ).
 
 -define(CLASSIFIER_TOLLFREE
-        ,wh_json:from_list([{<<"regex">>, <<"^\\+1(900\\d{7})$">>}
+        ,kz_json:from_list([{<<"regex">>, <<"^\\+1(900\\d{7})$">>}
                             ,{<<"friendly_name">>, <<"US Toll">>}
                             ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
                            ])
        ).
 
 -define(CLASSIFIER_EMERGENCY
-        ,wh_json:from_list([{<<"regex">>, <<"^(911)$">>}
+        ,kz_json:from_list([{<<"regex">>, <<"^(911)$">>}
                             ,{<<"friendly_name">>, <<"Emergency Dispatcher">>}
                            ])
        ).
 
 -define(CLASSIFIER_CARIBBEAN
-        ,wh_json:from_list([{<<"regex">>, <<"^\\+?1((?:684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340)\\d{7})$">>}
+        ,kz_json:from_list([{<<"regex">>, <<"^\\+?1((?:684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340)\\d{7})$">>}
                             ,{<<"friendly_name">>, <<"Caribbean">>}
                             ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
                            ])
        ).
 
 -define(CLASSIFIER_DID_US
-        ,wh_json:from_list([{<<"regex">>, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>}
+        ,kz_json:from_list([{<<"regex">>, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>}
                             ,{<<"friendly_name">>, <<"US DID">>}
                             ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
                            ])
        ).
 
 -define(CLASSIFIER_INTERNATIONAL
-        ,wh_json:from_list([{<<"regex">>, <<"^(011\\d*)$|^(00\\d*)$">>}
+        ,kz_json:from_list([{<<"regex">>, <<"^(011\\d*)$|^(00\\d*)$">>}
                             ,{<<"friendly_name">>, <<"International">>}
                            ])
        ).
 
 -define(CLASSIFIER_UNKNOWN
-        ,wh_json:from_list([{<<"regex">>, <<"^(.*)$">>}
+        ,kz_json:from_list([{<<"regex">>, <<"^(.*)$">>}
                             ,{<<"friendly_name">>, <<"Unknown">>}
                            ])
        ).
@@ -112,7 +112,7 @@ normalize(?NE_BINARY = Num) ->
 normalize(?NE_BINARY = Num, AccountId) ->
     (?CONVERTER_MOD):normalize(Num, AccountId).
 
--spec normalize(ne_binary(), api_binary(), wh_json:object()) ->
+-spec normalize(ne_binary(), api_binary(), kz_json:object()) ->
                        ne_binary().
 normalize(?NE_BINARY = Num, AccountId, DialPlan) ->
     (?CONVERTER_MOD):normalize(Num, AccountId, DialPlan).
@@ -185,7 +185,7 @@ is_reconcilable(Number) ->
 
 -spec is_reconcilable(ne_binary(), ne_binary()) -> boolean().
 is_reconcilable(Number, AccountId) ->
-    Regex = whapps_account_config:get_global(
+    Regex = kapps_account_config:get_global(
               AccountId
               ,?KNM_CONFIG_CAT
               ,?KEY_RECONCILE_REGEX
@@ -211,12 +211,12 @@ is_reconcilable_by_regex(Num, Regex) ->
 %% @end
 %%--------------------------------------------------------------------
 -ifdef(TEST).
--define(CLASSIFIERS, wh_json:from_list(?DEFAULT_CLASSIFIERS)).
+-define(CLASSIFIERS, kz_json:from_list(?DEFAULT_CLASSIFIERS)).
 -else.
 -define(CLASSIFIERS
-        ,whapps_config:get(?KNM_CONFIG_CAT
+        ,kapps_config:get(?KNM_CONFIG_CAT
                            ,<<"classifiers">>
-                           ,wh_json:from_list(?DEFAULT_CLASSIFIERS)
+                           ,kz_json:from_list(?DEFAULT_CLASSIFIERS)
                           )
        ).
 -endif.
@@ -224,7 +224,7 @@ is_reconcilable_by_regex(Num, Regex) ->
 -spec classify(ne_binary()) -> api_binary().
 classify(Number) ->
     Num = normalize(Number),
-    classify_number(Num, wh_json:to_proplist(?CLASSIFIERS)).
+    classify_number(Num, kz_json:to_proplist(?CLASSIFIERS)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -232,10 +232,10 @@ classify(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec available_classifiers() -> wh_json:object().
+-spec available_classifiers() -> kz_json:object().
 available_classifiers() ->
-    wh_json:foldl(fun correct_depreciated_classifiers/3
-                  ,wh_json:new()
+    kz_json:foldl(fun correct_depreciated_classifiers/3
+                  ,kz_json:new()
                   ,?CLASSIFIERS
                  ).
 
@@ -247,7 +247,7 @@ available_classifiers() ->
 %%--------------------------------------------------------------------
 -spec available_converters() -> ne_binaries().
 available_converters() ->
-    whapps_config:get(?KNM_CONFIG_CAT, <<"converters">>, ?DEFAULT_CONVERTERS).
+    kapps_config:get(?KNM_CONFIG_CAT, <<"converters">>, ?DEFAULT_CONVERTERS).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -267,7 +267,7 @@ default_converter() -> ?CONVERTER_MOD.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec classify_number(ne_binary(), wh_proplist() | ne_binary()) -> api_binary().
+-spec classify_number(ne_binary(), kz_proplist() | ne_binary()) -> api_binary().
 classify_number(Num, []) ->
     lager:debug("unable to classify number ~s", [Num]),
     'undefined';
@@ -276,7 +276,7 @@ classify_number(Num, [{Classification, Classifier}|Classifiers]) ->
         'nomatch' -> classify_number(Num, Classifiers);
         _ ->
             lager:debug("number '~s' is classified as ~s", [Num, Classification]),
-            wh_util:to_binary(Classification)
+            kz_util:to_binary(Classification)
     end.
 
 %%--------------------------------------------------------------------
@@ -284,29 +284,29 @@ classify_number(Num, [{Classification, Classifier}|Classifiers]) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_classifier_regex(ne_binary() | wh_json:object()) -> ne_binary().
+-spec get_classifier_regex(ne_binary() | kz_json:object()) -> ne_binary().
 get_classifier_regex(Classifier) when is_binary(Classifier) ->
     Classifier;
 get_classifier_regex(JObj) ->
-    wh_json:get_value(<<"regex">>, JObj, <<"^$">>).
+    kz_json:get_value(<<"regex">>, JObj, <<"^$">>).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec correct_depreciated_classifiers(wh_json:key(), wh_json:json_term(), wh_json:object()) ->
-                                             wh_json:object().
+-spec correct_depreciated_classifiers(kz_json:key(), kz_json:json_term(), kz_json:object()) ->
+                                             kz_json:object().
 correct_depreciated_classifiers(Classifier, ?NE_BINARY = Regex, JObj) ->
-    J = wh_json:from_list([{<<"regex">>, Regex}
+    J = kz_json:from_list([{<<"regex">>, Regex}
                            ,{<<"friendly_name">>, Classifier}
                           ]),
-    wh_json:set_value(Classifier, J, JObj);
+    kz_json:set_value(Classifier, J, JObj);
 correct_depreciated_classifiers(Classifier, J, JObj) ->
-    case wh_json:get_value(<<"friendly_name">>, J) of
+    case kz_json:get_value(<<"friendly_name">>, J) of
         'undefined' ->
-            Updated = wh_json:set_value(<<"friendly_name">>, Classifier, JObj),
-            wh_json:set_value(Classifier, Updated, JObj);
+            Updated = kz_json:set_value(<<"friendly_name">>, Classifier, JObj),
+            kz_json:set_value(Classifier, Updated, JObj);
         _Else ->
-            wh_json:set_value(Classifier, J, JObj)
+            kz_json:set_value(Classifier, J, JObj)
     end.

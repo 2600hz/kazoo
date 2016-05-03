@@ -165,7 +165,7 @@ s(Name) ->
 %%--------------------------------------------------------------------
 -spec init(list()) -> {'ok', state()}.
 init([Name, _CandidateNodes, _OptArgs, Mod, Arg, _Options]) ->
-    wh_util:put_callid(wapi_leader:queue()),
+    kz_util:put_callid(kapi_leader:queue()),
     gen_server:cast(self(), {'init', Arg}),
     State = #state{name = Name
                    ,callback_module = Mod
@@ -596,23 +596,23 @@ send(Pid, Msg) when is_atom(Pid); node() =:= erlang:node(Pid); node() =:= elemen
     lager:debug("local message ~p: ~p", [Msg, Pid]),
     Pid ! Msg;
 send({Name, Node}, Msg) when is_atom(Name) andalso is_atom(Node) ->
-    Route = wapi_leader:route(Name, Node),
+    Route = kapi_leader:route(Name, Node),
     send(Route, Msg);
 send({#state{name = Name}, Node}, Msg) ->
     send({Name, Node}, Msg);
 send({Name, #sign{node = Node}}, Msg) ->
     send({Name, Node}, Msg);
 send(Pid, Msg) when is_pid(Pid) ->
-    Route = wapi_leader:route(Pid),
+    Route = kapi_leader:route(Pid),
     send(Route, Msg);
 send(#sign{name = Name, node = Node}, Msg) ->
     send({Name, Node}, Msg);
 send(Route, Msg) when is_binary(Route) ->
     lager:debug("amqp message ~p: ~p", [Msg, Route]),
-    Props = [{<<"Message">>, wh_util:to_hex_binary(erlang:term_to_binary(Msg))}
-             | wh_api:default_headers(<<"leader">>, <<"message">>, ?APP_NAME, ?APP_VERSION)
+    Props = [{<<"Message">>, kz_util:to_hex_binary(erlang:term_to_binary(Msg))}
+             | kz_api:default_headers(<<"leader">>, <<"message">>, ?APP_NAME, ?APP_VERSION)
             ],
-    wapi_leader:publish_req(Route, Props).
+    kapi_leader:publish_req(Route, Props).
 
 -spec node(sign() | pid()) -> atom().
 node(#sign{node = Node}) when is_atom(Node) -> Node.

@@ -149,7 +149,7 @@ create(Context) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(?MATCH_MODB_PREFIX(Year,Month,_) = Id, Context) ->
-    Context1 = cb_context:set_account_modb(Context, wh_util:to_integer(Year), wh_util:to_integer(Month)),
+    Context1 = cb_context:set_account_modb(Context, kz_util:to_integer(Year), kz_util:to_integer(Month)),
     crossbar_doc:load(Id, Context1, ?TYPE_CHECK_OPTION(<<"sms">>));
 read(Id, Context) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"sms">>)).
@@ -168,7 +168,7 @@ on_successful_validation(Context) ->
     AccountDb = cb_context:account_modb(Context),
     kazoo_modb:create(AccountDb),
     ResellerId = cb_context:reseller_id(Context),
-    Realm = wh_util:get_account_realm(AccountId),
+    Realm = kz_util:get_account_realm(AccountId),
 
     {AuthorizationType, Authorization, OwnerId} =
         case {cb_context:user_id(Context), cb_context:auth_user_id(Context)} of
@@ -182,9 +182,9 @@ on_successful_validation(Context) ->
                 {<<"user">>, UserId, UserId}
         end,
 
-    {ToNum, ToOptions} = build_number(wh_json:get_value(<<"to">>, JObj)),
+    {ToNum, ToOptions} = build_number(kz_json:get_value(<<"to">>, JObj)),
     ToUser =
-        case whapps_account_config:get_global(AccountId, ?MOD_CONFIG_CAT, <<"api_e164_convert_to">>, 'false')
+        case kapps_account_config:get_global(AccountId, ?MOD_CONFIG_CAT, <<"api_e164_convert_to">>, 'false')
             andalso knm_converters:is_reconcilable(filter_number(ToNum), AccountId)
         of
             'true' -> knm_converters:normalize(filter_number(ToNum), AccountId);
@@ -192,9 +192,9 @@ on_successful_validation(Context) ->
         end,
     To = <<ToUser/binary, "@", Realm/binary>>,
 
-    {FromNum, FromOptions} = build_number(wh_json:get_value(<<"from">>, JObj, get_default_caller_id(Context, OwnerId))),
+    {FromNum, FromOptions} = build_number(kz_json:get_value(<<"from">>, JObj, get_default_caller_id(Context, OwnerId))),
     FromUser =
-        case whapps_account_config:get_global(AccountId, ?MOD_CONFIG_CAT, <<"api_e164_convert_from">>, 'false')
+        case kapps_account_config:get_global(AccountId, ?MOD_CONFIG_CAT, <<"api_e164_convert_from">>, 'false')
             andalso knm_converters:is_reconcilable(filter_number(FromNum), AccountId)
         of
             'true' -> knm_converters:normalize(filter_number(FromNum), AccountId);
@@ -208,7 +208,7 @@ on_successful_validation(Context) ->
     SmsDocId = create_sms_doc_id(),
 
     cb_context:set_doc(cb_context:set_account_db(Context, AccountDb)
-                       ,wh_json:set_values(
+                       ,kz_json:set_values(
                           props:filter_undefined(
                             [{<<"pvt_type">>, <<"sms">>}
                              ,{<<"pvt_status">>, <<"queued">>}
@@ -219,7 +219,7 @@ on_successful_validation(Context) ->
                              ,{<<"pvt_authorization_type">>, AuthorizationType}
                              ,{<<"pvt_authorization">>, Authorization}
                              ,{<<"pvt_origin">>, <<"api">>}
-                             ,{<<"pvt_address_options">>, wh_json:from_list(AddrOpts)}
+                             ,{<<"pvt_address_options">>, kz_json:from_list(AddrOpts)}
                              ,{<<"request">>, To}
                              ,{<<"request_user">>, ToUser}
                              ,{<<"request_realm">>, Realm}
@@ -230,8 +230,8 @@ on_successful_validation(Context) ->
                              ,{<<"from_user">>, FromUser}
                              ,{<<"from_realm">>, Realm}
                              ,{<<"_id">>, SmsDocId}
-                             ,{<<"pvt_created">>, wh_util:current_tstamp()}
-                             ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+                             ,{<<"pvt_created">>, kz_util:current_tstamp()}
+                             ,{<<"pvt_modified">>, kz_util:current_tstamp()}
                             ])
                           ,JObj
                          )).
@@ -242,28 +242,28 @@ on_successful_validation(Context) ->
 -spec get_default_caller_id(cb_context:context(), api_binary()) -> api_binary().
 get_default_caller_id(Context, 'undefined') ->
     {'ok', JObj} = kz_account:fetch(cb_context:account_id(Context)),
-    wh_json:get_first_defined(
+    kz_json:get_first_defined(
       [?CALLER_ID_INTERNAL, ?CALLER_ID_EXTERNAL]
       ,JObj
-      ,wh_util:anonymous_caller_id_number()
+      ,kz_util:anonymous_caller_id_number()
      );
 get_default_caller_id(Context, OwnerId) ->
     AccountDb = cb_context:account_db(Context),
     {'ok', JObj1} = kz_account:fetch(AccountDb),
     {'ok', JObj2} = kz_datamgr:open_cache_doc(AccountDb, OwnerId),
-    wh_json:get_first_defined(
+    kz_json:get_first_defined(
       [?CALLER_ID_INTERNAL, ?CALLER_ID_EXTERNAL]
-      ,wh_json:merge_recursive(JObj1, JObj2)
-      ,wh_util:anonymous_caller_id_number()
+      ,kz_json:merge_recursive(JObj1, JObj2)
+      ,kz_util:anonymous_caller_id_number()
      ).
 
 -spec create_sms_doc_id() -> ne_binary().
 create_sms_doc_id() ->
     {Year, Month, _} = erlang:date(),
-    wh_util:to_binary(
+    kz_util:to_binary(
       io_lib:format("~B~s-~s",[Year
-                               ,wh_util:pad_month(Month)
-                               ,wh_util:rand_hex_binary(16)
+                               ,kz_util:pad_month(Month)
+                               ,kz_util:rand_hex_binary(16)
                               ])
      ).
 
@@ -289,20 +289,20 @@ summary(Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [normalize_view_result_value(wh_json:get_value(<<"value">>, JObj))|Acc].
+    [normalize_view_result_value(kz_json:get_value(<<"value">>, JObj))|Acc].
 
--spec normalize_view_result_value(wh_json:object()) -> wh_json:object().
+-spec normalize_view_result_value(kz_json:object()) -> kz_json:object().
 normalize_view_result_value(JObj) ->
-    Date = wh_util:rfc1036(wh_json:get_value(<<"created">>, JObj)),
-    wh_json:set_value(<<"date">>, Date, JObj).
+    Date = kz_util:rfc1036(kz_json:get_value(<<"created">>, JObj)),
+    kz_json:set_value(<<"date">>, Date, JObj).
 
 -spec get_view_and_filter(cb_context:context()) ->
                                  {ne_binary(), api_binaries(), api_binaries()}.
 get_view_and_filter(Context) ->
     case {cb_context:device_id(Context), cb_context:user_id(Context)} of
-        {'undefined', 'undefined'} -> {?CB_LIST_ALL, 'undefined', [wh_json:new()]};
+        {'undefined', 'undefined'} -> {?CB_LIST_ALL, 'undefined', [kz_json:new()]};
         {'undefined', Id} -> {?CB_LIST_BY_OWNERID, [Id], 'undefined'};
         {Id , 'undefined'} -> {?CB_LIST_BY_DEVICE, [Id], 'undefined'};
         {Id, _} -> {?CB_LIST_BY_DEVICE, [Id], 'undefined'}
@@ -315,7 +315,7 @@ filter_number(Number) ->
 -spec is_digit(integer()) -> boolean().
 is_digit(N) -> N >= $0 andalso N =< $9.
 
--spec build_number(ne_binary()) -> {api_binary(), wh_proplist()}.
+-spec build_number(ne_binary()) -> {api_binary(), kz_proplist()}.
 build_number(Number) ->
     N = binary:split(Number, <<",">>, ['global']),
     case length(N) of
@@ -323,11 +323,11 @@ build_number(Number) ->
         _ -> lists:foldl(fun parse_number/2, {'undefined', []}, N)
     end.
 
--spec parse_number(ne_binary(), {api_binary(), wh_proplist()}) ->
-                          {api_binary(), wh_proplist()}.
+-spec parse_number(ne_binary(), {api_binary(), kz_proplist()}) ->
+                          {api_binary(), kz_proplist()}.
 parse_number(<<"TON=", N/binary>>, {Num, Options}) ->
-    {Num, [{<<"TON">>, wh_util:to_integer(N) } | Options]};
+    {Num, [{<<"TON">>, kz_util:to_integer(N) } | Options]};
 parse_number(<<"NPI=", N/binary>>, {Num, Options}) ->
-    {Num, [{<<"NPI">>, wh_util:to_integer(N) } | Options]};
+    {Num, [{<<"NPI">>, kz_util:to_integer(N) } | Options]};
 parse_number(N, {_, Options}) ->
     {N, Options}.

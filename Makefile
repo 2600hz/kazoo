@@ -88,17 +88,17 @@ rel/vm.args: rel/args rel/dev-vm.args
 
 ## More ACTs at //github.com/erlware/relx/priv/templates/extended_bin
 release: ACT ?= console # start | attach | stop | console | foreground
-release: REL ?= whistle_apps # whistle_apps | ecallmgr | …
-ifneq ($(findstring whistle_apps,$(REL)),whistle_apps)
+release: REL ?= kazoo_apps # kazoo_apps | ecallmgr | …
+ifneq ($(findstring kazoo_apps,$(REL)),kazoo_apps)
 release: export KAZOO_APPS = 'ecallmgr'
 endif
 release:
 	@RELX_REPLACE_OS_VARS=true KZname='-name $(REL)' _rel/kazoo/bin/kazoo $(ACT) "$$@"
 
 
-read-release-cookie: REL ?= whistle_apps
+read-release-cookie: REL ?= kazoo_apps
 read-release-cookie:
-	@RELX_REPLACE_OS_VARS=true KZname='-name $(REL)' _rel/kazoo/bin/kazoo escript lib/whistle_config-*/priv/read-cookie.escript "$$@"
+	@RELX_REPLACE_OS_VARS=true KZname='-name $(REL)' _rel/kazoo/bin/kazoo escript lib/kazoo_config-*/priv/read-cookie.escript "$$@"
 
 DIALYZER ?= dialyzer
 PLT ?= .kazoo.plt

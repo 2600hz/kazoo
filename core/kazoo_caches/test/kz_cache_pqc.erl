@@ -31,7 +31,7 @@ correct() ->
             ,commands(?MODULE)
            ,?TRAPEXIT(
                begin
-                   wh_util:put_callid(?MODULE),
+                   kz_util:put_callid(?MODULE),
                    kz_cache:stop_local(?SERVER),
                    {'ok', P} = kz_cache:start_link(?SERVER, [{'origin_bindings', [[]]}]),
                    {History, State, Result} = run_commands(?MODULE, Cmds),

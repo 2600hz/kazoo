@@ -9,7 +9,7 @@
 
 -behaviour(application).
 
--include_lib("whistle/include/wh_types.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
 
 -export([start/2]).
 -export([stop/1]).
@@ -33,18 +33,18 @@ stop(_State) ->
 
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    _ = wapi_authn:declare_exchanges(),
-    _ = wapi_authz:declare_exchanges(),
-    _ = wapi_call:declare_exchanges(),
-    _ = wapi_conference:declare_exchanges(),
-    _ = wapi_dialplan:declare_exchanges(),
-    _ = wapi_media:declare_exchanges(),
-    _ = wapi_notifications:declare_exchanges(),
-    _ = wapi_rate:declare_exchanges(),
-    _ = wapi_registration:declare_exchanges(),
-    _ = wapi_resource:declare_exchanges(),
-    _ = wapi_route:declare_exchanges(),
-    _ = wapi_sysconf:declare_exchanges(),
-    _ = wapi_sms:declare_exchanges(),
-    _ = wapi_presence:declare_exchanges(),
-    wapi_self:declare_exchanges().
+    _ = kapi_authn:declare_exchanges(),
+    _ = kapi_authz:declare_exchanges(),
+    _ = kapi_call:declare_exchanges(),
+    _ = kapi_conference:declare_exchanges(),
+    _ = kapi_dialplan:declare_exchanges(),
+    _ = kapi_media:declare_exchanges(),
+    _ = kapi_notifications:declare_exchanges(),
+    _ = kapi_rate:declare_exchanges(),
+    _ = kapi_registration:declare_exchanges(),
+    _ = kapi_resource:declare_exchanges(),
+    _ = kapi_route:declare_exchanges(),
+    _ = kapi_sysconf:declare_exchanges(),
+    _ = kapi_sms:declare_exchanges(),
+    _ = kapi_presence:declare_exchanges(),
+    kapi_self:declare_exchanges().

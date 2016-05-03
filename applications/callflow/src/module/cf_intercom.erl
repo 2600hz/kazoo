@@ -18,19 +18,19 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    CaptureGroup = whapps_call:kvs_fetch('cf_capture_group', Call),
-    AccountId = whapps_call:account_id(Call),
+    CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
+    AccountId = kapps_call:account_id(Call),
     case is_binary(CaptureGroup) andalso cf_util:lookup_callflow(CaptureGroup, AccountId) of
         {'ok', Flow, 'false'} ->
-            JObj = case wh_json:is_true(<<"barge_calls">>, Data) of
-                       'false' -> wh_json:from_list([{<<"Auto-Answer">>, <<"true">>}]);
-                       'true' -> wh_json:from_list([{<<"Auto-Answer">>, <<"true">>}
+            JObj = case kz_json:is_true(<<"barge_calls">>, Data) of
+                       'false' -> kz_json:from_list([{<<"Auto-Answer">>, <<"true">>}]);
+                       'true' -> kz_json:from_list([{<<"Auto-Answer">>, <<"true">>}
                                                     ,{<<"Auto-Answer-Notify">>, <<"true">>}
                                                    ])
                    end,
-            whapps_call_command:set('undefined', JObj, Call),
-            cf_exe:branch(wh_json:get_value(<<"flow">>, Flow, wh_json:new()), Call);
+            kapps_call_command:set('undefined', JObj, Call),
+            cf_exe:branch(kz_json:get_value(<<"flow">>, Flow, kz_json:new()), Call);
         _ -> cf_exe:continue(Call)
     end.

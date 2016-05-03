@@ -16,28 +16,28 @@
 
 -define(CONSOLE_LOG_LEVEL
         ,{<<"console_log_level">>
-          ,fun wh_util:change_console_log_level/1
-          ,wh_config:get_atom('log', 'console', ['notice'])
+          ,fun kz_util:change_console_log_level/1
+          ,kz_config:get_atom('log', 'console', ['notice'])
          }).
 -define(SYSLOG_LOG_LEVEL
         ,{<<"syslog_log_level">>
-          ,fun wh_util:change_syslog_log_level/1
-          ,wh_config:get_atom('log', 'syslog', ['info'])
+          ,fun kz_util:change_syslog_log_level/1
+          ,kz_config:get_atom('log', 'syslog', ['info'])
          }).
 -define(ERROR_LOG_LEVEL
         ,{<<"error_log_level">>
-          ,fun wh_util:change_error_log_level/1
-          ,wh_config:get_atom('log', 'error', ['error'])
+          ,fun kz_util:change_error_log_level/1
+          ,kz_config:get_atom('log', 'error', ['error'])
          }).
 
 -spec start_link() -> startlink_ret().
 start_link() ->
-    wh_util:spawn(fun init/0),
+    kz_util:spawn(fun init/0),
     'ignore'.
 
 init() ->
-    wh_util:put_callid(?MODULE),
-    case wh_config:get_atom('ecallmgr', 'cookie') of
+    kz_util:put_callid(?MODULE),
+    case kz_config:get_atom('ecallmgr', 'cookie') of
         [] ->
             lager:info("no cookie defined for ecallmgr, leaving as ~s", [erlang:get_cookie()]);
         [Cookie|_] ->
@@ -48,10 +48,10 @@ init() ->
     set_loglevel().
 
 set_loglevel() ->
-    [Console|_] = wh_config:get_atom('log', 'console', ['notice']),
-    wh_util:change_console_log_level(Console),
-    [Syslog|_] = wh_config:get_atom('log', 'syslog', ['info']),
-    wh_util:change_syslog_log_level(Syslog),
-    [Error|_] = wh_config:get_atom('log', 'error', ['error']),
-    wh_util:change_error_log_level(Error),
+    [Console|_] = kz_config:get_atom('log', 'console', ['notice']),
+    kz_util:change_console_log_level(Console),
+    [Syslog|_] = kz_config:get_atom('log', 'syslog', ['info']),
+    kz_util:change_syslog_log_level(Syslog),
+    [Error|_] = kz_config:get_atom('log', 'error', ['error']),
+    kz_util:change_error_log_level(Error),
     'ok'.

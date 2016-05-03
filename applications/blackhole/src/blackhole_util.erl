@@ -80,12 +80,12 @@ maybe_rm_binding_from_listener(Module, Binding, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec respond_with_error(bh_context:context()) -> bh_context:context().
--spec respond_with_error(bh_context:context(), api_binary(), wh_json:object()) -> bh_context:context().
+-spec respond_with_error(bh_context:context(), api_binary(), kz_json:object()) -> bh_context:context().
 respond_with_error(Context) ->
     respond_with_error(
         Context
         ,<<"error">>
-        ,wh_json:from_list([
+        ,kz_json:from_list([
             {<<"message">>, <<"unknown error">>}
         ])
     ).
@@ -93,7 +93,7 @@ respond_with_error(Context) ->
 respond_with_error(Context, Error, JObj) ->
     lager:debug(
         "Error: ~p for socket: ~s"
-        ,[wh_json:get_value(<<"message">>, JObj), bh_context:websocket_session_id(Context)]
+        ,[kz_json:get_value(<<"message">>, JObj), bh_context:websocket_session_id(Context)]
     ),
     blackhole_data_emitter:emit(
         bh_context:websocket_pid(Context)
@@ -114,7 +114,7 @@ respond_with_authn_failure(Context) ->
     respond_with_error(
         Context
         ,<<"auth_failure">>
-        ,wh_json:from_list([
+        ,kz_json:from_list([
             {<<"message">>, <<"invalid auth token">>}
             ,{<<"cause">>, Token}
         ])
@@ -130,7 +130,7 @@ get_callback_module(Binding) ->
     case binary:split(Binding, <<".">>) of
         [M|_] ->
             Mod = special_bindings(M),
-            try wh_util:to_atom(<<"bh_", Mod/binary>>, 'true') of
+            try kz_util:to_atom(<<"bh_", Mod/binary>>, 'true') of
                 Module -> Module
             catch
                 'error':'badarg' -> 'undefined'

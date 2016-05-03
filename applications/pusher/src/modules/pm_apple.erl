@@ -26,7 +26,7 @@ start_link() ->
 
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     {'ok', #state{tab=ets:new(?MODULE, [])}}.
 
 -spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
@@ -35,7 +35,7 @@ handle_call(_Request, _From, State) ->
 
 -spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'push', JObj}, #state{tab=ETS}=State) ->
-    TokenApp = wh_json:get_value(<<"Token-App">>, JObj),
+    TokenApp = kz_json:get_value(<<"Token-App">>, JObj),
     maybe_send_push_notification(get_apns(TokenApp, ETS), JObj),
     {'noreply', State};
 handle_cast('stop', State) ->
@@ -54,13 +54,13 @@ terminate(_Reason, #state{tab=ETS}) ->
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
--spec maybe_send_push_notification(api_pid(), wh_json:object()) -> any().
+-spec maybe_send_push_notification(api_pid(), kz_json:object()) -> any().
 maybe_send_push_notification('undefined', _) -> 'ok';
 maybe_send_push_notification(Pid, JObj) ->
-    TokenID = wh_json:get_value(<<"Token-ID">>, JObj),
-    Sender = wh_json:get_value(<<"Alert-Body">>, JObj),
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    apns:send_message(Pid, #apns_msg{device_token = wh_util:to_list(TokenID)
+    TokenID = kz_json:get_value(<<"Token-ID">>, JObj),
+    Sender = kz_json:get_value(<<"Alert-Body">>, JObj),
+    CallId = kz_json:get_value(<<"Call-ID">>, JObj),
+    apns:send_message(Pid, #apns_msg{device_token = kz_util:to_list(TokenID)
                                      ,sound = <<"ring.caf">>
                                      ,extra = [{<<"call-id">>, CallId}]
                                      ,alert = #loc_alert{args = [Sender]
@@ -79,7 +79,7 @@ get_apns(App, ETS) ->
 
 -spec maybe_load_apns(api_binary(), ets:tid()) -> api_pid().
 maybe_load_apns(App, ETS) ->
-    maybe_load_apns(App, ETS, whapps_config:get_binary(?CONFIG_CAT, <<"apple">>, 'undefined', App)).
+    maybe_load_apns(App, ETS, kapps_config:get_binary(?CONFIG_CAT, <<"apple">>, 'undefined', App)).
 
 -spec maybe_load_apns(api_binary(), ets:tid(), api_binary()) -> api_pid().
 maybe_load_apns(App, _, 'undefined') ->

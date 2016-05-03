@@ -61,11 +61,11 @@ handle_resp(_Error) ->
 %%--------------------------------------------------------------------
 -spec req_uri(ne_binaries()) -> api_list().
 req_uri(ExplodedPath) ->
-    case whapps_config:get_binary(?MOD_CONFIG_CAT, <<"url">>) of
+    case kapps_config:get_binary(?MOD_CONFIG_CAT, <<"url">>) of
         'undefined' -> 'undefined';
         Url ->
-            Uri = wh_util:uri(Url, ExplodedPath),
-            wh_util:to_list(Uri)
+            Uri = kz_util:uri(Url, ExplodedPath),
+            kz_util:to_list(Uri)
     end.
 
 %%--------------------------------------------------------------------
@@ -74,10 +74,10 @@ req_uri(ExplodedPath) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec req_headers(ne_binary()) -> wh_proplist().
+-spec req_headers(ne_binary()) -> kz_proplist().
 req_headers(AuthToken) ->
     props:filter_undefined(
       [{"Content-Type", "application/json"}
-      ,{"X-Auth-Token", wh_util:to_list(AuthToken)}
-      ,{"User-Agent", wh_util:to_list(erlang:node())}
+      ,{"X-Auth-Token", kz_util:to_list(AuthToken)}
+      ,{"User-Agent", kz_util:to_list(erlang:node())}
       ]).

@@ -12,15 +12,15 @@
 
 -include("jonny5.hrl").
 
--spec handle_req(wh_json:object(), wh_proplist()) -> any().
+-spec handle_req(kz_json:object(), kz_proplist()) -> any().
 handle_req(ReqJObj, _Props) ->
-    'true' = wapi_authz:balance_check_req_v(ReqJObj),
-    wh_util:put_callid(?APP_NAME),
-    ReqAccounts = wh_json:get_list_value(<<"Accounts">>, ReqJObj),
-    RespAccounts = wh_json:from_list(lists:foldl(fun account_balance/2, [], ReqAccounts)),
+    'true' = kapi_authz:balance_check_req_v(ReqJObj),
+    kz_util:put_callid(?APP_NAME),
+    ReqAccounts = kz_json:get_list_value(<<"Accounts">>, ReqJObj),
+    RespAccounts = kz_json:from_list(lists:foldl(fun account_balance/2, [], ReqAccounts)),
     Resp = build_resp(RespAccounts, ReqJObj),
-    ServerId = wh_api:server_id(ReqJObj),
-    wapi_authz:publish_balance_check_resp(ServerId, Resp).
+    ServerId = kz_api:server_id(ReqJObj),
+    kapi_authz:publish_balance_check_resp(ServerId, Resp).
 
 -spec account_balance(ne_binary(), ne_binaries()) -> ne_binaries().
 account_balance(AccountId, Acc) ->
@@ -30,7 +30,7 @@ account_balance(AccountId, Acc) ->
 build_resp(RespAccounts, ReqJObj) ->
     props:filter_undefined(
       [{<<"Balances">>, RespAccounts}
-       ,{<<"Msg-ID">>, wh_api:msg_id(ReqJObj)}
-       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+       ,{<<"Msg-ID">>, kz_api:msg_id(ReqJObj)}
+       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 

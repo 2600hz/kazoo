@@ -68,7 +68,7 @@ fsm(WorkerSup) ->
         [P] -> P
     end.
 
--spec start_fsm(pid(), pid(), wh_json:object()) -> sup_startchild_ret().
+-spec start_fsm(pid(), pid(), kz_json:object()) -> sup_startchild_ret().
 start_fsm(WorkerSup, MgrPid, QueueJObj) ->
     ListenerPid = self(),
     supervisor:start_child(WorkerSup, ?WORKER_ARGS('acdc_queue_fsm', [MgrPid, ListenerPid, QueueJObj])).

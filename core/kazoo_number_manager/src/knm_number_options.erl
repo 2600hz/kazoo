@@ -40,7 +40,7 @@
                   {'dry_run', boolean()} |
                   {'module_name', ne_binary()} |
                   {'ported_in', boolean()} |
-                  {'public_fields', wh_json:object()} |
+                  {'public_fields', kz_json:object()} |
                   {'state', ne_binary()} |
                   {'should_delete', boolean()}.
 
@@ -100,7 +100,7 @@ auth_by(Options, Default) ->
 
 -spec public_fields(options()) -> api_object().
 public_fields(Options) ->
-    props:get_value('public_fields', Options, wh_json:new()).
+    props:get_value('public_fields', Options, kz_json:new()).
 
 -spec state(options()) -> api_binary().
 -spec state(options(), Default) -> ne_binary() | Default.

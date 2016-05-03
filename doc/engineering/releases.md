@@ -34,13 +34,13 @@ These are the exact same binary.
 
 The release can be spawned as either one of the following node types:
 * `ecallmgr`: when booting, the VM will start the `ecallmgr` application and its dependencies
-* `whistle_apps`: when booting, the VM will start the `whistle_apps` application and its dependencies
+* `kazoo_apps`: when booting, the VM will start the `kazoo_apps` application and its dependencies
 
 Once booted, the node listens to its assigned ports, writes to the system logs, does everything Kazoo did when it wasn't a release.
 Releases add no scoping nor sandboxing capabilities.
 
 `REL` is the Makefile variable that stipulates the node type of the starting release.
-It defaults to `whistle_apps` and is used as if calling `erl` with `-name` option set to `$(REL)@$(hostname)`.
+It defaults to `kazoo_apps` and is used as if calling `erl` with `-name` option set to `$(REL)@$(hostname)`.
 
 ### Start a node
 
@@ -50,7 +50,7 @@ Once built, start a release in "attached mode":
 
 Which is equivalent to
 
-    ACT=console REL=whistle_apps make release
+    ACT=console REL=kazoo_apps make release
 
 There are different ways to start/stop a release (set the Makefile `ACT` variable accordingly):
 * `console` (default value): starts a node killable with `^G q`
@@ -85,7 +85,7 @@ This gracefully stops an `ecallmgr` node:
 
 ### Read a release's cookie from Kazoo's configuration
 
-    REL=whistle_apps make read-release-cookie
+    REL=kazoo_apps make read-release-cookie
 
 This hits `/etc/kazoo/config.ini` or the file at `$KAZOO_CONFIG`
 and reads the cookie value for release `REL`.

@@ -169,26 +169,26 @@ By default, if enabled, normalization will convert all media to MP3 (retaining t
 
 ###### Via SUP
 
-Enable normalization for this particular server: `sup whapps_config set crossbar.media normalize_media true`
+Enable normalization for this particular server: `sup kapps_config set crossbar.media normalize_media true`
 
-Enable normalization for all servers: `sup whapps_config set_default crossbar.media normalize_media true`
+Enable normalization for all servers: `sup kapps_config set_default crossbar.media normalize_media true`
 
 ###### Via DB
 
 1. Open `system_config/crossbar.media` document, create or update the key `normalize_media` to `true`.
-2. Flush the whapps_config cache, `sup whapps_config flush crossbar.media`, on all servers running Crossbar.
+2. Flush the kapps_config cache, `sup kapps_config flush crossbar.media`, on all servers running Crossbar.
 
 ##### Set Target Format
 
 ###### Via SUP
 
-For the server: `sup whapps_config set crossbar.media normalization_format ogg`
+For the server: `sup kapps_config set crossbar.media normalization_format ogg`
 
-For all servers: `sup whapps_config set_default crossbar.media normalization_format ogg`
+For all servers: `sup kapps_config set_default crossbar.media normalization_format ogg`
 
 ###### Via DB
 
-In the `system_config/crossbar.media` document, create or update the key `normalization_format` to your desired format (`mp3`, `wav`, etc). Flush the whapps_config cache on all servers running Crossbar. All new uploads will be normalized (if possible) to the new format.
+In the `system_config/crossbar.media` document, create or update the key `normalization_format` to your desired format (`mp3`, `wav`, etc). Flush the kapps_config cache on all servers running Crossbar. All new uploads will be normalized (if possible) to the new format.
 
 ##### Normalization parameters
 

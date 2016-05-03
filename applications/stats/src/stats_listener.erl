@@ -3,7 +3,7 @@
 %%% @doc
 %%% Master process to gather information send by all kazoo nodes.
 %%% It listens to targeted/statistics AMPQ messages, and is accessed by
-%%% whistle_snmp for SNMP queries.
+%%% kazoo_snmp for SNMP queries.
 %%%
 %%% @end
 %%% @contributors

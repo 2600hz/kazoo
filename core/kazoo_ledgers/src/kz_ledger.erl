@@ -35,7 +35,7 @@ get(Account, Name) ->
         {'ok', []} -> {'ok', 0};
         {'error', _R}=Error -> Error;
         {'ok', [JObj|_]} ->
-            {'ok', wh_json:get_integer_value(<<"value">>, JObj, 0)}
+            {'ok', kz_json:get_integer_value(<<"value">>, JObj, 0)}
     end.
 
 %%--------------------------------------------------------------------
@@ -45,9 +45,9 @@ get(Account, Name) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec credit(ne_binary(), ne_binary()
-             ,ne_binary(), wh_proplist()) -> save_return().
+             ,ne_binary(), kz_proplist()) -> save_return().
 -spec credit(ne_binary(), ne_binary(), ne_binary()
-            ,wh_proplist(), wh_proplist()) -> save_return().
+            ,kz_proplist(), kz_proplist()) -> save_return().
 credit(SrcService, SrcId, Account, Usage) ->
     credit(SrcService, SrcId, Account, Usage, []).
 
@@ -61,9 +61,9 @@ credit(SrcService, SrcId, Account, Usage, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec debit(ne_binary(), ne_binary()
-             ,ne_binary(), wh_proplist()) -> save_return().
+             ,ne_binary(), kz_proplist()) -> save_return().
 -spec debit(ne_binary(), ne_binary(), ne_binary()
-            ,wh_proplist(), wh_proplist()) -> save_return().
+            ,kz_proplist(), kz_proplist()) -> save_return().
 debit(SrcService, SrcId, Account, Usage) ->
     debit(SrcService, SrcId, Account, Usage, []).
 
@@ -81,7 +81,7 @@ debit(SrcService, SrcId, Account, Usage, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create(ne_binary(), ne_binary(), ne_binary()
-             ,ne_binary(), wh_proplist(), wh_proplist()) -> save_return().
+             ,ne_binary(), kz_proplist(), kz_proplist()) -> save_return().
 create(Type, SrcService, SrcId, Account, Usage, Props) ->
     Routines = [
         {fun kazoo_ledger:set_type/2, Type}
@@ -102,10 +102,10 @@ create(Type, SrcService, SrcId, Account, Usage, Props) ->
 %%--------------------------------------------------------------------
 -spec set_account(ledger(), ne_binary()) -> ledger().
 set_account(Ledger, Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountId = kz_util:format_account_id(Account, 'raw'),
     Routines = [
         {fun kazoo_ledger:set_account_id/2, AccountId}
-        ,{fun kazoo_ledger:set_account_name/2, whapps_util:get_account_name(AccountId)}
+        ,{fun kazoo_ledger:set_account_name/2, kapps_util:get_account_name(AccountId)}
     ],
     lists:foldl(fun apply_routine/2, Ledger, Routines).
 
@@ -115,7 +115,7 @@ set_account(Ledger, Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_usage(ledger(), wh_proplist()) -> ledger().
+-spec set_usage(ledger(), kz_proplist()) -> ledger().
 set_usage(Ledger, []) -> Ledger;
 set_usage(Ledger, [{<<"type">>, Val}|Usage]) ->
     set_usage(kazoo_ledger:set_usage_type(Ledger, Val), Usage);
@@ -132,7 +132,7 @@ set_usage(Ledger, [_|Usage]) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_extra(ledger(), wh_proplist()) -> ledger().
+-spec set_extra(ledger(), kz_proplist()) -> ledger().
 set_extra(Ledger, []) -> Ledger;
 set_extra(Ledger, [{<<"amount">>, Val}|Props]) ->
     set_extra(kazoo_ledger:set_amount(Ledger, Val), Props);

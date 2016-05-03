@@ -18,7 +18,7 @@
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
 -define(TEMPLATE_MACROS
-        ,wh_json:from_list(
+        ,kz_json:from_list(
            [?MACRO_VALUE(<<"user.first_name">>, <<"first_name">>, <<"First Name">>, <<"First Name">>)
             ,?MACRO_VALUE(<<"user.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last Name">>)
             ,?MACRO_VALUE(<<"user.password">>, <<"password">>, <<"Password">>, <<"Password">>)
@@ -91,7 +91,7 @@ Sent from {{system.hostname}}">>).
 
 -spec init() -> 'ok'.
 init() ->
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
                                            ,{'text', ?TEMPLATE_TEXT}
                                            ,{'html', ?TEMPLATE_HTML}
@@ -105,21 +105,21 @@ init() ->
                                            ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]).
 
--spec handle_new_account(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_new_account(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_new_account(JObj, _Props) ->
-    'true' = wapi_notifications:new_account_v(JObj),
+    'true' = kapi_notifications:new_account_v(JObj),
 
-    wh_util:put_callid(JObj),
+    kz_util:put_callid(JObj),
     %% Gather data for template
-    DataJObj = wh_json:normalize(JObj),
-    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    DataJObj = kz_json:normalize(JObj),
+    AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
         'false' -> lager:debug("notification handling not configured for this account");
         'true' -> process_req(DataJObj)
     end.
 
--spec process_req(wh_json:object()) -> 'ok'.
+-spec process_req(kz_json:object()) -> 'ok'.
 process_req(DataJObj) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:account_params(DataJObj)}
@@ -134,7 +134,7 @@ process_req(DataJObj) ->
                                              ),
 
     Subject =
-        teletype_util:render_subject(wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
+        teletype_util:render_subject(kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
                                     ,Macros
                                     ),
 
@@ -145,17 +145,17 @@ process_req(DataJObj) ->
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
 
--spec admin_user_properties(wh_json:object()) -> wh_proplist().
+-spec admin_user_properties(kz_json:object()) -> kz_proplist().
 admin_user_properties(DataJObj) ->
-    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
     case kz_account:fetch(AccountId) of
         {'ok', JObj} -> account_admin_user_properties(JObj);
         {'error', _} -> []
     end.
 
--spec account_admin_user_properties(wh_json:object()) -> wh_proplist().
+-spec account_admin_user_properties(kz_json:object()) -> kz_proplist().
 account_admin_user_properties(AccountJObj) ->
-    AccountDb = wh_doc:account_db(AccountJObj),
+    AccountDb = kz_doc:account_db(AccountJObj),
     case kz_datamgr:get_all_results(AccountDb, <<"users/crossbar_listing">>) of
         {'error', _E} ->
             lager:debug("failed to get user listing from ~s: ~p", [AccountDb, _E]),
@@ -164,17 +164,17 @@ account_admin_user_properties(AccountJObj) ->
             find_admin(Users)
     end.
 
--spec find_admin(api_binaries()) -> wh_proplist().
+-spec find_admin(api_binaries()) -> kz_proplist().
 find_admin([]) ->
     lager:debug("account has no admin users"),
     [];
 find_admin([User|Users]) ->
-    case wh_json:get_value([<<"value">>, <<"priv_level">>], User) of
-        <<"admin">> -> admin_properties(wh_json:get_value(<<"value">>, User));
+    case kz_json:get_value([<<"value">>, <<"priv_level">>], User) of
+        <<"admin">> -> admin_properties(kz_json:get_value(<<"value">>, User));
         _ -> find_admin(Users)
     end.
 
--spec admin_properties(wh_json:object()) -> wh_proplist().
+-spec admin_properties(kz_json:object()) -> kz_proplist().
 admin_properties(User) ->
     Ks = [<<"first_name">>, <<"last_name">>, <<"email">>, <<"timezone">>],
-    [{K, wh_json:get_value(K, User)} || K <- Ks].
+    [{K, kz_json:get_value(K, User)} || K <- Ks].

@@ -146,7 +146,7 @@ load_conference_summary(Context) ->
                              normalize_users_results(J, A, UserId)
                      end,
             crossbar_doc:load_view(?CB_LIST, [], Context, Filter);
-        {?WH_ACCOUNTS_DB, _} ->
+        {?KZ_ACCOUNTS_DB, _} ->
             crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
         _ ->
             cb_context:add_system_error('faulty_request', Context)
@@ -167,8 +167,8 @@ maybe_create_conference(Context) ->
         {'ok', JObjs} ->
             Numbers = kz_datamgr:get_result_keys(JObjs),
             ReqData = cb_context:req_data(Context),
-            MemberNumbers = wh_json:get_value([<<"member">>, <<"numbers">>], ReqData, []),
-            ModNumbers = wh_json:get_value([<<"moderator">>, <<"numbers">>], ReqData, []),
+            MemberNumbers = kz_json:get_value([<<"member">>, <<"numbers">>], ReqData, []),
+            ModNumbers = kz_json:get_value([<<"moderator">>, <<"numbers">>], ReqData, []),
             case is_number_already_used(Numbers, MemberNumbers ++ ModNumbers) of
                 'false' ->
                     create_conference(Context);
@@ -177,7 +177,7 @@ maybe_create_conference(Context) ->
                     cb_context:add_validation_error(
                         [<<"numbers">>]
                         ,<<"unique">>
-                        ,wh_json:from_list([
+                        ,kz_json:from_list([
                             {<<"message">>, <<"Number already in use">>}
                             ,{<<"cause">>, Number}
                          ])
@@ -233,14 +233,14 @@ load_conference(DocId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_conference_details(cb_context:context(), path_token()) -> cb_context:context().
 load_conference_details(Context, ConfId) ->
-    AccountRealm = wh_util:get_account_realm(cb_context:account_id(Context)),
+    AccountRealm = kz_util:get_account_realm(cb_context:account_id(Context)),
     Req = [{<<"Realm">>, AccountRealm}
            ,{<<"Fields">>, []}
            ,{<<"Conference-ID">>, ConfId}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    ReqResp = whapps_util:amqp_pool_collect(Req
-                                            ,fun wapi_conference:publish_search_req/1
+    ReqResp = kapps_util:amqp_pool_collect(Req
+                                            ,fun kapi_conference:publish_search_req/1
                                             ,{'ecallmgr', 'true'}
                                            ),
     case ReqResp of
@@ -248,14 +248,14 @@ load_conference_details(Context, ConfId) ->
         {_, JObjs} -> participant_details(conference_participants(JObjs), Context)
     end.
 
--spec conference_participants(wh_json:objects()) -> wh_json:objects().
+-spec conference_participants(kz_json:objects()) -> kz_json:objects().
 conference_participants(JObjs) ->
     [Participant || JObj <- JObjs
-                    ,Participant <- wh_json:get_value(<<"Participants">>, JObj, [])
+                    ,Participant <- kz_json:get_value(<<"Participants">>, JObj, [])
     ].
 
--spec participant_details(wh_json:objects(), cb_context:context()) -> cb_context:context().
--spec participant_details(wh_json:objects(), cb_context:context(), wh_json:objects()) -> cb_context:context().
+-spec participant_details(kz_json:objects(), cb_context:context()) -> cb_context:context().
+-spec participant_details(kz_json:objects(), cb_context:context(), kz_json:objects()) -> cb_context:context().
 participant_details([], Context) ->
     cb_context:add_system_error('conference_not_active', Context);
 participant_details(Participants, Context) ->
@@ -264,20 +264,20 @@ participant_details(Participants, Context) ->
 participant_details([], Context, Acc) ->
     crossbar_doc:handle_json_success(Acc, Context);
 participant_details([H|T], Context, Acc) ->
-    CallId = wh_json:get_value(<<"Call-ID">>, H),
+    CallId = kz_json:get_value(<<"Call-ID">>, H),
     Req = [{<<"Call-ID">>, CallId}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case whapps_util:amqp_pool_request(Req
-                                       ,fun wapi_call:publish_channel_status_req/1
-                                       ,fun wapi_call:channel_status_resp_v/1
+    case kapps_util:amqp_pool_request(Req
+                                       ,fun kapi_call:publish_channel_status_req/1
+                                       ,fun kapi_call:channel_status_resp_v/1
                                       ) of
         {'error', E} ->
             lager:debug("error fetching channel status for ~s (~p)", [CallId, E]),
             participant_details(T, Context, Acc);
         {'ok', Resp} ->
-            Participant = wh_json:set_values([{<<"Participant-ID">>, wh_json:get_ne_binary_value(<<"Participant-ID">>, H)}
-                                              ,{<<"Mute">>, not wh_json:is_true(<<"Speak">>, H)}
+            Participant = kz_json:set_values([{<<"Participant-ID">>, kz_json:get_ne_binary_value(<<"Participant-ID">>, H)}
+                                              ,{<<"Mute">>, not kz_json:is_true(<<"Speak">>, H)}
                                              ], Resp),
             participant_details(T, Context, [Participant | Acc])
     end.
@@ -288,36 +288,36 @@ participant_details([H|T], Context, Acc) ->
 %% Perform conference kick/mute/unmute via API
 %% @end
 %%--------------------------------------------------------------------
--spec do_conference_action(cb_context:context(), path_token(), wh_json:json_term(), wh_json:json_term()) ->
+-spec do_conference_action(cb_context:context(), path_token(), kz_json:json_term(), kz_json:json_term()) ->
                              cb_context:context().
 do_conference_action(Context, _, _, 'undefined') ->
     cb_context:add_system_error('participant_missing', Context);
 do_conference_action(Context, Id, Action, ParticipantId) ->
     AuthDoc = cb_context:auth_doc(Context),
     ConfDoc = cb_context:doc(load_conference(Id, Context)),
-    ConfOwnerId = wh_json:get_value(<<"owner_id">>, ConfDoc),
-    AuthOwnerId = wh_json:get_value(<<"owner_id">>, AuthDoc),
+    ConfOwnerId = kz_json:get_value(<<"owner_id">>, ConfDoc),
+    AuthOwnerId = kz_json:get_value(<<"owner_id">>, AuthDoc),
     % Abort if the user is not room owner
     case ConfOwnerId of
         AuthOwnerId ->
-            Conference = whapps_conference:set_id(Id, whapps_conference:new()),
-            Resp = wh_json:set_value(<<"resp">>
+            Conference = kapps_conference:set_id(Id, kapps_conference:new()),
+            Resp = kz_json:set_value(<<"resp">>
                                      ,perform_conference_action(Conference, Action, ParticipantId)
-                                     ,wh_json:new()
+                                     ,kz_json:new()
                                     ),
             crossbar_doc:handle_json_success(Resp, Context);
         _ -> cb_context:add_system_error('forbidden', Context)
     end.
 
--spec perform_conference_action(whapps_conference:conference(), ne_binary(), api_integer()) -> 'ok'.
+-spec perform_conference_action(kapps_conference:conference(), ne_binary(), api_integer()) -> 'ok'.
 perform_conference_action(Conference, <<"mute">>, ParticipantId) ->
-    whapps_conference_command:mute_participant(ParticipantId, Conference),
-    whapps_conference_command:prompt(<<"conf-muted">>, ParticipantId, Conference);
+    kapps_conference_command:mute_participant(ParticipantId, Conference),
+    kapps_conference_command:prompt(<<"conf-muted">>, ParticipantId, Conference);
 perform_conference_action(Conference, <<"unmute">>, ParticipantId) ->
-    whapps_conference_command:unmute_participant(ParticipantId, Conference),
-    whapps_conference_command:prompt(<<"conf-unmuted">>, ParticipantId, Conference);
+    kapps_conference_command:unmute_participant(ParticipantId, Conference),
+    kapps_conference_command:prompt(<<"conf-unmuted">>, ParticipantId, Conference);
 perform_conference_action(Conference, <<"kick">>, ParticipantId) ->
-    whapps_conference_command:kick(ParticipantId, Conference).
+    kapps_conference_command:kick(ParticipantId, Conference).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -351,7 +351,7 @@ patch_conference(DocId, Context) ->
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context
-                       ,wh_doc:set_type(cb_context:doc(Context), <<"conference">>)
+                       ,kz_doc:set_type(cb_context:doc(Context), <<"conference">>)
                       );
 on_successful_validation(DocId, Context) ->
     crossbar_doc:load_merge(DocId, Context, ?TYPE_CHECK_OPTION(<<"conference">>)).
@@ -362,14 +362,14 @@ on_successful_validation(DocId, Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
+    [kz_json:get_value(<<"value">>, JObj)|Acc].
 
--spec normalize_users_results(wh_json:object(), wh_json:objects(), ne_binary()) ->
+-spec normalize_users_results(kz_json:object(), kz_json:objects(), ne_binary()) ->
                                      api_objects().
 normalize_users_results(JObj, Acc, UserId) ->
-    case wh_json:get_value([<<"value">>, <<"owner_id">>], JObj) of
+    case kz_json:get_value([<<"value">>, <<"owner_id">>], JObj) of
         'undefined' -> normalize_view_results(JObj, Acc);
         UserId -> normalize_view_results(JObj, Acc);
         _ -> Acc

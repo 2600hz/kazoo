@@ -181,7 +181,7 @@ validate_patch(DocId, Context) ->
 -spec on_successful_validation(api_binary(), cb_context:context()) ->
                                       cb_context:context().
 on_successful_validation('undefined', Context) ->
-    cb_context:set_doc(Context, wh_json:set_values([{<<"pvt_type">>, <<"menu">>}
+    cb_context:set_doc(Context, kz_json:set_values([{<<"pvt_type">>, <<"menu">>}
                                                     ,{<<"pvt_vsn">>, <<"2">>}
                                                    ]
                                                    ,cb_context:doc(Context)
@@ -195,6 +195,6 @@ on_successful_validation(DocId, Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
+    [kz_json:get_value(<<"value">>, JObj)|Acc].

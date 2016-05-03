@@ -8,6 +8,6 @@
                  , stdlib
 
                  , kazoo_data
-                 , whistle_config
+                 , kazoo_config
                  ]}
  ]}.

@@ -1,5 +1,5 @@
 -ifndef(KNM_HRL).
--include_lib("whistle/include/wh_databases.hrl").
+-include_lib("kazoo/include/kz_databases.hrl").
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 
 -define(APP_VERSION, <<"4.0.0">>).
@@ -42,17 +42,17 @@
                   ]).
 
 -define(RESELLER_ACCOUNT_DOC
-        ,wh_json:from_list(
+        ,kz_json:from_list(
            [{<<"_id">>, ?RESELLER_ACCOUNT_ID}]
           )
        ).
 
 -define(AVAILABLE_NUMBER
-        ,wh_json:from_list(
+        ,kz_json:from_list(
            [{<<"_id">>, ?TEST_AVAILABLE_NUM}
             ,{<<"_rev">>, <<"10-7dd6a1523e81a4e3c2689140ed3a8e69">>}
             ,{?PVT_MODIFIED, 63565934349}
-            ,{?PVT_FEATURES, wh_json:new()}
+            ,{?PVT_FEATURES, kz_json:new()}
             ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
             ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
             ,{?PVT_MODULE_NAME, ?CARRIER_LOCAL}
@@ -66,11 +66,11 @@
        ).
 
 -define(IN_SERVICE_NUMBER
-        ,wh_json:from_list(
+        ,kz_json:from_list(
            [{<<"_id">>, ?TEST_IN_SERVICE_NUM}
             ,{<<"_rev">>, <<"3-7dd6a1523e81a4e3c2689140ed3a8e69">>}
             ,{?PVT_MODIFIED, 63565934349}
-            ,{?PVT_FEATURES, wh_json:new()}
+            ,{?PVT_FEATURES, kz_json:new()}
             ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
             ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
             ,{?PVT_MODULE_NAME, ?CARRIER_LOCAL}
@@ -84,11 +84,11 @@
        ).
 
 -define(IN_SERVICE_WITH_HISTORY_NUMBER
-        ,wh_json:from_list(
+        ,kz_json:from_list(
            [{<<"_id">>, ?TEST_IN_SERVICE_WITH_HISTORY_NUM}
             ,{<<"_rev">>, <<"3-7dd6a1523e81a4e3c2689140ed3a8e69">>}
             ,{?PVT_MODIFIED, 63565934349}
-            ,{?PVT_FEATURES, wh_json:new()}
+            ,{?PVT_FEATURES, kz_json:new()}
             ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
             ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID, ?MASTER_ACCOUNT_ID]}
             ,{?PVT_MODULE_NAME, ?CARRIER_LOCAL}
@@ -103,11 +103,11 @@
 
 
 -define(EXISTING_TOLL
-        ,wh_json:from_list(
+        ,kz_json:from_list(
            [{<<"_id">>, ?TEST_EXISTING_TOLL}
             ,{<<"_rev">>, <<"10-7dd6a1523e81a4e3c2689140ed3a8e69">>}
             ,{?PVT_MODIFIED, 63565934349}
-            ,{?PVT_FEATURES, wh_json:new()}
+            ,{?PVT_FEATURES, kz_json:new()}
             ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
             ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
             ,{?PVT_MODULE_NAME, ?CARRIER_LOCAL}
@@ -125,13 +125,13 @@
 -define(START_BLOCK, <<"+14158867900">>).
 -define(END_BLOCK, <<"+14158897909">>).
 -define(BLOCK_RESP
-        ,wh_json:from_list([{<<"start_number">>, ?START_BLOCK}
+        ,kz_json:from_list([{<<"start_number">>, ?START_BLOCK}
                             ,{<<"end_number">>, ?END_BLOCK}
                            ])
        ).
 
 -define(BLOCKS_RESP
-        ,wh_json:from_list([{<<"status">>, <<"success">>}
+        ,kz_json:from_list([{<<"status">>, <<"success">>}
                             ,{<<"data">>, [?BLOCK_RESP]}
                            ])
        ).
@@ -140,9 +140,9 @@
 -define(NUMBER_PHONEBOOK_URL, <<?NUMBER_PHONEBOOK_URL_L>>).
 
 -define(NUMBERS_DATA
-        ,wh_json:from_list(
+        ,kz_json:from_list(
            [{<<"+1415886790", (D + $0)>>
-             ,wh_json:from_list([{<<"extension">>, D}])
+             ,kz_json:from_list([{<<"extension">>, D}])
             }
             || D <- lists:seq(0,9)
            ]
@@ -150,7 +150,7 @@
        ).
 
 -define(NUMBERS_RESPONSE
-        ,wh_json:from_list([{<<"status">>, <<"success">>}
+        ,kz_json:from_list([{<<"status">>, <<"success">>}
                             ,{<<"data">>, ?NUMBERS_DATA}
                            ])
        ).
@@ -165,16 +165,16 @@
 
 -define(BW_EXISTING_DID, <<"+14122065197">>).
 -define(BW_EXISTING_JSON
-        ,wh_json:from_list(
+        ,kz_json:from_list(
            [{<<"_id">>,<<"+14122065197">>},
             {<<"pvt_db_name">>,<<"numbers%2F%2B1412">>},
-            {<<"pvt_features">>,wh_json:new()},
+            {<<"pvt_features">>,kz_json:new()},
             {<<"pvt_state">>,<<"discovery">>},
             {<<"pvt_reserve_history">>,[]},
             {<<"pvt_ported_in">>,'false'},
             {<<"pvt_module_name">>,<<"knm_bandwidth">>},
             {<<"pvt_carrier_data">>
-             ,wh_json:from_list(
+             ,kz_json:from_list(
                 [{<<"number_id">>, <<"0C107941-CDDA-42FE-823C-042EADBD3719">>},
                  {<<"ten_digit">>,<<"4122065197">>},
                  {<<"formatted_number">>,<<"1-412-206-5197">>},
@@ -182,7 +182,7 @@
                  {<<"npa_nxx">>,<<"412206">>},
                  {<<"status">>,<<"Available">>},
                  {<<"rate_center">>
-                  ,wh_json:from_list(
+                  ,kz_json:from_list(
                      [{<<"name">>,<<"PITTSBURGH SUBURBAN ZONE 13">>},
                       {<<"lata">>,<<"234">>},
                       {<<"state">>,<<"PA">>}

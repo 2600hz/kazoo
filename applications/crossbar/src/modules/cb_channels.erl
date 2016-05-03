@@ -19,7 +19,7 @@
 
 -include("crossbar.hrl").
 
--type endpoints_return() :: {wh_json:objects(), cb_context:context()}.
+-type endpoints_return() :: {kz_json:objects(), cb_context:context()}.
 
 %%%===================================================================
 %%% API
@@ -107,7 +107,7 @@ validate_channels(Context, ?HTTP_GET) ->
 
 -spec validate_channel(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_channel(Context, Id, ?HTTP_GET) ->
-    read(cb_context:set_resp_data(Context, wh_json:new()), Id);
+    read(cb_context:set_resp_data(Context, kz_json:new()), Id);
 validate_channel(Context, Id, ?HTTP_POST) ->
     update(Context, Id).
 
@@ -153,24 +153,24 @@ read(Context, CallId) ->
             crossbar_util:response_datastore_timeout(Context)
     end.
 
--spec channels_query(ne_binary()) -> wh_amqp_worker:request_return().
+-spec channels_query(ne_binary()) -> kz_amqp_worker:request_return().
 channels_query(CallId) ->
     Req = [{<<"Call-ID">>, CallId}
           ,{<<"Fields">>, <<"all">>}
           ,{<<"Active-Only">>, 'true'}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
-    wh_amqp_worker:call_collect(Req
-                               ,fun wapi_call:publish_query_channels_req/1
-                               ,{'ecallmgr', fun wapi_call:query_channels_resp_v/1}
+    kz_amqp_worker:call_collect(Req
+                               ,fun kapi_call:publish_query_channels_req/1
+                               ,{'ecallmgr', fun kapi_call:query_channels_resp_v/1}
                                ).
 
--spec find_channel(ne_binary(), ne_binary(), wh_json:objects()) -> api_object().
+-spec find_channel(ne_binary(), ne_binary(), kz_json:objects()) -> api_object().
 find_channel(_AccountId, _CallId, []) -> 'undefined';
 find_channel(AccountId, CallId, [StatusJObj|JObjs]) ->
-    Channel = wh_json:get_value([<<"Channels">>, CallId], StatusJObj),
-    case wh_json:get_value(<<"Account-ID">>, Channel) of
+    Channel = kz_json:get_value([<<"Channels">>, CallId], StatusJObj),
+    case kz_json:get_value(<<"Account-ID">>, Channel) of
         AccountId -> Channel;
         _AccountId -> find_channel(AccountId, CallId, JObjs)
     end.
@@ -234,7 +234,7 @@ summary(Context) ->
 
 -spec device_summary(cb_context:context(), ne_binary()) -> cb_context:context().
 device_summary(Context, DeviceId) ->
-    get_channels(Context, [cb_context:doc(crossbar_doc:load(DeviceId, Context))], fun wapi_call:publish_query_user_channels_req/1).
+    get_channels(Context, [cb_context:doc(crossbar_doc:load(DeviceId, Context))], fun kapi_call:publish_query_user_channels_req/1).
 
 -spec user_summary(cb_context:context(), ne_binary()) -> cb_context:context().
 user_summary(Context, UserId) ->
@@ -244,7 +244,7 @@ user_summary(Context, UserId) ->
         'false' ->
             get_channels(Context
                          ,UserEndpoints
-                         ,fun wapi_call:publish_query_user_channels_req/1
+                         ,fun kapi_call:publish_query_user_channels_req/1
                         )
     end.
 
@@ -266,21 +266,21 @@ group_summary(Context, GroupId) ->
         'false' ->
             get_channels(Context
                          ,GroupEndpoints
-                         ,fun wapi_call:publish_query_user_channels_req/1
+                         ,fun kapi_call:publish_query_user_channels_req/1
                         )
     end.
 
 -spec group_endpoints(cb_context:context(), ne_binary()) -> endpoints_return().
 group_endpoints(Context, _GroupId) ->
-    wh_json:foldl(fun group_endpoints_fold/3
+    kz_json:foldl(fun group_endpoints_fold/3
                   ,{[], Context}
-                  ,wh_json:get_value(<<"endpoints">>, cb_context:doc(Context), wh_json:new())
+                  ,kz_json:get_value(<<"endpoints">>, cb_context:doc(Context), kz_json:new())
                  ).
 
--spec group_endpoints_fold(ne_binary(), wh_json:object(), endpoints_return()) ->
+-spec group_endpoints_fold(ne_binary(), kz_json:object(), endpoints_return()) ->
                                   endpoints_return().
 group_endpoints_fold(EndpointId, EndpointData, {Acc, Context}) ->
-    case wh_json:get_value(<<"type">>, EndpointData) of
+    case kz_json:get_value(<<"type">>, EndpointData) of
         <<"user">> ->
             {EPs, Context1} = user_endpoints(Context, EndpointId),
             {EPs ++ Acc, Context1};
@@ -294,20 +294,20 @@ group_endpoints_fold(EndpointId, EndpointData, {Acc, Context}) ->
 
 -spec account_summary(cb_context:context()) -> cb_context:context().
 account_summary(Context) ->
-    get_channels(Context, [], fun wapi_call:publish_query_account_channels_req/1).
+    get_channels(Context, [], fun kapi_call:publish_query_account_channels_req/1).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_channels(cb_context:context(), wh_json:objects(), function()) -> cb_context:context().
+-spec get_channels(cb_context:context(), kz_json:objects(), function()) -> cb_context:context().
 get_channels(Context, Devices, PublisherFun) ->
-    Realm = wh_util:get_account_realm(cb_context:account_id(Context)),
+    Realm = kz_util:get_account_realm(cb_context:account_id(Context)),
 
     Usernames = [Username
                  || JObj <- Devices,
-                    (Username = wh_json:get_first_defined(
+                    (Username = kz_json:get_first_defined(
                                   [[<<"doc">>, <<"sip">>, <<"username">>]
                                    ,[<<"sip">>, <<"username">>]
                                   ]
@@ -322,10 +322,10 @@ get_channels(Context, Devices, PublisherFun) ->
            ,{<<"Account-ID">>, cb_context:account_id(Context)}
            ,{<<"Active-Only">>, 'false'}
            ,{<<"Msg-ID">>, cb_context:req_id(Context)}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
-    case wh_amqp_worker:call_collect(Req
+    case kz_amqp_worker:call_collect(Req
                                      ,PublisherFun
                                      ,{'ecallmgr', 'true'}
                                     )
@@ -338,28 +338,28 @@ get_channels(Context, Devices, PublisherFun) ->
             crossbar_util:response(Channels, Context)
     end.
 
--spec merge_user_channels_jobjs(wh_json:objects()) -> wh_json:objects().
+-spec merge_user_channels_jobjs(kz_json:objects()) -> kz_json:objects().
 merge_user_channels_jobjs(JObjs) ->
     merge_user_channels_jobjs(JObjs, dict:new()).
 
--spec merge_user_channels_jobjs(wh_json:objects(), dict:dict()) -> wh_json:objects().
+-spec merge_user_channels_jobjs(kz_json:objects(), dict:dict()) -> kz_json:objects().
 merge_user_channels_jobjs([], Dict) ->
     [delete_keys(Channel) || {_, Channel} <- dict:to_list(Dict)];
 merge_user_channels_jobjs([JObj|JObjs], Dict) ->
     merge_user_channels_jobjs(JObjs, merge_user_channels_jobj(JObj, Dict)).
 
--spec merge_user_channels_jobj(wh_json:object(), dict:dict()) -> dict:dict().
+-spec merge_user_channels_jobj(kz_json:object(), dict:dict()) -> dict:dict().
 merge_user_channels_jobj(JObj, Dict) ->
-    lists:foldl(fun merge_user_channels_fold/2, Dict, wh_json:get_value(<<"Channels">>, JObj, [])).
+    lists:foldl(fun merge_user_channels_fold/2, Dict, kz_json:get_value(<<"Channels">>, JObj, [])).
 
--spec merge_user_channels_fold(wh_json:object(), dict:dict()) -> dict:dict().
+-spec merge_user_channels_fold(kz_json:object(), dict:dict()) -> dict:dict().
 merge_user_channels_fold(Channel, D) ->
-    UUID = wh_json:get_value(<<"uuid">>, Channel),
+    UUID = kz_json:get_value(<<"uuid">>, Channel),
     dict:store(UUID, Channel, D).
 
--spec delete_keys(wh_json:object()) -> wh_json:object().
+-spec delete_keys(kz_json:object()) -> kz_json:object().
 delete_keys(JObj) ->
-    wh_json:delete_keys([<<"account_id">>
+    kz_json:delete_keys([<<"account_id">>
                          ,<<"bridge_id">>
                          ,<<"context">>
                          ,<<"dialplan">>
@@ -382,10 +382,10 @@ delete_keys(JObj) ->
                          ,<<"fetch_id">>
                         ], JObj).
 
--spec normalize_channel(wh_json:object()) -> wh_json:object().
+-spec normalize_channel(kz_json:object()) -> kz_json:object().
 normalize_channel(JObj) ->
     delete_keys(
-      wh_json:normalize(JObj)
+      kz_json:normalize(JObj)
      ).
 
 -spec maybe_transfer(cb_context:context(), ne_binary()) -> cb_context:context().
@@ -393,12 +393,12 @@ normalize_channel(JObj) ->
 -spec maybe_transfer(cb_context:context(), ne_binary(), ne_binary(), ne_binary()) -> cb_context:context().
 maybe_transfer(Context, Transferor) ->
     Channel = cb_context:resp_data(Context),
-    case wh_json:get_value(<<"other_leg_call_id">>, Channel) of
+    case kz_json:get_value(<<"other_leg_call_id">>, Channel) of
         'undefined' ->
             lager:debug("no transferee leg found"),
             cb_context:add_validation_error(<<"other_leg_call_id">>
                                            ,<<"required">>
-                                           ,wh_json:from_list([{<<"message">>, <<"Channel is not bridged">>}])
+                                           ,kz_json:from_list([{<<"message">>, <<"Channel is not bridged">>}])
                                            ,Context
                                            );
         Transferee ->
@@ -411,7 +411,7 @@ maybe_transfer(Context, Transferor, Transferee) ->
             lager:debug("no target destination"),
             cb_context:add_validation_error(<<"target">>
                                            ,<<"required">>
-                                           ,wh_json:from_list([{<<"message">>, <<"No target destination specified">>}])
+                                           ,kz_json:from_list([{<<"message">>, <<"No target destination specified">>}])
                                            ,Context
                                            );
         Target ->
@@ -421,39 +421,39 @@ maybe_transfer(Context, Transferor, Transferee) ->
 maybe_transfer(Context, Transferor, _Transferee, Target) ->
     API = [{<<"Call-ID">>, Transferor}
           ,{<<"Action">>, <<"transfer">>}
-          ,{<<"Data">>, wh_json:from_list(
+          ,{<<"Data">>, kz_json:from_list(
                           [{<<"target">>, Target}
                           ,{<<"takeback_dtmf">>, cb_context:req_value(Context, <<"takeback_dtmf">>)}
                           ,{<<"moh">>, cb_context:req_value(Context, <<"moh">>)}
                           ])
            }
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
     lager:debug("attempting to transfer ~s to ~s by ~s", [_Transferee, Target, Transferor]),
-    wh_amqp_worker:cast(API, fun wapi_metaflow:publish_req/1),
+    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_req/1),
     crossbar_util:response_202(<<"transfer initiated">>, Context).
 
 -spec maybe_hangup(cb_context:context(), ne_binary()) -> cb_context:context().
 maybe_hangup(Context, CallId) ->
     API = [{<<"Call-ID">>, CallId}
            ,{<<"Action">>, <<"hangup">>}
-           ,{<<"Data">>, wh_json:new()}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ,{<<"Data">>, kz_json:new()}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("attempting to hangup ~s", [CallId]),
-    wh_amqp_worker:cast(API, fun wapi_metaflow:publish_req/1),
+    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_req/1),
     crossbar_util:response_202(<<"hangup initiated">>, Context).
 
 -spec maybe_break(cb_context:context(), ne_binary()) -> cb_context:context().
 maybe_break(Context, CallId) ->
     API = [{<<"Call-ID">>, CallId}
            ,{<<"Action">>, <<"break">>}
-           ,{<<"Data">>, wh_json:new()}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ,{<<"Data">>, kz_json:new()}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("attempting to break ~s", [CallId]),
-    wh_amqp_worker:cast(API, fun wapi_metaflow:publish_req/1),
+    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_req/1),
     crossbar_util:response_202(<<"break initiated">>, Context).
 
 -spec maybe_callflow(cb_context:context(), ne_binary()) -> cb_context:context().
@@ -461,15 +461,15 @@ maybe_callflow(Context, CallId) ->
     CallflowId = cb_context:req_value(Context, <<"id">>),
     API = [{<<"Call-ID">>, CallId}
            ,{<<"Action">>, <<"callflow">>}
-           ,{<<"Data">>, wh_json:from_list(
+           ,{<<"Data">>, kz_json:from_list(
                            [{<<"id">>, CallflowId}
                             ,{<<"captures">>, cb_context:req_value(Context, <<"captures">>)}
                             ,{<<"collected">>, cb_context:req_value(Context, <<"collected">>)}
                            ])
             }
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
     lager:debug("attempting to running callflow ~s on ~s", [CallflowId, CallId]),
-    wh_amqp_worker:cast(API, fun wapi_metaflow:publish_req/1),
+    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_req/1),
     crossbar_util:response_202(<<"callflow initiated">>, Context).

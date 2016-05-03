@@ -35,10 +35,10 @@
 %%--------------------------------------------------------------------
 -spec check_initial_call(ne_binary()) -> 'ok'.
 check_initial_call(Account) when is_binary(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    case kz_datamgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
+    AccountId = kz_util:format_account_id(Account, 'raw'),
+    case kz_datamgr:open_cache_doc(?KZ_ACCOUNTS_DB, AccountId) of
         {'ok', JObj} ->
-            case wh_json:is_true([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>], JObj) of
+            case kz_json:is_true([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>], JObj) of
                 'true' -> io:format("account ~s has made their first call!~n", [AccountId]);
                 'false' -> io:format("account ~s has yet to make their first call~n", [AccountId])
             end;
@@ -54,10 +54,10 @@ check_initial_call(Account) when is_binary(Account) ->
 %%--------------------------------------------------------------------
 -spec check_initial_registration(ne_binary()) -> 'ok'.
 check_initial_registration(Account) when is_binary(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    case kz_datamgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
+    AccountId = kz_util:format_account_id(Account, 'raw'),
+    case kz_datamgr:open_cache_doc(?KZ_ACCOUNTS_DB, AccountId) of
         {'ok', JObj} ->
-            case wh_json:is_true([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>], JObj) of
+            case kz_json:is_true([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>], JObj) of
                 'true' -> io:format("account ~s has registered successfully~n", [AccountId]);
                 'false' -> io:format("account ~s has yet to register successfully~n", [AccountId])
         end;
@@ -145,9 +145,9 @@ configure_smtp_port(Value) ->
 %%--------------------------------------------------------------------
 -spec refresh() -> 'ok'.
 refresh() ->
-    kz_datamgr:db_create(?WH_ACCOUNTS_DB),
-    Views = [whapps_util:get_view_json('notify', <<"views/notify.json">>)],
-    whapps_util:update_views(?WH_ACCOUNTS_DB, Views),
+    kz_datamgr:db_create(?KZ_ACCOUNTS_DB),
+    Views = [kapps_util:get_view_json('notify', <<"views/notify.json">>)],
+    kapps_util:update_views(?KZ_ACCOUNTS_DB, Views),
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -169,7 +169,7 @@ refresh_template() ->
 
 -spec reload_smtp_configs() -> 'ok'.
 reload_smtp_configs() ->
-    whapps_config:flush(<<"smtp_client">>),
+    kapps_config:flush(<<"smtp_client">>),
     ok.
 %%--------------------------------------------------------------------
 %% @private
@@ -181,7 +181,7 @@ template_files() ->
     {'ok', Files} = file:list_dir(?TEMPLATE_PATH),
     lists:foldl(
         fun(File, Acc) ->
-            case wh_util:to_binary(File) of
+            case kz_util:to_binary(File) of
                  <<"notify_", _/binary>>=Bin ->
                     [Bin|Acc];
                 _ -> Acc
@@ -201,7 +201,7 @@ template_ids() ->
     {'ok', JObjs} =  kz_datamgr:all_docs(?SYSTEM_CONFIG_DB),
     lists:foldl(
         fun(JObj, Acc) ->
-           case wh_doc:id(JObj) of
+           case kz_doc:id(JObj) of
                 <<"notify.", _/binary>>=Id ->
                     [Id|Acc];
                 _ ->
@@ -217,7 +217,7 @@ template_ids() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec match_file_to_db(ne_binaries(), ne_binaries()) -> wh_proplist().
+-spec match_file_to_db(ne_binaries(), ne_binaries()) -> kz_proplist().
 match_file_to_db(Files, Ids) ->
     lists:foldl(
         fun(<<"notify_", FileKey/binary>>=File, Acc) ->
@@ -259,22 +259,22 @@ module_exists(Module) when is_atom(Module) ->
         _:_ -> 'false'
     end;
 module_exists(Module) ->
-    module_exists(wh_util:to_atom(Module, 'true')).
+    module_exists(kz_util:to_atom(Module, 'true')).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec compare_template_system_config(wh_proplist()) -> 'ok'.
--spec compare_template_system_config(wh_proplist(), wh_json:object()) -> 'ok'.
+-spec compare_template_system_config(kz_proplist()) -> 'ok'.
+-spec compare_template_system_config(kz_proplist(), kz_json:object()) -> 'ok'.
 -spec compare_template_system_config(api_binaries(), api_binary(), api_binary()) ->
                                             'default' | 'file' |
                                             'doc' | 'ok'.
 
 compare_template_system_config([]) -> 'ok';
 compare_template_system_config([{FileId, Id}|Match]) ->
-    File = [?TEMPLATE_PATH, "/" ,wh_util:to_list(FileId)],
+    File = [?TEMPLATE_PATH, "/" ,kz_util:to_list(FileId)],
     case {open_file(File), open_system_config(Id)} of
         {'error', _} ->
             io:format("comparing, failed to open template: ~s~n", [FileId]),
@@ -284,8 +284,8 @@ compare_template_system_config([{FileId, Id}|Match]) ->
             compare_template_system_config(Match);
         {Props, 'not_found'} ->
             io:format("comparing, failed to open document (does not exist): ~s~n", [Id]),
-            JObj = wh_json:from_list([{<<"_id">>, Id}
-                                      ,{<<"default">>, wh_json:new()}
+            JObj = kz_json:from_list([{<<"_id">>, Id}
+                                      ,{<<"default">>, kz_json:new()}
                                      ]),
             compare_template_system_config(Props, JObj),
             compare_template_system_config(Match);
@@ -296,17 +296,17 @@ compare_template_system_config([{FileId, Id}|Match]) ->
     end.
 
 compare_template_system_config([], JObj) ->
-    Id = wh_doc:id(JObj),
+    Id = kz_doc:id(JObj),
     case kz_datamgr:save_doc(?SYSTEM_CONFIG_DB, JObj) of
         {'ok', _} -> io:format("doc ~s updated~n", [Id]);
         {'error', Reason} ->
             io:format("doc ~s failed to update: ~p~n", [Id, Reason])
     end;
 compare_template_system_config([{Key, FileTemplate}|Props], JObj) ->
-    BinKey = wh_util:to_binary(Key),
-    <<"notify.", Id/binary>> = wh_doc:id(JObj),
+    BinKey = kz_util:to_binary(Key),
+    <<"notify.", Id/binary>> = kz_doc:id(JObj),
     DefaultTemplates = props:get_value(Key, props:get_value(Id, ?NOTIFY_TEMPLATES, [])),
-    case wh_json:get_value([<<"default">>, BinKey], JObj) of
+    case kz_json:get_value([<<"default">>, BinKey], JObj) of
         'undefined' ->
             io:format("key: '~s' not found in jobj adding file template value~n", [BinKey]),
             compare_template_system_config(Props, set_template(BinKey, FileTemplate, JObj));
@@ -348,12 +348,12 @@ compare_template_system_config(DefaultTemplates, DocTemplate, FileTemplate) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_template(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:object().
+-spec set_template(ne_binary(), ne_binary(), kz_json:object()) -> kz_json:object().
 set_template(Key, Template, JObj) ->
-    Default = wh_json:get_value(<<"default">>, JObj),
-    wh_json:set_value(
+    Default = kz_json:get_value(<<"default">>, JObj),
+    kz_json:set_value(
         <<"default">>
-        ,wh_json:set_value(Key, Template, Default)
+        ,kz_json:set_value(Key, Template, Default)
         ,JObj
     ).
 
@@ -362,7 +362,7 @@ set_template(Key, Template, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec open_file(list()) -> wh_proplist() | 'error'.
+-spec open_file(list()) -> kz_proplist() | 'error'.
 open_file(File) ->
     case file:consult(File) of
         {'ok', Props} -> Props;
@@ -374,7 +374,7 @@ open_file(File) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec open_system_config(ne_binary()) -> wh_json:object() | 'error' | 'not_found'.
+-spec open_system_config(ne_binary()) -> kz_json:object() | 'error' | 'not_found'.
 open_system_config(Id) ->
     case kz_datamgr:open_cache_doc(?SYSTEM_CONFIG_DB, Id) of
         {'ok', JObj} -> JObj;
@@ -388,6 +388,6 @@ open_system_config(Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec update_smtp_client_document(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {error, any()}.
+-spec update_smtp_client_document(ne_binary(), ne_binary()) -> {'ok', kz_json:object()} | {error, any()}.
 update_smtp_client_document(Key, Value) ->
-    whapps_config:set(?SMTP_CLIENT_DOC, Key, Value).
+    kapps_config:set(?SMTP_CLIENT_DOC, Key, Value).

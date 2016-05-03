@@ -25,19 +25,19 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    whapps_call_command:answer(Call),
+    kapps_call_command:answer(Call),
 
     AlreadyCollected =
-        case whapps_call:get_dtmf_collection(Call) of
+        case kapps_call:get_dtmf_collection(Call) of
             'undefined' -> <<>>;
             <<_/binary>> = D -> D
         end,
 
-    maybe_collect_more_digits(Data, whapps_call:set_dtmf_collection('undefined', Call), AlreadyCollected).
+    maybe_collect_more_digits(Data, kapps_call:set_dtmf_collection('undefined', Call), AlreadyCollected).
 
--spec maybe_collect_more_digits(wh_json:object(), whapps_call:call(), binary()) -> 'ok'.
+-spec maybe_collect_more_digits(kz_json:object(), kapps_call:call(), binary()) -> 'ok'.
 maybe_collect_more_digits(Data, Call, AlreadyCollected) ->
     AlreadyCollectedSize = byte_size(AlreadyCollected),
     MaxDigits = max_digits(Data),
@@ -45,19 +45,19 @@ maybe_collect_more_digits(Data, Call, AlreadyCollected) ->
     maybe_collect_more_digits(Data, Call, AlreadyCollected, AlreadyCollectedSize, MaxDigits),
     cf_exe:continue(Call).
 
--spec maybe_collect_more_digits(wh_json:object(), whapps_call:call(), binary(), non_neg_integer(), pos_integer()) -> 'ok'.
+-spec maybe_collect_more_digits(kz_json:object(), kapps_call:call(), binary(), non_neg_integer(), pos_integer()) -> 'ok'.
 maybe_collect_more_digits(Data, Call, AlreadyCollected, ACS, Max) when ACS >= Max ->
     lager:debug("early DTMF met collection criteria, not collecting any more digits"),
     <<Head:Max/binary, _/binary>> = AlreadyCollected,
     CollectionName = collection_name(Data),
 
-    cf_exe:set_call(whapps_call:set_dtmf_collection(Head, CollectionName, Call));
+    cf_exe:set_call(kapps_call:set_dtmf_collection(Head, CollectionName, Call));
 maybe_collect_more_digits(Data, Call, AlreadyCollected, ACS, Max) ->
     collect_more_digits(Data, Call, AlreadyCollected, Max-ACS).
 
--spec collect_more_digits(wh_json:object(), whapps_call:call(), binary(), pos_integer()) -> 'ok'.
+-spec collect_more_digits(kz_json:object(), kapps_call:call(), binary(), pos_integer()) -> 'ok'.
 collect_more_digits(Data, Call, AlreadyCollected, MaxDigits) ->
-    case whapps_call_command:collect_digits(MaxDigits
+    case kapps_call_command:collect_digits(MaxDigits
                                             ,collect_timeout(Data)
                                             ,interdigit(Data)
                                             ,'undefined'
@@ -70,43 +70,43 @@ collect_more_digits(Data, Call, AlreadyCollected, MaxDigits) ->
             lager:debug("collected ~s~s for ~s", [AlreadyCollected, Ds, CollectionName]),
 
             cf_exe:set_call(
-              whapps_call:set_dtmf_collection(<<AlreadyCollected/binary, Ds/binary>>, CollectionName, Call)
+              kapps_call:set_dtmf_collection(<<AlreadyCollected/binary, Ds/binary>>, CollectionName, Call)
              );
         {'error', _E} ->
             lager:debug("failed to collect DTMF: ~p", [_E])
     end.
 
--spec collection_name(wh_json:object()) -> ne_binary().
+-spec collection_name(kz_json:object()) -> ne_binary().
 collection_name(Data) ->
-    case wh_json:get_value(<<"collection_name">>, Data) of
+    case kz_json:get_value(<<"collection_name">>, Data) of
         <<_/binary>> = Name -> Name;
         'undefined' -> <<"default">>
     end.
 
--spec max_digits(wh_json:object()) -> pos_integer().
+-spec max_digits(kz_json:object()) -> pos_integer().
 max_digits(Data) ->
-    case wh_json:get_integer_value(<<"max_digits">>, Data) of
+    case kz_json:get_integer_value(<<"max_digits">>, Data) of
         'undefined' -> 1;
         N when N > 0 -> N
     end.
 
--spec collect_timeout(wh_json:object()) -> pos_integer().
+-spec collect_timeout(kz_json:object()) -> pos_integer().
 collect_timeout(Data) ->
-    case wh_json:get_integer_value(<<"timeout">>, Data) of
+    case kz_json:get_integer_value(<<"timeout">>, Data) of
         'undefined' -> 5000;
         N when N > 0 -> N
     end.
 
--spec interdigit(wh_json:object()) -> pos_integer().
+-spec interdigit(kz_json:object()) -> pos_integer().
 interdigit(Data) ->
-    case wh_json:get_integer_value(<<"interdigit_timeout">>, Data) of
-        'undefined' -> whapps_call_command:default_interdigit_timeout();
+    case kz_json:get_integer_value(<<"interdigit_timeout">>, Data) of
+        'undefined' -> kapps_call_command:default_interdigit_timeout();
         N when N > 0 -> N
     end.
 
--spec terminators(wh_json:object()) -> ne_binaries().
+-spec terminators(kz_json:object()) -> ne_binaries().
 terminators(Data) ->
-    case wh_json:get_first_defined([<<"terminator">>, <<"terminators">>], Data) of
+    case kz_json:get_first_defined([<<"terminator">>, <<"terminators">>], Data) of
         'undefined' -> [<<"#">>];
         <<_/binary>> = T ->
             'true' = lists:member(T, ?ANY_DIGIT),

@@ -11,8 +11,8 @@
                  , ssl
                  , inets
 
-                 , whistle_apps
-                 , whistle_amqp
+                 , kazoo_apps
+                 , kazoo_amqp
                  , kazoo_data
                  , kazoo_bindings
 

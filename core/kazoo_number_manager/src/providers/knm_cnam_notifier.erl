@@ -79,8 +79,8 @@ handle_outbound_cnam(Number) ->
     Doc = knm_phone_number:doc(PhoneNumber),
     Features = knm_phone_number:features(PhoneNumber),
 
-    CurrentCNAM = wh_json:get_ne_value([?FEATURE_CNAM, ?KEY_DISPLAY_NAME], Features),
-    case wh_json:get_ne_value([?PVT_FEATURES, ?FEATURE_CNAM, ?KEY_DISPLAY_NAME], Doc) of
+    CurrentCNAM = kz_json:get_ne_value([?FEATURE_CNAM, ?KEY_DISPLAY_NAME], Features),
+    case kz_json:get_ne_value([?PVT_FEATURES, ?FEATURE_CNAM, ?KEY_DISPLAY_NAME], Doc) of
         'undefined' ->
             Number1 = knm_services:deactivate_feature(Number, ?FEATURE_OUTBOUND_CNAM),
             handle_inbound_cnam(Number1);
@@ -104,7 +104,7 @@ handle_outbound_cnam(Number) ->
 handle_inbound_cnam(Number) ->
     Doc = knm_phone_number:doc(knm_number:phone_number(Number)),
     Number1 =
-        case wh_json:is_true([?PVT_FEATURES, ?FEATURE_CNAM, ?KEY_INBOUND_LOOKUP], Doc) of
+        case kz_json:is_true([?PVT_FEATURES, ?FEATURE_CNAM, ?KEY_INBOUND_LOOKUP], Doc) of
             'false' -> knm_services:deactivate_feature(Number, ?KEY_INBOUND_LOOKUP);
             'true' ->  knm_services:activate_feature(Number, ?FEATURE_INBOUND_CNAM)
         end,
@@ -142,7 +142,7 @@ publish_cnam_update(Number, 'false') ->
               ,{<<"Local-Number">>, knm_phone_number:module_name(PhoneNumber) =:= ?CARRIER_LOCAL}
               ,{<<"Number">>, knm_phone_number:number(PhoneNumber)}
               ,{<<"Acquired-For">>, knm_phone_number:auth_by(PhoneNumber)}
-              ,{<<"Cnam">>, wh_json:get_value(?FEATURE_CNAM, Features, wh_json:new())}
-              | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
+              ,{<<"Cnam">>, kz_json:get_value(?FEATURE_CNAM, Features, kz_json:new())}
+              | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
-    wapi_notifications:publish_cnam_request(Notify).
+    kapi_notifications:publish_cnam_request(Notify).

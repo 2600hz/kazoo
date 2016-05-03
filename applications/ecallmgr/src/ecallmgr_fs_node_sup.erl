@@ -46,7 +46,7 @@
 %% @public
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link(atom(), wh_proplist()) -> startlink_ret().
+-spec start_link(atom(), kz_proplist()) -> startlink_ret().
 start_link(Node, Options) ->
     supervisor:start_link({'local', Node}, ?MODULE, [Node, Options]).
 
@@ -107,7 +107,7 @@ init([Node, Options]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    NodeB = wh_util:to_binary(Node),
+    NodeB = kz_util:to_binary(Node),
     Args = [Node, Options],
     Children = [ child_name(NodeB, Args, H) || H <- ecallmgr_config:get(<<"modules">>, ?CHILDREN)],
 
@@ -115,27 +115,27 @@ init([Node, Options]) ->
 
 -spec child_name(binary(), list(), binary() | tuple()) -> any().
 child_name(NodeB, Args, {<<"supervisor">>, Module}) ->
-    Name = wh_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
-    Mod = wh_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
+    Name = kz_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
+    Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
     ?SUPER_NAME_ARGS(Mod, Name, Args);
 child_name(NodeB, Args, {<<"worker">>, Module}) ->
-    Name = wh_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
-    Mod = wh_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
+    Name = kz_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
+    Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
     ?WORKER_NAME_ARGS(Mod, Name, Args);
 child_name(NodeB, Args, <<"event_stream_sup">>=Module) ->
-    Name = wh_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
-    Mod = wh_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
+    Name = kz_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
+    Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
     ?SUPER_NAME_ARGS(Mod, Name, Args);
 child_name(NodeB, Args, <<_/binary>>=Module) ->
-    Name = wh_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
-    Mod = wh_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
+    Name = kz_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
+    Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
     ?WORKER_NAME_ARGS(Mod, Name, Args).
 
 -spec srv([{atom(), pid(), any(), any()}], list()) -> api_pid().
 srv([], _) -> 'undefined';
 srv([{Name, Pid, _, _} | Children], Suffix) ->
     %% FIXME: use lists:suffix
-    case lists:prefix(Suffix, lists:reverse(wh_util:to_list(Name))) of
+    case lists:prefix(Suffix, lists:reverse(kz_util:to_list(Name))) of
         'true' -> Pid;
         'false' -> srv(Children, Suffix)
     end.

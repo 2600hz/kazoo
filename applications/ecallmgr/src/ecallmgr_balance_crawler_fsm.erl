@@ -57,7 +57,7 @@ start_link() ->
 %%====================================================================
 init(_Args) ->
     process_flag('trap_exit', 'true'),
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     gen_fsm:send_event_after(?CRAWLER_CYCLE_MS, 'start_cycle'),
     {'ok', 'idle', 'undefined'}.
 
@@ -106,5 +106,5 @@ worker_timeout('worker_stop', _OldWorkerPid) ->
 %%====================================================================
 spawn_worker(Timeout) when Timeout >= 10 * ?MILLISECONDS_IN_SECOND ->
     gen_fsm:send_event_after(Timeout, 'start_cycle'),
-    wh_util:spawn_link(fun ecallmgr_balance_crawler_worker:start/0);
+    kz_util:spawn_link(fun ecallmgr_balance_crawler_worker:start/0);
 spawn_worker(_) -> spawn_worker(?MILLISECONDS_IN_MINUTE).

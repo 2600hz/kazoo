@@ -47,7 +47,7 @@
 start_link(Args) ->
     gen_server:start_link(?SERVER, [], [Args]).
 
--spec render(ne_binary(), binary(), wh_proplist()) ->
+-spec render(ne_binary(), binary(), kz_proplist()) ->
                     {'ok', iolist()} |
                     {'error', any()}.
 render(TemplateId, Template, TemplateData) ->
@@ -99,18 +99,18 @@ next_backoff(BackoffMs) ->
 
 -spec backoff_fudge() -> pos_integer().
 backoff_fudge() ->
-    Fudge = whapps_config:get_integer(?NOTIFY_CONFIG_CAT, <<"backoff_fudge_ms">>, 5000),
+    Fudge = kapps_config:get_integer(?NOTIFY_CONFIG_CAT, <<"backoff_fudge_ms">>, 5000),
     random:uniform(Fudge).
 
 -spec init(list()) -> {'ok', atom()}.
 init(_) ->
-    Self = wh_util:to_hex_binary(list_to_binary(pid_to_list(self()))),
+    Self = kz_util:to_hex_binary(list_to_binary(pid_to_list(self()))),
 
-    Module = wh_util:to_atom(
-               list_to_binary(["teletype_", Self, "_", wh_util:rand_hex_binary(4)])
+    Module = kz_util:to_atom(
+               list_to_binary(["teletype_", Self, "_", kz_util:rand_hex_binary(4)])
                ,'true'
               ),
-    wh_util:put_callid(Module),
+    kz_util:put_callid(Module),
     lager:debug("starting template renderer, using ~s as compiled module name", [Module]),
 
     {'ok', Module}.
@@ -183,7 +183,7 @@ terminate(_Reason, _TemplateModule) ->
 code_change(_Old, TemplateModule, _Extra) ->
     {'ok', TemplateModule}.
 
--spec render_template(atom(), wh_proplist()) ->
+-spec render_template(atom(), kz_proplist()) ->
                              {'ok', iolist()} |
                              {'error', any()}.
 render_template(TemplateModule, TemplateData) ->
@@ -198,12 +198,12 @@ render_template(TemplateModule, TemplateData) ->
         'error':'undef' ->
             ST = erlang:get_stacktrace(),
             lager:debug("something in the template ~s is undefined", [TemplateModule]),
-            wh_util:log_stacktrace(ST),
+            kz_util:log_stacktrace(ST),
             {'error', 'undefined'};
         _E:R ->
             ST = erlang:get_stacktrace(),
             lager:debug("crashed rendering template ~s: ~s: ~p", [TemplateModule, _E, R]),
-            wh_util:log_stacktrace(ST),
+            kz_util:log_stacktrace(ST),
             {'error', R}
     end.
 

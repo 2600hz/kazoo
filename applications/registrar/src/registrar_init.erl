@@ -14,10 +14,10 @@
 
 -spec start_link() -> startlink_ret().
 start_link() ->
-    wh_util:spawn(fun init/0),
+    kz_util:spawn(fun init/0),
     'ignore'.
 
 -spec init() -> any().
 init() ->
-    wh_util:put_callid(?MODULE),
-    whapps_maintenance:refresh(?WH_SIP_DB).
+    kz_util:put_callid(?MODULE),
+    kapps_maintenance:refresh(?KZ_SIP_DB).

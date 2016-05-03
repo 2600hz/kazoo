@@ -126,7 +126,7 @@ validate(Context) ->
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, CallId) ->
-    case wh_util:is_empty(CallId) of
+    case kz_util:is_empty(CallId) of
         'true' ->
             cb_context:add_system_error('not_found', Context);
         'false' ->
@@ -136,20 +136,20 @@ validate(Context, CallId) ->
 -spec inspect_call_id(ne_binary(), cb_context:context()) -> cb_context:context().
 inspect_call_id(CallId, Context) ->
     Req = [{<<"Call-ID">>, CallId}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case wh_amqp_worker:call(Req
-                             ,fun wapi_inspector:publish_lookup_req/1
-                             ,fun wapi_inspector:lookup_resp_v/1
+    case kz_amqp_worker:call(Req
+                             ,fun kapi_inspector:publish_lookup_req/1
+                             ,fun kapi_inspector:lookup_resp_v/1
                             )
     of
         {'ok', JObj} ->
-            Chunks   = sanitize(wh_json:get_value(<<"Chunks">>, JObj, [])),
-            Analysis = sanitize(wh_json:get_value(<<"Analysis">>, JObj, [])),
-            Response = wh_json:from_list(
+            Chunks   = sanitize(kz_json:get_value(<<"Chunks">>, JObj, [])),
+            Analysis = sanitize(kz_json:get_value(<<"Analysis">>, JObj, [])),
+            Response = kz_json:from_list(
                          [{<<"call-id">>, CallId}
                           ,{<<"messages">>, Chunks}
-                          ,{<<"dialog_entities">>, wh_json:get_value(<<"Dialog-Entities">>, JObj, [])}
+                          ,{<<"dialog_entities">>, kz_json:get_value(<<"Dialog-Entities">>, JObj, [])}
                           ,{<<"analysis">>, Analysis}
                          ]
                         ),
@@ -163,9 +163,9 @@ inspect_call_id(CallId, Context) ->
     end.
 
 %% @private
--spec sanitize(wh_json:objects()) -> wh_json:objects().
+-spec sanitize(kz_json:objects()) -> kz_json:objects().
 sanitize(JObjs) ->
-    [wh_json:delete_key(<<"call-id">>, JObj) || JObj <- JObjs].
+    [kz_json:delete_key(<<"call-id">>, JObj) || JObj <- JObjs].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -176,7 +176,7 @@ sanitize(JObjs) ->
 send_chunked_cdrs({Req, Context}) ->
     Dbs = cb_context:fetch(Context, 'chunked_dbs'),
     AuthAccountId = cb_context:auth_account_id(Context),
-    IsReseller = wh_services:is_reseller(AuthAccountId),
+    IsReseller = kz_services:is_reseller(AuthAccountId),
     send_chunked_cdrs(Dbs, {Req, cb_context:store(Context, 'is_reseller', IsReseller)}).
 
 -spec send_chunked_cdrs(ne_binaries(), cb_cdrs:payload()) -> cb_cdrs:payload().
@@ -192,23 +192,23 @@ send_chunked_cdrs([Db | Dbs], {Req, Context}) ->
     send_chunked_cdrs(Dbs, cb_cdrs:load_chunked_cdrs(Db, CDRIds, {Req, Context3})).
 
 -spec get_cdr_ids(ne_binary(), ne_binary(), crossbar_doc:view_options()) ->
-                         wh_proplist().
+                         kz_proplist().
 get_cdr_ids(Db, View, ViewOptions) ->
     {'ok', Ids} = cb_cdrs:get_cdr_ids(Db, View, ViewOptions),
     filter_cdr_ids(Ids).
 
--spec filter_cdr_ids(wh_proplist()) -> wh_proplist().
+-spec filter_cdr_ids(kz_proplist()) -> kz_proplist().
 filter_cdr_ids(Ids) ->
     Req = [{<<"Call-IDs">>, [CallId || {<<_:7/binary, CallId/binary>>, _} <- Ids]}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case wh_amqp_worker:call(Req
-                             ,fun wapi_inspector:publish_filter_req/1
-                             ,fun wapi_inspector:filter_resp_v/1
+    case kz_amqp_worker:call(Req
+                             ,fun kapi_inspector:publish_filter_req/1
+                             ,fun kapi_inspector:filter_resp_v/1
                             )
     of
         {'ok', JObj} ->
-            FilteredIds = wh_json:get_value(<<"Call-IDs">>, JObj, []),
+            FilteredIds = kz_json:get_value(<<"Call-IDs">>, JObj, []),
 
             [Id ||
                 {<<_:7/binary, CallId/binary>>, _}=Id <- Ids,

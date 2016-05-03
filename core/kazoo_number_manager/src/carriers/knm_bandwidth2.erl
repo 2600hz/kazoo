@@ -30,7 +30,7 @@
 - export([auth/0]).  %% Only to pass compilation
 -endif.
 
--define(BW2_DEBUG, whapps_config:get_is_true(?KNM_BW2_CONFIG_CAT, <<"debug">>, 'false')).
+-define(BW2_DEBUG, kapps_config:get_is_true(?KNM_BW2_CONFIG_CAT, <<"debug">>, 'false')).
 -define(BW2_DEBUG_FILE, "/tmp/bandwidth2.com.xml").
 
 -define(DEBUG_WRITE(Format, Args),
@@ -45,22 +45,22 @@
 -define(BW2_BASE_URL, "https://api.inetwork.com/v1.0").
 
 -define(IS_SANDBOX_PROVISIONING_TRUE,
-        whapps_config:get_is_true(?KNM_BW2_CONFIG_CAT, <<"sandbox_provisioning">>, 'true')).
+        kapps_config:get_is_true(?KNM_BW2_CONFIG_CAT, <<"sandbox_provisioning">>, 'true')).
 -define(IS_PROVISIONING_ENABLED,
-        whapps_config:get_is_true(?KNM_BW2_CONFIG_CAT, <<"enable_provisioning">>, 'true')).
+        kapps_config:get_is_true(?KNM_BW2_CONFIG_CAT, <<"enable_provisioning">>, 'true')).
 -define(BW2_ORDER_NAME_PREFIX,
-        whapps_config:get_string(?KNM_BW2_CONFIG_CAT, <<"order_name_prefix">>, "Kazoo")).
+        kapps_config:get_string(?KNM_BW2_CONFIG_CAT, <<"order_name_prefix">>, "Kazoo")).
 
 -define(BW2_ACCOUNT_ID,
-        whapps_config:get_string(?KNM_BW2_CONFIG_CAT, <<"account_id">>, "")).
+        kapps_config:get_string(?KNM_BW2_CONFIG_CAT, <<"account_id">>, "")).
 -define(BW2_API_USERNAME,
-        whapps_config:get_binary(?KNM_BW2_CONFIG_CAT, <<"api_username">>, <<>>)).
+        kapps_config:get_binary(?KNM_BW2_CONFIG_CAT, <<"api_username">>, <<>>)).
 -define(BW2_API_PASSWORD,
-        whapps_config:get_binary(?KNM_BW2_CONFIG_CAT, <<"api_password">>, <<>>)).
+        kapps_config:get_binary(?KNM_BW2_CONFIG_CAT, <<"api_password">>, <<>>)).
 -define(BW2_SIP_PEER,
-        whapps_config:get_string(?KNM_BW2_CONFIG_CAT, <<"sip_peer">>, "")).
+        kapps_config:get_string(?KNM_BW2_CONFIG_CAT, <<"sip_peer">>, "")).
 -define(BW2_SITE_ID,
-        whapps_config:get_string(?KNM_BW2_CONFIG_CAT, <<"site_id">>, "")).
+        kapps_config:get_string(?KNM_BW2_CONFIG_CAT, <<"site_id">>, "")).
 
 -type weird() :: xml_el() | xml_els() | string().
 
@@ -78,8 +78,8 @@ is_number_billable(_Number) -> 'true'.
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--type search_ret() :: {'ok', wh_json:object()} | {'error', any()}.
--spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) -> search_ret().
+-type search_ret() :: {'ok', kz_json:object()} | {'error', any()}.
+-spec find_numbers(ne_binary(), pos_integer(), kz_proplist()) -> search_ret().
 find_numbers(<<"+", Rest/binary>>, Quantity, Options) ->
     find_numbers(Rest, Quantity, Options);
 
@@ -105,14 +105,14 @@ find_numbers(<<NPA:3/binary>>, Quantity, Options) ->
     {'ok', process_search_response(Result, Options)};
 
 find_numbers(Search, Quantity, Options) ->
-    NpaNxx = wh_util:truncate_right_binary(Search, 6),
+    NpaNxx = kz_util:truncate_right_binary(Search, 6),
     Params = [ "npaNxx=", binary_to_list(NpaNxx)
              , "&enableTNDetail=true&quantity=", integer_to_list(Quantity)
              ],
     {'ok', Result} = search(Params),
     {'ok', process_search_response(Result, Options)}.
 
--spec process_search_response(xml_el(), wh_proplist()) -> knm_number:knm_numbers().
+-spec process_search_response(xml_el(), kz_proplist()) -> knm_number:knm_numbers().
 process_search_response(Result, Options) ->
     AccountId = props:get_value(<<"account_id">>, Options),
     [search_response_to_KNM(X, AccountId)
@@ -140,11 +140,11 @@ acquire_number(Number) ->
                       <<"+1", N/binary>> -> N;
                       N -> N
                   end,
-            ON = lists:flatten([?BW2_ORDER_NAME_PREFIX, "-", integer_to_list(wh_util:current_tstamp())]),
+            ON = lists:flatten([?BW2_ORDER_NAME_PREFIX, "-", integer_to_list(kz_util:current_tstamp())]),
             AuthBy = knm_phone_number:auth_by(PhoneNumber),
 
             Props = [{'Name', [ON]}
-                    ,{'CustomerOrderId', [wh_util:to_list(AuthBy)]}
+                    ,{'CustomerOrderId', [kz_util:to_list(AuthBy)]}
                     ,{'SiteId', [?BW2_SITE_ID]}
                     ,{'PeerId', [?BW2_SIP_PEER]}
                     ,{'ExistingTelephoneNumberOrderType',
@@ -155,7 +155,7 @@ acquire_number(Number) ->
 
             case api_post(url(["orders"]), Body) of
                 {'error', Reason} ->
-                    Error = <<"Unable to acquire number: ", (wh_util:to_binary(Reason))/binary>>,
+                    Error = <<"Unable to acquire number: ", (kz_util:to_binary(Reason))/binary>>,
                     knm_errors:by_carrier(?MODULE, Error, Number);
                 {'ok', Xml} ->
                     Response = xmerl_xpath:string("Order", Xml),
@@ -188,8 +188,8 @@ sites() ->
 
 -spec process_site(weird()) -> 'ok'.
 process_site(Site) ->
-    Id   = wh_util:get_xml_value("Site/Id/text()", Site),
-    Name = wh_util:get_xml_value("Site/Name/text()", Site),
+    Id   = kz_util:get_xml_value("Site/Id/text()", Site),
+    Name = kz_util:get_xml_value("Site/Name/text()", Site),
     io:format("Id: ~p Name: ~p~n", [Id, Name]).
 
 %% @public
@@ -203,8 +203,8 @@ peers(SiteId) ->
 
 -spec process_peer(weird()) -> 'ok'.
 process_peer(Peer) ->
-    Id   = wh_util:get_xml_value("SipPeer/PeerId/text()", Peer),
-    Name = wh_util:get_xml_value("SipPeer/PeerName/text()", Peer),
+    Id   = kz_util:get_xml_value("SipPeer/PeerId/text()", Peer),
+    Name = kz_util:get_xml_value("SipPeer/PeerName/text()", Peer),
     io:format("Id: ~p Name: ~p~n", [Id, Name]).
 
 %%% Internals
@@ -327,17 +327,17 @@ handle_response({'error', _}=E) ->
 %% Convert a number order response to json
 %% @end
 %%--------------------------------------------------------------------
--spec number_order_response_to_json(weird()) -> wh_json:object().
+-spec number_order_response_to_json(weird()) -> kz_json:object().
 number_order_response_to_json([]) ->
-    wh_json:new();
+    kz_json:new();
 number_order_response_to_json([Xml]) ->
     number_order_response_to_json(Xml);
 number_order_response_to_json(Xml) ->
-    wh_json:from_list(
+    kz_json:from_list(
       props:filter_empty(
-        [{<<"order_id">>, wh_util:get_xml_value("id/text()", Xml)}
-        ,{<<"order_name">>, wh_util:get_xml_value("Name/text()", Xml)}
-        ,{<<"number">>, wh_util:get_xml_value("TelephoneNumberList/TelephoneNumber/text()", Xml)}
+        [{<<"order_id">>, kz_util:get_xml_value("id/text()", Xml)}
+        ,{<<"order_name">>, kz_util:get_xml_value("Name/text()", Xml)}
+        ,{<<"number">>, kz_util:get_xml_value("TelephoneNumberList/TelephoneNumber/text()", Xml)}
         ])).
 
 %% @private
@@ -345,8 +345,8 @@ number_order_response_to_json(Xml) ->
 search_response_to_KNM([Xml], AccountId) ->
     search_response_to_KNM(Xml, AccountId);
 search_response_to_KNM(Xml, AccountId) ->
-    Num = wh_util:get_xml_value("//FullNumber/text()", Xml),
-    JObj = wh_json:from_list(
+    Num = kz_util:get_xml_value("//FullNumber/text()", Xml),
+    JObj = kz_json:from_list(
              props:filter_empty(
                [{<<"number">>, Num}
                ,{<<"rate_center">>, rate_center_to_json(Xml)}
@@ -358,8 +358,8 @@ search_response_to_KNM(Xml, AccountId) ->
 %% @private
 -spec tollfree_search_response_to_KNM(weird(), ne_binary()) -> knm_number:knm_number().
 tollfree_search_response_to_KNM(Xml, AccountId) ->
-    Num = wh_util:get_xml_value("//TelephoneNumber/text()", Xml),
-    {'ok', PhoneNumber} = knm_phone_number:newly_found(Num, ?MODULE, AccountId, wh_json:new()),
+    Num = kz_util:get_xml_value("//TelephoneNumber/text()", Xml),
+    {'ok', PhoneNumber} = knm_phone_number:newly_found(Num, ?MODULE, AccountId, kz_json:new()),
     knm_number:set_phone_number(knm_number:new(), PhoneNumber).
 
 %%--------------------------------------------------------------------
@@ -368,17 +368,17 @@ tollfree_search_response_to_KNM(Xml, AccountId) ->
 %% Convert a rate center XML entity to json
 %% @end
 %%--------------------------------------------------------------------
--spec rate_center_to_json(weird()) -> wh_json:object().
+-spec rate_center_to_json(weird()) -> kz_json:object().
 rate_center_to_json([]) ->
-    wh_json:new();
+    kz_json:new();
 rate_center_to_json([Xml]) ->
     rate_center_to_json(Xml);
 rate_center_to_json(Xml) ->
-    wh_json:from_list(
+    kz_json:from_list(
       props:filter_empty(
-        [{<<"name">>, wh_util:get_xml_value("//RateCenter/text()", Xml)}
-        ,{<<"lata">>, wh_util:get_xml_value("//LATA/text()", Xml)}
-        ,{<<"state">>, wh_util:get_xml_value("//State/text()", Xml)}
+        [{<<"name">>, kz_util:get_xml_value("//RateCenter/text()", Xml)}
+        ,{<<"lata">>, kz_util:get_xml_value("//LATA/text()", Xml)}
+        ,{<<"state">>, kz_util:get_xml_value("//State/text()", Xml)}
         ])).
 
 %%--------------------------------------------------------------------
@@ -391,15 +391,15 @@ rate_center_to_json(Xml) ->
 -spec verify_response(weird()) -> {'ok', weird()} |
                                   {'error', any()}.
 verify_response(Xml) ->
-    case wh_util:get_xml_value("/*/status/text()", Xml) =:= <<"success">>
-        orelse wh_util:get_xml_value("//LoginResponse/LoginResult/text()", Xml) =/= 'undefined'
-        orelse wh_util:get_xml_value("//SearchTelephoneNumbersResponse/SearchTelephoneNumbersResult", Xml) =/= []
+    case kz_util:get_xml_value("/*/status/text()", Xml) =:= <<"success">>
+        orelse kz_util:get_xml_value("//LoginResponse/LoginResult/text()", Xml) =/= 'undefined'
+        orelse kz_util:get_xml_value("//SearchTelephoneNumbersResponse/SearchTelephoneNumbersResult", Xml) =/= []
     of
         'true' ->
             lager:debug("request was successful"),
             {'ok', Xml};
         'false' ->
-            Reason = wh_util:get_xml_value("/*/errors/error/message/text()", Xml),
+            Reason = kz_util:get_xml_value("/*/errors/error/message/text()", Xml),
             lager:debug("request failed: ~s", [Reason]),
             {'error', Reason}
     end.

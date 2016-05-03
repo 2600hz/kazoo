@@ -30,9 +30,9 @@ start() ->
 
 -spec send_req(ne_binaries()) -> ne_binaries().
 send_req(Accounts) ->
-    ReqResp = wh_amqp_worker:call(balance_check_req(Accounts)
-                                  ,fun wapi_authz:publish_balance_check_req/1
-                                  ,fun wapi_authz:balance_check_resp_v/1
+    ReqResp = kz_amqp_worker:call(balance_check_req(Accounts)
+                                  ,fun kapi_authz:publish_balance_check_req/1
+                                  ,fun kapi_authz:balance_check_resp_v/1
                                   ,?FETCH_TIMEOUT_MS
                                  ),
     case ReqResp of
@@ -43,17 +43,17 @@ send_req(Accounts) ->
             balance_check_response(JObj)
     end.
 
--spec balance_check_req(ne_binaries()) -> wh_proplist().
+-spec balance_check_req(ne_binaries()) -> kz_proplist().
 balance_check_req(Accounts) ->
     props:filter_undefined(
       [{<<"Accounts">>, Accounts}
-       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
--spec balance_check_response(wh_json:object()) -> ne_binaries().
+-spec balance_check_response(kz_json:object()) -> ne_binaries().
 balance_check_response(JObj) ->
-    Balances = wh_json:get_json_value(<<"Balances">>, JObj),
-    wh_json:foldl(
+    Balances = kz_json:get_json_value(<<"Balances">>, JObj),
+    kz_json:foldl(
       fun(Key, Value, Acc) ->
               case Value of
                   'true' -> Acc;

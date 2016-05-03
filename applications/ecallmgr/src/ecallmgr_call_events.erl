@@ -69,7 +69,7 @@
           ,failed_node_checks = 0 :: non_neg_integer()
           ,node_down_tref :: reference()
           ,sanity_check_tref :: reference()
-          ,ref = wh_util:rand_hex_binary(12) :: ne_binary()
+          ,ref = kz_util:rand_hex_binary(12) :: ne_binary()
           ,passive = 'false' :: boolean()
          }).
 -type state() :: #state{}.
@@ -125,36 +125,36 @@ node(Srv) -> gen_listener:call(Srv, 'node', ?MILLISECONDS_IN_SECOND).
 
 update_node(Srv, Node) -> gen_listener:cast(Srv, {'update_node', Node}).
 
--spec transfer(pid(), atom(), wh_proplist()) -> 'ok'.
+-spec transfer(pid(), atom(), kz_proplist()) -> 'ok'.
 transfer(Srv, TransferType, Props) -> gen_listener:cast(Srv, {TransferType, Props}).
 
 -spec queue_name(pid()) -> ne_binary().
 queue_name(Srv) -> gen_listener:queue_name(Srv).
 
--spec to_json(wh_proplist()) -> wh_json:object().
+-spec to_json(kz_proplist()) -> kz_json:object().
 to_json(Props) ->
-    wh_json:from_list(create_event(Props)).
+    kz_json:from_list(create_event(Props)).
 
--spec handle_publisher_usurp(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_publisher_usurp(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_publisher_usurp(JObj, Props) ->
     CallId = props:get_value('call_id', Props),
     Ref = props:get_value('reference', Props),
-    Node = wh_util:to_binary(props:get_value('node', Props)),
+    Node = kz_util:to_binary(props:get_value('node', Props)),
 
     lager:debug("received publisher usurp for ~s on ~s (if ~s != ~s)"
-                ,[wh_json:get_value(<<"Call-ID">>, JObj)
-                  ,wh_json:get_value(<<"Media-Node">>, JObj)
+                ,[kz_json:get_value(<<"Call-ID">>, JObj)
+                  ,kz_json:get_value(<<"Media-Node">>, JObj)
                   ,Ref
-                  ,wh_json:get_value(<<"Reference">>, JObj)
+                  ,kz_json:get_value(<<"Reference">>, JObj)
                  ]),
 
-    case CallId =:= wh_json:get_value(<<"Call-ID">>, JObj)
-        andalso Node =:= wh_json:get_value(<<"Media-Node">>, JObj)
-        andalso Ref =/= wh_json:get_value(<<"Reference">>, JObj)
+    case CallId =:= kz_json:get_value(<<"Call-ID">>, JObj)
+        andalso Node =:= kz_json:get_value(<<"Media-Node">>, JObj)
+        andalso Ref =/= kz_json:get_value(<<"Reference">>, JObj)
     of
         'false' -> 'ok';
         'true' ->
-            wh_util:put_callid(CallId),
+            kz_util:put_callid(CallId),
             gen_listener:cast(props:get_value('server', Props), {'passive'})
     end.
 
@@ -183,13 +183,13 @@ init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
     end.
 
 init(Node, CallId) ->
-    wh_util:put_callid(CallId),
+    kz_util:put_callid(CallId),
     register_for_events(Node, CallId),
     gen_listener:cast(self(), 'init'),
     lager:debug("started call event publisher"),
     {'ok', #state{node=Node
                   ,call_id=CallId
-                  ,ref=wh_util:rand_hex_binary(12)
+                  ,ref=kz_util:rand_hex_binary(12)
                  }}.
 -spec register_event_process(atom(), ne_binary()) -> 'ok' | {'error', any()}.
 register_event_process(Node, CallId) ->
@@ -373,11 +373,11 @@ handle_info({'event', [CallId | Props]}, #state{node=Node
             {'noreply', State};
         {<<"RECORD_STOP">>, _} ->
             _ = case props:get_value(?GET_CCV(<<"Media-Recorder">>), Props) of
-                    <<"wh_media_recording">> ->
-                        lager:debug("wh_media_recording is handling call recording publishing record stop");
+                    <<"kz_media_recording">> ->
+                        lager:debug("kz_media_recording is handling call recording publishing record stop");
                     _ ->
                         lager:debug("no one is handling call recording, storing recording"),
-                        wh_util:spawn(fun store_recording/3, [Props, CallId, Node])
+                        kz_util:spawn(fun store_recording/3, [Props, CallId, Node])
                 end,
             process_channel_event(Props),
             {'noreply', State};
@@ -488,7 +488,7 @@ handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
--spec handle_bowout(atom(), wh_proplist(), ne_binary()) -> ne_binary().
+-spec handle_bowout(atom(), kz_proplist(), ne_binary()) -> ne_binary().
 handle_bowout(Node, Props, ResigningUUID) ->
     case {props:get_value(?RESIGNING_UUID, Props)
           ,props:get_value(?ACQUIRED_UUID, Props)
@@ -504,7 +504,7 @@ handle_bowout(Node, Props, ResigningUUID) ->
             unregister_for_events(Node, ResigningUUID),
             _ = unregister_event_process(Node, ResigningUUID),
 
-            wh_util:put_callid(AcquiringUUID),
+            kz_util:put_callid(AcquiringUUID),
             AcquiringUUID;
         {_UUID, _AcquiringUUID} ->
             lager:debug("failed to update after bowout, r: ~s a: ~s", [_UUID, _AcquiringUUID]),
@@ -560,7 +560,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec maybe_process_channel_destroy(atom(), ne_binary(), wh_proplist()) -> 'ok'.
+-spec maybe_process_channel_destroy(atom(), ne_binary(), kz_proplist()) -> 'ok'.
 maybe_process_channel_destroy(Node, CallId, Props) ->
     case ecallmgr_fs_channel:node(CallId) of
         {'ok', Node} -> gen_server:cast(self(), {'graceful_shutdown', CallId});
@@ -573,9 +573,9 @@ maybe_process_channel_destroy(Node, CallId, Props) ->
             publish_event(Event)
     end.
 
--spec process_channel_event(wh_proplist()) -> 'ok'.
+-spec process_channel_event(kz_proplist()) -> 'ok'.
 process_channel_event(Props) ->
-    wh_util:put_callid(get_call_id(Props)),
+    kz_util:put_callid(get_call_id(Props)),
     EventName = get_event_name(Props),
     ApplicationName = get_application_name(Props),
     Masqueraded = is_masquerade(Props),
@@ -586,15 +586,15 @@ process_channel_event(Props) ->
             publish_event(Event)
     end.
 
--spec create_event(wh_proplist()) -> wh_proplist().
+-spec create_event(kz_proplist()) -> kz_proplist().
 create_event(Props) ->
     create_event(get_event_name(Props), Props).
 
--spec create_event(ne_binary(), wh_proplist()) -> wh_proplist().
+-spec create_event(ne_binary(), kz_proplist()) -> kz_proplist().
 create_event(EventName, Props) ->
     create_event(EventName, get_application_name(Props), Props).
 
--spec create_event(ne_binary(), api_binary(), wh_proplist()) -> wh_proplist().
+-spec create_event(ne_binary(), api_binary(), kz_proplist()) -> kz_proplist().
 create_event(EventName, ApplicationName, Props) ->
     props:filter_undefined(
       [{<<"Event-Name">>, EventName}
@@ -603,8 +603,8 @@ create_event(EventName, ApplicationName, Props) ->
        ++ specific_call_channel_vars_props(EventName, Props)
       ]).
 
--spec specific_call_channel_vars_props(ne_binary(), wh_proplist()) ->
-                                              wh_proplist().
+-spec specific_call_channel_vars_props(ne_binary(), kz_proplist()) ->
+                                              kz_proplist().
 specific_call_channel_vars_props(<<"CHANNEL_DESTROY">>, Props) ->
     UUID = get_call_id(Props),
     Vars = ecallmgr_util:custom_channel_vars(Props),
@@ -613,22 +613,22 @@ specific_call_channel_vars_props(<<"CHANNEL_DESTROY">>, Props) ->
         {'ok', CDR} ->
             NewVars = props:set_value(<<?CALL_INTERACTION_ID>>, CDR, Vars),
             lager:debug("found interaction cache ~s for ~s", [CDR, UUID]),
-            [{<<"Custom-Channel-Vars">>, wh_json:from_list(NewVars)}];
+            [{<<"Custom-Channel-Vars">>, kz_json:from_list(NewVars)}];
         _ ->
             lager:debug("interaction cache for ~s not found", [UUID]),
-            [{<<"Custom-Channel-Vars">>, wh_json:from_list(Vars)}]
+            [{<<"Custom-Channel-Vars">>, kz_json:from_list(Vars)}]
     end;
 specific_call_channel_vars_props(_EventName, Props) ->
-    [{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}].
+    [{<<"Custom-Channel-Vars">>, kz_json:from_list(ecallmgr_util:custom_channel_vars(Props))}].
 
--spec generic_call_event_props(wh_proplist()) -> wh_proplist().
+-spec generic_call_event_props(kz_proplist()) -> kz_proplist().
 generic_call_event_props(Props) ->
-    Timestamp = wh_util:now_us(os:timestamp()),
+    Timestamp = kz_util:now_us(os:timestamp()),
     FSTimestamp = props:get_integer_value(<<"Event-Date-Timestamp">>, Props, Timestamp),
-    NormalizedFSTimestamp = wh_util:unix_seconds_to_gregorian_seconds(FSTimestamp div 1000000),
+    NormalizedFSTimestamp = kz_util:unix_seconds_to_gregorian_seconds(FSTimestamp div 1000000),
 
     [{<<"Timestamp">>, NormalizedFSTimestamp}
-     ,{<<"Msg-ID">>, wh_util:to_binary(FSTimestamp)}
+     ,{<<"Msg-ID">>, kz_util:to_binary(FSTimestamp)}
      ,{<<"Call-ID">>, get_call_id(Props)}
      ,{<<"Transfer-History">>, get_transfer_history(Props)}
      ,{<<"Hangup-Cause">>, get_hangup_cause(Props)}
@@ -649,7 +649,7 @@ generic_call_event_props(Props) ->
      ,{<<"Raw-Application-Data">>, props:get_value(<<"Application-Data">>, Props)}
      ,{<<"Media-Server">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
      ,{<<"Replaced-By">>, props:get_first_defined([<<"att_xfer_replaced_by">>, ?ACQUIRED_UUID], Props)}
-     ,{<<"Custom-SIP-Headers">>, wh_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
+     ,{<<"Custom-SIP-Headers">>, kz_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
      ,{<<"From-Tag">>, props:get_value(<<"variable_sip_from_tag">>, Props)}
      ,{<<"To-Tag">>, props:get_value(<<"variable_sip_to_tag">>, Props)}
      ,{<<"Switch-URL">>, props:get_value(<<"Switch-URL">>, Props)}
@@ -665,15 +665,15 @@ generic_call_event_props(Props) ->
      ,{<<"Channel-Loopback-Bowout-Execute">>, props:get_is_true(<<"variable_loopback_bowout_on_execute">>, Props)}
      ,{<<"Channel-Created-Time">>, props:get_integer_value(<<"Caller-Channel-Created-Time">>, Props)}
      | callee_call_event_props(Props)
-     ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+     ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec publish_event(wh_proplist()) -> 'ok'.
+-spec publish_event(kz_proplist()) -> 'ok'.
 publish_event(Props) ->
     %% call_control publishes channel create/destroy on the control
     %% events queue by calling create_event then this directly.
-    EventName = wh_util:to_lower_binary(props:get_value(<<"Event-Name">>, Props, <<>>)),
-    ApplicationName = wh_util:to_lower_binary(props:get_value(<<"Application-Name">>, Props, <<>>)),
+    EventName = kz_util:to_lower_binary(props:get_value(<<"Event-Name">>, Props, <<>>)),
+    ApplicationName = kz_util:to_lower_binary(props:get_value(<<"Application-Name">>, Props, <<>>)),
     case {ApplicationName, EventName} of
         {_, <<"dtmf">>} ->
             lager:debug("publishing received DTMF digit ~s"
@@ -686,27 +686,27 @@ publish_event(Props) ->
         {<<>>, _Event} ->
             lager:debug("publishing call event ~s", [_Event]);
         {ApplicationName, <<"channel_execute_complete">>} ->
-            ApplicationResponse = wh_util:to_lower_binary(props:get_value(<<"Application-Response">>, Props, <<>>)),
+            ApplicationResponse = kz_util:to_lower_binary(props:get_value(<<"Application-Response">>, Props, <<>>)),
             ApplicationData = props:get_value(<<"Raw-Application-Data">>, Props, <<>>),
             lager:debug("publishing call event ~s '~s(~s)' result: ~s", [EventName, ApplicationName, ApplicationData, ApplicationResponse]);
         {ApplicationName, _} ->
             ApplicationData = props:get_value(<<"Raw-Application-Data">>, Props, <<>>),
             lager:debug("publishing call event ~s '~s(~s)'", [EventName, ApplicationName, ApplicationData])
     end,
-    wh_amqp_worker:cast(Props, fun wapi_call:publish_event/1).
+    kz_amqp_worker:cast(Props, fun kapi_call:publish_event/1).
 
--spec is_masquerade(wh_proplist()) -> boolean().
+-spec is_masquerade(kz_proplist()) -> boolean().
 is_masquerade(Props) ->
     case props:get_value(<<"Event-Subclass">>, Props) of
-        %% If this is a event created by whistle, then use
+        %% If this is a event created by kazoo, then use
         %% the flag it as masqueraded
-        <<"whistle::", _/binary>> -> 'true';
+        <<"kazoo::", _/binary>> -> 'true';
         %% otherwise process as the genuine article
         _Else -> 'false'
     end.
 
 %% return a proplist of k/v pairs specific to the event
--spec specific_call_event_props(binary(), api_binary(), wh_proplist()) -> wh_proplist().
+-spec specific_call_event_props(binary(), api_binary(), kz_proplist()) -> kz_proplist().
 specific_call_event_props(<<"CHANNEL_EXECUTE">>, <<"conference">>, Props) ->
     conference_specific(Props);
 specific_call_event_props(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"conference">>, Props) ->
@@ -723,7 +723,7 @@ specific_call_event_props(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"playback">> = Appli
     ];
 specific_call_event_props(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>, Props) ->
     [{<<"Application-Name">>, <<"noop">>}
-     ,{<<"Application-Response">>, props:get_value(<<"whistle_application_response">>, Props)}
+     ,{<<"Application-Response">>, props:get_value(<<"kazoo_application_response">>, Props)}
     ];
 specific_call_event_props(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, Props) ->
     [{<<"Application-Name">>, <<"bridge">>}
@@ -770,14 +770,14 @@ specific_call_event_props(<<"CHANNEL_DESTROY">>, _, Props) ->
 specific_call_event_props(<<"RECORD_START">>, _, Props) ->
     [{<<"Application-Name">>, <<"record">>}
      ,{<<"Application-Response">>, props:get_first_defined([<<"Record-File-Path">>
-                                                            ,<<"whistle_application_response">>
+                                                            ,<<"kazoo_application_response">>
                                                            ], Props)
       }
     ];
 specific_call_event_props(<<"RECORD_STOP">>, _, Props) ->
     [{<<"Application-Name">>, <<"record">>}
      ,{<<"Application-Response">>, props:get_first_defined([<<"Record-File-Path">>
-                                                            ,<<"whistle_application_response">>
+                                                            ,<<"kazoo_application_response">>
                                                            ], Props)
       }
      ,{<<"Terminator">>, props:get_value(<<"variable_playback_terminator_used">>, Props)}
@@ -799,12 +799,12 @@ specific_call_event_props(<<"FAX_DETECTED">>, _, _Props) ->
 specific_call_event_props(<<"CHANNEL_FAX_STATUS">>, <<"rxfax", Event/binary>>, Prop) ->
     [{<<"Application-Name">>, <<"receive_fax">>}
     ,{<<"Application-Event">>, Event}
-    ,{<<"Application-Data">>, wh_json:from_list(fax_specific(Prop))}
+    ,{<<"Application-Data">>, kz_json:from_list(fax_specific(Prop))}
     ];
 specific_call_event_props(<<"CHANNEL_FAX_STATUS">>, <<"txfax", Event/binary>>, Prop) ->
     [{<<"Application-Name">>, <<"send_fax">>}
     ,{<<"Application-Event">>, Event}
-    ,{<<"Application-Data">>, wh_json:from_list(fax_specific(Prop))}
+    ,{<<"Application-Data">>, kz_json:from_list(fax_specific(Prop))}
     ];
 specific_call_event_props(<<"CHANNEL_INTERCEPTED">>, _, Props) ->
     [{<<"Intercepted-By">>, props:get_value(<<"intercepted_by">>, Props)}];
@@ -813,13 +813,13 @@ specific_call_event_props(_Evt, Application, Props) ->
      ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Props)}
     ].
 
--spec page_specific(wh_proplist()) -> wh_proplist().
+-spec page_specific(kz_proplist()) -> kz_proplist().
 page_specific(Props) ->
     [{<<"Application-Name">>, <<"page">>}
      ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Props)}
     ].
 
--spec conference_specific(wh_proplist()) -> wh_proplist().
+-spec conference_specific(kz_proplist()) -> kz_proplist().
 conference_specific(Props) ->
     Default = [{<<"Application-Name">>, <<"conference">>}
                ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Props)}
@@ -837,14 +837,14 @@ conference_specific(Props) ->
             end
     end.
 
--spec maybe_fax_specific(wh_proplist()) -> api_object().
+-spec maybe_fax_specific(kz_proplist()) -> api_object().
 maybe_fax_specific(Props) ->
     case fax_specific(Props) of
         [] -> 'undefined';
-        FaxProps -> wh_json:from_list(FaxProps)
+        FaxProps -> kz_json:from_list(FaxProps)
     end.
 
--spec fax_specific(wh_proplist()) -> wh_proplist().
+-spec fax_specific(kz_proplist()) -> kz_proplist().
 fax_specific(Props) ->
     props:filter_undefined(
       [{<<"Fax-Success">>, get_fax_success(Props)}
@@ -877,17 +877,17 @@ fax_specific(Props) ->
 
 -spec should_publish(ne_binary(), ne_binary(), boolean()) -> boolean().
 should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, 'false') ->
-    lager:debug("suppressing bridge execute complete in favour the whistle masquerade of this event"),
+    lager:debug("suppressing bridge execute complete in favour the kazoo masquerade of this event"),
     'false';
 should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"set", _/binary>>, _) ->
     'false';
 should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"set">>, _) ->
     'false';
 should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"intercept">>, 'false') ->
-    lager:debug("suppressing intercept execute complete in favour the whistle masquerade of this event"),
+    lager:debug("suppressing intercept execute complete in favour the kazoo masquerade of this event"),
     'false';
 should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"execute_extension">>, 'false') ->
-    lager:debug("suppressing execute_extension execute complete in favour the whistle masquerade of this event"),
+    lager:debug("suppressing execute_extension execute complete in favour the kazoo masquerade of this event"),
     'false';
 should_publish(<<"CHANNEL_EXECUTE", _/binary>>, <<"park">>, _) ->
     'false';
@@ -904,27 +904,27 @@ should_publish(<<"DETECTED_TONE">>, _, _) ->
 should_publish(EventName, _A, _) ->
     lists:member(EventName, ?CALL_EVENTS).
 
--spec silence_terminated(api_integer() | wh_proplist()) -> api_boolean().
+-spec silence_terminated(api_integer() | kz_proplist()) -> api_boolean().
 silence_terminated('undefined') -> 'undefined';
 silence_terminated(Hits) when is_integer(Hits) -> Hits =:= 0;
 silence_terminated(Prop) when is_list(Prop) ->
     case props:get_value(<<"variable_silence_hits_exhausted">>, Prop) of
         'undefined' -> silence_terminated(props:get_integer_value(<<"variable_record_silence_hits">>, Prop));
-        Ex -> wh_util:is_true(Ex)
+        Ex -> kz_util:is_true(Ex)
     end.
 
--spec is_channel_moving(wh_proplist()) -> boolean().
+-spec is_channel_moving(kz_proplist()) -> boolean().
 is_channel_moving(Props) ->
     props:get_is_true(<<"variable_channel_is_moving">>, Props, 'false').
 
--spec get_channel_moving(wh_proplist()) -> api_boolean().
+-spec get_channel_moving(kz_proplist()) -> api_boolean().
 get_channel_moving(Props) ->
     case is_channel_moving(Props) of
         'false' -> 'undefined';
         'true' -> 'true'
     end.
 
--spec get_channel_state(wh_proplist()) -> api_binary().
+-spec get_channel_state(kz_proplist()) -> api_binary().
 get_channel_state(Props) ->
     case props:get_value(<<"Channel-State">>, Props) of
         'undefined' -> 'undefined';
@@ -932,15 +932,15 @@ get_channel_state(Props) ->
         Other -> Other
     end.
 
--spec get_call_id(wh_proplist()) -> api_binary().
+-spec get_call_id(kz_proplist()) -> api_binary().
 get_call_id(Props) ->
     kzd_freeswitch:call_id(Props).
 
--spec get_other_leg(wh_proplist()) -> api_binary().
+-spec get_other_leg(kz_proplist()) -> api_binary().
 get_other_leg(Props) ->
     ecallmgr_fs_channel:get_other_leg(get_call_id(Props), Props).
 
--spec get_event_name(wh_proplist()) -> api_binary().
+-spec get_event_name(kz_proplist()) -> api_binary().
 get_event_name(Props) ->
     case kzd_freeswitch:application_name(Props) of
         <<"sofia::transferee">> -> <<"CHANNEL_TRANSFEREE">>;
@@ -953,7 +953,7 @@ get_event_name(Props) ->
         _AppName -> get_fs_event_name(Props)
     end.
 
--spec get_fs_event_name(wh_proplist()) -> api_binary().
+-spec get_fs_event_name(kz_proplist()) -> api_binary().
 get_fs_event_name(Props) ->
     case kzd_freeswitch:event_name(Props) of
         <<"DETECTED_TONE">> ->
@@ -964,7 +964,7 @@ get_fs_event_name(Props) ->
         Event -> Event
     end.
 
--spec get_application_name(wh_proplist()) -> api_binary().
+-spec get_application_name(kz_proplist()) -> api_binary().
 get_application_name(Props) ->
     case kzd_freeswitch:application_name(Props) of
         <<"sofia::transferee">> -> <<"transfer">>;
@@ -975,32 +975,32 @@ get_application_name(Props) ->
         AppName -> AppName
     end.
 
--spec get_raw_application_name(wh_proplist()) -> api_binary().
+-spec get_raw_application_name(kz_proplist()) -> api_binary().
 get_raw_application_name(Props) ->
     kzd_freeswitch:raw_application_name(Props).
 
--spec get_fax_success(wh_proplist()) -> api_boolean().
+-spec get_fax_success(kz_proplist()) -> api_boolean().
 get_fax_success(Props) ->
     case props:get_value(<<"variable_fax_success">>, Props) of
         'undefined' -> 'undefined';
         Else -> Else =/= <<"0">>
     end.
 
--spec get_fax_t38_used(wh_proplist()) -> api_boolean().
+-spec get_fax_t38_used(kz_proplist()) -> api_boolean().
 get_fax_t38_used(Props) ->
     case props:get_value(<<"variable_has_t38">>, Props) of
         'undefined' -> 'undefined';
-        Else -> wh_util:is_true(Else)
+        Else -> kz_util:is_true(Else)
     end.
 
--spec get_fax_ecm_used(wh_proplist()) -> api_boolean().
+-spec get_fax_ecm_used(kz_proplist()) -> api_boolean().
 get_fax_ecm_used(Props) ->
     case props:get_value(<<"variable_fax_ecm_used">>, Props) of
         'undefined' -> 'undefined';
         Else -> Else =/= <<"off">>
     end.
 
--spec get_serialized_history(wh_proplist()) -> binaries().
+-spec get_serialized_history(kz_proplist()) -> binaries().
 get_serialized_history(Props) ->
     case kzd_freeswitch:transfer_history(Props) of
         'undefined' -> [];
@@ -1010,7 +1010,7 @@ get_serialized_history(Props) ->
             History
     end.
 
--spec get_transfer_history(wh_proplist()) -> api_object().
+-spec get_transfer_history(kz_proplist()) -> api_object().
 get_transfer_history(Props) ->
     SerializedHistory = get_serialized_history(Props),
     case [HistJObj
@@ -1019,10 +1019,10 @@ get_transfer_history(Props) ->
          ]
     of
         [] -> 'undefined';
-        History -> wh_json:from_list(History)
+        History -> kz_json:from_list(History)
     end.
 
--spec create_trnsf_history_object(list()) -> {ne_binary(), wh_json:object()} | 'undefined'.
+-spec create_trnsf_history_object(list()) -> {ne_binary(), kz_json:object()} | 'undefined'.
 create_trnsf_history_object([Epoch, CallId, <<"att_xfer">>, Props]) ->
     [Transferee, Transferer] = binary:split(Props, <<"/">>),
     Trans = [{<<"Call-ID">>, CallId}
@@ -1030,52 +1030,52 @@ create_trnsf_history_object([Epoch, CallId, <<"att_xfer">>, Props]) ->
              ,{<<"Transferee">>, Transferee}
              ,{<<"Transferer">>, Transferer}
             ],
-    {Epoch, wh_json:from_list(Trans)};
+    {Epoch, kz_json:from_list(Trans)};
 create_trnsf_history_object([Epoch, CallId, <<"bl_xfer">> | Props]) ->
     %% This looks confusing but FS uses the same delimiter to in the array
     %% as it does for inline dialplan actions (like those created during partial attended)
     %% so we have to put it together to take it apart... I KNOW! ARRRG
-    Dialplan = lists:last(binary:split(wh_util:join_binary(Props, <<":">>), <<",">>)),
+    Dialplan = lists:last(binary:split(kz_util:join_binary(Props, <<":">>), <<",">>)),
     [Exten | _] = binary:split(Dialplan, <<"/">>, ['global']),
     Trans = [{<<"Call-ID">>, CallId}
              ,{<<"Type">>, <<"blind">>}
              ,{<<"Extension">>, Exten}
             ],
-    {Epoch, wh_json:from_list(Trans)};
+    {Epoch, kz_json:from_list(Trans)};
 create_trnsf_history_object([Epoch, CallId, <<"uuid_br">> , OtherLeg]) ->
     Trans = [{<<"Call-ID">>, CallId}
              ,{<<"Type">>, <<"bridge">>}
              ,{<<"Other-Leg">>, OtherLeg}
             ],
-    {Epoch, wh_json:from_list(Trans)};
+    {Epoch, kz_json:from_list(Trans)};
 create_trnsf_history_object(_Params) ->
     lager:debug("unhandled transfer type : ~p", [_Params]),
     'undefined'.
 
--spec get_hangup_cause(wh_proplist()) -> api_binary().
+-spec get_hangup_cause(kz_proplist()) -> api_binary().
 get_hangup_cause(Props) ->
     kzd_freeswitch:hangup_cause(Props).
 
--spec get_disposition(wh_proplist()) -> api_binary().
+-spec get_disposition(kz_proplist()) -> api_binary().
 get_disposition(Props) ->
     kzd_freeswitch:disposition(Props).
 
--spec get_hangup_code(wh_proplist()) -> api_binary().
+-spec get_hangup_code(kz_proplist()) -> api_binary().
 get_hangup_code(Props) ->
     kzd_freeswitch:hangup_code(Props).
 
--spec get_billing_seconds(wh_proplist()) -> api_binary().
+-spec get_billing_seconds(kz_proplist()) -> api_binary().
 get_billing_seconds(Props) ->
     case props:get_integer_value(<<"variable_billmsec">>, Props) of
         'undefined' -> props:get_value(<<"variable_billsec">>, Props);
-        Billmsec -> wh_util:to_binary(wh_util:ceiling(Billmsec / 1000))
+        Billmsec -> kz_util:to_binary(kz_util:ceiling(Billmsec / 1000))
     end.
 
--spec swap_call_legs(wh_proplist() | wh_json:object()) -> wh_proplist().
--spec swap_call_legs(wh_proplist(), wh_proplist()) -> wh_proplist().
+-spec swap_call_legs(kz_proplist() | kz_json:object()) -> kz_proplist().
+-spec swap_call_legs(kz_proplist(), kz_proplist()) -> kz_proplist().
 
 swap_call_legs(Props) when is_list(Props) -> swap_call_legs(Props, []);
-swap_call_legs(JObj) -> swap_call_legs(wh_json:to_proplist(JObj)).
+swap_call_legs(JObj) -> swap_call_legs(kz_json:to_proplist(JObj)).
 
 swap_call_legs([], Swap) -> Swap;
 swap_call_legs([{<<"Unique-ID">>, Value}|T], Swap) ->
@@ -1096,11 +1096,11 @@ usurp_other_publishers(#state{node=Node
     Usurp = [{<<"Call-ID">>, CallId}
              ,{<<"Media-Node">>, Node}
              ,{<<"Reference">>, Ref}
-             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
-    wapi_call:publish_usurp_publisher(CallId, Usurp).
+    kapi_call:publish_usurp_publisher(CallId, Usurp).
 
--spec store_recording(wh_proplist(), ne_binary(), atom()) ->
+-spec store_recording(kz_proplist(), ne_binary(), atom()) ->
                              'ok' |
                              'error' |
                              ecallmgr_util:send_cmd_ret() |
@@ -1110,17 +1110,17 @@ store_recording(Props, CallId, Node) ->
         'undefined' -> 'ok';
         <<>> -> 'ok';
         <<_/binary>> = Destination ->
-            wh_util:put_callid(CallId),
+            kz_util:put_callid(CallId),
 
             MediaName = kzd_freeswitch:ccv(Props, <<"Media-Name">>),
-            %% TODO: if you change this logic be sure it matches wh_media_util as well!
-            Url = wh_util:join_binary([wh_util:strip_right_binary(Destination, $/)
+            %% TODO: if you change this logic be sure it matches kz_media_util as well!
+            Url = kz_util:join_binary([kz_util:strip_right_binary(Destination, $/)
                                        ,MediaName
                                       ]
                                       ,<<"/">>
                                      ),
 
-            JObj = wh_json:from_list(
+            JObj = kz_json:from_list(
                      [{<<"Call-ID">>, CallId}
                       ,{<<"Msg-ID">>, CallId}
                       ,{<<"Media-Name">>, MediaName}
@@ -1130,12 +1130,12 @@ store_recording(Props, CallId, Node) ->
                       ,{<<"Application-Name">>, <<"store">>}
                       ,{<<"Event-Category">>, <<"call">>}
                       ,{<<"Event-Name">>, <<"command">>}
-                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                      ]),
             ecallmgr_call_command:exec_cmd(Node, CallId, JObj, 'undefined')
     end.
 
--spec media_transfer_method(wh_proplist()) -> ne_binary().
+-spec media_transfer_method(kz_proplist()) -> ne_binary().
 media_transfer_method(Props) ->
     kzd_freeswitch:ccv(Props, <<"Media-Transfer-Method">>, <<"put">>).
 
@@ -1143,7 +1143,7 @@ media_transfer_method(Props) ->
 get_is_loopback('undefined') -> 'undefined';
 get_is_loopback(_) -> 'true'.
 
--spec callee_call_event_props(wh_proplist()) -> wh_proplist().
+-spec callee_call_event_props(kz_proplist()) -> kz_proplist().
 callee_call_event_props(Props) ->
     UUID = get_call_id(Props),
     case kz_cache:peek_local(?ECALLMGR_INTERACTION_CACHE, {'channel', UUID}) of
@@ -1157,15 +1157,15 @@ callee_call_event_props(Props) ->
             ]
     end.
 
--spec debug_channel_props(wh_proplist()) -> wh_proplist().
--spec debug_channel_props(wh_proplist(), boolean()) -> wh_proplist().
+-spec debug_channel_props(kz_proplist()) -> kz_proplist().
+-spec debug_channel_props(kz_proplist(), boolean()) -> kz_proplist().
 debug_channel_props(Props) ->
     debug_channel_props(Props, ?DEBUG_CHANNEL).
 
 debug_channel_props(_Props, 'false') -> [];
 debug_channel_props(Props, 'true') ->
     [{<<"Channel-Debug">>
-      ,wh_json:from_list(lists:sort(fun sort_debug/2, Props))
+      ,kz_json:from_list(lists:sort(fun sort_debug/2, Props))
      }
     ].
 

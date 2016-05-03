@@ -16,7 +16,7 @@
 
 -include("crossbar.hrl").
 
--define(USE_COMPRESSION, whapps_config:get_is_true(?CONFIG_CAT, <<"compress_response_body">>, 'true')).
+-define(USE_COMPRESSION, kapps_config:get_is_true(?CONFIG_CAT, <<"compress_response_body">>, 'true')).
 
 -spec crossbar_routes() -> cowboy_router:routes().
 crossbar_routes() -> [{'_', paths_list()}].
@@ -36,7 +36,7 @@ api_version_constraint() ->
 
 -spec api_version_constraint(ne_binary()) -> boolean().
 api_version_constraint(<<"v", ApiVersion/binary>>) ->
-    try wh_util:to_integer(ApiVersion) of
+    try kz_util:to_integer(ApiVersion) of
         _Int -> lager:debug("routing to version ~b", [_Int]), 'true'
     catch
         _:_ -> lager:debug("not routing to version ~s", [ApiVersion]), 'false'
@@ -50,7 +50,7 @@ api_version_constraint(NotVersion) ->
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    wh_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?LOG_SYSTEM_ID),
     _ = declare_exchanges(),
 
     Dispatch = cowboy_router:compile(crossbar_routes()),
@@ -64,7 +64,7 @@ start_link() ->
 %% @doc Load a crossbar module's bindings into the bindings server
 %%--------------------------------------------------------------------
 -spec start_mod(atom() | string() | binary()) -> any().
-start_mod(CBMod) when not is_atom(CBMod) -> start_mod(wh_util:to_atom(CBMod, 'true'));
+start_mod(CBMod) when not is_atom(CBMod) -> start_mod(kz_util:to_atom(CBMod, 'true'));
 start_mod(CBMod) -> CBMod:init().
 
 %%--------------------------------------------------------------------
@@ -72,7 +72,7 @@ start_mod(CBMod) -> CBMod:init().
 %% @doc Load a crossbar module's bindings into the bindings server
 %%--------------------------------------------------------------------
 -spec stop_mod(atom() | string() | binary()) -> any().
-stop_mod(CBMod) when not is_atom(CBMod) -> stop_mod(wh_util:to_atom(CBMod, 'true'));
+stop_mod(CBMod) when not is_atom(CBMod) -> stop_mod(kz_util:to_atom(CBMod, 'true'));
 stop_mod(CBMod) ->
     crossbar_bindings:flush_mod(CBMod),
     case erlang:function_exported(CBMod, 'stop', 0) of
@@ -86,18 +86,18 @@ stop_mod(CBMod) ->
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    _ = wapi_acdc_agent:declare_exchanges(),
-    _ = wapi_acdc_stats:declare_exchanges(),
-    _ = wapi_money:declare_exchanges(),
-    _ = wapi_notifications:declare_exchanges(),
-    _ = wapi_presence:declare_exchanges(),
-    _ = wapi_registration:declare_exchanges(),
-    _ = wapi_resource:declare_exchanges(),
-    _ = wapi_switch:declare_exchanges(),
-    _ = wapi_sysconf:declare_exchanges(),
-    _ = wapi_call:declare_exchanges(),
-    _ = wapi_dialplan:declare_exchanges(),
-    wapi_self:declare_exchanges().
+    _ = kapi_acdc_agent:declare_exchanges(),
+    _ = kapi_acdc_stats:declare_exchanges(),
+    _ = kapi_money:declare_exchanges(),
+    _ = kapi_notifications:declare_exchanges(),
+    _ = kapi_presence:declare_exchanges(),
+    _ = kapi_registration:declare_exchanges(),
+    _ = kapi_resource:declare_exchanges(),
+    _ = kapi_switch:declare_exchanges(),
+    _ = kapi_sysconf:declare_exchanges(),
+    _ = kapi_call:declare_exchanges(),
+    _ = kapi_dialplan:declare_exchanges(),
+    kapi_self:declare_exchanges().
 
 %%--------------------------------------------------------------------
 %% @private
@@ -122,12 +122,12 @@ on_response(_Status, _Headers, _Body, Req0) ->
 
 -spec maybe_start_plaintext(cowboy_router:dispatch_rules()) -> 'ok'.
 maybe_start_plaintext(Dispatch) ->
-    case whapps_config:get_is_true(?CONFIG_CAT, <<"use_plaintext">>, 'true') of
+    case kapps_config:get_is_true(?CONFIG_CAT, <<"use_plaintext">>, 'true') of
         'false' -> lager:info("plaintext api support not enabled");
         'true' ->
-            Port = whapps_config:get_integer(?CONFIG_CAT, <<"port">>, 8000),
-            ReqTimeout = whapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND),
-            Workers = whapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 100),
+            Port = kapps_config:get_integer(?CONFIG_CAT, <<"port">>, 8000),
+            ReqTimeout = kapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND),
+            Workers = kapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 100),
 
             %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
             try cowboy:start_http('api_resource', Workers
@@ -154,7 +154,7 @@ maybe_start_plaintext(Dispatch) ->
 
 -spec maybe_start_ssl(cowboy_router:dispatch_rules()) -> 'ok'.
 maybe_start_ssl(Dispatch) ->
-    case whapps_config:get_is_true(?CONFIG_CAT, <<"use_ssl">>, 'false') of
+    case kapps_config:get_is_true(?CONFIG_CAT, <<"use_ssl">>, 'false') of
         'false' -> lager:info("ssl api support not enabled");
         'true' -> start_ssl(Dispatch)
     end.
@@ -166,8 +166,8 @@ start_ssl(Dispatch) ->
             lager:debug("trying to start SSL API server"),
             _SslStarted = ssl:start(),
             lager:debug("starting SSL : ~p", [_SslStarted]),
-            ReqTimeout = whapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND),
-            Workers = whapps_config:get_integer(?CONFIG_CAT, <<"ssl_workers">>, 100),
+            ReqTimeout = kapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND),
+            Workers = kapps_config:get_integer(?CONFIG_CAT, <<"ssl_workers">>, 100),
 
             try cowboy:start_https('api_resource_ssl', Workers
                                    ,SSLOpts
@@ -197,26 +197,26 @@ start_ssl(Dispatch) ->
             lager:warning("failed to start SSL API server: ~p", [_E])
     end.
 
--spec ssl_opts(list()) -> wh_proplist().
+-spec ssl_opts(list()) -> kz_proplist().
 ssl_opts(RootDir) ->
     BaseOpts = base_ssl_opts(RootDir),
-    case whapps_config:get_string(?CONFIG_CAT, <<"ssl_ca_cert">>) of
+    case kapps_config:get_string(?CONFIG_CAT, <<"ssl_ca_cert">>) of
         'undefined' -> BaseOpts;
         SSLCACert -> [{'cacertfile', SSLCACert} | BaseOpts]
     end.
 
--spec base_ssl_opts(list()) -> wh_proplist().
+-spec base_ssl_opts(list()) -> kz_proplist().
 base_ssl_opts(RootDir) ->
-    [{'port', whapps_config:get_integer(?CONFIG_CAT, <<"ssl_port">>, 8443)}
-     ,{'certfile', find_file(whapps_config:get_string(?CONFIG_CAT
+    [{'port', kapps_config:get_integer(?CONFIG_CAT, <<"ssl_port">>, 8443)}
+     ,{'certfile', find_file(kapps_config:get_string(?CONFIG_CAT
                                                       ,<<"ssl_cert">>
                                                       ,filename:join([RootDir, <<"priv/ssl/crossbar.crt">>])
                                                      ), RootDir)}
-     ,{'keyfile', find_file(whapps_config:get_string(?CONFIG_CAT
+     ,{'keyfile', find_file(kapps_config:get_string(?CONFIG_CAT
                                                      ,<<"ssl_key">>
                                                      ,filename:join([RootDir, <<"priv/ssl/crossbar.key">>])
                                                     ), RootDir)}
-     ,{'password', whapps_config:get_string(?CONFIG_CAT, <<"ssl_password">>, <<>>)}
+     ,{'password', kapps_config:get_string(?CONFIG_CAT, <<"ssl_password">>, <<>>)}
     ].
 
 -spec find_file(list(), list()) -> list().

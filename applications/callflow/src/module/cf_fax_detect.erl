@@ -16,7 +16,7 @@
 -export([handle/2]).
 
 -define(DEFAULT_FAX_DETECT_DURATION, 5).
--define(FAX_DETECT_DURATION, whapps_config:get_integer(?CF_CONFIG_CAT, <<"fax_detect_duration_s">>, ?DEFAULT_FAX_DETECT_DURATION)).
+-define(FAX_DETECT_DURATION, kapps_config:get_integer(?CF_CONFIG_CAT, <<"fax_detect_duration_s">>, ?DEFAULT_FAX_DETECT_DURATION)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -24,11 +24,11 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     lager:info("detecting fax"),
-    Duration = wh_json:get_integer_value(<<"duration">>, Data, ?FAX_DETECT_DURATION),
-    case whapps_call_command:fax_detection(<<"inbound">>, Duration, Call) of
+    Duration = kz_json:get_integer_value(<<"duration">>, Data, ?FAX_DETECT_DURATION),
+    case kapps_call_command:fax_detection(<<"inbound">>, Duration, Call) of
         'true' ->
             lager:debug("fax detected"),
             cf_exe:continue(<<"ON_FAX">>, Call);

@@ -29,9 +29,9 @@ websocket_init(_Type, Req, _Opts) ->
     {'ok', Req, State}.
 
 websocket_handle({'text', Data}, Req, State) ->
-    Obj    = wh_json:decode(Data),
-    Action = wh_json:get_value(<<"action">>, Obj),
-    Msg    = wh_json:delete_key(<<"action">>, Obj),
+    Obj    = kz_json:decode(Data),
+    Action = kz_json:get_value(<<"action">>, Obj),
+    Msg    = kz_json:delete_key(<<"action">>, Obj),
 
     {'ok', NewState} = blackhole_socket_callback:recv(self(), session_id(Req), {Action, Msg}, State),
     {'ok', Req, NewState}.
@@ -40,8 +40,8 @@ websocket_info({'$gen_cast', _}, Req, State) ->
     {'ok', Req, State};
 
 websocket_info({'send_event', Event, Data}, Req, State) ->
-    Msg = wh_json:set_value(<<"routing_key">>, Event, Data),
-    {'reply', {'text', wh_json:encode(Msg)}, Req, State};
+    Msg = kz_json:set_value(<<"routing_key">>, Event, Data),
+    {'reply', {'text', kz_json:encode(Msg)}, Req, State};
 
 websocket_info(Info, Req, State) ->
     lager:info("unhandled websocket info: ~p", [Info]),
@@ -55,7 +55,7 @@ session_id(Req) ->
     {Peer, _}  = cowboy_req:peer(Req),
     {Ip, Port} = Peer,
 
-    BinIp   = wh_util:to_binary(inet_parse:ntoa(Ip)),
-    BinPort = wh_util:to_binary(integer_to_list(Port)),
+    BinIp   = kz_util:to_binary(inet_parse:ntoa(Ip)),
+    BinPort = kz_util:to_binary(integer_to_list(Port)),
 
     <<BinIp/binary, ":", BinPort/binary>>.
