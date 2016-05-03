@@ -5,7 +5,7 @@ cd $(dirname $0)
 NODE="ecallmgr"
 HOSTNAME=$(/bin/hostname)
 REMOTE_SHELL="${NODE}@${HOSTNAME}"
-SUP="../utils/sup/sup"
+SUP="../make/sup/sup"
 
 if [ -z "${1}" ]; then
     ERL_COOKIE=$(${SUP} -n ${NODE} erlang get_cookie | sed "s/'//g")

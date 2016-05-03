@@ -1,0 +1,10 @@
+{application, sup,
+ [ {description, "Accept RPC requests & push them into a running Kazoo VM"}
+ , {vsn, "4.0.0"}
+ , {modules, []}
+ , {registered, []}
+ , {applications, [ kernel
+                  , stdlib
+                  ]}
+ , {env, []}
+ ]}.

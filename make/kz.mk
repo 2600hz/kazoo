@@ -74,4 +74,4 @@ dialyze: $(PLT) compile
 
 xref: TO_XREF = ebin/  #FIXME: set TO_XREF to an app's dependencies' ebin/ directories
 xref: compile
-	@ERL_LIBS=$(ELIBS) $(ROOT)/utils/rebar/rebar xref skip_deps=true -C $(ROOT)/make/xref.local.config
+	@ERL_LIBS=$(ELIBS) $(ROOT)/make/rebar/rebar xref skip_deps=true -C $(ROOT)/make/xref.local.config

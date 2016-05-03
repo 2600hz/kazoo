@@ -2,21 +2,20 @@
 %%! -sname kazoo_sup_build_autocomplete
 %% -*- coding: utf-8 -*-
 
--mode(compile).
--compile([debug_info]).
+-mode('compile').
+-compile(['debug_info']).
 
 -export([main/1]).
 
 %% This list has to never be empty! (nor contain empty strings)
 %% MUST be here only modules that don't end with '_maintenance',
 %% as these are automatically added anyway.
--define(REQUIRED_MODULES, ["couch_compactor_fsm"
-                           ,"crossbar_bindings"
-                           ,"ecallmgr_config"
-                           ,"notify_account_crawler"
-                           ,"kapps_account_config"
-                           ,"kapps_config"
-                           ,"kapps_controller"
+-define(REQUIRED_MODULES, ["crossbar_bindings"
+                          ,"ecallmgr_config"
+                          ,"notify_account_crawler"
+                          ,"kapps_account_config"
+                          ,"kapps_config"
+                          ,"kapps_controller"
                           ]).
 
 %% API
@@ -36,53 +35,53 @@ main([CompletionFile | Paths]) ->
 %% Internals
 
 dump(CompFile) ->
-    {ok, Dev} = file:open(CompFile, [write, append]),
-    ok = file:write(Dev,
-                    "# bash completion for 2600Hz, Inc's sup command\n"
-                    "\n"
-                    "_sup() {\n"
-                    "    local cur prev\n"
-                    "    _get_comp_words_by_ref cur prev\n"
-                    "\n"
-                    "    local path=.$(echo ${COMP_WORDS[*]} | sed 's/ /./g').\n"
-                    "    # echo $path\n"
-                    "\n"
-                    "    args() {\n"
-                    "        case $path in\n"),
+    {'ok', Dev} = file:open(CompFile, ['write', 'append']),
+    'ok' = file:write(Dev,
+                      "# bash completion for 2600Hz, Inc's sup command\n"
+                      "\n"
+                      "_sup() {\n"
+                      "    local cur prev\n"
+                      "    _get_comp_words_by_ref cur prev\n"
+                      "\n"
+                      "    local path=.$(echo ${COMP_WORDS[*]} | sed 's/ /./g').\n"
+                      "    # echo $path\n"
+                      "\n"
+                      "    args() {\n"
+                      "        case $path in\n"),
     lists:foreach(
       fun (MF) ->
               UChars = unicode:characters_to_binary(case_args(MF)),
-              ok = file:write(Dev, UChars)
-      end, get(mfs)),
-    ok = file:write(Dev,
-                    "        esac\n"
-                    "    }\n"
-                    "\n"
-                    "    case $prev in\n"
-                    "\n"),
+              'ok' = file:write(Dev, UChars)
+      end, get('mfs')),
+    'ok' = file:write(Dev,
+                      "        esac\n"
+                      "    }\n"
+                      "\n"
+                      "    case $prev in\n"
+                      "\n"),
 
-    ok = file:write(Dev, case_sup()),
+    'ok' = file:write(Dev, case_sup()),
 
     lists:foreach(
      fun (M) ->
-             ok = file:write(Dev, case_prev(M))
-     end, get(modules)),
-    ok = file:write(Dev,  "\n"
-                    "        *) args ;;\n"
-                          "    esac\n"
-                          "}\n"
-                          "complete -F _sup sup\n"),
-    ok = file:close(Dev).
+             'ok' = file:write(Dev, case_prev(M))
+     end, get('modules')),
+    'ok' = file:write(Dev,  "\n"
+                      "        *) args ;;\n"
+                      "    esac\n"
+                      "}\n"
+                      "complete -F _sup sup\n"),
+    'ok' = file:close(Dev).
 
-group([]) -> ok;
+group([]) -> 'ok';
 group([{Module,_,_,_}|_]=MFAs) ->
-    append(modules, Module),
+    append('modules', Module),
     Fs = lists:map(
            fun ({_M, F, _A, As}) ->
                    append({Module,F}, As),
                    F
            end, MFAs),
-    [append(mfs, {Module,F}) || F <- lists:usort(Fs)],
+    [append('mfs', {Module,F}) || F <- lists:usort(Fs)],
     put(Module, lists:usort(Fs)).
 
 append(Key, Value) ->
@@ -94,7 +93,7 @@ append(Key, Value) ->
     end.
 
 case_sup() ->
-    Ms = get(modules),
+    Ms = get('modules'),
     ["        sup) COMPREPLY=( $(compgen -W '", spaces(Ms), "' -- $cur) ) ;;\n\n"].
 
 case_prev(M) ->
@@ -140,19 +139,19 @@ print(_R) ->
 
 pp(Atom) when is_atom(Atom) ->
     atom_to_list(Atom);
-pp({atom,_,Atom}) ->
+pp({'atom',_,Atom}) ->
     "'" ++ pp(Atom) ++ "'";
-pp({var,_,Atom}) ->
+pp({'var',_,Atom}) ->
     pp(Atom);
-pp({bin,_,[{bin_element,_,{var,_,Atom},_,_}]}) ->
+pp({'bin',_,[{'bin_element',_,{'var',_,Atom},_,_}]}) ->
     pp(Atom);
-pp({bin,_,[{bin_element,_,{string,_,Str},_,_}]}) ->
+pp({'bin',_,[{'bin_element',_,{'string',_,Str},_,_}]}) ->
     "\"" ++ Str ++ "\"";
 
-%% MAY hide those (as its internals)
-pp({nil,_}) ->
+%% MAY hide those (internals)
+pp({'nil',_}) ->
     "[]";
-pp({cons,_,H,T}) ->
+pp({'cons',_,H,T}) ->
     "[" ++ pp(H) ++ "|" ++ pp(T) ++ "]";
 pp(_E) ->
     "PLACEHOLDER".
@@ -160,12 +159,12 @@ pp(_E) ->
 
 
 find(File) ->
-    {ok, {Module, [{exports, FAs0}]}} = beam_lib:chunks(File, [exports]),
-    FAs = [{F,A} || {F,A} <- FAs0, F =/= module_info],
-    {ok, {Module, [{abstract_code, AST}]}} = beam_lib:chunks(File, [abstract_code]),
+    {'ok', {Module, [{'exports', FAs0}]}} = beam_lib:chunks(File, ['exports']),
+    FAs = [{F,A} || {F,A} <- FAs0, F =/= 'module_info'],
+    {'ok', {Module, [{'abstract_code', AST}]}} = beam_lib:chunks(File, ['abstract_code']),
     %% io:format("AST = ~p\n", [AST]),
-    {raw_abstract_v1, Ts} = AST,
-    Clauses = [{F,A,Cs} || {function,_,F,A,Cs} <- Ts, lists:member({F,A}, FAs)],
+    {'raw_abstract_v1', Ts} = AST,
+    Clauses = [{F,A,Cs} || {'function',_,F,A,Cs} <- Ts, lists:member({F,A}, FAs)],
     %% io:format("Clauses = ~p\n", [Clauses]),
     Ps = lists:flatmap(
            fun ({F,A,Cs}) ->
@@ -174,7 +173,7 @@ find(File) ->
                    %% io:format("Clauses = ~p\n", [Clauses]),
                    %% io:format("~s ~s\n", [Module, F]),
                    ArgsPerClause = [ [pp(Arg) || Arg <- Args]
-                                     || {clause,_,Args,_,_} <- Cs],
+                                     || {'clause',_,Args,_,_} <- Cs],
                    [{Module,F,A,Args} || Args <- ArgsPerClause]
            end, Clauses),
     %% Ps.
@@ -186,12 +185,10 @@ find_modules(Path) ->
         'true' ->
             AccFiles = fun (File, Acc) -> [File|Acc] end,
             Required = string:join(?REQUIRED_MODULES, "|"),
-            filelib:fold_files(Path, "(.+_maintenance|" ++ Required ++ ")\\.beam", true, AccFiles, [])
-            %% filelib:fold_files(Path, ".+\\.beam", true, AccFiles, [])
+            filelib:fold_files(Path, "(.+_maintenance|" ++ Required ++ ")\\.beam", 'true', AccFiles, [])
     end.
 
 usage() ->
-    %% ok = io:setopts([{encoding, unicode}]),
     Arg0 = escript:script_name(),
     io:format("Usage: ~s  <completion file destination> <path to dir>+\n", [filename:basename(Arg0)]).
 

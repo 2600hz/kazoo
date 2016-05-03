@@ -1,6 +1,6 @@
 ROOT = .
-RELX = $(ROOT)/utils/relx/relx
-ELVIS = $(ROOT)/utils/elvis/elvis
+RELX = $(ROOT)/make/relx/relx
+ELVIS = $(ROOT)/make/elvis/elvis
 
 KAZOODIRS = core/Makefile applications/Makefile
 
@@ -139,9 +139,9 @@ xref_release:
 sup_completion: sup_completion_file = $(ROOT)/sup.bash
 sup_completion: kazoo
 	@$(if $(wildcard $(sup_completion_file)), rm $(sup_completion_file))
-	@$(ROOT)/scripts/sup-build-autocomplete.escript $(sup_completion_file) applications/ core/
+	@$(ROOT)/core/sup/priv/build-autocomplete.escript $(sup_completion_file) applications/ core/
 	@echo SUP Bash completion file written at $(sup_completion_file)
 
 
 elvis:
-	$(ELVIS) rock
+	$(ELVIS) --config make/elvis.config rock

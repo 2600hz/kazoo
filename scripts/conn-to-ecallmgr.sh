@@ -22,6 +22,6 @@ if [[ ! "$REMOTE_SHELL" == *@*  ]]; then
     REMOTE_SHELL="${REMOTE_SHELL}@$(hostname -f)"
 fi
 
-ERL_COOKIE=$(../utils/sup/sup erlang get_cookie -n ecallmgr | sed "s/'//g")
+ERL_COOKIE=$(../make/sup/sup erlang get_cookie -n ecallmgr | sed "s/'//g")
 
 exec erl -setcookie $ERL_COOKIE -name ${SHELL_NAME} -remsh ${REMOTE_SHELL}
