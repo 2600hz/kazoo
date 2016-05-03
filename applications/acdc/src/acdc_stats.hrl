@@ -52,7 +52,7 @@
           ,agent_id :: api(binary()) | '$2' | '_'
           ,account_id :: api(binary()) | '$1' | '_'
           ,status :: api(binary()) | '$4' | '_'
-          ,timestamp :: api_pos_integer() | '$1' | '$3' | '$5' | '_'
+          ,timestamp :: api(pos_integer()) | '$1' | '$3' | '$5' | '_'
 
           ,wait_time :: api(integer()) | '_'
           ,pause_time :: api(integer()) | '_'

@@ -59,7 +59,7 @@
                   ,reseller_allotment = 'false' :: boolean() | '_'
                   ,soft_limit = 'false' :: boolean() | '_'
                   ,timestamp = kz_util:current_tstamp() :: pos_integer() | '_'
-                  ,answered_timestamp :: api_pos_integer() | '$1' | '_'
+                  ,answered_timestamp :: api(pos_integer()) | '$1' | '_'
                   ,rate :: api(binary()) | '_'
                   ,rate_increment :: api(binary()) | '_'
                   ,rate_minimum :: api(binary()) | '_'

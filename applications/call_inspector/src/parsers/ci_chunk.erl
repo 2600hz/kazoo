@@ -105,7 +105,7 @@ src_ip(#ci_chunk{}=Chunk, Val) ->
 
 -spec src_port(chunk(), pos_integer()) -> chunk().
 ?SETTER(src_port).
--spec src_port(chunk()) -> api_pos_integer().
+-spec src_port(chunk()) -> api(pos_integer()).
 ?GETTER(src_port).
 
 -spec dst_ip(chunk(), ne_binary()) -> chunk().
@@ -116,7 +116,7 @@ dst_ip(#ci_chunk{}=Chunk, Val) ->
 
 -spec dst_port(chunk(), pos_integer()) -> chunk().
 ?SETTER(dst_port).
--spec dst_port(chunk()) -> api_pos_integer().
+-spec dst_port(chunk()) -> api(pos_integer()).
 ?GETTER(dst_port).
 
 -spec parser(chunk(), atom()) -> chunk().
