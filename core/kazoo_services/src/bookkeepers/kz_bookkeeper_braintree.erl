@@ -416,7 +416,7 @@ calculate([Addon|Addons], Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec timestamp_to_braintree(api_seconds()) -> ne_binary().
+-spec timestamp_to_braintree(api(gregorian_seconds())) -> ne_binary().
 timestamp_to_braintree('undefined') ->
     lager:debug("timestamp undefined using current_tstamp"),
     timestamp_to_braintree(kz_util:current_tstamp());
@@ -433,7 +433,7 @@ timestamp_to_braintree(Timestamp) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec utc_to_gregorian_seconds(ne_binary()) -> api_seconds().
+-spec utc_to_gregorian_seconds(ne_binary()) -> api(gregorian_seconds()).
 utc_to_gregorian_seconds(<<Y:4/binary, "-", M:2/binary, "-", D:2/binary, "T"
                            ,H:2/binary, ":", Mi:2/binary, ":", S:2/binary, _/binary
                          >>

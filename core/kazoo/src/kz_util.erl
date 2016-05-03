@@ -730,11 +730,11 @@ spawn_monitor(Fun, Arguments) ->
                          end).
 
 
--spec set_startup() -> api_seconds().
+-spec set_startup() -> api(gregorian_seconds()).
 set_startup() ->
     put('$startup', current_tstamp()).
 
--spec startup() -> api_seconds().
+-spec startup() -> api(gregorian_seconds()).
 startup() ->
     get('$startup').
 

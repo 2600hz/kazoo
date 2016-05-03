@@ -124,7 +124,7 @@ load_consumed(Context) ->
     end.
 
 -type mode() :: {'cycle', kz_datetime()} |
-                {'manual', api_seconds(), api_seconds()}.
+                {'manual', api(gregorian_seconds()), api(gregorian_seconds())}.
 
 -spec foldl_consumed(api(binary()), kz_json:object(), CMA) -> CMA when
       CMA :: {cb_context:context(), mode(), kz_json:objects()}.
@@ -194,7 +194,7 @@ get_consumed_mode(Context) ->
         {From, To} -> {'manual', From, To}
     end.
 
--spec maybe_req_seconds(cb_context:context(), api(binary())) -> api_seconds().
+-spec maybe_req_seconds(cb_context:context(), api(binary())) -> api(gregorian_seconds()).
 maybe_req_seconds(Context, Key) ->
     T = cb_context:req_value(Context, Key),
     case kz_util:is_empty(T) of
