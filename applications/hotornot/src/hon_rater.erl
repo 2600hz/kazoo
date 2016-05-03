@@ -69,7 +69,7 @@ get_rate_data(JObj) ->
     end.
 
 -spec get_rate_data(kz_json:object(), ne_binary(), api(binary()), kz_json:objects()) ->
-                           {'ok', api_terms()} |
+                           {'ok', api(terms())} |
                            {'error', 'no_rate_found'}.
 get_rate_data(JObj, ToDID, FromDID, Rates) ->
     lager:debug("candidate rates found, filtering"),

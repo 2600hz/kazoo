@@ -33,7 +33,7 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec advertise(api_terms()) -> {'ok', iolist()} |
+-spec advertise(api(terms())) -> {'ok', iolist()} |
                                 {'error', string()}.
 advertise(Prop) when is_list(Prop) ->
     case advertise_v(Prop) of
@@ -43,7 +43,7 @@ advertise(Prop) when is_list(Prop) ->
 advertise(JObj) ->
     advertise(kz_json:to_proplist(JObj)).
 
--spec advertise_v(api_terms()) -> boolean().
+-spec advertise_v(api(terms())) -> boolean().
 advertise_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?ADVERTISE_HEADERS, ?ADVERTISE_VALUES, ?ADVERTISE_TYPES);
 advertise_v(JObj) ->
@@ -81,8 +81,8 @@ declare_exchanges() ->
 %% prepare and publish a nodes advertise message
 %% @end
 %%--------------------------------------------------------------------
--spec publish_advertise(api_terms()) -> 'ok'.
--spec publish_advertise(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_advertise(api(terms())) -> 'ok'.
+-spec publish_advertise(api(terms()), ne_binary()) -> 'ok'.
 publish_advertise(JObj) ->
     publish_advertise(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_advertise(Advertise, ContentType) ->

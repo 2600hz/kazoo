@@ -91,7 +91,7 @@
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec authz_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec authz_req(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 authz_req(Prop) when is_list(Prop) ->
     case authz_req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?AUTHZ_REQ_HEADERS, ?OPTIONAL_AUTHZ_REQ_HEADERS);
@@ -100,13 +100,13 @@ authz_req(Prop) when is_list(Prop) ->
 authz_req(JObj) ->
     authz_req(kz_json:to_proplist(JObj)).
 
--spec authz_req_v(api_terms()) -> boolean().
+-spec authz_req_v(api(terms())) -> boolean().
 authz_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?AUTHZ_REQ_HEADERS, ?AUTHZ_REQ_VALUES, ?AUTHZ_REQ_TYPES);
 authz_req_v(JObj) ->
     authz_req_v(kz_json:to_proplist(JObj)).
 
--spec balance_check_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec balance_check_req(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 balance_check_req(Prop) when is_list(Prop) ->
     case balance_check_req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?BALANCE_CHECK_REQ_HEADERS, ?OPTIONAL_BALANCE_CHECK_REQ_HEADERS);
@@ -115,7 +115,7 @@ balance_check_req(Prop) when is_list(Prop) ->
 balance_check_req(JObj) ->
     balance_check_req(kz_json:to_proplist(JObj)).
 
--spec balance_check_req_v(api_terms()) -> boolean().
+-spec balance_check_req_v(api(terms())) -> boolean().
 balance_check_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?BALANCE_CHECK_REQ_HEADERS, ?BALANCE_CHECK_REQ_VALUES, ?BALANCE_CHECK_REQ_TYPES);
 balance_check_req_v(JObj) ->
@@ -126,7 +126,7 @@ balance_check_req_v(JObj) ->
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec authz_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec authz_resp(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 authz_resp(Prop) when is_list(Prop) ->
     case authz_resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?AUTHZ_RESP_HEADERS, ?OPTIONAL_AUTHZ_RESP_HEADERS);
@@ -135,13 +135,13 @@ authz_resp(Prop) when is_list(Prop) ->
 authz_resp(JObj) ->
     authz_resp(kz_json:to_proplist(JObj)).
 
--spec authz_resp_v(api_terms()) -> boolean().
+-spec authz_resp_v(api(terms())) -> boolean().
 authz_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?AUTHZ_RESP_HEADERS, ?AUTHZ_RESP_VALUES, ?AUTHZ_RESP_TYPES);
 authz_resp_v(JObj) ->
     authz_resp_v(kz_json:to_proplist(JObj)).
 
--spec balance_check_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec balance_check_resp(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 balance_check_resp(Prop) when is_list(Prop) ->
     case balance_check_resp_v(Prop) of
         'true' ->
@@ -151,7 +151,7 @@ balance_check_resp(Prop) when is_list(Prop) ->
 balance_check_resp(JObj) ->
     balance_check_resp(kz_json:to_proplist(JObj)).
 
--spec balance_check_resp_v(api_terms()) -> boolean().
+-spec balance_check_resp_v(api(terms())) -> boolean().
 balance_check_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?BALANCE_CHECK_RESP_HEADERS, ?BALANCE_CHECK_RESP_VALUES, ?BALANCE_CHECK_RESP_TYPES);
 balance_check_resp_v(JObj) ->
@@ -208,40 +208,40 @@ declare_exchanges() ->
 %% @doc Publish the JSON iolist() to the proper Exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_authz_req(api_terms()) -> 'ok'.
--spec publish_authz_req(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_authz_req(api(terms())) -> 'ok'.
+-spec publish_authz_req(api(terms()), ne_binary()) -> 'ok'.
 publish_authz_req(JObj) ->
     publish_authz_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_authz_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?AUTHZ_REQ_VALUES, fun ?MODULE:authz_req/1),
     amqp_util:callmgr_publish(Payload, ContentType, ?KEY_AUTHZ_REQ).
 
--spec publish_authz_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_authz_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_authz_resp(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_authz_resp(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_authz_resp(Queue, JObj) ->
     publish_authz_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_authz_resp(Queue, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?AUTHZ_RESP_VALUES, fun ?MODULE:authz_resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
--spec publish_balance_check_req(api_terms()) -> 'ok'.
--spec publish_balance_check_req(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_balance_check_req(api(terms())) -> 'ok'.
+-spec publish_balance_check_req(api(terms()), ne_binary()) -> 'ok'.
 publish_balance_check_req(JObj) ->
     publish_balance_check_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_balance_check_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?BALANCE_CHECK_REQ_VALUES, fun ?MODULE:balance_check_req/1),
     amqp_util:callmgr_publish(Payload, ContentType, ?KEY_BALANCE_CHECK_REQ).
 
--spec publish_balance_check_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_balance_check_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_balance_check_resp(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_balance_check_resp(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_balance_check_resp(Queue, JObj) ->
     publish_balance_check_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_balance_check_resp(Queue, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?BALANCE_CHECK_RESP_VALUES, fun ?MODULE:balance_check_resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
--spec broadcast_authz_resp(api_terms()) -> 'ok'.
--spec broadcast_authz_resp(api_terms(), ne_binary()) -> 'ok'.
+-spec broadcast_authz_resp(api(terms())) -> 'ok'.
+-spec broadcast_authz_resp(api(terms()), ne_binary()) -> 'ok'.
 broadcast_authz_resp(JObj) ->
     broadcast_authz_resp(JObj, ?DEFAULT_CONTENT_TYPE).
 broadcast_authz_resp(Resp, ContentType) ->

@@ -51,7 +51,7 @@
 
 -define(CI_AMQP_KEY(SubKey), <<"call_inspector.", SubKey/binary>>).
 
--spec lookup_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec lookup_req(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 lookup_req(Prop) when is_list(Prop) ->
     case lookup_req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?LOOKUP_REQ_HEADERS, ?OPTIONAL_LOOKUP_REQ_HEADERS);
@@ -60,13 +60,13 @@ lookup_req(Prop) when is_list(Prop) ->
 lookup_req(JObj) ->
     lookup_req(kz_json:to_proplist(JObj)).
 
--spec lookup_req_v(api_terms()) -> boolean().
+-spec lookup_req_v(api(terms())) -> boolean().
 lookup_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?LOOKUP_REQ_HEADERS, ?LOOKUP_REQ_VALUES, ?LOOKUP_REQ_TYPES);
 lookup_req_v(JObj) ->
     lookup_req_v(kz_json:to_proplist(JObj)).
 
--spec lookup_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec lookup_resp(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 lookup_resp(Prop) when is_list(Prop) ->
     case lookup_resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?LOOKUP_RESP_HEADERS, ?OPTIONAL_LOOKUP_RESP_HEADERS);
@@ -75,13 +75,13 @@ lookup_resp(Prop) when is_list(Prop) ->
 lookup_resp(JObj) ->
     lookup_resp(kz_json:to_proplist(JObj)).
 
--spec lookup_resp_v(api_terms()) -> boolean().
+-spec lookup_resp_v(api(terms())) -> boolean().
 lookup_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?LOOKUP_RESP_HEADERS, ?LOOKUP_RESP_VALUES, ?LOOKUP_RESP_TYPES);
 lookup_resp_v(JObj) ->
     lookup_resp_v(kz_json:to_proplist(JObj)).
 
--spec filter_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec filter_req(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 filter_req(Prop) when is_list(Prop) ->
     case filter_req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?FILTER_REQ_HEADERS, ?OPTIONAL_FILTER_REQ_HEADERS);
@@ -90,13 +90,13 @@ filter_req(Prop) when is_list(Prop) ->
 filter_req(JObj) ->
     filter_req(kz_json:to_proplist(JObj)).
 
--spec filter_req_v(api_terms()) -> boolean().
+-spec filter_req_v(api(terms())) -> boolean().
 filter_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?FILTER_REQ_HEADERS, ?FILTER_REQ_VALUES, ?FILTER_REQ_TYPES);
 filter_req_v(JObj) ->
     filter_req_v(kz_json:to_proplist(JObj)).
 
--spec filter_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec filter_resp(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 filter_resp(Prop) when is_list(Prop) ->
     case filter_resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?FILTER_RESP_HEADERS, ?OPTIONAL_FILTER_RESP_HEADERS);
@@ -105,7 +105,7 @@ filter_resp(Prop) when is_list(Prop) ->
 filter_resp(JObj) ->
     filter_resp(kz_json:to_proplist(JObj)).
 
--spec filter_resp_v(api_terms()) -> boolean().
+-spec filter_resp_v(api(terms())) -> boolean().
 filter_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?FILTER_RESP_HEADERS, ?FILTER_RESP_VALUES, ?FILTER_RESP_TYPES);
 filter_resp_v(JObj) ->
@@ -123,32 +123,32 @@ unbind_q(Q, _Props) ->
 declare_exchanges() ->
     amqp_util:monitor_exchange().
 
--spec publish_lookup_req(api_terms()) -> 'ok'.
--spec publish_lookup_req(api_terms(), binary()) -> 'ok'.
+-spec publish_lookup_req(api(terms())) -> 'ok'.
+-spec publish_lookup_req(api(terms()), binary()) -> 'ok'.
 publish_lookup_req(JObj) ->
     publish_lookup_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_lookup_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?LOOKUP_REQ_VALUES, fun ?MODULE:lookup_req/1),
     amqp_util:monitor_publish(Payload, ContentType, ?CI_AMQP_KEY(<<"lookup">>)).
 
--spec publish_lookup_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_lookup_resp(ne_binary(), api_terms(), binary()) -> 'ok'.
+-spec publish_lookup_resp(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_lookup_resp(ne_binary(), api(terms()), binary()) -> 'ok'.
 publish_lookup_resp(RespQ, JObj) ->
     publish_lookup_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_lookup_resp(RespQ, JObj, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?LOOKUP_RESP_VALUES, fun lookup_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
--spec publish_filter_req(api_terms()) -> 'ok'.
--spec publish_filter_req(api_terms(), binary()) -> 'ok'.
+-spec publish_filter_req(api(terms())) -> 'ok'.
+-spec publish_filter_req(api(terms()), binary()) -> 'ok'.
 publish_filter_req(JObj) ->
     publish_filter_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_filter_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?FILTER_REQ_VALUES, fun ?MODULE:filter_req/1),
     amqp_util:monitor_publish(Payload, ContentType, ?CI_AMQP_KEY(<<"filter">>)).
 
--spec publish_filter_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_filter_resp(ne_binary(), api_terms(), binary()) -> 'ok'.
+-spec publish_filter_resp(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_filter_resp(ne_binary(), api(terms()), binary()) -> 'ok'.
 publish_filter_resp(RespQ, JObj) ->
     publish_filter_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_filter_resp(RespQ, JObj, ContentType) ->

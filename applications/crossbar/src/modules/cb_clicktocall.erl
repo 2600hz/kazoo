@@ -352,7 +352,7 @@ originate_call(C2CId, Context, Contact) ->
     lager:debug("attempting call in ~p", [JObj]),
     crossbar_util:response_202(<<"processing request">>, JObj, cb_context:set_resp_data(Context, Request)).
 
--spec exec_originate(api_terms()) ->
+-spec exec_originate(api(terms())) ->
                             {'success', ne_binary()} |
                             {'error', ne_binary()}.
 exec_originate(Request) ->
@@ -405,7 +405,7 @@ handle_originate_resp({'timeout', _T}) ->
     {'error', <<"timed out">>}.
 
 -record(contact, {route, number, name}).
--spec build_originate_req(ne_binary(), cb_context:context()) -> api_terms().
+-spec build_originate_req(ne_binary(), cb_context:context()) -> api(terms()).
 build_originate_req(Contact, Context) ->
     AccountId = cb_context:account_id(Context),
     JObj = cb_context:doc(Context),

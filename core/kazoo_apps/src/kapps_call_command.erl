@@ -2686,7 +2686,7 @@ get_app(JObj) ->
 %% Sends call commands to the appropriate call control process
 %% @end
 %%--------------------------------------------------------------------
--spec send_command(api_terms(), kapps_call:call()) -> 'ok'.
+-spec send_command(api(terms()), kapps_call:call()) -> 'ok'.
 send_command(Command, Call) when is_list(Command) ->
     'true' = kapps_call:is_call(Call),
 

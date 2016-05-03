@@ -62,7 +62,7 @@
                          ]).
 -define(SYNC_REQ_TYPES, []).
 
--spec sync_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec sync_req(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 sync_req(Props) when is_list(Props) ->
     case sync_req_v(Props) of
         'true' -> kz_api:build_message(Props, ?SYNC_REQ_HEADERS, ?OPTIONAL_SYNC_REQ_HEADERS);
@@ -71,7 +71,7 @@ sync_req(Props) when is_list(Props) ->
 sync_req(JObj) ->
     sync_req(kz_json:to_proplist(JObj)).
 
--spec sync_req_v(api_terms()) -> boolean().
+-spec sync_req_v(api(terms())) -> boolean().
 sync_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SYNC_REQ_HEADERS, ?SYNC_REQ_VALUES, ?SYNC_REQ_TYPES);
 sync_req_v(JObj) ->
@@ -108,7 +108,7 @@ sync_req_routing_key(AcctId, Id) ->
                           ]).
 -define(SYNC_RESP_TYPES, []).
 
--spec sync_resp(api_terms()) -> {'ok', iolist()} |
+-spec sync_resp(api(terms())) -> {'ok', iolist()} |
                                 {'error', string()}.
 sync_resp(Props) when is_list(Props) ->
     case sync_resp_v(Props) of
@@ -118,7 +118,7 @@ sync_resp(Props) when is_list(Props) ->
 sync_resp(JObj) ->
     sync_resp(kz_json:to_proplist(JObj)).
 
--spec sync_resp_v(api_terms()) -> boolean().
+-spec sync_resp_v(api(terms())) -> boolean().
 sync_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SYNC_RESP_HEADERS, ?SYNC_RESP_VALUES, ?SYNC_RESP_TYPES);
 sync_resp_v(JObj) ->
@@ -140,7 +140,7 @@ sync_resp_v(JObj) ->
                           ]).
 -define(STATS_REQ_TYPES, []).
 
--spec stats_req(api_terms()) -> {'ok', iolist()} |
+-spec stats_req(api(terms())) -> {'ok', iolist()} |
                                 {'error', string()}.
 stats_req(Props) when is_list(Props) ->
     case stats_req_v(Props) of
@@ -150,7 +150,7 @@ stats_req(Props) when is_list(Props) ->
 stats_req(JObj) ->
     stats_req(kz_json:to_proplist(JObj)).
 
--spec stats_req_v(api_terms()) -> boolean().
+-spec stats_req_v(api(terms())) -> boolean().
 stats_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?STATS_REQ_HEADERS, ?STATS_REQ_VALUES, ?STATS_REQ_TYPES);
 stats_req_v(JObj) ->
@@ -192,7 +192,7 @@ stats_req_routing_key(Id, AgentId) ->
                            ]).
 -define(STATS_RESP_TYPES, [{<<"Stats">>, fun kz_json:is_json_object/1}]).
 
--spec stats_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec stats_resp(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 stats_resp(Props) when is_list(Props) ->
     case stats_resp_v(Props) of
         'true' -> kz_api:build_message(Props, ?STATS_RESP_HEADERS, ?OPTIONAL_STATS_RESP_HEADERS);
@@ -201,7 +201,7 @@ stats_resp(Props) when is_list(Props) ->
 stats_resp(JObj) ->
     stats_resp(kz_json:to_proplist(JObj)).
 
--spec stats_resp_v(api_terms()) -> boolean().
+-spec stats_resp_v(api(terms())) -> boolean().
 stats_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?STATS_RESP_HEADERS, ?STATS_RESP_VALUES, ?STATS_RESP_TYPES);
 stats_resp_v(JObj) ->
@@ -228,7 +228,7 @@ stats_resp_v(JObj) ->
 -define(LOGIN_QUEUE_VALUES, [{<<"Event-Name">>, <<"login_queue">>} | ?AGENT_VALUES]).
 -define(LOGOUT_QUEUE_VALUES, [{<<"Event-Name">>, <<"logout_queue">>} | ?AGENT_VALUES]).
 
--spec login(api_terms()) ->
+-spec login(api(terms())) ->
                          {'ok', iolist()} |
                          {'error', string()}.
 login(Props) when is_list(Props) ->
@@ -239,13 +239,13 @@ login(Props) when is_list(Props) ->
 login(JObj) ->
     login(kz_json:to_proplist(JObj)).
 
--spec login_v(api_terms()) -> boolean().
+-spec login_v(api(terms())) -> boolean().
 login_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?AGENT_HEADERS, ?LOGIN_VALUES, ?AGENT_TYPES);
 login_v(JObj) ->
     login_v(kz_json:to_proplist(JObj)).
 
--spec login_queue(api_terms()) ->
+-spec login_queue(api(terms())) ->
                                {'ok', iolist()} |
                                {'error', string()}.
 login_queue(Props) when is_list(Props) ->
@@ -256,14 +256,14 @@ login_queue(Props) when is_list(Props) ->
 login_queue(JObj) ->
     login_queue(kz_json:to_proplist(JObj)).
 
--spec login_queue_v(api_terms()) -> boolean().
+-spec login_queue_v(api(terms())) -> boolean().
 login_queue_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?AGENT_HEADERS, ?LOGIN_QUEUE_VALUES, ?AGENT_TYPES);
 login_queue_v(JObj) ->
     login_queue_v(kz_json:to_proplist(JObj)).
 
 
--spec logout(api_terms()) ->
+-spec logout(api(terms())) ->
                          {'ok', iolist()} |
                          {'error', string()}.
 logout(Props) when is_list(Props) ->
@@ -274,13 +274,13 @@ logout(Props) when is_list(Props) ->
 logout(JObj) ->
     logout(kz_json:to_proplist(JObj)).
 
--spec logout_v(api_terms()) -> boolean().
+-spec logout_v(api(terms())) -> boolean().
 logout_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?AGENT_HEADERS, ?LOGOUT_VALUES, ?AGENT_TYPES);
 logout_v(JObj) ->
     logout_v(kz_json:to_proplist(JObj)).
 
--spec logout_queue(api_terms()) ->
+-spec logout_queue(api(terms())) ->
                                 {'ok', iolist()} |
                                 {'error', string()}.
 logout_queue(Props) when is_list(Props) ->
@@ -291,13 +291,13 @@ logout_queue(Props) when is_list(Props) ->
 logout_queue(JObj) ->
     logout_queue(kz_json:to_proplist(JObj)).
 
--spec logout_queue_v(api_terms()) -> boolean().
+-spec logout_queue_v(api(terms())) -> boolean().
 logout_queue_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?AGENT_HEADERS, ?LOGOUT_QUEUE_VALUES, ?AGENT_TYPES);
 logout_queue_v(JObj) ->
     logout_queue_v(kz_json:to_proplist(JObj)).
 
--spec pause(api_terms()) ->
+-spec pause(api(terms())) ->
                          {'ok', iolist()} |
                          {'error', string()}.
 pause(Props) when is_list(Props) ->
@@ -308,13 +308,13 @@ pause(Props) when is_list(Props) ->
 pause(JObj) ->
     pause(kz_json:to_proplist(JObj)).
 
--spec pause_v(api_terms()) -> boolean().
+-spec pause_v(api(terms())) -> boolean().
 pause_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?AGENT_HEADERS, ?PAUSE_VALUES, ?AGENT_TYPES);
 pause_v(JObj) ->
     pause_v(kz_json:to_proplist(JObj)).
 
--spec resume(api_terms()) ->
+-spec resume(api(terms())) ->
                           {'ok', iolist()} |
                           {'error', string()}.
 resume(Props) when is_list(Props) ->
@@ -324,7 +324,7 @@ resume(Props) when is_list(Props) ->
     end;
 resume(JObj) -> resume(kz_json:to_proplist(JObj)).
 
--spec resume_v(api_terms()) -> boolean().
+-spec resume_v(api(terms())) -> boolean().
 resume_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?AGENT_HEADERS, ?RESUME_VALUES, ?AGENT_TYPES);
 resume_v(JObj) -> resume_v(kz_json:to_proplist(JObj)).
@@ -348,7 +348,7 @@ agent_status_routing_key(AcctId, AgentId, Status) ->
                            ]).
 -define(LOGIN_RESP_TYPES, []).
 
--spec login_resp(api_terms()) ->
+-spec login_resp(api(terms())) ->
                         {'ok', iolist()} |
                         {'error', string()}.
 login_resp(Props) when is_list(Props) ->
@@ -359,7 +359,7 @@ login_resp(Props) when is_list(Props) ->
 login_resp(JObj) ->
     login_resp(kz_json:to_proplist(JObj)).
 
--spec login_resp_v(api_terms()) -> boolean().
+-spec login_resp_v(api(terms())) -> boolean().
 login_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?LOGIN_RESP_HEADERS, ?LOGIN_RESP_VALUES, ?LOGIN_RESP_TYPES);
 login_resp_v(JObj) ->
@@ -437,16 +437,16 @@ declare_exchanges() ->
 %%------------------------------------------------------------------------------
 %% Publishers for convenience
 %%------------------------------------------------------------------------------
--spec publish_sync_req(api_terms()) -> 'ok'.
--spec publish_sync_req(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_sync_req(api(terms())) -> 'ok'.
+-spec publish_sync_req(api(terms()), ne_binary()) -> 'ok'.
 publish_sync_req(JObj) ->
     publish_sync_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_sync_req(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?SYNC_REQ_VALUES, fun sync_req/1),
     amqp_util:kapps_publish(sync_req_routing_key(API), Payload, ContentType).
 
--spec publish_sync_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_sync_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_sync_resp(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_sync_resp(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_sync_resp(Q, JObj) ->
     publish_sync_resp(Q, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_sync_resp('undefined', _, _) -> {'error', 'no_destination'};
@@ -454,72 +454,72 @@ publish_sync_resp(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?SYNC_RESP_VALUES, fun sync_resp/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
--spec publish_stats_req(api_terms()) -> 'ok'.
--spec publish_stats_req(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_stats_req(api(terms())) -> 'ok'.
+-spec publish_stats_req(api(terms()), ne_binary()) -> 'ok'.
 publish_stats_req(JObj) ->
     publish_stats_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_stats_req(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?STATS_REQ_VALUES, fun stats_req/1),
     amqp_util:kapps_publish(stats_req_publish_key(API), Payload, ContentType).
 
--spec publish_stats_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_stats_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_stats_resp(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_stats_resp(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_stats_resp(Q, JObj) ->
     publish_stats_resp(Q, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_stats_resp(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?STATS_RESP_VALUES, fun stats_resp/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
--spec publish_login(api_terms()) -> 'ok'.
--spec publish_login(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_login(api(terms())) -> 'ok'.
+-spec publish_login(api(terms()), ne_binary()) -> 'ok'.
 publish_login(JObj) ->
     publish_login(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_login(API, ContentType) ->
     {'ok', Payload} = login((API1 = kz_api:prepare_api_payload(API, ?LOGIN_VALUES))),
     amqp_util:kapps_publish(agent_status_routing_key(API1), Payload, ContentType).
 
--spec publish_logout(api_terms()) -> 'ok'.
--spec publish_logout(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_logout(api(terms())) -> 'ok'.
+-spec publish_logout(api(terms()), ne_binary()) -> 'ok'.
 publish_logout(JObj) ->
     publish_logout(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_logout(API, ContentType) ->
     {'ok', Payload} = logout((API1 = kz_api:prepare_api_payload(API, ?LOGOUT_VALUES))),
     amqp_util:kapps_publish(agent_status_routing_key(API1), Payload, ContentType).
 
--spec publish_login_queue(api_terms()) -> 'ok'.
--spec publish_login_queue(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_login_queue(api(terms())) -> 'ok'.
+-spec publish_login_queue(api(terms()), ne_binary()) -> 'ok'.
 publish_login_queue(JObj) ->
     publish_login_queue(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_login_queue(API, ContentType) ->
     {'ok', Payload} = login_queue((API1 = kz_api:prepare_api_payload(API, ?LOGIN_QUEUE_VALUES))),
     amqp_util:kapps_publish(agent_status_routing_key(API1), Payload, ContentType).
 
--spec publish_logout_queue(api_terms()) -> 'ok'.
--spec publish_logout_queue(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_logout_queue(api(terms())) -> 'ok'.
+-spec publish_logout_queue(api(terms()), ne_binary()) -> 'ok'.
 publish_logout_queue(JObj) ->
     publish_logout_queue(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_logout_queue(API, ContentType) ->
     {'ok', Payload} = logout_queue((API1 = kz_api:prepare_api_payload(API, ?LOGOUT_QUEUE_VALUES))),
     amqp_util:kapps_publish(agent_status_routing_key(API1), Payload, ContentType).
 
--spec publish_pause(api_terms()) -> 'ok'.
--spec publish_pause(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_pause(api(terms())) -> 'ok'.
+-spec publish_pause(api(terms()), ne_binary()) -> 'ok'.
 publish_pause(JObj) ->
     publish_pause(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_pause(API, ContentType) ->
     {'ok', Payload} = pause((API1 = kz_api:prepare_api_payload(API, ?PAUSE_VALUES))),
     amqp_util:kapps_publish(agent_status_routing_key(API1), Payload, ContentType).
 
--spec publish_resume(api_terms()) -> 'ok'.
--spec publish_resume(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_resume(api(terms())) -> 'ok'.
+-spec publish_resume(api(terms()), ne_binary()) -> 'ok'.
 publish_resume(JObj) ->
     publish_resume(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_resume(API, ContentType) ->
     {'ok', Payload} = resume((API1 = kz_api:prepare_api_payload(API, ?RESUME_VALUES))),
     amqp_util:kapps_publish(agent_status_routing_key(API1), Payload, ContentType).
 
--spec publish_login_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_login_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_login_resp(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_login_resp(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_login_resp(RespQ, JObj) ->
     publish_login_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_login_resp(RespQ, API, ContentType) ->

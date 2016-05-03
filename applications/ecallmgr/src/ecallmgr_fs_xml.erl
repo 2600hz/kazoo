@@ -56,7 +56,7 @@ sip_channel_xml(Props) ->
     SectionEl = section_el(<<"channels">>, ChannelEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')}.
 
--spec authn_resp_xml(api_terms()) -> {'ok', iolist()}.
+-spec authn_resp_xml(api(terms())) -> {'ok', iolist()}.
 -spec authn_resp_xml(ne_binary(), kz_json:object()) -> {'ok', xml_els()}.
 authn_resp_xml([_|_]=RespProp) ->
     authn_resp_xml(props:get_value(<<"Auth-Method">>, RespProp)
@@ -118,7 +118,7 @@ authn_resp_xml(_Method, _JObj) ->
     lager:debug("unknown method ~s", [_Method]),
     empty_response().
 
--spec reverse_authn_resp_xml(api_terms()) -> {'ok', iolist()}.
+-spec reverse_authn_resp_xml(api(terms())) -> {'ok', iolist()}.
 -spec reverse_authn_resp_xml(ne_binary(), kz_json:object()) ->
                                     {'ok', xml_els()}.
 reverse_authn_resp_xml([_|_]=RespProp) ->
@@ -155,7 +155,7 @@ reverse_authn_resp_xml(_Method, _JObj) ->
 empty_response() ->
     {'ok', ""}. %"<document type=\"freeswitch/xml\"></document>").
 
--spec conference_resp_xml(api_terms()) -> {'ok', iolist()}.
+-spec conference_resp_xml(api(terms())) -> {'ok', iolist()}.
 conference_resp_xml([_|_]=Resp) ->
     Ps = props:get_value(<<"Profiles">>, Resp, kz_json:new()),
     CCs = props:get_value(<<"Caller-Controls">>, Resp, kz_json:new()),
@@ -214,7 +214,7 @@ conference_profile_xml(Name, Params) ->
     ParamEls = [param_el(K, V) || {K, V} <- kz_json:to_proplist(Params)],
     profile_el(Name, ParamEls).
 
--spec route_resp_xml(api_terms(), kz_proplist()) -> {'ok', iolist()}.
+-spec route_resp_xml(api(terms()), kz_proplist()) -> {'ok', iolist()}.
 route_resp_xml([_|_]=RespProp, Props) -> route_resp_xml(kz_json:from_list(RespProp), Props);
 route_resp_xml(RespJObj, Props) ->
     route_resp_xml(kz_json:get_value(<<"Method">>, RespJObj)

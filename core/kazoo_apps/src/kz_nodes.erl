@@ -694,7 +694,7 @@ from_json(JObj, State) ->
              ,zone=get_zone(JObj, State)
             }.
 
--spec kapps_from_json(api_terms()) -> kapps_info().
+-spec kapps_from_json(api(terms())) -> kapps_info().
 -spec whapp_from_json(binary(), kz_json:object()) -> {binary(), whapp_info()}.
 -spec whapp_info_from_json(kz_json:object()) -> whapp_info().
 

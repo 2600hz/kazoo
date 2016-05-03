@@ -295,7 +295,7 @@ pids_for_callid(CallId) ->
 
     gproc:select('p', [{MatchHead, Guard, [Result]}]).
 
--spec originate(api_terms()) -> 'ok'.
+-spec originate(api(terms())) -> 'ok'.
 originate(Req) ->
     gen_listener:cast(?SERVER, {'originate', Req}).
 %%%===================================================================

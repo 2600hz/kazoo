@@ -459,7 +459,7 @@ headers(<<"port_request_admin">>) ->
 headers(Id) ->
     kapi_notifications:headers(Id).
 
--spec publish_fun(ne_binary()) -> fun((api_terms()) -> 'ok').
+-spec publish_fun(ne_binary()) -> fun((api(terms())) -> 'ok').
 publish_fun(<<"voicemail_to_email">>) ->
     fun kapi_notifications:publish_voicemail/1;
 publish_fun(<<"voicemail_full">>) ->

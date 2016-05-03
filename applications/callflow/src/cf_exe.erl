@@ -270,7 +270,7 @@ wildcard_is_empty(Call) ->
     Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     wildcard_is_empty(Srv).
 
--spec send_amqp(pid() | kapps_call:call(), api_terms(), kz_amqp_worker:publish_fun()) -> 'ok'.
+-spec send_amqp(pid() | kapps_call:call(), api(terms()), kz_amqp_worker:publish_fun()) -> 'ok'.
 send_amqp(Srv, API, PubFun) when is_pid(Srv), is_function(PubFun, 1) ->
     gen_listener:cast(Srv, {'send_amqp', API, PubFun});
 send_amqp(Call, API, PubFun) when is_function(PubFun, 1) ->
@@ -700,7 +700,7 @@ cf_module_task(CFModule, Data, Call, AMQPConsumer) ->
 %% a hangup command without relying on the (now terminated) cf_exe.
 %% @end
 %%--------------------------------------------------------------------
--spec send_amqp_message(api_terms(), kz_amqp_worker:publish_fun(), ne_binary()) -> 'ok'.
+-spec send_amqp_message(api(terms()), kz_amqp_worker:publish_fun(), ne_binary()) -> 'ok'.
 send_amqp_message(API, PubFun, Q) ->
     PubFun(add_server_id(API, Q)).
 
@@ -713,7 +713,7 @@ send_command(Command, ControlQ, CallId) ->
                       ],
     kapps_util:amqp_pool_send(Props, fun(P) -> kapi_dialplan:publish_command(ControlQ, P) end).
 
--spec add_server_id(api_terms(), ne_binary()) -> api_terms().
+-spec add_server_id(api(terms()), ne_binary()) -> api(terms()).
 add_server_id(API, Q) when is_list(API) ->
     [{<<"Server-ID">>, Q} | props:delete(<<"Server-ID">>, API)];
 add_server_id(API, Q) ->

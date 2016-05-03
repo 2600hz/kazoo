@@ -156,7 +156,7 @@ originate_execute_v(API) ->
 %% @end
 %%--------------------------------------------------------------------
 
--spec originate_req(api_terms()) -> api_formatter_return().
+-spec originate_req(api(terms())) -> api_formatter_return().
 originate_req(Prop) when is_list(Prop) ->
     EPs = [begin
                {'ok', EPProps} = originate_req_endpoint_headers(EP),
@@ -172,13 +172,13 @@ originate_req(Prop) when is_list(Prop) ->
 originate_req(JObj) ->
     originate_req(kz_json:to_proplist(JObj)).
 
--spec originate_req_v(api_terms()) -> boolean().
+-spec originate_req_v(api(terms())) -> boolean().
 originate_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?ORIGINATE_REQ_HEADERS, ?ORIGINATE_REQ_VALUES, ?ORIGINATE_REQ_TYPES);
 originate_req_v(JObj) ->
     originate_req_v(kz_json:to_proplist(JObj)).
 
--spec originate_req_endpoint_headers(api_terms()) ->
+-spec originate_req_endpoint_headers(api(terms())) ->
                                      {'ok', kz_proplist()} |
                                      {'error', string()}.
 originate_req_endpoint_headers(Prop) when is_list(Prop) ->
@@ -186,7 +186,7 @@ originate_req_endpoint_headers(Prop) when is_list(Prop) ->
 originate_req_endpoint_headers(JObj) ->
     originate_req_endpoint_headers(kz_json:to_proplist(JObj)).
 
--spec originate_req_endpoint_v(api_terms()) -> boolean().
+-spec originate_req_endpoint_v(api(terms())) -> boolean().
 originate_req_endpoint_v(Prop) when is_list(Prop) ->
     kz_api:validate_message(Prop, ?ORIGINATE_REQ_ENDPOINT_HEADERS, ?ORIGINATE_REQ_ENDPOINT_VALUES, ?ORIGINATE_REQ_ENDPOINT_TYPES);
 originate_req_endpoint_v(JObj) ->
@@ -198,7 +198,7 @@ originate_req_endpoint_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec originate_resp(api_terms()) ->
+-spec originate_resp(api(terms())) ->
                             {'ok', iolist()} |
                             {'error', string()}.
 originate_resp(Prop) when is_list(Prop) ->
@@ -209,7 +209,7 @@ originate_resp(Prop) when is_list(Prop) ->
 originate_resp(JObj) ->
     originate_resp(kz_json:to_proplist(JObj)).
 
--spec originate_resp_v(api_terms()) -> boolean().
+-spec originate_resp_v(api(terms())) -> boolean().
 originate_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?ORIGINATE_RESP_HEADERS, ?ORIGINATE_RESP_VALUES, ?ORIGINATE_RESP_TYPES);
 originate_resp_v(JObj) ->
@@ -220,7 +220,7 @@ originate_resp_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec originate_started(api_terms()) ->
+-spec originate_started(api(terms())) ->
                                {'ok', iolist()} |
                                {'error', string()}.
 originate_started(Prop) when is_list(Prop) ->
@@ -231,7 +231,7 @@ originate_started(Prop) when is_list(Prop) ->
 originate_started(JObj) ->
     originate_started(kz_json:to_proplist(JObj)).
 
--spec originate_started_v(api_terms()) -> boolean().
+-spec originate_started_v(api(terms())) -> boolean().
 originate_started_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?ORIGINATE_STARTED_HEADERS, ?ORIGINATE_STARTED_VALUES, ?ORIGINATE_STARTED_TYPES);
 originate_started_v(JObj) ->
@@ -242,7 +242,7 @@ originate_started_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec originate_uuid(api_terms()) ->
+-spec originate_uuid(api(terms())) ->
                             {'ok', iolist()} |
                             {'error', string()}.
 originate_uuid(Prop) when is_list(Prop) ->
@@ -253,7 +253,7 @@ originate_uuid(Prop) when is_list(Prop) ->
 originate_uuid(JObj) ->
     originate_uuid(kz_json:to_proplist(JObj)).
 
--spec originate_uuid_v(api_terms()) -> boolean().
+-spec originate_uuid_v(api(terms())) -> boolean().
 originate_uuid_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?ORIGINATE_UUID_HEADERS, ?ORIGINATE_UUID_VALUES, ?ORIGINATE_UUID_TYPES);
 originate_uuid_v(JObj) ->
@@ -264,7 +264,7 @@ originate_uuid_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec eavesdrop_req(api_terms()) ->
+-spec eavesdrop_req(api(terms())) ->
                            {'ok', iolist()} |
                            {'error', string()}.
 eavesdrop_req(Prop) when is_list(Prop) ->
@@ -275,7 +275,7 @@ eavesdrop_req(Prop) when is_list(Prop) ->
 eavesdrop_req(JObj) ->
     eavesdrop_req(kz_json:to_proplist(JObj)).
 
--spec eavesdrop_req_v(api_terms()) -> boolean().
+-spec eavesdrop_req_v(api(terms())) -> boolean().
 eavesdrop_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?EAVESDROP_REQ_HEADERS, ?EAVESDROP_REQ_VALUES, ?EAVESDROP_REQ_TYPES);
 eavesdrop_req_v(JObj) ->
@@ -286,7 +286,7 @@ eavesdrop_req_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec eavesdrop_resp(api_terms()) ->
+-spec eavesdrop_resp(api(terms())) ->
                             {'ok', iolist()} |
                             {'error', string()}.
 eavesdrop_resp(Prop) when is_list(Prop) ->
@@ -297,7 +297,7 @@ eavesdrop_resp(Prop) when is_list(Prop) ->
 eavesdrop_resp(JObj) ->
     eavesdrop_resp(kz_json:to_proplist(JObj)).
 
--spec eavesdrop_resp_v(api_terms()) -> boolean().
+-spec eavesdrop_resp_v(api(terms())) -> boolean().
 eavesdrop_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?EAVESDROP_RESP_HEADERS, ?EAVESDROP_RESP_VALUES, ?EAVESDROP_RESP_TYPES);
 eavesdrop_resp_v(JObj) ->
@@ -352,48 +352,48 @@ unbind_q(_, _, []) ->
 declare_exchanges() ->
     amqp_util:callmgr_exchange().
 
--spec publish_originate_req(api_terms()) -> 'ok'.
--spec publish_originate_req(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_originate_req(api(terms())) -> 'ok'.
+-spec publish_originate_req(api(terms()), ne_binary()) -> 'ok'.
 publish_originate_req(JObj) ->
     publish_originate_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_originate_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?ORIGINATE_REQ_VALUES, fun ?MODULE:originate_req/1),
     amqp_util:callmgr_publish(Payload, ContentType, ?KEY_RESOURCE_REQ, [{'mandatory', 'true'}]).
 
--spec publish_originate_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_originate_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_originate_resp(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_originate_resp(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_originate_resp(TargetQ, JObj) ->
     publish_originate_resp(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_originate_resp(TargetQ, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?ORIGINATE_RESP_VALUES, fun ?MODULE:originate_resp/1),
     amqp_util:targeted_publish(TargetQ, Payload, ContentType).
 
--spec publish_originate_started(ne_binary(), api_terms()) -> 'ok'.
--spec publish_originate_started(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_originate_started(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_originate_started(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_originate_started(TargetQ, JObj) ->
     publish_originate_started(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_originate_started(TargetQ, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?ORIGINATE_STARTED_VALUES, fun ?MODULE:originate_started/1),
     amqp_util:targeted_publish(TargetQ, Payload, ContentType).
 
--spec publish_originate_uuid(ne_binary(), api_terms()) -> 'ok'.
--spec publish_originate_uuid(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_originate_uuid(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_originate_uuid(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_originate_uuid(TargetQ, JObj) ->
     publish_originate_uuid(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_originate_uuid(TargetQ, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?ORIGINATE_UUID_VALUES, fun ?MODULE:originate_uuid/1),
     amqp_util:targeted_publish(TargetQ, Payload, ContentType).
 
--spec publish_eavesdrop_req(api_terms()) -> 'ok'.
--spec publish_eavesdrop_req(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_eavesdrop_req(api(terms())) -> 'ok'.
+-spec publish_eavesdrop_req(api(terms()), ne_binary()) -> 'ok'.
 publish_eavesdrop_req(JObj) ->
     publish_eavesdrop_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_eavesdrop_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?EAVESDROP_REQ_VALUES, fun ?MODULE:eavesdrop_req/1),
     amqp_util:callmgr_publish(Payload, ContentType, ?KEY_EAVESDROP_REQ).
 
--spec publish_eavesdrop_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_eavesdrop_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_eavesdrop_resp(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_eavesdrop_resp(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_eavesdrop_resp(TargetQ, JObj) ->
     publish_eavesdrop_resp(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_eavesdrop_resp(TargetQ, Resp, ContentType) ->

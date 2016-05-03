@@ -216,7 +216,7 @@ participant_volume_out(ParticipantId, VolumeOut,Conference) ->
               ],
     send_command(Command, Conference).
 
--spec send_command(api_terms(), kapps_conference:conference()) -> 'ok'.
+-spec send_command(api(terms()), kapps_conference:conference()) -> 'ok'.
 send_command([_|_]=Command, Conference) ->
     Q = kapps_conference:controller_queue(Conference),
     ConferenceId = kapps_conference:id(Conference),

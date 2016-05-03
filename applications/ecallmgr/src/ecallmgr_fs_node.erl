@@ -557,11 +557,11 @@ execute_command(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat) ->
             [Error | Acc]
     end.
 
--spec format_args('list'|'binary', api_terms()) -> api_terms().
+-spec format_args('list'|'binary', api(terms())) -> api(terms()).
 format_args('list', Args) -> kz_util:to_list(Args);
 format_args('binary', Args) -> kz_util:to_binary(Args).
 
--spec process_resp(atom(), api_terms(), ne_binaries(), cmd_results()) -> cmd_results().
+-spec process_resp(atom(), api(terms()), ne_binaries(), cmd_results()) -> cmd_results().
 process_resp(ApiCmd, ApiArg, [<<>>|Resps], Acc) ->
     process_resp(ApiCmd, ApiArg, Resps, Acc);
 process_resp(ApiCmd, ApiArg, [<<"+OK Reloading XML">>|Resps], Acc) ->

@@ -67,7 +67,7 @@ route(Name) when is_atom(Name) ->
 route(Name, Node) ->
     iolist_to_binary(io_lib:format("~s.~s", [Name, Node])).
 
--spec req(api_terms()) -> api_formatter_return().
+-spec req(api(terms())) -> api_formatter_return().
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?LEADER_REQ_HEADERS, ?OPTIONAL_LEADER_REQ_HEADERS);
@@ -76,7 +76,7 @@ req(Prop) when is_list(Prop) ->
 req(JObj) ->
     req(kz_json:to_proplist(JObj)).
 
--spec req_v(api_terms()) -> boolean().
+-spec req_v(api(terms())) -> boolean().
 req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?LEADER_REQ_HEADERS, ?LEADER_REQ_VALUES, ?LEADER_REQ_TYPES);
 req_v(JObj) ->
@@ -91,8 +91,8 @@ req_v(JObj) ->
 declare_exchanges() ->
     amqp_util:leader_exchange().
 
--spec publish_req(ne_binary(), api_terms()) -> 'ok'.
--spec publish_req(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_req(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_req(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_req(Routing, JObj) ->
     publish_req(Routing, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Routing, Req, ContentType) ->

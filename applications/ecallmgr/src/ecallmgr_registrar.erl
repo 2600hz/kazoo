@@ -560,7 +560,7 @@ fetch_registration(Username, Realm) ->
             {'error', 'not_found'}
     end.
 
--spec query_for_registration(api_terms()) ->
+-spec query_for_registration(api(terms())) ->
                                     {'ok', kz_json:objects()} |
                                     {'error', any()}.
 query_for_registration(Reg) ->

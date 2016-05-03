@@ -663,8 +663,8 @@ clear_call_state(#state{account_id=AccountId
                 ,delivery='undefined'
                }.
 
--spec publish(api_terms(), kz_amqp_worker:publish_fun()) -> 'ok'.
--spec publish(ne_binary(), api_terms(), fun((ne_binary(), api_terms()) -> 'ok')) -> 'ok'.
+-spec publish(api(terms()), kz_amqp_worker:publish_fun()) -> 'ok'.
+-spec publish(ne_binary(), api(terms()), fun((ne_binary(), api(terms())) -> 'ok')) -> 'ok'.
 publish(Req, F) ->
     case catch F(Req) of
         'ok' -> 'ok';

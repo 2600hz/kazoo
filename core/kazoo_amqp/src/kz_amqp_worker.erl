@@ -62,8 +62,8 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
--type publish_fun() :: fun((api_terms()) -> any()).
--type validate_fun() :: fun((api_terms()) -> boolean()).
+-type publish_fun() :: fun((api(terms())) -> any()).
+-type validate_fun() :: fun((api(terms())) -> boolean()).
 
 -type collect_until_acc() :: any().
 
@@ -177,11 +177,11 @@ default_timeout() -> 2 * ?MILLISECONDS_IN_SECOND.
                           {'returned', kz_json:object(), kz_json:object()} |
                           {'timeout', kz_json:objects()} |
                           {'error', any()}.
--spec call(api_terms(), publish_fun(), validate_fun()) ->
+-spec call(api(terms()), publish_fun(), validate_fun()) ->
                   request_return().
--spec call(api_terms(), publish_fun(), validate_fun(), kz_timeout()) ->
+-spec call(api(terms()), publish_fun(), validate_fun(), kz_timeout()) ->
                   request_return().
--spec call(api_terms(), publish_fun(), validate_fun(), kz_timeout(), pid()  | atom()) ->
+-spec call(api(terms()), publish_fun(), validate_fun(), kz_timeout(), pid()  | atom()) ->
                   request_return().
 call(Req, PubFun, VFun) ->
     call(Req, PubFun, VFun, default_timeout()).
@@ -253,11 +253,11 @@ checkin_worker(Worker) ->
 checkin_worker(Worker, Pool) ->
     poolboy:checkin(Pool, Worker).
 
--spec call_custom(api_terms(), publish_fun(), validate_fun(), gen_listener:binding()) ->
+-spec call_custom(api(terms()), publish_fun(), validate_fun(), gen_listener:binding()) ->
                          request_return().
--spec call_custom(api_terms(), publish_fun(), validate_fun(), kz_timeout(), gen_listener:binding()) ->
+-spec call_custom(api(terms()), publish_fun(), validate_fun(), kz_timeout(), gen_listener:binding()) ->
                          request_return().
--spec call_custom(api_terms(), publish_fun(), validate_fun(), kz_timeout(), gen_listener:binding(), pid()) ->
+-spec call_custom(api(terms()), publish_fun(), validate_fun(), kz_timeout(), gen_listener:binding(), pid()) ->
                          request_return().
 call_custom(Req, PubFun, VFun, Bind) ->
     call_custom(Req, PubFun, VFun, default_timeout(), Bind).
@@ -285,13 +285,13 @@ call_custom(Req, PubFun, VFun, Timeout, Bind, Worker) ->
         checkin_worker(Worker)
     end.
 
--spec call_collect(api_terms(), publish_fun()) ->
+-spec call_collect(api(terms()), publish_fun()) ->
                           request_return().
--spec call_collect(api_terms(), publish_fun(), timeout_or_until()) ->
+-spec call_collect(api(terms()), publish_fun(), timeout_or_until()) ->
                           request_return().
--spec call_collect(api_terms(), publish_fun(), collect_until(), kz_timeout()) ->
+-spec call_collect(api(terms()), publish_fun(), collect_until(), kz_timeout()) ->
                           request_return().
--spec call_collect(api_terms(), publish_fun(), collect_until(), kz_timeout(), pid()) ->
+-spec call_collect(api(terms()), publish_fun(), collect_until(), kz_timeout(), pid()) ->
                           request_return().
 call_collect(Req, PubFun) ->
     call_collect(Req, PubFun, default_timeout()).
@@ -373,8 +373,8 @@ call_collect(Req, PubFun, UntilFun, Timeout, Acc, Worker) ->
                        {'error', any()} |
                        {'returned', kz_json:object(), kz_json:object()}.
 
--spec cast(api_terms(), publish_fun()) -> cast_return().
--spec cast(api_terms(), publish_fun(), pid() | atom()) -> cast_return().
+-spec cast(api(terms()), publish_fun()) -> cast_return().
+-spec cast(api(terms()), publish_fun(), pid() | atom()) -> cast_return().
 cast(Req, PubFun) ->
     cast(Req, PubFun, kz_amqp_sup:pool_name()).
 

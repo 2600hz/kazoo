@@ -376,7 +376,7 @@ focus_queue_name(Focus) -> <<(kz_util:to_binary(Focus))/binary, "_conference">>.
                                                    ,<<"Application-Name">>
                                                   ], ?TONES_REQ_VALUES)
                              ]).
--spec say(api_terms()) -> api_formatter_return() .
+-spec say(api(terms())) -> api_formatter_return() .
 say(Prop) when is_list(Prop) ->
     case say_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?TTS_REQ_HEADERS, ?OPTIONAL_TTS_REQ_HEADERS);
@@ -386,7 +386,7 @@ say(JObj) -> say(kz_json:to_proplist(JObj)).
 
 tts(API) -> say(API).
 
--spec say_v(api_terms()) -> boolean().
+-spec say_v(api(terms())) -> boolean().
 say_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?TTS_REQ_HEADERS, ?CONF_SAY_REQ_VALUES, ?TTS_REQ_TYPES);
 say_v(JObj) -> say_v(kz_json:to_proplist(JObj)).
@@ -402,7 +402,7 @@ tts_v(API) -> say_v(API).
 -define(CONF_TONES_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                 | props:delete(<<"Event-Category">>, ?TONES_REQ_VALUES)
                                ]).
--spec tones(api_terms()) -> api_formatter_return() .
+-spec tones(api(terms())) -> api_formatter_return() .
 tones(Prop) when is_list(Prop) ->
     Tones = [begin
                  {'ok', TonesProp} = kapi_dialplan:tones_req_tone_headers(Tone),
@@ -418,7 +418,7 @@ tones(Prop) when is_list(Prop) ->
     end;
 tones(JObj) -> tones(kz_json:to_proplist(JObj)).
 
--spec tones_v(api_terms()) -> boolean().
+-spec tones_v(api(terms())) -> boolean().
 tones_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?TONES_REQ_HEADERS, ?CONF_TONES_REQ_VALUES, ?TONES_REQ_TYPES);
 tones_v(JObj) -> tones_v(kz_json:to_proplist(JObj)).
@@ -428,7 +428,7 @@ tones_v(JObj) -> tones_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec search_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec search_req(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 search_req(Prop) when is_list(Prop) ->
     case search_req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SEARCH_REQ_HEADERS, ?OPTIONAL_SEARCH_REQ_HEADERS);
@@ -436,7 +436,7 @@ search_req(Prop) when is_list(Prop) ->
     end;
 search_req(JObj) -> search_req(kz_json:to_proplist(JObj)).
 
--spec search_req_v(api_terms()) -> boolean().
+-spec search_req_v(api(terms())) -> boolean().
 search_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SEARCH_REQ_HEADERS, ?SEARCH_REQ_VALUES, ?SEARCH_REQ_TYPES);
 search_req_v(JObj) -> search_req_v(kz_json:to_proplist(JObj)).
@@ -446,7 +446,7 @@ search_req_v(JObj) -> search_req_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec search_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec search_resp(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 search_resp(Prop) when is_list(Prop) ->
     case search_resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SEARCH_RESP_HEADERS, ?OPTIONAL_SEARCH_RESP_HEADERS);
@@ -454,7 +454,7 @@ search_resp(Prop) when is_list(Prop) ->
     end;
 search_resp(JObj) -> search_resp(kz_json:to_proplist(JObj)).
 
--spec search_resp_v(api_terms()) -> boolean().
+-spec search_resp_v(api(terms())) -> boolean().
 search_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SEARCH_RESP_HEADERS, ?SEARCH_RESP_VALUES, ?SEARCH_RESP_TYPES);
 search_resp_v(JObj) -> search_resp_v(kz_json:to_proplist(JObj)).
@@ -464,7 +464,7 @@ search_resp_v(JObj) -> search_resp_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec discovery_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec discovery_req(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 discovery_req(Prop) when is_list(Prop) ->
     case discovery_req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?DISCOVERY_REQ_HEADERS, ?OPTIONAL_DISCOVERY_REQ_HEADERS);
@@ -472,7 +472,7 @@ discovery_req(Prop) when is_list(Prop) ->
     end;
 discovery_req(JObj) -> discovery_req(kz_json:to_proplist(JObj)).
 
--spec discovery_req_v(api_terms()) -> boolean().
+-spec discovery_req_v(api(terms())) -> boolean().
 discovery_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?DISCOVERY_REQ_HEADERS, ?DISCOVERY_REQ_VALUES, ?DISCOVERY_REQ_TYPES);
 discovery_req_v(JObj) -> discovery_req_v(kz_json:to_proplist(JObj)).
@@ -482,7 +482,7 @@ discovery_req_v(JObj) -> discovery_req_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec discovery_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec discovery_resp(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 discovery_resp(Prop) when is_list(Prop) ->
     case discovery_resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?DISCOVERY_RESP_HEADERS, ?OPTIONAL_DISCOVERY_RESP_HEADERS);
@@ -490,7 +490,7 @@ discovery_resp(Prop) when is_list(Prop) ->
     end;
 discovery_resp(JObj) -> discovery_resp(kz_json:to_proplist(JObj)).
 
--spec discovery_resp_v(api_terms()) -> boolean().
+-spec discovery_resp_v(api(terms())) -> boolean().
 discovery_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?DISCOVERY_RESP_HEADERS, ?DISCOVERY_RESP_VALUES, ?DISCOVERY_RESP_TYPES);
 discovery_resp_v(JObj) -> discovery_resp_v(kz_json:to_proplist(JObj)).
@@ -500,7 +500,7 @@ discovery_resp_v(JObj) -> discovery_resp_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec deaf_participant(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec deaf_participant(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 deaf_participant(Prop) when is_list(Prop) ->
     case deaf_participant_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?DEAF_PARTICIPANT_HEADERS, ?OPTIONAL_DEAF_PARTICIPANT_HEADERS);
@@ -508,7 +508,7 @@ deaf_participant(Prop) when is_list(Prop) ->
     end;
 deaf_participant(JObj) -> deaf_participant(kz_json:to_proplist(JObj)).
 
--spec deaf_participant_v(api_terms()) -> boolean().
+-spec deaf_participant_v(api(terms())) -> boolean().
 deaf_participant_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?DEAF_PARTICIPANT_HEADERS, ?DEAF_PARTICIPANT_VALUES, ?DEAF_PARTICIPANT_TYPES);
 deaf_participant_v(JObj) -> deaf_participant_v(kz_json:to_proplist(JObj)).
@@ -518,7 +518,7 @@ deaf_participant_v(JObj) -> deaf_participant_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec participant_energy(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec participant_energy(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 participant_energy(Prop) when is_list(Prop) ->
     case participant_energy_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?PARTICIPANT_ENERGY_HEADERS, ?OPTIONAL_PARTICIPANT_ENERGY_HEADERS);
@@ -526,7 +526,7 @@ participant_energy(Prop) when is_list(Prop) ->
     end;
 participant_energy(JObj) -> participant_energy(kz_json:to_proplist(JObj)).
 
--spec participant_energy_v(api_terms()) -> boolean().
+-spec participant_energy_v(api(terms())) -> boolean().
 participant_energy_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PARTICIPANT_ENERGY_HEADERS, ?PARTICIPANT_ENERGY_VALUES, ?PARTICIPANT_ENERGY_TYPES);
 participant_energy_v(JObj) -> participant_energy_v(kz_json:to_proplist(JObj)).
@@ -536,7 +536,7 @@ participant_energy_v(JObj) -> participant_energy_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec kick(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec kick(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 kick(Prop) when is_list(Prop) ->
     case kick_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?KICK_HEADERS, ?OPTIONAL_KICK_HEADERS);
@@ -544,7 +544,7 @@ kick(Prop) when is_list(Prop) ->
     end;
 kick(JObj) -> kick(kz_json:to_proplist(JObj)).
 
--spec kick_v(api_terms()) -> boolean().
+-spec kick_v(api(terms())) -> boolean().
 kick_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?KICK_HEADERS, ?KICK_VALUES, ?KICK_TYPES);
 kick_v(JObj) -> kick_v(kz_json:to_proplist(JObj)).
@@ -554,7 +554,7 @@ kick_v(JObj) -> kick_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec participants_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec participants_req(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 participants_req(Prop) when is_list(Prop) ->
     case participants_req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?PARTICIPANTS_REQ_HEADERS, ?OPTIONAL_PARTICIPANTS_REQ_HEADERS);
@@ -562,7 +562,7 @@ participants_req(Prop) when is_list(Prop) ->
     end;
 participants_req(JObj) -> participants_req(kz_json:to_proplist(JObj)).
 
--spec participants_req_v(api_terms()) -> boolean().
+-spec participants_req_v(api(terms())) -> boolean().
 participants_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PARTICIPANTS_REQ_HEADERS, ?PARTICIPANTS_REQ_VALUES, ?PARTICIPANTS_REQ_TYPES);
 participants_req_v(JObj) -> participants_req_v(kz_json:to_proplist(JObj)).
@@ -572,7 +572,7 @@ participants_req_v(JObj) -> participants_req_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec participants_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec participants_resp(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 participants_resp(Prop) when is_list(Prop) ->
     case participants_resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?PARTICIPANTS_RESP_HEADERS, ?OPTIONAL_PARTICIPANTS_RESP_HEADERS);
@@ -580,7 +580,7 @@ participants_resp(Prop) when is_list(Prop) ->
     end;
 participants_resp(JObj) -> participants_resp(kz_json:to_proplist(JObj)).
 
--spec participants_resp_v(api_terms()) -> boolean().
+-spec participants_resp_v(api(terms())) -> boolean().
 participants_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PARTICIPANTS_RESP_HEADERS, ?PARTICIPANTS_RESP_VALUES, ?PARTICIPANTS_RESP_TYPES);
 participants_resp_v(JObj) -> participants_resp_v(kz_json:to_proplist(JObj)).
@@ -590,7 +590,7 @@ participants_resp_v(JObj) -> participants_resp_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec lock(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec lock(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 lock(Prop) when is_list(Prop) ->
     case lock_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?LOCK_HEADERS, ?OPTIONAL_LOCK_HEADERS);
@@ -598,7 +598,7 @@ lock(Prop) when is_list(Prop) ->
     end;
 lock(JObj) -> lock(kz_json:to_proplist(JObj)).
 
--spec lock_v(api_terms()) -> boolean().
+-spec lock_v(api(terms())) -> boolean().
 lock_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?LOCK_HEADERS, ?LOCK_VALUES, ?LOCK_TYPES);
 lock_v(JObj) -> lock_v(kz_json:to_proplist(JObj)).
@@ -608,7 +608,7 @@ lock_v(JObj) -> lock_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec mute_participant(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec mute_participant(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 mute_participant(Prop) when is_list(Prop) ->
     case mute_participant_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?MUTE_PARTICIPANT_HEADERS, ?OPTIONAL_MUTE_PARTICIPANT_HEADERS);
@@ -616,7 +616,7 @@ mute_participant(Prop) when is_list(Prop) ->
     end;
 mute_participant(JObj) -> mute_participant(kz_json:to_proplist(JObj)).
 
--spec mute_participant_v(api_terms()) -> boolean().
+-spec mute_participant_v(api(terms())) -> boolean().
 mute_participant_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?MUTE_PARTICIPANT_HEADERS, ?MUTE_PARTICIPANT_VALUES, ?MUTE_PARTICIPANT_TYPES);
 mute_participant_v(JObj) -> mute_participant_v(kz_json:to_proplist(JObj)).
@@ -626,7 +626,7 @@ mute_participant_v(JObj) -> mute_participant_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec play(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec play(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 play(Prop) when is_list(Prop) ->
     case play_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?PLAY_HEADERS, ?OPTIONAL_PLAY_HEADERS);
@@ -634,7 +634,7 @@ play(Prop) when is_list(Prop) ->
     end;
 play(JObj) -> play(kz_json:to_proplist(JObj)).
 
--spec play_v(api_terms()) -> boolean().
+-spec play_v(api(terms())) -> boolean().
 play_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PLAY_HEADERS, ?PLAY_VALUES, ?PLAY_TYPES);
 play_v(JObj) -> play_v(kz_json:to_proplist(JObj)).
@@ -644,7 +644,7 @@ play_v(JObj) -> play_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec play_macro_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec play_macro_req(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 play_macro_req(Prop) when is_list(Prop) ->
     case play_macro_req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?CONF_PLAY_MACRO_REQ_HEADERS, ?OPTIONAL_CONF_PLAY_MACRO_REQ_HEADERS);
@@ -652,7 +652,7 @@ play_macro_req(Prop) when is_list(Prop) ->
     end;
 play_macro_req(JObj) -> play_macro_req(kz_json:to_proplist(JObj)).
 
--spec play_macro_req_v(api_terms()) -> boolean().
+-spec play_macro_req_v(api(terms())) -> boolean().
 play_macro_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?CONF_PLAY_MACRO_REQ_HEADERS, ?CONF_PLAY_MACRO_REQ_VALUES, ?CONF_PLAY_MACRO_REQ_TYPES);
 play_macro_req_v(JObj) -> play_macro_req_v(kz_json:to_proplist(JObj)).
@@ -662,7 +662,7 @@ play_macro_req_v(JObj) -> play_macro_req_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec record(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec record(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 record(Prop) when is_list(Prop) ->
     case record_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?RECORD_HEADERS, ?OPTIONAL_RECORD_HEADERS);
@@ -670,7 +670,7 @@ record(Prop) when is_list(Prop) ->
     end;
 record(JObj) -> record(kz_json:to_proplist(JObj)).
 
--spec record_v(api_terms()) -> boolean().
+-spec record_v(api(terms())) -> boolean().
 record_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?RECORD_HEADERS, ?RECORD_VALUES, ?RECORD_TYPES);
 record_v(JObj) -> record_v(kz_json:to_proplist(JObj)).
@@ -680,7 +680,7 @@ record_v(JObj) -> record_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec recordstop(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec recordstop(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 recordstop(Prop) when is_list(Prop) ->
     case recordstop_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?RECORDSTOP_HEADERS, ?OPTIONAL_RECORDSTOP_HEADERS);
@@ -688,7 +688,7 @@ recordstop(Prop) when is_list(Prop) ->
     end;
 recordstop(JObj) -> recordstop(kz_json:to_proplist(JObj)).
 
--spec recordstop_v(api_terms()) -> boolean().
+-spec recordstop_v(api(terms())) -> boolean().
 recordstop_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?RECORDSTOP_HEADERS, ?RECORDSTOP_VALUES, ?RECORDSTOP_TYPES);
 recordstop_v(JObj) -> recordstop_v(kz_json:to_proplist(JObj)).
@@ -698,7 +698,7 @@ recordstop_v(JObj) -> recordstop_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec relate_participants(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec relate_participants(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 relate_participants(Prop) when is_list(Prop) ->
     case relate_participants_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?RELATE_PARTICIPANTS_HEADERS, ?OPTIONAL_RELATE_PARTICIPANTS_HEADERS);
@@ -706,7 +706,7 @@ relate_participants(Prop) when is_list(Prop) ->
     end;
 relate_participants(JObj) -> relate_participants(kz_json:to_proplist(JObj)).
 
--spec relate_participants_v(api_terms()) -> boolean().
+-spec relate_participants_v(api(terms())) -> boolean().
 relate_participants_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?RELATE_PARTICIPANTS_HEADERS, ?RELATE_PARTICIPANTS_VALUES, ?RELATE_PARTICIPANTS_TYPES);
 relate_participants_v(JObj) -> relate_participants_v(kz_json:to_proplist(JObj)).
@@ -716,7 +716,7 @@ relate_participants_v(JObj) -> relate_participants_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec set(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec set(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 set(Prop) when is_list(Prop) ->
     case set_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SET_HEADERS, ?OPTIONAL_SET_HEADERS);
@@ -724,7 +724,7 @@ set(Prop) when is_list(Prop) ->
     end;
 set(JObj) -> set(kz_json:to_proplist(JObj)).
 
--spec set_v(api_terms()) -> boolean().
+-spec set_v(api(terms())) -> boolean().
 set_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SET_HEADERS, ?SET_VALUES, ?SET_TYPES);
 set_v(JObj) -> set_v(kz_json:to_proplist(JObj)).
@@ -734,7 +734,7 @@ set_v(JObj) -> set_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec stop_play(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec stop_play(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 stop_play(Prop) when is_list(Prop) ->
     case stop_play_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?STOP_PLAY_HEADERS, ?OPTIONAL_STOP_PLAY_HEADERS);
@@ -742,7 +742,7 @@ stop_play(Prop) when is_list(Prop) ->
     end;
 stop_play(JObj) -> stop_play(kz_json:to_proplist(JObj)).
 
--spec stop_play_v(api_terms()) -> boolean().
+-spec stop_play_v(api(terms())) -> boolean().
 stop_play_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?STOP_PLAY_HEADERS, ?STOP_PLAY_VALUES, ?STOP_PLAY_TYPES);
 stop_play_v(JObj) -> stop_play_v(kz_json:to_proplist(JObj)).
@@ -752,7 +752,7 @@ stop_play_v(JObj) -> stop_play_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec undeaf_participant(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec undeaf_participant(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 undeaf_participant(Prop) when is_list(Prop) ->
     case undeaf_participant_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?UNDEAF_PARTICIPANT_HEADERS, ?OPTIONAL_UNDEAF_PARTICIPANT_HEADERS);
@@ -760,7 +760,7 @@ undeaf_participant(Prop) when is_list(Prop) ->
     end;
 undeaf_participant(JObj) -> undeaf_participant(kz_json:to_proplist(JObj)).
 
--spec undeaf_participant_v(api_terms()) -> boolean().
+-spec undeaf_participant_v(api(terms())) -> boolean().
 undeaf_participant_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?UNDEAF_PARTICIPANT_HEADERS, ?UNDEAF_PARTICIPANT_VALUES, ?UNDEAF_PARTICIPANT_TYPES);
 undeaf_participant_v(JObj) -> undeaf_participant_v(kz_json:to_proplist(JObj)).
@@ -770,7 +770,7 @@ undeaf_participant_v(JObj) -> undeaf_participant_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec unlock(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec unlock(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 unlock(Prop) when is_list(Prop) ->
     case unlock_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?UNLOCK_HEADERS, ?OPTIONAL_UNLOCK_HEADERS);
@@ -778,7 +778,7 @@ unlock(Prop) when is_list(Prop) ->
     end;
 unlock(JObj) -> unlock(kz_json:to_proplist(JObj)).
 
--spec unlock_v(api_terms()) -> boolean().
+-spec unlock_v(api(terms())) -> boolean().
 unlock_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?UNLOCK_HEADERS, ?UNLOCK_VALUES, ?UNLOCK_TYPES);
 unlock_v(JObj) -> unlock_v(kz_json:to_proplist(JObj)).
@@ -788,7 +788,7 @@ unlock_v(JObj) -> unlock_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec unmute_participant(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec unmute_participant(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 unmute_participant(Prop) when is_list(Prop) ->
     case unmute_participant_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?UNMUTE_PARTICIPANT_HEADERS, ?OPTIONAL_UNMUTE_PARTICIPANT_HEADERS);
@@ -796,7 +796,7 @@ unmute_participant(Prop) when is_list(Prop) ->
     end;
 unmute_participant(JObj) -> unmute_participant(kz_json:to_proplist(JObj)).
 
--spec unmute_participant_v(api_terms()) -> boolean().
+-spec unmute_participant_v(api(terms())) -> boolean().
 unmute_participant_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?UNMUTE_PARTICIPANT_HEADERS, ?UNMUTE_PARTICIPANT_VALUES, ?UNMUTE_PARTICIPANT_TYPES);
 unmute_participant_v(JObj) -> unmute_participant_v(kz_json:to_proplist(JObj)).
@@ -806,7 +806,7 @@ unmute_participant_v(JObj) -> unmute_participant_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec participant_volume_in(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec participant_volume_in(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 participant_volume_in(Prop) when is_list(Prop) ->
     case participant_volume_in_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?PARTICIPANT_VOLUME_IN_HEADERS, ?OPTIONAL_PARTICIPANT_VOLUME_IN_HEADERS);
@@ -814,7 +814,7 @@ participant_volume_in(Prop) when is_list(Prop) ->
     end;
 participant_volume_in(JObj) -> participant_volume_in(kz_json:to_proplist(JObj)).
 
--spec participant_volume_in_v(api_terms()) -> boolean().
+-spec participant_volume_in_v(api(terms())) -> boolean().
 participant_volume_in_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PARTICIPANT_VOLUME_IN_HEADERS, ?PARTICIPANT_VOLUME_IN_VALUES, ?PARTICIPANT_VOLUME_IN_TYPES);
 participant_volume_in_v(JObj) -> participant_volume_in_v(kz_json:to_proplist(JObj)).
@@ -824,7 +824,7 @@ participant_volume_in_v(JObj) -> participant_volume_in_v(kz_json:to_proplist(JOb
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec participant_volume_out(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec participant_volume_out(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 participant_volume_out(Prop) when is_list(Prop) ->
     case participant_volume_out_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?PARTICIPANT_VOLUME_OUT_HEADERS, ?OPTIONAL_PARTICIPANT_VOLUME_OUT_HEADERS);
@@ -832,7 +832,7 @@ participant_volume_out(Prop) when is_list(Prop) ->
     end;
 participant_volume_out(JObj) -> participant_volume_out(kz_json:to_proplist(JObj)).
 
--spec participant_volume_out_v(api_terms()) -> boolean().
+-spec participant_volume_out_v(api(terms())) -> boolean().
 participant_volume_out_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PARTICIPANT_VOLUME_OUT_HEADERS, ?PARTICIPANT_VOLUME_OUT_VALUES, ?PARTICIPANT_VOLUME_OUT_TYPES);
 participant_volume_out_v(JObj) -> participant_volume_out_v(kz_json:to_proplist(JObj)).
@@ -842,7 +842,7 @@ participant_volume_out_v(JObj) -> participant_volume_out_v(kz_json:to_proplist(J
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec participants_event(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec participants_event(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 participants_event(Prop) when is_list(Prop) ->
     case participants_event_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?PARTICIPANTS_EVENT_HEADERS, ?OPTIONAL_PARTICIPANTS_EVENT_HEADERS);
@@ -850,7 +850,7 @@ participants_event(Prop) when is_list(Prop) ->
     end;
 participants_event(JObj) -> participants_event(kz_json:to_proplist(JObj)).
 
--spec participants_event_v(api_terms()) -> boolean().
+-spec participants_event_v(api(terms())) -> boolean().
 participants_event_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PARTICIPANTS_EVENT_HEADERS, ?PARTICIPANTS_EVENT_VALUES, ?PARTICIPANTS_EVENT_TYPES);
 participants_event_v(JObj) -> participants_event_v(kz_json:to_proplist(JObj)).
@@ -860,7 +860,7 @@ participants_event_v(JObj) -> participants_event_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec conference_error(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec conference_error(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 conference_error(Prop) when is_list(Prop) ->
     case conference_error_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?CONFERENCE_ERROR_HEADERS, ?OPTIONAL_CONFERENCE_ERROR_HEADERS);
@@ -868,7 +868,7 @@ conference_error(Prop) when is_list(Prop) ->
     end;
 conference_error(JObj) -> conference_error(kz_json:to_proplist(JObj)).
 
--spec conference_error_v(api_terms()) -> boolean().
+-spec conference_error_v(api(terms())) -> boolean().
 conference_error_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?CONFERENCE_ERROR_HEADERS, ?CONFERENCE_ERROR_VALUES, ?CONFERENCE_ERROR_TYPES);
 conference_error_v(JObj) -> conference_error_v(kz_json:to_proplist(JObj)).
@@ -878,7 +878,7 @@ conference_error_v(JObj) -> conference_error_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec config_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec config_req(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 config_req(Prop) when is_list(Prop) ->
     case config_req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?CONFIG_REQ_HEADERS, ?OPTIONAL_CONFIG_REQ_HEADERS);
@@ -886,7 +886,7 @@ config_req(Prop) when is_list(Prop) ->
     end;
 config_req(JObj) -> config_req(kz_json:to_proplist(JObj)).
 
--spec config_req_v(api_terms()) -> boolean().
+-spec config_req_v(api(terms())) -> boolean().
 config_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?CONFIG_REQ_HEADERS, ?CONFIG_REQ_VALUES, ?CONFIG_REQ_TYPES);
 config_req_v(JObj) -> config_req_v(kz_json:to_proplist(JObj)).
@@ -896,7 +896,7 @@ config_req_v(JObj) -> config_req_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec config_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec config_resp(api(terms())) -> {'ok', iolist()} | {'error', string()}.
 config_resp(Prop) when is_list(Prop) ->
     case config_resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?CONFIG_RESP_HEADERS, ?OPTIONAL_CONFIG_RESP_HEADERS);
@@ -904,7 +904,7 @@ config_resp(Prop) when is_list(Prop) ->
     end;
 config_resp(JObj) -> config_resp(kz_json:to_proplist(JObj)).
 
--spec config_resp_v(api_terms()) -> boolean().
+-spec config_resp_v(api(terms())) -> boolean().
 config_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?CONFIG_RESP_HEADERS, ?CONFIG_RESP_VALUES, ?CONFIG_RESP_TYPES);
 config_resp_v(JObj) -> config_resp_v(kz_json:to_proplist(JObj)).
@@ -985,8 +985,8 @@ declare_exchanges() ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_search_req(api_terms()) -> 'ok'.
--spec publish_search_req(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_search_req(api(terms())) -> 'ok'.
+-spec publish_search_req(api(terms()), ne_binary()) -> 'ok'.
 publish_search_req(JObj) ->
     publish_search_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_search_req(Req, ContentType) ->
@@ -998,8 +998,8 @@ publish_search_req(Req, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_search_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_search_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_search_resp(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_search_resp(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_search_resp(Queue, Resp) ->
     publish_search_resp(Queue, Resp, ?DEFAULT_CONTENT_TYPE).
 publish_search_resp(Queue, Resp, ContentType) ->
@@ -1011,8 +1011,8 @@ publish_search_resp(Queue, Resp, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_discovery_req(api_terms()) -> 'ok'.
--spec publish_discovery_req(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_discovery_req(api(terms())) -> 'ok'.
+-spec publish_discovery_req(api(terms()), ne_binary()) -> 'ok'.
 publish_discovery_req(JObj) ->
     publish_discovery_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_discovery_req(Req, ContentType) ->
@@ -1024,8 +1024,8 @@ publish_discovery_req(Req, ContentType) ->
 %% Publish the response to requestor
 %% @end
 %%--------------------------------------------------------------------
--spec publish_discovery_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_discovery_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_discovery_resp(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_discovery_resp(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_discovery_resp(Q, JObj) ->
     publish_discovery_resp(Q, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_discovery_resp(Q, Req, ContentType) ->
@@ -1037,8 +1037,8 @@ publish_discovery_resp(Q, Req, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_deaf_participant(ne_binary(), api_terms()) -> 'ok'.
--spec publish_deaf_participant(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_deaf_participant(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_deaf_participant(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_deaf_participant(ConferenceId, JObj) ->
     publish_deaf_participant(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_deaf_participant(ConferenceId, Req, ContentType) ->
@@ -1050,8 +1050,8 @@ publish_deaf_participant(ConferenceId, Req, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_participant_energy(ne_binary(), api_terms()) -> 'ok'.
--spec publish_participant_energy(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_participant_energy(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_participant_energy(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_participant_energy(ConferenceId, JObj) ->
     publish_participant_energy(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_participant_energy(ConferenceId, Req, ContentType) ->
@@ -1063,8 +1063,8 @@ publish_participant_energy(ConferenceId, Req, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_kick(ne_binary(), api_terms()) -> 'ok'.
--spec publish_kick(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_kick(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_kick(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_kick(ConferenceId, JObj) ->
     publish_kick(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_kick(ConferenceId, Req, ContentType) ->
@@ -1076,8 +1076,8 @@ publish_kick(ConferenceId, Req, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_participants_req(ne_binary(), api_terms()) -> 'ok'.
--spec publish_participants_req(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_participants_req(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_participants_req(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_participants_req(ConferenceId, JObj) ->
     publish_participants_req(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_participants_req(ConferenceId, Req, ContentType) ->
@@ -1089,8 +1089,8 @@ publish_participants_req(ConferenceId, Req, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_participants_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_participants_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_participants_resp(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_participants_resp(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_participants_resp(Queue, Resp) ->
     publish_participants_resp(Queue, Resp, ?DEFAULT_CONTENT_TYPE).
 publish_participants_resp(Queue, Resp, ContentType) ->
@@ -1102,8 +1102,8 @@ publish_participants_resp(Queue, Resp, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_lock(ne_binary(), api_terms()) -> 'ok'.
--spec publish_lock(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_lock(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_lock(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_lock(ConferenceId, JObj) ->
     publish_lock(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_lock(ConferenceId, Req, ContentType) ->
@@ -1115,8 +1115,8 @@ publish_lock(ConferenceId, Req, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_mute_participant(ne_binary(), api_terms()) -> 'ok'.
--spec publish_mute_participant(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_mute_participant(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_mute_participant(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_mute_participant(ConferenceId, JObj) ->
     publish_mute_participant(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_mute_participant(ConferenceId, Req, ContentType) ->
@@ -1128,8 +1128,8 @@ publish_mute_participant(ConferenceId, Req, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_play(ne_binary(), api_terms()) -> 'ok'.
--spec publish_play(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_play(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_play(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_play(ConferenceId, JObj) ->
     publish_play(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_play(ConferenceId, Req, ContentType) ->
@@ -1141,8 +1141,8 @@ publish_play(ConferenceId, Req, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_record(ne_binary(), api_terms()) -> 'ok'.
--spec publish_record(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_record(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_record(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_record(ConferenceId, JObj) ->
     publish_record(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_record(ConferenceId, Req, ContentType) ->
@@ -1154,8 +1154,8 @@ publish_record(ConferenceId, Req, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_recordstop(ne_binary(), api_terms()) -> 'ok'.
--spec publish_recordstop(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_recordstop(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_recordstop(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_recordstop(ConferenceId, JObj) ->
     publish_recordstop(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_recordstop(ConferenceId, Req, ContentType) ->
@@ -1167,8 +1167,8 @@ publish_recordstop(ConferenceId, Req, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_relate_participants(ne_binary(), api_terms()) -> 'ok'.
--spec publish_relate_participants(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_relate_participants(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_relate_participants(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_relate_participants(ConferenceId, JObj) ->
     publish_relate_participants(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_relate_participants(ConferenceId, Req, ContentType) ->
@@ -1180,8 +1180,8 @@ publish_relate_participants(ConferenceId, Req, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_set(ne_binary(), api_terms()) -> 'ok'.
--spec publish_set(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_set(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_set(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_set(ConferenceId, JObj) ->
     publish_set(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_set(ConferenceId, Req, ContentType) ->
@@ -1193,8 +1193,8 @@ publish_set(ConferenceId, Req, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_stop_play(ne_binary(), api_terms()) -> 'ok'.
--spec publish_stop_play(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_stop_play(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_stop_play(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_stop_play(ConferenceId, JObj) ->
     publish_stop_play(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_stop_play(ConferenceId, Req, ContentType) ->
@@ -1206,8 +1206,8 @@ publish_stop_play(ConferenceId, Req, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_undeaf_participant(ne_binary(), api_terms()) -> 'ok'.
--spec publish_undeaf_participant(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_undeaf_participant(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_undeaf_participant(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_undeaf_participant(ConferenceId, JObj) ->
     publish_undeaf_participant(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_undeaf_participant(ConferenceId, Req, ContentType) ->
@@ -1219,8 +1219,8 @@ publish_undeaf_participant(ConferenceId, Req, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_unlock(ne_binary(), api_terms()) -> 'ok'.
--spec publish_unlock(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_unlock(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_unlock(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_unlock(ConferenceId, JObj) ->
     publish_unlock(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_unlock(ConferenceId, Req, ContentType) ->
@@ -1232,8 +1232,8 @@ publish_unlock(ConferenceId, Req, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_unmute_participant(ne_binary(), api_terms()) -> 'ok'.
--spec publish_unmute_participant(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_unmute_participant(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_unmute_participant(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_unmute_participant(ConferenceId, JObj) ->
     publish_unmute_participant(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_unmute_participant(ConferenceId, Req, ContentType) ->
@@ -1245,8 +1245,8 @@ publish_unmute_participant(ConferenceId, Req, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_participant_volume_in(ne_binary(), api_terms()) -> 'ok'.
--spec publish_participant_volume_in(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_participant_volume_in(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_participant_volume_in(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_participant_volume_in(ConferenceId, JObj) ->
     publish_participant_volume_in(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_participant_volume_in(ConferenceId, Req, ContentType) ->
@@ -1258,8 +1258,8 @@ publish_participant_volume_in(ConferenceId, Req, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_participant_volume_out(ne_binary(), api_terms()) -> 'ok'.
--spec publish_participant_volume_out(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_participant_volume_out(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_participant_volume_out(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_participant_volume_out(ConferenceId, JObj) ->
     publish_participant_volume_out(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_participant_volume_out(ConferenceId, Req, ContentType) ->
@@ -1271,8 +1271,8 @@ publish_participant_volume_out(ConferenceId, Req, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_participants_event(ne_binary(), api_terms()) -> 'ok'.
--spec publish_participants_event(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_participants_event(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_participants_event(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_participants_event(ConferenceId, JObj) ->
     publish_participants_event(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_participants_event(ConferenceId, Event, ContentType) ->
@@ -1284,8 +1284,8 @@ publish_participants_event(ConferenceId, Event, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_error(ne_binary(), api_terms()) -> 'ok'.
--spec publish_error(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_error(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_error(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_error(Queue, JObj) ->
     publish_error(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_error(Queue, Req, ContentType) ->
@@ -1297,8 +1297,8 @@ publish_error(Queue, Req, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_command(ne_binary(), api_terms()) -> 'ok'.
--spec publish_command(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_command(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_command(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_command(ConferenceId, JObj) ->
     publish_command(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_command(ConferenceId, Req, ContentType) ->
@@ -1315,8 +1315,8 @@ publish_command(ConferenceId, Req, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_targeted_command(ne_binary(), api_terms()) -> 'ok'.
--spec publish_targeted_command(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_targeted_command(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_targeted_command(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_targeted_command(Focus, JObj) ->
     publish_targeted_command(Focus, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_targeted_command(Focus, Req, ContentType) ->
@@ -1334,8 +1334,8 @@ publish_targeted_command(Focus, Req, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_config_req(api_terms()) -> 'ok'.
--spec publish_config_req(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_config_req(api(terms())) -> 'ok'.
+-spec publish_config_req(api(terms()), ne_binary()) -> 'ok'.
 publish_config_req(JObj) ->
     publish_config_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_config_req(Req, ContentType) ->
@@ -1351,8 +1351,8 @@ profile(JObj) -> kz_json:get_value(<<"Profile">>, JObj).
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_config_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_config_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_config_resp(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_config_resp(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
 publish_config_resp(Queue, JObj) ->
     publish_config_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_config_resp(Queue, Req, ContentType) ->

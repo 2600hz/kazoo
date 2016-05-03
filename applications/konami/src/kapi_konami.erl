@@ -25,7 +25,7 @@
                             ]).
 -define(TRANSFERRED_TYPES, []).
 
--spec transferred(api_terms()) ->
+-spec transferred(api(terms())) ->
                          {'ok', iolist()} |
                          {'error', ne_binary()}.
 transferred(API) ->
@@ -34,7 +34,7 @@ transferred(API) ->
         'false' -> {'error', <<"API failed validation for transferred">>}
     end.
 
--spec transferred_v(api_terms()) -> boolean().
+-spec transferred_v(api(terms())) -> boolean().
 transferred_v(API) ->
     kz_api:validate(API, ?TRANSFERRED_HEADERS, ?TRANSFERRED_VALUES, ?TRANSFERRED_TYPES).
 
@@ -78,7 +78,7 @@ unbind_q(Queue, CallId, [_Restriction|Restrictions]) ->
 declare_exchanges() ->
     amqp_util:kapps_exchange().
 
--spec publish_transferred(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_transferred(ne_binary(), api(terms())) -> 'ok'.
 publish_transferred(TargetCallId, API) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?TRANSFERRED_VALUES, fun ?MODULE:transferred/1),
     amqp_util:kapps_publish(transferred_routing_key(TargetCallId), Payload).
