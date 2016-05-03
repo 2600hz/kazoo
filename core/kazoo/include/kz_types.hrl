@@ -40,6 +40,8 @@
 
 -type api(T) :: 'undefined' | T.
 
+-type terms() :: kz_json:object() | kz_proplist().
+
 -type kz_deeplist() :: iolist(). %[any() | kz_deeplist()].
 
 -type kz_std_return() :: {'ok', any()} | {'error', any()}.
