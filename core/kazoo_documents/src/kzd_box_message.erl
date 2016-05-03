@@ -86,7 +86,6 @@ new(Db, DocId, AttachmentName, BoxNum, Timezone, Props) ->
                ,{?KEY_MEDIA_FILENAME, AttachmentName}
                ,{?KEY_STREAMABLE, 'true'}
                ,{?KEY_UTC_SEC, UtcSeconds}
-               ,{?KEY_OWNER_ID, props:get_value(<<"OwnerId">>, Props)}
               ]),
     kz_doc:update_pvt_parameters(kz_json:from_list(DocProps), Db, [{'type', type()}]).
 

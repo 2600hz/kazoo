@@ -444,6 +444,7 @@ store_path_from_doc(JObj) ->
 store_path_from_doc(JObj, AName) ->
     Opts = [{'doc_type', kz_doc:type(JObj)}
             ,{'doc_owner', kz_json:get_value(<<"owner_id">>, JObj)}
+            ,{'storage_id', kz_json:get_first_defined([<<"storage_ref_id">>, <<"source_id">>], JObj)}
            ],
     #media_store_path{db = kz_doc:account_db(JObj)
                      ,id = kz_doc:id(JObj)
