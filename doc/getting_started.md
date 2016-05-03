@@ -31,7 +31,7 @@ Of course not! We have many different places where folks can chip in time. These
 * Check out our [GUI](https://github.com/2600hz/kazoo_ui) and write some Javascript.
 * Check out our REST APIs and write SDKs in your favorite languages
 * Check out our Pivot APIs and write SDKs in your favorite languages
-* Check out our AMQP APIs and write your own whapps on your Kazoo install
+* Check out our AMQP APIs and write your own kapps on your Kazoo install
 * Write some automated testing tools for testing the APIs
 * Write some SIPp test scripts to test the full stack
 

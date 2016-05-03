@@ -19,11 +19,11 @@
 
 -include("konami.hrl").
 
--spec handle(wh_json:object(), whapps_call:call()) ->
-    {'continue', whapps_call:call()}.
+-spec handle(kz_json:object(), kapps_call:call()) ->
+    {'continue', kapps_call:call()}.
 handle(Data, Call) ->
-    Action = wh_json:get_value(<<"action">>, Data),
-    Mode = wh_json:get_value(<<"mode">>, Data),
-    Level = wh_json:get_value(<<"level">>, Data),
-    whapps_call_command:audio_level(Call, Mode, Action, Level),
+    Action = kz_json:get_value(<<"action">>, Data),
+    Mode = kz_json:get_value(<<"mode">>, Data),
+    Level = kz_json:get_value(<<"level">>, Data),
+    kapps_call_command:audio_level(Call, Mode, Action, Level),
     {'continue', Call}.

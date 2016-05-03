@@ -31,28 +31,28 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> any().
+-spec handle(kz_json:object(), kapps_call:call()) -> any().
 handle(Data, Call) ->
     Temporal = get_temporal_route(Data, Call),
-    case wh_json:get_value(<<"action">>, Data) of
+    case kz_json:get_value(<<"action">>, Data) of
         <<"menu">> ->
             lager:info("temporal rules main menu"),
-            Rules = wh_json:get_value(<<"rules">>, Data, []),
+            Rules = kz_json:get_value(<<"rules">>, Data, []),
             _ = temporal_route_menu(Temporal, Rules, Call),
             cf_exe:stop(Call);
         <<"enable">> ->
             lager:info("force temporal rules to enable"),
-            Rules = wh_json:get_value(<<"rules">>, Data, []),
+            Rules = kz_json:get_value(<<"rules">>, Data, []),
             _ = enable_temporal_rules(Temporal, Rules, Call),
             cf_exe:stop(Call);
         <<"disable">> ->
             lager:info("force temporal rules to disable"),
-            Rules = wh_json:get_value(<<"rules">>, Data, []),
+            Rules = kz_json:get_value(<<"rules">>, Data, []),
             _ = disable_temporal_rules(Temporal, Rules, Call),
             cf_exe:stop(Call);
         <<"reset">> ->
             lager:info("resume normal temporal rule operation"),
-            Rules = wh_json:get_value(<<"rules">>, Data, []),
+            Rules = kz_json:get_value(<<"rules">>, Data, []),
             _ = reset_temporal_rules(Temporal, Rules, Call),
             cf_exe:stop(Call);
         _ ->
@@ -72,7 +72,7 @@ handle(Data, Call) ->
 %% returns the first valid callflow, or the default.
 %% @end
 %%--------------------------------------------------------------------
--spec process_rules(temporal(), rules(), whapps_call:call()) ->
+-spec process_rules(temporal(), rules(), kapps_call:call()) ->
                            'default' | binary().
 process_rules(Temporal, [#rule{enabled='false'
                                ,id=Id
@@ -131,22 +131,22 @@ process_rules(_, [], _) ->
 %% the future as well as pertain to this temporal route mapping.
 %% @end
 %%--------------------------------------------------------------------
--spec get_temporal_rules(temporal(), whapps_call:call()) -> rules().
+-spec get_temporal_rules(temporal(), kapps_call:call()) -> rules().
 get_temporal_rules(#temporal{local_sec=LSec
                              ,routes=Routes
                              ,timezone=TZ
                              ,rule_set=RuleSet
                             }, Call) ->
-    get_temporal_rules(Routes, LSec, whapps_call:account_db(Call), RuleSet, TZ, []).
+    get_temporal_rules(Routes, LSec, kapps_call:account_db(Call), RuleSet, TZ, []).
 
 -spec get_temporal_rules(ne_binaries(), non_neg_integer(), ne_binary(), boolean(), ne_binary(), rules()) -> rules().
 get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Rules) when is_binary(TZ) ->
     Now = localtime:utc_to_local(calendar:universal_time()
-                                 ,wh_util:to_list(TZ)
+                                 ,kz_util:to_list(TZ)
                                 ),
     get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Now, Rules).
 
--spec get_temporal_rules(ne_binaries(), non_neg_integer(), ne_binary(), boolean(), ne_binary(), wh_datetime(), rules()) ->
+-spec get_temporal_rules(ne_binaries(), non_neg_integer(), ne_binary(), boolean(), ne_binary(), kz_datetime(), rules()) ->
                                 rules().
 get_temporal_rules([], _, _, _, _, _, Rules) -> lists:reverse(Rules);
 get_temporal_rules([Route|Routes], LSec, AccountDb, RuleSet, TZ, Now, Rules) ->
@@ -157,35 +157,35 @@ get_temporal_rules([Route|Routes], LSec, AccountDb, RuleSet, TZ, Now, Rules) ->
         {'ok', JObj} ->
             Days = lists:foldr(
                         fun(Day, Acc) ->
-                            [wh_util:to_integer(Day)|Acc]
+                            [kz_util:to_integer(Day)|Acc]
                         end
                         ,[]
-                        ,wh_json:get_value(<<"days">>, JObj, ?RULE_DEFAULT_DAYS)
+                        ,kz_json:get_value(<<"days">>, JObj, ?RULE_DEFAULT_DAYS)
                    ),
             Rule = #rule{id = Route
                          ,enabled =
-                             wh_json:is_true(<<"enabled">>, JObj, 'undefined')
+                             kz_json:is_true(<<"enabled">>, JObj, 'undefined')
                          ,name =
-                             wh_json:get_value(<<"name">>, JObj, ?RULE_DEFAULT_NAME)
+                             kz_json:get_value(<<"name">>, JObj, ?RULE_DEFAULT_NAME)
                          ,cycle =
-                             wh_json:get_value(<<"cycle">>, JObj, ?RULE_DEFAULT_CYCLE)
+                             kz_json:get_value(<<"cycle">>, JObj, ?RULE_DEFAULT_CYCLE)
                          ,interval =
-                             wh_json:get_integer_value(<<"interval">>, JObj, ?RULE_DEFAULT_INTERVAL)
+                             kz_json:get_integer_value(<<"interval">>, JObj, ?RULE_DEFAULT_INTERVAL)
                          ,days = Days
                          ,wdays =
                              sort_wdays(
-                               wh_json:get_value(<<"wdays">>, JObj, ?RULE_DEFAULT_WDAYS)
+                               kz_json:get_value(<<"wdays">>, JObj, ?RULE_DEFAULT_WDAYS)
                               )
                          ,ordinal =
-                             wh_json:get_value(<<"ordinal">>, JObj, ?RULE_DEFAULT_ORDINAL)
+                             kz_json:get_value(<<"ordinal">>, JObj, ?RULE_DEFAULT_ORDINAL)
                          ,month =
-                             wh_json:get_integer_value(<<"month">>, JObj, ?RULE_DEFAULT_MONTH)
+                             kz_json:get_integer_value(<<"month">>, JObj, ?RULE_DEFAULT_MONTH)
                          ,start_date =
-                             get_date(wh_json:get_integer_value(<<"start_date">>, JObj, LSec), TZ)
+                             get_date(kz_json:get_integer_value(<<"start_date">>, JObj, LSec), TZ)
                          ,wtime_start =
-                             wh_json:get_integer_value(<<"time_window_start">>, JObj, ?RULE_DEFAULT_WTIME_START)
+                             kz_json:get_integer_value(<<"time_window_start">>, JObj, ?RULE_DEFAULT_WTIME_START)
                          ,wtime_stop =
-                             wh_json:get_integer_value(<<"time_window_stop">>, JObj, ?RULE_DEFAULT_WTIME_STOP)
+                             kz_json:get_integer_value(<<"time_window_stop">>, JObj, ?RULE_DEFAULT_WTIME_STOP)
                          ,rule_set = RuleSet
                         },
             case date_difference(Now, {Rule#rule.start_date, {0,0,0}}) of
@@ -204,7 +204,7 @@ get_temporal_rules([Route|Routes], LSec, AccountDb, RuleSet, TZ, Now, Rules) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec date_difference(wh_datetime(), wh_datetime()) -> 'future' | 'equal' | 'past'.
+-spec date_difference(kz_datetime(), kz_datetime()) -> 'future' | 'equal' | 'past'.
 date_difference(Date1, Date2) ->
     case calendar:time_difference(Date1, Date2) of
         {D, _} when D > 0 -> 'future';
@@ -219,17 +219,17 @@ date_difference(Date1, Date2) ->
 %% Loads the temporal record with data from the db.
 %% @end
 %%--------------------------------------------------------------------
--spec get_temporal_route(wh_json:object(), whapps_call:call()) -> temporal().
+-spec get_temporal_route(kz_json:object(), kapps_call:call()) -> temporal().
 get_temporal_route(JObj, Call) ->
     lager:info("loading temporal route"),
-    Keys = case wh_json:get_value(<<"rules">>, JObj, []) of
+    Keys = case kz_json:get_value(<<"rules">>, JObj, []) of
                [] ->
                    {'branch_keys', Rules} = cf_exe:get_branch_keys(Call),
                    Rules;
                Rules -> Rules
            end,
     {IsRuleSet, Routes} =
-        case wh_json:get_value(<<"rule_set">>, JObj) of
+        case kz_json:get_value(<<"rule_set">>, JObj) of
             'undefined' -> {'false', Keys};
             RuleSet -> {'true', get_rule_set(RuleSet, Call)}
         end,
@@ -237,9 +237,9 @@ get_temporal_route(JObj, Call) ->
                                 ,rule_set = IsRuleSet
                                 ,timezone = cf_util:get_timezone(JObj, Call)
                                 ,interdigit_timeout =
-                                    wh_json:get_integer_value(<<"interdigit_timeout">>
+                                    kz_json:get_integer_value(<<"interdigit_timeout">>
                                                               ,JObj
-                                                              ,whapps_call_command:default_interdigit_timeout()
+                                                              ,kapps_call_command:default_interdigit_timeout()
                                                              )
                                }).
 
@@ -249,28 +249,28 @@ get_temporal_route(JObj, Call) ->
 %% Loads rules set from account db.
 %% @end
 %%--------------------------------------------------------------------
--spec get_rule_set(ne_binary(), whapps_call:call()) -> ne_binaries().
+-spec get_rule_set(ne_binary(), kapps_call:call()) -> ne_binaries().
 get_rule_set(RuleSetId, Call) ->
-    AccountDb = whapps_call:account_db(Call),
+    AccountDb = kapps_call:account_db(Call),
     lager:info("loading temporal rule set ~s", [RuleSetId]),
     case kz_datamgr:open_cache_doc(AccountDb, RuleSetId) of
         {'error', _E} ->
             lager:error("failed to load ~s in ~s", [RuleSetId, AccountDb]),
             [];
-        {'ok', JObj} -> wh_json:get_value(<<"temporal_rules">>, JObj, [])
+        {'ok', JObj} -> kz_json:get_value(<<"temporal_rules">>, JObj, [])
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Accepts a term and tries to convert it to a wh_date()
+%% Accepts a term and tries to convert it to a kz_date()
 %% @end
 %%--------------------------------------------------------------------
--spec get_date(non_neg_integer(), ne_binary()) -> wh_date().
+-spec get_date(non_neg_integer(), ne_binary()) -> kz_date().
 get_date(Seconds, TZ) when is_integer(Seconds) ->
     {Date, _} = localtime:utc_to_local(
                   calendar:gregorian_seconds_to_datetime(Seconds)
-                  ,wh_util:to_list(TZ)
+                  ,kz_util:to_list(TZ)
                  ),
     Date.
 
@@ -281,7 +281,7 @@ get_date(Seconds, TZ) when is_integer(Seconds) ->
 %% the provided temporal rules.
 %% @end
 %%--------------------------------------------------------------------
--spec temporal_route_menu(temporal(), rules(), whapps_call:call()) -> cf_api_std_return().
+-spec temporal_route_menu(temporal(), rules(), kapps_call:call()) -> cf_api_std_return().
 temporal_route_menu(#temporal{keys=#keys{enable=Enable
                                          ,disable=Disable
                                          ,reset=Reset
@@ -292,10 +292,10 @@ temporal_route_menu(#temporal{keys=#keys{enable=Enable
                     ,Rules
                     ,Call
                    ) ->
-    NoopId = whapps_call_command:prompt(MainMenu, Call),
+    NoopId = kapps_call_command:prompt(MainMenu, Call),
 
-    case whapps_call_command:collect_digits(1
-                                            ,whapps_call_command:default_collect_timeout()
+    case kapps_call_command:collect_digits(1
+                                            ,kapps_call_command:default_collect_timeout()
                                             ,Interdigit
                                             ,NoopId
                                             ,Call
@@ -308,7 +308,7 @@ temporal_route_menu(#temporal{keys=#keys{enable=Enable
         {'ok', Reset} ->
             reset_temporal_rules(Temporal, Rules, Call);
         {'error', _} ->
-            {'ok', wh_json:new()};
+            {'ok', kz_json:new()};
         {'ok', _} ->
             temporal_route_menu(Temporal, Rules, Call)
     end.
@@ -321,14 +321,14 @@ temporal_route_menu(#temporal{keys=#keys{enable=Enable
 %% operation.
 %% @end
 %%--------------------------------------------------------------------
--spec disable_temporal_rules(temporal(), rules(), whapps_call:call()) -> cf_api_std_return().
+-spec disable_temporal_rules(temporal(), rules(), kapps_call:call()) -> cf_api_std_return().
 disable_temporal_rules(#temporal{prompts=#prompts{marked_disabled=Disabled}}, [], Call) ->
-    whapps_call_command:b_prompt(Disabled, Call);
+    kapps_call_command:b_prompt(Disabled, Call);
 disable_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
     try
-        AccountDb = whapps_call:account_db(Call),
+        AccountDb = kapps_call:account_db(Call),
         {'ok', JObj} = kz_datamgr:open_doc(AccountDb, Id),
-        case kz_datamgr:save_doc(AccountDb, wh_json:set_value(<<"enabled">>, 'false', JObj)) of
+        case kz_datamgr:save_doc(AccountDb, kz_json:set_value(<<"enabled">>, 'false', JObj)) of
             {'ok', _} ->
                 lager:info("set temporal rule ~s to disabled", [Id]),
                 disable_temporal_rules(Temporal, T, Call);
@@ -353,14 +353,14 @@ disable_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
 %% operation.
 %% @end
 %%--------------------------------------------------------------------
--spec reset_temporal_rules(temporal(), rules(), whapps_call:call()) -> cf_api_std_return().
+-spec reset_temporal_rules(temporal(), rules(), kapps_call:call()) -> cf_api_std_return().
 reset_temporal_rules(#temporal{prompts=#prompts{marker_reset=Reset}}, [], Call) ->
-    whapps_call_command:b_prompt(Reset, Call);
+    kapps_call_command:b_prompt(Reset, Call);
 reset_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
     try
-        AccountDb = whapps_call:account_db(Call),
+        AccountDb = kapps_call:account_db(Call),
         {'ok', JObj} = kz_datamgr:open_doc(AccountDb, Id),
-        case kz_datamgr:save_doc(AccountDb, wh_json:delete_key(<<"enabled">>, JObj)) of
+        case kz_datamgr:save_doc(AccountDb, kz_json:delete_key(<<"enabled">>, JObj)) of
             {'ok', _} ->
                 lager:info("reset temporal rule ~s", [Id]),
                 reset_temporal_rules(Temporal, T, Call);
@@ -385,14 +385,14 @@ reset_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
 %% operation.
 %% @end
 %%--------------------------------------------------------------------
--spec enable_temporal_rules(temporal(), rules(), whapps_call:call()) -> cf_api_std_return().
+-spec enable_temporal_rules(temporal(), rules(), kapps_call:call()) -> cf_api_std_return().
 enable_temporal_rules(#temporal{prompts=#prompts{marked_enabled=Enabled}}, [], Call) ->
-    whapps_call_command:b_prompt(Enabled, Call);
+    kapps_call_command:b_prompt(Enabled, Call);
 enable_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
     try
-        AccountDb = whapps_call:account_db(Call),
+        AccountDb = kapps_call:account_db(Call),
         {'ok', JObj} = kz_datamgr:open_doc(AccountDb, Id),
-        case kz_datamgr:save_doc(AccountDb, wh_json:set_value(<<"enabled">>, 'true', JObj)) of
+        case kz_datamgr:save_doc(AccountDb, kz_json:set_value(<<"enabled">>, 'true', JObj)) of
             {'ok', _} ->
                 lager:info("set temporal rule ~s to enabled active", [Id]),
                 enable_temporal_rules(Temporal, T, Call);
@@ -420,7 +420,7 @@ enable_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
 load_current_time(#temporal{timezone=Timezone}=Temporal)->
     {LocalDate, LocalTime} = localtime:utc_to_local(
                                calendar:universal_time()
-                               ,wh_util:to_list(Timezone)
+                               ,kz_util:to_list(Timezone)
                               ),
     lager:info("local time for ~s is {~w,~w}", [Timezone, LocalDate, LocalTime]),
     Temporal#temporal{local_sec=calendar:datetime_to_gregorian_seconds({LocalDate, LocalTime})
@@ -441,7 +441,7 @@ load_current_time(#temporal{timezone=Timezone}=Temporal)->
 %%   - 1,2,3..31
 %% @end
 %%--------------------------------------------------------------------
--spec next_rule_date(rule(), wh_date()) -> wh_date().
+-spec next_rule_date(rule(), kz_date()) -> kz_date().
 next_rule_date(#rule{cycle = <<"date">>
                      ,start_date=Date0
                     }
@@ -575,7 +575,7 @@ next_rule_date(#rule{cycle = <<"monthly">>
             Date;
         %% false:
         %%   In an 'inactive' month
-        %% {wh_date(), integer()}:
+        %% {kz_date(), integer()}:
         %%   We have already passed the last occurance of the DOW
         _ ->
             find_ordinal_weekday(Y0, M0 + Offset + I0, Weekday, Ordinal)
@@ -695,7 +695,7 @@ next_rule_date(#rule{cycle = <<"yearly">>
 %% I have been refering to this as 'spanning a month/year border'
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_date(improper_date()) -> wh_date().
+-spec normalize_date(improper_date()) -> kz_date().
 normalize_date({Y, 13, D}) ->
     normalize_date({Y + 1, 1, D});
 normalize_date({Y, 0, D}) ->
@@ -737,7 +737,7 @@ from_ordinal(<<"fifth">>) -> 4.
 %% position, in accordance with ISO 8601
 %% @end
 %%--------------------------------------------------------------------
--spec to_dow(wday()) -> wh_daynum().
+-spec to_dow(wday()) -> kz_daynum().
 to_dow(<<"monday">>) -> 1;
 to_dow(<<"tuesday">>) -> 2;
 to_dow(<<"wednesday">>) -> 3;
@@ -757,7 +757,7 @@ to_dow(<<"sunday">>) -> 7.
 %% It is possible for this function to cross month/year boundaries.
 %% @end
 %%--------------------------------------------------------------------
--spec find_next_weekday(wh_date(), wday()) -> wh_date().
+-spec find_next_weekday(kz_date(), wday()) -> kz_date().
 find_next_weekday({Y, M, D}, Weekday) ->
     RefDOW = to_dow(Weekday),
     case day_of_the_week({Y, M, D}) of
@@ -784,7 +784,7 @@ find_next_weekday({Y, M, D}, Weekday) ->
 %% It is possible for this function to cross month/year boundaries.
 %% @end
 %%--------------------------------------------------------------------
--spec find_ordinal_weekday(wh_year(), improper_month(), wday(), strict_ordinal()) -> wh_date().
+-spec find_ordinal_weekday(kz_year(), improper_month(), wday(), strict_ordinal()) -> kz_date().
 find_ordinal_weekday(Y1, M1, Weekday, Ordinal) when M1 =:= 13 ->
     find_ordinal_weekday(Y1 + 1, 1, Weekday, Ordinal);
 find_ordinal_weekday(Y1, M1, Weekday, Ordinal) when M1 > 12 ->
@@ -813,7 +813,7 @@ find_ordinal_weekday(Y1, M1, Weekday, Ordinal) ->
 %% occurance MUST be in the third week.
 %% @end
 %%--------------------------------------------------------------------
--spec find_last_weekday(improper_date(), wday()) -> wh_date().
+-spec find_last_weekday(improper_date(), wday()) -> kz_date().
 find_last_weekday({Y, M, D}, Weekday) when M =:= 13 ->
     find_last_weekday({Y + 1, 1, D}, Weekday);
 find_last_weekday({Y, M, D}, Weekday) when M > 12 ->
@@ -833,7 +833,7 @@ find_last_weekday({Y, M, _}, Weekday) ->
 %% function will explode on occasion.
 %% @end
 %%--------------------------------------------------------------------
--spec date_of_dow(wh_year(), improper_month(), wday(), strict_ordinal()) -> wh_date().
+-spec date_of_dow(kz_year(), improper_month(), wday(), strict_ordinal()) -> kz_date().
 date_of_dow(Year, 1, Weekday, Ordinal) ->
     date_of_dow(Year - 1, 13, Weekday, Ordinal);
 date_of_dow(Year, Month, Weekday, Ordinal) ->
@@ -866,7 +866,7 @@ date_of_dow(Year, Month, Weekday, Ordinal) ->
 %% All while remaining ISO 8601 compliant.
 %% @end
 %%--------------------------------------------------------------------
--spec iso_week_difference(wh_date(), wh_date()) -> non_neg_integer().
+-spec iso_week_difference(kz_date(), kz_date()) -> non_neg_integer().
 iso_week_difference({Y0, M0, D0}, {Y1, M1, D1}) ->
     DS0 = calendar:date_to_gregorian_days(iso_week_to_gregorian_date(iso_week_number({Y0, M0, D0}))),
     DS1 = calendar:date_to_gregorian_days(iso_week_to_gregorian_date(iso_week_number({Y1, M1, D1}))),
@@ -878,7 +878,7 @@ iso_week_difference({Y0, M0, D0}, {Y1, M1, D1}) ->
 %% Caclulates the gregorian date of a given ISO 8601 week
 %% @end
 %%--------------------------------------------------------------------
--spec iso_week_to_gregorian_date(wh_iso_week()) -> wh_date().
+-spec iso_week_to_gregorian_date(kz_iso_week()) -> kz_date().
 iso_week_to_gregorian_date({Year, Week}) ->
     Jan1 = calendar:date_to_gregorian_days(Year, 1, 1),
     Offset = 4 - day_of_the_week(Year, 1, 4),
@@ -898,21 +898,21 @@ iso_week_to_gregorian_date({Year, Week}) ->
 %% a local copy on older systems
 %% @end
 %%--------------------------------------------------------------------
--spec iso_week_number(wh_date()) -> wh_iso_week().
+-spec iso_week_number(kz_date()) -> kz_iso_week().
 iso_week_number(Date) ->
     case erlang:function_exported('calendar', 'iso_week_number', 1) of
         'true' -> calendar:iso_week_number(Date);
         'false' -> our_iso_week_number(Date)
     end.
 
--spec day_of_the_week(wh_date()) -> wh_day().
+-spec day_of_the_week(kz_date()) -> kz_day().
 day_of_the_week({Year, Month, Day}=Date) ->
     case erlang:function_exported('calendar', 'day_of_the_week', 1) of
         'true' -> calendar:day_of_the_week(Date);
         'false' -> our_day_of_the_week(Year, Month, Day)
     end.
 
--spec day_of_the_week(wh_year(), wh_month(), wh_day()) -> wh_day().
+-spec day_of_the_week(kz_year(), kz_month(), kz_day()) -> kz_day().
 day_of_the_week(Year, Month, Day) ->
     case erlang:function_exported('calendar', 'day_of_the_week', 3) of
         'true' -> calendar:day_of_the_week(Year, Month, Day);
@@ -960,7 +960,7 @@ gregorian_days_of_iso_w01_1(Year) ->
 our_day_of_the_week(Year, Month, Day) ->
     (calendar:date_to_gregorian_days(Year, Month, Day) + 5) rem 7 + 1.
 
--spec find_active_days(ne_binaries(), wh_day()) -> [wh_daynum()].
+-spec find_active_days(ne_binaries(), kz_day()) -> [kz_daynum()].
 find_active_days(Weekdays, DOW0) ->
     [DOW1
      || DOW1 <- [to_dow(D) || D <- Weekdays],

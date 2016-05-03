@@ -8,10 +8,10 @@
                   , stdlib
 		  , crypto
 
-                  , whistle
-                  , whistle_amqp
+                  , kazoo
+                  , kazoo_amqp
                   , kazoo_data
-                  , whistle_apps
+                  , kazoo_apps
                   , callflow
 
                   , lager

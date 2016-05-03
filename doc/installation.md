@@ -329,7 +329,7 @@ On both Server 1 and Server 3 update /etc/kazoo/kamailio/dbtext/dispatcher to co
 
 ### Configure Kazoo / RabbitMQ
 
-We will now create 2 zones, one for each Kazoo server.  Edit the zone, whistle_apps, and ecallmgr sections of /etc/kazoo/config.ini to look like the following:
+We will now create 2 zones, one for each Kazoo server.  Edit the zone, kazoo_apps, and ecallmgr sections of /etc/kazoo/config.ini to look like the following:
 ```
 [zone]
 name = "c1_zone1"
@@ -339,12 +339,12 @@ amqp_uri = "amqp://guest:guest@192.168.1.100:5672"
 name = "c1_zone2"
 amqp_uri = "amqp://guest:guest@192.168.1.101:5672"
 
-[whistle_apps]
+[kazoo_apps]
 host = "test1.cluster1.2600hz.com"
 zone = "c1_zone1"
 cookie = COOKIEHERE
 
-[whistle_apps]
+[kazoo_apps]
 host = "test3.cluster1.2600hz.com"
 zone = "c1_zone2"
 cookie = COOKIEHERE
@@ -377,7 +377,7 @@ Start all services
 # service bigcouch restart
 # service rabbitmq-server restart
 # service rsyslog restart
-# service kz-whistle_apps restart
+# service kz-kazoo_apps restart
 # service kz-ecallmgr restart
 # service kamailio restart
 # service httpd restart
@@ -396,7 +396,7 @@ Start all services
 # service bigcouch restart
 # service rabbitmq-server restart
 # service rsyslog restart
-# service kz-whistle_apps restart
+# service kz-kazoo_apps restart
 # service kz-ecallmgr restart
 # service kamailio restart
 # service httpd restart
@@ -408,10 +408,10 @@ Enable auto-startup for all services
 ```
 # chkconfig --add rabbitmq-server
 # chkconfig --add kz-ecallmgr
-# chkconfig --add kz-whistle_apps
+# chkconfig --add kz-kazoo_apps
 # chkconfig rabbitmq-server on
 # chkconfig kz-ecallmgr on
-# chkconfig kz-whistle_apps on
+# chkconfig kz-kazoo_apps on
 # chkconfig kamailio on
 # chkconfig bigcouch on
 # chkconfig httpd on
@@ -427,10 +427,10 @@ Enable auto-startup for all services
 ```
 # chkconfig --add rabbitmq-server
 # chkconfig --add kz-ecallmgr
-# chkconfig --add kz-whistle_apps
+# chkconfig --add kz-kazoo_apps
 # chkconfig rabbitmq-server on
 # chkconfig kz-ecallmgr on
-# chkconfig kz-whistle_apps on
+# chkconfig kz-kazoo_apps on
 # chkconfig kamailio on
 # chkconfig bigcouch on
 # chkconfig httpd on
@@ -440,7 +440,7 @@ Enable auto-startup for all services
 
 *Server 1 OR Server 3*
 ```
-# sup whistle_media_maintenance import_prompts /opt/kazoo/system_media/en-us en-us
+# sup kazoo_media_maintenance import_prompts /opt/kazoo/system_media/en-us en-us
 ```
 
 ### Configure ecallmgr
@@ -498,7 +498,7 @@ Connect to the cli and verify that you have at least one profile running, also v
 
 *Server 1 and Server 3*
 ```
-# service kz-whistle_apps status
+# service kz-kazoo_apps status
 ```
 
 Verify that the status shows nodes for BOTH Server 1 and Server 3

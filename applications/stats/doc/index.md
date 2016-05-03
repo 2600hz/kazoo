@@ -4,7 +4,7 @@ Title: Stats
 Language: en-US
 */
 
-Events counts are collected by whistle_stats.erl running on every kazoo
+Events counts are collected by kazoo_stats.erl running on every kazoo
 cluster node and are regularly sent via the targeted/statistics amqp queue to
 the stats application. The stats application can be queried using SNMP.
 There are 3 SNMP tables, each reporting information grouped by
@@ -27,11 +27,11 @@ OID 1.3.6.1.4.1.700001 for Kazoo with the read only version 2c community string
 "public".
 
 To test it, go to /opt/kazoo/applications/stats and run start-dev.sh. On each
-node, run whistle_stats_sup:start_link().
+node, run kazoo_stats_sup:start_link().
 snmpwalk -v 2c -c public localhost:4000 1.3.6.1.4.1.700001
 
-There are three modules - whistle_snmp.erl that provides the implementation
-functions for the SNMP interface, whistle_stats.erl that runs on each node,
+There are three modules - kazoo_snmp.erl that provides the implementation
+functions for the SNMP interface, kazoo_stats.erl that runs on each node,
 and stats_handler.erl that collects the stats sent by each node, and
 aggregates the data.
 

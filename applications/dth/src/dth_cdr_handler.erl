@@ -28,22 +28,22 @@ init() ->
     ok.
 
 %% handle_req2(JObj, Props) ->
-%%     true = wapi_call:cdr_v(JObj),
+%%     true = kapi_call:cdr_v(JObj),
 
-%%     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
-%%     CallDirection = wh_json:get_value(<<"Call-Direction">>, JObj),
+%%     CallID = kz_json:get_value(<<"Call-ID">>, JObj),
+%%     CallDirection = kz_json:get_value(<<"Call-Direction">>, JObj),
 %%     ?LOG_SYS(CallID, "Valid call cdr", []),
 %%     ?LOG_SYS(CallID, "Call Direction: ~s", [CallDirection]),
 
 %%     <<"outbound">> = CallDirection, %% b-leg only, though not the greatest way of determining this
 
-%%     Timestamp = wh_util:to_integer(wh_json:get_value(<<"Timestamp">>, JObj, wh_util:current_tstamp())),
-%%     BillingSec = wh_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, JObj, 0)),
+%%     Timestamp = kz_util:to_integer(kz_json:get_value(<<"Timestamp">>, JObj, kz_util:current_tstamp())),
+%%     BillingSec = kz_util:to_integer(kz_json:get_value(<<"Billing-Seconds">>, JObj, 0)),
 
 %%     DateTime = now_to_datetime(Timestamp - BillingSec),
 
-%%     ToE164 = wh_util:to_e164(get_to_user(JObj)),
-%%     FromE164 = wh_util:to_e164(get_from_user(JObj)),
+%%     ToE164 = kz_util:to_e164(get_to_user(JObj)),
+%%     FromE164 = kz_util:to_e164(get_from_user(JObj)),
 
 %%     AccountCode = get_account_code(JObj),
 
@@ -53,25 +53,25 @@ init() ->
 %%                                  ,'OriginatingNumber'=FromE164
 %%                                  ,'DestinationNumber'=ToE164
 %%                                  ,'StartTime'=DateTime
-%%                                  ,'Duration'=wh_util:to_binary(BillingSec)
+%%                                  ,'Duration'=kz_util:to_binary(BillingSec)
 %%                                  ,'UniqueID'=CallID
 %%                                  ,'CallType'=?DTH_CALL_TYPE_OTHER},
 %%     WsdlModel = props:get_value(wsdl, Props),
 %%     detergent:call(WsdlModel, "SubmitCallRecord", [CallRecord]).
 
 handle_req(JObj, Props) ->
-    true = wapi_call:event_v(JObj),
-    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+    true = kapi_call:event_v(JObj),
+    CallID = kz_json:get_value(<<"Call-ID">>, JObj),
     put(callid, CallID),
 
-    CallDirection = wh_json:get_value(<<"Call-Direction">>, JObj),
+    CallDirection = kz_json:get_value(<<"Call-Direction">>, JObj),
     lager:debug("valid call cdr"),
     lager:debug("call direction: ~s", [CallDirection]),
 
     <<"outbound">> = CallDirection, %% b-leg only, though not the greatest way of determining this
 
-    Timestamp = wh_util:to_integer(wh_json:get_value(<<"Timestamp">>, JObj, wh_util:current_tstamp())),
-    BillingSec = wh_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, JObj, 0)),
+    Timestamp = kz_util:to_integer(kz_json:get_value(<<"Timestamp">>, JObj, kz_util:current_tstamp())),
+    BillingSec = kz_util:to_integer(kz_json:get_value(<<"Billing-Seconds">>, JObj, 0)),
 
     DateTime = now_to_datetime(Timestamp - BillingSec),
 
@@ -87,7 +87,7 @@ handle_req(JObj, Props) ->
                                            ,FromE164
                                            ,ToE164
                                            ,DateTime
-                                           ,wh_util:to_binary(BillingSec)
+                                           ,kz_util:to_binary(BillingSec)
                                            ,CallID
                                            ,?DTH_CALL_TYPE_OTHER
                                           ])),
@@ -114,11 +114,11 @@ now_to_datetime(Secs) ->
     iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0wZ",
                                    [YY, MM, DD, Hour, Min, Sec])).
 
--spec get_to_user(wh_json:object()) -> binary().
+-spec get_to_user(kz_json:object()) -> binary().
 get_to_user(JObj) ->
-    case wh_json:get_value(<<"Callee-ID-Number">>, JObj) of
+    case kz_json:get_value(<<"Callee-ID-Number">>, JObj) of
         undefined ->
-            case wh_json:get_value(<<"To-Uri">>, JObj) of
+            case kz_json:get_value(<<"To-Uri">>, JObj) of
                 undefined -> <<"+00000000000">>;
                 ToUri ->
                     [To, _ToRealm] = binary:split(ToUri, <<"@">>),
@@ -128,11 +128,11 @@ get_to_user(JObj) ->
             To
     end.
 
--spec get_from_user(wh_json:object()) -> binary().
+-spec get_from_user(kz_json:object()) -> binary().
 get_from_user(JObj) ->
-    case wh_json:get_value(<<"Caller-ID-Number">>, JObj) of
+    case kz_json:get_value(<<"Caller-ID-Number">>, JObj) of
         undefined ->
-            case wh_json:get_value(<<"From-Uri">>, JObj) of
+            case kz_json:get_value(<<"From-Uri">>, JObj) of
                 undefined -> <<"+00000000000">>;
                 FromUri ->
                     [From, _FromRealm] = binary:split(FromUri, <<"@">>),
@@ -142,13 +142,13 @@ get_from_user(JObj) ->
             From
     end.
 
--spec get_account_code(wh_json:object()) -> ne_binary().
+-spec get_account_code(kz_json:object()) -> ne_binary().
 get_account_code(JObj) ->
-    AccountID = wh_util:truncate_left_binary(
-                    wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj)
+    AccountID = kz_util:truncate_left_binary(
+                    kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj)
                     ,17
                 ),
-    case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Inception">>], JObj) of
+    case kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Inception">>], JObj) of
         'undefined' -> AccountID;
         _Else -> << AccountID/binary, "-IN">>
     end.

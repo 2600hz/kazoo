@@ -35,7 +35,7 @@ find_numbers(Options) ->
     MatchPrefix =
         fun (Result) ->
                 Size = byte_size(Prefix),
-                Number = wh_json:get_value(<<"number">>, Result),
+                Number = kz_json:get_value(<<"number">>, Result),
                 case Number of
                     <<"+1", Prefix:Size/binary, _/binary>> -> 'true';
                     _Else -> 'false'
@@ -54,31 +54,31 @@ get_number_data() ->
     N = <<"4353198001">>,
     Result = ?MODULE_TESTED:get_number_data(N),
     [{"Verify right number is returned"
-      ,?_assertEqual(<<"+1",N/binary>>, wh_json:get_value(<<"e164">>, Result))
+      ,?_assertEqual(<<"+1",N/binary>>, kz_json:get_value(<<"e164">>, Result))
      }
      ,{"Verify number status"
-       ,?_assertEqual(<<"assigned">>, wh_json:get_value(<<"status">>, Result))
+       ,?_assertEqual(<<"assigned">>, kz_json:get_value(<<"status">>, Result))
       }
      ,{"Verify number msg"
-       ,?_assertEqual(<<"Number currently assigned to you with refid '' rewritten as '4353198001' to endpoint '13550'">>, wh_json:get_value(<<"msg">>, Result))
+       ,?_assertEqual(<<"Number currently assigned to you with refid '' rewritten as '4353198001' to endpoint '13550'">>, kz_json:get_value(<<"msg">>, Result))
       }
      ,{"Verify debug code"
-       ,?_assertEqual(<<"100">>, wh_json:get_value(<<"code">>, Result))
+       ,?_assertEqual(<<"100">>, kz_json:get_value(<<"code">>, Result))
       }
      ,{"Verify expiration data"
-       ,?_assertEqual(<<"2013-11-25T17:32:48.707">>, wh_json:get_value(<<"expireDate">>, Result))
+       ,?_assertEqual(<<"2013-11-25T17:32:48.707">>, kz_json:get_value(<<"expireDate">>, Result))
       }
      ,{"Verify 411 state"
-       ,?_assertEqual('false', wh_json:get_value(<<"has411">>, Result))
+       ,?_assertEqual('false', kz_json:get_value(<<"has411">>, Result))
       }
      ,{"Verify 911 state"
-       ,?_assertEqual('false', wh_json:get_value(<<"has911">>, Result))
+       ,?_assertEqual('false', kz_json:get_value(<<"has911">>, Result))
       }
      ,{"Verify t38 state"
-       ,?_assertEqual('true', wh_json:get_value(<<"t38">>, Result))
+       ,?_assertEqual('true', kz_json:get_value(<<"t38">>, Result))
       }
      ,{"Verify CNAM state"
-       ,?_assertEqual('true', wh_json:get_value(<<"cnam">>, Result))
+       ,?_assertEqual('true', kz_json:get_value(<<"cnam">>, Result))
      }
     ].
 

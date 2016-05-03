@@ -21,7 +21,7 @@ should_permanently_delete(Default) ->
 should_permanently_delete() ->
     should_permanently_delete('false').
 should_permanently_delete(Default) ->
-    whapps_config:get_is_true(?KNM_CONFIG_CAT, <<"should_permanently_delete">>, Default).
+    kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"should_permanently_delete">>, Default).
 -endif.
 
 -spec released_state() -> ne_binary().
@@ -33,7 +33,7 @@ released_state() ->
 released_state(Default) -> Default.
 -else.
 released_state(Default) ->
-    whapps_config:get_binary(?KNM_CONFIG_CAT, <<"released_state">>, Default).
+    kapps_config:get_binary(?KNM_CONFIG_CAT, <<"released_state">>, Default).
 -endif.
 
 -spec default_locality_url() -> api_binary().
@@ -41,11 +41,11 @@ released_state(Default) ->
 default_locality_url() ->
     default_locality_url('undefined').
 default_locality_url(Default) ->
-    whapps_config:get(<<"number_manager.other">>, <<"phonebook_url">>, Default).
+    kapps_config:get(<<"number_manager.other">>, <<"phonebook_url">>, Default).
 
 -spec locality_url() -> api_binary().
 -spec locality_url(api_binary()) -> api_binary().
 locality_url() ->
     locality_url(default_locality_url()).
 locality_url(Default) ->
-    whapps_config:get(?LOCALITY_CONFIG_CAT, <<"url">>, Default).
+    kapps_config:get(?LOCALITY_CONFIG_CAT, <<"url">>, Default).

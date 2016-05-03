@@ -19,7 +19,7 @@
 -export([record_to_json/1]).
 
 -import('braintree_util', [make_doc_xml/2]).
--import('wh_util', [get_xml_value/2]).
+-import('kz_util', [get_xml_value/2]).
 
 -include_lib("braintree/include/braintree.hrl").
 
@@ -33,10 +33,10 @@
 -spec url(ne_binary(), ne_binary()) -> string().
 
 url(CustomerId) ->
-    lists:append(["/customers/", wh_util:to_list(CustomerId), "/addresses"]).
+    lists:append(["/customers/", kz_util:to_list(CustomerId), "/addresses"]).
 
 url(CustomerId, AddressId) ->
-    lists:append(["/customers/", wh_util:to_list(CustomerId), "/addresses", wh_util:to_list(AddressId)]).
+    lists:append(["/customers/", kz_util:to_list(CustomerId), "/addresses", kz_util:to_list(AddressId)]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -109,7 +109,7 @@ delete(CustomerId, AddressId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec xml_to_record(bt_xml()) -> bt_address().
--spec xml_to_record(bt_xml(), wh_deeplist()) -> bt_address().
+-spec xml_to_record(bt_xml(), kz_deeplist()) -> bt_address().
 
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/address").
@@ -139,8 +139,8 @@ xml_to_record(Xml, Base) ->
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml(bt_address()) -> wh_proplist() | bt_xml() | 'undefined'.
--spec record_to_xml(bt_address(), boolean()) -> wh_proplist() | bt_xml() | 'undefined'.
+-spec record_to_xml(bt_address()) -> kz_proplist() | bt_xml() | 'undefined'.
+-spec record_to_xml(bt_address(), boolean()) -> kz_proplist() | bt_xml() | 'undefined'.
 
 record_to_xml(Address) ->
     record_to_xml(Address, 'false').
@@ -179,19 +179,19 @@ record_to_xml(Address, ToString) ->
 json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->
     #bt_address{id = create_or_get_json_id(JObj)
-                ,first_name = wh_json:get_value(<<"first_name">>, JObj)
-                ,last_name = wh_json:get_value(<<"last_name">>, JObj)
-                ,company = wh_json:get_value(<<"company">>, JObj)
-                ,street_address = wh_json:get_value(<<"street_address">>, JObj)
-                ,extended_address = wh_json:get_value(<<"extended_address">>, JObj)
-                ,locality = wh_json:get_value(<<"locality">>, JObj)
-                ,region = wh_json:get_value(<<"region">>, JObj)
-                ,postal_code = wh_json:get_value(<<"postal_code">>, JObj)
-                ,country_code_two = wh_json:get_value(<<"country_code_two">>, JObj)
-                ,country_code_three = wh_json:get_value(<<"country_code_three">>, JObj)
-                ,country_code = wh_json:get_value(<<"country_code">>, JObj)
-                ,country_name = wh_json:get_value(<<"country_name">>, JObj)
-                ,update_existing = wh_json:is_true(<<"update_existing">>, JObj)
+                ,first_name = kz_json:get_value(<<"first_name">>, JObj)
+                ,last_name = kz_json:get_value(<<"last_name">>, JObj)
+                ,company = kz_json:get_value(<<"company">>, JObj)
+                ,street_address = kz_json:get_value(<<"street_address">>, JObj)
+                ,extended_address = kz_json:get_value(<<"extended_address">>, JObj)
+                ,locality = kz_json:get_value(<<"locality">>, JObj)
+                ,region = kz_json:get_value(<<"region">>, JObj)
+                ,postal_code = kz_json:get_value(<<"postal_code">>, JObj)
+                ,country_code_two = kz_json:get_value(<<"country_code_two">>, JObj)
+                ,country_code_three = kz_json:get_value(<<"country_code_three">>, JObj)
+                ,country_code = kz_json:get_value(<<"country_code">>, JObj)
+                ,country_name = kz_json:get_value(<<"country_name">>, JObj)
+                ,update_existing = kz_json:is_true(<<"update_existing">>, JObj)
                }.
 
 %%--------------------------------------------------------------------
@@ -220,7 +220,7 @@ record_to_json(#bt_address{}=Address) ->
              ,{<<"created_at">>, Address#bt_address.created_at}
              ,{<<"updated_at">>, Address#bt_address.updated_at}
             ],
-    wh_json:from_list(props:filter_undefined(Props)).
+    kz_json:from_list(props:filter_undefined(Props)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -229,9 +229,9 @@ record_to_json(#bt_address{}=Address) ->
 %% a uuid to use during creation.
 %% @end
 %%--------------------------------------------------------------------
--spec create_or_get_json_id(wh_json:object()) ->  api_binary().
+-spec create_or_get_json_id(kz_json:object()) ->  api_binary().
 create_or_get_json_id(JObj) ->
-    case wh_json:get_value(<<"street_address">>, JObj) of
-        'undefined' -> wh_doc:id(JObj);
-        _Address -> wh_doc:id(JObj, wh_util:rand_hex_binary(16))
+    case kz_json:get_value(<<"street_address">>, JObj) of
+        'undefined' -> kz_doc:id(JObj);
+        _Address -> kz_doc:id(JObj, kz_util:rand_hex_binary(16))
     end.

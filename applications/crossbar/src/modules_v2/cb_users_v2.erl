@@ -177,11 +177,11 @@ billing(Context) ->
 process_billing(Context, [{<<"users">>, _}|_], ?HTTP_GET) ->
     Context;
 process_billing(Context, [{<<"users">>, _}|_], _Verb) ->
-    try wh_services:allow_updates(cb_context:account_id(Context)) of
+    try kz_services:allow_updates(cb_context:account_id(Context)) of
         'true' -> Context
     catch
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
     end;
 process_billing(Context, _Nouns, _Verb) -> Context.
 
@@ -204,25 +204,25 @@ validate_resource(Context, UserId, _) -> validate_user_id(UserId, Context).
 validate_resource(Context, UserId, _, _) -> validate_user_id(UserId, Context).
 
 -spec validate_user_id(api_binary(), cb_context:context()) -> cb_context:context().
--spec validate_user_id(api_binary(), cb_context:context(), wh_json:object()) -> cb_context:context().
+-spec validate_user_id(api_binary(), cb_context:context(), kz_json:object()) -> cb_context:context().
 validate_user_id(UserId, Context) ->
     case kz_datamgr:open_cache_doc(cb_context:account_db(Context), UserId) of
         {'ok', Doc} -> validate_user_id(UserId, Context, Doc);
         {'error', 'not_found'} ->
             cb_context:add_system_error(
                 'bad_identifier'
-                ,wh_json:from_list([{<<"cause">>, UserId}])
+                ,kz_json:from_list([{<<"cause">>, UserId}])
                 ,Context
             );
         {'error', _R} -> crossbar_util:response_db_fatal(Context)
     end.
 
 validate_user_id(UserId, Context, Doc) ->
-    case wh_doc:is_soft_deleted(Doc) of
+    case kz_doc:is_soft_deleted(Doc) of
         'true' ->
             cb_context:add_system_error(
                 'bad_identifier'
-                ,wh_json:from_list([{<<"cause">>, UserId}])
+                ,kz_json:from_list([{<<"cause">>, UserId}])
                 ,Context
             );
         'false'->
@@ -306,9 +306,9 @@ post(Context, _) ->
 -spec post(cb_context:context(), ne_binary(), path_token()) -> cb_context:context().
 post(Context, UserId, ?PHOTO) ->
     [{_FileName, FileObj}] = cb_context:req_files(Context),
-    Headers = wh_json:get_value(<<"headers">>, FileObj),
-    CT = wh_json:get_value(<<"content_type">>, Headers),
-    Content = wh_json:get_value(<<"contents">>, FileObj),
+    Headers = kz_json:get_value(<<"headers">>, FileObj),
+    CT = kz_json:get_value(<<"content_type">>, Headers),
+    Content = kz_json:get_value(<<"contents">>, FileObj),
     Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(kzd_user:type())],
     crossbar_doc:save_attachment(UserId, ?PHOTO, Content, Context, Opts).
 
@@ -356,8 +356,8 @@ load_attachment(AttachmentId, Context) ->
                                    ,Context
                                   )
       ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
-        ,{<<"Content-Type">>, wh_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)}
-        ,{<<"Content-Length">>, wh_doc:attachment_length(cb_context:doc(Context), AttachmentId)}
+        ,{<<"Content-Type">>, kz_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)}
+        ,{<<"Content-Length">>, kz_doc:attachment_length(cb_context:doc(Context), AttachmentId)}
        ]).
 
 load_attachment(UserId, AttachmentId, Context) ->
@@ -405,14 +405,14 @@ update_devices_presence(Context, DeviceDocs) ->
                           {'ok', kz_device:docs()} |
                           {'error', any()}.
 user_devices(Context) ->
-    UserId = wh_doc:id(cb_context:doc(Context)),
+    UserId = kz_doc:id(cb_context:doc(Context)),
     AccountDb = cb_context:account_db(Context),
 
     Options = [{'key', UserId}, 'include_docs'],
     case kz_datamgr:get_results(AccountDb, ?LIST_BY_PRESENCE_ID, Options) of
         {'error', _}=E -> E;
         {'ok', JObjs} ->
-            {'ok', [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs]}
+            {'ok', [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs]}
     end.
 
 -spec update_device_presence(cb_context:context(), kz_device:doc()) -> pid().
@@ -420,10 +420,10 @@ update_device_presence(Context, DeviceDoc) ->
     AuthToken = cb_context:auth_token(Context),
     ReqId = cb_context:req_id(Context),
 
-    lager:debug("re-provisioning device ~s", [wh_doc:id(DeviceDoc)]),
+    lager:debug("re-provisioning device ~s", [kz_doc:id(DeviceDoc)]),
 
-    wh_util:spawn(fun() ->
-                          wh_util:put_callid(ReqId),
+    kz_util:spawn(fun() ->
+                          kz_util:put_callid(ReqId),
                           provisioner_v5:update_device(DeviceDoc, AuthToken)
                   end).
 
@@ -435,7 +435,7 @@ update_device_presence(Context, DeviceDoc) ->
 -spec maybe_send_email(cb_context:context()) -> 'ok'.
 maybe_send_email(Context) ->
     ReqJObj = cb_context:req_data(Context),
-    case wh_json:is_true(<<"send_email_on_creation">>, ReqJObj, 'true') of
+    case kz_json:is_true(<<"send_email_on_creation">>, ReqJObj, 'true') of
         'false' -> 'ok';
         'true' -> send_email(Context)
     end.
@@ -451,15 +451,15 @@ send_email(Context) ->
     Doc = cb_context:doc(Context),
     ReqData = cb_context:req_data(Context),
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
-           ,{<<"User-ID">>, wh_doc:id(Doc)}
-           ,{<<"Password">>, wh_json:get_value(<<"password">>, ReqData)}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ,{<<"User-ID">>, kz_doc:id(Doc)}
+           ,{<<"Password">>, kz_json:get_value(<<"password">>, ReqData)}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case
-        whapps_util:amqp_pool_request(
+        kapps_util:amqp_pool_request(
           Req
-          ,fun wapi_notifications:publish_new_user/1
-          ,fun wapi_notifications:new_user_v/1
+          ,fun kapi_notifications:publish_new_user/1
+          ,fun kapi_notifications:new_user_v/1
          )
     of
         {'ok', _Resp} ->
@@ -516,17 +516,17 @@ validate_patch(UserId, Context) ->
 -spec prepare_username(api_binary(), cb_context:context()) -> cb_context:context().
 prepare_username(UserId, Context) ->
     JObj = cb_context:req_data(Context),
-    case wh_json:get_ne_value(<<"username">>, JObj) of
+    case kz_json:get_ne_value(<<"username">>, JObj) of
         'undefined' -> check_user_name(UserId, Context);
         Username ->
-            JObj1 = wh_json:set_value(<<"username">>, wh_util:to_lower_binary(Username), JObj),
+            JObj1 = kz_json:set_value(<<"username">>, kz_util:to_lower_binary(Username), JObj),
             check_user_name(UserId, cb_context:set_req_data(Context, JObj1))
     end.
 
 -spec check_user_name(api_binary(), cb_context:context()) -> cb_context:context().
 check_user_name(UserId, Context) ->
     JObj = cb_context:req_data(Context),
-    UserName = wh_json:get_ne_value(<<"username">>, JObj),
+    UserName = kz_json:get_ne_value(<<"username">>, JObj),
     AccountDb = cb_context:account_db(Context),
     case is_username_unique(AccountDb, UserId, UserName) of
         'true' ->
@@ -542,7 +542,7 @@ check_user_name(UserId, Context) ->
 non_unique_username_error(Context, Username) ->
     cb_context:add_validation_error([<<"username">>]
                                    ,<<"unique">>
-                                   ,wh_json:from_list(
+                                   ,kz_json:from_list(
                                       [{<<"message">>, <<"User name is not unique for this account">>}
                                       ,{<<"cause">>, Username}
                                       ])
@@ -559,7 +559,7 @@ is_username_unique(AccountDb, UserId, UserName) ->
     ViewOptions = [{'key', UserName}],
     case kz_datamgr:get_results(AccountDb, ?LIST_BY_USERNAME, ViewOptions) of
         {'ok', []} -> 'true';
-        {'ok', [JObj|_]} -> wh_doc:id(JObj) =:= UserId;
+        {'ok', [JObj|_]} -> kz_doc:id(JObj) =:= UserId;
         _Else ->
             lager:error("error ~p checking view ~p in ~p", [_Else, ?LIST_BY_USERNAME, AccountDb]),
             'false'
@@ -575,7 +575,7 @@ on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, kzd_user:type()}],
     maybe_import_credintials('undefined'
                             ,cb_context:set_doc(Context
-                                               ,wh_json:set_values(Props, cb_context:doc(Context))
+                                               ,kz_json:set_values(Props, cb_context:doc(Context))
                                                )
                             );
 on_successful_validation(UserId, Context) ->
@@ -584,13 +584,13 @@ on_successful_validation(UserId, Context) ->
 -spec maybe_import_credintials(api_binary(), cb_context:context()) -> cb_context:context().
 maybe_import_credintials(UserId, Context) ->
     JObj = cb_context:doc(Context),
-    case wh_json:get_ne_value(<<"credentials">>, JObj) of
+    case kz_json:get_ne_value(<<"credentials">>, JObj) of
         'undefined' -> maybe_validate_username(UserId, Context);
         Creds ->
             RemoveKeys = [<<"credentials">>, <<"pvt_sha1_auth">>],
             C = cb_context:set_doc(Context
-                                   ,wh_json:set_value(<<"pvt_md5_auth">>, Creds
-                                                      ,wh_json:delete_keys(RemoveKeys, JObj)
+                                   ,kz_json:set_value(<<"pvt_md5_auth">>, Creds
+                                                      ,kz_json:delete_keys(RemoveKeys, JObj)
                                                      )
                                   ),
             maybe_validate_username(UserId, C)
@@ -599,14 +599,14 @@ maybe_import_credintials(UserId, Context) ->
 -spec maybe_validate_username(api_binary(), cb_context:context()) -> cb_context:context().
 maybe_validate_username(UserId, Context) ->
     JObj = cb_context:doc(Context),
-    NewUsername = wh_json:get_ne_value(<<"username">>, JObj),
+    NewUsername = kz_json:get_ne_value(<<"username">>, JObj),
     CurrentUsername =
         case cb_context:fetch(Context, 'db_doc') of
             'undefined' -> NewUsername;
             CurrentJObj ->
-                wh_json:get_ne_value(<<"username">>, CurrentJObj, NewUsername)
+                kz_json:get_ne_value(<<"username">>, CurrentJObj, NewUsername)
         end,
-    case wh_util:is_empty(NewUsername)
+    case kz_util:is_empty(NewUsername)
         orelse CurrentUsername =:= NewUsername
         orelse username_doc_id(NewUsername, Context)
     of
@@ -623,11 +623,11 @@ maybe_validate_username(UserId, Context) ->
 
 -spec maybe_rehash_creds(api_binary(), api_binary(), cb_context:context()) -> cb_context:context().
 maybe_rehash_creds(UserId, Username, Context) ->
-    case wh_json:get_ne_value(<<"password">>, cb_context:doc(Context)) of
+    case kz_json:get_ne_value(<<"password">>, cb_context:doc(Context)) of
         %% No user name or hash, no creds for you!
         'undefined' when Username =:= 'undefined' ->
             HashKeys = [<<"pvt_md5_auth">>, <<"pvt_sha1_auth">>],
-            cb_context:set_doc(Context, wh_json:delete_keys(HashKeys, cb_context:doc(Context)));
+            cb_context:set_doc(Context, kz_json:delete_keys(HashKeys, cb_context:doc(Context)));
         %% User name without password, creds status quo
         'undefined' -> Context;
         %% Got a password, hope you also have a user name...
@@ -637,7 +637,7 @@ maybe_rehash_creds(UserId, Username, Context) ->
 -spec manditory_rehash_creds(api_binary(), api_binary(), cb_context:context()) ->
                                     cb_context:context().
 manditory_rehash_creds(UserId, Username, Context) ->
-    case wh_json:get_ne_value(<<"password">>, cb_context:doc(Context)) of
+    case kz_json:get_ne_value(<<"password">>, cb_context:doc(Context)) of
         'undefined' ->
             required_password_error(Context);
         Password -> rehash_creds(UserId, Username, Password, Context)
@@ -647,7 +647,7 @@ manditory_rehash_creds(UserId, Username, Context) ->
 required_password_error(Context) ->
     cb_context:add_validation_error(<<"password">>
                                    ,<<"required">>
-                                   ,wh_json:from_list(
+                                   ,kz_json:from_list(
                                       [{<<"message">>, <<"The password must be provided when updating the user name">>}]
                                      )
                                    ,Context
@@ -659,7 +659,7 @@ rehash_creds(_UserId, 'undefined', _Password, Context) ->
     cb_context:add_validation_error(
         <<"username">>
         ,<<"required">>
-        ,wh_json:from_list(
+        ,kz_json:from_list(
            [{<<"message">>, <<"The user name must be provided when updating the password">>}]
           )
         ,Context
@@ -667,12 +667,12 @@ rehash_creds(_UserId, 'undefined', _Password, Context) ->
 rehash_creds(_UserId, Username, Password, Context) ->
     lager:debug("password set on doc, updating hashes for ~s", [Username]),
     {MD5, SHA1} = cb_modules_util:pass_hashes(Username, Password),
-    JObj1 = wh_json:set_values([{<<"pvt_md5_auth">>, MD5}
+    JObj1 = kz_json:set_values([{<<"pvt_md5_auth">>, MD5}
                                ,{<<"pvt_sha1_auth">>, SHA1}
                                ]
                               ,cb_context:doc(Context)
                               ),
-    cb_context:set_doc(Context, wh_json:delete_key(<<"password">>, JObj1)).
+    cb_context:set_doc(Context, kz_json:delete_key(<<"password">>, JObj1)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -686,12 +686,12 @@ username_doc_id(Username, Context) ->
     username_doc_id(Username, Context, cb_context:account_db(Context)).
 username_doc_id(_, _, 'undefined') -> 'undefined';
 username_doc_id(Username, Context, _AccountDb) ->
-    Username = wh_util:to_lower_binary(Username),
+    Username = kz_util:to_lower_binary(Username),
     Context1 = crossbar_doc:load_view(?LIST_BY_USERNAME, [{'key', Username}], Context),
     case cb_context:resp_status(Context1) =:= 'success'
         andalso cb_context:doc(Context1)
     of
-        [JObj] -> wh_doc:id(JObj);
+        [JObj] -> kz_doc:id(JObj);
         _ -> 'undefined'
     end.
 
@@ -701,8 +701,8 @@ username_doc_id(Username, Context, _AccountDb) ->
 %% Normalizes the results of a view
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects()).
-normalize_view_results(JObj, Acc) -> [wh_json:get_value(<<"value">>, JObj)|Acc].
+-spec(normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects()).
+normalize_view_results(JObj, Acc) -> [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -713,28 +713,28 @@ normalize_view_results(JObj, Acc) -> [wh_json:get_value(<<"value">>, JObj)|Acc].
 -spec convert_to_vcard(cb_context:context()) -> cb_context:context().
 convert_to_vcard(Context) ->
     JObj = cb_context:doc(Context),
-    JProfile = wh_json:get_value(<<"profile">>, JObj, wh_json:new()),
-    JObj1 = wh_json:merge_jobjs(JObj, JProfile),
+    JProfile = kz_json:get_value(<<"profile">>, JObj, kz_json:new()),
+    JObj1 = kz_json:merge_jobjs(JObj, JProfile),
     JObj2 = set_photo(JObj1, Context),
     JObj3 = set_org(JObj2, Context),
     RespData = kzd_user:to_vcard(JObj3),
     cb_context:set_resp_data(Context, [RespData, <<"\n">>]).
 
--spec set_photo(wh_json:object(), cb_context:context()) -> wh_json:object().
+-spec set_photo(kz_json:object(), cb_context:context()) -> kz_json:object().
 set_photo(JObj, Context) ->
-    UserId = wh_doc:id(cb_context:doc(Context)),
+    UserId = kz_doc:id(cb_context:doc(Context)),
     Attach = crossbar_doc:load_attachment(UserId, ?PHOTO, ?TYPE_CHECK_OPTION(kzd_user:type()), Context),
     case cb_context:resp_status(Attach) of
         'error' -> JObj;
         'success' ->
             Data = cb_context:resp_data(Attach),
-            CT = wh_doc:attachment_content_type(cb_context:doc(Context), ?PHOTO),
-            wh_json:set_value(?PHOTO, wh_json:from_list([{CT, Data}]), JObj)
+            CT = kz_doc:attachment_content_type(cb_context:doc(Context), ?PHOTO),
+            kz_json:set_value(?PHOTO, kz_json:from_list([{CT, Data}]), JObj)
     end.
 
--spec set_org(wh_json:object(), cb_context:context()) -> wh_json:object().
+-spec set_org(kz_json:object(), cb_context:context()) -> kz_json:object().
 set_org(JObj, Context) ->
-    case wh_json:get_value(<<"org">>
+    case kz_json:get_value(<<"org">>
                           ,cb_context:doc(crossbar_doc:load(cb_context:account_id(Context)
                                                            ,Context
                                                            ,?TYPE_CHECK_OPTION(kzd_user:type())
@@ -743,5 +743,5 @@ set_org(JObj, Context) ->
                           )
     of
         'undefined' -> JObj;
-        Val -> wh_json:set_value(<<"org">>, Val, JObj)
+        Val -> kz_json:set_value(<<"org">>, Val, JObj)
     end.

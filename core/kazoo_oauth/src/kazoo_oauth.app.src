@@ -8,7 +8,7 @@
                  , stdlib
                  , public_key
 
-                 , whistle
+                 , kazoo
                  , kazoo_data
                  , kazoo_web
 

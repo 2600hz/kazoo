@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(kazoo_data_init).
 
--include_lib("whistle/include/wh_types.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
 
 -export([start_link/0]).
 
@@ -27,5 +27,5 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    _ = wapi_conf:declare_exchanges(),
-    wapi_self:declare_exchanges().
+    _ = kapi_conf:declare_exchanges(),
+    kapi_self:declare_exchanges().

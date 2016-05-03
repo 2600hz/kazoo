@@ -14,17 +14,17 @@
 -define(TREE, <<"pvt_tree">>).
 
 -define(MASTER_ACCOUNT_ID, <<"1">>).
--define(MASTER_ACCOUNT, wh_json:from_list([{?TREE, []}
+-define(MASTER_ACCOUNT, kz_json:from_list([{?TREE, []}
                                            ,{?ID, ?MASTER_ACCOUNT_ID}
                                           ])).
 
 -define(SUB_ACCOUNT_ID, <<"2">>).
--define(SUB_ACCOUNT, wh_json:from_list([{?TREE, [?MASTER_ACCOUNT_ID]}
+-define(SUB_ACCOUNT, kz_json:from_list([{?TREE, [?MASTER_ACCOUNT_ID]}
                                         ,{?ID, ?SUB_ACCOUNT_ID}
                                        ])).
 
 -define(SUB_SUB_ACCOUNT_ID, <<"2">>).
--define(SUB_SUB_ACCOUNT, wh_json:from_list([{?TREE, [?MASTER_ACCOUNT_ID, ?SUB_ACCOUNT_ID]}
+-define(SUB_SUB_ACCOUNT, kz_json:from_list([{?TREE, [?MASTER_ACCOUNT_ID, ?SUB_ACCOUNT_ID]}
                                             ,{?ID, ?SUB_SUB_ACCOUNT_ID}
                                            ])).
 
@@ -39,7 +39,7 @@ tree_test() ->
     ?assertEqual([?MASTER_ACCOUNT_ID, ?SUB_ACCOUNT_ID], kz_account:tree(?SUB_SUB_ACCOUNT)).
 
 trial_time_test_() ->
-    Now = wh_util:current_tstamp(),
+    Now = kz_util:current_tstamp(),
     Passed = kz_account:set_trial_expiration(kz_account:new(), Now - 10000),
     Active = kz_account:set_trial_expiration(kz_account:new(), Now + 10000),
 

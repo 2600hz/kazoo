@@ -27,7 +27,7 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {node :: atom()
-                ,options :: wh_proplist()
+                ,options :: kz_proplist()
                }).
 
 -define(BINDINGS, [{'resource', [{'restrict_to', ['originate']}]}
@@ -49,7 +49,7 @@
 %% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(atom()) -> startlink_ret().
--spec start_link(atom(), wh_proplist()) -> startlink_ret().
+-spec start_link(atom(), kz_proplist()) -> startlink_ret().
 start_link(Node) -> start_link(Node, []).
 start_link(Node, Options) ->
     gen_listener:start_link(?SERVER
@@ -61,9 +61,9 @@ start_link(Node, Options) ->
                              ],
                             [Node, Options]).
 
--spec handle_originate_req(wh_json:object(), wh_proplist()) -> sup_startchild_ret().
+-spec handle_originate_req(kz_json:object(), kz_proplist()) -> sup_startchild_ret().
 handle_originate_req(JObj, Props) ->
-    _ = wh_util:put_callid(JObj),
+    _ = kz_util:put_callid(JObj),
     Node = props:get_value('node', Props),
     lager:debug("received originate request for node ~s, starting originate process", [Node]),
     ecallmgr_originate_sup:start_originate_proc(Node, JObj).
@@ -84,7 +84,7 @@ handle_originate_req(JObj, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Options]) ->
-    wh_util:put_callid(Node),
+    kz_util:put_callid(Node),
     lager:info("starting new fs resource listener for ~s", [Node]),
     {'ok', #state{node=Node, options=Options}}.
 

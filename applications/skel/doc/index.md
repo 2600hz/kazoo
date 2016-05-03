@@ -12,7 +12,7 @@ The example listener is for route requests, but the reader should know that seve
 
 ## The Listener
 
-Generally speaking, most action starts at the listener. The listener typically builds on top of the gen\_listener pattern (found in lib/whistle-1.0.0/src) to abstract the AMQP connection and reception of payloads off the message bus. Instead, the gen\_listener behaviour allows the implementing module to specify the types of events to pull off the AMQP bus, and the handler modules/functions for each type of JSON payload received. The handlers run as processes separate from the listener process, allowing it to consuming AMQP payloads as quickly as possible.
+Generally speaking, most action starts at the listener. The listener typically builds on top of the gen\_listener pattern (found in lib/kazoo-1.0.0/src) to abstract the AMQP connection and reception of payloads off the message bus. Instead, the gen\_listener behaviour allows the implementing module to specify the types of events to pull off the AMQP bus, and the handler modules/functions for each type of JSON payload received. The handlers run as processes separate from the listener process, allowing it to consuming AMQP payloads as quickly as possible.
 
 The main areas of the listener that need editing are the bindings, responders, optional queue name, queue options, consume options, and QoS for initialization, and the handle\_event/2 callback.
 
@@ -36,7 +36,7 @@ The full example first:
 
 #### Bindings
 
-The AMQP APIs available can be found in the modules in lib/whistle-1.0.0/api/ (prefixed with wapi\_) and define the bindings needed to receive AMQP payloads of a certain type.
+The AMQP APIs available can be found in the modules in lib/kazoo-1.0.0/api/ (prefixed with kapi\_) and define the bindings needed to receive AMQP payloads of a certain type.
 
 For instance, to receive route requests, one would add the 'route' binding and payloads sent directly to our queue, one would configure the bindings list like:
 
@@ -45,9 +45,9 @@ For instance, to receive route requests, one would add the 'route' binding and p
                ]
     }
 
-These two 2-tuples will cause the gen\_listener to call `wapi_route:bind_q/2` and `wapi_self:bind_q/2` with the listener's queue. When shutting down the listener, the `unbind_q/2` variants will be called to cleanup the AMQP bindings.
+These two 2-tuples will cause the gen\_listener to call `kapi_route:bind_q/2` and `kapi_self:bind_q/2` with the listener's queue. When shutting down the listener, the `unbind_q/2` variants will be called to cleanup the AMQP bindings.
 
-Some of the wapi modules allow parameters to be passed in the second element of the tuple, changing either what bindings are added, or the binding key used. For instance, in lib/whistle-1.0.0/src/api/wapi\_route.erl, one can see in the `bind_q/2` function that one could specify a realm, which would restrict the route requests received by this listener to just the realm.
+Some of the kapi modules allow parameters to be passed in the second element of the tuple, changing either what bindings are added, or the binding key used. For instance, in lib/kazoo-1.0.0/src/api/kapi\_route.erl, one can see in the `bind_q/2` function that one could specify a realm, which would restrict the route requests received by this listener to just the realm.
 
 #### Responders
 
@@ -68,7 +68,7 @@ If you want to handle more than one type of name for a given category, you can u
 
 queue\_name: If you want an auto-generated, anonymous queue, you can omit the queue\_name tuple, or set it to {queue\_name, <<>>} (this is the default). If you want to use a named queue, include the name as the second element: `{queue_name, <<"named_queue">>}`.
 
-queue\_options: Another parameter that can be omitted from the list of configs sent to gen\_listener, use this if you need different values than in lib/whistle\_amqp-1.0.0/src/amqp\_util.erl, the new\_queue/2 function. This list controls how the broker creates the queue.
+queue\_options: Another parameter that can be omitted from the list of configs sent to gen\_listener, use this if you need different values than in lib/kazoo\_amqp-1.0.0/src/amqp\_util.erl, the new\_queue/2 function. This list controls how the broker creates the queue.
 
 consume\_options: Ommitable as well, these options control how consupmtion from the queue will be managed (see basic\_consume/2 in amqp\_util.erl).
 

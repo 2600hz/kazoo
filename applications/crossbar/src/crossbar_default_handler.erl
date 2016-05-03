@@ -22,10 +22,10 @@
                         ,<<"/:version/accounts/:account_id/faxes/:direction/:fax_id/attachment">>
                        ]).
 
--spec init({atom(), 'http'}, cowboy_req:req(), wh_proplist()) ->
+-spec init({atom(), 'http'}, cowboy_req:req(), kz_proplist()) ->
                   {'ok', cowboy_req:req(), 'undefined'}.
 init({_Any, 'http'}, Req0, HandlerOpts) ->
-    wh_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?LOG_SYSTEM_ID),
 
     {Path, Req1} = cowboy_req:path(Req0),
 
@@ -44,7 +44,7 @@ init({_Any, 'http'}, Req0, HandlerOpts) ->
     end.
 
 is_valid_magic_path(Path) ->
-    is_valid_magic_path(Path, whapps_config:get(?CONFIG_CAT, <<"magic_path_patterns">>, ?DEFAULT_PATHS)).
+    is_valid_magic_path(Path, kapps_config:get(?CONFIG_CAT, <<"magic_path_patterns">>, ?DEFAULT_PATHS)).
 
 is_valid_magic_path(Path, Templates) ->
     lists:any(fun(Template) -> path_matches_template(Path, Template) end, Templates).
@@ -76,7 +76,7 @@ get_magic_token(Path) ->
 get_magic_token_from_path([]) -> 'undefined';
 get_magic_token_from_path([<<>>|Paths]) -> get_magic_token_from_path(Paths);
 get_magic_token_from_path([Path|Paths]) ->
-    try whapps_util:from_magic_hash(Path) of
+    try kapps_util:from_magic_hash(Path) of
         Token -> Token
     catch
         _:_ -> get_magic_token_from_path(Paths)

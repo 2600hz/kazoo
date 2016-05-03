@@ -64,7 +64,7 @@ start_link(Args) ->
 %%--------------------------------------------------------------------
 init({'parser_args', LogFile, LogIP, LogPort} = Args) ->
     ParserId = ci_parsers_util:make_name(Args),
-    _ = wh_util:put_callid(ParserId),
+    _ = kz_util:put_callid(ParserId),
     NewDev = ci_parsers_util:open_file(LogFile),
     State = #state{parser_id = ParserId
                    ,logfile = LogFile
@@ -334,7 +334,7 @@ all_whitespace(_) -> 'false'.
 -spec strip_truncating_pieces([ne_binary()]) -> [ne_binary()].
 strip_truncating_pieces(Data) ->
     [case re:run(Line, "(\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{6} \\[[A-Z]+\\] )") of
-         {'match', [{Offset,_}|_]} -> wh_util:truncate_right_binary(Line, Offset);
+         {'match', [{Offset,_}|_]} -> kz_util:truncate_right_binary(Line, Offset);
          'nomatch' -> Line
      end
      || Line <- Data

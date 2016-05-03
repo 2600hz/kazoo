@@ -17,10 +17,10 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
-    'true' = wapi_call:event_v(JObj),
-    wh_util:put_callid(JObj),
+    'true' = kapi_call:event_v(JObj),
+    kz_util:put_callid(JObj),
     timer:sleep(crypto:rand_uniform(1000, 3000)),
     Request = j5_request:from_jobj(JObj),
     _ = account_reconcile_cdr(Request),

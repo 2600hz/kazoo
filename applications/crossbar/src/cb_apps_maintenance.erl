@@ -17,13 +17,13 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec migrate(ne_binary()) -> {'ok', wh_json:object()} | {'error', any()}.
+-spec migrate(ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 migrate(Account) when is_binary(Account) ->
     case kz_account:fetch(Account) of
         {'error', _R}=Error -> Error;
         {'ok', JObj} ->
             CurrentApps = kzd_apps_store:apps(JObj),
-            case wh_util:is_empty(CurrentApps) of
+            case kz_util:is_empty(CurrentApps) of
                 'true' -> {'error', 'migrated'};
                 'false' ->
                     Doc = kzd_apps_store:new(Account),
@@ -40,9 +40,9 @@ migrate(Account) when is_binary(Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec save(ne_binary(), wh_json:object(), wh_json:object()) -> {'ok', wh_json:object()} | {'error', any()}.
+-spec save(ne_binary(), kz_json:object(), kz_json:object()) -> {'ok', kz_json:object()} | {'error', any()}.
 save(Account, Doc, AccountDoc) ->
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    AccountDb = kz_util:format_account_id(Account, 'encoded'),
     case kz_datamgr:save_doc(AccountDb, Doc) of
         {'error', _R}=Error -> Error;
         {'ok', _}=Ok ->
@@ -56,14 +56,14 @@ save(Account, Doc, AccountDoc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec save_account(ne_binary(), wh_json:object()) -> 'ok'.
+-spec save_account(ne_binary(), kz_json:object()) -> 'ok'.
 save_account(Account, AccountDoc) ->
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case kz_datamgr:ensure_saved(AccountDb, wh_json:delete_key(<<"apps">>, AccountDoc)) of
+    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    case kz_datamgr:ensure_saved(AccountDb, kz_json:delete_key(<<"apps">>, AccountDoc)) of
         {'error', _R} ->
             lager:error("failed to save ~s : ~p", [AccountDb, _R]);
         {'ok', JObj} ->
-            case kz_datamgr:ensure_saved(?WH_ACCOUNTS_DB, JObj) of
+            case kz_datamgr:ensure_saved(?KZ_ACCOUNTS_DB, JObj) of
                 {'error', _R} ->
                     lager:error("failed to save ~s in accounts db: ~p", [Account, _R]);
                 {'ok', _} -> 'ok'

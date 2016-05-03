@@ -16,7 +16,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(ORIGIN_BINDINGS, [[{'db', ?WH_SIP_DB }
+-define(ORIGIN_BINDINGS, [[{'db', ?KZ_SIP_DB }
                            ,{'type', <<"device">>}
                           ]
                          ]).
@@ -59,7 +59,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init(any()) -> sup_init_ret().
 init([]) ->
-    wh_util:set_startup(),
+    kz_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,

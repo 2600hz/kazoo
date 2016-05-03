@@ -33,8 +33,8 @@ stop(_State) ->
 
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    _ = wapi_notifications:declare_exchanges(),
-    _ = wapi_call:declare_exchanges(),
-    _ = wapi_pusher:declare_exchanges(),
-    _ = wapi_registration:declare_exchanges(),
-    wapi_self:declare_exchanges().
+    _ = kapi_notifications:declare_exchanges(),
+    _ = kapi_call:declare_exchanges(),
+    _ = kapi_pusher:declare_exchanges(),
+    _ = kapi_registration:declare_exchanges(),
+    kapi_self:declare_exchanges().

@@ -20,7 +20,7 @@
 
 -spec open(pid(), binary(), any()) -> cb_return().
 open(Pid, Id, Ipaddr) ->
-    IPBin = wh_util:to_binary(inet_parse:ntoa(Ipaddr)),
+    IPBin = kz_util:to_binary(inet_parse:ntoa(Ipaddr)),
     lager:debug("opening socket (~p) ~p, peer: ~p", [Pid, Id, IPBin]),
 
     Context  = bh_context:new(Pid, Id),
@@ -29,7 +29,7 @@ open(Pid, Id, Ipaddr) ->
     blackhole_tracking:add_socket(Context1),
     {'ok', Context1}.
 
--spec recv(pid(), binary(), {binary(), wh_json:object()}, bc_context:context()) -> cb_return().
+-spec recv(pid(), binary(), {binary(), kz_json:object()}, bc_context:context()) -> cb_return().
 recv(_SessionPid, _SessionId, {<<"subscribe">>, SubscriptionJObj}, Context) ->
     lager:debug("maybe add binding for session: ~p. Data: ~p", [_SessionId, SubscriptionJObj]),
     maybe_subscribe(Context, SubscriptionJObj);
@@ -51,7 +51,7 @@ recv(_SessionPid, SessionId, Message, Context) ->
     lager:info("receive unknown message ~p on socket ~p", [Message, SessionId]),
     {'ok', Context}.
 
--spec amqp_send(bh_context:context(), wh_json:object()) -> 'ok'.
+-spec amqp_send(bh_context:context(), kz_json:object()) -> 'ok'.
 amqp_send(Context, Data) ->
     case blackhole_util:is_authorized(Context) of
         'true' ->
@@ -59,11 +59,11 @@ amqp_send(Context, Data) ->
             {Keys, _} = lists:unzip(Message),
 
             SendMessage = Message ++ [
-                {<<"Msg-ID">>, wh_util:rand_hex_binary(16)}
-                | wh_api:default_headers(<<"qubicle">>, <<"1.0">>)
+                {<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
+                | kz_api:default_headers(<<"qubicle">>, <<"1.0">>)
             ],
 
-            {'ok', Payload} = wh_api:build_message(SendMessage, [], Keys),
+            {'ok', Payload} = kz_api:build_message(SendMessage, [], Keys),
             amqp_util:basic_publish(<<"qubicle">>, <<"qubicle.recipient">>, Payload, ?DEFAULT_CONTENT_TYPE);
 
         'false' ->
@@ -92,8 +92,8 @@ close(SessionPid, SessionId, Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_subscribe(bh_context:context(), wh_json:object()) -> cb_return().
--spec maybe_subscribe(bh_context:context(), wh_json:object(), boolean()) -> cb_return().
+-spec maybe_subscribe(bh_context:context(), kz_json:object()) -> cb_return().
+-spec maybe_subscribe(bh_context:context(), kz_json:object(), boolean()) -> cb_return().
 maybe_subscribe(Context, JObj) ->
     Context1 = bh_context:from_json(Context, JObj),
     IsAuthorized = blackhole_util:is_authorized(Context1),
@@ -105,18 +105,18 @@ maybe_subscribe(Context, JObj, 'true') ->
     Bindings = bh_context:bindings_from_json(JObj),
     check_bindings(Context, JObj, Bindings).
 
--spec check_bindings(bh_context:context(), wh_json:object(), ne_binaries()) -> cb_return().
+-spec check_bindings(bh_context:context(), kz_json:object(), ne_binaries()) -> cb_return().
 check_bindings(Context, _JObj, []) ->
     {'ok', Context};
 check_bindings(Context, JObj, [Binding|Bds]) ->
     {'ok', Context1} = check_binding(Context, JObj, Binding),
     check_bindings(Context1, JObj, Bds).
 
--spec check_binding(bh_context:context(), wh_json:object(), ne_binary()) -> cb_return().
+-spec check_binding(bh_context:context(), kz_json:object(), ne_binary()) -> cb_return().
 check_binding(Context, JObj, Binding) ->
     case bh_context:is_bound(Context, Binding) of
         'true' ->
-            ErrorJObj = wh_json:from_list([
+            ErrorJObj = kz_json:from_list([
                 {<<"message">>, <<"binding already in use">>}
                 ,{<<"cause">>, Binding}
             ]),
@@ -126,7 +126,7 @@ check_binding(Context, JObj, Binding) ->
             subscribe(Context, JObj, Binding, Module)
     end.
 
--spec subscribe(bh_context:context(), wh_json:object(), ne_binary(), api_binary()) -> cb_return().
+-spec subscribe(bh_context:context(), kz_json:object(), ne_binary(), api_binary()) -> cb_return().
 subscribe(Context, _JObj, _Binding, 'undefined') ->
     {'ok', blackhole_util:respond_with_error(Context)};
 subscribe(Context, _JObj, Binding, Module) ->
@@ -141,8 +141,8 @@ subscribe(Context, _JObj, Binding, Module) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec unsubscribe(bh_context:context(), wh_json:object(), ne_binary(), ne_binary()) -> cb_return().
--spec unsubscribe(bh_context:context(), wh_json:object(), ne_binary(), ne_binary(), boolean()) -> cb_return().
+-spec unsubscribe(bh_context:context(), kz_json:object(), ne_binary(), ne_binary()) -> cb_return().
+-spec unsubscribe(bh_context:context(), kz_json:object(), ne_binary(), ne_binary(), boolean()) -> cb_return().
 unsubscribe(Context, JObj, SessionPid, SessionId) ->
     Context1 = bh_context:from_json(Context, JObj),
     IsAuthorized = blackhole_util:is_authorized(Context1),
@@ -151,7 +151,7 @@ unsubscribe(Context, JObj, SessionPid, SessionId) ->
 unsubscribe(Context, _JObj, _SessionPid, _SessionId, 'false') ->
     {'ok', blackhole_util:respond_with_authn_failure(Context)};
 unsubscribe(Context, JObj, SessionPid, SessionId, 'true') ->
-    case wh_json:get_value(<<"account_id">>, JObj) of
+    case kz_json:get_value(<<"account_id">>, JObj) of
         'undefined' ->
             unsubscribe_for_all(Context, JObj, SessionPid, SessionId);
         AccountId ->
@@ -163,7 +163,7 @@ unsubscribe(Context, JObj, SessionPid, SessionId, 'true') ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec unsubscribe_for_all(bh_context:context(), wh_json:object(), ne_binary(), ne_binary()) -> cb_return().
+-spec unsubscribe_for_all(bh_context:context(), kz_json:object(), ne_binary(), ne_binary()) -> cb_return().
 unsubscribe_for_all(Context, _JObj, SessionPid, SessionId) ->
     Context1 = bh_context:set_bindings(Context, []),
     lager:debug("remove all bindings for session: ~p", [SessionId]),
@@ -177,9 +177,9 @@ unsubscribe_for_all(Context, _JObj, SessionPid, SessionId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec unsubscribe_for_account(bh_context:context(), wh_json:object(), ne_binary()) -> cb_return().
--spec unsubscribe_for_account(bh_context:context(), wh_json:object(), ne_binary(), ne_binaries() | ne_binary()) -> cb_return().
--spec unsubscribe_for_account(bh_context:context(), wh_json:object(), ne_binary(), ne_binary(), api_binary()) -> cb_return().
+-spec unsubscribe_for_account(bh_context:context(), kz_json:object(), ne_binary()) -> cb_return().
+-spec unsubscribe_for_account(bh_context:context(), kz_json:object(), ne_binary(), ne_binaries() | ne_binary()) -> cb_return().
+-spec unsubscribe_for_account(bh_context:context(), kz_json:object(), ne_binary(), ne_binary(), api_binary()) -> cb_return().
 unsubscribe_for_account(Context, JObj, AccountId) ->
     Bindings = bh_context:bindings_from_json(JObj),
     unsubscribe_for_account(Context, JObj, AccountId, Bindings).
@@ -215,7 +215,7 @@ filter_bindings(SessionPid, Binding, _Module, _Function, Context) ->
             case bh_context:websocket_pid(Context) =:= SessionPid of
                 'false' -> 'true';
                 'true' ->
-                    _ = wh_util:spawn(fun blackhole_util:remove_binding/2, [Binding, Context]),
+                    _ = kz_util:spawn(fun blackhole_util:remove_binding/2, [Binding, Context]),
                     'false'
             end
     end.

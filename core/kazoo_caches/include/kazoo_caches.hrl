@@ -1,10 +1,10 @@
 -ifndef(KAZOO_CACHES_HRL).
 
--define(WHAPPS_CONFIG_CACHE, 'whapps_config_cache').
--define(WHAPPS_CALL_CACHE, 'whapps_call_cache').
--define(WHAPPS_GETBY_CACHE, 'whapps_getby_cache').
+-define(KAPPS_CONFIG_CACHE, 'kapps_config_cache').
+-define(KAPPS_CALL_CACHE, 'kapps_call_cache').
+-define(KAPPS_GETBY_CACHE, 'kapps_getby_cache').
 
--include_lib("whistle/include/wh_types.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
 
 -type callback_fun() :: fun((any(), any(), 'flush' | 'erase' | 'expire') -> any()).
 -type callback_funs() :: [callback_fun()].
@@ -18,8 +18,8 @@
 
 -record(cache_obj, {key :: any()| '_' | '$1'
                     ,value :: any() | '_' | '$1' | '$2'
-                    ,expires :: wh_timeout() | '_' | '$3'
-                    ,timestamp = wh_util:current_tstamp() :: gregorian_seconds() | '_' | '$4'
+                    ,expires :: kz_timeout() | '_' | '$3'
+                    ,timestamp = kz_util:current_tstamp() :: gregorian_seconds() | '_' | '$4'
                     ,callback :: callback_fun() | '_' | '$2' | '$3' | '$5'
                     ,origin :: origin_tuple() | origin_tuples() | '$1' | '_'
                    }).

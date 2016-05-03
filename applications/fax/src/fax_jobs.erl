@@ -55,7 +55,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    _ = wh_util:spawn(fun cleanup_jobs/0),
+    _ = kz_util:spawn(fun cleanup_jobs/0),
     {'ok', #state{}, ?POLLING_INTERVAL}.
 
 %%--------------------------------------------------------------------
@@ -103,11 +103,11 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info('timeout', #state{jobs=[]}=State) ->
-    Upto = wh_util:current_tstamp(),
+    Upto = kz_util:current_tstamp(),
     ViewOptions = [{'limit', 100}
                   ,{'endkey', Upto}
                   ],
-    case kz_datamgr:get_results(?WH_FAXES_DB, <<"faxes/jobs">>, ViewOptions) of
+    case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/jobs">>, ViewOptions) of
         {'ok', []} -> {'noreply', State, ?POLLING_INTERVAL};
         {'ok', Jobs} ->
             lager:debug("fetched ~b jobs, attempting to distribute to workers", [length(Jobs)]),
@@ -151,7 +151,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec distribute_jobs(wh_json:objects()) -> wh_json:objects().
+-spec distribute_jobs(kz_json:objects()) -> kz_json:objects().
 distribute_jobs([]) -> [];
 distribute_jobs([Job|Jobs]) ->
     case catch poolboy:checkout(?FAX_WORKER_POOL, 'false', 1000) of
@@ -163,13 +163,13 @@ distribute_jobs([Job|Jobs]) ->
 
 -spec cleanup_jobs() -> 'ok'.
 cleanup_jobs() ->
-    ViewOptions = [{<<"key">>, wh_util:to_binary(node())}],
-    case kz_datamgr:get_results(?WH_FAXES_DB, <<"faxes/processing_by_node">>, ViewOptions) of
+    ViewOptions = [{<<"key">>, kz_util:to_binary(node())}],
+    case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/processing_by_node">>, ViewOptions) of
         {'ok', JObjs} ->
             _ = [begin
-                     DocId = wh_doc:id(JObj),
+                     DocId = kz_doc:id(JObj),
                      lager:debug("moving zombie job ~s status to pending", [DocId]),
-                     kz_datamgr:update_doc(?WH_FAXES_DB, DocId, [{<<"pvt_job_status">>, <<"pending">>}])
+                     kz_datamgr:update_doc(?KZ_FAXES_DB, DocId, [{<<"pvt_job_status">>, <<"pending">>}])
                  end
                  || JObj <- JObjs
                 ],

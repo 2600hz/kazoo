@@ -24,10 +24,10 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec available() -> {'ok', wh_json:objects()} |
+-spec available() -> {'ok', kz_json:objects()} |
                      {'error', any()}.
 -spec available(api_binary()) ->
-                       {'ok', wh_json:objects()} |
+                       {'ok', kz_json:objects()} |
                        {'error', any()}.
 
 available() -> available('undefined').
@@ -35,7 +35,7 @@ available() -> available('undefined').
 available(Zone) -> available(Zone, 1).
 
 -spec available(api_binary(), non_neg_integer()) ->
-                       {'ok', wh_json:objects()} |
+                       {'ok', kz_json:objects()} |
                        {'error', any()}.
 available(Zone, Quantity) ->
     ViewOptions = props:filter_undefined(
@@ -43,7 +43,7 @@ available(Zone, Quantity) ->
                     ,{'limit', Quantity}
                     ]
                    ),
-    case kz_datamgr:get_results(?WH_DEDICATED_IP_DB
+    case kz_datamgr:get_results(?KZ_DEDICATED_IP_DB
                                ,<<"dedicated_ips/available_listing">>
                                ,ViewOptions
                                )
@@ -53,7 +53,7 @@ available(Zone, Quantity) ->
               fun() -> ?MODULE:available(Zone, Quantity) end
              );
         {'ok', JObjs} ->
-            {'ok', [wh_json:get_value(<<"value">>, JObj) || JObj <- JObjs]};
+            {'ok', [kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs]};
         {'error', _R}=E ->
             lager:debug("unable to get available dedicated ips: ~p", [_R]),
             E
@@ -66,12 +66,12 @@ available(Zone, Quantity) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec assigned(ne_binary()) ->
-                      {'ok', wh_json:objects()} |
+                      {'ok', kz_json:objects()} |
                       {'error', any()}.
 assigned(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountId = kz_util:format_account_id(Account, 'raw'),
     ViewOptions = [{'key', AccountId}],
-    case kz_datamgr:get_results(?WH_DEDICATED_IP_DB
+    case kz_datamgr:get_results(?KZ_DEDICATED_IP_DB
                                ,<<"dedicated_ips/assigned_to_listing">>
                                ,ViewOptions
                                )
@@ -81,7 +81,7 @@ assigned(Account) ->
               fun() -> ?MODULE:assigned(Account) end
              );
         {'ok', JObjs} ->
-            {'ok', [wh_json:get_value(<<"value">>, JObj) || JObj <- JObjs]};
+            {'ok', [kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs]};
         {'error', _R}=E ->
             lager:debug("unable to get assigned dedicated ips: ~p", [_R]),
             E
@@ -100,7 +100,7 @@ zones() ->
     ViewOptions = [{'group', 'true'}
                   ,{'group_level', 1}
                   ],
-    case kz_datamgr:get_results(?WH_DEDICATED_IP_DB
+    case kz_datamgr:get_results(?KZ_DEDICATED_IP_DB
                                ,<<"dedicated_ips/zone_listing">>
                                ,ViewOptions
                                )
@@ -110,7 +110,7 @@ zones() ->
               fun() -> ?MODULE:zones() end
              );
         {'ok', JObjs} ->
-            {'ok', [wh_json:get_value(<<"key">>, JObj)
+            {'ok', [kz_json:get_value(<<"key">>, JObj)
                     || JObj <- JObjs
                    ]};
         {'error', _R}=E ->
@@ -131,7 +131,7 @@ hosts() ->
     ViewOptions = [{'group', 'true'}
                    ,{'group_level', 1}
                   ],
-    case kz_datamgr:get_results(?WH_DEDICATED_IP_DB
+    case kz_datamgr:get_results(?KZ_DEDICATED_IP_DB
                                ,<<"dedicated_ips/host_listing">>
                                ,ViewOptions
                               )
@@ -141,7 +141,7 @@ hosts() ->
               fun() -> ?MODULE:hosts() end
              );
         {'ok', JObjs} ->
-            {'ok', [wh_json:get_value(<<"key">>, JObj)
+            {'ok', [kz_json:get_value(<<"key">>, JObj)
                     || JObj <- JObjs
                    ]};
         {'error', _R}=E ->
@@ -156,11 +156,11 @@ hosts() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec summary(api_binary()) ->
-                     {'ok', wh_json:objects()} |
+                     {'ok', kz_json:objects()} |
                      {'error', any()}.
 summary(Host) ->
     ViewOptions = props:filter_undefined([{'key', Host}]),
-    case kz_datamgr:get_results(?WH_DEDICATED_IP_DB
+    case kz_datamgr:get_results(?KZ_DEDICATED_IP_DB
                                ,<<"dedicated_ips/summary_listing">>
                                ,ViewOptions
                               )
@@ -169,7 +169,7 @@ summary(Host) ->
             kz_ip_utils:refresh_database(
               fun() -> ?MODULE:summary(Host) end
              );
-        {'ok', JObjs} -> {'ok', [wh_json:get_value(<<"value">>, JObj) || JObj <- JObjs]};
+        {'ok', JObjs} -> {'ok', [kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs]};
         {'error', _R}=E ->
             lager:debug("unable to get host ips: ~p", [_R]),
             E

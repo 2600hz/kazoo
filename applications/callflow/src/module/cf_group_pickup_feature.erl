@@ -61,25 +61,25 @@
 %% to cf_group_pickup.
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    Number = whapps_call:kvs_fetch('cf_capture_group', Call),
-    PickupType = wh_json:get_value(<<"type">>, Data),
+    Number = kapps_call:kvs_fetch('cf_capture_group', Call),
+    PickupType = kz_json:get_value(<<"type">>, Data),
     case build_pickup_params(Number, PickupType, Call) of
         {'ok', Params} ->
-            cf_group_pickup:handle(wh_json:from_list(Params), Call);
+            cf_group_pickup:handle(kz_json:from_list(Params), Call);
         {'error', _E} ->
             lager:info("Error <<~s>> processing pickup '~s' for number ~s"
                        ,[_E, PickupType, Number]),
-            _ = whapps_call_command:b_play(<<"park-no_caller">>, Call),
+            _ = kapps_call_command:b_play(<<"park-no_caller">>, Call),
             cf_exe:stop(Call)
     end.
 
--spec build_pickup_params(ne_binary(), ne_binary(), whapps_call:call()) ->
-                                 {'ok', wh_proplist()} |
+-spec build_pickup_params(ne_binary(), ne_binary(), kapps_call:call()) ->
+                                 {'ok', kz_proplist()} |
                                  {'error', ne_binary()}.
 build_pickup_params(Number, <<"device">>, Call) ->
-    AccountDb = whapps_call:account_db(Call),
+    AccountDb = kapps_call:account_db(Call),
     case cf_util:endpoint_id_by_sip_username(AccountDb, Number) of
         {'ok', EndpointId} -> {'ok', [{<<"device_id">>, EndpointId}]};
         {'error', _}=E -> E
@@ -89,11 +89,11 @@ build_pickup_params(_Number, <<"user">>, _Call) ->
 build_pickup_params(_Number, <<"group">>, _Call) ->
     {'error', <<"work in progress">>};
 build_pickup_params(Number, <<"extension">>, Call) ->
-    AccountId = whapps_call:account_id(Call),
+    AccountId = kapps_call:account_id(Call),
     case cf_util:lookup_callflow(Number, AccountId) of
         {'ok', FlowDoc, 'false'} ->
-            Data = wh_json:get_value([<<"flow">>, <<"data">>], FlowDoc),
-            Module = wh_json:get_value([<<"flow">>, <<"module">>], FlowDoc),
+            Data = kz_json:get_value([<<"flow">>, <<"data">>], FlowDoc),
+            Module = kz_json:get_value([<<"flow">>, <<"module">>], FlowDoc),
             params_from_data(Module, Data,Call);
         {'ok', _FlowDoc, 'true'} ->
             {'error', <<"no callflow with extension ", Number/binary>>};
@@ -104,20 +104,20 @@ build_pickup_params(_ ,'undefined', _) ->
 build_pickup_params(_, Other, _) ->
     {'error', <<Other/binary," not implemented">>}.
 
--spec params_from_data(ne_binary(), wh_json:object(), whapps_call:call()) ->
-                              {'ok', wh_proplist()} |
+-spec params_from_data(ne_binary(), kz_json:object(), kapps_call:call()) ->
+                              {'ok', kz_proplist()} |
                               {'error', ne_binary()}.
 params_from_data(<<"user">>, Data, _Call) ->
-    EndpointId = wh_doc:id(Data),
+    EndpointId = kz_doc:id(Data),
     {'ok', [{<<"user_id">>, EndpointId}]};
 params_from_data(<<"device">>, Data, _Call) ->
-    EndpointId = wh_doc:id(Data),
+    EndpointId = kz_doc:id(Data),
     {'ok', [{<<"device_id">>, EndpointId}]};
 params_from_data(<<"ring_group">>, Data, _Call) ->
-    [Endpoint |_Endpoints] = wh_json:get_value(<<"endpoints">>, Data, []),
-    EndpointType = wh_json:get_value(<<"endpoint_type">>, Endpoint),
+    [Endpoint |_Endpoints] = kz_json:get_value(<<"endpoints">>, Data, []),
+    EndpointType = kz_json:get_value(<<"endpoint_type">>, Endpoint),
     {'ok', [{<<EndpointType/binary,"_id">>
-             ,wh_doc:id(Endpoint)}
+             ,kz_doc:id(Endpoint)}
            ]};
 params_from_data(<<"page_group">>, Data, _Call) ->
     params_from_data(<<"ring_group">>, Data, _Call);

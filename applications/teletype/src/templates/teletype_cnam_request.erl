@@ -18,7 +18,7 @@
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
 -define(TEMPLATE_MACROS
-        ,wh_json:from_list(
+        ,kz_json:from_list(
            [?MACRO_VALUE(<<"request.number">>, <<"request_number">>, <<"Number">>, <<"Number to add CNAM">>)
             ,?MACRO_VALUE(<<"cnam.display_name">>, <<"cnam_display_name">>, <<"Display Name">>, <<"What to display">>)
             ,?MACRO_VALUE(<<"request.number_state">>, <<"request_number_state">>, <<"Number State">>, <<"Number State">>)
@@ -43,7 +43,7 @@
 
 -spec init() -> 'ok'.
 init() ->
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
                                            ,{'text', ?TEMPLATE_TEXT}
                                            ,{'html', ?TEMPLATE_HTML}
@@ -57,21 +57,21 @@ init() ->
                                            ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]).
 
--spec handle_cnam_request(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_cnam_request(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_cnam_request(JObj, _Props) ->
-    'true' = wapi_notifications:cnam_request_v(JObj),
-    wh_util:put_callid(JObj),
+    'true' = kapi_notifications:cnam_request_v(JObj),
+    kz_util:put_callid(JObj),
     %% Gather data for template
-    DataJObj = wh_json:normalize(JObj),
-    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    DataJObj = kz_json:normalize(JObj),
+    AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
     ReqData =
-        wh_json:set_value(<<"user">>, teletype_util:find_account_admin(AccountId), DataJObj),
+        kz_json:set_value(<<"user">>, teletype_util:find_account_admin(AccountId), DataJObj),
     CNAMJObj =
-        wh_json:set_values([{<<"request">>, DataJObj}
+        kz_json:set_values([{<<"request">>, DataJObj}
                             ,{<<"cnam">>, cnam_data(DataJObj)}
                            ]
-                           ,wh_json:merge_jobjs(DataJObj, ReqData)
+                           ,kz_json:merge_jobjs(DataJObj, ReqData)
                           ),
 
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
@@ -79,16 +79,16 @@ handle_cnam_request(JObj, _Props) ->
         'true' -> process_req(CNAMJObj)
     end.
 
--spec cnam_data(wh_json:object()) -> api_object().
+-spec cnam_data(kz_json:object()) -> api_object().
 cnam_data(DataJObj) ->
     case teletype_util:is_preview(DataJObj) of
         'false' ->
-            wh_json:get_json_value(<<"cnam">>, DataJObj);
+            kz_json:get_json_value(<<"cnam">>, DataJObj);
         'true' ->
-            wh_json:from_list([{<<"display_name">>, <<"Display Name">>}])
+            kz_json:from_list([{<<"display_name">>, <<"Display Name">>}])
     end.
 
--spec process_req(wh_json:object()) -> 'ok'.
+-spec process_req(kz_json:object()) -> 'ok'.
 process_req(DataJObj) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:account_params(DataJObj)}
@@ -108,7 +108,7 @@ process_req(DataJObj) ->
 
     Subject =
         teletype_util:render_subject(
-            wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
+            kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
             ,Macros
         ),
 

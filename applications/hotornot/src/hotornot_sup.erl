@@ -53,7 +53,7 @@ upgrade() ->
 %% ===================================================================
 -spec init(any()) -> sup_init_ret().
 init([]) ->
-    wh_util:set_startup(),
+    kz_util:set_startup(),
 
     RestartStrategy = 'one_for_one',
     MaxRestarts = 2,

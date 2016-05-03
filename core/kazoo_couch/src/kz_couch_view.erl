@@ -1,7 +1,7 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
-%%% Util functions used by whistle_couch
+%%% Util functions used by kazoo_couch
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
@@ -33,14 +33,14 @@ design_compact(#server{}=Conn, DbName, Design) ->
     end.
 
 -spec design_info(server(), ne_binary(), ne_binary()) ->
-                         {'ok', wh_json:object()} |
+                         {'ok', kz_json:object()} |
                          couchbeam_error().
 design_info(#server{}=Conn, DBName, Design) ->
     Db = kz_couch_util:get_db(Conn, DBName),
     do_get_design_info(Db, Design).
 
 -spec all_design_docs(server(), ne_binary(), view_options()) ->
-                             {'ok', wh_json:objects()} |
+                             {'ok', kz_json:objects()} |
                              couchbeam_error().
 all_design_docs(#server{}=Conn, DBName, Options) ->
     Db = kz_couch_util:get_db(Conn, DBName),
@@ -50,20 +50,20 @@ all_design_docs(#server{}=Conn, DBName, Options) ->
              ],
     do_fetch_results(Db, 'all_docs', Filter).
 
--spec all_docs(db(), view_options()) -> {'ok', wh_json:objects()} |
+-spec all_docs(db(), view_options()) -> {'ok', kz_json:objects()} |
                                         couchbeam_error().
 all_docs(#db{}=Db, Options) ->
     do_fetch_results(Db, 'all_docs', Options).
 
 -spec all_docs(server(), ne_binary(), view_options()) ->
-                      {'ok', wh_json:objects()} |
+                      {'ok', kz_json:objects()} |
                       couchbeam_error().
 all_docs(#server{}=Conn, DbName, Options) ->
     Db = kz_couch_util:get_db(Conn, DbName),
     do_fetch_results(Db, 'all_docs', Options).
 
 -spec get_results(server(), ne_binary(), ne_binary(), view_options()) ->
-                         {'ok', wh_json:objects() | wh_json:keys()} |
+                         {'ok', kz_json:objects() | kz_json:keys()} |
                          couchbeam_error().
 get_results(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
     Db = kz_couch_util:get_db(Conn, DbName),
@@ -82,7 +82,7 @@ get_results_count(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
 
 %% Design Doc/View internal functions
 -spec do_fetch_results(couchbeam_db(), ddoc(), view_options()) ->
-                              {'ok', wh_json:objects() | ne_binaries()} |
+                              {'ok', kz_json:objects() | ne_binaries()} |
                               couchbeam_error().
 do_fetch_results(Db, DesignDoc, Options)
   when is_binary(DesignDoc) ->
@@ -91,7 +91,7 @@ do_fetch_results(Db, DesignDoc, Options)
 do_fetch_results(Db, DesignDoc, Options) ->
     ?RETRY_504(
        case couchbeam_view:fetch(Db, DesignDoc, Options) of
-           {'ok', JObj} -> {'ok', wh_json:get_value(<<"rows">>, JObj, JObj)};
+           {'ok', JObj} -> {'ok', kz_json:get_value(<<"rows">>, JObj, JObj)};
            {'error', _T, E} -> {'error', kz_couch_util:format_error(E)};
            {'error', E} -> {'error', kz_couch_util:format_error(E)}
        end
@@ -104,7 +104,7 @@ map_options(Options) ->
 -spec map_view_option(term()) -> term().
 map_view_option({K, V})
   when is_binary(K) ->
-    {wh_util:to_atom(K, 'true'), V};
+    {kz_util:to_atom(K, 'true'), V};
 map_view_option(KV) -> KV.
 
 -spec do_fetch_results_count(couchbeam_db(), ddoc(), view_options()) ->
@@ -123,7 +123,7 @@ do_fetch_results_count(Db, DesignDoc, Options) ->
       ).
 
 -spec do_get_design_info(couchbeam_db(), ne_binary()) ->
-                                {'ok', wh_json:object()} |
+                                {'ok', kz_json:object()} |
                                 couchbeam_error().
 do_get_design_info(#db{}=Db, Design) ->
     ?RETRY_504(couchbeam:design_info(Db, Design)).

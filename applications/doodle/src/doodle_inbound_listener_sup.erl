@@ -20,16 +20,16 @@
 -define(DEFAULT_EXCHANGE, <<"sms">>).
 -define(DEFAULT_EXCHANGE_TYPE, <<"topic">>).
 -define(DEFAULT_EXCHANGE_OPTIONS, [{'passive', 'true'}] ).
--define(DEFAULT_EXCHANGE_OPTIONS_JOBJ, wh_json:from_list(?DEFAULT_EXCHANGE_OPTIONS) ).
+-define(DEFAULT_EXCHANGE_OPTIONS_JOBJ, kz_json:from_list(?DEFAULT_EXCHANGE_OPTIONS) ).
 
--define(DEFAULT_BROKER, wh_amqp_connections:primary_broker()).
+-define(DEFAULT_BROKER, kz_amqp_connections:primary_broker()).
 -define(QUEUE_NAME, <<"smsc_inbound_queue_", (?DOODLE_INBOUND_EXCHANGE)/binary>>).
 
--define(DOODLE_INBOUND_QUEUE, whapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_queue_name">>, ?QUEUE_NAME)).
--define(DOODLE_INBOUND_BROKER, whapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_broker">>, ?DEFAULT_BROKER)).
--define(DOODLE_INBOUND_EXCHANGE, whapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_exchange">>, ?DEFAULT_EXCHANGE)).
--define(DOODLE_INBOUND_EXCHANGE_TYPE, whapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_exchange_type">>, ?DEFAULT_EXCHANGE_TYPE)).
--define(DOODLE_INBOUND_EXCHANGE_OPTIONS,  whapps_config:get(?CONFIG_CAT, <<"inbound_exchange_options">>, ?DEFAULT_EXCHANGE_OPTIONS_JOBJ)).
+-define(DOODLE_INBOUND_QUEUE, kapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_queue_name">>, ?QUEUE_NAME)).
+-define(DOODLE_INBOUND_BROKER, kapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_broker">>, ?DEFAULT_BROKER)).
+-define(DOODLE_INBOUND_EXCHANGE, kapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_exchange">>, ?DEFAULT_EXCHANGE)).
+-define(DOODLE_INBOUND_EXCHANGE_TYPE, kapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_exchange_type">>, ?DEFAULT_EXCHANGE_TYPE)).
+-define(DOODLE_INBOUND_EXCHANGE_OPTIONS,  kapps_config:get(?CONFIG_CAT, <<"inbound_exchange_options">>, ?DEFAULT_EXCHANGE_OPTIONS_JOBJ)).
 
 -define(CHILDREN, [?WORKER_TYPE('doodle_inbound_listener', 'temporary')]).
 
@@ -86,32 +86,32 @@ default_connection() ->
                               ,exchange = ?DOODLE_INBOUND_EXCHANGE
                               ,type = ?DOODLE_INBOUND_EXCHANGE_TYPE
                               ,queue = ?DOODLE_INBOUND_QUEUE
-                              ,options = wh_json:to_proplist(?DOODLE_INBOUND_EXCHANGE_OPTIONS)
+                              ,options = kz_json:to_proplist(?DOODLE_INBOUND_EXCHANGE_OPTIONS)
                              }.
 
 -spec connections() -> amqp_listener_connections().
 connections() ->
-    case whapps_config:get(?CONFIG_CAT, <<"connections">>) of
+    case kapps_config:get(?CONFIG_CAT, <<"connections">>) of
         'undefined' -> [default_connection()];
-        JObj -> wh_json:foldl(fun connections_fold/3, [], JObj)
+        JObj -> kz_json:foldl(fun connections_fold/3, [], JObj)
     end.
 
--spec connections_fold(wh_json:key(), wh_json:json_term(), amqp_listener_connections()) ->
+-spec connections_fold(kz_json:key(), kz_json:json_term(), amqp_listener_connections()) ->
                               amqp_listener_connections().
 connections_fold(K, V, Acc) ->
     C = #amqp_listener_connection{name = K
-                                  ,broker = wh_json:get_value(<<"broker">>, V)
-                                  ,exchange = wh_json:get_value(<<"exchange">>, V)
-                                  ,type = wh_json:get_value(<<"type">>, V)
-                                  ,queue = wh_json:get_value(<<"queue">>, V)
-                                  ,options = connection_options(wh_json:get_value(<<"options">>, V))
+                                  ,broker = kz_json:get_value(<<"broker">>, V)
+                                  ,exchange = kz_json:get_value(<<"exchange">>, V)
+                                  ,type = kz_json:get_value(<<"type">>, V)
+                                  ,queue = kz_json:get_value(<<"queue">>, V)
+                                  ,options = connection_options(kz_json:get_value(<<"options">>, V))
                                  },
     [C | Acc].
 
--spec connection_options(api_object()) -> wh_proplist().
+-spec connection_options(api_object()) -> kz_proplist().
 connection_options('undefined') ->
     ?DEFAULT_EXCHANGE_OPTIONS;
 connection_options(JObj) ->
-    [{wh_util:to_atom(K, 'true'), V}
-     || {K, V} <- wh_json:to_proplist(JObj)
+    [{kz_util:to_atom(K, 'true'), V}
+     || {K, V} <- kz_json:to_proplist(JObj)
     ].

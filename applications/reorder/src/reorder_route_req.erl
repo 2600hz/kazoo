@@ -12,10 +12,10 @@
 
 -export([handle_req/2]).
 
--spec handle_req/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_req/2 :: (kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
-    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
-    case wh_util:is_empty(AccountId) of
+    AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
+    case kz_util:is_empty(AccountId) of
         'false' -> 'ok';
         'true' ->
             lager:debug("received route request with no account-id"),
@@ -23,7 +23,7 @@ handle_req(JObj, Props) ->
             maybe_known_number(ControllerQ, JObj)
     end.
 
--spec maybe_known_number(ne_binary(), wh_json:object()) -> 'ok'.
+-spec maybe_known_number(ne_binary(), kz_json:object()) -> 'ok'.
 maybe_known_number(ControllerQ, JObj) ->
     Number = get_dest_number(JObj),
     case knm_number:lookup_account(Number) of
@@ -33,10 +33,10 @@ maybe_known_number(ControllerQ, JObj) ->
             send_unknown_number_response(JObj, ControllerQ)
     end.
 
--spec get_dest_number(wh_json:object()) -> ne_binary().
+-spec get_dest_number(kz_json:object()) -> ne_binary().
 get_dest_number(JObj) ->
-    {User, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
-    case whapps_config:get_is_true(<<"reorder">>, <<"assume_inbound_e164">>) of
+    {User, _} = kapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
+    case kapps_config:get_is_true(<<"reorder">>, <<"assume_inbound_e164">>) of
         'true' ->
             Number = assume_e164(User),
             lager:debug("assuming number is e164, normalizing to ~s", [Number]),
@@ -51,30 +51,30 @@ get_dest_number(JObj) ->
 assume_e164(<<$+, _/binary>> = Number) -> Number;
 assume_e164(Number) -> <<$+, Number/binary>>.
 
--spec send_known_number_response(wh_json:object(), ne_binary()) -> 'ok'.
+-spec send_known_number_response(kz_json:object(), ne_binary()) -> 'ok'.
 send_known_number_response(JObj, Q) ->
-    ErrorCode = whapps_config:get_binary(?APP_NAME, <<"known-error-code">>, <<"686">>),
-    ErrorMsg = whapps_config:get_binary(?APP_NAME, <<"known-error-message">>, <<"PEBCAK">>),
+    ErrorCode = kapps_config:get_binary(?APP_NAME, <<"known-error-code">>, <<"686">>),
+    ErrorMsg = kapps_config:get_binary(?APP_NAME, <<"known-error-message">>, <<"PEBCAK">>),
     lager:debug("sending known number response: ~s ~s", [ErrorCode, ErrorMsg]),
-    Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+    Resp = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Method">>, <<"error">>}
             ,{<<"Route-Error-Code">>, ErrorCode}
             ,{<<"Route-Error-Message">>, ErrorMsg}
             ,{<<"Defer-Response">>, <<"true">>}
-            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
            ],
-    wapi_route:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
+    kapi_route:publish_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp).
 
--spec send_unknown_number_response(wh_json:object(), ne_binary()) -> 'ok'.
+-spec send_unknown_number_response(kz_json:object(), ne_binary()) -> 'ok'.
 send_unknown_number_response(JObj, Q) ->
-    ErrorCode = whapps_config:get_binary(?APP_NAME, <<"unknown-error-code">>, <<"604">>),
-    ErrorMsg = whapps_config:get_binary(?APP_NAME, <<"unknown-error-message">>, <<"Nope Nope Nope">>),
+    ErrorCode = kapps_config:get_binary(?APP_NAME, <<"unknown-error-code">>, <<"604">>),
+    ErrorMsg = kapps_config:get_binary(?APP_NAME, <<"unknown-error-message">>, <<"Nope Nope Nope">>),
     lager:debug("sending unknown number response: ~s ~s", [ErrorCode, ErrorMsg]),
-    Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+    Resp = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Method">>, <<"error">>}
             ,{<<"Route-Error-Code">>, ErrorCode}
             ,{<<"Route-Error-Message">>, ErrorMsg}
             ,{<<"Defer-Response">>, <<"true">>}
-            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
            ],
-    wapi_route:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
+    kapi_route:publish_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp).

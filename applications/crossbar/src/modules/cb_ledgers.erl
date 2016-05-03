@@ -158,23 +158,23 @@ credit_or_debit(Context, Action) ->
     ReqData = cb_context:req_data(Context),
 
     AccountId = cb_context:account_id(Context),
-    SrcService = wh_json:get_value([<<"source">>, <<"service">>], ReqData),
-    SrcId = wh_json:get_value([<<"source">>, <<"id">>], ReqData),
-    Usage = wh_json:to_proplist(wh_json:get_value(<<"usage">>, ReqData)),
+    SrcService = kz_json:get_value([<<"source">>, <<"service">>], ReqData),
+    SrcId = kz_json:get_value([<<"source">>, <<"id">>], ReqData),
+    Usage = kz_json:to_proplist(kz_json:get_value(<<"usage">>, ReqData)),
 
     Props =
         props:filter_undefined([
-            {<<"amount">>, wh_json:get_value(<<"amount">>, ReqData)}
-            ,{<<"description">>, wh_json:get_value(<<"description">>, ReqData)}
-            ,{<<"period_start">>, wh_json:get_value([<<"period">>, <<"start">>], ReqData)}
-            ,{<<"period_end">>, wh_json:get_value([<<"period">>, <<"end">>], ReqData)}
+            {<<"amount">>, kz_json:get_value(<<"amount">>, ReqData)}
+            ,{<<"description">>, kz_json:get_value(<<"description">>, ReqData)}
+            ,{<<"period_start">>, kz_json:get_value([<<"period">>, <<"start">>], ReqData)}
+            ,{<<"period_end">>, kz_json:get_value([<<"period">>, <<"end">>], ReqData)}
         ]),
 
     case process_action(Action, SrcService, SrcId, AccountId, Usage, Props) of
         {'error', Reason} ->
             crossbar_util:response('error', Reason, Context);
         {'ok', JObj} ->
-            JObj1 = wh_json:public_fields(JObj),
+            JObj1 = kz_json:public_fields(JObj),
             crossbar_util:response(JObj1, Context)
     end.
 
@@ -185,8 +185,8 @@ credit_or_debit(Context, Action) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec process_action(ne_binary(), ne_binary(), ne_binary()
-                     ,ne_binary(), wh_proplist(), wh_proplist()) ->
-                            {'ok', wh_json:object()} |
+                     ,ne_binary(), kz_proplist(), kz_proplist()) ->
+                            {'ok', kz_json:object()} |
                             {'error', any()}.
 process_action(?CREDIT, SrcService, SrcId, Account, Usage, Props) ->
     kz_ledger:credit(SrcService, SrcId, Account, Usage, Props);
@@ -221,7 +221,7 @@ read_ledger(Context, Ledger) ->
             crossbar_util:response('error', Reason, Context);
         {'ok', Value} ->
             crossbar_util:response(
-                wh_json:from_list([
+                kz_json:from_list([
                     {Ledger, Value}
                 ])
                 ,Context

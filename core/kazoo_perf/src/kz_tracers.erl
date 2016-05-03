@@ -17,7 +17,7 @@ add_trace(Pid, CollectFor) ->
     spawn(fun() ->
                   io:format("started trace for ~p in ~p~n", [Pid, self()]),
                   dbg:stop_clear(),
-                  BinFile = wh_util:to_list(<<"/home/james/eflame.trace">>),
+                  BinFile = kz_util:to_list(<<"/home/james/eflame.trace">>),
                   eflame2:write_trace('global_calls_plus_new_procs'
                                      ,BinFile
                                      ,Pid
@@ -49,7 +49,7 @@ gen_load(N, D) ->
 wait_for_refs(Start, MaxMailbox, Tables, []) ->
     case cache_data() of
         {0, _} ->
-            io:format("finished test after ~pms: ~p~n", [wh_util:elapsed_ms(Start), MaxMailbox]),
+            io:format("finished test after ~pms: ~p~n", [kz_util:elapsed_ms(Start), MaxMailbox]),
             table_status(Tables);
         _ -> timer:sleep(1000),
              wait_for_refs(Start, MaxMailbox, Tables, [])
@@ -73,8 +73,8 @@ table_status(Ts) ->
     io:format("tables: ~p ~p ~p~n", [{T, ets:info(T, 'size')} || T <- Ts]).
 
 do_load_gen(Ds) ->
-    AccountId = wh_util:rand_hex_binary(16),
-    AccountDb = wh_util:format_account_db(AccountId),
+    AccountId = kz_util:rand_hex_binary(16),
+    AccountDb = kz_util:format_account_db(AccountId),
     'true' = kz_datamgr:db_create(AccountDb),
 
     io:format("building ~p with ~p docs~n", [AccountDb, Ds]),
@@ -107,8 +107,8 @@ verify_no_docs(Docs) ->
 verify_no_doc(Doc) ->
     case kz_cache:peek_local(?CACHE_NAME
                              ,{'couch_util'
-                               ,wh_doc:account_db(Doc)
-                               ,wh_doc:id(Doc)
+                               ,kz_doc:account_db(Doc)
+                               ,kz_doc:id(Doc)
                               }
                             )
     of
@@ -117,12 +117,12 @@ verify_no_doc(Doc) ->
     end.
 
 new_doc(AccountDb, Ref) ->
-    Doc = wh_doc:update_pvt_parameters(
-            wh_json:from_list([{<<"_id">>, wh_util:rand_hex_binary(16)}
+    Doc = kz_doc:update_pvt_parameters(
+            kz_json:from_list([{<<"_id">>, kz_util:rand_hex_binary(16)}
                               ,{<<"ref">>, Ref}
                               ,{<<"pvt_type">>, <<"load_test">>}
-                               | [{wh_util:rand_hex_binary(8)
-                                  ,wh_util:rand_hex_binary(8)
+                               | [{kz_util:rand_hex_binary(8)
+                                  ,kz_util:rand_hex_binary(8)
                                   }
                                   || _ <- lists:seq(1, 12)
                                  ]
@@ -130,7 +130,7 @@ new_doc(AccountDb, Ref) ->
                                       ,AccountDb
            ),
     {'ok', Saved} = kz_datamgr:save_doc(AccountDb, Doc),
-    {'ok', _Loaded} = kz_datamgr:open_cache_doc(AccountDb, wh_doc:id(Saved)),
+    {'ok', _Loaded} = kz_datamgr:open_cache_doc(AccountDb, kz_doc:id(Saved)),
     Saved.
 
 do_stuff_to_docs(Start, _AccountDb, []) ->
@@ -166,17 +166,17 @@ wait_for_cache(Start, {N, F}) ->
             timer:sleep(1000),
             wait_for_cache(Start, {M, G});
         {0, _F} ->
-            io:format("~pms done (in ~p)~n", [wh_util:elapsed_ms(Start), _F]);
+            io:format("~pms done (in ~p)~n", [kz_util:elapsed_ms(Start), _F]);
         _ ->
             timer:sleep(1000),
             wait_for_cache(Start, {N, F})
     end.
 
 perform_op({'edit', Doc}, Acc, AccountDb) ->
-    Inc = wh_json:get_integer_value(<<"inc">>, Doc, 0),
-    Edited = wh_json:set_value(<<"inc">>, Inc+1, Doc),
+    Inc = kz_json:get_integer_value(<<"inc">>, Doc, 0),
+    Edited = kz_json:set_value(<<"inc">>, Inc+1, Doc),
     {'ok', Saved} = kz_datamgr:save_doc(AccountDb, Edited),
-    {'ok', _Loaded} = kz_datamgr:open_cache_doc(AccountDb, wh_doc:id(Saved)),
+    {'ok', _Loaded} = kz_datamgr:open_cache_doc(AccountDb, kz_doc:id(Saved)),
     [Saved | Acc];
 perform_op({'delete', Doc}, Acc, AccountDb) ->
     kz_datamgr:del_doc(AccountDb, Doc),

@@ -8,9 +8,9 @@
                    , stdlib
                    , crypto
 
-                   , whistle
+                   , kazoo
                    , kazoo_data
-                   , whistle_services
+                   , kazoo_services
 
                    , lager
                    ]}

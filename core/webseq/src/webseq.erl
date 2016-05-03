@@ -131,7 +131,7 @@ trunc(Srv) -> gen_server:cast(server_ref(Srv), 'trunc').
 rotate(Srv) -> gen_server:cast(server_ref(Srv), 'rotate').
 
 process_pid(P) ->
-    ProcId = wh_json:get_value(<<"Process-ID">>, P),
+    ProcId = kz_json:get_value(<<"Process-ID">>, P),
     case re:run(ProcId, <<".*(\<.*\>)">>, [{'capture', [1], 'binary'}]) of
         {'match', [M]} -> M;
         {'match', M} -> iolist_to_binary(M);

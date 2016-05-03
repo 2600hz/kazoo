@@ -21,7 +21,7 @@
 
 -spec init() -> 'ok'.
 init() ->
-    case whapps_config:get_is_true(?MODULE, <<"maybe_archive_modbs">>, 'false') of
+    case kapps_config:get_is_true(?MODULE, <<"maybe_archive_modbs">>, 'false') of
         'true' ->
             crossbar_bindings:bind(crossbar_cleanup:binding_account_mod(), ?MODULE, 'clean_modb');
         'false' ->

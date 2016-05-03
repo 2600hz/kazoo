@@ -12,7 +12,7 @@ Starting with Kazoo 4.0 Erlang support will target 18+ and will not be backward 
 
 #### Number Manager
 
-Upgrading to 4.0 will shift number management from `core/whistle_number_manager` to `core/kazoo_number_manager`.
+Upgrading to 4.0 will shift number management from `core/kazoo_number_manager` to `core/kazoo_number_manager`.
 The upgrade process *should* be seamless from the user's perspective, with some exceptions:
 * API calls for attachments and port requests all go to `cb_port_requests`
 
@@ -32,9 +32,9 @@ In the 3.x series, a `raw_numbers` attribute was allowed, ostensibly to match an
 
 ```shell
 # Account
-#> sup whapps_account_config set {ACCOUNT_ID} stepswitch block_anonymous_caller_id true
+#> sup kapps_account_config set {ACCOUNT_ID} stepswitch block_anonymous_caller_id true
 # System
-#> sup whapps_config set_default stepswitch block_anonymous_caller_id true
+#> sup kapps_config set_default stepswitch block_anonymous_caller_id true
 ```
 
 #### Voicemail Messages
@@ -49,9 +49,9 @@ The Blackhole application providing websocket support currently utilizes the soc
 
 The media prompts that we used to keep in the code repository for historical reasons has been moved the kazoo-prompts repository.
 
-#### Consistent naming (removal of references to whistle)
+#### Consistent naming (removal of references to kazoo)
 
-All instances of whistle or variations such as wh_ have been replaced with kazoo or kz_.  This will include all maintenance functions as well as init.d/systemd scripts.  A script is provided to convert any custom code but will require in-depth testing.
+All instances of kazoo or variations such as kz_ have been replaced with kazoo or kz_.  This will include all maintenance functions as well as init.d/systemd scripts.  A script is provided to convert any custom code but will require in-depth testing.
 
 ### 3.22
 
@@ -61,7 +61,7 @@ To upgrade to Kazoo-FreeSWITCH 1.4.26+ or FreeSWITCH 1.6+ you must set the syste
 
 #### Monster UI Enabled Applications
 
-The enabled Monster UI applications were moved from an object on the account document to its own document with the id `apps_store`.  When you run `sup whapps_maintenance migrate` this will automatically preform this operation but until it is complete users logging into Monster UI may not see their previously enabled applications.  Once the migration is complete the change should be transparent to end-users.
+The enabled Monster UI applications were moved from an object on the account document to its own document with the id `apps_store`.  When you run `sup kapps_maintenance migrate` this will automatically preform this operation but until it is complete users logging into Monster UI may not see their previously enabled applications.  Once the migration is complete the change should be transparent to end-users.
 
 #### Company Directory PDF
 
@@ -84,6 +84,6 @@ Most operations have been moved to the Cowboy or Cowlib projects. We will formal
 exmpp library has problems restarting. it will be replaced by `deps/escalus`
 
 #### Deprecating `deps/ibrowse`
-`ibrowse` will be replaced by `core/whistle_web/kz_http` which is using Erlang `httpc`. `kz_http` is the new HTTP client module now and the previous `kz_http` module is renamed to `kz_http_util`.
+`ibrowse` will be replaced by `core/kazoo_web/kz_http` which is using Erlang `httpc`. `kz_http` is the new HTTP client module now and the previous `kz_http` module is renamed to `kz_http_util`.
 
 If you maintain code apart from Kazoo that uses `ibrowse`, please either covert to equivalent functionality with `kz_http`/`httpc` or plan how you’ll build your custom code with your own dependency of `ibrowse`.

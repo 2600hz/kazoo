@@ -8,9 +8,9 @@
                  , stdlib
                  , crypto
 
-                 , whistle
+                 , kazoo
                  , kazoo_etsmgr
-                 , whistle_config
+                 , kazoo_config
 
                  , lager
                  ]},

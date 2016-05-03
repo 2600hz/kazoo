@@ -32,134 +32,134 @@
 
 -include("kz_documents.hrl").
 
--spec call_id(wh_json:object()) -> api_binary().
+-spec call_id(kz_json:object()) -> api_binary().
 call_id(JObj) ->
-    wh_json:get_value(<<"Call-ID">>, JObj).
+    kz_json:get_value(<<"Call-ID">>, JObj).
 
--spec other_leg_call_id(wh_json:object()) -> api_binary().
+-spec other_leg_call_id(kz_json:object()) -> api_binary().
 other_leg_call_id(JObj) ->
-    wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj).
+    kz_json:get_value(<<"Other-Leg-Call-ID">>, JObj).
 
--spec other_leg_destination_number(wh_json:object()) -> api_binary().
--spec other_leg_destination_number(wh_json:object(), Default) -> ne_binary() | Default.
+-spec other_leg_destination_number(kz_json:object()) -> api_binary().
+-spec other_leg_destination_number(kz_json:object(), Default) -> ne_binary() | Default.
 other_leg_destination_number(JObj) ->
     other_leg_destination_number(JObj, 'undefined').
 other_leg_destination_number(JObj, Default) ->
-    wh_json:get_ne_value(<<"Other-Leg-Destination-Number">>, JObj, Default).
+    kz_json:get_ne_value(<<"Other-Leg-Destination-Number">>, JObj, Default).
 
--spec replaced_by(wh_json:object()) -> api_binary().
+-spec replaced_by(kz_json:object()) -> api_binary().
 replaced_by(JObj) ->
-    wh_json:get_value(<<"Replaced-By">>, JObj).
+    kz_json:get_value(<<"Replaced-By">>, JObj).
 
--spec custom_channel_vars(wh_json:object()) -> api_object().
--spec custom_channel_vars(wh_json:object(), Default) -> api_object() | Default.
+-spec custom_channel_vars(kz_json:object()) -> api_object().
+-spec custom_channel_vars(kz_json:object(), Default) -> api_object() | Default.
 custom_channel_vars(JObj) ->
     custom_channel_vars(JObj, 'undefined').
 
 custom_channel_vars(JObj, Default) ->
-    wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, Default).
+    kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, Default).
 
--spec custom_channel_var(wh_json:object(), wh_json:key()) ->
+-spec custom_channel_var(kz_json:object(), kz_json:key()) ->
                                 api_binary().
--spec custom_channel_var(wh_json:object(), wh_json:key(), Default) ->
+-spec custom_channel_var(kz_json:object(), kz_json:key(), Default) ->
                                 ne_binary() | Default.
 custom_channel_var(JObj, Key) ->
     custom_channel_var(JObj, Key, 'undefined').
 
 custom_channel_var(JObj, Key, Default) ->
-    wh_json:get_value([<<"Custom-Channel-Vars">>, Key], JObj, Default).
+    kz_json:get_value([<<"Custom-Channel-Vars">>, Key], JObj, Default).
 
--spec custom_sip_headers(wh_json:object()) -> api_object().
+-spec custom_sip_headers(kz_json:object()) -> api_object().
 custom_sip_headers(JObj) ->
-    wh_json:get_value(<<"Custom-SIP-Headers">>, JObj).
+    kz_json:get_value(<<"Custom-SIP-Headers">>, JObj).
 
--spec authorizing_id(wh_json:object()) -> api_binary().
+-spec authorizing_id(kz_json:object()) -> api_binary().
 authorizing_id(JObj) ->
     custom_channel_var(JObj, <<"Authorizing-ID">>).
 
--spec authorizing_type(wh_json:object()) -> api_binary().
+-spec authorizing_type(kz_json:object()) -> api_binary().
 authorizing_type(JObj) ->
     custom_channel_var(JObj, <<"Authorizing-Type">>).
 
--spec dtmf_digit(wh_json:object()) -> api_binary().
+-spec dtmf_digit(kz_json:object()) -> api_binary().
 dtmf_digit(JObj) ->
-    wh_json:get_value(<<"DTMF-Digit">>, JObj).
+    kz_json:get_value(<<"DTMF-Digit">>, JObj).
 
--spec event_name(wh_json:object()) -> api_binary().
+-spec event_name(kz_json:object()) -> api_binary().
 event_name(JObj) ->
-    wh_json:get_value(<<"Event-Name">>, JObj).
+    kz_json:get_value(<<"Event-Name">>, JObj).
 
--spec hangup_cause(wh_json:object()) -> api_binary().
+-spec hangup_cause(kz_json:object()) -> api_binary().
 hangup_cause(JObj) ->
-    wh_json:get_value(<<"Hangup-Cause">>, JObj).
+    kz_json:get_value(<<"Hangup-Cause">>, JObj).
 
--spec hangup_code(wh_json:object()) -> api_binary().
+-spec hangup_code(kz_json:object()) -> api_binary().
 hangup_code(JObj) ->
-    wh_json:get_value(<<"Hangup-Code">>, JObj).
+    kz_json:get_value(<<"Hangup-Code">>, JObj).
 
--spec disposition(wh_json:object()) -> api_binary().
+-spec disposition(kz_json:object()) -> api_binary().
 disposition(JObj) ->
-    wh_json:get_value(<<"Disposition">>, JObj).
+    kz_json:get_value(<<"Disposition">>, JObj).
 
--spec application_name(wh_json:object()) -> api_binary().
+-spec application_name(kz_json:object()) -> api_binary().
 application_name(JObj) ->
-    wh_json:get_value(<<"Application-Name">>, JObj).
+    kz_json:get_value(<<"Application-Name">>, JObj).
 
--spec application_event(wh_json:object()) -> api_binary().
+-spec application_event(kz_json:object()) -> api_binary().
 application_event(JObj) ->
-    wh_json:get_value(<<"Application-Event">>, JObj).
+    kz_json:get_value(<<"Application-Event">>, JObj).
 
--spec application_data(wh_json:object()) -> wh_json:object().
+-spec application_data(kz_json:object()) -> kz_json:object().
 application_data(JObj) ->
-    wh_json:get_value(<<"Application-Data">>, JObj, wh_json:new()).
+    kz_json:get_value(<<"Application-Data">>, JObj, kz_json:new()).
 
--spec application_response(wh_json:object()) -> api_binary().
+-spec application_response(kz_json:object()) -> api_binary().
 application_response(JObj) ->
-    wh_json:get_value(<<"Application-Response">>, JObj).
+    kz_json:get_value(<<"Application-Response">>, JObj).
 
--spec response_message(wh_json:object()) -> api_binary().
+-spec response_message(kz_json:object()) -> api_binary().
 response_message(JObj) ->
-    wh_json:get_value(<<"Response-Message">>, JObj).
+    kz_json:get_value(<<"Response-Message">>, JObj).
 
--spec response_code(wh_json:object()) -> api_binary().
+-spec response_code(kz_json:object()) -> api_binary().
 response_code(JObj) ->
-    wh_json:get_value(<<"Response-Code">>, JObj).
+    kz_json:get_value(<<"Response-Code">>, JObj).
 
--spec account_id(wh_json:object()) -> api_binary().
+-spec account_id(kz_json:object()) -> api_binary().
 account_id(JObj) ->
     custom_channel_var(JObj, <<"Account-ID">>).
 
--spec owner_id(wh_json:object()) -> api_binary().
+-spec owner_id(kz_json:object()) -> api_binary().
 owner_id(JObj) ->
     custom_channel_var(JObj, <<"Owner-ID">>).
 
--spec timestamp(wh_json:object()) -> api_integer().
+-spec timestamp(kz_json:object()) -> api_integer().
 timestamp(JObj) ->
-    wh_json:get_integer_value(<<"Timestamp">>, JObj).
+    kz_json:get_integer_value(<<"Timestamp">>, JObj).
 
--spec ringing_seconds(wh_json:object()) -> api_integer().
+-spec ringing_seconds(kz_json:object()) -> api_integer().
 ringing_seconds(JObj) ->
-    wh_json:get_integer_value(<<"Ringing-Seconds">>, JObj).
+    kz_json:get_integer_value(<<"Ringing-Seconds">>, JObj).
 
--spec billing_seconds(wh_json:object()) -> api_integer().
+-spec billing_seconds(kz_json:object()) -> api_integer().
 billing_seconds(JObj) ->
-    wh_json:get_integer_value(<<"Billing-Seconds">>, JObj).
+    kz_json:get_integer_value(<<"Billing-Seconds">>, JObj).
 
--spec duration_seconds(wh_json:object()) -> api_integer().
+-spec duration_seconds(kz_json:object()) -> api_integer().
 duration_seconds(JObj) ->
-    wh_json:get_integer_value(<<"Duration-Seconds">>, JObj).
+    kz_json:get_integer_value(<<"Duration-Seconds">>, JObj).
 
--spec is_call_forwarded(wh_json:object()) -> api_boolean().
--spec is_call_forwarded(wh_json:object(), Default) -> boolean() | Default.
+-spec is_call_forwarded(kz_json:object()) -> api_boolean().
+-spec is_call_forwarded(kz_json:object(), Default) -> boolean() | Default.
 is_call_forwarded(JObj) ->
     is_call_forwarded(JObj, 'undefined').
 is_call_forwarded(JObj, Default) ->
     case custom_channel_var(JObj, <<"Call-Forward">>, Default) of
         'undefined' -> Default;
         Default -> Default;
-        IsForwarded -> wh_util:is_true(IsForwarded)
+        IsForwarded -> kz_util:is_true(IsForwarded)
     end.
 
--spec error_message(wh_json:object()) -> api_binary().
+-spec error_message(kz_json:object()) -> api_binary().
 error_message(JObj) ->
-    wh_json:get_value(<<"Error-Message">>, JObj).
+    kz_json:get_value(<<"Error-Message">>, JObj).

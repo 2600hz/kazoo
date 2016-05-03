@@ -1,5 +1,5 @@
 /*
-Section: Whistle Couch
+Section: Kazoo Couch
 Title: Compaction
 Language: en-US
 */
@@ -127,7 +127,7 @@ You can also cancel a specific shard being compacted:
 
 ## Configuration
 
-The compactor's configuration can be found in the `system_config/whistle_couch` doc. The following fields are available for tweaking:
+The compactor's configuration can be found in the `system_config/kazoo_couch` doc. The following fields are available for tweaking:
 
 * `autocompaction_check`: Defaults to 60000 ms (60 seconds); how often to check if auto-compaction is enabled, and if so and the compactor isn't running a job, start a compact job.
 * `bigcouch_cookie`: The cookie value of all the BigCouch nodes.
@@ -149,11 +149,11 @@ If the Kazoo node can't talk to the BigCouch node directly (using Distributed Er
 
 Check the cookie:
 
-`sup whapps_config get whistle_couch bigcouch_cookie`
+`sup kapps_config get kazoo_couch bigcouch_cookie`
 
 If it is returning an improper value, set it to the proper cookie:
 
-`sup whapps_config set whistle_couch bigcouch_cookie [cookie_value]`
+`sup kapps_config set kazoo_couch bigcouch_cookie [cookie_value]`
 
 ### Warning while compacting
 
@@ -161,13 +161,13 @@ When you manually compact a db, especially if the Kazoo node has recently starte
 
     5> couch_compactor_fsm:compact_db(<<"bigcouch@db01.somehost.com">>,<<"some_db">>).
     =ERROR REPORT==== 16-May-2012::23:39:09 ===
-    global: 'whistle_con_1337211446@whapps.somehost.com' failed to connect to 'bigcouch@db01.somehost.com'
+    global: 'kazoo_con_1337211446@kapps.somehost.com' failed to connect to 'bigcouch@db01.somehost.com'
     =ERROR REPORT==== 16-May-2012::23:39:09 ===
-    global: 'whistle_con_1337211446@whapps.somehost.com' failed to connect to 'bigcouch@db02.somehost.com'
+    global: 'kazoo_con_1337211446@kapps.somehost.com' failed to connect to 'bigcouch@db02.somehost.com'
     =ERROR REPORT==== 16-May-2012::23:39:10 ===
-    global: 'whistle_con_1337211446@whapps.somehost.com' failed to connect to 'bigcouch@db03.somehost.com'
+    global: 'kazoo_con_1337211446@kapps.somehost.com' failed to connect to 'bigcouch@db03.somehost.com'
     =ERROR REPORT==== 16-May-2012::23:39:10 ===
-    global: 'whistle_con_1337211446@whapps.somehost.com' failed to connect to 'bigcouch@db04.somehost.com'
+    global: 'kazoo_con_1337211446@kapps.somehost.com' failed to connect to 'bigcouch@db04.somehost.com'
     done
 
 These are ignorable and are part of the initial connection between a Kazoo and BigCouch node.

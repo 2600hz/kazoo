@@ -11,11 +11,11 @@
                   , ssl
                   , inets
 
-                  , whistle
-                  , whistle_amqp
+                  , kazoo
+                  , kazoo_amqp
                   , kazoo_data
                   , kazoo_bindings
-                  , whistle_apps
+                  , kazoo_apps
 
                   , lager
                   , ranch

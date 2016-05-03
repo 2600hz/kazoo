@@ -25,7 +25,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {call :: whapps_call:call()
+-record(state, {call :: kapps_call:call()
                 ,callback :: fun()
                 ,args :: list()
                 ,pid :: pid()
@@ -49,10 +49,10 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the listener and binds to the call channel destroy events
 %%--------------------------------------------------------------------
--spec start_link(whapps_call:call(), fun(), list()) -> startlink_ret().
+-spec start_link(kapps_call:call(), fun(), list()) -> startlink_ret().
 start_link(Call, Fun, Args) ->
     gen_listener:start_link(?SERVER
-                            ,[{'bindings', ?BINDINGS(whapps_call:call_id(Call))}
+                            ,[{'bindings', ?BINDINGS(kapps_call:call_id(Call))}
                               ,{'responders', ?RESPONDERS}
                               ,{'queue_name', ?QUEUE_NAME}       % optional to include
                               ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
@@ -68,10 +68,10 @@ start_link(Call, Fun, Args) ->
 %% CHANNEL_DESTROY.
 %% @end
 %%--------------------------------------------------------------------
--spec relay_amqp(wh_json:object(), wh_proplist()) -> any().
+-spec relay_amqp(kz_json:object(), kz_proplist()) -> any().
 relay_amqp(JObj, Props) ->
     Pid = props:get_value('cf_task_pid', Props),
-    whapps_call_command:relay_event(Pid, JObj).
+    kapps_call_command:relay_event(Pid, JObj).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -84,7 +84,7 @@ relay_amqp(JObj, Props) ->
 %%--------------------------------------------------------------------
 -spec init([fun()]) -> {'ok', state()}.
 init([Call, Callback, Args]) ->
-    _ = whapps_call:put_callid(Call),
+    _ = kapps_call:put_callid(Call),
     lager:debug("started event listener for cf_task"),
     {'ok', #state{call=Call
                   ,callback=Callback
@@ -146,7 +146,7 @@ handle_info(Info, State) ->
 %% Allows listener to pass options to handlers
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(wh_json:object(), state()) -> {'reply', wh_proplist()}.
+-spec handle_event(kz_json:object(), state()) -> {'reply', kz_proplist()}.
 handle_event(_JObj, #state{pid='undefined'}) -> 'ignore';
 handle_event(_JObj, #state{pid=Pid}) ->
     {'reply', [{'cf_task_pid', Pid}]}.
@@ -180,16 +180,16 @@ launch_task(#state{queue=Q
                    ,callback=Callback
                    ,args=Args
                   }=State) ->
-    {Pid, Ref} = wh_util:spawn_monitor(fun task_launched/5, [Q, Call, Callback, Args, self()]),
+    {Pid, Ref} = kz_util:spawn_monitor(fun task_launched/5, [Q, Call, Callback, Args, self()]),
     lager:debug("watching task execute in ~p (~p)", [Pid, Ref]),
     State#state{pid=Pid, ref=Ref}.
 
 %% @private
--spec task_launched(api_binary(), whapps_call:call(), fun(), list(), pid()) -> any().
+-spec task_launched(api_binary(), kapps_call:call(), fun(), list(), pid()) -> any().
 task_launched(Q, Call, Callback, Args, Parent) ->
-    whapps_call:put_callid(Call),
-    wh_amqp_channel:consumer_pid(Parent),
-    Funs = [{fun whapps_call:kvs_store/3, 'consumer_pid', Parent}
-            ,{fun whapps_call:set_controller_queue/2, Q}
+    kapps_call:put_callid(Call),
+    kz_amqp_channel:consumer_pid(Parent),
+    Funs = [{fun kapps_call:kvs_store/3, 'consumer_pid', Parent}
+            ,{fun kapps_call:set_controller_queue/2, Q}
            ],
-    apply(Callback, Args ++ [whapps_call:exec(Funs, Call)]).
+    apply(Callback, Args ++ [kapps_call:exec(Funs, Call)]).

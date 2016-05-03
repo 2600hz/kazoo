@@ -19,11 +19,11 @@
 -spec extract_user(ne_binary()) -> {ne_binary(), ne_binary(), ne_binaries()}.
 extract_user(User) ->
     [#uri{scheme=Proto, user=Username, domain=Realm}] = kzsip_uri:uris(User),
-    {wh_util:to_binary(Proto), <<Username/binary, "@", Realm/binary>>, [Username, Realm]}.
+    {kz_util:to_binary(Proto), <<Username/binary, "@", Realm/binary>>, [Username, Realm]}.
 
--spec normalize_variables(wh_proplist()) -> wh_proplist().
+-spec normalize_variables(kz_proplist()) -> kz_proplist().
 normalize_variables(Props) ->
-    [{wh_json:normalize_key(K), V} || {K, V} <- Props].
+    [{kz_json:normalize_key(K), V} || {K, V} <- Props].
 
 -spec are_valid_uris(ne_binaries()) -> boolean().
 are_valid_uris(L) ->

@@ -32,31 +32,31 @@
                            ,{<<"total_packets">>, 1000}
                           ]).
 
--spec sysconfig_default_rates() -> wh_json:object().
+-spec sysconfig_default_rates() -> kz_json:object().
 sysconfig_default_rates() ->
-    AccountSec = wh_json:from_list(?ACCOUNT_RATES_SEC),
-    AccountMin = wh_json:from_list(?ACCOUNT_RATES_MIN),
+    AccountSec = kz_json:from_list(?ACCOUNT_RATES_SEC),
+    AccountMin = kz_json:from_list(?ACCOUNT_RATES_MIN),
 
-    AccountRates = wh_json:from_list([{?MINUTE, AccountMin}
+    AccountRates = kz_json:from_list([{?MINUTE, AccountMin}
                                       ,{?SECOND, AccountSec}
                                      ]),
 
-    DeviceSec = wh_json:from_list(?DEVICE_RATES_SEC),
-    DeviceMin = wh_json:from_list(?DEVICE_RATES_MIN),
+    DeviceSec = kz_json:from_list(?DEVICE_RATES_SEC),
+    DeviceMin = kz_json:from_list(?DEVICE_RATES_MIN),
 
-    DeviceRates = wh_json:from_list([{?MINUTE, DeviceMin}
+    DeviceRates = kz_json:from_list([{?MINUTE, DeviceMin}
                                      ,{?SECOND, DeviceSec}
                                     ]),
 
-    wh_json:from_list([{<<"account">>, AccountRates}
+    kz_json:from_list([{<<"account">>, AccountRates}
                        ,{<<"device">>, DeviceRates}
                       ]).
 
 -spec start_link() -> 'ignore'.
 start_link() ->
-    _ = wh_util:spawn(fun default_rate_limits/0),
+    _ = kz_util:spawn(fun default_rate_limits/0),
     'ignore'.
 
--spec default_rate_limits() -> wh_json:object().
+-spec default_rate_limits() -> kz_json:object().
 default_rate_limits() ->
-    whapps_config:get(?APP_NAME, <<"rate_limits">>, sysconfig_default_rates()).
+    kapps_config:get(?APP_NAME, <<"rate_limits">>, sysconfig_default_rates()).

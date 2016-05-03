@@ -72,8 +72,8 @@ assign() ->
 
 -spec assign(ne_binary(), ne_binary()) -> 'no_return'.
 assign(IP, Account) ->
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountId = kz_util:format_account_id(Account, 'raw'),
     _ = case kz_datamgr:open_doc(AccountDb, AccountId) of
             {'ok', _} ->
                 case kz_ip:assign(Account, IP) of
@@ -152,7 +152,7 @@ summary(Host) ->
         end,
     'no_return'.
 
--spec print_summary(wh_json:objects()) -> 'ok'.
+-spec print_summary(kz_json:objects()) -> 'ok'.
 print_summary(JObjs) ->
     FormatString = "| ~-15s | ~-10s | ~-10s | ~-30s | ~-32s |~n",
     io:format("+-----------------+------------+------------+--------------------------------+----------------------------------+~n", []),
@@ -171,14 +171,14 @@ print_summary_headers(FormatString) ->
               ],
     io:format(FormatString, Headers).
 
--spec print_summary_row(wh_json:objects(), string()) -> 'ok'.
+-spec print_summary_row(kz_json:objects(), string()) -> 'ok'.
 print_summary_row([], _) -> 'ok';
 print_summary_row([JObj|JObjs], FormatString) ->
     io:format(FormatString,
-              [wh_json:get_value(<<"ip">>, JObj)
-               ,wh_json:get_value(<<"status">>, JObj)
-               ,wh_json:get_value(<<"zone">>, JObj)
-               ,wh_json:get_value(<<"host">>, JObj)
-               ,wh_json:get_value(<<"assigned_to">>, JObj)
+              [kz_json:get_value(<<"ip">>, JObj)
+               ,kz_json:get_value(<<"status">>, JObj)
+               ,kz_json:get_value(<<"zone">>, JObj)
+               ,kz_json:get_value(<<"host">>, JObj)
+               ,kz_json:get_value(<<"assigned_to">>, JObj)
               ]),
     print_summary_row(JObjs, FormatString).

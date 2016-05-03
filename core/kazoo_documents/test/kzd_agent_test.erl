@@ -12,8 +12,8 @@
 
 -define(QUEUE_ID, <<"1">>).
 
--define(AGENT_1, wh_json:from_list([{<<"queues">>, []}])).
--define(AGENT_2, wh_json:from_list([{<<"queues">>, [?QUEUE_ID]}])).
+-define(AGENT_1, kz_json:from_list([{<<"queues">>, []}])).
+-define(AGENT_2, kz_json:from_list([{<<"queues">>, [?QUEUE_ID]}])).
 
 add_queue_test() ->
     ?assertEqual(?AGENT_2, kzd_agent:maybe_add_queue(?AGENT_1, ?QUEUE_ID, 'skip')),

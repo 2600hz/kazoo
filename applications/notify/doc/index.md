@@ -45,7 +45,7 @@ Example:
    "pvt_created": 63581123482,
    "pvt_modified": 63581123482,
    "pvt_type": "config",
-   "pvt_node": "whistle_apps@fqdn.com"
+   "pvt_node": "kazoo_apps@fqdn.com"
 }
 
 ```
@@ -83,14 +83,14 @@ The JSON sent has the following fixed fields:
 #### Via Erlang
 ```erlang
 Config = <<"notify.system_alert">>.
-{ok, _NewConf} = whapps_config:set_default(Config, <<"enable_email_alerts">>, false).
+{ok, _NewConf} = kapps_config:set_default(Config, <<"enable_email_alerts">>, false).
 URL = <<"http://my.alerts.platform.com/hangups.php">>.
-{ok, _} = whapps_config:set_default(Config, <<"subscriber_url">>, URL).
+{ok, _} = kapps_config:set_default(Config, <<"subscriber_url">>, URL).
 ```
 
 Note that URL needs to be a binary, that is, not a list.
 
 #### Via SUP
 
-    sup whapps_config set_default notify.system_alert enable_email_alerts false
-    sup whapps_config set_default notify.system_alert subscriber_url 'http://my.alerts.platform.com/hangups.php'
+    sup kapps_config set_default notify.system_alert enable_email_alerts false
+    sup kapps_config set_default notify.system_alert subscriber_url 'http://my.alerts.platform.com/hangups.php'

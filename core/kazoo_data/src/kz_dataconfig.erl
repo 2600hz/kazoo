@@ -24,31 +24,31 @@ is_driver_app(App) ->
 
 -spec connection() -> data_connection().
 connection() ->
-    [Section] = wh_config:get('data', 'config', ['bigcouch']),
-    Props = props:get_value('generic', wh_config:get(Section), []),
+    [Section] = kz_config:get('data', 'config', ['bigcouch']),
+    Props = props:get_value('generic', kz_config:get(Section), []),
     connection(connection_options(Props)).
 
--spec connection_options(wh_proplist()) -> wh_proplist().
+-spec connection_options(kz_proplist()) -> kz_proplist().
 connection_options(Props) ->
     case props:get_value('connect_options', Props) of
         'undefined' -> Props;
         Section ->
-            Options = props:get_value('generic', wh_config:get(Section), []),
+            Options = props:get_value('generic', kz_config:get(Section), []),
             [{'connect_options', Options} | props:delete('connect_options', Props)]
     end.
 
--spec connection(wh_proplist() | map()) -> data_connection().
+-spec connection(kz_proplist() | map()) -> data_connection().
 connection(List) when is_list(List) ->
     connection(maps:from_list(props:filter_undefined(List)));
 connection(#{driver := App}=Map)
   when not is_atom(App) ->
-    connection(Map#{driver => wh_util:to_atom(App, 'true')});
+    connection(Map#{driver => kz_util:to_atom(App, 'true')});
 connection(#{app := App}=Map)
   when not is_atom(App) ->
-    connection(Map#{app => wh_util:to_atom(App, 'true')});
+    connection(Map#{app => kz_util:to_atom(App, 'true')});
 connection(#{module := App}=Map)
   when not is_atom(App) ->
-    connection(Map#{module => wh_util:to_atom(App, 'true')});
+    connection(Map#{module => kz_util:to_atom(App, 'true')});
 connection(#{module := App, tag := Tag}=Map) ->
     _ = ensure_driver_app(Map),
     is_driver_app(App),

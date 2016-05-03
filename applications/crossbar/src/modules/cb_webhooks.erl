@@ -24,7 +24,7 @@
         ]).
 
 -include("crossbar.hrl").
--include_lib("whistle/src/wh_json.hrl").
+-include_lib("kazoo/src/kz_json.hrl").
 
 -define(CB_LIST, <<"webhooks/crossbar_listing">>).
 
@@ -43,7 +43,7 @@
 init() ->
     _ = kz_datamgr:db_create(?KZ_WEBHOOKS_DB),
     _ = kz_datamgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>),
-    _ = kz_datamgr:revise_doc_from_file(?WH_SCHEMA_DB, 'crossbar', <<"schemas/webhooks.json">>),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_SCHEMA_DB, 'crossbar', <<"schemas/webhooks.json">>),
     init_master_account_db(),
     maybe_revise_schema(),
 
@@ -63,7 +63,7 @@ init() ->
 
 -spec init_master_account_db() -> 'ok'.
 init_master_account_db() ->
-    case whapps_util:get_master_account_db() of
+    case kapps_util:get_master_account_db() of
         {'ok', MasterAccountDb} ->
             _ = kz_datamgr:revise_doc_from_file(MasterAccountDb
                                                ,'webhooks'
@@ -75,10 +75,10 @@ init_master_account_db() ->
     end.
 
 -spec maybe_revise_schema() -> 'ok'.
--spec maybe_revise_schema(wh_json:object()) -> 'ok'.
--spec maybe_revise_schema(wh_json:object(), ne_binary()) -> 'ok'.
+-spec maybe_revise_schema(kz_json:object()) -> 'ok'.
+-spec maybe_revise_schema(kz_json:object(), ne_binary()) -> 'ok'.
 maybe_revise_schema() ->
-    case wh_json_schema:load(<<"webhooks">>) of
+    case kz_json_schema:load(<<"webhooks">>) of
         {'ok', SchemaJObj} ->
             maybe_revise_schema(SchemaJObj);
         {'error', _E} ->
@@ -86,7 +86,7 @@ maybe_revise_schema() ->
     end.
 
 maybe_revise_schema(SchemaJObj) ->
-    case whapps_util:get_master_account_db() of
+    case kapps_util:get_master_account_db() of
         {'ok', MasterDb} -> maybe_revise_schema(SchemaJObj, MasterDb);
         {'error', _E} ->
             lager:warning("master account not set yet, unable to revise schema: ~p", [_E])
@@ -99,14 +99,14 @@ maybe_revise_schema(SchemaJObj, MasterDb) ->
         {'error', _E} ->
             lager:warning("failed to find registered webhooks: ~p", [_E]);
         {'ok', Hooks} ->
-            revise_schema(SchemaJObj, [wh_json:get_value(<<"key">>, Hook) || Hook <- Hooks])
+            revise_schema(SchemaJObj, [kz_json:get_value(<<"key">>, Hook) || Hook <- Hooks])
     end.
 
--spec revise_schema(wh_json:object(), ne_binaries()) -> 'ok'.
+-spec revise_schema(kz_json:object(), ne_binaries()) -> 'ok'.
 revise_schema(SchemaJObj, HNs) ->
     HookNames = [<<"all">> | lists:delete(<<"skel">>, HNs)],
-    Updated = wh_json:set_value([<<"properties">>, <<"hook">>, <<"enum">>], HookNames, SchemaJObj),
-    case kz_datamgr:save_doc(?WH_SCHEMA_DB, Updated) of
+    Updated = kz_json:set_value([<<"properties">>, <<"hook">>, <<"enum">>], HookNames, SchemaJObj),
+    case kz_datamgr:save_doc(?KZ_SCHEMA_DB, Updated) of
         {'ok', _} -> lager:info("added hooks enum to schema: ~p", [HookNames]);
         {'error', _E} -> lager:warning("failed to add hooks enum to schema: ~p", [_E])
     end.
@@ -225,8 +225,8 @@ validate(Context, Id, ?PATH_TOKEN_ATTEMPTS) ->
 validate_patch(Context, Id) ->
     case cb_context:resp_status(Context) of
         'success' ->
-            PatchJObj = wh_doc:public_fields(cb_context:req_data(Context)),
-            JObj = wh_json:merge_jobjs(PatchJObj, cb_context:doc(Context)),
+            PatchJObj = kz_doc:public_fields(cb_context:req_data(Context)),
+            JObj = kz_json:merge_jobjs(PatchJObj, cb_context:doc(Context)),
             OnValidateReqDataSuccess = fun(C) -> crossbar_doc:load_merge(Id, C, ?TYPE_CHECK_OPTION(kzd_webhook:type())) end,
             cb_context:validate_request_data(<<"webhooks">>, cb_context:set_req_data(Context, JObj), OnValidateReqDataSuccess);
         _Status -> Context
@@ -256,7 +256,7 @@ delete(Context, _) ->
 -spec delete_account(cb_context:context(), ne_binary()) -> cb_context:context().
 delete_account(Context, AccountId) ->
     lager:debug("account ~s deleted, removing any webhooks", [AccountId]),
-    wh_util:spawn(fun delete_account_webhooks/1, [AccountId]),
+    kz_util:spawn(fun delete_account_webhooks/1, [AccountId]),
     Context.
 
 -spec delete_account_webhooks(ne_binary()) -> 'ok'.
@@ -283,10 +283,10 @@ fetch_account_hooks(AccountId) ->
                            ]
                          ).
 
--spec delete_account_hooks(wh_json:objects()) -> any().
+-spec delete_account_hooks(kz_json:objects()) -> any().
 delete_account_hooks(ViewJObjs) ->
     kz_datamgr:del_docs(?KZ_WEBHOOKS_DB
-                       ,[wh_json:get_value(<<"doc">>, ViewJObj)
+                       ,[kz_json:get_value(<<"doc">>, ViewJObj)
                          || ViewJObj <- ViewJObjs
                         ]
                       ).
@@ -315,13 +315,13 @@ validate_collection_patch(Context, 'undefined') ->
     cb_context:add_validation_error(
       ?REENABLE
       ,<<"required">>
-      ,wh_json:from_list(
+      ,kz_json:from_list(
          [{<<"message">>, <<"re-enable is required to patch collections">>}]
         )
       ,Context
      );
 validate_collection_patch(Context, ReEnable) ->
-    case wh_util:is_true(ReEnable) of
+    case kz_util:is_true(ReEnable) of
         'true' -> cb_context:set_resp_status(Context, 'success');
         'false' -> reenable_validation_error(Context)
     end.
@@ -332,7 +332,7 @@ reenable_validation_error(Context) ->
     cb_context:add_validation_error(
       ?REENABLE
       ,<<"enum">>
-      ,wh_json:from_list(
+      ,kz_json:from_list(
          [{<<"message">>, <<"value not found in enumerated list of values">>}
           ,{<<"target">>, ['true']}
          ])
@@ -356,7 +356,7 @@ read(Id, Context) ->
 -spec maybe_leak_pvt_fields(cb_context:context()) -> cb_context:context().
 maybe_leak_pvt_fields(Context) ->
     Doc = cb_context:doc(Context),
-    wh_json:set_values([{<<"disable_reason">>, kzd_webhook:disabled_message(Doc)}]
+    kz_json:set_values([{<<"disable_reason">>, kzd_webhook:disabled_message(Doc)}]
                        ,Doc
                       ),
     cb_context:set_doc(Context, Doc).
@@ -385,7 +385,7 @@ summary(Context) ->
     maybe_fix_envelope(
       crossbar_doc:load_view(?CB_LIST
                              ,[{'startkey', [cb_context:account_id(Context), get_summary_start_key(Context)]}
-                               ,{'endkey', [cb_context:account_id(Context), wh_json:new()]}
+                               ,{'endkey', [cb_context:account_id(Context), kz_json:new()]}
                               ]
                              ,Context
                              ,fun normalize_view_results/2
@@ -407,36 +407,36 @@ fix_envelope(Context) ->
              }
         of
             {[], Envelope} ->
-                wh_json:delete_keys([<<"start_key">>, <<"next_start_key">>], Envelope);
+                kz_json:delete_keys([<<"start_key">>, <<"next_start_key">>], Envelope);
             {_, Envelope} ->
                 fix_keys(Envelope)
         end,
     cb_context:set_resp_envelope(Context, UpdatedEnvelope).
 
--spec fix_keys(wh_json:object()) -> wh_json:object().
+-spec fix_keys(kz_json:object()) -> kz_json:object().
 fix_keys(Envelope) ->
     lists:foldl(fun fix_key_fold/2
                 ,Envelope
                 ,[<<"start_key">>, <<"next_start_key">>]
                ).
 
--spec fix_key_fold(wh_json:key(), wh_json:object()) -> wh_json:object().
+-spec fix_key_fold(kz_json:key(), kz_json:object()) -> kz_json:object().
 fix_key_fold(Key, Envelope) ->
-    case wh_json:get_value(Key, Envelope) of
-        [_AccountId, ?EMPTY_JSON_OBJECT] -> wh_json:delete_key(Key, Envelope);
-        [_AccountId, 0] -> wh_json:delete_key(Key, Envelope);
-        [_AccountId, Value] -> wh_json:set_value(Key, Value, Envelope);
+    case kz_json:get_value(Key, Envelope) of
+        [_AccountId, ?EMPTY_JSON_OBJECT] -> kz_json:delete_key(Key, Envelope);
+        [_AccountId, 0] -> kz_json:delete_key(Key, Envelope);
+        [_AccountId, Value] -> kz_json:set_value(Key, Value, Envelope);
         <<_/binary>> = _ -> Envelope;
-        0 -> wh_json:delete_key(Key, Envelope);
+        0 -> kz_json:delete_key(Key, Envelope);
         I when is_integer(I) -> Envelope;
-        ?EMPTY_JSON_OBJECT -> wh_json:delete_key(Key, Envelope);
+        ?EMPTY_JSON_OBJECT -> kz_json:delete_key(Key, Envelope);
         'undefined' -> Envelope
     end.
 
 -spec summary_available(cb_context:context()) ->
                                cb_context:context().
 summary_available(Context) ->
-    {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
+    {'ok', MasterAccountDb} = kapps_util:get_master_account_db(),
 
     crossbar_doc:load_view(?AVAILABLE_HOOKS
                            ,['include_docs']
@@ -444,16 +444,16 @@ summary_available(Context) ->
                            ,fun normalize_available/2
                           ).
 
--spec normalize_available(wh_json:object(), wh_json:objects()) ->
-                                 wh_json:objects().
+-spec normalize_available(kz_json:object(), kz_json:objects()) ->
+                                 kz_json:objects().
 normalize_available(JObj, Acc) ->
-    case wh_json:get_value(<<"key">>, JObj) of
+    case kz_json:get_value(<<"key">>, JObj) of
         <<"skel">> -> Acc;
         _ ->
-            Doc = wh_json:public_fields(wh_json:get_value(<<"doc">>, JObj)),
-            Name = wh_json:get_value(<<"name">>, Doc),
+            Doc = kz_json:public_fields(kz_json:get_value(<<"doc">>, JObj)),
+            Name = kz_json:get_value(<<"name">>, Doc),
 
-            [wh_json:set_value(<<"id">>, Name, Doc) | Acc]
+            [kz_json:set_value(<<"id">>, Name, Doc) | Acc]
     end.
 
 -spec summary_attempts(cb_context:context()) -> cb_context:context().
@@ -478,12 +478,12 @@ summary_attempts(Context, <<_/binary>> = HookId) ->
 
 -spec get_summary_start_key(cb_context:context()) -> ne_binary() | integer().
 get_summary_start_key(Context) ->
-    get_start_key(Context, 0, fun wh_util:identity/1).
+    get_start_key(Context, 0, fun kz_util:identity/1).
 
 -spec get_attempts_start_key(cb_context:context()) ->
                                     integer() | ?EMPTY_JSON_OBJECT.
 get_attempts_start_key(Context) ->
-    get_start_key(Context, wh_json:new(), fun wh_util:to_integer/1).
+    get_start_key(Context, kz_json:new(), fun kz_util:to_integer/1).
 
 -spec get_start_key(cb_context:context(), any(), fun()) -> any().
 get_start_key(Context, Default, Formatter) ->
@@ -495,7 +495,7 @@ get_start_key(Context, Default, Formatter) ->
 -spec summary_attempts_fetch(cb_context:context(), crossbar_doc:view_options(), ne_binary()) ->
                                     cb_context:context().
 summary_attempts_fetch(Context, ViewOptions, View) ->
-    Db = wh_util:format_account_mod_id(cb_context:account_id(Context), wh_util:current_tstamp()),
+    Db = kz_util:format_account_mod_id(cb_context:account_id(Context), kz_util:current_tstamp()),
     lager:debug("loading view ~s with options ~p", [View, ViewOptions]),
     maybe_fix_envelope(
       crossbar_doc:load_view(View
@@ -505,12 +505,12 @@ summary_attempts_fetch(Context, ViewOptions, View) ->
                             )
      ).
 
--spec normalize_attempt_results(wh_json:object(), wh_json:objects()) ->
-                                       wh_json:objects().
+-spec normalize_attempt_results(kz_json:object(), kz_json:objects()) ->
+                                       kz_json:objects().
 normalize_attempt_results(JObj, Acc) ->
-    Doc = wh_json:get_value(<<"doc">>, JObj),
-    [wh_json:delete_keys([<<"id">>, <<"_id">>]
-                         ,wh_json:set_value(<<"timestamp">>, wh_doc:created(Doc), Doc)
+    Doc = kz_json:get_value(<<"doc">>, JObj),
+    [kz_json:delete_keys([<<"id">>, <<"_id">>]
+                         ,kz_json:set_value(<<"timestamp">>, kz_doc:created(Doc), Doc)
                         )
      | Acc
     ].
@@ -525,7 +525,7 @@ normalize_attempt_results(JObj, Acc) ->
                                       cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context
-                       ,wh_json:set_values([{<<"pvt_type">>, kzd_webhook:type()}
+                       ,kz_json:set_values([{<<"pvt_type">>, kzd_webhook:type()}
                                             ,{<<"pvt_account_id">>, cb_context:account_id(Context)}
                                            ]
                                            ,cb_context:doc(Context)
@@ -540,10 +540,10 @@ on_successful_validation(Id, Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) ->
-                                    wh_json:objects().
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
+                                    kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
+    [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -581,27 +581,27 @@ reenable_hooks(Context, [AccountId, ?DESCENDANTS]) ->
      ).
 
 -spec send_reenable_req(cb_context:context(), ne_binary(), ne_binary()) ->
-                               wh_amqp_worker:request_return().
+                               kz_amqp_worker:request_return().
 send_reenable_req(Context, AccountId, Action) ->
     Req = [{<<"Type">>, kzd_webhook:type()}
            ,{<<"Action">>, Action}
            ,{<<"Account-ID">>, AccountId}
            ,{<<"Msg-ID">>, cb_context:req_id(Context)}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    wh_amqp_worker:call(Req
-                        ,fun wapi_conf:publish_doc_type_update/1
-                        ,fun wh_util:always_true/1
+    kz_amqp_worker:call(Req
+                        ,fun kapi_conf:publish_doc_type_update/1
+                        ,fun kz_util:always_true/1
                        ).
 
--spec handle_resp(cb_context:context(), wh_amqp_worker:request_return()) ->
+-spec handle_resp(cb_context:context(), kz_amqp_worker:request_return()) ->
                          cb_context:context().
 handle_resp(Context, {'ok', _Resp}) ->
     lager:debug("received resp from update"),
     crossbar_util:response(<<"hooks updated">>, Context);
 handle_resp(Context, {'returned', _Request, BasicReturn}) ->
     lager:debug("no webhook apps running: ~p", [BasicReturn]),
-    Resp = wh_json:delete_keys([<<"exchange">>, <<"routing_key">>], BasicReturn),
+    Resp = kz_json:delete_keys([<<"exchange">>, <<"routing_key">>], BasicReturn),
     crossbar_util:response('error', <<"The backend is not configured for this request">>, 500, Resp, Context);
 handle_resp(Context, {'timeout', _Timeout}) ->
     lager:debug("timed out waiting for a response: ~p", [_Timeout]),
@@ -633,7 +633,7 @@ cleanup_orphaned_hooks() ->
             cleanup_orphaned_hooks(Accounts)
     end.
 
--spec cleanup_orphaned_hooks(wh_json:objects()) -> 'ok'.
+-spec cleanup_orphaned_hooks(kz_json:objects()) -> 'ok'.
 cleanup_orphaned_hooks(Accounts) ->
     _Rm = [begin
                delete_account_webhooks(AccountId),
@@ -641,8 +641,8 @@ cleanup_orphaned_hooks(Accounts) ->
            end
            || Account <- Accounts,
               begin
-                  AccountId = wh_json:get_value(<<"key">>, Account),
-                  not kz_datamgr:db_exists(wh_util:format_account_id(AccountId, 'encoded'))
+                  AccountId = kz_json:get_value(<<"key">>, Account),
+                  not kz_datamgr:db_exists(kz_util:format_account_id(AccountId, 'encoded'))
               end
           ],
     _Rm =/= []

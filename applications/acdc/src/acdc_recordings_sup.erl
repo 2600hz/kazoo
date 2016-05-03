@@ -22,7 +22,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(CHILDREN, [?WORKER_TYPE('wh_media_recording', 'transient')]).
+-define(CHILDREN, [?WORKER_TYPE('kz_media_recording', 'transient')]).
 
 %%%===================================================================
 %%% API functions
@@ -35,7 +35,7 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec new(whapps_call:call(), wh_json:object()) -> startlink_ret().
+-spec new(kapps_call:call(), kz_json:object()) -> startlink_ret().
 new(Call, Data) ->
     supervisor:start_child(?SERVER, [Call, Data]).
 

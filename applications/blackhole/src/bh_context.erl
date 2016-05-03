@@ -54,7 +54,7 @@
 new()->
     Setters = [
         fun put_reqid/1
-        ,{fun set_timestamp/2, wh_util:current_tstamp()}
+        ,{fun set_timestamp/2, kz_util:current_tstamp()}
     ],
     setters(#bh_context{}, Setters).
 
@@ -70,17 +70,17 @@ new(SessionPid, SessionId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec from_json(wh_json:object()) -> context().
--spec from_json(context(), wh_json:object()) -> context().
+-spec from_json(kz_json:object()) -> context().
+-spec from_json(context(), kz_json:object()) -> context().
 from_json(JObj) ->
     from_json(new(), JObj).
 
 from_json(Context, JObj) ->
     Setters = [
-        {fun set_account_id/2, wh_json:get_value(<<"account_id">>, JObj)}
-        ,{fun set_auth_token/2,wh_json:get_value(<<"auth_token">>, JObj)}
-        ,{fun set_name/2, wh_json:get_value(<<"name">>, JObj)}
-        ,{fun set_metadata/2, wh_json:get_value(<<"metadata">>, JObj)}
+        {fun set_account_id/2, kz_json:get_value(<<"account_id">>, JObj)}
+        ,{fun set_auth_token/2,kz_json:get_value(<<"auth_token">>, JObj)}
+        ,{fun set_name/2, kz_json:get_value(<<"name">>, JObj)}
+        ,{fun set_metadata/2, kz_json:get_value(<<"metadata">>, JObj)}
     ],
     setters(Context, Setters).
 
@@ -89,9 +89,9 @@ from_json(Context, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec to_json(context()) -> wh_json:object().
+-spec to_json(context()) -> kz_json:object().
 to_json(Context) ->
-    wh_json:from_list(
+    kz_json:from_list(
         props:filter_undefined([
             {<<"account_id">>, account_id(Context)}
             ,{<<"auth_token">>, auth_token(Context)}
@@ -173,11 +173,11 @@ set_account_id(#bh_context{}=Context, AcctId) ->
 bindings(#bh_context{bindings=Bds}) ->
     Bds.
 
--spec bindings_from_json(wh_json:object()) -> ne_binaries().
+-spec bindings_from_json(kz_json:object()) -> ne_binaries().
 bindings_from_json(JObj) ->
-    case wh_json:get_value(<<"binding">>, JObj) of
+    case kz_json:get_value(<<"binding">>, JObj) of
         'undefined' ->
-             wh_json:get_value(<<"bindings">>, JObj, []);
+             kz_json:get_value(<<"bindings">>, JObj, []);
         Binding -> [Binding]
     end.
 
@@ -317,7 +317,7 @@ req_id(#bh_context{req_id=Id}) ->
 %%--------------------------------------------------------------------
 -spec put_reqid(context()) -> context().
 put_reqid(#bh_context{req_id = ReqId} = Context) ->
-    wh_util:put_callid(ReqId),
+    kz_util:put_callid(ReqId),
     Context.
 
 %%--------------------------------------------------------------------

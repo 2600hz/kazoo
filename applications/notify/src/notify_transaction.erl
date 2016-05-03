@@ -40,17 +40,17 @@ init() ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
-    true = wapi_notifications:transaction_v(JObj),
-    _ = wh_util:put_callid(JObj),
+    true = kapi_notifications:transaction_v(JObj),
+    _ = kz_util:put_callid(JObj),
     lager:debug("creating transaction notice"),
     {ok, Account} = notify_util:get_account_doc(JObj),
     Props = create_template_props(JObj, Account),
     {ok, TxtBody} = notify_util:render_template(undefined, ?DEFAULT_TEXT_TMPL, Props),
     {ok, HTMLBody} = notify_util:render_template(undefined, ?DEFAULT_HTML_TMPL, Props),
-    To = whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>),
-    CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"transaction">>, <<"email_subject_template">>], Account),
+    To = kapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>),
+    CustomSubjectTemplate = kz_json:get_value([<<"notifications">>, <<"transaction">>, <<"email_subject_template">>], Account),
     {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
     build_and_send_email(TxtBody, HTMLBody, Subject, To, Props).
 
@@ -60,12 +60,12 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props(wh_json:object(), wh_json:object()) -> wh_proplist().
+-spec create_template_props(kz_json:object(), kz_json:object()) -> kz_proplist().
 create_template_props(Event, Account) ->
     props:filter_empty([{<<"account">>, notify_util:json_to_template_props(Account)}
-                        ,{<<"plan">>, notify_util:json_to_template_props(wh_json:get_value(<<"Service-Plan">>, Event))}
-                        ,{<<"transaction">>, notify_util:json_to_template_props(wh_json:get_value(<<"Transaction">>, Event))}
-                        ,{<<"service">>, notify_util:get_service_props(wh_json:new(), ?MOD_CONFIG_CAT)}
+                        ,{<<"plan">>, notify_util:json_to_template_props(kz_json:get_value(<<"Service-Plan">>, Event))}
+                        ,{<<"transaction">>, notify_util:json_to_template_props(kz_json:get_value(<<"Transaction">>, Event))}
+                        ,{<<"service">>, notify_util:get_service_props(kz_json:new(), ?MOD_CONFIG_CAT)}
                        ]).
 
 %%--------------------------------------------------------------------
@@ -83,8 +83,8 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     From = props:get_value(<<"send_from">>, Service),
 
     {ContentTypeParams, CharsetString} = notify_util:get_charset_params(Service),
-    PlainTransferEncoding = whapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"text_content_transfer_encoding">>, <<"7BIT">>),
-    HTMLTransferEncoding = whapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"html_content_transfer_encoding">>, <<"7BIT">>),
+    PlainTransferEncoding = kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"text_content_transfer_encoding">>, <<"7BIT">>),
+    HTMLTransferEncoding = kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"html_content_transfer_encoding">>, <<"7BIT">>),
 
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>

@@ -180,7 +180,7 @@ summary(Context) ->
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     Doc = cb_context:doc(Context),
-    cb_context:set_doc(Context, wh_doc:set_type(Doc, <<"blacklist">>));
+    cb_context:set_doc(Context, kz_doc:set_type(Doc, <<"blacklist">>));
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"blacklist">>)).
 
@@ -190,9 +190,9 @@ on_successful_validation(Id, Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj) | Acc].
+    [kz_json:get_value(<<"value">>, JObj) | Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -203,14 +203,14 @@ normalize_view_results(JObj, Acc) ->
 format_numbers(Context) ->
     Doc = cb_context:doc(Context),
     Numbers =
-        wh_json:map(fun format_number_map/2
-                   ,wh_json:get_value(<<"numbers">>, Doc, wh_json:new())
+        kz_json:map(fun format_number_map/2
+                   ,kz_json:get_value(<<"numbers">>, Doc, kz_json:new())
                    ),
     cb_context:set_doc(Context
-                      ,wh_json:set_value(<<"numbers">>, Numbers, Doc)
+                      ,kz_json:set_value(<<"numbers">>, Numbers, Doc)
                       ).
 
--spec format_number_map(ne_binary(), wh_json:object()) ->
-                               {ne_binary(), wh_json:object()}.
+-spec format_number_map(ne_binary(), kz_json:object()) ->
+                               {ne_binary(), kz_json:object()}.
 format_number_map(Number, Data) ->
     {knm_converters:normalize(Number), Data}.

@@ -26,7 +26,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {request       :: wh_proplist()
+-record(state, {request       :: kz_proplist()
                 ,timer        :: 'undefined' | reference()
                 ,schedule     :: pos_integers()
                 ,check = 'true' :: check_fun()
@@ -34,8 +34,8 @@
 
 -type state() :: #state{}.
 
--spec start_link(wh_proplist(), pos_integers()) -> {'ok', pid()} | {'error', term()}.
--spec start_link(wh_proplist(), pos_integers(), check_fun()) -> {'ok', pid()} | {'error', term()}.
+-spec start_link(kz_proplist(), pos_integers()) -> {'ok', pid()} | {'error', term()}.
+-spec start_link(kz_proplist(), pos_integers(), check_fun()) -> {'ok', pid()} | {'error', term()}.
 start_link(Req, [_ | _] = Schedule) ->
     start_link(#state{request = Req, schedule = Schedule}).
 
@@ -82,11 +82,11 @@ terminate(_, #state{timer = Timer}) ->
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
--spec is_resp(wh_json:object() | wh_json:objects()) -> boolean().
+-spec is_resp(kz_json:object() | kz_json:objects()) -> boolean().
 is_resp([JObj|_]) -> is_resp(JObj);
 is_resp(JObj) ->
-    wapi_resource:originate_resp_v(JObj)
-    orelse wh_api:error_resp_v(JObj).
+    kapi_resource:originate_resp_v(JObj)
+    orelse kz_api:error_resp_v(JObj).
 
 -type routine_ret() :: state() | {'stop', any(), state()} | 'stop' | 'continue'.
 -type routine_fun() :: fun((state(), any()) -> routine_ret()).
@@ -132,8 +132,8 @@ check_condition(#state{check = Fun}, _) when is_function(Fun, 0) ->
 send_request(State, Req) ->
     lager:debug("sending originate request"),
     ReqTimeout = props:get_value(<<"Timeout">>, Req) * ?MILLISECONDS_IN_SECOND,
-    case wh_amqp_worker:call_collect(Req
-                                     ,fun wapi_resource:publish_originate_req/1
+    case kz_amqp_worker:call_collect(Req
+                                     ,fun kapi_resource:publish_originate_req/1
                                      ,fun is_resp/1
                                      ,ReqTimeout + 10 * ?MILLISECONDS_IN_SECOND)
     of
@@ -167,10 +167,10 @@ stop_originate_timer('undefined') ->
 stop_originate_timer(Timer) ->
     erlang:cancel_timer(Timer).
 
--spec handle_originate_response(wh_json:object(), state()) -> {'stop', 'normal', state()}
+-spec handle_originate_response(kz_json:object(), state()) -> {'stop', 'normal', state()}
                                                              | state().
 handle_originate_response(Resp, State) ->
-    case wh_json:get_first_defined([<<"Application-Response">>, <<"Error-Message">>], Resp) of
+    case kz_json:get_first_defined([<<"Application-Response">>, <<"Error-Message">>], Resp) of
         <<"SUCCESS">> ->
             lager:info("answered, stopping"),
             {'stop', 'normal', State};

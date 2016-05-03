@@ -27,16 +27,16 @@
 %% @public
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link(atom(), wh_proplist()) -> startlink_ret().
+-spec start_link(atom(), kz_proplist()) -> startlink_ret().
 start_link(Node, Options) ->
     supervisor:start_link({'local', sup_name(Node)}, ?MODULE, [Node, Options]).
 
 sup_name(Node) ->
-    Name = iolist_to_binary([wh_util:to_binary(?MODULE)
+    Name = iolist_to_binary([kz_util:to_binary(?MODULE)
                              ,"_"
-                             ,wh_util:to_binary(Node)
+                             ,kz_util:to_binary(Node)
                             ]),
-    wh_util:to_atom(Name, 'true').
+    kz_util:to_atom(Name, 'true').
 
 -spec add_child(atom(), {'CUSTOM', atom()} | atom()) -> sup_startchild_ret().
 add_child(Node, {'CUSTOM', Subclass}) ->
