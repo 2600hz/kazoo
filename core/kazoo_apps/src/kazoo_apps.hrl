@@ -17,6 +17,7 @@
                          ,'hangups'
                          ,'hotornot'
                          ,'konami'
+                         ,'jonny5'
                          ,'media_mgr'
                          ,'milliwatt'
                          ,'omnipresence'
