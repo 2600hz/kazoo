@@ -239,7 +239,7 @@ validate_transaction(Context, _PathToken, _Verb) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_debit(cb_context:context()) -> cb_context:context().
--spec validate_debit(cb_context:context(), api_float()) -> cb_context:context().
+-spec validate_debit(cb_context:context(), api(float())) -> cb_context:context().
 validate_debit(Context) ->
     Amount = kz_json:get_float_value(<<"amount">>, cb_context:req_data(Context)),
 

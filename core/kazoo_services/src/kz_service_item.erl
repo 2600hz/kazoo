@@ -56,13 +56,13 @@
                           ,item :: api(binary())
                           ,name :: api(binary())
                           ,quantity = 0 :: api(integer())
-                          ,rate = 0.0 :: api_float()
+                          ,rate = 0.0 :: api(float())
                           ,single_discount = 'false' :: boolean()
-                          ,single_discount_rate = 0.00 :: api_float()
+                          ,single_discount_rate = 0.00 :: api(float())
                           ,cumulative_discount = 0 :: api(integer())
-                          ,cumulative_discount_rate = 0.00 :: api_float()
+                          ,cumulative_discount_rate = 0.00 :: api(float())
                           ,bookkeepers = kz_json:new() :: kz_json:object()
-                          ,activation_charge = 0.00 :: api_float()
+                          ,activation_charge = 0.00 :: api(float())
                           ,minimum = 0 :: api(integer())
                           ,exceptions = [] :: ne_binaries()
                          }).
@@ -201,7 +201,7 @@ set_quantity(Q, #kz_service_item{}=ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec rate(item()) -> api_float().
+-spec rate(item()) -> api(float()).
 rate(#kz_service_item{rate=Rate}) ->
     Rate.
 
@@ -243,7 +243,7 @@ set_single_discount(SingleDiscount, #kz_service_item{}=ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec single_discount_rate(item()) -> api_float().
+-spec single_discount_rate(item()) -> api(float()).
 single_discount_rate(#kz_service_item{single_discount_rate=Rate}) ->
     Rate.
 
@@ -287,7 +287,7 @@ set_cumulative_discount(Quantity, #kz_service_item{}=ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec cumulative_discount_rate(item()) -> api_float().
+-spec cumulative_discount_rate(item()) -> api(float()).
 cumulative_discount_rate(#kz_service_item{cumulative_discount_rate=Rate}) ->
     Rate.
 

@@ -214,7 +214,7 @@ set_timezone(JObj, Timezone) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec low_balance_threshold(doc()) -> api_float().
+-spec low_balance_threshold(doc()) -> api(float()).
 low_balance_threshold(JObj) ->
     low_balance_threshold(JObj, 'undefined').
 
@@ -294,7 +294,7 @@ remove_low_balance_tstamp(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec topup_threshold(doc()) -> api_float().
+-spec topup_threshold(doc()) -> api(float()).
 topup_threshold(JObj) ->
     topup_threshold(JObj, 'undefined').
 

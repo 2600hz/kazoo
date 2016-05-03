@@ -517,7 +517,7 @@ get_number_value(Key, JObj, Default) ->
         Value -> safe_cast(Value, Default, fun kz_util:to_number/1)
     end.
 
--spec get_float_value(keys(), object() | objects()) -> api_float().
+-spec get_float_value(keys(), object() | objects()) -> api(float()).
 -spec get_float_value(keys(), object() | objects(), Default) -> float() | Default.
 get_float_value(Key, JObj) ->
     get_float_value(Key, JObj, 'undefined').

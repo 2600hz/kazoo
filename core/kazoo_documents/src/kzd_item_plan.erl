@@ -70,7 +70,7 @@ rates(ItemPlan) ->
 rates(ItemPlan, Default) ->
     kz_json:get_json_value(?RATES, ItemPlan, Default).
 
--spec rate(doc()) -> api_float().
+-spec rate(doc()) -> api(float()).
 -spec rate(doc(), Default) -> float() | Default.
 rate(ItemPlan) ->
     rate(ItemPlan, 'undefined').

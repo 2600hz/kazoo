@@ -118,7 +118,7 @@ get_integer(Category, Key, Default, Node) ->
 %% @public
 %% @doc Get a configuration key for a given category and cast it as a float
 %%-----------------------------------------------------------------------------
--spec get_float(config_category(), config_key()) -> api_float().
+-spec get_float(config_category(), config_key()) -> api(float()).
 -spec get_float(config_category(), config_key(), Default) -> float() | Default.
 -spec get_float(config_category(), config_key(), Default, ne_binary()) -> float() | Default.
 

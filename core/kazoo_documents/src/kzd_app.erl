@@ -172,7 +172,7 @@ license(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec price(kz_json:object()) -> api_float().
+-spec price(kz_json:object()) -> api(float()).
 price(JObj) ->
     kz_json:get_float_value(?PRICE, JObj).
 
