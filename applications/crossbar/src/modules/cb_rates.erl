@@ -256,7 +256,7 @@ doc_updates(Fun, Doc) when is_function(Fun, 1) ->
     Fun(Doc).
 
 -spec ensure_routes_set(kz_json:object()) -> kz_json:object().
--spec ensure_routes_set(kz_json:object(), api_binaries()) -> kz_json:object().
+-spec ensure_routes_set(kz_json:object(), api([api(binary())])) -> kz_json:object().
 ensure_routes_set(Doc) ->
     ensure_routes_set(Doc, kz_json:get_value(<<"routes">>, Doc)).
 

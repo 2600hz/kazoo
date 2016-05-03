@@ -548,7 +548,7 @@ bind_q(Queue, Props) ->
     RestrictTo = props:get_value('restrict_to', Props),
     bind_q(Queue, RestrictTo, Props).
 
--spec bind_q(ne_binary(), api_binaries(), kz_proplist()) -> 'ok'.
+-spec bind_q(ne_binary(), api([api(binary())]), kz_proplist()) -> 'ok'.
 bind_q(Queue, 'undefined', _) ->
     amqp_util:bind_q_to_presence(Queue, <<"#">>);
 bind_q(Queue, ['search_req'|Restrict], Props) ->

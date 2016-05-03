@@ -1187,7 +1187,7 @@ terminators(Bin) when is_binary(Bin) ->
     [<<B>> || <<B>> <= Bin, lists:member(<<B>>, ?ANY_DIGIT)];
 terminators('undefined') -> ?ANY_DIGIT.
 
--spec terminators_v(api_binaries() | binary()) -> boolean().
+-spec terminators_v(api([api(binary())]) | binary()) -> boolean().
 -spec terminator_v(ne_binary()) -> boolean().
 terminators_v(Ts) when is_list(Ts) ->
     lists:all(fun terminator_v/1, Ts);

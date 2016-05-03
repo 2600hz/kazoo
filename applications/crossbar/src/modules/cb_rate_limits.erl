@@ -135,7 +135,7 @@ validate_post_rate_limits(Context) ->
             crossbar_util:response_faulty_request(Context)
     end.
 
--spec get_rate_limits_id_for_thing(cb_context:context(), ne_binary()) -> api_binaries().
+-spec get_rate_limits_id_for_thing(cb_context:context(), ne_binary()) -> api([api(binary())]).
 get_rate_limits_id_for_thing(Context, ThingId) ->
     ViewOpt = [{'key', ThingId}],
     case kz_datamgr:get_results(cb_context:account_db(Context), ?LISTING_BY_OWNER, ViewOpt) of

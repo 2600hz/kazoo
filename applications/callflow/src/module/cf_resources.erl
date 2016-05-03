@@ -279,7 +279,7 @@ get_t38_enabled(Call) ->
         {'error', _} -> 'undefined'
     end.
 
--spec get_flags(kz_json:object(), kapps_call:call()) -> api_binaries().
+-spec get_flags(kz_json:object(), kapps_call:call()) -> api([api(binary())]).
 get_flags(Data, Call) ->
     Routines = [fun maybe_get_endpoint_flags/3
                 ,fun get_flow_flags/3

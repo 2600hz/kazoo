@@ -496,7 +496,7 @@ endpoint_jobjs_to_records([Endpoint|Endpoints], IncludeVars, BridgeEndpoints) ->
                                      )
     end.
 
--spec endpoint_key(kz_json:object()) -> api_binaries().
+-spec endpoint_key(kz_json:object()) -> api([api(binary())]).
 endpoint_key(Endpoint) ->
     [kz_json:get_value(<<"Invite-Format">>, Endpoint)
      ,kz_json:get_value(<<"To-User">>, Endpoint)

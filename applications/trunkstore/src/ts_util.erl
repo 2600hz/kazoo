@@ -79,7 +79,7 @@ filter_active_calls(CallID, ActiveCalls) ->
                     (_) -> 'true'
                  end, ActiveCalls).
 
--spec get_media_handling(kz_json:objects() | api_binaries()) -> ne_binary().
+-spec get_media_handling(kz_json:objects() | api([api(binary())])) -> ne_binary().
 get_media_handling(L) ->
     case simple_extract(L) of
         <<"process">> -> <<"process">>;
@@ -276,7 +276,7 @@ sip_headers(L) when is_list(L) ->
         _ -> 'undefined'
     end.
 
--spec failover(kz_json:objects() | api_binaries()) ->
+-spec failover(kz_json:objects() | api([api(binary())])) ->
                       api_object().
 %% cascade from DID to Srv to Account
 failover(L) ->
@@ -285,26 +285,26 @@ failover(L) ->
         Other -> Other
     end.
 
--spec progress_timeout(kz_json:objects() | api_binaries()) ->
+-spec progress_timeout(kz_json:objects() | api([api(binary())])) ->
                               kz_json:object() | api(binary()).
 progress_timeout(L) -> simple_extract(L).
 
--spec bypass_media(kz_json:objects() | api_binaries()) -> ne_binary().
+-spec bypass_media(kz_json:objects() | api([api(binary())])) -> ne_binary().
 bypass_media(L) ->
     case simple_extract(L) of
         <<"process">> -> <<"false">>;
         _ -> <<"true">>
     end.
 
--spec delay(kz_json:objects() | api_binaries()) ->
+-spec delay(kz_json:objects() | api([api(binary())])) ->
                    kz_json:object() | api(binary()).
 delay(L) -> simple_extract(L).
 
--spec ignore_early_media(kz_json:objects() | api_binaries()) ->
+-spec ignore_early_media(kz_json:objects() | api([api(binary())])) ->
                                 kz_json:object() | api(binary()).
 ignore_early_media(L) -> simple_extract(L).
 
--spec ep_timeout(kz_json:objects() | api_binaries()) ->
+-spec ep_timeout(kz_json:objects() | api([api(binary())])) ->
                         kz_json:object() | api(binary()).
 ep_timeout(L) -> simple_extract(L).
 
@@ -313,7 +313,7 @@ offnet_flags([]) -> 'undefined';
 offnet_flags([H|_]) when is_list(H) -> H;
 offnet_flags([_|T]) -> offnet_flags(T).
 
--spec simple_extract(kz_json:objects() | api_binaries()) ->
+-spec simple_extract(kz_json:objects() | api([api(binary())])) ->
                             kz_json:object() | api(binary()).
 simple_extract([]) -> 'undefined';
 simple_extract(['undefined'|T]) -> simple_extract(T);

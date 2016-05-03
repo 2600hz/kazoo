@@ -299,7 +299,7 @@ normalize_view_result_value(JObj) ->
     kz_json:set_value(<<"date">>, Date, JObj).
 
 -spec get_view_and_filter(cb_context:context()) ->
-                                 {ne_binary(), api_binaries(), api_binaries()}.
+                                 {ne_binary(), api([api(binary())]), api([api(binary())])}.
 get_view_and_filter(Context) ->
     case {cb_context:device_id(Context), cb_context:user_id(Context)} of
         {'undefined', 'undefined'} -> {?CB_LIST_ALL, 'undefined', [kz_json:new()]};

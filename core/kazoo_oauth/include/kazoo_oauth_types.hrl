@@ -50,7 +50,7 @@
                      ,verified_email :: api_boolean()
                      ,access_type :: api(binary())
                      ,scope   :: api(binary())
-                     ,scopes  :: api_binaries()
+                     ,scopes  :: api([api(binary())])
                      ,refresh_token :: api(binary())
                      ,app :: oauth_app()
                     }).

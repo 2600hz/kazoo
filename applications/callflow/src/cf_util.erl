@@ -788,7 +788,7 @@ may_be_dialplan_suits({Key, Val}, Acc, Names) ->
         'false' -> Acc
     end.
 
--spec encryption_method_map(api_object(), api_binaries() | kz_json:object()) -> api_object().
+-spec encryption_method_map(api_object(), api([api(binary())]) | kz_json:object()) -> api_object().
 encryption_method_map(JObj, []) -> JObj;
 encryption_method_map(JObj, [Method|Methods]) ->
     case props:get_value(Method, ?ENCRYPTION_MAP, []) of

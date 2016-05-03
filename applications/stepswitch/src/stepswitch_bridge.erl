@@ -40,7 +40,7 @@
                 ,queue :: api(binary())
                 ,timeout :: reference()
                 ,call_id :: api(binary())
-                ,call_ids :: api_binaries()
+                ,call_ids :: api([api(binary())])
                }).
 -type state() :: #state{}.
 

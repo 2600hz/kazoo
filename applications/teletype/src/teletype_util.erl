@@ -137,7 +137,7 @@ email_parameters([{Key, Vs}|T], Params) when is_list(Vs) ->
 email_parameters([{Key, V}|T], Params) ->
     email_parameters(T, [{Key, V} | Params]).
 
--spec relay_email(api_binaries(), ne_binary(), mimemail:mimetuple()) ->
+-spec relay_email(api([api(binary())]), ne_binary(), mimemail:mimetuple()) ->
                          'ok' | {'error', any()}.
 relay_email(To, From, {_Type
                        ,_SubType
@@ -161,7 +161,7 @@ relay_email(To, From, {_Type
             {'error', 'email_encoding_failed'}
     end.
 
--spec maybe_relay_to_bcc(ne_binary(), ne_binary(), api_binaries()) -> 'ok'.
+-spec maybe_relay_to_bcc(ne_binary(), ne_binary(), api([api(binary())])) -> 'ok'.
 maybe_relay_to_bcc(_From, _Encoded, 'undefined') -> 'ok';
 maybe_relay_to_bcc(_From, _Encoded, []) -> 'ok';
 maybe_relay_to_bcc(From, Encoded, Bcc) ->
@@ -177,7 +177,7 @@ relay_to_bcc(From, Encoded, Bcc) when is_binary(Bcc) ->
 relay_to_bcc(From, Encoded, Bcc) ->
     relay_encoded_email(Bcc, From, Encoded).
 
--spec relay_encoded_email(api_binaries(), ne_binary(), ne_binary()) ->
+-spec relay_encoded_email(api([api(binary())]), ne_binary(), ne_binary()) ->
                                  {'ok', ne_binary()} | {'error', any()}.
 relay_encoded_email('undefined', _From, _Encoded) ->
     lager:debug("failed to send email as the TO address(es) are missing"),
@@ -450,7 +450,7 @@ send_update(RespQ, MsgId, Status, Msg) ->
     lager:debug("notification update (~s) sending to ~s", [Status, RespQ]),
     kz_amqp_worker:cast(Prop, fun(P) -> kapi_notifications:publish_notify_update(RespQ, P) end).
 
--spec find_account_rep_email(api_object() | ne_binary()) -> api_binaries().
+-spec find_account_rep_email(api_object() | ne_binary()) -> api([api(binary())]).
 find_account_rep_email('undefined') -> 'undefined';
 find_account_rep_email(<<_/binary>> = AccountId) ->
     case kz_services:is_reseller(AccountId) of
@@ -466,8 +466,8 @@ find_account_rep_email(AccountJObj) ->
       find_account_id(AccountJObj)
      ).
 
--spec find_account_admin_email(api(binary())) -> api_binaries().
--spec find_account_admin_email(ne_binary(), api(binary())) -> api_binaries().
+-spec find_account_admin_email(api(binary())) -> api([api(binary())]).
+-spec find_account_admin_email(ne_binary(), api(binary())) -> api([api(binary())]).
 find_account_admin_email('undefined') -> 'undefined';
 find_account_admin_email(AccountId) ->
     find_account_admin_email(AccountId, kz_services:find_reseller_id(AccountId)).
@@ -673,9 +673,9 @@ find_addresses(DataJObj, TemplateMetaJObj, ConfigCat, [Key|Keys], Acc) ->
      ).
 
 -spec find_address(kz_json:object(), kz_json:object(), ne_binary(), kz_json:key()) ->
-                          {kz_json:key(), api_binaries()}.
+                          {kz_json:key(), api([api(binary())])}.
 -spec find_address(kz_json:object(), kz_json:object(), ne_binary(), kz_json:key(), api(binary())) ->
-                          {kz_json:key(), api_binaries()}.
+                          {kz_json:key(), api([api(binary())])}.
 find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key) ->
     find_address(
       DataJObj
@@ -701,7 +701,7 @@ find_address(DataJObj, _TemplateMetaJObj, ConfigCat, Key, ?EMAIL_ADMINS) ->
     {Key, find_admin_emails(DataJObj, ConfigCat, Key)}.
 
 -spec find_address(kz_json:keys(), kz_json:object(), kz_json:object()) ->
-                          api_binaries().
+                          api([api(binary())]).
 find_address(Key, DataJObj, TemplateMetaJObj) ->
     case kz_json:get_ne_value(Key, DataJObj) of
         'undefined' -> kz_json:get_ne_value(Key, TemplateMetaJObj);
@@ -709,7 +709,7 @@ find_address(Key, DataJObj, TemplateMetaJObj) ->
     end.
 
 -spec find_admin_emails(kz_json:object(), ne_binary(), kz_json:key()) ->
-                               api_binaries().
+                               api([api(binary())]).
 find_admin_emails(DataJObj, ConfigCat, Key) ->
     case ?MODULE:find_account_rep_email(
            ?MODULE:find_account_id(DataJObj)
@@ -721,7 +721,7 @@ find_admin_emails(DataJObj, ConfigCat, Key) ->
         Emails -> Emails
     end.
 
--spec find_default(ne_binary(), kz_json:key()) -> api_binaries().
+-spec find_default(ne_binary(), kz_json:key()) -> api([api(binary())]).
 find_default(ConfigCat, Key) ->
     case kapps_config:get(ConfigCat, <<"default_", Key/binary>>) of
         'undefined' ->

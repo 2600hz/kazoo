@@ -128,12 +128,12 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec collect_recipients(ne_binary()) -> api_binaries() | api(binary()).
+-spec collect_recipients(ne_binary()) -> api([api(binary())]) | api(binary()).
 collect_recipients(AccountId) ->
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
     get_email(AccountId, MasterAccountId).
 
--spec get_email(ne_binary(), ne_binary()) -> api_binaries() | api(binary()).
+-spec get_email(ne_binary(), ne_binary()) -> api([api(binary())]) | api(binary()).
 get_email(MasterAccountId, MasterAccountId) ->
     AccountDb = kz_util:format_account_id(MasterAccountId, 'encoded'),
     lager:debug("attempting to email low balance to master account ~s"
@@ -159,7 +159,7 @@ get_email(AccountId, MasterAccountId) ->
             get_email(MasterAccountId, MasterAccountId)
     end.
 
--spec get_email(kz_json:object(), ne_binary(), ne_binary()) -> api_binaries() | api(binary()).
+-spec get_email(kz_json:object(), ne_binary(), ne_binary()) -> api([api(binary())]) | api(binary()).
 get_email(JObj, AccountId, MasterAccountId) ->
     case find_billing_email(JObj) of
         'undefined' ->
@@ -171,7 +171,7 @@ get_email(JObj, AccountId, MasterAccountId) ->
         Email -> Email
     end.
 
--spec find_billing_email(kz_json:object()) -> api_binaries() | api(binary()).
+-spec find_billing_email(kz_json:object()) -> api([api(binary())]) | api(binary()).
 find_billing_email(JObj) ->
     case is_notify_enabled(JObj) of
         'false' -> 'undefined';

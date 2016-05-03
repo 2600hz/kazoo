@@ -1203,23 +1203,23 @@ b_prompt(Prompt, Lang, Call) ->
 %%--------------------------------------------------------------------
 -spec play(ne_binary(), kapps_call:call()) ->
                   ne_binary().
--spec play(ne_binary(), api_binaries(), kapps_call:call()) ->
+-spec play(ne_binary(), api([api(binary())]), kapps_call:call()) ->
                   ne_binary().
--spec play(ne_binary(), api_binaries(), api(binary()), kapps_call:call()) ->
+-spec play(ne_binary(), api([api(binary())]), api(binary()), kapps_call:call()) ->
                   ne_binary().
 
 -spec play_command(ne_binary(), kapps_call:call() | ne_binary()) ->
                           kz_json:object().
--spec play_command(ne_binary(), api_binaries(), kapps_call:call() | ne_binary()) ->
+-spec play_command(ne_binary(), api([api(binary())]), kapps_call:call() | ne_binary()) ->
                           kz_json:object().
--spec play_command(ne_binary(), api_binaries(), api(binary()), kapps_call:call() | ne_binary()) ->
+-spec play_command(ne_binary(), api([api(binary())]), api(binary()), kapps_call:call() | ne_binary()) ->
                           kz_json:object().
 
 -spec b_play(ne_binary(), kapps_call:call()) ->
                     kapps_api_std_return().
--spec b_play(ne_binary(), api_binaries(), kapps_call:call()) ->
+-spec b_play(ne_binary(), api([api(binary())]), kapps_call:call()) ->
                     kapps_api_std_return().
--spec b_play(ne_binary(), api_binaries(), api(binary()), kapps_call:call()) ->
+-spec b_play(ne_binary(), api([api(binary())]), api(binary()), kapps_call:call()) ->
                     kapps_api_std_return().
 
 play_command(Media, Call) ->
@@ -1238,7 +1238,7 @@ play_command(Media, Terminators, Leg, <<_/binary>> = CallId) ->
 play_command(Media, Terminators, Leg, Call) ->
     play_command(Media, Terminators, Leg, kapps_call:call_id(Call)).
 
--spec play_terminators(api_binaries()) -> ne_binaries().
+-spec play_terminators(api([api(binary())])) -> ne_binaries().
 play_terminators('undefined') -> ?ANY_DIGIT;
 play_terminators(Ts) -> lists:usort(Ts).
 
@@ -1281,8 +1281,8 @@ b_play(Media, Terminators, Leg, Call) ->
 -spec tts(api(binary()), kapps_call:call()) -> ne_binary().
 -spec tts(api(binary()), api(binary()), kapps_call:call()) -> ne_binary().
 -spec tts(api(binary()), api(binary()), api(binary()), kapps_call:call()) -> ne_binary().
--spec tts(api(binary()), api(binary()), api(binary()), api_binaries(), kapps_call:call()) -> ne_binary().
--spec tts(api(binary()), api(binary()), api(binary()), api_binaries(), api(binary()), kapps_call:call()) -> ne_binary().
+-spec tts(api(binary()), api(binary()), api(binary()), api([api(binary())]), kapps_call:call()) -> ne_binary().
+-spec tts(api(binary()), api(binary()), api(binary()), api([api(binary())]), api(binary()), kapps_call:call()) -> ne_binary().
 
 tts(SayMe, Call) -> tts(SayMe, <<"female">>, Call).
 tts(SayMe, Voice, Call) -> tts(SayMe, Voice, kapps_call:language(Call), Call).
@@ -1310,8 +1310,8 @@ tts(SayMe, Voice, Lang, Terminators, Engine, Call) ->
 -spec tts_command(api(binary()), kapps_call:call()) -> kz_json:object().
 -spec tts_command(api(binary()), api(binary()), kapps_call:call()) -> kz_json:object().
 -spec tts_command(api(binary()), api(binary()), api(binary()), kapps_call:call()) -> kz_json:object().
--spec tts_command(api(binary()), api(binary()), api(binary()), api_binaries(), kapps_call:call()) -> kz_json:object().
--spec tts_command(api(binary()), api(binary()), api(binary()), api_binaries(), api(binary()), kapps_call:call()) -> kz_json:object().
+-spec tts_command(api(binary()), api(binary()), api(binary()), api([api(binary())]), kapps_call:call()) -> kz_json:object().
+-spec tts_command(api(binary()), api(binary()), api(binary()), api([api(binary())]), api(binary()), kapps_call:call()) -> kz_json:object().
 tts_command(SayMe, Call) ->
     tts_command(SayMe, <<"female">>, Call).
 tts_command(SayMe, Voice, Call) ->
@@ -1350,8 +1350,8 @@ tts_engine(Engine) -> Engine.
 -spec b_tts(api(binary()), kapps_call:call()) -> kapps_api_std_return().
 -spec b_tts(api(binary()), api(binary()), kapps_call:call()) -> kapps_api_std_return().
 -spec b_tts(api(binary()), api(binary()), api(binary()), kapps_call:call()) -> kapps_api_std_return().
--spec b_tts(api(binary()), api(binary()), api(binary()), api_binaries(), kapps_call:call()) -> kapps_api_std_return().
--spec b_tts(api(binary()), api(binary()), api(binary()), api_binaries(), api(binary()), kapps_call:call()) -> kapps_api_std_return().
+-spec b_tts(api(binary()), api(binary()), api(binary()), api([api(binary())]), kapps_call:call()) -> kapps_api_std_return().
+-spec b_tts(api(binary()), api(binary()), api(binary()), api([api(binary())]), api(binary()), kapps_call:call()) -> kapps_api_std_return().
 
 b_tts(SayMe, Call) ->
     wait_for_noop(Call, tts(SayMe, Call)).

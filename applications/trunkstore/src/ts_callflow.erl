@@ -42,7 +42,7 @@
 
 -export_type([state/0]).
 
--spec init(kz_json:object(), api(binary()) | api_binaries()) ->
+-spec init(kz_json:object(), api(binary()) | api([api(binary())])) ->
                   state() |
                   {'error', 'not_ts_account'}.
 init(RouteReqJObj, Type) ->
@@ -281,7 +281,7 @@ set_failover(State, Failover) -> State#ts_callflow_state{failover=Failover}.
 -spec get_failover(state()) -> api_object().
 get_failover(#ts_callflow_state{failover=Fail}) -> Fail.
 
--spec is_trunkstore_acct(kz_json:object(), api(binary()) | api_binaries()) -> boolean().
+-spec is_trunkstore_acct(kz_json:object(), api(binary()) | api([api(binary())])) -> boolean().
 is_trunkstore_acct(JObj, [Type|Types]) ->
     case is_trunkstore_acct(JObj, Type) of
         'true' -> 'true';

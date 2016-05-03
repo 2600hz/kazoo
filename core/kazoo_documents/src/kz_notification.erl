@@ -121,7 +121,7 @@ to(JObj) ->
 set_to(JObj, To) ->
     kz_json:set_value(?TO, To, JObj).
 
--spec to_email_addresses(doc()) -> api_binaries().
+-spec to_email_addresses(doc()) -> api([api(binary())]).
 to_email_addresses(JObj) ->
     kz_json:get_value([?TO, ?EMAIL_ADDRESSES], JObj).
 
@@ -137,7 +137,7 @@ cc(JObj) ->
 set_cc(JObj, Cc) ->
     kz_json:set_value(?CC, Cc, JObj).
 
--spec cc_email_addresses(doc()) -> api_binaries().
+-spec cc_email_addresses(doc()) -> api([api(binary())]).
 cc_email_addresses(JObj) ->
     kz_json:get_value([?CC, ?EMAIL_ADDRESSES], JObj).
 
@@ -153,7 +153,7 @@ bcc(JObj) ->
 set_bcc(JObj, Bcc) ->
     kz_json:set_value(?BCC, Bcc, JObj).
 
--spec bcc_email_addresses(doc()) -> api_binaries().
+-spec bcc_email_addresses(doc()) -> api([api(binary())]).
 bcc_email_addresses(JObj) ->
     kz_json:get_value([?BCC, ?EMAIL_ADDRESSES], JObj).
 

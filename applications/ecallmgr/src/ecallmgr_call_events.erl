@@ -108,7 +108,7 @@ shutdown(Node, UUID) ->
         ],
     'ok'.
 
--spec listen_for_other_leg(atom(), ne_binary(), api_binaries()) -> 'ok'.
+-spec listen_for_other_leg(atom(), ne_binary(), api([api(binary())])) -> 'ok'.
 listen_for_other_leg(_Node, _UUID, 'undefined') -> 'ok';
 listen_for_other_leg(_Node, _UUID, []) -> 'ok';
 listen_for_other_leg(Node, UUID, [_|_] = Events) ->

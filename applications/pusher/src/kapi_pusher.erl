@@ -111,7 +111,7 @@ push_routing_key(Type, Token) ->
 %% API Helpers
 
 -spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
--spec bind_q(ne_binary(), ne_binary(), ne_binary(), api_binaries()) -> 'ok'.
+-spec bind_q(ne_binary(), ne_binary(), ne_binary(), api([api(binary())])) -> 'ok'.
 bind_q(Queue, Props) ->
     Token = props:get_value('token', Props, <<"*">>),
     Type = props:get_value('type', Props, <<"*">>),
@@ -127,7 +127,7 @@ bind_q(Queue, Type, Token, [_|Restrict]) ->
 bind_q(_Queue, _Type, _Token, []) -> 'ok'.
 
 -spec unbind_q(binary(), kz_proplist()) -> 'ok'.
--spec unbind_q(ne_binary(), ne_binary(), ne_binary(), api_binaries()) -> 'ok'.
+-spec unbind_q(ne_binary(), ne_binary(), ne_binary(), api([api(binary())])) -> 'ok'.
 unbind_q(Queue, Props) ->
     Token = props:get_value('token', Props, <<"*">>),
     Type = props:get_value('type', Props, <<"*">>),

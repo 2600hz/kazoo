@@ -164,7 +164,7 @@ account_admin_user_properties(AccountJObj) ->
             find_admin(Users)
     end.
 
--spec find_admin(api_binaries()) -> kz_proplist().
+-spec find_admin(api([api(binary())])) -> kz_proplist().
 find_admin([]) ->
     lager:debug("account has no admin users"),
     [];

@@ -487,8 +487,8 @@ maybe_fix_presence_id_realm(PresenceId, Endpoint, Call) ->
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec owned_by(api(binary()), kapps_call:call()) -> api_binaries().
--spec owned_by(api(binary()) | api_binaries(), ne_binary(), kapps_call:call()) -> api_binaries().
+-spec owned_by(api(binary()), kapps_call:call()) -> api([api(binary())]).
+-spec owned_by(api(binary()) | api([api(binary())]), ne_binary(), kapps_call:call()) -> api([api(binary())]).
 
 owned_by('undefined', _) -> [];
 owned_by(OwnerId, Call) ->
@@ -511,7 +511,7 @@ owned_by(OwnerId, Type, Call) ->
     owned_by_query([{'key', [OwnerId, Type]}], Call).
 
 -spec owned_by_docs(api(binary()), kapps_call:call()) -> api_objects().
--spec owned_by_docs(api(binary()) | api_binaries(), ne_binary(), kapps_call:call()) -> api_objects().
+-spec owned_by_docs(api(binary()) | api([api(binary())]), ne_binary(), kapps_call:call()) -> api_objects().
 
 owned_by_docs('undefined', _) -> [];
 owned_by_docs(OwnerId, Call) ->
@@ -534,8 +534,8 @@ owned_by_docs([_|_]=OwnerIds, Type, Call) ->
 owned_by_docs(OwnerId, Type, Call) ->
     owned_by_query([{'key', [OwnerId, Type]}, 'include_docs'], Call, <<"doc">>).
 
--spec owned_by_query(list(), kapps_call:call()) -> api_binaries().
--spec owned_by_query(list(), kapps_call:call(), ne_binary()) -> api_binaries().
+-spec owned_by_query(list(), kapps_call:call()) -> api([api(binary())]).
+-spec owned_by_query(list(), kapps_call:call(), ne_binary()) -> api([api(binary())]).
 owned_by_query(ViewOptions, Call) ->
     owned_by_query(ViewOptions, Call, <<"value">>).
 owned_by_query(ViewOptions, Call, ViewKey) ->

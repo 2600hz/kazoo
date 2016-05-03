@@ -498,7 +498,7 @@ emergency_cid_number(OffnetReq) ->
     EnabledNumbers = knm_numbers:emergency_enabled(AccountId),
     emergency_cid_number(Requested, Candidates, EnabledNumbers).
 
--spec emergency_cid_number(ne_binary(), api_binaries(), ne_binaries()) -> ne_binary().
+-spec emergency_cid_number(ne_binary(), api([api(binary())]), ne_binaries()) -> ne_binary().
 %% if there are no emergency enabled numbers then either use the global system default
 %% or the requested (if there isnt one)
 emergency_cid_number(Requested, _, []) ->

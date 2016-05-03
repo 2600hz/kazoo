@@ -451,7 +451,7 @@ fix_envelope_fold(Key, JObj) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec fix_start_key(api_binaries()) -> api(binary()).
+-spec fix_start_key(api([api(binary())])) -> api(binary()).
 fix_start_key('undefined') -> 'undefined';
 fix_start_key([_ , StartKey]) -> StartKey;
 fix_start_key([_ , _, StartKey]) -> StartKey.

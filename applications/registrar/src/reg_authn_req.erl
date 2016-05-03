@@ -533,7 +533,7 @@ get_account_db(JObj) ->
 remove_dashes(Bin) ->
     << <<B>> || <<B>> <= Bin, B =/= $->>.
 
--spec encryption_method_map(kz_proplist(), api_binaries() | kz_json:object()) -> kz_proplist().
+-spec encryption_method_map(kz_proplist(), api([api(binary())]) | kz_json:object()) -> kz_proplist().
 encryption_method_map(Props, []) -> Props;
 encryption_method_map(Props, [Method|Methods]) ->
     case props:get_value(Method, ?ENCRYPTION_MAP, []) of

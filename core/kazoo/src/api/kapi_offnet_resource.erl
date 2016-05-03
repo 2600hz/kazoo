@@ -441,7 +441,7 @@ outbound_callee_id_name(Req) ->
 outbound_callee_id_name(?REQ_TYPE(JObj), Default) ->
     kz_json:get_ne_value(?KEY_OUTBOUND_CALLEE_ID_NAME, JObj, Default).
 
--spec b_leg_events(req()) -> api_binaries().
+-spec b_leg_events(req()) -> api([api(binary())]).
 -spec b_leg_events(req(), Default) -> ne_binaries() | Default.
 b_leg_events(Req) ->
     b_leg_events(Req, 'undefined').

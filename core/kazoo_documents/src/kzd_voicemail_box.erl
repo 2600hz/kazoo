@@ -65,7 +65,7 @@ notification_emails(Box, Default) ->
         Emails -> Emails
     end.
 
--spec set_notification_emails(doc(), api_binaries()) -> doc().
+-spec set_notification_emails(doc(), api([api(binary())])) -> doc().
 set_notification_emails(Box, 'undefined') ->
     kz_json:delete_key(?KEY_NOTIFY_EMAILS, Box);
 set_notification_emails(Box, Emails) ->

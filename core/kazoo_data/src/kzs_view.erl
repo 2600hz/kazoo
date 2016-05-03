@@ -55,7 +55,7 @@ get_results(#{server := {App, Conn}}, DbName, DesignDoc, ViewOptions) ->
 get_results_count(#{server := {App, Conn}}, DbName, DesignDoc, ViewOptions) ->
     App:get_results_count(Conn, DbName, DesignDoc, ViewOptions).
 
--spec doc_type_from_view(ne_binary(), ne_binary()) -> api(binary()) | api_binaries().
+-spec doc_type_from_view(ne_binary(), ne_binary()) -> api(binary()) | api([api(binary())]).
 doc_type_from_view(<<"faxes">>, _ViewName) -> <<"fax">>;
 doc_type_from_view(<<"cdrs">>, _ViewName) -> <<"cdr">>;
 doc_type_from_view(<<"recordings">>, _ViewName) -> <<"call_recording">>;

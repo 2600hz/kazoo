@@ -289,13 +289,13 @@ get_status_history(Xml, Base) ->
                                  end, Sources)}
     ].
 
--spec get_users(bt_xml(), api_binaries()) -> api_binaries().
+-spec get_users(bt_xml(), api([api(binary())])) -> api([api(binary())]).
 get_users([], Users) -> Users;
 get_users([Element|Elements], Users) ->
     User = get_xml_value("user/text()", Element),
     get_users(Elements, [User|Users]).
 
--spec get_transaction_sources(bt_xml(), api_binaries()) -> api_binaries().
+-spec get_transaction_sources(bt_xml(), api([api(binary())])) -> api([api(binary())]).
 get_transaction_sources([], Sources) -> Sources;
 get_transaction_sources([Element|Elements], Sources) ->
     Source = get_xml_value("transaction-source/text()", Element),

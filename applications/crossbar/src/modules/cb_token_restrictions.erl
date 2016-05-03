@@ -198,7 +198,7 @@ find_endpoint_restrictions_by_account(AllowedAccounts
             find_endpoint_restrictions_by_account(AllowedAccounts, Restrictions)
     end.
 
--spec maybe_match_accounts(ne_binaries(), api_binaries()) -> boolean().
+-spec maybe_match_accounts(ne_binaries(), api([api(binary())])) -> boolean().
 maybe_match_accounts(_AllowedAccounts, 'undefined') -> 'true';
 maybe_match_accounts(_AllowedAccounts, [?CATCH_ALL]) -> 'true';
 maybe_match_accounts(AllowedAccounts, RestrictionAccounts) ->

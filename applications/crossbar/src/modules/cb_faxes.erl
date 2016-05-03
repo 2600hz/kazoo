@@ -555,7 +555,7 @@ inbox_summary(Context) -> fax_modb_summary(Context, ?INBOX).
 outbox_summary(Context) -> fax_modb_summary(Context, ?OUTBOX).
 
 -spec get_incoming_view_and_filter(kz_json:object(), ne_binary()) ->
-          {ne_binary(), api_binaries(), api_binaries()}.
+          {ne_binary(), api([api(binary())]), api([api(binary())])}.
 get_incoming_view_and_filter(JObj, Folder) ->
     Id = kz_doc:id(JObj),
     case kz_doc:type(JObj) of

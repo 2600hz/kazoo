@@ -246,7 +246,7 @@ process_realms() ->
         ],
     'ok'.
 
--spec process_realms(api_binaries(), ne_binary(), atom()) -> 'ok'.
+-spec process_realms(api([api(binary())]), ne_binary(), atom()) -> 'ok'.
 process_realms('undefined', _Dir, _Module) -> 'ok';
 process_realms([], _, _) -> 'ok';
 process_realms([Realm | Realms], Dir, Module) ->

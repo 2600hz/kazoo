@@ -1124,7 +1124,7 @@ version_specific_success(JObjs, Context, _Version) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_couch_mgr_errors(kazoo_data:data_errors(), api(binary()) | api_binaries(), cb_context:context()) ->
+-spec handle_couch_mgr_errors(kazoo_data:data_errors(), api(binary()) | api([api(binary())]), cb_context:context()) ->
                                      cb_context:context().
 handle_couch_mgr_errors('invalid_db_name', _, Context) ->
     lager:debug("datastore ~s not_found", [cb_context:account_db(Context)]),

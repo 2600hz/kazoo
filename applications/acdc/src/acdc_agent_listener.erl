@@ -87,7 +87,7 @@
          ,recording_url :: api(binary()) %% where to send recordings after the call
          ,is_thief = 'false' :: boolean()
          ,agent :: agent()
-         ,agent_call_ids = [] :: api_binaries() | kz_proplist()
+         ,agent_call_ids = [] :: api([api(binary())]) | kz_proplist()
          ,cdr_urls = dict:new() :: dict:dict() %% {CallId, Url}
          ,agent_presence_id :: api(binary())
          }).
