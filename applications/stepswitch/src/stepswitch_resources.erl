@@ -74,7 +74,7 @@
            ,fax_option :: ne_binary() | boolean()
            ,codecs = [] :: ne_binaries()
            ,bypass_media = 'false' :: boolean()
-           ,formatters :: api_objects()
+           ,formatters :: api(kz_json:objects())
            ,proxies = [] :: kz_proplist()
          }).
 
@@ -864,7 +864,7 @@ resource_bypass_media(JObj) ->
     Default = kapps_config:get_is_true(?SS_CONFIG_CAT, <<"default_bypass_media">>, 'false'),
     kz_json:is_true([<<"media">>, <<"bypass_media">>], JObj, Default).
 
--spec resource_formatters(kz_json:object()) -> api_objects().
+-spec resource_formatters(kz_json:object()) -> api(kz_json:objects()).
 resource_formatters(JObj) ->
     Default = kapps_config:get(?SS_CONFIG_CAT, <<"default_formatters">>),
     kz_json:get_value(<<"formatters">>, JObj, Default).

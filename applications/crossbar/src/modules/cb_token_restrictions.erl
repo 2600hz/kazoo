@@ -175,7 +175,7 @@ match_request_endpoint(Restrictions, ReqEndpoint) ->
         EndpointRestrictions -> EndpointRestrictions
     end.
 
--spec match_account(cb_context:context(), api_objects()) -> api(kz_json:object()).
+-spec match_account(cb_context:context(), api(kz_json:objects())) -> api(kz_json:object()).
 match_account(_Context, 'undefined') -> 'undefined';
 match_account(_Context, []) -> 'undefined';
 match_account(Context, EndpointRestrictions) ->

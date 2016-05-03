@@ -510,8 +510,8 @@ owned_by([_|_]=OwnerIds, Type, Call) ->
 owned_by(OwnerId, Type, Call) ->
     owned_by_query([{'key', [OwnerId, Type]}], Call).
 
--spec owned_by_docs(api(binary()), kapps_call:call()) -> api_objects().
--spec owned_by_docs(api(binary()) | api([api(binary())]), ne_binary(), kapps_call:call()) -> api_objects().
+-spec owned_by_docs(api(binary()), kapps_call:call()) -> api(kz_json:objects()).
+-spec owned_by_docs(api(binary()) | api([api(binary())]), ne_binary(), kapps_call:call()) -> api(kz_json:objects()).
 
 owned_by_docs('undefined', _) -> [];
 owned_by_docs(OwnerId, Call) ->

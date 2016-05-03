@@ -252,7 +252,7 @@ invite_format(<<"npan">>, To) ->
 invite_format(_, _) ->
     [{<<"Invite-Format">>, <<"username">>}].
 
--spec caller_id(api_objects()) -> {api(binary()), api(binary())}.
+-spec caller_id(api(kz_json:objects())) -> {api(binary()), api(binary())}.
 caller_id([]) -> {'undefined', 'undefined'};
 caller_id(['undefined'|T]) -> caller_id(T);
 caller_id([CID|T]) ->
@@ -264,7 +264,7 @@ caller_id([CID|T]) ->
         CallerID -> CallerID
     end.
 
--spec sip_headers(api_objects()) -> api(kz_json:object()).
+-spec sip_headers(api(kz_json:objects())) -> api(kz_json:object()).
 sip_headers([]) -> 'undefined';
 sip_headers(L) when is_list(L) ->
     case [Headers || Headers <- L,

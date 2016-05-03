@@ -1254,7 +1254,7 @@ maybe_send_port_comment_notification(Context, Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec has_new_comment(api_objects(), api_objects()) -> boolean().
+-spec has_new_comment(api(kz_json:objects()), api(kz_json:objects())) -> boolean().
 has_new_comment('undefined', [_|_]) -> 'true';
 has_new_comment([], [_|_]) -> 'true';
 has_new_comment(_, 'undefined') -> 'false';

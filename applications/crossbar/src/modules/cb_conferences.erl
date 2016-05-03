@@ -367,7 +367,7 @@ normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 -spec normalize_users_results(kz_json:object(), kz_json:objects(), ne_binary()) ->
-                                     api_objects().
+                                     api(kz_json:objects()).
 normalize_users_results(JObj, Acc, UserId) ->
     case kz_json:get_value([<<"value">>, <<"owner_id">>], JObj) of
         'undefined' -> normalize_view_results(JObj, Acc);
