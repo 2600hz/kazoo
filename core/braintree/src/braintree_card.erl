@@ -176,7 +176,7 @@ expiring(Start, End) ->
 %% Accessors for field 'make_default'.
 %% @end
 %%--------------------------------------------------------------------
--spec make_default(bt_card()) -> api_boolean().
+-spec make_default(bt_card()) -> api(boolean()).
 -spec make_default(bt_card(), boolean()) -> bt_card().
 
 make_default(#bt_card{make_default = Value}) -> Value.

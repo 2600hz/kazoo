@@ -424,7 +424,7 @@ wait_for_notification(Timeout) ->
     end.
 
 -spec brokers_with_tag(ne_binary()) -> kz_amqp_connections_list().
--spec brokers_with_tag(ne_binary(), api_boolean()) -> kz_amqp_connections_list().
+-spec brokers_with_tag(ne_binary(), api(boolean())) -> kz_amqp_connections_list().
 brokers_with_tag(Tag) ->
     %% by default we want all the brokers
     brokers_with_tag(Tag, 'undefined').
@@ -454,7 +454,7 @@ broker_with_tag(Tag) ->
     end.
 
 -spec brokers_for_zone(atom()) -> kz_amqp_connections_list().
--spec brokers_for_zone(atom(), api_boolean()) -> kz_amqp_connections_list().
+-spec brokers_for_zone(atom(), api(boolean())) -> kz_amqp_connections_list().
 
 brokers_for_zone(Zone) ->
     %% by default we want all the brokers

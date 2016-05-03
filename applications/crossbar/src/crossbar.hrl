@@ -170,7 +170,7 @@
           ,profile_id :: api(binary())
           ,api_version = ?VERSION_1 :: ne_binary()
           ,magic_pathed = 'false' :: boolean()
-          ,should_paginate :: api_boolean()
+          ,should_paginate :: api(boolean())
          }).
 
 -define(MAX_RANGE, kapps_config:get_integer(?CONFIG_CAT

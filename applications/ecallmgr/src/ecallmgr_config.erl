@@ -115,7 +115,7 @@ get_integer(Key, Default, Node) ->
         N -> kz_util:to_integer(N)
     end.
 
--spec get_boolean(kz_json:key()) -> api_boolean().
+-spec get_boolean(kz_json:key()) -> api(boolean()).
 -spec get_boolean(kz_json:key(), Default) -> boolean() | Default.
 -spec get_boolean(kz_json:key(), Default, kz_json:key() | atom()) -> boolean() | Default.
 get_boolean(Key) ->

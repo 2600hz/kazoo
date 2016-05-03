@@ -37,7 +37,7 @@
 -define(RULE_DEFAULT_WTIME_STOP, ?SECONDS_IN_DAY).
 
 -record(rule, {id = <<>> :: binary()
-               ,enabled :: api_boolean()
+               ,enabled :: api(boolean())
                ,name = ?RULE_DEFAULT_NAME :: binary()
                ,cycle = ?RULE_DEFAULT_CYCLE :: cycle_type()
                ,interval = ?RULE_DEFAULT_INTERVAL :: non_neg_integer()

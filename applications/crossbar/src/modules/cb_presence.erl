@@ -168,7 +168,7 @@ search_req(Context) ->
 
 -spec process_search_responses(kz_json:objects()) ->
                                       {'ok', kz_json:object()}.
--spec process_search_responses(kz_json:objects(), api_boolean()) ->
+-spec process_search_responses(kz_json:objects(), api(boolean())) ->
                                       {'ok', kz_json:object()}.
 process_search_responses(JObjs) ->
     process_search_responses(JObjs, 'undefined').
@@ -271,7 +271,7 @@ resp_value(Response) ->
 
 -spec process_presentity_responses(kz_json:objects()) ->
                                           {'ok', kz_json:object()}.
--spec process_presentity_responses(kz_json:objects(), api_boolean()) ->
+-spec process_presentity_responses(kz_json:objects(), api(boolean())) ->
                                           {'ok', kz_json:object()}.
 process_presentity_responses(JObjs) ->
     process_presentity_responses(JObjs, 'undefined').

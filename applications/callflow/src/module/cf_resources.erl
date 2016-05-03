@@ -272,7 +272,7 @@ get_sip_headers(Data, Call) ->
 get_ignore_early_media(Data) ->
     kz_util:to_binary(kz_json:is_true(<<"ignore_early_media">>, Data, 'false')).
 
--spec get_t38_enabled(kapps_call:call()) -> api_boolean().
+-spec get_t38_enabled(kapps_call:call()) -> api(boolean()).
 get_t38_enabled(Call) ->
     case cf_endpoint:get(Call) of
         {'ok', JObj} -> kz_json:is_true([<<"media">>, <<"fax_option">>], JObj);

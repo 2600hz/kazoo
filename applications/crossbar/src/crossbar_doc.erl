@@ -1318,7 +1318,7 @@ should_filter_doc(Doc, K, V) ->
 %% Returns 'true' or 'false' if the prop is found inside the doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_prop(kz_json:object(), ne_binary(), any()) -> api_boolean().
+-spec filter_prop(kz_json:object(), ne_binary(), any()) -> api(boolean()).
 filter_prop(Doc, <<"filter_not_", Key/binary>>, Val) ->
     not should_filter(Doc, Key, Val);
 filter_prop(Doc, <<"filter_", Key/binary>>, Val) ->

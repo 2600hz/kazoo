@@ -904,7 +904,7 @@ should_publish(<<"DETECTED_TONE">>, _, _) ->
 should_publish(EventName, _A, _) ->
     lists:member(EventName, ?CALL_EVENTS).
 
--spec silence_terminated(api_integer() | kz_proplist()) -> api_boolean().
+-spec silence_terminated(api_integer() | kz_proplist()) -> api(boolean()).
 silence_terminated('undefined') -> 'undefined';
 silence_terminated(Hits) when is_integer(Hits) -> Hits =:= 0;
 silence_terminated(Prop) when is_list(Prop) ->
@@ -917,7 +917,7 @@ silence_terminated(Prop) when is_list(Prop) ->
 is_channel_moving(Props) ->
     props:get_is_true(<<"variable_channel_is_moving">>, Props, 'false').
 
--spec get_channel_moving(kz_proplist()) -> api_boolean().
+-spec get_channel_moving(kz_proplist()) -> api(boolean()).
 get_channel_moving(Props) ->
     case is_channel_moving(Props) of
         'false' -> 'undefined';
@@ -979,21 +979,21 @@ get_application_name(Props) ->
 get_raw_application_name(Props) ->
     kzd_freeswitch:raw_application_name(Props).
 
--spec get_fax_success(kz_proplist()) -> api_boolean().
+-spec get_fax_success(kz_proplist()) -> api(boolean()).
 get_fax_success(Props) ->
     case props:get_value(<<"variable_fax_success">>, Props) of
         'undefined' -> 'undefined';
         Else -> Else =/= <<"0">>
     end.
 
--spec get_fax_t38_used(kz_proplist()) -> api_boolean().
+-spec get_fax_t38_used(kz_proplist()) -> api(boolean()).
 get_fax_t38_used(Props) ->
     case props:get_value(<<"variable_has_t38">>, Props) of
         'undefined' -> 'undefined';
         Else -> kz_util:is_true(Else)
     end.
 
--spec get_fax_ecm_used(kz_proplist()) -> api_boolean().
+-spec get_fax_ecm_used(kz_proplist()) -> api(boolean()).
 get_fax_ecm_used(Props) ->
     case props:get_value(<<"variable_fax_ecm_used">>, Props) of
         'undefined' -> 'undefined';

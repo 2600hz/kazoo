@@ -1104,7 +1104,7 @@ update_my_queues_of_change(AcctId, AgentId, Qs) ->
         ],
     'ok'.
 
--spec should_record_endpoints(kz_json:objects(), boolean(), api_boolean()) -> boolean().
+-spec should_record_endpoints(kz_json:objects(), boolean(), api(boolean())) -> boolean().
 should_record_endpoints(_EPs, 'true', _) -> 'true';
 should_record_endpoints(_EPs, 'false', 'true') -> 'true';
 should_record_endpoints(EPs, _, _) ->

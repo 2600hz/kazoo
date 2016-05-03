@@ -150,8 +150,8 @@ is_channel_recovering(Props) ->
 is_channel_recovering(Props, Default) ->
     props:is_true(<<"variable_recovered">>, Props, Default).
 
--spec is_consuming_global_resource(kz_proplist()) -> api_boolean().
--spec is_consuming_global_resource(kz_proplist(), api_boolean()) -> api_boolean().
+-spec is_consuming_global_resource(kz_proplist()) -> api(boolean()).
+-spec is_consuming_global_resource(kz_proplist(), api(boolean())) -> api(boolean()).
 is_consuming_global_resource(Props) ->
     is_consuming_global_resource(Props, 'undefined').
 

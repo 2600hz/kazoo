@@ -307,7 +307,7 @@ create(Context) ->
     cb_context:validate_request_data(<<"webhooks">>, Context, OnSuccess).
 
 -spec validate_collection_patch(cb_context:context()) -> cb_context:context().
--spec validate_collection_patch(cb_context:context(), api_boolean()) ->
+-spec validate_collection_patch(cb_context:context(), api(boolean())) ->
                                        cb_context:context().
 validate_collection_patch(Context) ->
     validate_collection_patch(Context, cb_context:req_value(Context, ?REENABLE)).

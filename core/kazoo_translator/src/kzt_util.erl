@@ -146,7 +146,7 @@ get_digits_pressed(Call) ->
     kapps_call:kvs_fetch(<<"dtmf_collections">>, Call).
 
 -spec set_record_call(boolean(), kapps_call:call()) -> kapps_call:call().
--spec get_record_call(kapps_call:call()) -> api_boolean().
+-spec get_record_call(kapps_call:call()) -> api(boolean()).
 set_record_call(R, Call) -> kapps_call:kvs_store(<<"record_call">>, R, Call).
 get_record_call(Call) -> kapps_call:kvs_fetch(<<"record_call">>, Call).
 

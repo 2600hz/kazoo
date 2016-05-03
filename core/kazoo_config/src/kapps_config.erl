@@ -136,7 +136,7 @@ get_float(Category, Key, Default, Node) ->
 %% @public
 %% @doc Get a configuration key for a given category and cast it as a is_false
 %%-----------------------------------------------------------------------------
--spec get_is_false(config_category(), config_key()) -> api_boolean().
+-spec get_is_false(config_category(), config_key()) -> api(boolean()).
 -spec get_is_false(config_category(), config_key(), Default) -> boolean() | Default.
 -spec get_is_false(config_category(), config_key(), Default, ne_binary()) -> boolean() | Default.
 
@@ -154,7 +154,7 @@ get_is_false(Category, Key, Default, Node) ->
 %% @public
 %% @doc Get a configuration key for a given category and cast it as a is_true
 %%-----------------------------------------------------------------------------
--spec get_is_true(config_category(), config_key()) -> api_boolean().
+-spec get_is_true(config_category(), config_key()) -> api(boolean()).
 -spec get_is_true(config_category(), config_key(), Default) -> boolean() | Default.
 -spec get_is_true(config_category(), config_key(), Default, ne_binary()) -> boolean() | Default.
 

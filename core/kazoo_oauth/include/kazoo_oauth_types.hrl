@@ -47,7 +47,7 @@
                      ,account_id :: api(binary())
                      ,owner_id :: api(binary())
                      ,email :: api(binary())
-                     ,verified_email :: api_boolean()
+                     ,verified_email :: api(boolean())
                      ,access_type :: api(binary())
                      ,scope   :: api(binary())
                      ,scopes  :: api([api(binary())])

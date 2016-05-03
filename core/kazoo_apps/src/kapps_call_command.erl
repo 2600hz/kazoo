@@ -319,7 +319,7 @@ channel_status(Call, SrvQueue) ->
     channel_status(kapps_call:call_id(Call), SrvQueue).
 
 -spec channel_status_command(ne_binary() | kapps_call:call()) -> kz_proplist().
--spec channel_status_command(ne_binary() | kapps_call:call(), api_boolean()) -> kz_proplist().
+-spec channel_status_command(ne_binary() | kapps_call:call(), api(boolean())) -> kz_proplist().
 channel_status_command(CallId) ->
     channel_status_command(CallId, 'undefined').
 channel_status_command(<<_/binary>> = CallId, ActiveOnly) ->

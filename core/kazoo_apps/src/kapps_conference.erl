@@ -322,11 +322,11 @@ moderator_pins(#kapps_conference{moderator_pins=ModeratorPins}) ->
 set_moderator_pins(ModeratorPins, Conference) when is_list(ModeratorPins) ->
     Conference#kapps_conference{moderator_pins=ModeratorPins}.
 
--spec moderator(kapps_conference:conference()) -> api_boolean().
+-spec moderator(kapps_conference:conference()) -> api(boolean()).
 moderator(#kapps_conference{moderator=Moderator}) ->
     Moderator.
 
--spec set_moderator(api_boolean(), kapps_conference:conference()) -> kapps_conference:conference().
+-spec set_moderator(api(boolean()), kapps_conference:conference()) -> kapps_conference:conference().
 set_moderator('undefined', Conference) ->
     Conference#kapps_conference{moderator='undefined'};
 set_moderator(Moderator, Conference) when is_boolean(Moderator) ->

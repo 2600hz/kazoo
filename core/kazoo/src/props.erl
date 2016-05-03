@@ -131,12 +131,12 @@ get_first_defined([H|T], Props, Default) ->
         V -> V
     end.
 
--spec get_is_true(kz_proplist_key(), kz_proplist()) -> api_boolean().
+-spec get_is_true(kz_proplist_key(), kz_proplist()) -> api(boolean()).
 -spec get_is_true(kz_proplist_key(), kz_proplist(), Default) -> Default | boolean().
 get_is_true(Key, Props) -> is_true(Key, Props).
 get_is_true(Key, Props, Default) -> is_true(Key, Props, Default).
 
--spec is_true(kz_proplist_key(), kz_proplist()) -> api_boolean().
+-spec is_true(kz_proplist_key(), kz_proplist()) -> api(boolean()).
 -spec is_true(kz_proplist_key(), kz_proplist(), Default) -> Default | boolean().
 is_true(Key, Props) ->
     is_true(Key, Props, 'undefined').
@@ -146,7 +146,7 @@ is_true(Key, Props, Default) ->
         V -> kz_util:is_true(V)
     end.
 
--spec get_is_false(kz_proplist_key(), kz_proplist()) -> api_boolean().
+-spec get_is_false(kz_proplist_key(), kz_proplist()) -> api(boolean()).
 -spec get_is_false(kz_proplist_key(), kz_proplist(), Default) -> Default | boolean().
 get_is_false(Key, Props) -> is_false(Key, Props).
 get_is_false(Key, Props, Default) -> is_false(Key, Props, Default).

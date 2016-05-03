@@ -371,7 +371,7 @@ timeout(Req) ->
 timeout(?REQ_TYPE(JObj), Default) ->
     kz_json:get_integer_value(?KEY_TIMEOUT, JObj, Default).
 
--spec ignore_early_media(req()) -> api_boolean().
+-spec ignore_early_media(req()) -> api(boolean()).
 -spec ignore_early_media(req(), Default) -> boolean() | Default.
 ignore_early_media(Req) ->
     ignore_early_media(Req, 'undefined').

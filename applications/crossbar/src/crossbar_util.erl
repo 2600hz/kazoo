@@ -552,7 +552,7 @@ update_descendants_tree([Descendant|Descendants], Tree, NewResellerId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec move_service(ne_binary(), ne_binaries(), ne_binary(), api_boolean()) ->
+-spec move_service(ne_binary(), ne_binaries(), ne_binary(), api(boolean())) ->
                           {'ok', kz_json:object()} |
                           {'error', any()}.
 move_service(AccountId, NewTree, NewResellerId, Dirty) ->
@@ -562,7 +562,7 @@ move_service(AccountId, NewTree, NewResellerId, Dirty) ->
             move_service_doc(NewTree, NewResellerId, Dirty, JObj)
     end.
 
--spec move_service_doc(ne_binaries(), ne_binary(), api_boolean(), kz_json:object()) ->
+-spec move_service_doc(ne_binaries(), ne_binary(), api(boolean()), kz_json:object()) ->
                           {'ok', kz_json:object()} |
                           {'error', any()}.
 move_service_doc(NewTree, NewResellerId, Dirty, JObj) ->

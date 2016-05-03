@@ -149,7 +149,7 @@ billing_seconds(JObj) ->
 duration_seconds(JObj) ->
     kz_json:get_integer_value(<<"Duration-Seconds">>, JObj).
 
--spec is_call_forwarded(kz_json:object()) -> api_boolean().
+-spec is_call_forwarded(kz_json:object()) -> api(boolean()).
 -spec is_call_forwarded(kz_json:object(), Default) -> boolean() | Default.
 is_call_forwarded(JObj) ->
     is_call_forwarded(JObj, 'undefined').

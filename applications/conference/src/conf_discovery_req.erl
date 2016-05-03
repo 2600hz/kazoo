@@ -120,7 +120,7 @@ maybe_collect_member_pin(Conference, Call, Srv) ->
             collect_conference_pin('false', Conference, Call, Srv)
     end.
 
--spec collect_conference_pin(api_boolean(), kapps_conference:conference(), kapps_call:call(), pid()) -> 'ok'.
+-spec collect_conference_pin(api(boolean()), kapps_conference:conference(), kapps_call:call(), pid()) -> 'ok'.
 collect_conference_pin(Type, Conference, Call, Srv) ->
     case validate_conference_pin(Type, Conference, Call, 1) of
         {'ok', C} ->
@@ -315,7 +315,7 @@ validate_collected_conference_id(Call, Loop, Digits) ->
             validate_conference_id('undefined', Call, Loop + 1)
     end.
 
--spec validate_conference_pin(api_boolean(), kapps_conference:conference(), kapps_call:call(), pos_integer()) ->
+-spec validate_conference_pin(api(boolean()), kapps_conference:conference(), kapps_call:call(), pos_integer()) ->
                                      {'ok', kapps_conference:conference()} |
                                      {'error', any()}.
 validate_conference_pin(_, _, Call, Loop) when Loop > 3->
