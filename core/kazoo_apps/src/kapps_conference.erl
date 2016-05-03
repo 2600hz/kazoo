@@ -141,7 +141,7 @@ from_json(JObj, Conference) ->
       ,call = load_call(JObj, call(Conference))
      }.
 
--spec load_call(kz_json:object(), kapps_call:call() | 'undefined') -> kapps_call:call() | 'undefined'.
+-spec load_call(kz_json:object(), api(kapps_call:call())) -> api(kapps_call:call()).
 load_call(JObj, ConfCall) ->
     case kz_json:get_value(<<"Call">>, JObj) of
         'undefined' -> ConfCall;
@@ -532,7 +532,7 @@ cache(#kapps_conference{id=ConferenceId}=Conference, Expires) ->
 retrieve(ConferenceId) ->
     kz_cache:fetch_local(?KAPPS_CALL_CACHE, {?MODULE, 'conference', ConferenceId}).
 
--spec call(kapps_conference:conference()) -> kapps_call:call() | 'undefined'.
+-spec call(kapps_conference:conference()) -> api(kapps_call:call()).
 call(#kapps_conference{call=Call}) -> Call.
 
 -spec set_call(kapps_call:call(), kapps_conference:conference()) -> kapps_conference:conference().

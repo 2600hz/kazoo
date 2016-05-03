@@ -110,7 +110,7 @@
                   ,verify = 'true' :: boolean()
                   ,update_existing = 'false' :: boolean() | ne_binary()
                   ,billing_address_id :: api_binary()
-                  ,billing_address :: bt_address() | 'undefined'
+                  ,billing_address :: api(bt_address())
                  }).
 -type bt_card() :: #bt_card{}.
 -type bt_cards() :: [bt_card()].

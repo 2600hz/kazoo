@@ -77,7 +77,7 @@ execute_action('echo', Call) ->
 
 
 
--spec tone_or_echo(kapps_call:call()) -> 'echo' | 'tone' | 'undefined'.
+-spec tone_or_echo(kapps_call:call()) -> api('echo' | 'tone').
 tone_or_echo(Call) ->
     CallJObj = kapps_call:to_json(Call),
     From = kz_json:get_binary_value(<<"Caller-ID-Number">>, CallJObj, <<>>),
@@ -94,16 +94,14 @@ tone_or_echo(Call) ->
             maybe_echo_maybe_tone(Echo, Tone, To, From)
     end.
 
--spec maybe_echo(kz_json:object(), ne_binary(), ne_binary()) ->
-                        'undefined' | 'echo'.
+-spec maybe_echo(kz_json:object(), ne_binary(), ne_binary()) -> api('echo').
 maybe_echo(Echo, To, From) ->
     case rule_exist(Echo, To, From) of
         'true' -> 'echo';
         'false' -> 'undefined'
     end.
 
--spec maybe_tone(kz_json:object(), ne_binary(), ne_binary()) ->
-                        'undefined' | 'tone'.
+-spec maybe_tone(kz_json:object(), ne_binary(), ne_binary()) -> api('tone').
 maybe_tone(Tone, To, From) ->
     case rule_exist(Tone, To, From) of
         'true' -> 'tone';
@@ -111,7 +109,7 @@ maybe_tone(Tone, To, From) ->
     end.
 
 -spec maybe_echo_maybe_tone(kz_json:object(), kz_json:object(), ne_binary(), ne_binary()) ->
-                                   'undefined' | 'tone' | 'echo'.
+                                   api('tone' | 'echo').
 maybe_echo_maybe_tone(Echo, Tone, To, From) ->
     case {rule_exist(Echo, To, From)
           ,rule_exist(Tone, To, From)

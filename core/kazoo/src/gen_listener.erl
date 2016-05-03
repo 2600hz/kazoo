@@ -863,7 +863,7 @@ start_amqp(Props) ->
             {'ok', Q}
     end.
 
--spec set_qos('undefined' | non_neg_integer()) -> 'ok'.
+-spec set_qos(api(non_neg_integer())) -> 'ok'.
 set_qos('undefined') -> 'ok';
 set_qos(N) when is_integer(N), N >= 0 -> amqp_util:basic_qos(N).
 
@@ -894,11 +894,11 @@ create_binding(Binding, Props, Q) ->
             erlang:error({'api_module_undefined', Wapi})
     end.
 
--spec stop_timer('undefined' | reference()) -> non_neg_integer() | 'false'.
+-spec stop_timer(api(reference())) -> non_neg_integer() | 'false'.
 stop_timer('undefined') -> 'false';
 stop_timer(Ref) when is_reference(Ref) -> erlang:cancel_timer(Ref).
 
--spec start_timer(any()) -> reference() | 'undefined'.
+-spec start_timer(any()) -> api(reference()).
 start_timer(0) ->
     self() ! ?CALLBACK_TIMEOUT_MSG,
     'undefined';

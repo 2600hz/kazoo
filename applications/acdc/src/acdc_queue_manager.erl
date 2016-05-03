@@ -602,8 +602,7 @@ start_agent_and_worker(WorkersSup, AccountId, QueueId, AgentJObj) ->
 
 %% Really sophisticated selection algorithm
 -spec pick_winner(pid(), kz_json:objects(), queue_strategy(), api_binary()) ->
-                         'undefined' |
-                         {kz_json:objects(), kz_json:objects()}.
+                         api({kz_json:objects(), kz_json:objects()}).
 pick_winner(_, [], _, _) ->
     lager:debug("no agent responses are left to choose from"),
     'undefined';
@@ -707,7 +706,7 @@ get_strategy(<<"most_idle">>) -> 'mi';
 get_strategy(_) -> 'rr'.
 
 -spec create_strategy_state(queue_strategy()
-                            ,queue_strategy_state() | 'undefined'
+                            ,api(queue_strategy_state())
                             ,ne_binary(), ne_binary()
                            ) -> queue_strategy_state().
 create_strategy_state(Strategy, AcctDb, QueueId) ->

@@ -853,7 +853,7 @@ flush_call_stat(JObj, Props) ->
                       ,{'flush_call', Id}
                      ).
 
--spec find_call_stat(ne_binary()) -> 'undefined' | call_stat().
+-spec find_call_stat(ne_binary()) -> api(call_stat()).
 find_call_stat(Id) ->
     case ets:lookup(call_table_id(), Id) of
         [] -> 'undefined';

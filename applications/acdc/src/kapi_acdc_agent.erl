@@ -370,7 +370,7 @@ login_resp_v(JObj) ->
 %%------------------------------------------------------------------------------
 
 -spec bind_q(binary(), kz_proplist()) -> 'ok'.
--spec bind_q(binary(), {ne_binary(), ne_binary(), ne_binary()}, 'undefined' | list()) -> 'ok'.
+-spec bind_q(binary(), {ne_binary(), ne_binary(), ne_binary()}, api(list())) -> 'ok'.
 bind_q(Q, Props) ->
     AgentId = props:get_value('agent_id', Props, <<"*">>),
     AcctId = props:get_value('account_id', Props, <<"*">>),
@@ -398,7 +398,7 @@ bind_q(Q, Ids, [_|T]) -> bind_q(Q, Ids, T);
 bind_q(_, _, []) -> 'ok'.
 
 -spec unbind_q(binary(), kz_proplist()) -> 'ok'.
--spec unbind_q(binary(), {ne_binary(), ne_binary(), ne_binary()}, 'undefined' | list()) -> 'ok'.
+-spec unbind_q(binary(), {ne_binary(), ne_binary(), ne_binary()}, api(list())) -> 'ok'.
 unbind_q(Q, Props) ->
     AgentId = props:get_value('agent_id', Props, <<"*">>),
     AcctId = props:get_value('account_id', Props, <<"*">>),

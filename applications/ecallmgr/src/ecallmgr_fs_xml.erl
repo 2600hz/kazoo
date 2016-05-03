@@ -411,7 +411,7 @@ route_resp_transfer_ringback(JObj) ->
             action_el(<<"set">>, <<"transfer_ringback=", (kz_util:to_binary(Stream))/binary>>)
     end.
 
--spec route_resp_pre_park_action(kz_json:object()) -> 'undefined' | xml_el().
+-spec route_resp_pre_park_action(kz_json:object()) -> api(xml_el()).
 route_resp_pre_park_action(JObj) ->
     case kz_json:get_value(<<"Pre-Park">>, JObj) of
         <<"ring_ready">> -> action_el(<<"ring_ready">>);
@@ -419,14 +419,14 @@ route_resp_pre_park_action(JObj) ->
         _Else -> 'undefined'
     end.
 
--spec maybe_start_dtmf_action(kz_proplist()) -> 'undefined' | xml_el().
+-spec maybe_start_dtmf_action(kz_proplist()) -> api(xml_el()).
 maybe_start_dtmf_action(Props) ->
     case ecallmgr_config:is_true(<<"should_detect_inband_dtmf">>) of
         'false' -> 'undefined';
         'true' -> check_dtmf_type(Props)
     end.
 
--spec check_dtmf_type(kz_proplist()) -> 'undefined' | xml_el().
+-spec check_dtmf_type(kz_proplist()) -> api(xml_el()).
 check_dtmf_type(Props) ->
     case props:get_value(<<"variable_switch_r_sdp">>, Props, <<"101 telephone-event">>) of
         <<"101 telephone-event">> -> 'undefined';
@@ -782,7 +782,7 @@ param_el(Name, Value) ->
                             ]
                }.
 
--spec maybe_param_el(xml_attrib_value(), xml_attrib_value()) -> xml_el() | 'undefined'.
+-spec maybe_param_el(xml_attrib_value(), xml_attrib_value()) -> api(xml_el()).
 maybe_param_el(Name, Value) ->
     case kz_util:is_empty(Value) of
         'true' -> 'undefined';
@@ -873,7 +873,7 @@ context_el(Name, Children) ->
                }.
 
 -spec extension_el(xml_els()) -> xml_el().
--spec extension_el(xml_attrib_value(), xml_attrib_value() | 'undefined', xml_els()) -> xml_el().
+-spec extension_el(xml_attrib_value(), api(xml_attrib_value()), xml_els()) -> xml_el().
 extension_el(Children) ->
     #xmlElement{name='extension'
                 ,content=Children
@@ -892,7 +892,7 @@ extension_el(Name, Continue, Children) ->
                 ,content=[Child || Child <- Children, Child =/= 'undefined']
                }.
 
--spec condition_el(xml_el() | xml_els() | 'undefined') -> xml_el().
+-spec condition_el(api(xml_el() | xml_els())) -> xml_el().
 condition_el(Child) when not is_list(Child) ->
     condition_el([Child]);
 condition_el(Children) ->
@@ -900,7 +900,7 @@ condition_el(Children) ->
                 ,content=[Child || Child <- Children, Child =/= 'undefined']
                }.
 
--spec condition_el(xml_el() | xml_els() | 'undefined', xml_attrib_value(), xml_attrib_value()) -> xml_el().
+-spec condition_el(api(xml_el() | xml_els()), xml_attrib_value(), xml_attrib_value()) -> xml_el().
 condition_el(Child, Field, Expression) when not is_list(Child) ->
     condition_el([Child], Field, Expression);
 condition_el(Children, Field, Expression) ->

@@ -175,7 +175,7 @@ entry_schema_success(Context, ListId, EntryId) ->
             )
     end.
 
--spec on_entry_successful_validation(path_token(), path_token() | 'undefined', cb_context:context()) ->
+-spec on_entry_successful_validation(path_token(), api(path_token()), cb_context:context()) ->
                                             cb_context:context().
 on_entry_successful_validation(_ListId, 'undefined', Context) ->
     cb_context:set_doc(Context

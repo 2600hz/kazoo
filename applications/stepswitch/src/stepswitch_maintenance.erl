@@ -203,7 +203,7 @@ reload_resources(Account) ->
 -spec process_number(text()) -> any().
 process_number(Number) -> process_number(Number, 'undefined').
 
--spec process_number(text(), text() | 'undefined') -> any().
+-spec process_number(text(), api(text())) -> any().
 process_number(Num, 'undefined') ->
     JObj = kz_json:from_list([{<<"To-DID">>, kz_util:to_binary(Num)}]),
     Number = stepswitch_util:get_outbound_destination(JObj),

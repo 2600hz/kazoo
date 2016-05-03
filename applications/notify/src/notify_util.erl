@@ -92,7 +92,7 @@ send_update(RespQ, MsgId, Status, Msg) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_template_props(api_object() | kz_json:objects()) -> 'undefined' | kz_proplist().
+-spec json_to_template_props(api_object() | kz_json:objects()) -> api(kz_proplist()).
 json_to_template_props('undefined') -> 'undefined';
 json_to_template_props(JObj) ->
     normalize_proplist(kz_json:recursive_to_proplist(JObj)).
@@ -357,9 +357,9 @@ find_admin(Account) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_account_doc(kz_json:object()) ->
-                             {'ok', kz_json:object()} |
-                             {'error', _} |
-                             'undefined'.
+                             api({'ok', kz_json:object()} |
+                                 {'error', _}
+                                ).
 get_account_doc(JObj) ->
     case kz_json:get_first_defined([<<"Account-DB">>
                                     ,<<"Account-ID">>
@@ -369,7 +369,7 @@ get_account_doc(JObj) ->
         Account -> kz_account:fetch(Account)
     end.
 
--spec category_to_file(ne_binary()) -> iolist() | 'undefined'.
+-spec category_to_file(ne_binary()) -> api(iolist()).
 category_to_file(<<"notify.voicemail_to_email">>) ->
     [code:lib_dir('notify', 'priv'), "/notify_voicemail_to_email.config"];
 category_to_file(<<"notify.voicemail_full">>) ->
@@ -411,7 +411,7 @@ category_to_file(<<"notify.topup">>) ->
 category_to_file(_) ->
     'undefined'.
 
--spec qr_code_image(api_binary()) -> kz_proplist() | 'undefined'.
+-spec qr_code_image(api_binary()) -> api(kz_proplist()).
 qr_code_image('undefined') -> 'undefined';
 qr_code_image(Text) ->
     lager:debug("create qr code for ~s", [Text]),

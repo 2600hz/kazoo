@@ -24,7 +24,7 @@
 
 -define(APIKEY, <<"delegate">>).
 
--type maybe_key() :: ne_binary() | 'undefined'.
+-type maybe_key() :: api(ne_binary()).
 
 -define(DELEGATE_ROUTING_KEY(App, Key), <<?APIKEY/binary, "."
                                           ,(amqp_util:encode(App))/binary, "."

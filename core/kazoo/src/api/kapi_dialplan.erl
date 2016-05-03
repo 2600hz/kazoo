@@ -1154,7 +1154,7 @@ metaflow_digit_timeout_v(X) ->
 bind_q(Queue, Props) ->
     bind_q(Queue, Props, props:get_value('metaflow', Props)).
 
--spec bind_q(ne_binary(), kz_proplist(), 'undefined' | 'true') -> 'ok'.
+-spec bind_q(ne_binary(), kz_proplist(), api('true')) -> 'ok'.
 bind_q(Queue, _Props, 'undefined') ->
     amqp_util:bind_q_to_callctl(Queue);
 bind_q(Queue, Props, 'true') ->
@@ -1165,7 +1165,7 @@ bind_q(Queue, Props, 'true') ->
 unbind_q(Queue, Props) ->
     unbind_q(Queue, Props, props:get_value('metaflow', Props)).
 
--spec unbind_q(ne_binary(), kz_proplist(), 'undefined' | 'true') -> 'ok'.
+-spec unbind_q(ne_binary(), kz_proplist(), api('true')) -> 'ok'.
 unbind_q(Queue, _Props, 'undefined') ->
     amqp_util:unbind_q_from_callctl(Queue);
 unbind_q(Queue, Props, 'true') ->

@@ -802,7 +802,7 @@ phone_number(#knm_number{knm_phone_number=PhoneNumber}) -> PhoneNumber.
 set_phone_number(Number, PhoneNumber) ->
     Number#knm_number{knm_phone_number=PhoneNumber}.
 
--spec services(knm_number()) -> kz_services:services() | 'undefined'.
+-spec services(knm_number()) -> api(kz_services:services()).
 services(#knm_number{services=Services}) -> Services.
 
 -spec set_services(knm_number(), kz_services:services()) -> knm_number().

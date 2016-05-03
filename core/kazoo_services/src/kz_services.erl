@@ -422,7 +422,7 @@ delete(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_billing_id(api_binary(), ne_binary() | services()) -> 'undefined' | services().
+-spec set_billing_id(api_binary(), ne_binary() | services()) -> api(services()).
 set_billing_id('undefined', _) -> 'undefined';
 set_billing_id(BillingId, #kz_services{billing_id=BillingId}) ->
     'undefined';
@@ -1037,8 +1037,7 @@ calculate_services_charges(#kz_services{jobj=ServiceJObj
     lager:debug("computed service charges"),
     {'ok', kz_service_items:public_json(Changed)}.
 
--spec apply_cascade_quantities(kz_json:object(), kz_json:object()) ->
-                                      kz_json:object().
+-spec apply_cascade_quantities(kz_json:object(), kz_json:object()) -> kz_json:object().
 apply_cascade_quantities(Quantities, CascadeQuantities) ->
     kz_json:map(fun(CategoryId, ItemsJObj) ->
                         {CategoryId, apply_cascade_categories(CategoryId, ItemsJObj, CascadeQuantities)}

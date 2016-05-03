@@ -167,7 +167,7 @@ get_query_string_data(QS0, Req) ->
 get_content_type(Req) ->
     get_parsed_content_type(cowboy_req:parse_header(<<"content-type">>, Req)).
 
--spec get_parsed_content_type({'ok', content_type() | 'undefined', cowboy_req:req()}) ->
+-spec get_parsed_content_type({'ok', api(content_type()), cowboy_req:req()}) ->
                                      {api_binary(), cowboy_req:req()}.
 get_parsed_content_type({'ok', 'undefined', Req}) ->
     {'undefined', Req};
@@ -921,7 +921,7 @@ content_type_matches(CTA, CT) when is_binary(CTA), is_binary(CT) ->
 content_type_matches(_CTA, _CTAs) ->
     'false'.
 
--spec ensure_content_type(content_type() | 'undefined') -> content_type().
+-spec ensure_content_type(api(content_type())) -> content_type().
 ensure_content_type('undefined') -> ?CROSSBAR_DEFAULT_CONTENT_TYPE;
 ensure_content_type(CT) -> CT.
 

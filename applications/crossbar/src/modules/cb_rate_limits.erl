@@ -68,7 +68,7 @@ authorize(Context) ->
 -type thing_type() :: ne_binary().
 -type thing_id() :: ne_binary().
 -type thing_description() :: {thing_type(), thing_id()}.
--spec thing_type_id(cb_context:context()) -> thing_description() | 'undefined'.
+-spec thing_type_id(cb_context:context()) -> api(thing_description()).
 thing_type_id(Context) ->
     case cb_context:req_nouns(Context) of
         [{<<"rate_limits">>, []}, {<<"accounts">> = Type, [Id]} | _] -> {Type, Id};
@@ -76,14 +76,14 @@ thing_type_id(Context) ->
         _ReqNouns -> 'undefined'
     end.
 
--spec thing_type(cb_context:context()) -> thing_type() | 'undefiend'.
+-spec thing_type(cb_context:context()) -> api(thing_type()).
 thing_type(Context) ->
     case thing_type_id(Context) of
         {Type, _} -> Type;
         'undefined' -> 'undefined'
     end.
 
--spec thing_id(cb_context:context()) -> thing_id() | 'undefined'.
+-spec thing_id(cb_context:context()) -> api(thing_id()).
 thing_id(Context) ->
     case thing_type_id(Context) of
         {_, Id} -> Id;

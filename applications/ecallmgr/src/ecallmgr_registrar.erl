@@ -227,7 +227,7 @@ lookup_registration(Realm, Username) ->
         'undefined' -> fetch_registration(Username, Realm)
     end.
 
--spec get_registration(ne_binary(), ne_binary()) -> 'undefined' | registration().
+-spec get_registration(ne_binary(), ne_binary()) -> api(registration()).
 get_registration(Realm, Username) ->
     case ets:lookup(?MODULE, registration_id(Username, Realm)) of
         [#registration{}=Registration] -> Registration;
@@ -330,7 +330,7 @@ flush(Realm) ->
         _Else -> gen_server:cast(?SERVER, {'flush', Realm})
     end.
 
--spec flush(text() | 'undefined', text()) -> 'ok'.
+-spec flush(api(text()), text()) -> 'ok'.
 flush('undefined', Realm) ->
     flush(Realm);
 flush(Username, Realm) when not is_binary(Realm) ->

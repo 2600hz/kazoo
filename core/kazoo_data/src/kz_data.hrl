@@ -28,7 +28,7 @@
 
 -type data_connection() :: #data_connection{}.
 -type data_connections() :: [data_connection()].
--type server() :: {atom(), any()} | 'undefined'.
+-type server() :: api({atom(), any()}).
 -type db() :: #db{}.
 
 -record(copy_doc, {source_dbname  :: ne_binary()
@@ -87,9 +87,14 @@
 
 -type view_options() :: list(view_option()).
 
--type db_classifications() :: 'account' | 'modb' | 'acdc' |
-                              'numbers' | 'aggregate' | 'system' |
-                              'deprecated' | 'undefined'.
+-type db_classifications() :: api('account' |
+                                  'modb' |
+                                  'acdc' |
+                                  'numbers' |
+                                  'aggregate' |
+                                  'system' |
+                                  'deprecated'
+                                 ).
 
 -type db_create_options() :: [{'q',integer()} | {'n',integer()}].
 

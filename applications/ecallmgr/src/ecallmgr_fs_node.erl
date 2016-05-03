@@ -130,7 +130,7 @@
 -record(state, {node :: atom()
                 ,options = []             :: kz_proplist()
                 ,interface = #interface{} :: interface()
-                ,start_cmds_pid_ref       :: pid_ref() | 'undefined'
+                ,start_cmds_pid_ref       :: api(pid_ref())
                }).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_reload_acls'}

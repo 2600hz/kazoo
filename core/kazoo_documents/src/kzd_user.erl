@@ -113,7 +113,7 @@ vcard_normalize_type(T) when is_list(T) -> kz_util:join_binary([vcard_normalize_
 vcard_normalize_type({T, V}) -> kz_util:join_binary([T, V], <<"=">>);
 vcard_normalize_type(T) -> T.
 
--type vcard_val() :: binary() | {char(), binaries()} | 'undefined'.
+-type vcard_val() :: api(binary() | {char(), binaries()}).
 -type vcard_type_token() :: ne_binary() | {ne_binary(), ne_binary()}.
 -type vcard_type() :: [vcard_type_token()] | vcard_type_token().
 -type vcard_field_token() :: {vcard_type(), vcard_val()}.
@@ -258,7 +258,8 @@ devices(UserJObj) ->
             []
     end.
 
--spec fetch(ne_binary(), ne_binary()) -> {'ok', doc()} | {'error', any()}.
+-spec fetch(ne_binary(), ne_binary()) -> {'ok', doc()} |
+                                         {'error', any()}.
 fetch(<<_/binary>> = AccountId, <<_/binary>> = UserId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     kz_datamgr:open_cache_doc(AccountDb, UserId);

@@ -1074,7 +1074,7 @@ skel_v(JObj) -> skel_v(kz_json:to_proplist(JObj)).
 bind_q(Queue, Props) ->
     bind_to_q(Queue, props:get_value('restrict_to', Props)).
 
--spec bind_to_q(ne_binary(), restrictions() | 'undefined') -> 'ok'.
+-spec bind_to_q(ne_binary(), api(restrictions())) -> 'ok'.
 bind_to_q(Q, 'undefined') ->
     'ok' = amqp_util:bind_q_to_notifications(Q, <<"notifications.*.*">>);
 bind_to_q(Q, ['new_voicemail'|T]) ->
@@ -1179,7 +1179,7 @@ bind_to_q(_Q, []) ->
 unbind_q(Queue, Props) ->
     unbind_q_from(Queue, props:get_value('restrict_to', Props)).
 
--spec unbind_q_from(ne_binary(), restrictions() | 'undefined') -> 'ok'.
+-spec unbind_q_from(ne_binary(), api(restrictions())) -> 'ok'.
 unbind_q_from(Q, 'undefined') ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, <<"notifications.*.*">>);
 unbind_q_from(Q, ['new_voicemail'|T]) ->

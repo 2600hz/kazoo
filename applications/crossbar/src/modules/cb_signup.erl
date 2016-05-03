@@ -401,7 +401,7 @@ exec_register_command(Context, #state{register_cmd=CmdTmpl}) ->
 %%--------------------------------------------------------------------
 -spec send_activation_email(cb_context:context(), #state{}) ->
                                    {'ok', pid()} |
-                                   {'error', term()}.
+                                   {'error', any()}.
 send_activation_email(Context
                       ,#state{activation_email_subject=SubjectTmpl
                               ,activation_email_from=FromTmpl
@@ -506,7 +506,7 @@ template_props(Context) ->
 %% accounts and completed signups
 %% @end
 %%--------------------------------------------------------------------
--spec is_unique_realm(binary() | 'undefined') -> boolean().
+-spec is_unique_realm(api(binary())) -> boolean().
 is_unique_realm('undefined') -> 'false';
 is_unique_realm(<<>>) -> 'false';
 is_unique_realm(Realm) ->
@@ -595,7 +595,7 @@ get_configs() ->
                          'cb_signup_email_subject' |
                          'cb_signup_register_cmd'.
 -spec compile_template(string() | api_binary(), template_name()) ->
-                              'undefined' | template_name().
+                              api(template_name()).
 compile_template('undefined', _) -> 'undefined';
 compile_template(Template, Name) when not is_binary(Template) ->
     Path = case string:substr(Template, 1, 1) of
@@ -617,7 +617,7 @@ compile_template(Template, Name) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec do_compile_template(nonempty_string() | ne_binary(), template_name()) ->
-                                 'undefined' | template_name().
+                                 api(template_name()).
 do_compile_template(Template, Name) ->
     case erlydtl:compile_template(Template, Name, [{'out_dir', 'false'}]) of
         {'ok', Name} ->

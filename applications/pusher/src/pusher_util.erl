@@ -36,7 +36,7 @@
 %% Internal functions
 %% ====================================================================
 
--type keycert() :: {'undefined' | {'PrivateKeyInfo', binary()}
+-type keycert() :: {api({'PrivateKeyInfo', binary()})
                     ,api_binary()
                    }.
 -spec binary_to_keycert(binary()) -> keycert().

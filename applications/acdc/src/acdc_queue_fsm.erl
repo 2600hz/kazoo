@@ -706,7 +706,7 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 start_collect_timer() ->
     gen_fsm:start_timer(?COLLECT_RESP_TIMEOUT, ?COLLECT_RESP_MESSAGE).
 
--spec connection_timeout(integer() | 'undefined') -> pos_integer().
+-spec connection_timeout(api(integer())) -> pos_integer().
 connection_timeout(N) when is_integer(N), N > 0 -> N * 1000;
 connection_timeout(_) -> ?CONNECTION_TIMEOUT.
 
@@ -714,7 +714,7 @@ connection_timeout(_) -> ?CONNECTION_TIMEOUT.
 start_connection_timer(ConnTimeout) ->
     gen_fsm:start_timer(ConnTimeout, ?CONNECTION_TIMEOUT_MESSAGE).
 
--spec agent_ring_timeout(integer() | 'undefined') -> pos_integer().
+-spec agent_ring_timeout(api(integer())) -> pos_integer().
 agent_ring_timeout(N) when is_integer(N), N > 0 -> N;
 agent_ring_timeout(_) -> ?AGENT_RING_TIMEOUT.
 
@@ -722,7 +722,7 @@ agent_ring_timeout(_) -> ?AGENT_RING_TIMEOUT.
 start_agent_ring_timer(AgentTimeout) ->
     gen_fsm:start_timer(AgentTimeout * 1600, ?AGENT_RING_TIMEOUT_MESSAGE).
 
--spec maybe_stop_timer(reference() | 'undefined') -> 'ok'.
+-spec maybe_stop_timer(api(reference())) -> 'ok'.
 maybe_stop_timer('undefined') -> 'ok';
 maybe_stop_timer(ConnRef) ->
     _ = gen_fsm:cancel_timer(ConnRef),
@@ -773,7 +773,7 @@ update_properties(QueueJObj, State) ->
       %%,strategy = get_strategy(kz_json:get_value(<<"strategy">>, QueueJObj))
      }.
 
--spec current_call('undefined' | kapps_call:call(), reference() | kz_timeout() | 'undefined', kz_timeout()) ->
+-spec current_call(api(kapps_call:call()), api(reference() | kz_timeout()), kz_timeout()) ->
                           kz_json:object().
 current_call('undefined', _, _) -> 'undefined';
 current_call(Call, QueueTimeLeft, Start) ->

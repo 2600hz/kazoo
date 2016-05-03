@@ -1060,7 +1060,7 @@ get_custom_sip_interface(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_skype_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) ->
-                                         kz_json:object().
+                                   kz_json:object().
 create_skype_endpoint(Endpoint, Properties, _Call) ->
     SkypeJObj = kz_json:get_value(<<"skype">>, Endpoint),
     Prop =
@@ -1502,7 +1502,7 @@ get_bypass_media(JObj) ->
         'false' -> 'undefined'
     end.
 
--spec get_codecs(kz_json:object()) -> 'undefined' | ne_binaries().
+-spec get_codecs(kz_json:object()) -> api(ne_binaries()).
 get_codecs(JObj) ->
     case kz_json:get_value([<<"media">>, <<"audio">>, <<"codecs">>], JObj, [])
         ++ kz_json:get_value([<<"media">>, <<"video">>, <<"codecs">>], JObj, [])

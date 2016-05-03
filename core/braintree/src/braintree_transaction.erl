@@ -446,7 +446,7 @@ record_to_json(#bt_transaction{}=Transaction) ->
             ],
     kz_json:from_list(props:filter_undefined(Props)).
 
--spec json_to_record(api_object()) -> bt_transaction() | 'undefined'.
+-spec json_to_record(api_object()) -> api(bt_transaction()).
 json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->
     #bt_transaction{

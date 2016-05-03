@@ -256,8 +256,8 @@ storage_retries(App) ->
 %%--------------------------------------------------------------------
 -spec presence(ne_binary(), ne_binary() | kapps_call:call()) -> 'ok'.
 -spec presence(ne_binary(), ne_binary(), api_binary() | kapps_call:call()) -> 'ok'.
--spec presence(ne_binary(), ne_binary() , api_binary() , kapps_call:call() | 'undefined') -> 'ok'.
--spec presence(ne_binary(), ne_binary() , api_binary() , api_binary(), kapps_call:call() | 'undefined') -> 'ok'.
+-spec presence(ne_binary(), ne_binary() , api_binary() , api(kapps_call:call())) -> 'ok'.
+-spec presence(ne_binary(), ne_binary() , api_binary() , api_binary(), api(kapps_call:call())) -> 'ok'.
 presence(State, <<_/binary>> = PresenceId) ->
     presence(State, PresenceId, 'undefined');
 presence(State, Call) ->
@@ -2446,7 +2446,7 @@ wait_for_dtmf(Timeout) ->
 %%--------------------------------------------------------------------
 -spec wait_for_bridge(kz_timeout(), kapps_call:call()) ->
                              kapps_api_bridge_return().
--spec wait_for_bridge(kz_timeout(), 'undefined' | fun((kz_json:object()) -> any()), kapps_call:call()) ->
+-spec wait_for_bridge(kz_timeout(), api(fun((kz_json:object()) -> any())), kapps_call:call()) ->
                              kapps_api_bridge_return().
 wait_for_bridge(Timeout, Call) ->
     wait_for_bridge(Timeout, 'undefined', Call).
@@ -2560,9 +2560,8 @@ wait_for_channel_bridge() ->
 %%--------------------------------------------------------------------
 -spec wait_for_hangup() -> {'ok', 'channel_hungup'} |
                            {'error', 'timeout'}.
--spec wait_for_hangup(kz_timeout()) ->
-                             {'ok', 'channel_hungup'} |
-                             {'error', 'timeout'}.
+-spec wait_for_hangup(kz_timeout()) -> {'ok', 'channel_hungup'} |
+                                       {'error', 'timeout'}.
 wait_for_hangup() ->
     wait_for_hangup('infinity').
 
@@ -2589,12 +2588,10 @@ wait_for_hangup(Timeout) ->
 %% Wait forever for the channel to hangup
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_unbridge() ->
-                               {'ok', 'leg_hungup'} |
-                               {'error', 'timeout'}.
--spec wait_for_unbridge(kz_timeout()) ->
-                               {'ok', 'leg_hungup'} |
-                               {'error', 'timeout'}.
+-spec wait_for_unbridge() -> {'ok', 'leg_hungup'} |
+                             {'error', 'timeout'}.
+-spec wait_for_unbridge(kz_timeout()) -> {'ok', 'leg_hungup'} |
+                                         {'error', 'timeout'}.
 wait_for_unbridge() ->
     wait_for_unbridge('infinity').
 

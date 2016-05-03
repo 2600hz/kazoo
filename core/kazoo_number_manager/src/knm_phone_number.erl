@@ -501,8 +501,7 @@ set_features(N, Features=?JSON_WRAPPER(_)) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec feature(knm_phone_number(), ne_binary()) ->
-                     kz_json:json_term() | 'undefined'.
+-spec feature(knm_phone_number(), ne_binary()) -> api(kz_json:json_term()).
 feature(Number, Feature) ->
     kz_json:get_value(Feature, features(Number)).
 

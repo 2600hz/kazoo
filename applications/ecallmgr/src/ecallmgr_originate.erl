@@ -470,7 +470,7 @@ get_transfer_action(JObj, Route) ->
                     ," XML ", Context, "' inline"
                    ]).
 
--spec intercept_unbridged_only(ne_binary() | 'undefined', kz_json:object()) -> ne_binary().
+-spec intercept_unbridged_only(api(ne_binary()), kz_json:object()) -> ne_binary().
 intercept_unbridged_only('undefined', JObj) ->
     get_bridge_action(JObj);
 intercept_unbridged_only(ExistingCallId, JObj) ->

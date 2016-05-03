@@ -268,10 +268,8 @@ get_media_meta(Call) -> kapps_call:kvs_fetch(<<"media_meta">>, Call).
 set_amqp_listener(Pid, Call) -> kapps_call:kvs_store(<<"amqp_listener">>, Pid, Call).
 get_amqp_listener(Call) -> kapps_call:kvs_fetch(<<"amqp_listener">>, Call).
 
--spec set_gather_pidref(pid_ref() | 'undefined', kapps_call:call()) ->
-                               kapps_call:call().
--spec get_gather_pidref(kapps_call:call()) ->
-                               pid_ref() | 'undefined'.
+-spec set_gather_pidref(api(pid_ref()), kapps_call:call()) -> kapps_call:call().
+-spec get_gather_pidref(kapps_call:call()) -> api(pid_ref()).
 set_gather_pidref('undefined', Call) ->
     kapps_call:kvs_store(<<"gather_pidref">>, 'undefined', Call);
 set_gather_pidref({_, _}=PidRef, Call) ->

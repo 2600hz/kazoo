@@ -195,7 +195,7 @@ is_master_account(Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec account_depth(ne_binary()) -> 'undefined' | non_neg_integer().
+-spec account_depth(ne_binary()) -> api(non_neg_integer()).
 account_depth(Account) ->
     {'ok', JObj} = kz_account:fetch(Account),
     length(kz_account:tree(JObj)).
@@ -652,11 +652,9 @@ get_destination(JObj, []) ->
     }.
 
 -spec try_split(api_binary()) ->
-                       {ne_binary(), ne_binary()} |
-                       'undefined'.
+                       api({ne_binary(), ne_binary()}).
 -spec try_split(ne_binary(), kz_json:object()) ->
-                       {ne_binary(), ne_binary()} |
-                       'undefined'.
+                       api({ne_binary(), ne_binary()}).
 try_split(Key, JObj) ->
     try_split(kz_json:get_value(Key, JObj)).
 

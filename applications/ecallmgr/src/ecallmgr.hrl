@@ -94,8 +94,8 @@
                      ,node :: atom() | '$1' | '$2' | '_'
                      ,participants = 0 :: non_neg_integer() | '_'
                      ,profile_name = <<"default">> :: ne_binary() | '_'
-                     ,with_floor :: 'undefined' | non_neg_integer() | '_' % which participant has the floor
-                     ,lost_floor :: 'undefined' | non_neg_integer() | '_' % which participant has lost the floor
+                     ,with_floor :: api(non_neg_integer()) | '_' % which participant has the floor
+                     ,lost_floor :: api(non_neg_integer()) | '_' % which participant has lost the floor
                      ,running = 'true' :: boolean() | '_'
                      ,answered = 'true' :: boolean() | '_'
                      ,enforce_min = 'true' :: boolean() | '_'

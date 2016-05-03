@@ -17,7 +17,7 @@
 -type shout_header() :: {0, ne_binary()}.
 -export_type([shout_header/0]).
 
--spec stream(inet:socket(), atom(), pos_integer(), binary(), shout_header() | 'undefined', boolean()) -> any().
+-spec stream(inet:socket(), atom(), pos_integer(), binary(), api(shout_header()), boolean()) -> any().
 stream(Socket, Transport, ChunkSize, Bin, Header, ToPad) ->
     lager:debug("let's stream the binary"),
     send_chunks(Socket, Transport, ChunkSize, Bin, Header, ToPad).

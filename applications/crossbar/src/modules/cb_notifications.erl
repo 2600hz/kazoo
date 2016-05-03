@@ -303,7 +303,7 @@ validate_recipient_id(RecipientId, Context) ->
 sender_account_id(Context) ->
     sender_account_id(Context, cb_context:account_id(Context)).
 
--spec sender_account_id(cb_context:context(), ne_binary()|'undefined') -> ne_binary().
+-spec sender_account_id(cb_context:context(), api(ne_binary())) -> ne_binary().
 sender_account_id(Context, 'undefined') ->
     cb_context:auth_account_id(Context);
 sender_account_id(_Context, AccountId) ->

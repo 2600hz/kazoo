@@ -51,7 +51,7 @@ add_options_fold({K, V}, Options) ->
 get_query_value(Key, Options) ->
     props:get_value(Key, Options).
 -else.
--spec get_query_value(atom() | ne_binary(), query_options()) -> term().
+-spec get_query_value(atom() | ne_binary(), query_options()) -> any().
 get_query_value(Key, Options) ->
     case props:get_value(Key, Options) of
         'undefined' ->
@@ -91,26 +91,26 @@ xml_resp_error_msg(XmlEls) ->
 xml_resp_response_msg(XmlEls) ->
     xml_el_to_binary(xml_resp_tag(XmlEls, 'response')).
 
--spec xml_resp_numbers(xml_els()) -> xml_el() | 'undefined'.
+-spec xml_resp_numbers(xml_els()) -> api(xml_el()).
 xml_resp_numbers(XmlEls) ->
     xml_resp_tag(XmlEls, 'numbers').
 
--spec xml_resp_info(xml_els()) -> xml_el() | 'undefined'.
+-spec xml_resp_info(xml_els()) -> api(xml_el()).
 xml_resp_info(XmlEls) ->
     xml_resp_tag(XmlEls, 'info').
 
--spec xml_resp_response(xml_els()) -> xml_el() | 'undefined'.
+-spec xml_resp_response(xml_els()) -> api(xml_el()).
 xml_resp_response(XmlEls) ->
     xml_resp_tag(XmlEls, 'response').
 
--spec xml_resp_tag(xml_els(), atom()) -> xml_el() | 'undefined'.
+-spec xml_resp_tag(xml_els(), atom()) -> api(xml_el()).
 xml_resp_tag([#xmlElement{name=Name}=El|_], Name) -> El;
 xml_resp_tag([_|Els], Name) ->
     xml_resp_tag(Els, Name);
 xml_resp_tag([], _Name) ->
     'undefined'.
 
--spec xml_el_to_binary('undefined' | xml_el()) -> api_binary().
+-spec xml_el_to_binary(api(xml_el())) -> api_binary().
 xml_el_to_binary('undefined') -> 'undefined';
 xml_el_to_binary(#xmlElement{content=Content}) ->
     kz_xml:texts_to_binary(Content).
@@ -173,7 +173,7 @@ query_vitelity(URI) ->
             E
     end.
 
--spec get_short_state(ne_binary()) -> state_two_letters() | 'undefined'.
+-spec get_short_state(ne_binary()) -> api(state_two_letters()).
 get_short_state(FullState) ->
     States = [{<<"alabama">>, <<"AL">>}
               ,{<<"alaska">>, <<"AK">>}

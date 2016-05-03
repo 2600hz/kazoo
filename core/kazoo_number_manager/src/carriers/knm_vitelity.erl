@@ -323,10 +323,10 @@ process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_xml_numbers(ne_binary(), pos_integer(), 'undefined' | xml_el()) ->
+-spec process_xml_numbers(ne_binary(), pos_integer(), api(xml_el())) ->
                                  {'ok', kz_json:object()} |
                                  {'error', any()}.
--spec process_xml_numbers(ne_binary(), pos_integer(), 'undefined' | xml_els(), kz_proplist()) ->
+-spec process_xml_numbers(ne_binary(), pos_integer(), api(xml_els()), kz_proplist()) ->
                                  {'ok', kz_json:object()} |
                                  {'error', any()}.
 process_xml_numbers(_Prefix, _Quantity, 'undefined') ->

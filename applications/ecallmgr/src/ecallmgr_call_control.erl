@@ -152,7 +152,7 @@ hostname(Srv) ->
     [_, Hostname] = binary:split(kz_util:to_binary(Node), <<"@">>),
     Hostname.
 
--spec queue_name(pid() | 'undefined') -> api_binary().
+-spec queue_name(api(pid())) -> api_binary().
 queue_name(Srv) when is_pid(Srv) -> gen_listener:queue_name(Srv);
 queue_name(_) -> 'undefined'.
 
@@ -1003,7 +1003,7 @@ queue_insert_fun('head') ->
 %% @end
 %%--------------------------------------------------------------------
 %% See Noop documentation for Filter-Applications to get an idea of this function's purpose
--spec maybe_filter_queue('undefined' | list(), queue:queue()) -> queue:queue().
+-spec maybe_filter_queue(api(list()), queue:queue()) -> queue:queue().
 maybe_filter_queue('undefined', CommandQ) -> CommandQ;
 maybe_filter_queue([], CommandQ) -> CommandQ;
 maybe_filter_queue([AppName|T]=Apps, CommandQ) when is_binary(AppName) ->

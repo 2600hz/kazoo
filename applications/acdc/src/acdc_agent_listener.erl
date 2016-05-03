@@ -265,7 +265,7 @@ config(Srv) -> gen_listener:call(Srv, 'config').
 refresh_config(_, 'undefined') -> 'ok';
 refresh_config(Srv, Qs) -> gen_listener:cast(Srv, {'refresh_config', Qs}).
 
--spec agent_info(pid(), kz_json:key()) -> kz_json:json_term() | 'undefined'.
+-spec agent_info(pid(), kz_json:key()) -> api(kz_json:json_term()).
 agent_info(Srv, Field) -> gen_listener:call(Srv, {'agent_info', Field}).
 
 send_status_resume(Srv) ->
@@ -897,8 +897,8 @@ code_change(_OldVsn, State, _Extra) ->
 is_valid_queue(Q, Qs) -> lists:member(Q, Qs).
 
 -spec send_member_connect_resp(kz_json:object(), ne_binary()
-                               ,ne_binary(), ne_binary()
-                               , kz_now() | 'undefined'
+                              ,ne_binary(), ne_binary()
+                              ,api(kz_now())
                               ) -> 'ok'.
 send_member_connect_resp(JObj, MyQ, AgentId, MyId, LastConn) ->
     Queue = kz_json:get_value(<<"Server-ID">>, JObj),
@@ -981,12 +981,11 @@ send_status_update(AcctId, AgentId, 'resume') ->
     kapi_acdc_agent:publish_resume(Update).
 
 
--spec idle_time('undefined' | kz_now()) -> api_integer().
+-spec idle_time(api(kz_now())) -> api_integer().
 idle_time('undefined') -> 'undefined';
 idle_time(T) -> kz_util:elapsed_s(T).
 
--spec call_id(kapps_call:call() | api_object()) ->
-                     api_binary().
+-spec call_id(kapps_call:call() | api_object()) -> api_binary().
 call_id('undefined') -> 'undefined';
 call_id(Call) ->
     case kapps_call:is_call(Call) of

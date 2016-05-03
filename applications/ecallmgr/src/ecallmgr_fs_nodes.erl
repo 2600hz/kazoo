@@ -87,7 +87,7 @@
 
 -record(state, {nodes = dict:new() :: dict:dict() %fs_nodes()
                 ,self = self() :: pid()
-                ,init_pidref :: pid_ref() | 'undefined'
+                ,init_pidref :: api(pid_ref())
                }).
 -type state() :: #state{}.
 

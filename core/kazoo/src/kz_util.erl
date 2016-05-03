@@ -1101,7 +1101,7 @@ to_lower_binary('undefined') -> 'undefined';
 to_lower_binary(Bin) when is_binary(Bin) -> << <<(to_lower_char(B))>> || <<B>> <= Bin>>;
 to_lower_binary(Else) -> to_lower_binary(to_binary(Else)).
 
--spec to_lower_string(any()) -> 'undefined' | list().
+-spec to_lower_string(any()) -> api(list()).
 to_lower_string('undefined') -> 'undefined';
 to_lower_string(L) when is_list(L) ->
     [to_lower_char(C) || C <- L];
@@ -1126,7 +1126,7 @@ to_upper_binary('undefined') -> 'undefined';
 to_upper_binary(Bin) when is_binary(Bin) -> << <<(to_upper_char(B))>> || <<B>> <= Bin>>;
 to_upper_binary(Else) -> to_upper_binary(to_binary(Else)).
 
--spec to_upper_string(any()) -> 'undefined' | list().
+-spec to_upper_string(any()) -> api(list()).
 to_upper_string('undefined') -> 'undefined';
 to_upper_string(L) when is_list(L) -> [to_upper_char(C) || C <- L];
 to_upper_string(Else) -> to_upper_string(to_list(Else)).
@@ -1589,7 +1589,7 @@ calling_process() ->
       ,line => Line
      }.
 
--spec get_app(atom() | ne_binary()) -> {atom(), string(), string()} | 'undefined'.
+-spec get_app(atom() | ne_binary()) -> api({atom(), string(), string()}).
 get_app(<<_/binary>> = AppName) ->
     get_app(to_atom(AppName));
 get_app(AppName) ->
@@ -1602,7 +1602,6 @@ get_app(AppName) ->
 
 -include_lib("eunit/include/eunit.hrl").
 
--spec resolve_uri_test() -> any().
 resolve_uri_test() ->
     RawPath = <<"http://pivot/script.php">>,
     Relative = <<"script2.php">>,

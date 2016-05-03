@@ -13,13 +13,13 @@
 
 -define(KZ_SERVICES_DB, <<"services">>).
 
--type error() :: 'topup_disabled' |
-                 'topup_undefined' |
-                 'amount_undefined' |
-                 'limit_undefined' |
-                 'balance_above_threshold' |
-                 'undefined' |
-                 atom().
+-type error() :: api('topup_disabled' |
+                     'topup_undefined' |
+                     'amount_undefined' |
+                     'limit_undefined' |
+                     'balance_above_threshold' |
+                     atom()
+                    ).
 
 
 %%--------------------------------------------------------------------

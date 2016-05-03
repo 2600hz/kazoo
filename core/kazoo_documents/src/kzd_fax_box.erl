@@ -41,8 +41,8 @@ owner_id(Box) ->
 owner_id(Box, Default) ->
     kz_json:get_value(?KEY_OWNER_ID, Box, Default).
 
--spec owner(doc()) -> kzd_user:doc() | 'undefined'.
--spec owner(doc(), ne_binary()) -> kzd_user:doc() | 'undefined'.
+-spec owner(doc()) -> api(kzd_user:doc()).
+-spec owner(doc(), ne_binary()) -> api(kzd_user:doc()).
 owner(Box) ->
     case owner_id(Box) of
         'undefined' -> 'undefined';

@@ -182,7 +182,7 @@ collect_timeout(Call, Timeout) ->
 -spec say_loop(kapps_call:call(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_timeout()) ->
                       {'ok', kapps_call:call()} |
                       {'error', _, kapps_call:call()}.
--spec say_loop(kapps_call:call(), ne_binary(), ne_binary(), ne_binary(), list() | 'undefined', ne_binary(), kz_timeout()) ->
+-spec say_loop(kapps_call:call(), ne_binary(), ne_binary(), ne_binary(), api(list()), ne_binary(), kz_timeout()) ->
                       {'ok', kapps_call:call()} |
                       {'error', _, kapps_call:call()}.
 say_loop(Call, SayMe, Voice, Lang, Engine, N) ->
@@ -208,7 +208,7 @@ say_loop(Call, SayMe, Voice, Lang, Terminators, Engine, N) ->
 -spec play_loop(kapps_call:call(), binary(), kz_timeout()) ->
                        {'ok', kapps_call:call()} |
                        {'error', _, kapps_call:call()}.
--spec play_loop(kapps_call:call(), binary(), list() | 'undefined', kz_timeout()) ->
+-spec play_loop(kapps_call:call(), binary(), api(list()), kz_timeout()) ->
                        {'ok', kapps_call:call()} |
                        {'error', _, kapps_call:call()}.
 play_loop(Call, PlayMe, N) ->

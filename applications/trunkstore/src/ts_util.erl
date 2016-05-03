@@ -308,7 +308,7 @@ ignore_early_media(L) -> simple_extract(L).
                         kz_json:object() | api_binary().
 ep_timeout(L) -> simple_extract(L).
 
--spec offnet_flags(list()) -> 'undefined' | list().
+-spec offnet_flags(list()) -> api(list()).
 offnet_flags([]) -> 'undefined';
 offnet_flags([H|_]) when is_list(H) -> H;
 offnet_flags([_|T]) -> offnet_flags(T).

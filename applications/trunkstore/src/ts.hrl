@@ -71,7 +71,7 @@
           ,inbound_format = <<>> :: binary()             % how does the server want the number? "E.164" | "NPANXXXXXX" | "1NPANXXXXXX" | "USERNAME"
           ,media_handling = <<>> :: binary()             % are we in the media path or not "process" | "bypass"
           ,progress_timeout = none :: none | integer()   %% for inbound with failover, how long do we wait
-          ,force_outbound = undefined :: undefined | boolean() %% if true, and call is outbound, don't try to route through our network; force over a carrier
+          ,force_outbound = undefined :: api(boolean()) %% if true, and call is outbound, don't try to route through our network; force over a carrier
           ,codecs = [] :: list()                         % what codecs to use (t38, g729, g711, etc...)
           ,rate = 0.0 :: float()                 % rate for the inbound leg, per minute
           ,rate_increment = 60 :: integer()      % time, in sec, to bill per

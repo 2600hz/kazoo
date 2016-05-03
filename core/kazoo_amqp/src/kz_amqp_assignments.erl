@@ -302,7 +302,7 @@ release_assignments({[#kz_amqp_assignment{timestamp=Timestamp
 %% @end
 %%--------------------------------------------------------------------
 
--spec maybe_reassign(pid()) -> 'undefined' | kz_amqp_assignment().
+-spec maybe_reassign(pid()) -> api(kz_amqp_assignment()).
 maybe_reassign(Consumer) ->
     Pattern = #kz_amqp_assignment{consumer=Consumer, _='_'},
     case ets:match_object(?TAB, Pattern, 1) of
@@ -319,7 +319,7 @@ maybe_reassign(Consumer) ->
 
 
 
--spec maybe_reassign(kz_amqp_assignment(), any()) -> 'undefined' | kz_amqp_assignment().
+-spec maybe_reassign(kz_amqp_assignment(), any()) -> api(kz_amqp_assignment()).
 maybe_reassign(_, 'undefined') -> 'undefined';
 maybe_reassign(_, '$end_of_table') -> 'undefined';
 maybe_reassign(#kz_amqp_assignment{consumer=_Consumer}=ConsumerAssignment

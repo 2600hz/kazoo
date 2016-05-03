@@ -317,7 +317,7 @@ all_accounts_set_classifier(Action, Classifier) ->
                           set_account_classifier_action(Action, Classifier, AccountDb)
                   end, kapps_util:get_all_accounts()).
 
--spec get_account_name_by_db(ne_binary()) -> ne_binary() | 'undefined'.
+-spec get_account_name_by_db(ne_binary()) -> api(ne_binary()).
 get_account_name_by_db(AccountDb) ->
     case kz_account:fetch(AccountDb) of
         {'error', _Error} ->

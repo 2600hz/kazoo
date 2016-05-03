@@ -152,7 +152,7 @@
                       ,language :: api_binary()                     %% Language of the call to use
                       ,app_name = <<"kapps_call">> :: ne_binary()        %% The application name used during kapps_call_command
                       ,app_version = <<"1.0.0">> :: ne_binary()           %% The application version used during kapps_call_command
-                      ,custom_publish_fun :: kapps_custom_publish() | 'undefined'     %% A custom command used to publish kapps_call_command
+                      ,custom_publish_fun :: api(kapps_custom_publish())     %% A custom command used to publish kapps_call_command
                       ,ccvs = kz_json:new() :: kz_json:object()      %% Any custom channel vars that where provided with the route request
                       ,sip_headers = kz_json:new() :: kz_json:object()                   %% Custom SIP Headers
                       ,kvs = orddict:new() :: orddict:orddict()           %% allows callflows to set values that propogate to children
@@ -963,7 +963,7 @@ set_custom_publish_function(Fun, #kapps_call{}=Call) when is_function(Fun, 2) ->
 clear_custom_publish_function(#kapps_call{}=Call) ->
     Call#kapps_call{custom_publish_fun='undefined'}.
 
--spec custom_publish_function(call()) -> 'undefined' | kapps_custom_publish().
+-spec custom_publish_function(call()) -> api(kapps_custom_publish()).
 custom_publish_function(#kapps_call{custom_publish_fun=Fun}) -> Fun.
 
 -spec kvs_append(any(), any(), call()) -> call().

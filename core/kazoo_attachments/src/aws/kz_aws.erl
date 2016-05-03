@@ -151,9 +151,17 @@ aws_request4_no_update(Method, Protocol, Host, Port, Path, Params, Service, #aws
     aws_request_form(Method, Protocol, Host, Port, Path, Query, SignedHeaders, Config).
 
 
--spec aws_request_form(Method :: atom(), Protocol :: undefined | string(), Host :: string(),
-                        Port :: undefined | integer() | string(), Path :: string(), Form :: iodata(),
-                        Headers :: list(), Config :: aws_config()) -> {ok, binary()} | {error, tuple()}.
+-spec aws_request_form(Method, Protocol, Host, Port, Path, Form, Headers, Config) ->
+                              {ok, binary()} | {error, tuple()} when
+      Method :: atom(),
+      Protocol :: api(string()),
+      Host :: string(),
+      Port :: api(integer() | string()),
+      Path :: string(),
+      Form :: iodata(),
+      Headers :: list(),
+      Config :: aws_config().
+
 aws_request_form(Method, Protocol, Host, Port, Path, Form, Headers, Config) ->
     UProtocol = case Protocol of
         undefined -> "https://";

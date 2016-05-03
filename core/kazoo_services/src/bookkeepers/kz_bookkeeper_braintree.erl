@@ -322,7 +322,7 @@ set_metadata(BTTransaction, Transaction) ->
     kz_transaction:set_metadata(BTTransaction, Transaction).
 
 -spec set_reason(kz_json:object(), kz_transaction:transaction()) -> kz_transaction:transaction().
--spec set_reason(kz_json:object(), kz_transaction:transaction(), pos_integer() | 'undefined') -> kz_transaction:transaction().
+-spec set_reason(kz_json:object(), kz_transaction:transaction(), api(pos_integer())) -> kz_transaction:transaction().
 set_reason(BTTransaction, Transaction) ->
     Code = kz_json:get_integer_value(<<"purchase_order">>, BTTransaction),
     set_reason(BTTransaction, Transaction, Code).
@@ -605,7 +605,7 @@ update_subscriptions(PlanId, Subscription, #kz_service_updates{bt_subscriptions=
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch_bt_customer(ne_binary(), boolean()) ->
-                               'undefined' | braintree_customer:customer().
+                               api(braintree_customer:customer()).
 fetch_bt_customer(AccountId, NewItems) ->
     lager:debug("requesting braintree customer ~s", [AccountId]),
     try braintree_customer:find(AccountId) of

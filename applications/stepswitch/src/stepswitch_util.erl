@@ -164,12 +164,8 @@ get_sip_headers(OffnetReq) ->
 maybe_remove_diversions(JObj) ->
     kz_json:delete_key(<<"Diversions">>, JObj).
 
--spec get_diversions(kz_json:object()) ->
-                            'undefined' |
-                            ne_binaries().
--spec get_diversions(api_binary(), ne_binaries()) ->
-                            'undefined' |
-                            ne_binaries().
+-spec get_diversions(kz_json:object()) -> api(ne_binaries()).
+-spec get_diversions(api_binary(), ne_binaries()) -> api(ne_binaries()).
 
 get_diversions(JObj) ->
     Inception = kz_json:get_value(<<"Inception">>, JObj),
@@ -268,7 +264,7 @@ endpoint_props(Endpoint, AccountId) ->
             empty_list_on_undefined(stepswitch_resources:get_props(ResourceId, AccountId))
     end.
 
--spec empty_list_on_undefined(kz_proplist() | 'undefined') -> kz_proplist().
+-spec empty_list_on_undefined(api(kz_proplist())) -> kz_proplist().
 empty_list_on_undefined('undefined') -> [];
 empty_list_on_undefined(L) -> L.
 

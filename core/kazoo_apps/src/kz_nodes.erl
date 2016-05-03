@@ -547,7 +547,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec create_node('undefined' | 5000..15000, nodes_state()) -> kz_node().
+-spec create_node(api(5000..15000), nodes_state()) -> kz_node().
 create_node(Heartbeat, #state{zone=Zone
                               ,version=Version
                              }) ->
@@ -601,7 +601,7 @@ add_ecallmgr_data(#kz_node{kapps=Whapps}=Node) ->
                  ,registrations=ecallmgr_registrar:count()
                 }.
 
--spec get_whapp_info(atom() | pid() | kz_proplist() | 'undefined') -> whapp_info().
+-spec get_whapp_info(api(atom() | pid() | kz_proplist())) -> whapp_info().
 get_whapp_info('undefined') -> #whapp_info{};
 get_whapp_info(Whapp) when is_atom(Whapp) ->
     get_whapp_info(application_controller:get_master(Whapp));
@@ -617,7 +617,7 @@ get_whapp_info(_Arg) ->
     lager:debug("can't get info for ~p", [_Arg]),
     #whapp_info{}.
 
--spec get_whapp_process_info(kz_proplist() | 'undefined') -> whapp_info().
+-spec get_whapp_process_info(api(kz_proplist())) -> whapp_info().
 get_whapp_process_info('undefined') -> #whapp_info{};
 get_whapp_process_info([]) -> #whapp_info{};
 get_whapp_process_info(PInfo) ->
@@ -842,9 +842,9 @@ determine_whapp_oldest_node(Whapp, MatchSpec) ->
     end.
 
 -spec determine_whapp_oldest_node_fold({kapps_info(), node()}
-                                       ,'undefined' | {node(), gregorian_seconds()}
+                                       ,api({node(), gregorian_seconds()})
                                        ,ne_binary()
-                                      ) -> 'undefined' | {node(), gregorian_seconds()}.
+                                      ) -> api({node(), gregorian_seconds()}).
 determine_whapp_oldest_node_fold({Whapps, Node}, 'undefined', Whapp) ->
     case props:get_value(Whapp, Whapps) of
         'undefined' -> 'undefined';

@@ -167,7 +167,7 @@ get_group_associations(Id, Groups, Set) ->
                         end
                 end, Set, Groups).
 
--spec get_callee_extension_info(kapps_call:call()) -> {ne_binary(), ne_binary()} | 'undefined'.
+-spec get_callee_extension_info(kapps_call:call()) -> api({ne_binary(), ne_binary()}).
 get_callee_extension_info(Call) ->
     Flow = kapps_call:kvs_fetch('cf_flow', Call),
     FirstModule = kz_json:get_value(<<"module">>, Flow),

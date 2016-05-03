@@ -53,8 +53,8 @@
 
 -record(state, {call = kapps_call:new() :: kapps_call:call()
                 ,flow = kz_json:new() :: kz_json:object()
-                ,cf_module_pid :: {pid(), reference()} | 'undefined'
-                ,cf_module_old_pid :: {pid(), reference()} | 'undefined'
+                ,cf_module_pid :: api({pid(), reference()})
+                ,cf_module_old_pid :: api({pid(), reference()})
                 ,status = <<"sane">> :: ne_binary()
                 ,queue :: api_binary()
                 ,self = self()
@@ -609,7 +609,7 @@ launch_cf_module(#state{call=Call
                 ,call=kapps_call:kvs_store('cf_last_action', Action, Call)
                }.
 
--spec cf_link('undefined' | pid_ref()) -> 'true'.
+-spec cf_link(api(pid_ref())) -> 'true'.
 cf_link('undefined') -> 'true';
 cf_link(PidRef) ->
     link(get_pid(PidRef)).
@@ -623,7 +623,7 @@ cf_module_prefix(_Call, <<"sms">>) -> <<"cf_sms_">>;
 cf_module_prefix(_Call, _) -> <<"cf_">>.
 
 -spec maybe_start_cf_module(ne_binary(), kz_proplist(), kapps_call:call()) ->
-                                   {pid_ref() | 'undefined', atom()}.
+                                   {api(pid_ref()), atom()}.
 maybe_start_cf_module(ModuleBin, Data, Call) ->
     CFModule = kz_util:to_atom(ModuleBin, 'true'),
     try CFModule:module_info('exports') of

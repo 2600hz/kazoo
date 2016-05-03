@@ -38,24 +38,26 @@
 -type pid_ref() :: {pid(), reference()}.
 -type pid_refs() :: [pid_ref()].
 
--type api_terms() :: kz_json:object() | kz_proplist().
--type api_binary() :: binary() | 'undefined'.
--type api_binaries() :: [api_binary()] | 'undefined'.
--type api_object() :: kz_json:object() | 'undefined'.
--type api_objects() :: kz_json:objects() | 'undefined'.
--type api_boolean() :: boolean() | 'undefined'.
--type api_atom() :: atom() | 'undefined'.
--type api_atoms() :: atoms() | 'undefined'.
--type api_string() :: string() | 'undefined'.
--type api_reference() :: reference() | 'undefined'.
--type api_pid() :: pid() | 'undefined'.
--type api_list() :: list() | 'undefined'.
+-type api(T) :: 'undefined' | T.
 
--type api_number() :: number() | 'undefined'.
--type api_integer() :: integer() | 'undefined'.
--type api_pos_integer() :: pos_integer() | 'undefined'.
--type api_non_neg_integer() :: non_neg_integer() | 'undefined'.
--type api_float() :: float() | 'undefined'.
+-type api_terms() :: kz_json:object() | kz_proplist().
+-type api_binary() :: api(binary()).
+-type api_binaries() :: api([api(binary())]).
+-type api_object() :: api(kz_json:object()).
+-type api_objects() :: api(kz_json:objects()).
+-type api_boolean() :: api(boolean()).
+-type api_atom() :: api(atom()).
+-type api_atoms() :: api(atoms()).
+-type api_string() :: api(string()).
+-type api_reference() :: api(reference()).
+-type api_pid() :: api(pid()).
+-type api_list() :: api(list()).
+
+-type api_number() :: api(number()).
+-type api_integer() :: api(integer()).
+-type api_pos_integer() :: api(pos_integer()).
+-type api_non_neg_integer() :: api(non_neg_integer()).
+-type api_float() :: api(float()).
 
 -type kz_deeplist() :: iolist(). %[any() | kz_deeplist()].
 
@@ -114,7 +116,7 @@
 -type kz_iso_week() :: calendar:yearweeknum(). %%{kz_year(), kz_weeknum()}.
 -type gregorian_seconds() :: pos_integer().
 -type unix_seconds() :: pos_integer().
--type api_seconds() :: 'undefined' | gregorian_seconds().
+-type api_seconds() :: api(gregorian_seconds()).
 
 -type kz_timeout() :: non_neg_integer() | 'infinity'.
 
@@ -323,11 +325,11 @@
 -type media_servers() :: [media_server()].
 
 -record(kz_node, {node = node() :: atom() | '$1' | '$2' | '_'
-                  ,expires = 0 :: non_neg_integer() | 'undefined' | '$2' | '_'
+                  ,expires = 0 :: api(non_neg_integer()) | '$2' | '_'
                   ,kapps = [] :: kapps_info() | '$1' | '_'
                   ,media_servers = [] :: media_servers() | '_'
-                  ,last_heartbeat = kz_util:now_ms(kz_util:now()) :: pos_integer() | 'undefined' | '$3' | '_'
-                  ,zone :: atom() | 'undefined' | '$2' | '_'
+                  ,last_heartbeat = kz_util:now_ms(kz_util:now()) :: api(pos_integer()) | '$3' | '_'
+                  ,zone :: api(atom()) | '$2' | '_'
                   ,broker :: api_binary() | '_'
                   ,used_memory = 0 :: non_neg_integer() | '_'
                   ,processes = 0 :: non_neg_integer() | '_'

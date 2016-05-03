@@ -54,7 +54,7 @@
 
 -record(state, {url                        :: api_binary()
                 ,format                    :: ne_binary()
-                ,sample_rate               :: integer() | 'undefined'
+                ,sample_rate               :: api(integer())
                 ,media                     :: media()
                 ,doc_db                    :: ne_binary()
                 ,doc_id                    :: ne_binary()

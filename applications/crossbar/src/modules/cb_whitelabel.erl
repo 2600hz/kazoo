@@ -700,7 +700,7 @@ find_whitelabel_binary(Context, Domain, AttachType) ->
     end.
 
 -spec find_whitelabel_binary_meta(cb_context:context(), ne_binary(), ne_binary()) ->
-                                         'undefined' | {ne_binary(), kz_json:object()}.
+                                         api({ne_binary(), kz_json:object()}).
 find_whitelabel_binary_meta(Context, Domain, AttachType) ->
     Context1 = find_whitelabel_meta(Context, Domain),
     case cb_context:resp_status(Context1) of
@@ -709,7 +709,7 @@ find_whitelabel_binary_meta(Context, Domain, AttachType) ->
     end.
 
 -spec whitelabel_binary_meta(cb_context:context(), ne_binary()) ->
-                                    'undefined' | {ne_binary(), kz_json:object()}.
+                                    api({ne_binary(), kz_json:object()}).
 whitelabel_binary_meta(Context, AttachType) ->
     JObj = kz_doc:attachments(cb_context:doc(Context), kz_json:new()),
     case whitelabel_attachment_id(JObj, AttachType) of
@@ -719,7 +719,7 @@ whitelabel_binary_meta(Context, AttachType) ->
     end.
 
 -spec whitelabel_attachment_id(kz_json:object(), ne_binary()) ->
-                                      'undefined' | {ne_binary(), kz_json:object()}.
+                                      api({ne_binary(), kz_json:object()}).
 whitelabel_attachment_id(JObj, AttachType) ->
     filter_attachment_type(kz_json:get_keys(JObj), AttachType).
 

@@ -156,7 +156,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec handle_config_req(atom(), ne_binary(), ne_binary(), kz_proplist() | 'undefined') -> fs_sendmsg_ret().
+-spec handle_config_req(atom(), ne_binary(), ne_binary(), api(kz_proplist())) -> fs_sendmsg_ret().
 handle_config_req(Node, Id, <<"acl.conf">>, _Props) ->
     kz_util:put_callid(Id),
 
@@ -205,7 +205,7 @@ handle_config_req(Node, Id, Conf, Data) ->
     kz_util:put_callid(Id),
     handle_config_req(Node, Id, Conf, Data, ecallmgr_config:get(<<"configuration_handlers">>)).
 
--spec handle_config_req(atom(), ne_binary(), ne_binary(), kz_proplist() | 'undefined', api_object() | binary()) -> fs_sendmsg_ret().
+-spec handle_config_req(atom(), ne_binary(), ne_binary(), api(kz_proplist()), api_object() | binary()) -> fs_sendmsg_ret().
 handle_config_req(Node, Id, Conf, _Data, 'undefined') ->
     config_req_not_handled(Node, Id, Conf);
 handle_config_req(Node, Id, Conf, Data, <<_/binary>> = Module) ->

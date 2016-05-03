@@ -183,7 +183,7 @@ get_sip_headers(Data, Call) ->
         'false' -> JObj
     end.
 
--spec get_flags(kz_json:object(), kapps_call:call()) -> 'undefined' | ne_binaries().
+-spec get_flags(kz_json:object(), kapps_call:call()) -> api(ne_binaries()).
 get_flags(Data, Call) ->
     Routines = [fun get_endpoint_flags/3
                 ,fun get_flow_flags/3

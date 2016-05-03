@@ -521,7 +521,7 @@ agent_change_v(JObj) -> agent_change_v(kz_json:to_proplist(JObj)).
 shared_queue_name(AcctId, QueueId) ->
     <<"acdc.queue.", AcctId/binary, ".", QueueId/binary>>.
 
--spec queue_size(ne_binary(), ne_binary()) -> integer() | 'undefined'.
+-spec queue_size(ne_binary(), ne_binary()) -> api(integer()).
 queue_size(AcctId, QueueId) ->
     Q = shared_queue_name(AcctId, QueueId),
     try amqp_util:new_queue(Q, [{'return_field', 'all'}

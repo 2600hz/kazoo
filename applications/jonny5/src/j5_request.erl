@@ -386,7 +386,7 @@ timestamp(#request{timestamp=Timestamp}) -> Timestamp.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec answered_time(request()) -> non_neg_integer() | 'undefined'.
+-spec answered_time(request()) -> api(non_neg_integer()).
 answered_time(#request{answered_time=AnsweredTime}) ->
     AnsweredTime.
 
@@ -396,7 +396,7 @@ answered_time(#request{answered_time=AnsweredTime}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec billing_seconds(request()) -> non_neg_integer() | 'undefined'.
+-spec billing_seconds(request()) -> api(non_neg_integer()).
 billing_seconds(#request{billing_seconds=BillingSeconds}) ->
     BillingSeconds.
 

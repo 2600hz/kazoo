@@ -233,7 +233,7 @@ copy_doc(Src, Dst, CopySpec, CopyFun, Opts) ->
         Error -> Error
     end.
 
--spec copy_transform('undefined' | fun(), kz_json:object(), kz_json:object()) -> kz_json:object().
+-spec copy_transform(api(fun()), kz_json:object(), kz_json:object()) -> kz_json:object().
 copy_transform('undefined', _SourceDoc, DestinationDoc) -> DestinationDoc;
 copy_transform(Fun, SourceDoc, DestinationDoc) -> Fun(SourceDoc, DestinationDoc).
 

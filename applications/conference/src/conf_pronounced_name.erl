@@ -40,14 +40,14 @@ get_user_id_from_device(Call) ->
         _ -> 'undefined'
     end.
 
--spec lookup_name(kapps_call:call()) -> name_pronounced_media() | 'undefined'.
+-spec lookup_name(kapps_call:call()) -> api(name_pronounced_media()).
 lookup_name(Call) ->
     case get_user_id(Call) of
         'undefined' -> 'undefined';
         UserId -> lookup_user_name(Call, UserId)
     end.
 
--spec lookup_user_name(kapps_call:call(), ne_binary()) -> name_pronounced_media() | 'undefined'.
+-spec lookup_user_name(kapps_call:call(), ne_binary()) -> api(name_pronounced_media()).
 lookup_user_name(Call, UserId) ->
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), UserId) of
         {'ok', UserDoc} ->

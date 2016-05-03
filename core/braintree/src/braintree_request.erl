@@ -183,7 +183,7 @@ verbose_debug(Format, Args) ->
 %% Get the base URL for the braintree service
 %% @end
 %%--------------------------------------------------------------------
--spec braintree_server_url(string()) -> string() | 'undefined'.
+-spec braintree_server_url(string()) -> api(string()).
 braintree_server_url(Env) ->
     proplists:get_value(Env, ?BT_SERVER_URL).
 

@@ -263,7 +263,7 @@ add_participant_to_conference(JObj, Conference, Call, Srv) ->
             conf_participant:join_remote(Srv, JObj)
     end.
 
--spec discovery_failed(kapps_call:call(), pid() | 'undefined') -> 'ok'.
+-spec discovery_failed(kapps_call:call(), api(pid())) -> 'ok'.
 discovery_failed(Call, _) -> kapps_call_command:hangup(Call).
 
 -spec validate_conference_id(api_binary(), kapps_call:call()) ->

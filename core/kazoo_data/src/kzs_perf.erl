@@ -66,7 +66,7 @@ update_profile_config(JObj) ->
     kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, {?MODULE, 'config'}, Map, ?CACHE_PROFILE_OPTS),
     Map.
 
--spec profile_match(atom(), atom(), arity()) -> map() | 'undefined'.
+-spec profile_match(atom(), atom(), arity()) -> api(map()).
 profile_match(Mod, Fun, Arity) ->
     try
         #{ Mod := #{ Fun := #{'arity' := Arity, 'enabled' := 'true'}=M}} = profile_config(),

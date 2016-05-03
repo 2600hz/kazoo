@@ -38,7 +38,7 @@
                 ,n_try :: non_neg_integer()
                 ,max_tries :: non_neg_integer()
                 ,try_after :: non_neg_integer()
-                ,stop_timer :: 'undefined' | timer:tref()
+                ,stop_timer :: api(timer:tref())
                 ,parked_call :: api_binary()
                 ,offnet_ctl_q :: api_binary()
                 ,moh :: api_binary()

@@ -931,7 +931,7 @@ ensure_valid_caller_id(JObj, SendFax) ->
             gen_server:cast(self(), {'error', 'invalid_cid', CIDNum})
     end.
 
--spec send_fax(ne_binary(), kz_json:object(), ne_binary(), binary() | 'undefined') -> 'ok'.
+-spec send_fax(ne_binary(), kz_json:object(), ne_binary(), api(binary())) -> 'ok'.
 send_fax(_JobId, _JObj, _Q, 'undefined') ->
     gen_server:cast(self(), {'error', 'invalid_number', <<"(undefined)">>});
 send_fax(_JobId, _JObj, _Q, <<>>) ->

@@ -172,9 +172,9 @@ get_is_true(Category, Key, Default, Node) ->
 %% @public
 %% @doc Get a configuration key for a given category and cast it as a is_true
 %%-----------------------------------------------------------------------------
--spec get_non_empty(config_category(), config_key()) -> _ | 'undefined'.
--spec get_non_empty(config_category(), config_key(), Default) -> _ | Default.
--spec get_non_empty(config_category(), config_key(), Default, ne_binary()) -> _ | Default.
+-spec get_non_empty(config_category(), config_key()) -> api(any()).
+-spec get_non_empty(config_category(), config_key(), Default) -> any() | Default.
+-spec get_non_empty(config_category(), config_key(), Default, ne_binary()) -> any() | Default.
 
 get_non_empty(Category, Key) ->
     get_non_empty(Category, Key, 'undefined').
@@ -211,7 +211,7 @@ get_ne_binary(Category, Key, Default, Node) ->
 %% node but if there is not then use the default value.
 %% @end
 %%-----------------------------------------------------------------------------
--spec get(config_category(), config_key()) -> any() | 'undefined'.
+-spec get(config_category(), config_key()) -> api(any()).
 -spec get(config_category(), config_key(), Default) -> any() | Default.
 -spec get(config_category(), config_key(), Default, ne_binary() | atom()) -> any() | Default.
 
@@ -264,7 +264,7 @@ get_zone_value(Category, _Node, Keys, Default, JObj) ->
     end.
 
 -spec get_default_value(config_category(), config_key(), Default, kz_json:object()) ->
-                                 Default | _.
+                                 Default | any().
 get_default_value(Category, Keys, Default, JObj) ->
     case kz_json:get_value([?KEY_DEFAULT | Keys], JObj) of
         'undefined' ->
@@ -316,16 +316,19 @@ set(Category, Key, Value, Node) ->
     update_category(Category, Key, Value, Node, []).
 
 -spec set_default(config_category(), config_key(), any()) ->
-                         {'ok', kz_json:object()} | 'ok' |
+                         {'ok', kz_json:object()} |
+                         'ok' |
                          {'error', any()}.
 set_default(Category, Key, Value) ->
     update_category(Category, Key, Value, ?KEY_DEFAULT, []).
 
 -spec update_default(config_category(), config_key(), kz_json:json_term()) ->
-                            {'ok', kz_json:object()} | 'ok' |
+                            {'ok', kz_json:object()} |
+                            'ok' |
                             {'error', any()}.
 -spec update_default(config_category(), config_key(), kz_json:json_term(), update_options()) ->
-                            {'ok', kz_json:object()} | 'ok' |
+                            {'ok', kz_json:object()} |
+                            'ok' |
                             {'error', any()}.
 update_default(Category, Key, Value) ->
     update_default(Category, Key, Value, []).
@@ -370,8 +373,8 @@ update_category(Category, Keys, Value, Node, Options) ->
             E
     end.
 
--spec update_category(config_category(), config_key(), any(), ne_binary(), update_options(), kz_json:object())
-                     -> {'ok', kz_json:object()}.
+-spec update_category(config_category(), config_key(), any(), ne_binary(), update_options(), kz_json:object()) ->
+                             {'ok', kz_json:object()}.
 update_category(Category, Keys, Value, Node, Options, JObj) ->
     PvtFields = props:get_value('pvt_fields', Options),
 

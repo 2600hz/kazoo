@@ -518,7 +518,7 @@ try_channel_resp(FetchId, Node, Props) ->
             channel_not_found(Node, FetchId)
     end.
 
--spec fetch_channel(ne_binary()) -> kz_proplist() | 'undefined'.
+-spec fetch_channel(ne_binary()) -> api(kz_proplist()).
 fetch_channel(UUID) ->
     case fetch(UUID, 'proplist') of
         {'error', 'not_found'} -> fetch_remote(UUID);
@@ -560,8 +560,7 @@ process_event(UUID, Props, Node, Pid) ->
 
     process_specific_event(EventName, UUID, Props, Node).
 
--spec process_specific_event(ne_binary(), api_binary(), kz_proplist(), atom()) ->
-                                    any().
+-spec process_specific_event(ne_binary(), api_binary(), kz_proplist(), atom()) -> any().
 process_specific_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
     _ = maybe_publish_channel_state(Props, Node),
     case props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props)

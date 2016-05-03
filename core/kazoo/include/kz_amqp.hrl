@@ -138,15 +138,21 @@
 -define(EXCHANGE_LEADER, <<"leader">>).
 -define(TYPE_LEADER, <<"topic">>).
 
--type kz_amqp_command() :: #'queue.declare'{} | #'queue.delete'{} |
-                           #'queue.bind'{} | #'queue.unbind'{} |
-                           #'basic.consume'{} | #'basic.cancel'{} |
-                           #'basic.ack'{} | #'basic.nack'{} |
-                           #'basic.qos'{} |
-                           #'exchange.declare'{} |
-                           #'confirm.select'{} |
-                           #'channel.flow'{} | #'channel.flow_ok'{} |
-                           '_' | 'undefined'.
+-type kz_amqp_command() :: api(#'basic.ack'{} |
+                               #'basic.cancel'{} |
+                               #'basic.consume'{} |
+                               #'basic.nack'{} |
+                               #'basic.qos'{} |
+                               #'channel.flow'{} |
+                               #'channel.flow_ok'{} |
+                               #'confirm.select'{} |
+                               #'exchange.declare'{} |
+                               #'queue.bind'{} |
+                               #'queue.declare'{} |
+                               #'queue.delete'{} |
+                               #'queue.unbind'{} |
+                               '_'
+                              ).
 -type kz_amqp_commands() :: [kz_amqp_command()].
 
 -type kz_amqp_exchange() :: #'exchange.declare'{}.
@@ -155,12 +161,16 @@
 -type kz_amqp_queue() :: #'queue.declare'{}.
 -type kz_amqp_queues() :: [#'queue.declare'{}].
 
--type kz_command_ret_ok() :: #'basic.qos_ok'{} | #'queue.declare_ok'{} |
-                             #'exchange.declare_ok'{} | #'queue.delete_ok'{} |
-                             #'queue.declare_ok'{} | #'queue.unbind_ok'{} |
-                             #'queue.bind_ok'{} | #'basic.consume_ok'{} |
+-type kz_command_ret_ok() :: #'basic.cancel_ok'{} |
+                             #'basic.consume_ok'{} |
+                             #'basic.qos_ok'{} |
                              #'confirm.select_ok'{} |
-                             #'basic.cancel_ok'{}.
+                             #'exchange.declare_ok'{} |
+                             #'queue.bind_ok'{} |
+                             #'queue.declare_ok'{} |
+                             #'queue.declare_ok'{} |
+                             #'queue.delete_ok'{} |
+                             #'queue.unbind_ok'{}.
 -type command_ret() :: 'ok' |
                        {'ok', ne_binary() | kz_command_ret_ok()} |
                        {'error', any()}.
@@ -177,7 +187,7 @@
                              ,channel_ref :: api_reference() | '_'
                              ,connection :: api_pid() | '$1' | '_'
                              ,broker :: api_binary() | '$1' | '_'
-                             ,assigned :: kz_timeout() | 'undefined' | '_'
+                             ,assigned :: api(kz_timeout()) | '_'
                              ,reconnect = 'false' :: boolean() | '_'
                              ,watchers = sets:new() :: sets:set() | pids() | '_'
                             }).

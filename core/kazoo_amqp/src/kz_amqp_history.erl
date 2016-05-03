@@ -88,7 +88,7 @@ send_command(Consumer, Command, 'sync') ->
 update_consumer_tag(Consumer, OldTag, NewTag) ->
     gen_server:cast(?SERVER, {'update_consumer_tag', Consumer, OldTag, NewTag}).
 
--spec remove(kz_amqp_assignment() | pid() | 'undefined') -> 'ok'.
+-spec remove(api(kz_amqp_assignment() | pid())) -> 'ok'.
 remove(#kz_amqp_assignment{consumer=Consumer}) -> remove(Consumer);
 remove(Consumer) when is_pid(Consumer) ->
     gen_server:cast(?SERVER, {'remove', Consumer});

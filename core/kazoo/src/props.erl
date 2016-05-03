@@ -120,7 +120,7 @@ get_value(Key, Props, Default) when is_list(Props) ->
     end.
 
 %% Given a list of keys, find the first one defined
--spec get_first_defined(kz_proplist_keys(), kz_proplist()) -> 'undefined' | any().
+-spec get_first_defined(kz_proplist_keys(), kz_proplist()) -> api(any()).
 -spec get_first_defined(kz_proplist_keys(), kz_proplist(), Default) -> Default | any().
 get_first_defined(Keys, Props) -> get_first_defined(Keys, Props, 'undefined').
 

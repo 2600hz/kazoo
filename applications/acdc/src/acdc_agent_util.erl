@@ -139,7 +139,7 @@ most_recent_statuses(AccountId, AgentId, Options) ->
     maybe_reduce_statuses(AgentId, receive_statuses([ETS, DB])).
 
 -spec maybe_start_db_lookup(atom(), fun(), ne_binary(), api_binary(), list(), pid()) ->
-                                   pid_ref() | 'undefined'.
+                                   api(pid_ref()).
 maybe_start_db_lookup(F, Fun, AccountId, AgentId, Options, Self) ->
     case kz_cache:fetch_local(?CACHE_NAME, db_fetch_key(F, AccountId, AgentId)) of
         {'ok', _} -> 'undefined';
@@ -169,7 +169,7 @@ reduce_agent_statuses(_, Data, {T, _}=Acc) ->
         _:_ -> Acc
     end.
 
--type receive_info() :: [{pid(), reference()} | 'undefined'].
+-type receive_info() :: [api({pid(), reference()})].
 -spec receive_statuses(receive_info()) ->
                               kz_json:object().
 -spec receive_statuses(receive_info(), kz_json:object()) ->
