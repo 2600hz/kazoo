@@ -267,12 +267,7 @@ validate(Context, ?CLASSIFIERS) ->
                             );
 validate(Context, ?LOCALITY) ->
     Numbers = cb_context:req_value(Context, ?COLLECTION_NUMBERS),
-    Context1 = validate_collection_request(Context, Numbers),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            fetch_locality(Context1);
-        _ -> Context1
-    end;
+    validate_collection_request(Context, Numbers);
 validate(Context, ?CHECK) ->
     validate_collection_request(Context);
 validate(Context, Number) ->
@@ -351,6 +346,8 @@ post(Context, ?COLLECTION) ->
     Results = collection_process(Context, ?HTTP_POST),
     CB = fun() -> post(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
     set_response(Results, Context, CB);
+post(Context, ?LOCALITY) ->
+    fetch_locality(Context);
 post(Context, Number) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
@@ -724,7 +721,9 @@ fetch_locality(Numbers, PhonebookUrlType) ->
             {'error', <<"could not get locality url">>};
         URL ->
             ReqBody = kz_json:set_value(<<"data">>, Numbers, kz_json:new()),
-            case kz_http:post(URL++"/locality/metadata", [], kz_json:encode(ReqBody)) of
+            URI = lists:flatten([URL, $/, "locality", $/, "metadata"]),
+            Headers = [{'content_type', "application/json"}],
+            case kz_http:post(URI, Headers, kz_json:encode(ReqBody)) of
                 {'ok', 200, _Headers, Body} ->
                     handle_phonebook_resp(kz_json:decode(Body));
                 {'ok', _Status, _, _Body} ->
