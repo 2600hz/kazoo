@@ -1,6 +1,6 @@
 ROOT = .
-RELX = $(ROOT)/make/relx/relx
-ELVIS = $(ROOT)/make/elvis/elvis
+RELX = $(ROOT)/deps/relx
+ELVIS = $(ROOT)/deps/elvis
 
 KAZOODIRS = core/Makefile applications/Makefile
 
@@ -47,9 +47,8 @@ clean-deps:
 	$(if $(wildcard deps/), $(MAKE) -C deps/ clean)
 	$(if $(wildcard deps/), rm -r deps/)
 
-.erlang.mk: ERLANGMK_VERSION = '2.0.0-pre.2'
 .erlang.mk:
-	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/$(ERLANGMK_VERSION)/erlang.mk' -O $(ROOT)/erlang.mk
+	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/master/erlang.mk' -O $(ROOT)/erlang.mk
 
 deps: deps/Makefile
 	$(MAKE) -C deps/ all
@@ -67,16 +66,20 @@ apps:
 kazoo: core apps
 
 
+$(RELX):
+	wget 'https://github.com/erlware/relx/releases/download/v3.19.0/relx' -O $@
+	chmod +x $@
+
 clean-release:
 	$(if $(wildcard _rel/), rm -r _rel/)
 	$(if $(wildcard rel/relx.config rel/vm.args rel/dev-vm.args), \
 	  rm $(wildcard rel/relx.config rel/vm.args rel/dev-vm.args)  )
 
-build-release: clean-release rel/relx.config rel/vm.args
+build-release: $(RELX) clean-release rel/relx.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release --relname 'kazoo'
-build-ci-release: clean-release rel/relx.config rel/vm.args
+build-ci-release: $(RELX) clean-release rel/relx.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release --relname 'kazoo' --sys_config rel/ci-sys.config
-tar-release: rel/relx.config rel/vm.args
+tar-release: $(RELX) rel/relx.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release tar --relname 'kazoo'
 rel/relx.config: rel/relx.config.src
 	$(ROOT)/scripts/src2any.escript $<
@@ -143,5 +146,9 @@ sup_completion: kazoo
 	@echo SUP Bash completion file written at $(sup_completion_file)
 
 
-elvis:
+$(ELVIS):
+	wget 'https://github.com/inaka/elvis/releases/download/0.2.11/elvis' -O $@
+	chmod +x $@
+
+elvis: $(ELVIS)
 	$(ELVIS) --config make/elvis.config rock
