@@ -22,8 +22,8 @@ main(CommandLineArgs) ->
     main(CommandLineArgs, 0).
 
 main(CommandLineArgs, Loops) ->
-    os:cmd("epmd -daemon"),
-    net_kernel:stop(),
+    _ = os:cmd("epmd -daemon"),
+    _ = net_kernel:stop(),
     case net_kernel:start([my_name(), long_or_short_name()]) of
         {'error', _} when Loops < 3 ->
             stderr("Unable to start command bridge network kernel, try again", []),
