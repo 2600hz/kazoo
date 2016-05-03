@@ -122,7 +122,7 @@ No problem! We have many different places where folks can chip in time. These in
 
 Translation efforts are always appreciated. We're working on redesigning how our back- and front-ends handle the world's languages and hope to make it easy to contribute translations. Stay tuned for more; please let us know of your interest and be sure to join the mailing lists so you can receive announcements regarding internationalization efforts.
 
-If you have a non-US deployment, please consider sharing your system configuration!  We are trying to build [examples]https://github.com/2600Hz/kazoo/tree/master/doc/internationalization) for every locality and fix any deficiencies.
+If you have a non-US deployment, please consider sharing your system configuration!  We are trying to build [examples](https://github.com/2600Hz/kazoo/tree/master/doc/internationalization) for every locality and fix any deficiencies.
 
 ### I know me some Erlang! How can I contribute?
 
