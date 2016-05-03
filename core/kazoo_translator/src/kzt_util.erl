@@ -151,12 +151,12 @@ set_record_call(R, Call) -> kapps_call:kvs_store(<<"record_call">>, R, Call).
 get_record_call(Call) -> kapps_call:kvs_fetch(<<"record_call">>, Call).
 
 -spec set_call_timeout(pos_integer(), kapps_call:call()) -> kapps_call:call().
--spec get_call_timeout(kapps_call:call()) -> api_integer().
+-spec get_call_timeout(kapps_call:call()) -> api(integer()).
 set_call_timeout(T, Call) -> kapps_call:kvs_store(<<"call_timeout">>, T, Call).
 get_call_timeout(Call) -> kapps_call:kvs_fetch(<<"call_timeout">>, Call).
 
 -spec set_call_time_limit(pos_integer(), kapps_call:call()) -> kapps_call:call().
--spec get_call_time_limit(kapps_call:call()) -> api_integer().
+-spec get_call_time_limit(kapps_call:call()) -> api(integer()).
 set_call_time_limit(T, Call) -> kapps_call:kvs_store(<<"call_time_limit">>, T, Call).
 get_call_time_limit(Call) -> kapps_call:kvs_fetch(<<"call_time_limit">>, Call).
 
@@ -189,7 +189,7 @@ set_recording_url(RU, Call) -> kapps_call:kvs_store(<<"recording_url">>, RU, Cal
 get_recording_url(Call) -> kapps_call:kvs_fetch(<<"recording_url">>, Call).
 
 -spec set_recording_duration(pos_integer(), kapps_call:call()) -> kapps_call:call().
--spec get_recording_duration(kapps_call:call()) -> api_integer().
+-spec get_recording_duration(kapps_call:call()) -> api(integer()).
 set_recording_duration(RD, Call) -> kapps_call:kvs_store(<<"recording_duration">>, RD, Call).
 get_recording_duration(Call) -> kapps_call:kvs_fetch(<<"recording_duration">>, Call).
 
@@ -229,7 +229,7 @@ set_dial_call_sid(DCS, Call) -> kapps_call:kvs_store(<<"dial_call_sid">>, DCS, C
 get_dial_call_sid(Call) -> kapps_call:kvs_fetch(<<"dial_call_sid">>, Call).
 
 -spec set_dial_call_duration(pos_integer(), kapps_call:call()) -> kapps_call:call().
--spec get_dial_call_duration(kapps_call:call()) -> api_integer().
+-spec get_dial_call_duration(kapps_call:call()) -> api(integer()).
 set_dial_call_duration(DCS, Call) -> kapps_call:kvs_store(<<"dial_call_duration">>, DCS, Call).
 get_dial_call_duration(Call) -> kapps_call:kvs_fetch(<<"dial_call_duration">>, Call).
 
@@ -249,12 +249,12 @@ set_dequeued_call_sid(DCS, Call) -> kapps_call:kvs_store(<<"dequeued_call_sid">>
 get_dequeued_call_sid(Call) -> kapps_call:kvs_fetch(<<"dequeued_call_sid">>, Call).
 
 -spec set_dequeued_call_queue_time(pos_integer(), kapps_call:call()) -> kapps_call:call().
--spec get_dequeued_call_queue_time(kapps_call:call()) -> api_integer().
+-spec get_dequeued_call_queue_time(kapps_call:call()) -> api(integer()).
 set_dequeued_call_queue_time(DCS, Call) -> kapps_call:kvs_store(<<"dequeued_call_queue_time">>, DCS, Call).
 get_dequeued_call_queue_time(Call) -> kapps_call:kvs_fetch(<<"dequeued_call_queue_time">>, Call).
 
 -spec set_dequeued_call_duration(pos_integer(), kapps_call:call()) -> kapps_call:call().
--spec get_dequeued_call_duration(kapps_call:call()) -> api_integer().
+-spec get_dequeued_call_duration(kapps_call:call()) -> api(integer()).
 set_dequeued_call_duration(DCS, Call) -> kapps_call:kvs_store(<<"dequeued_call_duration">>, DCS, Call).
 get_dequeued_call_duration(Call) -> kapps_call:kvs_fetch(<<"dequeued_call_duration">>, Call).
 

@@ -29,7 +29,7 @@
 
 -record(gateway, {
            server :: api(binary())
-           ,port :: api_integer()
+           ,port :: api(integer())
            ,realm :: api(binary())
            ,username :: api(binary())
            ,password :: api(binary())
@@ -215,7 +215,7 @@ reverse_lookup(JObj) ->
             maybe_find_local(IP, Port, Realm, AccountId)
     end.
 
--spec find_port(kz_json:object()) -> api_integer().
+-spec find_port(kz_json:object()) -> api(integer()).
 find_port(JObj) ->
     case kz_json:get_first_defined([<<"From-Network-Port">>
                                     ,<<"Orig-Port">>
@@ -243,20 +243,20 @@ find_account_id(Realm) ->
         {'ok', AccountId} -> AccountId
     end.
 
--spec maybe_find_global(api(binary()), api_integer(), api(binary())) ->
+-spec maybe_find_global(api(binary()), api(integer()), api(binary())) ->
                                {'ok', kz_proplist()} |
                                {'error', 'not_found'}.
 maybe_find_global(IP, Port, Realm) ->
     search_resources(IP, Port, Realm, get()).
 
--spec maybe_find_local(api(binary()), api_integer(), api(binary()), api(binary())) ->
+-spec maybe_find_local(api(binary()), api(integer()), api(binary()), api(binary())) ->
                               {'ok', kz_proplist()} |
                               {'error', 'not_found'}.
 maybe_find_local(_, _, _, 'undefined') -> {'error', 'not_found'};
 maybe_find_local(IP, Port, Realm, AccountId) ->
     search_resources(IP, Port, Realm, get(AccountId)).
 
--spec search_resources(api(binary()), api_integer(), api(binary()), resources()) ->
+-spec search_resources(api(binary()), api(integer()), api(binary()), resources()) ->
                               {'ok', kz_proplist()} |
                               {'error', 'not_found'}.
 search_resources(_IP, _Port, _Realm, []) ->
@@ -287,7 +287,7 @@ search_resources(IP, Port, Realm, [#resrc{id=Id
             {'ok', Props}
     end.
 
--spec search_gateways(api(binary()), api_integer(), api(binary()), gateways()) ->
+-spec search_gateways(api(binary()), api(integer()), api(binary()), gateways()) ->
                              gateway() |
                              {'error', 'not_found'}.
 search_gateways(_, _, _, []) -> {'error', 'not_found'};
@@ -297,7 +297,7 @@ search_gateways(IP, Port, Realm, [Gateway | Gateways]) ->
         #gateway{}=Gateway -> Gateway
     end.
 
--spec search_gateway(api(binary()), api_integer(), api(binary()), gateway()) ->
+-spec search_gateway(api(binary()), api(integer()), api(binary()), gateway()) ->
                             gateway() |
                             {'error', 'not_found'}.
 search_gateway(IP, Port, _, #gateway{server=IP

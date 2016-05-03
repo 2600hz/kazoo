@@ -1077,7 +1077,7 @@ is_custom_sip_header({<<"variable_sip_h_X-", ?CHANNEL_VAR_PREFIX, _/binary>>, _}
 is_custom_sip_header({<<"variable_sip_h_", _/binary>>, _}) -> 'true';
 is_custom_sip_header(_Header) -> 'false'.
 
--spec maybe_add_expires_deviation(api_integer()) -> api_integer().
+-spec maybe_add_expires_deviation(api(integer())) -> api(integer()).
 maybe_add_expires_deviation('undefined') -> 'undefined';
 maybe_add_expires_deviation(Expires) when not is_integer(Expires) ->
     maybe_add_expires_deviation(kz_util:to_integer(Expires));
@@ -1085,7 +1085,7 @@ maybe_add_expires_deviation(0) -> 0;
 maybe_add_expires_deviation(Expires) ->
     Expires + ecallmgr_config:get_integer(<<"expires_deviation_time">>, 180).
 
--spec maybe_add_expires_deviation_ms(api_integer()) -> api_integer().
+-spec maybe_add_expires_deviation_ms(api(integer())) -> api(integer()).
 maybe_add_expires_deviation_ms('undefined') -> 'undefined';
 maybe_add_expires_deviation_ms(Expires) when not is_integer(Expires) ->
     maybe_add_expires_deviation_ms(kz_util:to_integer(Expires));

@@ -1374,7 +1374,7 @@ hangup_cause(JObj) ->
     end.
 
 %% returns time left in seconds
--spec time_left(reference() | 'false' | api_integer()) -> api_integer().
+-spec time_left(reference() | 'false' | api(integer())) -> api(integer()).
 time_left(Ref) when is_reference(Ref) ->
     time_left(erlang:read_timer(Ref));
 time_left('false') -> 'undefined';
@@ -1437,7 +1437,7 @@ current_call(Call, AgentState, QueueId, Start) ->
                        ,{<<"queue_id">>, QueueId}
                       ]).
 
--spec elapsed(api(kz_now())) -> api_integer().
+-spec elapsed(api(kz_now())) -> api(integer()).
 elapsed('undefined') -> 'undefined';
 elapsed(Start) -> kz_util:elapsed_s(Start).
 

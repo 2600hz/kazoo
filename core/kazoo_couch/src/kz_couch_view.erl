@@ -108,7 +108,7 @@ map_view_option({K, V})
 map_view_option(KV) -> KV.
 
 -spec do_fetch_results_count(couchbeam_db(), ddoc(), view_options()) ->
-                                    {'ok', api_integer()} |
+                                    {'ok', api(integer())} |
                                     couchbeam_error().
 do_fetch_results_count(Db, DesignDoc, Options)
   when is_binary(DesignDoc) ->

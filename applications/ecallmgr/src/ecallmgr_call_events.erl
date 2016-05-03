@@ -904,7 +904,7 @@ should_publish(<<"DETECTED_TONE">>, _, _) ->
 should_publish(EventName, _A, _) ->
     lists:member(EventName, ?CALL_EVENTS).
 
--spec silence_terminated(api_integer() | kz_proplist()) -> api(boolean()).
+-spec silence_terminated(api(integer()) | kz_proplist()) -> api(boolean()).
 silence_terminated('undefined') -> 'undefined';
 silence_terminated(Hits) when is_integer(Hits) -> Hits =:= 0;
 silence_terminated(Prop) when is_list(Prop) ->

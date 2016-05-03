@@ -259,7 +259,7 @@ find_pid_from_supervisor({'error', {'already_started', P}}) when is_pid(P) ->
     {'ok', P};
 find_pid_from_supervisor(E) -> E.
 
--spec start_shared_queue(state(), pid(), api_integer()) -> {'noreply', state()}.
+-spec start_shared_queue(state(), pid(), api(integer())) -> {'noreply', state()}.
 start_shared_queue(#state{account_id=AccountId
                           ,queue_id=QueueId
                           ,worker_sup=WorkerSup

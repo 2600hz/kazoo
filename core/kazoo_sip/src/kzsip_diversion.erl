@@ -47,7 +47,7 @@ new() -> kz_json:new().
 
 -spec reason(diversion()) -> api(binary()).
 -spec counter(diversion()) -> non_neg_integer().
--spec limit(diversion()) -> api_integer().
+-spec limit(diversion()) -> api(integer()).
 -spec privacy(diversion()) -> api(binary()).
 -spec screen(diversion()) -> api(binary()).
 -spec extensions(diversion()) -> api(list()).

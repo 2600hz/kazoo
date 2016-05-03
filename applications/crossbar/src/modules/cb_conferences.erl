@@ -309,7 +309,7 @@ do_conference_action(Context, Id, Action, ParticipantId) ->
         _ -> cb_context:add_system_error('forbidden', Context)
     end.
 
--spec perform_conference_action(kapps_conference:conference(), ne_binary(), api_integer()) -> 'ok'.
+-spec perform_conference_action(kapps_conference:conference(), ne_binary(), api(integer())) -> 'ok'.
 perform_conference_action(Conference, <<"mute">>, ParticipantId) ->
     kapps_conference_command:mute_participant(ParticipantId, Conference),
     kapps_conference_command:prompt(<<"conf-muted">>, ParticipantId, Conference);

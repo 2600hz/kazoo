@@ -793,7 +793,7 @@ leak_notification_preference(Context, Pref) ->
 
 -spec leak_trial_time_left(cb_context:context()) ->
                                   cb_context:context().
--spec leak_trial_time_left(cb_context:context(), kz_json:object(), api_integer()) ->
+-spec leak_trial_time_left(cb_context:context(), kz_json:object(), api(integer())) ->
                                   cb_context:context().
 leak_trial_time_left(Context) ->
     JObj = cb_context:doc(Context),

@@ -391,7 +391,7 @@ load_outgoing_fax_doc(Id, Context) ->
     Ctx = read(Id, Context),
     crossbar_util:apply_response_map(Ctx, ?OUTGOING_FAX_DOC_MAP).
 
--spec get_delivered_date(kz_json:object()) -> api_integer().
+-spec get_delivered_date(kz_json:object()) -> api(integer()).
 get_delivered_date(JObj) ->
     case kz_json:get_value(<<"pvt_delivered_date">>, JObj) of
         'undefined' ->

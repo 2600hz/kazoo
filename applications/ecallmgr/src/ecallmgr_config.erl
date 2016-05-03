@@ -97,7 +97,7 @@ get_default(Key) ->
 get_default(Key, Default) ->
     get(Key, Default, <<"default">>).
 
--spec get_integer(kz_json:key()) -> api_integer().
+-spec get_integer(kz_json:key()) -> api(integer()).
 -spec get_integer(kz_json:key(), Default) -> integer() | Default.
 -spec get_integer(kz_json:key(), Default, kz_json:key() | atom()) -> integer() | Default.
 get_integer(Key) ->

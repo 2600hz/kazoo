@@ -574,7 +574,7 @@ start_secondary_queue(AccountId, QueueId) ->
                     ,?SECONDARY_BINDINGS(AccountId, QueueId)
                    ]).
 
--spec lookup_priority_levels(ne_binary(), ne_binary()) -> api_integer().
+-spec lookup_priority_levels(ne_binary(), ne_binary()) -> api(integer()).
 lookup_priority_levels(AccountDB, QueueId) ->
     case kz_datamgr:open_cache_doc(AccountDB, QueueId) of
         {'ok', JObj} -> kz_json:get_value(<<"max_priority">>, JObj);

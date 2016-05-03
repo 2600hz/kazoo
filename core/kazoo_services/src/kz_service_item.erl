@@ -55,15 +55,15 @@
 -record(kz_service_item, {category :: api(binary())
                           ,item :: api(binary())
                           ,name :: api(binary())
-                          ,quantity = 0 :: api_integer()
+                          ,quantity = 0 :: api(integer())
                           ,rate = 0.0 :: api_float()
                           ,single_discount = 'false' :: boolean()
                           ,single_discount_rate = 0.00 :: api_float()
-                          ,cumulative_discount = 0 :: api_integer()
+                          ,cumulative_discount = 0 :: api(integer())
                           ,cumulative_discount_rate = 0.00 :: api_float()
                           ,bookkeepers = kz_json:new() :: kz_json:object()
                           ,activation_charge = 0.00 :: api_float()
-                          ,minimum = 0 :: api_integer()
+                          ,minimum = 0 :: api(integer())
                           ,exceptions = [] :: ne_binaries()
                          }).
 
@@ -172,7 +172,7 @@ set_name(Name, #kz_service_item{}=ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec quantity(item()) -> api_integer().
+-spec quantity(item()) -> api(integer()).
 quantity(#kz_service_item{quantity=Quantity}) ->
     Quantity.
 
@@ -265,7 +265,7 @@ set_single_discount_rate(Rate, #kz_service_item{}=ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec cumulative_discount(item()) -> api_integer().
+-spec cumulative_discount(item()) -> api(integer()).
 cumulative_discount(#kz_service_item{cumulative_discount=Quantity}) ->
     Quantity.
 

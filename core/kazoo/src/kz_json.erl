@@ -487,7 +487,7 @@ get_atom_value(Key, JObj, Default) ->
         Value -> safe_cast(Value, Default, fun kz_util:to_atom/1)
     end.
 
--spec get_integer_value(keys(), object() | objects()) -> api_integer().
+-spec get_integer_value(keys(), object() | objects()) -> api(integer()).
 get_integer_value(Key, JObj) ->
     get_integer_value(Key, JObj, 'undefined').
 

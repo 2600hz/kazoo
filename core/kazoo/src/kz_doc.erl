@@ -156,7 +156,7 @@ set_modified(JObj, Now) ->
 add_pvt_modified(JObj, _, Opts) ->
     kz_json:set_value(?KEY_MODIFIED, props:get_value('now', Opts), JObj).
 
--spec modified(kz_json:object()) -> api_integer().
+-spec modified(kz_json:object()) -> api(integer()).
 -spec modified(kz_json:object(), Default) -> integer() | Default.
 modified(JObj) ->
     modified(JObj, 'undefined').
@@ -257,7 +257,7 @@ attachment(JObj, AName) ->
 attachment(JObj, AName, Default) ->
     kz_json:get_value(AName, attachments(JObj, kz_json:new()), Default).
 
--spec attachment_length(kz_json:object(), ne_binary()) -> api_integer().
+-spec attachment_length(kz_json:object(), ne_binary()) -> api(integer()).
 attachment_length(JObj, AName) ->
     attachment_property(JObj, AName, <<"length">>).
 
@@ -364,7 +364,7 @@ set_deleted(JObj, Bool) when is_boolean(Bool) ->
 is_deleted(JObj) ->
     kz_json:is_true(?KEY_DELETED, JObj, 'false').
 
--spec created(kz_json:object()) -> api_integer().
+-spec created(kz_json:object()) -> api(integer()).
 -spec created(kz_json:object(), Default) -> integer() | Default.
 created(JObj) ->
     created(JObj, 'undefined').

@@ -100,7 +100,7 @@ get_atom(Category, Key, Default, Node) ->
 %% @public
 %% @doc Get a configuration key for a given category and cast it as a integer
 %%-----------------------------------------------------------------------------
--spec get_integer(config_category(), config_key()) -> api_integer().
+-spec get_integer(config_category(), config_key()) -> api(integer()).
 -spec get_integer(config_category(), config_key(), Default) -> integer() | Default.
 -spec get_integer(config_category(), config_key(), Default, ne_binary()) -> integer() | Default.
 

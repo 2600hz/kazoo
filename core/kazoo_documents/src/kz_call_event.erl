@@ -133,19 +133,19 @@ account_id(JObj) ->
 owner_id(JObj) ->
     custom_channel_var(JObj, <<"Owner-ID">>).
 
--spec timestamp(kz_json:object()) -> api_integer().
+-spec timestamp(kz_json:object()) -> api(integer()).
 timestamp(JObj) ->
     kz_json:get_integer_value(<<"Timestamp">>, JObj).
 
--spec ringing_seconds(kz_json:object()) -> api_integer().
+-spec ringing_seconds(kz_json:object()) -> api(integer()).
 ringing_seconds(JObj) ->
     kz_json:get_integer_value(<<"Ringing-Seconds">>, JObj).
 
--spec billing_seconds(kz_json:object()) -> api_integer().
+-spec billing_seconds(kz_json:object()) -> api(integer()).
 billing_seconds(JObj) ->
     kz_json:get_integer_value(<<"Billing-Seconds">>, JObj).
 
--spec duration_seconds(kz_json:object()) -> api_integer().
+-spec duration_seconds(kz_json:object()) -> api(integer()).
 duration_seconds(JObj) ->
     kz_json:get_integer_value(<<"Duration-Seconds">>, JObj).
 

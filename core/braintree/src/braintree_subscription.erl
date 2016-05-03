@@ -366,7 +366,7 @@ increment_addon_quantity(SubscriptionId, AddOnId) ->
 %% Really ugly function to update a discount for a given subscription
 %% @end
 %%--------------------------------------------------------------------
--spec update_discount_quantity(subscription() | ne_binary(), ne_binary(), api_integer()) -> subscription().
+-spec update_discount_quantity(subscription() | ne_binary(), ne_binary(), api(integer())) -> subscription().
 update_discount_quantity(Subscription, DiscountId, Quantity) when not is_integer(Quantity) ->
     update_discount_quantity(Subscription, DiscountId, kz_util:to_integer(Quantity));
 update_discount_quantity(#bt_subscription{discounts=Discounts}=Subscription, DiscountId, Quantity) ->

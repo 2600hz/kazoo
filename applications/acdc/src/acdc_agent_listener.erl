@@ -981,7 +981,7 @@ send_status_update(AcctId, AgentId, 'resume') ->
     kapi_acdc_agent:publish_resume(Update).
 
 
--spec idle_time(api(kz_now())) -> api_integer().
+-spec idle_time(api(kz_now())) -> api(integer()).
 idle_time('undefined') -> 'undefined';
 idle_time(T) -> kz_util:elapsed_s(T).
 
@@ -1000,7 +1000,7 @@ call_id(Call) ->
                         end, 'undefined', Keys)
     end.
 
--spec maybe_connect_to_agent(ne_binary(), kz_json:objects(), kapps_call:call(), api_integer(), ne_binary(), api(binary())) ->
+-spec maybe_connect_to_agent(ne_binary(), kz_json:objects(), kapps_call:call(), api(integer()), ne_binary(), api(binary())) ->
                                     ne_binaries().
 maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId, _CdrUrl) ->
     MCallId = kapps_call:call_id(Call),

@@ -61,7 +61,7 @@
                          ,metadata :: api(kz_json:object())
                          ,pvt_status :: api(binary())
                          ,pvt_reason :: api(binary())
-                         ,pvt_code :: api_integer()
+                         ,pvt_code :: api(integer())
                          ,pvt_amount = 0 :: units()
                          ,pvt_type :: ne_binary()
                          ,pvt_created :: gregorian_seconds()
@@ -138,7 +138,7 @@ reason(#kz_transaction{pvt_reason=Reason}) ->
 status(#kz_transaction{pvt_status=Status}) ->
     Status.
 
--spec code(transaction()) -> api_integer().
+-spec code(transaction()) -> api(integer()).
 code(#kz_transaction{pvt_code=Code}) ->
     Code.
 

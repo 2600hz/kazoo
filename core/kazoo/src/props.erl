@@ -160,7 +160,7 @@ is_false(Key, Props, Default) ->
     end.
 
 -spec get_integer_value(kz_proplist_key(), kz_proplist()) ->
-                               api_integer().
+                               api(integer()).
 -spec get_integer_value(kz_proplist_key(), kz_proplist(), Default) ->
                                integer() | Default.
 get_integer_value(Key, Props) ->

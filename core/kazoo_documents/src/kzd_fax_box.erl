@@ -89,7 +89,7 @@ account_timezone(Box, Default) ->
             kz_account:timezone(AccountJObj, Default)
     end.
 
--spec retries(doc()) -> api_integer().
+-spec retries(doc()) -> api(integer()).
 -spec retries(doc(), Default) -> integer() | Default.
 retries(Box) ->
     retries(Box, 'undefined').

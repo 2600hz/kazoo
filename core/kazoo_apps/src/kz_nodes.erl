@@ -788,11 +788,11 @@ notify_new(#kz_node{node=NodeName}=Node, Pids) ->
         ],
     'ok'.
 
--spec whapp_oldest_node(text()) -> api_integer().
+-spec whapp_oldest_node(text()) -> api(integer()).
 whapp_oldest_node(Whapp) ->
     whapp_oldest_node(Whapp, 'false').
 
--spec whapp_oldest_node(text(), text() | boolean() | atom()) -> api_integer().
+-spec whapp_oldest_node(text(), text() | boolean() | atom()) -> api(integer()).
 whapp_oldest_node(Whapp, 'false') ->
     Zone = gen_listener:call(?SERVER, 'zone'),
     MatchSpec = [{#kz_node{kapps='$1'
@@ -828,7 +828,7 @@ whapp_oldest_node(Whapp, Zone)
                  }],
     determine_whapp_oldest_node(kz_util:to_binary(Whapp), MatchSpec).
 
--spec determine_whapp_oldest_node(ne_binary(), ets:match_spec()) -> api_integer().
+-spec determine_whapp_oldest_node(ne_binary(), ets:match_spec()) -> api(integer()).
 determine_whapp_oldest_node(Whapp, MatchSpec) ->
     case lists:foldl(fun({Whapps, _Node}=Info, Acc) when is_list(Whapps) ->
                              determine_whapp_oldest_node_fold(Info, Acc, Whapp)

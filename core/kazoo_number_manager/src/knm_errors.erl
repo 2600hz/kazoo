@@ -187,7 +187,7 @@ build_error(Code, Error, Message, Cause) ->
       ]
      ).
 
--spec code(error()) -> api_integer().
+-spec code(error()) -> api(integer()).
 code(JObj) ->
     kz_json:get_value(?CODE, JObj).
 

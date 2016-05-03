@@ -398,7 +398,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec get_timelimit(api_integer()) -> pos_integer().
+-spec get_timelimit(api(integer())) -> pos_integer().
 get_timelimit('undefined') ->
     kapps_config:get(?CONFIG_CAT, <<"max_recording_time_limit">>, 600);
 get_timelimit(TL) ->
@@ -536,7 +536,7 @@ append_path(Url, {_, MediaName}) ->
         _ -> <<Url/binary, "/", Encoded/binary>>
     end.
 
--spec start_recording(kapps_call:call(), ne_binary(), pos_integer(), ne_binary(), api_integer(), api_integer()) -> 'ok'.
+-spec start_recording(kapps_call:call(), ne_binary(), pos_integer(), ne_binary(), api(integer()), api(integer())) -> 'ok'.
 start_recording(Call, MediaName, TimeLimit, MediaRecorder, SampleRate, RecordMinSec) ->
     lager:debug("starting recording of ~s", [MediaName]),
     Props = [{<<"Media-Name">>, MediaName}

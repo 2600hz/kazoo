@@ -142,7 +142,7 @@ response('fatal', Msg, Context) ->
 %% of type fatal or error.
 %% @end
 %%--------------------------------------------------------------------
--spec response(fails(), kz_json:key(), api_integer(), cb_context:context()) ->
+-spec response(fails(), kz_json:key(), api(integer()), cb_context:context()) ->
                       cb_context:context().
 response('error', Msg, Code, Context) ->
     create_response('error', Msg, Code, kz_json:new(), Context);
@@ -156,7 +156,7 @@ response('fatal', Msg, Code, Context) ->
 %% of type fatal or error with additional data
 %% @end
 %%--------------------------------------------------------------------
--spec response(fails(), kz_json:key(), api_integer(), kz_json:json_term(), cb_context:context()) -> cb_context:context().
+-spec response(fails(), kz_json:key(), api(integer()), kz_json:json_term(), cb_context:context()) -> cb_context:context().
 response('error', Msg, Code, JTerm, Context) ->
     create_response('error', Msg, Code, JTerm, Context);
 response('fatal', Msg, Code, JTerm, Context) ->
@@ -170,7 +170,7 @@ response('fatal', Msg, Code, JTerm, Context) ->
 %% other parameters.
 %% @end
 %%--------------------------------------------------------------------
--spec create_response(crossbar_status(), kz_json:key(), api_integer()
+-spec create_response(crossbar_status(), kz_json:key(), api(integer())
                       ,kz_json:json_term(), cb_context:context()
                      ) -> cb_context:context().
 create_response(Status, Msg, Code, JTerm, Context) ->

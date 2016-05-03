@@ -24,9 +24,9 @@
           ,agent_id :: api(binary()) | '$3' | '_' % the handling agent
 
           ,entered_timestamp = kz_util:current_tstamp() :: pos_integer() | '$1' | '$5' | '_'
-          ,abandoned_timestamp :: api_integer() | '_'
-          ,handled_timestamp :: api_integer() | '_'
-          ,processed_timestamp :: api_integer() | '_'
+          ,abandoned_timestamp :: api(integer()) | '_'
+          ,handled_timestamp :: api(integer()) | '_'
+          ,processed_timestamp :: api(integer()) | '_'
 
           ,hung_up_by :: api(binary()) | '_'
 
@@ -37,7 +37,7 @@
           ,status :: api(binary()) | '$1' | '$2' | '$4' | '_'
           ,caller_id_name :: api(binary()) | '_'
           ,caller_id_number :: api(binary()) | '_'
-          ,caller_priority :: api_integer() | '_'
+          ,caller_priority :: api(integer()) | '_'
           ,is_archived = 'false' :: boolean() | '$2' | '$3' | '_'
          }).
 -type call_stat() :: #call_stat{}.
@@ -54,8 +54,8 @@
           ,status :: api(binary()) | '$4' | '_'
           ,timestamp :: api_pos_integer() | '$1' | '$3' | '$5' | '_'
 
-          ,wait_time :: api_integer() | '_'
-          ,pause_time :: api_integer() | '_'
+          ,wait_time :: api(integer()) | '_'
+          ,pause_time :: api(integer()) | '_'
           ,callid :: api(binary()) | '_'
           ,caller_id_name :: api(binary()) | '_'
           ,caller_id_number :: api(binary()) | '_'

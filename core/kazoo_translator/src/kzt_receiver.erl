@@ -700,7 +700,7 @@ handle_conference_timeout(#dial_req{call=Call}) ->
     lager:debug("timed out waiting for call to be answered by the conference"),
     {'ok', kzt_util:update_call_status(?STATUS_NOANSWER, Call)}.
 
--spec which_time(api_integer(), pos_integer()) -> non_neg_integer().
+-spec which_time(api(integer()), pos_integer()) -> non_neg_integer().
 which_time('undefined', Timelimit)
   when is_integer(Timelimit), Timelimit > 0 ->
     Timelimit;

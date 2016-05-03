@@ -91,7 +91,7 @@ append_data(#ci_chunk{data=D}=Chunk, Data) ->
 
 -spec timestamp(chunk(), integer()) -> chunk().
 ?SETTER(timestamp).
--spec timestamp(chunk()) -> api_integer().
+-spec timestamp(chunk()) -> api(integer()).
 ?GETTER(timestamp).
 
 -spec ref_timestamp(chunk()) -> api(number()).

@@ -166,7 +166,7 @@ update_agent_status(Call, AgentId, Data, PubFun) ->
 update_agent_status(Call, AgentId, Data, PubFun, Timeout) ->
     send_new_status(Call, AgentId, Data, PubFun, Timeout).
 
--spec send_new_status(kapps_call:call(), ne_binary(), kz_json:object(), kz_amqp_worker:publish_fun(), api_integer()) -> 'ok'.
+-spec send_new_status(kapps_call:call(), ne_binary(), kz_json:object(), kz_amqp_worker:publish_fun(), api(integer())) -> 'ok'.
 send_new_status(Call, AgentId, Data, PubFun, Timeout) ->
     Update = props:filter_undefined(
                [{<<"Account-ID">>, kapps_call:account_id(Call)}

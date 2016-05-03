@@ -364,7 +364,7 @@ custom_sip_headers(Req) ->
 custom_sip_headers(?REQ_TYPE(JObj), Default) ->
     kz_json:get_json_value(?KEY_CSHS, JObj, Default).
 
--spec timeout(req()) -> api_integer().
+-spec timeout(req()) -> api(integer()).
 -spec timeout(req(), Default) -> integer() | Default.
 timeout(Req) ->
     timeout(Req, 'undefined').
