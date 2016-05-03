@@ -2,11 +2,11 @@
 
 ## Welcome!
 
-This page is a work-in-progress as well as our documentation.  As you begin your journey with Kazoo please consider typing out what you learn and submitting it back for others.  If you are unable to create markdown files or know proper `git` procedures don't worry, just contact us and we will work to incorporate your notes into the docs.
+This page is a work-in-progress as well as our documentation.  As you begin your journey with Kazoo please consider typing out what you learn and submitting it back for others.  If you are unable to create markdown files or don't know proper `git` procedures don't worry!  Just contact us and we will work to incorporate your notes into the docs.
 
-Getting started with Kazoo depends on what you are looking to do with it but almost always starts with [installation](installation.md)!  Once you have your platform up and running check bellow for some highlighted documents based on your goals.
+Getting started with Kazoo depends on what you are looking to do with it but almost always starts with [installation](installation.md).  Once you have your platform up and running check bellow for some highlighted documents based on your goals.
 
-We recommend you keep the following resources handy and hope you enjoy your experience with Kazoo!
+Here are some general resources to keep handy and enjoy your experience with Kazoo!
 
 * Join us at [KazooCon!](http://kazoocon.com/)
 * Visit [the community site](http://2600hz.org)
