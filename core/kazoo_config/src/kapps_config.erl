@@ -44,7 +44,7 @@
 %% @public
 %% @doc Get a configuration key for a given category and cast it as a list
 %%-----------------------------------------------------------------------------
--spec get_string(config_category(), config_key()) -> api_string().
+-spec get_string(config_category(), config_key()) -> api(string()).
 -spec get_string(config_category(), config_key(), Default) ->
                         nonempty_string() | Default.
 -spec get_string(config_category(), config_key(), Default, ne_binary()) ->
