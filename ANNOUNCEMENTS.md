@@ -10,6 +10,10 @@ This file will serve as a reference point for upcoming announcements, both of th
 
 Starting with Kazoo 4.0 Erlang support will target 18+ and will not be backward compatible with prior Erlang versions.
 
+#### Naming switch
+
+Starting with 4.0 all references to whistle will be removed.  There is a script that can be used to assist with renaming and changing references in code `scripts/wh-to-kz.sh`
+
 #### Number Manager
 
 Upgrading to 4.0 will shift number management from `core/whistle_number_manager` to `core/kazoo_number_manager`.
