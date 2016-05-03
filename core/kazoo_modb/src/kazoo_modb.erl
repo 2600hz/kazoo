@@ -281,6 +281,8 @@ create_routines(AccountMODb) ->
     'ok'.
 
 -spec run_routine(ne_binary(), ne_binary()) -> any().
+run_routine(AccountMODb, <<"wh_", Routine/binary>>) ->
+    run_routine(AccountMODb, <<"kz_", Routine/binary>>);
 run_routine(AccountMODb, Routine) ->
     Module = kz_util:to_atom(Routine),
     _ = Module:modb(AccountMODb).
