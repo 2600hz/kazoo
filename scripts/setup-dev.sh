@@ -24,4 +24,3 @@ if ! getent passwd rabbitmq >/dev/null 2>&1; then
 else
     usermod -g daemon -d /var/lib/rabbitmq -s /sbin/nologin rabbitmq
 fi
-
