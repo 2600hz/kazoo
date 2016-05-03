@@ -517,8 +517,10 @@ maybe_enable_descendant_hooks(Account) ->
 
 -spec init_metadata(ne_binary(), kz_json:object()) -> 'ok'.
 init_metadata(Id, JObj) ->
-    {'ok', MasterAccountDb} = kapps_util:get_master_account_db(),
-    init_metadata(Id, JObj, MasterAccountDb).
+    case kapps_util:get_master_account_db() of
+        {'ok', MasterAccountDb} -> init_metadata(Id, JObj, MasterAccountDb);
+        _ -> lager:warning("master account not available")
+    end.
 
 -spec init_metadata(ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
 init_metadata(Id, JObj, MasterAccountDb) ->
