@@ -35,6 +35,7 @@
 -define(KEY_STREAMABLE, <<"streamable">>).
 -define(KEY_UTC_SEC, <<"utc_seconds">>).
 -define(KEY_MEDIA_ID, <<"media_id">>).
+-define(KEY_OWNER_ID, <<"owner_id">>).
 
 -define(KEY_METADATA, <<"metadata">>).
 -define(KEY_META_TIMESTAMP, <<"timestamp">>).
@@ -85,6 +86,7 @@ new(Db, DocId, AttachmentName, BoxNum, Timezone, Props) ->
                ,{?KEY_MEDIA_FILENAME, AttachmentName}
                ,{?KEY_STREAMABLE, 'true'}
                ,{?KEY_UTC_SEC, UtcSeconds}
+               ,{?KEY_OWNER_ID, props:get_value(<<"OwnerId">>, Props)}
               ]),
     kz_doc:update_pvt_parameters(kz_json:from_list(DocProps), Db, [{'type', type()}]).
 
