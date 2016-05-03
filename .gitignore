@@ -28,8 +28,8 @@ erlang.mk
 
 deps/
 
-core/whistle/src/kz_mime.erl
-core/whistle/mime.types
+core/kazoo/src/kz_mime.erl
+core/kazoo/mime.types
 
 applications/*/priv/archive_data/*
 
