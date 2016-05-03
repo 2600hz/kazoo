@@ -16,7 +16,11 @@
 -define(IGNORED_APP, kapps_config:get(?CONFIG_CAT, <<"ignore_apps">>, [<<"milliwatt">>])).
 
 -define(LOOPBACK_KEY, <<"ignore_loopback_bowout">>).
--define(IGNORE_LOOPBACK(AccountId), kapps_account_config:get_global(AccountId, ?CONFIG_CAT, ?LOOPBACK_KEY, 'true')).
+-define(IGNORE_LOOPBACK(AccountId), case AccountId of
+                                        'undefined' -> kapps_config:get(?CONFIG_CAT, ?LOOPBACK_KEY, 'true');
+                                        _ -> kapps_account_config:get_global(AccountId, ?CONFIG_CAT, ?LOOPBACK_KEY, 'true')
+                                    end
+                                    ).
 
 -define(CHANNEL_VARS, <<"Custom-Channel-Vars">>).
 -define(CCV(Key), [?CHANNEL_VARS, Key]).
