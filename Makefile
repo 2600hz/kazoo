@@ -1,6 +1,6 @@
 ROOT = .
-RELX = $(ROOT)/utils/relx/relx
-ELVIS = $(ROOT)/utils/elvis/elvis
+RELX = $(ROOT)/make/relx/relx
+ELVIS = $(ROOT)/make/elvis/elvis
 
 KAZOODIRS = core/Makefile applications/Makefile
 
