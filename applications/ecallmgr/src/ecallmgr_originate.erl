@@ -37,7 +37,7 @@
                 ,dialstrings :: api(binary())
                 ,queue :: api(binary())
                 ,control_pid :: api_pid()
-                ,tref :: api_reference()
+                ,tref :: api(reference())
                 ,fetch_id = kz_util:rand_hex_binary(16)
                }).
 -type state() :: #state{}.

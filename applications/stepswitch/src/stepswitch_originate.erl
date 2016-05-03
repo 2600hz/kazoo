@@ -29,7 +29,7 @@
                 ,request_handler :: pid()
                 ,response_queue :: api(binary())
                 ,queue :: api(binary())
-                ,timeout :: api_reference()
+                ,timeout :: api(reference())
                }).
 
 -define(RESPONDERS, []).

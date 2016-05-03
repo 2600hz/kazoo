@@ -39,8 +39,8 @@
 -include("jonny5.hrl").
 -include_lib("kazoo_apps/include/kz_hooks.hrl").
 
--record(state, {sync_ref :: api_reference()
-                ,sync_timer:: api_reference()
+-record(state, {sync_ref :: api(reference())
+                ,sync_timer:: api(reference())
                }).
 -type state() :: #state{}.
 

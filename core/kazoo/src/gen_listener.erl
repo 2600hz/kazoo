@@ -394,7 +394,7 @@ init([Module, Params, InitArgs]) ->
         'ignore' -> 'ignore'
     end.
 
--spec init(atom(), kz_proplist(), module_state(), api_reference()) ->
+-spec init(atom(), kz_proplist(), module_state(), api(reference())) ->
                   {'ok', state()}.
 init(Module, Params, ModuleState, TimeoutRef) ->
     _ = channel_requisition(Params),

@@ -65,7 +65,7 @@
                 ,ringback :: api(binary())
                 ,moh :: api(binary())
                 ,extension :: api(binary())
-                ,purgatory_ref :: api_reference()
+                ,purgatory_ref :: api(reference())
                 ,event_node :: ne_binary()
                }).
 -type state() :: #state{}.
@@ -1381,7 +1381,7 @@ maybe_start_transferor_ringback(Call, Transferor, Ringback) ->
     lager:debug("playing ringback on ~s to ~s", [Transferor, Ringback]),
     kapps_call_command:send_command(kz_json:set_values([{<<"Insert-At">>, <<"now">>}], Command), Call).
 
--spec maybe_cancel_timer(api_reference()) -> 'ok'.
+-spec maybe_cancel_timer(api(reference())) -> 'ok'.
 maybe_cancel_timer('undefined') -> 'ok';
 maybe_cancel_timer(Ref) -> erlang:cancel_timer(Ref).
 

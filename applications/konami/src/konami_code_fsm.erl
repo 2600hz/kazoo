@@ -42,11 +42,11 @@
 
                 ,listen_on = 'a' :: listen_on()
 
-                ,a_digit_timeout_ref :: api_reference()
+                ,a_digit_timeout_ref :: api(reference())
                 ,a_collected_dtmf = <<>> :: binary()
                 ,a_leg_armed = 'false' :: boolean()
 
-                ,b_digit_timeout_ref :: api_reference()
+                ,b_digit_timeout_ref :: api(reference())
                 ,b_collected_dtmf = <<>> :: binary()
                 ,b_endpoint_id :: api(binary())
                 ,b_leg_armed = 'false' :: boolean()

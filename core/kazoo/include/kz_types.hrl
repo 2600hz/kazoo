@@ -49,7 +49,7 @@
 -type api(atom()) :: api(atom()).
 -type api(atoms()) :: api(atoms()).
 -type api(string()) :: api(string()).
--type api_reference() :: api(reference()).
+-type api(reference()) :: api(reference()).
 -type api_pid() :: api(pid()).
 -type api_list() :: api(list()).
 

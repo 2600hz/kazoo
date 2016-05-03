@@ -1353,7 +1353,7 @@ start_sync_timer(P) ->
 start_resync_timer() ->
     gen_fsm:start_timer(?RESYNC_RESPONSE_TIMEOUT, ?RESYNC_RESPONSE_MESSAGE).
 
--spec start_pause_timer(pos_integer()) -> api_reference().
+-spec start_pause_timer(pos_integer()) -> api(reference()).
 start_pause_timer('undefined') -> start_pause_timer(1);
 start_pause_timer(0) -> 'undefined';
 start_pause_timer(Timeout) ->
@@ -1469,8 +1469,8 @@ hangup_call(#state{agent_listener=AgentListener
     maybe_notify(Ns, ?NOTIFY_HANGUP, State),
     wrapup_timer(State).
 
--spec maybe_stop_timer(api_reference()) -> 'ok'.
--spec maybe_stop_timer(api_reference(), boolean()) -> 'ok'.
+-spec maybe_stop_timer(api(reference())) -> 'ok'.
+-spec maybe_stop_timer(api(reference()), boolean()) -> 'ok'.
 maybe_stop_timer('undefined') -> 'ok';
 maybe_stop_timer(ConnRef) when is_reference(ConnRef) ->
     _ = gen_fsm:cancel_timer(ConnRef),

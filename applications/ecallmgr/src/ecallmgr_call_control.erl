@@ -87,16 +87,16 @@
          ,start_time = os:timestamp() :: kz_now()
          ,is_call_up = 'true' :: boolean()
          ,is_node_up = 'true' :: boolean()
-         ,keep_alive_ref :: api_reference()
+         ,keep_alive_ref :: api(reference())
          ,other_legs = [] :: ne_binaries()
          ,last_removed_leg :: api(binary())
-         ,sanity_check_tref :: api_reference()
+         ,sanity_check_tref :: api(reference())
          ,msg_id :: api(binary())
          ,fetch_id :: api(binary())
          ,controller_q :: api(binary())
          ,control_q :: api(binary())
          ,initial_ccvs :: kz_json:object()
-         ,node_down_tref :: api_reference()
+         ,node_down_tref :: api(reference())
          }).
 -type state() :: #state{}.
 
@@ -1172,7 +1172,7 @@ send_error_resp(CallId, Cmd, Msg) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_keep_alive_ref(state()) -> api_reference().
+-spec get_keep_alive_ref(state()) -> api(reference()).
 get_keep_alive_ref(#state{is_call_up='true'}) -> 'undefined';
 get_keep_alive_ref(#state{keep_alive_ref='undefined'
                           ,is_call_up='false'
