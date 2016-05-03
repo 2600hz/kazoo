@@ -270,7 +270,7 @@ acc(<<"stop|",_/binary>>=Logged, Buffer, _Dev, Key) ->
     erase(Key),
     {Key, [Logged|Buffer]}.
 
--type cleanse_acc() :: {ne_binaries(), api_number()}.
+-type cleanse_acc() :: {ne_binaries(), api(number())}.
 
 -spec cleanse_data_and_get_timestamp(data()) -> cleanse_acc().
 cleanse_data_and_get_timestamp(Data0) ->

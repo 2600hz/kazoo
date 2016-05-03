@@ -272,7 +272,7 @@ low_balance_enabled_exists(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec low_balance_tstamp(doc()) -> api_number().
+-spec low_balance_tstamp(doc()) -> api(number()).
 low_balance_tstamp(JObj) ->
     kz_json:get_integer_value(?LOW_BALANCE_TSTAMP, JObj).
 

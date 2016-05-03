@@ -182,7 +182,7 @@ extract_chunks(ParserId, Dev, LogIP, LogPort, Counter) ->
             extract_chunks(ParserId, Dev, LogIP, LogPort, NewCounter)
     end.
 
--type buffer() :: [binary() | {'timestamp', api_number()}].
+-type buffer() :: [binary() | {'timestamp', api(number())}].
 
 -spec make_and_store_chunk(atom(), ne_binary(), pos_integer(), pos_integer(), buffer()) -> pos_integer().
 make_and_store_chunk(ParserId, LogIP, LogPort, Counter, Data00) ->

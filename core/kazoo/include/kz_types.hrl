@@ -53,7 +53,7 @@
 -type api(pid()) :: api(pid()).
 -type api(list()) :: api(list()).
 
--type api_number() :: api(number()).
+-type api(number()) :: api(number()).
 -type api_integer() :: api(integer()).
 -type api_pos_integer() :: api(pos_integer()).
 -type api_non_neg_integer() :: api(non_neg_integer()).

@@ -506,7 +506,7 @@ safe_cast(Value, Default, CastFun) ->
         _:_ -> Default
     end.
 
--spec get_number_value(keys(), object() | objects()) -> api_number().
+-spec get_number_value(keys(), object() | objects()) -> api(number()).
 -spec get_number_value(keys(), object() | objects(), Default) -> number() | Default.
 get_number_value(Key, JObj) ->
     get_number_value(Key, JObj, 'undefined').
