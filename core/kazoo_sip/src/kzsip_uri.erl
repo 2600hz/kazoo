@@ -22,7 +22,9 @@ uris(Uri) -> nklib_parse_uri:uris(Uri).
 
 
 -spec ruri(uri()) -> binary().
+ruri(#uri{scheme='undefined'}=Uri) -> nklib_unparse:uri3(Uri#uri{scheme='sip'});
 ruri(Uri) -> nklib_unparse:uri3(Uri).
 
 -spec uri(uri()) -> binary().
+uri(#uri{scheme='undefined'}=Uri) -> nklib_unparse:uri(Uri#uri{scheme='sip'});
 uri(Uri) -> nklib_unparse:uri(Uri).
