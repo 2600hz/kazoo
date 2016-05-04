@@ -80,7 +80,7 @@ alias sup='KAZOO_ROOT=/opt/kazoo sup'
 ```
 
 It is preferable but not required that one also adds autocompletion to the `sup` command.
-In order to do this, see documentation about `make sup_completion`.
+In order to do this, see [documentation about `make sup_completion`](#longer-version).
 
 
 # Bigger Picture
