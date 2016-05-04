@@ -1,8 +1,15 @@
-### Faxes
+## Faxes
 
-#### About Faxes
+### Fax Subsystem Overview
 
-The Faxes API exposes lots of ways to send, track and process faxes.
+The Faxes API exposes lots of ways to send, receive, track and manage faxes.
+
+As a general concept, faxes are either considered inbound or outbound faxes. In addition:
+* API calls with the term "incoming" are used for tracking faxes currently in the process of being received
+* API calls with the term "inbox" are used for managing faxes which have already been received
+* API calls with the term "outgoing" are used for tracking faxes currently in the process of being sent
+* API calls with the term "outbox" are used for managing faxes which have already been sent
+
 
 #### Schema
 
@@ -36,6 +43,8 @@ Key | Description | Type | Default | Required
 `tx_result.success` | True if the fax transmission was successful | `boolean` | `false` | `false`
 `tx_result.time_elapsed` | The amount of time from submition to completion | `integer` | `0` | `false`
 
+
+### Outbound Faxes
 
 #### Create an outgoing fax
 
@@ -139,7 +148,7 @@ curl -v -X GET \
 
 #### Fetch all faxes in the outbox folder
 
-This API retrieves a listing of all outgoing faxes which have not yet been sent and are in queue for processing. Results will contain a listing of both API- and SMTP (email) - initiated outbound faxes.
+This API retrieves a listing of all outgoing faxes which have already been sent or attempted and are no longer in queue. Results will contain a listing of both API- and SMTP (email) - initiated outbound faxes.
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/outbox
 
@@ -148,6 +157,10 @@ curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox
 ```
+
+
+
+### Inbound Faxes
 
 #### Fetch
 
