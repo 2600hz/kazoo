@@ -38,7 +38,7 @@
 
 -include("konami.hrl").
 
--define(WSD_ENABLED, whapps_config:get_integer(?APP_NAME, <<"webseq_enabled">>, 'true')).
+-define(WSD_ENABLED, kapps_config:get_integer(?APP_NAME, <<"webseq_enabled">>, 'true')).
 
 -define(WSD_ID, ?WSD_ENABLED andalso {'file', <<(get('callid'))/binary, "_transfer">>}).
 
