@@ -1,7 +1,6 @@
 #!/bin/bash
 
-ln -s /opt/kazoo/utils/sup/sup /usr/bin/sup
-ln -s /opt/kazoo/make/media_importer/media_importer /usr/bin/media_importer
+ln -sf /opt/kazoo/core/priv/sup /usr/bin/sup
 ln -s /opt/kazoo/scripts/rabbitmq-server.init /etc/init.d/rabbitmq-server
 ln -s /opt/kazoo/scripts/kz-generic.init /etc/init.d/kz-ecallmgr
 ln -s /opt/kazoo/scripts/kz-generic.init /etc/init.d/kz-kazoo_apps

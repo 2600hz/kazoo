@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# The file to copy/symlink under /usr/bin or similar
+
+default_root="${KAZOO_ROOT:-_rel/kazoo}"
+default_rel='bla@tld'
+
+RELX_REPLACE_OS_VARS=true KZname="-name ${default_rel}" "${default_root}"/bin/kazoo escript lib/sup-*/priv/sup.escript "$*"
+
+unset default_root
+unset default_rel
