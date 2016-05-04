@@ -56,7 +56,7 @@
                }).
 -type state() :: #state{}.
 
--define(WSD_ENABLED, whapps_config:get_integer(?APP_NAME, <<"webseq_enabled">>, 'true')).
+-define(WSD_ENABLED, whapps_config:get_integer(?APP_NAME, <<"webseq_enabled">>, 'false')).
 
 -define(WSD_ID, ?WSD_ENABLED andalso {'file', get('callid')}).
 
