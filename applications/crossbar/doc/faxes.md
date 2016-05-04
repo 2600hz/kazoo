@@ -43,6 +43,16 @@ Key | Description | Type | Default | Required
 `tx_result.success` | True if the fax transmission was successful | `boolean` | `false` | `false`
 `tx_result.time_elapsed` | The amount of time from submition to completion | `integer` | `0` | `false`
 
+#### Processing States
+State | Description
+--- | -----------
+attaching_files | A fax job was submitted with a URL for retrieving the attachments and we are in the process of trying to retrieve those attachments for the fax job from a remote webserver
+pending | Fax waiting to be picked up by the fax sending job
+failed | If we can't retrieve the fax document via a requests URL, the state will be "failed" and the error text will contain "could not retrieve file, http response <XXX>"
+processing | Faxes that are actively picked up by the fax worker and are being processed
+completed | Faxes that are finished sending
+failed | Faxes that did not successfully send after all allotted retries are in state "failed". We pass-thru the FreeSWITCH error code in this case.
+
 
 ### Sending Outbound Faxes
 
