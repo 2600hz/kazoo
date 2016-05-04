@@ -272,6 +272,7 @@ to_public_json(Number) ->
     JObj = to_json(Number),
     State = {<<"state">>, state(Number)},
     UsedBy = {<<"used_by">>, used_by(Number)},
+    Features = {<<"features">>, sets:to_list(sets:from_list(kz_json:get_keys(features(Number))))},
     ReadOnly =
         kz_json:from_list(
           props:filter_empty(
@@ -279,6 +280,7 @@ to_public_json(Number) ->
             , {<<"modified">>, kz_doc:modified(JObj)}
             , State
             , UsedBy
+            , Features
             ])
          ),
     Root =
@@ -286,6 +288,7 @@ to_public_json(Number) ->
           props:filter_empty(
             [ State
             , UsedBy
+            , Features
               | kz_json:to_proplist(kz_json:public_fields(JObj))
             ])
          ),
