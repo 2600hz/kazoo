@@ -111,9 +111,9 @@ fetch_reply(Node, FetchID, Section, Reply, Timeout) ->
     end.
 
 api(Node, Cmd) ->
-    maybe(Node, Cmd, "").
+    api(Node, Cmd, "").
 api(Node, Cmd, Args) ->
-    maybe(Node, Cmd, Args, ?TIMEOUT).
+    api(Node, Cmd, Args, ?TIMEOUT).
 api(Node, Cmd, Args, Timeout) ->
     try gen_server:call({'mod_kazoo', Node}, {'api', Cmd, Args}, Timeout) of
         'timeout' -> {'error', 'timeout'};

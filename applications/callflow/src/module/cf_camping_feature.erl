@@ -41,19 +41,19 @@
                }).
 -type state() :: #state{}.
 
--type maybe(X) :: 'Nothing' | {'Just', X}.
+-type monad(X) :: 'Nothing' | {'Just', X}.
 
--spec '>>='(maybe(A), fun((A) -> maybe(B))) -> maybe(B).
+-spec '>>='(monad(A), fun((A) -> monad(B))) -> monad(B).
 '>>='('Nothing', _) ->
     'Nothing';
 '>>='({'Just', X}, Fun) ->
     Fun(X).
 
--spec just(A) -> maybe(A).
+-spec just(A) -> monad(A).
 just(X) ->
     {'Just', X}.
 
--spec nothing() -> maybe(any()).
+-spec nothing() -> monad(any()).
 nothing() ->
     'Nothing'.
 
@@ -71,7 +71,7 @@ init([Data, Call]) ->
         _ -> nothing()
     end.
 
--spec get_target(state()) -> maybe(state()).
+-spec get_target(state()) -> monad(state()).
 get_target(#state{callflow = Callflow} = S) ->
     lager:debug("Getting target"),
     TargetId = kz_json:get_ne_value([<<"flow">>, <<"data">>, <<"id">>], Callflow),
@@ -83,7 +83,7 @@ get_target(#state{callflow = Callflow} = S) ->
         {_, _} -> just(S#state{id = TargetId, type = TargetType})
     end.
 
--spec check_target_type(state()) -> maybe(state()).
+-spec check_target_type(state()) -> monad(state()).
 check_target_type(#state{type = TargetType} = S) ->
     lager:debug("Checking target type"),
     case lists:member(TargetType, [<<"offnet">>, <<"user">>, <<"device">>]) of
@@ -91,7 +91,7 @@ check_target_type(#state{type = TargetType} = S) ->
         'false' -> nothing()
     end.
 
--spec get_channels(state(), kapps_call:call()) -> maybe(state()).
+-spec get_channels(state(), kapps_call:call()) -> monad(state()).
 get_channels(#state{type = TargetType, id = TargetId} = S, Call) ->
     lager:debug("Exlpoing channels"),
     Usernames = case TargetType of
@@ -104,7 +104,7 @@ get_channels(#state{type = TargetType, id = TargetId} = S, Call) ->
                end,
     just(S#state{channels = cf_util:find_channels(Usernames, Call)}).
 
--spec check_self(state(), kapps_call:call()) -> maybe(state()).
+-spec check_self(state(), kapps_call:call()) -> monad(state()).
 check_self(State, Call) ->
     lager:debug("Check on self"),
     case {kapps_call:authorizing_id(Call), kapps_call:authorizing_type(Call)} of
@@ -113,7 +113,7 @@ check_self(State, Call) ->
         _ -> just(State)
     end.
 
--spec send_request(state(), kapps_call:call()) -> maybe('ok').
+-spec send_request(state(), kapps_call:call()) -> monad('ok').
 send_request(#state{channels = Channels} = S, Call) ->
     lager:debug("Sending request"),
     case Channels of
@@ -121,7 +121,7 @@ send_request(#state{channels = Channels} = S, Call) ->
         _ -> has_channels(S, Call)
     end.
 
--spec do(maybe(A), [fun((A) -> maybe(B))]) -> maybe(B).
+-spec do(monad(A), [fun((A) -> monad(B))]) -> monad(B).
 do(Monad, Actions) ->
     lists:foldl(fun(Action, Acc) -> '>>='(Acc, Action) end, Monad, Actions).
 
@@ -172,8 +172,8 @@ get_device_sip_username(AccountDb, DeviceId) ->
     {'ok', JObj} = kz_datamgr:open_cache_doc(AccountDb, DeviceId),
     kz_device:sip_username(JObj).
 
--spec no_channels(state(), kapps_call:call()) -> maybe('accepted') |
-                                                  maybe('connected').
+-spec no_channels(state(), kapps_call:call()) -> monad('accepted') |
+                                                 monad('connected').
 no_channels(#state{id = TargetId
                    ,type = TargetType
                    ,is_no_match = 'false'
@@ -203,7 +203,7 @@ no_channels(#state{type = <<"offnet">>
     kapi_delegate:publish_delegate(<<"camper">>, JObj, <<"offnet">>),
     just('accepted').
 
--spec has_channels(state(), kapps_call:call()) -> maybe('accepted').
+-spec has_channels(state(), kapps_call:call()) -> monad('accepted').
 has_channels(#state{id = TargetId
                     ,type = TargetType
                     ,number = Number
