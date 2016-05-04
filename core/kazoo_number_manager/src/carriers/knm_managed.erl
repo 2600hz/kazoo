@@ -39,7 +39,7 @@ find_numbers(<<"+", _/binary>>=Number, Quantity, Opts) ->
 find_numbers(Number, Quantity, Opts) ->
     find_numbers(<<"+",Number/binary>>, Quantity, Opts).
 
--spec find_numbers_in_account(ne_binary(), pos_integer(), api(binary())) ->
+-spec find_numbers_in_account(ne_binary(), pos_integer(), maybe(binary())) ->
                                      {'ok', knm_number:knm_numbers()} |
                                      {'error', any()}.
 find_numbers_in_account(Number, Quantity, AccountId) ->
@@ -53,7 +53,7 @@ find_numbers_in_account(Number, Quantity, AccountId) ->
         Result -> Result
     end.
 
--spec do_find_numbers_in_account(ne_binary(), pos_integer(), api(binary())) ->
+-spec do_find_numbers_in_account(ne_binary(), pos_integer(), maybe(binary())) ->
                                         {'error', any()} |
                                         {'ok', knm_number:knm_numbers()}.
 do_find_numbers_in_account(Number, Quantity, AccountId) ->

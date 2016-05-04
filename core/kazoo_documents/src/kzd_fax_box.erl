@@ -34,15 +34,15 @@ new() ->
 -spec type() -> ne_binary().
 type() -> ?PVT_TYPE.
 
--spec owner_id(doc()) -> api(binary()).
+-spec owner_id(doc()) -> maybe(binary()).
 -spec owner_id(doc(), Default) -> ne_binary() | Default.
 owner_id(Box) ->
     owner_id(Box, 'undefined').
 owner_id(Box, Default) ->
     kz_json:get_value(?KEY_OWNER_ID, Box, Default).
 
--spec owner(doc()) -> api(kzd_user:doc()).
--spec owner(doc(), ne_binary()) -> api(kzd_user:doc()).
+-spec owner(doc()) -> maybe(kzd_user:doc()).
+-spec owner(doc(), ne_binary()) -> maybe(kzd_user:doc()).
 owner(Box) ->
     case owner_id(Box) of
         'undefined' -> 'undefined';
@@ -55,7 +55,7 @@ owner(Box, OwnerId) ->
         {'error', 'not_found'} -> 'undefined'
     end.
 
--spec timezone(doc()) -> api(binary()).
+-spec timezone(doc()) -> maybe(binary()).
 -spec timezone(doc(), Default) -> ne_binary() | Default.
 timezone(Box) ->
     timezone(Box, 'undefined').
@@ -89,7 +89,7 @@ account_timezone(Box, Default) ->
             kz_account:timezone(AccountJObj, Default)
     end.
 
--spec retries(doc()) -> api(integer()).
+-spec retries(doc()) -> maybe(integer()).
 -spec retries(doc(), Default) -> integer() | Default.
 retries(Box) ->
     retries(Box, 'undefined').

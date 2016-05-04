@@ -18,7 +18,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile(kz_services:services()) -> kz_services:services().
--spec reconcile(kz_services:services(), api(binary()) | kz_proplist()) ->
+-spec reconcile(kz_services:services(), maybe(binary()) | kz_proplist()) ->
                        kz_services:services().
 reconcile(Services) ->
     AccountId = kz_services:account_id(Services),

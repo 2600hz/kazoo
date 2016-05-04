@@ -79,17 +79,17 @@
          ,last_connect :: kz_now() % last connection
          ,last_attempt :: kz_now() % last attempt to connect
          ,my_id :: ne_binary()
-         ,my_q :: api(binary()) % AMQP queue name
+         ,my_q :: maybe(binary()) % AMQP queue name
          ,timer_ref :: reference()
          ,sync_resp :: kz_json:object() % furthest along resp
          ,supervisor :: pid()
          ,record_calls = 'false' :: boolean()
-         ,recording_url :: api(binary()) %% where to send recordings after the call
+         ,recording_url :: maybe(binary()) %% where to send recordings after the call
          ,is_thief = 'false' :: boolean()
          ,agent :: agent()
-         ,agent_call_ids = [] :: api([api(binary())]) | kz_proplist()
+         ,agent_call_ids = [] :: maybe([maybe(binary())]) | kz_proplist()
          ,cdr_urls = dict:new() :: dict:dict() %% {CallId, Url}
-         ,agent_presence_id :: api(binary())
+         ,agent_presence_id :: maybe(binary())
          }).
 
 -type agent() :: kapps_call:call() | kz_json:object().
@@ -224,7 +224,7 @@ member_connect_accepted(Srv, ACallId) ->
     gen_listener:cast(Srv, {'member_connect_accepted', ACallId}).
 
 -spec bridge_to_member(pid(), kapps_call:call(), kz_json:object()
-                       ,kz_json:objects(), api(binary()), api(binary())
+                       ,kz_json:objects(), maybe(binary()), maybe(binary())
                       ) -> 'ok'.
 bridge_to_member(Srv, Call, WinJObj, EPs, CDRUrl, RecordingUrl) ->
     gen_listener:cast(Srv, {'bridge_to_member', Call, WinJObj, EPs, CDRUrl, RecordingUrl}).
@@ -265,7 +265,7 @@ config(Srv) -> gen_listener:call(Srv, 'config').
 refresh_config(_, 'undefined') -> 'ok';
 refresh_config(Srv, Qs) -> gen_listener:cast(Srv, {'refresh_config', Qs}).
 
--spec agent_info(pid(), kz_json:key()) -> api(kz_json:json_term()).
+-spec agent_info(pid(), kz_json:key()) -> maybe(kz_json:json_term()).
 agent_info(Srv, Field) -> gen_listener:call(Srv, {'agent_info', Field}).
 
 send_status_resume(Srv) ->
@@ -318,7 +318,7 @@ presence_update(Srv, PresenceState) ->
 update_agent_status(Srv, Status) ->
     gen_listener:cast(Srv, {'update_status', Status}).
 
--spec presence_id(pid()) -> api(binary()).
+-spec presence_id(pid()) -> maybe(binary()).
 presence_id(Srv) ->
     gen_listener:call(Srv, 'presence_id').
 
@@ -326,7 +326,7 @@ presence_id(Srv) ->
 queues(Srv) ->
     gen_listener:call(Srv, 'queues').
 
--spec id(pid()) -> api(binary()).
+-spec id(pid()) -> maybe(binary()).
 id(Srv) ->
     gen_listener:call(Srv, 'my_id').
 
@@ -898,7 +898,7 @@ is_valid_queue(Q, Qs) -> lists:member(Q, Qs).
 
 -spec send_member_connect_resp(kz_json:object(), ne_binary()
                               ,ne_binary(), ne_binary()
-                              ,api(kz_now())
+                              ,maybe(kz_now())
                               ) -> 'ok'.
 send_member_connect_resp(JObj, MyQ, AgentId, MyId, LastConn) ->
     Queue = kz_json:get_value(<<"Server-ID">>, JObj),
@@ -981,11 +981,11 @@ send_status_update(AcctId, AgentId, 'resume') ->
     kapi_acdc_agent:publish_resume(Update).
 
 
--spec idle_time(api(kz_now())) -> api(integer()).
+-spec idle_time(maybe(kz_now())) -> maybe(integer()).
 idle_time('undefined') -> 'undefined';
 idle_time(T) -> kz_util:elapsed_s(T).
 
--spec call_id(kapps_call:call() | api(kz_json:object())) -> api(binary()).
+-spec call_id(kapps_call:call() | maybe(kz_json:object())) -> maybe(binary()).
 call_id('undefined') -> 'undefined';
 call_id(Call) ->
     case kapps_call:is_call(Call) of
@@ -1000,7 +1000,7 @@ call_id(Call) ->
                         end, 'undefined', Keys)
     end.
 
--spec maybe_connect_to_agent(ne_binary(), kz_json:objects(), kapps_call:call(), api(integer()), ne_binary(), api(binary())) ->
+-spec maybe_connect_to_agent(ne_binary(), kz_json:objects(), kapps_call:call(), maybe(integer()), ne_binary(), maybe(binary())) ->
                                     ne_binaries().
 maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId, _CdrUrl) ->
     MCallId = kapps_call:call_id(Call),
@@ -1104,7 +1104,7 @@ update_my_queues_of_change(AcctId, AgentId, Qs) ->
         ],
     'ok'.
 
--spec should_record_endpoints(kz_json:objects(), boolean(), api(boolean())) -> boolean().
+-spec should_record_endpoints(kz_json:objects(), boolean(), maybe(boolean())) -> boolean().
 should_record_endpoints(_EPs, 'true', _) -> 'true';
 should_record_endpoints(_EPs, 'false', 'true') -> 'true';
 should_record_endpoints(EPs, _, _) ->
@@ -1131,21 +1131,21 @@ maybe_start_recording(Call, 'true', Url) ->
 recording_format() ->
     kapps_config:get(<<"callflow">>, [<<"call_recording">>, <<"extension">>], <<"mp3">>).
 
--spec agent_id(agent()) -> api(binary()).
+-spec agent_id(agent()) -> maybe(binary()).
 agent_id(Agent) ->
     case kz_json:is_json_object(Agent) of
         'true' -> kz_doc:id(Agent);
         'false' -> kapps_call:owner_id(Agent)
     end.
 
--spec account_id(agent()) -> api(binary()).
+-spec account_id(agent()) -> maybe(binary()).
 account_id(Agent) ->
     case kz_json:is_json_object(Agent) of
         'true' -> find_account_id(Agent);
         'false' -> kapps_call:account_id(Agent)
     end.
 
--spec account_db(agent()) -> api(binary()).
+-spec account_db(agent()) -> maybe(binary()).
 account_db(Agent) ->
     case kz_json:is_json_object(Agent) of
         'true' -> kz_doc:account_db(Agent);

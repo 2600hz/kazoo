@@ -68,7 +68,7 @@ create(Text, Voice, Format, Options) ->
     Provider = kapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_provider">>, <<"ispeech">>),
     create(Provider, Text, Voice, Format, Options).
 
--spec create(api(binary()), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> create_resp().
+-spec create(maybe(binary()), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> create_resp().
 create('undefined', Text, Voice, Format, Options) ->
     create(Text, Voice, Format, Options);
 create(<<"ispeech">> = Engine, Text, Voice, Format, Opts) ->
@@ -239,7 +239,7 @@ attempt_asr_freeform(Content, ContentType, Locale, Options) ->
             {'error', 'asr_provider_failure', kz_json:decode(Content2)}
     end.
 
--spec attempt_asr_freeform(api(binary()), binary(), ne_binary(), ne_binary(), kz_proplist()) ->
+-spec attempt_asr_freeform(maybe(binary()), binary(), ne_binary(), ne_binary(), kz_proplist()) ->
                                   provider_return().
 attempt_asr_freeform(_, <<>>, _, _, _) -> {'error', 'no_content'};
 attempt_asr_freeform(<<"ispeech">>, Bin, ContentType, Locale, Opts) ->

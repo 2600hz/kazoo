@@ -42,7 +42,7 @@ allowed_apps(AccountId) ->
 %% Get app object if allowed
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_app(ne_binary(), ne_binary()) -> api(kz_json:object()).
+-spec allowed_app(ne_binary(), ne_binary()) -> maybe(kz_json:object()).
 allowed_app(AccountId, AppId) ->
     FindApp = fun(App) -> AppId == kz_doc:id(App) end,
     case lists:filter(FindApp, allowed_apps(AccountId)) of
@@ -331,7 +331,7 @@ find_enabled_apps_fold(AppName, PlanApp, Acc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec find_app(ne_binary(), kz_json:object()) -> api(kz_json:object()).
+-spec find_app(ne_binary(), kz_json:object()) -> maybe(kz_json:object()).
 find_app(AppId, PlanApp) ->
     Account = kz_json:get_first_defined([<<"account_db">>, <<"account_id">>], PlanApp),
     AccountDb = kz_util:format_account_id(Account, 'encoded'),

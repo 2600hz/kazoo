@@ -33,7 +33,7 @@
 
 -define(PVT_TYPE, <<"user">>).
 
--spec email(doc()) -> api(binary()).
+-spec email(doc()) -> maybe(binary()).
 -spec email(doc(), Default) -> ne_binary() | Default.
 email(User) ->
     email(User, 'undefined').
@@ -113,7 +113,7 @@ vcard_normalize_type(T) when is_list(T) -> kz_util:join_binary([vcard_normalize_
 vcard_normalize_type({T, V}) -> kz_util:join_binary([T, V], <<"=">>);
 vcard_normalize_type(T) -> T.
 
--type vcard_val() :: api(binary() | {char(), binaries()}).
+-type vcard_val() :: maybe(binary() | {char(), binaries()}).
 -type vcard_type_token() :: ne_binary() | {ne_binary(), ne_binary()}.
 -type vcard_type() :: [vcard_type_token()] | vcard_type_token().
 -type vcard_field_token() :: {vcard_type(), vcard_val()}.
@@ -199,7 +199,7 @@ normalize_address(JObj) ->
     Address = kz_json:get_value(<<"address">>, JObj),
     {kz_util:join_binary(Types, <<",">>), Address}.
 
--spec timezone(kz_json:object()) -> api(binary()).
+-spec timezone(kz_json:object()) -> maybe(binary()).
 -spec timezone(kz_json:object(), Default) -> ne_binary() | Default.
 timezone(JObj) ->
     timezone(JObj, 'undefined').
@@ -210,7 +210,7 @@ timezone(JObj, Default) ->
         TZ -> TZ
     end.
 
--spec presence_id(doc()) -> api(binary()).
+-spec presence_id(doc()) -> maybe(binary()).
 -spec presence_id(doc(), Default) -> ne_binary() | Default.
 presence_id(UserJObj) ->
     presence_id(UserJObj, 'undefined').

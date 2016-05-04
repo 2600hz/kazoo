@@ -21,7 +21,7 @@
 
 -record(call_waiting, {enabled = 'true' :: boolean()
                        ,jobj = kz_json:new() :: kz_json:object()
-                       ,account_db :: api(binary())
+                       ,account_db :: maybe(binary())
                        ,action :: ne_binary()
                       }).
 -type call_waiting() :: #call_waiting{}.
@@ -73,13 +73,13 @@ maybe_build_call_waiting_record(Data, Call) ->
             }
     end.
 
--spec get_doc_id(ne_binary(), kapps_call:call()) -> api(binary()).
+-spec get_doc_id(ne_binary(), kapps_call:call()) -> maybe(binary()).
 get_doc_id(<<"user">>, Call) ->
     kapps_call:owner_id(Call);
 get_doc_id(<<"device">>, Call) ->
     kapps_call:authorizing_id(Call).
 
--spec maybe_get_doc(api(binary()), api(binary())) -> kz_jobj_return().
+-spec maybe_get_doc(maybe(binary()), maybe(binary())) -> kz_jobj_return().
 maybe_get_doc(_, 'undefined') ->
     {'error', 'no_device_id'};
 maybe_get_doc('undefined', _) ->

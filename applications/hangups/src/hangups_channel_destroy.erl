@@ -128,7 +128,7 @@ find_realm(JObj, AccountId) ->
         Realm -> Realm
     end.
 
--spec get_account_realm(api(binary())) -> ne_binary().
+-spec get_account_realm(maybe(binary())) -> ne_binary().
 get_account_realm('undefined') -> <<"unknown">>;
 get_account_realm(AccountId) ->
     case kz_datamgr:open_cache_doc(?KZ_ACCOUNTS_DB, AccountId) of

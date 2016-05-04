@@ -270,7 +270,7 @@ acc(<<"stop|",_/binary>>=Logged, Buffer, _Dev, Key) ->
     erase(Key),
     {Key, [Logged|Buffer]}.
 
--type cleanse_acc() :: {ne_binaries(), api(number())}.
+-type cleanse_acc() :: {ne_binaries(), maybe(number())}.
 
 -spec cleanse_data_and_get_timestamp(data()) -> cleanse_acc().
 cleanse_data_and_get_timestamp(Data0) ->
@@ -324,7 +324,7 @@ rm_newline(Line0) ->
     [Line, <<>>] = binary:split(Line0, <<"\n">>),
     Line.
 
--spec label(ne_binary()) -> api(binary()).
+-spec label(ne_binary()) -> maybe(binary()).
 label(<<"received internal reply ", Label/binary>>) -> Label;
 label(<<"received ", _Protocol:3/binary, " request ", Label/binary>>) -> Label;
 label(<<"external reply ", Label/binary>>) -> Label;
@@ -385,7 +385,7 @@ to_port([_Datum|Data], Default) ->
     to(Data, Default).
 
 
--spec c_seq(ne_binaries()) -> api(binary()).
+-spec c_seq(ne_binaries()) -> maybe(binary()).
 c_seq([<<"cseq ", CSeq/binary>>|_Data]) -> CSeq;
 c_seq([]) -> 'undefined';
 c_seq([_Datum|Data]) -> c_seq(Data).

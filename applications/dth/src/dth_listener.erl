@@ -39,7 +39,7 @@
 
 -define(BLACKLIST_REFRESH, 60 * ?MILLISECONDS_IN_SECOND).
 
--record(state, {wsdl_model = 'undefined' :: api(#wsdl{})
+-record(state, {wsdl_model = 'undefined' :: maybe(#wsdl{})
                 ,dth_cdr_url = <<>> :: binary()
                }).
 
@@ -79,7 +79,7 @@ init([]) ->
 
     {'ok', #state{dth_cdr_url=URL}}.
 
--spec maybe_init_model() -> api(#wsdl{}).
+-spec maybe_init_model() -> maybe(#wsdl{}).
 maybe_init_model() ->
     WSDLFile = [code:priv_dir('dth'), "/dthsoap.wsdl"],
     WSDLHrlFile = [code:lib_dir('dth', 'include'), "/dthsoap.hrl"],

@@ -32,13 +32,13 @@ handle(Data, Call) ->
     cf_exe:continue(Call1).
 
 
--spec set_cid_name(kapps_call:call(), api(binary())) -> kapps_call:call().
+-spec set_cid_name(kapps_call:call(), maybe(binary())) -> kapps_call:call().
 set_cid_name(Call, <<>>) ->
     kapps_call:kvs_erase('rewrite_cid_name', Call);
 set_cid_name(Call, Name) ->
     kapps_call:kvs_store('rewrite_cid_name', Name, Call).
 
--spec set_cid_number(kapps_call:call(), api(binary())) -> kapps_call:call().
+-spec set_cid_number(kapps_call:call(), maybe(binary())) -> kapps_call:call().
 set_cid_number(Call, <<>>) ->
     kapps_call:kvs_erase('rewrite_cid_number', Call);
 set_cid_number(Call, Number) ->

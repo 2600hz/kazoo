@@ -122,7 +122,7 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec success(api(terms())) ->
+-spec success(maybe(terms())) ->
                      {'ok', iolist()} |
                      {'error', string()}.
 success(Prop) when is_list(Prop) ->
@@ -132,7 +132,7 @@ success(Prop) when is_list(Prop) ->
     end;
 success(JObj) -> success(kz_json:to_proplist(JObj)).
 
--spec success_v(api(terms())) -> boolean().
+-spec success_v(maybe(terms())) -> boolean().
 success_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?REG_SUCCESS_HEADERS, ?REG_SUCCESS_VALUES, ?REG_SUCCESS_TYPES);
 success_v(JObj) -> success_v(kz_json:to_proplist(JObj)).
@@ -142,7 +142,7 @@ success_v(JObj) -> success_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec flush(api(terms())) ->
+-spec flush(maybe(terms())) ->
                    {'ok', iolist()} |
                    {'error', string()}.
 flush(Prop) when is_list(Prop) ->
@@ -152,13 +152,13 @@ flush(Prop) when is_list(Prop) ->
     end;
 flush(JObj) -> flush(kz_json:to_proplist(JObj)).
 
--spec flush_v(api(terms())) -> boolean().
+-spec flush_v(maybe(terms())) -> boolean().
 flush_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?REG_FLUSH_HEADERS, ?REG_FLUSH_VALUES, ?REG_FLUSH_TYPES);
 flush_v(JObj) -> flush_v(kz_json:to_proplist(JObj)).
 
 
--spec sync(api(terms())) ->
+-spec sync(maybe(terms())) ->
                    {'ok', iolist()} |
                    {'error', string()}.
 sync(Prop) when is_list(Prop) ->
@@ -168,7 +168,7 @@ sync(Prop) when is_list(Prop) ->
     end;
 sync(JObj) -> sync(kz_json:to_proplist(JObj)).
 
--spec sync_v(api(terms())) -> boolean().
+-spec sync_v(maybe(terms())) -> boolean().
 sync_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?REG_SYNC_HEADERS, ?REG_SYNC_VALUES, ?REG_SYNC_TYPES);
 sync_v(JObj) -> sync_v(kz_json:to_proplist(JObj)).
@@ -178,7 +178,7 @@ sync_v(JObj) -> sync_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec query_req(api(terms())) ->
+-spec query_req(maybe(terms())) ->
                        {'ok', iolist()} |
                        {'error', string()}.
 query_req(Prop) when is_list(Prop) ->
@@ -188,7 +188,7 @@ query_req(Prop) when is_list(Prop) ->
     end;
 query_req(JObj) -> query_req(kz_json:to_proplist(JObj)).
 
--spec query_req_v(api(terms())) -> boolean().
+-spec query_req_v(maybe(terms())) -> boolean().
 query_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?REG_QUERY_HEADERS, ?REG_QUERY_VALUES, ?REG_QUERY_TYPES);
 query_req_v(JObj) -> query_req_v(kz_json:to_proplist(JObj)).
@@ -198,7 +198,7 @@ query_req_v(JObj) -> query_req_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec query_resp(api(terms())) ->
+-spec query_resp(maybe(terms())) ->
                         {'ok', iolist()} |
                         {'error', string()}.
 query_resp(Prop) when is_list(Prop) ->
@@ -208,7 +208,7 @@ query_resp(Prop) when is_list(Prop) ->
     end;
 query_resp(JObj) -> query_resp(kz_json:to_proplist(JObj)).
 
--spec query_resp_v(api(terms())) -> boolean().
+-spec query_resp_v(maybe(terms())) -> boolean().
 query_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?REG_QUERY_RESP_HEADERS, ?REG_QUERY_RESP_VALUES, ?REG_QUERY_RESP_TYPES);
 query_resp_v(JObj) -> query_resp_v(kz_json:to_proplist(JObj)).
@@ -218,7 +218,7 @@ query_resp_v(JObj) -> query_resp_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec query_err(api(terms())) ->
+-spec query_err(maybe(terms())) ->
                        {'ok', iolist()} |
                        {'error', string()}.
 query_err(Prop) when is_list(Prop) ->
@@ -228,7 +228,7 @@ query_err(Prop) when is_list(Prop) ->
     end;
 query_err(JObj) -> query_err(kz_json:to_proplist(JObj)).
 
--spec query_err_v(api(terms())) -> boolean().
+-spec query_err_v(maybe(terms())) -> boolean().
 query_err_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?REG_QUERY_ERR_HEADERS, ?REG_QUERY_ERR_VALUES, ?REG_QUERY_ERR_TYPES);
 query_err_v(JObj) -> query_err_v(kz_json:to_proplist(JObj)).
@@ -290,8 +290,8 @@ declare_exchanges() ->
 %% @doc Publish the JSON iolist() to the proper Exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_success(api(terms())) -> 'ok'.
--spec publish_success(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_success(maybe(terms())) -> 'ok'.
+-spec publish_success(maybe(terms()), ne_binary()) -> 'ok'.
 publish_success(JObj) ->
     publish_success(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_success(Success, ContentType) ->
@@ -302,32 +302,32 @@ publish_success(Success, ContentType) ->
 %% @doc Publish the JSON iolist() to the proper Exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_flush(api(terms())) -> 'ok'.
--spec publish_flush(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_flush(maybe(terms())) -> 'ok'.
+-spec publish_flush(maybe(terms()), ne_binary()) -> 'ok'.
 publish_flush(JObj) ->
     publish_flush(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_flush(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?REG_FLUSH_VALUES, fun ?MODULE:flush/1),
     amqp_util:registrar_publish(get_flush_routing(API), Payload, ContentType).
 
--spec publish_query_req(api(terms())) -> 'ok'.
--spec publish_query_req(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_query_req(maybe(terms())) -> 'ok'.
+-spec publish_query_req(maybe(terms()), ne_binary()) -> 'ok'.
 publish_query_req(JObj) ->
     publish_query_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_query_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?REG_QUERY_VALUES, fun ?MODULE:query_req/1),
     amqp_util:registrar_publish(get_query_routing(Req), Payload, ContentType).
 
--spec publish_query_resp(ne_binary(), api(terms())) -> 'ok'.
--spec publish_query_resp(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
+-spec publish_query_resp(ne_binary(), maybe(terms())) -> 'ok'.
+-spec publish_query_resp(ne_binary(), maybe(terms()), ne_binary()) -> 'ok'.
 publish_query_resp(Queue, JObj) ->
     publish_query_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_query_resp(Queue, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?REG_QUERY_RESP_VALUES, fun ?MODULE:query_resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
--spec publish_query_err(ne_binary(), api(terms())) -> 'ok'.
--spec publish_query_err(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
+-spec publish_query_err(ne_binary(), maybe(terms())) -> 'ok'.
+-spec publish_query_err(ne_binary(), maybe(terms()), ne_binary()) -> 'ok'.
 publish_query_err(Queue, JObj) ->
     publish_query_err(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_query_err(Queue, Resp, ContentType) ->
@@ -335,8 +335,8 @@ publish_query_err(Queue, Resp, ContentType) ->
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 -spec publish_sync() -> 'ok'.
--spec publish_sync(api(terms())) -> 'ok'.
--spec publish_sync(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_sync(maybe(terms())) -> 'ok'.
+-spec publish_sync(maybe(terms()), ne_binary()) -> 'ok'.
 publish_sync() ->
     kz_amqp_worker:cast(kz_api:default_headers(<<"KAPI">>, <<"1.0">>), fun publish_sync/1).
 publish_sync(JObj) ->
@@ -353,7 +353,7 @@ publish_sync(API, ContentType) ->
 success_keys() ->
     ?OPTIONAL_REG_SUCCESS_HEADERS ++ ?REG_SUCCESS_HEADERS.
 
--spec get_success_routing(api(terms())) -> ne_binary().
+-spec get_success_routing(maybe(terms())) -> ne_binary().
 get_success_routing(Prop) when is_list(Prop) ->
     User = props:get_value(<<"Username">>, Prop),
     Realm = props:get_value(<<"Realm">>, Prop),
@@ -367,7 +367,7 @@ get_success_routing(JObj) ->
 get_success_routing(Realm, User) ->
     list_to_binary([?KEY_REG_SUCCESS, ".", amqp_util:encode(Realm), ".", amqp_util:encode(User)]).
 
--spec get_query_routing(api(terms())) -> ne_binary().
+-spec get_query_routing(maybe(terms())) -> ne_binary().
 get_query_routing(Prop) when is_list(Prop) ->
     User = props:get_value(<<"Username">>, Prop),
     Realm = props:get_value(<<"Realm">>, Prop),

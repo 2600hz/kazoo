@@ -47,6 +47,6 @@ lookup_fax_option(Call, Data) ->
                           end,
     kz_json:get_value(?FAX_OPTION, Data, DefaultFaxBoxOption).
 
--spec get_faxbox_id(kz_json:object()) -> api(binary()).
+-spec get_faxbox_id(kz_json:object()) -> maybe(binary()).
 get_faxbox_id(JObj) ->
     kz_json:get_first_defined([<<"id">>, <<"faxbox_id">>], JObj).

@@ -143,7 +143,7 @@ update_caller_identity(Data, Call) ->
 %% @doc validate that all required parameters are defined
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_caller_identity(api(binary()), api(binary()), api(binary())) -> boolean().
+-spec is_valid_caller_identity(maybe(binary()), maybe(binary()), maybe(binary())) -> boolean().
 is_valid_caller_identity('undefined', _Number, _UserId) -> 'false';
 is_valid_caller_identity(_Name, 'undefined', _UserId) -> 'false';
 is_valid_caller_identity(_Name, _Number, 'undefined') -> 'false';

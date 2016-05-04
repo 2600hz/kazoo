@@ -138,7 +138,7 @@
 -define(EXCHANGE_LEADER, <<"leader">>).
 -define(TYPE_LEADER, <<"topic">>).
 
--type kz_amqp_command() :: api(#'basic.ack'{} |
+-type kz_amqp_command() :: maybe(#'basic.ack'{} |
                                #'basic.cancel'{} |
                                #'basic.consume'{} |
                                #'basic.nack'{} |
@@ -180,14 +180,14 @@
 -type kz_amqp_type() :: 'sticky' | 'float'.
 
 -record(kz_amqp_assignment, {timestamp = os:timestamp() :: kz_now() | '_'
-                             ,consumer :: api(pid()) | '$2' | '_'
-                             ,consumer_ref :: api(reference()) | '_'
+                             ,consumer :: maybe(pid()) | '$2' | '_'
+                             ,consumer_ref :: maybe(reference()) | '_'
                              ,type = 'float' :: kz_amqp_type() | '_'
-                             ,channel :: api(pid()) | '$1' | '_'
-                             ,channel_ref :: api(reference()) | '_'
-                             ,connection :: api(pid()) | '$1' | '_'
-                             ,broker :: api(binary()) | '$1' | '_'
-                             ,assigned :: api(kz_timeout()) | '_'
+                             ,channel :: maybe(pid()) | '$1' | '_'
+                             ,channel_ref :: maybe(reference()) | '_'
+                             ,connection :: maybe(pid()) | '$1' | '_'
+                             ,broker :: maybe(binary()) | '$1' | '_'
+                             ,assigned :: maybe(kz_timeout()) | '_'
                              ,reconnect = 'false' :: boolean() | '_'
                              ,watchers = sets:new() :: sets:set() | pids() | '_'
                             }).
@@ -202,9 +202,9 @@
                              ,manager :: pid() | '_'
                              ,connection :: pid() | '_'
                              ,connection_ref :: reference() | '_'
-                             ,channel :: api(pid()) | '$1' | '_'
-                             ,channel_ref :: api(reference()) | '$1' | '_'
-                             ,reconnect_ref :: api(reference()) | '_'
+                             ,channel :: maybe(pid()) | '$1' | '_'
+                             ,channel_ref :: maybe(reference()) | '$1' | '_'
+                             ,reconnect_ref :: maybe(reference()) | '_'
                              ,available = 'false' :: boolean() | '_'
                              ,exchanges_initialized = 'false' :: boolean() | '_'
                              ,prechannels_initialized = 'false' :: boolean() | '_'
@@ -214,8 +214,8 @@
                             }).
 -type kz_amqp_connection() :: #kz_amqp_connection{}.
 
--record(kz_amqp_connections, {connection :: api(pid()) | '$1' | '_'
-                              ,connection_ref :: api(reference()) | '_'
+-record(kz_amqp_connections, {connection :: maybe(pid()) | '$1' | '_'
+                              ,connection_ref :: maybe(reference()) | '_'
                               ,broker :: ne_binary() | '$1' | '$2' | '_'
                               ,available='false' :: boolean() | '$1' | '$2' | '_'
                               ,timestamp=os:timestamp() :: kz_now() | '_'

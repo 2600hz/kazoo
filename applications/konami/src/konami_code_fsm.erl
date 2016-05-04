@@ -34,25 +34,25 @@
 
 -type listen_on() :: 'a' | 'b' | 'ab'.
 
--record(state, {numbers :: api(kz_json:object())
-                ,patterns :: api(kz_json:object())
+-record(state, {numbers :: maybe(kz_json:object())
+                ,patterns :: maybe(kz_json:object())
                 ,binding_digit = konami_config:binding_digit() :: ne_binary()
                 ,digit_timeout = konami_config:timeout() :: pos_integer()
-                ,call :: api(kapps_call:call())
+                ,call :: maybe(kapps_call:call())
 
                 ,listen_on = 'a' :: listen_on()
 
-                ,a_digit_timeout_ref :: api(reference())
+                ,a_digit_timeout_ref :: maybe(reference())
                 ,a_collected_dtmf = <<>> :: binary()
                 ,a_leg_armed = 'false' :: boolean()
 
-                ,b_digit_timeout_ref :: api(reference())
+                ,b_digit_timeout_ref :: maybe(reference())
                 ,b_collected_dtmf = <<>> :: binary()
-                ,b_endpoint_id :: api(binary())
+                ,b_endpoint_id :: maybe(binary())
                 ,b_leg_armed = 'false' :: boolean()
 
                 ,call_id :: ne_binary()
-                ,other_leg :: api(binary())
+                ,other_leg :: maybe(binary())
                }).
 -type state() :: #state{}.
 
@@ -326,7 +326,7 @@ digit_timeout(Call, JObj) ->
         Timeout -> Timeout
     end.
 
--spec is_a_leg(kapps_call:call(), api(kz_json:object()) | ne_binary()) -> boolean().
+-spec is_a_leg(kapps_call:call(), maybe(kz_json:object()) | ne_binary()) -> boolean().
 is_a_leg(_Call, 'undefined') -> 'true';
 is_a_leg(Call, <<_/binary>> = EndpointId) ->
     EndpointId =:= kapps_call:authorizing_id(Call);
@@ -498,7 +498,7 @@ add_bleg_dtmf(#state{b_collected_dtmf=Collected
                 ,b_collected_dtmf = <<Collected/binary, DTMF/binary>>
                }.
 
--spec maybe_add_call_event_bindings(api(binary()) | kapps_call:call()) -> 'ok'.
+-spec maybe_add_call_event_bindings(maybe(binary()) | kapps_call:call()) -> 'ok'.
 -spec maybe_add_call_event_bindings(kapps_call:call(), listen_on()) -> 'ok'.
 maybe_add_call_event_bindings('undefined') -> 'ok';
 maybe_add_call_event_bindings(<<_/binary>> = Leg) -> konami_event_listener:add_call_binding(Leg);
@@ -515,7 +515,7 @@ maybe_add_call_event_bindings(Call, 'ab') ->
     konami_event_listener:add_konami_binding(kapps_call:other_leg_call_id(Call)),
     maybe_add_call_event_bindings(Call).
 
--spec b_endpoint_id(kz_json:object(), listen_on()) -> api(binary()).
+-spec b_endpoint_id(kz_json:object(), listen_on()) -> maybe(binary()).
 b_endpoint_id(_JObj, 'a') -> 'undefined';
 b_endpoint_id(JObj, _ListenOn) -> kz_json:get_value(<<"Endpoint-ID">>, JObj).
 

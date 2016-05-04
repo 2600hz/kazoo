@@ -38,20 +38,20 @@
           options = [] :: list()
           ,from :: binary()
           ,to :: binary()
-          ,doc :: api(kz_json:object())
-          ,filename :: api(binary())
+          ,doc :: maybe(kz_json:object())
+          ,filename :: maybe(binary())
           ,content_type :: binary()
           ,peer_ip :: peer()
-          ,owner_id :: api(binary())
-          ,owner_email :: api(binary())
-          ,faxbox_email :: api(binary())
-          ,faxbox :: api(kz_json:object())
+          ,owner_id :: maybe(binary())
+          ,owner_email :: maybe(binary())
+          ,faxbox_email :: maybe(binary())
+          ,faxbox :: maybe(kz_json:object())
           ,errors = [] :: ne_binaries()
-          ,original_number :: api(binary())
-          ,number :: api(binary())
-          ,account_id :: api(binary())
-          ,session_id :: api(binary())
-          ,proxy :: api(binary())
+          ,original_number :: maybe(binary())
+          ,number :: maybe(binary())
+          ,account_id :: maybe(binary())
+          ,session_id :: maybe(binary())
+          ,proxy :: maybe(binary())
          }).
 
 -type state() :: #state{}.
@@ -339,7 +339,7 @@ to_proplist(#state{}=State) ->
       ]).
 
 
--spec faxbox_to_proplist(api(kz_json:object())) -> kz_proplist().
+-spec faxbox_to_proplist(maybe(kz_json:object())) -> kz_proplist().
 faxbox_to_proplist('undefined') -> [];
 faxbox_to_proplist(JObj) ->
     props:filter_undefined(
@@ -347,7 +347,7 @@ faxbox_to_proplist(JObj) ->
       ]
      ).
 
--spec faxdoc_to_proplist(api(kz_json:object())) -> kz_proplist().
+-spec faxdoc_to_proplist(maybe(kz_json:object())) -> kz_proplist().
 faxdoc_to_proplist('undefined') -> [];
 faxdoc_to_proplist(JObj) ->
     props:filter_undefined(
@@ -822,10 +822,10 @@ maybe_process_image(CT, Body, Size, State) ->
     end.
 
 -spec write_tmp_file(ne_binary(), binary() | mimemail:mimetuple()) ->
-                            {'ok', api(binary())} |
+                            {'ok', maybe(binary())} |
                             {'error', any()}.
--spec write_tmp_file(api(binary()) , ne_binary(), binary() | mimemail:mimetuple()) ->
-                            {'ok', api(binary())} |
+-spec write_tmp_file(maybe(binary()) , ne_binary(), binary() | mimemail:mimetuple()) ->
+                            {'ok', maybe(binary())} |
                             {'error', any()}.
 write_tmp_file(Extension, Body) ->
     write_tmp_file('undefined', Extension, Body).

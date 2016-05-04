@@ -65,21 +65,21 @@ notification_emails(Box, Default) ->
         Emails -> Emails
     end.
 
--spec set_notification_emails(doc(), api([api(binary())])) -> doc().
+-spec set_notification_emails(doc(), maybe([maybe(binary())])) -> doc().
 set_notification_emails(Box, 'undefined') ->
     kz_json:delete_key(?KEY_NOTIFY_EMAILS, Box);
 set_notification_emails(Box, Emails) ->
     kz_json:set_value(?KEY_NOTIFY_EMAILS, Emails, Box).
 
--spec owner_id(doc()) -> api(binary()).
+-spec owner_id(doc()) -> maybe(binary()).
 -spec owner_id(doc(), Default) -> ne_binary() | Default.
 owner_id(Box) ->
     owner_id(Box, 'undefined').
 owner_id(Box, Default) ->
     kz_json:get_value(?KEY_OWNER_ID, Box, Default).
 
--spec owner(doc()) -> api(kzd_user:doc()).
--spec owner(doc(), ne_binary()) -> api(kzd_user:doc()).
+-spec owner(doc()) -> maybe(kzd_user:doc()).
+-spec owner(doc(), ne_binary()) -> maybe(kzd_user:doc()).
 owner(Box) ->
     case owner_id(Box) of
         'undefined' -> 'undefined';
@@ -92,7 +92,7 @@ owner(Box, OwnerId) ->
         {'error', 'not_found'} -> 'undefined'
     end.
 
--spec timezone(doc()) -> api(binary()).
+-spec timezone(doc()) -> maybe(binary()).
 -spec timezone(doc(), Default) -> ne_binary() | Default.
 timezone(Box) ->
     timezone(Box, 'undefined').
@@ -137,14 +137,14 @@ skip_greeting(Box) ->
 skip_greeting(Box, Default) ->
     kz_json:is_true(?KEY_SKIP_GREETING, Box, Default).
 
--spec pin(doc()) -> api(binary()).
+-spec pin(doc()) -> maybe(binary()).
 -spec pin(doc(), Default) -> ne_binary() | Default.
 pin(Box) ->
     pin(Box, 'undefined').
 pin(Box, Default) ->
     kz_json:get_binary_value(?KEY_PIN, Box, Default).
 
--spec mailbox_number(doc()) -> api(binary()).
+-spec mailbox_number(doc()) -> maybe(binary()).
 -spec mailbox_number(doc(), Default) -> ne_binary() | Default.
 mailbox_number(Box) ->
     mailbox_number(Box, 'undefined').

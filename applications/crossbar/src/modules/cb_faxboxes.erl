@@ -335,7 +335,7 @@ update_faxbox(Id, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_faxbox_successful_validation(api(binary()), cb_context:context()) -> cb_context:context().
+-spec on_faxbox_successful_validation(maybe(binary()), cb_context:context()) -> cb_context:context().
 on_faxbox_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context
                        ,kz_json:set_values(
@@ -390,7 +390,7 @@ is_faxbox_email_global_unique(Email, FaxBoxId) ->
     end.
 
 -spec maybe_reregister_cloud_printer(cb_context:context()) -> cb_context:context().
--spec maybe_reregister_cloud_printer(api(binary()), cb_context:context()) -> cb_context:context().
+-spec maybe_reregister_cloud_printer(maybe(binary()), cb_context:context()) -> cb_context:context().
 maybe_reregister_cloud_printer(Context) ->
     CurrentState = kz_json:get_value(<<"pvt_cloud_state">>, cb_context:doc(Context)),
     Ctx = maybe_reregister_cloud_printer(CurrentState, Context),
@@ -545,13 +545,13 @@ build_file_parts(Boundary, Files, Acc0) ->
 join_formdata_fold(Bin, Acc) ->
     string:join([binary_to_list(Bin), Acc], "\r\n").
 
--spec maybe_oauth_req(kz_json:object(), api(binary()), cb_context:context()) -> cb_context:context().
+-spec maybe_oauth_req(kz_json:object(), maybe(binary()), cb_context:context()) -> cb_context:context().
 maybe_oauth_req(_Doc, 'undefined', Context) ->
     maybe_reregister_cloud_printer(Context);
 maybe_oauth_req(Doc, _, Context) ->
     oauth_req(Doc, kz_json:get_value(<<"pvt_cloud_refresh_token">>, Doc), Context).
 
--spec oauth_req(kz_json:object(), api(binary()), cb_context:context()) -> cb_context:context().
+-spec oauth_req(kz_json:object(), maybe(binary()), cb_context:context()) -> cb_context:context().
 oauth_req(Doc, 'undefined', Context) ->
     cb_context:set_resp_data(Context, kz_doc:public_fields(leak_private_fields(Doc)));
 oauth_req(Doc, OAuthRefresh, Context) ->

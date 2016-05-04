@@ -101,7 +101,7 @@
                 ,agent_id :: ne_binary()
                 ,agent_listener :: server_ref()
                 ,agent_listener_id :: ne_binary()
-                ,agent_name :: api(binary())
+                ,agent_name :: maybe(binary())
 
                 ,wrapup_timeout = 0 :: integer() % optionally set on win
                 ,wrapup_ref :: reference()
@@ -110,17 +110,17 @@
                 ,pause_ref :: reference()
 
                 ,member_call :: kapps_call:call()
-                ,member_call_id :: api(binary())
-                ,member_call_queue_id :: api(binary())
+                ,member_call_id :: maybe(binary())
+                ,member_call_queue_id :: maybe(binary())
                 ,member_call_start :: kz_now()
                 ,caller_exit_key = <<"#">> :: ne_binary()
-                ,queue_notifications :: api(kz_json:object())
+                ,queue_notifications :: maybe(kz_json:object())
 
-                ,agent_call_id :: api(binary())
-                ,next_status :: api(binary())
-                ,fsm_call_id :: api(binary()) % used when no call-ids are available
+                ,agent_call_id :: maybe(binary())
+                ,next_status :: maybe(binary())
+                ,fsm_call_id :: maybe(binary()) % used when no call-ids are available
                 ,endpoints = [] :: kz_json:objects()
-                ,outbound_call_id :: api(binary())
+                ,outbound_call_id :: maybe(binary())
                 ,max_connect_failures :: kz_timeout()
                 ,connect_failures = 0 :: non_neg_integer()
                 ,agent_state_updates = [] :: list()
@@ -294,7 +294,7 @@ agent_logout(FSM) ->
 -spec refresh(pid(), kz_json:object()) -> 'ok'.
 refresh(FSM, AgentJObj) -> gen_fsm:send_all_state_event(FSM, {'refresh', AgentJObj}).
 
--spec current_call(pid()) -> api(kz_json:object()).
+-spec current_call(pid()) -> maybe(kz_json:object()).
 current_call(FSM) -> gen_fsm:sync_send_event(FSM, 'current_call').
 
 -spec status(pid()) -> kz_proplist().
@@ -1353,13 +1353,13 @@ start_sync_timer(P) ->
 start_resync_timer() ->
     gen_fsm:start_timer(?RESYNC_RESPONSE_TIMEOUT, ?RESYNC_RESPONSE_MESSAGE).
 
--spec start_pause_timer(pos_integer()) -> api(reference()).
+-spec start_pause_timer(pos_integer()) -> maybe(reference()).
 start_pause_timer('undefined') -> start_pause_timer(1);
 start_pause_timer(0) -> 'undefined';
 start_pause_timer(Timeout) ->
     gen_fsm:start_timer(Timeout * 1000, ?PAUSE_MESSAGE).
 
--spec call_id(kz_json:object()) -> api(binary()).
+-spec call_id(kz_json:object()) -> maybe(binary()).
 call_id(JObj) ->
     case kz_json:get_value(<<"Call-ID">>, JObj) of
         'undefined' -> kz_json:get_value([<<"Call">>, <<"Call-ID">>], JObj);
@@ -1374,7 +1374,7 @@ hangup_cause(JObj) ->
     end.
 
 %% returns time left in seconds
--spec time_left(reference() | 'false' | api(integer())) -> api(integer()).
+-spec time_left(reference() | 'false' | maybe(integer())) -> maybe(integer()).
 time_left(Ref) when is_reference(Ref) ->
     time_left(erlang:read_timer(Ref));
 time_left('false') -> 'undefined';
@@ -1424,7 +1424,7 @@ clear_call(#state{fsm_call_id=FSMemberCallId
                 ,outbound_call_id = 'undefined'
                }.
 
--spec current_call(api(kapps_call:call()), atom(), ne_binary(), api(kz_now())) -> api(kz_json:object()).
+-spec current_call(maybe(kapps_call:call()), atom(), ne_binary(), maybe(kz_now())) -> maybe(kz_json:object()).
 current_call('undefined', _, _, _) -> 'undefined';
 current_call(Call, AgentState, QueueId, Start) ->
     kz_json:from_list([{<<"call_id">>, kapps_call:call_id(Call)}
@@ -1437,7 +1437,7 @@ current_call(Call, AgentState, QueueId, Start) ->
                        ,{<<"queue_id">>, QueueId}
                       ]).
 
--spec elapsed(api(kz_now())) -> api(integer()).
+-spec elapsed(maybe(kz_now())) -> maybe(integer()).
 elapsed('undefined') -> 'undefined';
 elapsed(Start) -> kz_util:elapsed_s(Start).
 
@@ -1469,8 +1469,8 @@ hangup_call(#state{agent_listener=AgentListener
     maybe_notify(Ns, ?NOTIFY_HANGUP, State),
     wrapup_timer(State).
 
--spec maybe_stop_timer(api(reference())) -> 'ok'.
--spec maybe_stop_timer(api(reference()), boolean()) -> 'ok'.
+-spec maybe_stop_timer(maybe(reference())) -> 'ok'.
+-spec maybe_stop_timer(maybe(reference()), boolean()) -> 'ok'.
 maybe_stop_timer('undefined') -> 'ok';
 maybe_stop_timer(ConnRef) when is_reference(ConnRef) ->
     _ = gen_fsm:cancel_timer(ConnRef),
@@ -1527,16 +1527,16 @@ missed_reason(<<"CALL_REJECTED">>) -> <<"rejected">>;
 missed_reason(<<"USER_BUSY">>) -> <<"rejected">>;
 missed_reason(Reason) -> Reason.
 
--spec find_username(kz_json:object()) -> api(binary()).
+-spec find_username(kz_json:object()) -> maybe(binary()).
 find_username(EP) ->
     find_sip_username(EP, kz_device:sip_username(EP)).
 
--spec find_sip_username(kz_json:object(), api(binary())) -> api(binary()).
+-spec find_sip_username(kz_json:object(), maybe(binary())) -> maybe(binary()).
 find_sip_username(EP, 'undefined') -> kz_json:get_value(<<"To-User">>, EP);
 find_sip_username(_EP, Username) -> Username.
 
--spec find_endpoint_id(kz_json:object()) -> api(binary()).
--spec find_endpoint_id(kz_json:object(), api(binary())) -> api(binary()).
+-spec find_endpoint_id(kz_json:object()) -> maybe(binary()).
+-spec find_endpoint_id(kz_json:object(), maybe(binary())) -> maybe(binary()).
 
 find_endpoint_id(EP) ->
     find_endpoint_id(EP, kz_doc:id(EP)).
@@ -1585,7 +1585,7 @@ maybe_remove_endpoint(EPId, EPs, AccountId, AgentListener) ->
             EPs1
     end.
 
--spec get_endpoints(kz_json:objects(), server_ref(), kapps_call:call(), api(binary()), api(binary())) ->
+-spec get_endpoints(kz_json:objects(), server_ref(), kapps_call:call(), maybe(binary()), maybe(binary())) ->
                            {'ok', kz_json:objects()} |
                            {'error', any()}.
 get_endpoints(OrigEPs, AgentListener, Call, AgentId, QueueId) ->
@@ -1712,14 +1712,14 @@ notify(Uri, Headers, Method, Body, Opts) ->
             lager:debug("failed to send request to ~s: ~p", [Uri, _E])
     end.
 
--spec cdr_url(kz_json:object()) -> api(binary()).
+-spec cdr_url(kz_json:object()) -> maybe(binary()).
 cdr_url(JObj) ->
     case kz_json:get_value([<<"Notifications">>, ?NOTIFY_CDR], JObj) of
         'undefined' -> kz_json:get_ne_value(<<"CDR-Url">>, JObj);
         Url -> Url
     end.
 
--spec recording_url(kz_json:object()) -> api(binary()).
+-spec recording_url(kz_json:object()) -> maybe(binary()).
 recording_url(JObj) ->
     case kz_json:get_value([<<"Notifications">>, ?NOTIFY_RECORDING], JObj) of
         'undefined' -> kz_json:get_ne_value(<<"Recording-URL">>, JObj);

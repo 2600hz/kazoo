@@ -28,7 +28,7 @@
 -define(MENU_KEY_LENGTH, 1).
 
 -record(cf_menu_data, {
-          menu_id :: api(binary())
+          menu_id :: maybe(binary())
          ,name = <<>> :: binary()
          ,retries = 3 :: pos_integer()
          ,timeout = 10000 :: pos_integer()
@@ -38,7 +38,7 @@
          ,hunt_allow = <<>> :: binary()
          ,record_pin = <<>> :: binary()
          ,record_from_offnet = 'false' :: boolean()
-         ,greeting_id :: api(binary())
+         ,greeting_id :: maybe(binary())
          ,exit_media = 'true' :: boolean() | ne_binary()
          ,transfer_media = 'true' :: boolean() | ne_binary()
          ,invalid_media = 'true' :: boolean() | ne_binary()

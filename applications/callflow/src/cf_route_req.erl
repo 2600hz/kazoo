@@ -190,7 +190,7 @@ callflow_should_respond(Call) ->
 callflow_resource_allowed(Call) ->
     is_resource_allowed(kapps_call:resource_type(Call)).
 
--spec is_resource_allowed(api(binary())) -> boolean().
+-spec is_resource_allowed(maybe(binary())) -> boolean().
 is_resource_allowed('undefined') -> 'true';
 is_resource_allowed(ResourceType) ->
     lists:member(ResourceType, ?RESOURCE_TYPES_HANDLED).
@@ -233,7 +233,7 @@ send_route_response(Flow, JObj, Call) ->
             lager:info("callflow didn't received a route win, exiting : ~p", [_E])
     end.
 
--spec get_transfer_media(kz_json:object(), kz_json:object()) -> api(binary()).
+-spec get_transfer_media(kz_json:object(), kz_json:object()) -> maybe(binary()).
 get_transfer_media(Flow, JObj) ->
     case kz_json:get_value([<<"ringback">>, <<"transfer">>], Flow) of
         'undefined' ->
@@ -241,7 +241,7 @@ get_transfer_media(Flow, JObj) ->
         MediaId -> MediaId
     end.
 
--spec get_ringback_media(kz_json:object(), kz_json:object()) -> api(binary()).
+-spec get_ringback_media(kz_json:object(), kz_json:object()) -> maybe(binary()).
 get_ringback_media(Flow, JObj) ->
     case kz_json:get_value([<<"ringback">>, <<"early">>], Flow) of
         'undefined' ->
@@ -304,7 +304,7 @@ maybe_referred_call(Call) ->
 maybe_device_redirected(Call) ->
     maybe_fix_restrictions(get_redirected_by(Call), Call).
 
--spec maybe_fix_restrictions(api(binary()), kapps_call:call()) -> kapps_call:call().
+-spec maybe_fix_restrictions(maybe(binary()), kapps_call:call()) -> kapps_call:call().
 maybe_fix_restrictions('undefined', Call) -> Call;
 maybe_fix_restrictions(Device, Call) ->
     case cf_util:endpoint_id_by_sip_username(kapps_call:account_db(Call), Device) of
@@ -314,17 +314,17 @@ maybe_fix_restrictions(Device, Call) ->
             kapps_call:remove_custom_channel_vars(Keys, Call)
     end.
 
--spec get_referred_by(kapps_call:call()) -> api(binary()).
+-spec get_referred_by(kapps_call:call()) -> maybe(binary()).
 get_referred_by(Call) ->
     ReferredBy = kapps_call:custom_channel_var(<<"Referred-By">>, Call),
     extract_sip_username(ReferredBy).
 
--spec get_redirected_by(kapps_call:call()) -> api(binary()).
+-spec get_redirected_by(kapps_call:call()) -> maybe(binary()).
 get_redirected_by(Call) ->
     RedirectedBy = kapps_call:custom_channel_var(<<"Redirected-By">>, Call),
     extract_sip_username(RedirectedBy).
 
--spec is_valid_endpoint(api(binary()), kapps_call:call()) -> boolean().
+-spec is_valid_endpoint(maybe(binary()), kapps_call:call()) -> boolean().
 is_valid_endpoint('undefined', _) -> 'false';
 is_valid_endpoint(Contact, Call) ->
     ReOptions = [{'capture', [1], 'binary'}],
@@ -337,7 +337,7 @@ is_valid_endpoint(Contact, Call) ->
         _ -> 'false'
     end.
 
--spec extract_sip_username(api(binary())) -> api(binary()).
+-spec extract_sip_username(maybe(binary())) -> maybe(binary()).
 extract_sip_username('undefined') -> 'undefined';
 extract_sip_username(Contact) ->
     ReOptions = [{'capture', [1], 'binary'}],

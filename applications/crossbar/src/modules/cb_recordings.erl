@@ -146,7 +146,7 @@ recording_summary(Context) ->
 normalize_view_results(JObj, Acc) ->
     [kz_json:public_fields(kz_json:get_value(<<"doc">>, JObj))|Acc].
 
--spec get_view_and_filter(cb_context:context()) -> {ne_binary(), api([api(binary())]), api([api(binary())])}.
+-spec get_view_and_filter(cb_context:context()) -> {ne_binary(), maybe([maybe(binary())]), maybe([maybe(binary())])}.
 get_view_and_filter(Context) ->
     case cb_context:user_id(Context) of
         'undefined' -> {?CB_LIST, [], [kz_json:new()]};

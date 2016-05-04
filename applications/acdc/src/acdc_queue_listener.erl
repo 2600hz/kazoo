@@ -121,7 +121,7 @@ start_link(WorkerSup, MgrPid, AccountId, QueueId) ->
 accept_member_calls(Srv) ->
     gen_listener:cast(Srv, {'accept_member_calls'}).
 
--spec member_connect_req(pid(), kz_json:object(), any(), api(binary())) -> 'ok'.
+-spec member_connect_req(pid(), kz_json:object(), any(), maybe(binary())) -> 'ok'.
 member_connect_req(Srv, MemberCallJObj, Delivery, Url) ->
     gen_listener:cast(Srv, {'member_connect_req', MemberCallJObj, Delivery, Url}).
 
@@ -141,7 +141,7 @@ timeout_agent(Srv, RespJObj) ->
 timeout_member_call(Srv) ->
     timeout_member_call(Srv, 'undefined').
 
--spec timeout_member_call(pid(), api(kz_json:object())) -> 'ok'.
+-spec timeout_member_call(pid(), maybe(kz_json:object())) -> 'ok'.
 timeout_member_call(Srv, JObj) ->
     gen_listener:cast(Srv, {'timeout_member_call', JObj}).
 
@@ -259,7 +259,7 @@ find_pid_from_supervisor({'error', {'already_started', P}}) when is_pid(P) ->
     {'ok', P};
 find_pid_from_supervisor(E) -> E.
 
--spec start_shared_queue(state(), pid(), api(integer())) -> {'noreply', state()}.
+-spec start_shared_queue(state(), pid(), maybe(integer())) -> {'noreply', state()}.
 start_shared_queue(#state{account_id=AccountId
                           ,queue_id=QueueId
                           ,worker_sup=WorkerSup
@@ -532,7 +532,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec maybe_timeout_agent(api(kz_json:object()), ne_binary(), kapps_call:call(), kz_json:object()) -> 'ok'.
+-spec maybe_timeout_agent(maybe(kz_json:object()), ne_binary(), kapps_call:call(), kz_json:object()) -> 'ok'.
 maybe_timeout_agent('undefined', _QueueId, _Call, _JObj) -> 'ok';
 maybe_timeout_agent(_AgentId, QueueId, Call, JObj) ->
     lager:debug("timing out winning agent because they should not be able to pick up after the queue timeout"),
@@ -663,8 +663,8 @@ clear_call_state(#state{account_id=AccountId
                 ,delivery='undefined'
                }.
 
--spec publish(api(terms()), kz_amqp_worker:publish_fun()) -> 'ok'.
--spec publish(ne_binary(), api(terms()), fun((ne_binary(), api(terms())) -> 'ok')) -> 'ok'.
+-spec publish(maybe(terms()), kz_amqp_worker:publish_fun()) -> 'ok'.
+-spec publish(ne_binary(), maybe(terms()), fun((ne_binary(), maybe(terms())) -> 'ok')) -> 'ok'.
 publish(Req, F) ->
     case catch F(Req) of
         'ok' -> 'ok';

@@ -81,7 +81,7 @@ start_link() ->
 flush() ->
     gen_listener:cast(?MODULE, 'flush').
 
--spec prompt_path(ne_binary(), ne_binary(), ne_binary()) -> api(binary()).
+-spec prompt_path(ne_binary(), ne_binary(), ne_binary()) -> maybe(binary()).
 prompt_path(AccountId, PromptId, L) ->
     Language = kz_util:to_lower_binary(L),
     #media_map{languages=Langs} = get_map(AccountId, PromptId),
@@ -95,7 +95,7 @@ prompt_path(AccountId, PromptId, L) ->
         Path -> Path
     end.
 
--spec default_prompt_path(ne_binary(), ne_binary()) -> api(binary()).
+-spec default_prompt_path(ne_binary(), ne_binary()) -> maybe(binary()).
 default_prompt_path(PromptId, Language) ->
     #media_map{languages=Langs} = get_map(PromptId),
     lager:debug("checking default langs ~p", [default_language_keys(Language)]),
@@ -137,7 +137,7 @@ table_options() ->
      ,'named_table'
     ].
 
--spec find_me_function() -> api(pid()).
+-spec find_me_function() -> maybe(pid()).
 find_me_function() -> whereis(?SERVER).
 
 -spec gift_data() -> 'ok'.
@@ -344,7 +344,7 @@ add_mapping(Db, SendFun, JObjs, Srv) ->
      'ok'.
 
 -spec maybe_add_prompt(ne_binary(), kz_json:object()) -> 'ok'.
--spec maybe_add_prompt(ne_binary(), kz_json:object(), api(binary())) -> 'ok'.
+-spec maybe_add_prompt(ne_binary(), kz_json:object(), maybe(binary())) -> 'ok'.
 maybe_add_prompt(AccountId, JObj) ->
     maybe_add_prompt(AccountId
                     ,JObj

@@ -40,7 +40,7 @@ maybe_update_metaflow(Data, Call, Results) ->
             maybe_update_metaflow(Data, Call, Results, CallId)
     end.
 
--spec maybe_update_metaflow(kz_json:object(), kapps_call:call(), kz_json:objects(), api(binary())) ->
+-spec maybe_update_metaflow(kz_json:object(), kapps_call:call(), kz_json:objects(), maybe(binary())) ->
                                    {'stop', kapps_call:call()}.
 maybe_update_metaflow(Data, Call, Results, CallId) ->
     case [Result || Result <- Results, is_originate_uuid(Result, CallId)] of
@@ -165,14 +165,14 @@ is_resp([JObj|_]) ->
 is_resp(JObj) ->
     kapi_resource:originate_resp_v(JObj).
 
--spec is_originate_uuid(kz_json:object(), api(binary())) -> boolean().
+-spec is_originate_uuid(kz_json:object(), maybe(binary())) -> boolean().
 is_originate_uuid(JObj, CallId) ->
     kapi_resource:originate_uuid_v(JObj)
         andalso (CallId =:= 'undefined'
                  orelse CallId =:= kz_json:get_value(<<"Outbound-Call-ID">>, JObj)
                 ).
 
--spec find_device_id_for_leg(ne_binary()) -> api(binary()).
+-spec find_device_id_for_leg(ne_binary()) -> maybe(binary()).
 find_device_id_for_leg(CallId) ->
     case kapps_util:amqp_pool_request([{<<"Fields">>, [<<"Authorizing-ID">>]}
                                         ,{<<"Call-ID">>, CallId}

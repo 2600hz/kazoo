@@ -120,7 +120,7 @@ maybe_collect_member_pin(Conference, Call, Srv) ->
             collect_conference_pin('false', Conference, Call, Srv)
     end.
 
--spec collect_conference_pin(api(boolean()), kapps_conference:conference(), kapps_call:call(), pid()) -> 'ok'.
+-spec collect_conference_pin(maybe(boolean()), kapps_conference:conference(), kapps_call:call(), pid()) -> 'ok'.
 collect_conference_pin(Type, Conference, Call, Srv) ->
     case validate_conference_pin(Type, Conference, Call, 1) of
         {'ok', C} ->
@@ -263,16 +263,16 @@ add_participant_to_conference(JObj, Conference, Call, Srv) ->
             conf_participant:join_remote(Srv, JObj)
     end.
 
--spec discovery_failed(kapps_call:call(), api(pid())) -> 'ok'.
+-spec discovery_failed(kapps_call:call(), maybe(pid())) -> 'ok'.
 discovery_failed(Call, _) -> kapps_call_command:hangup(Call).
 
--spec validate_conference_id(api(binary()), kapps_call:call()) ->
+-spec validate_conference_id(maybe(binary()), kapps_call:call()) ->
                                     {'ok', kapps_conference:conference()} |
                                     {'error', any()}.
 validate_conference_id(ConferenceId, Call) ->
     validate_conference_id(ConferenceId, Call, 1).
 
--spec validate_conference_id(api(binary()), kapps_call:call(), pos_integer()) ->
+-spec validate_conference_id(maybe(binary()), kapps_call:call(), pos_integer()) ->
                                     {'ok', kapps_conference:conference()} |
                                     {'error', any()}.
 validate_conference_id('undefined', Call, Loop) when Loop > 3 ->
@@ -315,7 +315,7 @@ validate_collected_conference_id(Call, Loop, Digits) ->
             validate_conference_id('undefined', Call, Loop + 1)
     end.
 
--spec validate_conference_pin(api(boolean()), kapps_conference:conference(), kapps_call:call(), pos_integer()) ->
+-spec validate_conference_pin(maybe(boolean()), kapps_conference:conference(), kapps_call:call(), pos_integer()) ->
                                      {'ok', kapps_conference:conference()} |
                                      {'error', any()}.
 validate_conference_pin(_, _, Call, Loop) when Loop > 3->

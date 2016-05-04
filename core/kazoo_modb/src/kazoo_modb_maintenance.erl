@@ -77,7 +77,7 @@ archive_modbs() ->
 archive_modbs(AccountId) ->
     do_archive_modbs(kapps_util:get_account_mods(AccountId), kz_util:to_binary(AccountId)).
 
--spec do_archive_modbs(ne_binaries(), api(binary())) -> 'no_return'.
+-spec do_archive_modbs(ne_binaries(), maybe(binary())) -> 'no_return'.
 do_archive_modbs(MODbs, AccountId) ->
     kz_util:put_callid(?MODULE),
     _ = [kazoo_modb:maybe_archive_modb(MODb) || MODb <- MODbs],

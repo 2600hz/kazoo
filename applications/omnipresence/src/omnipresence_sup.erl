@@ -46,7 +46,7 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec subscriptions_srv() -> api(pid()).
+-spec subscriptions_srv() -> maybe(pid()).
 subscriptions_srv() ->
     case [P || {_, P, 'worker', ['omnip_subscriptions']} <- supervisor:which_children(?SERVER)] of
         [] -> 'undefined';

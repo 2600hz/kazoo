@@ -55,30 +55,30 @@ The media prompts that we used to keep in the code repository for historical rea
 
 #### Kazoo types
 
-Types that were known as `api_SOMETHING()` are replaced with `api(SOMETHING())`.
-Example: `api_binary()` becomes `api(binary())`.
+Types that were known as `api_SOMETHING()` are replaced with `maybe(SOMETHING())`.
+Example: `api_binary()` becomes `maybe(binary())`.
 
 Complete list of said types:
 
 ```erlang
-api_terms() -> api(terms()) (terms() :: kz_json:object() | kz_proplist())
-api_binary() -> api(binary())
-api_binaries() -> api([api(binary())])
-api_object() -> api(kz_json:object())
-api_objects() -> api(kz_json:objects())
-api_boolean() -> api(boolean())
-api_atom() -> api(atom())
-api_atoms() -> api(atoms())
-api_string() -> api(string())
-api_reference() -> api(reference())
-api_pid() -> api(pid())
-api_list() -> api(list())
-api_number() -> api(number())
-api_integer() -> api(integer())
-api_pos_integer() -> api(pos_integer())
-api_non_neg_integer() -> api(non_neg_integer())
-api_float() -> api(float())
-api_seconds() -> api(gregorian_seconds())
+api_terms() -> maybe(terms()) (terms() :: kz_json:object() | kz_proplist())
+api_binary() -> maybe(binary())
+api_binaries() -> maybe([maybe(binary())])
+api_object() -> maybe(kz_json:object())
+api_objects() -> maybe(kz_json:objects())
+api_boolean() -> maybe(boolean())
+api_atom() -> maybe(atom())
+api_atoms() -> maybe(atoms())
+api_string() -> maybe(string())
+api_reference() -> maybe(reference())
+api_pid() -> maybe(pid())
+api_list() -> maybe(list())
+api_number() -> maybe(number())
+api_integer() -> maybe(integer())
+api_pos_integer() -> maybe(pos_integer())
+api_non_neg_integer() -> maybe(non_neg_integer())
+api_float() -> maybe(float())
+api_seconds() -> maybe(gregorian_seconds())
 ```
 
 Note: `api(T)` is defined as `undefined | T`.

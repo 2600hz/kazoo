@@ -20,11 +20,11 @@
 -include("acdc.hrl").
 -include("acdc_stats.hrl").
 
--spec wait_time(ne_binary(), kz_json:object()) -> api(integer()).
+-spec wait_time(ne_binary(), kz_json:object()) -> maybe(integer()).
 wait_time(<<"paused">>, _) -> 'undefined';
 wait_time(_, JObj) -> kz_json:get_integer_value(<<"Wait-Time">>, JObj).
 
--spec pause_time(ne_binary(), kz_json:object()) -> api(integer()).
+-spec pause_time(ne_binary(), kz_json:object()) -> maybe(integer()).
 pause_time(<<"paused">>, JObj) ->
     case kz_json:get_integer_value(<<"Pause-Time">>, JObj) of
         'undefined' -> kz_json:get_integer_value(<<"Wait-Time">>, JObj);

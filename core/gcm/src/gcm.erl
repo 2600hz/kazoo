@@ -24,7 +24,7 @@
 -spec code_change(any(), #state{}, any()) -> {ok, any()} | {error, any()}.
 
 
--spec start(atom(), any()) -> {ok, api(pid())} | {error, any()}.
+-spec start(atom(), any()) -> {ok, maybe(pid())} | {error, any()}.
 start(Name, Key) when is_binary(Key) ->
     start(Name, kz_util:to_list(Key));
 start(Name, Key) ->

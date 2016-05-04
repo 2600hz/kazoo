@@ -62,7 +62,7 @@ authenticate(Context, 'basic') ->
     end;
 authenticate(_Context, _TokenType) -> 'false'.
 
--spec check_basic_token(cb_context:context(), api(binary())) ->
+-spec check_basic_token(cb_context:context(), maybe(binary())) ->
                               'false' |
                               {'true' | 'halt', cb_context:context()}.
 check_basic_token(_Context, <<>>) -> 'false';
@@ -73,7 +73,7 @@ check_basic_token(Context, AuthToken) ->
         {'error', 'not_found'} -> maybe_check_credentials(Context, AuthToken)
     end.
 
--spec maybe_check_credentials(cb_context:context(), api(binary())) ->
+-spec maybe_check_credentials(cb_context:context(), maybe(binary())) ->
                               'false' |
                               {'true' | 'halt', cb_context:context()}.
 maybe_check_credentials(Context, AuthToken) ->
@@ -84,7 +84,7 @@ maybe_check_credentials(Context, AuthToken) ->
              'false'
     end.
 
--spec check_credentials(cb_context:context(), ne_binary(), api(binary())) ->
+-spec check_credentials(cb_context:context(), ne_binary(), maybe(binary())) ->
                               'false' |
                               {'true' | 'halt', cb_context:context()}.
 check_credentials(Context, AccountId, Credentials) ->
@@ -114,7 +114,7 @@ check_credentials(Context, AccountId, Credentials, BasicType) ->
         _ -> 'false'
     end.
 
--spec get_credential_doc(ne_binary(), ne_binary(), ne_binary()) -> api(kz_json:object()).
+-spec get_credential_doc(ne_binary(), ne_binary(), ne_binary()) -> maybe(kz_json:object()).
 get_credential_doc(AccountId, View, Key) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     Options = [{'key', Key}, 'include_docs'],

@@ -38,7 +38,7 @@ extract_realm(Entity) ->
         [JustRealm] -> JustRealm
     end.
 
--spec extract_username(ne_binary()) -> api(binary()).
+-spec extract_username(ne_binary()) -> maybe(binary()).
 extract_username(Entity) ->
     case binary:split(Entity, <<"@">>) of
         [Username, _] -> Username;

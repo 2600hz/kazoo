@@ -60,7 +60,7 @@ handle_rate_req(JObj, _Props) ->
     Limits = lookup_rate_limit_records(Entity, IncludeRealm, MethodList),
     send_response(Limits, JObj).
 
--spec lookup_methods(kz_json:object()) -> api([api(binary())]).
+-spec lookup_methods(kz_json:object()) -> maybe([maybe(binary())]).
 lookup_methods(JObj) ->
     Method = kz_json:get_value(<<"Method">>, JObj),
     MethodName = case Method of

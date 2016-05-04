@@ -32,7 +32,7 @@
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec resume(api(terms())) -> {'ok', iolist()} | {'error', string()}.
+-spec resume(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 resume(Prop) when is_list(Prop) ->
     case resume_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?RESUME_HEADERS, ?OPTIONAL_RESUME_HEADERS);
@@ -40,7 +40,7 @@ resume(Prop) when is_list(Prop) ->
     end;
 resume(JObj) -> resume(kz_json:to_proplist(JObj)).
 
--spec resume_v(api(terms())) -> boolean().
+-spec resume_v(maybe(terms())) -> boolean().
 resume_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?RESUME_HEADERS, ?RESUME_VALUES, ?RESUME_TYPES);
 resume_v(JObj) -> resume_v(kz_json:to_proplist(JObj)).
@@ -66,7 +66,7 @@ declare_exchanges() ->
 %% @doc Publish the JSON iolist() to the proper Exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_resume(api(terms())) -> 'ok'.
+-spec publish_resume(maybe(terms())) -> 'ok'.
 publish_resume(JObj) ->
     {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?RESUME_VALUES, fun ?MODULE:resume/1),
     amqp_util:kapps_publish(?RESUME_ROUTING_KEY, Payload).

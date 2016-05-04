@@ -26,7 +26,7 @@
 %%--------------------------------------------------------------------
 -spec available() -> {'ok', kz_json:objects()} |
                      {'error', any()}.
--spec available(api(binary())) ->
+-spec available(maybe(binary())) ->
                        {'ok', kz_json:objects()} |
                        {'error', any()}.
 
@@ -34,7 +34,7 @@ available() -> available('undefined').
 
 available(Zone) -> available(Zone, 1).
 
--spec available(api(binary()), non_neg_integer()) ->
+-spec available(maybe(binary()), non_neg_integer()) ->
                        {'ok', kz_json:objects()} |
                        {'error', any()}.
 available(Zone, Quantity) ->
@@ -155,7 +155,7 @@ hosts() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec summary(api(binary())) ->
+-spec summary(maybe(binary())) ->
                      {'ok', kz_json:objects()} |
                      {'error', any()}.
 summary(Host) ->

@@ -193,7 +193,7 @@ validate_req(?HTTP_GET, Context, [_ListId, ?ENTRIES, EntryId, ?VCARD]) ->
     RespData = kzd_user:to_vcard(JObj4),
     cb_context:set_resp_data(Context1, [RespData, "\n"]).
 
--spec validate_doc(api(binary()), ne_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_doc(maybe(binary()), ne_binary(), cb_context:context()) -> cb_context:context().
 validate_doc(Id, Type, Context) ->
     OnSuccess = fun(C) -> on_successfull_validation(Id, Type, C) end,
     cb_context:validate_request_data(type_schema_name(Type), Context, OnSuccess).
@@ -232,7 +232,7 @@ save(Context, _, ?ENTRIES, EntryId, ?PHOTO) ->
 type_schema_name(?TYPE_LIST) -> <<"lists">>;
 type_schema_name(?TYPE_LIST_ENTRY) -> <<"list_entries">>.
 
--spec on_successfull_validation(api(binary()), ne_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successfull_validation(maybe(binary()), ne_binary(), cb_context:context()) -> cb_context:context().
 on_successfull_validation('undefined', Type, Context) ->
     Doc = kz_json:set_values([{<<"pvt_type">>, Type}], cb_context:doc(Context)),
     cb_context:set_doc(Context, Doc);

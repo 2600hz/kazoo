@@ -76,7 +76,7 @@ handle_originate_req(Number, JObj) ->
         _ -> maybe_originate(Number, JObj)
     end.
 
--spec maybe_add_call_id(api(binary()), kz_json:object()) -> kz_json:object().
+-spec maybe_add_call_id(maybe(binary()), kz_json:object()) -> kz_json:object().
 maybe_add_call_id('undefined', JObj) ->
     kz_json:set_value(<<"Outbound-Call-ID">>, kz_util:rand_hex_binary(8), JObj);
 maybe_add_call_id(_, JObj) -> JObj.
@@ -219,7 +219,7 @@ local_originate(Props, JObj) ->
     lager:debug("originate local request"),
     stepswitch_request_sup:originate(Endpoints, J).
 
--spec local_originate_caller_id(kz_json:object()) -> {api(binary()), api(binary())}.
+-spec local_originate_caller_id(kz_json:object()) -> {maybe(binary()), maybe(binary())}.
 local_originate_caller_id(JObj) ->
     {kz_json:get_first_defined([<<"Outbound-Caller-ID-Number">>
                                 ,<<"Emergency-Caller-ID-Number">>

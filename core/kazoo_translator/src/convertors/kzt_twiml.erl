@@ -301,7 +301,7 @@ gather(Call, Attrs) ->
 
     gather(Call, FinishKey, Timeout, Props, kzt_twiml_util:num_digits(Props)).
 
--spec gather(kapps_call:call(), api(binary()), kz_timeout(), kz_proplist(), pos_integer()) ->
+-spec gather(kapps_call:call(), maybe(binary()), kz_timeout(), kz_proplist(), pos_integer()) ->
                     {'ok', kapps_call:call()} |
                     {'request', kapps_call:call()} |
                     {'error', _, kapps_call:call()} |
@@ -407,7 +407,7 @@ finish_record_call(Call, Props, MediaName) ->
         end,
     {'request', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call, Setters1)}.
 
--spec should_store_recording(api(binary())) -> {'true', ne_binary() | 'local'} | 'false'.
+-spec should_store_recording(maybe(binary())) -> {'true', ne_binary() | 'local'} | 'false'.
 should_store_recording(Url) ->
     case kapps_config:get_is_true(?CONFIG_CAT, <<"store_recordings">>, 'false') of
         'true' when is_binary(Url) -> {'true', Url};

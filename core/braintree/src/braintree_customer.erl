@@ -78,7 +78,7 @@ new_subscription(PlanId, Customer) ->
 %% Given a customer record find (if any) the default payment token
 %% @end
 %%--------------------------------------------------------------------
--spec default_payment_token(ne_binary() | customer()) -> api(binary()).
+-spec default_payment_token(ne_binary() | customer()) -> maybe(binary()).
 default_payment_token(#bt_customer{}=Customer) ->
     braintree_card:default_payment_token(get_cards(Customer));
 default_payment_token(CustomerId) ->
@@ -96,7 +96,7 @@ default_payment_card(CustomerId) ->
 %% Get the customer id
 %% @end
 %%--------------------------------------------------------------------
--spec get_id(customer()) -> api(binary()).
+-spec get_id(customer()) -> maybe(binary()).
 get_id(#bt_customer{id=CustomerId}) ->
     CustomerId.
 
@@ -335,7 +335,7 @@ record_to_xml(Customer, ToString) ->
 %% Convert a given json object into a record
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_record(api(kz_json:object())) -> customer().
+-spec json_to_record(maybe(kz_json:object())) -> customer().
 json_to_record('undefined') -> #bt_customer{};
 json_to_record(JObj) ->
     #bt_customer{id = kz_doc:id(JObj)

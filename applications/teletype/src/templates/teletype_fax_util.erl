@@ -146,7 +146,7 @@ get_file_name(Macros, Ext) ->
     FName = list_to_binary([CallerID, "_", kz_util:pretty_print_datetime(LocalDateTime), ".", Ext]),
     re:replace(kz_util:to_lower_binary(FName), <<"\\s+">>, <<"_">>, [{'return', 'binary'}, 'global']).
 
--spec get_attachment_binary(ne_binary(), api(binary())) ->
+-spec get_attachment_binary(ne_binary(), maybe(binary())) ->
                                    {'ok', ne_binary(), binary()} |
                                    {'error', 'no_attachment'}.
 get_attachment_binary(Db, Id) ->
@@ -179,7 +179,7 @@ get_attachment_binary(Db, Id, FaxJObj) ->
             {'error', 'no_attachment'}
     end.
 
--spec get_attachment(api(binary()), binary()) -> {'ok', ne_binary(), binary()}.
+-spec get_attachment(maybe(binary()), binary()) -> {'ok', ne_binary(), binary()}.
 get_attachment('undefined', Bin) ->
     get_attachment_binary(<<"image/tiff">>, Bin);
 get_attachment(ContentType, Bin) ->

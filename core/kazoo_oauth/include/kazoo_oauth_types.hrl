@@ -11,22 +11,22 @@
                      }).
 -type oauth_token() :: #oauth_token{}.
 
--record(oauth_refresh_token, {token :: api(binary())}).
+-record(oauth_refresh_token, {token :: maybe(binary())}).
 -type oauth_refresh_token() :: #oauth_refresh_token{}.
 
--record(oauth_provider, {name :: api(binary())
-                         ,auth_url :: api(binary())
-                         ,tokeninfo_url :: api(binary())
-                         ,profile_url :: api(binary())
-                         ,servers :: api(kz_json:object())
-                         ,scopes :: api(kz_json:object())
+-record(oauth_provider, {name :: maybe(binary())
+                         ,auth_url :: maybe(binary())
+                         ,tokeninfo_url :: maybe(binary())
+                         ,profile_url :: maybe(binary())
+                         ,servers :: maybe(kz_json:object())
+                         ,scopes :: maybe(kz_json:object())
                         }).
 -type oauth_provider() :: #oauth_provider{}.
 
--record(oauth_app, {name :: api(binary())
-                    ,account_id :: api(binary())
-                    ,secret :: api(binary())
-                    ,user_prefix :: api(binary())
+-record(oauth_app, {name :: maybe(binary())
+                    ,account_id :: maybe(binary())
+                    ,secret :: maybe(binary())
+                    ,user_prefix :: maybe(binary())
                     ,provider :: oauth_provider()
                    }).
 -type oauth_app() :: #oauth_app{}.
@@ -41,17 +41,17 @@
                            }).
 -type oauth_service_app() :: #oauth_service_app{}.
 
--record(oauth_user, {full_id :: api(binary())
-                     ,app_id  :: api(binary())
-                     ,oauth_id  :: api(binary())
-                     ,account_id :: api(binary())
-                     ,owner_id :: api(binary())
-                     ,email :: api(binary())
-                     ,verified_email :: api(boolean())
-                     ,access_type :: api(binary())
-                     ,scope   :: api(binary())
-                     ,scopes  :: api([api(binary())])
-                     ,refresh_token :: api(binary())
+-record(oauth_user, {full_id :: maybe(binary())
+                     ,app_id  :: maybe(binary())
+                     ,oauth_id  :: maybe(binary())
+                     ,account_id :: maybe(binary())
+                     ,owner_id :: maybe(binary())
+                     ,email :: maybe(binary())
+                     ,verified_email :: maybe(boolean())
+                     ,access_type :: maybe(binary())
+                     ,scope   :: maybe(binary())
+                     ,scopes  :: maybe([maybe(binary())])
+                     ,refresh_token :: maybe(binary())
                      ,app :: oauth_app()
                     }).
 -type oauth_user() :: #oauth_user{}.

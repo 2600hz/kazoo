@@ -62,7 +62,7 @@ handle(Data, Call) ->
     end.
 
 -spec nomorobo_score(kz_json:object(), kapps_call:call()) ->
-                            api(integer()).
+                            maybe(integer()).
 nomorobo_score(Data, Call) ->
     URI = nomorobo_uri(Call),
 
@@ -104,7 +104,7 @@ nomorobo_uri(Call) ->
 -spec uri_replace({ne_binary(), ne_binary()}, ne_binary()) -> ne_binary().
 uri_replace({S, R}, U) -> binary:replace(U, S, R).
 
--spec nomorobo_score_from_resp(binary()) -> api(integer()).
+-spec nomorobo_score_from_resp(binary()) -> maybe(integer()).
 nomorobo_score_from_resp(Body) ->
     try kz_json:decode(Body) of
         JObj -> trunc(kz_json:get_float_value(<<"score">>, JObj) * 10)

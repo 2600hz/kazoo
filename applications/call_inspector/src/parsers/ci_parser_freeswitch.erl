@@ -182,7 +182,7 @@ extract_chunks(ParserId, Dev, LogIP, LogPort, Counter) ->
             extract_chunks(ParserId, Dev, LogIP, LogPort, NewCounter)
     end.
 
--type buffer() :: [binary() | {'timestamp', api(number())}].
+-type buffer() :: [binary() | {'timestamp', maybe(number())}].
 
 -spec make_and_store_chunk(atom(), ne_binary(), pos_integer(), pos_integer(), buffer()) -> pos_integer().
 make_and_store_chunk(ParserId, LogIP, LogPort, Counter, Data00) ->
@@ -301,7 +301,7 @@ ip(Bin) ->
 get_port(Bin) ->
     extract_ahead(<<"]:">>, 6, <<" at ">>, Bin).
 
--spec extract_ahead(ne_binary(), pos_integer(), ne_binary(), binary()) -> api(binary()).
+-spec extract_ahead(ne_binary(), pos_integer(), ne_binary(), binary()) -> maybe(binary()).
 extract_ahead(Lhs, Span, Rhs, Bin) ->
     case binary:match(Bin, Lhs) of
         {StartS, StartP} ->

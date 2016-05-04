@@ -75,7 +75,7 @@ default() ->
                            ),
     kz_json:decode(FixtureJSON).
 
--spec cname(doc()) -> api(kz_json:object()).
+-spec cname(doc()) -> maybe(kz_json:object()).
 -spec cname(doc(), Default) -> kz_json:object() | Default.
 cname(Domains) ->
     cname(Domains, 'undefined').
@@ -86,7 +86,7 @@ cname(Domains, Default) ->
 cname_hosts(Domains) ->
     kz_json:get_keys(?KEY_CNAME, Domains).
 
--spec cname_host(doc(), ne_binary()) -> api(kz_json:object()).
+-spec cname_host(doc(), ne_binary()) -> maybe(kz_json:object()).
 -spec cname_host(doc(), ne_binary(), Default) -> kz_json:object() | Default.
 cname_host(Domains, Host) ->
     cname_host(Domains, Host, 'undefined').
@@ -109,7 +109,7 @@ set_cname(Domains, CNAME) ->
 add_cname_host(Domains, Host, Settings) ->
     kz_json:set_value([?KEY_CNAME, Host], Settings, Domains).
 
--spec a_record(doc()) -> api(kz_json:object()).
+-spec a_record(doc()) -> maybe(kz_json:object()).
 -spec a_record(doc(), Default) -> kz_json:object() | Default.
 a_record(Domains) ->
     a_record(Domains, 'undefined').
@@ -120,7 +120,7 @@ a_record(Domains, Default) ->
 a_record_hosts(Domains) ->
     kz_json:get_keys(?KEY_A_RECORD, Domains).
 
--spec a_record_host(doc(), ne_binary()) -> api(kz_json:object()).
+-spec a_record_host(doc(), ne_binary()) -> maybe(kz_json:object()).
 -spec a_record_host(doc(), ne_binary(), Default) -> kz_json:object() | Default.
 a_record_host(Domains, Host) ->
     a_record_host(Domains, Host, 'undefined').
@@ -143,7 +143,7 @@ set_a_record(Domains, A_RECORD) ->
 add_a_record_host(Domains, Host, Settings) ->
     kz_json:set_value([?KEY_A_RECORD, Host], Settings, Domains).
 
--spec naptr(doc()) -> api(kz_json:object()).
+-spec naptr(doc()) -> maybe(kz_json:object()).
 -spec naptr(doc(), Default) -> kz_json:object() | Default.
 naptr(Domains) ->
     naptr(Domains, 'undefined').
@@ -154,7 +154,7 @@ naptr(Domains, Default) ->
 naptr_hosts(Domains) ->
     kz_json:get_keys(?KEY_NAPTR, Domains).
 
--spec naptr_host(doc(), ne_binary()) -> api(kz_json:object()).
+-spec naptr_host(doc(), ne_binary()) -> maybe(kz_json:object()).
 -spec naptr_host(doc(), ne_binary(), Default) -> kz_json:object() | Default.
 naptr_host(Domains, Host) ->
     naptr_host(Domains, Host, 'undefined').
@@ -177,7 +177,7 @@ set_naptr(Domains, NAPTR) ->
 add_naptr_host(Domains, Host, Settings) ->
     kz_json:set_value([?KEY_NAPTR, Host], Settings, Domains).
 
--spec srv(doc()) -> api(kz_json:object()).
+-spec srv(doc()) -> maybe(kz_json:object()).
 -spec srv(doc(), Default) -> kz_json:object() | Default.
 srv(Domains) ->
     srv(Domains, 'undefined').
@@ -188,7 +188,7 @@ srv(Domains, Default) ->
 srv_hosts(Domains) ->
     kz_json:get_keys(?KEY_SRV, Domains).
 
--spec srv_host(doc(), ne_binary()) -> api(kz_json:object()).
+-spec srv_host(doc(), ne_binary()) -> maybe(kz_json:object()).
 -spec srv_host(doc(), ne_binary(), Default) -> kz_json:object() | Default.
 srv_host(Domains, Host) ->
     srv_host(Domains, Host, 'undefined').
@@ -223,7 +223,7 @@ save(Domains, PvtFields) ->
             {'error', Errors}
     end.
 
--spec try_save(doc(), api(kz_json:object())) ->
+-spec try_save(doc(), maybe(kz_json:object())) ->
                       {'ok', doc()} |
                       {'error', any()}.
 try_save(Domains, PvtFields) ->
@@ -306,6 +306,6 @@ format_mapping(Mapping, WhitelabelDomain) ->
 mappings(JObj) ->
     kz_json:get_value(?KEY_MAPPINGS, JObj).
 
--spec name(kz_json:object()) -> api(binary()).
+-spec name(kz_json:object()) -> maybe(binary()).
 name(JObj) ->
     kz_json:get_value(?KEY_NAME, JObj).

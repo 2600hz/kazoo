@@ -79,7 +79,7 @@
           ,first_last_keys :: ne_binary() % DTMF-version of first, last
           ,last_first_keys :: ne_binary() % DTMF-version of last, first
           ,callflow_id :: ne_binary() % what callflow to use on match
-          ,name_audio_id :: api(binary()) % pre-recorded audio of user's name
+          ,name_audio_id :: maybe(binary()) % pre-recorded audio of user's name
          }).
 -type directory_user() :: #directory_user{}.
 -type directory_users() :: [directory_user()].
@@ -282,7 +282,7 @@ username_audio_macro(Call, User) ->
         MediaID     -> maybe_play_media(Call, User, MediaID)
     end.
 
--spec maybe_play_media(kapps_call:call(), directory_user(), api(binary())) ->
+-spec maybe_play_media(kapps_call:call(), directory_user(), maybe(binary())) ->
                               kapps_call_command:audio_macro_prompt().
 maybe_play_media(Call, User, MediaId) ->
     AccountDb = kapps_call:account_db(Call),

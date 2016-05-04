@@ -289,7 +289,7 @@ time_tokens_to_binary('all') ->
 time_tokens_to_binary(Tokens) when is_list(Tokens) ->
     kz_util:join_binary([kz_util:to_binary(X) || X <- Tokens], ",").
 
--spec unknown_type(api(binary())) -> 'ok'.
+-spec unknown_type(maybe(binary())) -> 'ok'.
 unknown_type(Type) ->
     lager:warning("no function for type ~p", [Type]).
 

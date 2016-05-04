@@ -70,7 +70,7 @@
                ,cookie :: atom()
                ,connected = 'false' :: boolean()
                ,started = kz_util:current_tstamp() :: gregorian_seconds()
-               ,client_version :: api(binary())
+               ,client_version :: maybe(binary())
                ,options = [] :: kz_proplist()
               }).
 -type fs_node() :: #node{}.
@@ -87,7 +87,7 @@
 
 -record(state, {nodes = dict:new() :: dict:dict() %fs_nodes()
                 ,self = self() :: pid()
-                ,init_pidref :: api(pid_ref())
+                ,init_pidref :: maybe(pid_ref())
                }).
 -type state() :: #state{}.
 
@@ -165,7 +165,7 @@ do_flush(Args) ->
 -spec is_node_up(atom()) -> boolean().
 is_node_up(Node) -> gen_server:call(?SERVER, {'is_node_up', Node}).
 
--spec sip_url(text()) -> api(binary()).
+-spec sip_url(text()) -> maybe(binary()).
 sip_url(Node) when not is_atom(Node) ->
     sip_url(kz_util:to_atom(Node, 'true'));
 sip_url(Node) ->
@@ -178,7 +178,7 @@ sip_url(Node) ->
         _Else -> 'undefined'
     end.
 
--spec sip_external_ip(text()) -> api(binary()).
+-spec sip_external_ip(text()) -> maybe(binary()).
 sip_external_ip(Node) when not is_atom(Node) ->
     sip_external_ip(kz_util:to_atom(Node, 'true'));
 sip_external_ip(Node) ->
@@ -258,9 +258,9 @@ remove_capability(Node, Name) ->
     ets:select_delete(?CAPABILITY_TBL, MatchSpec).
 
 -spec get_capability(atom(), ne_binary()) ->
-                            capability() | api(kz_json:object()).
+                            capability() | maybe(kz_json:object()).
 -spec get_capability(atom(), ne_binary(), 'json' | 'record') ->
-                            capability() | api(kz_json:object()).
+                            capability() | maybe(kz_json:object()).
 get_capability(Node, Capability) ->
     get_capability(Node, Capability, 'json').
 get_capability(Node, Capability, Format) ->
@@ -296,7 +296,7 @@ format_capabilities('record', Results) -> Results;
 format_capabilities('json', Results) ->
     [capability_to_json(Result) || Result <- Results].
 
--spec format_capability('json' | 'record', [capability()]) -> api(kz_json:object()) | capability().
+-spec format_capability('json' | 'record', [capability()]) -> maybe(kz_json:object()) | capability().
 format_capability('record', [Capability]) -> Capability;
 format_capability('json', [Capability]) -> capability_to_json(Capability);
 format_capability(_, []) -> 'undefined'.
@@ -732,7 +732,7 @@ get_fs_cookie(Cookie, _) when is_atom(Cookie) ->
     Cookie.
 
 -spec get_fs_client_version(fs_node()) -> fs_node();
-                           (atom()) -> api(binary()).
+                           (atom()) -> maybe(binary()).
 get_fs_client_version(#node{node=NodeName}=Node) ->
     Node#node{client_version=get_fs_client_version(NodeName)};
 get_fs_client_version(NodeName) ->

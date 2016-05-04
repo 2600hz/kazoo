@@ -191,7 +191,7 @@ forbidden(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request(api(binary()), cb_context:context()) -> cb_context:context().
+-spec validate_request(maybe(binary()), cb_context:context()) -> cb_context:context().
 validate_request(ResourceId, Context) ->
     Context1 = check_template_name(Context),
     case cb_context:has_errors(Context1) of
@@ -205,7 +205,7 @@ validate_request(ResourceId, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_patch(api(binary()), cb_context:context()) -> cb_context:context().
+-spec validate_patch(maybe(binary()), cb_context:context()) -> cb_context:context().
 validate_patch(ResourceId, Context) ->
     crossbar_doc:patch_and_validate(ResourceId, Context, fun validate_request/2).
 
@@ -224,7 +224,7 @@ check_template_name(Context) ->
         _Name -> cb_context:set_resp_status(Context, 'success')
     end.
 
--spec on_successful_validation(api(binary()), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(maybe(binary()), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     JObj = kz_doc:set_type(cb_context:req_data(Context), <<"resource_template">>),
     cb_context:set_resp_status(cb_context:set_doc(Context, JObj), 'success');

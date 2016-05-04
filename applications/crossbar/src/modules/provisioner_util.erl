@@ -26,12 +26,12 @@
 -define(TEMPLATE_ATTCH, <<"template">>).
 
 
--spec get_mac_address(cb_context:context()) -> api(binary()).
+-spec get_mac_address(cb_context:context()) -> maybe(binary()).
 get_mac_address(Context) ->
     MACAddress = kz_json:get_ne_binary_value(<<"mac_address">>, cb_context:doc(Context)),
     cleanse_mac_address(MACAddress).
 
--spec get_old_mac_address(cb_context:context()) -> api(binary()).
+-spec get_old_mac_address(cb_context:context()) -> maybe(binary()).
 get_old_mac_address(Context) ->
     MACAddress =
         case cb_context:fetch(Context, 'db_doc') of
@@ -41,7 +41,7 @@ get_old_mac_address(Context) ->
         end,
     cleanse_mac_address(MACAddress).
 
--spec cleanse_mac_address(api(binary())) -> api(binary()).
+-spec cleanse_mac_address(maybe(binary())) -> maybe(binary()).
 cleanse_mac_address('undefined') -> 'undefined';
 cleanse_mac_address(MACAddress) ->
     re:replace(MACAddress, <<"[^0-9a-fA-F]">>, <<>>, ['global'
@@ -487,7 +487,7 @@ merge_device(MACAddress, Context) ->
     MergedDevice = lists:foldl(fun(F, J) -> F(J) end, JObj, Routines),
     {'ok', kz_json:public_fields(MergedDevice)}.
 
--spec get_owner(api(binary()), ne_binary()) -> kz_json:object().
+-spec get_owner(maybe(binary()), ne_binary()) -> kz_json:object().
 get_owner('undefined', _) -> kz_json:new();
 get_owner(OwnerId, AccountId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
@@ -751,7 +751,7 @@ send_provisioning_request(Template, MACAddress) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_provisioning_type() -> api(binary()).
+-spec get_provisioning_type() -> maybe(binary()).
 get_provisioning_type() ->
     case kapps_config:get_non_empty(?MOD_CONFIG_CAT, <<"provisioning_type">>) of
         'undefined' ->
@@ -822,7 +822,7 @@ maybe_sync_sip_data(Context, 'user', 'force') ->
     end.
 
 %% @private
--spec send_check_sync(api(binary()), api(binary()), api(binary())) -> 'ok'.
+-spec send_check_sync(maybe(binary()), maybe(binary()), maybe(binary())) -> 'ok'.
 send_check_sync('undefined', _Realm, _MsgId) ->
     lager:warning("did not send check sync: username is undefined");
 send_check_sync(_Username, 'undefined', _MsgId) ->
@@ -835,7 +835,7 @@ send_check_sync(Username, Realm, MsgId) ->
                               ]).
 
 -spec publish_check_sync(kz_proplist()) -> 'ok'.
--spec publish_check_sync(api(binary()), kz_proplist()) -> 'ok'.
+-spec publish_check_sync(maybe(binary()), kz_proplist()) -> 'ok'.
 publish_check_sync('undefined', Req) ->
     publish_check_sync(Req);
 publish_check_sync(MsgId, Req) ->

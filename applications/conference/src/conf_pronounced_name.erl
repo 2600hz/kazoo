@@ -22,7 +22,7 @@
 
 -define(PRONOUNCED_NAME_KEY, [<<"name_pronounced">>, <<"media_id">>]).
 
--spec get_user_id(kapps_call:call()) -> api(binary()).
+-spec get_user_id(kapps_call:call()) -> maybe(binary()).
 get_user_id(Call) ->
     case kapps_call:authorizing_type(Call) of
         <<"user">> -> kapps_call:authorizing_id(Call);
@@ -30,7 +30,7 @@ get_user_id(Call) ->
         _Type -> 'undefined'
     end.
 
--spec get_user_id_from_device(kapps_call:call()) -> api(binary()).
+-spec get_user_id_from_device(kapps_call:call()) -> maybe(binary()).
 get_user_id_from_device(Call) ->
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call)
                                   ,kapps_call:authorizing_id(Call)
@@ -40,14 +40,14 @@ get_user_id_from_device(Call) ->
         _ -> 'undefined'
     end.
 
--spec lookup_name(kapps_call:call()) -> api(name_pronounced_media()).
+-spec lookup_name(kapps_call:call()) -> maybe(name_pronounced_media()).
 lookup_name(Call) ->
     case get_user_id(Call) of
         'undefined' -> 'undefined';
         UserId -> lookup_user_name(Call, UserId)
     end.
 
--spec lookup_user_name(kapps_call:call(), ne_binary()) -> api(name_pronounced_media()).
+-spec lookup_user_name(kapps_call:call(), ne_binary()) -> maybe(name_pronounced_media()).
 lookup_user_name(Call, UserId) ->
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), UserId) of
         {'ok', UserDoc} ->
@@ -107,7 +107,7 @@ record_name(RecordName, Call) ->
             {'ok', <<"1">>}
     end.
 
--spec prepare_media_doc(ne_binary(), kapps_call:call()) -> api(binary()).
+-spec prepare_media_doc(ne_binary(), kapps_call:call()) -> maybe(binary()).
 prepare_media_doc(RecordName, Call) ->
     UserId = get_user_id(Call),
     AccountDb = kapps_call:account_db(Call),

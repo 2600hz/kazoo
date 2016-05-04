@@ -156,7 +156,7 @@ handle_call_event(JObj, Props) ->
     kz_util:put_callid(CallId),
     handle_call_event(JObj, AccountId, HookEvent, CallId, props:get_is_true('rr', Props)).
 
--spec handle_call_event(kz_json:object(), api(binary()), ne_binary(), ne_binary(), boolean()) ->
+-spec handle_call_event(kz_json:object(), maybe(binary()), ne_binary(), ne_binary(), boolean()) ->
                                'ok'.
 handle_call_event(JObj, 'undefined', <<"CHANNEL_CREATE">>, CallId, RR) ->
     lager:debug("event 'channel_create' had no account id"),

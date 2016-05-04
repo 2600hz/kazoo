@@ -118,7 +118,7 @@ add_amqp_pool(Uuid, Broker, PoolSize, PoolOverflow, Bindings, Exchanges, ServerA
     Args = ?ADD_POOL_ARGS(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges, ServerAck),
     supervisor:start_child(?SERVER, ?POOL_NAME_ARGS(UUID, Args)).
 
--spec pool_pid(atom() | binary()) -> api(pid()).
+-spec pool_pid(atom() | binary()) -> maybe(pid()).
 pool_pid(Pool) ->
     ID = kz_util:to_atom(Pool, 'true'),
     case [ Pid || {Id,Pid,_,_} <- supervisor:which_children(?SERVER), Id == ID] of

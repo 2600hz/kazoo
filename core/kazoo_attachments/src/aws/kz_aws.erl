@@ -154,9 +154,9 @@ aws_request4_no_update(Method, Protocol, Host, Port, Path, Params, Service, #aws
 -spec aws_request_form(Method, Protocol, Host, Port, Path, Form, Headers, Config) ->
                               {ok, binary()} | {error, tuple()} when
       Method :: atom(),
-      Protocol :: api(string()),
+      Protocol :: maybe(string()),
       Host :: string(),
-      Port :: api(integer() | string()),
+      Port :: maybe(integer() | string()),
       Path :: string(),
       Form :: iodata(),
       Headers :: list(),

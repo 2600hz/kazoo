@@ -26,7 +26,7 @@
 
 -include("kz_documents.hrl").
 
--spec fetch(api(binary())) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec fetch(maybe(binary())) -> {'ok', kz_json:object()} | {'error', any()}.
 fetch('undefined') ->
     {'error', 'account_id_undefined'};
 fetch(Account) ->
@@ -37,18 +37,18 @@ fetch(Account) ->
 port_hide(JObj) ->
     kz_json:is_true(?PORT_HIDE, JObj).
 
--spec port_email(kz_json:object()) -> api(binary()).
+-spec port_email(kz_json:object()) -> maybe(binary()).
 port_email(JObj) ->
     kz_json:get_ne_binary_value(?PORT_EMAIL, JObj).
 
--spec port_authority(kz_json:object()) -> api(binary()).
+-spec port_authority(kz_json:object()) -> maybe(binary()).
 port_authority(JObj) ->
     kz_json:get_ne_binary_value(?PORT_AUTHORITY, JObj).
 
--spec port_loa(kz_json:object()) -> api(binary()).
+-spec port_loa(kz_json:object()) -> maybe(binary()).
 port_loa(JObj) ->
     kz_json:get_ne_binary_value(?PORT_LOA, JObj).
 
--spec port_resporg(kz_json:object()) -> api(binary()).
+-spec port_resporg(kz_json:object()) -> maybe(binary()).
 port_resporg(JObj) ->
     kz_json:get_ne_binary_value(?PORT_RESPORG, JObj).

@@ -43,25 +43,25 @@ start_link(MgrPid, AcctId, QueueId) ->
 -spec stop(pid()) -> 'ok' | {'error', 'not_found'}.
 stop(WorkerSup) -> supervisor:terminate_child('acdc_queues_sup', WorkerSup).
 
--spec listener(pid()) -> api(pid()).
+-spec listener(pid()) -> maybe(pid()).
 listener(WorkerSup) ->
     case child_of_type(WorkerSup, 'acdc_queue_listener') of
         [] -> 'undefined';
         [P] -> P
     end.
 
--spec shared_queue(pid()) -> api(pid()).
+-spec shared_queue(pid()) -> maybe(pid()).
 shared_queue(WorkerSup) ->
     case child_of_type(WorkerSup, 'acdc_queue_shared') of
         [] -> 'undefined';
         [P] -> P
     end.
 
--spec start_shared_queue(pid(), pid(), ne_binary(), ne_binary(), api(integer())) -> sup_startchild_ret().
+-spec start_shared_queue(pid(), pid(), ne_binary(), ne_binary(), maybe(integer())) -> sup_startchild_ret().
 start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId, Priority) ->
     supervisor:start_child(WorkerSup, ?WORKER_ARGS('acdc_queue_shared', [FSMPid, AcctId, QueueId, Priority])).
 
--spec fsm(pid()) -> api(pid()).
+-spec fsm(pid()) -> maybe(pid()).
 fsm(WorkerSup) ->
     case child_of_type(WorkerSup, 'acdc_queue_fsm') of
         [] -> 'undefined';

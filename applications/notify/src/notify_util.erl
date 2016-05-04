@@ -34,7 +34,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec send_email(ne_binary(), api(binary()), any()) -> 'ok' | {'error', any()}.
+-spec send_email(ne_binary(), maybe(binary()), any()) -> 'ok' | {'error', any()}.
 send_email(_, 'undefined', _) -> lager:debug("no email to send to");
 send_email(_, <<>>, _) -> lager:debug("empty email to send to");
 send_email(From, To, Email) ->
@@ -71,8 +71,8 @@ send_email(From, To, Email) ->
     after 10 * ?MILLISECONDS_IN_SECOND -> {'error', 'timeout'}
     end.
 
--spec send_update(api(binary()), ne_binary(), ne_binary()) -> 'ok'.
--spec send_update(api(binary()), ne_binary(), ne_binary(), api(binary())) -> 'ok'.
+-spec send_update(maybe(binary()), ne_binary(), ne_binary()) -> 'ok'.
+-spec send_update(maybe(binary()), ne_binary(), ne_binary(), maybe(binary())) -> 'ok'.
 send_update(RespQ, MsgId, Status) ->
     send_update(RespQ, MsgId, Status, 'undefined').
 send_update('undefined', _, _, _) -> lager:debug("no response queue to send update");
@@ -92,7 +92,7 @@ send_update(RespQ, MsgId, Status, Msg) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_template_props(api(kz_json:object()) | kz_json:objects()) -> api(kz_proplist()).
+-spec json_to_template_props(maybe(kz_json:object()) | kz_json:objects()) -> maybe(kz_proplist()).
 json_to_template_props('undefined') -> 'undefined';
 json_to_template_props(JObj) ->
     normalize_proplist(kz_json:recursive_to_proplist(JObj)).
@@ -169,7 +169,7 @@ get_default_template(Category, Key) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec render_template(api(binary()), atom(), kz_proplist()) ->
+-spec render_template(maybe(binary()), atom(), kz_proplist()) ->
                                    {'ok', string()} |
                                    {'error', any()}.
 render_template(Template, DefaultTemplate, Props) ->
@@ -178,7 +178,7 @@ render_template(Template, DefaultTemplate, Props) ->
         Else -> Else
     end.
 
--spec do_render_template(api(binary()), atom(), kz_proplist()) ->
+-spec do_render_template(maybe(binary()), atom(), kz_proplist()) ->
                                    {'ok', string()} |
                                    {'error', any()}.
 do_render_template('undefined', DefaultTemplate, Props) ->
@@ -287,14 +287,14 @@ maybe_find_deprecated_settings(_, _) -> kz_json:new().
 %% account object
 %% @end
 %%--------------------------------------------------------------------
--spec get_rep_email(kz_json:object()) -> api(binary()).
+-spec get_rep_email(kz_json:object()) -> maybe(binary()).
 get_rep_email(JObj) ->
     case kapps_config:get_is_true(?NOTIFY_CONFIG_CAT, <<"search_rep_email">>, 'true') of
         'true' -> find_rep_email(JObj);
         'false' -> 'undefined'
     end.
 
--spec find_rep_email(kz_json:object()) -> api(binary()).
+-spec find_rep_email(kz_json:object()) -> maybe(binary()).
 find_rep_email(JObj) ->
     AccountId = kz_doc:account_id(JObj),
     Admin =
@@ -316,7 +316,7 @@ find_rep_email(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -type account_ids() :: ne_binaries().
--spec find_admin(api(binary()) | account_ids() | kz_json:object()) -> kz_json:object().
+-spec find_admin(maybe(binary()) | account_ids() | kz_json:object()) -> kz_json:object().
 find_admin('undefined') -> kz_json:new();
 find_admin([]) -> kz_json:new();
 find_admin(Account) when is_binary(Account) ->
@@ -357,7 +357,7 @@ find_admin(Account) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_account_doc(kz_json:object()) ->
-                             api({'ok', kz_json:object()} |
+                             maybe({'ok', kz_json:object()} |
                                  {'error', _}
                                 ).
 get_account_doc(JObj) ->
@@ -369,7 +369,7 @@ get_account_doc(JObj) ->
         Account -> kz_account:fetch(Account)
     end.
 
--spec category_to_file(ne_binary()) -> api(iolist()).
+-spec category_to_file(ne_binary()) -> maybe(iolist()).
 category_to_file(<<"notify.voicemail_to_email">>) ->
     [code:lib_dir('notify', 'priv'), "/notify_voicemail_to_email.config"];
 category_to_file(<<"notify.voicemail_full">>) ->
@@ -411,7 +411,7 @@ category_to_file(<<"notify.topup">>) ->
 category_to_file(_) ->
     'undefined'.
 
--spec qr_code_image(api(binary())) -> api(kz_proplist()).
+-spec qr_code_image(maybe(binary())) -> maybe(kz_proplist()).
 qr_code_image('undefined') -> 'undefined';
 qr_code_image(Text) ->
     lager:debug("create qr code for ~s", [Text]),

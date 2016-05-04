@@ -214,7 +214,7 @@ is_json_term(MaybeJObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec are_identical(api(kz_json:object()), api(kz_json:object())) -> boolean().
+-spec are_identical(maybe(kz_json:object()), maybe(kz_json:object())) -> boolean().
 are_identical('undefined', 'undefined') -> 'true';
 are_identical('undefined', _) -> 'false';
 are_identical(_, 'undefined') -> 'false';
@@ -366,7 +366,7 @@ encode_kv(Prefix, K, [V|Vs], Sep, Acc) ->
     encode_kv(Prefix, K, Vs, Sep, [ <<"&">>, encode_kv(Prefix, K, Sep, kz_http_util:urlencode(V)) | Acc]);
 encode_kv(_, _, [], _, Acc) -> lists:reverse(Acc).
 
--spec get_json_value(keys(), object()) -> api(kz_json:object()).
+-spec get_json_value(keys(), object()) -> maybe(kz_json:object()).
 -spec get_json_value(keys(), object(), Default) -> Default | object().
 get_json_value(Key, JObj) -> get_json_value(Key, JObj, 'undefined').
 get_json_value(Key, ?JSON_WRAPPER(_)=JObj, Default) ->
@@ -376,7 +376,7 @@ get_json_value(Key, ?JSON_WRAPPER(_)=JObj, Default) ->
         _ -> Default
     end.
 
--spec get_ne_json_value(keys(), object()) -> api(kz_json:object()).
+-spec get_ne_json_value(keys(), object()) -> maybe(kz_json:object()).
 -spec get_ne_json_value(keys(), object(), Default) -> Default | object().
 get_ne_json_value(Key, JObj) ->
     get_ne_json_value(Key, JObj, 'undefined').
@@ -422,7 +422,7 @@ foldl(F, Acc0, ?JSON_WRAPPER([])) when is_function(F, 3) -> Acc0;
 foldl(F, Acc0, ?JSON_WRAPPER(Prop)) when is_function(F, 3) ->
     lists:foldl(fun({Key, Value}, Acc1) -> F(Key, Value, Acc1) end, Acc0, Prop).
 
--spec get_string_value(keys(), object() | objects()) -> api(list()).
+-spec get_string_value(keys(), object() | objects()) -> maybe(list()).
 -spec get_string_value(keys(), object(), Default) -> list() | Default.
 get_string_value(Key, JObj) ->
     get_string_value(Key, JObj, 'undefined').
@@ -432,7 +432,7 @@ get_string_value(Key, JObj, Default) ->
         Value -> safe_cast(Value, Default, fun kz_util:to_list/1)
     end.
 
--spec get_list_value(keys(), object() | objects()) -> api(list()).
+-spec get_list_value(keys(), object() | objects()) -> maybe(list()).
 -spec get_list_value(keys(), object() | objects(), Default) -> Default | list().
 get_list_value(Key, JObj) ->
     get_list_value(Key, JObj, 'undefined').
@@ -443,7 +443,7 @@ get_list_value(Key, JObj, Default) ->
         _Else -> Default
     end.
 
--spec get_binary_value(keys(), object() | objects()) -> api(binary()).
+-spec get_binary_value(keys(), object() | objects()) -> maybe(binary()).
 -spec get_binary_value(keys(), object() | objects(), Default) -> binary() | Default.
 get_binary_value(Key, JObj) ->
     get_binary_value(Key, JObj, 'undefined').
@@ -453,7 +453,7 @@ get_binary_value(Key, JObj, Default) ->
         Value -> safe_cast(Value, Default, fun kz_util:to_binary/1)
     end.
 
--spec get_ne_binary_value(keys(), object() | objects()) -> api(binary()).
+-spec get_ne_binary_value(keys(), object() | objects()) -> maybe(binary()).
 -spec get_ne_binary_value(keys(), object() | objects(), Default) -> ne_binary() | Default.
 get_ne_binary_value(Key, JObj) ->
     get_ne_binary_value(Key, JObj, 'undefined').
@@ -464,7 +464,7 @@ get_ne_binary_value(Key, JObj, Default) ->
         Value -> Value
     end.
 
--spec get_lower_binary(keys(), object() | objects()) -> api(binary()).
+-spec get_lower_binary(keys(), object() | objects()) -> maybe(binary()).
 -spec get_lower_binary(keys(), object() | objects(), Default) -> binary() | Default.
 get_lower_binary(Key, JObj) ->
     get_lower_binary(Key, JObj, 'undefined').
@@ -476,7 +476,7 @@ get_lower_binary(Key, JObj, Default) ->
     end.
 
 %% must be an existing atom
--spec get_atom_value(keys(), object() | objects()) -> api(atom()).
+-spec get_atom_value(keys(), object() | objects()) -> maybe(atom()).
 -spec get_atom_value(keys(), object() | objects(), Default) -> atom() | Default.
 get_atom_value(Key, JObj) ->
     get_atom_value(Key, JObj, 'undefined').
@@ -487,7 +487,7 @@ get_atom_value(Key, JObj, Default) ->
         Value -> safe_cast(Value, Default, fun kz_util:to_atom/1)
     end.
 
--spec get_integer_value(keys(), object() | objects()) -> api(integer()).
+-spec get_integer_value(keys(), object() | objects()) -> maybe(integer()).
 get_integer_value(Key, JObj) ->
     get_integer_value(Key, JObj, 'undefined').
 
@@ -506,7 +506,7 @@ safe_cast(Value, Default, CastFun) ->
         _:_ -> Default
     end.
 
--spec get_number_value(keys(), object() | objects()) -> api(number()).
+-spec get_number_value(keys(), object() | objects()) -> maybe(number()).
 -spec get_number_value(keys(), object() | objects(), Default) -> number() | Default.
 get_number_value(Key, JObj) ->
     get_number_value(Key, JObj, 'undefined').
@@ -517,7 +517,7 @@ get_number_value(Key, JObj, Default) ->
         Value -> safe_cast(Value, Default, fun kz_util:to_number/1)
     end.
 
--spec get_float_value(keys(), object() | objects()) -> api(float()).
+-spec get_float_value(keys(), object() | objects()) -> maybe(float()).
 -spec get_float_value(keys(), object() | objects(), Default) -> float() | Default.
 get_float_value(Key, JObj) ->
     get_float_value(Key, JObj, 'undefined').
@@ -548,7 +548,7 @@ is_true(Key, JObj, Default) ->
         V -> kz_util:is_true(V)
     end.
 
--spec get_binary_boolean(keys(), kz_json:object() | objects()) -> api(binary()).
+-spec get_binary_boolean(keys(), kz_json:object() | objects()) -> maybe(binary()).
 -spec get_binary_boolean(keys(), kz_json:object() | objects(), Default) -> Default | ne_binary().
 get_binary_boolean(Key, JObj) ->
     get_binary_boolean(Key, JObj, 'undefined').
@@ -585,7 +585,7 @@ get_private_keys(JObj) ->
     ].
 
 -spec get_ne_value(keys(), object() | objects()) ->
-                          api(json_term()).
+                          maybe(json_term()).
 -spec get_ne_value(keys(), object() | objects(), Default) ->
                           json_term() | Default.
 get_ne_value(Key, JObj) ->
@@ -605,7 +605,7 @@ get_ne_value(Key, JObj, Default) ->
 %% Returns the value at Key
 %% @end
 %%--------------------------------------------------------------------
--spec find(keys(), objects()) -> api(json_term()).
+-spec find(keys(), objects()) -> maybe(json_term()).
 -spec find(keys(), objects(), Default) -> json_term() | Default.
 
 find(Key, Docs) ->
@@ -618,7 +618,7 @@ find(Key, [JObj|JObjs], Default) when is_list(JObjs) ->
         V -> V
     end.
 
--spec find_first_defined(keys(), objects()) -> api(json_term()).
+-spec find_first_defined(keys(), objects()) -> maybe(json_term()).
 -spec find_first_defined(keys(), objects(), Default) -> json_term() | Default.
 find_first_defined(Keys, Docs) ->
     find_first_defined(Keys, Docs, 'undefined').
@@ -637,7 +637,7 @@ find_first_defined([Key|Keys], Docs, Default) ->
 %% Returns the json object or 'undefined'
 %% @end
 %%--------------------------------------------------------------------
--spec find_value(keys(), json_term(), objects()) -> api(kz_json:object()).
+-spec find_value(keys(), json_term(), objects()) -> maybe(kz_json:object()).
 -spec find_value(keys(), json_term(), objects(), Default) -> object() | Default.
 find_value(Key, Value, JObjs) ->
     find_value(Key, Value, JObjs, 'undefined').
@@ -649,7 +649,7 @@ find_value(Key, Value, [JObj|JObjs], Default) ->
         _Value -> find_value(Key, Value, JObjs, Default)
     end.
 
--spec get_first_defined([keys()], object()) -> api(json_term()).
+-spec get_first_defined([keys()], object()) -> maybe(json_term()).
 -spec get_first_defined([keys()], object(), Default) -> Default | json_term().
 get_first_defined(Keys, JObj) ->
     get_first_defined(Keys, JObj, 'undefined').
@@ -662,7 +662,7 @@ get_first_defined([H|T], JObj, Default) ->
     end.
 
 -spec get_value(keys(), object() | objects()) ->
-                       api(json_term()).
+                       maybe(json_term()).
 -spec get_value(keys(), object() | objects(), Default) ->
                        json_term() | Default.
 get_value(Key, JObj) ->

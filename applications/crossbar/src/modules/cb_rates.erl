@@ -236,7 +236,7 @@ validate_patch(Id, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation(api(binary()), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(maybe(binary()), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     Doc = lists:foldl(fun doc_updates/2
                       ,cb_context:doc(Context)
@@ -256,7 +256,7 @@ doc_updates(Fun, Doc) when is_function(Fun, 1) ->
     Fun(Doc).
 
 -spec ensure_routes_set(kz_json:object()) -> kz_json:object().
--spec ensure_routes_set(kz_json:object(), api([api(binary())])) -> kz_json:object().
+-spec ensure_routes_set(kz_json:object(), maybe([maybe(binary())])) -> kz_json:object().
 ensure_routes_set(Doc) ->
     ensure_routes_set(Doc, kz_json:get_value(<<"routes">>, Doc)).
 
@@ -430,7 +430,7 @@ process_row(Row, {Count, JObjs}=Acc) ->
             {Count + 1, [kz_json:from_list(Props) | JObjs]}
     end.
 
--spec get_row_prefix(rate_row()) -> api(binary()).
+-spec get_row_prefix(rate_row()) -> maybe(binary()).
 get_row_prefix([Prefix | _]=_R) ->
     try kz_util:to_integer(Prefix) of
         P -> P
@@ -449,21 +449,21 @@ get_row_iso(_R) ->
     lager:info("iso not found on row: ~p", [_R]),
     <<"XX">>.
 
--spec get_row_description(rate_row()) -> api(binary()).
+-spec get_row_description(rate_row()) -> maybe(binary()).
 get_row_description([_, _, Description | _]) ->
     strip_quotes(kz_util:to_binary(Description));
 get_row_description(_R) ->
     lager:info("description not found on row: ~p", [_R]),
     'undefined'.
 
--spec get_row_internal_surcharge(rate_row()) -> api(float()).
+-spec get_row_internal_surcharge(rate_row()) -> maybe(float()).
 get_row_internal_surcharge([_, _, _, InternalSurcharge, _, _ | _]) ->
     kz_util:to_float(InternalSurcharge);
 get_row_internal_surcharge(_R) ->
     lager:info("internal surcharge not found on row: ~p", [_R]),
     'undefined'.
 
--spec get_row_surcharge(rate_row()) -> api(float()).
+-spec get_row_surcharge(rate_row()) -> maybe(float()).
 get_row_surcharge([_, _, _, Surcharge, _, _]) ->
     kz_util:to_float(Surcharge);
 get_row_surcharge([_, _, _, _, Surcharge, _ | _]) ->
@@ -472,7 +472,7 @@ get_row_surcharge([_|_]=_R) ->
     lager:info("surcharge not found on row: ~p", [_R]),
     'undefined'.
 
--spec get_row_internal_rate(rate_row()) -> api(float()).
+-spec get_row_internal_rate(rate_row()) -> maybe(float()).
 get_row_internal_rate([_, _, _, Rate]) ->
     kz_util:to_float(Rate);
 get_row_internal_rate([_, _, _, InternalRate, _]) ->
@@ -485,7 +485,7 @@ get_row_internal_rate([_|_]=_R) ->
     lager:info("internal rate not found on row: ~p", [_R]),
     'undefined'.
 
--spec get_row_rate(rate_row()) -> api(float()).
+-spec get_row_rate(rate_row()) -> maybe(float()).
 get_row_rate([_, _, _, Rate]) -> kz_util:to_float(Rate);
 get_row_rate([_, _, _, _, Rate]) -> kz_util:to_float(Rate);
 get_row_rate([_, _, _, _, _, Rate]) -> kz_util:to_float(Rate);

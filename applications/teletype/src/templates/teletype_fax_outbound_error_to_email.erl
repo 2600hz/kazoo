@@ -184,7 +184,7 @@ to_data(DataJObj) ->
        ,{<<"realm">>, kz_json:get_value(<<"to_realm">>, DataJObj)}
       ]).
 
--spec to_email_addresses(kz_json:object()) -> api([api(binary())]).
+-spec to_email_addresses(kz_json:object()) -> maybe([maybe(binary())]).
 to_email_addresses(DataJObj) ->
     to_email_addresses(DataJObj
                        ,kz_json:get_first_defined([[<<"to">>, <<"email_addresses">>]
@@ -198,7 +198,7 @@ to_email_addresses(DataJObj) ->
                                                  )
                       ).
 
--spec to_email_addresses(kz_json:object(), ne_binary() | api([api(binary())])) -> api([api(binary())]).
+-spec to_email_addresses(kz_json:object(), ne_binary() | maybe([maybe(binary())])) -> maybe([maybe(binary())]).
 to_email_addresses(_DataJObj, <<_/binary>> = Email) ->
     [Email];
 to_email_addresses(_DataJObj, [_|_] = Emails) ->
@@ -213,7 +213,7 @@ to_email_addresses(DataJObj, _) ->
             Emails
     end.
 
--spec default_to_addresses() -> api([api(binary())]).
+-spec default_to_addresses() -> maybe([maybe(binary())]).
 default_to_addresses() ->
     case kapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>) of
         'undefined' -> 'undefined';

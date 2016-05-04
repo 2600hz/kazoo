@@ -231,7 +231,7 @@ response_to_numbers(JObj, Options) ->
                    )
     }.
 
--spec response_pair_to_number(ne_binary(), kz_json:object(), knm_number:knm_numbers(), api(binary())) ->
+-spec response_pair_to_number(ne_binary(), kz_json:object(), knm_number:knm_numbers(), maybe(binary())) ->
                                      knm_number:knm_numbers().
 response_pair_to_number(DID, CarrierData, Acc, AccountId) ->
     {'ok', PhoneNumber} =
@@ -323,10 +323,10 @@ process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_xml_numbers(ne_binary(), pos_integer(), api(xml_el())) ->
+-spec process_xml_numbers(ne_binary(), pos_integer(), maybe(xml_el())) ->
                                  {'ok', kz_json:object()} |
                                  {'error', any()}.
--spec process_xml_numbers(ne_binary(), pos_integer(), api(xml_els()), kz_proplist()) ->
+-spec process_xml_numbers(ne_binary(), pos_integer(), maybe(xml_els()), kz_proplist()) ->
                                  {'ok', kz_json:object()} |
                                  {'error', any()}.
 process_xml_numbers(_Prefix, _Quantity, 'undefined') ->
@@ -444,7 +444,7 @@ purchase_tollfree_options(DID) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_routesip() -> api(binary()).
+-spec get_routesip() -> maybe(binary()).
 -ifdef(TEST).
 get_routesip() ->
     <<"1.2.3.4">>.

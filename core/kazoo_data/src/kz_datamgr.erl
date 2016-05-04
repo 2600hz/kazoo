@@ -255,7 +255,7 @@ db_exists(DbName) ->
         {'error', _}=E -> E
     end.
 
--spec db_exists(text(), api(binary()) | kz_proplist()) -> boolean().
+-spec db_exists(text(), maybe(binary()) | kz_proplist()) -> boolean().
 db_exists(DbName, 'undefined') ->
     db_exists(DbName);
 db_exists(DbName, Type)

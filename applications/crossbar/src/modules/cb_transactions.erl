@@ -239,7 +239,7 @@ validate_transaction(Context, _PathToken, _Verb) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_debit(cb_context:context()) -> cb_context:context().
--spec validate_debit(cb_context:context(), api(float())) -> cb_context:context().
+-spec validate_debit(cb_context:context(), maybe(float())) -> cb_context:context().
 validate_debit(Context) ->
     Amount = kz_json:get_float_value(<<"amount">>, cb_context:req_data(Context)),
 
@@ -293,7 +293,7 @@ validate_debit(Context, Amount) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_transactions(cb_context:context(), gregorian_seconds(), gregorian_seconds(), api(binary())) ->
+-spec fetch_transactions(cb_context:context(), gregorian_seconds(), gregorian_seconds(), maybe(binary())) ->
                                 cb_context:context().
 
 fetch_transactions(Context, From, To, 'undefined') ->
@@ -336,7 +336,7 @@ fetch_transactions(Context, From, To, Reason) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_monthly_recurring(cb_context:context(), gregorian_seconds(), gregorian_seconds(), api(binary())) ->
+-spec fetch_monthly_recurring(cb_context:context(), gregorian_seconds(), gregorian_seconds(), maybe(binary())) ->
                                      cb_context:context().
 fetch_monthly_recurring(Context, From, To, Reason) ->
     case kz_bookkeeper_braintree:transactions(cb_context:account_id(Context), From, To) of

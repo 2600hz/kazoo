@@ -56,7 +56,7 @@
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec req(api(terms())) ->
+-spec req(maybe(terms())) ->
                  {'ok', iolist()} |
                  {'error', string()}.
 req(Prop) when is_list(Prop) ->
@@ -67,7 +67,7 @@ req(Prop) when is_list(Prop) ->
 req(JObj) ->
     req(kz_json:to_proplist(JObj)).
 
--spec req_v(api(terms())) -> boolean().
+-spec req_v(maybe(terms())) -> boolean().
 req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?RATE_REQ_HEADERS, ?RATE_REQ_VALUES, ?RATE_REQ_TYPES);
 req_v(JObj) ->
@@ -78,7 +78,7 @@ req_v(JObj) ->
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec resp(api(terms())) ->
+-spec resp(maybe(terms())) ->
                   {'ok', iolist()} |
                   {'error', string()}.
 resp(Prop) when is_list(Prop) ->
@@ -89,7 +89,7 @@ resp(Prop) when is_list(Prop) ->
 resp(JObj) ->
     resp(kz_json:to_proplist(JObj)).
 
--spec resp_v(api(terms())) -> boolean().
+-spec resp_v(maybe(terms())) -> boolean().
 resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?RATE_RESP_HEADERS, ?RATE_RESP_VALUES, ?RATE_RESP_TYPES);
 resp_v(JObj) ->
@@ -146,24 +146,24 @@ declare_exchanges() ->
 %% @doc Publish the JSON iolist() to the proper Exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_req(api(terms())) -> 'ok'.
--spec publish_req(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_req(maybe(terms())) -> 'ok'.
+-spec publish_req(maybe(terms()), ne_binary()) -> 'ok'.
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?RATE_REQ_VALUES, fun ?MODULE:req/1),
     amqp_util:callmgr_publish(Payload, ContentType, ?KEY_RATE_REQ).
 
--spec publish_resp(ne_binary(), api(terms())) -> 'ok'.
--spec publish_resp(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
+-spec publish_resp(ne_binary(), maybe(terms())) -> 'ok'.
+-spec publish_resp(ne_binary(), maybe(terms()), ne_binary()) -> 'ok'.
 publish_resp(Queue, JObj) ->
     publish_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_resp(Queue, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?RATE_RESP_VALUES, fun ?MODULE:resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
--spec broadcast_resp(api(terms())) -> 'ok'.
--spec broadcast_resp(api(terms()), ne_binary()) -> 'ok'.
+-spec broadcast_resp(maybe(terms())) -> 'ok'.
+-spec broadcast_resp(maybe(terms()), ne_binary()) -> 'ok'.
 broadcast_resp(JObj) ->
     broadcast_resp(JObj, ?DEFAULT_CONTENT_TYPE).
 broadcast_resp(Resp, ContentType) ->

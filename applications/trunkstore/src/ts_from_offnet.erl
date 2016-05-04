@@ -363,7 +363,7 @@ routing_data(ToDID, AccountId, Settings) ->
            V =/= <<>>
     ].
 
--spec build_ip(api(binary()), api(binary()) | integer()) -> api(binary()).
+-spec build_ip(maybe(binary()), maybe(binary()) | integer()) -> maybe(binary()).
 build_ip('undefined', _) -> 'undefined';
 build_ip(IP, 'undefined') -> IP;
 build_ip(IP, <<_/binary>> = PortBin) -> build_ip(IP, kz_util:to_integer(PortBin));

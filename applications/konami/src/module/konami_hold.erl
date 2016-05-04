@@ -62,7 +62,7 @@ number_builder(DefaultJObj) ->
         NumberJObj -> kz_json:set_value(K, NumberJObj, DefaultJObj)
     end.
 
--spec number_builder_check(api(kz_json:object())) -> api(kz_json:object()).
+-spec number_builder_check(maybe(kz_json:object())) -> maybe(kz_json:object()).
 number_builder_check('undefined') ->
     number_builder_moh(kz_json:new());
 number_builder_check(NumberJObj) ->
@@ -72,7 +72,7 @@ number_builder_check(NumberJObj) ->
     {'ok', [Option]} = io:fread("What would you like to do: ", "~s"),
     number_builder_check_option(NumberJObj, Option).
 
--spec number_builder_check_option(kz_json:object(), string()) -> api(kz_json:object()).
+-spec number_builder_check_option(kz_json:object(), string()) -> maybe(kz_json:object()).
 number_builder_check_option(NumberJObj, "e") ->
     number_builder_moh(NumberJObj);
 number_builder_check_option(_NumberJObj, "d") ->

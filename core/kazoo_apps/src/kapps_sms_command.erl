@@ -181,7 +181,7 @@ send(<<"amqp">>, API, Endpoint, _Timeout) ->
             send(<<"amqp">>, API, FailOver, _Timeout)
     end.
 
--spec amqp_exchange_options(api(kz_json:object())) -> kz_proplist().
+-spec amqp_exchange_options(maybe(kz_json:object())) -> kz_proplist().
 amqp_exchange_options('undefined') -> [];
 amqp_exchange_options(JObj) ->
     [{kz_util:to_atom(K, 'true'), V}
@@ -197,8 +197,8 @@ send_amqp_sms(Payload, Pool) ->
         Else -> Else
     end.
 
--spec maybe_add_broker(api(binary()), api(binary()), api(binary()), ne_binary(), kz_proplist(), ne_binary()) -> 'ok'.
--spec maybe_add_broker(api(binary()), api(binary()), api(binary()), ne_binary(), kz_proplist(), ne_binary(), api(pid())) -> 'ok'.
+-spec maybe_add_broker(maybe(binary()), maybe(binary()), maybe(binary()), ne_binary(), kz_proplist(), ne_binary()) -> 'ok'.
+-spec maybe_add_broker(maybe(binary()), maybe(binary()), maybe(binary()), ne_binary(), kz_proplist(), ne_binary(), maybe(pid())) -> 'ok'.
 maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName) ->
     PoolPid = kz_amqp_sup:pool_pid(?SMS_POOL(Exchange, RouteId, BrokerName)),
     maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName, PoolPid).
@@ -243,7 +243,7 @@ create_sms_endpoints([Endpoint | Others], Endpoints) ->
         NewEndpoint -> create_sms_endpoints(Others, [NewEndpoint | Endpoints])
     end.
 
--spec create_sms_endpoint(kz_json:object(), binary()) -> api(kz_json:object()).
+-spec create_sms_endpoint(kz_json:object(), binary()) -> maybe(kz_json:object()).
 create_sms_endpoint(Endpoint, <<"amqp">>) -> Endpoint;
 create_sms_endpoint(Endpoint, <<"sip">>) ->
     Realm = kz_json:get_value(<<"To-Realm">>, Endpoint),
@@ -300,9 +300,9 @@ extract_device_registrar_fold(JObj, Set) ->
     end.
 
 -spec get_correlated_msg_type(kz_json:object()) ->
-                                     {api(binary()), api(binary()), api(binary())}.
+                                     {maybe(binary()), maybe(binary()), maybe(binary())}.
 -spec get_correlated_msg_type(ne_binary(), kz_json:object()) ->
-                                     {api(binary()), api(binary()), api(binary())}.
+                                     {maybe(binary()), maybe(binary()), maybe(binary())}.
 get_correlated_msg_type(JObj) ->
     get_correlated_msg_type(<<"Call-ID">>, JObj).
 get_correlated_msg_type(Key, JObj) ->

@@ -872,7 +872,7 @@ delete_old_images(AppId, MetaData, MasterAccountDb) ->
     _ = [safe_delete_image(MasterAccountDb, AppId, X) || X <- Screenshots],
     'ok'.
 
--spec safe_delete_image(ne_binary(), ne_binary(), api(binary())) -> 'ok'.
+-spec safe_delete_image(ne_binary(), ne_binary(), maybe(binary())) -> 'ok'.
 safe_delete_image(_AccountDb, _AppId, 'undefined') -> 'ok';
 safe_delete_image(AccountDb, AppId, Image) ->
     case kz_datamgr:fetch_attachment(AccountDb, AppId, Image) of

@@ -547,7 +547,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec create_node(api(5000..15000), nodes_state()) -> kz_node().
+-spec create_node(maybe(5000..15000), nodes_state()) -> kz_node().
 create_node(Heartbeat, #state{zone=Zone
                               ,version=Version
                              }) ->
@@ -601,7 +601,7 @@ add_ecallmgr_data(#kz_node{kapps=Whapps}=Node) ->
                  ,registrations=ecallmgr_registrar:count()
                 }.
 
--spec get_whapp_info(api(atom() | pid() | kz_proplist())) -> whapp_info().
+-spec get_whapp_info(maybe(atom() | pid() | kz_proplist())) -> whapp_info().
 get_whapp_info('undefined') -> #whapp_info{};
 get_whapp_info(Whapp) when is_atom(Whapp) ->
     get_whapp_info(application_controller:get_master(Whapp));
@@ -617,7 +617,7 @@ get_whapp_info(_Arg) ->
     lager:debug("can't get info for ~p", [_Arg]),
     #whapp_info{}.
 
--spec get_whapp_process_info(api(kz_proplist())) -> whapp_info().
+-spec get_whapp_process_info(maybe(kz_proplist())) -> whapp_info().
 get_whapp_process_info('undefined') -> #whapp_info{};
 get_whapp_process_info([]) -> #whapp_info{};
 get_whapp_process_info(PInfo) ->
@@ -694,7 +694,7 @@ from_json(JObj, State) ->
              ,zone=get_zone(JObj, State)
             }.
 
--spec kapps_from_json(api(terms())) -> kapps_info().
+-spec kapps_from_json(maybe(terms())) -> kapps_info().
 -spec whapp_from_json(binary(), kz_json:object()) -> {binary(), whapp_info()}.
 -spec whapp_info_from_json(kz_json:object()) -> whapp_info().
 
@@ -759,7 +759,7 @@ get_zone(JObj, #state{zones=Zones, zone=LocalZone}) ->
 -spec local_zone() -> atom().
 local_zone() -> kz_config:zone().
 
--spec get_amqp_broker(api(binary()) | kz_json:object()) -> api(binary()).
+-spec get_amqp_broker(maybe(binary()) | kz_json:object()) -> maybe(binary()).
 get_amqp_broker('undefined') ->
     kz_util:normalize_amqp_uri(kz_amqp_connections:primary_broker());
 get_amqp_broker(Broker) when is_binary(Broker) -> kz_util:normalize_amqp_uri(Broker);
@@ -788,11 +788,11 @@ notify_new(#kz_node{node=NodeName}=Node, Pids) ->
         ],
     'ok'.
 
--spec whapp_oldest_node(text()) -> api(integer()).
+-spec whapp_oldest_node(text()) -> maybe(integer()).
 whapp_oldest_node(Whapp) ->
     whapp_oldest_node(Whapp, 'false').
 
--spec whapp_oldest_node(text(), text() | boolean() | atom()) -> api(integer()).
+-spec whapp_oldest_node(text(), text() | boolean() | atom()) -> maybe(integer()).
 whapp_oldest_node(Whapp, 'false') ->
     Zone = gen_listener:call(?SERVER, 'zone'),
     MatchSpec = [{#kz_node{kapps='$1'
@@ -828,7 +828,7 @@ whapp_oldest_node(Whapp, Zone)
                  }],
     determine_whapp_oldest_node(kz_util:to_binary(Whapp), MatchSpec).
 
--spec determine_whapp_oldest_node(ne_binary(), ets:match_spec()) -> api(integer()).
+-spec determine_whapp_oldest_node(ne_binary(), ets:match_spec()) -> maybe(integer()).
 determine_whapp_oldest_node(Whapp, MatchSpec) ->
     case lists:foldl(fun({Whapps, _Node}=Info, Acc) when is_list(Whapps) ->
                              determine_whapp_oldest_node_fold(Info, Acc, Whapp)
@@ -842,9 +842,9 @@ determine_whapp_oldest_node(Whapp, MatchSpec) ->
     end.
 
 -spec determine_whapp_oldest_node_fold({kapps_info(), node()}
-                                       ,api({node(), gregorian_seconds()})
+                                       ,maybe({node(), gregorian_seconds()})
                                        ,ne_binary()
-                                      ) -> api({node(), gregorian_seconds()}).
+                                      ) -> maybe({node(), gregorian_seconds()}).
 determine_whapp_oldest_node_fold({Whapps, Node}, 'undefined', Whapp) ->
     case props:get_value(Whapp, Whapps) of
         'undefined' -> 'undefined';

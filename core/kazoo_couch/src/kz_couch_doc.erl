@@ -292,7 +292,7 @@ copy_attachments(#server{}=Conn, CopySpec, {[JObj | JObjs], [Key | Keys]}) ->
         Error -> Error
     end.
 
--spec maybe_set_account_db(api(binary()), ne_binary(), ne_binary()) -> kz_proplist().
+-spec maybe_set_account_db(maybe(binary()), ne_binary(), ne_binary()) -> kz_proplist().
 maybe_set_account_db(DB, DB, DestDbName) ->
     [{<<"pvt_account_db">>, DestDbName}];
 maybe_set_account_db(_1, _, _) -> [].

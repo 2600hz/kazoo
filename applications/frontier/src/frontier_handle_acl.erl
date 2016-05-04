@@ -36,7 +36,7 @@ send_response(Reqest, Responses) ->
     kapi_frontier:publish_acls_resp(ServerID, Resp).
 
 -spec make_section(kz_json:objects(), ne_binary()) -> kz_json:object().
--spec make_section(ne_binary(), api(binary()), api([api(binary())]), api(binary())) -> kz_json:object().
+-spec make_section(ne_binary(), maybe(binary()), maybe([maybe(binary())]), maybe(binary())) -> kz_json:object().
 make_section([], _) ->
     kz_json:new();
 make_section([JObj], Section) ->

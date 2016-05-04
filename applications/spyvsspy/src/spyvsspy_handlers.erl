@@ -44,7 +44,7 @@ new_call(AccountId) ->
        )
      ).
 
--spec get_group_and_call_id(kz_json:object()) -> {api(binary()), api(binary())}.
+-spec get_group_and_call_id(kz_json:object()) -> {maybe(binary()), maybe(binary())}.
 get_group_and_call_id(JObj) ->
     case kz_json:get_value(<<"Eavesdrop-Group-ID">>, JObj) of
         'undefined' -> {'undefined', kz_json:get_value(<<"Eavesdrop-Call-ID">>, JObj)};
@@ -142,9 +142,9 @@ send_originate_execute(JObj, Q) ->
     kapi_dialplan:publish_originate_execute(kz_json:get_value(<<"Server-ID">>, JObj), Prop).
 
 -spec find_caller_id(kz_json:object()) ->
-                            {ne_binary(), api(binary())}.
+                            {ne_binary(), maybe(binary())}.
 -spec find_caller_id(kz_json:object(), kz_proplist()) ->
-                            {ne_binary(), api(binary())}.
+                            {ne_binary(), maybe(binary())}.
 find_caller_id(JObj) ->
     find_caller_id(JObj, [{<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>}
                           ,{<<"Caller-ID-Name">>, <<"Caller-ID-Number">>}

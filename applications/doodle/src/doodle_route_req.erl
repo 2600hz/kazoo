@@ -74,7 +74,7 @@ prepend_preflow(AccountDb, PreflowId, CallFlow) ->
 resource_allowed(Call) ->
     is_resource_allowed(kapps_call:resource_type(Call)).
 
--spec is_resource_allowed(api(binary())) -> boolean().
+-spec is_resource_allowed(maybe(binary())) -> boolean().
 is_resource_allowed('undefined') -> 'true';
 is_resource_allowed(ResourceType) ->
     lists:member(ResourceType, ?RESOURCE_TYPES_HANDLED).

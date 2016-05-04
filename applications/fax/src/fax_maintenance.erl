@@ -366,7 +366,7 @@ migrate_outbound_faxes(Options) ->
                                    ])
     end.
 
--spec migrate_outbound_faxes(kz_json:objects(), api(binary())) -> api(binary()).
+-spec migrate_outbound_faxes(kz_json:objects(), maybe(binary())) -> maybe(binary()).
 migrate_outbound_faxes([], Acc) -> Acc;
 migrate_outbound_faxes([JObj | JObjs], _Acc) ->
     DocId = kz_doc:id(JObj),
@@ -381,7 +381,7 @@ maybe_migrate_outbound_fax(DocId) ->
         {'error', _E} -> io:format("error opening document ~s in faxes db~n", [DocId])
     end.
 
--spec maybe_migrate_outbound_fax(api(binary()), kz_json:object()) -> 'ok'.
+-spec maybe_migrate_outbound_fax(maybe(binary()), kz_json:object()) -> 'ok'.
 maybe_migrate_outbound_fax(<<"fax">>, JObj) ->
     case kz_json:get_value(<<"pvt_job_status">>, JObj) of
         <<"failed">> -> migrate_outbound_fax(JObj);

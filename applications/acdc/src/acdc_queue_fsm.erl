@@ -74,7 +74,7 @@
 
           ,member_call :: kapps_call:call()
           ,member_call_start :: non_neg_integer()
-          ,member_call_winner :: api(kz_json:object()) %% who won the call
+          ,member_call_winner :: maybe(kz_json:object()) %% who won the call
 
           %% Config options
           ,name :: ne_binary()
@@ -89,10 +89,10 @@
 
           ,caller_exit_key :: ne_binary() % DTMF a caller can press to leave the queue
           ,record_caller = 'false' :: boolean() % record the caller
-          ,recording_url :: api(binary()) %% URL of where to POST recordings
-          ,cdr_url :: api(binary()) % optional URL to request for extra CDR data
+          ,recording_url :: maybe(binary()) %% URL of where to POST recordings
+          ,cdr_url :: maybe(binary()) % optional URL to request for extra CDR data
 
-          ,notifications :: api(kz_json:object())
+          ,notifications :: maybe(kz_json:object())
          }).
 -type queue_fsm_state() :: #state{}.
 
@@ -171,7 +171,7 @@ call_event(_, _E, _N, _J) -> 'ok'.
 finish_member_call(FSM) ->
     gen_fsm:send_event(FSM, {'member_finished'}).
 
--spec current_call(pid()) -> api(kz_json:object()).
+-spec current_call(pid()) -> maybe(kz_json:object()).
 current_call(FSM) ->
     gen_fsm:sync_send_event(FSM, 'current_call').
 
@@ -179,7 +179,7 @@ current_call(FSM) ->
 status(FSM) ->
     gen_fsm:sync_send_event(FSM, 'status').
 
--spec cdr_url(pid()) -> api(binary()).
+-spec cdr_url(pid()) -> maybe(binary()).
 cdr_url(FSM) ->
     gen_fsm:sync_send_all_state_event(FSM, 'cdr_url').
 
@@ -706,7 +706,7 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 start_collect_timer() ->
     gen_fsm:start_timer(?COLLECT_RESP_TIMEOUT, ?COLLECT_RESP_MESSAGE).
 
--spec connection_timeout(api(integer())) -> pos_integer().
+-spec connection_timeout(maybe(integer())) -> pos_integer().
 connection_timeout(N) when is_integer(N), N > 0 -> N * 1000;
 connection_timeout(_) -> ?CONNECTION_TIMEOUT.
 
@@ -714,7 +714,7 @@ connection_timeout(_) -> ?CONNECTION_TIMEOUT.
 start_connection_timer(ConnTimeout) ->
     gen_fsm:start_timer(ConnTimeout, ?CONNECTION_TIMEOUT_MESSAGE).
 
--spec agent_ring_timeout(api(integer())) -> pos_integer().
+-spec agent_ring_timeout(maybe(integer())) -> pos_integer().
 agent_ring_timeout(N) when is_integer(N), N > 0 -> N;
 agent_ring_timeout(_) -> ?AGENT_RING_TIMEOUT.
 
@@ -722,13 +722,13 @@ agent_ring_timeout(_) -> ?AGENT_RING_TIMEOUT.
 start_agent_ring_timer(AgentTimeout) ->
     gen_fsm:start_timer(AgentTimeout * 1600, ?AGENT_RING_TIMEOUT_MESSAGE).
 
--spec maybe_stop_timer(api(reference())) -> 'ok'.
+-spec maybe_stop_timer(maybe(reference())) -> 'ok'.
 maybe_stop_timer('undefined') -> 'ok';
 maybe_stop_timer(ConnRef) ->
     _ = gen_fsm:cancel_timer(ConnRef),
     'ok'.
 
--spec maybe_timeout_winner(pid(), api(kz_json:object())) -> 'ok'.
+-spec maybe_timeout_winner(pid(), maybe(kz_json:object())) -> 'ok'.
 maybe_timeout_winner(Srv, 'undefined') ->
     acdc_queue_listener:timeout_member_call(Srv);
 maybe_timeout_winner(Srv, Winner) ->
@@ -773,7 +773,7 @@ update_properties(QueueJObj, State) ->
       %%,strategy = get_strategy(kz_json:get_value(<<"strategy">>, QueueJObj))
      }.
 
--spec current_call(api(kapps_call:call()), api(reference() | kz_timeout()), kz_timeout()) ->
+-spec current_call(maybe(kapps_call:call()), maybe(reference() | kz_timeout()), kz_timeout()) ->
                           kz_json:object().
 current_call('undefined', _, _) -> 'undefined';
 current_call(Call, QueueTimeLeft, Start) ->
@@ -786,7 +786,7 @@ current_call(Call, QueueTimeLeft, Start) ->
                        ,{<<"wait_time">>, elapsed(Start)}
                       ]).
 
--spec elapsed(api(reference()) | kz_timeout() | integer()) -> api(integer()).
+-spec elapsed(maybe(reference()) | kz_timeout() | integer()) -> maybe(integer()).
 elapsed('undefined') -> 'undefined';
 elapsed(Ref) when is_reference(Ref) ->
     case erlang:read_timer(Ref) of

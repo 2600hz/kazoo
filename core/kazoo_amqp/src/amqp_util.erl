@@ -334,9 +334,9 @@ monitor_publish(Payload, ContentType, RoutingKey) ->
 
 -type conf_routing_type() :: 'discovery' | 'event' | 'command' | 'config'.
 -spec conference_publish(amqp_payload(), conf_routing_type()) -> 'ok'.
--spec conference_publish(amqp_payload(), conf_routing_type(), api(binary())) -> 'ok'.
--spec conference_publish(amqp_payload(), conf_routing_type(), api(binary()), kz_proplist()) -> 'ok'.
--spec conference_publish(amqp_payload(), conf_routing_type(), api(binary()), kz_proplist(), ne_binary()) -> 'ok'.
+-spec conference_publish(amqp_payload(), conf_routing_type(), maybe(binary())) -> 'ok'.
+-spec conference_publish(amqp_payload(), conf_routing_type(), maybe(binary()), kz_proplist()) -> 'ok'.
+-spec conference_publish(amqp_payload(), conf_routing_type(), maybe(binary()), kz_proplist(), ne_binary()) -> 'ok'.
 
 conference_publish(Payload, 'discovery') ->
     conference_publish(Payload, 'discovery', <<"*">>);
@@ -657,7 +657,7 @@ new_conference_queue(Queue) ->
                      ]).
 
 %% Declare a queue and returns the queue Name
--type new_queue_ret() :: api(binary()) | integer() |
+-type new_queue_ret() :: maybe(binary()) | integer() |
                          {ne_binary(), integer(), integer()} |
                          {'error', any()}.
 -spec new_queue() -> new_queue_ret().
@@ -874,7 +874,7 @@ unbind_q_from_monitor(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_MONITOR).
 
 -spec bind_q_to_conference(ne_binary(), conf_routing_type()) -> 'ok'.
--spec bind_q_to_conference(ne_binary(), conf_routing_type(), api(binary())) -> 'ok'.
+-spec bind_q_to_conference(ne_binary(), conf_routing_type(), maybe(binary())) -> 'ok'.
 
 bind_q_to_conference(Queue, 'discovery') ->
     bind_q_to_conference(Queue, 'discovery', 'undefined');
@@ -926,7 +926,7 @@ bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
 %%------------------------------------------------------------------------------
 -spec unbind_q_from_conference(ne_binary(), conf_routing_type()) ->
                                       'ok' | {'error', any()}.
--spec unbind_q_from_conference(ne_binary(), conf_routing_type(), api(binary())) ->
+-spec unbind_q_from_conference(ne_binary(), conf_routing_type(), maybe(binary())) ->
                                       'ok' | {'error', any()}.
 unbind_q_from_conference(Queue, 'discovery') ->
     unbind_q_from_conference(Queue, 'discovery', 'undefined');

@@ -29,13 +29,13 @@ config_doc_id() ->
 %% played as part of the error.
 %% @end
 %%--------------------------------------------------------------------
--spec send(ne_binary(), ne_binary(), api(binary())) ->
+-spec send(ne_binary(), ne_binary(), maybe(binary())) ->
                   {'ok', ne_binary()} |
                   {'error', 'no_response'}.
--spec send(ne_binary() | kapps_call:call(), ne_binary(), api(binary()), api(binary())) ->
+-spec send(ne_binary() | kapps_call:call(), ne_binary(), maybe(binary()), maybe(binary())) ->
                   {'ok', ne_binary()} |
                   {'error', 'no_response'}.
--spec send(ne_binary(), ne_binary(), api(binary()), api(binary()), api(binary())) ->
+-spec send(ne_binary(), ne_binary(), maybe(binary()), maybe(binary()), maybe(binary())) ->
                   {'ok', ne_binary()} |
                   {'error', 'no_response'}.
 
@@ -130,7 +130,7 @@ do_send(CallId, CtrlQ, Commands) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec send_default(kapps_call:call(), api(binary())) ->
+-spec send_default(kapps_call:call(), maybe(binary())) ->
                           {'ok', ne_binary()} |
                           {'error', 'no_response'}.
 send_default(_Call, 'undefined') ->
@@ -164,7 +164,7 @@ send_default_response(Call, Response) ->
 %% returns the configured response proplist
 %% @end
 %%--------------------------------------------------------------------
--spec get_response(ne_binary(), kapps_call:call()) -> api(kz_json:object()).
+-spec get_response(ne_binary(), kapps_call:call()) -> maybe(kz_json:object()).
 get_response(Cause, Call) ->
     Default = case default_response(Cause) of
                   'undefined' -> 'undefined';
@@ -179,7 +179,7 @@ get_response(Cause, Call) ->
 %% returns the default action given the error
 %% @end
 %%--------------------------------------------------------------------
--spec default_response(ne_binary()) -> api(kz_proplist()).
+-spec default_response(ne_binary()) -> maybe(kz_proplist()).
 default_response(<<"RESPONSE_TO_STATUS_ENQUIRY">>) -> 'undefined';
 default_response(<<"FACILITY_NOT_SUBSCRIBED">>) -> 'undefined';
 default_response(<<"INVALID_MSG_UNSPECIFIED">>) -> 'undefined';

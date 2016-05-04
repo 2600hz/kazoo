@@ -76,7 +76,7 @@ maybe_start_jobs_listener() ->
         Pid -> Pid
     end.
 
--spec jobs_listener_pid() -> api(pid()).
+-spec jobs_listener_pid() -> maybe(pid()).
 jobs_listener_pid() ->
     whereis('cb_jobs_listener').
 
@@ -506,14 +506,14 @@ update_local(Context, Id) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation(api(binary()), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(maybe(binary()), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context, kz_doc:set_type(cb_context:doc(Context), <<"resource">>));
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"resource">>)).
 
 
--spec on_successful_local_validation(api(binary()), cb_context:context()) -> cb_context:context().
+-spec on_successful_local_validation(maybe(binary()), cb_context:context()) -> cb_context:context().
 on_successful_local_validation(Id, Context) ->
     cb_local_resources:validate_request(Id, Context).
 
@@ -568,7 +568,7 @@ collection_process(Context, Successes) ->
     end.
 
 -spec is_global_resource_request(cb_context:context()) -> boolean().
--spec is_global_resource_request(req_nouns(), api(binary())) -> boolean().
+-spec is_global_resource_request(req_nouns(), maybe(binary())) -> boolean().
 is_global_resource_request(Context) ->
     is_global_resource_request(cb_context:req_nouns(Context), cb_context:account_id(Context)).
 

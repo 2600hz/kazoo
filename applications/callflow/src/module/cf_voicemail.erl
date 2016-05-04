@@ -115,20 +115,20 @@
 -define(KEY_LENGTH, 1).
 
 -record(mailbox, {
-          mailbox_id :: api(binary())
+          mailbox_id :: maybe(binary())
           ,mailbox_number = <<>> :: binary()
           ,exists = 'false' :: boolean()
           ,skip_instructions = 'false' :: boolean()
           ,skip_greeting = 'false' :: boolean()
-          ,unavailable_media_id :: api(binary())
-          ,temporary_unavailable_media_id :: api(binary())
-          ,name_media_id :: api(binary())
+          ,unavailable_media_id :: maybe(binary())
+          ,temporary_unavailable_media_id :: maybe(binary())
+          ,name_media_id :: maybe(binary())
           ,pin = <<>> :: binary()
           ,timezone :: ne_binary()
           ,max_login_attempts = 3 :: non_neg_integer()
           ,require_pin = 'false' :: boolean()
           ,check_if_owner = 'true' :: boolean()
-          ,owner_id :: api(binary())
+          ,owner_id :: maybe(binary())
           ,is_setup = 'false' :: boolean()
           ,message_count = 0 :: non_neg_integer()
           ,max_message_count = 0 :: non_neg_integer()
@@ -142,7 +142,7 @@
           ,play_greeting_intro = 'false' :: boolean()
           ,use_person_not_available = 'false' :: boolean()
           ,not_configurable = 'false' :: boolean()
-          ,account_db :: api(binary())
+          ,account_db :: maybe(binary())
          }).
 -type mailbox() :: #mailbox{}.
 
@@ -1402,9 +1402,9 @@ max_message_count(Call) ->
     end.
 
 -spec owner_info(ne_binary(), kz_json:object()) ->
-                        {api(binary()), api(binary())}.
--spec owner_info(ne_binary(), kz_json:object(), api(binary())) ->
-                        {api(binary()), api(binary())}.
+                        {maybe(binary()), maybe(binary())}.
+-spec owner_info(ne_binary(), kz_json:object(), maybe(binary())) ->
+                        {maybe(binary()), maybe(binary())}.
 owner_info(AccountDb, MailboxJObj) ->
     owner_info(AccountDb, MailboxJObj, kz_json:get_ne_value(<<"owner_id">>, MailboxJObj)).
 
@@ -1457,7 +1457,7 @@ populate_keys(Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_mailbox_doc(ne_binary(), api(binary()), kz_json:object(), kapps_call:call()) ->
+-spec get_mailbox_doc(ne_binary(), maybe(binary()), kz_json:object(), kapps_call:call()) ->
                              {'ok', kz_json:object()} |
                              {'error', any()}.
 get_mailbox_doc(Db, Id, Data, Call) ->
@@ -1482,7 +1482,7 @@ get_mailbox_doc(Db, Id, Data, Call) ->
 -spec get_user_mailbox_doc(kz_json:object(), kapps_call:call()) ->
                                   {'ok', kz_json:object()} |
                                   {'error', any()}.
--spec get_user_mailbox_doc(kz_json:object(), kapps_call:call(), api(binary())) ->
+-spec get_user_mailbox_doc(kz_json:object(), kapps_call:call(), maybe(binary())) ->
                                   {'ok', kz_json:object()} |
                                   {'error', any()}.
 get_user_mailbox_doc(Data, Call) ->

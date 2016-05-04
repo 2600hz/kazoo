@@ -150,7 +150,7 @@ has_cost_parameters(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec req(api(terms())) ->
+-spec req(maybe(terms())) ->
                  {'ok', iolist()} |
                  {'error', string()}.
 req(Prop) when is_list(Prop) ->
@@ -160,7 +160,7 @@ req(Prop) when is_list(Prop) ->
     end;
 req(JObj) -> req(kz_json:to_proplist(JObj)).
 
--spec req_v(api(terms())) -> boolean().
+-spec req_v(maybe(terms())) -> boolean().
 req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?ROUTE_REQ_HEADERS, ?ROUTE_REQ_VALUES, ?ROUTE_REQ_TYPES);
 req_v(JObj) -> req_v(kz_json:to_proplist(JObj)).
@@ -173,7 +173,7 @@ req_event_type() -> {?EVENT_CATEGORY, ?ROUTE_REQ_EVENT_NAME}.
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec resp(api(terms())) ->
+-spec resp(maybe(terms())) ->
                   {'ok', iolist()} |
                   {'error', string()}.
 resp(Prop) when is_list(Prop) ->
@@ -193,7 +193,7 @@ resp(Prop) when is_list(Prop) ->
     end;
 resp(JObj) -> resp(kz_json:to_proplist(JObj)).
 
--spec resp_v(api(terms())) -> boolean().
+-spec resp_v(maybe(terms())) -> boolean().
 resp_v(Prop) when is_list(Prop) ->
     Valid = kz_api:validate(Prop, ?ROUTE_RESP_HEADERS, ?ROUTE_RESP_VALUES, ?ROUTE_RESP_TYPES),
     case props:get_value(<<"Method">>, Prop) of
@@ -206,7 +206,7 @@ resp_v(Prop) when is_list(Prop) ->
     end;
 resp_v(JObj) -> resp_v(kz_json:to_proplist(JObj)).
 
--spec is_actionable_resp(api(terms())) -> boolean().
+-spec is_actionable_resp(maybe(terms())) -> boolean().
 is_actionable_resp(Prop) when is_list(Prop) ->
     case props:get_value(<<"Method">>, Prop) of
         <<"bridge">> -> 'true';
@@ -224,7 +224,7 @@ is_actionable_resp(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec resp_route(api(terms())) ->
+-spec resp_route(maybe(terms())) ->
                         {'ok', iolist()} |
                         {'error', string()}.
 resp_route(Prop) when is_list(Prop) ->
@@ -234,7 +234,7 @@ resp_route(Prop) when is_list(Prop) ->
     end;
 resp_route(JObj) -> resp_route(kz_json:to_proplist(JObj)).
 
--spec resp_route_v(api(terms())) -> boolean().
+-spec resp_route_v(maybe(terms())) -> boolean().
 resp_route_v(Prop) when is_list(Prop) ->
     kz_api:validate_message(Prop, ?ROUTE_RESP_ROUTE_HEADERS, ?ROUTE_RESP_ROUTE_VALUES, ?ROUTE_RESP_ROUTE_TYPES);
 resp_route_v(JObj) -> resp_route_v(kz_json:to_proplist(JObj)).
@@ -244,7 +244,7 @@ resp_route_v(JObj) -> resp_route_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec win(api(terms())) ->
+-spec win(maybe(terms())) ->
                  {'ok', iolist()} |
                  {'error', string()}.
 win(Prop) when is_list(Prop) ->
@@ -254,7 +254,7 @@ win(Prop) when is_list(Prop) ->
     end;
 win(JObj) -> win(kz_json:to_proplist(JObj)).
 
--spec win_v(api(terms())) -> boolean().
+-spec win_v(maybe(terms())) -> boolean().
 win_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?ROUTE_WIN_HEADERS, ?ROUTE_WIN_VALUES, ?ROUTE_WIN_TYPES);
 win_v(JObj) -> win_v(kz_json:to_proplist(JObj)).
@@ -288,29 +288,29 @@ declare_exchanges() ->
 get_route_req_routing(Realm, User) ->
     list_to_binary([?KEY_ROUTE_REQ, ".", amqp_util:encode(Realm), ".", amqp_util:encode(User)]).
 
--spec get_route_req_routing(api(terms())) -> ne_binary().
+-spec get_route_req_routing(maybe(terms())) -> ne_binary().
 get_route_req_routing(Api) ->
     {User, Realm} = get_auth_user_realm(Api),
     get_route_req_routing(Realm, User).
 
--spec publish_req(api(terms())) -> 'ok'.
--spec publish_req(api(terms()), binary()) -> 'ok'.
+-spec publish_req(maybe(terms())) -> 'ok'.
+-spec publish_req(maybe(terms()), binary()) -> 'ok'.
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?ROUTE_REQ_VALUES, fun req/1),
     amqp_util:callmgr_publish(Payload, ContentType, get_route_req_routing(Req)).
 
--spec publish_resp(ne_binary(), api(terms())) -> 'ok'.
--spec publish_resp(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
+-spec publish_resp(ne_binary(), maybe(terms())) -> 'ok'.
+-spec publish_resp(ne_binary(), maybe(terms()), ne_binary()) -> 'ok'.
 publish_resp(RespQ, JObj) ->
     publish_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_resp(RespQ, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?ROUTE_RESP_VALUES, fun resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
--spec publish_win(ne_binary(), api(terms())) -> 'ok'.
--spec publish_win(ne_binary(), api(terms()), binary()) -> 'ok'.
+-spec publish_win(ne_binary(), maybe(terms())) -> 'ok'.
+-spec publish_win(ne_binary(), maybe(terms()), binary()) -> 'ok'.
 publish_win(RespQ, JObj) ->
     publish_win(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_win(RespQ, Win, ContentType) ->
@@ -324,7 +324,7 @@ publish_win(RespQ, Win, ContentType) ->
 %% when provided with an IP
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_auth_realm(api(terms())) -> ne_binary().
+-spec get_auth_realm(maybe(terms())) -> ne_binary().
 get_auth_realm(ApiProp) when is_list(ApiProp) ->
     [_ReqUser, ReqDomain] = binary:split(props:get_value(<<"From">>, ApiProp), <<"@">>),
     ReqDomain;
@@ -332,7 +332,7 @@ get_auth_realm(ApiJObj) ->
     [_ReqUser, ReqDomain] = binary:split(kz_json:get_value(<<"From">>, ApiJObj), <<"@">>),
     ReqDomain.
 
--spec get_auth_user(api(terms())) -> ne_binary().
+-spec get_auth_user(maybe(terms())) -> ne_binary().
 get_auth_user(ApiProp) when is_list(ApiProp) ->
     [ReqUser, _ReqDomain] = binary:split(props:get_value(<<"From">>, ApiProp), <<"@">>),
     ReqUser;
@@ -340,7 +340,7 @@ get_auth_user(ApiJObj) ->
     [ReqUser, _ReqDomain] = binary:split(kz_json:get_value(<<"From">>, ApiJObj), <<"@">>),
     ReqUser.
 
--spec get_auth_user_realm(api(terms())) -> {ne_binary(), ne_binary()}.
+-spec get_auth_user_realm(maybe(terms())) -> {ne_binary(), ne_binary()}.
 get_auth_user_realm(ApiProp) when is_list(ApiProp) ->
     [ReqUser, ReqDomain] = binary:split(props:get_value(<<"From">>, ApiProp), <<"@">>),
     {ReqUser, ReqDomain};
@@ -348,14 +348,14 @@ get_auth_user_realm(ApiJObj) ->
     [ReqUser, ReqDomain] = binary:split(kz_json:get_value(<<"From">>, ApiJObj), <<"@">>),
     {ReqUser, ReqDomain}.
 
--spec call_id(kz_json:object()) -> api(binary()).
+-spec call_id(kz_json:object()) -> maybe(binary()).
 call_id(JObj) ->
     kz_json:get_value(?KEY_CALL_ID, JObj).
 
--spec fetch_id(kz_json:object()) -> api(binary()).
+-spec fetch_id(kz_json:object()) -> maybe(binary()).
 fetch_id(JObj) ->
     kz_json:get_value(?KEY_FETCH_ID, JObj).
 
--spec control_queue(kz_json:object()) -> api(binary()).
+-spec control_queue(kz_json:object()) -> maybe(binary()).
 control_queue(JObj) ->
     kz_json:get_value(?KEY_CONTROL_QUEUE, JObj).

@@ -250,7 +250,7 @@ build_message_headers(JObj, Endpoint) ->
 headers_foldl(K, V, Acc) ->
     [{kz_util:to_list(?GET_CCV(K)), kz_util:to_list(V)} | Acc].
 
--spec get_uri(api(binary())) -> api(binary()).
+-spec get_uri(maybe(binary())) -> maybe(binary()).
 get_uri('undefined') -> 'undefined';
 get_uri(<<"<sip", _/binary>>=Uri) -> Uri;
 get_uri(<<"sip", _/binary>>=Uri) -> Uri;

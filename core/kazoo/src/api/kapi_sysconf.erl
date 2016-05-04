@@ -79,7 +79,7 @@
 %% READ
 %% @end
 %%--------------------------------------------------------------------
--spec get_req(api(terms())) ->
+-spec get_req(maybe(terms())) ->
                      {'ok', iolist()} |
                      {'error', string()}.
 get_req(Prop) when is_list(Prop) ->
@@ -90,13 +90,13 @@ get_req(Prop) when is_list(Prop) ->
 get_req(JObj) ->
     get_req(kz_json:to_proplist(JObj)).
 
--spec get_req_v(api(terms())) -> boolean().
+-spec get_req_v(maybe(terms())) -> boolean().
 get_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SYSCONF_GET_REQ_HEADERS, ?SYSCONF_GET_REQ_VALUES, ?SYSCONF_TYPES);
 get_req_v(JObj) ->
     get_req_v(kz_json:to_proplist(JObj)).
 
--spec get_resp(api(terms())) ->
+-spec get_resp(maybe(terms())) ->
                       {'ok', iolist()} |
                       {'error', string()}.
 get_resp(Prop) when is_list(Prop) ->
@@ -107,7 +107,7 @@ get_resp(Prop) when is_list(Prop) ->
 get_resp(JObj) ->
     get_resp(kz_json:to_proplist(JObj)).
 
--spec get_resp_v(api(terms())) -> boolean().
+-spec get_resp_v(maybe(terms())) -> boolean().
 get_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SYSCONF_GET_RESP_HEADERS, ?SYSCONF_GET_RESP_VALUES, ?SYSCONF_TYPES);
 get_resp_v(JObj) ->
@@ -118,7 +118,7 @@ get_resp_v(JObj) ->
 %% WRITE
 %% @end
 %%--------------------------------------------------------------------
--spec set_req(api(terms())) ->
+-spec set_req(maybe(terms())) ->
                      {'ok', iolist()} |
                      {'error', string()}.
 set_req(Prop) when is_list(Prop) ->
@@ -129,13 +129,13 @@ set_req(Prop) when is_list(Prop) ->
 set_req(JObj) ->
     set_req(kz_json:to_proplist(JObj)).
 
--spec set_req_v(api(terms())) -> boolean().
+-spec set_req_v(maybe(terms())) -> boolean().
 set_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SYSCONF_SET_REQ_HEADERS, ?SYSCONF_SET_REQ_VALUES, ?SYSCONF_TYPES);
 set_req_v(JObj) ->
     set_req_v(kz_json:to_proplist(JObj)).
 
--spec set_resp(api(terms())) ->
+-spec set_resp(maybe(terms())) ->
                       {'ok', iolist()} |
                       {'error', string()}.
 set_resp(Prop) when is_list(Prop) ->
@@ -146,7 +146,7 @@ set_resp(Prop) when is_list(Prop) ->
 set_resp(JObj) ->
     set_resp(kz_json:to_proplist(JObj)).
 
--spec set_resp_v(api(terms())) -> boolean().
+-spec set_resp_v(maybe(terms())) -> boolean().
 set_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SYSCONF_SET_RESP_HEADERS, ?SYSCONF_SET_RESP_VALUES, ?SYSCONF_TYPES);
 set_resp_v(JObj) ->
@@ -157,7 +157,7 @@ set_resp_v(JObj) ->
 %% Flush a given key
 %% @end
 %%--------------------------------------------------------------------
--spec flush_req(api(terms())) ->
+-spec flush_req(maybe(terms())) ->
                        {'ok', iolist()} |
                        {'error', string()}.
 flush_req(Prop) when is_list(Prop) ->
@@ -168,7 +168,7 @@ flush_req(Prop) when is_list(Prop) ->
 flush_req(JObj) ->
     flush_req(kz_json:to_proplist(JObj)).
 
--spec flush_req_v(api(terms())) -> boolean().
+-spec flush_req_v(maybe(terms())) -> boolean().
 flush_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SYSCONF_FLUSH_REQ_HEADERS, ?SYSCONF_FLUSH_REQ_VALUES, ?SYSCONF_TYPES);
 flush_req_v(JObj) ->
@@ -227,16 +227,16 @@ rm_bindings(_, []) ->
 declare_exchanges() ->
     amqp_util:sysconf_exchange().
 
--spec publish_get_req(api(terms())) -> 'ok'.
--spec publish_get_req(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_get_req(maybe(terms())) -> 'ok'.
+-spec publish_get_req(maybe(terms()), ne_binary()) -> 'ok'.
 publish_get_req(JObj) ->
     publish_get_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_get_req(Api, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Api, ?SYSCONF_GET_REQ_VALUES, fun ?MODULE:get_req/1),
     amqp_util:sysconf_publish(routing_key_get(), Payload, ContentType).
 
--spec publish_get_resp(ne_binary(), api(terms())) -> 'ok'.
--spec publish_get_resp(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
+-spec publish_get_resp(ne_binary(), maybe(terms())) -> 'ok'.
+-spec publish_get_resp(ne_binary(), maybe(terms()), ne_binary()) -> 'ok'.
 publish_get_resp(RespQ, JObj) ->
     publish_get_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_get_resp(RespQ, Api, ContentType) ->
@@ -246,24 +246,24 @@ publish_get_resp(RespQ, Api, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Api, ?SYSCONF_GET_RESP_VALUES, PrepareOptions),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
--spec publish_set_req(api(terms())) -> 'ok'.
--spec publish_set_req(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_set_req(maybe(terms())) -> 'ok'.
+-spec publish_set_req(maybe(terms()), ne_binary()) -> 'ok'.
 publish_set_req(JObj) ->
     publish_set_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_set_req(Api, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Api, ?SYSCONF_SET_REQ_VALUES, fun ?MODULE:set_req/1),
     amqp_util:sysconf_publish(routing_key_set(), Payload, ContentType).
 
--spec publish_set_resp(ne_binary(), api(terms())) -> 'ok'.
--spec publish_set_resp(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
+-spec publish_set_resp(ne_binary(), maybe(terms())) -> 'ok'.
+-spec publish_set_resp(ne_binary(), maybe(terms()), ne_binary()) -> 'ok'.
 publish_set_resp(RespQ, JObj) ->
     publish_set_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_set_resp(RespQ, Api, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Api, ?SYSCONF_SET_RESP_VALUES, fun ?MODULE:set_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
--spec publish_flush_req(api(terms())) -> 'ok'.
--spec publish_flush_req(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_flush_req(maybe(terms())) -> 'ok'.
+-spec publish_flush_req(maybe(terms()), ne_binary()) -> 'ok'.
 publish_flush_req(JObj) ->
     publish_flush_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_flush_req(Api, ContentType) ->
@@ -280,21 +280,21 @@ routing_key_flush() ->
     ?KEY_SYSCONF_FLUSH_REQ.
 
 
--spec get_category(kz_json:object()) -> api(binary()).
+-spec get_category(kz_json:object()) -> maybe(binary()).
 -spec get_category(kz_json:object(), Default) -> ne_binary() | Default.
 get_category(JObj) ->
     get_category(JObj, 'undefined').
 get_category(JObj, Default) ->
     kz_json:get_value(?CAT_KEY, JObj, Default).
 
--spec get_key(kz_json:object()) -> api(binary()).
+-spec get_key(kz_json:object()) -> maybe(binary()).
 -spec get_key(kz_json:object(), Default) -> ne_binary() | Default.
 get_key(JObj) ->
     get_key(JObj, 'undefined').
 get_key(JObj, Default) ->
     kz_json:get_value(?KEY_KEY, JObj, Default).
 
--spec get_value(kz_json:object()) -> api(kz_json:object()).
+-spec get_value(kz_json:object()) -> maybe(kz_json:object()).
 -spec get_value(kz_json:object(), Default) -> kz_json:object() | Default.
 get_value(JObj) ->
     get_value(JObj, 'undefined').

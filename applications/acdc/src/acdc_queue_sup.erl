@@ -44,11 +44,11 @@ start_link(AcctId, QueueId) ->
 stop(Super) ->
     supervisor:terminate_child('acdc_queues_sup', Super).
 
--spec manager(pid()) -> api(pid()).
+-spec manager(pid()) -> maybe(pid()).
 manager(Super) ->
     hd([P || {_, P, 'worker', _} <- supervisor:which_children(Super)]).
 
--spec workers_sup(pid()) -> api(pid()).
+-spec workers_sup(pid()) -> maybe(pid()).
 workers_sup(Super) ->
     hd([P || {_, P, 'supervisor', _} <- supervisor:which_children(Super)]).
 

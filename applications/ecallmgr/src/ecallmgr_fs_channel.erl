@@ -518,14 +518,14 @@ try_channel_resp(FetchId, Node, Props) ->
             channel_not_found(Node, FetchId)
     end.
 
--spec fetch_channel(ne_binary()) -> api(kz_proplist()).
+-spec fetch_channel(ne_binary()) -> maybe(kz_proplist()).
 fetch_channel(UUID) ->
     case fetch(UUID, 'proplist') of
         {'error', 'not_found'} -> fetch_remote(UUID);
         {'ok', Channel} -> Channel
     end.
 
--spec fetch_remote(ne_binary()) -> api(kz_json:object()).
+-spec fetch_remote(ne_binary()) -> maybe(kz_json:object()).
 fetch_remote(UUID) ->
     Command = [{<<"Call-ID">>, UUID}
                ,{<<"Active-Only">>, <<"true">>}
@@ -548,11 +548,11 @@ channel_not_found(Node, FetchId) ->
     {'ok', Resp} = ecallmgr_fs_xml:not_found(),
     freeswitch:fetch_reply(Node, FetchId, 'channels', iolist_to_binary(Resp)).
 
--spec process_event(api(binary()), kz_proplist(), atom()) -> any().
+-spec process_event(maybe(binary()), kz_proplist(), atom()) -> any().
 process_event(UUID, Props, Node) ->
     process_event(UUID, Props, Node, self()).
 
--spec process_event(api(binary()), kz_proplist(), atom(), pid()) -> any().
+-spec process_event(maybe(binary()), kz_proplist(), atom(), pid()) -> any().
 process_event(UUID, Props, Node, Pid) ->
     kz_util:put_callid(UUID),
     kz_amqp_channel:consumer_pid(Pid),
@@ -560,7 +560,7 @@ process_event(UUID, Props, Node, Pid) ->
 
     process_specific_event(EventName, UUID, Props, Node).
 
--spec process_specific_event(ne_binary(), api(binary()), kz_proplist(), atom()) -> any().
+-spec process_specific_event(ne_binary(), maybe(binary()), kz_proplist(), atom()) -> any().
 process_specific_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
     _ = maybe_publish_channel_state(Props, Node),
     case props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props)
@@ -664,7 +664,7 @@ handling_locally(Props) ->
     props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props)
         =:= kz_util:to_binary(node()).
 
--spec get_username(kz_proplist()) -> api(binary()).
+-spec get_username(kz_proplist()) -> maybe(binary()).
 get_username(Props) ->
     case props:get_first_defined([?GET_CCV(<<"Username">>)
                                   ,<<"variable_user_name">>
@@ -676,7 +676,7 @@ get_username(Props) ->
         Username -> kz_util:to_lower_binary(Username)
     end.
 
--spec get_realm(kz_proplist()) -> api(binary()).
+-spec get_realm(kz_proplist()) -> maybe(binary()).
 get_realm(Props) ->
     case props:get_first_defined([?GET_CCV(<<"Realm">>)
                                   ,<<"variable_domain_name">>
@@ -736,15 +736,15 @@ update_callee(UUID, Props) ->
       }
     ].
 
--spec maybe_update_callee_field(api(binary()), api(binary())) -> api(binary()).
+-spec maybe_update_callee_field(maybe(binary()), maybe(binary())) -> maybe(binary()).
 maybe_update_callee_field(Value, 'undefined') -> Value;
 maybe_update_callee_field(_Value, Existing) -> Existing.
 
--spec get_other_leg(ne_binary(), kz_proplist()) -> api(binary()).
+-spec get_other_leg(ne_binary(), kz_proplist()) -> maybe(binary()).
 get_other_leg(UUID, Props) ->
     get_other_leg_name(UUID, Props, props:get_value(<<"Other-Leg-Channel-Name">>, Props)).
 
--spec get_other_leg_name(ne_binary(), kz_proplist(), ne_binary()) -> api(binary()).
+-spec get_other_leg_name(ne_binary(), kz_proplist(), ne_binary()) -> maybe(binary()).
 get_other_leg_name(UUID, Props, _ChannelName) ->
     get_other_leg(UUID
                   ,Props
@@ -756,7 +756,7 @@ get_other_leg_name(UUID, Props, _ChannelName) ->
                                           )
                  ).
 
--spec get_other_leg(ne_binary(), kz_proplist(), api(binary())) -> api(binary()).
+-spec get_other_leg(ne_binary(), kz_proplist(), maybe(binary())) -> maybe(binary()).
 get_other_leg(UUID, Props, 'undefined') ->
     maybe_other_bridge_leg(UUID
                            ,Props
@@ -766,7 +766,7 @@ get_other_leg(UUID, Props, 'undefined') ->
 get_other_leg(_UUID, _Props, OtherLeg) -> OtherLeg.
 
 -spec maybe_other_bridge_leg(ne_binary(), kz_proplist(), ne_binary(), ne_binary()) ->
-                                    api(binary()).
+                                    maybe(binary()).
 maybe_other_bridge_leg(UUID, _Props, UUID, OtherLeg) -> OtherLeg;
 maybe_other_bridge_leg(UUID, _Props, OtherLeg, UUID) -> OtherLeg;
 maybe_other_bridge_leg(UUID, Props, _, _) ->

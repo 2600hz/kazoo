@@ -92,11 +92,11 @@ continue_processing(JObj, AccountDb, VMBox, Emails) ->
                          ,{RespQ, MsgId}
                         ).
 
--spec maybe_add_user_email(ne_binaries(), api(binary())) -> ne_binaries().
+-spec maybe_add_user_email(ne_binaries(), maybe(binary())) -> ne_binaries().
 maybe_add_user_email(BoxEmails, 'undefined') -> BoxEmails;
 maybe_add_user_email(BoxEmails, UserEmail) -> [UserEmail | BoxEmails].
 
--spec get_owner(ne_binary(), kzd_voicemail_box:doc(), api(binary())) ->
+-spec get_owner(ne_binary(), kzd_voicemail_box:doc(), maybe(binary())) ->
                        {'ok', kzd_user:doc()}.
 get_owner(AccountDb, VMBox) ->
     get_owner(AccountDb, VMBox, kzd_voicemail_box:owner_id(VMBox)).
@@ -146,7 +146,7 @@ create_template_props(Event, Timezone, Account) ->
      ,{<<"account_id">>, kz_doc:account_id(Account)}
     ].
 
--spec magic_hash(kz_json:object()) -> api(binary()).
+-spec magic_hash(kz_json:object()) -> maybe(binary()).
 magic_hash(Event) ->
     AccountId = kz_json:get_value(<<"Account-ID">>, Event),
     VMBoxId = kz_json:get_value(<<"Voicemail-Box">>, Event),
@@ -167,7 +167,7 @@ magic_hash(Event) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--type respond_to() :: {api(binary()), ne_binary()}.
+-type respond_to() :: {maybe(binary()), ne_binary()}.
 -spec build_and_send_email(iolist(), iolist(), iolist(), ne_binaries(), kz_proplist(), respond_to()) -> 'ok'.
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
     Voicemail = props:get_value(<<"voicemail">>, Props),
@@ -292,7 +292,7 @@ mime_to_extension(_) -> <<"wav">>.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec preaty_print_length(integer() | api(kz_json:object())) -> ne_binary().
+-spec preaty_print_length(integer() | maybe(kz_json:object())) -> ne_binary().
 preaty_print_length('undefined') ->
     <<"00:00">>;
 preaty_print_length(Milliseconds) when is_integer(Milliseconds) ->

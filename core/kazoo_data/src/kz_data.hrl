@@ -28,13 +28,13 @@
 
 -type data_connection() :: #data_connection{}.
 -type data_connections() :: [data_connection()].
--type server() :: api({atom(), any()}).
+-type server() :: maybe({atom(), any()}).
 -type db() :: #db{}.
 
 -record(copy_doc, {source_dbname  :: ne_binary()
                    ,source_doc_id  :: ne_binary()
-                   ,dest_dbname = 'undefined' :: api(binary())
-                   ,dest_doc_id = 'undefined' :: api(binary())
+                   ,dest_dbname = 'undefined' :: maybe(binary())
+                   ,dest_doc_id = 'undefined' :: maybe(binary())
                   }).
 -type copy_doc() :: #copy_doc{}.
 
@@ -87,7 +87,7 @@
 
 -type view_options() :: list(view_option()).
 
--type db_classifications() :: api('account' |
+-type db_classifications() :: maybe('account' |
                                   'modb' |
                                   'acdc' |
                                   'numbers' |

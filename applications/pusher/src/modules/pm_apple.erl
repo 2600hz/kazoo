@@ -54,7 +54,7 @@ terminate(_Reason, #state{tab=ETS}) ->
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
--spec maybe_send_push_notification(api(pid()), kz_json:object()) -> any().
+-spec maybe_send_push_notification(maybe(pid()), kz_json:object()) -> any().
 maybe_send_push_notification('undefined', _) -> 'ok';
 maybe_send_push_notification(Pid, JObj) ->
     TokenID = kz_json:get_value(<<"Token-ID">>, JObj),
@@ -69,7 +69,7 @@ maybe_send_push_notification(Pid, JObj) ->
                                     }
                      ).
 
--spec get_apns(api(binary()), ets:tid()) -> api(pid()).
+-spec get_apns(maybe(binary()), ets:tid()) -> maybe(pid()).
 get_apns('undefined', _) -> 'undefined';
 get_apns(App, ETS) ->
     case ets:lookup(ETS, App) of
@@ -77,11 +77,11 @@ get_apns(App, ETS) ->
         [{App, Pid}] -> Pid
     end.
 
--spec maybe_load_apns(api(binary()), ets:tid()) -> api(pid()).
+-spec maybe_load_apns(maybe(binary()), ets:tid()) -> maybe(pid()).
 maybe_load_apns(App, ETS) ->
     maybe_load_apns(App, ETS, kapps_config:get_binary(?CONFIG_CAT, <<"apple">>, 'undefined', App)).
 
--spec maybe_load_apns(api(binary()), ets:tid(), api(binary())) -> api(pid()).
+-spec maybe_load_apns(maybe(binary()), ets:tid(), maybe(binary())) -> maybe(pid()).
 maybe_load_apns(App, _, 'undefined') ->
     lager:debug("apple pusher certificate for app ~s not found", [App]),
     'undefined';

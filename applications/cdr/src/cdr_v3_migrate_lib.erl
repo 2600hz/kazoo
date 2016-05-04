@@ -63,7 +63,7 @@ build_month_date_list(Year, Month, 'ASC', Acc) ->
      || Day <- lists:seq(1, calendar:last_day_of_the_month(Year, Month))
     ] ++ Acc.
 
--spec get_test_account_details(pos_integer()) -> api([api(binary())]).
+-spec get_test_account_details(pos_integer()) -> maybe([maybe(binary())]).
 get_test_account_details(NumAccounts) ->
     [{<<"v3migratetest", (kz_util:to_binary(io_lib:format("~3..0B",[X])))/binary>>
           , <<"v3migratetest",(kz_util:to_binary(io_lib:format("~3..0B", [X])))/binary,".realm.com">>

@@ -28,9 +28,9 @@
 -record(state, {endpoints = [] :: kz_json:objects()
                 ,resource_req :: kapi_offnet_resource:req()
                 ,request_handler :: pid()
-                ,control_queue :: api(binary())
-                ,response_queue :: api(binary())
-                ,queue :: api(binary())
+                ,control_queue :: maybe(binary())
+                ,response_queue :: maybe(binary())
+                ,queue :: maybe(binary())
                 ,message = [] :: kz_proplist()
                 ,messages = queue:new() :: queue:queue()
                }).
@@ -308,7 +308,7 @@ send_error(API, CallId, Reason) ->
                     ],
     gen_listener:cast(self(), {'sms_error', kz_json:from_list(DeliveryProps)}).
 
--spec amqp_exchange_options(api(kz_json:object())) -> kz_proplist().
+-spec amqp_exchange_options(maybe(kz_json:object())) -> kz_proplist().
 amqp_exchange_options('undefined') -> [];
 amqp_exchange_options(JObj) ->
     [{kz_util:to_atom(K, 'true'), V}
@@ -325,8 +325,8 @@ send_amqp_sms(Payload, Pool) ->
         Else -> Else
     end.
 
--spec maybe_add_broker(api(binary()), api(binary()), api(binary()), ne_binary(), kz_proplist(), api(binary())) -> 'ok'.
--spec maybe_add_broker(api(binary()), api(binary()), api(binary()), ne_binary(), kz_proplist(), api(binary()), boolean()) -> 'ok'.
+-spec maybe_add_broker(maybe(binary()), maybe(binary()), maybe(binary()), ne_binary(), kz_proplist(), maybe(binary())) -> 'ok'.
+-spec maybe_add_broker(maybe(binary()), maybe(binary()), maybe(binary()), ne_binary(), kz_proplist(), maybe(binary()), boolean()) -> 'ok'.
 maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName) ->
     PoolExists = kz_amqp_sup:pool_pid(?SMS_POOL(Exchange, RouteId, BrokerName)) =/= 'undefined',
     maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName, PoolExists).
@@ -378,7 +378,7 @@ build_sms_base({CIDNum, CIDName}, OffnetReq, Q) ->
        | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
       ]).
 
--spec maybe_endpoints_format_from(kz_json:objects(), api(binary()), kapi_offnet_resource:req()) ->
+-spec maybe_endpoints_format_from(kz_json:objects(), maybe(binary()), kapi_offnet_resource:req()) ->
                                          kz_json:objects().
 maybe_endpoints_format_from([], _ , _) -> [];
 maybe_endpoints_format_from(Endpoints, 'undefined', _) -> Endpoints;
@@ -388,7 +388,7 @@ maybe_endpoints_format_from(Endpoints, CIDNum, OffnetReq) ->
      || Endpoint <- Endpoints
     ].
 
--spec maybe_endpoint_format_from(kz_json:object(), ne_binary(), api(binary())) ->
+-spec maybe_endpoint_format_from(kz_json:object(), ne_binary(), maybe(binary())) ->
                                         kz_json:object().
 maybe_endpoint_format_from(Endpoint, CIDNum, DefaultRealm) ->
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, kz_json:new()),
@@ -405,7 +405,7 @@ maybe_endpoint_format_from(Endpoint, CIDNum, DefaultRealm) ->
                              )
     end.
 
--spec endpoint_format_from(kz_json:object(), ne_binary(), api(binary())) -> kz_json:object().
+-spec endpoint_format_from(kz_json:object(), ne_binary(), maybe(binary())) -> kz_json:object().
 endpoint_format_from(Endpoint, CIDNum, DefaultRealm) ->
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, kz_json:new()),
     Realm = kz_json:get_value(<<"From-URI-Realm">>, CCVs, DefaultRealm),
@@ -437,7 +437,7 @@ endpoint_format_from(Endpoint, CIDNum, DefaultRealm) ->
     end.
 
 -spec bridge_caller_id(kz_json:objects(), kapi_offnet_resource:req()) ->
-                              {api(binary()), api(binary())}.
+                              {maybe(binary()), maybe(binary())}.
 bridge_caller_id(Endpoints, JObj) ->
     case contains_emergency_endpoints(Endpoints) of
         'true' -> bridge_emergency_caller_id(JObj);
@@ -445,7 +445,7 @@ bridge_caller_id(Endpoints, JObj) ->
     end.
 
 -spec bridge_emergency_caller_id(kapi_offnet_resource:req()) ->
-                                        {api(binary()), api(binary())}.
+                                        {maybe(binary()), maybe(binary())}.
 bridge_emergency_caller_id(OffnetReq) ->
     lager:debug("outbound call is using an emergency route, attempting to set CID accordingly"),
     {maybe_emergency_cid_number(OffnetReq)
@@ -459,8 +459,8 @@ bridge_caller_id(OffnetReq) ->
      ,stepswitch_bridge:bridge_outbound_cid_name(OffnetReq)
     }.
 
--spec bridge_from_uri(api(binary()), kapi_offnet_resource:req()) ->
-                             api(binary()).
+-spec bridge_from_uri(maybe(binary()), kapi_offnet_resource:req()) ->
+                             maybe(binary()).
 bridge_from_uri(CIDNum, OffnetReq) ->
     Realm = stepswitch_util:default_realm(OffnetReq),
     case (kapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>, 'false')
@@ -476,7 +476,7 @@ bridge_from_uri(CIDNum, OffnetReq) ->
     end.
 
 -spec maybe_emergency_cid_number(kapi_offnet_resource:req()) ->
-                                        api(binary()).
+                                        maybe(binary()).
 maybe_emergency_cid_number(OffnetReq) ->
     %% NOTE: if this request had a hunt-account-id then we
     %%   are assuming it was for a local resource (at the
@@ -498,7 +498,7 @@ emergency_cid_number(OffnetReq) ->
     EnabledNumbers = knm_numbers:emergency_enabled(AccountId),
     emergency_cid_number(Requested, Candidates, EnabledNumbers).
 
--spec emergency_cid_number(ne_binary(), api([api(binary())]), ne_binaries()) -> ne_binary().
+-spec emergency_cid_number(ne_binary(), maybe([maybe(binary())]), ne_binaries()) -> ne_binary().
 %% if there are no emergency enabled numbers then either use the global system default
 %% or the requested (if there isnt one)
 emergency_cid_number(Requested, _, []) ->

@@ -28,35 +28,35 @@
         kapps_config:get_integer(?SS_CONFIG_CAT, <<"default_progress_timeout">>, 8)).
 
 -record(gateway, {
-           server :: api(binary())
-           ,port :: api(integer())
-           ,realm :: api(binary())
-           ,username :: api(binary())
-           ,password :: api(binary())
-           ,route :: api(binary())
+           server :: maybe(binary())
+           ,port :: maybe(integer())
+           ,realm :: maybe(binary())
+           ,username :: maybe(binary())
+           ,password :: maybe(binary())
+           ,route :: maybe(binary())
            ,prefix = <<>> :: binary()
            ,suffix = <<>> :: binary()
            ,codecs = [] :: ne_binaries()
            ,bypass_media = 'false' :: boolean()
            ,caller_id_type = <<"external">> :: ne_binary()
            ,fax_option :: ne_binary() | boolean()
-           ,sip_headers :: api(kz_json:object())
-           ,sip_interface :: api(binary())
+           ,sip_headers :: maybe(kz_json:object())
+           ,sip_interface :: maybe(binary())
            ,progress_timeout = 8 :: 1..100
            ,invite_format = <<"route">> :: ne_binary()
            ,endpoint_type = <<"sip">> :: ne_binary()
            ,endpoint_options = kz_json:new() :: kz_json:object()
            ,format_from_uri = 'false' :: boolean()
            ,from_account_realm = 'false' :: boolean()
-           ,from_uri_realm :: api(binary())
+           ,from_uri_realm :: maybe(binary())
            ,is_emergency = 'false' :: boolean()
            ,force_port = 'false' :: boolean()
          }).
 
 -record(resrc, {
-           id :: api(binary())
-           ,rev :: api(binary())
-           ,name :: api(binary())
+           id :: maybe(binary())
+           ,rev :: maybe(binary())
+           ,name :: maybe(binary())
            ,weight = 1 :: 1..100
            ,grace_period = 3 :: non_neg_integer()
            ,flags = [] :: list()
@@ -69,12 +69,12 @@
            ,require_flags = 'false' :: boolean()
            ,global = 'true' :: boolean()
            ,format_from_uri = 'false' :: boolean()
-           ,from_uri_realm :: api(binary())
+           ,from_uri_realm :: maybe(binary())
            ,from_account_realm = 'false' :: boolean()
            ,fax_option :: ne_binary() | boolean()
            ,codecs = [] :: ne_binaries()
            ,bypass_media = 'false' :: boolean()
-           ,formatters :: api(kz_json:objects())
+           ,formatters :: maybe(kz_json:objects())
            ,proxies = [] :: kz_proplist()
          }).
 
@@ -92,14 +92,14 @@ get_props() ->
      || Resource <- sort_resources(get())
     ].
 
--spec get_props(ne_binary()) -> api(kz_proplist()).
+-spec get_props(ne_binary()) -> maybe(kz_proplist()).
 get_props(ResourceId) ->
     case get_resource(ResourceId) of
         'undefined' -> 'undefined';
         Resource -> resource_to_props(Resource)
     end.
 
--spec get_props(ne_binary(), api(binary())) -> api(kz_proplist()).
+-spec get_props(ne_binary(), maybe(binary())) -> maybe(kz_proplist()).
 get_props(_ResourceId, 'undefined') -> 'undefined';
 get_props(ResourceId, AccountId) ->
     case get_local_resource(ResourceId, AccountId) of
@@ -215,7 +215,7 @@ reverse_lookup(JObj) ->
             maybe_find_local(IP, Port, Realm, AccountId)
     end.
 
--spec find_port(kz_json:object()) -> api(integer()).
+-spec find_port(kz_json:object()) -> maybe(integer()).
 find_port(JObj) ->
     case kz_json:get_first_defined([<<"From-Network-Port">>
                                     ,<<"Orig-Port">>
@@ -225,7 +225,7 @@ find_port(JObj) ->
         Port -> kz_util:to_integer(Port)
     end.
 
--spec find_account_id(api(binary()), kz_json:object()) -> api(binary()).
+-spec find_account_id(maybe(binary()), kz_json:object()) -> maybe(binary()).
 find_account_id(Realm, JObj) ->
     case kz_json:get_first_defined([<<"Account-ID">>
                                     ,?CCV(<<"Account-ID">>)
@@ -235,7 +235,7 @@ find_account_id(Realm, JObj) ->
         AccountId -> AccountId
     end.
 
--spec find_account_id(api(binary())) -> api(binary()).
+-spec find_account_id(maybe(binary())) -> maybe(binary()).
 find_account_id('undefined') -> 'undefined';
 find_account_id(Realm) ->
     case kapps_util:get_account_by_realm(Realm) of
@@ -243,20 +243,20 @@ find_account_id(Realm) ->
         {'ok', AccountId} -> AccountId
     end.
 
--spec maybe_find_global(api(binary()), api(integer()), api(binary())) ->
+-spec maybe_find_global(maybe(binary()), maybe(integer()), maybe(binary())) ->
                                {'ok', kz_proplist()} |
                                {'error', 'not_found'}.
 maybe_find_global(IP, Port, Realm) ->
     search_resources(IP, Port, Realm, get()).
 
--spec maybe_find_local(api(binary()), api(integer()), api(binary()), api(binary())) ->
+-spec maybe_find_local(maybe(binary()), maybe(integer()), maybe(binary()), maybe(binary())) ->
                               {'ok', kz_proplist()} |
                               {'error', 'not_found'}.
 maybe_find_local(_, _, _, 'undefined') -> {'error', 'not_found'};
 maybe_find_local(IP, Port, Realm, AccountId) ->
     search_resources(IP, Port, Realm, get(AccountId)).
 
--spec search_resources(api(binary()), api(integer()), api(binary()), resources()) ->
+-spec search_resources(maybe(binary()), maybe(integer()), maybe(binary()), resources()) ->
                               {'ok', kz_proplist()} |
                               {'error', 'not_found'}.
 search_resources(_IP, _Port, _Realm, []) ->
@@ -287,7 +287,7 @@ search_resources(IP, Port, Realm, [#resrc{id=Id
             {'ok', Props}
     end.
 
--spec search_gateways(api(binary()), api(integer()), api(binary()), gateways()) ->
+-spec search_gateways(maybe(binary()), maybe(integer()), maybe(binary()), gateways()) ->
                              gateway() |
                              {'error', 'not_found'}.
 search_gateways(_, _, _, []) -> {'error', 'not_found'};
@@ -297,7 +297,7 @@ search_gateways(IP, Port, Realm, [Gateway | Gateways]) ->
         #gateway{}=Gateway -> Gateway
     end.
 
--spec search_gateway(api(binary()), api(integer()), api(binary()), gateway()) ->
+-spec search_gateway(maybe(binary()), maybe(integer()), maybe(binary()), gateway()) ->
                             gateway() |
                             {'error', 'not_found'}.
 search_gateway(IP, Port, _, #gateway{server=IP
@@ -621,7 +621,7 @@ maybe_get_t38(#gateway{fax_option=FaxOption}, OffnetJObj) ->
              )
     end.
 
--spec gateway_emergency_resource(gateway()) -> api(binary()).
+-spec gateway_emergency_resource(gateway()) -> maybe(binary()).
 gateway_emergency_resource(#gateway{is_emergency='true'}) ->
     lager:debug("gateway is part of an emergency resource"),
     <<"true">>;
@@ -636,7 +636,7 @@ gateway_emergency_resource(_) -> 'undefined'.
 -spec get() -> resources().
 get() -> get('undefined').
 
--spec get(api(binary())) -> resources().
+-spec get(maybe(binary())) -> resources().
 get('undefined') ->
     case kz_cache:fetch_local(?CACHE_NAME, 'global_resources') of
         {'ok', Resources} -> Resources;
@@ -648,7 +648,7 @@ get(AccountId) ->
         {'error', 'not_found'} -> fetch_local_resources(AccountId)
     end.
 
--spec get_resource(ne_binary()) -> api(resource()).
+-spec get_resource(ne_binary()) -> maybe(resource()).
 get_resource(ResourceId) ->
     case get('undefined') of
         [] -> 'undefined';
@@ -662,7 +662,7 @@ get_resource(ResourceId, [#resrc{}|Resources]) ->
 get_resource(_ResourceId, []) ->
     'undefined'.
 
--spec get_local_resource(ne_binary(), ne_binary()) -> api(resource()).
+-spec get_local_resource(ne_binary(), ne_binary()) -> maybe(resource()).
 get_local_resource(ResourceId, AccountId) ->
     case get(AccountId) of
         [] -> 'undefined';
@@ -725,7 +725,7 @@ fetch_local_resources(AccountId, JObjs) ->
        || JObj <- JObjs
       ]).
 
--spec fetch_account_dedicated_proxies(api(binary())) -> kz_proplist().
+-spec fetch_account_dedicated_proxies(maybe(binary())) -> kz_proplist().
 fetch_account_dedicated_proxies('undefined') -> [];
 fetch_account_dedicated_proxies(AccountId) ->
     case kz_ips:assigned(AccountId) of
@@ -733,7 +733,7 @@ fetch_account_dedicated_proxies(AccountId) ->
         _ -> []
     end.
 
--spec build_account_dedicated_proxy(kz_json:object()) -> {api(binary()), api(binary())}.
+-spec build_account_dedicated_proxy(kz_json:object()) -> {maybe(binary()), maybe(binary())}.
 build_account_dedicated_proxy(Proxy) ->
     Zone = kz_json:get_value(<<"zone">>, Proxy),
     ProxyIP = kz_json:get_value(<<"ip">>, Proxy),
@@ -864,7 +864,7 @@ resource_bypass_media(JObj) ->
     Default = kapps_config:get_is_true(?SS_CONFIG_CAT, <<"default_bypass_media">>, 'false'),
     kz_json:is_true([<<"media">>, <<"bypass_media">>], JObj, Default).
 
--spec resource_formatters(kz_json:object()) -> api(kz_json:objects()).
+-spec resource_formatters(kz_json:object()) -> maybe(kz_json:objects()).
 resource_formatters(JObj) ->
     Default = kapps_config:get(?SS_CONFIG_CAT, <<"default_formatters">>),
     kz_json:get_value(<<"formatters">>, JObj, Default).
@@ -987,7 +987,7 @@ gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
              ,endpoint_options = endpoint_options(JObj, EndpointType)
             }.
 
--spec endpoint_options(kz_json:object(), api(binary())) -> kz_json:object().
+-spec endpoint_options(kz_json:object(), maybe(binary())) -> kz_json:object().
 endpoint_options(JObj, <<"freetdm">>) ->
     kz_json:from_list(
       props:filter_undefined(

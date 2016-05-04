@@ -26,7 +26,7 @@
                            }).
 
 -record(kz_service_updates, {bt_subscriptions = [] :: [update()]
-                             ,account_id :: api(binary())
+                             ,account_id :: maybe(binary())
                              ,bt_customer :: braintree_customer:customer()
                             }).
 
@@ -322,7 +322,7 @@ set_metadata(BTTransaction, Transaction) ->
     kz_transaction:set_metadata(BTTransaction, Transaction).
 
 -spec set_reason(kz_json:object(), kz_transaction:transaction()) -> kz_transaction:transaction().
--spec set_reason(kz_json:object(), kz_transaction:transaction(), api(pos_integer())) -> kz_transaction:transaction().
+-spec set_reason(kz_json:object(), kz_transaction:transaction(), maybe(pos_integer())) -> kz_transaction:transaction().
 set_reason(BTTransaction, Transaction) ->
     Code = kz_json:get_integer_value(<<"purchase_order">>, BTTransaction),
     set_reason(BTTransaction, Transaction, Code).
@@ -416,7 +416,7 @@ calculate([Addon|Addons], Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec timestamp_to_braintree(api(gregorian_seconds())) -> ne_binary().
+-spec timestamp_to_braintree(maybe(gregorian_seconds())) -> ne_binary().
 timestamp_to_braintree('undefined') ->
     lager:debug("timestamp undefined using current_tstamp"),
     timestamp_to_braintree(kz_util:current_tstamp());
@@ -433,7 +433,7 @@ timestamp_to_braintree(Timestamp) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec utc_to_gregorian_seconds(ne_binary()) -> api(gregorian_seconds()).
+-spec utc_to_gregorian_seconds(ne_binary()) -> maybe(gregorian_seconds()).
 utc_to_gregorian_seconds(<<Y:4/binary, "-", M:2/binary, "-", D:2/binary, "T"
                            ,H:2/binary, ":", Mi:2/binary, ":", S:2/binary, _/binary
                          >>
@@ -605,7 +605,7 @@ update_subscriptions(PlanId, Subscription, #kz_service_updates{bt_subscriptions=
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch_bt_customer(ne_binary(), boolean()) ->
-                               api(braintree_customer:customer()).
+                               maybe(braintree_customer:customer()).
 fetch_bt_customer(AccountId, NewItems) ->
     lager:debug("requesting braintree customer ~s", [AccountId]),
     try braintree_customer:find(AccountId) of

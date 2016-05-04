@@ -1169,7 +1169,7 @@ call_id_status(CallId, Verbose) ->
             lager:info("failed to get status of '~s': '~p'", [CallId, _E])
     end.
 
--spec show_status(ne_binary(), boolean(), api(terms())) -> 'ok'.
+-spec show_status(ne_binary(), boolean(), maybe(terms())) -> 'ok'.
 show_status(CallId, 'false', Resp) ->
     lager:info("channel '~s' has status '~s'", [CallId, kapi_call:get_status(Resp)]);
 show_status(CallId, 'true', Resp) ->

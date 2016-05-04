@@ -64,7 +64,7 @@ type() -> ?PVT_TYPE.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec id(doc()) -> api(binary()).
+-spec id(doc()) -> maybe(binary()).
 id(JObj) ->
     kz_doc:id(JObj).
 
@@ -73,7 +73,7 @@ id(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(api(binary())) -> {'ok', doc()} |
+-spec fetch(maybe(binary())) -> {'ok', doc()} |
                             {'error', any()}.
 fetch('undefined') ->
     {'error', 'invalid_db_name'};
@@ -86,7 +86,7 @@ fetch(<<_/binary>> = AlertId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec title() -> ne_binary().
--spec title(doc()) -> api(binary()).
+-spec title(doc()) -> maybe(binary()).
 -spec title(doc(), Default) -> ne_binary() | Default.
 title() ->
     ?TITLE.
@@ -106,7 +106,7 @@ set_title(JObj, Title) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec category() -> ne_binary().
--spec category(doc()) -> api(binary()).
+-spec category(doc()) -> maybe(binary()).
 -spec category(doc(), Default) -> ne_binary() | Default.
 category() ->
     ?CATEGORY.
@@ -126,7 +126,7 @@ set_category(JObj, Category) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec message() -> ne_binary().
--spec message(doc()) -> api(binary()).
+-spec message(doc()) -> maybe(binary()).
 -spec message(doc(), Default) -> ne_binary() | Default.
 message() ->
     ?MESSAGE.
@@ -166,7 +166,7 @@ set_metadata(JObj, Metadata) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec level() -> ne_binary().
--spec level(doc()) -> api(binary()).
+-spec level(doc()) -> maybe(binary()).
 -spec level(doc(), Default) -> ne_binary() | Default.
 level() ->
     ?LEVEL.

@@ -122,7 +122,7 @@ authenticate(_, _) -> 'false'.
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate_request(cb_context:context(), http_method(), api(kz_json:object())) -> cb_context:context().
+-spec validate_request(cb_context:context(), http_method(), maybe(kz_json:object())) -> cb_context:context().
 validate(Context) ->
     validate_request(Context, cb_context:req_verb(Context), cb_context:auth_doc(Context)).
 
@@ -228,7 +228,7 @@ create_local_token(Context) ->
 %% the shared token and get the account/user for the token
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate_shared_token(api(binary()), nonempty_string()) ->
+-spec authenticate_shared_token(maybe(binary()), nonempty_string()) ->
                                        {'ok', string() | binary()} |
                                        {'error', atom()} |
                                        {'forbidden', atom()}.
@@ -269,7 +269,7 @@ import_missing_data(RemoteData) ->
 %% an account and user, ensure the account exists (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_account(api(binary()), api(kz_json:object())) -> boolean().
+-spec import_missing_account(maybe(binary()), maybe(kz_json:object())) -> boolean().
 import_missing_account('undefined', _Account) ->
     lager:debug("shared auth reply did not define an account id"),
     'false';
@@ -331,7 +331,7 @@ import_missing_account(AccountId, Account) ->
 %% an account and user, ensure the user exists locally (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_user(api(binary()), api(binary()), api(kz_json:object())) -> boolean().
+-spec import_missing_user(maybe(binary()), maybe(binary()), maybe(kz_json:object())) -> boolean().
 import_missing_user(_, 'undefined', _) ->
     lager:debug("shared auth reply did not define an user id"),
     'false';

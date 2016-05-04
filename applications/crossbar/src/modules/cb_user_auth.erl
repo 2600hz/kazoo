@@ -491,7 +491,7 @@ create_resetid_doc(ResetId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_account(api(binary()), api(binary()), api(binary()), cb_context:context()) ->
+-spec find_account(maybe(binary()), maybe(binary()), maybe(binary()), cb_context:context()) ->
                           {'ok', ne_binary() | ne_binaries()} |
                           {'error', cb_context:context()}.
 find_account('undefined', 'undefined', 'undefined', Context) ->

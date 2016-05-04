@@ -664,7 +664,7 @@ read(Context, Id) ->
         _ -> Context1
     end.
 
--spec authority(ne_binary()) -> api(binary()).
+-spec authority(ne_binary()) -> maybe(binary()).
 authority(AccountId) ->
   case kz_whitelabel:fetch(AccountId) of
       {'error', _R} -> 'undefined';
@@ -960,8 +960,8 @@ summary_attachments(Context, Id) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation(cb_context:context(), api(binary())) -> cb_context:context().
--spec on_successful_validation(cb_context:context(), api(binary()), boolean()) -> cb_context:context().
+-spec on_successful_validation(cb_context:context(), maybe(binary())) -> cb_context:context().
+-spec on_successful_validation(cb_context:context(), maybe(binary()), boolean()) -> cb_context:context().
 on_successful_validation(Context, 'undefined') ->
     on_successful_validation(Context, 'undefined', 'true');
 on_successful_validation(Context, Id) ->
@@ -1027,7 +1027,7 @@ can_update_port_request(Context, _) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec successful_validation(cb_context:context(), api(binary())) -> cb_context:context().
+-spec successful_validation(cb_context:context(), maybe(binary())) -> cb_context:context().
 successful_validation(Context, 'undefined') ->
     Normalized = knm_port_request:normalize_numbers(cb_context:doc(Context)),
     Unconf = [{<<"pvt_type">>, <<"port_request">>}
@@ -1043,9 +1043,9 @@ successful_validation(Context, _Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec check_number_portability(api(binary()), ne_binary(), cb_context:context()) ->
+-spec check_number_portability(maybe(binary()), ne_binary(), cb_context:context()) ->
                                       cb_context:context().
--spec check_number_portability(api(binary()), ne_binary(), cb_context:context(), ne_binary(), kz_json:object()) ->
+-spec check_number_portability(maybe(binary()), ne_binary(), cb_context:context(), ne_binary(), kz_json:object()) ->
                                       cb_context:context().
 check_number_portability(PortId, Number, Context) ->
     E164 = knm_converters:normalize(Number),
@@ -1210,7 +1210,7 @@ generate_loa(Context, _RespStatus) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec find_template(ne_binary()) -> ne_binary().
--spec find_template(ne_binary(), api(binary())) -> ne_binary().
+-spec find_template(ne_binary(), maybe(binary())) -> ne_binary().
 find_template(ResellerId) ->
     {'ok', Template} = kz_pdf:find_template(ResellerId, <<"loa">>),
     Template.
@@ -1254,7 +1254,7 @@ maybe_send_port_comment_notification(Context, Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec has_new_comment(api(kz_json:objects()), api(kz_json:objects())) -> boolean().
+-spec has_new_comment(maybe(kz_json:objects()), maybe(kz_json:objects())) -> boolean().
 has_new_comment('undefined', [_|_]) -> 'true';
 has_new_comment([], [_|_]) -> 'true';
 has_new_comment(_, 'undefined') -> 'false';
@@ -1570,7 +1570,7 @@ generate_loa_from_port(Context, PortRequest) ->
                                ,kz_json:get_value(<<"carrier">>, PortRequest)
                               ).
 
--spec generate_loa_from_template(cb_context:context(), kz_proplist(), ne_binary(), api(binary())) ->
+-spec generate_loa_from_template(cb_context:context(), kz_proplist(), ne_binary(), maybe(binary())) ->
                                         cb_context:context().
 generate_loa_from_template(Context, TemplateData, ResellerId, Carrier) ->
     Template = find_template(ResellerId, Carrier),
@@ -1583,7 +1583,7 @@ generate_loa_from_template(Context, TemplateData, ResellerId, Carrier) ->
              )
     end.
 
--spec create_qr_code(api(binary()), api(binary())) -> api(kz_proplist()).
+-spec create_qr_code(maybe(binary()), maybe(binary())) -> maybe(kz_proplist()).
 create_qr_code('undefined', _) -> 'undefined';
 create_qr_code(_, 'undefined') -> 'undefined';
 create_qr_code(AccountId, PortRequestId) ->

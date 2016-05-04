@@ -119,19 +119,19 @@
 
 -export([default_helper_function/2]).
 
--record(kapps_call, {call_id :: api(binary())                       %% The UUID of the call
+-record(kapps_call, {call_id :: maybe(binary())                       %% The UUID of the call
                       ,call_id_helper = fun ?MODULE:default_helper_function/2 :: kapps_helper_function()         %% A function used when requesting the call id, to ensure it is up-to-date
-                      ,control_q :: api(binary())                   %% The control queue provided on route win
+                      ,control_q :: maybe(binary())                   %% The control queue provided on route win
                       ,control_q_helper = fun ?MODULE:default_helper_function/2 :: kapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
-                      ,controller_q :: api(binary())                %%
+                      ,controller_q :: maybe(binary())                %%
                       ,caller_id_name = kz_util:anonymous_caller_id_name() :: ne_binary()      %% The caller name
                       ,caller_id_number = kz_util:anonymous_caller_id_number() :: ne_binary() %% The caller number
-                      ,callee_id_name :: api(binary())                     %% The callee name
-                      ,callee_id_number :: api(binary())                   %% The callee number
+                      ,callee_id_name :: maybe(binary())                     %% The callee name
+                      ,callee_id_number :: maybe(binary())                   %% The callee number
                       ,switch_nodename = <<>> :: binary()                 %% The switch node name (as known in ecallmgr)
-                      ,switch_hostname :: api(binary())                    %% The switch hostname (as reported by the switch)
-                      ,switch_url :: api(binary())                         %% The switch url
-                      ,switch_uri :: api(binary())                         %% The switch uri
+                      ,switch_hostname :: maybe(binary())                    %% The switch hostname (as reported by the switch)
+                      ,switch_url :: maybe(binary())                         %% The switch url
+                      ,switch_uri :: maybe(binary())                         %% The switch uri
                       ,request = <<"nouser@norealm">> :: ne_binary()      %% The request of sip_request_user + @ + sip_request_host
                       ,request_user = <<"nouser">> :: ne_binary()         %% SIP request user
                       ,request_realm = <<"norealm">> :: ne_binary()       %% SIP request host
@@ -141,32 +141,32 @@
                       ,to = <<"nouser@norealm">> :: ne_binary()           %% Result of sip_to_user + @ + sip_to_host
                       ,to_user = <<"nouser">> :: ne_binary()              %% SIP to user
                       ,to_realm = <<"norealm">> :: ne_binary()            %% SIP to host
-                      ,inception :: api(binary())                   %% Origin of the call <<"on-net">> | <<"off-net">>
-                      ,account_db :: api(binary())                  %% The database name of the account that authorized this call
-                      ,account_id :: api(binary())                  %% The account id that authorized this call
-                      ,authorizing_id :: api(binary())              %% The ID of the record that authorized this call
-                      ,authorizing_type :: api(binary())            %% The pvt_type of the record that authorized this call
-                      ,owner_id :: api(binary())                    %% The ID of the owner of this calling device, if any
-                      ,fetch_id :: api(binary())                    %% The Fetch ID of the Call
-                      ,bridge_id :: api(binary())                    %% The Bridge ID of the Call
-                      ,language :: api(binary())                     %% Language of the call to use
+                      ,inception :: maybe(binary())                   %% Origin of the call <<"on-net">> | <<"off-net">>
+                      ,account_db :: maybe(binary())                  %% The database name of the account that authorized this call
+                      ,account_id :: maybe(binary())                  %% The account id that authorized this call
+                      ,authorizing_id :: maybe(binary())              %% The ID of the record that authorized this call
+                      ,authorizing_type :: maybe(binary())            %% The pvt_type of the record that authorized this call
+                      ,owner_id :: maybe(binary())                    %% The ID of the owner of this calling device, if any
+                      ,fetch_id :: maybe(binary())                    %% The Fetch ID of the Call
+                      ,bridge_id :: maybe(binary())                    %% The Bridge ID of the Call
+                      ,language :: maybe(binary())                     %% Language of the call to use
                       ,app_name = <<"kapps_call">> :: ne_binary()        %% The application name used during kapps_call_command
                       ,app_version = <<"1.0.0">> :: ne_binary()           %% The application version used during kapps_call_command
-                      ,custom_publish_fun :: api(kapps_custom_publish())     %% A custom command used to publish kapps_call_command
+                      ,custom_publish_fun :: maybe(kapps_custom_publish())     %% A custom command used to publish kapps_call_command
                       ,ccvs = kz_json:new() :: kz_json:object()      %% Any custom channel vars that where provided with the route request
                       ,sip_headers = kz_json:new() :: kz_json:object()                   %% Custom SIP Headers
                       ,kvs = orddict:new() :: orddict:orddict()           %% allows callflows to set values that propogate to children
-                      ,other_leg_call_id :: api(binary())
-                      ,resource_type :: api(binary())                      %% from route_req
-                      ,to_tag :: api(binary())
-                      ,from_tag :: api(binary())
+                      ,other_leg_call_id :: maybe(binary())
+                      ,resource_type :: maybe(binary())                      %% from route_req
+                      ,to_tag :: maybe(binary())
+                      ,from_tag :: maybe(binary())
                       ,direction = <<"inbound">> :: ne_binary()
                      }).
 
 -type call() :: #kapps_call{}.
 -export_type([call/0]).
 
--type kapps_helper_function() :: fun((api(binary()), call()) -> api(binary())).
+-type kapps_helper_function() :: fun((maybe(binary()), call()) -> maybe(binary())).
 
 -define(SPECIAL_VARS, [{<<"Caller-ID-Name">>, #kapps_call.caller_id_name}
                        ,{<<"Caller-ID-Number">>, #kapps_call.caller_id_number}
@@ -192,7 +192,7 @@ clear_helpers(#kapps_call{}=Call) ->
 -spec new() -> call().
 new() -> #kapps_call{}.
 
--spec put_callid(call()) -> api(binary()).
+-spec put_callid(call()) -> maybe(binary()).
 put_callid(#kapps_call{call_id='undefined'}) -> 'undefined';
 put_callid(#kapps_call{call_id=CallId}) ->
     kz_util:put_callid(CallId).
@@ -310,8 +310,8 @@ from_route_win(RouteWin, #kapps_call{call_id=OldCallId
                      ,language = kz_media_util:prompt_language(AccountId, OldLanguage)
                     }.
 
--spec find_account_info(api(binary()), api(binary()), api(binary())) ->
-                               {api(binary()), api(binary())}.
+-spec find_account_info(maybe(binary()), maybe(binary()), maybe(binary())) ->
+                               {maybe(binary()), maybe(binary())}.
 find_account_info(OldId, OldDb, 'undefined') ->
     {OldId, OldDb};
 find_account_info('undefined', _OldDb, AccountId) ->
@@ -321,7 +321,7 @@ find_account_info('undefined', _OldDb, AccountId) ->
 find_account_info(OldId, OldDb, _AccountId) ->
     {OldId, OldDb}.
 
--spec merge(kz_json:object(), api(kz_json:object())) -> kz_json:object().
+-spec merge(kz_json:object(), maybe(kz_json:object())) -> kz_json:object().
 merge(OldJObj, 'undefined') -> OldJObj;
 merge(OldJObj, JObj) ->
     kz_json:merge_recursive(OldJObj, JObj).
@@ -506,16 +506,16 @@ set_application_version(AppVersion, #kapps_call{}=Call) when is_binary(AppVersio
 application_version(#kapps_call{app_version=AppVersion}) ->
     AppVersion.
 
--spec set_call_id(api(binary()), call()) -> call().
+-spec set_call_id(maybe(binary()), call()) -> call().
 set_call_id(CallId, #kapps_call{}=Call) ->
     Call#kapps_call{call_id=CallId}.
 
--spec set_other_leg_call_id(api(binary()), call()) -> call().
+-spec set_other_leg_call_id(maybe(binary()), call()) -> call().
 set_other_leg_call_id(CallId, #kapps_call{}=Call) ->
     Call#kapps_call{other_leg_call_id=CallId}.
 
--spec call_id(call()) -> api(binary()).
--spec call_id_direct(call()) -> api(binary()).
+-spec call_id(call()) -> maybe(binary()).
+-spec call_id_direct(call()) -> maybe(binary()).
 call_id(#kapps_call{call_id=CallId, call_id_helper=Fun}=Call) when is_function(Fun, 2) ->
     Fun(CallId, Call);
 call_id(#kapps_call{call_id=CallId}=Call) ->
@@ -524,7 +524,7 @@ call_id(#kapps_call{call_id=CallId}=Call) ->
 call_id_direct(#kapps_call{call_id=CallId}) ->
     CallId.
 
--spec other_leg_call_id(call()) -> api(binary()).
+-spec other_leg_call_id(call()) -> maybe(binary()).
 other_leg_call_id(#kapps_call{other_leg_call_id=CallId}=_Call) ->
     CallId.
 
@@ -540,8 +540,8 @@ clear_call_id_helper(Call) ->
 set_control_queue(ControlQ, #kapps_call{}=Call) when is_binary(ControlQ) ->
     Call#kapps_call{control_q=ControlQ}.
 
--spec control_queue(call()) -> api(binary()).
--spec control_queue_direct(call()) -> api(binary()).
+-spec control_queue(call()) -> maybe(binary()).
+-spec control_queue_direct(call()) -> maybe(binary()).
 control_queue(#kapps_call{control_q=ControlQ, control_q_helper=Fun}=Call) when is_function(Fun, 2) ->
     Fun(ControlQ, Call);
 control_queue(#kapps_call{control_q=ControlQ}=Call) ->
@@ -566,12 +566,12 @@ set_controller_queue(ControllerQ, #kapps_call{}=Call) when is_binary(ControllerQ
 controller_queue(#kapps_call{controller_q=ControllerQ}) ->
     ControllerQ.
 
--spec maybe_format_caller_id(call(), api(kz_json:object())) -> call().
+-spec maybe_format_caller_id(call(), maybe(kz_json:object())) -> call().
 maybe_format_caller_id(Call, 'undefined') -> Call;
 maybe_format_caller_id(Call, Format) ->
     set_caller_id_number(maybe_format_caller_id_str(caller_id_number(Call), Format), Call).
 
--spec maybe_format_caller_id_str(ne_binary(), api(kz_json:object())) -> ne_binary().
+-spec maybe_format_caller_id_str(ne_binary(), maybe(kz_json:object())) -> ne_binary().
 maybe_format_caller_id_str(Cid, 'undefined') -> Cid;
 maybe_format_caller_id_str(Cid, Format) ->
     Class = knm_converters:classify(Cid),
@@ -581,13 +581,13 @@ maybe_format_caller_id_str(Cid, Format) ->
         UseFormat   -> maybe_reformat_caller_id(Cid, UseFormat)
     end.
 
--spec maybe_reformat_caller_id(ne_binary(), api(kz_json:object())) -> ne_binary().
+-spec maybe_reformat_caller_id(ne_binary(), maybe(kz_json:object())) -> ne_binary().
 maybe_reformat_caller_id(CallerId, 'undefined') -> CallerId;
 maybe_reformat_caller_id(CallerId, Format) ->
     Regex = kz_json:get_ne_value(<<"regex">>, Format),
     maybe_regex_caller_id(CallerId, Regex, Format).
 
--spec maybe_regex_caller_id(ne_binary(), api(binary()), kz_json:object()) -> ne_binary().
+-spec maybe_regex_caller_id(ne_binary(), maybe(binary()), kz_json:object()) -> ne_binary().
 maybe_regex_caller_id(CallerId, 'undefined', _) -> CallerId;
 maybe_regex_caller_id(CallerId, Regex, Format) ->
     Normalized = knm_converters:normalize(CallerId),
@@ -605,14 +605,14 @@ maybe_regex_caller_id(CallerId, Regex, Format) ->
         _NotMatching -> CallerId
     end.
 
--spec maybe_prepend_caller_id(ne_binary(), api(binary())) -> ne_binary().
+-spec maybe_prepend_caller_id(ne_binary(), maybe(binary())) -> ne_binary().
 maybe_prepend_caller_id(CallerId, 'undefined') -> CallerId;
 maybe_prepend_caller_id(CallerId, Prefix) ->
     BinPrefix   = kz_util:to_binary(Prefix),
     lager:info("prepending cid with ~s~n", [BinPrefix]),
     <<BinPrefix/binary, CallerId/binary>>.
 
--spec maybe_append_caller_id(ne_binary(), api(binary())) -> ne_binary().
+-spec maybe_append_caller_id(ne_binary(), maybe(binary())) -> ne_binary().
 maybe_append_caller_id(CallerId, 'undefined') -> CallerId;
 maybe_append_caller_id(CallerId, Suffix) ->
     BinSuffix   = kz_util:to_binary(Suffix),
@@ -631,7 +631,7 @@ caller_id_name(#kapps_call{caller_id_name=CIDName}) ->
         'false' -> CIDName
     end.
 
--spec set_caller_id_number(api(binary()), call()) -> call().
+-spec set_caller_id_number(maybe(binary()), call()) -> call().
 set_caller_id_number(CIDNumber, #kapps_call{}=Call) ->
     kapps_call_command:set(kz_json:from_list([{<<"Caller-ID-Number">>, CIDNumber}]), 'undefined', Call),
     Call#kapps_call{caller_id_number=CIDNumber}.
@@ -697,7 +697,7 @@ from(#kapps_call{from=From}) ->
 from_user(#kapps_call{from_user=FromUser}) ->
     FromUser.
 
--spec from_realm(call()) -> api(binary()).
+-spec from_realm(call()) -> maybe(binary()).
 from_realm(#kapps_call{from_realm=FromRealm}) ->
     FromRealm.
 
@@ -717,7 +717,7 @@ to(#kapps_call{to=To}) ->
 to_user(#kapps_call{to_user=ToUser}) ->
     ToUser.
 
--spec to_realm(call()) -> api(binary()).
+-spec to_realm(call()) -> maybe(binary()).
 to_realm(#kapps_call{to_realm=ToRealm}) ->
     ToRealm.
 
@@ -725,7 +725,7 @@ to_realm(#kapps_call{to_realm=ToRealm}) ->
 set_switch_hostname(<<_/binary>> = Srv, #kapps_call{}=Call) ->
     Call#kapps_call{switch_hostname=Srv}.
 
--spec switch_hostname(call()) -> api(binary()).
+-spec switch_hostname(call()) -> maybe(binary()).
 switch_hostname(#kapps_call{switch_hostname=Srv}) ->
     Srv.
 
@@ -753,23 +753,23 @@ set_switch_uri(Srv, #kapps_call{}=Call) ->
 switch_uri(#kapps_call{switch_uri=Srv}) ->
     Srv.
 
--spec set_inception(api(binary()), call()) -> call().
+-spec set_inception(maybe(binary()), call()) -> call().
 set_inception('undefined', #kapps_call{}=Call) ->
     Call#kapps_call{inception='undefined'};
 set_inception(Inception, #kapps_call{}=Call) ->
     set_custom_channel_var(<<"Inception">>, Inception, Call#kapps_call{inception=Inception}).
 
--spec inception(call()) -> api(binary()).
+-spec inception(call()) -> maybe(binary()).
 inception(#kapps_call{inception=Inception}) ->
     Inception.
 
--spec set_resource_type(api(binary()), call()) -> call().
+-spec set_resource_type(maybe(binary()), call()) -> call().
 set_resource_type('undefined', #kapps_call{}=Call) ->
     Call#kapps_call{resource_type='undefined'};
 set_resource_type(ResourceType, #kapps_call{}=Call) ->
     set_custom_channel_var(<<"Resource-Type">>, ResourceType, Call#kapps_call{resource_type=ResourceType}).
 
--spec resource_type(call()) -> api(binary()).
+-spec resource_type(call()) -> maybe(binary()).
 resource_type(#kapps_call{resource_type=ResourceType}) ->
     ResourceType.
 
@@ -780,7 +780,7 @@ set_account_db(<<_/binary>> = AccountDb, #kapps_call{}=Call) ->
                                                                          ,account_id=AccountId
                                                                         }).
 
--spec account_db(call()) -> api(binary()).
+-spec account_db(call()) -> maybe(binary()).
 account_db(#kapps_call{account_db=AccountDb}) ->
     AccountDb.
 
@@ -791,7 +791,7 @@ set_account_id(<<_/binary>> = AccountId, #kapps_call{}=Call) ->
                                                                          ,account_id=AccountId
                                                                         }).
 
--spec account_id(call()) -> api(binary()).
+-spec account_id(call()) -> maybe(binary()).
 account_id(#kapps_call{account_id=AccountId}) ->
     AccountId.
 
@@ -804,7 +804,7 @@ account_realm(#kapps_call{account_id=AccountId}) ->
 set_authorizing_id(AuthorizingId, #kapps_call{}=Call) when is_binary(AuthorizingId) ->
     set_custom_channel_var(<<"Authorizing-ID">>, AuthorizingId, Call#kapps_call{authorizing_id=AuthorizingId}).
 
--spec authorizing_id(call()) -> api(binary()).
+-spec authorizing_id(call()) -> maybe(binary()).
 authorizing_id(#kapps_call{authorizing_id=AuthorizingId}) ->
     AuthorizingId.
 
@@ -812,7 +812,7 @@ authorizing_id(#kapps_call{authorizing_id=AuthorizingId}) ->
 set_authorizing_type(AuthorizingType, #kapps_call{}=Call) when is_binary(AuthorizingType) ->
     set_custom_channel_var(<<"Authorizing-Type">>, AuthorizingType, Call#kapps_call{authorizing_type=AuthorizingType}).
 
--spec authorizing_type(call()) -> api(binary()).
+-spec authorizing_type(call()) -> maybe(binary()).
 authorizing_type(#kapps_call{authorizing_type=AuthorizingType}) ->
     AuthorizingType.
 
@@ -832,28 +832,28 @@ set_authorization(AuthorizingType, AuthorizingId, #kapps_call{}=Call)
 set_owner_id(OwnerId, #kapps_call{}=Call) when is_binary(OwnerId) ->
     set_custom_channel_var(<<"Owner-ID">>, OwnerId, Call#kapps_call{owner_id=OwnerId}).
 
--spec owner_id(call()) -> api(binary()).
+-spec owner_id(call()) -> maybe(binary()).
 owner_id(#kapps_call{owner_id=OwnerId}) -> OwnerId.
 
 -spec set_fetch_id(ne_binary(), call()) -> call().
 set_fetch_id(FetchId, #kapps_call{}=Call) when is_binary(FetchId) ->
     set_custom_channel_var(<<"Fetch-Id">>, FetchId, Call#kapps_call{fetch_id=FetchId}).
 
--spec fetch_id(call()) -> api(binary()).
+-spec fetch_id(call()) -> maybe(binary()).
 fetch_id(#kapps_call{fetch_id=FetchId}) -> FetchId.
 
 -spec set_bridge_id(ne_binary(), call()) -> call().
 set_bridge_id(BridgeId, #kapps_call{}=Call) when is_binary(BridgeId) ->
     set_custom_channel_var(<<"Bridge-Id">>, BridgeId, Call#kapps_call{bridge_id=BridgeId}).
 
--spec bridge_id(call()) -> api(binary()).
+-spec bridge_id(call()) -> maybe(binary()).
 bridge_id(#kapps_call{bridge_id=BridgeId}) -> BridgeId.
 
 -spec set_language(ne_binary(), call()) -> call().
 set_language(Language, #kapps_call{}=Call) when is_binary(Language) ->
     Call#kapps_call{language=Language}.
 
--spec language(call()) -> api(binary()).
+-spec language(call()) -> maybe(binary()).
 language(#kapps_call{language='undefined', account_id=AccountId}) ->
     kz_media_util:prompt_language(AccountId);
 language(#kapps_call{language=Language}) -> Language.
@@ -862,7 +862,7 @@ language(#kapps_call{language=Language}) -> Language.
 set_to_tag(ToTag, #kapps_call{}=Call) when is_binary(ToTag) ->
     Call#kapps_call{to_tag=ToTag}.
 
--spec to_tag(call()) -> api(binary()).
+-spec to_tag(call()) -> maybe(binary()).
 to_tag(#kapps_call{to_tag=ToTag}) ->
     ToTag.
 
@@ -870,7 +870,7 @@ to_tag(#kapps_call{to_tag=ToTag}) ->
 set_from_tag(FromTag, #kapps_call{}=Call) when is_binary(FromTag) ->
     Call#kapps_call{from_tag=FromTag}.
 
--spec from_tag(call()) -> api(binary()).
+-spec from_tag(call()) -> maybe(binary()).
 from_tag(#kapps_call{from_tag=FromTag}) ->
     FromTag.
 
@@ -963,7 +963,7 @@ set_custom_publish_function(Fun, #kapps_call{}=Call) when is_function(Fun, 2) ->
 clear_custom_publish_function(#kapps_call{}=Call) ->
     Call#kapps_call{custom_publish_fun='undefined'}.
 
--spec custom_publish_function(call()) -> api(kapps_custom_publish()).
+-spec custom_publish_function(call()) -> maybe(kapps_custom_publish()).
 custom_publish_function(#kapps_call{custom_publish_fun=Fun}) -> Fun.
 
 -spec kvs_append(any(), any(), call()) -> call().
@@ -1047,8 +1047,8 @@ kvs_update(Key, Fun, Initial, #kapps_call{kvs=Dict}=Call) ->
 kvs_update_counter(Key, Number, #kapps_call{kvs=Dict}=Call) ->
     Call#kapps_call{kvs=orddict:update_counter(kz_util:to_binary(Key), Number, Dict)}.
 
--spec set_dtmf_collection(api(binary()), call()) -> call().
--spec set_dtmf_collection(api(binary()), ne_binary(), call()) -> call().
+-spec set_dtmf_collection(maybe(binary()), call()) -> call().
+-spec set_dtmf_collection(maybe(binary()), ne_binary(), call()) -> call().
 set_dtmf_collection(DTMF, Call) ->
     set_dtmf_collection(DTMF, <<"default">>, Call).
 set_dtmf_collection('undefined', Collection, Call) ->
@@ -1064,8 +1064,8 @@ set_dtmf_collection(DTMF, Collection, Call) ->
               ,Call
              ).
 
--spec get_dtmf_collection(call()) -> api(binary()).
--spec get_dtmf_collection(ne_binary(), call()) -> api(binary()).
+-spec get_dtmf_collection(call()) -> maybe(binary()).
+-spec get_dtmf_collection(ne_binary(), call()) -> maybe(binary()).
 get_dtmf_collection(Call) ->
     get_dtmf_collection(<<"default">>, Call).
 get_dtmf_collection(Collection, Call) ->
@@ -1086,8 +1086,8 @@ flush() ->
     kz_cache:flush_local(?KAPPS_CALL_CACHE).
 
 -spec cache(call()) -> 'ok'.
--spec cache(call(), api(binary())) -> 'ok'.
--spec cache(call(), api(binary()), pos_integer()) -> 'ok'.
+-spec cache(call(), maybe(binary())) -> 'ok'.
+-spec cache(call(), maybe(binary()), pos_integer()) -> 'ok'.
 
 cache(Call) ->
     cache(Call, 'undefined', 5 * ?SECONDS_IN_MINUTE).
@@ -1102,7 +1102,7 @@ cache(#kapps_call{call_id=CallId}=Call, AppName, Expires) ->
 -spec retrieve(ne_binary()) ->
                       {'ok', call()} |
                       {'error', 'not_found'}.
--spec retrieve(ne_binary(), api(binary())) ->
+-spec retrieve(ne_binary(), maybe(binary())) ->
                       {'ok', call()} |
                       {'error', 'not_found'}.
 

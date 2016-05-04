@@ -153,7 +153,7 @@ order_endpoints(Method, Endpoints)
 order_endpoints(<<"weighted_random">>, Endpoints) ->
     weighted_random_sort(Endpoints).
 
--type endpoint_intermediate() :: {ne_binary(), ne_binary(), group_weight(), api(kz_json:object())}.
+-type endpoint_intermediate() :: {ne_binary(), ne_binary(), group_weight(), maybe(kz_json:object())}.
 -type endpoint_intermediates() :: [endpoint_intermediate()].
 
 -spec resolve_endpoint_ids(kz_json:objects(), endpoint_intermediates(), kz_json:object(), kapps_call:call()) ->
@@ -310,7 +310,7 @@ random_integer(I) ->
 repeats(Data) ->
     max(1, kz_json:get_integer_value(<<"repeats">>, Data, 1)).
 
--spec group_weight(kz_json:object()) -> api(group_weight()).
+-spec group_weight(kz_json:object()) -> maybe(group_weight()).
 -spec group_weight(kz_json:object(), Default) -> group_weight() | Default.
 group_weight(Endpoint) ->
     group_weight(Endpoint, 'undefined').

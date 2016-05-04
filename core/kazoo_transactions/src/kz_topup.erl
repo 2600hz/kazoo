@@ -13,7 +13,7 @@
 
 -define(KZ_SERVICES_DB, <<"services">>).
 
--type error() :: api('topup_disabled' |
+-type error() :: maybe('topup_disabled' |
                      'topup_undefined' |
                      'amount_undefined' |
                      'limit_undefined' |
@@ -28,7 +28,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec init(api(binary()), integer()) ->
+-spec init(maybe(binary()), integer()) ->
                   'ok' |
                   {'error', error()}.
 init(Account, Balance) ->
@@ -44,7 +44,7 @@ init(Account, Balance) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_top_up(api(binary()) | kz_account:doc()) ->
+-spec get_top_up(maybe(binary()) | kz_account:doc()) ->
                         {'error', error()} |
                         {'ok', integer(), integer()}.
 get_top_up(<<_/binary>> = Account) ->

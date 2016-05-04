@@ -104,7 +104,7 @@ handle_new_voicemail(JObj, _Props) ->
             process_req(kz_json:merge_jobjs(DataJObj, ReqData))
     end.
 
--spec maybe_add_user_email(ne_binaries(), api(binary())) -> ne_binaries().
+-spec maybe_add_user_email(ne_binaries(), maybe(binary())) -> ne_binaries().
 maybe_add_user_email(BoxEmails, 'undefined') -> BoxEmails;
 maybe_add_user_email(BoxEmails, UserEmail) -> [UserEmail | BoxEmails].
 
@@ -268,7 +268,7 @@ build_date_called_data(DataJObj) ->
        ,{<<"local">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
       ]).
 
--spec date_called(api(kz_json:object()) | gregorian_seconds()) -> gregorian_seconds().
+-spec date_called(maybe(kz_json:object()) | gregorian_seconds()) -> gregorian_seconds().
 date_called(Timestamp) when is_integer(Timestamp) -> Timestamp;
 date_called('undefined') -> kz_util:current_tstamp();
 date_called(DataJObj) ->
@@ -282,7 +282,7 @@ build_voicemail_data(DataJObj) ->
        ,{<<"length">>, pretty_print_length(DataJObj)}
       ]).
 
--spec pretty_print_length(api(kz_json:object()) | pos_integer()) -> ne_binary().
+-spec pretty_print_length(maybe(kz_json:object()) | pos_integer()) -> ne_binary().
 pretty_print_length('undefined') -> <<"00:00">>;
 pretty_print_length(Ms) when is_integer(Ms) ->
     Seconds = round(Ms / ?MILLISECONDS_IN_SECOND) rem 60,

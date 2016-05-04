@@ -49,7 +49,7 @@ init() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec current_state(kz_json:object()) -> api(binary()).
+-spec current_state(kz_json:object()) -> maybe(binary()).
 current_state(JObj) ->
     kz_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_WAITING).
 
@@ -351,7 +351,7 @@ enable_number(Num) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_send_request(kz_json:object()) -> 'ok'.
--spec maybe_send_request(kz_json:object(), api(binary())) -> 'ok'.
+-spec maybe_send_request(kz_json:object(), maybe(binary())) -> 'ok'.
 maybe_send_request(JObj) ->
     kz_util:put_callid(kz_doc:id(JObj)),
     AccountId = kz_doc:account_id(JObj),
@@ -522,15 +522,15 @@ prepare_docs_for_migrate(Docs) ->
             (UpdatedDoc = migrate_doc(kz_json:get_value(<<"doc">>, Doc))) =/= 'undefined'
     ].
 
--spec migrate_doc(kz_json:object()) -> api(kz_json:object()).
+-spec migrate_doc(kz_json:object()) -> maybe(kz_json:object()).
 migrate_doc(PortRequest) ->
     case kz_json:get_value(<<"pvt_tree">>, PortRequest) of
         'undefined' -> update_doc(PortRequest);
         _Tree -> 'undefined'
     end.
 
--spec update_doc(kz_json:object()) -> api(kz_json:object()).
--spec update_doc(kz_json:object(), api(binary())) -> api(kz_json:object()).
+-spec update_doc(kz_json:object()) -> maybe(kz_json:object()).
+-spec update_doc(kz_json:object(), maybe(binary())) -> maybe(kz_json:object()).
 update_doc(PortRequest) ->
     update_doc(PortRequest, kz_doc:account_id(PortRequest)).
 

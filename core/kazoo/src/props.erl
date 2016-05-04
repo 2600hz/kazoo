@@ -120,7 +120,7 @@ get_value(Key, Props, Default) when is_list(Props) ->
     end.
 
 %% Given a list of keys, find the first one defined
--spec get_first_defined(kz_proplist_keys(), kz_proplist()) -> api(any()).
+-spec get_first_defined(kz_proplist_keys(), kz_proplist()) -> maybe(any()).
 -spec get_first_defined(kz_proplist_keys(), kz_proplist(), Default) -> Default | any().
 get_first_defined(Keys, Props) -> get_first_defined(Keys, Props, 'undefined').
 
@@ -131,12 +131,12 @@ get_first_defined([H|T], Props, Default) ->
         V -> V
     end.
 
--spec get_is_true(kz_proplist_key(), kz_proplist()) -> api(boolean()).
+-spec get_is_true(kz_proplist_key(), kz_proplist()) -> maybe(boolean()).
 -spec get_is_true(kz_proplist_key(), kz_proplist(), Default) -> Default | boolean().
 get_is_true(Key, Props) -> is_true(Key, Props).
 get_is_true(Key, Props, Default) -> is_true(Key, Props, Default).
 
--spec is_true(kz_proplist_key(), kz_proplist()) -> api(boolean()).
+-spec is_true(kz_proplist_key(), kz_proplist()) -> maybe(boolean()).
 -spec is_true(kz_proplist_key(), kz_proplist(), Default) -> Default | boolean().
 is_true(Key, Props) ->
     is_true(Key, Props, 'undefined').
@@ -146,7 +146,7 @@ is_true(Key, Props, Default) ->
         V -> kz_util:is_true(V)
     end.
 
--spec get_is_false(kz_proplist_key(), kz_proplist()) -> api(boolean()).
+-spec get_is_false(kz_proplist_key(), kz_proplist()) -> maybe(boolean()).
 -spec get_is_false(kz_proplist_key(), kz_proplist(), Default) -> Default | boolean().
 get_is_false(Key, Props) -> is_false(Key, Props).
 get_is_false(Key, Props, Default) -> is_false(Key, Props, Default).
@@ -160,7 +160,7 @@ is_false(Key, Props, Default) ->
     end.
 
 -spec get_integer_value(kz_proplist_key(), kz_proplist()) ->
-                               api(integer()).
+                               maybe(integer()).
 -spec get_integer_value(kz_proplist_key(), kz_proplist(), Default) ->
                                integer() | Default.
 get_integer_value(Key, Props) ->
@@ -183,7 +183,7 @@ get_atom_value(Key, Props, Default) ->
         Val -> kz_util:to_atom(Val)
     end.
 
--spec get_binary_value(kz_proplist_key() | kz_proplist_keys(), kz_proplist()) -> api(binary()).
+-spec get_binary_value(kz_proplist_key() | kz_proplist_keys(), kz_proplist()) -> maybe(binary()).
 -spec get_binary_value(kz_proplist_key() | kz_proplist_keys(), kz_proplist(), Default) ->
                               ne_binary() | Default.
 get_binary_value(Key, Props) ->
@@ -199,7 +199,7 @@ get_binary_value(Key, Props, Default) ->
         V -> kz_util:to_binary(V)
     end.
 
--spec get_ne_binary_value(kz_proplist_key(), kz_proplist()) -> api(binary()).
+-spec get_ne_binary_value(kz_proplist_key(), kz_proplist()) -> maybe(binary()).
 -spec get_ne_binary_value(kz_proplist_key(), kz_proplist(), Default) ->
                               ne_binary() | Default.
 get_ne_binary_value(Key, Props) ->

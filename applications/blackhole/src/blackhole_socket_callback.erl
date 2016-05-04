@@ -126,7 +126,7 @@ check_binding(Context, JObj, Binding) ->
             subscribe(Context, JObj, Binding, Module)
     end.
 
--spec subscribe(bh_context:context(), kz_json:object(), ne_binary(), api(binary())) -> cb_return().
+-spec subscribe(bh_context:context(), kz_json:object(), ne_binary(), maybe(binary())) -> cb_return().
 subscribe(Context, _JObj, _Binding, 'undefined') ->
     {'ok', blackhole_util:respond_with_error(Context)};
 subscribe(Context, _JObj, Binding, Module) ->
@@ -179,7 +179,7 @@ unsubscribe_for_all(Context, _JObj, SessionPid, SessionId) ->
 %%--------------------------------------------------------------------
 -spec unsubscribe_for_account(bh_context:context(), kz_json:object(), ne_binary()) -> cb_return().
 -spec unsubscribe_for_account(bh_context:context(), kz_json:object(), ne_binary(), ne_binaries() | ne_binary()) -> cb_return().
--spec unsubscribe_for_account(bh_context:context(), kz_json:object(), ne_binary(), ne_binary(), api(binary())) -> cb_return().
+-spec unsubscribe_for_account(bh_context:context(), kz_json:object(), ne_binary(), ne_binary(), maybe(binary())) -> cb_return().
 unsubscribe_for_account(Context, JObj, AccountId) ->
     Bindings = bh_context:bindings_from_json(JObj),
     unsubscribe_for_account(Context, JObj, AccountId, Bindings).

@@ -251,7 +251,7 @@ load_users_device_summary(Context, UserId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request(api(binary()), cb_context:context()) -> cb_context:context().
+-spec validate_request(maybe(binary()), cb_context:context()) -> cb_context:context().
 validate_request('undefined', Context) ->
     check_mac_address('undefined', Context);
 validate_request(DeviceId, Context) ->
@@ -267,7 +267,7 @@ changed_mac_address(Context) ->
             unique_mac_address(NewAddress, Context)
     end.
 
--spec check_mac_address(api(binary()), cb_context:context()) -> cb_context:context().
+-spec check_mac_address(maybe(binary()), cb_context:context()) -> cb_context:context().
 check_mac_address(DeviceId, Context) ->
     MacAddress = cb_context:req_value(Context, ?KEY_MAC_ADDRESS),
     case unique_mac_address(MacAddress, Context) of
@@ -277,7 +277,7 @@ check_mac_address(DeviceId, Context) ->
            error_used_mac_address(Context)
     end.
 
--spec unique_mac_address(api(binary()), cb_context:context()) -> boolean().
+-spec unique_mac_address(maybe(binary()), cb_context:context()) -> boolean().
 unique_mac_address('undefined', _Context) -> 'true';
 unique_mac_address(MacAddress, Context) ->
     DbName = cb_context:account_db(Context),
@@ -304,7 +304,7 @@ get_mac_addresses(DbName) ->
         _ -> []
     end.
 
--spec prepare_outbound_flags(api(binary()), cb_context:context()) ->
+-spec prepare_outbound_flags(maybe(binary()), cb_context:context()) ->
                                     cb_context:context().
 prepare_outbound_flags(DeviceId, Context) ->
     JObj =
@@ -321,7 +321,7 @@ prepare_outbound_flags(DeviceId, Context) ->
         end,
     prepare_device_realm(DeviceId, cb_context:set_req_data(Context, JObj)).
 
--spec prepare_device_realm(api(binary()), cb_context:context()) -> cb_context:context().
+-spec prepare_device_realm(maybe(binary()), cb_context:context()) -> cb_context:context().
 prepare_device_realm(DeviceId, Context) ->
     AccountRealm = kz_util:get_account_realm(cb_context:account_id(Context)),
     Realm = cb_context:req_value(Context, [<<"sip">>, <<"realm">>], AccountRealm),
@@ -333,7 +333,7 @@ prepare_device_realm(DeviceId, Context) ->
             validate_device_creds(Realm, DeviceId, cb_context:store(Context, 'aggregate_device', 'true'))
     end.
 
--spec validate_device_creds(ne_binary(), api(binary()), cb_context:context()) ->
+-spec validate_device_creds(ne_binary(), maybe(binary()), cb_context:context()) ->
                                    cb_context:context().
 validate_device_creds(Realm, DeviceId, Context) ->
     case cb_context:req_value(Context, [<<"sip">>, <<"method">>], <<"password">>) of
@@ -354,7 +354,7 @@ validate_device_creds(Realm, DeviceId, Context) ->
             check_emergency_caller_id(DeviceId, C)
     end.
 
--spec validate_device_password(ne_binary(), api(binary()), cb_context:context()) ->
+-spec validate_device_password(ne_binary(), maybe(binary()), cb_context:context()) ->
                                       cb_context:context().
 validate_device_password(Realm, DeviceId, Context) ->
     Username = cb_context:req_value(Context, [<<"sip">>, <<"username">>]),
@@ -372,7 +372,7 @@ validate_device_password(Realm, DeviceId, Context) ->
             check_emergency_caller_id(DeviceId, C)
     end.
 
--spec validate_device_ip(ne_binary(), api(binary()), cb_context:context()) ->
+-spec validate_device_ip(ne_binary(), maybe(binary()), cb_context:context()) ->
                                 cb_context:context().
 validate_device_ip(IP, DeviceId, Context) ->
     case kz_network_utils:is_ipv4(IP) of
@@ -389,7 +389,7 @@ validate_device_ip(IP, DeviceId, Context) ->
             check_emergency_caller_id(DeviceId, C)
     end.
 
--spec validate_device_ip_unique(ne_binary(), api(binary()), cb_context:context()) ->
+-spec validate_device_ip_unique(ne_binary(), maybe(binary()), cb_context:context()) ->
                                        cb_context:context().
 validate_device_ip_unique(IP, DeviceId, Context) ->
     case cb_devices_utils:is_ip_unique(IP, DeviceId) of
@@ -408,13 +408,13 @@ validate_device_ip_unique(IP, DeviceId, Context) ->
             check_emergency_caller_id(DeviceId, C)
     end.
 
--spec check_emergency_caller_id(api(binary()), cb_context:context()) ->
+-spec check_emergency_caller_id(maybe(binary()), cb_context:context()) ->
                                        cb_context:context().
 check_emergency_caller_id(DeviceId, Context) ->
     Context1 = crossbar_util:format_emergency_caller_id_number(Context),
     check_device_schema(DeviceId, Context1).
 
--spec check_device_schema(api(binary()), cb_context:context()) ->
+-spec check_device_schema(maybe(binary()), cb_context:context()) ->
                                  cb_context:context().
 check_device_schema(DeviceId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(DeviceId, C) end,
@@ -423,7 +423,7 @@ check_device_schema(DeviceId, Context) ->
                                      ,OnSuccess
                                     ).
 
--spec on_successful_validation(api(binary()), cb_context:context()) ->
+-spec on_successful_validation(maybe(binary()), cb_context:context()) ->
                                       cb_context:context().
 on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, <<"device">>}],
@@ -519,7 +519,7 @@ extract_device_registrations([JObj|JObjs], Set) ->
 %% Check if the device sip creds are unique
 %% @end
 %%--------------------------------------------------------------------
--spec is_sip_creds_unique(api(binary()), ne_binary(), ne_binary(), api(binary())) ->
+-spec is_sip_creds_unique(maybe(binary()), ne_binary(), ne_binary(), maybe(binary())) ->
                                  boolean().
 
 %% no account id and no doc id (ie initial create with no account)
@@ -557,8 +557,8 @@ is_creds_global_unique(Realm, Username, DeviceId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_aggregate_device(api(binary()), cb_context:context()) -> boolean().
--spec maybe_aggregate_device(api(binary()), cb_context:context(), crossbar_status()) -> boolean().
+-spec maybe_aggregate_device(maybe(binary()), cb_context:context()) -> boolean().
+-spec maybe_aggregate_device(maybe(binary()), cb_context:context(), crossbar_status()) -> boolean().
 maybe_aggregate_device(DeviceId, Context) ->
     maybe_aggregate_device(DeviceId, Context, cb_context:resp_status(Context)).
 maybe_aggregate_device(DeviceId, Context, 'success') ->
@@ -581,8 +581,8 @@ maybe_aggregate_device(_, _, _) -> 'false'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_remove_aggregate(api(binary()), cb_context:context()) -> boolean().
--spec maybe_remove_aggregate(api(binary()), cb_context:context(), crossbar_status()) -> boolean().
+-spec maybe_remove_aggregate(maybe(binary()), cb_context:context()) -> boolean().
+-spec maybe_remove_aggregate(maybe(binary()), cb_context:context(), crossbar_status()) -> boolean().
 maybe_remove_aggregate(DeviceId, Context) ->
     maybe_remove_aggregate(DeviceId, Context, cb_context:resp_status(Context)).
 

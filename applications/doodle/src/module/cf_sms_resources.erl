@@ -67,7 +67,7 @@ handle_result_status(Call, _Status) ->
     lager:info("completed successful message to the device"),
     doodle_exe:continue(Call).
 
--spec handle_bridge_failure(api(binary()), api(binary()), kapps_call:call()) -> 'ok'.
+-spec handle_bridge_failure(maybe(binary()), maybe(binary()), kapps_call:call()) -> 'ok'.
 handle_bridge_failure(Cause, Code, Call) ->
     lager:info("offnet request error, attempting to find failure branch for ~s:~s", [Code, Cause]),
     case doodle_util:handle_bridge_failure(Cause, Code, Call) of
@@ -115,28 +115,28 @@ get_bypass_e164(Data) ->
     kz_json:is_true(<<"do_not_normalize">>, Data)
         orelse kz_json:is_true(<<"bypass_e164">>, Data).
 
--spec get_from_uri_realm(kz_json:object(), kapps_call:call()) -> api(binary()).
+-spec get_from_uri_realm(kz_json:object(), kapps_call:call()) -> maybe(binary()).
 get_from_uri_realm(Data, Call) ->
     case kz_json:get_ne_value(<<"from_uri_realm">>, Data) of
         'undefined' -> maybe_get_call_from_realm(Call);
         Realm -> Realm
     end.
 
--spec maybe_get_call_from_realm(kapps_call:call()) -> api(binary()).
+-spec maybe_get_call_from_realm(kapps_call:call()) -> maybe(binary()).
 maybe_get_call_from_realm(Call) ->
     case kapps_call:from_realm(Call) of
         <<"norealm">> -> get_account_realm(Call);
         Realm -> Realm
     end.
 
--spec get_account_realm(kapps_call:call()) -> api(binary()).
+-spec get_account_realm(kapps_call:call()) -> maybe(binary()).
 get_account_realm(Call) ->
     case kz_account:fetch(kapps_call:account_id(Call)) of
         {'ok', JObj} -> kz_json:get_value(<<"realm">>, JObj);
         {'error', _} -> 'undefined'
     end.
 
--spec get_hunt_account_id(kz_json:object(), kapps_call:call()) -> api(binary()).
+-spec get_hunt_account_id(kz_json:object(), kapps_call:call()) -> maybe(binary()).
 get_hunt_account_id(Data, Call) ->
     case kz_json:is_true(<<"use_local_resources">>, Data, 'true') of
         'false' -> 'undefined';
@@ -166,7 +166,7 @@ get_to_did(_Data, Call, Number) ->
         {'error', _ } -> Number
     end.
 
--spec get_sip_headers(kz_json:object(), kapps_call:call()) -> api(kz_json:object()).
+-spec get_sip_headers(kz_json:object(), kapps_call:call()) -> maybe(kz_json:object()).
 get_sip_headers(Data, Call) ->
     Routines = [fun(J) ->
                         case kz_json:is_true(<<"emit_account_id">>, Data) of
@@ -183,7 +183,7 @@ get_sip_headers(Data, Call) ->
         'false' -> JObj
     end.
 
--spec get_flags(kz_json:object(), kapps_call:call()) -> api(ne_binaries()).
+-spec get_flags(kz_json:object(), kapps_call:call()) -> maybe(ne_binaries()).
 get_flags(Data, Call) ->
     Routines = [fun get_endpoint_flags/3
                 ,fun get_flow_flags/3
@@ -270,6 +270,6 @@ is_flag_exported(Flag, [{F, 1}|Funs]) ->
     end;
 is_flag_exported(Flag, [_|Funs]) -> is_flag_exported(Flag, Funs).
 
--spec get_inception(kapps_call:call()) -> api(binary()).
+-spec get_inception(kapps_call:call()) -> maybe(binary()).
 get_inception(Call) ->
     kz_json:get_value(<<"Inception">>, kapps_call:custom_channel_vars(Call)).

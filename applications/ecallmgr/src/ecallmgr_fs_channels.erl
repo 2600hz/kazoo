@@ -604,7 +604,7 @@ find_by_authorizing_id([AuthId|AuthIds], Acc) ->
             find_by_authorizing_id(AuthIds, lists:keymerge(1, Acc, Cs))
     end.
 
--spec find_by_user_realm(api(binary()) | ne_binaries(), ne_binary()) -> [] | kz_proplist().
+-spec find_by_user_realm(maybe(binary()) | ne_binaries(), ne_binary()) -> [] | kz_proplist().
 find_by_user_realm('undefined', Realm) ->
     Pattern = #channel{realm=kz_util:to_lower_binary(Realm)
                       ,_='_'},
@@ -677,7 +677,7 @@ build_matchspec_ors(Usernames) ->
 build_matchspec_ors_fold(Username, Acc) ->
     {'or', {'=:=', '$1', kz_util:to_lower_binary(Username)}, Acc}.
 
--spec query_channels(ne_binaries(), api(binary())) -> kz_json:object().
+-spec query_channels(ne_binaries(), maybe(binary())) -> kz_json:object().
 query_channels(Fields, 'undefined') ->
     query_channels(ets:match_object(?CHANNELS_TBL, #channel{_='_'}, 1)
                    ,Fields
@@ -801,7 +801,7 @@ publish_channel_connection_event(#channel{uuid=UUID
     kz_amqp_worker:cast(Event, fun kapi_call:publish_event/1),
     lager:debug("published channel connection event for ~s", [UUID]).
 
--spec channel_call_state(boolean()) -> api(binary()).
+-spec channel_call_state(boolean()) -> maybe(binary()).
 channel_call_state('true') ->
     <<"ANSWERED">>;
 channel_call_state('false') ->

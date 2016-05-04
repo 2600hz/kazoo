@@ -174,7 +174,7 @@ set_event(_Context, Item, Transaction) ->
     Event = <<"Activation charges for ", ItemValue/binary>>,
     kz_transaction:set_event(Event, Transaction).
 
--spec dry_run(api(kz_services:services())) -> kz_json:object().
+-spec dry_run(maybe(kz_services:services())) -> kz_json:object().
 dry_run('undefined') -> kz_json:new();
 dry_run(Services) ->
     lager:debug("updated services, checking for dry run"),
@@ -186,9 +186,9 @@ dry_run(Services) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec calc_service_updates(cb_context:context(), ne_binary()) ->
-                                  api(kz_services:services()).
+                                  maybe(kz_services:services()).
 -spec calc_service_updates(cb_context:context(), ne_binary(), kz_proplist()) ->
-                                  api(kz_services:services()).
+                                  maybe(kz_services:services()).
 calc_service_updates(Context, <<"device">>) ->
     DeviceType = kz_device:device_type(cb_context:doc(Context)),
     Services = fetch_service(Context),
@@ -357,7 +357,7 @@ leak_auth_pvt_fields(JObj) ->
                        ,kz_json:public_fields(JObj)
                       ).
 
--spec save_an_audit_log(cb_context:context(), api(kz_services:services())) -> 'ok'.
+-spec save_an_audit_log(cb_context:context(), maybe(kz_services:services())) -> 'ok'.
 save_an_audit_log(_Context, 'undefined') -> 'ok';
 save_an_audit_log(Context, Services) ->
     BaseAuditLog = base_audit_log(Context, Services),

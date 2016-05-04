@@ -97,7 +97,7 @@ lookup(JObj) ->
 set_phone_number(Num, JObj) ->
     kz_json:set_value(<<"phone_number">>, kz_util:uri_encode(Num), JObj).
 
--spec update_request(kz_json:object(), api(binary()), boolean()) -> kz_json:object().
+-spec update_request(kz_json:object(), maybe(binary()), boolean()) -> kz_json:object().
 update_request(JObj, 'undefined', _) -> JObj;
 update_request(JObj, CNAM, FromCache) ->
     Props = [{<<"Caller-ID-Name">>, CNAM}
@@ -225,7 +225,7 @@ code_change(_OldVsn, TemplateName, _Extra) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_template_props(api(kz_json:object())) -> api(kz_proplist()).
+-spec json_to_template_props(maybe(kz_json:object())) -> maybe(kz_proplist()).
 json_to_template_props('undefined') -> 'undefined';
 json_to_template_props(JObj) ->
     normalize_proplist(kz_json:recursive_to_proplist(JObj)).
@@ -258,7 +258,7 @@ normalize_value(Value) ->
 -spec cache_key(ne_binary()) -> {'cnam', ne_binary()}.
 cache_key(Number) -> ?CACHE_KEY(Number).
 
--spec fetch_cnam(ne_binary(), kz_json:object()) -> api(binary()).
+-spec fetch_cnam(ne_binary(), kz_json:object()) -> maybe(binary()).
 fetch_cnam(Number, JObj) ->
     case make_request(Number, JObj) of
         'undefined' -> 'undefined';
@@ -268,7 +268,7 @@ fetch_cnam(Number, JObj) ->
             CNAM
     end.
 
--spec make_request(ne_binary(), kz_json:object()) -> api(binary()).
+-spec make_request(ne_binary(), kz_json:object()) -> maybe(binary()).
 make_request(Number, JObj) ->
     Url = kz_util:to_list(get_http_url(JObj)),
     case kz_http:req(get_http_method()

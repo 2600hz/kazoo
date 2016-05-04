@@ -347,7 +347,7 @@ import_results_error(Id, C, Context) ->
                              ]),
     cb_context:set_resp_data(Context, kz_json:set_value(Id, Resp, JObj)).
 
--spec select_doc(ne_binary(), kz_json:objects()) -> api(kz_json:object()).
+-spec select_doc(ne_binary(), kz_json:objects()) -> maybe(kz_json:object()).
 select_doc(_Id, []) -> 'undefined';
 select_doc(Id, [JObj|JObjs]) ->
     case kz_doc:id(JObj) of
@@ -355,7 +355,7 @@ select_doc(Id, [JObj|JObjs]) ->
         _ -> select_doc(Id, JObjs)
     end.
 
--spec get_doc_updates(cb_context:context()) -> api(kz_json:object()).
+-spec get_doc_updates(cb_context:context()) -> maybe(kz_json:object()).
 get_doc_updates(Context) ->
     JObj = cb_context:req_data(Context),
     case kz_json:get_value(<<"updates">>, JObj) of
@@ -371,7 +371,7 @@ update_docs(Updates, Context) ->
             ],
     cb_context:set_doc(Context, JObjs).
 
--spec get_post_binding(kz_json:object() | ne_binary()) -> api(binary()).
+-spec get_post_binding(kz_json:object() | ne_binary()) -> maybe(binary()).
 get_post_binding(<<"device">>) ->     <<"v1_resource.execute.post.devices">>;
 get_post_binding(<<"user">>) ->       <<"v1_resource.execute.post.users">>;
 get_post_binding(<<"conference">>) -> <<"v1_resource.execute.post.conferences">>;
@@ -379,7 +379,7 @@ get_post_binding(<<"vmbox">>) ->      <<"v1_resource.execute.post.vmboxes">>;
 get_post_binding(<<_/binary>>) ->     'undefined';
 get_post_binding(JObj) ->             get_post_binding(kz_doc:type(JObj)).
 
--spec get_delete_binding(kz_json:object() | ne_binary()) -> api(binary()).
+-spec get_delete_binding(kz_json:object() | ne_binary()) -> maybe(binary()).
 get_delete_binding(<<"device">>) ->     <<"v1_resource.execute.delete.devices">>;
 get_delete_binding(<<"user">>) ->       <<"v1_resource.execute.delete.users">>;
 get_delete_binding(<<"conference">>) -> <<"v1_resource.execute.delete.conferences">>;
@@ -387,7 +387,7 @@ get_delete_binding(<<"vmbox">>) ->      <<"v1_resource.execute.delete.vmboxes">>
 get_delete_binding(<<_/binary>>) ->     'undefined';
 get_delete_binding(JObj) ->             get_delete_binding(kz_doc:type(JObj)).
 
--spec get_validate_binding(kz_json:object() | ne_binary()) -> api(binary()).
+-spec get_validate_binding(kz_json:object() | ne_binary()) -> maybe(binary()).
 get_validate_binding(<<"device">>) ->     <<"v1_resource.validate.devices">>;
 get_validate_binding(<<"user">>) ->       <<"v1_resource.validate.users">>;
 get_validate_binding(<<"conference">>) -> <<"v1_resource.validate.conferences">>;

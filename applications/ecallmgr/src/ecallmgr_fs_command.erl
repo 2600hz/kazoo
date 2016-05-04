@@ -33,7 +33,7 @@ set(_, _, []) -> 'ok';
 set(Node, UUID, Props) ->
     NewProps = maybe_export_vars(Node, UUID, Props),
     AppArgs = process_fs_kv(Node, UUID, NewProps, 'set'),
-    api(Node, UUID, ?FS_CMD_SET_MULTIVAR, AppArgs).
+    maybe(Node, UUID, ?FS_CMD_SET_MULTIVAR, AppArgs).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -58,7 +58,7 @@ bg_set(Node, UUID, Props) ->
 unset(_, _, []) -> 'ok';
 unset(Node, UUID, Props) ->
     AppArgs = process_fs_kv(Node, UUID, Props, 'unset'),
-    api(Node, UUID, ?FS_CMD_SET_MULTIVAR, AppArgs).
+    maybe(Node, UUID, ?FS_CMD_SET_MULTIVAR, AppArgs).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -194,17 +194,17 @@ maybe_export_vars(Node, UUID, Props) ->
                     (KV, Acc) -> [KV| Acc]
                 end, [], Props).
 
--spec api(atom(), atom(), binary()) -> ecallmgr_util:send_cmd_ret().
--spec api(atom(), atom(), binary(), binary() | list()) -> ecallmgr_util:send_cmd_ret().
+-spec maybe(atom(), atom(), binary()) -> ecallmgr_util:send_cmd_ret().
+-spec maybe(atom(), atom(), binary(), binary() | list()) -> ecallmgr_util:send_cmd_ret().
 api(Node, Cmd, Args) ->
     freeswitch:api(Node, Cmd, Args).
 
 api(_, _, _, []) -> 'ok';
 api(Node, UUID, Cmd, Args)
   when is_list(Args)->
-    api(Node, Cmd, list_to_binary([UUID, " ", fs_args_to_binary(Args)]));
+    maybe(Node, Cmd, list_to_binary([UUID, " ", fs_args_to_binary(Args)]));
 api(Node, UUID, Cmd, Args) ->
-    api(Node, Cmd, <<UUID/binary, " ", Args/binary>>).
+    maybe(Node, Cmd, <<UUID/binary, " ", Args/binary>>).
 
 -spec bgapi(atom(), binary(), binary()) -> ecallmgr_util:send_cmd_ret().
 -spec bgapi(atom(), binary(), binary(), binary() | list()) -> ecallmgr_util:send_cmd_ret().

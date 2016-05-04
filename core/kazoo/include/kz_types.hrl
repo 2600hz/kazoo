@@ -38,7 +38,7 @@
 -type pid_ref() :: {pid(), reference()}.
 -type pid_refs() :: [pid_ref()].
 
--type api(T) :: 'undefined' | T.
+-type maybe(T) :: 'undefined' | T.
 
 -type terms() :: kz_json:object() | kz_proplist().
 
@@ -111,7 +111,7 @@
 -type sup_init_ret() :: {'ok', {sup_start_flags(), sup_child_specs()}} |
                         'ignore'.
 
--type sup_child_id() :: api(pid()).
+-type sup_child_id() :: maybe(pid()).
 -type sup_startchild_err() :: 'already_present' |
                               {'already_started', sup_child_id()} |
                               any().
@@ -307,16 +307,16 @@
 -type media_servers() :: [media_server()].
 
 -record(kz_node, {node = node() :: atom() | '$1' | '$2' | '_'
-                  ,expires = 0 :: api(non_neg_integer()) | '$2' | '_'
+                  ,expires = 0 :: maybe(non_neg_integer()) | '$2' | '_'
                   ,kapps = [] :: kapps_info() | '$1' | '_'
                   ,media_servers = [] :: media_servers() | '_'
-                  ,last_heartbeat = kz_util:now_ms(kz_util:now()) :: api(pos_integer()) | '$3' | '_'
-                  ,zone :: api(atom()) | '$2' | '_'
-                  ,broker :: api(binary()) | '_'
+                  ,last_heartbeat = kz_util:now_ms(kz_util:now()) :: maybe(pos_integer()) | '$3' | '_'
+                  ,zone :: maybe(atom()) | '$2' | '_'
+                  ,broker :: maybe(binary()) | '_'
                   ,used_memory = 0 :: non_neg_integer() | '_'
                   ,processes = 0 :: non_neg_integer() | '_'
                   ,ports = 0 :: non_neg_integer() | '_'
-                  ,version :: api(binary()) | '_'
+                  ,version :: maybe(binary()) | '_'
                   ,channels = 0 :: non_neg_integer() | '_'
                   ,registrations = 0 :: non_neg_integer() | '_'
                  }).

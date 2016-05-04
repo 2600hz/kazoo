@@ -33,14 +33,14 @@ declare_exchanges() ->
     amqp_util:targeted_exchange().
 
 -spec publish_message(ne_binary(), kz_json:object()) -> 'ok'.
--spec publish_message(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
+-spec publish_message(ne_binary(), maybe(terms()), ne_binary()) -> 'ok'.
 publish_message(ServerId, JObj) ->
     publish_message(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_message(ServerId, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, [], fun build/1),
     amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
--spec build(api(terms())) -> {'ok', iolist()}.
+-spec build(maybe(terms())) -> {'ok', iolist()}.
 build(Prop) when is_list(Prop) ->
     kz_api:build_message(Prop, [], []);
 build(JObj) ->

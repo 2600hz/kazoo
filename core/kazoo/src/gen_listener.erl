@@ -112,7 +112,7 @@
 -type federator_listener() :: {ne_binary(), pid()}.
 -type federator_listeners() :: [federator_listener()].
 -record(state, {
-          queue :: api(binary())
+          queue :: maybe(binary())
          ,is_consuming = 'false' :: boolean()
          ,responders = [] :: listener_utils:responders() %% { {EvtCat, EvtName}, Module }
          ,bindings = [] :: bindings() %% {authentication, [{key, value},...]}
@@ -394,7 +394,7 @@ init([Module, Params, InitArgs]) ->
         'ignore' -> 'ignore'
     end.
 
--spec init(atom(), kz_proplist(), module_state(), api(reference())) ->
+-spec init(atom(), kz_proplist(), module_state(), maybe(reference())) ->
                   {'ok', state()}.
 init(Module, Params, ModuleState, TimeoutRef) ->
     _ = channel_requisition(Params),
@@ -863,7 +863,7 @@ start_amqp(Props) ->
             {'ok', Q}
     end.
 
--spec set_qos(api(non_neg_integer())) -> 'ok'.
+-spec set_qos(maybe(non_neg_integer())) -> 'ok'.
 set_qos('undefined') -> 'ok';
 set_qos(N) when is_integer(N), N >= 0 -> amqp_util:basic_qos(N).
 
@@ -871,7 +871,7 @@ set_qos(N) when is_integer(N), N >= 0 -> amqp_util:basic_qos(N).
 start_consumer(Q, 'undefined') -> amqp_util:basic_consume(Q, []);
 start_consumer(Q, ConsumeProps) -> amqp_util:basic_consume(Q, ConsumeProps).
 
--spec remove_binding(binding_module(), kz_proplist(), api(binary())) -> any().
+-spec remove_binding(binding_module(), kz_proplist(), maybe(binary())) -> any().
 remove_binding(Binding, Props, Q) ->
     Wapi = list_to_binary([<<"kapi_">>, kz_util:to_binary(Binding)]),
     lager:debug("trying to remove bindings with ~s:unbind_q(~s, ~p)", [Wapi, Q, Props]),
@@ -894,11 +894,11 @@ create_binding(Binding, Props, Q) ->
             erlang:error({'api_module_undefined', Wapi})
     end.
 
--spec stop_timer(api(reference())) -> non_neg_integer() | 'false'.
+-spec stop_timer(maybe(reference())) -> non_neg_integer() | 'false'.
 stop_timer('undefined') -> 'false';
 stop_timer(Ref) when is_reference(Ref) -> erlang:cancel_timer(Ref).
 
--spec start_timer(any()) -> api(reference()).
+-spec start_timer(any()) -> maybe(reference()).
 start_timer(0) ->
     self() ! ?CALLBACK_TIMEOUT_MSG,
     'undefined';
@@ -1110,7 +1110,7 @@ create_federated_params(FederateBindings, Params) ->
      ,{'consume_options', props:get_value('consume_options', Params, [])}
     ].
 
--spec federated_queue_name(kz_proplist()) -> api(binary()).
+-spec federated_queue_name(kz_proplist()) -> maybe(binary()).
 federated_queue_name(Params) ->
     QueueName = props:get_value('queue_name', Params, <<>>),
     case kz_util:is_empty(QueueName) of

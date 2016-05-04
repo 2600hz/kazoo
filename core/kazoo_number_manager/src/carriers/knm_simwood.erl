@@ -156,7 +156,7 @@ process_response(JObjs, Options) ->
     AccountId = props:get_value(<<"account_id">>, Options),
     {'ok', [response_jobj_to_number(JObj, AccountId) || JObj <- JObjs]}.
 
--spec response_jobj_to_number(kz_json:object(), api(binary())) ->
+-spec response_jobj_to_number(kz_json:object(), maybe(binary())) ->
                               knm_number:knm_number().
 response_jobj_to_number(JObj, AccountId) ->
     Num = kz_json:get_value(<<"number">>, JObj),

@@ -326,7 +326,7 @@ delete_messages([Mess|Messages], Filter, Deleted) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request(api(binary()), cb_context:context()) -> cb_context:context().
+-spec validate_request(maybe(binary()), cb_context:context()) -> cb_context:context().
 validate_request(VMBoxId, Context) ->
     validate_unique_vmbox(VMBoxId, Context).
 
@@ -336,8 +336,8 @@ validate_request(VMBoxId, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_unique_vmbox(api(binary()), cb_context:context()) -> cb_context:context().
--spec validate_unique_vmbox(api(binary()), cb_context:context(), api(binary())) -> cb_context:context().
+-spec validate_unique_vmbox(maybe(binary()), cb_context:context()) -> cb_context:context().
+-spec validate_unique_vmbox(maybe(binary()), cb_context:context(), maybe(binary())) -> cb_context:context().
 validate_unique_vmbox(VMBoxId, Context) ->
     validate_unique_vmbox(VMBoxId, Context, cb_context:account_db(Context)).
 
@@ -362,7 +362,7 @@ validate_unique_vmbox(VMBoxId, Context, _AccountDb) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec check_vmbox_schema(api(binary()), cb_context:context()) -> cb_context:context().
+-spec check_vmbox_schema(maybe(binary()), cb_context:context()) -> cb_context:context().
 check_vmbox_schema(VMBoxId, Context) ->
     Context1 = maybe_migrate_notification_emails(Context),
     OnSuccess = fun(C) -> on_successful_validation(VMBoxId, C) end,
@@ -396,7 +396,7 @@ maybe_migrate_notification_emails(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation(api(binary()), cb_context:context()) ->
+-spec on_successful_validation(maybe(binary()), cb_context:context()) ->
                                       cb_context:context().
 on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, kzd_voicemail_box:type()}],
@@ -457,7 +457,7 @@ load_message_summary(DocId, Context) ->
 %% Get message by its media ID and its context
 %% @end
 %%--------------------------------------------------------------------
--spec load_message(ne_binary(), api(kz_json:object()), cb_context:context()) ->
+-spec load_message(ne_binary(), maybe(kz_json:object()), cb_context:context()) ->
                           {boolean(), cb_context:context()}.
 load_message(MediaId, 'undefined', Context) ->
     load_message(MediaId, kz_json:new(), Context);
@@ -560,7 +560,7 @@ load_attachment_from_message(MediaId, Context, Update, Timezone) ->
 %% CallerID_YYYY-MM-DD_HH-MM-SS.ext
 %% @end
 %%--------------------------------------------------------------------
--spec generate_media_name(api(binary()), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+-spec generate_media_name(maybe(binary()), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
 generate_media_name('undefined', GregorianSeconds, Ext, Timezone) ->
     generate_media_name(<<"unknown">>, GregorianSeconds, Ext, Timezone);
 generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
@@ -591,8 +591,8 @@ update_message_doc(MediaId, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec check_uniqueness(api(binary()), cb_context:context()) -> boolean().
--spec check_uniqueness(api(binary()), cb_context:context(), pos_integer()) -> boolean().
+-spec check_uniqueness(maybe(binary()), cb_context:context()) -> boolean().
+-spec check_uniqueness(maybe(binary()), cb_context:context(), pos_integer()) -> boolean().
 check_uniqueness(VMBoxId, Context) ->
     try kz_json:get_integer_value(<<"mailbox">>, cb_context:req_data(Context)) of
         Mailbox ->

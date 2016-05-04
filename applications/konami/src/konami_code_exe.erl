@@ -12,7 +12,7 @@
 
 -include("konami.hrl").
 
--spec handle(api(kz_json:object()), kapps_call:call()) -> 'ok'.
+-spec handle(maybe(kz_json:object()), kapps_call:call()) -> 'ok'.
 handle('undefined', _Call) ->
     lager:debug("no metaflow to execute");
 handle(Metaflow, Call) ->
@@ -39,7 +39,7 @@ handle(Metaflow, Call) ->
             kz_util:log_stacktrace(ST)
     end.
 
--spec find_child_metaflow(api(binary()), kz_json:object()) -> api(kz_json:object()).
+-spec find_child_metaflow(maybe(binary()), kz_json:object()) -> maybe(kz_json:object()).
 find_child_metaflow('undefined', Metaflow) ->
     kz_json:get_value([<<"children">>, <<"_">>], Metaflow);
 find_child_metaflow(Child, Metaflow) ->

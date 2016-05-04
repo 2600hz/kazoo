@@ -400,7 +400,7 @@ surrender(State, To) ->
     send({State, 'broadcast'}, #?MODULE{from = sign(State), msg = {'leader', To}}),
     set_role(State, 'candidate').
 
--spec call_surrendered(state(), api(sign())) -> state().
+-spec call_surrendered(state(), maybe(sign())) -> state().
 call_surrendered(#state{leader = Leader} = State, Leader) ->
     State;
 call_surrendered(#state{callback_module = Mod} = State, 'undefined') ->

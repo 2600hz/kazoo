@@ -22,7 +22,7 @@
 -define(METER_PREFIX, <<?METER_PREFIX_LIST>>).
 
 -spec meter_name(ne_binary()) -> ne_binary().
--spec meter_name(ne_binary(), api(binary())) -> ne_binary().
+-spec meter_name(ne_binary(), maybe(binary())) -> ne_binary().
 meter_name(<<"*">>) -> <<"*">>;
 meter_name(HangupCause) ->
     <<?METER_PREFIX_LIST, ".", HangupCause/binary>>.
@@ -35,14 +35,14 @@ meter_name(HangupCause, AccountId) ->
 meter_prefix() ->
     ?METER_PREFIX.
 
--spec meter_account_id(ne_binary()) -> api(binary()).
+-spec meter_account_id(ne_binary()) -> maybe(binary()).
 meter_account_id(Name) ->
     case binary:split(Name, <<".">>, ['global']) of
         [?METER_PREFIX, _HC, AccountId] -> AccountId;
         _ -> 'undefined'
     end.
 
--spec meter_hangup_cause(ne_binary()) -> api(binary()).
+-spec meter_hangup_cause(ne_binary()) -> maybe(binary()).
 meter_hangup_cause(Name) ->
     case binary:split(Name, <<".">>, ['global']) of
         [?METER_PREFIX, HangupCause, _AccountId] -> HangupCause;

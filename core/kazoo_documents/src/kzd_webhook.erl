@@ -56,7 +56,7 @@ enable(Hook) ->
                      ).
 
 -spec disable(doc()) -> doc().
--spec disable(doc(), api(binary())) -> doc().
+-spec disable(doc(), maybe(binary())) -> doc().
 disable(Hook) ->
     disable(Hook, 'undefined').
 disable(Hook, Reason) ->
@@ -68,7 +68,7 @@ disable(Hook, Reason) ->
       ,Hook
      ).
 
--spec disabled_message(doc()) -> api(binary()).
+-spec disabled_message(doc()) -> maybe(binary()).
 -spec disabled_message(doc(), Default) -> ne_binary() | Default.
 disabled_message(Hook) ->
     disabled_message(Hook, 'undefined').
@@ -81,13 +81,13 @@ is_auto_disabled(Hook) ->
         andalso disabled_message(Hook) =/= 'undefined'.
 
 -spec type() -> ne_binary().
--spec type(doc()) -> api(binary()).
+-spec type(doc()) -> maybe(binary()).
 type() -> ?TYPE.
 
 type(Hook) ->
     kz_doc:type(Hook).
 
--spec name(doc()) -> api(binary()).
+-spec name(doc()) -> maybe(binary()).
 -spec name(doc(), Default) -> ne_binary() | Default.
 name(Hook) ->
     name(Hook, 'undefined').
@@ -98,7 +98,7 @@ name(Hook, Default) ->
 set_name(Hook, Name) ->
     kz_json:set_value(?NAME, Name, Hook).
 
--spec uri(doc()) -> api(binary()).
+-spec uri(doc()) -> maybe(binary()).
 -spec uri(doc(), Default) -> ne_binary() | Default.
 uri(Hook) ->
     uri(Hook, 'undefined').
@@ -109,7 +109,7 @@ uri(Hook, Default) ->
 set_uri(Hook, Uri) ->
     kz_json:set_value(?URI, Uri, Hook).
 
--spec event(doc()) -> api(binary()).
+-spec event(doc()) -> maybe(binary()).
 -spec event(doc(), Default) -> ne_binary() | Default.
 event(Hook) ->
     event(Hook, 'undefined').
@@ -132,7 +132,7 @@ verb(Hook, Default) ->
         Verb -> safe_verbs(kz_util:to_lower_binary(Verb), Default)
     end.
 
--spec safe_verbs(api(binary()), http_verb() | Default) ->
+-spec safe_verbs(maybe(binary()), http_verb() | Default) ->
                         http_verb() | Default.
 safe_verbs(<<"get">>, _Default) -> 'get';
 safe_verbs(<<"post">>, _Default) -> 'post';
@@ -166,24 +166,24 @@ constrain_retries(N) when is_integer(N) -> N.
 set_retries(Hook, Retries) when is_integer(Retries) ->
     kz_json:set_value(?RETRIES, constrain_retries(Retries), Hook).
 
--spec custom_data(doc()) -> api(kz_json:object()).
+-spec custom_data(doc()) -> maybe(kz_json:object()).
 -spec custom_data(doc(), Default) -> kz_json:object() | Default.
 custom_data(Hook) ->
     custom_data(Hook, 'undefined').
 custom_data(Hook, Default) ->
     kz_json:get_ne_json_value(?CUSTOM_DATA, Hook, Default).
 
--spec set_custom_data(doc(), api(kz_json:object())) -> doc().
+-spec set_custom_data(doc(), maybe(kz_json:object())) -> doc().
 set_custom_data(Hook, Custom) ->
     kz_json:set_value(?CUSTOM_DATA, Custom, Hook).
 
--spec modifiers(doc()) -> api(kz_json:object()).
+-spec modifiers(doc()) -> maybe(kz_json:object()).
 -spec modifiers(doc(), Default) -> kz_json:object() | Default.
 modifiers(Hook) ->
     modifiers(Hook, 'undefined').
 modifiers(Hook, Default) ->
     kz_json:get_ne_json_value(?MODIFIERS, Hook, Default).
 
--spec set_modifiers(doc(), api(kz_json:object())) -> doc().
+-spec set_modifiers(doc(), maybe(kz_json:object())) -> doc().
 set_modifiers(Hook, Modifiers) ->
     kz_json:set_value(?MODIFIERS, Modifiers, Hook).

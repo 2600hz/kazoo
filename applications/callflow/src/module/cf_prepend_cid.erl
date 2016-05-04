@@ -32,7 +32,7 @@ handle(Data, Call) ->
     cf_exe:set_call(kapps_call:exec(Updates, Call1)),
     cf_exe:continue(Call1).
 
--spec set_cid_name_prefix(kapps_call:call(), api(binary())) -> kapps_call:call().
+-spec set_cid_name_prefix(kapps_call:call(), maybe(binary())) -> kapps_call:call().
 set_cid_name_prefix(Call, 'undefined') ->
     kapps_call:kvs_store('prepend_cid_name', 'undefined', Call);
 set_cid_name_prefix(Call, Prefix) ->
@@ -42,7 +42,7 @@ set_cid_name_prefix(Call, Prefix) ->
               end,
     kapps_call:kvs_store('prepend_cid_name', Prefix1, Call).
 
--spec set_cid_number_prefix(kapps_call:call(), api(binary())) -> kapps_call:call().
+-spec set_cid_number_prefix(kapps_call:call(), maybe(binary())) -> kapps_call:call().
 set_cid_number_prefix(Call, 'undefined') ->
     kapps_call:kvs_store('prepend_cid_number', 'undefined', Call);
 set_cid_number_prefix(Call, Prefix) ->

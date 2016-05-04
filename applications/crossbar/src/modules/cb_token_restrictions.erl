@@ -158,15 +158,15 @@ maybe_deny_access(Context, Restrictions) ->
                     ,MatchFuns
                    ).
 
--spec match_endpoint(cb_context:context(), api(kz_json:object())) ->
-                            api(kz_json:object()).
+-spec match_endpoint(cb_context:context(), maybe(kz_json:object())) ->
+                            maybe(kz_json:object()).
 match_endpoint(Context, Restrictions) ->
     [{ReqEndpoint, _}|_] = cb_context:req_nouns(Context),
 
     match_request_endpoint(Restrictions, ReqEndpoint).
 
--spec match_request_endpoint(api(kz_json:object()), ne_binary()) ->
-                                    api(kz_json:object()).
+-spec match_request_endpoint(maybe(kz_json:object()), ne_binary()) ->
+                                    maybe(kz_json:object()).
 match_request_endpoint(Restrictions, ?CATCH_ALL = ReqEndpoint) ->
     kz_json:get_value(ReqEndpoint, Restrictions);
 match_request_endpoint(Restrictions, ReqEndpoint) ->
@@ -175,7 +175,7 @@ match_request_endpoint(Restrictions, ReqEndpoint) ->
         EndpointRestrictions -> EndpointRestrictions
     end.
 
--spec match_account(cb_context:context(), api(kz_json:objects())) -> api(kz_json:object()).
+-spec match_account(cb_context:context(), maybe(kz_json:objects())) -> maybe(kz_json:object()).
 match_account(_Context, 'undefined') -> 'undefined';
 match_account(_Context, []) -> 'undefined';
 match_account(Context, EndpointRestrictions) ->
@@ -183,7 +183,7 @@ match_account(Context, EndpointRestrictions) ->
     find_endpoint_restrictions_by_account(AllowedAccounts, EndpointRestrictions).
 
 -spec find_endpoint_restrictions_by_account(ne_binaries(), kz_json:objects()) ->
-                                                   api(kz_json:object()).
+                                                   maybe(kz_json:object()).
 find_endpoint_restrictions_by_account(_Accounts, []) ->
     'undefined';
 find_endpoint_restrictions_by_account(AllowedAccounts
@@ -198,7 +198,7 @@ find_endpoint_restrictions_by_account(AllowedAccounts
             find_endpoint_restrictions_by_account(AllowedAccounts, Restrictions)
     end.
 
--spec maybe_match_accounts(ne_binaries(), api([api(binary())])) -> boolean().
+-spec maybe_match_accounts(ne_binaries(), maybe([maybe(binary())])) -> boolean().
 maybe_match_accounts(_AllowedAccounts, 'undefined') -> 'true';
 maybe_match_accounts(_AllowedAccounts, [?CATCH_ALL]) -> 'true';
 maybe_match_accounts(AllowedAccounts, RestrictionAccounts) ->
@@ -222,7 +222,7 @@ allowed_accounts(Context) ->
 allowed_accounts(?AUTH_ACCOUNT_ID, ?ACCOUNT_ID = AccountId) ->
     [?CATCH_ALL, AccountId, <<"{DESCENDANT_ACCOUNT_ID}">>].
 -else.
--spec allowed_accounts(api(binary()), api(binary())) -> ne_binaries().
+-spec allowed_accounts(maybe(binary()), maybe(binary())) -> ne_binaries().
 allowed_accounts('undefined', _AccountId) -> [?CATCH_ALL];
 allowed_accounts(_AuthAccountId, 'undefined') -> [?CATCH_ALL];
 allowed_accounts(AuthAccountId, AccountId) ->
@@ -232,7 +232,7 @@ allowed_accounts(AuthAccountId, AccountId) ->
     end.
 -endif.
 
--spec match_arguments(cb_context:context(), api(kz_json:object())) ->
+-spec match_arguments(cb_context:context(), maybe(kz_json:object())) ->
                              http_methods().
 match_arguments(_Context, 'undefined') -> [];
 match_arguments(Context, RulesJObj) ->
@@ -250,7 +250,7 @@ match_argument_patterns(ReqParams, RulesJObj, RuleKeys) ->
             kz_json:get_value(MatchedRuleKey, RulesJObj, [])
     end.
 
--spec match_rules(ne_binaries(), ne_binaries()) -> api(binary()).
+-spec match_rules(ne_binaries(), ne_binaries()) -> maybe(binary()).
 match_rules(_ReqParams, []) -> 'undefined';
 match_rules(ReqParams, [RuleKey|RuleKeys]) ->
     case does_rule_match(RuleKey, ReqParams) of

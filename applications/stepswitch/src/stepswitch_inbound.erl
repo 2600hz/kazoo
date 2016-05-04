@@ -262,7 +262,7 @@ maybe_transition_port_in(NumberProps, JObj) ->
         'true' -> transition_port_in(knm_number_options:number(NumberProps), JObj)
     end.
 
--spec transition_port_in(ne_binary(), api(kz_json:object())) -> any().
+-spec transition_port_in(ne_binary(), maybe(kz_json:object())) -> any().
 transition_port_in(Number, JObj) ->
     case knm_port_request:get(Number) of
         {'ok', PortReq} -> knm_port_request:transition_to_complete(PortReq);

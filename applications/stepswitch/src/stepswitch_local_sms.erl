@@ -74,7 +74,7 @@ send_route_win(_FetchId, CallId, JObj) ->
     lager:debug("sending route_win to ~s", [ServerQ]),
     kz_amqp_worker:cast(Win, fun(Payload)-> kapi_route:publish_win(ServerQ, Payload) end).
 
--spec delivery_from_req(kapi_offnet_resource:req(), binary(), api(binary()), api(boolean())) ->
+-spec delivery_from_req(kapi_offnet_resource:req(), binary(), maybe(binary()), maybe(boolean())) ->
                                kz_json:object().
 delivery_from_req(OffnetReq, Status, DeliveryCode, DeliveryFailure) ->
     OffnetJObj = kapi_offnet_resource:req_to_jobj(OffnetReq),

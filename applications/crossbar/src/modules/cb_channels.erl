@@ -166,7 +166,7 @@ channels_query(CallId) ->
                                ,{'ecallmgr', fun kapi_call:query_channels_resp_v/1}
                                ).
 
--spec find_channel(ne_binary(), ne_binary(), kz_json:objects()) -> api(kz_json:object()).
+-spec find_channel(ne_binary(), ne_binary(), kz_json:objects()) -> maybe(kz_json:object()).
 find_channel(_AccountId, _CallId, []) -> 'undefined';
 find_channel(AccountId, CallId, [StatusJObj|JObjs]) ->
     Channel = kz_json:get_value([<<"Channels">>, CallId], StatusJObj),
@@ -192,7 +192,7 @@ update(Context, CallId) ->
     end.
 
 -spec maybe_execute_command(cb_context:context(), ne_binary()) -> cb_context:context().
--spec maybe_execute_command(cb_context:context(), ne_binary(), api(binary())) -> cb_context:context().
+-spec maybe_execute_command(cb_context:context(), ne_binary(), maybe(binary())) -> cb_context:context().
 maybe_execute_command(Context, CallId) ->
     maybe_execute_command(Context, CallId, cb_context:req_value(Context, <<"action">>)).
 

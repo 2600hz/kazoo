@@ -232,7 +232,7 @@ get_quantity(CategoryId, ItemId, ItemPlan, Services) ->
 %% current quantity.
 %% @end
 %%--------------------------------------------------------------------
--spec get_flat_rate(non_neg_integer(), kzd_item_plan:doc()) -> api(float()).
+-spec get_flat_rate(non_neg_integer(), kzd_item_plan:doc()) -> maybe(float()).
 get_flat_rate(Quantity, ItemPlan) ->
     Rates = kzd_item_plan:flat_rates(ItemPlan),
     L1 = [kz_util:to_integer(K) || K <- kz_json:get_keys(Rates)],
@@ -249,7 +249,7 @@ get_flat_rate(Quantity, ItemPlan) ->
 %% quantity.  If no rates are viable attempt to use the "rate" property.
 %% @end
 %%--------------------------------------------------------------------
--spec get_quantity_rate(non_neg_integer(), kzd_item_plan:doc()) -> api(float()).
+-spec get_quantity_rate(non_neg_integer(), kzd_item_plan:doc()) -> maybe(float()).
 get_quantity_rate(Quantity, ItemPlan) ->
     Rates = kzd_item_plan:rates(ItemPlan),
     L1 = [kz_util:to_integer(K) || K <- kz_json:get_keys(Rates)],

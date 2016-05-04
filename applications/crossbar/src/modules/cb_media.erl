@@ -116,7 +116,7 @@ resource_exists(_, ?BIN_DATA) -> 'true'.
 authorize(Context) ->
     authorize_media(Context, cb_context:req_nouns(Context), cb_context:account_id(Context)).
 
--spec authorize_media(cb_context:context(), req_nouns(), api(binary())) -> boolean().
+-spec authorize_media(cb_context:context(), req_nouns(), maybe(binary())) -> boolean().
 authorize_media(_Context, [{<<"media">>, [?PROMPTS]}], 'undefined') ->
     lager:debug("allowing system prompts request"),
     'true';
@@ -296,7 +296,7 @@ maybe_normalize_upload(Context, MediaId, FileJObj) ->
 
 -spec normalize_upload(cb_context:context(), ne_binary(), kz_json:object()) ->
                               cb_context:context().
--spec normalize_upload(cb_context:context(), ne_binary(), kz_json:object(), api(binary())) ->
+-spec normalize_upload(cb_context:context(), ne_binary(), kz_json:object(), maybe(binary())) ->
                               cb_context:context().
 normalize_upload(Context, MediaId, FileJObj) ->
     normalize_upload(Context, MediaId, FileJObj, kz_json:get_value([<<"headers">>, <<"content_type">>], FileJObj)).
@@ -380,7 +380,7 @@ get(Context, _MediaId, ?BIN_DATA) ->
 put(Context) ->
     put_media(Context, cb_context:account_id(Context)).
 
--spec put_media(cb_context:context(), api(binary())) -> cb_context:context().
+-spec put_media(cb_context:context(), maybe(binary())) -> cb_context:context().
 put_media(Context, 'undefined') ->
     put_media(cb_context:set_account_db(Context, ?KZ_MEDIA_DB), <<"ignore">>);
 put_media(Context, _AccountId) ->
@@ -410,7 +410,7 @@ put_media(Context, _AccountId) ->
 post(Context, MediaId) ->
     post_media_doc(Context, kz_http_util:urlencode(MediaId), cb_context:account_id(Context)).
 
--spec post_media_doc(cb_context:context(), ne_binary(), api(binary())) -> cb_context:context().
+-spec post_media_doc(cb_context:context(), ne_binary(), maybe(binary())) -> cb_context:context().
 post_media_doc(Context, MediaId, 'undefined') ->
     post_media_doc(cb_context:set_account_db(Context, ?KZ_MEDIA_DB), MediaId, <<"ignore">>);
 post_media_doc(Context, MediaId, _AccountId) ->
@@ -437,7 +437,7 @@ post_media_doc(Context, MediaId, _AccountId) ->
 post(Context, MediaId, ?BIN_DATA) ->
     post_media_binary(Context, kz_http_util:urlencode(MediaId), cb_context:account_id(Context)).
 
--spec post_media_binary(cb_context:context(), ne_binary(), api(binary())) -> cb_context:context().
+-spec post_media_binary(cb_context:context(), ne_binary(), maybe(binary())) -> cb_context:context().
 post_media_binary(Context, MediaId, 'undefined') ->
     post_media_binary(cb_context:set_account_db(Context, ?KZ_MEDIA_DB), MediaId, <<"ignore">>);
 post_media_binary(Context, MediaId, _AccountId) ->
@@ -546,7 +546,7 @@ delete(Context, MediaId, ?BIN_DATA) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_media_summary(cb_context:context()) -> cb_context:context().
--spec load_media_summary(cb_context:context(), api(binary())) -> cb_context:context().
+-spec load_media_summary(cb_context:context(), maybe(binary())) -> cb_context:context().
 load_media_summary(Context) ->
     load_media_summary(Context, cb_context:account_id(Context)).
 
@@ -597,7 +597,7 @@ fix_start_keys_fold(Key, JObj) ->
     end.
 
 -spec load_available_languages(cb_context:context()) -> cb_context:context().
--spec load_available_languages(cb_context:context(), api(binary())) -> cb_context:context().
+-spec load_available_languages(cb_context:context(), maybe(binary())) -> cb_context:context().
 load_available_languages(Context) ->
     load_available_languages(Context, cb_context:account_id(Context)).
 
@@ -631,7 +631,7 @@ normalize_count_results(JObj, [Acc]) ->
 
 -spec load_media_docs_by_language(cb_context:context(), ne_binary()) ->
                                          cb_context:context().
--spec load_media_docs_by_language(cb_context:context(), ne_binary() | 'null', api(binary())) ->
+-spec load_media_docs_by_language(cb_context:context(), ne_binary() | 'null', maybe(binary())) ->
                                          cb_context:context().
 load_media_docs_by_language(Context, <<"missing">>) ->
     lager:debug("loading media files missing a language"),
@@ -690,7 +690,7 @@ normalize_language_results(JObj, Acc) ->
 %%--------------------------------------------------------------------
 -spec load_available_prompts(cb_context:context()) ->
                                     cb_context:context().
--spec load_available_prompts(cb_context:context(), api(binary())) ->
+-spec load_available_prompts(cb_context:context(), maybe(binary())) ->
                                     cb_context:context().
 load_available_prompts(Context) ->
     load_available_prompts(Context, cb_context:account_id(Context)).
@@ -717,7 +717,7 @@ load_available_prompts(Context, _AccountId) ->
      ).
 
 -spec load_media_docs_by_prompt(cb_context:context(), ne_binary()) -> cb_context:context().
--spec load_media_docs_by_prompt(cb_context:context(), ne_binary(), api(binary())) -> cb_context:context().
+-spec load_media_docs_by_prompt(cb_context:context(), ne_binary(), maybe(binary())) -> cb_context:context().
 load_media_docs_by_prompt(Context, PromptId) ->
     lager:debug("loading media files in prompt ~p", [PromptId]),
     load_media_docs_by_prompt(Context, PromptId, cb_context:account_id(Context)).
@@ -750,7 +750,7 @@ load_media_docs_by_prompt(Context, PromptId, _AccountId) ->
 
 -spec prompt_start_key(cb_context:context()) ->
                               ne_binaries().
--spec prompt_start_key(cb_context:context(), api(binary())) ->
+-spec prompt_start_key(cb_context:context(), maybe(binary())) ->
                               ne_binaries().
 prompt_start_key(Context) ->
     prompt_start_key(Context, 'undefined').
@@ -807,7 +807,7 @@ fix_prompt_start_keys_fold(Key, JObj) ->
 %%--------------------------------------------------------------------
 -spec load_media_meta(cb_context:context(), ne_binary()) ->
                              cb_context:context().
--spec load_media_meta(cb_context:context(), ne_binary(), api(binary())) ->
+-spec load_media_meta(cb_context:context(), ne_binary(), maybe(binary())) ->
                              cb_context:context().
 load_media_meta(Context, MediaId) ->
     load_media_meta(Context, MediaId, cb_context:account_id(Context)).
@@ -823,12 +823,12 @@ load_media_meta(Context, MediaId, _AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request(api(binary()), cb_context:context()) -> cb_context:context().
+-spec validate_request(maybe(binary()), cb_context:context()) -> cb_context:context().
 validate_request(MediaId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(MediaId, C) end,
     cb_context:validate_request_data(<<"media">>, Context, OnSuccess).
 
--spec on_successful_validation(api(binary()), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(maybe(binary()), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, kzd_media:type()}
              ,{<<"media_source">>, <<"upload">>}
@@ -966,7 +966,7 @@ update_media_binary(Context, MediaId, [{Filename, FileObj}|Files]) ->
 %% Delete the binary attachment of a media doc
 %% @end
 %%--------------------------------------------------------------------
--spec delete_media_binary(path_token(), cb_context:context(), api(binary())) -> cb_context:context().
+-spec delete_media_binary(path_token(), cb_context:context(), maybe(binary())) -> cb_context:context().
 delete_media_binary(MediaId, Context, 'undefined') ->
     delete_media_binary(MediaId, cb_context:set_account_db(Context, ?KZ_MEDIA_DB), <<"ignore">>);
 delete_media_binary(MediaId, Context, _AccountId) ->
@@ -982,7 +982,7 @@ delete_media_binary(MediaId, Context, _AccountId) ->
     end.
 
 -spec is_tts(kz_json:object()) -> boolean().
--spec is_tts(kz_json:object(), api(binary())) -> boolean().
+-spec is_tts(kz_json:object(), maybe(binary())) -> boolean().
 is_tts(JObj) ->
     is_tts(JObj, kz_json:get_ne_value([<<"tts">>, <<"text">>], JObj)).
 

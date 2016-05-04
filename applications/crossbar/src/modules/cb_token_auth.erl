@@ -100,7 +100,7 @@ delete(Context) ->
     end.
 
 -spec finish_request(cb_context:context()) -> 'ok'.
--spec finish_request(cb_context:context(), api(kz_json:object())) -> 'ok'.
+-spec finish_request(cb_context:context(), maybe(kz_json:object())) -> 'ok'.
 finish_request(Context) ->
     finish_request(Context, cb_context:auth_doc(Context)).
 
@@ -195,7 +195,7 @@ authenticate(Context, 'x-auth-token') ->
     end;
 authenticate(_Context, _TokenType) -> 'false'.
 
--spec check_auth_token(cb_context:context(), api(binary()), boolean()) ->
+-spec check_auth_token(cb_context:context(), maybe(binary()), boolean()) ->
                               boolean() |
                               {'true', cb_context:context()}.
 check_auth_token(_Context, <<>>, MagicPathed) -> MagicPathed;

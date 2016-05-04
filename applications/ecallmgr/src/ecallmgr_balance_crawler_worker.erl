@@ -86,7 +86,7 @@ disconnect_channels([Channel|Channels]) ->
     try_disconnect_channel(Channel),
     disconnect_channels(Channels).
 
--spec try_disconnect_channel({api(binary()), api(binary())}) -> 'ok'.
+-spec try_disconnect_channel({maybe(binary()), maybe(binary())}) -> 'ok'.
 try_disconnect_channel({Node, UUID}) ->
     lager:debug("disconnect channel ~p",[UUID]),
     _ = ecallmgr_util:send_cmd(Node, UUID, "hangup", ""),

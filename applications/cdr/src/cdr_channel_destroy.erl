@@ -64,7 +64,7 @@ maybe_ignore_loopback(JObj) ->
      <<"ignoring cdr request for loopback channel">>
     }.
 
--spec is_normal_hangup_cause(api(binary())) -> boolean().
+-spec is_normal_hangup_cause(maybe(binary())) -> boolean().
 is_normal_hangup_cause('undefined') -> 'true';
 is_normal_hangup_cause(<<"NORMAL", _/binary>>) -> 'true';
 is_normal_hangup_cause(_) -> 'false'.
@@ -96,7 +96,7 @@ prepare_and_save(AccountId, Timestamp, JObj) ->
                ),
     'ok'.
 
--spec update_pvt_parameters(api(binary()), gregorian_seconds(), kz_json:object()) -> kz_json:object().
+-spec update_pvt_parameters(maybe(binary()), gregorian_seconds(), kz_json:object()) -> kz_json:object().
 update_pvt_parameters('undefined', _, JObj) ->
     Props = [{'type', 'cdr'}
              ,{'crossbar_doc_vsn', 2}
@@ -110,7 +110,7 @@ update_pvt_parameters(AccountId, Timestamp, JObj) ->
             ],
     kz_doc:update_pvt_parameters(JObj, AccountMODb, Props).
 
--spec update_ccvs(api(binary()), gregorian_seconds(), kz_json:object()) -> kz_json:object().
+-spec update_ccvs(maybe(binary()), gregorian_seconds(), kz_json:object()) -> kz_json:object().
 update_ccvs(_, _, JObj) ->
     CCVs = kz_call_event:custom_channel_vars(JObj, kz_json:new()),
     {UpdatedJobj, UpdatedCCVs} =
@@ -132,7 +132,7 @@ update_ccvs_foldl(Key, Value,  {JObj, CCVs}=Acc) ->
             }
     end.
 
--spec set_doc_id(api(binary()), gregorian_seconds(), kz_json:object()) -> kz_json:object().
+-spec set_doc_id(maybe(binary()), gregorian_seconds(), kz_json:object()) -> kz_json:object().
 set_doc_id(_, Timestamp, JObj) ->
     CallId = kz_call_event:call_id(JObj),
 %% we should consider this because there is a lost channel in case of
@@ -141,19 +141,19 @@ set_doc_id(_, Timestamp, JObj) ->
     DocId = cdr_util:get_cdr_doc_id(Timestamp, CallId),
     kz_doc:set_id(JObj, DocId).
 
--spec set_call_priority(api(binary()), gregorian_seconds(), kz_json:object()) -> kz_json:object().
+-spec set_call_priority(maybe(binary()), gregorian_seconds(), kz_json:object()) -> kz_json:object().
 set_call_priority(_AccountId, _Timestamp, JObj) ->
     maybe_leak_ccv(JObj, <<"Call-Priority">>).
 
--spec set_recording_url(api(binary()), gregorian_seconds(), kz_json:object()) -> kz_json:object().
+-spec set_recording_url(maybe(binary()), gregorian_seconds(), kz_json:object()) -> kz_json:object().
 set_recording_url(_AccountId, _Timestamp, JObj) ->
     maybe_leak_ccv(JObj, <<"Recording-Url">>).
 
--spec maybe_set_e164_destination(api(binary()), gregorian_seconds(), kz_json:object()) -> kz_json:object().
+-spec maybe_set_e164_destination(maybe(binary()), gregorian_seconds(), kz_json:object()) -> kz_json:object().
 maybe_set_e164_destination(_AccountId, _Timestamp, JObj) ->
     maybe_leak_ccv(JObj, <<"E164-Destination">>).
 
--spec is_conference(api(binary()), gregorian_seconds(), kz_json:object()) -> kz_json:object().
+-spec is_conference(maybe(binary()), gregorian_seconds(), kz_json:object()) -> kz_json:object().
 is_conference(_AccountId, _Timestamp, JObj) ->
     maybe_leak_ccv(JObj, <<"Is-Conference">>, {fun kz_json:is_true/3, 'false'}).
 
@@ -172,7 +172,7 @@ maybe_leak_ccv(JObj, Key, {GetFun, Default}) ->
                                   )
     end.
 
--spec set_interaction(api(binary()), gregorian_seconds(), kz_json:object()) ->
+-spec set_interaction(maybe(binary()), gregorian_seconds(), kz_json:object()) ->
                        kz_json:object().
 set_interaction(_AccountId, _Timestamp, JObj) ->
     <<Time:11/binary, "-", Key/binary>> = Interaction = kz_call_event:custom_channel_var(JObj, <<?CALL_INTERACTION_ID>>),
@@ -188,7 +188,7 @@ set_interaction(_AccountId, _Timestamp, JObj) ->
       ,kz_json:delete_key(?CCV(<<?CALL_INTERACTION_ID>>), kz_doc:set_id(JObj, DocId))
      ).
 
--spec save_cdr(api(binary()), gregorian_seconds(), kz_json:object()) -> kz_json:object().
+-spec save_cdr(maybe(binary()), gregorian_seconds(), kz_json:object()) -> kz_json:object().
 save_cdr(_, _, JObj) ->
     CDRDb = kz_doc:account_db(JObj),
     case cdr_util:save_cdr(CDRDb, kz_json:normalize_jobj(JObj)) of

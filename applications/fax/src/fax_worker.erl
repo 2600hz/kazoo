@@ -30,13 +30,13 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {queue_name :: api(binary())
-                ,pool :: api(pid())
-                ,job_id :: api(binary())
-                ,job :: api(kz_json:object())
-                ,account_id :: api(binary())
+-record(state, {queue_name :: maybe(binary())
+                ,pool :: maybe(pid())
+                ,job_id :: maybe(binary())
+                ,job :: maybe(kz_json:object())
+                ,account_id :: maybe(binary())
                 ,status :: binary()
-                ,fax_status :: api(kz_json:object())
+                ,fax_status :: maybe(kz_json:object())
                 ,pages  :: integer()
                 ,page = 0  :: integer()
                 ,file :: ne_binary()
@@ -467,7 +467,7 @@ code_change(_OldVsn, State, _Extra) ->
 -spec attempt_to_acquire_job(ne_binary(), ne_binary()) ->
                                     {'ok', kz_json:object()} |
                                     {'error', any()}.
--spec attempt_to_acquire_job(kz_json:object(), ne_binary(), api(binary())) ->
+-spec attempt_to_acquire_job(kz_json:object(), ne_binary(), maybe(binary())) ->
                                     {'ok', kz_json:object()} |
                                     {'error', any()}.
 attempt_to_acquire_job(Id, Q) ->
@@ -693,7 +693,7 @@ apply_reschedule_rules({[Rule | Rules], [Key | Keys]}, JObj) ->
             apply_reschedule_rules({Rules, Keys}, JObj)
     end.
 
--spec get_attempt_value(api(binary()) | integer()) -> integer().
+-spec get_attempt_value(maybe(binary()) | integer()) -> integer().
 get_attempt_value(X) when is_integer(X) -> X;
 get_attempt_value('undefined') -> -1;
 get_attempt_value(<<"any">>) -> -1;
@@ -734,7 +734,7 @@ move_doc(JObj) ->
    {'ok', Doc} = kz_datamgr:move_doc(FromDB, FromId, ToDB, ToId, Options),
     Doc.
 
--spec fax_error(kz_json:object()) -> api(binary()).
+-spec fax_error(kz_json:object()) -> maybe(binary()).
 fax_error(JObj) ->
     kz_json:get_value([<<"Application-Data">>, <<"Fax-Result-Text">>]
                       ,JObj
@@ -773,7 +773,7 @@ notify_fields(JObj, Resp) ->
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
--spec fax_fields(api(kz_json:object())) -> kz_proplist().
+-spec fax_fields(maybe(kz_json:object())) -> kz_proplist().
 fax_fields('undefined') -> [];
 fax_fields(JObj) ->
     [{K,V} || {<<"Fax-", _/binary>> = K, V} <- kz_json:to_proplist(JObj)].
@@ -931,7 +931,7 @@ ensure_valid_caller_id(JObj, SendFax) ->
             gen_server:cast(self(), {'error', 'invalid_cid', CIDNum})
     end.
 
--spec send_fax(ne_binary(), kz_json:object(), ne_binary(), api(binary())) -> 'ok'.
+-spec send_fax(ne_binary(), kz_json:object(), ne_binary(), maybe(binary())) -> 'ok'.
 send_fax(_JobId, _JObj, _Q, 'undefined') ->
     gen_server:cast(self(), {'error', 'invalid_number', <<"(undefined)">>});
 send_fax(_JobId, _JObj, _Q, <<>>) ->
@@ -979,7 +979,7 @@ send_fax(JobId, JObj, Q, ToDID) ->
     lager:debug("sending fax originate request ~s with call-id ~s", [JobId, CallId]),
     kapi_offnet_resource:publish_req(Request).
 
--spec get_hunt_account_id(ne_binary()) -> api(binary()).
+-spec get_hunt_account_id(ne_binary()) -> maybe(binary()).
 get_hunt_account_id(AccountId) ->
     AccountDb = kz_util:format_account_db(AccountId),
     Options = [{'key', <<"no_match">>}, 'include_docs'],
@@ -988,7 +988,7 @@ get_hunt_account_id(AccountId) ->
         _ -> 'undefined'
     end.
 
--spec maybe_hunt_account_id(api(kz_json:object())) -> api(binary()).
+-spec maybe_hunt_account_id(maybe(kz_json:object())) -> maybe(binary()).
 maybe_hunt_account_id('undefined') -> 'undefined';
 maybe_hunt_account_id(JObj) ->
     case kz_json:get_value([<<"flow">>, <<"module">>], JObj) of
@@ -1004,7 +1004,7 @@ resource_ccvs(JobId) ->
                        ,{<<"Authorizing-Type">>, <<"outbound_fax">>}
                       ]).
 
--spec get_did(kz_json:object()) -> api(binary()).
+-spec get_did(kz_json:object()) -> maybe(binary()).
 get_did(JObj) ->
     case kz_json:is_true(<<"bypass_e164">>, JObj, 'false') of
         'true' -> kz_json:get_value(<<"to_number">>, JObj);
@@ -1034,11 +1034,11 @@ send_status(State, Status) ->
 send_error_status(State, Status) ->
     send_status(State, Status, ?FAX_ERROR, 'undefined').
 
--spec send_status(state(), ne_binary(), api(kz_json:object())) -> any().
+-spec send_status(state(), ne_binary(), maybe(kz_json:object())) -> any().
 send_status(State, Status, FaxInfo) ->
     send_status(State, Status, ?FAX_SEND, FaxInfo).
 
--spec send_status(state(), ne_binary(), ne_binary(), api(kz_json:object())) -> any().
+-spec send_status(state(), ne_binary(), ne_binary(), maybe(kz_json:object())) -> any().
 send_status(#state{job=JObj
                    ,page=Page
                    ,job_id=JobId
@@ -1063,7 +1063,7 @@ send_status(#state{job=JObj
                 ]),
     kapi_fax:publish_status(Payload).
 
--spec send_reply_status(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), api(kz_json:object())) -> 'ok'.
+-spec send_reply_status(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), maybe(kz_json:object())) -> 'ok'.
 send_reply_status(Q, MsgId, JobId, Status, AccountId, JObj) ->
     Payload = props:filter_undefined(
                 [{<<"Job-ID">>, JobId}

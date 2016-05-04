@@ -309,7 +309,7 @@ maybe_match(JObj, Key, User, Realm, Formatter) ->
         'nomatch' -> 'false'
     end.
 
--spec maybe_match(api(binary()), ne_binary()) ->
+-spec maybe_match(maybe(binary()), ne_binary()) ->
                          {'match', binary()} |
                          'nomatch'.
 maybe_match('undefined', _Value) -> 'nomatch';

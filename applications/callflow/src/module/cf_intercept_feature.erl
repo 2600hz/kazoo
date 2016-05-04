@@ -116,7 +116,7 @@ maybe_allowed_to_intercept(Call, Props, DeviceDoc) ->
 can_device_intercept(Call, Props, DeviceDoc) ->
     device_has_same_owner(Call, DeviceDoc, props:get_value(<<"device_id">>, Props)).
 
--spec device_has_same_owner(kapps_call:call(), kz_json:object(), api(binary())) -> boolean().
+-spec device_has_same_owner(kapps_call:call(), kz_json:object(), maybe(binary())) -> boolean().
 device_has_same_owner(_Call, _Device, 'undefined') -> 'false';
 device_has_same_owner(Call, DeviceDoc, TargetDeviceId) ->
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), TargetDeviceId) of

@@ -108,7 +108,7 @@ connections_fold(K, V, Acc) ->
                                  },
     [C | Acc].
 
--spec connection_options(api(kz_json:object())) -> kz_proplist().
+-spec connection_options(maybe(kz_json:object())) -> kz_proplist().
 connection_options('undefined') ->
     ?DEFAULT_EXCHANGE_OPTIONS;
 connection_options(JObj) ->

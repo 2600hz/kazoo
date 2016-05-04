@@ -23,9 +23,9 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {subs_pid = 'undefined' :: api(pid())
+-record(state, {subs_pid = 'undefined' :: maybe(pid())
                 ,subs_ref :: reference()
-                ,queue = 'undefined' :: api(binary())
+                ,queue = 'undefined' :: maybe(binary())
                 ,consuming = 'false' :: boolean()
                 ,sync = 'false' :: boolean()
                }).

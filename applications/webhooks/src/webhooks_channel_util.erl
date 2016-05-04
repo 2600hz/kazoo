@@ -37,7 +37,7 @@ maybe_handle_channel_event(AccountId, HookEvent, JObj) ->
 hook_event_name(<<"CHANNEL_DISCONNECTED">>) -> <<"CHANNEL_DESTROY">>;
 hook_event_name(Event) -> Event.
 
--spec format_event(kz_json:object(), api(binary()), ne_binary()) ->
+-spec format_event(kz_json:object(), maybe(binary()), ne_binary()) ->
                           kz_json:object().
 format_event(JObj, AccountId, <<"CHANNEL_CREATE">>) ->
     kz_json:set_value(<<"hook_event">>, <<"channel_create">>
@@ -67,8 +67,8 @@ format_event(JObj, AccountId, <<"CHANNEL_DESTROY">>) ->
                      ]
                    ).
 
--spec base_hook_event(kz_json:object(), api(binary())) -> kz_json:object().
--spec base_hook_event(kz_json:object(), api(binary()), kz_proplist()) -> kz_json:object().
+-spec base_hook_event(kz_json:object(), maybe(binary())) -> kz_json:object().
+-spec base_hook_event(kz_json:object(), maybe(binary()), kz_proplist()) -> kz_json:object().
 base_hook_event(JObj, AccountId) ->
     base_hook_event(JObj, AccountId, []).
 base_hook_event(JObj, AccountId, Acc) ->
@@ -100,12 +100,12 @@ base_hook_event(JObj, AccountId, Acc) ->
          | Acc
         ])).
 
--spec resource_used(boolean(), kz_json:object()) -> api(binary()).
+-spec resource_used(boolean(), kz_json:object()) -> maybe(binary()).
 resource_used('true', _JObj) -> 'undefined';
 resource_used('false', JObj) -> ccv(JObj, <<"Resource-ID">>).
 
 -spec ccv(kz_json:object(), kz_json:key()) ->
-                 api(binary()).
+                 maybe(binary()).
 -spec ccv(kz_json:object(), kz_json:key(), Default) ->
                  ne_binary() | Default.
 ccv(JObj, Key) ->

@@ -25,7 +25,7 @@
                             ]).
 -define(TRANSFERRED_TYPES, []).
 
--spec transferred(api(terms())) ->
+-spec transferred(maybe(terms())) ->
                          {'ok', iolist()} |
                          {'error', ne_binary()}.
 transferred(API) ->
@@ -34,7 +34,7 @@ transferred(API) ->
         'false' -> {'error', <<"API failed validation for transferred">>}
     end.
 
--spec transferred_v(api(terms())) -> boolean().
+-spec transferred_v(maybe(terms())) -> boolean().
 transferred_v(API) ->
     kz_api:validate(API, ?TRANSFERRED_HEADERS, ?TRANSFERRED_VALUES, ?TRANSFERRED_TYPES).
 
@@ -43,7 +43,7 @@ bind_q(Queue, Props) ->
     CallId = props:get_value('callid', Props),
     bind_q(Queue, CallId, props:get_value('restrict_to', Props)).
 
--spec bind_q(ne_binary(), api(binary()), api(kz_proplist())) -> 'ok'.
+-spec bind_q(ne_binary(), maybe(binary()), maybe(kz_proplist())) -> 'ok'.
 bind_q(_Queue, 'undefined', 'undefined') -> 'ok';
 bind_q(Queue, CallId, 'undefined') ->
     bind_for_transferred(Queue, CallId);
@@ -61,7 +61,7 @@ unbind_q(Queue, Props) ->
     CallId = props:get_value('callid', Props),
     unbind_q(Queue, CallId, props:get_value('restrict_to', Props)).
 
--spec unbind_q(ne_binary(), api(binary()), api(kz_proplist())) -> 'ok'.
+-spec unbind_q(ne_binary(), maybe(binary()), maybe(kz_proplist())) -> 'ok'.
 unbind_q(_Queue, 'undefined', 'undefined') -> 'ok';
 unbind_q(Queue, CallId, 'undefined') ->
     unbind_for_transferred(Queue, CallId);
@@ -78,7 +78,7 @@ unbind_q(Queue, CallId, [_Restriction|Restrictions]) ->
 declare_exchanges() ->
     amqp_util:kapps_exchange().
 
--spec publish_transferred(ne_binary(), api(terms())) -> 'ok'.
+-spec publish_transferred(ne_binary(), maybe(terms())) -> 'ok'.
 publish_transferred(TargetCallId, API) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?TRANSFERRED_VALUES, fun ?MODULE:transferred/1),
     amqp_util:kapps_publish(transferred_routing_key(TargetCallId), Payload).

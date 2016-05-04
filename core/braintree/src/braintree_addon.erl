@@ -96,7 +96,7 @@ record_to_json(#bt_addon{id=Id, amount=Amount, quantity=Q}) ->
 %% Convert a given json obj into a record
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_record(api(kz_json:object())) -> api(bt_addon()).
+-spec json_to_record(maybe(kz_json:object())) -> maybe(bt_addon()).
 json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->
     #bt_addon{id = kz_doc:id(JObj)

@@ -55,7 +55,7 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec req(api(terms())) -> {'ok', iolist()} | {'error', string()}.
+-spec req(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
         true -> kz_api:build_message(Prop, ?ASR_REQ_HEADERS, ?OPTIONAL_ASR_REQ_HEADERS);
@@ -64,7 +64,7 @@ req(Prop) when is_list(Prop) ->
 req(JObj) ->
     req(kz_json:to_proplist(JObj)).
 
--spec req_v(api(terms())) -> boolean().
+-spec req_v(maybe(terms())) -> boolean().
 req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?ASR_REQ_HEADERS, ?ASR_REQ_VALUES, ?ASR_REQ_TYPES);
 req_v(JObj) ->
@@ -75,7 +75,7 @@ req_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec resp(api(terms())) -> {'ok', iolist()} | {'error', string()}.
+-spec resp(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 resp(Prop) when is_list(Prop) ->
     case resp_v(Prop) of
         true -> kz_api:build_message(Prop, ?ASR_RESP_HEADERS, ?OPTIONAL_ASR_RESP_HEADERS);
@@ -95,7 +95,7 @@ resp_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec error(api(terms())) -> {'ok', iolist()} | {'error', string()}.
+-spec error(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 error(Prop) when is_list(Prop) ->
     case error_v(Prop) of
         true -> kz_api:build_message(Prop, ?ASR_ERROR_HEADERS, ?OPTIONAL_ASR_ERROR_HEADERS);
@@ -142,8 +142,8 @@ declare_exchanges() ->
 %% prepare and publish an asr request
 %% @end
 %%--------------------------------------------------------------------
--spec publish_req(api(terms())) -> 'ok'.
--spec publish_req(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_req(maybe(terms())) -> 'ok'.
+-spec publish_req(maybe(terms()), ne_binary()) -> 'ok'.
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Req, ContentType) ->
@@ -155,8 +155,8 @@ publish_req(Req, ContentType) ->
 %% prepare and publish an asr response
 %% @end
 %%--------------------------------------------------------------------
--spec publish_resp(ne_binary(), api(terms())) -> 'ok'.
--spec publish_resp(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
+-spec publish_resp(ne_binary(), maybe(terms())) -> 'ok'.
+-spec publish_resp(ne_binary(), maybe(terms()), ne_binary()) -> 'ok'.
 publish_resp(Queue, JObj) ->
     publish_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_resp(Queue, Resp, ContentType) ->
@@ -168,8 +168,8 @@ publish_resp(Queue, Resp, ContentType) ->
 %% prepare and publish an asr error
 %% @end
 %%--------------------------------------------------------------------
--spec publish_error(ne_binary(), api(terms())) -> 'ok'.
--spec publish_error(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
+-spec publish_error(ne_binary(), maybe(terms())) -> 'ok'.
+-spec publish_error(ne_binary(), maybe(terms()), ne_binary()) -> 'ok'.
 publish_error(Queue, JObj) ->
     publish_error(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_error(Queue, Error, ContentType) ->

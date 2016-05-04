@@ -206,7 +206,7 @@ create_template_db(TemplateName, Context) ->
 %% documents into the account
 %% @end
 %%--------------------------------------------------------------------
--spec import_template(api(binary()), ne_binary(), ne_binary()) -> 'ok'.
+-spec import_template(maybe(binary()), ne_binary(), ne_binary()) -> 'ok'.
 import_template('undefined', _, _) -> 'ok';
 import_template(TemplateName, AccountId, AccountDb) ->
     %% TODO: use couch replication...

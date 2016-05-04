@@ -43,7 +43,7 @@
 %%--------------------------------------------------------------------
 -spec save(knm_number:knm_number()) ->
                   knm_number:knm_number().
--spec save(knm_number:knm_number(), api(binary())) ->
+-spec save(knm_number:knm_number(), maybe(binary())) ->
                   knm_number:knm_number().
 save(Number) ->
     State = knm_phone_number:state(knm_number:phone_number(Number)),
@@ -281,7 +281,7 @@ add_location(Number, Location, CallerName) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec provision_location(ne_binary()) -> api(binary()).
+-spec provision_location(ne_binary()) -> maybe(binary()).
 provision_location(LocationId) ->
     Props = [{'locationid', [kz_util:to_list(LocationId)]}],
     case emergency_provisioning_request('provisionLocation', Props) of
@@ -296,7 +296,7 @@ provision_location(LocationId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec remove_number(knm_number:knm_number()) -> api(binary()).
+-spec remove_number(knm_number:knm_number()) -> maybe(binary()).
 remove_number(Number) ->
     Num = knm_phone_number:number(knm_number:phone_number(Number)),
     lager:debug("removing dash e911 number '~s'", [Num]),

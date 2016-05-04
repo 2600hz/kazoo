@@ -64,9 +64,9 @@
 
 -type direction() :: 'ascending' | 'descending'.
 
--type startkey() :: api(kz_json:json_term()).
+-type startkey() :: maybe(kz_json:json_term()).
 
--type startkey_fun() :: api(fun((cb_context:context()) -> startkey()) |
+-type startkey_fun() :: maybe(fun((cb_context:context()) -> startkey()) |
                             fun((kz_proplist(), cb_context:context()) -> startkey())
                            ).
 
@@ -75,11 +75,11 @@
                          {'startkey_fun', startkey_fun()}
                         ].
 
--record(load_view_params, {view :: api(binary())
+-record(load_view_params, {view :: maybe(binary())
                            ,view_options = [] :: view_options()
                            ,context :: cb_context:context()
                            ,start_key :: startkey()
-                           ,page_size :: non_neg_integer() | api(binary())
+                           ,page_size :: non_neg_integer() | maybe(binary())
                            ,filter_fun :: filter_fun()
                            ,dbs = [] :: ne_binaries()
                            ,direction = 'ascending' :: direction()
@@ -87,8 +87,8 @@
 -type load_view_params() :: #load_view_params{}.
 
 -spec pagination_page_size() -> pos_integer().
--spec pagination_page_size(cb_context:context()) -> api(pos_integer()).
--spec pagination_page_size(cb_context:context(), ne_binary()) -> api(pos_integer()).
+-spec pagination_page_size(cb_context:context()) -> maybe(pos_integer()).
+-spec pagination_page_size(cb_context:context(), ne_binary()) -> maybe(pos_integer()).
 pagination_page_size() ->
     ?PAGINATION_PAGE_SIZE.
 
@@ -206,7 +206,7 @@ check_document_type([DocId|DocIds], Context, [JObj|JObjs], Options) ->
         'false' -> 'false'
     end.
 
--spec document_type_match(api(binary()), api(binary()), ne_binary()) -> boolean().
+-spec document_type_match(maybe(binary()), maybe(binary()), ne_binary()) -> boolean().
 document_type_match('undefined', _ExpectedType, _ReqType) ->
     lager:debug("document doesn't have type, requested type is ~p", [_ReqType]),
     'true';
@@ -286,7 +286,7 @@ load_from_file(Db, File) ->
                         cb_context:context().
 -spec load_merge(ne_binary(), kz_json:object(), cb_context:context(), kz_proplist()) ->
                         cb_context:context().
--spec load_merge(ne_binary(), kz_json:object(), cb_context:context(), kz_proplist(), api(kz_json:object())) ->
+-spec load_merge(ne_binary(), kz_json:object(), cb_context:context(), kz_proplist(), maybe(kz_json:object())) ->
                         cb_context:context().
 
 load_merge(DocId, Context) ->
@@ -346,7 +346,7 @@ patch_and_validate(Id, Context, ValidateFun) ->
                        cb_context:context().
 -spec load_view(ne_binary() | 'all_docs', kz_proplist(), cb_context:context(), kz_json:json_term(), pos_integer()) ->
                        cb_context:context().
--spec load_view(ne_binary() | 'all_docs', kz_proplist(), cb_context:context(), kz_json:json_term(), pos_integer(), api(filter_fun())) ->
+-spec load_view(ne_binary() | 'all_docs', kz_proplist(), cb_context:context(), kz_json:json_term(), pos_integer(), maybe(filter_fun())) ->
                        cb_context:context().
 load_view(View, Options, Context) ->
     load_view(View, Options, Context
@@ -465,8 +465,8 @@ load_view(#load_view_params{view=View
                                                )
     end.
 
--spec limit_by_page_size(api(binary()) | pos_integer()) -> api(pos_integer()).
--spec limit_by_page_size(cb_context:context(), api(binary()) | pos_integer()) -> api(pos_integer()).
+-spec limit_by_page_size(maybe(binary()) | pos_integer()) -> maybe(pos_integer()).
+-spec limit_by_page_size(cb_context:context(), maybe(binary()) | pos_integer()) -> maybe(pos_integer()).
 limit_by_page_size('undefined') -> 'undefined';
 limit_by_page_size(N) when is_integer(N) -> N+1;
 limit_by_page_size(<<_/binary>> = B) -> limit_by_page_size(kz_util:to_integer(B)).
@@ -479,8 +479,8 @@ limit_by_page_size(Context, PageSize) ->
             'undefined'
     end.
 
--spec start_key(cb_context:context()) -> api(kz_json:json_term()).
--spec start_key(kz_proplist(), cb_context:context()) -> api(kz_json:json_term()).
+-spec start_key(cb_context:context()) -> maybe(kz_json:json_term()).
+-spec start_key(kz_proplist(), cb_context:context()) -> maybe(kz_json:json_term()).
 start_key(Context) ->
     cb_context:req_value(Context, <<"start_key">>).
 
@@ -491,7 +491,7 @@ start_key(Options, Context) ->
         Fun when is_function(Fun, 1) -> Fun(Context)
     end.
 
--spec start_key_fun(kz_proplist(), cb_context:context()) -> api(kz_json:json_term()).
+-spec start_key_fun(kz_proplist(), cb_context:context()) -> maybe(kz_json:json_term()).
 start_key_fun(Options, Context) ->
     case props:get_value('startkey', Options) of
         'undefined' ->
@@ -751,7 +751,7 @@ delete(Context, 'soft') ->
 delete(Context, 'permanent') ->
     do_delete(Context, cb_context:doc(Context), fun kz_datamgr:del_doc/2).
 
--spec soft_delete(cb_context:context(), api(binary())) -> cb_context:context().
+-spec soft_delete(cb_context:context(), maybe(binary())) -> cb_context:context().
 soft_delete(Context, Rev) ->
     lager:debug("soft deleting with rev ~s", [Rev]),
     JObj1 = lists:foldl(fun({F, V}, J) -> F(J, V) end
@@ -818,7 +818,7 @@ delete_attachment(DocId, AName, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec rev_to_etag(kz_json:object() | kz_json:objects() | ne_binary()) ->
-                         api('automatic' | string()).
+                         maybe('automatic' | string()).
 rev_to_etag([_|_])-> 'automatic';
 rev_to_etag([]) -> 'undefined';
 rev_to_etag(Rev) when is_binary(Rev) -> kz_util:to_list(Rev);
@@ -834,7 +834,7 @@ rev_to_etag(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_pagination_envelope_params(cb_context:context(), any(), api(non_neg_integer())) ->
+-spec update_pagination_envelope_params(cb_context:context(), any(), maybe(non_neg_integer())) ->
                                                cb_context:context().
 update_pagination_envelope_params(Context, StartKey, PageSize) ->
     update_pagination_envelope_params(Context
@@ -844,7 +844,7 @@ update_pagination_envelope_params(Context, StartKey, PageSize) ->
                                       ,cb_context:should_paginate(Context)
                                      ).
 
--spec update_pagination_envelope_params(cb_context:context(), any(), api(non_neg_integer()), api(binary())) ->
+-spec update_pagination_envelope_params(cb_context:context(), any(), maybe(non_neg_integer()), maybe(binary())) ->
                                                cb_context:context().
 update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey) ->
     update_pagination_envelope_params(Context
@@ -854,7 +854,7 @@ update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey) ->
                                       ,cb_context:should_paginate(Context)
                                      ).
 
--spec update_pagination_envelope_params(cb_context:context(), any(), api(non_neg_integer()), api(binary()), boolean()) ->
+-spec update_pagination_envelope_params(cb_context:context(), any(), maybe(non_neg_integer()), maybe(binary()), boolean()) ->
                                                cb_context:context().
 update_pagination_envelope_params(Context, _StartKey, _PageSize, _NextStartKey, 'false') ->
     lager:debug("pagination disabled, removing resp envelope keys"),
@@ -881,7 +881,7 @@ update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey, 'tr
                                    )
                                 ).
 
--spec handle_couch_mgr_pagination_success(kz_json:objects(), api(pos_integer()), ne_binary(), load_view_params()) ->
+-spec handle_couch_mgr_pagination_success(kz_json:objects(), maybe(pos_integer()), ne_binary(), load_view_params()) ->
                                                  cb_context:context().
 handle_couch_mgr_pagination_success(JObjs
                                     ,_PageSize
@@ -982,9 +982,9 @@ handle_couch_mgr_pagination_success([_|_]=JObjs
 
 -type filter_fun() :: fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()).
 
--spec apply_filter(api(filter_fun()), kz_json:objects(), cb_context:context(), direction()) ->
+-spec apply_filter(maybe(filter_fun()), kz_json:objects(), cb_context:context(), direction()) ->
                           kz_json:objects().
--spec apply_filter(api(filter_fun()), kz_json:objects(), cb_context:context(), direction(), boolean()) ->
+-spec apply_filter(maybe(filter_fun()), kz_json:objects(), cb_context:context(), direction(), boolean()) ->
                           kz_json:objects().
 apply_filter(FilterFun, JObjs, Context, Direction) ->
     apply_filter(FilterFun, JObjs, Context, Direction, has_qs_filter(Context)).
@@ -1006,7 +1006,7 @@ apply_filter(FilterFun, JObjs, Context, Direction, HasQSFilter) ->
         'descending' -> lists:reverse(Filtered)
     end.
 
--spec maybe_apply_custom_filter(api(filter_fun()), kz_json:objects()) -> kz_json:objects().
+-spec maybe_apply_custom_filter(maybe(filter_fun()), kz_json:objects()) -> kz_json:objects().
 maybe_apply_custom_filter('undefined', JObjs) -> JObjs;
 maybe_apply_custom_filter(FilterFun, JObjs) ->
     [JObj
@@ -1124,7 +1124,7 @@ version_specific_success(JObjs, Context, _Version) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_couch_mgr_errors(kazoo_data:data_errors(), api(binary()) | api([api(binary())]), cb_context:context()) ->
+-spec handle_couch_mgr_errors(kazoo_data:data_errors(), maybe(binary()) | maybe([maybe(binary())]), cb_context:context()) ->
                                      cb_context:context().
 handle_couch_mgr_errors('invalid_db_name', _, Context) ->
     lager:debug("datastore ~s not_found", [cb_context:account_db(Context)]),
@@ -1286,7 +1286,7 @@ is_filter_key(_) -> 'false'.
 %% Returns 'true' if all of the requested props are found, 'false' if one is not found
 %% @end
 %%--------------------------------------------------------------------
--spec filter_doc(api(kz_json:object()), cb_context:context()) -> boolean().
+-spec filter_doc(maybe(kz_json:object()), cb_context:context()) -> boolean().
 filter_doc('undefined', _Context) ->
     lager:debug("no doc was returned (no include_docs?)"),
     'true';
@@ -1318,7 +1318,7 @@ should_filter_doc(Doc, K, V) ->
 %% Returns 'true' or 'false' if the prop is found inside the doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_prop(kz_json:object(), ne_binary(), any()) -> api(boolean()).
+-spec filter_prop(kz_json:object(), ne_binary(), any()) -> maybe(boolean()).
 filter_prop(Doc, <<"filter_not_", Key/binary>>, Val) ->
     not should_filter(Doc, Key, Val);
 filter_prop(Doc, <<"filter_", Key/binary>>, Val) ->

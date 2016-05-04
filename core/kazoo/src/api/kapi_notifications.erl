@@ -536,7 +536,7 @@ voicemail(Prop) when is_list(Prop) ->
     end;
 voicemail(JObj) -> voicemail(kz_json:to_proplist(JObj)).
 
--spec voicemail_v(api(terms())) -> boolean().
+-spec voicemail_v(maybe(terms())) -> boolean().
 voicemail_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?VOICEMAIL_HEADERS, ?VOICEMAIL_VALUES, ?VOICEMAIL_TYPES);
 voicemail_v(JObj) -> voicemail_v(kz_json:to_proplist(JObj)).
@@ -553,7 +553,7 @@ voicemail_saved(Prop) when is_list(Prop) ->
     end;
 voicemail_saved(JObj) -> voicemail_saved(kz_json:to_proplist(JObj)).
 
--spec voicemail_saved_v(api(terms())) -> boolean().
+-spec voicemail_saved_v(maybe(terms())) -> boolean().
 voicemail_saved_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?VOICEMAIL_HEADERS, ?VOICEMAIL_SAVED_VALUES, ?VOICEMAIL_TYPES);
 voicemail_saved_v(JObj) -> voicemail_saved_v(kz_json:to_proplist(JObj)).
@@ -570,7 +570,7 @@ voicemail_full(Prop) when is_list(Prop) ->
     end;
 voicemail_full(JObj) -> voicemail_full(kz_json:to_proplist(JObj)).
 
--spec voicemail_full_v(api(terms())) -> boolean().
+-spec voicemail_full_v(maybe(terms())) -> boolean().
 voicemail_full_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?VOICEMAIL_FULL_HEADERS, ?VOICEMAIL_FULL_VALUES, ?VOICEMAIL_FULL_TYPES);
 voicemail_full_v(JObj) -> voicemail_full_v(kz_json:to_proplist(JObj)).
@@ -587,7 +587,7 @@ fax_inbound(Prop) when is_list(Prop) ->
     end;
 fax_inbound(JObj) -> fax_inbound(kz_json:to_proplist(JObj)).
 
--spec fax_inbound_v(api(terms())) -> boolean().
+-spec fax_inbound_v(maybe(terms())) -> boolean().
 fax_inbound_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?FAX_INBOUND_HEADERS, ?FAX_INBOUND_VALUES, ?FAX_INBOUND_TYPES);
 fax_inbound_v(JObj) -> fax_inbound_v(kz_json:to_proplist(JObj)).
@@ -604,7 +604,7 @@ fax_outbound(Prop) when is_list(Prop) ->
     end;
 fax_outbound(JObj) -> fax_outbound(kz_json:to_proplist(JObj)).
 
--spec fax_outbound_v(api(terms())) -> boolean().
+-spec fax_outbound_v(maybe(terms())) -> boolean().
 fax_outbound_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?FAX_OUTBOUND_HEADERS, ?FAX_OUTBOUND_VALUES, ?FAX_OUTBOUND_TYPES);
 fax_outbound_v(JObj) -> fax_outbound_v(kz_json:to_proplist(JObj)).
@@ -621,7 +621,7 @@ fax_inbound_error(Prop) when is_list(Prop) ->
     end;
 fax_inbound_error(JObj) -> fax_inbound_error(kz_json:to_proplist(JObj)).
 
--spec fax_inbound_error_v(api(terms())) -> boolean().
+-spec fax_inbound_error_v(maybe(terms())) -> boolean().
 fax_inbound_error_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?FAX_INBOUND_ERROR_HEADERS, ?FAX_INBOUND_ERROR_VALUES, ?FAX_INBOUND_ERROR_TYPES);
 fax_inbound_error_v(JObj) -> fax_inbound_error_v(kz_json:to_proplist(JObj)).
@@ -638,7 +638,7 @@ fax_outbound_error(Prop) when is_list(Prop) ->
     end;
 fax_outbound_error(JObj) -> fax_outbound_error(kz_json:to_proplist(JObj)).
 
--spec fax_outbound_error_v(api(terms())) -> boolean().
+-spec fax_outbound_error_v(maybe(terms())) -> boolean().
 fax_outbound_error_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?FAX_OUTBOUND_ERROR_HEADERS, ?FAX_OUTBOUND_ERROR_VALUES, ?FAX_OUTBOUND_ERROR_TYPES);
 fax_outbound_error_v(JObj) -> fax_outbound_error_v(kz_json:to_proplist(JObj)).
@@ -655,7 +655,7 @@ register(Prop) when is_list(Prop) ->
     end;
 register(JObj) -> register(kz_json:to_proplist(JObj)).
 
--spec register_v(api(terms())) -> boolean().
+-spec register_v(maybe(terms())) -> boolean().
 register_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?REGISTER_HEADERS, ?REGISTER_VALUES, ?REGISTER_TYPES);
 register_v(JObj) -> register_v(kz_json:to_proplist(JObj)).
@@ -672,7 +672,7 @@ deregister(Prop) when is_list(Prop) ->
     end;
 deregister(JObj) -> deregister(kz_json:to_proplist(JObj)).
 
--spec deregister_v(api(terms())) -> boolean().
+-spec deregister_v(maybe(terms())) -> boolean().
 deregister_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?DEREGISTER_HEADERS, ?DEREGISTER_VALUES, ?DEREGISTER_TYPES);
 deregister_v(JObj) -> deregister_v(kz_json:to_proplist(JObj)).
@@ -689,7 +689,7 @@ pwd_recovery(Prop) when is_list(Prop) ->
     end;
 pwd_recovery(JObj) -> pwd_recovery(kz_json:to_proplist(JObj)).
 
--spec pwd_recovery_v(api(terms())) -> boolean().
+-spec pwd_recovery_v(maybe(terms())) -> boolean().
 pwd_recovery_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PWD_RECOVERY_HEADERS, ?PWD_RECOVERY_VALUES, ?PWD_RECOVERY_TYPES);
 pwd_recovery_v(JObj) -> pwd_recovery_v(kz_json:to_proplist(JObj)).
@@ -706,7 +706,7 @@ new_account(Prop) when is_list(Prop) ->
     end;
 new_account(JObj) -> new_account(kz_json:to_proplist(JObj)).
 
--spec new_account_v(api(terms())) -> boolean().
+-spec new_account_v(maybe(terms())) -> boolean().
 new_account_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?NEW_ACCOUNT_HEADERS, ?NEW_ACCOUNT_VALUES, ?NEW_ACCOUNT_TYPES);
 new_account_v(JObj) -> new_account_v(kz_json:to_proplist(JObj)).
@@ -723,7 +723,7 @@ new_user(Prop) when is_list(Prop) ->
     end;
 new_user(JObj) -> new_user(kz_json:to_proplist(JObj)).
 
--spec new_user_v(api(terms())) -> boolean().
+-spec new_user_v(maybe(terms())) -> boolean().
 new_user_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?NEW_USER_HEADERS, ?NEW_USER_VALUES, ?NEW_USER_TYPES);
 new_user_v(JObj) -> new_user_v(kz_json:to_proplist(JObj)).
@@ -740,7 +740,7 @@ port_request(Prop) when is_list(Prop) ->
     end;
 port_request(JObj) -> port_request(kz_json:to_proplist(JObj)).
 
--spec port_request_v(api(terms())) -> boolean().
+-spec port_request_v(maybe(terms())) -> boolean().
 port_request_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PORT_REQUEST_HEADERS, ?PORT_REQUEST_VALUES, ?PORT_REQUEST_TYPES);
 port_request_v(JObj) -> port_request_v(kz_json:to_proplist(JObj)).
@@ -757,7 +757,7 @@ port_pending(Prop) when is_list(Prop) ->
     end;
 port_pending(JObj) -> port_pending(kz_json:to_proplist(JObj)).
 
--spec port_pending_v(api(terms())) -> boolean().
+-spec port_pending_v(maybe(terms())) -> boolean().
 port_pending_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PORT_PENDING_HEADERS, ?PORT_PENDING_VALUES, ?PORT_PENDING_TYPES);
 port_pending_v(JObj) -> port_pending_v(kz_json:to_proplist(JObj)).
@@ -774,7 +774,7 @@ port_scheduled(Prop) when is_list(Prop) ->
     end;
 port_scheduled(JObj) -> port_scheduled(kz_json:to_proplist(JObj)).
 
--spec port_scheduled_v(api(terms())) -> boolean().
+-spec port_scheduled_v(maybe(terms())) -> boolean().
 port_scheduled_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PORT_SCHEDULED_HEADERS, ?PORT_SCHEDULED_VALUES, ?PORT_SCHEDULED_TYPES);
 port_scheduled_v(JObj) -> port_scheduled_v(kz_json:to_proplist(JObj)).
@@ -791,7 +791,7 @@ port_rejected(Prop) when is_list(Prop) ->
     end;
 port_rejected(JObj) -> port_rejected(kz_json:to_proplist(JObj)).
 
--spec port_rejected_v(api(terms())) -> boolean().
+-spec port_rejected_v(maybe(terms())) -> boolean().
 port_rejected_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PORT_REJECTED_HEADERS, ?PORT_REJECTED_VALUES, ?PORT_REJECTED_TYPES);
 port_rejected_v(JObj) -> port_rejected_v(kz_json:to_proplist(JObj)).
@@ -808,7 +808,7 @@ port_cancel(Prop) when is_list(Prop) ->
     end;
 port_cancel(JObj) -> port_cancel(kz_json:to_proplist(JObj)).
 
--spec port_cancel_v(api(terms())) -> boolean().
+-spec port_cancel_v(maybe(terms())) -> boolean().
 port_cancel_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PORT_CANCEL_HEADERS, ?PORT_CANCEL_VALUES, ?PORT_CANCEL_TYPES);
 port_cancel_v(JObj) -> port_cancel_v(kz_json:to_proplist(JObj)).
@@ -825,7 +825,7 @@ ported(Prop) when is_list(Prop) ->
     end;
 ported(JObj) -> ported(kz_json:to_proplist(JObj)).
 
--spec ported_v(api(terms())) -> boolean().
+-spec ported_v(maybe(terms())) -> boolean().
 ported_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PORTED_HEADERS, ?PORTED_VALUES, ?PORTED_TYPES);
 ported_v(JObj) -> ported_v(kz_json:to_proplist(JObj)).
@@ -842,7 +842,7 @@ port_comment(Prop) when is_list(Prop) ->
     end;
 port_comment(JObj) -> port_comment(kz_json:to_proplist(JObj)).
 
--spec port_comment_v(api(terms())) -> boolean().
+-spec port_comment_v(maybe(terms())) -> boolean().
 port_comment_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PORT_COMMENT_HEADERS, ?PORT_COMMENT_VALUES, ?PORT_COMMENT_TYPES);
 port_comment_v(JObj) -> port_comment_v(kz_json:to_proplist(JObj)).
@@ -859,7 +859,7 @@ cnam_request(Prop) when is_list(Prop) ->
     end;
 cnam_request(JObj) -> cnam_request(kz_json:to_proplist(JObj)).
 
--spec cnam_request_v(api(terms())) -> boolean().
+-spec cnam_request_v(maybe(terms())) -> boolean().
 cnam_request_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?CNAM_REQUEST_HEADERS, ?CNAM_REQUEST_VALUES, ?CNAM_REQUEST_TYPES);
 cnam_request_v(JObj) -> cnam_request_v(kz_json:to_proplist(JObj)).
@@ -876,7 +876,7 @@ low_balance(Prop) when is_list(Prop) ->
     end;
 low_balance(JObj) -> low_balance(kz_json:to_proplist(JObj)).
 
--spec low_balance_v(api(terms())) -> boolean().
+-spec low_balance_v(maybe(terms())) -> boolean().
 low_balance_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?LOW_BALANCE_HEADERS, ?LOW_BALANCE_VALUES, ?LOW_BALANCE_TYPES);
 low_balance_v(JObj) -> low_balance_v(kz_json:to_proplist(JObj)).
@@ -894,7 +894,7 @@ topup(Prop) when is_list(Prop) ->
     end;
 topup(JObj) -> topup(kz_json:to_proplist(JObj)).
 
--spec topup_v(api(terms())) -> boolean().
+-spec topup_v(maybe(terms())) -> boolean().
 topup_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?TOPUP_HEADERS, ?TOPUP_VALUES, ?TOPUP_TYPES);
 topup_v(JObj) -> topup_v(kz_json:to_proplist(JObj)).
@@ -911,7 +911,7 @@ transaction(Prop) when is_list(Prop) ->
     end;
 transaction(JObj) -> transaction(kz_json:to_proplist(JObj)).
 
--spec transaction_v(api(terms())) -> boolean().
+-spec transaction_v(maybe(terms())) -> boolean().
 transaction_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?TRANSACTION_HEADERS, ?TRANSACTION_VALUES, ?TRANSACTION_TYPES);
 transaction_v(JObj) -> transaction_v(kz_json:to_proplist(JObj)).
@@ -928,7 +928,7 @@ system_alert(Prop) when is_list(Prop) ->
     end;
 system_alert(JObj) -> system_alert(kz_json:to_proplist(JObj)).
 
--spec system_alert_v(api(terms())) -> boolean().
+-spec system_alert_v(maybe(terms())) -> boolean().
 system_alert_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SYSTEM_ALERT_HEADERS, ?SYSTEM_ALERT_VALUES, ?SYSTEM_ALERT_TYPES);
 system_alert_v(JObj) -> system_alert_v(kz_json:to_proplist(JObj)).
@@ -945,7 +945,7 @@ webhook(Prop) when is_list(Prop) ->
     end;
 webhook(JObj) -> webhook(kz_json:to_proplist(JObj)).
 
--spec webhook_v(api(terms())) -> boolean().
+-spec webhook_v(maybe(terms())) -> boolean().
 webhook_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?WEBHOOK_HEADERS, ?WEBHOOK_VALUES, ?WEBHOOK_TYPES);
 webhook_v(JObj) -> webhook_v(kz_json:to_proplist(JObj)).
@@ -962,7 +962,7 @@ webhook_disabled(Prop) when is_list(Prop) ->
     end;
 webhook_disabled(JObj) -> webhook_disabled(kz_json:to_proplist(JObj)).
 
--spec webhook_disabled_v(api(terms())) -> boolean().
+-spec webhook_disabled_v(maybe(terms())) -> boolean().
 webhook_disabled_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?WEBHOOK_DISABLED_HEADERS, ?WEBHOOK_DISABLED_VALUES, ?WEBHOOK_DISABLED_TYPES);
 webhook_disabled_v(JObj) -> webhook_disabled_v(kz_json:to_proplist(JObj)).
@@ -979,7 +979,7 @@ notify_update(Prop) when is_list(Prop) ->
     end;
 notify_update(JObj) -> notify_update(kz_json:to_proplist(JObj)).
 
--spec notify_update_v(api(terms())) -> boolean().
+-spec notify_update_v(maybe(terms())) -> boolean().
 notify_update_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?NOTIFY_UPDATE_HEADERS, ?NOTIFY_UPDATE_VALUES, ?NOTIFY_UPDATE_TYPES);
 notify_update_v(JObj) -> notify_update_v(kz_json:to_proplist(JObj)).
@@ -996,7 +996,7 @@ denied_emergency_bridge(Prop) when is_list(Prop) ->
     end;
 denied_emergency_bridge(JObj) -> denied_emergency_bridge(kz_json:to_proplist(JObj)).
 
--spec denied_emergency_bridge_v(api(terms())) -> boolean().
+-spec denied_emergency_bridge_v(maybe(terms())) -> boolean().
 denied_emergency_bridge_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?DENIED_EMERGENCY_BRIDGE_HEADERS, ?DENIED_EMERGENCY_BRIDGE_VALUES, ?DENIED_EMERGENCY_BRIDGE_TYPES);
 denied_emergency_bridge_v(JObj) -> denied_emergency_bridge_v(kz_json:to_proplist(JObj)).
@@ -1013,7 +1013,7 @@ customer_update(Prop) when is_list(Prop) ->
     end;
 customer_update(JObj) -> customer_update(kz_json:to_proplist(JObj)).
 
--spec customer_update_v(api(terms())) -> boolean().
+-spec customer_update_v(maybe(terms())) -> boolean().
 customer_update_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?CUSTOMER_UPDATE_HEADERS, ?CUSTOMER_UPDATE_VALUES, ?CUSTOMER_UPDATE_TYPES);
 customer_update_v(JObj) -> customer_update_v(kz_json:to_proplist(JObj)).
@@ -1030,7 +1030,7 @@ skel(Prop) when is_list(Prop) ->
     end;
 skel(JObj) -> skel(kz_json:to_proplist(JObj)).
 
--spec skel_v(api(terms())) -> boolean().
+-spec skel_v(maybe(terms())) -> boolean().
 skel_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SKEL_HEADERS, ?SKEL_VALUES, ?SKEL_TYPES);
 skel_v(JObj) -> skel_v(kz_json:to_proplist(JObj)).
@@ -1074,7 +1074,7 @@ skel_v(JObj) -> skel_v(kz_json:to_proplist(JObj)).
 bind_q(Queue, Props) ->
     bind_to_q(Queue, props:get_value('restrict_to', Props)).
 
--spec bind_to_q(ne_binary(), api(restrictions())) -> 'ok'.
+-spec bind_to_q(ne_binary(), maybe(restrictions())) -> 'ok'.
 bind_to_q(Q, 'undefined') ->
     'ok' = amqp_util:bind_q_to_notifications(Q, <<"notifications.*.*">>);
 bind_to_q(Q, ['new_voicemail'|T]) ->
@@ -1179,7 +1179,7 @@ bind_to_q(_Q, []) ->
 unbind_q(Queue, Props) ->
     unbind_q_from(Queue, props:get_value('restrict_to', Props)).
 
--spec unbind_q_from(ne_binary(), api(restrictions())) -> 'ok'.
+-spec unbind_q_from(ne_binary(), maybe(restrictions())) -> 'ok'.
 unbind_q_from(Q, 'undefined') ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, <<"notifications.*.*">>);
 unbind_q_from(Q, ['new_voicemail'|T]) ->
@@ -1286,8 +1286,8 @@ unbind_q_from(_Q, []) ->
 declare_exchanges() ->
     amqp_util:notifications_exchange().
 
--spec publish_voicemail_saved(api(terms())) -> 'ok'.
--spec publish_voicemail_saved(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_voicemail_saved(maybe(terms())) -> 'ok'.
+-spec publish_voicemail_saved(maybe(terms()), ne_binary()) -> 'ok'.
 publish_voicemail_saved(JObj) -> publish_voicemail_saved(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_voicemail_saved(Voicemail, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Voicemail, ?VOICEMAIL_SAVED_VALUES, fun ?MODULE:voicemail_saved/1),
@@ -1296,205 +1296,205 @@ publish_voicemail_saved(Voicemail, ContentType) ->
                                     ,ContentType
                                    ).
 
--spec publish_voicemail(api(terms())) -> 'ok'.
--spec publish_voicemail(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_voicemail(maybe(terms())) -> 'ok'.
+-spec publish_voicemail(maybe(terms()), ne_binary()) -> 'ok'.
 publish_voicemail(JObj) -> publish_voicemail(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_voicemail(Voicemail, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Voicemail, ?VOICEMAIL_VALUES, fun ?MODULE:voicemail/1),
     amqp_util:notifications_publish(?NOTIFY_VOICEMAIL_NEW, Payload, ContentType).
 
--spec publish_voicemail_full(api(terms())) -> 'ok'.
--spec publish_voicemail_full(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_voicemail_full(maybe(terms())) -> 'ok'.
+-spec publish_voicemail_full(maybe(terms()), ne_binary()) -> 'ok'.
 publish_voicemail_full(JObj) -> publish_voicemail_full(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_voicemail_full(Voicemail, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Voicemail, ?VOICEMAIL_FULL_VALUES, fun ?MODULE:voicemail_full/1),
     amqp_util:notifications_publish(?NOTIFY_VOICEMAIL_FULL, Payload, ContentType).
 
--spec publish_fax_inbound(api(terms())) -> 'ok'.
--spec publish_fax_inbound(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_fax_inbound(maybe(terms())) -> 'ok'.
+-spec publish_fax_inbound(maybe(terms()), ne_binary()) -> 'ok'.
 publish_fax_inbound(JObj) -> publish_fax_inbound(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_fax_inbound(Fax, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Fax,?FAX_INBOUND_VALUES, fun ?MODULE:fax_inbound/1),
     amqp_util:notifications_publish(?NOTIFY_FAX_INBOUND, Payload, ContentType).
 
--spec publish_fax_outbound(api(terms())) -> 'ok'.
--spec publish_fax_outbound(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_fax_outbound(maybe(terms())) -> 'ok'.
+-spec publish_fax_outbound(maybe(terms()), ne_binary()) -> 'ok'.
 publish_fax_outbound(JObj) -> publish_fax_outbound(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_fax_outbound(Fax, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Fax, ?FAX_OUTBOUND_VALUES, fun ?MODULE:fax_outbound/1),
     amqp_util:notifications_publish(?NOTIFY_FAX_OUTBOUND, Payload, ContentType).
 
--spec publish_fax_inbound_error(api(terms())) -> 'ok'.
--spec publish_fax_inbound_error(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_fax_inbound_error(maybe(terms())) -> 'ok'.
+-spec publish_fax_inbound_error(maybe(terms()), ne_binary()) -> 'ok'.
 publish_fax_inbound_error(JObj) -> publish_fax_inbound_error(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_fax_inbound_error(Fax, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Fax, ?FAX_INBOUND_ERROR_VALUES, fun ?MODULE:fax_inbound_error/1),
     amqp_util:notifications_publish(?NOTIFY_FAX_INBOUND_ERROR, Payload, ContentType).
 
--spec publish_fax_outbound_error(api(terms())) -> 'ok'.
--spec publish_fax_outbound_error(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_fax_outbound_error(maybe(terms())) -> 'ok'.
+-spec publish_fax_outbound_error(maybe(terms()), ne_binary()) -> 'ok'.
 publish_fax_outbound_error(JObj) -> publish_fax_outbound_error(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_fax_outbound_error(Fax, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Fax, ?FAX_OUTBOUND_ERROR_VALUES, fun ?MODULE:fax_outbound_error/1),
     amqp_util:notifications_publish(?NOTIFY_FAX_OUTBOUND_ERROR, Payload, ContentType).
 
--spec publish_register(api(terms())) -> 'ok'.
--spec publish_register(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_register(maybe(terms())) -> 'ok'.
+-spec publish_register(maybe(terms()), ne_binary()) -> 'ok'.
 publish_register(JObj) -> publish_register(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_register(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?REGISTER_VALUES, fun ?MODULE:register/1),
     amqp_util:notifications_publish(?NOTIFY_REGISTER, Payload, ContentType).
 
--spec publish_deregister(api(terms())) -> 'ok'.
--spec publish_deregister(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_deregister(maybe(terms())) -> 'ok'.
+-spec publish_deregister(maybe(terms()), ne_binary()) -> 'ok'.
 publish_deregister(JObj) -> publish_deregister(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_deregister(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?DEREGISTER_VALUES, fun ?MODULE:deregister/1),
     amqp_util:notifications_publish(?NOTIFY_DEREGISTER, Payload, ContentType).
 
--spec publish_pwd_recovery(api(terms())) -> 'ok'.
--spec publish_pwd_recovery(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_pwd_recovery(maybe(terms())) -> 'ok'.
+-spec publish_pwd_recovery(maybe(terms()), ne_binary()) -> 'ok'.
 publish_pwd_recovery(JObj) -> publish_pwd_recovery(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_pwd_recovery(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?PWD_RECOVERY_VALUES, fun ?MODULE:pwd_recovery/1),
     amqp_util:notifications_publish(?NOTIFY_PWD_RECOVERY, Payload, ContentType).
 
--spec publish_new_account(api(terms())) -> 'ok'.
--spec publish_new_account(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_new_account(maybe(terms())) -> 'ok'.
+-spec publish_new_account(maybe(terms()), ne_binary()) -> 'ok'.
 publish_new_account(JObj) -> publish_new_account(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_new_account(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?NEW_ACCOUNT_VALUES, fun ?MODULE:new_account/1),
     amqp_util:notifications_publish(?NOTIFY_NEW_ACCOUNT, Payload, ContentType).
 
--spec publish_new_user(api(terms())) -> 'ok'.
--spec publish_new_user(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_new_user(maybe(terms())) -> 'ok'.
+-spec publish_new_user(maybe(terms()), ne_binary()) -> 'ok'.
 publish_new_user(JObj) -> publish_new_user(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_new_user(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?NEW_USER_VALUES, fun ?MODULE:new_user/1),
     amqp_util:notifications_publish(?NOTIFY_NEW_USER, Payload, ContentType).
 
--spec publish_port_request(api(terms())) -> 'ok'.
--spec publish_port_request(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_port_request(maybe(terms())) -> 'ok'.
+-spec publish_port_request(maybe(terms()), ne_binary()) -> 'ok'.
 publish_port_request(JObj) -> publish_port_request(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_port_request(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?PORT_REQUEST_VALUES, fun ?MODULE:port_request/1),
     amqp_util:notifications_publish(?NOTIFY_PORT_REQUEST, Payload, ContentType).
 
--spec publish_port_pending(api(terms())) -> 'ok'.
--spec publish_port_pending(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_port_pending(maybe(terms())) -> 'ok'.
+-spec publish_port_pending(maybe(terms()), ne_binary()) -> 'ok'.
 publish_port_pending(JObj) -> publish_port_pending(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_port_pending(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?PORT_PENDING_VALUES, fun ?MODULE:port_pending/1),
     amqp_util:notifications_publish(?NOTIFY_PORT_PENDING, Payload, ContentType).
 
--spec publish_port_scheduled(api(terms())) -> 'ok'.
--spec publish_port_scheduled(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_port_scheduled(maybe(terms())) -> 'ok'.
+-spec publish_port_scheduled(maybe(terms()), ne_binary()) -> 'ok'.
 publish_port_scheduled(JObj) -> publish_port_scheduled(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_port_scheduled(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?PORT_SCHEDULED_VALUES, fun ?MODULE:port_scheduled/1),
     amqp_util:notifications_publish(?NOTIFY_PORT_SCHEDULED, Payload, ContentType).
 
--spec publish_port_rejected(api(terms())) -> 'ok'.
--spec publish_port_rejected(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_port_rejected(maybe(terms())) -> 'ok'.
+-spec publish_port_rejected(maybe(terms()), ne_binary()) -> 'ok'.
 publish_port_rejected(JObj) -> publish_port_rejected(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_port_rejected(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?PORT_REJECTED_VALUES, fun ?MODULE:port_rejected/1),
     amqp_util:notifications_publish(?NOTIFY_PORT_REJECTED, Payload, ContentType).
 
--spec publish_port_cancel(api(terms())) -> 'ok'.
--spec publish_port_cancel(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_port_cancel(maybe(terms())) -> 'ok'.
+-spec publish_port_cancel(maybe(terms()), ne_binary()) -> 'ok'.
 publish_port_cancel(JObj) -> publish_port_cancel(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_port_cancel(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?PORT_CANCEL_VALUES, fun ?MODULE:port_cancel/1),
     amqp_util:notifications_publish(?NOTIFY_PORT_CANCEL, Payload, ContentType).
 
--spec publish_ported(api(terms())) -> 'ok'.
--spec publish_ported(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_ported(maybe(terms())) -> 'ok'.
+-spec publish_ported(maybe(terms()), ne_binary()) -> 'ok'.
 publish_ported(JObj) -> publish_ported(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_ported(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?PORTED_VALUES, fun ?MODULE:ported/1),
     amqp_util:notifications_publish(?NOTIFY_PORTED, Payload, ContentType).
 
--spec publish_port_comment(api(terms())) -> 'ok'.
--spec publish_port_comment(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_port_comment(maybe(terms())) -> 'ok'.
+-spec publish_port_comment(maybe(terms()), ne_binary()) -> 'ok'.
 publish_port_comment(JObj) -> publish_port_comment(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_port_comment(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?PORT_COMMENT_VALUES, fun ?MODULE:port_comment/1),
     amqp_util:notifications_publish(?NOTIFY_PORT_COMMENT, Payload, ContentType).
 
--spec publish_cnam_request(api(terms())) -> 'ok'.
--spec publish_cnam_request(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_cnam_request(maybe(terms())) -> 'ok'.
+-spec publish_cnam_request(maybe(terms()), ne_binary()) -> 'ok'.
 publish_cnam_request(JObj) -> publish_cnam_request(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_cnam_request(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?CNAM_REQUEST_VALUES, fun ?MODULE:cnam_request/1),
     amqp_util:notifications_publish(?NOTIFY_CNAM_REQUEST, Payload, ContentType).
 
--spec publish_low_balance(api(terms())) -> 'ok'.
--spec publish_low_balance(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_low_balance(maybe(terms())) -> 'ok'.
+-spec publish_low_balance(maybe(terms()), ne_binary()) -> 'ok'.
 publish_low_balance(JObj) -> publish_low_balance(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_low_balance(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?LOW_BALANCE_VALUES, fun ?MODULE:low_balance/1),
     amqp_util:notifications_publish(?NOTIFY_LOW_BALANCE, Payload, ContentType).
 
--spec publish_topup(api(terms())) -> 'ok'.
--spec publish_topup(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_topup(maybe(terms())) -> 'ok'.
+-spec publish_topup(maybe(terms()), ne_binary()) -> 'ok'.
 publish_topup(JObj) -> publish_topup(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_topup(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?TOPUP_VALUES, fun ?MODULE:topup/1),
     amqp_util:notifications_publish(?NOTIFY_TOPUP, Payload, ContentType).
 
--spec publish_transaction(api(terms())) -> 'ok'.
--spec publish_transaction(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_transaction(maybe(terms())) -> 'ok'.
+-spec publish_transaction(maybe(terms()), ne_binary()) -> 'ok'.
 publish_transaction(JObj) -> publish_transaction(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_transaction(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?TRANSACTION_VALUES, fun ?MODULE:transaction/1),
     amqp_util:notifications_publish(?NOTIFY_TRANSACTION, Payload, ContentType).
 
--spec publish_system_alert(api(terms())) -> 'ok'.
--spec publish_system_alert(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_system_alert(maybe(terms())) -> 'ok'.
+-spec publish_system_alert(maybe(terms()), ne_binary()) -> 'ok'.
 publish_system_alert(JObj) -> publish_system_alert(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_system_alert(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?SYSTEM_ALERT_VALUES, fun ?MODULE:system_alert/1),
     amqp_util:notifications_publish(?NOTIFY_SYSTEM_ALERT, Payload, ContentType).
 
--spec publish_webhook(api(terms())) -> 'ok'.
--spec publish_webhook(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_webhook(maybe(terms())) -> 'ok'.
+-spec publish_webhook(maybe(terms()), ne_binary()) -> 'ok'.
 publish_webhook(JObj) -> publish_webhook(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_webhook(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?WEBHOOK_VALUES, fun ?MODULE:webhook/1),
     amqp_util:notifications_publish(?NOTIFY_WEBHOOK_CALLFLOW, Payload, ContentType).
 
--spec publish_webhook_disabled(api(terms())) -> 'ok'.
--spec publish_webhook_disabled(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_webhook_disabled(maybe(terms())) -> 'ok'.
+-spec publish_webhook_disabled(maybe(terms()), ne_binary()) -> 'ok'.
 publish_webhook_disabled(JObj) -> publish_webhook_disabled(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_webhook_disabled(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?WEBHOOK_DISABLED_VALUES, fun ?MODULE:webhook_disabled/1),
     amqp_util:notifications_publish(?NOTIFY_WEBHOOK_DISABLED, Payload, ContentType).
 
 
--spec publish_notify_update(ne_binary(), api(terms())) -> 'ok'.
--spec publish_notify_update(ne_binary(), api(terms()), ne_binary()) -> 'ok'.
+-spec publish_notify_update(ne_binary(), maybe(terms())) -> 'ok'.
+-spec publish_notify_update(ne_binary(), maybe(terms()), ne_binary()) -> 'ok'.
 publish_notify_update(RespQ, JObj) -> publish_notify_update(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_notify_update(RespQ, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?NOTIFY_UPDATE_VALUES, fun ?MODULE:notify_update/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
--spec publish_denied_emergency_bridge(api(terms())) -> 'ok'.
--spec publish_denied_emergency_bridge(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_denied_emergency_bridge(maybe(terms())) -> 'ok'.
+-spec publish_denied_emergency_bridge(maybe(terms()), ne_binary()) -> 'ok'.
 publish_denied_emergency_bridge(JObj) -> publish_denied_emergency_bridge(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_denied_emergency_bridge(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?DENIED_EMERGENCY_BRIDGE_VALUES, fun ?MODULE:denied_emergency_bridge/1),
     amqp_util:notifications_publish(?NOTIFY_DENIED_EMERGENCY_BRIDGE, Payload, ContentType).
 
--spec publish_customer_update(api(terms())) -> 'ok'.
--spec publish_customer_update(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_customer_update(maybe(terms())) -> 'ok'.
+-spec publish_customer_update(maybe(terms()), ne_binary()) -> 'ok'.
 publish_customer_update(JObj) -> publish_customer_update(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_customer_update(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?CUSTOMER_UPDATE_VALUES, fun ?MODULE:customer_update/1),
     amqp_util:notifications_publish(?NOTIFY_CUSTOMER_UPDATE, Payload, ContentType).
 
--spec publish_skel(api(terms())) -> 'ok'.
--spec publish_skel(api(terms()), ne_binary()) -> 'ok'.
+-spec publish_skel(maybe(terms())) -> 'ok'.
+-spec publish_skel(maybe(terms()), ne_binary()) -> 'ok'.
 publish_skel(JObj) -> publish_skel(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_skel(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?SKEL_VALUES, fun ?MODULE:skel/1),

@@ -163,12 +163,12 @@ get_query_string_data(QS0, Req) ->
     {QS, Req}.
 
 -spec get_content_type(cowboy_req:req()) ->
-                              {api(binary()), cowboy_req:req()}.
+                              {maybe(binary()), cowboy_req:req()}.
 get_content_type(Req) ->
     get_parsed_content_type(cowboy_req:parse_header(<<"content-type">>, Req)).
 
--spec get_parsed_content_type({'ok', api(content_type()), cowboy_req:req()}) ->
-                                     {api(binary()), cowboy_req:req()}.
+-spec get_parsed_content_type({'ok', maybe(content_type()), cowboy_req:req()}) ->
+                                     {maybe(binary()), cowboy_req:req()}.
 get_parsed_content_type({'ok', 'undefined', Req}) ->
     {'undefined', Req};
 get_parsed_content_type({'ok', {Main, Sub, _Opts}, Req}) ->
@@ -251,7 +251,7 @@ handle_url_encoded_body(Context, Req, QS, ReqBody, JObj) ->
             set_request_data_in_context(Context, Req, JObj, QS)
     end.
 
--spec set_request_data_in_context(cb_context:context(), cowboy_req:req(), api(kz_json:object()), kz_json:object()) ->
+-spec set_request_data_in_context(cb_context:context(), cowboy_req:req(), maybe(kz_json:object()), kz_json:object()) ->
                                          {cb_context:context(), cowboy_req:req()} |
                                          halt_return().
 set_request_data_in_context(Context, Req, 'undefined', QS) ->
@@ -494,7 +494,7 @@ get_request_body(_Req0, _Body, {'more', _, Req1}) ->
 get_request_body(_Req0, Body, {'ok', Data, Req1}) ->
     {iolist_to_binary([Body, Data]), Req1}.
 
--type get_json_return() :: {api(kz_json:object()), cowboy_req:req()} |
+-type get_json_return() :: {maybe(kz_json:object()), cowboy_req:req()} |
                            {{'malformed', ne_binary()}, cowboy_req:req()}.
 -spec get_json_body(binary(), cowboy_req:req()) -> get_json_return().
 
@@ -921,7 +921,7 @@ content_type_matches(CTA, CT) when is_binary(CTA), is_binary(CT) ->
 content_type_matches(_CTA, _CTAs) ->
     'false'.
 
--spec ensure_content_type(api(content_type())) -> content_type().
+-spec ensure_content_type(maybe(content_type())) -> content_type().
 ensure_content_type('undefined') -> ?CROSSBAR_DEFAULT_CONTENT_TYPE;
 ensure_content_type(CT) -> CT.
 
