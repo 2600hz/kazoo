@@ -236,13 +236,14 @@ code_change(_OldVsn, State, _Extra) ->
 -spec start_cleanup_pass(reference()) -> 'ok'.
 start_cleanup_pass(Ref) ->
     wh_util:put_callid(<<"cleanup_pass">>),
+    Start = os:timestamp(),
     {'ok', Dbs} = couch_mgr:db_info(),
-    lager:debug("starting cleanup pass of databases"),
+    lager:info("starting cleanup pass of databases"),
 
     _ = [crossbar_bindings:map(db_routing_key(Db), Db)
          || Db <- Dbs
         ],
-    lager:debug("pass completed for ~p", [Ref]),
+    lager:info("pass completed for ~p in ~ms", [Ref, wh_util:elapsed_ms(Start)]),
     gen_server:cast(?MODULE, {'cleanup_finished', Ref}).
 
 -spec db_routing_key(ne_binary()) -> ne_binary().
