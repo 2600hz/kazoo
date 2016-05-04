@@ -12,5 +12,7 @@
         ,{'event', CallId, EventName, Event}
        ).
 
+-define(WSD_ENABLED, kapps_config:get_is_true(?APP_NAME, <<"webseq_enabled">>, 'false')).
+	   
 -define(KONAMI_HRL, 'true').
 -endif.
