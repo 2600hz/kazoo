@@ -432,7 +432,7 @@ decode_base64(Context, CT, Req0) ->
     decode_base64(Context, CT, Req0, []).
 
 decode_base64(Context, CT, Req0, Body) ->
-    case cowboy_req:body(Req0) of
+    case cowboy_req:body(Req0, [{'length', ?MAX_UPLOAD_SIZE}]) of
         {'error', 'badlength'} ->
             lager:debug("the request body was most likely too big"),
             handle_max_filesize_exceeded(Context, Req0);
