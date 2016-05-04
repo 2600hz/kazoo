@@ -9,6 +9,7 @@
                 "auth_realm": {
                     "description": "The realm any device in the account will use to authenticate with",
                     "minLength": 1,
+                    "required": true,
                     "type": "string"
                 },
                 "caller_id": {
@@ -43,10 +44,12 @@
                     "type": "integer"
                 }
             },
+            "required": true,
             "type": "object"
         },
         "name": {
             "description": "Human-friendly name of the trunkstore account",
+            "required": true,
             "type": "string"
         },
         "servers": {
