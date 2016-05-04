@@ -36,7 +36,7 @@ url(CustomerId) ->
     lists:append(["/customers/", kz_util:to_list(CustomerId), "/addresses"]).
 
 url(CustomerId, AddressId) ->
-    lists:append(["/customers/", kz_util:to_list(CustomerId), "/addresses", kz_util:to_list(AddressId)]).
+    lists:append(["/customers/", kz_util:to_list(CustomerId), "/addresses/", kz_util:to_list(AddressId)]).
 
 %%--------------------------------------------------------------------
 %% @public
