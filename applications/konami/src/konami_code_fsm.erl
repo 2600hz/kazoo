@@ -56,7 +56,7 @@
                }).
 -type state() :: #state{}.
 
--define(WSD_ENABLED, kapps_config:get_is_true(?APP_NAME, <<"webseq_enabled">>, 'true')).
+-define(WSD_ENABLED, kapps_config:get_is_true(?APP_NAME, <<"webseq_enabled">>, 'false')).
 
 -define(WSD_ID, ?WSD_ENABLED andalso {'file', get('callid')}).
 
