@@ -2,7 +2,7 @@
 
 #### About Faxes
 
-The Faxes API exposes lots of ways to generate and fetch faxes.
+The Faxes API exposes lots of ways to send, track and process faxes.
 
 #### Schema
 
@@ -36,9 +36,12 @@ Key | Description | Type | Default | Required
 `tx_result.success` | True if the fax transmission was successful | `boolean` | `false` | `false`
 `tx_result.time_elapsed` | The amount of time from submition to completion | `integer` | `0` | `false`
 
+
 #### Create an outgoing fax
 
-Create a fax document that includes where to find the document to send. These are fetched by the `fax_jobs` worker and distributed to `fax_worker` processes. You can fetch the status of the created job using the `faxes/outgoing/{FAX_ID}` path
+There are two methods for creating an outgoing fax - they differ in how you attach the fax file for processing.
+
+In the first method, you can create a fax document that includes a URL which contains the fax document to send. The fax document is fetched by the `fax_jobs` worker and distributed to `fax_worker` processes. You can fetch the status of the created job using the `faxes/outgoing/{FAX_ID}` API.
 
 > PUT /v2/accounts/{ACCOUNT_ID}/faxes
 
@@ -79,8 +82,7 @@ curl -v -X PUT \
 }
 ```
 
-you can also multipart to attach the document instead of fetching it later.
-this is a good solution for portals that upload documents.
+In the second method, you can use a single PUT request and send a multipart content-type to attach both the JSON metadata about the fax transmission and the document itself, in a single request. This avoids needing to have an external storage location for storing fax attachments prior to processing. This is a good solution for portals that upload documents.
 
 ```curl
 curl -v -X PUT \
@@ -91,9 +93,22 @@ curl -v -X PUT \
      http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes
 ```
 
+#### Create an outgoing fax (Alias)
+
+This is identical to the `PUT /faxes` above.
+
+> PUT /v2/accounts/{ACCOUNT_ID}/faxes/outgoing
+
+```curl
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing
+```
+
+
 #### Fetch outgoing faxes and their statuses
 
-Fetch a listing of all outgoing faxes. Use the "id" to fetch details about a particular job. Will contain a listing of both API- and SMTP (email) - initiated outbound faxes.
+This API retrieves a listing of all outgoing faxes. Use the "id" to fetch details about a particular job. Results will contain a listing of both API- and SMTP (email) - initiated outbound faxes.
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/outgoing
 
@@ -122,19 +137,9 @@ curl -v -X GET \
 }
 ```
 
-#### Create an outgoing fax
-
-This is identical to the `PUT /faxes` above.
-
-> PUT /v2/accounts/{ACCOUNT_ID}/faxes/outgoing
-
-```curl
-curl -v -X PUT \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing
-```
-
 #### Fetch all faxes in the outbox folder
+
+This API retrieves a listing of all outgoing faxes which have not yet been sent and are in queue for processing. Results will contain a listing of both API- and SMTP (email) - initiated outbound faxes.
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/outbox
 
@@ -164,7 +169,9 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox
 ```
 
-#### Fetch logs related to faxes and email
+#### Fetch logs related to faxes submitted via email
+
+If a fax job was queued or attempted to be queued as the result of an inbound email, the SMTP log for that fax can be retrieved via this API. This is also useful for helping debug problems with inbound faxes, such as when the domain matched an account for an inbound fax, but not a specific faxbox, and thus failed to process.
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/smtplog
 
@@ -174,17 +181,21 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/smtplog
 ```
 
-#### Remove a fax job
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
+#### Fetch a specific log related to email
+
+> GET /v2/accounts/{ACCOUNT_ID}/faxes/smtplog/{ATTEMPT_ID}
 
 ```curl
-curl -v -X DELETE \
+curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/smtplog/{ATTEMPT_ID}
 ```
 
+
 #### Fetch details of a fax job
+
+Get all the details about a fax, regardless of it's state.
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
 
@@ -314,6 +325,17 @@ curl -v -X POST \
 }
 ```
 
+#### Remove a fax job
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
+
+```curl
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
+```
+
+
 #### Remove a fax from the outbox folder
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
@@ -356,6 +378,8 @@ curl -v -X GET \
 
 #### Remove an incoming fax job
 
+In some cases, you may wish to remove evidence of a fax from the log. This can be useful for privacy reasons. This API call allows you to remove the stored information and attachments related to an inbound fax.
+
 > DELETE /v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAX_ID}
 
 ```curl
@@ -374,17 +398,9 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAX_ID}
 ```
 
-#### Fetch a specific log related to email
+#### Remove the fax document from a fax job
 
-> GET /v2/accounts/{ACCOUNT_ID}/faxes/smtplog/{ATTEMPT_ID}
-
-```curl
-curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/smtplog/{ATTEMPT_ID}
-```
-
-#### Remove the fax payload
+In some cases, you may wish to remove the document from a fax (usually for privacy reasons) but keep evidence that the fax transmission occurred. This will remove attachments but not the metadata from a received fax. Useful after you've done post-processing on a fax externally.
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAX_ID}/attachment
 
