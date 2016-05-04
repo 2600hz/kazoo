@@ -81,7 +81,7 @@ curl -v -X GET \
             "+14155555555": {
                 "assigned_to": "{ACCOUNT_ID}",
                 "created": 63602230185,
-                "features": {},
+                "features": ["cnam"],
                 "state": "in_service",
                 "updated": 63602230212,
                 "used_by": "callflow"
@@ -89,7 +89,6 @@ curl -v -X GET \
             "+14158865100": {
                 "assigned_to": "{ACCOUNT_ID}",
                 "created": 63624719324,
-                "features": {},
                 "state": "in_service",
                 "updated": 63624719325
             }
@@ -740,14 +739,12 @@ curl -v -X POST \
             "+14152338421": {
                 "assigned_to": "{ACCOUNT_ID}",
                 "created": 63627334163,
-                "features": {},
                 "state": "in_service",
                 "updated": 63627447350
             },
             "+14155555555": {
                 "assigned_to": "{ACCOUNT_ID}",
                 "created": 63602230185,
-                "features": {},
                 "state": "in_service",
                 "updated": 63602230212,
                 "used_by": "callflow"
@@ -755,7 +752,6 @@ curl -v -X POST \
             "+14158865100": {
                 "assigned_to": "{ACCOUNT_ID}",
                 "created": 63624719324,
-                "features": {},
                 "state": "in_service",
                 "updated": 63624719325
             }
