@@ -152,7 +152,7 @@ process_fs_kv(Node, UUID, [K|KVs], 'unset'=Action)
     X1 = ecallmgr_util:get_fs_key(K),
     lists:foldl(fun(Prop, Acc) ->
                     process_fs_kv_fold(Node, UUID, Prop, Action, Acc)
-                end, <<X1/binary, "=">>, KVs).
+                end, [<<X1/binary, "=">>], KVs).
 
 process_fs_kv_fold(_, _, {_Key, 'undefined'}, _, Acc) -> Acc;
 process_fs_kv_fold(_Node, UUID, {K, V}, Action, Acc) when is_binary(V) ->
