@@ -32,9 +32,10 @@ put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
     Headers = [{'content_type', props:get_value('content_type', Options, kz_mime:from_filename(AName))}],
 
     case kz_http:req(kz_util:to_atom(Verb, 'true'), Url, Headers, Contents) of
-        {'ok', 200, _Headers, _Body} ->
+        {'ok', Code, _Headers, _Body} when
+              is_integer(Code) andalso Code >= 200 andalso Code =< 299 ->
             {'ok', [{'attachment', [{<<"url">>, Url}]}
-                     | add_document_url_field(DocUrlField, Url)
+                    | add_document_url_field(DocUrlField, Url)
                    ]};
         _E -> _E
     end.
