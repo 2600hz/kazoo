@@ -419,7 +419,7 @@ on_successful_validation(DocId, Context) ->
 
 -spec initial_job_status(req_files()) -> ne_binary().
 initial_job_status([]) -> <<"pending">>;
-initial_job_status(_) -> <<"attaching_docs">>.
+initial_job_status(_) -> <<"attaching_files">>.
 
 -spec maybe_reset_job(cb_context:context(), crossbar_status()) -> cb_context:context().
 maybe_reset_job(Context, 'success') ->
