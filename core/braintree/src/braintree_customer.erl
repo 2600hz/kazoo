@@ -346,8 +346,15 @@ json_to_record(JObj) ->
                  ,phone = kz_json:get_binary_value(<<"phone">>, JObj)
                  ,fax = kz_json:get_binary_value(<<"fax">>, JObj)
                  ,website = kz_json:get_binary_value(<<"website">>, JObj)
-                 ,credit_cards = [braintree_card:json_to_record(kz_json:get_value(<<"credit_card">>, JObj))]
+                 ,credit_cards = maybe_add_credit_card(JObj)
                 }.
+
+-spec maybe_add_credit_card(api_object()) -> bt_cards().
+maybe_add_credit_card(JObj) ->
+  case kz_json:get_binary_value(<<"credit_card">>, JObj) of
+      'undefined' -> [];
+      Card -> [braintree_card:json_to_record(Card)]
+  end.
 
 %%--------------------------------------------------------------------
 %% @public

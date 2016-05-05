@@ -176,11 +176,10 @@ expiring(Start, End) ->
 %% Accessors for field 'make_default'.
 %% @end
 %%--------------------------------------------------------------------
--spec make_default(bt_card() | 'undefined') -> api_boolean().
+-spec make_default(bt_card()) -> api_boolean().
 -spec make_default(bt_card(), boolean()) -> bt_card().
 
-make_default(#bt_card{make_default = 'true'}) -> 'true';
-make_default(_) -> 'false'.
+make_default(#bt_card{make_default = Value}) -> Value.
 
 make_default(#bt_card{}=Card, Value) ->
     Card#bt_card{make_default = Value}.
@@ -300,7 +299,6 @@ record_to_xml(#bt_card{}=Card, ToString) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec json_to_record(api_object()) -> bt_card().
-json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->
     #bt_card{token = create_or_get_json_id(JObj)
              ,cardholder_name = kz_json:get_binary_value(<<"cardholder_name">>, JObj)
