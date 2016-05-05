@@ -16,8 +16,6 @@
          ,content_types_accepted/1, content_types_accepted/2
          ,validate/1, validate/2, validate/3, validate/4
          ,put/1, put/2
-         ,post/1, post/3
-         ,patch/1, patch/3
          ,delete/3, delete/4
 
          ,acceptable_content_types/0
@@ -74,8 +72,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.content_types_accepted.faxes">>, ?MODULE, 'content_types_accepted'),
     _ = crossbar_bindings:bind(<<"*.validate.faxes">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.faxes">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.faxes">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"*.execute.patch.faxes">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.faxes">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
@@ -107,19 +103,17 @@ allowed_methods(?OUTGOING) ->
 allowed_methods(?SMTP_LOG, _AttemptId) ->
     [?HTTP_GET];
 allowed_methods(?INCOMING, _FaxId) ->
-    [?HTTP_GET, ?HTTP_DELETE];
+    [?HTTP_GET];
 allowed_methods(?INBOX, _FaxId) ->
     [?HTTP_GET, ?HTTP_DELETE];
 allowed_methods(?OUTBOX, _FaxId) ->
     [?HTTP_GET, ?HTTP_DELETE];
 allowed_methods(?OUTGOING, _FaxJobId) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
+    [?HTTP_GET].
 
 allowed_methods(?INBOX, _FaxId, ?ATTACHMENT) ->
     [?HTTP_GET, ?HTTP_DELETE];
 allowed_methods(?OUTBOX, _FaxId, ?ATTACHMENT) ->
-    [?HTTP_GET, ?HTTP_DELETE];
-allowed_methods(?INCOMING, _FaxJobId, ?ATTACHMENT) ->
     [?HTTP_GET, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
@@ -151,8 +145,7 @@ resource_exists(?OUTBOX, _Id) -> 'true';
 resource_exists(?OUTGOING, _Id) -> 'true'.
 
 resource_exists(?INBOX, _Id, ?ATTACHMENT) -> 'true';
-resource_exists(?OUTBOX, _Id, ?ATTACHMENT) -> 'true';
-resource_exists(?INCOMING, _Id, ?ATTACHMENT) -> 'true'.
+resource_exists(?OUTBOX, _Id, ?ATTACHMENT) -> 'true'.
 
 -spec acceptable_content_types() -> kz_proplist().
 acceptable_content_types() ->
@@ -191,13 +184,6 @@ content_types_provided(Context, ?INBOX, ?MATCH_MODB_PREFIX(YYYY,MM,_) = FaxId, ?
     Month = kz_util:to_integer(MM),
     Ctx = cb_context:set_account_modb(Context, Year, Month),
     content_types_provided_for_fax(Ctx, FaxId, cb_context:req_verb(Context));
-content_types_provided(Context, ?INCOMING, ?MATCH_MODB_PREFIX(YYYY,MM,_) = FaxId, ?ATTACHMENT) ->
-    Year  = kz_util:to_integer(YYYY),
-    Month = kz_util:to_integer(MM),
-    Ctx = cb_context:set_account_modb(Context, Year, Month),
-    content_types_provided_for_fax(Ctx, FaxId, cb_context:req_verb(Context));
-content_types_provided(Context, ?INCOMING, FaxId, ?ATTACHMENT) ->
-    content_types_provided_for_fax(Context, FaxId, cb_context:req_verb(Context));
 content_types_provided(Context, ?INBOX, FaxId, ?ATTACHMENT) ->
     content_types_provided_for_fax(Context, FaxId, cb_context:req_verb(Context));
 content_types_provided(Context, ?OUTBOX, FaxId, ?ATTACHMENT) ->
@@ -273,19 +259,11 @@ validate(Context, ?OUTGOING, Id) ->
     validate_outgoing_fax(Context, Id, cb_context:req_verb(Context)).
 
 validate_outgoing_fax(Context, Id, ?HTTP_GET) ->
-    load_outgoing_fax_doc(Id, cb_context:set_account_db(Context, ?KZ_FAXES_DB));
-validate_outgoing_fax(Context, Id, ?HTTP_POST) ->
-    update(Id, cb_context:set_account_db(Context, ?KZ_FAXES_DB));
-validate_outgoing_fax(Context, Id, ?HTTP_PATCH) ->
-    validate_patch(Id, cb_context:set_account_db(Context, ?KZ_FAXES_DB));
-validate_outgoing_fax(Context, Id, ?HTTP_DELETE) ->
-    read(Id, cb_context:set_account_db(Context, ?KZ_FAXES_DB)).
+    load_outgoing_fax_doc(Id, cb_context:set_account_db(Context, ?KZ_FAXES_DB)).
 
 validate(Context, ?INBOX, Id, ?ATTACHMENT) ->
     validate_modb_fax_attachment(Context, Id, cb_context:req_verb(Context));
 validate(Context, ?OUTBOX, Id, ?ATTACHMENT) ->
-    validate_modb_fax_attachment(Context, Id, cb_context:req_verb(Context));
-validate(Context, ?INCOMING, Id, ?ATTACHMENT) ->
     validate_modb_fax_attachment(Context, Id, cb_context:req_verb(Context)).
 
 validate_modb_fax_attachment(Context, Id, ?HTTP_GET) ->
@@ -306,34 +284,6 @@ put(Context) ->
     maybe_save_attachment(crossbar_doc:save(Context)).
 put(Context, ?OUTGOING) ->
     maybe_save_attachment(crossbar_doc:save(Context)).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verib is POST, execute the actual action, usually a db save
-%% (after a merge perhaps).
-%% @end
-%%--------------------------------------------------------------------
--spec post(cb_context:context()) -> cb_context:context().
--spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-post(Context) ->
-    crossbar_doc:save(Context).
-post(Context, ?OUTGOING, _) ->
-    crossbar_doc:save(Context).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verib is PATCH, execute the actual action, usually a db save
-%% (after a merge).
-%% @end
-%%--------------------------------------------------------------------
--spec patch(cb_context:context()) -> cb_context:context().
--spec patch(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-patch(Context) ->
-    crossbar_doc:save(Context).
-patch(Context, ?OUTGOING, _) ->
-    crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -434,29 +384,6 @@ get_fax_running_status(Id, Q) ->
 -spec load_fax_meta(ne_binary(), cb_context:context()) -> cb_context:context().
 load_fax_meta(FaxId, Context) ->
     crossbar_doc:load({<<"fax">>, FaxId}, Context, ?TYPE_CHECK_OPTION(<<"fax">>)).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update an existing instance with the data provided, if it is
-%% valid
-%% @end
-%%--------------------------------------------------------------------
--spec update(ne_binary(), cb_context:context()) -> cb_context:context().
-update(Id, Context) ->
-    OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
-    cb_context:validate_request_data(<<"faxes">>, Context, OnSuccess).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update-merge an existing instance partially with the data provided, if it is
-%% valid
-%% @end
-%%--------------------------------------------------------------------
--spec validate_patch(ne_binary(), cb_context:context()) -> cb_context:context().
-validate_patch(Id, Context) ->
-    crossbar_doc:patch_and_validate(Id, Context, fun update/2).
 
 %%--------------------------------------------------------------------
 %% @private
