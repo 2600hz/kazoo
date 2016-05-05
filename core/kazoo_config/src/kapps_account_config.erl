@@ -186,11 +186,10 @@ account_db_from_jobj(_Obj, 'false') ->
 -type migrate_values() :: [migrate_value()].
 
 -define(ACCOUNT_CONFIG_MIGRATIONS
-        ,[{{<<"callflow">>, <<"default_can_text_self">>}
-          ,{<<"kazoo_endpoint">>, <<"default_can_text_self">>}
-          }
-         ]).
-
+       ,[{{<<"callflow">>, <<"default_can_text_self">>}
+         ,{<<"kazoo_endpoint">>, <<"default_can_text_self">>}
+         }
+        ]).
 
 -spec migrate(ne_binary()) -> 'ok'.
 migrate(Account) ->

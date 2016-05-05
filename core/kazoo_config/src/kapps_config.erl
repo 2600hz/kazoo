@@ -548,25 +548,70 @@ get_category(Category) ->
 -type migrate_values() :: [migrate_value()].
 
 -define(CONFIG_MIGRATIONS
-        ,[{{<<"callflow">>, <<"default_emergency_cid_number">>}
-          ,{<<"stepswitch">>, <<"default_emergency_cid_number">>}
-          }
-          ,{{<<"callflow">>, <<"ensure_valid_emergency_number">>}
-           ,{<<"stepswitch">>, <<"ensure_valid_emergency_cid">>}
-           }
-          ,{{<<"trunkstore">>, <<"ensure_valid_emergency_number">>}
-           ,{<<"stepswitch">>, <<"ensure_valid_emergency_cid">>}
-           }
-          ,{{<<"callflow">>, <<"default_caller_id_number">>}
-            ,{<<"kazoo_endpoint">>, <<"default_caller_id_number">>}
-           }
-          ,{{<<"callflow">>, <<"default_caller_id_name">>}
-            ,{<<"kazoo_endpoint">>, <<"default_caller_id_name">>}
-           }
-          ,{{<<"callflow">>, <<"default_can_text_self">>}
-            ,{<<"kazoo_endpoint">>, <<"default_can_text_self">>}
-           }
-         ]).
+       ,[{{<<"callflow">>, <<"default_emergency_cid_number">>}
+         ,{<<"stepswitch">>, <<"default_emergency_cid_number">>}
+         }
+        ,{{<<"callflow">>, <<"ensure_valid_emergency_number">>}
+         ,{<<"stepswitch">>, <<"ensure_valid_emergency_cid">>}
+         }
+        ,{{<<"trunkstore">>, <<"ensure_valid_emergency_number">>}
+         ,{<<"stepswitch">>, <<"ensure_valid_emergency_cid">>}
+         }
+        ,{{<<"callflow">>, <<"default_caller_id_number">>}
+         ,{<<"kazoo_endpoint">>, <<"default_caller_id_number">>}
+         }
+        ,{{<<"callflow">>, <<"default_caller_id_name">>}
+         ,{<<"kazoo_endpoint">>, <<"default_caller_id_name">>}
+         }
+        ,{{<<"callflow">>, <<"default_can_text_self">>}
+         ,{<<"kazoo_endpoint">>, <<"default_can_text_self">>}
+         }
+        ,{{<<"callflow">>, <<"restrict_to_known_types">>}
+         ,{<<"kazoo_endpoint">>, <<"restrict_to_known_types">>}
+         }
+        ,{{<<"callflow">>, <<"sip_transport">>}
+         ,{<<"kazoo_endpoint">>, <<"sip_transport">>}
+         }
+        ,{{<<"callflow">>, <<"custom_sip_interface">>}
+         ,{<<"kazoo_endpoint">>, <<"custom_sip_interface">>}
+         }
+        ,{{<<"callflow">>, <<"should_add_diversion_header">>}
+         ,{<<"kazoo_endpoint">>, <<"should_add_diversion_header">>}
+         }
+        ,{{<<"callflow">>, <<"default_ignore_completed_elsewhere">>}
+         ,{<<"kazoo_endpoint">>, <<"default_ignore_completed_elsewhere">>}
+         }
+        ,{{<<"callflow.mobile">>, <<"create_sip_endpoint">>}
+         ,{<<"kazoo_endpoint.mobile">>, <<"create_sip_endpoint">>}
+         }
+        ,{{<<"callflow.mobile">>, <<"codecs">>}
+         ,{<<"kazoo_endpoint.mobile">>, <<"codecs">>}
+         }
+        ,{{<<"callflow.mobile">>, <<"custom_sip_interface">>}
+         ,{<<"kazoo_endpoint.mobile">>, <<"custom_sip_interface">>}
+         }
+        ,{{<<"callflow.mobile">>, <<"formatter">>}
+         ,{<<"kazoo_endpoint.mobile">>, <<"formatter">>}
+         }
+        ,{{<<"callflow.mobile">>, <<"prefix">>}
+         ,{<<"kazoo_endpoint.mobile">>, <<"prefix">>}
+         }
+        ,{{<<"callflow.mobile">>, <<"suffix">>}
+         ,{<<"kazoo_endpoint.mobile">>, <<"suffix">>}
+         }
+        ,{{<<"callflow.mobile">>, <<"realm">>}
+         ,{<<"kazoo_endpoint.mobile">>, <<"realm">>}
+         }
+        ,{{<<"callflow.mobile">>, <<"path">>}
+         ,{<<"kazoo_endpoint.mobile">>, <<"path">>}
+         }
+        ,{{<<"callflow.mobile">>, <<"sms_interface">>}
+         ,{<<"kazoo_endpoint.mobile">>, <<"sms_interface">>}
+         }
+        ,{{<<"callflow.mobile">>, [<<"sms">>, <<"connections">>]}
+         ,{<<"kazoo_endpoint.mobile">>, [<<"sms">>, <<"connections">>]}
+         }
+        ]).
 
 -spec migrate() -> 'ok'.
 migrate() ->
