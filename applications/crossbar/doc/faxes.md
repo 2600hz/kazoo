@@ -9,7 +9,7 @@ The Faxes API exposes lots of ways to generate and fetch faxes.
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `attempts` | The number of attempts made, this will be set by the system and reset automaticly on put/post | `integer` | `0` | `false`
-`document` | Parameters related to the storage of a fax document | `object` | `{}` | `false`
+`document` | Parameters related to the storage of a fax document | `object` |   | `false`
 `document.content` | The content provided in the body when fetching for transmission as a post | `string(0..256)` |   | `false`
 `document.content_type` | The content type header to be used when fetching for transmission as a post | `string` |   | `false`
 `document.host` | The host header to be used when fetching for transmission | `string` |   | `false`
@@ -35,6 +35,21 @@ Key | Description | Type | Default | Required
 `tx_result.pages_sent` | The number of pages transmitted | `integer` | `0` | `false`
 `tx_result.success` | True if the fax transmission was successful | `boolean` | `false` | `false`
 `tx_result.time_elapsed` | The amount of time from submition to completion | `integer` | `0` | `false`
+
+#### Processing States
+
+State | Description
+----- | -----------
+`attaching_files` | A fax job was submitted via the api (with a multipart/related content type) or smtp and we are in the process of attaching the files to the fax job.
+`pending` | Fax waiting to be picked up by the fax sending job
+`failed` | If we can't retrieve the fax document via a requests URL, the state will be "failed" and the error text will contain "could not retrieve file, http response <XXX>"
+`processing` | Faxes that are actively picked up by the fax worker and are being processed
+`completed` | Faxes that are finished sending
+`failed` | Faxes that did not successfully send after all allotted retries are in state "failed". We pass-thru the FreeSWITCH error code in this case.
+
+### Sending Outbound Faxes
+
+This section details APIs for manipulating job processing of outgoing faxes.
 
 #### Create an outgoing fax
 
@@ -227,9 +242,7 @@ curl -v -X GET \
 }
 ```
 
-#### Patch a fax job's definition
-
-> PATCH /v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
+### Managing Past Outbound Faxes
 
 ```curl
 curl -v -X PATCH \
@@ -374,9 +387,13 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAX_ID}
 ```
 
-#### Fetch a specific log related to email
+### Managing Past Inbound Faxes
 
-> GET /v2/accounts/{ACCOUNT_ID}/faxes/smtplog/{ATTEMPT_ID}
+#### Fetch all faxes in the inbox folder
+
+Retrieve a list of faxes that have previously been received.
+
+> GET /v2/accounts/{ACCOUNT_ID}/faxes/inbox
 
 ```curl
 curl -v -X GET \
@@ -424,9 +441,16 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}/attachment
 ```
 
-#### Remove the fax payload
+## APIs under active development
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}/attachment
+### Receiving Inbound Faxes
+
+#### Fetch
+
+Retrieve a list of faxes that are currently being received or attempted to be received.
+NOTE: THIS FUNCTION DOES NOT WORK YET AS OF THE WRITING OF THIS DOCUMENT. We'll update this doc once this function is complete. Ticket #
+
+> GET /v2/accounts/{ACCOUNT_ID}/faxes/incoming
 
 ```curl
 curl -v -X DELETE \

@@ -7,11 +7,7 @@
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `attempts` | The number of attempts made, this will be set by the system and reset automaticly on put/post | `integer` | `0` | `false`
-`callback` | A URL to send results to | `object` |   | `false`
-`callback.method` | The HTTP method used for the callback | `string('post', 'put')` |   | `false`
-`callback.type` | The content-type used for the body of the callback | `string('json', 'www-url-form-encoded')` |   | `false`
-`callback.url` | The URL to call back with the results | `string` |   | `false`
-`document` | Parameters related to the storage of a fax document | `object` | `{}` | `false`
+`document` | Parameters related to the storage of a fax document | `object` |   | `false`
 `document.content` | The content provided in the body when fetching for transmission as a post | `string(0..256)` |   | `false`
 `document.content_type` | The content type header to be used when fetching for transmission as a post | `string` |   | `false`
 `document.host` | The host header to be used when fetching for transmission | `string` |   | `false`
@@ -109,42 +105,12 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/smtplog
 ```
 
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
-
-```curl
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
-```
-
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
 
 ```curl
 curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
-```
-
-#### Patch
-
-> PATCH /v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
-
-```curl
-curl -v -X PATCH \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
-```
-
-#### Change
-
-> POST /v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
-
-```curl
-curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
 ```
@@ -189,16 +155,6 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}
 ```
 
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAX_ID}
-
-```curl
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAX_ID}
-```
-
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAX_ID}
@@ -217,26 +173,6 @@ curl -v -X GET \
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/smtplog/{ATTEMPT_ID}
-```
-
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAXJOB_ID}/attachment
-
-```curl
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAXJOB_ID}/attachment
-```
-
-#### Fetch
-
-> GET /v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAXJOB_ID}/attachment
-
-```curl
-curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAXJOB_ID}/attachment
 ```
 
 #### Remove
