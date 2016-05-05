@@ -47,7 +47,7 @@ Key | Description | Type | Default | Required
 
 State | Description
 ----- | -----------
-`attaching_files` | A fax job was submitted with a URL for retrieving the attachments and we are in the process of trying to retrieve those attachments for the fax job from a remote webserver
+`attaching_files` | A fax job was submitted via the api (with a multipar/related content type) or smtp and we are in the process of attaching the files to the fax job.
 `pending` | Fax waiting to be picked up by the fax sending job
 `failed` | If we can't retrieve the fax document via a requests URL, the state will be "failed" and the error text will contain "could not retrieve file, http response <XXX>"
 `processing` | Faxes that are actively picked up by the fax worker and are being processed
