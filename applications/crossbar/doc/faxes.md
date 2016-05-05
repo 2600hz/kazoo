@@ -16,7 +16,7 @@ As a general concept, faxes are either considered inbound or outbound faxes. In 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `attempts` | The number of attempts made, this will be set by the system and reset automaticly on put/post | `integer` | `0` | `false`
-`document` | Parameters related to the storage of a fax document | `object` | `{}` | `false`
+`document` | Parameters related to the storage of a fax document | `object` |   | `false`
 `document.content` | The content provided in the body when fetching for transmission as a post | `string(0..256)` |   | `false`
 `document.content_type` | The content type header to be used when fetching for transmission as a post | `string` |   | `false`
 `document.host` | The host header to be used when fetching for transmission | `string` |   | `false`
@@ -44,15 +44,15 @@ Key | Description | Type | Default | Required
 `tx_result.time_elapsed` | The amount of time from submition to completion | `integer` | `0` | `false`
 
 #### Processing States
-State | Description
---- | -----------
-attaching_files | A fax job was submitted with a URL for retrieving the attachments and we are in the process of trying to retrieve those attachments for the fax job from a remote webserver
-pending | Fax waiting to be picked up by the fax sending job
-failed | If we can't retrieve the fax document via a requests URL, the state will be "failed" and the error text will contain "could not retrieve file, http response <XXX>"
-processing | Faxes that are actively picked up by the fax worker and are being processed
-completed | Faxes that are finished sending
-failed | Faxes that did not successfully send after all allotted retries are in state "failed". We pass-thru the FreeSWITCH error code in this case.
 
+State | Description
+----- | -----------
+`attaching_files` | A fax job was submitted with a URL for retrieving the attachments and we are in the process of trying to retrieve those attachments for the fax job from a remote webserver
+`pending` | Fax waiting to be picked up by the fax sending job
+`failed` | If we can't retrieve the fax document via a requests URL, the state will be "failed" and the error text will contain "could not retrieve file, http response <XXX>"
+`processing` | Faxes that are actively picked up by the fax worker and are being processed
+`completed` | Faxes that are finished sending
+`failed` | Faxes that did not successfully send after all allotted retries are in state "failed". We pass-thru the FreeSWITCH error code in this case.
 
 ### Sending Outbound Faxes
 
@@ -202,7 +202,6 @@ curl -v -X GET \
 }
 ```
 
-
 ### Managing Past Outbound Faxes
 
 #### Fetch all previously sent faxes in the outbox folder
@@ -286,10 +285,6 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}/attachment
 ```
 
-
-
-
-
 ### Managing Past Inbound Faxes
 
 #### Fetch all faxes in the inbox folder
@@ -351,21 +346,6 @@ curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}/attachment
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 ## APIs under active development
 
