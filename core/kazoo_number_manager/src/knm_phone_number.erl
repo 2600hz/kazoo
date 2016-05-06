@@ -323,22 +323,24 @@ to_json(#knm_phone_number{doc=JObj}=N) ->
 %%--------------------------------------------------------------------
 -spec from_json(kz_json:object()) -> knm_phone_number().
 from_json(JObj) ->
-    #knm_phone_number{
-       number = kz_doc:id(JObj)
-       ,number_db = kz_json:get_value(?PVT_DB_NAME, JObj)
-       ,assigned_to = kz_json:get_value(?PVT_ASSIGNED_TO, JObj)
-       ,prev_assigned_to = kz_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)
-       ,used_by = kz_json:get_value(?PVT_USED_BY, JObj)
-       ,features = kz_json:get_value(?PVT_FEATURES, JObj, kz_json:new())
-       ,state = kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)
-       ,reserve_history = kz_json:get_value(?PVT_RESERVE_HISTORY, JObj, [])
-       ,ported_in = kz_json:is_true(?PVT_PORTED_IN, JObj, 'false')
-       ,module_name = kz_json:get_value(?PVT_MODULE_NAME, JObj)
-       ,carrier_data = kz_json:get_value(?PVT_CARRIER_DATA, JObj)
-       ,region = kz_json:get_value(?PVT_REGION, JObj)
-       ,auth_by = kz_json:get_value(?PVT_AUTH_BY, JObj)
-       ,doc = kz_json:delete_key(<<"id">>, kz_json:public_fields(JObj))
-      }.
+    {'ok', PhoneNumber} =
+        setters(new(),
+                [{fun set_number/2, kz_doc:id(JObj)}
+                ,{fun set_number_db/2, kz_json:get_value(?PVT_DB_NAME, JObj)}
+                ,{fun set_assigned_to/2, kz_json:get_value(?PVT_ASSIGNED_TO, JObj)}
+                ,{fun set_prev_assigned_to/2, kz_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)}
+                ,{fun set_used_by/2, kz_json:get_value(?PVT_USED_BY, JObj)}
+                ,{fun set_features/2, kz_json:get_value(?PVT_FEATURES, JObj, kz_json:new())}
+                ,{fun set_state/2, kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)}
+                ,{fun set_reserve_history/2, kz_json:get_value(?PVT_RESERVE_HISTORY, JObj, [])}
+                ,{fun set_ported_in/2, kz_json:is_true(?PVT_PORTED_IN, JObj, 'false')}
+                ,{fun set_module_name/2, kz_json:get_value(?PVT_MODULE_NAME, JObj)}
+                ,{fun set_carrier_data/2, kz_json:get_value(?PVT_CARRIER_DATA, JObj)}
+                ,{fun set_region/2, kz_json:get_value(?PVT_REGION, JObj)}
+                ,{fun set_auth_by/2, kz_json:get_value(?PVT_AUTH_BY, JObj)}
+                ,{fun set_doc/2, kz_json:delete_key(<<"id">>, kz_json:public_fields(JObj))}
+                ]),
+    PhoneNumber.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -389,8 +391,6 @@ setters_fold(_, {'error', _R}=Error) ->
 setters_fold({_Fun, 'undefined'}, PhoneNumber) ->
     lager:debug("skipping ~p", [_Fun]),
     PhoneNumber;
-setters_fold({Fun, [_|_]=Value}, PhoneNumber) when is_function(Fun) ->
-    setters_fold_apply(Fun, [PhoneNumber | Value]);
 setters_fold({Fun, Value}, PhoneNumber) when is_function(Fun, 2) ->
     setters_fold_apply(Fun, [PhoneNumber, Value]);
 setters_fold(Fun, PhoneNumber) when is_function(Fun, 1) ->
