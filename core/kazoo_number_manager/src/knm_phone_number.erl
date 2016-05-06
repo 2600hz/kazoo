@@ -366,6 +366,11 @@ setters(Number, Routines) ->
         Result -> {'ok', Result}
     catch
         'throw':{'stop', Error} -> Error;
+        'error':'function_clause' ->
+            {_M, FName, Args, _Info} = hd(erlang:get_stacktrace()),
+            lager:error("~s failed, args: ~p", [FName, lists:nth(2, Args)]),
+            kz_util:log_stacktrace(),
+            {'error', FName};
         'error':Reason -> {'error', Reason}
     end.
 
