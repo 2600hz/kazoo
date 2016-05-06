@@ -8,6 +8,7 @@
 -define(CACHE_NAME, 'knm_cache').
 -define(KNM_CONFIG_CAT, <<"number_manager">>).
 
+-define(FEATURE_LOCAL, <<"local">>).
 -define(FEATURE_OUTBOUND_CNAM, <<"outbound_cnam">>).
 -define(FEATURE_INBOUND_CNAM, <<"inbound_cnam">>).
 -define(FEATURE_CNAM, <<"cnam">>).

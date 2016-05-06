@@ -32,7 +32,7 @@
 find_numbers(Number, Quanity, Opts) when size(Number) < 5 ->
     find_numbers(<<"+1", Number/binary>>, Quanity, Opts);
 find_numbers(_Number, _Quanity, _Opts) ->
-    %% TODO: given the requestor's account, discover wnm_local numbers
+    %% TODO: given the requestor's account, discover knm_local numbers
     %%        that are available but managed by accendants of the account.
     {'error', 'not_available'}.
 
@@ -47,7 +47,8 @@ is_number_billable(_Number) -> 'false'.
 %%--------------------------------------------------------------------
 -spec acquire_number(knm_number:knm_number()) ->
                             knm_number:knm_number().
-acquire_number(Number) -> Number.
+acquire_number(Number) ->
+    Number.
 
 %%--------------------------------------------------------------------
 %% @private
