@@ -233,12 +233,17 @@ update_card(Customer, Card) ->
                  )
                ],
 
-    %% Delete previous cards /after/ changing subscriptions' payment token.
-    lists:foreach(fun braintree_card:delete/1, OldCards),
+    %% Delete previous cards and addresses /after/ changing subscriptions' payment token.
+    lists:foreach(fun delete_old_card_and_address/1, OldCards),
 
     UpdatedCustomer#bt_customer{credit_cards = NewCards
                                 ,subscriptions = NewSubscriptions
                                }.
+
+-spec delete_old_card_and_address(bt_card()) -> bt_card().
+delete_old_card_and_address(#bt_card{billing_address=OldAddress}=OldCard) ->
+    braintree_address:delete(OldAddress),
+    braintree_card:delete(OldCard).
 
 -spec do_update(bt_customer()) -> bt_customer().
 do_update(#bt_customer{id=CustomerId}=Customer) ->
