@@ -149,7 +149,6 @@ doc_change_event_name(Action, 'false') ->
 
 -spec doc_acct_id(ne_binary(), kz_json:object()) -> ne_binary().
 doc_acct_id(Db, Doc) ->
-    Classification = kzs_util:db_classification(Db),
     case kz_doc:account_id(Doc) of
         'undefined' -> maybe_account_id_from_db(kzs_util:db_classification(Db), Db);
         AccountId -> AccountId
