@@ -471,7 +471,8 @@ release_number(Number, Options) ->
     Routines = [fun knm_phone_number:release/1
                ],
     {'ok', PhoneNumber} = knm_phone_number:setters(phone_number(Number), Routines),
-    N = unwind_or_disconnect(set_phone_number(Number, PhoneNumber), Options),
+    N1 = knm_providers:delete(set_phone_number(Number, PhoneNumber)),
+    N = unwind_or_disconnect(N1, Options),
     wrap_phone_number_return(
       knm_phone_number:save(phone_number(N))
       ,N
