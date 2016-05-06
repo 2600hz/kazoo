@@ -36,6 +36,7 @@
 
 -define(MEDIA_MIME_TYPES
        ,?AUDIO_CONTENT_TYPES
+        ++ ?VIDEO_CONTENT_TYPES
         ++ ?BASE64_CONTENT_TYPES
        ).
 

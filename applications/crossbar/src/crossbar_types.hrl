@@ -87,6 +87,14 @@
                              ,{<<"audio">>, <<"ogg">>}
                              ]).
 
+-define(VIDEO_CONTENT_TYPES, [{<<"video">>, <<"x-flv">>}
+                             ,{<<"video">>, <<"h264">>}
+                             ,{<<"video">>, <<"mpeg">>}
+                             ,{<<"video">>, <<"quicktime">>}
+                             ,{<<"video">>, <<"mp4">>}
+                             ,{<<"video">>, <<"webm">>}
+                             ]).
+
 -define(BASE64_CONTENT_TYPES, [{<<"application">>, <<"base64">>}
                                ,{<<"application">>, <<"x-base64">>}
                               ]).
