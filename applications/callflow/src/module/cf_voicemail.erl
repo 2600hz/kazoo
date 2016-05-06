@@ -1470,7 +1470,7 @@ get_mailbox_doc(Db, Id, Data, Call) ->
         'true' when not CGIsEmpty ->
             lager:info("capture group not empty: ~s", [CaptureGroup]),
             Opts = [{'key', CaptureGroup}, 'include_docs'],
-            case kz_datamgr:get_results(Db, <<"cf_attributes/mailbox_number">>, Opts) of
+            case kz_datamgr:get_results(Db, <<"kz_attributes/mailbox_number">>, Opts) of
                 {'ok', []} -> {'error', 'not_found'};
                 {'ok', [JObj|_]} -> {'ok', kz_json:get_value(<<"doc">>, JObj, kz_json:new())};
                 Else -> Else
@@ -1505,7 +1505,7 @@ get_user_mailbox_doc(Data, Call, 'undefined') ->
     end;
 get_user_mailbox_doc(Data, Call, OwnerId) ->
     SingleMailboxLogin = kz_json:is_true(<<"single_mailbox_login">>, Data, 'false'),
-    case cf_attributes:owned_by_docs(OwnerId, <<"vmbox">>, Call) of
+    case kz_attributes:owned_by_docs(OwnerId, <<"vmbox">>, Call) of
         [] ->
             lager:debug("owner ~s has no vmboxes", [OwnerId]),
             {'error', "request voicemail box number"};

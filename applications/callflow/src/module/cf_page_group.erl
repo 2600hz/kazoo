@@ -48,7 +48,7 @@ get_endpoints(Members, Call) ->
     Builders = [kz_util:spawn(
                   fun() ->
                           kz_util:put_callid(kapps_call:call_id(Call)),
-                          S ! {self(), catch cf_endpoint:build(EndpointId, Member, Call)}
+                          S ! {self(), catch kz_endpoint:build(EndpointId, Member, Call)}
                   end)
                 || {EndpointId, Member} <- resolve_endpoint_ids(Members, Call)
                ],
@@ -100,7 +100,7 @@ resolve_endpoint_ids([Member|Members], EndpointIds, Call) ->
                                       end
                               end
                               ,[{Type, Id, 'undefined'}|EndpointIds]
-                              ,cf_attributes:owned_by(Id, <<"device">>, Call)),
+                              ,kz_attributes:owned_by(Id, <<"device">>, Call)),
             resolve_endpoint_ids(Members, Ids, Call);
         <<"device">> ->
             resolve_endpoint_ids(Members, [{Type, Id, Member}|EndpointIds], Call)

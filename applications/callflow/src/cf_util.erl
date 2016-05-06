@@ -260,7 +260,7 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
     ViewOptions = [{'key', [OwnerId, <<"device">>]}
                    ,'include_docs'
                   ],
-    case kz_datamgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"kz_attributes/owned">>, ViewOptions) of
         {'ok', JObjs} ->
             {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
             AccountId = kz_util:format_account_id(AccountDb, 'raw'),
@@ -442,7 +442,7 @@ owner_ids_by_sip_username(AccountDb, Username) ->
                                            {'error', any()}.
 get_owner_ids_by_sip_username(AccountDb, Username) ->
     ViewOptions = [{'key', Username}],
-    case kz_datamgr:get_results(AccountDb, <<"cf_attributes/sip_username">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"kz_attributes/sip_username">>, ViewOptions) of
         {'ok', [JObj]} ->
             EndpointId = kz_doc:id(JObj),
             OwnerIds = kz_json:get_value(<<"value">>, JObj, []),
@@ -478,7 +478,7 @@ endpoint_id_by_sip_username(AccountDb, Username) ->
                                              {'error', 'not_found'}.
 get_endpoint_id_by_sip_username(AccountDb, Username) ->
     ViewOptions = [{'key', Username}],
-    case kz_datamgr:get_results(AccountDb, <<"cf_attributes/sip_username">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"kz_attributes/sip_username">>, ViewOptions) of
         {'ok', [JObj]} ->
             EndpointId = kz_doc:id(JObj),
             CacheProps = [{'origin', {'db', AccountDb, EndpointId}}],
@@ -899,7 +899,7 @@ caller_belongs_to_user(UserId, Call) ->
 
 -spec find_group_endpoints(ne_binary(), kapps_call:call()) -> ne_binaries().
 find_group_endpoints(GroupId, Call) ->
-    GroupsJObj = cf_attributes:groups(Call),
+    GroupsJObj = kz_attributes:groups(Call),
     case [kz_json:get_value(<<"value">>, JObj)
           || JObj <- GroupsJObj,
              kz_doc:id(JObj) =:= GroupId
@@ -924,7 +924,7 @@ find_endpoints(Ids, GroupEndpoints, Call) ->
                                  ne_binaries().
 find_user_endpoints([], DeviceIds, _) -> DeviceIds;
 find_user_endpoints(UserIds, DeviceIds, Call) ->
-    UserDeviceIds = cf_attributes:owned_by(UserIds, <<"device">>, Call),
+    UserDeviceIds = kz_attributes:owned_by(UserIds, <<"device">>, Call),
     lists:merge(lists:sort(UserDeviceIds), DeviceIds).
 
 -spec find_channels(ne_binaries(), kapps_call:call()) -> kz_json:objects().
@@ -976,7 +976,7 @@ sip_users_from_device_id(EndpointId, Acc, Call) ->
 
 -spec sip_user_from_device_id(ne_binary(), kapps_call:call()) -> api_binary().
 sip_user_from_device_id(EndpointId, Call) ->
-    case cf_endpoint:get(EndpointId, Call) of
+    case kz_endpoint:get(EndpointId, Call) of
         {'error', _} -> 'undefined';
         {'ok', Endpoint} ->
             kz_device:sip_username(Endpoint)

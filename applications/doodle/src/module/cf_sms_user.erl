@@ -83,9 +83,9 @@ maybe_handle_bridge_failure({_ , R}=Reason, Call) ->
 get_endpoints('undefined', _, _) -> {[], 0};
 get_endpoints(UserId, Data, Call) ->
     Params = kz_json:set_value(<<"source">>, ?MODULE, Data),
-    EndpointIds = cf_attributes:owned_by(UserId, <<"device">>, Call),
+    EndpointIds = kz_attributes:owned_by(UserId, <<"device">>, Call),
     {Endpoints, DndCount} = lists:foldr(fun(EndpointId, {Acc, Dnd}) ->
-                        case cf_endpoint:build(EndpointId, Params, Call) of
+                        case kz_endpoint:build(EndpointId, Params, Call) of
                             {'ok', Endpoint} -> {Endpoint ++ Acc, Dnd};
                             {'error', 'do_not_disturb'} -> {Acc, Dnd+1};
                             {'error', _E} -> {Acc, Dnd}

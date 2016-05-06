@@ -47,7 +47,7 @@ should_restrict_call(Call) ->
 -spec should_restrict_call(api_binary(), kapps_call:call()) -> boolean().
 should_restrict_call('undefined', _Call) -> 'false';
 should_restrict_call(EndpointId, Call) ->
-    case cf_endpoint:get(EndpointId, Call) of
+    case kz_endpoint:get(EndpointId, Call) of
         {'error', _R} -> 'false';
         {'ok', JObj} -> maybe_service_unavailable(JObj, Call)
     end.
@@ -122,13 +122,13 @@ enforce_closed_groups(JObj, Call) ->
             maybe_classification_restriction(JObj, Call);
         {<<"user">>, CalleeId} ->
             lager:info("dialed number is user ~s extension, checking groups", [CalleeId]),
-            Groups = cf_attributes:groups(Call),
+            Groups = kz_attributes:groups(Call),
             CallerGroups = get_caller_groups(Groups, JObj, Call),
             CalleeGroups = get_group_associations(CalleeId, Groups),
             sets:size(sets:intersection(CallerGroups, CalleeGroups)) =:= 0;
         {<<"device">>, CalleeId} ->
             lager:info("dialed number is device ~s extension, checking groups", [CalleeId]),
-            Groups = cf_attributes:groups(Call),
+            Groups = kz_attributes:groups(Call),
             CallerGroups = get_caller_groups(Groups, JObj, Call),
             maybe_device_groups_intersect(CalleeId, CallerGroups, Groups, Call)
     end.
@@ -155,7 +155,7 @@ maybe_device_groups_intersect(CalleeId, CallerGroups, Groups, Call) ->
         'true' ->
             %% In this case the callee-id is a device id, find out if
             %% the owner of the device shares any groups with the caller
-            UserIds = cf_attributes:owner_ids(CalleeId, Call),
+            UserIds = kz_attributes:owner_ids(CalleeId, Call),
             UsersGroups = lists:foldl(fun(UserId, Set) ->
                                               get_group_associations(UserId, Groups, Set)
                                       end
@@ -220,7 +220,7 @@ bootstrap_callflow_executer(_JObj, Call) ->
 %%-----------------------------------------------------------------------------
 -spec store_owner_id(kapps_call:call()) -> kapps_call:call().
 store_owner_id(Call) ->
-    OwnerId = cf_attributes:owner_id(Call),
+    OwnerId = kz_attributes:owner_id(Call),
     kapps_call:kvs_store('owner_id', OwnerId, Call).
 
 %%-----------------------------------------------------------------------------
@@ -232,7 +232,7 @@ store_owner_id(Call) ->
 -spec set_language(kapps_call:call()) -> kapps_call:call().
 set_language(Call) ->
     Default = kz_media_util:prompt_language(kapps_call:account_id(Call)),
-    case cf_endpoint:get(Call) of
+    case kz_endpoint:get(Call) of
         {'ok', Endpoint} ->
             Language = kz_device:language(Endpoint, Default),
             lager:debug("setting language '~s' for this call", [Language]),
@@ -255,7 +255,7 @@ update_ccvs(Call) ->
                        _Else -> <<"external">>
                    end,
     {CIDNumber, CIDName} =
-        cf_attributes:caller_id(
+        kz_attributes:caller_id(
           CallerIdType
           ,kapps_call:kvs_erase('prepend_cid_name', Call)
          ),
@@ -263,7 +263,7 @@ update_ccvs(Call) ->
                ,[CallerIdType, CIDName, CIDNumber]
               ),
     Props = props:filter_undefined(
-              [{<<"Hold-Media">>, cf_attributes:moh_attributes(<<"media_id">>, Call)}
+              [{<<"Hold-Media">>, kz_attributes:moh_attributes(<<"media_id">>, Call)}
                ,{<<"Caller-ID-Name">>, CIDName}
                ,{<<"Caller-ID-Number">>, CIDNumber}
                | get_incoming_security(Call)
@@ -286,7 +286,7 @@ maybe_start_metaflow(Call, App) ->
 maybe_start_endpoint_metaflow(_Call, 'undefined') -> 'ok';
 maybe_start_endpoint_metaflow(Call, EndpointId) ->
     lager:debug("looking up endpoint for ~s", [EndpointId]),
-    case cf_endpoint:get(EndpointId, Call) of
+    case kz_endpoint:get(EndpointId, Call) of
         {'ok', Endpoint} ->
             lager:debug("trying to send metaflow for a-leg endpoint ~s", [EndpointId]),
             cf_util:maybe_start_metaflow(Call, Endpoint);
@@ -295,7 +295,7 @@ maybe_start_endpoint_metaflow(Call, EndpointId) ->
 
 -spec maybe_start_recording(kapps_call:call()) -> kapps_call:call().
 maybe_start_recording(Call) ->
-    maybe_start_endpoint_recording(Call, cf_endpoint:get(Call)).
+    maybe_start_endpoint_recording(Call, kz_endpoint:get(Call)).
 
 -spec maybe_start_endpoint_recording(kapps_call:call(), cf_api_std_return()) -> 'ok'.
 maybe_start_endpoint_recording(Call, {'ok', Endpoint}) ->
@@ -305,7 +305,7 @@ maybe_start_endpoint_recording(Call, _) -> Call.
 
 -spec get_incoming_security(kapps_call:call()) -> kz_proplist().
  get_incoming_security(Call) ->
-    case cf_endpoint:get(Call) of
+    case kz_endpoint:get(Call) of
         {'error', _R} -> [];
         {'ok', JObj} ->
             kz_json:to_proplist(

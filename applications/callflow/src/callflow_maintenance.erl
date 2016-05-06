@@ -51,7 +51,7 @@ lookup_endpoint(Username, Realm) ->
             {'ok', AccountDb} ->
                 case cf_util:endpoint_id_by_sip_username(AccountDb, Username) of
                     {'ok', EndpointId} ->
-                        Endpoint = cf_endpoint:get(EndpointId, AccountDb),
+                        Endpoint = kz_endpoint:get(EndpointId, AccountDb),
                         io:format("~p~n", [Endpoint]);
                     _Else -> io:format("unable to find username ~s in ~s~n", [Username, AccountDb])
                 end;
@@ -304,7 +304,7 @@ set_account_classifier_action(Action, Classifier, AccountDb) ->
     kz_datamgr:update_doc(AccountDb, AccountId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
     kz_datamgr:update_doc(<<"accounts">>, AccountId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
 
-    cf_endpoint:flush_account(AccountDb),
+    kz_endpoint:flush_account(AccountDb),
 
     io:format("  ...  classifier '~s' switched to action '~s'\n", [Classifier, Action]).
 
@@ -358,7 +358,7 @@ set_device_classifier_action(Action, Classifier, Uri) ->
     {'ok', [DeviceDoc]} = kz_datamgr:get_results(AccountDb, <<"devices/sip_credentials">>, Options),
     DeviceId = kz_doc:id(DeviceDoc),
     kz_datamgr:update_doc(AccountDb, DeviceId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
-    cf_endpoint:flush(AccountDb, DeviceId).
+    kz_endpoint:flush(AccountDb, DeviceId).
 
 %%--------------------------------------------------------------------
 %% @private
