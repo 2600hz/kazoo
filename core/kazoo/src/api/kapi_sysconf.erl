@@ -51,8 +51,8 @@
 -define(SYSCONF_GET_REQ_VALUES, [{<<"Event-Name">>, <<"get_req">>} | ?SYSCONF_VALUES]).
 
 %% answer to a read request
--define(SYSCONF_GET_RESP_HEADERS, [?CAT_KEY, ?KEY_KEY, ?VALUE_KEY]).
--define(OPTIONAL_SYSCONF_GET_RESP_HEADERS, []).
+-define(SYSCONF_GET_RESP_HEADERS, [?CAT_KEY, ?KEY_KEY]).
+-define(OPTIONAL_SYSCONF_GET_RESP_HEADERS, [?VALUE_KEY]).
 -define(SYSCONF_GET_RESP_VALUES, [{<<"Event-Name">>, <<"get_resp">>} | ?SYSCONF_VALUES]).
 
 %% request a write
