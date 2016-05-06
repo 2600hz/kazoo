@@ -575,6 +575,14 @@ module_name(#knm_phone_number{module_name = ?CARRIER_LOCAL_LEGACY}) -> ?CARRIER_
 module_name(#knm_phone_number{module_name = Name}) -> Name.
 
 -spec set_module_name(knm_phone_number(), ne_binary()) -> knm_phone_number().
+set_module_name(N0, ?CARRIER_LOCAL=Name) ->
+    Feature =
+        case feature(N0, ?FEATURE_LOCAL) of
+            'undefined' -> kz_json:new();
+            LocalFeature -> LocalFeature
+        end,
+    N = set_feature(N0, ?FEATURE_LOCAL, Feature),
+    N#knm_phone_number{module_name=Name};
 set_module_name(N, Name=?NE_BINARY) ->
     N#knm_phone_number{module_name=Name}.
 

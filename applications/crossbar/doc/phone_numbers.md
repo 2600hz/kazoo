@@ -81,7 +81,9 @@ curl -v -X GET \
             "+14155555555": {
                 "assigned_to": "{ACCOUNT_ID}",
                 "created": 63602230185,
-                "features": ["cnam"],
+                "features": [
+                    "cnam"
+                ],
                 "state": "in_service",
                 "updated": 63602230212,
                 "used_by": "callflow"
@@ -184,9 +186,15 @@ curl -v -X GET \
     "data": {
         "_read_only": {
             "created": 63627848989,
+            "features": [
+                "local"
+            ],
             "modified": 63627848989,
             "state": "reserved"
         },
+        "features": [
+            "local"
+        ],
         "id": "{PHONENUMBER}",
         "state": "reserved",
         "my_own_field": {}
