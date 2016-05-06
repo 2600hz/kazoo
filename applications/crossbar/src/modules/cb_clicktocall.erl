@@ -327,7 +327,7 @@ originate_call(_C2CId, Context, 'undefined') ->
      );
 originate_call(C2CId, Context, Contact) ->
     JObj = cb_context:doc(Context),
-    case wh_json:get_ne_value(<<"whitelist">>, JObj, []) of
+    case kz_json:get_ne_value(<<"whitelist">>, JObj, []) of
         [] -> originate_call(C2CId, Context, Contact, 'true');
         Whitelist -> originate_call(C2CId, Context, Contact, match_regexps(Whitelist, Contact))
     end.
