@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -15,10 +15,12 @@
 -export([build/2, build/3]).
 -export([create_call_fwd_endpoint/3
          ,create_sip_endpoint/3
+         ,maybe_start_metaflow/2
         ]).
 
 -include("kazoo_endpoint.hrl").
 -include_lib("kazoo/include/kapi_conf.hrl").
+-include_lib("kazoo/src/kz_json.hrl").
 
 -define(NON_DIRECT_MODULES, ['cf_ring_group', 'acdc_util']).
 
@@ -716,12 +718,44 @@ create_endpoints(Endpoint, Properties, Call) ->
             {'ok', Endpoints}
     end.
 
+-spec maybe_start_metaflows(whapps_call:call(), kz_json:objects()) -> 'ok'.
+-spec maybe_start_metaflows(whapps_call:call(), kz_json:objects(), api_binary()) -> 'ok'.
 maybe_start_metaflows(Call, Endpoints) ->
-    maybe_start_metaflows(kapps_call:call_id_direct(Call), Call, Endpoints).
+    maybe_start_metaflows(Call, Endpoints, kapps_call:call_id_direct(Call)).
 
-maybe_start_metaflows('undefined', _Call, _Endpoints) -> 'ok';
-maybe_start_metaflows(_, Call, Endpoints) ->
-    cf_util:maybe_start_metaflows(Call, Endpoints).
+maybe_start_metaflows(_Call, _Endpoints, 'undefined') -> 'ok';
+maybe_start_metaflows(Call, Endpoints, _CallId) ->
+    case kapps_call:custom_channel_var(<<"Metaflow-App">>, Call) of
+        'undefined' ->
+            [maybe_start_metaflow(Call, Endpoint) || Endpoint <- Endpoints],
+            'ok';
+        _App -> 'ok'
+    end.
+
+-spec maybe_start_metaflow(whapps_call:call(), kz_json:object()) -> 'ok'.
+maybe_start_metaflow(Call, Endpoint) ->
+    case kz_json:get_first_defined([<<"metaflows">>, <<"Metaflows">>], Endpoint) of
+        'undefined' -> 'ok';
+        ?EMPTY_JSON_OBJECT -> 'ok';
+        JObj ->
+            Id = kz_json:get_first_defined([<<"_id">>, <<"Endpoint-ID">>], Endpoint),
+            API = props:filter_undefined(
+                    [{<<"Endpoint-ID">>, Id}
+                    ,{<<"Call">>, kapps_call:to_json(Call)}
+                    ,{<<"Numbers">>, kz_json:get_value(<<"numbers">>, JObj)}
+                    ,{<<"Patterns">>, kz_json:get_value(<<"patterns">>, JObj)}
+                    ,{<<"Binding-Digit">>, kz_json:get_value(<<"binding_digit">>, JObj)}
+                    ,{<<"Digit-Timeout">>, kz_json:get_value(<<"digit_timeout">>, JObj)}
+                    ,{<<"Listen-On">>, kz_json:get_value(<<"listen_on">>, JObj, <<"self">>)}
+                     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                    ]),
+            lager:debug("sending metaflow for endpoint: ~s: ~s"
+                       ,[Id
+                        ,kz_json:get_value(<<"listen_on">>, JObj)
+                        ]
+                       ),
+            kapps_util:amqp_pool_send(API, fun kapi_dialplan:publish_metaflow/1)
+    end.
 
 -type ep_routine() :: fun((kz_json:object(), kz_json:object(), kapps_call:call()) ->
                                  {'error', _} | kz_json:object()).

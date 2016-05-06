@@ -27,9 +27,6 @@
 -export([owner_ids_by_sip_username/2]).
 -export([apply_dialplan/2]).
 -export([encryption_method_map/2]).
--export([maybe_start_metaflow/2
-         ,maybe_start_metaflows/2
-        ]).
 -export([sip_users_from_device_ids/2]).
 
 -export([caller_belongs_to_group/2
@@ -849,42 +846,6 @@ start_event_listener(Call, Mod, Args) ->
 event_listener_name(Call, Module) ->
     <<(kapps_call:call_id_direct(Call))/binary, "-", (kz_util:to_binary(Module))/binary>>.
 
--spec maybe_start_metaflows(kapps_call:call(), kz_json:objects()) -> 'ok'.
--spec maybe_start_metaflows(kapps_call:call(), kz_json:object(), api_binary()) -> 'ok'.
--spec maybe_start_metaflow(kapps_call:call(), kz_json:object()) -> 'ok'.
-
-maybe_start_metaflows(Call, Endpoints) ->
-    maybe_start_metaflows(Call, Endpoints, kapps_call:custom_channel_var(<<"Metaflow-App">>, Call)).
-
-maybe_start_metaflows(Call, Endpoints, 'undefined') ->
-    _ = [maybe_start_metaflow(Call, Endpoint) || Endpoint <- Endpoints],
-    'ok';
-maybe_start_metaflows(_Call, _Endpoints, _) -> 'ok'.
-
-maybe_start_metaflow(Call, Endpoint) ->
-    case kz_json:get_first_defined([<<"metaflows">>, <<"Metaflows">>], Endpoint) of
-        'undefined' -> 'ok';
-        ?EMPTY_JSON_OBJECT -> 'ok';
-        JObj ->
-            Id = kz_json:get_first_defined([<<"_id">>, <<"Endpoint-ID">>], Endpoint),
-            API = props:filter_undefined(
-                    [{<<"Endpoint-ID">>, Id}
-                     ,{<<"Call">>, kapps_call:to_json(Call)}
-                     ,{<<"Numbers">>, kz_json:get_value(<<"numbers">>, JObj)}
-                     ,{<<"Patterns">>, kz_json:get_value(<<"patterns">>, JObj)}
-                     ,{<<"Binding-Digit">>, kz_json:get_value(<<"binding_digit">>, JObj)}
-                     ,{<<"Digit-Timeout">>, kz_json:get_value(<<"digit_timeout">>, JObj)}
-                     ,{<<"Listen-On">>, kz_json:get_value(<<"listen_on">>, JObj, <<"self">>)}
-                     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-                    ]),
-            lager:debug("sending metaflow for endpoint: ~s: ~s"
-                        ,[Id
-                          ,kz_json:get_value(<<"listen_on">>, JObj)
-                         ]
-                       ),
-            kapps_util:amqp_pool_send(API, fun kapi_dialplan:publish_metaflow/1)
-    end.
-
 -spec caller_belongs_to_group(ne_binary(), kapps_call:call()) -> boolean().
 caller_belongs_to_group(GroupId, Call) ->
     maybe_belongs_to_group(kapps_call:authorizing_id(Call), GroupId, Call).
@@ -1101,4 +1062,3 @@ vm_count(JObj) ->
 vm_count_by_owner(_AccountDb, 'undefined') -> {0, 0};
 vm_count_by_owner(<<_/binary>> = AccountDb, <<_/binary>> = OwnerId) ->
     kz_vm_message:count_by_owner(AccountDb, OwnerId).
-
