@@ -150,6 +150,6 @@ doc_change_event_name(Action, 'false') ->
 -spec doc_acct_id(ne_binary(), kz_json:object()) -> ne_binary().
 doc_acct_id(Db, Doc) ->
     case kz_doc:account_id(Doc) of
-        'undefined' -> kz_util:format_account_id(Db, 'raw');
+        'undefined' -> kz_util:format_account_id(Db);
         AccountId -> AccountId
     end.
