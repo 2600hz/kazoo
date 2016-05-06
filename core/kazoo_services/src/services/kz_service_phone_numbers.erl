@@ -129,7 +129,7 @@ update_number_quantities(Services, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_number_billable(ne_binary(), api_binary() | atom()) -> boolean().
+-spec is_number_billable(ne_binary(), maybe(binary()) | atom()) -> boolean().
 is_number_billable(DID, 'undefined') ->
     case knm_number:get(DID) of
         {'error', _R} ->

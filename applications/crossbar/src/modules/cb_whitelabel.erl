@@ -409,7 +409,7 @@ validate_domains(Context, ?HTTP_POST) ->
 
 -spec load_domains(cb_context:context()) ->
                           cb_context:context().
--spec load_domains(cb_context:context(), api_binary()) ->
+-spec load_domains(cb_context:context(), maybe(binary())) ->
                           cb_context:context().
 -spec load_domains(cb_context:context(), ne_binary(), kz_json:object()) ->
                           cb_context:context().
@@ -439,14 +439,14 @@ missing_domain_error(Context) ->
                                     ,Context
                                    ).
 
--spec find_domain(cb_context:context()) -> api_binary().
+-spec find_domain(cb_context:context()) -> maybe(binary()).
 find_domain(Context) ->
     case cb_context:req_value(Context, <<"domain">>) of
         'undefined' -> find_existing_domain(Context);
         Domain -> Domain
     end.
 
--spec find_existing_domain(cb_context:context()) -> api_binary().
+-spec find_existing_domain(cb_context:context()) -> maybe(binary()).
 find_existing_domain(Context) ->
     Context1 = load_whitelabel_meta(Context, ?WHITELABEL_ID),
     case cb_context:resp_status(Context1) of
@@ -700,7 +700,7 @@ find_whitelabel_binary(Context, Domain, AttachType) ->
     end.
 
 -spec find_whitelabel_binary_meta(cb_context:context(), ne_binary(), ne_binary()) ->
-                                         'undefined' | {ne_binary(), kz_json:object()}.
+                                         maybe({ne_binary(), kz_json:object()}).
 find_whitelabel_binary_meta(Context, Domain, AttachType) ->
     Context1 = find_whitelabel_meta(Context, Domain),
     case cb_context:resp_status(Context1) of
@@ -709,7 +709,7 @@ find_whitelabel_binary_meta(Context, Domain, AttachType) ->
     end.
 
 -spec whitelabel_binary_meta(cb_context:context(), ne_binary()) ->
-                                    'undefined' | {ne_binary(), kz_json:object()}.
+                                    maybe({ne_binary(), kz_json:object()}).
 whitelabel_binary_meta(Context, AttachType) ->
     JObj = kz_doc:attachments(cb_context:doc(Context), kz_json:new()),
     case whitelabel_attachment_id(JObj, AttachType) of
@@ -719,11 +719,11 @@ whitelabel_binary_meta(Context, AttachType) ->
     end.
 
 -spec whitelabel_attachment_id(kz_json:object(), ne_binary()) ->
-                                      'undefined' | {ne_binary(), kz_json:object()}.
+                                      maybe({ne_binary(), kz_json:object()}).
 whitelabel_attachment_id(JObj, AttachType) ->
     filter_attachment_type(kz_json:get_keys(JObj), AttachType).
 
--spec filter_attachment_type(ne_binaries(), ne_binary()) -> api_binary().
+-spec filter_attachment_type(ne_binaries(), ne_binary()) -> maybe(binary()).
 filter_attachment_type([], _) -> 'undefined';
 filter_attachment_type([AttachmentId], <<"logo">>) ->
     %% if there is only one attachment and it is not an icon
@@ -758,11 +758,11 @@ update_response_with_attachment(Context, AttachmentId, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request(cb_context:context(), api_binary()) -> cb_context:context().
+-spec validate_request(cb_context:context(), maybe(binary())) -> cb_context:context().
 validate_request(Context, WhitelabelId) ->
     validate_unique_domain(Context, WhitelabelId).
 
--spec validate_unique_domain(cb_context:context(), api_binary()) -> cb_context:context().
+-spec validate_unique_domain(cb_context:context(), maybe(binary())) -> cb_context:context().
 validate_unique_domain(Context, WhitelabelId) ->
     Domain = kz_json:get_ne_value(<<"domain">>, cb_context:req_data(Context)),
     case is_domain_unique(cb_context:account_id(Context), Domain) of
@@ -781,12 +781,12 @@ validate_unique_domain(Context, WhitelabelId) ->
             check_whitelabel_schema(Context1, WhitelabelId)
     end.
 
--spec check_whitelabel_schema(cb_context:context(), api_binary()) -> cb_context:context().
+-spec check_whitelabel_schema(cb_context:context(), maybe(binary())) -> cb_context:context().
 check_whitelabel_schema(Context, WhitelabelId) ->
     OnSuccess = fun(C) -> on_successful_validation(C, WhitelabelId) end,
     cb_context:validate_request_data(<<"whitelabel">>, Context, OnSuccess).
 
--spec on_successful_validation(cb_context:context(), api_binary()) -> cb_context:context().
+-spec on_successful_validation(cb_context:context(), maybe(binary())) -> cb_context:context().
 on_successful_validation(Context, 'undefined') ->
     Doc = kz_json:set_values([{<<"pvt_type">>, <<"whitelabel">>}
                               ,{<<"_id">>, ?WHITELABEL_ID}

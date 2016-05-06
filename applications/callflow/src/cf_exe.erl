@@ -60,10 +60,10 @@
 -record(state, {call = kapps_call:new() :: kapps_call:call()
                 ,flow = kz_json:new() :: kz_json:object()
                 ,flows = [] :: kz_json:objects()
-                ,cf_module_pid :: {pid(), reference()} | 'undefined'
-                ,cf_module_old_pid :: {pid(), reference()} | 'undefined'
+                ,cf_module_pid :: maybe({pid(), reference()})
+                ,cf_module_old_pid :: maybe({pid(), reference()})
                 ,status = <<"sane">> :: ne_binary()
-                ,queue :: api_binary()
+                ,queue :: maybe(binary())
                 ,self = self()
                 ,stop_on_destroy = 'true' :: boolean()
                 ,destroyed = 'false' :: boolean()
@@ -134,8 +134,8 @@ branch(Flow, Call) ->
     Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     branch(Flow, Srv).
 
--spec next(kapps_call:call() | pid()) -> api_object().
--spec next(ne_binary(), kapps_call:call() | pid()) -> api_object().
+-spec next(kapps_call:call() | pid()) -> maybe(kz_json:object()).
+-spec next(ne_binary(), kapps_call:call() | pid()) -> maybe(kz_json:object()).
 next(Srv) -> next(<<"_">>, Srv).
 
 next(Key, Srv) when is_pid(Srv) ->
@@ -207,7 +207,7 @@ callid_update(CallId, Call) ->
     callid_update(CallId, Srv).
 
 -spec callid(kapps_call:call() | pid()) -> ne_binary().
--spec callid(api_binary(), kapps_call:call()) -> ne_binary().
+-spec callid(maybe(binary()), kapps_call:call()) -> ne_binary().
 
 callid(Srv) when is_pid(Srv) ->
     CallId = gen_server:call(Srv, 'callid', 1000),
@@ -228,7 +228,7 @@ queue_name(Call) ->
     queue_name(Srv).
 
 -spec control_queue(kapps_call:call() | pid()) -> ne_binary().
--spec control_queue(api_binary(), kapps_call:call() | pid()) -> ne_binary().
+-spec control_queue(maybe(binary()), kapps_call:call() | pid()) -> ne_binary().
 
 control_queue(Srv) when is_pid(Srv) -> gen_listener:call(Srv, 'control_queue_name');
 control_queue(Call) -> control_queue(kapps_call:kvs_fetch('consumer_pid', Call)).
@@ -270,7 +270,7 @@ wildcard_is_empty(Call) ->
     Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     wildcard_is_empty(Srv).
 
--spec send_amqp(pid() | kapps_call:call(), api_terms(), kz_amqp_worker:publish_fun()) -> 'ok'.
+-spec send_amqp(pid() | kapps_call:call(), maybe(terms()), kz_amqp_worker:publish_fun()) -> 'ok'.
 send_amqp(Srv, API, PubFun) when is_pid(Srv), is_function(PubFun, 1) ->
     gen_listener:cast(Srv, {'send_amqp', API, PubFun});
 send_amqp(Call, API, PubFun) when is_function(PubFun, 1) ->
@@ -641,7 +641,7 @@ launch_cf_module(#state{call=Call
                }.
 
 -spec maybe_start_cf_module(ne_binary(), kz_proplist(), kapps_call:call()) ->
-                                   {{pid(), reference()} | 'undefined', atom()}.
+                                   {maybe({pid(), reference()}), atom()}.
 maybe_start_cf_module(ModuleBin, Data, Call) ->
     CFModule = kz_util:to_atom(ModuleBin, 'true'),
     try CFModule:module_info('exports') of
@@ -700,11 +700,11 @@ cf_module_task(CFModule, Data, Call, AMQPConsumer) ->
 %% a hangup command without relying on the (now terminated) cf_exe.
 %% @end
 %%--------------------------------------------------------------------
--spec send_amqp_message(api_terms(), kz_amqp_worker:publish_fun(), ne_binary()) -> 'ok'.
+-spec send_amqp_message(maybe(terms()), kz_amqp_worker:publish_fun(), ne_binary()) -> 'ok'.
 send_amqp_message(API, PubFun, Q) ->
     PubFun(add_server_id(API, Q)).
 
--spec send_command(kz_proplist(), api_binary(), api_binary()) -> 'ok'.
+-spec send_command(kz_proplist(), maybe(binary()), maybe(binary())) -> 'ok'.
 send_command(_, 'undefined', _) -> lager:debug("no control queue to send command to");
 send_command(_, _, 'undefined') -> lager:debug("no call id to send command to");
 send_command(Command, ControlQ, CallId) ->
@@ -713,7 +713,7 @@ send_command(Command, ControlQ, CallId) ->
                       ],
     kapps_util:amqp_pool_send(Props, fun(P) -> kapi_dialplan:publish_command(ControlQ, P) end).
 
--spec add_server_id(api_terms(), ne_binary()) -> api_terms().
+-spec add_server_id(maybe(terms()), ne_binary()) -> maybe(terms()).
 add_server_id(API, Q) when is_list(API) ->
     [{<<"Server-ID">>, Q} | props:delete(<<"Server-ID">>, API)];
 add_server_id(API, Q) ->
@@ -784,7 +784,7 @@ relay_message(Notify, Message) ->
         ],
     'ok'.
 
--spec get_pid({pid(), reference()} | 'undefined') -> pid().
+-spec get_pid(maybe({pid(), reference()})) -> pid().
 get_pid({Pid, _}) when is_pid(Pid) -> Pid;
 get_pid(_) -> 'undefined'.
 

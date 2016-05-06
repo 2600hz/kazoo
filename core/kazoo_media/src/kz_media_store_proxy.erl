@@ -95,7 +95,7 @@ maybe_acl_authentication([ACL|ACLs], Ip, PathTokens, Req0) ->
             maybe_acl_authentication(ACLs, Ip, PathTokens, Req0)
     end.
 
--spec credentials(cowboy_req:req()) -> {api_binary(), api_binary(), cowboy_req:req()}.
+-spec credentials(cowboy_req:req()) -> {maybe(binary()), maybe(binary()), cowboy_req:req()}.
 credentials(Req0) ->
     case cowboy_req:header(<<"authorization">>, Req0) of
         {'undefined', Req1} ->
@@ -105,7 +105,7 @@ credentials(Req0) ->
             {Username, Password, Req1}
     end.
 
--spec credentials_from_header(ne_binary()) -> {api_binary(), api_binary()}.
+-spec credentials_from_header(ne_binary()) -> {maybe(binary()), maybe(binary())}.
 credentials_from_header(AuthorizationHeader) ->
     case binary:split(AuthorizationHeader, <<$\s>>) of
         [<<"Basic">>, EncodedCredentials] ->
@@ -114,7 +114,7 @@ credentials_from_header(AuthorizationHeader) ->
             {'undefined', 'undefined'}
     end.
 
--spec decoded_credentials(ne_binary()) -> {api_binary(), api_binary()}.
+-spec decoded_credentials(ne_binary()) -> {maybe(binary()), maybe(binary())}.
 decoded_credentials(EncodedCredentials) ->
     DecodedCredentials = base64:decode(EncodedCredentials),
     case binary:split(DecodedCredentials, <<$:>>) of

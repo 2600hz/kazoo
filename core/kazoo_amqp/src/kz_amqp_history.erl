@@ -41,7 +41,7 @@
                }).
 
 -record(kz_amqp_history, {timestamp = os:timestamp() :: kz_now() | '_'
-                          ,consumer :: api_pid() | '_'
+                          ,consumer :: maybe(pid()) | '_'
                           ,command :: kz_amqp_command() | '_'
                          }).
 -type kz_amqp_history() :: #kz_amqp_history{}.
@@ -88,13 +88,13 @@ send_command(Consumer, Command, 'sync') ->
 update_consumer_tag(Consumer, OldTag, NewTag) ->
     gen_server:cast(?SERVER, {'update_consumer_tag', Consumer, OldTag, NewTag}).
 
--spec remove(kz_amqp_assignment() | pid() | 'undefined') -> 'ok'.
+-spec remove(maybe(kz_amqp_assignment() | pid())) -> 'ok'.
 remove(#kz_amqp_assignment{consumer=Consumer}) -> remove(Consumer);
 remove(Consumer) when is_pid(Consumer) ->
     gen_server:cast(?SERVER, {'remove', Consumer});
 remove(_) -> 'ok'.
 
--spec get(api_pid()) -> kz_amqp_commands().
+-spec get(maybe(pid())) -> kz_amqp_commands().
 get('undefined') -> [];
 get(Consumer) ->
     Pattern = #kz_amqp_history{consumer=Consumer

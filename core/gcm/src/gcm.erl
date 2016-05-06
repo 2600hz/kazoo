@@ -9,6 +9,7 @@
 -export([push/3, push/4, sync_push/3, sync_push/4]).
 
 -include_lib("kazoo/include/kz_log.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
 
 -define(SERVER, ?MODULE).
 -define(RETRY, 3).
@@ -23,7 +24,7 @@
 -spec code_change(any(), #state{}, any()) -> {ok, any()} | {error, any()}.
 
 
--spec start(atom(), any()) -> {ok, undefined | pid()} | {error, any()}.
+-spec start(atom(), any()) -> {ok, maybe(pid())} | {error, any()}.
 start(Name, Key) when is_binary(Key) ->
     start(Name, kz_util:to_list(Key));
 start(Name, Key) ->

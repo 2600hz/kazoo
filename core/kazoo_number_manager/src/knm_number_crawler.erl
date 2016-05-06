@@ -238,7 +238,7 @@ maybe_remove_discovery(PhoneNumber, ?NUMBER_STATE_DISCOVERY) ->
 maybe_remove_discovery(PhoneNumber, _State) ->
     PhoneNumber.
 
--type created() :: gregorian_seconds() | 'undefined'.
+-type created() :: maybe(gregorian_seconds()).
 
 -spec maybe_discovery_number_expired(knm_phone_number:knm_phone_number(), created()) ->
                                             knm_phone_number:knm_phone_number().

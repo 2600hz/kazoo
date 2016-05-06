@@ -63,7 +63,7 @@
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec credit/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec credit/1 :: (maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 credit(Prop) when is_list(Prop) ->
         case credit_v(Prop) of
             true -> kz_api:build_message(Prop, ?CREDIT_HEADERS, ?OPTIONAL_CREDIT_HEADERS);
@@ -72,7 +72,7 @@ credit(Prop) when is_list(Prop) ->
 credit(JObj) ->
     credit(kz_json:to_proplist(JObj)).
 
--spec credit_v/1 :: (api_terms()) -> boolean().
+-spec credit_v/1 :: (maybe(terms())) -> boolean().
 credit_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?CREDIT_HEADERS, ?CREDIT_VALUES, ?CREDIT_TYPES);
 credit_v(JObj) ->
@@ -83,7 +83,7 @@ credit_v(JObj) ->
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec debit/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec debit/1 :: (maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 debit(Prop) when is_list(Prop) ->
         case debit_v(Prop) of
             true -> kz_api:build_message(Prop, ?DEBIT_HEADERS, ?OPTIONAL_DEBIT_HEADERS);
@@ -92,7 +92,7 @@ debit(Prop) when is_list(Prop) ->
 debit(JObj) ->
     debit(kz_json:to_proplist(JObj)).
 
--spec debit_v/1 :: (api_terms()) -> boolean().
+-spec debit_v/1 :: (maybe(terms())) -> boolean().
 debit_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?DEBIT_HEADERS, ?DEBIT_VALUES, ?DEBIT_TYPES);
 debit_v(JObj) ->
@@ -103,7 +103,7 @@ debit_v(JObj) ->
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec balance_req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec balance_req/1 :: (maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 balance_req(Prop) when is_list(Prop) ->
     case balance_req_v(Prop) of
         true -> kz_api:build_message(Prop, ?BALANCE_REQ_HEADERS, ?OPTIONAL_BALANCE_REQ_HEADERS);
@@ -112,7 +112,7 @@ balance_req(Prop) when is_list(Prop) ->
 balance_req(JObj) ->
     balance_req(kz_json:to_proplist(JObj)).
 
--spec balance_req_v/1 :: (api_terms()) -> boolean().
+-spec balance_req_v/1 :: (maybe(terms())) -> boolean().
 balance_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?BALANCE_REQ_HEADERS, ?BALANCE_REQ_VALUES, ?BALANCE_REQ_TYPES);
 balance_req_v(JObj) ->
@@ -123,7 +123,7 @@ balance_req_v(JObj) ->
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec balance_resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec balance_resp/1 :: (maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 balance_resp(Prop) when is_list(Prop) ->
     case balance_resp_v(Prop) of
         true -> kz_api:build_message(Prop, ?BALANCE_RESP_HEADERS, ?OPTIONAL_BALANCE_RESP_HEADERS);
@@ -132,7 +132,7 @@ balance_resp(Prop) when is_list(Prop) ->
 balance_resp(JObj) ->
     balance_resp(kz_json:to_proplist(JObj)).
 
--spec balance_resp_v/1 :: (api_terms()) -> boolean().
+-spec balance_resp_v/1 :: (maybe(terms())) -> boolean().
 balance_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?BALANCE_RESP_HEADERS, ?BALANCE_RESP_VALUES, ?BALANCE_RESP_TYPES);
 balance_resp_v(JObj) ->

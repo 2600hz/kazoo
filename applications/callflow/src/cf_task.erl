@@ -30,7 +30,7 @@
                 ,args :: list()
                 ,pid :: pid()
                 ,ref ::reference()
-                ,queue :: api_binary()
+                ,queue :: maybe(binary())
                }).
 -type state() :: #state{}.
 
@@ -185,7 +185,7 @@ launch_task(#state{queue=Q
     State#state{pid=Pid, ref=Ref}.
 
 %% @private
--spec task_launched(api_binary(), kapps_call:call(), fun(), list(), pid()) -> any().
+-spec task_launched(maybe(binary()), kapps_call:call(), fun(), list(), pid()) -> any().
 task_launched(Q, Call, Callback, Args, Parent) ->
     kapps_call:put_callid(Call),
     kz_amqp_channel:consumer_pid(Parent),

@@ -49,7 +49,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_req(api_terms()) ->{'ok', iolist()} | {'error', string()}.
+-spec get_req(maybe(terms())) ->{'ok', iolist()} | {'error', string()}.
 get_req(Prop) when is_list(Prop) ->
     case get_req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?BLACKHOLE_GET_REQ_HEADERS, ?OPTIONAL_BLACKHOLE_GET_REQ_HEADERS);
@@ -63,7 +63,7 @@ get_req(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_req_v(api_terms()) -> boolean().
+-spec get_req_v(maybe(terms())) -> boolean().
 get_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?BLACKHOLE_GET_REQ_HEADERS, ?BLACKHOLE_GET_REQ_VALUES, ?BLACKHOLE_TYPES);
 get_req_v(JObj) ->
@@ -74,7 +74,7 @@ get_req_v(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec get_resp(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 get_resp(Prop) when is_list(Prop) ->
     case get_resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?BLACKHOLE_GET_RESP_HEADERS, ?OPTIONAL_BLACKHOLE_GET_RESP_HEADERS);
@@ -88,7 +88,7 @@ get_resp(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_resp_v(api_terms()) -> boolean().
+-spec get_resp_v(maybe(terms())) -> boolean().
 get_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?BLACKHOLE_GET_RESP_HEADERS, ?BLACKHOLE_GET_RESP_VALUES, ?BLACKHOLE_TYPES);
 get_resp_v(JObj) ->
@@ -127,8 +127,8 @@ declare_exchanges() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec publish_get_req(api_terms()) -> 'ok'.
--spec publish_get_req(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_get_req(maybe(terms())) -> 'ok'.
+-spec publish_get_req(maybe(terms()), ne_binary()) -> 'ok'.
 publish_get_req(JObj) ->
     publish_get_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_get_req(Api, ContentType) ->
@@ -140,8 +140,8 @@ publish_get_req(Api, ContentType) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec publish_get_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_get_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_get_resp(ne_binary(), maybe(terms())) -> 'ok'.
+-spec publish_get_resp(ne_binary(), maybe(terms()), ne_binary()) -> 'ok'.
 publish_get_resp(RespQ, JObj) ->
     publish_get_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_get_resp(RespQ, Api, ContentType) ->

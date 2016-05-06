@@ -71,7 +71,7 @@ build_keys(<<>>, _, Acc) -> Acc.
 %% Optionally include direction of the call and options from the client to match against the rate
 -spec matching_rates(kz_json:objects(), ne_binary()) ->
                             kz_json:objects().
--spec matching_rates(kz_json:objects(), ne_binary(), api_binary(), trunking_options()) ->
+-spec matching_rates(kz_json:objects(), ne_binary(), maybe(binary()), trunking_options()) ->
                             kz_json:objects().
 matching_rates(Rates, DID) ->
     matching_rates(Rates, DID, 'undefined', []).
@@ -91,7 +91,7 @@ sort_rates(Rates) ->
 %% Return whether the given rate is a candidate for the given DID
 %% taking into account direction of the call and options the DID
 %% needs to have available
--spec matching_rate(kz_json:object(), ne_binary(), api_binary(), trunking_options()) -> boolean().
+-spec matching_rate(kz_json:object(), ne_binary(), maybe(binary()), trunking_options()) -> boolean().
 matching_rate(Rate, E164, Direction, RouteOptions) ->
     matching_direction(Rate, Direction)
         andalso matching_options(Rate, RouteOptions)
@@ -103,7 +103,7 @@ matching_routes(Rate, E164) ->
               ,kz_json:get_value([<<"routes">>], Rate, [])
              ).
 
--spec matching_direction(kz_json:object(), api_binary()) -> boolean().
+-spec matching_direction(kz_json:object(), maybe(binary())) -> boolean().
 matching_direction(_Rate, 'undefined') ->
     'true';
 matching_direction(Rate, Direction) ->

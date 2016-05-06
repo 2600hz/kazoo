@@ -130,7 +130,7 @@ setters(Context, Setters) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec auth_token(context()) -> api_binary().
+-spec auth_token(context()) -> maybe(binary()).
 auth_token(#bh_context{auth_token=AuthToken}) ->
     AuthToken.
 
@@ -143,7 +143,7 @@ set_auth_token(#bh_context{}=Context, AuthToken) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec auth_account_id(context()) -> api_binary().
+-spec auth_account_id(context()) -> maybe(binary()).
 auth_account_id(#bh_context{auth_account_id=AuthBy}) ->
     AuthBy.
 
@@ -156,7 +156,7 @@ set_auth_account_id(#bh_context{}=Context, AuthBy) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec account_id(context()) -> api_binary().
+-spec account_id(context()) -> maybe(binary()).
 account_id(#bh_context{account_id=AcctId}) ->
     AcctId.
 
@@ -212,7 +212,7 @@ is_bound(#bh_context{bindings=Bds}, Binding) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec websocket_pid(context()) -> api_binary().
+-spec websocket_pid(context()) -> maybe(binary()).
 websocket_pid(#bh_context{websocket_pid=SocketPid}) -> SocketPid.
 
 -spec set_websocket_pid(context(), pid()) -> context().
@@ -224,7 +224,7 @@ set_websocket_pid(#bh_context{}=Context, SocketPid) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec websocket_session_id(context()) -> api_binary().
+-spec websocket_session_id(context()) -> maybe(binary()).
 websocket_session_id(#bh_context{websocket_session_id=SessionId}) ->
     SessionId.
 

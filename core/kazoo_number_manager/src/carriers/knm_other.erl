@@ -331,7 +331,7 @@ format_blocks_resp(JObj, Options) ->
             {'error', 'not_available'}
     end.
 
--spec format_block_resp_fold(kz_json:object(), knm_number:knm_numbers(), api_binary()) ->
+-spec format_block_resp_fold(kz_json:object(), knm_number:knm_numbers(), maybe(binary())) ->
                                     knm_number:knm_numbers().
 format_block_resp_fold(Block, Numbers, AccountId) ->
     StartNumber = kz_json:get_value(<<"start_number">>, Block),
@@ -343,7 +343,7 @@ format_block_resp_fold(Block, Numbers, AccountId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec format_block_resp(kz_json:object(), knm_number:knm_numbers(), api_binary(), ne_binary(), ne_binary()) ->
+-spec format_block_resp(kz_json:object(), knm_number:knm_numbers(), maybe(binary()), ne_binary(), ne_binary()) ->
                                knm_number:knm_numbers().
 format_block_resp(JObj, Numbers, AccountId, Start, End) ->
     [block_resp(JObj, AccountId, Start)
@@ -351,7 +351,7 @@ format_block_resp(JObj, Numbers, AccountId, Start, End) ->
      | Numbers
     ].
 
--spec block_resp(kz_json:object(), api_binary(), ne_binary()) ->
+-spec block_resp(kz_json:object(), maybe(binary()), ne_binary()) ->
                         knm_number:knm_number().
 block_resp(JObj, AccountId, Num) ->
     {'ok', PhoneNumber} =

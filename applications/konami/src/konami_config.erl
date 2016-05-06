@@ -101,7 +101,7 @@ listen_on(Account) ->
             get_attribute(KonamiDoc, <<"listen_on">>, fun listen_on/0, fun constrain_listen_on/1)
     end.
 
--spec constrain_listen_on(api_binary()) -> 'a' | 'b' | 'ab'.
+-spec constrain_listen_on(maybe(binary())) -> 'a' | 'b' | 'ab'.
 constrain_listen_on(<<"a">>) -> 'a';
 constrain_listen_on(<<"b">>) -> 'b';
 constrain_listen_on(<<"ab">>) -> 'ab';
@@ -122,7 +122,7 @@ get_attribute(JObj, K, DefaultFun, FormatterFun) ->
         V -> FormatterFun(V)
     end.
 
--spec konami_doc(ne_binary()) -> api_object().
+-spec konami_doc(ne_binary()) -> maybe(kz_json:object()).
 konami_doc(Account) ->
     case kz_account:fetch(Account) of
         {'ok', JObj} -> kz_json:get_value(<<"metaflows">>, JObj);

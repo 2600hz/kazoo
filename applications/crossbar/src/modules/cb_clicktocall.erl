@@ -312,7 +312,7 @@ clear_history_set_type(Context) ->
 %% @end
 %%-------------------------------------------------------------------
 -spec originate_call(ne_binary(), cb_context:context()) -> cb_context:context().
--spec originate_call(ne_binary(), cb_context:context(), api_binary()) -> cb_context:context().
+-spec originate_call(ne_binary(), cb_context:context(), maybe(binary())) -> cb_context:context().
 originate_call(C2CId, Context) ->
     originate_call(C2CId, Context, get_c2c_contact(cb_context:req_value(Context, <<"contact">>))).
 
@@ -352,7 +352,7 @@ originate_call(C2CId, Context, Contact) ->
     lager:debug("attempting call in ~p", [JObj]),
     crossbar_util:response_202(<<"processing request">>, JObj, cb_context:set_resp_data(Context, Request)).
 
--spec exec_originate(api_terms()) ->
+-spec exec_originate(maybe(terms())) ->
                             {'success', ne_binary()} |
                             {'error', ne_binary()}.
 exec_originate(Request) ->
@@ -405,7 +405,7 @@ handle_originate_resp({'timeout', _T}) ->
     {'error', <<"timed out">>}.
 
 -record(contact, {route, number, name}).
--spec build_originate_req(ne_binary(), cb_context:context()) -> api_terms().
+-spec build_originate_req(ne_binary(), cb_context:context()) -> maybe(terms()).
 build_originate_req(Contact, Context) ->
     AccountId = cb_context:account_id(Context),
     JObj = cb_context:doc(Context),
@@ -490,7 +490,7 @@ is_resp(JObj) ->
     kapi_resource:originate_resp_v(JObj)
         orelse kz_api:error_resp_v(JObj).
 
--spec get_c2c_contact(api_binary()) -> api_binary().
+-spec get_c2c_contact(maybe(binary())) -> maybe(binary()).
 get_c2c_contact('undefined') -> 'undefined';
 get_c2c_contact(Contact) ->
     knm_converters:normalize(kz_http_util:urlencode(Contact)).

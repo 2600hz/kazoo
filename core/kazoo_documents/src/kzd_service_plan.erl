@@ -37,7 +37,7 @@
 
 -type doc() :: kz_json:object().
 -type docs() :: [doc()].
--type api_doc() :: api_object().
+-type api_doc() :: maybe(kz_json:object()).
 -export_type([doc/0
               ,api_doc/0
               ,docs/0
@@ -54,7 +54,7 @@ new() -> kz_json:new().
 -spec all_items_key() -> ne_binary().
 all_items_key() -> ?ALL.
 
--spec account_id(doc()) -> api_binary().
+-spec account_id(doc()) -> maybe(binary()).
 -spec account_id(doc(), Default) -> ne_binary() | Default.
 account_id(Plan) ->
     account_id(Plan, 'undefined').
@@ -72,7 +72,7 @@ overrides(Plan, Default) ->
 merge_overrides(Plan, Overrides) ->
     kz_json:merge_recursive(Plan, kz_json:from_list([{?PLAN, Overrides}])).
 
--spec item_activation_charge(doc(), ne_binary(), ne_binary()) -> api_float().
+-spec item_activation_charge(doc(), ne_binary(), ne_binary()) -> maybe(float()).
 -spec item_activation_charge(doc(), ne_binary(), ne_binary(), Default) -> float() | Default.
 item_activation_charge(Plan, Category, Item) ->
     item_activation_charge(Plan, Category, Item, 0).
@@ -97,8 +97,8 @@ category_activation_charge(Plan, Category, Default) ->
 categories(Plan) ->
     kz_json:get_keys(?PLAN, Plan).
 
--spec category(doc(), ne_binary()) -> api_object().
--spec category(doc(), ne_binary(), Default) -> api_object() | Default.
+-spec category(doc(), ne_binary()) -> maybe(kz_json:object()).
+-spec category(doc(), ne_binary(), Default) -> maybe(kz_json:object()) | Default.
 category(Plan, CategoryId) ->
     category(Plan, CategoryId, 'undefined').
 category(Plan, CategoryId, Default) ->
@@ -108,7 +108,7 @@ category(Plan, CategoryId, Default) ->
 items(Plan, Category) ->
     kz_json:get_keys([?PLAN, Category], Plan).
 
--spec item(doc(), ne_binary(), ne_binary()) -> api_object().
+-spec item(doc(), ne_binary(), ne_binary()) -> maybe(kz_json:object()).
 item(Plan, CategoryId, ItemId) ->
     kz_json:get_json_value([?PLAN, CategoryId, ItemId], Plan).
 

@@ -72,7 +72,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec get(kapps_call:call()) -> cf_api_std_return().
--spec get(api_binary(), ne_binary() | kapps_call:call()) -> cf_api_std_return().
+-spec get(maybe(binary()), ne_binary() | kapps_call:call()) -> cf_api_std_return().
 
 get(Call) -> get(kapps_call:authorizing_id(Call), Call).
 
@@ -113,7 +113,7 @@ maybe_have_endpoint(JObj, EndpointId, AccountDb) ->
             has_endpoint(JObj, EndpointId, AccountDb, EndpointType)
     end.
 
--spec endpoint_type_as(api_binary()) -> api_binary().
+-spec endpoint_type_as(maybe(binary())) -> maybe(binary()).
 endpoint_type_as(<<"click2call">>) -> <<"device">>;
 endpoint_type_as(Type) -> Type.
 
@@ -195,7 +195,7 @@ merge_attributes(Endpoint, Type, _Keys) ->
     lager:debug("unhandled endpoint type on merge attributes : ~p : ~p", [Type, Endpoint]),
     kz_json:new().
 
--spec merge_attributes(ne_binaries(), api_object(), api_object(), api_object()) ->
+-spec merge_attributes(ne_binaries(), maybe(kz_json:object()), maybe(kz_json:object()), maybe(kz_json:object())) ->
                               kz_json:object().
 merge_attributes([], _AccountDoc, Endpoint, _OwnerDoc) -> Endpoint;
 merge_attributes([<<"call_restriction">>|Keys], Account, Endpoint, Owner) ->
@@ -275,7 +275,7 @@ merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
                                     ),
     merge_attributes(Keys, Account, kz_json:set_value(Key, Merged, Endpoint), Owner).
 
--spec merge_attribute_caller_id(api_object(), api_object(), api_object(), api_object()) -> api_object().
+-spec merge_attribute_caller_id(maybe(kz_json:object()), maybe(kz_json:object()), maybe(kz_json:object()), maybe(kz_json:object())) -> maybe(kz_json:object()).
 merge_attribute_caller_id(AccountJObj, AccountJAttr, UserJAttr, EndpointJAttr) ->
     Merging =
         case kz_json:is_true(<<"prefer_device_caller_id">>, AccountJObj, 'false') of
@@ -301,7 +301,7 @@ get_record_call_properties(JObj) ->
             end
     end.
 
--spec merge_value(ne_binaries(), api_object(), kz_json:object(), api_object()) ->
+-spec merge_value(ne_binaries(), maybe(kz_json:object()), kz_json:object(), maybe(kz_json:object())) ->
                               kz_json:object().
 merge_value([Key|Keys], Account, Endpoint, Owner) ->
     case kz_json:find(Key, [Owner, Endpoint, Account], 'undefined') of
@@ -346,7 +346,7 @@ merge_call_restrictions([Key|Keys], Account, Endpoint, Owner) ->
             merge_call_restrictions(Keys, Account, Endpoint, Owner)
     end.
 
--spec get_user(ne_binary(), api_binary() | kz_json:object()) -> kz_json:object().
+-spec get_user(ne_binary(), maybe(binary()) | kz_json:object()) -> kz_json:object().
 get_user(_, 'undefined') -> kz_json:new();
 get_user(AccountDb, OwnerId) when is_binary(OwnerId) ->
     case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
@@ -442,7 +442,7 @@ do_all_restrict(Key, JObj) ->
                        ,<<"action">>
                       ], JObj) =:= <<"deny">>.
 
--spec create_endpoint_name(api_binary(), api_binary(), api_binary(), api_binary()) -> api_binary().
+-spec create_endpoint_name(maybe(binary()), maybe(binary()), maybe(binary()), maybe(binary())) -> maybe(binary()).
 create_endpoint_name('undefined', 'undefined', 'undefined', Account) -> Account;
 create_endpoint_name('undefined', 'undefined', Endpoint, _) -> Endpoint;
 create_endpoint_name(First, 'undefined', _, _) -> First;
@@ -500,10 +500,10 @@ flush(Db, Id) ->
                       | 'invalid_endpoint_id' | 'not_found' | 'owner_called_self'
                       | 'do_not_disturb' | 'no_resource_type'.
 
--spec build(api_binary() | kz_json:object(), kapps_call:call()) ->
+-spec build(maybe(binary()) | kz_json:object(), kapps_call:call()) ->
                    {'ok', kz_json:objects()} |
                    {'error', build_errors()}.
--spec build(api_binary() | kz_json:object(), api_object(), kapps_call:call()) ->
+-spec build(maybe(binary()) | kz_json:object(), maybe(kz_json:object()), kapps_call:call()) ->
                    {'ok', kz_json:objects()} |
                    {'error', build_errors()}.
 
@@ -560,7 +560,7 @@ should_create_endpoint([Routine|Routines], Endpoint, Properties, Call) when is_f
 -spec maybe_missing_resource_type(kz_json:object(), kz_json:object(),  kapps_call:call()) ->
                                      'ok' |
                                      {'error', 'no_resource_type'}.
--spec maybe_missing_resource_type(api_binary()) ->
+-spec maybe_missing_resource_type(maybe(binary())) ->
                                      'ok' |
                                      {'error', 'no_resource_type'}.
 maybe_missing_resource_type(_, _, Call) ->
@@ -578,7 +578,7 @@ maybe_missing_resource_type(_) -> 'ok'.
 maybe_owner_called_self(Endpoint, Properties, Call) ->
     maybe_owner_called_self(Endpoint, Properties, kapps_call:resource_type(Call), Call).
 
--spec maybe_owner_called_self(kz_json:object(), kz_json:object(), api_binary(), kapps_call:call()) ->
+-spec maybe_owner_called_self(kz_json:object(), kz_json:object(), maybe(binary()), kapps_call:call()) ->
                                      'ok' |
                                      {'error', 'owner_called_self'}.
 maybe_owner_called_self(Endpoint, Properties, <<"audio">>, Call) ->
@@ -618,7 +618,7 @@ maybe_owner_called_self(Endpoint, Properties, <<"sms">>, Call) ->
 maybe_endpoint_called_self(Endpoint, Properties, Call) ->
     maybe_endpoint_called_self(Endpoint, Properties, kapps_call:resource_type(Call), Call).
 
--spec maybe_endpoint_called_self(kz_json:object(), kz_json:object(), api_binary(), kapps_call:call()) ->
+-spec maybe_endpoint_called_self(kz_json:object(), kz_json:object(), maybe(binary()), kapps_call:call()) ->
                                         'ok' |
                                         {'error', 'endpoint_called_self'}.
 maybe_endpoint_called_self(Endpoint, Properties, <<"audio">>, Call) ->
@@ -805,7 +805,7 @@ get_endpoint_type(Endpoint) ->
         Else -> Else
     end.
 
--spec convert_endpoint_type(ne_binary()) -> api_binary().
+-spec convert_endpoint_type(ne_binary()) -> maybe(binary()).
 convert_endpoint_type(<<"sip_", _/binary>>) -> <<"sip">>;
 convert_endpoint_type(<<"smartphone">>) -> <<"sip">>;
 convert_endpoint_type(<<"softphone">>) -> <<"sip">>;
@@ -851,10 +851,10 @@ guess_endpoint_type(Endpoint, []) ->
 %% device) and the properties of this endpoint in the callflow.
 %% @end
 %%--------------------------------------------------------------------
--record(clid, {caller_number :: api_binary()
-               ,caller_name :: api_binary()
-               ,callee_name :: api_binary()
-               ,callee_number :: api_binary()
+-record(clid, {caller_number :: maybe(binary())
+               ,caller_name :: maybe(binary())
+               ,callee_name :: maybe(binary())
+               ,callee_number :: maybe(binary())
               }).
 -type clid() :: #clid{}.
 
@@ -960,7 +960,7 @@ maybe_get_t38(Endpoint, Call) ->
              )
     end.
 
--spec maybe_build_failover(kz_json:object(), clid(), kapps_call:call()) -> api_object().
+-spec maybe_build_failover(kz_json:object(), clid(), kapps_call:call()) -> maybe(kz_json:object()).
 maybe_build_failover(Endpoint, Clid, Call) ->
     CallForward = kz_json:get_value(<<"call_forward">>, Endpoint),
     Number = kz_json:get_value(<<"number">>, CallForward),
@@ -971,14 +971,14 @@ maybe_build_failover(Endpoint, Clid, Call) ->
         'true' -> create_call_fwd_endpoint(Endpoint, kz_json:new(), Call)
     end.
 
--spec maybe_build_push_failover(kz_json:object(), clid(), kapps_call:call()) -> api_object().
+-spec maybe_build_push_failover(kz_json:object(), clid(), kapps_call:call()) -> maybe(kz_json:object()).
 maybe_build_push_failover(Endpoint, Clid, Call) ->
     case kz_json:get_value(<<"push">>, Endpoint) of
         'undefined' -> 'undefined';
         PushJObj -> build_push_failover(Endpoint, Clid, PushJObj, Call)
     end.
 
--spec build_push_failover(kz_json:object(), clid(), kz_json:object(), kapps_call:call()) -> api_object().
+-spec build_push_failover(kz_json:object(), clid(), kz_json:object(), kapps_call:call()) -> maybe(kz_json:object()).
 build_push_failover(Endpoint, Clid, PushJObj, Call) ->
     lager:debug("building push failover"),
     SIPJObj = kz_json:get_value(<<"sip">>, Endpoint),
@@ -1023,7 +1023,7 @@ build_push_failover(Endpoint, Clid, PushJObj, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_sip_transport(kz_json:object()) -> api_binary().
+-spec get_sip_transport(kz_json:object()) -> maybe(binary()).
 get_sip_transport(SIPJObj) ->
     case validate_sip_transport(kz_json:get_value(<<"transport">>, SIPJObj)) of
         'undefined' ->
@@ -1031,7 +1031,7 @@ get_sip_transport(SIPJObj) ->
         Transport -> Transport
     end.
 
--spec validate_sip_transport(any()) -> api_binary().
+-spec validate_sip_transport(any()) -> maybe(binary()).
 validate_sip_transport(<<"tcp">>) -> <<"tcp">>;
 validate_sip_transport(<<"udp">>) -> <<"udp">>;
 validate_sip_transport(<<"tls">>) -> <<"tls">>;
@@ -1043,7 +1043,7 @@ validate_sip_transport(_) -> 'undefined'.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_custom_sip_interface(kz_json:object()) -> api_binary().
+-spec get_custom_sip_interface(kz_json:object()) -> maybe(binary()).
 get_custom_sip_interface(JObj) ->
     case kz_json:get_value(<<"custom_sip_interface">>, JObj) of
         'undefined' ->
@@ -1060,7 +1060,7 @@ get_custom_sip_interface(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_skype_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) ->
-                                         kz_json:object().
+                                   kz_json:object().
 create_skype_endpoint(Endpoint, Properties, _Call) ->
     SkypeJObj = kz_json:get_value(<<"skype">>, Endpoint),
     Prop =
@@ -1223,7 +1223,7 @@ generate_sip_headers(Endpoint, Acc, Call) ->
                  ],
     lists:foldr(fun(F, JObj) -> F(JObj) end, Acc, HeaderFuns).
 
--spec maybe_add_diversion(kz_json:object(), kz_json:object(), api_binary(), kapps_call:call()) -> kz_json:object().
+-spec maybe_add_diversion(kz_json:object(), kz_json:object(), maybe(binary()), kapps_call:call()) -> kz_json:object().
 maybe_add_diversion(JObj, Endpoint, _Inception, Call) ->
     ShouldAddDiversion = kapps_call:authorizing_id(Call) =:= 'undefined'
                          andalso kz_json:is_true([<<"call_forward">>, <<"keep_caller_id">>], Endpoint, 'false')
@@ -1257,7 +1257,7 @@ merge_custom_sip_headers('undefined', JObj) ->
 merge_custom_sip_headers(CustomHeaders, JObj) ->
     kz_json:merge_jobjs(CustomHeaders, JObj).
 
--spec maybe_add_alert_info(kz_json:object(), kz_json:object(), api_binary()) -> kz_json:object().
+-spec maybe_add_alert_info(kz_json:object(), kz_json:object(), maybe(binary())) -> kz_json:object().
 maybe_add_alert_info(JObj, Endpoint, 'undefined') ->
     case kz_json:get_value([<<"ringtones">>, <<"internal">>], Endpoint) of
         'undefined' -> JObj;
@@ -1270,7 +1270,7 @@ maybe_add_alert_info(JObj, Endpoint, _Inception) ->
     end.
 
 -spec maybe_add_aor(kz_json:object(), kz_json:object(), kapps_call:call()) -> kz_json:object().
--spec maybe_add_aor(kz_json:object(), kz_json:object(), api_binary(), ne_binary()) -> kz_json:object().
+-spec maybe_add_aor(kz_json:object(), kz_json:object(), maybe(binary()), ne_binary()) -> kz_json:object().
 maybe_add_aor(JObj, Endpoint, Call) ->
     Realm = kz_device:sip_realm(Endpoint, kapps_call:account_realm(Call)),
     Username = kz_device:sip_username(Endpoint),
@@ -1289,7 +1289,7 @@ maybe_add_aor(JObj, _, Username, Realm) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec generate_ccvs(kz_json:object(), kapps_call:call()) -> kz_json:object().
--spec generate_ccvs(kz_json:object(), kapps_call:call(), api_object()) -> kz_json:object().
+-spec generate_ccvs(kz_json:object(), kapps_call:call(), maybe(kz_json:object())) -> kz_json:object().
 
 generate_ccvs(Endpoint, Call) ->
     generate_ccvs(Endpoint, Call, 'undefined').
@@ -1312,7 +1312,7 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
     {_Endpoint, _Call, _CallFwd, JObj} = lists:foldr(fun(F, Acc) -> F(Acc) end, Acc0, CCVFuns),
     JObj.
 
--type ccv_acc() :: {kz_json:object(), kapps_call:call(), api_object(), kz_json:object()}.
+-type ccv_acc() :: {kz_json:object(), kapps_call:call(), maybe(kz_json:object()), kz_json:object()}.
 
 -spec maybe_retain_caller_id(ccv_acc()) -> ccv_acc().
 maybe_retain_caller_id({_Endpoint, _Call, 'undefined', _JObj}=Acc) ->
@@ -1441,14 +1441,14 @@ maybe_set_call_waiting({Endpoint, Call, CallFwd, JObj}) ->
 get_invite_format(SIPJObj) ->
     kz_json:get_value(<<"invite_format">>, SIPJObj, <<"username">>).
 
--spec get_to_did(kz_json:object(), kapps_call:call()) -> api_binary().
+-spec get_to_did(kz_json:object(), kapps_call:call()) -> maybe(binary()).
 get_to_did(Endpoint, Call) ->
     kz_json:get_value([<<"sip">>, <<"number">>]
                       ,Endpoint
                       ,kapps_call:request_user(Call)
                      ).
 
--spec get_to_user(kz_json:object(), kz_json:object()) -> api_binary().
+-spec get_to_user(kz_json:object(), kz_json:object()) -> maybe(binary()).
 get_to_user(SIPJObj, Properties) ->
     case kz_json:get_ne_value(<<"static_invite">>, Properties) of
         'undefined' ->
@@ -1459,50 +1459,50 @@ get_to_user(SIPJObj, Properties) ->
         To -> To
     end.
 
--spec get_to_username(kz_json:object()) -> api_binary().
+-spec get_to_username(kz_json:object()) -> maybe(binary()).
 get_to_username(SIPJObj) ->
     kz_json:get_value(<<"username">>, SIPJObj).
 
--spec get_timeout(kz_json:object()) -> api_binary().
+-spec get_timeout(kz_json:object()) -> maybe(binary()).
 get_timeout(JObj) ->
     case kz_json:get_integer_value(<<"timeout">>, JObj, 0) of
         Timeout when Timeout > 0 -> kz_util:to_binary(Timeout);
         _Else -> 'undefined'
     end.
 
--spec get_delay(kz_json:object()) -> api_binary().
+-spec get_delay(kz_json:object()) -> maybe(binary()).
 get_delay(JObj) ->
     case kz_json:get_integer_value(<<"delay">>, JObj, 0) of
         Delay when Delay > 0 -> kz_util:to_binary(Delay);
         _Else -> 'undefined'
     end.
 
--spec get_outbound_flags(kz_json:object()) -> api_binary().
+-spec get_outbound_flags(kz_json:object()) -> maybe(binary()).
 get_outbound_flags(JObj) ->
     kz_json:get_ne_value(<<"outbound_flags">>, JObj).
 
--spec get_progress_timeout(kz_json:object()) -> api_binary().
+-spec get_progress_timeout(kz_json:object()) -> maybe(binary()).
 get_progress_timeout(JObj) ->
     case kz_json:get_integer_value([<<"media">>, <<"progress_timeout">>], JObj, 0) of
         Timeout when Timeout > 0 -> kz_util:to_binary(Timeout);
         _Else -> 'undefined'
     end.
 
--spec get_ignore_early_media(kz_json:object()) -> api_binary().
+-spec get_ignore_early_media(kz_json:object()) -> maybe(binary()).
 get_ignore_early_media(JObj) ->
     case kz_json:is_true([<<"media">>, <<"ignore_early_media">>], JObj) of
         'true' -> <<"true">>;
         'false' -> 'undefined'
     end.
 
--spec get_bypass_media(kz_json:object()) -> api_binary().
+-spec get_bypass_media(kz_json:object()) -> maybe(binary()).
 get_bypass_media(JObj) ->
     case kz_json:is_true([<<"media">>, <<"peer_to_peer">>], JObj) of
         'true' -> <<"true">>;
         'false' -> 'undefined'
     end.
 
--spec get_codecs(kz_json:object()) -> 'undefined' | ne_binaries().
+-spec get_codecs(kz_json:object()) -> maybe(ne_binaries()).
 get_codecs(JObj) ->
     case kz_json:get_value([<<"media">>, <<"audio">>, <<"codecs">>], JObj, [])
         ++ kz_json:get_value([<<"media">>, <<"video">>, <<"codecs">>], JObj, [])

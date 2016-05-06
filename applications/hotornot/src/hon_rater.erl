@@ -68,8 +68,8 @@ get_rate_data(JObj) ->
             get_rate_data(JObj, ToDID, FromDID, Rates)
     end.
 
--spec get_rate_data(kz_json:object(), ne_binary(), api_binary(), kz_json:objects()) ->
-                           {'ok', api_terms()} |
+-spec get_rate_data(kz_json:object(), ne_binary(), maybe(binary()), kz_json:objects()) ->
+                           {'ok', maybe(terms())} |
                            {'error', 'no_rate_found'}.
 get_rate_data(JObj, ToDID, FromDID, Rates) ->
     lager:debug("candidate rates found, filtering"),
@@ -95,8 +95,8 @@ get_rate_data(JObj, ToDID, FromDID, Rates) ->
             {'ok', rate_resp(Rate, JObj)}
     end.
 
--spec maybe_get_rate_discount(kz_json:object()) -> api_binary().
--spec maybe_get_rate_discount(kz_json:object(), api_binary()) -> api_binary().
+-spec maybe_get_rate_discount(kz_json:object()) -> maybe(binary()).
+-spec maybe_get_rate_discount(kz_json:object(), maybe(binary())) -> maybe(binary()).
 maybe_get_rate_discount(JObj) ->
     maybe_get_rate_discount(JObj, kz_json:get_value(<<"Account-ID">>, JObj)).
 

@@ -138,15 +138,21 @@
 -define(EXCHANGE_LEADER, <<"leader">>).
 -define(TYPE_LEADER, <<"topic">>).
 
--type kz_amqp_command() :: #'queue.declare'{} | #'queue.delete'{} |
-                           #'queue.bind'{} | #'queue.unbind'{} |
-                           #'basic.consume'{} | #'basic.cancel'{} |
-                           #'basic.ack'{} | #'basic.nack'{} |
-                           #'basic.qos'{} |
-                           #'exchange.declare'{} |
-                           #'confirm.select'{} |
-                           #'channel.flow'{} | #'channel.flow_ok'{} |
-                           '_' | 'undefined'.
+-type kz_amqp_command() :: maybe(#'basic.ack'{} |
+                               #'basic.cancel'{} |
+                               #'basic.consume'{} |
+                               #'basic.nack'{} |
+                               #'basic.qos'{} |
+                               #'channel.flow'{} |
+                               #'channel.flow_ok'{} |
+                               #'confirm.select'{} |
+                               #'exchange.declare'{} |
+                               #'queue.bind'{} |
+                               #'queue.declare'{} |
+                               #'queue.delete'{} |
+                               #'queue.unbind'{} |
+                               '_'
+                              ).
 -type kz_amqp_commands() :: [kz_amqp_command()].
 
 -type kz_amqp_exchange() :: #'exchange.declare'{}.
@@ -155,12 +161,16 @@
 -type kz_amqp_queue() :: #'queue.declare'{}.
 -type kz_amqp_queues() :: [#'queue.declare'{}].
 
--type kz_command_ret_ok() :: #'basic.qos_ok'{} | #'queue.declare_ok'{} |
-                             #'exchange.declare_ok'{} | #'queue.delete_ok'{} |
-                             #'queue.declare_ok'{} | #'queue.unbind_ok'{} |
-                             #'queue.bind_ok'{} | #'basic.consume_ok'{} |
+-type kz_command_ret_ok() :: #'basic.cancel_ok'{} |
+                             #'basic.consume_ok'{} |
+                             #'basic.qos_ok'{} |
                              #'confirm.select_ok'{} |
-                             #'basic.cancel_ok'{}.
+                             #'exchange.declare_ok'{} |
+                             #'queue.bind_ok'{} |
+                             #'queue.declare_ok'{} |
+                             #'queue.declare_ok'{} |
+                             #'queue.delete_ok'{} |
+                             #'queue.unbind_ok'{}.
 -type command_ret() :: 'ok' |
                        {'ok', ne_binary() | kz_command_ret_ok()} |
                        {'error', any()}.
@@ -170,14 +180,14 @@
 -type kz_amqp_type() :: 'sticky' | 'float'.
 
 -record(kz_amqp_assignment, {timestamp = os:timestamp() :: kz_now() | '_'
-                             ,consumer :: api_pid() | '$2' | '_'
-                             ,consumer_ref :: api_reference() | '_'
+                             ,consumer :: maybe(pid()) | '$2' | '_'
+                             ,consumer_ref :: maybe(reference()) | '_'
                              ,type = 'float' :: kz_amqp_type() | '_'
-                             ,channel :: api_pid() | '$1' | '_'
-                             ,channel_ref :: api_reference() | '_'
-                             ,connection :: api_pid() | '$1' | '_'
-                             ,broker :: api_binary() | '$1' | '_'
-                             ,assigned :: kz_timeout() | 'undefined' | '_'
+                             ,channel :: maybe(pid()) | '$1' | '_'
+                             ,channel_ref :: maybe(reference()) | '_'
+                             ,connection :: maybe(pid()) | '$1' | '_'
+                             ,broker :: maybe(binary()) | '$1' | '_'
+                             ,assigned :: maybe(kz_timeout()) | '_'
                              ,reconnect = 'false' :: boolean() | '_'
                              ,watchers = sets:new() :: sets:set() | pids() | '_'
                             }).
@@ -192,9 +202,9 @@
                              ,manager :: pid() | '_'
                              ,connection :: pid() | '_'
                              ,connection_ref :: reference() | '_'
-                             ,channel :: api_pid() | '$1' | '_'
-                             ,channel_ref :: api_reference() | '$1' | '_'
-                             ,reconnect_ref :: api_reference() | '_'
+                             ,channel :: maybe(pid()) | '$1' | '_'
+                             ,channel_ref :: maybe(reference()) | '$1' | '_'
+                             ,reconnect_ref :: maybe(reference()) | '_'
                              ,available = 'false' :: boolean() | '_'
                              ,exchanges_initialized = 'false' :: boolean() | '_'
                              ,prechannels_initialized = 'false' :: boolean() | '_'
@@ -204,8 +214,8 @@
                             }).
 -type kz_amqp_connection() :: #kz_amqp_connection{}.
 
--record(kz_amqp_connections, {connection :: api_pid() | '$1' | '_'
-                              ,connection_ref :: api_reference() | '_'
+-record(kz_amqp_connections, {connection :: maybe(pid()) | '$1' | '_'
+                              ,connection_ref :: maybe(reference()) | '_'
                               ,broker :: ne_binary() | '$1' | '$2' | '_'
                               ,available='false' :: boolean() | '$1' | '$2' | '_'
                               ,timestamp=os:timestamp() :: kz_now() | '_'

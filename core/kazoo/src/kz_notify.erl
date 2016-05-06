@@ -121,7 +121,7 @@ first_registration(_Account) ->
     'ok'.
 
 -spec transaction(ne_binary(), kz_json:object()) -> 'ok'.
--spec transaction(ne_binary(), kz_json:object(), api_object()) -> 'ok'.
+-spec transaction(ne_binary(), kz_json:object(), maybe(kz_json:object())) -> 'ok'.
 
 transaction(Account, Transaction) ->
     transaction(Account, Transaction, 'undefined').

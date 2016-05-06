@@ -30,8 +30,8 @@
 
 -include("jonny5.hrl").
 
--record(limits, {account_id  :: api_binary()
-                 ,account_db :: api_binary()
+-record(limits, {account_id  :: maybe(binary())
+                 ,account_db :: maybe(binary())
                  ,enabled = 'true' :: boolean()
                  ,calls = -1 :: tristate_integer()
                  ,resource_consuming_calls = -1 :: tristate_integer()
@@ -125,7 +125,7 @@ to_props(Account) -> to_props(?MODULE:get(Account)).
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec account_id(limits()) -> api_binary().
+-spec account_id(limits()) -> maybe(binary()).
 account_id(#limits{account_id=AccountId}) -> AccountId;
 account_id(_) -> 'undefined'.
 

@@ -34,7 +34,7 @@
 
 -record(state, {type :: diagram_type()
                 ,name :: ne_binary()
-                ,io_device :: 'undefined' | file:io_device()
+                ,io_device :: maybe(file:io_device())
                 ,who_registry :: dict:dict()
                }).
 -type state() :: #state{}.
@@ -65,7 +65,7 @@ trunc(Srv) -> gen_server:cast(Srv, 'trunc').
 -spec rotate(server_ref()) -> 'ok'.
 rotate(Srv) -> gen_server:cast(Srv, 'rotate').
 
--spec process_pid(kz_json:object()) -> api_binary().
+-spec process_pid(kz_json:object()) -> maybe(binary()).
 process_pid(P) ->
     ProcId = kz_json:get_value(<<"Process-ID">>, P),
     case re:run(ProcId, <<".*(\<.*\>)">>, [{'capture', [1], 'binary'}]) of

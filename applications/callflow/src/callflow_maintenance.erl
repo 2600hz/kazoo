@@ -150,7 +150,7 @@ migrate_recorded_name(Db) ->
     end.
 
 -spec do_recorded_name_migration(ne_binary(), kz_json:object()) -> any().
--spec do_recorded_name_migration(ne_binary(), kz_json:object(), api_binary()) -> any().
+-spec do_recorded_name_migration(ne_binary(), kz_json:object(), maybe(binary())) -> any().
 do_recorded_name_migration(Db, VMBox) ->
     VMBoxId = kz_doc:id(VMBox),
     case kz_json:get_value(?RECORDED_NAME_KEY, VMBox) of
@@ -317,7 +317,7 @@ all_accounts_set_classifier(Action, Classifier) ->
                           set_account_classifier_action(Action, Classifier, AccountDb)
                   end, kapps_util:get_all_accounts()).
 
--spec get_account_name_by_db(ne_binary()) -> ne_binary() | 'undefined'.
+-spec get_account_name_by_db(ne_binary()) -> maybe(ne_binary()).
 get_account_name_by_db(AccountDb) ->
     case kz_account:fetch(AccountDb) of
         {'error', _Error} ->

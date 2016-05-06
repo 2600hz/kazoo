@@ -178,7 +178,7 @@ summary(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(maybe(binary()), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     Doc = cb_context:doc(Context),
     cb_context:set_doc(Context, kz_doc:set_type(Doc, <<"temporal_rule_set">>));

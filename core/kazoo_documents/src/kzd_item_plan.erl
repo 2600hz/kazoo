@@ -26,7 +26,7 @@
 -include("kz_documents.hrl").
 
 -type doc() :: kz_json:object().
--type api_doc() :: api_object().
+-type api_doc() :: maybe(kz_json:object()).
 -export_type([doc/0
               ,api_doc/0
              ]).
@@ -70,7 +70,7 @@ rates(ItemPlan) ->
 rates(ItemPlan, Default) ->
     kz_json:get_json_value(?RATES, ItemPlan, Default).
 
--spec rate(doc()) -> api_float().
+-spec rate(doc()) -> maybe(float()).
 -spec rate(doc(), Default) -> float() | Default.
 rate(ItemPlan) ->
     rate(ItemPlan, 'undefined').
@@ -91,14 +91,14 @@ should_cascade(ItemPlan) ->
 should_cascade(ItemPlan, Default) ->
     kz_json:is_true(?CASCADE, ItemPlan, Default).
 
--spec masquerade_as(doc()) -> api_binary().
+-spec masquerade_as(doc()) -> maybe(binary()).
 -spec masquerade_as(doc(), Default) -> ne_binary() | Default.
 masquerade_as(ItemPlan) ->
     masquerade_as(ItemPlan, 'undefined').
 masquerade_as(ItemPlan, Default) ->
     kz_json:get_value(?MASQUERADE, ItemPlan, Default).
 
--spec name(doc()) -> api_binary().
+-spec name(doc()) -> maybe(binary()).
 name(ItemPlan) ->
     case kz_json:get_value(?NAME, ItemPlan) of
         'undefined' -> masquerade_as(ItemPlan);
@@ -112,21 +112,21 @@ discounts(ItemPlan) ->
 discounts(ItemPlan, Default) ->
     kz_json:get_json_value(?DISCOUNTS, ItemPlan, Default).
 
--spec single_discount(doc()) -> api_object().
+-spec single_discount(doc()) -> maybe(kz_json:object()).
 -spec single_discount(doc(), Default) -> kz_json:object() | Default.
 single_discount(ItemPlan) ->
     single_discount(ItemPlan, 'undefined').
 single_discount(ItemPlan, Default) ->
     kz_json:get_json_value([?DISCOUNTS, ?SINGLE], ItemPlan, Default).
 
--spec cumulative_discount(doc()) -> api_object().
+-spec cumulative_discount(doc()) -> maybe(kz_json:object()).
 -spec cumulative_discount(doc(), Default) -> kz_json:object() | Default.
 cumulative_discount(ItemPlan) ->
     cumulative_discount(ItemPlan, 'undefined').
 cumulative_discount(ItemPlan, Default) ->
     kz_json:get_json_value([?DISCOUNTS, ?CUMULATIVE], ItemPlan, Default).
 
--spec activation_charge(doc()) -> api_object().
+-spec activation_charge(doc()) -> maybe(kz_json:object()).
 -spec activation_charge(doc(), Default) -> kz_json:object() | Default.
 activation_charge(ItemPlan) ->
     activation_charge(ItemPlan, 0).

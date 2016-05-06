@@ -127,7 +127,7 @@ to_deleted(Number) ->
     apply_transitions(Number, [fun move_to_deleted_state/1]).
 
 -spec authorize(kn()) -> kn().
--spec authorize(kn(), api_binary()) -> kn().
+-spec authorize(kn(), maybe(binary())) -> kn().
 authorize(Number) ->
     authorize(Number, knm_phone_number:auth_by(knm_number:phone_number(Number))).
 
@@ -244,7 +244,7 @@ move_phone_number_to_state(PhoneNumber, ToState) ->
                                ,knm_phone_number:assigned_to(PhoneNumber)
                               ).
 
--spec move_phone_number_to_state(knm_phone_number:knm_phone_number(), ne_binary(), api_binary()) ->
+-spec move_phone_number_to_state(knm_phone_number:knm_phone_number(), ne_binary(), maybe(binary())) ->
                                                  knm_phone_number:knm_phone_number().
 move_phone_number_to_state(PhoneNumber, ToState, 'undefined') ->
     Setters =

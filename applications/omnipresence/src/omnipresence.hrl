@@ -24,35 +24,35 @@
 -define(FAKE_CALLID(C), kz_util:to_hex_binary(crypto:hash(md5, C))).
 
 -record(omnip_subscription, {
-          user                                  :: api_binary() | '_' %% user@realm.com
-          ,from                                 :: api_binary() | <<>> | '_' %% user@realm.com
-          ,stalker                              :: api_binary() | '_' | '$2' % amqp queue to publish updates to
+          user                                  :: maybe(binary()) | '_' %% user@realm.com
+          ,from                                 :: maybe(binary()) | <<>> | '_' %% user@realm.com
+          ,stalker                              :: maybe(binary()) | '_' | '$2' % amqp queue to publish updates to
           ,expires = 0                          :: non_neg_integer() | '_' | '$2'
           ,timestamp = kz_util:current_tstamp() :: gregorian_seconds() | '_' | '$1'
           ,protocol = <<"sip">>                 :: ne_binary() | '_' % protocol
-          ,username                             :: api_binary() | '_'
-          ,realm                                :: api_binary() | '_'
-          ,normalized_user                      :: api_binary() | '_' | '$1'
-          ,normalized_from                      :: api_binary() | '_' | '$1'
-          ,event                                :: api_binary() | '_'
-          ,contact                              :: api_binary() | '_'
-          ,call_id                              :: api_binary() | '_'
-          ,subscription_id                      :: api_binary() | '_'
-          ,proxy_route                          :: api_binary() | '_'
+          ,username                             :: maybe(binary()) | '_'
+          ,realm                                :: maybe(binary()) | '_'
+          ,normalized_user                      :: maybe(binary()) | '_' | '$1'
+          ,normalized_from                      :: maybe(binary()) | '_' | '$1'
+          ,event                                :: maybe(binary()) | '_'
+          ,contact                              :: maybe(binary()) | '_'
+          ,call_id                              :: maybe(binary()) | '_'
+          ,subscription_id                      :: maybe(binary()) | '_'
+          ,proxy_route                          :: maybe(binary()) | '_'
           ,version = 1                          :: non_neg_integer() | '_'
           ,last_sequence = 0                    :: non_neg_integer() | '_'
           ,last_reply = 0                       :: non_neg_integer() | '_'
-          ,last_body                            :: api_binary() | '_'
-          ,user_agent                            :: api_binary() | '_'
+          ,last_body                            :: maybe(binary()) | '_'
+          ,user_agent                            :: maybe(binary()) | '_'
          }).
 
 -type subscription() :: #omnip_subscription{}.
 -type subscriptions() :: [subscription()].
 
--record(channel, {call_id     :: api_binary()
-                  ,direction  :: api_binary()
-                  ,state      :: api_binary()
-                  ,to         :: api_binary()
+-record(channel, {call_id     :: maybe(binary())
+                  ,direction  :: maybe(binary())
+                  ,state      :: maybe(binary())
+                  ,to         :: maybe(binary())
                  }).
 
 -type channel() :: #channel{}.

@@ -249,7 +249,7 @@ allow_call(Props, CallId, Node) ->
         end,
     'true'.
 
--spec maybe_deny_call(kz_proplist(), api_binary(), atom()) -> boolean().
+-spec maybe_deny_call(kz_proplist(), maybe(binary()), atom()) -> boolean().
 maybe_deny_call(Props, CallId, Node) ->
     case ecallmgr_config:get_boolean(<<"authz_dry_run">>, 'false') of
         'true' -> rate_call(Props, CallId, Node);

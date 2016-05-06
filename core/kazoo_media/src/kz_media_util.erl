@@ -180,8 +180,8 @@ convert_stream_type(<<"extant">>) -> <<"continuous">>;
 convert_stream_type(<<"store">>) -> <<"store">>;
 convert_stream_type(_) -> <<"single">>.
 
--spec media_path(api_binary()) -> api_binary().
--spec media_path(api_binary(), api_binary() | kapps_call:call()) -> api_binary().
+-spec media_path(maybe(binary())) -> maybe(binary()).
+-spec media_path(maybe(binary()), maybe(binary()) | kapps_call:call()) -> maybe(binary()).
 media_path(Path) -> media_path(Path, 'undefined').
 
 media_path('undefined', _AccountId) -> 'undefined';
@@ -206,7 +206,7 @@ media_path(Path, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec prompt_path(ne_binary()) -> ne_binary().
--spec prompt_path(api_binary(), ne_binary()) -> ne_binary().
+-spec prompt_path(maybe(binary()), ne_binary()) -> ne_binary().
 prompt_path(PromptId) ->
     prompt_path(?KZ_MEDIA_DB, PromptId).
 
@@ -218,7 +218,7 @@ prompt_path(Db, PromptId) ->
     kz_util:join_binary([<<>>, Db, PromptId], <<"/">>).
 
 -spec prompt_id(ne_binary()) -> ne_binary().
--spec prompt_id(ne_binary(), api_binary()) -> ne_binary().
+-spec prompt_id(ne_binary(), maybe(binary())) -> ne_binary().
 prompt_id(PromptId) -> prompt_id(PromptId, 'undefined').
 
 prompt_id(<<"/system_media/", PromptId/binary>>, Lang) ->
@@ -228,12 +228,12 @@ prompt_id(PromptId, <<>>) -> PromptId;
 prompt_id(PromptId, Lang) ->
     <<Lang/binary, "/", PromptId/binary>>.
 
--spec get_prompt(ne_binary()) -> api_binary().
--spec get_prompt(ne_binary(), api_binary() | kapps_call:call()) ->
-                        api_binary().
--spec get_prompt(ne_binary(), api_binary(), api_binary() | kapps_call:call()) ->
-                        api_binary().
--spec get_prompt(ne_binary(), api_binary(), api_binary(), boolean()) -> api_binary().
+-spec get_prompt(ne_binary()) -> maybe(binary()).
+-spec get_prompt(ne_binary(), maybe(binary()) | kapps_call:call()) ->
+                        maybe(binary()).
+-spec get_prompt(ne_binary(), maybe(binary()), maybe(binary()) | kapps_call:call()) ->
+                        maybe(binary()).
+-spec get_prompt(ne_binary(), maybe(binary()), maybe(binary()), boolean()) -> maybe(binary()).
 
 get_prompt(Name) ->
     get_prompt(Name, 'undefined').
@@ -268,8 +268,8 @@ get_prompt(PromptId, Lang, _AccountId, 'false') ->
     lager:debug("account overrides not enabled; ignoring account prompt for ~s", [PromptId]),
     kz_util:join_binary([<<"prompt:/">>, ?KZ_MEDIA_DB, PromptId, Lang], <<"/">>).
 
--spec get_account_prompt(ne_binary(), api_binary(), kapps_call:call()) -> api_binary().
--spec get_account_prompt(ne_binary(), api_binary(), kapps_call:call(), ne_binary()) -> api_binary().
+-spec get_account_prompt(ne_binary(), maybe(binary()), kapps_call:call()) -> maybe(binary()).
+-spec get_account_prompt(ne_binary(), maybe(binary()), kapps_call:call(), ne_binary()) -> maybe(binary()).
 %% tries account default, then system
 get_account_prompt(Name, 'undefined', Call) ->
     PromptId = prompt_id(Name),
@@ -363,7 +363,7 @@ prompt_is_usable(Doc) ->
         'false' -> {'ok', Doc}
     end.
 
--spec get_system_prompt(ne_binary(), api_binary()) -> api_binary().
+-spec get_system_prompt(ne_binary(), maybe(binary())) -> maybe(binary()).
 get_system_prompt(Name, 'undefined') ->
     PromptId = prompt_id(Name),
     lager:debug("getting system prompt for '~s'", [PromptId]),
@@ -406,7 +406,7 @@ get_system_prompt(Name, Lang) ->
     end.
 
 -spec default_prompt_language() -> ne_binary().
--spec default_prompt_language(api_binary()) -> ne_binary().
+-spec default_prompt_language(maybe(binary())) -> ne_binary().
 default_prompt_language() ->
     default_prompt_language(<<"en-us">>).
 default_prompt_language(Default) ->
@@ -414,12 +414,12 @@ default_prompt_language(Default) ->
       kapps_config:get(?WHM_CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, Default)
      ).
 
--spec prompt_language(api_binary()) -> ne_binary().
+-spec prompt_language(maybe(binary())) -> ne_binary().
 prompt_language(?KZ_MEDIA_DB) -> default_prompt_language();
 prompt_language(AccountId) ->
     prompt_language(AccountId, default_prompt_language()).
 
--spec prompt_language(api_binary(), api_binary()) -> ne_binary().
+-spec prompt_language(maybe(binary()), maybe(binary())) -> ne_binary().
 prompt_language('undefined', Default) ->
     default_prompt_language(Default);
 prompt_language(<<_/binary>> = AccountId, 'undefined') ->

@@ -96,10 +96,10 @@ pause_for(Props) ->
         N when is_integer(N), N > 3600 -> 3600000
     end.
 
--spec action_url(kz_proplist()) -> api_binary().
+-spec action_url(kz_proplist()) -> maybe(binary()).
 action_url(Props) -> props:get_binary_value('action', Props).
 
--spec reject_prompt(kz_proplist()) -> api_binary().
+-spec reject_prompt(kz_proplist()) -> maybe(binary()).
 reject_prompt(Props) -> props:get_binary_value('prompt', Props).
 
 -spec timeout_s(kz_proplist()) -> pos_integer().

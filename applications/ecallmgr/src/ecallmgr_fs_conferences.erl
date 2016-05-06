@@ -170,7 +170,7 @@ participant_update(CallId, Update) ->
 participant_destroy(CallId) ->
     gen_server:call(?SERVER, {'participant_destroy', CallId}).
 
--spec participant_callid(ne_binary(), non_neg_integer()) -> api_binary().
+-spec participant_callid(ne_binary(), non_neg_integer()) -> maybe(binary()).
 participant_callid(UUID, MemberId) ->
     case ets:match(?PARTICIPANTS_TBL, #participant{conference_uuid=UUID
                                                    ,member_id=MemberId

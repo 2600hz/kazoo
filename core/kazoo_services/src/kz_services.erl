@@ -64,9 +64,9 @@
 -define(QUANTITIES_CASCADE, <<"cascade_quantities">>).
 -define(PLANS, <<"plans">>).
 
--record(kz_services, {account_id :: api_binary()
-                      ,billing_id :: api_binary()
-                      ,current_billing_id :: api_binary()
+-record(kz_services, {account_id :: maybe(binary())
+                      ,billing_id :: maybe(binary())
+                      ,current_billing_id :: maybe(binary())
                       ,new_billing_id = 'false' :: boolean()
                       ,dirty = 'false' :: boolean()
                       ,deleted = 'false' :: boolean()
@@ -333,7 +333,7 @@ save_conflicting_as_dirty(#kz_services{account_id=AccountId}, BackOff) ->
             save_as_dirty(NewServices, BackOff*2)
     end.
 
--spec account_name(ne_binary()) -> api_binary().
+-spec account_name(ne_binary()) -> maybe(binary()).
 account_name(AccountId) ->
     case kz_account:fetch(AccountId) of
         {'ok', JObj} -> kz_account:name(JObj);
@@ -422,7 +422,7 @@ delete(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_billing_id(api_binary(), ne_binary() | services()) -> 'undefined' | services().
+-spec set_billing_id(maybe(binary()), ne_binary() | services()) -> maybe(services()).
 set_billing_id('undefined', _) -> 'undefined';
 set_billing_id(BillingId, #kz_services{billing_id=BillingId}) ->
     'undefined';
@@ -607,7 +607,7 @@ to_json(#kz_services{jobj=JObj
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_reseller_id(api_binary()) -> api_binary().
+-spec find_reseller_id(maybe(binary())) -> maybe(binary()).
 find_reseller_id('undefined') ->
     case kapps_util:get_master_account_id() of
         {'error', _} -> 'undefined';
@@ -728,8 +728,8 @@ move_to_good_standing(<<_/binary>> = AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile_only(api_binary() | services()) -> 'false' | services().
--spec reconcile(api_binary() | services()) -> 'false' | services().
+-spec reconcile_only(maybe(binary()) | services()) -> 'false' | services().
+-spec reconcile(maybe(binary()) | services()) -> 'false' | services().
 
 reconcile_only('undefined') -> 'false';
 reconcile_only(<<_/binary>> = Account) ->
@@ -755,7 +755,7 @@ reconcile(#kz_services{}=Services) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile_only(api_binary() | services(), text()) -> 'false' | services().
+-spec reconcile_only(maybe(binary()) | services(), text()) -> 'false' | services().
 reconcile_only('undefined', _Module) -> 'false';
 reconcile_only(<<_/binary>> = Account, Module) ->
     reconcile_only(fetch(Account), Module);
@@ -767,7 +767,7 @@ reconcile_only(#kz_services{account_id=AccountId}=CurrentServices, Module) ->
             ServiceModule:reconcile(CurrentServices)
     end.
 
--spec reconcile(api_binary() | services(), text()) -> 'false' | services().
+-spec reconcile(maybe(binary()) | services(), text()) -> 'false' | services().
 reconcile('undefined', _Module) -> 'false';
 reconcile(<<_/binary>> = Account, Module) ->
     timer:sleep(?MILLISECONDS_IN_SECOND),
@@ -817,7 +817,7 @@ quantity(CategoryId, ItemId, #kz_services{updates=Updates
     ItemQuantity = kzd_services:item_quantity(JObj, CategoryId, ItemId),
     kz_json:get_integer_value([CategoryId, ItemId], Updates, ItemQuantity).
 
--spec diff_quantities(services()) -> api_object().
+-spec diff_quantities(services()) -> maybe(kz_json:object()).
 diff_quantities(#kz_services{deleted='true'}) -> 'undefined';
 diff_quantities(#kz_services{jobj=JObj
                              ,updates=Updates
@@ -833,7 +833,7 @@ diff_cat_quantities(CategoryId, ItemsJObj, Updates) ->
                   ,ItemsJObj
                  ).
 
--spec diff_quantities(ne_binary(), services()) -> api_object().
+-spec diff_quantities(ne_binary(), services()) -> maybe(kz_json:object()).
 diff_quantities(_CategoryId, #kz_services{deleted='true'}) -> 'undefined';
 diff_quantities(CategoryId, #kz_services{jobj=JObj
                                          ,updates=Updates
@@ -1037,8 +1037,7 @@ calculate_services_charges(#kz_services{jobj=ServiceJObj
     lager:debug("computed service charges"),
     {'ok', kz_service_items:public_json(Changed)}.
 
--spec apply_cascade_quantities(kz_json:object(), kz_json:object()) ->
-                                      kz_json:object().
+-spec apply_cascade_quantities(kz_json:object(), kz_json:object()) -> kz_json:object().
 apply_cascade_quantities(Quantities, CascadeQuantities) ->
     kz_json:map(fun(CategoryId, ItemsJObj) ->
                         {CategoryId, apply_cascade_categories(CategoryId, ItemsJObj, CascadeQuantities)}
@@ -1282,7 +1281,7 @@ populate_service_plans(JObj, ResellerId) ->
     Plans = incorporate_default_service_plan(ResellerId, master_default_service_plan()),
     incorporate_depreciated_service_plans(Plans, JObj).
 
--spec default_service_plan_id(ne_binary()) -> api_binary().
+-spec default_service_plan_id(ne_binary()) -> maybe(binary()).
 default_service_plan_id(ResellerId) ->
     case kz_datamgr:open_doc(?KZ_SERVICES_DB, ResellerId) of
         {'ok', JObj} -> kz_json:get_value(<<"default_service_plan">>, JObj);
@@ -1291,7 +1290,7 @@ default_service_plan_id(ResellerId) ->
             'undefined'
     end.
 
--spec depreciated_default_service_plan_id(ne_binary()) -> api_binary().
+-spec depreciated_default_service_plan_id(ne_binary()) -> maybe(binary()).
 depreciated_default_service_plan_id(ResellerId) ->
     ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
     case kz_datamgr:open_doc(ResellerDb, ResellerId) of
@@ -1371,7 +1370,7 @@ get_reseller_id(<<_/binary>> = Account) ->
             get_reseller_id([])
     end.
 
--spec get_reseller_id(ne_binary(), ne_binaries(), kz_json:object()) -> api_binary().
+-spec get_reseller_id(ne_binary(), ne_binaries(), kz_json:object()) -> maybe(binary()).
 get_reseller_id(Parent, Ancestors, JObj) ->
     case kzd_services:is_reseller(JObj) of
         'false' -> get_reseller_id(Ancestors);

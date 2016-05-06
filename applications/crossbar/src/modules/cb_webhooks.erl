@@ -307,7 +307,7 @@ create(Context) ->
     cb_context:validate_request_data(<<"webhooks">>, Context, OnSuccess).
 
 -spec validate_collection_patch(cb_context:context()) -> cb_context:context().
--spec validate_collection_patch(cb_context:context(), api_boolean()) ->
+-spec validate_collection_patch(cb_context:context(), maybe(boolean())) ->
                                        cb_context:context().
 validate_collection_patch(Context) ->
     validate_collection_patch(Context, cb_context:req_value(Context, ?REENABLE)).
@@ -457,7 +457,7 @@ normalize_available(JObj, Acc) ->
     end.
 
 -spec summary_attempts(cb_context:context()) -> cb_context:context().
--spec summary_attempts(cb_context:context(), api_binary()) -> cb_context:context().
+-spec summary_attempts(cb_context:context(), maybe(binary())) -> cb_context:context().
 summary_attempts(Context) ->
     summary_attempts(Context, 'undefined').
 
@@ -521,7 +521,7 @@ normalize_attempt_results(JObj, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation(api_binary(), cb_context:context()) ->
+-spec on_successful_validation(maybe(binary()), cb_context:context()) ->
                                       cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context

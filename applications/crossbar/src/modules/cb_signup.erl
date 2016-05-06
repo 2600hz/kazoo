@@ -42,11 +42,11 @@
 
 -record(state, {cleanup_interval = 5 * ?SECONDS_IN_HOUR :: integer() %% once every 5 hours (in seconds)
                 ,signup_lifespan = ?SECONDS_IN_DAY :: integer() %% 24 hours (in seconds)
-                ,register_cmd = 'undefined' :: api_atom()
-                ,activation_email_plain = 'undefined' :: api_atom()
-                ,activation_email_html = 'undefined' :: api_atom()
-                ,activation_email_from = 'undefined' :: api_atom()
-                ,activation_email_subject = 'undefined' :: api_atom()
+                ,register_cmd = 'undefined' :: maybe(atom())
+                ,activation_email_plain = 'undefined' :: maybe(atom())
+                ,activation_email_html = 'undefined' :: maybe(atom())
+                ,activation_email_from = 'undefined' :: maybe(atom())
+                ,activation_email_subject = 'undefined' :: maybe(atom())
                }).
 
 %%%===================================================================
@@ -225,8 +225,8 @@ validate_new_signup(Context) ->
 %% Determines if the account realm is unique and if the account is valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_account(api_object(), cb_context:context()) ->
-                              {path_tokens(), api_object()}.
+-spec validate_account(maybe(kz_json:object()), cb_context:context()) ->
+                              {path_tokens(), maybe(kz_json:object())}.
 validate_account('undefined', _) ->
     lager:debug("signup did not contain an account definition"),
     {[<<"account">>], 'undefined'};
@@ -249,8 +249,8 @@ validate_account(Account, Context) ->
 %% Determines if the user object is valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_user(api_object(), cb_context:context()) ->
-                           {path_tokens(), api_object()}.
+-spec validate_user(maybe(kz_json:object()), cb_context:context()) ->
+                           {path_tokens(), maybe(kz_json:object())}.
 validate_user('undefined', _) ->
     lager:debug("signup did not contain an user definition"),
     {[<<"user">>], 'undefined'};
@@ -327,7 +327,7 @@ activate_signup(JObj) ->
 %% Create the account defined on the signup document
 %% @end
 %%--------------------------------------------------------------------
--spec activate_account(api_object()) ->
+-spec activate_account(maybe(kz_json:object())) ->
                               {'ok', kz_json:object()} |
                               {'error', 'creation_failed' | 'account_undefined'}.
 activate_account('undefined') ->
@@ -354,7 +354,7 @@ activate_account(Account) ->
 %% an account and user, ensure the user exists locally (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec activate_user(kz_json:object(), api_object()) ->
+-spec activate_user(kz_json:object(), maybe(kz_json:object())) ->
                            {'ok', kz_json:object(), kz_json:object()} |
                            {'error', 'user_undefined' | 'creation_failed'}.
 activate_user(_, 'undefined') ->
@@ -401,7 +401,7 @@ exec_register_command(Context, #state{register_cmd=CmdTmpl}) ->
 %%--------------------------------------------------------------------
 -spec send_activation_email(cb_context:context(), #state{}) ->
                                    {'ok', pid()} |
-                                   {'error', term()}.
+                                   {'error', any()}.
 send_activation_email(Context
                       ,#state{activation_email_subject=SubjectTmpl
                               ,activation_email_from=FromTmpl
@@ -506,7 +506,7 @@ template_props(Context) ->
 %% accounts and completed signups
 %% @end
 %%--------------------------------------------------------------------
--spec is_unique_realm(binary() | 'undefined') -> boolean().
+-spec is_unique_realm(maybe(binary())) -> boolean().
 is_unique_realm('undefined') -> 'false';
 is_unique_realm(<<>>) -> 'false';
 is_unique_realm(Realm) ->
@@ -594,8 +594,8 @@ get_configs() ->
                          'cb_signup_email_plain' |
                          'cb_signup_email_subject' |
                          'cb_signup_register_cmd'.
--spec compile_template(string() | api_binary(), template_name()) ->
-                              'undefined' | template_name().
+-spec compile_template(string() | maybe(binary()), template_name()) ->
+                              maybe(template_name()).
 compile_template('undefined', _) -> 'undefined';
 compile_template(Template, Name) when not is_binary(Template) ->
     Path = case string:substr(Template, 1, 1) of
@@ -617,7 +617,7 @@ compile_template(Template, Name) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec do_compile_template(nonempty_string() | ne_binary(), template_name()) ->
-                                 'undefined' | template_name().
+                                 maybe(template_name()).
 do_compile_template(Template, Name) ->
     case erlydtl:compile_template(Template, Name, [{'out_dir', 'false'}]) of
         {'ok', Name} ->

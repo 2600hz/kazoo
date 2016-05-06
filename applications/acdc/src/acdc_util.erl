@@ -49,7 +49,7 @@ agent_presence_update(AcctId, AgentId) ->
     end.
 
 -spec presence_update(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
--spec presence_update(ne_binary(), ne_binary(), ne_binary(), api_binary()) -> 'ok'.
+-spec presence_update(ne_binary(), ne_binary(), ne_binary(), maybe(binary())) -> 'ok'.
 presence_update(AcctId, PresenceId, State) ->
     presence_update(AcctId, PresenceId, State, 'undefined').
 presence_update(AcctId, PresenceId, State, CallId) ->
@@ -104,22 +104,22 @@ get_endpoints(Call, ?NE_BINARY = AgentId) ->
     cf_user:get_endpoints(AgentId, [], Call).
 
 %% Handles subscribing/unsubscribing from call events
--spec bind_to_call_events(api_binary() | {api_binary(), any()} | kapps_call:call()) -> 'ok'.
+-spec bind_to_call_events(maybe(binary()) | {maybe(binary()), any()} | kapps_call:call()) -> 'ok'.
 bind_to_call_events(Call) ->
     bind_to_call_events(Call, self()).
 
--spec bind_to_call_events(api_binary() | {api_binary(), any()} | kapps_call:call(), pid()) -> 'ok'.
+-spec bind_to_call_events(maybe(binary()) | {maybe(binary()), any()} | kapps_call:call(), pid()) -> 'ok'.
 bind_to_call_events('undefined', _) -> 'ok';
 bind_to_call_events(?NE_BINARY = CallId, Pid) ->
     gen_listener:add_binding(Pid, 'call', [{'callid', CallId}]);
 bind_to_call_events({CallId, _}, Pid) -> bind_to_call_events(CallId, Pid);
 bind_to_call_events(Call, Pid) -> bind_to_call_events(kapps_call:call_id(Call), Pid).
 
--spec unbind_from_call_events(api_binary() | {api_binary(), any()} | kapps_call:call()) -> 'ok'.
+-spec unbind_from_call_events(maybe(binary()) | {maybe(binary()), any()} | kapps_call:call()) -> 'ok'.
 unbind_from_call_events(Call) ->
     unbind_from_call_events(Call, self()).
 
--spec unbind_from_call_events(api_binary() | {api_binary(), any()} | kapps_call:call(), pid()) -> 'ok'.
+-spec unbind_from_call_events(maybe(binary()) | {maybe(binary()), any()} | kapps_call:call(), pid()) -> 'ok'.
 unbind_from_call_events('undefined', _Pid) -> 'ok';
 unbind_from_call_events(?NE_BINARY = CallId, Pid) ->
     gen_listener:rm_binding(Pid, 'call', [{'callid', CallId}]);

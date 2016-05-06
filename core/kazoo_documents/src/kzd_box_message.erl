@@ -139,7 +139,7 @@ build_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp) ->
 -spec type() -> ne_binary().
 type() -> ?PVT_TYPE.
 
--spec folder(doc()) -> api_object().
+-spec folder(doc()) -> maybe(kz_json:object()).
 folder(JObj) ->
     folder(JObj, 'undefined').
 
@@ -147,7 +147,7 @@ folder(JObj) ->
 folder(JObj, Default) ->
     kz_json:get_value(?VM_KEY_FOLDER, JObj, Default).
 
--spec set_folder(api_binary(), doc()) -> doc().
+-spec set_folder(maybe(binary()), doc()) -> doc().
 set_folder(Folder, JObj) ->
     kz_json:set_value(?VM_KEY_FOLDER, Folder, JObj).
 
@@ -159,7 +159,7 @@ set_folder_saved(JObj) ->
 set_folder_deleted(JObj) ->
     kz_json:set_value(?VM_KEY_FOLDER, ?VM_FOLDER_DELETED, JObj).
 
--spec media_id(doc()) -> api_binary().
+-spec media_id(doc()) -> maybe(binary()).
 media_id(JObj) ->
     kz_json:get_value(?KEY_MEDIA_ID, JObj).
 
@@ -171,7 +171,7 @@ set_media_id(MediaId, JObj) ->
 metadata(JObj) ->
     metadata(JObj, 'undefined').
 
--spec metadata(doc(), doc()) -> api_object().
+-spec metadata(doc(), doc()) -> maybe(kz_json:object()).
 metadata(JObj, Default) ->
     kz_json:get_value(?KEY_METADATA, JObj, Default).
 

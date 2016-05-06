@@ -214,7 +214,7 @@ found_number_to_jobj(PhoneNumber, _Carrier) ->
       ,CarrierData
      ).
 
--spec activation_charge(ne_binary(), api_binary()) -> api_number().
+-spec activation_charge(ne_binary(), maybe(binary())) -> maybe(number()).
 -ifdef(TEST).
 activation_charge(?START_BLOCK, _AccountId) -> 5.0;
 activation_charge(?END_BLOCK, _AccountId) -> 'undefined';

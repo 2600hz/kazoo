@@ -62,8 +62,8 @@
 
 -record(state, {
           node :: atom()
-          ,call_id :: api_binary()
-          ,other_leg :: api_binary()
+          ,call_id :: maybe(binary())
+          ,other_leg :: maybe(binary())
           ,other_leg_events = [] :: ne_binaries()
           ,is_node_up = 'true' :: boolean()
           ,failed_node_checks = 0 :: non_neg_integer()
@@ -108,7 +108,7 @@ shutdown(Node, UUID) ->
         ],
     'ok'.
 
--spec listen_for_other_leg(atom(), ne_binary(), api_binaries()) -> 'ok'.
+-spec listen_for_other_leg(atom(), ne_binary(), maybe([maybe(binary())])) -> 'ok'.
 listen_for_other_leg(_Node, _UUID, 'undefined') -> 'ok';
 listen_for_other_leg(_Node, _UUID, []) -> 'ok';
 listen_for_other_leg(Node, UUID, [_|_] = Events) ->
@@ -594,7 +594,7 @@ create_event(Props) ->
 create_event(EventName, Props) ->
     create_event(EventName, get_application_name(Props), Props).
 
--spec create_event(ne_binary(), api_binary(), kz_proplist()) -> kz_proplist().
+-spec create_event(ne_binary(), maybe(binary()), kz_proplist()) -> kz_proplist().
 create_event(EventName, ApplicationName, Props) ->
     props:filter_undefined(
       [{<<"Event-Name">>, EventName}
@@ -706,7 +706,7 @@ is_masquerade(Props) ->
     end.
 
 %% return a proplist of k/v pairs specific to the event
--spec specific_call_event_props(binary(), api_binary(), kz_proplist()) -> kz_proplist().
+-spec specific_call_event_props(binary(), maybe(binary()), kz_proplist()) -> kz_proplist().
 specific_call_event_props(<<"CHANNEL_EXECUTE">>, <<"conference">>, Props) ->
     conference_specific(Props);
 specific_call_event_props(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"conference">>, Props) ->
@@ -837,7 +837,7 @@ conference_specific(Props) ->
             end
     end.
 
--spec maybe_fax_specific(kz_proplist()) -> api_object().
+-spec maybe_fax_specific(kz_proplist()) -> maybe(kz_json:object()).
 maybe_fax_specific(Props) ->
     case fax_specific(Props) of
         [] -> 'undefined';
@@ -904,7 +904,7 @@ should_publish(<<"DETECTED_TONE">>, _, _) ->
 should_publish(EventName, _A, _) ->
     lists:member(EventName, ?CALL_EVENTS).
 
--spec silence_terminated(api_integer() | kz_proplist()) -> api_boolean().
+-spec silence_terminated(maybe(integer()) | kz_proplist()) -> maybe(boolean()).
 silence_terminated('undefined') -> 'undefined';
 silence_terminated(Hits) when is_integer(Hits) -> Hits =:= 0;
 silence_terminated(Prop) when is_list(Prop) ->
@@ -917,14 +917,14 @@ silence_terminated(Prop) when is_list(Prop) ->
 is_channel_moving(Props) ->
     props:get_is_true(<<"variable_channel_is_moving">>, Props, 'false').
 
--spec get_channel_moving(kz_proplist()) -> api_boolean().
+-spec get_channel_moving(kz_proplist()) -> maybe(boolean()).
 get_channel_moving(Props) ->
     case is_channel_moving(Props) of
         'false' -> 'undefined';
         'true' -> 'true'
     end.
 
--spec get_channel_state(kz_proplist()) -> api_binary().
+-spec get_channel_state(kz_proplist()) -> maybe(binary()).
 get_channel_state(Props) ->
     case props:get_value(<<"Channel-State">>, Props) of
         'undefined' -> 'undefined';
@@ -932,15 +932,15 @@ get_channel_state(Props) ->
         Other -> Other
     end.
 
--spec get_call_id(kz_proplist()) -> api_binary().
+-spec get_call_id(kz_proplist()) -> maybe(binary()).
 get_call_id(Props) ->
     kzd_freeswitch:call_id(Props).
 
--spec get_other_leg(kz_proplist()) -> api_binary().
+-spec get_other_leg(kz_proplist()) -> maybe(binary()).
 get_other_leg(Props) ->
     ecallmgr_fs_channel:get_other_leg(get_call_id(Props), Props).
 
--spec get_event_name(kz_proplist()) -> api_binary().
+-spec get_event_name(kz_proplist()) -> maybe(binary()).
 get_event_name(Props) ->
     case kzd_freeswitch:application_name(Props) of
         <<"sofia::transferee">> -> <<"CHANNEL_TRANSFEREE">>;
@@ -953,7 +953,7 @@ get_event_name(Props) ->
         _AppName -> get_fs_event_name(Props)
     end.
 
--spec get_fs_event_name(kz_proplist()) -> api_binary().
+-spec get_fs_event_name(kz_proplist()) -> maybe(binary()).
 get_fs_event_name(Props) ->
     case kzd_freeswitch:event_name(Props) of
         <<"DETECTED_TONE">> ->
@@ -964,7 +964,7 @@ get_fs_event_name(Props) ->
         Event -> Event
     end.
 
--spec get_application_name(kz_proplist()) -> api_binary().
+-spec get_application_name(kz_proplist()) -> maybe(binary()).
 get_application_name(Props) ->
     case kzd_freeswitch:application_name(Props) of
         <<"sofia::transferee">> -> <<"transfer">>;
@@ -975,25 +975,25 @@ get_application_name(Props) ->
         AppName -> AppName
     end.
 
--spec get_raw_application_name(kz_proplist()) -> api_binary().
+-spec get_raw_application_name(kz_proplist()) -> maybe(binary()).
 get_raw_application_name(Props) ->
     kzd_freeswitch:raw_application_name(Props).
 
--spec get_fax_success(kz_proplist()) -> api_boolean().
+-spec get_fax_success(kz_proplist()) -> maybe(boolean()).
 get_fax_success(Props) ->
     case props:get_value(<<"variable_fax_success">>, Props) of
         'undefined' -> 'undefined';
         Else -> Else =/= <<"0">>
     end.
 
--spec get_fax_t38_used(kz_proplist()) -> api_boolean().
+-spec get_fax_t38_used(kz_proplist()) -> maybe(boolean()).
 get_fax_t38_used(Props) ->
     case props:get_value(<<"variable_has_t38">>, Props) of
         'undefined' -> 'undefined';
         Else -> kz_util:is_true(Else)
     end.
 
--spec get_fax_ecm_used(kz_proplist()) -> api_boolean().
+-spec get_fax_ecm_used(kz_proplist()) -> maybe(boolean()).
 get_fax_ecm_used(Props) ->
     case props:get_value(<<"variable_fax_ecm_used">>, Props) of
         'undefined' -> 'undefined';
@@ -1010,7 +1010,7 @@ get_serialized_history(Props) ->
             History
     end.
 
--spec get_transfer_history(kz_proplist()) -> api_object().
+-spec get_transfer_history(kz_proplist()) -> maybe(kz_json:object()).
 get_transfer_history(Props) ->
     SerializedHistory = get_serialized_history(Props),
     case [HistJObj
@@ -1022,7 +1022,7 @@ get_transfer_history(Props) ->
         History -> kz_json:from_list(History)
     end.
 
--spec create_trnsf_history_object(list()) -> {ne_binary(), kz_json:object()} | 'undefined'.
+-spec create_trnsf_history_object(list()) -> maybe({ne_binary(), kz_json:object()}).
 create_trnsf_history_object([Epoch, CallId, <<"att_xfer">>, Props]) ->
     [Transferee, Transferer] = binary:split(Props, <<"/">>),
     Trans = [{<<"Call-ID">>, CallId}
@@ -1052,19 +1052,19 @@ create_trnsf_history_object(_Params) ->
     lager:debug("unhandled transfer type : ~p", [_Params]),
     'undefined'.
 
--spec get_hangup_cause(kz_proplist()) -> api_binary().
+-spec get_hangup_cause(kz_proplist()) -> maybe(binary()).
 get_hangup_cause(Props) ->
     kzd_freeswitch:hangup_cause(Props).
 
--spec get_disposition(kz_proplist()) -> api_binary().
+-spec get_disposition(kz_proplist()) -> maybe(binary()).
 get_disposition(Props) ->
     kzd_freeswitch:disposition(Props).
 
--spec get_hangup_code(kz_proplist()) -> api_binary().
+-spec get_hangup_code(kz_proplist()) -> maybe(binary()).
 get_hangup_code(Props) ->
     kzd_freeswitch:hangup_code(Props).
 
--spec get_billing_seconds(kz_proplist()) -> api_binary().
+-spec get_billing_seconds(kz_proplist()) -> maybe(binary()).
 get_billing_seconds(Props) ->
     case props:get_integer_value(<<"variable_billmsec">>, Props) of
         'undefined' -> props:get_value(<<"variable_billsec">>, Props);
@@ -1139,7 +1139,7 @@ store_recording(Props, CallId, Node) ->
 media_transfer_method(Props) ->
     kzd_freeswitch:ccv(Props, <<"Media-Transfer-Method">>, <<"put">>).
 
--spec get_is_loopback(api_binary()) -> atom().
+-spec get_is_loopback(maybe(binary())) -> atom().
 get_is_loopback('undefined') -> 'undefined';
 get_is_loopback(_) -> 'true'.
 

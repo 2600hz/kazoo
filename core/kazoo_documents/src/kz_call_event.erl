@@ -32,27 +32,27 @@
 
 -include("kz_documents.hrl").
 
--spec call_id(kz_json:object()) -> api_binary().
+-spec call_id(kz_json:object()) -> maybe(binary()).
 call_id(JObj) ->
     kz_json:get_value(<<"Call-ID">>, JObj).
 
--spec other_leg_call_id(kz_json:object()) -> api_binary().
+-spec other_leg_call_id(kz_json:object()) -> maybe(binary()).
 other_leg_call_id(JObj) ->
     kz_json:get_value(<<"Other-Leg-Call-ID">>, JObj).
 
--spec other_leg_destination_number(kz_json:object()) -> api_binary().
+-spec other_leg_destination_number(kz_json:object()) -> maybe(binary()).
 -spec other_leg_destination_number(kz_json:object(), Default) -> ne_binary() | Default.
 other_leg_destination_number(JObj) ->
     other_leg_destination_number(JObj, 'undefined').
 other_leg_destination_number(JObj, Default) ->
     kz_json:get_ne_value(<<"Other-Leg-Destination-Number">>, JObj, Default).
 
--spec replaced_by(kz_json:object()) -> api_binary().
+-spec replaced_by(kz_json:object()) -> maybe(binary()).
 replaced_by(JObj) ->
     kz_json:get_value(<<"Replaced-By">>, JObj).
 
--spec custom_channel_vars(kz_json:object()) -> api_object().
--spec custom_channel_vars(kz_json:object(), Default) -> api_object() | Default.
+-spec custom_channel_vars(kz_json:object()) -> maybe(kz_json:object()).
+-spec custom_channel_vars(kz_json:object(), Default) -> maybe(kz_json:object()) | Default.
 custom_channel_vars(JObj) ->
     custom_channel_vars(JObj, 'undefined').
 
@@ -60,7 +60,7 @@ custom_channel_vars(JObj, Default) ->
     kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, Default).
 
 -spec custom_channel_var(kz_json:object(), kz_json:key()) ->
-                                api_binary().
+                                maybe(binary()).
 -spec custom_channel_var(kz_json:object(), kz_json:key(), Default) ->
                                 ne_binary() | Default.
 custom_channel_var(JObj, Key) ->
@@ -69,43 +69,43 @@ custom_channel_var(JObj, Key) ->
 custom_channel_var(JObj, Key, Default) ->
     kz_json:get_value([<<"Custom-Channel-Vars">>, Key], JObj, Default).
 
--spec custom_sip_headers(kz_json:object()) -> api_object().
+-spec custom_sip_headers(kz_json:object()) -> maybe(kz_json:object()).
 custom_sip_headers(JObj) ->
     kz_json:get_value(<<"Custom-SIP-Headers">>, JObj).
 
--spec authorizing_id(kz_json:object()) -> api_binary().
+-spec authorizing_id(kz_json:object()) -> maybe(binary()).
 authorizing_id(JObj) ->
     custom_channel_var(JObj, <<"Authorizing-ID">>).
 
--spec authorizing_type(kz_json:object()) -> api_binary().
+-spec authorizing_type(kz_json:object()) -> maybe(binary()).
 authorizing_type(JObj) ->
     custom_channel_var(JObj, <<"Authorizing-Type">>).
 
--spec dtmf_digit(kz_json:object()) -> api_binary().
+-spec dtmf_digit(kz_json:object()) -> maybe(binary()).
 dtmf_digit(JObj) ->
     kz_json:get_value(<<"DTMF-Digit">>, JObj).
 
--spec event_name(kz_json:object()) -> api_binary().
+-spec event_name(kz_json:object()) -> maybe(binary()).
 event_name(JObj) ->
     kz_json:get_value(<<"Event-Name">>, JObj).
 
--spec hangup_cause(kz_json:object()) -> api_binary().
+-spec hangup_cause(kz_json:object()) -> maybe(binary()).
 hangup_cause(JObj) ->
     kz_json:get_value(<<"Hangup-Cause">>, JObj).
 
--spec hangup_code(kz_json:object()) -> api_binary().
+-spec hangup_code(kz_json:object()) -> maybe(binary()).
 hangup_code(JObj) ->
     kz_json:get_value(<<"Hangup-Code">>, JObj).
 
--spec disposition(kz_json:object()) -> api_binary().
+-spec disposition(kz_json:object()) -> maybe(binary()).
 disposition(JObj) ->
     kz_json:get_value(<<"Disposition">>, JObj).
 
--spec application_name(kz_json:object()) -> api_binary().
+-spec application_name(kz_json:object()) -> maybe(binary()).
 application_name(JObj) ->
     kz_json:get_value(<<"Application-Name">>, JObj).
 
--spec application_event(kz_json:object()) -> api_binary().
+-spec application_event(kz_json:object()) -> maybe(binary()).
 application_event(JObj) ->
     kz_json:get_value(<<"Application-Event">>, JObj).
 
@@ -113,43 +113,43 @@ application_event(JObj) ->
 application_data(JObj) ->
     kz_json:get_value(<<"Application-Data">>, JObj, kz_json:new()).
 
--spec application_response(kz_json:object()) -> api_binary().
+-spec application_response(kz_json:object()) -> maybe(binary()).
 application_response(JObj) ->
     kz_json:get_value(<<"Application-Response">>, JObj).
 
--spec response_message(kz_json:object()) -> api_binary().
+-spec response_message(kz_json:object()) -> maybe(binary()).
 response_message(JObj) ->
     kz_json:get_value(<<"Response-Message">>, JObj).
 
--spec response_code(kz_json:object()) -> api_binary().
+-spec response_code(kz_json:object()) -> maybe(binary()).
 response_code(JObj) ->
     kz_json:get_value(<<"Response-Code">>, JObj).
 
--spec account_id(kz_json:object()) -> api_binary().
+-spec account_id(kz_json:object()) -> maybe(binary()).
 account_id(JObj) ->
     custom_channel_var(JObj, <<"Account-ID">>).
 
--spec owner_id(kz_json:object()) -> api_binary().
+-spec owner_id(kz_json:object()) -> maybe(binary()).
 owner_id(JObj) ->
     custom_channel_var(JObj, <<"Owner-ID">>).
 
--spec timestamp(kz_json:object()) -> api_integer().
+-spec timestamp(kz_json:object()) -> maybe(integer()).
 timestamp(JObj) ->
     kz_json:get_integer_value(<<"Timestamp">>, JObj).
 
--spec ringing_seconds(kz_json:object()) -> api_integer().
+-spec ringing_seconds(kz_json:object()) -> maybe(integer()).
 ringing_seconds(JObj) ->
     kz_json:get_integer_value(<<"Ringing-Seconds">>, JObj).
 
--spec billing_seconds(kz_json:object()) -> api_integer().
+-spec billing_seconds(kz_json:object()) -> maybe(integer()).
 billing_seconds(JObj) ->
     kz_json:get_integer_value(<<"Billing-Seconds">>, JObj).
 
--spec duration_seconds(kz_json:object()) -> api_integer().
+-spec duration_seconds(kz_json:object()) -> maybe(integer()).
 duration_seconds(JObj) ->
     kz_json:get_integer_value(<<"Duration-Seconds">>, JObj).
 
--spec is_call_forwarded(kz_json:object()) -> api_boolean().
+-spec is_call_forwarded(kz_json:object()) -> maybe(boolean()).
 -spec is_call_forwarded(kz_json:object(), Default) -> boolean() | Default.
 is_call_forwarded(JObj) ->
     is_call_forwarded(JObj, 'undefined').
@@ -160,6 +160,6 @@ is_call_forwarded(JObj, Default) ->
         IsForwarded -> kz_util:is_true(IsForwarded)
     end.
 
--spec error_message(kz_json:object()) -> api_binary().
+-spec error_message(kz_json:object()) -> maybe(binary()).
 error_message(JObj) ->
     kz_json:get_value(<<"Error-Message">>, JObj).

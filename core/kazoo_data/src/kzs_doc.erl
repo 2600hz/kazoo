@@ -233,7 +233,7 @@ copy_doc(Src, Dst, CopySpec, CopyFun, Opts) ->
         Error -> Error
     end.
 
--spec copy_transform('undefined' | fun(), kz_json:object(), kz_json:object()) -> kz_json:object().
+-spec copy_transform(maybe(fun()), kz_json:object(), kz_json:object()) -> kz_json:object().
 copy_transform('undefined', _SourceDoc, DestinationDoc) -> DestinationDoc;
 copy_transform(Fun, SourceDoc, DestinationDoc) -> Fun(SourceDoc, DestinationDoc).
 
@@ -263,7 +263,7 @@ copy_attachments(Src, Dst, CopySpec, {[JObj | JObjs], [Key | Keys]}) ->
         Error -> Error
     end.
 
--spec maybe_set_account_db(api_binary(), ne_binary(), ne_binary()) -> kz_proplist().
+-spec maybe_set_account_db(maybe(binary()), ne_binary(), ne_binary()) -> kz_proplist().
 maybe_set_account_db(DB, DB, DestDbName) ->
     [{<<"pvt_account_db">>, DestDbName}];
 maybe_set_account_db(_1, _, _) -> [].

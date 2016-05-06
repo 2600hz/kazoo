@@ -68,7 +68,7 @@ handle(JObj, _Props) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_send_event(api_binary(), kz_json:object()) -> 'ok'.
+-spec maybe_send_event(maybe(binary()), kz_json:object()) -> 'ok'.
 maybe_send_event('undefined', _JObj) -> 'ok';
 maybe_send_event(AccountId, JObj) ->
     case webhooks_util:find_webhooks(?NAME, AccountId) of

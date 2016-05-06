@@ -92,7 +92,7 @@ running() ->
     lager:debug("running: ~p", [Running]),
     [{Pid, Type} || [Pid, Type] <- Running, erlang:is_process_alive(Pid)].
 
--spec server_ref(webseq_srv()) -> api_pid().
+-spec server_ref(webseq_srv()) -> maybe(pid()).
 server_ref(Pid) when is_pid(Pid) -> Pid;
 server_ref(Type) ->
     try gproc:lookup_value(?GPROC_KEY(Type)) of

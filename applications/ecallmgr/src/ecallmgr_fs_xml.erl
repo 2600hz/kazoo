@@ -56,7 +56,7 @@ sip_channel_xml(Props) ->
     SectionEl = section_el(<<"channels">>, ChannelEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')}.
 
--spec authn_resp_xml(api_terms()) -> {'ok', iolist()}.
+-spec authn_resp_xml(maybe(terms())) -> {'ok', iolist()}.
 -spec authn_resp_xml(ne_binary(), kz_json:object()) -> {'ok', xml_els()}.
 authn_resp_xml([_|_]=RespProp) ->
     authn_resp_xml(props:get_value(<<"Auth-Method">>, RespProp)
@@ -118,7 +118,7 @@ authn_resp_xml(_Method, _JObj) ->
     lager:debug("unknown method ~s", [_Method]),
     empty_response().
 
--spec reverse_authn_resp_xml(api_terms()) -> {'ok', iolist()}.
+-spec reverse_authn_resp_xml(maybe(terms())) -> {'ok', iolist()}.
 -spec reverse_authn_resp_xml(ne_binary(), kz_json:object()) ->
                                     {'ok', xml_els()}.
 reverse_authn_resp_xml([_|_]=RespProp) ->
@@ -155,7 +155,7 @@ reverse_authn_resp_xml(_Method, _JObj) ->
 empty_response() ->
     {'ok', ""}. %"<document type=\"freeswitch/xml\"></document>").
 
--spec conference_resp_xml(api_terms()) -> {'ok', iolist()}.
+-spec conference_resp_xml(maybe(terms())) -> {'ok', iolist()}.
 conference_resp_xml([_|_]=Resp) ->
     Ps = props:get_value(<<"Profiles">>, Resp, kz_json:new()),
     CCs = props:get_value(<<"Caller-Controls">>, Resp, kz_json:new()),
@@ -214,7 +214,7 @@ conference_profile_xml(Name, Params) ->
     ParamEls = [param_el(K, V) || {K, V} <- kz_json:to_proplist(Params)],
     profile_el(Name, ParamEls).
 
--spec route_resp_xml(api_terms(), kz_proplist()) -> {'ok', iolist()}.
+-spec route_resp_xml(maybe(terms()), kz_proplist()) -> {'ok', iolist()}.
 route_resp_xml([_|_]=RespProp, Props) -> route_resp_xml(kz_json:from_list(RespProp), Props);
 route_resp_xml(RespJObj, Props) ->
     route_resp_xml(kz_json:get_value(<<"Method">>, RespJObj)
@@ -411,7 +411,7 @@ route_resp_transfer_ringback(JObj) ->
             action_el(<<"set">>, <<"transfer_ringback=", (kz_util:to_binary(Stream))/binary>>)
     end.
 
--spec route_resp_pre_park_action(kz_json:object()) -> 'undefined' | xml_el().
+-spec route_resp_pre_park_action(kz_json:object()) -> maybe(xml_el()).
 route_resp_pre_park_action(JObj) ->
     case kz_json:get_value(<<"Pre-Park">>, JObj) of
         <<"ring_ready">> -> action_el(<<"ring_ready">>);
@@ -419,14 +419,14 @@ route_resp_pre_park_action(JObj) ->
         _Else -> 'undefined'
     end.
 
--spec maybe_start_dtmf_action(kz_proplist()) -> 'undefined' | xml_el().
+-spec maybe_start_dtmf_action(kz_proplist()) -> maybe(xml_el()).
 maybe_start_dtmf_action(Props) ->
     case ecallmgr_config:is_true(<<"should_detect_inband_dtmf">>) of
         'false' -> 'undefined';
         'true' -> check_dtmf_type(Props)
     end.
 
--spec check_dtmf_type(kz_proplist()) -> 'undefined' | xml_el().
+-spec check_dtmf_type(kz_proplist()) -> maybe(xml_el()).
 check_dtmf_type(Props) ->
     case props:get_value(<<"variable_switch_r_sdp">>, Props, <<"101 telephone-event">>) of
         <<"101 telephone-event">> -> 'undefined';
@@ -632,7 +632,7 @@ arrange_acl_node({_, JObj}, Dict) ->
             orddict:store(AclList, prepend_child(acl_list_el(AclList), NodeEl), Dict)
     end.
 
--spec hunt_context(kz_proplist()) -> api_binary().
+-spec hunt_context(kz_proplist()) -> maybe(binary()).
 hunt_context(Props) ->
     props:get_value(<<"Hunt-Context">>, Props, ?DEFAULT_FREESWITCH_CONTEXT).
 
@@ -679,7 +679,7 @@ config_el(Name, Desc, Content) ->
                 ,content=Content
                }.
 
--spec channel_el(api_binary(), xml_el() | xml_els()) -> xml_el() | xml_els().
+-spec channel_el(maybe(binary()), xml_el() | xml_els()) -> xml_el() | xml_els().
 channel_el('undefined', Content) -> Content;
 channel_el(UUID, Content) ->
     channel_el(UUID, <<"channel ", (kz_util:to_binary(UUID))/binary, " tracked by kazoo">>, Content).
@@ -782,7 +782,7 @@ param_el(Name, Value) ->
                             ]
                }.
 
--spec maybe_param_el(xml_attrib_value(), xml_attrib_value()) -> xml_el() | 'undefined'.
+-spec maybe_param_el(xml_attrib_value(), xml_attrib_value()) -> maybe(xml_el()).
 maybe_param_el(Name, Value) ->
     case kz_util:is_empty(Value) of
         'true' -> 'undefined';
@@ -873,7 +873,7 @@ context_el(Name, Children) ->
                }.
 
 -spec extension_el(xml_els()) -> xml_el().
--spec extension_el(xml_attrib_value(), xml_attrib_value() | 'undefined', xml_els()) -> xml_el().
+-spec extension_el(xml_attrib_value(), maybe(xml_attrib_value()), xml_els()) -> xml_el().
 extension_el(Children) ->
     #xmlElement{name='extension'
                 ,content=Children
@@ -892,7 +892,7 @@ extension_el(Name, Continue, Children) ->
                 ,content=[Child || Child <- Children, Child =/= 'undefined']
                }.
 
--spec condition_el(xml_el() | xml_els() | 'undefined') -> xml_el().
+-spec condition_el(maybe(xml_el() | xml_els())) -> xml_el().
 condition_el(Child) when not is_list(Child) ->
     condition_el([Child]);
 condition_el(Children) ->
@@ -900,7 +900,7 @@ condition_el(Children) ->
                 ,content=[Child || Child <- Children, Child =/= 'undefined']
                }.
 
--spec condition_el(xml_el() | xml_els() | 'undefined', xml_attrib_value(), xml_attrib_value()) -> xml_el().
+-spec condition_el(maybe(xml_el() | xml_els()), xml_attrib_value(), xml_attrib_value()) -> xml_el().
 condition_el(Child, Field, Expression) when not is_list(Child) ->
     condition_el([Child], Field, Expression);
 condition_el(Children, Field, Expression) ->

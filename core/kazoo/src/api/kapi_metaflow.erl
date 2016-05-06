@@ -71,8 +71,8 @@ unbind_q(Queue, Props) ->
 declare_exchanges() ->
     amqp_util:kapps_exchange().
 
--spec publish_req(api_terms()) -> 'ok'.
--spec publish_req(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_req(maybe(terms())) -> 'ok'.
+-spec publish_req(maybe(terms()), ne_binary()) -> 'ok'.
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Req, ContentType) ->

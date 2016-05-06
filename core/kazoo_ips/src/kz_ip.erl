@@ -264,7 +264,7 @@ is_available(IP) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec save(kz_json:object(), api_binary()) ->
+-spec save(kz_json:object(), maybe(binary())) ->
                   {'ok', ip()} |
                   {'error', any()}.
 save(JObj, PrevAccountId) ->
@@ -278,7 +278,7 @@ save(JObj, PrevAccountId) ->
             E
     end.
 
--spec reconcile_services(api_binary(), api_binary()) -> 'false' | kz_services:services().
+-spec reconcile_services(maybe(binary()), maybe(binary())) -> 'false' | kz_services:services().
 reconcile_services('undefined', AccountId) ->
     kz_services:reconcile(AccountId, <<"ips">>);
 reconcile_services(AccountId, 'undefined') ->

@@ -45,14 +45,14 @@
 -spec new() -> diversion().
 new() -> kz_json:new().
 
--spec reason(diversion()) -> api_binary().
+-spec reason(diversion()) -> maybe(binary()).
 -spec counter(diversion()) -> non_neg_integer().
--spec limit(diversion()) -> api_integer().
--spec privacy(diversion()) -> api_binary().
--spec screen(diversion()) -> api_binary().
--spec extensions(diversion()) -> api_list().
--spec address(diversion()) -> api_binary().
--spec user(diversion()) -> api_binary().
+-spec limit(diversion()) -> maybe(integer()).
+-spec privacy(diversion()) -> maybe(binary()).
+-spec screen(diversion()) -> maybe(binary()).
+-spec extensions(diversion()) -> maybe(list()).
+-spec address(diversion()) -> maybe(binary()).
+-spec user(diversion()) -> maybe(binary()).
 
 user(JObj) ->
     knm_sip:user(knm_sip:parse(address(JObj))).

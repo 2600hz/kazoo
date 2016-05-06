@@ -217,7 +217,7 @@ set_owner(JObj) ->
         {'error', _R} -> JObj
     end.
 
--spec get_owner(api_binary(), ne_binary()) ->
+-spec get_owner(maybe(binary()), ne_binary()) ->
                        {'ok', kz_json:object()} |
                        {'error', any()}.
 get_owner('undefined', _) -> {'error', 'undefined'};
@@ -342,7 +342,7 @@ settings_feature_keys(JObj) ->
     end.
 
 -spec get_feature_key(ne_binary(), ne_binary(), binary(), binary(), ne_binary()) ->
-                             api_object().
+                             maybe(kz_json:object()).
 get_feature_key(<<"presence">> = Type, Value, Brand, Family, AccountId) ->
     {'ok', UserJObj} = get_user(AccountId, Value),
     case kz_device:presence_id(UserJObj) of
@@ -392,11 +392,11 @@ get_feature_key(<<"parking">> = Type, Value, Brand, Family, _AccountId) ->
        )
      ).
 
--spec get_line_key(ne_binary(), ne_binary()) -> api_binary().
+-spec get_line_key(ne_binary(), ne_binary()) -> maybe(binary()).
 get_line_key(<<"yealink">>, _) -> <<"0">>;
 get_line_key(_, _) -> 'undefined'.
 
--spec get_feature_key_type(ne_binary(), binary(), binary()) -> api_object().
+-spec get_feature_key_type(ne_binary(), binary(), binary()) -> maybe(kz_json:object()).
 get_feature_key_type(Type, Brand, Family) ->
     kz_json:get_first_defined([[Brand, Family, Type]
                                ,[Brand, <<"_">>, Type]
@@ -410,7 +410,7 @@ get_user(AccountId, UserId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     kz_datamgr:open_cache_doc(AccountDb, UserId).
 
--spec maybe_add_feature_key(ne_binary(), api_object(), kz_json:object()) -> kz_json:object().
+-spec maybe_add_feature_key(ne_binary(), maybe(kz_json:object()), kz_json:object()) -> kz_json:object().
 maybe_add_feature_key(_Key, 'undefined', JObj) -> JObj;
 maybe_add_feature_key(Key, FeatureKey, JObj) ->
     kz_json:set_value(
@@ -459,7 +459,7 @@ settings_audio([Codec|Codecs], [Key|Keys], JObj) ->
 %% Send provisioning request
 %% @end
 %%--------------------------------------------------------------------
--spec send_req(atom(), api_object(), ne_binary(), ne_binary(), api_binary()) -> 'ok'.
+-spec send_req(atom(), maybe(kz_json:object()), ne_binary(), ne_binary(), maybe(binary())) -> 'ok'.
 
 send_req('devices_post', JObj, AuthToken, AccountId, MACAddress) ->
     Data = kz_json:encode(device_payload(JObj)),
@@ -631,7 +631,7 @@ check_request(Data) ->
             end
     end.
 
--spec get_schema() -> api_object().
+-spec get_schema() -> maybe(kz_json:object()).
 get_schema() ->
     case kz_json_schema:load(?SCHEMA) of
         {'ok', SchemaJObj} -> SchemaJObj;
@@ -640,7 +640,7 @@ get_schema() ->
             'undefined'
     end.
 
--spec handle_validation_error(jesse_error:error_reasons(), api_binary()) -> 'ok'.
+-spec handle_validation_error(jesse_error:error_reasons(), maybe(binary())) -> 'ok'.
 handle_validation_error([], AccountId) ->
     lager:error("not sending data to provisioner, data failed to validate in ~s", [AccountId]);
 handle_validation_error([{'data_invalid', _, _Reason, _Key, _Value}|Errors], AccountId) ->

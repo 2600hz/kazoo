@@ -145,7 +145,7 @@ select_carrier_module(Job) ->
             ?CARRIER_LOCAL
     end.
 
--spec maybe_create_number(kz_json:object(), ne_binary(), ne_binary(), api_binary(), ne_binary()) ->
+-spec maybe_create_number(kz_json:object(), ne_binary(), ne_binary(), maybe(binary()), ne_binary()) ->
                                  kz_json:object().
 maybe_create_number(Job, AccountId, AuthAccountId, CarrierModule, Number) ->
     case kz_json:get_first_defined([[?KEY_SUCCESS, Number]
@@ -158,7 +158,7 @@ maybe_create_number(Job, AccountId, AuthAccountId, CarrierModule, Number) ->
             Job
     end.
 
--spec create_number(kz_json:object(), ne_binary(), ne_binary(), api_binary(), ne_binary()) ->
+-spec create_number(kz_json:object(), ne_binary(), ne_binary(), maybe(binary()), ne_binary()) ->
                            kz_json:object().
 create_number(Job, AccountId, AuthAccountId, CarrierModule, DID) ->
     Options = [{'assign_to', AccountId}

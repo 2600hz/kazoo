@@ -18,7 +18,7 @@
 -define(SCHEMA_KEYWORDS_MAXLENGTH, <<"maxLength">>).
 
 %%% Load schema
--spec find_schema(ne_binary()) -> api_object().
+-spec find_schema(ne_binary()) -> maybe(kz_json:object()).
 find_schema(<<_/binary>> = Schema) ->
     case kz_json_schema:load(Schema) of
         {'ok', SchemaJObj} -> SchemaJObj;
@@ -41,7 +41,7 @@ properties(Key, Schema) ->
 %%% Keywords
 %%% ==================================
 %% String
--spec max_length(kz_json:key(), ne_binary()) -> api_object().
+-spec max_length(kz_json:key(), ne_binary()) -> maybe(kz_json:object()).
 max_length(Key, Schema) ->
     Properties = properties(Key, Schema),
     kz_json:get_value(?SCHEMA_KEYWORDS_MAXLENGTH, Properties).

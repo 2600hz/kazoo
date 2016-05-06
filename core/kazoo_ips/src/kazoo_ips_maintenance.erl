@@ -139,7 +139,7 @@ delete(IP) ->
 -spec summary() -> 'no_return'.
 summary() -> summary('undefined').
 
--spec summary(api_binary()) -> 'no_return'.
+-spec summary(maybe(binary())) -> 'no_return'.
 summary(Host) ->
     _ = case kz_ips:summary(Host) of
             {'ok', []} ->

@@ -93,7 +93,7 @@ type() -> ?PVT_TYPE.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec id(doc()) -> api_binary().
+-spec id(doc()) -> maybe(binary()).
 id(JObj) ->
     kz_doc:id(JObj).
 
@@ -102,7 +102,7 @@ id(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(api_binary()) -> {'ok', doc()} |
+-spec fetch(maybe(binary())) -> {'ok', doc()} |
                             {'error', any()}.
 fetch('undefined') ->
     {'error', 'invalid_db_name'};
@@ -116,7 +116,7 @@ fetch(<<_/binary>> = Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec name(doc()) -> api_binary().
+-spec name(doc()) -> maybe(binary()).
 -spec name(doc(), Default) -> ne_binary() | Default.
 name(JObj) ->
     name(JObj, 'undefined').
@@ -137,7 +137,7 @@ set_name(JObj, Name) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec realm(doc()) -> api_binary().
+-spec realm(doc()) -> maybe(binary()).
 -spec realm(doc(), Default) -> ne_binary() | Default.
 realm(JObj) ->
     realm(JObj, 'undefined').
@@ -158,7 +158,7 @@ set_realm(JObj, Realm) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec language(doc()) -> api_binary().
+-spec language(doc()) -> maybe(binary()).
 language(JObj) ->
     kz_json:get_value(?LANGUAGE, JObj).
 
@@ -176,7 +176,7 @@ set_language(JObj, Language) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec timezone(ne_binary() | doc()) -> api_binary().
+-spec timezone(ne_binary() | doc()) -> maybe(binary()).
 -spec timezone(ne_binary() | doc(), Default) -> ne_binary() | Default.
 timezone(AccountId)
   when is_binary(AccountId) ->
@@ -195,7 +195,7 @@ timezone(JObj, Default) ->
         TZ -> TZ
     end.
 
--spec parent_timezone(ne_binary(), api_binary()) -> ne_binary().
+-spec parent_timezone(ne_binary(), maybe(binary())) -> ne_binary().
 parent_timezone(AccountId, AccountId) -> ?DEFAULT_TIMEZONE;
 parent_timezone(_AccountId, 'undefined') -> ?DEFAULT_TIMEZONE;
 parent_timezone(_AccountId, ParentId) -> timezone(ParentId).
@@ -214,7 +214,7 @@ set_timezone(JObj, Timezone) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec low_balance_threshold(doc()) -> api_float().
+-spec low_balance_threshold(doc()) -> maybe(float()).
 low_balance_threshold(JObj) ->
     low_balance_threshold(JObj, 'undefined').
 
@@ -272,7 +272,7 @@ low_balance_enabled_exists(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec low_balance_tstamp(doc()) -> api_number().
+-spec low_balance_tstamp(doc()) -> maybe(number()).
 low_balance_tstamp(JObj) ->
     kz_json:get_integer_value(?LOW_BALANCE_TSTAMP, JObj).
 
@@ -294,7 +294,7 @@ remove_low_balance_tstamp(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec topup_threshold(doc()) -> api_float().
+-spec topup_threshold(doc()) -> maybe(float()).
 topup_threshold(JObj) ->
     topup_threshold(JObj, 'undefined').
 
@@ -311,7 +311,7 @@ set_topup_threshold(JObj, Threshold) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec parent_account_id(doc()) -> api_binary().
+-spec parent_account_id(doc()) -> maybe(binary()).
 parent_account_id(JObj) ->
     case tree(JObj) of
         [] -> 'undefined';
@@ -344,7 +344,7 @@ set_tree(JObj, Tree) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec notification_preference(doc()) -> api_binary().
+-spec notification_preference(doc()) -> maybe(binary()).
 notification_preference(JObj) ->
     kz_json:get_value(?NOTIFY_PREF, JObj).
 
@@ -389,7 +389,7 @@ disable(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec api_key(doc()) -> api_binary().
+-spec api_key(doc()) -> maybe(binary()).
 api_key(JObj) ->
     kz_json:get_value(?API_KEY, JObj).
 
@@ -433,7 +433,7 @@ allow_number_additions(JObj) ->
 set_allow_number_additions(JObj, IsAllowed) ->
     kz_json:set_value(?ALLOW_NUMBER_ADDITIONS, kz_util:is_true(IsAllowed), JObj).
 
--spec trial_expiration(doc()) -> api_integer().
+-spec trial_expiration(doc()) -> maybe(integer()).
 -spec trial_expiration(doc(), Default) -> integer() | Default.
 trial_expiration(JObj) ->
     trial_expiration(JObj, 'undefined').
@@ -551,7 +551,7 @@ set_reseller_id(JObj, ResellerId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec dial_plan(doc()) -> api_object().
+-spec dial_plan(doc()) -> maybe(kz_json:object()).
 -spec dial_plan(doc(), Default) -> kz_json:object() | Default.
 dial_plan(JObj) ->
     dial_plan(JObj, 'undefined').

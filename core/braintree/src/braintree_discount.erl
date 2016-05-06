@@ -93,7 +93,7 @@ record_to_json(#bt_discount{id=Id, amount=Amount, quantity=Q}) ->
 %% Convert a given json obj into a record
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_record(api_object()) -> bt_discount() | 'undefined'.
+-spec json_to_record(maybe(kz_json:object())) -> maybe(bt_discount()).
 json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->
     #bt_discount{id = kz_doc:id(JObj)

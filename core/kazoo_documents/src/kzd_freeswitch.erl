@@ -51,7 +51,7 @@
 -define(CHANNEL_VAR_PREFIX, "ecallmgr_").
 -define(CCV(Key), <<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>).
 
--spec caller_id_name(kz_proplist()) -> api_binary().
+-spec caller_id_name(kz_proplist()) -> maybe(binary()).
 -spec caller_id_name(kz_proplist(), Default) -> ne_binary() | Default.
 caller_id_name(Props) ->
     caller_id_name(Props, 'undefined').
@@ -63,7 +63,7 @@ caller_id_name(Props, Default) ->
                             ,Default
                            ).
 
--spec caller_id_number(kz_proplist()) -> api_binary().
+-spec caller_id_number(kz_proplist()) -> maybe(binary()).
 -spec caller_id_number(kz_proplist(), Default) -> ne_binary() | Default.
 caller_id_number(Props) ->
     caller_id_number(Props, 'undefined').
@@ -75,7 +75,7 @@ caller_id_number(Props, Default) ->
                             ,Default
                            ).
 
--spec callee_id_name(kz_proplist()) -> api_binary().
+-spec callee_id_name(kz_proplist()) -> maybe(binary()).
 -spec callee_id_name(kz_proplist(), Default) -> ne_binary() | Default.
 callee_id_name(Props) ->
     callee_id_name(Props, 'undefined').
@@ -87,7 +87,7 @@ callee_id_name(Props, Default) ->
                             ,Default
                            ).
 
--spec callee_id_number(kz_proplist()) -> api_binary().
+-spec callee_id_number(kz_proplist()) -> maybe(binary()).
 -spec callee_id_number(kz_proplist(), Default) -> ne_binary() | Default.
 callee_id_number(Props) ->
     callee_id_number(Props, 'undefined').
@@ -99,7 +99,7 @@ callee_id_number(Props, Default) ->
                             ,Default
                            ).
 
--spec dialed_number(kz_proplist()) -> api_binary().
+-spec dialed_number(kz_proplist()) -> maybe(binary()).
 dialed_number(Props) ->
     props:get_first_defined([<<"variable_destination_number">>
                              ,<<"Caller-Destination-Number">>
@@ -107,7 +107,7 @@ dialed_number(Props) ->
                             ,Props
                            ).
 
--spec call_id(kz_proplist()) -> api_binary().
+-spec call_id(kz_proplist()) -> maybe(binary()).
 call_id(Props) ->
     props:get_first_defined([<<"Caller-Unique-ID">>
                              ,<<"Unique-ID">>
@@ -118,15 +118,15 @@ call_id(Props) ->
                              ,?RESIGNING_UUID
                             ], Props).
 
--spec other_leg_call_id(kz_proplist()) -> api_binary().
+-spec other_leg_call_id(kz_proplist()) -> maybe(binary()).
 other_leg_call_id(Props) ->
     props:get_value(<<"Other-Leg-Unique-ID">>, Props).
 
--spec call_direction(kz_proplist()) -> api_binary().
+-spec call_direction(kz_proplist()) -> maybe(binary()).
 call_direction(Props) ->
     props:get_binary_value([<<"Caller-Logical-Direction">>, <<"Call-Direction">>], Props).
 
--spec resource_type(kz_proplist()) -> api_binary().
+-spec resource_type(kz_proplist()) -> maybe(binary()).
 -spec resource_type(kz_proplist(), Default) -> ne_binary() | Default.
 resource_type(Props) ->
     resource_type(Props, 'undefined').
@@ -134,11 +134,11 @@ resource_type(Props) ->
 resource_type(Props, Default) ->
     props:get_value(<<"Resource-Type">>, Props, Default).
 
--spec channel_authorized(kz_proplist()) -> api_binary().
+-spec channel_authorized(kz_proplist()) -> maybe(binary()).
 channel_authorized(Props) ->
     ccv(Props, <<"Channel-Authorized">>).
 
--spec hunt_destination_number(kz_proplist()) -> api_binary().
+-spec hunt_destination_number(kz_proplist()) -> maybe(binary()).
 hunt_destination_number(Props) ->
     props:get_value(<<"Hunt-Destination-Number">>, Props).
 
@@ -150,43 +150,43 @@ is_channel_recovering(Props) ->
 is_channel_recovering(Props, Default) ->
     props:is_true(<<"variable_recovered">>, Props, Default).
 
--spec is_consuming_global_resource(kz_proplist()) -> api_boolean().
--spec is_consuming_global_resource(kz_proplist(), api_boolean()) -> api_boolean().
+-spec is_consuming_global_resource(kz_proplist()) -> maybe(boolean()).
+-spec is_consuming_global_resource(kz_proplist(), maybe(boolean())) -> maybe(boolean()).
 is_consuming_global_resource(Props) ->
     is_consuming_global_resource(Props, 'undefined').
 
 is_consuming_global_resource(Props, Default) ->
     kz_util:is_true(ccv(Props, <<"Global-Resource">>, Default)).
 
--spec resource_id(kz_proplist()) -> api_binary().
+-spec resource_id(kz_proplist()) -> maybe(binary()).
 resource_id(Props) ->
     ccv(Props, <<"Resource-ID">>).
 
--spec authorizing_id(kz_proplist()) -> api_binary().
+-spec authorizing_id(kz_proplist()) -> maybe(binary()).
 authorizing_id(Props) ->
     ccv(Props, <<"Authorizing-ID">>).
 
--spec authorizing_type(kz_proplist()) -> api_binary().
+-spec authorizing_type(kz_proplist()) -> maybe(binary()).
 authorizing_type(Props) ->
     ccv(Props, <<"Authorizing-Type">>).
 
--spec account_id(kz_proplist()) -> api_binary().
+-spec account_id(kz_proplist()) -> maybe(binary()).
 account_id(Props) ->
     ccv(Props, <<"Account-ID">>).
 
--spec account_billing(kz_proplist()) -> api_binary().
+-spec account_billing(kz_proplist()) -> maybe(binary()).
 account_billing(Props) ->
     ccv(Props, <<"Account-Billing">>).
 
--spec reseller_id(kz_proplist()) -> api_binary().
+-spec reseller_id(kz_proplist()) -> maybe(binary()).
 reseller_id(Props) ->
     ccv(Props, <<"Reseller-ID">>).
 
--spec reseller_billing(kz_proplist()) -> api_binary().
+-spec reseller_billing(kz_proplist()) -> maybe(binary()).
 reseller_billing(Props) ->
     ccv(Props, <<"Reseller-Billing">>).
 
--spec to_did(kz_proplist()) -> api_binary().
+-spec to_did(kz_proplist()) -> maybe(binary()).
 to_did(Props) ->
     props:get_first_defined([?CCV(<<"E164-Destination">>)
                              ,?CCV(<<"Original-Number">>)
@@ -195,7 +195,7 @@ to_did(Props) ->
                             ,Props
                            ).
 
--spec ccv(kz_proplist(), ne_binary()) -> api_binary().
+-spec ccv(kz_proplist(), ne_binary()) -> maybe(binary()).
 ccv(Props, Key) ->
     ccv(Props, Key, 'undefined').
 
@@ -203,19 +203,19 @@ ccv(Props, Key) ->
 ccv(Props, Key, Default) ->
     props:get_value(?CCV(Key), Props, Default).
 
--spec hangup_code(kz_proplist()) -> api_binary().
+-spec hangup_code(kz_proplist()) -> maybe(binary()).
 hangup_code(Props) ->
     props:get_first_defined([<<"variable_proto_specific_hangup_cause">>
                              ,<<"variable_last_bridge_proto_specific_hangup_cause">>
                             ], Props).
 
--spec disposition(kz_proplist()) -> api_binary().
+-spec disposition(kz_proplist()) -> maybe(binary()).
 disposition(Props) ->
     props:get_first_defined([<<"variable_originate_disposition">>
                              ,<<"variable_endpoint_disposition">>
                             ], Props).
 
--spec hangup_cause(kz_proplist()) -> api_binary().
+-spec hangup_cause(kz_proplist()) -> maybe(binary()).
 hangup_cause(Props) ->
     case props:get_value(<<"variable_current_application">>, Props) of
         <<"bridge">> ->
@@ -230,35 +230,35 @@ hangup_cause(Props) ->
                                     ], Props)
     end.
 
--spec transfer_history(kz_proplist()) -> api_binary() | kz_proplist().
+-spec transfer_history(kz_proplist()) -> maybe(binary()) | kz_proplist().
 transfer_history(Props) ->
     props:get_value(<<"variable_transfer_history">>, Props).
 
--spec transfer_source(kz_proplist()) -> api_binary() | kz_proplist().
+-spec transfer_source(kz_proplist()) -> maybe(binary()) | kz_proplist().
 transfer_source(Props) ->
     props:get_value(<<"variable_transfer_source">>, Props).
 
--spec raw_application_name(kz_proplist()) -> api_binary().
+-spec raw_application_name(kz_proplist()) -> maybe(binary()).
 raw_application_name(Props) ->
     props:get_first_defined([<<"Application">>
                              ,<<"kazoo_application_name">>
                              ,<<"Event-Subclass">>
                             ], Props).
 
--spec application_name(kz_proplist()) -> api_binary().
+-spec application_name(kz_proplist()) -> maybe(binary()).
 application_name(Props) ->
     props:get_first_defined([<<"kazoo_application_name">>
                              ,<<"Application">>
                              ,<<"Event-Subclass">>
                             ], Props).
 
--spec event_name(kz_proplist()) -> api_binary().
+-spec event_name(kz_proplist()) -> maybe(binary()).
 event_name(Props) ->
     props:get_first_defined([<<"kazoo_event_name">>
                              ,<<"Event-Name">>
                             ], Props).
 
--spec from_network_ip(kz_proplist()) -> api_binary().
+-spec from_network_ip(kz_proplist()) -> maybe(binary()).
 from_network_ip(Props) ->
     props:get_first_defined([<<"variable_sip_h_X-AUTH-IP">>
                              ,<<"variable_sip_received_ip">>
@@ -266,7 +266,7 @@ from_network_ip(Props) ->
                             ,Props
                            ).
 
--spec from_network_port(kz_proplist()) -> api_binary().
+-spec from_network_port(kz_proplist()) -> maybe(binary()).
 from_network_port(Props) ->
     props:get_first_defined([<<"variable_sip_h_X-AUTH-PORT">>
                              ,<<"variable_sip_received_port">>
@@ -274,7 +274,7 @@ from_network_port(Props) ->
                             ,Props
                            ).
 
--spec user_agent(kz_proplist()) -> api_binary().
+-spec user_agent(kz_proplist()) -> maybe(binary()).
 user_agent(Props) ->
     props:get_first_defined([<<"variable_sip_user_agent">>
                              ,<<"sip_user_agent">>

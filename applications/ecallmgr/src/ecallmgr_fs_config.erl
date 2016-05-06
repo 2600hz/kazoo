@@ -156,7 +156,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec handle_config_req(atom(), ne_binary(), ne_binary(), kz_proplist() | 'undefined') -> fs_sendmsg_ret().
+-spec handle_config_req(atom(), ne_binary(), ne_binary(), maybe(kz_proplist())) -> fs_sendmsg_ret().
 handle_config_req(Node, Id, <<"acl.conf">>, _Props) ->
     kz_util:put_callid(Id),
 
@@ -205,7 +205,7 @@ handle_config_req(Node, Id, Conf, Data) ->
     kz_util:put_callid(Id),
     handle_config_req(Node, Id, Conf, Data, ecallmgr_config:get(<<"configuration_handlers">>)).
 
--spec handle_config_req(atom(), ne_binary(), ne_binary(), kz_proplist() | 'undefined', api_object() | binary()) -> fs_sendmsg_ret().
+-spec handle_config_req(atom(), ne_binary(), ne_binary(), maybe(kz_proplist()), maybe(kz_json:object()) | binary()) -> fs_sendmsg_ret().
 handle_config_req(Node, Id, Conf, _Data, 'undefined') ->
     config_req_not_handled(Node, Id, Conf);
 handle_config_req(Node, Id, Conf, Data, <<_/binary>> = Module) ->
@@ -226,7 +226,7 @@ config_req_not_handled(Node, Id, Conf) ->
     lager:debug("ignoring conf ~s: ~s", [Conf, Id]),
     freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(NotHandled)).
 
--spec generate_acl_xml(api_object()) -> api_binary().
+-spec generate_acl_xml(maybe(kz_json:object())) -> maybe(binary()).
 generate_acl_xml('undefined') ->
     'undefined';
 generate_acl_xml(SysconfResp) ->
@@ -394,7 +394,7 @@ fix_flite_tts(Profile) ->
     kz_json:set_value(<<"tts-voice">>, ecallmgr_fs_flite:voice(Voice), Profile).
 
 
--spec maybe_fetch_conference_profile(atom(), ne_binary(), api_binary()) -> fs_sendmsg_ret().
+-spec maybe_fetch_conference_profile(atom(), ne_binary(), maybe(binary())) -> fs_sendmsg_ret().
 maybe_fetch_conference_profile(Node, Id, 'undefined') ->
     lager:debug("failed to lookup undefined conference profile"),
     {'ok', XmlResp} = ecallmgr_fs_xml:not_found(),

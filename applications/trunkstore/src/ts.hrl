@@ -42,14 +42,14 @@
 -type active_calls() :: [{binary(), 'flat_rate' | 'per_min'}].
 
 -record(ts_callflow_state, {
-          aleg_callid :: api_binary()
-          ,bleg_callid :: api_binary()
+          aleg_callid :: maybe(binary())
+          ,bleg_callid :: maybe(binary())
           ,acctid = <<>> :: binary()
           ,acctdb = <<>> :: binary()
           ,route_req_jobj = kz_json:new() :: kz_json:object()
           ,ep_data = kz_json:new() :: kz_json:object() %% data for the endpoint, either an actual endpoint or an offnet request
           ,my_q = <<>> :: binary()
-          ,callctl_q :: api_binary()
+          ,callctl_q :: maybe(binary())
           ,call_cost = 0.0 :: float()
           ,failover :: kz_json:object()
          }).
@@ -60,8 +60,8 @@
           ,to_domain = <<>> :: binary()
           ,from_user = <<>> :: binary()
           ,from_domain = <<>> :: binary()
-          ,auth_user = <<>> :: api_binary()      % what username did we authenticate with
-          ,auth_realm = <<>> :: api_binary()     % what realm did we auth with
+          ,auth_user = <<>> :: maybe(binary())      % what username did we authenticate with
+          ,auth_realm = <<>> :: maybe(binary())     % what realm did we auth with
           ,direction = <<>> :: binary()                  % what direction is the call (relative to client)
           ,server_id = <<>> :: binary()                  % Server of the DID
           ,failover = {} :: tuple()                      % Failover information {type, value}. Type=(sip|e164), Value=("sip:user@domain"|"+1234567890")
@@ -71,7 +71,7 @@
           ,inbound_format = <<>> :: binary()             % how does the server want the number? "E.164" | "NPANXXXXXX" | "1NPANXXXXXX" | "USERNAME"
           ,media_handling = <<>> :: binary()             % are we in the media path or not "process" | "bypass"
           ,progress_timeout = none :: none | integer()   %% for inbound with failover, how long do we wait
-          ,force_outbound = undefined :: undefined | boolean() %% if true, and call is outbound, don't try to route through our network; force over a carrier
+          ,force_outbound = undefined :: maybe(boolean()) %% if true, and call is outbound, don't try to route through our network; force over a carrier
           ,codecs = [] :: list()                         % what codecs to use (t38, g729, g711, etc...)
           ,rate = 0.0 :: float()                 % rate for the inbound leg, per minute
           ,rate_increment = 60 :: integer()      % time, in sec, to bill per

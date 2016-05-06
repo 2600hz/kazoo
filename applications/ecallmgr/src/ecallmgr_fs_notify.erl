@@ -251,7 +251,7 @@ register_overwrite(JObj, Props) ->
                   ,Node
                  ]).
 
--spec ensure_contact_user(ne_binary(), ne_binary(), ne_binary()) -> api_binary().
+-spec ensure_contact_user(ne_binary(), ne_binary(), ne_binary()) -> maybe(binary()).
 ensure_contact_user(OriginalContact, Username, Realm) ->
     ecallmgr_util:fix_contact(OriginalContact, Username, Realm).
 

@@ -193,7 +193,7 @@ maybe_alert(HangupCause, Stats, Key) ->
     Value      = props:get_value(Key, Stats),
     maybe_alert_on_threshold(Value, Threshold, Key).
 
--spec maybe_alert_on_threshold(number(), number() | 'undefined', atom()) -> boolean().
+-spec maybe_alert_on_threshold(number(), maybe(number()), atom()) -> boolean().
 maybe_alert_on_threshold(_Value, 'undefined', _Key) -> 'false';
 maybe_alert_on_threshold(Value, Threshold, Key) ->
     Value > Threshold * folsom_minutes(Key).

@@ -341,7 +341,7 @@ load_outgoing_fax_doc(Id, Context) ->
     Ctx = read(Id, Context),
     crossbar_util:apply_response_map(Ctx, ?OUTGOING_FAX_DOC_MAP).
 
--spec get_delivered_date(kz_json:object()) -> api_integer().
+-spec get_delivered_date(kz_json:object()) -> maybe(integer()).
 get_delivered_date(JObj) ->
     case kz_json:get_value(<<"pvt_delivered_date">>, JObj) of
         'undefined' ->
@@ -352,7 +352,7 @@ get_delivered_date(JObj) ->
         Date -> Date
     end.
 
--spec get_execution_status(ne_binary(), kz_json:object()) -> api_binary().
+-spec get_execution_status(ne_binary(), kz_json:object()) -> maybe(binary()).
 get_execution_status(Id, JObj) ->
     case kz_json:get_value(<<"pvt_job_status">>, JObj) of
         <<"processing">> = S ->
@@ -391,7 +391,7 @@ load_fax_meta(FaxId, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(maybe(binary()), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = cb_context:account_db(Context),
@@ -482,7 +482,7 @@ inbox_summary(Context) -> fax_modb_summary(Context, ?INBOX).
 outbox_summary(Context) -> fax_modb_summary(Context, ?OUTBOX).
 
 -spec get_incoming_view_and_filter(kz_json:object(), ne_binary()) ->
-          {ne_binary(), api_binaries(), api_binaries()}.
+          {ne_binary(), maybe([maybe(binary())]), maybe([maybe(binary())])}.
 get_incoming_view_and_filter(JObj, Folder) ->
     Id = kz_doc:id(JObj),
     case kz_doc:type(JObj) of

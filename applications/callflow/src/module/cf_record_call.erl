@@ -73,7 +73,7 @@ get_recordings(Call) ->
         Q -> Q
     end.
 
--spec get_action(api_object()) -> ne_binary().
+-spec get_action(maybe(kz_json:object())) -> ne_binary().
 get_action('undefined') -> <<"start">>;
 get_action(Data) ->
     case kz_json:get_value(<<"action">>, Data) of

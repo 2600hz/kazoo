@@ -137,7 +137,7 @@ handle_system_alert(JObj, _Props) ->
             handle_req_as_http(JObj, Url, UseEmail)
     end.
 
--spec handle_req_as_http(kz_json:object(), api_binary(), boolean()) -> 'ok'.
+-spec handle_req_as_http(kz_json:object(), maybe(binary()), boolean()) -> 'ok'.
 handle_req_as_http(JObj, 'undefined', UseEmail) ->
     handle_req_as_email(JObj, UseEmail);
 handle_req_as_http(JObj, Url, UseEmail) ->

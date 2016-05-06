@@ -292,7 +292,7 @@ e911_options(Number, AddressJObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_unit(ne_binary()) -> {api_binary(), api_binary()}.
+-spec get_unit(ne_binary()) -> {maybe(binary()), maybe(binary())}.
 get_unit(ExtendedAddress) ->
     case binary:split(ExtendedAddress, <<" ">>) of
         [UnitType, UnitNumber|_] -> {UnitType, UnitNumber};
@@ -306,7 +306,7 @@ get_unit(ExtendedAddress) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_account_name(ne_binary()) -> api_binary().
+-spec get_account_name(ne_binary()) -> maybe(binary()).
 get_account_name(AccountId) ->
     case kz_account:fetch(AccountId) of
         {'error', _Error} ->

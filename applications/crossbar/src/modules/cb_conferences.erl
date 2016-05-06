@@ -309,7 +309,7 @@ do_conference_action(Context, Id, Action, ParticipantId) ->
         _ -> cb_context:add_system_error('forbidden', Context)
     end.
 
--spec perform_conference_action(kapps_conference:conference(), ne_binary(), api_integer()) -> 'ok'.
+-spec perform_conference_action(kapps_conference:conference(), ne_binary(), maybe(integer())) -> 'ok'.
 perform_conference_action(Conference, <<"mute">>, ParticipantId) ->
     kapps_conference_command:mute_participant(ParticipantId, Conference),
     kapps_conference_command:prompt(<<"conf-muted">>, ParticipantId, Conference);
@@ -348,7 +348,7 @@ patch_conference(DocId, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(maybe(binary()), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context
                        ,kz_doc:set_type(cb_context:doc(Context), <<"conference">>)
@@ -367,7 +367,7 @@ normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 -spec normalize_users_results(kz_json:object(), kz_json:objects(), ne_binary()) ->
-                                     api_objects().
+                                     maybe(kz_json:objects()).
 normalize_users_results(JObj, Acc, UserId) ->
     case kz_json:get_value([<<"value">>, <<"owner_id">>], JObj) of
         'undefined' -> normalize_view_results(JObj, Acc);

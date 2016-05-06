@@ -73,8 +73,8 @@
 
 -record(kz_copy_doc, {source_dbname  :: ne_binary()
                       ,source_doc_id  :: ne_binary()
-                      ,dest_dbname = 'undefined' :: api_binary()
-                      ,dest_doc_id = 'undefined' :: api_binary()
+                      ,dest_dbname = 'undefined' :: maybe(binary())
+                      ,dest_doc_id = 'undefined' :: maybe(binary())
                      }).
 -type copy_doc() :: #kz_copy_doc{}.
 

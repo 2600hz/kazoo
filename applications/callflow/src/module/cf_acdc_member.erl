@@ -23,7 +23,7 @@
 -define(MEMBER_HANGUP, <<"member_hangup">>).
 
 -record(member_call, {call              :: kapps_call:call()
-                      ,queue_id         :: api_binary()
+                      ,queue_id         :: maybe(binary())
                       ,config_data = [] :: kz_proplist()
                       ,max_wait = 60 * ?MILLISECONDS_IN_SECOND :: max_wait()
                      }).
@@ -69,7 +69,7 @@ handle(Data, Call) ->
                       ,is_queue_full(MaxQueueSize, CurrQueueSize)
                      ).
 
--spec lookup_priority(kz_json:object(), kapps_call:call()) -> api_binary().
+-spec lookup_priority(kz_json:object(), kapps_call:call()) -> maybe(binary()).
 lookup_priority(Data, Call) ->
     FromData = kz_json:get_integer_value(<<"priority">>, Data),
     FromCall = kapps_call:custom_channel_var(<<"Call-Priority">>, Call),

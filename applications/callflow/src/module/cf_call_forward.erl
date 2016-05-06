@@ -29,7 +29,7 @@
 -type keys() :: #keys{}.
 
 -record(callfwd, {keys = #keys{} :: keys()
-                  ,doc_id = 'undefined' :: api_binary()
+                  ,doc_id = 'undefined' :: maybe(binary())
                   ,enabled = 'false' :: boolean()
                   ,number = <<>> :: binary()
                   ,require_keypress = 'true' :: boolean()
@@ -116,7 +116,7 @@ cf_menu(#callfwd{keys=#keys{menu_toggle_cf=Toggle
 %% not, and disabling it if it is
 %% @end
 %%--------------------------------------------------------------------
--spec cf_toggle(callfwd(), api_binary(), kapps_call:call()) -> callfwd().
+-spec cf_toggle(callfwd(), maybe(binary()), kapps_call:call()) -> callfwd().
 cf_toggle(#callfwd{enabled='false'
                    ,number=Number
                   }=CF, _, Call) when is_binary(Number), size(Number) > 0 ->
@@ -139,7 +139,7 @@ cf_toggle(CF, _, Call) ->
 %% document to enable call forwarding
 %% @end
 %%--------------------------------------------------------------------
--spec cf_activate(callfwd(), api_binary(), kapps_call:call()) -> callfwd().
+-spec cf_activate(callfwd(), maybe(binary()), kapps_call:call()) -> callfwd().
 cf_activate(CF1, CaptureGroup, Call) when is_atom(CaptureGroup); CaptureGroup =:= <<>> ->
     lager:info("activating call forwarding to '~s'", [CaptureGroup]),
     CF2 = #callfwd{number=Number} = cf_update_number(CF1, CaptureGroup, Call),
@@ -180,7 +180,7 @@ cf_deactivate(CF, Call) ->
 %% document with a new number
 %% @end
 %%--------------------------------------------------------------------
--spec cf_update_number(callfwd(), api_binary(), kapps_call:call()) -> callfwd().
+-spec cf_update_number(callfwd(), maybe(binary()), kapps_call:call()) -> callfwd().
 cf_update_number(#callfwd{interdigit_timeout=Interdigit}=CF, CaptureGroup, Call)
   when is_atom(CaptureGroup); CaptureGroup =:= <<>> ->
     EnterNumber = kz_media_util:get_prompt(<<"cf-enter_number">>, Call),
@@ -265,7 +265,7 @@ get_call_forward(Call) ->
         end,
     maybe_get_call_forward(Call, OwnerId).
 
--spec maybe_get_call_forward(kapps_call:call(), api_binary()) ->
+-spec maybe_get_call_forward(kapps_call:call(), maybe(binary())) ->
                                     callfwd() |
                                     {'error', callfwd()}.
 maybe_get_call_forward(_Call, 'undefined') ->

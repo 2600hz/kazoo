@@ -148,8 +148,8 @@ render(TemplateId, Macros, DataJObj, 'false') ->
 render(TemplateId, Macros, DataJObj, 'true') ->
     preview(TemplateId, Macros, DataJObj).
 
--spec templates_source(ne_binary(), api_binary() | kz_json:object()) -> api_binary().
--spec templates_source(ne_binary(), api_binary(), ne_binary()) -> api_binary().
+-spec templates_source(ne_binary(), maybe(binary()) | kz_json:object()) -> maybe(binary()).
+-spec templates_source(ne_binary(), maybe(binary()), ne_binary()) -> maybe(binary()).
 templates_source(_TemplateId, 'undefined') ->
     lager:warning("no account id for template ~s, no template to process", [_TemplateId]),
     'undefined';
@@ -287,7 +287,7 @@ load_preview_templates(DataJObj) ->
        ,{?TEXT_PLAIN, kz_json:get_value(<<"text">>, DataJObj)}
       ]).
 
--spec maybe_decode_html(api_binary()) -> api_binary().
+-spec maybe_decode_html(maybe(binary())) -> maybe(binary()).
 maybe_decode_html('undefined') -> 'undefined';
 maybe_decode_html(HTML) ->
     try base64:decode(HTML) of
@@ -494,7 +494,7 @@ update_bcc(Bcc, Acc) ->
                  ,fun kz_notification:set_bcc/2
                 ).
 
--spec update_field(api_object() | ne_binary(), update_acc(), fun(), fun()) ->
+-spec update_field(maybe(kz_json:object()) | ne_binary(), update_acc(), fun(), fun()) ->
                           update_acc().
 update_field('undefined', Acc, _GetFun, _SetFun) -> Acc;
 update_field(Value, {_IsUpdated, TemplateJObj}=Acc, GetFun, SetFun) ->

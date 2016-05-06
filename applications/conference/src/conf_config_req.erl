@@ -24,7 +24,7 @@ fetch_config(JObj, ConfigName) ->
     Config = kapps_config:get(?CONFIG_CAT, [<<"profiles">>, ConfigName]),
     fetch_config(JObj, ConfigName, Config).
 
--spec fetch_config(kz_json:object(), ne_binary(), api_object()) -> 'ok'.
+-spec fetch_config(kz_json:object(), ne_binary(), maybe(kz_json:object())) -> 'ok'.
 fetch_config(JObj, ConfigName, 'undefined') ->
     lager:debug("no profile defined for '~s', using default", [ConfigName]),
     fetch_config(JObj, ConfigName, default_profile());
@@ -70,14 +70,14 @@ add_conference_params(ConfigName, Profile) ->
               ]),
     kz_json:set_values(Props, Profile).
 
--spec max_participants(kapps_conference:conference()) -> api_binary().
+-spec max_participants(kapps_conference:conference()) -> maybe(binary()).
 max_participants(Conference) ->
     case kapps_conference:max_participants(Conference) of
         N when is_integer(N), N > 1 -> N;
         _Else -> 'undefined'
     end.
 
--spec max_members_sound(kapps_conference:conference()) -> api_binary().
+-spec max_members_sound(kapps_conference:conference()) -> maybe(binary()).
 max_members_sound(Conference) ->
     case kapps_conference:max_members_media(Conference) of
         'undefined' -> kz_media_util:get_prompt(?DEFAULT_MAX_MEMBERS_MEDIA);
@@ -100,8 +100,8 @@ get_conference(ConferenceID) ->
             kapps_conference:new()
     end.
 
--spec caller_controls(ne_binary()) -> api_object().
--spec caller_controls(ne_binary(), api_object()) -> api_object().
+-spec caller_controls(ne_binary()) -> maybe(kz_json:object()).
+-spec caller_controls(ne_binary(), maybe(kz_json:object())) -> maybe(kz_json:object()).
 caller_controls(?DEFAULT_PROFILE_NAME = ConfigName) ->
     caller_controls(ConfigName, ?CALLER_CONTROLS(ConfigName, ?DEFAULT_CALLER_CONTROLS_CONFIG));
 caller_controls(ConfigName) ->
@@ -111,8 +111,8 @@ caller_controls(_ConfigName, 'undefined') -> 'undefined';
 caller_controls(ConfigName, Controls) ->
     kz_json:from_list([{ConfigName, Controls}]).
 
--spec advertise(ne_binary()) -> api_object().
--spec advertise(ne_binary(), api_object()) -> api_object().
+-spec advertise(ne_binary()) -> maybe(kz_json:object()).
+-spec advertise(ne_binary(), maybe(kz_json:object())) -> maybe(kz_json:object()).
 advertise(?DEFAULT_PROFILE_NAME = ConfigName) ->
     advertise(ConfigName, ?ADVERTISE(ConfigName, ?DEFAULT_ADVERTISE_CONFIG));
 advertise(ConfigName) ->
@@ -121,8 +121,8 @@ advertise(ConfigName) ->
 advertise(_ConfigName, 'undefined') -> 'undefined';
 advertise(ConfigName, Advertise) -> kz_json:from_list([{ConfigName, Advertise}]).
 
--spec chat_permissions(ne_binary()) -> api_object().
--spec chat_permissions(ne_binary(), api_object()) -> api_object().
+-spec chat_permissions(ne_binary()) -> maybe(kz_json:object()).
+-spec chat_permissions(ne_binary(), maybe(kz_json:object())) -> maybe(kz_json:object()).
 chat_permissions(?DEFAULT_PROFILE_NAME = ConfigName) ->
     chat_permissions(ConfigName, ?CHAT_PERMISSIONS(ConfigName, ?DEFAULT_CHAT_CONFIG));
 chat_permissions(ConfigName) ->

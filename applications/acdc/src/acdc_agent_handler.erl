@@ -137,7 +137,7 @@ login_resp(JObj, Status) ->
             kapi_acdc_agent:publish_login_resp(ServerID, Prop)
     end.
 
--spec maybe_start_agent(api_binary(), api_binary()) ->
+-spec maybe_start_agent(maybe(binary()), maybe(binary())) ->
                                {'ok', pid()} |
                                {'exists', pid()} |
                                {'error', any()}.
@@ -243,7 +243,7 @@ handle_new_channel(JObj, AccountId) ->
     _ = kz_util:put_callid(JObj),
     handle_new_channel_acct(JObj, AccountId).
 
--spec handle_new_channel_acct(kz_json:object(), api_binary()) -> 'ok'.
+-spec handle_new_channel_acct(kz_json:object(), maybe(binary())) -> 'ok'.
 handle_new_channel_acct(_, 'undefined') -> 'ok';
 handle_new_channel_acct(JObj, AccountId) ->
     [FromUser, _FromHost] = binary:split(kz_json:get_value(<<"From">>, JObj), <<"@">>),
@@ -435,7 +435,7 @@ presence_id(JObj, AgentId) ->
     lager:debug("find presence in ~p", [JObj]),
     kz_json:get_value(<<"Presence-ID">>, JObj, AgentId).
 
--spec presence_state(kz_json:object(), api_binary()) -> api_binary().
+-spec presence_state(kz_json:object(), maybe(binary())) -> maybe(binary()).
 presence_state(JObj, State) ->
     kz_json:get_value(<<"Presence-State">>, JObj, State).
 

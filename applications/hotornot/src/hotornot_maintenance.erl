@@ -25,7 +25,7 @@ local_summary() ->
     io:format("use rates_for_did/1 to see what rates would be used for a DID").
 
 -spec rates_for_did(ne_binary()) -> 'ok'.
--spec rates_for_did(ne_binary(), api_binary(), trunking_options()) -> 'ok'.
+-spec rates_for_did(ne_binary(), maybe(binary()), trunking_options()) -> 'ok'.
 rates_for_did(DID) ->
     rates_for_did(DID, 'undefined', []).
 rates_for_did(DID, Direction, RouteOptions) when is_list(RouteOptions) ->

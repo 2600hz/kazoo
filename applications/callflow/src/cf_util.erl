@@ -200,7 +200,7 @@ mwi_query(JObj) ->
         _Else -> 'ok'
     end.
 
--spec maybe_vm_mwi_resp(api_binary(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec maybe_vm_mwi_resp(maybe(binary()), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
 maybe_vm_mwi_resp('undefined', _Realm, _AccountDb, _JObj) -> 'ok';
 maybe_vm_mwi_resp(<<_/binary>> = VMNumber, Realm, AccountDb, JObj) ->
     case mailbox(AccountDb, VMNumber) of
@@ -239,7 +239,7 @@ is_unsolicited_mwi_enabled(AccountId) ->
 %%--------------------------------------------------------------------
 -type mwi_update_return() :: 'missing_account_db' |
                              'missing_owner_id'.
--spec unsolicited_owner_mwi_update(api_binary(), api_binary()) ->
+-spec unsolicited_owner_mwi_update(maybe(binary()), maybe(binary())) ->
                                           'ok' |
                                           {'error', mwi_update_return()} |
                                           kz_data:data_error().
@@ -289,7 +289,7 @@ maybe_send_mwi_update(JObj, AccountId, New, Saved) ->
         'false' -> 'ok'
     end.
 
--spec unsolicited_endpoint_mwi_update(api_binary(), api_binary()) ->
+-spec unsolicited_endpoint_mwi_update(maybe(binary()), maybe(binary())) ->
                                              'ok' | {'error', any()}.
 -spec unsolicited_endpoint_mwi_update(ne_binary(), ne_binary(), boolean()) ->
                                              'ok' | {'error', any()}.
@@ -399,7 +399,7 @@ dialpad_digit(WXYZ) when WXYZ =:= $w orelse WXYZ =:= $x orelse WXYZ =:= $y orels
 %% Determine if we should ignore early media
 %% @end
 %%--------------------------------------------------------------------
--spec ignore_early_media(kz_json:objects()) -> api_binary().
+-spec ignore_early_media(kz_json:objects()) -> maybe(binary()).
 ignore_early_media([]) -> 'undefined';
 ignore_early_media(Endpoints) ->
     case lists:any(fun(Endpoint) ->
@@ -417,7 +417,7 @@ ignore_early_media(Endpoints) ->
 %% the account id
 %% @end
 %%--------------------------------------------------------------------
--spec correct_media_path(api_binary(), kapps_call:call()) -> api_binary().
+-spec correct_media_path(maybe(binary()), kapps_call:call()) -> maybe(binary()).
 correct_media_path(Media, Call) ->
     kz_media_util:media_path(Media, Call).
 
@@ -519,7 +519,7 @@ get_operator_callflow(Account) ->
 %% certain actions, like cf_offnet and cf_resources
 %% @end
 %%--------------------------------------------------------------------
--spec handle_bridge_failure({'fail', kz_json:object()} | api_binary(), kapps_call:call()) ->
+-spec handle_bridge_failure({'fail', kz_json:object()} | maybe(binary()), kapps_call:call()) ->
                                    'ok' | 'not_found'.
 handle_bridge_failure({'fail', Reason}, Call) ->
     {Cause, Code} = kapps_util:get_call_termination_reason(Reason),
@@ -535,7 +535,7 @@ handle_bridge_failure(Failure, Call) ->
             'not_found'
     end.
 
--spec handle_bridge_failure(api_binary(), api_binary(), kapps_call:call()) ->
+-spec handle_bridge_failure(maybe(binary()), maybe(binary()), kapps_call:call()) ->
                                    'ok' | 'not_found'.
 handle_bridge_failure(Cause, Code, Call) ->
     lager:info("attempting to find failure branch for ~s:~s", [Code, Cause]),
@@ -570,7 +570,7 @@ send_default_response(Cause, Call) ->
 %% Get the sip realm
 %% @end
 %%--------------------------------------------------------------------
--spec get_sip_realm(kz_json:object(), ne_binary()) -> api_binary().
+-spec get_sip_realm(kz_json:object(), ne_binary()) -> maybe(binary()).
 get_sip_realm(SIPJObj, AccountId) ->
     get_sip_realm(SIPJObj, AccountId, 'undefined').
 
@@ -581,7 +581,7 @@ get_sip_realm(SIPJObj, AccountId, Default) ->
         Realm -> Realm
     end.
 
--spec get_account_realm(ne_binary(), api_binary()) -> api_binary().
+-spec get_account_realm(ne_binary(), maybe(binary())) -> maybe(binary()).
 get_account_realm(AccountId, Default) ->
     case kz_util:get_account_realm(AccountId) of
         'undefined' -> Default;
@@ -656,7 +656,7 @@ is_digit(_) -> 'false'.
 %% @end
 %%-----------------------------------------------------------------------------
 -spec lookup_callflow_patterns(ne_binary(), ne_binary()) ->
-                                      {'ok', {kz_json:object(), api_binary()}} |
+                                      {'ok', {kz_json:object(), maybe(binary())}} |
                                       {'error', any()}.
 lookup_callflow_patterns(Number, Db) ->
     lager:info("lookup callflow patterns for ~s in ~s", [Number, Db]),
@@ -719,11 +719,11 @@ test_callflow_patterns([Pattern|T], Number, {_, Capture}=Result) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_endpoint_owner(kz_json:object()) -> api_binary().
+-spec get_endpoint_owner(kz_json:object()) -> maybe(binary()).
 get_endpoint_owner(JObj) ->
     maybe_get_endpoint_hotdesk_owner(JObj).
 
--spec maybe_get_endpoint_hotdesk_owner(kz_json:object()) -> api_binary().
+-spec maybe_get_endpoint_hotdesk_owner(kz_json:object()) -> maybe(binary()).
 maybe_get_endpoint_hotdesk_owner(JObj) ->
     case kz_json:get_keys([<<"hotdesk">>, <<"users">>], JObj) of
         [] -> maybe_get_endpoint_assigned_owner(JObj);
@@ -731,11 +731,11 @@ maybe_get_endpoint_hotdesk_owner(JObj) ->
         [_|_] -> 'undefined'
     end.
 
--spec maybe_get_endpoint_assigned_owner(kz_json:object()) -> api_binary().
+-spec maybe_get_endpoint_assigned_owner(kz_json:object()) -> maybe(binary()).
 maybe_get_endpoint_assigned_owner(JObj) ->
     kz_json:get_ne_value(<<"owner_id">>, JObj).
 
--spec apply_dialplan(ne_binary(), api_object()) -> ne_binary().
+-spec apply_dialplan(ne_binary(), maybe(kz_json:object())) -> ne_binary().
 apply_dialplan(N, 'undefined') -> N;
 apply_dialplan(Number, DialPlan) ->
     Regexs = kz_json:get_keys(DialPlan),
@@ -788,7 +788,7 @@ may_be_dialplan_suits({Key, Val}, Acc, Names) ->
         'false' -> Acc
     end.
 
--spec encryption_method_map(api_object(), api_binaries() | kz_json:object()) -> api_object().
+-spec encryption_method_map(maybe(kz_json:object()), maybe([maybe(binary())]) | kz_json:object()) -> maybe(kz_json:object()).
 encryption_method_map(JObj, []) -> JObj;
 encryption_method_map(JObj, [Method|Methods]) ->
     case props:get_value(Method, ?ENCRYPTION_MAP, []) of
@@ -850,7 +850,7 @@ event_listener_name(Call, Module) ->
     <<(kapps_call:call_id_direct(Call))/binary, "-", (kz_util:to_binary(Module))/binary>>.
 
 -spec maybe_start_metaflows(kapps_call:call(), kz_json:objects()) -> 'ok'.
--spec maybe_start_metaflows(kapps_call:call(), kz_json:object(), api_binary()) -> 'ok'.
+-spec maybe_start_metaflows(kapps_call:call(), kz_json:object(), maybe(binary())) -> 'ok'.
 -spec maybe_start_metaflow(kapps_call:call(), kz_json:object()) -> 'ok'.
 
 maybe_start_metaflows(Call, Endpoints) ->
@@ -974,7 +974,7 @@ sip_users_from_device_id(EndpointId, Acc, Call) ->
         Username -> [Username|Acc]
     end.
 
--spec sip_user_from_device_id(ne_binary(), kapps_call:call()) -> api_binary().
+-spec sip_user_from_device_id(ne_binary(), kapps_call:call()) -> maybe(binary()).
 sip_user_from_device_id(EndpointId, Call) ->
     case cf_endpoint:get(EndpointId, Call) of
         {'error', _} -> 'undefined';
@@ -1097,7 +1097,7 @@ vm_count(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec vm_count_by_owner(ne_binary(), api_binary()) -> {non_neg_integer(), non_neg_integer()}.
+-spec vm_count_by_owner(ne_binary(), maybe(binary())) -> {non_neg_integer(), non_neg_integer()}.
 vm_count_by_owner(_AccountDb, 'undefined') -> {0, 0};
 vm_count_by_owner(<<_/binary>> = AccountDb, <<_/binary>> = OwnerId) ->
     kz_vm_message:count_by_owner(AccountDb, OwnerId).

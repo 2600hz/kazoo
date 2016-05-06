@@ -23,11 +23,11 @@
 
 %% API
 
--spec timestamp() -> api_number().
+-spec timestamp() -> maybe(number()).
 timestamp() ->
     timestamp(os:timestamp()).
 
--spec timestamp(ne_binary() | kz_now()) -> api_number().
+-spec timestamp(ne_binary() | kz_now()) -> maybe(number()).
 timestamp(<<YYYY:4/binary, "-", MM:2/binary, "-", DD:2/binary, "T"
             ,HH:2/binary, ":", MMM:2/binary, ":", SS:2/binary, "."
             ,Micro:6/binary, "+", _H:2/binary, ":", _M:2/binary, " ", _/binary
@@ -84,7 +84,7 @@ c_seq(Data) ->
 
 %% Internals
 
--spec sip_field(ne_binaries(), ne_binaries()) -> api_binary().
+-spec sip_field(ne_binaries(), ne_binaries()) -> maybe(binary()).
 sip_field(_Fields, []) ->
     'undefined';
 sip_field(Fields, [Data|Rest]) ->

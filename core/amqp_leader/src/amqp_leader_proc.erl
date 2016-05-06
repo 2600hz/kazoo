@@ -117,7 +117,7 @@ call(Name, Request) ->
 call(Name, Request, Timeout) ->
     gen_server:call(Name, Request, Timeout).
 
--spec reply({pid(), any()}, any()) -> term().
+-spec reply({pid(), any()}, any()) -> any().
 reply({Pid, _} = From, Reply) when is_pid(Pid) andalso erlang:node(Pid) =:= node() ->
     gen_server:reply(From, Reply);
 reply({From, Tag}, Reply) ->
@@ -400,7 +400,7 @@ surrender(State, To) ->
     send({State, 'broadcast'}, #?MODULE{from = sign(State), msg = {'leader', To}}),
     set_role(State, 'candidate').
 
--spec call_surrendered(state(), sign() | 'undefined') -> state().
+-spec call_surrendered(state(), maybe(sign())) -> state().
 call_surrendered(#state{leader = Leader} = State, Leader) ->
     State;
 call_surrendered(#state{callback_module = Mod} = State, 'undefined') ->

@@ -53,10 +53,10 @@
 
 -record(state, {call = kapps_call:new() :: kapps_call:call()
                 ,flow = kz_json:new() :: kz_json:object()
-                ,cf_module_pid :: {pid(), reference()} | 'undefined'
-                ,cf_module_old_pid :: {pid(), reference()} | 'undefined'
+                ,cf_module_pid :: maybe({pid(), reference()})
+                ,cf_module_old_pid :: maybe({pid(), reference()})
                 ,status = <<"sane">> :: ne_binary()
-                ,queue :: api_binary()
+                ,queue :: maybe(binary())
                 ,self = self()
                }).
 -type state() :: #state{}.
@@ -157,7 +157,7 @@ callid_update(CallId, Call) ->
     callid_update(CallId, Srv).
 
 -spec callid(kapps_call:call() | pid()) -> ne_binary().
--spec callid(api_binary(), kapps_call:call()) -> ne_binary().
+-spec callid(maybe(binary()), kapps_call:call()) -> ne_binary().
 
 callid(Srv) when is_pid(Srv) ->
     CallId = gen_server:call(Srv, 'callid', ?MILLISECONDS_IN_SECOND),
@@ -178,7 +178,7 @@ queue_name(Call) ->
     queue_name(Srv).
 
 -spec control_queue(kapps_call:call() | pid()) -> ne_binary().
--spec control_queue(api_binary(), kapps_call:call() | pid()) -> ne_binary().
+-spec control_queue(maybe(binary()), kapps_call:call() | pid()) -> ne_binary().
 
 control_queue(Srv) when is_pid(Srv) -> gen_listener:call(Srv, 'control_queue_name');
 control_queue(Call) -> control_queue(kapps_call:kvs_fetch('consumer_pid', Call)).
@@ -227,7 +227,7 @@ relay_amqp(JObj, Props) ->
            end,
     [kapps_call_command:relay_event(Pid, JObj) || Pid <- Pids, is_pid(Pid)].
 
--spec send_amqp(pid() | kapps_call:call(), api_terms(), kz_amqp_worker:publish_fun()) -> 'ok'.
+-spec send_amqp(pid() | kapps_call:call(), maybe(terms()), kz_amqp_worker:publish_fun()) -> 'ok'.
 send_amqp(Srv, API, PubFun) when is_pid(Srv), is_function(PubFun, 1) ->
     gen_listener:cast(Srv, {'send_amqp', API, PubFun});
 send_amqp(Call, API, PubFun) when is_function(PubFun, 1) ->
@@ -609,7 +609,7 @@ launch_cf_module(#state{call=Call
                 ,call=kapps_call:kvs_store('cf_last_action', Action, Call)
                }.
 
--spec cf_link('undefined' | pid_ref()) -> 'true'.
+-spec cf_link(maybe(pid_ref())) -> 'true'.
 cf_link('undefined') -> 'true';
 cf_link(PidRef) ->
     link(get_pid(PidRef)).
@@ -623,7 +623,7 @@ cf_module_prefix(_Call, <<"sms">>) -> <<"cf_sms_">>;
 cf_module_prefix(_Call, _) -> <<"cf_">>.
 
 -spec maybe_start_cf_module(ne_binary(), kz_proplist(), kapps_call:call()) ->
-                                   {pid_ref() | 'undefined', atom()}.
+                                   {maybe(pid_ref()), atom()}.
 maybe_start_cf_module(ModuleBin, Data, Call) ->
     CFModule = kz_util:to_atom(ModuleBin, 'true'),
     try CFModule:module_info('exports') of
@@ -681,11 +681,11 @@ cf_module_task(CFModule, Data, Call, AMQPConsumer) ->
 %% a hangup command without relying on the (now terminated) doodle_exe.
 %% @end
 %%--------------------------------------------------------------------
--spec send_amqp_message(api_terms(), kz_amqp_worker:publish_fun(), ne_binary()) -> 'ok'.
+-spec send_amqp_message(maybe(terms()), kz_amqp_worker:publish_fun(), ne_binary()) -> 'ok'.
 send_amqp_message(API, PubFun, Q) ->
     PubFun(add_server_id(API, Q)).
 
--spec send_command(kz_proplist(), api_binary(), api_binary()) -> 'ok'.
+-spec send_command(kz_proplist(), maybe(binary()), maybe(binary())) -> 'ok'.
 send_command(_, 'undefined', _) -> 'ok';
 send_command(_, _, 'undefined') -> 'ok';
 send_command(Command, ControlQ, CallId) ->
@@ -694,7 +694,7 @@ send_command(Command, ControlQ, CallId) ->
                       ],
     kapps_util:amqp_pool_send(Props, fun(P) -> kapi_dialplan:publish_command(ControlQ, P) end).
 
--spec add_server_id(api_terms(), ne_binary()) -> api_terms().
+-spec add_server_id(maybe(terms()), ne_binary()) -> maybe(terms()).
 add_server_id(API, Q) when is_list(API) ->
     [{<<"Server-ID">>, Q} | props:delete(<<"Server-ID">>, API)];
 add_server_id(API, Q) ->

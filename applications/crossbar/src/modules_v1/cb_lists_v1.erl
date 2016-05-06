@@ -117,7 +117,7 @@ validate_list_entry(Context, ListId, EntryId, ?HTTP_POST) ->
 validate_list_entry(Context, _ListId, EntryId, ?HTTP_DELETE) ->
     crossbar_doc:load(EntryId, Context, ?TYPE_CHECK_OPTION(<<"list_entry">>)).
 
--spec check_list_schema(api_binary(), cb_context:context()) -> cb_context:context().
+-spec check_list_schema(maybe(binary()), cb_context:context()) -> cb_context:context().
 check_list_schema(ListId, Context) ->
     case cb_context:req_value(Context, <<"entries">>) of
         'undefined' ->
@@ -139,7 +139,7 @@ filter_list_req_data({Key, _Val})
        -> 'true';
 filter_list_req_data(_) -> 'false'.
 
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(maybe(binary()), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, <<"list">>}],
     cb_context:set_doc(Context
@@ -148,7 +148,7 @@ on_successful_validation('undefined', Context) ->
 on_successful_validation(ListId, Context) ->
     crossbar_doc:load_merge(ListId, Context, ?TYPE_CHECK_OPTION(<<"list">>)).
 
--spec check_list_entry_schema(path_token(), api_binary(), cb_context:context()) -> cb_context:context().
+-spec check_list_entry_schema(path_token(), maybe(binary()), cb_context:context()) -> cb_context:context().
 check_list_entry_schema(ListId, EntryId, Context) ->
     OnSuccess = fun(C) -> entry_schema_success(C, ListId, EntryId) end,
     ReqData = kz_json:set_value(<<"list_id">>, ListId, cb_context:req_data(Context)),
@@ -175,7 +175,7 @@ entry_schema_success(Context, ListId, EntryId) ->
             )
     end.
 
--spec on_entry_successful_validation(path_token(), path_token() | 'undefined', cb_context:context()) ->
+-spec on_entry_successful_validation(path_token(), maybe(path_token()), cb_context:context()) ->
                                             cb_context:context().
 on_entry_successful_validation(_ListId, 'undefined', Context) ->
     cb_context:set_doc(Context

@@ -131,28 +131,28 @@
           ,languages_provided = [<<"en">>, <<"en-us">>, <<"en-gb">>] :: ne_binaries() %% english by default
           ,charsets_provided = [<<"iso-8859-1">>] :: ne_binaries() %% all charsets provided
           ,encodings_provided = [<<"gzip;q=1.0">>,<<"identity;q=0.5">>] :: ne_binaries() %% gzip and identity
-          ,auth_token = <<>> :: binary() | 'undefined'
+          ,auth_token = <<>> :: maybe(binary())
           ,auth_token_type = 'x-auth-token' :: 'x-auth-token' | 'basic' | 'oauth' | 'unknown'
-          ,auth_account_id :: api_binary()
-          ,auth_doc :: api_object()
+          ,auth_account_id :: maybe(binary())
+          ,auth_doc :: maybe(kz_json:object())
           ,req_verb = ?HTTP_GET :: http_method() % see ?ALLOWED_METHODS
           ,req_nouns = [{<<"404">>, []}] :: req_nouns() % {module, [id]} most typical
           ,req_json = kz_json:new() :: req_json()
           ,req_files = [] :: req_files()
           ,req_data :: kz_json:json_term()  % the "data" from the request JSON envelope
           ,req_headers = [] :: cowboy:http_headers()
-          ,query_json = kz_json:new() :: api_object()
-          ,account_id :: api_binary()
-          ,user_id :: api_binary()   % Will be loaded in validate stage for endpoints such as /accounts/{acct-id}/users/{user-id}/*
-          ,device_id :: api_binary()   % Will be loaded in validate stage for endpoints such as /accounts/{acct-id}/devices/{device-id}/*
-          ,reseller_id :: api_binary()
-          ,db_name :: api_binary() | ne_binaries()
-          ,doc :: api_object() | kz_json:objects()
+          ,query_json = kz_json:new() :: maybe(kz_json:object())
+          ,account_id :: maybe(binary())
+          ,user_id :: maybe(binary())   % Will be loaded in validate stage for endpoints such as /accounts/{acct-id}/users/{user-id}/*
+          ,device_id :: maybe(binary())   % Will be loaded in validate stage for endpoints such as /accounts/{acct-id}/devices/{device-id}/*
+          ,reseller_id :: maybe(binary())
+          ,db_name :: maybe(binary()) | ne_binaries()
+          ,doc :: maybe(kz_json:object()) | kz_json:objects()
           ,resp_expires = {{1999,1,1},{0,0,0}} :: kz_datetime()
-          ,resp_etag :: 'automatic' | string() | api_binary()
+          ,resp_etag :: 'automatic' | string() | maybe(binary())
           ,resp_status = 'error' :: crossbar_status()
           ,resp_error_msg :: kz_json:key()
-          ,resp_error_code :: api_integer()
+          ,resp_error_code :: maybe(integer())
           ,resp_data :: resp_data()
           ,resp_headers = [] :: kz_proplist() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
           ,resp_envelope = kz_json:new() :: kz_json:object()
@@ -165,12 +165,12 @@
           ,raw_qs = <<>> :: binary()
           ,method = ?HTTP_GET :: http_method()
           ,validation_errors = kz_json:new() :: kz_json:object()
-          ,client_ip = <<"127.0.0.1">> :: api_binary()
-          ,load_merge_bypass :: api_object()
-          ,profile_id :: api_binary()
+          ,client_ip = <<"127.0.0.1">> :: maybe(binary())
+          ,load_merge_bypass :: maybe(kz_json:object())
+          ,profile_id :: maybe(binary())
           ,api_version = ?VERSION_1 :: ne_binary()
           ,magic_pathed = 'false' :: boolean()
-          ,should_paginate :: api_boolean()
+          ,should_paginate :: maybe(boolean())
          }).
 
 -define(MAX_RANGE, kapps_config:get_integer(?CONFIG_CAT

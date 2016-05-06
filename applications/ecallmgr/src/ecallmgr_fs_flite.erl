@@ -29,7 +29,7 @@ call_command(Node, UUID, JObj) ->
                            ]),
     {<<"speak">>, kz_json:get_value(<<"Text">>, JObj)}.
 
--spec voice(api_binary() | kz_json:object()) -> ne_binary().
+-spec voice(maybe(binary()) | kz_json:object()) -> ne_binary().
 voice('undefined') -> <<"slt">>;
 voice(<<"male">>) -> <<"rms">>;
 voice(<<"female">>) -> <<"slt">>;

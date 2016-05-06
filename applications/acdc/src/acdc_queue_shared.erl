@@ -65,7 +65,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(server_ref(), ne_binary(), ne_binary(), api_integer()) -> startlink_ret().
+-spec start_link(server_ref(), ne_binary(), ne_binary(), maybe(integer())) -> startlink_ret().
 start_link(FSMPid, AcctId, QueueId, Priority) ->
     gen_listener:start_link(?SERVER
                             ,[{'bindings', ?SHARED_QUEUE_BINDINGS(AcctId, QueueId)}

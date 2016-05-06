@@ -174,7 +174,7 @@ load_callflow(DocId, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_request(maybe(binary()), cb_context:context()) -> cb_context:context().
 validate_request(CallflowId, Context) ->
     JObj = cb_context:req_data(Context),
     OriginalNumbers = kz_json:get_ne_value(<<"numbers">>, JObj, []),
@@ -219,11 +219,11 @@ normalize_numbers(Ns) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_patch(api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_patch(maybe(binary()), cb_context:context()) -> cb_context:context().
 validate_patch(CallflowId, Context) ->
     crossbar_doc:patch_and_validate(CallflowId, Context, fun validate_request/2).
 
--spec prepare_patterns(api_binary(), cb_context:context()) -> cb_context:context().
+-spec prepare_patterns(maybe(binary()), cb_context:context()) -> cb_context:context().
 prepare_patterns(CallflowId, Context) ->
     JObj = cb_context:req_data(Context),
     case kz_json:get_value(<<"patterns">>, JObj, []) of
@@ -241,12 +241,12 @@ prepare_patterns(CallflowId, Context) ->
             check_callflow_schema(CallflowId, Context)
     end.
 
--spec validate_unique_numbers(api_binary(), ne_binaries(), cb_context:context()) ->
+-spec validate_unique_numbers(maybe(binary()), ne_binaries(), cb_context:context()) ->
                                      cb_context:context().
 validate_unique_numbers(CallflowId, Numbers, Context) ->
     validate_unique_numbers(CallflowId, Numbers, Context, cb_context:account_db(Context)).
 
--spec validate_unique_numbers(api_binary(), ne_binaries(), cb_context:context(), api_binary()) ->
+-spec validate_unique_numbers(maybe(binary()), ne_binaries(), cb_context:context(), maybe(binary())) ->
                                      cb_context:context().
 validate_unique_numbers(CallflowId, _Numbers, Context, 'undefined') ->
     check_callflow_schema(CallflowId, Context);
@@ -263,7 +263,7 @@ validate_unique_numbers(CallflowId, Numbers, Context, AccountDb) ->
             check_callflow_schema(CallflowId, C)
     end.
 
--spec check_callflow_schema(api_binary(), cb_context:context()) -> cb_context:context().
+-spec check_callflow_schema(maybe(binary()), cb_context:context()) -> cb_context:context().
 check_callflow_schema(CallflowId, Context) ->
     OnSuccess = fun(C) ->
                         validate_callflow_elements(
@@ -272,7 +272,7 @@ check_callflow_schema(CallflowId, Context) ->
                 end,
     cb_context:validate_request_data(<<"callflows">>, Context, OnSuccess).
 
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(maybe(binary()), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context
                        ,kz_doc:set_type(cb_context:doc(Context)
@@ -349,7 +349,7 @@ validate_callflow_element(Context, <<"record_call">>, Data) ->
 validate_callflow_element(Context, _Module, _Data) ->
     Context.
 
--spec validate_callflow_children(cb_context:context(), api_object()) ->
+-spec validate_callflow_children(cb_context:context(), maybe(kz_json:object())) ->
                                         cb_context:context().
 validate_callflow_children(Context, 'undefined') ->
     Context;
@@ -488,7 +488,7 @@ is_pattern_unique(J, Number) ->
     Patterns = kz_json:get_ne_value([<<"doc">>, <<"patterns">>], J, []),
     patterns_dont_match(Number, Patterns).
 
--spec filter_callflow_list(api_binary(), kz_json:objects()) -> kz_json:objects().
+-spec filter_callflow_list(maybe(binary()), kz_json:objects()) -> kz_json:objects().
 filter_callflow_list('undefined', JObjs) ->
     [JObj
      || JObj <- JObjs,
@@ -540,7 +540,7 @@ add_number_conflict(Number, JObj, Context) ->
 %% collect addional informat about the objects referenced in the flow
 %% @end
 %%--------------------------------------------------------------------
--spec get_metadata(api_object(), ne_binary(), kz_json:object()) ->
+-spec get_metadata(maybe(kz_json:object()), ne_binary(), kz_json:object()) ->
                           kz_json:object().
 get_metadata('undefined', _, JObj) -> JObj;
 get_metadata(Flow, Db, JObj) ->

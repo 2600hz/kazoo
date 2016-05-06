@@ -32,7 +32,7 @@
 -type config_key() :: ne_binary() | nonempty_string() | atom() | [config_key(),...].
 
 -type update_option() :: {'node_specific', boolean()} |
-                         {'pvt_fields', api_object()}.
+                         {'pvt_fields', maybe(kz_json:object())}.
 -type update_options() :: [update_option()].
 
 -type fetch_ret() :: {'ok', kz_json:object()} |
@@ -44,7 +44,7 @@
 %% @public
 %% @doc Get a configuration key for a given category and cast it as a list
 %%-----------------------------------------------------------------------------
--spec get_string(config_category(), config_key()) -> api_string().
+-spec get_string(config_category(), config_key()) -> maybe(string()).
 -spec get_string(config_category(), config_key(), Default) ->
                         nonempty_string() | Default.
 -spec get_string(config_category(), config_key(), Default, ne_binary()) ->
@@ -64,7 +64,7 @@ get_string(Category, Key, Default, Node) ->
 %% @public
 %% @doc Get a configuration key for a given category and cast it as a binary
 %%-----------------------------------------------------------------------------
--spec get_binary(config_category(), config_key()) -> api_binary().
+-spec get_binary(config_category(), config_key()) -> maybe(binary()).
 -spec get_binary(config_category(), config_key(), Default) -> binary() | Default.
 -spec get_binary(config_category(), config_key(), Default, ne_binary()) -> binary() | Default.
 
@@ -82,7 +82,7 @@ get_binary(Category, Key, Default, Node) ->
 %% @public
 %% @doc Get a configuration key for a given category and cast it as a atom
 %%-----------------------------------------------------------------------------
--spec get_atom(config_category(), config_key()) -> api_atom().
+-spec get_atom(config_category(), config_key()) -> maybe(atom()).
 -spec get_atom(config_category(), config_key(), Default) -> atom() | Default.
 -spec get_atom(config_category(), config_key(), Default, ne_binary()) -> atom() | Default.
 
@@ -100,7 +100,7 @@ get_atom(Category, Key, Default, Node) ->
 %% @public
 %% @doc Get a configuration key for a given category and cast it as a integer
 %%-----------------------------------------------------------------------------
--spec get_integer(config_category(), config_key()) -> api_integer().
+-spec get_integer(config_category(), config_key()) -> maybe(integer()).
 -spec get_integer(config_category(), config_key(), Default) -> integer() | Default.
 -spec get_integer(config_category(), config_key(), Default, ne_binary()) -> integer() | Default.
 
@@ -118,7 +118,7 @@ get_integer(Category, Key, Default, Node) ->
 %% @public
 %% @doc Get a configuration key for a given category and cast it as a float
 %%-----------------------------------------------------------------------------
--spec get_float(config_category(), config_key()) -> api_float().
+-spec get_float(config_category(), config_key()) -> maybe(float()).
 -spec get_float(config_category(), config_key(), Default) -> float() | Default.
 -spec get_float(config_category(), config_key(), Default, ne_binary()) -> float() | Default.
 
@@ -136,7 +136,7 @@ get_float(Category, Key, Default, Node) ->
 %% @public
 %% @doc Get a configuration key for a given category and cast it as a is_false
 %%-----------------------------------------------------------------------------
--spec get_is_false(config_category(), config_key()) -> api_boolean().
+-spec get_is_false(config_category(), config_key()) -> maybe(boolean()).
 -spec get_is_false(config_category(), config_key(), Default) -> boolean() | Default.
 -spec get_is_false(config_category(), config_key(), Default, ne_binary()) -> boolean() | Default.
 
@@ -154,7 +154,7 @@ get_is_false(Category, Key, Default, Node) ->
 %% @public
 %% @doc Get a configuration key for a given category and cast it as a is_true
 %%-----------------------------------------------------------------------------
--spec get_is_true(config_category(), config_key()) -> api_boolean().
+-spec get_is_true(config_category(), config_key()) -> maybe(boolean()).
 -spec get_is_true(config_category(), config_key(), Default) -> boolean() | Default.
 -spec get_is_true(config_category(), config_key(), Default, ne_binary()) -> boolean() | Default.
 
@@ -172,9 +172,9 @@ get_is_true(Category, Key, Default, Node) ->
 %% @public
 %% @doc Get a configuration key for a given category and cast it as a is_true
 %%-----------------------------------------------------------------------------
--spec get_non_empty(config_category(), config_key()) -> _ | 'undefined'.
--spec get_non_empty(config_category(), config_key(), Default) -> _ | Default.
--spec get_non_empty(config_category(), config_key(), Default, ne_binary()) -> _ | Default.
+-spec get_non_empty(config_category(), config_key()) -> maybe(any()).
+-spec get_non_empty(config_category(), config_key(), Default) -> any() | Default.
+-spec get_non_empty(config_category(), config_key(), Default, ne_binary()) -> any() | Default.
 
 get_non_empty(Category, Key) ->
     get_non_empty(Category, Key, 'undefined').
@@ -187,7 +187,7 @@ get_non_empty(Category, Key, Default, Node) ->
         'false' -> Value
     end.
 
--spec get_ne_binary(config_category(), config_key()) -> api_binary().
+-spec get_ne_binary(config_category(), config_key()) -> maybe(binary()).
 -spec get_ne_binary(config_category(), config_key(), Default) -> ne_binary() | Default.
 -spec get_ne_binary(config_category(), config_key(), Default, ne_binary()) -> ne_binary() | Default.
 
@@ -211,7 +211,7 @@ get_ne_binary(Category, Key, Default, Node) ->
 %% node but if there is not then use the default value.
 %% @end
 %%-----------------------------------------------------------------------------
--spec get(config_category(), config_key()) -> any() | 'undefined'.
+-spec get(config_category(), config_key()) -> maybe(any()).
 -spec get(config_category(), config_key(), Default) -> any() | Default.
 -spec get(config_category(), config_key(), Default, ne_binary() | atom()) -> any() | Default.
 
@@ -264,7 +264,7 @@ get_zone_value(Category, _Node, Keys, Default, JObj) ->
     end.
 
 -spec get_default_value(config_category(), config_key(), Default, kz_json:object()) ->
-                                 Default | _.
+                                 Default | any().
 get_default_value(Category, Keys, Default, JObj) ->
     case kz_json:get_value([?KEY_DEFAULT | Keys], JObj) of
         'undefined' ->
@@ -316,16 +316,19 @@ set(Category, Key, Value, Node) ->
     update_category(Category, Key, Value, Node, []).
 
 -spec set_default(config_category(), config_key(), any()) ->
-                         {'ok', kz_json:object()} | 'ok' |
+                         {'ok', kz_json:object()} |
+                         'ok' |
                          {'error', any()}.
 set_default(Category, Key, Value) ->
     update_category(Category, Key, Value, ?KEY_DEFAULT, []).
 
 -spec update_default(config_category(), config_key(), kz_json:json_term()) ->
-                            {'ok', kz_json:object()} | 'ok' |
+                            {'ok', kz_json:object()} |
+                            'ok' |
                             {'error', any()}.
 -spec update_default(config_category(), config_key(), kz_json:json_term(), update_options()) ->
-                            {'ok', kz_json:object()} | 'ok' |
+                            {'ok', kz_json:object()} |
+                            'ok' |
                             {'error', any()}.
 update_default(Category, Key, Value) ->
     update_default(Category, Key, Value, []).
@@ -370,8 +373,8 @@ update_category(Category, Keys, Value, Node, Options) ->
             E
     end.
 
--spec update_category(config_category(), config_key(), any(), ne_binary(), update_options(), kz_json:object())
-                     -> {'ok', kz_json:object()}.
+-spec update_category(config_category(), config_key(), any(), ne_binary(), update_options(), kz_json:object()) ->
+                             {'ok', kz_json:object()}.
 update_category(Category, Keys, Value, Node, Options, JObj) ->
     PvtFields = props:get_value('pvt_fields', Options),
 
@@ -384,7 +387,7 @@ update_category(Category, Keys, Value, Node, Options, JObj) ->
             update_category(Category, kz_json:set_value([?KEY_DEFAULT | Keys], Value, JObj), PvtFields)
     end.
 
--spec update_category(config_category(), kz_json:object(), api_object()) ->
+-spec update_category(config_category(), kz_json:object(), maybe(kz_json:object())) ->
                              {'ok', kz_json:object()}.
 update_category(Category, JObj, PvtFields) ->
     case maybe_save_category(Category, JObj, PvtFields) of
@@ -398,13 +401,13 @@ update_category(Category, JObj, PvtFields) ->
     end.
 
 %% @private
--spec maybe_save_category(ne_binary(), kz_json:object(), api_object()) ->
+-spec maybe_save_category(ne_binary(), kz_json:object(), maybe(kz_json:object())) ->
                                  {'ok', kz_json:object()} |
                                  {'error', 'conflict'}.
--spec maybe_save_category(ne_binary(), kz_json:object(), api_object(), boolean()) ->
+-spec maybe_save_category(ne_binary(), kz_json:object(), maybe(kz_json:object()), boolean()) ->
                                  {'ok', kz_json:object()} |
                                  {'error', 'conflict'}.
--spec maybe_save_category(ne_binary(), kz_json:object(), api_object(), boolean(), boolean()) ->
+-spec maybe_save_category(ne_binary(), kz_json:object(), maybe(kz_json:object()), boolean(), boolean()) ->
                                  {'ok', kz_json:object()} |
                                  {'error', 'conflict'}.
 maybe_save_category(Category, JObj, PvtFields) ->
@@ -440,7 +443,7 @@ maybe_save_category(Category, JObj, PvtFields, Looped, _) ->
             {'ok', JObj1}
     end.
 
--spec update_pvt_fields(config_category(), kz_json:object(), api_object()) ->
+-spec update_pvt_fields(config_category(), kz_json:object(), maybe(kz_json:object())) ->
                                kz_json:object().
 update_pvt_fields(Category, JObj, 'undefined') ->
     kz_doc:update_pvt_parameters(

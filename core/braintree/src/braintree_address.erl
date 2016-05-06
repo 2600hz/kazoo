@@ -139,8 +139,8 @@ xml_to_record(Xml, Base) ->
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml(bt_address()) -> kz_proplist() | bt_xml() | 'undefined'.
--spec record_to_xml(bt_address(), boolean()) -> kz_proplist() | bt_xml() | 'undefined'.
+-spec record_to_xml(bt_address()) -> maybe(kz_proplist() | bt_xml()).
+-spec record_to_xml(bt_address(), boolean()) -> maybe(kz_proplist() | bt_xml()).
 
 record_to_xml(Address) ->
     record_to_xml(Address, 'false').
@@ -175,7 +175,7 @@ record_to_xml(Address, ToString) ->
 %% Convert a given json object into a record
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_record(api_object()) -> bt_address() | 'undefined'.
+-spec json_to_record(maybe(kz_json:object())) -> maybe(bt_address()).
 json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->
     #bt_address{id = create_or_get_json_id(JObj)
@@ -200,7 +200,7 @@ json_to_record(JObj) ->
 %% Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_json(bt_address() | 'undefined') -> api_object().
+-spec record_to_json(maybe(bt_address())) -> maybe(kz_json:object()).
 record_to_json('undefined') -> 'undefined';
 record_to_json(#bt_address{}=Address) ->
     Props = [{<<"id">>, Address#bt_address.id}
@@ -229,7 +229,7 @@ record_to_json(#bt_address{}=Address) ->
 %% a uuid to use during creation.
 %% @end
 %%--------------------------------------------------------------------
--spec create_or_get_json_id(kz_json:object()) ->  api_binary().
+-spec create_or_get_json_id(kz_json:object()) ->  maybe(binary()).
 create_or_get_json_id(JObj) ->
     case kz_json:get_value(<<"street_address">>, JObj) of
         'undefined' -> kz_doc:id(JObj);

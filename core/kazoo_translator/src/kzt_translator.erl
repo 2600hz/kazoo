@@ -17,7 +17,7 @@
 -include("kzt.hrl").
 
 -spec exec(kapps_call:call(), list()) -> exec_return().
--spec exec(kapps_call:call(), list(), api_binary() | list()) -> exec_return().
+-spec exec(kapps_call:call(), list(), maybe(binary()) | list()) -> exec_return().
 exec(Call, Cmds) ->
     exec(Call, Cmds, <<"text/xml">>).
 

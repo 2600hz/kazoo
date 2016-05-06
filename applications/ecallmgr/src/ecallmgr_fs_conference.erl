@@ -686,7 +686,7 @@ get_conf_command(Cmd, _Focus, _ConferenceId, _JObj) ->
     lager:debug("unknown conference command ~s", [Cmd]),
     {'error', list_to_binary([<<"unknown conference command: ">>, Cmd])}.
 
--spec send_response(ne_binary(), tuple(), api_binary(), kz_json:object()) -> 'ok'.
+-spec send_response(ne_binary(), tuple(), maybe(binary()), kz_json:object()) -> 'ok'.
 send_response(<<"stop_play">>, {'ok', Res}, _Queue, Command) ->
     Evt = [{<<"Conference-Name">>, kz_json:get_value(<<"Conference-ID">>, Command)}
            ,{<<"Event-Date-Timestamp">>, kz_util:current_tstamp()}

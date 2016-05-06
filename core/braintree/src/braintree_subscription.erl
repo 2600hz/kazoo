@@ -100,7 +100,7 @@ new_subscription_id() ->
 %% Get the subscription id
 %% @end
 %%--------------------------------------------------------------------
--spec get_id(subscription()) -> api_binary().
+-spec get_id(subscription()) -> maybe(binary()).
 get_id(#bt_subscription{id=SubscriptionId}) ->
     SubscriptionId.
 
@@ -144,7 +144,7 @@ get_addon_quantity(#bt_subscription{add_ons=AddOns}, AddOnId) ->
 %% Get the subscription id
 %% @end
 %%--------------------------------------------------------------------
--spec update_addon_amount(subscription(), ne_binary(), api_binary() | number()) -> subscription().
+-spec update_addon_amount(subscription(), ne_binary(), maybe(binary()) | number()) -> subscription().
 update_addon_amount(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Amount) ->
     case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
         'false' ->
@@ -202,7 +202,7 @@ update_discount_amount(#bt_subscription{discounts=Discounts}=Subscription, Disco
     end.
 
 %% @public
--spec get_payment_token(subscription()) -> api_binary().
+-spec get_payment_token(subscription()) -> maybe(binary()).
 get_payment_token(#bt_subscription{payment_token = PT}) -> PT.
 
 %%--------------------------------------------------------------------
@@ -306,7 +306,7 @@ reset_discounts(#bt_subscription{discounts=Discounts}=Subscription) ->
 %% or subscription id
 %% @end
 %%--------------------------------------------------------------------
--spec update_addon_quantity(subscription() | ne_binary(), ne_binary(), integer() | api_binary()) ->
+-spec update_addon_quantity(subscription() | ne_binary(), ne_binary(), integer() | maybe(binary())) ->
                                    subscription().
 update_addon_quantity(Subscription, AddOnId, Quantity) when not is_integer(Quantity) ->
     update_addon_quantity(Subscription, AddOnId, kz_util:to_integer(Quantity));
@@ -366,7 +366,7 @@ increment_addon_quantity(SubscriptionId, AddOnId) ->
 %% Really ugly function to update a discount for a given subscription
 %% @end
 %%--------------------------------------------------------------------
--spec update_discount_quantity(subscription() | ne_binary(), ne_binary(), api_integer()) -> subscription().
+-spec update_discount_quantity(subscription() | ne_binary(), ne_binary(), maybe(integer())) -> subscription().
 update_discount_quantity(Subscription, DiscountId, Quantity) when not is_integer(Quantity) ->
     update_discount_quantity(Subscription, DiscountId, kz_util:to_integer(Quantity));
 update_discount_quantity(#bt_subscription{discounts=Discounts}=Subscription, DiscountId, Quantity) ->

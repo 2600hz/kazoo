@@ -78,7 +78,7 @@ maybe_handle_bridge_failure({_ , R}=Reason, Call) ->
 %% Send to endpoint in determined order
 %% @end
 %%--------------------------------------------------------------------
--spec get_endpoints(api_binary(), kz_json:object(), kapps_call:call()) ->
+-spec get_endpoints(maybe(binary()), kz_json:object(), kapps_call:call()) ->
                            {kz_json:objects(), non_neg_integer()}.
 get_endpoints('undefined', _, _) -> {[], 0};
 get_endpoints(UserId, Data, Call) ->

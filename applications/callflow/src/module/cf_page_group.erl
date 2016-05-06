@@ -70,7 +70,7 @@ resolve_endpoint_ids(Members, Call) ->
             ,Id =/= kapps_call:authorizing_id(Call)
     ].
 
--type endpoint_intermediate() :: {ne_binary(), ne_binary(), api_object()}.
+-type endpoint_intermediate() :: {ne_binary(), ne_binary(), maybe(kz_json:object())}.
 -type endpoint_intermediates() :: [endpoint_intermediate()].
 -spec resolve_endpoint_ids(kz_json:objects(), endpoint_intermediates(), kapps_call:call()) ->
                                   endpoint_intermediates().

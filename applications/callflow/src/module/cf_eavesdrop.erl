@@ -172,7 +172,7 @@ sip_users_from_endpoints(EndpointIds, Call) ->
                         end
                 end, [], EndpointIds).
 
--spec sip_user_of_endpoint(ne_binary(), kapps_call:call()) -> api_binary().
+-spec sip_user_of_endpoint(ne_binary(), kapps_call:call()) -> maybe(binary()).
 sip_user_of_endpoint(EndpointId, Call) ->
     case cf_endpoint:get(EndpointId, Call) of
         {'error', _} -> 'undefined';

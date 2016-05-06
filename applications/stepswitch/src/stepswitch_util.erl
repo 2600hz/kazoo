@@ -25,7 +25,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_realm(api_binary() | kz_json:object()) -> api_binary().
+-spec get_realm(maybe(binary()) | kz_json:object()) -> maybe(binary()).
 get_realm('undefined') -> 'undefined';
 get_realm(From) when is_binary(From) ->
     case binary:split(From, <<"@">>) of
@@ -119,7 +119,7 @@ cache_key_number(Number) ->
 %% callerid.
 %% @end
 %%--------------------------------------------------------------------
--spec correct_shortdial(ne_binary(), ne_binary() | kapi_offnet_resource:req()) -> api_binary().
+-spec correct_shortdial(ne_binary(), ne_binary() | kapi_offnet_resource:req()) -> maybe(binary()).
 correct_shortdial(<<"+", Number/binary>>, CIDNum) ->
     correct_shortdial(Number, CIDNum);
 correct_shortdial(Number, <<"+", CIDNum/binary>>) ->
@@ -164,12 +164,8 @@ get_sip_headers(OffnetReq) ->
 maybe_remove_diversions(JObj) ->
     kz_json:delete_key(<<"Diversions">>, JObj).
 
--spec get_diversions(kz_json:object()) ->
-                            'undefined' |
-                            ne_binaries().
--spec get_diversions(api_binary(), ne_binaries()) ->
-                            'undefined' |
-                            ne_binaries().
+-spec get_diversions(kz_json:object()) -> maybe(ne_binaries()).
+-spec get_diversions(maybe(binary()), ne_binaries()) -> maybe(ne_binaries()).
 
 get_diversions(JObj) ->
     Inception = kz_json:get_value(<<"Inception">>, JObj),
@@ -210,7 +206,7 @@ build_filter_fun(Name, Number) ->
        (_Else) -> 'true'
     end.
 
--spec format_endpoints(kz_json:objects(), api_binary(), api_binary(), kapi_offnet_resource:req(), filter_fun()) ->
+-spec format_endpoints(kz_json:objects(), maybe(binary()), maybe(binary()), kapi_offnet_resource:req(), filter_fun()) ->
                               kz_json:objects().
 format_endpoints(Endpoints, Name, Number, OffnetReq, FilterFun) ->
     SIPHeaders = stepswitch_util:get_sip_headers(OffnetReq),
@@ -224,14 +220,14 @@ format_endpoints(Endpoints, Name, Number, OffnetReq, FilterFun) ->
      || Endpoint <- Endpoints
     ].
 
--spec default_realm(kapi_offnet_resource:req()) -> api_binary().
+-spec default_realm(kapi_offnet_resource:req()) -> maybe(binary()).
 default_realm(OffnetReq) ->
     case kapi_offnet_resource:from_uri_realm(OffnetReq) of
         'undefined' -> kapi_offnet_resource:account_realm(OffnetReq);
         Realm -> Realm
     end.
 
--spec set_endpoint_caller_id(kz_json:object(), api_binary(), api_binary()) -> kz_json:object().
+-spec set_endpoint_caller_id(kz_json:object(), maybe(binary()), maybe(binary())) -> kz_json:object().
 set_endpoint_caller_id(Endpoint, Name, Number) ->
     kz_json:insert_values(props:filter_undefined(
                             [{?KEY_OUTBOUND_CALLER_ID_NUMBER, Number}
@@ -241,7 +237,7 @@ set_endpoint_caller_id(Endpoint, Name, Number) ->
                           ,Endpoint
                          ).
 
--spec format_endpoint(kz_json:object(), api_binary(), filter_fun(), kapi_offnet_resource:req(), kz_json:object(), ne_binary()) ->
+-spec format_endpoint(kz_json:object(), maybe(binary()), filter_fun(), kapi_offnet_resource:req(), kz_json:object(), ne_binary()) ->
                              kz_json:object().
 format_endpoint(Endpoint, Number, FilterFun, OffnetReq, SIPHeaders, AccountId) ->
     FormattedEndpoint = apply_formatters(Endpoint, SIPHeaders, AccountId),
@@ -258,7 +254,7 @@ apply_formatters(Endpoint, SIPHeaders, AccountId) ->
                                 ,'outbound'
                                ).
 
--spec endpoint_props(kz_json:object(), api_binary()) -> kz_proplist().
+-spec endpoint_props(kz_json:object(), maybe(binary())) -> kz_proplist().
 endpoint_props(Endpoint, AccountId) ->
     ResourceId = kz_json:get_value(?CCV(<<"Resource-ID">>), Endpoint),
     case kz_json:is_true(?CCV(<<"Global-Resource">>), Endpoint) of
@@ -268,7 +264,7 @@ endpoint_props(Endpoint, AccountId) ->
             empty_list_on_undefined(stepswitch_resources:get_props(ResourceId, AccountId))
     end.
 
--spec empty_list_on_undefined(kz_proplist() | 'undefined') -> kz_proplist().
+-spec empty_list_on_undefined(maybe(kz_proplist())) -> kz_proplist().
 empty_list_on_undefined('undefined') -> [];
 empty_list_on_undefined(L) -> L.
 
@@ -332,7 +328,7 @@ endpoint_format_from(Endpoint, Number, OffnetReq, CCVs) ->
                              )
     end.
 
--spec get_endpoint_format_from(kapi_offnet_resource:req(), kz_json:object()) -> api_binary().
+-spec get_endpoint_format_from(kapi_offnet_resource:req(), kz_json:object()) -> maybe(binary()).
 get_endpoint_format_from(OffnetReq, CCVs) ->
     DefaultRealm = default_realm(OffnetReq),
     case kz_json:is_true(<<"From-Account-Realm">>, CCVs) of

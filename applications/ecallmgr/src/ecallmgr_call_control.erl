@@ -82,21 +82,21 @@
           node :: atom()
          ,call_id :: ne_binary()
          ,command_q = queue:new() :: queue:queue()
-         ,current_app :: api_binary()
-         ,current_cmd :: api_object()
+         ,current_app :: maybe(binary())
+         ,current_cmd :: maybe(kz_json:object())
          ,start_time = os:timestamp() :: kz_now()
          ,is_call_up = 'true' :: boolean()
          ,is_node_up = 'true' :: boolean()
-         ,keep_alive_ref :: api_reference()
+         ,keep_alive_ref :: maybe(reference())
          ,other_legs = [] :: ne_binaries()
-         ,last_removed_leg :: api_binary()
-         ,sanity_check_tref :: api_reference()
-         ,msg_id :: api_binary()
-         ,fetch_id :: api_binary()
-         ,controller_q :: api_binary()
-         ,control_q :: api_binary()
+         ,last_removed_leg :: maybe(binary())
+         ,sanity_check_tref :: maybe(reference())
+         ,msg_id :: maybe(binary())
+         ,fetch_id :: maybe(binary())
+         ,controller_q :: maybe(binary())
+         ,control_q :: maybe(binary())
          ,initial_ccvs :: kz_json:object()
-         ,node_down_tref :: api_reference()
+         ,node_down_tref :: maybe(reference())
          }).
 -type state() :: #state{}.
 
@@ -112,7 +112,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(atom(), ne_binary(), api_binary(), api_binary(), kz_json:object()) -> startlink_ret().
+-spec start_link(atom(), ne_binary(), maybe(binary()), maybe(binary()), kz_json:object()) -> startlink_ret().
 start_link(Node, CallId, FetchId, ControllerQ, CCVs) ->
     %% We need to become completely decoupled from ecallmgr_call_events
     %% because the call_events process might have been spun up with A->B
@@ -152,7 +152,7 @@ hostname(Srv) ->
     [_, Hostname] = binary:split(kz_util:to_binary(Node), <<"@">>),
     Hostname.
 
--spec queue_name(pid() | 'undefined') -> api_binary().
+-spec queue_name(maybe(pid())) -> maybe(binary()).
 queue_name(Srv) when is_pid(Srv) -> gen_listener:queue_name(Srv);
 queue_name(_) -> 'undefined'.
 
@@ -160,7 +160,7 @@ queue_name(_) -> 'undefined'.
 other_legs(Srv) ->
     gen_listener:call(Srv, 'other_legs', ?MILLISECONDS_IN_SECOND).
 
--spec event_execute_complete(api_pid(), ne_binary(), ne_binary()) -> 'ok'.
+-spec event_execute_complete(maybe(pid()), ne_binary(), ne_binary()) -> 'ok'.
 event_execute_complete('undefined', _CallId, _App) -> 'ok';
 event_execute_complete(Srv, CallId, App) ->
     gen_listener:cast(Srv, {'event_execute_complete', CallId, App, kz_json:new()}).
@@ -598,7 +598,7 @@ force_queue_advance(#state{call_id=CallId
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_execute_complete(api_binary(), kz_json:object(), state()) -> state().
+-spec handle_execute_complete(maybe(binary()), kz_json:object(), state()) -> state().
 handle_execute_complete('undefined', _, State) -> State;
 handle_execute_complete(<<"noop">>, JObj, #state{msg_id=CurrMsgId}=State) ->
     NoopId = kz_json:get_value(<<"Application-Response">>, JObj),
@@ -637,7 +637,7 @@ handle_execute_complete(AppName, JObj, #state{current_app=CurrApp}=State) ->
         'false' -> State
     end.
 
--spec flush_group_id(queue:queue(), api_binary(), ne_binary()) -> queue:queue().
+-spec flush_group_id(queue:queue(), maybe(binary()), ne_binary()) -> queue:queue().
 flush_group_id(CmdQ, 'undefined', _) -> CmdQ;
 flush_group_id(CmdQ, GroupId, AppName) ->
     Filter = kz_json:from_list([{<<"Application-Name">>, AppName}
@@ -757,14 +757,14 @@ publish_leg_addition(Props) ->
                                              ),
     ecallmgr_call_events:publish_event(Event).
 
--spec maybe_add_cleg(kz_proplist(), api_binary(), api_binary(), state()) -> state().
+-spec maybe_add_cleg(kz_proplist(), maybe(binary()), maybe(binary()), state()) -> state().
 maybe_add_cleg(Props, OtherLeg, LegId, #state{other_legs=Legs}=State) ->
     case lists:member(OtherLeg, Legs) of
         'true' -> add_cleg(Props, OtherLeg, LegId, State);
         'false' -> State
     end.
 
--spec add_cleg(kz_proplist(), api_binary(), api_binary(), state()) -> state().
+-spec add_cleg(kz_proplist(), maybe(binary()), maybe(binary()), state()) -> state().
 add_cleg(_Props, _OtherLeg, 'undefined', State) -> State;
 add_cleg(Props, OtherLeg, LegId, #state{other_legs=Legs
                                         ,call_id=CallId
@@ -783,7 +783,7 @@ add_cleg(Props, OtherLeg, LegId, #state{other_legs=Legs
             State#state{other_legs=[LegId|Legs]}
     end.
 
--spec publish_cleg_addition(kz_proplist(), api_binary(), ne_binary()) -> 'ok'.
+-spec publish_cleg_addition(kz_proplist(), maybe(binary()), ne_binary()) -> 'ok'.
 publish_cleg_addition(Props, OtherLeg, CallId) ->
     Event = ecallmgr_call_events:create_event(<<"LEG_CREATED">>
                                               ,'undefined'
@@ -792,7 +792,7 @@ publish_cleg_addition(Props, OtherLeg, CallId) ->
     Event1 = replace_call_id(Event, OtherLeg, CallId, []),
     ecallmgr_call_events:publish_event(Event1).
 
--spec replace_call_id(kz_proplist(), api_binary(), ne_binary(), kz_proplist()) -> kz_proplist().
+-spec replace_call_id(kz_proplist(), maybe(binary()), ne_binary(), kz_proplist()) -> kz_proplist().
 replace_call_id([], _Call1, _Call2, Swap) -> Swap;
 replace_call_id([{Key, Call1}|T], Call1, Call2, Swap) ->
     replace_call_id(T, Call1, Call2, [{Key, Call2}|Swap]);
@@ -1003,7 +1003,7 @@ queue_insert_fun('head') ->
 %% @end
 %%--------------------------------------------------------------------
 %% See Noop documentation for Filter-Applications to get an idea of this function's purpose
--spec maybe_filter_queue('undefined' | list(), queue:queue()) -> queue:queue().
+-spec maybe_filter_queue(maybe(list()), queue:queue()) -> queue:queue().
 maybe_filter_queue('undefined', CommandQ) -> CommandQ;
 maybe_filter_queue([], CommandQ) -> CommandQ;
 maybe_filter_queue([AppName|T]=Apps, CommandQ) when is_binary(AppName) ->
@@ -1172,7 +1172,7 @@ send_error_resp(CallId, Cmd, Msg) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_keep_alive_ref(state()) -> api_reference().
+-spec get_keep_alive_ref(state()) -> maybe(reference()).
 get_keep_alive_ref(#state{is_call_up='true'}) -> 'undefined';
 get_keep_alive_ref(#state{keep_alive_ref='undefined'
                           ,is_call_up='false'

@@ -265,7 +265,7 @@ maybe_inbound_soft_limit(Request, Limits) ->
 
 -define(AUTZH_TYPES_FOR_OUTBOUND, [<<"account">>, <<"user">>, <<"device">>]).
 
--spec maybe_get_outbound_flags(api_binary(), api_binary(), ne_binary()) -> api_binary().
+-spec maybe_get_outbound_flags(maybe(binary()), maybe(binary()), ne_binary()) -> maybe(binary()).
 maybe_get_outbound_flags('undefined', _AuthId, _AccountDb) -> 'undefined';
 maybe_get_outbound_flags(_AuthType, 'undefined', _AccountDb) -> 'undefined';
 maybe_get_outbound_flags(AuthType, AuthId, AccountDb) ->

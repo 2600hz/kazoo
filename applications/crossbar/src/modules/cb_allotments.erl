@@ -124,9 +124,9 @@ load_consumed(Context) ->
     end.
 
 -type mode() :: {'cycle', kz_datetime()} |
-                {'manual', api_seconds(), api_seconds()}.
+                {'manual', maybe(gregorian_seconds()), maybe(gregorian_seconds())}.
 
--spec foldl_consumed(api_binary(), kz_json:object(), CMA) -> CMA when
+-spec foldl_consumed(maybe(binary()), kz_json:object(), CMA) -> CMA when
       CMA :: {cb_context:context(), mode(), kz_json:objects()}.
 foldl_consumed(Classification, Value, {Context, Mode, Acc}) ->
     case create_viewoptions(Context, Classification, Value, Mode) of
@@ -143,7 +143,7 @@ foldl_consumed(Classification, Value, {Context, Mode, Acc}) ->
     end.
 
 
--spec normalize_result(api_binary(), gregorian_seconds(), gregorian_seconds(), kz_json:object(), kz_json:objects())
+-spec normalize_result(maybe(binary()), gregorian_seconds(), gregorian_seconds(), kz_json:object(), kz_json:objects())
                       -> kz_json:object().
 normalize_result(_Cycle, _From, _To, Acc, []) -> Acc;
 normalize_result(Cycle, From, To, Acc, [Head|Tail]) ->
@@ -164,7 +164,7 @@ normalize_result(Cycle, From, To, Acc, [Head|Tail]) ->
            end,
     normalize_result(Cycle, From, To, Acc1, Tail).
 
--spec create_viewoptions(cb_context:context(), api_binary(), kz_json:object(), mode()) -> {api_binary(), kz_proplist()} |
+-spec create_viewoptions(cb_context:context(), maybe(binary()), kz_json:object(), mode()) -> {maybe(binary()), kz_proplist()} |
                                                                                           cb_context:context().
 create_viewoptions(Context, Classification, JObj, {'cycle', DateTime}) ->
     Cycle = kz_json:get_value(<<"cycle">>, JObj),
@@ -194,7 +194,7 @@ get_consumed_mode(Context) ->
         {From, To} -> {'manual', From, To}
     end.
 
--spec maybe_req_seconds(cb_context:context(), api_binary()) -> api_seconds().
+-spec maybe_req_seconds(cb_context:context(), maybe(binary())) -> maybe(gregorian_seconds()).
 maybe_req_seconds(Context, Key) ->
     T = cb_context:req_value(Context, Key),
     case kz_util:is_empty(T) of

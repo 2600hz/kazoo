@@ -220,7 +220,7 @@ set_caller_id(Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_get_account_cid(ne_binary(), kapps_call:call()) ->
-                                   {api_binary(), api_binary()}.
+                                   {maybe(binary()), maybe(binary())}.
 maybe_get_account_cid(AccountId, Call) ->
     Name = kapps_call:caller_id_name(Call),
     Number = kapps_call:caller_id_number(Call),
@@ -235,7 +235,7 @@ maybe_get_account_cid(AccountId, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_get_account_external_number(ne_binary(), ne_binary(), kz_json:object(), kapps_call:call()) ->
-                                               {api_binary(), api_binary()}.
+                                               {maybe(binary()), maybe(binary())}.
 maybe_get_account_external_number(Number, Name, Account, Call) ->
     External = kz_json:get_ne_value([<<"caller_id">>, <<"external">>, <<"number">>], Account),
     case is_valid_caller_id(External, Call) of
@@ -251,7 +251,7 @@ maybe_get_account_external_number(Number, Name, Account, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_caller_id(api_binary(), kapps_call:call()) -> boolean().
+-spec is_valid_caller_id(maybe(binary()), kapps_call:call()) -> boolean().
 is_valid_caller_id('undefined', _) -> 'false';
 is_valid_caller_id(_, _) -> 'true'.
 

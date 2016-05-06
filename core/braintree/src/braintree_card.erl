@@ -56,7 +56,7 @@ url(Token, _) ->
 %% Given a list of #bt_cards{} find the current default payment token.
 %% @end
 %%--------------------------------------------------------------------
--spec default_payment_token(bt_cards()) -> api_binary().
+-spec default_payment_token(bt_cards()) -> maybe(binary()).
 default_payment_token(Cards) ->
     case lists:keyfind('true', #bt_card.default, Cards) of
         'false' -> braintree_util:error_no_payment_token();
@@ -70,7 +70,7 @@ default_payment_card(Cards) ->
         Card -> Card
     end.
 
--spec payment_token(bt_card()) -> api_binary().
+-spec payment_token(bt_card()) -> maybe(binary()).
 payment_token(#bt_card{token = Value}) -> Value.
 
 %%--------------------------------------------------------------------
@@ -176,7 +176,7 @@ expiring(Start, End) ->
 %% Accessors for field 'make_default'.
 %% @end
 %%--------------------------------------------------------------------
--spec make_default(bt_card()) -> api_boolean().
+-spec make_default(bt_card()) -> maybe(boolean()).
 -spec make_default(bt_card(), boolean()) -> bt_card().
 
 make_default(#bt_card{make_default = Value}) -> Value.
@@ -298,7 +298,7 @@ record_to_xml(#bt_card{}=Card, ToString) ->
 %% Convert a given json object into a record
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_record(api_object()) -> bt_card().
+-spec json_to_record(maybe(kz_json:object())) -> bt_card().
 json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->
     #bt_card{token = create_or_get_json_id(JObj)
@@ -352,7 +352,7 @@ record_to_json(#bt_card{}=Card) ->
 %% a uuid to use during creation.
 %% @end
 %%--------------------------------------------------------------------
--spec create_or_get_json_id(kz_json:object()) -> api_binary().
+-spec create_or_get_json_id(kz_json:object()) -> maybe(binary()).
 create_or_get_json_id(JObj) ->
     case kz_json:get_value(<<"number">>, JObj) of
         'undefined' -> kz_doc:id(JObj);

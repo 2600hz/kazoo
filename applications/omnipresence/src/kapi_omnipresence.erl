@@ -118,7 +118,7 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec subscribe(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec subscribe(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 subscribe(Prop) when is_list(Prop) ->
     case subscribe_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SUBSCRIBE_HEADERS, ?OPTIONAL_SUBSCRIBE_HEADERS);
@@ -126,7 +126,7 @@ subscribe(Prop) when is_list(Prop) ->
     end;
 subscribe(JObj) -> subscribe(kz_json:to_proplist(JObj)).
 
--spec subscribe_v(api_terms()) -> boolean().
+-spec subscribe_v(maybe(terms())) -> boolean().
 subscribe_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SUBSCRIBE_HEADERS, ?SUBSCRIBE_VALUES, ?SUBSCRIBE_TYPES);
 subscribe_v(JObj) -> subscribe_v(kz_json:to_proplist(JObj)).
@@ -141,7 +141,7 @@ publish_subscribe(Req, ContentType) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec update(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec update(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 update(Prop) when is_list(Prop) ->
     case update_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?UPDATE_HEADERS, ?OPTIONAL_UPDATE_HEADERS);
@@ -149,12 +149,12 @@ update(Prop) when is_list(Prop) ->
     end;
 update(JObj) -> update(kz_json:to_proplist(JObj)).
 
--spec update_v(api_terms()) -> boolean().
+-spec update_v(maybe(terms())) -> boolean().
 update_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?UPDATE_HEADERS, ?UPDATE_VALUES, ?UPDATE_TYPES);
 update_v(JObj) -> update_v(kz_json:to_proplist(JObj)).
 
--spec publish_update(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_update(ne_binary(), maybe(terms())) -> 'ok'.
 publish_update(Q, JObj) -> publish_update(Q, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_update(Q, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?UPDATE_VALUES, fun ?MODULE:update/1),
@@ -165,7 +165,7 @@ publish_update(Q, Req, ContentType) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec notify(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec notify(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 notify(Prop) when is_list(Prop) ->
     case notify_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?NOTIFY_HEADERS, ?OPTIONAL_NOTIFY_HEADERS);
@@ -173,7 +173,7 @@ notify(Prop) when is_list(Prop) ->
     end;
 notify(JObj) -> notify(kz_json:to_proplist(JObj)).
 
--spec notify_v(api_terms()) -> boolean().
+-spec notify_v(maybe(terms())) -> boolean().
 notify_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?NOTIFY_HEADERS, ?NOTIFY_VALUES, ?NOTIFY_TYPES);
 notify_v(JObj) -> notify_v(kz_json:to_proplist(JObj)).
@@ -188,7 +188,7 @@ publish_notify(Req, ContentType) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec search_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec search_req(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 search_req(Prop) when is_list(Prop) ->
     case search_req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SEARCH_REQ_HEADERS, ?OPTIONAL_SEARCH_REQ_HEADERS);
@@ -197,21 +197,21 @@ search_req(Prop) when is_list(Prop) ->
 search_req(JObj) ->
     search_req(kz_json:to_proplist(JObj)).
 
--spec search_req_v(api_terms()) -> boolean().
+-spec search_req_v(maybe(terms())) -> boolean().
 search_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SEARCH_REQ_HEADERS, ?SEARCH_REQ_VALUES, ?SEARCH_REQ_TYPES);
 search_req_v(JObj) ->
     search_req_v(kz_json:to_proplist(JObj)).
 
--spec publish_search_req(api_terms()) -> 'ok'.
--spec publish_search_req(api_terms(), binary()) -> 'ok'.
+-spec publish_search_req(maybe(terms())) -> 'ok'.
+-spec publish_search_req(maybe(terms()), binary()) -> 'ok'.
 publish_search_req(JObj) ->
     publish_search_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_search_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?SEARCH_REQ_VALUES, fun ?MODULE:search_req/1),
     amqp_util:basic_publish(?OMNIPRESENCE_EXCHANGE, search_req_routing_key(Req), Payload, ContentType).
 
--spec search_req_routing_key(binary() | api_terms()) -> ne_binary().
+-spec search_req_routing_key(binary() | maybe(terms())) -> ne_binary().
 search_req_routing_key(Req) when is_list(Req) ->
     search_req_routing_key(props:get_value(<<"Realm">>, Req));
 search_req_routing_key(Realm) when is_binary(Realm) ->
@@ -222,7 +222,7 @@ search_req_routing_key(Realm) when is_binary(Realm) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec search_partial_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec search_partial_resp(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 search_partial_resp(Prop) when is_list(Prop) ->
     case search_partial_resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SEARCH_PARTIAL_RESP_HEADERS, ?OPTIONAL_SEARCH_PARTIAL_RESP_HEADERS);
@@ -231,14 +231,14 @@ search_partial_resp(Prop) when is_list(Prop) ->
 search_partial_resp(JObj) ->
     search_partial_resp(kz_json:to_proplist(JObj)).
 
--spec search_partial_resp_v(api_terms()) -> boolean().
+-spec search_partial_resp_v(maybe(terms())) -> boolean().
 search_partial_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SEARCH_PARTIAL_RESP_HEADERS, ?SEARCH_PARTIAL_RESP_VALUES, ?SEARCH_PARTIAL_RESP_TYPES);
 search_partial_resp_v(JObj) ->
     search_partial_resp_v(kz_json:to_proplist(JObj)).
 
--spec publish_search_partial_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_search_partial_resp(ne_binary(), api_terms(), binary()) -> 'ok'.
+-spec publish_search_partial_resp(ne_binary(), maybe(terms())) -> 'ok'.
+-spec publish_search_partial_resp(ne_binary(), maybe(terms()), binary()) -> 'ok'.
 publish_search_partial_resp(Queue, JObj) ->
     publish_search_partial_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_search_partial_resp(Queue, Resp, ContentType) ->
@@ -250,7 +250,7 @@ publish_search_partial_resp(Queue, Resp, ContentType) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec search_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec search_resp(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 search_resp(Prop) when is_list(Prop) ->
     case search_resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SEARCH_RESP_HEADERS, ?OPTIONAL_SEARCH_RESP_HEADERS);
@@ -259,14 +259,14 @@ search_resp(Prop) when is_list(Prop) ->
 search_resp(JObj) ->
     search_resp(kz_json:to_proplist(JObj)).
 
--spec search_resp_v(api_terms()) -> boolean().
+-spec search_resp_v(maybe(terms())) -> boolean().
 search_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SEARCH_RESP_HEADERS, ?SEARCH_RESP_VALUES, ?SEARCH_RESP_TYPES);
 search_resp_v(JObj) ->
     search_resp_v(kz_json:to_proplist(JObj)).
 
--spec publish_search_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_search_resp(ne_binary(), api_terms(), binary()) -> 'ok'.
+-spec publish_search_resp(ne_binary(), maybe(terms())) -> 'ok'.
+-spec publish_search_resp(ne_binary(), maybe(terms()), binary()) -> 'ok'.
 publish_search_resp(Queue, JObj) ->
     publish_search_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_search_resp(Queue, Resp, ContentType) ->
@@ -317,7 +317,7 @@ bind_q(Queue, [_|Restrict], Props) ->
 bind_q(_, [], _) -> 'ok'.
 
 -spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
--spec unbind_q(ne_binary(), atoms() | 'undefined', kz_proplist()) -> 'ok'.
+-spec unbind_q(ne_binary(), maybe(atoms()), kz_proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     unbind_q(Queue, props:get_value('restrict_to', Props), Props).
 

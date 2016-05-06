@@ -77,8 +77,8 @@ handle_reg_success(JObj, _Props) ->
 
     maybe_process_reg_success(UserAgentProperties, JObj).
 
--spec maybe_process_reg_success(api_object(), kz_json:object()) -> 'ok'.
--spec maybe_process_reg_success(api_binary(), kz_json:object(), kz_json:object(), kz_proplist()) -> 'ok'.
+-spec maybe_process_reg_success(maybe(kz_json:object()), kz_json:object()) -> 'ok'.
+-spec maybe_process_reg_success(maybe(binary()), kz_json:object(), kz_json:object(), kz_proplist()) -> 'ok'.
 maybe_process_reg_success('undefined', _JObj) -> 'ok';
 maybe_process_reg_success(UA, JObj) ->
     OriginalContact = kz_json:get_value(<<"Original-Contact">>, JObj),
@@ -98,7 +98,7 @@ maybe_process_reg_success(Token, UA, JObj, Params) ->
     end.
 
 -spec maybe_update_push_token(kz_json:object(), kz_json:object(), kz_proplist()) -> 'ok'.
--spec maybe_update_push_token(api_binary(), api_binary(), kz_json:object(), kz_json:object(), kz_proplist()) -> 'ok'.
+-spec maybe_update_push_token(maybe(binary()), maybe(binary()), kz_json:object(), kz_json:object(), kz_proplist()) -> 'ok'.
 maybe_update_push_token(UA, JObj, Params) ->
     AccountId = kz_json:get_first_defined([[<<"Custom-Channel-Vars">>, <<"Account-ID">>]
                                            ,<<"Account-ID">>

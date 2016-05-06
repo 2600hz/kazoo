@@ -37,7 +37,7 @@
 -define(RULE_DEFAULT_WTIME_STOP, ?SECONDS_IN_DAY).
 
 -record(rule, {id = <<>> :: binary()
-               ,enabled :: api_boolean()
+               ,enabled :: maybe(boolean())
                ,name = ?RULE_DEFAULT_NAME :: binary()
                ,cycle = ?RULE_DEFAULT_CYCLE :: cycle_type()
                ,interval = ?RULE_DEFAULT_INTERVAL :: non_neg_integer()
@@ -58,7 +58,7 @@
                    ,local_date = {2011, 1, 1} :: kz_date()
                    ,local_time = {0, 0, 0} :: kz_time()
                    ,routes = [] :: kz_json:keys()
-                   ,timezone :: api_binary()
+                   ,timezone :: maybe(binary())
                    ,prompts = #prompts{} :: prompts()
                    ,keys = #keys{} :: keys()
                    ,interdigit_timeout = kapps_call_command:default_interdigit_timeout() :: pos_integer()

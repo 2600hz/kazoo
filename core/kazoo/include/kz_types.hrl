@@ -38,24 +38,9 @@
 -type pid_ref() :: {pid(), reference()}.
 -type pid_refs() :: [pid_ref()].
 
--type api_terms() :: kz_json:object() | kz_proplist().
--type api_binary() :: binary() | 'undefined'.
--type api_binaries() :: [api_binary()] | 'undefined'.
--type api_object() :: kz_json:object() | 'undefined'.
--type api_objects() :: kz_json:objects() | 'undefined'.
--type api_boolean() :: boolean() | 'undefined'.
--type api_atom() :: atom() | 'undefined'.
--type api_atoms() :: atoms() | 'undefined'.
--type api_string() :: string() | 'undefined'.
--type api_reference() :: reference() | 'undefined'.
--type api_pid() :: pid() | 'undefined'.
--type api_list() :: list() | 'undefined'.
+-type maybe(T) :: 'undefined' | T.
 
--type api_number() :: number() | 'undefined'.
--type api_integer() :: integer() | 'undefined'.
--type api_pos_integer() :: pos_integer() | 'undefined'.
--type api_non_neg_integer() :: non_neg_integer() | 'undefined'.
--type api_float() :: float() | 'undefined'.
+-type terms() :: kz_json:object() | kz_proplist().
 
 -type kz_deeplist() :: iolist(). %[any() | kz_deeplist()].
 
@@ -114,7 +99,6 @@
 -type kz_iso_week() :: calendar:yearweeknum(). %%{kz_year(), kz_weeknum()}.
 -type gregorian_seconds() :: pos_integer().
 -type unix_seconds() :: pos_integer().
--type api_seconds() :: 'undefined' | gregorian_seconds().
 
 -type kz_timeout() :: non_neg_integer() | 'infinity'.
 
@@ -127,7 +111,7 @@
 -type sup_init_ret() :: {'ok', {sup_start_flags(), sup_child_specs()}} |
                         'ignore'.
 
--type sup_child_id() :: api_pid().
+-type sup_child_id() :: maybe(pid()).
 -type sup_startchild_err() :: 'already_present' |
                               {'already_started', sup_child_id()} |
                               any().
@@ -323,16 +307,16 @@
 -type media_servers() :: [media_server()].
 
 -record(kz_node, {node = node() :: atom() | '$1' | '$2' | '_'
-                  ,expires = 0 :: non_neg_integer() | 'undefined' | '$2' | '_'
+                  ,expires = 0 :: maybe(non_neg_integer()) | '$2' | '_'
                   ,kapps = [] :: kapps_info() | '$1' | '_'
                   ,media_servers = [] :: media_servers() | '_'
-                  ,last_heartbeat = kz_util:now_ms(kz_util:now()) :: pos_integer() | 'undefined' | '$3' | '_'
-                  ,zone :: atom() | 'undefined' | '$2' | '_'
-                  ,broker :: api_binary() | '_'
+                  ,last_heartbeat = kz_util:now_ms(kz_util:now()) :: maybe(pos_integer()) | '$3' | '_'
+                  ,zone :: maybe(atom()) | '$2' | '_'
+                  ,broker :: maybe(binary()) | '_'
                   ,used_memory = 0 :: non_neg_integer() | '_'
                   ,processes = 0 :: non_neg_integer() | '_'
                   ,ports = 0 :: non_neg_integer() | '_'
-                  ,version :: api_binary() | '_'
+                  ,version :: maybe(binary()) | '_'
                   ,channels = 0 :: non_neg_integer() | '_'
                   ,registrations = 0 :: non_neg_integer() | '_'
                  }).

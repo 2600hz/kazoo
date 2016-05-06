@@ -12,7 +12,7 @@
 
 -include("jonny5.hrl").
 
--spec remove_call_charges(api_binary(), api_binary()) -> 'ok'.
+-spec remove_call_charges(maybe(binary()), maybe(binary())) -> 'ok'.
 remove_call_charges('undefined', _) -> 'ok';
 remove_call_charges(_, 'undefined') -> 'ok';
 remove_call_charges(AccountId, CallId) ->
@@ -55,7 +55,7 @@ send_system_alert(Request) ->
                              ,lists:foldr(fun(F, P) -> F(P) end, [], Routines)
                             ).
 
--spec add_limit_details(api_binary(), ne_binary(), kz_proplist()) -> kz_proplist().
+-spec add_limit_details(maybe(binary()), ne_binary(), kz_proplist()) -> kz_proplist().
 add_limit_details('undefined', _, Props) -> Props;
 add_limit_details(Account, Prefix, Props) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
@@ -108,7 +108,7 @@ add_limit_details(Account, Prefix, Props) ->
      | Props
     ].
 
--spec get_account_name(api_binary()) -> ne_binary().
+-spec get_account_name(maybe(binary())) -> ne_binary().
 get_account_name('undefined') -> <<"unknown">>;
 get_account_name(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),

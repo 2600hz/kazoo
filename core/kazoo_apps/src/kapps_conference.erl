@@ -69,10 +69,10 @@
 -define(BRIDGE_PWD, kapps_config:get(<<"conferences">>, <<"bridge_password">>, kz_util:rand_hex_binary(12))).
 
 -record(kapps_conference, {
-          id :: api_binary()                                  %% the conference id
-          ,focus :: api_binary()                              %% the conference focus
-          ,profile = <<"undefined">> :: api_binary()          %% conference profile (config settings)
-          ,controller_q :: api_binary()                       %% the controller queue, for responses
+          id :: maybe(binary())                                  %% the conference id
+          ,focus :: maybe(binary())                              %% the conference focus
+          ,profile = <<"undefined">> :: maybe(binary())          %% conference profile (config settings)
+          ,controller_q :: maybe(binary())                       %% the controller queue, for responses
           ,bridge_username = ?BRIDGE_USER :: ne_binary()      %% the username used for a conference bridge
           ,bridge_password = ?BRIDGE_PWD :: ne_binary()       %% the password used for a conference bridge
           ,member_pins = [] :: ne_binaries()                  %% a list of pins for use by members
@@ -83,7 +83,7 @@
           ,moderator_join_muted = 'false' :: boolean()        %% should the moderator join muted
           ,moderator_join_deaf = 'false' :: boolean()         %% should the moderator join deaf
           ,max_participants = 0 :: non_neg_integer()          %% max number of participants
-          ,max_members_media :: api_binary()                  %% media to play instead of allowing new users to conference
+          ,max_members_media :: maybe(binary())                  %% media to play instead of allowing new users to conference
           ,require_moderator = 'false' :: boolean()           %% does the conference require a moderator
           ,wait_for_moderator = 'false' :: boolean()          %% can members wait for a moderator
           ,play_name_on_join = 'false' :: boolean()           %% should participants have their name played on join
@@ -141,7 +141,7 @@ from_json(JObj, Conference) ->
       ,call = load_call(JObj, call(Conference))
      }.
 
--spec load_call(kz_json:object(), kapps_call:call() | 'undefined') -> kapps_call:call() | 'undefined'.
+-spec load_call(kz_json:object(), maybe(kapps_call:call())) -> maybe(kapps_call:call()).
 load_call(JObj, ConfCall) ->
     case kz_json:get_value(<<"Call">>, JObj) of
         'undefined' -> ConfCall;
@@ -244,17 +244,17 @@ update_fold({Fun, Value}, Conference) when is_function(Fun, 2) ->
 update_fold(Fun, Conference) when is_function(Fun, 1) ->
     Fun(Conference).
 
--spec id(kapps_conference:conference()) -> api_binary().
+-spec id(kapps_conference:conference()) -> maybe(binary()).
 id(#kapps_conference{id=Id}) -> Id.
 
--spec set_id(api_binary(), kapps_conference:conference()) -> kapps_conference:conference().
+-spec set_id(maybe(binary()), kapps_conference:conference()) -> kapps_conference:conference().
 set_id(Id, Conference) when is_binary(Id); Id =:= 'undefined' ->
     Conference#kapps_conference{id=Id}.
 
--spec profile(kapps_conference:conference()) -> api_binary().
+-spec profile(kapps_conference:conference()) -> maybe(binary()).
 profile(#kapps_conference{profile=P}) -> P.
 
--spec set_profile(api_binary(), kapps_conference:conference()) -> kapps_conference:conference().
+-spec set_profile(maybe(binary()), kapps_conference:conference()) -> kapps_conference:conference().
 set_profile(P, Conference) when is_binary(P); P =:= 'undefined' ->
     Conference#kapps_conference{profile=P}.
 
@@ -274,7 +274,7 @@ application_version(#kapps_conference{app_version=AppVersion}) ->
 set_application_version(AppVersion, #kapps_conference{}=Conference) when is_binary(AppVersion) ->
     Conference#kapps_conference{app_version=AppVersion}.
 
--spec focus(kapps_conference:conference()) -> api_binary().
+-spec focus(kapps_conference:conference()) -> maybe(binary()).
 focus(#kapps_conference{focus=Focus}) ->
     Focus.
 
@@ -282,7 +282,7 @@ focus(#kapps_conference{focus=Focus}) ->
 set_focus(Focus, Conference) when is_binary(Focus) ->
     Conference#kapps_conference{focus=Focus}.
 
--spec controller_queue(kapps_conference:conference()) -> api_binary().
+-spec controller_queue(kapps_conference:conference()) -> maybe(binary()).
 controller_queue(#kapps_conference{controller_q=ControllerQ}) ->
     ControllerQ.
 
@@ -322,11 +322,11 @@ moderator_pins(#kapps_conference{moderator_pins=ModeratorPins}) ->
 set_moderator_pins(ModeratorPins, Conference) when is_list(ModeratorPins) ->
     Conference#kapps_conference{moderator_pins=ModeratorPins}.
 
--spec moderator(kapps_conference:conference()) -> api_boolean().
+-spec moderator(kapps_conference:conference()) -> maybe(boolean()).
 moderator(#kapps_conference{moderator=Moderator}) ->
     Moderator.
 
--spec set_moderator(api_boolean(), kapps_conference:conference()) -> kapps_conference:conference().
+-spec set_moderator(maybe(boolean()), kapps_conference:conference()) -> kapps_conference:conference().
 set_moderator('undefined', Conference) ->
     Conference#kapps_conference{moderator='undefined'};
 set_moderator(Moderator, Conference) when is_boolean(Moderator) ->
@@ -372,7 +372,7 @@ max_participants(#kapps_conference{max_participants=MaxParticipants}) ->
 set_max_participants(MaxParticipants, Conference) when is_integer(MaxParticipants) ->
     Conference#kapps_conference{max_participants=MaxParticipants}.
 
--spec max_members_media(kapps_conference:conference()) -> api_binary().
+-spec max_members_media(kapps_conference:conference()) -> maybe(binary()).
 max_members_media(#kapps_conference{max_members_media = Value}) -> Value.
 
 -spec set_max_members_media(ne_binary(), kapps_conference:conference()) -> kapps_conference:conference().
@@ -432,7 +432,7 @@ play_welcome(#kapps_conference{play_welcome=ShouldPlay}) ->
 set_play_welcome(ShouldPlay, Conference) when is_boolean(ShouldPlay) ->
     Conference#kapps_conference{play_welcome=ShouldPlay}.
 
--spec conference_doc(kapps_conference:conference()) -> api_object().
+-spec conference_doc(kapps_conference:conference()) -> maybe(kz_json:object()).
 conference_doc(#kapps_conference{conference_doc=JObj}) -> JObj.
 
 -spec set_conference_doc(kz_json:object(), kapps_conference:conference()) -> kapps_conference:conference().
@@ -532,7 +532,7 @@ cache(#kapps_conference{id=ConferenceId}=Conference, Expires) ->
 retrieve(ConferenceId) ->
     kz_cache:fetch_local(?KAPPS_CALL_CACHE, {?MODULE, 'conference', ConferenceId}).
 
--spec call(kapps_conference:conference()) -> kapps_call:call() | 'undefined'.
+-spec call(kapps_conference:conference()) -> maybe(kapps_call:call()).
 call(#kapps_conference{call=Call}) -> Call.
 
 -spec set_call(kapps_call:call(), kapps_conference:conference()) -> kapps_conference:conference().

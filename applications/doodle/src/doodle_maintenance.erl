@@ -41,7 +41,7 @@ check_sms_by_device_id(AccountId, DeviceId) ->
             lager:debug("unable to get sms by device for ~s/~s: ~p", [AccountId, DeviceId, _R])
     end.
 
--spec check_sms_by_owner_id(ne_binary(), api_binary()) -> 'ok'.
+-spec check_sms_by_owner_id(ne_binary(), maybe(binary())) -> 'ok'.
 check_sms_by_owner_id(_AccountId, 'undefined') -> 'ok';
 check_sms_by_owner_id(AccountId, OwnerId) ->
     ViewOptions = [{'endkey', [OwnerId, kz_util:current_tstamp()]}],

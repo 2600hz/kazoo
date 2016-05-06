@@ -48,20 +48,20 @@
 
 -define(KZ_SERVICES_DB, <<"services">>).
 
--record(kz_transaction, {id :: api_binary()
-                         ,rev :: api_binary()
-                         ,description :: api_binary()
-                         ,call_id :: api_binary()
+-record(kz_transaction, {id :: maybe(binary())
+                         ,rev :: maybe(binary())
+                         ,description :: maybe(binary())
+                         ,call_id :: maybe(binary())
                          ,sub_account_id :: ne_binary()
-                         ,sub_account_name :: api_binary()
-                         ,event :: api_binary()
-                         ,number :: api_binary()
-                         ,feature :: api_binary()
-                         ,bookkeeper_info :: api_object()
-                         ,metadata :: api_object()
-                         ,pvt_status :: api_binary()
-                         ,pvt_reason :: api_binary()
-                         ,pvt_code :: api_integer()
+                         ,sub_account_name :: maybe(binary())
+                         ,event :: maybe(binary())
+                         ,number :: maybe(binary())
+                         ,feature :: maybe(binary())
+                         ,bookkeeper_info :: maybe(kz_json:object())
+                         ,metadata :: maybe(kz_json:object())
+                         ,pvt_status :: maybe(binary())
+                         ,pvt_reason :: maybe(binary())
+                         ,pvt_code :: maybe(integer())
                          ,pvt_amount = 0 :: units()
                          ,pvt_type :: ne_binary()
                          ,pvt_created :: gregorian_seconds()
@@ -69,7 +69,7 @@
                          ,pvt_account_id :: ne_binary()
                          ,pvt_account_db :: ne_binary()
                          ,pvt_vsn = 2 :: integer()
-                         ,order_id :: api_binary()
+                         ,order_id :: maybe(binary())
                         }).
 
 -type transaction() :: #kz_transaction{}.
@@ -94,7 +94,7 @@ id(#kz_transaction{id=Id}) ->
 rev(#kz_transaction{rev=Rev}) ->
     Rev.
 
--spec description(transaction()) -> api_binary().
+-spec description(transaction()) -> maybe(binary()).
 description(#kz_transaction{description=Description}) ->
     Description.
 
@@ -106,7 +106,7 @@ call_id(#kz_transaction{call_id=CallId}) ->
 sub_account_id(#kz_transaction{sub_account_id=SubAccountId}) ->
     SubAccountId.
 
--spec sub_account_name(transaction()) -> api_binary().
+-spec sub_account_name(transaction()) -> maybe(binary()).
 sub_account_name(#kz_transaction{sub_account_name=SubAccountName}) ->
     SubAccountName.
 
@@ -126,7 +126,7 @@ feature(#kz_transaction{feature=Feature}) ->
 bookkeeper_info(#kz_transaction{bookkeeper_info=BookkeeperInfo}) ->
     BookkeeperInfo.
 
--spec metadata(transaction()) -> api_object().
+-spec metadata(transaction()) -> maybe(kz_json:object()).
 metadata(#kz_transaction{metadata=MetaData}) ->
     MetaData.
 
@@ -138,7 +138,7 @@ reason(#kz_transaction{pvt_reason=Reason}) ->
 status(#kz_transaction{pvt_status=Status}) ->
     Status.
 
--spec code(transaction()) -> api_integer().
+-spec code(transaction()) -> maybe(integer()).
 code(#kz_transaction{pvt_code=Code}) ->
     Code.
 
@@ -174,7 +174,7 @@ account_db(#kz_transaction{pvt_account_db=AccountDb}) ->
 version(#kz_transaction{pvt_vsn=Version}) ->
     Version.
 
--spec order_id(transaction()) -> api_binary().
+-spec order_id(transaction()) -> maybe(binary()).
 order_id(#kz_transaction{order_id=OrderId}) ->
     OrderId.
 
@@ -327,7 +327,7 @@ set_account_db(AccountDb, Transaction) ->
 set_version(Vsn, Transaction) ->
     Transaction#kz_transaction{pvt_vsn=Vsn}.
 
--spec set_order_id(api_binary(), transaction()) -> transaction().
+-spec set_order_id(maybe(binary()), transaction()) -> transaction().
 set_order_id(OrderId, Transaction) ->
     Transaction#kz_transaction{order_id=OrderId}.
 

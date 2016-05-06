@@ -109,7 +109,7 @@ create_ccvs(#auth_user{doc=JObj}=AuthUser) ->
             ],
     kz_json:from_list(props:filter_undefined(Props)).
 
--spec maybe_get_presence_id(auth_user()) -> api_binary().
+-spec maybe_get_presence_id(auth_user()) -> maybe(binary()).
 maybe_get_presence_id(#auth_user{account_db=AccountDb
                                  ,authorizing_id=DeviceId
                                  ,owner_id=OwnerId
@@ -125,7 +125,7 @@ maybe_get_presence_id(#auth_user{account_db=AccountDb
             end
     end.
 
--spec get_presence_id(api_binary(), api_binary(), api_binary()) -> api_binary().
+-spec get_presence_id(maybe(binary()), maybe(binary()), maybe(binary())) -> maybe(binary()).
 get_presence_id('undefined', _, _) -> 'undefined';
 get_presence_id(_, 'undefined', 'undefined') -> 'undefined';
 get_presence_id(AccountDb, DeviceId, 'undefined') ->
@@ -133,7 +133,7 @@ get_presence_id(AccountDb, DeviceId, 'undefined') ->
 get_presence_id(AccountDb, DeviceId, OwnerId) ->
     maybe_get_owner_presence_id(AccountDb, DeviceId, OwnerId).
 
--spec maybe_get_owner_presence_id(ne_binary(), ne_binary(), ne_binary()) -> api_binary().
+-spec maybe_get_owner_presence_id(ne_binary(), ne_binary(), ne_binary()) -> maybe(binary()).
 maybe_get_owner_presence_id(AccountDb, DeviceId, OwnerId) ->
     case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
         {'error', _} -> 'undefined';
@@ -144,7 +144,7 @@ maybe_get_owner_presence_id(AccountDb, DeviceId, OwnerId) ->
             end
     end.
 
--spec get_device_presence_id(ne_binary(), ne_binary()) -> api_binary().
+-spec get_device_presence_id(ne_binary(), ne_binary()) -> maybe(binary()).
 get_device_presence_id(AccountDb, DeviceId) ->
     case kz_datamgr:open_cache_doc(AccountDb, DeviceId) of
         {'error', _} -> 'undefined';
@@ -162,7 +162,7 @@ create_specific_ccvs(#auth_user{msisdn=MSISDN}, ?GSM_ANY_METHOD) ->
     ];
 create_specific_ccvs(_, _) -> [].
 
--spec create_custom_sip_headers(api_binary(), auth_user()) -> api_object().
+-spec create_custom_sip_headers(maybe(binary()), auth_user()) -> maybe(kz_json:object()).
 create_custom_sip_headers(?GSM_ANY_METHOD
                           ,#auth_user{a3a8_kc=KC
                                       ,a3a8_sres=SRES
@@ -183,11 +183,11 @@ create_custom_sip_headers(?GSM_ANY_METHOD
      );
 create_custom_sip_headers(?ANY_AUTH_METHOD, _) -> 'undefined'.
 
--spec create_custom_sip_headers(kz_proplist()) -> api_object().
+-spec create_custom_sip_headers(kz_proplist()) -> maybe(kz_json:object()).
 create_custom_sip_headers([]) -> 'undefined';
 create_custom_sip_headers(Props) -> kz_json:from_list(Props).
 
--spec get_tel_uri(api_binary()) -> api_binary().
+-spec get_tel_uri(maybe(binary())) -> maybe(binary()).
 get_tel_uri('undefined') -> 'undefined';
 get_tel_uri(Number) -> <<"<tel:", Number/binary,">">>.
 
@@ -371,7 +371,7 @@ jobj_to_auth_user(JObj, Username, Realm, Req) ->
                          },
     maybe_auth_method(add_account_name(AuthUser), AuthDoc, Req, Method).
 
--spec get_auth_value(kz_json:object()) -> api_object().
+-spec get_auth_value(kz_json:object()) -> maybe(kz_json:object()).
 get_auth_value(JObj) ->
     kz_json:get_first_defined([[<<"doc">>,<<"sip">>]
                                ,<<"value">>
@@ -436,7 +436,7 @@ maybe_auth_method(AuthUser, _JObj, _Req, ?ANY_AUTH_METHOD)->
 -define(GSM_PRE_REGISTER_ROUTINES, [fun maybe_msisdn/1]).
 -define(GSM_REGISTER_ROUTINES, [fun maybe_msisdn/1]).
 
--spec maybe_update_gsm(api_binary(), auth_user()) -> auth_user().
+-spec maybe_update_gsm(maybe(binary()), auth_user()) -> auth_user().
 maybe_update_gsm(<<"PRE-REGISTER">>, AuthUser) ->
     lists:foldl(fun(F,A) -> F(A) end, AuthUser, ?GSM_PRE_REGISTER_ROUTINES);
 maybe_update_gsm(<<"REGISTER">>, AuthUser) ->
@@ -504,7 +504,7 @@ gsm_auth(AuthUser) -> {'ok', AuthUser}.
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_account_id(kz_json:object()) -> api_binary().
+-spec get_account_id(kz_json:object()) -> maybe(binary()).
 get_account_id(JObj) ->
     case get_account_db(JObj) of
         'undefined' -> 'undefined';
@@ -517,7 +517,7 @@ get_account_id(JObj) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_account_db(kz_json:object()) -> api_binary().
+-spec get_account_db(kz_json:object()) -> maybe(binary()).
 get_account_db(JObj) ->
     case kz_json:get_first_defined([[<<"doc">>, <<"pvt_account_db">>]
                                     ,<<"pvt_account_db">>
@@ -533,7 +533,7 @@ get_account_db(JObj) ->
 remove_dashes(Bin) ->
     << <<B>> || <<B>> <= Bin, B =/= $->>.
 
--spec encryption_method_map(kz_proplist(), api_binaries() | kz_json:object()) -> kz_proplist().
+-spec encryption_method_map(kz_proplist(), maybe([maybe(binary())]) | kz_json:object()) -> kz_proplist().
 encryption_method_map(Props, []) -> Props;
 encryption_method_map(Props, [Method|Methods]) ->
     case props:get_value(Method, ?ENCRYPTION_MAP, []) of

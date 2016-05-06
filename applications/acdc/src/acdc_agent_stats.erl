@@ -95,7 +95,7 @@ agent_pending_logged_out(AccountId, AgentId) ->
 
 -spec agent_connecting(ne_binary(), ne_binary(), ne_binary()) ->
                               'ok'.
--spec agent_connecting(ne_binary(), ne_binary(), ne_binary(), api_binary(), api_binary()) ->
+-spec agent_connecting(ne_binary(), ne_binary(), ne_binary(), maybe(binary()), maybe(binary())) ->
                               'ok'.
 agent_connecting(AccountId, AgentId, CallId) ->
     agent_connecting(AccountId, AgentId, CallId, 'undefined', 'undefined').
@@ -116,7 +116,7 @@ agent_connecting(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
 
 -spec agent_connected(ne_binary(), ne_binary(), ne_binary()) ->
                              'ok'.
--spec agent_connected(ne_binary(), ne_binary(), ne_binary(), api_binary(), api_binary()) ->
+-spec agent_connected(ne_binary(), ne_binary(), ne_binary(), maybe(binary()), maybe(binary())) ->
                              'ok'.
 agent_connected(AccountId, AgentId, CallId) ->
     agent_connected(AccountId, AgentId, CallId, 'undefined', 'undefined').
@@ -149,7 +149,7 @@ agent_wrapup(AccountId, AgentId, WaitTime) ->
                                ,fun kapi_acdc_stats:publish_status_wrapup/1
                               ).
 
--spec agent_paused(ne_binary(), ne_binary(), api_integer()) -> 'ok'.
+-spec agent_paused(ne_binary(), ne_binary(), maybe(integer())) -> 'ok'.
 agent_paused(AccountId, AgentId, 'undefined') ->
     lager:debug("undefined pause time for ~s(~s)", [AgentId, AccountId]);
 agent_paused(AccountId, AgentId, PauseTime) ->

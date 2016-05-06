@@ -57,7 +57,7 @@
 
 -define(DEFAULT_HTTP_METHOD, 'post').
 
--spec http_method(api_binary() | list()) -> 'get' | 'post'.
+-spec http_method(maybe(binary()) | list()) -> 'get' | 'post'.
 http_method(L) when is_list(L) ->
     http_method(kz_util:to_binary(props:get_value('method', L)));
 http_method('undefined') -> ?DEFAULT_HTTP_METHOD;
@@ -109,7 +109,7 @@ offnet_req(Data, Call) ->
     kz_amqp_worker:cast(Req, fun kapi_offnet_resource:publish_req/1).
 
 -spec update_call_status(ne_binary(), kapps_call:call()) -> kapps_call:call().
--spec get_call_status(kapps_call:call()) -> api_binary().
+-spec get_call_status(kapps_call:call()) -> maybe(binary()).
 update_call_status(Status, Call) ->
     kapps_call:kvs_store(<<"call_status">>, Status, Call).
 get_call_status(Call) ->
@@ -128,12 +128,12 @@ add_error(Call, K, V) ->
 get_errors(Call) -> kapps_call:kvs_fetch(<<"response_errors">>, Call).
 
 -spec set_hangup_dtmf(ne_binary(), kapps_call:call()) -> kapps_call:call().
--spec get_hangup_dtmf(kapps_call:call()) -> api_binary().
+-spec get_hangup_dtmf(kapps_call:call()) -> maybe(binary()).
 set_hangup_dtmf(DTMF, Call) -> kapps_call:kvs_store(<<"hangup_dtmf">>, DTMF, Call).
 get_hangup_dtmf(Call) -> kapps_call:kvs_fetch(<<"hangup_dtmf">>, Call).
 
--spec set_digit_pressed(api_binary(), kapps_call:call()) -> kapps_call:call().
--spec get_digit_pressed(kapps_call:call()) -> api_binary() | kz_json:object().
+-spec set_digit_pressed(maybe(binary()), kapps_call:call()) -> kapps_call:call().
+-spec get_digit_pressed(kapps_call:call()) -> maybe(binary()) | kz_json:object().
 set_digit_pressed(DTMF, Call) -> kapps_call:kvs_store(<<"digit_pressed">>, DTMF, Call).
 get_digit_pressed(Call) ->
     case kapps_call:kvs_fetch(<<"digit_pressed">>, Call) of
@@ -141,27 +141,27 @@ get_digit_pressed(Call) ->
         D -> D
     end.
 
--spec get_digits_pressed(kapps_call:call()) -> api_object().
+-spec get_digits_pressed(kapps_call:call()) -> maybe(kz_json:object()).
 get_digits_pressed(Call) ->
     kapps_call:kvs_fetch(<<"dtmf_collections">>, Call).
 
 -spec set_record_call(boolean(), kapps_call:call()) -> kapps_call:call().
--spec get_record_call(kapps_call:call()) -> api_boolean().
+-spec get_record_call(kapps_call:call()) -> maybe(boolean()).
 set_record_call(R, Call) -> kapps_call:kvs_store(<<"record_call">>, R, Call).
 get_record_call(Call) -> kapps_call:kvs_fetch(<<"record_call">>, Call).
 
 -spec set_call_timeout(pos_integer(), kapps_call:call()) -> kapps_call:call().
--spec get_call_timeout(kapps_call:call()) -> api_integer().
+-spec get_call_timeout(kapps_call:call()) -> maybe(integer()).
 set_call_timeout(T, Call) -> kapps_call:kvs_store(<<"call_timeout">>, T, Call).
 get_call_timeout(Call) -> kapps_call:kvs_fetch(<<"call_timeout">>, Call).
 
 -spec set_call_time_limit(pos_integer(), kapps_call:call()) -> kapps_call:call().
--spec get_call_time_limit(kapps_call:call()) -> api_integer().
+-spec get_call_time_limit(kapps_call:call()) -> maybe(integer()).
 set_call_time_limit(T, Call) -> kapps_call:kvs_store(<<"call_time_limit">>, T, Call).
 get_call_time_limit(Call) -> kapps_call:kvs_fetch(<<"call_time_limit">>, Call).
 
--spec set_voice_uri(api_binary(), kapps_call:call()) -> kapps_call:call().
--spec get_voice_uri(kapps_call:call()) -> api_binary().
+-spec set_voice_uri(maybe(binary()), kapps_call:call()) -> kapps_call:call().
+-spec get_voice_uri(kapps_call:call()) -> maybe(binary()).
 set_voice_uri(Uri, Call) -> kapps_call:kvs_store(<<"voice_uri">>, Uri, Call).
 get_voice_uri(Call) -> kapps_call:kvs_fetch(<<"voice_uri">>, Call).
 
@@ -170,7 +170,7 @@ get_voice_uri(Call) -> kapps_call:kvs_fetch(<<"voice_uri">>, Call).
 set_voice_uri_method(M, Call) -> kapps_call:kvs_store(<<"voice_uri_method">>, M, Call).
 get_voice_uri_method(Call) -> kapps_call:kvs_fetch(<<"voice_uri_method">>, Call).
 
--spec set_digits_collected(api_binary(), kapps_call:call()) -> kapps_call:call().
+-spec set_digits_collected(maybe(binary()), kapps_call:call()) -> kapps_call:call().
 -spec get_digits_collected(kapps_call:call()) -> binary().
 -spec clear_digits_collected(kapps_call:call()) -> kapps_call:call().
 -spec add_digit_collected(ne_binary(), kapps_call:call()) -> kapps_call:call().
@@ -184,94 +184,92 @@ add_digit_collected(D, Call) ->
                            ,D, Call).
 
 -spec set_recording_url(ne_binary(), kapps_call:call()) -> kapps_call:call().
--spec get_recording_url(kapps_call:call()) -> api_binary().
+-spec get_recording_url(kapps_call:call()) -> maybe(binary()).
 set_recording_url(RU, Call) -> kapps_call:kvs_store(<<"recording_url">>, RU, Call).
 get_recording_url(Call) -> kapps_call:kvs_fetch(<<"recording_url">>, Call).
 
 -spec set_recording_duration(pos_integer(), kapps_call:call()) -> kapps_call:call().
--spec get_recording_duration(kapps_call:call()) -> api_integer().
+-spec get_recording_duration(kapps_call:call()) -> maybe(integer()).
 set_recording_duration(RD, Call) -> kapps_call:kvs_store(<<"recording_duration">>, RD, Call).
 get_recording_duration(Call) -> kapps_call:kvs_fetch(<<"recording_duration">>, Call).
 
 -spec set_recording_sid(ne_binary(), kapps_call:call()) -> kapps_call:call().
--spec get_recording_sid(kapps_call:call()) -> api_binary().
+-spec get_recording_sid(kapps_call:call()) -> maybe(binary()).
 set_recording_sid(SID, Call) -> kapps_call:kvs_store(<<"recording_sid">>, SID, Call).
 get_recording_sid(Call) -> kapps_call:kvs_fetch(<<"recording_sid">>, Call).
 
 -spec set_transcription_sid(ne_binary(), kapps_call:call()) -> kapps_call:call().
--spec get_transcription_sid(kapps_call:call()) -> api_binary().
+-spec get_transcription_sid(kapps_call:call()) -> maybe(binary()).
 set_transcription_sid(SID, Call) -> kapps_call:kvs_store(<<"transcription_sid">>, SID, Call).
 get_transcription_sid(Call) -> kapps_call:kvs_fetch(<<"transcription_sid">>, Call).
 
 -spec set_transcription_text(ne_binary(), kapps_call:call()) -> kapps_call:call().
--spec get_transcription_text(kapps_call:call()) -> api_binary().
+-spec get_transcription_text(kapps_call:call()) -> maybe(binary()).
 set_transcription_text(RD, Call) -> kapps_call:kvs_store(<<"transcription_text">>, RD, Call).
 get_transcription_text(Call) -> kapps_call:kvs_fetch(<<"transcription_text">>, Call).
 
 -spec set_transcription_status(ne_binary(), kapps_call:call()) -> kapps_call:call().
--spec get_transcription_status(kapps_call:call()) -> api_binary().
+-spec get_transcription_status(kapps_call:call()) -> maybe(binary()).
 set_transcription_status(RD, Call) -> kapps_call:kvs_store(<<"transcription_status">>, RD, Call).
 get_transcription_status(Call) -> kapps_call:kvs_fetch(<<"transcription_status">>, Call).
 
 -spec set_transcription_url(ne_binary(), kapps_call:call()) -> kapps_call:call().
--spec get_transcription_url(kapps_call:call()) -> api_binary().
+-spec get_transcription_url(kapps_call:call()) -> maybe(binary()).
 set_transcription_url(RD, Call) -> kapps_call:kvs_store(<<"transcription_url">>, RD, Call).
 get_transcription_url(Call) -> kapps_call:kvs_fetch(<<"transcription_url">>, Call).
 
 -spec set_dial_call_status(ne_binary(), kapps_call:call()) -> kapps_call:call().
--spec get_dial_call_status(kapps_call:call()) -> api_binary().
+-spec get_dial_call_status(kapps_call:call()) -> maybe(binary()).
 set_dial_call_status(DCS, Call) -> kapps_call:kvs_store(<<"dial_call_status">>, DCS, Call).
 get_dial_call_status(Call) -> kapps_call:kvs_fetch(<<"dial_call_status">>, Call).
 
 -spec set_dial_call_sid(ne_binary(), kapps_call:call()) -> kapps_call:call().
--spec get_dial_call_sid(kapps_call:call()) -> api_binary().
+-spec get_dial_call_sid(kapps_call:call()) -> maybe(binary()).
 set_dial_call_sid(DCS, Call) -> kapps_call:kvs_store(<<"dial_call_sid">>, DCS, Call).
 get_dial_call_sid(Call) -> kapps_call:kvs_fetch(<<"dial_call_sid">>, Call).
 
 -spec set_dial_call_duration(pos_integer(), kapps_call:call()) -> kapps_call:call().
--spec get_dial_call_duration(kapps_call:call()) -> api_integer().
+-spec get_dial_call_duration(kapps_call:call()) -> maybe(integer()).
 set_dial_call_duration(DCS, Call) -> kapps_call:kvs_store(<<"dial_call_duration">>, DCS, Call).
 get_dial_call_duration(Call) -> kapps_call:kvs_fetch(<<"dial_call_duration">>, Call).
 
 -spec set_queue_sid(ne_binary(), kapps_call:call()) -> kapps_call:call().
--spec get_queue_sid(kapps_call:call()) -> api_binary().
+-spec get_queue_sid(kapps_call:call()) -> maybe(binary()).
 set_queue_sid(DCS, Call) -> kapps_call:kvs_store(<<"queue_sid">>, DCS, Call).
 get_queue_sid(Call) -> kapps_call:kvs_fetch(<<"queue_sid">>, Call).
 
 -spec set_dequeue_result(ne_binary(), kapps_call:call()) -> kapps_call:call().
--spec get_dequeue_result(kapps_call:call()) -> api_binary().
+-spec get_dequeue_result(kapps_call:call()) -> maybe(binary()).
 set_dequeue_result(DCS, Call) -> kapps_call:kvs_store(<<"dequeue_result">>, DCS, Call).
 get_dequeue_result(Call) -> kapps_call:kvs_fetch(<<"dequeue_result">>, Call).
 
 -spec set_dequeued_call_sid(ne_binary(), kapps_call:call()) -> kapps_call:call().
--spec get_dequeued_call_sid(kapps_call:call()) -> api_binary().
+-spec get_dequeued_call_sid(kapps_call:call()) -> maybe(binary()).
 set_dequeued_call_sid(DCS, Call) -> kapps_call:kvs_store(<<"dequeued_call_sid">>, DCS, Call).
 get_dequeued_call_sid(Call) -> kapps_call:kvs_fetch(<<"dequeued_call_sid">>, Call).
 
 -spec set_dequeued_call_queue_time(pos_integer(), kapps_call:call()) -> kapps_call:call().
--spec get_dequeued_call_queue_time(kapps_call:call()) -> api_integer().
+-spec get_dequeued_call_queue_time(kapps_call:call()) -> maybe(integer()).
 set_dequeued_call_queue_time(DCS, Call) -> kapps_call:kvs_store(<<"dequeued_call_queue_time">>, DCS, Call).
 get_dequeued_call_queue_time(Call) -> kapps_call:kvs_fetch(<<"dequeued_call_queue_time">>, Call).
 
 -spec set_dequeued_call_duration(pos_integer(), kapps_call:call()) -> kapps_call:call().
--spec get_dequeued_call_duration(kapps_call:call()) -> api_integer().
+-spec get_dequeued_call_duration(kapps_call:call()) -> maybe(integer()).
 set_dequeued_call_duration(DCS, Call) -> kapps_call:kvs_store(<<"dequeued_call_duration">>, DCS, Call).
 get_dequeued_call_duration(Call) -> kapps_call:kvs_fetch(<<"dequeued_call_duration">>, Call).
 
 -spec set_media_meta(kz_json:object(), kapps_call:call()) -> kapps_call:call().
--spec get_media_meta(kapps_call:call()) -> api_object().
+-spec get_media_meta(kapps_call:call()) -> maybe(kz_json:object()).
 set_media_meta(DCS, Call) -> kapps_call:kvs_store(<<"media_meta">>, DCS, Call).
 get_media_meta(Call) -> kapps_call:kvs_fetch(<<"media_meta">>, Call).
 
 -spec set_amqp_listener(ne_binary(), kapps_call:call()) -> kapps_call:call().
--spec get_amqp_listener(kapps_call:call()) -> api_binary().
+-spec get_amqp_listener(kapps_call:call()) -> maybe(binary()).
 set_amqp_listener(Pid, Call) -> kapps_call:kvs_store(<<"amqp_listener">>, Pid, Call).
 get_amqp_listener(Call) -> kapps_call:kvs_fetch(<<"amqp_listener">>, Call).
 
--spec set_gather_pidref(pid_ref() | 'undefined', kapps_call:call()) ->
-                               kapps_call:call().
--spec get_gather_pidref(kapps_call:call()) ->
-                               pid_ref() | 'undefined'.
+-spec set_gather_pidref(maybe(pid_ref()), kapps_call:call()) -> kapps_call:call().
+-spec get_gather_pidref(kapps_call:call()) -> maybe(pid_ref()).
 set_gather_pidref('undefined', Call) ->
     kapps_call:kvs_store(<<"gather_pidref">>, 'undefined', Call);
 set_gather_pidref({_, _}=PidRef, Call) ->

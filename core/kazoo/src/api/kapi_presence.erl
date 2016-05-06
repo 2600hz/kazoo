@@ -171,7 +171,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec search_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec search_req(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 search_req(Prop) when is_list(Prop) ->
     case search_req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SEARCH_REQ_HEADERS, ?OPTIONAL_SEARCH_REQ_HEADERS);
@@ -180,21 +180,21 @@ search_req(Prop) when is_list(Prop) ->
 search_req(JObj) ->
     search_req(kz_json:to_proplist(JObj)).
 
--spec search_req_v(api_terms()) -> boolean().
+-spec search_req_v(maybe(terms())) -> boolean().
 search_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SEARCH_REQ_HEADERS, ?SEARCH_REQ_VALUES, ?SEARCH_REQ_TYPES);
 search_req_v(JObj) ->
     search_req_v(kz_json:to_proplist(JObj)).
 
--spec publish_search_req(api_terms()) -> 'ok'.
--spec publish_search_req(api_terms(), binary()) -> 'ok'.
+-spec publish_search_req(maybe(terms())) -> 'ok'.
+-spec publish_search_req(maybe(terms()), binary()) -> 'ok'.
 publish_search_req(JObj) ->
     publish_search_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_search_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?SEARCH_REQ_VALUES, fun ?MODULE:search_req/1),
     amqp_util:presence_publish(search_req_routing_key(Req), Payload, ContentType).
 
--spec search_req_routing_key(ne_binary() | api_terms()) -> ne_binary().
+-spec search_req_routing_key(ne_binary() | maybe(terms())) -> ne_binary().
 search_req_routing_key(Req) when is_list(Req) ->
     search_req_routing_key(props:get_value(<<"Realm">>, Req));
 search_req_routing_key(Realm) when is_binary(Realm) ->
@@ -207,7 +207,7 @@ search_req_routing_key(Req) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec search_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec search_resp(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 search_resp(Prop) when is_list(Prop) ->
     case search_resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SEARCH_RESP_HEADERS, ?OPTIONAL_SEARCH_RESP_HEADERS);
@@ -216,14 +216,14 @@ search_resp(Prop) when is_list(Prop) ->
 search_resp(JObj) ->
     search_resp(kz_json:to_proplist(JObj)).
 
--spec search_resp_v(api_terms()) -> boolean().
+-spec search_resp_v(maybe(terms())) -> boolean().
 search_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SEARCH_RESP_HEADERS, ?SEARCH_RESP_VALUES, ?SEARCH_RESP_TYPES);
 search_resp_v(JObj) ->
     search_resp_v(kz_json:to_proplist(JObj)).
 
--spec publish_search_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_search_resp(ne_binary(), api_terms(), binary()) -> 'ok'.
+-spec publish_search_resp(ne_binary(), maybe(terms())) -> 'ok'.
+-spec publish_search_resp(ne_binary(), maybe(terms()), binary()) -> 'ok'.
 publish_search_resp(Queue, JObj) ->
     publish_search_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_search_resp(Queue, Resp, ContentType) ->
@@ -235,7 +235,7 @@ publish_search_resp(Queue, Resp, ContentType) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec subscribe(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec subscribe(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 subscribe(Prop) when is_list(Prop) ->
     case subscribe_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SUBSCRIBE_HEADERS, ?OPTIONAL_SUBSCRIBE_HEADERS);
@@ -243,7 +243,7 @@ subscribe(Prop) when is_list(Prop) ->
     end;
 subscribe(JObj) -> subscribe(kz_json:to_proplist(JObj)).
 
--spec subscribe_v(api_terms()) -> boolean().
+-spec subscribe_v(maybe(terms())) -> boolean().
 subscribe_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SUBSCRIBE_HEADERS, ?SUBSCRIBE_VALUES, ?SUBSCRIBE_TYPES);
 subscribe_v(JObj) -> subscribe_v(kz_json:to_proplist(JObj)).
@@ -270,7 +270,7 @@ subscribe_routing_key(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec update(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 update(Prop) when is_list(Prop) ->
     case update_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?UPDATE_HEADERS, ?OPTIONAL_UPDATE_HEADERS);
@@ -278,7 +278,7 @@ update(Prop) when is_list(Prop) ->
     end;
 update(JObj) -> update(kz_json:to_proplist(JObj)).
 
--spec update_v(api_terms()) -> boolean().
+-spec update_v(maybe(terms())) -> boolean().
 update_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?UPDATE_HEADERS, ?UPDATE_VALUES, ?UPDATE_TYPES);
 update_v(JObj) -> update_v(kz_json:to_proplist(JObj)).
@@ -289,7 +289,7 @@ publish_update(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?UPDATE_VALUES, fun ?MODULE:update/1),
     amqp_util:presence_publish(update_routing_key(Req), Payload, ContentType).
 
--spec update_routing_key(ne_binary() | api_terms()) -> ne_binary().
+-spec update_routing_key(ne_binary() | maybe(terms())) -> ne_binary().
 -spec update_routing_key(ne_binary(), ne_binary()) -> ne_binary().
 update_routing_key(Req) when is_list(Req) ->
     update_routing_key(props:get_value(<<"State">>, Req)
@@ -314,7 +314,7 @@ update_routing_key(State, PresenceID) when is_binary(State) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec probe(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec probe(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 probe(Prop) when is_list(Prop) ->
     case probe_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?PROBE_HEADERS, ?OPTIONAL_PROBE_HEADERS);
@@ -322,13 +322,13 @@ probe(Prop) when is_list(Prop) ->
     end;
 probe(JObj) -> probe(kz_json:to_proplist(JObj)).
 
--spec probe_v(api_terms()) -> boolean().
+-spec probe_v(maybe(terms())) -> boolean().
 probe_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PROBE_HEADERS, ?PROBE_VALUES, ?PROBE_TYPES);
 probe_v(JObj) -> probe_v(kz_json:to_proplist(JObj)).
 
--spec publish_probe(api_terms()) -> 'ok'.
--spec publish_probe(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_probe(maybe(terms())) -> 'ok'.
+-spec publish_probe(maybe(terms()), ne_binary()) -> 'ok'.
 publish_probe(JObj) -> publish_probe(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_probe(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?PROBE_VALUES, fun ?MODULE:probe/1),
@@ -346,7 +346,7 @@ probe_routing_key(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec mwi_update(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec mwi_update(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 mwi_update(Prop) when is_list(Prop) ->
     case mwi_update_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?MWI_REQ_HEADERS, ?OPTIONAL_MWI_REQ_HEADERS);
@@ -354,19 +354,19 @@ mwi_update(Prop) when is_list(Prop) ->
     end;
 mwi_update(JObj) -> mwi_update(kz_json:to_proplist(JObj)).
 
--spec mwi_update_v(api_terms()) -> boolean().
+-spec mwi_update_v(maybe(terms())) -> boolean().
 mwi_update_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?MWI_REQ_HEADERS, ?MWI_REQ_VALUES, ?MWI_REQ_TYPES);
 mwi_update_v(JObj) -> mwi_update_v(kz_json:to_proplist(JObj)).
 
--spec publish_mwi_update(api_terms()) -> 'ok'.
--spec publish_mwi_update(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_mwi_update(maybe(terms())) -> 'ok'.
+-spec publish_mwi_update(maybe(terms()), ne_binary()) -> 'ok'.
 publish_mwi_update(JObj) -> publish_mwi_update(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_mwi_update(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?MWI_REQ_VALUES, fun ?MODULE:mwi_update/1),
      amqp_util:presence_publish(mwi_update_routing_key(Req), Payload, ContentType).
 
--spec mwi_update_routing_key(api_terms() | api_binary()) -> ne_binary().
+-spec mwi_update_routing_key(maybe(terms()) | maybe(binary())) -> ne_binary().
 mwi_update_routing_key(Prop) when is_list(Prop) ->
     mwi_update_routing_key(props:get_value(<<"To">>, Prop));
 mwi_update_routing_key(To) when is_binary(To) ->
@@ -383,7 +383,7 @@ mwi_update_routing_key(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec mwi_query(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec mwi_query(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 mwi_query(Prop) when is_list(Prop) ->
     case mwi_query_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?MWI_QUERY_HEADERS, ?OPTIONAL_MWI_QUERY_HEADERS);
@@ -391,13 +391,13 @@ mwi_query(Prop) when is_list(Prop) ->
     end;
 mwi_query(JObj) -> mwi_query(kz_json:to_proplist(JObj)).
 
--spec mwi_query_v(api_terms()) -> boolean().
+-spec mwi_query_v(maybe(terms())) -> boolean().
 mwi_query_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?MWI_QUERY_HEADERS, ?MWI_QUERY_VALUES, ?MWI_QUERY_TYPES);
 mwi_query_v(JObj) -> mwi_query_v(kz_json:to_proplist(JObj)).
 
--spec publish_mwi_query(api_terms()) -> 'ok'.
--spec publish_mwi_query(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_mwi_query(maybe(terms())) -> 'ok'.
+-spec publish_mwi_query(maybe(terms()), ne_binary()) -> 'ok'.
 publish_mwi_query(JObj) -> publish_mwi_query(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_mwi_query(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?MWI_QUERY_VALUES, fun ?MODULE:mwi_query/1),
@@ -423,13 +423,13 @@ register_overwrite(Prop) when is_list(Prop) ->
     end;
 register_overwrite(JObj) -> register_overwrite(kz_json:to_proplist(JObj)).
 
--spec register_overwrite_v(api_terms()) -> boolean().
+-spec register_overwrite_v(maybe(terms())) -> boolean().
 register_overwrite_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?REGISTER_OVERWRITE_HEADERS, ?REGISTER_OVERWRITE_VALUES, ?REGISTER_OVERWRITE_TYPES);
 register_overwrite_v(JObj) -> register_overwrite_v(kz_json:to_proplist(JObj)).
 
--spec publish_register_overwrite(api_terms()) -> 'ok'.
--spec publish_register_overwrite(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_register_overwrite(maybe(terms())) -> 'ok'.
+-spec publish_register_overwrite(maybe(terms()), ne_binary()) -> 'ok'.
 publish_register_overwrite(JObj) -> publish_register_overwrite(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_register_overwrite(Req, ContentType) when is_list(Req) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?REGISTER_OVERWRITE_VALUES, fun ?MODULE:register_overwrite/1),
@@ -449,7 +449,7 @@ register_overwrite_routing_key(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reset(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec reset(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 reset(Prop) when is_list(Prop) ->
     case reset_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?RESET_HEADERS, ?OPTIONAL_RESET_HEADERS);
@@ -458,21 +458,21 @@ reset(Prop) when is_list(Prop) ->
 reset(JObj) ->
     reset(kz_json:to_proplist(JObj)).
 
--spec reset_v(api_terms()) -> boolean().
+-spec reset_v(maybe(terms())) -> boolean().
 reset_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?RESET_HEADERS, ?RESET_VALUES, ?RESET_TYPES);
 reset_v(JObj) ->
     reset_v(kz_json:to_proplist(JObj)).
 
--spec publish_reset(api_terms()) -> 'ok'.
--spec publish_reset(api_terms(), binary()) -> 'ok'.
+-spec publish_reset(maybe(terms())) -> 'ok'.
+-spec publish_reset(maybe(terms()), binary()) -> 'ok'.
 publish_reset(JObj) ->
     publish_reset(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_reset(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?RESET_VALUES, fun ?MODULE:reset/1),
     amqp_util:presence_publish(reset_routing_key(Req), Payload, ContentType).
 
--spec reset_routing_key(ne_binary() | api_terms()) -> ne_binary().
+-spec reset_routing_key(ne_binary() | maybe(terms())) -> ne_binary().
 -spec reset_routing_key(ne_binary(), ne_binary()) -> ne_binary().
 reset_routing_key(Req) when is_list(Req) ->
     reset_routing_key(props:get_value(<<"Realm">>, Req)
@@ -495,7 +495,7 @@ reset_routing_key(Realm, Username) when is_binary(Realm) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec flush(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec flush(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 flush(Prop) when is_list(Prop) ->
     case flush_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?FLUSH_HEADERS, ?OPTIONAL_FLUSH_HEADERS);
@@ -503,7 +503,7 @@ flush(Prop) when is_list(Prop) ->
     end;
 flush(JObj) -> flush(kz_json:to_proplist(JObj)).
 
--spec flush_v(api_terms()) -> boolean().
+-spec flush_v(maybe(terms())) -> boolean().
 flush_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?FLUSH_HEADERS, ?FLUSH_VALUES, ?FLUSH_TYPES);
 flush_v(JObj) -> flush_v(kz_json:to_proplist(JObj)).
@@ -519,7 +519,7 @@ publish_flush(Req, ContentType) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec sync(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec sync(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 sync(Prop) when is_list(Prop) ->
     case sync_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SYNC_HEADERS, ?OPTIONAL_SYNC_HEADERS);
@@ -527,7 +527,7 @@ sync(Prop) when is_list(Prop) ->
     end;
 sync(JObj) -> sync(kz_json:to_proplist(JObj)).
 
--spec sync_v(api_terms()) -> boolean().
+-spec sync_v(maybe(terms())) -> boolean().
 sync_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SYNC_HEADERS, ?SYNC_VALUES, ?SYNC_TYPES);
 sync_v(JObj) -> sync_v(kz_json:to_proplist(JObj)).
@@ -548,7 +548,7 @@ bind_q(Queue, Props) ->
     RestrictTo = props:get_value('restrict_to', Props),
     bind_q(Queue, RestrictTo, Props).
 
--spec bind_q(ne_binary(), api_binaries(), kz_proplist()) -> 'ok'.
+-spec bind_q(ne_binary(), maybe([maybe(binary())]), kz_proplist()) -> 'ok'.
 bind_q(Queue, 'undefined', _) ->
     amqp_util:bind_q_to_presence(Queue, <<"#">>);
 bind_q(Queue, ['search_req'|Restrict], Props) ->
@@ -608,7 +608,7 @@ unbind_q(Queue, Props) ->
     RestrictTo = props:get_value('restrict_to', Props),
     unbind_q(Queue, RestrictTo, Props).
 
--spec unbind_q(ne_binary(), api_binary(), kz_proplist()) -> 'ok'.
+-spec unbind_q(ne_binary(), maybe(binary()), kz_proplist()) -> 'ok'.
 unbind_q(Queue, 'undefined', _) ->
     amqp_util:unbind_q_from_presence(Queue, <<"#">>);
 unbind_q(Queue, ['search_req'|Restrict], Props) ->
@@ -676,7 +676,7 @@ presence_states() -> ?PRESENCE_STATES.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_state(api_binary() | api_terms()) -> boolean().
+-spec is_valid_state(maybe(binary()) | maybe(terms())) -> boolean().
 is_valid_state(State) when is_binary(State) ->
     lists:member(State, ?PRESENCE_STATES);
 is_valid_state(Prop) when is_list(Prop) ->

@@ -110,7 +110,7 @@ create_template_props(Event, Admin, Account, AllDocs) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), api_binary() | ne_binaries(), kz_proplist()) ->
+-spec build_and_send_email(iolist(), iolist(), iolist(), maybe(binary()) | ne_binaries(), kz_proplist()) ->
                                   'ok' | {'error', any()}.
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
     _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];

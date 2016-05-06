@@ -31,7 +31,7 @@ new() ->
 -spec type() -> ne_binary().
 type() -> ?PVT_TYPE.
 
--spec prompt_id(doc()) -> api_binary().
+-spec prompt_id(doc()) -> maybe(binary()).
 -spec prompt_id(doc(), Default) -> ne_binary() | Default.
 prompt_id(Doc) ->
     prompt_id(Doc, 'undefined').
@@ -42,7 +42,7 @@ prompt_id(Doc, Default) ->
 is_prompt(Doc) ->
     prompt_id(Doc) =/= 'undefined'.
 
--spec language(doc()) -> api_binary().
+-spec language(doc()) -> maybe(binary()).
 -spec language(doc(), Default) -> ne_binary() | Default.
 language(Doc) ->
     language(Doc, 'undefined').

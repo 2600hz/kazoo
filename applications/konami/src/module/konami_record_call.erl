@@ -49,7 +49,7 @@ handle(Data, Call, <<"stop">> = Action) ->
     _ = kapps_call_command:record_call([{<<"Media-Name">>, MediaName}], Action, Call),
     lager:debug("sent command to stop recording").
 
--spec get_action(api_binary()) -> ne_binary().
+-spec get_action(maybe(binary())) -> ne_binary().
 get_action('undefined') -> <<"start">>;
 get_action(<<"stop">>) -> <<"stop">>;
 get_action(_) -> <<"start">>.
@@ -67,7 +67,7 @@ number_builder(DefaultJObj) ->
         NumberJObj -> kz_json:set_value(K, NumberJObj, DefaultJObj)
     end.
 
--spec number_builder_check(api_object()) -> api_object().
+-spec number_builder_check(maybe(kz_json:object())) -> maybe(kz_json:object()).
 number_builder_check('undefined') ->
     number_builder_action(kz_json:new());
 number_builder_check(NumberJObj) ->
@@ -77,7 +77,7 @@ number_builder_check(NumberJObj) ->
     {'ok', [Option]} = io:fread("What would you like to do: ", "~s"),
     number_builder_check_option(NumberJObj, Option).
 
--spec number_builder_check_option(kz_json:object(), string()) -> api_object().
+-spec number_builder_check_option(kz_json:object(), string()) -> maybe(kz_json:object()).
 number_builder_check_option(NumberJObj, "e") ->
     number_builder_action(NumberJObj);
 number_builder_check_option(_NumberJObj, "d") ->

@@ -16,7 +16,7 @@
 
 -record(dnd, {enabled = 'false' :: boolean()
               ,jobj = kz_json:new() :: kz_json:object()
-              ,account_db :: api_binary()
+              ,account_db :: maybe(binary())
              }).
 -type dnd() :: #dnd{}.
 
@@ -82,7 +82,7 @@ maybe_get_authorizing_device(AccountDb, _, Call) ->
     AuthorizingId = kapps_call:authorizing_id(Call),
     maybe_get_doc(AccountDb, AuthorizingId).
 
--spec maybe_get_doc(api_binary(), api_binary()) -> kz_jobj_return().
+-spec maybe_get_doc(maybe(binary()), maybe(binary())) -> kz_jobj_return().
 maybe_get_doc(_, 'undefined') ->
     {'error', 'no_device_id'};
 maybe_get_doc('undefined', _) ->

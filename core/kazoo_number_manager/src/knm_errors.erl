@@ -126,9 +126,9 @@ by_carrier(Carrier, E, Number) ->
 %%--------------------------------------------------------------------
 -spec to_json(reason()) ->
                      error().
--spec to_json(reason(), api_binary()) ->
+-spec to_json(reason(), maybe(binary())) ->
                      error().
--spec to_json(reason(), api_binary(), api_binary()) ->
+-spec to_json(reason(), maybe(binary()), maybe(binary())) ->
                      error().
 to_json(Reason)->
     to_json(Reason, 'undefined').
@@ -172,7 +172,7 @@ to_json(Reason, _, Cause) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec build_error(integer(), atom(), api_binary(), api_binary()) ->
+-spec build_error(integer(), atom(), maybe(binary()), maybe(binary())) ->
                          error().
 build_error(Code, Error, Message, Cause) ->
     kz_json:from_list(
@@ -187,18 +187,18 @@ build_error(Code, Error, Message, Cause) ->
       ]
      ).
 
--spec code(error()) -> api_integer().
+-spec code(error()) -> maybe(integer()).
 code(JObj) ->
     kz_json:get_value(?CODE, JObj).
 
--spec error(error()) -> api_binary().
+-spec error(error()) -> maybe(binary()).
 error(JObj) ->
     kz_json:get_value(?ERROR, JObj).
 
--spec cause(error()) -> api_binary().
+-spec cause(error()) -> maybe(binary()).
 cause(JObj) ->
     kz_json:get_value(?CAUSE, JObj).
 
--spec message(error()) -> api_binary().
+-spec message(error()) -> maybe(binary()).
 message(JObj) ->
     kz_json:get_value(?MESSAGE, JObj).

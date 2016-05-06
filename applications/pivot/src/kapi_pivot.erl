@@ -44,7 +44,7 @@
                              ]).
 -define(PIVOT_FAILED_TYPES, []).
 
--spec req(api_terms()) -> {'ok', iolist()} |
+-spec req(maybe(terms())) -> {'ok', iolist()} |
                           {'error', string()}.
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
@@ -54,13 +54,13 @@ req(Prop) when is_list(Prop) ->
 req(JObj) ->
     req(kz_json:to_proplist(JObj)).
 
--spec req_v(api_terms()) -> boolean().
+-spec req_v(maybe(terms())) -> boolean().
 req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PIVOT_REQ_HEADERS, ?PIVOT_REQ_VALUES, ?PIVOT_REQ_TYPES);
 req_v(JObj) ->
     req_v(kz_json:to_proplist(JObj)).
 
--spec failed(api_terms()) -> {'ok', iolist()} |
+-spec failed(maybe(terms())) -> {'ok', iolist()} |
                           {'error', string()}.
 failed(Prop) when is_list(Prop) ->
     case failed_v(Prop) of
@@ -70,7 +70,7 @@ failed(Prop) when is_list(Prop) ->
 failed(JObj) ->
     failed(kz_json:to_proplist(JObj)).
 
--spec failed_v(api_terms()) -> boolean().
+-spec failed_v(maybe(terms())) -> boolean().
 failed_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PIVOT_FAILED_HEADERS, ?PIVOT_FAILED_VALUES, ?PIVOT_FAILED_TYPES);
 failed_v(JObj) ->
@@ -100,8 +100,8 @@ get_pivot_req_routing(Realm) when is_binary(Realm) ->
 get_pivot_req_routing(Api) ->
     get_pivot_req_routing(get_from_realm(Api)).
 
--spec publish_req(api_terms()) -> 'ok'.
--spec publish_req(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_req(maybe(terms())) -> 'ok'.
+-spec publish_req(maybe(terms()), ne_binary()) -> 'ok'.
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Req, ContentType) ->
@@ -114,7 +114,7 @@ publish_failed(Target, JObj) ->
     {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?PIVOT_FAILED_VALUES, fun failed/1),
     amqp_util:targeted_publish(Target, Payload).
 
--spec get_from_realm(api_terms()) -> ne_binary().
+-spec get_from_realm(maybe(terms())) -> ne_binary().
 get_from_realm(Prop) when is_list(Prop) ->
     kz_json:get_value(<<"From-Realm">>, props:get_value(<<"Call">>, Prop));
 get_from_realm(JObj) ->

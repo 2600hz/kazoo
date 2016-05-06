@@ -69,7 +69,7 @@ is_caller_same_user(Data, Call, CallerDeviceJObj) ->
         _UserId -> 'false'
     end.
 
--spec is_device_same_user(kapps_call:call(), ne_binary(), api_binary()) -> boolean().
+-spec is_device_same_user(kapps_call:call(), ne_binary(), maybe(binary())) -> boolean().
 is_device_same_user(_Call, _OwnerId, 'undefined') -> 'false';
 is_device_same_user(Call, OwnerId, DeviceId) ->
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), DeviceId) of
@@ -98,7 +98,7 @@ is_caller_same_group(Data, Call, CallerDeviceJObj) ->
     GroupId = kz_json:get_value(<<"group_id">>, Data),
     is_owner_same_group(Call, DeviceId, OwnerId, GroupId).
 
--spec is_owner_same_group(kapps_call:call(), ne_binary(), ne_binary(), api_binary()) -> boolean().
+-spec is_owner_same_group(kapps_call:call(), ne_binary(), ne_binary(), maybe(binary())) -> boolean().
 is_owner_same_group(_Call, _DeviceId, _OwnerId, 'undefined') -> 'false';
 is_owner_same_group(Call, DeviceId, OwnerId, GroupId) ->
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), GroupId) of

@@ -313,7 +313,7 @@ sip_device(URI) ->
 request_id(N, Call) -> iolist_to_binary([N, <<"@">>, kapps_call:from_realm(Call)]).
 
 -spec media_processing(kapps_call:call()) -> ne_binary().
--spec media_processing(boolean(), api_binary()) -> ne_binary().
+-spec media_processing(boolean(), maybe(binary())) -> ne_binary().
 media_processing(Call) ->
     media_processing(kzt_util:get_record_call(Call), kzt_util:get_hangup_dtmf(Call)).
 
@@ -342,7 +342,7 @@ caller_id(Props, Call) ->
       props:get_value('callerId', Props, kapps_call:caller_id_number(Call))
      ).
 
--spec hangup_dtmf(kz_proplist() | api_binary()) -> api_binary().
+-spec hangup_dtmf(kz_proplist() | maybe(binary())) -> maybe(binary()).
 hangup_dtmf(Props) when is_list(Props) ->
     case props:get_value('hangupOnStar', Props) of
         'true' -> <<"*">>;

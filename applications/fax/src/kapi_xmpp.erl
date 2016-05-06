@@ -40,7 +40,7 @@
 
 
 
--spec event(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec event(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 event(Prop) when is_list(Prop) ->
     case event_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?XMPP_EVENT_HEADERS, ?OPTIONAL_XMPP_EVENT_HEADERS);
@@ -48,7 +48,7 @@ event(Prop) when is_list(Prop) ->
     end;
 event(JObj) -> event(kz_json:to_proplist(JObj)).
 
--spec event_v(api_terms()) -> boolean().
+-spec event_v(maybe(terms())) -> boolean().
 event_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?XMPP_EVENT_HEADERS, ?XMPP_EVENT_VALUES, ?XMPP_EVENT_TYPES);
 event_v(JObj) -> event_v(kz_json:to_proplist(JObj)).
@@ -87,8 +87,8 @@ declare_exchanges() ->
     amqp_util:new_exchange(?XMPP_EXCHANGE, <<"fanout">>).
 
 
--spec publish_event(api_terms()) -> 'ok'.
--spec publish_event(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_event(maybe(terms())) -> 'ok'.
+-spec publish_event(maybe(terms()), ne_binary()) -> 'ok'.
 publish_event(Event) -> publish_event(Event, ?DEFAULT_CONTENT_TYPE).
 publish_event(Event, ContentType) when is_list(Event) ->
     JID = props:get_value(<<"JID">>, Event),

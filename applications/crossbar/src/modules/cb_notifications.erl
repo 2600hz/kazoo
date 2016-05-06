@@ -303,7 +303,7 @@ validate_recipient_id(RecipientId, Context) ->
 sender_account_id(Context) ->
     sender_account_id(Context, cb_context:account_id(Context)).
 
--spec sender_account_id(cb_context:context(), ne_binary()|'undefined') -> ne_binary().
+-spec sender_account_id(cb_context:context(), maybe(ne_binary())) -> ne_binary().
 sender_account_id(Context, 'undefined') ->
     cb_context:auth_account_id(Context);
 sender_account_id(_Context, AccountId) ->
@@ -459,7 +459,7 @@ headers(<<"port_request_admin">>) ->
 headers(Id) ->
     kapi_notifications:headers(Id).
 
--spec publish_fun(ne_binary()) -> fun((api_terms()) -> 'ok').
+-spec publish_fun(ne_binary()) -> fun((maybe(terms())) -> 'ok').
 publish_fun(<<"voicemail_to_email">>) ->
     fun kapi_notifications:publish_voicemail/1;
 publish_fun(<<"voicemail_full">>) ->
@@ -594,8 +594,8 @@ accept_values(Context) ->
     Tunneled = cb_context:req_value(Context, <<"accept">>),
     media_values(AcceptValue, Tunneled).
 
--spec media_values(api_binary()) -> media_values().
--spec media_values(api_binary(), api_binary()) -> media_values().
+-spec media_values(maybe(binary())) -> media_values().
+-spec media_values(maybe(binary()), maybe(binary())) -> media_values().
 media_values(Media) ->
     media_values(Media, 'undefined').
 
@@ -789,7 +789,7 @@ note_notification_preference(AccountDb, AccountJObj) ->
             lager:debug("failed to note preference: ~p", [_E])
     end.
 
--spec migrate_template_attachments(cb_context:context(), ne_binary(), api_object()) ->
+-spec migrate_template_attachments(cb_context:context(), ne_binary(), maybe(kz_json:object())) ->
                                           cb_context:context().
 migrate_template_attachments(Context, _Id, 'undefined') ->
     lager:debug("no attachments to migrate for ~s", [_Id]),
@@ -1104,7 +1104,7 @@ normalize_available_port(Value, Acc, Context) ->
 system_config_notification_doc(DocId) ->
     kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, DocId).
 
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(maybe(binary()), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     ReqTemplate = clean_req_doc(cb_context:doc(Context)),
 

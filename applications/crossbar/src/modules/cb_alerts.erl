@@ -314,7 +314,7 @@ view_keys(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_user_admin(ne_binary(), api_binary()) -> boolean().
+-spec is_user_admin(ne_binary(), maybe(binary())) -> boolean().
 is_user_admin(_Account, 'undefined') -> 'false';
 is_user_admin(Account, UserId) ->
     AccountDb = kz_util:format_account_id(Account, 'encoded'),

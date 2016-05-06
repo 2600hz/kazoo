@@ -36,7 +36,7 @@ new() -> #ci_analysis{}.
 set_call_id(Analysis, CallId) ->
     Analysis#ci_analysis{call_id=CallId}.
 
--spec call_id(analysis()) -> api_binary().
+-spec call_id(analysis()) -> maybe(binary()).
 call_id(#ci_analysis{call_id=CallId}) ->
     CallId.
 
@@ -46,7 +46,7 @@ set_originate_type(Analysis, <<"phone">> = Type) ->
 set_originate_type(Analysis, <<"carrier">> = Type) ->
     Analysis#ci_analysis{originate_type=Type}.
 
--spec originate_type(analysis()) -> api_binary().
+-spec originate_type(analysis()) -> maybe(binary()).
 originate_type(#ci_analysis{originate_type=Type}) -> Type.
 
 -spec set_terminate_type(analysis(), ne_binary()) -> analysis().
@@ -55,7 +55,7 @@ set_terminate_type(Analysis, <<"phone">> = Type) ->
 set_terminate_type(Analysis, <<"carrier">> = Type) ->
     Analysis#ci_analysis{terminate_type=Type}.
 
--spec terminate_type(analysis()) -> api_binary().
+-spec terminate_type(analysis()) -> maybe(binary()).
 terminate_type(#ci_analysis{terminate_type=Type}) ->
     Type.
 
@@ -65,7 +65,7 @@ set_failure_location(Analysis, <<"origination">> = Location) ->
 set_failure_location(Analysis, <<"termination">> = Location) ->
     Analysis#ci_analysis{failure_location=Location}.
 
--spec failure_location(analysis()) -> api_binary().
+-spec failure_location(analysis()) -> maybe(binary()).
 failure_location(#ci_analysis{failure_location=Location}) ->
     Location.
 
@@ -73,7 +73,7 @@ failure_location(#ci_analysis{failure_location=Location}) ->
 set_reason(Analysis, Reason) ->
     Analysis#ci_analysis{reason=Reason}.
 
--spec reason(analysis()) -> api_binary().
+-spec reason(analysis()) -> maybe(binary()).
 reason(#ci_analysis{reason=Reason}) ->
     Reason.
 

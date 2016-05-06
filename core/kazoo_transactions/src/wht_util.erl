@@ -414,7 +414,7 @@ reason_code(Reason) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec code_reason(pos_integer()) -> api_binary().
+-spec code_reason(pos_integer()) -> maybe(binary()).
 code_reason(Code) ->
     case lists:keyfind(Code, 2, ?REASONS) of
         'false' -> <<"unknown">>;

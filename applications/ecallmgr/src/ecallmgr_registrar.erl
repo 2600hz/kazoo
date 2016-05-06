@@ -72,7 +72,7 @@
 -define(EXPIRES_MISSING_VALUE, 0).
 
 -record(state, {started = kz_util:current_tstamp()
-                ,queue :: api_binary()
+                ,queue :: maybe(binary())
                }).
 
 -record(registration, {id :: {ne_binary(), ne_binary()} | '_' | '$1'
@@ -88,7 +88,7 @@
                        ,user_agent :: ne_binary() | '_'
                        ,expires = ?EXPIRES_MISSING_VALUE :: non_neg_integer() | '_' | '$1'
                        ,contact :: ne_binary() | '_'
-                       ,previous_contact :: api_binary() | '_'
+                       ,previous_contact :: maybe(binary()) | '_'
                        ,original_contact :: ne_binary() | '_'
                        ,last_registration = kz_util:current_tstamp() :: gregorian_seconds() | '_' | '$2'
                        ,initial_registration = kz_util:current_tstamp() :: gregorian_seconds() | '_'
@@ -96,16 +96,16 @@
                        ,registrar_hostname :: ne_binary() | '_'
                        ,suppress_unregister = 'true' :: boolean() | '_'
                        ,register_overwrite_notify = 'false' :: boolean() | '_'
-                       ,account_db :: api_binary() | '_'
-                       ,account_id :: api_binary() | '_'
-                       ,authorizing_id :: api_binary() | '_'
-                       ,authorizing_type :: api_binary() | '_'
-                       ,owner_id :: api_binary() | '_'
+                       ,account_db :: maybe(binary()) | '_'
+                       ,account_id :: maybe(binary()) | '_'
+                       ,authorizing_id :: maybe(binary()) | '_'
+                       ,authorizing_type :: maybe(binary()) | '_'
+                       ,owner_id :: maybe(binary()) | '_'
                        ,initial = 'true' :: boolean() | '_'
-                       ,account_realm :: api_binary() | '_' | '$2'
-                       ,account_name :: api_binary() | '_'
-                       ,proxy :: api_binary() | '_'
-                       ,bridge_uri :: api_binary() | '_'
+                       ,account_realm :: maybe(binary()) | '_' | '$2'
+                       ,account_name :: maybe(binary()) | '_'
+                       ,proxy :: maybe(binary()) | '_'
+                       ,bridge_uri :: maybe(binary()) | '_'
                       }).
 
 -type registration() :: #registration{}.
@@ -227,7 +227,7 @@ lookup_registration(Realm, Username) ->
         'undefined' -> fetch_registration(Username, Realm)
     end.
 
--spec get_registration(ne_binary(), ne_binary()) -> 'undefined' | registration().
+-spec get_registration(ne_binary(), ne_binary()) -> maybe(registration()).
 get_registration(Realm, Username) ->
     case ets:lookup(?MODULE, registration_id(Username, Realm)) of
         [#registration{}=Registration] -> Registration;
@@ -330,7 +330,7 @@ flush(Realm) ->
         _Else -> gen_server:cast(?SERVER, {'flush', Realm})
     end.
 
--spec flush(text() | 'undefined', text()) -> 'ok'.
+-spec flush(maybe(text()), text()) -> 'ok'.
 flush('undefined', Realm) ->
     flush(Realm);
 flush(Username, Realm) when not is_binary(Realm) ->
@@ -560,7 +560,7 @@ fetch_registration(Username, Realm) ->
             {'error', 'not_found'}
     end.
 
--spec query_for_registration(api_terms()) ->
+-spec query_for_registration(maybe(terms())) ->
                                     {'ok', kz_json:objects()} |
                                     {'error', any()}.
 query_for_registration(Reg) ->
@@ -892,7 +892,7 @@ augment_registration(Reg, JObj) ->
                                     )
      }.
 
--spec fix_contact(api_binary()) -> api_binary().
+-spec fix_contact(maybe(binary())) -> maybe(binary()).
 fix_contact('undefined') -> 'undefined';
 fix_contact(Contact) ->
     binary:replace(Contact
@@ -901,7 +901,7 @@ fix_contact(Contact) ->
                    ,['global']
                   ).
 
--spec bridge_uri(api_binary(), api_binary(), binary(), binary()) -> api_binary().
+-spec bridge_uri(maybe(binary()), maybe(binary()), binary(), binary()) -> maybe(binary()).
 bridge_uri(_Contact, 'undefined', _, _) -> 'undefined';
 bridge_uri('undefined', _Proxy, _, _) -> 'undefined';
 bridge_uri(Contact, Proxy, Username, Realm) ->

@@ -91,10 +91,10 @@ save_fax_docs([Doc|Docs], FileContents, CT) ->
         Else -> Else
     end.
 
--spec save_fax_attachment(api_object(), binary(), ne_binary())->
+-spec save_fax_attachment(maybe(kz_json:object()), binary(), ne_binary())->
                                  {'ok', kz_json:object()} |
                                  {'error', ne_binary()}.
--spec save_fax_attachment(api_object(), binary(), ne_binary(), non_neg_integer())->
+-spec save_fax_attachment(maybe(kz_json:object()), binary(), ne_binary(), non_neg_integer())->
                                  {'ok', kz_json:object()} |
                                  {'error', ne_binary()}.
 save_fax_attachment(JObj, FileContents, CT) ->
@@ -150,7 +150,7 @@ save_fax_doc_completed(JObj)->
             {'error', E}
     end.
 
--spec notify_email_list(api_binary(), api_binary(), ne_binary() | list()) -> list().
+-spec notify_email_list(maybe(binary()), maybe(binary()), ne_binary() | list()) -> list().
 notify_email_list(From, OwnerEmail, Email) when is_binary(Email) ->
     notify_email_list(From, OwnerEmail, [Email]);
 notify_email_list('undefined', 'undefined', List) ->
@@ -166,7 +166,7 @@ notify_email_list(From, OwnerEmail, List) ->
 filter_numbers(Number) ->
     << <<X>> || <<X>> <= Number, is_digit(X)>>.
 
--spec is_valid_caller_id(api_binary(), ne_binary()) -> boolean().
+-spec is_valid_caller_id(maybe(binary()), ne_binary()) -> boolean().
 is_valid_caller_id('undefined', _) -> 'false';
 is_valid_caller_id(Number, AccountId) ->
     case knm_number:lookup_account(Number) of

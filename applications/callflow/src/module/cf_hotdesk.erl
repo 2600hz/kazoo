@@ -23,11 +23,11 @@
 -define(HOTDESK_ID_LENGTH, kapps_config:get_integer(?HD_CONFIG_CAT, <<"max_hotdesk_id_length">>, 10)).
 
 -record(hotdesk, {enabled = 'false' :: boolean()
-                  ,hotdesk_id :: api_binary()
-                  ,pin :: api_binary()
+                  ,hotdesk_id :: maybe(binary())
+                  ,pin :: maybe(binary())
                   ,require_pin = 'false' :: boolean()
                   ,keep_logged_in_elsewhere = 'false' :: boolean()
-                  ,owner_id :: api_binary()
+                  ,owner_id :: maybe(binary())
                   ,endpoint_ids = [] :: ne_binaries()
                   ,jobj = kz_json:new() :: kz_json:object()
                   ,account_db :: ne_binary()
@@ -186,7 +186,7 @@ maybe_logout_elsewhere(Hotdesk, Call) ->
 get_authorizing_id(Hotdesk, Call) ->
     login_authorizing_id(kapps_call:authorizing_id(Call), Hotdesk, Call).
 
--spec login_authorizing_id(api_binary(), hotdesk(), kapps_call:call()) ->
+-spec login_authorizing_id(maybe(binary()), hotdesk(), kapps_call:call()) ->
                                   kapps_api_std_return().
 login_authorizing_id('undefined', _, Call) ->
     kapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
@@ -234,7 +234,7 @@ maybe_keep_logged_in_elsewhere(Hotdesk, Call) ->
     H = remove_from_endpoints(Hotdesk, Call),
     logged_out(H, Call).
 
--spec keep_logged_in_elsewhere(api_binary(), hotdesk(), kapps_call:call()) ->
+-spec keep_logged_in_elsewhere(maybe(binary()), hotdesk(), kapps_call:call()) ->
                                       kapps_api_std_return().
 keep_logged_in_elsewhere('undefined', Hotdesk, Call) ->
     logged_out(Hotdesk, Call);
@@ -266,7 +266,7 @@ logged_out(_, Call) ->
 %% mailbox record
 %% @end
 %%--------------------------------------------------------------------
--spec get_hotdesk_profile(api_binary(), kz_json:object(), kapps_call:call()) ->
+-spec get_hotdesk_profile(maybe(binary()), kz_json:object(), kapps_call:call()) ->
                                  hotdesk() |
                                  {'error', any()}.
 get_hotdesk_profile('undefined', Data, Call) ->
@@ -360,7 +360,7 @@ remove_from_endpoints(#hotdesk{endpoint_ids=[EndpointId|Endpoints]
     _ = update_hotdesk_endpoint(AccountDb, EndpointId, Fun),
     remove_from_endpoints(Hotdesk#hotdesk{endpoint_ids=Endpoints}, Call).
 
--spec update_hotdesk_endpoint(ne_binary(), api_binary() | kz_json:object(), function()) ->
+-spec update_hotdesk_endpoint(ne_binary(), maybe(binary()) | kz_json:object(), function()) ->
                                      kz_jobj_return().
 update_hotdesk_endpoint(_, 'undefined', _) -> {'error', 'not_found'};
 update_hotdesk_endpoint(AccountDb, EndpointId, Fun) when is_binary(EndpointId) ->

@@ -53,6 +53,36 @@ The Blackhole application providing websocket support currently utilizes the soc
 
 The media prompts that we used to keep in the code repository for historical reasons has been moved the kazoo-prompts repository.
 
+#### Kazoo types
+
+Types that were known as `api_SOMETHING()` are replaced with `maybe(SOMETHING())`.
+Example: `api_binary()` becomes `maybe(binary())`.
+
+Complete list of said types:
+
+```erlang
+api_terms() -> maybe(terms()) (terms() :: kz_json:object() | kz_proplist())
+api_binary() -> maybe(binary())
+api_binaries() -> maybe([maybe(binary())])
+api_object() -> maybe(kz_json:object())
+api_objects() -> maybe(kz_json:objects())
+api_boolean() -> maybe(boolean())
+api_atom() -> maybe(atom())
+api_atoms() -> maybe(atoms())
+api_string() -> maybe(string())
+api_reference() -> maybe(reference())
+api_pid() -> maybe(pid())
+api_list() -> maybe(list())
+api_number() -> maybe(number())
+api_integer() -> maybe(integer())
+api_pos_integer() -> maybe(pos_integer())
+api_non_neg_integer() -> maybe(non_neg_integer())
+api_float() -> maybe(float())
+api_seconds() -> maybe(gregorian_seconds())
+```
+
+Note: `api(T)` is defined as `undefined | T`.
+
 ### 3.22
 
 #### FreeSWITCH 1.4.26+ / 1.6+

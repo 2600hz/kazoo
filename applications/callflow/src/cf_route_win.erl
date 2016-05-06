@@ -44,7 +44,7 @@ should_restrict_call(Call) ->
 	EndpointId = kapps_call:kvs_fetch(?RESTRICTED_ENDPOINT_KEY, DefaultEndpointId, Call),
 	should_restrict_call(EndpointId, Call).
 
--spec should_restrict_call(api_binary(), kapps_call:call()) -> boolean().
+-spec should_restrict_call(maybe(binary()), kapps_call:call()) -> boolean().
 should_restrict_call('undefined', _Call) -> 'false';
 should_restrict_call(EndpointId, Call) ->
     case cf_endpoint:get(EndpointId, Call) of
@@ -178,7 +178,7 @@ get_group_associations(Id, Groups, Set) ->
                         end
                 end, Set, Groups).
 
--spec get_callee_extension_info(kapps_call:call()) -> {ne_binary(), ne_binary()} | 'undefined'.
+-spec get_callee_extension_info(kapps_call:call()) -> maybe({ne_binary(), ne_binary()}).
 get_callee_extension_info(Call) ->
     Flow = kapps_call:kvs_fetch('cf_flow', Call),
     FirstModule = kz_json:get_value(<<"module">>, Flow),
@@ -271,7 +271,7 @@ update_ccvs(Call) ->
     kapps_call:set_custom_channel_vars(Props, Call).
 
 -spec maybe_start_metaflow(kapps_call:call()) -> kapps_call:call().
--spec maybe_start_metaflow(kapps_call:call(), api_binary()) -> kapps_call:call().
+-spec maybe_start_metaflow(kapps_call:call(), maybe(binary())) -> kapps_call:call().
 maybe_start_metaflow(Call) ->
     maybe_start_metaflow(Call, kapps_call:custom_channel_var(<<"Metaflow-App">>, Call)).
 
@@ -282,7 +282,7 @@ maybe_start_metaflow(Call, App) ->
     lager:debug("metaflow app ~s", [App]),
     Call.
 
--spec maybe_start_endpoint_metaflow(kapps_call:call(), api_binary()) -> 'ok'.
+-spec maybe_start_endpoint_metaflow(kapps_call:call(), maybe(binary())) -> 'ok'.
 maybe_start_endpoint_metaflow(_Call, 'undefined') -> 'ok';
 maybe_start_endpoint_metaflow(Call, EndpointId) ->
     lager:debug("looking up endpoint for ~s", [EndpointId]),

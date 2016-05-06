@@ -98,7 +98,7 @@ find_conference(Call, AccountDb) ->
             Error
     end.
 
--spec find_account_db(kapps_call:call()) -> api_binary().
+-spec find_account_db(kapps_call:call()) -> maybe(binary()).
 find_account_db(Call) ->
     Realm = kapps_call:to_realm(Call),
     case kapps_util:get_account_by_realm(Realm) of

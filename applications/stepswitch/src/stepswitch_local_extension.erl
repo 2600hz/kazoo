@@ -26,9 +26,9 @@
 -record(state, {number_props = [] :: knm_number_options:extra_options()
                 ,resource_req :: kapi_offnet_resource:req()
                 ,request_handler :: pid()
-                ,control_queue :: api_binary()
-                ,response_queue :: api_binary()
-                ,queue :: api_binary()
+                ,control_queue :: maybe(binary())
+                ,response_queue :: maybe(binary())
+                ,queue :: maybe(binary())
                 ,timeout :: reference()
                }).
 -type state() :: #state{}.
@@ -297,7 +297,7 @@ get_account_realm(AccountId) ->
         _ -> AccountId
     end.
 
--spec local_extension_caller_id(kz_json:object()) -> {api_binary(), api_binary()}.
+-spec local_extension_caller_id(kz_json:object()) -> {maybe(binary()), maybe(binary())}.
 local_extension_caller_id(JObj) ->
     {kz_json:get_first_defined([<<"Outbound-Caller-ID-Number">>
                                 ,<<"Emergency-Caller-ID-Number">>
@@ -307,7 +307,7 @@ local_extension_caller_id(JObj) ->
                                 ], JObj)
     }.
 
--spec local_extension_callee_id(kz_json:object(), ne_binary()) -> {api_binary(), api_binary()}.
+-spec local_extension_callee_id(kz_json:object(), ne_binary()) -> {maybe(binary()), maybe(binary())}.
 local_extension_callee_id(JObj, Number) ->
     {kz_json:get_value(<<"Outbound-Callee-ID-Number">>, JObj, Number)
      ,kz_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj, Number)
@@ -348,8 +348,8 @@ local_extension_success(Request) ->
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec bridge_from_uri(api_binary(), kapi_offnet_resource:req()) ->
-                             api_binary().
+-spec bridge_from_uri(maybe(binary()), kapi_offnet_resource:req()) ->
+                             maybe(binary()).
 bridge_from_uri(Number, OffnetReq) ->
     Realm = default_realm(OffnetReq),
 
@@ -365,7 +365,7 @@ bridge_from_uri(Number, OffnetReq) ->
             FromURI
     end.
 
--spec default_realm(kapi_offnet_resource:req()) -> api_binary().
+-spec default_realm(kapi_offnet_resource:req()) -> maybe(binary()).
 default_realm(OffnetReq) ->
     case kapi_offnet_resource:from_uri_realm(OffnetReq) of
         'undefined' -> kapi_offnet_resource:account_realm(OffnetReq);

@@ -48,14 +48,14 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec listener() -> api_pid().
+-spec listener() -> maybe(pid()).
 listener() ->
     case child_of_type(?SERVER, 'webhooks_listener') of
         [] -> 'undefined';
         [P] -> P
     end.
 
--spec shared_listener() -> api_pid().
+-spec shared_listener() -> maybe(pid()).
 shared_listener() ->
     case child_of_type(?SERVER, 'webhooks_shared_listener') of
         [] -> 'undefined';

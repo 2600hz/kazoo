@@ -27,7 +27,7 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {request       :: kz_proplist()
-                ,timer        :: 'undefined' | reference()
+                ,timer        :: maybe(reference())
                 ,schedule     :: pos_integers()
                 ,check = 'true' :: check_fun()
                }).

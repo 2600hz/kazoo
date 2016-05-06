@@ -92,7 +92,7 @@
 -define(FSREPLY_COMMAND_TYPES, []).
 
 %% Request a reload_acls
--spec reload_acls(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec reload_acls(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 reload_acls(Prop) when is_list(Prop) ->
     case reload_acls_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?RELOAD_ACLS_HEADERS, ?OPTIONAL_RELOAD_ACLS_HEADERS);
@@ -101,14 +101,14 @@ reload_acls(Prop) when is_list(Prop) ->
 reload_acls(JObj) ->
     reload_acls(kz_json:to_proplist(JObj)).
 
--spec reload_acls_v(api_terms()) -> boolean().
+-spec reload_acls_v(maybe(terms())) -> boolean().
 reload_acls_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?RELOAD_ACLS_HEADERS, ?RELOAD_ACLS_VALUES, ?RELOAD_ACLS_TYPES);
 reload_acls_v(JObj) ->
     reload_acls_v(kz_json:to_proplist(JObj)).
 
 %% Request a reload_gateways
--spec reload_gateways(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec reload_gateways(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 reload_gateways(Prop) when is_list(Prop) ->
     case reload_gateways_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?RELOAD_GATEWAYS_HEADERS, ?OPTIONAL_RELOAD_GATEWAYS_HEADERS);
@@ -117,14 +117,14 @@ reload_gateways(Prop) when is_list(Prop) ->
 reload_gateways(JObj) ->
     reload_gateways(kz_json:to_proplist(JObj)).
 
--spec reload_gateways_v(api_terms()) -> boolean().
+-spec reload_gateways_v(maybe(terms())) -> boolean().
 reload_gateways_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?RELOAD_GATEWAYS_HEADERS, ?RELOAD_GATEWAYS_VALUES, ?RELOAD_GATEWAYS_TYPES);
 reload_gateways_v(JObj) ->
     reload_gateways_v(kz_json:to_proplist(JObj)).
 
 %% Request a fs_xml_flush
--spec fs_xml_flush(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec fs_xml_flush(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 fs_xml_flush(Prop) when is_list(Prop) ->
     case fs_xml_flush_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?FS_XML_FLUSH_HEADERS, ?OPTIONAL_FS_XML_FLUSH_HEADERS);
@@ -133,14 +133,14 @@ fs_xml_flush(Prop) when is_list(Prop) ->
 fs_xml_flush(JObj) ->
     fs_xml_flush(kz_json:to_proplist(JObj)).
 
--spec fs_xml_flush_v(api_terms()) -> boolean().
+-spec fs_xml_flush_v(maybe(terms())) -> boolean().
 fs_xml_flush_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?FS_XML_FLUSH_HEADERS, ?FS_XML_FLUSH_VALUES, ?FS_XML_FLUSH_TYPES);
 fs_xml_flush_v(JObj) ->
     fs_xml_flush_v(kz_json:to_proplist(JObj)).
 
 %% Request a check_sync
--spec check_sync(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec check_sync(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 check_sync(Prop) when is_list(Prop) ->
     case check_sync_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?CHECK_SYNC_HEADERS, ?OPTIONAL_CHECK_SYNC_HEADERS);
@@ -149,14 +149,14 @@ check_sync(Prop) when is_list(Prop) ->
 check_sync(JObj) ->
     check_sync(kz_json:to_proplist(JObj)).
 
--spec check_sync_v(api_terms()) -> boolean().
+-spec check_sync_v(maybe(terms())) -> boolean().
 check_sync_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?CHECK_SYNC_HEADERS, ?CHECK_SYNC_VALUES, ?CHECK_SYNC_TYPES);
 check_sync_v(JObj) ->
     check_sync_v(kz_json:to_proplist(JObj)).
 
 %% Request a fs command
--spec fs_command(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec fs_command(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 fs_command(Prop) when is_list(Prop) ->
     case fs_command_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?FS_COMMAND_HEADERS, ?OPTIONAL_FS_COMMAND_HEADERS);
@@ -165,14 +165,14 @@ fs_command(Prop) when is_list(Prop) ->
 fs_command(JObj) ->
     fs_command(kz_json:to_proplist(JObj)).
 
--spec fs_command_v(api_terms()) -> boolean().
+-spec fs_command_v(maybe(terms())) -> boolean().
 fs_command_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?FS_COMMAND_HEADERS, ?FS_COMMAND_VALUES, ?FS_COMMAND_TYPES);
 fs_command_v(JObj) ->
     fs_command_v(kz_json:to_proplist(JObj)).
 
 %% Reply to fs command
--spec fs_reply(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec fs_reply(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 fs_reply(Prop) when is_list(Prop) ->
     case fs_reply_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?FSREPLY_COMMAND_HEADERS, ?OPTIONAL_FSREPLY_COMMAND_HEADERS);
@@ -181,7 +181,7 @@ fs_reply(Prop) when is_list(Prop) ->
 fs_reply(JObj) ->
     fs_reply(kz_json:to_proplist(JObj)).
 
--spec fs_reply_v(api_terms()) -> boolean().
+-spec fs_reply_v(maybe(terms())) -> boolean().
 fs_reply_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?FSREPLY_COMMAND_HEADERS, ?FSREPLY_COMMAND_VALUES, ?FSREPLY_COMMAND_TYPES);
 fs_reply_v(JObj) ->
@@ -260,16 +260,16 @@ publish_reload_gateways() ->
     {'ok', Payload} = kz_api:prepare_api_payload(Defaults, ?RELOAD_GATEWAYS_VALUES, fun ?MODULE:reload_gateways/1),
     amqp_util:configuration_publish(?RELOAD_GATEWAYS_KEY, Payload, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_fs_xml_flush(api_terms()) -> 'ok'.
--spec publish_fs_xml_flush(api_terms(), binary()) -> 'ok'.
+-spec publish_fs_xml_flush(maybe(terms())) -> 'ok'.
+-spec publish_fs_xml_flush(maybe(terms()), binary()) -> 'ok'.
 publish_fs_xml_flush(JObj) ->
     publish_fs_xml_flush(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_fs_xml_flush(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?FS_XML_FLUSH_VALUES, fun ?MODULE:fs_xml_flush/1),
     amqp_util:configuration_publish(?FS_XML_FLUSH_KEY, Payload, ContentType).
 
--spec publish_check_sync(api_terms()) -> 'ok'.
--spec publish_check_sync(api_terms(), binary()) -> 'ok'.
+-spec publish_check_sync(maybe(terms())) -> 'ok'.
+-spec publish_check_sync(maybe(terms()), binary()) -> 'ok'.
 publish_check_sync(JObj) ->
     publish_check_sync(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_check_sync(Req, ContentType) ->
@@ -283,24 +283,24 @@ publish_check_sync(Req, ContentType) ->
                                     ,ContentType
                                    ).
 
--spec check_sync_realm(api_terms()) -> api_binary().
+-spec check_sync_realm(maybe(terms())) -> maybe(binary()).
 check_sync_realm(Props) when is_list(Props) ->
     check_sync_value(Props, <<"Realm">>, fun props:get_value/2);
 check_sync_realm(JObj) ->
     check_sync_value(JObj, <<"Realm">>, fun kz_json:get_value/2).
 
--spec check_sync_username(api_terms()) -> api_binary().
+-spec check_sync_username(maybe(terms())) -> maybe(binary()).
 check_sync_username(Props) when is_list(Props) ->
     check_sync_value(Props, <<"Username">>, fun props:get_value/2);
 check_sync_username(JObj) ->
     check_sync_value(JObj, <<"Username">>, fun kz_json:get_value/2).
 
--spec check_sync_value(api_terms(), ne_binary(), fun()) -> api_binary().
+-spec check_sync_value(maybe(terms()), ne_binary(), fun()) -> maybe(binary()).
 check_sync_value(API, Key, Get) ->
     Get(Key, API).
 
--spec publish_command(api_terms()) -> 'ok'.
--spec publish_command(api_terms(), binary()) -> 'ok'.
+-spec publish_command(maybe(terms())) -> 'ok'.
+-spec publish_command(maybe(terms()), binary()) -> 'ok'.
 publish_command(JObj) ->
     publish_command(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_command(Req, ContentType) ->
@@ -308,21 +308,21 @@ publish_command(Req, ContentType) ->
     N = check_fs_node(Req),
     amqp_util:configuration_publish(?FS_COMMAND_KEY(N), Payload, ContentType).
 
--spec publish_reply(binary(), api_terms()) -> 'ok'.
+-spec publish_reply(binary(), maybe(terms())) -> 'ok'.
 publish_reply(Queue, Req) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?FSREPLY_COMMAND_VALUES, fun ?MODULE:fs_reply/1),
     amqp_util:targeted_publish(Queue, Payload).
 
--spec check_fs_node(api_terms()) -> api_binary().
+-spec check_fs_node(maybe(terms())) -> maybe(binary()).
 check_fs_node(Props) when is_list(Props) ->
     get_value(Props, <<"FreeSWITCH-Node">>, <<"*">>).
 
--spec get_value(api_terms(), ne_binary(), ne_binary()) -> api_binary().
+-spec get_value(maybe(terms()), ne_binary(), ne_binary()) -> maybe(binary()).
 get_value(Props, Key, Default) when is_list(Props) ->
     get_value(Props, Key, fun props:get_value/3, Default);
 get_value(JObj, Key, Default) ->
     get_value(JObj, Key, fun kz_json:get_value/3, Default).
 
--spec get_value(api_terms(), ne_binary(), fun(), ne_binary()) -> api_binary().
+-spec get_value(maybe(terms()), ne_binary(), fun(), ne_binary()) -> maybe(binary()).
 get_value(API, Key, Get, Default) ->
     Get(Key, API, Default).

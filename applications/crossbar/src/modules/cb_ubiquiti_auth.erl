@@ -173,7 +173,7 @@ auth_response(_Context, _RespHeaders, RespBody) ->
                                     )
                                  ).
 
--spec maybe_add_account_information(api_binary(), kz_json:object()) -> kz_json:object().
+-spec maybe_add_account_information(maybe(binary()), kz_json:object()) -> kz_json:object().
 maybe_add_account_information('undefined', AuthResponse) ->
     AuthResponse;
 maybe_add_account_information(UUID, AuthResponse) ->

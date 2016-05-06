@@ -186,7 +186,7 @@ validate_resource(Context) -> Context.
 validate_resource(Context, ?STATUS_PATH_TOKEN) -> Context;
 validate_resource(Context, DeviceId) -> validate_device_id(Context, DeviceId).
 
--spec validate_device_id(cb_context:context(), api_binary()) -> cb_context:context().
+-spec validate_device_id(cb_context:context(), maybe(binary())) -> cb_context:context().
 validate_device_id(Context, DeviceId) ->
     case kz_datamgr:open_cache_doc(cb_context:account_db(Context), DeviceId) of
         {'ok', _} -> cb_context:set_device_id(Context, DeviceId);
@@ -334,7 +334,7 @@ load_users_device_summary(Context, UserId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_request(maybe(binary()), cb_context:context()) -> cb_context:context().
 validate_request('undefined', Context) ->
     maybe_check_mdn('undefined', Context);
 validate_request(DeviceId, Context) ->
@@ -344,7 +344,7 @@ validate_request(DeviceId, Context) ->
         _Else -> Context1
     end.
 
--spec maybe_check_mdn(api_binary(), cb_context:context()) -> cb_context:context().
+-spec maybe_check_mdn(maybe(binary()), cb_context:context()) -> cb_context:context().
 maybe_check_mdn(DeviceId, Context) ->
     case get_device_type(Context) of
         <<"mobile">> -> check_mdn_undefined(DeviceId, Context);
@@ -354,7 +354,7 @@ maybe_check_mdn(DeviceId, Context) ->
             prepare_outbound_flags(DeviceId, Context)
     end.
 
--spec check_mdn_undefined(api_binary(), cb_context:context()) -> cb_context:context().
+-spec check_mdn_undefined(maybe(binary()), cb_context:context()) -> cb_context:context().
 check_mdn_undefined(DeviceId, Context) ->
     case get_mdn(Context) =:= 'undefined' of
         'true' -> error_mdn_undefined(Context);
@@ -372,7 +372,7 @@ error_mdn_undefined(Context) ->
       ,Context
      ).
 
--spec check_mdn_changed(api_binary(), cb_context:context()) -> cb_context:context().
+-spec check_mdn_changed(maybe(binary()), cb_context:context()) -> cb_context:context().
 check_mdn_changed('undefined', Context) ->
     check_mdn_taken('undefined', Context);
 check_mdn_changed(DeviceId, Context) ->
@@ -401,7 +401,7 @@ error_mdn_changed(Context) ->
       ,Context
      ).
 
--spec check_mdn_taken(api_binary(), cb_context:context()) -> cb_context:context().
+-spec check_mdn_taken(maybe(binary()), cb_context:context()) -> cb_context:context().
 check_mdn_taken(DeviceId, Context) ->
     MDN = get_mdn(Context),
     case knm_number:get(MDN) of
@@ -423,7 +423,7 @@ error_mdn_taken(MDN, Context) ->
       ,Context
      ).
 
--spec check_mdn_registered(api_binary(), cb_context:context()) -> cb_context:context().
+-spec check_mdn_registered(maybe(binary()), cb_context:context()) -> cb_context:context().
 check_mdn_registered(DeviceId, Context) ->
     %%TODO: issue API request to TOP (if configured with URL) and validate
     %%   that the number is present in that system, if not stop the request
@@ -444,7 +444,7 @@ changed_mac_address(Context) ->
             unique_mac_address(NewAddress, Context)
     end.
 
--spec check_mac_address(api_binary(), cb_context:context()) -> cb_context:context().
+-spec check_mac_address(maybe(binary()), cb_context:context()) -> cb_context:context().
 check_mac_address(DeviceId, Context) ->
     MacAddress = cb_context:req_value(Context, ?KEY_MAC_ADDRESS),
     case unique_mac_address(MacAddress, Context) of
@@ -454,7 +454,7 @@ check_mac_address(DeviceId, Context) ->
             error_used_mac_address(Context)
     end.
 
--spec unique_mac_address(api_binary(), cb_context:context()) -> boolean().
+-spec unique_mac_address(maybe(binary()), cb_context:context()) -> boolean().
 unique_mac_address('undefined', _Context) -> 'true';
 unique_mac_address(MacAddress, Context) ->
     DbName = cb_context:account_db(Context),
@@ -481,7 +481,7 @@ get_mac_addresses(DbName) ->
         _ -> []
     end.
 
--spec prepare_outbound_flags(api_binary(), cb_context:context()) -> cb_context:context().
+-spec prepare_outbound_flags(maybe(binary()), cb_context:context()) -> cb_context:context().
 prepare_outbound_flags(DeviceId, Context) ->
     JObj = case cb_context:req_value(Context, <<"outbound_flags">>) of
                'undefined' -> cb_context:req_data(Context);
@@ -496,7 +496,7 @@ prepare_outbound_flags(DeviceId, Context) ->
            end,
     prepare_device_realm(DeviceId, cb_context:set_req_data(Context, JObj)).
 
--spec prepare_device_realm(api_binary(), cb_context:context()) -> cb_context:context().
+-spec prepare_device_realm(maybe(binary()), cb_context:context()) -> cb_context:context().
 prepare_device_realm(DeviceId, Context) ->
     AccountRealm = kz_util:get_account_realm(cb_context:account_id(Context)),
     Realm = cb_context:req_value(Context, [<<"sip">>, <<"realm">>], AccountRealm),
@@ -508,7 +508,7 @@ prepare_device_realm(DeviceId, Context) ->
             validate_device_creds(Realm, DeviceId, cb_context:store(Context, 'aggregate_device', 'true'))
     end.
 
--spec validate_device_creds(api_binary(), api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_device_creds(maybe(binary()), maybe(binary()), cb_context:context()) -> cb_context:context().
 validate_device_creds(Realm, DeviceId, Context) ->
     case cb_context:req_value(Context, [<<"sip">>, <<"method">>], <<"password">>) of
         <<"password">> ->
@@ -529,7 +529,7 @@ validate_device_creds(Realm, DeviceId, Context) ->
             check_emergency_caller_id(DeviceId, C)
     end.
 
--spec validate_device_password(ne_binary(), api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_device_password(ne_binary(), maybe(binary()), cb_context:context()) -> cb_context:context().
 validate_device_password(Realm, DeviceId, Context) ->
     Username = cb_context:req_value(Context, [<<"sip">>, <<"username">>]),
     case is_sip_creds_unique(cb_context:account_db(Context), Realm, Username, DeviceId) of
@@ -546,7 +546,7 @@ validate_device_password(Realm, DeviceId, Context) ->
             check_emergency_caller_id(DeviceId, C)
     end.
 
--spec validate_device_ip(ne_binary(), api_binary(), cb_context:context()) ->
+-spec validate_device_ip(ne_binary(), maybe(binary()), cb_context:context()) ->
                                 cb_context:context().
 validate_device_ip(IP, DeviceId, Context) ->
     case kz_network_utils:is_ipv4(IP) of
@@ -564,7 +564,7 @@ validate_device_ip(IP, DeviceId, Context) ->
             check_emergency_caller_id(DeviceId, C)
     end.
 
--spec validate_device_ip_unique(ne_binary(), api_binary(), cb_context:context()) ->
+-spec validate_device_ip_unique(ne_binary(), maybe(binary()), cb_context:context()) ->
                                        cb_context:context().
 validate_device_ip_unique(IP, DeviceId, Context) ->
     case cb_devices_utils:is_ip_unique(IP, DeviceId) of
@@ -583,12 +583,12 @@ validate_device_ip_unique(IP, DeviceId, Context) ->
             check_emergency_caller_id(DeviceId, C)
     end.
 
--spec check_emergency_caller_id(api_binary(), cb_context:context()) -> cb_context:context().
+-spec check_emergency_caller_id(maybe(binary()), cb_context:context()) -> cb_context:context().
 check_emergency_caller_id(DeviceId, Context) ->
     Context1 = crossbar_util:format_emergency_caller_id_number(Context),
     check_device_type_change(DeviceId, Context1).
 
--spec check_device_type_change(api_binary(), cb_context:context()) -> cb_context:context().
+-spec check_device_type_change(maybe(binary()), cb_context:context()) -> cb_context:context().
 check_device_type_change('undefined', Context) ->
     check_device_schema('undefined', Context);
 check_device_type_change(DeviceId, Context) ->
@@ -602,7 +602,7 @@ check_device_type_change(DeviceId, Context) ->
         _Else -> error_device_type_change(NewDeviceType, Context)
     end.
 
--spec error_device_type_change(api_binary(), cb_context:context()) -> cb_context:context().
+-spec error_device_type_change(maybe(binary()), cb_context:context()) -> cb_context:context().
 error_device_type_change(DeviceType, Context) ->
     cb_context:add_validation_error(
       <<"device_type">>
@@ -614,12 +614,12 @@ error_device_type_change(DeviceType, Context) ->
       ,Context
      ).
 
--spec check_device_schema(api_binary(), cb_context:context()) -> cb_context:context().
+-spec check_device_schema(maybe(binary()), cb_context:context()) -> cb_context:context().
 check_device_schema(DeviceId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(DeviceId, C) end,
     cb_context:validate_request_data(<<"devices">>, Context, OnSuccess).
 
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(maybe(binary()), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, <<"device">>}],
     cb_context:set_doc(Context, kz_json:set_values(Props, cb_context:doc(Context)));
@@ -713,7 +713,7 @@ extract_device_registrations([JObj|JObjs], Set) ->
 %% Check if the device sip creds are unique
 %% @end
 %%--------------------------------------------------------------------
--spec is_sip_creds_unique(api_binary(), ne_binary(), ne_binary(), api_binary()) ->
+-spec is_sip_creds_unique(maybe(binary()), ne_binary(), ne_binary(), maybe(binary())) ->
                                  boolean().
 
 %% no account id and no doc id (ie initial create with no account)
@@ -749,8 +749,8 @@ is_creds_global_unique(Realm, Username, DeviceId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_aggregate_device(api_binary(), cb_context:context()) -> boolean().
--spec maybe_aggregate_device(api_binary(), cb_context:context(), crossbar_status()) -> boolean().
+-spec maybe_aggregate_device(maybe(binary()), cb_context:context()) -> boolean().
+-spec maybe_aggregate_device(maybe(binary()), cb_context:context(), crossbar_status()) -> boolean().
 maybe_aggregate_device(DeviceId, Context) ->
     maybe_aggregate_device(DeviceId, Context, cb_context:resp_status(Context)).
 maybe_aggregate_device(DeviceId, Context, 'success') ->
@@ -773,8 +773,8 @@ maybe_aggregate_device(_, _, _) -> 'false'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_remove_aggregate(api_binary(), cb_context:context()) -> boolean().
--spec maybe_remove_aggregate(api_binary(), cb_context:context(), crossbar_status()) -> boolean().
+-spec maybe_remove_aggregate(maybe(binary()), cb_context:context()) -> boolean().
+-spec maybe_remove_aggregate(maybe(binary()), cb_context:context(), crossbar_status()) -> boolean().
 maybe_remove_aggregate(DeviceId, Context) ->
     maybe_remove_aggregate(DeviceId, Context, cb_context:resp_status(Context)).
 
@@ -796,7 +796,7 @@ maybe_remove_aggregate(_, _, _) -> 'false'.
 %%   gets the one from request data.
 %% @end
 %%--------------------------------------------------------------------
--spec get_device_type(cb_context:context()) -> api_binary().
+-spec get_device_type(cb_context:context()) -> maybe(binary()).
 get_device_type(Context) ->
     case kz_device:device_type(cb_context:fetch(Context, 'db_doc')) of
         'undefined' ->
@@ -900,7 +900,7 @@ remove_if_mobile(MDN, Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_mdn(cb_context:context()) -> api_binary().
+-spec get_mdn(cb_context:context()) -> maybe(binary()).
 get_mdn(Context) ->
     case cb_context:req_value(Context, ?KEY_MOBILE_MDN) of
         'undefined' ->

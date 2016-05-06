@@ -80,7 +80,7 @@ maybe_rm_binding_from_listener(Module, Binding, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec respond_with_error(bh_context:context()) -> bh_context:context().
--spec respond_with_error(bh_context:context(), api_binary(), kz_json:object()) -> bh_context:context().
+-spec respond_with_error(bh_context:context(), maybe(binary()), kz_json:object()) -> bh_context:context().
 respond_with_error(Context) ->
     respond_with_error(
         Context

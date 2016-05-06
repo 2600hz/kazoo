@@ -64,7 +64,7 @@
 
 -type store_options() :: [{'origin', origin_tuple() | origin_tuples()} |
                           {'expires', kz_timeout()} |
-                          {'callback', 'undefined' | callback_fun()}
+                          {'callback', maybe(callback_fun())}
                          ] | [].
 -export_type([store_options/0]).
 
@@ -632,14 +632,14 @@ get_props_expires(Props) ->
             Expires
     end.
 
--spec get_props_callback(kz_proplist()) -> 'undefined' | callback_fun().
+-spec get_props_callback(kz_proplist()) -> maybe(callback_fun()).
 get_props_callback(Props) ->
     case props:get_value('callback', Props) of
         'undefined' -> 'undefined';
         Fun when is_function(Fun, 3) -> Fun
     end.
 
--spec get_props_origin(kz_proplist()) -> 'undefined' | origin_tuple() | origin_tuples().
+-spec get_props_origin(kz_proplist()) -> maybe(origin_tuple() | origin_tuples()).
 get_props_origin(Props) -> props:get_value('origin', Props).
 
 -spec expire_objects(ets:tid(), [ets:tid()]) -> non_neg_integer().
@@ -713,8 +713,7 @@ maybe_exec_erase_callbacks(Tab, Key) ->
         'error':'badarg' -> 'ok'
     end.
 
--spec exec_erase_callbacks(ets:tid(), any(), callback_fun()) ->
-                                  any().
+-spec exec_erase_callbacks(ets:tid(), any(), callback_fun()) -> any().
 exec_erase_callbacks(Tab, Key, Fun) ->
     Value = ets:lookup_element(Tab, Key, #cache_obj.value),
     Fun(Key, Value, 'erase').
@@ -772,8 +771,8 @@ delete_monitor_callbacks(MonitorTab, Key) ->
 start_expire_period_timer(ExpirePeriod) ->
     erlang:start_timer(ExpirePeriod, self(), ?EXPIRE_PERIOD_MSG).
 
--spec insert_origin_pointers('undefined' | origin_tuple() | origin_tuples()
-                            ,cache_obj(), ets:tid()) -> 'ok'.
+-spec insert_origin_pointers(maybe(origin_tuple() | origin_tuples()), cache_obj(), ets:tid()) ->
+                                    'ok'.
 insert_origin_pointers('undefined', _CacheObj, _PointerTab) -> 'ok';
 insert_origin_pointers(Origin, CacheObj, PointerTab) when is_tuple(Origin) ->
     insert_origin_pointer(Origin, CacheObj, PointerTab);

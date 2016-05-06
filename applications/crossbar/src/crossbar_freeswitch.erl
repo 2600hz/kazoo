@@ -52,7 +52,7 @@
 
 -define(AUTHN_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 
--record(state, {config = 'undefined' :: api_binary(),
+-record(state, {config = 'undefined' :: maybe(binary()),
                 is_running = 'false' :: boolean(),
                 monitor :: reference()
                }).
@@ -246,7 +246,7 @@ process_realms() ->
         ],
     'ok'.
 
--spec process_realms(api_binaries(), ne_binary(), atom()) -> 'ok'.
+-spec process_realms(maybe([maybe(binary())]), ne_binary(), atom()) -> 'ok'.
 process_realms('undefined', _Dir, _Module) -> 'ok';
 process_realms([], _, _) -> 'ok';
 process_realms([Realm | Realms], Dir, Module) ->
@@ -332,7 +332,7 @@ maybe_export_numbers(Db, [Number|Numbers]) ->
         end,
     maybe_export_numbers(Db, Numbers).
 
--spec maybe_export_number(ne_binary(), api_binary(), api_binary()) -> 'ok'.
+-spec maybe_export_number(ne_binary(), maybe(binary()), maybe(binary())) -> 'ok'.
 maybe_export_number(Number, ?NUMBER_STATE_IN_SERVICE, AccountId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     ViewOptions = [{'key', Number}
@@ -367,7 +367,7 @@ process_callflows(Number, AccountId, [JObj | JObjs]) ->
     process_callflow(Number, AccountId, Flow),
     process_callflows(Number, AccountId, JObjs).
 
--spec process_callflow(ne_binary(), ne_binary(), api_object()) -> 'ok'.
+-spec process_callflow(ne_binary(), ne_binary(), maybe(kz_json:object())) -> 'ok'.
 process_callflow(_, _, 'undefined') -> 'ok';
 process_callflow(Number, AccountId, Flow) ->
     Module = kz_json:get_value(<<"module">>, Flow),
@@ -380,7 +380,7 @@ process_callflow(Number, AccountId, Flow) ->
                           _ -> Children
                       end).
 
--spec process_callflow(ne_binary(), ne_binary(), ne_binary(), api_binary()) -> 'ok'.
+-spec process_callflow(ne_binary(), ne_binary(), ne_binary(), maybe(binary())) -> 'ok'.
 process_callflow(_, _, _, 'undefined') -> 'ok';
 process_callflow(Number, AccountId, <<"device">>, DeviceId) ->
     lager:debug("found device ~s associated with ~s"
@@ -532,7 +532,7 @@ compile_templates() ->
 compile_template(Module) ->
     compile_template(Module, kapps_config:get_binary(?MOD_CONFIG_CAT, kz_util:to_binary(Module))).
 
--spec compile_template(atom(), api_binary()) -> 'ok'.
+-spec compile_template(atom(), maybe(binary())) -> 'ok'.
 compile_template(Module, 'undefined') ->
     {'ok', Contents} = file:read_file(template_file(Module)),
     kapps_config:set(?MOD_CONFIG_CAT, kz_util:to_binary(Module), Contents),
@@ -576,7 +576,7 @@ xml_file_from_config(Module) ->
 xml_file_from_config(Module, KeyName) ->
     xml_file_from_config(Module, kapps_config:get_binary(?MOD_CONFIG_CAT, KeyName), KeyName).
 
--spec xml_file_from_config(atom(), api_binary(), ne_binary()) -> ne_binary().
+-spec xml_file_from_config(atom(), maybe(binary()), ne_binary()) -> ne_binary().
 xml_file_from_config(Module, 'undefined', KeyName) ->
     {'ok', Contents} = file:read_file(xml_file(Module)),
     kapps_config:set(?MOD_CONFIG_CAT, KeyName, Contents),

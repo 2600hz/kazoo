@@ -33,17 +33,17 @@
 -record(state, {
           call :: kapps_call:call()
          ,action = 'receive' :: 'receive' | 'transmit'
-         ,owner_id :: api_binary()
-         ,faxbox_id :: api_binary()
-         ,fax_doc :: api_object()
+         ,owner_id :: maybe(binary())
+         ,faxbox_id :: maybe(binary())
+         ,fax_doc :: maybe(kz_json:object())
          ,storage :: fax_storage()
-         ,fax_option :: api_binary()
-         ,fax_result :: api_object()
-         ,fax_notify = 'undefined' :: api_object()
+         ,fax_option :: maybe(binary())
+         ,fax_result :: maybe(kz_json:object())
+         ,fax_notify = 'undefined' :: maybe(kz_json:object())
          ,fax_store_count = 0 :: integer()
-         ,fax_id = 'undefined' :: api_binary()
-         ,account_id = 'undefined' :: api_binary()
-         ,fax_status :: api_object()
+         ,fax_id = 'undefined' :: maybe(binary())
+         ,account_id = 'undefined' :: maybe(binary())
+         ,fax_status :: maybe(kz_json:object())
          ,page = 0  ::integer()
          ,status :: binary()
          }).
@@ -352,7 +352,7 @@ get_faxbox_notify_list(FaxBoxDoc, AccountDb) ->
 default_notify(FaxBoxDoc) ->
     kz_json:get_value([<<"notifications">>,<<"inbound">>], FaxBoxDoc, kz_json:new()).
 
--spec maybe_add_owner_to_notify_list(list(), api_binary()) -> kz_json:object().
+-spec maybe_add_owner_to_notify_list(list(), maybe(binary())) -> kz_json:object().
 maybe_add_owner_to_notify_list(List, 'undefined') ->
     kz_json:set_value([<<"email">>, <<"send_to">>], List, kz_json:new());
 maybe_add_owner_to_notify_list(List, OwnerEmail) ->
@@ -561,7 +561,7 @@ notify_failure(JObj, State) ->
     Reason = kz_json:get_value([<<"Application-Data">>,<<"Fax-Result">>], JObj),
     notify_failure(JObj, Reason, State).
 
--spec notify_failure(kz_json:object(), api_binary(), state()) -> 'ok'.
+-spec notify_failure(kz_json:object(), maybe(binary()), state()) -> 'ok'.
 notify_failure(JObj, 'undefined', State) ->
     notify_failure(JObj, <<"unknown error">>, State);
 notify_failure(JObj, Reason, #state{call=Call
@@ -609,15 +609,15 @@ notify_success(JObj, #state{call=Call
                 ]),
     kapi_notifications:publish_fax_inbound(Message).
 
--spec send_error_status(state(), ne_binary(), api_object()) -> 'ok'.
+-spec send_error_status(state(), ne_binary(), maybe(kz_json:object())) -> 'ok'.
 send_error_status(State, Status, FaxInfo) ->
     send_status(State, Status, ?FAX_ERROR, FaxInfo).
 
--spec send_status(state(), ne_binary(), api_object()) -> 'ok'.
+-spec send_status(state(), ne_binary(), maybe(kz_json:object())) -> 'ok'.
 send_status(State, Status, FaxInfo) ->
     send_status(State, Status, ?FAX_RECEIVE, FaxInfo).
 
--spec send_status(state(), ne_binary(), ne_binary(), api_object()) -> 'ok'.
+-spec send_status(state(), ne_binary(), ne_binary(), maybe(kz_json:object())) -> 'ok'.
 send_status(#state{call=Call
                    ,account_id=AccountId
                    ,page=Page

@@ -150,7 +150,7 @@ maybe_add_macro_key(_Key, Acc, _DataJObj) ->
 
 -spec maybe_add_account_data(ne_binary(), kz_proplist(), kz_json:object()) ->
                                     kz_proplist().
--spec maybe_add_account_data(ne_binary(), kz_proplist(), kz_json:object(), api_binary()) ->
+-spec maybe_add_account_data(ne_binary(), kz_proplist(), kz_json:object(), maybe(binary())) ->
                                     kz_proplist().
 maybe_add_account_data(Key, Acc, DataJObj) ->
     maybe_add_account_data(Key, Acc, DataJObj

@@ -53,7 +53,7 @@
                            ]).
 -define(FAX_STATUS_TYPES, []).
 
--spec req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec req(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
         'false' -> {'error', "Proplist failed validation for fax_req"};
@@ -62,13 +62,13 @@ req(Prop) when is_list(Prop) ->
 req(JObj) ->
     req(kz_json:to_proplist(JObj)).
 
--spec req_v(api_terms()) -> boolean().
+-spec req_v(maybe(terms())) -> boolean().
 req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?FAX_REQ_HEADERS, ?FAX_REQ_VALUES, ?FAX_REQ_TYPES);
 req_v(JObj) ->
     req_v(kz_json:to_proplist(JObj)).
 
--spec query_status(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec query_status(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 query_status(Prop) when is_list(Prop) ->
     case query_status_v(Prop) of
         'false' -> {'error', "Proplist failed validation for fax_query_status"};
@@ -77,13 +77,13 @@ query_status(Prop) when is_list(Prop) ->
 query_status(JObj) ->
     query_status(kz_json:to_proplist(JObj)).
 
--spec query_status_v(api_terms()) -> boolean().
+-spec query_status_v(maybe(terms())) -> boolean().
 query_status_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?FAX_QUERY_HEADERS, ?FAX_QUERY_VALUES, ?FAX_QUERY_TYPES);
 query_status_v(JObj) ->
     query_status_v(kz_json:to_proplist(JObj)).
 
--spec status(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec status(maybe(terms())) -> {'ok', iolist()} | {'error', string()}.
 status(Prop) when is_list(Prop) ->
     case status_v(Prop) of
         'false' -> {'error', "Proplist failed validation for fax_query_status"};
@@ -92,7 +92,7 @@ status(Prop) when is_list(Prop) ->
 status(JObj) ->
     status(kz_json:to_proplist(JObj)).
 
--spec status_v(api_terms()) -> boolean().
+-spec status_v(maybe(terms())) -> boolean().
 status_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?FAX_STATUS_HEADERS, ?FAX_STATUS_VALUES, ?FAX_STATUS_TYPES);
 status_v(JObj) ->
@@ -149,8 +149,8 @@ declare_exchanges() ->
     amqp_util:targeted_exchange(),
     amqp_util:callmgr_exchange().
 
--spec publish_req(api_terms()) -> 'ok'.
--spec publish_req(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_req(maybe(terms())) -> 'ok'.
+-spec publish_req(maybe(terms()), ne_binary()) -> 'ok'.
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 
@@ -158,8 +158,8 @@ publish_req(Api, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Api, ?FAX_REQ_VALUES, fun req/1),
     amqp_util:callmgr_publish(Payload, ContentType, fax_routing_key()).
 
--spec publish_query_status(ne_binary(), api_terms()) -> 'ok'.
--spec publish_query_status(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_query_status(ne_binary(), maybe(terms())) -> 'ok'.
+-spec publish_query_status(ne_binary(), maybe(terms()), ne_binary()) -> 'ok'.
 publish_query_status(Q, JObj) ->
     publish_query_status(Q, JObj, ?DEFAULT_CONTENT_TYPE).
 
@@ -167,8 +167,8 @@ publish_query_status(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?FAX_QUERY_VALUES, fun ?MODULE:query_status/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
--spec publish_status(api_terms()) -> 'ok'.
--spec publish_status(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_status(maybe(terms())) -> 'ok'.
+-spec publish_status(maybe(terms()), ne_binary()) -> 'ok'.
 publish_status(API) ->
     publish_status(API, ?DEFAULT_CONTENT_TYPE).
 
@@ -177,8 +177,8 @@ publish_status(API, ContentType) ->
     FaxId = props:get_first_defined([<<"Fax-ID">>,<<"Job-ID">>], API,<<"*">>),
     amqp_util:basic_publish(?FAX_EXCHANGE, status_routing_key(FaxId), Payload, ContentType).
 
--spec publish_targeted_status(ne_binary(), api_terms()) -> 'ok'.
--spec publish_targeted_status(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_targeted_status(ne_binary(), maybe(terms())) -> 'ok'.
+-spec publish_targeted_status(ne_binary(), maybe(terms()), ne_binary()) -> 'ok'.
 publish_targeted_status(Q, JObj) ->
     publish_targeted_status(Q, JObj, ?DEFAULT_CONTENT_TYPE).
 

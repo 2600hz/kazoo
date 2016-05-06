@@ -43,7 +43,7 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec buckets_srv() -> api_pid().
+-spec buckets_srv() -> maybe(pid()).
 buckets_srv() ->
     case [P || {'kz_buckets', P, _, _} <- supervisor:which_children(?SERVER)] of
         [] -> 'undefined';

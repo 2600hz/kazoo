@@ -87,13 +87,13 @@ range_view_options(Context, MaxRange, Key, RangeFrom, RangeTo) ->
 range_modb_view_options(Context) ->
     range_modb_view_options(Context, 'undefined', 'undefined').
 
--spec range_modb_view_options(cb_context:context(), api_binaries()) ->
+-spec range_modb_view_options(cb_context:context(), maybe([maybe(binary())])) ->
                                      {'ok', kz_proplist()} |
                                      cb_context:context().
 range_modb_view_options(Context, PrefixKeys) ->
     range_modb_view_options(Context, PrefixKeys, 'undefined').
 
--spec range_modb_view_options(cb_context:context(), api_binaries(), api_binaries()) ->
+-spec range_modb_view_options(cb_context:context(), maybe([maybe(binary())]), maybe([maybe(binary())])) ->
                                      {'ok', crossbar_doc:view_options()} |
                                      cb_context:context().
 range_modb_view_options(Context, 'undefined', SuffixKeys) ->
@@ -107,7 +107,7 @@ range_modb_view_options(Context, PrefixKeys, SuffixKeys) ->
         Context1 -> Context1
     end.
 
--spec range_modb_view_options(cb_context:context(), api_binaries(), api_binaries(), gregorian_seconds(), gregorian_seconds()) ->
+-spec range_modb_view_options(cb_context:context(), maybe([maybe(binary())]), maybe([maybe(binary())]), gregorian_seconds(), gregorian_seconds()) ->
                                      {'ok', crossbar_doc:view_options()} |
                                      cb_context:context().
 range_modb_view_options(Context, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo) ->
@@ -117,7 +117,7 @@ range_modb_view_options(Context, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo)
         Context1 -> Context1
     end.
 
--spec range_modb_view_options1(cb_context:context(), api_binaries(), api_binaries(), gregorian_seconds(), gregorian_seconds()) ->
+-spec range_modb_view_options1(cb_context:context(), maybe([maybe(binary())]), maybe([maybe(binary())]), gregorian_seconds(), gregorian_seconds()) ->
                                      {'ok', crossbar_doc:view_options()} |
                                      cb_context:context().
 range_modb_view_options1(Context, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo) ->
@@ -165,7 +165,7 @@ pass_hashes(Username, Password) ->
     MD5 = kz_util:to_hex_binary(crypto:hash('md5', Creds)),
     {MD5, SHA1}.
 
--spec update_mwi(api_binary(), ne_binary()) -> pid().
+-spec update_mwi(maybe(binary()), ne_binary()) -> pid().
 update_mwi(OwnerId, AccountDb) ->
     kz_util:spawn(fun() ->
                           timer:sleep(?MILLISECONDS_IN_SECOND),
@@ -390,14 +390,14 @@ get_media(Context) ->
         _Else -> <<"process">>
     end.
 
--spec get_cid_name(cb_context:context(), api_binary()) -> api_binary().
+-spec get_cid_name(cb_context:context(), maybe(binary())) -> maybe(binary()).
 get_cid_name(Context, Default) ->
     case cb_context:req_value(Context, <<"cid-name">>, Default) of
         'undefined' -> 'undefined';
         CIDName -> kz_util:uri_decode(CIDName)
     end.
 
--spec get_cid_number(cb_context:context(), api_binary()) -> api_binary().
+-spec get_cid_number(cb_context:context(), maybe(binary())) -> maybe(binary()).
 get_cid_number(Context, Default) ->
     case cb_context:req_value(Context, <<"cid-number">>, Default) of
         'undefined' -> 'undefined';
@@ -410,7 +410,7 @@ get_cid_number(Context, Default) ->
 %% Returns true if the request contains a system admin module.
 %% @end
 %%--------------------------------------------------------------------
--spec is_superduper_admin(api_binary() | cb_context:context()) -> boolean().
+-spec is_superduper_admin(maybe(binary()) | cb_context:context()) -> boolean().
 is_superduper_admin('undefined') -> 'false';
 is_superduper_admin(<<_/binary>> = AccountId) ->
     lager:debug("checking for superduper admin: ~s", [AccountId]),
@@ -463,7 +463,7 @@ parse_media_type(MediaType) ->
     cowboy_http:nonempty_list(MediaType, fun cowboy_http:media_range/2).
 
 -spec bucket_name(cb_context:context()) -> ne_binary().
--spec bucket_name(api_binary(), api_binary()) -> ne_binary().
+-spec bucket_name(maybe(binary()), maybe(binary())) -> ne_binary().
 bucket_name(Context) ->
     bucket_name(cb_context:client_ip(Context)
                 ,cb_context:account_id(Context)
@@ -507,7 +507,7 @@ token_cost(Context, Default, Suffix) when is_integer(Default), Default >= 0 ->
                       ,kz_json:keys()
                       ,req_nouns()
                       ,http_method()
-                      ,api_binary()
+                      ,maybe(binary())
                      ) ->
                              non_neg_integer().
 
@@ -558,7 +558,7 @@ remove_plaintext_password(Context) ->
 
 -type assignment_updates() :: [{ne_binary(), knm_number:knm_number_return()}].
 
--spec apply_assignment_updates([{ne_binary(), api_binary()}]) ->
+-spec apply_assignment_updates([{ne_binary(), maybe(binary())}]) ->
                                       assignment_updates().
 apply_assignment_updates(Updates) ->
     [{DID, knm_number:assign_to_app(DID, Assign)}

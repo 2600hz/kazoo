@@ -168,7 +168,7 @@ search_req(Context) ->
 
 -spec process_search_responses(kz_json:objects()) ->
                                       {'ok', kz_json:object()}.
--spec process_search_responses(kz_json:objects(), api_boolean()) ->
+-spec process_search_responses(kz_json:objects(), maybe(boolean())) ->
                                       {'ok', kz_json:object()}.
 process_search_responses(JObjs) ->
     process_search_responses(JObjs, 'undefined').
@@ -271,7 +271,7 @@ resp_value(Response) ->
 
 -spec process_presentity_responses(kz_json:objects()) ->
                                           {'ok', kz_json:object()}.
--spec process_presentity_responses(kz_json:objects(), api_boolean()) ->
+-spec process_presentity_responses(kz_json:objects(), maybe(boolean())) ->
                                           {'ok', kz_json:object()}.
 process_presentity_responses(JObjs) ->
     process_presentity_responses(JObjs, 'undefined').
@@ -410,7 +410,7 @@ publish_reset(Realm, Things) ->
         ],
     'ok'.
 
--spec publish_presence_reset(ne_binary(), api_binary()) -> 'ok'.
+-spec publish_presence_reset(ne_binary(), maybe(binary())) -> 'ok'.
 publish_presence_reset(_Realm, 'undefined') -> 'ok';
 publish_presence_reset(Realm, PresenceId) ->
     lager:debug("resetting ~s @ ~s", [PresenceId, Realm]),

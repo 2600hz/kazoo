@@ -195,7 +195,7 @@ is_master_account(Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec account_depth(ne_binary()) -> 'undefined' | non_neg_integer().
+-spec account_depth(ne_binary()) -> maybe(non_neg_integer()).
 account_depth(Account) ->
     {'ok', JObj} = kz_account:fetch(Account),
     length(kz_account:tree(JObj)).
@@ -533,7 +533,7 @@ update_views(Db, Views, Remove) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_aggregate_device(ne_binary(), api_binary()) -> 'ok'.
+-spec add_aggregate_device(ne_binary(), maybe(binary())) -> 'ok'.
 add_aggregate_device(_, 'undefined') -> 'ok';
 add_aggregate_device(Db, Device) ->
     DeviceId = kz_doc:id(Device),
@@ -553,7 +553,7 @@ add_aggregate_device(Db, Device) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec rm_aggregate_device(ne_binary(), api_object() | api_binary()) -> 'ok'.
+-spec rm_aggregate_device(ne_binary(), maybe(kz_json:object()) | maybe(binary())) -> 'ok'.
 rm_aggregate_device(_, 'undefined') -> 'ok';
 rm_aggregate_device(Db, DeviceId) when is_binary(DeviceId) ->
     case kz_datamgr:open_doc(?KZ_SIP_DB, DeviceId) of
@@ -566,14 +566,14 @@ rm_aggregate_device(Db, DeviceId) when is_binary(DeviceId) ->
 rm_aggregate_device(Db, Device) ->
     rm_aggregate_device(Db, kz_doc:id(Device)).
 
--spec amqp_pool_send(api_terms(), kz_amqp_worker:publish_fun()) ->
+-spec amqp_pool_send(maybe(terms()), kz_amqp_worker:publish_fun()) ->
                             'ok' | {'error', any()}.
 amqp_pool_send(Api, PubFun) when is_function(PubFun, 1) ->
     kz_amqp_worker:cast(Api, PubFun).
 
--spec amqp_pool_request(api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun()) ->
+-spec amqp_pool_request(maybe(terms()), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun()) ->
                                kz_amqp_worker:request_return().
--spec amqp_pool_request(api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun(), kz_timeout()) ->
+-spec amqp_pool_request(maybe(terms()), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun(), kz_timeout()) ->
                                kz_amqp_worker:request_return().
 amqp_pool_request(Api, PubFun, ValidateFun)
   when is_function(PubFun, 1),
@@ -586,9 +586,9 @@ amqp_pool_request(Api, PubFun, ValidateFun, Timeout)
         orelse Timeout =:= 'infinity') ->
     kz_amqp_worker:call(Api, PubFun, ValidateFun, Timeout).
 
--spec amqp_pool_request_custom(api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun(), gen_listener:binding()) ->
+-spec amqp_pool_request_custom(maybe(terms()), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun(), gen_listener:binding()) ->
                                       kz_amqp_worker:request_return().
--spec amqp_pool_request_custom(api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun(), kz_timeout(), gen_listener:binding()) ->
+-spec amqp_pool_request_custom(maybe(terms()), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun(), kz_timeout(), gen_listener:binding()) ->
                                       kz_amqp_worker:request_return().
 amqp_pool_request_custom(Api, PubFun, ValidateFun, Bind)
   when is_function(PubFun, 1),
@@ -601,21 +601,21 @@ amqp_pool_request_custom(Api, PubFun, ValidateFun, Timeout, Bind)
         orelse Timeout =:= 'infinity') ->
     kz_amqp_worker:call_custom(Api, PubFun, ValidateFun, Timeout, Bind).
 
--spec amqp_pool_collect(api_terms(), kz_amqp_worker:publish_fun()) ->
+-spec amqp_pool_collect(maybe(terms()), kz_amqp_worker:publish_fun()) ->
                                {'ok', kz_json:objects()} |
                                {'timeout', kz_json:objects()} |
                                {'error', any()}.
 amqp_pool_collect(Api, PubFun) ->
     amqp_pool_collect(Api, PubFun, kz_amqp_worker:default_timeout()).
 
--spec amqp_pool_collect(api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:timeout_or_until()) ->
+-spec amqp_pool_collect(maybe(terms()), kz_amqp_worker:publish_fun(), kz_amqp_worker:timeout_or_until()) ->
                                {'ok', kz_json:objects()} |
                                {'timeout', kz_json:objects()} |
                                {'error', any()}.
 amqp_pool_collect(Api, PubFun, TimeoutOrUntil) ->
     kz_amqp_worker:call_collect(Api, PubFun, TimeoutOrUntil).
 
--spec amqp_pool_collect(api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:collect_until(), kz_timeout()) ->
+-spec amqp_pool_collect(maybe(terms()), kz_amqp_worker:publish_fun(), kz_amqp_worker:collect_until(), kz_timeout()) ->
                                {'ok', kz_json:objects()} |
                                {'timeout', kz_json:objects()} |
                                {'error', any()}.
@@ -651,12 +651,10 @@ get_destination(JObj, []) ->
      ,kz_json:get_value(<<"To-Realm">>, JObj)
     }.
 
--spec try_split(api_binary()) ->
-                       {ne_binary(), ne_binary()} |
-                       'undefined'.
+-spec try_split(maybe(binary())) ->
+                       maybe({ne_binary(), ne_binary()}).
 -spec try_split(ne_binary(), kz_json:object()) ->
-                       {ne_binary(), ne_binary()} |
-                       'undefined'.
+                       maybe({ne_binary(), ne_binary()}).
 try_split(Key, JObj) ->
     try_split(kz_json:get_value(Key, JObj)).
 

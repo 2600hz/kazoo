@@ -130,7 +130,7 @@
 -record(state, {node :: atom()
                 ,options = []             :: kz_proplist()
                 ,interface = #interface{} :: interface()
-                ,start_cmds_pid_ref       :: pid_ref() | 'undefined'
+                ,start_cmds_pid_ref       :: maybe(pid_ref())
                }).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_reload_acls'}
@@ -220,7 +220,7 @@ sync_capabilities(Srv) ->
 sync_registrations(Srv) ->
     gen_server:cast(find_srv(Srv), 'sync_registrations').
 
--spec hostname(pid()) -> api_binary().
+-spec hostname(pid()) -> maybe(binary()).
 hostname(Srv) ->
     case fs_node(Srv) of
         'undefined' -> 'undefined';
@@ -229,11 +229,11 @@ hostname(Srv) ->
             Hostname
     end.
 
--spec sip_url(fs_node()) -> api_binary().
+-spec sip_url(fs_node()) -> maybe(binary()).
 sip_url(Srv) ->
     gen_server:call(find_srv(Srv), 'sip_url').
 
--spec sip_external_ip(fs_node()) -> api_binary().
+-spec sip_external_ip(fs_node()) -> maybe(binary()).
 sip_external_ip(Srv) ->
     gen_server:call(find_srv(Srv), 'sip_external_ip').
 
@@ -557,11 +557,11 @@ execute_command(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat) ->
             [Error | Acc]
     end.
 
--spec format_args('list'|'binary', api_terms()) -> api_terms().
+-spec format_args('list'|'binary', maybe(terms())) -> maybe(terms()).
 format_args('list', Args) -> kz_util:to_list(Args);
 format_args('binary', Args) -> kz_util:to_binary(Args).
 
--spec process_resp(atom(), api_terms(), ne_binaries(), cmd_results()) -> cmd_results().
+-spec process_resp(atom(), maybe(terms()), ne_binaries(), cmd_results()) -> cmd_results().
 process_resp(ApiCmd, ApiArg, [<<>>|Resps], Acc) ->
     process_resp(ApiCmd, ApiArg, Resps, Acc);
 process_resp(ApiCmd, ApiArg, [<<"+OK Reloading XML">>|Resps], Acc) ->

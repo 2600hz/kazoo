@@ -272,7 +272,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle_get_req_data(api_binary(), api_binary(), api_binary()) -> any().
+-spec handle_get_req_data(maybe(binary()), maybe(binary()), maybe(binary())) -> any().
 handle_get_req_data('undefined', 'undefined', Node) ->
     lager:warning("received undefined blackhole get req", [Node]);
 handle_get_req_data(AccountId, 'undefined', Node) ->

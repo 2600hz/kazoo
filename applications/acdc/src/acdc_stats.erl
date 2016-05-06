@@ -63,12 +63,12 @@
 -define(SERVER, ?MODULE).
 
 %% Public API
--spec call_waiting(api_binary()
-                   ,api_binary()
-                   ,api_binary()
-                   ,api_binary()
-                   ,api_binary()
-                   ,api_binary()
+-spec call_waiting(maybe(binary())
+                   ,maybe(binary())
+                   ,maybe(binary())
+                   ,maybe(binary())
+                   ,maybe(binary())
+                   ,maybe(binary())
                   ) -> 'ok' | {'error', any()}.
 call_waiting(AccountId, QueueId, CallId, CallerIdName, CallerIdNumber, CallerPriority) ->
     Prop = props:filter_undefined(
@@ -853,7 +853,7 @@ flush_call_stat(JObj, Props) ->
                       ,{'flush_call', Id}
                      ).
 
--spec find_call_stat(ne_binary()) -> 'undefined' | call_stat().
+-spec find_call_stat(ne_binary()) -> maybe(call_stat()).
 find_call_stat(Id) ->
     case ets:lookup(call_table_id(), Id) of
         [] -> 'undefined';

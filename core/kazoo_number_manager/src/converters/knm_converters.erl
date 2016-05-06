@@ -107,12 +107,12 @@
 normalize(?NE_BINARY = Num) ->
     (?CONVERTER_MOD):normalize(Num).
 
--spec normalize(ne_binary(), api_binary()) ->
+-spec normalize(ne_binary(), maybe(binary())) ->
                        ne_binary().
 normalize(?NE_BINARY = Num, AccountId) ->
     (?CONVERTER_MOD):normalize(Num, AccountId).
 
--spec normalize(ne_binary(), api_binary(), kz_json:object()) ->
+-spec normalize(ne_binary(), maybe(binary()), kz_json:object()) ->
                        ne_binary().
 normalize(?NE_BINARY = Num, AccountId, DialPlan) ->
     (?CONVERTER_MOD):normalize(Num, AccountId, DialPlan).
@@ -166,7 +166,7 @@ to_1npan(Num) ->
 %% @public
 %% @doc Given a number determine the database name it belongs to.
 %%--------------------------------------------------------------------
--spec to_db(<<_:40,_:_*8>>) -> api_binary().
+-spec to_db(<<_:40,_:_*8>>) -> maybe(binary()).
 to_db(<<NumPrefix:5/binary, _/binary>>) ->
     kz_http_util:urlencode(<<?KNM_DB_PREFIX/binary, NumPrefix/binary>>);
 to_db(_) ->
@@ -221,7 +221,7 @@ is_reconcilable_by_regex(Num, Regex) ->
        ).
 -endif.
 
--spec classify(ne_binary()) -> api_binary().
+-spec classify(ne_binary()) -> maybe(binary()).
 classify(Number) ->
     Num = normalize(Number),
     classify_number(Num, kz_json:to_proplist(?CLASSIFIERS)).
@@ -267,7 +267,7 @@ default_converter() -> ?CONVERTER_MOD.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec classify_number(ne_binary(), kz_proplist() | ne_binary()) -> api_binary().
+-spec classify_number(ne_binary(), kz_proplist() | ne_binary()) -> maybe(binary()).
 classify_number(Num, []) ->
     lager:debug("unable to classify number ~s", [Num]),
     'undefined';

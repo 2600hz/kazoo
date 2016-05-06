@@ -74,7 +74,7 @@ new() ->
 is_device(Doc) ->
     kz_doc:type(Doc) =:= ?PVT_TYPE.
 
--spec sip_username(doc()) -> api_binary().
+-spec sip_username(doc()) -> maybe(binary()).
 -spec sip_username(doc(), Default) -> ne_binary() | Default.
 sip_username(DeviceJObj) ->
     sip_username(DeviceJObj, 'undefined').
@@ -82,7 +82,7 @@ sip_username(DeviceJObj) ->
 sip_username(DeviceJObj, Default) ->
     kz_json:get_value(?USERNAME, DeviceJObj, Default).
 
--spec sip_password(doc()) -> api_binary().
+-spec sip_password(doc()) -> maybe(binary()).
 -spec sip_password(doc(), Default) -> ne_binary() | Default.
 sip_password(DeviceJObj) ->
     sip_password(DeviceJObj, 'undefined').
@@ -90,7 +90,7 @@ sip_password(DeviceJObj) ->
 sip_password(DeviceJObj, Default) ->
     kz_json:get_value(?PASSWORD, DeviceJObj, Default).
 
--spec sip_method(doc()) -> api_binary().
+-spec sip_method(doc()) -> maybe(binary()).
 -spec sip_method(doc(), Default) -> ne_binary() | Default.
 sip_method(DeviceJObj) ->
     sip_method(DeviceJObj, 'undefined').
@@ -98,7 +98,7 @@ sip_method(DeviceJObj) ->
 sip_method(DeviceJObj, Default) ->
     kz_json:get_value(?METHOD, DeviceJObj, Default).
 
--spec sip_realm(doc()) -> api_binary().
+-spec sip_realm(doc()) -> maybe(binary()).
 -spec sip_realm(doc(), Default) -> ne_binary() | Default.
 sip_realm(DeviceJObj) ->
     sip_realm(DeviceJObj, 'undefined').
@@ -106,7 +106,7 @@ sip_realm(DeviceJObj) ->
 sip_realm(DeviceJObj, Default) ->
     kz_json:get_value(?REALM, DeviceJObj, Default).
 
--spec sip_ip(doc()) -> api_binary().
+-spec sip_ip(doc()) -> maybe(binary()).
 -spec sip_ip(doc(), Default) -> ne_binary() | Default.
 sip_ip(DeviceJObj) ->
     sip_ip(DeviceJObj, 'undefined').
@@ -114,7 +114,7 @@ sip_ip(DeviceJObj) ->
 sip_ip(DeviceJObj, Default) ->
     kz_json:get_value(?IP, DeviceJObj, Default).
 
--spec sip_invite_format(doc()) -> api_binary().
+-spec sip_invite_format(doc()) -> maybe(binary()).
 -spec sip_invite_format(doc(), Default) -> ne_binary() | Default.
 sip_invite_format(DeviceJObj) ->
     sip_invite_format(DeviceJObj, 'undefined').
@@ -122,7 +122,7 @@ sip_invite_format(DeviceJObj) ->
 sip_invite_format(DeviceJObj, Default) ->
     kz_json:get_value(?IP, DeviceJObj, Default).
 
--spec sip_route(doc()) -> api_binary().
+-spec sip_route(doc()) -> maybe(binary()).
 -spec sip_route(doc(), Default) -> ne_binary() | Default.
 sip_route(DeviceJObj) ->
     sip_route(DeviceJObj, 'undefined').
@@ -130,7 +130,7 @@ sip_route(DeviceJObj) ->
 sip_route(DeviceJObj, Default) ->
     kz_json:get_value(?IP, DeviceJObj, Default).
 
--spec custom_sip_headers_inbound(doc()) -> api_object().
+-spec custom_sip_headers_inbound(doc()) -> maybe(kz_json:object()).
 -spec custom_sip_headers_inbound(doc(), Default) -> kz_json:object() | Default.
 custom_sip_headers_inbound(DeviceJObj) ->
     custom_sip_headers_inbound(DeviceJObj, 'undefined').
@@ -150,7 +150,7 @@ filter_custom_sip_headers({<<"in">>, _}) -> 'false';
 filter_custom_sip_headers({<<"out">>, _}) -> 'false';
 filter_custom_sip_headers(_) -> 'true'.
 
--spec custom_sip_headers_outbound(doc()) -> api_object().
+-spec custom_sip_headers_outbound(doc()) -> maybe(kz_json:object()).
 -spec custom_sip_headers_outbound(doc(), Default) -> kz_json:object() | Default.
 custom_sip_headers_outbound(DeviceJObj) ->
     custom_sip_headers_outbound(DeviceJObj, 'undefined').
@@ -158,7 +158,7 @@ custom_sip_headers_outbound(DeviceJObj) ->
 custom_sip_headers_outbound(DeviceJObj, Default) ->
     kz_json:get_value(?CUSTOM_SIP_HEADERS_OUT, DeviceJObj, Default).
 
--spec sip_settings(doc()) -> api_object().
+-spec sip_settings(doc()) -> maybe(kz_json:object()).
 -spec sip_settings(doc(), Default) -> kz_json:object() | Default.
 sip_settings(DeviceJObj) ->
     sip_settings(DeviceJObj, 'undefined').
@@ -206,7 +206,7 @@ set_custom_sip_headers_outbound(Device, Headers) ->
 set_sip_settings(DeviceJObj, SipJObj) ->
     kz_json:set_value(?SIP, SipJObj, DeviceJObj).
 
--spec presence_id(doc()) -> api_binary().
+-spec presence_id(doc()) -> maybe(binary()).
 -spec presence_id(doc(), Default) -> ne_binary() | Default.
 presence_id(DeviceJObj) ->
     presence_id(DeviceJObj, sip_username(DeviceJObj)).
@@ -221,7 +221,7 @@ set_presence_id(DeviceJObj, Id) ->
       ,DeviceJObj
      ).
 
--spec name(doc()) -> api_binary().
+-spec name(doc()) -> maybe(binary()).
 -spec name(doc(), Default) -> ne_binary() | Default.
 name(DeviceJObj) ->
     name(DeviceJObj, 'undefined').
@@ -232,7 +232,7 @@ name(DeviceJObj, Default) ->
 set_name(DeviceJObj, Name) ->
     kz_json:set_value(?NAME, Name, DeviceJObj).
 
--spec mac_address(doc()) -> api_binary().
+-spec mac_address(doc()) -> maybe(binary()).
 -spec mac_address(doc(), Default) -> ne_binary() | Default.
 mac_address(DeviceJObj) ->
     mac_address(DeviceJObj, 'undefined').
@@ -243,7 +243,7 @@ mac_address(DeviceJObj, Default) ->
 set_mac_address(DeviceJObj, MacAddress) ->
     kz_json:set_value(?MAC_ADDRESS, MacAddress, DeviceJObj).
 
--spec language(doc()) -> api_binary().
+-spec language(doc()) -> maybe(binary()).
 -spec language(doc(), Default) -> ne_binary() | Default.
 language(DeviceJObj) ->
     language(DeviceJObj, 'undefined').
@@ -254,7 +254,7 @@ language(DeviceJObj, Default) ->
 set_language(DeviceJObj, Language) ->
     kz_json:set_value(?LANGUAGE, Language, DeviceJObj).
 
--spec device_type(doc()) -> api_binary().
+-spec device_type(doc()) -> maybe(binary()).
 -spec device_type(doc(), Default) -> ne_binary() | Default.
 device_type(DeviceJObj) ->
     device_type(DeviceJObj, 'undefined').
@@ -268,7 +268,7 @@ set_device_type(DeviceJObj, MacAddress) ->
 -spec type() -> ne_binary().
 type() -> ?PVT_TYPE.
 
--spec owner_id(doc()) -> api_binary().
+-spec owner_id(doc()) -> maybe(binary()).
 -spec owner_id(doc(), Default) -> ne_binary() | Default.
 owner_id(DeviceJObj) ->
     owner_id(DeviceJObj, 'undefined').
@@ -291,7 +291,7 @@ enabled(DeviceJObj, Default) ->
 set_enabled(DeviceJObj, Enabled) ->
     kz_json:set_value(?ENABLED, Enabled, DeviceJObj).
 
--spec timezone(doc()) -> api_binary().
+-spec timezone(doc()) -> maybe(binary()).
 -spec timezone(doc(), Default) -> ne_binary() | Default.
 timezone(Box) ->
     timezone(Box, 'undefined').
@@ -310,8 +310,8 @@ owner_timezone(Box, Default) ->
         OwnerJObj -> owner_timezone(Box, Default, OwnerJObj)
     end.
 
--spec owner(doc()) -> kzd_user:doc() | 'undefined'.
--spec owner(doc(), ne_binary()) -> kzd_user:doc() | 'undefined'.
+-spec owner(doc()) -> maybe(kzd_user:doc()).
+-spec owner(doc(), ne_binary()) -> maybe(kzd_user:doc()).
 owner(Box) ->
     case owner_id(Box) of
         'undefined' -> 'undefined';
