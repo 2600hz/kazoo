@@ -43,6 +43,7 @@
 -export([cleanup_voicemail_media/1]).
 -export([cleanup_orphan_modbs/0]).
 -export([delete_system_media_references/0]).
+-export([migrate_system/0]).
 
 -define(DEVICES_CB_LIST, <<"devices/crossbar_listing">>).
 -define(MAINTENANCE_VIEW_FILE, <<"views/maintenance.json">>).
@@ -85,6 +86,8 @@ migrate() ->
 
 -spec migrate(text() | integer()) -> 'no_return'.
 migrate(Pause) ->
+    _ = migrate_system(),
+
     _ = migrate_config_setting(
           {<<"callflow">>, <<"default_emergency_cid_number">>}
           ,{<<"stepswitch">>, <<"default_emergency_cid_number">>}
@@ -1217,3 +1220,60 @@ remove_system_media_refs(HangupCause, Config) ->
                                      kz_json:object().
 remove_system_media_ref(Key, <<"/system_media/", Value/binary>>, Acc) -> kz_json:set_value(Key, Value, Acc);
 remove_system_media_ref(Key, Value, Acc) -> kz_json:set_value(Key, Value, Acc).
+
+-spec last_migrate_version() -> ne_binary().
+last_migrate_version() ->
+    kapps_config:get_ne_binary(?MODULE, <<"migrate_current_version">>, <<"3.22">>).
+
+-spec set_last_migrate_version(ne_binary()) -> {'ok', kz_json:object()}.
+set_last_migrate_version(Version) ->
+    kapps_config:set(?MODULE, <<"migrate_current_version">>, Version).
+
+-spec migrate_system() -> 'ok'.
+migrate_system() ->
+    migrate_system(last_migrate_version(), kz_util:kazoo_version()).
+
+-spec migrate_system(ne_binary(), ne_binary()) -> 'ok'.
+migrate_system(ThisVersion, ThisVersion) ->
+    lager:notice("system config version is ~s", [ThisVersion]);
+migrate_system(PreviousVersion, ThisVersion) ->
+    Routines = migrate_system_version_routines(PreviousVersion, ThisVersion),
+    Result = lists:foldl(
+               fun(Fun, Acc) when is_function(Fun, 2) ->
+                       [Fun(PreviousVersion, ThisVersion) | Acc];
+                  (Fun, Acc) when is_function(Fun, 1) ->
+                       [Fun(ThisVersion) | Acc];
+                  (Fun, Acc) when is_function(Fun) ->
+                       [Fun() | Acc]
+               end, [], Routines),
+    case lists:all(fun kz_util:is_true/1, Result) of
+        'true' -> _ = set_last_migrate_version(ThisVersion),
+                  'ok';
+        'false' -> 'ok'
+    end.
+
+-spec migrate_system_version_routines(ne_binary(), ne_binary()) -> [fun()].
+migrate_system_version_routines(<<"3.22">>, _) ->
+    [fun handle_module_rename/0];
+migrate_system_version_routines(_, _) -> [].
+
+-spec handle_module_rename() -> boolean().
+handle_module_rename() ->
+    {'ok', Docs} = kz_datamgr:all_docs(?KZ_CONFIG_DB, ['include_docs']),
+    Results = [handle_module_rename_doc(Doc) || Doc <- Docs],
+    lists:all(fun kz_util:is_true/1, Results).
+
+-spec handle_module_rename_doc(kz_json:object()) -> boolean().
+handle_module_rename_doc(JObj) ->
+    Bin = kz_json:encode(JObj),
+    WHBin = binary:replace(Bin, <<"wh_">>, <<"kz_">>, ['global']),
+    WNMBin = binary:replace(WHBin, <<"wnm_">>, <<"knm_">>, ['global']),
+    case WNMBin of
+        Bin -> 'true';
+        Replaced ->
+            lager:notice("found wh_ / wnm_ pattern in ~s, replacing.", [kz_doc:id(JObj)]),
+            case kz_datamgr:ensure_saved(?KZ_CONFIG_DB, kz_json:decode(Replaced)) of
+                {'ok', _NewDoc} -> 'true';
+                {'error', _Error} -> 'false'
+            end
+    end.
