@@ -175,7 +175,7 @@ update_mwi(OwnerId, AccountDb) ->
 -spec get_devices_owned_by(ne_binary(), ne_binary()) -> kz_json:objects().
 get_devices_owned_by(OwnerID, DB) ->
     case kz_datamgr:get_results(DB
-                               ,<<"cf_attributes/owned">>
+                               ,<<"kz_attributes/owned">>
                                ,[{'key', [OwnerID, <<"device">>]}
                                  ,'include_docs'
                                 ])
@@ -275,7 +275,7 @@ get_endpoints(Call, Context, ?DEVICES_QCALL_NOUNS(_DeviceId, Number)) ->
                                     ,{<<"suppress_clid">>, 'true'}
                                     ,{<<"source">>, 'cb_devices'}
                                    ]),
-    case cf_endpoint:build(cb_context:doc(Context), Properties, aleg_cid(Number, Call)) of
+    case kz_endpoint:build(cb_context:doc(Context), Properties, aleg_cid(Number, Call)) of
         {'error', _} -> [];
         {'ok', []} -> [];
         {'ok', Endpoints} -> Endpoints
@@ -286,13 +286,13 @@ get_endpoints(Call, _Context, ?USERS_QCALL_NOUNS(_UserId, Number)) ->
                                    ,{<<"source">>, 'cb_users'}
                                    ]),
     lists:foldr(fun(EndpointId, Acc) ->
-                        case cf_endpoint:build(EndpointId, Properties, aleg_cid(Number, Call)) of
+                        case kz_endpoint:build(EndpointId, Properties, aleg_cid(Number, Call)) of
                             {'ok', Endpoint} -> Endpoint ++ Acc;
                             {'error', _E} -> Acc
                         end
                 end
                ,[]
-               ,cf_attributes:owned_by(_UserId, <<"device">>, Call)
+               ,kz_attributes:owned_by(_UserId, <<"device">>, Call)
                );
 get_endpoints(_Call, _Context, _ReqNouns) ->
     [].
@@ -320,7 +320,7 @@ originate_quickcall(Endpoints, Call, Context) ->
                 'false' -> cb_context:req_id(Context)
             end,
 
-    {DefaultCIDNumber, DefaultCIDName} = cf_attributes:caller_id(<<"external">>, Call),
+    {DefaultCIDNumber, DefaultCIDName} = kz_attributes:caller_id(<<"external">>, Call),
 
     Request =
         kz_json:from_list(

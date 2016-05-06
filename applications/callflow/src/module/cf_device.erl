@@ -52,7 +52,7 @@ maybe_handle_bridge_failure(Reason, Call) ->
 bridge_to_endpoints(Data, Call) ->
     EndpointId = kz_doc:id(Data),
     Params = kz_json:set_value(<<"source">>, ?MODULE, Data),
-    case cf_endpoint:build(EndpointId, Params, Call) of
+    case kz_endpoint:build(EndpointId, Params, Call) of
         {'error', _}=E -> E;
         {'ok', Endpoints} ->
             FailOnSingleReject = kz_json:get_value(<<"fail_on_single_reject">>, Data, 'undefined'),

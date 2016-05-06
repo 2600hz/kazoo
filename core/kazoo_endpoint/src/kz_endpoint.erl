@@ -872,7 +872,7 @@ get_clid(Endpoint, Properties, Call, Type) ->
     case kz_json:is_true(<<"suppress_clid">>, Properties) of
         'true' -> #clid{};
         'false' ->
-            {Number, Name} = cf_attributes:caller_id(Type, Call),
+            {Number, Name} = kz_attributes:caller_id(Type, Call),
             CallerNumber = case kapps_call:caller_id_number(Call) of
                                Number -> 'undefined';
                                _Number -> Number
@@ -881,7 +881,7 @@ get_clid(Endpoint, Properties, Call, Type) ->
                              Name -> 'undefined';
                              _Name -> Name
                          end,
-            {CalleeNumber, CalleeName} = cf_attributes:callee_id(Endpoint, Call),
+            {CalleeNumber, CalleeName} = kz_attributes:callee_id(Endpoint, Call),
             #clid{caller_number=CallerNumber
                   ,caller_name=CallerName
                   ,callee_number=CalleeNumber
@@ -938,8 +938,8 @@ create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
          ,{<<"Endpoint-Delay">>, get_delay(Properties)}
          ,{<<"Endpoint-ID">>, kz_doc:id(Endpoint)}
          ,{<<"Codecs">>, get_codecs(Endpoint)}
-         ,{<<"Hold-Media">>, cf_attributes:moh_attributes(Endpoint, <<"media_id">>, Call)}
-         ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
+         ,{<<"Hold-Media">>, kz_attributes:moh_attributes(Endpoint, <<"media_id">>, Call)}
+         ,{<<"Presence-ID">>, kz_attributes:presence_id(Endpoint, Call)}
          ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
          ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call)}
          ,{<<"Flags">>, get_outbound_flags(Endpoint)}
@@ -1015,8 +1015,8 @@ build_push_failover(Endpoint, Clid, PushJObj, Call) ->
          ,{<<"Endpoint-Progress-Timeout">>, get_progress_timeout(Endpoint)}
          ,{<<"Endpoint-ID">>, kz_doc:id(Endpoint)}
          ,{<<"Codecs">>, get_codecs(Endpoint)}
-         ,{<<"Hold-Media">>, cf_attributes:moh_attributes(Endpoint, <<"media_id">>, Call)}
-         ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
+         ,{<<"Hold-Media">>, kz_attributes:moh_attributes(Endpoint, <<"media_id">>, Call)}
+         ,{<<"Presence-ID">>, kz_attributes:presence_id(Endpoint, Call)}
          ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, PushHeaders, Call)}
          ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call)}
          ,{<<"Flags">>, get_outbound_flags(Endpoint)}
@@ -1111,7 +1111,7 @@ create_call_fwd_endpoint(Endpoint, Properties, Call) ->
             ,{<<"Endpoint-Progress-Timeout">>, get_progress_timeout(Endpoint)}
             ,{<<"Endpoint-Timeout">>, get_timeout(Properties)}
             ,{<<"Endpoint-Delay">>, get_delay(Properties)}
-            ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
+            ,{<<"Presence-ID">>, kz_attributes:presence_id(Endpoint, Call)}
             ,{<<"Callee-ID-Name">>, Clid#clid.callee_name}
             ,{<<"Callee-ID-Number">>, Clid#clid.callee_number}
             ,{<<"Outbound-Callee-ID-Name">>, Clid#clid.callee_name}
@@ -1155,7 +1155,7 @@ create_mobile_audio_endpoint(Endpoint, Properties, Call) ->
                     ,{<<"Ignore-Early-Media">>, <<"true">>}
                     ,{<<"Endpoint-Timeout">>, get_timeout(Properties)}
                     ,{<<"Endpoint-Delay">>, get_delay(Properties)}
-                    ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
+                    ,{<<"Presence-ID">>, kz_attributes:presence_id(Endpoint, Call)}
                     ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
                     ,{<<"Codecs">>, Codecs}
                     ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, kz_json:new())}
@@ -1550,7 +1550,7 @@ create_mobile_sms_endpoint(Endpoint, Properties, Call) ->
                       ,{<<"To-DID">>, get_to_did(Endpoint, Call)}
                       ,{<<"Callee-ID-Name">>, Clid#clid.callee_name}
                       ,{<<"Callee-ID-Number">>, Clid#clid.callee_number}
-                      ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
+                      ,{<<"Presence-ID">>, kz_attributes:presence_id(Endpoint, Call)}
                       ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
                       ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, kz_json:new())}
                      ]),

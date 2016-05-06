@@ -57,9 +57,9 @@ maybe_scheduled_delivery(JObj, Call, _, _) ->
 
 -spec should_restrict_call(kapps_call:call()) -> boolean().
 should_restrict_call(Call) ->
-    case cf_endpoint:get(Call) of
+    case kz_endpoint:get(Call) of
         {'error', _R} ->
-            lager:debug("error getting cf_endpoint for the sms : ~p", [_R]),
+            lager:debug("error getting kz_endpoint for the sms : ~p", [_R]),
             'false';
         {'ok', JObj} -> maybe_service_unavailable(JObj, Call)
     end.
@@ -115,13 +115,13 @@ enforce_closed_groups(JObj, Call) ->
             maybe_classification_restriction(JObj, Call);
         {<<"user">>, CalleeId} ->
             lager:info("dialed number is user ~s extension, checking groups", [CalleeId]),
-            Groups = cf_attributes:groups(Call),
+            Groups = kz_attributes:groups(Call),
             CallerGroups = get_caller_groups(Groups, JObj, Call),
             CalleeGroups = get_group_associations(CalleeId, Groups),
             sets:size(sets:intersection(CallerGroups, CalleeGroups)) =:= 0;
         {<<"device">>, CalleeId} ->
             lager:info("dialed number is device ~s extension, checking groups", [CalleeId]),
-            Groups = cf_attributes:groups(Call),
+            Groups = kz_attributes:groups(Call),
             CallerGroups = get_caller_groups(Groups, JObj, Call),
             maybe_device_groups_intersect(CalleeId, CallerGroups, Groups, Call)
     end.
@@ -145,7 +145,7 @@ maybe_device_groups_intersect(CalleeId, CallerGroups, Groups, Call) ->
         'true' ->
             %% In this case the callee-id is a device id, find out if
             %% the owner of the device shares any groups with the caller
-            UserIds = cf_attributes:owner_ids(CalleeId, Call),
+            UserIds = kz_attributes:owner_ids(CalleeId, Call),
             UsersGroups = lists:foldl(fun(UserId, Set) ->
                                              get_group_associations(UserId, Groups, Set)
                                      end, sets:new(), UserIds),
@@ -206,7 +206,7 @@ bootstrap_callflow_executer(_JObj, Call) ->
 %%-----------------------------------------------------------------------------
 -spec store_owner_id(kapps_call:call()) -> kapps_call:call().
 store_owner_id(Call) ->
-    OwnerId = cf_attributes:owner_id(Call),
+    OwnerId = kz_attributes:owner_id(Call),
     kapps_call:kvs_store('owner_id', OwnerId, Call).
 
 %%-----------------------------------------------------------------------------
@@ -221,7 +221,7 @@ update_ccvs(Call) ->
                        'undefined' -> <<"internal">>;
                        _Else -> <<"external">>
                    end,
-    {CIDNumber, CIDName} = cf_attributes:caller_id(CallerIdType, Call),
+    {CIDNumber, CIDName} = kz_attributes:caller_id(CallerIdType, Call),
     lager:info("bootstrapping with caller id type ~s: \"~s\" ~s"
                ,[CallerIdType, CIDName, CIDNumber]),
     Props = props:filter_undefined(
@@ -233,7 +233,7 @@ update_ccvs(Call) ->
 
 -spec get_incoming_security(kapps_call:call()) -> kz_proplist().
  get_incoming_security(Call) ->
-    case cf_endpoint:get(Call) of
+    case kz_endpoint:get(Call) of
         {'error', _R} -> [];
         {'ok', JObj} ->
             kz_json:to_proplist(
@@ -265,7 +265,7 @@ send_service_unavailable(_JObj, Call) ->
 
 -spec set_service_unavailable_message(kapps_call:call()) -> kapps_call:call().
 set_service_unavailable_message(Call) ->
-    {'ok', Endpoint} = cf_endpoint:get(Call),
+    {'ok', Endpoint} = kz_endpoint:get(Call),
     Language = kz_json:get_value(<<"language">>, Endpoint, ?DEFAULT_LANGUAGE),
     TextNode = kapps_config:get(?CONFIG_CAT, <<"unavailable_message">>, ?DEFAULT_UNAVAILABLE_MESSAGE_NODE),
     Text = kz_json:get_value(Language, TextNode, ?DEFAULT_UNAVAILABLE_MESSAGE),
@@ -275,7 +275,7 @@ set_service_unavailable_message(Call) ->
 send_reply_msg(Call) ->
     EndpointId = kapps_call:authorizing_id(Call),
     Options = kz_json:set_value(<<"can_call_self">>, 'true', kz_json:new()),
-    case cf_endpoint:build(EndpointId, Options, Call) of
+    case kz_endpoint:build(EndpointId, Options, Call) of
         {'error', Msg}=_E ->
             lager:debug("error getting endpoint for reply unavailable service ~s : ~p", [EndpointId, Msg]);
         {'ok', Endpoints} ->

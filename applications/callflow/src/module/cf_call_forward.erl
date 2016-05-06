@@ -259,7 +259,7 @@ get_call_forward(Call) ->
     AuthorizingId = kapps_call:authorizing_id(Call),
 
     OwnerId =
-        case cf_attributes:owner_id(AuthorizingId, Call) of
+        case kz_attributes:owner_id(AuthorizingId, Call) of
             'undefined' -> AuthorizingId;
             UserId -> UserId
         end,

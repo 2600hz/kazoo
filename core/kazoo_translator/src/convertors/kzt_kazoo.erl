@@ -38,7 +38,7 @@ parse_cmds(JSON) ->
 
 -spec req_params(kapps_call:call()) -> kz_proplist().
 req_params(Call) ->
-    Owners = case cf_attributes:owner_ids(kapps_call:authorizing_id(Call), Call) of
+    Owners = case kz_attributes:owner_ids(kapps_call:authorizing_id(Call), Call) of
                  [] -> 'undefined';
                  [OwnerId] -> OwnerId;
                  [_|_]=IDs -> IDs

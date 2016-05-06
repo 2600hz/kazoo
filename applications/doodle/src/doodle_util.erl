@@ -352,7 +352,7 @@ get_caller_id(Data, Call) ->
 -spec get_caller_id(kz_json:object(), binary(), kapps_call:call()) -> {api_binary(), api_binary()}.
 get_caller_id(Data, Default, Call) ->
     Type = kz_json:get_value(<<"caller_id_type">>, Data, Default),
-    cf_attributes:caller_id(Type, Call).
+    kz_attributes:caller_id(Type, Call).
 
 -spec set_caller_id(kz_json:object() | binary(), kapps_call:call()) -> kapps_call:call().
 set_caller_id(CIDNumber, Call)
@@ -376,7 +376,7 @@ set_caller_id(CIDNumber, CIDName, Call) ->
 
 -spec get_callee_id(binary(), kapps_call:call()) -> {api_binary(), api_binary()}.
 get_callee_id(EndpointId, Call) ->
-    cf_attributes:callee_id(EndpointId, Call).
+    kz_attributes:callee_id(EndpointId, Call).
 
 -spec set_callee_id(binary(), kapps_call:call()) -> kapps_call:call().
 set_callee_id(EndpointId, Call) ->

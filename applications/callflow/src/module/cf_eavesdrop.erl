@@ -174,7 +174,7 @@ sip_users_from_endpoints(EndpointIds, Call) ->
 
 -spec sip_user_of_endpoint(ne_binary(), kapps_call:call()) -> api_binary().
 sip_user_of_endpoint(EndpointId, Call) ->
-    case cf_endpoint:get(EndpointId, Call) of
+    case kz_endpoint:get(EndpointId, Call) of
         {'error', _} -> 'undefined';
         {'ok', Endpoint} ->
             kz_device:sip_username(Endpoint)

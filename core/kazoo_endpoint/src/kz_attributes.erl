@@ -97,7 +97,7 @@ maybe_get_dynamic_cid(Validate, Attribute, Call) ->
 -spec maybe_get_endpoint_cid(boolean(), ne_binary(), kapps_call:call()) ->
                                     {api_binary(), api_binary()}.
 maybe_get_endpoint_cid(Validate, Attribute, Call) ->
-    case cf_endpoint:get(Call) of
+    case kz_endpoint:get(Call) of
         {'error', _R} ->
             lager:info("unable to get endpoint: ~p", [_R]),
             maybe_normalize_cid('undefined', 'undefined', Validate, Attribute, Call);
@@ -325,7 +325,7 @@ maybe_get_presence_number(Endpoint, Call) ->
 -spec callee_id(api_binary() | kz_json:object(), kapps_call:call()) ->
                        {api_binary(), api_binary()}.
 callee_id(EndpointId, Call) when is_binary(EndpointId) ->
-    case cf_endpoint:get(EndpointId, Call) of
+    case kz_endpoint:get(EndpointId, Call) of
         {'ok', Endpoint} -> callee_id(Endpoint, Call);
         {'error', _R} ->
             maybe_normalize_callee('undefined', 'undefined', kz_json:new(), Call)
@@ -362,7 +362,7 @@ determine_callee_attribute(Call) ->
 -spec moh_attributes(api_binary() | kz_json:object(), ne_binary(), kapps_call:call()) -> api_binary().
 
 moh_attributes(Attribute, Call) ->
-    case cf_endpoint:get(Call) of
+    case kz_endpoint:get(Call) of
         {'error', _R} -> 'undefined';
         {'ok', Endpoint} ->
             Value = kz_json:get_ne_value([<<"music_on_hold">>, Attribute], Endpoint),
@@ -371,7 +371,7 @@ moh_attributes(Attribute, Call) ->
 
 moh_attributes('undefined', _, _) -> 'undefined';
 moh_attributes(EndpointId, Attribute, Call) when is_binary(EndpointId) ->
-    case cf_endpoint:get(EndpointId, Call) of
+    case kz_endpoint:get(EndpointId, Call) of
         {'error', _} -> 'undefined';
         {'ok', Endpoint} ->
             Value = kz_json:get_ne_value([<<"music_on_hold">>, Attribute], Endpoint),
@@ -400,7 +400,7 @@ maybe_normalize_moh_attribute(Value, Attribute, _) ->
 -spec owner_id(api_binary(), kapps_call:call()) -> api_binary().
 
 owner_id(Call) ->
-    case cf_endpoint:get(Call) of
+    case kz_endpoint:get(Call) of
         {'error', _} -> 'undefined';
         {'ok', Endpoint} ->
             case kz_json:get_ne_value(<<"owner_id">>, Endpoint) of
@@ -453,7 +453,7 @@ presence_id(Call) ->
 
 -spec presence_id(api_binary() | kz_json:object(), kapps_call:call()) -> api_binary().
 presence_id(EndpointId, Call) when is_binary(EndpointId) ->
-    case cf_endpoint:get(EndpointId, Call) of
+    case kz_endpoint:get(EndpointId, Call) of
         {'ok', Endpoint} -> presence_id(Endpoint, Call);
         {'error', _} -> 'undefined'
     end;

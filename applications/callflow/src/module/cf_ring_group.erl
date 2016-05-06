@@ -129,7 +129,7 @@ start_builder(EndpointId, Member, Call) ->
     kz_util:spawn(
       fun() ->
               kz_util:put_callid(kapps_call:call_id(Call)),
-              S ! {self(), catch cf_endpoint:build(EndpointId, Member, Call)}
+              S ! {self(), catch kz_endpoint:build(EndpointId, Member, Call)}
       end
      ).
 
@@ -194,7 +194,7 @@ get_user_endpoint_ids(Member, EndpointIds, Id, GroupWeight, Call) ->
               end
       end
       ,[{<<"user">>, Id, 'undefined'} | EndpointIds]
-      ,cf_attributes:owned_by(Id, <<"device">>, Call)
+      ,kz_attributes:owned_by(Id, <<"device">>, Call)
      ).
 
 -spec get_group_members(kz_json:object(), ne_binary(), group_weight(), kz_json:object(), kapps_call:call()) -> kz_json:objects().

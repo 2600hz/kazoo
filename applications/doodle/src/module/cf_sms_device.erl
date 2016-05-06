@@ -70,7 +70,7 @@ maybe_handle_bridge_failure({_ , R}=Reason, Call) ->
                             {'ok', kz_json:object()}.
 build_endpoint(EndpointId, Data, Call) ->
     Params = kz_json:set_value(<<"source">>, ?MODULE, Data),
-    case cf_endpoint:build(EndpointId, Params, Call) of
+    case kz_endpoint:build(EndpointId, Params, Call) of
         {'error', _}=E -> E;
         {'ok', Endpoints} -> maybe_note_owner(Endpoints, Call)
     end.

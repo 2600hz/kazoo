@@ -114,7 +114,7 @@ maybe_route_to_callflow(Data, Call, Retries, Interdigit, Number) ->
                        }
                        ,{fun kapps_call:set_to/2, list_to_binary([Number, "@", kapps_call:to_realm(Call)])}
                        ,fun(C) when NoMatch ->
-                                {CIDNum, CIDName} = cf_attributes:caller_id(<<"external">>, C),
+                                {CIDNum, CIDName} = kz_attributes:caller_id(<<"external">>, C),
                                 C1 = kapps_call:set_caller_id_number(CIDNum, C),
                                 kapps_call:set_caller_id_name(CIDName, C1);
                            (C) -> C
@@ -225,7 +225,7 @@ maybe_get_account_cid(AccountId, Call) ->
     Name = kapps_call:caller_id_name(Call),
     Number = kapps_call:caller_id_number(Call),
     case kz_account:fetch(AccountId) of
-        {'error', _} -> cf_attributes:maybe_get_assigned_number(Number, Name, Call);
+        {'error', _} -> kz_attributes:maybe_get_assigned_number(Number, Name, Call);
         {'ok', JObj} -> maybe_get_account_external_number(Number, Name, JObj, Call)
     end.
 
@@ -243,7 +243,7 @@ maybe_get_account_external_number(Number, Name, Account, Call) ->
             lager:info("valid account external caller id <~s> ~s", [Name, Number]),
             {External, Name};
         'false' ->
-            cf_attributes:maybe_get_account_default_number(Number, Name, Account, Call)
+            kz_attributes:maybe_get_account_default_number(Number, Name, Account, Call)
     end.
 
 %%--------------------------------------------------------------------

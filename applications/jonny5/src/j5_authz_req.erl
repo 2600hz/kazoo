@@ -270,7 +270,7 @@ maybe_get_outbound_flags('undefined', _AuthId, _AccountDb) -> 'undefined';
 maybe_get_outbound_flags(_AuthType, 'undefined', _AccountDb) -> 'undefined';
 maybe_get_outbound_flags(AuthType, AuthId, AccountDb) ->
     case lists:member(AuthType, ?AUTZH_TYPES_FOR_OUTBOUND) andalso
-             cf_endpoint:get(AuthId, AccountDb)
+             kz_endpoint:get(AuthId, AccountDb)
     of
         {'ok', Endpoint} -> kz_json:get_value(<<"outbound_flags">>, Endpoint);
         _ -> 'undefined'

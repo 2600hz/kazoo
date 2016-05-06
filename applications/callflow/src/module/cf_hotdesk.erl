@@ -51,7 +51,7 @@ handle(Data, Call) ->
     end.
 
 hotdesk_id(Data, <<"logout">>, Call) ->
-    case cf_attributes:owner_ids(kapps_call:authorizing_id(Call), Call) of
+    case kz_attributes:owner_ids(kapps_call:authorizing_id(Call), Call) of
         [] -> kz_doc:id(Data);
         [Id] -> kz_doc:id(Data, Id);
         [_|_] -> kz_doc:id(Data)
@@ -109,7 +109,7 @@ build_endpoints(EndpointIds, Call) ->
 
 build_endpoints([], Endpoints, _) -> Endpoints;
 build_endpoints([EndpointId|EndpointIds], Endpoints, Call) ->
-    case cf_endpoint:build(EndpointId, Call) of
+    case kz_endpoint:build(EndpointId, Call) of
         {'ok', Endpoint} ->
             build_endpoints(EndpointIds, [Endpoint|Endpoints], Call);
         {'error', _} ->
@@ -323,7 +323,7 @@ lookup_hotdesk_id(HotdeskId, Data, Call) ->
     ViewOptions = [{'key', HotdeskId}
                    ,'include_docs'
                   ],
-    case kz_datamgr:get_results(AccountDb, <<"cf_attributes/hotdesk_id">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"kz_attributes/hotdesk_id">>, ViewOptions) of
         {'ok', [JObj]} ->
             lager:info("found hotdesk id ~s", [HotdeskId]),
             from_json(kz_json:get_value(<<"doc">>, JObj), Data, Call);
@@ -387,7 +387,7 @@ update_hotdesk_endpoint(AccountDb, JObj, Fun) ->
 get_endpoint_ids(OwnerId, Call) ->
     AccountDb = kapps_call:account_db(Call),
     ViewOptions = [{'key', OwnerId}],
-    case kz_datamgr:get_results(AccountDb, <<"cf_attributes/hotdesk_users">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"kz_attributes/hotdesk_users">>, ViewOptions) of
         {'ok', JObjs} ->
             [kz_doc:id(JObj) || JObj <- JObjs];
         {'error', _R} ->

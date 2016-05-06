@@ -335,7 +335,7 @@ handle_device_change(AccountDb, AccountId, DeviceId, Rev, Type) ->
 handle_device_change(_AccountDb, _AccountId, DeviceId, Rev, _Type, Cnt) when Cnt > 3 ->
     lager:debug("retried ~p times to refresh endpoint ~s(~s), giving up", [Cnt, DeviceId, Rev]);
 handle_device_change(AccountDb, AccountId, DeviceId, Rev, ?DOC_CREATED, Cnt) ->
-    case cf_endpoint:get(DeviceId, AccountDb) of
+    case kz_endpoint:get(DeviceId, AccountDb) of
         {'ok', EP} ->
             case kz_doc:revision(EP) of
                 Rev ->
@@ -348,7 +348,7 @@ handle_device_change(AccountDb, AccountId, DeviceId, Rev, ?DOC_CREATED, Cnt) ->
         _ -> lager:debug("ignoring the fact that device ~s was created", [DeviceId])
     end;
 handle_device_change(AccountDb, AccountId, DeviceId, Rev, ?DOC_EDITED, Cnt) ->
-    case cf_endpoint:get(DeviceId, AccountDb) of
+    case kz_endpoint:get(DeviceId, AccountDb) of
         {'ok', EP} ->
             case kz_doc:revision(EP) of
                 Rev ->
@@ -361,7 +361,7 @@ handle_device_change(AccountDb, AccountId, DeviceId, Rev, ?DOC_EDITED, Cnt) ->
         _ -> lager:debug("ignoring the fact that device ~s was edited", [DeviceId])
     end;
 handle_device_change(AccountDb, AccountId, DeviceId, Rev, ?DOC_DELETED, Cnt) ->
-    case cf_endpoint:get(DeviceId, AccountDb) of
+    case kz_endpoint:get(DeviceId, AccountDb) of
         {'ok', EP} ->
             case kz_doc:revision(EP) of
                 Rev ->
