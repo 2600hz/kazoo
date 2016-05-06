@@ -738,9 +738,7 @@ save_to_number_db(PhoneNumber) ->
             kz_datamgr:revise_views_from_folder(NumberDb, kz_util:to_atom(?APP_NAME)),
             save_to_number_db(PhoneNumber);
         {'error', E} ->
-            lager:error("failed to save ~s in ~s: ~p"
-                        ,[number(PhoneNumber), NumberDb, E]
-                       ),
+            lager:error("failed to save ~s in ~s: ~p", [number(PhoneNumber), NumberDb, E]),
             knm_errors:database_error(E, PhoneNumber)
     end.
 -endif.

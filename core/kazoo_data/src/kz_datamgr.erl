@@ -1094,8 +1094,8 @@ change_notice() ->
 %% @private
 %% @doc
 %% NOTE: the attempt to correct the dbname is not very erlang like, but
-%%  when since there are more places that expect an error and do not
-%%  handle a crash appropriately/gracefully this is a quick solution....
+%%  since there are more places that expect an error and do not
+%%  handle a crash appropriately/gracefully this is a quick solution...
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_convert_dbname(text()) ->

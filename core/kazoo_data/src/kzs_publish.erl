@@ -122,22 +122,22 @@ publish(Action, Db, Doc) ->
 
     EventName = doc_change_event_name(Action, IsSoftDeleted orelse IsHardDeleted),
 
-    Props =
-        [{<<"ID">>, Id}
-        ,{<<"Origin-Cache">>, ?CACHE_NAME}
-        ,{<<"Type">>, Type}
-        ,{<<"Database">>, Db}
-        ,{<<"Rev">>, kz_doc:revision(Doc)}
-        ,{<<"Account-ID">>, doc_acct_id(Db, Doc)}
-        ,{<<"Date-Modified">>, kz_doc:created(Doc)}
-        ,{<<"Date-Created">>, kz_doc:modified(Doc)}
-        ,{<<"Is-Soft-Deleted">>, IsSoftDeleted}
-         | kz_api:default_headers(<<"configuration">>
-                                 ,EventName
-                                 ,?APP_NAME
-                                 ,?APP_VERSION
-                                 )
-        ],
+    Props = props:filter_undefined(
+              [{<<"ID">>, Id}
+               ,{<<"Origin-Cache">>, ?CACHE_NAME}
+               ,{<<"Type">>, Type}
+               ,{<<"Database">>, Db}
+               ,{<<"Rev">>, kz_doc:revision(Doc)}
+               ,{<<"Account-ID">>, doc_acct_id(Db, Doc)}
+               ,{<<"Date-Modified">>, kz_doc:created(Doc)}
+               ,{<<"Date-Created">>, kz_doc:modified(Doc)}
+               ,{<<"Is-Soft-Deleted">>, IsSoftDeleted}
+                   | kz_api:default_headers(<<"configuration">>
+                                            ,EventName
+                                            ,?APP_NAME
+                                            ,?APP_VERSION
+                                           )
+              ]),
     Fun = fun(P) -> kapi_conf:publish_doc_update(Action, Db, Type, Id, P) end,
     kz_amqp_worker:cast(Props, Fun).
 
@@ -150,6 +150,14 @@ doc_change_event_name(Action, 'false') ->
 -spec doc_acct_id(ne_binary(), kz_json:object()) -> ne_binary().
 doc_acct_id(Db, Doc) ->
     case kz_doc:account_id(Doc) of
-        'undefined' -> kz_util:format_account_id(Db, 'raw');
+        'undefined' -> maybe_account_id_from_db(kzs_util:db_classification(Db), Db);
         AccountId -> AccountId
     end.
+
+-spec maybe_account_id_from_db(atom(), ne_binary()) -> api_binary().
+maybe_account_id_from_db('account', Db) ->
+    kz_util:format_account_id(Db);
+maybe_account_id_from_db('modb', Db) ->
+    kz_util:format_account_id(Db);
+maybe_account_id_from_db(_, _) ->
+    'undefined'.
