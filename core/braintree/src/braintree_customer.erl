@@ -351,7 +351,7 @@ json_to_record(JObj) ->
 
 -spec maybe_add_credit_card(api_object()) -> bt_cards().
 maybe_add_credit_card(JObj) ->
-  case kz_json:get_binary_value(<<"credit_card">>, JObj) of
+  case kz_json:get_value(<<"credit_card">>, JObj) of
       'undefined' -> [];
       Card -> [braintree_card:json_to_record(Card)]
   end.
