@@ -77,9 +77,9 @@ has_emergency_services(_Number) -> 'false'.
 handle_outbound_cnam(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     Doc = knm_phone_number:doc(PhoneNumber),
-    Features = knm_phone_number:features(PhoneNumber),
+    Features = knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM),
 
-    CurrentCNAM = kz_json:get_ne_value([?FEATURE_CNAM, ?KEY_DISPLAY_NAME], Features),
+    CurrentCNAM = kz_json:get_ne_value(?KEY_DISPLAY_NAME, Features),
     case kz_json:get_ne_value([?PVT_FEATURES, ?FEATURE_CNAM, ?KEY_DISPLAY_NAME], Doc) of
         'undefined' ->
             Number1 = knm_services:deactivate_feature(Number, ?FEATURE_OUTBOUND_CNAM),
@@ -136,13 +136,13 @@ publish_cnam_update(Number) ->
 publish_cnam_update(_Number, 'true') -> 'ok';
 publish_cnam_update(Number, 'false') ->
     PhoneNumber = knm_number:phone_number(Number),
-    Features = knm_phone_number:features(PhoneNumber),
+    Feature = knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM),
     Notify = [{<<"Account-ID">>, knm_phone_number:assigned_to(PhoneNumber)}
               ,{<<"Number-State">>, knm_phone_number:state(PhoneNumber)}
               ,{<<"Local-Number">>, knm_phone_number:module_name(PhoneNumber) =:= ?CARRIER_LOCAL}
               ,{<<"Number">>, knm_phone_number:number(PhoneNumber)}
               ,{<<"Acquired-For">>, knm_phone_number:auth_by(PhoneNumber)}
-              ,{<<"Cnam">>, kz_json:get_value(?FEATURE_CNAM, Features, kz_json:new())}
+              ,{<<"Cnam">>, case Feature of 'undefined' -> kz_json:new(); _ -> Feature end}
               | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     kapi_notifications:publish_cnam_request(Notify).
