@@ -81,7 +81,9 @@ curl -v -X GET \
             "+14155555555": {
                 "assigned_to": "{ACCOUNT_ID}",
                 "created": 63602230185,
-                "features": {},
+                "features": [
+                    "cnam"
+                ],
                 "state": "in_service",
                 "updated": 63602230212,
                 "used_by": "callflow"
@@ -89,7 +91,6 @@ curl -v -X GET \
             "+14158865100": {
                 "assigned_to": "{ACCOUNT_ID}",
                 "created": 63624719324,
-                "features": {},
                 "state": "in_service",
                 "updated": 63624719325
             }
@@ -185,9 +186,15 @@ curl -v -X GET \
     "data": {
         "_read_only": {
             "created": 63627848989,
+            "features": [
+                "local"
+            ],
             "modified": 63627848989,
             "state": "reserved"
         },
+        "features": [
+            "local"
+        ],
         "id": "{PHONENUMBER}",
         "state": "reserved",
         "my_own_field": {}
@@ -740,14 +747,12 @@ curl -v -X POST \
             "+14152338421": {
                 "assigned_to": "{ACCOUNT_ID}",
                 "created": 63627334163,
-                "features": {},
                 "state": "in_service",
                 "updated": 63627447350
             },
             "+14155555555": {
                 "assigned_to": "{ACCOUNT_ID}",
                 "created": 63602230185,
-                "features": {},
                 "state": "in_service",
                 "updated": 63602230212,
                 "used_by": "callflow"
@@ -755,7 +760,6 @@ curl -v -X POST \
             "+14158865100": {
                 "assigned_to": "{ACCOUNT_ID}",
                 "created": 63624719324,
-                "features": {},
                 "state": "in_service",
                 "updated": 63624719325
             }
