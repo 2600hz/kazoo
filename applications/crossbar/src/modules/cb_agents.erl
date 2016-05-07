@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% CRUD for call queues
@@ -273,8 +273,11 @@ fetch_all_agent_statuses(Context) ->
 fetch_agent_status(AgentId, Context) ->
     case kz_util:is_true(cb_context:req_value(Context, <<"recent">>)) of
         'false' ->
-            {'ok', Resp} = acdc_agent_util:most_recent_status(cb_context:account_id(Context), AgentId),
-            crossbar_util:response(Resp, Context);
+            fetch_current_status(Context
+                                ,AgentId
+                                ,kz_util:is_true(cb_context:req_value(Context, <<"full">>))
+								);
+
         'true' ->
             fetch_all_current_statuses(Context
                                        ,AgentId
@@ -309,6 +312,35 @@ fetch_all_current_stats(Context, AgentId) ->
             ]),
     fetch_stats_from_amqp(Context, Req).
 
+-spec fetch_current_status(cb_context:context(), api_binary(), api_boolean()) -> cb_context:context().
+fetch_current_status(Context, AgentId, Full) ->
+    case Full of
+        'false'->
+            {'ok', Resp} = acdc_agent_util:most_recent_status(cb_context:account_id(Context), AgentId),
+                                  crossbar_util:response(Resp, Context);
+        'true' ->
+            Req = props:filter_undefined(
+                [{<<"Account-ID">>, cb_context:account_id(Context)}
+                ,{<<"Agent-ID">>, AgentId}
+                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                ]),
+            case kapps_util:amqp_pool_request(Req
+                                              ,fun wapi_acdc_stats:publish_status_req/1
+                                              ,fun wapi_acdc_stats:status_resp_v/1
+                                              )
+            of
+                {'error', _}=E ->
+                    crossbar_util:response('error', <<"status request contains errors">>, 400
+                                          ,kz_json:get_value(<<"Error-Reason">>, E)
+                                          ,Context
+                                          );
+                {'ok', Resp} ->
+                    Stats = kz_json:get_value([<<"Agents">>, AgentId], Resp),
+                    {_, StatusJObj} = kz_json:foldl(fun acdc_agent_util:find_most_recent_fold/3, {0, kz_json:new()}, Stats),
+                    crossbar_util:response(StatusJObj, Context)
+          end
+    end.	
+	
 -spec fetch_all_current_statuses(cb_context:context(), api_binary(), api_binary()) ->
                                         cb_context:context().
 fetch_all_current_statuses(Context, AgentId, Status) ->
