@@ -190,16 +190,7 @@ delete(#knm_phone_number{dry_run='true'}=Number) ->
     lager:debug("dry_run-ing btw"),
     {'ok', Number};
 delete(#knm_phone_number{dry_run='false'}=Number) ->
-    Routines = [fun(PhoneNumber) ->
-                        knm_number:phone_number(
-                          knm_providers:delete(
-                            knm_number:set_phone_number(
-                              knm_number:new(), PhoneNumber
-                             )
-                           )
-                         )
-                end
-                ,fun delete_number_doc/1
+    Routines = [fun delete_number_doc/1
                 ,fun maybe_remove_number_from_account/1
                ],
     {'ok', NewPhoneNumber} = setters(Number, Routines),
@@ -272,6 +263,7 @@ to_public_json(Number) ->
     JObj = to_json(Number),
     State = {<<"state">>, state(Number)},
     UsedBy = {<<"used_by">>, used_by(Number)},
+    Features = {<<"features">>, sets:to_list(sets:from_list(kz_json:get_keys(features(Number))))},
     ReadOnly =
         kz_json:from_list(
           props:filter_empty(
@@ -279,6 +271,7 @@ to_public_json(Number) ->
             , {<<"modified">>, kz_doc:modified(JObj)}
             , State
             , UsedBy
+            , Features
             ])
          ),
     Root =
@@ -286,6 +279,7 @@ to_public_json(Number) ->
           props:filter_empty(
             [ State
             , UsedBy
+            , Features
               | kz_json:to_proplist(kz_json:public_fields(JObj))
             ])
          ),
@@ -329,22 +323,24 @@ to_json(#knm_phone_number{doc=JObj}=N) ->
 %%--------------------------------------------------------------------
 -spec from_json(kz_json:object()) -> knm_phone_number().
 from_json(JObj) ->
-    #knm_phone_number{
-       number = kz_doc:id(JObj)
-       ,number_db = kz_json:get_value(?PVT_DB_NAME, JObj)
-       ,assigned_to = kz_json:get_value(?PVT_ASSIGNED_TO, JObj)
-       ,prev_assigned_to = kz_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)
-       ,used_by = kz_json:get_value(?PVT_USED_BY, JObj)
-       ,features = kz_json:get_value(?PVT_FEATURES, JObj, kz_json:new())
-       ,state = kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)
-       ,reserve_history = kz_json:get_value(?PVT_RESERVE_HISTORY, JObj, [])
-       ,ported_in = kz_json:is_true(?PVT_PORTED_IN, JObj, 'false')
-       ,module_name = kz_json:get_value(?PVT_MODULE_NAME, JObj)
-       ,carrier_data = kz_json:get_value(?PVT_CARRIER_DATA, JObj)
-       ,region = kz_json:get_value(?PVT_REGION, JObj)
-       ,auth_by = kz_json:get_value(?PVT_AUTH_BY, JObj)
-       ,doc = kz_json:delete_key(<<"id">>, kz_json:public_fields(JObj))
-      }.
+    {'ok', PhoneNumber} =
+        setters(new(),
+                [{fun set_number/2, kz_doc:id(JObj)}
+                ,{fun set_number_db/2, kz_json:get_value(?PVT_DB_NAME, JObj)}
+                ,{fun set_assigned_to/2, kz_json:get_value(?PVT_ASSIGNED_TO, JObj)}
+                ,{fun set_prev_assigned_to/2, kz_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)}
+                ,{fun set_used_by/2, kz_json:get_value(?PVT_USED_BY, JObj)}
+                ,{fun set_features/2, kz_json:get_value(?PVT_FEATURES, JObj, kz_json:new())}
+                ,{fun set_state/2, kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)}
+                ,{fun set_reserve_history/2, kz_json:get_value(?PVT_RESERVE_HISTORY, JObj, [])}
+                ,{fun set_ported_in/2, kz_json:is_true(?PVT_PORTED_IN, JObj, 'false')}
+                ,{fun set_module_name/2, kz_json:get_value(?PVT_MODULE_NAME, JObj)}
+                ,{fun set_carrier_data/2, kz_json:get_value(?PVT_CARRIER_DATA, JObj)}
+                ,{fun set_region/2, kz_json:get_value(?PVT_REGION, JObj)}
+                ,{fun set_auth_by/2, kz_json:get_value(?PVT_AUTH_BY, JObj)}
+                ,{fun set_doc/2, kz_json:delete_key(<<"id">>, kz_json:public_fields(JObj))}
+                ]),
+    PhoneNumber.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -372,6 +368,11 @@ setters(Number, Routines) ->
         Result -> {'ok', Result}
     catch
         'throw':{'stop', Error} -> Error;
+        'error':'function_clause' ->
+            {_M, FName, Args, _Info} = hd(erlang:get_stacktrace()),
+            lager:error("~s failed, args: ~p", [FName, lists:nth(2, Args)]),
+            kz_util:log_stacktrace(),
+            {'error', FName};
         'error':Reason -> {'error', Reason}
     end.
 
@@ -390,8 +391,6 @@ setters_fold(_, {'error', _R}=Error) ->
 setters_fold({_Fun, 'undefined'}, PhoneNumber) ->
     lager:debug("skipping ~p", [_Fun]),
     PhoneNumber;
-setters_fold({Fun, [_|_]=Value}, PhoneNumber) when is_function(Fun) ->
-    setters_fold_apply(Fun, [PhoneNumber | Value]);
 setters_fold({Fun, Value}, PhoneNumber) when is_function(Fun, 2) ->
     setters_fold_apply(Fun, [PhoneNumber, Value]);
 setters_fold(Fun, PhoneNumber) when is_function(Fun, 1) ->
@@ -572,6 +571,14 @@ module_name(#knm_phone_number{module_name = ?CARRIER_LOCAL_LEGACY}) -> ?CARRIER_
 module_name(#knm_phone_number{module_name = Name}) -> Name.
 
 -spec set_module_name(knm_phone_number(), ne_binary()) -> knm_phone_number().
+set_module_name(N0, ?CARRIER_LOCAL=Name) ->
+    Feature =
+        case feature(N0, ?FEATURE_LOCAL) of
+            'undefined' -> kz_json:new();
+            LocalFeature -> LocalFeature
+        end,
+    N = set_feature(N0, ?FEATURE_LOCAL, Feature),
+    N#knm_phone_number{module_name=Name};
 set_module_name(N, Name=?NE_BINARY) ->
     N#knm_phone_number{module_name=Name}.
 
