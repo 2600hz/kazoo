@@ -952,7 +952,7 @@ maybe_playback_via_http_cache(URI) ->
             URI;
         'true' ->
             lager:debug("media is streamed via http_cache, using ~s", [URI]),
-            <<?HTTP_GET_PREFIX, URI/binary>>
+            <<"${http_get ", URI/binary, "}">>
     end.
 
 %% given a proplist of a FS event, return the Kazoo-equivalent app name(s).
