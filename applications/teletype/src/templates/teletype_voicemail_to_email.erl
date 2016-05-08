@@ -188,29 +188,7 @@ get_file_name(MediaJObj, Macros) ->
 
 -spec get_extension(kz_json:object()) -> ne_binary().
 get_extension(MediaJObj) ->
-    case kz_json:get_value(<<"media_type">>, MediaJObj) of
-        'undefined' ->
-            lager:debug("getting extension from attachment mime"),
-            attachment_to_extension(kz_doc:attachments(MediaJObj));
-        MediaType -> MediaType
-    end.
-
--spec attachment_to_extension(kz_json:object()) -> ne_binary().
-attachment_to_extension(AttachmentsJObj) ->
-    kz_json:get_value(<<"extension">>
-                      ,kz_json:map(fun attachment_to_extension/2, AttachmentsJObj)
-                      ,kapps_config:get(<<"callflow">>, [<<"voicemail">>, <<"extension">>], <<"mp3">>)
-                     ).
-
--spec attachment_to_extension(ne_binary(), kz_json:object()) -> {ne_binary(), ne_binary()}.
-attachment_to_extension(_Id, Meta) ->
-    CT = kz_json:get_value(<<"content_type">>, Meta),
-    Ext = mime_to_extension(CT),
-    {<<"extension">>, Ext}.
-
--spec mime_to_extension(ne_binary()) -> ne_binary().
-mime_to_extension(<<"audio/mpeg">>) -> <<"mp3">>;
-mime_to_extension(_) -> <<"wav">>.
+    kz_mime:to_extension(kz_doc:attachment_content_type(MediaJObj)).
 
 -spec build_template_data(kz_json:object()) -> kz_proplist().
 build_template_data(DataJObj) ->
