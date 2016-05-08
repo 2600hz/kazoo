@@ -387,14 +387,14 @@ set_folder(Folder, Message, AccountId) ->
     MessageId = kzd_box_message:media_id(Message),
     FromFolder = kzd_box_message:folder(Message, ?VM_FOLDER_NEW),
     lager:info("setting folder for message ~s to ~s", [MessageId, Folder]),
-    maybe_set_folder(FromFolder, Folder, MessageId, AccountId).
+    maybe_set_folder(FromFolder, Folder, MessageId, AccountId, Message).
 
--spec maybe_set_folder(ne_binary(), ne_binary(), kz_json:object(), ne_binary()) -> any().
-maybe_set_folder(FromFolder, FromFolder, ?MATCH_MODB_PREFIX(_, _, _), _) -> 'ok';
-maybe_set_folder(FromFolder, FromFolder, MessageId, AccountId) ->
+-spec maybe_set_folder(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> any().
+maybe_set_folder(FromFolder, FromFolder, ?MATCH_MODB_PREFIX(_, _, _), _, Msg) -> {'ok', Msg};
+maybe_set_folder(FromFolder, FromFolder, MessageId, AccountId, _) ->
     lager:info("folder is same, but doc is in accountdb, move it to modb"),
     update_message_doc(AccountId, MessageId);
-maybe_set_folder(_FromFolder, ToFolder, MessageId, AccountId) ->
+maybe_set_folder(_FromFolder, ToFolder, MessageId, AccountId, _) ->
     update_folder(ToFolder, MessageId, AccountId).
 
 -spec update_folder(ne_binary(), ne_binary(), ne_binary()) -> db_ret() | {'error', 'attachment_undefined'}.
