@@ -276,7 +276,7 @@ fetch_agent_status(AgentId, Context) ->
             fetch_current_status(Context
                                 ,AgentId
                                 ,kz_util:is_true(cb_context:req_value(Context, <<"full">>))
-								);
+                                );
 
         'true' ->
             fetch_all_current_statuses(Context
@@ -325,8 +325,8 @@ fetch_current_status(Context, AgentId, Full) ->
                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
             case kapps_util:amqp_pool_request(Req
-                                              ,fun wapi_acdc_stats:publish_status_req/1
-                                              ,fun wapi_acdc_stats:status_resp_v/1
+                                              ,fun kapi_acdc_stats:publish_status_req/1
+                                              ,fun kapi_acdc_stats:status_resp_v/1
                                               )
             of
                 {'error', _}=E ->
