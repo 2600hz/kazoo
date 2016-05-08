@@ -21,7 +21,7 @@
          ,attachment/1, attachment/2, attachment/3
 
          ,attachment_length/2
-         ,attachment_content_type/2, attachment_content_type/3
+         ,attachment_content_type/1, attachment_content_type/2, attachment_content_type/3
          ,attachment_property/3
          ,delete_attachments/1, delete_attachment/2
          ,maybe_remove_attachments/1, maybe_remove_attachments/2
@@ -261,8 +261,15 @@ attachment(JObj, AName, Default) ->
 attachment_length(JObj, AName) ->
     attachment_property(JObj, AName, <<"length">>).
 
+-spec attachment_content_type(kz_json:object()) -> api_binary().
 -spec attachment_content_type(kz_json:object(), ne_binary()) -> api_binary().
 -spec attachment_content_type(kz_json:object(), ne_binary(), ne_binary()) -> ne_binary().
+attachment_content_type(JObj) ->
+    case kz_json:get_values(attachments(JObj, kz_json:new())) of
+        {[], []} -> 'undefined';
+        {[_Attachment|_], [AName|_]} ->
+            attachment_property(JObj, AName, <<"content_type">>)
+    end.
 attachment_content_type(JObj, AName) ->
     attachment_property(JObj, AName, <<"content_type">>).
 attachment_content_type(JObj, AName, DefaultContentType) ->
