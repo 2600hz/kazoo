@@ -21,13 +21,7 @@ init({_Transport, _Proto}, Req0, _Opts) ->
     case cowboy_req:path_info(Req0) of
         {[<<"tts">>, Id], Req1} ->
             init_from_tts(Id, Req1);
-        {[Url], Req1} ->
-%%             EncodedId = kz_util:to_binary(http_uri:encode(kz_util:to_list(Id))),
-%%             init_from_doc(Db, EncodedId, Type, Rev, Attachment, Req1);
-%%         {[Db, Id, Type, Rev, Attachment], Req1} ->
-%%             AccountDb = kz_util:to_binary(http_uri:encode(kz_util:to_list(Db))),
-%%             EncodedId = kz_util:to_binary(http_uri:encode(kz_util:to_list(Id))),
-%%            init_from_doc(AccountDb, EncodedId, Type, Rev, Attachment, Req1)
+        {[Url, _AName], Req1} ->
             init_from_doc(Url, Req1)
     end.
 
