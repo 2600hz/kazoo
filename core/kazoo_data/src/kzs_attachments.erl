@@ -50,8 +50,44 @@ do_fetch_attachment_from_handler([{Handler, Props}], DbName, DocId, AName) ->
 -spec stream_attachment(map(), ne_binary(), ne_binary(), ne_binary(), pid()) ->
                                {'ok', reference()} |
                                data_error().
-stream_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Caller) ->
-    App:stream_attachment(Conn, DbName, DocId, AName, Caller).
+stream_attachment(#{}=Server, DbName, DocId, AName, Caller) ->
+    case kzs_cache:open_cache_doc(Server, DbName, DocId, []) of
+        {'ok', Doc} ->
+            case kz_doc:attachment(Doc, AName) of
+                'undefined' -> {'error', 'not_found'};
+                Att -> do_stream_attachment(Server, DbName, DocId, AName, Att, Caller)
+            end;
+        {'error', _}=E -> E
+    end.
+
+do_stream_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Att, Caller) ->
+    case kz_json:get_value(<<"handler">>, Att) of
+        'undefined' -> App:stream_attachment(Conn, DbName, DocId, AName, Caller);
+        Handler -> do_stream_attachment_from_handler(kz_json:to_proplist(Handler), DbName, DocId, AName, Caller)
+    end.
+
+do_stream_attachment_from_handler([{Handler, Props}], DbName, DocId, AName, Caller) ->
+    Module = kz_util:to_atom(Handler, 'true'),
+    Ref = make_ref(),
+    kz_util:spawn(fun relay_stream_attachment/7, [Caller, Ref, Module, Props, DbName, DocId, AName]),
+    {'ok', Ref}.
+
+relay_stream_attachment(Caller, Ref, Module, Props, DbName, DocId, AName) ->
+    case Module:fetch_attachment(Props, DbName, DocId, AName) of
+        {'ok', Bin} -> relay_stream_attachment(Caller, Ref, Bin);
+        {'error', _} = Error -> Caller ! {Ref, Error}
+    end.
+
+-define(CHUNK_SIZE, 8192).
+
+relay_stream_attachment(Caller, Ref, <<>>) ->
+    Caller ! {Ref, 'done'};
+relay_stream_attachment(Caller, Ref, <<Bin:?CHUNK_SIZE/binary, Rest/binary>>) ->
+    Caller ! {Ref, {'ok', Bin}},
+    relay_stream_attachment(Caller, Ref, Rest);
+relay_stream_attachment(Caller, Ref, Bin) ->
+    Caller ! {Ref, {'ok', Bin}},
+    relay_stream_attachment(Caller, Ref, <<>>).
 
 -spec put_attachment(map(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) ->
                             {'ok', kz_json:object()} |
