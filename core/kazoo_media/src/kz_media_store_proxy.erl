@@ -147,7 +147,7 @@ unauthorized_body() ->
 
 -spec handle(cowboy_req:req(), ne_binaries()) ->
                     {'ok', cowboy_req:req(), 'ok'}.
-handle(Req0, [Url]) ->
+handle(Req0, [Url, _AName]) ->
    {Db, Id, Attachment, Options} = binary_to_term(base64:decode(Url)),
     Path = #media_store_path{db = Db
                             ,id = Id

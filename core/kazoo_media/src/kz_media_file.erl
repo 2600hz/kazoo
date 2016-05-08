@@ -92,6 +92,7 @@ proxy_uri(JObj, #media_store_path{db = Db
     <<(kz_media_util:base_url(Host, Port, Permissions))/binary
       ,StreamType/binary
       ,"/", Path/binary
+      ,"/", Attachment/binary
     >>.
 
 
