@@ -14,9 +14,6 @@
 -export([record_to_json/1]).
 -export([json_to_record/1]).
 
--import(braintree_util, [make_doc_xml/2]).
--import(kz_util, [get_xml_value/2]).
-
 -include_lib("braintree/include/braintree.hrl").
 
 %%--------------------------------------------------------------------
@@ -42,12 +39,12 @@ xml_to_record(Xml) ->
     xml_to_record(Xml, "/add-on").
 
 xml_to_record(Xml, Base) ->
-    #bt_addon{id = get_xml_value([Base, "/id/text()"], Xml)
-              ,amount = get_xml_value([Base, "/amount/text()"], Xml)
-              ,never_expires = kz_term:is_true(get_xml_value([Base, "/never-expires/text()"], Xml))
-              ,billing_cycle = get_xml_value([Base, "/current-billing-cycle/text()"], Xml)
-              ,number_of_cycles = get_xml_value([Base, "/number-of-billing-cycles/text()"], Xml)
-              ,quantity = kz_term:to_integer(get_xml_value([Base, "/quantity/text()"], Xml))
+    #bt_addon{id = kz_util:get_xml_value([Base, "/id/text()"], Xml)
+              ,amount = kz_util:get_xml_value([Base, "/amount/text()"], Xml)
+              ,never_expires = kz_term:is_true(kz_util:get_xml_value([Base, "/never-expires/text()"], Xml))
+              ,billing_cycle = kz_util:get_xml_value([Base, "/current-billing-cycle/text()"], Xml)
+              ,number_of_cycles = kz_util:get_xml_value([Base, "/number-of-billing-cycles/text()"], Xml)
+              ,quantity = kz_term:to_integer(kz_util:get_xml_value([Base, "/quantity/text()"], Xml))
              }.
 
 %%--------------------------------------------------------------------
@@ -72,7 +69,7 @@ record_to_xml(Addon, ToString) ->
              ,{'existing-id', Addon#bt_addon.id}
             ],
     case ToString of
-        true -> make_doc_xml(Props, 'add-on');
+        true -> braintree_util:make_doc_xml(Props, 'add-on');
         false -> Props
     end.
 
