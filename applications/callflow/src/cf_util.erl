@@ -42,10 +42,7 @@
 
 -export([wait_for_noop/2]).
 -export([start_task/3]).
--export([maybe_start_call_recording/2
-         ,start_call_recording/2
-         ,start_event_listener/3
-         ,recording_module/1
+-export([start_event_listener/3
          ,event_listener_name/2
         ]).
 
@@ -61,8 +58,6 @@
 -define(OPERATOR_KEY, kapps_config:get(?CF_CONFIG_CAT, <<"operator_key">>, <<"0">>)).
 -define(MWI_SEND_UNSOLICITATED_UPDATES, <<"mwi_send_unsoliciated_updates">>).
 -define(VM_CACHE_KEY(Db, Id), {?MODULE, 'vmbox', Db, Id}).
-
--define(RECORDING_ARGS(Call, Data), [kapps_call:clear_helpers(Call) , Data]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -743,29 +738,6 @@ may_be_dialplan_suits({Key, Val}, Acc, Names) ->
     case lists:member(Name, Names) of
         'true' -> kz_json:set_value(Key, Val, Acc);
         'false' -> Acc
-    end.
-
--spec maybe_start_call_recording(kz_json:object(), kapps_call:call()) -> kapps_call:call().
-maybe_start_call_recording(RecordCall, Call) ->
-    case kz_util:is_empty(RecordCall) of
-        'true' -> Call;
-        'false' -> start_call_recording(RecordCall, Call)
-    end.
-
--spec start_call_recording(kz_json:object(), kapps_call:call()) -> kapps_call:call().
-start_call_recording(Data, Call) ->
-    Mod = recording_module(Call),
-    Name = event_listener_name(Call, Mod),
-    X = cf_event_handler_sup:new(Name, Mod, ?RECORDING_ARGS(Call, Data)),
-    lager:debug("started ~s process ~s : ~p", [Mod, Name, X]),
-    Call.
-
--spec recording_module(kapps_call:call()) -> atom().
-recording_module(Call) ->
-    AccountId = kapps_call:account_id(Call),
-    case kapps_account_config:get(AccountId, ?CF_CONFIG_CAT, <<"recorder_module">>) of
-        'undefined' -> kapps_config:get_atom(?CF_CONFIG_CAT, <<"recorder_module">>, 'kz_media_recording');
-        Mod -> kz_util:to_atom(Mod, 'true')
     end.
 
 -spec start_event_listener(kapps_call:call(), atom(), list()) ->

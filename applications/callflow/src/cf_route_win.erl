@@ -295,13 +295,12 @@ maybe_start_endpoint_metaflow(Call, EndpointId) ->
 
 -spec maybe_start_recording(kapps_call:call()) -> kapps_call:call().
 maybe_start_recording(Call) ->
-    maybe_start_endpoint_recording(Call, kz_endpoint:get(Call)).
-
--spec maybe_start_endpoint_recording(kapps_call:call(), cf_api_std_return()) -> 'ok'.
-maybe_start_endpoint_recording(Call, {'ok', Endpoint}) ->
-    Data = kz_json:get_value(<<"record_call">>, Endpoint, kz_json:new()),
-    cf_util:maybe_start_call_recording(Data, Call);
-maybe_start_endpoint_recording(Call, _) -> Call.
+    case kz_endpoint:get(Call) of
+        {'error', _} -> 'ok';
+        {'ok', Endpoint} ->
+            (not kz_util:is_empty(kz_json:get_value(<<"record_call">>, Endpoint)))
+                andalso lager:debug("started call recording on inbound leg")
+    end.
 
 -spec get_incoming_security(kapps_call:call()) -> kz_proplist().
  get_incoming_security(Call) ->

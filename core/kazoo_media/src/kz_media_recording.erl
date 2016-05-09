@@ -23,6 +23,7 @@
 -export([start_link/2
          ,start_recording/2
          ,handle_call_event/2
+         ,recording_module/1
 
          ,get_timelimit/1
          ,get_format/1
@@ -558,3 +559,11 @@ store({DirName, MediaName}, StoreUrl, Call) ->
 -spec stop_recording(pid()) -> 'ok'.
 stop_recording(Pid) ->
     gen_server:cast(Pid, 'stop_recording').
+
+-spec recording_module(kapps_call:call()) -> atom().
+recording_module(Call) ->
+    AccountId = kapps_call:account_id(Call),
+    case kapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"recorder_module">>) of
+        'undefined' -> kapps_config:get_atom(?CONFIG_CAT, <<"recorder_module">>, 'kz_media_recording');
+        Mod -> kz_util:to_atom(Mod, 'true')
+    end.
