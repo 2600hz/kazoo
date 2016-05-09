@@ -67,7 +67,7 @@ do_stream_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Att, Caller
     end.
 
 do_stream_attachment_from_handler([{Handler, Props}], DbName, DocId, AName, Caller) ->
-    Module = kz_util:to_atom(Handler, 'true'),
+    Module = kz_term:to_atom(Handler, 'true'),
     Ref = make_ref(),
     kz_util:spawn(fun relay_stream_attachment/7, [Caller, Ref, Module, Props, DbName, DocId, AName]),
     {'ok', Ref}.

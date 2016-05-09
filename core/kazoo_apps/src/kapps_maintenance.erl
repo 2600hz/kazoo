@@ -1246,7 +1246,7 @@ migrate_system(PreviousVersion, ThisVersion) ->
                   (Fun, Acc) when is_function(Fun) ->
                        [Fun() | Acc]
                end, [], Routines),
-    case lists:all(fun kz_util:is_true/1, Result) of
+    case lists:all(fun kz_term:is_true/1, Result) of
         'true' -> _ = set_last_migrate_version(ThisVersion),
                   'ok';
         'false' -> 'ok'
@@ -1261,7 +1261,7 @@ migrate_system_version_routines(_, _) -> [].
 handle_module_rename() ->
     {'ok', Docs} = kz_datamgr:all_docs(?KZ_CONFIG_DB, ['include_docs']),
     Results = [handle_module_rename_doc(Doc) || Doc <- Docs],
-    lists:all(fun kz_util:is_true/1, Results).
+    lists:all(fun kz_term:is_true/1, Results).
 
 -spec handle_module_rename_doc(kz_json:object()) -> boolean().
 handle_module_rename_doc(JObj) ->
