@@ -17,16 +17,16 @@
 -export([unsolicited_owner_mwi_update/2]).
 -export([unsolicited_endpoint_mwi_update/2]).
 -export([alpha_to_dialpad/1, ignore_early_media/1]).
--export([correct_media_path/2]).
+
 -export([lookup_callflow/1, lookup_callflow/2]).
 -export([handle_bridge_failure/2, handle_bridge_failure/3]).
 -export([send_default_response/2]).
--export([get_sip_realm/2, get_sip_realm/3]).
+
 -export([get_operator_callflow/1]).
 -export([endpoint_id_by_sip_username/2]).
 -export([owner_ids_by_sip_username/2]).
 -export([apply_dialplan/2]).
--export([encryption_method_map/2]).
+
 -export([sip_users_from_device_ids/2]).
 
 -export([caller_belongs_to_group/2
@@ -62,11 +62,6 @@
 -define(MWI_SEND_UNSOLICITATED_UPDATES, <<"mwi_send_unsoliciated_updates">>).
 -define(VM_CACHE_KEY(Db, Id), {?MODULE, 'vmbox', Db, Id}).
 
--define(ENCRYPTION_MAP, [{<<"srtp">>, [{<<"RTP-Secure-Media">>, <<"true">>}]}
-                        ,{<<"zrtp">>, [{<<"ZRTP-Secure-Media">>, <<"true">>}
-                                       ,{<<"ZRTP-Enrollment">>, <<"true">>}
-                                      ]}
-                        ]).
 -define(RECORDING_ARGS(Call, Data), [kapps_call:clear_helpers(Call) , Data]).
 
 %%--------------------------------------------------------------------
@@ -274,7 +269,7 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
 maybe_send_mwi_update(JObj, AccountId, New, Saved) ->
     J = kz_json:get_value(<<"doc">>, JObj),
     Username = kz_device:sip_username(J),
-    Realm = get_sip_realm(J, AccountId),
+    Realm = kz_endpoint:get_sip_realm(J, AccountId),
     OwnerId = get_endpoint_owner(J),
     case kz_device:sip_method(J) =:= <<"password">>
         andalso Username =/= 'undefined'
@@ -320,7 +315,7 @@ maybe_send_endpoint_mwi_update(_AccountDb, _JObj, 'false') ->
 maybe_send_endpoint_mwi_update(AccountDb, JObj, 'true') ->
     AccountId = kz_util:format_account_id(AccountDb, 'raw'),
     Username = kz_device:sip_username(JObj),
-    Realm = get_sip_realm(JObj, AccountId),
+    Realm = kz_endpoint:get_sip_realm(JObj, AccountId),
     OwnerId = get_endpoint_owner(JObj),
     case kz_device:sip_method(JObj) =:= <<"password">>
         andalso Username =/= 'undefined'
@@ -406,17 +401,6 @@ ignore_early_media(Endpoints) ->
         'true' -> <<"true">>;
         'false' -> 'undefined'
     end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% given a media path that is just a media id correct it to include
-%% the account id
-%% @end
-%%--------------------------------------------------------------------
--spec correct_media_path(api_binary(), kapps_call:call()) -> api_binary().
-correct_media_path(Media, Call) ->
-    kz_media_util:media_path(Media, Call).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -559,30 +543,6 @@ send_default_response(Cause, Call) ->
                     _ = kapps_call_command:wait_for_noop(Call, NoopId),
                     'ok'
             end
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Get the sip realm
-%% @end
-%%--------------------------------------------------------------------
--spec get_sip_realm(kz_json:object(), ne_binary()) -> api_binary().
-get_sip_realm(SIPJObj, AccountId) ->
-    get_sip_realm(SIPJObj, AccountId, 'undefined').
-
--spec get_sip_realm(kz_json:object(), ne_binary(), Default) -> Default | ne_binary().
-get_sip_realm(SIPJObj, AccountId, Default) ->
-    case kz_device:sip_realm(SIPJObj) of
-        'undefined' -> get_account_realm(AccountId, Default);
-        Realm -> Realm
-    end.
-
--spec get_account_realm(ne_binary(), api_binary()) -> api_binary().
-get_account_realm(AccountId, Default) ->
-    case kz_util:get_account_realm(AccountId) of
-        'undefined' -> Default;
-        Else -> Else
     end.
 
 %%-----------------------------------------------------------------------------
@@ -784,25 +744,6 @@ may_be_dialplan_suits({Key, Val}, Acc, Names) ->
         'true' -> kz_json:set_value(Key, Val, Acc);
         'false' -> Acc
     end.
-
--spec encryption_method_map(api_object(), api_binaries() | kz_json:object()) -> api_object().
-encryption_method_map(JObj, []) -> JObj;
-encryption_method_map(JObj, [Method|Methods]) ->
-    case props:get_value(Method, ?ENCRYPTION_MAP, []) of
-        [] -> encryption_method_map(JObj, Methods);
-        Values ->
-            encryption_method_map(kz_json:set_values(Values, JObj), Method)
-    end;
-encryption_method_map(JObj, Endpoint) ->
-    encryption_method_map(JObj
-                          ,kz_json:get_value([<<"media">>
-                                              ,<<"encryption">>
-                                              ,<<"methods">>
-                                             ]
-                                             ,Endpoint
-                                             ,[]
-                                            )
-                         ).
 
 -spec maybe_start_call_recording(kz_json:object(), kapps_call:call()) -> kapps_call:call().
 maybe_start_call_recording(RecordCall, Call) ->

@@ -16,6 +16,8 @@
 -export([create_call_fwd_endpoint/3
          ,create_sip_endpoint/3
          ,maybe_start_metaflow/2
+         ,encryption_method_map/2
+         ,get_sip_realm/2, get_sip_realm/3
         ]).
 
 -include("kazoo_endpoint.hrl").
@@ -65,6 +67,12 @@
        ).
 
 -define(CONFIRM_FILE(Call), kz_media_util:get_prompt(<<"ivr-group_confirm">>, Call)).
+
+-define(ENCRYPTION_MAP, [{<<"srtp">>, [{<<"RTP-Secure-Media">>, <<"true">>}]}
+                        ,{<<"zrtp">>, [{<<"ZRTP-Secure-Media">>, <<"true">>}
+                                       ,{<<"ZRTP-Enrollment">>, <<"true">>}
+                                      ]}
+                        ]).
 
 -type sms_route() :: {binary(), kz_proplist()}.
 -type sms_routes() :: [sms_route(), ...].
@@ -951,7 +959,7 @@ create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
         [{<<"Invite-Format">>, get_invite_format(SIPJObj)}
          ,{<<"To-User">>, get_to_user(SIPJObj, Properties)}
          ,{<<"To-Username">>, get_to_username(SIPJObj)}
-         ,{<<"To-Realm">>, cf_util:get_sip_realm(Endpoint, kapps_call:account_id(Call))}
+         ,{<<"To-Realm">>, kz_endpoint:get_sip_realm(Endpoint, kapps_call:account_id(Call))}
          ,{<<"To-DID">>, get_to_did(Endpoint, Call)}
          ,{<<"To-IP">>, kz_json:get_value(<<"ip">>, SIPJObj)}
          ,{<<"SIP-Transport">>, get_sip_transport(SIPJObj)}
@@ -1023,7 +1031,7 @@ build_push_failover(Endpoint, Clid, PushJObj, Call) ->
     lager:debug("building push failover"),
     SIPJObj = kz_json:get_value(<<"sip">>, Endpoint),
     ToUsername = get_to_username(SIPJObj),
-    ToRealm = cf_util:get_sip_realm(Endpoint, kapps_call:account_id(Call)),
+    ToRealm = kz_endpoint:get_sip_realm(Endpoint, kapps_call:account_id(Call)),
     ToUser = <<ToUsername/binary, "@", ToRealm/binary>>,
     Proxy = kz_json:get_value(<<"Token-Proxy">>, PushJObj),
     PushHeaders = kz_json:foldl(fun(K, V, Acc) ->
@@ -1460,8 +1468,28 @@ maybe_enforce_security({Endpoint, Call, CallFwd, JObj}) ->
 -spec maybe_set_encryption_flags(ccv_acc()) -> ccv_acc().
 maybe_set_encryption_flags({Endpoint, Call, CallFwd, JObj}) ->
     {Endpoint, Call, CallFwd
-     ,cf_util:encryption_method_map(JObj, Endpoint)
+     ,encryption_method_map(JObj, Endpoint)
     }.
+
+-spec encryption_method_map(api_object(), api_binaries() | kz_json:object()) -> api_object().
+encryption_method_map(JObj, []) -> JObj;
+encryption_method_map(JObj, [Method|Methods]) ->
+    case props:get_value(Method, ?ENCRYPTION_MAP, []) of
+        [] -> encryption_method_map(JObj, Methods);
+        Values ->
+            encryption_method_map(kz_json:set_values(Values, JObj), Method)
+    end;
+encryption_method_map(JObj, Endpoint) ->
+    encryption_method_map(JObj
+                          ,kz_json:get_value([<<"media">>
+                                              ,<<"encryption">>
+                                              ,<<"methods">>
+                                             ]
+                                             ,Endpoint
+                                             ,[]
+                                            )
+                         ).
+
 
 -spec set_sip_invite_domain(ccv_acc()) -> ccv_acc().
 set_sip_invite_domain({Endpoint, Call, CallFwd, JObj}) ->
@@ -1641,3 +1669,27 @@ build_mobile_sms_amqp_route_options(JObj) ->
      ,{<<"Exchange-Type">>, kz_json:get_value(<<"type">>, JObj, ?DEFAULT_MOBILE_SMS_EXCHANGE_TYPE)}
      ,{<<"Exchange-Options">>, kz_json:get_value(<<"options">>, JObj, ?DEFAULT_MOBILE_SMS_EXCHANGE_OPTIONS)}
     ].
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Get the sip realm
+%% @end
+%%--------------------------------------------------------------------
+-spec get_sip_realm(kz_json:object(), ne_binary()) -> api_binary().
+get_sip_realm(SIPJObj, AccountId) ->
+    get_sip_realm(SIPJObj, AccountId, 'undefined').
+
+-spec get_sip_realm(kz_json:object(), ne_binary(), Default) -> Default | ne_binary().
+get_sip_realm(SIPJObj, AccountId, Default) ->
+    case kz_device:sip_realm(SIPJObj) of
+        'undefined' -> get_account_realm(AccountId, Default);
+        Realm -> Realm
+    end.
+
+-spec get_account_realm(ne_binary(), api_binary()) -> api_binary().
+get_account_realm(AccountId, Default) ->
+    case kz_util:get_account_realm(AccountId) of
+        'undefined' -> Default;
+        Else -> Else
+    end.
