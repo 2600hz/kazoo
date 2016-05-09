@@ -33,6 +33,16 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/user_auth/{AUTHTOKEN}
 ```
 
+#### Change
+
+> POST /v2/user_auth/recovery
+
+```curl
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/user_auth/recovery
+```
+
 #### Create
 
 > PUT /v2/user_auth/recovery
