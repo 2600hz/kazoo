@@ -154,27 +154,27 @@ allowed_methods(?PORT_REJECT) ->
     [?HTTP_GET];
 allowed_methods(?PORT_CANCELED) ->
     [?HTTP_GET];
-allowed_methods(_Id) ->
+allowed_methods(_PortRequestId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
-allowed_methods(_Id, ?PORT_SUBMITTED) ->
+allowed_methods(_PortRequestId, ?PORT_SUBMITTED) ->
     [?HTTP_PATCH];
-allowed_methods(_Id, ?PORT_PENDING) ->
+allowed_methods(_PortRequestId, ?PORT_PENDING) ->
     [?HTTP_PATCH];
-allowed_methods(_Id, ?PORT_SCHEDULED) ->
+allowed_methods(_PortRequestId, ?PORT_SCHEDULED) ->
     [?HTTP_PATCH];
-allowed_methods(_Id, ?PORT_COMPLETE) ->
+allowed_methods(_PortRequestId, ?PORT_COMPLETE) ->
     [?HTTP_PATCH];
-allowed_methods(_Id, ?PORT_REJECT) ->
+allowed_methods(_PortRequestId, ?PORT_REJECT) ->
     [?HTTP_PATCH];
-allowed_methods(_Id, ?PORT_CANCELED) ->
+allowed_methods(_PortRequestId, ?PORT_CANCELED) ->
     [?HTTP_PATCH];
-allowed_methods(_Id, ?PORT_ATTACHMENT) ->
+allowed_methods(_PortRequestId, ?PORT_ATTACHMENT) ->
     [?HTTP_GET, ?HTTP_PUT];
-allowed_methods(_Id, ?PATH_TOKEN_LOA) ->
+allowed_methods(_PortRequestId, ?PATH_TOKEN_LOA) ->
     [?HTTP_GET].
 
-allowed_methods(_Id, ?PORT_ATTACHMENT, _AttachmentId) ->
+allowed_methods(_PortRequestId, ?PORT_ATTACHMENT, _AttachmentId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
@@ -192,19 +192,19 @@ allowed_methods(_Id, ?PORT_ATTACHMENT, _AttachmentId) ->
 -spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
 
-resource_exists(_Id) -> 'true'.
+resource_exists(_PortRequestId) -> 'true'.
 
-resource_exists(_Id, ?PORT_SUBMITTED) -> 'true';
-resource_exists(_Id, ?PORT_PENDING) -> 'true';
-resource_exists(_Id, ?PORT_SCHEDULED) -> 'true';
-resource_exists(_Id, ?PORT_COMPLETE) -> 'true';
-resource_exists(_Id, ?PORT_REJECT) -> 'true';
-resource_exists(_Id, ?PORT_CANCELED) -> 'true';
-resource_exists(_Id, ?PORT_ATTACHMENT) -> 'true';
-resource_exists(_Id, ?PATH_TOKEN_LOA) -> 'true';
-resource_exists(_Id, _Unknown) -> 'false'.
+resource_exists(_PortRequestId, ?PORT_SUBMITTED) -> 'true';
+resource_exists(_PortRequestId, ?PORT_PENDING) -> 'true';
+resource_exists(_PortRequestId, ?PORT_SCHEDULED) -> 'true';
+resource_exists(_PortRequestId, ?PORT_COMPLETE) -> 'true';
+resource_exists(_PortRequestId, ?PORT_REJECT) -> 'true';
+resource_exists(_PortRequestId, ?PORT_CANCELED) -> 'true';
+resource_exists(_PortRequestId, ?PORT_ATTACHMENT) -> 'true';
+resource_exists(_PortRequestId, ?PATH_TOKEN_LOA) -> 'true';
+resource_exists(_PortRequestId, _) -> 'false'.
 
-resource_exists(_Id, ?PORT_ATTACHMENT, _AttachmentId) -> 'true'.
+resource_exists(_PortRequestId, ?PORT_ATTACHMENT, _AttachmentId) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public

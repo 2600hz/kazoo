@@ -8039,6 +8039,41 @@
         "/v2/accounts/{ACCOUNT_ID}/port_requests/submitted": {
             "get": {}
         },
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID}": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/canceled": {
+            "patch": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/completed": {
+            "patch": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/loa": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/pending": {
+            "patch": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/rejected": {
+            "patch": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/scheduled": {
+            "patch": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/submitted": {
+            "patch": {}
+        },
         "/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}": {
             "delete": {},
             "get": {},

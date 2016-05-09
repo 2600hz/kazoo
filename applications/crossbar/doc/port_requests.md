@@ -1,169 +1,299 @@
-
 ### Port Requests
+
 Manage and track number port requests through the Port Requests API.
 
-A port request can be in one of five states:
-* Unconfirmed: A port request has been created, but the details have not been confirmed and the port process has not started.
-* Submitted: Indicates the number port is ready to be processed and sent to the losing carrier.
-* Scheduled: The port is in progress and the losing carrier has been notified.
-* Completed: The port request has been finished, and numbers are activated.
-* Rejected: The port request has been cancelled, or something has gone wrong during the port process. The port can be resubmitted.
+A port request can be in one of five **states**:
 
-##### List port requests
+* `unconfirmed`: A port request has been created, but the details have not been confirmed and the port process has not started.
+* `submitted`: Indicates the number port is ready to be processed and sent to the losing carrier.
+* `scheduled`: The port is in progress and the losing carrier has been notified.
+* `completed`: The port request has been finished, and numbers are activated.
+* `rejected`: The port request has been cancelled, or something has gone wrong during the port process. The port can be resubmitted.
 
-    curl -v -X GET \
-    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
-    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests
 
-###### Listing by port state
+#### List port requests
 
-You can issue GET requests to find all ports in a particular state too:
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests
 
-    curl -v -X GET \
-    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
-    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{STATE_NAME}
+```curl
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests
+```
 
-Where `{STATE_NAME}` is one of:
 
-* submitted
-* pending
-* scheduled
-* completed
-* rejected
-* canceled
+#### Listing by port state
 
-All requests are not paginated, with the exception of the `completed` state. Use pagination toggles for date range as desired.
+You can issue GET requests to find all ports in a particular state too.
 
-##### List port requests of self and sub accounts
+All requests are not paginated, with the exception of the `completed` state.
+Use pagination toggles for date range as desired.
+
+##### Listing by `pending` port
+
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/pending
+
+```curl
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/pending
+```
+
+##### Listing by `submitted` port
+
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/submitted
+
+```curl
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/submitted
+```
+
+##### Listing by `pending` port
+
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/pending
+
+```curl
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/pending
+```
+
+##### Listing by `scheduled` port
+
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/scheduled
+
+```curl
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/scheduled
+```
+
+##### Listing by `completed` port
+
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/completed
+
+```curl
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/completed
+```
+
+##### Listing by `rejected` port
+
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/rejected
+
+```curl
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/rejected
+```
+
+##### Listing by `canceled` port
+
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/canceled
+
+```curl
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/canceled
+```
+
+
+#### List port requests of self and sub accounts
 
     curl -v -X GET \
     -H "X-Auth-Token: {{AUTH_TOKEN}}" \
     http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/descendants/port_requests
 
-##### Create a new port request
 
-    curl -v -X PUT \
-    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
+#### Create a new port request
+
+> PUT /v2/accounts/{ACCOUNT_ID}/port_requests
+
+```curl
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
     -d '{"data":{"numbers":{"+12025559000":{}}, "name":"Porting 202.555.9000"}}' \
-    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests
+```
 
-##### List port request details
 
-    curl -v -X GET \
-    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
-    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}
+#### List port request details
 
-##### Edit a port request
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}
 
-    curl -v -X POST \
-    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
+```curl
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}
+```
+
+
+#### Edit a port request
+
+> POST /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}
+
+```curl
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
     -d '{"data":{"numbers":{"+12025559000":{"state":"NY"}}}}' \
-    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}
+```
 
-##### DELETE a port request
 
-    curl -v -X DELETE \
-    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
-    -H "Content-Type: application/json" \
-    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}
+#### DELETE a port request
 
-#### Attachment manipulation
+> DELETE /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}
 
-##### List attachments on a port request
+```curl
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}
+```
 
-    curl -v -X GET \
-    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
-    -H "Content-Type: application/json" \
-    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/attachments
 
-##### Add an attachment to a port request
+#### List attachments on a port request
 
-    curl -v -X PUT \
-    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments
+
+```curl
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments
+```
+
+
+#### Add an attachment to a port request
+
+> PUT /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments
+
+```curl
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/pdf" \
     --data-binary @/path/to/file.pdf \
-    'http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/attachments?filename=file.pdf'
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments?filename=file.pdf'
+```
 
-##### Get an attachment from a port request
 
-    curl -v -X GET -H \
-    "X-Auth-Token: {{AUTH_TOKEN}}" -H \
-    "Accept: application/pdf" \
-    'http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/attachments/file.pdf' > file.pdf
+#### Get an attachment from a port request
 
-##### Replace an attachment on a port request
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID}
 
-    curl -v -X POST \
-    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
+```curl
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Accept: application/pdf" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID} > file.pdf
+```
+
+
+#### Replace an attachment on a port request
+
+> POST /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID}
+
+```curl
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/pdf" \
     --data-binary @/path/to/file.pdf \
-    'http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/attachments/file.pdf'
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID}
+```
 
-##### Delete an attachment on a port request
 
-    curl -v -X DELETE \
-    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
-    -H "Content-Type: application/json" \
-    'http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/attachments/otp.pdf'
+#### Delete an attachment on a port request
 
-#### State changes
+> DELETE /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID}
 
-##### Indicate a port is ready to be processed
+```curl
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID}
+```
 
-    curl -v -X PATCH \
-    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
-    -H "Content-Type: application/json" \
-    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/submitted
 
-##### Put port in pending
+#### Indicate a port is ready to be processed
 
-    curl -v -X PATCH \
-    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
-    -H "Content-Type: application/json" \
-    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/pending
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/submitted
 
-##### Put port in progress (sent to losing carrier)
+```curl
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/submitted
+```
 
-    curl -v -X PATCH \
-    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
-    -H "Content-Type: application/json" \
-    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/scheduled
 
-##### Complete port, numbers will activate in the system, account will be billed
+#### Put port in pending
 
-    curl -v -X PATCH \
-    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
-    -H "Content-Type: application/json" \
-    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/completed
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/pending
 
-##### Reject a port
+```curl
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/pending
+```
 
-    curl -v -X PATCH \
-    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
-    -H "Content-Type: application/json" \
-    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/rejected
 
-##### Cancel a port
+#### Put port in progress (sent to losing carrier)
 
-    curl -v -X PATCH \
-    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
-    -H "Content-Type: application/json" \
-    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/canceled
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/scheduled
 
-#### Extra features
+```curl
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/scheduled
+```
 
-##### Build an LOA PDF from a port request
 
-    curl -v -X GET \
+#### Complete port, numbers will activate in the system, account will be billed
+
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/completed
+
+```curl
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/completed
+```
+
+
+#### Reject a port
+
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/rejected
+
+```curl
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/rejected
+```
+
+
+#### Cancel a port
+
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/canceled
+
+```curl
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/canceled
+```
+
+
+#### Build an LOA PDF from a port request
+
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/loa
+
+```curl
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Accept: application/x-pdf" \
-    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
-    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/loa
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/loa
+```
 
-#### Get port request for account
 
-##### Request
+#### Get a port request by phone number
 
 - Verb: `GET`
 - Url: `/accounts/{{ACCOUNT_ID}}/port_requests?by_number={{NUMBER}}`
@@ -213,12 +343,9 @@ All requests are not paginated, with the exception of the `completed` state. Use
 
 #### Get port request for account and descendants
 
-##### Request
-
 - Verb: `GET`
 - Url: `/accounts/{{ACCOUNT_ID}}/descendants/port_requests?by_number={{NUMBER}}`
 - Payload: None
-
 
 ##### Response
 
