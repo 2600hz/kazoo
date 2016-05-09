@@ -42,3 +42,13 @@ util_split 'kz_accounts' $kz_accounts_exports
 
 kz_http_util_from_kz_util='resolve_uri safe_urlencode uri uri_decode uri_encode'
 util_split 'kz_http_util' $kz_http_util_from_kz_util
+
+
+function rename_fname() {
+    local From=$1
+    local To=$2
+    grep -Rl $From | xargs sed -i 's/'$From'(/'$To'(/g'
+    grep -Rl $From | xargs sed -i 's%'$From'/%'$To'/%g'
+}
+
+rename_fname kz_util:get_xml_value kz_xml:value
