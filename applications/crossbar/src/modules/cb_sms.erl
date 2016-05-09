@@ -149,7 +149,7 @@ create(Context) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(?MATCH_MODB_PREFIX(Year,Month,_) = Id, Context) ->
-    Context1 = cb_context:set_account_modb(Context, kz_util:to_integer(Year), kz_util:to_integer(Month)),
+    Context1 = cb_context:set_account_modb(Context, kz_term:to_integer(Year), kz_term:to_integer(Month)),
     crossbar_doc:load(Id, Context1, ?TYPE_CHECK_OPTION(<<"sms">>));
 read(Id, Context) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"sms">>)).
@@ -260,10 +260,10 @@ get_default_caller_id(Context, OwnerId) ->
 -spec create_sms_doc_id() -> ne_binary().
 create_sms_doc_id() ->
     {Year, Month, _} = erlang:date(),
-    kz_util:to_binary(
+    kz_term:to_binary(
       io_lib:format("~B~s-~s",[Year
                                ,kz_util:pad_month(Month)
-                               ,kz_util:rand_hex_binary(16)
+                               ,kz_term:rand_hex_binary(16)
                               ])
      ).
 
@@ -326,8 +326,8 @@ build_number(Number) ->
 -spec parse_number(ne_binary(), {api_binary(), kz_proplist()}) ->
                           {api_binary(), kz_proplist()}.
 parse_number(<<"TON=", N/binary>>, {Num, Options}) ->
-    {Num, [{<<"TON">>, kz_util:to_integer(N) } | Options]};
+    {Num, [{<<"TON">>, kz_term:to_integer(N) } | Options]};
 parse_number(<<"NPI=", N/binary>>, {Num, Options}) ->
-    {Num, [{<<"NPI">>, kz_util:to_integer(N) } | Options]};
+    {Num, [{<<"NPI">>, kz_term:to_integer(N) } | Options]};
 parse_number(N, {_, Options}) ->
     {N, Options}.

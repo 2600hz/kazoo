@@ -660,7 +660,7 @@ recording_meta(Call, MediaName) ->
                     ,{<<"description">>, <<"recording ", MediaName/binary>>}
                     ,{<<"content_type">>, <<"audio/mp3">>}
                     ,{<<"media_source">>, <<"recorded">>}
-                    ,{<<"source_type">>, kz_util:to_binary(?MODULE)}
+                    ,{<<"source_type">>, kz_term:to_binary(?MODULE)}
                     ,{<<"pvt_type">>, <<"private_media">>}
                     ,{<<"from">>, kapps_call:from(Call)}
                     ,{<<"to">>, kapps_call:to(Call)}

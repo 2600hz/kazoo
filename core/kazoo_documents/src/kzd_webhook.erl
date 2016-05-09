@@ -129,7 +129,7 @@ verb(Hook) ->
 verb(Hook, Default) ->
     case kz_json:get_value(?VERB, Hook) of
         'undefined' -> Default;
-        Verb -> safe_verbs(kz_util:to_lower_binary(Verb), Default)
+        Verb -> safe_verbs(kz_term:to_lower_binary(Verb), Default)
     end.
 
 -spec safe_verbs(api_binary(), http_verb() | Default) ->

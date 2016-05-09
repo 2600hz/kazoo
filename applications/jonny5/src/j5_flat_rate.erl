@@ -64,11 +64,11 @@ eligible_for_flat_rate(Request) ->
     Number = knm_converters:normalize(j5_request:number(Request)),
     TrunkWhitelist = ?WHITELIST,
     TrunkBlacklist = ?BLACKLIST,
-    (kz_util:is_empty(TrunkWhitelist)
+    (kz_term:is_empty(TrunkWhitelist)
      orelse re:run(Number, TrunkWhitelist) =/= 'nomatch'
     )
         andalso
-          (kz_util:is_empty(TrunkBlacklist)
+          (kz_term:is_empty(TrunkBlacklist)
            orelse re:run(Number, TrunkBlacklist) =:= 'nomatch'
           ).
 

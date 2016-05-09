@@ -63,7 +63,7 @@ parse_user(Bin, Uri) ->
 parse_host(Bin, Uri) ->
     case parse_until(<<":">>, Bin) of
         {<<>>, _} -> throw({'invalid_uri_host', Bin});
-        {H, <<>>} -> Uri#sip_uri{host=kz_util:strip_right_binary(H, $>), port=5060};
+        {H, <<>>} -> Uri#sip_uri{host=kz_term:strip_right_binary(H, $>), port=5060};
         {H, <<">">>} -> Uri#sip_uri{host=H, port=5060};
         {H, P} -> Uri#sip_uri{host=H, port=parse_port(P)}
     end.
@@ -72,7 +72,7 @@ parse_host(Bin, Uri) ->
 parse_port(P) ->
     case parse_until(<<">">>, P) of
         {<<>>, _} -> throw({'invalid_uri_port', P});
-        {Port, _} -> kz_util:to_integer(Port)
+        {Port, _} -> kz_term:to_integer(Port)
     end.
 
 -spec parse_until(ne_binary(), ne_binary()) -> {binary(), binary()}.

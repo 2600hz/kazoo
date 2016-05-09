@@ -141,7 +141,7 @@ filter_out_failed({'halt', _}) -> 'true';
 filter_out_failed({'false', _}) -> 'false';
 filter_out_failed('false') -> 'false';
 filter_out_failed({'EXIT', _}) -> 'false';
-filter_out_failed(Term) -> not kz_util:is_empty(Term).
+filter_out_failed(Term) -> not kz_term:is_empty(Term).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -155,7 +155,7 @@ filter_out_succeeded({'halt', _}) -> 'true';
 filter_out_succeeded({'false', _}) -> 'true';
 filter_out_succeeded('false') -> 'true';
 filter_out_succeeded({'EXIT', _}) -> 'true';
-filter_out_succeeded(Term) -> kz_util:is_empty(Term).
+filter_out_succeeded(Term) -> kz_term:is_empty(Term).
 
 -type bind_result() :: 'ok' |
                        {'error', 'exists'}.
@@ -189,7 +189,7 @@ modules_loaded() ->
 is_cb_module(<<"cb_", _/binary>>) -> 'true';
 is_cb_module(<<"crossbar_", _binary>>) -> 'true';
 is_cb_module(<<_/binary>>) -> 'false';
-is_cb_module(Mod) -> is_cb_module(kz_util:to_binary(Mod)).
+is_cb_module(Mod) -> is_cb_module(kz_term:to_binary(Mod)).
 
 -spec start_link() -> 'ignore'.
 start_link() ->
@@ -208,7 +208,7 @@ init() ->
 
 -spec maybe_init_mod(ne_binary() | atom()) -> 'ok'.
 maybe_init_mod(Mod) ->
-    try (kz_util:to_atom(Mod, 'true')):init() of
+    try (kz_term:to_atom(Mod, 'true')):init() of
         _ -> 'ok'
     catch
         _E:_R ->
@@ -219,10 +219,10 @@ maybe_init_mod(Mod) ->
 -spec maybe_init_mod_versions(ne_binaries(), ne_binary() | atom()) -> 'ok'.
 maybe_init_mod_versions([], _) -> 'ok';
 maybe_init_mod_versions([Version|Versions], Mod) ->
-    Module = <<(kz_util:to_binary(Mod))/binary
-               , "_", (kz_util:to_binary(Version))/binary
+    Module = <<(kz_term:to_binary(Mod))/binary
+               , "_", (kz_term:to_binary(Version))/binary
              >>,
-    try (kz_util:to_atom(Module, 'true')):init() of
+    try (kz_term:to_atom(Module, 'true')):init() of
         _ ->
             lager:notice("module ~s version ~s successfully loaded", [Mod, Version]),
             maybe_init_mod_versions(Versions, Mod)

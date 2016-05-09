@@ -388,10 +388,10 @@ read(Id, Context) ->
 
 -spec read_job(cb_context:context(), ne_binary()) -> cb_context:context().
 read_job(Context, ?MATCH_MODB_PREFIX(Year,Month,_) = JobId) ->
-    Modb = cb_context:account_modb(Context, kz_util:to_integer(Year), kz_util:to_integer(Month)),
+    Modb = cb_context:account_modb(Context, kz_term:to_integer(Year), kz_term:to_integer(Month)),
     leak_job_fields(crossbar_doc:load(JobId, cb_context:set_account_db(Context, Modb), ?TYPE_CHECK_OPTION(<<"resource">>)));
 read_job(Context, ?MATCH_MODB_PREFIX_M1(Year,Month,_) = JobId) ->
-    Modb = cb_context:account_modb(Context, kz_util:to_integer(Year), kz_util:to_integer(Month)),
+    Modb = cb_context:account_modb(Context, kz_term:to_integer(Year), kz_term:to_integer(Month)),
     leak_job_fields(crossbar_doc:load(JobId, cb_context:set_account_db(Context, Modb), ?TYPE_CHECK_OPTION(<<"resource">>)));
 read_job(Context, JobId) ->
     lager:debug("invalid job id format: ~s", [JobId]),
@@ -520,10 +520,10 @@ on_successful_local_validation(Id, Context) ->
 -spec on_successful_job_validation('undefined', cb_context:context()) -> cb_context:context().
 on_successful_job_validation('undefined', Context) ->
     {Year, Month, _} = erlang:date(),
-    Id = list_to_binary([kz_util:to_binary(Year)
+    Id = list_to_binary([kz_term:to_binary(Year)
                          ,kz_util:pad_month(Month)
                          ,"-"
-                         ,kz_util:rand_hex_binary(8)
+                         ,kz_term:rand_hex_binary(8)
                         ]),
 
     cb_context:set_doc(Context
@@ -550,7 +550,7 @@ reload_acls() ->
 collection_process(Context) ->
     RespData = cb_context:resp_data(Context),
 
-    case kz_util:is_empty(kz_json:get_value(<<"errors">>, RespData)) of
+    case kz_term:is_empty(kz_json:get_value(<<"errors">>, RespData)) of
         'true' -> collection_process(Context, kz_json:get_value(?KEY_SUCCESS, RespData));
         'false' -> cb_context:set_resp_data(Context, kz_json:delete_key(?KEY_SUCCESS, RespData))
     end.

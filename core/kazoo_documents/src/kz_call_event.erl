@@ -157,7 +157,7 @@ is_call_forwarded(JObj, Default) ->
     case custom_channel_var(JObj, <<"Call-Forward">>, Default) of
         'undefined' -> Default;
         Default -> Default;
-        IsForwarded -> kz_util:is_true(IsForwarded)
+        IsForwarded -> kz_term:is_true(IsForwarded)
     end.
 
 -spec error_message(kz_json:object()) -> api_binary().

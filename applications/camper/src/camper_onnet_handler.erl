@@ -235,7 +235,7 @@ originate_quickcall(Endpoints, Exten, Call) ->
             ,{<<"Authorizing-Type">>, kapps_call:authorizing_type(Call)}
             ,{<<"Authorizing-ID">>, kapps_call:authorizing_id(Call)}
            ],
-    MsgId = kz_util:rand_hex_binary(16),
+    MsgId = kz_term:rand_hex_binary(16),
 
     Request = [{<<"Application-Name">>, <<"transfer">>}
                ,{<<"Application-Data">>, kz_json:from_list([{<<"Route">>, Exten}])}

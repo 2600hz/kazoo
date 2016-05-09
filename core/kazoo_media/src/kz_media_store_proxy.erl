@@ -19,7 +19,7 @@
                   {'ok', cowboy_req:req(), ne_binaries()} |
                   {'shutdown',  cowboy_req:req(), 'ok'}.
 init({_Transport, _Proto}, Req0, _Opts) ->
-    kz_util:put_callid(kz_util:rand_hex_binary(16)),
+    kz_util:put_callid(kz_term:rand_hex_binary(16)),
     case cowboy_req:path_info(Req0) of
         {[_]=PathTokens, Req1} -> is_authentic(PathTokens, Req1);
         {[_, _, _, _, _]=PathTokens, Req1} -> is_authentic(PathTokens, Req1);
@@ -60,8 +60,8 @@ maybe_basic_authentication(Username, Password, PathTokens, Req1) ->
     AuthUsername = kapps_config:get_binary(?CONFIG_CAT, <<"proxy_username">>, <<>>),
     AuthPassword = kapps_config:get_binary(?CONFIG_CAT, <<"proxy_password">>, <<>>),
     case
-        not kz_util:is_empty(AuthUsername) andalso
-        not kz_util:is_empty(AuthPassword) andalso
+        not kz_term:is_empty(AuthUsername) andalso
+        not kz_term:is_empty(AuthPassword) andalso
         Username == AuthUsername andalso
         Password == AuthPassword
     of
@@ -197,7 +197,7 @@ is_appropriate_extension(#media_store_path{att=Attachment}=Path, Req0) ->
 -spec ensure_extension_present(media_store_path(), ne_binary(), cowboy_req:req()) ->
                                       {'ok', cowboy_req:req(), 'ok'}.
 ensure_extension_present(#media_store_path{att=Attachment}=Path, CT, Req0) ->
-    case kz_util:is_empty(filename:extension(Attachment))
+    case kz_term:is_empty(filename:extension(Attachment))
         andalso kz_mime:to_extension(CT)
     of
         'false' ->
@@ -218,7 +218,7 @@ try_to_store(#media_store_path{db=Db
                               ,opt=Opts
                               }, CT, Req0) ->
     {'ok', Contents, Req1} = cowboy_req:body(Req0),
-    Options = [{'content_type', kz_util:to_list(CT)}
+    Options = [{'content_type', kz_term:to_list(CT)}
                ,{'content_length', byte_size(Contents)}
                | Opts
               ],

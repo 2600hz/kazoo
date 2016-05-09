@@ -77,7 +77,7 @@ new(<<_/binary>> = Broker, Zone) ->
         'true' -> ?MODULE:add(Broker, Zone)
     end;
 new(Broker, Zone) ->
-    new(kz_util:to_binary(Broker), Zone).
+    new(kz_term:to_binary(Broker), Zone).
 
 -spec add(kz_amqp_connection() | text()) ->
                  kz_amqp_connection() |
@@ -103,14 +103,14 @@ add(#kz_amqp_connection{broker=Broker, tags=Tags}=Connection, Zone) ->
             {'error', Reason}
     end;
 add(Broker, Zone) when not is_binary(Broker) ->
-    add(kz_util:to_binary(Broker), Zone);
+    add(kz_term:to_binary(Broker), Zone);
 add(Broker, Zone) when not is_atom(Zone) ->
-    add(Broker, kz_util:to_atom(Zone, 'true'));
+    add(Broker, kz_term:to_atom(Zone, 'true'));
 add(Broker, Zone) ->
     add(Broker, Zone, []).
 
 add(Broker, Zone, Tags) ->
-    case catch amqp_uri:parse(kz_util:to_list(Broker)) of
+    case catch amqp_uri:parse(kz_term:to_list(Broker)) of
         {'EXIT', _R} ->
             lager:error("failed to parse AMQP URI '~s': ~p", [Broker, _R]),
             {'error', 'invalid_uri'};
@@ -143,7 +143,7 @@ remove([Connection|Connections]) when is_pid(Connection) ->
 remove(Connection) when is_pid(Connection) ->
     kz_amqp_connection_sup:remove(Connection);
 remove(Broker) when not is_binary(Broker) ->
-    remove(kz_util:to_binary(Broker));
+    remove(kz_term:to_binary(Broker));
 remove(<<_/binary>> = Broker) ->
     Pattern = #kz_amqp_connections{broker=Broker
                                    ,connection='$1'

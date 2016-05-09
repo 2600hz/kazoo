@@ -59,19 +59,19 @@
 
 -spec http_method(api_binary() | list()) -> 'get' | 'post'.
 http_method(L) when is_list(L) ->
-    http_method(kz_util:to_binary(props:get_value('method', L)));
+    http_method(kz_term:to_binary(props:get_value('method', L)));
 http_method('undefined') -> ?DEFAULT_HTTP_METHOD;
 http_method(<<_/binary>> = Method) ->
-    MethodBin = kz_util:to_lower_binary(Method),
+    MethodBin = kz_term:to_lower_binary(Method),
 
-    try kz_util:to_atom(MethodBin) of
+    try kz_term:to_atom(MethodBin) of
         'get' -> 'get';
         'post' -> 'post';
         'undefined' -> ?DEFAULT_HTTP_METHOD
     catch
         _E:_R -> ?DEFAULT_HTTP_METHOD
     end;
-http_method(Method) -> http_method(kz_util:to_binary(Method)).
+http_method(Method) -> http_method(kz_term:to_binary(Method)).
 
 -spec resolve_uri(ne_binary(), ne_binary()) -> ne_binary().
 resolve_uri(Path, NewPath) ->

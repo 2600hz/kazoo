@@ -182,7 +182,7 @@ should_hook(Call) ->
 %%--------------------------------------------------------------------
 -spec is_enabled() -> boolean().
 is_enabled() ->
-    (not kz_util:is_empty(get_hook_url())).
+    (not kz_term:is_empty(get_hook_url())).
 
 %%--------------------------------------------------------------------
 %% @private

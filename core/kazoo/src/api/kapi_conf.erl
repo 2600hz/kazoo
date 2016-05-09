@@ -54,7 +54,7 @@
                                 ]).
 -define(CONF_DOC_UPDATE_TYPES, [{<<"ID">>, fun is_binary/1}
                                 ,{<<"Rev">>, fun is_binary/1}
-                                ,{<<"Is-Soft-Deleted">>, fun kz_util:is_boolean/1}
+                                ,{<<"Is-Soft-Deleted">>, fun kz_term:is_boolean/1}
                                ]).
 
 -define(DOC_TYPE_UPDATE_HEADERS, [<<"Type">>]).
@@ -100,7 +100,7 @@ get_type(API) ->
 
 -spec get_is_soft_deleted(api_terms()) -> boolean().
 get_is_soft_deleted(API) ->
-    kz_util:is_true(get_value(API, <<"Is-Soft-Deleted">>)).
+    kz_term:is_true(get_value(API, <<"Is-Soft-Deleted">>)).
 
 -spec get_value(api_terms(), ne_binary()) -> any().
 get_value(Prop, Key) when is_list(Prop) ->

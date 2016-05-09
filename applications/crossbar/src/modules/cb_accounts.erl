@@ -481,7 +481,7 @@ ensure_account_has_realm(_AccountId, Context) ->
 random_realm() ->
     RealmSuffix = kapps_config:get_binary(?ACCOUNTS_CONFIG_CAT, <<"account_realm_suffix">>, <<"sip.2600hz.com">>),
     Strength = kapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"random_realm_strength">>, 3),
-    list_to_binary([kz_util:rand_hex_binary(Strength), ".", RealmSuffix]).
+    list_to_binary([kz_term:rand_hex_binary(Strength), ".", RealmSuffix]).
 
 -spec remove_spaces(api_binary(), cb_context:context()) -> cb_context:context().
 remove_spaces(_AccountId, Context) ->
@@ -584,7 +584,7 @@ maybe_import_enabled(Context, 'success') ->
 maybe_import_enabled(Context, _JObj, 'undefined') -> Context;
 maybe_import_enabled(Context, JObj, IsEnabled) ->
     JObj1 =
-        case kz_util:is_true(IsEnabled) of
+        case kz_term:is_true(IsEnabled) of
             'true' -> kz_account:enable(JObj);
             'false' -> kz_account:disable(JObj)
         end,
@@ -705,7 +705,7 @@ leak_pvt_superduper_admin(Context) ->
 
 -spec leak_pvt_api_key(cb_context:context()) -> cb_context:context().
 leak_pvt_api_key(Context) ->
-    case kz_util:is_true(cb_context:req_value(Context, <<"include_api_key">>, 'false'))
+    case kz_term:is_true(cb_context:req_value(Context, <<"include_api_key">>, 'false'))
         orelse kapps_config:get_is_true(?ACCOUNTS_CONFIG_CAT, <<"expose_api_key">>, 'false')
     of
         'false' -> Context;
@@ -1130,7 +1130,7 @@ add_pvt_enabled(Context) ->
     case lists:reverse(kz_account:tree(JObj)) of
         [ParentId | _] ->
             ParentDb = kz_util:format_account_id(ParentId, 'encoded'),
-            case (not kz_util:is_empty(ParentId))
+            case (not kz_term:is_empty(ParentId))
                 andalso kz_datamgr:open_doc(ParentDb, ParentId)
             of
                 {'ok', Parent} ->
@@ -1149,7 +1149,7 @@ maybe_add_pvt_api_key(Context) ->
     JObj = cb_context:doc(Context),
     case kz_account:api_key(JObj) of
         'undefined' ->
-            APIKey = kz_util:to_hex_binary(crypto:rand_bytes(32)),
+            APIKey = kz_term:to_hex_binary(crypto:rand_bytes(32)),
             cb_context:set_doc(Context, kz_account:set_api_key(JObj, APIKey));
         _Else -> Context
     end.
@@ -1421,7 +1421,7 @@ replicate_account_definition(JObj) ->
 %%--------------------------------------------------------------------
 -spec is_unique_realm(api_binary(), ne_binary()) -> boolean().
 is_unique_realm(AccountId, Realm) ->
-    ViewOptions = [{'key', kz_util:to_lower_binary(Realm)}],
+    ViewOptions = [{'key', kz_term:to_lower_binary(Realm)}],
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ?AGG_VIEW_REALM, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [JObj]} -> kz_doc:id(JObj) =:= AccountId;
@@ -1503,7 +1503,7 @@ support_depreciated_billing_id(BillingId, AccountId, Context) ->
               <<"billing_id">>
               ,<<"not_found">>
               ,kz_json:from_list(
-                 [{<<"message">>, kz_util:to_binary(Error)}
+                 [{<<"message">>, kz_term:to_binary(Error)}
                   ,{<<"cause">>, AccountId}
                  ])
               ,Reason

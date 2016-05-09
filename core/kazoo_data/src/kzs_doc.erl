@@ -159,7 +159,7 @@ prepare_doc_for_del(Server, DbName, Doc) ->
 -spec prepare_doc_for_save(ne_binary(), kz_json:object()) -> {kz_json:object(), kz_json:object()}.
 -spec prepare_doc_for_save(ne_binary(), kz_json:object(), boolean()) -> {kz_json:object(), kz_json:object()}.
 prepare_doc_for_save(Db, JObj) ->
-    prepare_doc_for_save(Db, JObj, kz_util:is_empty(kz_doc:id(JObj))).
+    prepare_doc_for_save(Db, JObj, kz_term:is_empty(kz_doc:id(JObj))).
 
 prepare_doc_for_save(_Db, JObj, 'true') ->
     prepare_publish(maybe_set_docid(JObj));
@@ -254,7 +254,7 @@ copy_attachments(Src, Dst, CopySpec, {[JObj | JObjs], [Key | Keys]}) ->
     case kzs_attachments:fetch_attachment(Src, SourceDbName, SourceDocId, Key) of
         {'ok', Contents} ->
             ContentType = kz_json:get_value([<<"content_type">>], JObj),
-            Opts = [{'content_type', kz_util:to_list(ContentType)}],
+            Opts = [{'content_type', kz_term:to_list(ContentType)}],
             case kz_datamgr:put_attachment(DestDbName, DestDocId, Key, Contents, Opts) of
                 {'ok', _AttachmentDoc} ->
                     copy_attachments(Src, Dst, CopySpec, {JObjs, Keys});

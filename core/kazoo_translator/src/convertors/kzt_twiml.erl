@@ -18,7 +18,7 @@
 -spec parse_cmds(iolist()) -> {'ok', xml_els()} |
                               {'error', 'not_parsed'}.
 parse_cmds(XMLString) ->
-    try xmerl_scan:string(kz_util:to_list(XMLString)) of
+    try xmerl_scan:string(kz_term:to_list(XMLString)) of
         {#xmlElement{name='Response'}=XML, _} -> {'ok', XML};
         _E ->
             {'error', 'not_parsed'}

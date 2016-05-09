@@ -34,7 +34,7 @@
                            ,{<<"Event-Name">>, <<"pivot_req">>}
                           ]).
 -define(PIVOT_REQ_TYPES, [{<<"Call">>, fun kz_json:is_json_object/1}
-                          ,{<<"Debug">>, fun kz_util:is_boolean/1}
+                          ,{<<"Debug">>, fun kz_term:is_boolean/1}
                          ]).
 
 -define(PIVOT_FAILED_HEADERS, [<<"Call-ID">>]).

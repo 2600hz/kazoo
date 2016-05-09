@@ -50,7 +50,7 @@ check(Account) when is_binary(Account) ->
             lager:warning("unable to open account definition for ~s: ~p", [AccountId, _R])
     end;
 check(Account) ->
-    check(kz_util:to_binary(Account)).
+    check(kz_term:to_binary(Account)).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -134,7 +134,7 @@ handle_info('crawl_accounts', _) ->
     _ = case kz_datamgr:all_docs(?KZ_ACCOUNTS_DB) of
             {'ok', JObjs} ->
                 self() ! 'next_account',
-                {'noreply', kz_util:shuffle_list(JObjs)};
+                {'noreply', kz_term:shuffle_list(JObjs)};
             {'error', _R} ->
                 lager:warning("unable to list all docs in ~s: ~p", [?KZ_ACCOUNTS_DB, _R]),
                 self() ! 'next_account',

@@ -90,7 +90,7 @@ prop_expands() ->
     ?FORALL(Paths
             ,expanded_paths(),
             ?WHENFAIL(io:format("Failed on ~p~n", [Paths])
-                      ,lists:all(fun kz_util:identity/1,
+                      ,lists:all(fun kz_term:identity/1,
                                  [binding_matches(Pattern, Expanded) =:= Expected
                                   || {Pattern, Expanded, Expected} <- Paths
                                  ])

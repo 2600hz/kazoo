@@ -60,8 +60,8 @@ print_matching(Matching) ->
 
 -spec rates_between(ne_binary(), ne_binary()) -> 'ok'.
 rates_between(Pre, Post) ->
-    ViewOpts = [{'startkey', kz_util:to_binary(Pre)}
-                ,{'endkey', kz_util:to_binary(Post)}
+    ViewOpts = [{'startkey', kz_term:to_binary(Pre)}
+                ,{'endkey', kz_term:to_binary(Post)}
                ],
     case kz_datamgr:get_results(?KZ_RATES_DB, <<"rates/lookup">>, ViewOpts) of
         {'ok', []} -> io:format("rate lookup had no results~n");

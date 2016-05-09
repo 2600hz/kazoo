@@ -119,7 +119,7 @@ validate(Context) ->
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, <<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId) ->
-    Ctx = cb_context:set_account_modb(Context, kz_util:to_integer(Year), kz_util:to_integer(Month)),
+    Ctx = cb_context:set_account_modb(Context, kz_term:to_integer(Year), kz_term:to_integer(Month)),
     crossbar_doc:load({<<"call_recording">>, DocId}, Ctx, ?TYPE_CHECK_OPTION(<<"call_recording">>)).
 
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
@@ -160,7 +160,7 @@ get_view_and_filter(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 load_recording_binary(<<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId, Context) ->
-    do_load_recording_binary(DocId, cb_context:set_account_modb(Context, kz_util:to_integer(Year), kz_util:to_integer(Month))).
+    do_load_recording_binary(DocId, cb_context:set_account_modb(Context, kz_term:to_integer(Year), kz_term:to_integer(Month))).
 
 -spec do_load_recording_binary(ne_binary(), cb_context:context()) -> cb_context:context().
 do_load_recording_binary(DocId, Context) ->

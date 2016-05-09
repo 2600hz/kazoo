@@ -80,9 +80,9 @@ reg_who(Srv, P, W) -> gen_server:cast(Srv, {'reg_who', P, W}).
 -spec who(server_ref(), ne_binary() | pid()) -> ne_binary().
 who(Srv, P) ->
     case catch gen_server:call(Srv, {'who', P}) of
-        {'EXIT', _} when is_pid(P) -> kz_util:to_binary(pid_to_list(P));
+        {'EXIT', _} when is_pid(P) -> kz_term:to_binary(pid_to_list(P));
         {'EXIT', _} -> P;
-        'undefined' when is_pid(P) -> kz_util:to_binary(pid_to_list(P));
+        'undefined' when is_pid(P) -> kz_term:to_binary(pid_to_list(P));
         'undefined' -> P;
         W -> W
     end.
@@ -119,7 +119,7 @@ init({'file', Name, PreFilename}=Type) ->
             {'stop', E}
     end;
 init({'db', Database}) ->
-    init({'db', kz_util:rand_hex_binary(4), Database});
+    init({'db', kz_term:rand_hex_binary(4), Database});
 init({'db', Name, Database}=Type) ->
     kz_util:put_callid(Name),
 
@@ -138,7 +138,7 @@ init({'db', Name, Database}=Type) ->
 handle_call('stop', _, State) ->
     {'stop', 'normal', 'ok', State};
 handle_call({'who', P}, _, #state{who_registry=Who}=State) when is_pid(P) ->
-    PBin = kz_util:to_binary(pid_to_list(P)),
+    PBin = kz_term:to_binary(pid_to_list(P)),
     case dict:find(PBin, Who) of
         {'ok', V} -> {'reply', V, State};
         'error' -> {'reply', P, State}
@@ -181,7 +181,7 @@ handle_cast('rotate', #state{type={'db', Name, Database}}=State) ->
     {'noreply', State};
 
 handle_cast({'reg_who', P, W}, #state{who_registry=Who}=State) when is_pid(P) ->
-    PBin = kz_util:to_binary(pid_to_list(P)),
+    PBin = kz_term:to_binary(pid_to_list(P)),
     {'noreply', State#state{who_registry=dict:store(PBin, W, Who)}};
 handle_cast(_Msg, S) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -227,7 +227,7 @@ write_to_db(Database, Name, Str, Args) ->
                         {'ok', file:io_device()} |
                         {'error', any()}.
 start_file(Filename) ->
-    _ = file:rename(Filename, iolist_to_binary([Filename, ".", kz_util:to_binary(kz_util:current_tstamp())])),
+    _ = file:rename(Filename, iolist_to_binary([Filename, ".", kz_term:to_binary(kz_util:current_tstamp())])),
     file:open(Filename, ['append', 'raw', 'delayed_write']).
 
 -spec trunc_database(ne_binary(), ne_binary()) -> 'ok'.
@@ -272,7 +272,7 @@ rotate_db(Database, Name) ->
 
 -spec rotate_db(ne_binary(), ne_binary(), kz_json:objects()) -> {'ok', kz_json:objects()}.
 rotate_db(Database, Name, Docs) ->
-    RotatedName = <<Name/binary, ".", (kz_util:rand_hex_binary(3))/binary>>,
+    RotatedName = <<Name/binary, ".", (kz_term:rand_hex_binary(3))/binary>>,
     Rotated = [rotate_doc(RotatedName, kz_json:get_value(<<"doc">>, Doc)) || Doc <- Docs],
     {'ok', _} = kz_datamgr:save_docs(Database, Rotated).
 

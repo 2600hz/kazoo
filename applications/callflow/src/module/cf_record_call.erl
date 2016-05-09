@@ -28,7 +28,7 @@ handle(Data, Call) ->
     cf_exe:continue(handle(Data, Call, get_action(Data))).
 
 handle(Data, Call, <<"start">>) ->
-    RecID = kz_util:rand_hex_binary(16),
+    RecID = kz_term:rand_hex_binary(16),
     Format = kz_media_recording:get_format(kz_json:get_value(<<"format">>, Data)),
     MediaName = kz_media_recording:get_media_name(RecID, Format),
     Args = kz_json:set_value(?CF_RECORDING_ID_KEY, MediaName, Data),

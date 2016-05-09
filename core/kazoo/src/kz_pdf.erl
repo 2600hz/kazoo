@@ -74,8 +74,8 @@ generate(Account, Props, Template) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     DocType = props:get_first_defined([<<"type">>, <<"pvt_type">>], Props),
 
-    Rand = kz_util:rand_hex_binary(5),
-    Renderer = kz_util:to_atom(<<"kz_pdf_", DocType/binary, "_", Rand/binary>>, 'true'),
+    Rand = kz_term:rand_hex_binary(5),
+    Renderer = kz_term:to_atom(<<"kz_pdf_", DocType/binary, "_", Rand/binary>>, 'true'),
     {'ok', Renderer} = erlydtl:compile_template(Template, Renderer, [{'out_dir', 'false'}]),
     {'ok', Rendered} = Renderer:render(Props),
 
@@ -96,7 +96,7 @@ generate(Account, Props, Template) ->
                        ]
                      ),
     lager:debug("exec ~s", [Cmd]),
-    case os:cmd(kz_util:to_list(Cmd)) of
+    case os:cmd(kz_term:to_list(Cmd)) of
         [] -> file:read_file(PDFFile);
         _R ->
             lager:error("failed to exec ~s: ~s", [Cmd, _R]),

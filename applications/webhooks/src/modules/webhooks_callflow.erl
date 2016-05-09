@@ -13,7 +13,7 @@
 
 -include("webhooks.hrl").
 
--define(ID, kz_util:to_binary(?MODULE)).
+-define(ID, kz_term:to_binary(?MODULE)).
 -define(NAME, <<"callflow">>).
 -define(DESC, <<"Fire a webhook from a callflow">>).
 -define(METADATA

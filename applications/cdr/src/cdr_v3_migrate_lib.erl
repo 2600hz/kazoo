@@ -65,9 +65,9 @@ build_month_date_list(Year, Month, 'ASC', Acc) ->
 
 -spec get_test_account_details(pos_integer()) -> api_binaries().
 get_test_account_details(NumAccounts) ->
-    [{<<"v3migratetest", (kz_util:to_binary(io_lib:format("~3..0B",[X])))/binary>>
-          , <<"v3migratetest",(kz_util:to_binary(io_lib:format("~3..0B", [X])))/binary,".realm.com">>
-          , <<"v3testuser", (kz_util:to_binary(io_lib:format("~3..0B", [X])))/binary, "-user">>
+    [{<<"v3migratetest", (kz_term:to_binary(io_lib:format("~3..0B",[X])))/binary>>
+          , <<"v3migratetest",(kz_term:to_binary(io_lib:format("~3..0B", [X])))/binary,".realm.com">>
+          , <<"v3testuser", (kz_term:to_binary(io_lib:format("~3..0B", [X])))/binary, "-user">>
           , <<"v3password">>
      } || X <- lists:seq(1, NumAccounts)].
 

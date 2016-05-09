@@ -147,7 +147,7 @@ send_probe(JObj, State) ->
     PresenceUpdate =
         [{<<"State">>, State}
          ,{<<"Presence-ID">>, To}
-         ,{<<"Call-ID">>, kz_util:to_hex_binary(crypto:hash(md5, To))}
+         ,{<<"Call-ID">>, kz_term:to_hex_binary(crypto:hash(md5, To))}
          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
     kapi_presence:publish_update(PresenceUpdate).

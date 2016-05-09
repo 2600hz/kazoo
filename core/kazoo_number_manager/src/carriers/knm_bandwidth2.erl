@@ -103,7 +103,7 @@ find_numbers(<<NPA:3/binary>>, Quantity, Options) ->
     {'ok', process_search_response(Result, Options)};
 
 find_numbers(Search, Quantity, Options) ->
-    NpaNxx = kz_util:truncate_right_binary(Search, 6),
+    NpaNxx = kz_term:truncate_right_binary(Search, 6),
     Params = [ "npaNxx=", binary_to_list(NpaNxx)
              , "&enableTNDetail=true&quantity=", integer_to_list(Quantity)
              ],
@@ -142,7 +142,7 @@ acquire_number(Number) ->
             AuthBy = knm_phone_number:auth_by(PhoneNumber),
 
             Props = [{'Name', [ON]}
-                    ,{'CustomerOrderId', [kz_util:to_list(AuthBy)]}
+                    ,{'CustomerOrderId', [kz_term:to_list(AuthBy)]}
                     ,{'SiteId', [?BW2_SITE_ID]}
                     ,{'PeerId', [?BW2_SIP_PEER]}
                     ,{'ExistingTelephoneNumberOrderType',
@@ -153,7 +153,7 @@ acquire_number(Number) ->
 
             case api_post(url(["orders"]), Body) of
                 {'error', Reason} ->
-                    Error = <<"Unable to acquire number: ", (kz_util:to_binary(Reason))/binary>>,
+                    Error = <<"Unable to acquire number: ", (kz_term:to_binary(Reason))/binary>>,
                     knm_errors:by_carrier(?MODULE, Error, Number);
                 {'ok', Xml} ->
                     Response = xmerl_xpath:string("Order", Xml),

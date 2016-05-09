@@ -482,7 +482,7 @@ sync({'sync_resp', JObj}, #state{sync_ref=Ref
                                  ,agent_id=AgentId
                                  ,agent_listener=AgentListener
                                 }=State) ->
-    case catch kz_util:to_atom(kz_json:get_value(<<"Status">>, JObj)) of
+    case catch kz_term:to_atom(kz_json:get_value(<<"Status">>, JObj)) of
         'sync' ->
             lager:debug("other agent is in sync too"),
             {'next_state', 'sync', State};
@@ -1433,7 +1433,7 @@ current_call(Call, AgentState, QueueId, Start) ->
                        ,{<<"caller_id_number">>, kapps_call:caller_id_name(Call)}
                        ,{<<"to">>, kapps_call:to_user(Call)}
                        ,{<<"from">>, kapps_call:from_user(Call)}
-                       ,{<<"agent_state">>, kz_util:to_binary(AgentState)}
+                       ,{<<"agent_state">>, kz_term:to_binary(AgentState)}
                        ,{<<"duration">>, elapsed(Start)}
                        ,{<<"queue_id">>, QueueId}
                       ]).
@@ -1660,7 +1660,7 @@ maybe_notify(Ns, Key, State) ->
 get_method(Ns) ->
     case kz_json:get_value(<<"method">>, Ns) of
         'undefined' -> 'get';
-        M -> standardize_method(kz_util:to_lower_binary(M))
+        M -> standardize_method(kz_term:to_lower_binary(M))
     end.
 
 -spec standardize_method(ne_binary()) -> 'get' | 'post'.
@@ -1705,7 +1705,7 @@ notify(Uri, Headers, Method, Body, Opts) ->
                ,{'timeout', 1000}
                | Opts
               ],
-    URI = kz_util:to_list(Uri),
+    URI = kz_term:to_list(Uri),
     case kz_http:req(Method, URI, Headers, Body, Options) of
         {'ok', _Status, _ResponseHeaders, _ResponseBody} ->
             lager:debug("~s req to ~s: ~p", [Method, Uri, _Status]);

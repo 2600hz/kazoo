@@ -106,8 +106,8 @@
 -define(DISCOVERY_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                ,{<<"Event-Name">>, <<"discovery_req">>}
                               ]).
--define(DISCOVERY_REQ_TYPES, [{<<"Moderator">>, fun kz_util:is_boolean/1}
-                              ,{<<"Play-Welcome">>, fun kz_util:is_boolean/1}
+-define(DISCOVERY_REQ_TYPES, [{<<"Moderator">>, fun kz_term:is_boolean/1}
+                              ,{<<"Play-Welcome">>, fun kz_term:is_boolean/1}
                              ]).
 
 %% Conference Discovery Request
@@ -363,7 +363,7 @@
 -define(CONF_PLAY_MACRO_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
                                    ]).
 
-focus_queue_name(Focus) -> <<(kz_util:to_binary(Focus))/binary, "_conference">>.
+focus_queue_name(Focus) -> <<(kz_term:to_binary(Focus))/binary, "_conference">>.
 
 %%--------------------------------------------------------------------
 %% @doc Create a tone on the channel - see wiki

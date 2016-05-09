@@ -175,7 +175,7 @@ validate_search(Context, _Type, _Query, 'undefined') ->
 validate_search(Context, Type, Query, <<_/binary>> = Value) ->
     search(Context, Type, Query, Value);
 validate_search(Context, Type, Query, Value) ->
-    case kz_util:is_true(Value) of
+    case kz_term:is_true(Value) of
         'true' -> validate_search(Context, Type, Query, <<>>);
         'false' -> validate_search(Context, Type, Query, 'undefined')
     end.

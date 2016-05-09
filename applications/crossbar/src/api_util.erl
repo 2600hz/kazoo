@@ -109,7 +109,7 @@ add_cors_headers(Req0, Context) ->
     {ReqMethod, Req1} = cowboy_req:header(<<"access-control-request-method">>, Req0),
 
     Methods = [?HTTP_OPTIONS | cb_context:allow_methods(Context)],
-    Allow = case kz_util:is_empty(ReqMethod)
+    Allow = case kz_term:is_empty(ReqMethod)
                 orelse lists:member(ReqMethod, Methods)
             of
                 'false' -> [ReqMethod|Methods];
@@ -131,10 +131,10 @@ add_cors_headers(Req0, Context) ->
 -spec get_cors_headers(ne_binaries()) -> kz_proplist().
 get_cors_headers(Allow) ->
     [{<<"access-control-allow-origin">>, <<"*">>}
-     ,{<<"access-control-allow-methods">>, kz_util:join_binary(Allow, <<", ">>)}
+     ,{<<"access-control-allow-methods">>, kz_term:join_binary(Allow, <<", ">>)}
      ,{<<"access-control-allow-headers">>, <<"Content-Type, Depth, User-Agent, X-Http-Method-Override, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-control, X-Auth-Token, X-Kazoo-Cluster-ID, If-Match">>}
      ,{<<"access-control-expose-headers">>, <<"Content-Type, X-Auth-Token, X-Request-ID, X-Kazoo-Cluster-ID, Location, Etag, ETag">>}
-     ,{<<"access-control-max-age">>, kz_util:to_binary(?SECONDS_IN_DAY)}
+     ,{<<"access-control-max-age">>, kz_term:to_binary(?SECONDS_IN_DAY)}
     ].
 
 -spec get_req_data(cb_context:context(), cowboy_req:req()) ->
@@ -374,7 +374,7 @@ extract_file_body(Context, ContentType, Req0) ->
                                           halt_return().
 handle_max_filesize_exceeded(Context, Req1) ->
     Maximum = ?MAX_UPLOAD_SIZE,
-    MaxSize = kz_util:to_binary(Maximum),
+    MaxSize = kz_term:to_binary(Maximum),
 
     lager:error("file size exceeded, max is ~p", [Maximum]),
 
@@ -423,7 +423,7 @@ uploaded_filename(Context) ->
 
 -spec default_filename() -> ne_binary().
 default_filename() ->
-    <<"uploaded_file_", (kz_util:to_binary(kz_util:current_tstamp()))/binary>>.
+    <<"uploaded_file_", (kz_term:to_binary(kz_util:current_tstamp()))/binary>>.
 
 -spec decode_base64(cb_context:context(), ne_binary(), cowboy_req:req()) ->
                            {cb_context:context(), cowboy_req:req()} |
@@ -510,7 +510,7 @@ decode_json_body(ReqBody, Req) ->
     catch
         'throw':{'invalid_json',{'error',{ErrLine, ErrMsg}}, _JSON} ->
             lager:debug("failed to decode json near ~p: ~s", [ErrLine, ErrMsg]),
-            {{'malformed', <<(kz_util:to_binary(ErrMsg))/binary, " around ", (kz_util:to_binary(ErrLine))/binary>>}, Req};
+            {{'malformed', <<(kz_term:to_binary(ErrMsg))/binary, " around ", (kz_term:to_binary(ErrLine))/binary>>}, Req};
         _E:_R ->
             lager:debug("unknown catch from json decode ~p : ~p", [_E, _R]),
             throw(_R)
@@ -560,7 +560,7 @@ get_http_verb(Method, Context) ->
         'undefined' -> Method;
         Verb ->
             lager:debug("found verb ~s on request, using instead of ~s", [Verb, Method]),
-            kz_util:to_upper_binary(Verb)
+            kz_term:to_upper_binary(Verb)
     end.
 
 %%--------------------------------------------------------------------
@@ -601,7 +601,7 @@ parse_path_tokens(Context, [Mod|T], Events) ->
 
 -spec is_cb_module(cb_context:context(), ne_binary()) -> boolean().
 is_cb_module(Context, Elem) ->
-    try (kz_util:to_atom(<<"cb_", Elem/binary>>)):module_info('exports') of
+    try (kz_term:to_atom(<<"cb_", Elem/binary>>)):module_info('exports') of
         _ -> 'true'
     catch
         'error':'badarg' -> 'false'; %% atom didn't exist already
@@ -615,7 +615,7 @@ is_cb_module_version(Context, Elem) ->
         'true'  ->
             ApiVersion = cb_context:api_version(Context),
             ModuleName = <<"cb_", Elem/binary, "_", ApiVersion/binary>>,
-            try (kz_util:to_atom(ModuleName)):module_info('exports') of
+            try (kz_term:to_atom(ModuleName)):module_info('exports') of
                 _ -> 'true'
             catch
                 'error':'badarg' -> 'false'; %% atom didn't exist already
@@ -658,14 +658,14 @@ allow_methods_fold(Response, Acc) ->
 
 -spec uppercase_all(ne_binaries() | atoms()) -> ne_binaries().
 uppercase_all(L) when is_list(L) ->
-    [kz_util:to_upper_binary(kz_util:to_binary(I)) || I <- L].
+    [kz_term:to_upper_binary(kz_term:to_binary(I)) || I <- L].
 
 %% insert 'POST' if Verb is in Allowed; otherwise remove 'POST'.
 -spec maybe_add_post_method(ne_binary(), http_method(), http_methods()) -> http_methods().
 maybe_add_post_method(?HTTP_POST, ?HTTP_POST, Allowed) ->
     Allowed;
 maybe_add_post_method(Verb, ?HTTP_POST, Allowed) ->
-    BigVerb = kz_util:to_upper_binary(Verb),
+    BigVerb = kz_term:to_upper_binary(Verb),
     case lists:member(BigVerb, Allowed) of
         'true' -> [?HTTP_POST | Allowed];
         'false' -> lists:delete(?HTTP_POST, Allowed)
@@ -1041,7 +1041,7 @@ execute_request(Req, Context) ->
 
 execute_request(Req, Context, Mod, Params, Verb) ->
     Event = create_event_name(Context, [<<"execute">>
-                                        ,kz_util:to_lower_binary(Verb)
+                                        ,kz_term:to_lower_binary(Verb)
                                         ,Mod
                                        ]),
     Payload = [Context | Params],
@@ -1137,7 +1137,7 @@ create_resp_content(Req0, Context) ->
 create_push_response(Req0, Context) ->
     {Content, Req1} = create_resp_content(Req0, Context),
     Req2 = set_resp_headers(Req1, Context),
-    lager:debug("push response content: ~s", [kz_util:to_binary(Content)]),
+    lager:debug("push response content: ~s", [kz_term:to_binary(Content)]),
     {succeeded(Context), cowboy_req:set_resp_body(Content, Req2), Context}.
 
 %%--------------------------------------------------------------------
@@ -1152,7 +1152,7 @@ create_push_response(Req0, Context) ->
                                   halt_return().
 create_pull_response(Req0, Context) ->
     {Content, Req1} = create_resp_content(Req0, Context),
-    lager:debug("pull response content: ~s", [kz_util:to_binary(Content)]),
+    lager:debug("pull response content: ~s", [kz_term:to_binary(Content)]),
     Req2 = set_resp_headers(Req1, Context),
     case succeeded(Context) of
         'false' -> ?MODULE:halt(Req2, Context);
@@ -1176,16 +1176,16 @@ do_create_resp_envelope(Context) ->
                    [{<<"auth_token">>, cb_context:auth_token(Context)}
                     ,{<<"status">>, <<"success">>}
                     ,{<<"request_id">>, cb_context:req_id(Context)}
-                    ,{<<"revision">>, kz_util:to_binary(cb_context:resp_etag(Context))}
+                    ,{<<"revision">>, kz_term:to_binary(cb_context:resp_etag(Context))}
                     ,{<<"data">>, RespData}
                    ];
                {'error', {ErrorCode, ErrorMsg, RespData}} ->
                    lager:debug("generating error ~b ~s response", [ErrorCode, ErrorMsg]),
-                   [{<<"auth_token">>, kz_util:to_binary(cb_context:auth_token(Context))}
+                   [{<<"auth_token">>, kz_term:to_binary(cb_context:auth_token(Context))}
                     ,{<<"request_id">>, cb_context:req_id(Context)}
                     ,{<<"status">>, <<"error">>}
                     ,{<<"message">>, ErrorMsg}
-                    ,{<<"error">>, kz_util:to_binary(ErrorCode)}
+                    ,{<<"error">>, kz_term:to_binary(ErrorCode)}
                     ,{<<"data">>, RespData}
                    ]
            end,
@@ -1217,7 +1217,7 @@ set_resp_headers(Req0, Context) ->
 fix_header(<<"Location">> = H, Path, Req) ->
     {H, crossbar_util:get_path(Req, Path)};
 fix_header(H, V, _) ->
-    {kz_util:to_binary(H), kz_util:to_binary(V)}.
+    {kz_term:to_binary(H), kz_term:to_binary(V)}.
 
 -spec halt(cowboy_req:req(), cb_context:context()) ->
                   halt_return().
@@ -1240,7 +1240,7 @@ halt(Req0, Context) ->
 
 -spec create_event_name(cb_context:context(), ne_binary() | ne_binaries()) -> ne_binary().
 create_event_name(Context, Segments) when is_list(Segments) ->
-    create_event_name(Context, kz_util:join_binary(Segments, <<".">>));
+    create_event_name(Context, kz_term:join_binary(Segments, <<".">>));
 create_event_name(Context, Name) ->
     ApiVersion = cb_context:api_version(Context),
     <<ApiVersion/binary, "_resource.", Name/binary>>.

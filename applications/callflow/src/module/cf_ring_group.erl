@@ -163,7 +163,7 @@ resolve_endpoint_ids([Member|Members], EndpointIds, Data, Call) ->
     Id = kz_doc:id(Member),
     Type = kz_json:get_value(<<"endpoint_type">>, Member, <<"device">>),
     Weight = group_weight(Member, 20),
-    case kz_util:is_empty(Id)
+    case kz_term:is_empty(Id)
         orelse lists:keymember(Id, 2, EndpointIds)
         orelse Type
     of

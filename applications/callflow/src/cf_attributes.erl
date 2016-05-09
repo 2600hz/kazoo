@@ -141,7 +141,7 @@ maybe_normalize_cid(Number, 'undefined', Validate, Attribute, Call) ->
     lager:debug("replacing empty caller id name with SIP caller id name ~s", [Name]),
     maybe_normalize_cid(Number, Name, Validate, Attribute, Call);
 maybe_normalize_cid(Number, Name, Validate, Attribute, Call) ->
-    maybe_prefix_cid_number(kz_util:to_binary(Number), Name, Validate, Attribute, Call).
+    maybe_prefix_cid_number(kz_term:to_binary(Number), Name, Validate, Attribute, Call).
 
 -spec maybe_prefix_cid_number(ne_binary(), ne_binary(), boolean(), ne_binary(), kapps_call:call()) ->
                                      {api_binary(), api_binary()}.
@@ -150,7 +150,7 @@ maybe_prefix_cid_number(Number, Name, Validate, Attribute, Call) ->
         'undefined' -> maybe_prefix_cid_name(Number, Name, Validate, Attribute, Call);
         Prefix ->
             lager:debug("prepending caller id number with ~s", [Prefix]),
-            Prefixed = <<(kz_util:to_binary(Prefix))/binary, Number/binary>>,
+            Prefixed = <<(kz_term:to_binary(Prefix))/binary, Number/binary>>,
             maybe_prefix_cid_name(Prefixed, Name, Validate, Attribute, Call)
     end.
 
@@ -161,7 +161,7 @@ maybe_prefix_cid_name(Number, Name, Validate, Attribute, Call) ->
         'undefined' -> maybe_rewrite_cid_number(Number, Name, Validate, Attribute, Call);
         Prefix ->
             lager:debug("prepending caller id name with ~s", [Prefix]),
-            Prefixed = <<(kz_util:to_binary(Prefix))/binary, Name/binary>>,
+            Prefixed = <<(kz_term:to_binary(Prefix))/binary, Name/binary>>,
             maybe_rewrite_cid_number(Number, Prefixed, Validate, Attribute, Call)
     end.
 
@@ -204,7 +204,7 @@ maybe_ensure_cid_valid(Number, Name, _, Attribute, Call) ->
 -spec maybe_cid_privacy(api_binary(), api_binary(), kapps_call:call()) ->
                                {api_binary(), api_binary()}.
 maybe_cid_privacy(Number, Name, Call) ->
-    case kz_util:is_true(kapps_call:kvs_fetch('cf_privacy', Call))
+    case kz_term:is_true(kapps_call:kvs_fetch('cf_privacy', Call))
         orelse ?CALLER_PRIVACY(kapps_call:custom_channel_vars(Call))
     of
         'true' ->
@@ -464,7 +464,7 @@ presence_id(Endpoint, Call) ->
 -spec presence_id(kz_json:object(), kapps_call:call(), Default) -> ne_binary() | Default.
 presence_id(Endpoint, Call, Default) ->
     PresenceId = kz_device:presence_id(Endpoint, Default),
-    case kz_util:is_empty(PresenceId) of
+    case kz_term:is_empty(PresenceId) of
         'true' -> Default;
         'false' -> maybe_fix_presence_id_realm(PresenceId, Endpoint, Call)
     end.

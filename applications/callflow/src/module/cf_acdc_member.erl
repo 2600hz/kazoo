@@ -75,7 +75,7 @@ lookup_priority(Data, Call) ->
     FromCall = kapps_call:custom_channel_var(<<"Call-Priority">>, Call),
     case {FromData, FromCall} of
         {FromData, _} when is_integer(FromData) -> FromData;
-        {_, FromCall} when is_binary(FromCall) -> kz_util:to_integer(FromCall);
+        {_, FromCall} when is_binary(FromCall) -> kz_term:to_integer(FromCall);
         _ -> 'undefined'
     end.
 

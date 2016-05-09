@@ -136,7 +136,7 @@ put(Context) ->
 maybe_authenticate_user(Context) ->
     LoginURL = crossbar_util:get_path(?SSO_URL, <<"login">>),
 
-    case kz_http:post(kz_util:to_list(LoginURL)
+    case kz_http:post(kz_term:to_list(LoginURL)
                       ,[{"Content-Type","application/json"}]
                       ,kz_json:encode(login_req(Context))
                      )

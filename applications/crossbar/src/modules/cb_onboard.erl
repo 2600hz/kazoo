@@ -136,7 +136,7 @@ create_extensions([Exten|Extens], Iteration, Context, {PassAcc, FailAcc}) ->
         'true' ->
             create_extensions(Extens, Iteration + 1, Context, {[P|PassAcc], FailAcc});
         'false' ->
-            Failures = kz_json:set_value([<<"extensions">>, kz_util:to_binary(Iteration)], F, FailAcc),
+            Failures = kz_json:set_value([<<"extensions">>, kz_term:to_binary(Iteration)], F, FailAcc),
             create_extensions(Extens, Iteration + 1, Context, {[P|PassAcc], Failures})
     end.
 
@@ -262,7 +262,7 @@ create_user(JObj, Iteration, Context, {Pass, Fail}) ->
                   ,fun(J) ->
                            case kz_json:get_ne_value(<<"last_name">>, J) of
                                'undefined' ->
-                                   kz_json:set_value(<<"last_name">>, kz_util:to_binary(Iteration), J);
+                                   kz_json:set_value(<<"last_name">>, kz_term:to_binary(Iteration), J);
                                _ -> J
                            end
                    end
@@ -311,7 +311,7 @@ create_device(JObj, Iteration, Context, {Pass, Fail}) ->
                                'undefined' ->
                                    User = get_context_jobj(<<"users">>, Pass),
                                    FirstName = kz_json:get_value(<<"first_name">>, User, <<"User">>),
-                                   LastName = kz_json:get_value(<<"last_name">>, User, kz_util:to_binary(Iteration)),
+                                   LastName = kz_json:get_value(<<"last_name">>, User, kz_term:to_binary(Iteration)),
                                    Name = list_to_binary([FirstName, " ", LastName, "'s Device"]),
                                    kz_json:set_value(<<"name">>, Name, J);
                                _ ->
@@ -322,7 +322,7 @@ create_device(JObj, Iteration, Context, {Pass, Fail}) ->
                            case kz_device:sip_username(J) of
                                'undefined' ->
                                    Strength = kapps_config:get_integer(?OB_CONFIG_CAT, <<"device_username_strength">>, 3),
-                                   kz_device:set_sip_username(J, list_to_binary(["user_", kz_util:rand_hex_binary(Strength)]));
+                                   kz_device:set_sip_username(J, list_to_binary(["user_", kz_term:rand_hex_binary(Strength)]));
                                _ ->
                                    J
                            end
@@ -331,7 +331,7 @@ create_device(JObj, Iteration, Context, {Pass, Fail}) ->
                            case kz_device:sip_password(J) of
                                'undefined' ->
                                    Strength = kapps_config:get_integer(?OB_CONFIG_CAT, <<"device_pwd_strength">>, 6),
-                                   kz_device:set_sip_password(J, kz_util:rand_hex_binary(Strength));
+                                   kz_device:set_sip_password(J, kz_term:rand_hex_binary(Strength));
                                _ ->
                                    J
                            end
@@ -369,7 +369,7 @@ create_vmbox(JObj, Iteration, Context, {Pass, Fail}) ->
                            case kz_json:get_ne_value(<<"mailbox">>, J) of
                                'undefined' ->
                                    StartExten = kapps_config:get_integer(?OB_CONFIG_CAT, <<"default_vm_start_exten">>, 3 * ?MILLISECONDS_IN_SECOND),
-                                   kz_json:set_value(<<"mailbox">>, kz_util:to_binary(StartExten + Iteration), J);
+                                   kz_json:set_value(<<"mailbox">>, kz_term:to_binary(StartExten + Iteration), J);
                                _ ->
                                    J
                            end
@@ -379,7 +379,7 @@ create_vmbox(JObj, Iteration, Context, {Pass, Fail}) ->
                                'undefined' ->
                                    User = get_context_jobj(<<"users">>, Pass),
                                    FirstName = kz_json:get_value(<<"first_name">>, User, <<"User">>),
-                                   LastName = kz_json:get_value(<<"last_name">>, User, kz_util:to_binary(Iteration)),
+                                   LastName = kz_json:get_value(<<"last_name">>, User, kz_term:to_binary(Iteration)),
                                    Name = list_to_binary([FirstName, " ", LastName, "'s Voicemail"]),
                                    kz_json:set_value(<<"name">>, Name, J);
                                _ ->
@@ -411,7 +411,7 @@ create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
                           User = get_context_jobj(<<"users">>, Pass),
                           VMBox = get_context_jobj(<<"vmboxes">>, Pass),
                           DefaultFlow = kapps_config:get_string(?OB_CONFIG_CAT, <<"default_extension_callflow">>
-                                                                     ,kz_util:to_binary(?DEFAULT_FLOW)),
+                                                                     ,kz_term:to_binary(?DEFAULT_FLOW)),
                           Flow = kz_json:decode(io_lib:format(DefaultFlow, [kz_doc:id(User)
                                                                             ,kz_doc:id(VMBox)
                                                                            ])),
@@ -420,13 +420,13 @@ create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
                   ,fun(J) -> kz_doc:set_id(J, kz_datamgr:get_uuid()) end
                   ,fun(J) ->
                            case [Num || Num <- kz_json:get_ne_value(<<"numbers">>, J, [])
-                                            , not kz_util:is_empty(Num)]
+                                            , not kz_term:is_empty(Num)]
                            of
                                [] ->
                                    StartExten = kapps_config:get_integer(?OB_CONFIG_CAT
                                                                           ,<<"default_callflow_start_exten">>
                                                                               ,2 * ?MILLISECONDS_IN_SECOND),
-                                   kz_json:set_value(<<"numbers">>, [kz_util:to_binary(StartExten + Iteration)], J);
+                                   kz_json:set_value(<<"numbers">>, [kz_term:to_binary(StartExten + Iteration)], J);
                                Numbers -> kz_json:set_value(<<"numbers">>, Numbers, J)
                            end
                    end
@@ -536,7 +536,7 @@ populate_new_account([{Event, Context}|Props], AccountDb, Results) ->
             end;
         {'error', {_, _, Errors}} ->
             populate_new_account(Props, AccountDb
-                                 ,kz_json:set_value([<<"errors">>, Event, kz_util:to_binary(Iteration)], Errors, Results))
+                                 ,kz_json:set_value([<<"errors">>, Event, kz_term:to_binary(Iteration)], Errors, Results))
     end.
 
 prepare_props(Props) ->
@@ -575,7 +575,7 @@ create_response(Context) ->
                      ,{<<"owner_id">>, kz_json:get_value(<<"owner_id">>, JObj)}
                      ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
                      ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-                     ,{<<"method">>, kz_util:to_binary(?MODULE)}
+                     ,{<<"method">>, kz_term:to_binary(?MODULE)}
                     ],
             case kz_datamgr:save_doc(?KZ_TOKEN_DB, kz_json:from_list(Token)) of
                 {'ok', Doc} ->
@@ -611,10 +611,10 @@ notfy_new_account(JObj) ->
 -spec generate_username(api_binary(), api_binary(), api_binary()) ->
                                ne_binary().
 generate_username('undefined', 'undefined', _) ->
-    kz_util:rand_hex_binary(3);
+    kz_term:rand_hex_binary(3);
 generate_username('undefined', _, 'undefined') ->
-    kz_util:rand_hex_binary(3);
+    kz_term:rand_hex_binary(3);
 generate_username('undefined', <<FirstLetter:1/binary, _/binary>>, LastName) ->
-    <<FirstLetter/binary, (kz_util:to_binary(LastName))/binary>>;
+    <<FirstLetter/binary, (kz_term:to_binary(LastName))/binary>>;
 generate_username(Email, _, _) ->
     Email.

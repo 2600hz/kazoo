@@ -957,7 +957,7 @@ create_auth_token(Context, AuthModule, JObj) ->
                ,{<<"as">>, kz_json:get_value(<<"as">>, Data)}
                ,{<<"api_key">>, kz_json:get_value(<<"api_key">>, Data)}
                ,{<<"restrictions">>, get_token_restrictions(AuthModule, AccountId, OwnerId)}
-               ,{<<"method">>, kz_util:to_binary(AuthModule)}
+               ,{<<"method">>, kz_term:to_binary(AuthModule)}
               ]),
     JObjToken = kz_doc:update_pvt_parameters(kz_json:from_list(Token)
                                              ,kz_util:format_account_id(AccountId, 'encoded')
@@ -1022,7 +1022,7 @@ get_account_token_restrictions(AccountId, AuthModule) ->
         {'error', _} -> 'undefined';
         {'ok', RestrictionsDoc} ->
             kz_json:get_first_defined(
-              [[<<"restrictions">>, kz_util:to_binary(AuthModule)]
+              [[<<"restrictions">>, kz_term:to_binary(AuthModule)]
                ,[<<"restrictions">>, ?CATCH_ALL]
               ]
               ,RestrictionsDoc
@@ -1352,7 +1352,7 @@ maybe_validate_quickcall(Context) ->
 maybe_validate_quickcall(Context, 'success') ->
     AllowAnon = kz_json:get_value(<<"allow_anonymous_quickcalls">>, cb_context:doc(Context)),
 
-    case kz_util:is_true(AllowAnon)
+    case kz_term:is_true(AllowAnon)
         orelse cb_context:is_authenticated(Context)
         orelse
         (AllowAnon =:= 'undefined'

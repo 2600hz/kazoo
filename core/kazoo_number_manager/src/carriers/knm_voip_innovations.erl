@@ -192,8 +192,8 @@ to_json('find_numbers', Quantity, {'ok', Xml}) ->
          [{<<"e164">>, knm_converters:normalize(kz_util:get_xml_value("//tn/text()", DID))}
           ,{<<"rate_center">>, kz_util:get_xml_value("//rateCenter/text()", DID)}
           ,{<<"state">>, kz_util:get_xml_value("//state/text()", DID)}
-          ,{<<"cnam">>, kz_util:is_true(kz_util:get_xml_value("//outboundCNAM/text()", DID))}
-          ,{<<"t38">>, kz_util:is_true(kz_util:get_xml_value("//t38/text()", DID))}
+          ,{<<"cnam">>, kz_term:is_true(kz_util:get_xml_value("//outboundCNAM/text()", DID))}
+          ,{<<"t38">>, kz_term:is_true(kz_util:get_xml_value("//t38/text()", DID))}
          ])
        || DID=#xmlElement{} <- lists:sublist(DIDs, Quantity)
      ]

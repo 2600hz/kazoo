@@ -200,9 +200,9 @@ create_fake_token(Context) ->
 
 create_fake_token(Context, JObj) ->
     AccountId = kz_json:get_value([<<"value">>, <<"account_id">>], JObj),
-    AuthToken = kz_util:rand_hex_binary(12),
+    AuthToken = kz_term:rand_hex_binary(12),
     Token = [{<<"account_id">>, AccountId}
-             ,{<<"method">>, kz_util:to_binary(?MODULE)}
+             ,{<<"method">>, kz_term:to_binary(?MODULE)}
              ,{<<"_id">>, AuthToken}
             ],
     crossbar_util:response(crossbar_util:response_auth(JObj)

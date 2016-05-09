@@ -37,8 +37,8 @@ init() ->
 
 %%     <<"outbound">> = CallDirection, %% b-leg only, though not the greatest way of determining this
 
-%%     Timestamp = kz_util:to_integer(kz_json:get_value(<<"Timestamp">>, JObj, kz_util:current_tstamp())),
-%%     BillingSec = kz_util:to_integer(kz_json:get_value(<<"Billing-Seconds">>, JObj, 0)),
+%%     Timestamp = kz_term:to_integer(kz_json:get_value(<<"Timestamp">>, JObj, kz_util:current_tstamp())),
+%%     BillingSec = kz_term:to_integer(kz_json:get_value(<<"Billing-Seconds">>, JObj, 0)),
 
 %%     DateTime = now_to_datetime(Timestamp - BillingSec),
 
@@ -53,7 +53,7 @@ init() ->
 %%                                  ,'OriginatingNumber'=FromE164
 %%                                  ,'DestinationNumber'=ToE164
 %%                                  ,'StartTime'=DateTime
-%%                                  ,'Duration'=kz_util:to_binary(BillingSec)
+%%                                  ,'Duration'=kz_term:to_binary(BillingSec)
 %%                                  ,'UniqueID'=CallID
 %%                                  ,'CallType'=?DTH_CALL_TYPE_OTHER},
 %%     WsdlModel = props:get_value(wsdl, Props),
@@ -70,8 +70,8 @@ handle_req(JObj, Props) ->
 
     <<"outbound">> = CallDirection, %% b-leg only, though not the greatest way of determining this
 
-    Timestamp = kz_util:to_integer(kz_json:get_value(<<"Timestamp">>, JObj, kz_util:current_tstamp())),
-    BillingSec = kz_util:to_integer(kz_json:get_value(<<"Billing-Seconds">>, JObj, 0)),
+    Timestamp = kz_term:to_integer(kz_json:get_value(<<"Timestamp">>, JObj, kz_util:current_tstamp())),
+    BillingSec = kz_term:to_integer(kz_json:get_value(<<"Billing-Seconds">>, JObj, 0)),
 
     DateTime = now_to_datetime(Timestamp - BillingSec),
 
@@ -87,7 +87,7 @@ handle_req(JObj, Props) ->
                                            ,FromE164
                                            ,ToE164
                                            ,DateTime
-                                           ,kz_util:to_binary(BillingSec)
+                                           ,kz_term:to_binary(BillingSec)
                                            ,CallID
                                            ,?DTH_CALL_TYPE_OTHER
                                           ])),
@@ -144,7 +144,7 @@ get_from_user(JObj) ->
 
 -spec get_account_code(kz_json:object()) -> ne_binary().
 get_account_code(JObj) ->
-    AccountID = kz_util:truncate_left_binary(
+    AccountID = kz_term:truncate_left_binary(
                     kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj)
                     ,17
                 ),

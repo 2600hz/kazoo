@@ -150,7 +150,7 @@ fire_hook(JObj, #webhook{uri=URI
                         }=Hook) ->
     fire_hook(JObj
               ,Hook
-              ,kz_util:to_list(URI)
+              ,kz_term:to_list(URI)
               ,Method
               ,Retries
              );
@@ -161,7 +161,7 @@ fire_hook(JObj, #webhook{uri=URI
                         }=Hook) ->
     fire_hook(kz_json:merge_jobjs(CustomData, JObj)
               ,Hook
-              ,kz_util:to_list(URI)
+              ,kz_term:to_list(URI)
               ,Method
               ,Retries
              ).
@@ -257,7 +257,7 @@ failed_hook(#webhook{hook_id=HookId
             ,E
            ) ->
     note_failed_attempt(AccountId, HookId),
-    Error = try kz_util:to_binary(E) of
+    Error = try kz_term:to_binary(E) of
                 Bin -> Bin
             catch
                 _E:_R ->
@@ -312,7 +312,7 @@ hook_id(AccountId, Id) ->
 
 -spec hook_event(ne_binary()) -> ne_binary().
 -spec hook_event_lowered(ne_binary()) -> ne_binary().
-hook_event(Bin) -> hook_event_lowered(kz_util:to_lower_binary(Bin)).
+hook_event(Bin) -> hook_event_lowered(kz_term:to_lower_binary(Bin)).
 
 hook_event_lowered(<<"channel_create">>) -> <<"CHANNEL_CREATE">>;
 hook_event_lowered(<<"channel_answer">>) -> <<"CHANNEL_ANSWER">>;
@@ -432,7 +432,7 @@ account_expires_time(AccountId) ->
                                               ,?ATTEMPT_EXPIRY_KEY
                                               ,?MILLISECONDS_IN_MINUTE
                                              ),
-    try kz_util:to_integer(Expiry) of
+    try kz_term:to_integer(Expiry) of
         I -> I
     catch
         _:_ -> ?MILLISECONDS_IN_MINUTE
@@ -473,7 +473,7 @@ enable_hooks(Hooks) ->
             {'ok', Saved} = kz_datamgr:save_docs(?KZ_WEBHOOKS_DB, Reenable),
             _ = webhooks_disabler:flush_hooks(Reenable),
             io:format("re-enabled ~p hooks~nIDs: ", [length(Saved)]),
-            Ids = kz_util:join_binary([kz_doc:id(D) || D <- Saved], <<", ">>),
+            Ids = kz_term:join_binary([kz_doc:id(D) || D <- Saved], <<", ">>),
             io:format("~s~n", [Ids])
     end.
 

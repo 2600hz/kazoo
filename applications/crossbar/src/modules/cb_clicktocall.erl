@@ -444,8 +444,8 @@ build_originate_req(Contact, Context) ->
                 ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
                ],
 
-    MsgId = kz_json:get_value(<<"msg_id">>, JObj, kz_util:rand_hex_binary(16)),
-    CallId = <<(kz_util:rand_hex_binary(18))/binary, "-clicktocall">>,
+    MsgId = kz_json:get_value(<<"msg_id">>, JObj, kz_term:rand_hex_binary(16)),
+    CallId = <<(kz_term:rand_hex_binary(18))/binary, "-clicktocall">>,
     props:filter_undefined(
       [{<<"Application-Name">>, <<"transfer">>}
        ,{<<"Application-Data">>, kz_json:from_list([{<<"Route">>, Caller#contact.route}])}
@@ -482,7 +482,7 @@ get_caller_callee(<<"contact">>, Contact, Extension) -> {Extension, Contact}.
 
 -spec get_ignore_early_media(kz_json:object()) -> boolean().
 get_ignore_early_media(JObj) ->
-    kz_util:is_true(kz_json:get_value([<<"media">>, <<"ignore_early_media">>], JObj, 'true')).
+    kz_term:is_true(kz_json:get_value([<<"media">>, <<"ignore_early_media">>], JObj, 'true')).
 
 -spec is_resp(kz_json:objects() | kz_json:object()) -> boolean().
 is_resp([JObj|_]) -> is_resp(JObj);

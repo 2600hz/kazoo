@@ -20,7 +20,7 @@
 
 -spec open(pid(), binary(), any()) -> cb_return().
 open(Pid, Id, Ipaddr) ->
-    IPBin = kz_util:to_binary(inet_parse:ntoa(Ipaddr)),
+    IPBin = kz_term:to_binary(inet_parse:ntoa(Ipaddr)),
     lager:debug("opening socket (~p) ~p, peer: ~p", [Pid, Id, IPBin]),
 
     Context  = bh_context:new(Pid, Id),
@@ -59,7 +59,7 @@ amqp_send(Context, Data) ->
             {Keys, _} = lists:unzip(Message),
 
             SendMessage = Message ++ [
-                {<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
+                {<<"Msg-ID">>, kz_term:rand_hex_binary(16)}
                 | kz_api:default_headers(<<"qubicle">>, <<"1.0">>)
             ],
 

@@ -163,7 +163,7 @@ distribute_jobs([Job|Jobs]) ->
 
 -spec cleanup_jobs() -> 'ok'.
 cleanup_jobs() ->
-    ViewOptions = [{<<"key">>, kz_util:to_binary(node())}],
+    ViewOptions = [{<<"key">>, kz_term:to_binary(node())}],
     case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/processing_by_node">>, ViewOptions) of
         {'ok', JObjs} ->
             _ = [begin

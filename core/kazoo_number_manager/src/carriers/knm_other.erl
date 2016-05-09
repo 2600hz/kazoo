@@ -210,7 +210,7 @@ format_check_numbers_success(Body) ->
 get_numbers(Url, Number, Quantity, Options) ->
     Offset = props:get_binary_value(<<"offset">>, Options, <<"0">>),
     Country = ?COUNTRY,
-    ReqBody = <<"?prefix=", Number/binary, "&limit=", (kz_util:to_binary(Quantity))/binary, "&offset=", Offset/binary>>,
+    ReqBody = <<"?prefix=", Number/binary, "&limit=", (kz_term:to_binary(Quantity))/binary, "&offset=", Offset/binary>>,
     Uri = <<Url/binary, "/numbers/", Country/binary, "/search", ReqBody/binary>>,
 
     Results = query_for_numbers(Uri),
@@ -286,7 +286,7 @@ get_blocks(Url, Number, Quantity, Props) ->
     Limit = props:get_binary_value(<<"blocks">>, Props, <<"0">>),
     Country = kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
     ReqBody = <<"?prefix=", (kz_util:uri_encode(Number))/binary
-                ,"&size=", (kz_util:to_binary(Quantity))/binary
+                ,"&size=", (kz_term:to_binary(Quantity))/binary
                 ,"&offset=", Offset/binary
                 ,"&limit=", Limit/binary
               >>,

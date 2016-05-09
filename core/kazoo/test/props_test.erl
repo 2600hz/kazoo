@@ -56,7 +56,7 @@ to_querystring_test() ->
              ,{[{<<"url">>, <<"http://user:pass@host:port/">>}], <<"url=http%3A%2F%2Fuser%3Apass%40host%3Aport%2F">>}
             ],
     lists:foreach(fun({Props, QS}) ->
-                          QS1 = kz_util:to_binary(props:to_querystring(Props)),
+                          QS1 = kz_term:to_binary(props:to_querystring(Props)),
                           ?assertEqual(QS, QS1)
                   end, Tests).
 

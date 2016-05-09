@@ -235,11 +235,11 @@ get_quantity(CategoryId, ItemId, ItemPlan, Services) ->
 -spec get_flat_rate(non_neg_integer(), kzd_item_plan:doc()) -> api_float().
 get_flat_rate(Quantity, ItemPlan) ->
     Rates = kzd_item_plan:flat_rates(ItemPlan),
-    L1 = [kz_util:to_integer(K) || K <- kz_json:get_keys(Rates)],
+    L1 = [kz_term:to_integer(K) || K <- kz_json:get_keys(Rates)],
     case lists:dropwhile(fun(K) -> Quantity > K end, lists:sort(L1)) of
         [] -> 'undefined';
         Range ->
-            kz_json:get_float_value(kz_util:to_binary(hd(Range)), Rates)
+            kz_json:get_float_value(kz_term:to_binary(hd(Range)), Rates)
     end.
 
 %%--------------------------------------------------------------------
@@ -252,12 +252,12 @@ get_flat_rate(Quantity, ItemPlan) ->
 -spec get_quantity_rate(non_neg_integer(), kzd_item_plan:doc()) -> api_float().
 get_quantity_rate(Quantity, ItemPlan) ->
     Rates = kzd_item_plan:rates(ItemPlan),
-    L1 = [kz_util:to_integer(K) || K <- kz_json:get_keys(Rates)],
+    L1 = [kz_term:to_integer(K) || K <- kz_json:get_keys(Rates)],
     case lists:dropwhile(fun(K) -> Quantity > K end, lists:sort(L1)) of
         [] ->
             kzd_item_plan:rate(ItemPlan);
         Range ->
-            kz_json:get_float_value(kz_util:to_binary(hd(Range)), Rates)
+            kz_json:get_float_value(kz_term:to_binary(hd(Range)), Rates)
     end.
 
 %%--------------------------------------------------------------------

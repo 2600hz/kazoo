@@ -236,7 +236,7 @@ create_auth_token(Context) ->
                     ,{<<"owner_id">>, OwnerId}
                     ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
                     ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-                    ,{<<"method">>, kz_util:to_binary(?MODULE)}
+                    ,{<<"method">>, kz_term:to_binary(?MODULE)}
                     ],
             case kz_datamgr:save_doc(?KZ_TOKEN_DB, kz_json:from_list(Token)) of
                 {'ok', Doc} ->

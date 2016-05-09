@@ -161,7 +161,7 @@ map_reduce_agent_statuses(AgentId, Statuses) ->
 
 reduce_agent_statuses(_, Data, {T, _}=Acc) ->
     StatT = kz_json:get_value(<<"timestamp">>, Data),
-    try kz_util:to_integer(StatT) of
+    try kz_term:to_integer(StatT) of
         Timestamp when Timestamp > T ->
             {Timestamp, Data};
         _ -> Acc
@@ -361,7 +361,7 @@ build_agent_view_options(AgentId, [_| ReqOptions], ViewOptions) ->
 -spec find_most_recent_fold(integer() | ne_binary(), kz_json:object(), {integer(), kz_json:object()}) ->
                                    {integer(), kz_json:object()}.
 find_most_recent_fold(K, V, {T, _V}=Acc) ->
-    try kz_util:to_integer(K) of
+    try kz_term:to_integer(K) of
         N when N > T ->
             {N, kz_doc:public_fields(V)};
         _ -> Acc

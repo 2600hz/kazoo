@@ -92,7 +92,7 @@ log_current_queues(Agents) ->
 log_current_queue(AgentSup) ->
     AgentL = acdc_agent_sup:listener(AgentSup),
     io:format(" ~35s | ~s~n", [acdc_agent_listener:id(AgentL)
-                               ,kz_util:join_binary(acdc_agent_listener:queues(AgentL))
+                               ,kz_term:join_binary(acdc_agent_listener:queues(AgentL))
                               ]).
 
 current_agents(AccountId) ->
@@ -110,7 +110,7 @@ log_current_agent(QueueSup) ->
     QueueM = acdc_queue_sup:manager(QueueSup),
     {_AccountId, QueueId} = acdc_queue_manager:config(QueueM),
     io:format(" ~35s | ~s~n", [QueueId
-                               ,kz_util:join_binary(acdc_queue_manager:current_agents(QueueM))
+                               ,kz_term:join_binary(acdc_queue_manager:current_agents(QueueM))
                               ]).
 
 current_calls(AccountId) ->
@@ -450,7 +450,7 @@ agent_pause(AcctId, AgentId, Timeout) ->
     Update = props:filter_undefined(
                [{<<"Account-ID">>, AcctId}
                 ,{<<"Agent-ID">>, AgentId}
-                ,{<<"Timeout">>, kz_util:to_integer(Timeout)}
+                ,{<<"Timeout">>, kz_term:to_integer(Timeout)}
                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     kapps_util:amqp_pool_send(Update, fun kapi_acdc_agent:publish_pause/1),

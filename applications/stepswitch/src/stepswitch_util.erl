@@ -34,7 +34,7 @@ get_realm(From) when is_binary(From) ->
     end;
 get_realm(JObj) ->
     AuthRealm = kz_json:get_value(<<"Auth-Realm">>, JObj),
-    case kz_util:is_empty(AuthRealm)
+    case kz_term:is_empty(AuthRealm)
         orelse kz_network_utils:is_ipv4(AuthRealm)
         orelse kz_network_utils:is_ipv6(AuthRealm)
     of
@@ -129,7 +129,7 @@ correct_shortdial(Number, CIDNum) when is_binary(CIDNum) ->
     MinCorrection = kapps_config:get_integer(?SS_CONFIG_CAT, <<"min_shortdial_correction">>, 2),
     case is_binary(CIDNum) andalso (size(CIDNum) - size(Number)) of
         Length when Length =< MaxCorrection, Length >= MinCorrection ->
-            Correction = kz_util:truncate_right_binary(CIDNum, Length),
+            Correction = kz_term:truncate_right_binary(CIDNum, Length),
             CorrectedNumber = knm_converters:normalize(<<Correction/binary, Number/binary>>),
             lager:debug("corrected shortdial ~s via CID ~s to ~s"
                        ,[Number, CIDNum, CorrectedNumber]),

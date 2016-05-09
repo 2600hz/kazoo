@@ -31,7 +31,7 @@ put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
     Url = list_to_binary([BaseUrl, "/", format_url(Fields, JObj, Args)]),
     Headers = [{'content_type', props:get_value('content_type', Options, kz_mime:from_filename(AName))}],
 
-    case kz_http:req(kz_util:to_atom(Verb, 'true'), Url, Headers, Contents) of
+    case kz_http:req(kz_term:to_atom(Verb, 'true'), Url, Headers, Contents) of
         {'ok', Code, _Headers, _Body} when
               is_integer(Code) andalso Code >= 200 andalso Code =< 299 ->
             {'ok', [{'attachment', [{<<"url">>, Url}]}
@@ -55,7 +55,7 @@ fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->
     end.
 
 format_url(Fields, JObj, Args) ->
-    kz_util:join_binary(
+    kz_term:join_binary(
       lists:reverse(
         lists:foldl(fun(F, Acc) -> format_url_field(JObj, Args, F, Acc) end, [], Fields)
         ), <<"/">>).

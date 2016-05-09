@@ -218,7 +218,7 @@ handle_status_stat(JObj, Props) ->
 
 -spec status_stat_id(ne_binary(), pos_integer(), any()) -> ne_binary().
 status_stat_id(AgentId, Timestamp, _EventName) ->
-    <<AgentId/binary, "::", (kz_util:to_binary(Timestamp))/binary>>.
+    <<AgentId/binary, "::", (kz_term:to_binary(Timestamp))/binary>>.
 
 -spec handle_status_query(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_status_query(JObj, _Prop) ->
@@ -270,7 +270,7 @@ status_match_builder_fold(<<"Start-Range">>, Start, {StatusStat, Contstraints}) 
     Now = kz_util:current_tstamp(),
     Past = Now - ?CLEANUP_WINDOW,
 
-    try kz_util:to_integer(Start) of
+    try kz_term:to_integer(Start) of
         N when N < Past ->
             {'error', kz_json:from_list([{<<"Start-Range">>, <<"supplied value is too far in the past">>}
                                          ,{<<"Window-Size">>, ?CLEANUP_WINDOW}
@@ -294,7 +294,7 @@ status_match_builder_fold(<<"End-Range">>, End, {StatusStat, Contstraints}) ->
     Now = kz_util:current_tstamp(),
     Past = Now - ?CLEANUP_WINDOW,
 
-    try kz_util:to_integer(End) of
+    try kz_term:to_integer(End) of
         N when N < Past ->
             {'error', kz_json:from_list([{<<"End-Range">>, <<"supplied value is too far in the past">>}
                                          ,{<<"Window-Size">>, ?CLEANUP_WINDOW}
@@ -350,7 +350,7 @@ trim_query_statuses(A, Statuses, Limit) ->
     {A, Trimmed}.
 
 trim_query_statuses_fold(TBin, Datum, {Ks, Data}=Acc) ->
-    T = kz_util:to_integer(TBin),
+    T = kz_term:to_integer(TBin),
     case lists:min(Ks) of
         N when N < T ->
             {[T | lists:delete(N, Ks)]
@@ -366,7 +366,7 @@ query_status_fold(#status_stat{agent_id=AgentId
                                ,timestamp=T
                               }=Stat, Acc) ->
     Doc = status_stat_to_doc(Stat),
-    kz_json:set_value([AgentId, kz_util:to_binary(T)], Doc, Acc).
+    kz_json:set_value([AgentId, kz_term:to_binary(T)], Doc, Acc).
 
 -spec status_stat_to_doc(status_stat()) -> kz_json:object().
 status_stat_to_doc(#status_stat{id=Id

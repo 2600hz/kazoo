@@ -1119,7 +1119,7 @@ check_number_existence(E164, Number, Context) ->
             cb_context:set_resp_status(Context, 'success');
         {'error', E} ->
             lager:debug("number ~s error-ed when looking up: ~p", [E164, E]),
-            number_validation_error(Context, Number, kz_util:to_binary(E))
+            number_validation_error(Context, Number, kz_term:to_binary(E))
     end.
 
 %%--------------------------------------------------------------------
@@ -1218,7 +1218,7 @@ find_template(ResellerId) ->
 find_template(ResellerId, 'undefined') ->
     find_template(ResellerId);
 find_template(ResellerId, CarrierName) ->
-    TemplateName = <<(kz_util:to_lower_binary(kz_util:uri_encode(CarrierName)))/binary, ".tmpl">>,
+    TemplateName = <<(kz_term:to_lower_binary(kz_util:uri_encode(CarrierName)))/binary, ".tmpl">>,
     lager:debug("looking for carrier template ~s or plain template for reseller ~s"
                 ,[TemplateName, ResellerId]
                ),
@@ -1591,7 +1591,7 @@ create_qr_code(AccountId, PortRequestId) ->
     CHL = <<AccountId/binary, "-", PortRequestId/binary>>,
     Url = <<"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=", CHL/binary, "&choe=UTF-8">>,
 
-    case kz_http:get(kz_util:to_list(Url)) of
+    case kz_http:get(kz_term:to_list(Url)) of
         {'ok', 200, _RespHeaders, RespBody} ->
             lager:debug("generated QR code from ~s: ~s", [Url, RespBody]),
             [{<<"image">>, base64:encode(RespBody)}];

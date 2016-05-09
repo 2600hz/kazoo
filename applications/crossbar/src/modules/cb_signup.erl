@@ -275,7 +275,7 @@ validate_user(User, Context) ->
 -spec create_activation_key() -> ne_binary().
 create_activation_key() ->
     ActivationKey =
-        kz_util:to_hex_binary(crypto:rand_bytes(32)),
+        kz_term:to_hex_binary(crypto:rand_bytes(32)),
     lager:debug("created new activation key ~s", [ActivationKey]),
     ActivationKey.
 
@@ -417,7 +417,7 @@ send_activation_email(Context
     From = case FromTmpl:render(Props) of
                {'ok', F} -> F;
                _ ->
-                   <<"no_reply@", (kz_util:to_binary(net_adm:localhost()))/binary>>
+                   <<"no_reply@", (kz_term:to_binary(net_adm:localhost()))/binary>>
            end,
     Email = {<<"multipart">>, <<"alternative">> %% Content Type / Sub Type
                  ,[ %% Headers
@@ -483,7 +483,7 @@ template_props(Context) ->
     Data = cb_context:req_data(Context),
     RawHost = Context#cb_context.raw_host,
     Port = Context#cb_context.port,
-    ApiHost = list_to_binary(["http://", RawHost, ":", kz_util:to_list(Port), "/"]),
+    ApiHost = list_to_binary(["http://", RawHost, ":", kz_term:to_list(Port), "/"]),
     %% remove the redundant request data
     Req = kz_json:delete_keys([<<"account">>, <<"user">>], Data),
 

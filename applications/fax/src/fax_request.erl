@@ -162,7 +162,7 @@ handle_cast({'fax_status', <<"negociateresult">>, JObj}, State) ->
     Data = kz_json:get_value(<<"Application-Data">>, JObj, kz_json:new()),
     TransferRate = kz_json:get_integer_value(<<"Fax-Transfer-Rate">>, Data, 1),
     lager:debug("fax status - negociate result - ~s : ~p",[State#state.fax_id, TransferRate]),
-    Status = list_to_binary(["fax negotiated at ", kz_util:to_list(TransferRate)]),
+    Status = list_to_binary(["fax negotiated at ", kz_term:to_list(TransferRate)]),
     send_status(State, Status, Data),
     {'noreply', State#state{status=Status
                             ,page=1
@@ -178,7 +178,7 @@ handle_cast({'fax_status', <<"pageresult">>, JObj}
     lager:debug("fax status - page result - ~s : ~p : ~p"
                 ,[JobId, TransferredPages, kz_util:current_tstamp()]
                ),
-    Status = list_to_binary(["Received  Page ", kz_util:to_list(Page)]),
+    Status = list_to_binary(["Received  Page ", kz_term:to_list(Page)]),
     send_status(State, Status, Data),
     {'noreply', State#state{page=TransferredPages
                             ,status=Status
@@ -288,12 +288,12 @@ get_fax_storage(Call) ->
     {Year, Month, _} = erlang:date(),
     AccountMODb = kazoo_modb:get_modb(AccountId, Year, Month),
     FaxDb = kz_util:format_account_modb(AccountMODb, 'encoded'),
-    FaxId = <<(kz_util:to_binary(Year))/binary
+    FaxId = <<(kz_term:to_binary(Year))/binary
               ,(kz_util:pad_month(Month))/binary
               ,"-"
-              ,(kz_util:rand_hex_binary(16))/binary
+              ,(kz_term:rand_hex_binary(16))/binary
             >>,
-    AttachmentId = kz_util:rand_hex_binary(16),
+    AttachmentId = kz_term:rand_hex_binary(16),
     Ext = kapps_config:get_binary(?CONFIG_CAT, <<"default_fax_extension">>, <<".tiff">>),
     FaxAttachmentId = <<AttachmentId/binary, Ext/binary>>,
 
@@ -400,13 +400,13 @@ build_fax_settings(Call, JObj) ->
 
 -spec callee_name(kz_json:object()) -> ne_binary().
 callee_name(JObj) ->
-    kz_util:to_binary(
+    kz_term:to_binary(
       kz_json:get_first_defined([<<"caller_name">>,<<"name">>], JObj)
      ).
 
 -spec overridden_callee_id(kapps_call:call(), kz_json:object()) -> ne_binary().
 overridden_callee_id(Call, JObj) ->
-    kz_util:to_binary(
+    kz_term:to_binary(
       kz_json:get_first_defined([<<"caller_id">>,<<"fax_identity">>], JObj
                                 ,kapps_call:to_user(Call)
                                )
@@ -414,7 +414,7 @@ overridden_callee_id(Call, JObj) ->
 
 -spec overridden_fax_identity(kapps_call:call(), kz_json:object()) -> ne_binary().
 overridden_fax_identity(Call, JObj) ->
-    kz_util:to_binary(
+    kz_term:to_binary(
       kz_json:get_first_defined([<<"fax_identity">>,<<"caller_id">>], JObj
                                 ,kapps_call:to_user(Call)
                                )
@@ -487,13 +487,13 @@ create_fax_doc(JObj, #state{owner_id = OwnerId
                            }) ->
     {{Y,M,D}, {H,I,S}} = calendar:gregorian_seconds_to_datetime(kz_util:current_tstamp()),
     Name = list_to_binary(["fax message received at "
-                           ,kz_util:to_binary(Y), "-", kz_util:to_binary(M), "-", kz_util:to_binary(D)
-                           ," " , kz_util:to_binary(H), ":", kz_util:to_binary(I), ":", kz_util:to_binary(S)
+                           ,kz_term:to_binary(Y), "-", kz_term:to_binary(M), "-", kz_term:to_binary(D)
+                           ," " , kz_term:to_binary(H), ":", kz_term:to_binary(I), ":", kz_term:to_binary(S)
                            ," UTC"
                           ]),
 
     ?MATCH_MODB_PREFIX(Year,Month,_) = FaxDocId,
-    CdrId = <<(kz_util:to_binary(Year))/binary
+    CdrId = <<(kz_term:to_binary(Year))/binary
               ,(kz_util:pad_month(Month))/binary
               ,"-"
               ,(kapps_call:call_id(Call))/binary
@@ -514,7 +514,7 @@ create_fax_doc(JObj, #state{owner_id = OwnerId
                ,{<<"cdr_doc_id">>, CdrId}
                ,{<<"_id">>, FaxDocId}
                ,{<<"rx_result">>, rx_result(JObj)}
-               ,{<<"pvt_job_node">>, kz_util:to_binary(node())}
+               ,{<<"pvt_job_node">>, kz_term:to_binary(node())}
                ,{<<"notifications">>, Notify}
               ]),
 

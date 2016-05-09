@@ -36,7 +36,7 @@ api_version_constraint() ->
 
 -spec api_version_constraint(ne_binary()) -> boolean().
 api_version_constraint(<<"v", ApiVersion/binary>>) ->
-    try kz_util:to_integer(ApiVersion) of
+    try kz_term:to_integer(ApiVersion) of
         _Int -> lager:debug("routing to version ~b", [_Int]), 'true'
     catch
         _:_ -> lager:debug("not routing to version ~s", [ApiVersion]), 'false'
@@ -64,7 +64,7 @@ start_link() ->
 %% @doc Load a crossbar module's bindings into the bindings server
 %%--------------------------------------------------------------------
 -spec start_mod(atom() | string() | binary()) -> any().
-start_mod(CBMod) when not is_atom(CBMod) -> start_mod(kz_util:to_atom(CBMod, 'true'));
+start_mod(CBMod) when not is_atom(CBMod) -> start_mod(kz_term:to_atom(CBMod, 'true'));
 start_mod(CBMod) -> CBMod:init().
 
 %%--------------------------------------------------------------------
@@ -72,7 +72,7 @@ start_mod(CBMod) -> CBMod:init().
 %% @doc Load a crossbar module's bindings into the bindings server
 %%--------------------------------------------------------------------
 -spec stop_mod(atom() | string() | binary()) -> any().
-stop_mod(CBMod) when not is_atom(CBMod) -> stop_mod(kz_util:to_atom(CBMod, 'true'));
+stop_mod(CBMod) when not is_atom(CBMod) -> stop_mod(kz_term:to_atom(CBMod, 'true'));
 stop_mod(CBMod) ->
     crossbar_bindings:flush_mod(CBMod),
     case erlang:function_exported(CBMod, 'stop', 0) of

@@ -76,7 +76,7 @@ get_db(AccountId, _DocId) ->
 
 -spec get_db(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
 get_db(AccountId, Year, Month) ->
-    kazoo_modb:get_modb(AccountId, kz_util:to_integer(Year), kz_util:to_integer(Month)).
+    kazoo_modb:get_modb(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -125,10 +125,10 @@ create_message_doc(AttachmentName, BoxNum, Call, Timezone, Props) ->
     {Year, Month, _} = erlang:date(),
     Db = kazoo_modb:get_modb(kapps_call:account_id(Call), Year, Month),
 
-    MediaId = <<(kz_util:to_binary(Year))/binary
+    MediaId = <<(kz_term:to_binary(Year))/binary
                 ,(kz_util:pad_month(Month))/binary
                 ,"-"
-                ,(kz_util:rand_hex_binary(16))/binary
+                ,(kz_term:rand_hex_binary(16))/binary
               >>,
     Doc = kzd_box_message:new(Db, MediaId, AttachmentName, BoxNum, Timezone, Props),
     {'ok', JObj} = kz_datamgr:save_doc(Db, Doc),
@@ -463,10 +463,10 @@ move_to_modb(AccountId, DocId, JObj, Funs) ->
     FromDb = get_db(AccountId),
     FromId = kz_doc:id(JObj),
     ToDb = kazoo_modb:get_modb(AccountId, Year, Month),
-    ToId = <<(kz_util:to_binary(Year))/binary
+    ToId = <<(kz_term:to_binary(Year))/binary
               ,(kz_util:pad_month(Month))/binary
               ,"-"
-              ,(kz_util:rand_hex_binary(16))/binary
+              ,(kz_term:rand_hex_binary(16))/binary
            >>,
 
     TransformFuns = [fun(DestDoc) -> kzd_box_message:set_metadata(kzd_box_message:metadata(JObj), DestDoc) end
@@ -834,8 +834,8 @@ get_caller_id_name(Call) ->
     CallerIdName = kapps_call:caller_id_name(Call),
     case kapps_call:kvs_fetch('prepend_cid_name', Call) of
         'undefined' -> CallerIdName;
-        Prepend -> Pre = <<(kz_util:to_binary(Prepend))/binary, CallerIdName/binary>>,
-                   kz_util:truncate_right_binary(Pre,
+        Prepend -> Pre = <<(kz_term:to_binary(Prepend))/binary, CallerIdName/binary>>,
+                   kz_term:truncate_right_binary(Pre,
                            kzd_schema_caller_id:external_name_max_length())
     end.
 
@@ -844,8 +844,8 @@ get_caller_id_number(Call) ->
     CallerIdNumber = kapps_call:caller_id_number(Call),
     case kapps_call:kvs_fetch('prepend_cid_number', Call) of
         'undefined' -> CallerIdNumber;
-        Prepend -> Pre = <<(kz_util:to_binary(Prepend))/binary, CallerIdNumber/binary>>,
-                   kz_util:truncate_right_binary(Pre,
+        Prepend -> Pre = <<(kz_term:to_binary(Prepend))/binary, CallerIdNumber/binary>>,
+                   kz_term:truncate_right_binary(Pre,
                            kzd_schema_caller_id:external_name_max_length())
     end.
 

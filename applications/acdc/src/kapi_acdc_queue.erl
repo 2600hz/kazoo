@@ -263,7 +263,7 @@ member_connect_resp_v(JObj) ->
 -define(MEMBER_CONNECT_WIN_VALUES, [{<<"Event-Category">>, <<"member">>}
                                     ,{<<"Event-Name">>, <<"connect_win">>}
                                    ]).
--define(MEMBER_CONNECT_WIN_TYPES, [{<<"Record-Caller">>, fun kz_util:is_boolean/1}]).
+-define(MEMBER_CONNECT_WIN_TYPES, [{<<"Record-Caller">>, fun kz_term:is_boolean/1}]).
 
 -spec member_connect_win(api_terms()) ->
                                 {'ok', iolist()} |

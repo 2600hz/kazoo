@@ -197,9 +197,9 @@ get_consumed_mode(Context) ->
 -spec maybe_req_seconds(cb_context:context(), api_binary()) -> api_seconds().
 maybe_req_seconds(Context, Key) ->
     T = cb_context:req_value(Context, Key),
-    case kz_util:is_empty(T) of
+    case kz_term:is_empty(T) of
         'true' -> 'undefined';
-        'false' -> kz_util:to_integer(T)
+        'false' -> kz_term:to_integer(T)
     end.
 
 -spec on_successful_validation(cb_context:context()) -> cb_context:context().

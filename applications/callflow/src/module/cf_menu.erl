@@ -407,7 +407,7 @@ maybe_delete_attachments(AccountDb, _MediaId, JObj) ->
 %%--------------------------------------------------------------------
 -spec tmp_file() -> ne_binary().
 tmp_file() ->
-     <<(kz_util:to_hex_binary(crypto:rand_bytes(16)))/binary, ".mp3">>.
+     <<(kz_term:to_hex_binary(crypto:rand_bytes(16)))/binary, ".mp3">>.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -543,7 +543,7 @@ get_menu_profile(Data, Call) ->
                               (not kz_json:is_false([<<"media">>, <<"invalid_media">>], JObj))
                           andalso kz_json:get_ne_value([<<"media">>, <<"invalid_media">>], JObj, 'true')
                           ,interdigit_timeout =
-                              kz_util:to_integer(
+                              kz_term:to_integer(
                                 kz_json:find(<<"interdigit_timeout">>
                                              ,[JObj, Data]
                                              ,kapps_call_command:default_interdigit_timeout()

@@ -424,7 +424,7 @@ timestamp_to_braintree(Timestamp) ->
     {{Y, M, D}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
     <<(kz_util:pad_month(M))/binary, "/"
       ,(kz_util:pad_month(D))/binary, "/"
-      ,(kz_util:to_binary(Y))/binary
+      ,(kz_term:to_binary(Y))/binary
     >>.
 
 %%--------------------------------------------------------------------
@@ -439,8 +439,8 @@ utc_to_gregorian_seconds(<<Y:4/binary, "-", M:2/binary, "-", D:2/binary, "T"
                          >>
                         ) ->
     Date = {
-      {kz_util:to_integer(Y), kz_util:to_integer(M), kz_util:to_integer(D)}
-      ,{kz_util:to_integer(H), kz_util:to_integer(Mi), kz_util:to_integer(S)}
+      {kz_term:to_integer(Y), kz_term:to_integer(M), kz_term:to_integer(D)}
+      ,{kz_term:to_integer(H), kz_term:to_integer(Mi), kz_term:to_integer(S)}
      },
     calendar:datetime_to_gregorian_seconds(Date);
 utc_to_gregorian_seconds(UTC) ->
@@ -471,7 +471,7 @@ handle_quick_sale_response(BtTransaction) ->
     Transaction = braintree_transaction:record_to_json(BtTransaction),
     RespCode = kz_json:get_value(<<"processor_response_code">>, Transaction, ?CODE_UNKNOWN),
     %% https://www.braintreepayments.com/docs/ruby/reference/processor_responses
-    kz_util:to_integer(RespCode) < 2000.
+    kz_term:to_integer(RespCode) < 2000.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -486,7 +486,7 @@ already_charged(BillingId, Code) when is_integer(Code) ->
     Transactions = [braintree_transaction:record_to_json(BtTransaction)
                     || BtTransaction <- BtTransactions
                    ],
-    already_charged(kz_util:to_binary(Code), Transactions);
+    already_charged(kz_term:to_binary(Code), Transactions);
 
 already_charged(_, []) ->
     lager:debug("no transactions found matching code or made today"),
@@ -524,7 +524,7 @@ already_charged_transaction(Code , _, Code, Transaction) ->
     >> = kz_json:get_value(<<"created_at">>, Transaction),
     Id = kz_doc:id(Transaction),
     {YearNow, M, D} = erlang:date(),
-    case {kz_util:to_binary(YearNow), kz_util:pad_month(M), kz_util:pad_month(D)} of
+    case {kz_term:to_binary(YearNow), kz_util:pad_month(M), kz_util:pad_month(D)} of
         {Year, Month, Day} ->
             lager:debug("found transaction matching code and date (~s)", [Id]),
             'true';
@@ -549,8 +549,8 @@ handle_single_discount(ServiceItem, Subscription) ->
     SingleDiscount = kz_service_item:single_discount(ServiceItem),
     Rate = kz_service_item:single_discount_rate(ServiceItem),
     case
-        kz_util:is_empty(SingleDiscount)
-        orelse kz_util:is_empty(DiscountId)
+        kz_term:is_empty(SingleDiscount)
+        orelse kz_term:is_empty(DiscountId)
         orelse (not erlang:is_number(Rate))
     of
         'true' -> Subscription;
@@ -573,8 +573,8 @@ handle_cumulative_discounts(ServiceItem, Subscription) ->
     CumulativeDiscount = kz_service_item:cumulative_discount(ServiceItem),
     Rate = kz_service_item:cumulative_discount_rate(ServiceItem),
     case
-        kz_util:is_empty(CumulativeDiscount)
-        orelse kz_util:is_empty(DiscountId)
+        kz_term:is_empty(CumulativeDiscount)
+        orelse kz_term:is_empty(DiscountId)
         orelse (not erlang:is_number(Rate))
     of
         'true' -> Subscription;

@@ -153,10 +153,10 @@
           ,{?KEY_CSHS, fun kz_json:is_json_object/1}
           ,{?KEY_ENABLE_T38_GATEWAY, fun is_binary/1}
           ,{?KEY_FLAGS, fun is_list/1}
-          ,{?KEY_FORCE_FAX, fun kz_util:is_boolean/1}
-          ,{?KEY_FORCE_OUTBOUND, fun kz_util:is_boolean/1}
+          ,{?KEY_FORCE_FAX, fun kz_term:is_boolean/1}
+          ,{?KEY_FORCE_OUTBOUND, fun kz_term:is_boolean/1}
           ,{?KEY_TO_DID, fun is_binary/1}
-          ,{?KEY_BYPASS_E164, fun kz_util:is_boolean/1}
+          ,{?KEY_BYPASS_E164, fun kz_term:is_boolean/1}
          ]).
 
 %% Offnet Resource Response

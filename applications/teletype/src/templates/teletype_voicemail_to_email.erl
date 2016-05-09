@@ -173,8 +173,8 @@ get_file_name(MediaJObj, Macros) ->
              }
         of
             {'undefined', 'undefined'} -> <<"Unknown">>;
-            {'undefined', Num} -> knm_util:pretty_print(kz_util:to_binary(Num));
-            {Name, _} -> knm_util:pretty_print(kz_util:to_binary(Name))
+            {'undefined', Num} -> knm_util:pretty_print(kz_term:to_binary(Num));
+            {Name, _} -> knm_util:pretty_print(kz_term:to_binary(Name))
         end,
 
     LocalDateTime = props:get_value([<<"date_called">>, <<"local">>], Macros),
@@ -183,7 +183,7 @@ get_file_name(MediaJObj, Macros) ->
     FileName = list_to_binary([CallerID, "_", kz_util:pretty_print_datetime(LocalDateTime), ".", Extension]),
 
     kz_http_util:urlencode(
-      binary:replace(kz_util:to_lower_binary(FileName), <<" ">>, <<"_">>)
+      binary:replace(kz_term:to_lower_binary(FileName), <<" ">>, <<"_">>)
      ).
 
 -spec get_extension(kz_json:object()) -> ne_binary().
@@ -265,6 +265,6 @@ pretty_print_length('undefined') -> <<"00:00">>;
 pretty_print_length(Ms) when is_integer(Ms) ->
     Seconds = round(Ms / ?MILLISECONDS_IN_SECOND) rem 60,
     Minutes = trunc(Ms / (?MILLISECONDS_IN_MINUTE)) rem 60,
-    kz_util:to_binary(io_lib:format("~2..0w:~2..0w", [Minutes, Seconds]));
+    kz_term:to_binary(io_lib:format("~2..0w:~2..0w", [Minutes, Seconds]));
 pretty_print_length(JObj) ->
     pretty_print_length(kz_json:get_integer_value(<<"voicemail_length">>, JObj)).

@@ -262,15 +262,15 @@ get_provision_defaults(Context) ->
 
     Url = [kapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_url">>)
            ,"?request=data"
-           ,"&brand=", kz_util:to_list(Brand)
-           ,"&model=", kz_util:to_list(Model)
-           ,"&product=", kz_util:to_list(Product)
+           ,"&brand=", kz_term:to_list(Brand)
+           ,"&model=", kz_term:to_list(Model)
+           ,"&product=", kz_term:to_list(Product)
           ],
     UrlString = lists:flatten(Url),
     Headers = props:filter_undefined(
                 [{"Host", kapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_host">>)}
                  ,{"Referer", kapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_referer">>)}
-                 ,{"User-Agent", kz_util:to_list(erlang:node())}
+                 ,{"User-Agent", kz_term:to_list(erlang:node())}
                 ]),
     lager:debug("attempting to pull provisioning configs from ~s", [UrlString]),
     case kz_http:get(UrlString, Headers) of
@@ -323,7 +323,7 @@ do_simple_provision(MACAddress, Context) ->
             Headers = props:filter_undefined(
                         [{"Host", kapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_host">>)}
                          ,{"Referer", kapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_referer">>)}
-                         ,{"User-Agent", kz_util:to_list(erlang:node())}
+                         ,{"User-Agent", kz_term:to_list(erlang:node())}
                          ,{"Content-Type", "application/x-www-form-urlencoded"}
                         ]),
             Body = [{"device[mac]", MACAddress}
@@ -381,7 +381,7 @@ maybe_send_to_full_provisioner(PartialURL) ->
     case kapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_url">>) of
         'undefined' -> 'false';
         Url ->
-            FullUrl = kz_util:to_lower_string(<<Url/binary, "/", PartialURL/binary>>),
+            FullUrl = kz_term:to_lower_string(<<Url/binary, "/", PartialURL/binary>>),
             send_to_full_provisioner(FullUrl)
     end.
 
@@ -392,10 +392,10 @@ maybe_send_to_full_provisioner(PartialURL, JObj) ->
             Headers = props:filter_undefined(
                         [{"Host", kapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_host">>)}
                          ,{"Referer", kapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_referer">>)}
-                         ,{"User-Agent", kz_util:to_list(erlang:node())}
+                         ,{"User-Agent", kz_term:to_list(erlang:node())}
                          ,{"Content-Type", "application/json"}
                         ]),
-            FullUrl = kz_util:to_lower_string(<<Url/binary, "/", PartialURL/binary>>),
+            FullUrl = kz_term:to_lower_string(<<Url/binary, "/", PartialURL/binary>>),
             {'ok', _, _, RawJObj} = kz_http:get(FullUrl, Headers, [{'timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
             case kz_json:get_integer_value([<<"error">>, <<"code">>], kz_json:decode(RawJObj)) of
                 'undefined' -> send_to_full_provisioner('post', FullUrl, JObj);
@@ -409,7 +409,7 @@ send_to_full_provisioner(FullUrl) ->
     Headers = props:filter_undefined(
                 [{"Host", kapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_host">>)}
                  ,{"Referer", kapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_referer">>)}
-                 ,{"User-Agent", kz_util:to_list(erlang:node())}
+                 ,{"User-Agent", kz_term:to_list(erlang:node())}
                  ,{"Content-Type", "application/json"}
                 ]),
     lager:debug("making ~s request to ~s", ['delete', FullUrl]),
@@ -422,10 +422,10 @@ send_to_full_provisioner('put', FullUrl, JObj) ->
     Headers = props:filter_undefined(
                 [{"Host", kapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_host">>)}
                  ,{"Referer", kapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_referer">>)}
-                 ,{"User-Agent", kz_util:to_list(erlang:node())}
+                 ,{"User-Agent", kz_term:to_list(erlang:node())}
                  ,{"Content-Type", "application/json"}
                 ]),
-    Body = kz_util:to_list(kz_json:encode(JObj)),
+    Body = kz_term:to_list(kz_json:encode(JObj)),
     lager:debug("making put request to ~s with: ~-300p", [FullUrl, Body]),
     Res = kz_http:put(FullUrl, Headers, Body, [{'timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
     lager:debug("response from server: ~p", [Res]),
@@ -434,7 +434,7 @@ send_to_full_provisioner('post', FullUrl, JObj) ->
     Headers = props:filter_undefined(
                 [{"Host", kapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_host">>)}
                  ,{"Referer", kapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_referer">>)}
-                 ,{"User-Agent", kz_util:to_list(erlang:node())}
+                 ,{"User-Agent", kz_term:to_list(erlang:node())}
                  ,{"Content-Type", "application/json"}
                 ]),
     Props = [{<<"provider_id">>, kz_json:get_value(<<"provider_id">>, JObj)}
@@ -442,7 +442,7 @@ send_to_full_provisioner('post', FullUrl, JObj) ->
              ,{<<"settings">>, JObj}
             ],
     J =  kz_json:from_list(props:filter_undefined(Props)),
-    Body = kz_util:to_list(kz_json:encode(J)),
+    Body = kz_term:to_list(kz_json:encode(J)),
     lager:debug("making post request to ~s with: ~-300p", [FullUrl, Body]),
     Res = kz_http:post(FullUrl, Headers, Body, [{'timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
     lager:debug("response from server: ~p", [Res]),
@@ -734,7 +734,7 @@ send_provisioning_request(Template, MACAddress) ->
                 [{"Content-Type", "application/json"}
                  ,{"Host", kapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioner_host">>)}
                  ,{"Referer", kapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioner_referer">>)}
-                 ,{"User-Agent", kz_util:to_list(erlang:node())}
+                 ,{"User-Agent", kz_term:to_list(erlang:node())}
                 ]),
     lager:debug("provisioning via ~s", [UrlString]),
     case kz_http:post(UrlString, Headers, ProvisionRequest) of

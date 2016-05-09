@@ -25,9 +25,9 @@ elements(Els, Name) -> [El || #xmlElement{name=N}=El <- Els, N =:= Name].
 texts_to_binary([]) -> <<>>;
 texts_to_binary([_|_]=Vs) ->
     lists:foldl(fun(C, B) ->
-                        kz_util:strip_binary(B, C)
+                        kz_term:strip_binary(B, C)
                 end
-                ,iolist_to_binary([kz_util:to_binary(V) || #xmlText{value=V, type='text'} <- Vs])
+                ,iolist_to_binary([kz_term:to_binary(V) || #xmlText{value=V, type='text'} <- Vs])
                 ,[$\n, $\s, $\n, $\s]
                ).
 

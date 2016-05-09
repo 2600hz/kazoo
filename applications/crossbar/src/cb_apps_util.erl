@@ -161,7 +161,7 @@ get_user_priv_level(AccountId, UserId) ->
 has_all_apps_in_service_plan(ServicePlan) ->
     %% If the "ui_apps" key is empty, return true
     %% else "ui_apps._all.enabled" == true
-    kz_util:is_empty(kzd_service_plan:category(ServicePlan, ?PLAN_CATEGORY))
+    kz_term:is_empty(kzd_service_plan:category(ServicePlan, ?PLAN_CATEGORY))
         orelse kzd_item_plan:is_enabled(kzd_service_plan:category_plan(ServicePlan, ?PLAN_CATEGORY)).
 
 %%--------------------------------------------------------------------

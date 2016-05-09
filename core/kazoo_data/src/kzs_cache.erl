@@ -135,7 +135,7 @@ cache_if_not_media(CacheProps, DbName, DocId, CacheValue) ->
 
 -spec expires_policy_value(ne_binary(), kz_json:object()) -> kz_timeout().
 expires_policy_value(DbName, CacheValue) ->
-    Classification = kz_util:to_binary(kzs_util:db_classification(DbName)),
+    Classification = kz_term:to_binary(kzs_util:db_classification(DbName)),
     Type = kz_doc:type(CacheValue, <<"no_type">>),
     expires_policy_value(DbName, Classification, Type).
 
@@ -153,7 +153,7 @@ expires_policy_value(DbName, Classification, Type) ->
                                    ,[Classification]
                                    ], CachePolicy) of
         <<"infinity">> -> 'infinity';
-        Timeout -> kz_util:to_integer(Timeout)
+        Timeout -> kz_term:to_integer(Timeout)
     end.
 
 -spec flush_cache_doc(ne_binary() | db(), ne_binary() | kz_json:object()) -> 'ok'.
@@ -164,7 +164,7 @@ flush_cache_doc(Db, Doc) when is_binary(Db) ->
 
 -spec flush_cache_doc(ne_binary() | db(), ne_binary() | kz_json:object(), kz_proplist()) -> 'ok'.
 flush_cache_doc(#db{name=Name}, Doc, Options) ->
-    flush_cache_doc(kz_util:to_binary(Name), Doc, Options);
+    flush_cache_doc(kz_term:to_binary(Name), Doc, Options);
 flush_cache_doc(DbName, DocId, _Options) when is_binary(DocId) ->
     kz_cache:erase_local(?CACHE_NAME, {?MODULE, DbName, DocId});
 flush_cache_doc(DbName, Doc, Options) ->
@@ -175,7 +175,7 @@ flush_cache_docs() -> kz_cache:flush_local(?CACHE_NAME).
 
 -spec flush_cache_docs(ne_binary() | db()) -> 'ok'.
 flush_cache_docs(#db{name=Name}) ->
-    flush_cache_docs(kz_util:to_binary(Name));
+    flush_cache_docs(kz_term:to_binary(Name));
 flush_cache_docs(DbName) ->
     Filter = fun({?MODULE, DbName1, _DocId}=K, _) when DbName1 =:= DbName ->
                      kz_cache:erase_local(?CACHE_NAME, K),

@@ -203,7 +203,7 @@ send_alert(HangupCause) ->
     lager:debug("hangup cause ~s past threshold, system alerting", [HangupCause]),
     Meter = hangups_util:meter_name(HangupCause),
     kz_notify:detailed_alert("~s alerted past configured threshold"
-                            , [kz_util:to_lower_binary(HangupCause)]
+                            , [kz_term:to_lower_binary(HangupCause)]
                             , hangups_query_listener:meter_resp(Meter)
                             ).
 

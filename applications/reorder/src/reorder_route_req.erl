@@ -15,7 +15,7 @@
 -spec handle_req/2 :: (kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
     AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
-    case kz_util:is_empty(AccountId) of
+    case kz_term:is_empty(AccountId) of
         'false' -> 'ok';
         'true' ->
             lager:debug("received route request with no account-id"),

@@ -34,7 +34,7 @@
                           ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>, <<"sms">>]}
                          ]).
 -define(RATE_REQ_TYPES, [{<<"Options">>, fun is_list/1}
-                         ,{<<"Send-Empty">>, fun kz_util:is_boolean/1}
+                         ,{<<"Send-Empty">>, fun kz_term:is_boolean/1}
                         ]).
 
 %% AMQP fields for Rating Response

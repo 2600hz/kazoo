@@ -78,7 +78,7 @@
 -define(SUBSCRIBE_VALUES, [{<<"Event-Category">>, <<"presence">>}
                            ,{<<"Event-Name">>, <<"subscription">>}
                           ]).
--define(SUBSCRIBE_TYPES, [{<<"Expires">>, fun(V) -> is_integer(kz_util:to_integer(V)) end}]).
+-define(SUBSCRIBE_TYPES, [{<<"Expires">>, fun(V) -> is_integer(kz_term:to_integer(V)) end}]).
 
 %% Presence state updates
 -define(UPDATE_HEADERS, [<<"Presence-ID">>, <<"State">>]).

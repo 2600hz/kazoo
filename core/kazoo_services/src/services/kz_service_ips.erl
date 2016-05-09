@@ -49,6 +49,6 @@ reconcile_foldl({Type, Quantity}, Services) ->
     OldQuantity = kz_services:updated_quantity(<<"ips">>, Type, Services),
     kz_services:update(<<"ips">>
                        ,Type
-                       ,OldQuantity + kz_util:to_integer(Quantity)
+                       ,OldQuantity + kz_term:to_integer(Quantity)
                        ,Services
                       ).

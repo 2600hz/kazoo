@@ -61,7 +61,7 @@ send_eavesdrop(JObj, EPs, AccountId) ->
     {CallerIdName, CallerIdNumber} = find_caller_id(JObj),
 
     Prop = props:filter_undefined(
-             [{<<"Msg-ID">>, kz_util:rand_hex_binary(6)}
+             [{<<"Msg-ID">>, kz_term:rand_hex_binary(6)}
               ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
               ,{<<"Timeout">>, Timeout}
               ,{<<"Endpoints">>, [kz_json:set_values([{<<"Endpoint-Timeout">>, Timeout}

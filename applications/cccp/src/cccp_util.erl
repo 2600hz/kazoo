@@ -235,7 +235,7 @@ build_bridge_offnet_request(CallId, ToDID, Q, CtrlQ, AccountId, OutboundCID) ->
        ,{<<"Outbound-Caller-ID-Number">>, OutboundCID}
        ,{<<"Outbound-Caller-ID-Name">>, OutboundCID}
        ,{<<"Originate-Immediate">>, 'true'}
-       ,{<<"Msg-ID">>, kz_util:rand_hex_binary(6)}
+       ,{<<"Msg-ID">>, kz_term:rand_hex_binary(6)}
        ,{<<"Account-ID">>, AccountId}
        | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
       ]).
@@ -267,7 +267,7 @@ build_bridge_request(CallId, ToDID, CID, CtrlQ, AccountId) ->
        ,{<<"Caller-ID-Number">>, CID}
        ,{<<"Caller-ID-Name">>, CID}
        ,{<<"Originate-Immediate">>, 'true'}
-       ,{<<"Msg-ID">>, kz_util:rand_hex_binary(6)}
+       ,{<<"Msg-ID">>, kz_term:rand_hex_binary(6)}
        ,{<<"Account-ID">>, AccountId}
        ,{<<"Dial-Endpoint-Method">>, <<"single">>}
        ,{<<"Continue-On-Fail">>, 'true'}

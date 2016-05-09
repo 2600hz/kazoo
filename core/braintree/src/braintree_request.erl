@@ -146,7 +146,7 @@ build_url(Path) ->
 request_headers() ->
     [{"Accept", "application/xml"}
      ,{"User-Agent", "Braintree Erlang Library 1"}
-     ,{"X-ApiVersion", kz_util:to_list(?BT_API_VERSION)}
+     ,{"X-ApiVersion", kz_term:to_list(?BT_API_VERSION)}
      ,{"Content-Type", "application/xml"}
     ].
 

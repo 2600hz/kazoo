@@ -119,7 +119,7 @@ validate_sip_username(Context, Username) ->
 
 -spec sip_username_exists(cb_context:context(), ne_binary()) -> boolean().
 sip_username_exists(Context, Username) ->
-    ViewOptions = [{'key', kz_util:to_lower_binary(Username)}],
+    ViewOptions = [{'key', kz_term:to_lower_binary(Username)}],
     case kz_datamgr:get_results(cb_context:account_db(Context)
                                ,<<"devices/sip_credentials">>
                                ,ViewOptions

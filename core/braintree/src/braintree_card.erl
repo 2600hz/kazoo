@@ -45,10 +45,10 @@ url() ->
     "/payment_methods/".
 
 url(Token) ->
-    "/payment_methods/" ++ kz_util:to_list(Token).
+    "/payment_methods/" ++ kz_term:to_list(Token).
 
 url(Token, _) ->
-    "/payment_methods/credit_card/" ++ kz_util:to_list(Token).
+    "/payment_methods/credit_card/" ++ kz_term:to_list(Token).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -161,9 +161,9 @@ expired(#bt_card{expired=Expired}) -> Expired.
 -spec expiring(text(), text()) -> [bt_xml()].
 expiring(Start, End) ->
     Url = lists:append(["/payment_methods/all/expiring?start="
-                        ,kz_util:to_list(Start)
+                        ,kz_term:to_list(Start)
                         ,"&end="
-                        ,kz_util:to_list(End)
+                        ,kz_term:to_list(End)
                        ]),
     Xml = braintree_request:post(Url, <<>>),
     [xml_to_record(Item)
@@ -203,11 +203,11 @@ xml_to_record(Xml, Base) ->
              ,card_type = get_xml_value([Base, "/card-type/text()"], Xml)
              ,created_at = get_xml_value([Base, "/created-at/text()"], Xml)
              ,updated_at = get_xml_value([Base, "/updated-at/text()"], Xml)
-             ,default = kz_util:is_true(get_xml_value([Base, "/default/text()"], Xml))
+             ,default = kz_term:is_true(get_xml_value([Base, "/default/text()"], Xml))
              ,expiration_date = get_xml_value([Base, "/expiration-date/text()"], Xml)
              ,expiration_month = get_xml_value([Base, "/expiration-month/text()"], Xml)
              ,expiration_year = get_xml_value([Base, "/expiration-year/text()"], Xml)
-             ,expired = kz_util:is_true(get_xml_value([Base, "/expired/text()"], Xml))
+             ,expired = kz_term:is_true(get_xml_value([Base, "/expired/text()"], Xml))
              ,customer_location = get_xml_value([Base, "/customer-location/text()"], Xml)
              ,last_four = get_xml_value([Base, "/last-4/text()"], Xml)
              ,customer_id = get_xml_value([Base, "/customer-id/text()"], Xml)
@@ -355,5 +355,5 @@ record_to_json(#bt_card{}=Card) ->
 create_or_get_json_id(JObj) ->
     case kz_json:get_value(<<"number">>, JObj) of
         'undefined' -> kz_doc:id(JObj);
-         _ ->          kz_doc:id(JObj, kz_util:rand_hex_binary(16))
+         _ ->          kz_doc:id(JObj, kz_term:rand_hex_binary(16))
     end.

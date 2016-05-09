@@ -39,7 +39,7 @@ print_receipt({{'receipt', Receipt}
                               }}
               ,Count
              ) ->
-    io:format(?RECEIPT_FORMAT, [kz_util:to_binary(Count)
+    io:format(?RECEIPT_FORMAT, [kz_term:to_binary(Count)
                                 ,CallId
                                 ,receipt_for_printing(Receipt)
                                 ,convert_for_printing(To)
@@ -50,7 +50,7 @@ print_receipt({{'receipt', Receipt}
 
 -spec convert_for_printing(ne_binary() | ne_binaries()) -> ne_binary().
 convert_for_printing(<<_/binary>>=V) -> V;
-convert_for_printing([_|_]=Vs) -> kz_util:join_binary(Vs, <<",">>).
+convert_for_printing([_|_]=Vs) -> kz_term:join_binary(Vs, <<",">>).
 
 -spec receipt_for_printing(ne_binary()) -> ne_binary().
 receipt_for_printing(Receipt) ->
@@ -65,4 +65,4 @@ receipt_for_printing(Receipt) ->
     end.
 
 default_receipt_printing(Receipt) ->
-    kz_util:strip_binary(Receipt, [$\n, $\r]).
+    kz_term:strip_binary(Receipt, [$\n, $\r]).

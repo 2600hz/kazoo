@@ -461,7 +461,7 @@ call_match_builder_fold(<<"Start-Range">>, Start, {CallStat, Contstraints}) ->
     Now = kz_util:current_tstamp(),
     Past = Now - ?CLEANUP_WINDOW,
 
-    try kz_util:to_integer(Start) of
+    try kz_term:to_integer(Start) of
         N when N < Past ->
             {'error', kz_json:from_list([{<<"Start-Range">>, <<"supplied value is too far in the past">>}
                                          ,{<<"Window-Size">>, ?CLEANUP_WINDOW}
@@ -484,7 +484,7 @@ call_match_builder_fold(<<"End-Range">>, End, {CallStat, Contstraints}) ->
     Now = kz_util:current_tstamp(),
     Past = Now - ?CLEANUP_WINDOW,
 
-    try kz_util:to_integer(End) of
+    try kz_term:to_integer(End) of
         N when N < Past ->
             {'error', kz_json:from_list([{<<"End-Range">>, <<"supplied value is too far in the past">>}
                                          ,{<<"Window-Size">>, ?CLEANUP_WINDOW}
@@ -505,7 +505,7 @@ call_match_builder_fold(<<"End-Range">>, End, {CallStat, Contstraints}) ->
 call_match_builder_fold(_, _, Acc) -> Acc.
 
 is_valid_call_status(S) ->
-    Status = kz_util:to_lower_binary(S),
+    Status = kz_term:to_lower_binary(S),
     case lists:member(Status, ?VALID_STATUSES) of
         'true' -> {'true', Status};
         'false' -> 'false'

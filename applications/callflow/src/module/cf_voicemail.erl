@@ -280,7 +280,7 @@ find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, Loop) ->
         {'ok', <<>>} ->
             find_mailbox(Box, Call, Loop + 1);
         {'ok', Mailbox} ->
-            BoxNum = try kz_util:to_integer(Mailbox) catch _:_ -> 0 end,
+            BoxNum = try kz_term:to_integer(Mailbox) catch _:_ -> 0 end,
             %% find the voicemail box, by making a fake 'callflow data payload' we look for it now because if the
             %% caller is the owner, and the pin is not required then we skip requesting the pin
             ViewOptions = [{'key', BoxNum}],
@@ -464,7 +464,7 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=B
                              ]),
     kapps_call_command:tones([Tone], Call),
     lager:info("composing new voicemail to ~s", [AttachmentName]),
-    case kapps_call_command:b_record(AttachmentName, ?ANY_DIGIT, kz_util:to_binary(MaxMessageLength), Call) of
+    case kapps_call_command:b_record(AttachmentName, ?ANY_DIGIT, kz_term:to_binary(MaxMessageLength), Call) of
         {'ok', Msg} ->
             Length = kz_json:get_integer_value(<<"Length">>, Msg, 0),
             IsCallUp = kz_json:get_value(<<"Hangup-Cause">>, Msg) =:= 'undefined',
@@ -681,33 +681,33 @@ message_count_prompts(1, 1) ->
     ];
 message_count_prompts(New, 0) ->
     [{'prompt', <<"vm-you_have">>}
-     ,{'say', kz_util:to_binary(New), ?VM_KEY_MESSAGES}
+     ,{'say', kz_term:to_binary(New), ?VM_KEY_MESSAGES}
      ,{'prompt', <<"vm-new_messages">>}
     ];
 message_count_prompts(New, 1) ->
     [{'prompt', <<"vm-you_have">>}
-     ,{'say', kz_util:to_binary(New), ?VM_KEY_MESSAGES}
+     ,{'say', kz_term:to_binary(New), ?VM_KEY_MESSAGES}
      ,{'prompt', <<"vm-new_and">>}
      ,{'say', <<"1">>, ?VM_KEY_MESSAGES}
      ,{'prompt', <<"vm-saved_message">>}
     ];
 message_count_prompts(0, Saved) ->
     [{'prompt', <<"vm-you_have">>}
-     ,{'say', kz_util:to_binary(Saved), ?VM_KEY_MESSAGES}
+     ,{'say', kz_term:to_binary(Saved), ?VM_KEY_MESSAGES}
      ,{'prompt', <<"vm-saved_messages">>}
     ];
 message_count_prompts(1, Saved) ->
     [{'prompt', <<"vm-you_have">>}
      ,{'say', <<"1">>, ?VM_KEY_MESSAGES}
      ,{'prompt', <<"vm-new_and">>}
-     ,{'say', kz_util:to_binary(Saved), ?VM_KEY_MESSAGES}
+     ,{'say', kz_term:to_binary(Saved), ?VM_KEY_MESSAGES}
      ,{'prompt', <<"vm-saved_messages">>}
     ];
 message_count_prompts(New, Saved) ->
     [{'prompt', <<"vm-you_have">>}
-     ,{'say', kz_util:to_binary(New), ?VM_KEY_MESSAGES}
+     ,{'say', kz_term:to_binary(New), ?VM_KEY_MESSAGES}
      ,{'prompt', <<"vm-new_and">>}
-     ,{'say', kz_util:to_binary(Saved), ?VM_KEY_MESSAGES}
+     ,{'say', kz_term:to_binary(Saved), ?VM_KEY_MESSAGES}
      ,{'prompt', <<"vm-saved_messages">>}
     ].
 
@@ -731,7 +731,7 @@ play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{timezone=Timezone
     Message = kz_vm_message:media_url(AccountId, H),
     lager:info("playing mailbox message ~p (~s)", [Count, Message]),
     Prompt = [{'prompt', <<"vm-message_number">>}
-              ,{'say', kz_util:to_binary(Count - length(Messages) + 1), <<"number">>}
+              ,{'say', kz_term:to_binary(Count - length(Messages) + 1), <<"number">>}
               ,{'play', Message}
               ,{'prompt', <<"vm-received">>}
               ,{'say',  get_unix_epoch(kz_json:get_value(<<"timestamp">>, H), Timezone), <<"current_date_time">>}
@@ -1353,7 +1353,7 @@ get_mailbox_profile(Data, Call) ->
                      ,is_setup =
                          kzd_voicemail_box:is_setup(MailboxJObj, 'false')
                      ,max_message_count =
-                         kz_util:to_integer(MaxMessageCount)
+                         kz_term:to_integer(MaxMessageCount)
                      ,max_message_length = find_max_message_length([Data, MailboxJObj])
                      ,min_message_length = min_recording_length(Call)
                      ,message_count =
@@ -1462,8 +1462,8 @@ populate_keys(Call) ->
                              {'error', any()}.
 get_mailbox_doc(Db, Id, Data, Call) ->
     CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
-    CGIsEmpty = kz_util:is_empty(CaptureGroup),
-    case kz_util:is_empty(Id) of
+    CGIsEmpty = kz_term:is_empty(CaptureGroup),
+    case kz_term:is_empty(Id) of
         'false' ->
             lager:info("opening ~s", [Id]),
             kz_datamgr:open_doc(Db, Id);
@@ -1664,7 +1664,7 @@ min_recording_length(Call) ->
                                   )
     of
         'undefined' -> ?MAILBOX_DEFAULT_MSG_MIN_LENGTH;
-        MML -> kz_util:to_integer(MML)
+        MML -> kz_term:to_integer(MML)
     end.
 
 %%--------------------------------------------------------------------
@@ -1733,7 +1733,7 @@ update_doc(Key, Value, Id, Call) ->
 -spec tmp_file() -> ne_binary().
 tmp_file() ->
     Ext = ?DEFAULT_VM_EXTENSION,
-    <<(kz_util:to_hex_binary(crypto:rand_bytes(16)))/binary, ".", Ext/binary>>.
+    <<(kz_term:to_hex_binary(crypto:rand_bytes(16)))/binary, ".", Ext/binary>>.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1744,9 +1744,9 @@ tmp_file() ->
 %%--------------------------------------------------------------------
 -spec get_unix_epoch(ne_binary(), ne_binary()) -> ne_binary().
 get_unix_epoch(Epoch, Timezone) ->
-    UtcDateTime = calendar:gregorian_seconds_to_datetime(kz_util:to_integer(Epoch)),
+    UtcDateTime = calendar:gregorian_seconds_to_datetime(kz_term:to_integer(Epoch)),
     LocalDateTime = localtime:utc_to_local(UtcDateTime, Timezone),
-    kz_util:to_binary(calendar:datetime_to_gregorian_seconds(LocalDateTime) - ?UNIX_EPOCH_IN_GREGORIAN).
+    kz_term:to_binary(calendar:datetime_to_gregorian_seconds(LocalDateTime) - ?UNIX_EPOCH_IN_GREGORIAN).
 
 %%--------------------------------------------------------------------
 %% @private

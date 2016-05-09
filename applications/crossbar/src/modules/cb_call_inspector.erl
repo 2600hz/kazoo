@@ -126,7 +126,7 @@ validate(Context) ->
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, CallId) ->
-    case kz_util:is_empty(CallId) of
+    case kz_term:is_empty(CallId) of
         'true' ->
             cb_context:add_system_error('not_found', Context);
         'false' ->

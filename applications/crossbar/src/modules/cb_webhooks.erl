@@ -321,7 +321,7 @@ validate_collection_patch(Context, 'undefined') ->
       ,Context
      );
 validate_collection_patch(Context, ReEnable) ->
-    case kz_util:is_true(ReEnable) of
+    case kz_term:is_true(ReEnable) of
         'true' -> cb_context:set_resp_status(Context, 'success');
         'false' -> reenable_validation_error(Context)
     end.
@@ -478,12 +478,12 @@ summary_attempts(Context, <<_/binary>> = HookId) ->
 
 -spec get_summary_start_key(cb_context:context()) -> ne_binary() | integer().
 get_summary_start_key(Context) ->
-    get_start_key(Context, 0, fun kz_util:identity/1).
+    get_start_key(Context, 0, fun kz_term:identity/1).
 
 -spec get_attempts_start_key(cb_context:context()) ->
                                     integer() | ?EMPTY_JSON_OBJECT.
 get_attempts_start_key(Context) ->
-    get_start_key(Context, kz_json:new(), fun kz_util:to_integer/1).
+    get_start_key(Context, kz_json:new(), fun kz_term:to_integer/1).
 
 -spec get_start_key(cb_context:context(), any(), fun()) -> any().
 get_start_key(Context, Default, Formatter) ->
@@ -591,7 +591,7 @@ send_reenable_req(Context, AccountId, Action) ->
           ],
     kz_amqp_worker:call(Req
                         ,fun kapi_conf:publish_doc_type_update/1
-                        ,fun kz_util:always_true/1
+                        ,fun kz_term:always_true/1
                        ).
 
 -spec handle_resp(cb_context:context(), kz_amqp_worker:request_return()) ->

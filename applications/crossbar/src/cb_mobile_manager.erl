@@ -65,7 +65,7 @@ req_uri(ExplodedPath) ->
         'undefined' -> 'undefined';
         Url ->
             Uri = kz_util:uri(Url, ExplodedPath),
-            kz_util:to_list(Uri)
+            kz_term:to_list(Uri)
     end.
 
 %%--------------------------------------------------------------------
@@ -78,6 +78,6 @@ req_uri(ExplodedPath) ->
 req_headers(AuthToken) ->
     props:filter_undefined(
       [{"Content-Type", "application/json"}
-      ,{"X-Auth-Token", kz_util:to_list(AuthToken)}
-      ,{"User-Agent", kz_util:to_list(erlang:node())}
+      ,{"X-Auth-Token", kz_term:to_list(AuthToken)}
+      ,{"User-Agent", kz_term:to_list(erlang:node())}
       ]).

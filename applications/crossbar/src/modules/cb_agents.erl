@@ -271,7 +271,7 @@ fetch_all_agent_statuses(Context) ->
 
 -spec fetch_agent_status(api_binary(), cb_context:context()) -> cb_context:context().
 fetch_agent_status(AgentId, Context) ->
-    case kz_util:is_true(cb_context:req_value(Context, <<"recent">>)) of
+    case kz_term:is_true(cb_context:req_value(Context, <<"recent">>)) of
         'false' ->
             {'ok', Resp} = acdc_agent_util:most_recent_status(cb_context:account_id(Context), AgentId),
             crossbar_util:response(Resp, Context);
@@ -322,7 +322,7 @@ fetch_all_current_statuses(Context, AgentId, Status) ->
               ,{<<"Agent-ID">>, AgentId}
               ,{<<"Start-Range">>, Yday}
               ,{<<"End-Range">>, Now}
-              ,{<<"Most-Recent">>, kz_util:is_false(Recent)}
+              ,{<<"Most-Recent">>, kz_term:is_false(Recent)}
              ]),
 
     {'ok', Resp} = acdc_agent_util:most_recent_statuses(cb_context:account_id(Context), Opts),
@@ -335,10 +335,10 @@ fetch_ranged_agent_stats(Context, StartRange) ->
     Now = kz_util:current_tstamp(),
     Past = Now - MaxRange,
 
-    To = kz_util:to_integer(cb_context:req_value(Context, <<"end_range">>, Now)),
+    To = kz_term:to_integer(cb_context:req_value(Context, <<"end_range">>, Now)),
     MaxFrom = To - MaxRange,
 
-    case kz_util:to_integer(StartRange) of
+    case kz_term:to_integer(StartRange) of
         F when F > To ->
             %% start_range is larger than end_range
             cb_context:add_validation_error(
@@ -581,7 +581,7 @@ check_for_status_error(Context, S) ->
                                            cb_context:context().
 validate_status_change_params(Context, <<"pause">>) ->
     Value = cb_context:req_value(Context, <<"timeout">>),
-    try kz_util:to_integer(Value) of
+    try kz_term:to_integer(Value) of
         N when N >= 0 -> cb_context:set_resp_status(Context, 'success');
         N ->
             lager:debug("bad int for pause: ~p", [N]),

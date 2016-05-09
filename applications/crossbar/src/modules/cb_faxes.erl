@@ -175,13 +175,13 @@ maybe_add_types_accepted(Context, _) -> Context.
 -spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
                                     cb_context:context().
 content_types_provided(Context, ?OUTBOX, ?MATCH_MODB_PREFIX(YYYY,MM,_) = FaxId, ?ATTACHMENT) ->
-    Year  = kz_util:to_integer(YYYY),
-    Month = kz_util:to_integer(MM),
+    Year  = kz_term:to_integer(YYYY),
+    Month = kz_term:to_integer(MM),
     Ctx = cb_context:set_account_modb(Context, Year, Month),
     content_types_provided_for_fax(Ctx, FaxId, cb_context:req_verb(Context));
 content_types_provided(Context, ?INBOX, ?MATCH_MODB_PREFIX(YYYY,MM,_) = FaxId, ?ATTACHMENT) ->
-    Year  = kz_util:to_integer(YYYY),
-    Month = kz_util:to_integer(MM),
+    Year  = kz_term:to_integer(YYYY),
+    Month = kz_term:to_integer(MM),
     Ctx = cb_context:set_account_modb(Context, Year, Month),
     content_types_provided_for_fax(Ctx, FaxId, cb_context:req_verb(Context));
 content_types_provided(Context, ?INBOX, FaxId, ?ATTACHMENT) ->
@@ -322,8 +322,8 @@ create(Context) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(?MATCH_MODB_PREFIX(YYYY,MM,_) = Id, Context) ->
-    Year  = kz_util:to_integer(YYYY),
-    Month = kz_util:to_integer(MM),
+    Year  = kz_term:to_integer(YYYY),
+    Month = kz_term:to_integer(MM),
     crossbar_doc:load({<<"fax">>, Id}, cb_context:set_account_modb(Context, Year, Month), ?TYPE_CHECK_OPTION(<<"fax">>));
 read(Id, Context) ->
     crossbar_doc:load({<<"fax">>, Id}, Context, ?TYPE_CHECK_OPTION(<<"fax">>)).
@@ -511,7 +511,7 @@ load_smtp_log(Context) ->
 %%--------------------------------------------------------------------
 -spec load_fax_binary(path_token(), cb_context:context()) -> cb_context:context().
 load_fax_binary(?MATCH_MODB_PREFIX(Year,Month,_) = FaxId, Context) ->
-    do_load_fax_binary(FaxId, cb_context:set_account_modb(Context, kz_util:to_integer(Year), kz_util:to_integer(Month)));
+    do_load_fax_binary(FaxId, cb_context:set_account_modb(Context, kz_term:to_integer(Year), kz_term:to_integer(Month)));
 load_fax_binary(FaxId, Context) ->
     do_load_fax_binary(FaxId, Context).
 

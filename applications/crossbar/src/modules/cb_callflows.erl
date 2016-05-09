@@ -327,7 +327,7 @@ validate_callflow_element(Context, <<"record_call">>, Data) ->
               <<"time_limit">>
               ,<<"maximum">>
               ,kz_json:from_list(
-                 [{<<"message">>, <<"Exceeds system limit of ", (kz_util:to_binary(Max))/binary, " seconds">>}
+                 [{<<"message">>, <<"Exceeds system limit of ", (kz_term:to_binary(Max))/binary, " seconds">>}
                   ,{<<"cause">>, TimeLimit}
                  ])
               ,Context

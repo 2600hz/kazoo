@@ -463,11 +463,11 @@ maybe_load_user_doc_via_reset_id(Context) ->
 %% @private
 -spec reset_id(ne_binary()) -> ne_binary().
 reset_id(?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
-    Noise = kz_util:rand_hex_binary((?RESET_ID_SIZE - 32) / 2),
+    Noise = kz_term:rand_hex_binary((?RESET_ID_SIZE - 32) / 2),
     <<(?MATCH_ACCOUNT_RAW(A,B,Rest))/binary, Noise/binary>>;
 reset_id(<<ResetId:?RESET_ID_SIZE/binary>>) ->
     <<Account:32/binary, _Noise/binary>> = ResetId,
-    kz_util:format_account_db(kz_util:to_lower_binary(Account)).
+    kz_util:format_account_db(kz_term:to_lower_binary(Account)).
 
 %% @private
 -spec reset_link(kz_json:object(), ne_binary()) -> ne_binary().

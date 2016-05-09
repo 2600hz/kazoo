@@ -57,7 +57,7 @@ reconcile_foldl({Type, Quantity}, Services) ->
     kz_services:update(
         ?CATEGORY
         ,Type
-        ,OldQuantity + kz_util:to_integer(Quantity)
+        ,OldQuantity + kz_term:to_integer(Quantity)
         ,Services
     ).
 

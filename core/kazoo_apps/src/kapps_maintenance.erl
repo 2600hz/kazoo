@@ -70,7 +70,7 @@ rebuild_token_auth() ->
 -spec rebuild_token_auth(text() | integer()) -> 'ok'.
 rebuild_token_auth(Pause) ->
     _ = kz_datamgr:db_delete(?KZ_TOKEN_DB),
-    timer:sleep(kz_util:to_integer(Pause)),
+    timer:sleep(kz_term:to_integer(Pause)),
     refresh(?KZ_TOKEN_DB),
     'ok'.
 
@@ -159,7 +159,7 @@ refresh() ->
 
 refresh(Databases, Pause) ->
     Total = length(Databases),
-    refresh(Databases, kz_util:to_integer(Pause), Total).
+    refresh(Databases, kz_term:to_integer(Pause), Total).
 
 refresh([], _, _) -> 'no_return';
 refresh([Database|Databases], Pause, Total) ->
@@ -696,7 +696,7 @@ migrate_limits_fold(AccountDb, Current, Total) ->
     Current + 1.
 
 migrate_limits(Account) when not is_binary(Account) ->
-    migrate_limits(kz_util:to_binary(Account));
+    migrate_limits(kz_term:to_binary(Account));
 migrate_limits(Account) ->
     TStamp = kz_util:current_tstamp(),
 
@@ -782,7 +782,7 @@ migrate_media_fold(AccountDb, Current, Total) ->
     Current + 1.
 
 migrate_media(Account) when not is_binary(Account) ->
-    migrate_media(kz_util:to_binary(Account));
+    migrate_media(kz_term:to_binary(Account));
 migrate_media(Account) ->
     AccountDb = case kz_datamgr:db_exists(Account) of
                     'true' -> Account;
@@ -960,14 +960,14 @@ maybe_update_attachment_content_type(A, MCT, DocCT) ->
 -spec find_attachment_content_type(ne_binary()) -> ne_binary().
 find_attachment_content_type(A) ->
     try cow_mimetypes:all(A) of
-        {Type, SubType, _Options} -> kz_util:join_binary([Type, SubType], <<"/">>)
+        {Type, SubType, _Options} -> kz_term:join_binary([Type, SubType], <<"/">>)
     catch
         'error':'function_clause' -> <<"audio/mpeg">>
     end.
 
 -spec maybe_add_extension({ne_binary(), ne_binary()}) -> {ne_binary(), ne_binary()}.
 maybe_add_extension({A, CT}) ->
-    case kz_util:is_empty(filename:extension(A)) of
+    case kz_term:is_empty(filename:extension(A)) of
         'false' -> {A, CT};
         'true' -> {add_extension(A, CT), CT}
     end.
@@ -1028,7 +1028,7 @@ maybe_resave_attachment(Content1, AccountDb, Id, OrigAttach, NewAttach, CT) ->
             io:format("unable to put new attachment ~s/~s/~s: ~p~n", [AccountDb, Id, NewAttach, Result]),
             throw({'error', 'length_mismatch'});
         'true' ->
-            Filename = kz_util:to_list(<<"/tmp/media_", Id/binary, "_", OrigAttach/binary>>),
+            Filename = kz_term:to_list(<<"/tmp/media_", Id/binary, "_", OrigAttach/binary>>),
             case file:write_file(Filename, Content1) of
                 'ok' -> 'ok';
                 {'error', _R}=E2 ->
@@ -1128,13 +1128,13 @@ purge_doc_type([Type|Types], Account) ->
                    ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, ?MILLISECONDS_IN_SECOND)
                   );
 purge_doc_type(Type, Account) when not is_binary(Type) ->
-    purge_doc_type(kz_util:to_binary(Type)
+    purge_doc_type(kz_term:to_binary(Type)
                    ,Account
                    ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, ?MILLISECONDS_IN_SECOND)
                   );
 purge_doc_type(Type, Account) when not is_binary(Account) ->
     purge_doc_type(Type
-                   ,kz_util:to_binary(Account)
+                   ,kz_term:to_binary(Account)
                    ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, ?MILLISECONDS_IN_SECOND)
                   ).
 
@@ -1158,7 +1158,7 @@ purge_doc_type(Type, Account, ChunkSize) ->
 call_id_status(CallId) ->
     call_id_status(CallId, 'false').
 call_id_status(CallId, Verbose) ->
-    Req = [{<<"Call-ID">>, kz_util:to_binary(CallId)}
+    Req = [{<<"Call-ID">>, kz_term:to_binary(CallId)}
            | kz_api:default_headers(<<"shell">>, <<"0">>)
           ],
     case kapps_util:amqp_pool_request(Req
@@ -1167,7 +1167,7 @@ call_id_status(CallId, Verbose) ->
                                       )
     of
         {'ok', Resp} ->
-            show_status(CallId, kz_util:is_true(Verbose), Resp);
+            show_status(CallId, kz_term:is_true(Verbose), Resp);
         {'error', _E} ->
             lager:info("failed to get status of '~s': '~p'", [CallId, _E])
     end.

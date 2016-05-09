@@ -47,10 +47,10 @@ kill_channel(_, <<"sms">>, _CallId, _Node) -> 'ok';
 kill_channel(<<"inbound">>, _, CallId, Node) ->
     %% Give any pending route requests a chance to cleanly terminate this call,
     %% if it has not been processed yet.  Then chop its head off....
-    _ = freeswitch:api(Node, 'uuid_kill', kz_util:to_list(<<CallId/binary, " USER_BUSY">>)),
+    _ = freeswitch:api(Node, 'uuid_kill', kz_term:to_list(<<CallId/binary, " USER_BUSY">>)),
     'ok';
 kill_channel(<<"outbound">>, _, CallId, Node) ->
-    _ = freeswitch:api(Node, 'uuid_kill', kz_util:to_list(<<CallId/binary, " OUTGOING_CALL_BARRED">>)),
+    _ = freeswitch:api(Node, 'uuid_kill', kz_term:to_list(<<CallId/binary, " OUTGOING_CALL_BARRED">>)),
     'ok'.
 
 -spec maybe_authorize_channel(kz_proplist(), atom()) -> boolean().
@@ -345,7 +345,7 @@ maybe_update_callee_id(JObj, Acc) ->
 
     case kz_json:is_true(<<"Update-Callee-ID">>, JObj, 'false') of
         'true' ->
-            ConvertedRate = kz_util:to_binary(wht_util:units_to_dollars(kz_util:to_number(Rate))),
+            ConvertedRate = kz_term:to_binary(wht_util:units_to_dollars(kz_term:to_number(Rate))),
             [{<<"ignore_display_updates">>, <<"false">>}
              ,{<<"effective_callee_id_name">>, <<"$", ConvertedRate/binary
                                                  ," per min ${effective_callee_id_name}"

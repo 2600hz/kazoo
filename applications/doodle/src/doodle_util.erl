@@ -112,7 +112,7 @@ save_sms(JObj, Call) ->
 -spec save_sms(kz_json:object(), api_binary(), kapps_call:call()) -> kapps_call:call().
 save_sms(JObj, 'undefined', Call) ->
     {Year, Month, _} = erlang:date(),
-    SmsDocId = kz_util:to_binary(
+    SmsDocId = kz_term:to_binary(
                  io_lib:format("~B~s-~s",
                                [Year
                                 ,kz_util:pad_month(Month)
@@ -219,8 +219,8 @@ endpoint_id_from_sipdb(Realm, Username) ->
                                         {'ok', ne_binary(), ne_binary()} |
                                         {'error', any()}.
 get_endpoint_id_from_sipdb(Realm, Username) ->
-    ViewOptions = [{'key', [kz_util:to_lower_binary(Realm)
-                            ,kz_util:to_lower_binary(Username)
+    ViewOptions = [{'key', [kz_term:to_lower_binary(Realm)
+                            ,kz_term:to_lower_binary(Username)
                            ]
                    }],
     case kz_datamgr:get_results(?KZ_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
@@ -252,8 +252,8 @@ endpoint_from_sipdb(Realm, Username) ->
                                      {'ok', kz_json:object()} |
                                      {'error', any()}.
 get_endpoint_from_sipdb(Realm, Username) ->
-    ViewOptions = [{'key', [kz_util:to_lower_binary(Realm)
-                            ,kz_util:to_lower_binary(Username)
+    ViewOptions = [{'key', [kz_term:to_lower_binary(Realm)
+                            ,kz_term:to_lower_binary(Username)
                            ]
                    }
                    ,'include_docs'
@@ -627,7 +627,7 @@ apply_reschedule_rule(<<"report">>, V, JObj) ->
     Props = props:filter_undefined(
               [{<<"To">>, kapps_call:to_user(Call)}
                ,{<<"From">>, kapps_call:from_user(Call)}
-               ,{<<"Error">>, kz_util:strip_binary(Error)}
+               ,{<<"Error">>, kz_term:strip_binary(Error)}
                ,{<<"Attempts">>, kz_json:get_value(<<"attempts">>, JObj)}
                | safe_to_proplist(V)
               ]),

@@ -239,7 +239,7 @@ create_transaction(Number, Units) ->
 
     Routines = [fun(T) -> set_activation_reason(T, LedgerId, AccountId, <<"number">>) end
                 ,fun(T) -> kz_transaction:set_number(Num, T) end
-                ,fun(T) -> set_feature_description(T, kz_util:to_binary(Num)) end
+                ,fun(T) -> set_feature_description(T, kz_term:to_binary(Num)) end
                ],
     lager:debug("staging number activation charge $~p for ~s via billing account ~s"
                 ,[wht_util:units_to_dollars(Units), AccountId, LedgerId]
@@ -263,7 +263,7 @@ create_transaction(Number, Feature, Units) ->
     Routines = [fun(T) -> set_activation_reason(T, LedgerId, AccountId, <<"feature">>) end
                 ,fun(T) -> kz_transaction:set_feature(Feature, T) end
                 ,fun(T) -> kz_transaction:set_number(Num, T) end
-                ,fun(T) -> set_feature_description(T, kz_util:to_binary(Feature)) end
+                ,fun(T) -> set_feature_description(T, kz_term:to_binary(Feature)) end
                ],
     lager:debug("staging feature '~s' activation charge $~p for ~s via billing account ~s"
                 ,[Feature, wht_util:units_to_dollars(Units), AccountId, LedgerId]

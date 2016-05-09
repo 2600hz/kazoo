@@ -142,7 +142,7 @@ get_temporal_rules(#temporal{local_sec=LSec
 -spec get_temporal_rules(ne_binaries(), non_neg_integer(), ne_binary(), boolean(), ne_binary(), rules()) -> rules().
 get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Rules) when is_binary(TZ) ->
     Now = localtime:utc_to_local(calendar:universal_time()
-                                 ,kz_util:to_list(TZ)
+                                 ,kz_term:to_list(TZ)
                                 ),
     get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Now, Rules).
 
@@ -157,7 +157,7 @@ get_temporal_rules([Route|Routes], LSec, AccountDb, RuleSet, TZ, Now, Rules) ->
         {'ok', JObj} ->
             Days = lists:foldr(
                         fun(Day, Acc) ->
-                            [kz_util:to_integer(Day)|Acc]
+                            [kz_term:to_integer(Day)|Acc]
                         end
                         ,[]
                         ,kz_json:get_value(<<"days">>, JObj, ?RULE_DEFAULT_DAYS)
@@ -270,7 +270,7 @@ get_rule_set(RuleSetId, Call) ->
 get_date(Seconds, TZ) when is_integer(Seconds) ->
     {Date, _} = localtime:utc_to_local(
                   calendar:gregorian_seconds_to_datetime(Seconds)
-                  ,kz_util:to_list(TZ)
+                  ,kz_term:to_list(TZ)
                  ),
     Date.
 
@@ -420,7 +420,7 @@ enable_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
 load_current_time(#temporal{timezone=Timezone}=Temporal)->
     {LocalDate, LocalTime} = localtime:utc_to_local(
                                calendar:universal_time()
-                               ,kz_util:to_list(Timezone)
+                               ,kz_term:to_list(Timezone)
                               ),
     lager:info("local time for ~s is {~w,~w}", [Timezone, LocalDate, LocalTime]),
     Temporal#temporal{local_sec=calendar:datetime_to_gregorian_seconds({LocalDate, LocalTime})

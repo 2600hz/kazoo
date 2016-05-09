@@ -60,7 +60,7 @@ is_registering_gateway(Gateway) ->
 
 -spec check_if_peer(api_binary(), cb_context:context()) -> cb_context:context().
 check_if_peer(ResourceId, Context) ->
-    case {kz_util:is_true(cb_context:req_value(Context, <<"peer">>))
+    case {kz_term:is_true(cb_context:req_value(Context, <<"peer">>))
           ,kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"allow_peers">>, 'false')
          }
     of
@@ -170,7 +170,7 @@ maybe_aggregate_resource(Context) ->
     maybe_aggregate_resource(Context, cb_context:resp_status(Context)).
 
 maybe_aggregate_resource(Context, 'success') ->
-    case kz_util:is_true(cb_context:fetch(Context, 'aggregate_resource')) of
+    case kz_term:is_true(cb_context:fetch(Context, 'aggregate_resource')) of
         'false' ->
             ResourceId = kz_doc:id(cb_context:doc(Context)),
             maybe_remove_aggregate(ResourceId, Context);
@@ -228,7 +228,7 @@ get_all_acl_ips() ->
            ,{<<"Key">>, <<"acls">>}
            ,{<<"Node">>, <<"all">>}
            ,{<<"Default">>, kz_json:new()}
-           ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
+           ,{<<"Msg-ID">>, kz_term:rand_hex_binary(16)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     Resp = kapps_util:amqp_pool_request(

@@ -66,8 +66,8 @@ send_http(Node, File, Url, Method, JObj) ->
     lager:debug("processing http_send command : ~s / ~s", [File, Url]),
     Args = <<Url/binary, " ", File/binary>>,
     Fun = fun send_http_cb/3,
-    M = kz_util:to_atom(Method, 'true'),
-    A = kz_util:to_list(Args),
+    M = kz_term:to_atom(Method, 'true'),
+    A = kz_term:to_list(Args),
     case freeswitch:bgapi(Node, M, A, Fun, [JObj]) of
         {'error', _} -> reply_error(<<"failure">>, JObj);
         {'ok', JobId} -> lager:debug("send_http command started ~p", [JobId])

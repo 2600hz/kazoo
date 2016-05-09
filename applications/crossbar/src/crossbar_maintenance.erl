@@ -55,7 +55,7 @@ migrate(Accounts) ->
     _ = migrate_accounts_data(Accounts),
 
     CurrentModules =
-        [kz_util:to_atom(Module, 'true')
+        [kz_term:to_atom(Module, 'true')
          || Module <- crossbar_config:autoload_modules()
         ],
 
@@ -132,7 +132,7 @@ flush() ->
 -spec start_module(text()) -> 'ok'.
 start_module(Module) ->
     try crossbar_init:start_mod(Module) of
-        _ -> maybe_autoload_module(kz_util:to_binary(Module))
+        _ -> maybe_autoload_module(kz_term:to_binary(Module))
     catch
         _E:_R ->
             io:format("failed to start ~s: ~s: ~p~n", [Module, _E, _R])
@@ -152,8 +152,8 @@ maybe_autoload_module(Module) ->
 -spec persist_module(ne_binary(), ne_binaries()) -> 'ok'.
 persist_module(Module, Mods) ->
     crossbar_config:set_default_autoload_modules(
-      [kz_util:to_binary(Module)
-       | lists:delete(kz_util:to_binary(Module), Mods)
+      [kz_term:to_binary(Module)
+       | lists:delete(kz_term:to_binary(Module), Mods)
       ]),
     'ok'.
 
@@ -168,7 +168,7 @@ stop_module(Module) ->
     try crossbar_init:stop_mod(Module) of
         _ ->
             Mods = crossbar_config:autoload_modules(),
-            crossbar_config:set_default_autoload_modules(lists:delete(kz_util:to_binary(Module), Mods)),
+            crossbar_config:set_default_autoload_modules(lists:delete(kz_term:to_binary(Module), Mods)),
             io:format("stopped and removed ~s from autoloaded modules~n", [Module])
     catch
         _E:_R ->
@@ -194,7 +194,7 @@ running_modules() -> crossbar_bindings:modules_loaded().
                                     {'ok', ne_binary()} |
                                     {'error', any()}.
 find_account_by_number(Number) when not is_binary(Number) ->
-    find_account_by_number(kz_util:to_binary(Number));
+    find_account_by_number(kz_term:to_binary(Number));
 find_account_by_number(Number) ->
     case knm_number:lookup_account(Number) of
         {'ok', AccountId, _} ->
@@ -222,7 +222,7 @@ find_account_by_number(Number) ->
                                   {'multiples', [ne_binary(),...]} |
                                   {'error', any()}.
 find_account_by_name(Name) when not is_binary(Name) ->
-    find_account_by_name(kz_util:to_binary(Name));
+    find_account_by_name(kz_term:to_binary(Name));
 find_account_by_name(Name) ->
     case kapps_util:get_accounts_by_name(Name) of
         {'ok', AccountDb} ->
@@ -250,7 +250,7 @@ find_account_by_name(Name) ->
                                    {'multiples', [ne_binary(),...]} |
                                    {'error', any()}.
 find_account_by_realm(Realm) when not is_binary(Realm) ->
-    find_account_by_realm(kz_util:to_binary(Realm));
+    find_account_by_realm(kz_term:to_binary(Realm));
 find_account_by_realm(Realm) ->
     case kapps_util:get_account_by_realm(Realm) of
         {'ok', AccountDb} ->
@@ -279,7 +279,7 @@ find_account_by_realm(Realm) ->
 find_account_by_id(Id) when is_binary(Id) ->
     print_account_info(kz_util:format_account_id(Id, 'encoded'));
 find_account_by_id(Id) ->
-    find_account_by_id(kz_util:to_binary(Id)).
+    find_account_by_id(kz_term:to_binary(Id)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -367,13 +367,13 @@ demote_account(AccountId) ->
 %%--------------------------------------------------------------------
 -spec create_account(input_term(), input_term(), input_term(), input_term()) -> 'ok' | 'failed'.
 create_account(AccountName, Realm, Username, Password) when not is_binary(AccountName) ->
-    create_account(kz_util:to_binary(AccountName), Realm, Username, Password);
+    create_account(kz_term:to_binary(AccountName), Realm, Username, Password);
 create_account(AccountName, Realm, Username, Password) when not is_binary(Realm) ->
-    create_account(AccountName, kz_util:to_binary(Realm), Username, Password);
+    create_account(AccountName, kz_term:to_binary(Realm), Username, Password);
 create_account(AccountName, Realm, Username, Password) when not is_binary(Username) ->
-    create_account(AccountName, Realm, kz_util:to_binary(Username), Password);
+    create_account(AccountName, Realm, kz_term:to_binary(Username), Password);
 create_account(AccountName, Realm, Username, Password) when not is_binary(Password) ->
-    create_account(AccountName, Realm, Username, kz_util:to_binary(Password));
+    create_account(AccountName, Realm, Username, kz_term:to_binary(Password));
 create_account(AccountName, Realm, Username, Password) ->
     Account = kz_json:from_list([{<<"_id">>, kz_datamgr:get_uuid()}
                                  ,{<<"name">>, AccountName}
@@ -665,7 +665,7 @@ set_data_for_callflow(JObj, BaseGroup) ->
 
 -spec set_number_for_callflow(kz_json:object(), kz_json:object()) -> kz_json:object().
 set_number_for_callflow(JObj, BaseGroup) ->
-    Number = <<"group_", (kz_util:to_binary(kz_util:now_ms(os:timestamp())))/binary>>,
+    Number = <<"group_", (kz_term:to_binary(kz_util:now_ms(os:timestamp())))/binary>>,
     Numbers = [Number],
     set_name_for_callflow(JObj, kz_json:set_value(<<"numbers">>, Numbers, BaseGroup)).
 

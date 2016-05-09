@@ -118,7 +118,7 @@ refresh(<<Account/binary>>) ->
     Views = kapps_util:get_views_json('callflow', "views"),
     kapps_util:update_views(AccountDb, Views);
 refresh(Account) ->
-    refresh(kz_util:to_binary(Account)).
+    refresh(kz_term:to_binary(Account)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -212,7 +212,7 @@ do_menu_migration(Menu, Db) ->
         {'ok', Bin} ->
             Name = <<(kz_json:get_value(<<"name">>, Doc, <<>>))/binary, " menu greeting">>,
             MediaId = create_media_doc(Name, <<"menu">>, MenuId, Db),
-            AName = <<(kz_util:to_hex_binary(crypto:rand_bytes(16)))/binary, ".mp3">>,
+            AName = <<(kz_term:to_hex_binary(crypto:rand_bytes(16)))/binary, ".mp3">>,
             {'ok', _} = kz_datamgr:put_attachment(Db, MediaId, AName, Bin),
             'ok' = update_doc([<<"media">>, <<"greeting">>], MediaId, MenuId, Db),
             'ok' = update_doc([<<"pvt_vsn">>], <<"2">>, MenuId, Db),
@@ -464,7 +464,7 @@ update_feature_codes() ->
 -spec update_feature_codes(ne_binary()) -> 'ok'.
 update_feature_codes(Account)
   when not is_binary(Account) ->
-    update_feature_codes(kz_util:to_binary(Account));
+    update_feature_codes(kz_term:to_binary(Account));
 update_feature_codes(Account) ->
     AccountDb = kz_util:format_account_db(Account),
     case kz_datamgr:get_results(AccountDb, ?LIST_BY_PATTERN, ['include_docs']) of

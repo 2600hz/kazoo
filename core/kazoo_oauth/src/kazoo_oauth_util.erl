@@ -171,13 +171,13 @@ token(#oauth_app{name=AppId
      ) ->
     lager:debug("getting token : refresh ~p",[RefreshToken]),
     Headers = [{"Content-Type","application/x-www-form-urlencoded"}],
-    Fields = [{"client_id", kz_util:to_list(AppId)}
-              ,{"client_secret",kz_util:to_list(Secret)}
+    Fields = [{"client_id", kz_term:to_list(AppId)}
+              ,{"client_secret",kz_term:to_list(Secret)}
               ,{"grant_type","refresh_token"}
-              ,{"refresh_token",kz_util:to_list(RefreshToken)}
+              ,{"refresh_token",kz_term:to_list(RefreshToken)}
              ],
     Body = string:join(lists:append(lists:map(fun({K,V}) -> [string:join([K,V], "=")] end, Fields)), "&"),
-    case kz_http:post(kz_util:to_list(AUTH_URL), Headers, Body) of
+    case kz_http:post(kz_term:to_list(AUTH_URL), Headers, Body) of
         {'ok', 200, _RespHeaders, RespXML} ->
             JObj = kz_json:decode(RespXML),
             Token = kz_json:get_value(<<"access_token">>, JObj),
@@ -204,7 +204,7 @@ verify_token(ProviderId, AccessToken) when is_binary(ProviderId) ->
     end;
 verify_token(#oauth_provider{tokeninfo_url=TokenInfoUrl}, AccessToken) ->
     URL = <<TokenInfoUrl/binary, AccessToken/binary>>,
-    case kz_http:get(kz_util:to_list(URL)) of
+    case kz_http:get(kz_term:to_list(URL)) of
         {'ok', 200, _RespHeaders, RespXML} ->
             JObj = kz_json:decode(RespXML),
             case kz_json:get_value(<<"error">>, JObj) of
@@ -250,8 +250,8 @@ refresh_token(#oauth_app{name=ClientId
               ,{"scope", Scope}
               ,{"code", AuthorizationCode}
              ],
-    Body = string:join(lists:append(lists:map(fun({K,V}) -> [string:join([K, kz_util:to_list(V)], "=") ] end, Fields)),"&"),
-    case kz_http:post(kz_util:to_list(URL), Headers, Body) of
+    Body = string:join(lists:append(lists:map(fun({K,V}) -> [string:join([K, kz_term:to_list(V)], "=") ] end, Fields)),"&"),
+    case kz_http:post(kz_term:to_list(URL), Headers, Body) of
         {'ok', 200, _RespHeaders, RespXML} ->
             {'ok', kz_json:decode(RespXML)};
         Else ->

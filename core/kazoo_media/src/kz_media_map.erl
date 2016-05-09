@@ -83,7 +83,7 @@ flush() ->
 
 -spec prompt_path(ne_binary(), ne_binary(), ne_binary()) -> api_binary().
 prompt_path(AccountId, PromptId, L) ->
-    Language = kz_util:to_lower_binary(L),
+    Language = kz_term:to_lower_binary(L),
     #media_map{languages=Langs} = get_map(AccountId, PromptId),
     case kz_json:get_first_defined(language_keys(Language), Langs) of
         'undefined' ->
@@ -370,7 +370,7 @@ maybe_add_prompt(_AccountId, _JObj, 'undefined') ->
     lager:debug("no prompt id, ignoring ~s for ~s", [kz_doc:id(_JObj), _AccountId]);
 maybe_add_prompt(AccountId, JObj, PromptId) ->
     lager:debug("add prompt ~s to ~s (~s)", [PromptId, AccountId, kz_doc:id(JObj)]),
-    Lang = kz_util:to_lower_binary(
+    Lang = kz_term:to_lower_binary(
              kz_json:get_value(<<"language">>, JObj, kz_media_util:prompt_language(AccountId))
             ),
 

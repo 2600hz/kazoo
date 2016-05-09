@@ -658,7 +658,7 @@ log_function_clause(M, F, Length, [{M, F, _Args, _}|_]) ->
 log_function_clause(M, F, Length, [{RealM, RealF, RealArgs, Where}|_ST]) ->
     lager:error("unable to find function clause for ~s:~s(~s) in ~s:~p"
                 ,[RealM, RealF
-                  ,kz_util:join_binary([kz_util:to_binary(io_lib:format("~p",[A])) || A <- RealArgs], <<", ">>)
+                  ,kz_term:join_binary([kz_term:to_binary(io_lib:format("~p",[A])) || A <- RealArgs], <<", ">>)
                   ,props:get_value('file', Where), props:get_value('line', Where)
                  ]
                ),

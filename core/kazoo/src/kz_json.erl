@@ -219,9 +219,9 @@ are_identical('undefined', 'undefined') -> 'true';
 are_identical('undefined', _) -> 'false';
 are_identical(_, 'undefined') -> 'false';
 are_identical(JObj1, JObj2) ->
-    [KV || {_, V}=KV <- kz_json:to_proplist(JObj1), (not kz_util:is_empty(V))]
+    [KV || {_, V}=KV <- kz_json:to_proplist(JObj1), (not kz_term:is_empty(V))]
         =:=
-    [KV || {_, V}=KV <- kz_json:to_proplist(JObj2), (not kz_util:is_empty(V))].
+    [KV || {_, V}=KV <- kz_json:to_proplist(JObj2), (not kz_term:is_empty(V))].
 
 %% converts top-level proplist to json object, but only if sub-proplists have been converted
 %% first.
@@ -340,7 +340,7 @@ fold_kvs([K|Ks], [V|Vs], Prefix, Acc) ->
 -spec encode_kv(iolist() | binary(), ne_binary(), json_term() | json_terms()) -> iolist().
 %% If a list of values, use the []= as a separator between the key and each value
 encode_kv(Prefix, K, Vs) when is_list(Vs) ->
-    encode_kv(Prefix, kz_util:to_binary(K), Vs, <<"[]=">>, []);
+    encode_kv(Prefix, kz_term:to_binary(K), Vs, <<"[]=">>, []);
 %% if the value is a "simple" value, just encode it (url-encoded)
 encode_kv(Prefix, K, V) when is_binary(V) orelse is_number(V) ->
     encode_kv(Prefix, K, <<"=">>, kz_http_util:urlencode(V));
@@ -356,8 +356,8 @@ encode_kv(<<>>, K, ?JSON_WRAPPER(_)=JObj) -> to_querystring(JObj, [K]);
 encode_kv(Prefix, K, ?JSON_WRAPPER(_)=JObj) -> to_querystring(JObj, [Prefix, <<"[">>, K, <<"]">>]).
 
 -spec encode_kv(iolist() | binary(), ne_binary(), ne_binary(), string() | binary()) -> iolist().
-encode_kv(<<>>, K, Sep, V) -> [kz_util:to_binary(K), Sep, kz_util:to_binary(V)];
-encode_kv(Prefix, K, Sep, V) -> [Prefix, <<"[">>, kz_util:to_binary(K), <<"]">>, Sep, kz_util:to_binary(V)].
+encode_kv(<<>>, K, Sep, V) -> [kz_term:to_binary(K), Sep, kz_term:to_binary(V)];
+encode_kv(Prefix, K, Sep, V) -> [Prefix, <<"[">>, kz_term:to_binary(K), <<"]">>, Sep, kz_term:to_binary(V)].
 
 -spec encode_kv(iolist() | binary(), ne_binary(), [string()], ne_binary(), iolist()) -> iolist().
 encode_kv(Prefix, K, [V], Sep, Acc) ->
@@ -429,7 +429,7 @@ get_string_value(Key, JObj) ->
 get_string_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> safe_cast(Value, Default, fun kz_util:to_list/1)
+        Value -> safe_cast(Value, Default, fun kz_term:to_list/1)
     end.
 
 -spec get_list_value(keys(), object() | objects()) -> 'undefined' | list().
@@ -450,7 +450,7 @@ get_binary_value(Key, JObj) ->
 get_binary_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> safe_cast(Value, Default, fun kz_util:to_binary/1)
+        Value -> safe_cast(Value, Default, fun kz_term:to_binary/1)
     end.
 
 -spec get_ne_binary_value(keys(), object() | objects()) -> api_binary().
@@ -472,7 +472,7 @@ get_lower_binary(Key, JObj) ->
 get_lower_binary(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> safe_cast(Value, Default, fun kz_util:to_lower_binary/1)
+        Value -> safe_cast(Value, Default, fun kz_term:to_lower_binary/1)
     end.
 
 %% must be an existing atom
@@ -484,7 +484,7 @@ get_atom_value(Key, JObj) ->
 get_atom_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> safe_cast(Value, Default, fun kz_util:to_atom/1)
+        Value -> safe_cast(Value, Default, fun kz_term:to_atom/1)
     end.
 
 -spec get_integer_value(keys(), object() | objects()) -> api_integer().
@@ -495,7 +495,7 @@ get_integer_value(Key, JObj) ->
 get_integer_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> safe_cast(Value, Default, fun kz_util:to_integer/1)
+        Value -> safe_cast(Value, Default, fun kz_term:to_integer/1)
     end.
 
 -spec safe_cast(json_term(), json_term(), fun()) -> json_term().
@@ -514,7 +514,7 @@ get_number_value(Key, JObj) ->
 get_number_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> safe_cast(Value, Default, fun kz_util:to_number/1)
+        Value -> safe_cast(Value, Default, fun kz_term:to_number/1)
     end.
 
 -spec get_float_value(keys(), object() | objects()) -> api_float().
@@ -525,17 +525,17 @@ get_float_value(Key, JObj) ->
 get_float_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> safe_cast(Value, Default, fun kz_util:to_float/1)
+        Value -> safe_cast(Value, Default, fun kz_term:to_float/1)
     end.
 
 -spec is_false(keys(), object() | objects()) -> boolean().
 -spec is_false(keys(), object() | objects(), Default) -> boolean() | Default.
 is_false(Key, JObj) ->
-    kz_util:is_false(get_value(Key, JObj)).
+    kz_term:is_false(get_value(Key, JObj)).
 is_false(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        V -> kz_util:is_false(V)
+        V -> kz_term:is_false(V)
     end.
 
 -spec is_true(keys(), object() | objects()) -> boolean().
@@ -545,7 +545,7 @@ is_true(Key, JObj) ->
 is_true(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        V -> kz_util:is_true(V)
+        V -> kz_term:is_true(V)
     end.
 
 -spec get_binary_boolean(keys(), kz_json:object() | objects()) -> api_binary().
@@ -556,7 +556,7 @@ get_binary_boolean(Key, JObj) ->
 get_binary_boolean(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> kz_util:to_binary(kz_util:is_true(Value))
+        Value -> kz_term:to_binary(kz_term:is_true(Value))
     end.
 
 -spec get_keys(object()) -> keys().
@@ -593,7 +593,7 @@ get_ne_value(Key, JObj) ->
 
 get_ne_value(Key, JObj, Default) ->
     Value = get_value(Key, JObj),
-    case kz_util:is_empty(Value) of
+    case kz_term:is_empty(Value) of
         'true' -> Default;
         'false' -> Value
     end.
@@ -670,7 +670,7 @@ get_value(Key, JObj) ->
 
 get_value([Key|Ks], L, Default) when is_list(L) ->
     try
-        get_value1(Ks, lists:nth(kz_util:to_integer(Key), L), Default)
+        get_value1(Ks, lists:nth(kz_term:to_integer(Key), L), Default)
     catch
         'error':'badarg' -> Default;
         'error':'badarith' -> Default;
@@ -685,7 +685,7 @@ get_value1([], JObj, _Default) ->
 get_value1(Key, JObj, Default) when not is_list(Key)->
     get_value1([Key], JObj, Default);
 get_value1([K|Ks], JObjs, Default) when is_list(JObjs) ->
-    try lists:nth(kz_util:to_integer(K), JObjs) of
+    try lists:nth(kz_term:to_integer(K), JObjs) of
         'undefined' -> Default;
         JObj1 -> get_value1(Ks, JObj1, Default)
     catch
@@ -745,7 +745,7 @@ set_value(Key, Value, JObj) -> set_value1([Key], Value, JObj).
 -spec set_value1(keys() | integers(), json_term(), object() | objects()) -> object() | objects().
 set_value1([Key|_]=Keys, Value, []) when not is_integer(Key) -> set_value1(Keys, Value, new());
 set_value1([Key|T], Value, JObjs) when is_list(JObjs) ->
-    Key1 = kz_util:to_integer(Key),
+    Key1 = kz_term:to_integer(Key),
     case Key1 > length(JObjs) of
         %% The object index does not exist so try to add a new one to the list
         'true' ->
@@ -839,7 +839,7 @@ prune([K|T], JObj) when not is_list(JObj) ->
     end;
 prune(_, []) -> [];
 prune([K|T], [_|_]=JObjs) ->
-    V = lists:nth(kz_util:to_integer(K), JObjs),
+    V = lists:nth(kz_term:to_integer(K), JObjs),
     case prune(T, V) of
         ?EMPTY_JSON_OBJECT -> replace_in_list(K, 'undefined', JObjs, []);
         V -> replace_in_list(K, 'undefined', JObjs, []);
@@ -854,7 +854,7 @@ no_prune([K], JObj) when not is_list(JObj) ->
         L -> from_list(L)
     end;
 no_prune([K|T], Array) when is_list(Array) ->
-    {Less, [V|More]} = lists:split(kz_util:to_integer(K)-1, Array),
+    {Less, [V|More]} = lists:split(kz_term:to_integer(K)-1, Array),
     case {is_json_object(V), T, V} of
         {'true', [_|_]=Keys, JObj} ->
             Less ++ [no_prune(Keys, JObj)] ++ More;
@@ -870,7 +870,7 @@ no_prune([K|T], JObj) ->
     end;
 no_prune(_, []) -> [];
 no_prune([K|T], [_|_]=JObjs) when is_integer(K) ->
-    V = lists:nth(kz_util:to_integer(K), JObjs),
+    V = lists:nth(kz_term:to_integer(K), JObjs),
     V1 = no_prune(T, V),
     case V1 =:= V of
         'true' ->
@@ -906,7 +906,7 @@ load_fixture_from_file(App, File) ->
     load_fixture_from_file(App, <<"couchdb">>, File).
 
 load_fixture_from_file(App, Dir, File) ->
-    Path = list_to_binary([code:priv_dir(App), "/", kz_util:to_list(Dir), "/", kz_util:to_list(File)]),
+    Path = list_to_binary([code:priv_dir(App), "/", kz_term:to_list(Dir), "/", kz_term:to_list(File)]),
     lager:debug("read fixture from filesystem whapp ~s from JSON file: ~s", [App, Path]),
     try
         {'ok', Bin} = file:read_file(Path),

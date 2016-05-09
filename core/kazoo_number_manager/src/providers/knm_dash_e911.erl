@@ -111,7 +111,7 @@ maybe_update_dash_e911(Number) ->
     E911 = kz_json:get_ne_value([?PVT_FEATURES, ?DASH_KEY], Doc),
 
     NotChanged = kz_json:are_identical(CurrentE911, E911),
-    case kz_util:is_empty(E911) of
+    case kz_term:is_empty(E911) of
         'true' ->
             lager:debug("dash e911 information has been removed, updating dash"),
             _ = remove_number(Number),
@@ -225,7 +225,7 @@ provision_geocoded(JObj, E911) ->
 is_valid_location(Location) ->
     case emergency_provisioning_request('validateLocation', Location) of
         {'error', Reason} ->
-            {'error', kz_util:to_binary(Reason)};
+            {'error', kz_term:to_binary(Reason)};
         {'ok', Response} ->
             case kz_util:get_xml_value("//Location/status/code/text()", Response) of
                 <<"GEOCODED">> ->
@@ -237,7 +237,7 @@ is_valid_location(Location) ->
                 <<"ERROR">> ->
                     {'error', kz_util:get_xml_value("//Location/status/description/text()", Response)};
                 Else ->
-                    {'error', kz_util:to_binary(Else)}
+                    {'error', kz_term:to_binary(Else)}
             end
     end.
 
@@ -252,14 +252,14 @@ is_valid_location(Location) ->
                           {'provisioned', kz_json:object()} |
                           {'error', binary()}.
 add_location(Number, Location, CallerName) ->
-    Props = [{'uri', [{'uri', [kz_util:to_list(<<"tel:", (knm_converters:to_1npan(Number))/binary>>)]}
-                      ,{'callername', [kz_util:to_list(CallerName)]}
+    Props = [{'uri', [{'uri', [kz_term:to_list(<<"tel:", (knm_converters:to_1npan(Number))/binary>>)]}
+                      ,{'callername', [kz_term:to_list(CallerName)]}
                      ]
              }
              | Location
             ],
     case emergency_provisioning_request('addLocation', Props) of
-        {'error', Reason} -> {'error', kz_util:to_binary(Reason)};
+        {'error', Reason} -> {'error', kz_term:to_binary(Reason)};
         {'ok', Response} ->
             case kz_util:get_xml_value("//Location/status/code/text()", Response) of
                 <<"GEOCODED">> ->
@@ -271,7 +271,7 @@ add_location(Number, Location, CallerName) ->
                 <<"ERROR">> ->
                     {'error', kz_util:get_xml_value("//Location/status/description/text()", Response)};
                 Else ->
-                    {'error', kz_util:to_binary(Else)}
+                    {'error', kz_term:to_binary(Else)}
             end
     end.
 
@@ -283,7 +283,7 @@ add_location(Number, Location, CallerName) ->
 %%--------------------------------------------------------------------
 -spec provision_location(ne_binary()) -> api_binary().
 provision_location(LocationId) ->
-    Props = [{'locationid', [kz_util:to_list(LocationId)]}],
+    Props = [{'locationid', [kz_term:to_list(LocationId)]}],
     case emergency_provisioning_request('provisionLocation', Props) of
         {'error', _} -> 'undefined';
         {'ok', Response} ->
@@ -300,7 +300,7 @@ provision_location(LocationId) ->
 remove_number(Number) ->
     Num = knm_phone_number:number(knm_number:phone_number(Number)),
     lager:debug("removing dash e911 number '~s'", [Num]),
-    Props = [{'uri', [kz_util:to_list(<<"tel:", (knm_converters:to_1npan(Num))/binary>>)]}],
+    Props = [{'uri', [kz_term:to_list(<<"tel:", (knm_converters:to_1npan(Num))/binary>>)]}],
     case emergency_provisioning_request('removeURI', Props) of
         {'error', 'server_error'} ->
             lager:debug("removed number from dash e911"),
@@ -342,7 +342,7 @@ remove_number(Number) ->
                                             {'ok', xml_el()} |
                                             {'error', emergency_provisioning_error()}.
 emergency_provisioning_request(Verb, Props) ->
-    URL = list_to_binary([?DASH_EMERG_URL, "/", kz_util:to_lower_binary(Verb)]),
+    URL = list_to_binary([?DASH_EMERG_URL, "/", kz_term:to_lower_binary(Verb)]),
     Body = unicode:characters_to_binary(
              xmerl:export_simple([{Verb, Props}]
                                  ,'xmerl_xml'
@@ -360,7 +360,7 @@ emergency_provisioning_request(Verb, Props) ->
                   ],
     lager:debug("making ~s request to dash e911 ~s", [Verb, URL]),
     ?DASH_DEBUG("Request:~n~s ~s~n~s~n", ['post', URL, Body]),
-    case kz_http:post(kz_util:to_list(URL), Headers, Body, HTTPOptions) of
+    case kz_http:post(kz_term:to_list(URL), Headers, Body, HTTPOptions) of
         {'ok', 401, _, _Response} ->
             ?DASH_DEBUG("Response:~n401~n~s~n", [_Response]),
             lager:debug("dash e911 request error: 401 (unauthenticated)"),

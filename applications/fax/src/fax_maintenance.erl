@@ -71,7 +71,7 @@ migrate_faxes_fold(AccountDb, Current, Total, Options) ->
 
 -spec migrate_faxes(atom() | string() | binary(),  kz_proplist()) -> 'ok'.
 migrate_faxes(Account, Options) when not is_binary(Account) ->
-    migrate_faxes(kz_util:to_binary(Account), Options);
+    migrate_faxes(kz_term:to_binary(Account), Options);
 migrate_faxes(Account, Options) ->
     migrate_private_media(Account),
     recover_private_media(Account),
@@ -183,7 +183,7 @@ migrate_fax_to_modb(AccountDb, DocId, JObj, Options) ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
     AccountMODb = kazoo_modb:get_modb(AccountDb, Year, Month),
     FaxMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
-    FaxId = <<(kz_util:to_binary(Year))/binary
+    FaxId = <<(kz_term:to_binary(Year))/binary
              ,(kz_util:pad_month(Month))/binary
              ,"-"
              ,DocId/binary
@@ -349,7 +349,7 @@ migrate_outbound_faxes() ->
 
 -spec migrate_outbound_faxes(ne_binary() | integer() | kz_proplist()) -> 'ok'.
 migrate_outbound_faxes(Number) when is_binary(Number) ->
-    migrate_outbound_faxes(kz_util:to_integer(Number));
+    migrate_outbound_faxes(kz_term:to_integer(Number));
 migrate_outbound_faxes(Number) when is_integer(Number) ->
     io:format("start migrating outbound faxes with batch size ~p~n", [Number]),
     migrate_outbound_faxes([{'limit', Number}]);
@@ -399,7 +399,7 @@ migrate_outbound_fax(JObj) ->
     AccountMODb = kazoo_modb:get_modb(AccountId, Year, Month),
     kazoo_modb:create(AccountMODb),
     ToDB = kz_util:format_account_modb(AccountMODb, 'encoded'),
-    ToId = ?MATCH_MODB_PREFIX(kz_util:to_binary(Year), kz_util:pad_month(Month),FromId),
+    ToId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_util:pad_month(Month),FromId),
     case kz_datamgr:move_doc(FromDB, FromId, ToDB, ToId, ['override_existing_document']) of
         {'ok', _} -> io:format("document ~s/~s moved to ~s/~s~n", [FromDB, FromId, ToDB, ToId]);
         {'error', _E} -> io:format("error ~p moving document ~s/~s to ~s/~s~n", [_E, FromDB, FromId, ToDB, ToId])

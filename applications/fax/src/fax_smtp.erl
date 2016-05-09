@@ -68,7 +68,7 @@ init(Hostname, SessionCount, Address, Options) ->
             Banner = [Hostname, " Kazoo Email to Fax Server"],
             State = #state{options = Options
                            ,peer_ip = Address
-                           ,session_id = kz_util:rand_hex_binary(16)
+                           ,session_id = kz_term:rand_hex_binary(16)
                           },
             kz_util:put_callid(State#state.session_id),
             {'ok', Banner, State};
@@ -109,14 +109,14 @@ filter_extensions(BuilIn, Options) ->
 
 -spec handle_MAIL(binary(), state()) -> {'ok', state()}.
 handle_MAIL(FromHeader, State) ->
-    From = kz_util:to_lower_binary(FromHeader),
+    From = kz_term:to_lower_binary(FromHeader),
     lager:debug("Checking Mail from ~s", [From]),
     {'ok', State#state{from=From}}.
 
 -spec handle_MAIL_extension(binary(), state()) ->
                                    'error'.
 handle_MAIL_extension(Extension, _State) ->
-    Error = kz_util:to_binary(io_lib:format("554 Unknown MAIL FROM extension ~s", [Extension])),
+    Error = kz_term:to_binary(io_lib:format("554 Unknown MAIL FROM extension ~s", [Extension])),
     lager:debug(Error),
     'error'.
 
@@ -124,14 +124,14 @@ handle_MAIL_extension(Extension, _State) ->
                          {'ok', state()} |
                          {'error', string(), state()}.
 handle_RCPT(ToHeader, State) ->
-    To = kz_util:to_lower_binary(ToHeader),
+    To = kz_term:to_lower_binary(ToHeader),
     lager:debug("Checking Mail to ~s", [To]),
     check_faxbox((reset(State))#state{to=To}).
 
 -spec handle_RCPT_extension(binary(), state()) ->
                                    'error'.
 handle_RCPT_extension(Extension, _State) ->
-    Error = kz_util:to_binary(io_lib:format("554 Unknown RCPT TO extension ~s", [Extension])),
+    Error = kz_term:to_binary(io_lib:format("554 Unknown RCPT TO extension ~s", [Extension])),
     lager:debug(Error),
     'error'.
 
@@ -144,7 +144,7 @@ handle_DATA(From, To, <<>>, State) ->
 handle_DATA(From, To, Data, #state{options=Options}=State) ->
     lager:debug("Handle Data From ~p to ~p", [From,To]),
 
-    %% JMA: Can this be done with kz_util:rand_hex_binary() ?
+    %% JMA: Can this be done with kz_term:rand_hex_binary() ?
     Reference = lists:flatten(
                   [io_lib:format("~2.16.0b", [X])
                    || <<X>> <= erlang:md5(term_to_binary(kz_util:now()))
@@ -249,7 +249,7 @@ handle_message(#state{filename=Filename
                 {'error', Error} -> maybe_faxbox_log(State#state{errors=[Error]})
             end;
         _Else ->
-            Error = kz_util:to_binary(io_lib:format("error reading attachment ~s", [Filename])),
+            Error = kz_term:to_binary(io_lib:format("error reading attachment ~s", [Filename])),
             maybe_faxbox_log(State#state{errors=[Error]})
     end.
 
@@ -316,8 +316,8 @@ faxbox_log(#state{account_id=AccountId}=State) ->
 -spec error_doc() -> ne_binary().
 error_doc() ->
     {Year, Month, _} = erlang:date(),
-    <<(kz_util:to_binary(Year))/binary,(kz_util:pad_month(Month))/binary
-      ,"-",(kz_util:rand_hex_binary(16))/binary
+    <<(kz_term:to_binary(Year))/binary,(kz_util:pad_month(Month))/binary
+      ,"-",(kz_term:rand_hex_binary(16))/binary
     >>.
 
 -spec to_proplist(state()) -> kz_proplist().
@@ -371,7 +371,7 @@ reset(State) ->
                           {'ok', state()} |
                           {'error', string(), state()}.
 check_faxbox(#state{to=To}= State) ->
-    case binary:split(kz_util:to_lower_binary(To), <<"@">>) of
+    case binary:split(kz_term:to_lower_binary(To), <<"@">>) of
         [FaxNumber, Domain] ->
             Number = fax_util:filter_numbers(FaxNumber),
             check_number(
@@ -393,7 +393,7 @@ check_number(#state{number= <<>>
                     ,original_number=Number
                     ,faxbox='undefined'
                    }=State) ->
-    Error = kz_util:to_binary(
+    Error = kz_term:to_binary(
               io_lib:format("fax number ~s is empty, no faxbox to report to", [Number])
              ),
     lager:debug(Error),
@@ -402,7 +402,7 @@ check_number(#state{number= <<>>
                     ,original_number=Number
                     ,errors=Errors
                    }=State) ->
-    Error = kz_util:to_binary(io_lib:format("fax number ~s is empty", [Number])),
+    Error = kz_term:to_binary(io_lib:format("fax number ~s is empty", [Number])),
     lager:debug(Error),
     {'error', "554 Not Found", State#state{errors=[Error | Errors]}};
 check_number(#state{faxbox='undefined'}=State) ->
@@ -440,7 +440,7 @@ check_permissions(#state{from=From
     of
         'true' -> add_fax_document(State);
         'false' ->
-            Error = kz_util:to_binary(
+            Error = kz_term:to_binary(
                       io_lib:format("address ~s is not allowed on faxbox ~s"
                                    ,[From, kz_doc:id(FaxBoxDoc)]
                                    )
@@ -520,18 +520,18 @@ maybe_faxbox_by_owner_email(AccountId, #state{errors=Errors
     AccountDb = kz_util:format_account_db(AccountId),
     case kz_datamgr:get_results(AccountDb, <<"users/list_by_email">>, ViewOptions) of
         {'ok', []} ->
-            Error = kz_util:to_binary(io_lib:format("user ~s does not exist in account ~s, trying by rules",[From, AccountId])),
+            Error = kz_term:to_binary(io_lib:format("user ~s does not exist in account ~s, trying by rules",[From, AccountId])),
             lager:debug(Error),
             maybe_faxbox_by_rules(AccountId, State#state{errors=[Error | Errors]});
         {'ok', [JObj]} ->
             OwnerId = kz_doc:id(JObj),
             maybe_faxbox_by_owner_id(AccountId, OwnerId, State);
         {'ok', [_JObj | _JObjs]} ->
-            Error = kz_util:to_binary(io_lib:format("more then one user with email ~s in account ~s, trying by rules", [From, AccountId])),
+            Error = kz_term:to_binary(io_lib:format("more then one user with email ~s in account ~s, trying by rules", [From, AccountId])),
             lager:debug(Error),
             maybe_faxbox_by_rules(AccountId, State#state{errors=[Error | Errors]});
         {'error', _E} ->
-            Error = kz_util:to_binary(io_lib:format("error ~p getting user by email ~s  in account ~s, trying by rules",[_E, From, AccountId])),
+            Error = kz_term:to_binary(io_lib:format("error ~p getting user by email ~s  in account ~s, trying by rules",[_E, From, AccountId])),
             lager:debug(Error),
             maybe_faxbox_by_rules(AccountId, State#state{errors=[Error | Errors]})
     end.
@@ -548,7 +548,7 @@ maybe_faxbox_by_owner_id(AccountId, OwnerId, #state{errors=Errors, from=From}=St
                         ,errors=[]
                        };
         {'ok', [_JObj | _JObjs]} ->
-            Error = kz_util:to_binary(io_lib:format("user ~s : ~s has multiples faxboxes", [OwnerId, From])),
+            Error = kz_term:to_binary(io_lib:format("user ~s : ~s has multiples faxboxes", [OwnerId, From])),
             maybe_faxbox_by_rules(AccountId
                                   ,State#state{owner_id=OwnerId
                                                ,owner_email=From
@@ -556,7 +556,7 @@ maybe_faxbox_by_owner_id(AccountId, OwnerId, #state{errors=Errors, from=From}=St
                                               }
                                  );
         _ ->
-            Error = kz_util:to_binary(io_lib:format("user ~s : ~s does not have a faxbox", [OwnerId, From])),
+            Error = kz_term:to_binary(io_lib:format("user ~s : ~s does not have a faxbox", [OwnerId, From])),
             lager:debug("user ~s : ~s from account ~s does not have a faxbox, trying by rules"
                         ,[OwnerId, From, AccountId]
                        ),
@@ -712,7 +712,7 @@ maybe_process_part(<<"application/octet-stream">>, Parameters, Body, State) ->
     case props:get_value(<<"disposition">>, Parameters) of
         <<"attachment">> ->
             Props = props:get_value(<<"disposition-params">>, Parameters, []),
-            Filename = kz_util:to_lower_binary(props:get_value(<<"filename">>, Props, <<>>)),
+            Filename = kz_term:to_lower_binary(props:get_value(<<"filename">>, Props, <<>>)),
             case kz_mime:from_filename(Filename) of
                 <<"application/octet-stream">> ->
                     lager:debug("unable to determine content-type for extension : ~s", [Filename]),
@@ -804,14 +804,14 @@ maybe_process_image(CT, Body, State) ->
 -spec maybe_process_image(ne_binary(), binary() | mimemail:mimetuple(), ne_binary(), state()) -> {'ok', state()}.
 maybe_process_image(CT, Body, Size, State) ->
     {MinX, MinY} = case re:split(Size, "x") of
-                       [P] -> {kz_util:to_integer(P), kz_util:to_integer(P)};
-                       [X, Y] -> {kz_util:to_integer(X), kz_util:to_integer(Y)}
+                       [P] -> {kz_term:to_integer(P), kz_term:to_integer(P)};
+                       [X, Y] -> {kz_term:to_integer(X), kz_term:to_integer(Y)}
                    end,
     {'ok', NewState = #state{filename = Filename}} = process_part(CT, Body, State),
     Cmd = io_lib:format(?IMAGE_SIZE_CMD_FMT, [Filename]),
     [W, H] = re:split(os:cmd(Cmd), "x"),
-    Width = kz_util:to_integer(W),
-    Height = kz_util:to_integer(H),
+    Width = kz_term:to_integer(W),
+    Height = kz_term:to_integer(H),
     case MinX =< Width andalso MinY =< Height of
         'true' ->
             {'ok', NewState};
@@ -831,7 +831,7 @@ write_tmp_file(Extension, Body) ->
     write_tmp_file('undefined', Extension, Body).
 
 write_tmp_file('undefined', Extension, Body) ->
-    Filename = <<"/tmp/email_attachment_", (kz_util:to_binary(kz_util:current_tstamp()))/binary>>,
+    Filename = <<"/tmp/email_attachment_", (kz_term:to_binary(kz_util:current_tstamp()))/binary>>,
     write_tmp_file(Filename, Extension, Body);
 write_tmp_file(Filename, Extension, Body) ->
     File = <<Filename/binary, ".", Extension/binary>>,

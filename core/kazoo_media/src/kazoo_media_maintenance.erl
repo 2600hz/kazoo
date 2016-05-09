@@ -42,7 +42,7 @@ set_account_language(Account, Language) ->
     try kapps_account_config:set(AccountId
                                   ,?WHM_CONFIG_CAT
                                   ,?PROMPT_LANGUAGE_KEY
-                                  ,kz_util:to_lower_binary(Language)
+                                  ,kz_term:to_lower_binary(Language)
                                  )
     of
         _Config ->
@@ -65,7 +65,7 @@ import_prompts(DirPath, Lang) ->
         'true' ->
             kz_datamgr:db_create(?KZ_MEDIA_DB),
             MediaPath = filename:join([DirPath, "*.{wav,mp3}"]),
-            case filelib:wildcard(kz_util:to_list(MediaPath)) of
+            case filelib:wildcard(kz_term:to_list(MediaPath)) of
                 [] -> io:format("failed to find media files in '~s'~n", [DirPath]);
                 Files -> import_files(DirPath, Lang, Files)
             end
@@ -110,11 +110,11 @@ import_prompt(Path, Lang) ->
     end.
 
 import_prompt(Path0, Lang0, Contents) ->
-    Lang = kz_util:to_binary(Lang0),
-    Path = kz_util:to_binary(Path0),
+    Lang = kz_term:to_binary(Lang0),
+    Path = kz_term:to_binary(Path0),
 
     Extension = filename:extension(Path),
-    PromptName = kz_util:to_binary(filename:basename(Path, Extension)),
+    PromptName = kz_term:to_binary(filename:basename(Path, Extension)),
 
     {Category, Type, _} = cow_mimetypes:all(Path),
 
@@ -133,7 +133,7 @@ import_prompt(Path0, Lang0, Contents) ->
                   ,{<<"prompt_id">>, PromptName}
                   ,{<<"description">>, <<"System prompt in ", Lang/binary, " for ", PromptName/binary>>}
                   ,{<<"content_length">>, ContentLength}
-                  ,{<<"language">>, kz_util:to_lower_binary(Lang)}
+                  ,{<<"language">>, kz_term:to_lower_binary(Lang)}
                   ,{<<"content_type">>, ContentType}
                   ,{<<"source_type">>, ?MODULE}
                   ,{<<"streamable">>, 'true'}
@@ -147,9 +147,9 @@ import_prompt(Path0, Lang0, Contents) ->
         {'ok', MetaJObj1} ->
             io:format("  saved metadata about '~s'~n", [Path]),
             upload_prompt(ID
-                          ,<<PromptName/binary, (kz_util:to_binary(Extension))/binary>>
+                          ,<<PromptName/binary, (kz_term:to_binary(Extension))/binary>>
                           ,Contents
-                          ,[{'content_type', kz_util:to_list(ContentType)}
+                          ,[{'content_type', kz_term:to_list(ContentType)}
                             ,{'content_length', ContentLength}
                             ,{'rev', kz_doc:revision(MetaJObj1)}
                            ]
@@ -335,7 +335,7 @@ remove_empty_media_docs(AccountId, AccountDb) ->
 
 -spec media_doc_filename(ne_binary(), non_neg_integer()) -> file:name().
 media_doc_filename(AccountId, Timestamp) ->
-    Path = ["/tmp/empty_media_", AccountId, "_", kz_util:to_binary(Timestamp), ".json"],
+    Path = ["/tmp/empty_media_", AccountId, "_", kz_term:to_binary(Timestamp), ".json"],
     binary_to_list(list_to_binary(Path)).
 
 -spec remove_empty_media_docs(ne_binary(), ne_binary(), file:io_device(), kz_json:objects()) -> 'ok'.

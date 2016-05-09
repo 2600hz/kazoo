@@ -60,7 +60,7 @@
 -spec start_link(atom(), kz_proplist()) -> startlink_ret().
 start_link(Node) -> start_link(Node, []).
 start_link(Node, Options) ->
-    NodeBin = kz_util:to_binary(Node),
+    NodeBin = kz_term:to_binary(Node),
     gen_listener:start_link(?SERVER
                             ,[{'responders', ?RESPONDERS}
                               ,{'bindings', ?BINDINGS(NodeBin)}
@@ -232,23 +232,23 @@ build_message_headers(JObj, Endpoint) ->
                 ,{"proto", "sip"}
                 ,{"blocking", "true"}
                 ,{"dest_proto", "sip"}
-                ,{"from", kz_util:to_list(CIDNumber)}
-                ,{"from_full", kz_util:to_list(FromFull)}
-                ,{"content-length", kz_util:to_list(size(Body))}
+                ,{"from", kz_term:to_list(CIDNumber)}
+                ,{"from_full", kz_term:to_list(FromFull)}
+                ,{"content-length", kz_term:to_list(size(Body))}
                 ,{"type", "text/plain"}
                 ,{"body", Body}
-                ,{"Call-ID", kz_util:to_list(CallId)}
-                ,{"Unique-ID", kz_util:to_list(CallId)}
-                ,{"Server-ID", kz_util:to_list(ServerId)}
-                ,{"Message-ID", kz_util:to_list(MessageId)}
-                ,{"Msg-ID", kz_util:to_list(MsgId)}
-                ,{"sip_h_X-Kazoo-Bounce", kz_util:to_list(kz_util:rand_hex_binary(12))}
+                ,{"Call-ID", kz_term:to_list(CallId)}
+                ,{"Unique-ID", kz_term:to_list(CallId)}
+                ,{"Server-ID", kz_term:to_list(ServerId)}
+                ,{"Message-ID", kz_term:to_list(MessageId)}
+                ,{"Msg-ID", kz_term:to_list(MsgId)}
+                ,{"sip_h_X-Kazoo-Bounce", kz_term:to_list(kz_term:rand_hex_binary(12))}
                ]),
     kz_json:foldl(fun headers_foldl/3, Header, CCVs).
 
 -spec headers_foldl(kz_json:key(), kz_json:json_term(), kz_proplist()) -> kz_proplist().
 headers_foldl(K, V, Acc) ->
-    [{kz_util:to_list(?GET_CCV(K)), kz_util:to_list(V)} | Acc].
+    [{kz_term:to_list(?GET_CCV(K)), kz_term:to_list(V)} | Acc].
 
 -spec get_uri(api_binary()) -> api_binary().
 get_uri('undefined') -> 'undefined';
@@ -260,15 +260,15 @@ get_uri(Uri) -> <<"<sip:", Uri/binary, ">">>.
 send_error(Node, JObj, Err) ->
     ServerId =  kz_json:get_value(<<"Server-ID">>, JObj),
     Payload =
-        [{<<"Error-Description">>, kz_util:to_binary(Err)}
+        [{<<"Error-Description">>, kz_term:to_binary(Err)}
          ,{<<"Status">>, <<"Error">>}
          ,{<<"Delivery-Result-Code">>, <<"503">>}
-         ,{<<"Delivery-Result-Text">>, kz_util:to_binary(Err)}
+         ,{<<"Delivery-Result-Text">>, kz_term:to_binary(Err)}
          ,{<<"Delivery-Failure">>, 'true'}
          ,{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, JObj)}
          ,{<<"Message-ID">>, kz_json:get_value(<<"Message-ID">>, JObj)}
          ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
-         ,{<<"Switch-Nodename">>, kz_util:to_binary(Node)}
+         ,{<<"Switch-Nodename">>, kz_term:to_binary(Node)}
          ,{<<"Custom-Channel-Vars">>, kz_json:get_value(<<"Custom-Channel-Vars">>, JObj)}
              | kz_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
         ],
@@ -305,9 +305,9 @@ format_endpoint(Endpoint, _Props, _JObj, <<"username">>) ->
                   ,port=ToPort
                  }=_ToContact] = kzsip_uri:uris(Contact),
             {'ok', props:filter_empty(
-                     [{"to", kz_util:to_list(ToURI)}
-                      ,{"to_sip_ip", kz_util:to_list(ToIP)}
-                      ,{"to_sip_port", kz_util:to_list(ToPort)}
+                     [{"to", kz_term:to_list(ToURI)}
+                      ,{"to_sip_ip", kz_term:to_list(ToIP)}
+                      ,{"to_sip_port", kz_term:to_list(ToPort)}
                      ])};
         {'error', _Err}=E ->
             lager:debug("failed to find original contact for ~s@~s: ~p", [Username, Realm, _Err]),
@@ -324,9 +324,9 @@ format_route_endpoint(Endpoint, _Props, _JObj) ->
           ,port=ToPort
          }=_ToContact] = kzsip_uri:uris(ToURI),
     {'ok', props:filter_empty(
-             [{"to", kz_util:to_list(ToURI)}
-              ,{"to_sip_ip", kz_util:to_list(ToIP)}
-              ,{"to_sip_port", kz_util:to_list(ToPort)}
+             [{"to", kz_term:to_list(ToURI)}
+              ,{"to_sip_ip", kz_term:to_list(ToIP)}
+              ,{"to_sip_port", kz_term:to_list(ToPort)}
              ])}.
 
 -spec format_bounce_endpoint(kz_json:object(), kz_proplist(), kz_json:object()) -> {'ok', kz_proplist()} | {'error', ne_binary()}.
@@ -342,9 +342,9 @@ format_bounce_endpoint(Endpoint, Props, JObj) ->
           ,port=ToPort
          }=_ToContact] = kzsip_uri:uris(ToURI),
     {'ok', props:filter_empty(
-      [{"to", kz_util:to_list(To)}
-       ,{"to_sip_ip", kz_util:to_list(ToIP)}
-       ,{"to_sip_port", kz_util:to_list(ToPort)}
+      [{"to", kz_term:to_list(To)}
+       ,{"to_sip_ip", kz_term:to_list(ToIP)}
+       ,{"to_sip_port", kz_term:to_list(ToPort)}
       ])}.
 
 -spec process_fs_event(atom(), kz_proplist()) -> any().
@@ -364,7 +364,7 @@ process_fs_event(<<"CUSTOM">>, <<"SMS::DELIVERY_REPORT">>, Node, Props) ->
     BaseProps = props:filter_empty(props:filter_undefined(
         [{<<"Call-ID">>, CallId}
          ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, Props)}
-         ,{<<"Switch-Nodename">>, kz_util:to_binary(Node)}
+         ,{<<"Switch-Nodename">>, kz_term:to_binary(Node)}
          ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
          ,{<<"Delivery-Result-Code">>, props:get_value(<<"Delivery-Result-Code">>, Props)}
          ,{<<"Delivery-Failure">>, props:get_value(<<"Delivery-Failure">>, Props)}

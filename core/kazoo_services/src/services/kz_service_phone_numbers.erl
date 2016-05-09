@@ -145,7 +145,7 @@ is_number_billable(DID, 'undefined') ->
             end
     end;
 is_number_billable(DID, M) ->
-    Module = kz_util:to_atom(M, 'true'),
+    Module = kz_term:to_atom(M, 'true'),
     case catch Module:is_number_billable(DID) of
         'true' ->
             lager:debug("number ~s is billable: ~s", [DID, Module]),

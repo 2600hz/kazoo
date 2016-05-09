@@ -265,9 +265,9 @@ dump_local(Srv) -> dump_local(Srv, 'false').
 
 -spec dump_local(text(), text() | boolean()) -> 'ok'.
 dump_local(Srv, ShowValue) when not is_atom(Srv) ->
-    dump_local(kz_util:to_atom(Srv), ShowValue);
+    dump_local(kz_term:to_atom(Srv), ShowValue);
 dump_local(Srv, ShowValue) when not is_boolean(ShowValue) ->
-    dump_local(Srv, kz_util:to_boolean(ShowValue));
+    dump_local(Srv, kz_term:to_boolean(ShowValue));
 dump_local(Srv, ShowValue) ->
     {PointerTab, MonitorTab} = gen_listener:call(Srv, {'tables'}),
 
@@ -391,7 +391,7 @@ monitor_tab(Tab) ->
 
 -spec to_tab(atom(), string()) -> atom().
 to_tab(Tab, Suffix) ->
-    kz_util:to_atom(kz_util:to_list(Tab) ++ Suffix, 'true').
+    kz_term:to_atom(kz_term:to_list(Tab) ++ Suffix, 'true').
 
 %%--------------------------------------------------------------------
 %% @private
@@ -583,7 +583,7 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 handle_event(JObj, #state{tab=Tab}=State) ->
     case (V=kapi_conf:doc_update_v(JObj)) andalso
-             (kz_api:node(JObj) =/= kz_util:to_binary(node()) orelse
+             (kz_api:node(JObj) =/= kz_term:to_binary(node()) orelse
               kz_json:get_atom_value(<<"Origin-Cache">>, JObj) =/= ets:info(Tab, 'name')
              )
     of

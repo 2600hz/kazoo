@@ -82,7 +82,7 @@ update_prepend(Number) ->
 
     NotChanged = kz_json:are_identical(CurrentPrepend, Prepend),
 
-    case kz_util:is_empty(Prepend) of
+    case kz_term:is_empty(Prepend) of
         'true' ->
             knm_services:deactivate_feature(Number, ?PREPEND_KEY);
         'false' when NotChanged  ->

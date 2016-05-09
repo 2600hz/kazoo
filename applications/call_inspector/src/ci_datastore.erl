@@ -221,7 +221,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec make_name(ne_binary()) -> file:filename().
 make_name(CallId) ->
-    <<D1:2/binary, D2:2/binary, Rest/binary>> = kz_util:binary_md5(CallId),
+    <<D1:2/binary, D2:2/binary, Rest/binary>> = kz_term:binary_md5(CallId),
     filename:join([?CI_DIR, D1, D2, Rest]).
 
 -spec ensure_path_exists(file:filename()) -> 'ok'.

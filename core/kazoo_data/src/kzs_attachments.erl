@@ -44,7 +44,7 @@ do_fetch_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Att) ->
     end.
 
 do_fetch_attachment_from_handler([{Handler, Props}], DbName, DocId, AName) ->
-    Module = kz_util:to_atom(Handler, 'true'),
+    Module = kz_term:to_atom(Handler, 'true'),
     Module:fetch_attachment(Props, DbName, DocId, AName).
 
 -spec stream_attachment(map(), ne_binary(), ne_binary(), ne_binary(), pid()) ->
@@ -108,7 +108,7 @@ put_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Contents, Options
 
 
 attachment_from_handler(AName, AttHandler, Size, CT) ->
-    Props = [{<<"content_type">>, kz_util:to_binary(CT)}
+    Props = [{<<"content_type">>, kz_term:to_binary(CT)}
             ,{<<"length">>, Size}
             ,{<<"stub">>, false}
             ,{<<"handler">>, AttHandler}
@@ -117,7 +117,7 @@ attachment_from_handler(AName, AttHandler, Size, CT) ->
 
 attachment_handler_jobj(Handler, Props) ->
     JObj = kz_json:from_list(props:get_value('attachment', Props, [])),
-    kz_json:set_value(kz_util:to_binary(Handler), JObj, kz_json:new()).
+    kz_json:set_value(kz_term:to_binary(Handler), JObj, kz_json:new()).
 
 -spec handle_put_attachment(map(), kz_json:object(), ne_binary(), ne_binary(), ne_binary(), ne_binary()
                            , kz_proplist(), kz_proplist()) ->

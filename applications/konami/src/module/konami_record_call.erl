@@ -60,7 +60,7 @@ number_builder(DefaultJObj) ->
 
     {'ok', [Number]} = io:fread("What number should invoke 'record_call'? ", "~d"),
 
-    K = [<<"numbers">>, kz_util:to_binary(Number)],
+    K = [<<"numbers">>, kz_term:to_binary(Number)],
 
     case number_builder_check(kz_json:get_value(K, DefaultJObj)) of
         'undefined' -> kz_json:delete_key(K, DefaultJObj);
@@ -89,7 +89,7 @@ number_builder_check_option(NumberJObj, _Option) ->
 -spec number_builder_action(kz_json:object()) -> kz_json:object().
 number_builder_action(NumberJObj) ->
     {'ok', [Action]} = io:fread("What action: 'start' or 'stop': ", "~s"),
-    number_builder_time_limit(NumberJObj, kz_util:to_binary(Action)).
+    number_builder_time_limit(NumberJObj, kz_term:to_binary(Action)).
 
 -spec number_builder_time_limit(kz_json:object(), ne_binary()) -> kz_json:object().
 number_builder_time_limit(NumberJObj, Action) ->
@@ -99,12 +99,12 @@ number_builder_time_limit(NumberJObj, Action) ->
 -spec number_builder_format(kz_json:object(), ne_binary(), pos_integer()) -> kz_json:object().
 number_builder_format(NumberJObj, Action, TimeLimit) ->
     {'ok', [Format]} = io:fread("What format would you like the recording? ('wav' or 'mp3'): ", "~3s"),
-    number_builder_url(NumberJObj, Action, TimeLimit, kz_util:to_binary(Format)).
+    number_builder_url(NumberJObj, Action, TimeLimit, kz_term:to_binary(Format)).
 
 -spec number_builder_url(kz_json:object(), ne_binary(), pos_integer(), ne_binary()) -> kz_json:object().
 number_builder_url(NumberJObj, Action, TimeLimit, Format) ->
     {'ok', [URL]} = io:fread("What URL to send the recording to at the end: ", "~s"),
-    metaflow_jobj(NumberJObj, Action, TimeLimit, Format, kz_util:to_binary(URL)).
+    metaflow_jobj(NumberJObj, Action, TimeLimit, Format, kz_term:to_binary(URL)).
 
 -spec metaflow_jobj(kz_json:object(), ne_binary(), pos_integer(), ne_binary(), ne_binary()) -> kz_json:object().
 metaflow_jobj(NumberJObj, Action, TimeLimit, Format, URL) ->

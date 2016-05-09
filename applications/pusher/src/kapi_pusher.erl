@@ -35,7 +35,7 @@
 -define(PUSH_REQ_VALUES, [{<<"Event-Category">>, <<"notification">>}
                           ,{<<"Event-Name">>, <<"push_req">>}
                          ]).
--define(PUSH_REQ_TYPES, [{<<"Expires">>, fun(V) -> is_integer(kz_util:to_integer(V)) end}]).
+-define(PUSH_REQ_TYPES, [{<<"Expires">>, fun(V) -> is_integer(kz_term:to_integer(V)) end}]).
 
 -define(PUSH_RESP_HEADERS, [<<"Token-ID">>]).
 -define(OPTIONAL_PUSH_RESP_HEADERS, []).

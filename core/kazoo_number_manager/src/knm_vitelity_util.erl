@@ -72,7 +72,7 @@ default_options(Options) ->
 -spec build_uri(query_options()) -> ne_binary().
 build_uri(Options) ->
     URI = props:get_value('uri', Options),
-    QS = kz_util:to_binary(
+    QS = kz_term:to_binary(
            props:to_querystring(
              props:filter_undefined(
                props:get_value('qs', Options)
@@ -150,11 +150,11 @@ xml_el_to_kv_pair(#xmlElement{name=Name
                              }) ->
     case kz_xml:elements(Value) of
         [] ->
-            {kz_util:to_binary(Name)
+            {kz_term:to_binary(Name)
              ,kz_xml:texts_to_binary(Value)
             };
         Els ->
-            {kz_util:to_binary(Name)
+            {kz_term:to_binary(Name)
              ,kz_json:from_list(xml_els_to_proplist(Els))
             }
     end.
@@ -164,7 +164,7 @@ xml_el_to_kv_pair(#xmlElement{name=Name
                             {'error', any()}.
 query_vitelity(URI) ->
     lager:debug("querying ~s", [URI]),
-    case kz_http:post(kz_util:to_list(URI)) of
+    case kz_http:post(kz_term:to_list(URI)) of
         {'ok', _RespCode, _RespHeaders, RespXML} ->
             lager:debug("recv ~p: ~s", [_RespCode, RespXML]),
             {'ok', RespXML};
@@ -235,5 +235,5 @@ get_short_state(FullState) ->
               ,{<<"wisconsin">>, <<"WI">>}
               ,{<<"wyoming">>, <<"WY">>}
              ],
-    State = kz_util:to_lower_binary(FullState),
+    State = kz_term:to_lower_binary(FullState),
     props:get_value(State, States).

@@ -21,7 +21,7 @@
 -define(PRESENCE_EVENT, <<"presence">>).
 -define(OMNIPRESENCE_EVENT_ALL, <<"all">>).
 
--define(FAKE_CALLID(C), kz_util:to_hex_binary(crypto:hash(md5, C))).
+-define(FAKE_CALLID(C), kz_term:to_hex_binary(crypto:hash(md5, C))).
 
 -record(omnip_subscription, {
           user                                  :: api_binary() | '_' %% user@realm.com

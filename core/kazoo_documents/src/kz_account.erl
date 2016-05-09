@@ -431,7 +431,7 @@ allow_number_additions(JObj) ->
 
 -spec set_allow_number_additions(doc(), boolean()) -> doc().
 set_allow_number_additions(JObj, IsAllowed) ->
-    kz_json:set_value(?ALLOW_NUMBER_ADDITIONS, kz_util:is_true(IsAllowed), JObj).
+    kz_json:set_value(?ALLOW_NUMBER_ADDITIONS, kz_term:is_true(IsAllowed), JObj).
 
 -spec trial_expiration(doc()) -> api_integer().
 -spec trial_expiration(doc(), Default) -> integer() | Default.

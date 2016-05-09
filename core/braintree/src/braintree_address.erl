@@ -33,10 +33,10 @@
 -spec url(ne_binary(), ne_binary()) -> string().
 
 url(CustomerId) ->
-    lists:append(["/customers/", kz_util:to_list(CustomerId), "/addresses"]).
+    lists:append(["/customers/", kz_term:to_list(CustomerId), "/addresses"]).
 
 url(CustomerId, AddressId) ->
-    lists:append(["/customers/", kz_util:to_list(CustomerId), "/addresses/", kz_util:to_list(AddressId)]).
+    lists:append(["/customers/", kz_term:to_list(CustomerId), "/addresses/", kz_term:to_list(AddressId)]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -233,5 +233,5 @@ record_to_json(#bt_address{}=Address) ->
 create_or_get_json_id(JObj) ->
     case kz_json:get_value(<<"street_address">>, JObj) of
         'undefined' -> kz_doc:id(JObj);
-        _Address -> kz_doc:id(JObj, kz_util:rand_hex_binary(16))
+        _Address -> kz_doc:id(JObj, kz_term:rand_hex_binary(16))
     end.

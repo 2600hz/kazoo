@@ -410,7 +410,7 @@ default_eavesdrop_req(Context) ->
     [{<<"Eavesdrop-Mode">>, cb_context:req_value(Context, <<"mode">>, <<"listen">>)}
      ,{<<"Account-ID">>, cb_context:account_id(Context)}
      ,{<<"Endpoint-ID">>, cb_context:req_value(Context, <<"id">>)}
-     ,{<<"Endpoint-Timeout">>, kz_util:to_integer(cb_context:req_value(Context, <<"timeout">>, 20))}
+     ,{<<"Endpoint-Timeout">>, kz_term:to_integer(cb_context:req_value(Context, <<"timeout">>, 20))}
      ,{<<"Outbound-Caller-ID-Name">>, cb_context:req_value(Context, <<"caller_id_name">>)}
      ,{<<"Outbound-Caller-ID-Number">>, cb_context:req_value(Context, <<"caller_id_number">>)}
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -704,10 +704,10 @@ fetch_ranged_queue_stats(Context, StartRange) ->
     Now = kz_util:current_tstamp(),
     Past = Now - MaxRange,
 
-    To = kz_util:to_integer(cb_context:req_value(Context, <<"end_range">>, Now)),
+    To = kz_term:to_integer(cb_context:req_value(Context, <<"end_range">>, Now)),
     MaxFrom = To - MaxRange,
 
-    case kz_util:to_integer(StartRange) of
+    case kz_term:to_integer(StartRange) of
         F when F > To ->
             %% start_range is larger than end_range
             cb_context:add_validation_error(

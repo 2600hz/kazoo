@@ -429,11 +429,11 @@ check_for_inactive_buckets() ->
           }],
     case [begin
               kz_token_bucket:stop(Srv),
-              kz_util:to_binary(Srv)
+              kz_term:to_binary(Srv)
           end
           || Srv <- ets:select(?MODULE:table_id(), MS)
          ]
     of
         [] -> 'ok';
-        L -> lager:debug("stopped servers ~s", [kz_util:join_binary(L)])
+        L -> lager:debug("stopped servers ~s", [kz_term:join_binary(L)])
     end.

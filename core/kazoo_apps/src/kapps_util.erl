@@ -352,7 +352,7 @@ is_account_db(Db) -> kz_datamgr:db_classification(Db) =:= 'account'.
 %%--------------------------------------------------------------------
 -spec get_account_by_realm(ne_binary()) -> getby_return().
 get_account_by_realm(RawRealm) ->
-    Realm = kz_util:to_lower_binary(RawRealm),
+    Realm = kz_term:to_lower_binary(RawRealm),
     get_accounts_by(Realm, ?ACCT_BY_REALM_CACHE(Realm), ?AGG_LIST_BY_REALM).
 
 -spec get_account_by_ip(ne_binary()) -> getby_return().
@@ -676,11 +676,11 @@ write_tts_file(Path, Say) ->
 
 -spec to_magic_hash(ne_binary()) -> ne_binary().
 to_magic_hash(Bin) ->
-    kz_util:to_hex_binary(zlib:zip(Bin)).
+    kz_term:to_hex_binary(zlib:zip(Bin)).
 
 -spec from_magic_hash(ne_binary()) -> ne_binary().
 from_magic_hash(Bin) ->
-    zlib:unzip(kz_util:from_hex_binary(Bin)).
+    zlib:unzip(kz_term:from_hex_binary(Bin)).
 
 -spec media_local_store_url(kapps_call:call(), kz_json:object()) -> ne_binary().
 media_local_store_url(Call, JObj) ->

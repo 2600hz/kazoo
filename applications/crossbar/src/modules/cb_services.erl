@@ -135,7 +135,7 @@ validate_services(Context, ?HTTP_POST) ->
     catch
         'throw':{Error, Reason} ->
             R = kz_json:set_value([<<"billing_id">>, <<"invalid">>], Reason, kz_json:new()),
-            crossbar_util:response('error', kz_util:to_binary(Error), 400, R, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 400, R, Context)
     end.
 
 validate(Context, ?PATH_PLAN) ->
@@ -180,7 +180,7 @@ post(Context, Services) ->
             crossbar_util:response(kz_services:public_json(NewServices), Context)
     catch
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end.
 
 -spec load_audit_logs(cb_context:context()) -> cb_context:context().

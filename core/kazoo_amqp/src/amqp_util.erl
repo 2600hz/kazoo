@@ -264,33 +264,33 @@ document_routing_key(Action, Db, Type) ->
     document_routing_key(Action, Db, Type, <<"*">>).
 
 document_routing_key(<<"*">>, Db, Type, Id) ->
-    list_to_binary([<<"*.">>, kz_util:to_binary(Db)
-                    ,".", kz_util:to_binary(Type)
-                    ,".", encode(kz_util:to_binary(Id))
+    list_to_binary([<<"*.">>, kz_term:to_binary(Db)
+                    ,".", kz_term:to_binary(Type)
+                    ,".", encode(kz_term:to_binary(Id))
                    ]);
 document_routing_key(<<"db_", _/binary>> = Action, Db, Type, Id) ->
     list_to_binary([Action
-                    ,".", kz_util:to_binary(Db)
-                    ,".", kz_util:to_binary(Type)
-                    ,".", encode(kz_util:to_binary(Id))
+                    ,".", kz_term:to_binary(Db)
+                    ,".", kz_term:to_binary(Type)
+                    ,".", encode(kz_term:to_binary(Id))
                    ]);
 document_routing_key(<<"doc_", _/binary>> = Action, Db, Type, Id) ->
     list_to_binary([Action
-                    ,".", kz_util:to_binary(Db)
-                    ,".", kz_util:to_binary(Type)
-                    ,".", encode(kz_util:to_binary(Id))
+                    ,".", kz_term:to_binary(Db)
+                    ,".", kz_term:to_binary(Type)
+                    ,".", encode(kz_term:to_binary(Id))
                    ]);
 document_routing_key(Action, Db, <<"database">>=Type, Id) ->
-    list_to_binary(["db_", kz_util:to_list(Action)
-                    ,".", kz_util:to_binary(Db)
-                    ,".", kz_util:to_binary(Type)
-                    ,".", encode(kz_util:to_binary(Id))
+    list_to_binary(["db_", kz_term:to_list(Action)
+                    ,".", kz_term:to_binary(Db)
+                    ,".", kz_term:to_binary(Type)
+                    ,".", encode(kz_term:to_binary(Id))
                    ]);
 document_routing_key(Action, Db, Type, Id) ->
-    list_to_binary(["doc_", kz_util:to_list(Action)
-                    ,".", kz_util:to_binary(Db)
-                    ,".", kz_util:to_binary(Type)
-                    ,".", encode(kz_util:to_binary(Id))
+    list_to_binary(["doc_", kz_term:to_list(Action)
+                    ,".", kz_term:to_binary(Db)
+                    ,".", kz_term:to_binary(Type)
+                    ,".", encode(kz_term:to_binary(Id))
                    ]).
 
 -spec callctl_publish(ne_binary(), amqp_payload()) -> 'ok'.
@@ -700,7 +700,7 @@ new_queue(Queue, Options) when is_binary(Queue) ->
 
 -spec new_queue_name() -> ne_binary().
 new_queue_name() ->
-    list_to_binary(io_lib:format("~s-~p-~s", [node(), self(), kz_util:rand_hex_binary(4)])).
+    list_to_binary(io_lib:format("~s-~p-~s", [node(), self(), kz_term:rand_hex_binary(4)])).
 
 -spec queue_arguments(kz_proplist()) -> amqp_properties().
 queue_arguments(Arguments) ->

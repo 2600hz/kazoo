@@ -30,7 +30,7 @@
 
 -record(state, {parent :: pid()
                 ,broker :: ne_binary()
-                ,self_binary = kz_util:to_binary(pid_to_list(self())) :: ne_binary()
+                ,self_binary = kz_term:to_binary(pid_to_list(self())) :: ne_binary()
                 ,zone :: ne_binary()
                }).
 
@@ -73,7 +73,7 @@ init([Parent, Broker]) ->
                 ,[Parent, Broker]
                ),
     kz_amqp_channel:consumer_broker(Broker),
-    Zone = kz_util:to_binary(kz_amqp_connections:broker_zone(Broker)),
+    Zone = kz_term:to_binary(kz_amqp_connections:broker_zone(Broker)),
     {'ok', #state{parent=Parent
                   ,broker=Broker
                   ,zone=Zone

@@ -79,7 +79,7 @@ is_notice_enabled(JObj) ->
                             ], JObj)
     of
         'undefined' -> is_notice_enabled_default();
-        Value -> kz_util:is_true(Value)
+        Value -> kz_term:is_true(Value)
     end.
 
 -spec is_notice_enabled_default() -> boolean().
@@ -105,7 +105,7 @@ create_template_props(Event, Docs, Account) ->
     DateCalled = kz_json:get_integer_value(<<"Fax-Timestamp">>, Event, Now),
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
 
-    Timezone = kz_util:to_list(kz_json:find(<<"timezone">>, Docs, <<"UTC">>)),
+    Timezone = kz_term:to_list(kz_json:find(<<"timezone">>, Docs, <<"UTC">>)),
     ClockTimezone = kapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
 
     [{<<"account">>, notify_util:json_to_template_props(Account)}

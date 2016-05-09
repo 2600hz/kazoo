@@ -295,14 +295,14 @@ send_response(Request) ->
             ),
 
     Resp = props:filter_undefined(
-             [{<<"Is-Authorized">>, kz_util:to_binary(j5_request:is_authorized(Request))}
+             [{<<"Is-Authorized">>, kz_term:to_binary(j5_request:is_authorized(Request))}
               ,{<<"Account-ID">>, j5_request:account_id(Request)}
               ,{<<"Account-Billing">>, j5_request:account_billing(Request)}
               ,{<<"Reseller-ID">>, j5_request:reseller_id(Request)}
               ,{<<"Reseller-Billing">>, j5_request:reseller_billing(Request)}
               ,{<<"Call-Direction">>, j5_request:call_direction(Request)}
               ,{<<"Other-Leg-Call-ID">>, j5_request:other_leg_call_id(Request)}
-              ,{<<"Soft-Limit">>, kz_util:to_binary(j5_request:soft_limit(Request))}
+              ,{<<"Soft-Limit">>, kz_term:to_binary(j5_request:soft_limit(Request))}
               ,{<<"Msg-ID">>, j5_request:message_id(Request)}
               ,{<<"Call-ID">>, j5_request:call_id(Request)}
               ,{<<"Custom-Channel-Vars">>, CCVs}
@@ -322,8 +322,8 @@ send_response(Request) ->
 trunk_usage(Id) ->
     Limits = j5_limits:get(Id),
     <<
-      (kz_util:to_binary(j5_limits:inbound_trunks(Limits)))/binary, "/",
-      (kz_util:to_binary(j5_limits:outbound_trunks(Limits)))/binary, "/",
-      (kz_util:to_binary(j5_limits:twoway_trunks(Limits)))/binary, "/",
-      (kz_util:to_binary(j5_limits:burst_trunks(Limits)))/binary
+      (kz_term:to_binary(j5_limits:inbound_trunks(Limits)))/binary, "/",
+      (kz_term:to_binary(j5_limits:outbound_trunks(Limits)))/binary, "/",
+      (kz_term:to_binary(j5_limits:twoway_trunks(Limits)))/binary, "/",
+      (kz_term:to_binary(j5_limits:burst_trunks(Limits)))/binary
     >>.

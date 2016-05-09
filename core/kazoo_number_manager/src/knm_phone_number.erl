@@ -112,7 +112,7 @@ newly_found(Num=?NE_BINARY, Carrier, AssignTo=?NE_BINARY, Data=?JSON_WRAPPER(_))
     setters(new(),
             [{fun set_number/2, NormalizedNum}
             ,{fun set_number_db/2, knm_converters:to_db(NormalizedNum)}
-            ,{fun set_module_name/2, kz_util:to_binary(Carrier)}
+            ,{fun set_module_name/2, kz_term:to_binary(Carrier)}
             ,{fun set_carrier_data/2, Data}
             ,{fun set_state/2, ?NUMBER_STATE_DISCOVERY}
             ,{fun set_assign_to/2, kz_util:format_account_id(AssignTo)}
@@ -742,7 +742,7 @@ save_to_number_db(PhoneNumber) ->
         {'error', 'not_found'} ->
             lager:debug("creating new db '~s' for number '~s'", [NumberDb, number(PhoneNumber)]),
             'true' = kz_datamgr:db_create(NumberDb),
-            kz_datamgr:revise_views_from_folder(NumberDb, kz_util:to_atom(?APP_NAME)),
+            kz_datamgr:revise_views_from_folder(NumberDb, kz_term:to_atom(?APP_NAME)),
             save_to_number_db(PhoneNumber);
         {'error', E} ->
             lager:error("failed to save ~s in ~s: ~p", [number(PhoneNumber), NumberDb, E]),
@@ -769,7 +769,7 @@ handle_assignment(PhoneNumber) ->
 -spec assign(knm_phone_number(), ne_binary()) -> knm_phone_number().
 assign(PhoneNumber) ->
     AssignedTo = assigned_to(PhoneNumber),
-    case kz_util:is_empty(AssignedTo) of
+    case kz_term:is_empty(AssignedTo) of
         'true' -> PhoneNumber;
         'false' -> assign(PhoneNumber, AssignedTo)
     end.
@@ -803,7 +803,7 @@ assign(PhoneNumber, AssignedTo) ->
 -spec unassign(knm_phone_number(), ne_binary()) -> knm_phone_number().
 unassign(PhoneNumber) ->
     PrevAssignedTo = prev_assigned_to(PhoneNumber),
-    case kz_util:is_empty(PrevAssignedTo) of
+    case kz_term:is_empty(PrevAssignedTo) of
         'true' ->
             lager:debug("prev_assigned_to is is empty for ~s, ignoring"
                         ,[number(PhoneNumber)]
@@ -875,7 +875,7 @@ delete_number_doc(Number) ->
 -spec maybe_remove_number_from_account(knm_phone_number()) -> knm_phone_number_return().
 maybe_remove_number_from_account(Number) ->
     AssignedTo = assigned_to(Number),
-    case kz_util:is_empty(AssignedTo) of
+    case kz_term:is_empty(AssignedTo) of
         'true' ->
             lager:debug("assigned_to is is empty for ~s, ignoring", [number(Number)]),
             {'ok', Number};

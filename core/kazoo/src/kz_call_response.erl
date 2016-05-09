@@ -114,7 +114,7 @@ do_send(CallId, CtrlQ, Commands) ->
     Command = [{<<"Application-Name">>, <<"queue">>}
                ,{<<"Call-ID">>, CallId}
                ,{<<"Commands">>, Commands}
-               ,{<<"Msg-ID">>, kz_util:rand_hex_binary(6)}
+               ,{<<"Msg-ID">>, kz_term:rand_hex_binary(6)}
                | kz_api:default_headers(<<"call">>, <<"command">>, <<"call_response">>, <<"0.1.0">>)
               ],
     kz_amqp_worker:cast(Command

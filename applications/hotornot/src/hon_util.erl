@@ -61,10 +61,10 @@ find_candidate_rates(DID, _) ->
 build_keys(<<"+", E164/binary>>) ->
     build_keys(E164);
 build_keys(<<D:1/binary, Rest/binary>>) ->
-    build_keys(Rest, D, [kz_util:to_integer(D)]).
+    build_keys(Rest, D, [kz_term:to_integer(D)]).
 
 build_keys(<<D:1/binary, Rest/binary>>, Prefix, Acc) ->
-    build_keys(Rest, <<Prefix/binary, D/binary>>, [kz_util:to_integer(<<Prefix/binary, D/binary>>) | Acc]);
+    build_keys(Rest, <<Prefix/binary, D/binary>>, [kz_term:to_integer(<<Prefix/binary, D/binary>>) | Acc]);
 build_keys(<<>>, _, Acc) -> Acc.
 
 %% Given a list of rates, return the list of rates whose routes regexes match the given E164

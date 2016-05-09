@@ -138,8 +138,8 @@ transaction(Account, Transaction, ServicePlan) ->
 -spec system_alert(atom() | string() | binary(), [any()]) -> 'ok'.
 system_alert(Format, Args) ->
     Msg = io_lib:format(Format, Args),
-    Notify= [{<<"Message">>, kz_util:to_binary(Msg)}
-             ,{<<"Subject">>, <<"KAZOO: ", (kz_util:to_binary(Msg))/binary>>}
+    Notify= [{<<"Message">>, kz_term:to_binary(Msg)}
+             ,{<<"Subject">>, <<"KAZOO: ", (kz_term:to_binary(Msg))/binary>>}
              | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
             ],
     kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1).
@@ -147,12 +147,12 @@ system_alert(Format, Args) ->
 -spec detailed_alert(string(), list(), kz_proplist()) -> 'ok'.
 detailed_alert(Format, Args, Props) ->
     Msg = io_lib:format(Format, Args),
-    Notify = [{<<"Message">>, kz_util:to_binary(Msg)}
-              ,{<<"Subject">>, <<"KAZOO: ", (kz_util:to_binary(Msg))/binary>>}
+    Notify = [{<<"Message">>, kz_term:to_binary(Msg)}
+              ,{<<"Subject">>, <<"KAZOO: ", (kz_term:to_binary(Msg))/binary>>}
               ,{<<"Details">>,
                 kz_json:from_list(
                   %% Include Format to help parse JSON data sent
-                  [{<<"Format">>, kz_util:to_binary(Format)}
+                  [{<<"Format">>, kz_term:to_binary(Format)}
                    | Props
                   ])
                }
@@ -162,8 +162,8 @@ detailed_alert(Format, Args, Props) ->
 
 -spec generic_alert(atom() | string() | binary(), atom() | string() | binary()) -> 'ok'.
 generic_alert(Subject, Msg) ->
-    Notify= [{<<"Message">>, kz_util:to_binary(Msg)}
-             ,{<<"Subject">>, <<"KAZOO: ", (kz_util:to_binary(Subject))/binary>>}
+    Notify= [{<<"Message">>, kz_term:to_binary(Msg)}
+             ,{<<"Subject">>, <<"KAZOO: ", (kz_term:to_binary(Subject))/binary>>}
              | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
             ],
     kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1).

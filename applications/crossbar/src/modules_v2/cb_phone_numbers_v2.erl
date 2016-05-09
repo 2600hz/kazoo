@@ -225,7 +225,7 @@ maybe_allow_updates(Context, [{?KNM_PHONE_NUMBERS_DOC, _}|_], _Verb) ->
         'true' -> Context
     catch
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end;
 maybe_allow_updates(Context, _Nouns, _Verb) -> Context.
 
@@ -503,7 +503,7 @@ find_numbers(Context) ->
 get_find_numbers_req(Context) ->
     JObj = cb_context:query_string(Context),
     AccountId = cb_context:auth_account_id(Context),
-    Quantity = kz_util:to_integer(cb_context:req_value(Context, <<"quantity">>, 1)),
+    Quantity = kz_term:to_integer(cb_context:req_value(Context, <<"quantity">>, 1)),
     kz_json:set_values([{<<"quantity">>, Quantity}
                        ,{<<"Account-ID">>, AccountId}
                        ], JObj).

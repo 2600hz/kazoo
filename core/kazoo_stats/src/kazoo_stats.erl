@@ -262,7 +262,7 @@ recursive_from_proplist(List) when is_list(List) ->
     case lists:all(fun is_integer/1, List) of
         'true' -> List;
         'false' ->
-            kz_json:from_list([{kz_util:to_binary(K)
+            kz_json:from_list([{kz_term:to_binary(K)
                                 ,recursive_from_proplist(V)}
                                || {K,V} <- List
                               ])

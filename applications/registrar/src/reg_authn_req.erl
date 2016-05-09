@@ -359,10 +359,10 @@ jobj_to_auth_user(JObj, Username, Realm, Req) ->
                           ,username = Username
                           ,account_id = get_account_id(AuthDoc)
                           ,account_db = get_account_db(AuthDoc)
-                          ,password = kz_json:get_value(<<"password">>, AuthValue, kz_util:rand_hex_binary(6))
+                          ,password = kz_json:get_value(<<"password">>, AuthValue, kz_term:rand_hex_binary(6))
                           ,authorizing_type = kz_doc:type(AuthDoc, <<"anonymous">>)
                           ,authorizing_id = kz_doc:id(JObj)
-                          ,method = kz_util:to_lower_binary(Method)
+                          ,method = kz_term:to_lower_binary(Method)
                           ,owner_id = kz_json:get_value(<<"owner_id">>, AuthDoc)
                           ,suppress_unregister_notifications = kz_json:is_true(<<"suppress_unregister_notifications">>, AuthDoc)
                           ,register_overwrite_notify = kz_json:is_true(<<"register_overwrite_notify">>, AuthDoc)
@@ -387,7 +387,7 @@ add_account_name(#auth_user{account_id=AccountId}=AuthUser) ->
             Realm = kz_account:realm(Account),
             AuthUser#auth_user{account_name = kz_account:name(Account)
                                ,account_realm = Realm
-                               ,account_normalized_realm = kz_util:to_lower_binary(Realm)
+                               ,account_normalized_realm = kz_term:to_lower_binary(Realm)
                               }
     end.
 
@@ -407,7 +407,7 @@ get_auth_method(JObj) ->
                                {'error', any()}.
 maybe_auth_method(AuthUser, JObj, Req, ?GSM_ANY_METHOD)->
     GsmDoc = kz_json:get_value(<<"gsm">>, JObj),
-    CachedNonce = kz_json:get_value(<<"nonce">>, GsmDoc, kz_util:rand_hex_binary(16)),
+    CachedNonce = kz_json:get_value(<<"nonce">>, GsmDoc, kz_term:rand_hex_binary(16)),
     Nonce = remove_dashes(
               kz_json:get_first_defined([<<"nonce">>
                                          ,<<"Auth-Nonce">>
@@ -417,7 +417,7 @@ maybe_auth_method(AuthUser, JObj, Req, ?GSM_ANY_METHOD)->
                                        )
              ),
     GsmKey = kz_json:get_value(<<"key">>, GsmDoc),
-    GsmSRes = kz_json:get_value(<<"sres">>, GsmDoc, kz_util:rand_hex_binary(6)),
+    GsmSRes = kz_json:get_value(<<"sres">>, GsmDoc, kz_term:rand_hex_binary(6)),
     GsmNumber = kz_json:get_value(<<"msisdn">>, GsmDoc),
     ReqMethod = kz_json:get_value(<<"Method">>, Req),
     gsm_auth(
@@ -487,10 +487,10 @@ gsm_auth(#auth_user{method=?GSM_A3A8_METHOD
                     ,a3a8_key=GsmKey
                     ,nonce=NonceHex
                    }=AuthUser) ->
-    Key = kz_util:from_hex_binary(GsmKey),
-    Nonce = kz_util:from_hex_binary(NonceHex),
+    Key = kz_term:from_hex_binary(GsmKey),
+    Nonce = kz_term:from_hex_binary(NonceHex),
     SRes = registrar_crypto:a3a8(Nonce, Key),
-    SResHex = kz_util:to_hex_binary(SRes),
+    SResHex = kz_term:to_hex_binary(SRes),
     <<SRES:8/binary, KC/binary>> = SResHex,
     {'ok', AuthUser#auth_user{a3a8_sres=SRES
                               ,a3a8_kc=KC

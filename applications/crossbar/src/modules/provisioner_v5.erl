@@ -78,7 +78,7 @@ get_family(JObj) ->
 -spec get_model(kz_json:object()) -> ne_binary().
 get_model(JObj) ->
     Family = kz_json:get_binary_value([<<"provision">>, <<"endpoint_model">>], JObj, <<>>),
-    case kz_util:to_lower_binary(Family) of
+    case kz_term:to_lower_binary(Family) of
         <<"t19">> -> <<"t19p">>;
         <<"t21">> -> <<"t21p">>;
         <<"t22">> -> <<"t22p">>;
@@ -276,7 +276,7 @@ settings_lines(JObj) ->
 settings_basic(JObj) ->
     Enabled = case kz_json:get_ne_value(<<"enabled">>, JObj) of
                   'undefined' -> 'undefined';
-                  Else -> kz_util:is_true(Else)
+                  Else -> kz_term:is_true(Else)
               end,
     Props = props:filter_undefined(
               [{<<"display_name">>, kz_json:get_ne_value(<<"name">>, JObj)}
@@ -587,18 +587,18 @@ decode(JSON) ->
 req_headers(Token) ->
     props:filter_undefined(
       [{"Content-Type", "application/json"}
-      ,{"X-Auth-Token", kz_util:to_list(Token)}
+      ,{"X-Auth-Token", kz_term:to_list(Token)}
       ,{"X-Kazoo-Cluster-ID", get_cluster_id()}
-      ,{"User-Agent", kz_util:to_list(erlang:node())}
+      ,{"User-Agent", kz_term:to_list(erlang:node())}
       ]).
 
 -spec get_cluster_id() -> string().
 get_cluster_id() ->
     case kapps_config:get_string(?MOD_CONFIG_CAT, <<"cluster_id">>) of
         'undefined' ->
-            ClusterId = kz_util:rand_hex_binary(16),
+            ClusterId = kz_term:rand_hex_binary(16),
             {'ok', _JObj} = kapps_config:set_default(?MOD_CONFIG_CAT, <<"cluster_id">>, ClusterId),
-            kz_util:to_list(ClusterId);
+            kz_term:to_list(ClusterId);
         ClusterId -> ClusterId
     end.
 

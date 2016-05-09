@@ -59,7 +59,7 @@
 handle_push(JObj, _Props) ->
     Token = kz_json:get_value(<<"Token-ID">>, JObj),
     TokenType = kz_json:get_value(<<"Token-Type">>, JObj),
-    Module = kz_util:to_atom(<<"pm_",TokenType/binary>> , 'true'),
+    Module = kz_term:to_atom(<<"pm_",TokenType/binary>> , 'true'),
 
     lager:debug("pushing for token ~s(~s) to module ~s", [Token, TokenType, Module]),
 

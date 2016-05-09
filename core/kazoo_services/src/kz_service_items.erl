@@ -169,7 +169,7 @@ log_update_rate(Category, Item, ServiceItem) ->
 -spec log_update_cumulative_discount(ne_binary(), ne_binary(), kz_service_item:item()) -> 'ok'.
 log_update_cumulative_discount(Category, Item, ServiceItem) ->
     CumulativeDiscount = kz_service_item:cumulative_discount(ServiceItem),
-    case kz_util:is_empty(CumulativeDiscount)
+    case kz_term:is_empty(CumulativeDiscount)
         orelse kz_service_item:cumulative_discount_rate(ServiceItem)
     of
         'true' -> 'ok';

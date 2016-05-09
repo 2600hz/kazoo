@@ -192,7 +192,7 @@ is_notice_enabled(JObj) ->
                             ], JObj)
     of
         'undefined' -> is_notice_enabled_default();
-        Value -> kz_util:is_true(Value)
+        Value -> kz_term:is_true(Value)
     end.
 
 -spec is_notice_enabled_default() -> boolean().

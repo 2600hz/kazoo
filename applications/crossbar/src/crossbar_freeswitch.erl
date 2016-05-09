@@ -204,15 +204,15 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec zip_directory(file:filename_all()) -> string().
 zip_directory(WorkDir0) ->
-    WorkDir = kz_util:to_list(WorkDir0),
+    WorkDir = kz_term:to_list(WorkDir0),
     ZipName = lists:concat([WorkDir, ".zip"]),
-    Files = [kz_util:to_list(F) || F <- filelib:wildcard("*", WorkDir)],
+    Files = [kz_term:to_list(F) || F <- filelib:wildcard("*", WorkDir)],
     {'ok', _} = zip:zip(ZipName , Files, [{'cwd', WorkDir}]),
     ZipName.
 
 -spec setup_directory() -> file:filename_all().
 setup_directory() ->
-    TopDir = kz_util:rand_hex_binary(8),
+    TopDir = kz_term:rand_hex_binary(8),
     WorkRootDir = kapps_config:get_binary(?MOD_CONFIG_CAT, <<"work_dir">>, <<"/tmp/">>),
     WorkDir = filename:join([WorkRootDir, TopDir]),
     kz_util:make_dir(WorkDir),
@@ -226,7 +226,7 @@ setup_directory() ->
                             ,xml_file_from_config(T)
                            )
          || {D, T} <- Files,
-            lists:member(kz_util:to_binary(T), Filter)
+            lists:member(kz_term:to_binary(T), Filter)
         ],
     put(<<"WorkDir">>, WorkDir),
     put(<<"Realms">>, []),
@@ -242,7 +242,7 @@ process_realms() ->
     Filter = kapps_config:get(?MOD_CONFIG_CAT, <<"realm_templates_to_process">>, ?FS_REALM_TEMPLATES),
     _ = [process_realms(Realms, D, T)
          || {D, T} <- Templates,
-            lists:member(kz_util:to_binary(T), Filter)
+            lists:member(kz_term:to_binary(T), Filter)
         ],
     'ok'.
 
@@ -279,7 +279,7 @@ build_freeswitch(Pid) ->
     _ = [crawl_numbers_db(Db) || Db <- AllDBs, is_number_db(Db)],
     process_realms(),
     File = zip_directory(WorkDir),
-    del_dir(kz_util:to_list(WorkDir)),
+    del_dir(kz_term:to_list(WorkDir)),
     gen_server:cast(Pid, {'completed', File}).
 
 -spec is_number_db(ne_binary()) -> boolean().
@@ -289,7 +289,7 @@ is_number_db(DB) ->
 -spec crawl_numbers_db(ne_binary()) -> 'ok'.
 crawl_numbers_db(NumberDb) ->
     lager:debug("getting all numbers from ~s",[NumberDb]),
-    Db = kz_util:to_binary(http_uri:encode(kz_util:to_list(NumberDb))),
+    Db = kz_term:to_binary(http_uri:encode(kz_term:to_list(NumberDb))),
     try kz_datamgr:all_docs(Db) of
         {'ok', []} ->
             lager:debug("no number docs in ~s",[NumberDb]);
@@ -472,7 +472,7 @@ render_templates(Number, AccountId, Username, Realm, Props) ->
                 ],
     Filter = kapps_config:get(?MOD_CONFIG_CAT, <<"templates_to_process">>, ?DEFAULT_FS_TEMPLATES),
     _ = [render_template(Number, AccountId, Username, Realm, Props, D, T)
-         || {D, T} <- Templates, lists:member(kz_util:to_binary(T), Filter)
+         || {D, T} <- Templates, lists:member(kz_term:to_binary(T), Filter)
         ],
     'ok'.
 
@@ -526,16 +526,16 @@ template_file_name(?FS_DIRECTORY_REALM) -> "directory_realm_template.xml".
 
 -spec compile_templates() -> ['ok'].
 compile_templates() ->
-    [compile_template(kz_util:to_atom(T,'true')) || T <- ?FS_ALL_TEMPLATES].
+    [compile_template(kz_term:to_atom(T,'true')) || T <- ?FS_ALL_TEMPLATES].
 
 -spec compile_template(atom()) -> 'ok'.
 compile_template(Module) ->
-    compile_template(Module, kapps_config:get_binary(?MOD_CONFIG_CAT, kz_util:to_binary(Module))).
+    compile_template(Module, kapps_config:get_binary(?MOD_CONFIG_CAT, kz_term:to_binary(Module))).
 
 -spec compile_template(atom(), api_binary()) -> 'ok'.
 compile_template(Module, 'undefined') ->
     {'ok', Contents} = file:read_file(template_file(Module)),
-    kapps_config:set(?MOD_CONFIG_CAT, kz_util:to_binary(Module), Contents),
+    kapps_config:set(?MOD_CONFIG_CAT, kz_term:to_binary(Module), Contents),
     compile_template(Module, Contents);
 compile_template(Module, Template) ->
     case erlydtl:compile_template(Template, Module, [{'out_dir', 'false'}]) of
@@ -571,7 +571,7 @@ xml_file_name(?FS_DIRECTORY) -> "directory.xml".
 -spec xml_file_from_config(?FS_CHATPLAN | ?FS_DIALPLAN | ?FS_DIRECTORY) -> ne_binary().
 -spec xml_file_from_config(?FS_CHATPLAN | ?FS_DIALPLAN | ?FS_DIRECTORY, ne_binary()) -> ne_binary().
 xml_file_from_config(Module) ->
-    KeyName = <<(kz_util:to_binary(Module))/binary,"_top_dir_file_content">>,
+    KeyName = <<(kz_term:to_binary(Module))/binary,"_top_dir_file_content">>,
     xml_file_from_config(Module, KeyName).
 xml_file_from_config(Module, KeyName) ->
     xml_file_from_config(Module, kapps_config:get_binary(?MOD_CONFIG_CAT, KeyName), KeyName).

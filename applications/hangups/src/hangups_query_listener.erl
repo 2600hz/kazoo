@@ -118,7 +118,7 @@ meter_resp(N) ->
     meter_resp(N, folsom_metrics_meter:get_values(N)).
 
 meter_resp(N, [_|_]=Values) ->
-    Vs = [{kz_util:to_binary(K), V}
+    Vs = [{kz_term:to_binary(K), V}
           || {K, V} <- Values,
              K =/= 'acceleration'
          ],
@@ -149,7 +149,7 @@ publish_to(Queue, API) ->
 
 -spec get_accel(kz_proplist()) -> kz_proplist().
 get_accel(AccelVs) ->
-    [{kz_util:to_binary(K), V}
+    [{kz_term:to_binary(K), V}
      || {K, V} <- AccelVs
     ].
 

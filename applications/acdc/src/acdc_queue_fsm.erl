@@ -202,7 +202,7 @@ cdr_url(FSM) ->
 %%--------------------------------------------------------------------
 init([MgrPid, ListenerPid, QueueJObj]) ->
     QueueId = kz_doc:id(QueueJObj),
-    kz_util:put_callid(<<"fsm_", QueueId/binary, "_", (kz_util:to_binary(self()))/binary>>),
+    kz_util:put_callid(<<"fsm_", QueueId/binary, "_", (kz_term:to_binary(self()))/binary>>),
 
     webseq:start(?WSD_ID),
     webseq:reg_who(?WSD_ID, self(), iolist_to_binary([<<"qFSM">>, pid_to_list(self())])),

@@ -117,7 +117,7 @@ default_headers(ServerID, AppName, AppVsn) ->
     [{?KEY_SERVER_ID, ServerID}
      ,{?KEY_APP_NAME, AppName}
      ,{?KEY_APP_VERSION, AppVsn}
-     ,{?KEY_NODE, kz_util:to_binary(node())}
+     ,{?KEY_NODE, kz_term:to_binary(node())}
     ].
 
 default_headers(EvtCat, EvtName, AppName, AppVsn) ->
@@ -129,7 +129,7 @@ default_headers(ServerID, EvtCat, EvtName, AppName, AppVsn) ->
      ,{?KEY_EVENT_NAME, EvtName}
      ,{?KEY_APP_NAME, AppName}
      ,{?KEY_APP_VERSION, AppVsn}
-     ,{?KEY_NODE, kz_util:to_binary(node())}
+     ,{?KEY_NODE, kz_term:to_binary(node())}
     ].
 
 default_headers_v(Props) when is_list(Props) ->
@@ -142,11 +142,11 @@ default_headers_v(JObj) ->
 
 -spec default_header_v(ne_binary(), kz_proplist()) -> boolean().
 default_header_v(Header, Props) ->
-    not kz_util:is_empty(props:get_value(Header, Props)).
+    not kz_term:is_empty(props:get_value(Header, Props)).
 
 disambiguate_and_publish(ReqJObj, RespJObj, Binding) ->
-    Wapi = list_to_binary([<<"kapi_">>, kz_util:to_binary(Binding)]),
-    ApiMod = kz_util:to_atom(Wapi),
+    Wapi = list_to_binary([<<"kapi_">>, kz_term:to_binary(Binding)]),
+    ApiMod = kz_term:to_atom(Wapi),
     ApiMod:disambiguate_and_publish(ReqJObj, RespJObj).
 
 %%--------------------------------------------------------------------
@@ -170,7 +170,7 @@ prepare_api_payload(Prop, HeaderValues) ->
 prepare_api_payload(Prop, HeaderValues, FormatterFun) when is_function(FormatterFun, 1) ->
     prepare_api_payload(Prop, HeaderValues, [{'formatter', FormatterFun}]);
 prepare_api_payload(Prop, HeaderValues, Options) when is_list(Prop) ->
-    FormatterFun = props:get_value('formatter', Options, fun kz_util:identity/1),
+    FormatterFun = props:get_value('formatter', Options, fun kz_term:identity/1),
     CleanupFuns = [fun (P) -> remove_empty_values(P, props:get_is_true('remove_recursive', Options, 'true')) end
                    ,fun (P) -> set_missing_values(P, ?DEFAULT_VALUES) end
                    ,fun (P) -> set_missing_values(P, HeaderValues) end
@@ -225,7 +225,7 @@ do_empty_value_removal([{K,V}=KV|T], Recursive, Acc) ->
         'true' -> do_empty_value_removal(T, Recursive, Acc);
         'false' ->
             case (kz_json:is_json_object(V) orelse
-                  kz_util:is_proplist(V)
+                  kz_term:is_proplist(V)
                  )
                 andalso Recursive
             of
@@ -323,7 +323,7 @@ build_message(Prop, ReqH, OptH) when is_list(Prop) ->
     case defaults(Prop) of
         {'error', _Reason}=Error ->
             lager:debug("API message does not have the default headers ~s: ~p"
-                        ,[string:join([kz_util:to_list(H) || H <- ReqH], ","), Error]
+                        ,[string:join([kz_term:to_list(H) || H <- ReqH], ","), Error]
                        ),
             Error;
         HeadAndProp ->
@@ -342,7 +342,7 @@ build_message_specific_headers({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
         {'error', _Reason} = Error ->
             lager:debug("API message does not have the required headers ~s: ~p"
-                        ,[kz_util:join_binary(ReqH, <<",">>), Error]
+                        ,[kz_term:join_binary(ReqH, <<",">>), Error]
                        ),
             Error;
         {Headers1, Prop1} ->
@@ -358,7 +358,7 @@ build_message_specific({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
         {'error', _Reason} = Error ->
             lager:debug("API message does not have the required headers ~s: ~p"
-                        ,[kz_util:join_binary(ReqH, <<",">>), Error]
+                        ,[kz_term:join_binary(ReqH, <<",">>), Error]
                        ),
             Error;
         {Headers1, Prop1} ->

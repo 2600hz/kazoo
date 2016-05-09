@@ -77,8 +77,8 @@ find_numbers(<<"+", Rest/binary>>, Quanity, Options) ->
 find_numbers(<<"1", Rest/binary>>, Quanity, Options) ->
     find_numbers(Rest, Quanity, Options);
 find_numbers(<<NPA:3/binary>>, Quanity, Options) ->
-    Props = [{'areaCode', [kz_util:to_list(NPA)]}
-             ,{'maxQuantity', [kz_util:to_list(Quanity)]}
+    Props = [{'areaCode', [kz_term:to_list(NPA)]}
+             ,{'maxQuantity', [kz_term:to_list(Quanity)]}
             ],
     case make_numbers_request('areaCodeNumberSearch', Props) of
         {'error', _}=E -> E;
@@ -86,8 +86,8 @@ find_numbers(<<NPA:3/binary>>, Quanity, Options) ->
     end;
 find_numbers(Search, Quanity, Options) ->
     NpaNxx = binary:part(Search, 0, (case size(Search) of L when L < 6 -> L; _ -> 6 end)),
-    Props = [{'npaNxx', [kz_util:to_list(NpaNxx)]}
-             ,{'maxQuantity', [kz_util:to_list(Quanity)]}
+    Props = [{'npaNxx', [kz_term:to_list(NpaNxx)]}
+             ,{'maxQuantity', [kz_term:to_list(Quanity)]}
             ],
     case make_numbers_request('npaNxxNumberSearch', Props) of
         {'error', _}=E -> E;
@@ -144,19 +144,19 @@ acquire_and_provision_number(Number) ->
     Hosts = case ?BW_ENDPOINTS of
                 'undefined' -> [];
                 Endpoint when is_binary(Endpoint) ->
-                    [{'endPoints', [{'host', [kz_util:to_list(Endpoint)]}]}];
+                    [{'endPoints', [{'host', [kz_term:to_list(Endpoint)]}]}];
                 Endpoints ->
-                    [{'endPoints', [{'host', [kz_util:to_list(E)]} || E <- Endpoints]}]
+                    [{'endPoints', [{'host', [kz_term:to_list(E)]} || E <- Endpoints]}]
             end,
     OrderName = lists:flatten([?BW_ORDER_NAME_PREFIX, "-", integer_to_list(kz_util:current_tstamp())]),
-    AcquireFor = case kz_util:is_empty(AssignedTo) of
+    AcquireFor = case kz_term:is_empty(AssignedTo) of
                      'true' -> "no_assigned_account";
                      'false' -> binary_to_list(AssignedTo)
                  end,
     Props = [{'orderName', [OrderName]}
              ,{'extRefID', [binary_to_list(AuthBy)]}
              ,{'numberIDs', [{'id', [Id]}]}
-             ,{'subscriber', [kz_util:to_list(AcquireFor)]}
+             ,{'subscriber', [kz_term:to_list(AcquireFor)]}
              | Hosts
             ],
     case make_numbers_request('basicNumberOrder', Props) of
@@ -335,7 +335,7 @@ number_search_response_to_json(Xml) ->
 get_cleaned(Path, Xml) ->
     case kz_util:get_xml_value(Path, Xml) of
         'undefined' -> 'undefined';
-        V -> kz_util:strip_binary(V, [$\s, $\n])
+        V -> kz_term:strip_binary(V, [$\s, $\n])
     end.
 
 %%--------------------------------------------------------------------

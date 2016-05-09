@@ -684,7 +684,7 @@ from_jobj(JObj) ->
              ,reseller_id = ResellerId
              ,reseller_billing = ResellerBilling
              ,reseller_allotment = is_allotment(ResellerBilling)
-             ,soft_limit = kz_util:is_true(SoftLimit)
+             ,soft_limit = kz_term:is_true(SoftLimit)
             }.
 
 -spec is_allotment(ne_binary()) -> boolean().

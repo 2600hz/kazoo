@@ -14,7 +14,7 @@
 
 -include("webhooks.hrl").
 
--define(ID, kz_util:to_binary(?MODULE)).
+-define(ID, kz_term:to_binary(?MODULE)).
 -define(NAME, <<"parking">>).
 -define(DESC, <<"Events when calls get parked/retrieved">>).
 -define(METADATA

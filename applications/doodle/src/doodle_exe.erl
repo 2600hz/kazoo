@@ -407,7 +407,7 @@ handle_cast(_Msg, State) ->
     {'noreply', State}.
 
 event_listener_name(Call, Module) ->
-    <<(kapps_call:call_id_direct(Call))/binary, "-", (kz_util:to_binary(Module))/binary>>.
+    <<(kapps_call:call_id_direct(Call))/binary, "-", (kz_term:to_binary(Module))/binary>>.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -625,7 +625,7 @@ cf_module_prefix(_Call, _) -> <<"cf_">>.
 -spec maybe_start_cf_module(ne_binary(), kz_proplist(), kapps_call:call()) ->
                                    {pid_ref() | 'undefined', atom()}.
 maybe_start_cf_module(ModuleBin, Data, Call) ->
-    CFModule = kz_util:to_atom(ModuleBin, 'true'),
+    CFModule = kz_term:to_atom(ModuleBin, 'true'),
     try CFModule:module_info('exports') of
         _ ->
             lager:info("moving to action '~s'", [CFModule]),

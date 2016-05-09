@@ -118,7 +118,7 @@ diversion_strip_test_() ->
     ].
 
 replace_value_test_() ->
-    Replace = kz_util:rand_hex_binary(10),
+    Replace = kz_term:rand_hex_binary(10),
 
     Formatter = kz_json:from_list([{<<"from">>
                                     ,[kz_json:from_list([{<<"value">>, Replace}])]

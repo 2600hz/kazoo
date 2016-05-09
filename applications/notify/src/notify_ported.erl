@@ -92,7 +92,7 @@ create_template_props(Event, Account) ->
 %%--------------------------------------------------------------------
 -spec get_send_from(kz_json:object()) -> ne_binary().
 get_send_from(Admin) ->
-    DefaultFrom = kz_util:to_binary(node()),
+    DefaultFrom = kz_term:to_binary(node()),
     case kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"send_from_admin_email">>, 'true') of
         'false' -> DefaultFrom;
         'true' -> kz_json:get_ne_value(<<"email">>, Admin, DefaultFrom)

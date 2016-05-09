@@ -101,12 +101,12 @@ message_name(BoxNum, DT) ->
 -spec message_name(ne_binary(), kz_datetime(), string()) -> ne_binary().
 message_name(BoxNum, {{Y,M,D},{H,I,S}}, TZ) ->
     list_to_binary(["mailbox ", BoxNum, " message "
-                    ,kz_util:to_binary(M), "-"
-                    ,kz_util:to_binary(D), "-"
-                    ,kz_util:to_binary(Y), " "
-                    ,kz_util:to_binary(H), ":"
-                    ,kz_util:to_binary(I), ":"
-                    ,kz_util:to_binary(S), TZ
+                    ,kz_term:to_binary(M), "-"
+                    ,kz_term:to_binary(D), "-"
+                    ,kz_term:to_binary(Y), " "
+                    ,kz_term:to_binary(H), ":"
+                    ,kz_term:to_binary(I), ":"
+                    ,kz_term:to_binary(S), TZ
                    ]).
 
 %%--------------------------------------------------------------------

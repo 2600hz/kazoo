@@ -20,7 +20,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(CHILDREN, [ ?WORKER(kz_util:to_atom(Mod, 'true'))
+-define(CHILDREN, [ ?WORKER(kz_term:to_atom(Mod, 'true'))
                     || Mod <- kapps_config:get(?CONFIG_CAT, <<"modules">>, [])
                   ]).
 

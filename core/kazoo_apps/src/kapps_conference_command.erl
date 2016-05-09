@@ -227,7 +227,7 @@ send_command([_|_]=Command, Conference) ->
                        | kz_api:default_headers(Q, <<"conference">>, <<"command">>, AppName, AppVersion)
                       ],
     lager:debug("prop ~p", [Prop]),
-    case kz_util:is_empty(Focus) of
+    case kz_term:is_empty(Focus) of
         'true' -> kapi_conference:publish_command(ConferenceId, Prop);
         'false' -> kapi_conference:publish_targeted_command(Focus, Prop)
     end;
@@ -237,7 +237,7 @@ macro(Commands, Conference) ->
     Values = [{<<"Event-Category">>, <<"conference">>}
               ,{<<"Event-Name">>, <<"command">>}
               ,{<<"Conference-ID">>, kapps_conference:id(Conference)}
-              ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
+              ,{<<"Msg-ID">>, kz_term:rand_hex_binary(16)}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ],
     JsonCommands = lists:reverse(lists:foldl(fun(Command, Acc) ->

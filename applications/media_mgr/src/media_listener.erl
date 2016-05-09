@@ -155,7 +155,7 @@ send_error_resp(JObj, ErrMsg) ->
     MediaName = kz_json:get_value(<<"Media-Name">>, JObj),
     Error = [{<<"Media-Name">>, MediaName}
              ,{<<"Error-Code">>, <<"other">>}
-             ,{<<"Error-Msg">>, kz_util:to_binary(ErrMsg)}
+             ,{<<"Error-Msg">>, kz_term:to_binary(ErrMsg)}
              ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],

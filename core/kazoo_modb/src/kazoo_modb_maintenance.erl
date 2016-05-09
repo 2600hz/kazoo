@@ -33,9 +33,9 @@ delete_modbs(Period) ->
     end.
 
 delete_modbs(<<_/binary>> = Year, Month) ->
-    delete_modbs(kz_util:to_integer(Year), Month);
+    delete_modbs(kz_term:to_integer(Year), Month);
 delete_modbs(Year, <<_/binary>> = Month) ->
-    delete_modbs(Year, kz_util:to_integer(Month));
+    delete_modbs(Year, kz_term:to_integer(Month));
 delete_modbs(Year, Month) when is_integer(Year),
                                is_integer(Month),
                                Year > 2000 andalso Year < 2999,
@@ -75,7 +75,7 @@ delete_modb(?MATCH_MODB_SUFFIX_ENCODED(_,_,_) = AccountModb) ->
 archive_modbs() ->
     do_archive_modbs(kapps_util:get_all_account_mods(), 'undefined').
 archive_modbs(AccountId) ->
-    do_archive_modbs(kapps_util:get_account_mods(AccountId), kz_util:to_binary(AccountId)).
+    do_archive_modbs(kapps_util:get_account_mods(AccountId), kz_term:to_binary(AccountId)).
 
 -spec do_archive_modbs(ne_binaries(), api_binary()) -> 'no_return'.
 do_archive_modbs(MODbs, AccountId) ->
@@ -122,7 +122,7 @@ verify_rollups(AccountDb, Year, Month) ->
 
 verify_rollups(AccountDb, Year, Month, AccountId, JObj) ->
     Balance = wht_util:previous_balance(AccountDb
-                                        ,kz_util:to_binary(Year)
+                                        ,kz_term:to_binary(Year)
                                         ,kz_util:pad_month(Month)
                                        ),
     case rollup_balance(JObj) of
@@ -142,7 +142,7 @@ fix_rollup(Account) ->
     {Y, M, _} = erlang:date(),
     {PYear, PMonth} =  kazoo_modb_util:prev_year_month(Y, M),
     Balance = wht_util:previous_balance(AccountId
-                                        ,kz_util:to_binary(PYear)
+                                        ,kz_term:to_binary(PYear)
                                         ,kz_util:pad_month(PMonth)
                                        ),
     AccountMODb = kazoo_modb:get_modb(AccountId),

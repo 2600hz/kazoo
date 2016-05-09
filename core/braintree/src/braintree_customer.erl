@@ -49,7 +49,7 @@ url() ->
     "/customers/".
 
 url(CustomerId) ->
-    lists:append(["/customers/", kz_util:to_list(CustomerId)]).
+    lists:append(["/customers/", kz_term:to_list(CustomerId)]).
 
 %%--------------------------------------------------------------------
 %% @public

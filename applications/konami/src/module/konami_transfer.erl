@@ -40,9 +40,9 @@
 
 -define(WSD_ID, ?WSD_ENABLED andalso {'file', <<(get('callid'))/binary, "_transfer">>}).
 
--define(WSD_EVT(Fr, T, E), ?WSD_ENABLED andalso webseq:evt(?WSD_ID, Fr, T, <<(kz_util:to_binary(?LINE))/binary, "-", E/binary>>)).
+-define(WSD_EVT(Fr, T, E), ?WSD_ENABLED andalso webseq:evt(?WSD_ID, Fr, T, <<(kz_term:to_binary(?LINE))/binary, "-", E/binary>>)).
 
--define(WSD_NOTE(W, D, N), ?WSD_ENABLED andalso webseq:note(?WSD_ID, W, D, <<(kz_util:to_binary(?LINE))/binary, "-", N/binary>>)).
+-define(WSD_NOTE(W, D, N), ?WSD_ENABLED andalso webseq:note(?WSD_ID, W, D, <<(kz_term:to_binary(?LINE))/binary, "-", N/binary>>)).
 
 -define(WSD_TITLE(T), ?WSD_ENABLED andalso webseq:title(?WSD_ID, T)).
 
@@ -1000,7 +1000,7 @@ terminate(_Reason, _StateName, #state{transferor=Transferor
     konami_event_listener:rm_call_binding(Transferor, ?TRANSFEROR_CALL_EVENTS),
     konami_event_listener:rm_call_binding(Transferee, ?TRANSFEREE_CALL_EVENTS),
     konami_event_listener:rm_call_binding(Target, ?TARGET_CALL_EVENTS),
-    ?WSD_NOTE(Transferor, 'right', <<"eot while in ", (kz_util:to_binary(_StateName))/binary>>),
+    ?WSD_NOTE(Transferor, 'right', <<"eot while in ", (kz_term:to_binary(_StateName))/binary>>),
     ?WSD_STOP(),
     lager:info("fsm terminating while in ~s: ~p", [_StateName, _Reason]).
 
@@ -1019,7 +1019,7 @@ add_transferee_bindings(CallId) ->
 
 -spec originate_to_extension(ne_binary(), ne_binary(), kapps_call:call()) -> ne_binary().
 originate_to_extension(Extension, TransferorLeg, Call) ->
-    MsgId = kz_util:rand_hex_binary(4),
+    MsgId = kz_term:rand_hex_binary(4),
 
     CallerIdNumber = caller_id_number(Call, TransferorLeg),
 
@@ -1081,7 +1081,7 @@ originate_to_extension(Extension, TransferorLeg, Call) ->
 
 -spec create_call_id() -> ne_binary().
 create_call_id() ->
-    TargetCallId = <<"konami-transfer-", (kz_util:rand_hex_binary(4))/binary>>,
+    TargetCallId = <<"konami-transfer-", (kz_term:rand_hex_binary(4))/binary>>,
     bind_target_call_events(TargetCallId),
     TargetCallId.
 
@@ -1179,7 +1179,7 @@ handle_transferor_dtmf(Evt
 
     Collected = <<DTMFs/binary, Digit/binary>>,
 
-    case kz_util:suffix_binary(TakebackDTMF, Collected) of
+    case kz_term:suffix_binary(TakebackDTMF, Collected) of
         'true' ->
             lager:info("takeback dtmf sequence (~s) engaged!", [TakebackDTMF]),
             ?WSD_NOTE(_Transferor, 'right', <<"takeback sequence engaged">>),
@@ -1213,7 +1213,7 @@ pattern_builder_regex(DefaultJObj) ->
     {'ok', [Regex]} = io:fread("First, what regex should invoke the 'transfer'? ", "~s"),
     case re:compile(Regex) of
         {'ok', _} ->
-            K = [<<"patterns">>, kz_util:to_binary(Regex)],
+            K = [<<"patterns">>, kz_term:to_binary(Regex)],
             case pattern_builder_check(kz_json:get_value(K, DefaultJObj)) of
                 'undefined' -> kz_json:delete_key(K, DefaultJObj);
                 PatternJObj -> kz_json:set_value(K, PatternJObj, DefaultJObj)
@@ -1245,7 +1245,7 @@ number_builder(DefaultJObj) ->
 
     {'ok', [Number]} = io:fread("First, what number should invoke 'transfer'? ", "~d"),
 
-    K = [<<"numbers">>, kz_util:to_binary(Number)],
+    K = [<<"numbers">>, kz_term:to_binary(Number)],
     case number_builder_check(kz_json:get_value(K, DefaultJObj)) of
         'undefined' -> kz_json:delete_key(K, DefaultJObj);
         NumberJObj -> kz_json:set_value(K, NumberJObj, DefaultJObj)
@@ -1280,17 +1280,17 @@ builder_check_option(JObj, _Option, CheckFun, _BuilderFun) ->
 -spec builder_target(kz_json:object()) -> kz_json:object().
 builder_target(JObj) ->
     {'ok', [Target]} = io:fread("What is the target extension/DID to transfer to? ", "~s"),
-    builder_takeback_dtmf(JObj, kz_util:to_binary(Target)).
+    builder_takeback_dtmf(JObj, kz_term:to_binary(Target)).
 
 -spec builder_takeback_dtmf(kz_json:object(), api_binary()) -> kz_json:object().
 builder_takeback_dtmf(JObj, Target) ->
     {'ok', [Takeback]} = io:fread("What is the takeback DTMF ('n' to use the default)? ", "~s"),
-    builder_moh(JObj, Target, kz_util:to_binary(Takeback)).
+    builder_moh(JObj, Target, kz_term:to_binary(Takeback)).
 
 -spec builder_moh(kz_json:object(), api_binary(), ne_binary()) -> kz_json:object().
 builder_moh(JObj, Target, Takeback) ->
     {'ok', [MOH]} = io:fread("Any custom music-on-hold ('n' for none, 'h' for help')? ", "~s"),
-    metaflow_jobj(JObj, Target, Takeback, kz_util:to_binary(MOH)).
+    metaflow_jobj(JObj, Target, Takeback, kz_term:to_binary(MOH)).
 
 -spec metaflow_jobj(kz_json:object(), api_binary(), api_binary(), api_binary()) -> kz_json:object().
 metaflow_jobj(JObj, Target, Takeback, <<"h">>) ->

@@ -55,7 +55,7 @@ session_id(Req) ->
     {Peer, _}  = cowboy_req:peer(Req),
     {Ip, Port} = Peer,
 
-    BinIp   = kz_util:to_binary(inet_parse:ntoa(Ip)),
-    BinPort = kz_util:to_binary(integer_to_list(Port)),
+    BinIp   = kz_term:to_binary(inet_parse:ntoa(Ip)),
+    BinPort = kz_term:to_binary(integer_to_list(Port)),
 
     <<BinIp/binary, ":", BinPort/binary>>.

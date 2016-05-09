@@ -99,7 +99,7 @@ init([Opts]) ->
     TableId = opt_table_id(Opts),
     TableOptions = opt_table_options(Opts),
 
-    kz_util:put_callid(<<"etssrv_", (kz_util:to_binary(TableId))/binary>>),
+    kz_util:put_callid(<<"etssrv_", (kz_term:to_binary(TableId))/binary>>),
     gen_server:cast(self(), {'begin', TableId, TableOptions}),
 
     lager:debug("started etsmgr for table ~p", [TableId]),

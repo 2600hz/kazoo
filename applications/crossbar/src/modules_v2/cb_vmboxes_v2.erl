@@ -546,8 +546,8 @@ load_attachment_from_message(MediaId, Context, Update, Timezone) ->
 generate_media_name('undefined', GregorianSeconds, Ext, Timezone) ->
     generate_media_name(<<"unknown">>, GregorianSeconds, Ext, Timezone);
 generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
-    UTCDateTime = calendar:gregorian_seconds_to_datetime(kz_util:to_integer(GregorianSeconds)),
-    LocalTime = case localtime:utc_to_local(UTCDateTime, kz_util:to_list(Timezone)) of
+    UTCDateTime = calendar:gregorian_seconds_to_datetime(kz_term:to_integer(GregorianSeconds)),
+    LocalTime = case localtime:utc_to_local(UTCDateTime, kz_term:to_list(Timezone)) of
                     {{_,_,_},{_,_,_}}=LT -> lager:debug("Converted to TZ: ~s", [Timezone]), LT;
                     _ -> lager:debug("Bad TZ: ~p", [Timezone]), UTCDateTime
                 end,
