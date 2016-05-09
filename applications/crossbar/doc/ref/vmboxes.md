@@ -2,7 +2,7 @@
 
 #### About Vmboxes
 
-#### VMbox Schema
+#### Schema
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -12,6 +12,16 @@ Key | Description | Type | Default | Required
 `mailbox` | The voicemail box number | `string(1..30)` |   | `true`
 `media` | The media (prompt) parameters | `object` | `{}` | `false`
 `media.unavailable` | The ID of a media object that should be used as the unavailable greeting | `string(32)` |   | `false`
+`messages` | The messages that have been left in the voicemail box | `array(object)` | `[]` | `false`
+`messages.[].call_id` | The SIP call-id | `string` |   | `false`
+`messages.[].caller_id_name` | The reported caller id name | `string(0..35)` |   | `false`
+`messages.[].caller_id_number` | The reported caller id number | `string(0..35)` |   | `false`
+`messages.[].folder` | The folder the message belongs to | `string('deleted', 'saved', 'new')` |   | `false`
+`messages.[].from` | The SIP from header | `string` |   | `false`
+`messages.[].length` |   | `integer` |   | `false`
+`messages.[].media_id` | The ID of the message media object | `string(32..39)` |   | `false`
+`messages.[].timestamp` | The UTC timestamp, in gregorian seconds, that the voicemail was left on | `integer` |   | `false`
+`messages.[].to` | The SIP to header | `string` |   | `false`
 `name` | A friendly name for the voicemail box | `string(1..128)` |   | `true`
 `not_configurable` | Determines if the user can configure this voicemail. | `boolean` | `false` | `false`
 `notify` |   | `object` |   | `false`
@@ -26,21 +36,6 @@ Key | Description | Type | Default | Required
 `skip_instructions` | Determines if the instructions after the greeting and prior to composing a message should be played | `boolean` | `false` | `false`
 `timezone` | The default timezone | `string(5..32)` |   | `false`
 
-#### Mailbox Message schema
-
-The messages that have been left in the voicemail box.
-
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`call_id` | The SIP call-id | `string` |   | `false`
-`caller_id_name` | The reported caller id name | `string` |   | `false`
-`caller_id_number` | The reported caller id number | `string` |   | `false`
-`folder` | The folder the message belongs to | `string` |   | `false`
-`from` | The SIP from header | `string` |   | `false`
-`length` |   | `integer` |   | `false`
-`media_id` | The ID of the message object | `string` |   | `false`
-`timestamp` | The UTC timestamp, in gregorian seconds, that the voicemail was left on | `integer` |   | `false`
-`to` | The SIP to header | `string` |   | `false`
 
 #### Fetch
 

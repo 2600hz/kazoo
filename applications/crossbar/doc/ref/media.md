@@ -7,7 +7,7 @@
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `content_length` | Length, in bytes, of the file | `integer` |   | `false`
-`content_type` | Used to override the automatic upload type | `string('audio/mp3', 'audio/mpeg', 'audio/mpeg3', 'audio/x-wav', 'audio/wav', 'audio/ogg')` |   | `false`
+`content_type` | Used to override the automatic upload type | `string('audio/mp3', 'audio/mpeg', 'audio/mpeg3', 'audio/x-wav', 'audio/wav', 'audio/ogg', 'video/x-flv', 'video/h264', 'video/mpeg', 'video/quicktime', 'video/mp4', 'video/webm')` |   | `false`
 `description` | A breif description of the media update, usally the original file name | `string(1..128)` |   | `false`
 `language` | The language of the media file or text | `string` | `en-us` | `false`
 `media_source` | Defines the source of the media | `string('recording', 'upload', 'tts')` | `upload` | `false`
