@@ -62,3 +62,9 @@ resolve_uri_test() ->
 
     ?assertEqual(RawPathList, kz_http_util:resolve_uri_path(RawPath, Relative)),
     ?assertEqual(RawPathList, kz_http_util:resolve_uri_path(RawPath, <<"/", Relative/binary>>)).
+
+
+uri_test() ->
+    ?assertEqual(<<"http://test.com/path1/path2">>, kz_http_util:uri(<<"http://test.com">>, [<<"path1">>, <<"path2">>])),
+    ?assertEqual(<<"http://192.168.0.1:8888/path1/path2">>, kz_http_util:uri(<<"http://192.168.0.1:8888/">>, [<<"path1">>, <<"path2">>])),
+    ?assertEqual(<<"http://test.com/path1/path2">>, kz_http_util:uri(<<"http://test.com/">>, [<<"path1/">>, <<"path2/">>])).
