@@ -31,39 +31,9 @@
         ]).
 
 -export([try_load_module/1]).
--export([shuffle_list/1]).
 
--export([to_integer/1, to_integer/2
-         ,to_float/1, to_float/2
-         ,to_number/1
-         ,to_hex/1, to_hex_binary/1, rand_hex_binary/1
-         ,hexencode_binary/1
-         ,from_hex_binary/1, from_hex_string/1
-         ,to_list/1, to_binary/1
-         ,to_atom/1, to_atom/2
-         ,to_date/1
-         ,to_datetime/1
-         ,error_to_binary/1
-        ]).
--export([to_boolean/1, is_boolean/1
-         ,is_true/1, is_false/1
-         ,is_empty/1, is_not_empty/1
-         ,is_proplist/1
-         ,identity/1
-         ,always_true/1, always_false/1
-        ]).
--export([to_lower_binary/1, to_upper_binary/1
-         ,to_lower_string/1, to_upper_string/1
-         ,ucfirst_binary/1, lcfirst_binary/1
-         ,strip_binary/1, strip_binary/2
-         ,strip_left_binary/2, strip_right_binary/2
-         ,suffix_binary/2
-         ,truncate_binary/2, truncate_binary/3
-         ,truncate_left_binary/2, truncate_right_binary/2
-        ]).
-
--export([clean_binary/1, clean_binary/2
-         ,remove_white_spaces/1
+-export([to_date/1
+        ,to_datetime/1
         ]).
 
 -export([uri_encode/1
@@ -76,10 +46,8 @@
 -export([uri/2]).
 
 -export([pad_month/1]).
-
--export([binary_md5/1]).
--export([pad_binary/3, join_binary/1, join_binary/2]).
--export([a1hash/3, floor/1, ceiling/1]).
+-export([error_to_binary/1]).
+-export([a1hash/3]).
 
 -export([current_tstamp/0, current_unix_tstamp/0
          ,gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1
@@ -194,21 +162,21 @@ change_console_log_level(L) when is_atom(L) ->
     lager:info("updated console_log to level ~s", [L]),
     lager:set_loglevel('lager_console_backend', L);
 change_console_log_level(L) ->
-    change_console_log_level(to_atom(L)).
+    change_console_log_level(kz_term:to_atom(L)).
 
 -spec change_error_log_level(log_level()) -> 'ok'.
 change_error_log_level(L) when is_atom(L) ->
     lager:info("updated error_log to level ~s", [L]),
     lager:set_loglevel({'lager_file_backend', "log/error.log"}, L);
 change_error_log_level(L) ->
-    change_error_log_level(to_atom(L)).
+    change_error_log_level(kz_term:to_atom(L)).
 
 -spec change_syslog_log_level(log_level()) -> 'ok'.
 change_syslog_log_level(L) when is_atom(L) ->
     lager:info("updated syslog_log to level ~s", [L]),
     lager:set_loglevel({'lager_syslog_backend',{"2600hz",'local0'}}, L);
 change_syslog_log_level(L) ->
-    change_syslog_log_level(to_atom(L)).
+    change_syslog_log_level(kz_term:to_atom(L)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -247,10 +215,10 @@ format_account_id(AccountId, 'raw') ->
     raw_account_id(AccountId);
 format_account_id(AccountId, 'unencoded') ->
     ?MATCH_ACCOUNT_RAW(A,B,Rest) = raw_account_id(AccountId),
-    to_binary(["account/", A, "/", B, "/", Rest]);
+    kz_term:to_binary(["account/", A, "/", B, "/", Rest]);
 format_account_id(AccountId, 'encoded') ->
     ?MATCH_ACCOUNT_RAW(A,B,Rest) = raw_account_id(AccountId),
-    to_binary(["account%2F", A, "%2F", B, "%2F", Rest]).
+    kz_term:to_binary(["account%2F", A, "%2F", B, "%2F", Rest]).
 
 %% @private
 %% Returns account_id() | any()
@@ -300,13 +268,13 @@ raw_account_modb(?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, Year, Month)) ->
                                api_binary().
 format_account_id('undefined', _Year, _Month) -> 'undefined';
 format_account_id(AccountId, Year, Month) when not is_integer(Year) ->
-    format_account_id(AccountId, to_integer(Year), Month);
+    format_account_id(AccountId, kz_term:to_integer(Year), Month);
 format_account_id(AccountId, Year, Month) when not is_integer(Month) ->
-    format_account_id(AccountId, Year, to_integer(Month));
+    format_account_id(AccountId, Year, kz_term:to_integer(Month));
 format_account_id(Account, Year, Month) when is_integer(Year),
                                              is_integer(Month) ->
     ?MATCH_ACCOUNT_RAW(A,B,Rest) = raw_account_id(Account),
-    ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, to_binary(Year), pad_month(Month)).
+    ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, kz_term:to_binary(Year), pad_month(Month)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -358,18 +326,18 @@ format_account_modb(AccountId, 'raw') ->
     raw_account_modb(AccountId);
 format_account_modb(AccountId, 'unencoded') ->
     ?MATCH_ACCOUNT_RAW(A,B,Rest) = raw_account_modb(AccountId),
-    to_binary(["account/", A, "/", B, "/", Rest]);
+    kz_term:to_binary(["account/", A, "/", B, "/", Rest]);
 format_account_modb(AccountId, 'encoded') ->
     ?MATCH_ACCOUNT_RAW(A,B,Rest) = raw_account_modb(AccountId),
-    to_binary(["account%2F", A, "%2F", B, "%2F", Rest]).
+    kz_term:to_binary(["account%2F", A, "%2F", B, "%2F", Rest]).
 
 -spec pad_month(kz_month() | ne_binary()) -> ne_binary().
 pad_month(<<_/binary>> = Month) ->
-    pad_month(to_integer(Month));
+    pad_month(kz_term:to_integer(Month));
 pad_month(Month) when Month < 10 ->
-    <<"0", (to_binary(Month))/binary>>;
+    <<"0", (kz_term:to_binary(Month))/binary>>;
 pad_month(Month) ->
-    to_binary(Month).
+    kz_term:to_binary(Month).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -384,7 +352,7 @@ pad_month(Month) ->
 normalize_account_name('undefined') -> 'undefined';
 normalize_account_name(AccountName) ->
     << <<Char>>
-       || <<Char>> <= to_lower_binary(AccountName),
+       || <<Char>> <= kz_term:to_lower_binary(AccountName),
           (Char >= $a andalso Char =< $z)
               or (Char >= $0 andalso Char =< $9)
     >>.
@@ -592,7 +560,7 @@ get_account_realm(Db, AccountId) ->
 %%--------------------------------------------------------------------
 -spec try_load_module(string() | binary()) -> atom() | 'false'.
 try_load_module(Name) ->
-    Module = ?MODULE:to_atom(Name, 'true'),
+    Module = kz_term:to_atom(Name, 'true'),
     try Module:module_info('exports') of
         _ when Module =:= 'undefined' -> 'false';
         _ ->
@@ -603,67 +571,6 @@ try_load_module(Name) ->
             lager:debug("module ~s not found", [Name]),
             'false'
     end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Ensure a binary is a minimum size, padding it if not with a given
-%% value.
-%% @end
-%%--------------------------------------------------------------------
--spec pad_binary(binary(), non_neg_integer(), binary()) -> binary().
-pad_binary(Bin, Size, Value) when size(Bin) < Size ->
-    pad_binary(<<Bin/binary, Value/binary>>, Size, Value);
-pad_binary(Bin, _, _) -> Bin.
-
--spec pad_binary_left(binary(), non_neg_integer(), binary()) -> binary().
-pad_binary_left(Bin, Size, Value) when size(Bin) < Size ->
-    pad_binary_left(<<Value/binary, Bin/binary>>, Size, Value);
-pad_binary_left(Bin, _Size, _Value) -> Bin.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Join a binary together with a seperator.
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec join_binary([text() | atom(),...]) -> binary().
--spec join_binary([text() | atom(),...], binary()) -> binary().
-
-join_binary(Bins) -> join_binary(Bins, <<", ">>).
-join_binary([], _) -> <<>>;
-join_binary([Bin], _) -> to_binary(Bin);
-join_binary([Bin|Bins], Sep) ->
-    iolist_to_binary(
-      [to_binary(Bin)] ++ [[Sep, to_binary(B)] || B <- Bins]
-     ).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec shuffle_list(list()) -> list().
-shuffle_list([]) -> [];
-shuffle_list(List) when is_list(List) ->
-    Len = length(List),
-    randomize_list(round(math:log(Len) + 0.5), List).
-
--spec randomize_list(list()) -> list().
--spec randomize_list(pos_integer(), list()) -> list().
-
-randomize_list(List) ->
-    D = lists:keysort(1, [{random:uniform(), A} || A <- List]),
-    {_, D1} = lists:unzip(D),
-    D1.
-
-randomize_list(1, List) -> randomize_list(List);
-randomize_list(T, List) ->
-    lists:foldl(fun(_E, Acc) ->
-                        randomize_list(Acc)
-                end, randomize_list(List), lists:seq(1, (T - 1))).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -798,96 +705,32 @@ extract_xml_values(Elements) ->
         Bin -> Bin
     end.
 
-%% must be a term that can be changed to a list
--spec to_hex(binary() | string()) -> string().
-to_hex(S) ->
-    string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- to_list(S)])).
-
--spec to_hex_binary(binary() | string()) -> binary().
-to_hex_binary(S) ->
-    Bin = to_binary(S),
-    << <<(binary_to_hex_char(B div 16)), (binary_to_hex_char(B rem 16))>> || <<B>> <= Bin>>.
-
-hexencode_binary(<<_/binary>> = Bin) ->
-    hexencode_binary(Bin, <<>>);
-hexencode_binary(S) ->
-    hexencode_binary(to_binary(S)).
-
-hexencode_binary(<<>>, Acc) -> Acc;
-hexencode_binary(<<Hi:4, Lo:4, Rest/binary>>, Acc) ->
-    hexencode_binary(Rest, <<Acc/binary
-                             ,(binary_to_hex_char(Hi))
-                             ,(binary_to_hex_char(Lo))
-                           >>).
-
--spec from_hex_binary(binary()) -> binary().
-from_hex_binary(Bin) ->
-    to_binary(from_hex_string(to_list(Bin))).
-
--spec from_hex_string(list()) -> list().
--spec from_hex_string(list(), list()) -> list().
-from_hex_string(Str) ->
-    from_hex_string(Str, []).
-
-from_hex_string([], Acc) -> lists:reverse(Acc);
-from_hex_string([Div, Rem | T], Acc) ->
-    Lo = hex_char_to_binary(Rem),
-    Hi = hex_char_to_binary(Div),
-
-    Sum = (Hi * 16) + Lo,
-
-    from_hex_string(T, [Sum|Acc]).
-
--spec hex_char_to_binary(pos_integer()) -> pos_integer().
-hex_char_to_binary(B) when B < 58 ->
-    (to_lower_char(B) - $0);
-hex_char_to_binary(B) ->
-    to_lower_char(B) - ($a - 10).
-
--spec rand_hex_binary(pos_integer() | ne_binary()) -> ne_binary().
-rand_hex_binary(Size) when not is_integer(Size) ->
-    rand_hex_binary(?MODULE:to_integer(Size));
-rand_hex_binary(Size) when is_integer(Size) andalso Size > 0 ->
-    to_hex_binary(rand_hex(Size)).
-
--spec rand_hex(pos_integer()) -> ne_binary().
-rand_hex(Size) ->
-    try crypto:strong_rand_bytes(Size) of
-        Bytes -> Bytes
-    catch
-        _:'low_entropy' -> crypto:rand_bytes(Size)
-    end.
-
--spec binary_to_hex_char(pos_integer()) -> pos_integer().
-binary_to_hex_char(N) when N < 10 -> $0 + N;
-binary_to_hex_char(N) when N < 16 -> $a - 10 + N.
-
 -spec uri_decode(text()) -> text().
 uri_decode(Binary) when is_binary(Binary) ->
-    to_binary(http_uri:decode(to_list(Binary)));
+    kz_term:to_binary(http_uri:decode(kz_term:to_list(Binary)));
 uri_decode(String) when is_list(String) ->
     http_uri:decode(String);
 uri_decode(Atom) when is_atom(Atom) ->
-    to_atom(http_uri:decode(to_list(Atom)), 'true').
+    kz_term:to_atom(http_uri:decode(kz_term:to_list(Atom)), 'true').
 
 -spec uri_encode(text()) -> text().
 uri_encode(Binary) when is_binary(Binary) ->
-    to_binary(http_uri:encode(to_list(Binary)));
+    kz_term:to_binary(http_uri:encode(kz_term:to_list(Binary)));
 uri_encode(String) when is_list(String) ->
     http_uri:encode(String);
 uri_encode(Atom) when is_atom(Atom) ->
-    to_atom(http_uri:encode(to_list(Atom)), 'true').
+    kz_term:to_atom(http_uri:encode(kz_term:to_list(Atom)), 'true').
 
 -spec resolve_uri(nonempty_string() | api_binary(), nonempty_string() | ne_binary()) -> ne_binary().
-resolve_uri(Raw, 'undefined') -> to_binary(Raw);
+resolve_uri(Raw, 'undefined') -> kz_term:to_binary(Raw);
 resolve_uri(_Raw, <<"http", _/binary>> = Abs) -> Abs;
 resolve_uri(<<_/binary>> = RawPath, <<_/binary>> = Relative) ->
-    join_binary(
+    kz_term:join_binary(
       resolve_uri_path(RawPath, Relative)
       ,<<"/">>
      );
 resolve_uri(RawPath, Relative) ->
-    resolve_uri(to_binary(RawPath), to_binary(Relative)).
+    resolve_uri(kz_term:to_binary(RawPath), kz_term:to_binary(Relative)).
 
 -spec resolve_uri_path(ne_binary(), ne_binary()) -> ne_binaries().
 resolve_uri_path(RawPath, Relative) ->
@@ -925,96 +768,8 @@ uri(BaseUrl, Tokens) ->
 -spec safe_urlencode(binary() | number()) -> iolist().
 safe_urlencode(V) when is_binary(V)
                        orelse is_number(V) ->
-    kz_http_util:urlencode(kz_util:to_binary(V)).
+    kz_http_util:urlencode(kz_term:to_binary(V)).
 
-
--spec to_integer(string() | binary() | integer() | float()) -> integer().
--spec to_integer(string() | binary() | integer() | float(), 'strict' | 'notstrict') -> integer().
-to_integer(X) -> to_integer(X, 'notstrict').
-
-to_integer(X, 'strict') when is_float(X) -> erlang:error('badarg');
-to_integer(X, 'notstrict') when is_float(X) -> round(X);
-to_integer(X, S) when is_binary(X) -> to_integer(binary_to_list(X), S);
-to_integer(X, S) when is_list(X) ->
-    try list_to_integer(X) of
-        I -> I
-    catch
-        'error':'badarg' when S =:= 'notstrict' ->
-            round(list_to_float(X))
-    end;
-to_integer(X, _) when is_integer(X) ->
-    X.
-
--spec to_float(string() | binary() | integer() | float()) -> float().
--spec to_float(string() | binary() | integer() | float(), 'strict' | 'notstrict') -> float().
-to_float(X) -> to_float(X, 'notstrict').
-
-to_float(X, S) when is_binary(X) -> to_float(binary_to_list(X), S);
-to_float(X, S) when is_list(X) ->
-    try list_to_float(X) of
-        F -> F
-    catch
-        'error':'badarg' when S =:= 'notstrict' -> list_to_integer(X)*1.0 %% "500" -> 500.0
-    end;
-to_float(X, 'strict') when is_integer(X) -> erlang:error('badarg');
-to_float(X, 'notstrict') when is_integer(X) -> X * 1.0;
-to_float(X, _) when is_float(X) -> X.
-
--spec to_number(binary() | string() | number()) -> number().
-to_number(X) when is_number(X) -> X;
-to_number(X) when is_binary(X) -> to_number(to_list(X));
-to_number(X) when is_list(X) ->
-    try list_to_integer(X) of
-        Int -> Int
-    catch
-        'error':'badarg' -> list_to_float(X)
-    end.
-
--spec to_list(atom() | list() | binary() | integer() | float()) -> list().
-to_list(X) when is_float(X) -> mochinum:digits(X);
-to_list(X) when is_integer(X) -> integer_to_list(X);
-to_list(X) when is_binary(X) -> binary_to_list(X);
-to_list(X) when is_atom(X) -> atom_to_list(X);
-to_list(X) when is_list(X) -> X.
-
-%% Known limitations:
-%%   Converting [256 | _], lists with integers > 255
--spec to_binary(atom() | string() | binary() | integer() | float() | pid() | iolist()) -> binary().
-to_binary(X) when is_float(X) -> to_binary(mochinum:digits(X));
-to_binary(X) when is_integer(X) -> list_to_binary(integer_to_list(X));
-to_binary(X) when is_atom(X) -> list_to_binary(atom_to_list(X));
-to_binary(X) when is_list(X) -> iolist_to_binary(X);
-to_binary(X) when is_pid(X) -> to_binary(pid_to_list(X));
-to_binary(X) when is_binary(X) -> X.
-
-%% the safer version, won't let you leak atoms
--spec to_atom(atom() | list() | binary() | integer() | float()) -> atom().
-to_atom(X) when is_atom(X) -> X;
-to_atom(X) when is_list(X) -> list_to_existing_atom(X);
-to_atom(X) -> to_atom(to_list(X)).
-
-%% only if you're really sure you want this
-%% to protect yourself a bit from overrunning the atom table,
-%% pass a list of safe values for X
-%% so if X is a binary, the SafeList would be [ne_binary(),...]
-%% if X is a list, the SafeList would be [nonempty_string(),...]
-%% etc. So to_atom will not coerce the type of X to match the types in SafeList
-%% when doing the lists:member/2
--spec to_atom(atom() | list() | binary() | integer() | float(), 'true' | list()) -> atom().
-to_atom(X, _) when is_atom(X) -> X;
-to_atom(X, 'true') when is_list(X) -> list_to_atom(X);
-to_atom(X, 'true') -> to_atom(to_list(X), 'true');
-to_atom(X, 'false') -> to_atom(X);
-to_atom(X, SafeList) when is_list(SafeList) ->
-    to_atom(to_list(X), lists:member(X, SafeList)).
-
--spec to_boolean(binary() | string() | atom()) -> boolean().
-to_boolean(<<"true">>) -> 'true';
-to_boolean("true") -> 'true';
-to_boolean('true') -> 'true';
-to_boolean(<<"false">>) -> 'false';
-to_boolean("false") -> 'false';
-to_boolean('false') -> 'false'.
 
 -spec to_date(binary() | string() | integer()) -> kz_date().
 to_date(X) ->
@@ -1023,232 +778,22 @@ to_date(X) ->
 
 -spec to_datetime(binary() | string() | integer()) -> kz_datetime().
 to_datetime(X) when is_integer(X) -> calendar:gregorian_seconds_to_datetime(X);
-to_datetime(X) when is_binary(X) -> to_datetime(to_integer(X));
-to_datetime(X) when is_list(X) -> to_datetime(to_integer(X)).
+to_datetime(X) when is_binary(X) -> to_datetime(kz_term:to_integer(X));
+to_datetime(X) when is_list(X) -> to_datetime(kz_term:to_integer(X)).
 
 -spec error_to_binary({'error', binary()} | binary()) -> binary().
 error_to_binary({'error', Reason}) ->
     error_to_binary(Reason);
 error_to_binary(Reason) ->
-    try to_binary(Reason) of
+    try kz_term:to_binary(Reason) of
         Message -> Message
     catch
         _:_ -> <<"Unknown Error">>
     end.
 
--spec is_true(binary() | string() | atom()) -> boolean().
-is_true(<<"true">>) -> 'true';
-is_true("true") -> 'true';
-is_true('true') -> 'true';
-is_true(_) -> 'false'.
-
--spec always_true(any()) -> 'true'.
-always_true(_) -> 'true'.
-
--spec is_false(binary() | string() | atom()) -> boolean().
-is_false(<<"false">>) -> 'true';
-is_false("false") -> 'true';
-is_false('false') -> 'true';
-is_false(_) -> 'false'.
-
--spec always_false(any()) -> 'false'.
-always_false(_) -> 'false'.
-
--spec is_boolean(binary() | string() | atom()) -> boolean().
-is_boolean(<<"true">>) -> 'true';
-is_boolean("true") -> 'true';
-is_boolean('true') -> 'true';
-is_boolean(<<"false">>) -> 'true';
-is_boolean("false") -> 'true';
-is_boolean('false') -> 'true';
-is_boolean(_) -> 'false'.
-
--spec is_empty(any()) -> boolean().
-is_empty(0) -> 'true';
-is_empty([]) -> 'true';
-is_empty("0") -> 'true';
-is_empty("false") -> 'true';
-is_empty("NULL") -> 'true';
-is_empty("undefined") -> 'true';
-is_empty(<<>>) -> 'true';
-is_empty(<<"0">>) -> 'true';
-is_empty(<<"false">>) -> 'true';
-is_empty(<<"NULL">>) -> 'true';
-is_empty(<<"undefined">>) -> 'true';
-is_empty('null') -> 'true';
-is_empty('false') -> 'true';
-is_empty('undefined') -> 'true';
-is_empty(Float) when is_float(Float), Float =:= 0.0 -> 'true';
-is_empty(MaybeJObj) ->
-    case kz_json:is_json_object(MaybeJObj) of
-        'false' -> 'false'; %% if not a json object, it's not empty
-        'true' -> kz_json:is_empty(MaybeJObj)
-    end.
-
--spec is_not_empty(any()) -> boolean().
-is_not_empty(Term) -> (not is_empty(Term)).
-
--spec is_proplist(any()) -> boolean().
-is_proplist(Term) when is_list(Term) ->
-    lists:all(fun({_,_}) -> 'true'; (A) -> is_atom(A) end, Term);
-is_proplist(_) -> 'false'.
-
--spec identity(X) -> X.
-identity(X) -> X.
-
--spec to_lower_binary(any()) -> api_binary().
-to_lower_binary('undefined') -> 'undefined';
-to_lower_binary(Bin) when is_binary(Bin) -> << <<(to_lower_char(B))>> || <<B>> <= Bin>>;
-to_lower_binary(Else) -> to_lower_binary(to_binary(Else)).
-
--spec to_lower_string(any()) -> 'undefined' | list().
-to_lower_string('undefined') -> 'undefined';
-to_lower_string(L) when is_list(L) ->
-    [to_lower_char(C) || C <- L];
-to_lower_string(Else) ->
-    to_lower_string(to_list(Else)).
-
--spec ucfirst_binary(ne_binary()) -> ne_binary().
-ucfirst_binary(<<F:8, Bin/binary>>) -> <<(to_upper_char(F)):8, Bin/binary>>.
-
--spec lcfirst_binary(ne_binary()) -> ne_binary().
-lcfirst_binary(<<F:8, Bin/binary>>) -> <<(to_lower_char(F)):8, Bin/binary>>.
-
--spec to_lower_char(char()) -> char().
-to_lower_char(C) when is_integer(C), $A =< C, C =< $Z -> C + 32;
-%% Converts latin capital letters to lowercase, skipping 16#D7 (extended ascii 215) "multiplication sign: x"
-to_lower_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % from string:to_lower
-to_lower_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
-to_lower_char(C) -> C.
-
--spec to_upper_binary(any()) -> api_binary().
-to_upper_binary('undefined') -> 'undefined';
-to_upper_binary(Bin) when is_binary(Bin) -> << <<(to_upper_char(B))>> || <<B>> <= Bin>>;
-to_upper_binary(Else) -> to_upper_binary(to_binary(Else)).
-
--spec to_upper_string(any()) -> 'undefined' | list().
-to_upper_string('undefined') -> 'undefined';
-to_upper_string(L) when is_list(L) -> [to_upper_char(C) || C <- L];
-to_upper_string(Else) -> to_upper_string(to_list(Else)).
-
--spec to_upper_char(char()) -> char().
-to_upper_char(C) when is_integer(C), $a =< C, C =< $z -> C - 32;
-to_upper_char(C) when is_integer(C), 16#E0 =< C, C =< 16#F6 -> C - 32;
-to_upper_char(C) when is_integer(C), 16#F8 =< C, C =< 16#FE -> C - 32;
-to_upper_char(C) -> C.
-
--spec strip_binary(binary()) -> binary().
--spec strip_binary(binary(), 'both' | 'left' | 'right' | char() | [char()]) -> binary().
--spec strip_left_binary(binary(), char() | binary()) -> binary().
--spec strip_right_binary(binary(), char() | binary()) -> binary().
-strip_binary(B) -> strip_binary(B, 'both').
-
-strip_binary(B, 'left') -> strip_left_binary(B, $\s);
-strip_binary(B, 'right') -> strip_right_binary(B, $\s);
-strip_binary(B, 'both') -> strip_right_binary(strip_left_binary(B, $\s), $\s);
-strip_binary(B, C) when is_integer(C) -> strip_right_binary(strip_left_binary(B, C), C);
-strip_binary(B, Cs) when is_list(Cs) ->
-    lists:foldl(fun(C, Acc) -> strip_binary(Acc, C) end
-                ,B
-                ,Cs
-               ).
-
-strip_left_binary(<<C, B/binary>>, C) -> strip_left_binary(B, C);
-strip_left_binary(B, _) -> B.
-
-strip_right_binary(C, C) -> <<>>;
-strip_right_binary(<<C, B/binary>>, C) ->
-    case strip_right_binary(B, C) of
-        <<>> -> <<>>;
-        T -> <<C, T/binary>>
-    end;
-strip_right_binary(<<A, B/binary>>, C) ->
-    <<A, (strip_right_binary(B, C))/binary>>;
-strip_right_binary(<<>>, _) -> <<>>.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Ensure a binary is a maximum given size, truncating it if not.
-%% @end
-%%--------------------------------------------------------------------
--spec truncate_binary(binary(), non_neg_integer()) -> binary().
--spec truncate_binary(binary(), non_neg_integer(), 'left' | 'right') -> binary().
-truncate_binary(Bin, Size) ->
-    truncate_binary(Bin, Size, 'right').
-
-truncate_binary(Bin, Size, 'left') ->
-    truncate_left_binary(Bin, Size);
-truncate_binary(Bin, Size, 'right') ->
-    truncate_right_binary(Bin, Size).
-
--spec truncate_left_binary(binary(), non_neg_integer()) -> binary().
-truncate_left_binary(Bin, Size) when byte_size(Bin) > Size ->
-    binary:part(Bin, {byte_size(Bin), -Size});
-truncate_left_binary(Bin, _) ->
-    Bin.
-
--spec truncate_right_binary(binary(), non_neg_integer()) -> binary().
-truncate_right_binary(Bin, Size) when byte_size(Bin) > Size ->
-    binary:part(Bin, {0, Size});
-truncate_right_binary(Bin, _) ->
-    Bin.
-
--spec suffix_binary(binary(), binary()) -> boolean().
-suffix_binary(<<>>, _Bin) -> 'false';
-suffix_binary(<<_/binary>> = Suffix, <<_/binary>> = Bin) ->
-    try truncate_left_binary(Bin, byte_size(Suffix)) =:= Suffix of
-        Bool -> Bool
-    catch
-        _:_ -> 'false'
-    end.
-
--spec clean_binary(binary()) -> binary().
--spec clean_binary(binary(), kz_proplist()) -> binary().
-clean_binary(Bin) ->
-    clean_binary(Bin, []).
-
-clean_binary(Bin, Opts) ->
-    Routines = [fun remove_white_spaces/2],
-    lists:foldl(fun(F, B) -> F(B, Opts) end, Bin, Routines).
-
--spec remove_white_spaces(binary(), kz_proplist()) -> binary().
-remove_white_spaces(Bin, Opts) ->
-    case props:get_value(<<"remove_white_spaces">>, Opts, 'true') of
-        'false' -> Bin;
-        'true' -> remove_white_spaces(Bin)
-    end.
-
--spec remove_white_spaces(binary()) -> binary().
-remove_white_spaces(Bin) ->
-    << <<X>> || <<X>> <= Bin, X =/= $\s >>.
-
--spec binary_md5(text()) -> ne_binary().
-binary_md5(Text) -> to_hex_binary(erlang:md5(to_binary(Text))).
-
 -spec a1hash(ne_binary(), ne_binary(), ne_binary()) -> nonempty_string().
 a1hash(User, Realm, Password) ->
-    to_hex(erlang:md5(list_to_binary([User,":",Realm,":",Password]))).
-
-%% found via trapexit
--spec floor(integer() | float()) -> integer().
-floor(X) when X < 0 ->
-    T = trunc(X),
-    case X - T == 0 of
-        'true' -> T;
-        'false' -> T - 1
-    end;
-floor(X) -> trunc(X).
-
-%% found via trapexit
--spec ceiling(integer() | float()) -> integer().
-ceiling(X) when X < 0 -> trunc(X);
-ceiling(X) ->
-    T = trunc(X),
-    case X - T == 0 of
-        'true' -> T;
-        'false' -> T + 1
-    end.
+    kz_term:to_hex(erlang:md5(list_to_binary([User,":",Realm,":",Password]))).
 
 %% returns current seconds
 -spec current_tstamp() -> gregorian_seconds().
@@ -1263,7 +808,7 @@ current_unix_tstamp() ->
 -spec kazoo_version() -> ne_binary().
 kazoo_version() ->
     {_, _, Version} = get_app('kazoo'),
-    to_binary(Version).
+    kz_term:to_binary(Version).
 
 -spec write_pid(ne_binary() | nonempty_string() | iolist()) -> 'ok' | {'error', atom()}.
 write_pid(FileName) ->
@@ -1271,15 +816,15 @@ write_pid(FileName) ->
 
 -spec gregorian_seconds_to_unix_seconds(integer() | string() | binary()) -> integer().
 gregorian_seconds_to_unix_seconds(GregorianSeconds) ->
-    to_integer(GregorianSeconds) - ?UNIX_EPOCH_IN_GREGORIAN.
+    kz_term:to_integer(GregorianSeconds) - ?UNIX_EPOCH_IN_GREGORIAN.
 
 -spec unix_seconds_to_gregorian_seconds(integer() | string() | binary()) -> integer().
 unix_seconds_to_gregorian_seconds(UnixSeconds) ->
-    to_integer(UnixSeconds) + ?UNIX_EPOCH_IN_GREGORIAN.
+    kz_term:to_integer(UnixSeconds) + ?UNIX_EPOCH_IN_GREGORIAN.
 
 -spec unix_timestamp_to_gregorian_seconds(integer() | string() | binary()) -> integer().
 unix_timestamp_to_gregorian_seconds(UnixTimestamp) ->
-    ?UNIX_EPOCH_IN_GREGORIAN + (to_integer(UnixTimestamp) div 1000).
+    ?UNIX_EPOCH_IN_GREGORIAN + (kz_term:to_integer(UnixTimestamp) div 1000).
 
 -spec pretty_print_datetime(kz_datetime() | integer()) -> ne_binary().
 pretty_print_datetime(Timestamp) when is_integer(Timestamp) ->
@@ -1297,12 +842,12 @@ rfc1036(DateTime) ->
 rfc1036({Date = {Y, Mo, D}, {H, Mi, S}}, TZ) ->
     Wday = calendar:day_of_the_week(Date),
     <<(weekday(Wday))/binary, ", ",
-      (pad_binary_left(to_binary(D), 2, <<"0">>))/binary, " ",
+      (kz_term:pad_binary_left(kz_term:to_binary(D), 2, <<"0">>))/binary, " ",
       (month(Mo))/binary, " ",
-      (to_binary(Y))/binary, " ",
-      (pad_binary_left(to_binary(H), 2, <<"0">>))/binary, ":",
-      (pad_binary_left(to_binary(Mi), 2, <<"0">>))/binary, ":",
-      (pad_binary_left(to_binary(S), 2, <<"0">>))/binary,
+      (kz_term:to_binary(Y))/binary, " ",
+      (kz_term:pad_binary_left(kz_term:to_binary(H), 2, <<"0">>))/binary, ":",
+      (kz_term:pad_binary_left(kz_term:to_binary(Mi), 2, <<"0">>))/binary, ":",
+      (kz_term:pad_binary_left(kz_term:to_binary(S), 2, <<"0">>))/binary,
       " ", TZ/binary
     >>;
 rfc1036(Timestamp, TZ) when is_integer(Timestamp) ->
@@ -1310,9 +855,9 @@ rfc1036(Timestamp, TZ) when is_integer(Timestamp) ->
 
 -spec iso8601(calendar:datetime() | gregorian_seconds()) -> ne_binary().
 iso8601({{Y,M,D},_}) ->
-    <<(to_binary(Y))/binary, "-"
-      ,(pad_binary_left(to_binary(M), 2, <<"0">>))/binary, "-"
-      ,(pad_binary_left(to_binary(D), 2, <<"0">>))/binary
+    <<(kz_term:to_binary(Y))/binary, "-"
+      ,(kz_term:pad_binary_left(kz_term:to_binary(M), 2, <<"0">>))/binary, "-"
+      ,(kz_term:pad_binary_left(kz_term:to_binary(D), 2, <<"0">>))/binary
     >>;
 iso8601(Timestamp) when is_integer(Timestamp) ->
     iso8601(calendar:gregorian_seconds_to_datetime(Timestamp)).
@@ -1349,16 +894,16 @@ pretty_print_elapsed_s(Seconds) ->
 -spec unitfy_seconds(non_neg_integer()) -> iolist().
 unitfy_seconds(0) -> "";
 unitfy_seconds(Seconds) when Seconds < ?SECONDS_IN_MINUTE ->
-    [to_binary(Seconds), "s"];
+    [kz_term:to_binary(Seconds), "s"];
 unitfy_seconds(Seconds) when Seconds < ?SECONDS_IN_HOUR ->
     M = Seconds div ?SECONDS_IN_MINUTE,
-    [to_binary(M), "m", unitfy_seconds(Seconds - (M * ?SECONDS_IN_MINUTE))];
+    [kz_term:to_binary(M), "m", unitfy_seconds(Seconds - (M * ?SECONDS_IN_MINUTE))];
 unitfy_seconds(Seconds) when Seconds < ?SECONDS_IN_DAY ->
     H = Seconds div ?SECONDS_IN_HOUR,
-    [to_binary(H), "h", unitfy_seconds(Seconds - (H * ?SECONDS_IN_HOUR))];
+    [kz_term:to_binary(H), "h", unitfy_seconds(Seconds - (H * ?SECONDS_IN_HOUR))];
 unitfy_seconds(Seconds) ->
     D = Seconds div ?SECONDS_IN_DAY,
-    [to_binary(D), "d", unitfy_seconds(Seconds - (D * ?SECONDS_IN_DAY))].
+    [kz_term:to_binary(D), "d", unitfy_seconds(Seconds - (D * ?SECONDS_IN_DAY))].
 
 -spec pretty_print_bytes(non_neg_integer()) -> ne_binary().
 pretty_print_bytes(0) -> <<"0B">>;
@@ -1368,19 +913,19 @@ pretty_print_bytes(Bytes) ->
 -spec unitfy_bytes(non_neg_integer()) -> iolist().
 unitfy_bytes(0) -> "";
 unitfy_bytes(Bytes) when Bytes < ?BYTES_K  ->
-    [to_binary(Bytes), "B"];
+    [kz_term:to_binary(Bytes), "B"];
 unitfy_bytes(Bytes) when Bytes < ?BYTES_M ->
     K = Bytes div ?BYTES_K,
-    [to_binary(K), "K", unitfy_bytes(Bytes rem ?BYTES_K)];
+    [kz_term:to_binary(K), "K", unitfy_bytes(Bytes rem ?BYTES_K)];
 unitfy_bytes(Bytes) when Bytes < ?BYTES_G ->
     M = Bytes div ?BYTES_M,
-    [to_binary(M), "M", unitfy_bytes(Bytes rem ?BYTES_M)];
+    [kz_term:to_binary(M), "M", unitfy_bytes(Bytes rem ?BYTES_M)];
 unitfy_bytes(Bytes) when Bytes < ?BYTES_T ->
     G = Bytes div ?BYTES_G,
-    [to_binary(G), "G", unitfy_bytes(Bytes rem ?BYTES_G)];
+    [kz_term:to_binary(G), "G", unitfy_bytes(Bytes rem ?BYTES_G)];
 unitfy_bytes(Bytes) ->
     T = Bytes div ?BYTES_T,
-    [to_binary(T), "T", unitfy_bytes(Bytes rem ?BYTES_T)].
+    [kz_term:to_binary(T), "T", unitfy_bytes(Bytes rem ?BYTES_T)].
 
 -spec decr_timeout(kz_timeout(), non_neg_integer() | kz_now()) -> kz_timeout().
 decr_timeout('infinity', _) -> 'infinity';
@@ -1394,8 +939,8 @@ decr_timeout(Timeout, Start) ->
     decr_timeout(Timeout, ?MODULE:elapsed_ms(Start)).
 
 -spec microseconds_to_seconds(float() | integer() | string() | binary()) -> non_neg_integer().
-microseconds_to_seconds(Microseconds) -> to_integer(Microseconds) div 1000000.
-milliseconds_to_seconds(Milliseconds) -> to_integer(Milliseconds) div ?MILLISECONDS_IN_SECOND.
+microseconds_to_seconds(Microseconds) -> kz_term:to_integer(Microseconds) div 1000000.
+milliseconds_to_seconds(Milliseconds) -> kz_term:to_integer(Milliseconds) div ?MILLISECONDS_IN_SECOND.
 
 -spec elapsed_s(kz_now() | pos_integer()) -> pos_integer().
 -spec elapsed_ms(kz_now() | pos_integer()) -> pos_integer().
@@ -1452,14 +997,14 @@ format_date() ->
 
 format_date(Timestamp) ->
     {{Y,M,D}, _ } = calendar:gregorian_seconds_to_datetime(Timestamp),
-    list_to_binary([?MODULE:to_binary(Y), "-", ?MODULE:to_binary(M), "-", ?MODULE:to_binary(D)]).
+    list_to_binary([kz_term:to_binary(Y), "-", kz_term:to_binary(M), "-", kz_term:to_binary(D)]).
 
 format_time() ->
     format_time(current_tstamp()).
 
 format_time(Timestamp) ->
     { _, {H,I,S}} = calendar:gregorian_seconds_to_datetime(Timestamp),
-    list_to_binary([?MODULE:to_binary(H), ":", ?MODULE:to_binary(I), ":", ?MODULE:to_binary(S)]).
+    list_to_binary([kz_term:to_binary(H), ":", kz_term:to_binary(I), ":", kz_term:to_binary(S)]).
 
 format_datetime() ->
     format_datetime(current_tstamp()).
@@ -1480,10 +1025,10 @@ mem_usage() ->
 -spec node_name() -> binary().
 -spec node_hostname() -> binary().
 node_name() ->
-    [Name, _Host] = binary:split(to_binary(node()), <<"@">>),
+    [Name, _Host] = binary:split(kz_term:to_binary(node()), <<"@">>),
     Name.
 node_hostname() ->
-    [_Name, Host] = binary:split(to_binary(node()), <<"@">>),
+    [_Name, Host] = binary:split(kz_term:to_binary(node()), <<"@">>),
     Host.
 
 
@@ -1520,7 +1065,7 @@ make_dir(Filename) ->
     end.
 
 normalize_amqp_uri(URI) ->
-    to_binary(amqp_uri:remove_credentials(to_list(URI))).
+    kz_term:to_binary(amqp_uri:remove_credentials(kz_term:to_list(URI))).
 
 -spec anonymous_caller_id_name() -> ne_binary().
 anonymous_caller_id_name() ->
@@ -1552,8 +1097,8 @@ calling_app() ->
     {'current_stacktrace', [_Me, {Module, _, _, _} | Start]} = Modules,
     {'ok', App} = application:get_application(Module),
     case process_fold(Start, App) of
-        App -> to_binary(App);
-        {Parent, _MFA} -> to_binary(Parent)
+        App -> kz_term:to_binary(App);
+        {Parent, _MFA} -> kz_term:to_binary(Parent)
     end.
 
 -spec calling_app_version() -> {ne_binary(), ne_binary()}.
@@ -1566,7 +1111,7 @@ calling_app_version() ->
                  {Parent, _MFA} -> Parent
              end,
     {NewApp, _, Version} = get_app(NewApp),
-    {to_binary(NewApp), to_binary(Version)}.
+    {kz_term:to_binary(NewApp), kz_term:to_binary(Version)}.
 
 -spec calling_process() -> map().
 calling_process() ->
@@ -1591,7 +1136,7 @@ calling_process() ->
 
 -spec get_app(atom() | ne_binary()) -> {atom(), string(), string()} | 'undefined'.
 get_app(<<_/binary>> = AppName) ->
-    get_app(to_atom(AppName));
+    get_app(kz_term:to_atom(AppName));
 get_app(AppName) ->
     case [App || {Name, _, _}=App <- application:loaded_applications(), Name =:= AppName] of
         [] -> 'undefined';
