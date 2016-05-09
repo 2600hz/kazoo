@@ -112,22 +112,22 @@ xml_to_record(Xml) ->
     xml_to_record(Xml, "/address").
 
 xml_to_record(Xml, Base) ->
-    #bt_address{id = kz_util:get_xml_value([Base, "/id/text()"], Xml)
-                ,customer_id = kz_util:get_xml_value([Base, "/customer-id/text()"], Xml)
-                ,first_name = kz_util:get_xml_value([Base, "/first-name/text()"], Xml)
-                ,last_name = kz_util:get_xml_value([Base, "/last-name/text()"], Xml)
-                ,company = kz_util:get_xml_value([Base, "/company/text()"], Xml)
-                ,street_address = kz_util:get_xml_value([Base, "/street-address/text()"], Xml)
-                ,extended_address = kz_util:get_xml_value([Base, "/extended-address/text()"], Xml)
-                ,locality = kz_util:get_xml_value([Base, "/locality/text()"], Xml)
-                ,region = kz_util:get_xml_value([Base, "/region/text()"], Xml)
-                ,postal_code = kz_util:get_xml_value([Base, "/postal-code/text()"], Xml)
-                ,country_code_two = kz_util:get_xml_value([Base, "/country-code-alpha2/text()"], Xml)
-                ,country_code_three = kz_util:get_xml_value([Base, "/country-code-alpha3/text()"], Xml)
-                ,country_code = kz_util:get_xml_value([Base, "/country-code-numeric/text()"], Xml)
-                ,country_name = kz_util:get_xml_value([Base, "/country-name/text()"], Xml)
-                ,created_at = kz_util:get_xml_value([Base, "/created-at/text()"], Xml)
-                ,updated_at = kz_util:get_xml_value([Base, "/updated-at/text()"], Xml)
+    #bt_address{id = kz_xml:value([Base, "/id/text()"], Xml)
+                ,customer_id = kz_xml:value([Base, "/customer-id/text()"], Xml)
+                ,first_name = kz_xml:value([Base, "/first-name/text()"], Xml)
+                ,last_name = kz_xml:value([Base, "/last-name/text()"], Xml)
+                ,company = kz_xml:value([Base, "/company/text()"], Xml)
+                ,street_address = kz_xml:value([Base, "/street-address/text()"], Xml)
+                ,extended_address = kz_xml:value([Base, "/extended-address/text()"], Xml)
+                ,locality = kz_xml:value([Base, "/locality/text()"], Xml)
+                ,region = kz_xml:value([Base, "/region/text()"], Xml)
+                ,postal_code = kz_xml:value([Base, "/postal-code/text()"], Xml)
+                ,country_code_two = kz_xml:value([Base, "/country-code-alpha2/text()"], Xml)
+                ,country_code_three = kz_xml:value([Base, "/country-code-alpha3/text()"], Xml)
+                ,country_code = kz_xml:value([Base, "/country-code-numeric/text()"], Xml)
+                ,country_name = kz_xml:value([Base, "/country-name/text()"], Xml)
+                ,created_at = kz_xml:value([Base, "/created-at/text()"], Xml)
+                ,updated_at = kz_xml:value([Base, "/updated-at/text()"], Xml)
                }.
 
 %%--------------------------------------------------------------------

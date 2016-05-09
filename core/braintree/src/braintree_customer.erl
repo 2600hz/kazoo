@@ -275,16 +275,16 @@ xml_to_record(Xml, Base) ->
     CreditCardPath = lists:flatten([Base, "/credit-cards/credit-card"]),
     AddressPath = lists:flatten([Base, "/addresses/address"]),
     SubscriptionPath = lists:flatten([Base, "/credit-cards/credit-card/subscriptions/subscription"]),
-    #bt_customer{id = kz_util:get_xml_value([Base, "/id/text()"], Xml)
-                 ,first_name = kz_util:get_xml_value([Base, "/first-name/text()"], Xml)
-                 ,last_name = kz_util:get_xml_value([Base, "/last-name/text()"], Xml)
-                 ,company = kz_util:get_xml_value([Base, "/company/text()"], Xml)
-                 ,email = kz_util:get_xml_value([Base, "/email/text()"], Xml)
-                 ,phone = kz_util:get_xml_value([Base, "/phone/text()"], Xml)
-                 ,fax = kz_util:get_xml_value([Base, "/fax/text()"], Xml)
-                 ,website = kz_util:get_xml_value([Base, "/website/text()"], Xml)
-                 ,created_at = kz_util:get_xml_value([Base, "/created-at/text()"], Xml)
-                 ,updated_at = kz_util:get_xml_value([Base, "/updated-at/text()"], Xml)
+    #bt_customer{id = kz_xml:value([Base, "/id/text()"], Xml)
+                 ,first_name = kz_xml:value([Base, "/first-name/text()"], Xml)
+                 ,last_name = kz_xml:value([Base, "/last-name/text()"], Xml)
+                 ,company = kz_xml:value([Base, "/company/text()"], Xml)
+                 ,email = kz_xml:value([Base, "/email/text()"], Xml)
+                 ,phone = kz_xml:value([Base, "/phone/text()"], Xml)
+                 ,fax = kz_xml:value([Base, "/fax/text()"], Xml)
+                 ,website = kz_xml:value([Base, "/website/text()"], Xml)
+                 ,created_at = kz_xml:value([Base, "/created-at/text()"], Xml)
+                 ,updated_at = kz_xml:value([Base, "/updated-at/text()"], Xml)
                  ,credit_cards = [braintree_card:xml_to_record(Card)
                                   || Card <- xmerl_xpath:string(CreditCardPath, Xml)
                                  ]

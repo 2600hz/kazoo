@@ -141,7 +141,7 @@ delete(Token) ->
 -spec expired() -> [bt_xml()].
 expired() ->
     Xml = braintree_request:post("/payment_methods/all/expired_ids", <<>>),
-    [kz_util:get_xml_value("/item/text()", Item)
+    [kz_xml:value("/item/text()", Item)
      || Item <- xmerl_xpath:string("/search-results/ids/item", Xml)
     ].
 
@@ -194,22 +194,22 @@ xml_to_record(Xml) ->
     xml_to_record(Xml, "/credit-card").
 
 xml_to_record(Xml, Base) ->
-    #bt_card{token = kz_util:get_xml_value([Base, "/token/text()"], Xml)
-             ,bin = kz_util:get_xml_value([Base, "/bin/text()"], Xml)
-             ,cardholder_name = kz_util:get_xml_value([Base, "/cardholder-name/text()"], Xml)
-             ,card_type = kz_util:get_xml_value([Base, "/card-type/text()"], Xml)
-             ,created_at = kz_util:get_xml_value([Base, "/created-at/text()"], Xml)
-             ,updated_at = kz_util:get_xml_value([Base, "/updated-at/text()"], Xml)
-             ,default = kz_term:is_true(kz_util:get_xml_value([Base, "/default/text()"], Xml))
-             ,expiration_date = kz_util:get_xml_value([Base, "/expiration-date/text()"], Xml)
-             ,expiration_month = kz_util:get_xml_value([Base, "/expiration-month/text()"], Xml)
-             ,expiration_year = kz_util:get_xml_value([Base, "/expiration-year/text()"], Xml)
-             ,expired = kz_term:is_true(kz_util:get_xml_value([Base, "/expired/text()"], Xml))
-             ,customer_location = kz_util:get_xml_value([Base, "/customer-location/text()"], Xml)
-             ,last_four = kz_util:get_xml_value([Base, "/last-4/text()"], Xml)
-             ,customer_id = kz_util:get_xml_value([Base, "/customer-id/text()"], Xml)
+    #bt_card{token = kz_xml:value([Base, "/token/text()"], Xml)
+             ,bin = kz_xml:value([Base, "/bin/text()"], Xml)
+             ,cardholder_name = kz_xml:value([Base, "/cardholder-name/text()"], Xml)
+             ,card_type = kz_xml:value([Base, "/card-type/text()"], Xml)
+             ,created_at = kz_xml:value([Base, "/created-at/text()"], Xml)
+             ,updated_at = kz_xml:value([Base, "/updated-at/text()"], Xml)
+             ,default = kz_term:is_true(kz_xml:value([Base, "/default/text()"], Xml))
+             ,expiration_date = kz_xml:value([Base, "/expiration-date/text()"], Xml)
+             ,expiration_month = kz_xml:value([Base, "/expiration-month/text()"], Xml)
+             ,expiration_year = kz_xml:value([Base, "/expiration-year/text()"], Xml)
+             ,expired = kz_term:is_true(kz_xml:value([Base, "/expired/text()"], Xml))
+             ,customer_location = kz_xml:value([Base, "/customer-location/text()"], Xml)
+             ,last_four = kz_xml:value([Base, "/last-4/text()"], Xml)
+             ,customer_id = kz_xml:value([Base, "/customer-id/text()"], Xml)
              ,billing_address = braintree_address:xml_to_record(Xml, [Base, "/billing-address"])
-             ,billing_address_id = kz_util:get_xml_value([Base, "/billing-address/id/text()"], Xml)
+             ,billing_address_id = kz_xml:value([Base, "/billing-address/id/text()"], Xml)
             }.
 
 %%--------------------------------------------------------------------
