@@ -611,6 +611,9 @@ get_category(Category) ->
         ,{{<<"callflow.mobile">>, [<<"sms">>, <<"connections">>]}
          ,{<<"kazoo_endpoint.mobile">>, [<<"sms">>, <<"connections">>]}
          }
+        ,{{<<"callflow">>, <<"recorder_module">>}
+         ,{<<"kazoo_endpoint">>, <<"recorder_module">>}
+         }
         ]).
 
 -spec migrate() -> 'ok'.

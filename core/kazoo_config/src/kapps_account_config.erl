@@ -189,6 +189,9 @@ account_db_from_jobj(_Obj, 'false') ->
        ,[{{<<"callflow">>, <<"default_can_text_self">>}
          ,{<<"kazoo_endpoint">>, <<"default_can_text_self">>}
          }
+        ,{{<<"callflow">>, <<"recorder_module">>}
+         ,{<<"kazoo_endpoint">>, <<"recorder_module">>}
+         }
         ]).
 
 -spec migrate(ne_binary()) -> 'ok'.

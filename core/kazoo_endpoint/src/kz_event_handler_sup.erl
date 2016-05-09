@@ -1,35 +1,28 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2016, 2600Hz INC
+%%% @copyright (C) 2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(kazoo_media_sup).
+-module(kz_event_handler_sup).
+
 -behaviour(supervisor).
 
--include("kazoo_media.hrl").
+-include("kazoo_endpoint.hrl").
 
 -define(SERVER, ?MODULE).
 
+%% API
 -export([start_link/0]).
+-export([new/3]).
+-export([workers/0, worker/1]).
+
+%% Supervisor callbacks
 -export([init/1]).
 
-%% Helper macro for declaring children of supervisor
--define(CHILDREN, [?SUPER('kz_media_cache_sup')
-                   ,?SUPER('kz_media_recording_sup')
-                   ,?WORKER_APP_INIT('kazoo_media_init', 20 * ?SECONDS_IN_MINUTE)
-                   ,?WORKER_ARGS('kazoo_etsmgr_srv'
-                                 ,[
-                                   [{'table_id', kz_media_map:table_id()}
-                                    ,{'table_options', kz_media_map:table_options()}
-                                    ,{'find_me_function', fun kz_media_map:find_me_function/0}
-                                    ,{'gift_data', kz_media_map:gift_data()}
-                                   ]
-                                  ])
-                   ,?WORKER('kz_media_map')
-                   ,?WORKER('kz_media_proxy')
-                  ]).
+-define(CHILDREN, []).
 
 %% ===================================================================
 %% API functions
@@ -42,6 +35,21 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
+
+-spec new(any(), atom(), list()) -> sup_startchild_ret().
+new(Name, M, A) ->
+    supervisor:start_child(?SERVER, ?WORKER_NAME_ARGS_TYPE(Name, M, A, 'temporary')).
+
+-spec workers() -> pids().
+workers() ->
+    [Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?SERVER)].
+
+-spec worker(ne_binary()) -> api_pid().
+worker(Name) ->
+    case [Pid || {Worker, Pid, 'worker', [_]} <- supervisor:which_children(?SERVER), Worker =:= Name] of
+        [] -> 'undefined';
+        [P |_] -> P
+    end.
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -59,8 +67,8 @@ start_link() ->
 -spec init(any()) -> sup_init_ret().
 init([]) ->
     RestartStrategy = 'one_for_one',
-    MaxRestarts = 5,
-    MaxSecondsBetweenRestarts = 10,
+    MaxRestarts = 0,
+    MaxSecondsBetweenRestarts = 1,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
