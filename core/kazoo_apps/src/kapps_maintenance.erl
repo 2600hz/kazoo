@@ -1259,8 +1259,8 @@ migrate_system_version_routines(_, _) -> [].
 
 -spec handle_module_rename() -> boolean().
 handle_module_rename() ->
-    {'ok', Docs} = kz_datamgr:all_docs(?KZ_CONFIG_DB, ['include_docs']),
-    Results = [handle_module_rename_doc(Doc) || Doc <- Docs],
+    {'ok', JObjs} = kz_datamgr:all_docs(?KZ_CONFIG_DB, ['include_docs']),
+    Results = [handle_module_rename_doc(kz_json:get_value(<<"doc">>, JObj)) || JObj <- JObjs],
     lists:all(fun kz_util:is_true/1, Results).
 
 -spec handle_module_rename_doc(kz_json:object()) -> boolean().
