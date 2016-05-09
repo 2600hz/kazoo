@@ -292,9 +292,9 @@ strip_test() ->
     ?assertEqual(kz_term:strip_binary(<<"...Hello.....">>, $.), <<"Hello">>).
 
 uri_test() ->
-    ?assertEqual(<<"http://test.com/path1/path2">>, kz_util:uri(<<"http://test.com">>, [<<"path1">>, <<"path2">>])),
-    ?assertEqual(<<"http://192.168.0.1:8888/path1/path2">>, kz_util:uri(<<"http://192.168.0.1:8888/">>, [<<"path1">>, <<"path2">>])),
-    ?assertEqual(<<"http://test.com/path1/path2">>, kz_util:uri(<<"http://test.com/">>, [<<"path1/">>, <<"path2/">>])).
+    ?assertEqual(<<"http://test.com/path1/path2">>, kz_http_util:uri(<<"http://test.com">>, [<<"path1">>, <<"path2">>])),
+    ?assertEqual(<<"http://192.168.0.1:8888/path1/path2">>, kz_http_util:uri(<<"http://192.168.0.1:8888/">>, [<<"path1">>, <<"path2">>])),
+    ?assertEqual(<<"http://test.com/path1/path2">>, kz_http_util:uri(<<"http://test.com/">>, [<<"path1/">>, <<"path2/">>])).
 
 suffix_binary_test() ->
     ?assertEqual('true', kz_term:suffix_binary(<<"34">>, <<"1234">>)),
@@ -323,8 +323,8 @@ resolve_uri_test() ->
     RawPath = <<"http://pivot/script.php">>,
     Relative = <<"script2.php">>,
 
-    ?assertEqual(<<"http://pivot/script2.php">>, kz_util:resolve_uri(RawPath, Relative)),
-    ?assertEqual(<<"http://pivot/script2.php">>, kz_util:resolve_uri(RawPath, <<"/", Relative/binary>>)).
+    ?assertEqual(<<"http://pivot/script2.php">>, kz_http_util:resolve_uri(RawPath, Relative)),
+    ?assertEqual(<<"http://pivot/script2.php">>, kz_http_util:resolve_uri(RawPath, <<"/", Relative/binary>>)).
 
 account_formats_test_() ->
     AccountId = <<A:2/binary, B:2/binary, Rest:28/binary>> = kz_term:rand_hex_binary(16),

@@ -915,7 +915,7 @@ apply_response_map_item({Key, ExistingKey}, J, JObj) ->
 
 -spec get_path(cowboy_req:req() | ne_binary(), ne_binary()) -> ne_binary().
 get_path(<<_/binary>> = RawPath, Relative) ->
-    kz_util:resolve_uri(RawPath, Relative);
+    kz_http_util:resolve_uri(RawPath, Relative);
 get_path(Req, Relative) ->
     {RawPath, _} = cowboy_req:path(Req),
     get_path(RawPath, Relative).

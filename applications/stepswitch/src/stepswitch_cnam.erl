@@ -73,7 +73,7 @@ lookup(<<_/binary>> = Number) ->
         'false' -> knm_converters:normalize(Number);
         'true'  -> Number
     end,
-    lookup(kz_json:set_values([{<<"phone_number">>, kz_util:uri_encode(Num)}
+    lookup(kz_json:set_values([{<<"phone_number">>, kz_http_util:uri_encode(Num)}
                                ,{<<"Caller-ID-Number">>, Num}
                               ]
                               ,kz_json:new()
@@ -95,7 +95,7 @@ lookup(JObj) ->
 
 -spec set_phone_number(ne_binary(), kz_json:object()) -> kz_json:object().
 set_phone_number(Num, JObj) ->
-    kz_json:set_value(<<"phone_number">>, kz_util:uri_encode(Num), JObj).
+    kz_json:set_value(<<"phone_number">>, kz_http_util:uri_encode(Num), JObj).
 
 -spec update_request(kz_json:object(), api_binary(), boolean()) -> kz_json:object().
 update_request(JObj, 'undefined', _) -> JObj;

@@ -75,7 +75,7 @@ http_method(Method) -> http_method(kz_term:to_binary(Method)).
 
 -spec resolve_uri(ne_binary(), ne_binary()) -> ne_binary().
 resolve_uri(Path, NewPath) ->
-    kz_util:resolve_uri(Path, NewPath).
+    kz_http_util:resolve_uri(Path, NewPath).
 
 %% see cf_offnet.erl
 -spec offnet_req(kz_proplist(), kapps_call:call()) -> 'ok'.

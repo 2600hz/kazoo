@@ -1218,7 +1218,7 @@ find_template(ResellerId) ->
 find_template(ResellerId, 'undefined') ->
     find_template(ResellerId);
 find_template(ResellerId, CarrierName) ->
-    TemplateName = <<(kz_term:to_lower_binary(kz_util:uri_encode(CarrierName)))/binary, ".tmpl">>,
+    TemplateName = <<(kz_term:to_lower_binary(kz_http_util:uri_encode(CarrierName)))/binary, ".tmpl">>,
     lager:debug("looking for carrier template ~s or plain template for reseller ~s"
                 ,[TemplateName, ResellerId]
                ),

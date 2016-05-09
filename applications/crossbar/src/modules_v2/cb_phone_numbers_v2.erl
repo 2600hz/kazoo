@@ -602,7 +602,7 @@ get_prefix(City) ->
             {'error', <<"Unable to acquire numbers missing carrier url">>};
         Url ->
             Country = kapps_config:get_string(?PHONE_NUMBERS_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
-            ReqParam = kz_util:uri_encode(City),
+            ReqParam = kz_http_util:uri_encode(City),
             case kz_http:get(lists:flatten([Url, "/", Country, "/city?pattern=", ReqParam])) of
                 {'ok', 200, _Headers, Body} ->
                     JObj = kz_json:decode(Body),

@@ -285,7 +285,7 @@ get_blocks(Url, Number, Quantity, Props) ->
     Offset = props:get_binary_value(<<"offset">>, Props, <<"0">>),
     Limit = props:get_binary_value(<<"blocks">>, Props, <<"0">>),
     Country = kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
-    ReqBody = <<"?prefix=", (kz_util:uri_encode(Number))/binary
+    ReqBody = <<"?prefix=", (kz_http_util:uri_encode(Number))/binary
                 ,"&size=", (kz_term:to_binary(Quantity))/binary
                 ,"&offset=", Offset/binary
                 ,"&limit=", Limit/binary

@@ -529,7 +529,7 @@ store_recording(Media, StoreUrl, Call, 'local') ->
 append_path(Url, {_, MediaName}) ->
     S = byte_size(Url)-1,
 
-    Encoded = kz_util:uri_encode(MediaName),
+    Encoded = kz_http_util:uri_encode(MediaName),
 
     case Url of
         <<_:S/binary, "/">> -> <<Url/binary, Encoded/binary>>;

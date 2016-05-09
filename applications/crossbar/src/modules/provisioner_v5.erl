@@ -502,7 +502,7 @@ req_uri('devices', AccountId, MACAddress) ->
 -spec provisioning_uri(iolist()) -> iolist().
 provisioning_uri(ExplodedPath) ->
     Url = kapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_url">>),
-    Uri = kz_util:uri(Url, ExplodedPath),
+    Uri = kz_http_util:uri(Url, ExplodedPath),
     binary:bin_to_list(Uri).
 
 -spec account_payload(kz_json:object(), ne_binary()) -> kz_json:object().

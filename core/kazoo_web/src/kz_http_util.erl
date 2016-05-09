@@ -14,6 +14,16 @@
          ,urlunsplit/1
         ]).
 
+-export([uri_encode/1
+         ,uri_decode/1
+         ,resolve_uri/2
+         ,safe_urlencode/1
+        ]).
+
+-export([uri/2]).
+
+-include_lib("kazoo/include/kz_types.hrl").
+
 %%--------------------------------------------------------------------
 %% @doc URL decodes a URL encoded string
 %%--------------------------------------------------------------------
@@ -258,3 +268,69 @@ urlunsplit({S, N, P, Q, F}) ->
     Uf = case F of <<>> -> <<>>; _ -> <<$#, F/binary>> end,
 
     <<Us/binary, N/binary, P/binary, Uq/binary, Uf/binary>>.
+
+
+-spec uri_decode(text()) -> text().
+uri_decode(Binary) when is_binary(Binary) ->
+    kz_term:to_binary(http_uri:decode(kz_term:to_list(Binary)));
+uri_decode(String) when is_list(String) ->
+    http_uri:decode(String);
+uri_decode(Atom) when is_atom(Atom) ->
+    kz_term:to_atom(http_uri:decode(kz_term:to_list(Atom)), 'true').
+
+-spec uri_encode(text()) -> text().
+uri_encode(Binary) when is_binary(Binary) ->
+    kz_term:to_binary(http_uri:encode(kz_term:to_list(Binary)));
+uri_encode(String) when is_list(String) ->
+    http_uri:encode(String);
+uri_encode(Atom) when is_atom(Atom) ->
+    kz_term:to_atom(http_uri:encode(kz_term:to_list(Atom)), 'true').
+
+-spec resolve_uri(nonempty_string() | api_binary(), nonempty_string() | ne_binary()) -> ne_binary().
+resolve_uri(Raw, 'undefined') -> kz_term:to_binary(Raw);
+resolve_uri(_Raw, <<"http", _/binary>> = Abs) -> Abs;
+resolve_uri(<<_/binary>> = RawPath, <<_/binary>> = Relative) ->
+    kz_term:join_binary(
+      resolve_uri_path(RawPath, Relative)
+      ,<<"/">>
+     );
+resolve_uri(RawPath, Relative) ->
+    resolve_uri(kz_term:to_binary(RawPath), kz_term:to_binary(Relative)).
+
+-spec resolve_uri_path(ne_binary(), ne_binary()) -> ne_binaries().
+resolve_uri_path(RawPath, Relative) ->
+    PathTokensRev = lists:reverse(binary:split(RawPath, <<"/">>, ['global'])),
+    UrlTokens = binary:split(Relative, <<"/">>, ['global']),
+
+    lists:reverse(
+      lists:foldl(fun resolve_uri_fold/2, PathTokensRev, UrlTokens)
+     ).
+
+-spec resolve_uri_fold(ne_binary(), ne_binaries()) -> ne_binaries().
+resolve_uri_fold(<<"..">>, []) -> [];
+resolve_uri_fold(<<"..">>, [_ | PathTokens]) -> PathTokens;
+resolve_uri_fold(<<".">>, PathTokens) -> PathTokens;
+resolve_uri_fold(<<>>, PathTokens) -> PathTokens;
+resolve_uri_fold(Segment, [<<>>|DirTokens]) ->
+    [Segment|DirTokens];
+resolve_uri_fold(Segment, [LastToken|DirTokens]=PathTokens) ->
+    case filename:extension(LastToken) of
+        <<>> ->
+            %% no extension, append Segment to Tokens
+            [Segment | PathTokens];
+        _Ext ->
+            %% Extension found, append Segment to DirTokens
+            [Segment|DirTokens]
+    end.
+
+-spec uri(ne_binary(), ne_binaries()) -> ne_binary().
+uri(BaseUrl, Tokens) ->
+    [Pro, Url] = binary:split(BaseUrl, <<"://">>),
+    Uri = filename:join([Url | Tokens]),
+    <<Pro/binary, "://", Uri/binary>>.
+
+
+-spec safe_urlencode(binary() | number()) -> iolist().
+safe_urlencode(V) when is_binary(V)
+                       orelse is_number(V) ->
+    kz_http_util:urlencode(kz_term:to_binary(V)).

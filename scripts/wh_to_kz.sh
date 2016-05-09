@@ -38,3 +38,7 @@ util_split 'kz_time' $kz_time_exports
 
 kz_accounts_exports='account_update disable_account enable_account format_account_db format_account_id format_account_mod_id format_account_modb get_account_realm is_account_enabled is_account_expired is_in_account_hierarchy is_in_account_hierarchy is_system_admin is_system_db maybe_disable_account normalize_account_name set_allow_number_additions set_superduper_admin'
 util_split 'kz_accounts' $kz_accounts_exports
+
+
+kz_http_util_from_kz_util='resolve_uri safe_urlencode uri uri_decode uri_encode'
+util_split 'kz_http_util' $kz_http_util_from_kz_util
