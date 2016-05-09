@@ -573,7 +573,7 @@ public_json(#kz_services{jobj=ServicesJObj
                          ,cascade_quantities=CascadeQuantities
                         }) ->
     AccountId = kz_doc:account_id(ServicesJObj),
-    InGoodStanding = try maybe_follow_billling_id(AccountId, ServicesJObj) of
+    InGoodStanding = try maybe_follow_billing_id(AccountId, ServicesJObj) of
                          'true' -> 'true'
                      catch
                          'throw':_ -> 'false'
@@ -645,16 +645,16 @@ allow_updates(<<_/binary>> = Account) ->
             default_maybe_allow_updates(AccountId);
         {'ok', ServicesJObj} ->
             lager:debug("determining if account ~s is able to make updates", [AccountId]),
-            maybe_follow_billling_id(AccountId, ServicesJObj)
+            maybe_follow_billing_id(AccountId, ServicesJObj)
     end;
 allow_updates(#kz_services{jobj=ServicesJObj
                            ,account_id=AccountId
                           }) ->
     lager:debug("determining if account ~s is able to make updates", [AccountId]),
-    maybe_follow_billling_id(AccountId, ServicesJObj).
+    maybe_follow_billing_id(AccountId, ServicesJObj).
 
--spec maybe_follow_billling_id(ne_binary(), kz_json:object()) -> 'true'.
-maybe_follow_billling_id(AccountId, ServicesJObj) ->
+-spec maybe_follow_billing_id(ne_binary(), kz_json:object()) -> 'true'.
+maybe_follow_billing_id(AccountId, ServicesJObj) ->
     case kzd_services:billing_id(ServicesJObj, AccountId) of
         AccountId -> maybe_allow_updates(AccountId, ServicesJObj);
         BillingId ->
