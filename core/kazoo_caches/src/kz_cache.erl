@@ -207,7 +207,7 @@ fetch_local(Srv, K) ->
     case peek_local(Srv, K) of
         {'error', 'not_found'}=E -> E;
         {'ok', Value} ->
-            ets:update_element(Srv, K, {#cache_obj.timestamp, kz_util:current_tstamp()}),
+            ets:update_element(Srv, K, {#cache_obj.timestamp, kz_time:current_tstamp()}),
 %            gen_server:cast(Srv, {'update_timestamp', K, }),
             {'ok', Value}
     end.
@@ -278,7 +278,7 @@ dump_local(Srv, ShowValue) ->
 
 -spec dump_table(ets:tid(), boolean()) -> 'ok'.
 dump_table(Tab, ShowValue) ->
-    Now = kz_util:current_tstamp(),
+    Now = kz_time:current_tstamp(),
     io:format("Table ~p~n", [ets:info(Tab, 'name')]),
     _ = [display_cache_obj(CacheObj, ShowValue, Now)
          || CacheObj <- ets:match_object(Tab, #cache_obj{_ = '_'})
@@ -645,7 +645,7 @@ get_props_origin(Props) -> props:get_value('origin', Props).
 -spec expire_objects(ets:tid(), [ets:tid()]) -> non_neg_integer().
 -spec expire_objects(ets:tid(), [ets:tid()], list()) -> non_neg_integer().
 expire_objects(Tab, AuxTables) ->
-    Now = kz_util:current_tstamp(),
+    Now = kz_time:current_tstamp(),
     FindSpec = [{#cache_obj{key = '$1'
                             ,value = '$2'
                             ,expires = '$3'

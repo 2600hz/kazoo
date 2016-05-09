@@ -495,7 +495,7 @@ get_start_key(Context, Default, Formatter) ->
 -spec summary_attempts_fetch(cb_context:context(), crossbar_doc:view_options(), ne_binary()) ->
                                     cb_context:context().
 summary_attempts_fetch(Context, ViewOptions, View) ->
-    Db = kz_util:format_account_mod_id(cb_context:account_id(Context), kz_util:current_tstamp()),
+    Db = kz_util:format_account_mod_id(cb_context:account_id(Context), kz_time:current_tstamp()),
     lager:debug("loading view ~s with options ~p", [View, ViewOptions]),
     maybe_fix_envelope(
       crossbar_doc:load_view(View

@@ -423,7 +423,7 @@ uploaded_filename(Context) ->
 
 -spec default_filename() -> ne_binary().
 default_filename() ->
-    <<"uploaded_file_", (kz_term:to_binary(kz_util:current_tstamp()))/binary>>.
+    <<"uploaded_file_", (kz_term:to_binary(kz_time:current_tstamp()))/binary>>.
 
 -spec decode_base64(cb_context:context(), ne_binary(), cowboy_req:req()) ->
                            {cb_context:context(), cowboy_req:req()} |

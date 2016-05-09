@@ -169,7 +169,7 @@ handle_dtmf(Call, FinishKey, Timeout, N, OnFirstFun, Collected, DTMF) ->
 collect_decr_timeout(Call, Timeout, Start) ->
     case kzt_util:get_gather_pidref(Call) of
         {_Pid, _Ref} when is_pid(_Pid) andalso is_reference(_Ref) -> Timeout;
-        _ -> kz_util:decr_timeout(Timeout, Start)
+        _ -> kz_time:decr_timeout(Timeout, Start)
     end.
 
 -spec collect_timeout(kapps_call:call(), kz_timeout()) -> kz_timeout().
@@ -237,7 +237,7 @@ play_loop(Call, PlayMe, Terminators, N) ->
 record_loop(Call, SilenceTimeout) ->
     case wait_for_call_event(Call, <<"RECORD_STOP">>) of
         {'ok', EvtJObj} ->
-            Len = kz_util:milliseconds_to_seconds(kz_json:get_value(<<"Length">>, EvtJObj, 0)),
+            Len = kz_time:milliseconds_to_seconds(kz_json:get_value(<<"Length">>, EvtJObj, 0)),
             DTMF = kz_json:get_value(<<"Terminator">>, EvtJObj, <<"hangup">>),
 
             case {kz_json:is_true(<<"Silence-Terminated">>, EvtJObj, 'false')
@@ -254,7 +254,7 @@ record_loop(Call, SilenceTimeout) ->
                     {'ok', kapps_call:exec(Fs, Call)}
             end;
         {'error', 'channel_destroy', EvtJObj} ->
-            Len = kz_util:milliseconds_to_seconds(kz_json:get_value(<<"Length">>, EvtJObj, 0)),
+            Len = kz_time:milliseconds_to_seconds(kz_json:get_value(<<"Length">>, EvtJObj, 0)),
 
             lager:debug("recording ended (hangup): len: ~p", [Len]),
 
@@ -393,7 +393,7 @@ wait_for_conference(Call) ->
                                          ,record_call=RecordCall
                                          ,call_timeout=CallTimeout
                                          ,call_time_limit=CallTimeLimit
-                                         ,start=kz_util:now()
+                                         ,start=kz_time:now()
                                         }).
 
 -spec call_status(ne_binary()) -> ne_binary().
@@ -673,7 +673,7 @@ recording_meta(Call, MediaName) ->
     kz_datamgr:save_doc(AcctDb, MediaDoc).
 
 recording_name(ALeg, BLeg) ->
-    DateTime = kz_util:pretty_print_datetime(calendar:universal_time()),
+    DateTime = kz_time:pretty_print_datetime(calendar:universal_time()),
     iolist_to_binary([DateTime, "_", ALeg, "_to_", BLeg, ".mp3"]).
 
 -spec handle_offnet_timeout(dial_req()) -> {'ok', kapps_call:call()}.
@@ -718,7 +718,7 @@ update_offnet_timers(#dial_req{call_timeout='undefined'
                                ,call_time_limit=CallTimeLimit
                                ,start=Start
                               }=OffnetReq) ->
-    Left = kz_util:decr_timeout(CallTimeLimit, Start),
+    Left = kz_time:decr_timeout(CallTimeLimit, Start),
     OffnetReq#dial_req{call_time_limit=Left
                        ,start=os:timestamp()
                       };
@@ -727,7 +727,7 @@ update_offnet_timers(#dial_req{call_timeout='infinity'}=OffnetReq) ->
 update_offnet_timers(#dial_req{call_timeout=CallTimeout
                                ,start=Start
                               }=OffnetReq) ->
-    Left = kz_util:decr_timeout(CallTimeout, Start),
+    Left = kz_time:decr_timeout(CallTimeout, Start),
     OffnetReq#dial_req{call_timeout=Left
                        ,start=os:timestamp()
                       }.

@@ -636,8 +636,8 @@ base_group_ring_group(JObj) ->
                   props:filter_undefined(
                     [{<<"pvt_vsn">>, <<"1">>}
                      ,{<<"pvt_type">>, <<"callflow">>}
-                     ,{<<"pvt_modified">>, kz_util:current_tstamp()}
-                     ,{<<"pvt_created">>, kz_util:current_tstamp()}
+                     ,{<<"pvt_modified">>, kz_time:current_tstamp()}
+                     ,{<<"pvt_created">>, kz_time:current_tstamp()}
                      ,{<<"pvt_account_db">>, kz_doc:account_db(JObj)}
                      ,{<<"pvt_account_id">>, kz_doc:account_id(JObj)}
                      ,{<<"flow">>, kz_json:from_list([{<<"children">>, kz_json:new()}
@@ -665,7 +665,7 @@ set_data_for_callflow(JObj, BaseGroup) ->
 
 -spec set_number_for_callflow(kz_json:object(), kz_json:object()) -> kz_json:object().
 set_number_for_callflow(JObj, BaseGroup) ->
-    Number = <<"group_", (kz_term:to_binary(kz_util:now_ms(os:timestamp())))/binary>>,
+    Number = <<"group_", (kz_term:to_binary(kz_time:now_ms(os:timestamp())))/binary>>,
     Numbers = [Number],
     set_name_for_callflow(JObj, kz_json:set_value(<<"numbers">>, Numbers, BaseGroup)).
 

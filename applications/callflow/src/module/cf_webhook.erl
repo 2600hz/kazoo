@@ -30,7 +30,7 @@ handle_webhook(Data, Call) ->
     Hook = set_hook(Data, CallJObj),
     JObj = kz_json:from_list(
              [{<<"Hook">>, Hook}
-              ,{<<"Timestamp">>, kz_util:current_tstamp()}
+              ,{<<"Timestamp">>, kz_time:current_tstamp()}
               ,{<<"Data">>, CallJObj}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),

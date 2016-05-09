@@ -66,7 +66,7 @@ new() ->
 %%--------------------------------------------------------------------
 -spec new(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> doc().
 new(Db, DocId, AttachmentName, BoxNum, Timezone, Props) ->
-    UtcSeconds = kz_util:current_tstamp(),
+    UtcSeconds = kz_time:current_tstamp(),
     UtcDateTime = calendar:gregorian_seconds_to_datetime(UtcSeconds),
     Name = case localtime:utc_to_local(UtcDateTime, Timezone) of
                {'error', 'unknown_tz'} ->

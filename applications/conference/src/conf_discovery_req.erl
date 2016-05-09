@@ -206,7 +206,7 @@ wait_for_creation(Conference, After) ->
         {'ok', _}=Ok -> Ok;
         {'error', _} ->
             timer:sleep(?MILLISECONDS_IN_SECOND),
-            wait_for_creation(Conference, kz_util:decr_timeout(After, Start))
+            wait_for_creation(Conference, kz_time:decr_timeout(After, Start))
     end.
 
 -spec handle_search_resp(kz_json:object(), kapps_conference:conference(), kapps_call:call(), pid()) -> 'ok'.

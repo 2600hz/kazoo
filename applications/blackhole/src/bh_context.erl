@@ -54,7 +54,7 @@
 new()->
     Setters = [
         fun put_reqid/1
-        ,{fun set_timestamp/2, kz_util:current_tstamp()}
+        ,{fun set_timestamp/2, kz_time:current_tstamp()}
     ],
     setters(#bh_context{}, Setters).
 

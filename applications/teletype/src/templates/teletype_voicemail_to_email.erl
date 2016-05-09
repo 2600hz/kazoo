@@ -180,7 +180,7 @@ get_file_name(MediaJObj, Macros) ->
     LocalDateTime = props:get_value([<<"date_called">>, <<"local">>], Macros),
 
     Extension = get_extension(MediaJObj),
-    FileName = list_to_binary([CallerID, "_", kz_util:pretty_print_datetime(LocalDateTime), ".", Extension]),
+    FileName = list_to_binary([CallerID, "_", kz_time:pretty_print_datetime(LocalDateTime), ".", Extension]),
 
     kz_http_util:urlencode(
       binary:replace(kz_term:to_lower_binary(FileName), <<" ">>, <<"_">>)
@@ -248,7 +248,7 @@ build_date_called_data(DataJObj) ->
 
 -spec date_called(api_object() | gregorian_seconds()) -> gregorian_seconds().
 date_called(Timestamp) when is_integer(Timestamp) -> Timestamp;
-date_called('undefined') -> kz_util:current_tstamp();
+date_called('undefined') -> kz_time:current_tstamp();
 date_called(DataJObj) ->
     date_called(kz_json:get_integer_value(<<"voicemail_timestamp">>, DataJObj)).
 

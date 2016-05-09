@@ -197,7 +197,7 @@ port_request_data_fold(<<"id">> = K, V, Acc) ->
 port_request_data_fold(<<"account_id">> = K, V, Acc) ->
     kz_json:set_value(K, V, Acc);
 port_request_data_fold(<<"transfer_date">>, Date, Acc) ->
-    kz_json:set_value(<<"requested_port_date">>, kz_util:iso8601({Date, {0,0,0}}), Acc);
+    kz_json:set_value(<<"requested_port_date">>, kz_time:iso8601({Date, {0,0,0}}), Acc);
 port_request_data_fold(<<"bill_", _/binary>> = K, V, Acc) ->
     kz_json:set_value(K, V, Acc);
 port_request_data_fold(<<"numbers">> = K, Numbers, Acc) ->

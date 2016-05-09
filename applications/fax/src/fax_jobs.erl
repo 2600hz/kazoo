@@ -103,7 +103,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info('timeout', #state{jobs=[]}=State) ->
-    Upto = kz_util:current_tstamp(),
+    Upto = kz_time:current_tstamp(),
     ViewOptions = [{'limit', 100}
                   ,{'endkey', Upto}
                   ],

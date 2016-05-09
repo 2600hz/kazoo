@@ -333,7 +333,7 @@ to_kv(X, Separator) ->
     {kz_term:to_binary(K), kz_term:to_binary(fix_value(K, V1))}.
 
 fix_value("Event-Date-Timestamp", TStamp) ->
-    kz_util:microseconds_to_seconds(kz_term:to_integer(TStamp));
+    kz_time:microseconds_to_seconds(kz_term:to_integer(TStamp));
 fix_value(_K, V) -> V.
 
 -spec unserialize_fs_array(api_binary()) -> ne_binaries().

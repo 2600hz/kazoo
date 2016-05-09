@@ -48,7 +48,7 @@ range_view_options(Context) ->
 range_view_options(Context, MaxRange) ->
     range_view_options(Context, MaxRange, <<"created">>).
 range_view_options(Context, MaxRange, Key) ->
-    TStamp =  kz_util:current_tstamp(),
+    TStamp =  kz_time:current_tstamp(),
     RangeTo = range_to(Context, TStamp, Key),
     RangeFrom = range_from(Context, RangeTo, MaxRange, Key),
     range_view_options(Context, MaxRange, Key, RangeFrom, RangeTo).

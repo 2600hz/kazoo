@@ -176,7 +176,7 @@ handle_cast({'fax_status', <<"pageresult">>, JObj}
     Data = kz_json:get_value(<<"Application-Data">>, JObj, kz_json:new()),
     TransferredPages = kz_json:get_integer_value(<<"Fax-Transferred-Pages">>, Data, 0),
     lager:debug("fax status - page result - ~s : ~p : ~p"
-                ,[JobId, TransferredPages, kz_util:current_tstamp()]
+                ,[JobId, TransferredPages, kz_time:current_tstamp()]
                ),
     Status = list_to_binary(["Received  Page ", kz_term:to_list(Page)]),
     send_status(State, Status, Data),
@@ -289,7 +289,7 @@ get_fax_storage(Call) ->
     AccountMODb = kazoo_modb:get_modb(AccountId, Year, Month),
     FaxDb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     FaxId = <<(kz_term:to_binary(Year))/binary
-              ,(kz_util:pad_month(Month))/binary
+              ,(kz_time:pad_month(Month))/binary
               ,"-"
               ,(kz_term:rand_hex_binary(16))/binary
             >>,
@@ -485,7 +485,7 @@ create_fax_doc(JObj, #state{owner_id = OwnerId
                                                   ,db=FaxDb
                                                  }
                            }) ->
-    {{Y,M,D}, {H,I,S}} = calendar:gregorian_seconds_to_datetime(kz_util:current_tstamp()),
+    {{Y,M,D}, {H,I,S}} = calendar:gregorian_seconds_to_datetime(kz_time:current_tstamp()),
     Name = list_to_binary(["fax message received at "
                            ,kz_term:to_binary(Y), "-", kz_term:to_binary(M), "-", kz_term:to_binary(D)
                            ," " , kz_term:to_binary(H), ":", kz_term:to_binary(I), ":", kz_term:to_binary(S)
@@ -494,7 +494,7 @@ create_fax_doc(JObj, #state{owner_id = OwnerId
 
     ?MATCH_MODB_PREFIX(Year,Month,_) = FaxDocId,
     CdrId = <<(kz_term:to_binary(Year))/binary
-              ,(kz_util:pad_month(Month))/binary
+              ,(kz_time:pad_month(Month))/binary
               ,"-"
               ,(kapps_call:call_id(Call))/binary
             >>,
@@ -552,7 +552,7 @@ notify_fields(Call, JObj) ->
        ,{<<"Callee-ID-Number">>, kapps_call:callee_id_number(Call)}
        ,{<<"Callee-ID-Name">>, kapps_call:callee_id_name(Call)}
        ,{<<"Call-ID">>, kapps_call:call_id(Call)}
-       ,{<<"Fax-Timestamp">>, kz_util:current_tstamp()}
+       ,{<<"Fax-Timestamp">>, kz_time:current_tstamp()}
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 

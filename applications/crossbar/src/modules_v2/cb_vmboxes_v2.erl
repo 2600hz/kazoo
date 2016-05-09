@@ -551,7 +551,7 @@ generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
                     {{_,_,_},{_,_,_}}=LT -> lager:debug("Converted to TZ: ~s", [Timezone]), LT;
                     _ -> lager:debug("Bad TZ: ~p", [Timezone]), UTCDateTime
                 end,
-    Date = kz_util:pretty_print_datetime(LocalTime),
+    Date = kz_time:pretty_print_datetime(LocalTime),
     list_to_binary([CallerId, "_", Date, Ext]).
 
 %%--------------------------------------------------------------------

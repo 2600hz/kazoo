@@ -221,7 +221,7 @@ get_modb(Account, Year, Month) ->
 -spec maybe_create(ne_binary()) -> boolean().
 maybe_create(?MATCH_MODB_SUFFIX_RAW(_,Year,Month) = AccountMODb) ->
     {Y, M, _} = erlang:date(),
-    case {kz_term:to_binary(Y), kz_util:pad_month(M)} of
+    case {kz_term:to_binary(Y), kz_time:pad_month(M)} of
         {Year, Month} ->
             create(AccountMODb),
             'true';

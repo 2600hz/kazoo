@@ -105,7 +105,7 @@ log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
              ,{<<"pvt_type">>, <<"notify_smtp_log">>}
              ,{<<"account_id">>, AccountId}
              ,{<<"account_db">>, AccountDb}
-             ,{<<"pvt_created">>, kz_util:current_tstamp()}
+             ,{<<"pvt_created">>, kz_time:current_tstamp()}
              ,{<<"template_id">>, get('template_id')}
              ,{<<"template_account_id">>, get('template_account_id')}
              ,{<<"_id">>, make_smtplog_id(AccountDb)}
@@ -201,7 +201,7 @@ relay_encoded_email(To, From, Encoded) ->
                                  ,{'receipt', Receipt}
                                  ,#email_receipt{to=To
                                                  ,from=From
-                                                 ,timestamp=kz_util:current_tstamp()
+                                                 ,timestamp=kz_time:current_tstamp()
                                                  ,call_id=kz_util:get_callid()
                                                 }
                                  ,[{'expires', ?MILLISECONDS_IN_HOUR}]

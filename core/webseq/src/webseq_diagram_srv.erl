@@ -227,7 +227,7 @@ write_to_db(Database, Name, Str, Args) ->
                         {'ok', file:io_device()} |
                         {'error', any()}.
 start_file(Filename) ->
-    _ = file:rename(Filename, iolist_to_binary([Filename, ".", kz_term:to_binary(kz_util:current_tstamp())])),
+    _ = file:rename(Filename, iolist_to_binary([Filename, ".", kz_term:to_binary(kz_time:current_tstamp())])),
     file:open(Filename, ['append', 'raw', 'delayed_write']).
 
 -spec trunc_database(ne_binary(), ne_binary()) -> 'ok'.

@@ -465,7 +465,7 @@ move_account(AccountId, JObj, ToAccount, ToTree) ->
     PreviousTree = kz_account:tree(JObj),
     JObj1 = kz_json:set_values([{<<"pvt_tree">>, ToTree}
                                 ,{<<"pvt_previous_tree">>, PreviousTree}
-                                ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+                                ,{<<"pvt_modified">>, kz_time:current_tstamp()}
                                ], JObj),
     case kz_datamgr:save_doc(AccountDb, JObj1) of
         {'error', _E}=Error -> Error;
@@ -536,7 +536,7 @@ update_descendants_tree([Descendant|Descendants], Tree, NewResellerId) ->
             ToTree = Tree ++ Tail,
             JObj1 = kz_json:set_values([{<<"pvt_tree">>, ToTree}
                                         ,{<<"pvt_previous_tree">>, PreviousTree}
-                                        ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+                                        ,{<<"pvt_modified">>, kz_time:current_tstamp()}
                                        ], JObj),
             case kz_datamgr:save_doc(AccountDb, JObj1) of
                 {'error', _E}=Error -> Error;
@@ -570,7 +570,7 @@ move_service_doc(NewTree, NewResellerId, Dirty, JObj) ->
     Props = props:filter_undefined([{<<"pvt_tree">>, NewTree}
                                     ,{<<"pvt_dirty">>, Dirty}
                                     ,{<<"pvt_previous_tree">>, PreviousTree}
-                                    ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+                                    ,{<<"pvt_modified">>, kz_time:current_tstamp()}
                                     ,{<<"pvt_reseller_id">>, NewResellerId}
                                    ]),
     case kz_datamgr:save_doc(?KZ_SERVICES_DB, kz_json:set_values(Props, JObj)) of
@@ -616,7 +616,7 @@ mark_dirty(AccountId) when is_binary(AccountId) ->
 mark_dirty(JObj) ->
     kz_datamgr:save_doc(?KZ_SERVICES_DB
                        ,kz_json:set_values([{<<"pvt_dirty">>, 'true'}
-                                            ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+                                            ,{<<"pvt_modified">>, kz_time:current_tstamp()}
                                            ], JObj
                                           )
                       ).

@@ -115,12 +115,12 @@ save_sms(JObj, 'undefined', Call) ->
     SmsDocId = kz_term:to_binary(
                  io_lib:format("~B~s-~s",
                                [Year
-                                ,kz_util:pad_month(Month)
+                                ,kz_time:pad_month(Month)
                                 ,kapps_call:call_id(Call)
                                ])
                 ),
     UpdatedCall = kapps_call:kvs_store('sms_docid', SmsDocId, Call),
-    Doc = kz_doc:set_created(kz_json:new(), kz_util:current_tstamp()),
+    Doc = kz_doc:set_created(kz_json:new(), kz_time:current_tstamp()),
     save_sms(JObj, SmsDocId, Doc, UpdatedCall);
 save_sms(JObj, DocId, Call) ->
     AccountId = kapps_call:account_id(Call),
@@ -147,8 +147,8 @@ save_sms(JObj, ?MATCH_MODB_PREFIX(Year,Month,_) = DocId, Doc, Call) ->
     MessageId = kz_json:get_value(<<"Message-ID">>, JObj),
     Rev = get_sms_revision(Call),
     Opts = props:filter_undefined([{'rev', Rev}]),
-    Created = kz_doc:created(JObj, kz_util:current_tstamp()),
-    Modified = kz_util:current_tstamp(),
+    Created = kz_doc:created(JObj, kz_time:current_tstamp()),
+    Modified = kz_time:current_tstamp(),
     Status = kapps_call:kvs_fetch(<<"flow_status">>, <<"queued">>, Call),
     Schedule = kapps_call:kvs_fetch(<<"flow_schedule">>, Call),
     Props = props:filter_empty(
@@ -565,7 +565,7 @@ apply_reschedule_rules({[Rule | Rules], [Key | Keys]}, JObj, Step) ->
     case apply_reschedule_step(kz_json:get_values(Rule), JObj) of
         'no_match' ->
             NewObj = kz_json:set_values(
-                       [{<<"rule_start_time">>, kz_util:current_tstamp()}
+                       [{<<"rule_start_time">>, kz_time:current_tstamp()}
                         ,{<<"attempts">>, 0}
                        ], JObj),
             apply_reschedule_rules({Rules, Keys}, NewObj, Step+1);
@@ -610,14 +610,14 @@ apply_reschedule_rule(<<"time">>, IntervalJObj, JObj) ->
     {[Value], [Key]} = kz_json:get_values(IntervalJObj),
     Start = kz_json:get_value(<<"rule_start_time">>, JObj),
     Until = time_rule(Key, Value, Start),
-    Now = kz_util:current_tstamp(),
+    Now = kz_time:current_tstamp(),
     case Until > Now of
         'true' -> JObj;
         'false' -> 'no_match'
     end;
 apply_reschedule_rule(<<"interval">>, IntervalJObj, JObj) ->
     {[Value], [Key]} = kz_json:get_values(IntervalJObj),
-    Next = time_rule(Key, Value, kz_util:current_tstamp()),
+    Next = time_rule(Key, Value, kz_time:current_tstamp()),
     kz_json:set_value(<<"start_time">>, Next, JObj);
 apply_reschedule_rule(<<"report">>, V, JObj) ->
     Call = get('call'),

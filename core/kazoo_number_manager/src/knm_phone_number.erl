@@ -292,7 +292,7 @@ to_public_json(Number) ->
 %%--------------------------------------------------------------------
 -spec to_json(knm_phone_number()) -> kz_json:object().
 to_json(#knm_phone_number{doc=JObj}=N) ->
-    Now = kz_util:current_tstamp(),
+    Now = kz_time:current_tstamp(),
     kz_json:from_list(
       props:filter_empty(
         [{<<"_id">>, number(N)}

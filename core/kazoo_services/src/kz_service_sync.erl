@@ -195,7 +195,7 @@ maybe_sync_service() ->
     SyncBufferPeriod = kapps_config:get_integer(?WHS_CONFIG_CAT, <<"sync_buffer_period">>, 600),
     ViewOptions = [{'limit', 1}
                    ,'include_docs'
-                   ,{'endkey', kz_util:current_tstamp() - SyncBufferPeriod}
+                   ,{'endkey', kz_time:current_tstamp() - SyncBufferPeriod}
                   ],
     case kz_datamgr:get_results(?KZ_SERVICES_DB, <<"services/dirty">>, ViewOptions) of
         {'error', _}=E -> E;
@@ -210,7 +210,7 @@ bump_modified(JObj) ->
     'true' = (Services =/= 'false'),
 
     UpdatedServicesJObj =
-        kz_json:set_values([{<<"pvt_modified">>, kz_util:current_tstamp()}
+        kz_json:set_values([{<<"pvt_modified">>, kz_time:current_tstamp()}
                            ,{<<"_rev">>, kz_doc:revision(JObj)}
                            ]
                           ,kz_services:to_json(Services)
@@ -389,7 +389,7 @@ mark_dirty(AccountId) when is_binary(AccountId) ->
 mark_dirty(ServicesJObj) ->
     kz_datamgr:save_doc(?KZ_SERVICES_DB
                        ,kz_json:set_values([{<<"pvt_dirty">>, 'true'}
-                                            ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+                                            ,{<<"pvt_modified">>, kz_time:current_tstamp()}
                                            ]
                                           ,ServicesJObj
                                           )

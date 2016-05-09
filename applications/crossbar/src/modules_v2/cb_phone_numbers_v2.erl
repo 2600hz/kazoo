@@ -87,7 +87,7 @@ init() ->
 -spec populate_phone_numbers(cb_context:context()) -> 'ok'.
 populate_phone_numbers(Context) ->
     AccountDb = cb_context:account_db(Context),
-    Now = kz_util:current_tstamp(),
+    Now = kz_time:current_tstamp(),
     PVTs = [{<<"_id">>, ?KNM_PHONE_NUMBERS_DOC}
             ,{<<"pvt_account_db">>, AccountDb}
             ,{<<"pvt_account_id">>, cb_context:account_id(Context)}

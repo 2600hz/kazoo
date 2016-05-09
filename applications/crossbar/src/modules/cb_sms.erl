@@ -230,8 +230,8 @@ on_successful_validation(Context) ->
                              ,{<<"from_user">>, FromUser}
                              ,{<<"from_realm">>, Realm}
                              ,{<<"_id">>, SmsDocId}
-                             ,{<<"pvt_created">>, kz_util:current_tstamp()}
-                             ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+                             ,{<<"pvt_created">>, kz_time:current_tstamp()}
+                             ,{<<"pvt_modified">>, kz_time:current_tstamp()}
                             ])
                           ,JObj
                          )).
@@ -262,7 +262,7 @@ create_sms_doc_id() ->
     {Year, Month, _} = erlang:date(),
     kz_term:to_binary(
       io_lib:format("~B~s-~s",[Year
-                               ,kz_util:pad_month(Month)
+                               ,kz_time:pad_month(Month)
                                ,kz_term:rand_hex_binary(16)
                               ])
      ).
@@ -295,7 +295,7 @@ normalize_view_results(JObj, Acc) ->
 
 -spec normalize_view_result_value(kz_json:object()) -> kz_json:object().
 normalize_view_result_value(JObj) ->
-    Date = kz_util:rfc1036(kz_json:get_value(<<"created">>, JObj)),
+    Date = kz_time:rfc1036(kz_json:get_value(<<"created">>, JObj)),
     kz_json:set_value(<<"date">>, Date, JObj).
 
 -spec get_view_and_filter(cb_context:context()) ->

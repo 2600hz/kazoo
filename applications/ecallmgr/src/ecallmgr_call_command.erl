@@ -1095,7 +1095,7 @@ maybe_add_ccvs(BaseProps, ChannelProps) ->
 
 -spec build_base_store_event_props(ne_binary(), kz_proplist(), ne_binary(), api_binary(), ne_binary()) -> kz_proplist().
 build_base_store_event_props(UUID, ChannelProps, MediaTransResults, File, App) ->
-    Timestamp = kz_term:to_binary(kz_util:current_tstamp()),
+    Timestamp = kz_term:to_binary(kz_time:current_tstamp()),
     props:filter_undefined(
       [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, ChannelProps, Timestamp)}
        ,{<<"Call-ID">>, UUID}
@@ -1122,7 +1122,7 @@ send_store_vm_call_event(Node, UUID, MediaTransResults) ->
 
 -spec send_store_fax_call_event(ne_binary(), ne_binary()) -> 'ok'.
 send_store_fax_call_event(UUID, Results) ->
-    Timestamp = kz_term:to_binary(kz_util:current_tstamp()),
+    Timestamp = kz_term:to_binary(kz_time:current_tstamp()),
     Prop = [{<<"Msg-ID">>, Timestamp}
             ,{<<"Call-ID">>, UUID}
             ,{<<"Application-Name">>, <<"store_fax">>}

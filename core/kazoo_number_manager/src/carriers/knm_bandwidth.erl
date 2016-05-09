@@ -148,7 +148,7 @@ acquire_and_provision_number(Number) ->
                 Endpoints ->
                     [{'endPoints', [{'host', [kz_term:to_list(E)]} || E <- Endpoints]}]
             end,
-    OrderName = lists:flatten([?BW_ORDER_NAME_PREFIX, "-", integer_to_list(kz_util:current_tstamp())]),
+    OrderName = lists:flatten([?BW_ORDER_NAME_PREFIX, "-", integer_to_list(kz_time:current_tstamp())]),
     AcquireFor = case kz_term:is_empty(AssignedTo) of
                      'true' -> "no_assigned_account";
                      'false' -> binary_to_list(AssignedTo)

@@ -69,7 +69,7 @@
 -record(node, {node :: atom()
                ,cookie :: atom()
                ,connected = 'false' :: boolean()
-               ,started = kz_util:current_tstamp() :: gregorian_seconds()
+               ,started = kz_time:current_tstamp() :: gregorian_seconds()
                ,client_version :: api_binary()
                ,options = [] :: kz_proplist()
               }).
@@ -478,7 +478,7 @@ handle_cast(_Cast, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info('expire_sip_subscriptions', Cache) ->
-    Now = kz_util:current_tstamp(),
+    Now = kz_time:current_tstamp(),
     DeleteSpec = [{#sip_subscription{expires = '$1', timestamp = '$2', _ = '_'},
                    [{'>', {'const', Now}, {'+', '$2', '$1'}}],
                    ['true']}

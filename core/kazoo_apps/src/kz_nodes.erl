@@ -288,8 +288,8 @@ print_media_server(Server) ->
 print_media_server({Name, JObj}, Format) ->
     io:format(lists:flatten([Format, ?MEDIA_SERVERS_DETAIL, "~n"])
               ,[Name
-                ,kz_util:pretty_print_elapsed_s(
-                   kz_util:elapsed_s(kz_json:get_integer_value(<<"Startup">>, JObj))
+                ,kz_time:pretty_print_elapsed_s(
+                   kz_time:elapsed_s(kz_json:get_integer_value(<<"Startup">>, JObj))
                   )
                ]).
 
@@ -302,8 +302,8 @@ status_list([{Whapp, #whapp_info{startup='undefined'}}|Whapps], Column) ->
     io:format("~-25s", [Whapp]),
     status_list(Whapps, Column + 1);
 status_list([{Whapp, #whapp_info{startup=Started}}|Whapps], Column) ->
-    Elapsed = kz_util:elapsed_s(Started),
-    Print = <<(kz_term:to_binary(Whapp))/binary, "(", (kz_util:pretty_print_elapsed_s(Elapsed))/binary, ")">>,
+    Elapsed = kz_time:elapsed_s(Started),
+    Print = <<(kz_term:to_binary(Whapp))/binary, "(", (kz_time:pretty_print_elapsed_s(Elapsed))/binary, ")">>,
     io:format("~-25s", [Print]),
     status_list(Whapps, Column + 1).
 
@@ -446,7 +446,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info('expire_nodes', #state{tab=Tab}=State) ->
-    Now = kz_util:now_ms(kz_util:now()),
+    Now = kz_time:now_ms(kz_time:now()),
     FindSpec = [{#kz_node{expires='$2'
                           ,last_heartbeat='$3'
                           ,_ = '_'
@@ -712,7 +712,7 @@ whapp_info_from_json(JObj) ->
         'undefined' ->
             #whapp_info{};
         V when V < ?UNIX_EPOCH_IN_GREGORIAN ->
-            #whapp_info{startup=kz_util:unix_seconds_to_gregorian_seconds(V)};
+            #whapp_info{startup=kz_time:unix_seconds_to_gregorian_seconds(V)};
         V ->
             #whapp_info{startup=V}
     end.

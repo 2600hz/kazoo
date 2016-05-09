@@ -324,7 +324,7 @@ wait_for_correlated_message(CallId, Event, Type, Timeout) when is_binary(CallId)
                     {'ok', JObj};
                 {_Type, _Event, _CallId} ->
                     lager:debug("received message (~s , ~s, ~s)",[_Type, _Event, _CallId]),
-                    wait_for_correlated_message(CallId, Event, Type, kz_util:decr_timeout(Timeout, Start))
+                    wait_for_correlated_message(CallId, Event, Type, kz_time:decr_timeout(Timeout, Start))
             end
     end;
 wait_for_correlated_message(Call, Event, Type, Timeout) ->

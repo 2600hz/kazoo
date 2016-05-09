@@ -247,7 +247,7 @@ handle_cast({'fax_status', <<"pageresult">>, JobId, JObj}
     Data = kz_call_event:application_data(JObj),
     Page = kz_json:get_integer_value(<<"Fax-Transferred-Pages">>, Data, 0),
     lager:debug("fax status - page result - ~s : ~p : ~p"
-               ,[JobId, Page, kz_util:current_tstamp()]
+               ,[JobId, Page, kz_time:current_tstamp()]
                ),
     Status = list_to_binary(["Sent Page ", kz_term:to_list(Page), " of ", kz_term:to_list(Pages)]),
     send_status(State#state{page=Page}, Status, Data),
@@ -481,7 +481,7 @@ attempt_to_acquire_job(JObj, Q, <<"pending">>) ->
     kz_datamgr:save_doc(?KZ_FAXES_DB
                        ,kz_json:set_values([{<<"pvt_job_status">>, <<"processing">>}
                                             ,{<<"pvt_job_node">>, kz_term:to_binary(node())}
-                                            ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+                                            ,{<<"pvt_modified">>, kz_time:current_tstamp()}
                                             ,{<<"pvt_queue">>, Q}
                                            ]
                                            ,JObj
@@ -609,7 +609,7 @@ release_successful_job(Resp, JObj) ->
                 ,{<<"result_cause">>, kz_json:get_value(<<"Hangup-Cause">>, Resp)}
                 ,{<<"pvt_delivered_date">>,
                   case kz_json:is_true([<<"Application-Data">>, <<"Fax-Success">>], Resp) of
-                      'true' -> kz_util:current_tstamp();
+                      'true' -> kz_time:current_tstamp();
                       'false' -> 'undefined'
                   end
                  }
@@ -701,7 +701,7 @@ get_attempt_value(X) -> kz_term:to_integer(X).
 
 -spec set_default_update_fields(kz_json:object()) -> kz_json:object().
 set_default_update_fields(JObj) ->
-    kz_json:set_values([{<<"pvt_modified">>, kz_util:current_tstamp()}
+    kz_json:set_values([{<<"pvt_modified">>, kz_time:current_tstamp()}
                         ,{<<"retry_after">>, ?DEFAULT_RETRY_PERIOD}
                        ]
                        ,JObj
@@ -721,13 +721,13 @@ maybe_notify(_Result, _JObj, _Resp, Status) ->
 
 move_doc(JObj) ->
     FromId = kz_doc:id(JObj),
-    {Year, Month, _D} = kz_util:to_date(kz_doc:created(JObj)),
+    {Year, Month, _D} = kz_time:to_date(kz_doc:created(JObj)),
     FromDB = kz_doc:account_db(JObj),
     AccountId = kz_doc:account_id(JObj),
     AccountMODb = kazoo_modb:get_modb(AccountId, Year, Month),
     kazoo_modb:create(AccountMODb),
     ToDB = kz_util:format_account_modb(AccountMODb, 'encoded'),
-    ToId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_util:pad_month(Month), FromId),
+    ToId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_time:pad_month(Month), FromId),
     Options = ['override_existing_document'
                ,{'doc_type', <<"fax">>}
               ],
@@ -780,7 +780,7 @@ fax_fields(JObj) ->
 
 -spec elapsed_time(kz_json:object()) -> non_neg_integer().
 elapsed_time(JObj) ->
-    Now = kz_util:current_tstamp(),
+    Now = kz_time:current_tstamp(),
     Created = kz_doc:created(JObj, Now),
     Now - Created.
 

@@ -39,7 +39,7 @@ timestamp(<<YYYY:4/binary, "-", MM:2/binary, "-", DD:2/binary, "T"
           }
          );
 timestamp({_,_,_} = TS) ->
-    kz_util:now_s(TS);
+    kz_time:now_s(TS);
 timestamp(_) -> 'undefined'.
 
 -spec open_file(iodata()) -> file:io_device().

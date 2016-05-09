@@ -479,7 +479,7 @@ maybe_update_tts(Context, Text, Voice, 'success') ->
                                           ,{<<"contents">>, Content}
                                          ]),
             FileName = <<"text_to_speech_"
-                         ,(kz_term:to_binary(kz_util:current_tstamp()))/binary
+                         ,(kz_term:to_binary(kz_time:current_tstamp()))/binary
                          ,".wav"
                        >>,
             _ = update_media_binary(cb_context:set_resp_status(
@@ -512,7 +512,7 @@ maybe_merge_tts(Context, MediaId, Text, Voice, 'success') ->
                                           ,{<<"contents">>, Content}
                                          ]),
             FileName = <<"text_to_speech_"
-                         ,(kz_term:to_binary(kz_util:current_tstamp()))/binary
+                         ,(kz_term:to_binary(kz_time:current_tstamp()))/binary
                          ,".wav"
                        >>,
 

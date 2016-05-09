@@ -157,7 +157,7 @@ get_balance_from_previous(Account, ViewOptions, Retries) when Retries >= 0 ->
     {Year, Month} = kazoo_modb_util:prev_year_month(Y, M),
 
     VOptions = [{'year', kz_term:to_binary(Year)}
-                ,{'month', kz_util:pad_month(Month)}
+                ,{'month', kz_time:pad_month(Month)}
                 ,{'retry', Retries-1}
                ],
     lager:warning("could not find current balance trying previous month: ~p", [VOptions]),
@@ -210,7 +210,7 @@ get_rollup_from_previous(Account) ->
     {Y, M, _} = erlang:date(),
     {Year, Month} = kazoo_modb_util:prev_year_month(Y, M),
     ModbOptions = [{'year', kz_term:to_binary(Year)}
-                   ,{'month', kz_util:pad_month(Month)}
+                   ,{'month', kz_time:pad_month(Month)}
                   ],
     case kazoo_modb:open_doc(Account, <<"monthly_rollup">>, ModbOptions) of
         {'ok', _} ->

@@ -52,12 +52,12 @@ collect(ACLs, PidRefs, Timeout) ->
     receive
         ?ACL_RESULT(IP, ACL) ->
             lager:debug("adding acl for '~s' to ~s", [IP, kz_json:get_value(<<"network-list-name">>, ACL)]),
-            collect(kz_json:set_value(IP, ACL, ACLs), PidRefs, kz_util:decr_timeout(Timeout, Start));
+            collect(kz_json:set_value(IP, ACL, ACLs), PidRefs, kz_time:decr_timeout(Timeout, Start));
         {'DOWN', Ref, 'process', Pid, _Reason} ->
             case lists:keytake(Pid, 1, PidRefs) of
-                'false' -> collect(ACLs, PidRefs, kz_util:decr_timeout(Timeout, Start));
+                'false' -> collect(ACLs, PidRefs, kz_time:decr_timeout(Timeout, Start));
                 {'value', {Pid, Ref}, NewPidRefs} ->
-                    collect(ACLs, NewPidRefs, kz_util:decr_timeout(Timeout, Start))
+                    collect(ACLs, NewPidRefs, kz_time:decr_timeout(Timeout, Start))
             end
     after Timeout ->
             lager:debug("timed out collecting acls, working with what we have"),
@@ -105,9 +105,9 @@ wait_for_pid_refs(PidRefs, Timeout) ->
     receive
         {'DOWN', Ref, 'process', Pid, _Reason} ->
             case lists:keytake(Pid, 1, PidRefs) of
-                'false' -> wait_for_pid_refs(PidRefs, kz_util:decr_timeout(Timeout, Start));
+                'false' -> wait_for_pid_refs(PidRefs, kz_time:decr_timeout(Timeout, Start));
                 {'value', {Pid, Ref}, NewPidRefs} ->
-                    wait_for_pid_refs(NewPidRefs, kz_util:decr_timeout(Timeout, Start))
+                    wait_for_pid_refs(NewPidRefs, kz_time:decr_timeout(Timeout, Start))
             end
     after Timeout ->
             lager:debug("timed out waiting for pid refs: ~p", [PidRefs])

@@ -59,8 +59,8 @@ save(Ledger) ->
     JObj =
         kz_json:set_values([
             {<<"pvt_type">>, ?PVT_TYPE}
-            ,{<<"pvt_modified">>, kz_util:current_tstamp()}
-            ,{<<"pvt_created">>, kz_util:current_tstamp()}
+            ,{<<"pvt_modified">>, kz_time:current_tstamp()}
+            ,{<<"pvt_created">>, kz_time:current_tstamp()}
         ], Ledger),
     save(JObj, AccountId, IsReseller).
 

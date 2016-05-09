@@ -37,7 +37,7 @@ init() ->
 
 %%     <<"outbound">> = CallDirection, %% b-leg only, though not the greatest way of determining this
 
-%%     Timestamp = kz_term:to_integer(kz_json:get_value(<<"Timestamp">>, JObj, kz_util:current_tstamp())),
+%%     Timestamp = kz_term:to_integer(kz_json:get_value(<<"Timestamp">>, JObj, kz_time:current_tstamp())),
 %%     BillingSec = kz_term:to_integer(kz_json:get_value(<<"Billing-Seconds">>, JObj, 0)),
 
 %%     DateTime = now_to_datetime(Timestamp - BillingSec),
@@ -70,7 +70,7 @@ handle_req(JObj, Props) ->
 
     <<"outbound">> = CallDirection, %% b-leg only, though not the greatest way of determining this
 
-    Timestamp = kz_term:to_integer(kz_json:get_value(<<"Timestamp">>, JObj, kz_util:current_tstamp())),
+    Timestamp = kz_term:to_integer(kz_json:get_value(<<"Timestamp">>, JObj, kz_time:current_tstamp())),
     BillingSec = kz_term:to_integer(kz_json:get_value(<<"Billing-Seconds">>, JObj, 0)),
 
     DateTime = now_to_datetime(Timestamp - BillingSec),

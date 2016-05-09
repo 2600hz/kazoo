@@ -698,7 +698,7 @@ migrate_limits_fold(AccountDb, Current, Total) ->
 migrate_limits(Account) when not is_binary(Account) ->
     migrate_limits(kz_term:to_binary(Account));
 migrate_limits(Account) ->
-    TStamp = kz_util:current_tstamp(),
+    TStamp = kz_time:current_tstamp(),
 
     TwowayTrunks = kapps_config:get(<<"jonny5">>, <<"default_twoway_trunks">>),
     InboundTrunks = kapps_config:get(<<"jonny5">>, <<"default_inbound_trunks">>),

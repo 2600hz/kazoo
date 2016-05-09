@@ -658,9 +658,9 @@ col_customer_cost(JObj, _Timestamp) -> kz_term:to_binary(customer_cost(JObj)).
 col_dialed_number(JObj, _Timestamp) -> dialed_number(JObj).
 col_calling_from(JObj, _Timestamp) -> calling_from(JObj).
 col_pretty_print(_JObj, Timestamp) -> pretty_print_datetime(Timestamp).
-col_unix_timestamp(_JObj, Timestamp) -> kz_term:to_binary(kz_util:gregorian_seconds_to_unix_seconds(Timestamp)).
-col_rfc1036(_JObj, Timestamp) -> list_to_binary([$", kz_util:rfc1036(Timestamp), $"]).
-col_iso8601(_JObj, Timestamp) -> list_to_binary([$", kz_util:iso8601(Timestamp), $"]).
+col_unix_timestamp(_JObj, Timestamp) -> kz_term:to_binary(kz_time:gregorian_seconds_to_unix_seconds(Timestamp)).
+col_rfc1036(_JObj, Timestamp) -> list_to_binary([$", kz_time:rfc1036(Timestamp), $"]).
+col_iso8601(_JObj, Timestamp) -> list_to_binary([$", kz_time:iso8601(Timestamp), $"]).
 col_account_call_type(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"account_billing">>], JObj, <<>>).
 col_rate(JObj, _Timestamp) -> kz_term:to_binary(wht_util:units_to_dollars(kz_json:get_value([?KEY_CCV, <<"rate">>], JObj, 0))).
 col_rate_name(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"rate_name">>], JObj, <<>>).

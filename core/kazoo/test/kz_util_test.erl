@@ -125,7 +125,7 @@ prop_pretty_print_elapsed_s() ->
                                           ,{M, "m"}
                                           ,{S, "s"}
                                          ]),
-                 Result = kz_util:pretty_print_elapsed_s(Seconds),
+                 Result = kz_time:pretty_print_elapsed_s(Seconds),
                  Result =:= iolist_to_binary(lists:reverse(Expected))
              end).
 
@@ -170,25 +170,25 @@ pad_binary_test() ->
     ?assertEqual(<<"1234500000">>, kz_term:pad_binary(<<"12345">>, 10, <<"0">>)).
 
 greg_secs_to_unix_secs_test() ->
-    GregSecs = kz_util:current_tstamp(),
-    ?assertEqual(GregSecs - ?UNIX_EPOCH_IN_GREGORIAN, kz_util:gregorian_seconds_to_unix_seconds(GregSecs)).
+    GregSecs = kz_time:current_tstamp(),
+    ?assertEqual(GregSecs - ?UNIX_EPOCH_IN_GREGORIAN, kz_time:gregorian_seconds_to_unix_seconds(GregSecs)).
 
 unix_secs_to_greg_secs_test() ->
     UnixSecs = 1000000000,
-    ?assertEqual(UnixSecs + ?UNIX_EPOCH_IN_GREGORIAN, kz_util:unix_seconds_to_gregorian_seconds(UnixSecs)).
+    ?assertEqual(UnixSecs + ?UNIX_EPOCH_IN_GREGORIAN, kz_time:unix_seconds_to_gregorian_seconds(UnixSecs)).
 
 microsecs_to_secs_test() ->
     Microsecs = 1310157838405890,
     Secs = 1310157838,
-    ?assertEqual(Secs, kz_util:microseconds_to_seconds(Microsecs)).
+    ?assertEqual(Secs, kz_time:microseconds_to_seconds(Microsecs)).
 
 elapsed_test() ->
     Start = {1401,998570,817606},
     Now = {1401,998594,798064},
 
-    ?assertEqual(kz_util:elapsed_us(Start, Now), 23980458),
-    ?assertEqual(kz_util:elapsed_ms(Start, Now), 23980),
-    ?assertEqual(kz_util:elapsed_s(Start, Now), 23),
+    ?assertEqual(kz_time:elapsed_us(Start, Now), 23980458),
+    ?assertEqual(kz_time:elapsed_ms(Start, Now), 23980),
+    ?assertEqual(kz_time:elapsed_s(Start, Now), 23),
 
     StartDateTime = {{2014,6,5},{20,7,7}},
     StartTimestamp = calendar:datetime_to_gregorian_seconds(StartDateTime),
@@ -196,9 +196,9 @@ elapsed_test() ->
     NowDateTime = {{2014,6,5},{20,7,9}},
     NowTimestamp = calendar:datetime_to_gregorian_seconds(NowDateTime),
 
-    ?assertEqual(kz_util:elapsed_s(StartTimestamp, NowTimestamp), 2),
-    ?assertEqual(kz_util:elapsed_ms(StartTimestamp, NowTimestamp), 2000),
-    ?assertEqual(kz_util:elapsed_us(StartTimestamp, NowTimestamp), 2000000).
+    ?assertEqual(kz_time:elapsed_s(StartTimestamp, NowTimestamp), 2),
+    ?assertEqual(kz_time:elapsed_ms(StartTimestamp, NowTimestamp), 2000),
+    ?assertEqual(kz_time:elapsed_us(StartTimestamp, NowTimestamp), 2000000).
 
 join_binary_test() ->
     ?assertEqual(<<"foo">>, kz_term:join_binary([<<"foo">>], <<", ">>)),
@@ -307,7 +307,7 @@ rfc1036_test() ->
              ,{ 63595733389, <<"Wed, 08 Apr 2015 17:29:49 GMT">>}
             ],
     lists:foreach(fun({Date, Expected}) ->
-                          ?assertEqual(Expected, kz_util:rfc1036(Date))
+                          ?assertEqual(Expected, kz_time:rfc1036(Date))
                   end, Tests).
 
 iso8601_test() ->
@@ -316,7 +316,7 @@ iso8601_test() ->
              ,{ 63595733389, <<"2015-04-08">>}
             ],
     lists:foreach(fun({Date, Expected}) ->
-                          ?assertEqual(Expected, kz_util:iso8601(Date))
+                          ?assertEqual(Expected, kz_time:iso8601(Date))
                   end, Tests).
 
 resolve_uri_test() ->
@@ -334,7 +334,7 @@ account_formats_test_() ->
     {Y, M, _} = erlang:date(),
     Now = os:timestamp(),
     Year = kz_term:to_binary(Y),
-    Month = kz_util:pad_month(M),
+    Month = kz_time:pad_month(M),
 
     MODbId = list_to_binary([AccountId, "-", Year, Month]),
     MODbEn = list_to_binary([AccountDbEn, "-", Year, Month]),

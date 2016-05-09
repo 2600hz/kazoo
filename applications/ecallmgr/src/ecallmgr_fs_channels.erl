@@ -787,7 +787,7 @@ publish_channel_connection_event(#channel{uuid=UUID
                                           ,answered=IsAnswered
                                          }=Channel
                                  ,ChannelSpecific) ->
-    Event = [{<<"Timestamp">>, kz_util:current_tstamp()}
+    Event = [{<<"Timestamp">>, kz_time:current_tstamp()}
              ,{<<"Call-ID">>, UUID}
              ,{<<"Call-Direction">>, Direction}
              ,{<<"Media-Server">>, Node}
@@ -857,7 +857,7 @@ maybe_cleanup_old_channels() ->
 cleanup_old_channels() ->
     cleanup_old_channels(max_channel_uptime()).
 cleanup_old_channels(MaxAge) ->
-    NoOlderThan = kz_util:current_tstamp() - MaxAge,
+    NoOlderThan = kz_time:current_tstamp() - MaxAge,
 
     MatchSpec = [{#channel{uuid='$1'
                            ,node='$2'
@@ -888,6 +888,6 @@ hangup_old_channels(OldChannels) ->
 -spec hangup_old_channel(old_channel()) -> 'ok'.
 hangup_old_channel([UUID, Node, Started]) ->
     lager:debug("killing channel ~s on ~s, started ~s"
-                ,[UUID, Node, kz_util:pretty_print_datetime(Started)]
+                ,[UUID, Node, kz_time:pretty_print_datetime(Started)]
                ),
     freeswitch:api(Node, 'uuid_kill', UUID).

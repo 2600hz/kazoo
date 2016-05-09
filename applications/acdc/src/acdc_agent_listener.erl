@@ -983,7 +983,7 @@ send_status_update(AcctId, AgentId, 'resume') ->
 
 -spec idle_time('undefined' | kz_now()) -> api_integer().
 idle_time('undefined') -> 'undefined';
-idle_time(T) -> kz_util:elapsed_s(T).
+idle_time(T) -> kz_time:elapsed_s(T).
 
 -spec call_id(kapps_call:call() | api_object()) ->
                      api_binary().

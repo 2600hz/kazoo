@@ -725,7 +725,7 @@ handle_cast({'event', MsgId, JObj}, #state{current_msg_id = MsgId
         'true' ->
             lager:debug("responses have apparently met the criteria for the client, returning"),
             lager:debug("response for msg id ~s took ~bus to return"
-                        ,[MsgId, kz_util:elapsed_us(StartTime)]
+                        ,[MsgId, kz_time:elapsed_us(StartTime)]
                        ),
             gen_server:reply(From, {'ok', Responses}),
             {'noreply', reset(State), 'hibernate'};
@@ -747,7 +747,7 @@ handle_cast({'event', MsgId, JObj}, #state{current_msg_id = MsgId
         'true' ->
             lager:debug("responses have apparently met the criteria for the client, returning"),
             lager:debug("response for msg id ~s took ~bus to return"
-                        ,[MsgId, kz_util:elapsed_us(StartTime)]
+                        ,[MsgId, kz_time:elapsed_us(StartTime)]
                        ),
             gen_server:reply(From, {'ok', Responses}),
             {'noreply', reset(State), 'hibernate'};

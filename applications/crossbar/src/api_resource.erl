@@ -179,7 +179,7 @@ rest_terminate(Req, Context) ->
 
 rest_terminate(Req, Context, ?HTTP_OPTIONS) ->
     lager:info("OPTIONS request fulfilled in ~p ms"
-               ,[kz_util:elapsed_ms(cb_context:start(Context))]
+               ,[kz_time:elapsed_ms(cb_context:start(Context))]
               ),
     _ = api_util:finish_request(Req, Context);
 rest_terminate(Req, Context, Verb) ->
@@ -187,7 +187,7 @@ rest_terminate(Req, Context, Verb) ->
     {BBin, BMem} = cb_context:fetch(Context, 'metrics'),
 
     lager:info("~s request fulfilled in ~p ms ~s mem ~s bin"
-               ,[Verb, kz_util:elapsed_ms(cb_context:start(Context))
+               ,[Verb, kz_time:elapsed_ms(cb_context:start(Context))
                  ,pretty_metric(AMem - BMem)
                  ,pretty_metric(ABin - BBin)
                 ]

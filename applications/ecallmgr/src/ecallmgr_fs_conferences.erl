@@ -205,7 +205,7 @@ handle_search_req(JObj, _Props) ->
             Resp = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
                     ,{<<"Conference-ID">>, Name}
                     ,{<<"UUID">>, UUID}
-                    ,{<<"Run-Time">>, kz_util:current_tstamp() - StartTime}
+                    ,{<<"Run-Time">>, kz_time:current_tstamp() - StartTime}
                     ,{<<"Switch-Hostname">>, Hostname}
                     ,{<<"Switch-URL">>, SwitchURL}
                     ,{<<"Switch-External-IP">>, ExternalIP}
@@ -418,7 +418,7 @@ conference_from_props(Props, Node, Conference) ->
                           ,uuid=props:get_value(<<"Conference-Unique-ID">>, Props)
                           ,name=props:get_value(<<"Conference-Name">>, Props)
                           ,profile_name=props:get_value(<<"Conference-Profile-Name">>, Props)
-                          ,start_time = kz_util:current_tstamp()
+                          ,start_time = kz_time:current_tstamp()
                           ,switch_hostname=props:get_value(<<"FreeSWITCH-Hostname">>, Props, kz_term:to_binary(Node))
                           ,switch_url=ecallmgr_fs_nodes:sip_url(Node)
                           ,switch_external_ip=ecallmgr_fs_nodes:sip_external_ip(Node)
@@ -609,7 +609,7 @@ xml_attr_to_conference(Conference, 'exit_sound', Value) ->
 xml_attr_to_conference(Conference, 'enter_sound', Value) ->
     Conference#conference{enter_sound=kz_term:is_true(Value)};
 xml_attr_to_conference(Conference, 'run_time', Value) ->
-    Conference#conference{start_time=kz_util:decr_timeout(kz_util:current_tstamp()
+    Conference#conference{start_time=kz_time:decr_timeout(kz_time:current_tstamp()
                                                           ,kz_term:to_integer(Value)
                                                          )};
 xml_attr_to_conference(Conference, _Name, _Value) ->
@@ -821,7 +821,7 @@ print_summary({[#conference{name=Name
               ,Count) ->
     Participants = participants(Name),
     io:format("| ~-32s | ~-50s | ~-12B | ~-11B | ~-32s |~n"
-              ,[Name, Node, length(Participants), kz_util:current_tstamp() - StartTime, AccountId]
+              ,[Name, Node, length(Participants), kz_time:current_tstamp() - StartTime, AccountId]
              ),
     print_summary(ets:select(Continuation), Count + 1).
 

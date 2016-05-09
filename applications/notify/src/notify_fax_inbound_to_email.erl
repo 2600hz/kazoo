@@ -81,7 +81,7 @@ handle_req(JObj, _Props) ->
 %%--------------------------------------------------------------------
 -spec create_template_props(kz_json:object(), kz_json:objects(), kz_json:object()) -> kz_proplist().
 create_template_props(Event, [FaxDoc | _Others]=_Docs, Account) ->
-    Now = kz_util:current_tstamp(),
+    Now = kz_time:current_tstamp(),
 
     CIDName = kz_json:get_value(<<"Caller-ID-Name">>, Event),
     CIDNum = kz_json:get_value(<<"Caller-ID-Number">>, Event),

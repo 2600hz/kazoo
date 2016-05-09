@@ -61,7 +61,7 @@ voicemail_to_email(AccountId, VMBox,  [Message|_]) ->
             ,{<<"Voicemail-Name">>, MediaId}
             ,{<<"Caller-ID-Number">>, <<"CallerIdNumber">>}
             ,{<<"Caller-ID-Name">>, <<"CallerIdName">>}
-            ,{<<"Voicemail-Timestamp">>, kz_util:current_tstamp()}
+            ,{<<"Voicemail-Timestamp">>, kz_time:current_tstamp()}
             ,{<<"Voicemail-Length">>, Length}
             ,{<<"Call-ID">>, CallId}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -174,6 +174,6 @@ notify_fields(JObj) ->
        ,{<<"Callee-ID-Number">>, <<"Callee-Number">>}
        ,{<<"Callee-ID-Name">>, <<"Callee-Name">>}
        ,{<<"Call-ID">>, kz_json:get_value(<<"call_id">>, JObj)}
-       ,{<<"Fax-Timestamp">>, kz_util:current_tstamp()}
+       ,{<<"Fax-Timestamp">>, kz_time:current_tstamp()}
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).

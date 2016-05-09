@@ -138,7 +138,7 @@ acquire_number(Number) ->
                       <<"+1", N/binary>> -> N;
                       N -> N
                   end,
-            ON = lists:flatten([?BW2_ORDER_NAME_PREFIX, "-", integer_to_list(kz_util:current_tstamp())]),
+            ON = lists:flatten([?BW2_ORDER_NAME_PREFIX, "-", integer_to_list(kz_time:current_tstamp())]),
             AuthBy = knm_phone_number:auth_by(PhoneNumber),
 
             Props = [{'Name', [ON]}

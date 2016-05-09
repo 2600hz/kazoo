@@ -198,7 +198,7 @@ download_file(URL, Authorization) ->
             CT = kz_term:to_binary(props:get_value("Content-Type", RespHeaders)),
             Ext = kz_mime:to_extension(CT),
             FileName = <<"/tmp/fax_printer_"
-                         ,(kz_term:to_binary(kz_util:current_tstamp()))/binary
+                         ,(kz_term:to_binary(kz_time:current_tstamp()))/binary
                          ,"."
                          ,Ext/binary
                        >>,
@@ -295,7 +295,7 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
               ]),
     Doc = kz_json:set_values([{<<"pvt_type">>, <<"fax">>}
                               ,{<<"pvt_job_status">>, <<"queued">>}
-                              ,{<<"pvt_created">>, kz_util:current_tstamp()}
+                              ,{<<"pvt_created">>, kz_time:current_tstamp()}
                               ,{<<"attempts">>, 0}
                               ,{<<"pvt_account_id">>, AccountId}
                               ,{<<"pvt_account_db">>, AccountDb}
@@ -448,9 +448,9 @@ process_registration_result('false', AppId, JObj, _Result) ->
     PrinterId = kz_json:get_value(<<"pvt_cloud_printer_id">>, JObj),
     TokenDuration = kz_json:get_integer_value(<<"pvt_cloud_token_duration">>, JObj),
     UnixTS = kz_json:get_integer_value(<<"pvt_cloud_created_time">>, JObj),
-    CreatedTime = kz_util:unix_timestamp_to_gregorian_seconds(UnixTS),
+    CreatedTime = kz_time:unix_timestamp_to_gregorian_seconds(UnixTS),
     InviteUrl = kz_json:get_value(<<"pvt_cloud_connector_claim_url">>, JObj),
-    Elapsed = kz_util:elapsed_s(CreatedTime),
+    Elapsed = kz_time:elapsed_s(CreatedTime),
 
     case Elapsed > TokenDuration of
         'true' ->

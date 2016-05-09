@@ -204,8 +204,8 @@ create_local_token(Context) ->
     JObj = cb_context:doc(Context),
     Token = kz_json:from_list([{<<"account_id">>, kz_json:get_value([<<"account">>, <<"_id">>], JObj, <<>>)}
                                ,{<<"owner_id">>, kz_json:get_value([<<"user">>, <<"_id">>], JObj, <<>>)}
-                               ,{<<"created">>, kz_util:current_tstamp()}
-                               ,{<<"modified">>, kz_util:current_tstamp()}
+                               ,{<<"created">>, kz_time:current_tstamp()}
+                               ,{<<"modified">>, kz_time:current_tstamp()}
                                ,{<<"method">>, kz_term:to_binary(?MODULE)}
                                ,{<<"shared_token">>, cb_context:auth_token(Context)}
                               ]),

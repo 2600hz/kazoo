@@ -332,11 +332,11 @@ normalize_view_results(JObj, Acc) ->
 -spec upload_csv(cb_context:context()) -> 'ok'.
 upload_csv(Context) ->
     _ = cb_context:put_reqid(Context),
-    Now = kz_util:now(),
+    Now = kz_time:now(),
     {'ok', {Count, Rates}} = process_upload_file(Context),
-    lager:debug("trying to save ~b rates (took ~b ms to process)", [Count, kz_util:elapsed_ms(Now)]),
+    lager:debug("trying to save ~b rates (took ~b ms to process)", [Count, kz_time:elapsed_ms(Now)]),
     _  = crossbar_doc:save(cb_context:set_doc(Context, Rates), [{'publish_doc', 'false'}]),
-    lager:debug("it took ~b milli to process and save ~b rates", [kz_util:elapsed_ms(Now), Count]).
+    lager:debug("it took ~b milli to process and save ~b rates", [kz_time:elapsed_ms(Now), Count]).
 
 -spec process_upload_file(cb_context:context()) ->
                                  {'ok', {non_neg_integer(), kz_json:objects()}}.
@@ -533,10 +533,10 @@ constrain_weight(X) -> X.
 save_processed_rates(Context, Count) ->
     kz_util:spawn(
       fun() ->
-              Now = kz_util:now(),
+              Now = kz_time:now(),
               _ = cb_context:put_reqid(Context),
               _ = crossbar_doc:save(Context, [{'publish_doc', 'false'}]),
-              lager:debug("saved up to ~b docs (took ~b ms)", [Count, kz_util:elapsed_ms(Now)])
+              lager:debug("saved up to ~b docs (took ~b ms)", [Count, kz_time:elapsed_ms(Now)])
       end).
 
 -spec rate_for_number(ne_binary(), cb_context:context()) -> cb_context:context().

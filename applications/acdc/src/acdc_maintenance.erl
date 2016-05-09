@@ -74,7 +74,7 @@ log_current_statuses([A|As], N) ->
 log_current_status(A, N) ->
     io:format("~4b | ~35s | ~12s | ~20s |~n", [N, kz_json:get_value(<<"agent_id">>, A)
                                                ,kz_json:get_value(<<"status">>, A)
-                                               ,kz_util:pretty_print_datetime(kz_json:get_integer_value(<<"timestamp">>, A))
+                                               ,kz_time:pretty_print_datetime(kz_json:get_integer_value(<<"timestamp">>, A))
                                               ]).
 
 current_queues(AccountId) ->

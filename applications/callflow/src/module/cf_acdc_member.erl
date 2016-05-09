@@ -124,10 +124,10 @@ end_member_call(Call) ->
                       ,{ne_binary(), ne_binary()}
                      ) -> 'ok'.
 process_message(#member_call{call=Call}, _, Start, _Wait, _JObj, {<<"call_event">>,<<"CHANNEL_BRIDGE">>}) ->
-    lager:info("member was bridged to agent, yay! took ~b s", [kz_util:elapsed_s(Start)]),
+    lager:info("member was bridged to agent, yay! took ~b s", [kz_time:elapsed_s(Start)]),
     cf_exe:control_usurped(Call);
 process_message(#member_call{call=Call}, _, Start, _Wait, _JObj, {<<"call_event">>,<<"CHANNEL_DESTROY">>}) ->
-    lager:info("member hungup while waiting in the queue (was there ~b s)", [kz_util:elapsed_s(Start)]),
+    lager:info("member hungup while waiting in the queue (was there ~b s)", [kz_time:elapsed_s(Start)]),
     cancel_member_call(Call, ?MEMBER_HANGUP),
     cf_exe:stop(Call);
 process_message(#member_call{call=Call
@@ -137,14 +137,14 @@ process_message(#member_call{call=Call
         'true' ->
             Failure = kz_json:get_value(<<"Failure-Reason">>, JObj),
             lager:info("call failed to be processed: ~s (took ~b s)"
-                       ,[Failure, kz_util:elapsed_s(Start)]
+                       ,[Failure, kz_time:elapsed_s(Start)]
                       ),
             cancel_member_call(Call, Failure),
             stop_hold_music(Call),
             cf_exe:continue(Call);
         'false' ->
             lager:info("failure json was for a different queue, ignoring"),
-            wait_for_bridge(MC, kz_util:decr_timeout(Timeout, Wait), Start)
+            wait_for_bridge(MC, kz_time:decr_timeout(Timeout, Wait), Start)
     end;
 process_message(#member_call{call=Call}=MC, Timeout, Start, Wait, JObj, {<<"call_event">>, <<"DTMF">>}) ->
     DigitPressed = kz_json:get_value(<<"DTMF-Digit">>, JObj),
@@ -157,13 +157,13 @@ process_message(#member_call{call=Call}=MC, Timeout, Start, Wait, JObj, {<<"call
             cf_exe:continue(Call);
         'false' ->
             lager:info("caller pressed ~s, ignoring", [DigitPressed]),
-            wait_for_bridge(MC, kz_util:decr_timeout(Timeout, Wait), Start)
+            wait_for_bridge(MC, kz_time:decr_timeout(Timeout, Wait), Start)
     end;
 process_message(#member_call{call=Call}, _, Start, _Wait, _JObj, {<<"member">>, <<"call_success">>}) ->
-    lager:info("call was processed by queue (took ~b s)", [kz_util:elapsed_s(Start)]),
+    lager:info("call was processed by queue (took ~b s)", [kz_time:elapsed_s(Start)]),
     cf_exe:control_usurped(Call);
 process_message(MC, Timeout, Start, Wait, _JObj, _Type) ->
-    wait_for_bridge(MC, kz_util:decr_timeout(Timeout, Wait), Start).
+    wait_for_bridge(MC, kz_time:decr_timeout(Timeout, Wait), Start).
 
 %% convert from seconds to milliseconds, or infinity
 -spec max_wait(integer()) -> max_wait().

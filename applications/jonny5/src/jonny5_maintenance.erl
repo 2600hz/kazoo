@@ -67,7 +67,7 @@ authz_details([]) ->
 authz_details([Channel|Channels]) ->
     io:format("~n", []),
     Props = j5_channels:to_props(Channel),
-    Timestamp = kz_util:current_tstamp(),
+    Timestamp = kz_time:current_tstamp(),
     pretty_print_field(<<"Call ID">>, props:get_value(<<"Call-ID">>, Props)),
     pretty_print_field(<<"Other Leg Call ID">>, props:get_value(<<"Other-Leg-Call-ID">>, Props)),
     pretty_print_field(<<"Direction">>, props:get_value(<<"Direction">>, Props)),

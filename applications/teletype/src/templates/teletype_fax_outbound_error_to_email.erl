@@ -157,7 +157,7 @@ callee_id_data(DataJObj) ->
 
 -spec date_called_data(kz_json:object()) -> kz_proplist().
 date_called_data(DataJObj) ->
-    DateCalled = kz_json:get_integer_value(<<"fax_timestamp">>, DataJObj, kz_util:current_tstamp()),
+    DateCalled = kz_json:get_integer_value(<<"fax_timestamp">>, DataJObj, kz_time:current_tstamp()),
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
     Timezone = kz_json:get_value([<<"fax">>, <<"rx_result">>, <<"timezone">>], DataJObj, <<"UTC">>),
     ClockTimezone = kapps_config:get(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),

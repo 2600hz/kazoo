@@ -553,7 +553,7 @@ store_debug(Call, Doc) ->
             ,[{'account_id', kapps_call:account_id(Call)}
               ,{'account_db', AccountModDb}
               ,{'type', <<"pivot_debug">>}
-              ,{'now', kz_util:current_tstamp()}
+              ,{'now', kz_time:current_tstamp()}
             ]
         ),
     case kazoo_modb:save_doc(AccountModDb, JObj) of

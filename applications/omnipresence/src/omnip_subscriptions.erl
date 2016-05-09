@@ -475,7 +475,7 @@ start_expire_ref() ->
 
 -spec expire_old_subscriptions() -> non_neg_integer().
 expire_old_subscriptions() ->
-    Now = kz_util:current_tstamp(),
+    Now = kz_time:current_tstamp(),
     ets:select_delete(table_id(), [{#omnip_subscription{timestamp='$1'
                                                         ,expires='$2'
                                                         ,_='_'
@@ -683,7 +683,7 @@ subscribe(#omnip_subscription{expires=E
         {'ok', #omnip_subscription{timestamp=_T
                                    ,expires=_E
                                   }=O} ->
-            lager:debug("unsubscribe ~s/~s (had ~p s left)", [_U, _F, _E - kz_util:elapsed_s(_T)]),
+            lager:debug("unsubscribe ~s/~s (had ~p s left)", [_U, _F, _E - kz_time:elapsed_s(_T)]),
             ets:delete_object(table_id(), O),
             {'unsubscribe', O}
     end;
@@ -701,7 +701,7 @@ subscribe(#omnip_subscription{user=_U
                                   }=O
         } ->
             lager:debug("re-subscribe ~s/~s/~s expires in ~ps(prior remaing ~ps)"
-                        ,[_U, _F, CallId, E1, _E2 - kz_util:elapsed_s(_T)]
+                        ,[_U, _F, CallId, E1, _E2 - kz_time:elapsed_s(_T)]
                        ),
             ets:update_element(table_id(), CallId,
                                [{#omnip_subscription.timestamp, T1}

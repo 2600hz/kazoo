@@ -83,8 +83,8 @@ populate_phone_numbers(Context) ->
             ,{<<"pvt_account_id">>, AccountId}
             ,{<<"pvt_vsn">>, <<"1">>}
             ,{<<"pvt_type">>, ?KNM_PHONE_NUMBERS_DOC}
-            ,{<<"pvt_modified">>, kz_util:current_tstamp()}
-            ,{<<"pvt_created">>, kz_util:current_tstamp()}
+            ,{<<"pvt_modified">>, kz_time:current_tstamp()}
+            ,{<<"pvt_created">>, kz_time:current_tstamp()}
            ],
     _ = kz_datamgr:save_doc(AccountDb, kz_json:from_list(PVTs)),
     'ok'.

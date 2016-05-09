@@ -265,7 +265,7 @@ maybe_recover_incomplete_jobs(IncompleteJobs) ->
 
 -spec maybe_recover_incomplete_job(kz_json:object()) -> 'ok'.
 maybe_recover_incomplete_job(Job) ->
-    Now = kz_util:current_tstamp(),
+    Now = kz_time:current_tstamp(),
     case (Now - kz_doc:modified(Job)) > ?RECOVERY_THRESHOLD_S of
         'false' -> 'ok';
         'true' ->

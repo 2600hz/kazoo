@@ -44,7 +44,7 @@ print_receipt({{'receipt', Receipt}
                                 ,receipt_for_printing(Receipt)
                                 ,convert_for_printing(To)
                                 ,convert_for_printing(From)
-                                ,kz_util:pretty_print_datetime(GregSecs)
+                                ,kz_time:pretty_print_datetime(GregSecs)
                                ]),
     Count+1.
 

@@ -689,7 +689,7 @@ get_conf_command(Cmd, _Focus, _ConferenceId, _JObj) ->
 -spec send_response(ne_binary(), tuple(), api_binary(), kz_json:object()) -> 'ok'.
 send_response(<<"stop_play">>, {'ok', Res}, _Queue, Command) ->
     Evt = [{<<"Conference-Name">>, kz_json:get_value(<<"Conference-ID">>, Command)}
-           ,{<<"Event-Date-Timestamp">>, kz_util:current_tstamp()}
+           ,{<<"Event-Date-Timestamp">>, kz_time:current_tstamp()}
            ,{<<"Action">>,<<"play-file-done">>}
            ,{<<"Event-Name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
            ,{<<"kazoo_event_name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}

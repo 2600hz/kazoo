@@ -112,7 +112,7 @@ finish_request(Context, AuthDoc) ->
 -spec maybe_save_auth_doc(kz_json:object()) -> any().
 maybe_save_auth_doc(OldAuthDoc) ->
     OldAuthModified = kz_doc:modified(OldAuthDoc),
-    Now = kz_util:current_tstamp(),
+    Now = kz_time:current_tstamp(),
 
     ToSaveTimeout = (?LOOP_TIMEOUT * ?PERCENT_OF_TIMEOUT) div 100,
 
@@ -131,7 +131,7 @@ maybe_save_auth_doc(OldAuthDoc) ->
 -spec clean_expired() -> 'ok'.
 -spec clean_expired(gregorian_seconds()) -> 'ok'.
 clean_expired() ->
-    clean_expired(kz_util:current_tstamp() - ?LOOP_TIMEOUT).
+    clean_expired(kz_time:current_tstamp() - ?LOOP_TIMEOUT).
 
 clean_expired(CreatedBefore) ->
     ViewOpts = [{'startkey', 0}

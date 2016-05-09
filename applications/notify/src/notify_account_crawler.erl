@@ -370,7 +370,7 @@ maybe_low_balance_notify(AccountJObj, CurrentBalance, 'true') ->
     case kz_account:low_balance_tstamp(AccountJObj) of
         LowBalanceSent when is_number(LowBalanceSent) ->
             Cycle = kapps_config:get_integer(?MOD_CONFIG_CAT, <<"low_balance_repeat_s">>, 1 * ?SECONDS_IN_DAY),
-            Diff = kz_util:current_tstamp() - LowBalanceSent,
+            Diff = kz_time:current_tstamp() - LowBalanceSent,
             case Diff >= Cycle of
                 'false' -> lager:debug("low balance alert sent ~w seconds ago, repeats every ~w", [Diff, Cycle]);
                 'true' -> notify_of_low_balance(AccountJObj, CurrentBalance)

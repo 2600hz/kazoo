@@ -326,7 +326,7 @@
                   ,expires = 0 :: non_neg_integer() | 'undefined' | '$2' | '_'
                   ,kapps = [] :: kapps_info() | '$1' | '_'
                   ,media_servers = [] :: media_servers() | '_'
-                  ,last_heartbeat = kz_util:now_ms(kz_util:now()) :: pos_integer() | 'undefined' | '$3' | '_'
+                  ,last_heartbeat = kz_time:now_ms(kz_time:now()) :: pos_integer() | 'undefined' | '$3' | '_'
                   ,zone :: atom() | 'undefined' | '$2' | '_'
                   ,broker :: api_binary() | '_'
                   ,used_memory = 0 :: non_neg_integer() | '_'

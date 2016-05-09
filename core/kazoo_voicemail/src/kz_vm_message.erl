@@ -126,7 +126,7 @@ create_message_doc(AttachmentName, BoxNum, Call, Timezone, Props) ->
     Db = kazoo_modb:get_modb(kapps_call:account_id(Call), Year, Month),
 
     MediaId = <<(kz_term:to_binary(Year))/binary
-                ,(kz_util:pad_month(Month))/binary
+                ,(kz_time:pad_month(Month))/binary
                 ,"-"
                 ,(kz_term:rand_hex_binary(16))/binary
               >>,
@@ -464,7 +464,7 @@ move_to_modb(AccountId, DocId, JObj, Funs) ->
     FromId = kz_doc:id(JObj),
     ToDb = kazoo_modb:get_modb(AccountId, Year, Month),
     ToId = <<(kz_term:to_binary(Year))/binary
-              ,(kz_util:pad_month(Month))/binary
+              ,(kz_time:pad_month(Month))/binary
               ,"-"
               ,(kz_term:rand_hex_binary(16))/binary
            >>,
@@ -684,7 +684,7 @@ results_from_modbs(AccountId, View, [ViewOpts|ViewOptsList], Acc) ->
 
 -spec get_range_view(ne_binary(), kz_proplist()) -> kz_proplists().
 get_range_view(AccountId, ViewOpts) ->
-    To = kz_util:current_tstamp(),
+    To = kz_time:current_tstamp(),
     From = To - ?RETENTION_DAYS(?RETENTION_DURATION),
 
     [ begin
@@ -827,7 +827,7 @@ is_valid_transcription(_Res, _Txt, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec new_timestamp() -> gregorian_seconds().
-new_timestamp() -> kz_util:current_tstamp().
+new_timestamp() -> kz_time:current_tstamp().
 
 -spec get_caller_id_name(kapps_call:call()) -> ne_binary().
 get_caller_id_name(Call) ->
@@ -891,7 +891,7 @@ maybe_migrate_to_modb(AccountId, Id) ->
 %%--------------------------------------------------------------------
 -spec cleanup_heard_voicemail(ne_binary()) -> 'ok'.
 cleanup_heard_voicemail(AccountId) ->
-    Today = kz_util:current_tstamp(),
+    Today = kz_time:current_tstamp(),
     Duration = ?RETENTION_DURATION,
     DurationS = ?RETENTION_DAYS(Duration),
     lager:debug("retaining messages for ~p days, delete those older for ~s", [Duration, AccountId]),

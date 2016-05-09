@@ -123,7 +123,7 @@ verify_rollups(AccountDb, Year, Month) ->
 verify_rollups(AccountDb, Year, Month, AccountId, JObj) ->
     Balance = wht_util:previous_balance(AccountDb
                                         ,kz_term:to_binary(Year)
-                                        ,kz_util:pad_month(Month)
+                                        ,kz_time:pad_month(Month)
                                        ),
     case rollup_balance(JObj) of
         Balance ->
@@ -143,7 +143,7 @@ fix_rollup(Account) ->
     {PYear, PMonth} =  kazoo_modb_util:prev_year_month(Y, M),
     Balance = wht_util:previous_balance(AccountId
                                         ,kz_term:to_binary(PYear)
-                                        ,kz_util:pad_month(PMonth)
+                                        ,kz_time:pad_month(PMonth)
                                        ),
     AccountMODb = kazoo_modb:get_modb(AccountId),
     lager:debug("rolling up ~p credits to ~s", [Balance, AccountMODb]),

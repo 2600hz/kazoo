@@ -575,7 +575,7 @@ ready({'member_connect_win', JObj}, #state{agent_listener=AgentListener
                     {'next_state', 'ringing', State#state{wrapup_timeout=WrapupTimer
                                                           ,member_call=Call
                                                           ,member_call_id=CallId
-                                                          ,member_call_start=kz_util:now()
+                                                          ,member_call_start=kz_time:now()
                                                           ,member_call_queue_id=QueueId
                                                           ,caller_exit_key=CallerExitKey
                                                           ,endpoints=UpdatedEPs
@@ -590,7 +590,7 @@ ready({'member_connect_win', JObj}, #state{agent_listener=AgentListener
             {'next_state', 'ringing', State#state{
                                         wrapup_timeout=WrapupTimer
                                         ,member_call_id=CallId
-                                        ,member_call_start=kz_util:now()
+                                        ,member_call_start=kz_time:now()
                                         ,member_call_queue_id=QueueId
                                         ,caller_exit_key=CallerExitKey
                                         ,agent_call_id='undefined'
@@ -1440,7 +1440,7 @@ current_call(Call, AgentState, QueueId, Start) ->
 
 -spec elapsed('undefined' | kz_now()) -> api_integer().
 elapsed('undefined') -> 'undefined';
-elapsed(Start) -> kz_util:elapsed_s(Start).
+elapsed(Start) -> kz_time:elapsed_s(Start).
 
 -spec wrapup_timer(fsm_state()) -> reference().
 wrapup_timer(#state{agent_listener=AgentListener
@@ -1685,7 +1685,7 @@ notify(Url, Method, Key, #state{account_id=AccountId
                 ,{<<"caller_id_name">>, kapps_call:caller_id_name(MemberCall)}
                 ,{<<"caller_id_number">>, kapps_call:caller_id_number(MemberCall)}
                 ,{<<"call_state">>, Key}
-                ,{<<"now">>, kz_util:current_tstamp()}
+                ,{<<"now">>, kz_time:current_tstamp()}
                ])),
     notify(Url, Method, Data).
 

@@ -380,7 +380,7 @@ channel_summary({[#kz_amqp_assignment{}=Assignment], Continuation}) ->
     channel_summary(ets:match_object(Continuation)).
 
 channel_summary_age('undefined') -> 0;
-channel_summary_age(Timestamp) -> kz_util:elapsed_s(Timestamp).
+channel_summary_age(Timestamp) -> kz_time:elapsed_s(Timestamp).
 
 %%--------------------------------------------------------------------
 %% @public

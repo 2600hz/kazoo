@@ -124,7 +124,7 @@ import_prompt(Path0, Lang0, Contents) ->
 
     io:format("  importing as '~s'~n", [ID]),
 
-    Now = kz_util:current_tstamp(),
+    Now = kz_time:current_tstamp(),
     ContentType = <<Category/binary, "/", Type/binary>>,
 
     MetaJObj = kz_json:from_list(
@@ -324,7 +324,7 @@ remove_empty_media_docs(AccountId, AccountDb) ->
             io:format("no media docs in account ~s~n", [AccountId]);
         {'ok', MediaDocs} ->
             io:format("found ~b media docs in account ~s~n", [length(MediaDocs), AccountId]),
-            Filename = media_doc_filename(AccountId, kz_util:current_tstamp()),
+            Filename = media_doc_filename(AccountId, kz_time:current_tstamp()),
             io:format("archiving removed media docs to ~s~n", [Filename]),
             {'ok', File} = file:open(Filename, ['write', 'binary', 'append']),
             catch remove_empty_media_docs(AccountId, AccountDb, File, MediaDocs),
