@@ -58,7 +58,7 @@ send_system_alert(Request) ->
 -spec add_limit_details(api_binary(), ne_binary(), kz_proplist()) -> kz_proplist().
 add_limit_details('undefined', _, Props) -> Props;
 add_limit_details(Account, Prefix, Props) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
     Limits = j5_limits:get(AccountId),
     [{<<Prefix/binary, "-Enforce-Limits">>, kz_term:to_binary(j5_limits:enabled(Limits))}
      ,{<<Prefix/binary, "-Calls">>
@@ -111,7 +111,7 @@ add_limit_details(Account, Prefix, Props) ->
 -spec get_account_name(api_binary()) -> ne_binary().
 get_account_name('undefined') -> <<"unknown">>;
 get_account_name(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
     case kz_datamgr:open_cache_doc(?KZ_ACCOUNTS_DB, AccountId) of
         {'error', _} -> AccountId;
         {'ok', JObj} -> kz_json:get_ne_value(<<"name">>, JObj, AccountId)

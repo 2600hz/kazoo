@@ -1501,7 +1501,7 @@ remove_phone_number(Number, _, {_, Acc}) ->
                                    {'error', any()}.
 get_phone_numbers_doc(Context) ->
     AccountId = cb_context:account_id(Context),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     Context1 = crossbar_doc:load(?KNM_PHONE_NUMBERS_DOC
                                  ,cb_context:set_account_db(Context, AccountDb)
                                  ,?TYPE_CHECK_OPTION(<<"phone_numbers">>)),
@@ -1525,7 +1525,7 @@ save_phone_numbers_doc(Context, JObj) ->
         cb_context:setters(
           Context
           ,[{fun cb_context:set_doc/2, JObj}
-            ,{fun cb_context:set_account_db/2, kz_util:format_account_id(AccountId, 'encoded')}
+            ,{fun cb_context:set_account_db/2, kz_accounts:format_account_id(AccountId, 'encoded')}
            ]
          ),
 

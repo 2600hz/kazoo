@@ -334,7 +334,7 @@ maybe_export_numbers(Db, [Number|Numbers]) ->
 
 -spec maybe_export_number(ne_binary(), api_binary(), api_binary()) -> 'ok'.
 maybe_export_number(Number, ?NUMBER_STATE_IN_SERVICE, AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     ViewOptions = [{'key', Number}
                    ,'include_docs'
                   ],
@@ -386,7 +386,7 @@ process_callflow(Number, AccountId, <<"device">>, DeviceId) ->
     lager:debug("found device ~s associated with ~s"
                 ,[DeviceId, Number]
                ),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:open_cache_doc(AccountDb, DeviceId) of
         {'ok', JObj } -> process_device(Number, AccountId, JObj);
         {'error', _R} ->
@@ -398,7 +398,7 @@ process_callflow(Number, AccountId, <<"user">>, UserId) ->
     lager:debug("found user ~s associated with ~s"
                 ,[UserId, Number]
                ),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     ViewOptions = [{'key', UserId}],
     case kz_datamgr:get_results(AccountDb, ?DEVICES_VIEW, ViewOptions) of
         {'ok', JObjs} ->
@@ -418,7 +418,7 @@ process_callflow(_, _, _, _) -> 'ok'.
 
 -spec process_device(ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
 process_device(Number, AccountId, JObj) ->
-    AccountRealm = kz_util:get_account_realm(AccountId),
+    AccountRealm = kz_accounts:get_account_realm(AccountId),
     Realm = kz_device:sip_realm(JObj, AccountRealm),
     Username = kz_device:sip_username(JObj),
     case query_registrar(Realm, Username) of

@@ -466,7 +466,7 @@ fetch_mdn(Num) ->
                               {'ok', ne_binary(), api_binary()} |
                               {'error', 'not_found'}.
 fetch_mdn_result(AccountId, Num) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kz_accounts:format_account_db(AccountId),
     ViewOptions = [{'key', mdn_from_e164(Num)}],
     case kz_datamgr:get_results(AccountDb, ?MDN_VIEW, ViewOptions) of
         {'ok', []} -> {'error', 'not_found'};

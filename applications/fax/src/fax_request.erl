@@ -287,7 +287,7 @@ get_fax_storage(Call) ->
     AccountId = kapps_call:account_id(Call),
     {Year, Month, _} = erlang:date(),
     AccountMODb = kazoo_modb:get_modb(AccountId, Year, Month),
-    FaxDb = kz_util:format_account_modb(AccountMODb, 'encoded'),
+    FaxDb = kz_accounts:format_account_modb(AccountMODb, 'encoded'),
     FaxId = <<(kz_term:to_binary(Year))/binary
               ,(kz_time:pad_month(Month))/binary
               ,"-"

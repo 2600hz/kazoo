@@ -24,7 +24,7 @@ flush() ->
     kz_cache:flush_local(?CACHE_NAME).
 
 flush(Account) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kz_accounts:format_account_id(Account),
 
     Flush = kz_cache:filter_local(?CACHE_NAME
                                   ,fun(Key, _Value) -> is_ts_cache_object(Key, AccountId) end
@@ -120,7 +120,7 @@ account_exists_with_realm(Realm) ->
 
 create_account(Realm) ->
     AcctID = kz_datamgr:get_uuid(),
-    AcctDB = kz_util:format_account_id(AcctID, 'encoded'),
+    AcctDB = kz_accounts:format_account_id(AcctID, 'encoded'),
     case kz_datamgr:db_create(AcctDB) of
         'true' ->
             lager:info("created account db: ~s", [AcctDB]),

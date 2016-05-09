@@ -376,13 +376,13 @@ set_modified(BTTransaction, Transaction) ->
 -spec set_account_id(kz_json:object(), kz_transaction:transaction()) -> kz_transaction:transaction().
 set_account_id(BTTransaction, Transaction) ->
     CustomerId = kz_json:get_value([<<"customer">>, <<"id">>], BTTransaction),
-    AccountId = kz_util:format_account_id(CustomerId, 'raw'),
+    AccountId = kz_accounts:format_account_id(CustomerId, 'raw'),
     kz_transaction:set_account_id(AccountId, Transaction).
 
 -spec set_account_db(kz_json:object(), kz_transaction:transaction()) -> kz_transaction:transaction().
 set_account_db(BTTransaction, Transaction) ->
     CustormerId = kz_json:get_value([<<"customer">>, <<"id">>], BTTransaction),
-    AccountDb = kz_util:format_account_id(CustormerId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(CustormerId, 'encoded'),
     kz_transaction:set_account_db(AccountDb, Transaction).
 
 -spec transaction_is_prorated(kz_json:object()) -> boolean().

@@ -864,7 +864,7 @@ augment_registration(Reg, JObj) ->
                        ,Reg#registration.register_overwrite_notify
                       )
          ),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     Reg#registration{
       account_id=AccountId
       ,account_db=AccountDb
@@ -1007,7 +1007,7 @@ update_from_authn_response(#registration{username=Username
                            ,JObj) ->
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
     AccountId = kz_json:get_value(<<"Account-ID">>, CCVs),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     AuthorizingId = kz_json:get_value(<<"Authorizing-ID">>, CCVs),
     OwnerIdProp =
         case kz_json:get_value(<<"Owner-ID">>, CCVs) of

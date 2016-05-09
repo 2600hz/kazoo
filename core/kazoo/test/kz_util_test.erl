@@ -344,15 +344,15 @@ account_formats_test_() ->
                ,MODbId, MODbEn, MODbUn
               ],
     %% Note: the whole point of exporting some of these is so that function_clause can be caught
-    Funs = [{fun kz_util:format_account_id/1, AccountId}
+    Funs = [{fun kz_accounts:format_account_id/1, AccountId}
             ,{fun ?MODULE:format_account_id_raw/1, AccountId}
             ,{fun ?MODULE:format_account_id_encoded/1, AccountDbEn}
             ,{fun ?MODULE:format_account_id_unencoded/1, AccountDbUn}
-            ,{fun kz_util:format_account_db/1, AccountDbEn}
-            ,{fun kz_util:format_account_mod_id/1, MODbEn}
+            ,{fun kz_accounts:format_account_db/1, AccountDbEn}
+            ,{fun kz_accounts:format_account_mod_id/1, MODbEn}
             ,{fun ?MODULE:format_account_mod_id_from_year_month/1, MODbEn}
             ,{fun ?MODULE:format_account_mod_id_from_now/1, MODbEn}
-            ,{fun kz_util:format_account_modb/1, MODbId}
+            ,{fun kz_accounts:format_account_modb/1, MODbId}
             ,{fun ?MODULE:format_account_modb_raw/1, MODbId}
             ,{fun ?MODULE:format_account_modb_encoded/1, MODbEn}
             ,{fun ?MODULE:format_account_modb_unencoded/1, MODbUn}
@@ -411,14 +411,14 @@ is_simple_modb_converter("#Fun<kz_util_test.format_account_modb_encoded.1>"++_) 
 is_simple_modb_converter("#Fun<kz_util_test.format_account_modb_unencoded.1>"++_) -> 'true';
 is_simple_modb_converter(_Else) -> 'false'.
 
-format_account_id_raw(F) -> kz_util:format_account_id(F, 'raw').
-format_account_id_encoded(F) -> kz_util:format_account_id(F, 'encoded').
-format_account_id_unencoded(F) -> kz_util:format_account_id(F, 'unencoded').
+format_account_id_raw(F) -> kz_accounts:format_account_id(F, 'raw').
+format_account_id_encoded(F) -> kz_accounts:format_account_id(F, 'encoded').
+format_account_id_unencoded(F) -> kz_accounts:format_account_id(F, 'unencoded').
 format_account_mod_id_from_year_month(F) ->
     {Year, Month, _} = erlang:date(),
-    kz_util:format_account_mod_id(F, Year, Month).
+    kz_accounts:format_account_mod_id(F, Year, Month).
 format_account_mod_id_from_now(F) ->
-    kz_util:format_account_mod_id(F, os:timestamp()).
-format_account_modb_raw(F) -> kz_util:format_account_modb(F, 'raw').
-format_account_modb_encoded(F) -> kz_util:format_account_modb(F, 'encoded').
-format_account_modb_unencoded(F) -> kz_util:format_account_modb(F, 'unencoded').
+    kz_accounts:format_account_mod_id(F, os:timestamp()).
+format_account_modb_raw(F) -> kz_accounts:format_account_modb(F, 'raw').
+format_account_modb_encoded(F) -> kz_accounts:format_account_modb(F, 'encoded').
+format_account_modb_unencoded(F) -> kz_accounts:format_account_modb(F, 'unencoded').

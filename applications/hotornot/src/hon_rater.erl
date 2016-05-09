@@ -102,7 +102,7 @@ maybe_get_rate_discount(JObj) ->
 
 maybe_get_rate_discount(_JObj, 'undefined') -> 'undefined';
 maybe_get_rate_discount(JObj, AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:open_cache_doc(AccountDb, <<"limits">>) of
         {'error', _R} ->
             lager:debug("unable to open account ~s definition: ~p", [AccountId, _R]),

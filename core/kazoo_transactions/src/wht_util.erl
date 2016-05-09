@@ -263,8 +263,8 @@ current_account_dollars(Account) ->
 -spec get_balance_from_account(ne_binary(), couch_util:view_options()) -> units().
 get_balance_from_account(Account, ViewOptions) ->
     View = <<"transactions/credit_remaining">>,
-    AccountId = kz_util:format_account_id(Account, 'raw'),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:get_results(AccountDb, View, ViewOptions) of
         {'ok', []} ->
             lager:debug("no current balance for ~s", [AccountId]),
@@ -463,10 +463,10 @@ rollup(Transaction) ->
     end.
 
 rollup(<<_/binary>> = AccountMODb, Balance) when Balance >= 0 ->
-    AccountId = kz_util:format_account_id(AccountMODb, 'raw'),
+    AccountId = kz_accounts:format_account_id(AccountMODb, 'raw'),
     rollup(kz_transaction:credit(AccountId, Balance));
 rollup(<<_/binary>> = AccountMODb, Balance) ->
-    AccountId = kz_util:format_account_id(AccountMODb, 'raw'),
+    AccountId = kz_accounts:format_account_id(AccountMODb, 'raw'),
     rollup(kz_transaction:debit(AccountId, -1*Balance)).
 
 %%--------------------------------------------------------------------

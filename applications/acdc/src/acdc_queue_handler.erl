@@ -113,7 +113,7 @@ handle_presence_probe(JObj, _Props) ->
 
     Realm = kz_json:get_value(<<"Realm">>, JObj),
     case kapps_util:get_account_by_realm(Realm) of
-        {'ok', AcctDb} -> maybe_respond_to_presence_probe(JObj, kz_util:format_account_id(AcctDb, raw));
+        {'ok', AcctDb} -> maybe_respond_to_presence_probe(JObj, kz_accounts:format_account_id(AcctDb, raw));
         _ -> 'ok'
     end.
 

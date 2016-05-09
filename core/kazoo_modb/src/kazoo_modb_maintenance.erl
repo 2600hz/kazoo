@@ -63,7 +63,7 @@ should_delete(AccountModb, Months) ->
 
 -spec delete_modb(ne_binary()) -> 'ok'.
 delete_modb(?MATCH_MODB_SUFFIX_UNENCODED(_,_,_) = AccountModb) ->
-    delete_modb(kz_util:format_account_db(AccountModb));
+    delete_modb(kz_accounts:format_account_db(AccountModb));
 delete_modb(?MATCH_MODB_SUFFIX_ENCODED(_,_,_) = AccountModb) ->
     'ok' = kz_datamgr:db_archive(AccountModb),
     _Deleted = kz_datamgr:db_delete(AccountModb),
@@ -110,7 +110,7 @@ verify_rollups(Account) ->
     verify_rollups(Account, Y, M).
 
 verify_rollups(AccountDb, Year, Month) ->
-    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+    AccountId = kz_accounts:format_account_id(AccountDb, 'raw'),
     case kazoo_modb:open_doc(AccountDb, <<"monthly_rollup">>, Year, Month) of
         {'ok', JObj} ->
             verify_rollups(AccountDb, Year, Month, AccountId, JObj);
@@ -138,7 +138,7 @@ verify_rollups(AccountDb, Year, Month, AccountId, JObj) ->
 
 -spec fix_rollup(ne_binary()) -> 'ok'.
 fix_rollup(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
     {Y, M, _} = erlang:date(),
     {PYear, PMonth} =  kazoo_modb_util:prev_year_month(Y, M),
     Balance = wht_util:previous_balance(AccountId
@@ -167,7 +167,7 @@ rollup_account_fold(AccountDb, {Current, Total}) ->
 
 -spec rollup_account(ne_binary()) -> 'ok'.
 rollup_account(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
     Balance = wht_util:get_balance_from_account(AccountId, []),
     rollup_account(AccountId, Balance).
 

@@ -159,7 +159,7 @@ maybe_get_endpoints(Number, OffnetJObj) ->
 -spec maybe_get_local_endpoints(ne_binary(), ne_binary(), kapi_offnet_resource:req()) -> kz_json:objects().
 maybe_get_local_endpoints(HuntAccount, Number, OffnetJObj) ->
     AccountId = kapi_offnet_resource:account_id(OffnetJObj),
-    case kz_util:is_in_account_hierarchy(HuntAccount, AccountId, 'true') of
+    case kz_accounts:is_in_account_hierarchy(HuntAccount, AccountId, 'true') of
         'false' ->
             lager:info("account ~s attempted to use local resources of ~s, but it is not allowed"
                        ,[AccountId, HuntAccount]
@@ -699,7 +699,7 @@ fetch_global_resources() ->
 %%--------------------------------------------------------------------
 -spec fetch_local_resources(ne_binary()) -> resources().
 fetch_local_resources(AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     ViewOptions = ['include_docs'],
     lager:debug("local resource cache miss, fetching from db ~s", [AccountDb]),
     case kz_datamgr:get_results(AccountDb, ?LIST_RESOURCES_BY_ID, ViewOptions) of

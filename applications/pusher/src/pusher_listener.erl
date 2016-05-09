@@ -112,7 +112,7 @@ maybe_update_push_token(UA, JObj, Params) ->
 maybe_update_push_token('undefined', _AuthorizingId, _UA, _JObj, _Params) -> 'ok';
 maybe_update_push_token(_AccountId, 'undefined', _UA, _JObj, _Params) -> 'ok';
 maybe_update_push_token(AccountId, AuthorizingId, UA, JObj, Params) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kz_accounts:format_account_db(AccountId),
     case kz_datamgr:open_cache_doc(AccountDb, AuthorizingId) of
         {'ok', Doc} ->
             Push = kz_json:get_value(<<"push">>, Doc),

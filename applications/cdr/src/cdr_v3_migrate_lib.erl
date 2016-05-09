@@ -107,7 +107,7 @@ get_account_by_realm(AccountRealm) ->
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_realm">>, [{'key', AccountRealm}]) of
         {'ok', [JObj]} ->
             AccountDb = kz_json:get_value([<<"value">>, <<"account_db">>], JObj),
-            _AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+            _AccountId = kz_accounts:format_account_id(AccountDb, 'raw'),
             {'ok', AccountDb};
         {'ok', []} ->
             {'error', 'not_found'};
@@ -171,10 +171,10 @@ maybe_delete_test_account(AccountDb) ->
         [] -> lager:debug("account_db is not a migrate test: ~p", [AccountDb]);
         [_Account] ->
             NumMonthsToShard = kapps_config:get_integer(?CONFIG_CAT, <<"v3_migrate_num_months">>, 4),
-            AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+            AccountId = kz_accounts:format_account_id(AccountDb, 'raw'),
             {{CurrentYear, CurrentMonth, _}, _} = calendar:universal_time(),
             Months = get_prev_n_months(CurrentYear, CurrentMonth, NumMonthsToShard),
-            AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+            AccountId = kz_accounts:format_account_id(AccountDb, 'raw'),
             _ = [delete_account_database(AccountId, {Year, Month})
                  || {Year, Month} <- Months],
             kz_datamgr:del_doc(<<"accounts">>, AccountId),
@@ -184,7 +184,7 @@ maybe_delete_test_account(AccountDb) ->
 -spec delete_account_database(account_id(), {kz_year(), kz_month()}) ->
                                      'ok' | {'error', any()}.
 delete_account_database(AccountId, {Year, Month}) ->
-    AccountMODb = kz_util:format_account_id(AccountId, Year, Month),
+    AccountMODb = kz_accounts:format_account_id(AccountId, Year, Month),
     kz_datamgr:db_delete(AccountMODb).
 
 -spec get_prev_n_months(kz_year(), kz_month(), pos_integer()) -> kz_proplist().

@@ -168,7 +168,7 @@ on_successful_validation(Context) ->
     AccountDb = cb_context:account_modb(Context),
     kazoo_modb:create(AccountDb),
     ResellerId = cb_context:reseller_id(Context),
-    Realm = kz_util:get_account_realm(AccountId),
+    Realm = kz_accounts:get_account_realm(AccountId),
 
     {AuthorizationType, Authorization, OwnerId} =
         case {cb_context:user_id(Context), cb_context:auth_user_id(Context)} of

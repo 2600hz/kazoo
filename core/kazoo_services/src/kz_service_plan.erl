@@ -22,7 +22,7 @@
 %%--------------------------------------------------------------------
 -spec fetch(ne_binary(), ne_binary()) -> kzd_service_plan:api_doc().
 fetch(PlanId, VendorId) ->
-    VendorDb = kz_util:format_account_id(VendorId, 'encoded'),
+    VendorDb = kz_accounts:format_account_id(VendorId, 'encoded'),
     case kz_datamgr:open_cache_doc(VendorDb, PlanId) of
         {'ok', ServicePlan} ->
             lager:debug("found service plan ~s/~s", [VendorDb, PlanId]),

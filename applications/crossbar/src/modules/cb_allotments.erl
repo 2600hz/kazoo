@@ -219,7 +219,7 @@ on_successful_validation(Context) ->
 is_allowed(Context) ->
     AccountId = cb_context:account_id(Context),
     AuthAccountId = cb_context:auth_account_id(Context),
-    IsSystemAdmin = kz_util:is_system_admin(AuthAccountId),
+    IsSystemAdmin = kz_accounts:is_system_admin(AuthAccountId),
     {'ok', MasterAccount} = kapps_util:get_master_account_id(),
     case kz_services:find_reseller_id(AccountId) of
         AuthAccountId ->

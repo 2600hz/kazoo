@@ -661,7 +661,7 @@ maybe_migrate_vm_box(Box) ->
 %%--------------------------------------------------------------------
 -spec migrate(ne_binary()) -> 'ok'.
 migrate(Account) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
     case kz_datamgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
         {'ok', []} -> 'ok';
         {'error', _E} -> io:format("failed to check account ~s for voicemail boxes: ~p~n", [Account, _E]);

@@ -375,7 +375,7 @@ init([AccountId, AgentId, Supervisor, Props, IsThief]) ->
     lager:debug("waiting for listener in ~p", [_P]),
 
     {'ok', 'wait', #state{account_id = AccountId
-                          ,account_db = kz_util:format_account_id(AccountId, 'encoded')
+                          ,account_db = kz_accounts:format_account_id(AccountId, 'encoded')
                           ,agent_id = AgentId
                           ,fsm_call_id = FSMCallId
                           ,max_connect_failures = max_failures(AccountId)

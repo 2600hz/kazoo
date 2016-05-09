@@ -256,8 +256,8 @@ establish_c2c(C2CId, Context) ->
 
 -spec maybe_migrate_history(ne_binary()) -> 'ok'.
 maybe_migrate_history(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
+    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
 
     case kz_datamgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
         {'ok', []} -> 'ok';
@@ -287,7 +287,7 @@ migrate_history(AccountId, AccountDb, C2C) ->
 -spec save_history_item(ne_binary(), kz_json:object(), ne_binary()) -> any().
 save_history_item(AccountId, HistoryItem, C2CId) ->
     Timestamp = kz_json:get_integer_value(<<"timestamp">>, HistoryItem, kz_time:current_tstamp()),
-    AccountModb = kz_util:format_account_mod_id(AccountId, Timestamp),
+    AccountModb = kz_accounts:format_account_mod_id(AccountId, Timestamp),
     JObj = kz_doc:update_pvt_parameters(kz_json:set_value(<<"pvt_clicktocall_id">>, C2CId, HistoryItem)
                                         ,AccountModb
                                         ,[{'type', <<"c2c_history">>}

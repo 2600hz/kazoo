@@ -291,7 +291,7 @@ maybe_defered_error(Realm, Username, JObj) ->
         'false' -> {'error', 'timeout'};
         'true' ->
             AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
-            AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+            AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
             AuthorizingId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], JObj),
             OwnerIdProp = case kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Owner-ID">>], JObj) of
                               'undefined' -> [];

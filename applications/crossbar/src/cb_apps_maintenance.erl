@@ -42,7 +42,7 @@ migrate(Account) when is_binary(Account) ->
 %%--------------------------------------------------------------------
 -spec save(ne_binary(), kz_json:object(), kz_json:object()) -> {'ok', kz_json:object()} | {'error', any()}.
 save(Account, Doc, AccountDoc) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
     case kz_datamgr:save_doc(AccountDb, Doc) of
         {'error', _R}=Error -> Error;
         {'ok', _}=Ok ->
@@ -58,7 +58,7 @@ save(Account, Doc, AccountDoc) ->
 %%--------------------------------------------------------------------
 -spec save_account(ne_binary(), kz_json:object()) -> 'ok'.
 save_account(Account, AccountDoc) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
     case kz_datamgr:ensure_saved(AccountDb, kz_json:delete_key(<<"apps">>, AccountDoc)) of
         {'error', _R} ->
             lager:error("failed to save ~s : ~p", [AccountDb, _R]);

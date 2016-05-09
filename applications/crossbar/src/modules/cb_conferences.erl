@@ -233,7 +233,7 @@ load_conference(DocId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_conference_details(cb_context:context(), path_token()) -> cb_context:context().
 load_conference_details(Context, ConfId) ->
-    AccountRealm = kz_util:get_account_realm(cb_context:account_id(Context)),
+    AccountRealm = kz_accounts:get_account_realm(cb_context:account_id(Context)),
     Req = [{<<"Realm">>, AccountRealm}
            ,{<<"Fields">>, []}
            ,{<<"Conference-ID">>, ConfId}

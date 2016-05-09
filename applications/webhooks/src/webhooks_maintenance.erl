@@ -44,7 +44,7 @@ set_failure_expiry(Expires) ->
     end.
 
 set_failure_expiry(Account, Expires) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
     try kz_term:to_integer(Expires) of
         I ->
             kapps_account_config:set(AccountId, ?APP_NAME, ?ATTEMPT_EXPIRY_KEY, I),
@@ -67,7 +67,7 @@ set_disable_threshold(Count) ->
     end.
 
 set_disable_threshold(Account, Count) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
     try kz_term:to_integer(Count) of
         I ->
             kapps_account_config:set(AccountId, ?APP_NAME, ?FAILURE_COUNT_KEY, I),
@@ -87,7 +87,7 @@ failure_status() ->
     print_failure_footer().
 
 failure_status(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
     Failed = webhooks_disabler:find_failures(),
 
     Sorted = lists:keysort(1, Failed),

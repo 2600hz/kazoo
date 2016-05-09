@@ -87,7 +87,7 @@ fetch_master_attachments(TemplateId) ->
 fetch_attachments(TemplateId, Account) ->
     AccountDb = case Account of
                     ?KZ_CONFIG_DB -> ?KZ_CONFIG_DB;
-                    Account -> kz_util:format_account_db(Account)
+                    Account -> kz_accounts:format_account_db(Account)
                 end,
     DocId = doc_id(TemplateId),
     case fetch_notification(TemplateId, AccountDb) of
@@ -196,7 +196,7 @@ fetch_notification(TemplateId, 'undefined', _ResellerId) ->
 fetch_notification(TemplateId, ?KZ_CONFIG_DB, _ResellerId) ->
     kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, doc_id(TemplateId), [{'cache_failures', ['not_found']}]);
 fetch_notification(TemplateId, AccountId, AccountId) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kz_accounts:format_account_db(AccountId),
     DocId = doc_id(TemplateId),
 
     case kz_datamgr:open_cache_doc(AccountDb, DocId, [{'cache_failures', ['not_found']}]) of
@@ -204,7 +204,7 @@ fetch_notification(TemplateId, AccountId, AccountId) ->
         {'error', _E} -> fetch_notification(TemplateId, 'undefined', AccountId)
     end;
 fetch_notification(TemplateId, AccountId, ResellerId) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kz_accounts:format_account_db(AccountId),
     DocId = doc_id(TemplateId),
     case kz_datamgr:open_cache_doc(AccountDb, DocId, [{'cache_failures', ['not_found']}]) of
         {'ok', _JObj}=OK -> OK;

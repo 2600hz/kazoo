@@ -301,7 +301,7 @@ check_auth_user(JObj, Username, Realm, Req) ->
 -spec is_account_enabled(kz_json:object()) -> boolean().
 is_account_enabled(JObj) ->
     AccountId = get_account_id(JObj),
-    case kz_util:is_account_enabled(AccountId) of
+    case kz_accounts:is_account_enabled(AccountId) of
         'true' -> 'true';
         'false' ->
             lager:notice("rejecting authn for disabled account ~s", [AccountId]),
@@ -508,7 +508,7 @@ gsm_auth(AuthUser) -> {'ok', AuthUser}.
 get_account_id(JObj) ->
     case get_account_db(JObj) of
         'undefined' -> 'undefined';
-        AccountDb -> kz_util:format_account_id(AccountDb, 'raw')
+        AccountDb -> kz_accounts:format_account_id(AccountDb, 'raw')
     end.
 
 %%-----------------------------------------------------------------------------
@@ -526,7 +526,7 @@ get_account_db(JObj) ->
                                    ], JObj)
     of
         'undefined' -> 'undefined';
-        AccountDb -> kz_util:format_account_id(AccountDb, 'encoded')
+        AccountDb -> kz_accounts:format_account_id(AccountDb, 'encoded')
     end.
 
 -spec remove_dashes(ne_binary()) -> ne_binary().

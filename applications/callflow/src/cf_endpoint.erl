@@ -129,7 +129,7 @@ has_endpoint(JObj, EndpointId, AccountDb, EndpointType) ->
 cache_origin(JObj, EndpointId, AccountDb) ->
     Routines = [fun(P) -> [{'db', AccountDb, EndpointId} | P] end
                 ,fun(P) ->
-                         [{'db', AccountDb, kz_util:format_account_id(AccountDb, 'raw')}
+                         [{'db', AccountDb, kz_accounts:format_account_id(AccountDb, 'raw')}
                           | P
                          ]
                  end

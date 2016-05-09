@@ -89,7 +89,7 @@ legalize_outbound_cid(OutboundCID, AccountId) ->
 -spec ensure_valid_caller_id(ne_binary(), ne_binary()) -> ne_binary().
 ensure_valid_caller_id(OutboundCID, AccountId) ->
     {'ok', AccountPhoneNumbersList} =
-        kz_datamgr:open_cache_doc(kz_util:format_account_id(AccountId, 'encoded')
+        kz_datamgr:open_cache_doc(kz_accounts:format_account_id(AccountId, 'encoded')
                                  ,?KNM_PHONE_NUMBERS_DOC
                                 ),
     case lists:member(knm_converters:normalize(OutboundCID)

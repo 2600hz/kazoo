@@ -97,7 +97,7 @@ constrain_weight(W) -> W.
                         {'ok', kz_json:object()} |
                         {'error', 'no_did_found' | atom()}.
 lookup_did(DID, AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     case kz_cache:fetch_local(?CACHE_NAME
                               ,{'lookup_did', DID, AccountId}
                              )
@@ -172,7 +172,7 @@ lookup_user_flags('undefined', _, AccountId, DID) ->
             }
     end;
 lookup_user_flags(Name, Realm, AccountId, _) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     case kz_cache:fetch_local(?CACHE_NAME
                               ,{'lookup_user_flags', Realm, Name, AccountId}
                              )

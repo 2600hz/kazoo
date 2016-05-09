@@ -209,7 +209,7 @@ maybe_authenticate_user(Context) ->
     JObj = cb_context:doc(Context),
     Credentials = kz_json:get_value(<<"credentials">>, JObj),
     Method = kz_json:get_value(<<"method">>, JObj, <<"md5">>),
-    AccountName = kz_util:normalize_account_name(kz_json:get_value(<<"account_name">>, JObj)),
+    AccountName = kz_accounts:normalize_account_name(kz_json:get_value(<<"account_name">>, JObj)),
     PhoneNumber = kz_json:get_ne_value(<<"phone_number">>, JObj),
     AccountRealm = kz_json:get_first_defined([<<"account_realm">>, <<"realm">>], JObj),
     case find_account(PhoneNumber, AccountRealm, AccountName, Context) of
@@ -223,7 +223,7 @@ maybe_authenticate_user(Context) ->
     end.
 
 maybe_authenticate_user(Context, Credentials, <<"md5">>, <<_/binary>> = Account) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
     Context1 = crossbar_doc:load_view(?ACCT_MD5_LIST
                                       ,[{'key', Credentials}]
                                       ,cb_context:set_account_db(Context, AccountDb)
@@ -236,7 +236,7 @@ maybe_authenticate_user(Context, Credentials, <<"md5">>, <<_/binary>> = Account)
             cb_context:add_system_error('invalid_credentials', Context1)
     end;
 maybe_authenticate_user(Context, Credentials, <<"sha">>, <<_/binary>> = Account) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
     Context1 = crossbar_doc:load_view(?ACCT_SHA1_LIST
                                       ,[{'key', Credentials}]
                                       ,cb_context:set_account_db(Context, AccountDb)
@@ -277,10 +277,10 @@ maybe_auth_accounts(Context, Credentials, Method, [Account|Accounts]) ->
 
 -spec maybe_account_is_expired(cb_context:context(), ne_binary()) -> cb_context:context().
 maybe_account_is_expired(Context, Account) ->
-    case kz_util:is_account_expired(Account) of
+    case kz_accounts:is_account_expired(Account) of
         'false' -> maybe_account_is_enabled(Context, Account);
         {'true', Expired} ->
-            _ = kz_util:spawn(fun kz_util:maybe_disable_account/1, [Account]),
+            _ = kz_util:spawn(fun kz_accounts:maybe_disable_account/1, [Account]),
             Cause =
                 kz_json:from_list(
                   [{<<"message">>, <<"account expired">>}
@@ -292,7 +292,7 @@ maybe_account_is_expired(Context, Account) ->
 
 -spec maybe_account_is_enabled(cb_context:context(), ne_binary()) -> cb_context:context().
 maybe_account_is_enabled(Context, Account) ->
-    case kz_util:is_account_enabled(Account) of
+    case kz_accounts:is_account_enabled(Account) of
         'true' -> Context;
         'false' ->
             lager:debug("account ~p is disabled", [Account]),
@@ -357,7 +357,7 @@ maybe_delete_doc(AccountDb, ResetIdDoc) ->
 -spec maybe_load_user_doc_via_creds(cb_context:context()) -> cb_context:context().
 maybe_load_user_doc_via_creds(Context) ->
     JObj = cb_context:doc(Context),
-    AccountName = kz_util:normalize_account_name(kz_json:get_value(<<"account_name">>, JObj)),
+    AccountName = kz_accounts:normalize_account_name(kz_json:get_value(<<"account_name">>, JObj)),
     PhoneNumber = kz_json:get_ne_value(<<"phone_number">>, JObj),
     AccountRealm = kz_json:get_first_defined([<<"account_realm">>, <<"realm">>], JObj),
     case find_account(PhoneNumber, AccountRealm, AccountName, Context) of
@@ -370,7 +370,7 @@ maybe_load_user_doc_via_creds(Context) ->
 -spec maybe_load_user_doc_by_username(ne_binary(), cb_context:context()) -> cb_context:context().
 maybe_load_user_doc_by_username(Account, Context) ->
     JObj = cb_context:doc(Context),
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
     lager:debug("attempting to lookup user name in db: ~s", [AccountDb]),
     Username = kz_json:get_value(<<"username">>, JObj),
     ViewOptions = [{'key', Username}
@@ -467,7 +467,7 @@ reset_id(?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
     <<(?MATCH_ACCOUNT_RAW(A,B,Rest))/binary, Noise/binary>>;
 reset_id(<<ResetId:?RESET_ID_SIZE/binary>>) ->
     <<Account:32/binary, _Noise/binary>> = ResetId,
-    kz_util:format_account_db(kz_term:to_lower_binary(Account)).
+    kz_accounts:format_account_db(kz_term:to_lower_binary(Account)).
 
 %% @private
 -spec reset_link(kz_json:object(), ne_binary()) -> ne_binary().
@@ -539,7 +539,7 @@ find_account('undefined', AccountRealm, AccountName, Context) ->
 find_account(PhoneNumber, AccountRealm, AccountName, Context) ->
     case knm_number:lookup_account(PhoneNumber) of
         {'ok', AccountId, _} ->
-            AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+            AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
             lager:debug("found account by phone number '~s': ~s", [PhoneNumber, AccountDb]),
             {'ok', AccountDb};
         {'error', _} ->

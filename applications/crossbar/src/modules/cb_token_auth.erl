@@ -214,10 +214,10 @@ check_auth_token(Context, AuthToken, _MagicPathed) ->
                         {'halt', cb_context:context()}.
 is_expired(Context, JObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, JObj),
-    case kz_util:is_account_expired(AccountId) of
+    case kz_accounts:is_account_expired(AccountId) of
         'false' -> check_as(Context, JObj);
         {'true', Expired} ->
-            _ = kz_util:spawn(fun kz_util:maybe_disable_account/1, [AccountId]),
+            _ = kz_util:spawn(fun kz_accounts:maybe_disable_account/1, [AccountId]),
             Cause =
                 kz_json:from_list(
                   [{<<"message">>, <<"account expired">>}
