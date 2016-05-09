@@ -258,6 +258,8 @@
                                ,{<<"Fax-Doc-DB">>, <<"fax_doc_database">>}
                                ,{<<"default_language">>, <<"default_language">>}
                                ,{<<"Default-Language">>, <<"default_language">>}
+                               ,{<<"RECORD_STEREO">>, <<"RECORD_STEREO">>}
+                               ,{<<"RECORD_SOFTWARE">>, <<"RECORD_SOFTWARE">>}
                               ]).
 
 %% [{FreeSWITCH-App-Name, Kazoo-App-Name}]
