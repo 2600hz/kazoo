@@ -54,3 +54,11 @@ urlencode_test() ->
     ?assertEqual(<<"foo%0A">> , kz_http_util:urlencode(<<"foo\n">>)),
     ?assertEqual(<<"foo%3B%26%3D">> , kz_http_util:urlencode(<<"foo;&=">>)).
 
+
+resolve_uri_test() ->
+    RawPath = <<"http://pivot/script.php">>,
+    Relative = <<"script2.php">>,
+    RawPathList = [<<"http:">>, <<>>, <<"pivot">>, <<"script2.php">>],
+
+    ?assertEqual(RawPathList, kz_http_util:resolve_uri_path(RawPath, Relative)),
+    ?assertEqual(RawPathList, kz_http_util:resolve_uri_path(RawPath, <<"/", Relative/binary>>)).

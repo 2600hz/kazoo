@@ -414,18 +414,3 @@ get_app(AppName) ->
         [] -> 'undefined';
         [Ret | _] -> Ret
     end.
-
--ifdef(TEST).
-
--include_lib("eunit/include/eunit.hrl").
-
--spec resolve_uri_test() -> any().
-resolve_uri_test() ->
-    RawPath = <<"http://pivot/script.php">>,
-    Relative = <<"script2.php">>,
-    RawPathList = [<<"http:">>, <<>>, <<"pivot">>, <<"script2.php">>],
-
-    ?assertEqual(RawPathList, resolve_uri_path(RawPath, Relative)),
-    ?assertEqual(RawPathList, resolve_uri_path(RawPath, <<"/", Relative/binary>>)).
-
--endif.

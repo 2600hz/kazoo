@@ -22,6 +22,10 @@
 
 -export([uri/2]).
 
+-ifdef(TEST).
+-export([resolve_uri_path/2]).
+-endif.
+
 -include_lib("kazoo/include/kz_types.hrl").
 
 %%--------------------------------------------------------------------
