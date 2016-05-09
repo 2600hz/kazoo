@@ -410,7 +410,7 @@ default_eavesdrop_req(Context) ->
     [{<<"Eavesdrop-Mode">>, cb_context:req_value(Context, <<"mode">>, <<"listen">>)}
      ,{<<"Account-ID">>, cb_context:account_id(Context)}
      ,{<<"Endpoint-ID">>, cb_context:req_value(Context, <<"id">>)}
-     ,{<<"Endpoint-Timeout">>, kz_util:to_integer(cb_context:req_value(Context, <<"timeout">>, 20))}
+     ,{<<"Endpoint-Timeout">>, kz_term:to_integer(cb_context:req_value(Context, <<"timeout">>, 20))}
      ,{<<"Outbound-Caller-ID-Name">>, cb_context:req_value(Context, <<"caller_id_name">>)}
      ,{<<"Outbound-Caller-ID-Number">>, cb_context:req_value(Context, <<"caller_id_number">>)}
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -684,7 +684,7 @@ fetch_all_current_queue_stats(Context) ->
     fetch_from_amqp(Context, Req).
 
 format_stats(Context, Resp) ->
-    Stats = kz_json:from_list([{<<"current_timestamp">>, kz_util:current_tstamp()}
+    Stats = kz_json:from_list([{<<"current_timestamp">>, kz_time:current_tstamp()}
                                ,{<<"stats">>,
                                  kz_doc:public_fields(
                                    kz_json:get_value(<<"Handled">>, Resp, []) ++
@@ -701,13 +701,13 @@ format_stats(Context, Resp) ->
 fetch_ranged_queue_stats(Context, StartRange) ->
     MaxRange = kapps_config:get_integer(<<"acdc">>, <<"archive_window_s">>, 3600),
 
-    Now = kz_util:current_tstamp(),
+    Now = kz_time:current_tstamp(),
     Past = Now - MaxRange,
 
-    To = kz_util:to_integer(cb_context:req_value(Context, <<"end_range">>, Now)),
+    To = kz_term:to_integer(cb_context:req_value(Context, <<"end_range">>, Now)),
     MaxFrom = To - MaxRange,
 
-    case kz_util:to_integer(StartRange) of
+    case kz_term:to_integer(StartRange) of
         F when F > To ->
             %% start_range is larger than end_range
             cb_context:add_validation_error(
@@ -730,7 +730,7 @@ fetch_ranged_queue_stats(Context, StartRange) ->
     end.
 
 fetch_ranged_queue_stats(Context, From, To, 'true') ->
-    lager:debug("ranged query from ~b to ~b(~b) of current stats (now ~b)", [From, To, To-From, kz_util:current_tstamp()]),
+    lager:debug("ranged query from ~b to ~b(~b) of current stats (now ~b)", [From, To, To-From, kz_time:current_tstamp()]),
     Req = props:filter_undefined(
             [{<<"Account-ID">>, cb_context:account_id(Context)}
              ,{<<"Status">>, cb_context:req_value(Context, <<"status">>)}

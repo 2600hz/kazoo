@@ -121,7 +121,7 @@ dst_ip(#ci_chunk{}=Chunk, Val) ->
 
 -spec parser(chunk(), atom()) -> chunk().
 parser(#ci_chunk{}=Chunk, Parser) ->
-    Chunk#ci_chunk{parser = kz_util:to_binary(Parser)}.
+    Chunk#ci_chunk{parser = kz_term:to_binary(Parser)}.
 -spec parser(chunk()) -> api_binary().
 ?GETTER(parser).
 
@@ -140,7 +140,7 @@ to_json(Chunk) ->
     kz_json:from_list(
       [{<<"call-id">>, call_id(Chunk)}
        ,{<<"timestamp">>, timestamp(Chunk)}
-       ,{<<"ref_timestamp">>, kz_util:to_binary(ref_timestamp(Chunk))}
+       ,{<<"ref_timestamp">>, kz_term:to_binary(ref_timestamp(Chunk))}
        ,{<<"label">>, label(Chunk)}
        ,{<<"raw">>, data(Chunk)}
        ,{<<"src">>, src(Chunk)}
@@ -169,17 +169,17 @@ from_json(JObj) ->
 
 -spec src(chunk() | ne_binary()) -> ne_binary() | {ne_binary(), pos_integer()}.
 src(#ci_chunk{src_ip = Ip, src_port = Port}) ->
-    <<Ip/binary, ":", (kz_util:to_binary(Port))/binary>>;
+    <<Ip/binary, ":", (kz_term:to_binary(Port))/binary>>;
 src(Bin = <<_/binary>>) ->
     [IP, Port] = binary:split(Bin, <<":">>),
-    {IP, kz_util:to_integer(Port)}.
+    {IP, kz_term:to_integer(Port)}.
 
 -spec dst(chunk() | ne_binary()) -> ne_binary() | {ne_binary(), pos_integer()}.
 dst(#ci_chunk{dst_ip = Ip, dst_port = Port}) ->
-    <<Ip/binary, ":", (kz_util:to_binary(Port))/binary>>;
+    <<Ip/binary, ":", (kz_term:to_binary(Port))/binary>>;
 dst(Bin = <<_/binary>>) ->
     [IP, Port] = binary:split(Bin, <<":">>),
-    {IP, kz_util:to_integer(Port)}.
+    {IP, kz_term:to_integer(Port)}.
 
 -spec is_chunk(any()) -> boolean().
 is_chunk(#ci_chunk{}) -> 'true';

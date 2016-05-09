@@ -40,9 +40,9 @@ add_broker(Broker) ->
     add_broker(Broker, 'local').
 
 add_broker(Broker, Zone) when not is_binary(Broker) ->
-    add_broker(kz_util:to_binary(Broker), Zone);
+    add_broker(kz_term:to_binary(Broker), Zone);
 add_broker(Broker, Zone) when not is_atom(Zone) ->
-    add_broker(Broker, kz_util:to_atom(Zone, 'true'));
+    add_broker(Broker, kz_term:to_atom(Zone, 'true'));
 add_broker(Broker, Zone) ->
     case kz_amqp_connections:new(Broker, Zone) of
         {'error', 'exists'} ->
@@ -68,7 +68,7 @@ add_broker(Broker, Zone) ->
 %% @end
 %%--------------------------------------------------------------------
 remove_broker(Broker) when not is_binary(Broker) ->
-    remove_broker(kz_util:to_binary(Broker));
+    remove_broker(kz_term:to_binary(Broker));
 remove_broker(Broker) ->
    kz_amqp_connections:remove(Broker).
 
@@ -82,9 +82,9 @@ add_connection(Broker) ->
     add_connection(Broker, 'local').
 
 add_connection(Broker, Zone) when not is_binary(Broker) ->
-    add_connection(kz_util:to_binary(Broker), Zone);
+    add_connection(kz_term:to_binary(Broker), Zone);
 add_connection(Broker, Zone) when not is_atom(Zone) ->
-    add_connection(Broker, kz_util:to_atom(Zone, 'true'));
+    add_connection(Broker, kz_term:to_atom(Zone, 'true'));
 add_connection(Broker, Zone) ->
     case kz_amqp_connections:add(Broker, Zone) of
         {'error', Reason} ->
@@ -380,7 +380,7 @@ channel_summary({[#kz_amqp_assignment{}=Assignment], Continuation}) ->
     channel_summary(ets:match_object(Continuation)).
 
 channel_summary_age('undefined') -> 0;
-channel_summary_age(Timestamp) -> kz_util:elapsed_s(Timestamp).
+channel_summary_age(Timestamp) -> kz_time:elapsed_s(Timestamp).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -404,14 +404,14 @@ consumer_details(ProcessUpper) ->
     consumer_details(<<"0">>, ProcessUpper, <<"0">>).
 
 consumer_details(NodeNumber, ProcessUpper, ProcessLower) when not is_binary(NodeNumber) ->
-    consumer_details(kz_util:to_binary(NodeNumber), ProcessUpper, ProcessLower);
+    consumer_details(kz_term:to_binary(NodeNumber), ProcessUpper, ProcessLower);
 consumer_details(NodeNumber, ProcessUpper, ProcessLower) when not is_binary(ProcessUpper) ->
-    consumer_details(NodeNumber, kz_util:to_binary(ProcessUpper), ProcessLower);
+    consumer_details(NodeNumber, kz_term:to_binary(ProcessUpper), ProcessLower);
 consumer_details(NodeNumber, ProcessUpper, ProcessLower) when not is_binary(ProcessLower) ->
-    consumer_details(NodeNumber, ProcessUpper, kz_util:to_binary(ProcessLower));
+    consumer_details(NodeNumber, ProcessUpper, kz_term:to_binary(ProcessLower));
 consumer_details(NodeNumber, ProcessUpper, ProcessLower) ->
     Pid = list_to_pid(
-            kz_util:to_list(
+            kz_term:to_list(
               <<"<", NodeNumber/binary
                 ,".", ProcessUpper/binary
                 ,".", ProcessLower/binary

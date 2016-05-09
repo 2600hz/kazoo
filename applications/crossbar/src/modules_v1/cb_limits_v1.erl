@@ -85,7 +85,7 @@ process_billing(Context, [{<<"limits">>, _}|_], _Verb) ->
             )
     catch
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end;
 process_billing(Context, _Nouns, _Verb) -> Context.
 
@@ -93,7 +93,7 @@ process_billing(Context, _Nouns, _Verb) -> Context.
 is_allowed(Context) ->
     AccountId = cb_context:account_id(Context),
     AuthAccountId = cb_context:auth_account_id(Context),
-    IsSystemAdmin = kz_util:is_system_admin(AuthAccountId),
+    IsSystemAdmin = kz_accounts:is_system_admin(AuthAccountId),
     {'ok', MasterAccount} = kapps_util:get_master_account_id(),
     case kz_services:find_reseller_id(AccountId) of
         AuthAccountId ->

@@ -368,21 +368,21 @@ not_found() ->
 
 -spec route_resp_log_winning_node() -> xml_el().
 route_resp_log_winning_node() ->
-    action_el(<<"log">>, [<<"NOTICE log|${uuid}|", (kz_util:to_binary(node()))/binary, " won call control">>]).
+    action_el(<<"log">>, [<<"NOTICE log|${uuid}|", (kz_term:to_binary(node()))/binary, " won call control">>]).
 
 route_resp_set_winning_node() ->
-    action_el(<<"export">>, [?SET_CCV(<<"Ecallmgr-Node">>, (kz_util:to_binary(node())))]).
+    action_el(<<"export">>, [?SET_CCV(<<"Ecallmgr-Node">>, (kz_term:to_binary(node())))]).
 
 -spec route_resp_ringback(kz_json:object()) -> xml_el().
 route_resp_ringback(JObj) ->
     case kz_json:get_value(<<"Ringback-Media">>, JObj) of
         'undefined' ->
             {'ok', RBSetting} = ecallmgr_util:get_setting(<<"default_ringback">>, <<"%(2000,4000,440,480)">>),
-            action_el(<<"set">>, <<"ringback=", (kz_util:to_binary(RBSetting))/binary>>);
+            action_el(<<"set">>, <<"ringback=", (kz_term:to_binary(RBSetting))/binary>>);
         Media ->
             MsgId = kz_json:get_value(<<"Msg-ID">>, JObj),
             Stream = ecallmgr_util:media_path(Media, 'extant', MsgId, JObj),
-            action_el(<<"set">>, <<"ringback=", (kz_util:to_binary(Stream))/binary>>)
+            action_el(<<"set">>, <<"ringback=", (kz_term:to_binary(Stream))/binary>>)
     end.
 
 -spec route_resp_ccvs(kz_json:object()) -> xml_els().
@@ -394,21 +394,21 @@ route_resp_ccvs(JObj) ->
 
 -spec route_ccvs_list(kz_proplist()) -> ne_binary().
 route_ccvs_list(CCVs) ->
-    L = [kz_util:to_list(ecallmgr_util:get_fs_kv(K, V))
+    L = [kz_term:to_list(ecallmgr_util:get_fs_kv(K, V))
          || {K, V} <- CCVs
         ],
-    <<"^^;", (kz_util:to_binary(string:join(L, ";")))/binary>>.
+    <<"^^;", (kz_term:to_binary(string:join(L, ";")))/binary>>.
 
 -spec route_resp_transfer_ringback(kz_json:object()) -> xml_el().
 route_resp_transfer_ringback(JObj) ->
     case kz_json:get_value(<<"Transfer-Media">>, JObj) of
         'undefined' ->
             {'ok', RBSetting} = ecallmgr_util:get_setting(<<"default_ringback">>, <<"%(2000,4000,440,480)">>),
-            action_el(<<"set">>, <<"transfer_ringback=", (kz_util:to_binary(RBSetting))/binary>>);
+            action_el(<<"set">>, <<"transfer_ringback=", (kz_term:to_binary(RBSetting))/binary>>);
         Media ->
             MsgId = kz_json:get_value(<<"Msg-ID">>, JObj),
             Stream = ecallmgr_util:media_path(Media, 'extant', MsgId, JObj),
-            action_el(<<"set">>, <<"transfer_ringback=", (kz_util:to_binary(Stream))/binary>>)
+            action_el(<<"set">>, <<"transfer_ringback=", (kz_term:to_binary(Stream))/binary>>)
     end.
 
 -spec route_resp_pre_park_action(kz_json:object()) -> 'undefined' | xml_el().
@@ -435,13 +435,13 @@ check_dtmf_type(Props) ->
 
 -spec get_leg_vars(kz_json:object() | kz_proplist()) -> iolist().
 get_leg_vars([_|_]=Prop) ->
-    ["[", string:join([kz_util:to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], Prop)], ","), "]"];
+    ["[", string:join([kz_term:to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], Prop)], ","), "]"];
 get_leg_vars(JObj) -> get_leg_vars(kz_json:to_proplist(JObj)).
 
 -spec get_channel_vars(kz_json:object() | kz_proplist()) -> iolist().
 get_channel_vars([_|_]=Prop) ->
     P = Prop ++ [{<<"Overwrite-Channel-Vars">>, <<"true">>}],
-    ["{", string:join([kz_util:to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], P)], ","), "}"];
+    ["{", string:join([kz_term:to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], P)], ","), "}"];
 get_channel_vars(JObj) -> get_channel_vars(kz_json:to_proplist(JObj)).
 
 -spec get_channel_vars({binary(), binary() | kz_json:object()}, ne_binaries()) -> iolist().
@@ -452,13 +452,13 @@ get_channel_vars({<<"Custom-SIP-Headers">>, SIPJObj}, Vars) ->
     kz_json:foldl(fun sip_headers_fold/3, Vars, SIPJObj);
 get_channel_vars({<<"To-User">>, Username}, Vars) ->
     [list_to_binary([?CHANNEL_VAR_PREFIX, "Username"
-                     ,"='", kz_util:to_list(Username), "'"
+                     ,"='", kz_term:to_list(Username), "'"
                     ])
      | Vars
     ];
 get_channel_vars({<<"To-Realm">>, Realm}, Vars) ->
     [list_to_binary([?CHANNEL_VAR_PREFIX, "Realm"
-                     ,"='", kz_util:to_list(Realm), "'"
+                     ,"='", kz_term:to_list(Realm), "'"
                     ])
      | Vars
     ];
@@ -479,16 +479,16 @@ get_channel_vars({<<"origination_uuid">> = K, UUID}, Vars) ->
 
 get_channel_vars({<<"Hold-Media">>, Media}, Vars) ->
     [list_to_binary(["hold_music="
-                     ,kz_util:to_list(ecallmgr_util:media_path(Media, 'extant', get('callid'), kz_json:new()))
+                     ,kz_term:to_list(ecallmgr_util:media_path(Media, 'extant', get('callid'), kz_json:new()))
                     ])
      | Vars];
 
 get_channel_vars({<<"Codecs">>, []}, Vars) ->
     Vars;
 get_channel_vars({<<"Codecs">>, Cs}, Vars) ->
-    Codecs = [kz_util:to_list(codec_mappings(C))
+    Codecs = [kz_term:to_list(codec_mappings(C))
               || C <- Cs,
-                 not kz_util:is_empty(C)
+                 not kz_term:is_empty(C)
              ],
     CodecStr = string:join(Codecs, ":"),
     [list_to_binary(["absolute_codec_string='^^:", CodecStr, "'"])
@@ -497,10 +497,10 @@ get_channel_vars({<<"Codecs">>, Cs}, Vars) ->
 
 %% SPECIAL CASE: Timeout must be larger than zero
 get_channel_vars({<<"Timeout">>, V}, Vars) ->
-    case kz_util:to_integer(V) of
+    case kz_term:to_integer(V) of
         TO when TO > 0 ->
-            [<<"call_timeout=", (kz_util:to_binary(TO))/binary>>
-             ,<<"originate_timeout=", (kz_util:to_binary(TO))/binary>>
+            [<<"call_timeout=", (kz_term:to_binary(TO))/binary>>
+             ,<<"originate_timeout=", (kz_term:to_binary(TO))/binary>>
              | Vars
             ];
         _Else -> Vars
@@ -517,7 +517,7 @@ get_channel_vars({<<"Enable-T38-Gateway">>, Direction}, Vars) ->
 
 get_channel_vars({<<"Confirm-File">>, V}, Vars) ->
     [list_to_binary(["group_confirm_file='"
-        ,kz_util:to_list(ecallmgr_util:media_path(V, 'extant', get('callid'), kz_json:new()))
+        ,kz_term:to_list(ecallmgr_util:media_path(V, 'extant', get('callid'), kz_json:new()))
         ,"'"
     ]) | Vars];
 
@@ -551,12 +551,12 @@ get_channel_vars_fold(<<"Force-Fax">>, Direction, Acc) ->
 get_channel_vars_fold(K, V, Acc) ->
     case lists:keyfind(K, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' ->
-            [list_to_binary([?CHANNEL_VAR_PREFIX, kz_util:to_list(K)
-                             ,"='", kz_util:to_list(V), "'"])
+            [list_to_binary([?CHANNEL_VAR_PREFIX, kz_term:to_list(K)
+                             ,"='", kz_term:to_list(V), "'"])
              | Acc];
         {_, <<"group_confirm_file">>} ->
             [list_to_binary(["group_confirm_file='"
-                             ,kz_util:to_list(ecallmgr_util:media_path(V, 'extant', get('callid'), kz_json:new()))
+                             ,kz_term:to_list(ecallmgr_util:media_path(V, 'extant', get('callid'), kz_json:new()))
                              ,"'"
                             ])
              | Acc];
@@ -580,7 +580,7 @@ codec_mappings(Codec) ->
 encode_fs_val(Prefix, V) ->
     list_to_binary([Prefix, "='", escape(V, 39), "'"]). % 39 = '
 escape(V, C) ->
-    iolist_to_binary([encode(A, C) || <<A>> <= kz_util:to_binary(V)]).
+    iolist_to_binary([encode(A, C) || <<A>> <= kz_term:to_binary(V)]).
 encode(C, C) -> [$\\, C];
 encode(C, _) -> C.
 
@@ -667,7 +667,7 @@ network_list_el(ListsEls) ->
     #xmlElement{name='network-lists', content=ListsEls}.
 
 config_el(Name, Content) ->
-    config_el(Name, <<"configuration ", (kz_util:to_binary(Name))/binary, " built by kazoo">>, Content).
+    config_el(Name, <<"configuration ", (kz_term:to_binary(Name))/binary, " built by kazoo">>, Content).
 
 config_el(Name, Desc, #xmlElement{}=Content) ->
     config_el(Name, Desc, [Content]);
@@ -682,7 +682,7 @@ config_el(Name, Desc, Content) ->
 -spec channel_el(api_binary(), xml_el() | xml_els()) -> xml_el() | xml_els().
 channel_el('undefined', Content) -> Content;
 channel_el(UUID, Content) ->
-    channel_el(UUID, <<"channel ", (kz_util:to_binary(UUID))/binary, " tracked by kazoo">>, Content).
+    channel_el(UUID, <<"channel ", (kz_term:to_binary(UUID))/binary, " tracked by kazoo">>, Content).
 
 -spec channel_el(ne_binary(), ne_binary(), xml_el() | xml_els()) -> xml_el().
 channel_el(UUID, Desc, #xmlElement{}=Content) ->
@@ -784,7 +784,7 @@ param_el(Name, Value) ->
 
 -spec maybe_param_el(xml_attrib_value(), xml_attrib_value()) -> xml_el() | 'undefined'.
 maybe_param_el(Name, Value) ->
-    case kz_util:is_empty(Value) of
+    case kz_term:is_empty(Value) of
         'true' -> 'undefined';
         'false' -> param_el(Name, Value)
     end.
@@ -887,7 +887,7 @@ extension_el(Name, 'undefined', Children) ->
 extension_el(Name, Continue, Children) ->
     #xmlElement{name='extension'
                 ,attributes=[xml_attrib('name', Name)
-                             ,xml_attrib('continue', kz_util:is_true(Continue))
+                             ,xml_attrib('continue', kz_term:is_true(Continue))
                             ]
                 ,content=[Child || Child <- Children, Child =/= 'undefined']
                }.
@@ -928,7 +928,7 @@ action_el(App, Data, Inline) ->
     #xmlElement{name='action'
                 ,attributes=[xml_attrib('application', App)
                              ,xml_attrib('data', Data)
-							 ,xml_attrib('inline', kz_util:to_binary(Inline))
+							 ,xml_attrib('inline', kz_term:to_binary(Inline))
                             ]
                }.
 
@@ -951,7 +951,7 @@ prepend_child(#xmlElement{content=Contents}=El, Child) ->
 
 -spec xml_attrib(xml_attrib_name(), xml_attrib_value()) -> xml_attrib().
 xml_attrib(Name, Value) when is_atom(Name) ->
-    #xmlAttribute{name=Name, value=kz_util:to_list(Value)}.
+    #xmlAttribute{name=Name, value=kz_term:to_list(Value)}.
 
 sofia_profiles_el(JObj) ->
     Content = lists:foldl(fun(Key, Xml) ->
@@ -979,7 +979,7 @@ sofia_profile_el(JObj) ->
 sofia_settings_el(JObj) ->
     lists:foldl(fun(Key, Xml) ->
                         Value = kz_json:get_value(Key, JObj),
-                        Name = kz_util:to_lower_binary(Key),
+                        Name = kz_term:to_lower_binary(Key),
                         [#xmlElement{name='param'
                                      ,attributes=[xml_attrib('name', Name)
                                                   ,xml_attrib('value', Value)
@@ -1010,7 +1010,7 @@ sofia_gateway_el(JObj) ->
                         ];
                    (Key, Xml) ->
                         Value = kz_json:get_value(Key, JObj),
-                        Name = kz_util:to_lower_binary(Key),
+                        Name = kz_term:to_lower_binary(Key),
                         [#xmlElement{name='param'
                                      ,attributes=[xml_attrib('name', Name)
                                                   ,xml_attrib('value', Value)
@@ -1045,15 +1045,15 @@ get_sofia_gateways_el(Xml) ->
     end.
 
 sofia_gateway_xml_to_json(Xml, JObj) ->
-    Id = kz_util:get_xml_value("/gateway/name/text()", Xml),
+    Id = kz_xml:value("/gateway/name/text()", Xml),
     InboundVars = xmerl_xpath:string("/gateway/inbound-variables/*", Xml),
     OutboundVars = xmerl_xpath:string("/gateway/outbound-variables/*", Xml),
-    Props = [{<<"Username">>, kz_util:get_xml_value("/gateway/username/text()", Xml)}
-             ,{<<"Password">>, kz_util:get_xml_value("/gateway/password/text()", Xml)}
-             ,{<<"Realm">>, kz_util:get_xml_value("/gateway/realm/text()", Xml)}
-             ,{<<"Proxy">>, kz_util:get_xml_value("/gateway/proxy/text()", Xml)}
-             ,{<<"From-Domain">>, kz_util:get_xml_value("/gateway/from/text()", Xml)}
-             ,{<<"Expire-Seconds">>, kz_util:get_xml_value("/gateway/expires/text()", Xml)}
+    Props = [{<<"Username">>, kz_xml:value("/gateway/username/text()", Xml)}
+             ,{<<"Password">>, kz_xml:value("/gateway/password/text()", Xml)}
+             ,{<<"Realm">>, kz_xml:value("/gateway/realm/text()", Xml)}
+             ,{<<"Proxy">>, kz_xml:value("/gateway/proxy/text()", Xml)}
+             ,{<<"From-Domain">>, kz_xml:value("/gateway/from/text()", Xml)}
+             ,{<<"Expire-Seconds">>, kz_xml:value("/gateway/expires/text()", Xml)}
              ,{<<"Inbound-Variables">>, sofia_gateway_vars_xml_to_json(InboundVars, kz_json:new())}
              ,{<<"Outbound-Variables">>, sofia_gateway_vars_xml_to_json(OutboundVars, kz_json:new())}
             ],
@@ -1065,6 +1065,6 @@ sofia_gateway_vars_xml_to_json(#xmlElement{}=Xml, JObj) ->
 sofia_gateway_vars_xml_to_json([], JObj) ->
     JObj;
 sofia_gateway_vars_xml_to_json([Var|Vars], JObj) ->
-    Key = kz_util:get_xml_value("/variable/@name", Var),
-    Value = kz_util:get_xml_value("/variable/@value", Var),
+    Key = kz_xml:value("/variable/@name", Var),
+    Value = kz_xml:value("/variable/@value", Var),
     sofia_gateway_vars_xml_to_json(Vars, kz_json:set_value(Key, Value, JObj)).

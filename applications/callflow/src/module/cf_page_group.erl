@@ -79,7 +79,7 @@ resolve_endpoint_ids([], EndpointIds, _) ->
 resolve_endpoint_ids([Member|Members], EndpointIds, Call) ->
     Id = kz_doc:id(Member),
     Type = kz_json:get_value(<<"endpoint_type">>, Member, <<"device">>),
-    case kz_util:is_empty(Id)
+    case kz_term:is_empty(Id)
         orelse lists:keymember(Id, 2, EndpointIds)
         orelse Type
     of

@@ -34,9 +34,9 @@ handle(Data, Call) ->
 
 -spec build_action(ne_binary(), ne_binary()) -> kz_json:object().
 build_action(<<"park">>, ShouldPark) ->
-    kz_json:from_list([{<<"Park-After-Pickup">>, kz_util:is_true(ShouldPark)}]);
+    kz_json:from_list([{<<"Park-After-Pickup">>, kz_term:is_true(ShouldPark)}]);
 build_action(<<"hangup">>, ShouldHangup) ->
-    kz_json:from_list([{<<"Hangup-After-Pickup">>, kz_util:is_true(ShouldHangup)}]);
+    kz_json:from_list([{<<"Hangup-After-Pickup">>, kz_term:is_true(ShouldHangup)}]);
 build_action(<<"transfer">>, ToExtension) when is_binary(ToExtension) ->
     kz_json:from_list([{<<"Transfer-After-Pickup">>, ToExtension}]);
 build_action(_Cmd, _Data) ->

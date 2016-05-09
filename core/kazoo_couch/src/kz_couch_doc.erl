@@ -117,7 +117,7 @@ do_ensure_saved(#db{}=Db, Doc, Opts) ->
                           ne_binary() |
                           couchbeam_error().
 do_fetch_rev(#db{}=Db, DocId) ->
-    case kz_util:is_empty(DocId) of
+    case kz_term:is_empty(DocId) of
         'true' -> {'error', 'empty_doc_id'};
         'false' -> ?RETRY_504(couchbeam:lookup_doc_rev(Db, DocId))
     end.
@@ -126,7 +126,7 @@ do_fetch_rev(#db{}=Db, DocId) ->
                           {'ok', kz_json:object()} |
                           couchbeam_error().
 do_fetch_doc(#db{}=Db, DocId, Options) ->
-    case kz_util:is_empty(DocId) of
+    case kz_term:is_empty(DocId) of
         'true' -> {'error', 'empty_doc_id'};
         'false' -> ?RETRY_504(couchbeam:open_doc(Db, DocId, Options))
     end.
@@ -233,10 +233,10 @@ copy_doc(#server{}=Conn, #kz_copy_doc{source_dbname = SourceDb
                                       ,dest_dbname='undefined'
                                      }=CopySpec, Options) ->
     copy_doc(Conn, CopySpec#kz_copy_doc{dest_dbname=SourceDb
-                                        ,dest_doc_id=kz_util:rand_hex_binary(16)
+                                        ,dest_doc_id=kz_term:rand_hex_binary(16)
                                        }, Options);
 copy_doc(#server{}=Conn, #kz_copy_doc{dest_doc_id='undefined'}=CopySpec, Options) ->
-    copy_doc(Conn, CopySpec#kz_copy_doc{dest_doc_id=kz_util:rand_hex_binary(16)}, Options);
+    copy_doc(Conn, CopySpec#kz_copy_doc{dest_doc_id=kz_term:rand_hex_binary(16)}, Options);
 copy_doc(#server{}=Conn, CopySpec, Options) ->
     SaveFun = default_copy_function(props:is_defined(?COPY_DOC_OVERRIDE_PROPERTY, Options)),
     copy_doc(Conn, CopySpec, SaveFun, props:delete(?COPY_DOC_OVERRIDE_PROPERTY, Options)).
@@ -283,7 +283,7 @@ copy_attachments(#server{}=Conn, CopySpec, {[JObj | JObjs], [Key | Keys]}) ->
     case kz_couch_attachments:fetch_attachment(Conn, SourceDbName, SourceDocId, Key) of
         {'ok', Contents} ->
             ContentType = kz_json:get_value([<<"content_type">>], JObj),
-            Opts = [{'headers', [{'content_type', kz_util:to_list(ContentType)}]}],
+            Opts = [{'headers', [{'content_type', kz_term:to_list(ContentType)}]}],
             case kz_couch_attachments:put_attachment(Conn, DestDbName, DestDocId, Key, Contents, Opts) of
                 {'ok', _AttachmentDoc} ->
                     copy_attachments(Conn, CopySpec, {JObjs, Keys});

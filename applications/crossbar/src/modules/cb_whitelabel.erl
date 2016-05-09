@@ -547,7 +547,7 @@ test_host(Host, HostConfig, DomainType, Options) ->
 -spec lookup(ne_binary(), ne_binary(), kz_network_utils:options()) ->
                     ne_binaries().
 lookup(Host, DomainType, Options) ->
-    Type = kz_util:to_atom(kz_util:to_lower_binary(DomainType)),
+    Type = kz_term:to_atom(kz_term:to_lower_binary(DomainType)),
     {'ok', Lookup} = kz_network_utils:lookup_dns(Host, Type, Options),
     lager:debug("lookup of ~s(~s): ~p", [Host, Type, Lookup]),
     format_lookup_results(Type, Lookup).
@@ -570,7 +570,7 @@ format_lookup_result(_, {_, _, _, _, _, _, _, _}=IP) ->
     kz_network_utils:iptuple_to_binary(IP);
 format_lookup_result(_Type, Value) ->
     lager:debug("attempt to convert ~s result to binary: ~p", [Value]),
-    kz_util:to_binary(Value).
+    kz_term:to_binary(Value).
 
 -spec test_network_options(cb_context:context()) -> kz_network_utils:options().
 test_network_options(Context) ->
@@ -634,7 +634,7 @@ delete(Context) ->
 -spec find_whitelabel(cb_context:context(), ne_binary()) ->
                              cb_context:context().
 find_whitelabel(Context, Domain) ->
-    ViewOptions = [{'key', kz_util:to_lower_binary(Domain)}],
+    ViewOptions = [{'key', kz_term:to_lower_binary(Domain)}],
     Context1 = crossbar_doc:load_view(?AGG_VIEW_WHITELABEL_DOMAIN
                                       ,ViewOptions
                                       ,cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB)
@@ -842,13 +842,13 @@ update_whitelabel_binary(AttachType, WhitelabelId, Context) ->
 -spec attachment_name(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
 attachment_name(Filename, CT) ->
     Generators = [fun(A) ->
-                          case kz_util:is_empty(A) of
-                              'true' -> kz_util:to_hex_binary(crypto:rand_bytes(16));
+                          case kz_term:is_empty(A) of
+                              'true' -> kz_term:to_hex_binary(crypto:rand_bytes(16));
                               'false' -> A
                           end
                   end
                   ,fun(A) ->
-                           case kz_util:is_empty(filename:extension(A)) of
+                           case kz_term:is_empty(filename:extension(A)) of
                                'false' -> A;
                                'true' ->
                                    <<A/binary, ".", (kz_mime:to_extension(CT))/binary>>
@@ -868,7 +868,7 @@ attachment_name(AttachType, Filename, CT) ->
 %%--------------------------------------------------------------------
 -spec is_domain_unique(ne_binary(), ne_binary()) -> boolean().
 is_domain_unique(AccountId, Domain) ->
-    ViewOptions = [{'key', kz_util:to_lower_binary(Domain)}],
+    ViewOptions = [{'key', kz_term:to_lower_binary(Domain)}],
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ?AGG_VIEW_WHITELABEL_DOMAIN, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [JObj]} ->

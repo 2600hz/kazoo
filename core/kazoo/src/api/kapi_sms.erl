@@ -25,7 +25,7 @@
          ,publish_outbound/1, publish_outbound/2
         ]).
 
--define(LOWER(X), kz_util:to_lower_binary(X)).
+-define(LOWER(X), kz_term:to_lower_binary(X)).
 
 -define(SMS_EXCHANGE, <<"sms">>).
 -define(EVENT_CATEGORY, <<"message">>).
@@ -58,7 +58,7 @@
                         ,{<<"SIP-Headers">>, fun kz_json:is_json_object/1}
                         ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
                         ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
-                        ,{<<"Continue-On-Fail">>, fun kz_util:is_boolean/1}
+                        ,{<<"Continue-On-Fail">>, fun kz_term:is_boolean/1}
                         ,{<<"Message-ID">>, fun is_binary/1}
                         ,{<<"Body">>, fun is_binary/1}
                        ]).
@@ -442,6 +442,6 @@ publish_resume(Req, ContentType) ->
 -spec amqp_options(api_object()) -> kz_proplist().
 amqp_options('undefined') -> [];
 amqp_options(JObj) ->
-    [{kz_util:to_atom(K, 'true'), V}
+    [{kz_term:to_atom(K, 'true'), V}
      || {K, V} <- kz_json:to_proplist(JObj)
     ].

@@ -116,7 +116,7 @@ do_put_attachment(#db{}=Db, DocId, AName, Contents, Options) ->
                                {'ok', kz_json:object()} |
                                couchbeam_error().
 do_del_attachment(#db{}=Db, DocId, AName, Options) ->
-    Doc = kz_util:to_binary(http_uri:encode(kz_util:to_list(DocId))),
+    Doc = kz_term:to_binary(http_uri:encode(kz_term:to_list(DocId))),
     ?RETRY_504(couchbeam:delete_attachment(Db, Doc, AName, Options)).
 
 -spec maybe_add_revision(kz_proplist()) -> binary().

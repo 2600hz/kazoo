@@ -134,7 +134,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'fetch', 'chatplan', Something, Key, Value, Id, ['undefined' | Data]}, State) ->
-    MsgId = kz_util:rand_hex_binary(16),
+    MsgId = kz_term:rand_hex_binary(16),
     handle_info({'fetch', 'chatplan', Something, Key, Value, Id, [MsgId, {<<"Unique-ID">>, MsgId} | Data]}, State);
 handle_info({'fetch', _Section, _Something, _Key, _Value, Id, ['undefined' | _Data]}, #state{node=Node}=State) ->
     lager:warning("fetch unknown section from ~s: ~p So: ~p, K: ~p V: ~p Id: ~s"
@@ -224,7 +224,7 @@ add_message_missing_props(Props) ->
     props:insert_values(
       [{<<"Call-Direction">>, <<"outbound">>}
       ,{<<"Resource-Type">>,<<"sms">>}
-      ,{<<"Message-ID">>, kz_util:rand_hex_binary(16)}
+      ,{<<"Message-ID">>, kz_term:rand_hex_binary(16)}
       ,{<<"Caller-Caller-ID-Number">>, props:get_value(<<"from_user">>, Props)}
       ,{<<"Caller-Destination-Number">>, props:get_value(<<"to_user">>, Props)}
       ]
@@ -249,7 +249,7 @@ expand_message_var({K,V}, Ac) ->
 -spec process_route_req(atom(), atom(), ne_binary(), ne_binary(), kz_proplist()) -> 'ok'.
 process_route_req(Section, Node, FetchId, CallId, Props) ->
     kz_util:put_callid(CallId),
-    case kz_util:is_true(props:get_value(<<"variable_recovered">>, Props)) of
+    case kz_term:is_true(props:get_value(<<"variable_recovered">>, Props)) of
         'false' -> search_for_route(Section, Node, FetchId, CallId, ecallmgr_fs_loopback:filter(Node, CallId, Props));
         'true' ->
             lager:debug("recovered channel already exists on ~s, park it", [Node]),
@@ -309,7 +309,7 @@ reply_forbidden(Section, Node, FetchId) ->
                     [{<<"Method">>, <<"error">>}
                      ,{<<"Route-Error-Code">>, <<"403">>}
                      ,{<<"Route-Error-Message">>, <<"Incoming call barred">>}
-                     ,{<<"Fetch-Section">>, kz_util:to_binary(Section)}
+                     ,{<<"Fetch-Section">>, kz_term:to_binary(Section)}
                     ]
                     , []),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
@@ -321,7 +321,7 @@ reply_forbidden(Section, Node, FetchId) ->
 -spec reply_affirmative(atom(), atom(), ne_binary(), ne_binary(), kz_json:object(), kz_proplist()) -> 'ok'.
 reply_affirmative(Section, Node, FetchId, CallId, PreFetchJObj, Props) ->
     lager:info("received affirmative route response for request ~s", [FetchId]),
-    JObj = kz_json:set_value(<<"Fetch-Section">>, kz_util:to_binary(Section), PreFetchJObj),
+    JObj = kz_json:set_value(<<"Fetch-Section">>, kz_term:to_binary(Section), PreFetchJObj),
     {'ok', XML} = ecallmgr_fs_xml:route_resp_xml(JObj, Props),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
     case freeswitch:fetch_reply(Node, FetchId, Section, iolist_to_binary(XML), 3 * ?MILLISECONDS_IN_SECOND) of
@@ -389,7 +389,7 @@ route_req(CallId, FetchId, Props, Node) ->
      ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
      ,{<<"Body">>, get_body(Props) }
      ,{<<"SIP-Request-Host">>, props:get_value(<<"variable_sip_req_host">>, Props)}
-     ,{<<"Switch-Nodename">>, kz_util:to_binary(Node)}
+     ,{<<"Switch-Nodename">>, kz_term:to_binary(Node)}
      ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
      ,{<<"Switch-URL">>, SwitchURL}
      ,{<<"Switch-URI">>, SwitchURI}

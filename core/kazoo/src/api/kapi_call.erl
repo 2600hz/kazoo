@@ -64,7 +64,7 @@
 
 %% Call Events
 -define(CALL_EVENT_ROUTING_KEY(Event, CallId), <<"call."
-                                                 ,(kz_util:to_binary(Event))/binary
+                                                 ,(kz_term:to_binary(Event))/binary
                                                  ,"."
                                                  ,(amqp_util:encode(CallId))/binary
                                                >>).
@@ -205,7 +205,7 @@
 -define(QUERY_USER_CHANNELS_REQ_TYPES, [{<<"Usernames">>, fun erlang:is_list/1}
                                         ,{<<"Username">>, fun erlang:is_binary/1}
                                         ,{<<"Authorizing-IDs">>, fun erlang:is_list/1}
-                                        ,{<<"Active-Only">>, fun kz_util:is_boolean/1}
+                                        ,{<<"Active-Only">>, fun kz_term:is_boolean/1}
                                        ]).
 
 %% Query User Channels Resp
@@ -224,7 +224,7 @@
                                            ]).
 -define(QUERY_ACCOUNT_CHANNELS_REQ_TYPES, [{<<"Usernames">>, fun erlang:is_list/1}
                                            ,{<<"Username">>, fun erlang:is_binary/1}
-                                           ,{<<"Active-Only">>, fun kz_util:is_boolean/1}
+                                           ,{<<"Active-Only">>, fun kz_term:is_boolean/1}
                                           ]).
 
 %% Query Account Channels Resp
@@ -243,7 +243,7 @@
 -define(QUERY_CHANNELS_REQ_VALUES, [{<<"Event-Category">>, <<"call_event">>}
                                     ,{<<"Event-Name">>, <<"query_channels_req">>}
                                    ]).
--define(QUERY_CHANNELS_REQ_TYPES, [{<<"Active-Only">>, fun kz_util:is_boolean/1}]).
+-define(QUERY_CHANNELS_REQ_TYPES, [{<<"Active-Only">>, fun kz_term:is_boolean/1}]).
 
 %% Query Channels Resp
 -define(QUERY_CHANNELS_RESP_HEADERS, [<<"Channels">>]).

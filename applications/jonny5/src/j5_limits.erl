@@ -65,7 +65,7 @@
 %%--------------------------------------------------------------------
 -spec get(ne_binary()) -> limits().
 get(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
     case kz_cache:peek_local(?CACHE_NAME, ?LIMITS_KEY(AccountId)) of
         {'ok', Limits} -> Limits;
         {'error', 'not_found'} -> fetch(AccountId)
@@ -73,8 +73,8 @@ get(Account) ->
 
 -spec fetch(ne_binary()) -> limits().
 fetch(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
+    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
     JObj = get_limit_jobj(AccountDb),
     Limits = #limits{account_id = AccountId
                      ,account_db = AccountDb
@@ -336,7 +336,7 @@ get_default_limit_units(Key, Default) ->
 get_limit_boolean(Key, JObj, Default) ->
     case kz_json:get_value(<<"pvt_", Key/binary>>, JObj) of
         'undefined' -> get_public_limit_boolean(Key, JObj, Default);
-        Value -> kz_util:is_true(Value)
+        Value -> kz_term:is_true(Value)
     end.
 
 -spec get_public_limit_boolean(ne_binary(), kz_json:object(), boolean()) -> boolean().
@@ -345,7 +345,7 @@ get_limit_boolean(Key, JObj, Default) ->
 get_public_limit_boolean(<<"allow_prepay">> = Key, JObj, Default) ->
     case kz_json:get_value(Key, JObj) of
         'undefined' -> get_default_limit_boolean(Key, Default);
-        Value -> kz_util:is_true(Value)
+        Value -> kz_term:is_true(Value)
     end;
 get_public_limit_boolean(Key, _, Default) ->
     get_default_limit_boolean(Key, Default).
@@ -427,11 +427,11 @@ get_limit_jobj(AccountDb) ->
 
 -spec create_limit_jobj(ne_binary()) -> kz_json:object().
 create_limit_jobj(AccountDb) ->
-    TStamp = kz_util:current_tstamp(),
+    TStamp = kz_time:current_tstamp(),
     JObj = kz_json:from_list(
              [{<<"_id">>, <<"limits">>}
               ,{<<"pvt_account_db">>, AccountDb}
-              ,{<<"pvt_account_id">>, kz_util:format_account_id(AccountDb, 'raw')}
+              ,{<<"pvt_account_id">>, kz_accounts:format_account_id(AccountDb, 'raw')}
               ,{<<"pvt_type">>, <<"limits">>}
               ,{<<"pvt_created">>, TStamp}
               ,{<<"pvt_modified">>, TStamp}

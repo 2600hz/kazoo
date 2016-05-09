@@ -94,7 +94,7 @@ is_formatter_applicable(Formatter, Direction) ->
                                          kz_json:object().
 maybe_apply_formatters_fold(JObj, _JObjKeys, _MetaKey, []) -> JObj;
 maybe_apply_formatters_fold(JObj, JObjKeys, MetaKey, [_|_]=Formatters) ->
-    case props:get_value(kz_util:to_lower_binary(MetaKey), JObjKeys) of
+    case props:get_value(kz_term:to_lower_binary(MetaKey), JObjKeys) of
         'undefined' -> JObj;
         JObjKey -> maybe_apply_formatters(JObj, JObjKey, Formatters)
     end.

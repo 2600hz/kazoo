@@ -83,8 +83,8 @@ populate_phone_numbers(Context) ->
             ,{<<"pvt_account_id">>, AccountId}
             ,{<<"pvt_vsn">>, <<"1">>}
             ,{<<"pvt_type">>, ?KNM_PHONE_NUMBERS_DOC}
-            ,{<<"pvt_modified">>, kz_util:current_tstamp()}
-            ,{<<"pvt_created">>, kz_util:current_tstamp()}
+            ,{<<"pvt_modified">>, kz_time:current_tstamp()}
+            ,{<<"pvt_created">>, kz_time:current_tstamp()}
            ],
     _ = kz_datamgr:save_doc(AccountDb, kz_json:from_list(PVTs)),
     'ok'.
@@ -155,7 +155,7 @@ billing(Context, _, [{?KNM_PHONE_NUMBERS_DOC, _}|_]) ->
         'true' -> Context
     catch
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end;
 billing(Context, _, _) ->
     Context.
@@ -351,7 +351,7 @@ identify(Context, Number) ->
                 ,Context
             );
         {'error', E} ->
-            set_response({kz_util:to_binary(E), <<>>}, Number, Context);
+            set_response({kz_term:to_binary(E), <<>>}, Number, Context);
         {'ok', AccountId, Options} ->
             JObj = kz_json:set_values([{<<"account_id">>, AccountId}
                                        ,{<<"number">>, knm_number_options:number(Options)}
@@ -478,7 +478,7 @@ set_response({'error', Data}, _, Context) ->
             crossbar_util:response_400(<<"client error">>, Data, Context)
     end;
 set_response({Error, Reason}, _, Context) ->
-    crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context);
+    crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context);
 set_response(_Else, _, Context) ->
     lager:debug("unexpected response: ~p", [_Else]),
     cb_context:add_system_error('unspecified_fault', Context).

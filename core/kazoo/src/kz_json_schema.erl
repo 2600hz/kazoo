@@ -25,7 +25,7 @@ load(<<_/binary>> = Schema) ->
         {'error', _E}=E -> E;
         {'ok', JObj} -> {'ok', kz_json:insert_value(<<"id">>, Schema, JObj)}
     end;
-load(Schema) -> load(kz_util:to_binary(Schema)).
+load(Schema) -> load(kz_term:to_binary(Schema)).
 
 -spec flush() -> 'ok'.
 -spec flush(ne_binary()) -> 'ok'.

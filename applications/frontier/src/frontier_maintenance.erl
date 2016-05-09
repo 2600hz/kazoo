@@ -53,7 +53,7 @@ print_limits(Section, Rates) ->
 -spec update_system_default(ne_binary(), ne_binary()) -> 'ok'.
 update_system_default(Path, Value) ->
     Keys = binary:split(Path, <<".">>, ['global']),
-    NewRate = kz_util:to_integer(Value),
+    NewRate = kz_term:to_integer(Value),
     Rates = frontier_init:default_rate_limits(),
     OldRate = kz_json:get_value(Keys, Rates),
     io:format("Updating ~s from ~p to ~p~n", [Path, OldRate, NewRate]),

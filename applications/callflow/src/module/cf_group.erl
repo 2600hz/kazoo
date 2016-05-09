@@ -33,7 +33,7 @@ handle(Data, Call) ->
 attempt_group(Data, Call) ->
     GroupId = kz_doc:id(Data),
     AccountId = kapps_call:account_id(Call),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:open_cache_doc(AccountDb, GroupId) of
         {'ok', JObj} -> attempt_endpoints(JObj, Data, Call);
         {'error', _R} ->
@@ -44,16 +44,16 @@ attempt_group(Data, Call) ->
 -spec attempt_endpoints(kz_json:object(), kz_json:object(), kapps_call:call()) -> 'ok'.
 attempt_endpoints(JObj, Data, Call) ->
     Endpoints = build_endpoints(JObj, Call),
-    Timeout = kz_util:to_integer(
+    Timeout = kz_term:to_integer(
                 kz_json:find(<<"timeout">>, [JObj, Data], ?DEFAULT_TIMEOUT_S)
                ),
-    Strategy = kz_util:to_binary(
+    Strategy = kz_term:to_binary(
                  kz_json:find(<<"strategy">>, [JObj, Data], ?DIAL_METHOD_SIMUL)
                 ),
-    IgnoreForward = kz_util:to_binary(
+    IgnoreForward = kz_term:to_binary(
                       kz_json:find(<<"ignore_forward">>, [JObj, Data], <<"true">>)
                      ),
-    Ringback = kz_util:to_binary(
+    Ringback = kz_term:to_binary(
                  kz_json:find(<<"ringback">>, [JObj, Data])
                 ),
     lager:info("attempting group of ~b members with strategy ~s", [length(Endpoints), Strategy]),

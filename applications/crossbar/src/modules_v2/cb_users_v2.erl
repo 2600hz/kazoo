@@ -180,7 +180,7 @@ process_billing(Context, [{<<"users">>, _}|_], _Verb) ->
         'true' -> Context
     catch
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end;
 process_billing(Context, _Nouns, _Verb) -> Context.
 
@@ -518,7 +518,7 @@ prepare_username(UserId, Context) ->
     case kz_json:get_ne_value(<<"username">>, JObj) of
         'undefined' -> check_user_name(UserId, Context);
         Username ->
-            JObj1 = kz_json:set_value(<<"username">>, kz_util:to_lower_binary(Username), JObj),
+            JObj1 = kz_json:set_value(<<"username">>, kz_term:to_lower_binary(Username), JObj),
             check_user_name(UserId, cb_context:set_req_data(Context, JObj1))
     end.
 
@@ -605,7 +605,7 @@ maybe_validate_username(UserId, Context) ->
             CurrentJObj ->
                 kz_json:get_ne_value(<<"username">>, CurrentJObj, NewUsername)
         end,
-    case kz_util:is_empty(NewUsername)
+    case kz_term:is_empty(NewUsername)
         orelse CurrentUsername =:= NewUsername
         orelse username_doc_id(NewUsername, Context)
     of
@@ -685,7 +685,7 @@ username_doc_id(Username, Context) ->
     username_doc_id(Username, Context, cb_context:account_db(Context)).
 username_doc_id(_, _, 'undefined') -> 'undefined';
 username_doc_id(Username, Context, _AccountDb) ->
-    Username = kz_util:to_lower_binary(Username),
+    Username = kz_term:to_lower_binary(Username),
     Context1 = crossbar_doc:load_view(?LIST_BY_USERNAME, [{'key', Username}], Context),
     case cb_context:resp_status(Context1) =:= 'success'
         andalso cb_context:doc(Context1)

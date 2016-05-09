@@ -62,7 +62,7 @@
 
 -spec get_db(ne_binary()) -> ne_binary().
 get_db(AccountId) ->
-    kz_util:format_account_id(AccountId, 'encoded').
+    kz_accounts:format_account_id(AccountId, 'encoded').
 
 -spec get_db(ne_binary(), kazoo_data:docid() | kz_json:object()) -> ne_binary().
 get_db(AccountId, {_, ?MATCH_MODB_PREFIX(Year, Month, _)}) ->
@@ -76,7 +76,7 @@ get_db(AccountId, _DocId) ->
 
 -spec get_db(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
 get_db(AccountId, Year, Month) ->
-    kazoo_modb:get_modb(AccountId, kz_util:to_integer(Year), kz_util:to_integer(Month)).
+    kazoo_modb:get_modb(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -125,10 +125,10 @@ create_message_doc(AttachmentName, BoxNum, Call, Timezone, Props) ->
     {Year, Month, _} = erlang:date(),
     Db = kazoo_modb:get_modb(kapps_call:account_id(Call), Year, Month),
 
-    MediaId = <<(kz_util:to_binary(Year))/binary
-                ,(kz_util:pad_month(Month))/binary
+    MediaId = <<(kz_term:to_binary(Year))/binary
+                ,(kz_time:pad_month(Month))/binary
                 ,"-"
-                ,(kz_util:rand_hex_binary(16))/binary
+                ,(kz_term:rand_hex_binary(16))/binary
               >>,
     Doc = kzd_box_message:new(Db, MediaId, AttachmentName, BoxNum, Timezone, Props),
     {'ok', JObj} = kz_datamgr:save_doc(Db, Doc),
@@ -317,7 +317,7 @@ maybe_include_messages(_AccountId, _BoxId, JObj, _) ->
 %%--------------------------------------------------------------------
 -spec vmbox_summary(ne_binary()) -> db_ret().
 vmbox_summary(AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:get_results(AccountDb, ?BOX_MESSAGES_CB_LIST, []) of
         {'ok', JObjs} ->
             Res = [kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs],
@@ -463,10 +463,10 @@ move_to_modb(AccountId, DocId, JObj, Funs) ->
     FromDb = get_db(AccountId),
     FromId = kz_doc:id(JObj),
     ToDb = kazoo_modb:get_modb(AccountId, Year, Month),
-    ToId = <<(kz_util:to_binary(Year))/binary
-              ,(kz_util:pad_month(Month))/binary
+    ToId = <<(kz_term:to_binary(Year))/binary
+              ,(kz_time:pad_month(Month))/binary
               ,"-"
-              ,(kz_util:rand_hex_binary(16))/binary
+              ,(kz_term:rand_hex_binary(16))/binary
            >>,
 
     TransformFuns = [fun(DestDoc) -> kzd_box_message:set_metadata(kzd_box_message:metadata(JObj), DestDoc) end
@@ -521,7 +521,7 @@ count(AccountId, BoxId) ->
     New + Saved.
 
 count_by_owner(?MATCH_ACCOUNT_ENCODED(_)=AccountDb, OwnerId) ->
-    AccountId = kz_util:format_account_id(AccountDb),
+    AccountId = kz_accounts:format_account_id(AccountDb),
     count_by_owner(AccountId, OwnerId);
 count_by_owner(AccountId, OwnerId) ->
     ViewOpts = [{'key', [OwnerId, <<"vmbox">>]}],
@@ -684,7 +684,7 @@ results_from_modbs(AccountId, View, [ViewOpts|ViewOptsList], Acc) ->
 
 -spec get_range_view(ne_binary(), kz_proplist()) -> kz_proplists().
 get_range_view(AccountId, ViewOpts) ->
-    To = kz_util:current_tstamp(),
+    To = kz_time:current_tstamp(),
     From = To - ?RETENTION_DAYS(?RETENTION_DURATION),
 
     [ begin
@@ -827,15 +827,15 @@ is_valid_transcription(_Res, _Txt, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec new_timestamp() -> gregorian_seconds().
-new_timestamp() -> kz_util:current_tstamp().
+new_timestamp() -> kz_time:current_tstamp().
 
 -spec get_caller_id_name(kapps_call:call()) -> ne_binary().
 get_caller_id_name(Call) ->
     CallerIdName = kapps_call:caller_id_name(Call),
     case kapps_call:kvs_fetch('prepend_cid_name', Call) of
         'undefined' -> CallerIdName;
-        Prepend -> Pre = <<(kz_util:to_binary(Prepend))/binary, CallerIdName/binary>>,
-                   kz_util:truncate_right_binary(Pre,
+        Prepend -> Pre = <<(kz_term:to_binary(Prepend))/binary, CallerIdName/binary>>,
+                   kz_term:truncate_right_binary(Pre,
                            kzd_schema_caller_id:external_name_max_length())
     end.
 
@@ -844,8 +844,8 @@ get_caller_id_number(Call) ->
     CallerIdNumber = kapps_call:caller_id_number(Call),
     case kapps_call:kvs_fetch('prepend_cid_number', Call) of
         'undefined' -> CallerIdNumber;
-        Prepend -> Pre = <<(kz_util:to_binary(Prepend))/binary, CallerIdNumber/binary>>,
-                   kz_util:truncate_right_binary(Pre,
+        Prepend -> Pre = <<(kz_term:to_binary(Prepend))/binary, CallerIdNumber/binary>>,
+                   kz_term:truncate_right_binary(Pre,
                            kzd_schema_caller_id:external_name_max_length())
     end.
 
@@ -891,7 +891,7 @@ maybe_migrate_to_modb(AccountId, Id) ->
 %%--------------------------------------------------------------------
 -spec cleanup_heard_voicemail(ne_binary()) -> 'ok'.
 cleanup_heard_voicemail(AccountId) ->
-    Today = kz_util:current_tstamp(),
+    Today = kz_time:current_tstamp(),
     Duration = ?RETENTION_DURATION,
     DurationS = ?RETENTION_DAYS(Duration),
     lager:debug("retaining messages for ~p days, delete those older for ~s", [Duration, AccountId]),

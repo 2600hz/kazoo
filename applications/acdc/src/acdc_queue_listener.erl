@@ -204,7 +204,7 @@ init([WorkerSup, MgrPid, AccountId, QueueId]) ->
 
     lager:debug("starting queue ~s", [QueueId]),
 
-    {'ok', QueueJObj} = kz_datamgr:open_cache_doc(kz_util:format_account_id(AccountId, 'encoded')
+    {'ok', QueueJObj} = kz_datamgr:open_cache_doc(kz_accounts:format_account_id(AccountId, 'encoded')
                                                  ,QueueId
                                                 ),
 
@@ -615,7 +615,7 @@ publish_sync_resp(Strategy, StrategyState, ReqJObj, Id) ->
              [{<<"Account-ID">>, kz_json:get_value(<<"Account-ID">>, ReqJObj)}
               ,{<<"Queue-ID">>, kz_json:get_value(<<"Queue-ID">>, ReqJObj)}
               ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, ReqJObj)}
-              ,{<<"Current-Strategy">>, kz_util:to_binary(Strategy)}
+              ,{<<"Current-Strategy">>, kz_term:to_binary(Strategy)}
               ,{<<"Strategy-State">>, StrategyState}
               ,{<<"Process-ID">>, Id}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)

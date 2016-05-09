@@ -30,7 +30,7 @@ hangups_summary() ->
     print_stats(Hangups).
 
 hangup_summary(HangupCause) ->
-    HC = kz_util:to_upper_binary(HangupCause),
+    HC = kz_term:to_upper_binary(HangupCause),
     io:format("checking hangup summary for ~s~n", [HC]),
     Hangups = [{Name, hangups_query_listener:meter_resp(Name)}
                    || Name <- folsom_metrics:get_metrics(),
@@ -39,7 +39,7 @@ hangup_summary(HangupCause) ->
     print_stats(Hangups).
 
 hangup_summary(HangupCause, AccountId) ->
-    HC = kz_util:to_upper_binary(HangupCause),
+    HC = kz_term:to_upper_binary(HangupCause),
     io:format("checking hangup summary for ~s.~s~n", [HC, AccountId]),
     Hangups = [{Name, hangups_query_listener:meter_resp(Name)}
                    || Name <- folsom_metrics:get_metrics(),
@@ -110,7 +110,7 @@ activate_monitors(AccountId, ThresholdOneMinute) ->
 %% @public
 -spec set_monitor_threshold(text(), text()) -> boolean().
 set_monitor_threshold(HangupCause, TOM) ->
-    ThresholdOnMinute = kz_util:to_float(TOM),
+    ThresholdOnMinute = kz_term:to_float(TOM),
     update_monitor_thresholds(HangupCause, ThresholdOnMinute)
         andalso set_monitor_threshold(HangupCause, <<"one">>, ThresholdOnMinute).
 
@@ -134,8 +134,8 @@ update_monitor_thresholds(HangupCause, ThresholdOnMinute) ->
 -spec set_monitor_threshold(ne_binary(), ne_binary(), float()) -> boolean().
 -spec set_monitor_threshold(ne_binary(), ne_binary(), float(), boolean()) -> boolean().
 set_monitor_threshold(HangupCause, ThresholdName, T) ->
-    Threshold = kz_util:to_float(T),
-    set_monitor_threshold(kz_util:to_upper_binary(HangupCause)
+    Threshold = kz_term:to_float(T),
+    set_monitor_threshold(kz_term:to_upper_binary(HangupCause)
                           ,ThresholdName
                           ,Threshold
                           ,is_valid_threshold_name(ThresholdName)

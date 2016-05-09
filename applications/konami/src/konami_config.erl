@@ -87,7 +87,7 @@ timeout(Account) ->
     case konami_doc(Account) of
         'undefined' -> timeout();
         KonamiDoc ->
-            get_attribute(KonamiDoc, <<"digit_timeout_ms">>, fun timeout/0, fun kz_util:to_integer/1)
+            get_attribute(KonamiDoc, <<"digit_timeout_ms">>, fun timeout/0, fun kz_term:to_integer/1)
     end.
 
 -spec listen_on() -> 'a' | 'b' | 'ab'.
@@ -128,7 +128,7 @@ konami_doc(Account) ->
         {'ok', JObj} -> kz_json:get_value(<<"metaflows">>, JObj);
         {'error', 'not_found'} -> 'undefined';
         {'error', _E} ->
-            AccountId = kz_util:format_account_id(Account, 'raw'),
+            AccountId = kz_accounts:format_account_id(Account, 'raw'),
             lager:debug("failed to open account(~s)'s konami doc: ~p", [AccountId, _E]),
             'undefined'
     end.

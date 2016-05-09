@@ -65,16 +65,16 @@ props_to_xml([{K, Attr, [{_, _}|_]=V}|T], Xml) ->
 props_to_xml([{K, Attr, [{_, _, _}|_]=V}|T], Xml) ->
     props_to_xml(T, [{K, Attr, props_to_xml(V, [])}|Xml]);
 props_to_xml([{K, Attr, V}|T], Xml) when is_boolean(V) ->
-    props_to_xml(T, [{K, [{'type', "boolean"}|Attr], [kz_util:to_list(V)]}|Xml]);
+    props_to_xml(T, [{K, [{'type', "boolean"}|Attr], [kz_term:to_list(V)]}|Xml]);
 props_to_xml([{K, Attr, V}|T], Xml) ->
-    props_to_xml(T, [{K, Attr, [kz_util:to_list(V)]}|Xml]);
+    props_to_xml(T, [{K, Attr, [kz_term:to_list(V)]}|Xml]);
 
 props_to_xml([{K, [{_, _}|_]=V}|T], Xml) ->
     props_to_xml(T, [{K, props_to_xml(V, [])}|Xml]);
 props_to_xml([{K, V}|T], Xml) when is_boolean(V) ->
-    props_to_xml(T, [{K, [{'type', "boolean"}], [kz_util:to_list(V)]}|Xml]);
+    props_to_xml(T, [{K, [{'type', "boolean"}], [kz_term:to_list(V)]}|Xml]);
 props_to_xml([{K, V}|T], Xml) ->
-    props_to_xml(T, [{K, [kz_util:to_list(V)]}|Xml]).
+    props_to_xml(T, [{K, [kz_term:to_list(V)]}|Xml]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -239,7 +239,7 @@ error_io_fault() ->
 %%--------------------------------------------------------------------
 -spec error_min_amount(number() | ne_binary()) -> no_return().
 error_min_amount(Amount) ->
-    Error = <<"Unable to process a transaction for less than $", (kz_util:to_binary(Amount))/binary>>,
+    Error = <<"Unable to process a transaction for less than $", (kz_term:to_binary(Amount))/binary>>,
     lager:debug("~s", [Error]),
     throw({'min_amount', kz_json:from_list([{<<"min_amount">>, Error}])}).
 
@@ -251,6 +251,6 @@ error_min_amount(Amount) ->
 %%--------------------------------------------------------------------
 -spec error_max_amount(number() | ne_binary()) -> no_return().
 error_max_amount(Amount) ->
-    Error = <<"Unable to process a transaction for more than $", (kz_util:to_binary(Amount))/binary>>,
+    Error = <<"Unable to process a transaction for more than $", (kz_term:to_binary(Amount))/binary>>,
     lager:debug("~s", [Error]),
     throw({'max_amount', kz_json:from_list([{<<"max_amount">>, Error}])}).

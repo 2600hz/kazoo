@@ -103,7 +103,7 @@ find_numbers(<<NPA:3/binary>>, Quantity, Options) ->
     {'ok', process_search_response(Result, Options)};
 
 find_numbers(Search, Quantity, Options) ->
-    NpaNxx = kz_util:truncate_right_binary(Search, 6),
+    NpaNxx = kz_term:truncate_right_binary(Search, 6),
     Params = [ "npaNxx=", binary_to_list(NpaNxx)
              , "&enableTNDetail=true&quantity=", integer_to_list(Quantity)
              ],
@@ -138,11 +138,11 @@ acquire_number(Number) ->
                       <<"+1", N/binary>> -> N;
                       N -> N
                   end,
-            ON = lists:flatten([?BW2_ORDER_NAME_PREFIX, "-", integer_to_list(kz_util:current_tstamp())]),
+            ON = lists:flatten([?BW2_ORDER_NAME_PREFIX, "-", integer_to_list(kz_time:current_tstamp())]),
             AuthBy = knm_phone_number:auth_by(PhoneNumber),
 
             Props = [{'Name', [ON]}
-                    ,{'CustomerOrderId', [kz_util:to_list(AuthBy)]}
+                    ,{'CustomerOrderId', [kz_term:to_list(AuthBy)]}
                     ,{'SiteId', [?BW2_SITE_ID]}
                     ,{'PeerId', [?BW2_SIP_PEER]}
                     ,{'ExistingTelephoneNumberOrderType',
@@ -153,7 +153,7 @@ acquire_number(Number) ->
 
             case api_post(url(["orders"]), Body) of
                 {'error', Reason} ->
-                    Error = <<"Unable to acquire number: ", (kz_util:to_binary(Reason))/binary>>,
+                    Error = <<"Unable to acquire number: ", (kz_term:to_binary(Reason))/binary>>,
                     knm_errors:by_carrier(?MODULE, Error, Number);
                 {'ok', Xml} ->
                     Response = xmerl_xpath:string("Order", Xml),
@@ -186,8 +186,8 @@ sites() ->
 
 -spec process_site(xml_el()) -> 'ok'.
 process_site(Site) ->
-    Id   = kz_util:get_xml_value("Site/Id/text()", Site),
-    Name = kz_util:get_xml_value("Site/Name/text()", Site),
+    Id   = kz_xml:value("Site/Id/text()", Site),
+    Name = kz_xml:value("Site/Name/text()", Site),
     io:format("Id: ~p Name: ~p~n", [Id, Name]).
 
 %% @public
@@ -201,8 +201,8 @@ peers(SiteId) ->
 
 -spec process_peer(xml_el()) -> 'ok'.
 process_peer(Peer) ->
-    Id   = kz_util:get_xml_value("SipPeer/PeerId/text()", Peer),
-    Name = kz_util:get_xml_value("SipPeer/PeerName/text()", Peer),
+    Id   = kz_xml:value("SipPeer/PeerId/text()", Peer),
+    Name = kz_xml:value("SipPeer/PeerName/text()", Peer),
     io:format("Id: ~p Name: ~p~n", [Id, Name]).
 
 %%% Internals
@@ -333,9 +333,9 @@ number_order_response_to_json([Xml]) ->
 number_order_response_to_json(Xml) ->
     kz_json:from_list(
       props:filter_empty(
-        [{<<"order_id">>, kz_util:get_xml_value("id/text()", Xml)}
-        ,{<<"order_name">>, kz_util:get_xml_value("Name/text()", Xml)}
-        ,{<<"number">>, kz_util:get_xml_value("TelephoneNumberList/TelephoneNumber/text()", Xml)}
+        [{<<"order_id">>, kz_xml:value("id/text()", Xml)}
+        ,{<<"order_name">>, kz_xml:value("Name/text()", Xml)}
+        ,{<<"number">>, kz_xml:value("TelephoneNumberList/TelephoneNumber/text()", Xml)}
         ])).
 
 %% @private
@@ -343,7 +343,7 @@ number_order_response_to_json(Xml) ->
 search_response_to_KNM([Xml], AccountId) ->
     search_response_to_KNM(Xml, AccountId);
 search_response_to_KNM(Xml, AccountId) ->
-    Num = kz_util:get_xml_value("//FullNumber/text()", Xml),
+    Num = kz_xml:value("//FullNumber/text()", Xml),
     JObj = kz_json:from_list(
              props:filter_empty(
                [{<<"number">>, Num}
@@ -356,7 +356,7 @@ search_response_to_KNM(Xml, AccountId) ->
 %% @private
 -spec tollfree_search_response_to_KNM(xml_el(), ne_binary()) -> knm_number:knm_number().
 tollfree_search_response_to_KNM(Xml, AccountId) ->
-    Num = kz_util:get_xml_value("//TelephoneNumber/text()", Xml),
+    Num = kz_xml:value("//TelephoneNumber/text()", Xml),
     {'ok', PhoneNumber} = knm_phone_number:newly_found(Num, ?MODULE, AccountId, kz_json:new()),
     knm_number:set_phone_number(knm_number:new(), PhoneNumber).
 
@@ -374,9 +374,9 @@ rate_center_to_json([Xml]) ->
 rate_center_to_json(Xml) ->
     kz_json:from_list(
       props:filter_empty(
-        [{<<"name">>, kz_util:get_xml_value("//RateCenter/text()", Xml)}
-        ,{<<"lata">>, kz_util:get_xml_value("//LATA/text()", Xml)}
-        ,{<<"state">>, kz_util:get_xml_value("//State/text()", Xml)}
+        [{<<"name">>, kz_xml:value("//RateCenter/text()", Xml)}
+        ,{<<"lata">>, kz_xml:value("//LATA/text()", Xml)}
+        ,{<<"state">>, kz_xml:value("//State/text()", Xml)}
         ])).
 
 %%--------------------------------------------------------------------
@@ -389,15 +389,15 @@ rate_center_to_json(Xml) ->
 -spec verify_response(xml_el()) -> {'ok', xml_el()} |
                                    {'error', any()}.
 verify_response(Xml) ->
-    case kz_util:get_xml_value("/*/status/text()", Xml) =:= <<"success">>
-        orelse kz_util:get_xml_value("//LoginResponse/LoginResult/text()", Xml) =/= 'undefined'
-        orelse kz_util:get_xml_value("//SearchTelephoneNumbersResponse/SearchTelephoneNumbersResult", Xml) =/= []
+    case kz_xml:value("/*/status/text()", Xml) =:= <<"success">>
+        orelse kz_xml:value("//LoginResponse/LoginResult/text()", Xml) =/= 'undefined'
+        orelse kz_xml:value("//SearchTelephoneNumbersResponse/SearchTelephoneNumbersResult", Xml) =/= []
     of
         'true' ->
             lager:debug("request was successful"),
             {'ok', Xml};
         'false' ->
-            Reason = kz_util:get_xml_value("/*/errors/error/message/text()", Xml),
+            Reason = kz_xml:value("/*/errors/error/message/text()", Xml),
             lager:debug("request failed: ~s", [Reason]),
             {'error', Reason}
     end.

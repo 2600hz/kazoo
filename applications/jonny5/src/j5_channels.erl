@@ -58,7 +58,7 @@
                   ,reseller_billing :: api_binary() | '$1' | '_'
                   ,reseller_allotment = 'false' :: boolean() | '_'
                   ,soft_limit = 'false' :: boolean() | '_'
-                  ,timestamp = kz_util:current_tstamp() :: pos_integer() | '_'
+                  ,timestamp = kz_time:current_tstamp() :: pos_integer() | '_'
                   ,answered_timestamp :: api_pos_integer() | '$1' | '_'
                   ,rate :: api_binary() | '_'
                   ,rate_increment :: api_binary() | '_'
@@ -600,7 +600,7 @@ handle_info(?HOOK_EVT(_, <<"CHANNEL_CREATE">>, JObj), State) ->
     {'noreply', State};
 handle_info(?HOOK_EVT(_, <<"CHANNEL_ANSWER">>, JObj), State) ->
     CallId = kz_json:get_value(<<"Call-ID">>, JObj),
-    Props = [{#channel.answered_timestamp, kz_util:current_tstamp()}],
+    Props = [{#channel.answered_timestamp, kz_time:current_tstamp()}],
     _ = ets:update_element(?TAB, CallId, Props),
     {'noreply', State};
 handle_info(?HOOK_EVT(_, <<"CHANNEL_DESTROY">>, JObj), State) ->
@@ -684,7 +684,7 @@ from_jobj(JObj) ->
              ,reseller_id = ResellerId
              ,reseller_billing = ResellerBilling
              ,reseller_allotment = is_allotment(ResellerBilling)
-             ,soft_limit = kz_util:is_true(SoftLimit)
+             ,soft_limit = kz_term:is_true(SoftLimit)
             }.
 
 -spec is_allotment(ne_binary()) -> boolean().
@@ -750,7 +750,7 @@ start_channel_sync_timer(State) ->
 
 -spec sum_allotment_consumed(non_neg_integer(), non_neg_integer(), non_neg_integers()) -> non_neg_integer().
 sum_allotment_consumed(CycleStart, Span, Matches) ->
-    sum_allotment_consumed(CycleStart, Span, kz_util:current_tstamp(), 0, Matches).
+    sum_allotment_consumed(CycleStart, Span, kz_time:current_tstamp(), 0, Matches).
 
 -spec sum_allotment_consumed(non_neg_integer(), non_neg_integer(), non_neg_integer(), non_neg_integer(), non_neg_integers()) -> non_neg_integer().
 sum_allotment_consumed(_, _, _, Seconds, []) -> Seconds;
@@ -778,7 +778,7 @@ call_cost(Channel) -> call_cost(Channel, 60).
 call_cost(#channel{answered_timestamp='undefined'}=Channel, Seconds) ->
     wht_util:call_cost(billing_jobj(Seconds, Channel));
 call_cost(#channel{answered_timestamp=Timestamp}=Channel, Seconds) ->
-    BillingSeconds = kz_util:current_tstamp() - Timestamp + Seconds,
+    BillingSeconds = kz_time:current_tstamp() - Timestamp + Seconds,
     wht_util:call_cost(billing_jobj(BillingSeconds, Channel)).
 
 -spec billing_jobj(non_neg_integer(), channel()) -> kz_json:object().

@@ -234,12 +234,12 @@ create_transaction(Number, Units) ->
     BillingId = fetch_billing_id(Number),
     PhoneNumber = knm_number:phone_number(Number),
     AccountId = knm_phone_number:assigned_to(PhoneNumber),
-    LedgerId = kz_util:format_account_id(BillingId, 'raw'),
+    LedgerId = kz_accounts:format_account_id(BillingId, 'raw'),
     Num = knm_phone_number:number(PhoneNumber),
 
     Routines = [fun(T) -> set_activation_reason(T, LedgerId, AccountId, <<"number">>) end
                 ,fun(T) -> kz_transaction:set_number(Num, T) end
-                ,fun(T) -> set_feature_description(T, kz_util:to_binary(Num)) end
+                ,fun(T) -> set_feature_description(T, kz_term:to_binary(Num)) end
                ],
     lager:debug("staging number activation charge $~p for ~s via billing account ~s"
                 ,[wht_util:units_to_dollars(Units), AccountId, LedgerId]
@@ -257,13 +257,13 @@ create_transaction(Number, Feature, Units) ->
     BillingId = fetch_billing_id(Number),
     PhoneNumber = knm_number:phone_number(Number),
     AccountId = knm_phone_number:assigned_to(PhoneNumber),
-    LedgerId = kz_util:format_account_id(BillingId, 'raw'),
+    LedgerId = kz_accounts:format_account_id(BillingId, 'raw'),
     Num = knm_phone_number:number(PhoneNumber),
 
     Routines = [fun(T) -> set_activation_reason(T, LedgerId, AccountId, <<"feature">>) end
                 ,fun(T) -> kz_transaction:set_feature(Feature, T) end
                 ,fun(T) -> kz_transaction:set_number(Num, T) end
-                ,fun(T) -> set_feature_description(T, kz_util:to_binary(Feature)) end
+                ,fun(T) -> set_feature_description(T, kz_term:to_binary(Feature)) end
                ],
     lager:debug("staging feature '~s' activation charge $~p for ~s via billing account ~s"
                 ,[Feature, wht_util:units_to_dollars(Units), AccountId, LedgerId]

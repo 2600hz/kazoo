@@ -334,7 +334,7 @@ all_whitespace(_) -> 'false'.
 -spec strip_truncating_pieces([ne_binary()]) -> [ne_binary()].
 strip_truncating_pieces(Data) ->
     [case re:run(Line, "(\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{6} \\[[A-Z]+\\] )") of
-         {'match', [{Offset,_}|_]} -> kz_util:truncate_right_binary(Line, Offset);
+         {'match', [{Offset,_}|_]} -> kz_term:truncate_right_binary(Line, Offset);
          'nomatch' -> Line
      end
      || Line <- Data

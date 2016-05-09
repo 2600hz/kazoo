@@ -213,7 +213,7 @@ is_actionable_resp(Prop) when is_list(Prop) ->
         <<"park">> -> 'true';
         <<"sms">> -> 'true';
         <<"error">> ->
-            kz_util:is_true(props:get_value(<<"Defer-Response">>, Prop));
+            kz_term:is_true(props:get_value(<<"Defer-Response">>, Prop));
         _ -> 'false'
     end;
 is_actionable_resp(JObj) ->

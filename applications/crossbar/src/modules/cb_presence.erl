@@ -106,12 +106,12 @@ validate_search(Context) ->
 
 -spec should_include_presentity(ne_binary()) -> boolean().
 should_include_presentity(AccountId) ->
-    kz_util:is_true(kapps_account_config:get_global(AccountId, ?MOD_CONFIG_CAT, ?PRESENTITY_CFG_KEY, 'false')).
+    kz_term:is_true(kapps_account_config:get_global(AccountId, ?MOD_CONFIG_CAT, ?PRESENTITY_CFG_KEY, 'false')).
 
 -spec maybe_include_presentities(cb_context:context()) -> list().
 maybe_include_presentities(Context) ->
     Default = should_include_presentity(cb_context:account_id(Context)),
-    case kz_util:is_true(cb_context:req_param(Context, ?PRESENTITY_KEY, Default)) of
+    case kz_term:is_true(cb_context:req_param(Context, ?PRESENTITY_KEY, Default)) of
         'true' -> [fun presentity_search_req/1];
         'false' -> []
     end.
@@ -368,7 +368,7 @@ maybe_load_thing(Context, ThingId) ->
 
 -spec is_reset_request(cb_context:context()) -> boolean().
 is_reset_request(Context) ->
-    kz_util:is_true(cb_context:req_value(Context, <<"reset">>)).
+    kz_term:is_true(cb_context:req_value(Context, <<"reset">>)).
 
 -spec reset_validation_error(cb_context:context()) -> cb_context:context().
 reset_validation_error(Context) ->

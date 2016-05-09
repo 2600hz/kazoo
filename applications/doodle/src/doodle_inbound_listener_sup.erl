@@ -112,6 +112,6 @@ connections_fold(K, V, Acc) ->
 connection_options('undefined') ->
     ?DEFAULT_EXCHANGE_OPTIONS;
 connection_options(JObj) ->
-    [{kz_util:to_atom(K, 'true'), V}
+    [{kz_term:to_atom(K, 'true'), V}
      || {K, V} <- kz_json:to_proplist(JObj)
     ].

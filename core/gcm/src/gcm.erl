@@ -25,7 +25,7 @@
 
 -spec start(atom(), any()) -> {ok, undefined | pid()} | {error, any()}.
 start(Name, Key) when is_binary(Key) ->
-    start(Name, kz_util:to_list(Key));
+    start(Name, kz_term:to_list(Key));
 start(Name, Key) ->
     gcm_sup:start_child(Name, Key).
 

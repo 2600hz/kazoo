@@ -24,7 +24,7 @@ flush() ->
     kz_cache:flush_local(?CACHE_NAME).
 
 flush(Account) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kz_accounts:format_account_id(Account),
 
     Flush = kz_cache:filter_local(?CACHE_NAME
                                   ,fun(Key, _Value) -> is_ts_cache_object(Key, AccountId) end
@@ -95,7 +95,7 @@ create_ts_doc(AcctDB, AcctID, TSJObj) ->
 
 create_credit_doc(AcctDB, AcctID, TSJObj) ->
     Credit = kz_json:get_value([<<"account">>, <<"credits">>, <<"prepay">>], TSJObj, 0.0),
-    Units = wht_util:dollars_to_units(kz_util:to_float(Credit)),
+    Units = wht_util:dollars_to_units(kz_term:to_float(Credit)),
     lager:info("Putting ~p units", [Units]),
     Transaction = kz_json:from_list([{<<"amount">>, Units}
                                      ,{<<"pvt_type">>, <<"credit">>}
@@ -106,7 +106,7 @@ create_credit_doc(AcctDB, AcctID, TSJObj) ->
     kz_datamgr:save_doc(AcctDB, Transaction).
 
 account_exists_with_realm(Realm) ->
-    ViewOptions = [{<<"key">>, kz_util:to_lower_binary(Realm)}],
+    ViewOptions = [{<<"key">>, kz_term:to_lower_binary(Realm)}],
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_realm">>, ViewOptions) of
         {'ok', []} -> 'false';
         {'ok', [AcctObj]} ->
@@ -120,7 +120,7 @@ account_exists_with_realm(Realm) ->
 
 create_account(Realm) ->
     AcctID = kz_datamgr:get_uuid(),
-    AcctDB = kz_util:format_account_id(AcctID, 'encoded'),
+    AcctDB = kz_accounts:format_account_id(AcctID, 'encoded'),
     case kz_datamgr:db_create(AcctDB) of
         'true' ->
             lager:info("created account db: ~s", [AcctDB]),

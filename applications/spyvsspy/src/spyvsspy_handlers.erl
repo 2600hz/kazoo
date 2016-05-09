@@ -38,7 +38,7 @@ new_call(AccountId) ->
     kapps_call:from_json(
       kz_json:from_list(
         [{<<"Account-ID">>, AccountId}
-         ,{<<"Account-DB">>, kz_util:format_account_id(AccountId, 'encoded')}
+         ,{<<"Account-DB">>, kz_accounts:format_account_id(AccountId, 'encoded')}
          ,{<<"Resource-Type">>, ?RESOURCE_TYPE_AUDIO}
         ]
        )
@@ -61,7 +61,7 @@ send_eavesdrop(JObj, EPs, AccountId) ->
     {CallerIdName, CallerIdNumber} = find_caller_id(JObj),
 
     Prop = props:filter_undefined(
-             [{<<"Msg-ID">>, kz_util:rand_hex_binary(6)}
+             [{<<"Msg-ID">>, kz_term:rand_hex_binary(6)}
               ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
               ,{<<"Timeout">>, Timeout}
               ,{<<"Endpoints">>, [kz_json:set_values([{<<"Endpoint-Timeout">>, Timeout}

@@ -26,7 +26,7 @@
 -define(QUERY_REQ_VALUES, [{<<"Event-Category">>, <<"hangups">>}
                            ,{<<"Event-Name">>, <<"query_req">>}
                           ]).
--define(QUERY_REQ_TYPES, [{<<"Raw-Data">>, fun kz_util:is_boolean/1}]).
+-define(QUERY_REQ_TYPES, [{<<"Raw-Data">>, fun kz_term:is_boolean/1}]).
 
 -define(QUERY_RESP_HEADERS, []).
 -define(OPTIONAL_QUERY_RESP_HEADERS, [<<"mean">>

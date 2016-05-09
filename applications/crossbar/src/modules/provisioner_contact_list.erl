@@ -57,7 +57,7 @@ get_extension_contacts(AccountDb) ->
             Includes = get_contact_list_includes(AccountDb),
             lists:foldr(fun(JObj, Contacts) ->
                                 Key = kz_json:get_value(<<"key">>, JObj),
-                                case kz_util:is_empty(Includes)
+                                case kz_term:is_empty(Includes)
                                     orelse lists:member(Key, Includes)
                                 of
                                     'false' -> Contacts;

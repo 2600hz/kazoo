@@ -58,7 +58,7 @@ retry504s(Fun, Cnt) ->
             retry504s(Fun, Cnt+1);
         {'error', {'ok', ErrCode, _Hdrs, _Body}} ->
             kazoo_stats:increment_counter(<<"bigcouch-other-error">>),
-            {'error', kz_util:to_integer(ErrCode)};
+            {'error', kz_term:to_integer(ErrCode)};
         %%% couchbeam doesn't pass 202 as acceptable
         {'error', {'bad_response',{202, _Headers, Body}}} ->
             {'ok', kz_json:decode(Body)};
@@ -118,7 +118,7 @@ convert_options(Options) ->
 
 convert_option({K, V}) ->
     case lists:member(K, ?ATOM_OPTIONS) of
-        'true' -> {K, kz_util:to_atom(V, 'true')};
+        'true' -> {K, kz_term:to_atom(V, 'true')};
         'false' when is_map(V) -> {K, maps:to_list(V)};
         'false' -> {K, V}
     end.
@@ -143,7 +143,7 @@ connection_parse(K, V, #kz_couch_connection{options=Options}=Conn) ->
                           {'error', 'timeout'} |
                           {'error', 'ehostunreach'}.
 get_new_conn(Host, Port, Opts) ->
-    Conn = couchbeam:server_connection(kz_util:to_list(Host), Port, "", Opts),
+    Conn = couchbeam:server_connection(kz_term:to_list(Host), Port, "", Opts),
     lager:debug("new connection to host ~s:~b, testing: ~p", [Host, Port, Conn]),
     case server_info(Conn) of
         {'ok', ConnData} ->
@@ -252,7 +252,7 @@ maybe_add_rev(#db{name=_Name}=Db, DocId, Options) ->
                           ne_binary() |
                           couchbeam_error().
 do_fetch_rev(#db{}=Db, DocId) ->
-    case kz_util:is_empty(DocId) of
+    case kz_term:is_empty(DocId) of
         'true' -> {'error', 'empty_doc_id'};
         'false' -> ?RETRY_504(couchbeam:lookup_doc_rev(Db, DocId))
     end.

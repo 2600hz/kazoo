@@ -22,5 +22,5 @@ get_uri(<<"tts://", Text/binary>>, JObj) ->
     StreamType = kz_media_util:convert_stream_type(kz_json:get_value(<<"Stream-Type">>, JObj)),
 
     <<(kz_media_util:base_url(Host, Port))/binary, StreamType/binary
-      ,"/tts/", (kz_util:binary_md5(Text))/binary, ".", Format/binary
+      ,"/tts/", (kz_term:binary_md5(Text))/binary, ".", Format/binary
     >>.

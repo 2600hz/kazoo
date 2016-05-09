@@ -49,7 +49,7 @@
                            ,from :: api_binary() | '$2' | '_'
                            ,node :: atom() | '$1' | '_'
                            ,expires = 300 :: pos_integer() | '$1' | '_'
-                           ,timestamp = kz_util:current_tstamp() :: pos_integer() | '$2' | '_'
+                           ,timestamp = kz_time:current_tstamp() :: pos_integer() | '$2' | '_'
                           }).
 
 -record(channel, {uuid :: api_binary() | '$1' | '_'
@@ -102,7 +102,7 @@
                      ,dynamic = 'true' :: boolean() | '_'
                      ,exit_sound = 'true' :: boolean() | '_'
                      ,enter_sound = 'true' :: boolean() | '_'
-                     ,start_time = kz_util:current_tstamp() :: non_neg_integer() | '_'
+                     ,start_time = kz_time:current_tstamp() :: non_neg_integer() | '_'
                      ,switch_hostname :: api_binary() | '_'
                      ,switch_url :: api_binary() | '_'
                      ,switch_external_ip :: api_binary() | '_'
@@ -334,7 +334,7 @@
                                    ,'sofia::replaced'
                                    ,'sofia::intercepted'
                                   ]).
--define(IS_SOFIA_TRANSFER(N), lists:member(kz_util:to_atom(N, 'true'), ?FS_SOFIA_TRANSFER_EVENTS)).
+-define(IS_SOFIA_TRANSFER(N), lists:member(kz_term:to_atom(N, 'true'), ?FS_SOFIA_TRANSFER_EVENTS)).
 
 -define(FS_CUSTOM_EVENTS, ['kazoo::noop', 'kazoo::masquerade'
                            ,'sofia::transferor', 'sofia::transferee'
@@ -452,8 +452,8 @@
 -define(CHANNEL_VARS_EXT, "Execute-Extension-Original-").
 
 -define(CALL_INTERACTION_DEFAULT
-        ,<<(kz_util:to_binary(kz_util:current_tstamp()))/binary
-           ,"-", (kz_util:rand_hex_binary(4))/binary
+        ,<<(kz_term:to_binary(kz_time:current_tstamp()))/binary
+           ,"-", (kz_term:rand_hex_binary(4))/binary
          >>).
 
 -define(ECALLMGR_HRL, 'true').

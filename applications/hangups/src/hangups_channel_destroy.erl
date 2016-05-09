@@ -49,7 +49,7 @@ alert_about_hangup(HangupCause, JObj) ->
     lager:debug("abnormal call termination: ~s", [HangupCause]),
     AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj, <<"unknown">>),
     kz_notify:detailed_alert("~s ~s to ~s (~s) on ~s(~s)"
-                             ,[kz_util:to_lower_binary(HangupCause)
+                             ,[kz_term:to_lower_binary(HangupCause)
                                ,find_source(JObj)
                                ,find_destination(JObj)
                                ,find_direction(JObj)

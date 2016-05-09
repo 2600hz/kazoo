@@ -186,7 +186,7 @@ quantity(#kz_service_item{quantity=Quantity}) ->
 set_quantity('undefined', #kz_service_item{}=ServiceItem) ->
     ServiceItem#kz_service_item{quantity='undefined'};
 set_quantity(Q, #kz_service_item{}=ServiceItem) ->
-    Quantity = kz_util:to_integer(Q),
+    Quantity = kz_term:to_integer(Q),
     case Quantity > 0 of
         'false' -> ServiceItem#kz_service_item{quantity=Quantity};
         'true'->
@@ -215,7 +215,7 @@ rate(#kz_service_item{rate=Rate}) ->
 set_rate('undefined', #kz_service_item{}=ServiceItem) ->
     ServiceItem#kz_service_item{rate='undefined'};
 set_rate(Rate, #kz_service_item{}=ServiceItem) ->
-    ServiceItem#kz_service_item{rate=kz_util:to_float(Rate)}.
+    ServiceItem#kz_service_item{rate=kz_term:to_float(Rate)}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -235,7 +235,7 @@ single_discount(#kz_service_item{single_discount=SingleDiscount}) ->
 %%--------------------------------------------------------------------
 -spec set_single_discount(ne_binary() | boolean(), item()) -> item().
 set_single_discount(SingleDiscount, #kz_service_item{}=ServiceItem) ->
-    ServiceItem#kz_service_item{single_discount=kz_util:is_true(SingleDiscount)}.
+    ServiceItem#kz_service_item{single_discount=kz_term:is_true(SingleDiscount)}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -257,7 +257,7 @@ single_discount_rate(#kz_service_item{single_discount_rate=Rate}) ->
 set_single_discount_rate('undefined', #kz_service_item{}=ServiceItem) ->
     ServiceItem#kz_service_item{single_discount_rate='undefined'};
 set_single_discount_rate(Rate, #kz_service_item{}=ServiceItem) ->
-    ServiceItem#kz_service_item{single_discount_rate=kz_util:to_float(Rate)}.
+    ServiceItem#kz_service_item{single_discount_rate=kz_term:to_float(Rate)}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -279,7 +279,7 @@ cumulative_discount(#kz_service_item{cumulative_discount=Quantity}) ->
 set_cumulative_discount('undefined', #kz_service_item{}=ServiceItem) ->
     ServiceItem#kz_service_item{cumulative_discount='undefined'};
 set_cumulative_discount(Quantity, #kz_service_item{}=ServiceItem) ->
-    ServiceItem#kz_service_item{cumulative_discount=kz_util:to_integer(Quantity)}.
+    ServiceItem#kz_service_item{cumulative_discount=kz_term:to_integer(Quantity)}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -301,7 +301,7 @@ cumulative_discount_rate(#kz_service_item{cumulative_discount_rate=Rate}) ->
 set_cumulative_discount_rate('undefined', #kz_service_item{}=ServiceItem) ->
     ServiceItem#kz_service_item{cumulative_discount_rate='undefined'};
 set_cumulative_discount_rate(Rate, #kz_service_item{}=ServiceItem) ->
-    ServiceItem#kz_service_item{cumulative_discount_rate=kz_util:to_float(Rate)}.
+    ServiceItem#kz_service_item{cumulative_discount_rate=kz_term:to_float(Rate)}.
 
 %%--------------------------------------------------------------------
 %% @public

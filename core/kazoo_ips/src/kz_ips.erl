@@ -69,7 +69,7 @@ available(Zone, Quantity) ->
                       {'ok', kz_json:objects()} |
                       {'error', any()}.
 assigned(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
     ViewOptions = [{'key', AccountId}],
     case kz_datamgr:get_results(?KZ_DEDICATED_IP_DB
                                ,<<"dedicated_ips/assigned_to_listing">>

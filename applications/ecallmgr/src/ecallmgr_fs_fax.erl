@@ -26,23 +26,23 @@ receive_fax(Node, UUID, JObj) ->
                           ,<<"Enable-T38-Gateway">>
                          ])),
     ecallmgr_fs_command:set(Node, UUID, Sets),
-    Filename = kz_util:to_list(kz_json:get_value(<<"Fax-Local-Filename">>, JObj, ecallmgr_util:fax_filename(UUID))),
+    Filename = kz_term:to_list(kz_json:get_value(<<"Fax-Local-Filename">>, JObj, ecallmgr_util:fax_filename(UUID))),
     [{<<"playback">>, <<"silence_stream://2000">>}
     ,{<<"rxfax">>, Filename}
     ].
 
 header_to_fs_var(<<"Enable-T38-Fax">>, Value ) ->
-    case kz_util:is_true(Value) of
+    case kz_term:is_true(Value) of
         'true' -> {<<"fax_enable_t38">>, <<"true">> };
         'false' -> {<<"fax_enable_t38">>, 'undefined'}
     end;
 header_to_fs_var(<<"Enable-T38-Fax-Request">>, Value ) ->
-    case kz_util:is_true(Value) of
+    case kz_term:is_true(Value) of
         'true' -> {<<"fax_enable_t38_request">>, <<"true">> };
         'false' -> {<<"fax_enable_t38_request">>, 'undefined'}
     end;
 header_to_fs_var(<<"Enable-T38-Passthrough">>, Value ) ->
-    case kz_util:is_true(Value) of
+    case kz_term:is_true(Value) of
         'true' -> {<<"t38_passthru">>, <<"true">> };
         'false' -> {<<"t38_passthru">>, 'undefined'}
     end;

@@ -175,7 +175,7 @@ validate_search(Context, _Type, _Query, 'undefined') ->
 validate_search(Context, Type, Query, <<_/binary>> = Value) ->
     search(Context, Type, Query, Value);
 validate_search(Context, Type, Query, Value) ->
-    case kz_util:is_true(Value) of
+    case kz_term:is_true(Value) of
         'true' -> validate_search(Context, Type, Query, <<>>);
         'false' -> validate_search(Context, Type, Query, 'undefined')
     end.
@@ -362,7 +362,7 @@ multi_search(Context, Type, [_|Props], Acc) ->
 %%--------------------------------------------------------------------
 -spec maybe_normalize_value(ne_binary(), ne_binary()) -> ne_binary().
 maybe_normalize_value(<<"account">>, Value) ->
-    kz_util:normalize_account_name(Value);
+    kz_accounts:normalize_account_name(Value);
 maybe_normalize_value(_, Value) ->
     Value.
 

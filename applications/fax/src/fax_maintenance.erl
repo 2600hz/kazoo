@@ -71,7 +71,7 @@ migrate_faxes_fold(AccountDb, Current, Total, Options) ->
 
 -spec migrate_faxes(atom() | string() | binary(),  kz_proplist()) -> 'ok'.
 migrate_faxes(Account, Options) when not is_binary(Account) ->
-    migrate_faxes(kz_util:to_binary(Account), Options);
+    migrate_faxes(kz_term:to_binary(Account), Options);
 migrate_faxes(Account, Options) ->
     migrate_private_media(Account),
     recover_private_media(Account),
@@ -84,7 +84,7 @@ migrate_faxes(Account, Options) ->
 migrate_private_media(Account) ->
     AccountDb = case kz_datamgr:db_exists(Account) of
                     'true' -> Account;
-                    'false' -> kz_util:format_account_id(Account, 'encoded')
+                    'false' -> kz_accounts:format_account_id(Account, 'encoded')
                 end,
     ViewOptions = [{'key', <<"private_media">>}],
     case kz_datamgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
@@ -118,7 +118,7 @@ migrate_private_media(_AccountDb, _JObj, _MediaType) -> 'ok'.
 recover_private_media(Account) ->
     AccountDb = case kz_datamgr:db_exists(Account) of
                     'true' -> Account;
-                    'false' -> kz_util:format_account_id(Account, 'encoded')
+                    'false' -> kz_accounts:format_account_id(Account, 'encoded')
                 end,
     ViewOptions = [{'key', <<"fax">>}],
     case kz_datamgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
@@ -147,7 +147,7 @@ recover_private_media(AccountDb, Doc, _MediaType) ->
 migrate_faxes_to_modb(Account, Options) ->
     AccountDb = case kz_datamgr:db_exists(Account) of
                     'true' -> Account;
-                    'false' -> kz_util:format_account_id(Account, 'encoded')
+                    'false' -> kz_accounts:format_account_id(Account, 'encoded')
                 end,
     ViewOptions = [{'key', <<"fax">>}],
     case kz_datamgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
@@ -179,12 +179,12 @@ maybe_migrate_fax_to_modb(AccountDb, JObj, Options) ->
     end.
 
 migrate_fax_to_modb(AccountDb, DocId, JObj, Options) ->
-    Timestamp = kz_doc:created(JObj, kz_util:current_tstamp()),
+    Timestamp = kz_doc:created(JObj, kz_time:current_tstamp()),
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
     AccountMODb = kazoo_modb:get_modb(AccountDb, Year, Month),
-    FaxMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
-    FaxId = <<(kz_util:to_binary(Year))/binary
-             ,(kz_util:pad_month(Month))/binary
+    FaxMODb = kz_accounts:format_account_modb(AccountMODb, 'encoded'),
+    FaxId = <<(kz_term:to_binary(Year))/binary
+             ,(kz_time:pad_month(Month))/binary
              ,"-"
              ,DocId/binary
             >>,
@@ -219,7 +219,7 @@ account_jobs(AccountId, State) ->
     _ = case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/list_by_account_state">>, ViewOptions) of
             {'ok', Jobs} ->
                 [io:format(FormatString, [kz_json:get_value([<<"value">>, <<"id">>], JObj)
-                                          ,kz_util:format_datetime(
+                                          ,kz_time:format_datetime(
                                              kz_json:get_value([<<"value">>, <<"modified">>], JObj))
                                           ,kz_json:get_value([<<"value">>, <<"status">>], JObj)
                                           ,kz_json:get_value([<<"value">>, <<"account_id">>], JObj)
@@ -248,7 +248,7 @@ faxbox_jobs(FaxboxId, State) ->
     _ = case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/list_by_faxbox_state">>, ViewOptions) of
             {'ok', Jobs} ->
                 [io:format(FormatString, [kz_json:get_value([<<"value">>, <<"id">>], JObj)
-                                          ,kz_util:format_datetime(
+                                          ,kz_time:format_datetime(
                                              kz_json:get_value([<<"value">>, <<"modified">>], JObj))
                                           ,kz_json:get_value([<<"value">>, <<"status">>], JObj)
                                           ,kz_json:get_value([<<"value">>, <<"account_id">>], JObj)
@@ -271,7 +271,7 @@ pending_jobs() ->
     _ = case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/jobs">>) of
             {'ok', Jobs} ->
                 [io:format(FormatString, [kz_json:get_value([<<"value">>, <<"id">>], JObj)
-                                          ,kz_util:format_datetime(
+                                          ,kz_time:format_datetime(
                                              kz_json:get_value([<<"value">>, <<"modified">>], JObj))
                                           ,kz_json:get_value([<<"value">>, <<"account_id">>], JObj)
                                           ,kz_json:get_value([<<"value">>, <<"faxbox_id">>], JObj, <<"(none)">>)
@@ -294,7 +294,7 @@ active_jobs() ->
             {'ok', Jobs} ->
                 [io:format(FormatString, [kz_json:get_value([<<"value">>, <<"node">>], JObj)
                                           ,kz_json:get_value([<<"value">>, <<"id">>], JObj)
-                                          ,kz_util:format_datetime(
+                                          ,kz_time:format_datetime(
                                              kz_json:get_value([<<"value">>, <<"modified">>], JObj))
                                           ,kz_json:get_value([<<"value">>, <<"account_id">>], JObj)
                                           ,kz_json:get_value([<<"value">>, <<"faxbox_id">>], JObj, <<"(none)">>)
@@ -334,7 +334,7 @@ update_job(JobID, State, JObj) ->
             Opts = [{'rev', kz_doc:revision(JObj)}],
             kz_datamgr:save_doc(?KZ_FAXES_DB
                                ,kz_json:set_values([{<<"pvt_job_status">>, State}
-                                                    ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+                                                    ,{<<"pvt_modified">>, kz_time:current_tstamp()}
                                                    ]
                                                    ,JObj
                                                   )
@@ -349,7 +349,7 @@ migrate_outbound_faxes() ->
 
 -spec migrate_outbound_faxes(ne_binary() | integer() | kz_proplist()) -> 'ok'.
 migrate_outbound_faxes(Number) when is_binary(Number) ->
-    migrate_outbound_faxes(kz_util:to_integer(Number));
+    migrate_outbound_faxes(kz_term:to_integer(Number));
 migrate_outbound_faxes(Number) when is_integer(Number) ->
     io:format("start migrating outbound faxes with batch size ~p~n", [Number]),
     migrate_outbound_faxes([{'limit', Number}]);
@@ -393,13 +393,13 @@ maybe_migrate_outbound_fax(_Type, _JObj) -> 'ok'.
 -spec migrate_outbound_fax(kz_json:object()) -> 'ok'.
 migrate_outbound_fax(JObj) ->
     FromId = kz_doc:id(JObj),
-    {Year, Month, _D} = kz_util:to_date(kz_doc:created(JObj)),
+    {Year, Month, _D} = kz_time:to_date(kz_doc:created(JObj)),
     FromDB = kz_doc:account_db(JObj),
     AccountId = kz_doc:account_id(JObj),
     AccountMODb = kazoo_modb:get_modb(AccountId, Year, Month),
     kazoo_modb:create(AccountMODb),
-    ToDB = kz_util:format_account_modb(AccountMODb, 'encoded'),
-    ToId = ?MATCH_MODB_PREFIX(kz_util:to_binary(Year), kz_util:pad_month(Month),FromId),
+    ToDB = kz_accounts:format_account_modb(AccountMODb, 'encoded'),
+    ToId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_time:pad_month(Month),FromId),
     case kz_datamgr:move_doc(FromDB, FromId, ToDB, ToId, ['override_existing_document']) of
         {'ok', _} -> io:format("document ~s/~s moved to ~s/~s~n", [FromDB, FromId, ToDB, ToId]);
         {'error', _E} -> io:format("error ~p moving document ~s/~s to ~s/~s~n", [_E, FromDB, FromId, ToDB, ToId])

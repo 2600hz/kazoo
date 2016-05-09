@@ -25,7 +25,7 @@ prop_to_npan() ->
     ?FORALL(Number
             ,range(2002000000,19999999999)
             ,begin
-                 BinNum = kz_util:to_binary(Number),
+                 BinNum = kz_term:to_binary(Number),
                  NPAN = ?MODULE_TESTED:to_npan(BinNum),
                  case byte_size(BinNum) of
                      11 -> BinNum =:= <<"1", NPAN/binary>>;
@@ -39,7 +39,7 @@ prop_to_1npan() ->
     ?FORALL(Number
             ,range(2002000000,19999999999)
             ,begin
-                 BinNum = kz_util:to_binary(Number),
+                 BinNum = kz_term:to_binary(Number),
                  OneNPAN = ?MODULE_TESTED:to_1npan(BinNum),
                  case byte_size(BinNum) of
                      11 -> OneNPAN =:= BinNum;
@@ -53,7 +53,7 @@ prop_normalize() ->
     ?FORALL(Number
             ,range(2002000000,19999999999)
             ,begin
-                 BinNum = kz_util:to_binary(Number),
+                 BinNum = kz_term:to_binary(Number),
                  E164 = ?MODULE_TESTED:normalize(BinNum),
                  case byte_size(BinNum) of
                      11 -> E164 =:= <<$+, BinNum/binary>>;

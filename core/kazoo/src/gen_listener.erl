@@ -303,24 +303,24 @@ rm_responder(Srv, Responder, Keys) ->
 -spec add_binding(server_ref(), binding() | ne_binary() | atom()) -> 'ok'.
 add_binding(Srv, {Binding, Props}) when is_list(Props)
                                         ,(is_atom(Binding) orelse is_binary(Binding)) ->
-    gen_server:cast(Srv, {'add_binding', kz_util:to_binary(Binding), Props});
+    gen_server:cast(Srv, {'add_binding', kz_term:to_binary(Binding), Props});
 add_binding(Srv, Binding) when is_binary(Binding) orelse is_atom(Binding) ->
-    gen_server:cast(Srv, {'add_binding', kz_util:to_binary(Binding), []}).
+    gen_server:cast(Srv, {'add_binding', kz_term:to_binary(Binding), []}).
 
 -spec add_binding(server_ref(), ne_binary() | atom(), kz_proplist()) -> 'ok'.
 add_binding(Srv, Binding, Props) when is_binary(Binding) orelse is_atom(Binding) ->
-    gen_server:cast(Srv, {'add_binding', kz_util:to_binary(Binding), Props}).
+    gen_server:cast(Srv, {'add_binding', kz_term:to_binary(Binding), Props}).
 
 -spec b_add_binding(server_ref(), binding() | ne_binary() | atom()) -> 'ok'.
 b_add_binding(Srv, {Binding, Props}) when is_list(Props)
                                         ,(is_atom(Binding) orelse is_binary(Binding)) ->
-    gen_server:call(Srv, {'add_binding', kz_util:to_binary(Binding), Props});
+    gen_server:call(Srv, {'add_binding', kz_term:to_binary(Binding), Props});
 b_add_binding(Srv, Binding) when is_binary(Binding) orelse is_atom(Binding) ->
-    gen_server:call(Srv, {'add_binding', kz_util:to_binary(Binding), []}).
+    gen_server:call(Srv, {'add_binding', kz_term:to_binary(Binding), []}).
 
 -spec b_add_binding(server_ref(), ne_binary() | atom(), kz_proplist()) -> 'ok'.
 b_add_binding(Srv, Binding, Props) when is_binary(Binding) orelse is_atom(Binding) ->
-    gen_server:call(Srv, {'add_binding', kz_util:to_binary(Binding), Props}).
+    gen_server:call(Srv, {'add_binding', kz_term:to_binary(Binding), Props}).
 
 %% It is expected that responders have been set up already, prior to binding the new queue
 -spec add_queue(server_ref(), binary(), kz_proplist(), binding() | bindings()) ->
@@ -344,7 +344,7 @@ rm_binding(Srv, {Binding, Props}) ->
 
 -spec rm_binding(server_ref(), ne_binary() | atom(), kz_proplist()) -> 'ok'.
 rm_binding(Srv, Binding, Props) ->
-    gen_server:cast(Srv, {'rm_binding', kz_util:to_binary(Binding), Props}).
+    gen_server:cast(Srv, {'rm_binding', kz_term:to_binary(Binding), Props}).
 
 -spec federated_event(server_ref(), kz_json:object(), basic_deliver()) -> 'ok'.
 federated_event(Srv, JObj, BasicDeliver) ->
@@ -697,9 +697,9 @@ basic_return_to_jobj(#'basic.return'{reply_code=Code
                                      ,routing_key=RoutingKey
                                     }) ->
     kz_json:from_list([{<<"code">>, Code}
-                       ,{<<"message">>, kz_util:to_binary(Msg)}
-                       ,{<<"exchange">>, kz_util:to_binary(Exchange)}
-                       ,{<<"routing_key">>, kz_util:to_binary(RoutingKey)}
+                       ,{<<"message">>, kz_term:to_binary(Msg)}
+                       ,{<<"exchange">>, kz_term:to_binary(Exchange)}
+                       ,{<<"routing_key">>, kz_term:to_binary(RoutingKey)}
                       ]).
 
 -spec handle_confirm(#'basic.ack'{} | #'basic.nack'{}, state()) -> handle_cast_return().
@@ -873,9 +873,9 @@ start_consumer(Q, ConsumeProps) -> amqp_util:basic_consume(Q, ConsumeProps).
 
 -spec remove_binding(binding_module(), kz_proplist(), api_binary()) -> any().
 remove_binding(Binding, Props, Q) ->
-    Wapi = list_to_binary([<<"kapi_">>, kz_util:to_binary(Binding)]),
+    Wapi = list_to_binary([<<"kapi_">>, kz_term:to_binary(Binding)]),
     lager:debug("trying to remove bindings with ~s:unbind_q(~s, ~p)", [Wapi, Q, Props]),
-    try (kz_util:to_atom(Wapi, 'true')):unbind_q(Q, Props) of
+    try (kz_term:to_atom(Wapi, 'true')):unbind_q(Q, Props) of
         Return -> Return
     catch
         'error':'undef' ->
@@ -884,10 +884,10 @@ remove_binding(Binding, Props, Q) ->
 
 -spec create_binding(ne_binary(), kz_proplist(), ne_binary()) -> any().
 create_binding(Binding, Props, Q) when not is_binary(Binding) ->
-    create_binding(kz_util:to_binary(Binding), Props, Q);
+    create_binding(kz_term:to_binary(Binding), Props, Q);
 create_binding(Binding, Props, Q) ->
-    Wapi = list_to_binary([<<"kapi_">>, kz_util:to_binary(Binding)]),
-    try (kz_util:to_atom(Wapi, 'true')):bind_q(Q, Props) of
+    Wapi = list_to_binary([<<"kapi_">>, kz_term:to_binary(Binding)]),
+    try (kz_term:to_atom(Wapi, 'true')):bind_q(Q, Props) of
         Return -> Return
     catch
         'error':'undef' ->
@@ -996,7 +996,7 @@ handle_rm_binding(Binding, Props, #state{queue=Q
                                         }=State) ->
     KeepBs = lists:filter(fun(BP) ->
                                   maybe_remove_binding(BP
-                                                      ,kz_util:to_binary(Binding)
+                                                      ,kz_term:to_binary(Binding)
                                                       ,Props
                                                       ,Q
                                                       )
@@ -1113,7 +1113,7 @@ create_federated_params(FederateBindings, Params) ->
 -spec federated_queue_name(kz_proplist()) -> api_binary().
 federated_queue_name(Params) ->
     QueueName = props:get_value('queue_name', Params, <<>>),
-    case kz_util:is_empty(QueueName) of
+    case kz_term:is_empty(QueueName) of
         'true' -> QueueName;
         'false' ->
             Zone = kz_config:zone('binary'),
@@ -1235,7 +1235,7 @@ maybe_add_broker_connection(Broker) ->
     maybe_add_broker_connection(Broker, Count).
 
 maybe_add_broker_connection(Broker, Count) when Count =:= 0 ->
-    kz_amqp_connections:add(Broker, kz_util:rand_hex_binary(6), [<<"hidden">>]),
+    kz_amqp_connections:add(Broker, kz_term:rand_hex_binary(6), [<<"hidden">>]),
     kz_amqp_channel:requisition(self(), Broker);
 maybe_add_broker_connection(Broker, _Count) ->
     kz_amqp_channel:requisition(self(), Broker).

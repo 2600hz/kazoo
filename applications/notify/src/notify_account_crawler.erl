@@ -42,7 +42,7 @@ start_link() ->
 
 -spec check(ne_binary()) -> 'ok'.
 check(Account) when is_binary(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
     case kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, AccountId) of
         {'ok', AccountJObj} ->
             process_account(AccountId, kz_doc:account_db(AccountJObj), AccountJObj);
@@ -50,7 +50,7 @@ check(Account) when is_binary(Account) ->
             lager:warning("unable to open account definition for ~s: ~p", [AccountId, _R])
     end;
 check(Account) ->
-    check(kz_util:to_binary(Account)).
+    check(kz_term:to_binary(Account)).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -134,7 +134,7 @@ handle_info('crawl_accounts', _) ->
     _ = case kz_datamgr:all_docs(?KZ_ACCOUNTS_DB) of
             {'ok', JObjs} ->
                 self() ! 'next_account',
-                {'noreply', kz_util:shuffle_list(JObjs)};
+                {'noreply', kz_term:shuffle_list(JObjs)};
             {'error', _R} ->
                 lager:warning("unable to list all docs in ~s: ~p", [?KZ_ACCOUNTS_DB, _R]),
                 self() ! 'next_account',
@@ -252,7 +252,7 @@ notify_initial_registration(AccountJObj) ->
                                     ,'true'
                                     ,AccountJObj
                                     ),
-    kz_util:account_update(UpdatedAccountJObj),
+    kz_accounts:account_update(UpdatedAccountJObj),
     notify_first_occurrence:send(<<"registration">>, UpdatedAccountJObj).
 
 -spec maybe_test_for_initial_call(ne_binary(), ne_binary(), kz_account:doc()) -> 'ok'.
@@ -290,7 +290,7 @@ notify_initial_call(AccountJObj) ->
                                            ,'true'
                                            ,AccountJObj
                                           ),
-    kz_util:account_update(UpdatedAccountJObj),
+    kz_accounts:account_update(UpdatedAccountJObj),
     notify_first_occurrence:send(<<"call">>, UpdatedAccountJObj).
 
 -spec maybe_test_for_low_balance(ne_binary(), kz_account:doc()) -> 'ok'.
@@ -331,7 +331,7 @@ reset_low_balance_sent(AccountJObj0) ->
     lager:debug("resetting low balance sent"),
     AccountJObj1 = kz_account:reset_low_balance_sent(AccountJObj0),
     AccountJObj2 = kz_account:remove_low_balance_tstamp(AccountJObj1),
-    kz_util:account_update(AccountJObj2).
+    kz_accounts:account_update(AccountJObj2).
 
 -spec is_account_balance_too_low(kz_transaction:units(), number()) -> boolean().
 is_account_balance_too_low(CurrentBalance, Threshold) ->
@@ -370,7 +370,7 @@ maybe_low_balance_notify(AccountJObj, CurrentBalance, 'true') ->
     case kz_account:low_balance_tstamp(AccountJObj) of
         LowBalanceSent when is_number(LowBalanceSent) ->
             Cycle = kapps_config:get_integer(?MOD_CONFIG_CAT, <<"low_balance_repeat_s">>, 1 * ?SECONDS_IN_DAY),
-            Diff = kz_util:current_tstamp() - LowBalanceSent,
+            Diff = kz_time:current_tstamp() - LowBalanceSent,
             case Diff >= Cycle of
                 'false' -> lager:debug("low balance alert sent ~w seconds ago, repeats every ~w", [Diff, Cycle]);
                 'true' -> notify_of_low_balance(AccountJObj, CurrentBalance)
@@ -390,7 +390,7 @@ maybe_low_balance_notify_deprecated(AccountJObj, CurrentBalance) ->
 update_account_low_balance_sent(AccountJObj0) ->
     AccountJObj1 = kz_account:set_low_balance_sent(AccountJObj0),
     AccountJObj2 = kz_account:set_low_balance_tstamp(AccountJObj1),
-    kz_util:account_update(AccountJObj2).
+    kz_accounts:account_update(AccountJObj2).
 
 -spec notify_of_low_balance(kz_account:doc(), kz_transaction:units()) -> 'ok'.
 notify_of_low_balance(AccountJObj, CurrentBalance) ->

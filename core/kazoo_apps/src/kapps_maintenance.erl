@@ -70,7 +70,7 @@ rebuild_token_auth() ->
 -spec rebuild_token_auth(text() | integer()) -> 'ok'.
 rebuild_token_auth(Pause) ->
     _ = kz_datamgr:db_delete(?KZ_TOKEN_DB),
-    timer:sleep(kz_util:to_integer(Pause)),
+    timer:sleep(kz_term:to_integer(Pause)),
     refresh(?KZ_TOKEN_DB),
     'ok'.
 
@@ -104,7 +104,7 @@ migrate(Pause) ->
          ),
 
     Databases = get_databases(),
-    Accounts = [kz_util:format_account_id(Db, 'encoded')
+    Accounts = [kz_accounts:format_account_id(Db, 'encoded')
                 || Db <- Databases,
                    kapps_util:is_account_db(Db)
                ],
@@ -159,7 +159,7 @@ refresh() ->
 
 refresh(Databases, Pause) ->
     Total = length(Databases),
-    refresh(Databases, kz_util:to_integer(Pause), Total).
+    refresh(Databases, kz_term:to_integer(Pause), Total).
 
 refresh([], _, _) -> 'no_return';
 refresh([Database|Databases], Pause, Total) ->
@@ -443,8 +443,8 @@ config_setting_key(Node, Setting) ->
 %% @end
 %%--------------------------------------------------------------------
 refresh_account_db(Database) ->
-    AccountDb = kz_util:format_account_id(Database, 'encoded'),
-    AccountId = kz_util:format_account_id(Database, 'raw'),
+    AccountDb = kz_accounts:format_account_id(Database, 'encoded'),
+    AccountId = kz_accounts:format_account_id(Database, 'raw'),
     _ = remove_depreciated_account_views(AccountDb),
     _ = ensure_account_definition(AccountDb, AccountId),
     Views = get_all_account_views(),
@@ -544,8 +544,8 @@ cleanup_aggregated_accounts([JObj|JObjs]) ->
 
 -spec cleanup_aggregated_account(ne_binary()) -> 'ok'.
 cleanup_aggregated_account(Account) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
     case kz_datamgr:open_doc(AccountDb, AccountId) of
         {'error', 'not_found'} -> remove_aggregated_account(AccountDb);
         _Else -> 'ok'
@@ -553,7 +553,7 @@ cleanup_aggregated_account(Account) ->
 
 -spec remove_aggregated_account(ne_binary()) -> 'ok'.
 remove_aggregated_account(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
     {'ok', JObj} = kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, AccountId),
     io:format("    removing invalid ~s doc ~s~n", [?KZ_ACCOUNTS_DB, AccountId]),
     _ = kz_datamgr:del_doc(?KZ_ACCOUNTS_DB, JObj),
@@ -592,8 +592,8 @@ cleanup_aggregated_device(DocId) ->
     of
         'undefined' -> 'ok';
         Account ->
-            AccountDb = kz_util:format_account_id(Account, 'encoded'),
-            AccountId = kz_util:format_account_id(Account, 'raw'),
+            AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
+            AccountId = kz_accounts:format_account_id(Account, 'raw'),
             verify_aggregated_device(AccountDb, AccountId, JObj)
     end.
 
@@ -618,7 +618,7 @@ verify_aggregated_device(AccountDb, AccountId, JObj) ->
                                      {'ok', kz_json:objects()} |
                                      {'error', any()}.
 cleanup_voicemail_media(Account) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
     Medias = get_medias(Account),
     Messages = get_messages(Account),
     ExtraMedia = lists:subtract(Medias, Messages),
@@ -640,7 +640,7 @@ cleanup_orphan_modbs() ->
 
 -spec get_messages(ne_binary()) -> ne_binaries().
 get_messages(Account) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
     ViewOptions = ['include_docs'],
     case kz_datamgr:get_results(AccountDb, ?VMBOX_VIEW, ViewOptions) of
         {'ok', ViewRes} ->
@@ -660,7 +660,7 @@ extract_messages(JObj, CurMessages) ->
 
 -spec get_medias(ne_binary()) -> ne_binaries().
 get_medias(Account) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
     ViewOptions = [],
     case kz_datamgr:get_results(AccountDb, ?PMEDIA_VIEW, ViewOptions) of
         {'ok', ViewRes} -> [kz_doc:id(JObj) || JObj<- ViewRes];
@@ -696,16 +696,16 @@ migrate_limits_fold(AccountDb, Current, Total) ->
     Current + 1.
 
 migrate_limits(Account) when not is_binary(Account) ->
-    migrate_limits(kz_util:to_binary(Account));
+    migrate_limits(kz_term:to_binary(Account));
 migrate_limits(Account) ->
-    TStamp = kz_util:current_tstamp(),
+    TStamp = kz_time:current_tstamp(),
 
     TwowayTrunks = kapps_config:get(<<"jonny5">>, <<"default_twoway_trunks">>),
     InboundTrunks = kapps_config:get(<<"jonny5">>, <<"default_inbound_trunks">>),
 
     AccountDb = case kz_datamgr:db_exists(Account) of
                     'true' -> Account;
-                    'false' -> kz_util:format_account_id(Account, 'encoded')
+                    'false' -> kz_accounts:format_account_id(Account, 'encoded')
                 end,
     {TT, IT} = clean_trunkstore_docs(AccountDb, TwowayTrunks, InboundTrunks),
     JObj = kz_json:from_list(
@@ -714,7 +714,7 @@ migrate_limits(Account) ->
                 ,{<<"twoway_trunks">>, TT}
                 ,{<<"inbound_trunks">>, IT}
                 ,{<<"pvt_account_db">>, AccountDb}
-                ,{<<"pvt_account_id">>, kz_util:format_account_id(Account, 'raw')}
+                ,{<<"pvt_account_id">>, kz_accounts:format_account_id(Account, 'raw')}
                 ,{<<"pvt_type">>, <<"limits">>}
                 ,{<<"pvt_created">>, TStamp}
                 ,{<<"pvt_modified">>, TStamp}
@@ -782,11 +782,11 @@ migrate_media_fold(AccountDb, Current, Total) ->
     Current + 1.
 
 migrate_media(Account) when not is_binary(Account) ->
-    migrate_media(kz_util:to_binary(Account));
+    migrate_media(kz_term:to_binary(Account));
 migrate_media(Account) ->
     AccountDb = case kz_datamgr:db_exists(Account) of
                     'true' -> Account;
-                    'false' -> kz_util:format_account_id(Account, 'encoded')
+                    'false' -> kz_accounts:format_account_id(Account, 'encoded')
                 end,
     case kz_datamgr:get_results(AccountDb, <<"media/listing_by_name">>, []) of
         {'ok', []} -> io:format("no public media files in db ~s~n", [AccountDb]);
@@ -823,8 +823,8 @@ ensure_aggregate_devices(Accounts).
 
 -spec ensure_aggregate_device(ne_binary()) -> 'ok'.
 ensure_aggregate_device(Account) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
-    AccountRealm = kz_util:get_account_realm(AccountDb),
+    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
+    AccountRealm = kz_accounts:get_account_realm(AccountDb),
     case kz_datamgr:get_results(AccountDb, ?DEVICES_CB_LIST, ['include_docs']) of
         {'ok', Devices} ->
             _ = remove_aggregate_devices(AccountDb, AccountRealm, Devices),
@@ -869,7 +869,7 @@ find_invalid_acccount_dbs() ->
     lists:foldr(fun find_invalid_acccount_dbs_fold/2, [], kapps_util:get_all_accounts()).
 
 find_invalid_acccount_dbs_fold(AccountDb, Acc) ->
-    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+    AccountId = kz_accounts:format_account_id(AccountDb, 'raw'),
     case kz_datamgr:open_doc(AccountDb, AccountId) of
         {'error', 'not_found'} -> [AccountDb|Acc];
         {'ok', _} -> Acc
@@ -960,14 +960,14 @@ maybe_update_attachment_content_type(A, MCT, DocCT) ->
 -spec find_attachment_content_type(ne_binary()) -> ne_binary().
 find_attachment_content_type(A) ->
     try cow_mimetypes:all(A) of
-        {Type, SubType, _Options} -> kz_util:join_binary([Type, SubType], <<"/">>)
+        {Type, SubType, _Options} -> kz_term:join_binary([Type, SubType], <<"/">>)
     catch
         'error':'function_clause' -> <<"audio/mpeg">>
     end.
 
 -spec maybe_add_extension({ne_binary(), ne_binary()}) -> {ne_binary(), ne_binary()}.
 maybe_add_extension({A, CT}) ->
-    case kz_util:is_empty(filename:extension(A)) of
+    case kz_term:is_empty(filename:extension(A)) of
         'false' -> {A, CT};
         'true' -> {add_extension(A, CT), CT}
     end.
@@ -1028,7 +1028,7 @@ maybe_resave_attachment(Content1, AccountDb, Id, OrigAttach, NewAttach, CT) ->
             io:format("unable to put new attachment ~s/~s/~s: ~p~n", [AccountDb, Id, NewAttach, Result]),
             throw({'error', 'length_mismatch'});
         'true' ->
-            Filename = kz_util:to_list(<<"/tmp/media_", Id/binary, "_", OrigAttach/binary>>),
+            Filename = kz_term:to_list(<<"/tmp/media_", Id/binary, "_", OrigAttach/binary>>),
             case file:write_file(Filename, Content1) of
                 'ok' -> 'ok';
                 {'error', _R}=E2 ->
@@ -1128,18 +1128,18 @@ purge_doc_type([Type|Types], Account) ->
                    ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, ?MILLISECONDS_IN_SECOND)
                   );
 purge_doc_type(Type, Account) when not is_binary(Type) ->
-    purge_doc_type(kz_util:to_binary(Type)
+    purge_doc_type(kz_term:to_binary(Type)
                    ,Account
                    ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, ?MILLISECONDS_IN_SECOND)
                   );
 purge_doc_type(Type, Account) when not is_binary(Account) ->
     purge_doc_type(Type
-                   ,kz_util:to_binary(Account)
+                   ,kz_term:to_binary(Account)
                    ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, ?MILLISECONDS_IN_SECOND)
                   ).
 
 purge_doc_type(Type, Account, ChunkSize) ->
-    Db = kz_util:format_account_id(Account, 'encoded'),
+    Db = kz_accounts:format_account_id(Account, 'encoded'),
     Opts = [{'key', Type}
             ,{'limit', ChunkSize}
             ,'include_docs'
@@ -1158,7 +1158,7 @@ purge_doc_type(Type, Account, ChunkSize) ->
 call_id_status(CallId) ->
     call_id_status(CallId, 'false').
 call_id_status(CallId, Verbose) ->
-    Req = [{<<"Call-ID">>, kz_util:to_binary(CallId)}
+    Req = [{<<"Call-ID">>, kz_term:to_binary(CallId)}
            | kz_api:default_headers(<<"shell">>, <<"0">>)
           ],
     case kapps_util:amqp_pool_request(Req
@@ -1167,7 +1167,7 @@ call_id_status(CallId, Verbose) ->
                                       )
     of
         {'ok', Resp} ->
-            show_status(CallId, kz_util:is_true(Verbose), Resp);
+            show_status(CallId, kz_term:is_true(Verbose), Resp);
         {'error', _E} ->
             lager:info("failed to get status of '~s': '~p'", [CallId, _E])
     end.

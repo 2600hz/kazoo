@@ -122,7 +122,7 @@ new(<<_/binary>> = AccountId) ->
 base_service_object(AccountId, AccountJObj) ->
     ResellerId = get_reseller_id(AccountId),
     BaseJObj = kz_doc:update_pvt_parameters(kz_json:new()
-                                            ,kz_util:format_account_id(AccountId, 'encoded')
+                                            ,kz_accounts:format_account_id(AccountId, 'encoded')
                                             ,[{'account_id', AccountId}
                                               ,{'crossbar_doc_vsn', <<"1">>}
                                               ,{'id', AccountId}
@@ -181,7 +181,7 @@ maybe_calc_updates(Services, 'false') ->
 %%--------------------------------------------------------------------
 -spec fetch(ne_binary()) -> services().
 fetch(<<_/binary>> = Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
 
     case fetch_cached_services(AccountId) of
         {'ok', Services} -> Services;
@@ -302,7 +302,7 @@ save_as_dirty(#kz_services{jobj = JObj
                     ,JObj
                     ,[{fun kz_doc:set_id/2, AccountId}
                       ,{fun kzd_services:set_is_dirty/2, 'true'}
-                      ,{fun kz_doc:set_modified/2, kz_util:current_tstamp()}
+                      ,{fun kz_doc:set_modified/2, kz_time:current_tstamp()}
                      ]
                    ),
     case kz_datamgr:save_doc(?KZ_SERVICES_DB, UpdatedJObj) of
@@ -358,7 +358,7 @@ save(#kz_services{jobj = JObj
 
     Props = [{fun kz_doc:set_id/2, AccountId}
              ,{fun kzd_services:set_is_dirty/2, Dirty}
-             ,{fun kz_doc:set_modified/2, kz_util:current_tstamp()}
+             ,{fun kz_doc:set_modified/2, kz_time:current_tstamp()}
              ,{fun kzd_services:set_quantities/2, kz_json:merge_jobjs(UpdatedQuantities, CurrentQuantities)}
             ],
     UpdatedJObj = kz_json:set_values(props:filter_undefined(Props), JObj),
@@ -399,7 +399,7 @@ save(#kz_services{jobj = JObj
 %%--------------------------------------------------------------------
 -spec delete(ne_binary()) -> kz_std_return().
 delete(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
     %% TODO: support other bookkeepers, and just cancel subscriptions....
     _ = (catch braintree_customer:delete(AccountId)),
     case kz_datamgr:open_doc(?KZ_SERVICES_DB, AccountId) of
@@ -459,7 +459,7 @@ set_billing_id(BillingId, <<_/binary>> = AccountId) ->
 -spec get_billing_id(ne_binary() | services()) -> ne_binary().
 get_billing_id(#kz_services{billing_id=BillingId}) -> BillingId;
 get_billing_id(<<_/binary>> = Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
     lager:debug("determining if account ~s is able to make updates", [AccountId]),
     case fetch_services_doc(AccountId) of
         {'error', _R} ->
@@ -482,7 +482,7 @@ get_billing_id(<<_/binary>> = Account) ->
 %%--------------------------------------------------------------------
 -spec update(ne_binary(), ne_binary(), integer(), services()) -> services().
 update(CategoryId, ItemId, Quantity, Services) when not is_integer(Quantity) ->
-    update(CategoryId, ItemId, kz_util:to_integer(Quantity), Services);
+    update(CategoryId, ItemId, kz_term:to_integer(Quantity), Services);
 update(CategoryId, ItemId, Quantity, #kz_services{updates=JObj}=Services)
   when is_binary(CategoryId),
        is_binary(ItemId) ->
@@ -614,7 +614,7 @@ find_reseller_id('undefined') ->
         {'ok', MasterAccountId} -> MasterAccountId
     end;
 find_reseller_id(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
     case fetch_services_doc(AccountId) of
         {'ok', JObj} ->
             case kzd_services:reseller_id(JObj) of
@@ -638,7 +638,7 @@ find_reseller_id(Account) ->
 %%--------------------------------------------------------------------
 -spec allow_updates(ne_binary() | services()) -> 'true'.
 allow_updates(<<_/binary>> = Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
     case fetch_services_doc(AccountId) of
         {'error', _R} ->
             lager:debug("can't determine if account ~s can make updates: ~p", [AccountId, _R]),
@@ -666,7 +666,7 @@ maybe_follow_billing_id(AccountId, ServicesJObj) ->
 maybe_allow_updates(AccountId, ServicesJObj) ->
     StatusGood = ?STATUS_GOOD,
     Plans = kz_service_plans:plan_summary(ServicesJObj),
-    case kz_util:is_empty(Plans)
+    case kz_term:is_empty(Plans)
         orelse kzd_services:status(ServicesJObj)
     of
         'true' ->
@@ -698,7 +698,7 @@ maybe_bookkeeper_allow_updates(Bookkeeper, AccountId, Status) ->
         'false' ->
             lager:debug("denying update request for services ~s due to status ~s", [AccountId, Status]),
             Error = io_lib:format("Unable to continue due to billing account ~s status", [AccountId]),
-            throw({Status, kz_util:to_binary(Error)})
+            throw({Status, kz_term:to_binary(Error)})
     end.
 
 -spec default_maybe_allow_updates(ne_binary()) -> 'true'.
@@ -708,7 +708,7 @@ default_maybe_allow_updates(AccountId) ->
         'false' ->
             lager:debug("denying update request, ~s.default_allow_updates is false", [?WHS_CONFIG_CAT]),
             Error = io_lib:format("Service updates are disallowed by default for billing account ~s", [AccountId]),
-            throw({<<"updates_disallowed">>, kz_util:to_binary(Error)})
+            throw({<<"updates_disallowed">>, kz_term:to_binary(Error)})
     end.
 
 -spec spawn_move_to_good_standing(ne_binary()) -> 'true'.
@@ -801,7 +801,7 @@ services_json(#kz_services{jobj=JObj}) ->
 
 -spec is_dirty(services()) -> boolean().
 is_dirty(#kz_services{dirty=IsDirty}) ->
-    kz_util:is_true(IsDirty).
+    kz_term:is_true(IsDirty).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1170,7 +1170,7 @@ get_filesystem_service_modules() ->
     Mods = [Mod
             || P <- filelib:wildcard([code:lib_dir('kazoo_services'), "/src/services/*.erl"]),
                begin
-                   Name = kz_util:to_binary(filename:rootname(filename:basename(P))),
+                   Name = kz_term:to_binary(filename:rootname(filename:basename(P))),
                    (Mod = kz_util:try_load_module(Name)) =/= 'false'
                end
            ],
@@ -1185,12 +1185,12 @@ get_filesystem_service_modules() ->
 %%--------------------------------------------------------------------
 -spec get_service_module(text()) -> atom() | 'false'.
 get_service_module(Module) when not is_binary(Module) ->
-    get_service_module(kz_util:to_binary(Module));
+    get_service_module(kz_term:to_binary(Module));
 get_service_module(<<"kz_service_", _/binary>> = Module) ->
     ServiceModules = get_service_modules(),
     case [M
           || M <- ServiceModules,
-             kz_util:to_binary(M) =:= Module
+             kz_term:to_binary(M) =:= Module
          ]
     of
         [M] -> M;
@@ -1220,7 +1220,7 @@ cascade_quantities(<<_/binary>> = Account, 'true') ->
 
 -spec do_cascade_quantities(ne_binary(), ne_binary()) -> kz_json:object().
 do_cascade_quantities(<<_/binary>> = Account, <<_/binary>> = View) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
     ViewOptions = ['group'
                    ,'reduce'
                    ,{'startkey', [AccountId]}
@@ -1293,7 +1293,7 @@ default_service_plan_id(ResellerId) ->
 
 -spec depreciated_default_service_plan_id(ne_binary()) -> api_binary().
 depreciated_default_service_plan_id(ResellerId) ->
-    ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
+    ResellerDb = kz_accounts:format_account_id(ResellerId, 'encoded'),
     case kz_datamgr:open_doc(ResellerDb, ResellerId) of
         {'ok', JObj} -> kz_json:get_value(<<"default_service_plan">>, JObj);
         {'error', _R} ->
@@ -1331,8 +1331,8 @@ maybe_augment_with_plan(ResellerId, JObj, PlanId) ->
 incorporate_depreciated_service_plans(Plans, JObj) ->
     PlanIds = kz_json:get_value(<<"pvt_service_plans">>, JObj),
     ResellerId = kzd_services:reseller_id(JObj),
-    case kz_util:is_empty(PlanIds)
-        orelse kz_util:is_empty(ResellerId)
+    case kz_term:is_empty(PlanIds)
+        orelse kz_term:is_empty(ResellerId)
     of
         'true' -> Plans;
         'false' ->

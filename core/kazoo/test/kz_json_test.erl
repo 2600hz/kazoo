@@ -374,7 +374,7 @@ to_querystring_test() ->
                    ,<<"topkey[subkey1]=v1&topkey[subkey2][k3]=v3">>}
             ],
     lists:foreach(fun({JSON, QS}) ->
-                          QS1 = kz_util:to_binary(
+                          QS1 = kz_term:to_binary(
                                   kz_json:to_querystring(
                                     kz_json:decode(JSON)
                                    )

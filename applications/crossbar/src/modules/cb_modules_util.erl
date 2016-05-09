@@ -48,7 +48,7 @@ range_view_options(Context) ->
 range_view_options(Context, MaxRange) ->
     range_view_options(Context, MaxRange, <<"created">>).
 range_view_options(Context, MaxRange, Key) ->
-    TStamp =  kz_util:current_tstamp(),
+    TStamp =  kz_time:current_tstamp(),
     RangeTo = range_to(Context, TStamp, Key),
     RangeFrom = range_from(Context, RangeTo, MaxRange, Key),
     range_view_options(Context, MaxRange, Key, RangeFrom, RangeTo).
@@ -66,7 +66,7 @@ range_view_options(Context, MaxRange, Key, RangeFrom, RangeTo) ->
              );
         N when N > MaxRange ->
             Message = <<Key/binary, "_to is more than "
-                        ,(kz_util:to_binary(MaxRange))/binary
+                        ,(kz_term:to_binary(MaxRange))/binary
                         ," seconds from ", Key/binary, "_from"
                       >>,
             cb_context:add_validation_error(
@@ -138,16 +138,16 @@ range_to(Context, TStamp, Key) ->
     case crossbar_doc:start_key(Context) of
         'undefined' ->
             lager:debug("building ~s_to from req value", [Key]),
-            kz_util:to_integer(cb_context:req_value(Context, <<Key/binary, "_to">>, TStamp));
+            kz_term:to_integer(cb_context:req_value(Context, <<Key/binary, "_to">>, TStamp));
         StartKey ->
             lager:debug("found startkey ~p as ~s_to", [StartKey, Key]),
-            kz_util:to_integer(StartKey)
+            kz_term:to_integer(StartKey)
     end.
 
 -spec range_from(cb_context:context(), pos_integer(), pos_integer(), ne_binary()) -> pos_integer().
 range_from(Context, CreatedTo, MaxRange, Key) ->
     lager:debug("building ~s_from from req value", [Key]),
-    kz_util:to_integer(cb_context:req_value(Context, <<Key/binary, "_from">>, CreatedTo - MaxRange)).
+    kz_term:to_integer(cb_context:req_value(Context, <<Key/binary, "_from">>, CreatedTo - MaxRange)).
 
 -type binding() :: {ne_binary(), atom()}.
 -type bindings() :: [binding(),...].
@@ -161,8 +161,8 @@ bind(Module, Bindings) ->
 -spec pass_hashes(ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
 pass_hashes(Username, Password) ->
     Creds = list_to_binary([Username, ":", Password]),
-    SHA1 = kz_util:to_hex_binary(crypto:hash('sha', Creds)),
-    MD5 = kz_util:to_hex_binary(crypto:hash('md5', Creds)),
+    SHA1 = kz_term:to_hex_binary(crypto:hash('sha', Creds)),
+    MD5 = kz_term:to_hex_binary(crypto:hash('md5', Creds)),
     {MD5, SHA1}.
 
 -spec update_mwi(api_binary(), ne_binary()) -> pid().
@@ -262,7 +262,7 @@ build_number_uri(Context, Number) ->
         FilterRegex -> filter_number_regex(Number, FilterRegex)
     end,
 
-    Realm = kz_util:get_account_realm(cb_context:account_id(Context)),
+    Realm = kz_accounts:get_account_realm(cb_context:account_id(Context)),
     <<UseNumber/binary, "@", Realm/binary>>.
 
 -spec get_endpoints(kapps_call:call(), cb_context:context()) -> kz_json:objects().
@@ -301,7 +301,7 @@ get_endpoints(_Call, _Context, _ReqNouns) ->
 aleg_cid(Number, Call) ->
     Routines = [{fun kapps_call:set_custom_channel_var/3, <<"Retain-CID">>, <<"true">>}
                ,{fun kapps_call:set_caller_id_name/2, <<"QuickCall">>}
-               ,{fun kapps_call:set_caller_id_number/2, kz_util:to_binary(Number)}
+               ,{fun kapps_call:set_caller_id_number/2, kz_term:to_binary(Number)}
                ],
     kapps_call:exec(Routines, Call).
 
@@ -315,8 +315,8 @@ originate_quickcall(Endpoints, Call, Context) ->
             ,{<<"Authorizing-Type">>, kapps_call:authorizing_type(Call)}
             ,{<<"Authorizing-ID">>, kapps_call:authorizing_id(Call)}
            ],
-    MsgId = case kz_util:is_empty(cb_context:req_id(Context)) of
-                'true' -> kz_util:rand_hex_binary(16);
+    MsgId = case kz_term:is_empty(cb_context:req_id(Context)) of
+                'true' -> kz_term:rand_hex_binary(16);
                 'false' -> cb_context:req_id(Context)
             end,
 
@@ -354,7 +354,7 @@ update_quickcall_endpoints(_AutoAnswer, Endpoints) ->
 
 -spec set_quickcall_outbound_call_id(kz_json:object()) -> kz_json:object().
 set_quickcall_outbound_call_id(Endpoint) ->
-    CallId = <<(kz_util:rand_hex_binary(18))/binary, "-quickcall">>,
+    CallId = <<(kz_term:rand_hex_binary(18))/binary, "-quickcall">>,
     kz_json:set_value(<<"Outbound-Call-ID">>, CallId, Endpoint).
 
 -spec get_application_data(cb_context:context()) -> kz_json:object().
@@ -372,7 +372,7 @@ get_application_data_from_nouns(_Nouns) ->
 -define(DEFAULT_TIMEOUT_S, 30).
 -spec get_timeout(cb_context:context()) -> pos_integer().
 get_timeout(Context) ->
-    try kz_util:to_integer(cb_context:req_value(Context, <<"timeout">>, ?DEFAULT_TIMEOUT_S)) of
+    try kz_term:to_integer(cb_context:req_value(Context, <<"timeout">>, ?DEFAULT_TIMEOUT_S)) of
         Timeout when is_integer(Timeout), Timeout > 3 -> Timeout;
         _ -> ?DEFAULT_TIMEOUT_S
     catch
@@ -381,7 +381,7 @@ get_timeout(Context) ->
 
 -spec get_ignore_early_media(cb_context:context()) -> boolean().
 get_ignore_early_media(Context) ->
-    kz_util:is_true(cb_context:req_value(Context, <<"ignore-early-media">>, 'true')).
+    kz_term:is_true(cb_context:req_value(Context, <<"ignore-early-media">>, 'true')).
 
 -spec get_media(cb_context:context()) -> ne_binary().
 get_media(Context) ->
@@ -394,14 +394,14 @@ get_media(Context) ->
 get_cid_name(Context, Default) ->
     case cb_context:req_value(Context, <<"cid-name">>, Default) of
         'undefined' -> 'undefined';
-        CIDName -> kz_util:uri_decode(CIDName)
+        CIDName -> kz_http_util:uri_decode(CIDName)
     end.
 
 -spec get_cid_number(cb_context:context(), api_binary()) -> api_binary().
 get_cid_number(Context, Default) ->
     case cb_context:req_value(Context, <<"cid-number">>, Default) of
         'undefined' -> 'undefined';
-        CIDNumber -> kz_util:uri_decode(CIDNumber)
+        CIDNumber -> kz_http_util:uri_decode(CIDNumber)
     end.
 
 %%--------------------------------------------------------------------
@@ -441,13 +441,13 @@ is_superduper_admin(Context) ->
 -spec attachment_name(ne_binary(), text()) -> ne_binary().
 attachment_name(Filename, CT) ->
     Generators = [fun(A) ->
-                          case kz_util:is_empty(A) of
-                              'true' -> kz_util:to_hex_binary(crypto:rand_bytes(16));
+                          case kz_term:is_empty(A) of
+                              'true' -> kz_term:to_hex_binary(crypto:rand_bytes(16));
                               'false' -> A
                           end
                   end
                   ,fun(A) ->
-                           case kz_util:is_empty(filename:extension(A)) of
+                           case kz_term:is_empty(filename:extension(A)) of
                                'false' -> A;
                                'true' ->
                                    <<A/binary, ".", (kz_mime:to_extension(CT))/binary>>
@@ -533,7 +533,7 @@ find_token_cost(JObj, Default, Suffix, [{Endpoint, _}|_], ReqVerb, AccountId) ->
 get_token_cost(JObj, Default, Keys) ->
     case kz_json:get_first_defined(Keys, JObj) of
         'undefined' -> Default;
-        V -> kz_util:to_integer(V)
+        V -> kz_term:to_integer(V)
     end.
 
 %% @public

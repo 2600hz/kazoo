@@ -49,8 +49,8 @@ maybe_relay_request(JObj) ->
             Fun = fun(F, J) -> F(Inception, NumberProps, J) end,
             JObjReq = lists:foldl(Fun, JObj, Routines),
 
-            FetchId = kz_util:rand_hex_binary(16),
-            CallId =  kz_util:rand_hex_binary(16),
+            FetchId = kz_term:rand_hex_binary(16),
+            CallId =  kz_term:rand_hex_binary(16),
 
             process_sms_req(FetchId, CallId, JObjReq)
     end.
@@ -101,7 +101,7 @@ send_route_win(FetchId, CallId, JObj) ->
                             kz_json:object().
 set_account_id(_Inception, NumberProps, JObj) ->
     AccountId = knm_number_options:account_id(NumberProps),
-    AccountRealm = kz_util:get_account_realm(AccountId),
+    AccountRealm = kz_accounts:get_account_realm(AccountId),
     kz_json:set_values(
       props:filter_undefined(
         [{?CCV(<<"Account-ID">>), AccountId}

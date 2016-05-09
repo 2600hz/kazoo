@@ -57,7 +57,7 @@ from_json(JObj) -> JObj.
                     {'ok', ip()} |
                     {'error', any()}.
 create(IP, Zone, Host) ->
-    Timestamp = kz_util:current_tstamp(),
+    Timestamp = kz_time:current_tstamp(),
     JObj = kz_json:from_list(
              [{<<"_id">>, IP}
               ,{<<"pvt_vsn">>, <<"1">>}
@@ -126,9 +126,9 @@ assign(Account, IPDoc) ->
         'false' -> {'error', 'already_assigned'};
         'true' ->
             IPJObj = to_json(IPDoc),
-            AccountId = kz_util:format_account_id(Account, 'raw'),
+            AccountId = kz_accounts:format_account_id(Account, 'raw'),
             Props = [{<<"pvt_assigned_to">>, AccountId}
-                    ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+                    ,{<<"pvt_modified">>, kz_time:current_tstamp()}
                     ,{<<"pvt_status">>, ?ASSIGNED}
                     ],
             save(kz_json:set_values(Props, IPJObj)
@@ -154,7 +154,7 @@ release(IP) ->
     'true' = is_dedicated_ip(IP),
     RemoveKeys = [<<"pvt_assigned_to">>],
     Props = [{<<"pvt_status">>, ?AVAILABLE}
-             ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+             ,{<<"pvt_modified">>, kz_time:current_tstamp()}
             ],
     JObj = to_json(IP),
     save(kz_json:delete_keys(RemoveKeys, kz_json:set_values(Props, JObj))

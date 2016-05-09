@@ -73,14 +73,14 @@ send_email(Emails, Subject, RenderedTemplates, Attachments) ->
         {'ok', Receipt} ->
             maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, 'undefined');
         {'error', Reason} = E ->
-            maybe_log_smtp(Emails, Subject, RenderedTemplates, 'undefined', kz_util:to_binary(Reason)),
+            maybe_log_smtp(Emails, Subject, RenderedTemplates, 'undefined', kz_term:to_binary(Reason)),
             E
     end.
 
 -spec maybe_log_smtp(email_map(), ne_binary(), list(), api_binary(), api_binary()) -> 'ok'.
 -spec maybe_log_smtp(email_map(), ne_binary(), list(), api_binary(), api_binary(), boolean()) -> 'ok'.
 maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error) ->
-    Skip = kz_util:is_true(get('skip_smtp_log')),
+    Skip = kz_term:is_true(get('skip_smtp_log')),
     maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, Skip).
 
 maybe_log_smtp(_Emails, _Subject, _RenderedTemplates, _Receipt, _Error, 'true') ->
@@ -105,7 +105,7 @@ log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
              ,{<<"pvt_type">>, <<"notify_smtp_log">>}
              ,{<<"account_id">>, AccountId}
              ,{<<"account_db">>, AccountDb}
-             ,{<<"pvt_created">>, kz_util:current_tstamp()}
+             ,{<<"pvt_created">>, kz_time:current_tstamp()}
              ,{<<"template_id">>, get('template_id')}
              ,{<<"template_account_id">>, get('template_account_id')}
              ,{<<"_id">>, make_smtplog_id(AccountDb)}
@@ -116,7 +116,7 @@ log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
 
 -spec make_smtplog_id(ne_binary()) -> ne_binary().
 make_smtplog_id(?MATCH_MODB_SUFFIX_ENCODED(_Account, Year, Month)) ->
-    ?MATCH_MODB_PREFIX(Year, Month, kz_util:rand_hex_binary(16)).
+    ?MATCH_MODB_PREFIX(Year, Month, kz_term:rand_hex_binary(16)).
 
 -spec email_body(rendered_templates()) -> mimemail:mimetuple().
 email_body(RenderedTemplates) ->
@@ -201,7 +201,7 @@ relay_encoded_email(To, From, Encoded) ->
                                  ,{'receipt', Receipt}
                                  ,#email_receipt{to=To
                                                  ,from=From
-                                                 ,timestamp=kz_util:current_tstamp()
+                                                 ,timestamp=kz_time:current_tstamp()
                                                  ,call_id=kz_util:get_callid()
                                                 }
                                  ,[{'expires', ?MILLISECONDS_IN_HOUR}]
@@ -227,9 +227,9 @@ log_email_send_error(Reason) ->
 
 -spec smtp_options() -> kz_proplist().
 smtp_options() ->
-    Relay = kz_util:to_list(kapps_config:get(<<"smtp_client">>, <<"relay">>, <<"localhost">>)),
-    Username = kz_util:to_list(kapps_config:get(<<"smtp_client">>, <<"username">>)),
-    Password = kz_util:to_list(kapps_config:get(<<"smtp_client">>, <<"password">>)),
+    Relay = kz_term:to_list(kapps_config:get(<<"smtp_client">>, <<"relay">>, <<"localhost">>)),
+    Username = kz_term:to_list(kapps_config:get(<<"smtp_client">>, <<"username">>)),
+    Password = kz_term:to_list(kapps_config:get(<<"smtp_client">>, <<"password">>)),
     Auth = kapps_config:get(<<"smtp_client">>, <<"auth">>, <<"never">>),
     Port = kapps_config:get_integer(<<"smtp_client">>, <<"port">>, 25),
     Retries = kapps_config:get_integer(<<"smtp_client">>, <<"retries">>, 1),
@@ -314,7 +314,7 @@ default_content_transfer_encoding(_) -> <<"7BIT">>.
 
 -spec system_params() -> kz_proplist().
 system_params() ->
-    [{<<"hostname">>, kz_util:to_binary(net_adm:localhost())}].
+    [{<<"hostname">>, kz_term:to_binary(net_adm:localhost())}].
 
 -spec account_params(kz_json:object()) -> kz_proplist().
 account_params(DataJObj) ->
@@ -423,7 +423,7 @@ find_account_db(JObj) ->
 find_account_db_from_id(JObj) ->
     case find_account_id(JObj) of
         'undefined' -> 'undefined';
-        Id -> kz_util:format_account_id(Id, 'encoded')
+        Id -> kz_accounts:format_account_id(Id, 'encoded')
     end.
 
 -spec send_update(kz_json:object(), ne_binary()) -> 'ok'.
@@ -486,7 +486,7 @@ find_account_admin_email(AccountId, ResellerId) ->
 
 -spec query_account_for_admin_emails(ne_binary()) -> ne_binaries().
 query_account_for_admin_emails(AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     ViewOptions = [{'key', <<"user">>}
                    ,'include_docs'
                   ],
@@ -518,7 +518,7 @@ find_account_admin(AccountId, ResellerId) ->
 
 -spec query_for_account_admin(ne_binary()) -> api_object().
 query_for_account_admin(AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     ViewOptions = [{'key', <<"user">>}
                    ,'include_docs'
                   ],
@@ -615,7 +615,7 @@ is_account_notice_enabled('undefined', TemplateKey, _ResellerAccountId) ->
     lager:debug("no account id to check, checking system config for ~s", [TemplateKey]),
     is_notice_enabled_default(TemplateKey);
 is_account_notice_enabled(AccountId, TemplateKey, ResellerAccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     TemplateId = teletype_templates:doc_id(TemplateKey),
 
     case kz_datamgr:open_cache_doc(AccountDb, TemplateId) of

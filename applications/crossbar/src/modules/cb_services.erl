@@ -135,7 +135,7 @@ validate_services(Context, ?HTTP_POST) ->
     catch
         'throw':{Error, Reason} ->
             R = kz_json:set_value([<<"billing_id">>, <<"invalid">>], Reason, kz_json:new()),
-            crossbar_util:response('error', kz_util:to_binary(Error), 400, R, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 400, R, Context)
     end.
 
 validate(Context, ?PATH_PLAN) ->
@@ -180,7 +180,7 @@ post(Context, Services) ->
             crossbar_util:response(kz_services:public_json(NewServices), Context)
     catch
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end.
 
 -spec load_audit_logs(cb_context:context()) -> cb_context:context().
@@ -270,7 +270,7 @@ cleanup_orphaned_services_docs([View|Views]) ->
 -spec cleanup_orphaned_services_doc(kz_json:object() | ne_binary()) -> 'ok'.
 cleanup_orphaned_services_doc(<<"_design/", _/binary>>) -> 'ok';
 cleanup_orphaned_services_doc(<<_/binary>> = AccountId) ->
-    case kz_datamgr:db_exists(kz_util:format_account_id(AccountId, 'encoded')) of
+    case kz_datamgr:db_exists(kz_accounts:format_account_id(AccountId, 'encoded')) of
         'true' -> 'ok';
         'false' ->
             lager:info("account ~s no longer exists but has a services doc", [AccountId]),

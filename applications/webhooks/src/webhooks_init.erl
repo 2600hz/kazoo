@@ -81,7 +81,7 @@ init_module(Module) ->
 
 -spec existing_modules() -> atoms().
 existing_modules() ->
-    existing_modules(code:lib_dir(kz_util:to_atom(?APP_NAME))).
+    existing_modules(code:lib_dir(kz_term:to_atom(?APP_NAME))).
 
 -spec existing_modules(string()) -> atoms().
 existing_modules(WebhooksRoot) ->
@@ -99,7 +99,7 @@ existing_modules(WebhooksRoot) ->
              ,"webhooks_util"
             ],
     Pattern = filename:join(ModulesDirectory, "*"++Extension),
-    [kz_util:to_atom(Module, 'true')
+    [kz_term:to_atom(Module, 'true')
      || Path <- filelib:wildcard(Pattern),
         not lists:member((Module=filename:basename(Path, Extension)), Utils)
     ].

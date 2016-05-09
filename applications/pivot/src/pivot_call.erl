@@ -243,7 +243,7 @@ handle_cast({'cdr', JObj}, #state{cdr_uri=Url
 
     maybe_debug_req(Call, Url, 'post', Headers, Body, Debug),
 
-    case kz_http:post(kz_util:to_list(Url), Headers, Body) of
+    case kz_http:post(kz_term:to_list(Url), Headers, Body) of
         {'ok', RespCode, RespHeaders, RespBody} ->
             maybe_debug_resp(Debug, Call, integer_to_binary(RespCode), RespHeaders, RespBody),
             lager:debug("recv ~p from cdr url ~s", [RespCode, Url]);
@@ -429,7 +429,7 @@ send(Call, Uri, Method, ReqHdrs, ReqBody, Debug) ->
 
     maybe_debug_req(Call, Uri, Method, ReqHdrs, ReqBody, Debug),
 
-    case kz_http:async_req(self(), Method, kz_util:to_list(Uri), ReqHdrs, ReqBody) of
+    case kz_http:async_req(self(), Method, kz_term:to_list(Uri), ReqHdrs, ReqBody) of
         {'http_req_id', ReqId} ->
             lager:debug("response coming in asynchronosly to ~p", [ReqId]),
             {'ok', ReqId, Call};
@@ -440,7 +440,7 @@ send(Call, Uri, Method, ReqHdrs, ReqBody, Debug) ->
 
 -spec normalize_resp_headers(kz_proplist()) -> kz_proplist().
 normalize_resp_headers(Headers) ->
-    [{kz_util:to_lower_binary(K), kz_util:to_binary(V)} || {K, V} <- Headers].
+    [{kz_term:to_lower_binary(K), kz_term:to_binary(V)} || {K, V} <- Headers].
 
 -spec handle_resp(api_binary(), kapps_call:call(), ne_binary(), binary()) -> 'ok'.
 handle_resp(RequesterQ, Call, CT, RespBody) ->
@@ -471,7 +471,7 @@ process_resp(RequesterQ, Call, Hdrs, RespBody) when is_list(Hdrs) ->
     handle_resp(RequesterQ, Call, props:get_value(<<"content-type">>, Hdrs), RespBody);
 process_resp(RequesterQ, Call, CT, RespBody) ->
     lager:info("finding translator for content type ~s", [CT]),
-    try kzt_translator:exec(Call, kz_util:to_list(RespBody), CT) of
+    try kzt_translator:exec(Call, kz_term:to_list(RespBody), CT) of
         {'stop', _Call1}=Stop ->
             lager:debug("translator says stop"),
             Stop;
@@ -510,7 +510,7 @@ uri(URI, QueryString) ->
 
 -spec req_params(ne_binary(), kapps_call:call()) -> kz_proplist().
 req_params(Format, Call) ->
-    FmtAtom = kz_util:to_atom(<<"kzt_", Format/binary>>, 'true'),
+    FmtAtom = kz_term:to_atom(<<"kzt_", Format/binary>>, 'true'),
     try FmtAtom:req_params(Call) of
         Result ->
             lager:debug("get req params from ~s", [FmtAtom]),
@@ -524,7 +524,7 @@ maybe_debug_req(_Call, _Uri, _Method, _ReqHdrs, _ReqBody, 'false') -> 'ok';
 maybe_debug_req(Call, Uri, Method, ReqHdrs, ReqBody, 'true') ->
     Headers = kz_json:from_list([{fix_value(K), fix_value(V)} || {K, V} <- ReqHdrs]),
     store_debug(Call, [{<<"uri">>, iolist_to_binary(Uri)}
-                       ,{<<"method">>, kz_util:to_binary(Method)}
+                       ,{<<"method">>, kz_term:to_binary(Method)}
                        ,{<<"req_headers">>, Headers}
                        ,{<<"req_body">>, iolist_to_binary(ReqBody)}
                        ,{<<"iteration">>, kapps_call:kvs_fetch('pivot_counter', Call)}
@@ -545,7 +545,7 @@ maybe_debug_resp('true', Call, StatusCode, RespHeaders, RespBody) ->
 
 -spec store_debug(kapps_call:call(), kz_proplist()) -> 'ok'.
 store_debug(Call, Doc) ->
-    AccountModDb = kz_util:format_account_mod_id(kapps_call:account_id(Call)),
+    AccountModDb = kz_accounts:format_account_mod_id(kapps_call:account_id(Call)),
     JObj =
         kz_doc:update_pvt_parameters(
             kz_json:from_list([{<<"call_id">>, kapps_call:call_id(Call)} | Doc])
@@ -553,7 +553,7 @@ store_debug(Call, Doc) ->
             ,[{'account_id', kapps_call:account_id(Call)}
               ,{'account_db', AccountModDb}
               ,{'type', <<"pivot_debug">>}
-              ,{'now', kz_util:current_tstamp()}
+              ,{'now', kz_time:current_tstamp()}
             ]
         ),
     case kazoo_modb:save_doc(AccountModDb, JObj) of
@@ -565,4 +565,4 @@ store_debug(Call, Doc) ->
 
 -spec fix_value(number() | list()) -> number() | ne_binary().
 fix_value(N) when is_number(N) -> N;
-fix_value(O) -> kz_util:to_lower_binary(O).
+fix_value(O) -> kz_term:to_lower_binary(O).

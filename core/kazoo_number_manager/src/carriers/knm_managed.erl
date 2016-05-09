@@ -160,7 +160,7 @@ import_numbers(AccountId, [Number | Numbers], JObj) ->
                       {'ok', kz_json:object()} |
                       {'error', any()}.
 save_doc(AccountId, Number) ->
-    JObj = kz_json:from_list([{<<"_id">>,<<"+",(kz_util:to_binary(Number))/binary>>}
+    JObj = kz_json:from_list([{<<"_id">>,<<"+",(kz_term:to_binary(Number))/binary>>}
                               ,{<<"pvt_account_id">>, AccountId}
                               ,{?PVT_STATE, ?NUMBER_STATE_AVAILABLE}
                               ,{<<"pvt_type">>, <<"number">>}

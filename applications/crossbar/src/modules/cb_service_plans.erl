@@ -117,7 +117,7 @@ validate(Context, ?CURRENT) ->
 validate(Context, ?AVAILABLE) ->
     AccountId = cb_context:account_id(Context),
     ResellerId = kz_services:find_reseller_id(AccountId),
-    ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
+    ResellerDb = kz_accounts:format_account_id(ResellerId, 'encoded'),
     crossbar_doc:load_view(
       ?CB_LIST
       ,[]
@@ -136,7 +136,7 @@ validate(Context, ?RECONCILIATION) ->
     end;
 validate(Context, ?OVERRIDE) ->
     AuthAccountId = cb_context:auth_account_id(Context),
-    case kz_util:is_system_admin(AuthAccountId) of
+    case kz_accounts:is_system_admin(AuthAccountId) of
         'true' ->
             crossbar_doc:load(
                 cb_context:account_id(Context)
@@ -151,7 +151,7 @@ validate(Context, PlanId) ->
 validate(Context, ?AVAILABLE, PlanId) ->
     AccountId = cb_context:account_id(Context),
     ResellerId = kz_services:find_reseller_id(AccountId),
-    ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
+    ResellerDb = kz_accounts:format_account_id(ResellerId, 'encoded'),
     crossbar_doc:load(PlanId, cb_context:set_account_db(Context, ResellerDb), ?TYPE_CHECK_OPTION(<<"service_plan">>)).
 
 -spec validate_service_plan(cb_context:context(), http_method()) -> cb_context:context().
@@ -355,7 +355,7 @@ is_allowed(Context) ->
     ResellerId = kz_services:find_reseller_id(cb_context:account_id(Context)),
     AuthAccountId = cb_context:auth_account_id(Context),
     (AuthAccountId =:= ResellerId
-     orelse kz_util:is_system_admin(AuthAccountId)
+     orelse kz_accounts:is_system_admin(AuthAccountId)
     )
         andalso {'ok', ResellerId}.
 
@@ -420,5 +420,5 @@ check_plan_ids(Context, ResellerId, PlanIds) ->
 -spec check_plan_id(cb_context:context(), path_token(), ne_binary()) ->
                            cb_context:context().
 check_plan_id(Context, PlanId, ResellerId) ->
-    ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
+    ResellerDb = kz_accounts:format_account_id(ResellerId, 'encoded'),
     crossbar_doc:load(PlanId, cb_context:set_account_db(Context, ResellerDb), ?TYPE_CHECK_OPTION(<<"service_plan">>)).

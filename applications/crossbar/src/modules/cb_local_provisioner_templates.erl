@@ -71,7 +71,7 @@ content_types_provided(Context, PT1, PT2) ->
     content_types_provided_for_provisioner(Context, PT1, PT2, cb_context:req_verb(Context)).
 
 content_types_provided_for_provisioner(Context, DocId, ?IMAGE_REQ, ?HTTP_GET) ->
-    Db = kz_util:format_account_id(cb_context:auth_account_id(Context), 'encoded'),
+    Db = kz_accounts:format_account_id(cb_context:auth_account_id(Context), 'encoded'),
     case kz_datamgr:open_doc(Db, DocId) of
         {'error', _} -> Context;
         {'ok', JObj} ->

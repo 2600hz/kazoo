@@ -17,7 +17,7 @@ add_trace(Pid, CollectFor) ->
     spawn(fun() ->
                   io:format("started trace for ~p in ~p~n", [Pid, self()]),
                   dbg:stop_clear(),
-                  BinFile = kz_util:to_list(<<"/home/james/eflame.trace">>),
+                  BinFile = kz_term:to_list(<<"/home/james/eflame.trace">>),
                   eflame2:write_trace('global_calls_plus_new_procs'
                                      ,BinFile
                                      ,Pid
@@ -49,7 +49,7 @@ gen_load(N, D) ->
 wait_for_refs(Start, MaxMailbox, Tables, []) ->
     case cache_data() of
         {0, _} ->
-            io:format("finished test after ~pms: ~p~n", [kz_util:elapsed_ms(Start), MaxMailbox]),
+            io:format("finished test after ~pms: ~p~n", [kz_time:elapsed_ms(Start), MaxMailbox]),
             table_status(Tables);
         _ -> timer:sleep(1000),
              wait_for_refs(Start, MaxMailbox, Tables, [])
@@ -73,8 +73,8 @@ table_status(Ts) ->
     io:format("tables: ~p ~p ~p~n", [{T, ets:info(T, 'size')} || T <- Ts]).
 
 do_load_gen(Ds) ->
-    AccountId = kz_util:rand_hex_binary(16),
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountId = kz_term:rand_hex_binary(16),
+    AccountDb = kz_accounts:format_account_db(AccountId),
     'true' = kz_datamgr:db_create(AccountDb),
 
     io:format("building ~p with ~p docs~n", [AccountDb, Ds]),
@@ -118,11 +118,11 @@ verify_no_doc(Doc) ->
 
 new_doc(AccountDb, Ref) ->
     Doc = kz_doc:update_pvt_parameters(
-            kz_json:from_list([{<<"_id">>, kz_util:rand_hex_binary(16)}
+            kz_json:from_list([{<<"_id">>, kz_term:rand_hex_binary(16)}
                               ,{<<"ref">>, Ref}
                               ,{<<"pvt_type">>, <<"load_test">>}
-                               | [{kz_util:rand_hex_binary(8)
-                                  ,kz_util:rand_hex_binary(8)
+                               | [{kz_term:rand_hex_binary(8)
+                                  ,kz_term:rand_hex_binary(8)
                                   }
                                   || _ <- lists:seq(1, 12)
                                  ]
@@ -166,7 +166,7 @@ wait_for_cache(Start, {N, F}) ->
             timer:sleep(1000),
             wait_for_cache(Start, {M, G});
         {0, _F} ->
-            io:format("~pms done (in ~p)~n", [kz_util:elapsed_ms(Start), _F]);
+            io:format("~pms done (in ~p)~n", [kz_time:elapsed_ms(Start), _F]);
         _ ->
             timer:sleep(1000),
             wait_for_cache(Start, {N, F})

@@ -99,7 +99,7 @@ pagination_page_size(_Context, ?VERSION_1) -> 'undefined';
 pagination_page_size(Context, _Version) ->
     case cb_context:req_value(Context, <<"page_size">>) of
         'undefined' -> pagination_page_size();
-        V -> kz_util:to_integer(V)
+        V -> kz_term:to_integer(V)
     end.
 
 %%--------------------------------------------------------------------
@@ -469,7 +469,7 @@ load_view(#load_view_params{view=View
 -spec limit_by_page_size(cb_context:context(), api_binary() | pos_integer()) -> api_pos_integer().
 limit_by_page_size('undefined') -> 'undefined';
 limit_by_page_size(N) when is_integer(N) -> N+1;
-limit_by_page_size(<<_/binary>> = B) -> limit_by_page_size(kz_util:to_integer(B)).
+limit_by_page_size(<<_/binary>> = B) -> limit_by_page_size(kz_term:to_integer(B)).
 
 limit_by_page_size(Context, PageSize) ->
     case cb_context:should_paginate(Context) of
@@ -519,7 +519,7 @@ load_docs(Context, Filter) when is_function(Filter, 2) ->
         {'ok', JObjs} ->
             Filtered = [JObj
                         || JObj <- lists:foldl(Filter, [], JObjs)
-                               ,(not kz_util:is_empty(JObj))
+                               ,(not kz_term:is_empty(JObj))
                        ],
             handle_couch_mgr_success(Filtered, Context)
     end.
@@ -671,7 +671,7 @@ save_attachment(DocId, Name, Contents, Context, Options) ->
                 _O -> Options
             end,
 
-    AName = kz_util:clean_binary(Name),
+    AName = kz_term:clean_binary(Name),
 
     case kz_datamgr:put_attachment(cb_context:account_db(Context), DocId, AName, Contents, Opts1) of
         {'error', 'conflict'=Error} ->
@@ -821,11 +821,11 @@ delete_attachment(DocId, AName, Context) ->
                          'undefined' | 'automatic' | string().
 rev_to_etag([_|_])-> 'automatic';
 rev_to_etag([]) -> 'undefined';
-rev_to_etag(Rev) when is_binary(Rev) -> kz_util:to_list(Rev);
+rev_to_etag(Rev) when is_binary(Rev) -> kz_term:to_list(Rev);
 rev_to_etag(JObj) ->
     case kz_doc:revision(JObj) of
         'undefined' -> 'undefined';
-        Rev -> kz_util:to_list(Rev)
+        Rev -> kz_term:to_list(Rev)
     end.
 
 %%--------------------------------------------------------------------
@@ -1011,7 +1011,7 @@ maybe_apply_custom_filter('undefined', JObjs) -> JObjs;
 maybe_apply_custom_filter(FilterFun, JObjs) ->
     [JObj
      || JObj <- lists:foldl(FilterFun, [], JObjs),
-        (not kz_util:is_empty(JObj))
+        (not kz_term:is_empty(JObj))
     ].
 
 %%--------------------------------------------------------------------
@@ -1140,10 +1140,10 @@ handle_couch_mgr_errors('conflict', DocId, Context) ->
     cb_context:add_system_error('datastore_conflict', Context);
 handle_couch_mgr_errors('invalid_view_name', View, Context) ->
     lager:debug("loading view ~s from ~s failed: invalid view", [View, cb_context:account_db(Context)]),
-    cb_context:add_system_error('datastore_missing_view', kz_json:from_list([{<<"cause">>, kz_util:to_binary(View)}]), Context);
+    cb_context:add_system_error('datastore_missing_view', kz_json:from_list([{<<"cause">>, kz_term:to_binary(View)}]), Context);
 handle_couch_mgr_errors(Else, _View, Context) ->
     lager:debug("operation failed: ~p on ~p", [Else, _View]),
-    try kz_util:to_binary(Else) of
+    try kz_term:to_binary(Else) of
         Reason -> cb_context:add_system_error('datastore_fault', kz_json:from_list([{<<"cause">>, Reason}]), Context)
     catch
         _:_ -> cb_context:add_system_error('datastore_fault', Context)
@@ -1330,13 +1330,13 @@ filter_prop(Doc, <<"key_missing">>, Key) ->
 filter_prop(Doc, <<"has_value">>, Key) ->
     has_value(Doc, Key);
 filter_prop(Doc, <<"created_from">>, Val) ->
-    lowerbound(kz_doc:created(Doc), kz_util:to_integer(Val));
+    lowerbound(kz_doc:created(Doc), kz_term:to_integer(Val));
 filter_prop(Doc, <<"created_to">>, Val) ->
-    upperbound(kz_doc:created(Doc), kz_util:to_integer(Val));
+    upperbound(kz_doc:created(Doc), kz_term:to_integer(Val));
 filter_prop(Doc, <<"modified_from">>, Val) ->
-    lowerbound(kz_doc:modified(Doc), kz_util:to_integer(Val));
+    lowerbound(kz_doc:modified(Doc), kz_term:to_integer(Val));
 filter_prop(Doc, <<"modified_to">>, Val) ->
-    upperbound(kz_doc:modified(Doc), kz_util:to_integer(Val));
+    upperbound(kz_doc:modified(Doc), kz_term:to_integer(Val));
 filter_prop(_, _, _) ->
     'undefined'.
 
@@ -1366,7 +1366,7 @@ should_filter(Doc, Key, Val) ->
     Keys = binary_key_to_json_key(Key),
     should_filter(
         kz_json:get_binary_value(Keys, Doc, <<>>)
-        ,kz_util:to_binary(Val)
+        ,kz_term:to_binary(Val)
     ).
 
 -spec has_key(kz_json:object(), ne_binary()) -> boolean().

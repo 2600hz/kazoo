@@ -33,7 +33,7 @@ start_check_sms_by_owner_id(AccountId, OwnerId) ->
 -spec check_sms_by_device_id(ne_binary(), ne_binary()) -> 'ok'.
 check_sms_by_device_id(_AccountId, 'undefined') -> 'ok';
 check_sms_by_device_id(AccountId, DeviceId) ->
-    ViewOptions = [{'endkey', [DeviceId, kz_util:current_tstamp()]}],
+    ViewOptions = [{'endkey', [DeviceId, kz_time:current_tstamp()]}],
     case kazoo_modb:get_results(AccountId, <<"sms/deliver_to_device">>, ViewOptions) of
         {'ok', []} -> 'ok';
         {'ok', JObjs} -> replay_sms(AccountId, JObjs);
@@ -44,7 +44,7 @@ check_sms_by_device_id(AccountId, DeviceId) ->
 -spec check_sms_by_owner_id(ne_binary(), api_binary()) -> 'ok'.
 check_sms_by_owner_id(_AccountId, 'undefined') -> 'ok';
 check_sms_by_owner_id(AccountId, OwnerId) ->
-    ViewOptions = [{'endkey', [OwnerId, kz_util:current_tstamp()]}],
+    ViewOptions = [{'endkey', [OwnerId, kz_time:current_tstamp()]}],
     case kazoo_modb:get_results(AccountId, <<"sms/deliver_to_owner">>, ViewOptions) of
         {'ok', []} -> 'ok';
         {'ok', JObjs} -> replay_sms(AccountId, JObjs);
@@ -55,7 +55,7 @@ check_sms_by_owner_id(AccountId, OwnerId) ->
 -spec start_check_sms_by_account(ne_binary(), kz_json:object()) -> pid().
 start_check_sms_by_account(AccountId, JObj) ->
      case kz_doc:is_soft_deleted(JObj)
-         orelse kz_util:is_false(kz_json:get_value(<<"pvt_enabled">>, JObj, 'true'))
+         orelse kz_term:is_false(kz_json:get_value(<<"pvt_enabled">>, JObj, 'true'))
      of
          'true' -> 'ok';
          'false' -> kz_util:spawn(fun check_pending_sms_for_delivery/1, [AccountId])
@@ -69,7 +69,7 @@ check_pending_sms_for_outbound_delivery(AccountId) ->
 -spec check_pending_sms_for_delivery(ne_binary()) -> 'ok'.
 check_pending_sms_for_delivery(AccountId) ->
     ViewOptions = [{'limit', 100}
-                  ,{'endkey', kz_util:current_tstamp()}
+                  ,{'endkey', kz_time:current_tstamp()}
                   ],
     case kazoo_modb:get_results(AccountId, <<"sms/deliver">>, ViewOptions) of
         {'ok', []} -> 'ok';
@@ -107,7 +107,7 @@ spawn_handler(AccountId, JObj) ->
 -spec check_pending_sms_for_offnet_delivery(ne_binary()) -> 'ok'.
 check_pending_sms_for_offnet_delivery(AccountId) ->
     ViewOptions = [{'limit', 100}
-                   ,{'endkey', kz_util:current_tstamp()}
+                   ,{'endkey', kz_time:current_tstamp()}
                   ],
     case kazoo_modb:get_results(AccountId, <<"sms/deliver_to_offnet">>, ViewOptions) of
         {'ok', []} -> 'ok';
@@ -137,11 +137,11 @@ send_outbound_sms(To, Msg, Times) ->
     send_outbound_sms(To, ?DEFAULT_FROM, ?DEFAULT_ROUTEID, Msg, Times).
 
 send_outbound_sms(To, From, RouteId, Msg) ->
-    Payload = [{<<"Message-ID">>, kz_util:rand_hex_binary(16)}
+    Payload = [{<<"Message-ID">>, kz_term:rand_hex_binary(16)}
                ,{<<"System-ID">>, kz_util:node_name()}
                ,{<<"Route-ID">>, RouteId}
                ,{<<"From">>, From}
-               ,{<<"To">>, kz_util:to_binary(To)}
+               ,{<<"To">>, kz_term:to_binary(To)}
                ,{<<"Body">>, Msg}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
@@ -149,8 +149,8 @@ send_outbound_sms(To, From, RouteId, Msg) ->
 
 send_outbound_sms(To, From, RouteId, Msg, Times) ->
     [begin
-         send_outbound_sms(To, From, RouteId, <<"MSG - ", (kz_util:to_binary(X))/binary, " => ", Msg/binary>>),
+         send_outbound_sms(To, From, RouteId, <<"MSG - ", (kz_term:to_binary(X))/binary, " => ", Msg/binary>>),
          timer:sleep(2000)
      end
-     || X <- lists:seq(1, kz_util:to_integer(Times))
+     || X <- lists:seq(1, kz_term:to_integer(Times))
     ].

@@ -34,7 +34,7 @@
 %%--------------------------------------------------------------------
 -spec update_presence(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 update_presence(SlotNumber, _PresenceId, AccountDb) ->
-    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+    AccountId = kz_accounts:format_account_id(AccountDb, 'raw'),
     ParkedCalls = get_parked_calls(AccountDb, AccountId),
     case get_slot_call_id(SlotNumber, ParkedCalls) of
         'undefined' -> 'ok';
@@ -46,7 +46,7 @@ update_presence(SlotNumber, _PresenceId, AccountDb) ->
 update_parked_call_presence(SlotNumber, Slot, ParkedCallId, AccountId) ->
     case kapps_call_command:b_channel_status(ParkedCallId) of
         {'ok', _Status} -> update_presence(Slot);
-        {'error', _} -> cleanup_slot(SlotNumber, ParkedCallId, kz_util:format_account_db(AccountId))
+        {'error', _} -> cleanup_slot(SlotNumber, ParkedCallId, kz_accounts:format_account_db(AccountId))
     end.
 
 -spec get_slot_call_id(kz_json:key(), kz_json:object()) -> api_binary().
@@ -211,7 +211,7 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Data, Call) ->
             _ = kapps_call_command:b_answer(Call),
             %% Caller parked in slot number...
             _ = kapps_call_command:b_prompt(<<"park-call_placed_in_spot">>, Call),
-            _ = kapps_call_command:b_say(kz_util:to_binary(SlotNumber), Call),
+            _ = kapps_call_command:b_say(kz_term:to_binary(SlotNumber), Call),
             cf_exe:transfer(Call);
         %% blind transfer and but the provided slot number is occupied
         {_, {'error', 'occupied'}} ->
@@ -246,7 +246,7 @@ create_slot(ParkerCallId, PresenceType, Call) ->
     AccountDb = kapps_call:account_db(Call),
     AccountId = kapps_call:account_id(Call),
     RingbackId = maybe_get_ringback_id(Call),
-    SlotCallId = kz_util:rand_hex_binary(16),
+    SlotCallId = kz_term:rand_hex_binary(16),
     kz_json:from_list(
       props:filter_undefined(
         [{<<"Call-ID">>, CallId}
@@ -257,7 +257,7 @@ create_slot(ParkerCallId, PresenceType, Call) ->
          ,{<<"Parker-Call-ID">>, ParkerCallId}
          ,{<<"Ringback-ID">>, RingbackId}
          ,{<<"Presence-ID">>, <<(kapps_call:request_user(Call))/binary
-                                ,"@", (kz_util:get_account_realm(AccountDb, AccountId))/binary
+                                ,"@", (kz_accounts:get_account_realm(AccountDb, AccountId))/binary
                               >>
           }
          ,{<<"Node">>, kapps_call:switch_nodename(Call)}
@@ -280,11 +280,11 @@ get_slot_number(_, CaptureGroup) when is_binary(CaptureGroup)
                                       andalso size(CaptureGroup) > 0 ->
     CaptureGroup;
 get_slot_number(ParkedCalls, _) ->
-    Slots = [kz_util:to_integer(Slot)
+    Slots = [kz_term:to_integer(Slot)
              || Slot <- kz_json:get_keys(<<"slots">>, ParkedCalls)
             ],
     Sorted = ordsets:to_list(ordsets:from_list([100|Slots])),
-    kz_util:to_binary(find_slot_number(Sorted)).
+    kz_term:to_binary(find_slot_number(Sorted)).
 
 -spec find_slot_number([integer(),...]) -> integer().
 find_slot_number([A]) -> A + 1;
@@ -308,7 +308,7 @@ find_slot_number([A|[B|_]=Slots]) ->
 save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
     ParkedCallId = kz_json:get_ne_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls),
     ParkerCallId = kz_json:get_ne_value([<<"slots">>, SlotNumber, <<"Parker-Call-ID">>], ParkedCalls),
-    case kz_util:is_empty(ParkedCallId) orelse ParkedCallId =:= ParkerCallId of
+    case kz_term:is_empty(ParkedCallId) orelse ParkedCallId =:= ParkerCallId of
         'true' ->
             lager:info("slot has parked call '~s' by parker '~s', it is available", [ParkedCallId, ParkerCallId]),
             do_save_slot(SlotNumber, Slot, ParkedCalls, Call);
@@ -576,7 +576,7 @@ cleanup_slot(SlotNumber, ParkedCallId, AccountDb) ->
 wait_for_pickup(SlotNumber, Slot, Data, Call) ->
     RingbackId = kz_json:get_value(<<"Ringback-ID">>, Slot),
     HoldMedia = kz_json:get_value(<<"Hold-Media">>, Slot),
-    Timeout = case kz_util:is_empty(RingbackId) of
+    Timeout = case kz_term:is_empty(RingbackId) of
                   'true' -> 'infinity';
                   'false' -> ringback_timeout(Data, SlotNumber)
               end,
@@ -788,7 +788,7 @@ publish_event(Call, SlotNumber, Event) ->
     Cmd = [
         {<<"Event-Name">>, Event}
         ,{<<"Call-ID">>, kapps_call:call_id(Call)}
-        ,{<<"Parking-Slot">>, kz_util:to_binary(SlotNumber)}
+        ,{<<"Parking-Slot">>, kz_term:to_binary(SlotNumber)}
         ,{<<"Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
         ,{<<"Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
         ,{<<"Callee-ID-Number">>, kapps_call:callee_id_number(Call)}

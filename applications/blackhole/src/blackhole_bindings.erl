@@ -114,7 +114,7 @@ filter_out_failed({'halt', _}) -> 'true';
 filter_out_failed({'false', _}) -> 'false';
 filter_out_failed('false') -> 'false';
 filter_out_failed({'EXIT', _}) -> 'false';
-filter_out_failed(Term) -> not kz_util:is_empty(Term).
+filter_out_failed(Term) -> not kz_term:is_empty(Term).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -128,7 +128,7 @@ filter_out_succeeded({'halt', _}) -> 'true';
 filter_out_succeeded({'false', _}) -> 'true';
 filter_out_succeeded('false') -> 'true';
 filter_out_succeeded({'EXIT', _}) -> 'true';
-filter_out_succeeded(Term) -> kz_util:is_empty(Term).
+filter_out_succeeded(Term) -> kz_term:is_empty(Term).
 
 -type bind_result() :: 'ok' |
                        {'error', 'exists'}.
@@ -186,7 +186,7 @@ init_mod(ModuleName) ->
 
 maybe_init_mod(ModuleName) ->
     lager:debug("trying to init module: ~p", [ModuleName]),
-    try (kz_util:to_atom(ModuleName, 'true')):init() of
+    try (kz_term:to_atom(ModuleName, 'true')):init() of
         _ -> 'ok'
     catch
         _E:_R ->

@@ -203,7 +203,7 @@ do_assigned_to_app([{Num, App}|Props], Options, Acc) ->
 %%--------------------------------------------------------------------
 -spec free(ne_binary()) -> 'ok'.
 free(Account=?NE_BINARY) ->
-    AccountDb = kz_util:format_account_db(Account),
+    AccountDb = kz_accounts:format_account_db(Account),
     {Numbers, _NumbersData} = lists:unzip(account_listing(AccountDb)),
     _ = [case Result of
              {Num, {'ok', _PhoneNumber}} ->
@@ -220,7 +220,7 @@ free(Account=?NE_BINARY) ->
 %%--------------------------------------------------------------------
 -spec emergency_enabled(ne_binary()) -> ne_binaries().
 emergency_enabled(AccountId=?MATCH_ACCOUNT_RAW(_)) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kz_accounts:format_account_db(AccountId),
     Numbers =
         [Num || {Num, ShortJObj} <- account_listing(AccountDb),
                 AccountId == kz_json:get_value(<<"assigned_to">>, ShortJObj)

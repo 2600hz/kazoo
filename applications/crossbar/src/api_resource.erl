@@ -57,12 +57,12 @@ init({'ssl', 'http'}, _Req, _Opts) ->
 rest_init(Req0, Opts) ->
     ReqId = case cowboy_req:header(<<"x-request-id">>, Req0) of
                 {'undefined', _} -> kz_datamgr:get_uuid();
-                {UserReqId, _} -> kz_util:to_binary(UserReqId)
+                {UserReqId, _} -> kz_term:to_binary(UserReqId)
             end,
     kz_util:put_callid(ReqId),
     ProfileId = case cowboy_req:header(<<"x-profile-id">>, Req0) of
                     {'undefined', _} -> 'undefined';
-                    {ProfId, _} -> kz_util:to_binary(ProfId)
+                    {ProfId, _} -> kz_term:to_binary(ProfId)
                 end,
     {Host, Req1} = cowboy_req:host(Req0),
     {Port, Req2} = cowboy_req:port(Req1),
@@ -82,11 +82,11 @@ rest_init(Req0, Opts) ->
 
     Setters = [{fun cb_context:set_req_id/2, ReqId}
               ,{fun cb_context:set_req_headers/2, Headers}
-              ,{fun cb_context:set_raw_host/2, kz_util:to_binary(Host)}
-              ,{fun cb_context:set_port/2, kz_util:to_integer(Port)}
-              ,{fun cb_context:set_raw_path/2, kz_util:to_binary(Path)}
-              ,{fun cb_context:set_raw_qs/2, kz_util:to_binary(QS)}
-              ,{fun cb_context:set_method/2, kz_util:to_binary(Method)}
+              ,{fun cb_context:set_raw_host/2, kz_term:to_binary(Host)}
+              ,{fun cb_context:set_port/2, kz_term:to_integer(Port)}
+              ,{fun cb_context:set_raw_path/2, kz_term:to_binary(Path)}
+              ,{fun cb_context:set_raw_qs/2, kz_term:to_binary(QS)}
+              ,{fun cb_context:set_method/2, kz_term:to_binary(Method)}
               ,{fun cb_context:set_resp_status/2, 'fatal'}
               ,{fun cb_context:set_resp_error_msg/2, <<"init failed">>}
               ,{fun cb_context:set_resp_error_code/2, 500}
@@ -134,7 +134,7 @@ maybe_allow_proxy_req(Peer, ForwardIP) ->
     case is_proxied(Peer) of
         true ->
             lager:info("request is from expected reverse proxy: ~s", [ForwardIP]),
-            kz_util:to_binary(ForwardIP);
+            kz_term:to_binary(ForwardIP);
         false ->
             lager:warning("request with \"X-Forwarded-For: ~s\" header, but peer (~s) is not allowed as proxy"
                          ,[ForwardIP, Peer]
@@ -156,7 +156,7 @@ is_proxied(Peer, [Proxy|Rest]) ->
     end.
 
 to_version(<<"v", Int/binary>>=Version) ->
-    try kz_util:to_integer(Int) of
+    try kz_term:to_integer(Int) of
         _ -> Version
     catch
         _:_ -> ?VERSION_1
@@ -179,7 +179,7 @@ rest_terminate(Req, Context) ->
 
 rest_terminate(Req, Context, ?HTTP_OPTIONS) ->
     lager:info("OPTIONS request fulfilled in ~p ms"
-               ,[kz_util:elapsed_ms(cb_context:start(Context))]
+               ,[kz_time:elapsed_ms(cb_context:start(Context))]
               ),
     _ = api_util:finish_request(Req, Context);
 rest_terminate(Req, Context, Verb) ->
@@ -187,7 +187,7 @@ rest_terminate(Req, Context, Verb) ->
     {BBin, BMem} = cb_context:fetch(Context, 'metrics'),
 
     lager:info("~s request fulfilled in ~p ms ~s mem ~s bin"
-               ,[Verb, kz_util:elapsed_ms(cb_context:start(Context))
+               ,[Verb, kz_time:elapsed_ms(cb_context:start(Context))
                  ,pretty_metric(AMem - BMem)
                  ,pretty_metric(ABin - BBin)
                 ]
@@ -200,7 +200,7 @@ pretty_metric(N) ->
     pretty_metric(N, kapps_config:get_is_true(?CONFIG_CAT, <<"pretty_metrics">>, 'true')).
 
 pretty_metric(N, 'false') ->
-    kz_util:to_binary(N);
+    kz_term:to_binary(N);
 pretty_metric(N, 'true') when N < 0 ->
     NegN = N * -1,
     PrettyN = kz_util:pretty_print_bytes(NegN),
@@ -270,7 +270,7 @@ find_allowed_methods(Req0, Context) ->
     {Method, Req1} = cowboy_req:method(Req0),
     AllowMethods = api_util:allow_methods(Responses
                                           ,cb_context:req_verb(Context)
-                                          ,kz_util:to_binary(Method)
+                                          ,kz_term:to_binary(Method)
                                          ),
     maybe_add_cors_headers(Req1, cb_context:set_allow_methods(Context, AllowMethods)).
 
@@ -678,7 +678,7 @@ to_json(Req0, Context0, 'undefined') ->
     [{Mod, _Params}|_] = cb_context:req_nouns(Context0),
     Verb = cb_context:req_verb(Context0),
     Event = api_util:create_event_name(Context0, [<<"to_json">>
-                                                      ,kz_util:to_lower_binary(Verb)
+                                                      ,kz_term:to_lower_binary(Verb)
                                                   ,Mod
                                                  ]),
     {Req1, Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
@@ -754,7 +754,7 @@ to_csv(Req, Context) ->
     [{Mod, _Params}|_] = cb_context:req_nouns(Context),
     Verb = cb_context:req_verb(Context),
     Event = api_util:create_event_name(Context, [<<"to_csv">>
-                                                 ,kz_util:to_lower_binary(Verb)
+                                                 ,kz_term:to_lower_binary(Verb)
                                                  ,Mod
                                                 ]),
     {Req1, Context1} = crossbar_bindings:fold(Event, {Req, Context}),
@@ -781,7 +781,7 @@ to_pdf(Req, Context) ->
     [{Mod, _Params}|_] = cb_context:req_nouns(Context),
     Verb = cb_context:req_verb(Context),
     Event = api_util:create_event_name(Context, [<<"to_pdf">>
-                                                 ,kz_util:to_lower_binary(Verb)
+                                                 ,kz_term:to_lower_binary(Verb)
                                                  ,Mod
                                                 ]),
     {Req1, Context1} = crossbar_bindings:fold(Event, {Req, Context}),
@@ -877,14 +877,14 @@ csv_header(JObj) ->
 
 -spec csv_ize(kz_json:keys()) -> iolist().
 csv_ize([F|Rest]) ->
-    [<<"\"">>, kz_util:to_binary(F), <<"\"">>
+    [<<"\"">>, kz_term:to_binary(F), <<"\"">>
      ,[[<<",\"">>, try_to_binary(V), <<"\"">>] || V <- Rest]
      ,<<"\n">>
     ].
 
 -spec try_to_binary(any()) -> binary().
 try_to_binary(Value) ->
-    try kz_util:to_binary(Value) of
+    try kz_term:to_binary(Value) of
         V -> V
     catch
         _E:_R -> <<"">>
@@ -917,7 +917,7 @@ generate_etag(Req0, Context0) ->
     case cb_context:resp_etag(Context1) of
         'automatic' ->
             {Content, _} = api_util:create_resp_content(Req1, Context1),
-            Tag = kz_util:to_hex_binary(crypto:hash('md5', Content)),
+            Tag = kz_term:to_hex_binary(crypto:hash('md5', Content)),
             {list_to_binary([$", Tag, $"]), Req1, cb_context:set_resp_etag(Context1, Tag)};
         'undefined' ->
             {'undefined', Req1, cb_context:set_resp_etag(Context1, 'undefined')};

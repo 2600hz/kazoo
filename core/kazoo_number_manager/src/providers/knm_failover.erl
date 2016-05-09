@@ -83,7 +83,7 @@ update_failover(Number) ->
 
     NotChanged = kz_json:are_identical(CurrentFailover, Failover),
 
-    case kz_util:is_empty(Failover) of
+    case kz_term:is_empty(Failover) of
         'true' ->
             knm_services:deactivate_feature(Number, ?FAILOVER_KEY);
         'false' when NotChanged ->

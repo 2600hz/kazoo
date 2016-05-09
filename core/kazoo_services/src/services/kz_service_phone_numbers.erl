@@ -29,7 +29,7 @@
 
 reconcile(Services) ->
     AccountId = kz_services:account_id(Services),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:get_results(AccountDb, ?LISTING_BY_NUMBER, ['include_docs']) of
         {'error', _R} ->
             lager:debug("unable to get current phone numbers in service: ~p", [_R]),
@@ -145,7 +145,7 @@ is_number_billable(DID, 'undefined') ->
             end
     end;
 is_number_billable(DID, M) ->
-    Module = kz_util:to_atom(M, 'true'),
+    Module = kz_term:to_atom(M, 'true'),
     case catch Module:is_number_billable(DID) of
         'true' ->
             lager:debug("number ~s is billable: ~s", [DID, Module]),

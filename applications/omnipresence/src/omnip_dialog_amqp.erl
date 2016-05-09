@@ -257,7 +257,7 @@ handle_update(JObj, State, From, To, Expires) ->
     CallId = kz_json:get_value(<<"Call-ID">>, JObj, ?FAKE_CALLID(From)),
     TargetCallId = kz_json:get_value(<<"Target-Call-ID">>, JObj, CallId),
     SwitchURI = kz_json:get_value(<<"Switch-URI">>, JObj),
-    Cookie = kz_util:rand_hex_binary(6),
+    Cookie = kz_term:rand_hex_binary(6),
 
     {User, Props} =
         case kz_json:get_lower_binary(<<"Call-Direction">>, JObj) of
@@ -380,7 +380,7 @@ reset_blf(User) ->
     Headers = [{<<"From">>, User}
                ,{<<"To">>, User}
                ,{<<"Flush-Level">>, 1}
-               ,{<<"Call-ID">>, kz_util:to_hex_binary(crypto:hash('md5', User))}
+               ,{<<"Call-ID">>, kz_term:to_hex_binary(crypto:hash('md5', User))}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     handle_update(kz_json:from_list(Headers), ?PRESENCE_HANGUP).

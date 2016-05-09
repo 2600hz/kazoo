@@ -150,7 +150,7 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({'store_chunk', CallId, Chunk}, State) ->
     Object = #object{call_id=CallId
-                    ,timestamp=kz_util:current_tstamp()
+                    ,timestamp=kz_time:current_tstamp()
                     ,type='chunk'
                     ,value=Chunk
                     },
@@ -159,7 +159,7 @@ handle_cast({'store_chunk', CallId, Chunk}, State) ->
     {'noreply', State};
 handle_cast({'store_analysis', CallId, Analysis}, State) ->
     Object = #object{call_id=CallId
-                    ,timestamp=kz_util:current_tstamp()
+                    ,timestamp=kz_time:current_tstamp()
                     ,type='analysis'
                     ,value=Analysis
                     },
@@ -221,7 +221,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec make_name(ne_binary()) -> file:filename().
 make_name(CallId) ->
-    <<D1:2/binary, D2:2/binary, Rest/binary>> = kz_util:binary_md5(CallId),
+    <<D1:2/binary, D2:2/binary, Rest/binary>> = kz_term:binary_md5(CallId),
     filename:join([?CI_DIR, D1, D2, Rest]).
 
 -spec ensure_path_exists(file:filename()) -> 'ok'.

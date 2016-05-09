@@ -59,7 +59,7 @@
 handle_push(JObj, _Props) ->
     Token = kz_json:get_value(<<"Token-ID">>, JObj),
     TokenType = kz_json:get_value(<<"Token-Type">>, JObj),
-    Module = kz_util:to_atom(<<"pm_",TokenType/binary>> , 'true'),
+    Module = kz_term:to_atom(<<"pm_",TokenType/binary>> , 'true'),
 
     lager:debug("pushing for token ~s(~s) to module ~s", [Token, TokenType, Module]),
 
@@ -112,7 +112,7 @@ maybe_update_push_token(UA, JObj, Params) ->
 maybe_update_push_token('undefined', _AuthorizingId, _UA, _JObj, _Params) -> 'ok';
 maybe_update_push_token(_AccountId, 'undefined', _UA, _JObj, _Params) -> 'ok';
 maybe_update_push_token(AccountId, AuthorizingId, UA, JObj, Params) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kz_accounts:format_account_db(AccountId),
     case kz_datamgr:open_cache_doc(AccountDb, AuthorizingId) of
         {'ok', Doc} ->
             Push = kz_json:get_value(<<"push">>, Doc),

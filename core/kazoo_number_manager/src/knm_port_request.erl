@@ -302,7 +302,7 @@ completed_port(PortReq) ->
 transition_numbers(PortReq) ->
     Numbers = kz_json:get_keys(<<"numbers">>, PortReq),
     PortOps = [enable_number(N) || N <- Numbers],
-    case lists:all(fun kz_util:is_true/1, PortOps) of
+    case lists:all(fun kz_term:is_true/1, PortOps) of
         'true' ->
             lager:debug("all numbers ported, removing from port request"),
             ClearedPortRequest = clear_numbers_from_port(PortReq),
@@ -384,10 +384,10 @@ maybe_send_request(JObj, Url)->
 -spec send_request(kz_json:object(), ne_binary()) -> 'error' | 'ok'.
 send_request(JObj, Url) ->
     Headers = [{"Content-Type", "application/json"}
-               ,{"User-Agent", kz_util:to_list(erlang:node())}
+               ,{"User-Agent", kz_term:to_list(erlang:node())}
               ],
 
-    Uri = kz_util:to_list(<<Url/binary, "/", (kz_doc:id(JObj))/binary>>),
+    Uri = kz_term:to_list(<<Url/binary, "/", (kz_doc:id(JObj))/binary>>),
 
     Remove = [<<"_rev">>
               ,<<"ui_metadata">>
@@ -460,11 +460,11 @@ fetch_and_send(Url, JObj) ->
 send_attachment(Url, Id, Name, Options, Attachment) ->
     ContentType = kz_json:get_value(<<"content_type">>, Options),
 
-    Headers = [{"Content-Type", kz_util:to_list(ContentType)}
-               ,{"User-Agent", kz_util:to_list(erlang:node())}
+    Headers = [{"Content-Type", kz_term:to_list(ContentType)}
+               ,{"User-Agent", kz_term:to_list(erlang:node())}
               ],
 
-    Uri = kz_util:to_list(<<Url/binary, "/", Id/binary, "/", Name/binary>>),
+    Uri = kz_term:to_list(<<Url/binary, "/", Id/binary, "/", Name/binary>>),
 
     case kz_http:post(Uri, Headers, Attachment) of
         {'ok', 200, _Headers, _Resp} ->

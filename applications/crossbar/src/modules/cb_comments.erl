@@ -413,7 +413,7 @@ only_return_comment(Context, Id) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec id_to_number(ne_binary()) -> pos_integer().
-id_to_number(Id) -> kz_util:to_integer(Id) + 1.
+id_to_number(Id) -> kz_term:to_integer(Id) + 1.
 
 %%--------------------------------------------------------------------
 %% @private

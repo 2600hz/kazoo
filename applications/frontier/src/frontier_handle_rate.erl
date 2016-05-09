@@ -135,7 +135,7 @@ run_rate_limits_query(Entity, AccountDB, IncludeRealm, MethodList) ->
 -spec to_json_key(ne_binary()) -> ne_binary().
 to_json_key(Token) ->
     Tokens = binary:split(Token, <<"_">>),
-    kz_util:join_binary([kz_util:ucfirst_binary(T) || T <- Tokens], <<"-">>).
+    kz_term:join_binary([kz_term:ucfirst_binary(T) || T <- Tokens], <<"-">>).
 
 -spec fold_responses(kz_json:object(), kz_json:object()) -> kz_json:object().
 fold_responses(Record, Acc) ->
@@ -268,7 +268,7 @@ check_fallbacks(Tree, MethodList, Realm) ->
 
 -spec check_fallback(ne_binary(), atom() | kz_json:objects(), ne_binaries(), ne_binary()) -> atom() | kz_json:objects().
 check_fallback(AccountId, 'empty', MethodList, Realm) ->
-    AccountDB = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDB = kz_accounts:format_account_id(AccountId, 'encoded'),
     ViewOpts = [{'key', AccountId}],
     case kz_datamgr:get_results(AccountDB, ?RATES_LISTING_BY_OWNER, ViewOpts) of
         {'ok', []} -> 'empty';

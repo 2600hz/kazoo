@@ -37,7 +37,7 @@
 
 -endif.
 
--define(CONVERTER_MOD, kz_util:to_atom(<<"knm_converter_", (?DEFAULT_CONVERTER)/binary>>, 'true')).
+-define(CONVERTER_MOD, kz_term:to_atom(<<"knm_converter_", (?DEFAULT_CONVERTER)/binary>>, 'true')).
 
 -define(DEFAULT_RECONCILE_REGEX, <<"^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*$">>).
 -define(KEY_RECONCILE_REGEX, <<"reconcile_regex">>).
@@ -276,7 +276,7 @@ classify_number(Num, [{Classification, Classifier}|Classifiers]) ->
         'nomatch' -> classify_number(Num, Classifiers);
         _ ->
             lager:debug("number '~s' is classified as ~s", [Num, Classification]),
-            kz_util:to_binary(Classification)
+            kz_term:to_binary(Classification)
     end.
 
 %%--------------------------------------------------------------------

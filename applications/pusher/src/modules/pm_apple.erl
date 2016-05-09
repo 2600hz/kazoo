@@ -60,7 +60,7 @@ maybe_send_push_notification(Pid, JObj) ->
     TokenID = kz_json:get_value(<<"Token-ID">>, JObj),
     Sender = kz_json:get_value(<<"Alert-Body">>, JObj),
     CallId = kz_json:get_value(<<"Call-ID">>, JObj),
-    apns:send_message(Pid, #apns_msg{device_token = kz_util:to_list(TokenID)
+    apns:send_message(Pid, #apns_msg{device_token = kz_term:to_list(TokenID)
                                      ,sound = <<"ring.caf">>
                                      ,extra = [{<<"call-id">>, CallId}]
                                      ,alert = #loc_alert{args = [Sender]

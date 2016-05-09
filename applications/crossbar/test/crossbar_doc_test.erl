@@ -195,8 +195,8 @@ from_qs(TStamp, Filter) ->
     kz_json:from_list([{<<Filter/binary, "_from">>, TStamp}]).
 
 multi_filter(Doc) ->
-    CFrom = kz_util:to_binary(?CREATED-1),
-    CTo = kz_util:to_binary(?CREATED+1),
+    CFrom = kz_term:to_binary(?CREATED-1),
+    CTo = kz_term:to_binary(?CREATED+1),
 
     QSTrue = kz_json:decode(<<"{\"filter_foo\":\"bar\",\"created_from\":", CFrom/binary, ",\"created_to\":", CTo/binary, "}">>),
 

@@ -30,7 +30,7 @@ handle_webhook(Data, Call) ->
     Hook = set_hook(Data, CallJObj),
     JObj = kz_json:from_list(
              [{<<"Hook">>, Hook}
-              ,{<<"Timestamp">>, kz_util:current_tstamp()}
+              ,{<<"Timestamp">>, kz_time:current_tstamp()}
               ,{<<"Data">>, CallJObj}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
@@ -51,7 +51,7 @@ set_hook(Data, CallJObj) ->
     Now = calendar:datetime_to_gregorian_seconds(calendar:local_time()),
     kz_json:from_list(
         props:filter_undefined(
-          [{<<"_id">>, kz_util:to_binary(Now)}
+          [{<<"_id">>, kz_term:to_binary(Now)}
            ,{<<"uri">>, kz_json:get_value(<<"uri">>, Data)}
            ,{<<"hook">>, <<"callflow">>}
            ,{<<"http_verb">>, kz_json:get_value(<<"http_verb">>, Data)}

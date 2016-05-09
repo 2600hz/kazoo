@@ -34,7 +34,7 @@ hooks_configured(AccountId) ->
 -spec set_failure_expiry(ne_binary()) -> 'ok'.
 -spec set_failure_expiry(ne_binary(), ne_binary()) -> 'ok'.
 set_failure_expiry(Expires) ->
-    try kz_util:to_integer(Expires) of
+    try kz_term:to_integer(Expires) of
         I ->
             kapps_config:set_default(?APP_NAME, ?ATTEMPT_EXPIRY_KEY, I),
             io:format("set default expiry for failure attempts to ~pms~n", [I])
@@ -44,8 +44,8 @@ set_failure_expiry(Expires) ->
     end.
 
 set_failure_expiry(Account, Expires) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
-    try kz_util:to_integer(Expires) of
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
+    try kz_term:to_integer(Expires) of
         I ->
             kapps_account_config:set(AccountId, ?APP_NAME, ?ATTEMPT_EXPIRY_KEY, I),
             io:format("set default expiry for failure attempts to ~pms on account ~s~n", [I, AccountId])
@@ -57,7 +57,7 @@ set_failure_expiry(Account, Expires) ->
 -spec set_disable_threshold(ne_binary()) -> 'ok'.
 -spec set_disable_threshold(ne_binary(), ne_binary()) -> 'ok'.
 set_disable_threshold(Count) ->
-    try kz_util:to_integer(Count) of
+    try kz_term:to_integer(Count) of
         I ->
             kapps_config:set_default(?APP_NAME, ?FAILURE_COUNT_KEY, I),
             io:format("set default count of failed attempts to disable hook to ~p~n", [I])
@@ -67,8 +67,8 @@ set_disable_threshold(Count) ->
     end.
 
 set_disable_threshold(Account, Count) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
-    try kz_util:to_integer(Count) of
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
+    try kz_term:to_integer(Count) of
         I ->
             kapps_account_config:set(AccountId, ?APP_NAME, ?FAILURE_COUNT_KEY, I),
             io:format("set default count of failed attempts to disable hook to ~p~n", [I])
@@ -87,7 +87,7 @@ failure_status() ->
     print_failure_footer().
 
 failure_status(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
     Failed = webhooks_disabler:find_failures(),
 
     Sorted = lists:keysort(1, Failed),
@@ -106,7 +106,7 @@ print_failure_footer() ->
     io:format(?FORMAT_FAILURE_HEADER, [$-, $-, $-]).
 
 print_failure_count(AccountId, HookId, Count) ->
-    io:format(?FORMAT_FAILURE_STRING, [AccountId, HookId, kz_util:to_binary(Count)]).
+    io:format(?FORMAT_FAILURE_STRING, [AccountId, HookId, kz_term:to_binary(Count)]).
 
 enable_account_hooks(AccountId) ->
     webhooks_util:reenable(AccountId, <<"account">>).

@@ -96,7 +96,7 @@ init() ->
 -spec cleanup(ne_binary(), kz_json:objects()) -> 'ok'.
 
 cleanup(?KZ_PORT_REQUESTS_DB = Db) ->
-    ModifiedBefore = kz_util:current_tstamp() - ?UNFINISHED_PORT_REQUEST_LIFETIME,
+    ModifiedBefore = kz_time:current_tstamp() - ?UNFINISHED_PORT_REQUEST_LIFETIME,
     ViewOpts = [{'startkey', [0]}
                 ,{'endkey', [ModifiedBefore]}
                 ,{'limit', kz_datamgr:max_bulk_insert()}
@@ -1119,7 +1119,7 @@ check_number_existence(E164, Number, Context) ->
             cb_context:set_resp_status(Context, 'success');
         {'error', E} ->
             lager:debug("number ~s error-ed when looking up: ~p", [E164, E]),
-            number_validation_error(Context, Number, kz_util:to_binary(E))
+            number_validation_error(Context, Number, kz_term:to_binary(E))
     end.
 
 %%--------------------------------------------------------------------
@@ -1218,7 +1218,7 @@ find_template(ResellerId) ->
 find_template(ResellerId, 'undefined') ->
     find_template(ResellerId);
 find_template(ResellerId, CarrierName) ->
-    TemplateName = <<(kz_util:to_lower_binary(kz_util:uri_encode(CarrierName)))/binary, ".tmpl">>,
+    TemplateName = <<(kz_term:to_lower_binary(kz_http_util:uri_encode(CarrierName)))/binary, ".tmpl">>,
     lager:debug("looking for carrier template ~s or plain template for reseller ~s"
                 ,[TemplateName, ResellerId]
                ),
@@ -1501,7 +1501,7 @@ remove_phone_number(Number, _, {_, Acc}) ->
                                    {'error', any()}.
 get_phone_numbers_doc(Context) ->
     AccountId = cb_context:account_id(Context),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     Context1 = crossbar_doc:load(?KNM_PHONE_NUMBERS_DOC
                                  ,cb_context:set_account_db(Context, AccountDb)
                                  ,?TYPE_CHECK_OPTION(<<"phone_numbers">>)),
@@ -1525,7 +1525,7 @@ save_phone_numbers_doc(Context, JObj) ->
         cb_context:setters(
           Context
           ,[{fun cb_context:set_doc/2, JObj}
-            ,{fun cb_context:set_account_db/2, kz_util:format_account_id(AccountId, 'encoded')}
+            ,{fun cb_context:set_account_db/2, kz_accounts:format_account_id(AccountId, 'encoded')}
            ]
          ),
 
@@ -1591,7 +1591,7 @@ create_qr_code(AccountId, PortRequestId) ->
     CHL = <<AccountId/binary, "-", PortRequestId/binary>>,
     Url = <<"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=", CHL/binary, "&choe=UTF-8">>,
 
-    case kz_http:get(kz_util:to_list(Url)) of
+    case kz_http:get(kz_term:to_list(Url)) of
         {'ok', 200, _RespHeaders, RespBody} ->
             lager:debug("generated QR code from ~s: ~s", [Url, RespBody]),
             [{<<"image">>, base64:encode(RespBody)}];

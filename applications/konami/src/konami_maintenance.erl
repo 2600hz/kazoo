@@ -130,15 +130,15 @@ print_builders(Builders) ->
     [io:format("  ~b. ~s~n", [N, builder_name(M)]) || {N, M} <- Builders].
 
 -spec builder_name(ne_binary() | atom()) -> ne_binary().
-builder_name(<<"konami_", Name/binary>>) -> kz_util:ucfirst_binary(Name);
-builder_name(<<_/binary>> = Name) -> kz_util:ucfirst_binary(Name);
-builder_name(M) -> builder_name(kz_util:to_binary(M)).
+builder_name(<<"konami_", Name/binary>>) -> kz_term:ucfirst_binary(Name);
+builder_name(<<_/binary>> = Name) -> kz_term:ucfirst_binary(Name);
+builder_name(M) -> builder_name(kz_term:to_binary(M)).
 
 -spec builder_menu(kz_json:object(), save_fun(), builder_action()) -> 'ok'.
 builder_menu(Default, SaveFun, #builder_action{builders=Builders
                                                ,metaflow_key=Key
                                               }=BA) ->
-    io:format("~s Builders:~n", [kz_util:ucfirst_binary(Key)]),
+    io:format("~s Builders:~n", [kz_term:ucfirst_binary(Key)]),
 
     _ = print_builders(Builders),
     io:format("  0. Return to Menu~n~n", []),
@@ -167,7 +167,7 @@ execute_action(Default, SaveFun, #builder_action{module_fun_name=ModuleFun
                                                 }=BA, Module) ->
     try Module:ModuleFun(Default) of
         NewDefault ->
-            io:format("  ~s: ~s~n~n", [kz_util:ucfirst_binary(Key)
+            io:format("  ~s: ~s~n~n", [kz_term:ucfirst_binary(Key)
                                        ,kz_json:encode(kz_json:get_value(Key, NewDefault, kz_json:new()))
                                       ]),
             builder_menu(NewDefault, SaveFun, BA)

@@ -103,7 +103,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info('timeout', #state{jobs=[]}=State) ->
-    Upto = kz_util:current_tstamp(),
+    Upto = kz_time:current_tstamp(),
     ViewOptions = [{'limit', 100}
                   ,{'endkey', Upto}
                   ],
@@ -163,7 +163,7 @@ distribute_jobs([Job|Jobs]) ->
 
 -spec cleanup_jobs() -> 'ok'.
 cleanup_jobs() ->
-    ViewOptions = [{<<"key">>, kz_util:to_binary(node())}],
+    ViewOptions = [{<<"key">>, kz_term:to_binary(node())}],
     case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/processing_by_node">>, ViewOptions) of
         {'ok', JObjs} ->
             _ = [begin

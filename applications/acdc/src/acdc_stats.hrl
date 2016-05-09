@@ -10,7 +10,7 @@
 -record(agent_miss, {
           agent_id :: api_binary()
           ,miss_reason :: api_binary()
-          ,miss_timestamp = kz_util:current_tstamp() :: pos_integer()
+          ,miss_timestamp = kz_time:current_tstamp() :: pos_integer()
          }).
 -type agent_miss() :: #agent_miss{}.
 -type agent_misses() :: [agent_miss()].
@@ -23,7 +23,7 @@
 
           ,agent_id :: api_binary() | '$3' | '_' % the handling agent
 
-          ,entered_timestamp = kz_util:current_tstamp() :: pos_integer() | '$1' | '$5' | '_'
+          ,entered_timestamp = kz_time:current_tstamp() :: pos_integer() | '$1' | '$5' | '_'
           ,abandoned_timestamp :: api_integer() | '_'
           ,handled_timestamp :: api_integer() | '_'
           ,processed_timestamp :: api_integer() | '_'

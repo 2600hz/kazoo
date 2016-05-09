@@ -86,7 +86,7 @@ reasons(Min, Max, [_ | T], Acc) ->
 dollars_to_units(Dollars) when is_number(Dollars) ->
     round(Dollars * ?DOLLAR_TO_UNIT);
 dollars_to_units(Dollars) ->
-    dollars_to_units(kz_util:to_float(Dollars)).
+    dollars_to_units(kz_term:to_float(Dollars)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -98,12 +98,12 @@ dollars_to_units(Dollars) ->
 units_to_dollars(Units) when is_number(Units) ->
     trunc(Units) / ?DOLLAR_TO_UNIT;
 units_to_dollars(Units) ->
-    units_to_dollars(kz_util:to_integer(Units)).
+    units_to_dollars(kz_term:to_integer(Units)).
 
 %% @public
 -spec pretty_print_dollars(dollars()) -> ne_binary().
 pretty_print_dollars(Amount) ->
-    kz_util:to_binary(io_lib:format("$~.2f", [Amount])).
+    kz_term:to_binary(io_lib:format("$~.2f", [Amount])).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -156,8 +156,8 @@ get_balance_from_previous(Account, ViewOptions, Retries) when Retries >= 0 ->
     M = props:get_integer_value('month', ViewOptions, DefaultMonth),
     {Year, Month} = kazoo_modb_util:prev_year_month(Y, M),
 
-    VOptions = [{'year', kz_util:to_binary(Year)}
-                ,{'month', kz_util:pad_month(Month)}
+    VOptions = [{'year', kz_term:to_binary(Year)}
+                ,{'month', kz_time:pad_month(Month)}
                 ,{'retry', Retries-1}
                ],
     lager:warning("could not find current balance trying previous month: ~p", [VOptions]),
@@ -209,8 +209,8 @@ maybe_rollup_previous_month(Account, Balance) ->
 get_rollup_from_previous(Account) ->
     {Y, M, _} = erlang:date(),
     {Year, Month} = kazoo_modb_util:prev_year_month(Y, M),
-    ModbOptions = [{'year', kz_util:to_binary(Year)}
-                   ,{'month', kz_util:pad_month(Month)}
+    ModbOptions = [{'year', kz_term:to_binary(Year)}
+                   ,{'month', kz_time:pad_month(Month)}
                   ],
     case kazoo_modb:open_doc(Account, <<"monthly_rollup">>, ModbOptions) of
         {'ok', _} ->
@@ -263,8 +263,8 @@ current_account_dollars(Account) ->
 -spec get_balance_from_account(ne_binary(), couch_util:view_options()) -> units().
 get_balance_from_account(Account, ViewOptions) ->
     View = <<"transactions/credit_remaining">>,
-    AccountId = kz_util:format_account_id(Account, 'raw'),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:get_results(AccountDb, View, ViewOptions) of
         {'ok', []} ->
             lager:debug("no current balance for ~s", [AccountId]),
@@ -328,7 +328,7 @@ get_integer_value(Key, JObj) ->
 -spec get_integer_value(ne_binary(), kz_json:object(), any()) -> integer().
 get_integer_value(Key, JObj, Default) ->
     Keys = [Key, kz_json:normalize_key(Key)],
-    kz_util:to_integer(kz_json:get_first_defined(Keys, JObj, Default)).
+    kz_term:to_integer(kz_json:get_first_defined(Keys, JObj, Default)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -373,7 +373,7 @@ calculate_cost(R, RI, RM, Sur, Secs) ->
         'true' ->
             trunc(Sur + ((RM / 60) * R));
         'false' ->
-            trunc(Sur + ((RM / 60) * R) + (kz_util:ceiling((Secs - RM) / RI) * ((RI / 60) * R)))
+            trunc(Sur + ((RM / 60) * R) + (kz_term:ceiling((Secs - RM) / RI) * ((RI / 60) * R)))
     end.
 
 %%--------------------------------------------------------------------
@@ -463,10 +463,10 @@ rollup(Transaction) ->
     end.
 
 rollup(<<_/binary>> = AccountMODb, Balance) when Balance >= 0 ->
-    AccountId = kz_util:format_account_id(AccountMODb, 'raw'),
+    AccountId = kz_accounts:format_account_id(AccountMODb, 'raw'),
     rollup(kz_transaction:credit(AccountId, Balance));
 rollup(<<_/binary>> = AccountMODb, Balance) ->
-    AccountId = kz_util:format_account_id(AccountMODb, 'raw'),
+    AccountId = kz_accounts:format_account_id(AccountMODb, 'raw'),
     rollup(kz_transaction:debit(AccountId, -1*Balance)).
 
 %%--------------------------------------------------------------------

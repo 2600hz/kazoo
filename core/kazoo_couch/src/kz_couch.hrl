@@ -55,7 +55,7 @@
          ,do_compaction = 'false' :: boolean()
          }).
 
--record(kz_couch_connection, {id = kz_util:current_tstamp()
+-record(kz_couch_connection, {id = kz_time:current_tstamp()
                               ,host = "localhost"
                               ,port = ?DEFAULT_PORT
                               ,username = ""

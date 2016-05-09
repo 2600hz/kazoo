@@ -96,7 +96,7 @@ summary() ->
 
 -spec summary(text()) -> 'ok'.
 summary(Node) when not is_atom(Node) ->
-    summary(kz_util:to_atom(Node, 'true'));
+    summary(kz_term:to_atom(Node, 'true'));
 summary(Node) ->
     MatchSpec = [{#conference{node='$1', _ = '_'}
                   ,[{'=:=', '$1', {'const', Node}}]
@@ -114,7 +114,7 @@ details() ->
 
 -spec details(text()) -> 'ok'.
 details(UUID) when not is_binary(UUID) ->
-    details(kz_util:to_binary(UUID));
+    details(kz_term:to_binary(UUID));
 details(UUID) ->
     MatchSpec = [{#conference{uuid=UUID, _ = '_'}
                   ,[{'=:=', '$1', {'const', UUID}}]
@@ -205,7 +205,7 @@ handle_search_req(JObj, _Props) ->
             Resp = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
                     ,{<<"Conference-ID">>, Name}
                     ,{<<"UUID">>, UUID}
-                    ,{<<"Run-Time">>, kz_util:current_tstamp() - StartTime}
+                    ,{<<"Run-Time">>, kz_time:current_tstamp() - StartTime}
                     ,{<<"Switch-Hostname">>, Hostname}
                     ,{<<"Switch-URL">>, SwitchURL}
                     ,{<<"Switch-External-IP">>, ExternalIP}
@@ -418,8 +418,8 @@ conference_from_props(Props, Node, Conference) ->
                           ,uuid=props:get_value(<<"Conference-Unique-ID">>, Props)
                           ,name=props:get_value(<<"Conference-Name">>, Props)
                           ,profile_name=props:get_value(<<"Conference-Profile-Name">>, Props)
-                          ,start_time = kz_util:current_tstamp()
-                          ,switch_hostname=props:get_value(<<"FreeSWITCH-Hostname">>, Props, kz_util:to_binary(Node))
+                          ,start_time = kz_time:current_tstamp()
+                          ,switch_hostname=props:get_value(<<"FreeSWITCH-Hostname">>, Props, kz_term:to_binary(Node))
                           ,switch_url=ecallmgr_fs_nodes:sip_url(Node)
                           ,switch_external_ip=ecallmgr_fs_nodes:sip_external_ip(Node)
                          }.
@@ -534,7 +534,7 @@ conference_to_props(#conference{name=Name
 list_conferences(Node) ->
     case freeswitch:api(Node, 'conference', "xml_list") of
         {'ok', XmlStr} ->
-            {Xml, _} = xmerl_scan:string(kz_util:to_list(XmlStr)),
+            {Xml, _} = xmerl_scan:string(kz_term:to_list(XmlStr)),
             case catch xml_list_to_records(Xml, Node) of
                 {'EXIT', _R} -> [];
                 Rs -> Rs
@@ -572,7 +572,7 @@ xml_list_to_records(_, _, Recs) -> Recs.
 xml_to_conference(#xmlElement{name='conference'
                               ,attributes=Attrs
                              }, Node) ->
-    [_, Hostname] = binary:split(kz_util:to_binary(Node), <<"@">>),
+    [_, Hostname] = binary:split(kz_term:to_binary(Node), <<"@">>),
     xml_attrs_to_conference(Attrs, #conference{node=Node
                                                ,switch_hostname=Hostname
                                                ,switch_url=ecallmgr_fs_nodes:sip_url(Node)
@@ -591,26 +591,26 @@ xml_attrs_to_conference([#xmlAttribute{name=Name, value=Value}
 -spec xml_attr_to_conference(conference(), xml_attrib_name(), xml_attrib_value()) ->
                                     conference().
 xml_attr_to_conference(Conference, 'name', Value) ->
-    Conference#conference{name=kz_util:to_binary(Value)};
+    Conference#conference{name=kz_term:to_binary(Value)};
 xml_attr_to_conference(Conference, 'member-count', Value) ->
-    Conference#conference{participants=kz_util:to_integer(Value)};
+    Conference#conference{participants=kz_term:to_integer(Value)};
 xml_attr_to_conference(Conference, 'uuid', Value) ->
-    Conference#conference{uuid=kz_util:to_binary(Value)};
+    Conference#conference{uuid=kz_term:to_binary(Value)};
 xml_attr_to_conference(Conference, 'running', Value) ->
-    Conference#conference{running=kz_util:is_true(Value)};
+    Conference#conference{running=kz_term:is_true(Value)};
 xml_attr_to_conference(Conference, 'answered', Value) ->
-    Conference#conference{answered=kz_util:is_true(Value)};
+    Conference#conference{answered=kz_term:is_true(Value)};
 xml_attr_to_conference(Conference, 'enforce_min', Value) ->
-    Conference#conference{enforce_min=kz_util:is_true(Value)};
+    Conference#conference{enforce_min=kz_term:is_true(Value)};
 xml_attr_to_conference(Conference, 'dynamic', Value) ->
-    Conference#conference{dynamic=kz_util:is_true(Value)};
+    Conference#conference{dynamic=kz_term:is_true(Value)};
 xml_attr_to_conference(Conference, 'exit_sound', Value) ->
-    Conference#conference{exit_sound=kz_util:is_true(Value)};
+    Conference#conference{exit_sound=kz_term:is_true(Value)};
 xml_attr_to_conference(Conference, 'enter_sound', Value) ->
-    Conference#conference{enter_sound=kz_util:is_true(Value)};
+    Conference#conference{enter_sound=kz_term:is_true(Value)};
 xml_attr_to_conference(Conference, 'run_time', Value) ->
-    Conference#conference{start_time=kz_util:decr_timeout(kz_util:current_tstamp()
-                                                          ,kz_util:to_integer(Value)
+    Conference#conference{start_time=kz_time:decr_timeout(kz_time:current_tstamp()
+                                                          ,kz_term:to_integer(Value)
                                                          )};
 xml_attr_to_conference(Conference, _Name, _Value) ->
     lager:debug("unhandled conference k/v ~s: ~p", [_Name, _Value]),
@@ -639,7 +639,7 @@ xml_member_to_participant([#xmlElement{name='id'
                                       }
                            |XmlElements
                           ], Participant) ->
-    Value = kz_util:to_integer(xml_text_to_binary(Id)),
+    Value = kz_term:to_integer(xml_text_to_binary(Id)),
     xml_member_to_participant(XmlElements
                               ,Participant#participant{member_id=Value});
 xml_member_to_participant([#xmlElement{name='flags'
@@ -654,17 +654,17 @@ xml_member_to_participant([#xmlElement{name='uuid'
                                       }
                            |XmlElements
                           ], Participant) ->
-    CallId = kz_util:uri_decode(xml_text_to_binary(UUID)),
+    CallId = kz_http_util:uri_decode(xml_text_to_binary(UUID)),
     lager:debug("uuid ~s callid ~s", [xml_text_to_binary(UUID), CallId]),
     xml_member_to_participant(XmlElements
-                              ,Participant#participant{uuid=kz_util:to_binary(CallId)}
+                              ,Participant#participant{uuid=kz_term:to_binary(CallId)}
                              );
 xml_member_to_participant([#xmlElement{name='energy'
                                        ,content=Energy
                                       }
                            |XmlElements
                           ], Participant) ->
-    Value = kz_util:to_integer(xml_text_to_binary(Energy)),
+    Value = kz_term:to_integer(xml_text_to_binary(Energy)),
     xml_member_to_participant(XmlElements
                               ,Participant#participant{energy_level=Value});
 xml_member_to_participant([_|XmlElements], Participant) ->
@@ -677,7 +677,7 @@ xml_member_flags_to_participant([#xmlElement{name='talking'
                                             }
                                  | XmlElements
                                 ], Participant) ->
-    Value = kz_util:is_true(xml_text_to_binary(Speak)),
+    Value = kz_term:is_true(xml_text_to_binary(Speak)),
     xml_member_flags_to_participant(XmlElements
                                     ,Participant#participant{speak=Value});
 xml_member_flags_to_participant([#xmlElement{name='has_floor'
@@ -685,7 +685,7 @@ xml_member_flags_to_participant([#xmlElement{name='has_floor'
                                             }
                                  | XmlElements
                                 ], Participant) ->
-    Value = kz_util:is_true(xml_text_to_binary(HasFloor)),
+    Value = kz_term:is_true(xml_text_to_binary(HasFloor)),
     xml_member_flags_to_participant(XmlElements
                                     ,Participant#participant{floor=Value});
 xml_member_flags_to_participant([#xmlElement{name='is_moderator'
@@ -693,7 +693,7 @@ xml_member_flags_to_participant([#xmlElement{name='is_moderator'
                                             }
                                  | XmlElements
                                 ], Participant) ->
-    Value = kz_util:is_true(xml_text_to_binary(IsMod)),
+    Value = kz_term:is_true(xml_text_to_binary(IsMod)),
     xml_member_flags_to_participant(XmlElements
                                     ,Participant#participant{is_moderator=Value});
 xml_member_flags_to_participant([#xmlElement{name='can_hear'
@@ -701,7 +701,7 @@ xml_member_flags_to_participant([#xmlElement{name='can_hear'
                                             }
                                  | XmlElements
                                 ], Participant) ->
-    Value = kz_util:is_true(xml_text_to_binary(Hear)),
+    Value = kz_term:is_true(xml_text_to_binary(Hear)),
     xml_member_flags_to_participant(XmlElements
                                     ,Participant#participant{hear=Value});
 xml_member_flags_to_participant([#xmlElement{name='can_speak'
@@ -709,7 +709,7 @@ xml_member_flags_to_participant([#xmlElement{name='can_speak'
                                             }
                                  | XmlElements
                                 ], Participant) ->
-    Value = kz_util:is_true(xml_text_to_binary(Speak)),
+    Value = kz_term:is_true(xml_text_to_binary(Speak)),
     xml_member_flags_to_participant(XmlElements
                                     ,Participant#participant{speak=Value});
 xml_member_flags_to_participant([_|XmlElements], Participant) ->
@@ -821,7 +821,7 @@ print_summary({[#conference{name=Name
               ,Count) ->
     Participants = participants(Name),
     io:format("| ~-32s | ~-50s | ~-12B | ~-11B | ~-32s |~n"
-              ,[Name, Node, length(Participants), kz_util:current_tstamp() - StartTime, AccountId]
+              ,[Name, Node, length(Participants), kz_time:current_tstamp() - StartTime, AccountId]
              ),
     print_summary(ets:select(Continuation), Count + 1).
 
@@ -836,7 +836,7 @@ print_details({[#conference{name=Name}=Conference]
                ,Continuation}
               ,Count) ->
     io:format("~n"),
-    _ = [io:format("~-19s: ~s~n", [K, kz_util:to_binary(V)])
+    _ = [io:format("~-19s: ~s~n", [K, kz_term:to_binary(V)])
          || {K, V} <- conference_to_props(Conference)
         ],
     _ = case participants(Name) of

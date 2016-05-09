@@ -118,7 +118,7 @@ reconcile('all') ->
                     end, 1, Accounts),
     'no_return';
 reconcile(Account) when not is_binary(Account) ->
-    reconcile(kz_util:to_binary(Account));
+    reconcile(kz_term:to_binary(Account));
 reconcile(Account) ->
     try kz_services:reconcile(Account) of
         Any -> Any
@@ -136,7 +136,7 @@ reconcile(Account) ->
 %%--------------------------------------------------------------------
 -spec sync(text()) -> 'ok'.
 sync(Account) when not is_binary(Account) ->
-    sync(kz_util:to_binary(Account));
+    sync(kz_term:to_binary(Account));
 sync(Account) ->
     kz_service_sync:sync(Account),
     'ok'.
@@ -148,9 +148,9 @@ sync(Account) ->
 %%--------------------------------------------------------------------
 -spec set_reseller_id(text(), text()) -> 'ok'.
 set_reseller_id(Reseller, Account) when not is_binary(Account) ->
-    set_reseller_id(Reseller, kz_util:to_binary(Account));
+    set_reseller_id(Reseller, kz_term:to_binary(Account));
 set_reseller_id(Reseller, Account) when not is_binary(Reseller) ->
-    set_reseller_id(kz_util:to_binary(Reseller), Account);
+    set_reseller_id(kz_term:to_binary(Reseller), Account);
 set_reseller_id(Reseller, Account) ->
     whs_account_conversion:set_reseller_id(Reseller, Account).
 
@@ -163,9 +163,9 @@ set_reseller_id(Reseller, Account) ->
 %%--------------------------------------------------------------------
 -spec cascade_reseller_id(text(), text()) -> 'ok'.
 cascade_reseller_id(Reseller, Account) when not is_binary(Account) ->
-    cascade_reseller_id(Reseller, kz_util:to_binary(Account));
+    cascade_reseller_id(Reseller, kz_term:to_binary(Account));
 cascade_reseller_id(Reseller, Account) when not is_binary(Reseller) ->
-    cascade_reseller_id(kz_util:to_binary(Reseller), Account);
+    cascade_reseller_id(kz_term:to_binary(Reseller), Account);
 cascade_reseller_id(Reseller, Account) ->
     whs_account_conversion:cascade_reseller_id(Reseller, Account).
 
@@ -178,7 +178,7 @@ cascade_reseller_id(Reseller, Account) ->
 %%--------------------------------------------------------------------
 -spec demote_reseller(text()) -> 'ok'.
 demote_reseller(Account) when not is_binary(Account) ->
-    demote_reseller(kz_util:to_binary(Account));
+    demote_reseller(kz_term:to_binary(Account));
 demote_reseller(Account) ->
     whs_account_conversion:demote(Account).
 
@@ -191,6 +191,6 @@ demote_reseller(Account) ->
 %%--------------------------------------------------------------------
 -spec make_reseller(text()) -> 'ok'.
 make_reseller(Account) when not is_binary(Account) ->
-    make_reseller(kz_util:to_binary(Account));
+    make_reseller(kz_term:to_binary(Account));
 make_reseller(Account) ->
     whs_account_conversion:promote(Account).

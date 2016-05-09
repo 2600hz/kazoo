@@ -23,7 +23,7 @@ available_as_parent() ->
     available_as(?MASTER_ACCOUNT_ID).
 
 available_as_rando() ->
-    available_as(kz_util:rand_hex_binary(16)).
+    available_as(kz_term:rand_hex_binary(16)).
 
 available_as(AuthAccountId) ->
     case knm_number:get(?TEST_AVAILABLE_NUM

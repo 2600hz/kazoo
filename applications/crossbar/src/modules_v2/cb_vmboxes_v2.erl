@@ -546,12 +546,12 @@ load_attachment_from_message(MediaId, Context, Update, Timezone) ->
 generate_media_name('undefined', GregorianSeconds, Ext, Timezone) ->
     generate_media_name(<<"unknown">>, GregorianSeconds, Ext, Timezone);
 generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
-    UTCDateTime = calendar:gregorian_seconds_to_datetime(kz_util:to_integer(GregorianSeconds)),
-    LocalTime = case localtime:utc_to_local(UTCDateTime, kz_util:to_list(Timezone)) of
+    UTCDateTime = calendar:gregorian_seconds_to_datetime(kz_term:to_integer(GregorianSeconds)),
+    LocalTime = case localtime:utc_to_local(UTCDateTime, kz_term:to_list(Timezone)) of
                     {{_,_,_},{_,_,_}}=LT -> lager:debug("Converted to TZ: ~s", [Timezone]), LT;
                     _ -> lager:debug("Bad TZ: ~p", [Timezone]), UTCDateTime
                 end,
-    Date = kz_util:pretty_print_datetime(LocalTime),
+    Date = kz_time:pretty_print_datetime(LocalTime),
     list_to_binary([CallerId, "_", Date, Ext]).
 
 %%--------------------------------------------------------------------
@@ -643,7 +643,7 @@ maybe_migrate_vm_box(Box) ->
 %%--------------------------------------------------------------------
 -spec migrate(ne_binary()) -> 'ok'.
 migrate(Account) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
     case kz_datamgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
         {'ok', []} -> 'ok';
         {'error', _E} -> io:format("failed to check account ~s for voicemail boxes: ~p~n", [Account, _E]);

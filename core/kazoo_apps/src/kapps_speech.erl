@@ -73,7 +73,7 @@ create('undefined', Text, Voice, Format, Options) ->
     create(Text, Voice, Format, Options);
 create(<<"ispeech">> = Engine, Text, Voice, Format, Opts) ->
     VoiceMappings = ?ISPEECH_VOICE_MAPPINGS,
-    case props:get_value(kz_util:to_lower_binary(Voice), VoiceMappings) of
+    case props:get_value(kz_term:to_lower_binary(Voice), VoiceMappings) of
         'undefined' ->
             {'error', 'invalid_voice'};
         ISpeechVoice ->
@@ -114,7 +114,7 @@ create(_, _, _, _, _) ->
 create_voicefabric(Engine, Text, Voice, Opts) ->
     lager:debug("getting ~ts from VoiceFabric", [Text]),
     VoiceMappings = ?VOICEFABRIC_VOICE_MAPPINGS,
-    case props:get_value(kz_util:to_lower_binary(Voice), VoiceMappings) of
+    case props:get_value(kz_term:to_lower_binary(Voice), VoiceMappings) of
         'undefined' ->
             {'error', 'invalid_voice'};
         VFabricVoice ->
@@ -192,7 +192,7 @@ asr_freeform(Content, ContentType, Locale) ->
     asr_freeform(Content, ContentType, Locale, []).
 asr_freeform(Content, ContentType, Locale, Options) ->
     Provider = kapps_config:get_binary(?MOD_CONFIG_CAT, <<"asr_provider">>, <<>>),
-    case kz_util:is_empty(Provider) of
+    case kz_term:is_empty(Provider) of
         'true' -> {'error', 'no_asr_provider'};
         'false' -> maybe_convert_content(Content, ContentType, Locale, Options)
     end.
@@ -305,7 +305,7 @@ asr_commands(Bin, Commands, ContentType, Locale, Options) ->
 asr_commands(<<"ispeech">>, Bin, Commands, ContentType, Locale, Opts) ->
     BaseUrl = kapps_config:get_string(?MOD_CONFIG_CAT, <<"asr_url">>, <<"http://api.ispeech.org/api/json">>),
 
-    Commands1 = kz_util:join_binary(Commands, <<"|">>),
+    Commands1 = kz_term:join_binary(Commands, <<"|">>),
 
     lager:debug("sending request to ~s", [BaseUrl]),
 
@@ -379,7 +379,7 @@ create_response(_Engine, {'ok', 200, Headers, Content}) ->
     ContentType = props:get_value("Content-Type", Headers),
     ContentLength = props:get_value("Content-Length", Headers),
     lager:debug("created speech file ~s of length ~s", [ContentType, ContentLength]),
-    {'ok', kz_util:to_binary(ContentType), Content};
+    {'ok', kz_term:to_binary(ContentType), Content};
 create_response(Engine, {'ok', _Code, RespHeaders, Content}) ->
     lager:warning("creating speech file failed with code ~p: ~p", [_Code, Content]),
     _ = [lager:debug("hdr: ~p", [H]) || H <- RespHeaders],
@@ -387,7 +387,7 @@ create_response(Engine, {'ok', _Code, RespHeaders, Content}) ->
 
 -spec voicefabric_get_media_rate(kz_proplist()) -> {'ok', ne_binary()}.
 voicefabric_get_media_rate(Headers1) ->
-    Headers = [{kz_util:to_lower_binary(X), kz_util:to_binary(Y)}
+    Headers = [{kz_term:to_lower_binary(X), kz_term:to_binary(Y)}
                || {X, Y} <- Headers1
               ],
     case props:get_value(<<"content-type">>, Headers) of
@@ -431,8 +431,8 @@ convert_content(_, ContentType, ConvertTo) ->
 
 -spec tmp_file_name(ne_binary()) -> string().
 tmp_file_name(Ext) ->
-    Prefix = kz_util:rand_hex_binary(10),
+    Prefix = kz_term:rand_hex_binary(10),
     Name = filename:join([?TMP_PATH
                           ,<<Prefix/binary, "_voicemail.", Ext/binary>>
                          ]),
-    kz_util:to_list(Name).
+    kz_term:to_list(Name).

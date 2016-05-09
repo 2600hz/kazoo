@@ -179,7 +179,7 @@ handle_config_req(Node, Id, <<"acl.conf">>, _Props) ->
 handle_config_req(Node, Id, <<"sofia.conf">>, _Props) ->
     kz_util:put_callid(Id),
 
-    case kz_util:is_true(ecallmgr_config:get(<<"sofia_conf">>)) of
+    case kz_term:is_true(ecallmgr_config:get(<<"sofia_conf">>)) of
         'false' ->
             lager:info("sofia conf disabled"),
             {'ok', Resp} = ecallmgr_fs_xml:not_found(),
@@ -211,7 +211,7 @@ handle_config_req(Node, Id, Conf, _Data, 'undefined') ->
 handle_config_req(Node, Id, Conf, Data, <<_/binary>> = Module) ->
     lager:debug("relaying configuration ~s to ~s", [Conf, Module]),
     try
-        (kz_util:to_atom(Module, 'true')):handle_config_req(Node, Id, Conf, Data)
+        (kz_term:to_atom(Module, 'true')):handle_config_req(Node, Id, Conf, Data)
     catch
         _E1:_E2 ->
             lager:debug("exception ~p/~p calling module ~s for configuration ~s", [_E1, _E2, Module, Conf]),
@@ -236,17 +236,17 @@ generate_acl_xml(SysconfResp) ->
 
 -spec default_sip_profiles(atom()) -> kz_json:object().
 default_sip_profiles(Node) ->
-    Gateways = case kz_util:is_true(ecallmgr_config:get(<<"process_gateways">>, 'false')) of
+    Gateways = case kz_term:is_true(ecallmgr_config:get(<<"process_gateways">>, 'false')) of
                    'false' -> kz_json:new();
                    'true' ->
                        SysconfResp = ecallmgr_config:fetch(<<"gateways">>, kz_json:new()),
                        _ = maybe_kill_node_gateways(SysconfResp, Node),
                        SysconfResp
                end,
-    JObj = kz_json:from_list([{kz_util:to_binary(?DEFAULT_FS_PROFILE)
+    JObj = kz_json:from_list([{kz_term:to_binary(?DEFAULT_FS_PROFILE)
                                ,kz_json:from_list(default_sip_profile())}
                              ]),
-    kz_json:set_value([kz_util:to_binary(?DEFAULT_FS_PROFILE), <<"Gateways">>]
+    kz_json:set_value([kz_term:to_binary(?DEFAULT_FS_PROFILE), <<"Gateways">>]
                       ,Gateways
                       ,JObj
                      ).
@@ -370,13 +370,13 @@ kill_gateway(GatewayName, Node) ->
     Args = ["profile "
             ,?DEFAULT_FS_PROFILE
             ," killgw "
-            ,kz_util:to_list(GatewayName)
+            ,kz_term:to_list(GatewayName)
            ],
     freeswitch:api(Node, 'sofia', lists:flatten(Args)).
 
 get_node_gateways(Node) ->
     {'ok', Response} = freeswitch:api(Node, 'sofia', "xmlstatus gateway"),
-    {Xml, _} = xmerl_scan:string(kz_util:to_list(Response)),
+    {Xml, _} = xmerl_scan:string(kz_term:to_list(Response)),
     ecallmgr_fs_xml:sofia_gateways_xml_to_json(Xml).
 
 maybe_fix_conference_tts(Resp) ->

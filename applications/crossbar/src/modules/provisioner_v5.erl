@@ -78,7 +78,7 @@ get_family(JObj) ->
 -spec get_model(kz_json:object()) -> ne_binary().
 get_model(JObj) ->
     Family = kz_json:get_binary_value([<<"provision">>, <<"endpoint_model">>], JObj, <<>>),
-    case kz_util:to_lower_binary(Family) of
+    case kz_term:to_lower_binary(Family) of
         <<"t19">> -> <<"t19p">>;
         <<"t21">> -> <<"t21p">>;
         <<"t22">> -> <<"t22p">>;
@@ -121,7 +121,7 @@ delete_account(AccountId, AuthToken) ->
             ).
 -spec update_account(ne_binary(), ne_binary()) -> 'ok'.
 update_account(Account, AuthToken) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
     case kz_account:fetch(AccountId) of
         {'ok', JObj} -> update_account(AccountId, JObj, AuthToken);
         {'error', _R} ->
@@ -150,7 +150,7 @@ update_user(AccountId, JObj, AuthToken) ->
 -spec save_user(ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
 save_user(AccountId, JObj, AuthToken) ->
     _ = update_account(AccountId, AuthToken),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     Devices = crossbar_util:get_devices_by_owner(AccountDb, kz_doc:id(JObj)),
     Settings = settings(JObj),
     lists:foreach(
@@ -222,7 +222,7 @@ set_owner(JObj) ->
                        {'error', any()}.
 get_owner('undefined', _) -> {'error', 'undefined'};
 get_owner(OwnerId, AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     kz_datamgr:open_cache_doc(AccountDb, OwnerId).
 
 %%--------------------------------------------------------------------
@@ -276,7 +276,7 @@ settings_lines(JObj) ->
 settings_basic(JObj) ->
     Enabled = case kz_json:get_ne_value(<<"enabled">>, JObj) of
                   'undefined' -> 'undefined';
-                  Else -> kz_util:is_true(Else)
+                  Else -> kz_term:is_true(Else)
               end,
     Props = props:filter_undefined(
               [{<<"display_name">>, kz_json:get_ne_value(<<"name">>, JObj)}
@@ -407,7 +407,7 @@ get_feature_key_type(Type, Brand, Family) ->
 -spec get_user(ne_binary(), ne_binary()) -> {'ok', kz_json:object()} |
                                             {'error', any()}.
 get_user(AccountId, UserId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     kz_datamgr:open_cache_doc(AccountDb, UserId).
 
 -spec maybe_add_feature_key(ne_binary(), api_object(), kz_json:object()) -> kz_json:object().
@@ -502,7 +502,7 @@ req_uri('devices', AccountId, MACAddress) ->
 -spec provisioning_uri(iolist()) -> iolist().
 provisioning_uri(ExplodedPath) ->
     Url = kapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_url">>),
-    Uri = kz_util:uri(Url, ExplodedPath),
+    Uri = kz_http_util:uri(Url, ExplodedPath),
     binary:bin_to_list(Uri).
 
 -spec account_payload(kz_json:object(), ne_binary()) -> kz_json:object().
@@ -587,18 +587,18 @@ decode(JSON) ->
 req_headers(Token) ->
     props:filter_undefined(
       [{"Content-Type", "application/json"}
-      ,{"X-Auth-Token", kz_util:to_list(Token)}
+      ,{"X-Auth-Token", kz_term:to_list(Token)}
       ,{"X-Kazoo-Cluster-ID", get_cluster_id()}
-      ,{"User-Agent", kz_util:to_list(erlang:node())}
+      ,{"User-Agent", kz_term:to_list(erlang:node())}
       ]).
 
 -spec get_cluster_id() -> string().
 get_cluster_id() ->
     case kapps_config:get_string(?MOD_CONFIG_CAT, <<"cluster_id">>) of
         'undefined' ->
-            ClusterId = kz_util:rand_hex_binary(16),
+            ClusterId = kz_term:rand_hex_binary(16),
             {'ok', _JObj} = kapps_config:set_default(?MOD_CONFIG_CAT, <<"cluster_id">>, ClusterId),
-            kz_util:to_list(ClusterId);
+            kz_term:to_list(ClusterId);
         ClusterId -> ClusterId
     end.
 

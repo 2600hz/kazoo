@@ -112,7 +112,7 @@ finish_request(Context, AuthDoc) ->
 -spec maybe_save_auth_doc(kz_json:object()) -> any().
 maybe_save_auth_doc(OldAuthDoc) ->
     OldAuthModified = kz_doc:modified(OldAuthDoc),
-    Now = kz_util:current_tstamp(),
+    Now = kz_time:current_tstamp(),
 
     ToSaveTimeout = (?LOOP_TIMEOUT * ?PERCENT_OF_TIMEOUT) div 100,
 
@@ -131,7 +131,7 @@ maybe_save_auth_doc(OldAuthDoc) ->
 -spec clean_expired() -> 'ok'.
 -spec clean_expired(gregorian_seconds()) -> 'ok'.
 clean_expired() ->
-    clean_expired(kz_util:current_tstamp() - ?LOOP_TIMEOUT).
+    clean_expired(kz_time:current_tstamp() - ?LOOP_TIMEOUT).
 
 clean_expired(CreatedBefore) ->
     ViewOpts = [{'startkey', 0}
@@ -214,10 +214,10 @@ check_auth_token(Context, AuthToken, _MagicPathed) ->
                         {'halt', cb_context:context()}.
 is_expired(Context, JObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, JObj),
-    case kz_util:is_account_expired(AccountId) of
+    case kz_accounts:is_account_expired(AccountId) of
         'false' -> check_as(Context, JObj);
         {'true', Expired} ->
-            _ = kz_util:spawn(fun kz_util:maybe_disable_account/1, [AccountId]),
+            _ = kz_util:spawn(fun kz_accounts:maybe_disable_account/1, [AccountId]),
             Cause =
                 kz_json:from_list(
                   [{<<"message">>, <<"account expired">>}

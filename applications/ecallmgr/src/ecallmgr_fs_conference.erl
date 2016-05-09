@@ -457,7 +457,7 @@ exec(Focus, ConferenceId, JObj) ->
                         lager:debug("api to ~s: conference ~s", [Focus, Command]),
                         freeswitch:api(Focus, 'conference', Command);
                     CallId ->
-                        Command = kz_util:to_list(list_to_binary(["uuid:", CallId
+                        Command = kz_term:to_list(list_to_binary(["uuid:", CallId
                                                                   ," conference ", ConferenceId
                                                                   ," play ", AppData
                                                                  ])),
@@ -477,7 +477,7 @@ exec(Focus, ConferenceId, JObj) ->
             end, 'undefined', Commands),
             send_response(App, Result, kz_json:get_value(<<"Server-ID">>, JObj), JObj);
         {AppName, AppData} ->
-            Command = kz_util:to_list(list_to_binary([ConferenceId, " ", AppName, " ", AppData])),
+            Command = kz_term:to_list(list_to_binary([ConferenceId, " ", AppName, " ", AppData])),
             Focus =/= 'undefined' andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command]),
             lager:debug("api to ~s: conference ~s", [Focus, Command]),
             Result = freeswitch:api(Focus, 'conference', Command),
@@ -542,16 +542,16 @@ get_conf_command(<<"tones">>, _Focus, _ConferenceId, JObj) ->
                            Vol = case kz_json:get_value(<<"Volume">>, Tone) of
                                      'undefined' -> [];
                                      %% need to map V (0-100) to FS values
-                                     V -> list_to_binary(["v=", kz_util:to_list(V), ";"])
+                                     V -> list_to_binary(["v=", kz_term:to_list(V), ";"])
                                  end,
                            Repeat = case kz_json:get_value(<<"Repeat">>, Tone) of
                                         'undefined' -> [];
-                                        R -> list_to_binary(["l=", kz_util:to_list(R), ";"])
+                                        R -> list_to_binary(["l=", kz_term:to_list(R), ";"])
                                     end,
-                           Freqs = string:join([ kz_util:to_list(V) || V <- kz_json:get_value(<<"Frequencies">>, Tone) ], ","),
-                           On = kz_util:to_list(kz_json:get_value(<<"Duration-ON">>, Tone)),
-                           Off = kz_util:to_list(kz_json:get_value(<<"Duration-OFF">>, Tone)),
-                           kz_util:to_list(list_to_binary([Vol, Repeat, "%(", On, ",", Off, ",", Freqs, ")"]))
+                           Freqs = string:join([ kz_term:to_list(V) || V <- kz_json:get_value(<<"Frequencies">>, Tone) ], ","),
+                           On = kz_term:to_list(kz_json:get_value(<<"Duration-ON">>, Tone)),
+                           Off = kz_term:to_list(kz_json:get_value(<<"Duration-OFF">>, Tone)),
+                           kz_term:to_list(list_to_binary([Vol, Repeat, "%(", On, ",", Off, ",", Freqs, ")"]))
                        end || Tone <- Tones],
             Arg = "tone_stream://" ++ string:join(FSTones, ";"),
             {<<"play">>, Arg}
@@ -689,7 +689,7 @@ get_conf_command(Cmd, _Focus, _ConferenceId, _JObj) ->
 -spec send_response(ne_binary(), tuple(), api_binary(), kz_json:object()) -> 'ok'.
 send_response(<<"stop_play">>, {'ok', Res}, _Queue, Command) ->
     Evt = [{<<"Conference-Name">>, kz_json:get_value(<<"Conference-ID">>, Command)}
-           ,{<<"Event-Date-Timestamp">>, kz_util:current_tstamp()}
+           ,{<<"Event-Date-Timestamp">>, kz_time:current_tstamp()}
            ,{<<"Action">>,<<"play-file-done">>}
            ,{<<"Event-Name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
            ,{<<"kazoo_event_name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
@@ -726,7 +726,7 @@ send_response(_, {'ok', Response}, RespQ, Command) ->
     end;
 send_response(_, {'error', Msg}, RespQ, Command) ->
     Error = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, Command, <<>>)}
-             ,{<<"Error-Message">>, binary:replace(kz_util:to_binary(Msg), <<"\n">>, <<>>)}
+             ,{<<"Error-Message">>, binary:replace(kz_term:to_binary(Msg), <<"\n">>, <<>>)}
              ,{<<"Request">>, Command}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
@@ -779,10 +779,10 @@ publish_new_participant_event(Props, Node) ->
     ConferenceName = props:get_value(<<"Conference-Name">>, Props),
     Participants = ecallmgr_fs_conferences:participants(ConferenceName),
     Event = [{<<"Participants">>, ecallmgr_fs_conferences:participants_to_json(Participants)}
-             ,{<<"Focus">>, kz_util:to_binary(Node)}
+             ,{<<"Focus">>, kz_term:to_binary(Node)}
              ,{<<"Conference-ID">>, ConferenceName}
              ,{<<"Instance-ID">>, props:get_value(<<"Conference-Unique-ID">>, Props)}
-             ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props, kz_util:to_binary(Node))}
+             ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props, kz_term:to_binary(Node))}
              ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Node)}
              ,{<<"Switch-External-IP">>, ecallmgr_fs_nodes:sip_external_ip(Node)}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -796,10 +796,10 @@ publish_participant_destroy_event(Props, Node) ->
     ConferenceName = props:get_value(<<"Conference-Name">>, Props),
     Participants = ecallmgr_fs_conferences:participants(ConferenceName),
     Event = [{<<"Participants">>, ecallmgr_fs_conferences:participants_to_json(Participants)}
-             ,{<<"Focus">>, kz_util:to_binary(Node)}
+             ,{<<"Focus">>, kz_term:to_binary(Node)}
              ,{<<"Conference-ID">>, ConferenceName}
              ,{<<"Instance-ID">>, props:get_value(<<"Conference-Unique-ID">>, Props)}
-             ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props, kz_util:to_binary(Node))}
+             ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props, kz_term:to_binary(Node))}
              ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Node)}
              ,{<<"Switch-External-IP">>, ecallmgr_fs_nodes:sip_external_ip(Node)}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)

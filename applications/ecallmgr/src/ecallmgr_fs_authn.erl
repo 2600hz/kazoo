@@ -205,7 +205,7 @@ get_auth_realm(Props) ->
                 orelse kz_network_utils:is_ipv6(Realm)
             of
                 'true' -> get_auth_uri_realm(Props);
-                'false' -> kz_util:to_lower_binary(Realm)
+                'false' -> kz_term:to_lower_binary(Realm)
             end
     end.
 
@@ -213,7 +213,7 @@ get_auth_realm(Props) ->
 get_auth_uri_realm(Props) ->
     AuthURI = props:get_value(<<"sip_auth_uri">>, Props, <<>>),
     case binary:split(AuthURI, <<"@">>) of
-        [_, Realm] -> kz_util:to_lower_binary(Realm);
+        [_, Realm] -> kz_term:to_lower_binary(Realm);
         _Else ->
             props:get_first_defined([<<"Auth-Realm">>
                                     ,<<"sip_request_host">>
@@ -267,7 +267,7 @@ query_registrar(Realm, Username, Node, Id, Method, Props) ->
            ,{<<"Auth-Response">>, props:get_value(<<"sip_auth_response">>, Props)}
            ,{<<"Custom-SIP-Headers">>, kz_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
            ,{<<"User-Agent">>, props:get_value(<<"sip_user_agent">>, Props)}
-           ,{<<"Media-Server">>, kz_util:to_binary(Node)}
+           ,{<<"Media-Server">>, kz_term:to_binary(Node)}
            ,{<<"Call-ID">>, props:get_value(<<"sip_call_id">>, Props, Id)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
@@ -291,7 +291,7 @@ maybe_defered_error(Realm, Username, JObj) ->
         'false' -> {'error', 'timeout'};
         'true' ->
             AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
-            AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+            AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
             AuthorizingId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], JObj),
             OwnerIdProp = case kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Owner-ID">>], JObj) of
                               'undefined' -> [];

@@ -89,7 +89,7 @@ legalize_outbound_cid(OutboundCID, AccountId) ->
 -spec ensure_valid_caller_id(ne_binary(), ne_binary()) -> ne_binary().
 ensure_valid_caller_id(OutboundCID, AccountId) ->
     {'ok', AccountPhoneNumbersList} =
-        kz_datamgr:open_cache_doc(kz_util:format_account_id(AccountId, 'encoded')
+        kz_datamgr:open_cache_doc(kz_accounts:format_account_id(AccountId, 'encoded')
                                  ,?KNM_PHONE_NUMBERS_DOC
                                 ),
     case lists:member(knm_converters:normalize(OutboundCID)
@@ -235,7 +235,7 @@ build_bridge_offnet_request(CallId, ToDID, Q, CtrlQ, AccountId, OutboundCID) ->
        ,{<<"Outbound-Caller-ID-Number">>, OutboundCID}
        ,{<<"Outbound-Caller-ID-Name">>, OutboundCID}
        ,{<<"Originate-Immediate">>, 'true'}
-       ,{<<"Msg-ID">>, kz_util:rand_hex_binary(6)}
+       ,{<<"Msg-ID">>, kz_term:rand_hex_binary(6)}
        ,{<<"Account-ID">>, AccountId}
        | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
       ]).
@@ -267,7 +267,7 @@ build_bridge_request(CallId, ToDID, CID, CtrlQ, AccountId) ->
        ,{<<"Caller-ID-Number">>, CID}
        ,{<<"Caller-ID-Name">>, CID}
        ,{<<"Originate-Immediate">>, 'true'}
-       ,{<<"Msg-ID">>, kz_util:rand_hex_binary(6)}
+       ,{<<"Msg-ID">>, kz_term:rand_hex_binary(6)}
        ,{<<"Account-ID">>, AccountId}
        ,{<<"Dial-Endpoint-Method">>, <<"single">>}
        ,{<<"Continue-On-Fail">>, 'true'}

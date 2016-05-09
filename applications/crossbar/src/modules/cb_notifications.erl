@@ -809,7 +809,7 @@ migrate_template_attachment(MasterAccountDb, Id, AName, AMeta, Context) ->
             ContentType = kz_json:get_value(<<"content_type">>, AMeta),
             lager:debug("saving attachment for ~s(~s): ~s", [Id, AName, ContentType]),
             Opts = [{'headers'
-                     ,[{'content_type', kz_util:to_list(ContentType)}]
+                     ,[{'content_type', kz_term:to_list(ContentType)}]
                     }
                     | ?TYPE_CHECK_OPTION(kz_notification:pvt_type())
                    ],
@@ -924,7 +924,7 @@ update_template(Context, Id, FileJObj) ->
     CT = kz_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
     lager:debug("file content type for ~s: ~s", [Id, CT]),
 
-    Opts = [{'content_type', kz_util:to_list(CT)} | ?TYPE_CHECK_OPTION(kz_notification:pvt_type())], % Temporary until couchbeam update
+    Opts = [{'content_type', kz_term:to_list(CT)} | ?TYPE_CHECK_OPTION(kz_notification:pvt_type())], % Temporary until couchbeam update
 
     AttachmentName = attachment_name_by_content_type(CT),
 
@@ -1046,7 +1046,7 @@ merge_fold(Overridden, Acc) ->
 -spec select_normalize_fun(cb_context:context()) -> normalize_fun().
 select_normalize_fun(Context) ->
     Account = cb_context:auth_account_id(Context),
-    case kz_util:is_system_admin(Account) of
+    case kz_accounts:is_system_admin(Account) of
         'true' -> fun normalize_available_admin/2;
         'false' -> fun(JObj, Acc) -> normalize_available_non_admin(JObj, Acc, Context) end
     end.
@@ -1212,8 +1212,8 @@ leak_attachments_fold(_Attachment, Props, Acc) ->
 
 -spec load_smtp_log_doc(ne_binary(), cb_context:context()) -> cb_context:context().
 load_smtp_log_doc(?MATCH_MODB_PREFIX(YYYY,MM,_) = Id, Context) ->
-    Year  = kz_util:to_integer(YYYY),
-    Month = kz_util:to_integer(MM),
+    Year  = kz_term:to_integer(YYYY),
+    Month = kz_term:to_integer(MM),
     crossbar_doc:load(Id
                       ,cb_context:set_account_modb(Context, Year, Month)
                       ,?TYPE_CHECK_OPTION(kz_notification:pvt_type())).

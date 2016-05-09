@@ -56,7 +56,7 @@ maybe_get_global_from_reseller(_AccountId, ResellerId, Category, Key, Default) -
                                      {'error', any()}.
 get_global_from_account(Account, Category, _Key, _Default) ->
     AccountId = account_id(Account),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     kz_datamgr:open_cache_doc(AccountDb, config_doc_id(Category), [{'cache_failures', ['not_found']}]).
 
 -spec get_global_from_doc(ne_binary(), kz_json:key(), kz_json:json_term(), kz_json:object()) ->
@@ -70,7 +70,7 @@ get_global_from_doc(Category, Key, Default, JObj) ->
 -spec get(account(), ne_binary()) -> kz_json:object().
 get(Account, Config) ->
     AccountId = account_id(Account),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     DocId = config_doc_id(Config),
     case kz_datamgr:open_cache_doc(AccountDb, DocId, [{'cache_failures', ['not_found']}]) of
         {'error', _} -> kz_doc:set_id(kz_json:new(), DocId);
@@ -80,11 +80,11 @@ get(Account, Config) ->
 -spec flush(account()) -> 'ok'.
 -spec flush(account(), ne_binary()) -> 'ok'.
 flush(Account) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
     kz_datamgr:flush_cache_docs(AccountDb).
 
 flush(Account, Config) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
     kz_datamgr:flush_cache_doc(AccountDb, config_doc_id(Config)).
 
 -spec get(account(), ne_binary(), kz_json:key()) ->
@@ -139,7 +139,7 @@ cache_key(AccountId, Config) -> {?MODULE, Config, AccountId}.
 
 -spec account_id(account()) -> ne_binary().
 account_id(Account) when is_binary(Account) ->
-    kz_util:format_account_id(Account, 'raw');
+    kz_accounts:format_account_id(Account, 'raw');
 account_id(Obj) ->
     account_id_from_call(Obj, kapps_call:is_call(Obj)).
 
@@ -158,7 +158,7 @@ account_id_from_jobj(_Obj, 'false') ->
 
 -spec account_db(account()) -> ne_binary().
 account_db(Account) when is_binary(Account) ->
-    kz_util:format_account_id(Account, 'encoded');
+    kz_accounts:format_account_id(Account, 'encoded');
 account_db(Obj) ->
     account_db_from_call(Obj, kapps_call:is_call(Obj)).
 

@@ -130,7 +130,7 @@ replicate_from_account(AccountDb, AccountDb, _) ->
     lager:debug("requested to replicate from db ~s to self, skipping", [AccountDb]),
     {'error', 'matching_dbs'};
 replicate_from_account(AccountDb, TargetDb, FilterDoc) ->
-    ReplicateProps = [{<<"source">>, kz_util:format_account_id(AccountDb, ?REPLICATE_ENCODING)}
+    ReplicateProps = [{<<"source">>, kz_accounts:format_account_id(AccountDb, ?REPLICATE_ENCODING)}
                       ,{<<"target">>, TargetDb}
                       ,{<<"filter">>, FilterDoc}
                       ,{<<"create_target">>, 'true'}
@@ -179,12 +179,12 @@ get_master_account_db() ->
     case get_master_account_id() of
         {'error', _}=E -> E;
         {'ok', AccountId} ->
-            {'ok', kz_util:format_account_id(AccountId, 'encoded')}
+            {'ok', kz_accounts:format_account_id(AccountId, 'encoded')}
     end.
 
 -spec is_master_account(ne_binary()) -> boolean().
 is_master_account(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
     case get_master_account_id() of
         {'ok', AccountId} -> 'true';
         _Else -> 'false'
@@ -207,7 +207,7 @@ account_depth(Account) ->
 %%--------------------------------------------------------------------
 -spec account_has_descendants(ne_binary()) -> boolean().
 account_has_descendants(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
     ViewOptions = [{'startkey', [AccountId]}
                    ,{'endkey', [AccountId, kz_json:new()]}
                   ],
@@ -264,7 +264,7 @@ get_all_accounts(Encoding) ->
     {'ok', Dbs} = kz_datamgr:db_list([{'startkey', <<"account/">>}
                                       ,{'endkey', <<"account/\ufff0">>}
                                      ]),
-    [kz_util:format_account_id(Db, Encoding)
+    [kz_accounts:format_account_id(Db, Encoding)
      || Db <- Dbs, is_account_db(Db)
     ].
 
@@ -284,8 +284,8 @@ get_all_accounts_and_mods(Encoding) ->
 -spec format_db(ne_binary(), 'unencoded' | 'encoded' | 'raw') -> ne_binary().
 format_db(Db, Encoding) ->
     Fs =
-        [{fun is_account_db/1, fun kz_util:format_account_id/2}
-         ,{fun is_account_mod/1, fun kz_util:format_account_modb/2}
+        [{fun is_account_db/1, fun kz_accounts:format_account_id/2}
+         ,{fun is_account_mod/1, fun kz_accounts:format_account_modb/2}
         ],
     format_db(Db, Encoding, Fs).
 
@@ -302,7 +302,7 @@ get_all_account_mods() ->
 
 get_all_account_mods(Encoding) ->
     {'ok', Databases} = kz_datamgr:db_info(),
-    [kz_util:format_account_modb(Db, Encoding)
+    [kz_accounts:format_account_modb(Db, Encoding)
      || Db <- Databases,
         is_account_mod(Db)
     ].
@@ -316,7 +316,7 @@ get_account_mods(AccountId) ->
 
 get_account_mods(AccountId, Encoding) ->
     MODs = get_all_account_mods(Encoding),
-    [kz_util:format_account_id(MOD, Encoding)
+    [kz_accounts:format_account_id(MOD, Encoding)
      || MOD <- MODs,
         is_account_mod(MOD),
         is_matched_account_mod(MOD, AccountId)
@@ -352,7 +352,7 @@ is_account_db(Db) -> kz_datamgr:db_classification(Db) =:= 'account'.
 %%--------------------------------------------------------------------
 -spec get_account_by_realm(ne_binary()) -> getby_return().
 get_account_by_realm(RawRealm) ->
-    Realm = kz_util:to_lower_binary(RawRealm),
+    Realm = kz_term:to_lower_binary(RawRealm),
     get_accounts_by(Realm, ?ACCT_BY_REALM_CACHE(Realm), ?AGG_LIST_BY_REALM).
 
 -spec get_account_by_ip(ne_binary()) -> getby_return().
@@ -676,11 +676,11 @@ write_tts_file(Path, Say) ->
 
 -spec to_magic_hash(ne_binary()) -> ne_binary().
 to_magic_hash(Bin) ->
-    kz_util:to_hex_binary(zlib:zip(Bin)).
+    kz_term:to_hex_binary(zlib:zip(Bin)).
 
 -spec from_magic_hash(ne_binary()) -> ne_binary().
 from_magic_hash(Bin) ->
-    zlib:unzip(kz_util:from_hex_binary(Bin)).
+    zlib:unzip(kz_term:from_hex_binary(Bin)).
 
 -spec media_local_store_url(kapps_call:call(), kz_json:object()) -> ne_binary().
 media_local_store_url(Call, JObj) ->

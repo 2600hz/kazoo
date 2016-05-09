@@ -245,9 +245,9 @@ parse_time_token(TokenName, Schedule, Default) ->
         'all' ->
             'all';
         Tokens when is_list(Tokens) ->
-            [kz_util:to_integer(X) || X <- Tokens];
+            [kz_term:to_integer(X) || X <- Tokens];
         Token ->
-            kz_util:to_integer(Token)
+            kz_term:to_integer(Token)
     end.
 
 -spec action_fun(ne_binary(), kz_json:object()) -> amqp_cron_callback().
@@ -261,7 +261,7 @@ action_fun(Type, _JObj) ->
 -spec action_name(ne_binary(), kz_json:object(), time()) -> ne_binary().
 action_name(ActionType, Action, Times) ->
     ActionSuffix = action_suffixes(ActionType, Action),
-    kz_util:join_binary([ActionType | ActionSuffix] ++ [time_suffix(Times)], "-").
+    kz_term:join_binary([ActionType | ActionSuffix] ++ [time_suffix(Times)], "-").
 
 -spec action_suffixes(ne_binary(), kz_json:object()) -> ne_binaries().
 action_suffixes(<<"check_voicemail">>, JObj) ->
@@ -271,23 +271,23 @@ action_suffixes(_Type, _JObj) ->
 
 -spec time_suffix(time()) -> ne_binary().
 time_suffix({'cron', {Minutes, Hours, MonthDays, Monthes, Weekdays}}) ->
-    kz_util:join_binary(
+    kz_term:join_binary(
       lists:map(fun time_tokens_to_binary/1
                 ,[Minutes, Hours, MonthDays, Monthes, Weekdays])
       , "-");
 time_suffix({'oneshot', {{Year, Month, Day}, {Hour, Minute, Second}}}) ->
-    kz_util:join_binary(
-      lists:map(fun kz_util:to_binary/1
+    kz_term:join_binary(
+      lists:map(fun kz_term:to_binary/1
                 ,[Year, Month, Day, Hour, Minute, Second])
       , "-");
 time_suffix({'sleeper', MilliSeconds}) ->
-    kz_util:to_binary(MilliSeconds).
+    kz_term:to_binary(MilliSeconds).
 
 -spec time_tokens_to_binary(time_token_value()) -> ne_binary().
 time_tokens_to_binary('all') ->
     <<"all">>;
 time_tokens_to_binary(Tokens) when is_list(Tokens) ->
-    kz_util:join_binary([kz_util:to_binary(X) || X <- Tokens], ",").
+    kz_term:join_binary([kz_term:to_binary(X) || X <- Tokens], ",").
 
 -spec unknown_type(api_binary()) -> 'ok'.
 unknown_type(Type) ->

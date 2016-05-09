@@ -23,7 +23,7 @@ convert(FromFormat, FromFormat, Bin) ->
 convert(FromFormat0, ToFormat0, Bin) ->
     FromFormat = valid_format(FromFormat0),
     ToFormat = valid_format(ToFormat0),
-    Filename = kz_util:rand_hex_binary(8),
+    Filename = kz_term:rand_hex_binary(8),
     FromFile = <<"/tmp/", Filename/binary, ".", FromFormat/binary>>,
     ToFile = <<"/tmp/", Filename/binary, ".", ToFormat/binary>>,
     'ok' = file:write_file(FromFile, Bin),
@@ -139,12 +139,12 @@ get_file_name(Macros, Ext) ->
              }
         of
             {'undefined', 'undefined'} -> <<"Unknown">>;
-            {'undefined', Num} -> kz_util:to_binary(Num);
-            {Name, _} -> kz_util:to_binary(Name)
+            {'undefined', Num} -> kz_term:to_binary(Num);
+            {Name, _} -> kz_term:to_binary(Name)
         end,
     LocalDateTime = props:get_value([<<"date_called">>, <<"local">>], Macros, <<"0000-00-00_00-00-00">>),
-    FName = list_to_binary([CallerID, "_", kz_util:pretty_print_datetime(LocalDateTime), ".", Ext]),
-    re:replace(kz_util:to_lower_binary(FName), <<"\\s+">>, <<"_">>, [{'return', 'binary'}, 'global']).
+    FName = list_to_binary([CallerID, "_", kz_time:pretty_print_datetime(LocalDateTime), ".", Ext]),
+    re:replace(kz_term:to_lower_binary(FName), <<"\\s+">>, <<"_">>, [{'return', 'binary'}, 'global']).
 
 -spec get_attachment_binary(ne_binary(), api_binary()) ->
                                    {'ok', ne_binary(), binary()} |

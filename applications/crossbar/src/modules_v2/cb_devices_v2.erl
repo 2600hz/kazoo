@@ -140,7 +140,7 @@ billing(Context, _ReqVerb, [{<<"devices">>, _}|_Nouns]) ->
                           ,Reason
                          ]
                        ),
-            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end;
 billing(Context, _ReqVerb, _Nouns) -> Context.
 
@@ -487,7 +487,7 @@ prepare_outbound_flags(DeviceId, Context) ->
                'undefined' -> cb_context:req_data(Context);
                [] -> cb_context:req_data(Context);
                Flags when is_list(Flags) ->
-                   OutboundFlags = [kz_util:strip_binary(Flag)
+                   OutboundFlags = [kz_term:strip_binary(Flag)
                                     || Flag <- Flags
                                    ],
                    kz_json:set_value(<<"outbound_flags">>, OutboundFlags, cb_context:req_data(Context));
@@ -498,7 +498,7 @@ prepare_outbound_flags(DeviceId, Context) ->
 
 -spec prepare_device_realm(api_binary(), cb_context:context()) -> cb_context:context().
 prepare_device_realm(DeviceId, Context) ->
-    AccountRealm = kz_util:get_account_realm(cb_context:account_id(Context)),
+    AccountRealm = kz_accounts:get_account_realm(cb_context:account_id(Context)),
     Realm = cb_context:req_value(Context, [<<"sip">>, <<"realm">>], AccountRealm),
     case AccountRealm =:= Realm of
         'true' ->
@@ -645,7 +645,7 @@ load_device(DeviceId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_device_status(cb_context:context()) -> cb_context:context().
 load_device_status(Context) ->
-    AccountRealm = kz_util:get_account_realm(cb_context:account_id(Context)),
+    AccountRealm = kz_accounts:get_account_realm(cb_context:account_id(Context)),
     RegStatuses = lookup_regs(AccountRealm),
     lager:debug("reg statuses: ~p", [RegStatuses]),
     crossbar_util:response(RegStatuses, Context).
@@ -723,7 +723,7 @@ is_sip_creds_unique(AccountDb, Realm, Username, DeviceId) ->
         andalso is_creds_global_unique(Realm, Username, DeviceId).
 
 is_creds_locally_unique(AccountDb, Username, DeviceId) ->
-    ViewOptions = [{'key', kz_util:to_lower_binary(Username)}],
+    ViewOptions = [{'key', kz_term:to_lower_binary(Username)}],
     case kz_datamgr:get_results(AccountDb, <<"devices/sip_credentials">>, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [JObj]} -> kz_doc:id(JObj) =:= DeviceId;
@@ -732,8 +732,8 @@ is_creds_locally_unique(AccountDb, Username, DeviceId) ->
     end.
 
 is_creds_global_unique(Realm, Username, DeviceId) ->
-    ViewOptions = [{'key', [kz_util:to_lower_binary(Realm)
-                           ,kz_util:to_lower_binary(Username)
+    ViewOptions = [{'key', [kz_term:to_lower_binary(Realm)
+                           ,kz_term:to_lower_binary(Username)
                            ]
                    }],
     case kz_datamgr:get_results(?KZ_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
@@ -754,7 +754,7 @@ is_creds_global_unique(Realm, Username, DeviceId) ->
 maybe_aggregate_device(DeviceId, Context) ->
     maybe_aggregate_device(DeviceId, Context, cb_context:resp_status(Context)).
 maybe_aggregate_device(DeviceId, Context, 'success') ->
-    case kz_util:is_true(cb_context:fetch(Context, 'aggregate_device'))
+    case kz_term:is_true(cb_context:fetch(Context, 'aggregate_device'))
         andalso kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"allow_aggregates">>, 'true')
     of
         'false' ->
@@ -811,7 +811,7 @@ get_device_type(Context) ->
 %%--------------------------------------------------------------------
 -spec maybe_add_mobile_mdn(cb_context:context()) -> cb_context:context().
 maybe_add_mobile_mdn(Context) ->
-    case kz_util:is_true(cb_context:fetch(Context, 'add_mobile_mdn')) of
+    case kz_term:is_true(cb_context:fetch(Context, 'add_mobile_mdn')) of
         'true' -> add_mobile_mdn(Context);
         'false' -> Context
     end.
@@ -862,7 +862,7 @@ set_mobile_public_fields(Normalized, Context) ->
 
 -spec maybe_remove_mobile_mdn(cb_context:context()) -> cb_context:context().
 maybe_remove_mobile_mdn(Context) ->
-    case kz_util:is_true(cb_context:fetch(Context, 'remove_mobile_mdn')) of
+    case kz_term:is_true(cb_context:fetch(Context, 'remove_mobile_mdn')) of
         'true' -> remove_mobile_mdn(Context);
         'false' -> Context
     end.

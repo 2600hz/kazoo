@@ -158,8 +158,8 @@ debug_read(Context, CallId) ->
 get_modb(Context) ->
     AccountId = cb_context:account_id(Context),
     case cb_context:req_value(Context, <<"created_from">>) of
-        'undefined' -> kz_util:format_account_mod_id(AccountId);
-        From -> kz_util:format_account_mod_id(AccountId, kz_util:to_integer(From))
+        'undefined' -> kz_accounts:format_account_mod_id(AccountId);
+        From -> kz_accounts:format_account_mod_id(AccountId, kz_term:to_integer(From))
     end.
 
 %%--------------------------------------------------------------------
@@ -207,7 +207,7 @@ normalize_debug_results(Context) ->
      ).
 
 normalize_debug_results(Context, List) ->
-    Size = kz_util:to_integer((crossbar_doc:pagination_page_size(Context)-1)/2),
+    Size = kz_term:to_integer((crossbar_doc:pagination_page_size(Context)-1)/2),
     FinalList =
         case erlang:length(List) > Size of
             'false' -> List;

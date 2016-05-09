@@ -50,7 +50,7 @@ rm_responder(Responders, Responder, Keys) ->
 is_responder_known(Responders, {Responder,_}=Callback) ->
     _ = maybe_load_responder(Responder),
     erlang:function_exported(Responder, 'init', 0) andalso
-        kz_util:is_false(lists:keyfind(Callback, 2, Responders)).
+        kz_term:is_false(lists:keyfind(Callback, 2, Responders)).
 
 maybe_load_responder(Responder) ->
     case erlang:module_loaded(Responder) of

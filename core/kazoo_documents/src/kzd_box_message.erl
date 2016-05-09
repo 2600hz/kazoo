@@ -66,7 +66,7 @@ new() ->
 %%--------------------------------------------------------------------
 -spec new(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> doc().
 new(Db, DocId, AttachmentName, BoxNum, Timezone, Props) ->
-    UtcSeconds = kz_util:current_tstamp(),
+    UtcSeconds = kz_time:current_tstamp(),
     UtcDateTime = calendar:gregorian_seconds_to_datetime(UtcSeconds),
     Name = case localtime:utc_to_local(UtcDateTime, Timezone) of
                {'error', 'unknown_tz'} ->
@@ -101,12 +101,12 @@ message_name(BoxNum, DT) ->
 -spec message_name(ne_binary(), kz_datetime(), string()) -> ne_binary().
 message_name(BoxNum, {{Y,M,D},{H,I,S}}, TZ) ->
     list_to_binary(["mailbox ", BoxNum, " message "
-                    ,kz_util:to_binary(M), "-"
-                    ,kz_util:to_binary(D), "-"
-                    ,kz_util:to_binary(Y), " "
-                    ,kz_util:to_binary(H), ":"
-                    ,kz_util:to_binary(I), ":"
-                    ,kz_util:to_binary(S), TZ
+                    ,kz_term:to_binary(M), "-"
+                    ,kz_term:to_binary(D), "-"
+                    ,kz_term:to_binary(Y), " "
+                    ,kz_term:to_binary(H), ":"
+                    ,kz_term:to_binary(I), ":"
+                    ,kz_term:to_binary(S), TZ
                    ]).
 
 %%--------------------------------------------------------------------

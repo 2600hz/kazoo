@@ -30,7 +30,7 @@
 
 -record(state, {recovery_ref :: reference()}).
 
--define(APP_ROUTING, kz_util:to_binary(?MODULE)).
+-define(APP_ROUTING, kz_term:to_binary(?MODULE)).
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".resources">>).
 -define(RECOVERY_TIMEOUT_S
         ,kapps_config:get_integer(?MOD_CONFIG_CAT, <<"job_recovery_timeout_s">>, ?SECONDS_IN_HOUR * 6)
@@ -188,7 +188,7 @@ create_number(Job, AccountId, AuthAccountId, CarrierModule, DID) ->
                         ,[DID, AccountId, E, _R]
                        ),
             update_status(kz_json:set_value([<<"errors">>, DID]
-                                            ,kz_json:from_list([{<<"reason">>, kz_util:to_binary(E)}])
+                                            ,kz_json:from_list([{<<"reason">>, kz_term:to_binary(E)}])
                                             ,Job
                                            )
                           ,<<"running">>
@@ -225,7 +225,7 @@ build_number_properties(JObj) ->
 update_status(Job, Status) ->
     {'ok', Job1} = kz_datamgr:save_doc(kz_doc:account_db(Job)
                                       ,kz_json:set_values([{<<"pvt_status">>, Status}
-                                                           ,{<<"pvt_node">>, kz_util:to_binary(node())}
+                                                           ,{<<"pvt_node">>, kz_term:to_binary(node())}
                                                           ]
                                                           ,kz_doc:update_pvt_modified(Job)
                                                          )
@@ -265,7 +265,7 @@ maybe_recover_incomplete_jobs(IncompleteJobs) ->
 
 -spec maybe_recover_incomplete_job(kz_json:object()) -> 'ok'.
 maybe_recover_incomplete_job(Job) ->
-    Now = kz_util:current_tstamp(),
+    Now = kz_time:current_tstamp(),
     case (Now - kz_doc:modified(Job)) > ?RECOVERY_THRESHOLD_S of
         'false' -> 'ok';
         'true' ->
@@ -290,7 +290,7 @@ recover_incomplete_job(Job) ->
 -spec republish_job(kz_json:object()) -> 'ok'.
 republish_job(Job) ->
     JobId = kz_doc:id(Job),
-    ReqId = kz_json:get_value(<<"pvt_request_id">>, Job, kz_util:to_binary(?MODULE)),
+    ReqId = kz_json:get_value(<<"pvt_request_id">>, Job, kz_term:to_binary(?MODULE)),
     publish(kz_doc:account_id(Job), JobId, ReqId).
 
 %%%===================================================================
@@ -406,9 +406,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec job_modb(ne_binary(), ne_binary()) -> ne_binary().
 job_modb(AccountId, ?MATCH_MODB_PREFIX(Year,Month,_)) ->
-    kz_util:format_account_mod_id(AccountId, kz_util:to_integer(Year), kz_util:to_integer(Month));
+    kz_accounts:format_account_mod_id(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month));
 job_modb(AccountId, ?MATCH_MODB_PREFIX_M1(Year,Month,_)) ->
-    kz_util:format_account_mod_id(AccountId, kz_util:to_integer(Year), kz_util:to_integer(Month)).
+    kz_accounts:format_account_mod_id(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month)).
 
 -spec start_timer() -> reference().
 start_timer() ->

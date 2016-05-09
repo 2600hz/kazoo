@@ -85,7 +85,7 @@
 update_pvt_parameters(JObj0, DBName) ->
     update_pvt_parameters(JObj0, DBName, []).
 update_pvt_parameters(JObj0, DBName, Options) ->
-    Opts = props:insert_value('now', kz_util:current_tstamp(), Options),
+    Opts = props:insert_value('now', kz_time:current_tstamp(), Options),
     lists:foldl(fun(Fun, JObj) -> Fun(JObj, DBName, Opts) end, JObj0, ?PVT_FUNS).
 
 -spec add_pvt_vsn(kz_json:object(), api_binary(), kz_proplist()) -> kz_json:object().
@@ -115,7 +115,7 @@ add_pvt_account_id(JObj, 'undefined', Opts) ->
     end;
 add_pvt_account_id(JObj, DBName, Opts) ->
     case props:get_value('account_id', Opts) of
-        'undefined' -> kz_json:set_value(?KEY_ACCOUNT_ID, kz_util:format_account_id(DBName, 'raw'), JObj);
+        'undefined' -> kz_json:set_value(?KEY_ACCOUNT_ID, kz_accounts:format_account_id(DBName, 'raw'), JObj);
         Id -> kz_json:set_value(?KEY_ACCOUNT_ID, Id, JObj)
     end.
 
@@ -129,8 +129,8 @@ add_pvt_type(JObj, _, Options) ->
 -spec add_pvt_node(kz_json:object(), api_binary(), kz_proplist()) -> kz_json:object().
 add_pvt_node(JObj, _, Options) ->
     case props:get_value('node', Options) of
-        'undefined' -> kz_json:set_value(?KEY_NODE, kz_util:to_binary(node()), JObj);
-        Node -> kz_json:set_value(?KEY_NODE, kz_util:to_binary(Node), JObj)
+        'undefined' -> kz_json:set_value(?KEY_NODE, kz_term:to_binary(node()), JObj);
+        Node -> kz_json:set_value(?KEY_NODE, kz_term:to_binary(Node), JObj)
     end.
 
 -spec add_pvt_created(kz_json:object(), api_binary(), kz_proplist()) -> kz_json:object().
@@ -138,7 +138,7 @@ add_pvt_created(JObj, _, Opts) ->
     case kz_json:get_value(?KEY_REV, JObj) of
         'undefined' ->
             kz_json:set_value(?KEY_CREATED
-                              ,props:get_value('now', Opts, kz_util:current_tstamp())
+                              ,props:get_value('now', Opts, kz_time:current_tstamp())
                               ,JObj
                              );
         _ -> JObj
@@ -146,7 +146,7 @@ add_pvt_created(JObj, _, Opts) ->
 
 -spec update_pvt_modified(kz_json:object()) -> kz_json:object().
 update_pvt_modified(JObj) ->
-    add_pvt_modified(JObj, 'undefined', [{'now', kz_util:current_tstamp()}]).
+    add_pvt_modified(JObj, 'undefined', [{'now', kz_time:current_tstamp()}]).
 
 -spec set_modified(kz_json:object(), gregorian_seconds()) -> kz_json:object().
 set_modified(JObj, Now) ->
@@ -332,7 +332,7 @@ id(JObj, Default) ->
                                   ,JObj
                                   ,Default
                                   ),
-    case kz_util:is_empty(Id) of
+    case kz_term:is_empty(Id) of
         'true' -> Default;
         'false' -> Id
     end.
@@ -354,7 +354,7 @@ set_type(JObj, Type) ->
 
 -spec set_soft_deleted(kz_json:object(), boolean()) -> kz_json:object().
 set_soft_deleted(JObj, IsSoftDeleted) ->
-    kz_json:set_value(?KEY_SOFT_DELETED, kz_util:is_true(IsSoftDeleted), JObj).
+    kz_json:set_value(?KEY_SOFT_DELETED, kz_term:is_true(IsSoftDeleted), JObj).
 
 -spec is_soft_deleted(kz_json:object()) -> boolean().
 is_soft_deleted(JObj) ->

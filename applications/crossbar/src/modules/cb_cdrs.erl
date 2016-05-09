@@ -125,14 +125,14 @@ to_json(Req0, Context) ->
 -spec pagination(payload()) -> payload().
 pagination({Req, Context}=Payload) ->
     PageSize = cb_context:fetch(Context, 'page_size', 0),
-    'ok' = cowboy_req:chunk(<<", \"page_size\": ", (kz_util:to_binary(PageSize))/binary>>, Req),
+    'ok' = cowboy_req:chunk(<<", \"page_size\": ", (kz_term:to_binary(PageSize))/binary>>, Req),
     IsInteraction = cb_context:fetch(Context, 'interaction', 'false'),
     case pagination_key(IsInteraction, 'next_start_key', Context) of
         'ok' -> 'ok';
-        Next -> cowboy_req:chunk(<<", \"next_start_key\": \"", (kz_util:to_binary(Next))/binary, "\"">>, Req)
+        Next -> cowboy_req:chunk(<<", \"next_start_key\": \"", (kz_term:to_binary(Next))/binary, "\"">>, Req)
     end,
     StartKey = pagination_key(IsInteraction, 'start_key', Context),
-    'ok' = cowboy_req:chunk(<<", \"start_key\": \"", (kz_util:to_binary(StartKey))/binary, "\"">>, Req),
+    'ok' = cowboy_req:chunk(<<", \"start_key\": \"", (kz_term:to_binary(StartKey))/binary, "\"">>, Req),
     Payload.
 
 -spec pagination_key(boolean(), atom(), cb_context:context()) ->
@@ -603,7 +603,7 @@ normalize_cdr(JObj, Context) ->
 normalize_cdr_to_csv(JObj, Context) ->
     Timestamp = kz_json:get_integer_value(<<"timestamp">>, JObj, 0),
 
-    CSV = kz_util:join_binary(
+    CSV = kz_term:join_binary(
             [F(JObj, Timestamp) || {_, F} <- csv_rows(Context)]
             ,<<",">>
            ),
@@ -612,7 +612,7 @@ normalize_cdr_to_csv(JObj, Context) ->
 -spec normalize_cdr_to_csv_header(kz_json:object(), cb_context:context()) -> ne_binary().
 normalize_cdr_to_csv_header(_JObj, Context) ->
     CSV =
-        kz_util:join_binary(
+        kz_term:join_binary(
           [K || {K, _Fun} <- csv_rows(Context)]
           ,<<",">>
          ),
@@ -637,7 +637,7 @@ col_callee_id_number(JObj, _Timestamp) -> kz_json:get_value(<<"callee_id_number"
 col_callee_id_name(JObj, _Timestamp) -> kz_json:get_value(<<"callee_id_name">>, JObj, <<>>).
 col_duration_seconds(JObj, _Timestamp) -> kz_json:get_value(<<"duration_seconds">>, JObj, <<>>).
 col_billing_seconds(JObj, _Timestamp) -> kz_json:get_value(<<"billing_seconds">>, JObj, <<>>).
-col_timestamp(_JObj, Timestamp) -> kz_util:to_binary(Timestamp).
+col_timestamp(_JObj, Timestamp) -> kz_term:to_binary(Timestamp).
 col_hangup_cause(JObj, _Timestamp) -> kz_json:get_value(<<"hangup_cause">>, JObj, <<>>).
 col_other_leg_call_id(JObj, _Timestamp) -> kz_json:get_value(<<"other_leg_call_id">>, JObj, <<>>).
 col_owner_id(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"owner_id">>], JObj, <<>>).
@@ -653,22 +653,22 @@ col_authorizing_id(JObj, _Timestamp) ->
         {A, A} -> <<>>;
         {_A, B} -> B
     end.
-col_customer_cost(JObj, _Timestamp) -> kz_util:to_binary(customer_cost(JObj)).
+col_customer_cost(JObj, _Timestamp) -> kz_term:to_binary(customer_cost(JObj)).
 
 col_dialed_number(JObj, _Timestamp) -> dialed_number(JObj).
 col_calling_from(JObj, _Timestamp) -> calling_from(JObj).
 col_pretty_print(_JObj, Timestamp) -> pretty_print_datetime(Timestamp).
-col_unix_timestamp(_JObj, Timestamp) -> kz_util:to_binary(kz_util:gregorian_seconds_to_unix_seconds(Timestamp)).
-col_rfc1036(_JObj, Timestamp) -> list_to_binary([$", kz_util:rfc1036(Timestamp), $"]).
-col_iso8601(_JObj, Timestamp) -> list_to_binary([$", kz_util:iso8601(Timestamp), $"]).
+col_unix_timestamp(_JObj, Timestamp) -> kz_term:to_binary(kz_time:gregorian_seconds_to_unix_seconds(Timestamp)).
+col_rfc1036(_JObj, Timestamp) -> list_to_binary([$", kz_time:rfc1036(Timestamp), $"]).
+col_iso8601(_JObj, Timestamp) -> list_to_binary([$", kz_time:iso8601(Timestamp), $"]).
 col_account_call_type(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"account_billing">>], JObj, <<>>).
-col_rate(JObj, _Timestamp) -> kz_util:to_binary(wht_util:units_to_dollars(kz_json:get_value([?KEY_CCV, <<"rate">>], JObj, 0))).
+col_rate(JObj, _Timestamp) -> kz_term:to_binary(wht_util:units_to_dollars(kz_json:get_value([?KEY_CCV, <<"rate">>], JObj, 0))).
 col_rate_name(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"rate_name">>], JObj, <<>>).
 col_bridge_id(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"bridge_id">>], JObj, <<>>).
 col_recording_url(JObj, _Timestamp) -> kz_json:get_value([<<"recording_url">>], JObj, <<>>).
 col_call_priority(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"call_priority">>], JObj, <<>>).
 
-col_reseller_cost(JObj, _Timestamp) -> kz_util:to_binary(reseller_cost(JObj)).
+col_reseller_cost(JObj, _Timestamp) -> kz_term:to_binary(reseller_cost(JObj)).
 col_reseller_call_type(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"reseller_billing">>], JObj, <<>>).
 
 -spec pretty_print_datetime(kz_datetime() | integer()) -> ne_binary().
@@ -737,7 +737,7 @@ remove_qs_keys(Context) ->
 -spec load_cdr(ne_binary(), cb_context:context()) -> cb_context:context().
 load_cdr(?MATCH_MODB_PREFIX(Year,Month,_) = CDRId, Context) ->
     AccountId = cb_context:account_id(Context),
-    AccountDb = kazoo_modb:get_modb(AccountId, kz_util:to_integer(Year), kz_util:to_integer(Month)),
+    AccountDb = kazoo_modb:get_modb(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month)),
     Context1 = cb_context:set_account_db(Context, AccountDb),
     crossbar_doc:load({<<"cdr">>, CDRId}, Context1, ?TYPE_CHECK_OPTION(<<"cdr">>));
 load_cdr(CDRId, Context) ->
@@ -753,7 +753,7 @@ load_cdr(CDRId, Context) ->
 -spec load_legs(ne_binary(), cb_context:context()) -> cb_context:context().
 load_legs(<<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId, Context) ->
     AccountId = cb_context:account_id(Context),
-    AccountDb = kazoo_modb:get_modb(AccountId, kz_util:to_integer(Year), kz_util:to_integer(Month)),
+    AccountDb = kazoo_modb:get_modb(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month)),
     Context1 = cb_context:set_account_db(Context, AccountDb),
     case kz_datamgr:open_cache_doc(AccountDb, {<<"cdr">>, DocId}) of
         {'ok', JObj} ->

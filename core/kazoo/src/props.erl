@@ -80,7 +80,7 @@ filter(Props, Term) when is_list(Props) ->
 filter_empty(Props) ->
     [KV || KV <- Props,
            case KV of
-               {_, V} -> not kz_util:is_empty(V);
+               {_, V} -> not kz_term:is_empty(V);
                _V -> 'true'
            end
     ].
@@ -143,7 +143,7 @@ is_true(Key, Props) ->
 is_true(Key, Props, Default) ->
     case get_value(Key, Props) of
         'undefined' -> Default;
-        V -> kz_util:is_true(V)
+        V -> kz_term:is_true(V)
     end.
 
 -spec get_is_false(kz_proplist_key(), kz_proplist()) -> api_boolean().
@@ -156,7 +156,7 @@ is_false(Key, Props) ->
 is_false(Key, Props, Default) ->
     case get_value(Key, Props) of
         'undefined' -> Default;
-        V -> kz_util:is_false(V)
+        V -> kz_term:is_false(V)
     end.
 
 -spec get_integer_value(kz_proplist_key(), kz_proplist()) ->
@@ -168,7 +168,7 @@ get_integer_value(Key, Props) ->
 get_integer_value(Key, Props, Default) ->
     case ?MODULE:get_value(Key, Props) of
         'undefined' -> Default;
-        Val -> kz_util:to_integer(Val)
+        Val -> kz_term:to_integer(Val)
     end.
 
 -spec get_atom_value(kz_proplist_key(), kz_proplist()) ->
@@ -180,7 +180,7 @@ get_atom_value(Key, Props) ->
 get_atom_value(Key, Props, Default) ->
     case ?MODULE:get_value(Key, Props) of
         'undefined' -> Default;
-        Val -> kz_util:to_atom(Val)
+        Val -> kz_term:to_atom(Val)
     end.
 
 -spec get_binary_value(kz_proplist_key() | kz_proplist_keys(), kz_proplist()) -> api_binary().
@@ -191,12 +191,12 @@ get_binary_value(Key, Props) ->
 get_binary_value(Keys, Props, Default) when is_list(Keys) ->
     case ?MODULE:get_first_defined(Keys, Props) of
         'undefined' -> Default;
-        V -> kz_util:to_binary(V)
+        V -> kz_term:to_binary(V)
     end;
 get_binary_value(Key, Props, Default) ->
     case ?MODULE:get_value(Key, Props) of
         'undefined' -> Default;
-        V -> kz_util:to_binary(V)
+        V -> kz_term:to_binary(V)
     end.
 
 -spec get_ne_binary_value(kz_proplist_key(), kz_proplist()) -> api_binary().
@@ -208,7 +208,7 @@ get_ne_binary_value(Key, Props, Default) ->
     case ?MODULE:get_value(Key, Props) of
         'undefined' -> Default;
         <<>> -> Default;
-        V -> kz_util:to_binary(V)
+        V -> kz_term:to_binary(V)
     end.
 
 -spec get_keys(kz_proplist()) -> kz_proplist_keys().
@@ -265,7 +265,7 @@ to_querystring(Props) ->
 
 to_querystring(Props, Prefix) ->
     {Vs, Ks} = get_values_and_keys(Props),
-    fold_kvs([kz_util:to_binary(K) || K <- Ks], Vs, Prefix, []).
+    fold_kvs([kz_term:to_binary(K) || K <- Ks], Vs, Prefix, []).
 
 %% foreach key/value pair, encode the key/value with the prefix and prepend the &
 %% if the last key/value pair, encode the key/value with the prefix, prepend to accumulator
@@ -279,24 +279,24 @@ fold_kvs([K|Ks], [V|Vs], Prefix, Acc) ->
 -spec encode_kv(iolist() | binary(), ne_binary(), any()) -> iolist().
 %% If a list of values, use the []= as a separator between the key and each value
 encode_kv(Prefix, K, Vs) when is_list(Vs) ->
-    encode_kv(Prefix, kz_util:to_binary(K), Vs, <<"[]=">>, []);
+    encode_kv(Prefix, kz_term:to_binary(K), Vs, <<"[]=">>, []);
 %% if the value is a "simple" value, just encode it (url-encoded)
 encode_kv(Prefix, K, V) when is_binary(V) orelse is_number(V) ->
     encode_kv(Prefix, K, <<"=">>, kz_http_util:urlencode(V));
 
 % key:{k1:v1, k2:v2} => key[k1]=v1&key[k2]=v2
 %% if no prefix is present, use just key to prefix the key/value pairs in the jobj
-encode_kv(<<>>, K, [_|_]=Props) -> to_querystring(Props, [kz_util:to_binary(K)]);
+encode_kv(<<>>, K, [_|_]=Props) -> to_querystring(Props, [kz_term:to_binary(K)]);
 %% if a prefix is defined, nest the key in square brackets
-encode_kv(Prefix, K, [_|_]=Props) -> to_querystring(Props, [Prefix, <<"[">>, kz_util:to_binary(K), <<"]">>]).
+encode_kv(Prefix, K, [_|_]=Props) -> to_querystring(Props, [Prefix, <<"[">>, kz_term:to_binary(K), <<"]">>]).
 
 -spec encode_kv(iolist() | binary(), ne_binary(), ne_binary(), string() | binary()) -> iolist().
 encode_kv(<<>>, K, Sep, V) ->
-    [kz_util:to_binary(K), Sep, kz_util:to_binary(V)];
+    [kz_term:to_binary(K), Sep, kz_term:to_binary(V)];
 encode_kv(Prefix, K, Sep, V) ->
     [Prefix
-     ,<<"[">>, kz_util:to_binary(K), <<"]">>
-     ,Sep, kz_util:to_binary(V)
+     ,<<"[">>, kz_term:to_binary(K), <<"]">>
+     ,Sep, kz_term:to_binary(V)
     ].
 
 -spec encode_kv(iolist() | binary(), ne_binary(), [string()], ne_binary(), iolist()) -> iolist().
@@ -313,7 +313,7 @@ to_log(Props) ->
 -spec to_log(kz_proplist(), ne_binary()) -> 'ok'.
 to_log(Props, Header) ->
   Keys = ?MODULE:get_keys(Props),
-  K = kz_util:rand_hex_binary(4),
+  K = kz_term:rand_hex_binary(4),
   lager:debug(<<"===== Start ", Header/binary , " - ", K/binary, " ====">>),
   lists:foreach(fun(A) -> lager:info("~s - ~p = ~p",[K,A,?MODULE:get_value(A,Props)]) end,Keys),
   lager:debug(<<"===== End ", Header/binary, " - ", K/binary, " ====">>),

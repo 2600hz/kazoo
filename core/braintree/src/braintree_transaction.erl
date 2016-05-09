@@ -25,9 +25,6 @@
 
 -define(MIN_AMOUNT, kapps_config:get_float(<<"braintree">>, <<"min_amount">>, 5.00)).
 
--import('braintree_util', [make_doc_xml/2]).
--import('kz_util', [get_xml_value/2]).
-
 -include_lib("braintree/include/braintree.hrl").
 
 %%--------------------------------------------------------------------
@@ -44,13 +41,13 @@ url() ->
     "/transactions/".
 
 url(TransactionId) ->
-    lists:append(["/transactions/", kz_util:to_list(TransactionId)]).
+    lists:append(["/transactions/", kz_term:to_list(TransactionId)]).
 
 url(TransactionId, Options) ->
     lists:append(["/transactions/"
-                  ,kz_util:to_list(TransactionId)
+                  ,kz_term:to_list(TransactionId)
                   ,"/"
-                  ,kz_util:to_list(Options)
+                  ,kz_term:to_list(Options)
                  ]).
 
 %%--------------------------------------------------------------------
@@ -75,7 +72,7 @@ find(TransactionId) ->
 find_by_customer(CustomerId) ->
     Url = url(<<"advanced_search">>),
     Props = [{'customer_id', [{'is', CustomerId}]}],
-    Request = make_doc_xml(Props, 'search'),
+    Request = braintree_util:make_doc_xml(Props, 'search'),
     Xml = braintree_request:post(Url, Request),
     [xml_to_record(Transaction)
      || Transaction <- xmerl_xpath:string("/credit-card-transactions/transaction", Xml)
@@ -94,7 +91,7 @@ find_by_customer(CustomerId, Min, Max) ->
                               ,{'max_minute', 59}
                              ]}
             ],
-    Request = make_doc_xml(Props, 'search'),
+    Request = braintree_util:make_doc_xml(Props, 'search'),
     Xml = braintree_request:post(Url, Request),
     [xml_to_record(Transaction)
      || Transaction <- xmerl_xpath:string("/credit-card-transactions/transaction", Xml)
@@ -113,7 +110,7 @@ find_by_customer(CustomerId, Min, Max) ->
 
 create(#bt_transaction{amount=Amount}=Transaction) ->
     MaxAmount = kapps_config:get_float(<<"braintree">>, <<"max_amount">>, 200.00),
-    case kz_util:to_float(Amount) >  MaxAmount of
+    case kz_term:to_float(Amount) >  MaxAmount of
         'true' -> braintree_util:error_max_amount(MaxAmount);
         'false' -> 'ok'
     end,
@@ -144,17 +141,17 @@ sale(CustomerId, Transaction) ->
 -spec quick_sale(ne_binary(), number() | ne_binary()) -> bt_transaction().
 -spec quick_sale(ne_binary(), number() | ne_binary(), kz_proplist()) -> bt_transaction().
 quick_sale(CustomerId, Amount) ->
-    case kz_util:to_float(Amount) < ?MIN_AMOUNT of
+    case kz_term:to_float(Amount) < ?MIN_AMOUNT of
         'true' -> braintree_util:error_min_amount(?MIN_AMOUNT);
-        'false' -> sale(CustomerId, #bt_transaction{amount=kz_util:to_binary(Amount)})
+        'false' -> sale(CustomerId, #bt_transaction{amount=kz_term:to_binary(Amount)})
     end.
 
 quick_sale(CustomerId, Amount, Props) ->
-    case kz_util:to_float(Amount) < ?MIN_AMOUNT of
+    case kz_term:to_float(Amount) < ?MIN_AMOUNT of
         'true' -> braintree_util:error_min_amount(?MIN_AMOUNT);
         'false' ->
             Transaction = json_to_record(kz_json:from_list(Props)),
-            sale(CustomerId, Transaction#bt_transaction{amount=kz_util:to_binary(Amount)})
+            sale(CustomerId, Transaction#bt_transaction{amount=kz_term:to_binary(Amount)})
     end.
 
 %%--------------------------------------------------------------------
@@ -175,7 +172,7 @@ credit(CustomerId, Transaction) ->
 
 -spec quick_credit(ne_binary(), ne_binary()) -> bt_transaction().
 quick_credit(CustomerId, Amount) ->
-    credit(CustomerId, #bt_transaction{amount=kz_util:to_binary(Amount)
+    credit(CustomerId, #bt_transaction{amount=kz_term:to_binary(Amount)
                                        ,settle='false'
                                        ,tax_exempt='false'
                                       }).
@@ -232,34 +229,34 @@ xml_to_record(Xml, Base) ->
     BillingAddress = braintree_address:xml_to_record(Xml, [Base, "/billing"]),
     Card = braintree_card:xml_to_record(Xml, [Base, "/credit-card"]),
     StatusHistory = get_status_history(Xml, Base),
-    #bt_transaction{id = get_xml_value([Base, "/id/text()"], Xml)
-                    ,status = get_xml_value([Base, "/status/text()"], Xml)
-                    ,type = get_xml_value([Base, "/type/text()"], Xml)
-                    ,currency_code = get_xml_value([Base, "/currency-iso-code/text()"], Xml)
-                    ,amount = get_xml_value([Base, "/amount/text()"], Xml)
-                    ,merchant_account_id = get_xml_value([Base, "/merchant-account-id/text()"], Xml)
-                    ,order_id = get_xml_value([Base, "/order-id/text()"], Xml)
-                    ,purchase_order = get_xml_value([Base, "/purchase-order-number/text()"], Xml)
-                    ,created_at = get_xml_value([Base, "/created-at/text()"], Xml)
-                    ,update_at = get_xml_value([Base, "/updated-at/text()"], Xml)
-                    ,refund_id = get_xml_value([Base, "/refund-id/text()"], Xml)
-                    ,refunded_transaction = get_xml_value([Base, "/refunded-transaction-id /text()"], Xml)
-                    ,settlement_batch = get_xml_value([Base, "/settlement-batch-id/text()"], Xml)
-                    ,avs_error_code = get_xml_value([Base, "/avs-error-response-code/text()"], Xml)
-                    ,avs_postal_response = get_xml_value([Base, "/avs-postal-code-response-code/text()"], Xml)
-                    ,avs_street_response = get_xml_value([Base, "/avs-street-address-response-code/text()"], Xml)
-                    ,ccv_response_code = get_xml_value([Base, "/cvv-response-code/text()"], Xml)
-                    ,gateway_rejection = get_xml_value([Base, "/gateway-rejection-reason/text()"], Xml)
-                    ,processor_authorization_code = get_xml_value([Base, "/processor-authorization-code/text()"], Xml)
-                    ,processor_response_code = get_xml_value([Base, "/processor-response-code/text()"], Xml)
-                    ,processor_response_text = get_xml_value([Base, "/processor-response-text/text()"], Xml)
-                    ,tax_amount = get_xml_value([Base, "/tax-amount/text()"], Xml)
-                    ,tax_exempt = kz_util:is_true(get_xml_value([Base, "/tax-exempt/text()"], Xml))
+    #bt_transaction{id = kz_xml:value([Base, "/id/text()"], Xml)
+                    ,status = kz_xml:value([Base, "/status/text()"], Xml)
+                    ,type = kz_xml:value([Base, "/type/text()"], Xml)
+                    ,currency_code = kz_xml:value([Base, "/currency-iso-code/text()"], Xml)
+                    ,amount = kz_xml:value([Base, "/amount/text()"], Xml)
+                    ,merchant_account_id = kz_xml:value([Base, "/merchant-account-id/text()"], Xml)
+                    ,order_id = kz_xml:value([Base, "/order-id/text()"], Xml)
+                    ,purchase_order = kz_xml:value([Base, "/purchase-order-number/text()"], Xml)
+                    ,created_at = kz_xml:value([Base, "/created-at/text()"], Xml)
+                    ,update_at = kz_xml:value([Base, "/updated-at/text()"], Xml)
+                    ,refund_id = kz_xml:value([Base, "/refund-id/text()"], Xml)
+                    ,refunded_transaction = kz_xml:value([Base, "/refunded-transaction-id /text()"], Xml)
+                    ,settlement_batch = kz_xml:value([Base, "/settlement-batch-id/text()"], Xml)
+                    ,avs_error_code = kz_xml:value([Base, "/avs-error-response-code/text()"], Xml)
+                    ,avs_postal_response = kz_xml:value([Base, "/avs-postal-code-response-code/text()"], Xml)
+                    ,avs_street_response = kz_xml:value([Base, "/avs-street-address-response-code/text()"], Xml)
+                    ,ccv_response_code = kz_xml:value([Base, "/cvv-response-code/text()"], Xml)
+                    ,gateway_rejection = kz_xml:value([Base, "/gateway-rejection-reason/text()"], Xml)
+                    ,processor_authorization_code = kz_xml:value([Base, "/processor-authorization-code/text()"], Xml)
+                    ,processor_response_code = kz_xml:value([Base, "/processor-response-code/text()"], Xml)
+                    ,processor_response_text = kz_xml:value([Base, "/processor-response-text/text()"], Xml)
+                    ,tax_amount = kz_xml:value([Base, "/tax-amount/text()"], Xml)
+                    ,tax_exempt = kz_term:is_true(kz_xml:value([Base, "/tax-exempt/text()"], Xml))
                     ,billing_address = BillingAddress
                     ,shipping_address = braintree_address:xml_to_record(Xml, [Base, "/shipping"])
                     ,customer = braintree_customer:xml_to_record(Xml, [Base, "/customer"])
                     ,card = Card#bt_card{billing_address=BillingAddress}
-                    ,subscription_id = get_xml_value([Base, "/subscription-id/text()"], Xml)
+                    ,subscription_id = kz_xml:value([Base, "/subscription-id/text()"], Xml)
                     ,add_ons = [braintree_addon:xml_to_record(Addon)
                                 || Addon <- xmerl_xpath:string(AddOnsPath, Xml)
                                ]
@@ -292,13 +289,13 @@ get_status_history(Xml, Base) ->
 -spec get_users(bt_xml(), api_binaries()) -> api_binaries().
 get_users([], Users) -> Users;
 get_users([Element|Elements], Users) ->
-    User = get_xml_value("user/text()", Element),
+    User = kz_xml:value("user/text()", Element),
     get_users(Elements, [User|Users]).
 
 -spec get_transaction_sources(bt_xml(), api_binaries()) -> api_binaries().
 get_transaction_sources([], Sources) -> Sources;
 get_transaction_sources([Element|Elements], Sources) ->
-    Source = get_xml_value("transaction-source/text()", Element),
+    Source = kz_xml:value("transaction-source/text()", Element),
     get_transaction_sources(Elements, [Source|Sources]).
 
 %%--------------------------------------------------------------------
@@ -391,7 +388,7 @@ record_to_xml(#bt_transaction{}=Transaction, ToString) ->
                     end],
     Props1 = lists:foldr(fun(F, P) -> F(Transaction, P) end, Props, Conditionals),
     case ToString of
-        'true' -> make_doc_xml(Props1, 'transaction');
+        'true' -> braintree_util:make_doc_xml(Props1, 'transaction');
         'false' -> Props1
     end.
 

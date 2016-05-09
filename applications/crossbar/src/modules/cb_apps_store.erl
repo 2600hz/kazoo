@@ -274,7 +274,7 @@ validate_req(Context, ?HTTP_GET) ->
 validate_blacklist(Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     AccountId = cb_context:account_id(Context),
-    case kz_util:is_in_account_hierarchy(AuthAccountId, AccountId) of
+    case kz_accounts:is_in_account_hierarchy(AuthAccountId, AccountId) of
         'false' -> cb_context:add_system_error('forbidden', Context);
         'true' -> load_apps_store(Context)
     end.
@@ -565,7 +565,7 @@ get_icon(Context) ->
 maybe_get_screenshot(Context, Number) ->
     JObj = cb_context:doc(Context),
     Screenshots = kz_json:get_value(<<"screenshots">>, JObj),
-    try lists:nth(kz_util:to_integer(Number)+1, Screenshots) of
+    try lists:nth(kz_term:to_integer(Number)+1, Screenshots) of
         Name ->
             case kz_doc:attachment(JObj, Name) of
                 'undefined' -> 'error';
@@ -640,7 +640,7 @@ get_attachment(Context, Id, JObj, Attachment) ->
     AppId = kz_doc:id(JObj),
     case kz_datamgr:fetch_attachment(Db, AppId, Id) of
         {'error', R} ->
-            Reason = kz_util:to_binary(R),
+            Reason = kz_term:to_binary(R),
             lager:error("failed to fetch attachment, ~s in ~s, (account: ~s)", [Id, AppId, Db]),
             cb_context:add_system_error('datastore_fault', kz_json:from_list([{'details', Reason}]), Context);
         {'ok', AttachBin} ->

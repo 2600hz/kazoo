@@ -170,13 +170,13 @@ init([Call, Data]) ->
     RecordMinSec = kz_json:get_integer_value(<<"record_min_sec">>, Data, DefaultRecordMinSec),
     AccountId = kapps_call:account_id(Call),
     {Year, Month, _} = erlang:date(),
-    AccountDb = kz_util:format_account_modb(kazoo_modb:get_modb(AccountId, Year, Month),'encoded'),
+    AccountDb = kz_accounts:format_account_modb(kazoo_modb:get_modb(AccountId, Year, Month),'encoded'),
     CallId = kapps_call:call_id(Call),
-    CdrId = ?MATCH_MODB_PREFIX(kz_util:to_binary(Year), kz_util:pad_month(Month), CallId),
-    RecordingId = kz_util:rand_hex_binary(16),
-    DocId = ?MATCH_MODB_PREFIX(kz_util:to_binary(Year), kz_util:pad_month(Month), RecordingId),
+    CdrId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_time:pad_month(Month), CallId),
+    RecordingId = kz_term:rand_hex_binary(16),
+    DocId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_time:pad_month(Month), RecordingId),
     InteractionId = kapps_call:custom_channel_var(?CALL_INTERACTION_ID, Call),
-    DefaultMediaName = get_media_name(kz_util:rand_hex_binary(16), Format),
+    DefaultMediaName = get_media_name(kz_term:rand_hex_binary(16), Format),
     MediaName = kz_json:get_value(?RECORDING_ID_KEY, Data, DefaultMediaName),
     Url = get_url(Data),
     ShouldStore = should_store_recording(Url),
@@ -433,7 +433,7 @@ store_recording_meta(#state{call=Call
                     ,{<<"content_type">>, kz_mime:from_extension(Ext)}
                     ,{<<"media_type">>, Ext}
                     ,{<<"media_source">>, <<"recorded">>}
-                    ,{<<"source_type">>, kz_util:to_binary(?MODULE)}
+                    ,{<<"source_type">>, kz_term:to_binary(?MODULE)}
                     ,{<<"pvt_type">>, <<"call_recording">>}
                     ,{<<"from">>, kapps_call:from(Call)}
                     ,{<<"to">>, kapps_call:to(Call)}
@@ -482,7 +482,7 @@ store_url(#state{doc_db=Db
 -spec should_store_recording() -> store_url().
 -spec should_store_recording(api_binary()) -> store_url().
 should_store_recording(Url) ->
-    case kz_util:is_empty(Url) of
+    case kz_term:is_empty(Url) of
         'true' -> should_store_recording();
         'false' -> {'true', 'other', Url}
     end.
@@ -529,7 +529,7 @@ store_recording(Media, StoreUrl, Call, 'local') ->
 append_path(Url, {_, MediaName}) ->
     S = byte_size(Url)-1,
 
-    Encoded = kz_util:uri_encode(MediaName),
+    Encoded = kz_http_util:uri_encode(MediaName),
 
     case Url of
         <<_:S/binary, "/">> -> <<Url/binary, Encoded/binary>>;
@@ -541,7 +541,7 @@ start_recording(Call, MediaName, TimeLimit, MediaRecorder, SampleRate, RecordMin
     lager:debug("starting recording of ~s", [MediaName]),
     Props = [{<<"Media-Name">>, MediaName}
              ,{<<"Record-Sample-Rate">>, SampleRate}
-             ,{<<"Record-Min-Sec">>, kz_util:to_binary(RecordMinSec)}
+             ,{<<"Record-Min-Sec">>, kz_term:to_binary(RecordMinSec)}
              ,{<<"Media-Recorder">>, MediaRecorder}
             ],
     kapps_call_command:start_record_call(Props, TimeLimit, Call),

@@ -80,7 +80,7 @@ do_profile({Mod, Fun, _Arity}, Args, PD) ->
         [Plan, DbName | Others] = Args,
         {Time, Result} = timer:tc(fun() -> erlang:apply(Mod, Fun, Args) end),
         From = kz_util:calling_process(),
-        FromList = [{kz_util:to_atom(<<"from_", (kz_util:to_binary(K))/binary>>, true), V} || {K,V} <- maps:to_list(From)],
+        FromList = [{kz_term:to_atom(<<"from_", (kz_term:to_binary(K))/binary>>, true), V} || {K,V} <- maps:to_list(From)],
         MD = FromList ++ maps:to_list(maps:merge(Plan, PD)),
         data:debug([{'mod', Mod}
                     ,{'func', Fun}

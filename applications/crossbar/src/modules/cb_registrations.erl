@@ -119,7 +119,7 @@ validate_sip_username(Context, Username) ->
 
 -spec sip_username_exists(cb_context:context(), ne_binary()) -> boolean().
 sip_username_exists(Context, Username) ->
-    ViewOptions = [{'key', kz_util:to_lower_binary(Username)}],
+    ViewOptions = [{'key', kz_term:to_lower_binary(Username)}],
     case kz_datamgr:get_results(cb_context:account_db(Context)
                                ,<<"devices/sip_credentials">>
                                ,ViewOptions
@@ -141,7 +141,7 @@ delete(Context, Username) ->
 
 -spec lookup_regs(cb_context:context()) -> kz_json:objects().
 lookup_regs(Context) ->
-    AccountRealm = kz_util:get_account_realm(cb_context:account_id(Context)),
+    AccountRealm = kz_accounts:get_account_realm(cb_context:account_id(Context)),
     Req = [{<<"Realm">>, AccountRealm}
            ,{<<"Fields">>, []}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -231,5 +231,5 @@ count_registrations(Context) ->
 get_realm_for_counting(Context) ->
     case cb_context:account_id(Context) of
         'undefined' -> <<"all">>;
-        _AccountId -> kz_util:get_account_realm(cb_context:account_id(Context))
+        _AccountId -> kz_accounts:get_account_realm(cb_context:account_id(Context))
     end.

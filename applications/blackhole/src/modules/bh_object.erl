@@ -51,7 +51,7 @@ add_amqp_binding(Binding, Context) ->
 add_amqp_binding(_Binding, Context, Action, Type) ->
     lager:debug("adding amqp binding: ~s", [_Binding]),
     AccountId = bh_context:account_id(Context),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     Keys = [[{'action', Action}, {'db', AccountDb}, {'doc_type', Type}]],
     blackhole_listener:add_binding(
         'conf'
@@ -72,7 +72,7 @@ rm_amqp_binding(Binding, Context) ->
     lager:debug("removing amqp binding: ~s", [Binding]),
     [Action, _, Type|_] = binary:split(Binding, <<".">>, ['global']),
     AccountId = bh_context:account_id(Context),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     Keys = [[{'action', Action}, {'db', AccountDb}, {'doc_type', Type}]],
     blackhole_listener:remove_binding(
         'conf'

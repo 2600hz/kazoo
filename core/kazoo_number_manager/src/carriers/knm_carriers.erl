@@ -320,7 +320,7 @@ acquire(Number, ?NE_BINARY = Mod, 'false') ->
 disconnect(Number) ->
     case knm_phone_number:module_name(knm_number:phone_number(Number)) of
         ?NE_BINARY=Mod ->
-            Module = kz_util:to_atom(Mod, 'true'),
+            Module = kz_term:to_atom(Mod, 'true'),
             lager:debug("contacting carrier ~s", [Module]),
             Module:disconnect_number(Number);
         _Mod ->
@@ -339,7 +339,7 @@ disconnect(Number) ->
 %%--------------------------------------------------------------------
 -spec carrier_module(knm_number:knm_number() | ne_binary()) -> atom().
 carrier_module(?NE_BINARY = Module) ->
-    kz_util:to_atom(Module, 'true');
+    kz_term:to_atom(Module, 'true');
 carrier_module(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     carrier_module(knm_phone_number:module_name(PhoneNumber)).

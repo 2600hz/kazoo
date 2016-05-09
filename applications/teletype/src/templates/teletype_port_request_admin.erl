@@ -137,7 +137,7 @@ maybe_set_emails(DataJObj) ->
 
 -spec maybe_set_from(kz_json:object()) -> kz_json:object().
 maybe_set_from(DataJObj) ->
-    SystemFrom = kz_util:to_binary(node()),
+    SystemFrom = kz_term:to_binary(node()),
     PortRequest = kz_json:get_value(<<"port_request">>, DataJObj),
     DefaultFrom = kz_json:get_value(<<"from">>, DataJObj, SystemFrom),
 
@@ -197,11 +197,11 @@ port_request_data_fold(<<"id">> = K, V, Acc) ->
 port_request_data_fold(<<"account_id">> = K, V, Acc) ->
     kz_json:set_value(K, V, Acc);
 port_request_data_fold(<<"transfer_date">>, Date, Acc) ->
-    kz_json:set_value(<<"requested_port_date">>, kz_util:iso8601({Date, {0,0,0}}), Acc);
+    kz_json:set_value(<<"requested_port_date">>, kz_time:iso8601({Date, {0,0,0}}), Acc);
 port_request_data_fold(<<"bill_", _/binary>> = K, V, Acc) ->
     kz_json:set_value(K, V, Acc);
 port_request_data_fold(<<"numbers">> = K, Numbers, Acc) ->
-    kz_json:set_value(K, kz_util:join_binary(Numbers, <<", ">>), Acc);
+    kz_json:set_value(K, kz_term:join_binary(Numbers, <<", ">>), Acc);
 port_request_data_fold(<<"notifications">>, NJObj, Acc) ->
     kz_json:set_value(<<"customer_contact">>, kz_json:get_value([<<"email">>, <<"send_to">>], NJObj), Acc);
 port_request_data_fold(<<"carrier">>, V, Acc) ->

@@ -15,7 +15,7 @@
 -include("webhooks.hrl").
 -include_lib("kazoo/include/kapi_conf.hrl").
 
--define(ID, kz_util:to_binary(?MODULE)).
+-define(ID, kz_term:to_binary(?MODULE)).
 -define(NAME, <<"object">>).
 -define(DESC, <<"Receive notifications when objects in Kazoo are changed">>).
 
@@ -91,7 +91,7 @@ bindings_and_responders() ->
 %%--------------------------------------------------------------------
 -spec account_bindings(ne_binary()) -> gen_listener:bindings().
 account_bindings(AccountId) ->
-    bindings([kz_util:format_account_id(AccountId, 'encoded')]).
+    bindings([kz_accounts:format_account_id(AccountId, 'encoded')]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -133,7 +133,7 @@ load_accounts() ->
          )
     of
         {'ok', View} ->
-            [kz_util:format_account_id(
+            [kz_accounts:format_account_id(
                kz_json:get_value(<<"value">>, Result)
                ,'encoded'
               )
@@ -190,6 +190,6 @@ format_event(JObj, AccountId) ->
 find_account_id(JObj) ->
     case kapi_conf:get_account_id(JObj) of
         'undefined' ->
-            kz_util:format_account_id(kapi_conf:get_account_db(JObj), 'raw');
+            kz_accounts:format_account_id(kapi_conf:get_account_db(JObj), 'raw');
         AccountId -> AccountId
     end.

@@ -13,7 +13,7 @@
 
 -include("webhooks.hrl").
 
--define(ID, kz_util:to_binary(?MODULE)).
+-define(ID, kz_term:to_binary(?MODULE)).
 -define(NAME, <<"skel">>).
 -define(DESC, <<"Example webhook module">>).
 -define(METADATA

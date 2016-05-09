@@ -87,7 +87,7 @@ init() ->
 -spec populate_phone_numbers(cb_context:context()) -> 'ok'.
 populate_phone_numbers(Context) ->
     AccountDb = cb_context:account_db(Context),
-    Now = kz_util:current_tstamp(),
+    Now = kz_time:current_tstamp(),
     PVTs = [{<<"_id">>, ?KNM_PHONE_NUMBERS_DOC}
             ,{<<"pvt_account_db">>, AccountDb}
             ,{<<"pvt_account_id">>, cb_context:account_id(Context)}
@@ -225,7 +225,7 @@ maybe_allow_updates(Context, [{?KNM_PHONE_NUMBERS_DOC, _}|_], _Verb) ->
         'true' -> Context
     catch
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end;
 maybe_allow_updates(Context, _Nouns, _Verb) -> Context.
 
@@ -503,7 +503,7 @@ find_numbers(Context) ->
 get_find_numbers_req(Context) ->
     JObj = cb_context:query_string(Context),
     AccountId = cb_context:auth_account_id(Context),
-    Quantity = kz_util:to_integer(cb_context:req_value(Context, <<"quantity">>, 1)),
+    Quantity = kz_term:to_integer(cb_context:req_value(Context, <<"quantity">>, 1)),
     kz_json:set_values([{<<"quantity">>, Quantity}
                        ,{<<"Account-ID">>, AccountId}
                        ], JObj).
@@ -602,7 +602,7 @@ get_prefix(City) ->
             {'error', <<"Unable to acquire numbers missing carrier url">>};
         Url ->
             Country = kapps_config:get_string(?PHONE_NUMBERS_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
-            ReqParam = kz_util:uri_encode(City),
+            ReqParam = kz_http_util:uri_encode(City),
             case kz_http:get(lists:flatten([Url, "/", Country, "/city?pattern=", ReqParam])) of
                 {'ok', 200, _Headers, Body} ->
                     JObj = kz_json:decode(Body),

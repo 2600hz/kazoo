@@ -32,7 +32,7 @@
        ).
 -define(DEFAULT_STRATEGY, <<"single">>).
 
--define(ATOM(X), kz_util:to_atom(X, 'true')).
+-define(ATOM(X), kz_term:to_atom(X, 'true')).
 -define(SMS_POOL(A,B,C), ?ATOM(<<A/binary, "_", B/binary, "_", C/binary>>) ).
 
 -spec default_collect_timeout() -> pos_integer().
@@ -168,7 +168,7 @@ send(<<"amqp">>, API, Endpoint, _Timeout) ->
                               [{<<"Delivery-Result-Code">>, <<"sip:500">> }
                                ,{<<"Delivery-Failure">>, 'true'}
                                ,{<<"Error-Code">>, 500}
-                               ,{<<"Error-Message">>, kz_util:to_binary(Reason)}
+                               ,{<<"Error-Message">>, kz_term:to_binary(Reason)}
                                ,{<<"Status">>, <<"Failed">>}
                                ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, API) }
                                ,{<<"Call-ID">>, CallId }
@@ -184,7 +184,7 @@ send(<<"amqp">>, API, Endpoint, _Timeout) ->
 -spec amqp_exchange_options(api_object()) -> kz_proplist().
 amqp_exchange_options('undefined') -> [];
 amqp_exchange_options(JObj) ->
-    [{kz_util:to_atom(K, 'true'), V}
+    [{kz_term:to_atom(K, 'true'), V}
      || {K, V} <- kz_json:to_proplist(JObj)
     ].
 
@@ -324,7 +324,7 @@ wait_for_correlated_message(CallId, Event, Type, Timeout) when is_binary(CallId)
                     {'ok', JObj};
                 {_Type, _Event, _CallId} ->
                     lager:debug("received message (~s , ~s, ~s)",[_Type, _Event, _CallId]),
-                    wait_for_correlated_message(CallId, Event, Type, kz_util:decr_timeout(Timeout, Start))
+                    wait_for_correlated_message(CallId, Event, Type, kz_time:decr_timeout(Timeout, Start))
             end
     end;
 wait_for_correlated_message(Call, Event, Type, Timeout) ->

@@ -32,14 +32,14 @@ timestamp(<<YYYY:4/binary, "-", MM:2/binary, "-", DD:2/binary, "T"
             ,HH:2/binary, ":", MMM:2/binary, ":", SS:2/binary, "."
             ,Micro:6/binary, "+", _H:2/binary, ":", _M:2/binary, " ", _/binary
           >>) ->
-    1.0e-6 * kz_util:to_integer(Micro) +
+    1.0e-6 * kz_term:to_integer(Micro) +
         calendar:datetime_to_gregorian_seconds(
-          {{kz_util:to_integer(YYYY), kz_util:to_integer(MM), kz_util:to_integer(DD)}
-           ,{kz_util:to_integer(HH), kz_util:to_integer(MMM), kz_util:to_integer(SS)}
+          {{kz_term:to_integer(YYYY), kz_term:to_integer(MM), kz_term:to_integer(DD)}
+           ,{kz_term:to_integer(HH), kz_term:to_integer(MMM), kz_term:to_integer(SS)}
           }
          );
 timestamp({_,_,_} = TS) ->
-    kz_util:now_s(TS);
+    kz_time:now_s(TS);
 timestamp(_) -> 'undefined'.
 
 -spec open_file(iodata()) -> file:io_device().
@@ -64,13 +64,13 @@ make_name(Bin)
     binary_to_atom(Bin, 'utf8');
 make_name({'parser_args', ListenIP, Port})
   when is_integer(Port) ->
-    make_name(<< (kz_util:to_binary(ListenIP))/binary,
+    make_name(<< (kz_term:to_binary(ListenIP))/binary,
                  ":",
-                 (kz_util:to_binary(Port))/binary
+                 (kz_term:to_binary(Port))/binary
               >>);
 make_name({'parser_args', Filename, _IP, _Port}) ->
     FName = filename:absname(Filename),
-    make_name(kz_util:to_binary(FName)).
+    make_name(kz_term:to_binary(FName)).
 
 -spec call_id(ne_binaries()) -> ne_binary().
 call_id(Data) ->
@@ -105,7 +105,7 @@ try_all(Data, Field) ->
         <<Field:FieldSz/binary, _/binary>> ->
             case binary:split(Data, <<": ">>) of
                 [_Key, Value0] ->
-                    kz_util:truncate_right_binary(Value0, byte_size(Value0));
+                    kz_term:truncate_right_binary(Value0, byte_size(Value0));
                 _ ->
                     'false'
             end;

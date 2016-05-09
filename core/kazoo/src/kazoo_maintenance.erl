@@ -34,13 +34,13 @@
 -spec etop/0 :: () -> 'ok'.
 
 syslog_level(Level) ->
-    kz_util:change_syslog_log_level(kz_util:to_atom(Level)).
+    kz_util:change_syslog_log_level(kz_term:to_atom(Level)).
 
 error_level(Level) ->
-    kz_util:change_error_log_level(kz_util:to_atom(Level)).
+    kz_util:change_error_log_level(kz_term:to_atom(Level)).
 
 console_level(Level) ->
-    kz_util:change_console_log_level(kz_util:to_atom(Level)).
+    kz_util:change_console_log_level(kz_term:to_atom(Level)).
 
 nodes() ->
     kz_nodes:status().
@@ -54,7 +54,7 @@ hotload(Module) when is_atom(Module) ->
             'no_return'
     end;
 hotload(Module) ->
-    hotload(kz_util:to_atom(Module, 'true')).
+    hotload(kz_term:to_atom(Module, 'true')).
 
 hotload_app(App) when is_atom(App) ->
     case application:get_key(App, 'modules') of
@@ -66,7 +66,7 @@ hotload_app(App) when is_atom(App) ->
             io:format("app ~s not found (is it running? typo?)~n", [App])
     end;
 hotload_app(App) ->
-    hotload_app(kz_util:to_atom(App, 'true')).
+    hotload_app(kz_term:to_atom(App, 'true')).
 
 gc_all() ->
     gc_pids(processes()).

@@ -316,7 +316,7 @@ find_account_info(OldId, OldDb, 'undefined') ->
     {OldId, OldDb};
 find_account_info('undefined', _OldDb, AccountId) ->
     {AccountId
-     ,kz_util:format_account_id(AccountId, 'encoded')
+     ,kz_accounts:format_account_id(AccountId, 'encoded')
     };
 find_account_info(OldId, OldDb, _AccountId) ->
     {OldId, OldDb}.
@@ -608,14 +608,14 @@ maybe_regex_caller_id(CallerId, Regex, Format) ->
 -spec maybe_prepend_caller_id(ne_binary(), api_binary()) -> ne_binary().
 maybe_prepend_caller_id(CallerId, 'undefined') -> CallerId;
 maybe_prepend_caller_id(CallerId, Prefix) ->
-    BinPrefix   = kz_util:to_binary(Prefix),
+    BinPrefix   = kz_term:to_binary(Prefix),
     lager:info("prepending cid with ~s~n", [BinPrefix]),
     <<BinPrefix/binary, CallerId/binary>>.
 
 -spec maybe_append_caller_id(ne_binary(), api_binary()) -> ne_binary().
 maybe_append_caller_id(CallerId, 'undefined') -> CallerId;
 maybe_append_caller_id(CallerId, Suffix) ->
-    BinSuffix   = kz_util:to_binary(Suffix),
+    BinSuffix   = kz_term:to_binary(Suffix),
     lager:info("appending cid with ~s~n", [BinSuffix]),
     <<CallerId/binary, BinSuffix/binary>>.
 
@@ -626,7 +626,7 @@ set_caller_id_name(CIDName, #kapps_call{}=Call) when is_binary(CIDName) ->
 
 -spec caller_id_name(call()) -> ne_binary().
 caller_id_name(#kapps_call{caller_id_name=CIDName}) ->
-    case kz_util:is_empty(CIDName) of
+    case kz_term:is_empty(CIDName) of
         'true' -> kz_util:anonymous_caller_id_name();
         'false' -> CIDName
     end.
@@ -638,7 +638,7 @@ set_caller_id_number(CIDNumber, #kapps_call{}=Call) ->
 
 -spec caller_id_number(call()) -> ne_binary().
 caller_id_number(#kapps_call{caller_id_number=CIDNumber}) ->
-    case  kz_util:is_empty(CIDNumber) of
+    case  kz_term:is_empty(CIDNumber) of
         'true' -> kz_util:anonymous_caller_id_number();
         'false' -> CIDNumber
     end.
@@ -775,7 +775,7 @@ resource_type(#kapps_call{resource_type=ResourceType}) ->
 
 -spec set_account_db(ne_binary(), call()) -> call().
 set_account_db(<<_/binary>> = AccountDb, #kapps_call{}=Call) ->
-    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+    AccountId = kz_accounts:format_account_id(AccountDb, 'raw'),
     set_custom_channel_var(<<"Account-ID">>, AccountId, Call#kapps_call{account_db=AccountDb
                                                                          ,account_id=AccountId
                                                                         }).
@@ -786,7 +786,7 @@ account_db(#kapps_call{account_db=AccountDb}) ->
 
 -spec set_account_id(ne_binary(), call()) -> call().
 set_account_id(<<_/binary>> = AccountId, #kapps_call{}=Call) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     set_custom_channel_var(<<"Account-ID">>, AccountId, Call#kapps_call{account_db=AccountDb
                                                                          ,account_id=AccountId
                                                                         }).
@@ -968,17 +968,17 @@ custom_publish_function(#kapps_call{custom_publish_fun=Fun}) -> Fun.
 
 -spec kvs_append(any(), any(), call()) -> call().
 kvs_append(Key, Value, #kapps_call{kvs=Dict}=Call) ->
-    Call#kapps_call{kvs=orddict:append(kz_util:to_binary(Key), Value, Dict)}.
+    Call#kapps_call{kvs=orddict:append(kz_term:to_binary(Key), Value, Dict)}.
 
 -spec kvs_append_list(any(), [any(),...], call()) -> call().
 kvs_append_list(Key, ValList, #kapps_call{kvs=Dict}=Call) ->
-    Call#kapps_call{kvs=orddict:append_list(kz_util:to_binary(Key), ValList, Dict)}.
+    Call#kapps_call{kvs=orddict:append_list(kz_term:to_binary(Key), ValList, Dict)}.
 
 -spec kvs_erase(any() | [any(),...], call()) -> call().
 kvs_erase(Keys, #kapps_call{kvs=Dict}=Call) when is_list(Keys)->
-    Call#kapps_call{kvs=lists:foldl(fun(K, D) -> orddict:erase(kz_util:to_binary(K), D) end, Dict, Keys)};
+    Call#kapps_call{kvs=lists:foldl(fun(K, D) -> orddict:erase(kz_term:to_binary(K), D) end, Dict, Keys)};
 kvs_erase(Key, #kapps_call{kvs=Dict}=Call) ->
-    Call#kapps_call{kvs=orddict:erase(kz_util:to_binary(Key), Dict)}.
+    Call#kapps_call{kvs=orddict:erase(kz_term:to_binary(Key), Dict)}.
 
 -spec kvs_flush(call()) -> call().
 kvs_flush(#kapps_call{}=Call) -> Call#kapps_call{kvs=orddict:new()}.
@@ -987,7 +987,7 @@ kvs_flush(#kapps_call{}=Call) -> Call#kapps_call{kvs=orddict:new()}.
 -spec kvs_fetch(kz_json:key(), Default, call()) -> any() | Default.
 kvs_fetch(Key, Call) -> kvs_fetch(Key, 'undefined', Call).
 kvs_fetch(Key, Default, #kapps_call{kvs=Dict}) ->
-    try orddict:fetch(kz_util:to_binary(Key), Dict) of
+    try orddict:fetch(kz_term:to_binary(Key), Dict) of
         Ok -> Ok
     catch
         'error':'function_clause' -> Default
@@ -1003,19 +1003,19 @@ kvs_filter(Pred, #kapps_call{kvs=Dict}=Call) ->
 
 -spec kvs_find(any(), call()) -> {'ok', any()} | 'error'.
 kvs_find(Key, #kapps_call{kvs=Dict}) ->
-    orddict:find(kz_util:to_binary(Key), Dict).
+    orddict:find(kz_term:to_binary(Key), Dict).
 
 -spec kvs_fold(fun((any(), any(), any()) -> any()), any(), call()) -> call().
 kvs_fold(Fun, Acc0, #kapps_call{kvs=Dict}) -> orddict:fold(Fun, Acc0, Dict).
 
 -spec kvs_from_proplist(kz_proplist(), call()) -> call().
 kvs_from_proplist(List, #kapps_call{kvs=Dict}=Call) ->
-    L = orddict:from_list([{kz_util:to_binary(K), V} || {K, V} <- List]),
+    L = orddict:from_list([{kz_term:to_binary(K), V} || {K, V} <- List]),
     Call#kapps_call{kvs=orddict:merge(fun(_, V1, _) -> V1 end, L, Dict)}.
 
 -spec kvs_is_key(any(), call()) -> boolean().
 kvs_is_key(Key, #kapps_call{kvs=Dict}) ->
-    orddict:is_key(kz_util:to_binary(Key), Dict).
+    orddict:is_key(kz_term:to_binary(Key), Dict).
 
 -spec kvs_map(fun((any(), any()) -> any()), call()) -> call().
 kvs_map(Pred, #kapps_call{kvs=Dict}=Call) ->
@@ -1023,12 +1023,12 @@ kvs_map(Pred, #kapps_call{kvs=Dict}=Call) ->
 
 -spec kvs_store(any(), any(), call()) -> call().
 kvs_store(Key, Value, #kapps_call{kvs=Dict}=Call) ->
-    Call#kapps_call{kvs=orddict:store(kz_util:to_binary(Key), Value, Dict)}.
+    Call#kapps_call{kvs=orddict:store(kz_term:to_binary(Key), Value, Dict)}.
 
 -spec kvs_store_proplist(kz_proplist(), call()) -> call().
 kvs_store_proplist(List, #kapps_call{kvs=Dict}=Call) ->
     Call#kapps_call{kvs=lists:foldr(fun({K, V}, D) ->
-                                             orddict:store(kz_util:to_binary(K), V, D)
+                                             orddict:store(kz_term:to_binary(K), V, D)
                                      end, Dict, List)}.
 
 -spec kvs_to_proplist(call()) -> kz_proplist().
@@ -1037,15 +1037,15 @@ kvs_to_proplist(#kapps_call{kvs=Dict}) ->
 
 -spec kvs_update(any(), fun((any()) -> any()), call()) -> call().
 kvs_update(Key, Fun, #kapps_call{kvs=Dict}=Call) ->
-    Call#kapps_call{kvs=orddict:update(kz_util:to_binary(Key), Fun, Dict)}.
+    Call#kapps_call{kvs=orddict:update(kz_term:to_binary(Key), Fun, Dict)}.
 
 -spec kvs_update(any(), fun((any()) -> any()), any(), call()) -> call().
 kvs_update(Key, Fun, Initial, #kapps_call{kvs=Dict}=Call) ->
-    Call#kapps_call{kvs=orddict:update(kz_util:to_binary(Key), Fun, Initial, Dict)}.
+    Call#kapps_call{kvs=orddict:update(kz_term:to_binary(Key), Fun, Initial, Dict)}.
 
 -spec kvs_update_counter(any(), number(), call()) -> call().
 kvs_update_counter(Key, Number, #kapps_call{kvs=Dict}=Call) ->
-    Call#kapps_call{kvs=orddict:update_counter(kz_util:to_binary(Key), Number, Dict)}.
+    Call#kapps_call{kvs=orddict:update_counter(kz_term:to_binary(Key), Number, Dict)}.
 
 -spec set_dtmf_collection(api_binary(), call()) -> call().
 -spec set_dtmf_collection(api_binary(), ne_binary(), call()) -> call().

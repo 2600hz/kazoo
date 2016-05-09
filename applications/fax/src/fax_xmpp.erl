@@ -50,14 +50,14 @@
 %-type jid() :: #jid{}.
 
 start(PrinterId) ->
-  gen_server:start({'local', kz_util:to_atom(PrinterId, 'true')}, ?MODULE, [PrinterId], []).
+  gen_server:start({'local', kz_term:to_atom(PrinterId, 'true')}, ?MODULE, [PrinterId], []).
 
 -spec start_link(ne_binary()) -> startlink_ret().
 start_link(PrinterId) ->
-  gen_server:start_link({'local', kz_util:to_atom(PrinterId, 'true')}, ?MODULE, [PrinterId], []).
+  gen_server:start_link({'local', kz_term:to_atom(PrinterId, 'true')}, ?MODULE, [PrinterId], []).
 
 stop(PrinterId) ->
-  gen_server:cast({'local', kz_util:to_atom(PrinterId, 'true')}, 'stop').
+  gen_server:cast({'local', kz_term:to_atom(PrinterId, 'true')}, 'stop').
 
 init([PrinterId]) ->
     process_flag('trap_exit', 'true'),

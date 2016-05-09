@@ -21,14 +21,14 @@
 -define(PRESENCE_EVENT, <<"presence">>).
 -define(OMNIPRESENCE_EVENT_ALL, <<"all">>).
 
--define(FAKE_CALLID(C), kz_util:to_hex_binary(crypto:hash(md5, C))).
+-define(FAKE_CALLID(C), kz_term:to_hex_binary(crypto:hash(md5, C))).
 
 -record(omnip_subscription, {
           user                                  :: api_binary() | '_' %% user@realm.com
           ,from                                 :: api_binary() | <<>> | '_' %% user@realm.com
           ,stalker                              :: api_binary() | '_' | '$2' % amqp queue to publish updates to
           ,expires = 0                          :: non_neg_integer() | '_' | '$2'
-          ,timestamp = kz_util:current_tstamp() :: gregorian_seconds() | '_' | '$1'
+          ,timestamp = kz_time:current_tstamp() :: gregorian_seconds() | '_' | '$1'
           ,protocol = <<"sip">>                 :: ne_binary() | '_' % protocol
           ,username                             :: api_binary() | '_'
           ,realm                                :: api_binary() | '_'

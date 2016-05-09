@@ -306,7 +306,7 @@ move(Num, MoveTo, Options) ->
 
 -spec move_to(knm_number(), ne_binary()) -> knm_number_return().
 move_to(Number, MoveTo) ->
-    AccountId = kz_util:format_account_id(MoveTo),
+    AccountId = kz_accounts:format_account_id(MoveTo),
     PhoneNumber = phone_number(Number),
     MovedPhoneNumber = knm_phone_number:set_assign_to(PhoneNumber, AccountId),
     MovedNumber = set_phone_number(Number, MovedPhoneNumber),
@@ -594,7 +594,7 @@ fetch_account_from_number(NormalizedNum) ->
 -spec check_number(knm_phone_number:knm_phone_number()) -> lookup_account_return().
 check_number(PhoneNumber) ->
     AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
-    case kz_util:is_empty(AssignedTo) of
+    case kz_term:is_empty(AssignedTo) of
         'true' -> {'error', 'unassigned'};
         'false' ->
             States = [?NUMBER_STATE_PORT_IN, ?NUMBER_STATE_IN_SERVICE, ?NUMBER_STATE_PORT_OUT],
@@ -613,7 +613,7 @@ check_number(PhoneNumber) ->
 -spec check_account(knm_phone_number:knm_phone_number()) -> lookup_account_return().
 check_account(PhoneNumber) ->
     AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
-    case kz_util:is_account_enabled(AssignedTo) of
+    case kz_accounts:is_account_enabled(AssignedTo) of
         'false' -> {'error', {'account_disabled', AssignedTo}};
         'true' ->
             Module = knm_phone_number:module_name(PhoneNumber),
@@ -656,9 +656,9 @@ feature_inbound_cname(PhoneNumber) ->
         'undefined' -> 'false';
         _ ->
             Mod = knm_phone_number:module_name(PhoneNumber),
-            Module = kz_util:to_atom(Mod, 'true'),
+            Module = kz_term:to_atom(Mod, 'true'),
             try Module:should_lookup_cnam() of
-                Boolean -> kz_util:is_true(Boolean)
+                Boolean -> kz_term:is_true(Boolean)
             catch
                 _E:_R -> 'true'
             end
@@ -695,7 +695,7 @@ is_force_outbound(PhoneNumber) ->
     Module = knm_phone_number:module_name(PhoneNumber),
     State = knm_phone_number:state(PhoneNumber),
     ForceOutbound = force_outbound_feature(PhoneNumber),
-    is_force_outbound(State, Module, kz_util:is_true(ForceOutbound)).
+    is_force_outbound(State, Module, kz_term:is_true(ForceOutbound)).
 
 is_force_outbound(?NUMBER_STATE_PORT_IN, Module, _ForceOutbound) ->
     kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"force_port_in_outbound">>, 'true')
@@ -712,7 +712,7 @@ is_force_outbound(_State, _Module, ForceOutbound) ->
 force_outbound_feature(PhoneNumber) ->
     case knm_phone_number:feature(PhoneNumber, <<"force_outbound">>) of
         'undefined' -> default_force_outbound();
-        FO -> kz_util:is_true(FO)
+        FO -> kz_term:is_true(FO)
     end.
 
 %%--------------------------------------------------------------------

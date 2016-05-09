@@ -24,7 +24,7 @@ $(GEN_FILE):
 
 $(GEN_OUT): $(GEN_FILE) $(GEN_SRC)
 	head $(GEN_SRC) -n `grep -n '%% GENERATED' $(GEN_SRC) | cut -d: -f1` > $(GEN_OUT)
-	echo 'from_extension(Ext) when not is_binary(Ext) -> from_extension(kz_util:to_binary(Ext));' >> $(GEN_OUT)
+	echo 'from_extension(Ext) when not is_binary(Ext) -> from_extension(kz_term:to_binary(Ext));' >> $(GEN_OUT)
 	echo 'from_extension(<<$$., Ext/binary>>) -> from_extension(Ext);' >> $(GEN_OUT)
 	cat $(GEN_FILE) \
 		| grep -v ^# \

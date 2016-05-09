@@ -79,7 +79,7 @@ find_tts_server(Id) ->
                              {'ok', pid()} |
                              {'error', any()}.
 find_tts_server(Text, JObj) ->
-    Id = kz_util:binary_md5(Text),
+    Id = kz_term:binary_md5(Text),
     find_tts_server(Text, JObj, Id).
 
 find_tts_server(Text, JObj, Id) ->

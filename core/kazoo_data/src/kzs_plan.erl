@@ -42,7 +42,7 @@ plan(DbName, 'undefined')  ->
     plan(DbName);
 plan(DbName, DocType)
   when is_atom(DocType) ->
-    plan(DbName, kz_util:to_binary(DocType)).
+    plan(DbName, kz_term:to_binary(DocType)).
 
 -spec plan(ne_binary(), api_binary(), api_binary()) -> map().
 plan(DbName, 'undefined', 'undefined') ->
@@ -94,40 +94,40 @@ system_dataplan(DBName, _Classification) ->
     dataplan_type_match(<<"system">>, DBName, Plan).
 
 account_dataplan(AccountDb) ->
-    AccountId = kz_util:format_account_id(AccountDb),
+    AccountId = kz_accounts:format_account_id(AccountDb),
     Plan = ?CACHED_ACCOUNT_DATAPLAN(AccountId),
     dataplan_match(<<"account">>, Plan, AccountId).
 
 account_dataplan(AccountDb, 'undefined') ->
     account_dataplan(AccountDb);
 account_dataplan(AccountDb, DocType) ->
-    AccountId = kz_util:format_account_id(AccountDb),
+    AccountId = kz_accounts:format_account_id(AccountDb),
     Plan = ?CACHED_ACCOUNT_DATAPLAN(AccountId),
     dataplan_type_match(<<"account">>, DocType, Plan, AccountId).
 
 account_dataplan(AccountDb, DocType, 'undefined') ->
     account_dataplan(AccountDb, DocType);
 account_dataplan(AccountDb, DocType, StorageId) ->
-    AccountId = kz_util:format_account_id(AccountDb),
+    AccountId = kz_accounts:format_account_id(AccountDb),
     Plan = ?CACHED_STORAGE_DATAPLAN(AccountId, StorageId),
     dataplan_type_match(<<"account">>, DocType, Plan, AccountId).
 
 account_modb_dataplan(AccountMODB) ->
-    AccountId = kz_util:format_account_id(AccountMODB),
+    AccountId = kz_accounts:format_account_id(AccountMODB),
     Plan = ?CACHED_ACCOUNT_DATAPLAN(AccountId),
     dataplan_match(<<"modb">>, Plan, AccountId).
 
 account_modb_dataplan(AccountMODB, 'undefined') ->
     account_modb_dataplan(AccountMODB);
 account_modb_dataplan(AccountMODB, DocType) ->
-    AccountId = kz_util:format_account_id(AccountMODB),
+    AccountId = kz_accounts:format_account_id(AccountMODB),
     Plan = ?CACHED_ACCOUNT_DATAPLAN(AccountId),
     dataplan_type_match(<<"modb">>, DocType, Plan, AccountId).
 
 account_modb_dataplan(AccountMODB, DocType, 'undefined') ->
     account_modb_dataplan(AccountMODB, DocType);
 account_modb_dataplan(AccountMODB, DocType, StorageId) ->
-    AccountId = kz_util:format_account_id(AccountMODB),
+    AccountId = kz_accounts:format_account_id(AccountMODB),
     Plan = ?CACHED_STORAGE_DATAPLAN(AccountId, StorageId),
     dataplan_type_match(<<"modb">>, DocType, Plan, AccountId).
 
@@ -168,7 +168,7 @@ dataplan_match(Classification, Plan, AccountId) ->
                                 ,<<"settings">> := AttSettings
                                 }
              } = GAtt,
-            AttHandler = kz_util:to_atom(AttHandlerBin,'true'),
+            AttHandler = kz_term:to_atom(AttHandlerBin,'true'),
             Params = maps:merge(AttSettings, maps:get(<<"params">>, CAtt, #{})),
 
             #{tag => Tag
@@ -216,7 +216,7 @@ dataplan_type_match(Classification, DocType, Plan, AccountId) ->
                                 ,<<"settings">> := AttSettings
                                 }
              } = GAtt,
-             AttHandler = kz_util:to_atom(AttHandlerBin,'true'),
+             AttHandler = kz_term:to_atom(AttHandlerBin,'true'),
              Params = maps:merge(AttSettings, maps:get(<<"params">>, TypeAttMap, #{})),
             #{tag => Tag
              ,server => Server
@@ -304,7 +304,7 @@ default_dataplan() ->
 -spec maybe_start_connection(atom() | ne_binary(), map()) -> {atom(), server()}.
 maybe_start_connection(Connection, Params)
   when is_binary(Connection) ->
-    maybe_start_connection(kz_util:to_atom(Connection, 'true'), Params);
+    maybe_start_connection(kz_term:to_atom(Connection, 'true'), Params);
 maybe_start_connection(Tag, Params) ->
     case kz_dataconnections:get_server(Tag) of
         'undefined' -> start_connection(Tag, Params);

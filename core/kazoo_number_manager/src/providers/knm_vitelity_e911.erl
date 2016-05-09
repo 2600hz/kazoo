@@ -142,7 +142,7 @@ maybe_update_e911(Number, 'true') ->
 
     NotChanged = kz_json:are_identical(CurrentE911, E911),
 
-    case kz_util:is_empty(E911) of
+    case kz_term:is_empty(E911) of
         'true' ->
             lager:debug("dry run: remove vitelity e911 information"),
             knm_services:deactivate_feature(Number, ?VITELITY_KEY);
@@ -162,7 +162,7 @@ maybe_update_e911(Number, 'false') ->
 
     NotChanged = kz_json:are_identical(CurrentE911, E911),
 
-    case kz_util:is_empty(E911) of
+    case kz_term:is_empty(E911) of
         'true' ->
             lager:debug("vitelity e911 information has been removed, updating vitelity"),
             _ = remove_number(Number),

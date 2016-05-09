@@ -76,7 +76,7 @@ send(CurrentBalance, Account) ->
 %%--------------------------------------------------------------------
 -spec create_template_props(integer(), kz_json:object()) -> kz_proplist().
 create_template_props(CurrentBalance, Account) ->
-    AccountDb = kz_util:format_account_id(kz_doc:id(Account), 'encoded'),
+    AccountDb = kz_accounts:format_account_id(kz_doc:id(Account), 'encoded'),
     Threshold = notify_account_crawler:low_balance_threshold(AccountDb),
     [{<<"account">>, notify_util:json_to_template_props(Account)}
      ,{<<"service">>, notify_util:get_service_props(kz_json:new(), Account, ?MOD_CONFIG_CAT)}
@@ -92,7 +92,7 @@ create_template_props(CurrentBalance, Account) ->
 %%--------------------------------------------------------------------
 -spec pretty_print_dollars(float()) -> ne_binary().
 pretty_print_dollars(Amount) ->
-    kz_util:to_binary(io_lib:format("$~.2f", [Amount])).
+    kz_term:to_binary(io_lib:format("$~.2f", [Amount])).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -135,7 +135,7 @@ collect_recipients(AccountId) ->
 
 -spec get_email(ne_binary(), ne_binary()) -> api_binaries() | api_binary().
 get_email(MasterAccountId, MasterAccountId) ->
-    AccountDb = kz_util:format_account_id(MasterAccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(MasterAccountId, 'encoded'),
     lager:debug("attempting to email low balance to master account ~s"
                 ,[MasterAccountId]
                ),
@@ -151,7 +151,7 @@ get_email(AccountId, MasterAccountId) ->
     lager:debug("attempting to email low balance to account ~s"
                 ,[AccountId]
                ),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:open_doc(AccountDb, AccountId) of
         {'ok', JObj} -> get_email(JObj, AccountId, MasterAccountId);
         {'error', _R} ->
@@ -187,7 +187,7 @@ is_notify_enabled(JObj) ->
                            ], JObj)
     of
         'undefined' -> is_notify_enabled_default();
-        Value -> kz_util:is_true(Value)
+        Value -> kz_term:is_true(Value)
     end.
 
 -spec is_notify_enabled_default() -> boolean().

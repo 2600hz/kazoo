@@ -132,7 +132,7 @@ parse_name_addr({<<C, Header/binary>>, Acc}) ->
 -spec parse_name_addr_angle(ne_binary(), iolist()) ->
                                    {binary(), iolist()}.
 parse_name_addr_angle(<<">", Header/binary>>, Acc) ->
-    {kz_util:strip_binary(Header), [$> | Acc]};
+    {kz_term:strip_binary(Header), [$> | Acc]};
 parse_name_addr_angle(<<C, Header/binary>>, Acc) ->
     parse_name_addr_angle(Header, [C | Acc]).
 
@@ -152,7 +152,7 @@ parse_name_addr_single_quote(<<C, Header/binary>>, Acc) ->
 
 -spec name_addr_start(char(), ne_binary()) -> ne_binary().
 name_addr_start(Char, Bin) ->
-    kz_util:strip_left_binary(Bin, Char).
+    kz_term:strip_left_binary(Bin, Char).
 
 -spec parse_params(ne_binary(), kz_json:object()) -> kz_json:object().
 parse_params(Params, JObj) ->
@@ -166,17 +166,17 @@ parse_params(Params, JObj) ->
 parse_param(Param, JObj) ->
     case binary:split(Param, <<"=">>, ['trim']) of
         [Name, Value] ->
-            parse_param(kz_util:strip_binary(Name), kz_util:strip_binary(Value), JObj);
+            parse_param(kz_term:strip_binary(Name), kz_term:strip_binary(Value), JObj);
         [Extension] ->
-            add_extension(kz_util:strip_binary(Extension), JObj)
+            add_extension(kz_term:strip_binary(Extension), JObj)
     end.
 
 parse_param(?PARAM_REASON, Value, JObj) ->
     kz_json:set_value(?PARAM_REASON, parse_reason_param(Value), JObj);
 parse_param(?PARAM_COUNTER, Value, JObj) ->
-    kz_json:set_value(?PARAM_COUNTER, kz_util:to_integer(Value), JObj);
+    kz_json:set_value(?PARAM_COUNTER, kz_term:to_integer(Value), JObj);
 parse_param(?PARAM_LIMIT, Value, JObj) ->
-    kz_json:set_value(?PARAM_LIMIT, kz_util:to_integer(Value), JObj);
+    kz_json:set_value(?PARAM_LIMIT, kz_term:to_integer(Value), JObj);
 parse_param(?PARAM_PRIVACY, Value, JObj) ->
     kz_json:set_value(?PARAM_PRIVACY, parse_privacy_param(Value), JObj);
 parse_param(?PARAM_SCREEN, Value, JObj) ->
@@ -282,7 +282,7 @@ parse_single_quoted_param(<<C, Quoted/binary>>, Acc) ->
 
 -spec maybe_unquote(ne_binary()) -> ne_binary().
 maybe_unquote(<<"\"", Value/binary>>) ->
-    kz_util:truncate_right_binary(Value, byte_size(Value)-1);
+    kz_term:truncate_right_binary(Value, byte_size(Value)-1);
 maybe_unquote(Value) -> Value.
 
 -spec to_binary(kz_json:object()) -> ne_binary().
@@ -303,26 +303,26 @@ maybe_add_params(JObj, Address) ->
 
 -spec maybe_add_param(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
 maybe_add_param(?PARAM_REASON, Reason, Acc) ->
-    <<Acc/binary, ";", ?PARAM_REASON/binary, "=", (encode_reason_param(kz_util:strip_binary(Reason)))/binary>>;
+    <<Acc/binary, ";", ?PARAM_REASON/binary, "=", (encode_reason_param(kz_term:strip_binary(Reason)))/binary>>;
 maybe_add_param(?PARAM_COUNTER, Count, Acc) ->
-    <<Acc/binary, ";", ?PARAM_COUNTER/binary, "=", (kz_util:to_binary(Count))/binary>>;
+    <<Acc/binary, ";", ?PARAM_COUNTER/binary, "=", (kz_term:to_binary(Count))/binary>>;
 maybe_add_param(?PARAM_LIMIT, Limit, Acc) ->
-    <<Acc/binary, ";", ?PARAM_LIMIT/binary, "=", (kz_util:to_binary(Limit))/binary>>;
+    <<Acc/binary, ";", ?PARAM_LIMIT/binary, "=", (kz_term:to_binary(Limit))/binary>>;
 maybe_add_param(?PARAM_PRIVACY, Priv, Acc) ->
-    <<Acc/binary, ";", ?PARAM_PRIVACY/binary, "=", (encode_privacy_param(kz_util:strip_binary(Priv)))/binary>>;
+    <<Acc/binary, ";", ?PARAM_PRIVACY/binary, "=", (encode_privacy_param(kz_term:strip_binary(Priv)))/binary>>;
 maybe_add_param(?PARAM_SCREEN, Screen, Acc) ->
-    <<Acc/binary, ";", ?PARAM_SCREEN/binary, "=", (encode_screen_param(kz_util:strip_binary(Screen)))/binary>>;
+    <<Acc/binary, ";", ?PARAM_SCREEN/binary, "=", (encode_screen_param(kz_term:strip_binary(Screen)))/binary>>;
 maybe_add_param(?PARAM_EXTENSION, Extensions, Acc) ->
     lists:foldl(fun maybe_add_extension/2, Acc, kz_json:to_proplist(Extensions));
 maybe_add_param(_, _, Acc) -> Acc.
 
 -spec maybe_add_extension({ne_binary(), ne_binary()}, ne_binary()) -> ne_binary().
 maybe_add_extension({Key, ?SOLO_EXTENSION}, Acc) ->
-    <<Acc/binary, ";", (kz_util:to_binary(Key))/binary>>;
+    <<Acc/binary, ";", (kz_term:to_binary(Key))/binary>>;
 maybe_add_extension({Key, Value}, Acc) ->
-    <<Acc/binary, ";", (kz_util:to_binary(Key))/binary, "=", (kz_util:to_binary(Value))/binary>>;
+    <<Acc/binary, ";", (kz_term:to_binary(Key))/binary, "=", (kz_term:to_binary(Value))/binary>>;
 maybe_add_extension(Key, Acc) ->
-    <<Acc/binary, ";", (kz_util:to_binary(Key))/binary>>.
+    <<Acc/binary, ";", (kz_term:to_binary(Key))/binary>>.
 
 -spec encode_reason_param(ne_binary()) -> ne_binary().
 encode_reason_param(Reason) ->

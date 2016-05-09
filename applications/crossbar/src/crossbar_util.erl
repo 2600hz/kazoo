@@ -339,7 +339,7 @@ response_db_fatal(Context) ->
 -spec get_account_realm(api_binary(), ne_binary()) -> api_binary().
 
 get_account_realm(AccountId) when is_binary(AccountId) ->
-    get_account_realm(kz_util:format_account_id(AccountId, 'encoded'), AccountId);
+    get_account_realm(kz_accounts:format_account_id(AccountId, 'encoded'), AccountId);
 get_account_realm(Context) ->
     Db = cb_context:account_db(Context),
     AccountId = cb_context:account_id(Context),
@@ -355,8 +355,8 @@ get_account_realm(Db, AccountId) ->
 -spec get_account_doc(ne_binary()) -> api_object().
 -spec get_account_doc(ne_binary(), ne_binary()) -> api_object().
 get_account_doc(<<_/binary>> = Id) ->
-    get_account_doc(kz_util:format_account_id(Id, 'encoded')
-                    ,kz_util:format_account_id(Id, 'raw')
+    get_account_doc(kz_accounts:format_account_id(Id, 'encoded')
+                    ,kz_accounts:format_account_id(Id, 'raw')
                    ).
 
 get_account_doc(<<_/binary>> = Db, <<_/binary>> = Id) ->
@@ -374,7 +374,7 @@ flush_registrations(<<_/binary>> = Realm) ->
                ],
     kapps_util:amqp_pool_send(FlushCmd, fun kapi_registration:publish_flush/1);
 flush_registrations(Context) ->
-    flush_registrations(kz_util:get_account_realm(cb_context:account_id(Context))).
+    flush_registrations(kz_accounts:get_account_realm(cb_context:account_id(Context))).
 
 -spec flush_registration(api_binary(), ne_binary() | cb_context:context()) -> 'ok'.
 flush_registration('undefined', _Realm) ->
@@ -387,7 +387,7 @@ flush_registration(Username, <<_/binary>> = Realm) ->
     kapps_util:amqp_pool_send(FlushCmd, fun kapi_switch:publish_check_sync/1),
     kapps_util:amqp_pool_send(FlushCmd, fun kapi_registration:publish_flush/1);
 flush_registration(Username, Context) ->
-    Realm = kz_util:get_account_realm(cb_context:account_id(Context)),
+    Realm = kz_accounts:get_account_realm(cb_context:account_id(Context)),
     flush_registration(Username, Realm).
 
 %% @public
@@ -396,7 +396,7 @@ flush_registration(Context) ->
     OldDevice = cb_context:fetch(Context, 'db_doc'),
     NewDevice = cb_context:doc(Context),
     AccountId = cb_context:account_id(Context),
-    Realm = kz_util:get_account_realm(AccountId),
+    Realm = kz_accounts:get_account_realm(AccountId),
     maybe_flush_registration_on_password(Realm, OldDevice, NewDevice).
 
 -spec maybe_flush_registration_on_password(api_binary(), kz_json:object(), kz_json:object()) -> 'ok'.
@@ -461,11 +461,11 @@ move_account(<<_/binary>> = AccountId, <<_/binary>> = ToAccount) ->
     end.
 
 move_account(AccountId, JObj, ToAccount, ToTree) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     PreviousTree = kz_account:tree(JObj),
     JObj1 = kz_json:set_values([{<<"pvt_tree">>, ToTree}
                                 ,{<<"pvt_previous_tree">>, PreviousTree}
-                                ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+                                ,{<<"pvt_modified">>, kz_time:current_tstamp()}
                                ], JObj),
     case kz_datamgr:save_doc(AccountDb, JObj1) of
         {'error', _E}=Error -> Error;
@@ -526,8 +526,8 @@ move_descendants(<<_/binary>> = AccountId, Tree, NewResellerId) ->
                                      {'error', any()}.
 update_descendants_tree([], _, _) -> {'ok', 'done'};
 update_descendants_tree([Descendant|Descendants], Tree, NewResellerId) ->
-    AccountId = kz_util:format_account_id(Descendant, 'raw'),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountId = kz_accounts:format_account_id(Descendant, 'raw'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:open_doc(AccountDb, AccountId) of
         {'error', _E}=Error -> Error;
         {'ok', JObj} ->
@@ -536,7 +536,7 @@ update_descendants_tree([Descendant|Descendants], Tree, NewResellerId) ->
             ToTree = Tree ++ Tail,
             JObj1 = kz_json:set_values([{<<"pvt_tree">>, ToTree}
                                         ,{<<"pvt_previous_tree">>, PreviousTree}
-                                        ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+                                        ,{<<"pvt_modified">>, kz_time:current_tstamp()}
                                        ], JObj),
             case kz_datamgr:save_doc(AccountDb, JObj1) of
                 {'error', _E}=Error -> Error;
@@ -570,7 +570,7 @@ move_service_doc(NewTree, NewResellerId, Dirty, JObj) ->
     Props = props:filter_undefined([{<<"pvt_tree">>, NewTree}
                                     ,{<<"pvt_dirty">>, Dirty}
                                     ,{<<"pvt_previous_tree">>, PreviousTree}
-                                    ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+                                    ,{<<"pvt_modified">>, kz_time:current_tstamp()}
                                     ,{<<"pvt_reseller_id">>, NewResellerId}
                                    ]),
     case kz_datamgr:save_doc(?KZ_SERVICES_DB, kz_json:set_values(Props, JObj)) of
@@ -616,7 +616,7 @@ mark_dirty(AccountId) when is_binary(AccountId) ->
 mark_dirty(JObj) ->
     kz_datamgr:save_doc(?KZ_SERVICES_DB
                        ,kz_json:set_values([{<<"pvt_dirty">>, 'true'}
-                                            ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+                                            ,{<<"pvt_modified">>, kz_time:current_tstamp()}
                                            ], JObj
                                           )
                       ).
@@ -800,7 +800,7 @@ format_app(JObj, Lang) ->
 %%--------------------------------------------------------------------
 change_pvt_enabled(_, 'undefined') -> 'ok';
 change_pvt_enabled(State, AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     try
         {'ok', JObj1} = kz_datamgr:open_doc(AccountDb, AccountId),
         lager:debug("set pvt_enabled to ~s on account ~s", [State, AccountId]),
@@ -848,7 +848,7 @@ get_language(AccountId, UserId) ->
 
 -spec get_user_lang(ne_binary(), ne_binary()) -> 'error' | {'ok', ne_binary()}.
 get_user_lang(AccountId, UserId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:open_cache_doc(AccountDb, UserId) of
         {'ok', JObj} ->
             case kz_json:get_value(<<"language">>, JObj) of
@@ -877,7 +877,7 @@ get_account_lang(AccountId) ->
 get_user_timezone(AccountId, 'undefined') ->
     get_account_timezone(AccountId);
 get_user_timezone(AccountId, UserId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:open_cache_doc(AccountDb, UserId) of
         {'ok', UserJObj} -> kzd_user:timezone(UserJObj);
         {'error', _E} -> get_account_timezone(AccountId)
@@ -915,7 +915,7 @@ apply_response_map_item({Key, ExistingKey}, J, JObj) ->
 
 -spec get_path(cowboy_req:req() | ne_binary(), ne_binary()) -> ne_binary().
 get_path(<<_/binary>> = RawPath, Relative) ->
-    kz_util:resolve_uri(RawPath, Relative);
+    kz_http_util:resolve_uri(RawPath, Relative);
 get_path(Req, Relative) ->
     {RawPath, _} = cowboy_req:path(Req),
     get_path(RawPath, Relative).
@@ -957,10 +957,10 @@ create_auth_token(Context, AuthModule, JObj) ->
                ,{<<"as">>, kz_json:get_value(<<"as">>, Data)}
                ,{<<"api_key">>, kz_json:get_value(<<"api_key">>, Data)}
                ,{<<"restrictions">>, get_token_restrictions(AuthModule, AccountId, OwnerId)}
-               ,{<<"method">>, kz_util:to_binary(AuthModule)}
+               ,{<<"method">>, kz_term:to_binary(AuthModule)}
               ]),
     JObjToken = kz_doc:update_pvt_parameters(kz_json:from_list(Token)
-                                             ,kz_util:format_account_id(AccountId, 'encoded')
+                                             ,kz_accounts:format_account_id(AccountId, 'encoded')
                                              ,Token
                                             ),
 
@@ -983,7 +983,7 @@ create_auth_token(Context, AuthModule, JObj) ->
 -spec get_token_restrictions(atom(), ne_binary(), ne_binary()) ->
                                     api_object().
 get_token_restrictions(AuthModule, AccountId, OwnerId) ->
-    case kz_util:is_system_admin(AccountId) of
+    case kz_accounts:is_system_admin(AccountId) of
         'true' -> 'undefined';
         'false' ->
             Restrictions =
@@ -1003,7 +1003,7 @@ get_priv_level(_AccountId, 'undefined') ->
                       ,<<"admin">>
                      );
 get_priv_level(AccountId, OwnerId) ->
-    AccountDB = kz_util:format_account_db(AccountId),
+    AccountDB = kz_accounts:format_account_db(AccountId),
     {'ok', Doc} = kz_datamgr:open_cache_doc(AccountDB, OwnerId),
     kz_json:get_ne_value(<<"priv_level">>, Doc).
 
@@ -1017,12 +1017,12 @@ get_system_token_restrictions(AuthModule) ->
 
 -spec get_account_token_restrictions(ne_binary(), atom()) -> api_object().
 get_account_token_restrictions(AccountId, AuthModule) ->
-    AccountDB = kz_util:format_account_db(AccountId),
+    AccountDB = kz_accounts:format_account_db(AccountId),
     case kz_datamgr:open_cache_doc(AccountDB, ?CB_ACCOUNT_TOKEN_RESTRICTIONS) of
         {'error', _} -> 'undefined';
         {'ok', RestrictionsDoc} ->
             kz_json:get_first_defined(
-              [[<<"restrictions">>, kz_util:to_binary(AuthModule)]
+              [[<<"restrictions">>, kz_term:to_binary(AuthModule)]
                ,[<<"restrictions">>, ?CATCH_ALL]
               ]
               ,RestrictionsDoc
@@ -1055,7 +1055,7 @@ descendants_count() ->
     descendants_count(ViewOptions).
 
 descendants_count(<<_/binary>> = Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
     descendants_count([{'key', AccountId}]);
 descendants_count(Opts) ->
     ViewOptions = [{'group_level', 1}
@@ -1142,7 +1142,7 @@ maybe_refresh_fs_xml('user', _Context, 'false') -> 'ok';
 maybe_refresh_fs_xml('user', Context, 'true') ->
     Doc = cb_context:doc(Context),
     AccountDb = cb_context:account_db(Context),
-    Realm = kz_util:get_account_realm(AccountDb),
+    Realm = kz_accounts:get_account_realm(AccountDb),
     Id = kz_doc:id(Doc),
     Devices = get_devices_by_owner(AccountDb, Id),
     lists:foreach(fun (DevDoc) -> refresh_fs_xml(Realm, DevDoc) end, Devices);
@@ -1159,7 +1159,7 @@ maybe_refresh_fs_xml('device', Context, Precondition) ->
          )
     ) andalso
         refresh_fs_xml(
-          kz_util:get_account_realm(cb_context:account_db(Context))
+          kz_accounts:get_account_realm(cb_context:account_db(Context))
           ,DbDoc
          ),
     'ok';
@@ -1222,7 +1222,7 @@ map_server(Server, Acc) ->
 %% @public
 -spec refresh_fs_xml(cb_context:context()) -> 'ok'.
 refresh_fs_xml(Context) ->
-    Realm = kz_util:get_account_realm(cb_context:account_db(Context)),
+    Realm = kz_accounts:get_account_realm(cb_context:account_db(Context)),
     DbDoc = cb_context:fetch(Context, 'db_doc'),
     refresh_fs_xml(Realm, DbDoc).
 
@@ -1318,7 +1318,7 @@ maybe_update_descendants_count(AccountId, JObj, NewCount, _, Try) ->
 %%--------------------------------------------------------------------
 -spec update_descendants_count(ne_binary(), kz_json:object(), integer()) -> 'ok' | 'error'.
 update_descendants_count(AccountId, JObj, NewCount) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     Doc = kz_json:set_value(<<"descendants_count">>, NewCount, JObj),
     case kz_datamgr:save_doc(AccountDb, Doc) of
         {'error', _E} -> 'error';
@@ -1352,7 +1352,7 @@ maybe_validate_quickcall(Context) ->
 maybe_validate_quickcall(Context, 'success') ->
     AllowAnon = kz_json:get_value(<<"allow_anonymous_quickcalls">>, cb_context:doc(Context)),
 
-    case kz_util:is_true(AllowAnon)
+    case kz_term:is_true(AllowAnon)
         orelse cb_context:is_authenticated(Context)
         orelse
         (AllowAnon =:= 'undefined'

@@ -88,7 +88,7 @@ get_media_handling(L) ->
 
 -spec constrain_weight(ne_binary() | integer()) -> integer().
 constrain_weight(W) when not is_integer(W) ->
-    constrain_weight(kz_util:to_integer(W));
+    constrain_weight(kz_term:to_integer(W));
 constrain_weight(W) when W > 100 -> 100;
 constrain_weight(W) when W < 1 -> 1;
 constrain_weight(W) -> W.
@@ -97,7 +97,7 @@ constrain_weight(W) -> W.
                         {'ok', kz_json:object()} |
                         {'error', 'no_did_found' | atom()}.
 lookup_did(DID, AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     case kz_cache:fetch_local(?CACHE_NAME
                               ,{'lookup_did', DID, AccountId}
                              )
@@ -172,7 +172,7 @@ lookup_user_flags('undefined', _, AccountId, DID) ->
             }
     end;
 lookup_user_flags(Name, Realm, AccountId, _) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     case kz_cache:fetch_local(?CACHE_NAME
                               ,{'lookup_user_flags', Realm, Name, AccountId}
                              )
@@ -181,8 +181,8 @@ lookup_user_flags(Name, Realm, AccountId, _) ->
             lager:info("cache hit for ~s@~s", [Name, Realm]),
             Result;
         {'error', 'not_found'} ->
-            Options = [{'key', [kz_util:to_lower_binary(Realm)
-                                ,kz_util:to_lower_binary(Name)
+            Options = [{'key', [kz_term:to_lower_binary(Realm)
+                                ,kz_term:to_lower_binary(Name)
                                ]
                        }],
             case kz_datamgr:get_results(AccountDb, <<"trunkstore/LookUpUserFlags">>, Options) of
@@ -210,7 +210,7 @@ lookup_user_flags(Name, Realm, AccountId, _) ->
 
 -spec get_call_duration(kz_json:object()) -> integer().
 get_call_duration(JObj) ->
-    kz_util:to_integer(kz_json:get_value(<<"Billing-Seconds">>, JObj)).
+    kz_term:to_integer(kz_json:get_value(<<"Billing-Seconds">>, JObj)).
 
 -spec invite_format(ne_binary(), ne_binary()) -> kz_proplist().
 invite_format(<<"e.164">>, To) ->

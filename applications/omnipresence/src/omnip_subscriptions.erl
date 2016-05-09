@@ -106,7 +106,7 @@ reset(JObj) ->
 -spec handle_subscribe(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_subscribe(JObj, _Props) ->
     'true' = kapi_presence:subscribe_v(JObj),
-    case kz_json:get_value(<<"Node">>, JObj) =:= kz_util:to_binary(node()) of
+    case kz_json:get_value(<<"Node">>, JObj) =:= kz_term:to_binary(node()) of
         'true' -> 'ok';
         'false' ->
             gen_server:call(?SERVER, {'subscribe', subscribe_to_record(JObj)})
@@ -399,10 +399,10 @@ subscribe_to_record(JObj) ->
                         ,from=F
                         ,protocol=P
                         ,expires=expires(JObj)
-                        ,normalized_user=kz_util:to_lower_binary(U)
-                        ,normalized_from=kz_util:to_lower_binary(F)
-                        ,username=kz_util:to_lower_binary(Username)
-                        ,realm=kz_util:to_lower_binary(Realm)
+                        ,normalized_user=kz_term:to_lower_binary(U)
+                        ,normalized_from=kz_term:to_lower_binary(F)
+                        ,username=kz_term:to_lower_binary(Username)
+                        ,realm=kz_term:to_lower_binary(Realm)
                         ,stalker=kz_json:get_first_defined([<<"Subscription-ID">>
                                                             ,<<"Server-ID">>
                                                             ,<<"Queue">>
@@ -475,7 +475,7 @@ start_expire_ref() ->
 
 -spec expire_old_subscriptions() -> non_neg_integer().
 expire_old_subscriptions() ->
-    Now = kz_util:current_tstamp(),
+    Now = kz_time:current_tstamp(),
     ets:select_delete(table_id(), [{#omnip_subscription{timestamp='$1'
                                                         ,expires='$2'
                                                         ,_='_'
@@ -516,7 +516,7 @@ find_subscriptions(JObj) ->
        >>).
 
 find_subscriptions(Event, User) when is_binary(User) ->
-    U = kz_util:to_lower_binary(User),
+    U = kz_term:to_lower_binary(User),
     MatchSpec = [{#omnip_subscription{normalized_user='$1'
                                       ,event=Event
                                       ,_='_'
@@ -533,7 +533,7 @@ find_subscriptions(Event, User) when is_binary(User) ->
                                      {'ok', subscriptions()} |
                                      {'error', 'not_found'}.
 find_user_subscriptions(?OMNIPRESENCE_EVENT_ALL, User) ->
-    U = kz_util:to_lower_binary(User),
+    U = kz_term:to_lower_binary(User),
     MatchSpec = [{#omnip_subscription{normalized_from='$1'
                                       ,_='_'
                                      }
@@ -542,7 +542,7 @@ find_user_subscriptions(?OMNIPRESENCE_EVENT_ALL, User) ->
                  }],
     find_user_subscriptions(MatchSpec);
 find_user_subscriptions(Event, User) ->
-    U = kz_util:to_lower_binary(User),
+    U = kz_term:to_lower_binary(User),
     MatchSpec = [{#omnip_subscription{normalized_from='$1'
                                       ,event=Event
                                       ,_='_'
@@ -567,7 +567,7 @@ find_user_subscriptions(MatchSpec) ->
                                {'ok', binaries()} |
                                {'error', 'not_found'}.
 get_stalkers(Event, User) ->
-    U = kz_util:to_lower_binary(User),
+    U = kz_term:to_lower_binary(User),
     MatchSpec = [{#omnip_subscription{normalized_user='$1'
                                       ,stalker='$2'
                                       ,event=Event
@@ -585,7 +585,7 @@ get_stalkers(Event, User) ->
                                {'ok', subscriptions()} |
                                {'error', 'not_found'}.
 get_subscriptions(Event, User) ->
-    U = kz_util:to_lower_binary(User),
+    U = kz_term:to_lower_binary(User),
     case find_subscriptions(Event, U) of
         {'ok', Subs} -> {'ok', Subs};
         {'error', _}=Err -> Err
@@ -595,7 +595,7 @@ get_subscriptions(Event, User) ->
                                {'ok', subscriptions()} |
                                {'error', 'not_found'}.
 get_subscriptions(Event, User, Version) ->
-    U = kz_util:to_lower_binary(User),
+    U = kz_term:to_lower_binary(User),
     MatchSpec = [{#omnip_subscription{normalized_user='$1'
                                       ,event=Event
                                       ,version=Version
@@ -647,7 +647,7 @@ expires(JObj) -> expires(kz_json:get_integer_value(<<"Expires">>, JObj)).
 -spec search_for_subscriptions(ne_binary() | '_', ne_binary(), ne_binary() | '_') -> subscriptions().
 search_for_subscriptions(Event, Realm) ->
     MatchSpec =
-        #omnip_subscription{realm=kz_util:to_lower_binary(Realm)
+        #omnip_subscription{realm=kz_term:to_lower_binary(Realm)
                             ,event=Event
                             ,_='_'
                            },
@@ -657,8 +657,8 @@ search_for_subscriptions(Event, Realm, '_') ->
     search_for_subscriptions(Event, Realm);
 search_for_subscriptions(Event, Realm, Username) ->
     MatchSpec =
-        #omnip_subscription{username=kz_util:to_lower_binary(Username)
-                            ,realm=kz_util:to_lower_binary(Realm)
+        #omnip_subscription{username=kz_term:to_lower_binary(Username)
+                            ,realm=kz_term:to_lower_binary(Realm)
                             ,event=Event
                             ,_='_'
                            },
@@ -683,7 +683,7 @@ subscribe(#omnip_subscription{expires=E
         {'ok', #omnip_subscription{timestamp=_T
                                    ,expires=_E
                                   }=O} ->
-            lager:debug("unsubscribe ~s/~s (had ~p s left)", [_U, _F, _E - kz_util:elapsed_s(_T)]),
+            lager:debug("unsubscribe ~s/~s (had ~p s left)", [_U, _F, _E - kz_time:elapsed_s(_T)]),
             ets:delete_object(table_id(), O),
             {'unsubscribe', O}
     end;
@@ -701,7 +701,7 @@ subscribe(#omnip_subscription{user=_U
                                   }=O
         } ->
             lager:debug("re-subscribe ~s/~s/~s expires in ~ps(prior remaing ~ps)"
-                        ,[_U, _F, CallId, E1, _E2 - kz_util:elapsed_s(_T)]
+                        ,[_U, _F, CallId, E1, _E2 - kz_time:elapsed_s(_T)]
                        ),
             ets:update_element(table_id(), CallId,
                                [{#omnip_subscription.timestamp, T1}

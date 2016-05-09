@@ -107,8 +107,8 @@ id(JObj) ->
 fetch('undefined') ->
     {'error', 'invalid_db_name'};
 fetch(<<_/binary>> = Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
+    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
     kz_datamgr:open_cache_doc(AccountDb, AccountId, ['cache_failures']).
 
 %%--------------------------------------------------------------------
@@ -278,7 +278,7 @@ low_balance_tstamp(JObj) ->
 
 -spec set_low_balance_tstamp(doc()) -> doc().
 set_low_balance_tstamp(JObj) ->
-    TStamp = kz_util:current_tstamp(),
+    TStamp = kz_time:current_tstamp(),
     set_low_balance_tstamp(JObj, TStamp).
 
 -spec set_low_balance_tstamp(doc(), number()) -> doc().
@@ -431,7 +431,7 @@ allow_number_additions(JObj) ->
 
 -spec set_allow_number_additions(doc(), boolean()) -> doc().
 set_allow_number_additions(JObj, IsAllowed) ->
-    kz_json:set_value(?ALLOW_NUMBER_ADDITIONS, kz_util:is_true(IsAllowed), JObj).
+    kz_json:set_value(?ALLOW_NUMBER_ADDITIONS, kz_term:is_true(IsAllowed), JObj).
 
 -spec trial_expiration(doc()) -> api_integer().
 -spec trial_expiration(doc(), Default) -> integer() | Default.
@@ -459,11 +459,11 @@ set_trial_expiration(JObj, Expiration) ->
 -spec trial_time_left(doc()) -> integer().
 -spec trial_time_left(doc(), gregorian_seconds()) -> integer().
 trial_time_left(JObj) ->
-    trial_time_left(JObj, kz_util:current_tstamp()).
+    trial_time_left(JObj, kz_time:current_tstamp()).
 trial_time_left(JObj, Now) ->
     case trial_expiration(JObj) of
         'undefined' -> 0;
-        Expiration -> kz_util:elapsed_s(Now, Expiration)
+        Expiration -> kz_time:elapsed_s(Now, Expiration)
     end.
 
 %%--------------------------------------------------------------------
@@ -473,7 +473,7 @@ trial_time_left(JObj, Now) ->
 %%--------------------------------------------------------------------
 -spec trial_has_expired(doc()) -> boolean().
 trial_has_expired(JObj) ->
-    trial_has_expired(JObj, kz_util:current_tstamp()).
+    trial_has_expired(JObj, kz_time:current_tstamp()).
 trial_has_expired(JObj, Now) ->
     trial_expiration(JObj) =/= 'undefined' andalso
         trial_time_left(JObj, Now) =< 0.

@@ -69,7 +69,7 @@
 -record(node, {node :: atom()
                ,cookie :: atom()
                ,connected = 'false' :: boolean()
-               ,started = kz_util:current_tstamp() :: gregorian_seconds()
+               ,started = kz_time:current_tstamp() :: gregorian_seconds()
                ,client_version :: api_binary()
                ,options = [] :: kz_proplist()
               }).
@@ -167,7 +167,7 @@ is_node_up(Node) -> gen_server:call(?SERVER, {'is_node_up', Node}).
 
 -spec sip_url(text()) -> api_binary().
 sip_url(Node) when not is_atom(Node) ->
-    sip_url(kz_util:to_atom(Node, 'true'));
+    sip_url(kz_term:to_atom(Node, 'true'));
 sip_url(Node) ->
     case [ecallmgr_fs_node:sip_url(Srv)
           || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'})
@@ -180,7 +180,7 @@ sip_url(Node) ->
 
 -spec sip_external_ip(text()) -> api_binary().
 sip_external_ip(Node) when not is_atom(Node) ->
-    sip_external_ip(kz_util:to_atom(Node, 'true'));
+    sip_external_ip(kz_term:to_atom(Node, 'true'));
 sip_external_ip(Node) ->
     case [ecallmgr_fs_node:sip_external_ip(Srv)
           || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'})
@@ -206,7 +206,7 @@ details() ->
     print_details(gen_server:call(?SERVER, 'nodes')).
 
 details(NodeName) when not is_atom(NodeName) ->
-    details(kz_util:to_atom(NodeName, 'true'));
+    details(kz_term:to_atom(NodeName, 'true'));
 details(NodeName) ->
     case gen_server:call(?SERVER, {'node', NodeName}) of
         {'error', 'not_found'} ->
@@ -317,7 +317,7 @@ capability_to_json(#capability{node=Node
                                ,module=Module
                                ,is_loaded=IsLoaded
                               }) ->
-    kz_json:from_list([{<<"node">>, kz_util:to_binary(Node)}
+    kz_json:from_list([{<<"node">>, kz_term:to_binary(Node)}
                        ,{<<"capability">>, Capability}
                        ,{<<"module">>, Module}
                        ,{<<"is_loaded">>, IsLoaded}
@@ -478,7 +478,7 @@ handle_cast(_Cast, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info('expire_sip_subscriptions', Cache) ->
-    Now = kz_util:current_tstamp(),
+    Now = kz_time:current_tstamp(),
     DeleteSpec = [{#sip_subscription{expires = '$1', timestamp = '$2', _ = '_'},
                    [{'>', {'const', Now}, {'+', '$2', '$1'}}],
                    ['true']}
@@ -715,9 +715,9 @@ close_node(#node{node=NodeName}) ->
 
 -spec create_node(text(), text(), kz_proplist()) -> fs_node().
 create_node(NodeName, Cookie, Options) when not is_atom(NodeName) ->
-    create_node(kz_util:to_atom(NodeName, 'true'), Cookie, Options);
+    create_node(kz_term:to_atom(NodeName, 'true'), Cookie, Options);
 create_node(NodeName, Cookie, Options) when not is_atom(Cookie) ->
-    create_node(NodeName, kz_util:to_atom(Cookie, 'true'), Options);
+    create_node(NodeName, kz_term:to_atom(Cookie, 'true'), Options);
 create_node(NodeName, Cookie, Options) ->
     #node{node=NodeName
           ,cookie=get_fs_cookie(Cookie, Options)
@@ -727,7 +727,7 @@ create_node(NodeName, Cookie, Options) ->
 
 -spec get_fs_cookie(atom(), kz_proplist()) -> atom().
 get_fs_cookie('undefined', Props) ->
-    kz_util:to_atom(props:get_value('cookie', Props, erlang:get_cookie()));
+    kz_term:to_atom(props:get_value('cookie', Props, erlang:get_cookie()));
 get_fs_cookie(Cookie, _) when is_atom(Cookie) ->
     Cookie.
 
@@ -784,10 +784,10 @@ start_preconfigured_servers() ->
 
 start_node_from_config(MaybeJObj) ->
     case kz_json:is_json_object(MaybeJObj) of
-        'false' -> ?MODULE:add(kz_util:to_atom(MaybeJObj, 'true'));
+        'false' -> ?MODULE:add(kz_term:to_atom(MaybeJObj, 'true'));
         'true' ->
             {[Cookie], [Node]} = kz_json:get_values(MaybeJObj),
-            try ?MODULE:add(kz_util:to_atom(Node, 'true'), kz_util:to_atom(Cookie, 'true')) of
+            try ?MODULE:add(kz_term:to_atom(Node, 'true'), kz_term:to_atom(Cookie, 'true')) of
                 _OK -> lager:debug("added ~s(~s) successfully: ~p", [Node, Cookie, _OK])
             catch
                 _E:_R -> lager:debug("failed to add ~s(~s): ~s: ~p", [Node, Cookie, _E, _R])

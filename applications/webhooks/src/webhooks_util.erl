@@ -150,7 +150,7 @@ fire_hook(JObj, #webhook{uri=URI
                         }=Hook) ->
     fire_hook(JObj
               ,Hook
-              ,kz_util:to_list(URI)
+              ,kz_term:to_list(URI)
               ,Method
               ,Retries
              );
@@ -161,7 +161,7 @@ fire_hook(JObj, #webhook{uri=URI
                         }=Hook) ->
     fire_hook(kz_json:merge_jobjs(CustomData, JObj)
               ,Hook
-              ,kz_util:to_list(URI)
+              ,kz_term:to_list(URI)
               ,Method
               ,Retries
              ).
@@ -257,7 +257,7 @@ failed_hook(#webhook{hook_id=HookId
             ,E
            ) ->
     note_failed_attempt(AccountId, HookId),
-    Error = try kz_util:to_binary(E) of
+    Error = try kz_term:to_binary(E) of
                 Bin -> Bin
             catch
                 _E:_R ->
@@ -279,8 +279,8 @@ failed_hook(#webhook{hook_id=HookId
 
 -spec save_attempt(kz_json:object(), api_binary()) -> 'ok'.
 save_attempt(Attempt, AccountId) ->
-    Now = kz_util:current_tstamp(),
-    ModDb = kz_util:format_account_mod_id(AccountId, Now),
+    Now = kz_time:current_tstamp(),
+    ModDb = kz_accounts:format_account_mod_id(AccountId, Now),
 
     Doc = kz_json:set_values(
             props:filter_undefined(
@@ -312,7 +312,7 @@ hook_id(AccountId, Id) ->
 
 -spec hook_event(ne_binary()) -> ne_binary().
 -spec hook_event_lowered(ne_binary()) -> ne_binary().
-hook_event(Bin) -> hook_event_lowered(kz_util:to_lower_binary(Bin)).
+hook_event(Bin) -> hook_event_lowered(kz_term:to_lower_binary(Bin)).
 
 hook_event_lowered(<<"channel_create">>) -> <<"CHANNEL_CREATE">>;
 hook_event_lowered(<<"channel_answer">>) -> <<"CHANNEL_ANSWER">>;
@@ -404,7 +404,7 @@ init_webhooks() ->
     end.
 
 init_webhooks(Accts) ->
-    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(kz_util:current_tstamp()),
+    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(kz_time:current_tstamp()),
     init_webhooks(Accts, Year, Month).
 
 init_webhooks(Accts, Year, Month) ->
@@ -413,14 +413,14 @@ init_webhooks(Accts, Year, Month) ->
 
 -spec init_webhook(kz_json:object(), kz_year(), kz_month()) -> 'ok'.
 init_webhook(Acct, Year, Month) ->
-    Db = kz_util:format_account_id(kz_json:get_value(<<"key">>, Acct), Year, Month),
+    Db = kz_accounts:format_account_id(kz_json:get_value(<<"key">>, Acct), Year, Month),
     kazoo_modb:create(Db),
     lager:debug("updated account_mod ~s", [Db]).
 
 -spec note_failed_attempt(ne_binary(), ne_binary()) -> 'ok'.
 note_failed_attempt(AccountId, HookId) ->
     kz_cache:store_local(?CACHE_NAME
-                         ,?FAILURE_CACHE_KEY(AccountId, HookId, kz_util:current_tstamp())
+                         ,?FAILURE_CACHE_KEY(AccountId, HookId, kz_time:current_tstamp())
                          ,'true'
                          ,[{'expires', account_expires_time(AccountId)}]
                         ).
@@ -432,7 +432,7 @@ account_expires_time(AccountId) ->
                                               ,?ATTEMPT_EXPIRY_KEY
                                               ,?MILLISECONDS_IN_MINUTE
                                              ),
-    try kz_util:to_integer(Expiry) of
+    try kz_term:to_integer(Expiry) of
         I -> I
     catch
         _:_ -> ?MILLISECONDS_IN_MINUTE
@@ -450,7 +450,7 @@ reenable(AccountId, <<"descendants">>) ->
 
 -spec enable_account_hooks(ne_binary()) -> 'ok'.
 enable_account_hooks(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
 
     case kz_datamgr:get_results(?KZ_WEBHOOKS_DB
                                ,<<"webhooks/accounts_listing">>
@@ -473,7 +473,7 @@ enable_hooks(Hooks) ->
             {'ok', Saved} = kz_datamgr:save_docs(?KZ_WEBHOOKS_DB, Reenable),
             _ = webhooks_disabler:flush_hooks(Reenable),
             io:format("re-enabled ~p hooks~nIDs: ", [length(Saved)]),
-            Ids = kz_util:join_binary([kz_doc:id(D) || D <- Saved], <<", ">>),
+            Ids = kz_term:join_binary([kz_doc:id(D) || D <- Saved], <<", ">>),
             io:format("~s~n", [Ids])
     end.
 
@@ -486,7 +486,7 @@ hooks_to_reenable(Hooks) ->
 
 -spec enable_descendant_hooks(ne_binary()) -> 'ok'.
 enable_descendant_hooks(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_accounts:format_account_id(Account, 'raw'),
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB
                                ,<<"accounts/listing_by_descendants">>
                                ,[{'startkey', [AccountId]}

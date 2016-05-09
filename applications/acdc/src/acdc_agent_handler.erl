@@ -76,7 +76,7 @@ maybe_agent_queue_change(_AccountId, _AgentId, _Evt, _QueueId, _JObj) ->
 
 update_agent('undefined', QueueId, _F, AccountId, AgentId, _JObj) ->
     lager:debug("new agent process needs starting"),
-    {'ok', AgentJObj} = kz_datamgr:open_cache_doc(kz_util:format_account_id(AccountId, 'encoded')
+    {'ok', AgentJObj} = kz_datamgr:open_cache_doc(kz_accounts:format_account_id(AccountId, 'encoded')
                                                  ,AgentId
                                                 ),
     lager:debug("agent loaded"),
@@ -146,7 +146,7 @@ maybe_start_agent(AccountId, AgentId) ->
         'undefined' ->
             lager:debug("agent ~s (~s) not found, starting", [AgentId, AccountId]),
             acdc_agent_stats:agent_ready(AccountId, AgentId),
-            case kz_datamgr:open_doc(kz_util:format_account_id(AccountId, 'encoded'), AgentId) of
+            case kz_datamgr:open_doc(kz_accounts:format_account_id(AccountId, 'encoded'), AgentId) of
                 {'ok', AgentJObj} -> acdc_agents_sup:new(AgentJObj);
                 {'error', _E}=E ->
                     lager:debug("error opening agent doc: ~p", [_E]),
@@ -396,7 +396,7 @@ handle_presence_probe(JObj, _Props) ->
     'true' = kapi_presence:probe_v(JObj),
     Realm = kz_json:get_value(<<"Realm">>, JObj),
     case kapps_util:get_account_by_realm(Realm) of
-        {'ok', AcctDb} -> maybe_respond_to_presence_probe(JObj, kz_util:format_account_id(AcctDb, 'raw'));
+        {'ok', AcctDb} -> maybe_respond_to_presence_probe(JObj, kz_accounts:format_account_id(AcctDb, 'raw'));
         _ -> lager:debug("ignoring presence probe from realm ~s", [Realm])
     end.
 
@@ -419,7 +419,7 @@ send_probe(JObj, State) ->
     PresenceUpdate =
         [{<<"State">>, State}
          ,{<<"Presence-ID">>, To}
-         ,{<<"Call-ID">>, kz_util:to_hex_binary(crypto:hash(md5, To))}
+         ,{<<"Call-ID">>, kz_term:to_hex_binary(crypto:hash(md5, To))}
          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
     kapi_presence:publish_update(PresenceUpdate).

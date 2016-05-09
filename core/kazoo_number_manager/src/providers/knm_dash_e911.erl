@@ -111,7 +111,7 @@ maybe_update_dash_e911(Number) ->
     E911 = kz_json:get_ne_value([?PVT_FEATURES, ?DASH_KEY], Doc),
 
     NotChanged = kz_json:are_identical(CurrentE911, E911),
-    case kz_util:is_empty(E911) of
+    case kz_term:is_empty(E911) of
         'true' ->
             lager:debug("dash e911 information has been removed, updating dash"),
             _ = remove_number(Number),
@@ -225,19 +225,19 @@ provision_geocoded(JObj, E911) ->
 is_valid_location(Location) ->
     case emergency_provisioning_request('validateLocation', Location) of
         {'error', Reason} ->
-            {'error', kz_util:to_binary(Reason)};
+            {'error', kz_term:to_binary(Reason)};
         {'ok', Response} ->
-            case kz_util:get_xml_value("//Location/status/code/text()", Response) of
+            case kz_xml:value("//Location/status/code/text()", Response) of
                 <<"GEOCODED">> ->
                     {'geocoded', location_xml_to_json_address(xmerl_xpath:string("//Location", Response))};
                 <<"PROVISIONED">> ->
                     {'provisioned', location_xml_to_json_address(xmerl_xpath:string("//Location", Response))};
                 <<"INVALID">> ->
-                    {'invalid', kz_util:get_xml_value("//Location/status/description/text()", Response)};
+                    {'invalid', kz_xml:value("//Location/status/description/text()", Response)};
                 <<"ERROR">> ->
-                    {'error', kz_util:get_xml_value("//Location/status/description/text()", Response)};
+                    {'error', kz_xml:value("//Location/status/description/text()", Response)};
                 Else ->
-                    {'error', kz_util:to_binary(Else)}
+                    {'error', kz_term:to_binary(Else)}
             end
     end.
 
@@ -252,26 +252,26 @@ is_valid_location(Location) ->
                           {'provisioned', kz_json:object()} |
                           {'error', binary()}.
 add_location(Number, Location, CallerName) ->
-    Props = [{'uri', [{'uri', [kz_util:to_list(<<"tel:", (knm_converters:to_1npan(Number))/binary>>)]}
-                      ,{'callername', [kz_util:to_list(CallerName)]}
+    Props = [{'uri', [{'uri', [kz_term:to_list(<<"tel:", (knm_converters:to_1npan(Number))/binary>>)]}
+                      ,{'callername', [kz_term:to_list(CallerName)]}
                      ]
              }
              | Location
             ],
     case emergency_provisioning_request('addLocation', Props) of
-        {'error', Reason} -> {'error', kz_util:to_binary(Reason)};
+        {'error', Reason} -> {'error', kz_term:to_binary(Reason)};
         {'ok', Response} ->
-            case kz_util:get_xml_value("//Location/status/code/text()", Response) of
+            case kz_xml:value("//Location/status/code/text()", Response) of
                 <<"GEOCODED">> ->
                     {'geocoded', location_xml_to_json_address(xmerl_xpath:string("//Location", Response))};
                 <<"PROVISIONED">> ->
                     {'provisioned', location_xml_to_json_address(xmerl_xpath:string("//Location", Response))};
                 <<"INVALID">> ->
-                    {'error', kz_util:get_xml_value("//Location/status/description/text()", Response)};
+                    {'error', kz_xml:value("//Location/status/description/text()", Response)};
                 <<"ERROR">> ->
-                    {'error', kz_util:get_xml_value("//Location/status/description/text()", Response)};
+                    {'error', kz_xml:value("//Location/status/description/text()", Response)};
                 Else ->
-                    {'error', kz_util:to_binary(Else)}
+                    {'error', kz_term:to_binary(Else)}
             end
     end.
 
@@ -283,11 +283,11 @@ add_location(Number, Location, CallerName) ->
 %%--------------------------------------------------------------------
 -spec provision_location(ne_binary()) -> api_binary().
 provision_location(LocationId) ->
-    Props = [{'locationid', [kz_util:to_list(LocationId)]}],
+    Props = [{'locationid', [kz_term:to_list(LocationId)]}],
     case emergency_provisioning_request('provisionLocation', Props) of
         {'error', _} -> 'undefined';
         {'ok', Response} ->
-            kz_util:get_xml_value("//LocationStatus/code/text()", Response)
+            kz_xml:value("//LocationStatus/code/text()", Response)
     end.
 
 %%--------------------------------------------------------------------
@@ -300,7 +300,7 @@ provision_location(LocationId) ->
 remove_number(Number) ->
     Num = knm_phone_number:number(knm_number:phone_number(Number)),
     lager:debug("removing dash e911 number '~s'", [Num]),
-    Props = [{'uri', [kz_util:to_list(<<"tel:", (knm_converters:to_1npan(Num))/binary>>)]}],
+    Props = [{'uri', [kz_term:to_list(<<"tel:", (knm_converters:to_1npan(Num))/binary>>)]}],
     case emergency_provisioning_request('removeURI', Props) of
         {'error', 'server_error'} ->
             lager:debug("removed number from dash e911"),
@@ -309,7 +309,7 @@ remove_number(Number) ->
             lager:debug("removed number from dash e911: ~p", [_E]),
             <<"REMOVED">>;
         {'ok', Response} ->
-            case kz_util:get_xml_value("//URIStatus/code/text()", Response) of
+            case kz_xml:value("//URIStatus/code/text()", Response) of
                 <<"REMOVED">> = R ->
                     lager:debug("removed number from dash e911"),
                     R;
@@ -342,7 +342,7 @@ remove_number(Number) ->
                                             {'ok', xml_el()} |
                                             {'error', emergency_provisioning_error()}.
 emergency_provisioning_request(Verb, Props) ->
-    URL = list_to_binary([?DASH_EMERG_URL, "/", kz_util:to_lower_binary(Verb)]),
+    URL = list_to_binary([?DASH_EMERG_URL, "/", kz_term:to_lower_binary(Verb)]),
     Body = unicode:characters_to_binary(
              xmerl:export_simple([{Verb, Props}]
                                  ,'xmerl_xml'
@@ -360,7 +360,7 @@ emergency_provisioning_request(Verb, Props) ->
                   ],
     lager:debug("making ~s request to dash e911 ~s", [Verb, URL]),
     ?DASH_DEBUG("Request:~n~s ~s~n~s~n", ['post', URL, Body]),
-    case kz_http:post(kz_util:to_list(URL), Headers, Body, HTTPOptions) of
+    case kz_http:post(kz_term:to_list(URL), Headers, Body, HTTPOptions) of
         {'ok', 401, _, _Response} ->
             ?DASH_DEBUG("Response:~n401~n~s~n", [_Response]),
             lager:debug("dash e911 request error: 401 (unauthenticated)"),
@@ -436,20 +436,20 @@ location_xml_to_json_address(Xml) when is_list(Xml) ->
     [location_xml_to_json_address(X) || X <- Xml];
 location_xml_to_json_address(Xml) ->
     Props =
-        [{<<"street_address">>, kz_util:get_xml_value("address1/text()", Xml)}
-         ,{<<"extended_address">>, kz_util:get_xml_value("address2/text()", Xml)}
-         ,{<<"activated_time">>, kz_util:get_xml_value("activated_time/text()", Xml)}
-         ,{<<"caller_name">>, kz_util:get_xml_value("callername/text()", Xml)}
-         ,{<<"comments">>, kz_util:get_xml_value("comments/text()", Xml)}
-         ,{<<"locality">>, kz_util:get_xml_value("community/text()", Xml)}
-         ,{<<"order_id">>, kz_util:get_xml_value("customerorderid/text()", Xml)}
-         ,{<<"latitude">>, kz_util:get_xml_value("latitude/text()", Xml)}
-         ,{<<"longitude">>, kz_util:get_xml_value("longitude/text()", Xml)}
-         ,{<<"location_id">>, kz_util:get_xml_value("locationid/text()", Xml)}
-         ,{<<"plus_four">>, kz_util:get_xml_value("plusfour/text()", Xml)}
-         ,{<<"postal_code">>, kz_util:get_xml_value("postalcode/text()", Xml)}
-         ,{<<"region">>, kz_util:get_xml_value("state/text()", Xml)}
-         ,{<<"status">>, kz_util:get_xml_value("status/code/text()", Xml)}
+        [{<<"street_address">>, kz_xml:value("address1/text()", Xml)}
+         ,{<<"extended_address">>, kz_xml:value("address2/text()", Xml)}
+         ,{<<"activated_time">>, kz_xml:value("activated_time/text()", Xml)}
+         ,{<<"caller_name">>, kz_xml:value("callername/text()", Xml)}
+         ,{<<"comments">>, kz_xml:value("comments/text()", Xml)}
+         ,{<<"locality">>, kz_xml:value("community/text()", Xml)}
+         ,{<<"order_id">>, kz_xml:value("customerorderid/text()", Xml)}
+         ,{<<"latitude">>, kz_xml:value("latitude/text()", Xml)}
+         ,{<<"longitude">>, kz_xml:value("longitude/text()", Xml)}
+         ,{<<"location_id">>, kz_xml:value("locationid/text()", Xml)}
+         ,{<<"plus_four">>, kz_xml:value("plusfour/text()", Xml)}
+         ,{<<"postal_code">>, kz_xml:value("postalcode/text()", Xml)}
+         ,{<<"region">>, kz_xml:value("state/text()", Xml)}
+         ,{<<"status">>, kz_xml:value("status/code/text()", Xml)}
          ,{<<"legacy_data">>, legacy_data_xml_to_json(xmerl_xpath:string("legacydata", Xml))}
         ],
     kz_json:from_list(props:filter_undefined(Props)).
@@ -468,9 +468,9 @@ legacy_data_xml_to_json([Xml]) ->
 legacy_data_xml_to_json(Xml) when is_list(Xml) ->
     [legacy_data_xml_to_json(X) || X <- Xml];
 legacy_data_xml_to_json(Xml) ->
-    Props = [{<<"house_number">>, kz_util:get_xml_value("housenumber/text()", Xml)}
-             ,{<<"predirectional">>, kz_util:get_xml_value("predirectional/text()", Xml)}
-             ,{<<"streetname">>, kz_util:get_xml_value("streetname/text()", Xml)}
-             ,{<<"suite">>, kz_util:get_xml_value("suite/text()", Xml)}
+    Props = [{<<"house_number">>, kz_xml:value("housenumber/text()", Xml)}
+             ,{<<"predirectional">>, kz_xml:value("predirectional/text()", Xml)}
+             ,{<<"streetname">>, kz_xml:value("streetname/text()", Xml)}
+             ,{<<"suite">>, kz_xml:value("suite/text()", Xml)}
             ],
     kz_json:from_list(props:filter_undefined(Props)).

@@ -41,7 +41,7 @@
 -define(TEMPLATE_HTML_USER, "{% if user %}<h2>Admin</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>Name: </td><td>{{user.first_name}} {{user.last_name}}</td></tr><tr><td>Email: </td><td>{{user.email}}</td></tr><tr><td>Timezone: </td><td>{{user.timezone}}</td></tr></table>{% endif %}").
 -define(TEMPLATE_HTML_NUMBERS, "{% if account.pvt_wnm_numbers %}<h2>Phone Numbers</h2><ul>{% for number in account.pvt_wnm_numbers %}<li>{{number}}</li>{% endfor %}</ul>{% endif %}").
 
--define(TEMPLATE_HTML, kz_util:to_binary(
+-define(TEMPLATE_HTML, kz_term:to_binary(
                          lists:flatten(
                            [?TEMPLATE_HTML_HEAD
                             ,?TEMPLATE_HTML_ALERT
@@ -77,7 +77,7 @@
 -define(TEMPLATE_TEXT_USER, "{% if user %}Admin\nName: {{user.first_name}} {{user.last_name}}\nEmail: {{user.email}}\nTimezone: {{user.timezone}}\n\n{% endif %}").
 -define(TEMPLATE_TEXT_NUMBERS, "{% if account.pvt_wnm_numbers %}Phone Numbers\n{% for number in account.pvt_wnm_numbers %}{{number}}\n{% endfor %}\n{% endif %}").
 
--define(TEMPLATE_TEXT, kz_util:to_binary(
+-define(TEMPLATE_TEXT, kz_term:to_binary(
                          lists:flatten(
                            [?TEMPLATE_TEXT_ALERT
                             ,?TEMPLATE_TEXT_PRODUCER
@@ -143,7 +143,7 @@ handle_req_as_http(JObj, 'undefined', UseEmail) ->
 handle_req_as_http(JObj, Url, UseEmail) ->
     Headers = [{"Content-Type", "application/json"}],
     Encoded = kz_json:encode(JObj),
-    case kz_http:post(kz_util:to_list(Url), Headers, Encoded) of
+    case kz_http:post(kz_term:to_list(Url), Headers, Encoded) of
         {'ok', _2xx, _ResponseHeaders, _ResponseBody}
           when (_2xx - 200) < 100 -> %% ie: match "2"++_
             lager:debug("JSON data successfully POSTed to '~s'", [Url]);

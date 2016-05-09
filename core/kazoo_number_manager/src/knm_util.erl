@@ -123,6 +123,6 @@ fixture(Filename) ->
     read_fixture(file:read_file(Fixture), Fixture).
 
 read_fixture({'ok', Contents}, _F) ->
-    kz_util:to_list(Contents);
+    kz_term:to_list(Contents);
 read_fixture({'error', 'enoent'}, F) ->
     throw({'error', 'missing_fixture', F}).

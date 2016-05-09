@@ -63,7 +63,7 @@ init() ->
 
     LoaderFun = fun A(?DOMAINS_SCHEMA) -> DomainsSchema;
                     A(?HOSTS_SCHEMA) -> DomainHostsSchema;
-                    A(X) when not is_binary(X) -> A(kz_util:to_binary(X));
+                    A(X) when not is_binary(X) -> A(kz_term:to_binary(X));
                     A(X) -> io:format("error: schema ~p not found", [X]),
                           'undefined'
                 end,

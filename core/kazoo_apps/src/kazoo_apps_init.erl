@@ -23,8 +23,8 @@ init() ->
     case kz_config:get_atom('kazoo_apps', 'cookie') of
         [] ->
             lager:warning("failed to set kazoo_apps cookie trying node ~s", [node()]),
-            [Name, _Host] = binary:split(kz_util:to_binary(node()), <<"@">>),
-            case kz_config:get_atom(kz_util:to_atom(Name, 'true'), 'cookie') of
+            [Name, _Host] = binary:split(kz_term:to_binary(node()), <<"@">>),
+            case kz_config:get_atom(kz_term:to_atom(Name, 'true'), 'cookie') of
                 [] ->
                     lager:warning("failed to set kazoo_apps cookie for node ~s", [node()]);
                 [Cookie|_] ->

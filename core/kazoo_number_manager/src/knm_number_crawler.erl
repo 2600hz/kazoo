@@ -270,7 +270,7 @@ maybe_deleted_number_expired(PhoneNumber, Created) ->
 -spec maybe_remove(knm_phone_number:knm_phone_number(), gregorian_seconds(), pos_integer()) ->
                           knm_phone_number:knm_phone_number().
 maybe_remove(PhoneNumber, Created, Expiry) ->
-    Now = kz_util:current_tstamp(),
+    Now = kz_time:current_tstamp(),
     case (Now - Expiry) > Created of
         'true' -> PhoneNumber;
         'false' -> knm_phone_number:delete(PhoneNumber)

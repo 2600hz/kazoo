@@ -65,7 +65,7 @@ maybe_handle_bridge_failure({_ , R}=Reason, Call) ->
     case doodle_util:handle_bridge_failure(Reason, Call) of
         'not_found' ->
             doodle_util:maybe_reschedule_sms(
-              doodle_util:set_flow_status(<<"pending">>, kz_util:to_binary(R), Call)
+              doodle_util:set_flow_status(<<"pending">>, kz_term:to_binary(R), Call)
               );
         'ok' -> 'ok'
     end.

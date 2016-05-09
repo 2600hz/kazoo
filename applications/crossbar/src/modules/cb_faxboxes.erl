@@ -343,7 +343,7 @@ on_faxbox_successful_validation('undefined', Context) ->
                            ,{<<"pvt_account_id">>, cb_context:account_id(Context)}
                            ,{<<"pvt_account_db">>, cb_context:account_db(Context)}
                            ,{<<"pvt_reseller_id">>, cb_context:reseller_id(Context)}
-                           ,{<<"_id">>, kz_util:rand_hex_binary(16)}
+                           ,{<<"_id">>, kz_term:rand_hex_binary(16)}
                            ,{<<"pvt_smtp_email_address">>, generate_email_address(Context)}
                           ]
                           ,cb_context:doc(Context)
@@ -356,7 +356,7 @@ on_faxbox_successful_validation(DocId, Context) ->
 generate_email_address(Context) ->
     ResellerId =  cb_context:reseller_id(Context),
     Domain = kapps_account_config:get_global(ResellerId, <<"fax">>, <<"default_smtp_domain">>, ?DEFAULT_FAX_SMTP_DOMAIN),
-    New = kz_util:rand_hex_binary(4),
+    New = kz_term:rand_hex_binary(4),
     <<New/binary, ".", Domain/binary>>.
 
 %%--------------------------------------------------------------------
@@ -381,7 +381,7 @@ normalize_view_results(JObj, Acc) ->
 
 -spec is_faxbox_email_global_unique(ne_binary(), ne_binary()) -> boolean().
 is_faxbox_email_global_unique(Email, FaxBoxId) ->
-    ViewOptions = [{'key', kz_util:to_lower_binary(Email)}],
+    ViewOptions = [{'key', kz_term:to_lower_binary(Email)}],
     case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxbox/email_address">>, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [JObj]} -> kz_doc:id(JObj) =:= FaxBoxId;
@@ -414,7 +414,7 @@ maybe_reregister_cloud_printer(_, Context) -> Context.
 maybe_register_cloud_printer(Context) ->
     ResellerId =  cb_context:reseller_id(Context),
     CloudConnectorEnable = kapps_account_config:get(ResellerId, <<"fax">>, <<"enable_cloud_connector">>, 'false'),
-    case kz_util:is_true(CloudConnectorEnable) of
+    case kz_term:is_true(CloudConnectorEnable) of
         'true' -> maybe_register_cloud_printer(Context, cb_context:doc(Context));
         'false' -> Context
     end.
@@ -432,15 +432,15 @@ maybe_register_cloud_printer(Context, JObj) ->
 -spec register_cloud_printer(cb_context:context(), ne_binary()) -> kz_proplist().
 register_cloud_printer(Context, FaxboxId) ->
     ResellerId =  cb_context:reseller_id(Context),
-    Boundary = <<"------", (kz_util:rand_hex_binary(16))/binary>>,
+    Boundary = <<"------", (kz_term:rand_hex_binary(16))/binary>>,
     Body = register_body(ResellerId, FaxboxId, Boundary),
-    ContentType = kz_util:to_list(<<"multipart/form-data; boundary=", Boundary/binary>>),
+    ContentType = kz_term:to_list(<<"multipart/form-data; boundary=", Boundary/binary>>),
     ContentLength = length(Body),
     Headers = [?GPC_PROXY_HEADER
                ,{"Content-Type",ContentType}
                ,{'Content-Length', ContentLength}
               ],
-    Url = kz_util:to_list(?GPC_URL_REGISTER),
+    Url = kz_term:to_list(?GPC_URL_REGISTER),
     case kz_http:post(Url, Headers, Body) of
         {'ok', 200, _RespHeaders, RespJSON} ->
             JObj = kz_json:decode(RespJSON),

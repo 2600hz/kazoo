@@ -118,7 +118,7 @@ v(JObj) ->
 -spec v(api_terms(), binary()) -> boolean().
 v(Prop, DPApp) ->
     try
-        VFun = kz_util:to_atom(<<DPApp/binary, "_v">>),
+        VFun = kz_term:to_atom(<<DPApp/binary, "_v">>),
         case lists:keyfind(VFun, 1, ?MODULE:module_info(exports)) of
             'false' -> throw({invalid_dialplan_object, Prop});
             {_, 1} -> ?MODULE:VFun(Prop)
@@ -322,7 +322,7 @@ tones_v(JObj) -> tones_v(kz_json:to_proplist(JObj)).
 -spec tone_timeout_v(any()) -> boolean().
 tone_timeout_v(Timeout) ->
     %% <<"+123">> converts to 123, so yay!
-    try kz_util:to_integer(Timeout) of
+    try kz_term:to_integer(Timeout) of
         T when T < 0 -> 'false';
         _ -> 'true'
     catch
@@ -1064,7 +1064,7 @@ publish_command(CtrlQ, JObj) ->
     publish_command(CtrlQ, kz_json:to_proplist(JObj)).
 
 publish_command(CtrlQ, Prop, DPApp) ->
-    try kz_util:to_atom(<<DPApp/binary>>) of
+    try kz_term:to_atom(<<DPApp/binary>>) of
         BuildMsgFun ->
             case lists:keyfind(BuildMsgFun, 1, ?MODULE:module_info('exports')) of
                 'false' ->
@@ -1148,7 +1148,7 @@ metaflow_v(JObj) -> metaflow_v(kz_json:to_proplist(JObj)).
 
 -spec metaflow_digit_timeout_v(any()) -> boolean().
 metaflow_digit_timeout_v(X) ->
-    is_integer(kz_util:to_integer(X)).
+    is_integer(kz_term:to_integer(X)).
 
 -spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
@@ -1201,7 +1201,7 @@ terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
 -spec offsite_store_url(api_binary(), ne_binary()) -> ne_binary().
 offsite_store_url('undefined', _) -> throw({'error', <<"URL not defined">>});
 offsite_store_url(Url, MediaName) ->
-    iolist_to_binary([kz_util:strip_right_binary(Url, $/), "/", MediaName]).
+    iolist_to_binary([kz_term:strip_right_binary(Url, $/), "/", MediaName]).
 
 %%--------------------------------------------------------------------
 %% @doc Detect fax on the line

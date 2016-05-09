@@ -104,7 +104,7 @@ map_options(Options) ->
 -spec map_view_option(term()) -> term().
 map_view_option({K, V})
   when is_binary(K) ->
-    {kz_util:to_atom(K, 'true'), V};
+    {kz_term:to_atom(K, 'true'), V};
 map_view_option(KV) -> KV.
 
 -spec do_fetch_results_count(couchbeam_db(), ddoc(), view_options()) ->

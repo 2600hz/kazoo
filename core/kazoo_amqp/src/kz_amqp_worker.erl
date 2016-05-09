@@ -146,7 +146,7 @@ maybe_broker(Args) ->
 maybe_queuename(Args) ->
     case props:get_value('amqp_queuename_start', Args) of
         'undefined' -> ?QUEUE_NAME;
-        QueueStart -> <<(kz_util:to_binary(QueueStart))/binary, "_", (kz_util:rand_hex_binary(4))/binary>>
+        QueueStart -> <<(kz_term:to_binary(QueueStart))/binary, "_", (kz_term:rand_hex_binary(4))/binary>>
     end.
 
 -spec maybe_bindings(kz_proplist()) -> kz_proplist().
@@ -397,7 +397,7 @@ cast(Req, PubFun, Worker) when is_pid(Worker) ->
     end.
 
 -spec collect_until_timeout() -> collect_until_fun().
-collect_until_timeout() -> fun kz_util:always_false/1.
+collect_until_timeout() -> fun kz_term:always_false/1.
 
 -spec collect_from_whapp(text()) -> collect_until_fun().
 collect_from_whapp(Whapp) ->
@@ -471,7 +471,7 @@ send_request(CallId, Self, PublishFun, ReqProps)
 
 -spec request_proplist_filter({kz_proplist_key(), kz_proplist_value()}) -> boolean().
 request_proplist_filter({<<"Server-ID">>, Value}) ->
-    not kz_util:is_empty(Value);
+    not kz_term:is_empty(Value);
 request_proplist_filter({_, 'undefined'}) -> 'false';
 request_proplist_filter(_) -> 'true'.
 
@@ -725,7 +725,7 @@ handle_cast({'event', MsgId, JObj}, #state{current_msg_id = MsgId
         'true' ->
             lager:debug("responses have apparently met the criteria for the client, returning"),
             lager:debug("response for msg id ~s took ~bus to return"
-                        ,[MsgId, kz_util:elapsed_us(StartTime)]
+                        ,[MsgId, kz_time:elapsed_us(StartTime)]
                        ),
             gen_server:reply(From, {'ok', Responses}),
             {'noreply', reset(State), 'hibernate'};
@@ -747,7 +747,7 @@ handle_cast({'event', MsgId, JObj}, #state{current_msg_id = MsgId
         'true' ->
             lager:debug("responses have apparently met the criteria for the client, returning"),
             lager:debug("response for msg id ~s took ~bus to return"
-                        ,[MsgId, kz_util:elapsed_us(StartTime)]
+                        ,[MsgId, kz_time:elapsed_us(StartTime)]
                        ),
             gen_server:reply(From, {'ok', Responses}),
             {'noreply', reset(State), 'hibernate'};
@@ -800,7 +800,7 @@ handle_info('timeout', #state{neg_resp=ErrorJObj
                               ,responses='undefined'
                               ,defer_response=ReservedJObj
                              }=State) ->
-    case kz_util:is_empty(ReservedJObj) of
+    case kz_term:is_empty(ReservedJObj) of
         'true' ->
             lager:debug("negative response threshold reached, returning last negative message to ~p", [_Pid]),
             gen_server:reply(From, {'error', ErrorJObj});
@@ -825,7 +825,7 @@ handle_info({'timeout', ReqRef, 'req_timeout'}, #state{current_msg_id= _MsgId
                                                        ,defer_response=ReservedJObj
                                                       }=State) ->
     kz_util:put_callid(CallId),
-    case kz_util:is_empty(ReservedJObj) of
+    case kz_term:is_empty(ReservedJObj) of
         'true' ->
             lager:debug("request timeout exceeded for msg id: ~s and client: ~p", [_MsgId, _Pid]),
             gen_server:reply(From, {'error', 'timeout'});
@@ -934,7 +934,7 @@ maybe_convert_to_proplist(Req) ->
 maybe_set_msg_id(Props) ->
     case kz_api:msg_id(Props) of
         'undefined' ->
-            props:set_value(<<"Msg-ID">>, kz_util:rand_hex_binary(8), Props);
+            props:set_value(<<"Msg-ID">>, kz_term:rand_hex_binary(8), Props);
         _MsgId ->
             Props
     end.

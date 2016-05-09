@@ -217,7 +217,7 @@ presence_id(DeviceJObj, Default) ->
 set_presence_id(DeviceJObj, Id) ->
     kz_json:set_value(
       ?PRESENCE_ID
-      ,kz_util:to_binary(Id)
+      ,kz_term:to_binary(Id)
       ,DeviceJObj
      ).
 

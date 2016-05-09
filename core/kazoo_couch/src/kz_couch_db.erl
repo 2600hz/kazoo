@@ -42,14 +42,14 @@ db_create(#server{}=Conn, DbName) ->
 
 -spec db_create(server(), ne_binary(), db_create_options()) -> boolean().
 db_create(#server{}=Conn, DbName, Options) ->
-    case couchbeam:create_db(Conn, kz_util:to_list(DbName), [], Options) of
+    case couchbeam:create_db(Conn, kz_term:to_list(DbName), [], Options) of
         {'error', _} -> 'false';
         {'ok', _} -> 'true'
     end.
 
 -spec db_delete(server(), ne_binary()) -> boolean().
 db_delete(#server{}=Conn, DbName) ->
-    case couchbeam:delete_db(Conn, kz_util:to_list(DbName)) of
+    case couchbeam:delete_db(Conn, kz_term:to_list(DbName)) of
         {'error', _} -> 'false';
         {'ok', _} -> 'true'
     end.
@@ -85,7 +85,7 @@ db_info(#server{}=Conn, DbName) ->
 
 -spec db_exists(server(), ne_binary()) -> boolean().
 db_exists(#server{}=Conn, DbName) ->
-    couchbeam:db_exists(Conn, kz_util:to_list(DbName)).
+    couchbeam:db_exists(Conn, kz_term:to_list(DbName)).
 
 -spec db_archive(server(), ne_binary(), ne_binary()) -> 'ok'.
 db_archive(#server{}=Conn, DbName, Filename) ->

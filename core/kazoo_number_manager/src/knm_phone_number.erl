@@ -112,10 +112,10 @@ newly_found(Num=?NE_BINARY, Carrier, AssignTo=?NE_BINARY, Data=?JSON_WRAPPER(_))
     setters(new(),
             [{fun set_number/2, NormalizedNum}
             ,{fun set_number_db/2, knm_converters:to_db(NormalizedNum)}
-            ,{fun set_module_name/2, kz_util:to_binary(Carrier)}
+            ,{fun set_module_name/2, kz_term:to_binary(Carrier)}
             ,{fun set_carrier_data/2, Data}
             ,{fun set_state/2, ?NUMBER_STATE_DISCOVERY}
-            ,{fun set_assign_to/2, kz_util:format_account_id(AssignTo)}
+            ,{fun set_assign_to/2, kz_accounts:format_account_id(AssignTo)}
             ]).
 
 %%--------------------------------------------------------------------
@@ -235,7 +235,7 @@ authorize_release(PhoneNumber, ?KNM_DEFAULT_AUTH_BY) ->
     authorized_release(PhoneNumber);
 authorize_release(PhoneNumber, AuthBy) ->
     AssignedTo = assigned_to(PhoneNumber),
-    case kz_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true') of
+    case kz_accounts:is_in_account_hierarchy(AuthBy, AssignedTo, 'true') of
         'false' -> knm_errors:unauthorized();
         'true' -> authorized_release(PhoneNumber)
     end.
@@ -292,7 +292,7 @@ to_public_json(Number) ->
 %%--------------------------------------------------------------------
 -spec to_json(knm_phone_number()) -> kz_json:object().
 to_json(#knm_phone_number{doc=JObj}=N) ->
-    Now = kz_util:current_tstamp(),
+    Now = kz_time:current_tstamp(),
     kz_json:from_list(
       props:filter_empty(
         [{<<"_id">>, number(N)}
@@ -675,7 +675,7 @@ list_attachments(PhoneNumber, AuthBy) ->
     AssignedTo = assigned_to(PhoneNumber),
     case
         state(PhoneNumber) == ?NUMBER_STATE_PORT_IN
-        andalso kz_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true')
+        andalso kz_accounts:is_in_account_hierarchy(AuthBy, AssignedTo, 'true')
     of
         'true' -> {'ok', kz_doc:attachments(doc(PhoneNumber), kz_json:new())};
         'false' -> {'error', 'unauthorized'}
@@ -722,7 +722,7 @@ is_authorized(#knm_phone_number{assigned_to = AssignedTo
                                ,auth_by = AuthBy
                                }) ->
     ?LOG_DEBUG("is authz ~s ~s", [AuthBy, AssignedTo]),
-    kz_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true').
+    kz_accounts:is_in_account_hierarchy(AuthBy, AssignedTo, 'true').
 -endif.
 
 %%--------------------------------------------------------------------
@@ -742,7 +742,7 @@ save_to_number_db(PhoneNumber) ->
         {'error', 'not_found'} ->
             lager:debug("creating new db '~s' for number '~s'", [NumberDb, number(PhoneNumber)]),
             'true' = kz_datamgr:db_create(NumberDb),
-            kz_datamgr:revise_views_from_folder(NumberDb, kz_util:to_atom(?APP_NAME)),
+            kz_datamgr:revise_views_from_folder(NumberDb, kz_term:to_atom(?APP_NAME)),
             save_to_number_db(PhoneNumber);
         {'error', E} ->
             lager:error("failed to save ~s in ~s: ~p", [number(PhoneNumber), NumberDb, E]),
@@ -769,7 +769,7 @@ handle_assignment(PhoneNumber) ->
 -spec assign(knm_phone_number(), ne_binary()) -> knm_phone_number().
 assign(PhoneNumber) ->
     AssignedTo = assigned_to(PhoneNumber),
-    case kz_util:is_empty(AssignedTo) of
+    case kz_term:is_empty(AssignedTo) of
         'true' -> PhoneNumber;
         'false' -> assign(PhoneNumber, AssignedTo)
     end.
@@ -779,7 +779,7 @@ assign(PhoneNumber, _AssignedTo) ->
     PhoneNumber.
 -else.
 assign(PhoneNumber, AssignedTo) ->
-    AccountDb = kz_util:format_account_db(AssignedTo),
+    AccountDb = kz_accounts:format_account_db(AssignedTo),
     case kz_datamgr:ensure_saved(AccountDb, to_json(PhoneNumber)) of
         {'error', E} ->
             lager:error("failed to assign number ~s to ~s"
@@ -803,7 +803,7 @@ assign(PhoneNumber, AssignedTo) ->
 -spec unassign(knm_phone_number(), ne_binary()) -> knm_phone_number().
 unassign(PhoneNumber) ->
     PrevAssignedTo = prev_assigned_to(PhoneNumber),
-    case kz_util:is_empty(PrevAssignedTo) of
+    case kz_term:is_empty(PrevAssignedTo) of
         'true' ->
             lager:debug("prev_assigned_to is is empty for ~s, ignoring"
                         ,[number(PhoneNumber)]
@@ -831,7 +831,7 @@ unassign(PhoneNumber, PrevAssignedTo) ->
 
 -spec do_unassign(knm_phone_number(), ne_binary()) -> knm_phone_number().
 do_unassign(PhoneNumber, PrevAssignedTo) ->
-    AccountDb = kz_util:format_account_db(PrevAssignedTo),
+    AccountDb = kz_accounts:format_account_db(PrevAssignedTo),
     case kz_datamgr:del_doc(AccountDb, to_json(PhoneNumber)) of
         {'error', E} ->
             lager:error("failed to unassign number ~s from ~s"
@@ -849,7 +849,7 @@ do_unassign(PhoneNumber, PrevAssignedTo) ->
                                    {'ok', kz_json:object()} |
                                    {'error', any()}.
 get_number_in_account(AccountId, Num) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kz_accounts:format_account_db(AccountId),
     kz_datamgr:open_cache_doc(AccountDb, Num).
 -endif.
 
@@ -875,12 +875,12 @@ delete_number_doc(Number) ->
 -spec maybe_remove_number_from_account(knm_phone_number()) -> knm_phone_number_return().
 maybe_remove_number_from_account(Number) ->
     AssignedTo = assigned_to(Number),
-    case kz_util:is_empty(AssignedTo) of
+    case kz_term:is_empty(AssignedTo) of
         'true' ->
             lager:debug("assigned_to is is empty for ~s, ignoring", [number(Number)]),
             {'ok', Number};
         'false' ->
-            case kz_datamgr:del_doc(kz_util:format_account_db(AssignedTo), to_json(Number)) of
+            case kz_datamgr:del_doc(kz_accounts:format_account_db(AssignedTo), to_json(Number)) of
                 {'error', _R}=E -> E;
                 {'ok', _} -> {'ok', Number}
             end

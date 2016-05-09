@@ -114,11 +114,11 @@ refresh() ->
 
 -spec refresh(binary() | string()) -> 'ok'.
 refresh(<<Account/binary>>) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
     Views = kapps_util:get_views_json('callflow', "views"),
     kapps_util:update_views(AccountDb, Views);
 refresh(Account) ->
-    refresh(kz_util:to_binary(Account)).
+    refresh(kz_term:to_binary(Account)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -189,7 +189,7 @@ do_recorded_name_migration(Db, MediaId, OwnerId) ->
 migrate_menus() ->
     [migrate_menus(Account) || Account <- kapps_util:get_all_accounts('raw')].
 migrate_menus(Account) ->
-    Db = kz_util:format_account_id(Account, 'encoded'),
+    Db = kz_accounts:format_account_id(Account, 'encoded'),
     lager:info("migrating all menus in ~s", [Db]),
     case kz_datamgr:get_results(Db, <<"menus/crossbar_listing">>, ['include_docs']) of
         {'ok', []} ->
@@ -212,7 +212,7 @@ do_menu_migration(Menu, Db) ->
         {'ok', Bin} ->
             Name = <<(kz_json:get_value(<<"name">>, Doc, <<>>))/binary, " menu greeting">>,
             MediaId = create_media_doc(Name, <<"menu">>, MenuId, Db),
-            AName = <<(kz_util:to_hex_binary(crypto:rand_bytes(16)))/binary, ".mp3">>,
+            AName = <<(kz_term:to_hex_binary(crypto:rand_bytes(16)))/binary, ".mp3">>,
             {'ok', _} = kz_datamgr:put_attachment(Db, MediaId, AName, Bin),
             'ok' = update_doc([<<"media">>, <<"greeting">>], MediaId, MenuId, Db),
             'ok' = update_doc([<<"pvt_vsn">>], <<"2">>, MenuId, Db),
@@ -273,12 +273,12 @@ update_doc(Key, Value, Id, Db) ->
 
 -spec account_set_classifier_inherit(ne_binary(), ne_binary()) -> 'ok'.
 account_set_classifier_inherit(Classifier, Account) ->
-    {'ok', AccountDb} = kapps_util:get_accounts_by_name(kz_util:normalize_account_name(Account)),
+    {'ok', AccountDb} = kapps_util:get_accounts_by_name(kz_accounts:normalize_account_name(Account)),
     set_account_classifier_action(<<"inherit">>, Classifier, AccountDb).
 
 -spec account_set_classifier_deny(ne_binary(), ne_binary()) -> 'ok'.
 account_set_classifier_deny(Classifier, Account) ->
-    {'ok', AccountDb} = kapps_util:get_accounts_by_name(kz_util:normalize_account_name(Account)),
+    {'ok', AccountDb} = kapps_util:get_accounts_by_name(kz_accounts:normalize_account_name(Account)),
     set_account_classifier_action(<<"deny">>, Classifier, AccountDb).
 
 -spec all_accounts_set_classifier_inherit(ne_binary()) -> 'ok'.
@@ -299,7 +299,7 @@ all_accounts_set_classifier_deny(Classifier) ->
 set_account_classifier_action(Action, Classifier, AccountDb) ->
     'true' = is_classifier(Classifier),
     io:format("found account: ~p", [get_account_name_by_db(AccountDb)]),
-    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+    AccountId = kz_accounts:format_account_id(AccountDb, 'raw'),
 
     kz_datamgr:update_doc(AccountDb, AccountId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
     kz_datamgr:update_doc(<<"accounts">>, AccountId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
@@ -387,10 +387,10 @@ is_classifier(Classifier) ->
 %%--------------------------------------------------------------------
 -spec list_account_restrictions(ne_binary()) -> 'ok'.
 list_account_restrictions(Account) ->
-    {'ok', AccountDb} = kapps_util:get_accounts_by_name(kz_util:normalize_account_name(Account)),
-    DbNameEncoded = kz_util:format_account_id(AccountDb,'encoded'),
+    {'ok', AccountDb} = kapps_util:get_accounts_by_name(kz_accounts:normalize_account_name(Account)),
+    DbNameEncoded = kz_accounts:format_account_id(AccountDb,'encoded'),
     io:format("\nAccount level classifiers:\n\n"),
-    print_call_restrictions(DbNameEncoded, kz_util:format_account_id(AccountDb,'raw')),
+    print_call_restrictions(DbNameEncoded, kz_accounts:format_account_id(AccountDb,'raw')),
     print_users_level_call_restrictions(DbNameEncoded),
     print_devices_level_call_restrictions(DbNameEncoded),
     print_trunkstore_call_restrictions(DbNameEncoded).
@@ -464,20 +464,20 @@ update_feature_codes() ->
 -spec update_feature_codes(ne_binary()) -> 'ok'.
 update_feature_codes(Account)
   when not is_binary(Account) ->
-    update_feature_codes(kz_util:to_binary(Account));
+    update_feature_codes(kz_term:to_binary(Account));
 update_feature_codes(Account) ->
-    AccountDb = kz_util:format_account_db(Account),
+    AccountDb = kz_accounts:format_account_db(Account),
     case kz_datamgr:get_results(AccountDb, ?LIST_BY_PATTERN, ['include_docs']) of
         {'error', _Reason} ->
             io:format("error listing feature code patterns: ~p\n", [_Reason]);
         {'ok', Patterns} ->
-            AccountId = kz_util:format_account_id(Account, 'raw'),
+            AccountId = kz_accounts:format_account_id(Account, 'raw'),
             io:format("~s : looking through patterns...\n", [AccountId]),
             maybe_update_feature_codes(AccountDb, Patterns)
     end.
 
 maybe_update_feature_codes(Db, []) ->
-    io:format("~s : feature codes up to date\n", [kz_util:format_account_id(Db, 'raw')]);
+    io:format("~s : feature codes up to date\n", [kz_accounts:format_account_id(Db, 'raw')]);
 maybe_update_feature_codes(Db, [Pattern|Patterns]) ->
     DocId = kz_doc:id(Pattern),
     Regex = kz_json:get_value(<<"key">>, Pattern),

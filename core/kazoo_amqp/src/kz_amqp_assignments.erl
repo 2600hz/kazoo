@@ -427,7 +427,7 @@ move_channel_to_consumer(#kz_amqp_assignment{timestamp=Timestamp
         ConsumerAssignment#kz_amqp_assignment{channel=Channel
                                               ,channel_ref=ChannelRef
                                               ,connection=Connection
-                                              ,assigned=kz_util:current_tstamp()
+                                              ,assigned=kz_time:current_tstamp()
                                              },
     %% Update the consumer assignment with all the channel information
     ets:insert(?TAB, Assignment#kz_amqp_assignment{reconnect='false'
@@ -458,7 +458,7 @@ add_consumer_to_channel(#kz_amqp_assignment{channel=Channel
     Assignment =
         ChannelAssignment#kz_amqp_assignment{consumer=Consumer
                                              ,consumer_ref=Ref
-                                             ,assigned=kz_util:current_tstamp()
+                                             ,assigned=kz_time:current_tstamp()
                                              ,type=Type
                                             },
     %% Add the consumer to the channel assignment
@@ -574,14 +574,14 @@ assign_channel(#kz_amqp_assignment{timestamp=Timestamp
                                                 ,channel_ref=Ref
                                                 ,broker=Broker
                                                 ,connection=Connection
-                                                ,assigned=kz_util:current_tstamp()
+                                                ,assigned=kz_time:current_tstamp()
                                                },
     %% Add the new channel to the consumer assignment (reservation/wrong broker)
     ets:insert(?TAB, Assigment#kz_amqp_assignment{reconnect='false'
                                                   ,watchers=sets:new()
                                                  }),
     lager:debug("assigned consumer ~p new channel ~p on ~s after ~pus"
-                ,[Consumer, Channel, Broker, kz_util:elapsed_us(Timestamp)]),
+                ,[Consumer, Channel, Broker, kz_time:elapsed_us(Timestamp)]),
     register_channel_handlers(Channel, Consumer),
     _ = maybe_reconnect(Assigment),
     _ = send_notifications(Assigment),
@@ -856,7 +856,7 @@ find_reference(Ref) ->
 -spec log_short_lived(kz_amqp_assignment()) -> 'ok'.
 log_short_lived(#kz_amqp_assignment{assigned='undefined'}) -> 'ok';
 log_short_lived(#kz_amqp_assignment{assigned=Timestamp}=Assignment) ->
-    Duration = kz_util:elapsed_s(Timestamp),
+    Duration = kz_time:elapsed_s(Timestamp),
     case Duration < 5 of
         'false' -> 'ok';
         'true' ->

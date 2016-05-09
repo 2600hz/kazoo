@@ -332,11 +332,11 @@ normalize_view_results(JObj, Acc) ->
 -spec upload_csv(cb_context:context()) -> 'ok'.
 upload_csv(Context) ->
     _ = cb_context:put_reqid(Context),
-    Now = kz_util:now(),
+    Now = kz_time:now(),
     {'ok', {Count, Rates}} = process_upload_file(Context),
-    lager:debug("trying to save ~b rates (took ~b ms to process)", [Count, kz_util:elapsed_ms(Now)]),
+    lager:debug("trying to save ~b rates (took ~b ms to process)", [Count, kz_time:elapsed_ms(Now)]),
     _  = crossbar_doc:save(cb_context:set_doc(Context, Rates), [{'publish_doc', 'false'}]),
-    lager:debug("it took ~b milli to process and save ~b rates", [kz_util:elapsed_ms(Now), Count]).
+    lager:debug("it took ~b milli to process and save ~b rates", [kz_time:elapsed_ms(Now), Count]).
 
 -spec process_upload_file(cb_context:context()) ->
                                  {'ok', {non_neg_integer(), kz_json:objects()}}.
@@ -403,12 +403,12 @@ process_row(Row, {Count, JObjs}=Acc) ->
             %% The idea here is the more expensive rate will have a higher CostF
             %% and decrement it from the weight so it has a lower weight #
             %% meaning it should be more likely used
-            Weight = constrain_weight(byte_size(kz_util:to_binary(Prefix)) * 10
+            Weight = constrain_weight(byte_size(kz_term:to_binary(Prefix)) * 10
                                       - trunc(InternalRate * 100)),
-            Id = <<ISO/binary, "-", (kz_util:to_binary(Prefix))/binary>>,
+            Id = <<ISO/binary, "-", (kz_term:to_binary(Prefix))/binary>>,
             Props = props:filter_undefined(
                       [{<<"_id">>, Id}
-                       ,{<<"prefix">>, kz_util:to_binary(Prefix)}
+                       ,{<<"prefix">>, kz_term:to_binary(Prefix)}
                        ,{<<"weight">>, Weight}
                        ,{<<"description">>, Description}
                        ,{<<"rate_name">>, Id}
@@ -423,7 +423,7 @@ process_row(Row, {Count, JObjs}=Acc) ->
                        ,{<<"rate_cost">>, get_row_rate(Row)}
                        ,{<<"direction">>, get_row_direction(Row)}
                        ,{<<"pvt_rate_surcharge">>, get_row_internal_surcharge(Row)}
-                       ,{<<"routes">>, [<<"^\\+", (kz_util:to_binary(Prefix))/binary, "(\\d*)$">>]}
+                       ,{<<"routes">>, [<<"^\\+", (kz_term:to_binary(Prefix))/binary, "(\\d*)$">>]}
                        ,{<<"options">>, []}
                       ]),
 
@@ -432,7 +432,7 @@ process_row(Row, {Count, JObjs}=Acc) ->
 
 -spec get_row_prefix(rate_row()) -> api_binary().
 get_row_prefix([Prefix | _]=_R) ->
-    try kz_util:to_integer(Prefix) of
+    try kz_term:to_integer(Prefix) of
         P -> P
     catch
         _:_ ->
@@ -444,63 +444,63 @@ get_row_prefix(_R) ->
     'undefined'.
 
 -spec get_row_iso(rate_row()) -> ne_binary().
-get_row_iso([_, ISO | _]) -> strip_quotes(kz_util:to_binary(ISO));
+get_row_iso([_, ISO | _]) -> strip_quotes(kz_term:to_binary(ISO));
 get_row_iso(_R) ->
     lager:info("iso not found on row: ~p", [_R]),
     <<"XX">>.
 
 -spec get_row_description(rate_row()) -> api_binary().
 get_row_description([_, _, Description | _]) ->
-    strip_quotes(kz_util:to_binary(Description));
+    strip_quotes(kz_term:to_binary(Description));
 get_row_description(_R) ->
     lager:info("description not found on row: ~p", [_R]),
     'undefined'.
 
 -spec get_row_internal_surcharge(rate_row()) -> api_float().
 get_row_internal_surcharge([_, _, _, InternalSurcharge, _, _ | _]) ->
-    kz_util:to_float(InternalSurcharge);
+    kz_term:to_float(InternalSurcharge);
 get_row_internal_surcharge(_R) ->
     lager:info("internal surcharge not found on row: ~p", [_R]),
     'undefined'.
 
 -spec get_row_surcharge(rate_row()) -> api_float().
 get_row_surcharge([_, _, _, Surcharge, _, _]) ->
-    kz_util:to_float(Surcharge);
+    kz_term:to_float(Surcharge);
 get_row_surcharge([_, _, _, _, Surcharge, _ | _]) ->
-    kz_util:to_float(Surcharge);
+    kz_term:to_float(Surcharge);
 get_row_surcharge([_|_]=_R) ->
     lager:info("surcharge not found on row: ~p", [_R]),
     'undefined'.
 
 -spec get_row_internal_rate(rate_row()) -> api_float().
 get_row_internal_rate([_, _, _, Rate]) ->
-    kz_util:to_float(Rate);
+    kz_term:to_float(Rate);
 get_row_internal_rate([_, _, _, InternalRate, _]) ->
-    kz_util:to_float(InternalRate);
+    kz_term:to_float(InternalRate);
 get_row_internal_rate([_, _, _, _, InternalRate, _]) ->
-    kz_util:to_float(InternalRate);
+    kz_term:to_float(InternalRate);
 get_row_internal_rate([_, _, _, _, _, InternalRate | _]) ->
-    kz_util:to_float(InternalRate);
+    kz_term:to_float(InternalRate);
 get_row_internal_rate([_|_]=_R) ->
     lager:info("internal rate not found on row: ~p", [_R]),
     'undefined'.
 
 -spec get_row_rate(rate_row()) -> api_float().
-get_row_rate([_, _, _, Rate]) -> kz_util:to_float(Rate);
-get_row_rate([_, _, _, _, Rate]) -> kz_util:to_float(Rate);
-get_row_rate([_, _, _, _, _, Rate]) -> kz_util:to_float(Rate);
-get_row_rate([_, _, _, _, _, _, Rate | _]) -> kz_util:to_float(Rate);
+get_row_rate([_, _, _, Rate]) -> kz_term:to_float(Rate);
+get_row_rate([_, _, _, _, Rate]) -> kz_term:to_float(Rate);
+get_row_rate([_, _, _, _, _, Rate]) -> kz_term:to_float(Rate);
+get_row_rate([_, _, _, _, _, _, Rate | _]) -> kz_term:to_float(Rate);
 get_row_rate([_|_]=_R) ->
     lager:info("rate not found on row: ~p", [_R]),
     'undefined'.
 
 get_row_routes([_, _, _, _, _, _, _, Routes | _]) ->
-    [kz_util:to_binary(X) || X <- string:tokens(kz_util:to_list(Routes), ";")];
+    [kz_term:to_binary(X) || X <- string:tokens(kz_term:to_list(Routes), ";")];
 get_row_routes([_|_]) ->
     'undefined'.
 
 get_row_increment([_, _, _, _, _, _, _, _, Increment | _]) ->
-    case kz_util:to_float(Increment) of
+    case kz_term:to_float(Increment) of
         Inc when Inc < 10 -> 10;
         Inc -> Inc
     end;
@@ -508,7 +508,7 @@ get_row_increment([_|_]) ->
     60.
 
 get_row_minimum([_, _, _, _, _, _, _, _, _, Minimum | _]) ->
-    case kz_util:to_float(Minimum) of
+    case kz_term:to_float(Minimum) of
         Min when Min < 10 -> 10;
         Min -> Min
     end;
@@ -516,7 +516,7 @@ get_row_minimum([_|_]) ->
     60.
 
 get_row_direction([_, _, _, _, _, _, _, _, _, _, Direction | _]) ->
-    [kz_util:to_binary(X) || X <- string:tokens(kz_util:to_list(Direction), ";")];
+    [kz_term:to_binary(X) || X <- string:tokens(kz_term:to_list(Direction), ";")];
 get_row_direction([_|_]) ->
     'undefined'.
 
@@ -533,10 +533,10 @@ constrain_weight(X) -> X.
 save_processed_rates(Context, Count) ->
     kz_util:spawn(
       fun() ->
-              Now = kz_util:now(),
+              Now = kz_time:now(),
               _ = cb_context:put_reqid(Context),
               _ = crossbar_doc:save(Context, [{'publish_doc', 'false'}]),
-              lager:debug("saved up to ~b docs (took ~b ms)", [Count, kz_util:elapsed_ms(Now)])
+              lager:debug("saved up to ~b docs (took ~b ms)", [Count, kz_time:elapsed_ms(Now)])
       end).
 
 -spec rate_for_number(ne_binary(), cb_context:context()) -> cb_context:context().

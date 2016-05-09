@@ -116,7 +116,7 @@ load_default_apps() ->
 -spec create_apps_store_doc(ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 create_apps_store_doc(Account) ->
     Doc = kzd_apps_store:new(Account),
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
     kz_datamgr:save_doc(AccountDb, Doc).
 
 %%%===================================================================
@@ -143,7 +143,7 @@ get_apps_store_doc(Account) ->
 %%--------------------------------------------------------------------
 -spec get_user_priv_level(ne_binary(), ne_binary()) -> binary().
 get_user_priv_level(AccountId, UserId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:open_cache_doc(AccountDb, UserId) of
         {'error', _R} ->
             lager:error("failed to open user ~s in ~s", [UserId, AccountDb]),
@@ -161,7 +161,7 @@ get_user_priv_level(AccountId, UserId) ->
 has_all_apps_in_service_plan(ServicePlan) ->
     %% If the "ui_apps" key is empty, return true
     %% else "ui_apps._all.enabled" == true
-    kz_util:is_empty(kzd_service_plan:category(ServicePlan, ?PLAN_CATEGORY))
+    kz_term:is_empty(kzd_service_plan:category(ServicePlan, ?PLAN_CATEGORY))
         orelse kzd_item_plan:is_enabled(kzd_service_plan:category_plan(ServicePlan, ?PLAN_CATEGORY)).
 
 %%--------------------------------------------------------------------
@@ -268,10 +268,10 @@ maybe_set_account(Account, Doc) ->
 %%--------------------------------------------------------------------
 -spec set_account(ne_binary(), kz_json:object()) -> kz_json:object().
 set_account(Account, JObj) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
     Corrected =
         kz_json:set_values(
-          [{<<"pvt_account_id">>, kz_util:format_account_id(Account, 'raw')}
+          [{<<"pvt_account_id">>, kz_accounts:format_account_id(Account, 'raw')}
            ,{<<"pvt_account_db">>, AccountDb}
           ], JObj),
     case kz_datamgr:save_doc(AccountDb, Corrected) of
@@ -334,7 +334,7 @@ find_enabled_apps_fold(AppName, PlanApp, Acc) ->
 -spec find_app(ne_binary(), kz_json:object()) -> api_object().
 find_app(AppId, PlanApp) ->
     Account = kz_json:get_first_defined([<<"account_db">>, <<"account_id">>], PlanApp),
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
     case kz_datamgr:open_cache_doc(AccountDb, AppId) of
         {'ok', JObj} -> JObj;
         {'error', _R} ->

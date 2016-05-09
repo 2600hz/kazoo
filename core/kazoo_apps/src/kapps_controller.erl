@@ -73,7 +73,7 @@ start_app(App) when is_atom(App) ->
             E
     end;
 start_app(App) ->
-    start_app(kz_util:to_atom(App, 'true')).
+    start_app(kz_term:to_atom(App, 'true')).
 
 -spec stop_app(atom() | nonempty_string() | ne_binary()) -> 'ok' | {'error', any()}.
 stop_app(App) when is_atom(App) ->
@@ -86,7 +86,7 @@ stop_app(App) when is_atom(App) ->
             Err
     end;
 stop_app(App) ->
-    stop_app(kz_util:to_atom(App)).
+    stop_app(kz_term:to_atom(App)).
 
 -spec restart_app(atom() | nonempty_string() | ne_binary()) -> 'ok' | {'error', any()}.
 restart_app(App) when is_atom(App) ->
@@ -94,7 +94,7 @@ restart_app(App) when is_atom(App) ->
     _ = stop_app(App),
     start_app(App);
 restart_app(App) ->
-    restart_app(kz_util:to_atom(App, 'true')).
+    restart_app(kz_term:to_atom(App, 'true')).
 
 -spec running_apps() -> atoms() | string().
 -spec running_apps(boolean()) -> atoms() | string().
@@ -102,7 +102,7 @@ running_apps() ->
     running_apps('false').
 
 running_apps(Verbose) ->
-    case kz_util:is_true(Verbose) of
+    case kz_term:is_true(Verbose) of
         'true' -> running_apps_verbose();
         'false' -> running_apps_list()
     end.
@@ -113,7 +113,7 @@ running_apps_verbose() ->
         [] -> "kapps have not started yet, check that rabbitmq and bigcouch/haproxy are running at the configured addresses";
         Resp ->
             lists:sort(
-              [kz_util:to_binary(io_lib:format("~s(~s): ~s~n", [App, Vsn, Desc]))
+              [kz_term:to_binary(io_lib:format("~s(~s): ~s~n", [App, Vsn, Desc]))
                || {App, Desc, Vsn} <- Resp
               ]
              )
@@ -147,7 +147,7 @@ initialize_kapps() ->
                  KAZOO_APPS ->
                      string:tokens(KAZOO_APPS, ", ")
              end,
-    StartWhApps = [kz_util:to_atom(WhApp, 'true') || WhApp <- WhApps],
+    StartWhApps = [kz_term:to_atom(WhApp, 'true') || WhApp <- WhApps],
 
     _ = [start_app(A) || A <- lists:sort(fun sysconf_first/2, StartWhApps)],
     lager:notice("auto-started kapps ~p", [StartWhApps]).
@@ -162,7 +162,7 @@ list_apps() ->
     case get_running_apps() of
         [] ->
             WhApps = kapps_config:get(?MODULE, <<"kapps">>, ?DEFAULT_KAPPS),
-            [kz_util:to_atom(WhApp, 'true') || WhApp <- WhApps];
+            [kz_term:to_atom(WhApp, 'true') || WhApp <- WhApps];
         Resp -> [App || {App, _, _} <- Resp]
     end.
 

@@ -155,12 +155,12 @@
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
--define(YR_TO_MICRO(Y), kz_util:to_integer(Y)*365*24*3600*1000000).
--define(DAY_TO_MICRO(D), kz_util:to_integer(D)*24*3600*1000000).
--define(HR_TO_MICRO(Hr), kz_util:to_integer(Hr)*3600*1000000).
--define(MIN_TO_MICRO(Min), kz_util:to_integer(Min)*60*1000000).
--define(SEC_TO_MICRO(Sec), kz_util:to_integer(Sec)*1000000).
--define(MILLI_TO_MICRO(Mil), kz_util:to_integer(Mil)*1000).
+-define(YR_TO_MICRO(Y), kz_term:to_integer(Y)*365*24*3600*1000000).
+-define(DAY_TO_MICRO(D), kz_term:to_integer(D)*24*3600*1000000).
+-define(HR_TO_MICRO(Hr), kz_term:to_integer(Hr)*3600*1000000).
+-define(MIN_TO_MICRO(Min), kz_term:to_integer(Min)*60*1000000).
+-define(SEC_TO_MICRO(Sec), kz_term:to_integer(Sec)*1000000).
+-define(MILLI_TO_MICRO(Mil), kz_term:to_integer(Mil)*1000).
 
 -define(FS_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 
@@ -193,9 +193,9 @@
 -spec start_link(atom(), kz_proplist()) -> startlink_ret().
 start_link(Node) -> start_link(Node, []).
 start_link(Node, Options) ->
-    QueueName = <<(kz_util:to_binary(Node))/binary
+    QueueName = <<(kz_term:to_binary(Node))/binary
                   ,"-"
-                  ,(kz_util:to_binary(?MODULE))/binary
+                  ,(kz_term:to_binary(?MODULE))/binary
                 >>,
     gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
                                       ,{'bindings', ?BINDINGS(Node)}
@@ -225,7 +225,7 @@ hostname(Srv) ->
     case fs_node(Srv) of
         'undefined' -> 'undefined';
         Node ->
-            [_, Hostname] = binary:split(kz_util:to_binary(Node), <<"@">>),
+            [_, Hostname] = binary:split(kz_term:to_binary(Node), <<"@">>),
             Hostname
     end.
 
@@ -273,7 +273,7 @@ fs_node(Srv) ->
 
 -spec find_srv(fs_node()) -> pid().
 find_srv(Pid) when is_pid(Pid) -> Pid;
-find_srv(Node) when is_binary(Node) -> find_srv(kz_util:to_atom(Node));
+find_srv(Node) when is_binary(Node) -> find_srv(kz_term:to_atom(Node));
 find_srv(Node) when is_atom(Node) ->
     ecallmgr_fs_node_sup:node_srv(ecallmgr_fs_sup:find_node(Node)).
 
@@ -466,11 +466,11 @@ is_restarting(Node) ->
 is_restarting_status(UP) ->
     case re:run(UP, <<"UP (\\d+) years, (\\d+) days, (\\d+) hours, (\\d+) minutes, (\\d+) seconds, (\\d+) milliseconds, (\\d+) microseconds">>, [{'capture', 'all_but_first', 'binary'}]) of
         {'match', [Years, Days, Hours, Minutes, Seconds, _Mille, _Micro]} ->
-            Uptime = (kz_util:to_integer(Years) * ?SECONDS_IN_YEAR)
-                + (kz_util:to_integer(Days) * ?SECONDS_IN_DAY)
-                + (kz_util:to_integer(Hours) * ?SECONDS_IN_HOUR)
-                + (kz_util:to_integer(Minutes) * ?SECONDS_IN_MINUTE)
-                + kz_util:to_integer(Seconds),
+            Uptime = (kz_term:to_integer(Years) * ?SECONDS_IN_YEAR)
+                + (kz_term:to_integer(Days) * ?SECONDS_IN_DAY)
+                + (kz_term:to_integer(Hours) * ?SECONDS_IN_HOUR)
+                + (kz_term:to_integer(Minutes) * ?SECONDS_IN_MINUTE)
+                + kz_term:to_integer(Seconds),
             lager:debug("node has been up for ~b s (considered restarting: ~s)", [Uptime, Uptime < ?UPTIME_S]),
             Uptime < ?UPTIME_S;
         'nomatch' -> 'false'
@@ -539,7 +539,7 @@ process_cmd(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat) ->
 -spec execute_command(atom(), kz_proplist(), ne_binary(), kz_json:json_term(), cmd_results(), 'list'|'binary') ->
                              cmd_results().
 execute_command(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat) ->
-    ApiCmd = kz_util:to_atom(ApiCmd0, ?FS_CMD_SAFELIST),
+    ApiCmd = kz_term:to_atom(ApiCmd0, ?FS_CMD_SAFELIST),
     lager:debug("exec ~s on ~s", [ApiCmd, Node]),
     case freeswitch:bgapi(Node, ApiCmd, format_args(ArgFormat, ApiArg)) of
         {'ok', BGApiID} ->
@@ -558,8 +558,8 @@ execute_command(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat) ->
     end.
 
 -spec format_args('list'|'binary', api_terms()) -> api_terms().
-format_args('list', Args) -> kz_util:to_list(Args);
-format_args('binary', Args) -> kz_util:to_binary(Args).
+format_args('list', Args) -> kz_term:to_list(Args);
+format_args('binary', Args) -> kz_term:to_binary(Args).
 
 -spec process_resp(atom(), api_terms(), ne_binaries(), cmd_results()) -> cmd_results().
 process_resp(ApiCmd, ApiArg, [<<>>|Resps], Acc) ->
@@ -660,7 +660,7 @@ interface_from_props(Props) ->
 split_codes(Key, Props) ->
     [Codec
      || Codec <- binary:split(props:get_value(Key, Props, <<>>), <<",">>, ['global'])
-            ,not kz_util:is_empty(Codec)
+            ,not kz_term:is_empty(Codec)
     ].
 
 -spec probe_capabilities(atom()) -> 'ok'.
@@ -677,9 +677,9 @@ probe_capabilities(Node, PossibleCapabilities) ->
 maybe_add_capability(Node, Capability) ->
     Module = kz_json:get_value(<<"module">>, Capability),
     lager:debug("probing ~s about ~s", [Node, Module]),
-    case freeswitch:api(Node, 'module_exists', kz_util:to_binary(Module)) of
+    case freeswitch:api(Node, 'module_exists', kz_term:to_binary(Module)) of
         {'ok', Maybe} ->
-            case kz_util:is_true(Maybe) of
+            case kz_term:is_true(Maybe) of
                 'true' ->
                     lager:debug("adding capability of ~s", [Module]),
                     ecallmgr_fs_nodes:add_capability(Node, kz_json:set_value(<<"is_loaded">>, 'true', Capability));
@@ -699,8 +699,8 @@ maybe_replay_registrations(Node) ->
 replay_registration(_Node, [[]]) -> 'ok';
 replay_registration(_Node, []) -> 'ok';
 replay_registration(Node, [Reg | Regs]) ->
-    Payload = [{<<"FreeSWITCH-Nodename">>, kz_util:to_binary(Node)}
-               ,{<<"Event-Timestamp">>, round(kz_util:current_tstamp())}
+    Payload = [{<<"FreeSWITCH-Nodename">>, kz_term:to_binary(Node)}
+               ,{<<"Event-Timestamp">>, round(kz_time:current_tstamp())}
                | lists:map(fun({K,{F, V}}) when is_function(F,1) ->
                                    {K, F(props:get_value(V, Reg))};
                               ({K,V}) ->
@@ -720,8 +720,8 @@ replay_profile(V) ->
 
 -spec replay_expires(ne_binary()) -> pos_integer().
 replay_expires(V) ->
-    kz_util:unix_seconds_to_gregorian_seconds(kz_util:to_integer(V)) -
-        (kz_util:current_tstamp() +
+    kz_time:unix_seconds_to_gregorian_seconds(kz_term:to_integer(V)) -
+        (kz_time:current_tstamp() +
              ecallmgr_config:get_integer(<<"expires_deviation_time">>, 0)
         ).
 

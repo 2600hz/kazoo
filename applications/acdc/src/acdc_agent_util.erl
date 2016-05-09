@@ -32,7 +32,7 @@ update_status(?NE_BINARY = AccountId, AgentId, Status, Options) ->
     API = [{<<"Account-ID">>, AccountId}
            ,{<<"Agent-ID">>, AgentId}
            ,{<<"Status">>, Status}
-           ,{<<"Timestamp">>, kz_util:current_tstamp()}
+           ,{<<"Timestamp">>, kz_time:current_tstamp()}
            | Options ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kapps_util:amqp_pool_send(API, fun kapi_acdc_stats:publish_status_update/1).
@@ -71,7 +71,7 @@ most_recent_ets_status(AccountId, AgentId) ->
 -spec most_recent_db_status(ne_binary(), ne_binary()) ->
                                    {'ok', ne_binary()}.
 most_recent_db_status(AccountId, AgentId) ->
-    Opts = [{'startkey', [AgentId, kz_util:current_tstamp()]}
+    Opts = [{'startkey', [AgentId, kz_time:current_tstamp()]}
             ,{'limit', 1}
             ,'descending'
            ],
@@ -93,7 +93,7 @@ most_recent_db_status(AccountId, AgentId) ->
 -spec prev_month_recent_db_status(ne_binary(), ne_binary()) ->
                                          {'ok', ne_binary()}.
 prev_month_recent_db_status(AccountId, AgentId) ->
-    Opts = [{'startkey', [AgentId, kz_util:current_tstamp()]}
+    Opts = [{'startkey', [AgentId, kz_time:current_tstamp()]}
             ,{'limit', 1}
             ,'descending'
            ],
@@ -161,7 +161,7 @@ map_reduce_agent_statuses(AgentId, Statuses) ->
 
 reduce_agent_statuses(_, Data, {T, _}=Acc) ->
     StatT = kz_json:get_value(<<"timestamp">>, Data),
-    try kz_util:to_integer(StatT) of
+    try kz_term:to_integer(StatT) of
         Timestamp when Timestamp > T ->
             {Timestamp, Data};
         _ -> Acc
@@ -324,7 +324,7 @@ constrain_agent_view_options(AgentId, ViewOptions) ->
     case {props:get_value('startkey', ViewOptions), props:get_value('endkey', ViewOptions)} of
         {'undefined', 'undefined'} ->
             %% No time constraints, limit it to most recent time period
-            Now = kz_util:current_tstamp(),
+            Now = kz_time:current_tstamp(),
             Past = Now - Window,
             [{'startkey', [AgentId, Now]}
              ,{'endkey', [AgentId, Past]}
@@ -361,7 +361,7 @@ build_agent_view_options(AgentId, [_| ReqOptions], ViewOptions) ->
 -spec find_most_recent_fold(integer() | ne_binary(), kz_json:object(), {integer(), kz_json:object()}) ->
                                    {integer(), kz_json:object()}.
 find_most_recent_fold(K, V, {T, _V}=Acc) ->
-    try kz_util:to_integer(K) of
+    try kz_term:to_integer(K) of
         N when N > T ->
             {N, kz_doc:public_fields(V)};
         _ -> Acc

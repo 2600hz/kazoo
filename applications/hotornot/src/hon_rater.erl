@@ -102,7 +102,7 @@ maybe_get_rate_discount(JObj) ->
 
 maybe_get_rate_discount(_JObj, 'undefined') -> 'undefined';
 maybe_get_rate_discount(JObj, AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:open_cache_doc(AccountDb, <<"limits">>) of
         {'error', _R} ->
             lager:debug("unable to open account ~s definition: ~p", [AccountId, _R]),
@@ -123,17 +123,17 @@ rate_resp(Rate, JObj) ->
     PrivateCost = get_private_cost(Rate),
     lager:debug("base cost for a minute call: ~p", [BaseCost]),
     UpdateCalleeId = maybe_update_callee_id(JObj),
-    [{<<"Rate">>, kz_util:to_binary(RateCost)}
+    [{<<"Rate">>, kz_term:to_binary(RateCost)}
      ,{<<"Rate-Increment">>, kz_json:get_binary_value(<<"rate_increment">>, Rate, <<"60">>)}
-     ,{<<"Rate-Minimum">>, kz_util:to_binary(RateMinimum)}
+     ,{<<"Rate-Minimum">>, kz_term:to_binary(RateMinimum)}
      ,{<<"Discount-Percentage">>, maybe_get_rate_discount(JObj)}
-     ,{<<"Surcharge">>, kz_util:to_binary(RateSurcharge)}
+     ,{<<"Surcharge">>, kz_term:to_binary(RateSurcharge)}
      ,{<<"Prefix">>, kz_json:get_binary_value(<<"prefix">>, Rate)}
      ,{<<"Rate-Name">>, kz_json:get_binary_value(<<"rate_name">>, Rate)}
      ,{<<"Rate-Description">>, kz_json:get_binary_value(<<"description">>, Rate)}
      ,{<<"Rate-ID">>, kz_json:get_binary_value(<<"rate_id">>, Rate)}
-     ,{<<"Base-Cost">>, kz_util:to_binary(BaseCost)}
-     ,{<<"Pvt-Cost">>, kz_util:to_binary(PrivateCost)}
+     ,{<<"Base-Cost">>, kz_term:to_binary(BaseCost)}
+     ,{<<"Pvt-Cost">>, kz_term:to_binary(PrivateCost)}
      ,{<<"Rate-NoCharge-Time">>, kz_json:get_binary_value(<<"rate_nocharge_time">>, Rate)}
      ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
      ,{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, JObj)}

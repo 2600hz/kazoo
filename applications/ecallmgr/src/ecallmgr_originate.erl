@@ -38,7 +38,7 @@
                 ,queue :: api_binary()
                 ,control_pid :: api_pid()
                 ,tref :: api_reference()
-                ,fetch_id = kz_util:rand_hex_binary(16)
+                ,fetch_id = kz_term:rand_hex_binary(16)
                }).
 -type state() :: #state{}.
 
@@ -544,7 +544,7 @@ build_originate_args_from_endpoints(Action, Endpoints, JObj, FetchId) ->
 -spec get_channel_vars(kz_json:object(), ne_binary()) -> iolist().
 get_channel_vars(JObj, FetchId) ->
     CCVs = [{[<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], FetchId}
-            ,{[<<"Custom-Channel-Vars">>, <<"Ecallmgr-Node">>], kz_util:to_binary(node())}
+            ,{[<<"Custom-Channel-Vars">>, <<"Ecallmgr-Node">>], kz_term:to_binary(node())}
             ,{[<<"Custom-Channel-Vars">>, <<?CALL_INTERACTION_ID>>], ?CALL_INTERACTION_DEFAULT}
            ],
     Vars = maybe_add_loopback(JObj, CCVs),
@@ -555,7 +555,7 @@ get_channel_vars(JObj, FetchId) ->
 maybe_add_loopback(JObj, Props) ->
     case kz_json:get_binary_boolean(<<"Simplify-Loopback">>, JObj) of
         'undefined' -> Props;
-        SimpliFly -> add_loopback(kz_util:is_true(SimpliFly)) ++ Props
+        SimpliFly -> add_loopback(kz_term:is_true(SimpliFly)) ++ Props
     end.
 
 -spec add_loopback(boolean()) -> kz_proplist().
@@ -575,21 +575,21 @@ originate_execute(Node, Dialstrings, Timeout) ->
     lager:debug("executing originate on ~s: ~s", [Node, Dialstrings]),
     case freeswitch:api(Node
                         ,'originate'
-                        ,kz_util:to_list(Dialstrings)
+                        ,kz_term:to_list(Dialstrings)
                         ,Timeout*?MILLISECONDS_IN_SECOND
                        )
     of
         {'ok', <<"+OK ", ID/binary>>} ->
-            UUID = kz_util:strip_binary(binary:replace(ID, <<"\n">>, <<>>)),
+            UUID = kz_term:strip_binary(binary:replace(ID, <<"\n">>, <<>>)),
             Media = get('hold_media'),
             _Pid = kz_util:spawn(fun set_music_on_hold/3, [Node, UUID, Media]),
             {'ok', UUID};
         {'ok', Other} ->
             lager:debug("recv other 'ok': ~s", [Other]),
-            {'error', kz_util:strip_binary(binary:replace(Other, <<"\n">>, <<>>))};
+            {'error', kz_term:strip_binary(binary:replace(Other, <<"\n">>, <<>>))};
         {'error', Error} when is_binary(Error) ->
             lager:debug("error originating: ~s", [Error]),
-            {'error', kz_util:strip_binary(binary:replace(Error, <<"\n">>, <<>>))};
+            {'error', kz_term:strip_binary(binary:replace(Error, <<"\n">>, <<>>))};
         {'error', _Reason} ->
             lager:debug("error originating: ~p", [_Reason]),
             {'error', <<"unspecified">>}
@@ -634,7 +634,7 @@ create_uuid(Node) ->
             {'fs', UUID};
         {'error', _E} ->
             lager:debug("unable to get a uuid from ~s: ~p", [Node, _E]),
-            {'fs', kz_util:rand_hex_binary(18)}
+            {'fs', kz_term:rand_hex_binary(18)}
     end.
 
 create_uuid(JObj, Node) ->

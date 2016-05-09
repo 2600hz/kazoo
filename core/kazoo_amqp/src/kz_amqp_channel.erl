@@ -169,7 +169,7 @@ basic_publish(_, #'basic.publish'{exchange=_Exchange, routing_key=_RK}, AmqpMsg)
 maybe_split_routing_key(<<"consumer://", _/binary>> = RoutingKey) ->
     Size = byte_size(RoutingKey),
     {Start, _} = lists:last(binary:matches(RoutingKey, <<"/">>)),
-    {list_to_pid(kz_util:to_list(binary:part(RoutingKey, 11, Start - 11)))
+    {list_to_pid(kz_term:to_list(binary:part(RoutingKey, 11, Start - 11)))
      ,binary:part(RoutingKey, Start + 1, Size - Start - 1)};
 maybe_split_routing_key(RoutingKey) -> {'undefined', RoutingKey}.
 

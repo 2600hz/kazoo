@@ -104,10 +104,10 @@ backoff_fudge() ->
 
 -spec init(list()) -> {'ok', atom()}.
 init(_) ->
-    Self = kz_util:to_hex_binary(list_to_binary(pid_to_list(self()))),
+    Self = kz_term:to_hex_binary(list_to_binary(pid_to_list(self()))),
 
-    Module = kz_util:to_atom(
-               list_to_binary(["teletype_", Self, "_", kz_util:rand_hex_binary(4)])
+    Module = kz_term:to_atom(
+               list_to_binary(["teletype_", Self, "_", kz_term:rand_hex_binary(4)])
                ,'true'
               ),
     kz_util:put_callid(Module),

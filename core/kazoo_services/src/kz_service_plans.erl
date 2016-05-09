@@ -89,7 +89,7 @@ merge_plans(SerivcePlan, JObj) ->
 %%--------------------------------------------------------------------
 -spec add_service_plan(ne_binary(), ne_binary(), kzd_services:doc()) -> kzd_services:doc().
 add_service_plan(PlanId, ResellerId, ServicesJObj) ->
-    ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
+    ResellerDb = kz_accounts:format_account_id(ResellerId, 'encoded'),
     case kz_datamgr:open_cache_doc(ResellerDb, PlanId) of
         {'error', _R} ->
             Plan = kz_json:from_list([{<<"account_id">>, ResellerId}]),

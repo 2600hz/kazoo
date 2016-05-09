@@ -79,50 +79,50 @@
 %%--------------------------------------------------------------------
 -spec send_cmd(atom(), ne_binary(), text(), text()) -> send_cmd_ret().
 send_cmd(Node, UUID, App, Args) when not is_list(App) ->
-    send_cmd(Node, UUID, kz_util:to_list(App), Args);
+    send_cmd(Node, UUID, kz_term:to_list(App), Args);
 send_cmd(Node, UUID, "xferext", Dialplan) ->
     XferExt = [begin
                    lager:debug("building xferext on node ~s: ~s", [Node, V]),
-                   {kz_util:to_list(K), kz_util:to_list(V)}
+                   {kz_term:to_list(K), kz_term:to_list(V)}
                end || {K, V} <- Dialplan],
     'ok' = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"} | XferExt]);
 send_cmd(Node, UUID, App, Args) when not is_list(Args) ->
-    send_cmd(Node, UUID, App, kz_util:to_list(Args));
+    send_cmd(Node, UUID, App, kz_term:to_list(Args));
 send_cmd(Node, UUID, "playstop", _Args) ->
     lager:debug("execute on node ~s: uuid_break(~s all)", [Node, UUID]),
-    freeswitch:api(Node, 'uuid_break', kz_util:to_list(<<UUID/binary, " all">>));
+    freeswitch:api(Node, 'uuid_break', kz_term:to_list(<<UUID/binary, " all">>));
 send_cmd(Node, UUID, "unbridge", _) ->
     lager:debug("execute on node ~s: uuid_park(~s)", [Node, UUID]),
-    freeswitch:api(Node, 'uuid_park', kz_util:to_list(UUID));
+    freeswitch:api(Node, 'uuid_park', kz_term:to_list(UUID));
 send_cmd(Node, _UUID, "broadcast", Args) ->
     lager:debug("execute on node ~s: uuid_broadcast(~s)", [Node, Args]),
-    Resp = freeswitch:api(Node, 'uuid_broadcast', kz_util:to_list(iolist_to_binary(Args))),
+    Resp = freeswitch:api(Node, 'uuid_broadcast', kz_term:to_list(iolist_to_binary(Args))),
     lager:debug("broadcast resulted in: ~p", [Resp]),
     Resp;
 send_cmd(Node, UUID, "call_pickup", Target) ->
     Args = iolist_to_binary([UUID, " ", Target]),
     lager:debug("execute on node ~s: uuid_bridge(~s)", [Node, Args]),
-    freeswitch:api(Node, 'uuid_bridge', kz_util:to_list(Args));
+    freeswitch:api(Node, 'uuid_bridge', kz_term:to_list(Args));
 send_cmd(Node, UUID, "hangup", _) ->
     lager:debug("terminate call on node ~s", [Node]),
-    freeswitch:api(Node, 'uuid_kill', kz_util:to_list(UUID));
+    freeswitch:api(Node, 'uuid_kill', kz_term:to_list(UUID));
 send_cmd(Node, UUID, "break", _) ->
     lager:debug("break call on node ~s", [Node]),
-    freeswitch:api(Node, 'uuid_break', kz_util:to_list(UUID));
+    freeswitch:api(Node, 'uuid_break', kz_term:to_list(UUID));
 send_cmd(Node, _UUID, "audio_level", Args) ->
     lager:debug("execute on node ~s: uuid_audio ~p", [Node, Args]),
-    freeswitch:api(Node, 'uuid_audio', kz_util:to_list(iolist_to_binary(Args)));
+    freeswitch:api(Node, 'uuid_audio', kz_term:to_list(iolist_to_binary(Args)));
 send_cmd(Node, UUID, "conference", Args) ->
     Args1 = iolist_to_binary([UUID, " conference:", Args, " inline"]),
     lager:debug("starting conference on ~s: ~s", [Node, Args1]),
-    freeswitch:api(Node, 'uuid_transfer', kz_util:to_list(Args1));
+    freeswitch:api(Node, 'uuid_transfer', kz_term:to_list(Args1));
 send_cmd(Node, _UUID, "transfer", Args) ->
     lager:debug("transfering on ~s: ~s", [Node, Args]),
-    freeswitch:api(Node, 'uuid_transfer', kz_util:to_list(Args));
+    freeswitch:api(Node, 'uuid_transfer', kz_term:to_list(Args));
 send_cmd(Node, UUID, AppName, Args) ->
     Result = freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
                                              ,{"execute-app-name", AppName}
-                                             ,{"execute-app-arg", kz_util:to_list(Args)}
+                                             ,{"execute-app-arg", kz_term:to_list(Args)}
                                             ]),
     lager:debug("execute on node ~s(~s) ~s(~s): ~p"
                 ,[Node, UUID, AppName, Args, Result]
@@ -131,7 +131,7 @@ send_cmd(Node, UUID, AppName, Args) ->
 
 -spec get_expires(kz_proplist()) -> integer().
 get_expires(Props) ->
-    Expiry = kz_util:to_integer(props:get_first_defined([<<"Expires">>, <<"expires">>], Props, 300)),
+    Expiry = kz_term:to_integer(props:get_first_defined([<<"Expires">>, <<"expires">>], Props, 300)),
     round(Expiry * 1.25).
 
 -spec get_interface_properties(atom()) -> kz_proplist().
@@ -141,7 +141,7 @@ get_interface_properties(Node) ->
     get_interface_properties(Node, ?DEFAULT_FS_PROFILE).
 
 get_interface_properties(Node, Interface) ->
-    case freeswitch:api(Node, 'sofia', kz_util:to_list(list_to_binary(["status profile ", Interface]))) of
+    case freeswitch:api(Node, 'sofia', kz_term:to_list(list_to_binary(["status profile ", Interface]))) of
         {'ok', Response} ->
             R = binary:replace(Response, <<" ">>, <<>>, ['global']),
             [KV || Line <- binary:split(R, <<"\n">>, ['global']),
@@ -324,16 +324,16 @@ update_referred_to_ccv(ReferredTo, CCVs) ->
 %% "Event-Name: NAME\nEvent-Timestamp: 1234\n" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
 -spec eventstr_to_proplist(text()) -> kz_proplist().
 eventstr_to_proplist(EvtStr) ->
-    [to_kv(X, ": ") || X <- string:tokens(kz_util:to_list(EvtStr), "\n")].
+    [to_kv(X, ": ") || X <- string:tokens(kz_term:to_list(EvtStr), "\n")].
 
 -spec to_kv(nonempty_string(), nonempty_string()) -> {ne_binary(), ne_binary()}.
 to_kv(X, Separator) ->
     [K, V] = string:tokens(X, Separator),
     [{V1, _}] = kz_http_util:parse_query_string(list_to_binary(V)),
-    {kz_util:to_binary(K), kz_util:to_binary(fix_value(K, V1))}.
+    {kz_term:to_binary(K), kz_term:to_binary(fix_value(K, V1))}.
 
 fix_value("Event-Date-Timestamp", TStamp) ->
-    kz_util:microseconds_to_seconds(kz_util:to_integer(TStamp));
+    kz_time:microseconds_to_seconds(kz_term:to_integer(TStamp));
 fix_value(_K, V) -> V.
 
 -spec unserialize_fs_array(api_binary()) -> ne_binaries().
@@ -347,7 +347,7 @@ unserialize_fs_array(Single) ->
 %% "Event-Name=NAME,Event-Timestamp=1234" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
 -spec varstr_to_proplist(nonempty_string()) -> kz_proplist().
 varstr_to_proplist(VarStr) ->
-    [to_kv(X, "=") || X <- string:tokens(kz_util:to_list(VarStr), ",")].
+    [to_kv(X, "=") || X <- string:tokens(kz_term:to_list(VarStr), ",")].
 
 -spec get_setting(kz_json:key()) -> {'ok', any()}.
 -spec get_setting(kz_json:key(), Default) -> {'ok', Default | any()}.
@@ -373,18 +373,18 @@ get_fs_kv(Key, Value) ->
     get_fs_kv(Key, Value, 'undefined').
 
 get_fs_kv(<<?CHANNEL_VAR_PREFIX, Key/binary>>, Val, _) ->
-    list_to_binary([?CHANNEL_VAR_PREFIX, kz_util:to_list(Key), "=", kz_util:to_list(Val)]);
+    list_to_binary([?CHANNEL_VAR_PREFIX, kz_term:to_list(Key), "=", kz_term:to_list(Val)]);
 get_fs_kv(<<"Hold-Media">>, Media, UUID) ->
     list_to_binary(["hold_music="
-                    ,kz_util:to_list(media_path(Media, 'extant', UUID, kz_json:new()))
+                    ,kz_term:to_list(media_path(Media, 'extant', UUID, kz_json:new()))
                    ]);
 get_fs_kv(Key, Val, _) ->
     case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' ->
-            list_to_binary([?CHANNEL_VAR_PREFIX, kz_util:to_list(Key), "=", kz_util:to_list(Val)]);
+            list_to_binary([?CHANNEL_VAR_PREFIX, kz_term:to_list(Key), "=", kz_term:to_list(Val)]);
         {_, Prefix} ->
             V = maybe_sanitize_fs_value(Key, Val),
-            list_to_binary([Prefix, "=", kz_util:to_list(V), ""])
+            list_to_binary([Prefix, "=", kz_term:to_list(V), ""])
     end.
 
 -spec get_fs_key(ne_binary()) -> binary().
@@ -433,9 +433,9 @@ maybe_sanitize_fs_value(<<"Caller-ID-Name">>, Val) ->
 maybe_sanitize_fs_value(<<"Callee-ID-Name">>, Val) ->
     re:replace(Val, <<"[^a-zA-Z0-9-\s]">>, <<>>, ['global', {'return', 'binary'}]);
 maybe_sanitize_fs_value(Key, Val) when not is_binary(Key) ->
-    maybe_sanitize_fs_value(kz_util:to_binary(Key), Val);
+    maybe_sanitize_fs_value(kz_term:to_binary(Key), Val);
 maybe_sanitize_fs_value(Key, Val) when not is_binary(Val) ->
-    maybe_sanitize_fs_value(Key, kz_util:to_binary(Val));
+    maybe_sanitize_fs_value(Key, kz_term:to_binary(Val));
 maybe_sanitize_fs_value(_, Val) -> Val.
 
 %%--------------------------------------------------------------------
@@ -464,7 +464,7 @@ build_bridge_string(Endpoints, Seperator) ->
     %%  Invite-Format, To-IP, To-User, To-realm, To-DID, and Route
     BridgeStrings = build_bridge_channels(Endpoints),
     %% NOTE: dont use binary_join here as it will crash on an empty list...
-    kz_util:join_binary(lists:reverse(BridgeStrings), Seperator).
+    kz_term:join_binary(lists:reverse(BridgeStrings), Seperator).
 
 -spec endpoint_jobjs_to_records(kz_json:objects()) -> bridge_endpoints().
 -spec endpoint_jobjs_to_records(kz_json:objects(), boolean()) -> bridge_endpoints().
@@ -707,7 +707,7 @@ build_sip_channel(#bridge_endpoint{failover=Failover}=Endpoint) ->
                             {'ok', bridge_channel()} |
                             {'error', any()}.
 maybe_failover(Endpoint) ->
-    case kz_util:is_empty(Endpoint) of
+    case kz_term:is_empty(Endpoint) of
         'true' -> {'error', 'invalid'};
         'false' -> build_sip_channel(endpoint_jobj_to_record(Endpoint))
     end.
@@ -803,25 +803,25 @@ maybe_set_interface(Contact, #bridge_endpoint{sip_interface='undefined'}=Endpoin
     Options = ['ungreedy', {'capture', 'all_but_first', 'binary'}],
     case re:run(Contact, <<";fs_path=sip:(.*):\\d*;">>, Options) of
         {'match', FsPath} ->
-            SIPInterface = kz_util:to_binary(get_sip_interface_from_db(FsPath)),
+            SIPInterface = kz_term:to_binary(get_sip_interface_from_db(FsPath)),
             maybe_set_interface(Contact, Endpoint#bridge_endpoint{sip_interface=SIPInterface});
         'nomatch' ->
             <<"sofia/", ?SIP_INTERFACE, "/", Contact/binary>>
     end;
 maybe_set_interface(Contact, #bridge_endpoint{sip_interface= <<"sofia/", _/binary>>=SIPInterface}) ->
-    <<(kz_util:strip_right_binary(SIPInterface, $/))/binary, "/", Contact/binary>>;
+    <<(kz_term:strip_right_binary(SIPInterface, $/))/binary, "/", Contact/binary>>;
 maybe_set_interface(Contact, #bridge_endpoint{sip_interface=SIPInterface}) ->
     <<"sofia/", SIPInterface/binary, "/", Contact/binary>>.
 
 -spec append_channel_vars(ne_binary(), bridge_endpoint()) -> ne_binary().
 append_channel_vars(Contact, #bridge_endpoint{include_channel_vars='false'}) ->
-    'false' = kz_util:is_empty(Contact),
+    'false' = kz_term:is_empty(Contact),
     Contact;
 append_channel_vars(Contact, #bridge_endpoint{channel_vars=["[",[],"]"]}) ->
-    'false' = kz_util:is_empty(Contact),
+    'false' = kz_term:is_empty(Contact),
     Contact;
 append_channel_vars(Contact, #bridge_endpoint{channel_vars=ChannelVars}) ->
-    'false' = kz_util:is_empty(Contact),
+    'false' = kz_term:is_empty(Contact),
     list_to_binary([ChannelVars, Contact]).
 
 %%--------------------------------------------------------------------
@@ -855,7 +855,7 @@ media_path(MediaName, UUID, JObj) -> media_path(MediaName, 'new', UUID, JObj).
 media_path('undefined', _Type, _UUID, _) -> <<"silence_stream://5">>;
 media_path(<<>>, _Type, _UUID, _) -> <<"silence_stream://5">>;
 media_path(MediaName, Type, UUID, JObj) when not is_binary(MediaName) ->
-    media_path(kz_util:to_binary(MediaName), Type, UUID, JObj);
+    media_path(kz_term:to_binary(MediaName), Type, UUID, JObj);
 media_path(<<"silence">> = Media, _Type, _UUID, _) -> Media;
 media_path(<<"silence_stream://", _/binary>> = Media, _Type, _UUID, _) -> Media;
 media_path(<<"tone_stream://", _/binary>> = Media, _Type, _UUID, _) -> Media;
@@ -869,10 +869,10 @@ media_path(MediaName, Type, UUID, JObj) ->
     case lookup_media(MediaName, UUID, JObj, Type) of
         {'error', _E} ->
             lager:warning("failed to get media path for ~s: ~p", [MediaName, _E]),
-            kz_util:to_binary(MediaName);
+            kz_term:to_binary(MediaName);
         {'ok', Path} ->
             lager:debug("found path ~s for ~s", [Path, MediaName]),
-            kz_util:to_binary(get_fs_playback(Path))
+            kz_term:to_binary(get_fs_playback(Path))
     end.
 
 -spec fax_filename(ne_binary()) -> file:filename().
@@ -923,7 +923,7 @@ get_fs_playback(URI) -> maybe_playback_via_vlc(URI).
 
 -spec maybe_playback_via_vlc(ne_binary()) -> ne_binary().
 maybe_playback_via_vlc(URI) ->
-    case kz_util:is_true(ecallmgr_config:get(<<"use_vlc">>, 'false')) of
+    case kz_term:is_true(ecallmgr_config:get(<<"use_vlc">>, 'false')) of
         'false' -> maybe_playback_via_shout(URI);
         'true' ->
             lager:debug("media is streamed via VLC, prepending ~s", [URI]),
@@ -933,7 +933,7 @@ maybe_playback_via_vlc(URI) ->
 -spec maybe_playback_via_shout(ne_binary()) -> ne_binary().
 maybe_playback_via_shout(URI) ->
     case filename:extension(URI) =:= <<".mp3">>
-        andalso kz_util:is_true(ecallmgr_config:get(<<"use_shout">>, 'false'))
+        andalso kz_term:is_true(ecallmgr_config:get(<<"use_shout">>, 'false'))
     of
         'false' -> maybe_playback_via_http_cache(URI);
         'true' ->
@@ -946,7 +946,7 @@ maybe_playback_via_http_cache(<<?HTTP_GET_PREFIX, _/binary>> = URI) ->
     lager:debug("media is streamed via http_cache, using ~s", [URI]),
     URI;
 maybe_playback_via_http_cache(URI) ->
-    case kz_util:is_true(ecallmgr_config:get(<<"use_http_cache">>, 'true')) of
+    case kz_term:is_true(ecallmgr_config:get(<<"use_http_cache">>, 'true')) of
         'false' ->
             lager:debug("using straight URI ~s", [URI]),
             URI;
@@ -990,9 +990,9 @@ request_media_url(MediaName, CallId, JObj, Type) ->
     Request = kz_json:set_values(
                 props:filter_undefined(
                   [{<<"Media-Name">>, MediaName}
-                   ,{<<"Stream-Type">>, kz_util:to_binary(Type)}
+                   ,{<<"Stream-Type">>, kz_term:to_binary(Type)}
                    ,{<<"Call-ID">>, CallId}
-                   ,{<<"Msg-ID">>, kz_util:rand_hex_binary(8)}
+                   ,{<<"Msg-ID">>, kz_term:rand_hex_binary(8)}
                    | kz_api:default_headers(<<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
                   ])
                 ,JObj),
@@ -1026,7 +1026,7 @@ request_media_url(MediaName, CallId, JObj, Type) ->
 media_url_cache_props(<<"/", _/binary>> = MediaName) ->
     case binary:split(MediaName, <<"/">>, ['global']) of
         [<<>>, AccountId, MediaId] ->
-            AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+            AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
             [{'origin', {'db', AccountDb, MediaId}}];
         _Parts -> []
     end;
@@ -1035,12 +1035,12 @@ media_url_cache_props(<<"prompt://", Prompt/binary>>) ->
         [?KZ_MEDIA_DB, _MediaId] ->
             [{'origin', {'db', ?KZ_MEDIA_DB, <<"media">>}}];
         [AccountId, _MediaId] ->
-            AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+            AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
             [{'origin', {'db', AccountDb, <<"media">>}}];
         _ -> []
     end;
 media_url_cache_props(<<"tts://", Text/binary>>) ->
-    Id = kz_util:binary_md5(Text),
+    Id = kz_term:binary_md5(Text),
     [{'origin', {'db', <<"tts">>, Id}}];
 media_url_cache_props(_MediaName) -> [].
 
@@ -1080,7 +1080,7 @@ is_custom_sip_header(_Header) -> 'false'.
 -spec maybe_add_expires_deviation(api_integer()) -> api_integer().
 maybe_add_expires_deviation('undefined') -> 'undefined';
 maybe_add_expires_deviation(Expires) when not is_integer(Expires) ->
-    maybe_add_expires_deviation(kz_util:to_integer(Expires));
+    maybe_add_expires_deviation(kz_term:to_integer(Expires));
 maybe_add_expires_deviation(0) -> 0;
 maybe_add_expires_deviation(Expires) ->
     Expires + ecallmgr_config:get_integer(<<"expires_deviation_time">>, 180).
@@ -1088,7 +1088,7 @@ maybe_add_expires_deviation(Expires) ->
 -spec maybe_add_expires_deviation_ms(api_integer()) -> api_integer().
 maybe_add_expires_deviation_ms('undefined') -> 'undefined';
 maybe_add_expires_deviation_ms(Expires) when not is_integer(Expires) ->
-    maybe_add_expires_deviation_ms(kz_util:to_integer(Expires));
+    maybe_add_expires_deviation_ms(kz_term:to_integer(Expires));
 maybe_add_expires_deviation_ms(Expires) ->
     maybe_add_expires_deviation(Expires) * ?MILLISECONDS_IN_SECOND.
 
@@ -1107,7 +1107,7 @@ fix_contact(<<";", _/binary>> = OriginalContact, Username, Realm) ->
     fix_contact(<<"sip:", Username/binary, "@", Realm/binary, OriginalContact/binary>>, Username, Realm);
 fix_contact(OriginalContact, Username, Realm)
   when is_binary(OriginalContact) ->
-    fix_contact(binary:split(kz_util:strip_binary(OriginalContact), <<";">>, ['global']), Username, Realm);
+    fix_contact(binary:split(kz_term:strip_binary(OriginalContact), <<";">>, ['global']), Username, Realm);
 fix_contact([<<>> | Options], Username, Realm) ->
     [<<"sip:", Username/binary, "@", Realm/binary>> | Options];
 fix_contact([Contact | Options], Username, Realm) ->

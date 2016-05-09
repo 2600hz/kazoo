@@ -43,16 +43,16 @@ flush(Key) ->
 flush(Key, 'undefined') ->
     flush(Key);
 flush(Key, Node) when not is_binary(Key), Key =/= 'undefined' ->
-    flush(kz_util:to_binary(Key), Node);
+    flush(kz_term:to_binary(Key), Node);
 flush(Key, Node) when not is_binary(Node) ->
-    flush(Key, kz_util:to_binary(Node));
+    flush(Key, kz_term:to_binary(Node));
 flush(Key, Node) ->
     CacheKey = cache_key(Key, Node),
     kz_cache:erase_local(?ECALLMGR_UTIL_CACHE, CacheKey),
     Req = [{<<"Category">>, <<"ecallmgr">>}
            ,{<<"Key">>, Key}
            ,{<<"Node">>, Node}
-           ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
+           ,{<<"Msg-ID">>, kz_term:rand_hex_binary(16)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("flushing ~s from sysconf", [Key]),
@@ -75,14 +75,14 @@ get(Key) ->
     get(Key, 'undefined').
 
 get(Key, Default) ->
-    get(Key, Default, kz_util:to_binary(node())).
+    get(Key, Default, kz_term:to_binary(node())).
 
 get(Key, Default, 'undefined') ->
     get(Key, Default);
 get(Key, Default, Node) when not is_binary(Key) ->
-    get(kz_util:to_binary(Key), Default, Node);
+    get(kz_term:to_binary(Key), Default, Node);
 get(Key, Default, Node) when not is_binary(Node) ->
-    get(Key, Default, kz_util:to_binary(Node));
+    get(Key, Default, kz_term:to_binary(Node));
 get(Key, Default, Node) ->
     case kz_cache:fetch_local(?ECALLMGR_UTIL_CACHE, cache_key(Key, Node)) of
         {'ok', V} -> V;
@@ -106,13 +106,13 @@ get_integer(Key) ->
 get_integer(Key, Default) ->
     case get(Key, Default) of
         Default -> Default;
-        N -> kz_util:to_integer(N)
+        N -> kz_term:to_integer(N)
     end.
 
 get_integer(Key, Default, Node) ->
     case get(Key, Default, Node) of
         Default -> Default;
-        N -> kz_util:to_integer(N)
+        N -> kz_term:to_integer(N)
     end.
 
 -spec get_boolean(kz_json:key()) -> api_boolean().
@@ -124,31 +124,31 @@ get_boolean(Key) ->
 get_boolean(Key, Default) ->
     case get(Key, Default) of
         Default -> Default;
-        N -> kz_util:to_boolean(N)
+        N -> kz_term:to_boolean(N)
     end.
 
 get_boolean(Key, Default, Node) ->
     case get(Key, Default, Node) of
         Default -> Default;
-        N -> kz_util:to_boolean(N)
+        N -> kz_term:to_boolean(N)
     end.
 
 -spec is_true(kz_json:key()) -> boolean().
 -spec is_true(kz_json:key(), Default) -> boolean() | Default.
 -spec is_true(kz_json:key(), Default, kz_json:key() | atom()) -> boolean() | Default.
 is_true(Key) ->
-    kz_util:is_true(?MODULE:get(Key)).
+    kz_term:is_true(?MODULE:get(Key)).
 
 is_true(Key, Default) ->
     case ?MODULE:get(Key, Default) of
         Default -> Default;
-        N -> kz_util:is_true(N)
+        N -> kz_term:is_true(N)
     end.
 
 is_true(Key, Default, Node) ->
     case ?MODULE:get(Key, Default, Node) of
         Default -> Default;
-        N -> kz_util:is_true(N)
+        N -> kz_term:is_true(N)
     end.
 
 -spec fetch(kz_json:key()) -> kz_json:json_term() | 'undefined'.
@@ -160,25 +160,25 @@ fetch(Key) ->
     fetch(Key, 'undefined').
 
 fetch(Key, Default) ->
-    fetch(Key, Default, kz_util:to_binary(node())).
+    fetch(Key, Default, kz_term:to_binary(node())).
 
 fetch(Key, Default, 'undefined') ->
     fetch(Key, Default);
 fetch(Key, Default, Node) when not is_binary(Key) ->
-    fetch(kz_util:to_binary(Key), Default, Node);
+    fetch(kz_term:to_binary(Key), Default, Node);
 fetch(Key, Default, Node) when not is_binary(Node) ->
-    fetch(Key, Default, kz_util:to_binary(Node));
+    fetch(Key, Default, kz_term:to_binary(Node));
 fetch(Key, Default, <<_/binary>> = Node) ->
     fetch(Key, Default, Node, ?DEFAULT_FETCH_TIMEOUT);
 fetch(Key, Default, Timeout) when is_integer(Timeout) ->
-    fetch(Key, Default, kz_util:to_binary(node()), Timeout).
+    fetch(Key, Default, kz_term:to_binary(node()), Timeout).
 
 fetch(Key, Default, Node, RequestTimeout) ->
     Req = [{<<"Category">>, <<"ecallmgr">>}
            ,{<<"Key">>, Key}
            ,{<<"Default">>, Default}
            ,{<<"Node">>, Node}
-           ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
+           ,{<<"Msg-ID">>, kz_term:rand_hex_binary(16)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("looking up '~s' from sysconf", [Key]),
@@ -211,7 +211,7 @@ maybe_cache_resp(Key, Node, Value) ->
 
 -spec set(kz_json:key(), kz_json:json_term()) -> 'ok'.
 set(Key, Value) ->
-    set(Key, Value, kz_util:to_binary(node()), []).
+    set(Key, Value, kz_term:to_binary(node()), []).
 
 -spec set_default(kz_json:key(), kz_json:json_term()) -> 'ok'.
 set_default(Key, Value) ->
@@ -223,13 +223,13 @@ set_node(Key, Value) ->
 
 -spec set_node(kz_json:key(), kz_json:json_term(), ne_binary() | atom()) -> 'ok'.
 set_node(Key, Value, Node) when is_atom(Node) ->
-    set_node(Key, Value, kz_util:to_binary(Node));
+    set_node(Key, Value, kz_term:to_binary(Node));
 set_node(Key, Value, Node) ->
     set(Key, Value, Node, [{'node_specific', 'true'}]).
 
 -spec set(kz_json:key(), kz_json:json_term(), kz_json:key(), kz_proplist()) -> 'ok'.
 set(Key, Value, Node, Opt) when not is_binary(Key) ->
-    set(kz_util:to_binary(Key), Value, Node, Opt);
+    set(kz_term:to_binary(Key), Value, Node, Opt);
 set(Key, Value, Node, Opt) ->
     Props = [{<<"Category">>, <<"ecallmgr">>}
              ,{<<"Key">>, Key}
@@ -242,7 +242,7 @@ set(Key, Value, Node, Opt) ->
           ],
     ReqResp = kz_amqp_worker:call(props:filter_undefined(Req)
                                   ,fun kapi_sysconf:publish_set_req/1
-                                  ,fun kz_util:always_true/1
+                                  ,fun kz_term:always_true/1
                                  ),
     case ReqResp of
         {'ok', _} -> maybe_cache_resp(Key, Node, Value);

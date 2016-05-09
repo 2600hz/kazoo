@@ -20,7 +20,7 @@ handle(Metaflow, Call) ->
     M = kz_json:get_value(<<"module">>, Metaflow),
     Data = kz_json:get_value(<<"data">>, Metaflow, kz_json:new()),
 
-    try (kz_util:to_atom(<<"konami_", M/binary>>)):handle(Data, Call) of
+    try (kz_term:to_atom(<<"konami_", M/binary>>)):handle(Data, Call) of
         {'branch', ChildBranch, Call1} ->
             lager:debug("continuing to child metaflow from konami_~s", [M]),
             handle(find_child_metaflow(ChildBranch, Metaflow), Call1);
