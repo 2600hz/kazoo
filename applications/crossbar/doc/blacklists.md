@@ -63,11 +63,11 @@ Using Crossbar to modify Blacklist is very simple:
 
 ###### PUT - Add account blacklists:
 
-    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/blacklists -d '{"data": {"name": "Main Blacklis","numbers": {"+14151234567": {}}}}'
+    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/blacklists -d '{"data": {"name": "Main Blacklist","numbers": {"+14151234567": {}}}}'
 
 ###### POST - Update account blacklists:
 
-    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/blacklists/{ID} -d '{"data": {"name": "Main Blacklis","numbers": {"+14151234567": {}}}}'
+    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/blacklists/{ID} -d '{"data": {"name": "Main Blacklist","numbers": {"+14151234567": {}}}}'
 
 ###### DELETE - Remove account blacklists:
 
