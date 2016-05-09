@@ -333,7 +333,7 @@ number_search_response_to_json(Xml) ->
 
 -spec get_cleaned(kz_deeplist(), xml_el()) -> api_binary().
 get_cleaned(Path, Xml) ->
-    case kz_util:get_xml_value(Path, Xml) of
+    case kz_xml:value(Path, Xml) of
         'undefined' -> 'undefined';
         V -> kz_term:strip_binary(V, [$\s, $\n])
     end.

@@ -1045,15 +1045,15 @@ get_sofia_gateways_el(Xml) ->
     end.
 
 sofia_gateway_xml_to_json(Xml, JObj) ->
-    Id = kz_util:get_xml_value("/gateway/name/text()", Xml),
+    Id = kz_xml:value("/gateway/name/text()", Xml),
     InboundVars = xmerl_xpath:string("/gateway/inbound-variables/*", Xml),
     OutboundVars = xmerl_xpath:string("/gateway/outbound-variables/*", Xml),
-    Props = [{<<"Username">>, kz_util:get_xml_value("/gateway/username/text()", Xml)}
-             ,{<<"Password">>, kz_util:get_xml_value("/gateway/password/text()", Xml)}
-             ,{<<"Realm">>, kz_util:get_xml_value("/gateway/realm/text()", Xml)}
-             ,{<<"Proxy">>, kz_util:get_xml_value("/gateway/proxy/text()", Xml)}
-             ,{<<"From-Domain">>, kz_util:get_xml_value("/gateway/from/text()", Xml)}
-             ,{<<"Expire-Seconds">>, kz_util:get_xml_value("/gateway/expires/text()", Xml)}
+    Props = [{<<"Username">>, kz_xml:value("/gateway/username/text()", Xml)}
+             ,{<<"Password">>, kz_xml:value("/gateway/password/text()", Xml)}
+             ,{<<"Realm">>, kz_xml:value("/gateway/realm/text()", Xml)}
+             ,{<<"Proxy">>, kz_xml:value("/gateway/proxy/text()", Xml)}
+             ,{<<"From-Domain">>, kz_xml:value("/gateway/from/text()", Xml)}
+             ,{<<"Expire-Seconds">>, kz_xml:value("/gateway/expires/text()", Xml)}
              ,{<<"Inbound-Variables">>, sofia_gateway_vars_xml_to_json(InboundVars, kz_json:new())}
              ,{<<"Outbound-Variables">>, sofia_gateway_vars_xml_to_json(OutboundVars, kz_json:new())}
             ],
@@ -1065,6 +1065,6 @@ sofia_gateway_vars_xml_to_json(#xmlElement{}=Xml, JObj) ->
 sofia_gateway_vars_xml_to_json([], JObj) ->
     JObj;
 sofia_gateway_vars_xml_to_json([Var|Vars], JObj) ->
-    Key = kz_util:get_xml_value("/variable/@name", Var),
-    Value = kz_util:get_xml_value("/variable/@value", Var),
+    Key = kz_xml:value("/variable/@name", Var),
+    Value = kz_xml:value("/variable/@value", Var),
     sofia_gateway_vars_xml_to_json(Vars, kz_json:set_value(Key, Value, JObj)).

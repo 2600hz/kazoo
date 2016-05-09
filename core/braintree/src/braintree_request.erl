@@ -203,32 +203,32 @@ verify_response(Xml) ->
 -spec error_response(bt_xml()) -> no_return().
 error_response(Xml) ->
     lager:debug("braintree api error response"),
-    Errors = [#bt_error{code = kz_util:get_xml_value("/error/code/text()", Error)
-                        ,message = kz_util:get_xml_value("/error/message/text()", Error)
-                        ,attribute = kz_util:get_xml_value("/error/attribute/text()", Error)
+    Errors = [#bt_error{code = kz_xml:value("/error/code/text()", Error)
+                        ,message = kz_xml:value("/error/message/text()", Error)
+                        ,attribute = kz_xml:value("/error/attribute/text()", Error)
                        }
               || Error <- xmerl_xpath:string("/api-error-response/errors//errors/error", Xml)
              ],
     Verif = #bt_verification{verification_status =
-                                 kz_util:get_xml_value("/api-error-response/verification/status/text()", Xml)
+                                 kz_xml:value("/api-error-response/verification/status/text()", Xml)
                              ,processor_response_code =
-                                 kz_util:get_xml_value("/api-error-response/verification/processor-response-code/text()", Xml)
+                                 kz_xml:value("/api-error-response/verification/processor-response-code/text()", Xml)
                              ,processor_response_text =
-                                 kz_util:get_xml_value("/api-error-response/verification/processor-response-text/text()", Xml)
+                                 kz_xml:value("/api-error-response/verification/processor-response-text/text()", Xml)
                              ,cvv_response_code =
-                                 kz_util:get_xml_value("/api-error-response/verification/cvv-response-code/text()", Xml)
+                                 kz_xml:value("/api-error-response/verification/cvv-response-code/text()", Xml)
                              ,avs_response_code =
-                                 kz_util:get_xml_value("/api-error-response/verification/avs-error-response-code/text()", Xml)
+                                 kz_xml:value("/api-error-response/verification/avs-error-response-code/text()", Xml)
                              ,postal_response_code =
-                                 kz_util:get_xml_value("/api-error-response/verification/avs-postal-code-response-code/text()", Xml)
+                                 kz_xml:value("/api-error-response/verification/avs-postal-code-response-code/text()", Xml)
                              ,street_response_code =
-                                 kz_util:get_xml_value("/api-error-response/verification/avs-street-address-response-code/text()", Xml)
+                                 kz_xml:value("/api-error-response/verification/avs-street-address-response-code/text()", Xml)
                              ,gateway_rejection_reason =
-                                 kz_util:get_xml_value("/api-error-response/verification/gateway-rejection-reason/text()", Xml)
+                                 kz_xml:value("/api-error-response/verification/gateway-rejection-reason/text()", Xml)
                             },
     braintree_util:error_api(
       #bt_api_error{errors=Errors
                     ,verification=Verif
-                    ,message=kz_util:get_xml_value("/api-error-response/message/text()", Xml)
+                    ,message=kz_xml:value("/api-error-response/message/text()", Xml)
                    }
      ).
