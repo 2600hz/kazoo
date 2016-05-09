@@ -33,5 +33,8 @@ util_split 'kz_term' $kz_term_exports
 
 
 kz_time_exports='current_tstamp current_unix_tstamp decr_timeout elapsed_ms elapsed_s elapsed_us format_date format_datetime format_time gregorian_seconds_to_unix_seconds iso8601 microseconds_to_seconds milliseconds_to_seconds now now_ms now_s now_us pad_month pretty_print_datetime pretty_print_elapsed_s rfc1036 to_date to_datetime unix_seconds_to_gregorian_seconds unix_timestamp_to_gregorian_seconds'
-util_split
-'kz_time' $kz_time_exports
+util_split 'kz_time' $kz_time_exports
+
+
+kz_accounts_exports='account_update disable_account enable_account format_account_db format_account_id format_account_mod_id format_account_modb get_account_realm is_account_enabled is_account_expired is_in_account_hierarchy is_in_account_hierarchy is_system_admin is_system_db maybe_disable_account normalize_account_name set_allow_number_additions set_superduper_admin'
+util_split 'kz_accounts' $kz_accounts_exports
