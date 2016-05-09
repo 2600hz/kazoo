@@ -237,7 +237,7 @@ update_ccvs(Call) ->
         {'error', _R} -> [];
         {'ok', JObj} ->
             kz_json:to_proplist(
-              cf_util:encryption_method_map(kz_json:new(), JObj)
+              kz_endpoint:encryption_method_map(kz_json:new(), JObj)
             )
     end.
 

@@ -384,7 +384,7 @@ moh_attributes(Endpoint, Attribute, Call) ->
 -spec maybe_normalize_moh_attribute(api_binary(), ne_binary(), kapps_call:call()) -> api_binary().
 maybe_normalize_moh_attribute('undefined', _, _) -> 'undefined';
 maybe_normalize_moh_attribute(Value, <<"media_id">>, Call) ->
-    MediaId = cf_util:correct_media_path(Value, Call),
+    MediaId = kz_media_util:media_path(Value, Call),
     lager:info("found music_on_hold media_id: '~p'", [MediaId]),
     MediaId;
 maybe_normalize_moh_attribute(Value, Attribute, _) ->
@@ -473,11 +473,10 @@ presence_id(Endpoint, Call, Default) ->
 maybe_fix_presence_id_realm(PresenceId, Endpoint, Call) ->
     case binary:match(PresenceId, <<"@">>) of
         'nomatch' ->
-            Realm = cf_util:get_sip_realm(
-                      Endpoint
-                      ,kapps_call:account_id(Call)
-                      ,kapps_call:request_realm(Call)
-                     ),
+            Realm = kz_endpoint:get_sip_realm(Endpoint
+                                             ,kapps_call:account_id(Call)
+                                             ,kapps_call:request_realm(Call)
+                                             ),
             <<PresenceId/binary, $@, Realm/binary>>;
         _Else -> PresenceId
     end.

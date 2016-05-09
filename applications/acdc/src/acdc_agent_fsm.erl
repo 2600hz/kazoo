@@ -1549,7 +1549,7 @@ find_endpoint_id(_EP, EPId) -> EPId.
 monitor_endpoint(EP, AccountId, AgentListener) ->
     %% Bind for outbound call requests
     acdc_agent_listener:add_endpoint_bindings(AgentListener
-                                     ,cf_util:get_sip_realm(EP, AccountId)
+                                     ,kz_endpoint:get_sip_realm(EP, AccountId)
                                      ,find_username(EP)
                                     ),
     %% Inform us of device changes
@@ -1560,9 +1560,9 @@ monitor_endpoint(EP, AccountId, AgentListener) ->
 unmonitor_endpoint(EP, AccountId, AgentListener) ->
     %% Bind for outbound call requests
     acdc_agent_listener:remove_endpoint_bindings(AgentListener
-                                        ,cf_util:get_sip_realm(EP, AccountId)
-                                        ,find_username(EP)
-                                       ),
+                                                ,kz_endpoint:get_sip_realm(EP, AccountId)
+                                                ,find_username(EP)
+                                                ),
     %% Inform us of device changes
     catch gproc:unreg(?ENDPOINT_UPDATE_REG(AccountId, kz_doc:id(EP))),
     catch gproc:unreg(?NEW_CHANNEL_REG(AccountId, find_username(EP))).
