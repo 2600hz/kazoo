@@ -23,9 +23,11 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
--spec handle(kz_json:object(), kapps_call:call(), ne_binary()) -> 'ok'.
+-spec handle(kz_json:object(), kapps_call:call(), ne_binary()) -> kapps_call:call().
 handle(Data, Call) ->
-    cf_exe:continue(handle(Data, Call, get_action(Data))).
+    cf_exe:continue(
+      handle(Data, Call, get_action(Data))
+     ).
 
 handle(Data, Call, <<"start">>) ->
     RecID = kz_util:rand_hex_binary(16),
