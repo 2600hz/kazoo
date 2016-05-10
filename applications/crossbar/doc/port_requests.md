@@ -180,15 +180,53 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests
 ```
 
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "id": "462da37f8be11e46161fb40bc71173a9",
+        "name": "Porting 202.555.9000",
+        "numbers": {
+            "+12025559000": {}
+        },
+        "port_state": "unconfirmed"
+    },
+    "request_id": "54672607e9884437069abb7e5a891a5c",
+    "revision": "1-184548f264275cf9351872e21a195152",
+    "status": "success"
+}
+```
+
 
 #### List port request details
 
 > GET /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "created": 63630097779,
+        "id": "{PORTREQUEST_ID}",
+        "name": "Porting 202.555.9000",
+        "numbers": {
+            "+12025559000": {}
+        },
+        "port_state": "unconfirmed",
+        "sent": false,
+        "updated": 63630097779,
+        "uploads": {}
+    },
+    "request_id": "32afa58869e88fd709f88739f2d0bb12",
+    "revision": "1-184548f264275cf9351872e21a195152",
+    "status": "success"
+}
 ```
 
 
@@ -196,12 +234,35 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
-    -d '{"data":{"numbers":{"+12025559000":{"state":"NY"}}}}' \
+    -d '{"data":{"numbers":{"+12025559000":{"state":"NY"}}, "name": "{PORTREQUEST_NAME}"}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "created": 63630097779,
+        "id": "{PORTREQUEST_ID}",
+        "name": "{PORTREQUEST_NAME}",
+        "numbers": {
+            "+12025559000": {
+                "state": "NY"
+            }
+        },
+        "port_state": "unconfirmed",
+        "sent": false,
+        "updated": 63630104652,
+        "uploads": {}
+    },
+    "request_id": "aed9b0228ef02bcd92322442b02204e9",
+    "revision": "2-b43873df23aedaaa96682ec2da32e688",
+    "status": "success"
+}
 ```
 
 
@@ -209,10 +270,29 @@ curl -v -X POST \
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "id": "{PORTREQUEST_ID}",
+        "name": "Porting 202.555.9000",
+        "numbers": {
+            "+12025559000": {
+                "state": "NY"
+            }
+        },
+        "port_state": "unconfirmed"
+    },
+    "request_id": "80b315b87c9db92a2ae755c581d838a3",
+    "revision": "2-b43873df23aedaaa96682ec2da32e688",
+    "status": "success"
+}
 ```
 
 
