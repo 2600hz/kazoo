@@ -29,7 +29,7 @@ find_schema(<<_/binary>> = Schema) ->
 
 %%% Meta keywords
 %%% ===================
--spec properties(kz_json:key(), ne_binary()) -> kz_json:object().
+-spec properties(kz_json:keys(), ne_binary()) -> kz_json:object().
 properties(Key, Schema) ->
     case find_schema(Schema) of
         'undefined' ->
@@ -41,7 +41,7 @@ properties(Key, Schema) ->
 %%% Keywords
 %%% ==================================
 %% String
--spec max_length(kz_json:key(), ne_binary()) -> api_object().
+-spec max_length(kz_json:keys(), ne_binary()) -> api_object().
 max_length(Key, Schema) ->
     Properties = properties(Key, Schema),
     kz_json:get_value(?SCHEMA_KEYWORDS_MAXLENGTH, Properties).
