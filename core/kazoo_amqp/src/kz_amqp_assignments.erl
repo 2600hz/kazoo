@@ -50,7 +50,7 @@ start_link() ->
 -spec find() -> kz_amqp_assignment() | {'error', 'no_channel'}.
 find() -> find(kz_amqp_channel:consumer_pid()).
 
--spec find(pid() | ne_binary()) -> kz_amqp_assignment() | {'error', 'no_channel'}.
+-spec find(pid()) -> kz_amqp_assignment() | {'error', 'no_channel'}.
 find(Consumer) when is_pid(Consumer) ->
     Pattern = #kz_amqp_assignment{consumer=Consumer, _='_'},
     case ets:match_object(?TAB, Pattern, 1) of
@@ -61,20 +61,18 @@ find(Consumer) when is_pid(Consumer) ->
 -spec get_channel() -> kz_amqp_assignment().
 get_channel() -> get_channel(kz_amqp_channel:consumer_pid()).
 
--spec get_channel(non_neg_integer()) ->
+-spec get_channel(pid() | non_neg_integer() | 'infinity') ->
                          kz_amqp_assignment() |
-                         {'error', 'timeout'};
-                 ('infinity') -> kz_amqp_assignment();
-                 (pid()) -> kz_amqp_assignment().
+                         {'error', 'timeout'}.
 get_channel(Consumer) when is_pid(Consumer) ->
     get_channel(Consumer, 'infinity');
-get_channel(Timeout) when is_integer(Timeout); Timeout =:= 'infinity' ->
+get_channel(Timeout) when is_integer(Timeout)
+                          orelse Timeout =:= 'infinity' ->
     get_channel(kz_amqp_channel:consumer_pid(), Timeout).
 
--spec get_channel(pid(), non_neg_integer()) ->
+-spec get_channel(pid(), non_neg_integer() | 'infinity') ->
                          kz_amqp_assignment() |
-                         {'error', 'timeout'};
-                 (pid(), 'infinity') -> kz_amqp_assignment().
+                         {'error', 'timeout'}.
 get_channel(Consumer, Timeout) when is_pid(Consumer) ->
     case find(Consumer) of
         #kz_amqp_assignment{channel=Channel}=Assignment
@@ -94,7 +92,9 @@ request_channel(Consumer, Broker) when is_pid(Consumer) ->
     gen_server:call(?SERVER, {'request_sticky', Consumer, Broker}).
 
 -spec add_channel(ne_binary(), pid(), pid()) -> 'ok'.
-add_channel(Broker, Connection, Channel) when is_pid(Channel), is_binary(Broker) ->
+add_channel(Broker, Connection, Channel)
+  when is_pid(Channel)
+       andalso is_binary(Broker) ->
     case kz_amqp_connections:primary_broker() =:= Broker of
         'true' ->
             gen_server:cast(?SERVER, {'add_channel_primary_broker', Broker, Connection, Channel});
@@ -310,7 +310,8 @@ maybe_reassign(Consumer) ->
         {[#kz_amqp_assignment{channel=Channel}], _}
           when is_pid(Channel) -> 'ok';
         {[#kz_amqp_assignment{type='sticky'
-                              ,broker=Broker}=Assignment
+                              ,broker=Broker
+                             }=Assignment
          ], _} -> maybe_reassign(Assignment, Broker);
         {[#kz_amqp_assignment{type='float'}=Assignment], _} ->
             Broker = kz_amqp_connections:primary_broker(),
@@ -323,11 +324,11 @@ maybe_reassign(Consumer) ->
 maybe_reassign(_, 'undefined') -> 'undefined';
 maybe_reassign(_, '$end_of_table') -> 'undefined';
 maybe_reassign(#kz_amqp_assignment{consumer=_Consumer}=ConsumerAssignment
-               ,{[#kz_amqp_assignment{timestamp=Timestamp
-                                      ,channel=Channel
-                                      ,broker=_Broker
-                                     }=ChannelAssignment
-                 ], Continuation}) ->
+              ,{[#kz_amqp_assignment{timestamp=Timestamp
+                                    ,channel=Channel
+                                    ,broker=_Broker
+                                    }=ChannelAssignment
+                ], Continuation}) ->
     %% This is a minor optimization and still allows a dying channel to be
     %% re-assigned prior to the notification that a broker is down. However,
     %% it very unlikely and well handled if it does happen (when the new
@@ -792,16 +793,21 @@ reassign_props('sticky') ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec add_watcher(pid(), pid()) -> 'ok'.
 add_watcher(Consumer, Watcher) ->
     case find(Consumer) of
         #kz_amqp_assignment{channel=Channel}=Assignment
           when is_pid(Channel) ->
-            Watcher ! Assignment;
+            Watcher ! Assignment,
+            'ok';
         #kz_amqp_assignment{watchers=Watchers
-                            ,timestamp=Timestamp} ->
+                           ,timestamp=Timestamp
+                           } ->
             W = sets:add_element(Watcher, Watchers),
             Props = [{#kz_amqp_assignment.watchers, W}],
-            ets:update_element(?TAB, Timestamp, Props)
+            ets:update_element(?TAB, Timestamp, Props),
+            'ok';
+        {'error', 'no_channel'} -> 'ok'
     end.
 
 -spec wait_for_assignment('infinity') -> kz_amqp_assignment();
@@ -836,15 +842,17 @@ request_and_wait(Consumer, Broker, Timeout) when is_pid(Consumer) ->
 -spec find_reference(reference()) -> down_matches().
 find_reference(Ref) ->
     MatchSpec = [{#kz_amqp_assignment{channel_ref=Ref
-                                      ,_='_'}
-                  ,[]
-                  ,[{{'channel', '$_'}}]
+                                      ,_='_'
+                                     }
+                 ,[]
+                 ,[{{'channel', '$_'}}]
                  }
-                 ,{#kz_amqp_assignment{consumer_ref=Ref
-                                       ,_='_'}
-                   ,[]
-                   ,[{{'consumer', '$_'}}]
-                  }],
+                ,{#kz_amqp_assignment{consumer_ref=Ref
+                                      ,_='_'
+                                     }
+                 ,[]
+                 ,[{{'consumer', '$_'}}]
+                 }],
     ets:select(?TAB, MatchSpec).
 
 %%--------------------------------------------------------------------
