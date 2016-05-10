@@ -1733,7 +1733,7 @@ uri(URI, QueryString) ->
         {Scheme, Host, Path, <<>>, Fragment} ->
             kz_http_util:urlunsplit({Scheme, Host, Path, QueryString, Fragment});
         {Scheme, Host, Path, QS, Fragment} ->
-            kz_http_util:urlunsplit({Scheme, Host, Path, <<QS/binary, "&", QueryString/binary>>, Fragment})
+            kz_http_util:urlunsplit({Scheme, Host, Path, <<QS/binary, "&", (kz_util:to_binary(QueryString))/binary>>, Fragment})
     end.
 
 -spec apply_state_updates(fsm_state()) -> {'next_state', atom(), fsm_state()}.
