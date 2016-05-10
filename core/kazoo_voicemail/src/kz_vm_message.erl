@@ -241,10 +241,10 @@ save_meta(Length, Action, Call, MediaId, BoxId) ->
 -spec save_metadata(kz_json:object(), ne_binary(), ne_binary(), update_funs()) -> db_ret().
 save_metadata(NewMessage, AccountId, MessageId, Funs) ->
     UpdateFuns = [fun(JObj) ->
-              kzd_box_message:set_metadata(NewMessage, JObj)
-           end
-           | Funs
-          ],
+                      kzd_box_message:set_metadata(NewMessage, JObj)
+                  end
+                  | Funs
+                 ],
 
     case update_message_doc(AccountId, MessageId, UpdateFuns) of
         {'ok', _}=OK -> OK;
@@ -389,14 +389,20 @@ message(AccountId, MessageId) ->
 %% @doc Folder operations
 %% @end
 %%--------------------------------------------------------------------
--spec set_folder(ne_binary(), kz_json:object(), ne_binary()) -> any().
-set_folder(Folder, Message, AccountId) ->
+-spec set_folder(ne_binary(), kz_json:object() | ne_binary(), ne_binary()) -> any().
+set_folder(Folder, ?JSON_WRAPPER(_)=Message, AccountId) ->
     MessageId = kzd_box_message:media_id(Message),
     FromFolder = kzd_box_message:folder(Message, ?VM_FOLDER_NEW),
     lager:info("setting folder for message ~s to ~s", [MessageId, Folder]),
-    maybe_set_folder(FromFolder, Folder, MessageId, AccountId, Message).
+    maybe_set_folder(FromFolder, Folder, MessageId, AccountId, Message);
+set_folder(Folder, MessageId, AccountId) ->
+    lager:info("setting folder for message ~s to ~s", [MessageId, Folder]),
+    update_folder(Folder, MessageId, AccountId).
 
 -spec maybe_set_folder(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> any().
+maybe_set_folder(_, ?VM_FOLDER_DELETED=ToFolder, MessageId, AccountId, _) ->
+    % ensuring that message is really deleted
+    update_folder(ToFolder, MessageId, AccountId);
 maybe_set_folder(FromFolder, FromFolder, ?MATCH_MODB_PREFIX(_, _, _), _, Msg) -> {'ok', Msg};
 maybe_set_folder(FromFolder, FromFolder, MessageId, AccountId, _) ->
     lager:info("folder is same, but doc is in accountdb, move it to modb"),

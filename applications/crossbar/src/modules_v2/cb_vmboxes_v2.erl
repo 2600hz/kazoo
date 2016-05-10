@@ -157,10 +157,8 @@ validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
 validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId, ?BIN_DATA) ->
     case load_message_binary(DocId, MediaId, Context) of
         {'true', C1} ->
-            C2 = update_message_doc(MediaId, C1),
-            update_mwi(
-              cb_context:set_resp_data(C2, cb_context:resp_data(C1))
-             );
+            C2 = update_message_folder(MediaId, C1),
+            update_mwi(C2);
         {_, C} -> C
     end.
 
@@ -178,7 +176,7 @@ post(Context, _DocId) ->
     C = crossbar_doc:save(Context1),
     update_mwi(C).
 post(Context, _DocId, ?MESSAGES_RESOURCE, MediaId) ->
-    C = update_message_doc(MediaId, Context),
+    C = update_message_folder(MediaId, Context),
     update_mwi(C).
 
 %%--------------------------------------------------------------------
@@ -208,11 +206,11 @@ delete(Context, DocId) ->
 delete(Context, DocId, ?MESSAGES_RESOURCE) ->
     Messages = cb_context:resp_data(Context),
     _ = [kz_vm_message:set_folder(?VM_FOLDER_DELETED, M, cb_context:account_id(Context)) || M <- Messages],
-    C = load_vmbox(DocId, Context),
+    C = load_message_summary(DocId, Context),
     update_mwi(C).
 
 delete(Context, _DocId, ?MESSAGES_RESOURCE, MediaId) ->
-    C = update_message_doc(MediaId, Context),
+    C = update_message_folder(MediaId, Context),
     update_mwi(C).
 
 %%--------------------------------------------------------------------
@@ -240,10 +238,8 @@ patch(Context, _Id) ->
 validate_message(Context, _DocId, MediaId, ?HTTP_GET) ->
     case load_message(MediaId, 'undefined', Context) of
         {'true', C1} ->
-            C2 = update_message_doc(MediaId, C1),
-            update_mwi(
-              cb_context:set_resp_data(C2, cb_context:resp_data(C1))
-             );
+            C2 = update_message_folder(MediaId, C1),
+            update_mwi(C2);
         {_, C} -> C
     end;
 validate_message(Context, _DocId, MediaId, ?HTTP_POST) ->
@@ -444,9 +440,9 @@ load_message_summary(DocId, Context) ->
 load_message(MediaId, 'undefined', Context) ->
     load_message(MediaId, kz_json:new(), Context);
 load_message(MediaId, UpdateJObj, Context) ->
-    case kz_vm_message:message_doc(cb_context:account_id(Context), MediaId) of
+    case kz_vm_message:message(cb_context:account_id(Context), MediaId) of
         {'ok', Message} ->
-            load_message_metadata(Message, UpdateJObj, crossbar_doc:handle_json_success(Message, Context));
+            ensure_message_in_folder(Message, UpdateJObj, crossbar_doc:handle_json_success(Message, Context));
         {'error', Error} ->
             {'false', crossbar_doc:handle_couch_mgr_errors(Error, MediaId, Context)}
     end.
@@ -457,25 +453,22 @@ load_message(MediaId, UpdateJObj, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec load_message_metadata(kz_json:object(), kz_json:object(), cb_context:context()) ->
+-spec ensure_message_in_folder(kz_json:object(), kz_json:object(), cb_context:context()) ->
                                         {boolean(), cb_context:context()}.
-load_message_metadata(Message, UpdateJObj, Context) ->
-    CurrentMetaData = kzd_box_message:metadata(Message, kz_json:new()),
-    CurrentFolder = kzd_box_message:folder(CurrentMetaData, ?VM_FOLDER_NEW),
+ensure_message_in_folder(Message, UpdateJObj, Context) ->
+    CurrentFolder = kzd_box_message:folder(Message, ?VM_FOLDER_NEW),
 
     RequestedFolder = cb_context:req_value(Context
                                            ,?VM_KEY_FOLDER
                                            ,kzd_box_message:folder(UpdateJObj, CurrentFolder)
                                           ),
     lager:debug("ensuring message is in folder ~s", [RequestedFolder]),
-    MetaData = kz_json:merge_jobjs(kzd_box_message:set_folder(RequestedFolder, UpdateJObj)
-                                   ,CurrentMetaData
-                                  ),
+    NewMessage = kz_json:merge_jobjs(kzd_box_message:set_folder(RequestedFolder, UpdateJObj)
+                                     ,Message
+                                    ),
     {CurrentFolder =/= RequestedFolder
-     ,cb_context:set_resp_data(
-        cb_context:set_doc(Context, kzd_box_message:set_metadata(MetaData, Message))
-        ,MetaData
-       )}.
+     ,cb_context:set_resp_data(cb_context:set_doc(Context, NewMessage), NewMessage)
+    }.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -556,13 +549,16 @@ generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc update vm message doc and handle the result
+%% @doc update message folder
 %% @end
 %%--------------------------------------------------------------------
-update_message_doc(MediaId, Context) ->
-    case kz_vm_message:update_message_doc(cb_context:account_id(Context), MediaId) of
-        {'ok', JObj} ->
-            crossbar_doc:handle_json_success(JObj, Context);
+-spec update_message_folder(path_token(), cb_context:context()) -> cb_context:context().
+update_message_folder(MediaId, Context) ->
+    AccountId = cb_context:account_id(Context),
+    Folder = kzd_box_message:folder(cb_context:doc(Context)),
+    case kz_vm_message:set_folder(Folder, MediaId, AccountId) of
+        {'ok', Message} ->
+            crossbar_util:response(Message, cb_context:set_resp_status(Context, 'success'));
         {'error', Error} ->
             crossbar_doc:handle_couch_mgr_errors(Error, MediaId, Context)
     end.
