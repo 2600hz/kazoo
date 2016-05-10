@@ -306,7 +306,7 @@ get_private_limit(Key, JObj) ->
 
 -spec get_default_limit(ne_binary(), tristate_integer()) -> tristate_integer().
 get_default_limit(Key, Default) ->
-    kapps_config:get_integer(<<"jonny5">>, <<"default_", Key/binary>>, Default).
+    kapps_config:get_integer(?APP_NAME, <<"default_", Key/binary>>, Default).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -323,7 +323,7 @@ get_limit_units(Key, JObj, Default) ->
 
 -spec get_default_limit_units(ne_binary(), float()) -> non_neg_integer().
 get_default_limit_units(Key, Default) ->
-    Value = kapps_config:get_float(<<"jonny5">>, <<"default_", Key/binary>>, Default),
+    Value = kapps_config:get_float(?APP_NAME, <<"default_", Key/binary>>, Default),
     wht_util:dollars_to_units(abs(Value)).
 
 %%--------------------------------------------------------------------
@@ -352,7 +352,7 @@ get_public_limit_boolean(Key, _, Default) ->
 
 -spec get_default_limit_boolean(ne_binary(), boolean()) -> boolean().
 get_default_limit_boolean(Key, Default) ->
-    kapps_config:get_is_true(<<"jonny5">>, <<"default_", Key/binary>>, Default).
+    kapps_config:get_is_true(?APP_NAME, <<"default_", Key/binary>>, Default).
 
 %%--------------------------------------------------------------------
 %% @private
