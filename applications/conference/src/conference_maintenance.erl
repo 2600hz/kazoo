@@ -40,7 +40,7 @@ refresh() ->
     'started'.
 
 refresh(<<Account/binary>>) ->
-    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
+    AccountDb = kz_account:format_id(Account, 'encoded'),
     Views = kapps_util:get_views_json('conference', "views"),
     kapps_util:update_views(AccountDb, Views);
 refresh(Account) ->

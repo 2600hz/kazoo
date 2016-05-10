@@ -49,4 +49,4 @@ get_query_limit(JObj) ->
 
 -spec db_name(ne_binary()) -> ne_binary().
 db_name(Account) ->
-    kz_accounts:format_account_mod_id(Account).
+    kz_account:format_mod_id(Account).

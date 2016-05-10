@@ -29,7 +29,7 @@
 
 reconcile(Services) ->
     AccountId = kz_services:account_id(Services),
-    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_account:format_id(AccountId, 'encoded'),
     case kz_datamgr:get_results(AccountDb, ?LISTING_BY_NUMBER, ['include_docs']) of
         {'error', _R} ->
             lager:debug("unable to get current phone numbers in service: ~p", [_R]),

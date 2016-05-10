@@ -63,7 +63,7 @@
 -type mgr_state() :: #state{}.
 
 -define(BINDINGS(A, Q), [{'conf', [{'type', <<"queue">>}
-                                   ,{'db', kz_accounts:format_account_id(A, 'encoded')}
+                                   ,{'db', kz_account:format_id(A, 'encoded')}
                                    ,{'id', Q}
                                    ,'federate'
                                   ]}
@@ -274,7 +274,7 @@ init([Super, QueueJObj]) ->
 init([Super, AccountId, QueueId]) ->
     kz_util:put_callid(<<"mgr_", QueueId/binary>>),
 
-    AcctDb = kz_accounts:format_account_id(AccountId, 'encoded'),
+    AcctDb = kz_account:format_id(AccountId, 'encoded'),
     {'ok', QueueJObj} = kz_datamgr:open_cache_doc(AcctDb, QueueId),
 
     init(Super, AccountId, QueueId, QueueJObj).
@@ -282,7 +282,7 @@ init([Super, AccountId, QueueId]) ->
 init(Super, AccountId, QueueId, QueueJObj) ->
     process_flag('trap_exit', 'false'),
 
-    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_account:format_id(AccountId, 'encoded'),
     kz_datamgr:add_to_doc_cache(AccountDb, QueueId, QueueJObj),
 
     _ = start_secondary_queue(AccountId, QueueId),
@@ -409,7 +409,7 @@ handle_cast({'start_workers'}, #state{account_id=AccountId
                                       ,supervisor=QueueSup
                                      }=State) ->
     WorkersSup = acdc_queue_sup:workers_sup(QueueSup),
-    case kz_datamgr:get_results(kz_accounts:format_account_id(AccountId, 'encoded')
+    case kz_datamgr:get_results(kz_account:format_id(AccountId, 'encoded')
                                ,<<"queues/agents_listing">>
                                ,[{'key', QueueId}
                                  ,'include_docs'
@@ -563,7 +563,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 start_secondary_queue(AccountId, QueueId) ->
-    AccountDb = kz_accounts:format_account_db(AccountId),
+    AccountDb = kz_account:format_db(AccountId),
     Priority = lookup_priority_levels(AccountDb, QueueId),
     kz_util:spawn(fun gen_listener:add_queue/4
                   ,[self()

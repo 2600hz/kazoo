@@ -138,7 +138,7 @@ authorize(Number) ->
        ).
 -else.
 -define(ACCT_HIERARCHY(AuthBy, AssignTo, Bool)
-        ,kz_accounts:is_in_account_hierarchy(AuthBy, AssignTo, Bool)
+        ,kz_account:is_it_in_hierarchy(AuthBy, AssignTo, Bool)
        ).
 -endif.
 
@@ -287,7 +287,7 @@ apply_transitions(Number, Routines) ->
 
 -spec is_authorized_operation(ne_binary(), ne_binary()) -> boolean().
 is_authorized_operation(CheckFor, InAccount) ->
-     kz_accounts:is_in_account_hierarchy(
+     kz_account:is_it_in_hierarchy(
        CheckFor
        ,InAccount
       ).

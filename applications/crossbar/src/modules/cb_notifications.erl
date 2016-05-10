@@ -1046,7 +1046,7 @@ merge_fold(Overridden, Acc) ->
 -spec select_normalize_fun(cb_context:context()) -> normalize_fun().
 select_normalize_fun(Context) ->
     Account = cb_context:auth_account_id(Context),
-    case kz_accounts:is_system_admin(Account) of
+    case kz_account:is_it_system_admin(Account) of
         'true' -> fun normalize_available_admin/2;
         'false' -> fun(JObj, Acc) -> normalize_available_non_admin(JObj, Acc, Context) end
     end.

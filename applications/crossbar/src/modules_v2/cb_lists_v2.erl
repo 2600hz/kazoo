@@ -34,7 +34,7 @@
 %%%===================================================================
 -spec maybe_migrate(ne_binary()) -> 'ok'.
 maybe_migrate(Account) ->
-    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
+    AccountDb = kz_account:format_id(Account, 'encoded'),
     case kz_datamgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
         {'ok', []} -> 'ok';
         {'ok', Lists} -> migrate(AccountDb, Lists);
@@ -207,7 +207,7 @@ delete(Context, ListId) ->
     crossbar_doc:delete(Context1).
 delete(Context, _ListId, ?ENTRIES) ->
     Docs = [kz_json:get_value(<<"id">>, Entry) || Entry <- cb_context:doc(Context)],
-    AccountDb = kz_accounts:format_account_id(cb_context:account_db(Context), 'encoded'),
+    AccountDb = kz_account:format_id(cb_context:account_db(Context), 'encoded'),
     %% do we need 'soft' delete as in crossbar_doc?
     kz_datamgr:del_docs(AccountDb, Docs),
     Context.

@@ -361,7 +361,7 @@ activate_user(_, 'undefined') ->
     {'error', 'user_undefined'};
 activate_user(Account, User) ->
     AccountId = kz_doc:id(Account),
-    Db = kz_accounts:format_account_id(AccountId, 'encoded'),
+    Db = kz_account:format_id(AccountId, 'encoded'),
     Event = <<"*.execute.put.users">>,
     Payload = [cb_context:setters(cb_context:new(), [{fun cb_context:set_doc/2, User}
                                                      ,{fun cb_context:set_account_db/2, Db}

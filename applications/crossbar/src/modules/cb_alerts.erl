@@ -317,7 +317,7 @@ view_keys(Context) ->
 -spec is_user_admin(ne_binary(), api_binary()) -> boolean().
 is_user_admin(_Account, 'undefined') -> 'false';
 is_user_admin(Account, UserId) ->
-    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
+    AccountDb = kz_account:format_id(Account, 'encoded'),
     case kz_datamgr:open_cache_doc(AccountDb, UserId) of
         {'error', _} -> 'false';
         {'ok', JObj} ->

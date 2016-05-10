@@ -234,7 +234,7 @@ create_transaction(Number, Units) ->
     BillingId = fetch_billing_id(Number),
     PhoneNumber = knm_number:phone_number(Number),
     AccountId = knm_phone_number:assigned_to(PhoneNumber),
-    LedgerId = kz_accounts:format_account_id(BillingId, 'raw'),
+    LedgerId = kz_account:format_id(BillingId, 'raw'),
     Num = knm_phone_number:number(PhoneNumber),
 
     Routines = [fun(T) -> set_activation_reason(T, LedgerId, AccountId, <<"number">>) end
@@ -257,7 +257,7 @@ create_transaction(Number, Feature, Units) ->
     BillingId = fetch_billing_id(Number),
     PhoneNumber = knm_number:phone_number(Number),
     AccountId = knm_phone_number:assigned_to(PhoneNumber),
-    LedgerId = kz_accounts:format_account_id(BillingId, 'raw'),
+    LedgerId = kz_account:format_id(BillingId, 'raw'),
     Num = knm_phone_number:number(PhoneNumber),
 
     Routines = [fun(T) -> set_activation_reason(T, LedgerId, AccountId, <<"feature">>) end

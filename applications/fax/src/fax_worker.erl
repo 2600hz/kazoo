@@ -726,7 +726,7 @@ move_doc(JObj) ->
     AccountId = kz_doc:account_id(JObj),
     AccountMODb = kazoo_modb:get_modb(AccountId, Year, Month),
     kazoo_modb:create(AccountMODb),
-    ToDB = kz_accounts:format_account_modb(AccountMODb, 'encoded'),
+    ToDB = kz_account:format_modb(AccountMODb, 'encoded'),
     ToId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_time:pad_month(Month), FromId),
     Options = ['override_existing_document'
                ,{'doc_type', <<"fax">>}
@@ -943,7 +943,7 @@ send_fax(JobId, JObj, Q, ToDID) ->
     CallId = kz_term:rand_hex_binary(16),
     ETimeout = kz_term:to_binary(kapps_config:get_integer(?CONFIG_CAT, <<"endpoint_timeout">>, 40)),
     AccountId =  kz_doc:account_id(JObj),
-    AccountRealm = kz_accounts:get_account_realm(AccountId),
+    AccountRealm = kz_account:do_get_realm(AccountId),
     Request = props:filter_undefined(
                 [{<<"Outbound-Caller-ID-Name">>, kz_json:get_value(<<"from_name">>, JObj)}
                  ,{<<"Outbound-Caller-ID-Number">>, kz_json:get_value(<<"from_number">>, JObj)}
@@ -981,7 +981,7 @@ send_fax(JobId, JObj, Q, ToDID) ->
 
 -spec get_hunt_account_id(ne_binary()) -> api_binary().
 get_hunt_account_id(AccountId) ->
-    AccountDb = kz_accounts:format_account_db(AccountId),
+    AccountDb = kz_account:format_db(AccountId),
     Options = [{'key', <<"no_match">>}, 'include_docs'],
     case kz_datamgr:get_results(AccountDb, ?CALLFLOW_LIST, Options) of
         {'ok', [JObj]} -> maybe_hunt_account_id(kz_json:get_value(<<"doc">>, JObj));

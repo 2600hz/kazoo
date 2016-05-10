@@ -91,7 +91,7 @@ bindings_and_responders() ->
 %%--------------------------------------------------------------------
 -spec account_bindings(ne_binary()) -> gen_listener:bindings().
 account_bindings(AccountId) ->
-    bindings([kz_accounts:format_account_id(AccountId, 'encoded')]).
+    bindings([kz_account:format_id(AccountId, 'encoded')]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -133,7 +133,7 @@ load_accounts() ->
          )
     of
         {'ok', View} ->
-            [kz_accounts:format_account_id(
+            [kz_account:format_id(
                kz_json:get_value(<<"value">>, Result)
                ,'encoded'
               )
@@ -190,6 +190,6 @@ format_event(JObj, AccountId) ->
 find_account_id(JObj) ->
     case kapi_conf:get_account_id(JObj) of
         'undefined' ->
-            kz_accounts:format_account_id(kapi_conf:get_account_db(JObj), 'raw');
+            kz_account:format_id(kapi_conf:get_account_db(JObj), 'raw');
         AccountId -> AccountId
     end.

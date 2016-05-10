@@ -262,7 +262,7 @@ build_number_uri(Context, Number) ->
         FilterRegex -> filter_number_regex(Number, FilterRegex)
     end,
 
-    Realm = kz_accounts:get_account_realm(cb_context:account_id(Context)),
+    Realm = kz_account:do_get_realm(cb_context:account_id(Context)),
     <<UseNumber/binary, "@", Realm/binary>>.
 
 -spec get_endpoints(kapps_call:call(), cb_context:context()) -> kz_json:objects().

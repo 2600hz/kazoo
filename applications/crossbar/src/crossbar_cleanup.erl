@@ -248,7 +248,7 @@ start_cleanup_pass(Ref) ->
 db_routing_key(Db) ->
     Classifiers = [{fun kapps_util:is_account_db/1, fun binding_account/0}
                    ,{fun kapps_util:is_account_mod/1, fun binding_account_mod/0}
-                   ,{fun kz_accounts:is_system_db/1, fun binding_system/0}
+                   ,{fun kz_account:is_it_system_db/1, fun binding_system/0}
                   ],
     db_routing_key(Db, Classifiers).
 db_routing_key(_Db, []) ->
@@ -304,7 +304,7 @@ cleanup_soft_deletes(Account) ->
 
 -spec cleanup_account_soft_deletes(ne_binary()) -> 'ok'.
 cleanup_account_soft_deletes(Account) ->
-    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
+    AccountDb = kz_account:format_id(Account, 'encoded'),
     do_cleanup(AccountDb).
 
 -spec do_cleanup(ne_binary()) -> 'ok'.

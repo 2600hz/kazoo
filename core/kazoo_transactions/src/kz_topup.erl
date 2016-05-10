@@ -83,7 +83,7 @@ get_top_up(JObj) ->
                           'ok' |
                           {'error', error()}.
 maybe_top_up(Account, Balance, Amount, Threshold) when Balance =< Threshold ->
-    AccountId = kz_accounts:format_account_id(Account, 'raw'),
+    AccountId = kz_account:format_id(Account, 'raw'),
     case kz_datamgr:open_cache_doc(?KZ_SERVICES_DB, AccountId) of
         {'error', _R}=E -> E;
         {'ok', ServicesJObj} ->

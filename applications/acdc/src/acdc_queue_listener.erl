@@ -204,7 +204,7 @@ init([WorkerSup, MgrPid, AccountId, QueueId]) ->
 
     lager:debug("starting queue ~s", [QueueId]),
 
-    {'ok', QueueJObj} = kz_datamgr:open_cache_doc(kz_accounts:format_account_id(AccountId, 'encoded')
+    {'ok', QueueJObj} = kz_datamgr:open_cache_doc(kz_account:format_id(AccountId, 'encoded')
                                                  ,QueueId
                                                 ),
 

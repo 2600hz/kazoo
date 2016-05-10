@@ -423,7 +423,7 @@ find_account_db(JObj) ->
 find_account_db_from_id(JObj) ->
     case find_account_id(JObj) of
         'undefined' -> 'undefined';
-        Id -> kz_accounts:format_account_id(Id, 'encoded')
+        Id -> kz_account:format_id(Id, 'encoded')
     end.
 
 -spec send_update(kz_json:object(), ne_binary()) -> 'ok'.
@@ -486,7 +486,7 @@ find_account_admin_email(AccountId, ResellerId) ->
 
 -spec query_account_for_admin_emails(ne_binary()) -> ne_binaries().
 query_account_for_admin_emails(AccountId) ->
-    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_account:format_id(AccountId, 'encoded'),
     ViewOptions = [{'key', <<"user">>}
                    ,'include_docs'
                   ],
@@ -518,7 +518,7 @@ find_account_admin(AccountId, ResellerId) ->
 
 -spec query_for_account_admin(ne_binary()) -> api_object().
 query_for_account_admin(AccountId) ->
-    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_account:format_id(AccountId, 'encoded'),
     ViewOptions = [{'key', <<"user">>}
                    ,'include_docs'
                   ],
@@ -615,7 +615,7 @@ is_account_notice_enabled('undefined', TemplateKey, _ResellerAccountId) ->
     lager:debug("no account id to check, checking system config for ~s", [TemplateKey]),
     is_notice_enabled_default(TemplateKey);
 is_account_notice_enabled(AccountId, TemplateKey, ResellerAccountId) ->
-    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_account:format_id(AccountId, 'encoded'),
     TemplateId = teletype_templates:doc_id(TemplateKey),
 
     case kz_datamgr:open_cache_doc(AccountDb, TemplateId) of

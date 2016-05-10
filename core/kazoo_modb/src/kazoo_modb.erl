@@ -43,7 +43,7 @@ get_results(_Account, _View, _ViewOptions, Retry) when Retry =< 0 ->
     {'error', 'retries_exceeded'};
 get_results(Account, View, ViewOptions, Retry) ->
     AccountMODb = get_modb(Account, ViewOptions),
-    EncodedMODb = kz_accounts:format_account_modb(AccountMODb, 'encoded'),
+    EncodedMODb = kz_account:format_modb(AccountMODb, 'encoded'),
     case kz_datamgr:get_results(EncodedMODb, View, ViewOptions) of
         {'error', 'not_found'} ->
             get_results_not_found(Account, View, ViewOptions, Retry);
@@ -54,7 +54,7 @@ get_results(Account, View, ViewOptions, Retry) ->
                                    {'ok', kz_json:objects()}.
 get_results_not_found(Account, View, ViewOptions, Retry) ->
     AccountMODb = get_modb(Account, ViewOptions),
-    EncodedMODb = kz_accounts:format_account_modb(AccountMODb, 'encoded'),
+    EncodedMODb = kz_account:format_modb(AccountMODb, 'encoded'),
     case kz_datamgr:db_exists(EncodedMODb, View) of
         'true' ->
             refresh_views(AccountMODb),
@@ -120,7 +120,7 @@ couch_open(AccountMODb, DocId) ->
                         {'ok', kz_json:object()} |
                         {'error', atom()}.
 couch_open(AccountMODb, DocId, Options) ->
-    EncodedMODb = kz_accounts:format_account_modb(AccountMODb, 'encoded'),
+    EncodedMODb = kz_account:format_modb(AccountMODb, 'encoded'),
     case kz_datamgr:open_doc(EncodedMODb, DocId, Options) of
         {'ok', _}=Ok -> Ok;
         {'error', _E}=Error ->
@@ -162,7 +162,7 @@ couch_save(AccountMODb, _Doc, 0) ->
     lager:error("failed to save doc in ~p", AccountMODb),
     {'error', 'doc_save_failed'};
 couch_save(AccountMODb, Doc, Retry) ->
-     EncodedMODb = kz_accounts:format_account_modb(AccountMODb, 'encoded'),
+     EncodedMODb = kz_account:format_modb(AccountMODb, 'encoded'),
     case kz_datamgr:save_doc(EncodedMODb, Doc) of
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
@@ -205,12 +205,12 @@ get_modb(Account, Props) when is_list(Props) ->
         {Month, Year} -> get_modb(Account, Year, Month)
     end;
 get_modb(Account, Timestamp) ->
-    kz_accounts:format_account_mod_id(Account, Timestamp).
+    kz_account:format_mod_id(Account, Timestamp).
 
 get_modb(?MATCH_MODB_SUFFIX_RAW(_,_,_) = AccountMODb, _Year, _Month) ->
     AccountMODb;
 get_modb(Account, Year, Month) ->
-    kz_accounts:format_account_mod_id(Account, Year, Month).
+    kz_account:format_mod_id(Account, Year, Month).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -234,14 +234,14 @@ maybe_create(<<"account%2F", AccountId/binary>>) ->
 
 -spec create(ne_binary()) -> 'ok'.
 create(AccountMODb) ->
-    EncodedMODb = kz_accounts:format_account_modb(AccountMODb, 'encoded'),
+    EncodedMODb = kz_account:format_modb(AccountMODb, 'encoded'),
     do_create(AccountMODb, kz_datamgr:db_exists_all(EncodedMODb)).
 
 -spec do_create(ne_binary(), boolean()) -> 'ok'.
 do_create(_AccountMODb, 'true') -> 'ok';
 do_create(AccountMODb, 'false') ->
     lager:debug("create modb ~p", [AccountMODb]),
-    EncodedMODb = kz_accounts:format_account_modb(AccountMODb, 'encoded'),
+    EncodedMODb = kz_account:format_modb(AccountMODb, 'encoded'),
     _ = kz_datamgr:db_create(EncodedMODb),
     _ = refresh_views(EncodedMODb),
     create_routines(AccountMODb).
@@ -249,7 +249,7 @@ do_create(AccountMODb, 'false') ->
 -spec refresh_views(ne_binary()) -> 'ok'.
 refresh_views(AccountMODb) ->
     lager:debug("init modb ~p", [AccountMODb]),
-    EncodedMODb = kz_accounts:format_account_modb(AccountMODb, 'encoded'),
+    EncodedMODb = kz_account:format_modb(AccountMODb, 'encoded'),
     Views = get_modb_views(),
     _ = kapps_util:update_views(EncodedMODb, Views, 'true'),
     'ok'.
@@ -337,7 +337,7 @@ should_archive(AccountMODb, Year, Month) ->
 %%--------------------------------------------------------------------
 -spec maybe_delete(ne_binary(), [ne_binary()]) -> boolean().
 maybe_delete(AccountMODb, AccountIds) ->
-    AccountId = kz_accounts:format_account_id(AccountMODb, 'raw'),
+    AccountId = kz_account:format_id(AccountMODb, 'raw'),
     IsOrphaned = not lists:member(AccountId, AccountIds),
     delete_if_orphaned(AccountMODb, IsOrphaned).
 

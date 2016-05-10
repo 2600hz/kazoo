@@ -406,9 +406,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec job_modb(ne_binary(), ne_binary()) -> ne_binary().
 job_modb(AccountId, ?MATCH_MODB_PREFIX(Year,Month,_)) ->
-    kz_accounts:format_account_mod_id(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month));
+    kz_account:format_mod_id(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month));
 job_modb(AccountId, ?MATCH_MODB_PREFIX_M1(Year,Month,_)) ->
-    kz_accounts:format_account_mod_id(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month)).
+    kz_account:format_mod_id(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month)).
 
 -spec start_timer() -> reference().
 start_timer() ->

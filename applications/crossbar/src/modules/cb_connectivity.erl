@@ -141,7 +141,7 @@ delete(Context, _) ->
 -spec registration_update(cb_context:context()) -> 'ok'.
 registration_update(Context) ->
     crossbar_util:flush_registrations(
-      kz_accounts:get_account_realm(cb_context:account_id(Context))
+      kz_account:do_get_realm(cb_context:account_id(Context))
      ).
 
 %%--------------------------------------------------------------------

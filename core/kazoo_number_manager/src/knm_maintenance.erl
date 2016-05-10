@@ -53,7 +53,7 @@ fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(_)) ->
     foreach_pause_in_between(?TIME_BETWEEN_NUMBERS_MS, fun maybe_fix_number/1, ToFix),
     kz_datamgr:flush_cache_doc(AccountDb, ?KNM_PHONE_NUMBERS_DOC);
 fix_account_numbers(Account = ?NE_BINARY) ->
-    fix_account_numbers(kz_accounts:format_account_db(Account)).
+    fix_account_numbers(kz_account:format_db(Account)).
 
 %%%===================================================================
 %%% Internal functions
@@ -89,7 +89,7 @@ get_phone_numbers(AccountDb) ->
                                                     ,kz_json:get_value(Key, JObj))
                , fetched => fetch_number(Key)
                , account_db => AccountDb
-               , account_id => kz_accounts:format_account_id(AccountDb)
+               , account_id => kz_account:format_id(AccountDb)
                , trunkstore_numbers => TrunkstoreNumbers
                , callflow_numbers => CallflowNumbers
                , fixes => []

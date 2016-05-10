@@ -132,7 +132,7 @@ maybe_account_is_disabled(Context) ->
     case kz_json:get_value([<<"AuthDoc">>,<<"pvt_account_id">>], JObj) of
         'undefined' -> Context;
         Account ->
-            case kz_accounts:is_account_enabled(Account) of
+            case kz_account:is_it_enabled(Account) of
                 'true' -> maybe_load_username(Account, Context);
                 'false' ->
                     lager:debug("account ~s is disabled", [Account]),
@@ -154,7 +154,7 @@ maybe_account_is_disabled(Context) ->
 -spec maybe_load_username(ne_binary(), cb_context:context()) -> cb_context:context().
 maybe_load_username(Account, Context) ->
     JObj = cb_context:doc(Context),
-    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
+    AccountDb = kz_account:format_id(Account, 'encoded'),
     Username = kz_json:get_value([<<"AuthDoc">>,<<"pvt_username">>], JObj),
     lager:debug("attempting to load username in db: ~s", [AccountDb]),
     ViewOptions = [{'key', Username}

@@ -48,8 +48,8 @@ init_db() ->
 
 -spec init_acct(ne_binary()) -> 'ok'.
 init_acct(Account) ->
-    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
-    AccountId = kz_accounts:format_account_id(Account, 'raw'),
+    AccountDb = kz_account:format_id(Account, 'encoded'),
+    AccountId = kz_account:format_id(Account, 'raw'),
 
     lager:debug("init acdc account: ~s", [AccountId]),
 
@@ -64,8 +64,8 @@ init_acct(Account) ->
 
 -spec init_acct_queues(ne_binary()) -> any().
 init_acct_queues(Account) ->
-    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
-    AccountId = kz_accounts:format_account_id(Account, 'raw'),
+    AccountDb = kz_account:format_id(Account, 'encoded'),
+    AccountId = kz_account:format_id(Account, 'raw'),
 
     lager:debug("init acdc account queues: ~s", [AccountId]),
     init_agents(AccountId
@@ -74,8 +74,8 @@ init_acct_queues(Account) ->
 
 -spec init_acct_agents(ne_binary()) -> any().
 init_acct_agents(Account) ->
-    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
-    AccountId = kz_accounts:format_account_id(Account, 'raw'),
+    AccountDb = kz_account:format_id(Account, 'encoded'),
+    AccountId = kz_account:format_id(Account, 'raw'),
 
     lager:debug("init acdc account agents: ~s", [AccountId]),
     init_agents(AccountId
@@ -129,7 +129,7 @@ try_again(AccountId, View, F) ->
       fun() ->
               kz_util:put_callid(?MODULE),
               wait_a_bit(),
-              AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
+              AccountDb = kz_account:format_id(AccountId, 'encoded'),
               F(AccountId, kz_datamgr:get_results(AccountDb, View, []))
       end).
 

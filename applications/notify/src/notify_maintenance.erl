@@ -35,7 +35,7 @@
 %%--------------------------------------------------------------------
 -spec check_initial_call(ne_binary()) -> 'ok'.
 check_initial_call(Account) when is_binary(Account) ->
-    AccountId = kz_accounts:format_account_id(Account, 'raw'),
+    AccountId = kz_account:format_id(Account, 'raw'),
     case kz_datamgr:open_cache_doc(?KZ_ACCOUNTS_DB, AccountId) of
         {'ok', JObj} ->
             case kz_json:is_true([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>], JObj) of
@@ -54,7 +54,7 @@ check_initial_call(Account) when is_binary(Account) ->
 %%--------------------------------------------------------------------
 -spec check_initial_registration(ne_binary()) -> 'ok'.
 check_initial_registration(Account) when is_binary(Account) ->
-    AccountId = kz_accounts:format_account_id(Account, 'raw'),
+    AccountId = kz_account:format_id(Account, 'raw'),
     case kz_datamgr:open_cache_doc(?KZ_ACCOUNTS_DB, AccountId) of
         {'ok', JObj} ->
             case kz_json:is_true([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>], JObj) of

@@ -306,7 +306,7 @@ move(Num, MoveTo, Options) ->
 
 -spec move_to(knm_number(), ne_binary()) -> knm_number_return().
 move_to(Number, MoveTo) ->
-    AccountId = kz_accounts:format_account_id(MoveTo),
+    AccountId = kz_account:format_id(MoveTo),
     PhoneNumber = phone_number(Number),
     MovedPhoneNumber = knm_phone_number:set_assign_to(PhoneNumber, AccountId),
     MovedNumber = set_phone_number(Number, MovedPhoneNumber),
@@ -613,7 +613,7 @@ check_number(PhoneNumber) ->
 -spec check_account(knm_phone_number:knm_phone_number()) -> lookup_account_return().
 check_account(PhoneNumber) ->
     AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
-    case kz_accounts:is_account_enabled(AssignedTo) of
+    case kz_account:is_it_enabled(AssignedTo) of
         'false' -> {'error', {'account_disabled', AssignedTo}};
         'true' ->
             Module = knm_phone_number:module_name(PhoneNumber),

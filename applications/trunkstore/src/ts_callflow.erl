@@ -58,7 +58,7 @@ init(RouteReqJObj, Type) ->
                aleg_callid=CallID
                ,route_req_jobj=RouteReqJObj
                ,acctid=AccountId
-               ,acctdb=kz_accounts:format_account_id(AccountId, 'encoded')
+               ,acctdb=kz_account:format_id(AccountId, 'encoded')
               }
     end.
 
@@ -81,7 +81,7 @@ send_park(#ts_callflow_state{my_q=Q
             ,{<<"Routes">>, []}
             ,{<<"Pre-Park">>, pre_park_action()}
             ,{<<"Method">>, <<"park">>}
-            ,{<<"From-Realm">>, kz_accounts:get_account_realm(AccountId)}
+            ,{<<"From-Realm">>, kz_account:do_get_realm(AccountId)}
             ,{<<"Custom-Channel-Vars">>, kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())}
             | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
            ],

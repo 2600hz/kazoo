@@ -28,7 +28,7 @@
 fetch('undefined') ->
     {'error', 'account_id_undefined'};
 fetch(Account) ->
-    AccoundDb = kz_accounts:format_account_id(Account, 'encoded'),
+    AccoundDb = kz_account:format_id(Account, 'encoded'),
     kz_datamgr:open_cache_doc(AccoundDb, ?ID).
 
 %%--------------------------------------------------------------------
@@ -41,11 +41,11 @@ new(Account) ->
     Routines = [
         fun(JObj) -> kz_doc:set_id(JObj, ?ID) end
         ,fun(JObj) ->
-            AccountId = kz_accounts:format_account_id(Account, 'raw'),
+            AccountId = kz_account:format_id(Account, 'raw'),
             kz_doc:set_account_id(JObj, AccountId)
         end
         ,fun(JObj) ->
-            AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
+            AccountDb = kz_account:format_id(Account, 'encoded'),
             kz_doc:set_account_db(JObj, AccountDb)
         end
     ],

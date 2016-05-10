@@ -170,7 +170,7 @@ init([Call, Data]) ->
     RecordMinSec = kz_json:get_integer_value(<<"record_min_sec">>, Data, DefaultRecordMinSec),
     AccountId = kapps_call:account_id(Call),
     {Year, Month, _} = erlang:date(),
-    AccountDb = kz_accounts:format_account_modb(kazoo_modb:get_modb(AccountId, Year, Month),'encoded'),
+    AccountDb = kz_account:format_modb(kazoo_modb:get_modb(AccountId, Year, Month),'encoded'),
     CallId = kapps_call:call_id(Call),
     CdrId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_time:pad_month(Month), CallId),
     RecordingId = kz_term:rand_hex_binary(16),

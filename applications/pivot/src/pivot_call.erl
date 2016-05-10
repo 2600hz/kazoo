@@ -545,7 +545,7 @@ maybe_debug_resp('true', Call, StatusCode, RespHeaders, RespBody) ->
 
 -spec store_debug(kapps_call:call(), kz_proplist()) -> 'ok'.
 store_debug(Call, Doc) ->
-    AccountModDb = kz_accounts:format_account_mod_id(kapps_call:account_id(Call)),
+    AccountModDb = kz_account:format_mod_id(kapps_call:account_id(Call)),
     JObj =
         kz_doc:update_pvt_parameters(
             kz_json:from_list([{<<"call_id">>, kapps_call:call_id(Call)} | Doc])

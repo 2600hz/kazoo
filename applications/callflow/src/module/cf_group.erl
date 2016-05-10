@@ -33,7 +33,7 @@ handle(Data, Call) ->
 attempt_group(Data, Call) ->
     GroupId = kz_doc:id(Data),
     AccountId = kapps_call:account_id(Call),
-    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_account:format_id(AccountId, 'encoded'),
     case kz_datamgr:open_cache_doc(AccountDb, GroupId) of
         {'ok', JObj} -> attempt_endpoints(JObj, Data, Call);
         {'error', _R} ->

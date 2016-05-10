@@ -65,7 +65,7 @@
 %%--------------------------------------------------------------------
 -spec get(ne_binary()) -> limits().
 get(Account) ->
-    AccountId = kz_accounts:format_account_id(Account, 'raw'),
+    AccountId = kz_account:format_id(Account, 'raw'),
     case kz_cache:peek_local(?CACHE_NAME, ?LIMITS_KEY(AccountId)) of
         {'ok', Limits} -> Limits;
         {'error', 'not_found'} -> fetch(AccountId)
@@ -73,8 +73,8 @@ get(Account) ->
 
 -spec fetch(ne_binary()) -> limits().
 fetch(Account) ->
-    AccountId = kz_accounts:format_account_id(Account, 'raw'),
-    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
+    AccountId = kz_account:format_id(Account, 'raw'),
+    AccountDb = kz_account:format_id(Account, 'encoded'),
     JObj = get_limit_jobj(AccountDb),
     Limits = #limits{account_id = AccountId
                      ,account_db = AccountDb
@@ -431,7 +431,7 @@ create_limit_jobj(AccountDb) ->
     JObj = kz_json:from_list(
              [{<<"_id">>, <<"limits">>}
               ,{<<"pvt_account_db">>, AccountDb}
-              ,{<<"pvt_account_id">>, kz_accounts:format_account_id(AccountDb, 'raw')}
+              ,{<<"pvt_account_id">>, kz_account:format_id(AccountDb, 'raw')}
               ,{<<"pvt_type">>, <<"limits">>}
               ,{<<"pvt_created">>, TStamp}
               ,{<<"pvt_modified">>, TStamp}

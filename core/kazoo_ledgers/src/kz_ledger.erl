@@ -102,7 +102,7 @@ create(Type, SrcService, SrcId, Account, Usage, Props) ->
 %%--------------------------------------------------------------------
 -spec set_account(ledger(), ne_binary()) -> ledger().
 set_account(Ledger, Account) ->
-    AccountId = kz_accounts:format_account_id(Account, 'raw'),
+    AccountId = kz_account:format_id(Account, 'raw'),
     Routines = [
         {fun kazoo_ledger:set_account_id/2, AccountId}
         ,{fun kazoo_ledger:set_account_name/2, kapps_util:get_account_name(AccountId)}

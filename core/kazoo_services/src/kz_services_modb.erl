@@ -21,7 +21,7 @@ start_link() ->
 
 -spec modb(ne_binary()) -> 'ok'.
 modb(?MATCH_MODB_SUFFIX_ENCODED(_AccountId, _Year, _Month) = AccountMODb) ->
-    modb(kz_accounts:format_account_modb(AccountMODb, 'raw'));
+    modb(kz_account:format_modb(AccountMODb, 'raw'));
 modb(?MATCH_MODB_SUFFIX_RAW(AccountId, _Year, _Month) = AccountMODb) ->
     ServicesJObj = kz_services:to_json(kz_services:fetch(AccountId)),
     save_services_to_modb(AccountMODb, ServicesJObj, <<"services_bom">>),

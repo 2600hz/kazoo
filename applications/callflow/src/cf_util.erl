@@ -110,7 +110,7 @@ maybe_presence_parking_slot_resp(Username, Realm, AccountDb) ->
 
 -spec maybe_presence_parking_flow(ne_binary(), ne_binary(), ne_binary()) -> 'ok' | 'not_found'.
 maybe_presence_parking_flow(Username, Realm, AccountDb) ->
-    AccountId = kz_accounts:format_account_id(AccountDb, 'raw'),
+    AccountId = kz_account:format_id(AccountDb, 'raw'),
     _ = lookup_callflow(Username, AccountId),
     case kz_cache:fetch_local(?CACHE_NAME, ?CF_FLOW_CACHE_KEY(Username, AccountDb)) of
         {'error', 'not_found'} -> 'not_found';
@@ -250,7 +250,7 @@ is_unsolicited_mwi_enabled(AccountId) ->
 unsolicited_owner_mwi_update('undefined', _) -> {'error', 'missing_account_db'};
 unsolicited_owner_mwi_update(_, 'undefined') -> {'error', 'missing_owner_id'};
 unsolicited_owner_mwi_update(AccountDb, OwnerId) ->
-    AccountId = kz_accounts:format_account_id(AccountDb),
+    AccountId = kz_account:format_id(AccountDb),
     MWIUpdate = is_unsolicited_mwi_enabled(AccountId),
     unsolicited_owner_mwi_update(AccountDb, OwnerId, MWIUpdate).
 
@@ -263,7 +263,7 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
     case kz_datamgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
         {'ok', JObjs} ->
             {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
-            AccountId = kz_accounts:format_account_id(AccountDb, 'raw'),
+            AccountId = kz_account:format_id(AccountDb, 'raw'),
             lists:foreach(
               fun(JObj) -> maybe_send_mwi_update(JObj, AccountId, New, Saved) end
               ,JObjs
@@ -298,7 +298,7 @@ unsolicited_endpoint_mwi_update('undefined', _) ->
 unsolicited_endpoint_mwi_update(_, 'undefined') ->
     {'error', 'missing_owner_id'};
 unsolicited_endpoint_mwi_update(AccountDb, EndpointId) ->
-    AccountId = kz_accounts:format_account_id(AccountDb),
+    AccountId = kz_account:format_id(AccountDb),
     MWIUpdate = is_unsolicited_mwi_enabled(AccountId),
     unsolicited_endpoint_mwi_update(AccountDb, EndpointId, MWIUpdate).
 
@@ -321,7 +321,7 @@ maybe_send_endpoint_mwi_update(AccountDb, JObj) ->
 maybe_send_endpoint_mwi_update(_AccountDb, _JObj, 'false') ->
     lager:debug("unsolicitated mwi updates disabled for ~s/~s", [_AccountDb, kz_doc:id(_JObj)]);
 maybe_send_endpoint_mwi_update(AccountDb, JObj, 'true') ->
-    AccountId = kz_accounts:format_account_id(AccountDb, 'raw'),
+    AccountId = kz_account:format_id(AccountDb, 'raw'),
     Username = kz_device:sip_username(JObj),
     Realm = get_sip_realm(JObj, AccountId),
     OwnerId = get_endpoint_owner(JObj),
@@ -501,7 +501,7 @@ get_endpoint_id_by_sip_username(AccountDb, Username) ->
 -spec get_operator_callflow(ne_binary()) -> {'ok', kz_json:object()} |
                                             kz_data:data_error().
 get_operator_callflow(Account) ->
-    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
+    AccountDb = kz_account:format_id(Account, 'encoded'),
     Options = [{'key', ?OPERATOR_KEY}, 'include_docs'],
     case kz_datamgr:get_results(AccountDb, ?LIST_BY_NUMBER, Options) of
         {'ok', []} -> {'error', 'not_found'};
@@ -583,7 +583,7 @@ get_sip_realm(SIPJObj, AccountId, Default) ->
 
 -spec get_account_realm(ne_binary(), api_binary()) -> api_binary().
 get_account_realm(AccountId, Default) ->
-    case kz_accounts:get_account_realm(AccountId) of
+    case kz_account:do_get_realm(AccountId) of
         'undefined' -> Default;
         Else -> Else
     end.
@@ -606,7 +606,7 @@ lookup_callflow(Number, AccountId) when not is_binary(Number) ->
     lookup_callflow(kz_term:to_binary(Number), AccountId);
 lookup_callflow(<<>>, _) -> {'error', 'invalid_number'};
 lookup_callflow(Number, AccountId) ->
-    Db = kz_accounts:format_account_id(AccountId, 'encoded'),
+    Db = kz_account:format_id(AccountId, 'encoded'),
     do_lookup_callflow(Number, Db).
 
 do_lookup_callflow(Number, Db) ->
@@ -929,7 +929,7 @@ find_user_endpoints(UserIds, DeviceIds, Call) ->
 
 -spec find_channels(ne_binaries(), kapps_call:call()) -> kz_json:objects().
 find_channels(Usernames, Call) ->
-    Realm = kz_accounts:get_account_realm(kapps_call:account_id(Call)),
+    Realm = kz_account:do_get_realm(kapps_call:account_id(Call)),
     lager:debug("finding channels for realm ~s, usernames ~p", [Realm, Usernames]),
     Req = [{<<"Realm">>, Realm}
            ,{<<"Usernames">>, Usernames}

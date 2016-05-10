@@ -128,7 +128,7 @@ transaction(Account, Transaction) ->
 
 transaction(Account, Transaction, ServicePlan) ->
     Notify = props:filter_undefined(
-               [{<<"Account-ID">>, kz_accounts:format_account_id(Account, 'raw')}
+               [{<<"Account-ID">>, kz_account:format_id(Account, 'raw')}
                 ,{<<"Transaction">>, Transaction}
                 ,{<<"Service-Plan">>, ServicePlan}
                 | kz_api:default_headers(?APP_VERSION, ?APP_NAME)

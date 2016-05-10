@@ -75,7 +75,7 @@ maybe_prepend_preflow(JObj, Props, Call, Flow, NoMatch) ->
 -spec prepend_preflow(ne_binary(), ne_binary(), kz_json:object()) ->
                              kz_json:object().
 prepend_preflow(AccountId, PreflowId, Flow) ->
-    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_account:format_id(AccountId, 'encoded'),
     case kz_datamgr:open_cache_doc(AccountDb, PreflowId) of
         {'error', _E} ->
             lager:warning("could not open ~s in ~s : ~p", [PreflowId, AccountDb, _E]),
@@ -214,7 +214,7 @@ send_route_response(Flow, JObj, Call) ->
               ,{<<"Transfer-Media">>, get_transfer_media(Flow, JObj)}
               ,{<<"Ringback-Media">>, get_ringback_media(Flow, JObj)}
               ,{<<"Pre-Park">>, pre_park_action(Call)}
-              ,{<<"From-Realm">>, kz_accounts:get_account_realm(AccountId)}
+              ,{<<"From-Realm">>, kz_account:do_get_realm(AccountId)}
               ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),

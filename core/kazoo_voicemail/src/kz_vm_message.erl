@@ -62,7 +62,7 @@
 
 -spec get_db(ne_binary()) -> ne_binary().
 get_db(AccountId) ->
-    kz_accounts:format_account_id(AccountId, 'encoded').
+    kz_account:format_id(AccountId, 'encoded').
 
 -spec get_db(ne_binary(), kazoo_data:docid() | kz_json:object()) -> ne_binary().
 get_db(AccountId, {_, ?MATCH_MODB_PREFIX(Year, Month, _)}) ->
@@ -317,7 +317,7 @@ maybe_include_messages(_AccountId, _BoxId, JObj, _) ->
 %%--------------------------------------------------------------------
 -spec vmbox_summary(ne_binary()) -> db_ret().
 vmbox_summary(AccountId) ->
-    AccountDb = kz_accounts:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_account:format_id(AccountId, 'encoded'),
     case kz_datamgr:get_results(AccountDb, ?BOX_MESSAGES_CB_LIST, []) of
         {'ok', JObjs} ->
             Res = [kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs],
@@ -521,7 +521,7 @@ count(AccountId, BoxId) ->
     New + Saved.
 
 count_by_owner(?MATCH_ACCOUNT_ENCODED(_)=AccountDb, OwnerId) ->
-    AccountId = kz_accounts:format_account_id(AccountDb),
+    AccountId = kz_account:format_id(AccountDb),
     count_by_owner(AccountId, OwnerId);
 count_by_owner(AccountId, OwnerId) ->
     ViewOpts = [{'key', [OwnerId, <<"vmbox">>]}],

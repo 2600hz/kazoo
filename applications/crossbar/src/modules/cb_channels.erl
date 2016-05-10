@@ -303,7 +303,7 @@ account_summary(Context) ->
 %%--------------------------------------------------------------------
 -spec get_channels(cb_context:context(), kz_json:objects(), function()) -> cb_context:context().
 get_channels(Context, Devices, PublisherFun) ->
-    Realm = kz_accounts:get_account_realm(cb_context:account_id(Context)),
+    Realm = kz_account:do_get_realm(cb_context:account_id(Context)),
 
     Usernames = [Username
                  || JObj <- Devices,

@@ -220,7 +220,7 @@ should_handle_system() ->
 
 -spec should_handle_account(ne_binary()) -> boolean().
 should_handle_account(Account) ->
-    AccountId = kz_accounts:format_account_id(Account, 'raw'),
+    AccountId = kz_account:format_id(Account, 'raw'),
     case kz_account:fetch(Account) of
         {'ok', AccountJObj} ->
             kz_account:notification_preference(AccountJObj) =:= 'undefined'

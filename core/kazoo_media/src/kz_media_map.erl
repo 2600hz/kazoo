@@ -179,13 +179,13 @@ handle_call({'add_mapping', ?KZ_MEDIA_DB, JObj}, _From, State) ->
     _ = maybe_add_prompt(?KZ_MEDIA_DB, JObj),
      {'reply', 'ok', State};
 handle_call({'add_mapping', Account, JObj}, _From, State) ->
-    _ = maybe_add_prompt(kz_accounts:format_account_id(Account), JObj),
+    _ = maybe_add_prompt(kz_account:format_id(Account), JObj),
     {'reply', 'ok', State};
 handle_call({'rm_mapping', ?KZ_MEDIA_DB, PromptId}, _From, State) ->
     lager:debug("removing prompt mappings for ~s/~s", [?KZ_MEDIA_DB, PromptId]),
     {'reply', ets:delete(table_id(), mapping_id(?KZ_MEDIA_DB, PromptId)), State};
 handle_call({'rm_mapping', Account, PromptId}, _From, State) ->
-    AccountId = kz_accounts:format_account_id(Account),
+    AccountId = kz_account:format_id(Account),
     lager:debug("removing prompt mappings for ~s/~s", [AccountId, PromptId]),
     {'reply', ets:delete(table_id(), mapping_id(AccountId, PromptId)), State};
 handle_call({'new_map', Map}, _From, State) ->
@@ -215,14 +215,14 @@ handle_cast({'add_mapping', ?KZ_MEDIA_DB, JObj}, State) ->
     _ = maybe_add_prompt(?KZ_MEDIA_DB, JObj),
     {'noreply', State};
 handle_cast({'add_mapping', AccountId, JObj}, State) ->
-    _ = maybe_add_prompt(kz_accounts:format_account_id(AccountId), JObj),
+    _ = maybe_add_prompt(kz_account:format_id(AccountId), JObj),
     {'noreply', State};
 handle_cast({'rm_mapping', ?KZ_MEDIA_DB, PromptId}, State) ->
     lager:debug("removing prompt mappings for ~s/~s", [?KZ_MEDIA_DB, PromptId]),
     ets:delete(table_id(), mapping_id(?KZ_MEDIA_DB, PromptId)),
     {'noreply', State};
 handle_cast({'rm_mapping', Account, PromptId}, State) ->
-    AccountId = kz_accounts:format_account_id(Account),
+    AccountId = kz_account:format_id(Account),
     lager:debug("removing prompt mappings for ~s/~s", [AccountId, PromptId]),
     ets:delete(table_id(), mapping_id(AccountId, PromptId)),
     {'noreply', State};
@@ -333,13 +333,13 @@ add_mapping(Db, SendFun, JObjs) ->
     add_mapping(Db, SendFun, JObjs, whereis(?MODULE)).
 
 add_mapping(Db, _SendFun, JObjs, Srv) when Srv =:= self() ->
-    AccountId = kz_accounts:format_account_id(Db, 'raw'),
+    AccountId = kz_account:format_id(Db, 'raw'),
     _ = [maybe_add_prompt(AccountId, kz_json:get_value(<<"doc">>, JObj))
          || JObj <- JObjs
         ],
     'ok';
 add_mapping(Db, SendFun, JObjs, Srv) ->
-     AccountId = kz_accounts:format_account_id(Db, 'raw'),
+     AccountId = kz_account:format_id(Db, 'raw'),
     _ = [SendFun(Srv, {'add_mapping', AccountId, kz_json:get_value(<<"doc">>, JObj)}) || JObj <- JObjs],
      'ok'.
 
@@ -448,7 +448,7 @@ new_map(Map, Srv) ->
 load_account_map(AccountId, PromptId) ->
     lager:debug("attempting to load account map for ~s/~s", [AccountId, PromptId]),
 
-    case kz_datamgr:get_results(kz_accounts:format_account_id(AccountId, 'encoded')
+    case kz_datamgr:get_results(kz_account:format_id(AccountId, 'encoded')
                                ,<<"media/listing_by_prompt">>
                                ,[{'startkey', [PromptId]}
                                  ,{'endkey', [PromptId, kz_json:new()]}

@@ -678,8 +678,8 @@ prepare_topup_transaction(Transaction) ->
 create(Ledger, Amount, Type) ->
     #kz_transaction{pvt_type=Type
                     ,pvt_amount=abs(Amount)
-                    ,pvt_account_id=kz_accounts:format_account_id(Ledger, 'raw')
-                    ,pvt_account_db=kz_accounts:format_account_mod_id(Ledger)
+                    ,pvt_account_id=kz_account:format_id(Ledger, 'raw')
+                    ,pvt_account_db=kz_account:format_mod_id(Ledger)
                     ,pvt_created=kz_time:current_tstamp()
                     ,pvt_modified=kz_time:current_tstamp()
                    }.

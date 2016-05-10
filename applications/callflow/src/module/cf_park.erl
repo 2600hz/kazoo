@@ -34,7 +34,7 @@
 %%--------------------------------------------------------------------
 -spec update_presence(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 update_presence(SlotNumber, _PresenceId, AccountDb) ->
-    AccountId = kz_accounts:format_account_id(AccountDb, 'raw'),
+    AccountId = kz_account:format_id(AccountDb, 'raw'),
     ParkedCalls = get_parked_calls(AccountDb, AccountId),
     case get_slot_call_id(SlotNumber, ParkedCalls) of
         'undefined' -> 'ok';
@@ -46,7 +46,7 @@ update_presence(SlotNumber, _PresenceId, AccountDb) ->
 update_parked_call_presence(SlotNumber, Slot, ParkedCallId, AccountId) ->
     case kapps_call_command:b_channel_status(ParkedCallId) of
         {'ok', _Status} -> update_presence(Slot);
-        {'error', _} -> cleanup_slot(SlotNumber, ParkedCallId, kz_accounts:format_account_db(AccountId))
+        {'error', _} -> cleanup_slot(SlotNumber, ParkedCallId, kz_account:format_db(AccountId))
     end.
 
 -spec get_slot_call_id(kz_json:key(), kz_json:object()) -> api_binary().
@@ -257,7 +257,7 @@ create_slot(ParkerCallId, PresenceType, Call) ->
          ,{<<"Parker-Call-ID">>, ParkerCallId}
          ,{<<"Ringback-ID">>, RingbackId}
          ,{<<"Presence-ID">>, <<(kapps_call:request_user(Call))/binary
-                                ,"@", (kz_accounts:get_account_realm(AccountDb, AccountId))/binary
+                                ,"@", (kz_account:do_get_realm(AccountDb, AccountId))/binary
                               >>
           }
          ,{<<"Node">>, kapps_call:switch_nodename(Call)}

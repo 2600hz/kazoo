@@ -72,8 +72,8 @@ assign() ->
 
 -spec assign(ne_binary(), ne_binary()) -> 'no_return'.
 assign(IP, Account) ->
-    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
-    AccountId = kz_accounts:format_account_id(Account, 'raw'),
+    AccountDb = kz_account:format_id(Account, 'encoded'),
+    AccountId = kz_account:format_id(Account, 'raw'),
     _ = case kz_datamgr:open_doc(AccountDb, AccountId) of
             {'ok', _} ->
                 case kz_ip:assign(Account, IP) of

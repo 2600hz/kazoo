@@ -30,7 +30,7 @@
 fetch('undefined') ->
     {'error', 'account_id_undefined'};
 fetch(Account) ->
-    AccoundDb = kz_accounts:format_account_id(Account, 'encoded'),
+    AccoundDb = kz_account:format_id(Account, 'encoded'),
     kz_datamgr:open_cache_doc(AccoundDb, ?ID).
 
 -spec port_hide(kz_json:object()) -> boolean().

@@ -130,8 +130,8 @@ id(JObj) ->
 fetch('undefined') ->
     {'error', 'invalid_db_name'};
 fetch(<<_/binary>> = Account) ->
-    AccountId = kz_accounts:format_account_id(Account, 'raw'),
-    AccountDb = kz_accounts:format_account_id(Account, 'encoded'),
+    AccountId = kz_account:format_id(Account, 'raw'),
+    AccountDb = kz_account:format_id(Account, 'encoded'),
     kz_datamgr:open_cache_doc(AccountDb, AccountId, ['cache_failures']).
 
 %%--------------------------------------------------------------------
