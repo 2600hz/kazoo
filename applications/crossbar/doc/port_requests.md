@@ -15,10 +15,40 @@ A port request can be in one of five **states**:
 
 > GET /v2/accounts/{ACCOUNT_ID}/port_requests
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "account_id": "{ACCOUNT_ID}",
+            "account_name": "{ACCOUNT_NAME}",
+            "port_requests": [
+                {
+                    "account_id": "{ACCOUNT_ID}",
+                    "created": 63630097779,
+                    "id": "462da37f8be11e46161fb40bc71173a9",
+                    "name": "Porting 202.555.9000",
+                    "numbers": {
+                        "+12025559000": {}
+                    },
+                    "port_state": "unconfirmed",
+                    "sent": false,
+                    "updated": 63630097779,
+                    "uploads": {}
+                }
+            ]
+        }
+    ],
+    "request_id": "6b667214680d1cc3143b8a187d820af6",
+    "revision": "undefined",
+    "status": "success"
+}
 ```
 
 
@@ -29,14 +59,45 @@ You can issue GET requests to find all ports in a particular state too.
 All requests are not paginated, with the exception of the `completed` state.
 Use pagination toggles for date range as desired.
 
-##### Listing by `pending` port
+##### Listing by `unconfirmed` port
 
-> GET /v2/accounts/{ACCOUNT_ID}/port_requests/pending
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/unconfirmed
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/pending
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/unconfirmed
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "account_id": "{ACCOUNT_ID}",
+            "account_name": "{ACCOUNT_NAME}",
+            "port_requests": [
+                {
+                    "account_id": "{ACCOUNT_ID}",
+                    "created": 63630097779,
+                    "id": "462da37f8be11e46161fb40bc71173a9",
+                    "name": "Porting 202.555.9000",
+                    "numbers": {
+                        "+12025559000": {}
+                    },
+                    "port_state": "unconfirmed",
+                    "sent": false,
+                    "updated": 63630097779,
+                    "uploads": {}
+                }
+            ]
+        }
+    ],
+    "page_size": 1,
+    "request_id": "ecd09332796338bd1cfada0a74e6bd28",
+    "revision": "db7651aaeed4a373915b516963cd6dd4",
+    "status": "success"
+}
 ```
 
 ##### Listing by `submitted` port
@@ -111,7 +172,7 @@ curl -v -X GET \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/port_requests
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
