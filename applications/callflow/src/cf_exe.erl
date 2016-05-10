@@ -759,7 +759,7 @@ handle_channel_replaced(Call, JObj, Notify) ->
         'false' -> 'ok'
     end.
 
--spec handle_usurp(pid(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec handle_usurp(pid(), kapps_call:call(), kz_json:object()) -> 'ok'.
 handle_usurp(Self, Call, JObj) ->
     OrgFetchId = kapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
     NewFetchId = kz_json:get_value(<<"Fetch-ID">>, JObj),
@@ -795,4 +795,3 @@ hangup_call(Call) ->
            ,{<<"Application-Name">>, <<"hangup">>}
           ],
     send_command(Cmd, kapps_call:control_queue_direct(Call), kapps_call:call_id_direct(Call)).
-
