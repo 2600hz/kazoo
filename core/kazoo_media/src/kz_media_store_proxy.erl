@@ -21,7 +21,7 @@
 init({_Transport, _Proto}, Req0, _Opts) ->
     kz_util:put_callid(kz_util:rand_hex_binary(16)),
     case cowboy_req:path_info(Req0) of
-        {[_]=PathTokens, Req1} -> is_authentic(PathTokens, Req1);
+        {[_, _]=PathTokens, Req1} -> is_authentic(PathTokens, Req1);
         {[_, _, _, _, _]=PathTokens, Req1} -> is_authentic(PathTokens, Req1);
         {_Else, Req1} ->
             lager:debug("unexpected path: ~p", [_Else]),
