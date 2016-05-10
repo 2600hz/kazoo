@@ -113,7 +113,7 @@ maybe_add_default(Key, Default, JObj) ->
                       {'error', jesse_error:error()}.
 validate(SchemaJObj, DataJObj) ->
     validate(SchemaJObj, DataJObj, [{'schema_loader_fun', fun load/1}
-                                   ,{'allowed_errors', 'infinity'}
+                                    ,{'allowed_errors', 'infinity'}
                                    ]).
 validate(<<_/binary>> = Schema, DataJObj, Options) ->
     {'ok', SchemaJObj} = load(Schema),
