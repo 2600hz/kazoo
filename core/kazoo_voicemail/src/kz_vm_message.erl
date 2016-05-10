@@ -220,30 +220,37 @@ save_meta(Length, Action, Call, MediaId, BoxId) ->
     case Action of
         'delete' ->
             lager:debug("attachment was sent out via notification, deleteing media file"),
-            UpdatedMetadata = apply_folder(?VM_FOLDER_DELETED, Metadata),
-            {'ok', _} = save_metadata(UpdatedMetadata, AccountId, MediaId);
+            Fun = [fun(JObj) ->
+                       apply_folder(?VM_FOLDER_DELETED, JObj)
+                   end
+                  ],
+            {'ok', _} = save_metadata(Metadata, AccountId, MediaId, Fun);
         'save' ->
             lager:debug("attachment was sent out via notification, saving media file"),
-            UpdatedMetadata = apply_folder(?VM_FOLDER_SAVED, Metadata),
-            {'ok', _} = save_metadata(UpdatedMetadata, AccountId, MediaId);
+            Fun = [fun(JObj) ->
+                       apply_folder(?VM_FOLDER_SAVED, JObj)
+                   end
+                  ],
+            {'ok', _} = save_metadata(Metadata, AccountId, MediaId, Fun);
         'nothing' ->
-            {'ok', _} = save_metadata(Metadata, AccountId, MediaId),
+            {'ok', _} = save_metadata(Metadata, AccountId, MediaId, []),
             lager:debug("stored voicemail metadata for ~s", [MediaId]),
             publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp)
     end.
 
--spec save_metadata(kz_json:object(), ne_binary(), ne_binary()) -> db_ret().
-save_metadata(NewMessage, AccountId, MessageId) ->
-    Fun = [fun(JObj) ->
+-spec save_metadata(kz_json:object(), ne_binary(), ne_binary(), update_funs()) -> db_ret().
+save_metadata(NewMessage, AccountId, MessageId, Funs) ->
+    UpdateFuns = [fun(JObj) ->
               kzd_box_message:set_metadata(NewMessage, JObj)
            end
+           | Funs
           ],
 
-    case update_message_doc(AccountId, MessageId, Fun) of
+    case update_message_doc(AccountId, MessageId, UpdateFuns) of
         {'ok', _}=OK -> OK;
         {'error', 'conflict'} ->
             lager:info("saving resulted in a conflict, trying again"),
-            save_metadata(NewMessage, AccountId, MessageId);
+            save_metadata(NewMessage, AccountId, MessageId, Funs);
         {'error', R}=E ->
             lager:info("error while storing voicemail metadata: ~p", [R]),
             E
@@ -527,6 +534,9 @@ count_by_owner(AccountId, OwnerId) ->
     ViewOpts = [{'key', [OwnerId, <<"vmbox">>]}],
 
     case kz_datamgr:get_results(get_db(AccountId), <<"cf_attributes/owned">>, ViewOpts) of
+        {'ok', []} ->
+            lager:info("voicemail box owner is not found"),
+            {0, 0};
         {'ok', [Owned|_]} ->
             VMBoxId = kz_json:get_value(<<"value">>, Owned),
             count_per_folder(AccountId, VMBoxId);
