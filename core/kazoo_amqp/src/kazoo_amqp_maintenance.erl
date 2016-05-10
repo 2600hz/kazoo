@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -123,8 +123,9 @@ validate_assignments({[#kz_amqp_assignment{timestamp={_, _, _}
                                            ,channel=Channel
                                            ,channel_ref=ChannelRef
                                            ,connection=Connection
-                                           ,broker=?NE_BINARY}=Assignment
-                   ], Continuation})
+                                           ,broker=?NE_BINARY
+                                          }=Assignment
+                      ], Continuation})
   when is_pid(Channel), is_reference(ChannelRef), is_pid(Connection) ->
     %% validate prechannel
     _ = case is_process_alive(Channel) andalso is_process_alive(Connection) of
@@ -140,7 +141,8 @@ validate_assignments({[#kz_amqp_assignment{timestamp={_, _, _}
                                            ,channel_ref='undefined'
                                            ,connection='undefined'
                                            ,broker='undefined'
-                                           ,type='float'}=Assignment
+                                           ,type='float'
+                                          }=Assignment
                    ], Continuation})
   when is_pid(Consumer), is_reference(ConsumerRef) ->
     %% validate float reservation
@@ -157,7 +159,8 @@ validate_assignments({[#kz_amqp_assignment{timestamp={_, _, _}
                                            ,channel_ref='undefined'
                                            ,connection='undefined'
                                            ,broker=?NE_BINARY
-                                           ,type='sticky'}=Assignment
+                                           ,type='sticky'
+                                          }=Assignment
                    ], Continuation})
   when is_pid(Consumer), is_reference(ConsumerRef) ->
     %% validate sticky reservation
@@ -173,7 +176,8 @@ validate_assignments({[#kz_amqp_assignment{timestamp={_, _, _}
                                            ,channel_ref=ChannelRef
                                            ,connection=Connection
                                            ,assigned=Assigned
-                                           ,broker=?NE_BINARY}=Assignment
+                                           ,broker=?NE_BINARY
+                                          }=Assignment
                    ], Continuation})
   when is_pid(Consumer), is_reference(ConsumerRef)
        ,is_pid(Channel), is_reference(ChannelRef)
@@ -213,21 +217,25 @@ connection_summary('$end_of_table', _) -> 'ok';
 connection_summary({[#kz_amqp_connections{connection=Connection
                                           ,broker=Broker
                                           ,available=Available
-                                          ,zone=Zone}
-                   ], Continuation}, PrimaryBroker) ->
+                                          ,zone=Zone
+                                         }
+                    ], Continuation
+                   }
+                  ,PrimaryBroker) ->
     MatchSpec = [{#kz_amqp_assignment{connection=Connection
-                                      ,_='_'},
+                                      ,_='_'
+                                     },
                   [],
                   ['true']}
                 ],
     io:format("| ~-48s | ~-16w | ~-8B | ~-9s | ~-10s | ~-7s |~n"
-              ,[Broker
-                ,Connection
-                ,ets:select_count(?ASSIGNMENTS, MatchSpec)
-                ,Available
-                ,Zone
-                ,Broker =:= PrimaryBroker
-               ]),
+             ,[Broker
+               ,Connection
+               ,ets:select_count(?ASSIGNMENTS, MatchSpec)
+               ,Available
+               ,Zone
+               ,Broker =:= PrimaryBroker
+              ]),
     io:format("+--------------------------------------------------+------------------+----------+-----------+------------+---------+~n"),
     connection_summary(ets:match_object(Continuation), PrimaryBroker).
 
@@ -242,9 +250,10 @@ broker_summary() ->
     Brokers = ordsets:to_list(
                 ordsets:from_list(
                   [Broker
-                   || [Broker] <- ets:match(?ASSIGNMENTS, Pattern)
-                          ,Broker =/= 'undefined'
-                  ])),
+                   || [Broker] <- ets:match(?ASSIGNMENTS, Pattern),
+                      Broker =/= 'undefined'
+                  ]
+                 )),
     io:format("+--------------------------------------------------+-------------+-----------------------+-----------------------+-------------+~n"),
     io:format("| Broker                                           | Connections |    Sticky Channels    |    Float Channels     | Prechannels |~n"),
     io:format("|                                                  |             | Assigned | Unassigned | Assigned | Unassigned |             |~n"),
@@ -278,15 +287,17 @@ broker_summary_broker(Broker) ->
 broker_summary_connections(Broker) ->
     MatchSpec = [{#kz_amqp_assignment{connection='$1'
                                       ,broker=Broker
-                                      ,_='_'},
-                  [{'=/=', '$1', 'undefined'}],
-                  ['$1']}
+                                      ,_='_'
+                                     }
+                 ,[{'=/=', '$1', 'undefined'}]
+                 ,['$1']}
                 ],
     Count = sets:to_list(
               sets:from_list(
                 [Connection
                  || Connection <- ets:select(?ASSIGNMENTS, MatchSpec)
-                ])),
+                ]
+               )),
     io:format(" ~-11B |", [length(Count)]).
 
 broker_summary_assigned_sticky(Broker) ->
@@ -294,11 +305,15 @@ broker_summary_assigned_sticky(Broker) ->
                                       ,consumer='$2'
                                       ,broker=Broker
                                       ,type='sticky'
-                                      ,_='_'},
-                  [{'andalso', {'=/=', '$1', 'undefined'}
-                    ,{'=/=', '$2', 'undefined'}
-                   }],
-                  ['true']}
+                                      ,_='_'
+                                     }
+                 ,[{'andalso'
+                   ,{'=/=', '$1', 'undefined'}
+                   ,{'=/=', '$2', 'undefined'}
+                   }
+                  ]
+                 ,['true']
+                 }
                 ],
     io:format(" ~-8B |", [ets:select_count(?ASSIGNMENTS, MatchSpec)]).
 
@@ -307,11 +322,15 @@ broker_summary_unassigned_sticky(Broker) ->
                                       ,consumer='$2'
                                       ,broker=Broker
                                       ,type='sticky'
-                                      ,_='_'},
-                  [{'andalso', {'=:=', '$1', 'undefined'}
-                    ,{'=/=', '$2', 'undefined'}
-                   }],
-                  ['true']}
+                                      ,_='_'
+                                     }
+                 ,[{'andalso'
+                   ,{'=:=', '$1', 'undefined'}
+                   ,{'=/=', '$2', 'undefined'}
+                   }
+                  ]
+                 ,['true']
+                 }
                 ],
     io:format(" ~-10B |", [ets:select_count(?ASSIGNMENTS, MatchSpec)]).
 
@@ -320,11 +339,14 @@ broker_summary_assigned_float(Broker) ->
                                       ,consumer='$2'
                                       ,broker=Broker
                                       ,type='float'
-                                      ,_='_'},
-                  [{'andalso', {'=/=', '$1', 'undefined'}
-                    ,{'=/=', '$2', 'undefined'}
-                   }],
-                  ['true']}
+                                      ,_='_'
+                                     }
+                 ,[{'andalso'
+                   ,{'=/=', '$1', 'undefined'}
+                   ,{'=/=', '$2', 'undefined'}
+                   }]
+                 ,['true']
+                 }
                 ],
     io:format(" ~-8B |", [ets:select_count(?ASSIGNMENTS, MatchSpec)]).
 
@@ -333,11 +355,15 @@ broker_summary_unassigned_float(Broker) ->
                                       ,consumer='$2'
                                       ,broker=Broker
                                       ,type='float'
-                                      ,_='_'},
-                  [{'andalso', {'=:=', '$1', 'undefined'}
-                    ,{'=/=', '$2', 'undefined'}
-                   }],
-                  ['true']}
+                                      ,_='_'
+                                     }
+                 ,[{'andalso'
+                   ,{'=:=', '$1', 'undefined'}
+                   ,{'=/=', '$2', 'undefined'}
+                   }
+                  ]
+                 ,['true']
+                 }
                 ],
     io:format(" ~-10B |", [ets:select_count(?ASSIGNMENTS, MatchSpec)]).
 
@@ -345,9 +371,11 @@ broker_summary_prechannels(Broker) ->
     MatchSpec = [{#kz_amqp_assignment{channel='$1'
                                       ,consumer='undefined'
                                       ,broker=Broker
-                                      ,_='_'},
-                  [{'=/=', '$1', 'undefined'}],
-                  ['true']}
+                                      ,_='_'
+                                     }
+                  ,[{'=/=', '$1', 'undefined'}]
+                  ,['true']
+                 }
                 ],
     io:format(" ~-11B |~n", [ets:select_count(?ASSIGNMENTS, MatchSpec)]).
 
@@ -391,12 +419,14 @@ channel_summary_age(Timestamp) -> kz_util:elapsed_s(Timestamp).
 consumer_details() ->
     MatchSpec = [{#kz_amqp_assignment{channel='$1'
                                       ,consumer='$2'
-                                      ,_='_'},
-                  [{'andalso',
-                    {'=/=', '$1', 'undefined'},
-                    {'=/=', '$2', 'undefined'}
-                   }],
-                  ['$2']
+                                      ,_='_'
+                                     }
+                 ,[{'andalso'
+                   ,{'=/=', '$1', 'undefined'}
+                   ,{'=/=', '$2', 'undefined'}
+                   }
+                  ]
+                  ,['$2']
                  }],
     print_consumer_details(ets:select(?ASSIGNMENTS, MatchSpec, 1)).
 
@@ -415,7 +445,9 @@ consumer_details(NodeNumber, ProcessUpper, ProcessLower) ->
               <<"<", NodeNumber/binary
                 ,".", ProcessUpper/binary
                 ,".", ProcessLower/binary
-                ,">">>)),
+                ,">"
+              >>
+             )),
     print_consumer_details(Pid).
 
 print_consumer_details('$end_of_table') -> 'ok';
@@ -427,22 +459,27 @@ print_consumer_details(Consumer) when is_pid(Consumer) ->
     _ = case kz_amqp_assignments:find(Consumer) of
             {'error', _} ->
                 io:format("  ~-10s: Not currently assigned AMQP channel!~n"
-                          ,["Status"]);
+                         ,["Status"]
+                         );
             #kz_amqp_assignment{channel='undefined'
                                 ,type='sticky'
-                                ,broker=Broker} ->
+                                ,broker=Broker
+                               } ->
                 io:format("  ~-10s: Waiting for sticky channel from ~s~n"
-                          ,["Status", Broker]);
+                         ,["Status", Broker]
+                         );
             #kz_amqp_assignment{channel='undefined'
-                                ,type='float'} ->
+                                ,type='float'
+                               } ->
                 io:format("  ~-10s: Waiting for float channel from any broker~n"
-                          ,["Status"]);
+                         ,["Status"]
+                         );
             #kz_amqp_assignment{broker=Broker
                                 ,channel=Channel
                                 ,connection=Connection
-                                ,type=Type} ->
-                io:format("  ~-10s: Assigned AMQP channel~n"
-                          ,["Status"]),
+                                ,type=Type
+                               } ->
+                io:format("  ~-10s: Assigned AMQP channel~n", ["Status"]),
                 io:format("  ~-10s: ~s~n", ["Broker", Broker]),
                 io:format("  ~-10s: ~p~n", ["Channel", Channel]),
                 io:format("  ~-10s: ~p~n", ["Connection", Connection]),
