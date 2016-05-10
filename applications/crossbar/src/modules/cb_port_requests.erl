@@ -357,11 +357,10 @@ update_port_request_for_save(Context) ->
                         ]
                       ).
 
--spec add_pvt_fields(cb_context:context(), kz_json:object()) ->
-                            kz_json:object().
+-spec add_pvt_fields(cb_context:context(), kz_json:object()) -> kz_json:object().
 add_pvt_fields(Context, PortRequest) ->
     Tree = kz_account:tree(cb_context:account_doc(Context)),
-    kz_json:set_value(<<"pvt_tree">>, Tree, PortRequest).
+    kz_account:set_tree(PortRequest, Tree).
 
 put(Context, Id, ?PORT_ATTACHMENT) ->
     [{Filename, FileJObj}] = cb_context:req_files(Context),
