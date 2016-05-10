@@ -729,8 +729,8 @@ create_endpoints(Endpoint, Properties, Call) ->
             {'ok', Endpoints}
     end.
 
--spec maybe_start_metaflows(whapps_call:call(), kz_json:objects()) -> 'ok'.
--spec maybe_start_metaflows(whapps_call:call(), kz_json:objects(), api_binary()) -> 'ok'.
+-spec maybe_start_metaflows(kapps_call:call(), kz_json:objects()) -> 'ok'.
+-spec maybe_start_metaflows(kapps_call:call(), kz_json:objects(), api_binary()) -> 'ok'.
 maybe_start_metaflows(Call, Endpoints) ->
     maybe_start_metaflows(Call, Endpoints, kapps_call:call_id_direct(Call)).
 
@@ -743,7 +743,7 @@ maybe_start_metaflows(Call, Endpoints, _CallId) ->
         _App -> 'ok'
     end.
 
--spec maybe_start_metaflow(whapps_call:call(), kz_json:object()) -> 'ok'.
+-spec maybe_start_metaflow(kapps_call:call(), kz_json:object()) -> 'ok'.
 maybe_start_metaflow(Call, Endpoint) ->
     case kz_json:get_first_defined([<<"metaflows">>, <<"Metaflows">>], Endpoint) of
         'undefined' -> 'ok';
