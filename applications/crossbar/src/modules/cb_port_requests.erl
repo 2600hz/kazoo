@@ -148,9 +148,9 @@ allowed_methods(?PORT_PENDING) ->
     [?HTTP_GET];
 allowed_methods(?PORT_SCHEDULED) ->
     [?HTTP_GET];
-allowed_methods(?PORT_COMPLETE) ->
+allowed_methods(?PORT_COMPLETED) ->
     [?HTTP_GET];
-allowed_methods(?PORT_REJECT) ->
+allowed_methods(?PORT_REJECTED) ->
     [?HTTP_GET];
 allowed_methods(?PORT_CANCELED) ->
     [?HTTP_GET];
@@ -163,9 +163,9 @@ allowed_methods(_PortRequestId, ?PORT_PENDING) ->
     [?HTTP_PATCH];
 allowed_methods(_PortRequestId, ?PORT_SCHEDULED) ->
     [?HTTP_PATCH];
-allowed_methods(_PortRequestId, ?PORT_COMPLETE) ->
+allowed_methods(_PortRequestId, ?PORT_COMPLETED) ->
     [?HTTP_PATCH];
-allowed_methods(_PortRequestId, ?PORT_REJECT) ->
+allowed_methods(_PortRequestId, ?PORT_REJECTED) ->
     [?HTTP_PATCH];
 allowed_methods(_PortRequestId, ?PORT_CANCELED) ->
     [?HTTP_PATCH];
@@ -197,8 +197,8 @@ resource_exists(_PortRequestId) -> 'true'.
 resource_exists(_PortRequestId, ?PORT_SUBMITTED) -> 'true';
 resource_exists(_PortRequestId, ?PORT_PENDING) -> 'true';
 resource_exists(_PortRequestId, ?PORT_SCHEDULED) -> 'true';
-resource_exists(_PortRequestId, ?PORT_COMPLETE) -> 'true';
-resource_exists(_PortRequestId, ?PORT_REJECT) -> 'true';
+resource_exists(_PortRequestId, ?PORT_COMPLETED) -> 'true';
+resource_exists(_PortRequestId, ?PORT_REJECTED) -> 'true';
 resource_exists(_PortRequestId, ?PORT_CANCELED) -> 'true';
 resource_exists(_PortRequestId, ?PORT_ATTACHMENT) -> 'true';
 resource_exists(_PortRequestId, ?PATH_TOKEN_LOA) -> 'true';
@@ -294,9 +294,9 @@ validate(Context, ?PORT_PENDING = Type) ->
     validate_load_summary(Context, Type);
 validate(Context, ?PORT_SCHEDULED = Type) ->
     validate_load_summary(Context, Type);
-validate(Context, ?PORT_COMPLETE = Type) ->
+validate(Context, ?PORT_COMPLETED = Type) ->
     validate_load_summary(Context, Type);
-validate(Context, ?PORT_REJECT = Type) ->
+validate(Context, ?PORT_REJECTED = Type) ->
     validate_load_summary(Context, Type);
 validate(Context, ?PORT_CANCELED = Type) ->
     validate_load_summary(Context, Type);
@@ -311,10 +311,10 @@ validate(Context, Id, ?PORT_PENDING) ->
     validate_port_request(Context, Id, ?PORT_PENDING, cb_context:req_verb(Context));
 validate(Context, Id, ?PORT_SCHEDULED) ->
     validate_port_request(Context, Id, ?PORT_SCHEDULED, cb_context:req_verb(Context));
-validate(Context, Id, ?PORT_COMPLETE) ->
-    validate_port_request(Context, Id, ?PORT_COMPLETE, cb_context:req_verb(Context));
-validate(Context, Id, ?PORT_REJECT) ->
-    validate_port_request(Context, Id, ?PORT_REJECT, cb_context:req_verb(Context));
+validate(Context, Id, ?PORT_COMPLETED) ->
+    validate_port_request(Context, Id, ?PORT_COMPLETED, cb_context:req_verb(Context));
+validate(Context, Id, ?PORT_REJECTED) ->
+    validate_port_request(Context, Id, ?PORT_REJECTED, cb_context:req_verb(Context));
 validate(Context, Id, ?PORT_CANCELED) ->
     validate_port_request(Context, Id, ?PORT_CANCELED, cb_context:req_verb(Context));
 validate(Context, Id, ?PORT_ATTACHMENT) ->
@@ -411,18 +411,18 @@ patch(Context, Id, ?PORT_SCHEDULED) ->
             send_port_notification(Context1, Id, ?PORT_SCHEDULED);
         _ -> Context1
     end;
-patch(Context, Id, ?PORT_COMPLETE) ->
+patch(Context, Id, ?PORT_COMPLETED) ->
     Context1 = do_patch(Context, Id),
     case cb_context:resp_status(Context1) of
         'success' ->
-            send_port_notification(Context1, Id, ?PORT_COMPLETE);
+            send_port_notification(Context1, Id, ?PORT_COMPLETED);
         _ -> Context1
     end;
-patch(Context, Id, ?PORT_REJECT) ->
+patch(Context, Id, ?PORT_REJECTED) ->
     Context1 = do_patch(Context, Id),
     case cb_context:resp_status(Context1) of
         'success' ->
-            send_port_notification(Context1, Id, ?PORT_REJECT);
+            send_port_notification(Context1, Id, ?PORT_REJECTED);
         _ -> Context1
     end;
 patch(Context, Id, ?PORT_CANCELED) ->
@@ -536,7 +536,7 @@ load_port_request(Context, Id) ->
 %%--------------------------------------------------------------------
 -spec validate_load_summary(cb_context:context(), ne_binary()) ->
                                     cb_context:context().
-validate_load_summary(Context, ?PORT_COMPLETE = Type) ->
+validate_load_summary(Context, ?PORT_COMPLETED = Type) ->
     case cb_modules_util:range_view_options(Context, ?MAX_RANGE, <<"modified">>) of
         {From, To} -> load_summary_by_range(Context, Type, From, To);
         Context1 -> Context1
@@ -583,10 +583,10 @@ validate_port_request(Context, Id, ?PORT_PENDING, ?HTTP_PATCH) ->
     maybe_move_state(Context, Id, ?PORT_PENDING);
 validate_port_request(Context, Id, ?PORT_SCHEDULED, ?HTTP_PATCH) ->
     maybe_move_state(Context, Id, ?PORT_SCHEDULED);
-validate_port_request(Context, Id, ?PORT_COMPLETE, ?HTTP_PATCH) ->
-    maybe_move_state(Context, Id, ?PORT_COMPLETE);
-validate_port_request(Context, Id, ?PORT_REJECT, ?HTTP_PATCH) ->
-    maybe_move_state(Context, Id, ?PORT_REJECT);
+validate_port_request(Context, Id, ?PORT_COMPLETED, ?HTTP_PATCH) ->
+    maybe_move_state(Context, Id, ?PORT_COMPLETED);
+validate_port_request(Context, Id, ?PORT_REJECTED, ?HTTP_PATCH) ->
+    maybe_move_state(Context, Id, ?PORT_REJECTED);
 validate_port_request(Context, Id, ?PORT_CANCELED, ?HTTP_PATCH) ->
     maybe_move_state(Context, Id, ?PORT_CANCELED).
 
@@ -626,7 +626,7 @@ validate_attachment(Context, Id, AttachmentId, ?HTTP_DELETE) ->
 is_deletable(Context) ->
     is_deletable(Context, knm_port_request:current_state(cb_context:doc(Context))).
 is_deletable(Context, ?PORT_UNCONFIRMED) -> Context;
-is_deletable(Context, ?PORT_REJECT) -> Context;
+is_deletable(Context, ?PORT_REJECTED) -> Context;
 is_deletable(Context, ?PORT_CANCELED) -> Context;
 is_deletable(Context, _PortState) ->
     lager:debug("port is in state ~s, can't modify", [_PortState]),
@@ -713,7 +713,7 @@ load_summary_by_range(Context, From, To) ->
       lists:foldl(fun(?PORT_SUBMITTED=Type, C) -> load_summary_fold(C, Type);
                      (?PORT_PENDING=Type, C) -> load_summary_fold(C, Type);
                      (?PORT_SCHEDULED=Type, C) -> load_summary_fold(C, Type);
-                     (?PORT_REJECT=Type, C) -> load_summary_fold(C, Type);
+                     (?PORT_REJECTED=Type, C) -> load_summary_fold(C, Type);
                      (Type, C) ->
                           load_summary_by_range_fold(C, Type, From, To)
                   end,
@@ -1017,7 +1017,7 @@ can_update_port_request(Context) ->
 
 can_update_port_request(_Context, ?PORT_UNCONFIRMED) ->
     'true';
-can_update_port_request(_Context, ?PORT_REJECT) ->
+can_update_port_request(_Context, ?PORT_REJECTED) ->
     'true';
 can_update_port_request(Context, _) ->
     cb_modules_util:is_superduper_admin(cb_context:auth_account_id(Context)).
@@ -1279,9 +1279,9 @@ send_port_notification(Context, Id, ?PORT_PENDING=State) ->
     send_port_notification(Context, Id, State, fun send_port_pending_notification/2);
 send_port_notification(Context, Id, ?PORT_SCHEDULED=State) ->
     send_port_notification(Context, Id, State, fun send_port_scheduled_notification/2);
-send_port_notification(Context, Id, ?PORT_COMPLETE=State) ->
+send_port_notification(Context, Id, ?PORT_COMPLETED=State) ->
     send_port_notification(Context, Id, State, fun send_ported_notification/2);
-send_port_notification(Context, Id, ?PORT_REJECT=State) ->
+send_port_notification(Context, Id, ?PORT_REJECTED=State) ->
     send_port_notification(Context, Id, State, fun send_port_rejected_notification/2);
 send_port_notification(Context, Id, ?PORT_CANCELED=State) ->
     _ = remove_from_phone_numbers_doc(Context),

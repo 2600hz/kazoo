@@ -172,7 +172,7 @@ normalize_number_map(N, Meta) ->
 -spec transition_to_canceled(kz_json:object()) -> transition_response().
 
 transition_to_submitted(JObj) ->
-    transition(JObj, [?PORT_WAITING, ?PORT_REJECT], ?PORT_SUBMITTED).
+    transition(JObj, [?PORT_WAITING, ?PORT_REJECTED], ?PORT_SUBMITTED).
 
 transition_to_pending(JObj) ->
     transition(JObj, [?PORT_SUBMITTED], ?PORT_PENDING).
@@ -181,16 +181,16 @@ transition_to_scheduled(JObj) ->
     transition(JObj, [?PORT_PENDING], ?PORT_SCHEDULED).
 
 transition_to_complete(JObj) ->
-    case transition(JObj, [?PORT_PENDING, ?PORT_SCHEDULED, ?PORT_REJECT], ?PORT_COMPLETE) of
+    case transition(JObj, [?PORT_PENDING, ?PORT_SCHEDULED, ?PORT_REJECTED], ?PORT_COMPLETED) of
         {'error', _}=E -> E;
         {'ok', Transitioned} -> completed_port(Transitioned)
     end.
 
 transition_to_rejected(JObj) ->
-    transition(JObj, [?PORT_SUBMITTED, ?PORT_PENDING, ?PORT_SCHEDULED], ?PORT_REJECT).
+    transition(JObj, [?PORT_SUBMITTED, ?PORT_PENDING, ?PORT_SCHEDULED], ?PORT_REJECTED).
 
 transition_to_canceled(JObj) ->
-    transition(JObj, [?PORT_WAITING, ?PORT_SUBMITTED, ?PORT_PENDING, ?PORT_SCHEDULED, ?PORT_REJECT], ?PORT_CANCELED).
+    transition(JObj, [?PORT_WAITING, ?PORT_SUBMITTED, ?PORT_PENDING, ?PORT_SCHEDULED, ?PORT_REJECTED], ?PORT_CANCELED).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -204,9 +204,9 @@ maybe_transition(PortReq, ?PORT_PENDING) ->
     transition_to_pending(PortReq);
 maybe_transition(PortReq, ?PORT_SCHEDULED) ->
     transition_to_scheduled(PortReq);
-maybe_transition(PortReq, ?PORT_COMPLETE) ->
+maybe_transition(PortReq, ?PORT_COMPLETED) ->
     transition_to_complete(PortReq);
-maybe_transition(PortReq, ?PORT_REJECT) ->
+maybe_transition(PortReq, ?PORT_REJECTED) ->
     transition_to_rejected(PortReq);
 maybe_transition(PortReq, ?PORT_CANCELED) ->
     transition_to_canceled(PortReq).
