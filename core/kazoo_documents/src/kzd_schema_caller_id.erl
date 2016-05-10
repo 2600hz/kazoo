@@ -12,9 +12,9 @@
 
 -include_lib("kazoo/include/kz_types.hrl").
 
--define (SCHEMA_NAME, <<"caller_id">>).
--define (SCHEMA_PATH_PATTERN(K1, K2), [<<"properties">>, K1, <<"properties">>, K2]).
--define (SCHEMA_EXTERNAL_NAME, ?SCHEMA_PATH_PATTERN(<<"external">>, <<"name">>)).
+-define(SCHEMA_NAME, <<"caller_id">>).
+-define(SCHEMA_PATH_PATTERN(K1, K2), [<<"properties">>, K1, <<"properties">>, K2]).
+-define(SCHEMA_EXTERNAL_NAME, ?SCHEMA_PATH_PATTERN(<<"external">>, <<"name">>)).
 
 -spec external_name_max_length() -> api_object().
 external_name_max_length() ->
