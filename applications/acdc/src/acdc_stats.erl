@@ -318,8 +318,8 @@ find_call(CallId) ->
 -record(state, {
           archive_ref :: reference()
           ,cleanup_ref :: reference()
-          ,call_table_id :: ets:table_id()
-          ,status_table_id :: ets:table_id()
+          ,call_table_id :: ets:tid()
+          ,status_table_id :: ets:tid()
          }).
 
 -spec init([]) -> {'ok', #state{}}.
