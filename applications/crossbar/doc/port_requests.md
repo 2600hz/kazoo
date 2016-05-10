@@ -300,23 +300,54 @@ curl -v -X DELETE \
 
 > GET /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments
 ```
 
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "file.pdf": {
+            "content_type": "application/pdf",
+            "length": 90931
+        },
+        "otherfile.pdf": {
+            "content_type": "application/pdf",
+            "length": 767684
+        }
+    },
+    "request_id": "ed71507eeccbd3eeab8ccd7bd6cf023c",
+    "revision": "6-ade05f2d7e539be79f425bfb39e41cef",
+    "status": "success"
+}
+```
+
 
 #### Add an attachment to a port request
 
+Note: if `ATTACHMENT_ID` does not end with `.pdf` the extension will be appended.
+
 > PUT /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/pdf" \
     --data-binary @/path/to/file.pdf \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments?filename=file.pdf'
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments?filename={ATTACHMENT_ID}'
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {},
+    "request_id": "e9db1aa74945884eed5a4545a405b490",
+    "revision": "2-7ab1daee08211c782a6cdc5425886be4",
+    "status": "success"
+}
 ```
 
 
@@ -324,24 +355,36 @@ curl -v -X PUT \
 
 > GET /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Accept: application/pdf" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID} > file.pdf
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID}
 ```
+
+Streams back the contents of the PDF file `{ATTACHMENT_ID}`.
 
 
 #### Replace an attachment on a port request
 
 > POST /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID}
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/pdf" \
     --data-binary @/path/to/file.pdf \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID}
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {},
+    "request_id": "5ccaf7eb473c350c2e460ae5b4a76697",
+    "revision": "4-288d2d9e121c8e5d5e0d137626d70536",
+    "status": "success"
+}
 ```
 
 

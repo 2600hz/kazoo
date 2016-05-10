@@ -368,7 +368,7 @@ put(Context, Id, ?PORT_ATTACHMENT) ->
 
     Contents = kz_json:get_value(<<"contents">>, FileJObj),
 
-    CT = kz_json:get_string_value([<<"headers">>, <<"content_type">>], FileJObj),
+    CT = kz_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
     Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(<<"port_request">>)],
 
     crossbar_doc:save_attachment(Id
@@ -469,7 +469,7 @@ post(Context, Id) ->
 post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     [{_Filename, FileJObj}] = cb_context:req_files(Context),
     Contents = kz_json:get_value(<<"contents">>, FileJObj),
-    CT = kz_json:get_string_value([<<"headers">>, <<"content_type">>], FileJObj),
+    CT = kz_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
     Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(<<"port_request">>)],
 
     case kz_doc:attachment(cb_context:doc(Context), AttachmentId) of
