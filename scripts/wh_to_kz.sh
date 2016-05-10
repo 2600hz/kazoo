@@ -36,10 +36,6 @@ kz_time_exports='current_tstamp current_unix_tstamp decr_timeout elapsed_ms elap
 util_split 'kz_time' $kz_time_exports
 
 
-kz_accounts_exports='account_update disable_account enable_account format_account_db format_account_id format_account_mod_id format_account_modb get_account_realm is_account_enabled is_account_expired is_in_account_hierarchy is_in_account_hierarchy is_system_admin is_system_db maybe_disable_account normalize_account_name set_allow_number_additions set_superduper_admin'
-util_split 'kz_accounts' $kz_accounts_exports
-
-
 kz_http_util_from_kz_util='resolve_uri safe_urlencode uri uri_decode uri_encode'
 util_split 'kz_http_util' $kz_http_util_from_kz_util
 
@@ -52,3 +48,22 @@ function rename_fname() {
 }
 
 rename_fname kz_util:get_xml_value kz_xml:value
+
+
+rename_fname kz_accounts:account_update kz_account:do_update
+rename_fname kz_accounts:disable_account kz_account:do_disable
+rename_fname kz_accounts:enable_account kz_account:do_enable
+rename_fname kz_accounts:format_account_db kz_account:format_db
+rename_fname kz_accounts:format_account_id kz_account:format_id
+rename_fname kz_accounts:format_account_mod_id kz_account:format_mod_id
+rename_fname kz_accounts:format_account_modb kz_account:format_modb
+rename_fname kz_accounts:get_account_realm kz_account:do_get_realm
+rename_fname kz_accounts:is_account_enabled kz_account:is_it_enabled
+rename_fname kz_accounts:is_account_expired kz_account:is_it_expired
+rename_fname kz_accounts:is_in_account_hierarchy kz_account:is_it_in_hierarchy
+rename_fname kz_accounts:is_system_admin kz_account:is_it_system_admin
+rename_fname kz_accounts:is_system_db kz_account:is_it_system_db
+rename_fname kz_accounts:maybe_disable_account kz_account:do_maybe_disable
+rename_fname kz_accounts:normalize_account_name kz_account:normalize_name
+rename_fname kz_accounts:set_allow_number_additions kz_account:do_set_allow_number_additions
+rename_fname kz_accounts:set_superduper_admin kz_account:do_set_superduper_admin
