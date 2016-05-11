@@ -286,7 +286,7 @@ get_values([{_, Values} | T], Key, Acc) ->
 %%--------------------------------------------------------------------
 -spec load() -> kz_proplist().
 load() ->
-    case erlang:get(?SECTION_DEFAULTS) of
+    case erlang:get(?SETTINGS_KEY) of
         'undefined' ->
             case application:get_env(?APP_NAME_ATOM, 'kz_config') of
                 'undefined' -> ?SECTION_DEFAULTS;
