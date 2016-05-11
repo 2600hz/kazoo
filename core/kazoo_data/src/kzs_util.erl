@@ -42,6 +42,7 @@ db_classification(<<"numbers%2f", _/binary>>) -> 'numbers';
 db_classification(?MATCH_MODB_SUFFIX_UNENCODED(_A,_B,_Rest,_Year,_Month)) -> 'modb';% these only need to match
 db_classification(?MATCH_MODB_SUFFIX_ENCODED(_A,_B,_Rest,_Year,_Month)) -> 'modb';%   "account..." then the
 db_classification(?MATCH_MODB_SUFFIX_encoded(_A,_B,_Rest,_Year,_Month)) -> 'modb';%   right size.
+db_classification(?MATCH_MODB_SUFFIX_RAW(_Account,_Year,_Month)) -> 'modb';%   right size.
 db_classification(?MATCH_ACCOUNT_UNENCODED(_AccountId)) -> 'account';
 db_classification(?MATCH_ACCOUNT_encoded(_AccountId)) -> 'account';
 db_classification(?MATCH_ACCOUNT_ENCODED(_AccountId)) -> 'account';
