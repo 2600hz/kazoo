@@ -255,7 +255,7 @@ copy_attachments(Src, Dst, CopySpec, {[JObj | JObjs], [Key | Keys]}) ->
         {'ok', Contents} ->
             ContentType = kz_json:get_value([<<"content_type">>], JObj),
             Opts = [{'content_type', kz_util:to_list(ContentType)}],
-            case kz_datamgr:put_attachment(DestDbName, DestDocId, Key, Contents, Opts) of
+            case kzs_attachments:put_attachment(Dst, DestDbName, DestDocId, Key, Contents, Opts) of
                 {'ok', _AttachmentDoc} ->
                     copy_attachments(Src, Dst, CopySpec, {JObjs, Keys});
                 Error -> Error
