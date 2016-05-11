@@ -32,6 +32,8 @@
     ,account/1
     ,account_id/1, set_account_id/2
     ,account_name/1, set_account_name/2
+    ,metadata/1, metadata/2
+    ,set_metadata/2, set_metadata/3
 ]).
 
 
@@ -281,6 +283,36 @@ account_name(Ledger) ->
 -spec set_account_name(ledger(), ne_binary()) -> ledger().
 set_account_name(L, End) ->
     kz_json:set_value(?ACCOUNT_NAME, End, L).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec metadata(ledger()) -> ledger().
+metadata(Ledger) ->
+    kz_json:get_value(?METADATA, Ledger).
+
+-spec metadata(ledger(), ne_binary() | ne_binaries()) -> ledger().
+metadata(Ledger, Key)
+  when is_binary(Key)->
+    kz_json:get_value(?METADATA_KEY(Key), Ledger);
+metadata(Ledger, Keys)
+  when is_list(Keys)->
+    kz_json:get_value(?METADATA_KEYS(Keys), Ledger).
+
+-spec set_metadata(ledger(), kz_json:object() | kz_proplist()) -> ledger().
+set_metadata(Ledger, List)
+  when is_list(List) ->
+    kz_json:set_values([{?METADATA_KEY(K), V} || {K,V} <- List], Ledger);
+set_metadata(Ledger, JObj) ->
+    kz_json:set_value(?METADATA, JObj, Ledger).
+
+-spec set_metadata(ledger(), ne_binary(), kz_json:json_term()) -> ledger().
+set_metadata(Ledger, Key, Value) ->
+    kz_json:set_value(?METADATA_KEY(Key), Value, Ledger).
+
 
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
