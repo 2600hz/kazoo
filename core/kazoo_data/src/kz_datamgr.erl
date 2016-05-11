@@ -1107,15 +1107,19 @@ maybe_convert_dbname(DbName) ->
         'false' -> {'ok', kz_util:to_binary(DbName)}
     end.
 
--spec copy_doc(ne_binary(), ne_binary(), ne_binary(), kz_proplist()) ->
+-spec copy_doc(ne_binary(), docid(), ne_binary(), kz_proplist()) ->
                       {'ok', kz_json:object()} |
                       data_error().
--spec copy_doc(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) ->
+-spec copy_doc(ne_binary(), docid(), ne_binary(), docid(), kz_proplist()) ->
                       {'ok', kz_json:object()} |
                       data_error().
 copy_doc(FromDB, FromId, ToDB, Options) ->
     copy_doc(FromDB, FromId, ToDB, FromId, Options).
 
+copy_doc(FromDB, {DocType, FromId}, ToDB, ToId, Options) ->
+    copy_doc(FromDB, FromId, ToDB, ToId, maybe_add_doc_type(DocType, Options));
+copy_doc(FromDB, FromId, ToDB, {DocType, ToId}, Options) ->
+    copy_doc(FromDB, FromId, ToDB, ToId, maybe_add_doc_type(DocType, Options));
 copy_doc(FromDB, FromId, ToDB, ToId, Options) ->
     Src = kzs_plan:plan(FromDB, Options),
     Dst = kzs_plan:plan(ToDB, Options),
@@ -1126,15 +1130,19 @@ copy_doc(FromDB, FromId, ToDB, ToId, Options) ->
                         },
     kzs_doc:copy_doc(Src, Dst, CopySpec, Options).
 
--spec move_doc(ne_binary(), ne_binary(), ne_binary(), kz_proplist()) ->
+-spec move_doc(ne_binary(), docid(), ne_binary(), kz_proplist()) ->
                       {'ok', kz_json:object()} |
                       data_error().
--spec move_doc(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) ->
+-spec move_doc(ne_binary(), docid(), ne_binary(), docid(), kz_proplist()) ->
                       {'ok', kz_json:object()} |
                       data_error().
 move_doc(FromDB, FromId, ToDB, Options) ->
     move_doc(FromDB, FromId, ToDB, FromId, Options).
 
+move_doc(FromDB, {DocType, FromId}, ToDB, ToId, Options) ->
+    move_doc(FromDB, FromId, ToDB, ToId, maybe_add_doc_type(DocType, Options));
+move_doc(FromDB, FromId, ToDB, {DocType, ToId}, Options) ->
+    move_doc(FromDB, FromId, ToDB, ToId, maybe_add_doc_type(DocType, Options));
 move_doc(FromDB, FromId, ToDB, ToId, Options) ->
     Src = kzs_plan:plan(FromDB, Options),
     Dst = kzs_plan:plan(ToDB, Options),
