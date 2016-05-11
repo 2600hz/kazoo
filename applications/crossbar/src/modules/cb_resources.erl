@@ -306,14 +306,16 @@ post(Context, Id) ->
 
 -spec do_collection(cb_context:context(), ne_binary()) -> cb_context:context().
 do_collection(Context, ?KZ_OFFNET_DB) ->
-    reload_acls(),
+    _ = reload_acls(),
+    _ = reload_gateways(),
     collection_process(Context);
 do_collection(Context, _AccountDb) ->
     collection_process(Context).
 
 -spec do_post(cb_context:context(), path_token(), ne_binary()) -> cb_context:context().
 do_post(Context, _Id, ?KZ_OFFNET_DB) ->
-    reload_acls(),
+    _ = reload_acls(),
+    _ = reload_gateways(),
     crossbar_doc:save(Context);
 do_post(Context, _Id, _AccountDb) ->
     Context1 = crossbar_doc:save(Context),
@@ -332,18 +334,20 @@ put(Context, ?JOBS) ->
 
 -spec do_put(cb_context:context(), ne_binary()) -> cb_context:context().
 do_put(Context, ?KZ_OFFNET_DB) ->
-    reload_acls(),
+    _ = reload_acls(),
+    _ = reload_gateways(),
     crossbar_doc:save(Context);
 do_put(Context, _AccountDb) ->
     Context1 = crossbar_doc:save(Context),
-    cb_local_resources:maybe_aggregate_resource(Context1),
+    _ = cb_local_resources:maybe_aggregate_resource(Context1),
     Context1.
 
 -spec put_collection(cb_context:context(), ne_binary()) -> cb_context:context().
 put_collection(Context, ?KZ_OFFNET_DB) ->
     collection_process(Context);
 put_collection(Context, _AccountDb) ->
-    reload_acls(),
+    _ = reload_acls(),
+    _ = reload_gateways(),
     collection_process(Context).
 
 -spec put_job(cb_context:context()) -> cb_context:context().
@@ -353,7 +357,7 @@ put_job(Context) ->
 
     case cb_context:resp_status(Context1) of
         'success' ->
-            cb_jobs_listener:publish_new_job(Context),
+            _ = cb_jobs_listener:publish_new_job(Context),
             crossbar_util:response_202(<<"Job scheduled">>, cb_context:resp_data(Context1), Context1);
         _Status ->
             Context1
@@ -365,11 +369,12 @@ delete(Context, ResourceId) ->
 
 -spec do_delete(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 do_delete(Context, _ResourceId, ?KZ_OFFNET_DB) ->
-    reload_acls(),
+    _ = reload_acls(),
+    _ = reload_gateways(),
     crossbar_doc:delete(Context);
 do_delete(Context, ResourceId, _AccountDb) ->
     Context1 = crossbar_doc:delete(Context),
-    cb_local_resources:maybe_remove_aggregate(ResourceId, Context1),
+    _ = cb_local_resources:maybe_remove_aggregate(ResourceId, Context1),
     Context1.
 
 %%%===================================================================
@@ -544,6 +549,11 @@ on_successful_job_validation('undefined', Context) ->
 reload_acls() ->
     lager:debug("published reloadacl"),
     kz_amqp_worker:cast([], fun(_) -> kapi_switch:publish_reload_acls() end).
+
+-spec reload_gateways() -> 'ok'.
+reload_gateways() ->
+    lager:debug("published reload_gateways"),
+    kz_amqp_worker:cast([], fun(_) -> kapi_switch:publish_reload_gateways() end).
 
 -spec collection_process(cb_context:context()) -> cb_context:context().
 -spec collection_process(cb_context:context(), kz_json:objects()) -> cb_context:context().
