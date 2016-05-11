@@ -36,7 +36,6 @@ Key | Description | Type | Default | Required
 `skip_instructions` | Determines if the instructions after the greeting and prior to composing a message should be played | `boolean` | `false` | `false`
 `timezone` | The default timezone | `string(5..32)` |   | `false`
 
-
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/vmboxes
