@@ -36,9 +36,9 @@ load_file() ->
     load_file(ini_file()).
 load_file(File) ->
     case zucchini:parse_file(File) of
-        {'ok', Prop} ->
+        {'ok', Props} ->
             lager:info("loaded configs from file ~s", [File]),
-            Prop;
+            Props;
         {'error', 'enoent'} ->
             lager:warning("file ~s does not exist or is not accessible", [File]),
             lager:warning("please create ~s or set the environment variable ~s to the path of the config file", [File, ?CONFIG_FILE_ENV]),
@@ -78,7 +78,6 @@ reload() ->
 %%--------------------------------------------------------------------
 -spec read_cookie(atom()) -> [atom()].
 read_cookie(NodeName) ->
-    case props:get_atom_value([NodeName, 'cookie'], load_file(), []) of
-        [] -> [];
-        Cookie -> [Cookie]
-    end.
+    AppEnv = load_file(),
+    erlang:put(?SETTINGS_KEY, AppEnv),
+    kz_config:get_atom(NodeName, 'cookie', []).
