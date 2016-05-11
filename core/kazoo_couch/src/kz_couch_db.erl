@@ -95,18 +95,18 @@ db_archive(#server{}=Conn, DbName, Filename) ->
     'ok' = file:write(File, <<"[">>),
     io:format("archiving to ~s~n", [Filename]),
     MaxDocs = kapps_config:get_integer(?CONFIG_CAT, <<"max_concurrent_docs_to_archive">>, 500),
-    archive(Db, File, MaxDocs, kz_json:get_integer_value(<<"doc_count">>, DbInfo), 0),
+    archive(Db, DbName, File, MaxDocs, kz_json:get_integer_value(<<"doc_count">>, DbInfo), 0),
     'ok' = file:write(File, <<"]">>),
     file:close(File).
 
 %% MaxDocs = The biggest set of docs to pull from Couch
 %% N = The number of docs in the DB that haven't been archived
 %% Pos = Which doc will the next query start from (the offset)
--spec archive(db(), file:io_device(), pos_integer(), non_neg_integer(), non_neg_integer()) -> 'ok'.
-archive(Db, _File,  _MaxDocs, 0, _Pos) ->
-    io:format("    archive ~s complete~n", [Db]);
-archive(#db{}=Db, File, MaxDocs, N, Pos) when N =< MaxDocs ->
-    ViewOptions = [{'limit', N}
+-spec archive(db(), ne_binary(), file:io_device(), pos_integer(), non_neg_integer(), non_neg_integer()) -> 'ok'.
+archive(_Db, DbName, _File,  _MaxDocs, 0, _Pos) ->
+    io:format("    archive ~s complete~n", [DbName]);
+archive(#db{}=Db, DbName, File, MaxDocs, N, Pos) when N =< MaxDocs ->
+    ViewOptions = [{'limit', MaxDocs}
                    ,{'skip', Pos}
                    ,'include_docs'
                   ],
@@ -118,9 +118,9 @@ archive(#db{}=Db, File, MaxDocs, N, Pos) when N =< MaxDocs ->
         {'error', _E} ->
             io:format("    error ~p asking for ~p docs from pos ~p~n", [_E, N, Pos]),
             timer:sleep(500),
-            archive(Db, File, MaxDocs, N, Pos)
+            archive(Db, DbName, File, MaxDocs, N, Pos)
     end;
-archive(Db, File, MaxDocs, N, Pos) ->
+archive(Db, DbName, File, MaxDocs, N, Pos) ->
     ViewOptions = [{'limit', MaxDocs}
                    ,{'skip', Pos}
                    ,'include_docs'
@@ -130,11 +130,11 @@ archive(Db, File, MaxDocs, N, Pos) ->
         {'ok', Docs} ->
             'ok' = archive_docs(File, Docs),
             io:format("    archived ~p docs~n", [MaxDocs]),
-            archive(Db, File, MaxDocs, N - MaxDocs, Pos + MaxDocs);
+            archive(Db, DbName, File, MaxDocs, N - MaxDocs, Pos + MaxDocs);
         {'error', _E} ->
             io:format("    error ~p asking for ~p docs from pos ~p~n", [_E, N, Pos]),
             timer:sleep(500),
-            archive(Db, File, MaxDocs, N, Pos)
+            archive(Db, DbName, File, MaxDocs, N, Pos)
     end.
 
 -spec archive_docs(file:io_device(), kz_json:objects()) -> 'ok'.
