@@ -3,7 +3,7 @@
     "language": "javascript",
     "views": {
         "listing_by_service": {
-            "map": "function(doc) { if ( doc.pvt_deleted || doc.pvt_type != 'ledger') return; var amount = doc.pvt_amount || 0; if(doc.pvt_ledger_type == 'debit') {amount *= -1} emit(doc.source.service, amount)}",
+            "map": "function(doc) { if ( doc.pvt_deleted || doc.pvt_type != 'ledger') return; var amount = doc.pvt_amount || doc.amount || 0; if(doc.pvt_ledger_type == 'debit') {amount *= -1} emit(doc.source.service, amount)}",
             "reduce": "function (key, values) { return sum(values) }"
         }
     }
