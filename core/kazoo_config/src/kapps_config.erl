@@ -673,7 +673,7 @@ add_config_setting(Id, Setting, Values) when is_binary(Id) ->
     end;
 add_config_setting(JObj, _, []) -> {'ok', JObj};
 add_config_setting(JObj, ToSetting, [{FromId, Node, FromSetting, Value} | Values]) ->
-    ToId  = kz_json:get_value(<<"_id">>, JObj),
+    ToId  = kz_doc:id(JObj),
     Key = config_setting_key(Node, ToSetting),
     case kz_json:get_value(Key, JObj) of
         'undefined' ->
@@ -716,7 +716,7 @@ remove_config_setting(Id, Setting) when is_binary(Id) ->
         {'error', _}=Error -> Error
     end;
 remove_config_setting(JObj, Setting) ->
-    Id = kz_json:get_value(<<"_id">>, JObj),
+    Id = kz_doc:id(JObj),
     Keys =
         [{Id, Node, Setting}
          || Node <- kz_json:get_public_keys(JObj)
