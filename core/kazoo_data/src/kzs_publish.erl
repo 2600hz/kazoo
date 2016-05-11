@@ -62,6 +62,8 @@ maybe_publish_db(DbName, Action) ->
 should_publish_doc(Doc) ->
     case kz_doc:id(Doc) of
         <<"_design/", _/binary>> = _D -> 'false';
+        <<"_design%2F", _/binary>> = _D -> 'false';
+        <<"_design%2f", _/binary>> = _D -> 'false';
         _Else -> 'true'
     end.
 
