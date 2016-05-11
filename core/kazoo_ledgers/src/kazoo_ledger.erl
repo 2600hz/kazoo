@@ -54,27 +54,14 @@ new() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec save(kz_json:object()) -> {'ok', kz_json:object()} | {'error', any()}.
--spec save(kz_json:object(), ne_binary(), boolean()) -> {'ok', kz_json:object()} | {'error', any()}.
 save(Ledger) ->
     AccountId = account_id(Ledger),
-    IsReseller = kz_services:is_reseller(AccountId),
-    JObj =
-        kz_json:set_values([
-            {<<"pvt_type">>, ?PVT_TYPE}
-            ,{<<"pvt_modified">>, kz_util:current_tstamp()}
-            ,{<<"pvt_created">>, kz_util:current_tstamp()}
-        ], Ledger),
-    save(JObj, AccountId, IsReseller).
-
-save(JObj, AccountId, 'true') ->
-    kazoo_modb:save_doc(AccountId, JObj);
-save(JObj, AccountId, 'false') ->
-    ResellerId = kz_services:find_reseller_id(AccountId),
-    case kazoo_modb:save_doc(ResellerId, JObj) of
-        {'error', _}=Err -> Err;
-        {'ok', _} ->
-            kazoo_modb:save_doc(AccountId, JObj)
-    end.
+    Props = [{<<"pvt_type">>, ?PVT_TYPE}
+             ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+             ,{<<"pvt_created">>, kz_util:current_tstamp()}
+            ],
+    JObj = kz_json:set_values(Props, Ledger),
+    kazoo_modb:save_doc(AccountId, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
