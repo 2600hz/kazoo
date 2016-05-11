@@ -164,19 +164,13 @@ unset(Section, Key) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-%-spec find_values() -> .
+-spec find_values(section(), kz_proplist()) -> list().
 find_values(Section, ?DEFAULT_DEFAULTS) ->
-    Prop = load(),
-    get_sections(Section, Prop);
+    get_sections(Section, load());
 find_values(Section, Keys) when is_list(Keys) ->
-    lists:reverse(
-      lists:foldl(fun(Key, Acc) ->
-                          [find_values(Section, Key)|Acc]
-                  end, [], Keys)
-     );
+    lists:reverse([find_values(Section, Key) || Key <- Keys]);
 find_values(Section, Key) ->
-    Prop = load(),
-    Sections = get_sections(Section, Prop),
+    Sections = get_sections(Section, load()),
     get_values(Key, Sections).
 
 %%--------------------------------------------------------------------
@@ -275,7 +269,7 @@ is_local_section({SectionHost, _}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-%-spec get_value(atom(), kz_proplist()) -> [].
+-spec get_values(atom(), kz_proplist()) -> list().
 get_values(Key, Sections) -> get_values(Sections, Key, []).
 
 get_values([], _, []) -> [];
@@ -290,14 +284,13 @@ get_values([{_, Values} | T], Key, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-
 -spec load() -> kz_proplist().
 load() ->
     case erlang:get(?SECTION_DEFAULTS) of
         'undefined' ->
             case application:get_env(?APP_NAME_ATOM, 'kz_config') of
                 'undefined' -> ?SECTION_DEFAULTS;
-                Settings -> Settings
+                {'ok', Settings} -> Settings
             end;
         Settings ->
             erlang:put(?SETTINGS_KEY, 'undefined'),
