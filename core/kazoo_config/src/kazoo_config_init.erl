@@ -13,8 +13,7 @@
          ,reload/0
         ]).
 
-%% To read config.ini
--export([load_file/0]).
+-export([read_cookie/1]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -69,3 +68,17 @@ set_zone(AppEnv) ->
 -spec reload() -> 'ok'.
 reload() ->
     set_env().
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Reads config.ini without starting the kazoo_config application.
+%% @end
+%%--------------------------------------------------------------------
+-spec read_cookie(atom()) -> [atom()].
+read_cookie(NodeName) ->
+    case props:get_atom_value([NodeName, 'cookie'], load_file(), []) of
+        [] -> [];
+        Cookie -> [Cookie]
+    end.
