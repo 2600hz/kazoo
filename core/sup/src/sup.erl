@@ -68,7 +68,7 @@ get_target(Options, Verbose) ->
     Target = list_to_atom(Node ++ "@" ++ Host),
      case net_adm:ping(Target) of
         'pong' ->
-            Verbose andalso stdout("Connected to service '~s' with cookie '~s'", [Target, Cookie]),
+            Verbose andalso stdout("Connected to service ~s with cookie ~s", [Target, Cookie]),
             Target;
         'pang' ->
             stderr("Connection to service failed!", []),
@@ -79,14 +79,14 @@ get_target(Options, Verbose) ->
 get_cookie(Options, Node) ->
     CookieStr =
         case { props:get_value('cookie', Options, "")
-             , kz_config:get_atom(Node, 'cookie', [])
+             , kazoo_config_init:read_cookie(Node)
              }
         of
             {C, []} when C =/= "" -> C;
             {_, [C]} -> C;
             {"", []} -> print_no_setcookie()
         end,
-    lager:debug("cookie found: '~p'", [CookieStr]),
+    lager:debug("cookie found (~p)", [CookieStr]),
     Cookie = kz_util:to_atom(CookieStr, 'true'),
     'true' = erlang:set_cookie(node(), Cookie),
     Cookie.
@@ -140,7 +140,7 @@ print_no_setcookie() ->
 
 -spec print_ping_failed(string(), atom()) -> no_return().
 print_ping_failed(Target, Cookie) ->
-    stdout("Failed to connect to service '~s' with cookie '~s'", [Target, Cookie]),
+    stdout("Failed to connect to service ~s with cookie ~s", [Target, Cookie]),
     stdout("  Possible fixes:", []),
     stdout("    * Ensure the Kazoo service you are trying to connect to is running on the host", []),
     stdout("    * Ensure that you are using the same cookie as the Kazoo node, `sup -c <cookie>`", []),
@@ -172,10 +172,10 @@ stderr(Format, Things) ->
 -spec option_spec_list() -> list().
 option_spec_list() ->
     [{'help', $?, "help", 'undefined', "Show the program options"}
-    ,{'host', $h, "host", {'string', localhost()}, "System hostname, defaults to system hostname"}
-    ,{'node', $n, "node", {'string', "kazoo_apps"}, "Node name, default \"kazoo_apps\""}
-    ,{'cookie', $c, "cookie", {'string', ""}, "Erlang cookie"}
-    ,{'timeout', $t, "timeout", 'integer', "Command timeout, default 5"}
+    ,{'host', $h, "host", {'string', localhost()}, "System hostname"}
+    ,{'node', $n, "node", {'string', "kazoo_apps"}, "Node name"}
+    ,{'cookie', $c, "cookie", {'string', "monster"}, "Erlang cookie"}
+    ,{'timeout', $t, "timeout", {'integer', 5}, "Command timeout"}
     ,{'verbose', $v, "verbose", 'undefined', "Be verbose"}
     ,{'module', 'undefined', 'undefined', 'string', "The name of the remote module"}
     ,{'function', 'undefined', 'undefined', 'string', "The name of the remote module's function"}

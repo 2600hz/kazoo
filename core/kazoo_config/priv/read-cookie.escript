@@ -12,10 +12,8 @@
 
 main(_) ->
     "-name "++Release = os:getenv("KZname"),
-    REL = list_to_atom(lists:takewhile(fun ($@) -> 'false'; (_) -> 'true' end, Release)),
-    INI = kazoo_config_init:load_file(),
-    {_, RelEnv} = lists:keyfind(REL, 1, INI),
-    {_, Cookie} = lists:keyfind('cookie', 1, RelEnv),
+    REL = lists:takewhile(fun ($@) -> 'false'; (_) -> 'true' end, Release),
+    [Cookie] = kazoo_config_init:read_cookie(list_to_atom(REL)),
     io:format("~s\n", [Cookie]).
 
 %% End of Module
