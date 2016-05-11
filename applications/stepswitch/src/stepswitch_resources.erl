@@ -76,6 +76,7 @@
            ,bypass_media = 'false' :: boolean()
            ,formatters :: api_objects()
            ,proxies = [] :: kz_proplist()
+           ,outbound_number :: api_binary()
          }).
 
 -type resource() :: #resrc{}.
@@ -152,7 +153,9 @@ endpoints(Number, OffnetJObj) ->
 -spec maybe_get_endpoints(ne_binary(), kapi_offnet_resource:req()) -> kz_json:objects().
 maybe_get_endpoints(Number, OffnetJObj) ->
     case kapi_offnet_resource:hunt_account_id(OffnetJObj) of
-        'undefined' -> get_global_endpoints(Number, OffnetJObj);
+        'undefined' -> 
+            lager:debug("attempting to find global resources"),
+            get_endpoints(get(), Number, OffnetJObj);
         HuntAccount -> maybe_get_local_endpoints(HuntAccount, Number, OffnetJObj)
     end.
 
@@ -167,22 +170,29 @@ maybe_get_local_endpoints(HuntAccount, Number, OffnetJObj) ->
             [];
         'true' ->
             lager:info("account ~s is using the local resources of ~s", [AccountId, HuntAccount]),
-            get_local_endpoints(HuntAccount, Number, OffnetJObj)
+            lager:debug("attempting to find local resources for ~s", [HuntAccount]),
+            get_endpoints(get(HuntAccount), Number, OffnetJObj)
     end.
 
--spec get_local_endpoints(ne_binary(), ne_binary(), kapi_offnet_resource:req()) -> kz_json:objects().
-get_local_endpoints(AccountId, Number, OffnetJObj) ->
-    lager:debug("attempting to find local resources for ~s", [AccountId]),
+-spec get_endpoints(resources(), ne_binary(), kapi_offnet_resource:req()) -> kz_json:objects().
+get_endpoints(Resources, Number, OffnetJObj) ->
+    CallerIdNumber = case ?RULES_HONOR_DIVERSION of
+                         'false' -> kapi_offnet_resource:outbound_caller_id_number(OffnetJObj);
+                         'true' -> check_diversion_fields(OffnetJObj)
+                     end,
     Flags = kapi_offnet_resource:flags(OffnetJObj, []),
-    Resources = filter_resources(Flags, get(AccountId)),
-    resources_to_endpoints(Resources, Number, OffnetJObj).
-
--spec get_global_endpoints(ne_binary(), kapi_offnet_resource:req()) -> kz_json:objects().
-get_global_endpoints(Number, OffnetJObj) ->
-    lager:debug("attempting to find global resources"),
-    Flags = kapi_offnet_resource:flags(OffnetJObj, []),
-    Resources = filter_resources(Flags, get()),
-    resources_to_endpoints(Resources, Number, OffnetJObj).
+    Routines = [fun(R) -> maybe_filter_resources_by_flags(Flags, R) end
+                ,fun(R) -> filter_resources_by_rules(Number, R) end
+                ,fun(R) -> filter_resources_by_cid_rules(CallerIdNumber, R) end
+               ],
+    FilteredResources = lists:foldl(
+                          fun(_F, []) -> [];
+                             (F, R) -> F(R)
+                          end
+                          ,Resources
+                          ,Routines
+                         ),
+    resources_to_endpoints(FilteredResources, Number, OffnetJObj).
 
 -spec sort_endpoints(kz_json:objects()) -> kz_json:objects().
 sort_endpoints(Endpoints) ->
@@ -335,23 +345,23 @@ search_gateway(_, _, _, _) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec filter_resources(ne_binaries(), resources()) -> resources().
-filter_resources([], Resources) ->
+-spec maybe_filter_resources_by_flags(ne_binaries(), resources()) -> resources().
+maybe_filter_resources_by_flags([], Resources) ->
     lager:debug("no flags provided, filtering resources that require flags"),
     [Resource
      || #resrc{require_flags=RequireFlags}=Resource <- Resources,
         not RequireFlags
     ];
-filter_resources(Flags, Resources) ->
+maybe_filter_resources_by_flags(Flags, Resources) ->
     lager:debug("filtering resources by flags"),
-    filter_resources(Flags, Resources, []).
+    filter_resources_by_flags(Flags, Resources, []).
 
--spec filter_resources(ne_binaries(), resources(), resources()) -> resources().
-filter_resources(_, [], Filtered) -> Filtered;
-filter_resources(Flags, [Resource|Resources], Filtered) ->
+-spec filter_resources_by_flags(ne_binaries(), resources(), resources()) -> resources().
+filter_resources_by_flags(_, [], Filtered) -> Filtered;
+filter_resources_by_flags(Flags, [Resource|Resources], Filtered) ->
     case resource_has_flags(Flags, Resource) of
-        'false' -> filter_resources(Flags, Resources, Filtered);
-        'true' -> filter_resources(Flags, Resources, [Resource | Filtered])
+        'false' -> filter_resources_by_flags(Flags, Resources, Filtered);
+        'true' -> filter_resources_by_flags(Flags, Resources, [Resource | Filtered])
     end.
 
 -spec resource_has_flags(ne_binaries(), resource()) -> boolean().
@@ -372,6 +382,64 @@ resource_has_flag(Flag, #resrc{flags=ResourceFlags, id=_Id}) ->
             'false'
     end.
 
+-spec filter_resources_by_rules(ne_binary(), resources()) -> resources().
+-spec filter_resources_by_rules(ne_binary(), resources(), resources()) -> resources().
+filter_resources_by_rules(Number, Resources) ->
+    filter_resources_by_rules(Number, Resources, []).
+
+filter_resources_by_rules(_Number, [], Acc) -> Acc;
+filter_resources_by_rules(Number, [ #resrc{id=Id, rules=Rules}=R | Resources ], Acc) ->
+    case evaluate_rules(Rules, Number) of
+        {'error', 'no_match'} ->
+            lager:debug("resource ~s does not match request, skipping", [Id]),
+            filter_resources_by_rules(Number, Resources, Acc);
+        {'ok', NumberMatch} ->
+            Resource = R#resrc{outbound_number=NumberMatch},
+            filter_resources_by_rules(Number, Resources, [ Resource | Acc ])
+    end.
+
+-spec filter_resources_by_cid_rules(ne_binary(), resources()) -> resources().
+-spec filter_resources_by_cid_rules(ne_binary(), resources(), resources()) -> resources().
+filter_resources_by_cid_rules(CallerIdNumber, Resources) ->
+    filter_resources_by_cid_rules(CallerIdNumber, Resources, []).
+
+filter_resources_by_cid_rules(_CallerIdNumber, [], Acc) -> Acc;
+filter_resources_by_cid_rules(CallerIdNumber,  [ #resrc{id=Id, cid_rules=CidRules}=R | Resources ], Acc) ->
+    case evaluate_cid_rules(CidRules, CallerIdNumber) of
+        {'error', 'no_match'} ->
+            lager:debug("resource ~s does not match caller id number '~s', skipping", [Id, CallerIdNumber]),
+            filter_resources_by_cid_rules(CallerIdNumber, Resources, Acc);
+        {'ok', 'empty_rules'} ->
+            lager:debug("resource ~s matches any caller id", [Id]),
+            filter_resources_by_cid_rules(CallerIdNumber, Resources, [ R | Acc ]);
+        {'ok', CIDMatch} ->
+            lager:debug("resource ~s matches with caller id match '~s'", [Id, CIDMatch]),
+            filter_resources_by_cid_rules(CallerIdNumber, Resources, [ R | Acc ])
+    end.
+
+-spec evaluate_rules(re:mp(), ne_binary()) ->
+                            {'ok', ne_binary()} |
+                            {'error', 'no_match'}.
+evaluate_rules([], _) -> {'error', 'no_match'};
+evaluate_rules([Rule|Rules], Number) ->
+    case re:run(Number, Rule) of
+        {'match', [{Start,End}]} ->
+            {'ok', binary:part(Number, Start, End)};
+        {'match', CaptureGroups} ->
+            %% find the largest matching group if present by sorting the position of the
+            %% matching groups by list, reverse so head is largest, then take the head of the list
+            {Start, End} = hd(lists:reverse(lists:keysort(2, tl(CaptureGroups)))),
+            {'ok', binary:part(Number, Start, End)};
+        _ -> evaluate_rules(Rules, Number)
+    end.
+
+-spec evaluate_cid_rules(re:mp(), ne_binary()) ->
+                            {'ok', ne_binary()} |
+                            {'ok', 'empty_rules'} | %% empty rules, it`s ok, allow any number
+                            {'error', 'no_match'}.
+evaluate_cid_rules([], _) -> {'ok','empty_rules'};
+evaluate_cid_rules(CIDRules, CIDNumber) -> evaluate_rules(CIDRules, CIDNumber).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -388,45 +456,36 @@ resources_to_endpoints(Resources, Number, OffnetJObj) ->
 resources_to_endpoints([], _Number, _OffnetJObj, Endpoints) ->
     lists:reverse(Endpoints);
 resources_to_endpoints([Resource|Resources], Number, OffnetJObj, Endpoints) ->
-    MoreEndpoints = maybe_resource_to_endpoints(Resource, Number, OffnetJObj, Endpoints),
+    MoreEndpoints = resource_to_endpoints(Resource, Number, OffnetJObj, Endpoints),
     resources_to_endpoints(Resources, Number, OffnetJObj, MoreEndpoints).
 
--spec maybe_resource_to_endpoints(resource(), ne_binary(), kapi_offnet_resource:req(), kz_json:objects()) ->
-                                         kz_json:objects().
-maybe_resource_to_endpoints(#resrc{id=Id
-                                   ,name=Name
-                                   ,rules=Rules
-                                   ,cid_rules=CallerIdRules
-                                   ,gateways=Gateways
-                                   ,global=Global
-                                   ,weight=Weight
-                                   ,proxies=Proxies
-                                  }
-                            ,Number
-                            ,OffnetJObj
-                            ,Endpoints
-                           ) ->
-    CallerIdNumber = case ?RULES_HONOR_DIVERSION of
-                         'false' -> kapi_offnet_resource:outbound_caller_id_number(OffnetJObj);
-                         'true' -> check_diversion_fields(OffnetJObj)
-                     end,
-    case filter_resource_by_rules(Id, Number, Rules, CallerIdNumber, CallerIdRules) of
-        {'error','no_match'} -> Endpoints;
-        {'ok', NumberMatch} ->
-            lager:debug("building resource ~s endpoints", [Id]),
-            CCVUpdates = [{<<"Global-Resource">>, kz_util:to_binary(Global)}
-                          ,{<<"Resource-ID">>, Id}
-                          ,{<<"E164-Destination">>, Number}
-                          ,{<<"Original-Number">>, kapi_offnet_resource:to_did(OffnetJObj)}
-                         ],
-            Updates = [{<<"Name">>, Name}
-                       ,{<<"Weight">>, Weight}
-                      ],
-            EndpointList = [update_endpoint(Endpoint, Updates, CCVUpdates)
-                            || Endpoint <- gateways_to_endpoints(NumberMatch, Gateways, OffnetJObj, [])
-                           ],
-            maybe_add_proxies(EndpointList, Proxies, Endpoints)
-    end.
+-spec resource_to_endpoints(resource(), ne_binary(), kapi_offnet_resource:req(), kz_json:objects()) ->
+    kz_json:objects().
+resource_to_endpoints(#resrc{id=Id
+                             ,name=Name
+                             ,gateways=Gateways
+                             ,global=Global
+                             ,weight=Weight
+                             ,proxies=Proxies
+                             ,outbound_number=NumberMatch
+                            }
+                      ,Number
+                      ,OffnetJObj
+                      ,Endpoints
+                     ) ->
+    lager:debug("building resource ~s endpoints", [Id]),
+    CCVUpdates = [{<<"Global-Resource">>, kz_util:to_binary(Global)}
+                  ,{<<"Resource-ID">>, Id}
+                  ,{<<"E164-Destination">>, Number}
+                  ,{<<"Original-Number">>, kapi_offnet_resource:to_did(OffnetJObj)}
+                 ],
+    Updates = [{<<"Name">>, Name}
+               ,{<<"Weight">>, Weight}
+              ],
+    EndpointList = [update_endpoint(Endpoint, Updates, CCVUpdates)
+                    || Endpoint <- gateways_to_endpoints(NumberMatch, Gateways, OffnetJObj, [])
+                   ],
+    maybe_add_proxies(EndpointList, Proxies, Endpoints).
 
 -spec check_diversion_fields(kapi_offnet_resource:req()) -> ne_binary().
 check_diversion_fields(OffnetJObj) ->
@@ -457,63 +516,10 @@ add_proxy(Endpoint, {Zone, IP}) ->
               ],
     kz_json:set_values(Updates ,Endpoint).
 
--spec filter_resource_by_rules(ne_binary(), ne_binary(), re:mp(), ne_binary(), re:mp()) ->
-                                      {'ok', ne_binary()} |
-                                      {'error', 'no_match'}.
-filter_resource_by_rules(Id, Number, Rules, CallerIdNumber, CallerIdRules) ->
-    case evaluate_rules(Rules, Number) of
-        {'error', 'no_match'} ->
-            lager:debug("resource ~s does not match request, skipping", [Id]),
-            {'error','no_match'};
-        {'ok', Match} ->
-            filter_resource_by_match(Id, Number, CallerIdNumber, CallerIdRules, Match)
-    end.
-
--spec filter_resource_by_match(ne_binary(), ne_binary(), ne_binary(), re:mp(), ne_binary()) ->
-                                      {'ok', ne_binary()} |
-                                      {'error', 'no_match'}.
-filter_resource_by_match(Id, Number, CallerIdNumber, CallerIdRules, Match) ->
-    case evaluate_cid_rules(CallerIdRules, CallerIdNumber) of
-        {'ok', 'empty_rules'} ->
-            lager:debug("resource ~s matches number '~s' with regex match '~s'", [Id, Number, Match]),
-            {'ok', Match};
-        {'ok', _CIDMatch} ->
-            lager:debug("resource ~s matches number '~s' with regex match '~s' and caller id match '~s'"
-                        ,[Id, Number, Match, _CIDMatch]
-                       ),
-            {'ok', Match};
-        {'error', 'no_match'} ->
-            lager:debug("resource ~s does not match caller id number '~s', skipping", [Id, CallerIdNumber]),
-            {'error','no_match'}
-    end.
-
 -spec update_ccvs(kz_json:object(), kz_proplist()) -> kz_json:object().
 update_ccvs(Endpoint, Updates) ->
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, kz_json:new()),
     kz_json:set_value(<<"Custom-Channel-Vars">>, kz_json:set_values(Updates, CCVs), Endpoint).
-
--spec evaluate_rules(re:mp(), ne_binary()) ->
-                            {'ok', ne_binary()} |
-                            {'error', 'no_match'}.
-evaluate_rules([], _) -> {'error', 'no_match'};
-evaluate_rules([Rule|Rules], Number) ->
-    case re:run(Number, Rule) of
-        {'match', [{Start,End}]} ->
-            {'ok', binary:part(Number, Start, End)};
-        {'match', CaptureGroups} ->
-            %% find the largest matching group if present by sorting the position of the
-            %% matching groups by list, reverse so head is largest, then take the head of the list
-            {Start, End} = hd(lists:reverse(lists:keysort(2, tl(CaptureGroups)))),
-            {'ok', binary:part(Number, Start, End)};
-        _ -> evaluate_rules(Rules, Number)
-    end.
-
--spec evaluate_cid_rules(re:mp(), ne_binary()) ->
-                            {'ok', ne_binary()} |
-                            {'ok', 'empty_rules'} | %% empty rules, it`s ok, allow any number
-                            {'error', 'no_match'}.
-evaluate_cid_rules([], _) -> {'ok','empty_rules'};
-evaluate_cid_rules(CIDRules, CIDNumber) -> evaluate_rules(CIDRules, CIDNumber).
 
 %%--------------------------------------------------------------------
 %% @private
