@@ -175,6 +175,7 @@ maybe_get_local_endpoints(HuntAccount, Number, OffnetJObj) ->
     end.
 
 -spec get_endpoints(resources(), ne_binary(), kapi_offnet_resource:req()) -> kz_json:objects().
+get_endpoints([], _Number, _OffnetJObj) -> [];
 get_endpoints(Resources, Number, OffnetJObj) ->
     CallerIdNumber = case ?RULES_HONOR_DIVERSION of
                          'false' -> kapi_offnet_resource:outbound_caller_id_number(OffnetJObj);
