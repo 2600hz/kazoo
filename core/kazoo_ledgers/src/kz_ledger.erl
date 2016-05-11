@@ -158,7 +158,7 @@ set_extra(Ledger, [{<<"period_end">>, Val}|Props]) ->
     set_extra(kazoo_ledger:set_period_end(Ledger, Val), Props);
 set_extra(Ledger, [{<<"metadata">>, Val}|Props]) ->
     set_extra(kazoo_ledger:set_metadata(Ledger, Val), Props);
-set_extra(Ledger, [{_K, _V}=KV|Props]) ->
+set_extra(Ledger, [_ | Props]) ->
     set_extra(kazoo_ledger:set_metadata(Ledger, [KV]), Props).
 
 %%--------------------------------------------------------------------
