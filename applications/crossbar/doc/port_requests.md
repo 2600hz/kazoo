@@ -145,60 +145,246 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/port_requests/submitted
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/submitted
 ```
 
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "account_id": "{ACCOUNT_ID}",
+            "account_name": "{ACCOUNT_NAME}",
+            "port_requests": [
+                {
+                    "account_id": "009afc511c97b2ae693c6cc4920988e8",
+                    "created": 63630130298,
+                    "id": "c320d6506f1afcd715a1a49bac019c51",
+                    "name": "My port req1",
+                    "numbers": {
+                        "+12025559042": {}
+                    },
+                    "port_state": "submitted",
+                    "sent": false,
+                    "updated": 63630130376,
+                    "uploads": {}
+                }
+            ]
+        }
+    ],
+    "page_size": 1,
+    "request_id": "1bf407e087f04e6096f7f010c4eef045",
+    "revision": "e4058257bbc9e33ceab14632c5662eaf",
+    "status": "success"
+}
+```
+
+
 ##### Listing by `pending` port
 
 > GET /v2/accounts/{ACCOUNT_ID}/port_requests/pending
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/pending
 ```
 
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "account_id": "{ACCOUNT_ID}",
+            "account_name": "{ACCOUNT_NAME}",
+            "port_requests": [
+                {
+                    "account_id": "009afc511c97b2ae693c6cc4920988e8",
+                    "created": 63630130298,
+                    "id": "c320d6506f1afcd715a1a49bac019c51",
+                    "name": "My port req1",
+                    "numbers": {
+                        "+12025559042": {}
+                    },
+                    "port_state": "pending",
+                    "sent": false,
+                    "updated": 63630130450,
+                    "uploads": {}
+                }
+            ]
+        }
+    ],
+    "page_size": 1,
+    "request_id": "156c9979f04229a0088653bfbff0b08c",
+    "revision": "cc55f42be1e2294a9291a2dca8087d10",
+    "status": "success"
+}
+```
+
+
 ##### Listing by `scheduled` port
 
 > GET /v2/accounts/{ACCOUNT_ID}/port_requests/scheduled
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/scheduled
 ```
 
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "account_id": "{ACCOUNT_ID}",
+            "account_name": "{ACCOUNT_NAME}",
+            "port_requests": [
+                {
+                    "account_id": "009afc511c97b2ae693c6cc4920988e8",
+                    "created": 63630130298,
+                    "id": "c320d6506f1afcd715a1a49bac019c51",
+                    "name": "My port req1",
+                    "numbers": {
+                        "+12025559042": {}
+                    },
+                    "port_state": "scheduled",
+                    "sent": false,
+                    "updated": 63630130490,
+                    "uploads": {}
+                }
+            ]
+        }
+    ],
+    "page_size": 1,
+    "request_id": "ab348636e435cd01888356607b183697",
+    "revision": "ae048f434e5b16749c721eb0ab8fa781",
+    "status": "success"
+}
+```
+
+
 ##### Listing by `completed` port
 
 > GET /v2/accounts/{ACCOUNT_ID}/port_requests/completed
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/completed
 ```
 
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [],
+    "page_size": 0,
+    "request_id": "388313efcf12e4eda5672b5336828350",
+    "revision": "undefined",
+    "start_key": [
+        "009afc511c97b2ae693c6cc4920988e8",
+        "completed",
+        63630130530
+    ],
+    "status": "success"
+}
+```
+
+
 ##### Listing by `rejected` port
 
 > GET /v2/accounts/{ACCOUNT_ID}/port_requests/rejected
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/rejected
 ```
 
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "account_id": "{ACCOUNT_ID}",
+            "account_name": "{ACCOUNT_NAME}",
+            "port_requests": [
+                {
+                    "account_id": "009afc511c97b2ae693c6cc4920988e8",
+                    "created": 63630130298,
+                    "id": "c320d6506f1afcd715a1a49bac019c51",
+                    "name": "My port req1",
+                    "numbers": {
+                        "+12025559042": {}
+                    },
+                    "port_state": "rejected",
+                    "sent": false,
+                    "updated": 63630130557,
+                    "uploads": {}
+                }
+            ]
+        }
+    ],
+    "page_size": 1,
+    "request_id": "92200b874efd5cbb641599f47cd2431a",
+    "revision": "26e7f1549eed11fb1d5418c58424baf6",
+    "status": "success"
+}
+```
+
+
 ##### Listing by `canceled` port
 
 > GET /v2/accounts/{ACCOUNT_ID}/port_requests/canceled
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/canceled
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "account_id": "{ACCOUNT_ID}",
+            "account_name": "{ACCOUNT_NAME}",
+            "port_requests": [
+                {
+                    "account_id": "009afc511c97b2ae693c6cc4920988e8",
+                    "created": 63630107130,
+                    "id": "0684aa1e2785d62c76ce27d2451a1c26",
+                    "name": "Porting 202.555.9000",
+                    "numbers": {
+                        "+12025559000": {}
+                    },
+                    "port_state": "canceled",
+                    "sent": false,
+                    "updated": 63630120578,
+                    "uploads": {
+                        "file.pdf": {
+                            "content_type": "application/pdf",
+                            "length": 90931
+                        }
+                    }
+                }
+            ]
+        }
+    ],
+    "page_size": 1,
+    "request_id": "745be8bfd341636eabb9a0b9572846eb",
+    "revision": "bddb6f5c0566d7a84ca2877abff750a8",
+    "start_key": [
+        "009afc511c97b2ae693c6cc4920988e8",
+        "canceled",
+        63630129922
+    ],
+    "status": "success"
+}
 ```
 
 
