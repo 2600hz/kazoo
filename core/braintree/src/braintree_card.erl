@@ -299,6 +299,7 @@ record_to_xml(#bt_card{}=Card, ToString) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec json_to_record(api_object()) -> bt_card().
+json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->
     #bt_card{token = create_or_get_json_id(JObj)
              ,cardholder_name = kz_json:get_binary_value(<<"cardholder_name">>, JObj)
