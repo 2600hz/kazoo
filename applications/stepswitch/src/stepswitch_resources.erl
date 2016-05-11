@@ -85,12 +85,10 @@
 -type gateway() :: #gateway{}.
 -type gateways() :: [#gateway{}].
 
--compile({'no_auto_import', [get/0, get/1]}).
-
 -spec get_props() -> kz_proplists().
 get_props() ->
     [resource_to_props(Resource)
-     || Resource <- sort_resources(get())
+     || Resource <- sort_resources(get_resources())
     ].
 
 -spec get_props(ne_binary()) -> kz_proplist() | 'undefined'.
@@ -155,7 +153,7 @@ maybe_get_endpoints(Number, OffnetJObj) ->
     case kapi_offnet_resource:hunt_account_id(OffnetJObj) of
         'undefined' ->
             lager:debug("attempting to find global resources"),
-            get_endpoints(get(), Number, OffnetJObj);
+            get_endpoints(get_resources(), Number, OffnetJObj);
         HuntAccount -> maybe_get_local_endpoints(HuntAccount, Number, OffnetJObj)
     end.
 
@@ -171,7 +169,7 @@ maybe_get_local_endpoints(HuntAccount, Number, OffnetJObj) ->
         'true' ->
             lager:info("account ~s is using the local resources of ~s", [AccountId, HuntAccount]),
             lager:debug("attempting to find local resources for ~s", [HuntAccount]),
-            get_endpoints(get(HuntAccount), Number, OffnetJObj)
+            get_endpoints(get_resources(HuntAccount), Number, OffnetJObj)
     end.
 
 -spec get_endpoints(resources(), ne_binary(), kapi_offnet_resource:req()) -> kz_json:objects().
@@ -258,14 +256,14 @@ find_account_id(Realm) ->
                                {'ok', kz_proplist()} |
                                {'error', 'not_found'}.
 maybe_find_global(IP, Port, Realm) ->
-    search_resources(IP, Port, Realm, get()).
+    search_resources(IP, Port, Realm, get_resources()).
 
 -spec maybe_find_local(api_binary(), api_integer(), api_binary(), api_binary()) ->
                               {'ok', kz_proplist()} |
                               {'error', 'not_found'}.
 maybe_find_local(_, _, _, 'undefined') -> {'error', 'not_found'};
 maybe_find_local(IP, Port, Realm, AccountId) ->
-    search_resources(IP, Port, Realm, get(AccountId)).
+    search_resources(IP, Port, Realm, get_resources(AccountId)).
 
 -spec search_resources(api_binary(), api_integer(), api_binary(), resources()) ->
                               {'ok', kz_proplist()} |
@@ -640,16 +638,16 @@ gateway_emergency_resource(_) -> 'undefined'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get() -> resources().
-get() -> get('undefined').
+-spec get_resources() -> resources().
+get_resources() -> get_resources('undefined').
 
--spec get(api_binary()) -> resources().
-get('undefined') ->
+-spec get_resources(api_binary()) -> resources().
+get_resources('undefined') ->
     case kz_cache:fetch_local(?CACHE_NAME, 'global_resources') of
         {'ok', Resources} -> Resources;
         {'error', 'not_found'} -> fetch_global_resources()
     end;
-get(AccountId) ->
+get_resources(AccountId) ->
     case kz_cache:fetch_local(?CACHE_NAME, {'local_resources', AccountId}) of
         {'ok', Resources} -> Resources;
         {'error', 'not_found'} -> fetch_local_resources(AccountId)
@@ -657,7 +655,7 @@ get(AccountId) ->
 
 -spec get_resource(ne_binary()) -> resource() | 'undefined'.
 get_resource(ResourceId) ->
-    case get('undefined') of
+    case get_resources('undefined') of
         [] -> 'undefined';
         Resources -> get_resource(ResourceId, Resources)
     end.
@@ -671,7 +669,7 @@ get_resource(_ResourceId, []) ->
 
 -spec get_local_resource(ne_binary(), ne_binary()) -> resource() | 'undefined'.
 get_local_resource(ResourceId, AccountId) ->
-    case get(AccountId) of
+    case get_resources(AccountId) of
         [] -> 'undefined';
         Resources -> get_resource(ResourceId, Resources)
     end.
