@@ -7010,81 +7010,6 @@
                     "required": false,
                     "type": "object"
                 },
-                "messages": {
-                    "default": [],
-                    "description": "The messages that have been left in the voicemail box",
-                    "items": {
-                        "properties": {
-                            "call_id": {
-                                "description": "The SIP call-id",
-                                "name": "Call ID",
-                                "required": false,
-                                "type": "string"
-                            },
-                            "caller_id_name": {
-                                "description": "The reported caller id name",
-                                "maxLength": 35,
-                                "name": "Caller ID Name",
-                                "required": false,
-                                "type": "string"
-                            },
-                            "caller_id_number": {
-                                "description": "The reported caller id number",
-                                "maxLength": 35,
-                                "name": "Caller ID Number",
-                                "required": false,
-                                "type": "string"
-                            },
-                            "folder": {
-                                "description": "The folder the message belongs to",
-                                "enum": [
-                                    "deleted",
-                                    "saved",
-                                    "new"
-                                ],
-                                "name": "Folder",
-                                "required": false,
-                                "type": "string"
-                            },
-                            "from": {
-                                "description": "The SIP from header",
-                                "name": "From",
-                                "required": false,
-                                "type": "string"
-                            },
-                            "length": {
-                                "name": "Length",
-                                "required": false,
-                                "type": "integer"
-                            },
-                            "media_id": {
-                                "description": "The ID of the message media object",
-                                "maxLength": 39,
-                                "minLength": 32,
-                                "name": "Media ID",
-                                "required": false,
-                                "type": "string"
-                            },
-                            "timestamp": {
-                                "description": "The UTC timestamp, in gregorian seconds, that the voicemail was left on",
-                                "name": "Timestamp",
-                                "required": false,
-                                "type": "integer"
-                            },
-                            "to": {
-                                "description": "The SIP to header",
-                                "name": "To",
-                                "required": false,
-                                "type": "string"
-                            }
-                        },
-                        "required": false,
-                        "type": "object"
-                    },
-                    "name": "Messages",
-                    "required": false,
-                    "type": "array"
-                },
                 "name": {
                     "description": "A friendly name for the voicemail box",
                     "maxLength": 128,
@@ -8503,7 +8428,7 @@
         },
         "/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages": {
             "delete": {
-                "description": "Delete all messages in the voicemail box",
+                "description": "Remove all or a list of messages from a voicemail box",
                 "produces": [
                     "application/json"
                 ],
@@ -8526,15 +8451,44 @@
             }
         },
         "/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}": {
-            "delete": {},
-            "get": {},
+            "delete": {
+                "description": "Remove the message from the voicemail box",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The removed message object"
+                    }
+                }
+            },
+            "get": {
+                "description": "Get a specific message object",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The message object"
+                    }
+                }
+            },
             "post": {
+                "description": "Change the folder of a message",
                 "parameters": {
                     "in": "body",
                     "name": "vmboxes",
                     "required": true,
                     "schema": {
-                        "$ref": "#/definitions/vmboxes"
+                        "$ref": "#/definitions/mailbox_message"
+                    }
+                },
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The edited message object, in full"
                     }
                 }
             }
