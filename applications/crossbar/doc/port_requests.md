@@ -52,6 +52,47 @@ curl -v -X GET \
 ```
 
 
+#### Get a port request by phone number
+
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests?by_number={PHONE_NUMBER}
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "account_id": "{ACCOUNT_ID}",
+            "created": 63630107130,
+            "id": "0684aa1e2785d62c76ce27d2451a1c26",
+            "name": "Porting 202.555.9000",
+            "numbers": {
+                "{PHONE_NUMBER}": {}
+            },
+            "port_state": "canceled",
+            "sent": false,
+            "updated": 63630120578,
+            "uploads": {
+                "file.pdf": {
+                    "content_type": "application/pdf",
+                    "length": 90931
+                }
+            }
+        }
+    ],
+    "page_size": 1,
+    "request_id": "24060fb2eb79e6dd0d29b290e2cb7085",
+    "revision": "bb7443aecba069b09d7197410dc02fbe",
+    "status": "success"
+}
+```
+
+
 #### Listing by port state
 
 You can issue GET requests to find all ports in a particular state too.
@@ -163,9 +204,81 @@ curl -v -X GET \
 
 #### List port requests of self and sub accounts
 
-    curl -v -X GET \
-    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
-    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/descendants/port_requests
+> GET /v2/accounts/{ACCOUNT_ID}/descendants/port_requests
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/descendants/port_requests
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [],
+    "request_id": "48f4e5e053801a13b4e4e3e3ba9c10c4",
+    "revision": "undefined",
+    "status": "success"
+}
+```
+
+
+#### Get port request for account and descendants
+
+> GET /v2/accounts/{ACCOUNT_ID}/descendants/port_requests
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/descendants/port_requests?by_number={PHONE_NUMBER}
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "bill": {
+                "address": "116, natoma street",
+                "locality": "San Francisco",
+                "name": "John Doe",
+                "postal_code": "95109",
+                "region": "Ca"
+            },
+            "carrier": "PACIFIC BELL",
+            "created": 63597642009,
+            "id": "84e0a824c6b74fe1e3ec48962a600ef2",
+            "name": "Port request test",
+            "notifications": {
+                "email": {
+                    "send_to": "someone@2600hz.com"
+                }
+            },
+            "numbers": {
+                "{{NUMBER}}": {}
+            },
+            "port_state": "submitted",
+            "sent": false,
+            "transfer_date": 63598114800,
+            "updated": 63597642011,
+            "uploads": {
+                "bill.pdf": {
+                    "content_type": "application/pdf",
+                    "length": 8304
+                },
+                "loa.pdf": {
+                    "content_type": "application/pdf",
+                    "length": 59196
+                }
+            }
+        }
+    ],
+    "page_size": 1,
+    "request_id": "82db6e47a0adafc1db83369723390dce",
+    "revision": "4dd6dc369615b519373a4deeaa1567bd",
+    "status": "success"
+}
+```
 
 
 #### Create a new port request
@@ -176,7 +289,7 @@ curl -v -X GET \
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
-    -d '{"data":{"numbers":{"+12025559000":{}}, "name":"Porting 202.555.9000"}}' \
+    -d '{"data":{"numbers":{"{PHONE_NUMBER}":{}}, "name":"{PORTREQUEST_NAME}"}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests
 ```
 
@@ -185,9 +298,9 @@ curl -v -X PUT \
     "auth_token": "{AUTH_TOKEN}",
     "data": {
         "id": "462da37f8be11e46161fb40bc71173a9",
-        "name": "Porting 202.555.9000",
+        "name": "{PORTREQUEST_NAME}",
         "numbers": {
-            "+12025559000": {}
+            "{PHONE_NUMBER}": {}
         },
         "port_state": "unconfirmed"
     },
@@ -392,10 +505,20 @@ curl -v -X POST \
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID}
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID}
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {},
+    "request_id": "1178da494ef5a953240b33eeaa7df859",
+    "revision": "undefined",
+    "status": "success"
+}
 ```
 
 
@@ -675,99 +798,3 @@ curl -v -X GET \
     -H "Accept: application/x-pdf" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/loa
 ```
-
-
-#### Get a port request by phone number
-
-- Verb: `GET`
-- Url: `/accounts/{{ACCOUNT_ID}}/port_requests?by_number={{NUMBER}}`
-- Payload: None
-
-##### Response
-
-    {"page_size": 1,
-     "data": [{
-        "carrier": "PACIFIC BELL",
-        "bill": {
-            "name": "John Doe",
-            "address": "116, natoma street",
-            "locality": "San Francisco",
-            "region": "Ca",
-            "postal_code": "95109"
-        },
-        "name": "Port request test",
-        "notifications": {
-            "email": {
-                "send_to": "someone@2600hz.com"
-            }
-        },
-        "transfer_date": 63598114800,
-        "port_state": "submitted",
-        "numbers": {
-            "{{NUMBER}}": {}
-        },
-        "sent": false,
-        "uploads": {
-            "loa.pdf": {
-                "content_type": "application/pdf",
-                "length": 59196
-            },
-            "bill.pdf": {
-                "content_type": "application/pdf",
-                "length": 8304
-            }
-        },
-        "updated": 63597642011,
-        "created": 63597642009,
-        "id": "84e0a824c6b74fe1e3ec48962a600ef2"
-     }],
-     "status": "success"
-    }
-
-
-#### Get port request for account and descendants
-
-- Verb: `GET`
-- Url: `/accounts/{{ACCOUNT_ID}}/descendants/port_requests?by_number={{NUMBER}}`
-- Payload: None
-
-##### Response
-
-    {"page_size": 1,
-     "data": [{
-        "carrier": "PACIFIC BELL",
-        "bill": {
-            "name": "John Doe",
-            "address": "116, natoma street",
-            "locality": "San Francisco",
-            "region": "Ca",
-            "postal_code": "95109"
-        },
-        "name": "Port request test",
-        "notifications": {
-            "email": {
-                "send_to": "someone@2600hz.com"
-            }
-        },
-        "transfer_date": 63598114800,
-        "port_state": "submitted",
-        "numbers": {
-            "{{NUMBER}}": {}
-        },
-        "sent": false,
-        "uploads": {
-            "loa.pdf": {
-                "content_type": "application/pdf",
-                "length": 59196
-            },
-            "bill.pdf": {
-                "content_type": "application/pdf",
-                "length": 8304
-            }
-        },
-        "updated": 63597642011,
-        "created": 63597642009,
-        "id": "84e0a824c6b74fe1e3ec48962a600ef2"
-     }],
-     "status": "success"
-    }
