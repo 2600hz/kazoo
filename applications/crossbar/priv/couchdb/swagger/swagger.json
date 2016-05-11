@@ -1085,12 +1085,6 @@
                     "required": false,
                     "type": "integer"
                 },
-                "recording_id": {
-                    "description": "Name the media file that will be generated from the call",
-                    "name": "Recording ID",
-                    "required": false,
-                    "type": "string"
-                },
                 "time_limit": {
                     "default": 3600,
                     "description": "Time limit, in seconds, for the recording",
@@ -1103,7 +1097,7 @@
                 "url": {
                     "description": "The URL to use when sending the recording for storage",
                     "name": "URL",
-                    "required": true,
+                    "required": false,
                     "type": "string"
                 }
             },
@@ -1142,7 +1136,7 @@
                 "url": {
                     "description": "The URL to use when sending the recording for storage",
                     "name": "URL",
-                    "required": true,
+                    "required": false,
                     "type": "string"
                 }
             },
@@ -3354,6 +3348,21 @@
             "required": true,
             "type": "object"
         },
+        "find_numbers": {
+            "properties": {
+                "prefix": {
+                    "maxLength": 10,
+                    "minLength": 3,
+                    "required": true,
+                    "type": "string"
+                },
+                "quantity": {
+                    "default": 1,
+                    "minimum": 1,
+                    "type": "integer"
+                }
+            }
+        },
         "ips": {
             "description": "IP addresses assigned to the account",
             "name": "IP Addresses",
@@ -3626,6 +3635,76 @@
             "required": true,
             "type": "object"
         },
+        "mailbox_message": {
+            "description": "Schema for mailbox message",
+            "name": "Mailbox Message",
+            "properties": {
+                "call_id": {
+                    "description": "The SIP call-id",
+                    "name": "Call ID",
+                    "required": false,
+                    "type": "string"
+                },
+                "caller_id_name": {
+                    "description": "The reported caller id name",
+                    "maxLength": 35,
+                    "name": "Caller ID Name",
+                    "required": false,
+                    "type": "string"
+                },
+                "caller_id_number": {
+                    "description": "The reported caller id number",
+                    "maxLength": 35,
+                    "name": "Caller ID Number",
+                    "required": false,
+                    "type": "string"
+                },
+                "folder": {
+                    "description": "The folder the message belongs to",
+                    "enum": [
+                        "deleted",
+                        "saved",
+                        "new"
+                    ],
+                    "name": "Folder",
+                    "required": false,
+                    "type": "string"
+                },
+                "from": {
+                    "description": "The SIP from header",
+                    "name": "From",
+                    "required": false,
+                    "type": "string"
+                },
+                "length": {
+                    "name": "Length",
+                    "required": false,
+                    "type": "integer"
+                },
+                "media_id": {
+                    "description": "The ID of the message media object",
+                    "maxLength": 39,
+                    "minLength": 39,
+                    "name": "Media ID",
+                    "required": true,
+                    "type": "string"
+                },
+                "timestamp": {
+                    "description": "The UTC timestamp, in gregorian seconds, that the message was left on",
+                    "name": "Timestamp",
+                    "required": false,
+                    "type": "integer"
+                },
+                "to": {
+                    "description": "The SIP to header",
+                    "name": "To",
+                    "required": false,
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
         "media": {
             "description": "Schema for media",
             "name": "Media",
@@ -3646,7 +3725,13 @@
                         "audio/mpeg3",
                         "audio/x-wav",
                         "audio/wav",
-                        "audio/ogg"
+                        "audio/ogg",
+                        "video/x-flv",
+                        "video/h264",
+                        "video/mpeg",
+                        "video/quicktime",
+                        "video/mp4",
+                        "video/webm"
                     ],
                     "name": "Content Type",
                     "required": false,
@@ -6320,7 +6405,7 @@
             "type": "object"
         },
         "user_auth_recovery": {
-            "description": "Provides an auth-token via user credentials",
+            "description": "Send a reset-your-password email via user credentials",
             "name": "Password Recovery",
             "properties": {
                 "account_name": {
@@ -6344,10 +6429,31 @@
                     "required": false,
                     "type": "string"
                 },
+                "ui_url": {
+                    "description": "The UI's root URL",
+                    "maxLength": 2000,
+                    "minLength": 14,
+                    "required": true,
+                    "type": "string"
+                },
                 "username": {
                     "description": "The user's username",
                     "maxLength": 254,
                     "minLength": 1,
+                    "required": true,
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "user_auth_recovery_reset": {
+            "description": "Request a password reset from a trusted source",
+            "name": "Password Reset",
+            "properties": {
+                "reset_id": {
+                    "description": "The UUID that is part of the password-reset link",
+                    "pattern": "^[a-fA-F0-9]{256}$",
                     "required": true,
                     "type": "string"
                 }
@@ -6903,81 +7009,6 @@
                     },
                     "required": false,
                     "type": "object"
-                },
-                "messages": {
-                    "default": [],
-                    "description": "The messages that have been left in the voicemail box",
-                    "items": {
-                        "properties": {
-                            "call_id": {
-                                "description": "The SIP call-id",
-                                "name": "Call ID",
-                                "required": false,
-                                "type": "string"
-                            },
-                            "caller_id_name": {
-                                "description": "The reported caller id name",
-                                "maxLength": 35,
-                                "name": "Caller ID Name",
-                                "required": false,
-                                "type": "string"
-                            },
-                            "caller_id_number": {
-                                "description": "The reported caller id number",
-                                "maxLength": 35,
-                                "name": "Caller ID Number",
-                                "required": false,
-                                "type": "string"
-                            },
-                            "folder": {
-                                "description": "The folder the message belongs to",
-                                "enum": [
-                                    "deleted",
-                                    "saved",
-                                    "new"
-                                ],
-                                "name": "Folder",
-                                "required": false,
-                                "type": "string"
-                            },
-                            "from": {
-                                "description": "The SIP from header",
-                                "name": "From",
-                                "required": false,
-                                "type": "string"
-                            },
-                            "length": {
-                                "name": "Length",
-                                "required": false,
-                                "type": "integer"
-                            },
-                            "media_id": {
-                                "description": "The ID of the message media object",
-                                "maxLength": 32,
-                                "minLength": 32,
-                                "name": "Media ID",
-                                "required": false,
-                                "type": "string"
-                            },
-                            "timestamp": {
-                                "description": "The UTC timestamp, in gregorian seconds, that the voicemail was left on",
-                                "name": "Timestamp",
-                                "required": false,
-                                "type": "integer"
-                            },
-                            "to": {
-                                "description": "The SIP to header",
-                                "name": "To",
-                                "required": false,
-                                "type": "string"
-                            }
-                        },
-                        "required": false,
-                        "type": "object"
-                    },
-                    "name": "Messages",
-                    "required": false,
-                    "type": "array"
                 },
                 "name": {
                     "description": "A friendly name for the voicemail box",
@@ -8397,7 +8428,7 @@
         },
         "/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages": {
             "delete": {
-                "description": "Delete all messages in the voicemail box",
+                "description": "Remove all or a list of messages from a voicemail box",
                 "produces": [
                     "application/json"
                 ],
@@ -8420,15 +8451,44 @@
             }
         },
         "/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}": {
-            "delete": {},
-            "get": {},
+            "delete": {
+                "description": "Remove the message from the voicemail box",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The removed message object"
+                    }
+                }
+            },
+            "get": {
+                "description": "Get a specific message object",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The message object"
+                    }
+                }
+            },
             "post": {
+                "description": "Change the folder of a message",
                 "parameters": {
                     "in": "body",
                     "name": "vmboxes",
                     "required": true,
                     "schema": {
-                        "$ref": "#/definitions/vmboxes"
+                        "$ref": "#/definitions/mailbox_message"
+                    }
+                },
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The edited message object, in full"
                     }
                 }
             }
@@ -8720,7 +8780,8 @@
         },
         "/v2/shared_auth": {
             "delete": {},
-            "get": {}
+            "get": {},
+            "put": {}
         },
         "/v2/sup/{MODULE}": {
             "get": {}
@@ -8807,6 +8868,7 @@
             }
         },
         "/v2/user_auth/recovery": {
+            "post": {},
             "put": {
                 "parameters": {
                     "in": "body",
