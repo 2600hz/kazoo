@@ -345,22 +345,19 @@ get(Context, Id, ?PATH_TOKEN_LOA) ->
 -spec put(cb_context:context()) -> cb_context:context().
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context) ->
-    crossbar_doc:save(
-      update_port_request_for_save(Context)
-     ).
+    crossbar_doc:save(update_port_request_for_save(Context)).
 
 -spec update_port_request_for_save(cb_context:context()) -> cb_context:context().
+-spec update_port_request_for_save(cb_context:context(), kz_json:object()) -> cb_context:context().
 update_port_request_for_save(Context) ->
+    update_port_request_for_save(Context, cb_context:doc(Context)).
+update_port_request_for_save(Context, Doc) ->
+    NewDoc = kz_account:set_tree(Doc, kz_account:tree(cb_context:account_doc(Context))),
     cb_context:setters(Context
                        ,[{fun cb_context:set_account_db/2, ?KZ_PORT_REQUESTS_DB}
-                         ,{fun cb_context:set_doc/2, add_pvt_fields(Context, cb_context:doc(Context))}
+                         ,{fun cb_context:set_doc/2, NewDoc}
                         ]
                       ).
-
--spec add_pvt_fields(cb_context:context(), kz_json:object()) -> kz_json:object().
-add_pvt_fields(Context, PortRequest) ->
-    Tree = kz_account:tree(cb_context:account_doc(Context)),
-    kz_account:set_tree(PortRequest, Tree).
 
 put(Context, Id, ?PORT_ATTACHMENT) ->
     [{Filename, FileJObj}] = cb_context:req_files(Context),
@@ -380,69 +377,42 @@ put(Context, Id, ?PORT_ATTACHMENT) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% If the HTTP verb is POST, execute the actual action, usually a db save
-%% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
 -spec patch(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 patch(Context, Id, ?PORT_SUBMITTED) ->
-    Callback =
-        fun() ->
-            Context1 = do_patch(Context, Id),
-            case cb_context:resp_status(Context1) of
-                'success' ->
-                    send_port_notification(Context1, Id, ?PORT_SUBMITTED);
-                _ -> Context1
-            end
-        end,
+    Callback = fun() -> patch_then_notify(Context, Id, ?PORT_SUBMITTED) end,
     crossbar_services:maybe_dry_run(Context, Callback);
 patch(Context, Id, ?PORT_PENDING) ->
-    Context1 = do_patch(Context, Id),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            send_port_notification(Context1, Id, ?PORT_PENDING);
-        _ -> Context1
-    end;
+    patch_then_notify(Context, Id, ?PORT_PENDING);
 patch(Context, Id, ?PORT_SCHEDULED) ->
-    Context1 = do_patch(Context, Id),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            send_port_notification(Context1, Id, ?PORT_SCHEDULED);
-        _ -> Context1
-    end;
+    patch_then_notify(Context, Id, ?PORT_SCHEDULED);
 patch(Context, Id, ?PORT_COMPLETED) ->
-    Context1 = do_patch(Context, Id),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            send_port_notification(Context1, Id, ?PORT_COMPLETED);
-        _ -> Context1
-    end;
+    patch_then_notify(Context, Id, ?PORT_COMPLETED);
 patch(Context, Id, ?PORT_REJECTED) ->
-    Context1 = do_patch(Context, Id),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            send_port_notification(Context1, Id, ?PORT_REJECTED);
-        _ -> Context1
-    end;
+    patch_then_notify(Context, Id, ?PORT_REJECTED);
 patch(Context, Id, ?PORT_CANCELED) ->
-    Context1 = do_patch(Context, Id),
+    patch_then_notify(Context, Id, ?PORT_CANCELED).
+
+%% @private
+-spec patch_then_notify(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+patch_then_notify(Context, PortId, PortState) ->
+    Context1 = do_patch(Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            send_port_notification(Context1, Id, ?PORT_CANCELED);
+            send_port_notification(Context1, PortId, PortState);
         _ -> Context1
     end.
 
--spec do_patch(cb_context:context(), path_token()) -> cb_context:context().
-do_patch(Context, _Id) ->
+%% @private
+-spec do_patch(cb_context:context()) -> cb_context:context().
+do_patch(Context) ->
     UpdatedDoc =
         kz_json:merge_recursive(
             cb_context:doc(Context)
             ,kz_json:public_fields(cb_context:req_data(Context))
         ),
-    Setters = [fun update_port_request_for_save/1
-              ,{fun cb_context:set_doc/2, UpdatedDoc}
-              ],
-    Context1 = crossbar_doc:save(cb_context:setters(Context, Setters)),
+    Context1 = crossbar_doc:save(update_port_request_for_save(Context, UpdatedDoc)),
     case cb_context:resp_status(Context1) of
         'success' ->
             cb_context:set_resp_data(
@@ -486,14 +456,12 @@ post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
 
 -spec do_post(cb_context:context(), path_token()) -> cb_context:context().
 do_post(Context, Id) ->
-    Context1 =
-        crossbar_doc:save(
-            update_port_request_for_save(Context)
-        ),
+    Context1 = crossbar_doc:save(update_port_request_for_save(Context)),
     case cb_context:resp_status(Context1) of
         'success' ->
             _ = maybe_send_port_comment_notification(Context1, Id),
-            cb_context:set_resp_data(Context1, knm_port_request:public_fields(cb_context:doc(Context1)));
+            Doc = cb_context:doc(Context1),
+            cb_context:set_resp_data(Context1, knm_port_request:public_fields(Doc));
         _Status ->
             Context1
     end.

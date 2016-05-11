@@ -403,10 +403,58 @@ curl -v -X DELETE \
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/submitted
 
-```curl
+```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/submitted
+```
+
+##### Success
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "created": 63630107130,
+        "id": "{PORTREQUEST_ID}",
+        "name": "Porting 202.555.9000",
+        "numbers": {
+            "+12025559000": {}
+        },
+        "port_state": "submitted",
+        "sent": false,
+        "updated": 63630120443,
+        "uploads": {
+            "file.pdf": {
+                "content_type": "application/pdf",
+                "length": 90931
+            }
+        }
+    },
+    "request_id": "6a05c7559aabd2ff55f13e364ccfa63c",
+    "revision": "14-f5fcbb593efe8719d9b3e29cb745ead9",
+    "status": "success"
+}
+```
+
+###### Failure: charges have to be accepted
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "activation_charges": 10.0,
+        "number_services": {
+            "port": {
+                "activation_charges": 10.0
+            }
+        }
+    },
+    "error": "402",
+    "message": "accept charges",
+    "request_id": "9abd3b133b4bf2e2f006fa164a842441",
+    "status": "error"
+}
 ```
 
 
@@ -414,10 +462,58 @@ curl -v -X PATCH \
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/pending
 
-```curl
+```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/pending
+```
+
+##### Success
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "created": 63630107130,
+        "id": "{PORTREQUEST_ID}",
+        "name": "Porting 202.555.9000",
+        "numbers": {
+            "+12025559000": {}
+        },
+        "port_state": "pending",
+        "sent": false,
+        "updated": 63630120502,
+        "uploads": {
+            "file.pdf": {
+                "content_type": "application/pdf",
+                "length": 90931
+            }
+        }
+    },
+    "request_id": "f9012ea6d97a1fa3a54e3f5615e5ad24",
+    "revision": "15-eefd336bebf12ec109880527a01387c2",
+    "status": "success"
+}
+```
+
+##### Failure: target state illegal given current state
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "port_state": {
+            "enum": {
+                "cause": "pending",
+                "message": "Cannot move to new state from current state"
+            }
+        }
+    },
+    "error": "500",
+    "message": "invalid request",
+    "request_id": "a6c9b35b2fde177b833ff79e78dcc21c",
+    "status": "error"
+}
 ```
 
 
@@ -425,10 +521,36 @@ curl -v -X PATCH \
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/scheduled
 
-```curl
+```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/scheduled
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "created": 63630107130,
+        "id": "{PORTREQUEST_ID}",
+        "name": "Porting 202.555.9000",
+        "numbers": {
+            "+12025559000": {}
+        },
+        "port_state": "scheduled",
+        "sent": false,
+        "updated": 63630120528,
+        "uploads": {
+            "file.pdf": {
+                "content_type": "application/pdf",
+                "length": 90931
+            }
+        }
+    },
+    "request_id": "9942dcff784138431b268b6bd140862f",
+    "revision": "16-1377609b9166abf7a5dbb6b25a5a3890",
+    "status": "success"
+}
 ```
 
 
@@ -436,10 +558,36 @@ curl -v -X PATCH \
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/completed
 
-```curl
+```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/completed
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "created": 63630107130,
+        "id": "{PORTREQUEST_ID}",
+        "name": "Porting 202.555.9000",
+        "numbers": {
+            "+12025559000": {}
+        },
+        "port_state": "completed",
+        "sent": false,
+        "updated": 63630120570,
+        "uploads": {
+            "file.pdf": {
+                "content_type": "application/pdf",
+                "length": 90931
+            }
+        }
+    },
+    "request_id": "b760e5f682423a3e7224b1afc21e0f48",
+    "revision": "1-8edacf2b310d0fd1e919fda51ed10306",
+    "status": "success"
+}
 ```
 
 
@@ -447,10 +595,36 @@ curl -v -X PATCH \
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/rejected
 
-```curl
+```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/rejected
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "created": 63630107130,
+        "id": "{PORTREQUEST_ID}",
+        "name": "Porting 202.555.9000",
+        "numbers": {
+            "+12025559000": {}
+        },
+        "port_state": "rejected",
+        "sent": false,
+        "updated": 63630120570,
+        "uploads": {
+            "file.pdf": {
+                "content_type": "application/pdf",
+                "length": 90931
+            }
+        }
+    },
+    "request_id": "8edacf2b310d0fd1e919fda51ed10306",
+    "revision": "17-84f0e12cfa1b4227e3a324286f5e067b",
+    "status": "success"
+}
 ```
 
 
@@ -458,10 +632,36 @@ curl -v -X PATCH \
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/canceled
 
-```curl
+```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/canceled
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "created": 63630107130,
+        "id": "{PORTREQUEST_ID}",
+        "name": "Porting 202.555.9000",
+        "numbers": {
+            "+12025559000": {}
+        },
+        "port_state": "canceled",
+        "sent": false,
+        "updated": 63630120578,
+        "uploads": {
+            "file.pdf": {
+                "content_type": "application/pdf",
+                "length": 90931
+            }
+        }
+    },
+    "request_id": "cb1cff969c1513d8a21df2e4c5bbe341",
+    "revision": "18-82cca84c2b3d9019309a68f1d95c2d0c",
+    "status": "success"
+}
 ```
 
 

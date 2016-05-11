@@ -16,8 +16,7 @@
 -export([has_emergency_services/1]).
 
 -include("knm.hrl").
-
--define(PORT_KEY, <<"port">>).
+-include("knm_port_request.hrl"). %% PORT_KEY
 
 %%--------------------------------------------------------------------
 %% @public
