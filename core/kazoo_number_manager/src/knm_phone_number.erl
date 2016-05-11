@@ -323,6 +323,13 @@ to_json(#knm_phone_number{doc=JObj}=N) ->
 %%--------------------------------------------------------------------
 -spec from_json(kz_json:object()) -> knm_phone_number().
 from_json(JObj) ->
+    Features =
+        case kz_json:get_value(?PVT_FEATURES, JObj) of
+            'undefined' -> kz_json:new();
+            FeaturesList when is_list(FeaturesList) ->
+                lists:foldl(fun (FeatureKey, Acc) -> kz_json:set_value(FeatureKey, kz_json:new(), Acc) end, kz_json:new(), FeaturesList);
+            FeaturesJObj -> FeaturesJObj
+        end,
     {'ok', PhoneNumber} =
         setters(new(),
                 [{fun set_number/2, kz_doc:id(JObj)}
@@ -330,7 +337,7 @@ from_json(JObj) ->
                 ,{fun set_assigned_to/2, kz_json:get_value(?PVT_ASSIGNED_TO, JObj)}
                 ,{fun set_prev_assigned_to/2, kz_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)}
                 ,{fun set_used_by/2, kz_json:get_value(?PVT_USED_BY, JObj)}
-                ,{fun set_features/2, kz_json:get_value(?PVT_FEATURES, JObj, kz_json:new())}
+                ,{fun set_features/2, Features}
                 ,{fun set_state/2, kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)}
                 ,{fun set_reserve_history/2, kz_json:get_value(?PVT_RESERVE_HISTORY, JObj, [])}
                 ,{fun set_ported_in/2, kz_json:is_true(?PVT_PORTED_IN, JObj, 'false')}
@@ -491,9 +498,7 @@ set_used_by(N, UsedBy=?NE_BINARY) ->
 -spec features(knm_phone_number()) -> kz_json:object().
 features(#knm_phone_number{features=Features}) -> Features.
 
--spec set_features(knm_phone_number(), kz_json:object() | list()) -> knm_phone_number().
-set_features(N, Features) when is_list(Features) ->
-    set_features(N, kz_json:from_list(Features));
+-spec set_features(knm_phone_number(), kz_json:object()) -> knm_phone_number().
 set_features(N, Features=?JSON_WRAPPER(_)) ->
     N#knm_phone_number{features=Features}.
 
