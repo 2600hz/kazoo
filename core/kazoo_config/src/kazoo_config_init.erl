@@ -56,14 +56,14 @@ set_env() ->
     AppEnv = load_file(),
     lager:notice("loaded settings : ~p", [AppEnv]),
     set_zone(AppEnv),
-    application:set_env('kazoo_config', 'kz_config', AppEnv).
+    application:set_env(?APP_NAME_ATOM, 'kz_config', AppEnv).
 
 set_zone(AppEnv) ->
-    erlang:put('$_App_Settings', AppEnv),
+    erlang:put(?SETTINGS_KEY, AppEnv),
     [Local] = kz_config:get(kz_config:get_node_section_name(), 'zone', ['local']),
     Zone = kz_util:to_atom(Local, 'true'),
     lager:notice("setting zone to ~p", [Zone]),
-    application:set_env('kazoo_config', 'zone', Zone).
+    application:set_env(?APP_NAME_ATOM, 'zone', Zone).
 
 
 -spec reload() -> 'ok'.
