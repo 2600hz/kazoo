@@ -134,7 +134,7 @@ get_node_section_name() ->
 -spec set(section(), atom(), term()) -> 'ok'.
 -spec set({section(), kz_proplist()}, kz_proplist()) -> 'ok'.
 set(Section, Key, Value) ->
-    {'ok', Props} = load(),
+    Props = load(),
     case props:get_value(Section, Props) of
         'undefined' ->
             NewSection = {Section, [{Key, Value}]},
@@ -146,11 +146,11 @@ set(Section, Key, Value) ->
 
 set(NewSection, Props) ->
     NewProps = props:insert_value(NewSection, Props),
-    application:set_env('kazoo_config', 'kz_config', NewProps).
+    application:set_env(?APP_NAME_ATOM, 'kz_config', NewProps).
 
 -spec unset(section(), atom()) -> 'ok'.
 unset(Section, Key) ->
-    {'ok', Props} = load(),
+    Props = load(),
     case props:get_value(Section, Props) of
       'undefined' -> 'ok';
       Val ->
@@ -166,7 +166,7 @@ unset(Section, Key) ->
 %%--------------------------------------------------------------------
 %-spec find_values() -> .
 find_values(Section, ?DEFAULT_DEFAULTS) ->
-    {'ok', Prop} = load(),
+    Prop = load(),
     get_sections(Section, Prop);
 find_values(Section, Keys) when is_list(Keys) ->
     lists:reverse(
@@ -175,7 +175,7 @@ find_values(Section, Keys) when is_list(Keys) ->
                   end, [], Keys)
      );
 find_values(Section, Key) ->
-    {'ok', Prop} = load(),
+    Prop = load(),
     Sections = get_sections(Section, Prop),
     get_values(Key, Sections).
 
@@ -195,7 +195,7 @@ get_sections(Section, Prop) ->
 
 -spec get_section(section()) -> kz_proplist().
 get_section(Section) ->
-    {'ok', Prop} = load(),
+    Prop = load(),
     Sections = proplists:get_all_values(Section, Prop),
     format_sections(Sections, '__no_zone_filter', []).
 
@@ -291,26 +291,26 @@ get_values([{_, Values} | T], Key, Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 
--spec load() -> {'ok', kz_proplist()}.
+-spec load() -> kz_proplist().
 load() ->
-    case erlang:get('$_App_Settings') of
+    case erlang:get(?SECTION_DEFAULTS) of
         'undefined' ->
-            case application:get_env('kazoo_config', 'kz_config') of
-                'undefined' -> {'ok', ?SECTION_DEFAULTS};
-                {'ok', _}=X -> X
+            case application:get_env(?APP_NAME_ATOM, 'kz_config') of
+                'undefined' -> ?SECTION_DEFAULTS;
+                Settings -> Settings
             end;
         Settings ->
-            erlang:put('$_App_Settings', 'undefined'),
-            {'ok', Settings}
+            erlang:put(?SETTINGS_KEY, 'undefined'),
+            Settings
     end.
 
 -spec zone() -> atom().
 zone() ->
-    case application:get_env('kazoo_config', 'zone') of
+    case application:get_env(?APP_NAME_ATOM, 'zone') of
         'undefined' ->
-            [Local] = get(kz_config:get_node_section_name(), 'zone', ['local']),
+            [Local] = get(get_node_section_name(), 'zone', ['local']),
             Zone = kz_util:to_atom(Local, 'true'),
-            application:set_env('kazoo_config', 'zone', Zone),
+            application:set_env(?APP_NAME_ATOM, 'zone', Zone),
             Zone;
         {'ok', Zone} -> Zone
     end.
