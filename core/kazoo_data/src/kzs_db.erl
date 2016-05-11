@@ -147,11 +147,15 @@ db_view_update(#{}=Map, DbName, Views, Remove) ->
                   end, Others).
 
 -spec do_db_view_update(map(), ne_binary(), kz_proplist(), boolean()) -> boolean().
-do_db_view_update(#{}=Server, Db, Views, Remove) ->
+do_db_view_update(#{server := {App, Conn}}=Server, Db, Views, Remove) ->
     case kzs_view:all_design_docs(Server, Db, ['include_docs']) of
         {'ok', Found} -> update_views(Found, Db, Views, Remove, Server);
         {'error', _R} ->
-            lager:debug("unable to fetch current design docs: ~p", [_R])
+            case App:db_exists(Conn, Db) of
+                'true' -> update_views([], Db, Views, Remove, Server);
+                'false' -> lager:error("error fetching current views for db ~s", [Db]),
+                           true
+            end
     end.
 
 -spec update_views(kz_json:objects(), ne_binary(), kz_proplist(), boolean(), map()) -> boolean().
