@@ -491,9 +491,7 @@ set_used_by(N, UsedBy=?NE_BINARY) ->
 -spec features(knm_phone_number()) -> kz_json:object().
 features(#knm_phone_number{features=Features}) -> Features.
 
--spec set_features(knm_phone_number(), kz_json:object() | list()) -> knm_phone_number().
-set_features(N, Features) when is_list(Features) ->
-    set_features(N, kz_json:from_list(Features));
+-spec set_features(knm_phone_number(), kz_json:object()) -> knm_phone_number().
 set_features(N, Features=?JSON_WRAPPER(_)) ->
     N#knm_phone_number{features=Features}.
 
