@@ -65,7 +65,7 @@ The enabled Monster UI applications were moved from an object on the account doc
 
 #### Company Directory PDF
 
-If you plan to support the new API to download the company directory as a PDF you will need to install 'htmldoc' on any server running crossbar.
+If you plan to support the new API to download the company directory as a PDF you will need to install `htmldoc` on any server running crossbar.
 
 #### Default WebRTC Port change
 

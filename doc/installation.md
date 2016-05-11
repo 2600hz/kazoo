@@ -7,10 +7,14 @@ This is a guide to installing Kazoo on a Debian 8 (Jessie) base installation. Ot
 ### Packages Required
 
 ```shell
-#> sudo apt-get install build-essential libxslt-dev \
+$ sudo apt-get install build-essential libxslt-dev \
     zip unzip expat zlib1g-dev libssl-dev curl \
-    libncurses5-dev git-core libexpat1-dev
+    libncurses5-dev git-core libexpat1-dev \
+    htmldoc
 ```
+
+Note: `htmldoc` is required only if [you want to be able to download PDFs](./announcements.md#company-directory-pdf).
+
 
 ### Erlang
 
@@ -34,7 +38,7 @@ $ . /usr/lib/erlang/activate
 
 ### Short version
 
-```
+```shell
 $ cd /opt
 $ git clone https://github.com/2600Hz/kazoo.git
 $ cd kazoo
@@ -118,8 +122,9 @@ There are a few concerns that should be planned for when designing a Kazoo clust
 The following should be done to prepare a server for installation (this should be done on all servers in a cluster prior to installing anything)
 
 ### Add 2600hz repo
-```
-# wget -P /etc/yum.repos.d/ http://repo.2600hz.com/2600hz.repo
+
+```shell
+$ wget -P /etc/yum.repos.d/ http://repo.2600hz.com/2600hz.repo
 ```
 
 ### Set correct IP / hostname
@@ -136,8 +141,8 @@ Example:
 
 During installation you should disable any firewalls and SELinux, this is to prevent them from causing any problems during installation and initial testing.
 
-```
-# service iptables save && service iptables stop && chkconfig iptables off
+```shell
+$ service iptables save && service iptables stop && chkconfig iptables off
 ```
 
 Edit /etc/selinux/config (restart required)
@@ -150,31 +155,35 @@ SELINUX=disabled
 It is important for the time and dates to be correct and in sync on all servers in a cluster.  It is highly reccomended that you use NTP to facilitate this.
 
 Select the correct timezone
-```
-# tzselect
+
+```shell
+$ tzselect
 ```
 
 Symlink the timezone file to make the configuration change persistent
-```
-# ln -sf /usr/share/zoneinfo/UTC /etc/localtime
+
+```shell
+$ ln -sf /usr/share/zoneinfo/UTC /etc/localtime
 ```
 
 Enable NTP
-```
-# service ntpd start && chkconfig ntpd on
+
+```shell
+$ service ntpd start && chkconfig ntpd on
 ```
 
 Check date / time and verify it is correct
-```
-# date
+
+```shell
+$ date
 ```
 
 ## Single server installation
 
 ### Install packages
 
-```
-# yum install -y kazoo-bigcouch-R15B haproxy kazoo-freeswitch-R15B kazoo-kamailio kazoo-R15B httpd monster-ui*
+```shell
+$ yum install -y kazoo-bigcouch-R15B haproxy kazoo-freeswitch-R15B kazoo-kamailio kazoo-R15B httpd monster-ui*
 ```
 
 ### Configure packages
@@ -194,8 +203,9 @@ n=1
 ```
 
 Restart bigcouch for changes to take effect
-```
-# service bigcouch restart
+
+```shell
+$ service bigcouch restart
 ```
 
 You should now be ready to validate the installation
@@ -209,16 +219,19 @@ Server 1 (zone 1): bigcouch, kazoo
  Hostname: test1.cluster1.2600hz.com
  IP Addr : 192.168.1.100
 ```
+
 ```
 Server 2 (zone 1): bigcouch, freeswitch
  Hostname: test2.cluster1.2600hz.com
  IP Addr : 192.168.1.101
 ```
+
 ```
 Server 3 (zone 2): bigcouch, kazoo, monster-ui
  Hostname: test3.cluster1.2600hz.com
  IP Addr : 192.168.1.102
 ```
+
 ```
 Server 4 (zone 2): bigcouch, freeswitch
  Hostname: test4.cluster1.2600hz.com
@@ -228,39 +241,45 @@ Server 4 (zone 2): bigcouch, freeswitch
 ### Install and configure bigcouch
 
 On all servers:
-```
-# yum install -y kazoo-bigcouch-R15B
+
+```shell
+$ yum install -y kazoo-bigcouch-R15B
 ```
 
 **Set the Erlang cookie correctly for bigcouch (see section below)**
 
 **Set up bigcouch cluster**
-```
-# curl -X PUT test1.cluster1.2600hz.com:5986/nodes/bigcouch@test2.cluster1.2600hz.com -d {}
-# curl -X PUT test1.cluster1.2600hz.com:5986/nodes/bigcouch@test3.cluster1.2600hz.com -d {}
-# curl -X PUT test1.cluster1.2600hz.com:5986/nodes/bigcouch@test4.cluster1.2600hz.com -d {}
+
+```shell
+$ curl -X PUT test1.cluster1.2600hz.com:5986/nodes/bigcouch@test2.cluster1.2600hz.com -d {}
+$ curl -X PUT test1.cluster1.2600hz.com:5986/nodes/bigcouch@test3.cluster1.2600hz.com -d {}
+$ curl -X PUT test1.cluster1.2600hz.com:5986/nodes/bigcouch@test4.cluster1.2600hz.com -d {}
 ```
 
 ### Install remaining packages
 
 **Server 1**
-```
-# yum install -y kazoo-kamailio kazoo-R15B
+
+```shell
+$ yum install -y kazoo-kamailio kazoo-R15B
 ```
 
 **Server 2**
-```
-# yum install -y haproxy kazoo-freeswitch-R15B
+
+```shell
+$ yum install -y haproxy kazoo-freeswitch-R15B
 ```
 
 **Server 3**
-```
-# yum install -y kazoo-kamailio kazoo-R15B httpd monster-ui*
+
+```shell
+$ yum install -y kazoo-kamailio kazoo-R15B httpd monster-ui*
 ```
 
 **Server 4**
-```
-# yum install -y haproxy kazoo-freeswitch-R15B
+
+```shell
+$ yum install -y haproxy kazoo-freeswitch-R15B
 ```
 
 ### Configure packages
@@ -313,9 +332,10 @@ cookie = COOKIEHERE
 ### Configure HAProxy
 
 Symlink the Kazoo HAProxy configruation file
-```
-# rm -f /etc/haproxy/haproxy.cfg
-# ln -s /etc/kazoo/haproxy/haproxy.cfg /etc/haproxy/
+
+```shell
+$ rm -f /etc/haproxy/haproxy.cfg
+$ ln -s /etc/kazoo/haproxy/haproxy.cfg /etc/haproxy/
 ```
 
 ### Configure Kamailio
@@ -352,7 +372,8 @@ On both Server 1 and Server 3 update /etc/kazoo/kamailio/dbtext/dispatcher to co
 ### Configure Kazoo / RabbitMQ
 
 We will now create 2 zones, one for each Kazoo server.  Edit the zone, kazoo_apps, and ecallmgr sections of /etc/kazoo/config.ini to look like the following:
-```
+
+```ini
 [zone]
 name = "c1_zone1"
 amqp_uri = "amqp://guest:guest@192.168.1.100:5672"
@@ -395,94 +416,104 @@ default: 'http://192.168.1.102:8000/v2/'
 Start all services
 
 **Server 1**
-```
-# service bigcouch restart
-# service rabbitmq-server restart
-# service rsyslog restart
-# service kz-kazoo_apps restart
-# service kz-ecallmgr restart
-# service kamailio restart
-# service httpd restart
+
+```shell
+$ service bigcouch restart
+$ service rabbitmq-server restart
+$ service rsyslog restart
+$ service kz-kazoo_apps restart
+$ service kz-ecallmgr restart
+$ service kamailio restart
+$ service httpd restart
 ```
 
 **Server 2**
-```
-# service bigcouch restart
-# service rsyslog restart
-# service haproxy restart
-# service freeswitch restart
+
+```shell
+$ service bigcouch restart
+$ service rsyslog restart
+$ service haproxy restart
+$ service freeswitch restart
 ```
 
 **Server 3**
-```
-# service bigcouch restart
-# service rabbitmq-server restart
-# service rsyslog restart
-# service kz-kazoo_apps restart
-# service kz-ecallmgr restart
-# service kamailio restart
-# service httpd restart
+
+```shell
+$ service bigcouch restart
+$ service rabbitmq-server restart
+$ service rsyslog restart
+$ service kz-kazoo_apps restart
+$ service kz-ecallmgr restart
+$ service kamailio restart
+$ service httpd restart
 ```
 
 Enable auto-startup for all services
 
 **Server 1**
-```
-# chkconfig --add rabbitmq-server
-# chkconfig --add kz-ecallmgr
-# chkconfig --add kz-kazoo_apps
-# chkconfig rabbitmq-server on
-# chkconfig kz-ecallmgr on
-# chkconfig kz-kazoo_apps on
-# chkconfig kamailio on
-# chkconfig bigcouch on
-# chkconfig httpd on
+
+```shell
+$ chkconfig --add rabbitmq-server
+$ chkconfig --add kz-ecallmgr
+$ chkconfig --add kz-kazoo_apps
+$ chkconfig rabbitmq-server on
+$ chkconfig kz-ecallmgr on
+$ chkconfig kz-kazoo_apps on
+$ chkconfig kamailio on
+$ chkconfig bigcouch on
+$ chkconfig httpd on
 ```
 
 **Server 2**
-```
-# chkconfig haproxy on
-# chkconfig freeswitch on
+
+```shell
+$ chkconfig haproxy on
+$ chkconfig freeswitch on
 ```
 
 **Server 3**
-```
-# chkconfig --add rabbitmq-server
-# chkconfig --add kz-ecallmgr
-# chkconfig --add kz-kazoo_apps
-# chkconfig rabbitmq-server on
-# chkconfig kz-ecallmgr on
-# chkconfig kz-kazoo_apps on
-# chkconfig kamailio on
-# chkconfig bigcouch on
-# chkconfig httpd on
+
+```shell
+$ chkconfig --add rabbitmq-server
+$ chkconfig --add kz-ecallmgr
+$ chkconfig --add kz-kazoo_apps
+$ chkconfig rabbitmq-server on
+$ chkconfig kz-ecallmgr on
+$ chkconfig kz-kazoo_apps on
+$ chkconfig kamailio on
+$ chkconfig bigcouch on
+$ chkconfig httpd on
 ```
 
 ### Import media files
 
 *Server 1 OR Server 3*
-```
-# sup kazoo_media_maintenance import_prompts /opt/kazoo/system_media/en-us en-us
+
+```shell
+$ sup kazoo_media_maintenance import_prompts /opt/kazoo/system_media/en-us en-us
 ```
 
 ### Configure ecallmgr
 
 Add freeswitch nodes
 *Server 1*
-```
-# sup -n ecallmgr ecallmgr_maintenance add_fs_node freeswitch@test2.cluster1.2600hz.com
+
+```shell
+$ sup -n ecallmgr ecallmgr_maintenance add_fs_node freeswitch@test2.cluster1.2600hz.com
 ```
 
 *Server 3*
-```
-# sup -n ecallmgr ecallmgr_maintenance add_fs_node freeswitch@test4.cluster1.2600hz.com
+
+```shell
+$ sup -n ecallmgr ecallmgr_maintenance add_fs_node freeswitch@test4.cluster1.2600hz.com
 ```
 
 Add acl entries for SIP servers
 *Server 1 OR Server 3*
-```
-# sup -n ecallmgr ecallmgr_maintenance allow_sbc test1.cluster1.2600hz.com 192.168.1.100
-# sup -n ecallmgr ecallmgr_maintenance allow_sbc test3.cluster1.2600hz.com 192.168.1.102
+
+```shell
+$ sup -n ecallmgr ecallmgr_maintenance allow_sbc test1.cluster1.2600hz.com 192.168.1.100
+$ sup -n ecallmgr ecallmgr_maintenance allow_sbc test3.cluster1.2600hz.com 192.168.1.102
 ```
 
 ## Validate installation
@@ -492,15 +523,24 @@ Add acl entries for SIP servers
 On all servers, curl the database ip/port to verify that it is reachable:
 
 ```shell
-#> curl localhost:5984
-{"couchdb":"Welcome", "uuid":"0d13a8a56e2fbd9338531c4063c41910", "version":"1.6.1", "vendor":{"version":"12.04", "name":"Ubuntu"}}
+$ curl localhost:5984 -vs | python -m  json.tool
+{
+    "couchdb": "Welcome",
+    "uuid": "0d13a8a56e2fbd9338531c4063c41910",
+    "vendor": {
+        "name": "Ubuntu",
+        "version": "12.04"
+    },
+    "version": "1.6.1"
+}
 ```
 
 ### Check FreeSWITCH
 
 Connect to the cli and verify that you have at least one profile running, also verify that BOTH ecallmgr nodes are connected
-```
-# fs_cli
+
+```shell
+$ fs_cli
 
 > sofia status
 < should show at least one profile>
@@ -512,15 +552,17 @@ Connect to the cli and verify that you have at least one profile running, also v
 ### Check Kamailio status
 
 *Server 1 and Server 3*
-```
-# kamctl fifo ds_list
+
+```shell
+$ kamctl fifo ds_list
 ```
 
 ### Check federation (for cluster installations)
 
 *Server 1 and Server 3*
-```
-# service kz-kazoo_apps status
+
+```shell
+$ service kz-kazoo_apps status
 ```
 
 Verify that the status shows nodes for BOTH Server 1 and Server 3
@@ -528,19 +570,22 @@ Verify that the status shows nodes for BOTH Server 1 and Server 3
 ### Create master account
 
 *Server 1 OR Server 3*
-```
-# sup crossbar_maintenance create_account {ACCT NAME} {REALM} {LOGIN} {PASSWORD}
+
+```shell
+$ sup crossbar_maintenance create_account {ACCT NAME} {REALM} {LOGIN} {PASSWORD}
 ```
 ### Load applications
 
 *Server 1*
-```
-# sup crossbar_maintenance init_apps /var/www/html/monster-ui/apps/ http://192.168.1.100:8000/v2
+
+```shell
+$ sup crossbar_maintenance init_apps /var/www/html/monster-ui/apps/ http://192.168.1.100:8000/v2
 ```
 
 *Server 3*
-```
-# sup crossbar_maintenance init_apps /var/www/html/monster-ui/apps/ http://192.168.1.102:8000/v2
+
+```shell
+$ sup crossbar_maintenance init_apps /var/www/html/monster-ui/apps/ http://192.168.1.102:8000/v2
 ```
 
 ## Notes / Credits

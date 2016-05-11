@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2015, 2600Hz INC
+%%% @copyright (C) 2013-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% Handles port request life cycles
@@ -23,7 +23,6 @@
          ,post/2, post/4
          ,delete/2, delete/4
          ,cleanup/1
-         ,find_template/1, find_template/2
          ,authority/1
 
          ,acceptable_content_types/0
@@ -1176,21 +1175,18 @@ generate_loa(Context, _RespStatus) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec find_template(ne_binary()) -> ne_binary().
 -spec find_template(ne_binary(), api_binary()) -> ne_binary().
-find_template(ResellerId) ->
-    {'ok', Template} = kz_pdf:find_template(ResellerId, <<"loa">>),
-    Template.
-
 find_template(ResellerId, 'undefined') ->
-    find_template(ResellerId);
+    {'ok', Template} = kz_pdf:find_template(ResellerId, <<"loa">>),
+    Template;
 find_template(ResellerId, CarrierName) ->
-    TemplateName = <<(kz_util:to_lower_binary(kz_util:uri_encode(CarrierName)))/binary, ".tmpl">>,
+    EncodedCarrierName = kz_util:to_lower_binary(kz_util:uri_encode(CarrierName)),
+    TemplateName = <<EncodedCarrierName/binary, ".tmpl">>,
     lager:debug("looking for carrier template ~s or plain template for reseller ~s"
                 ,[TemplateName, ResellerId]
                ),
     case kz_pdf:find_template(ResellerId, <<"loa">>, TemplateName) of
-        {'error', _} -> find_template(ResellerId);
+        {'error', _} -> find_template(ResellerId, 'undefined');
         {'ok', Template} -> Template
     end.
 
@@ -1513,33 +1509,19 @@ save_phone_numbers_doc(Context, JObj) ->
                                     cb_context:context().
 generate_loa_from_port(Context, PortRequest) ->
     AccountId = cb_context:account_id(Context),
-
     ResellerId = kz_services:find_reseller_id(AccountId),
     ResellerDoc = cb_context:account_doc(cb_context:set_account_id(Context, ResellerId)),
+    TemplateData = props:filter_undefined(
+                     [{<<"reseller">>, kz_json:to_proplist(ResellerDoc)}
+                     ,{<<"account">>, kz_json:to_proplist(cb_context:account_doc(Context))}
+                     ,{<<"numbers">>, [knm_util:pretty_print(N) || N <- kz_json:get_keys(<<"numbers">>, PortRequest)]}
+                     ,{<<"bill">>, kz_json:to_proplist(kz_json:get_value(<<"bill">>, PortRequest, kz_json:new()))}
+                     ,{<<"request">>, kz_json:to_proplist(PortRequest)}
+                     ,{<<"qr_code">>, create_QR_code(AccountId, kz_doc:id(PortRequest))}
+                     ,{<<"type">>, <<"loa">>}
+                     ]),
+    Carrier = kz_json:get_value(<<"carrier">>, PortRequest),
 
-    AccountDoc = cb_context:account_doc(Context),
-
-    Numbers = [knm_util:pretty_print(N) || N <- kz_json:get_keys(<<"numbers">>, PortRequest)],
-
-    QRCode = create_qr_code(cb_context:account_id(Context), kz_doc:id(PortRequest)),
-
-    generate_loa_from_template(Context
-                               ,props:filter_undefined(
-                                  [{<<"reseller">>, kz_json:to_proplist(ResellerDoc)}
-                                   ,{<<"account">>, kz_json:to_proplist(AccountDoc)}
-                                   ,{<<"numbers">>, Numbers}
-                                   ,{<<"bill">>, kz_json:to_proplist(kz_json:get_value(<<"bill">>, PortRequest, kz_json:new()))}
-                                   ,{<<"request">>, kz_json:to_proplist(PortRequest)}
-                                   ,{<<"qr_code">>, QRCode}
-                                   ,{<<"type">>, <<"loa">>}
-                                  ])
-                               ,ResellerId
-                               ,kz_json:get_value(<<"carrier">>, PortRequest)
-                              ).
-
--spec generate_loa_from_template(cb_context:context(), kz_proplist(), ne_binary(), api_binary()) ->
-                                        cb_context:context().
-generate_loa_from_template(Context, TemplateData, ResellerId, Carrier) ->
     Template = find_template(ResellerId, Carrier),
     case kz_pdf:generate(ResellerId, TemplateData, Template) of
         {'error', _R} -> cb_context:set_resp_status(Context, 'error');
@@ -1550,17 +1532,19 @@ generate_loa_from_template(Context, TemplateData, ResellerId, Carrier) ->
              )
     end.
 
--spec create_qr_code(api_binary(), api_binary()) -> kz_proplist() | 'undefined'.
-create_qr_code('undefined', _) -> 'undefined';
-create_qr_code(_, 'undefined') -> 'undefined';
-create_qr_code(AccountId, PortRequestId) ->
+-spec create_QR_code(api_binary(), api_binary()) -> kz_proplist() | 'undefined'.
+create_QR_code('undefined', _) -> 'undefined';
+create_QR_code(_, 'undefined') -> 'undefined';
+create_QR_code(AccountId, PortRequestId) ->
     lager:debug("create qr code for ~s - ~s", [AccountId, PortRequestId]),
-    CHL = <<AccountId/binary, "-", PortRequestId/binary>>,
-    Url = <<"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=", CHL/binary, "&choe=UTF-8">>,
+    CHL = [binary_to_list(AccountId), "-", binary_to_list(PortRequestId)],
+    Url = ["https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=", CHL, "&choe=UTF-8"],
 
-    case kz_http:get(kz_util:to_list(Url)) of
+    case kz_http:get(lists:flatten(Url)) of
         {'ok', 200, _RespHeaders, RespBody} ->
-            lager:debug("generated QR code from ~s: ~s", [Url, RespBody]),
+            lager:debug("generated QR code from ~s", [Url]),
+            lager:debug("QR code size: ~p, head: ~w"
+                       ,[byte_size(RespBody), binary:part(RespBody, 0, min(50, byte_size(RespBody)))]),
             [{<<"image">>, base64:encode(RespBody)}];
         _E ->
             lager:debug("failed to generate QR code: ~p", [_E]),

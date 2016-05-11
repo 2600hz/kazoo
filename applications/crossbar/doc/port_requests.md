@@ -978,9 +978,11 @@ curl -v -X PATCH \
 
 > GET /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/loa
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Accept: application/x-pdf" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/loa
 ```
+
+Streams back the contents of the generated Letter Of Authorization PDF.
