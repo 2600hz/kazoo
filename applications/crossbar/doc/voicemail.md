@@ -198,7 +198,7 @@ curl -v -X PATCH \
         "id": "3a63acc3694ba189947235ae4727941b",
         "owner_id": "f1d98a5df729f95cd208ee9430e3b21b",
         "media": {},
-        {"some_key":"some_value"}
+        "some_key": "some_value"
     },
     "revision": "27-d5b3672c6e21e23d7bf206ac516df5c0",
     "request_id": "{REQUEST_ID}",
