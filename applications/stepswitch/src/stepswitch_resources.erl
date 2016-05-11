@@ -153,7 +153,7 @@ endpoints(Number, OffnetJObj) ->
 -spec maybe_get_endpoints(ne_binary(), kapi_offnet_resource:req()) -> kz_json:objects().
 maybe_get_endpoints(Number, OffnetJObj) ->
     case kapi_offnet_resource:hunt_account_id(OffnetJObj) of
-        'undefined' -> 
+        'undefined' ->
             lager:debug("attempting to find global resources"),
             get_endpoints(get(), Number, OffnetJObj);
         HuntAccount -> maybe_get_local_endpoints(HuntAccount, Number, OffnetJObj)
