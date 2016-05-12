@@ -42,9 +42,25 @@ db_create(#server{}=Conn, DbName) ->
 
 -spec db_create(server(), ne_binary(), db_create_options()) -> boolean().
 db_create(#server{}=Conn, DbName, Options) ->
-    case couchbeam:create_db(Conn, kz_util:to_list(DbName), [], Options) of
-        {'error', _} -> 'false';
+    case do_db_create_db(Conn, DbName, Options, []) of
+        {'error', Error} ->
+            lager:error("failed to create database ~s : ~p", [DbName, Error]),
+            'false';
         {'ok', _} -> 'true'
+    end.
+
+do_db_create_db(#server{url=ServerUrl, options=Opts}=Server, DbName, Options, Params) ->
+    Options1 = couchbeam_util:propmerge1(Options, Opts),
+    Url = hackney_url:make_url(ServerUrl, DbName, Params),
+    Resp = couchbeam_httpc:db_request(put, Url, [], <<>>, Options1, [201, 202]),
+    case Resp of
+        {ok, _Status, _Headers, Ref} ->
+            hackney:skip_body(Ref),
+            {ok, #db{server=Server, name=DbName, options=Options1}};
+        {error, precondition_failed} ->
+            {error, db_exists};
+       Error ->
+          Error
     end.
 
 -spec db_delete(server(), ne_binary()) -> boolean().
