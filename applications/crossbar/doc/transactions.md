@@ -106,6 +106,17 @@ curl -x GET \
 }
 ```
 
+## Credit an account
+
+Only for super duper admins and resellers.
+
+### Request
+
+- Verb: `PUT`
+- Url: `/accounts/{{ACCOUNT_ID}}/transactions/credit`
+- Payload: `{"data": {"amount": 1, "reason": "manual_addition", "description": "Wire transfer, Invoice #1, dated by 01/01/2016"} }`
+- Super admin can add "credit_type": "free" field to avoid bookkeeper and add credit "for free"
+
 
 #### Debit an account
 
