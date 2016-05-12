@@ -916,9 +916,7 @@ leak_pvt_fields(Res, JObj) ->
 summary_attachments(Context, Id) ->
     Context1 = load_port_request(Context, Id),
     As = kz_doc:attachments(cb_context:doc(Context1), kz_json:new()),
-    cb_context:set_resp_data(Context1
-                             ,knm_port_request:normalize_attachments(As)
-                            ).
+    cb_context:set_resp_data(Context1, knm_port_request:normalize_attachments(As)).
 
 %%--------------------------------------------------------------------
 %% @private

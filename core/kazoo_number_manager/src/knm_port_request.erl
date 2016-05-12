@@ -51,7 +51,7 @@ init() ->
 %%--------------------------------------------------------------------
 -spec current_state(kz_json:object()) -> api_binary().
 current_state(JObj) ->
-    kz_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_WAITING).
+    kz_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_UNCONFIRMED).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -66,7 +66,7 @@ public_fields(JObj) ->
                         ,{<<"created">>, kz_doc:created(JObj)}
                         ,{<<"updated">>, kz_doc:modified(JObj)}
                         ,{<<"uploads">>, normalize_attachments(As)}
-                        ,{<<"port_state">>, kz_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_WAITING)}
+                        ,{<<"port_state">>, kz_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_UNCONFIRMED)}
                         ,{<<"sent">>, kz_json:get_value(?PVT_SENT, JObj, 'false')}
                        ]
                        ,kz_doc:public_fields(JObj)
@@ -172,7 +172,7 @@ normalize_number_map(N, Meta) ->
 -spec transition_to_canceled(kz_json:object()) -> transition_response().
 
 transition_to_submitted(JObj) ->
-    transition(JObj, [?PORT_WAITING, ?PORT_REJECTED], ?PORT_SUBMITTED).
+    transition(JObj, [?PORT_UNCONFIRMED, ?PORT_REJECTED], ?PORT_SUBMITTED).
 
 transition_to_pending(JObj) ->
     transition(JObj, [?PORT_SUBMITTED], ?PORT_PENDING).
@@ -190,7 +190,7 @@ transition_to_rejected(JObj) ->
     transition(JObj, [?PORT_SUBMITTED, ?PORT_PENDING, ?PORT_SCHEDULED], ?PORT_REJECTED).
 
 transition_to_canceled(JObj) ->
-    transition(JObj, [?PORT_WAITING, ?PORT_SUBMITTED, ?PORT_PENDING, ?PORT_SCHEDULED, ?PORT_REJECTED], ?PORT_CANCELED).
+    transition(JObj, [?PORT_UNCONFIRMED, ?PORT_SUBMITTED, ?PORT_PENDING, ?PORT_SCHEDULED, ?PORT_REJECTED], ?PORT_CANCELED).
 
 %%--------------------------------------------------------------------
 %% @public
