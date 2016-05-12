@@ -198,6 +198,7 @@
                                 ,{<<"sms">>, <<"sms">>}
                                 ,{<<"phone_numbers">>, <<"phone_numbers">>} %% weird...
                                 ,{<<"vmboxes">>, <<"vmbox">>}
+                                ,{<<"resource_selectors">>, <<"resource_selectors_rules">>}
                                ]).
 
 -define(CROSSBAR_HRL, 'true').

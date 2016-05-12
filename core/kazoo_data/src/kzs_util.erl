@@ -46,6 +46,10 @@ db_classification(?MATCH_MODB_SUFFIX_RAW(_Account,_Year,_Month)) -> 'modb';%   r
 db_classification(?MATCH_ACCOUNT_UNENCODED(_AccountId)) -> 'account';
 db_classification(?MATCH_ACCOUNT_encoded(_AccountId)) -> 'account';
 db_classification(?MATCH_ACCOUNT_ENCODED(_AccountId)) -> 'account';
+db_classification(?MATCH_RESOURCE_SELECTORS_UNENCODED(_AccountId)) -> 'resource_selectors';
+db_classification(?MATCH_RESOURCE_SELECTORS_encoded(_AccountId)) -> 'resource_selectors';
+db_classification(?MATCH_RESOURCE_SELECTORS_ENCODED(_AccountId)) -> 'resource_selectors';
+db_classification(?MATCH_RESOURCE_SELECTORS_RAW(_AccountId)) -> 'resource_selectors';
 db_classification(?KZ_RATES_DB) -> 'system';
 db_classification(?KZ_OFFNET_DB) -> 'system';
 db_classification(?KZ_ANONYMOUS_CDR_DB) -> 'system';
@@ -56,6 +60,7 @@ db_classification(?KZ_SCHEMA_DB) -> 'system';
 db_classification(?KZ_OAUTH_DB) -> 'system';
 db_classification(?KZ_DATA_DB) -> 'system';
 db_classification(?KZ_TASKS_DB) -> 'system';
+db_classification(?KZ_RESOURCE_SELECTORS_DB) -> 'system';
 db_classification(_Database) ->
     lager:debug("unknown type for database ~s", [_Database]),
     'undefined'.

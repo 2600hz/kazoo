@@ -51,6 +51,7 @@
                         ,?KZ_ALERTS_DB
                         ,?KZ_DATA_DB
                         ,?KZ_TASKS_DB
+                        ,?KZ_RESOURCE_SELECTORS_DB
                        ]).
 
 -define(KZ_DATABASES_HRL, 'true').

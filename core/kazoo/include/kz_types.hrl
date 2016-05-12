@@ -313,6 +313,40 @@
         <<(Year):4/binary, (Month):1/binary, "-", (Account)/binary>>  %% FIXME: add missing size
        ).
 
+-define(MATCH_RESOURCE_SELECTORS_RAW(Account),
+        <<(Account):32/binary, "-selectors">>
+       ).
+-define(MATCH_RESOURCE_SELECTORS_UNENCODED(Account),
+        <<"account/", (Account):34/binary, "-selectors">>
+       ).
+-define(MATCH_RESOURCE_SELECTORS_ENCODED(Account),
+        <<"account%2F", (Account):38/binary, "-selectors">>
+       ).
+-define(MATCH_RESOURCE_SELECTORS_encoded(Account),
+        <<"account%2f", (Account):38/binary, "-selectors">>
+       ).
+
+-define(MATCH_RESOURCE_SELECTORS_RAW(A, B, Rest),
+        <<(A):2/binary, (B):2/binary, (Rest):28/binary
+          ,"-selectors"
+        >>
+       ).
+-define(MATCH_RESOURCE_SELECTORS_UNENCODED(A, B, Rest),
+        <<"account/", (A):2/binary, "/", (B):2/binary, "/", (Rest):28/binary
+          ,"-selectors"
+        >>
+       ).
+-define(MATCH_RESOURCE_SELECTORS_ENCODED(A, B, Rest),
+        <<"account%2F", (A):2/binary, "%2F", (B):2/binary, "%2F", (Rest):28/binary
+          ,"-selectors"
+        >>
+       ).
+-define(MATCH_RESOURCE_SELECTORS_encoded(A, B, Rest),
+        <<"account%2f", (A):2/binary, "%2f", (B):2/binary, "%2f", (Rest):28/binary
+          ,"-selectors"
+        >>
+       ).
+
 %% KZ_NODES types
 -record(whapp_info, {startup :: gregorian_seconds()}).
 

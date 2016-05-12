@@ -58,6 +58,7 @@ get_dataplan(DBName) ->
     case kzs_util:db_classification(DBName) of
         'modb' -> account_modb_dataplan(DBName);
         'account' -> account_dataplan(DBName);
+        'resource_selectors' -> account_dataplan(DBName);
         Else -> system_dataplan(DBName, Else)
     end.
 
@@ -67,6 +68,7 @@ get_dataplan(DBName, DocType) ->
     case kzs_util:db_classification(DBName) of
         'modb' -> account_modb_dataplan(DBName, DocType);
         'account' -> account_dataplan(DBName, DocType);
+        'resource_selectors' -> account_dataplan(DBName, DocType);
         Else -> system_dataplan(DBName, Else)
     end.
 
@@ -76,6 +78,7 @@ get_dataplan(DBName, DocType, DocOwner) ->
     case kzs_util:db_classification(DBName) of
         'modb' -> account_modb_dataplan(DBName, DocType, DocOwner);
         'account' -> account_dataplan(DBName, DocType, DocOwner);
+        'resource_selectors' -> account_dataplan(DBName, DocType, DocOwner);
         Else -> system_dataplan(DBName, Else)
     end.
 

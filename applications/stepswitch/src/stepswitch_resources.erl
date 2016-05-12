@@ -14,6 +14,59 @@
 -export([fetch_global_resources/0
          ,fetch_local_resources/1
         ]).
+-export([maybe_add_proxies/3]).
+-export([gateways_to_endpoints/4]).
+-export([check_diversion_fields/1]).
+
+-export([get_resrc_id/1
+         ,get_resrc_rev/1
+         ,get_resrc_name/1
+         ,get_resrc_weight/1
+         ,get_resrc_grace_period/1
+         ,get_resrc_flags/1
+         ,get_resrc_rules/1
+         ,get_resrc_raw_rules/1
+         ,get_resrc_cid_rules/1
+         ,get_resrc_cid_raw_rules/1
+         ,get_resrc_gateways/1
+         ,get_resrc_is_emergency/1
+         ,get_resrc_require_flags/1
+         ,get_resrc_global/1
+         ,get_resrc_format_from_uri/1
+         ,get_resrc_from_uri_realm/1
+         ,get_resrc_from_account_realm/1
+         ,get_resrc_fax_option/1
+         ,get_resrc_codecs/1
+         ,get_resrc_bypass_media/1
+         ,get_resrc_formatters/1
+         ,get_resrc_proxies/1
+         ,get_resrc_selector_marks/1
+        ]).
+
+-export([set_resrc_id/2
+         ,set_resrc_rev/2
+         ,set_resrc_name/2
+         ,set_resrc_weight/2
+         ,set_resrc_grace_period/2
+         ,set_resrc_flags/2
+         ,set_resrc_rules/2
+         ,set_resrc_raw_rules/2
+         ,set_resrc_cid_rules/2
+         ,set_resrc_cid_raw_rules/2
+         ,set_resrc_gateways/2
+         ,set_resrc_is_emergency/2
+         ,set_resrc_require_flags/2
+         ,set_resrc_global/2
+         ,set_resrc_format_from_uri/2
+         ,set_resrc_from_uri_realm/2
+         ,set_resrc_from_account_realm/2
+         ,set_resrc_fax_option/2
+         ,set_resrc_codecs/2
+         ,set_resrc_bypass_media/2
+         ,set_resrc_formatters/2
+         ,set_resrc_proxies/2
+         ,set_resrc_selector_marks/2
+        ]).
 
 -include("stepswitch.hrl").
 
@@ -76,6 +129,7 @@
            ,bypass_media = 'false' :: boolean()
            ,formatters :: api_objects()
            ,proxies = [] :: kz_proplist()
+           ,selector_marks = [] :: [tuple()]
          }).
 
 -type resource() :: #resrc{}.
@@ -83,6 +137,12 @@
 
 -type gateway() :: #gateway{}.
 -type gateways() :: [#gateway{}].
+
+-export_type([resource/0
+              ,resources/0
+              ,gateway/0
+              ,gateways/0
+             ]).
 
 -compile({'no_auto_import', [get/0, get/1]}).
 
@@ -1053,3 +1113,99 @@ gateway_dialstring(#gateway{route='undefined'
 gateway_dialstring(#gateway{route=Route}, _) ->
     lager:debug("using pre-configured gateway route ~s", [Route]),
     Route.
+
+-spec get_resrc_id(resource()) -> api_binary().
+-spec get_resrc_rev(resource()) -> api_binary().
+-spec get_resrc_name(resource()) -> api_binary().
+-spec get_resrc_weight(resource()) -> non_neg_integer().
+-spec get_resrc_grace_period(resource()) -> non_neg_integer().
+-spec get_resrc_flags(resource()) -> list().
+-spec get_resrc_rules(resource()) -> list().
+-spec get_resrc_raw_rules(resource()) -> list().
+-spec get_resrc_cid_rules(resource()) -> list().
+-spec get_resrc_cid_raw_rules(resource()) -> list().
+-spec get_resrc_gateways(resource()) -> list().
+-spec get_resrc_is_emergency(resource()) -> boolean().
+-spec get_resrc_require_flags(resource()) -> boolean().
+-spec get_resrc_global(resource()) -> boolean().
+-spec get_resrc_format_from_uri(resource()) -> boolean().
+-spec get_resrc_from_uri_realm(resource()) -> api_binary().
+-spec get_resrc_from_account_realm(resource()) -> boolean().
+-spec get_resrc_fax_option(resource()) -> ne_binary() | boolean().
+-spec get_resrc_codecs(resource()) -> ne_binaries().
+-spec get_resrc_bypass_media(resource()) -> boolean().
+-spec get_resrc_formatters(resource()) -> api_objects().
+-spec get_resrc_proxies(resource()) -> kz_proplist().
+-spec get_resrc_selector_marks(resource()) -> kz_proplist().
+
+get_resrc_id(#resrc{id=Id}) -> Id.
+get_resrc_rev(#resrc{rev=Rev}) -> Rev.
+get_resrc_name(#resrc{name=Name}) -> Name.
+get_resrc_weight(#resrc{weight=Weight}) -> Weight.
+get_resrc_grace_period(#resrc{grace_period=GracePeriod}) -> GracePeriod.
+get_resrc_flags(#resrc{flags=Flags}) -> Flags.
+get_resrc_rules(#resrc{rules=Rules}) -> Rules.
+get_resrc_raw_rules(#resrc{raw_rules=RawRules}) -> RawRules.
+get_resrc_cid_rules(#resrc{cid_rules=CIDRules}) -> CIDRules.
+get_resrc_cid_raw_rules(#resrc{cid_raw_rules=CIDRawRules}) -> CIDRawRules.
+get_resrc_gateways(#resrc{gateways=Gateways}) -> Gateways.
+get_resrc_is_emergency(#resrc{is_emergency=IsEmergency}) -> IsEmergency.
+get_resrc_require_flags(#resrc{require_flags=RequireFlags}) -> RequireFlags.
+get_resrc_global(#resrc{global=Global}) -> Global.
+get_resrc_format_from_uri(#resrc{format_from_uri=FormatFromUri}) -> FormatFromUri.
+get_resrc_from_uri_realm(#resrc{from_uri_realm=FromUriRealm}) -> FromUriRealm.
+get_resrc_from_account_realm(#resrc{from_account_realm=FromAccountRealm}) -> FromAccountRealm.
+get_resrc_fax_option(#resrc{fax_option=FaxOption}) -> FaxOption.
+get_resrc_codecs(#resrc{codecs=Codecs}) -> Codecs.
+get_resrc_bypass_media(#resrc{bypass_media=BypassMedia}) -> BypassMedia.
+get_resrc_formatters(#resrc{formatters=Formatters}) -> Formatters.
+get_resrc_proxies(#resrc{proxies=Proxies}) -> Proxies.
+get_resrc_selector_marks(#resrc{selector_marks=Marks}) -> Marks.
+
+-spec set_resrc_id(resource(), api_binary()) -> resource().
+-spec set_resrc_rev(resource(), api_binary()) -> resource().
+-spec set_resrc_name(resource(), api_binary()) -> resource().
+-spec set_resrc_weight(resource(), non_neg_integer()) -> resource().
+-spec set_resrc_grace_period(resource(), non_neg_integer()) -> resource().
+-spec set_resrc_flags(resource(), list()) -> resource().
+-spec set_resrc_rules(resource(), list()) -> resource().
+-spec set_resrc_raw_rules(resource(), list()) -> resource().
+-spec set_resrc_cid_rules(resource(), list()) -> resource().
+-spec set_resrc_cid_raw_rules(resource(), list()) -> resource().
+-spec set_resrc_gateways(resource(), list()) -> resource().
+-spec set_resrc_is_emergency(resource(), boolean()) -> resource().
+-spec set_resrc_require_flags(resource(), boolean()) -> resource().
+-spec set_resrc_global(resource(), boolean()) -> resource().
+-spec set_resrc_format_from_uri(resource(), boolean()) -> resource().
+-spec set_resrc_from_uri_realm(resource(), api_binary()) -> resource().
+-spec set_resrc_from_account_realm(resource(), boolean()) -> resource().
+-spec set_resrc_fax_option(resource(), ne_binary() | boolean()) -> resource().
+-spec set_resrc_codecs(resource(), ne_binaries()) -> resource().
+-spec set_resrc_bypass_media(resource(), boolean()) -> resource().
+-spec set_resrc_formatters(resource(), api_objects()) -> resource().
+-spec set_resrc_proxies(resource(), kz_proplist()) -> resource().
+-spec set_resrc_selector_marks(resource(), kz_proplist()) -> resource().
+
+set_resrc_id(Resource, Id) -> Resource#resrc{id=Id}.
+set_resrc_rev(Resource, Rev) -> Resource#resrc{rev=Rev}.
+set_resrc_name(Resource, Name) -> Resource#resrc{name=Name}.
+set_resrc_weight(Resource, Weight) -> Resource#resrc{weight=Weight}.
+set_resrc_grace_period(Resource, GracePeriod) -> Resource#resrc{grace_period=GracePeriod}.
+set_resrc_flags(Resource, Flags) -> Resource#resrc{flags=Flags}.
+set_resrc_rules(Resource, Rules) -> Resource#resrc{rules=Rules}.
+set_resrc_raw_rules(Resource, RawRules) -> Resource#resrc{raw_rules=RawRules}.
+set_resrc_cid_rules(Resource, CIDRules) -> Resource#resrc{cid_rules=CIDRules}.
+set_resrc_cid_raw_rules(Resource, CIDRawRules) -> Resource#resrc{cid_raw_rules=CIDRawRules}.
+set_resrc_gateways(Resource, Gateways) -> Resource#resrc{gateways=Gateways}.
+set_resrc_is_emergency(Resource, IsEmergency) -> Resource#resrc{is_emergency=IsEmergency}.
+set_resrc_require_flags(Resource, RequireFlags) -> Resource#resrc{require_flags=RequireFlags}.
+set_resrc_global(Resource, Global) -> Resource#resrc{global=Global}.
+set_resrc_format_from_uri(Resource, FormatFromUri) -> Resource#resrc{format_from_uri=FormatFromUri}.
+set_resrc_from_uri_realm(Resource, FromUriRealm) -> Resource#resrc{from_uri_realm=FromUriRealm}.
+set_resrc_from_account_realm(Resource, FromAccountRealm) -> Resource#resrc{from_account_realm=FromAccountRealm}.
+set_resrc_fax_option(Resource, FaxOption) -> Resource#resrc{fax_option=FaxOption}.
+set_resrc_codecs(Resource, Codecs) -> Resource#resrc{codecs=Codecs}.
+set_resrc_bypass_media(Resource, BypassMedia) -> Resource#resrc{bypass_media=BypassMedia}.
+set_resrc_formatters(Resource, Formatters) -> Resource#resrc{formatters=Formatters}.
+set_resrc_proxies(Resource, Proxies) -> Resource#resrc{proxies=Proxies}.
+set_resrc_selector_marks(Resource, Marks) -> Resource#resrc{selector_marks=Marks}.

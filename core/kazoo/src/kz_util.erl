@@ -14,6 +14,8 @@
          ,format_account_mod_id/1, format_account_mod_id/2, format_account_mod_id/3
          ,format_account_db/1
          ,format_account_modb/1, format_account_modb/2
+         ,format_resource_selectors_id/1, format_resource_selectors_id/2
+         ,format_resource_selectors_db/1
          ,normalize_account_name/1
          ,account_update/1, account_update/2
         ]).
@@ -272,6 +274,12 @@ raw_account_id(?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, _, _)) ->
     ?MATCH_ACCOUNT_RAW(A, B, Rest);
 raw_account_id(?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, _, _)) ->
     ?MATCH_ACCOUNT_RAW(A, B, Rest);
+raw_account_id(?MATCH_RESOURCE_SELECTORS_RAW(AccountId)) ->
+    AccountId;
+raw_account_id(?MATCH_RESOURCE_SELECTORS_UNENCODED(A, B, Rest)) ->
+    ?MATCH_RESOURCE_SELECTORS_RAW(A, B, Rest);
+raw_account_id(?MATCH_RESOURCE_SELECTORS_ENCODED(A, B, Rest)) ->
+    ?MATCH_RESOURCE_SELECTORS_RAW(A, B, Rest);
 raw_account_id(<<"number/", _/binary>>=Other) ->
     Other;
 raw_account_id(Other) ->
@@ -292,6 +300,72 @@ raw_account_modb(?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, Year, Month)) ->
     ?MATCH_MODB_SUFFIX_RAW(A, B, Rest, Year, Month);
 raw_account_modb(?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, Year, Month)) ->
     ?MATCH_MODB_SUFFIX_RAW(A, B, Rest, Year, Month).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given a representation of an account resource_selectors return it in a 'encoded',
+%% unencoded or 'raw' format.
+%% @end
+%%--------------------------------------------------------------------
+-spec format_resource_selectors_id(api_binary()) -> api_binary().
+-spec format_resource_selectors_id(api_binary(), account_format()) -> api_binary();
+                       (api_binary(), gregorian_seconds()) -> api_binary(). %% MODb!
+
+format_resource_selectors_id(Account) ->
+    format_resource_selectors_id(Account, 'raw').
+
+format_resource_selectors_id('undefined', _Encoding) -> 'undefined';
+
+format_resource_selectors_id(?MATCH_RESOURCE_SELECTORS_RAW(_)=AccountId, 'raw') ->
+    AccountId;
+format_resource_selectors_id(?MATCH_RESOURCE_SELECTORS_ENCODED(_)=AccountDb, 'encoded') ->
+    AccountDb;
+format_resource_selectors_id(?MATCH_RESOURCE_SELECTORS_UNENCODED(_)=AccountDbUn, 'unencoded') ->
+    AccountDbUn;
+format_resource_selectors_id(?MATCH_ACCOUNT_RAW(A, B, Rest), 'raw') ->
+    ?MATCH_RESOURCE_SELECTORS_RAW(A, B, Rest);
+format_resource_selectors_id(?MATCH_ACCOUNT_RAW(A, B, Rest), 'encoded') ->
+    ?MATCH_RESOURCE_SELECTORS_ENCODED(A, B, Rest);
+format_resource_selectors_id(?MATCH_ACCOUNT_RAW(A, B, Rest), 'unencoded') ->
+    ?MATCH_RESOURCE_SELECTORS_UNENCODED(A, B, Rest);
+
+format_resource_selectors_id(AccountId, 'raw') ->
+    raw_resource_selectors_id(AccountId);
+format_resource_selectors_id(AccountId, 'unencoded') ->
+    ?MATCH_RESOURCE_SELECTORS_RAW(A,B,Rest) = raw_resource_selectors_id(AccountId),
+    to_binary(["account/", A, "/", B, "/", Rest]);
+format_resource_selectors_id(AccountId, 'encoded') ->
+    ?MATCH_RESOURCE_SELECTORS_RAW(A,B,Rest) = raw_resource_selectors_id(AccountId),
+    to_binary(["account%2F", A, "%2F", B, "%2F", Rest]).
+
+%% @private
+%% Returns account_id() | any()
+%% Passes input along if not account_id() | account_db() | account_db_unencoded().
+-spec raw_resource_selectors_id(ne_binary()) -> ne_binary().
+raw_resource_selectors_id(?MATCH_RESOURCE_SELECTORS_RAW(AccountId)) ->
+    AccountId;
+raw_resource_selectors_id(?MATCH_RESOURCE_SELECTORS_UNENCODED(A, B, Rest)) ->
+    ?MATCH_RESOURCE_SELECTORS_RAW(A, B, Rest);
+raw_resource_selectors_id(?MATCH_RESOURCE_SELECTORS_ENCODED(A, B, Rest)) ->
+    ?MATCH_RESOURCE_SELECTORS_RAW(A, B, Rest);
+raw_resource_selectors_id(Other) ->
+    case lists:member(Other, ?KZ_SYSTEM_DBS) of
+        'true' -> Other;
+        'false' ->
+            lager:warning("raw account resource_selectors id doesn't process '~p'", [Other]),
+            Other
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given a representation of an account resource_selectors return it in a 'encoded',
+%% @end
+%%--------------------------------------------------------------------
+-spec format_resource_selectors_db(api_binary()) -> api_binary().
+format_resource_selectors_db(AccountId) ->
+    format_resource_selectors_id(AccountId, 'encoded').
 
 %%--------------------------------------------------------------------
 %% @public
