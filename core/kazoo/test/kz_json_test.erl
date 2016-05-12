@@ -98,104 +98,113 @@ prop_to_proplist() ->
 -define(SP, kz_json:decode(<<"{\"plan\":{\"phone_numbers\":{\"did_us\":{\"discounts\":{\"cumulative\":{\"rate\":1}}}}}}">>)).
 -define(O, kz_json:decode(<<"{\"phone_numbers\":{\"did_us\":{\"discounts\":{\"cumulative\":{\"rate\":20}}}}}">>)).
 
-merge_overrides_test() ->
+merge_overrides_test_() ->
     AP = kz_json:merge_recursive(?SP, kz_json:from_list([{<<"plan">>, ?O}])),
 
     Key = [<<"plan">>, <<"phone_numbers">>, <<"did_us">>, <<"discounts">>, <<"cumulative">>, <<"rate">>],
 
-    ?assertEqual(1, kz_json:get_value(Key, ?SP)),
-    ?assertEqual(20, kz_json:get_value(Key, AP)).
+    [?_assertEqual(1, kz_json:get_value(Key, ?SP))
+    ,?_assertEqual(20, kz_json:get_value(Key, AP))
+    ].
 
-is_empty_test() ->
-    ?assertEqual('true', kz_json:is_empty(kz_json:new())),
-    ?assertEqual('false', kz_json:is_empty(?D1)),
-    ?assertEqual('false', kz_json:is_empty(?D6)),
-    ?assertEqual('false', kz_json:is_empty(123)),
-    ?assertEqual('false', kz_json:is_empty(<<"foobar">>)),
-    ?assertEqual('false', kz_json:is_empty([{'bar', 'bas'}])).
+is_empty_test_() ->
+    [?_assertEqual('true', kz_json:is_empty(kz_json:new()))
+    ,?_assertEqual('false', kz_json:is_empty(?D1))
+    ,?_assertEqual('false', kz_json:is_empty(?D6))
+    ,?_assertEqual('false', kz_json:is_empty(123))
+    ,?_assertEqual('false', kz_json:is_empty(<<"foobar">>))
+    ,?_assertEqual('false', kz_json:is_empty([{'bar', 'bas'}]))
+    ].
 
-merge_jobjs_test() ->
+merge_jobjs_test_() ->
     JObj = kz_json:merge_jobjs(?D1, ?D2),
-    ?assertEqual('true', 'undefined' =/= kz_json:get_value(<<"d1k1">>, JObj)),
-    ?assertEqual('true', 'undefined' =/= kz_json:get_value(<<"d2k1">>, JObj)),
-    ?assertEqual('true', 'undefined' =/= kz_json:get_value(<<"sub_d1">>, JObj)),
-    ?assertEqual('true', 'undefined' =:= kz_json:get_value(<<"missing_k">>, JObj)).
+    [?_assertEqual('true', 'undefined' =/= kz_json:get_value(<<"d1k1">>, JObj))
+    ,?_assertEqual('true', 'undefined' =/= kz_json:get_value(<<"d2k1">>, JObj))
+    ,?_assertEqual('true', 'undefined' =/= kz_json:get_value(<<"sub_d1">>, JObj))
+    ,?_assertEqual('true', 'undefined' =:= kz_json:get_value(<<"missing_k">>, JObj))
+    ].
 
-merge_recursive_test() ->
+merge_recursive_test_() ->
     Base = ?D2,
     New = kz_json:set_value([<<"sub_d1">>, <<"d1k1">>], 'd2k2', ?D2),
     JObj = kz_json:merge_recursive(Base, New),
     JObj1 = kz_json:merge_recursive([Base, New]),
+    lists:flatmap(fun do_merge_recursive/1, [JObj, JObj1]).
 
-    lists:foreach(fun(J) ->
-                          ?assertEqual('true', kz_json:is_json_object(J)),
-                          ?assertEqual('undefined', kz_json:get_value(<<"d1k1">>, J)),
-                          ?assertEqual(1, kz_json:get_value(<<"d2k1">>, J)),
+do_merge_recursive(J) ->
+    [?_assertEqual('true', kz_json:is_json_object(J))
+    ,?_assertEqual('undefined', kz_json:get_value(<<"d1k1">>, J))
+    ,?_assertEqual(1, kz_json:get_value(<<"d2k1">>, J))
 
-                          ?assertEqual('true', 'undefined' =/= kz_json:get_value(<<"sub_d1">>, J)),
+    ,?_assertEqual('true', 'undefined' =/= kz_json:get_value(<<"sub_d1">>, J))
 
-                          %% second JObj takes precedence
-                          ?assertEqual('d2k2',  kz_json:get_value([<<"sub_d1">>, <<"d1k1">>], J)),
-                          ?assertEqual('undefined', kz_json:get_value(<<"missing_k">>, J))
-                  end
-                  ,[JObj, JObj1]
-                 ).
+    %% second JObj takes precedence
+    ,?_assertEqual('d2k2',  kz_json:get_value([<<"sub_d1">>, <<"d1k1">>], J))
+    ,?_assertEqual('undefined', kz_json:get_value(<<"missing_k">>, J))
+    ].
 
-get_binary_value_test() ->
-    ?assertEqual('true', is_binary(kz_json:get_binary_value(<<"d1k1">>, ?D1))),
-    ?assertEqual('undefined', kz_json:get_binary_value(<<"d2k1">>, ?D1)),
-    ?assertEqual('true', is_binary(kz_json:get_binary_value(<<"d1k1">>, ?D1, <<"something">>))),
-    ?assertEqual(<<"something">>, kz_json:get_binary_value(<<"d2k1">>, ?D1, <<"something">>)).
+get_binary_value_test_() ->
+    [?_assertEqual('true', is_binary(kz_json:get_binary_value(<<"d1k1">>, ?D1)))
+    ,?_assertEqual('undefined', kz_json:get_binary_value(<<"d2k1">>, ?D1))
+    ,?_assertEqual('true', is_binary(kz_json:get_binary_value(<<"d1k1">>, ?D1, <<"something">>)))
+    ,?_assertEqual(<<"something">>, kz_json:get_binary_value(<<"d2k1">>, ?D1, <<"something">>))
+    ].
 
-get_integer_value_test() ->
-    ?assertEqual(1, kz_json:get_integer_value(<<"d2k1">>, ?D2)),
-    ?assertEqual('undefined', kz_json:get_integer_value(<<"d1k1">>, ?D2)),
-    ?assertEqual(1, kz_json:get_integer_value(<<"d2k1">>, ?D2, 0)),
-    ?assertEqual(0, kz_json:get_integer_value(<<"d1k1">>, ?D2, 0)).
+get_integer_value_test_() ->
+    [?_assertEqual(1, kz_json:get_integer_value(<<"d2k1">>, ?D2))
+    ,?_assertEqual('undefined', kz_json:get_integer_value(<<"d1k1">>, ?D2))
+    ,?_assertEqual(1, kz_json:get_integer_value(<<"d2k1">>, ?D2, 0))
+    ,?_assertEqual(0, kz_json:get_integer_value(<<"d1k1">>, ?D2, 0))
+    ].
 
-get_float_value_test() ->
-    ?assertEqual('true', is_float(kz_json:get_float_value(<<"d2k2">>, ?D2))),
-    ?assertEqual('undefined', kz_json:get_float_value(<<"d1k1">>, ?D2)),
-    ?assertEqual(3.14, kz_json:get_float_value(<<"d2k2">>, ?D2, 0.0)),
-    ?assertEqual(0.0, kz_json:get_float_value(<<"d1k1">>, ?D2, 0.0)).
+get_float_value_test_() ->
+    [?_assertEqual('true', is_float(kz_json:get_float_value(<<"d2k2">>, ?D2)))
+    ,?_assertEqual('undefined', kz_json:get_float_value(<<"d1k1">>, ?D2))
+    ,?_assertEqual(3.14, kz_json:get_float_value(<<"d2k2">>, ?D2, 0.0))
+    ,?_assertEqual(0.0, kz_json:get_float_value(<<"d1k1">>, ?D2, 0.0))
+    ].
 
-get_binary_boolean_test() ->
-    ?assertEqual('undefined', kz_json:get_binary_boolean(<<"d1k1">>, ?D2)),
-    ?assertEqual(<<"false">>, kz_json:get_binary_boolean(<<"a_key">>, ?JSON_WRAPPER([{<<"a_key">>, 'false'}]))),
-    ?assertEqual(<<"true">>, kz_json:get_binary_boolean(<<"a_key">>, ?JSON_WRAPPER([{<<"a_key">>, 'true'}]))).
+get_binary_boolean_test_() ->
+    [?_assertEqual('undefined', kz_json:get_binary_boolean(<<"d1k1">>, ?D2))
+    ,?_assertEqual(<<"false">>, kz_json:get_binary_boolean(<<"a_key">>, ?JSON_WRAPPER([{<<"a_key">>, 'false'}])))
+    ,?_assertEqual(<<"true">>, kz_json:get_binary_boolean(<<"a_key">>, ?JSON_WRAPPER([{<<"a_key">>, 'true'}])))
+    ].
 
-is_false_test() ->
-    ?assertEqual('false', kz_json:is_false(<<"d1k1">>, ?D1)),
-    ?assertEqual('true', kz_json:is_false(<<"a_key">>, ?JSON_WRAPPER([{<<"a_key">>, 'false'}]))).
+is_false_test_() ->
+    [?_assertEqual('false', kz_json:is_false(<<"d1k1">>, ?D1))
+    ,?_assertEqual('true', kz_json:is_false(<<"a_key">>, ?JSON_WRAPPER([{<<"a_key">>, 'false'}])))
+    ].
 
-is_true_test() ->
-    ?assertEqual('false', kz_json:is_true(<<"d1k1">>, ?D1)),
-    ?assertEqual('true', kz_json:is_true(<<"a_key">>, ?JSON_WRAPPER([{<<"a_key">>, 'true'}]))).
+is_true_test_() ->
+    [?_assertEqual('false', kz_json:is_true(<<"d1k1">>, ?D1))
+    ,?_assertEqual('true', kz_json:is_true(<<"a_key">>, ?JSON_WRAPPER([{<<"a_key">>, 'true'}])))
+    ].
 
 -define(D1_FILTERED, ?JSON_WRAPPER([{<<"d1k2">>, 'd1v2'}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).
 -define(D2_FILTERED, ?JSON_WRAPPER([{<<"sub_d1">>, ?D1}])).
 -define(D3_FILTERED, ?JSON_WRAPPER([{<<"d3k1">>, <<"d3v1">>}, {<<"d3k2">>, []}, {<<"sub_docs">>, [?D1, ?D2_FILTERED]}])).
-filter_test() ->
-    ?assertEqual(?D1_FILTERED, kz_json:filter(fun({<<"d1k1">>, _}) -> 'false'; (_) -> 'true' end, ?D1)),
-    ?assertEqual(?D2_FILTERED, kz_json:filter(fun({_, V}) when is_number(V) -> 'false'; (_) -> 'true' end, ?D2)),
-    ?assertEqual(?D3_FILTERED, kz_json:filter(fun({_, V}) when is_number(V) -> 'false'; (_) -> 'true' end, ?D3, [<<"sub_docs">>, 2])).
+filter_test_() ->
+    [?_assertEqual(?D1_FILTERED, kz_json:filter(fun({<<"d1k1">>, _}) -> 'false'; (_) -> 'true' end, ?D1))
+    ,?_assertEqual(?D2_FILTERED, kz_json:filter(fun({_, V}) when is_number(V) -> 'false'; (_) -> 'true' end, ?D2))
+    ,?_assertEqual(?D3_FILTERED, kz_json:filter(fun({_, V}) when is_number(V) -> 'false'; (_) -> 'true' end, ?D3, [<<"sub_docs">>, 2]))
+    ].
 
 new_test() ->
-    ?EMPTY_JSON_OBJECT =:= kz_json:new().
+    ?assertEqual(?EMPTY_JSON_OBJECT, kz_json:new()).
 
--spec is_json_object_test() -> any().
-is_json_object_test() ->
-    ?assertEqual('false', kz_json:is_json_object('foo')),
-    ?assertEqual('false', kz_json:is_json_object(123)),
-    ?assertEqual('false', kz_json:is_json_object(['boo', 'yah'])),
-    ?assertEqual('false', kz_json:is_json_object(<<"bin">>)),
+is_json_object_test_() ->
+    [?_assertEqual('false', kz_json:is_json_object('foo'))
+    ,?_assertEqual('false', kz_json:is_json_object(123))
+    ,?_assertEqual('false', kz_json:is_json_object(['boo', 'yah']))
+    ,?_assertEqual('false', kz_json:is_json_object(<<"bin">>))
 
-    ?assertEqual('true', kz_json:is_json_object(?D1)),
-    ?assertEqual('true', kz_json:is_json_object(?D2)),
-    ?assertEqual('true', kz_json:is_json_object(?D3)),
-    ?assertEqual('true', lists:all(fun kz_json:is_json_object/1, ?D4)),
-    ?assertEqual('true', kz_json:is_json_object(?D6)),
-    ?assertEqual('true', kz_json:is_json_object(?D7)).
+    ,?_assertEqual('true', kz_json:is_json_object(?D1))
+    ,?_assertEqual('true', kz_json:is_json_object(?D2))
+    ,?_assertEqual('true', kz_json:is_json_object(?D3))
+    ,?_assertEqual('true', lists:all(fun kz_json:is_json_object/1, ?D4))
+    ,?_assertEqual('true', kz_json:is_json_object(?D6))
+    ,?_assertEqual('true', kz_json:is_json_object(?D7))
+    ].
 
 %% delete results
 -define(D1_AFTER_K1, ?JSON_WRAPPER([{<<"d1k2">>, 'd1v2'}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).
@@ -229,94 +238,95 @@ is_json_object_test() ->
 -define(D_ARR, ?JSON_WRAPPER([{<<"k1">>, [1]}])).
 -define(P_ARR, ?JSON_WRAPPER([{<<"k1">>, []}])).
 
--spec get_keys_test() -> any().
-get_keys_test() ->
+get_keys_test_() ->
     Keys = [<<"d1k1">>, <<"d1k2">>, <<"d1k3">>],
-    ?assertEqual('true', lists:all(fun(K) -> lists:member(K, Keys) end, kz_json:get_keys([], ?D1))),
-    ?assertEqual('true', lists:all(fun(K) -> lists:member(K, Keys) end, kz_json:get_keys([<<"sub_docs">>, 1], ?D3))),
-    ?assertEqual('true', lists:all(fun(K) -> lists:member(K, [1,2,3]) end, kz_json:get_keys([<<"sub_docs">>], ?D3))).
+    [?_assertEqual('true', lists:all(fun(K) -> lists:member(K, Keys) end, kz_json:get_keys([], ?D1)))
+    ,?_assertEqual('true', lists:all(fun(K) -> lists:member(K, Keys) end, kz_json:get_keys([<<"sub_docs">>, 1], ?D3)))
+    ,?_assertEqual('true', lists:all(fun(K) -> lists:member(K, [1,2,3]) end, kz_json:get_keys([<<"sub_docs">>], ?D3)))
+    ].
 
--spec to_proplist_test() -> any().
-to_proplist_test() ->
-    ?assertEqual(?P1, kz_json:to_proplist(?D1)),
-    ?assertEqual(?P2, kz_json:to_proplist(?D2)),
-    ?assertEqual(?P3, kz_json:to_proplist(?D3)),
-    ?assertEqual(?P4, lists:map(fun kz_json:to_proplist/1, ?D4)),
-    ?assertEqual(?P6, kz_json:to_proplist(?D6)),
-    ?assertEqual(?P7, kz_json:to_proplist(?D7)).
+to_proplist_test_() ->
+    [?_assertEqual(?P1, kz_json:to_proplist(?D1))
+    ,?_assertEqual(?P2, kz_json:to_proplist(?D2))
+    ,?_assertEqual(?P3, kz_json:to_proplist(?D3))
+    ,?_assertEqual(?P4, lists:map(fun kz_json:to_proplist/1, ?D4))
+    ,?_assertEqual(?P6, kz_json:to_proplist(?D6))
+    ,?_assertEqual(?P7, kz_json:to_proplist(?D7))
+    ].
 
--spec recursive_to_proplist_test() -> any().
-recursive_to_proplist_test() ->
-    ?assertEqual(?P8, kz_json:recursive_to_proplist(?D1)),
-    ?assertEqual(?P9, kz_json:recursive_to_proplist(?D2)),
-    ?assertEqual(?P10, kz_json:recursive_to_proplist(?D3)),
-    ?assertEqual(?P11, lists:map(fun kz_json:recursive_to_proplist/1, ?D4)),
-    ?assertEqual(?P12, kz_json:recursive_to_proplist(?D6)),
-    ?assertEqual(?P13, kz_json:recursive_to_proplist(?D7)).
+recursive_to_proplist_test_() ->
+    [?_assertEqual(?P8, kz_json:recursive_to_proplist(?D1))
+    ,?_assertEqual(?P9, kz_json:recursive_to_proplist(?D2))
+    ,?_assertEqual(?P10, kz_json:recursive_to_proplist(?D3))
+    ,?_assertEqual(?P11, lists:map(fun kz_json:recursive_to_proplist/1, ?D4))
+    ,?_assertEqual(?P12, kz_json:recursive_to_proplist(?D6))
+    ,?_assertEqual(?P13, kz_json:recursive_to_proplist(?D7))
+    ].
 
--spec delete_key_test() -> any().
-delete_key_test() ->
-    ?assertEqual(?EMPTY_JSON_OBJECT, kz_json:delete_key(<<"foo">>, ?EMPTY_JSON_OBJECT)),
-    ?assertEqual(?EMPTY_JSON_OBJECT, kz_json:delete_key(<<"foo">>, ?EMPTY_JSON_OBJECT, 'prune')),
-    ?assertEqual(?EMPTY_JSON_OBJECT, kz_json:delete_key([<<"foo">>], ?EMPTY_JSON_OBJECT)),
-    ?assertEqual(?EMPTY_JSON_OBJECT, kz_json:delete_key([<<"foo">>], ?EMPTY_JSON_OBJECT, 'prune')),
-    ?assertEqual(?EMPTY_JSON_OBJECT, kz_json:delete_key([<<"foo">>, <<"bar">>], ?EMPTY_JSON_OBJECT)),
-    ?assertEqual(?EMPTY_JSON_OBJECT, kz_json:delete_key([<<"foo">>, <<"bar">>], ?EMPTY_JSON_OBJECT, 'prune')),
-    ?assertEqual(?EMPTY_JSON_OBJECT, kz_json:delete_key([<<"d1k1">>], ?D7)),
-    ?assertEqual(?EMPTY_JSON_OBJECT, kz_json:delete_key([<<"d1k1">>], ?D7, 'prune')),
-    ?assertEqual(?D1_AFTER_K1, kz_json:delete_key([<<"d1k1">>], ?D1)),
-    ?assertEqual(?D1_AFTER_K1, kz_json:delete_key([<<"d1k1">>], ?D1, 'prune')),
-    ?assertEqual(?D1_AFTER_K3_V2, kz_json:delete_key([<<"d1k3">>, 2], ?D1)),
-    ?assertEqual(?D1_AFTER_K3_V2, kz_json:delete_key([<<"d1k3">>, 2], ?D1, 'prune')),
-    ?assertEqual(?D6_AFTER_SUB, kz_json:delete_key([<<"sub_d1">>, <<"d1k1">>], ?D6)),
-    ?assertEqual(?D6_AFTER_SUB_PRUNE, kz_json:delete_key([<<"sub_d1">>, <<"d1k1">>], ?D6, 'prune')),
-    ?assertEqual(?P_ARR, kz_json:delete_key([<<"k1">>, 1], ?D_ARR)),
-    ?assertEqual(?EMPTY_JSON_OBJECT, kz_json:delete_key([<<"k1">>, 1], ?D_ARR, 'prune')).
+delete_key_test_() ->
+    [?_assertEqual(?EMPTY_JSON_OBJECT, kz_json:delete_key(<<"foo">>, ?EMPTY_JSON_OBJECT))
+    ,?_assertEqual(?EMPTY_JSON_OBJECT, kz_json:delete_key(<<"foo">>, ?EMPTY_JSON_OBJECT, 'prune'))
+    ,?_assertEqual(?EMPTY_JSON_OBJECT, kz_json:delete_key([<<"foo">>], ?EMPTY_JSON_OBJECT))
+    ,?_assertEqual(?EMPTY_JSON_OBJECT, kz_json:delete_key([<<"foo">>], ?EMPTY_JSON_OBJECT, 'prune'))
+    ,?_assertEqual(?EMPTY_JSON_OBJECT, kz_json:delete_key([<<"foo">>, <<"bar">>], ?EMPTY_JSON_OBJECT))
+    ,?_assertEqual(?EMPTY_JSON_OBJECT, kz_json:delete_key([<<"foo">>, <<"bar">>], ?EMPTY_JSON_OBJECT, 'prune'))
+    ,?_assertEqual(?EMPTY_JSON_OBJECT, kz_json:delete_key([<<"d1k1">>], ?D7))
+    ,?_assertEqual(?EMPTY_JSON_OBJECT, kz_json:delete_key([<<"d1k1">>], ?D7, 'prune'))
+    ,?_assertEqual(?D1_AFTER_K1, kz_json:delete_key([<<"d1k1">>], ?D1))
+    ,?_assertEqual(?D1_AFTER_K1, kz_json:delete_key([<<"d1k1">>], ?D1, 'prune'))
+    ,?_assertEqual(?D1_AFTER_K3_V2, kz_json:delete_key([<<"d1k3">>, 2], ?D1))
+    ,?_assertEqual(?D1_AFTER_K3_V2, kz_json:delete_key([<<"d1k3">>, 2], ?D1, 'prune'))
+    ,?_assertEqual(?D6_AFTER_SUB, kz_json:delete_key([<<"sub_d1">>, <<"d1k1">>], ?D6))
+    ,?_assertEqual(?D6_AFTER_SUB_PRUNE, kz_json:delete_key([<<"sub_d1">>, <<"d1k1">>], ?D6, 'prune'))
+    ,?_assertEqual(?P_ARR, kz_json:delete_key([<<"k1">>, 1], ?D_ARR))
+    ,?_assertEqual(?EMPTY_JSON_OBJECT, kz_json:delete_key([<<"k1">>, 1], ?D_ARR, 'prune'))
+    ].
 
--spec get_value_test() -> any().
-get_value_test() ->
+get_value_test_() ->
     %% Basic first level key
-    ?assertEqual('undefined', kz_json:get_value([<<"d1k1">>], ?EMPTY_JSON_OBJECT)),
-    ?assertEqual(<<"d1v1">>, kz_json:get_value([<<"d1k1">>], ?D1)),
-    ?assertEqual('undefined', kz_json:get_value([<<"d1k1">>], ?D2)),
-    ?assertEqual('undefined', kz_json:get_value([<<"d1k1">>], ?D3)),
-    ?assertEqual('undefined', kz_json:get_value([<<"d1k1">>], ?D4)),
+    [?_assertEqual('undefined', kz_json:get_value([<<"d1k1">>], ?EMPTY_JSON_OBJECT))
+    ,?_assertEqual(<<"d1v1">>, kz_json:get_value([<<"d1k1">>], ?D1))
+    ,?_assertEqual('undefined', kz_json:get_value([<<"d1k1">>], ?D2))
+    ,?_assertEqual('undefined', kz_json:get_value([<<"d1k1">>], ?D3))
+    ,?_assertEqual('undefined', kz_json:get_value([<<"d1k1">>], ?D4))
     %% Basic nested key
-    ?assertEqual('undefined', kz_json:get_value([<<"sub_d1">>, <<"d1k2">>], ?EMPTY_JSON_OBJECT)),
-    ?assertEqual('undefined', kz_json:get_value([<<"sub_d1">>, <<"d1k2">>], ?D1)),
-    ?assertEqual('d1v2',      kz_json:get_value([<<"sub_d1">>, <<"d1k2">>], ?D2)),
-    ?assertEqual('undefined', kz_json:get_value([<<"sub_d1">>, <<"d1k2">>], ?D3)),
-    ?assertEqual('undefined', kz_json:get_value([<<"sub_d1">>, <<"d1k2">>], ?D4)),
+    ,?_assertEqual('undefined', kz_json:get_value([<<"sub_d1">>, <<"d1k2">>], ?EMPTY_JSON_OBJECT))
+    ,?_assertEqual('undefined', kz_json:get_value([<<"sub_d1">>, <<"d1k2">>], ?D1))
+    ,?_assertEqual('d1v2',      kz_json:get_value([<<"sub_d1">>, <<"d1k2">>], ?D2))
+    ,?_assertEqual('undefined', kz_json:get_value([<<"sub_d1">>, <<"d1k2">>], ?D3))
+    ,?_assertEqual('undefined', kz_json:get_value([<<"sub_d1">>, <<"d1k2">>], ?D4))
     %% Get the value in an object in an array in another object that is part of
     %% an array of objects
-    ?assertEqual('undefined', kz_json:get_value([3, <<"sub_docs">>, 2, <<"d2k2">>], ?EMPTY_JSON_OBJECT)),
-    ?assertEqual('undefined', kz_json:get_value([3, <<"sub_docs">>, 2, <<"d2k2">>], ?D1)),
-    ?assertEqual('undefined', kz_json:get_value([3, <<"sub_docs">>, 2, <<"d2k2">>], ?D2)),
-    ?assertEqual('undefined', kz_json:get_value([3, <<"sub_docs">>, 2, <<"d2k2">>], ?D3)),
-    ?assertEqual(3.14,      kz_json:get_value([3, <<"sub_docs">>, 2, <<"d2k2">>], ?D4)),
+    ,?_assertEqual('undefined', kz_json:get_value([3, <<"sub_docs">>, 2, <<"d2k2">>], ?EMPTY_JSON_OBJECT))
+    ,?_assertEqual('undefined', kz_json:get_value([3, <<"sub_docs">>, 2, <<"d2k2">>], ?D1))
+    ,?_assertEqual('undefined', kz_json:get_value([3, <<"sub_docs">>, 2, <<"d2k2">>], ?D2))
+    ,?_assertEqual('undefined', kz_json:get_value([3, <<"sub_docs">>, 2, <<"d2k2">>], ?D3))
+    ,?_assertEqual(3.14,      kz_json:get_value([3, <<"sub_docs">>, 2, <<"d2k2">>], ?D4))
     %% Get the value in an object in an array in another object that is part of
     %% an array of objects, but change the default return if it is not present.
     %% Also tests the ability to have indexs represented as strings
-    ?assertEqual(<<"not">>, kz_json:get_value([3, <<"sub_docs">>, <<"2">>, <<"d2k2">>], [], <<"not">>)),
-    ?assertEqual(<<"not">>, kz_json:get_value([3, <<"sub_docs">>, <<"2">>, <<"d2k2">>], ?D1, <<"not">>)),
-    ?assertEqual(<<"not">>, kz_json:get_value([3, <<"sub_docs">>, <<"2">>, <<"d2k2">>], ?D2, <<"not">>)),
-    ?assertEqual(<<"not">>, kz_json:get_value([3, <<"sub_docs">>, <<"2">>, <<"d2k2">>], ?D3, <<"not">>)),
-    ?assertEqual(3.14,      kz_json:get_value([3, <<"sub_docs">>, 2, <<"d2k2">>], ?D4, <<"not">>)).
+    ,?_assertEqual(<<"not">>, kz_json:get_value([3, <<"sub_docs">>, <<"2">>, <<"d2k2">>], [], <<"not">>))
+    ,?_assertEqual(<<"not">>, kz_json:get_value([3, <<"sub_docs">>, <<"2">>, <<"d2k2">>], ?D1, <<"not">>))
+    ,?_assertEqual(<<"not">>, kz_json:get_value([3, <<"sub_docs">>, <<"2">>, <<"d2k2">>], ?D2, <<"not">>))
+    ,?_assertEqual(<<"not">>, kz_json:get_value([3, <<"sub_docs">>, <<"2">>, <<"d2k2">>], ?D3, <<"not">>))
+    ,?_assertEqual(3.14,      kz_json:get_value([3, <<"sub_docs">>, 2, <<"d2k2">>], ?D4, <<"not">>))
+    ].
 
 -define(T2R1, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, <<"update">>}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).
 -define(T2R2, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}, {<<"d1k4">>, 'new_value'}])).
 -define(T2R3, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, ?JSON_WRAPPER([{<<"new_key">>, 'added_value'}])}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).
 -define(T2R4, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}, {<<"d1k4">>, ?JSON_WRAPPER([{<<"new_key">>, 'added_value'}])}])).
 
-set_value_object_test() ->
+set_value_object_test_() ->
     %% Test setting an existing key
-    ?assertEqual(?T2R1, kz_json:set_value([<<"d1k2">>], <<"update">>, ?D1)),
+    [?_assertEqual(?T2R1, kz_json:set_value([<<"d1k2">>], <<"update">>, ?D1))
     %% Test setting a non-existing key
-    ?assertEqual(?T2R2, kz_json:set_value([<<"d1k4">>], 'new_value', ?D1)),
+    ,?_assertEqual(?T2R2, kz_json:set_value([<<"d1k4">>], 'new_value', ?D1))
     %% Test setting an existing key followed by a non-existant key
-    ?assertEqual(?T2R3, kz_json:set_value([<<"d1k2">>, <<"new_key">>], 'added_value', ?D1)),
+    ,?_assertEqual(?T2R3, kz_json:set_value([<<"d1k2">>, <<"new_key">>], 'added_value', ?D1))
     %% Test setting a non-existing key followed by another non-existant key
-    ?assertEqual(?T2R4, kz_json:set_value([<<"d1k4">>, <<"new_key">>], 'added_value', ?D1)).
+    ,?_assertEqual(?T2R4, kz_json:set_value([<<"d1k4">>, <<"new_key">>], 'added_value', ?D1))
+    ].
 
 -define(D5,   [?JSON_WRAPPER([{<<"k1">>, 'v1'}]), ?JSON_WRAPPER([{<<"k2">>, 'v2'}])]).
 -define(T3R1, [?JSON_WRAPPER([{<<"k1">>,'test'}]),?JSON_WRAPPER([{<<"k2">>,'v2'}])]).
@@ -325,17 +335,18 @@ set_value_object_test() ->
 -define(T3R4, [?JSON_WRAPPER([{<<"k1">>,'v1'}]),?JSON_WRAPPER([{<<"k2">>,<<"updated">>}])]).
 -define(T3R5, [?JSON_WRAPPER([{<<"k1">>,'v1'}]),?JSON_WRAPPER([{<<"k2">>,'v2'}]),?JSON_WRAPPER([{<<"new_key">>,<<"added">>}])]).
 
-set_value_multiple_object_test() ->
+set_value_multiple_object_test_() ->
     %% Set an existing key in the first kz_json:object()
-    ?assertEqual(?T3R1, kz_json:set_value([1, <<"k1">>], 'test', ?D5)),
+    [?_assertEqual(?T3R1, kz_json:set_value([1, <<"k1">>], 'test', ?D5))
     %% Set a non-existing key in the first kz_json:object()
-    ?assertEqual(?T3R2, kz_json:set_value([1, <<"pi">>], 3.14, ?D5)),
+    ,?_assertEqual(?T3R2, kz_json:set_value([1, <<"pi">>], 3.14, ?D5))
     %% Set a non-existing key followed by another non-existant key in the first kz_json:object()
-    ?assertEqual(?T3R3, kz_json:set_value([1, <<"callerid">>, <<"name">>], <<"2600hz">>, ?D5)),
+    ,?_assertEqual(?T3R3, kz_json:set_value([1, <<"callerid">>, <<"name">>], <<"2600hz">>, ?D5))
     %% Set an existing key in the second kz_json:object()
-    ?assertEqual(?T3R4, kz_json:set_value([2, <<"k2">>], <<"updated">>, ?D5)),
+    ,?_assertEqual(?T3R4, kz_json:set_value([2, <<"k2">>], <<"updated">>, ?D5))
     %% Set a non-existing key in a non-existing kz_json:object()
-    ?assertEqual(?T3R5, kz_json:set_value([3, <<"new_key">>], <<"added">>, ?D5)).
+    ,?_assertEqual(?T3R5, kz_json:set_value([3, <<"new_key">>], <<"added">>, ?D5))
+    ].
 
 %% <<"ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ"
 -define(T4R1,  ?JSON_WRAPPER([{<<"Caller-ID">>, 1234},{list_to_binary(lists:seq(16#C0, 16#D6)), <<"Smith">>} ])).
@@ -351,17 +362,18 @@ set_value_multiple_object_test() ->
 -define(T4R3,  ?JSON_WRAPPER([{<<"Node-1">>, ?JSON_WRAPPER([{<<"Node-2">>, ?T4R2  }])}, {<<"Another-Node">>, ?T4R1 }] )).
 -define(T4R3V, ?JSON_WRAPPER([{<<"node_1">>, ?JSON_WRAPPER([{<<"node_2">>, ?T4R2V }])}, {<<"another_node">>, ?T4R1V}] )).
 
-set_value_normalizer_test() ->
+set_value_normalizer_test_() ->
     %% Normalize a flat JSON object
-    ?assertEqual(kz_json:normalize_jobj(?T4R1), ?T4R1V),
+    [?_assertEqual(kz_json:normalize_jobj(?T4R1), ?T4R1V)
     %% Normalize a single nested JSON object
-    ?assertEqual(kz_json:normalize_jobj(?T4R2), ?T4R2V),
+    ,?_assertEqual(kz_json:normalize_jobj(?T4R2), ?T4R2V)
     %% Normalize multiple nested JSON object
-    ?assertEqual(kz_json:normalize_jobj(?T4R3), ?T4R3V),
+    ,?_assertEqual(kz_json:normalize_jobj(?T4R3), ?T4R3V)
 
-    ?assertEqual(kz_json:normalize_jobj(?T5R1), ?T5R1V).
+    ,?_assertEqual(kz_json:normalize_jobj(?T5R1), ?T5R1V)
+    ].
 
-to_querystring_test() ->
+to_querystring_test_() ->
     Tests = [{<<"{}">>, <<>>}
              ,{<<"{\"foo\":\"bar\"}">>, <<"foo=bar">>}
              ,{<<"{\"foo\":\"bar\",\"fizz\":\"buzz\"}">>, <<"foo=bar&fizz=buzz">>}
@@ -373,14 +385,14 @@ to_querystring_test() ->
              ,{<<"{\"topkey\":{\"subkey1\":\"v1\",\"subkey2\":{\"k3\":\"v3\"}}}">>
                    ,<<"topkey[subkey1]=v1&topkey[subkey2][k3]=v3">>}
             ],
-    lists:foreach(fun({JSON, QS}) ->
-                          QS1 = kz_util:to_binary(
-                                  kz_json:to_querystring(
-                                    kz_json:decode(JSON)
-                                   )
-                                 ),
-                          ?assertEqual(QS, QS1)
-                  end, Tests).
+    [?_assertEqual(QS, kz_util:to_binary(
+                         kz_json:to_querystring(
+                           kz_json:decode(JSON)
+                          )
+                        )
+                  )
+     || {JSON, QS} <- Tests
+    ].
 
 get_values_test() ->
     ?assertEqual('true', are_all_there(?D1, [<<"d1v1">>, 'd1v2', [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]], [<<"d1k1">>, <<"d1k2">>, <<"d1k3">>])).
@@ -399,34 +411,38 @@ are_all_there(JObj, Vs, Ks) ->
     lists:all(fun(K) -> lists:member(K, Keys) end, Ks)
         andalso lists:all(fun(V) -> lists:member(V, Values) end, Vs).
 
-find_value_test() ->
+find_value_test_() ->
     JObjs = kz_json:decode(<<"[{\"k1\":\"v1\"},{\"k1\":\"v2\"}]">>),
-    ?assertEqual(<<"{\"k1\":\"v1\"}">>, kz_json:encode(kz_json:find_value(<<"k1">>, <<"v1">>, JObjs))),
-    ?assertEqual(<<"{\"k1\":\"v2\"}">>, kz_json:encode(kz_json:find_value(<<"k1">>, <<"v2">>, JObjs))),
-    ?assertEqual('undefined', kz_json:find_value(<<"k1">>, <<"v3">>, JObjs)).
+    [?_assertEqual(<<"{\"k1\":\"v1\"}">>, kz_json:encode(kz_json:find_value(<<"k1">>, <<"v1">>, JObjs)))
+    ,?_assertEqual(<<"{\"k1\":\"v2\"}">>, kz_json:encode(kz_json:find_value(<<"k1">>, <<"v2">>, JObjs)))
+    ,?_assertEqual('undefined', kz_json:find_value(<<"k1">>, <<"v3">>, JObjs))
+    ].
 
-insert_value_test() ->
+insert_value_test_() ->
     JObj = kz_json:decode(<<"{\"k1\":\"v1\",\"k2\":\"v2\"}">>),
     NonInsert = kz_json:insert_value(<<"k1">>, <<"v3">>, JObj),
     Insert = kz_json:insert_value(<<"k3">>, <<"v3">>, JObj),
-    ?assertEqual(<<"v1">>, kz_json:get_value(<<"k1">>, NonInsert)),
-    ?assertEqual(<<"v3">>, kz_json:get_value(<<"k3">>, Insert)).
+    [?_assertEqual(<<"v1">>, kz_json:get_value(<<"k1">>, NonInsert))
+    ,?_assertEqual(<<"v3">>, kz_json:get_value(<<"k3">>, Insert))
+    ].
 
-insert_values_test() ->
+insert_values_test_() ->
     JObj = kz_json:decode(<<"{\"k1\":\"v1\",\"k2\":\"v2\"}">>),
     NonInsert = kz_json:insert_values([{<<"k1">>, <<"v3">>}], JObj),
     Insert = kz_json:insert_values([{<<"k3">>, <<"v3">>}], JObj),
-    ?assertEqual(<<"v1">>, kz_json:get_value(<<"k1">>, NonInsert)),
-    ?assertEqual(<<"v3">>, kz_json:get_value(<<"k3">>, Insert)).
+    [?_assertEqual(<<"v1">>, kz_json:get_value(<<"k1">>, NonInsert))
+    ,?_assertEqual(<<"v3">>, kz_json:get_value(<<"k3">>, Insert))
+    ].
 
-get_ne_json_object_test() ->
+get_ne_json_object_test_() ->
     JObj = kz_json:decode(<<"{\"k1\":\"v1\",\"k2\":\"v2\",\"o1\":{\"k3\":\"v3\"},\"o2\":{}}">>),
-    ?assertEqual('undefined'
-                 ,kz_json:get_ne_json_value(<<"k1">>, JObj)
-                ),
-    ?assertEqual(?JSON_WRAPPER([{<<"k3">>, <<"v3">>}])
-                 ,kz_json:get_ne_json_value(<<"o1">>, JObj)
-                ),
-    ?assertEqual('undefined'
-                 ,kz_json:get_ne_json_value(<<"o2">>, JObj)
-                ).
+    [?_assertEqual('undefined'
+                  ,kz_json:get_ne_json_value(<<"k1">>, JObj)
+                  )
+    ,?_assertEqual(?JSON_WRAPPER([{<<"k3">>, <<"v3">>}])
+                  ,kz_json:get_ne_json_value(<<"o1">>, JObj)
+                  )
+    ,?_assertEqual('undefined'
+                  ,kz_json:get_ne_json_value(<<"o2">>, JObj)
+                  )
+    ].

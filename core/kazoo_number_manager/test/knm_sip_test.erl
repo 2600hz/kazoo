@@ -11,50 +11,56 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
-parse_until_test() ->
+parse_until_test_() ->
     {Before, After} = knm_sip:parse_until(<<":">>, <<"foo:bar">>),
-    ?assertEqual(<<"foo">>, Before),
-    ?assertEqual(<<"bar">>, After).
+    [?_assertEqual(<<"foo">>, Before)
+    ,?_assertEqual(<<"bar">>, After)
+    ].
 
-parse_full_test() ->
+parse_full_test_() ->
     Uri = knm_sip:parse(<<"sip:username@host.com:2600">>),
 
-    ?assertEqual('sip', knm_sip:scheme(Uri)),
-    ?assertEqual(<<"username">>, knm_sip:user(Uri)),
-    ?assertEqual(<<"host.com">>, knm_sip:host(Uri)),
-    ?assertEqual(2600, knm_sip:port(Uri)).
+    [?_assertEqual('sip', knm_sip:scheme(Uri))
+    ,?_assertEqual(<<"username">>, knm_sip:user(Uri))
+    ,?_assertEqual(<<"host.com">>, knm_sip:host(Uri))
+    ,?_assertEqual(2600, knm_sip:port(Uri))
+    ].
 
-parse_uh_test() ->
+parse_uh_test_() ->
     Uri = knm_sip:parse(<<"sip:username@host.com">>),
 
-    ?assertEqual('sip', knm_sip:scheme(Uri)),
-    ?assertEqual(<<"username">>, knm_sip:user(Uri)),
-    ?assertEqual(<<"host.com">>, knm_sip:host(Uri)),
-    ?assertEqual(5060, knm_sip:port(Uri)).
+    [?_assertEqual('sip', knm_sip:scheme(Uri))
+    ,?_assertEqual(<<"username">>, knm_sip:user(Uri))
+    ,?_assertEqual(<<"host.com">>, knm_sip:host(Uri))
+    ,?_assertEqual(5060, knm_sip:port(Uri))
+    ].
 
-parse_suh_test() ->
+parse_suh_test_() ->
     Uri = knm_sip:parse(<<"sips:username@host.com">>),
 
-    ?assertEqual('sips', knm_sip:scheme(Uri)),
-    ?assertEqual(<<"username">>, knm_sip:user(Uri)),
-    ?assertEqual(<<"host.com">>, knm_sip:host(Uri)),
-    ?assertEqual(5060, knm_sip:port(Uri)).
+    [?_assertEqual('sips', knm_sip:scheme(Uri))
+    ,?_assertEqual(<<"username">>, knm_sip:user(Uri))
+    ,?_assertEqual(<<"host.com">>, knm_sip:host(Uri))
+    ,?_assertEqual(5060, knm_sip:port(Uri))
+    ].
 
-parse_noscheme_test() ->
+parse_noscheme_test_() ->
     Uri = knm_sip:parse(<<"username@host.com">>),
 
-    ?assertEqual('sip', knm_sip:scheme(Uri)),
-    ?assertEqual(<<"username">>, knm_sip:user(Uri)),
-    ?assertEqual(<<"host.com">>, knm_sip:host(Uri)),
-    ?assertEqual(5060, knm_sip:port(Uri)).
+    [?_assertEqual('sip', knm_sip:scheme(Uri))
+    ,?_assertEqual(<<"username">>, knm_sip:user(Uri))
+    ,?_assertEqual(<<"host.com">>, knm_sip:host(Uri))
+    ,?_assertEqual(5060, knm_sip:port(Uri))
+    ].
 
-parse_noscheme_port_test() ->
+parse_noscheme_port_test_() ->
     Uri = knm_sip:parse(<<"username@host.com:2600">>),
 
-    ?assertEqual('sip', knm_sip:scheme(Uri)),
-    ?assertEqual(<<"username">>, knm_sip:user(Uri)),
-    ?assertEqual(<<"host.com">>, knm_sip:host(Uri)),
-    ?assertEqual(2600, knm_sip:port(Uri)).
+    [?_assertEqual('sip', knm_sip:scheme(Uri))
+    ,?_assertEqual(<<"username">>, knm_sip:user(Uri))
+    ,?_assertEqual(<<"host.com">>, knm_sip:host(Uri))
+    ,?_assertEqual(2600, knm_sip:port(Uri))
+    ].
 
 encode_test() ->
     Uri = knm_sip:parse(<<"username@host.com:2600">>),
@@ -75,16 +81,18 @@ encode_full_5060_test() ->
     Uri = knm_sip:parse(U),
     ?assertEqual(<<"sips:username@host.com">>, knm_sip:encode(Uri)).
 
-parse_angles_test() ->
+parse_angles_test_() ->
     U = <<"<sips:username@host.com:5060>">>,
     Uri = knm_sip:parse(U),
 
-    ?assertEqual(<<"username">>, knm_sip:user(Uri)),
-    ?assertEqual(<<"sips:username@host.com">>, knm_sip:encode(Uri)).
+    [?_assertEqual(<<"username">>, knm_sip:user(Uri))
+    ,?_assertEqual(<<"sips:username@host.com">>, knm_sip:encode(Uri))
+    ].
 
-parse_angles_2_test() ->
+parse_angles_2_test_() ->
     U = <<"<sip:username@host.com>">>,
     Uri = knm_sip:parse(U),
 
-    ?assertEqual(<<"username">>, knm_sip:user(Uri)),
-    ?assertEqual(<<"sip:username@host.com">>, knm_sip:encode(Uri)).
+    [?_assertEqual(<<"username">>, knm_sip:user(Uri))
+    ,?_assertEqual(<<"sip:username@host.com">>, knm_sip:encode(Uri))
+    ].

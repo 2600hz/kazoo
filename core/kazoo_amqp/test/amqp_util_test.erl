@@ -12,14 +12,14 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
-encode_key_test() ->
-    ?assertEqual(<<"#">>, amqp_util:encode(<<"#">>)),
-    ?assertEqual(<<"*">>, amqp_util:encode(<<"*">>)),
-    ?assertEqual(<<"key">>, amqp_util:encode(<<"key">>)),
-    ?assertEqual(<<"routing%2Ekey">>, amqp_util:encode(<<"routing.key">>)),
-    ?assertEqual(<<"long%2Erouting%2Ekey">>, amqp_util:encode(<<"long.routing.key">>)),
-    ?assertEqual(<<"test%26%2E192%2E+168%2E+5%2E+5%23">>, amqp_util:encode(<<"test&.192. 168. 5. 5#">>)),
-    'ok'.
+encode_key_test_() ->
+    [?_assertEqual(<<"#">>, amqp_util:encode(<<"#">>))
+    ,?_assertEqual(<<"*">>, amqp_util:encode(<<"*">>))
+    ,?_assertEqual(<<"key">>, amqp_util:encode(<<"key">>))
+    ,?_assertEqual(<<"routing%2Ekey">>, amqp_util:encode(<<"routing.key">>))
+    ,?_assertEqual(<<"long%2Erouting%2Ekey">>, amqp_util:encode(<<"long.routing.key">>))
+    ,?_assertEqual(<<"test%26%2E192%2E+168%2E+5%2E+5%23">>, amqp_util:encode(<<"test&.192. 168. 5. 5#">>))
+    ].
 
 trim_test_() ->
     Min = 0,

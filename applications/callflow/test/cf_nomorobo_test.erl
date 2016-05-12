@@ -9,7 +9,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
-nomorobo_branch_test() ->
+nomorobo_branch_test_() ->
     ScoreBranch = [{  0, <<"0">>}
                    ,{ 1, <<"0">>}
                    ,{ 2, <<"0">>}
@@ -24,6 +24,6 @@ nomorobo_branch_test() ->
                   ],
     Keys = cf_nomorobo:nomorobo_branches({'branch_keys', [<<"0">>, <<"10">>, <<"3">>, <<"6">>]}),
 
-    [?assertEqual(Branch, cf_nomorobo:nomorobo_branch(Score, Keys))
+    [?_assertEqual(Branch, cf_nomorobo:nomorobo_branch(Score, Keys))
      || {Score, Branch} <- ScoreBranch
     ].

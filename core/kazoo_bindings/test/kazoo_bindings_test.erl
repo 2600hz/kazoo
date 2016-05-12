@@ -60,14 +60,14 @@ bindings_match_test() ->
                           ?assertEqual(Expected, {B, Actual})
                   end, ?BINDINGS).
 
-weird_bindings_test() ->
-    ?assertEqual('true', binding_matches(<<"#.A.*">>,<<"A.a.A.a">>)),
-    ?assertEqual('true', binding_matches(<<"#.*">>, <<"foo">>)),
-    ?assertEqual('true', binding_matches(<<"#.*">>, <<"foo.bar">>)),
-    ?assertEqual('false', binding_matches(<<"foo.#.*">>, <<"foo">>)),
-    %% ?assertEqual('false', binding_matches(<<"#.*">>, <<>>)),
-    ?assertEqual('true', binding_matches(<<"#.6.*.1.4.*">>,<<"6.a.a.6.a.1.4.a">>)),
-    ok.
+weird_bindings_test_() ->
+    [?_assertEqual('true', binding_matches(<<"#.A.*">>,<<"A.a.A.a">>))
+    ,?_assertEqual('true', binding_matches(<<"#.*">>, <<"foo">>))
+    ,?_assertEqual('true', binding_matches(<<"#.*">>, <<"foo.bar">>))
+    ,?_assertEqual('false', binding_matches(<<"foo.#.*">>, <<"foo">>))
+    %% ,?_assertEqual('false', binding_matches(<<"#.*">>, <<>>))
+    ,?_assertEqual('true', binding_matches(<<"#.6.*.1.4.*">>,<<"6.a.a.6.a.1.4.a">>))
+    ].
 
 %%% PropEr tests
 %% Checks that the patterns for paths (a.#.*.c) match or do not

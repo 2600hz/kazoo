@@ -12,20 +12,22 @@
 %% EUNIT TESTING
 -include_lib("eunit/include/eunit.hrl").
 
-has_all_test() ->
+has_all_test_() ->
     Prop = [{<<"k1">>, <<"v1">>}
             ,{<<"k2">>, <<"v2">>}
             ,{<<"k3">>, <<"v3">>}
            ],
     Headers = [<<"k1">>, <<"k2">>, <<"k3">>],
-    ?assertEqual('true', kz_api:has_all(Prop, Headers)),
-    ?assertEqual('false', kz_api:has_all(Prop, [<<"k4">> | Headers])).
+    [?_assertEqual('true', kz_api:has_all(Prop, Headers))
+    ,?_assertEqual('false', kz_api:has_all(Prop, [<<"k4">> | Headers]))
+    ].
 
-has_any_test() ->
+has_any_test_() ->
     Prop = [{<<"k1">>, <<"v1">>}
             ,{<<"k2">>, <<"v2">>}
             ,{<<"k3">>, <<"v3">>}
            ],
     Headers = [<<"k1">>, <<"k2">>, <<"k3">>],
-    ?assertEqual('true', kz_api:has_any(Prop, Headers)),
-    ?assertEqual('false', kz_api:has_any(Prop, [<<"k4">>])).
+    [?_assertEqual('true', kz_api:has_any(Prop, Headers))
+    ,?_assertEqual('false', kz_api:has_any(Prop, [<<"k4">>]))
+    ].
