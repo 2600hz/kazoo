@@ -17,7 +17,7 @@
          ,reconcile/2
          ,reserve/2
 
-         ,change_state/1, change_state/2
+         ,to_state/2, to_state/3
          ,assign_to_app/2, assign_to_app/3
 
          ,free/1
@@ -125,25 +125,24 @@ reserve(Nums, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec change_state(kz_proplist()) ->
-                          numbers_return().
--spec change_state(kz_proplist(), knm_number_options:options()) ->
-                          numbers_return().
-change_state(Props) ->
-    change_state(Props, knm_number_options:default()).
+-spec to_state(ne_binaries(), ne_binary()) ->
+                      numbers_return().
+-spec to_state(ne_binaries(), ne_binary(), knm_number_options:options()) ->
+                      numbers_return().
+to_state(Nums, ToState) ->
+    to_state(Nums, ToState, knm_number_options:default()).
 
-change_state(Props, Options) ->
-    do_change_state(Props, Options, []).
+to_state(Nums, ToState, Options) ->
+    [{Num, change_state(Num, ToState, Options)} || Num <- Nums].
 
--spec do_change_state(kz_proplist(), knm_number_options:options(), numbers_return()) ->
-                             numbers_return().
-do_change_state([], _Options, Acc) -> Acc;
-do_change_state([{Num, State}|Props], Options, Acc) ->
-    try knm_number_states:to_state(Num, State, Options) of
-        Number -> do_change_state(Props, Options, [{Num, {'ok', Number}}|Acc])
+-spec change_state(ne_binary(), ne_binary(), knm_number_options:options()) ->
+                          {'ok', knm_number:knm_number()} |
+                          knm_errors:thrown_error().
+change_state(Num, ToState, Options) ->
+    try knm_number_states:to_state(Num, ToState, Options) of
+        Number -> {'ok', Number}
     catch
-        'throw':R ->
-            do_change_state(Props, Options, [{Num, R} | Acc])
+        'throw':R -> R
     end.
 
 %%--------------------------------------------------------------------

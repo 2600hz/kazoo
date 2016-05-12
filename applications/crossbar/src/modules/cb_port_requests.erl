@@ -327,7 +327,6 @@ validate(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
 -spec get(cb_context:context(), path_token(), path_token()) -> cb_context:context().
@@ -852,12 +851,7 @@ build_keys_from_account(E164, [AccountId, ?PORT_DESCENDANTS]) ->
     ViewOptions = [{'startkey', [AccountId]}
                    ,{'endkey', [AccountId, kz_json:new()]}
                   ],
-    case kz_datamgr:get_results(
-           ?KZ_ACCOUNTS_DB
-           ,?AGG_VIEW_DESCENDANTS
-           ,ViewOptions
-          )
-    of
+    case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ?AGG_VIEW_DESCENDANTS, ViewOptions) of
         {'error', _R} ->
             lager:error("failed to query view ~p", [_R]),
             [];

@@ -22,10 +22,8 @@
 
 -type kn() :: knm_number:knm_number().
 
--spec to_state(ne_binary() | kn(), ne_binary()) ->
-                      kn().
--spec to_state(ne_binary() | kn(), ne_binary(), kz_proplist()) ->
-                      kn().
+-spec to_state(ne_binary() | kn(), ne_binary()) -> kn().
+-spec to_state(ne_binary() | kn(), ne_binary(), kz_proplist()) -> kn().
 to_state(DID, ToState) ->
     to_state(DID, ToState, knm_number_options:default()).
 to_state(?NE_BINARY = DID, ToState, Options) ->
@@ -41,7 +39,10 @@ change_state(Number, ?NUMBER_STATE_RESERVED) ->
     to_reserved(Number);
 change_state(Number, ?NUMBER_STATE_DELETED) ->
     to_deleted(Number);
+change_state(Number, ?NUMBER_STATE_IN_SERVICE) ->
+    to_in_service(Number);
 change_state(Number, _State) ->
+    lager:debug("unhandled state change to ~p", [_State]),
     knm_errors:unspecified('invalid_state', Number).
 
 -spec to_reserved(kn()) -> kn().

@@ -80,7 +80,7 @@ public_fields(JObj) ->
 -spec get(ne_binary() | knm_phone_number:knm_phone_number()) ->
                  {'ok', kz_json:object()} |
                  {'error', 'not_found'}.
-get(DID) when is_binary(DID) ->
+get(DID=?NE_BINARY) ->
     ViewOptions = [{'key', DID}, 'include_docs'],
     case
         kz_datamgr:get_results(
@@ -301,14 +301,18 @@ completed_port(PortReq) ->
 -spec transition_numbers(kz_json:object()) -> transition_response().
 transition_numbers(PortReq) ->
     Numbers = kz_json:get_keys(<<"numbers">>, PortReq),
-    PortOps = [enable_number(N) || N <- Numbers],
-    case lists:all(fun kz_util:is_true/1, PortOps) of
+    Results = knm_numbers:to_state(Numbers, ?NUMBER_STATE_IN_SERVICE),
+    IsOK = fun ({_Num, {'ok',_}}) -> 'true'; ({_Num, _}) -> 'false' end,
+    {_OK, Errored} = lists:partition(IsOK, Results),
+    case [] == Errored of
         'true' ->
             lager:debug("all numbers ported, removing from port request"),
             ClearedPortRequest = clear_numbers_from_port(PortReq),
             {'ok', ClearedPortRequest};
         'false' ->
-            lager:debug("failed to transition numbers: ~p", [PortOps]),
+            lager:debug("failed to transition ~p/~p numbers", [length(Errored), length(_OK)]),
+            _ = [lager:debug("~s error: ~p", [Num, Error]) || {Num,Error} <- Errored],
+            _ = [lager:debug("~s success", [Num]) || {Num,_} <- _OK],
             {'error', PortReq}
     end.
 
@@ -321,28 +325,15 @@ transition_numbers(PortReq) ->
 clear_numbers_from_port(PortReq) ->
     Cleared = kz_json:set_value(<<"numbers">>, kz_json:new(), PortReq),
     case kz_datamgr:save_doc(?KZ_PORT_REQUESTS_DB, Cleared) of
-        {'ok', PortReq1} -> lager:debug("port numbers cleared"), PortReq1;
+        {'ok', PortReq1} ->
+            lager:debug("port numbers cleared"),
+            PortReq1;
         {'error', 'conflict'} ->
             lager:debug("port request doc was updated before we could re-save"),
             PortReq;
         {'error', _E} ->
             lager:debug("failed to clear numbers: ~p", [_E]),
             PortReq
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec enable_number(ne_binary()) -> boolean().
-enable_number(Num) ->
-    try knm_number_states:to_state(Num, ?NUMBER_STATE_IN_SERVICE) of
-        _Number -> 'true'
-    catch
-        'throw':_R ->
-            lager:error("failed to enable number ~s : ~p", [Num, _R]),
-            'false'
     end.
 
 %%--------------------------------------------------------------------
@@ -365,7 +356,7 @@ maybe_send_request(JObj) ->
 
 maybe_send_request(JObj, 'undefined')->
     lager:debug("'submitted_port_requests_url' is not set for account ~s"
-                ,[kz_doc:account_id(JObj)]);
+               ,[kz_doc:account_id(JObj)]);
 maybe_send_request(JObj, Url)->
     case send_request(JObj, Url) of
         'error' -> 'ok';
@@ -384,7 +375,7 @@ maybe_send_request(JObj, Url)->
 -spec send_request(kz_json:object(), ne_binary()) -> 'error' | 'ok'.
 send_request(JObj, Url) ->
     Headers = [{"Content-Type", "application/json"}
-               ,{"User-Agent", kz_util:to_list(erlang:node())}
+               ,{"User-Agent", kz_util:to_list(node())}
               ],
 
     Uri = kz_util:to_list(<<Url/binary, "/", (kz_doc:id(JObj))/binary>>),
@@ -461,7 +452,7 @@ send_attachment(Url, Id, Name, Options, Attachment) ->
     ContentType = kz_json:get_value(<<"content_type">>, Options),
 
     Headers = [{"Content-Type", kz_util:to_list(ContentType)}
-               ,{"User-Agent", kz_util:to_list(erlang:node())}
+               ,{"User-Agent", kz_util:to_list(node())}
               ],
 
     Uri = kz_util:to_list(<<Url/binary, "/", Id/binary, "/", Name/binary>>),
