@@ -8,11 +8,35 @@ Voicemail boxes store messages, recorded from the caller, for the voicemail box 
 
 As of Kazoo 4.0 all new voicemail messages will be stored in the account MODbs.
 
-Regarding this change the v2 vmboxes API will ___no longer___ returns the messages array. For compatiblity issues v1 vmboxes API tries to return the messages array along the vmboxes API response, but because of how things work behind this moving to MODBs, manipulation the messages array on the v1 is ___strongly___ discuraged.
+Regarding this change the v2 vmboxes API will ___no longer___ returns the messages array. For compatibility issues v1 vmboxes API tries to return the messages array along the vmboxes API response, but because of how things work behind this moving to MODBs, manipulation the messages array on the v1 is ___strongly___ discouraged.
 
 The existing messages API _should be_ used to manage messages in a voicemail box for _both_ versions.
 
 For more information about voicemail changes see documentation for kazoo_voicemail.
+
+#### Schema
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`check_if_owner` | Determines if when the user calls their own voicemail they should be prompted to sign in | `boolean` | `true` | `false`
+`delete_after_notify` | Delete the voicemail after the notification has been sent | `boolean` | `false` | `false`
+`is_setup` | Determines if the user has completed the initial configuration | `boolean` | `false` | `false`
+`mailbox` | The voicemail box number | `string(1..30)` |   | `true`
+`media` | The media (prompt) parameters | `object` | `{}` | `false`
+`media.unavailable` | The ID of a media object that should be used as the unavailable greeting | `string(32)` |   | `false`
+`name` | A friendly name for the voicemail box | `string(1..128)` |   | `true`
+`not_configurable` | Determines if the user can configure this voicemail. | `boolean` | `false` | `false`
+`notify` |   | `object` |   | `false`
+`notify.callback` |   | `#/definitions/notify.callback` |   | `false`
+`notify_email_addresses` | List of email addresses to send notifications to (in addition to owner's email, if any) | `array(string)` | `[]` | `false`
+`notify_email_addresses.[]` |   | `string` |   | `false`
+`owner_id` | The ID of the user object that 'owns' the voicemail box | `string(32)` |   | `false`
+`pin` | The pin number for the voicemail box | `string(4..15)` |   | `false`
+`require_pin` | Determines if a pin is required to check the voicemail from the users devices | `boolean` | `false` | `false`
+`save_after_notify` | Save the voicemail after the notification has been sent | `boolean` | `false` | `false`
+`skip_greeting` | Determines if the greeting should be skipped | `boolean` | `false` | `false`
+`skip_instructions` | Determines if the instructions after the greeting and prior to composing a message should be played | `boolean` | `false` | `false`
+`timezone` | The default timezone | `string(5..32)` |   | `false`
 
 #### List all account's voicemail boxes
 
