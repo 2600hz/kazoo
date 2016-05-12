@@ -24,7 +24,7 @@ make_api_token_test() ->
 
     ?assertEqual(ApiToken, Generated).
 
-split_api_token_test() ->
+split_api_token_test_() ->
     ProviderId = <<"2600hz">>,
     Secret     = <<"f1986434eb540c8c956eb0a21094c38c6f9f12bf">>,
     Salt       = <<"966d1579e4c0c324c0d95c266adce307bd1e7e08">>,
@@ -36,6 +36,7 @@ split_api_token_test() ->
     Generated = cb_ubiquiti_util:make_api_token(ProviderId, Timestamp, Salt, Secret),
     {Salt1, Timestamp1, Auth1} = cb_ubiquiti_util:split_api_token(Generated),
 
-    ?assertEqual(Salt, Salt1),
-    ?assertEqual(Timestamp, Timestamp1),
-    ?assertEqual(Auth, Auth1).
+    [?_assertEqual(Salt, Salt1)
+    ,?_assertEqual(Timestamp, Timestamp1)
+    ,?_assertEqual(Auth, Auth1)
+    ].

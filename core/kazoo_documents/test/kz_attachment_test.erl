@@ -18,7 +18,7 @@ decode_plain_text_test() ->
     ?assertEqual({'undefined', Data}, kz_attachment:decode_base64(Base64Data)),
     ?assertEqual({<<"text/plain">>, Data}, kz_attachment:decode_base64(InlineData)).
 
-decode_image_png_test() ->
+decode_image_png_test_() ->
     Data = <<137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,5,0,0,0,5,8,6,0,0,0,141,
              111,38,229,0,0,0,28,73,68,65,84,8,215,99,248,255,255,63,195,127,6,32,5,195,
              32,18,132,208,49,241,130,88,205,4,0,14,245,53,203,209,142,14,31,0,0,0,0,73,
@@ -27,10 +27,11 @@ decode_image_png_test() ->
     Base64Data = base64:encode(Data),
     InlineData = <<"data:image/png;base64,", Base64Data/binary>>,
 
-    ?assertEqual({'undefined', Data}, kz_attachment:decode_base64(Base64Data)),
-    ?assertEqual({<<"image/png">>, Data}, kz_attachment:decode_base64(InlineData)).
+    [?_assertEqual({'undefined', Data}, kz_attachment:decode_base64(Base64Data))
+    ,?_assertEqual({<<"image/png">>, Data}, kz_attachment:decode_base64(InlineData))
+    ].
 
-decode_application_pdf_test() ->
+decode_application_pdf_test_() ->
     Data =
         <<37,80,68,70,45,49,46,51,10,37,196,229,242,229,235,167,243,160,208,196,198,10,
           52,32,48,32,111,98,106,10,60,60,32,47,76,101,110,103,116,104,32,53,32,48,32,
@@ -323,5 +324,6 @@ decode_application_pdf_test() ->
     Base64Data = base64:encode(Data),
     InlineData = <<"data:application/pdf;base64,", Base64Data/binary>>,
 
-    ?assertEqual({'undefined', Data}, kz_attachment:decode_base64(Base64Data)),
-    ?assertEqual({<<"application/pdf">>, Data}, kz_attachment:decode_base64(InlineData)).
+    [?_assertEqual({'undefined', Data}, kz_attachment:decode_base64(Base64Data))
+    ,?_assertEqual({<<"application/pdf">>, Data}, kz_attachment:decode_base64(InlineData))
+    ].
