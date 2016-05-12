@@ -12,8 +12,7 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1
          ,resource_exists/0, resource_exists/1
-         ,authenticate/1
-         ,authorize/1
+         ,authorize/1, authorize/2
          ,validate/1, validate/2
          ,put/2
         ]).
@@ -37,8 +36,7 @@
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.ledgers">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.ledgers">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
-    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"*.authorize.ledgers">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.validate.ledgers">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.get.ledgers">>, ?MODULE, 'get'),
     _ = crossbar_bindings:bind(<<"*.execute.put.ledgers">>, ?MODULE, 'put').
@@ -83,16 +81,33 @@ resource_exists(_) -> 'true'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate(cb_context:context()) -> boolean().
-authenticate(_Context) -> 'false'.
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> boolean().
-authorize(_Context) -> 'false'.
+authorize(Context) ->
+    cb_simple_authz:authorize(Context).
+
+-spec authorize(cb_context:context(), path_token()) -> boolean().
+authorize(Context, Path) ->
+    authorize_request(Context, Path, cb_context:req_verb(Context)).
+
+-spec authorize_request(cb_context:context(), path_token(), http_method()) -> boolean().
+authorize_request(Context, ?DEBIT, ?HTTP_PUT) ->
+    authorize_create(Context);
+authorize_request(Context, ?CREDIT, ?HTTP_PUT) ->
+    authorize_create(Context);
+authorize_request(Context, _, ?HTTP_PUT) ->
+    {'halt', cb_context:add_system_error('forbidden', Context)};    
+authorize_request(Context, _, ?HTTP_GET) ->
+    cb_simple_authz:authorize(Context).
+
+-spec authorize_create(cb_context:context()) -> boolean().
+authorize_create(Context) ->
+    IsAuthenticated = cb_context:is_authenticated(Context),
+    IsSuperDuperAdmin = cb_modules_util:is_superduper_admin(Context),
+    IsReseller = cb_context:reseller_id(Context) =:= cb_context:auth_account_id(Context),
+    case IsAuthenticated andalso (IsSuperDuperAdmin orelse IsReseller) of
+        'true' -> 'true';
+        'false' -> {'halt', cb_context:add_system_error('forbidden', Context)}
+    end.    
 
 %%--------------------------------------------------------------------
 %% @public
@@ -110,9 +125,13 @@ validate(Context) ->
     validate_ledgers(Context, cb_context:req_verb(Context)).
 
 validate(Context, ?CREDIT) ->
-    cb_context:validate_request_data(<<"ledgers">>, Context, fun is_admin/1);
+    ReqData = cb_context:req_data(Context),
+    JObj = kz_json:set_value([<<"usage">>, <<"type">>], ?CREDIT, ReqData),
+    cb_context:validate_request_data(<<"ledgers">>, cb_context:set_req_data(Context, JObj), fun is_admin/1);
 validate(Context, ?DEBIT) ->
-    cb_context:validate_request_data(<<"ledgers">>, Context, fun is_admin/1);
+    ReqData = cb_context:req_data(Context),
+    JObj = kz_json:set_value([<<"usage">>, <<"type">>], ?DEBIT, ReqData),
+    cb_context:validate_request_data(<<"ledgers">>, cb_context:set_req_data(Context, JObj), fun is_admin/1);
 validate(Context, Id) ->
     validate_ledger(Context, Id, cb_context:req_verb(Context)).
 
@@ -168,6 +187,7 @@ credit_or_debit(Context, Action) ->
             ,{<<"description">>, kz_json:get_value(<<"description">>, ReqData)}
             ,{<<"period_start">>, kz_json:get_value([<<"period">>, <<"start">>], ReqData)}
             ,{<<"period_end">>, kz_json:get_value([<<"period">>, <<"end">>], ReqData)}
+            ,{<<"metadata">>, kz_json:get_value(<<"metadata">>, ReqData)}
         ]),
 
     case process_action(Action, SrcService, SrcId, AccountId, Usage, Props) of
