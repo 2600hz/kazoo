@@ -97,7 +97,7 @@ authorize_request(Context, ?DEBIT, ?HTTP_PUT) ->
 authorize_request(Context, ?CREDIT, ?HTTP_PUT) ->
     authorize_create(Context);
 authorize_request(Context, _, ?HTTP_PUT) ->
-    {'halt', cb_context:add_system_error('forbidden', Context)};    
+    {'halt', cb_context:add_system_error('forbidden', Context)};
 authorize_request(Context, _, ?HTTP_GET) ->
     cb_simple_authz:authorize(Context).
 
@@ -109,7 +109,7 @@ authorize_create(Context) ->
     case IsAuthenticated andalso (IsSuperDuperAdmin orelse IsReseller) of
         'true' -> 'true';
         'false' -> {'halt', cb_context:add_system_error('forbidden', Context)}
-    end.    
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
