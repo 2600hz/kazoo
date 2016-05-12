@@ -431,7 +431,15 @@ do_patch(Context) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 post(Context, Id) ->
-    do_post(Context, Id).
+    Context1 = crossbar_doc:save(update_port_request_for_save(Context)),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            _ = maybe_send_port_comment_notification(Context1, Id),
+            Doc = cb_context:doc(Context1),
+            cb_context:set_resp_data(Context1, knm_port_request:public_fields(Doc));
+        _Status ->
+            Context1
+    end.
 
 post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     [{_Filename, FileJObj}] = cb_context:req_files(Context),
@@ -451,18 +459,6 @@ post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
                                  ,Context
                                  ,Opts
                                 ).
-
--spec do_post(cb_context:context(), path_token()) -> cb_context:context().
-do_post(Context, Id) ->
-    Context1 = crossbar_doc:save(update_port_request_for_save(Context)),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            _ = maybe_send_port_comment_notification(Context1, Id),
-            Doc = cb_context:doc(Context1),
-            cb_context:set_resp_data(Context1, knm_port_request:public_fields(Doc));
-        _Status ->
-            Context1
-    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -595,10 +591,8 @@ is_deletable(Context, ?PORT_REJECTED) -> Context;
 is_deletable(Context, ?PORT_CANCELED) -> Context;
 is_deletable(Context, _PortState) ->
     lager:debug("port is in state ~s, can't modify", [_PortState]),
-    cb_context:add_system_error('invalid_method'
-                                ,<<"port request is not modifiable in this state">>
-                                ,Context
-                               ).
+    Msg = <<"port request is not modifiable in this state">>,
+    cb_context:add_system_error('invalid_method', Msg, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -736,10 +730,15 @@ load_summary_by_range_fold(Context, Type, From, To) ->
 
 -spec load_summary_by_number(cb_context:context(), ne_binary()) -> cb_context:context().
 load_summary_by_number(Context, Number) ->
-    case should_summarize_descendant_requests(Context) of
-        'true' -> summary_descendants_by_number(Context, Number);
-        'false' -> summary_by_number(Context, Number)
-    end.
+    ViewOptions = [{'keys', build_keys(Context, Number)}
+                   ,'include_docs'
+                  ],
+    crossbar_doc:load_view(
+      ?ALL_PORT_REQ_NUMBERS
+      ,ViewOptions
+      ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+      ,fun normalize_view_results/2
+     ).
 
 -spec load_summary(cb_context:context(), crossbar_doc:view_options()) ->
                            cb_context:context().
@@ -807,70 +806,26 @@ should_summarize_descendant_requests(Context) ->
         _Params -> 'false'
     end.
 
--spec summary_by_number(cb_context:context(), ne_binary()) ->
-                               cb_context:context().
-summary_by_number(Context, Number) ->
-    ViewOptions = [{'keys', build_keys(Context, Number)}
-                   ,'include_docs'
-                  ],
-    crossbar_doc:load_view(
-      ?ALL_PORT_REQ_NUMBERS
-      ,ViewOptions
-      ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
-      ,fun normalize_view_results/2
-     ).
-
--spec summary_descendants_by_number(cb_context:context(), ne_binary()) ->
-                                           cb_context:context().
-summary_descendants_by_number(Context, Number) ->
-    ViewOptions = [{'keys', build_keys(Context, Number)}
-                   ,'include_docs'
-                  ],
-    crossbar_doc:load_view(
-      ?ALL_PORT_REQ_NUMBERS
-      ,ViewOptions
-      ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
-      ,fun normalize_view_results/2
-     ).
-
 -type descendant_keys() :: [ne_binaries()].
 
--spec build_keys(cb_context:context(), ne_binary()) ->
-                        descendant_keys().
+-spec build_keys(cb_context:context(), ne_binary()) -> descendant_keys().
 build_keys(Context, Number) ->
-    build_keys_from_account(
-      knm_converters:normalize(Number)
-      ,props:get_value(<<"accounts">>, cb_context:req_nouns(Context))
-     ).
-
--spec build_keys_from_account(ne_binary(), ne_binaries()) ->
-                                     descendant_keys().
-build_keys_from_account(E164, [AccountId]) ->
-    [[AccountId, E164]];
-build_keys_from_account(E164, [AccountId, ?PORT_DESCENDANTS]) ->
-    ViewOptions = [{'startkey', [AccountId]}
-                   ,{'endkey', [AccountId, kz_json:new()]}
-                  ],
-    case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ?AGG_VIEW_DESCENDANTS, ViewOptions) of
-        {'error', _R} ->
-            lager:error("failed to query view ~p", [_R]),
-            [];
-        {'ok', JObjs} ->
-            lists:foldl(
-              fun(JObj, Acc) ->
-                      build_descendant_key(JObj, Acc, E164)
-              end
-              ,[]
-              ,JObjs
-             )
+    E164 = knm_converters:normalize(Number),
+    case props:get_value(<<"accounts">>, cb_context:req_nouns(Context)) of
+        [AccountId] ->
+            [[AccountId, E164]];
+        [AccountId, ?PORT_DESCENDANTS] ->
+            ViewOptions = [{'startkey', [AccountId]}
+                          ,{'endkey', [AccountId, kz_json:new()]}
+                          ],
+            case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ?AGG_VIEW_DESCENDANTS, ViewOptions) of
+                {'error', _R} ->
+                    lager:error("failed to query view ~p", [_R]),
+                    [];
+                {'ok', JObjs} ->
+                    lists:reverse([[kz_doc:id(JObj), E164] || JObj <- JObjs])
+            end
     end.
-
--spec build_descendant_key(kz_json:object(), descendant_keys(), ne_binary()) ->
-                                  descendant_keys().
-build_descendant_key(JObj, Acc, E164) ->
-    [[kz_doc:id(JObj), E164]
-     |Acc
-    ].
 
 %%--------------------------------------------------------------------
 %% @private
