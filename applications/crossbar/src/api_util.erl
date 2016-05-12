@@ -817,11 +817,18 @@ is_permitted_verb(Req, Context, ?HTTP_OPTIONS) ->
     lager:debug("options requests are permitted by default"),
     %% all all OPTIONS, they are harmless (I hope) and required for CORS preflight
     {'true', Req, Context};
-is_permitted_verb(Req, Context0, _ReqVerb) ->
+is_permitted_verb(Req, Context, ReqVerb) ->
+    case is_permitted_nouns(Req, Context, ReqVerb, cb_context:req_nouns(Context)) of
+        [] -> is_verb_authorized(Req, Context, ReqVerb);
+        Other -> Other
+    end.
+
+is_verb_authorized(Req, Context0, _ReqVerb) ->
     Event = ?MODULE:create_event_name(Context0, <<"authorize">>),
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context0)) of
         [] ->
-            is_permitted_nouns(Req, Context0, _ReqVerb,cb_context:req_nouns(Context0));
+            lager:debug("no one authz'd the request"),
+            ?MODULE:halt(Req, cb_context:add_system_error('forbidden', Context0));
         ['true'|_] ->
             {'true', Req, Context0};
         [{'true', Context1}|_] ->
@@ -836,16 +843,13 @@ is_permitted_verb(Req, Context0, _ReqVerb) ->
                                 halt_return().
 is_permitted_nouns(Req, Context, _ReqVerb, [{<<"404">>, []}]) ->
     ?MODULE:halt(Req, cb_context:add_system_error('not_found', Context));
-is_permitted_nouns(Req, Context, _ReqVerb, []) ->
-    lager:debug("no one authz'd the request"),
-    ?MODULE:halt(Req, cb_context:add_system_error('forbidden', Context));
+is_permitted_nouns(_Req, _Context, _ReqVerb, []) ->
+    [];
 is_permitted_nouns(Req, Context0, _ReqVerb, [{Mod, Params} | _ReqNouns]) ->
     Event = ?MODULE:create_event_name(Context0, <<"authorize.", Mod/binary>>),
     Payload = [Context0 | Params],
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Payload)) of
-        [] ->
-            lager:debug("failed to authorize : ~p", [Mod]),
-            ?MODULE:halt(Req, cb_context:add_system_error('forbidden', Context0));
+        [] -> [];
         ['true'|_] ->
             {'true', Req, Context0};
         [{'true', Context1}|_] ->
