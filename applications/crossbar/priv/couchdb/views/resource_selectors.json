@@ -1,0 +1,34 @@
+{
+    "_id": "_design/selectors",
+    "language": "javascript",
+    "views": {
+        "cid_prefix_listing": {
+            "map": "function(doc) { if (doc.pvt_type != 'resource_selector' || doc.pvt_deleted || doc.selector_type != 'cid_prefix') return; emit(doc.selector_data, doc.resource); }"
+        },
+        "crossbar_listing": {
+            "map": "function(doc) { if (doc.pvt_type != 'resource_selector' || doc.pvt_deleted) return; emit([doc.resource, doc.selector_type], doc.selector_data); }"
+        },
+        "crossbar_search": {
+            "map": "function(doc) { if (doc.pvt_type != 'resource_selector' || doc.pvt_deleted) return; emit([doc.resource, doc.selector_type, doc.selector_data]); }"
+        },
+        "flag_listing": {
+            "map": "function(doc) { if (doc.pvt_type != 'resource_selector' || doc.pvt_deleted || doc.selector_type != 'flag') return; emit(doc.selector_data, doc.resource); }"
+        },
+        "has_flag_listing": {
+            "map": "function(doc) { if (doc.pvt_type != 'resource_selector' || doc.pvt_deleted || doc.selector_type != 'flag') return; emit(doc.resource, doc.selector_data); }",
+            "reduce": "_count"
+        },
+        "prefix_listing": {
+            "map": "function(doc) { if (doc.pvt_type != 'resource_selector' || doc.pvt_deleted || doc.selector_type != 'prefix') return; emit(doc.selector_data, doc.resource); }"
+        },
+        "regex_cid_listing": {
+            "map": "function(doc) { if (doc.pvt_type != 'resource_selector' || doc.pvt_deleted || doc.selector_type != 'regex_cid') return; emit(doc.resource, doc.selector_data); }"
+        },
+        "regex_listing": {
+            "map": "function(doc) { if (doc.pvt_type != 'resource_selector' || doc.pvt_deleted || doc.selector_type != 'regex') return; emit(doc.resource, doc.selector_data); }"
+        },
+        "weight_listing": {
+            "map": "function(doc) { if (doc.pvt_type != 'resource_selector' || doc.pvt_deleted || doc.selector_type != 'weight') return; emit(doc.resource, doc.selector_data); }"
+        }
+    }
+}

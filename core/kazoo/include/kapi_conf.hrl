@@ -4,6 +4,7 @@
 -define(DOC_CREATED, <<"doc_created">>).
 -define(DOC_DELETED, <<"doc_deleted">>).
 
+-define(DB_EDITED, <<"db_edited">>).
 -define(DB_CREATED, <<"db_created">>).
 -define(DB_DELETED, <<"db_deleted">>).
 

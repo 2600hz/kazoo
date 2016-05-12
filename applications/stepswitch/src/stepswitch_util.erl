@@ -14,6 +14,8 @@
 -export([get_sip_headers/1]).
 -export([format_endpoints/4]).
 -export([default_realm/1]).
+-export([route_by/0]).
+-export([resources_to_endpoints/3]).
 
 -include("stepswitch.hrl").
 -include_lib("kazoo/src/kz_json.hrl").
@@ -339,3 +341,57 @@ get_endpoint_format_from(OffnetReq, CCVs) ->
         'true' -> DefaultRealm;
         'false' -> kz_json:get_value(<<"From-URI-Realm">>, CCVs, DefaultRealm)
     end.
+
+-spec route_by() -> atom().
+route_by() ->
+        RouteBy = kapps_config:get_ne_binary(?SS_CONFIG_CAT, <<"route_by">>, ?DEFAULT_ROUTE_BY),
+        case kz_util:try_load_module(RouteBy) of
+            'false' -> kz_util:to_atom(?DEFAULT_ROUTE_BY);
+            Module -> Module
+        end.
+
+-spec resources_to_endpoints(stepswitch_resources:resources(), ne_binary(), kapi_offnet_resource:req()) ->
+                                    kz_json:objects().
+-spec resources_to_endpoints(stepswitch_resources:resources(), ne_binary(), kapi_offnet_resource:req(), kz_json:objects()) ->
+                                    kz_json:objects().
+resources_to_endpoints(Resources, Number, OffnetJObj) ->
+    resources_to_endpoints(Resources, Number, OffnetJObj, []).
+
+resources_to_endpoints([], _Number, _OffnetJObj, Endpoints) ->
+    lists:reverse(Endpoints);
+resources_to_endpoints([Resource|Resources], Number, OffnetJObj, Endpoints) ->
+    MoreEndpoints = maybe_resource_to_endpoints(Resource, Number, OffnetJObj, Endpoints),
+    resources_to_endpoints(Resources, Number, OffnetJObj, MoreEndpoints).
+
+-spec maybe_resource_to_endpoints(stepswitch_resources:resource(), ne_binary(), kapi_offnet_resource:req(), kz_json:objects()) ->
+                                         kz_json:objects().
+maybe_resource_to_endpoints(Resource
+                            ,Number
+                            ,OffnetJObj
+                            ,Endpoints
+                           ) ->
+    Id = stepswitch_resources:get_resrc_id(Resource),
+    Name = stepswitch_resources:get_resrc_name(Resource),
+    Gateways = stepswitch_resources:get_resrc_gateways(Resource),
+    Global = stepswitch_resources:get_resrc_global(Resource),
+    Weight = stepswitch_resources:get_resrc_weight(Resource),
+    Proxies = stepswitch_resources:get_resrc_proxies(Resource),
+    lager:debug("building resource ~s endpoints", [Id]),
+    CCVUpdates = [{<<"Global-Resource">>, kz_util:to_binary(Global)}
+                  ,{<<"Resource-ID">>, Id}
+                  ,{<<"E164-Destination">>, Number}
+                  ,{<<"Original-Number">>, kapi_offnet_resource:to_did(OffnetJObj)}
+                 ],
+    Updates = [{<<"Name">>, Name}
+               ,{<<"Weight">>, Weight}
+              ],
+    EndpointList = [kz_json:set_values(Updates ,update_ccvs(Endpoint, CCVUpdates))
+                    || Endpoint <- stepswitch_resources:gateways_to_endpoints(Number, Gateways, OffnetJObj, [])
+                   ],
+    stepswitch_resources:maybe_add_proxies(EndpointList, Proxies, Endpoints).
+
+-spec update_ccvs(kz_json:object(), kz_proplist()) -> kz_json:object().
+update_ccvs(Endpoint, Updates) ->
+    CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, kz_json:new()),
+    kz_json:set_value(<<"Custom-Channel-Vars">>, kz_json:set_values(Updates, CCVs), Endpoint).
+

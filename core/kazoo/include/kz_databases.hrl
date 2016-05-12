@@ -13,6 +13,7 @@
 -define(KZ_OFFNET_DB, <<"offnet">>).
 -define(KZ_DEDICATED_IP_DB, <<"dedicated_ips">>).
 -define(KZ_ANONYMOUS_CDR_DB, <<"anonymous_cdrs">>).
+-define(KZ_RESOURCE_SELECTORS_DB, <<"resource_selectors">>).
 
 -define(KZ_TOKEN_DB, <<"token_auth">>).
 
@@ -48,6 +49,7 @@
                         ,?KZ_TOKEN_DB
                         ,?KZ_ALERTS_DB
                         ,?KZ_DATA_DB
+                        ,?KZ_RESOURCE_SELECTORS_DB
                        ]).
 
 -define(KZ_DATABASES_HRL, 'true').

@@ -1,0 +1,20 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "resource_selectors",
+    "description": "Schema for resource selectors",
+    "name": "Resource Selectors",
+    "properties": {
+        "selectors_data": {
+            "description": "Data used for selectors",
+            "items": {
+                "required": false,
+                "type": "string"
+            },
+            "name": "Selectors Data",
+            "required": true,
+            "type": "array"
+        }
+    },
+    "required": true,
+    "type": "object"
+}
