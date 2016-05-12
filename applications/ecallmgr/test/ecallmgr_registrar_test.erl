@@ -45,12 +45,11 @@
            }
          ]).
 
-registrar_summary_test() ->
-    lists:foreach(fun contact_props/1, ?CONTACTS).
+registrar_summary_test_() ->
+    lists:flatmap(fun contact_props/1, ?CONTACTS).
 
 contact_props({Contact, Ps}) ->
     Props = ecallmgr_registrar:breakup_contact(Contact),
-
-    lists:foreach(fun({K, V}) ->
-                          ?assertEqual(V, props:get_value(K, Props))
-                  end, Ps).
+    [?_assertEqual(V, props:get_value(K, Props))
+     || {K, V} <- Ps
+    ].

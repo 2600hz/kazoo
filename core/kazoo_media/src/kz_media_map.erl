@@ -494,12 +494,14 @@ mapping_id(AccountId, PromptId) ->
 
 -include_lib("eunit/include/eunit.hrl").
 
-language_keys_test() ->
+language_keys_test_() ->
     LangTests = [{<<"en">>, [<<"en">>]}
                  ,{<<"en-us">>, [<<"en-us">>, <<"en">>]}
                  ,{<<"en-us_fr-fr">>, [<<"en-us_fr-fr">>, <<"en-us">>, <<"en">>]}
                  ,{<<"foo-bar">>, [<<"foo-bar">>]}
                 ],
-    [?assertEqual(Result, language_keys(Lang)) || {Lang, Result} <- LangTests].
+    [?_assertEqual(Result, language_keys(Lang))
+     || {Lang, Result} <- LangTests
+    ].
 
 -endif.
