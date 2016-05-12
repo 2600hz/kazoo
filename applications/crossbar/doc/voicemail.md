@@ -279,9 +279,10 @@ Deleting all message is easy, just use `DELETE` method on message API endpoint t
 
 Optional payload for deleting a group of messages:
 
-* One can specify a `folder` in the payload of a request to delete all messages in that folder(e.g. `{"folder": "saved"}` to delete all saved messages)
+* One can apply a filter to delete all messages in a particular folder(e.g. new or saved) by adding a query string `?folder=saved` to the URL or set it in the payload as `{"data": {"folder": "saved"}}`
+* Or providing an array of message ids, e.g `{"data": {"messages": [MSG_ID1, MSG_ID2, ...]}}`.
 
-**Note:** If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id(media id) to change to the new format.
+**Note:** If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id to change to the new format.
 
 ```shell
 curl -v -X DELETE \
@@ -334,11 +335,28 @@ curl curl -v -X GET \
 }
 ```
 
+#### Change folder of a list of messages
+
+> POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages
+
+* Specify the folder that message should move into(e.g. new or saved) by adding a query string `?folder=saved` to the URL or set it in the payload as `{"data": {"folder": "saved"}}`
+* Providing an array of message ids, e.g `{"data": {"messages": ["MSG_ID1", "MSG_ID2", "MSG_ID3"]}}`.
+
+**Note:** If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id to change to the new format.
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: application/json"
+    -d '{"data": {"folder": "saved", "messages": ["MSG_ID1", "MSG_ID2", "MSG_ID3"]}}'
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages
+```
+
 #### Remove a message from the voicemail box
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}
 
-**Note:** If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id(media id) to change to the new format.
+**Note:** If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id to change to the new format.
 
 ```shell
 curl curl -v -X DELETE \
@@ -406,7 +424,7 @@ curl curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}
 
-**Note:** If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id(media id) to change to the new format.
+**Note:** If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id to change to the new format.
 
 ```shell
 curl curl -v -X POST \

@@ -107,6 +107,16 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages
 ```
 
+#### Change
+
+> POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages
+```
+
 #### Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}
