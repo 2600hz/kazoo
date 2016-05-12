@@ -822,7 +822,7 @@ is_permitted_verb(Req, Context0, _ReqVerb) ->
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context0)) of
         [] ->
             is_permitted_nouns(Req, Context0, _ReqVerb,cb_context:req_nouns(Context0));
-        ['true'|_] -> 
+        ['true'|_] ->
             is_permitted_verb_on_module(Req, Context0, _ReqVerb,cb_context:req_nouns(Context0));
         [{'true', Context1}|_] ->
             is_permitted_verb_on_module(Req, Context1, _ReqVerb,cb_context:req_nouns(Context1));
