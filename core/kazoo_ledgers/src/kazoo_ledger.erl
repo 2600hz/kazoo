@@ -12,7 +12,7 @@
 
 -export([
     new/0
-    ,save/1
+    ,save/1, save/2
 ]).
 
 -export([
@@ -60,8 +60,12 @@ save(Ledger) ->
              ,{<<"pvt_modified">>, kz_util:current_tstamp()}
              ,{<<"pvt_created">>, kz_util:current_tstamp()}
             ],
-    JObj = kz_json:set_values(Props, Ledger),
-    kazoo_modb:save_doc(AccountId, JObj).
+    save(kz_json:set_values(Props, Ledger), AccountId).
+
+-spec save(kz_json:object(), ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
+save(Ledger, AccountId) ->
+    Props = [{<<"pvt_account_id">>, AccountId}],
+    kazoo_modb:save_doc(AccountId, kz_json:set_values(Props, Ledger)).
 
 %%--------------------------------------------------------------------
 %% @public
