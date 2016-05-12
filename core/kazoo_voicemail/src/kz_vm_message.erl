@@ -596,8 +596,8 @@ cleanup_moved_msgs(AccountId, Ids, BoxId) ->
     _ = remove_moved_msgs_from_vmbox(AccountId, BoxId, Ids),
     'ok'.
 
--spec remove_moved_msgs_from_vmbox(ne_binary(), ne_binary(), ne_binary() | ne_binaries()) -> db_ret().
-remove_moved_msgs_from_vmbox(AccountId, BoxId, OldIds) when is_list(OldIds) ->
+-spec remove_moved_msgs_from_vmbox(ne_binary(), ne_binary(), ne_binaries()) -> db_ret().
+remove_moved_msgs_from_vmbox(AccountId, BoxId, OldIds) ->
     case open_accountdb_doc(AccountId, BoxId, kzd_voicemail_box:type()) of
         {'ok', VMBox} ->
             Messages = kz_json:get_value(?VM_KEY_MESSAGES, VMBox, []),
@@ -617,9 +617,7 @@ remove_moved_msgs_from_vmbox(AccountId, BoxId, OldIds) when is_list(OldIds) ->
         {'error', _R}=E ->
             lager:warning("failed to open mailbox for update ~s: ~s", [BoxId, _R]),
             E
-    end;
-remove_moved_msgs_from_vmbox(AccountId, BoxId, OldId) ->
-    remove_moved_msgs_from_vmbox(AccountId, BoxId, [OldId]).
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -990,14 +988,14 @@ migrate(AccountId, ?JSON_WRAPPER(_)=Box) ->
     migrate(AccountId, kz_json:get_value(<<"id">>, Box));
 migrate(AccountId, BoxId) ->
     Msgs = messages(AccountId, BoxId),
-    _ = [maybe_migrate_to_modb(AccountId, kzd_box_message:media_id(M)) || M <- Msgs],
+    Ids = lists:filter(fun(M) -> maybe_migrate_to_modb(kzd_box_message:media_id(M)) end, Msgs),
+    _ = update_multi_messages(AccountId, Ids, []),
     'ok'.
 
--spec maybe_migrate_to_modb(ne_binary(), ne_binary()) -> 'ok'.
-maybe_migrate_to_modb(_AccountId, ?MATCH_MODB_PREFIX(_, _, _)) -> 'ok';
-maybe_migrate_to_modb(AccountId, Id) ->
-    _ = update_message_doc(AccountId, Id),
-    'ok'.
+-spec maybe_migrate_to_modb(ne_binary()) -> boolean().
+maybe_migrate_to_modb(?MATCH_MODB_PREFIX(_, _, _)) -> 'false';
+maybe_migrate_to_modb(_) -> 'true'.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Clean old heard voice messages from db
@@ -1052,11 +1050,8 @@ cleanup_voicemail_box(AccountId, Timestamp, Box) ->
         {Older, _} ->
             lager:debug("there are ~b old messages to remove", [length(Older)]),
 
-            _ = [catch delete_old_message(AccountId, Msg) || Msg <- Older],
+            Ids = [kzd_box_message:media_id(M) || M <- Older],
+            _ = update_folder(?VM_FOLDER_DELETED, Ids, AccountId),
             lager:debug("soft-deleted old messages"),
             lager:debug("updated messages in voicemail box ~s", [BoxId])
     end.
-
--spec delete_old_message(ne_binary(), kz_json:object()) -> {'ok', kz_json:object()} | {'error', _}.
-delete_old_message(AccountId, Msg) ->
-    {'ok', _} = set_folder(<<"deleted">>, Msg, AccountId).
