@@ -6,6 +6,7 @@
 %%% @contributors
 %%%   Peter Defebvre
 %%%   James Aimonetti
+%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_number).
 
@@ -164,7 +165,6 @@ create_phone_number(Number) ->
 %% @public
 %% @doc
 %% Fetches then transition an existing number to the reserved state.
-%% Similar to kz_number_manager:reserve_number
 %% @end
 %%--------------------------------------------------------------------
 -spec reserve(ne_binary(), knm_number_options:options()) -> knm_number_return().

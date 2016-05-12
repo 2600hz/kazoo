@@ -1,21 +1,24 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015, 2600Hz INC
+%%% @copyright (C) 2015-2016, 2600Hz INC
 %%% @doc
-%%%
+%%%   Bulk operations on numbers. Follows knm_number's API.
 %%% @end
 %%% @contributors
 %%%   Peter Defebvre
+%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_numbers).
 
 -export([get/1, get/2
-         ,create/1, create/2
-         ,move/1, move/2, move/3
-         ,update/1, update/2, update/3
-         ,reconcile/2
+         ,create/2
+         ,move/2, move/3
+         ,update/2, update/3
          ,release/1, release/2
+         ,reconcile/2
+         ,reserve/2
+
          ,change_state/1, change_state/2
-         ,assigned_to_app/1, assigned_to_app/2
+         ,assign_to_app/2, assign_to_app/3
 
          ,free/1
          ,emergency_enabled/1
@@ -48,90 +51,39 @@ get(Nums, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec create(kz_proplist()) -> numbers_return().
-create(Props) ->
-    do_create(Props, []).
-
 -spec create(ne_binaries(), knm_number_options:options()) -> numbers_return().
 create(Nums, Options) ->
     [{Num, knm_number:create(Num, Options)} || Num <- Nums].
 
--spec do_create(kz_proplist(), numbers_return()) -> numbers_return().
-do_create([], Acc) -> Acc;
-do_create([{Num, Data}|Props], Acc) ->
-    Return = knm_number:create(Num, Data),
-    do_create(Props, [{Num, Return}|Acc]).
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec move(kz_proplist()) ->
-                  numbers_return().
--spec move(kz_proplist(), knm_number_options:options()) ->
+-spec move(ne_binaries(), ne_binary()) ->
                   numbers_return().
 -spec move(ne_binaries(), ne_binary(), knm_number_options:options()) ->
                   numbers_return().
-move(Props) ->
-    move(Props, knm_number_options:default()).
-
-move(Props, Options) ->
-    do_move(Props, Options, []).
+move(Nums, MoveTo) ->
+    move(Nums, MoveTo, knm_number_options:default()).
 
 move(Nums, MoveTo, Options) ->
     [{Num, knm_number:move(Num, MoveTo, Options)} || Num <- Nums].
 
--spec do_move(kz_proplist(), knm_number_options:options(), numbers_return()) ->
-                     numbers_return().
-do_move([], _Options, Acc) -> Acc;
-do_move([{Num, MoveTo}|Props], Options, Acc) ->
-    Return = knm_number:move(Num, MoveTo, Options),
-    do_move(Props, Options, [{Num, Return}|Acc]).
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec update(kz_proplist()) ->
-                    numbers_return().
--spec update(kz_proplist(), knm_number_options:options()) ->
+-spec update(ne_binaries(), knm_phone_number:set_functions()) ->
                     numbers_return().
 -spec update(ne_binaries(), knm_phone_number:set_functions(), knm_number_options:options()) ->
                     numbers_return().
-update(Props) ->
-    update(Props, knm_number_options:default()).
-
-update(Props, Options) ->
-    do_update(Props, Options, []).
+update(Nums, Routines) ->
+    update(Nums, Routines, knm_number_options:default()).
 
 update(Nums, Routines, Options) ->
     [{Num, knm_number:update(Num, Routines, Options)} || Num <- Nums].
-
--spec do_update(kz_proplist(), knm_number_options:options(), numbers_return()) ->
-                       numbers_return().
-do_update([], _Options, Acc) -> Acc;
-do_update([{Num, Data}|Props], Options, Acc) ->
-    Return = knm_number:update(Num, Data, Options),
-    do_update(Props, Options, [{Num, Return}|Acc]).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec reconcile(ne_binaries(), knm_number_options:options()) ->
-                       numbers_return().
-reconcile(Numbers, Options) ->
-    do_reconcile(Numbers, Options, []).
-
--spec do_reconcile(ne_binaries(), knm_number_options:options(), numbers_return()) ->
-                          numbers_return().
-do_reconcile([], _Options, Acc) -> Acc;
-do_reconcile([Number|Numbers], Options, Acc) ->
-    Return = knm_number:reconcile(Number, Options),
-    do_reconcile(Numbers, Options, [{Number, Return}|Acc]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -147,6 +99,26 @@ release(Nums) ->
 
 release(Nums, Options) ->
     [{Num, knm_number:release(Num, Options)} || Num <- Nums].
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec reconcile(ne_binaries(), knm_number_options:options()) ->
+                       numbers_return().
+reconcile(Nums, Options) ->
+    [{Num, knm_number:reconcile(Num, Options)} || Num <- Nums].
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec reserve(ne_binaries(), knm_number_options:options()) ->
+                     numbers_return().
+reserve(Nums, Options) ->
+    [{Num, knm_number:reserve(Num, Options)} || Num <- Nums].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -179,26 +151,19 @@ do_change_state([{Num, State}|Props], Options, Acc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec assigned_to_app(kz_proplist()) ->
-                             numbers_return().
--spec assigned_to_app(kz_proplist(), knm_number_options:options()) ->
-                             numbers_return().
-assigned_to_app(Props) ->
-    assigned_to_app(Props, knm_number_options:default()).
+-spec assign_to_app(ne_binaries(), api_binary()) ->
+                           numbers_return().
+-spec assign_to_app(ne_binaries(), api_binary(), knm_number_options:options()) ->
+                           numbers_return().
+assign_to_app(Nums, App) ->
+    assign_to_app(Nums, App, knm_number_options:default()).
 
-assigned_to_app(Props, Options) ->
-    do_assigned_to_app(Props, Options, []).
-
--spec do_assigned_to_app(kz_proplist(), knm_number_options:options(), numbers_return()) ->
-                                numbers_return().
-do_assigned_to_app([], _Options, Acc) -> Acc;
-do_assigned_to_app([{Num, App}|Props], Options, Acc) ->
-    Return = knm_number:assign_to_app(Num, App, Options),
-    do_assigned_to_app(Props, Options, [{Num, Return}|Acc]).
+assign_to_app(Nums, App, Options) ->
+    [{Num, knm_number:assign_to_app(Num, App, Options)} || Num <- Nums].
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
+%% @doc Release all of an account's numbers
 %% @end
 %%--------------------------------------------------------------------
 -spec free(ne_binary()) -> 'ok'.
