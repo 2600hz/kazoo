@@ -258,7 +258,7 @@ get_endpoints(Call, EndpointId, <<"device">>) ->
     Properties = kz_json:from_list([{<<"can_call_self">>, 'true'}
                                     ,{<<"suppress_clid">>, 'true'}
                                    ]),
-    case cf_endpoint:build(EndpointId, Properties, Call) of
+    case kz_endpoint:build(EndpointId, Properties, Call) of
         {'error', _} -> [];
         {'ok', []} -> [];
         {'ok', Endpoints} -> Endpoints
@@ -268,11 +268,11 @@ get_endpoints(Call, UserId, <<"user">>) ->
                                     ,{<<"suppress_clid">>, 'true'}
                                    ]),
     lists:foldl(fun(EndpointId, Acc) ->
-        case cf_endpoint:build(EndpointId, Properties, Call) of
+        case kz_endpoint:build(EndpointId, Properties, Call) of
             {'ok', Endpoint} -> Endpoint ++ Acc;
             {'error', _E} -> Acc
         end
-    end, [], cf_attributes:owned_by(UserId, <<"device">>, Call));
+    end, [], kz_attributes:owned_by(UserId, <<"device">>, Call));
 get_endpoints(_, _, _) ->
     [].
 

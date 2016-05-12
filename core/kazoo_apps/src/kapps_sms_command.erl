@@ -191,10 +191,10 @@ amqp_exchange_options(JObj) ->
 -spec send_amqp_sms(kz_proplist(), atom()) -> 'ok' | {'error', any()}.
 send_amqp_sms(Payload, Pool) ->
     case kz_amqp_worker:cast(Payload, fun kapi_sms:publish_outbound/1, Pool) of
+        'ok' -> 'ok';
+        {'error', _}=E -> E;
         {'returned', _JObj, Deliver} ->
-            {'error', kz_json:get_value(<<"message">>, Deliver, <<"unknown">>)};
-        {'timeout', _} -> {'error', 'timeout'};
-        Else -> Else
+            {'error', kz_json:get_value(<<"message">>, Deliver, <<"unknown">>)}
     end.
 
 -spec maybe_add_broker(api_binary(), api_binary(), api_binary(), ne_binary(), kz_proplist(), ne_binary()) -> 'ok'.

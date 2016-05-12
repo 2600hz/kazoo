@@ -172,7 +172,7 @@
 -record(kz_amqp_assignment, {timestamp = os:timestamp() :: kz_now() | '_'
                              ,consumer :: api_pid() | '$2' | '_'
                              ,consumer_ref :: api_reference() | '_'
-                             ,type = 'float' :: kz_amqp_type() | '_'
+                             ,type = 'float' :: kz_amqp_type() | 'undefined' | '_'
                              ,channel :: api_pid() | '$1' | '_'
                              ,channel_ref :: api_reference() | '_'
                              ,connection :: api_pid() | '$1' | '_'

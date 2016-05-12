@@ -103,7 +103,7 @@ build_device_endpoints(Endpoints, [{MemberId, Member} | Members], Call) ->
     of
         'true' ->
             M = kz_json:set_value(<<"source">>, ?MODULE, Member),
-            E = [{MemberId, cf_endpoint:build(MemberId, M, Call)}|Endpoints],
+            E = [{MemberId, kz_endpoint:build(MemberId, M, Call)}|Endpoints],
             build_device_endpoints(E, Members, Call);
         'false' -> build_device_endpoints(Endpoints, Members, Call)
     end.
@@ -113,7 +113,7 @@ build_user_endpoints(Endpoints, [], _) -> Endpoints;
 build_user_endpoints(Endpoints, [{MemberId, Member} | Members], Call) ->
     case kz_json:get_value(<<"type">>, Member, <<"user">>) =:= <<"user">> of
         'true' ->
-            DeviceIds = cf_attributes:owned_by(MemberId, <<"device">>, Call),
+            DeviceIds = kz_attributes:owned_by(MemberId, <<"device">>, Call),
             M = kz_json:set_values([{<<"source">>, ?MODULE}
                                     ,{<<"type">>, <<"device">>}
                                    ], Member),

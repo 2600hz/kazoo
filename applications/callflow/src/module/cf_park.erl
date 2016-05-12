@@ -264,7 +264,7 @@ create_slot(ParkerCallId, PresenceType, Call) ->
          ,{<<"CID-Number">>, kapps_call:caller_id_number(Call)}
          ,{<<"CID-Name">>, kapps_call:caller_id_name(Call)}
          ,{<<"CID-URI">>, kapps_call:from(Call)}
-         ,{<<"Hold-Media">>, cf_attributes:moh_attributes(RingbackId, <<"media_id">>, Call)}
+         ,{<<"Hold-Media">>, kz_attributes:moh_attributes(RingbackId, <<"media_id">>, Call)}
          ,{?PRESENCE_TYPE_KEY, PresenceType}
         ])).
 
@@ -447,7 +447,7 @@ maybe_set_hold_media(JObj, Call) ->
     case RingbackId =/= 'undefined' andalso HoldMedia =:= 'undefined' of
         'false' -> JObj;
         'true' ->
-            case cf_attributes:moh_attributes(RingbackId, <<"media_id">>, Call) of
+            case kz_attributes:moh_attributes(RingbackId, <<"media_id">>, Call) of
                 'undefined' -> JObj;
                 RingbackHoldMedia ->
                     kz_json:set_value(<<"Hold-Media">>, RingbackHoldMedia, JObj)
@@ -686,7 +686,7 @@ get_endpoint_id(Username, Call) ->
 ringback_parker('undefined', _, _, _, _) -> 'failed';
 ringback_parker(EndpointId, SlotNumber, TmpCID, Data, Call) ->
     Timeout = callback_timeout(Data, SlotNumber),
-    case cf_endpoint:build(EndpointId, kz_json:from_list([{<<"can_call_self">>, 'true'}]), Call) of
+    case kz_endpoint:build(EndpointId, kz_json:from_list([{<<"can_call_self">>, 'true'}]), Call) of
         {'ok', Endpoints} ->
             lager:info("attempting to ringback endpoint ~s", [EndpointId]),
             OriginalCID = kapps_call:caller_id_name(Call),

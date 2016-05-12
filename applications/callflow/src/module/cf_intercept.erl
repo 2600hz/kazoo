@@ -156,7 +156,7 @@ maybe_approved_group(Data, Call) ->
 
 -spec find_group_endpoints(ne_binary(), kapps_call:call()) -> ne_binaries().
 find_group_endpoints(GroupId, Call) ->
-    GroupsJObj = cf_attributes:groups(Call),
+    GroupsJObj = kz_attributes:groups(Call),
     case [kz_json:get_value(<<"value">>, JObj)
           || JObj <- GroupsJObj,
              kz_doc:id(JObj) =:= GroupId

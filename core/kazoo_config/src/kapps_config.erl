@@ -28,6 +28,8 @@
 -export([lock_db/0, lock_db/1, is_locked/0]).
 -export([flush/0, flush/1, flush/2, flush/3]).
 
+-export([migrate/0]).
+
 -type config_category() :: ne_binary() | nonempty_string() | atom().
 -type config_key() :: ne_binary() | nonempty_string() | atom() | [config_key(),...].
 
@@ -527,3 +529,217 @@ flush(Category, Keys, Node) ->
 -spec get_category(ne_binary()) -> fetch_ret().
 get_category(Category) ->
     kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, Category, [{'cache_failures', ['not_found']}]).
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function will move a system config setting from one location
+%%  to another.  It will create the document if it does not already
+%%  exist and will move per-node settings if they exist.
+%%  In the event that both the source and destination exist but
+%%  have different values it will not make any change.  The parameter
+%%  is only removed from the source after a successsful save of the
+%%  the destiation.
+%% @end
+%%--------------------------------------------------------------------
+-type migrate_setting() :: {ne_binary(), config_key()}.
+-type migrate_value() :: {ne_binary(), ne_binary(), config_key(), _}.
+-type migrate_values() :: [migrate_value()].
+
+-define(CONFIG_MIGRATIONS
+       ,[{{<<"callflow">>, <<"default_emergency_cid_number">>}
+         ,{<<"stepswitch">>, <<"default_emergency_cid_number">>}
+         }
+        ,{{<<"callflow">>, <<"ensure_valid_emergency_number">>}
+         ,{<<"stepswitch">>, <<"ensure_valid_emergency_cid">>}
+         }
+        ,{{<<"trunkstore">>, <<"ensure_valid_emergency_number">>}
+         ,{<<"stepswitch">>, <<"ensure_valid_emergency_cid">>}
+         }
+        ,{{<<"callflow">>, <<"default_caller_id_number">>}
+         ,{<<"kazoo_endpoint">>, <<"default_caller_id_number">>}
+         }
+        ,{{<<"callflow">>, <<"default_caller_id_name">>}
+         ,{<<"kazoo_endpoint">>, <<"default_caller_id_name">>}
+         }
+        ,{{<<"callflow">>, <<"default_can_text_self">>}
+         ,{<<"kazoo_endpoint">>, <<"default_can_text_self">>}
+         }
+        ,{{<<"callflow">>, <<"restrict_to_known_types">>}
+         ,{<<"kazoo_endpoint">>, <<"restrict_to_known_types">>}
+         }
+        ,{{<<"callflow">>, <<"sip_transport">>}
+         ,{<<"kazoo_endpoint">>, <<"sip_transport">>}
+         }
+        ,{{<<"callflow">>, <<"custom_sip_interface">>}
+         ,{<<"kazoo_endpoint">>, <<"custom_sip_interface">>}
+         }
+        ,{{<<"callflow">>, <<"should_add_diversion_header">>}
+         ,{<<"kazoo_endpoint">>, <<"should_add_diversion_header">>}
+         }
+        ,{{<<"callflow">>, <<"default_ignore_completed_elsewhere">>}
+         ,{<<"kazoo_endpoint">>, <<"default_ignore_completed_elsewhere">>}
+         }
+        ,{{<<"callflow.mobile">>, <<"create_sip_endpoint">>}
+         ,{<<"kazoo_endpoint.mobile">>, <<"create_sip_endpoint">>}
+         }
+        ,{{<<"callflow.mobile">>, <<"codecs">>}
+         ,{<<"kazoo_endpoint.mobile">>, <<"codecs">>}
+         }
+        ,{{<<"callflow.mobile">>, <<"custom_sip_interface">>}
+         ,{<<"kazoo_endpoint.mobile">>, <<"custom_sip_interface">>}
+         }
+        ,{{<<"callflow.mobile">>, <<"formatter">>}
+         ,{<<"kazoo_endpoint.mobile">>, <<"formatter">>}
+         }
+        ,{{<<"callflow.mobile">>, <<"prefix">>}
+         ,{<<"kazoo_endpoint.mobile">>, <<"prefix">>}
+         }
+        ,{{<<"callflow.mobile">>, <<"suffix">>}
+         ,{<<"kazoo_endpoint.mobile">>, <<"suffix">>}
+         }
+        ,{{<<"callflow.mobile">>, <<"realm">>}
+         ,{<<"kazoo_endpoint.mobile">>, <<"realm">>}
+         }
+        ,{{<<"callflow.mobile">>, <<"path">>}
+         ,{<<"kazoo_endpoint.mobile">>, <<"path">>}
+         }
+        ,{{<<"callflow.mobile">>, <<"sms_interface">>}
+         ,{<<"kazoo_endpoint.mobile">>, <<"sms_interface">>}
+         }
+        ,{{<<"callflow.mobile">>, [<<"sms">>, <<"connections">>]}
+         ,{<<"kazoo_endpoint.mobile">>, [<<"sms">>, <<"connections">>]}
+         }
+        ,{{<<"callflow">>, <<"recorder_module">>}
+         ,{<<"kazoo_endpoint">>, <<"recorder_module">>}
+         }
+        ]).
+
+-spec migrate() -> 'ok'.
+migrate() ->
+    _ = [migrate_config_setting(From, To)
+         || {From, To} <- ?CONFIG_MIGRATIONS
+        ],
+    'ok'.
+
+-spec migrate_config_setting(migrate_setting(), migrate_setting()) ->
+                                    'ok' |
+                                    {'error', any()}.
+migrate_config_setting(From, To) ->
+    case remove_config_setting(From) of
+        {'ok', _, []} -> 'ok';
+        {'ok', JObj, Removed} ->
+            migrate_config_setting(JObj, Removed, To);
+        {'error', 'not_found'} -> 'ok';
+        {'error', Reason} -> {'error', {'remove', Reason}}
+    end.
+
+-spec migrate_config_setting(kz_json:object(), migrate_values(), migrate_setting()) ->
+                                    'ok' |
+                                    {'error', any()}.
+migrate_config_setting(UpdatedFrom, Removed, To) ->
+    case add_config_setting(To, Removed) of
+        {'ok', UpdatedTo} ->
+            {'ok', _} = kz_datamgr:save_doc(?KZ_CONFIG_DB, UpdatedTo),
+            {'ok', _} = kz_datamgr:save_doc(?KZ_CONFIG_DB, UpdatedFrom),
+            'ok';
+        {'error', Reason} -> {'error', {'add', Reason}}
+    end.
+
+-spec add_config_setting(migrate_setting(), migrate_values()) ->
+                                'ok' |
+                                {'error', any()}.
+add_config_setting({Id, Setting}, Values) ->
+    add_config_setting(Id, Setting, Values).
+
+-spec add_config_setting(ne_binary(), config_key(), migrate_values()) ->
+                                'ok' |
+                                {'error', any()}.
+add_config_setting(Id, Setting, Values) when is_binary(Id) ->
+    case kz_datamgr:open_doc(?KZ_CONFIG_DB, Id) of
+        {'ok', JObj} -> add_config_setting(JObj, Setting, Values);
+        {'error', 'not_found'} ->
+            add_config_setting(
+              kz_doc:update_pvt_parameters(
+                kz_doc:set_id(kz_json:new(), Id)
+                ,?KZ_CONFIG_DB
+                ,[{'type', <<"config">>}]
+               )
+              ,Setting
+              ,Values
+             );
+        {'error', _}=Error -> Error
+    end;
+add_config_setting(JObj, _, []) -> {'ok', JObj};
+add_config_setting(JObj, ToSetting, [{FromId, Node, FromSetting, Value} | Values]) ->
+    ToId  = kz_doc:id(JObj),
+    Key = config_setting_key(Node, ToSetting),
+    case kz_json:get_value(Key, JObj) of
+        'undefined' ->
+            io:format(
+              "migrating setting from ~s ~s.~s to ~s ~s.~s value ~p~n"
+              ,[FromId, Node, FromSetting
+                ,ToId, Node, ToSetting
+                ,Value
+               ]
+             ),
+            add_config_setting(
+              kz_json:set_value(Key, Value, JObj)
+              ,ToSetting
+              ,Values
+             );
+        Value -> add_config_setting(JObj, ToSetting, Values);
+        _Else ->
+            io:format("the system tried to move the parameter listed below but found a different setting already there, you need to correct this disparity manually!~n", []),
+            io:format("  Source~n    db: ~s~n    id: ~s~n    key: ~s ~s~n    value: ~p~n"
+                      ,[?KZ_CONFIG_DB, FromId, Node, FromSetting, Value]
+                     ),
+            io:format("  Destination~n    db: ~s~n    id: ~s~n    key: ~s ~s~n    value: ~p~n"
+                      ,[?KZ_CONFIG_DB, ToId, Node, ToSetting, _Else]
+                     ),
+            {'error', 'disparity'}
+    end.
+
+-spec remove_config_setting(migrate_setting()) ->
+                                   {'ok', kz_json:object(), migrate_values()} |
+                                   {'error', any()}.
+remove_config_setting({Id, Setting}) ->
+    remove_config_setting(Id, Setting).
+
+-spec remove_config_setting(ne_binary() | kz_json:object(), config_key()) ->
+                                   {'ok', kz_json:object(), migrate_values()} |
+                                   {'error', any()}.
+remove_config_setting(Id, Setting) when is_binary(Id) ->
+    case kz_datamgr:open_doc(?KZ_CONFIG_DB, Id) of
+        {'ok', JObj} -> remove_config_setting(JObj, Setting);
+        {'error', _}=Error -> Error
+    end;
+remove_config_setting(JObj, Setting) ->
+    Id = kz_doc:id(JObj),
+    Keys =
+        [{Id, Node, Setting}
+         || Node <- kz_json:get_public_keys(JObj)
+        ],
+    remove_config_setting(Keys, JObj, []).
+
+-spec remove_config_setting([{ne_binary(), ne_binary(), config_key()}], kz_json:object(), migrate_values()) ->
+                                   {'ok', kz_json:object(), migrate_values()}.
+remove_config_setting([], JObj, Removed) ->
+    {'ok', JObj, Removed};
+remove_config_setting([{Id, Node, Setting} | Keys], JObj, Removed) ->
+    Key = config_setting_key(Node, Setting),
+    case kz_json:get_value(Key, JObj) of
+        'undefined' -> remove_config_setting(Keys, JObj, Removed);
+        Value ->
+            remove_config_setting(
+              Keys
+              ,kz_json:delete_key(Key, JObj)
+              ,[{Id, Node, Setting, Value} | Removed]
+             )
+    end.
+
+-spec config_setting_key(ne_binary(), config_key()) -> ne_binaries().
+%% NOTE: to support nested keys, update this merge function
+config_setting_key(Node, Setting) ->
+    [Node, Setting].

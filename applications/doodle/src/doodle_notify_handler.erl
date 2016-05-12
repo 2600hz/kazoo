@@ -28,7 +28,7 @@ handle_account_req(AccountDb, Username) ->
     AccountId = kz_util:format_account_id(AccountDb),
     case cf_util:endpoint_id_by_sip_username(AccountDb, Username) of
         {'ok', EndpointId} ->
-            case cf_endpoint:get(EndpointId, AccountDb) of
+            case kz_endpoint:get(EndpointId, AccountDb) of
                 {'ok', Endpoint} ->
                     OwnerId = kz_json:get_value(<<"owner_id">>, Endpoint),
                     doodle_maintenance:start_check_sms_by_device_id(AccountId, EndpointId),

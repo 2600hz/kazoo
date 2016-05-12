@@ -31,7 +31,7 @@ handle_eavesdrop_req(JObj, _Props) ->
                            {'ok', kz_json:objects()} |
                            {'error', any()}.
 get_endpoints(AccountId, EndpointId) ->
-    cf_endpoint:build(EndpointId, new_call(AccountId)).
+    kz_endpoint:build(EndpointId, new_call(AccountId)).
 
 -spec new_call(ne_binary()) -> kapps_call:call().
 new_call(AccountId) ->

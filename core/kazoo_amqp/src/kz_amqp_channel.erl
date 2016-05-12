@@ -145,24 +145,33 @@ publish(#'basic.publish'{routing_key=RoutingKey}=BasicPub, AmqpMsg) ->
                          )
     end.
 
--spec basic_publish(kz_amqp_assignment(), basic_publish(), amqp_msg()) -> 'ok'.
-basic_publish(#kz_amqp_assignment{channel=Channel, broker=_Broker}
-              ,#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub
-              ,AmqpMsg)
+-spec basic_publish(kz_amqp_assignment() | {'error', 'no_channel'}, basic_publish(), amqp_msg()) -> 'ok'.
+basic_publish(#kz_amqp_assignment{channel=Channel
+                                 ,broker=_Broker
+                                 }
+              ,#'basic.publish'{exchange=_Exchange
+                               ,routing_key=_RK
+                               }=BasicPub
+             ,AmqpMsg)
   when is_pid(Channel) ->
     _ = (catch amqp_channel:call(Channel, BasicPub, AmqpMsg)),
     lager:debug("published to ~s(~s) exchange (routing key ~s) via ~p"
                 ,[_Exchange, _Broker, _RK, Channel]
                );
 basic_publish({'error', 'no_channel'}
-              ,#'basic.publish'{exchange=_Exchange, routing_key=_RK}
-              ,AmqpMsg) ->
+             ,#'basic.publish'{exchange=_Exchange
+                              ,routing_key=_RK
+                              }
+             ,AmqpMsg) ->
     lager:debug("dropping payload to ~s exchange (routing key ~s): ~s"
-                ,[_Exchange, _RK, AmqpMsg#'amqp_msg'.payload]
+               ,[_Exchange, _RK, AmqpMsg#'amqp_msg'.payload]
                );
-basic_publish(_, #'basic.publish'{exchange=_Exchange, routing_key=_RK}, AmqpMsg) ->
+basic_publish(_, #'basic.publish'{exchange=_Exchange
+                                 ,routing_key=_RK
+                                 }
+             ,AmqpMsg) ->
     lager:debug("dropping payload to ~s exchange (routing key ~s): ~s"
-                ,[_Exchange, _RK, AmqpMsg#'amqp_msg'.payload]
+               ,[_Exchange, _RK, AmqpMsg#'amqp_msg'.payload]
                ).
 
 -spec maybe_split_routing_key(binary()) -> {api_pid(), binary()}.
@@ -170,8 +179,10 @@ maybe_split_routing_key(<<"consumer://", _/binary>> = RoutingKey) ->
     Size = byte_size(RoutingKey),
     {Start, _} = lists:last(binary:matches(RoutingKey, <<"/">>)),
     {list_to_pid(kz_util:to_list(binary:part(RoutingKey, 11, Start - 11)))
-     ,binary:part(RoutingKey, Start + 1, Size - Start - 1)};
-maybe_split_routing_key(RoutingKey) -> {'undefined', RoutingKey}.
+    ,binary:part(RoutingKey, Start + 1, Size - Start - 1)
+    };
+maybe_split_routing_key(RoutingKey) ->
+    {'undefined', RoutingKey}.
 
 -spec command(kz_amqp_command()) -> command_ret().
 command(#'exchange.declare'{exchange=_Ex, type=_Ty}=Exchange) ->
@@ -202,7 +213,8 @@ command(#kz_amqp_assignment{consumer=Consumer
             kz_amqp_history:update_consumer_tag(Consumer, OldTag, NewTag);
         _Else ->
             lager:warning("failed to re-establish consumer for ~p: ~p"
-                          ,[Consumer, _Else])
+                         ,[Consumer, _Else]
+                         )
     end;
 command(#kz_amqp_assignment{consumer=Consumer
                             ,channel=Channel
@@ -225,7 +237,9 @@ command(#kz_amqp_assignment{channel=Channel
                           Result = amqp_channel:call(Channel, Command),
                           handle_command_result(Result, Command, Assignment);
                      (_) -> 'ok'
-                  end, kz_amqp_history:list_consume(Consumer));
+                  end
+                 ,kz_amqp_history:list_consume(Consumer)
+                 );
 command(#kz_amqp_assignment{channel=Channel
                             ,consumer=Consumer
                            }=Assignment

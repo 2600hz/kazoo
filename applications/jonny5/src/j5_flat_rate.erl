@@ -19,8 +19,8 @@
 -define(WHITELIST, ?DEFAULT_WHITELIST).
 -define(BLACKLIST, ?DEFAULT_BLACKLIST).
 -else.
--define(WHITELIST, kapps_config:get(<<"jonny5">>, <<"flat_rate_whitelist">>, ?DEFAULT_WHITELIST)).
--define(BLACKLIST, kapps_config:get(<<"jonny5">>, <<"flat_rate_blacklist">>, ?DEFAULT_BLACKLIST)).
+-define(WHITELIST, kapps_config:get(?APP_NAME, <<"flat_rate_whitelist">>, ?DEFAULT_WHITELIST)).
+-define(BLACKLIST, kapps_config:get(?APP_NAME, <<"flat_rate_blacklist">>, ?DEFAULT_BLACKLIST)).
 -endif.
 
 %%--------------------------------------------------------------------

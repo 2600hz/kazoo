@@ -250,7 +250,7 @@ is_valid(_Domains, {'error', E}) ->
     {'false', E};
 is_valid(Domains, {'ok', SchemaJObj}) ->
     case kz_json_schema:validate(SchemaJObj
-                                 ,Domains
+                                ,Domains
                                 )
     of
         {'ok', _JObj} -> 'true';

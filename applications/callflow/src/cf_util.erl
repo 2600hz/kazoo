@@ -17,19 +17,16 @@
 -export([unsolicited_owner_mwi_update/2]).
 -export([unsolicited_endpoint_mwi_update/2]).
 -export([alpha_to_dialpad/1, ignore_early_media/1]).
--export([correct_media_path/2]).
+
 -export([lookup_callflow/1, lookup_callflow/2]).
 -export([handle_bridge_failure/2, handle_bridge_failure/3]).
 -export([send_default_response/2]).
--export([get_sip_realm/2, get_sip_realm/3]).
+
 -export([get_operator_callflow/1]).
 -export([endpoint_id_by_sip_username/2]).
 -export([owner_ids_by_sip_username/2]).
 -export([apply_dialplan/2]).
--export([encryption_method_map/2]).
--export([maybe_start_metaflow/2
-         ,maybe_start_metaflows/2
-        ]).
+
 -export([sip_users_from_device_ids/2]).
 
 -export([caller_belongs_to_group/2
@@ -45,10 +42,7 @@
 
 -export([wait_for_noop/2]).
 -export([start_task/3]).
--export([maybe_start_call_recording/2
-         ,start_call_recording/2
-         ,start_event_listener/3
-         ,recording_module/1
+-export([start_event_listener/3
          ,event_listener_name/2
         ]).
 
@@ -64,13 +58,6 @@
 -define(OPERATOR_KEY, kapps_config:get(?CF_CONFIG_CAT, <<"operator_key">>, <<"0">>)).
 -define(MWI_SEND_UNSOLICITATED_UPDATES, <<"mwi_send_unsoliciated_updates">>).
 -define(VM_CACHE_KEY(Db, Id), {?MODULE, 'vmbox', Db, Id}).
-
--define(ENCRYPTION_MAP, [{<<"srtp">>, [{<<"RTP-Secure-Media">>, <<"true">>}]}
-                        ,{<<"zrtp">>, [{<<"ZRTP-Secure-Media">>, <<"true">>}
-                                       ,{<<"ZRTP-Enrollment">>, <<"true">>}
-                                      ]}
-                        ]).
--define(RECORDING_ARGS(Call, Data), [kapps_call:clear_helpers(Call) , Data]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -260,7 +247,7 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
     ViewOptions = [{'key', [OwnerId, <<"device">>]}
                    ,'include_docs'
                   ],
-    case kz_datamgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"kz_attributes/owned">>, ViewOptions) of
         {'ok', JObjs} ->
             {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
             AccountId = kz_util:format_account_id(AccountDb, 'raw'),
@@ -277,7 +264,7 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
 maybe_send_mwi_update(JObj, AccountId, New, Saved) ->
     J = kz_json:get_value(<<"doc">>, JObj),
     Username = kz_device:sip_username(J),
-    Realm = get_sip_realm(J, AccountId),
+    Realm = kz_endpoint:get_sip_realm(J, AccountId),
     OwnerId = get_endpoint_owner(J),
     case kz_device:sip_method(J) =:= <<"password">>
         andalso Username =/= 'undefined'
@@ -323,7 +310,7 @@ maybe_send_endpoint_mwi_update(_AccountDb, _JObj, 'false') ->
 maybe_send_endpoint_mwi_update(AccountDb, JObj, 'true') ->
     AccountId = kz_util:format_account_id(AccountDb, 'raw'),
     Username = kz_device:sip_username(JObj),
-    Realm = get_sip_realm(JObj, AccountId),
+    Realm = kz_endpoint:get_sip_realm(JObj, AccountId),
     OwnerId = get_endpoint_owner(JObj),
     case kz_device:sip_method(JObj) =:= <<"password">>
         andalso Username =/= 'undefined'
@@ -413,17 +400,6 @@ ignore_early_media(Endpoints) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% given a media path that is just a media id correct it to include
-%% the account id
-%% @end
-%%--------------------------------------------------------------------
--spec correct_media_path(api_binary(), kapps_call:call()) -> api_binary().
-correct_media_path(Media, Call) ->
-    kz_media_util:media_path(Media, Call).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
@@ -442,7 +418,7 @@ owner_ids_by_sip_username(AccountDb, Username) ->
                                            {'error', any()}.
 get_owner_ids_by_sip_username(AccountDb, Username) ->
     ViewOptions = [{'key', Username}],
-    case kz_datamgr:get_results(AccountDb, <<"cf_attributes/sip_username">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"kz_attributes/sip_username">>, ViewOptions) of
         {'ok', [JObj]} ->
             EndpointId = kz_doc:id(JObj),
             OwnerIds = kz_json:get_value(<<"value">>, JObj, []),
@@ -478,7 +454,7 @@ endpoint_id_by_sip_username(AccountDb, Username) ->
                                              {'error', 'not_found'}.
 get_endpoint_id_by_sip_username(AccountDb, Username) ->
     ViewOptions = [{'key', Username}],
-    case kz_datamgr:get_results(AccountDb, <<"cf_attributes/sip_username">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"kz_attributes/sip_username">>, ViewOptions) of
         {'ok', [JObj]} ->
             EndpointId = kz_doc:id(JObj),
             CacheProps = [{'origin', {'db', AccountDb, EndpointId}}],
@@ -562,30 +538,6 @@ send_default_response(Cause, Call) ->
                     _ = kapps_call_command:wait_for_noop(Call, NoopId),
                     'ok'
             end
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Get the sip realm
-%% @end
-%%--------------------------------------------------------------------
--spec get_sip_realm(kz_json:object(), ne_binary()) -> api_binary().
-get_sip_realm(SIPJObj, AccountId) ->
-    get_sip_realm(SIPJObj, AccountId, 'undefined').
-
--spec get_sip_realm(kz_json:object(), ne_binary(), Default) -> Default | ne_binary().
-get_sip_realm(SIPJObj, AccountId, Default) ->
-    case kz_device:sip_realm(SIPJObj) of
-        'undefined' -> get_account_realm(AccountId, Default);
-        Realm -> Realm
-    end.
-
--spec get_account_realm(ne_binary(), api_binary()) -> api_binary().
-get_account_realm(AccountId, Default) ->
-    case kz_util:get_account_realm(AccountId) of
-        'undefined' -> Default;
-        Else -> Else
     end.
 
 %%-----------------------------------------------------------------------------
@@ -788,48 +740,6 @@ may_be_dialplan_suits({Key, Val}, Acc, Names) ->
         'false' -> Acc
     end.
 
--spec encryption_method_map(api_object(), api_binaries() | kz_json:object()) -> api_object().
-encryption_method_map(JObj, []) -> JObj;
-encryption_method_map(JObj, [Method|Methods]) ->
-    case props:get_value(Method, ?ENCRYPTION_MAP, []) of
-        [] -> encryption_method_map(JObj, Methods);
-        Values ->
-            encryption_method_map(kz_json:set_values(Values, JObj), Method)
-    end;
-encryption_method_map(JObj, Endpoint) ->
-    encryption_method_map(JObj
-                          ,kz_json:get_value([<<"media">>
-                                              ,<<"encryption">>
-                                              ,<<"methods">>
-                                             ]
-                                             ,Endpoint
-                                             ,[]
-                                            )
-                         ).
-
--spec maybe_start_call_recording(kz_json:object(), kapps_call:call()) -> kapps_call:call().
-maybe_start_call_recording(RecordCall, Call) ->
-    case kz_util:is_empty(RecordCall) of
-        'true' -> Call;
-        'false' -> start_call_recording(RecordCall, Call)
-    end.
-
--spec start_call_recording(kz_json:object(), kapps_call:call()) -> kapps_call:call().
-start_call_recording(Data, Call) ->
-    Mod = recording_module(Call),
-    Name = event_listener_name(Call, Mod),
-    X = cf_event_handler_sup:new(Name, Mod, ?RECORDING_ARGS(Call, Data)),
-    lager:debug("started ~s process ~s : ~p", [Mod, Name, X]),
-    Call.
-
--spec recording_module(kapps_call:call()) -> atom().
-recording_module(Call) ->
-    AccountId = kapps_call:account_id(Call),
-    case kapps_account_config:get(AccountId, ?CF_CONFIG_CAT, <<"recorder_module">>) of
-        'undefined' -> kapps_config:get_atom(?CF_CONFIG_CAT, <<"recorder_module">>, 'kz_media_recording');
-        Mod -> kz_util:to_atom(Mod, 'true')
-    end.
-
 -spec start_event_listener(kapps_call:call(), atom(), list()) ->
           {'ok', pid()} | {'error', any()}.
 start_event_listener(Call, Mod, Args) ->
@@ -849,42 +759,6 @@ start_event_listener(Call, Mod, Args) ->
 event_listener_name(Call, Module) ->
     <<(kapps_call:call_id_direct(Call))/binary, "-", (kz_util:to_binary(Module))/binary>>.
 
--spec maybe_start_metaflows(kapps_call:call(), kz_json:objects()) -> 'ok'.
--spec maybe_start_metaflows(kapps_call:call(), kz_json:object(), api_binary()) -> 'ok'.
--spec maybe_start_metaflow(kapps_call:call(), kz_json:object()) -> 'ok'.
-
-maybe_start_metaflows(Call, Endpoints) ->
-    maybe_start_metaflows(Call, Endpoints, kapps_call:custom_channel_var(<<"Metaflow-App">>, Call)).
-
-maybe_start_metaflows(Call, Endpoints, 'undefined') ->
-    _ = [maybe_start_metaflow(Call, Endpoint) || Endpoint <- Endpoints],
-    'ok';
-maybe_start_metaflows(_Call, _Endpoints, _) -> 'ok'.
-
-maybe_start_metaflow(Call, Endpoint) ->
-    case kz_json:get_first_defined([<<"metaflows">>, <<"Metaflows">>], Endpoint) of
-        'undefined' -> 'ok';
-        ?EMPTY_JSON_OBJECT -> 'ok';
-        JObj ->
-            Id = kz_json:get_first_defined([<<"_id">>, <<"Endpoint-ID">>], Endpoint),
-            API = props:filter_undefined(
-                    [{<<"Endpoint-ID">>, Id}
-                     ,{<<"Call">>, kapps_call:to_json(Call)}
-                     ,{<<"Numbers">>, kz_json:get_value(<<"numbers">>, JObj)}
-                     ,{<<"Patterns">>, kz_json:get_value(<<"patterns">>, JObj)}
-                     ,{<<"Binding-Digit">>, kz_json:get_value(<<"binding_digit">>, JObj)}
-                     ,{<<"Digit-Timeout">>, kz_json:get_value(<<"digit_timeout">>, JObj)}
-                     ,{<<"Listen-On">>, kz_json:get_value(<<"listen_on">>, JObj, <<"self">>)}
-                     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-                    ]),
-            lager:debug("sending metaflow for endpoint: ~s: ~s"
-                        ,[Id
-                          ,kz_json:get_value(<<"listen_on">>, JObj)
-                         ]
-                       ),
-            kapps_util:amqp_pool_send(API, fun kapi_dialplan:publish_metaflow/1)
-    end.
-
 -spec caller_belongs_to_group(ne_binary(), kapps_call:call()) -> boolean().
 caller_belongs_to_group(GroupId, Call) ->
     maybe_belongs_to_group(kapps_call:authorizing_id(Call), GroupId, Call).
@@ -899,7 +773,7 @@ caller_belongs_to_user(UserId, Call) ->
 
 -spec find_group_endpoints(ne_binary(), kapps_call:call()) -> ne_binaries().
 find_group_endpoints(GroupId, Call) ->
-    GroupsJObj = cf_attributes:groups(Call),
+    GroupsJObj = kz_attributes:groups(Call),
     case [kz_json:get_value(<<"value">>, JObj)
           || JObj <- GroupsJObj,
              kz_doc:id(JObj) =:= GroupId
@@ -924,7 +798,7 @@ find_endpoints(Ids, GroupEndpoints, Call) ->
                                  ne_binaries().
 find_user_endpoints([], DeviceIds, _) -> DeviceIds;
 find_user_endpoints(UserIds, DeviceIds, Call) ->
-    UserDeviceIds = cf_attributes:owned_by(UserIds, <<"device">>, Call),
+    UserDeviceIds = kz_attributes:owned_by(UserIds, <<"device">>, Call),
     lists:merge(lists:sort(UserDeviceIds), DeviceIds).
 
 -spec find_channels(ne_binaries(), kapps_call:call()) -> kz_json:objects().
@@ -976,7 +850,7 @@ sip_users_from_device_id(EndpointId, Acc, Call) ->
 
 -spec sip_user_from_device_id(ne_binary(), kapps_call:call()) -> api_binary().
 sip_user_from_device_id(EndpointId, Call) ->
-    case cf_endpoint:get(EndpointId, Call) of
+    case kz_endpoint:get(EndpointId, Call) of
         {'error', _} -> 'undefined';
         {'ok', Endpoint} ->
             kz_device:sip_username(Endpoint)
@@ -1101,4 +975,3 @@ vm_count(JObj) ->
 vm_count_by_owner(_AccountDb, 'undefined') -> {0, 0};
 vm_count_by_owner(<<_/binary>> = AccountDb, <<_/binary>> = OwnerId) ->
     kz_vm_message:count_by_owner(AccountDb, OwnerId).
-

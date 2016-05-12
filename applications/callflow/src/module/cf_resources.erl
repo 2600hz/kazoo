@@ -76,7 +76,7 @@ handle_bridge_failure(Cause, Code, Call) ->
 %%--------------------------------------------------------------------
 -spec build_offnet_request(kz_json:object(), kapps_call:call()) -> kz_proplist().
 build_offnet_request(Data, Call) ->
-    {ECIDNum, ECIDName} = cf_attributes:caller_id(<<"emergency">>, Call),
+    {ECIDNum, ECIDName} = kz_attributes:caller_id(<<"emergency">>, Call),
     {CIDNumber, CIDName} = get_caller_id(Data, Call),
     props:filter_undefined(
       [{?KEY_ACCOUNT_ID, kapps_call:account_id(Call)}
@@ -100,7 +100,7 @@ build_offnet_request(Data, Call) ->
        ,{?KEY_MSG_ID, kz_util:rand_hex_binary(6)}
        ,{?KEY_OUTBOUND_CALLER_ID_NAME, CIDName}
        ,{?KEY_OUTBOUND_CALLER_ID_NUMBER, CIDNumber}
-       ,{?KEY_PRESENCE_ID, cf_attributes:presence_id(Call)}
+       ,{?KEY_PRESENCE_ID, kz_attributes:presence_id(Call)}
        ,{?KEY_RESOURCE_TYPE, ?RESOURCE_TYPE_AUDIO}
        ,{?KEY_RINGBACK, kz_json:get_value(<<"ringback">>, Data)}
        ,{?KEY_T38_ENABLED, get_t38_enabled(Call)}
@@ -120,7 +120,7 @@ get_channel_vars(Call) ->
 -spec get_channel_vars(api_binary(), kapps_call:call()) -> kz_proplist().
 get_channel_vars('undefined', Call) -> [maybe_require_ignore_early_media(Call)];
 get_channel_vars(EndpointId, Call) ->
-    case cf_endpoint:get(EndpointId, kapps_call:account_db(Call)) of
+    case kz_endpoint:get(EndpointId, kapps_call:account_db(Call)) of
         {'ok', Endpoint} ->
             [{<<"Authorizing-ID">>, EndpointId}
              ,{<<"Owner-ID">>, kz_json:get_value(<<"owner_id">>, Endpoint)}
@@ -161,7 +161,7 @@ update_ccvs(Call) ->
 
 -spec maybe_set_bridge_generate_comfort_noise(kapps_call:call()) -> api_binary().
 maybe_set_bridge_generate_comfort_noise(Call) ->
-    case cf_endpoint:get(Call) of
+    case kz_endpoint:get(Call) of
         {'ok', Endpoint} ->
             maybe_has_comfort_noise_option_enabled(Endpoint);
         {'error', _E} ->
@@ -183,7 +183,7 @@ get_account_realm(Call) ->
 -spec get_caller_id(kz_json:object(), kapps_call:call()) -> {api_binary(), api_binary()}.
 get_caller_id(Data, Call) ->
     Type = kz_json:get_value(<<"caller_id_type">>, Data, <<"external">>),
-    cf_attributes:caller_id(Type, Call).
+    kz_attributes:caller_id(Type, Call).
 
 -spec get_hunt_account_id(kz_json:object(), kapps_call:call()) -> api_binary().
 get_hunt_account_id(Data, Call) ->
@@ -206,7 +206,7 @@ get_request_did(Data, Call) ->
     case kz_json:is_true(<<"do_not_normalize">>, Data) of
         'true' -> get_original_request_user(Call);
         'false' ->
-            case cf_endpoint:get(Call) of
+            case kz_endpoint:get(Call) of
                 {'error', _ } -> maybe_bypass_e164(Data, Call);
                 {'ok', Endpoint} ->
                     maybe_apply_dialplan(Endpoint, Data, Call)
@@ -254,7 +254,7 @@ get_sip_headers(Data, Call) ->
                         end
                 end
                ],
-    AuthEndCSH = case cf_endpoint:get(Call) of
+    AuthEndCSH = case kz_endpoint:get(Call) of
                      {'ok', AuthorizingEndpoint} ->
                          kz_device:custom_sip_headers_outbound(AuthorizingEndpoint, kz_json:new());
                      _ -> kz_json:new()
@@ -274,7 +274,7 @@ get_ignore_early_media(Data) ->
 
 -spec get_t38_enabled(kapps_call:call()) -> api_boolean().
 get_t38_enabled(Call) ->
-    case cf_endpoint:get(Call) of
+    case kz_endpoint:get(Call) of
         {'ok', JObj} -> kz_json:is_true([<<"media">>, <<"fax_option">>], JObj);
         {'error', _} -> 'undefined'
     end.
@@ -293,7 +293,7 @@ get_flags(Data, Call) ->
 -spec maybe_get_endpoint_flags(kz_json:object(), kapps_call:call(), ne_binaries()) ->
                                       ne_binaries().
 maybe_get_endpoint_flags(_Data, Call, Flags) ->
-    case cf_endpoint:get(Call) of
+    case kz_endpoint:get(Call) of
         {'error', _} -> Flags;
         {'ok', Endpoint} ->
             get_endpoint_flags(Flags, Endpoint)
@@ -341,7 +341,7 @@ get_flow_dynamic_flags(Data, Call, Flags) ->
 -spec maybe_get_endpoint_dynamic_flags(kz_json:object(), kapps_call:call(), ne_binaries()) ->
                                         ne_binaries().
 maybe_get_endpoint_dynamic_flags(_Data, Call, Flags) ->
-    case cf_endpoint:get(Call) of
+    case kz_endpoint:get(Call) of
         {'error', _} -> Flags;
         {'ok', Endpoint} ->
             get_endpoint_dynamic_flags(Call, Flags, Endpoint)

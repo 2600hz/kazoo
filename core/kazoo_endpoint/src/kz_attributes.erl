@@ -6,7 +6,7 @@
 %%%   Karl Anderson
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(cf_attributes).
+-module(kz_attributes).
 
 -export([temporal_rules/1]).
 -export([groups/1, groups/2]).
@@ -22,7 +22,7 @@
 -export([maybe_get_assigned_number/3]).
 -export([maybe_get_account_default_number/4]).
 
--include("callflow.hrl").
+-include("kazoo_endpoint.hrl").
 
 -define(CALLER_PRIVACY(CCVs)
        ,(kz_json:is_true(<<"Caller-Privacy-Number">>, CCVs, 'false')
@@ -97,7 +97,7 @@ maybe_get_dynamic_cid(Validate, Attribute, Call) ->
 -spec maybe_get_endpoint_cid(boolean(), ne_binary(), kapps_call:call()) ->
                                     {api_binary(), api_binary()}.
 maybe_get_endpoint_cid(Validate, Attribute, Call) ->
-    case cf_endpoint:get(Call) of
+    case kz_endpoint:get(Call) of
         {'error', _R} ->
             lager:info("unable to get endpoint: ~p", [_R]),
             maybe_normalize_cid('undefined', 'undefined', Validate, Attribute, Call);
@@ -325,7 +325,7 @@ maybe_get_presence_number(Endpoint, Call) ->
 -spec callee_id(api_binary() | kz_json:object(), kapps_call:call()) ->
                        {api_binary(), api_binary()}.
 callee_id(EndpointId, Call) when is_binary(EndpointId) ->
-    case cf_endpoint:get(EndpointId, Call) of
+    case kz_endpoint:get(EndpointId, Call) of
         {'ok', Endpoint} -> callee_id(Endpoint, Call);
         {'error', _R} ->
             maybe_normalize_callee('undefined', 'undefined', kz_json:new(), Call)
@@ -362,7 +362,7 @@ determine_callee_attribute(Call) ->
 -spec moh_attributes(api_binary() | kz_json:object(), ne_binary(), kapps_call:call()) -> api_binary().
 
 moh_attributes(Attribute, Call) ->
-    case cf_endpoint:get(Call) of
+    case kz_endpoint:get(Call) of
         {'error', _R} -> 'undefined';
         {'ok', Endpoint} ->
             Value = kz_json:get_ne_value([<<"music_on_hold">>, Attribute], Endpoint),
@@ -371,7 +371,7 @@ moh_attributes(Attribute, Call) ->
 
 moh_attributes('undefined', _, _) -> 'undefined';
 moh_attributes(EndpointId, Attribute, Call) when is_binary(EndpointId) ->
-    case cf_endpoint:get(EndpointId, Call) of
+    case kz_endpoint:get(EndpointId, Call) of
         {'error', _} -> 'undefined';
         {'ok', Endpoint} ->
             Value = kz_json:get_ne_value([<<"music_on_hold">>, Attribute], Endpoint),
@@ -384,7 +384,7 @@ moh_attributes(Endpoint, Attribute, Call) ->
 -spec maybe_normalize_moh_attribute(api_binary(), ne_binary(), kapps_call:call()) -> api_binary().
 maybe_normalize_moh_attribute('undefined', _, _) -> 'undefined';
 maybe_normalize_moh_attribute(Value, <<"media_id">>, Call) ->
-    MediaId = cf_util:correct_media_path(Value, Call),
+    MediaId = kz_media_util:media_path(Value, Call),
     lager:info("found music_on_hold media_id: '~p'", [MediaId]),
     MediaId;
 maybe_normalize_moh_attribute(Value, Attribute, _) ->
@@ -400,7 +400,7 @@ maybe_normalize_moh_attribute(Value, Attribute, _) ->
 -spec owner_id(api_binary(), kapps_call:call()) -> api_binary().
 
 owner_id(Call) ->
-    case cf_endpoint:get(Call) of
+    case kz_endpoint:get(Call) of
         {'error', _} -> 'undefined';
         {'ok', Endpoint} ->
             case kz_json:get_ne_value(<<"owner_id">>, Endpoint) of
@@ -453,7 +453,7 @@ presence_id(Call) ->
 
 -spec presence_id(api_binary() | kz_json:object(), kapps_call:call()) -> api_binary().
 presence_id(EndpointId, Call) when is_binary(EndpointId) ->
-    case cf_endpoint:get(EndpointId, Call) of
+    case kz_endpoint:get(EndpointId, Call) of
         {'ok', Endpoint} -> presence_id(Endpoint, Call);
         {'error', _} -> 'undefined'
     end;
@@ -473,11 +473,10 @@ presence_id(Endpoint, Call, Default) ->
 maybe_fix_presence_id_realm(PresenceId, Endpoint, Call) ->
     case binary:match(PresenceId, <<"@">>) of
         'nomatch' ->
-            Realm = cf_util:get_sip_realm(
-                      Endpoint
-                      ,kapps_call:account_id(Call)
-                      ,kapps_call:request_realm(Call)
-                     ),
+            Realm = kz_endpoint:get_sip_realm(Endpoint
+                                             ,kapps_call:account_id(Call)
+                                             ,kapps_call:request_realm(Call)
+                                             ),
             <<PresenceId/binary, $@, Realm/binary>>;
         _Else -> PresenceId
     end.
@@ -554,29 +553,30 @@ owned_by_query(ViewOptions, Call, ViewKey) ->
 %%-----------------------------------------------------------------------------
 -spec default_cid_number() -> ne_binary().
 default_cid_number() ->
-    kapps_config:get(
-      ?CF_CONFIG_CAT
-      ,<<"default_caller_id_number">>
-      ,kz_util:anonymous_caller_id_number()
-     ).
+    kapps_config:get(?CONFIG_CAT
+                    ,<<"default_caller_id_number">>
+                    ,kz_util:anonymous_caller_id_number()
+                    ).
 
 -spec default_cid_name(kz_json:object()) -> ne_binary().
+default_cid_name('undefined') ->
+    kapps_config:get(?CONFIG_CAT
+                    ,<<"default_caller_id_name">>
+                    ,kz_util:anonymous_caller_id_name()
+                    );
+default_cid_name(<<_/binary>> = Name) -> Name;
 default_cid_name(Endpoint) ->
-    case kz_json:get_ne_value(<<"name">>, Endpoint) of
-        'undefined' ->
-            kapps_config:get(
-              ?CF_CONFIG_CAT
-              ,<<"default_caller_id_name">>
-              ,kz_util:anonymous_caller_id_name()
-             );
-        Name -> Name
-    end.
+    default_cid_name(kz_json:get_ne_value(<<"name">>, Endpoint)).
 
 -spec get_cid_or_default(ne_binary(), ne_binary(), kz_json:object()) -> api_binary().
 get_cid_or_default(<<"emergency">>, Property, Endpoint) ->
     case kz_json:get_first_defined([[<<"caller_id">>, <<"emergency">>, Property]
-                                    ,[<<"caller_id">>, <<"external">>, Property]
-                                   ], Endpoint) of
+                                   ,[<<"caller_id">>, <<"external">>, Property]
+                                   ]
+                                  ,Endpoint
+                                  )
+
+    of
         'undefined' -> kz_json:get_ne_value([<<"default">>, Property], Endpoint);
         Value -> Value
     end;

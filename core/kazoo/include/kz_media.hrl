@@ -1,3 +1,5 @@
+-ifndef(KZ_MEDIA_HRL).
+
 -define(CHUNKSIZE, 24576).
 
 -record(media_file, {
@@ -11,3 +13,6 @@
          ,continuous = false :: boolean()
          ,pad_response = true :: boolean()
 	 }).
+
+-define(KZ_MEDIA_HRL, 'true').
+-endif.

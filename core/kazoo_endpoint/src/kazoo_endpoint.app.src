@@ -1,0 +1,17 @@
+{application, kazoo_endpoint,
+ [
+  {description, "Building endpoints and managing attributes of those endpoints"}
+  ,{vsn, "4.0.0"}
+  ,{modules, []}
+  ,{registered, [kazoo_endpoint_cache]}
+  ,{applications, [ kernel
+                  , stdlib
+                  , crypto
+
+                  , kazoo_apps
+                  , kazoo_data
+
+                  , lager
+                  ]}
+  ,{mod, {kazoo_endpoint_app, []}}
+ ]}.
