@@ -68,6 +68,9 @@ retry504s(Fun, Cnt) ->
             kazoo_stats:increment_counter(<<"bigcouch-other-error">>),
             lager:critical("response code ~b not expected : ~p", [_Code, _Body]),
             {'error', format_error(Response)};
+        {'error', Other} when is_binary(Other) ->
+            kazoo_stats:increment_counter(<<"bigcouch-other-error">>),
+            {'error', Other};
         {'error', Other} ->
             kazoo_stats:increment_counter(<<"bigcouch-other-error">>),
             {'error', format_error(Other)};
@@ -220,7 +223,7 @@ format_error('timeout') -> 'timeout';
 format_error('conflict') -> 'conflict';
 format_error('not_found') -> 'not_found';
 format_error({'error', 'connect_timeout'}) -> 'connect_timeout';
-format_error({'http_error', 500, Msg}) -> Msg;
+format_error({'http_error', _, Msg}) -> Msg;
 format_error({'error', Error}) -> Error;
 format_error(E) ->
     lager:warning("unformatted error: ~p", [E]),
