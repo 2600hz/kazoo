@@ -441,7 +441,7 @@ curl -v -X GET \
                 }
             },
             "numbers": {
-                "{{NUMBER}}": {}
+                "{PHONE_NUMBER}": {}
             },
             "port_state": "submitted",
             "sent": false,
@@ -579,7 +579,7 @@ curl -v -X GET \
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
-    -d '{"data":{"numbers":{"+12025559000":{"state":"NY"}}, "name": "{PORTREQUEST_NAME}"}}' \
+    -d '{"data":{"numbers":{"{PHONE_NUMBER}":{"state":"NY"}}, "name": "{PORTREQUEST_NAME}"}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}
 ```
 
@@ -591,7 +591,7 @@ curl -v -X POST \
         "id": "{PORTREQUEST_ID}",
         "name": "{PORTREQUEST_NAME}",
         "numbers": {
-            "+12025559000": {
+            "{PHONE_NUMBER}": {
                 "state": "NY"
             }
         },
