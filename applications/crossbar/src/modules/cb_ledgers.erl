@@ -133,11 +133,11 @@ validate(Context) ->
 validate(Context, ?CREDIT) ->
     ReqData = cb_context:req_data(Context),
     JObj = kz_json:set_value([<<"usage">>, <<"type">>], ?CREDIT, ReqData),
-    cb_context:validate_request_data(<<"ledgers">>, cb_context:set_req_data(Context, JObj), fun is_admin/1);
+    cb_context:validate_request_data(<<"ledgers">>, cb_context:set_req_data(Context, JObj));
 validate(Context, ?DEBIT) ->
     ReqData = cb_context:req_data(Context),
     JObj = kz_json:set_value([<<"usage">>, <<"type">>], ?DEBIT, ReqData),
-    cb_context:validate_request_data(<<"ledgers">>, cb_context:set_req_data(Context, JObj), fun is_admin/1);
+    cb_context:validate_request_data(<<"ledgers">>, cb_context:set_req_data(Context, JObj));
 validate(Context, Id) ->
     validate_ledger(Context, Id, cb_context:req_verb(Context)).
 
@@ -342,16 +342,3 @@ normalize_view_result(Context, _DocType, JObj) ->
        ,{<<"metadata">>, kz_transaction:metadata(Transaction)}
        ,{<<"id">>, kz_doc:id(JObj)}
       ]).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec is_admin(cb_context:context()) -> cb_context:context().
-is_admin(Context) ->
-    case cb_modules_util:is_superduper_admin(Context) of
-        'true' -> cb_context:set_resp_status(Context, 'success');
-        'false' -> cb_context:add_system_error('forbidden', Context)
-    end.
