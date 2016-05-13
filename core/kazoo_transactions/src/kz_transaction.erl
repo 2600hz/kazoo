@@ -43,6 +43,7 @@
 -export([remove/1]).
 -export([save/1]).
 -export([service_save/1]).
+-export([is_per_minute/1]).
 
 -include("include/kazoo_transactions.hrl").
 
@@ -330,6 +331,20 @@ set_version(Vsn, Transaction) ->
 -spec set_order_id(api_binary(), transaction()) -> transaction().
 set_order_id(OrderId, Transaction) ->
     Transaction#kz_transaction{order_id=OrderId}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec is_per_minute(kz_transaction:transaction()) -> boolean().
+is_per_minute(Transaction) ->
+    case kz_transaction:code(Transaction) of
+        ?CODE_PER_MINUTE_CALL -> 'true';
+        ?CODE_SUB_ACCOUNT_PER_MINUTE_CALL -> 'true';
+        _Code -> 'false'
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
