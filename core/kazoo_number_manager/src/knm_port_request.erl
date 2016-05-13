@@ -40,7 +40,9 @@
 -define(PVT_ACCOUNT_ID, <<"pvt_account_id">>).
 -define(PVT_ID, <<"_id">>).
 -define(PVT_REV, <<"_rev">>).
--define(PVT_TREE, <<"pvt_tree">>).
+-ifndef(PVT_TREE).
+- define(PVT_TREE, <<"pvt_tree">>).
+-endif.
 -define(PVT_VSN, <<"pvt_vsn">>).
 
 
