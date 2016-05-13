@@ -518,6 +518,26 @@ curl -v -X PUT \
 }
 ```
 
+##### Failure: an account already owns this number
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "{PHONE_NUMBER}": {
+            "type": {
+                "cause": "{PHONE_NUMBER}",
+                "message": "Number exists on the system already"
+            }
+        }
+    },
+    "error": "500",
+    "message": "invalid request",
+    "request_id": "05ec9cf8811661fed103864e2ed07bcd",
+    "status": "error"
+}
+```
+
 
 #### List port request details
 

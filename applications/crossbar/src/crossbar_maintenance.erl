@@ -190,21 +190,20 @@ running_modules() -> crossbar_bindings:modules_loaded().
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_account_by_number(input_term()) ->
-                                    {'ok', ne_binary()} |
-                                    {'error', any()}.
+-spec find_account_by_number(input_term()) -> {'ok', ne_binary()} |
+                                              {'error', any()}.
 find_account_by_number(Number) when not is_binary(Number) ->
     find_account_by_number(kz_util:to_binary(Number));
 find_account_by_number(Number) ->
     case knm_number:lookup_account(Number) of
         {'ok', AccountId, _} ->
-            AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+            AccountDb = kz_util:format_account_db(AccountId),
             print_account_info(AccountDb, AccountId);
         {'error', {'not_in_service', AssignedTo}} ->
-            AccountDb = kz_util:format_account_id(AssignedTo, 'encoded'),
+            AccountDb = kz_util:format_account_db(AssignedTo),
             print_account_info(AccountDb, AssignedTo);
         {'error', {'account_disabled', AssignedTo}} ->
-            AccountDb = kz_util:format_account_id(AssignedTo, 'encoded'),
+            AccountDb = kz_util:format_account_db(AssignedTo),
             print_account_info(AccountDb, AssignedTo);
         {'error', Reason}=E ->
             io:format("failed to find account assigned to number '~s': ~p~n", [Number, Reason]),

@@ -1018,6 +1018,9 @@ check_number_existence(E164, Number, Context) ->
         {'ok', _AccountId, _} ->
             lager:debug("number ~s exists and belongs to ~s", [E164, _AccountId]),
             number_validation_error(Context, Number, <<"Number exists on the system already">>);
+        {'error', {'not_in_service', _AccountId}} ->
+            lager:debug("number ~s exists and belongs to ~s", [E164, _AccountId]),
+            number_validation_error(Context, Number, <<"Number exists on the system already">>);
         {'error', 'not_found'} ->
             lager:debug("number ~s not found in numbers db (portable!)", [E164]),
             cb_context:set_resp_status(Context, 'success');
