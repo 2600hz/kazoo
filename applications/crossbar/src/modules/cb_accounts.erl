@@ -1211,7 +1211,7 @@ load_account_db([AccountId|_], Context) ->
     load_account_db(AccountId, Context);
 load_account_db(AccountId, Context) when is_binary(AccountId) ->
     case kz_account:fetch(AccountId) of
-        {'ok', _JObj} ->
+        {'ok', JObj} ->
             AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
             lager:debug("account ~s db exists, setting operating database as ~s", [AccountId, AccountDb]),
             ResellerId = kz_services:find_reseller_id(AccountId),
@@ -1219,6 +1219,7 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
                                ,[{fun cb_context:set_resp_status/2, 'success'}
                                  ,{fun cb_context:set_account_db/2, AccountDb}
                                  ,{fun cb_context:set_account_id/2, AccountId}
+                                 ,{fun cb_context:set_account_name/2, kz_account:name(JObj)}
                                  ,{fun cb_context:set_reseller_id/2, ResellerId}
                                 ]);
         {'error', 'not_found'} ->

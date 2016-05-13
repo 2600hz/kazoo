@@ -143,6 +143,7 @@
           ,req_headers = [] :: cowboy:http_headers()
           ,query_json = kz_json:new() :: api_object()
           ,account_id :: api_binary()
+          ,account_name :: api_binary()
           ,user_id :: api_binary()   % Will be loaded in validate stage for endpoints such as /accounts/{acct-id}/users/{user-id}/*
           ,device_id :: api_binary()   % Will be loaded in validate stage for endpoints such as /accounts/{acct-id}/devices/{device-id}/*
           ,reseller_id :: api_binary()
