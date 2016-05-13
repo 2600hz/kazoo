@@ -25,7 +25,7 @@ get(Account) ->
         ,'group'
         ,{'group_level', 1}
     ],
-    case kazoo_modb:get_results(Account, ?LIST_BY_SERVICE, Options) of
+    case kazoo_modb:get_results(Account, ?TOTAL_BY_SERVICE_LEGACY, Options) of
         {'error', _R}=Error -> Error;
         {'ok', JObjs}->
             Data =

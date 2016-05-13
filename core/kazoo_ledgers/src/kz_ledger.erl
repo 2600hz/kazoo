@@ -28,10 +28,9 @@
                  {'error', any()}.
 get(Account, Name) ->
     Options = [
-        'reduce'
-        ,{'key', Name}
+        {'key', Name}
     ],
-    case kazoo_modb:get_results(Account, ?LIST_BY_SERVICE, Options) of
+    case kazoo_modb:get_results(Account, ?LIST_BY_SERVICE_LEGACY, Options) of
         {'ok', []} -> {'ok', 0};
         {'error', _R}=Error -> Error;
         {'ok', [JObj|_]} ->
