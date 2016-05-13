@@ -479,6 +479,8 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests
 ```
 
+##### Success
+
 ```json
 {
     "auth_token": "{AUTH_TOKEN}",
@@ -493,6 +495,26 @@ curl -v -X PUT \
     "request_id": "54672607e9884437069abb7e5a891a5c",
     "revision": "1-184548f264275cf9351872e21a195152",
     "status": "success"
+}
+```
+
+##### Failure: a port already exists for this number
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "{PHONE_NUMBER}": {
+            "type": {
+                "cause": "{PHONE_NUMBER}",
+                "message": "Number is on a port request already: 41ed5722d24bfc69bc479208b274be6b"
+            }
+        }
+    },
+    "error": "500",
+    "message": "invalid request",
+    "request_id": "7cdd44775dc7b583a2628e05588c439b",
+    "status": "error"
 }
 ```
 

@@ -740,6 +740,25 @@ load_summary_by_number(Context, Number) ->
       ,fun normalize_view_results/2
      ).
 
+-spec build_keys(cb_context:context(), ne_binary()) -> [ne_binaries()].
+build_keys(Context, Number) ->
+    E164 = knm_converters:normalize(Number),
+    case props:get_value(<<"accounts">>, cb_context:req_nouns(Context)) of
+        [AccountId] ->
+            [[AccountId, E164]];
+        [AccountId, ?PORT_DESCENDANTS] ->
+            ViewOptions = [{'startkey', [AccountId]}
+                          ,{'endkey', [AccountId, kz_json:new()]}
+                          ],
+            case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ?AGG_VIEW_DESCENDANTS, ViewOptions) of
+                {'error', _R} ->
+                    lager:error("failed to query view ~p", [_R]),
+                    [];
+                {'ok', JObjs} ->
+                    lists:reverse([[kz_doc:id(JObj), E164] || JObj <- JObjs])
+            end
+    end.
+
 -spec load_summary(cb_context:context(), crossbar_doc:view_options()) ->
                            cb_context:context().
 load_summary(Context, ViewOptions) ->
@@ -804,27 +823,6 @@ should_summarize_descendant_requests(Context) ->
     case props:get_value(<<"accounts">>, cb_context:req_nouns(Context)) of
         [_AccountId, ?DESCENDANTS] -> 'true';
         _Params -> 'false'
-    end.
-
--type descendant_keys() :: [ne_binaries()].
-
--spec build_keys(cb_context:context(), ne_binary()) -> descendant_keys().
-build_keys(Context, Number) ->
-    E164 = knm_converters:normalize(Number),
-    case props:get_value(<<"accounts">>, cb_context:req_nouns(Context)) of
-        [AccountId] ->
-            [[AccountId, E164]];
-        [AccountId, ?PORT_DESCENDANTS] ->
-            ViewOptions = [{'startkey', [AccountId]}
-                          ,{'endkey', [AccountId, kz_json:new()]}
-                          ],
-            case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ?AGG_VIEW_DESCENDANTS, ViewOptions) of
-                {'error', _R} ->
-                    lager:error("failed to query view ~p", [_R]),
-                    [];
-                {'ok', JObjs} ->
-                    lists:reverse([[kz_doc:id(JObj), E164] || JObj <- JObjs])
-            end
     end.
 
 %%--------------------------------------------------------------------
@@ -944,7 +942,7 @@ can_update_port_request(Context, _) ->
 successful_validation(Context, 'undefined') ->
     Normalized = knm_port_request:normalize_numbers(cb_context:doc(Context)),
     Unconf = [{<<"pvt_type">>, <<"port_request">>}
-              ,{?PORT_PVT_STATE, ?PORT_UNCONFIRMED}
+             ,{?PORT_PVT_STATE, ?PORT_UNCONFIRMED}
              ],
     cb_context:set_doc(Context, kz_json:set_values(Unconf, Normalized));
 successful_validation(Context, _Id) ->
@@ -969,39 +967,35 @@ check_number_portability(PortId, Number, Context) ->
         {'ok', [PortReq]} ->
             check_number_portability(PortId, Number, Context, E164, PortReq);
         {'ok', [_|_]=_PortReqs} ->
-            Message = <<"Number is currently on multiple port requests. Contact a system admin to rectify">>,
-            lager:debug("number ~s(~s) exists on multiple port request docs. That's bad!", [E164, Number]),
-            number_validation_error(Context, Number, Message);
+            lager:debug("number ~s(~s) exists on multiple port request docs. That's bad!",
+                        [E164, Number]),
+            Msg = <<"Number is currently on multiple port requests. Contact a system admin to rectify">>,
+            number_validation_error(Context, Number, Msg);
         {'error', _E} ->
-            Message = <<"Failed to query back-end services, cannot port at this time">>,
             lager:debug("failed to query the port request view: ~p", [_E]),
+            Message = <<"Failed to query back-end services, cannot port at this time">>,
             number_validation_error(Context, Number, Message)
     end.
 
 check_number_portability(PortId, Number, Context, E164, PortReq) ->
     case {kz_json:get_value(<<"value">>, PortReq) =:= cb_context:account_id(Context)
-          ,kz_doc:id(PortReq) =:= PortId
+         ,kz_doc:id(PortReq) =:= PortId
          }
     of
         {'true', 'true'} ->
-            lager:debug(
-              "number ~s(~s) is on this existing port request for this account(~s)"
-              ,[E164, Number, cb_context:account_id(Context)]
-             ),
+            lager:debug("number ~s(~s) is on this existing port request for this account(~s)"
+                       ,[E164, Number, cb_context:account_id(Context)]),
             cb_context:set_resp_status(Context, 'success');
         {'true', 'false'} ->
-            lager:debug(
-              "number ~s(~s) is on a different port request in this account(~s): ~s"
-              ,[E164, Number, cb_context:account_id(Context), kz_doc:id(PortReq)]
-             ),
+            lager:debug("number ~s(~s) is on a different port request in this account(~s): ~s"
+                       ,[E164, Number, cb_context:account_id(Context), kz_doc:id(PortReq)]),
             Message = <<"Number is on a port request already: ", (kz_doc:id(PortReq))/binary>>,
             number_validation_error(Context, Number, Message);
         {'false', _} ->
-            lager:debug(
-              "number ~s(~s) is on existing port request for other account(~s)"
-              ,[E164, Number, kz_json:get_value(<<"value">>, PortReq)]
-             ),
-            number_validation_error(Context, Number, <<"Number is being ported for a different account">>)
+            lager:debug("number ~s(~s) is on existing port request for other account(~s)"
+                       ,[E164, Number, kz_json:get_value(<<"value">>, PortReq)]),
+            Message = <<"Number is being ported for a different account">>,
+            number_validation_error(Context, Number, Message)
     end.
 
 -spec number_validation_error(cb_context:context(), ne_binary(), ne_binary()) ->
