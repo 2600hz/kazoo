@@ -6,14 +6,14 @@
             "map": "function(doc) { if ( doc.pvt_deleted || doc.pvt_type != 'ledger') return; var amount = doc.pvt_amount || doc.amount  || 0; if(doc.pvt_ledger_type == 'debit') {amount *= -1} emit([doc.source.service, doc.pvt_created], amount)}"
         },
         "listing_by_service_legacy": {
-            "map": "function(doc) { if ( doc.pvt_deleted || (doc.pvt_type != 'ledger' && !( (doc.pvt_type == 'credit' || doc.pvt_type == 'debit') && (doc.pvt_code == 1001 || doc.pvt_code == 1002 || doc.pvt_code == 2001 || doc.pvt_code == 2002)) )) return; var amount = doc.pvt_amount || doc.amount  || 0; var service = doc.pvt_type == 'ledger' ? doc.source.service : 'per-minute-voip';if( doc.pvt_ledger_type == 'debit' || doc.pvt_type == 'debit') {amount *= -1} emit([service, doc.pvt_created], amount)}"
+            "map": "function(doc) { if ( doc.pvt_deleted || (doc.pvt_type != 'ledger' && !( (doc.pvt_type == 'credit' || doc.pvt_type == 'debit') && (doc.pvt_code == 1001 || doc.pvt_code == 1002 )) )) return; var amount = doc.pvt_amount || doc.amount  || 0; var service = doc.pvt_type == 'ledger' ? doc.source.service : 'per-minute-voip';if( doc.pvt_ledger_type == 'debit' || doc.pvt_type == 'debit') {amount *= -1} emit([service, doc.pvt_created], amount)}"
         },
         "total_by_service": {
             "map": "function(doc) { if ( doc.pvt_deleted || doc.pvt_type != 'ledger') return; var amount = doc.pvt_amount || doc.amount  || 0; if(doc.pvt_ledger_type == 'debit') {amount *= -1} emit(doc.source.service, amount)}",
             "reduce": "function (key, values) { return sum(values) }"
         },
         "total_by_service_legacy": {
-            "map": "function(doc) { if ( doc.pvt_deleted || (doc.pvt_type != 'ledger' && !( (doc.pvt_type == 'credit' || doc.pvt_type == 'debit') && (doc.pvt_code == 1001 || doc.pvt_code == 1002 || doc.pvt_code == 2001 || doc.pvt_code == 2002)) )) return; var amount = doc.pvt_amount || doc.amount  || 0; var service = doc.pvt_type == 'ledger' ? doc.source.service : 'per-minute-voip';if( doc.pvt_ledger_type == 'debit' || doc.pvt_type == 'debit') {amount *= -1} emit(service, amount)}",
+            "map": "function(doc) { if ( doc.pvt_deleted || (doc.pvt_type != 'ledger' && !( (doc.pvt_type == 'credit' || doc.pvt_type == 'debit') && (doc.pvt_code == 1001 || doc.pvt_code == 1002 )) )) return; var amount = doc.pvt_amount || doc.amount  || 0; var service = doc.pvt_type == 'ledger' ? doc.source.service : 'per-minute-voip';if( doc.pvt_ledger_type == 'debit' || doc.pvt_type == 'debit') {amount *= -1} emit(service, amount)}",
             "reduce": "function (key, values) { return sum(values) }"
         }
     }
