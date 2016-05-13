@@ -121,18 +121,20 @@ create(Num, Options) ->
 -spec create_or_load(ne_binary(), knm_number_options:options()) -> knm_number() |
                                                                    dry_run_return().
 create_or_load(Num, Options) ->
-    case knm_phone_number:fetch(Num) of
-        {'ok', PhoneNumber} ->
-            ensure_can_load_to_create(PhoneNumber),
-            Updates = create_updaters(Num, Options),
-            {'ok', NewPhoneNumber} = knm_phone_number:setters(PhoneNumber, Updates),
-            create_phone_number(set_phone_number(new(), NewPhoneNumber));
-        {'error', 'not_found'} ->
-            ensure_can_create(Num, Options),
-            Updates = create_updaters(Num, Options),
-            {'ok', PhoneNumber} = knm_phone_number:setters(knm_phone_number:new(), Updates),
-            create_phone_number(set_phone_number(new(), PhoneNumber))
-    end.
+    create_or_load(Num, Options, knm_phone_number:fetch(Num)).
+
+-spec create_or_load(ne_binary(), knm_number_options:options(), knm_phone_number_return()) ->
+                            knm_number() | dry_run_return().
+create_or_load(Num, Options, {'ok', PhoneNumber}) ->
+    ensure_can_load_to_create(PhoneNumber),
+    Updates = create_updaters(Num, Options),
+    {'ok', NewPhoneNumber} = knm_phone_number:setters(PhoneNumber, Updates),
+    create_phone_number(set_phone_number(new(), NewPhoneNumber));
+create_or_load(Num, Options, {'error', 'not_found'}) ->
+    ensure_can_create(Num, Options),
+    Updates = create_updaters(Num, Options),
+    {'ok', PhoneNumber} = knm_phone_number:setters(knm_phone_number:new(), Updates),
+    create_phone_number(set_phone_number(new(), PhoneNumber)).
 
 -spec ensure_can_load_to_create(knm_phone_number:knm_phone_number()) -> 'true'.
 ensure_can_load_to_create(PhoneNumber) ->
