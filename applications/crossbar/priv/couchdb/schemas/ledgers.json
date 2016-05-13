@@ -102,7 +102,14 @@
             },
             "required": true,
             "type": "object"
-        }
+        },
+        "metadata": {
+            "description": "Metadata for ledger document",
+            "name": "Metadata",
+            "required": false,
+            "type": "object"
+        },
+        
     },
     "required": true,
     "type": "object"
