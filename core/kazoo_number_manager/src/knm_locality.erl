@@ -32,11 +32,13 @@ fetch(Numbers) when is_list(Numbers)->
             handle_resp(Resp)
     end.
 
--spec fetch_req(ne_binaries(), ne_binary()) -> kz_http:http_ret().
+-spec fetch_req(ne_binaries(), nonempty_string()) -> kz_http:http_ret().
 fetch_req(Numbers, Url) ->
-    ReqBody = kz_json:set_value(<<"data">>, Numbers, kz_json:new()),
+    ReqBody = kz_json:from_list([{<<"data">>, Numbers}]),
     Uri = <<Url/binary, "/locality/metadata">>,
-    kz_http:post(binary:bin_to_list(Uri), [], kz_json:encode(ReqBody)).
+    Headers = [{'content_type', "application/json"}
+              ],
+    kz_http:post(binary_to_list(Uri), Headers, kz_json:encode(ReqBody)).
 
 -spec handle_resp(kz_http:http_ret()) ->
                          {'ok', kz_json:object()} |

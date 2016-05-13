@@ -56,7 +56,6 @@
 
 -define(DEFAULT_COUNTRY, <<"US">>).
 -define(KEY_PHONEBOOK_FREE_URL, <<"phonebook_url">>).
--define(KEY_PHONEBOOK_PAID_URL, <<"phonebook_url_premium">>).
 -define(PREFIX, <<"prefix">>).
 -define(LOCALITY, <<"locality">>).
 -define(CHECK, <<"check">>).
@@ -625,20 +624,19 @@ get_prefix(City) ->
 -spec fetch_locality(cb_context:context()) -> cb_context:context().
 fetch_locality(Context) ->
     Numbers = cb_context:req_value(Context, ?COLLECTION_NUMBERS),
-    Url = get_url(cb_context:req_value(Context, <<"quality">>)),
-    case fetch_locality(Numbers, Url) of
+    case knm_locality:fetch(Numbers) of
         {'ok', Localities} ->
             cb_context:set_resp_data(
               cb_context:set_resp_status(Context, 'success')
               ,Localities
              );
-        {'error', E} ->
-            crossbar_util:response('error', E, 500, Context)
+        {'error', 'lookup_failed'} ->
+            Msg = <<"number locality lookup failed">>,
+            crossbar_util:response('error', Msg, 500, Context);
+        {'error', 'missing_url'} ->
+            Msg = <<"could not get locality url">>,
+            crossbar_util:response('error', Msg, 500, Context)
     end.
-
--spec get_url(any()) -> ne_binary().
-get_url(<<"high">>) -> ?KEY_PHONEBOOK_PAID_URL;
-get_url(_) -> ?KEY_PHONEBOOK_FREE_URL.
 
 %% @private
 -spec maybe_update_locality(cb_context:context()) -> cb_context:context().
@@ -656,7 +654,7 @@ maybe_update_locality(Context) ->
                              cb_context:context().
 update_locality(Context, []) -> Context;
 update_locality(Context, Numbers) ->
-    case fetch_locality(Numbers, ?KEY_PHONEBOOK_FREE_URL) of
+    case knm_locality:fetch(Numbers) of
         {'ok', Localities} ->
             _ = kz_util:spawn(fun update_phone_numbers_locality/2, [Context, Localities]),
             update_context_locality(Context, Localities);
@@ -709,41 +707,6 @@ update_phone_numbers_locality_fold(Key, Value, JObj) ->
                     kz_json:set_value([Key, <<"locality">>], Locality, JObj)
             end;
         _Else -> JObj
-    end.
-
-%% @private
--spec fetch_locality(ne_binaries(), ne_binary()) -> {'ok', kz_json:object()} |
-                                                    {'error', any()}.
-fetch_locality(Numbers, PhonebookUrlType) ->
-    case kapps_config:get_string(?PHONE_NUMBERS_CONFIG_CAT, PhonebookUrlType) of
-        'undefined' ->
-            lager:error("could not get locality url ~s", [PhonebookUrlType]),
-            {'error', <<"could not get locality url">>};
-        URL ->
-            ReqBody = kz_json:set_value(<<"data">>, Numbers, kz_json:new()),
-            URI = lists:flatten([URL, $/, "locality", $/, "metadata"]),
-            Headers = [{'content_type', "application/json"}],
-            case kz_http:post(URI, Headers, kz_json:encode(ReqBody)) of
-                {'ok', 200, _Headers, Body} ->
-                    handle_phonebook_resp(kz_json:decode(Body));
-                {'ok', _Status, _, _Body} ->
-                    lager:error("number locality lookup failed: ~p ~p", [_Status, _Body]),
-                    {'error', <<"number locality lookup failed">>};
-                {'error', _Reason} ->
-                    lager:error("number locality lookup failed: ~p", [_Reason]),
-                    {'error', <<"number locality lookup failed">>}
-            end
-    end.
-
-%% @private
--spec handle_phonebook_resp(kz_json:object()) -> 'ok'.
-handle_phonebook_resp(Resp) ->
-    case kz_json:get_value(<<"status">>, Resp) of
-        <<"success">> ->
-            {'ok', kz_json:get_value(<<"data">>, Resp, kz_json:new())};
-        _E ->
-            lager:error("number locality lookup failed, status: ~p", [_E]),
-            {'error', <<"number locality lookup failed">>}
     end.
 
 %%--------------------------------------------------------------------
