@@ -152,5 +152,4 @@ metadata(Request) ->
        ,{<<"from">>, j5_request:from(Request)}
        ,{<<"direction">>, j5_request:call_direction(Request)}
        ,{<<"rate">>, j5_request:rate(Request)}
-       ,{<<"direction">>, j5_request:rate_name(Request)}
       ]).
