@@ -2,18 +2,18 @@
 %%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
-%%%
 %%% @end
 %%% @contributors:
 %%%   Peter Defebvre
+%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(cb_ledgers).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,authorize/1, authorize/2
-         ,validate/1, validate/2
+         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+         ,resource_exists/0, resource_exists/1, resource_exists/2
+         ,authorize/1, authorize/2, authorize/3
+         ,validate/1, validate/2, validate/3
          ,put/2
         ]).
 
@@ -56,6 +56,7 @@ init() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
 
@@ -63,9 +64,11 @@ allowed_methods(?CREDIT) ->
     [?HTTP_PUT];
 allowed_methods(?DEBIT) ->
     [?HTTP_PUT];
-allowed_methods(_) ->
+allowed_methods(_LedgerId) ->
     [?HTTP_GET].
 
+allowed_methods(_LedgerId, _Id) ->
+    [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -78,8 +81,10 @@ allowed_methods(_) ->
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
+resource_exists(_, _) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -88,12 +93,15 @@ resource_exists(_) -> 'true'.
 %% @end
 %%--------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> boolean().
-authorize(Context) ->
-    cb_simple_authz:authorize(Context).
+authorize(Context) -> cb_simple_authz:authorize(Context).
 
 -spec authorize(cb_context:context(), path_token()) -> boolean().
 authorize(Context, Path) ->
     authorize_request(Context, Path, cb_context:req_verb(Context)).
+
+-spec authorize(cb_context:context(), path_token(), path_token()) -> boolean().
+authorize(Context, _Path, _Id) ->
+    cb_simple_authz:authorize(Context).
 
 -spec authorize_request(cb_context:context(), path_token(), http_method()) -> boolean().
 authorize_request(Context, ?DEBIT, ?HTTP_PUT) ->
@@ -127,6 +135,7 @@ authorize_create(Context) ->
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_ledgers(Context, cb_context:req_verb(Context)).
 
@@ -140,6 +149,9 @@ validate(Context, ?DEBIT) ->
     cb_context:validate_request_data(<<"ledgers">>, cb_context:set_req_data(Context, JObj));
 validate(Context, Id) ->
     validate_ledger(Context, Id, cb_context:req_verb(Context)).
+
+validate(Context, Ledger, Id) ->
+    validate_ledger_doc(Context, Ledger, Id, cb_context:req_verb(Context)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -171,6 +183,10 @@ validate_ledgers(Context, ?HTTP_GET) ->
 -spec validate_ledger(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_ledger(Context, Id, ?HTTP_GET) ->
     read_ledger(Context, Id).
+
+-spec validate_ledger_doc(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
+validate_ledger_doc(Context, Ledger, Id, ?HTTP_GET) ->
+    read_ledger_doc(Context, Ledger, Id).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -311,8 +327,8 @@ normalize_view_result(Context, JObj) ->
 
 -spec normalize_view_result(cb_context:context(), ne_binary(), kz_json:object()) -> kz_json:object().
 normalize_view_result(_Context, <<"ledger">>, JObj) ->
-    kz_json:public_fields(JObj);
-%% Legacy, this would be debit or credit from transactions
+    kz_json:public_fields(maybe_set_doc_modb_prefix(JObj));
+%% Legacy, this would be debit or credit from per-minute transactions
 normalize_view_result(Context, _DocType, JObj) ->
     Transaction = kz_transaction:from_json(JObj),
     kz_json:from_list(
@@ -340,5 +356,71 @@ normalize_view_result(Context, _DocType, JObj) ->
        ,{<<"period">>, kz_json:from_list([{<<"start">>, kz_transaction:created(Transaction)}
                                         ])}
        ,{<<"metadata">>, kz_transaction:metadata(Transaction)}
-       ,{<<"id">>, kz_doc:id(JObj)}
+       ,{<<"id">>, kz_doc:id(maybe_set_doc_modb_prefix(JObj))}
       ]).
+
+-spec maybe_set_doc_modb_prefix(kz_json:object()) -> kz_json:object().
+maybe_set_doc_modb_prefix(JObj) ->
+    case kz_doc:id(JObj) of
+        ?MATCH_MODB_PREFIX(_,_,_) -> JObj;
+        _ ->
+            {Year, Month, _} = kz_util:to_date(kz_doc:created(JObj)),
+            Id = <<(kz_util:to_binary(Year))/binary
+                   ,(kz_util:pad_month(Month))/binary
+                   ,"-"
+                   ,(kz_doc:id(JObj))/binary
+                 >>,
+            kz_doc:set_id(JObj, Id)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec read_ledger_doc(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+read_ledger_doc(Context, Ledger, ?MATCH_MODB_PREFIX(YYYY, MM, SimpleId) = Id) ->
+    Year  = kz_util:to_integer(YYYY),
+    Month = kz_util:to_integer(MM),
+    Options = ?TYPE_CHECK_OPTION([<<"ledger">>, <<"debit">>, <<"credit">>]),
+    Ctx = crossbar_doc:load(Id, cb_context:set_account_modb(Context, Year, Month), Options),
+    case cb_context:resp_status(Ctx) =:= 'success'
+        andalso validate_returned_ledger_doc(Ledger, Ctx)
+    of
+        'true' -> Ctx;
+        'false' -> read_ledger_doc(cb_context:set_account_modb(Context, Year, Month), Ledger, SimpleId);
+        Ctx1 -> Ctx1
+    end;
+read_ledger_doc(Context, Ledger, Id) ->
+    Options = ?TYPE_CHECK_OPTION([<<"ledger">>, <<"debit">>, <<"credit">>]),
+    Ctx = crossbar_doc:load(Id, Context, Options),
+    case cb_context:resp_status(Ctx) =:= 'success'
+        andalso validate_returned_ledger_doc(Ledger, Ctx)
+    of
+        'true' -> Ctx;
+        'false' -> Ctx;
+        Ctx1 -> Ctx1
+    end.
+
+-spec validate_returned_ledger_doc(ne_binary(), cb_context:context()) -> 'true' | cb_context:context().
+validate_returned_ledger_doc(Ledger, Context) ->
+    JObj = cb_context:doc(Context),
+    TransactionTypes = [<<"debit">>, <<"credit">>],
+    case (kz_doc:type(JObj) =:= <<"ledger">>
+         andalso kazoo_ledger:source_service(JObj) =:= Ledger
+         )
+        orelse
+             (lists:member(kz_doc:type(JObj), TransactionTypes) andalso
+                  Ledger =:= <<"per-minute-voip">> andalso
+                  kz_transaction:is_per_minute(kz_transaction:from_json(JObj))
+             )
+    of
+        'true' -> cb_context:set_resp_data(Context, normalize_view_result(Context, JObj));
+        'false' ->
+            cb_context:add_validation_error(
+                      <<"Id">>
+                      ,<<"invalid">>
+                      ,kz_json:from_list([{<<"message">>, <<"document does not belong to ledger">>}])
+                      ,Context)
+    end.
