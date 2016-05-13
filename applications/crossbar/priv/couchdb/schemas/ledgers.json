@@ -108,7 +108,7 @@
             "name": "Metadata",
             "required": false,
             "type": "object"
-        },
+        }
         
     },
     "required": true,
