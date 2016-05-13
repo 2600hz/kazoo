@@ -45,7 +45,7 @@ handle(_Data, Call) ->
 
 -spec get_channels(ne_binary(), kapps_call:call()) -> dict:dict().
 get_channels(OwnerId, Call) ->
-    DeviceIds = cf_attributes:owned_by(OwnerId, <<"device">>, Call),
+    DeviceIds = kz_attributes:owned_by(OwnerId, <<"device">>, Call),
     Req = [{<<"Authorizing-IDs">>, DeviceIds}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],

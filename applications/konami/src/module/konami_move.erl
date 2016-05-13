@@ -99,7 +99,7 @@ get_originate_req(Data, Call) ->
             'b' -> {find_device_id_for_leg(SourceOfDTMF), kapps_call:call_id(Call)}
         end,
 
-    DeviceOwnerId = cf_attributes:owner_id(SourceDeviceId, Call),
+    DeviceOwnerId = kz_attributes:owner_id(SourceDeviceId, Call),
     OwnerId = kz_json:get_value(<<"owner_id">>, Data, DeviceOwnerId),
     Endpoints = build_endpoints(SourceDeviceId, OwnerId, Params, Call),
     build_originate(Endpoints, TargetCallId, Call).
@@ -113,13 +113,13 @@ build_endpoints(DeviceId, OwnerId, Params, Call) ->
               Acc;
          (EndpointId, Acc) ->
               lager:debug("building endpoint ~s", [EndpointId]),
-              case cf_endpoint:build(EndpointId, Params, Call) of
+              case kz_endpoint:build(EndpointId, Params, Call) of
                   {'ok', Endpoint} -> Endpoint ++ Acc;
                   _Else -> Acc
               end
       end
       ,[]
-      ,cf_attributes:owned_by(OwnerId, <<"device">>, Call)
+      ,kz_attributes:owned_by(OwnerId, <<"device">>, Call)
      ).
 
 -spec build_originate(kz_json:objects(), ne_binary(), kapps_call:call()) -> kz_proplist().

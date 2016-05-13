@@ -155,7 +155,7 @@ handle(Data, Call) ->
                                           ne_binaries().
 get_sip_usernames_for_target(TargetId, TargetType, Call) ->
     Targets = case TargetType of
-                  <<"user">> -> cf_attributes:owned_by(TargetId, <<"device">>, Call);
+                  <<"user">> -> kz_attributes:owned_by(TargetId, <<"device">>, Call);
                   <<"device">> -> [TargetId];
                   _Else ->
                       lager:debug("Can't found camping target's type. May be wrong extension number?"),

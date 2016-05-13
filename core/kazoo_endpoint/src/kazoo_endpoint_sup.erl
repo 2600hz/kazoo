@@ -1,35 +1,37 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2016, 2600Hz INC
+%%% @copyright (C) 2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
+%%%   Karl Anderson
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(kazoo_media_sup).
+-module(kazoo_endpoint_sup).
+
 -behaviour(supervisor).
 
--include("kazoo_media.hrl").
+%% API
+-export([start_link/0]).
+
+%% Supervisor callbacks
+-export([init/1]).
+
+-include("kazoo_endpoint.hrl").
 
 -define(SERVER, ?MODULE).
 
--export([start_link/0]).
--export([init/1]).
+-define(ORIGIN_BINDINGS, [[{'type', <<"account">>}]
+                         ,[{'type', <<"user">>}]
+                         ,[{'type', <<"device">>}]
+                         ]).
 
-%% Helper macro for declaring children of supervisor
--define(CHILDREN, [?SUPER('kz_media_cache_sup')
-                   ,?SUPER('kz_media_recording_sup')
-                   ,?WORKER_APP_INIT('kazoo_media_init', 20 * ?SECONDS_IN_MINUTE)
-                   ,?WORKER_ARGS('kazoo_etsmgr_srv'
-                                 ,[
-                                   [{'table_id', kz_media_map:table_id()}
-                                    ,{'table_options', kz_media_map:table_options()}
-                                    ,{'find_me_function', fun kz_media_map:find_me_function/0}
-                                    ,{'gift_data', kz_media_map:gift_data()}
-                                   ]
-                                  ])
-                   ,?WORKER('kz_media_map')
-                   ,?WORKER('kz_media_proxy')
-                  ]).
+-define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
+
+-define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
+                  ,?SUPER('kz_event_handler_sup')
+                  ]
+       ).
 
 %% ===================================================================
 %% API functions
@@ -58,10 +60,10 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init(any()) -> sup_init_ret().
 init([]) ->
+    kz_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-
     {'ok', {SupFlags, ?CHILDREN}}.

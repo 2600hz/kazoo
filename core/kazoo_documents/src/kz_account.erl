@@ -103,7 +103,7 @@ id(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch(api_binary()) -> {'ok', doc()} |
-                            {'error', any()}.
+                             {'error', any()}.
 fetch('undefined') ->
     {'error', 'invalid_db_name'};
 fetch(<<_/binary>> = Account) ->

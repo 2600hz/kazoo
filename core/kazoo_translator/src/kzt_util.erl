@@ -80,8 +80,8 @@ resolve_uri(Path, NewPath) ->
 %% see cf_offnet.erl
 -spec offnet_req(kz_proplist(), kapps_call:call()) -> 'ok'.
 offnet_req(Data, Call) ->
-    {ECIDNum, ECIDName} = cf_attributes:caller_id(<<"emergency">>, Call),
-    {CIDNumber, CIDName} = cf_attributes:caller_id(<<"external">>, Call),
+    {ECIDNum, ECIDName} = kz_attributes:caller_id(<<"emergency">>, Call),
+    {CIDNumber, CIDName} = kz_attributes:caller_id(<<"external">>, Call),
     CIDNum = case kapps_call:kvs_fetch('dynamic_cid', Call) of
                  'undefined' -> CIDNumber;
                  DynamicCID -> DynamicCID
@@ -101,7 +101,7 @@ offnet_req(Data, Call) ->
            ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
            ,{<<"Outbound-Caller-ID-Name">>, CIDName}
            ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
-           ,{<<"Presence-ID">>, cf_attributes:presence_id(Call)}
+           ,{<<"Presence-ID">>, kz_attributes:presence_id(Call)}
            ,{<<"Ringback">>, props:get_value(<<"ringback">>, Data)}
            | kz_api:default_headers(kapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION)
           ] ++ Data,

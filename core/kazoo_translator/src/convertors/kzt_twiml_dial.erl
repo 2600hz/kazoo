@@ -232,7 +232,7 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Device'
                          ) ->
     DeviceId = kz_xml:texts_to_binary(DeviceIdTxt),
     lager:debug("maybe adding device ~s to ring group", [DeviceId]),
-    case cf_endpoint:build(DeviceId, Call) of
+    case kz_endpoint:build(DeviceId, Call) of
         {'ok', DeviceEPs} -> xml_elements_to_endpoints(Call, EPs, DeviceEPs ++ Acc);
         {'error', _E} ->
             lager:debug("failed to add device ~s: ~p", [DeviceId, _E]),
@@ -272,7 +272,7 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Number'
                                  ,{<<"substribute">>, 'true'}
                                 ]),
     Endpoint = kz_json:from_list([{<<"call_forward">>, CallFwd}]),
-    EP = cf_endpoint:create_call_fwd_endpoint(Endpoint, kz_json:new(), Call),
+    EP = kz_endpoint:create_call_fwd_endpoint(Endpoint, kz_json:new(), Call),
 
     xml_elements_to_endpoints(Call, EPs, [EP|Acc]);
 
@@ -300,7 +300,7 @@ xml_elements_to_endpoints(Call, [_Xml|EPs], Acc) ->
 sip_uri(Call, URI) ->
     lager:debug("maybe adding SIP endpoint: ~s", [knm_sip:encode(URI)]),
     SIPDevice = sip_device(URI),
-    cf_endpoint:create_sip_endpoint(SIPDevice, kz_json:new(), Call).
+    kz_endpoint:create_sip_endpoint(SIPDevice, kz_json:new(), Call).
 
 -spec sip_device(ne_binary()) -> kz_device:doc().
 sip_device(URI) ->

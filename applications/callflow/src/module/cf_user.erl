@@ -75,12 +75,7 @@ maybe_handle_bridge_failure(Reason, Call) ->
 get_endpoints('undefined', _, _) -> [];
 get_endpoints(UserId, Data, Call) ->
     Params = kz_json:set_value(<<"source">>, ?MODULE, Data),
-    lists:foldr(fun(EndpointId, Acc) ->
-                        case cf_endpoint:build(EndpointId, Params, Call) of
-                            {'ok', Endpoint} -> Endpoint ++ Acc;
-                            {'error', _E} -> Acc
-                        end
-                end, [], cf_attributes:owned_by(UserId, <<"device">>, Call)).
+    kz_endpoints:by_owner_id(UserId, Params, Call).
 
 -spec bridge(kz_proplist(), integer(), kapps_call:call()) -> kapps_api_bridge_return().
 bridge(Command, Timeout, Call) ->

@@ -226,7 +226,7 @@ find_sip_users(GroupId, Call) when is_binary(GroupId) ->
 
 -spec find_group_endpoints(ne_binary(), kapps_call:call()) -> ne_binaries().
 find_group_endpoints(GroupId, Call) ->
-    GroupsJObj = cf_attributes:groups(Call),
+    GroupsJObj = kz_attributes:groups(Call),
     case [kz_json:get_value(<<"value">>, JObj)
           || JObj <- GroupsJObj,
              kz_doc:id(JObj) =:= GroupId
@@ -251,7 +251,7 @@ find_endpoints(Ids, GroupEndpoints, Call) ->
                                  ne_binaries().
 find_user_endpoints([], DeviceIds, _) -> DeviceIds;
 find_user_endpoints(UserIds, DeviceIds, Call) ->
-    UserDeviceIds = cf_attributes:owned_by(UserIds, <<"device">>, Call),
+    UserDeviceIds = kz_attributes:owned_by(UserIds, <<"device">>, Call),
     lists:merge(lists:sort(UserDeviceIds), DeviceIds).
 
 -spec no_users_in_group(kapps_call:call()) -> any().

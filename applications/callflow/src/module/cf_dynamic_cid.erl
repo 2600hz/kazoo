@@ -238,7 +238,7 @@ should_restrict_call(Data, Call, Number) ->
 %%--------------------------------------------------------------------
 -spec should_restrict_call(kapps_call:call(), ne_binary()) -> boolean().
 should_restrict_call(Call, Number) ->
-    case  cf_endpoint:get(Call) of
+    case  kz_endpoint:get(Call) of
         {'error', _} -> 'false';
         {'ok', JObj} ->
             Classification = knm_converters:classify(Number),

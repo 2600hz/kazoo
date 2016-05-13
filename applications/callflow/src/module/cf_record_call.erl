@@ -23,9 +23,11 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
--spec handle(kz_json:object(), kapps_call:call(), ne_binary()) -> 'ok'.
+-spec handle(kz_json:object(), kapps_call:call(), ne_binary()) -> kapps_call:call().
 handle(Data, Call) ->
-    cf_exe:continue(handle(Data, Call, get_action(Data))).
+    cf_exe:continue(
+      handle(Data, Call, get_action(Data))
+     ).
 
 handle(Data, Call, <<"start">>) ->
     RecID = kz_util:rand_hex_binary(16),
@@ -33,12 +35,12 @@ handle(Data, Call, <<"start">>) ->
     MediaName = kz_media_recording:get_media_name(RecID, Format),
     Args = kz_json:set_value(?CF_RECORDING_ID_KEY, MediaName, Data),
     Routines = [{fun store_recording/2, MediaName}],
-    cf_util:start_call_recording(Args, cf_exe:update_call(Call, Routines));
+    kz_endpoint:start_call_recording(Args, cf_exe:update_call(Call, Routines));
 
 handle(_Data, OriginalCall, <<"stop">>) ->
     case retrieve_recording(OriginalCall) of
         {'ok', _MediaName, Call} ->
-            Mod = cf_util:recording_module(Call),
+            Mod = kz_media_recording:recording_module(Call),
             case cf_event_handler_sup:worker(cf_util:event_listener_name(Call, Mod)) of
                 'undefined' -> lager:debug("no recording process to stop");
                 RecorderPid -> Mod:stop_recording(RecorderPid)

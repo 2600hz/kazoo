@@ -135,6 +135,8 @@
 -export([calling_process/0]).
 -export([get_app/1]).
 
+-export([application_version/1]).
+
 -include_lib("kernel/include/inet.hrl").
 
 -include_lib("kazoo/include/kz_types.hrl").
@@ -1597,6 +1599,11 @@ get_app(AppName) ->
         [] -> 'undefined';
         [Ret | _] -> Ret
     end.
+
+-spec application_version(atom()) -> ne_binary().
+application_version(Application) ->
+    {'ok', Vsn} = application:get_key(Application, 'vsn'),
+    to_binary(Vsn).
 
 -ifdef(TEST).
 
