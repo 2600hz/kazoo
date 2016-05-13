@@ -24,6 +24,10 @@
 
 -define(NOTIFY_MSG, "failed to impact reseller ~s ledger : ~p").
 
+-define(LEDGER_VIEW, <<"ledgers/listing_by_service_legacy">>).
+%%-define(LEDGER_VIEW, "ledgers/listing_by_service").
+%% TODO: make this change for 4.1
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -264,17 +268,80 @@ read_ledgers(Context) ->
 %%--------------------------------------------------------------------
 -spec read_ledger(cb_context:context(), ne_binary()) -> cb_context:context().
 read_ledger(Context, Ledger) ->
-    case kz_ledger:get(cb_context:account_id(Context), Ledger) of
-        {'error', Reason} ->
-            crossbar_util:response('error', Reason, Context);
-        {'ok', Value} ->
-            crossbar_util:response(
-                kz_json:from_list([
-                    {Ledger, Value}
-                ])
-                ,Context
-            )
+    case view_options(Context, Ledger) of
+        {'ok', ViewOptions} ->
+    crossbar_doc:load_view(?LEDGER_VIEW
+                           ,ViewOptions
+                           ,Context
+                           ,fun normalize_view_results/3
+                          );
+        Ctx -> Ctx
     end.
+
+view_options(Context, Ledger) ->
+    case cb_modules_util:range_view_options(Context) of
+        {CreatedFrom, CreatedTo} ->
+            AccountId = cb_context:account_id(Context),
+            Databases = kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo),
+            {'ok', [{'startkey', [Ledger, CreatedTo]}
+                    ,{'endkey', [Ledger, CreatedFrom]}
+                    ,{'limit', pagination_page_size(Context)}
+                    ,'descending'
+                    ,'include_docs'
+                    ,{'databases', Databases}
+                   ]};
+        Ctx -> Ctx
+    end.
+
+-spec pagination_page_size(cb_context:context()) ->pos_integer().
+pagination_page_size(Context) ->
+    case crossbar_doc:pagination_page_size(Context) of
+        'undefined' -> 'undefined';
+        PageSize -> PageSize + 1
+    end.
+
+-spec normalize_view_results(cb_context:context(), kz_json:object(), kz_json:objects()) ->
+                                             kz_json:objects().
+normalize_view_results(Context, JObj, Acc) ->
+    [normalize_view_result(Context, kz_json:get_value(<<"doc">>, JObj)) | Acc].
+
+-spec normalize_view_result(cb_context:context(), kz_json:object()) -> kz_json:object().
+normalize_view_result(Context, JObj) ->
+    normalize_view_result(Context, kz_doc:type(JObj), JObj).
+
+-spec normalize_view_result(cb_context:context(), ne_binary(), kz_json:object()) -> kz_json:object().
+normalize_view_result(_Context, <<"ledger">>, JObj) ->
+    kz_json:public_fields(JObj);
+%% Legacy, this would be debit or credit from transactions
+normalize_view_result(Context, _DocType, JObj) ->
+    Transaction = kz_transaction:from_json(JObj),
+    kz_json:from_list(
+      [{<<"source">>, kz_json:from_list([{<<"service">>, <<"per-minute-voip">>}
+                                         ,{<<"id">>, kz_transaction:call_id(Transaction)}
+                                        ])}
+       ,{<<"account">>, kz_json:from_list(
+           case kz_transaction:code(Transaction) of
+               Code when Code =:= 1001 orelse Code =:= 2001 ->
+                   [{<<"id">>, kz_transaction:account_id(Transaction)}
+                    ,{<<"name">>, cb_context:account_name(Context)}
+                   ];
+               Code when Code =:= 1002 orelse Code =:= 2002 ->
+                   [{<<"id">>, kz_transaction:sub_account_id(Transaction)}
+                    ,{<<"name">>, kz_transaction:sub_account_name(Transaction)}
+                   ]
+           end
+                                         )}
+       ,{<<"usage">>, kz_json:from_list([{<<"type">>, <<"voice">>}
+                                         ,{<<"unit">>, <<"sec">>}
+                                         ,{<<"quantity">>,kz_json:get_integer_value(<<"duration">>, kz_transaction:metadata(Transaction), 0)}
+                                        ])}
+       ,{<<"amount">>, kz_transaction:amount(Transaction)}
+       ,{<<"description">>, kz_transaction:description(Transaction)}
+       ,{<<"period">>, kz_json:from_list([{<<"start">>, kz_transaction:created(Transaction)}
+                                        ])}
+       ,{<<"metadata">>, kz_transaction:metadata(Transaction)}
+       ,{<<"id">>, kz_doc:id(JObj)}
+      ]).
 
 %%--------------------------------------------------------------------
 %% @private
