@@ -53,7 +53,7 @@ new() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec save(kz_json:object()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec save(ledger()) -> {'ok', ledger()} | {'error', any()}.
 save(Ledger) ->
     AccountId = account_id(Ledger),
     Props = [{<<"pvt_type">>, ?PVT_TYPE}
@@ -62,10 +62,25 @@ save(Ledger) ->
             ],
     save(kz_json:set_values(Props, Ledger), AccountId).
 
--spec save(kz_json:object(), ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec save(ledger(), ne_binary()) -> {'ok', ledger()} | {'error', any()}.
 save(Ledger, AccountId) ->
-    Props = [{<<"pvt_account_id">>, AccountId}],
+    Props = [{<<"pvt_account_id">>, AccountId}
+            | maybe_add_id(Ledger)
+            ],
     kazoo_modb:save_doc(AccountId, kz_json:set_values(Props, Ledger)).
+
+-spec maybe_add_id(ledger()) -> kz_proplist().
+maybe_add_id(Ledger) ->
+    case kz_doc:id(Ledger) of
+        'undefined' ->
+            {Year, Month, _} = erlang:date(),
+            [{<<"_id">>, <<(kz_util:to_binary(Year))/binary
+                           ,(kz_util:pad_month(Month))/binary
+                           ,"-"
+                           ,(kz_util:rand_hex_binary(16))/binary
+                         >>}];
+        _ -> []
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
