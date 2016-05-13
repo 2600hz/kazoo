@@ -11,6 +11,7 @@ Key | Description | Type | Default | Required
 `account.name` | Account name | `string` |   | `false`
 `amount` | Ledger amount | `integer` |   | `false`
 `description` | Useful description for ledger | `string` |   | `false`
+`metadata` | Metadata for ledger document | `object` |   | `false`
 `period` | Period of ledger | `object` |   | `false`
 `period.end` | Period end | `integer` |   | `false`
 `period.start` | Period start | `integer` |   | `false`

@@ -3416,6 +3416,12 @@
                     "required": false,
                     "type": "string"
                 },
+                "metadata": {
+                    "description": "Metadata for ledger document",
+                    "name": "Metadata",
+                    "required": false,
+                    "type": "object"
+                },
                 "period": {
                     "description": "Period of ledger",
                     "name": "Period",
