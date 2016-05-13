@@ -18,6 +18,7 @@
         ]).
 
 -include("crossbar.hrl").
+-include_lib("kazoo_transactions/include/kazoo_transactions.hrl").
 
 -define(CREDIT, <<"credit">>).
 -define(DEBIT, <<"debit">>).
@@ -337,11 +338,11 @@ normalize_view_result(Context, _DocType, JObj) ->
                                         ])}
        ,{<<"account">>, kz_json:from_list(
            case kz_transaction:code(Transaction) of
-               Code when Code =:= 1001 orelse Code =:= 2001 ->
+               Code when Code =:= ?CODE_PER_MINUTE_CALL ->
                    [{<<"id">>, kz_transaction:account_id(Transaction)}
                     ,{<<"name">>, cb_context:account_name(Context)}
                    ];
-               Code when Code =:= 1002 orelse Code =:= 2002 ->
+               Code when Code =:= ?CODE_SUB_ACCOUNT_PER_MINUTE_CALL ->
                    [{<<"id">>, kz_transaction:sub_account_id(Transaction)}
                     ,{<<"name">>, kz_transaction:sub_account_name(Transaction)}
                    ]
