@@ -355,7 +355,9 @@ load_view(View, Options, Context) ->
               ,'undefined'
              ).
 
-load_view(View, Options, Context, FilterFun) when is_function(FilterFun, 2) ->
+load_view(View, Options, Context, FilterFun)
+  when is_function(FilterFun, 2);
+       is_function(FilterFun, 3) ->
     load_view(View, Options, Context
               ,start_key(Options, Context)
               ,pagination_page_size(Context)
@@ -513,12 +515,18 @@ start_key_fun(Options, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_docs(cb_context:context(), filter_fun()) -> cb_context:context().
-load_docs(Context, Filter) when is_function(Filter, 2) ->
+load_docs(Context, Filter)
+  when is_function(Filter, 2);
+       is_function(Filter, 3) ->
+    Fun = case is_function(Filter, 2) of
+              'true' -> Filter;
+              'false' -> fun(J, Acc) -> Filter(Context, J, Acc) end
+          end,
     case kz_datamgr:all_docs(cb_context:account_db(Context)) of
         {'error', Error} -> handle_couch_mgr_errors(Error, <<"all_docs">>, Context);
         {'ok', JObjs} ->
             Filtered = [JObj
-                        || JObj <- lists:foldl(Filter, [], JObjs)
+                        || JObj <- lists:foldl(Fun, [], JObjs)
                                ,(not kz_util:is_empty(JObj))
                        ],
             handle_couch_mgr_success(Filtered, Context)
@@ -993,7 +1001,8 @@ apply_filter(FilterFun, JObjs, Context, Direction, HasQSFilter) ->
     lager:debug("applying filter fun: ~p, qs filter: ~p to dir ~p", [FilterFun, HasQSFilter, Direction]),
 
     Filtered =
-        maybe_apply_custom_filter(FilterFun
+        maybe_apply_custom_filter(Context
+                                  ,FilterFun
                                   ,[JObj
                                     || JObj <- JObjs,
                                        filtered_doc_by_qs(JObj, HasQSFilter, Context)
@@ -1006,11 +1015,15 @@ apply_filter(FilterFun, JObjs, Context, Direction, HasQSFilter) ->
         'descending' -> lists:reverse(Filtered)
     end.
 
--spec maybe_apply_custom_filter('undefined' | filter_fun(), kz_json:objects()) -> kz_json:objects().
-maybe_apply_custom_filter('undefined', JObjs) -> JObjs;
-maybe_apply_custom_filter(FilterFun, JObjs) ->
+-spec maybe_apply_custom_filter(cb_context:context(), 'undefined' | filter_fun(), kz_json:objects()) -> kz_json:objects().
+maybe_apply_custom_filter(_Context, 'undefined', JObjs) -> JObjs;
+maybe_apply_custom_filter(Context, FilterFun, JObjs) ->
+    Fun = case is_function(FilterFun, 2) of
+              'true' -> FilterFun;
+              'false' -> fun(J, Acc) -> FilterFun(Context, J, Acc) end
+          end,
     [JObj
-     || JObj <- lists:foldl(FilterFun, [], JObjs),
+     || JObj <- lists:foldl(Fun, [], JObjs),
         (not kz_util:is_empty(JObj))
     ].
 
