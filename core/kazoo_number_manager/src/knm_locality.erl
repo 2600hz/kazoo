@@ -59,7 +59,7 @@ prefix(Url, Country, City) ->
 %%% Internal functions
 %%%===================================================================
 
--spec fetch_req(ne_binaries(), nonempty_string()) -> kz_http:http_ret().
+-spec fetch_req(ne_binaries(), ne_binary()) -> kz_http:http_ret().
 fetch_req(Numbers, Url) ->
     ReqBody = kz_json:from_list([{<<"data">>, Numbers}]),
     Uri = <<Url/binary, "/locality/metadata">>,
