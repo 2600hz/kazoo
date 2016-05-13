@@ -9,6 +9,7 @@
 -module(knm_locality).
 
 -export([fetch/1]).
+-export([prefix/3]).
 
 -include("knm.hrl").
 
@@ -17,11 +18,8 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(ne_binary() | ne_binaries()) ->
-                   {'ok', kz_json:object()} |
-                   {'error', 'lookup_failed' | 'missing_url'}.
-fetch(Number) when is_binary(Number)->
-    fetch([Number]);
+-spec fetch(ne_binaries()) -> {'ok', kz_json:object()} |
+                              {'error', 'lookup_failed' | 'missing_url'}.
 fetch(Numbers) when is_list(Numbers)->
     case knm_config:locality_url() of
         'undefined' ->
@@ -32,6 +30,35 @@ fetch(Numbers) when is_list(Numbers)->
             handle_resp(Resp)
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec prefix(ne_binary(), ne_binary(), ne_binary()) -> {'ok', kz_json:object()} |
+                                                       {'error', kz_json:object()}.
+prefix(Url, Country, City) ->
+    ReqParam = kz_util:uri_encode(City),
+    Uri = lists:flatten([Url, "/", Country, "/city?pattern=", ReqParam]),
+    case kz_http:get(Uri) of
+        {'ok', 200, _Headers, Body} ->
+            JObj = kz_json:decode(Body),
+            case kz_json:get_value(<<"data">>, JObj) of
+                'undefined' -> {'error', JObj};
+                Data -> {'ok', Data}
+            end;
+        {'ok', _Status, _Headers, Body} ->
+            {'error', kz_json:decode(Body)};
+        {'error', Reason} ->
+            JObj = kz_json:from_list([{<<"unknown error">>, kz_util:to_binary(Reason)}]),
+            {'error', JObj}
+    end.
+
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+
 -spec fetch_req(ne_binaries(), nonempty_string()) -> kz_http:http_ret().
 fetch_req(Numbers, Url) ->
     ReqBody = kz_json:from_list([{<<"data">>, Numbers}]),
@@ -40,9 +67,8 @@ fetch_req(Numbers, Url) ->
               ],
     kz_http:post(binary_to_list(Uri), Headers, kz_json:encode(ReqBody)).
 
--spec handle_resp(kz_http:http_ret()) ->
-                         {'ok', kz_json:object()} |
-                         {'error', any()}.
+-spec handle_resp(kz_http:http_ret()) -> {'ok', kz_json:object()} |
+                                         {'error', 'lookup_failed'}.
 handle_resp({'error', Reason}) ->
     lager:error("number locality lookup failed: ~p", [Reason]),
     {'error', 'lookup_failed'};
@@ -52,19 +78,8 @@ handle_resp({'ok', _Status, _, _Body}) ->
     lager:error("number locality lookup failed: ~p ~p", [_Status, _Body]),
     {'error', 'lookup_failed'}.
 
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec handle_resp_body(kz_json:object()) ->
-                              {'ok', kz_json:object()} |
-                              {'error', 'lookup_failed'}.
+-spec handle_resp_body(kz_json:object()) -> {'ok', kz_json:object()} |
+                                            {'error', 'lookup_failed'}.
 handle_resp_body(Resp) ->
     case kz_json:get_value(<<"status">>, Resp, <<"error">>) of
         <<"success">> ->

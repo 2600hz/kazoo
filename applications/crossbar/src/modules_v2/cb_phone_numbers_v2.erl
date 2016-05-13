@@ -519,13 +519,13 @@ find_prefix(Context) ->
         'undefined' -> cb_context:add_system_error('bad_identifier', Context);
         City ->
             case get_prefix(City) of
-                {'ok', Data} ->
+                {'ok', JObj} ->
                     cb_context:set_resp_data(
                       cb_context:set_resp_status(Context, 'success')
-                      ,Data
+                      ,JObj
                      );
                 {'error', Error} ->
-                    lager:error("error while prefix for city: ~p : ~p", [City, Error]),
+                    lager:error("error while prefix for city ~s: ~p", [City, Error]),
                     cb_context:set_resp_data(
                       cb_context:set_resp_status(Context, 'error')
                       ,Error
@@ -600,20 +600,11 @@ get_prefix(City) ->
         'undefined' ->
             {'error', <<"Unable to acquire numbers missing carrier url">>};
         Url ->
-            Country = kapps_config:get_string(?PHONE_NUMBERS_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
-            ReqParam = kz_util:uri_encode(City),
-            case kz_http:get(lists:flatten([Url, "/", Country, "/city?pattern=", ReqParam])) of
-                {'ok', 200, _Headers, Body} ->
-                    JObj = kz_json:decode(Body),
-                    case kz_json:get_value(<<"data">>, JObj) of
-                        'undefined' -> {'error', JObj};
-                        Data -> {'ok', Data}
-                    end;
-                {'ok', _Status, _Headers, Body} ->
-                    {'error', kz_json:decode(Body)};
-                {'error', _Reason}=E ->
-                    E
-            end
+            Country = kapps_config:get_string(?PHONE_NUMBERS_CONFIG_CAT
+                                             ,<<"default_country">>
+                                             ,?DEFAULT_COUNTRY
+                                             ),
+            knm_locality:prefix(Url, Country, City)
     end.
 
 %%--------------------------------------------------------------------
