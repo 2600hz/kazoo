@@ -275,13 +275,13 @@ to_public_json(Number) ->
             ])
          ),
     Root =
-        kz_json:from_list(
+        kz_json:set_values(
           props:filter_empty(
             [ State
             , UsedBy
             , Features
-              | kz_json:to_proplist(kz_json:public_fields(JObj))
             ])
+          ,kz_json:public_fields(JObj)
          ),
     kz_json:set_value(<<"_read_only">>, ReadOnly, Root).
 
