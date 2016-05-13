@@ -33,5 +33,7 @@ for endpoint in APIs:
         print endpoint
         undocumented += 1
 
-print documented, '/', documented + undocumented
-sys.exit(undocumented)
+total = documented + undocumented
+percent_documented = documented * 100 / total
+print documented, '/', total, '(', str(percent_documented) + '% documented', ')'
+sys.exit(100 - percent_documented)
