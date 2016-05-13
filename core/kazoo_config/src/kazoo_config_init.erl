@@ -13,8 +13,7 @@
          ,reload/0
         ]).
 
-%% To read config.ini
--export([load_file/0]).
+-export([read_cookie/1]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -37,9 +36,9 @@ load_file() ->
     load_file(ini_file()).
 load_file(File) ->
     case zucchini:parse_file(File) of
-        {'ok', Prop} ->
+        {'ok', Props} ->
             lager:info("loaded configs from file ~s", [File]),
-            Prop;
+            Props;
         {'error', 'enoent'} ->
             lager:warning("file ~s does not exist or is not accessible", [File]),
             lager:warning("please create ~s or set the environment variable ~s to the path of the config file", [File, ?CONFIG_FILE_ENV]),
@@ -56,16 +55,29 @@ set_env() ->
     AppEnv = load_file(),
     lager:notice("loaded settings : ~p", [AppEnv]),
     set_zone(AppEnv),
-    application:set_env('kazoo_config', 'kz_config', AppEnv).
+    application:set_env(?APP_NAME_ATOM, 'kz_config', AppEnv).
 
 set_zone(AppEnv) ->
-    erlang:put('$_App_Settings', AppEnv),
+    erlang:put(?SETTINGS_KEY, AppEnv),
     [Local] = kz_config:get(kz_config:get_node_section_name(), 'zone', ['local']),
     Zone = kz_util:to_atom(Local, 'true'),
     lager:notice("setting zone to ~p", [Zone]),
-    application:set_env('kazoo_config', 'zone', Zone).
+    application:set_env(?APP_NAME_ATOM, 'zone', Zone).
 
 
 -spec reload() -> 'ok'.
 reload() ->
     set_env().
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Reads config.ini without starting the kazoo_config application.
+%% @end
+%%--------------------------------------------------------------------
+-spec read_cookie(atom()) -> [atom()].
+read_cookie(NodeName) ->
+    AppEnv = load_file(),
+    erlang:put(?SETTINGS_KEY, AppEnv),
+    kz_config:get_atom(NodeName, 'cookie', []).

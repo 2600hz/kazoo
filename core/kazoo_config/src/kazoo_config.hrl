@@ -9,6 +9,10 @@
 -define(CONFIG_FILE_ENV, "KAZOO_CONFIG").
 -define(CONFIG_FILE, "/etc/kazoo/config.ini").
 
+-define(APP_NAME_ATOM, 'kazoo_config').
+
+-define(SETTINGS_KEY, '$_App_Settings').
+
 -define(DEFAULT_DEFAULTS, []).
 -define(SECTION_DEFAULTS, [{'amqp', [{'uri', "amqp://guest:guest@localhost:5672"}
                                      ,{'use_federation', 'false'}
@@ -24,12 +28,13 @@
                                          ]
                             }
                            ,{'ecallmgr', [{'cookie', 'change_me'}]}
-                           ,{'kazoo_apps', [{'cookie', 'change_me'}]}
                            ,{'log', [{'syslog', 'info'}
                                      ,{'console', 'notice'}
                                      ,{'file', 'error'}
                                     ]}
+                           ,{'kazoo_apps', [{'cookie', 'change_me'}]}
                           ]).
+
 -type section() :: 'amqp' |
                    'bigcouch' |
                    'ecallmgr' |
