@@ -36,12 +36,12 @@ curl -v -X GET \
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/ledgers/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}
 
 ```curl
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}
 ```
 
 #### Create
@@ -62,5 +62,15 @@ curl -v -X PUT \
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/credit
+```
+
+#### Fetch
+
+> GET /v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{_ID}
+
+```curl
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{_ID}
 ```
 
