@@ -210,7 +210,10 @@ check_document_type([DocId|DocIds], Context, [JObj|JObjs], Options) ->
 document_type_match('undefined', _ExpectedType, _ReqType) ->
     lager:debug("document doesn't have type, requested type is ~p", [_ReqType]),
     'true';
-document_type_match(_JObjType, 'any', _) -> 'true';
+document_type_match(_JObjType, <<"any">>, _) -> 'true';
+document_type_match(ExpectedType, ExpectedTypes, _)
+  when is_list(ExpectedTypes) ->
+    lists:member(ExpectedType, ExpectedTypes);
 document_type_match(ExpectedType, ExpectedType, _) -> 'true';
 document_type_match(ReqType, _, ReqType) ->
     lager:debug("expected type is not specified, checking against requested type ~p", [ReqType]),
