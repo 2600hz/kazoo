@@ -83,6 +83,15 @@ Key | Description | Type | Default | Required
 `action.callflow` | Executes a callflow ID on the `{UUID}` | | |
 `id` | Callflow ID to execute | `string()` | |
 `action.hangup` | Hangup the `{UUID}` | | |
+`action.hold` | Put the Caller on Hold | | |
+`moh_aleg` | Music to play on User's Own Call leg | `string()` | |
+`moh_bleg` | Music to play on Caller's Call leg | `string()` | |
+`unhold_key` | Key to Unhold the Call | `string("0".."9")` | |
+`action.move` | Move the Call to a user's `{UUID}` | | |
+`data.user` | A user's `{UUID}` | `string()` | |
+
+
+
 
 > POST /v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 
