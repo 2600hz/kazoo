@@ -151,7 +151,7 @@ expires_policy_value(DbName, Classification, Type) ->
                                    ,[DbName]
                                    ,[Type]
                                    ,[Classification]
-                                   ], CachePolicy) of
+                                   ], CachePolicy, ?DEFAULT_CACHE_PERIOD) of
         <<"infinity">> -> 'infinity';
         Timeout -> kz_util:to_integer(Timeout)
     end.
