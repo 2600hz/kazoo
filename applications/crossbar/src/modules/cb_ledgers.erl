@@ -205,13 +205,13 @@ credit_or_debit(Context, Action) ->
     Usage = kz_json:to_proplist(kz_json:get_value(<<"usage">>, ReqData)),
 
     Props =
-        props:filter_undefined([
-            {<<"amount">>, kz_json:get_value(<<"amount">>, ReqData)}
-            ,{<<"description">>, kz_json:get_value(<<"description">>, ReqData)}
-            ,{<<"period_start">>, kz_json:get_value([<<"period">>, <<"start">>], ReqData)}
-            ,{<<"period_end">>, kz_json:get_value([<<"period">>, <<"end">>], ReqData)}
-            ,{<<"metadata">>, kz_json:get_value(<<"metadata">>, ReqData)}
-        ]),
+        props:filter_undefined(
+          [{<<"amount">>, kz_json:get_value(<<"amount">>, ReqData)}
+          ,{<<"description">>, kz_json:get_value(<<"description">>, ReqData)}
+          ,{<<"period_start">>, kz_json:get_value([<<"period">>, <<"start">>], ReqData)}
+          ,{<<"period_end">>, kz_json:get_value([<<"period">>, <<"end">>], ReqData)}
+          ,{<<"metadata">>, kz_json:get_value(<<"metadata">>, ReqData)}
+          ]),
 
     case process_action(Action, SrcService, SrcId, AccountId, Usage, Props) of
         {'error', Reason} ->
@@ -387,7 +387,7 @@ maybe_set_doc_modb_prefix(JObj) ->
 read_ledger_doc(Context, Ledger, ?MATCH_MODB_PREFIX(YYYY, MM, SimpleId) = Id) ->
     Year  = kz_util:to_integer(YYYY),
     Month = kz_util:to_integer(MM),
-    Options = ?TYPE_CHECK_OPTION([<<"ledger">>, <<"debit">>, <<"credit">>]),
+    Options = ?TYPE_CHECK_OPTION([<<"ledger">>, ?DEBIT, ?CREDIT]),
     Ctx = crossbar_doc:load(Id, cb_context:set_account_modb(Context, Year, Month), Options),
     case cb_context:resp_status(Ctx) =:= 'success'
         andalso validate_returned_ledger_doc(Ledger, Ctx)
@@ -396,7 +396,7 @@ read_ledger_doc(Context, Ledger, ?MATCH_MODB_PREFIX(YYYY, MM, SimpleId) = Id) ->
         Ctx1 -> Ctx1
     end;
 read_ledger_doc(Context, Ledger, Id) ->
-    Options = ?TYPE_CHECK_OPTION([<<"ledger">>, <<"debit">>, <<"credit">>]),
+    Options = ?TYPE_CHECK_OPTION([<<"ledger">>, ?DEBIT, ?CREDIT]),
     Ctx = crossbar_doc:load(Id, Context, Options),
     case cb_context:resp_status(Ctx) =:= 'success'
         andalso validate_returned_ledger_doc(Ledger, Ctx)
@@ -408,7 +408,7 @@ read_ledger_doc(Context, Ledger, Id) ->
 -spec validate_returned_ledger_doc(ne_binary(), cb_context:context()) -> cb_context:context().
 validate_returned_ledger_doc(Ledger, Context) ->
     JObj = cb_context:doc(Context),
-    TransactionTypes = [<<"debit">>, <<"credit">>],
+    TransactionTypes = [?DEBIT, ?CREDIT],
     case (kz_doc:type(JObj) =:= <<"ledger">>
          andalso kazoo_ledger:source_service(JObj) =:= Ledger
          )
