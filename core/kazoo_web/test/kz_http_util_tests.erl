@@ -40,7 +40,15 @@ urlsplit_test() ->
 
 urlunsplit_test() ->
     ?assertEqual(<<"/foo#bar?baz">>, kz_http_util:urlunsplit({<<"">>, <<"">>, <<"/foo">>, <<"">>, <<"bar?baz">>})),
-    ?assertEqual(<<"http://host:port/foo#bar?baz">>, kz_http_util:urlunsplit({<<"http">>, <<"host:port">>, <<"/foo">>, <<"">>, <<"bar?baz">>})).
+    ?assertEqual(<<"http://host:port/foo#bar?baz">>, kz_http_util:urlunsplit({<<"http">>, <<"host:port">>, <<"/foo">>, <<"">>, <<"bar?baz">>})),
+
+
+    QS = kz_json:to_querystring(
+           kz_json:from_list([{<<"bar">>, <<"baz">>}])
+          ),
+    ?assertEqual(<<"http://host:port/foo?bar=baz">>
+                ,kz_http_util:urlunsplit({<<"http">>, <<"host:port">>, <<"/foo">>, QS, <<>>})
+                ).
 
 urlencode_test() ->
     ?assertEqual(<<"1">> , kz_http_util:urlencode(1)),
@@ -53,4 +61,3 @@ urlencode_test() ->
     ?assertEqual(<<"foo+bar">> , kz_http_util:urlencode(<<"foo bar">>)),
     ?assertEqual(<<"foo%0A">> , kz_http_util:urlencode(<<"foo\n">>)),
     ?assertEqual(<<"foo%3B%26%3D">> , kz_http_util:urlencode(<<"foo;&=">>)).
-
