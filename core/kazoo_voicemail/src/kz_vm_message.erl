@@ -566,6 +566,7 @@ move_to_modb(AccountId, JObj, Funs, 'true') ->
 move_to_modb(AccountId, JObj, Funs, 'false') ->
     do_move_to_modb(AccountId, JObj, Funs).
 
+-spec do_move_to_modb(ne_binary(), kz_json:object(), update_funs()) -> db_ret().
 do_move_to_modb(AccountId, JObj, Funs) ->
     Created = kz_doc:created(JObj),
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Created),
@@ -587,6 +588,8 @@ do_move_to_modb(AccountId, JObj, Funs) ->
     Options = [{'transform', fun(_, B) -> lists:foldl(fun(F, J) -> F(J) end, B, TransformFuns) end}],
     try_move_to_modb(FromDb, FromId, ToDb, ToId, Options).
 
+-spec try_move_to_modb(ne_binary(), ne_binary(), ne_binary(), ne_binary(), []) -> db_ret().
+-spec try_move_to_modb(ne_binary(), ne_binary(), ne_binary(), ne_binary(), [], non_neg_integer()) -> db_ret().
 try_move_to_modb(FromDb, FromId, ToDb, ToId, Options) ->
     try_move_to_modb(FromDb, FromId, ToDb, ToId, Options, 3).
 
@@ -607,7 +610,7 @@ update_media_id(MediaId, JObj) ->
 
 -spec cleanup_moved_msgs(ne_binary(), [{ne_binary(), kz_json:object()}]) -> 'ok'.
 cleanup_moved_msgs(_, []) -> 'ok';
-cleanup_moved_msgs(AccountId, Moved) ->
+cleanup_moved_msgs(AccountId, [{_, J1}|_]=Moved) ->
     lists:foreach(fun({OldId, NJObj}) ->
                       NewId = kzd_box_message:media_id(NJObj),
                       case kz_datamgr:del_doc(get_db(AccountId), OldId) of
@@ -620,8 +623,7 @@ cleanup_moved_msgs(AccountId, Moved) ->
                   ,Moved
                  ),
     OldIds = [Id || {Id, _} <- Moved],
-    {_, J} = hd(Moved),
-    BoxId = kzd_box_message:source_id(J),
+    BoxId = kzd_box_message:source_id(J1),
     _ = remove_moved_msgs_from_vmbox(AccountId, BoxId, OldIds),
     'ok'.
 
