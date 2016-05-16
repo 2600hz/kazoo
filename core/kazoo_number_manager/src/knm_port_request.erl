@@ -34,6 +34,20 @@
 -type transition_response() :: {'ok', kz_json:object()} |
                                {'error', 'invalid_state_transition'}.
 
+-define(NAME_KEY, <<"name">>).
+-define(NUMBERS_KEY, <<"numbers">>).
+-define(PVT_ACCOUNT_DB, <<"pvt_account_db">>).
+-define(PVT_ACCOUNT_ID, <<"pvt_account_id">>).
+-define(PVT_ID, <<"_id">>).
+-define(PVT_REV, <<"_rev">>).
+-ifndef(PVT_TREE).
+- define(PVT_TREE, <<"pvt_tree">>).
+-endif.
+-define(PVT_VSN, <<"pvt_vsn">>).
+
+
+%%% API
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -51,7 +65,7 @@ init() ->
 %%--------------------------------------------------------------------
 -spec current_state(kz_json:object()) -> api_binary().
 current_state(JObj) ->
-    kz_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_WAITING).
+    kz_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_UNCONFIRMED).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -66,7 +80,7 @@ public_fields(JObj) ->
                         ,{<<"created">>, kz_doc:created(JObj)}
                         ,{<<"updated">>, kz_doc:modified(JObj)}
                         ,{<<"uploads">>, normalize_attachments(As)}
-                        ,{<<"port_state">>, kz_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_WAITING)}
+                        ,{<<"port_state">>, kz_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_UNCONFIRMED)}
                         ,{<<"sent">>, kz_json:get_value(?PVT_SENT, JObj, 'false')}
                        ]
                        ,kz_doc:public_fields(JObj)
@@ -77,10 +91,9 @@ public_fields(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get(ne_binary() | knm_phone_number:knm_phone_number()) ->
-                 {'ok', kz_json:object()} |
-                 {'error', 'not_found'}.
-get(DID) when is_binary(DID) ->
+-spec get(ne_binary()) -> {'ok', kz_json:object()} |
+                          {'error', 'not_found'}.
+get(DID=?NE_BINARY) ->
     ViewOptions = [{'key', DID}, 'include_docs'],
     case
         kz_datamgr:get_results(
@@ -94,9 +107,7 @@ get(DID) when is_binary(DID) ->
         {'error', _E} ->
             lager:debug("failed to query for port number '~s': ~p", [DID, _E]),
             {'error', 'not_found'}
-    end;
-get(Number) ->
-    ?MODULE:get(knm_phone_number:number(Number)).
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -148,10 +159,10 @@ normalize_attachments_map(K, V) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_numbers(kz_json:object()) -> kz_json:object().
-normalize_numbers(JObj) ->
-    Numbers = kz_json:get_value(<<"numbers">>, JObj, kz_json:new()),
+normalize_numbers(PortReq) ->
+    Numbers = kz_json:get_value(?NUMBERS_KEY, PortReq, kz_json:new()),
     Normalized = kz_json:map(fun normalize_number_map/2, Numbers),
-    kz_json:set_value(<<"numbers">>, Normalized, JObj).
+    kz_json:set_value(?NUMBERS_KEY, Normalized, PortReq).
 
 %% @private
 -spec normalize_number_map(kz_json:key(), kz_json:json_term()) ->
@@ -172,7 +183,7 @@ normalize_number_map(N, Meta) ->
 -spec transition_to_canceled(kz_json:object()) -> transition_response().
 
 transition_to_submitted(JObj) ->
-    transition(JObj, [?PORT_WAITING, ?PORT_REJECT], ?PORT_SUBMITTED).
+    transition(JObj, [?PORT_UNCONFIRMED, ?PORT_REJECTED], ?PORT_SUBMITTED).
 
 transition_to_pending(JObj) ->
     transition(JObj, [?PORT_SUBMITTED], ?PORT_PENDING).
@@ -181,16 +192,16 @@ transition_to_scheduled(JObj) ->
     transition(JObj, [?PORT_PENDING], ?PORT_SCHEDULED).
 
 transition_to_complete(JObj) ->
-    case transition(JObj, [?PORT_PENDING, ?PORT_SCHEDULED, ?PORT_REJECT], ?PORT_COMPLETE) of
+    case transition(JObj, [?PORT_PENDING, ?PORT_SCHEDULED, ?PORT_REJECTED], ?PORT_COMPLETED) of
         {'error', _}=E -> E;
         {'ok', Transitioned} -> completed_port(Transitioned)
     end.
 
 transition_to_rejected(JObj) ->
-    transition(JObj, [?PORT_SUBMITTED, ?PORT_PENDING, ?PORT_SCHEDULED], ?PORT_REJECT).
+    transition(JObj, [?PORT_SUBMITTED, ?PORT_PENDING, ?PORT_SCHEDULED], ?PORT_REJECTED).
 
 transition_to_canceled(JObj) ->
-    transition(JObj, [?PORT_WAITING, ?PORT_SUBMITTED, ?PORT_PENDING, ?PORT_SCHEDULED, ?PORT_REJECT], ?PORT_CANCELED).
+    transition(JObj, [?PORT_UNCONFIRMED, ?PORT_SUBMITTED, ?PORT_PENDING, ?PORT_SCHEDULED, ?PORT_REJECTED], ?PORT_CANCELED).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -204,9 +215,9 @@ maybe_transition(PortReq, ?PORT_PENDING) ->
     transition_to_pending(PortReq);
 maybe_transition(PortReq, ?PORT_SCHEDULED) ->
     transition_to_scheduled(PortReq);
-maybe_transition(PortReq, ?PORT_COMPLETE) ->
+maybe_transition(PortReq, ?PORT_COMPLETED) ->
     transition_to_complete(PortReq);
-maybe_transition(PortReq, ?PORT_REJECT) ->
+maybe_transition(PortReq, ?PORT_REJECTED) ->
     transition_to_rejected(PortReq);
 maybe_transition(PortReq, ?PORT_CANCELED) ->
     transition_to_canceled(PortReq).
@@ -300,15 +311,28 @@ completed_port(PortReq) ->
 %%--------------------------------------------------------------------
 -spec transition_numbers(kz_json:object()) -> transition_response().
 transition_numbers(PortReq) ->
-    Numbers = kz_json:get_keys(<<"numbers">>, PortReq),
-    PortOps = [enable_number(N) || N <- Numbers],
-    case lists:all(fun kz_util:is_true/1, PortOps) of
-        'true' ->
+    PortReqId = kz_doc:id(PortReq),
+    Options = [{'assign_to', kz_json:get_value(?PVT_ACCOUNT_ID, PortReq)}
+              ,{'auth_by', ?KNM_DEFAULT_AUTH_BY}
+              ,{'module_name', ?CARRIER_LOCAL}
+              ,{'ported_in', 'true'}
+              ,{'public_fields', kz_json:from_list([{<<"port_id">>, PortReqId}])}
+              ,{'state', ?NUMBER_STATE_IN_SERVICE}
+              ],
+    lager:debug("creating local numbers for port ~s", [PortReqId]),
+    Numbers = kz_json:get_keys(?NUMBERS_KEY, PortReq),
+    Results = knm_numbers:create(Numbers, Options),
+    IsOK = fun ({_Num, {'ok',_}}) -> 'true'; ({_Num, _}) -> 'false' end,
+    {_OK, Errored} = lists:partition(IsOK, Results),
+    case Errored of
+        [] ->
             lager:debug("all numbers ported, removing from port request"),
             ClearedPortRequest = clear_numbers_from_port(PortReq),
             {'ok', ClearedPortRequest};
-        'false' ->
-            lager:debug("failed to transition numbers: ~p", [PortOps]),
+        _ ->
+            lager:debug("failed to transition ~p/~p numbers", [length(Errored), length(_OK)]),
+            _ = [lager:debug("~s error: ~p", [Num, Error]) || {Num,Error} <- Errored],
+            _ = [lager:debug("~s success", [Num]) || {Num,_} <- _OK],
             {'error', PortReq}
     end.
 
@@ -319,30 +343,17 @@ transition_numbers(PortReq) ->
 %%--------------------------------------------------------------------
 -spec clear_numbers_from_port(kz_json:object()) -> kz_json:object().
 clear_numbers_from_port(PortReq) ->
-    Cleared = kz_json:set_value(<<"numbers">>, kz_json:new(), PortReq),
+    Cleared = kz_json:set_value(?NUMBERS_KEY, kz_json:new(), PortReq),
     case kz_datamgr:save_doc(?KZ_PORT_REQUESTS_DB, Cleared) of
-        {'ok', PortReq1} -> lager:debug("port numbers cleared"), PortReq1;
+        {'ok', PortReq1} ->
+            lager:debug("port numbers cleared"),
+            PortReq1;
         {'error', 'conflict'} ->
             lager:debug("port request doc was updated before we could re-save"),
             PortReq;
         {'error', _E} ->
             lager:debug("failed to clear numbers: ~p", [_E]),
             PortReq
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec enable_number(ne_binary()) -> boolean().
-enable_number(Num) ->
-    try knm_number_states:to_state(Num, ?NUMBER_STATE_IN_SERVICE) of
-        _Number -> 'true'
-    catch
-        'throw':_R ->
-            lager:error("failed to enable number ~s : ~p", [Num, _R]),
-            'false'
     end.
 
 %%--------------------------------------------------------------------
@@ -365,7 +376,7 @@ maybe_send_request(JObj) ->
 
 maybe_send_request(JObj, 'undefined')->
     lager:debug("'submitted_port_requests_url' is not set for account ~s"
-                ,[kz_doc:account_id(JObj)]);
+               ,[kz_doc:account_id(JObj)]);
 maybe_send_request(JObj, Url)->
     case send_request(JObj, Url) of
         'error' -> 'ok';
@@ -384,24 +395,24 @@ maybe_send_request(JObj, Url)->
 -spec send_request(kz_json:object(), ne_binary()) -> 'error' | 'ok'.
 send_request(JObj, Url) ->
     Headers = [{"Content-Type", "application/json"}
-               ,{"User-Agent", kz_util:to_list(erlang:node())}
+               ,{"User-Agent", kz_util:to_list(node())}
               ],
 
     Uri = kz_util:to_list(<<Url/binary, "/", (kz_doc:id(JObj))/binary>>),
 
-    Remove = [<<"_rev">>
+    Remove = [?PVT_REV
               ,<<"ui_metadata">>
               ,<<"_attachments">>
               ,<<"pvt_request_id">>
-              ,<<"pvt_type">>
-              ,<<"pvt_vsn">>
-              ,<<"pvt_account_db">>
+              ,?PVT_TYPE
+              ,?PVT_VSN
+              ,?PVT_ACCOUNT_DB
              ],
-    Replace = [{<<"_id">>, <<"id">>}
-               ,{<<"pvt_port_state">>, <<"port_state">>}
-               ,{<<"pvt_account_id">>, <<"account_id">>}
-               ,{<<"pvt_created">>, <<"created">>}
-               ,{<<"pvt_modified">>, <<"modified">>}
+    Replace = [{?PVT_ID, <<"id">>}
+               ,{?PORT_PVT_STATE, <<"port_state">>}
+               ,{?PVT_ACCOUNT_ID, <<"account_id">>}
+               ,{?PVT_CREATED, <<"created">>}
+               ,{?PVT_MODIFIED, <<"modified">>}
               ],
     Data = kz_json:encode(kz_json:normalize_jobj(JObj, Remove, Replace)),
 
@@ -461,7 +472,7 @@ send_attachment(Url, Id, Name, Options, Attachment) ->
     ContentType = kz_json:get_value(<<"content_type">>, Options),
 
     Headers = [{"Content-Type", kz_util:to_list(ContentType)}
-               ,{"User-Agent", kz_util:to_list(erlang:node())}
+               ,{"User-Agent", kz_util:to_list(node())}
               ],
 
     Uri = kz_util:to_list(<<Url/binary, "/", Id/binary, "/", Name/binary>>),
@@ -524,7 +535,7 @@ prepare_docs_for_migrate(Docs) ->
 
 -spec migrate_doc(kz_json:object()) -> api_object().
 migrate_doc(PortRequest) ->
-    case kz_json:get_value(<<"pvt_tree">>, PortRequest) of
+    case kz_json:get_value(?PVT_TREE, PortRequest) of
         'undefined' -> update_doc(PortRequest);
         _Tree -> 'undefined'
     end.
@@ -539,7 +550,7 @@ update_doc(_Doc, 'undefined') ->
     'undefined';
 update_doc(PortRequest, AccountId) ->
     {'ok', AccountDoc} = kz_account:fetch(AccountId),
-    kz_json:set_value(<<"pvt_tree">>, kz_account:tree(AccountDoc), PortRequest).
+    kz_json:set_value(?PVT_TREE, kz_account:tree(AccountDoc), PortRequest).
 
 -spec fetch_docs(binary(), pos_integer()) -> {'ok', kz_json:objects()}.
 fetch_docs(StartKey, Limit) ->

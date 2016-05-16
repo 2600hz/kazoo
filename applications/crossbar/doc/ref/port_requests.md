@@ -47,32 +47,32 @@ curl -v -X PUT \
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}
 
 ```curl
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}
 
 ```curl
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
+> POST /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}
 
 ```curl
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}
 ```
 
 #### Fetch
@@ -137,121 +137,121 @@ curl -v -X GET \
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/loa
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/loa
 
 ```curl
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/loa
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/loa
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments
 
 ```curl
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments
+> PUT /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments
 
 ```curl
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/canceled
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/canceled
 
 ```curl
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/canceled
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/canceled
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/rejected
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/rejected
 
 ```curl
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/rejected
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/rejected
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/completed
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/completed
 
 ```curl
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/completed
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/completed
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/scheduled
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/scheduled
 
 ```curl
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/scheduled
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/scheduled
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/pending
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/pending
 
 ```curl
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/pending
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/pending
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/submitted
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/submitted
 
 ```curl
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/submitted
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/submitted
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID}
 
 ```curl
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID}
 
 ```curl
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
+> POST /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID}
 
 ```curl
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID}
 ```
 

@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015 2600Hz, INC
+%%% @copyright (C) 2011-2016 2600Hz, INC
 %%% @doc
-%%% Builds an LOA doc using HTMLDoc (http://www.msweet.org/projects.php?Z1)
+%%% Builds PDF from an HTML template using HTMLDoc (http://www.msweet.org/projects.php?Z1)
 %%% @end
 %%% @contributors:
 %%%   Peter Defebvre
@@ -30,21 +30,23 @@
 -define(PDF_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".pdf">>).
 -define(HTML_TO_PDF, <<"/usr/bin/htmldoc --quiet --webpage -f $pdf$ $html$">>).
 
+-type ret() :: {'ok', ne_binary()} | {'error', any()}.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec find_template(ne_binary(), kz_proplist() | ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
+-spec find_template(ne_binary(), kz_proplist() | ne_binary()) -> ret().
 find_template(AccountId, DocType) when is_binary(DocType)  ->
     find_template(AccountId, DocType, <<DocType/binary, ".tmpl">>);
 find_template(AccountId, Props) ->
     DocType = props:get_first_defined([<<"type">>, <<"pvt_type">>], Props),
     find_template(AccountId, Props, <<DocType/binary, ".tmpl">>).
 
--spec find_template(ne_binary(), kz_proplist() | ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
+-spec find_template(ne_binary(), ne_binary() | kz_proplist(), ne_binary()) -> ret().
 find_template(AccountId, DocType, AttachmentId) when is_binary(DocType) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_util:format_account_db(AccountId),
     case kz_datamgr:fetch_attachment(AccountDb, ?TEMPLATE_DOC_ID(DocType), AttachmentId) of
         {'ok', _}=OK -> OK;
         {'error', _R} ->
@@ -61,8 +63,8 @@ find_template(AccountId, Props, AttachmentId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec generate(ne_binary(), kz_proplist()) -> {'ok', ne_binary()} | {'error', any()}.
--spec generate(ne_binary(), kz_proplist(), ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
+-spec generate(ne_binary(), kz_proplist()) -> ret().
+-spec generate(ne_binary(), kz_proplist(), ne_binary()) -> ret().
 generate(AccountId, Props) ->
     case find_template(AccountId, Props) of
         {'error', _R}=Error -> Error;
@@ -75,6 +77,7 @@ generate(Account, Props, Template) ->
     DocType = props:get_first_defined([<<"type">>, <<"pvt_type">>], Props),
 
     Rand = kz_util:rand_hex_binary(5),
+    %% TODO: fix that atom creation!
     Renderer = kz_util:to_atom(<<"kz_pdf_", DocType/binary, "_", Rand/binary>>, 'true'),
     {'ok', Renderer} = erlydtl:compile_template(Template, Renderer, [{'out_dir', 'false'}]),
     {'ok', Rendered} = Renderer:render(Props),
@@ -130,7 +133,7 @@ cmd_fold({Search, Replace}, Subject) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec default_template(ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
+-spec default_template(ne_binary(), ne_binary()) -> ret().
 default_template(DocType, AttachmentId) ->
     lager:debug("searching for default template ~s", [AttachmentId]),
     case kz_datamgr:fetch_attachment(?KZ_CONFIG_DB, ?TEMPLATE_DOC_ID(DocType), AttachmentId) of
@@ -138,12 +141,11 @@ default_template(DocType, AttachmentId) ->
         {'error', 'not_found'} -> maybe_create_default_template(DocType, AttachmentId);
         {'error', _R}=Error ->
             lager:error("failed to find  default template ~s/~s : ~p"
-                        ,[?TEMPLATE_DOC_ID(DocType), AttachmentId, _R]
-                       ),
+                        ,[?TEMPLATE_DOC_ID(DocType), AttachmentId, _R]),
             Error
     end.
 
--spec maybe_create_default_template(ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
+-spec maybe_create_default_template(ne_binary(), ne_binary()) -> ret().
 maybe_create_default_template(DocType, AttachmentId) ->
     PrivDir = code:priv_dir('crossbar'),
     TemplateFile = filename:join([PrivDir, <<"couchdb">>, <<"templates">>, AttachmentId]),
@@ -155,7 +157,7 @@ maybe_create_default_template(DocType, AttachmentId) ->
         {'ok', Template} -> create_default_template(Template, DocType, AttachmentId)
     end.
 
--spec create_default_template(binary(), ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
+-spec create_default_template(binary(), ne_binary(), ne_binary()) -> ret().
 create_default_template(Template, DocType, AttachmentId) ->
     lager:debug("creating default template ~s", [DocType]),
     Default = kz_json:from_list([{<<"template_name">>, DocType}]),
@@ -174,12 +176,11 @@ create_default_template(Template, DocType, AttachmentId) ->
         {'error', 'conflict'} -> save_default_attachment(Template, DocType, AttachmentId);
         {'error', _R}=Error ->
             lager:error("failed to create default template doc for ~s : ~p"
-                         ,[?TEMPLATE_DOC_ID(DocType), _R]
-                       ),
+                         ,[?TEMPLATE_DOC_ID(DocType), _R]),
             Error
     end.
 
--spec save_default_attachment(binary(), ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
+-spec save_default_attachment(binary(), ne_binary(), ne_binary()) -> ret().
 save_default_attachment(Template, DocType, AttachmentId) ->
     lager:debug("saving default template ~s attachment", [DocType]),
     case
@@ -192,8 +193,7 @@ save_default_attachment(Template, DocType, AttachmentId) ->
     of
         {'error', _R}=Error ->
             lager:error("failed to save default template attachment for ~s : ~p"
-                        ,[?TEMPLATE_DOC_ID(DocType), _R]
-                       ),
+                        ,[?TEMPLATE_DOC_ID(DocType), _R]),
             Error;
         {'ok', _} -> {'ok', Template}
     end.

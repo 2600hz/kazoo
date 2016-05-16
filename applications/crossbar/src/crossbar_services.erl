@@ -13,6 +13,8 @@
         ]).
 
 -include("crossbar.hrl").
+-include_lib("kazoo_number_manager/include/knm_phone_number.hrl"). %% PVT_FEATURES
+-include_lib("kazoo_number_manager/include/knm_port_request.hrl"). %% PORT_KEY
 
 %%--------------------------------------------------------------------
 %% @public
@@ -214,11 +216,13 @@ calc_service_updates(Context, <<"port_request">>) ->
     JObj = cb_context:doc(Context),
     Numbers = kz_json:get_value(<<"numbers">>, JObj),
     PhoneNumbers =
-        kz_json:foldl(
-          fun port_request_foldl/3
-          ,kz_json:new()
-          ,Numbers
-         ),
+        [kz_doc:set_id(
+           kz_json:set_value(?PVT_FEATURES, [?PORT_KEY
+                                             | kz_json:get_list_value(?PVT_FEATURES, NumberJObj, [])
+                                            ], NumberJObj)
+           ,NumberKey
+          )
+         || {NumberKey, NumberJObj} <- kz_json:to_proplist(Numbers)],
     kz_service_phone_numbers:reconcile(Services, PhoneNumbers);
 calc_service_updates(Context, <<"app">>) ->
     [{<<"apps_store">>, [Id]} | _] = cb_context:req_nouns(Context),
@@ -248,23 +252,6 @@ calc_service_updates(Context, <<"ips">>, Props) ->
 calc_service_updates(_Context, _Type, _Props) ->
     lager:warning("unknown type ~p, cannot execute dry run", [_Type]),
     'undefined'.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec port_request_foldl(ne_binary(), kz_json:object(), kz_json:object()) -> kz_json:object().
-port_request_foldl(Number, NumberJObj, JObj) ->
-    kz_json:set_value(
-      Number
-      ,kz_json:set_value(
-         <<"features">>
-         ,[<<"port">>]
-         ,NumberJObj
-        )
-      ,JObj
-     ).
 
 %%--------------------------------------------------------------------
 %% @private

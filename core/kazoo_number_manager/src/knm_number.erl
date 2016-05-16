@@ -6,6 +6,7 @@
 %%% @contributors
 %%%   Peter Defebvre
 %%%   James Aimonetti
+%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_number).
 
@@ -117,23 +118,23 @@ get_number(Num, Options) ->
 create(Num, Options) ->
     attempt(fun create_or_load/2, [Num, Options]).
 
--spec create_or_load(ne_binary(), knm_number_options:options()) ->
-                            knm_number() | dry_run_return().
+-spec create_or_load(ne_binary(), knm_number_options:options()) -> knm_number() |
+                                                                   dry_run_return().
 create_or_load(Num, Options) ->
     create_or_load(Num, Options, knm_phone_number:fetch(Num)).
 
 -spec create_or_load(ne_binary(), knm_number_options:options(), knm_phone_number_return()) ->
                             knm_number() | dry_run_return().
-create_or_load(Num, Options, {'error', 'not_found'}) ->
-    ensure_can_create(Num, Options),
-    Updates = create_updaters(Num, Options),
-    {'ok', PhoneNumber} = knm_phone_number:setters(knm_phone_number:new(), Updates),
-    create_phone_number(set_phone_number(new(), PhoneNumber));
 create_or_load(Num, Options, {'ok', PhoneNumber}) ->
     ensure_can_load_to_create(PhoneNumber),
     Updates = create_updaters(Num, Options),
     {'ok', NewPhoneNumber} = knm_phone_number:setters(PhoneNumber, Updates),
-    create_phone_number(set_phone_number(new(), NewPhoneNumber)).
+    create_phone_number(set_phone_number(new(), NewPhoneNumber));
+create_or_load(Num, Options, {'error', 'not_found'}) ->
+    ensure_can_create(Num, Options),
+    Updates = create_updaters(Num, Options),
+    {'ok', PhoneNumber} = knm_phone_number:setters(knm_phone_number:new(), Updates),
+    create_phone_number(set_phone_number(new(), PhoneNumber)).
 
 -spec ensure_can_load_to_create(knm_phone_number:knm_phone_number()) -> 'true'.
 ensure_can_load_to_create(PhoneNumber) ->
@@ -164,7 +165,6 @@ create_phone_number(Number) ->
 %% @public
 %% @doc
 %% Fetches then transition an existing number to the reserved state.
-%% Similar to kz_number_manager:reserve_number
 %% @end
 %%--------------------------------------------------------------------
 -spec reserve(ne_binary(), knm_number_options:options()) -> knm_number_return().
@@ -213,7 +213,7 @@ dry_run_or_number(Number) ->
 -spec ensure_can_create(ne_binary(), knm_number_options:options()) -> 'true'.
 ensure_can_create(Num, Options) ->
     ensure_account_can_create(Options)
-        andalso ensure_number_is_not_porting(Num).
+        andalso ensure_number_is_not_porting(Num, Options).
 
 -spec ensure_account_can_create(knm_number_options:options()) -> 'true'.
 ensure_account_can_create(Options) ->
@@ -240,14 +240,16 @@ ensure_account_is_allowed_to_create(_Options, _AccountId) ->
         'false' -> knm_errors:unauthorized()
     end.
 
--spec ensure_number_is_not_porting(ne_binary()) -> 'true'.
+-spec ensure_number_is_not_porting(ne_binary(), knm_number_options:options()) -> 'true'.
 -ifdef(TEST).
-ensure_number_is_not_porting(?TEST_CREATE_NUM) -> 'true';
-ensure_number_is_not_porting(?TEST_AVAILABLE_NUM = Num) ->
+ensure_number_is_not_porting(?TEST_CREATE_NUM, _Options) -> 'true';
+ensure_number_is_not_porting(?TEST_AVAILABLE_NUM = Num, _Options) ->
     knm_errors:number_is_porting(Num).
 -else.
-ensure_number_is_not_porting(Num) ->
-    case knm_port_request:get(Num) of
+ensure_number_is_not_porting(Num, Options) ->
+    JustPorted = knm_number_options:ported_in(Options),
+    case JustPorted orelse knm_port_request:get(Num) of
+        'true' -> 'true';
         {'ok', _Doc} -> knm_errors:number_is_porting(Num);
         {'error', 'not_found'} -> 'true'
     end.

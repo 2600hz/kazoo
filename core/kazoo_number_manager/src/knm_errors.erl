@@ -44,7 +44,13 @@
 -type kn() :: knm_number:knm_number().
 -type kpn() :: knm_phone_number:knm_phone_number().
 
--export_type([error/0]).
+-type thrown_error() :: {'error', atom()} |
+                        {'error', atom(), any()} |
+                        {'error', atom(), any(), any()}.
+
+-export_type([error/0
+             ,thrown_error/0
+             ]).
 
 -spec unauthorized() -> no_return().
 unauthorized() ->
