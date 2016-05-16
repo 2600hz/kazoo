@@ -72,21 +72,25 @@
 -define(DEFAULT_COMPARE_FIELD, kapps_config:get_binary(?CONFIG_CAT, <<"default_compare_field">>, <<"result_cause">>)).
 
 -define(COUNT_PAGES_CMD, <<"echo -n `tiffinfo ~s | grep 'Page Number' | grep -c 'P'`">>).
--define(CONVERT_PDF_CMD, <<"/usr/bin/gs -q "
-                           "-r204x98 "
-                           "-g1728x1078 "
-                           "-dNOPAUSE "
-                           "-dBATCH "
-                           "-dSAFER "
-                           "-sDEVICE=tiffg3 "
-                           "-sOutputFile=~s -- ~s > /dev/null "
-                           "&& echo -n \"success\""
-                         >>).
--define(CONVERT_IMAGE_CMD, <<"convert -density 204x98 "
-                             "-units PixelsPerInch "
-                             "-size 1728x1078 ~s ~s > /dev/null "
-                             "&& echo -n success"
-                           >>).
+-define(CONVERT_PDF_CMD(In, Out), ["/usr/bin/gs"
+                                  ,"-q"
+                                  ,"-r204x98"
+                                  ,"-g1728x1078"
+                                  ,"-dNOPAUSE"
+                                  ,"-dBATCH"
+                                  ,"-dSAFER"
+                                  ,"-sDEVICE=tiffg3"
+                                  ,"-sOutputFile", binary_to_list(Out)
+                                  ,"--"
+                                  ,binary_to_list(In)
+                                  ]).
+-define(CONVERT_IMAGE_CMD(In, Out), ["convert"
+                                    ,"-density", "204x98"
+                                    ,"-units", "PixelsPerInch"
+                                    ,"-size", "1728x1078"
+                                    ,binary_to_list(In)
+                                    ,binary_to_list(Out)
+                                    ]).
 -define(CONVERT_OO_DOC_CMD, <<"unoconv -c ~s -f pdf --stdout ~s "
                               "| /usr/bin/gs -q "
                               "-r204x98 "
@@ -829,36 +833,22 @@ prepare_contents(JobId, RespHeaders, RespContent) ->
             InputFile = list_to_binary([TmpDir, JobId, ".pdf"]),
             OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
             kz_util:write_file(InputFile, RespContent),
-            ConvertCmd = kapps_config:get_binary(?CONFIG_CAT
-                                                  ,<<"conversion_pdf_command">>
-                                                  ,kapps_config:get_binary(?CONFIG_CAT
-                                                                            ,<<"conversion_command">>
-                                                                            ,?CONVERT_PDF_CMD
-                                                                           )
-                                                 ),
-            Cmd = io_lib:format(ConvertCmd, [OutputFile, InputFile]),
-            lager:debug("attempting to convert pdf: ~s", [Cmd]),
-            try "success" = os:cmd(Cmd) of
-                "success" ->
-                    {'ok', OutputFile}
-            catch
-                Type:Exception ->
-                    lager:debug("could not covert file: ~p:~p", [Type, Exception]),
+            lager:debug("attempting to convert PDF to TIFF"),
+            case kz_util:cmd(".", ?CONVERT_PDF_CMD(InputFile, OutputFile), 5*1000) of
+                {0, _} -> {'ok', OutputFile};
+                {_NonZero, _Message} ->
+                    lager:debug("command failed with ~p: ~p", [_NonZero, _Message]),
                     {'error', <<"can not convert file, try uploading a tiff">>}
             end;
         <<"image/", SubType/binary>> ->
             InputFile = list_to_binary([TmpDir, JobId, ".", SubType]),
             OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
             kz_util:write_file(InputFile, RespContent),
-            ConvertCmd = kapps_config:get_binary(?CONFIG_CAT, <<"conversion_image_command">>, ?CONVERT_IMAGE_CMD),
-            Cmd = io_lib:format(ConvertCmd, [InputFile, OutputFile]),
-            lager:debug("attempting to convert ~s: ~s", [SubType, Cmd]),
-            try "success" = os:cmd(Cmd) of
-                "success" ->
-                    {'ok', OutputFile}
-            catch
-                Type:Exception ->
-                    lager:debug("could not covert file: ~p:~p", [Type, Exception]),
+            lager:debug("attempting to convert ~s to TIFF", [SubType]),
+            case kz_util:cmd(".", ?CONVERT_IMAGE_CMD(InputFile, OutputFile), 5*1000) of
+                {0, _} -> {'ok', OutputFile};
+                {_NonZero, _Message} ->
+                    lager:debug("command failed with ~p: ~p", [_NonZero, _Message]),
                     {'error', <<"can not convert file, try uploading a tiff">>}
             end;
         <<?OPENXML_MIME_PREFIX, _/binary>> = CT ->

@@ -11,7 +11,8 @@
 
 -include("notify.hrl").
 
--define(TIFF_TO_PDF_CMD, <<"tiff2pdf -o ~s ~s &> /dev/null && echo -n \"success\"">>).
+-define(TIFF_TO_PDF_CMD(TIFFFile, PDFFile), ["tiff2pdf", "-o", PDFFile, TIFFFile]).
+
 
 
 %%--------------------------------------------------------------------
@@ -113,10 +114,9 @@ convert_to_pdf(AttachmentBin, Props, _ContentType) ->
     TiffFile = tmp_file_name(<<"tiff">>),
     PDFFile = tmp_file_name(<<"pdf">>),
     kz_util:write_file(TiffFile, AttachmentBin),
-    ConvertCmd = kapps_config:get_binary(<<"notify.fax">>, <<"tiff_to_pdf_conversion_command">>, ?TIFF_TO_PDF_CMD),
-    Cmd = io_lib:format(ConvertCmd, [PDFFile, TiffFile]),
-    lager:debug("running command: ~s", [Cmd]),
-    _ = os:cmd(Cmd),
+    lager:debug("trying to convert TIFF to PDF"),
+    {_Code, _Msg} = kz_util:cmd(".", ?TIFF_TO_PDF_CMD(TiffFile, PDFFile), 5*1000),
+    _Code =/= 0 andalso lager:debug("command failed with ~p: ~p", [_Code, _Msg]),
     kz_util:delete_file(TiffFile),
     case file:read_file(PDFFile) of
         {'ok', PDFBin} ->

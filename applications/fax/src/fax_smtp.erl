@@ -803,13 +803,13 @@ maybe_process_image(CT, Body, State) ->
 
 -spec maybe_process_image(ne_binary(), binary() | mimemail:mimetuple(), ne_binary(), state()) -> {'ok', state()}.
 maybe_process_image(CT, Body, Size, State) ->
-    {MinX, MinY} = case re:split(Size, "x") of
+    {MinX, MinY} = case binary:split(Size, <<"x">>) of
                        [P] -> {kz_util:to_integer(P), kz_util:to_integer(P)};
                        [X, Y] -> {kz_util:to_integer(X), kz_util:to_integer(Y)}
                    end,
     {'ok', NewState = #state{filename = Filename}} = process_part(CT, Body, State),
     Cmd = io_lib:format(?IMAGE_SIZE_CMD_FMT, [Filename]),
-    [W, H] = re:split(os:cmd(Cmd), "x"),
+    [W, H] = binary:split(os:cmd(Cmd), <<"x">>),
     Width = kz_util:to_integer(W),
     Height = kz_util:to_integer(H),
     case MinX =< Width andalso MinY =< Height of

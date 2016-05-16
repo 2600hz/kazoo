@@ -16,7 +16,7 @@
 -include("teletype.hrl").
 
 -define(FAX_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax">>).
--define(TIFF_TO_PDF_CMD, <<"tiff2pdf -o ~s ~s &> /dev/null && echo -n \"success\"">>).
+-define(TIFF_TO_PDF_CMD(TIFFFile, PDFFile), ["tiff2pdf", "-o", PDFFile, TIFFFile]).
 
 convert(FromFormat, FromFormat, Bin) ->
     {'ok', Bin};
@@ -27,25 +27,21 @@ convert(FromFormat0, ToFormat0, Bin) ->
     FromFile = <<"/tmp/", Filename/binary, ".", FromFormat/binary>>,
     ToFile = <<"/tmp/", Filename/binary, ".", ToFormat/binary>>,
     'ok' = file:write_file(FromFile, Bin),
-    ConvertCmd = kapps_config:get_binary(?FAX_CONFIG_CAT, <<"tiff_to_pdf_conversion_command">>, ?TIFF_TO_PDF_CMD),
-    Cmd = io_lib:format(ConvertCmd, [ToFile, FromFile]),
-    lager:debug("running conversion command: ~s", [Cmd]),
-    Response = case os:cmd(Cmd) of
-                   "success" ->
-                       case file:read_file(ToFile) of
-                           {'ok', PDF} ->
-                               lager:debug("convert file ~s to ~s succeeded", [FromFile, ToFile]),
-                               {'ok', PDF};
-                           {'error', _R}=E ->
-                               lager:debug("unable to read converted file ~s : ~p", [ToFile, _R]),
-                               E
-                       end;
-                   Else ->
-                       lager:debug("could not convert file ~s : ~p", [FromFile, Else]),
-                       {'error', Else}
-               end,
-    _ = kz_util:delete_file(FromFile),
-    _ = kz_util:delete_file(ToFile),
+    lager:debug("trying to convert TIFF to PDF"),
+    case kz_util:cmd(".", ?TIFF_TO_PDF_CMD(FromFile, ToFile), 5*1000) of
+        {0, _} ->
+            case file:read_file(ToFile) of
+                {'ok', PDF}=Ok -> Ok;
+                {'error', _R}=E ->
+                    lager:debug("unable to read converted file ~s: ~p", [ToFile, _R]),
+                    E
+            end;
+        Else ->
+            lager:debug("could not convert file ~s: ~p", [FromFile, Else]),
+            {'error', Else}
+    end,
+    kz_util:delete_file(FromFile),
+    kz_util:delete_file(ToFile),
     Response.
 
 valid_format(<<"tiff">>) -> <<"tif">>;
@@ -105,7 +101,7 @@ maybe_convert_attachment(Macros, ContentType, Bin) ->
     FromFormat = from_format_from_content_type(ContentType),
     lager:debug("converting from ~s to ~s", [FromFormat, ToFormat]),
 
-    case ?MODULE:convert(FromFormat, ToFormat, Bin) of
+    case convert(FromFormat, ToFormat, Bin) of
         {'ok', Converted} ->
             Filename = get_file_name(Macros, ToFormat),
             lager:debug("adding attachment as ~s", [Filename]),
