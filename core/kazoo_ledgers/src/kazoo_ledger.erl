@@ -12,7 +12,7 @@
 
 -export([
     new/0
-    ,save/1
+    ,save/1, save/2
 ]).
 
 -export([
@@ -32,6 +32,8 @@
     ,account/1
     ,account_id/1, set_account_id/2
     ,account_name/1, set_account_name/2
+    ,metadata/1, metadata/2
+    ,set_metadata/2, set_metadata/3
 ]).
 
 
@@ -51,27 +53,33 @@ new() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec save(kz_json:object()) -> {'ok', kz_json:object()} | {'error', any()}.
--spec save(kz_json:object(), ne_binary(), boolean()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec save(ledger()) -> {'ok', ledger()} | {'error', any()}.
 save(Ledger) ->
     AccountId = account_id(Ledger),
-    IsReseller = kz_services:is_reseller(AccountId),
-    JObj =
-        kz_json:set_values([
-            {<<"pvt_type">>, ?PVT_TYPE}
-            ,{<<"pvt_modified">>, kz_util:current_tstamp()}
-            ,{<<"pvt_created">>, kz_util:current_tstamp()}
-        ], Ledger),
-    save(JObj, AccountId, IsReseller).
+    Props = [{<<"pvt_type">>, ?PVT_TYPE}
+             ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+             ,{<<"pvt_created">>, kz_util:current_tstamp()}
+            ],
+    save(kz_json:set_values(Props, Ledger), AccountId).
 
-save(JObj, AccountId, 'true') ->
-    kazoo_modb:save_doc(AccountId, JObj);
-save(JObj, AccountId, 'false') ->
-    ResellerId = kz_services:find_reseller_id(AccountId),
-    case kazoo_modb:save_doc(ResellerId, JObj) of
-        {'error', _}=Err -> Err;
-        {'ok', _} ->
-            kazoo_modb:save_doc(AccountId, JObj)
+-spec save(ledger(), ne_binary()) -> {'ok', ledger()} | {'error', any()}.
+save(Ledger, AccountId) ->
+    Props = [{<<"pvt_account_id">>, AccountId}
+            | maybe_add_id(Ledger)
+            ],
+    kazoo_modb:save_doc(AccountId, kz_json:set_values(Props, Ledger)).
+
+-spec maybe_add_id(ledger()) -> kz_proplist().
+maybe_add_id(Ledger) ->
+    case kz_doc:id(Ledger) of
+        'undefined' ->
+            {Year, Month, _} = erlang:date(),
+            [{<<"_id">>, <<(kz_util:to_binary(Year))/binary
+                           ,(kz_util:pad_month(Month))/binary
+                           ,"-"
+                           ,(kz_util:rand_hex_binary(16))/binary
+                         >>}];
+        _ -> []
     end.
 
 %%--------------------------------------------------------------------
@@ -274,13 +282,43 @@ set_account_id(L, Start) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec account_name(ledger()) -> ledger().
+-spec account_name(ledger()) -> ne_binary().
 account_name(Ledger) ->
     kz_json:get_ne_binary_value(?ACCOUNT_NAME, Ledger).
 
 -spec set_account_name(ledger(), ne_binary()) -> ledger().
 set_account_name(L, End) ->
     kz_json:set_value(?ACCOUNT_NAME, End, L).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec metadata(ledger()) -> ledger().
+metadata(Ledger) ->
+    kz_json:get_value(?METADATA, Ledger).
+
+-spec metadata(ledger(), ne_binary() | ne_binaries()) -> ledger().
+metadata(Ledger, Key)
+  when is_binary(Key)->
+    kz_json:get_value(?METADATA_KEY(Key), Ledger);
+metadata(Ledger, Keys)
+  when is_list(Keys)->
+    kz_json:get_value(?METADATA_KEYS(Keys), Ledger).
+
+-spec set_metadata(ledger(), kz_json:object() | kz_proplist()) -> ledger().
+set_metadata(Ledger, List)
+  when is_list(List) ->
+    kz_json:set_values([{?METADATA_KEY(K), V} || {K,V} <- List], Ledger);
+set_metadata(Ledger, JObj) ->
+    kz_json:set_value(?METADATA, JObj, Ledger).
+
+-spec set_metadata(ledger(), ne_binary(), kz_json:json_term()) -> ledger().
+set_metadata(Ledger, Key, Value) ->
+    kz_json:set_value(?METADATA_KEY(Key), Value, Ledger).
+
 
 %% ------------------------------------------------------------------
 %% Internal Function Definitions

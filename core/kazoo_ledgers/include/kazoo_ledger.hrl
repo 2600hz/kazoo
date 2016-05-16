@@ -18,6 +18,9 @@
 -define(ACCOUNT, <<"account">>).
 -define(ACCOUNT_ID, [?ACCOUNT, <<"id">>]).
 -define(ACCOUNT_NAME, [?ACCOUNT, <<"name">>]).
+-define(METADATA, <<"metadata">>).
+-define(METADATA_KEY(A), [?METADATA, A]).
+-define(METADATA_KEYS(L), [?METADATA | L]).
 
 -define(PVT_LEDGER_TYPE, <<"pvt_ledger_type">>).
 -define(PVT_TYPE, <<"ledger">>).
