@@ -825,7 +825,7 @@ reply_number_not_found(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -type process_result() :: {kz_services:services(), kz_json:object()}.
--spec collection_process(cb_context:context(), ne_binary()) -> process_result().
+-spec collection_process(cb_context:context(), ne_binary()) -> {ne_binary(), kz_services:services(), kz_json:object()}.
 collection_process(Context, Action) ->
     ReqData = cb_context:req_data(Context),
     Numbers = kz_json:get_value(<<"numbers">>, ReqData),
@@ -858,7 +858,7 @@ collection_process(Context, Action, Numbers) ->
 
 %% @private
 -spec numbers_action(cb_context:context(), ne_binary(), ne_binaries()) ->
-                            knm_number_return().
+                            knm_numbers:numbers_return().
 numbers_action(Context, ?ACTIVATE, Numbers) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
                ,{'dry_run', not cb_context:accepting_charges(Context)}
@@ -886,7 +886,7 @@ numbers_action(Context, ?HTTP_DELETE, Numbers) ->
 
 -spec fold_dry_runs([kz_services:services(), ...]) -> kz_json:object().
 fold_dry_runs(ServicesList) ->
-    F = fun (Services, _Acc) -> kz_services:dry_run(Services) end,
+    F = fun(Services, _Acc) -> kz_services:dry_run(Services) end,
     lists:foldl(F, [], ServicesList).
 
 %%--------------------------------------------------------------------
