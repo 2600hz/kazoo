@@ -287,30 +287,34 @@ read_ledgers(Context) ->
 read_ledger(Context, Ledger) ->
     case view_options(Context, Ledger) of
         {'ok', ViewOptions} ->
-    crossbar_doc:load_view(?LEDGER_VIEW
-                           ,ViewOptions
-                           ,Context
-                           ,fun normalize_view_results/3
-                          );
+            crossbar_doc:load_view(?LEDGER_VIEW
+                                  ,ViewOptions
+                                  ,Context
+                                  ,fun normalize_view_results/3
+                                  );
         Ctx -> Ctx
     end.
 
+-spec view_options(cb_context:context(), ne_binary()) ->
+                          {'ok', crossbar_doc:view_options()} |
+                          cb_context:context().
 view_options(Context, Ledger) ->
     case cb_modules_util:range_view_options(Context) of
         {CreatedFrom, CreatedTo} ->
             AccountId = cb_context:account_id(Context),
             Databases = kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo),
             {'ok', [{'startkey', [Ledger, CreatedTo]}
-                    ,{'endkey', [Ledger, CreatedFrom]}
-                    ,{'limit', pagination_page_size(Context)}
-                    ,'descending'
-                    ,'include_docs'
-                    ,{'databases', Databases}
-                   ]};
+                   ,{'endkey', [Ledger, CreatedFrom]}
+                   ,{'limit', pagination_page_size(Context)}
+                   ,'descending'
+                   ,'include_docs'
+                   ,{'databases', Databases}
+                   ]
+            };
         Ctx -> Ctx
     end.
 
--spec pagination_page_size(cb_context:context()) ->pos_integer().
+-spec pagination_page_size(cb_context:context()) -> pos_integer().
 pagination_page_size(Context) ->
     case crossbar_doc:pagination_page_size(Context) of
         'undefined' -> 'undefined';
@@ -318,7 +322,7 @@ pagination_page_size(Context) ->
     end.
 
 -spec normalize_view_results(cb_context:context(), kz_json:object(), kz_json:objects()) ->
-                                             kz_json:objects().
+                                    kz_json:objects().
 normalize_view_results(Context, JObj, Acc) ->
     [normalize_view_result(Context, kz_json:get_value(<<"doc">>, JObj)) | Acc].
 
@@ -334,30 +338,29 @@ normalize_view_result(Context, _DocType, JObj) ->
     Transaction = kz_transaction:from_json(JObj),
     kz_json:from_list(
       [{<<"source">>, kz_json:from_list([{<<"service">>, <<"per-minute-voip">>}
-                                         ,{<<"id">>, kz_transaction:call_id(Transaction)}
+                                        ,{<<"id">>, kz_transaction:call_id(Transaction)}
                                         ])}
-       ,{<<"account">>, kz_json:from_list(
-           case kz_transaction:code(Transaction) of
-               Code when Code =:= ?CODE_PER_MINUTE_CALL ->
-                   [{<<"id">>, kz_transaction:account_id(Transaction)}
-                    ,{<<"name">>, cb_context:account_name(Context)}
-                   ];
-               Code when Code =:= ?CODE_SUB_ACCOUNT_PER_MINUTE_CALL ->
-                   [{<<"id">>, kz_transaction:sub_account_id(Transaction)}
-                    ,{<<"name">>, kz_transaction:sub_account_name(Transaction)}
-                   ]
-           end
-                                         )}
-       ,{<<"usage">>, kz_json:from_list([{<<"type">>, <<"voice">>}
-                                         ,{<<"unit">>, <<"sec">>}
-                                         ,{<<"quantity">>,kz_json:get_integer_value(<<"duration">>, kz_transaction:metadata(Transaction), 0)}
-                                        ])}
-       ,{<<"amount">>, kz_transaction:amount(Transaction)}
-       ,{<<"description">>, kz_transaction:description(Transaction)}
-       ,{<<"period">>, kz_json:from_list([{<<"start">>, kz_transaction:created(Transaction)}
-                                        ])}
-       ,{<<"metadata">>, kz_transaction:metadata(Transaction)}
-       ,{<<"id">>, kz_doc:id(maybe_set_doc_modb_prefix(JObj))}
+      ,{<<"account">>, kz_json:from_list(
+                         case kz_transaction:code(Transaction) of
+                             Code when Code =:= ?CODE_PER_MINUTE_CALL ->
+                                 [{<<"id">>, kz_transaction:account_id(Transaction)}
+                                 ,{<<"name">>, cb_context:account_name(Context)}
+                                 ];
+                             Code when Code =:= ?CODE_SUB_ACCOUNT_PER_MINUTE_CALL ->
+                                 [{<<"id">>, kz_transaction:sub_account_id(Transaction)}
+                                 ,{<<"name">>, kz_transaction:sub_account_name(Transaction)}
+                                 ]
+                         end
+                        )}
+      ,{<<"usage">>, kz_json:from_list([{<<"type">>, <<"voice">>}
+                                       ,{<<"unit">>, <<"sec">>}
+                                       ,{<<"quantity">>, kz_json:get_integer_value(<<"duration">>, kz_transaction:metadata(Transaction), 0)}
+                                       ])}
+      ,{<<"amount">>, kz_transaction:amount(Transaction)}
+      ,{<<"description">>, kz_transaction:description(Transaction)}
+      ,{<<"period">>, kz_json:from_list([{<<"start">>, kz_transaction:created(Transaction)}])}
+      ,{<<"metadata">>, kz_transaction:metadata(Transaction)}
+      ,{<<"id">>, kz_doc:id(maybe_set_doc_modb_prefix(JObj))}
       ]).
 
 -spec maybe_set_doc_modb_prefix(kz_json:object()) -> kz_json:object().
@@ -389,7 +392,6 @@ read_ledger_doc(Context, Ledger, ?MATCH_MODB_PREFIX(YYYY, MM, SimpleId) = Id) ->
     case cb_context:resp_status(Ctx) =:= 'success'
         andalso validate_returned_ledger_doc(Ledger, Ctx)
     of
-        'true' -> Ctx;
         'false' -> read_ledger_doc(cb_context:set_account_modb(Context, Year, Month), Ledger, SimpleId);
         Ctx1 -> Ctx1
     end;
@@ -399,12 +401,11 @@ read_ledger_doc(Context, Ledger, Id) ->
     case cb_context:resp_status(Ctx) =:= 'success'
         andalso validate_returned_ledger_doc(Ledger, Ctx)
     of
-        'true' -> Ctx;
         'false' -> Ctx;
         Ctx1 -> Ctx1
     end.
 
--spec validate_returned_ledger_doc(ne_binary(), cb_context:context()) -> 'true' | cb_context:context().
+-spec validate_returned_ledger_doc(ne_binary(), cb_context:context()) -> cb_context:context().
 validate_returned_ledger_doc(Ledger, Context) ->
     JObj = cb_context:doc(Context),
     TransactionTypes = [<<"debit">>, <<"credit">>],
@@ -419,9 +420,9 @@ validate_returned_ledger_doc(Ledger, Context) ->
     of
         'true' -> cb_context:set_resp_data(Context, normalize_view_result(Context, JObj));
         'false' ->
-            cb_context:add_validation_error(
-                      <<"Id">>
-                      ,<<"invalid">>
-                      ,kz_json:from_list([{<<"message">>, <<"document does not belong to ledger">>}])
-                      ,Context)
+            cb_context:add_validation_error(<<"Id">>
+                                           ,<<"invalid">>
+                                           ,kz_json:from_list([{<<"message">>, <<"document does not belong to ledger">>}])
+                                           ,Context
+                                           )
     end.

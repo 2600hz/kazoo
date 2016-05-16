@@ -190,8 +190,8 @@ get_open_function(Options) ->
 %% it will return `true`.
 %% @end
 %%--------------------------------------------------------------------
--spec check_document_type(ne_binary() | ne_binaries(), cb_context:context(), kz_json:object(), kz_proplist()) ->
-                                  boolean().
+-spec check_document_type(ne_binary() | ne_binaries(), cb_context:context(), kz_json:object() | kz_json:objects(), kz_proplist()) ->
+                                 boolean().
 check_document_type(DocId, Context, JObj, Options) when is_binary(DocId) ->
     JObjType = kz_doc:type(JObj),
     ExpectedType = props:get_value(?OPTION_EXPECTED_TYPE, Options),
@@ -991,7 +991,8 @@ handle_couch_mgr_pagination_success([_|_]=JObjs
                        })
     end.
 
--type filter_fun() :: fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()).
+-type filter_fun() :: fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()) |
+                      fun((cb_context:context(), kz_json:object(), kz_json:objects()) -> kz_json:objects()).
 
 -spec apply_filter('undefined' | filter_fun(), kz_json:objects(), cb_context:context(), direction()) ->
                           kz_json:objects().
