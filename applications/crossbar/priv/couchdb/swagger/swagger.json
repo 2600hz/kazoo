@@ -7857,18 +7857,6 @@
         "/v2/accounts/{ACCOUNT_ID}/ledgers/debit": {
             "put": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/ledgers/{ID}": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/ledgers/{ID}/credit": {
-            "post": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/ledgers/{ID}/debit": {
-            "post": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/ledgers/{ID}/{ID}": {
-            "get": {}
-        },
         "/v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}": {
             "get": {}
         },
