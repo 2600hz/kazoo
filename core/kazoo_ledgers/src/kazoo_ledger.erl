@@ -282,7 +282,7 @@ set_account_id(L, Start) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec account_name(ledger()) -> ledger().
+-spec account_name(ledger()) -> ne_binary().
 account_name(Ledger) ->
     kz_json:get_ne_binary_value(?ACCOUNT_NAME, Ledger).
 
