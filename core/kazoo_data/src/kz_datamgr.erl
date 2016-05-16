@@ -82,6 +82,8 @@
          ,change_notice/0
         ]).
 
+-export_type([view_options/0]).
+
 -include("kz_data.hrl").
 
 -define(UUID_SIZE, 16).
