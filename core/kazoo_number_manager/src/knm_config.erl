@@ -13,10 +13,8 @@
 -spec should_permanently_delete() -> boolean().
 -spec should_permanently_delete(boolean()) -> boolean().
 -ifdef(TEST).
-should_permanently_delete() ->
-    'false'.
-should_permanently_delete(Default) ->
-    Default.
+should_permanently_delete() -> 'false'.
+should_permanently_delete(Default) -> Default.
 -else.
 should_permanently_delete() ->
     should_permanently_delete('false').

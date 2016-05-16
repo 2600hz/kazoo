@@ -25,7 +25,7 @@
 
 -include("knm.hrl").
 
--type number_return() :: {ne_binary(), knm_number_return()}.
+-type number_return() :: {ne_binary(), knm_number:knm_number_return()}.
 -type numbers_return() :: [number_return()].
 
 %%--------------------------------------------------------------------
