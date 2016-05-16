@@ -182,11 +182,11 @@ post(Context, DocId) ->
     C = crossbar_doc:save(cb_context:set_doc(Context, kz_json:set_values(Props, Doc))),
     update_mwi(C).
 
-post(Context, DocId, ?MESSAGES_RESOURCE) ->
+post(Context, _DocId, ?MESSAGES_RESOURCE) ->
     MsgIds = cb_context:resp_data(Context),
     Folder = get_folder_filter(Context, ?VM_FOLDER_SAVED),
-    _ = kz_vm_message:update_folder(Folder, MsgIds, cb_context:account_id(Context)),
-    C = load_message_summary(DocId, Context),
+    {'ok', Result} = kz_vm_message:update_folder(Folder, MsgIds, cb_context:account_id(Context)),
+    C = cb_context:set_resp_data(Context, Result),
     update_mwi(C).
 
 post(Context, _DocId, ?MESSAGES_RESOURCE, MediaId) ->
@@ -229,10 +229,10 @@ delete(Context, DocId) ->
     C = crossbar_doc:delete(Context),
     update_mwi(C).
 
-delete(Context, DocId, ?MESSAGES_RESOURCE) ->
+delete(Context, _DocId, ?MESSAGES_RESOURCE) ->
     MsgIds = cb_context:resp_data(Context),
-    _ = kz_vm_message:update_folder(?VM_FOLDER_DELETED, MsgIds, cb_context:account_id(Context)),
-    C = load_message_summary(DocId, Context),
+    {'ok', Result} = kz_vm_message:update_folder(?VM_FOLDER_DELETED, MsgIds, cb_context:account_id(Context)),
+    C = cb_context:set_resp_data(Context, Result),
     update_mwi(C).
 
 delete(Context, _DocId, ?MESSAGES_RESOURCE, MediaId) ->

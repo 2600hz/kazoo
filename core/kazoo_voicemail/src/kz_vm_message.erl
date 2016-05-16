@@ -116,7 +116,7 @@ new_message(AttachmentName, BoxNum, Timezone, Call, Props) ->
             _ = notify_and_save_meta(Call, MediaId, Length, Props),
             'ok';
         {'error', Call1} ->
-            lager:critical(Msg),
+            lager:error(Msg),
             {'error', Call1, Msg}
     end.
 
@@ -433,8 +433,7 @@ update_folder(Folder, MsgIds, AccountId) ->
                apply_folder(Folder, JObj)
            end
           ],
-    _ = update_multi_messages(AccountId, MsgIds, Fun),
-    'ok'.
+    {'ok', update_multi_messages(AccountId, MsgIds, Fun)}.
 
 -spec apply_folder(ne_binary(), kz_json:object()) -> kz_json:object().
 apply_folder(?VM_FOLDER_DELETED, Doc) ->
@@ -475,30 +474,37 @@ do_update_message_doc(AccountId, MsgId, JObj, Funs) ->
 %% @doc Do update on multiple messages docs and do migration when necessary
 %% @end
 %%--------------------------------------------------------------------
--spec update_multi_messages(ne_binary(), ne_binaries(), update_funs()) -> 'ok'.
+-spec update_multi_messages(ne_binary(), ne_binaries(), update_funs()) -> kz_json:object().
 update_multi_messages(AccountId, MsgIds, Funs) ->
     {VMBoxMIds, MODBMIds} = filter_messages_id(MsgIds, {[], []}),
-    _ = move_messages_to_modb(AccountId, VMBoxMIds, Funs),
-    _ = update_modb_messages(AccountId, MODBMIds, Funs),
-    'ok'.
+    {SMoved, FMoved} = move_messages_to_modb(AccountId, VMBoxMIds, Funs),
+    {SUpdated, FUpdated} = update_modb_messages(AccountId, MODBMIds, Funs),
+    R = kz_json:from_list([{<<"succeeded">>, kz_json:from_list(lists:flatten(SMoved, SUpdated))}
+                           ,{<<"failed">>, kz_json:from_list(lists:flatten(FMoved, FUpdated))}
+                          ]
+                         ),
+    R.
 
--spec update_modb_messages(ne_binary(), ne_binaries(), update_funs()) -> [db_ret()].
+-spec update_modb_messages(ne_binary(), ne_binaries(), update_funs()) ->
+                                {ne_binaries(), [{ne_binary(), ne_binary()}]}.
 update_modb_messages(AccountId, Ids, Funs) ->
-    update_modb_messages(AccountId, Ids, Funs, []).
+    update_modb_messages(AccountId, Ids, Funs, {[], []}).
 
--spec update_modb_messages(ne_binary(), ne_binaries(), update_funs(), [db_ret()]) -> [db_ret()].
-update_modb_messages(_, [], _, Updated) -> Updated;
-update_modb_messages(AccountId, [Id|Ids], Funs, Updated) ->
+-spec update_modb_messages(ne_binary(), ne_binaries(), update_funs(), {ne_binaries(), [{ne_binary(), ne_binary()}]}) ->
+                                {ne_binaries(), [{ne_binary(), ne_binary()}]}.
+update_modb_messages(_, [], _, Acc) -> Acc;
+update_modb_messages(AccountId, [Id|Ids], Funs, {SAcc, FAcc}) ->
     case message_doc(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _)=Id) of
         {'ok', JObj} ->
                 NewJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Funs),
                 case handle_update_result(Id, kazoo_modb:save_doc(AccountId, NewJObj, Year, Month)) of
-                    {'ok', _}=OK ->
-                        update_modb_messages(AccountId, Ids, Funs, [OK | Updated]);
-                    {'error', _} ->
-                        update_modb_messages(AccountId, Ids, Funs, Updated)
+                    {'ok', NJObj} ->
+                        update_modb_messages(AccountId, Ids, Funs, {[NJObj | SAcc], FAcc});
+                    {'error', R} ->
+                        update_modb_messages(AccountId, Ids, Funs, {SAcc, [{Id, kz_util:to_binary(R)} | FAcc]})
                 end;
-        {'error', _}=E -> E
+        {'error', R} ->
+            update_modb_messages(AccountId, Ids, Funs, {SAcc, [{Id, kz_util:to_binary(R)} | FAcc]})
     end.
 
 -spec filter_messages_id(ne_binaries(), {ne_binaries(), ne_binaries()}) -> {ne_binaries(), ne_binaries()}.
@@ -515,7 +521,7 @@ handle_update_result(?MATCH_MODB_PREFIX(_, _, _)=_Id, {'error', _R}=Error) ->
     Error;
 handle_update_result(?MATCH_MODB_PREFIX(_, _, _), {'ok', _}=Res) -> Res;
 handle_update_result(FromId, {'error', _R}=Error) ->
-    lager:warning("failed to move voicemail message ~s to modb: ~p", [FromId, _R]),
+    lager:warning("failed move voicemail message ~s to modb: ~p", [FromId, _R]),
     Error;
 handle_update_result(_, {'ok', _}=Res) -> Res.
 
@@ -524,33 +530,37 @@ handle_update_result(_, {'ok', _}=Res) -> Res.
 %% @doc Move old voicemail media doc with message metadata to the MODB
 %% @end
 %%--------------------------------------------------------------------
--spec move_messages_to_modb(ne_binary(), ne_binaries(), update_funs()) -> [db_ret()].
-move_messages_to_modb(_, [], _) -> 'ok';
+-spec move_messages_to_modb(ne_binary(), ne_binaries(), update_funs()) ->
+                                {ne_binaries(), [{ne_binary(), ne_binary()}]}.
+move_messages_to_modb(_, [], _) -> {[], []};
 move_messages_to_modb(AccountId, OldIds, Funs) ->
-    Moved = move_messages_to_modb(AccountId, OldIds, Funs, []),
+    {Moved, Failed} = move_messages_to_modb(AccountId, OldIds, Funs, {[], []}),
     _ = cleanup_moved_msgs(AccountId, Moved),
-    [Results || {_, Results} <- Moved].
+    Moved1 = [kzd_box_message:media_id(NJObj) || {_OldId, NJObj} <- Moved],
+    {Moved1, Failed}.
 
--spec move_messages_to_modb(ne_binary(), ne_binaries(), update_funs(), [{ne_binary(), {atom(), kz_json:object()}}]) ->
-                                [{ne_binary(), {atom(), kz_json:object()}}].
-move_messages_to_modb(_, [], _, Moved) -> Moved;
-move_messages_to_modb(AccountId, [Id|Ids], Funs, Moved) ->
+-spec move_messages_to_modb(ne_binary(), ne_binaries(), update_funs(), [{ne_binary(), kz_json:object()}]) ->
+                                [{ne_binary(), kz_json:object()}].
+move_messages_to_modb(_, [], _, Acc) -> Acc;
+move_messages_to_modb(AccountId, [Id|Ids], Funs, {SAcc, FAcc}) ->
     case message_doc(AccountId, Id) of
         {'ok', JObj} ->
-            case handle_update_result(Id, move_to_modb(AccountId, JObj, Funs, 'false')) of
-                {'ok', _}=OK ->
-                    move_messages_to_modb(AccountId, Ids, Funs, [{Id, OK} | Moved]);
-                {'error', _} ->
-                    move_messages_to_modb(AccountId, Ids, Funs, Moved)
+            case  handle_update_result(Id, move_to_modb(AccountId, JObj, Funs, 'false')) of
+                {'ok', NJObj} ->
+                    move_messages_to_modb(AccountId, Ids, Funs, {[{Id, NJObj}|SAcc], FAcc});
+                {'error', R} ->
+                    move_messages_to_modb(AccountId, Ids, Funs, {SAcc, [{Id, kz_util:to_binary(R)}, FAcc]})
             end;
-        {'error', _} -> move_messages_to_modb(AccountId, Ids, Funs, Moved)
+        {'error', R} -> move_messages_to_modb(AccountId, Ids, Funs, {SAcc, [{Id, kz_util:to_binary(R)}, FAcc]})
     end.
 
 -spec move_to_modb(ne_binary(), kz_json:object(), update_funs(), boolean()) -> db_ret().
 move_to_modb(AccountId, JObj, Funs, 'true') ->
     case do_move_to_modb(AccountId, JObj, Funs) of
-        {'ok', _} ->
-            cleanup_moved_msgs(AccountId, [kz_doc:id(JObj)], kzd_box_message:source_id(JObj));
+        {'ok', NJObj}=OK ->
+            Moved = [{kz_doc:id(JObj)}, NJObj],
+            _ = cleanup_moved_msgs(AccountId, Moved),
+            OK;
         {'error', _}=E -> E
     end;
 move_to_modb(AccountId, JObj, Funs, 'false') ->
@@ -575,25 +585,44 @@ do_move_to_modb(AccountId, JObj, Funs) ->
                      | Funs
                     ],
     Options = [{'transform', fun(_, B) -> lists:foldl(fun(F, J) -> F(J) end, B, TransformFuns) end}],
-    kz_datamgr:move_doc(FromDb, FromId, ToDb, ToId, Options).
+    try_move_to_modb(FromDb, FromId, ToDb, ToId, Options).
+
+try_move_to_modb(FromDb, FromId, ToDb, ToId, Options) ->
+    try_move_to_modb(FromDb, FromId, ToDb, ToId, Options, 3).
+
+try_move_to_modb(_, _, ToDb, ToId, _, 0) ->
+        _ = kz_datamgr:del_doc(ToDb, ToId),
+        {'error', 'conflict'};
+try_move_to_modb(FromDb, FromId, ToDb, ToId, Options, Tries) ->
+    case kz_datamgr:move_doc(FromDb, FromId, ToDb, ToId, Options) of
+        {'error', 'conflict'} ->
+            try_move_to_modb(FromDb, FromId, ToDb, ToId, Options, Tries - 1);
+        Other -> Other
+    end.
 
 -spec update_media_id(ne_binary(), kz_json:object()) -> kz_json:object().
 update_media_id(MediaId, JObj) ->
     Metadata = kzd_box_message:set_media_id(MediaId, kzd_box_message:metadata(JObj)),
     kzd_box_message:set_metadata(Metadata, JObj).
 
--spec cleanup_moved_msgs(ne_binary(), [{ne_binary(), {atom(), kz_json:object()}}]) -> 'ok'.
+-spec cleanup_moved_msgs(ne_binary(), [{ne_binary(), kz_json:object()}]) -> 'ok'.
 cleanup_moved_msgs(_, []) -> 'ok';
 cleanup_moved_msgs(AccountId, Moved) ->
-    Ids = [Id || {Id, _} <- Moved],
-    {_OldId, {_Ok, MsgJObj}} = hd(Moved),
-    BoxId = kzd_box_message:source_id(MsgJObj),
-    cleanup_moved_msgs(AccountId, Ids, BoxId).
-
--spec cleanup_moved_msgs(ne_binary(), ne_binaries(), ne_binary()) -> 'ok'.
-cleanup_moved_msgs(AccountId, Ids, BoxId) ->
-    lists:foreach(fun(Id) -> kz_datamgr:del_doc(get_db(AccountId), Id) end, Ids),
-    _ = remove_moved_msgs_from_vmbox(AccountId, BoxId, Ids),
+    lists:foreach(fun({OldId, NJObj}) ->
+                      NewId = kzd_box_message:media_id(NJObj),
+                      case kz_datamgr:del_doc(get_db(AccountId), OldId) of
+                          {'ok', _} -> 'ok';
+                          {'error', _R} ->
+                              lager:error("failed to remove voicemail message media doc "),
+                              lager:error("after moving to MODB(old_id: ~s new_id: ~s): ~p", [OldId, NewId, _R])
+                      end
+                  end
+                  ,Moved
+                 ),
+    OldIds = [Id || {Id, _} <- Moved],
+    {_, J} = hd(Moved),
+    BoxId = kzd_box_message:source_id(J),
+    _ = remove_moved_msgs_from_vmbox(AccountId, BoxId, OldIds),
     'ok'.
 
 -spec remove_moved_msgs_from_vmbox(ne_binary(), ne_binary(), ne_binaries()) -> db_ret().
@@ -611,11 +640,11 @@ remove_moved_msgs_from_vmbox(AccountId, BoxId, OldIds) ->
                 {'ok', _}=OK -> OK;
                 {'error', 'conflict'} -> remove_moved_msgs_from_vmbox(AccountId, BoxId, OldIds);
                 {'error', _R}=E ->
-                    lager:debug("could not update mailbox ~s: ~s", [BoxId, _R]),
+                    lager:error("could not update mailbox messages array after moving voicemail messages to MODb ~s: ~s", [BoxId, _R]),
                     E
             end;
         {'error', _R}=E ->
-            lager:warning("failed to open mailbox for update ~s: ~s", [BoxId, _R]),
+            lager:error("unable to open mailbox for update messages array after moving voicemail messages to MODb ~s: ~s", [BoxId, _R]),
             E
     end.
 
