@@ -257,6 +257,7 @@ build_voicemail_data(DataJObj) ->
     props:filter_undefined(
       [{<<"box">>, kz_json:get_value(<<"voicemail_box">>, DataJObj)}
        ,{<<"name">>, kz_json:get_value(<<"voicemail_name">>, DataJObj)}
+       ,{<<"transcription">>, kz_json:get_value([<<"voicemail_transcription">>, <<"text">>], DataJObj)}
        ,{<<"length">>, pretty_print_length(DataJObj)}
       ]).
 
