@@ -4,7 +4,7 @@
 %%%
 %%% @end
 %%% @contributors
-%%%    Pierre Fenoll
+%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(kazoo_tasks_sup).
 -behaviour(supervisor).
@@ -17,7 +17,7 @@
 -define(SERVER, ?MODULE).
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, []).
+-define(CHILDREN, [?WORKER_ARGS('kz_task_scheduler', [AllNodes])]).
 
 %% ===================================================================
 %% API functions
@@ -44,8 +44,8 @@ start_link() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(any()) -> sup_init_ret().
-init([]) ->
+-spec init([node()]) -> sup_init_ret().
+init([AllNodes]) ->
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
