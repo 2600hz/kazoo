@@ -318,7 +318,7 @@ search_response_to_json([Xml]) ->
 search_response_to_json(Xml) ->
     Number = wh_util:get_xml_value("//FullNumber/text()", Xml),
     Props = [
-        {<<"number">>, Number}
+        {<<"number">>, wnm_util:to_e164(Number)}
        ,{<<"rate_center">>, rate_center_to_json(Xml)}
     ],
 
@@ -328,7 +328,7 @@ search_response_to_json(Xml) ->
 tollfree_search_response_to_json(Xml) ->
     Number = wh_util:get_xml_value("//TelephoneNumber/text()", Xml),
     Props = [
-        {<<"number">>, Number}
+        {<<"number">>, wnm_util:to_e164(Number)}
     ],
 
     {Number, wh_json:from_list(Props)}.
