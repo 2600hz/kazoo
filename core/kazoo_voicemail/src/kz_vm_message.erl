@@ -474,6 +474,8 @@ do_update_message_doc(AccountId, MsgId, JObj, Funs) ->
 %% @doc Do update on multiple messages docs and do migration when necessary
 %% @end
 %%--------------------------------------------------------------------
+-type update_fold_ret() :: {ne_binaries(), [{ne_binary(), ne_binary()}]}.
+
 -spec update_multi_messages(ne_binary(), ne_binaries(), update_funs()) -> kz_json:object().
 update_multi_messages(AccountId, MsgIds, Funs) ->
     {VMBoxMIds, MODBMIds} = filter_messages_id(MsgIds, {[], []}),
@@ -485,13 +487,11 @@ update_multi_messages(AccountId, MsgIds, Funs) ->
                          ),
     R.
 
--spec update_modb_messages(ne_binary(), ne_binaries(), update_funs()) ->
-                                {ne_binaries(), [{ne_binary(), ne_binary()}]}.
+-spec update_modb_messages(ne_binary(), ne_binaries(), update_funs()) -> update_fold_ret().
 update_modb_messages(AccountId, Ids, Funs) ->
     update_modb_messages(AccountId, Ids, Funs, {[], []}).
 
--spec update_modb_messages(ne_binary(), ne_binaries(), update_funs(), {ne_binaries(), [{ne_binary(), ne_binary()}]}) ->
-                                {ne_binaries(), [{ne_binary(), ne_binary()}]}.
+-spec update_modb_messages(ne_binary(), ne_binaries(), update_funs(), update_fold_ret()) -> update_fold_ret().
 update_modb_messages(_, [], _, Acc) -> Acc;
 update_modb_messages(AccountId, [Id|Ids], Funs, {SAcc, FAcc}) ->
     case message_doc(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _)=Id) of
@@ -530,8 +530,10 @@ handle_update_result(_, {'ok', _}=Res) -> Res.
 %% @doc Move old voicemail media doc with message metadata to the MODB
 %% @end
 %%--------------------------------------------------------------------
--spec move_messages_to_modb(ne_binary(), ne_binaries(), update_funs()) ->
-                                {ne_binaries(), [{ne_binary(), ne_binary()}]}.
+-type modb_move_ret() :: [{ne_binary(), kz_json:object()}].
+-type modb_move_acc() :: {modb_move_ret(), [ne_binary(), ne_binary()]}.
+
+-spec move_messages_to_modb(ne_binary(), ne_binaries(), update_funs()) -> update_fold_ret().
 move_messages_to_modb(_, [], _) -> {[], []};
 move_messages_to_modb(AccountId, OldIds, Funs) ->
     {Moved, Failed} = move_messages_to_modb(AccountId, OldIds, Funs, {[], []}),
@@ -539,8 +541,7 @@ move_messages_to_modb(AccountId, OldIds, Funs) ->
     Moved1 = [kzd_box_message:media_id(NJObj) || {_OldId, NJObj} <- Moved],
     {Moved1, Failed}.
 
--spec move_messages_to_modb(ne_binary(), ne_binaries(), update_funs(), [{ne_binary(), kz_json:object()}]) ->
-                                [{ne_binary(), kz_json:object()}].
+-spec move_messages_to_modb(ne_binary(), ne_binaries(), update_funs(), modb_move_acc()) -> modb_move_ret().
 move_messages_to_modb(_, [], _, Acc) -> Acc;
 move_messages_to_modb(AccountId, [Id|Ids], Funs, {SAcc, FAcc}) ->
     case message_doc(AccountId, Id) of
@@ -588,8 +589,8 @@ do_move_to_modb(AccountId, JObj, Funs) ->
     Options = [{'transform', fun(_, B) -> lists:foldl(fun(F, J) -> F(J) end, B, TransformFuns) end}],
     try_move_to_modb(FromDb, FromId, ToDb, ToId, Options).
 
--spec try_move_to_modb(ne_binary(), ne_binary(), ne_binary(), ne_binary(), []) -> db_ret().
--spec try_move_to_modb(ne_binary(), ne_binary(), ne_binary(), ne_binary(), [], non_neg_integer()) -> db_ret().
+-spec try_move_to_modb(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> db_ret().
+-spec try_move_to_modb(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_proplist(), non_neg_integer()) -> db_ret().
 try_move_to_modb(FromDb, FromId, ToDb, ToId, Options) ->
     try_move_to_modb(FromDb, FromId, ToDb, ToId, Options, 3).
 
@@ -608,7 +609,7 @@ update_media_id(MediaId, JObj) ->
     Metadata = kzd_box_message:set_media_id(MediaId, kzd_box_message:metadata(JObj)),
     kzd_box_message:set_metadata(Metadata, JObj).
 
--spec cleanup_moved_msgs(ne_binary(), [{ne_binary(), kz_json:object()}]) -> 'ok'.
+-spec cleanup_moved_msgs(ne_binary(), modb_move_ret()) -> 'ok'.
 cleanup_moved_msgs(_, []) -> 'ok';
 cleanup_moved_msgs(AccountId, [{_, J1}|_]=Moved) ->
     lists:foreach(fun({OldId, NJObj}) ->
