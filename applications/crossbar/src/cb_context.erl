@@ -30,6 +30,7 @@
          ,new/0
 
          ,account_id/1, set_account_id/2
+         ,account_name/1, set_account_name/2
          ,account_db/1, set_account_db/2
          ,user_id/1, set_user_id/2
          ,device_id/1, set_device_id/2
@@ -159,6 +160,7 @@ set_accepting_charges(#cb_context{req_json = ReqJObj} = Context) ->
 -spec profile_id(context()) -> api_binary().
 
 account_id(#cb_context{account_id=AcctId}) -> AcctId.
+account_name(#cb_context{account_name=Name}) -> Name.
 user_id(#cb_context{user_id=UserId}) -> UserId.
 device_id(#cb_context{device_id=DeviceId}) -> DeviceId.
 reseller_id(#cb_context{reseller_id=AcctId}) -> AcctId.
@@ -316,6 +318,8 @@ setters_fold(F, C) when is_function(F, 1) -> F(C).
 
 set_account_id(#cb_context{}=Context, AcctId) ->
     Context#cb_context{account_id=AcctId}.
+set_account_name(#cb_context{}=Context, Name) ->
+    Context#cb_context{account_name=Name}.
 set_user_id(#cb_context{}=Context, UserId) ->
     Context#cb_context{user_id=UserId}.
 set_device_id(#cb_context{}=Context, DeviceId) ->

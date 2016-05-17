@@ -23,9 +23,7 @@
          ,db_list/2
         ]).
 
-
 -include("kz_data.hrl").
-
 
 %%% DB-related functions ---------------------------------------------
 -spec db_compact(map(), ne_binary()) -> boolean().

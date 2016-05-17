@@ -55,40 +55,38 @@ range_view_options(Context, MaxRange, Key) ->
 range_view_options(Context, MaxRange, Key, RangeFrom, RangeTo) ->
     case RangeTo - RangeFrom of
         N when N < 0 ->
-            cb_context:add_validation_error(
-              <<Key/binary, "_from">>
-              ,<<"date_range">>
-              ,kz_json:from_list(
-                 [{<<"message">>, <<Key/binary, "_from is prior to ", Key/binary, "_to">>}
-                  ,{<<"cause">>, RangeFrom}
-                 ])
-              ,Context
-             );
+            cb_context:add_validation_error(<<Key/binary, "_from">>
+                                           ,<<"date_range">>
+                                           ,kz_json:from_list(
+                                              [{<<"message">>, <<Key/binary, "_from is prior to ", Key/binary, "_to">>}
+                                              ,{<<"cause">>, RangeFrom}
+                                              ])
+                                           ,Context
+                                           );
         N when N > MaxRange ->
             Message = <<Key/binary, "_to is more than "
                         ,(kz_util:to_binary(MaxRange))/binary
                         ," seconds from ", Key/binary, "_from"
                       >>,
-            cb_context:add_validation_error(
-              <<Key/binary, "_from">>
-              ,<<"date_range">>
-              ,kz_json:from_list(
-                 [{<<"message">>, Message}
-                  ,{<<"cause">>, RangeTo}
-                 ])
-              ,Context
-             );
+            cb_context:add_validation_error(<<Key/binary, "_from">>
+                                           ,<<"date_range">>
+                                           ,kz_json:from_list(
+                                              [{<<"message">>, Message}
+                                              ,{<<"cause">>, RangeTo}
+                                              ])
+                                           ,Context
+                                           );
         _N -> {RangeFrom, RangeTo}
     end.
 
 -spec range_modb_view_options(cb_context:context()) ->
-                                     {'ok', kz_proplist()} |
+                                     {'ok', crossbar_doc:view_options()} |
                                      cb_context:context().
 range_modb_view_options(Context) ->
     range_modb_view_options(Context, 'undefined', 'undefined').
 
 -spec range_modb_view_options(cb_context:context(), api_binaries()) ->
-                                     {'ok', kz_proplist()} |
+                                     {'ok', crossbar_doc:view_options()} |
                                      cb_context:context().
 range_modb_view_options(Context, PrefixKeys) ->
     range_modb_view_options(Context, PrefixKeys, 'undefined').
@@ -118,18 +116,20 @@ range_modb_view_options(Context, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo)
     end.
 
 -spec range_modb_view_options1(cb_context:context(), api_binaries(), api_binaries(), gregorian_seconds(), gregorian_seconds()) ->
-                                     {'ok', crossbar_doc:view_options()} |
-                                     cb_context:context().
+                                      {'ok', crossbar_doc:view_options()} |
+                                      cb_context:context().
 range_modb_view_options1(Context, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo) ->
     AccountId = cb_context:account_id(Context),
-    case PrefixKeys =:= [] andalso SuffixKeys =:= [] of
+    case PrefixKeys =:= []
+        andalso SuffixKeys =:= []
+    of
         'true' -> {'ok', [{'startkey', CreatedFrom}
-                          ,{'endkey', CreatedTo}
-                          ,{'databases', kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo)}
+                         ,{'endkey', CreatedTo}
+                         ,{'databases', kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo)}
                          ]};
         'false' -> {'ok', [{'startkey', [Key || Key <- PrefixKeys ++ [CreatedFrom] ++ SuffixKeys] }
-                           ,{'endkey', [Key || Key <- PrefixKeys  ++ [CreatedTo]   ++ SuffixKeys] }
-                           ,{'databases', kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo)}
+                          ,{'endkey', [Key || Key <- PrefixKeys  ++ [CreatedTo]   ++ SuffixKeys] }
+                          ,{'databases', kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo)}
                           ]}
     end.
 

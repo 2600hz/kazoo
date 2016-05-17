@@ -3416,6 +3416,12 @@
                     "required": false,
                     "type": "string"
                 },
+                "metadata": {
+                    "description": "Metadata for ledger document",
+                    "name": "Metadata",
+                    "required": false,
+                    "type": "object"
+                },
                 "period": {
                     "description": "Period of ledger",
                     "name": "Period",
@@ -7851,14 +7857,11 @@
         "/v2/accounts/{ACCOUNT_ID}/ledgers/debit": {
             "put": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/ledgers/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/ledgers/{ID}/credit": {
-            "post": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/ledgers/{ID}/debit": {
-            "post": {}
+        "/v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{ID}": {
+            "get": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/limits": {
             "get": {},

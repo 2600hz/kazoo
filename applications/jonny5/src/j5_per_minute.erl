@@ -48,7 +48,7 @@ reconcile_call_cost(Request, Limits) ->
     case j5_request:call_cost(Request) of
         0 -> 'ok';
         Amount ->
-            create_debit_transaction(<<"end">>, Amount, Request, Limits)
+            create_ledger_usage(Amount, Request, Limits)
     end.
 
 %%--------------------------------------------------------------------
@@ -124,42 +124,32 @@ maybe_postpay_credit_available(Balance, Amount, Limits) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create_debit_transaction(ne_binary(), integer(), j5_request:request(), j5_limits:limits()) -> any().
-create_debit_transaction(Event, Amount, Request, Limits) ->
+-spec create_ledger_usage(integer(), j5_request:request(), j5_limits:limits()) -> any().
+create_ledger_usage(Amount, Request, Limits) ->
+    SrcService = <<"per-minute-voip">>,
+    SrcId = j5_request:call_id(Request),
     LedgerId = j5_limits:account_id(Limits),
-    lager:debug("creating debit transaction in ledger ~s for $~w"
-                ,[LedgerId, wht_util:units_to_dollars(Amount)]
+    lager:debug("creating debit transaction in ledger ~s / ~s for $~w"
+                ,[LedgerId, SrcService, wht_util:units_to_dollars(Amount)]
                ),
-    Routines = [fun(T) ->
-                        case j5_request:account_id(Request) of
-                            LedgerId ->
-                                kz_transaction:set_reason(<<"per_minute_call">>, T);
-                            AccountId ->
-                                T1 = kz_transaction:set_reason(<<"sub_account_per_minute_call">>, T),
-                                kz_transaction:set_sub_account_info(AccountId, T1)
-                        end
-                end
-                ,fun(T) -> kz_transaction:set_event(Event, T) end
-                ,fun(T) -> kz_transaction:set_call_id(j5_request:call_id(Request), T) end
-                ,fun(T) ->  kz_transaction:set_description(<<"per minute call">>, T) end
-                ,fun(T) when Event =:= <<"end">> ->
-                         kz_transaction:set_metadata(metadata(Request), T);
-                    (T) -> T
-                 end
-               ],
-    kz_transaction:save(
-      lists:foldl(fun(F, T) -> F(T) end
-                  ,kz_transaction:debit(LedgerId, Amount)
-                  ,Routines
-                 )
-     ).
+    Usage = [{<<"type">>, <<"voice">>}
+             ,{<<"quantity">>, j5_request:billing_seconds(Request)}
+             ,{<<"unit">>, <<"sec">>}
+            ],
+
+    Extra = [{<<"amount">>, Amount}
+             ,{<<"description">>, j5_request:rate_name(Request)}
+             ,{<<"period_start">>, j5_request:timestamp(Request)}
+             ,{<<"metadata">>, metadata(Request)}
+            ],
+
+    kz_ledger:debit(SrcService, SrcId, LedgerId, Usage, Extra).
 
 -spec metadata(j5_request:request()) -> kz_json:object().
 metadata(Request) ->
     kz_json:from_list(
-      [{<<"direction">>, j5_request:call_direction(Request)}
-       ,{<<"duration">>, j5_request:billing_seconds(Request)}
-       ,{<<"account_id">>, j5_request:account_id(Request)}
-       ,{<<"to">>, j5_request:to(Request)}
+      [{<<"to">>, j5_request:to(Request)}
        ,{<<"from">>, j5_request:from(Request)}
+       ,{<<"direction">>, j5_request:call_direction(Request)}
+       ,{<<"rate">>, j5_request:rate(Request)}
       ]).

@@ -823,12 +823,25 @@ is_permitted_verb(Req, Context0, _ReqVerb) ->
         [] ->
             is_permitted_nouns(Req, Context0, _ReqVerb,cb_context:req_nouns(Context0));
         ['true'|_] ->
-            {'true', Req, Context0};
+            is_permitted_verb_on_module(Req, Context0, _ReqVerb,cb_context:req_nouns(Context0));
         [{'true', Context1}|_] ->
-            {'true', Req, Context1};
+            is_permitted_verb_on_module(Req, Context1, _ReqVerb,cb_context:req_nouns(Context1));
         [{'halt', Context1}|_] ->
             lager:debug("authz halted"),
             ?MODULE:halt(Req, Context1)
+    end.
+
+-spec is_permitted_verb_on_module(cowboy_req:req(), cb_context:context(), http_method(), list()) ->
+                                {'true', cowboy_req:req(), cb_context:context()} |
+                                halt_return().
+is_permitted_verb_on_module(Req, Context0, _ReqVerb, [{Mod, Params} | _ReqNouns]) ->
+    Event = ?MODULE:create_event_name(Context0, <<"authorize.", Mod/binary>>),
+    Payload = [Context0 | Params],
+    case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Payload)) of
+        [{'halt', Context1}|_] ->
+            lager:debug("authz halted"),
+            ?MODULE:halt(Req, Context1);
+        _Other -> {'true', Req, Context0}
     end.
 
 -spec is_permitted_nouns(cowboy_req:req(), cb_context:context(), http_method(), list()) ->
