@@ -284,6 +284,7 @@ build_voicemail_data(DataJObj) ->
     props:filter_undefined(
       [{<<"box">>, wh_json:get_value(<<"voicemail_box">>, DataJObj)}
        ,{<<"name">>, wh_json:get_value(<<"voicemail_name">>, DataJObj)}
+       ,{<<"transcription">>, wh_json:get_value([<<"voicemail_transcription">>, <<"text">>], DataJObj)}
        ,{<<"length">>, pretty_print_length(DataJObj)}
       ]).
 
