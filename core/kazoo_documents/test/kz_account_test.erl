@@ -28,15 +28,17 @@
                                             ,{?ID, ?SUB_SUB_ACCOUNT_ID}
                                            ])).
 
-parent_account_id_test() ->
-    ?assertEqual('undefined', kz_account:parent_account_id(?MASTER_ACCOUNT)),
-    ?assertEqual(?MASTER_ACCOUNT_ID, kz_account:parent_account_id(?SUB_ACCOUNT)),
-    ?assertEqual(?SUB_ACCOUNT_ID, kz_account:parent_account_id(?SUB_SUB_ACCOUNT)).
+parent_account_id_test_() ->
+    [?_assertEqual('undefined', kz_account:parent_account_id(?MASTER_ACCOUNT))
+    ,?_assertEqual(?MASTER_ACCOUNT_ID, kz_account:parent_account_id(?SUB_ACCOUNT))
+    ,?_assertEqual(?SUB_ACCOUNT_ID, kz_account:parent_account_id(?SUB_SUB_ACCOUNT))
+    ].
 
-tree_test() ->
-    ?assertEqual([], kz_account:tree(?MASTER_ACCOUNT)),
-    ?assertEqual([?MASTER_ACCOUNT_ID], kz_account:tree(?SUB_ACCOUNT)),
-    ?assertEqual([?MASTER_ACCOUNT_ID, ?SUB_ACCOUNT_ID], kz_account:tree(?SUB_SUB_ACCOUNT)).
+tree_test_() ->
+    [?_assertEqual([], kz_account:tree(?MASTER_ACCOUNT))
+    ,?_assertEqual([?MASTER_ACCOUNT_ID], kz_account:tree(?SUB_ACCOUNT))
+    ,?_assertEqual([?MASTER_ACCOUNT_ID, ?SUB_ACCOUNT_ID], kz_account:tree(?SUB_SUB_ACCOUNT))
+    ].
 
 trial_time_test_() ->
     Now = kz_util:current_tstamp(),
