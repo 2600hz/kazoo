@@ -314,7 +314,7 @@ validate_messages(Context, DocId, ?HTTP_DELETE) ->
     ).
 
 -spec get_folder_filter(cb_context:context(), ne_binary()) -> ne_binary().
-get_folder_filter(Context, Defuault) ->
+get_folder_filter(Context, Default) ->
     ReqData = cb_context:req_data(Context),
     QS = cb_context:query_string(Context),
     ReqJObj = cb_context:req_json(Context),
@@ -322,7 +322,7 @@ get_folder_filter(Context, Defuault) ->
     case kz_json:find(?VM_KEY_FOLDER, [ReqData, QS, ReqJObj]) of
         ?VM_FOLDER_NEW -> ?VM_FOLDER_NEW;
         ?VM_FOLDER_SAVED -> ?VM_FOLDER_SAVED;
-        _ -> Defuault
+        _ -> Default
     end.
 
 %%--------------------------------------------------------------------
@@ -340,9 +340,9 @@ filter_messages([], _Filter, Selected) ->
 filter_messages([Mess|Messages], <<"all">>=Filter, Selected) ->
     Id = kzd_box_message:media_id(Mess),
     filter_messages(Messages, Filter, [Id|Selected]);
-filter_messages([Mess|Messages], Filter, Selected) when (Filter =:= ?VM_FOLDER_NEW);
-                                                       (Filter =:= ?VM_FOLDER_SAVED);
-                                                       (Filter =:= ?VM_FOLDER_DELETED) ->
+filter_messages([Mess|Messages], Filter, Selected) when Filter =:= ?VM_FOLDER_NEW;
+                                                        Filter =:= ?VM_FOLDER_SAVED;
+                                                        Filter =:= ?VM_FOLDER_DELETED ->
     Id = kzd_box_message:media_id(Mess),
     case kzd_box_message:folder(Mess) of
         Filter -> filter_messages(Messages, Filter, [Id|Selected]);
@@ -615,7 +615,7 @@ generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
 update_message_folder(MediaId, Context) ->
     AccountId = cb_context:account_id(Context),
     Folder = kzd_box_message:folder(cb_context:doc(Context)),
-    case kz_vm_message:set_folder(Folder, MediaId, AccountId) of
+    case kz_vm_message:update_folder(Folder, MediaId, AccountId) of
         {'ok', Message} ->
             crossbar_util:response(Message, cb_context:set_resp_status(Context, 'success'));
         {'error', Error} ->

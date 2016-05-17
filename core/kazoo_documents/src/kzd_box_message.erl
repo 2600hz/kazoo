@@ -10,7 +10,6 @@
 
 -export([new/0, new/6, build_metadata_object/6
          ,count_folder/2, normalize_count/1
-         ,remove_msg_from_list/2
          ,type/0
          ,folder/1, folder/2, set_folder/2, set_folder_saved/1, set_folder_deleted/1, filter_folder/2
          ,media_id/1, set_media_id/2
@@ -227,30 +226,3 @@ count_folder(Messages, Folders) when is_list(Folders) ->
               ]);
 count_folder(Messages, Folder) ->
     count_folder(Messages, [Folder]).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc Given the id of a message, remove the message from messages
-%% and return a tuple of deleted message and remaining messages in the list
-%% @end
-%%--------------------------------------------------------------------
--type message_filter_ret() :: {kz_json:object(), kz_json:objects()} | {'error', 'not_found'}.
-
--spec remove_msg_from_list(ne_binary(), kz_json:objects()) -> message_filter_ret().
-remove_msg_from_list(_MediaId, []) ->
-    lager:warning("found media doc ~s but messages in vmbox is empty", [_MediaId]),
-    {'error', 'not_found'};
-remove_msg_from_list(MediaId, [H|T]) ->
-    remove_msg_from_list(MediaId, media_id(H), H, T, []).
-
--spec remove_msg_from_list(ne_binary(), ne_binary(), kz_json:object(), kz_json:objects(), kz_json:objects()) ->
-                                message_filter_ret().
-remove_msg_from_list(MediaId, MediaId, Msg, [], Acc) ->
-    {Msg, Acc};
-remove_msg_from_list(_MediaId, _, _, [], _) ->
-    lager:warning("found media doc ~s but could not find metadata in vmbox", [_MediaId]),
-    {'error', 'not_found'};
-remove_msg_from_list(MediaId, MediaId, Msg, Tail, Acc) ->
-    {Msg, lists:flatten([Acc | Tail])};
-remove_msg_from_list(MediaId, _, _, [H|T], Acc) ->
-    remove_msg_from_list(MediaId, media_id(H), H, T, [H|Acc]).
