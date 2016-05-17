@@ -256,5 +256,4 @@ urlunsplit({S, N, P, Q, F}) ->
     Us = case S of <<>> -> <<>>; _ -> <<S/binary, "://">> end,
     Uq = case Q of <<>> -> <<>>; _ -> <<$?, Q/binary>> end,
     Uf = case F of <<>> -> <<>>; _ -> <<$#, F/binary>> end,
-
-    <<Us/binary, N/binary, P/binary, Uq/binary, Uf/binary>>.
+    iolist_to_binary([Us, N, P, Uq, Uf]).
