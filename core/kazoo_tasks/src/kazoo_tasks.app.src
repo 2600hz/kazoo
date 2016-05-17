@@ -1,0 +1,16 @@
+{application, kazoo_tasks,
+ [
+  {description, "Tasks - Schedule one-offs cluster-wide tasks"},
+  {vsn, "4.0.0"},
+  {modules, []},
+  {registered, [kazoo_tasks_sup]},
+  {applications, [ kernel
+                 , stdlib
+
+                 , kazoo
+                 , kazoo_amqp
+
+                 , lager
+                 ]},
+  {mod, {kazoo_tasks_app, []}}
+ ]}.
