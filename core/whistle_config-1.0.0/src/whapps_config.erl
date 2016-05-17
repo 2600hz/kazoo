@@ -379,6 +379,7 @@ update_category(Category, Keys, Value, Node, Options) ->
 update_category(Category, Keys, Value, Node, Options, JObj) ->
     PvtFields = props:get_value('pvt_fields', Options),
 
+    lager:info("attempting to update ~s:~s", [Category, Keys]),
     case wh_json:get_value([Node | Keys], JObj) =/= 'undefined'
         orelse props:is_true('node_specific', Options, 'false')
     of
@@ -422,8 +423,8 @@ maybe_save_category(Category, JObj, PvtFields) ->
 maybe_save_category(Category, JObj, PvtFields, Looped) ->
     maybe_save_category(Category, JObj, PvtFields, Looped, is_locked()).
 
-maybe_save_category(_, JObj, _, _, 'true') ->
-    lager:warning("failed to update category, system config database is locked!"),
+maybe_save_category(_Cat, JObj, _, _, 'true') ->
+    lager:warning("failed to update ~s, system config database is locked!", [_Cat]),
     lager:warning("please update /etc/kazoo/config.ini or use 'sup whapps_config lock_db <boolean>' to enable system config writes."),
     {'ok', JObj};
 maybe_save_category(Category, JObj, PvtFields, Looped, _) ->
