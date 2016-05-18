@@ -117,7 +117,7 @@
                          ,<<"pvt_type">>
                         ]).
 
--define(DELETE_KEYS, [<<"_rev">>, <<"id">>, <<"_attachments">>]).
+-define(DELETE_KEYS, [<<"_rev">>, <<"id">>, <<"_attachments">>, <<"pvt_attachments">>]).
 
 -define(MAX_BULK_INSERT, 2000).
 

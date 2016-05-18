@@ -225,9 +225,9 @@ copy_doc(Src, Dst, CopySpec, CopyFun, Opts) ->
             DestinationDoc = kz_json:set_values(Props, kz_json:delete_keys(?DELETE_KEYS, SourceDoc)),
             Doc = copy_transform(Transform, SourceDoc, DestinationDoc),
             case CopyFun(Dst, DestDbName, Doc, Options) of
-                {'ok', _JObj} ->
+                {'ok', JObj} ->
                     Attachments = kz_doc:attachments(SourceDoc, kz_json:new()),
-                    copy_attachments(Src, Dst, CopySpec, kz_json:get_values(Attachments));
+                    copy_attachments(Src, Dst, CopySpec, kz_json:get_values(Attachments), kz_doc:revision(JObj));
                 Error -> Error
             end;
         Error -> Error
@@ -237,15 +237,15 @@ copy_doc(Src, Dst, CopySpec, CopyFun, Opts) ->
 copy_transform('undefined', _SourceDoc, DestinationDoc) -> DestinationDoc;
 copy_transform(Fun, SourceDoc, DestinationDoc) -> Fun(SourceDoc, DestinationDoc).
 
--spec copy_attachments(map(), map(), copy_doc(), {kz_json:json_terms(), kz_json:keys()}) ->
+-spec copy_attachments(map(), map(), copy_doc(), {kz_json:json_terms(), kz_json:keys()}, ne_binary()) ->
                               {'ok', ne_binary()} |
                               {'error', any()}.
-copy_attachments(_Src, Dst, CopySpec, {[], []}) ->
+copy_attachments(_Src, Dst, CopySpec, {[], []}, _) ->
     #copy_doc{dest_dbname = DestDbName
                  ,dest_doc_id = DestDocId
                 } = CopySpec,
     open_doc(Dst, DestDbName, DestDocId, []);
-copy_attachments(Src, Dst, CopySpec, {[JObj | JObjs], [Key | Keys]}) ->
+copy_attachments(Src, Dst, CopySpec, {[JObj | JObjs], [Key | Keys]}, Rev) ->
     #copy_doc{source_dbname = SourceDbName
                  ,source_doc_id = SourceDocId
                  ,dest_dbname = DestDbName
@@ -254,10 +254,12 @@ copy_attachments(Src, Dst, CopySpec, {[JObj | JObjs], [Key | Keys]}) ->
     case kzs_attachments:fetch_attachment(Src, SourceDbName, SourceDocId, Key) of
         {'ok', Contents} ->
             ContentType = kz_json:get_value([<<"content_type">>], JObj),
-            Opts = [{'content_type', kz_util:to_list(ContentType)}],
+            Opts = [{'content_type', kz_util:to_list(ContentType)}
+                    ,{'rev', Rev}
+                   ],
             case kzs_attachments:put_attachment(Dst, DestDbName, DestDocId, Key, Contents, Opts) of
-                {'ok', _AttachmentDoc} ->
-                    copy_attachments(Src, Dst, CopySpec, {JObjs, Keys});
+                {'ok', AttachmentDoc} ->
+                    copy_attachments(Src, Dst, CopySpec, {JObjs, Keys}, kz_doc:revision(AttachmentDoc));
                 Error -> Error
             end;
         Error -> Error
