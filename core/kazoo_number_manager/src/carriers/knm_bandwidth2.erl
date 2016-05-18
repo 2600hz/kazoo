@@ -180,14 +180,14 @@ disconnect_number(_Number) -> _Number.
 sites() ->
     {'ok', Xml} = api_get(url(["sites"])),
     io:format("listing all sites for account ~p~n", [?BW2_ACCOUNT_ID]),
-    Sites = xmerl_xpath:string("Sites", Xml),
+    Sites = xmerl_xpath:string("Sites/Site", Xml),
     _ = [process_site(X) || X <- Sites],
     io:format("done.~n").
 
 -spec process_site(xml_el()) -> 'ok'.
 process_site(Site) ->
-    Id   = kz_util:get_xml_value("Site/Id/text()", Site),
-    Name = kz_util:get_xml_value("Site/Name/text()", Site),
+    Id   = kz_util:get_xml_value("Id/text()", Site),
+    Name = kz_util:get_xml_value("Name/text()", Site),
     io:format("Id: ~p Name: ~p~n", [Id, Name]).
 
 %% @public
@@ -195,14 +195,14 @@ process_site(Site) ->
 peers(SiteId) ->
     {'ok', Xml} = api_get(url(["sippeers"])),
     io:format("listing all peers for account ~p, site ~p~n", [?BW2_ACCOUNT_ID, SiteId]),
-    Peers = xmerl_xpath:string("SipPeers", Xml),
+    Peers = xmerl_xpath:string("SipPeers/SipPeer", Xml),
     _ = [process_peer(X) || X <- Peers],
     io:format("done.~n").
 
 -spec process_peer(xml_el()) -> 'ok'.
 process_peer(Peer) ->
-    Id   = kz_util:get_xml_value("SipPeer/PeerId/text()", Peer),
-    Name = kz_util:get_xml_value("SipPeer/PeerName/text()", Peer),
+    Id   = kz_util:get_xml_value("PeerId/text()", Peer),
+    Name = kz_util:get_xml_value("PeerName/text()", Peer),
     io:format("Id: ~p Name: ~p~n", [Id, Name]).
 
 %%% Internals
