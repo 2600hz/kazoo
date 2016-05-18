@@ -132,6 +132,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    process_flag('trap_exit', 'true'),
     lager:debug("starting globals registry"),
     kapi_globals:declare_exchanges(),
     kapi_self:declare_exchanges(),
@@ -158,6 +159,9 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+
+handle_call({'where_is', Name}, _From, State) ->
+    {'reply', where_is(Name), State};
 handle_call({'delete_remote', Pid}, _From, State) ->
     _ = delete_by_pid(Pid),
     {'reply', 'ok', State};
@@ -220,6 +224,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'DOWN', Ref, 'process', Pid, Reason}, State) ->
+    lager:debug("monitor ~p detected process ~p exited with reason ~p", [Ref, Pid, Reason]),
     erlang:demonitor(Ref, ['flush']),
     delete_by_pid(Pid, Reason),
     {'noreply', State};
@@ -348,6 +353,7 @@ register_local(Name, Pid, #state{zone=Zone, queue=Q}) ->
                        ,name = kz_util:to_binary(Name)
                        ,state='local'
                },
+    lager:debug("inserting global ~s with pid ~p", [Name, Pid]),
     ets:insert(?TAB_NAME, Global),
     advertise_register(Global),
     'yes'.
@@ -550,9 +556,18 @@ send(Name, Msg) ->
 -spec whereis_name(Name) -> pid() | 'undefined' when
       Name :: term().
 whereis_name(Name) ->
+    lager:debug("calling querying global ~s", [Name]),
+    gen_server:call(?SERVER, {'where_is', Name}, 'infinity').
+
+-spec where_is(Name) -> pid() | 'undefined' when
+      Name :: term().
+where_is(Name) ->
+    lager:debug("querying global ~s", [Name]),
     case where(Name) of
         #kz_global{pid=Pid} -> Pid;
-        'undefined' -> amqp_query(Name)
+        'undefined' ->
+            lager:debug("querying global ~s thru amqp", [Name]),
+            amqp_query(Name)
     end.
 
 -spec where(Name) -> kz_global() | 'undefined' when
@@ -569,6 +584,7 @@ where(Name) ->
 register_name(Name, Pid) when is_pid(Pid) ->
     case where(Name) of
         undefined ->
+            lager:debug("registering global ~s with pid ~p", [Name, Pid]),
             gen_server:call(?SERVER, {'register', Name, Pid}, 'infinity');
         _ ->
             'no'
