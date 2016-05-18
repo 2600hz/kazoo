@@ -187,8 +187,11 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'amqp_delete', #kz_global{pid=Pid}}, State) ->
+handle_cast({'amqp_delete', #kz_global{pid=Pid}, 'undefined'}, State) ->
     Pid ! '$proxy_stop',
+    {'noreply', State};
+handle_cast({'amqp_delete', #kz_global{pid=Pid}, Reason}, State) ->
+    Pid ! {'$proxy_stop', Reason},
     {'noreply', State};
 handle_cast({'insert_remote', Global}, State) ->
     _ = register_remote(Global),
@@ -216,9 +219,9 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'DOWN', Ref, 'process', Pid, _}, State) ->
+handle_info({'DOWN', Ref, 'process', Pid, Reason}, State) ->
     erlang:demonitor(Ref, ['flush']),
-    delete_by_pid(Pid),
+    delete_by_pid(Pid, Reason),
     {'noreply', State};
 handle_info({'EXIT', Pid, Reason}, State) ->
     lager:debug("proxy process ~p exited with reason ~p", [Pid, Reason]),
@@ -371,13 +374,14 @@ amqp_unregister(Name) ->
     case where(Name) of
         #kz_global{state='local'
                   } = Global ->
-            do_amqp_unregister(Global);
+            do_amqp_unregister(Global, 'normal');
         _ -> ok
     end.
 
--spec do_amqp_unregister(kz_global()) -> 'ok'.
-do_amqp_unregister(#kz_global{name=Name}) ->
+-spec do_amqp_unregister(kz_global(), term()) -> 'ok'.
+do_amqp_unregister(#kz_global{name=Name}, Reason) ->
     Payload = [{<<"Name">>, Name}
+               ,{<<"Reason">>, kapi_globals:encode(Reason)}
                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     ets:delete(?TAB_NAME, Name),
@@ -526,7 +530,7 @@ amqp_register_reply(JObj, Global) ->
 handle_amqp_unregister(JObj, _Props) ->
     case where(kapi_globals:name(JObj)) of
         #kz_global{}=Global ->
-            gen_server:cast(?MODULE, {'amqp_delete', Global});
+            gen_server:cast(?MODULE, {'amqp_delete', Global, kapi_globals:reason(JObj)});
         _ -> 'ok'
     end.
 
@@ -589,6 +593,9 @@ proxy_loop(#kz_global{}=Global) ->
         {'$gen_call', {_Pid, _Mref}=From, Request} ->
             gen_server:reply(From, amqp_call(Global, Request)),
             proxy_loop(Global);
+        {'$proxy_stop', Reason} ->
+            gen_server:call(?MODULE, {'delete_remote', self()}),
+            exit(Reason);
         '$proxy_stop' ->
             gen_server:call(?MODULE, {'delete_remote', self()}),
             exit('normal');
@@ -612,17 +619,21 @@ from_json(JObj, State) ->
 
 -spec delete_by_pid(pid()) -> 'ok'.
 delete_by_pid(Pid) ->
+    delete_by_pid(Pid, 'normal').
+
+-spec delete_by_pid(pid(), term()) -> 'ok'.
+delete_by_pid(Pid, Reason) ->
     MatchSpec = [{#kz_global{pid = Pid, _ = '_'} ,[],['$_']}],
     Globals = ets:select(?TAB_NAME, MatchSpec),
-    delete_globals(Globals),
+    delete_globals(Globals, Reason),
     lager:info("deleted ~p proxies", [length(Globals)]).
 
--spec delete_globals(kz_globals()) -> 'ok'.
-delete_globals([]) -> 'ok';
-delete_globals([#kz_global{node=Node} = Global | Globals])
+-spec delete_globals(kz_globals(), term()) -> 'ok'.
+delete_globals([], _) -> 'ok';
+delete_globals([#kz_global{node=Node} = Global | Globals], Reason)
   when Node =:= node() ->
-    do_amqp_unregister(Global),
-    delete_globals(Globals);
-delete_globals([#kz_global{name=Name} | Globals]) ->
+    do_amqp_unregister(Global, Reason),
+    delete_globals(Globals, Reason);
+delete_globals([#kz_global{name=Name} | Globals], Reason) ->
     ets:delete(?TAB_NAME, Name),
-    delete_globals(Globals).
+    delete_globals(Globals, Reason).
