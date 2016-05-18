@@ -5,25 +5,29 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(kazoo_apps_sup).
+-module(kazoo_globals_sup).
 
 -behaviour(supervisor).
 
 -export([start_link/0
-         ,initialize_kapps/1
          ,init/1
-         ,start_child/1
         ]).
 
--include("kapps_call_command.hrl").
--include("kazoo_apps.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
 
 -define(SERVER, ?MODULE).
 
--define(CHILDREN, [?WORKER('kz_nodes')
-                   ,?SUPER('kz_hooks_listener_sup')
-                   ,?WORKER('kazoo_apps_init')
-                   ,?WORKER('kapps_controller')
+-define(ETSMGR_ARGS
+        ,[[{'table_id', kz_globals:table_id()}
+           ,{'find_me_function', fun kz_globals:find_me/0}
+           ,{'table_options', kz_globals:table_options()}
+           ,{'gift_data', kz_globals:gift_data()}
+          ]]
+       ).
+
+-define(CHILDREN, [?SUPER('kz_global_proxies_sup')
+                   ,?WORKER_ARGS('kazoo_etsmgr_srv', ?ETSMGR_ARGS)
+                   ,?WORKER('kz_globals')
                   ]).
 
 %% ===================================================================
@@ -37,13 +41,6 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
-
--spec initialize_kapps(atoms()) -> sup_startchild_ret().
-initialize_kapps(Whapps) ->
-    supervisor:start_child(?SERVER, ?SUPER_ARGS('kapps_sup', Whapps)).
-
-start_child(Spec) ->
-    supervisor:start_child(?SERVER, Spec).
 
 %% ===================================================================
 %% Supervisor callbacks
