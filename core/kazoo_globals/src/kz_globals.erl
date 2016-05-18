@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -10,25 +10,36 @@
 
 -behaviour(gen_listener).
 
--export([start_link/0]).
--export([delete_by_pid/1]).
--export([where_is/1]).
-
--export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
-        ]).
-
+%% Public API
 -export([whereis_name/1
         ,register_name/2
         ,unregister_name/1
         ,send/2
+        ,registered/0
         ]).
 
+-export([start_link/0
+        ,delete_by_pid/1
+        ]).
+
+%% gen listener callbacks
+-export([init/1
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
+        ]).
+
+%% ETS Management
+-export([table_id/0
+         ,table_options/0
+         ,gift_data/0
+         ,find_me/0
+        ]).
+
+%% AMQP handlers
 -export([handle_amqp_register/2
         ,handle_amqp_unregister/2
         ,handle_amqp_send/2
@@ -36,29 +47,27 @@
         ,handle_amqp_query/2
         ]).
 
--include_lib("kazoo/include/kz_types.hrl").
--include_lib("kazoo/include/kz_log.hrl").
--include_lib("kazoo/include/kz_api.hrl").
+-include("kazoo_globals.hrl").
 
 -define(SERVER, ?MODULE).
 
 -define(BINDINGS, [{'globals', ['federate']}
-                   ,{'self', []}
+                  ,{'self', []}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_amqp_call'}
-                      ,[{<<"globals">>, <<"call">>}]
+                     ,[{<<"globals">>, <<"call">>}]
                      }
                     ,{{?MODULE, 'handle_amqp_send'}
-                      ,[{<<"globals">>, <<"send">>}]
+                     ,[{<<"globals">>, <<"send">>}]
                      }
                     ,{{?MODULE, 'handle_amqp_register'}
-                      ,[{<<"globals">>, <<"register">>}]
+                     ,[{<<"globals">>, <<"register">>}]
                      }
                     ,{{?MODULE, 'handle_amqp_unregister'}
-                      ,[{<<"globals">>, <<"unregister">>}]
+                     ,[{<<"globals">>, <<"unregister">>}]
                      }
                     ,{{?MODULE, 'handle_amqp_query'}
-                      ,[{<<"globals">>, <<"query">>}]
+                     ,[{<<"globals">>, <<"query">>}]
                      }
                     ]).
 -define(QUEUE_NAME, <<>>).
@@ -68,34 +77,21 @@
 -define(HEARTBEAT, crypto:rand_uniform(5 * ?MILLISECONDS_IN_SECOND, 15 * ?MILLISECONDS_IN_SECOND)).
 -define(EXPIRE_PERIOD, 1 * ?MILLISECONDS_IN_SECOND).
 -define(FUDGE_FACTOR, 1.25).
--define(APP_NAME, <<"kz_globals">>).
--define(APP_VERSION, <<"4.0.0">>).
 
 -define(AMQP_REGISTER_FUN, fun kapi_globals:publish_register/1).
 -define(AMQP_UNREGISTER_FUN, fun kapi_globals:publish_unregister/1).
 -define(AMQP_QUERY_FUN, fun kapi_globals:publish_query/1).
 -define(AMQP_CALL_SCOPE, {'kz_globals', 'true', 'true'}).
 
--define(TAB_NAME, kazoo_global_names).
+-define(TAB_NAME, 'kazoo_global_names').
 
 -record(state, {zone = 'local' :: atom()
-                ,zones = [] :: kz_proplist()
-                ,queue :: api_binary()
-                ,node = node() :: node()
+               ,zones = [] :: kz_proplist()
+               ,queue :: api_binary()
+               ,node = node() :: atom()
+               ,ready = 'false' :: boolean()
                }).
 -type globals_state() :: #state{}.
-
--record(kz_global, {node = node() :: atom() | '_'
-                  ,zone :: atom() | '_'
-                  ,pid :: api_pid() | '_'
-                  ,server :: any() | '_'
-                  ,name :: term() | '_'
-                  ,monitor :: api_reference() | '_'
-                  ,state = 'none' :: kapi_globals:state() | '_'
-                 }).
-
--type kz_global() :: #kz_global{}.
--type kz_globals() :: [kz_global()].
 
 %%%===================================================================
 %%% API
@@ -107,15 +103,32 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}
-                            ,?MODULE
-                            ,[{'bindings', ?BINDINGS}
-                              ,{'responders', ?RESPONDERS}
-                              ,{'queue_name', ?QUEUE_NAME}
-                              ,{'queue_options', ?QUEUE_OPTIONS}
-                              ,{'consume_options', ?CONSUME_OPTIONS}
-                             ]
-                            ,[]
+                           ,?MODULE
+                           ,[{'bindings', ?BINDINGS}
+                            ,{'responders', ?RESPONDERS}
+                            ,{'queue_name', ?QUEUE_NAME}
+                            ,{'queue_options', ?QUEUE_OPTIONS}
+                            ,{'consume_options', ?CONSUME_OPTIONS}
+                            ]
+                           ,[]
                            ).
+-spec table_id() -> ?TAB_NAME.
+table_id() -> ?TAB_NAME.
+
+-spec table_options() -> list().
+table_options() -> ['set'
+                   ,'protected'
+                   ,'named_table'
+                   ,{'keypos', kz_global:name_pos()}
+                   ,{'read_concurrency', 'true'}
+                   ].
+
+-spec gift_data() -> 'ok'.
+gift_data() -> 'ok'.
+
+-spec find_me() -> api_pid().
+find_me() ->
+    whereis(?SERVER).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -137,12 +150,7 @@ init([]) ->
     lager:debug("starting globals registry"),
     kapi_globals:declare_exchanges(),
     kapi_self:declare_exchanges(),
-    _ = ets:new(?TAB_NAME, ['set'
-                            ,'protected'
-                            ,'named_table'
-                            ,{'keypos', #kz_global.name}
-                           , {read_concurrency, true}
-                           ]),
+
     Zone = kz_config:zone(),
     {'ok', #state{zone=Zone}}.
 
@@ -192,11 +200,11 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'amqp_delete', #kz_global{pid=Pid}, 'undefined'}, State) ->
-    Pid ! '$proxy_stop',
+handle_cast({'amqp_delete', Global, 'undefined'}, State) ->
+    kz_global_proxy:stop(kz_global:pid(Global)),
     {'noreply', State};
-handle_cast({'amqp_delete', #kz_global{pid=Pid}, Reason}, State) ->
-    Pid ! {'$proxy_stop', Reason},
+handle_cast({'amqp_delete', Global, Reason}, State) ->
+    kz_global_proxy:stop(kz_global:pid(Global), Reason),
     {'noreply', State};
 handle_cast({'insert_remote', Global}, State) ->
     _ = register_remote(Global),
@@ -239,6 +247,9 @@ handle_info({'nodedown', Node, InfoList}, State) ->
 handle_info({'nodedown', Node}, State) ->
     lager:info("VM ~s is no longer connected", [Node]),
     {'noreply', State};
+handle_info({'ETS-TRANSFER', _TblId, _From, _Data}, State) ->
+    lager:info("ready to register names"),
+    {'noreply', State#state{ready='true'}};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -256,7 +267,7 @@ handle_event(JObj, State) ->
         'true' -> 'ignore';
         'false' ->
             {'reply', [{'node', node()}
-                       ,{'state', State}
+                      ,{'state', State}
                       ]}
     end.
 
@@ -284,45 +295,52 @@ terminate(_Reason, _State) ->
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 
 -spec get_zone(kz_json:object(), globals_state()) -> atom().
-get_zone(JObj, #state{zones=Zones, zone=LocalZone}) ->
+get_zone(JObj, State) ->
     case kz_json:get_first_defined([<<"Zone">>, <<"AMQP-Broker-Zone">>], JObj) of
         'undefined' ->
-            case kz_json:get_value(<<"AMQP-Broker">>, JObj) of
-                'undefined' -> LocalZone;
-                Broker ->
-                    case props:get_value(Broker, Zones) of
-                        'undefined' -> LocalZone;
-                        Zone -> kz_util:to_atom(Zone, 'true')
-                    end
-            end;
+            get_zone_from_broker(JObj, State);
         Zone -> kz_util:to_atom(Zone, 'true')
     end.
 
--spec maybe_add_zone(kz_global(), globals_state()) -> 'ok'.
-maybe_add_zone(#kz_global{zone='undefined'}, _State) -> 'ok';
-maybe_add_zone(#kz_global{zone=Zone}, #state{zones=Zones}) ->
+-spec get_zone_from_broker(kz_json:object(), globals_state()) -> atom().
+get_zone_from_broker(JObj, #state{zones=Zones
+                                 ,zone=LocalZone
+                                 }) ->
+    case kz_json:get_value(<<"AMQP-Broker">>, JObj) of
+        'undefined' -> LocalZone;
+        Broker ->
+            case props:get_value(Broker, Zones) of
+                'undefined' -> LocalZone;
+                Zone -> kz_util:to_atom(Zone, 'true')
+            end
+    end.
+
+-spec maybe_add_zone(atom(), globals_state()) -> 'ok'.
+maybe_add_zone('undefined', _State) -> 'ok';
+maybe_add_zone(Zone, #state{zones=Zones}) ->
     case lists:member(Zone, Zones) of
         'false' -> gen_server:cast(?MODULE, {'add_zone', Zone});
         'true' -> 'ok'
     end.
 
--spec amqp_register(term(), pid(), globals_state()) -> 'yes' | 'no'.
+-spec amqp_register(kz_global:name(), pid(), globals_state()) -> 'yes' | 'no'.
 amqp_register(Name, Pid, State) ->
     case where(Name) of
-        undefined -> do_amqp_register(Name, Pid, State);
-        _ -> no
+        'undefined' -> do_amqp_register(Name, Pid, State);
+        _Pid -> 'no'
     end.
 
--spec do_amqp_register(term(), pid(), globals_state()) -> 'yes' | 'no'.
+-spec do_amqp_register(kz_global:name(), pid(), globals_state()) -> 'yes' | 'no'.
 do_amqp_register(Name, Pid, #state{}=State) ->
     Payload = [{<<"Name">>, Name}
-               ,{<<"State">>, 'pending'}
-                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ,{<<"State">>, 'pending'}
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     case kz_amqp_worker:call_collect(Payload, ?AMQP_REGISTER_FUN) of
         {'ok', JObjs} ->
@@ -334,95 +352,66 @@ do_amqp_register(Name, Pid, #state{}=State) ->
             'no'
     end.
 
--spec amqp_register_check(kz_json:objects(), term(), pid(), globals_state()) -> 'yes' | 'no'.
-amqp_register_check([], Name, Pid, State) ->
-    register_local(Name, Pid, State);
-amqp_register_check([JObj | JObjs], Name, Pid, State) ->
-    case kapi_globals:is_pending(JObj) of
-        'true' -> amqp_register_check(JObjs, Name, Pid, State);
+-spec amqp_register_check(kz_json:objects(), kz_global:name(), pid(), globals_state()) ->
+                                 'yes' | 'no'.
+amqp_register_check(Responses, Name, Pid, State) ->
+    case lists:all(fun kapi_globals:is_pending/1, Responses) of
+        'true' -> register_local(Name, Pid, State);
         'false' -> 'no'
     end.
 
--spec register_local(term(), pid(), globals_state()) -> 'yes'.
+-spec register_local(kz_global:name(), pid(), globals_state()) -> 'yes'.
 register_local(Name, Pid, #state{zone=Zone, queue=Q}) ->
-    Global = #kz_global{
-                        node = node()
-                       ,zone = Zone
-                       ,server = Q
-                       ,pid = Pid
-                       ,monitor = erlang:monitor(process, Pid)
-                       ,name = kz_util:to_binary(Name)
-                       ,state='local'
-               },
-    lager:debug("inserting global ~s with pid ~p", [Name, Pid]),
+    Global = kz_global:new_local(Name, Pid, Zone, Q),
     ets:insert(?TAB_NAME, Global),
     advertise_register(Global),
     'yes'.
 
--spec advertise_register(kz_global()) -> 'ok'.
-advertise_register(#kz_global{name=Name, server=Q}) ->
+-spec advertise_register(kz_global:global()) -> 'ok'.
+-spec advertise_register(kz_global:name(), ne_binary()) -> 'ok'.
+advertise_register(Global) ->
+    advertise_register(kz_global:name(Global)
+                       ,kz_global:server(Global)
+                      ).
+advertise_register(Name, Queue) ->
     Payload = [{<<"Name">>, Name}
-               ,{<<"State">>, 'local'}
-                | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+              ,{<<"State">>, 'local'}
+               | kz_api:default_headers(Queue, ?APP_NAME, ?APP_VERSION)
               ],
     kz_amqp_worker:cast(Payload, ?AMQP_REGISTER_FUN).
 
--spec register_remote(kz_global()) -> pid() | 'undefined'.
-register_remote(#kz_global{name=Name}=Global) ->
-    case where(Name) of
-        #kz_global{pid=Pid} -> Pid;
-        _ ->
-            {Pid, Ref} = start_proxy(Global),
-            ets:insert(?TAB_NAME, Global#kz_global{monitor=Ref
-                                                   ,pid=Pid
-                                                  }),
-            Pid
-    end.
+-spec register_remote(kz_global:global()) -> pid().
+register_remote(Global) ->
+    {Pid, Ref} = start_proxy(Global),
+    ets:insert(?TAB_NAME
+              ,kz_global:update_with_pid_ref(Global, Pid, Ref)
+              ),
+    Pid.
 
-
--spec amqp_unregister(term()) -> 'ok'.
+-spec amqp_unregister(kz_global:name()) -> 'ok'.
 amqp_unregister(Name) ->
     case where(Name) of
-        #kz_global{state='local'
-                  } = Global ->
-            do_amqp_unregister(Global, 'normal');
-        _ -> ok
-    end.
+        'undefined' -> 'ok';
+        Global ->
+            kz_global:is_local(Global)
+                andalso do_amqp_unregister(Global, 'normal')
+    end,
+    'ok'.
 
--spec do_amqp_unregister(kz_global(), term()) -> 'ok'.
-do_amqp_unregister(#kz_global{name=Name}, Reason) ->
+-spec do_amqp_unregister(kz_global:global(), term()) -> 'ok'.
+do_amqp_unregister(Global, Reason) ->
+    Name = kz_global:name(Global),
     Payload = [{<<"Name">>, Name}
-               ,{<<"Reason">>, kapi_globals:encode(Reason)}
-                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ,{<<"Reason">>, kapi_globals:encode(Reason)}
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     ets:delete(?TAB_NAME, Name),
     kz_amqp_worker:cast(Payload, ?AMQP_UNREGISTER_FUN).
 
--spec amqp_send(kz_global(), term()) -> 'ok'.
-amqp_send(#kz_global{server=_ServerId, name=Name}, Message) ->
+-spec amqp_query(kz_global:name()) -> api_pid().
+amqp_query(Name) ->
     Payload = [{<<"Name">>, Name}
-               ,{<<"Message">>, kapi_globals:encode(Message)}
-                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-              ],
-    Publisher = fun kapi_globals:publish_send/1,
-    kz_amqp_worker:cast(Payload, Publisher).
-
--spec amqp_call(kz_global(), term()) -> term().
-amqp_call(#kz_global{server=_ServerId, name=Name}, Msg) ->
-    Payload = [{<<"Name">>, Name}
-               ,{<<"Message">>, kapi_globals:encode(Msg)}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-              ],
-    Publisher = fun kapi_globals:publish_call/1,
-    case kz_amqp_worker:call(Payload, Publisher, fun kapi_globals:reply_msg_v/1) of
-        {'ok', JObj} -> kapi_globals:reply(JObj);
-        Error -> Error
-    end.
-
--spec amqp_query(term(), globals_state()) -> 'undefined' | pid().
-amqp_query(Name, State) ->
-    Payload = [{<<"Name">>, Name}
-                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     case kz_amqp_worker:call_collect(Payload, ?AMQP_QUERY_FUN) of
         {'ok', [JObj]} ->
@@ -440,25 +429,37 @@ amqp_query(Name, State) ->
 
 -spec handle_amqp_call(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_amqp_call(JObj, Props) ->
-    Node = props:get_value('node', Props),
     case where(kapi_globals:name(JObj)) of
-        #kz_global{state='local'
-                   ,node=Node
-                   ,pid=Pid
-                  } ->
-            case catch gen_server:call(Pid, kapi_globals:message(JObj)) of
-                {'EXIT',Reason} -> amqp_reply(JObj, {'error', Reason});
-                Res -> amqp_reply(JObj, Res)
-            end;
-        undefined -> 'ok'
+        'undefined' -> 'ok';
+        Global ->
+            maybe_handle_local_call(JObj
+                                   ,Global
+                                   ,kz_global:is_local(Global)
+                                   ,kz_global:node(Global) =:= props:get_value('node', Props)
+                                   )
+    end.
+
+-spec maybe_handle_local_call(kz_json:object(), kz_global:global(), boolean(), boolean()) -> 'ok'.
+maybe_handle_local_call(_JObj, _Global, 'false', _SameNode) -> 'ok';
+maybe_handle_local_call(_JObj, _Global, 'true', 'false') -> 'ok';
+maybe_handle_local_call(JObj, Global, 'true', 'true') ->
+    attempt_call(JObj, kz_global:pid(Global)).
+
+-spec attempt_call(kz_json:object(), pid()) -> 'ok'.
+attempt_call(JObj, Pid) ->
+    try gen_server:call(Pid, kapi_globals:message(JObj)) of
+        Res -> amqp_reply(JObj, Res)
+    catch
+        Class:Reason ->
+            amqp_reply(JObj, {'error', {Class, Reason}})
     end.
 
 -spec amqp_reply(kz_json:object(), term()) -> 'ok'.
 amqp_reply(JObj, Result) ->
     Payload = [{<<"Name">>, kapi_globals:name(JObj)}
-               ,{<<"Reply">>, kapi_globals:encode(Result)}
-               ,{?KEY_MSG_ID, kz_api:msg_id(JObj)}
-                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ,{<<"Reply">>, kapi_globals:encode(Result)}
+              ,{?KEY_MSG_ID, kz_api:msg_id(JObj)}
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     ServerId = kz_api:server_id(JObj),
     Publisher = fun(P) -> kapi_globals:publish_reply(ServerId, P) end,
@@ -466,33 +467,45 @@ amqp_reply(JObj, Result) ->
 
 -spec handle_amqp_send(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_amqp_send(JObj, Props) ->
-    Node = props:get_value('node', Props),
     case where(kapi_globals:name(JObj)) of
-        #kz_global{state='local'
-                   ,node=Node
-                   ,pid=Pid
-                  } ->
-            Pid ! kapi_globals:message(JObj);
-        'undefined' -> 'ok'
+        'undefined' -> 'ok';
+        Global ->
+            maybe_handle_local_send(JObj
+                                    ,Global
+                                    ,kz_global:is_local(Global)
+                                    ,kz_global:node(Global) =:= props:get_value('node', Props)
+                                   )
     end.
+
+-spec maybe_handle_local_send(kz_json:object(), kz_global:global(), boolean(), boolean()) -> 'ok'.
+maybe_handle_local_send(_JObj, _Global, 'false', _SameNode) -> 'ok';
+maybe_handle_local_send(_JObj, _Global, 'true', 'false') -> 'ok';
+maybe_handle_local_send(JObj, Global, 'true', 'true') ->
+    kz_global_proxy:send(kz_global:pid(Global), kapi_globals:message(JObj)).
 
 -spec handle_amqp_query(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_amqp_query(JObj, Props) ->
-    Node = props:get_value('node', Props),
     case where(kapi_globals:name(JObj)) of
-        #kz_global{state='local'
-                   ,node=Node
-                  }=Global ->
-            amqp_query_reply(JObj, Global);
-        _ -> 'ok'
+        'undefined' -> 'ok';
+        Global ->
+            maybe_handle_local_query(JObj
+                                     ,Global
+                                     ,kz_global:is_local(Global)
+                                     ,kz_global:node(Global) =:= props:get_value('node', Props)
+                                    )
     end.
 
--spec amqp_query_reply(kz_json:object(), kz_global()) -> 'ok'.
+maybe_handle_local_query(_JObj, _Global, 'false', _SameNode) -> 'ok';
+maybe_handle_local_query(_JObj, _Global, 'true', 'false') -> 'ok';
+maybe_handle_local_query(JObj, Global, 'true', 'true') ->
+    amqp_query_reply(JObj, Global).
+
+-spec amqp_query_reply(kz_json:object(), kz_global:global()) -> 'ok'.
 amqp_query_reply(JObj, Global) ->
     Payload = [{<<"Name">>, kapi_globals:name(JObj)}
-               ,{<<"State">>, Global#kz_global.state}
-               ,{?KEY_MSG_ID, kz_api:msg_id(JObj)}
-                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ,{<<"State">>, kz_global:state(Global)}
+              ,{?KEY_MSG_ID, kz_api:msg_id(JObj)}
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     ServerId = kz_api:server_id(JObj),
     Publisher = fun(P) -> kapi_globals:publish_query_resp(ServerId, P) end,
@@ -500,19 +513,17 @@ amqp_query_reply(JObj, Global) ->
 
 -spec handle_amqp_register(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_amqp_register(JObj, Props) ->
-    handle_amqp_register(kapi_globals:state(JObj), JObj, Props).
+    handle_amqp_register(JObj, Props, kapi_globals:state(JObj)).
 
--spec handle_amqp_register(kapi_globals:state(), kz_json:object(), kz_proplist()) -> 'ok'.
-handle_amqp_register('pending', JObj, Props) ->
-    Node = props:get_value('node', Props),
+-spec handle_amqp_register(kz_json:object(), kz_proplist(), kapi_globals:state()) -> 'ok'.
+handle_amqp_register(JObj, _Props, 'pending') ->
     case where(kapi_globals:name(JObj)) of
-        #kz_global{node=Node}=Global ->
+        'undefined' -> amqp_register_reply(JObj);
+        Global ->
             advertise_register(Global),
-            amqp_register_reply(JObj, Global);
-        #kz_global{} -> 'ok';
-        'undefined' -> amqp_register_reply(JObj)
+            amqp_register_reply(JObj, Global)
     end;
-handle_amqp_register('local', JObj, Props) ->
+handle_amqp_register(JObj, Props, 'local') ->
     State = props:get_value('state', Props),
     Global = from_json(JObj,  State),
     gen_server:cast(?SERVER, {'insert_remote', Global}).
@@ -520,51 +531,43 @@ handle_amqp_register('local', JObj, Props) ->
 -spec amqp_register_reply(kz_json:object()) -> 'ok'.
 amqp_register_reply(JObj) ->
     Payload = [{<<"Name">>, kapi_globals:name(JObj)}
-               ,{<<"State">>, 'pending'}
-               ,{?KEY_MSG_ID, kz_api:msg_id(JObj)}
-                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ,{<<"State">>, 'pending'}
+              ,{?KEY_MSG_ID, kz_api:msg_id(JObj)}
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     ServerId = kz_api:server_id(JObj),
     Publisher = fun(P) -> kapi_globals:publish_register_resp(ServerId, P) end,
     kz_amqp_worker:cast(Payload, Publisher).
 
--spec amqp_register_reply(kz_json:object(), kz_global()) -> 'ok'.
+-spec amqp_register_reply(kz_json:object(), kz_global:global()) -> 'ok'.
 amqp_register_reply(JObj, Global) ->
     Payload = [{<<"Name">>, kapi_globals:name(JObj)}
-               ,{<<"State">>, Global#kz_global.state}
-               ,{?KEY_MSG_ID, kz_api:msg_id(JObj)}
-                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ,{<<"State">>, kz_global:state(Global)}
+              ,{?KEY_MSG_ID, kz_api:msg_id(JObj)}
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     ServerId = kz_api:server_id(JObj),
     Publisher = fun(P) -> kapi_globals:publish_register_resp(ServerId, P) end,
     kz_amqp_worker:cast(Payload, Publisher).
 
-
 -spec handle_amqp_unregister(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_amqp_unregister(JObj, Props) ->
-    Node = props:get_value('node', Props),
+handle_amqp_unregister(JObj, _Props) ->
     case where(kapi_globals:name(JObj)) of
-        #kz_global{node=Node} -> 'ok';
-        #kz_global{}=Global ->
-            gen_server:cast(?MODULE, {'amqp_delete', Global, kapi_globals:reason(JObj)});
-        _ -> 'ok'
+        'undefined' -> 'ok';
+        Global ->
+            gen_server:cast(?MODULE, {'amqp_delete', Global, kapi_globals:reason(JObj)})
     end.
 
--spec send(Name, Msg) -> Pid when
-          Name :: term(),
-          Msg :: term(),
-          Pid :: pid().
+-spec send(kz_global:name(), term()) -> pid().
 send(Name, Msg) ->
     case where(Name) of
-        #kz_global{pid=Pid} ->
-            Pid ! Msg,
-            Pid;
-        undefined ->
-            exit({'badarg', {Name, Msg}})
+        'undefined' -> exit({'badarg', {Name, Msg}});
+        Global ->
+            kz_global_proxy:send(kz_global:pid(Global), Msg),
+            kz_global:pid(Global)
     end.
 
--spec whereis_name(Name) -> pid() | 'undefined' when
-      Name :: term().
+-spec whereis_name(kz_global:name()) -> api_pid().
 whereis_name(Name) ->
     lager:debug("calling querying global ~s", [Name]),
     gen_server:call(?SERVER, {'where_is', Name}, 'infinity').
@@ -575,81 +578,47 @@ whereis_name(Name) ->
 where_is(Name, State) ->
     lager:debug("querying global ~s", [Name]),
     case where(Name) of
-        #kz_global{pid=Pid} -> Pid;
-        'undefined' ->
-            lager:debug("querying global ~s thru amqp", [Name]),
-            amqp_query(Name, State)
+        'undefined' -> amqp_query(Name);
+        Global -> kz_global:pid(Global)
     end.
 
--spec where(Name) -> kz_global() | 'undefined' when
-          Name :: term().
+-spec where(kz_global:name()) -> kz_global:global() | 'undefined'.
 where(Name) ->
-    case ets:lookup(?TAB_NAME, kz_util:to_binary(Name)) of
-        [#kz_global{}=Global] -> Global;
+    case ets:lookup(?TAB_NAME, Name) of
+        [Global] -> Global;
         [] -> 'undefined'
     end.
 
--spec where_is(Name) -> pid() | 'undefined' when
-          Name :: term().
-where_is(Name) ->
-    case ets:lookup(?TAB_NAME, kz_util:to_binary(Name)) of
-        [#kz_global{pid=Pid}] -> Pid;
-        [] -> 'undefined'
-    end.
-
--spec register_name(Name, Pid) -> 'yes' | 'no' when
-          Name :: term(),
-          Pid :: pid().
+-spec register_name(kz_global:name(), pid()) -> 'yes' | 'no'.
 register_name(Name, Pid) when is_pid(Pid) ->
     case where(Name) of
-        undefined ->
-            lager:debug("registering global ~s with pid ~p", [Name, Pid]),
+        'undefined' ->
             gen_server:call(?SERVER, {'register', Name, Pid}, 'infinity');
-        _ ->
-            'no'
+        _Pid -> 'no'
     end.
 
--spec unregister_name(Name) -> _ when
-          Name :: term().
+registered() ->
+    kz_global:all_names(?TAB_NAME).
+
+-spec unregister_name(kz_global:name()) -> 'ok'.
 unregister_name(Name) ->
     case where(Name) of
-        'undefined' ->
-            'ok';
-        _ ->
+        'undefined' -> 'ok';
+        _Pid ->
             gen_server:call(?MODULE, {'unregister', Name}, 'infinity')
     end.
 
--spec start_proxy(kz_global()) -> {pid(), reference()}.
+-spec start_proxy(kz_global:global()) -> pid_ref().
 start_proxy(Global) ->
-    spawn_opt(fun() -> proxy_loop(Global) end, [link, monitor]).
+    {'ok', Pid} = kz_global_proxies_sup:new(Global),
+    link(Pid),
+    {Pid, monitor('process', Pid)}.
 
-proxy_loop(#kz_global{}=Global) ->
-    receive
-        {'$gen_call', {_Pid, _Mref}=From, Request} ->
-            gen_server:reply(From, amqp_call(Global, Request)),
-            proxy_loop(Global);
-        {'$proxy_stop', Reason} ->
-            gen_server:call(?MODULE, {'delete_remote', self()}),
-            exit(Reason);
-        '$proxy_stop' ->
-            gen_server:call(?MODULE, {'delete_remote', self()}),
-            exit('normal');
-        Request ->
-            amqp_send(Global, Request),
-            proxy_loop(Global)
-    end.
-
--spec from_json(kz_json:object(), globals_state()) -> kz_global().
+-spec from_json(kz_json:object(), globals_state()) -> kz_global:global().
 from_json(JObj, State) ->
-    Node = kz_api:node(JObj),
     Zone = get_zone(JObj, State),
-    Global = #kz_global{node=kz_util:to_atom(Node, 'true')
-                        ,zone=Zone
-                        ,server = kz_api:server_id(JObj)
-                        ,name = kapi_globals:name(JObj)
-                        ,state = kapi_globals:state(JObj)
-                       },
-    maybe_add_zone(Global, State),
+    Global = kz_global:from_jobj(JObj, Zone),
+    maybe_add_zone(kz_global:zone(Global), State),
     Global.
 
 -spec delete_by_pid(pid()) -> 'ok'.
@@ -658,17 +627,17 @@ delete_by_pid(Pid) ->
 
 -spec delete_by_pid(pid(), term()) -> 'ok'.
 delete_by_pid(Pid, Reason) ->
-    MatchSpec = [{#kz_global{pid = Pid, _ = '_'} ,[],['$_']}],
-    Globals = ets:select(?TAB_NAME, MatchSpec),
-    delete_globals(Globals, Reason),
-    lager:info("deleted ~p proxies", [length(Globals)]).
+    _Res = [delete_global(Global, Reason)
+         || Global <- kz_global:all_globals_by_pid(?TAB_NAME, Pid)
+        ],
+    lager:info("deleted ~p proxies", [length(_Res)]).
 
--spec delete_globals(kz_globals(), term()) -> 'ok'.
-delete_globals([], _) -> 'ok';
-delete_globals([#kz_global{node=Node} = Global | Globals], Reason)
-  when Node =:= node() ->
-    do_amqp_unregister(Global, Reason),
-    delete_globals(Globals, Reason);
-delete_globals([#kz_global{name=Name} | Globals], Reason) ->
-    ets:delete(?TAB_NAME, Name),
-    delete_globals(Globals, Reason).
+-spec delete_global(kz_global:global(), term()) -> 'ok' | 'true'.
+-spec delete_global(kz_global:global(), term(), atom()) -> 'ok' | 'true'.
+delete_global(Global, Reason) ->
+    delete_global(Global, Reason, kz_global:node(Global)).
+
+delete_global(Global, Reason, Node) when Node =:= node() ->
+    do_amqp_unregister(Global, Reason);
+delete_global(Global, _Reason, _Node) ->
+    ets:delete(?TAB_NAME, kz_global:name(Global)).
