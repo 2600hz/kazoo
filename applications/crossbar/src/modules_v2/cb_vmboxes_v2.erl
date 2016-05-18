@@ -159,7 +159,7 @@ validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
 validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId, ?BIN_DATA) ->
     case load_message_binary(DocId, MediaId, Context) of
         {'true', C1} ->
-            C2 = update_message_folder(MediaId, C1),
+            C2 = update_message_folder(DocId, MediaId, C1),
             update_mwi(C2);
         {_, C} -> C
     end.
@@ -183,15 +183,15 @@ post(Context, _DocId) ->
     C2 = cb_context:set_doc(Context, kz_json:delete_key(?VM_KEY_MESSAGES, cb_context:doc(C1))),
     update_mwi(C2).
 
-post(Context, _DocId, ?MESSAGES_RESOURCE) ->
-    MsgIds = cb_context:resp_data(Context),
+post(Context, DocId, ?MESSAGES_RESOURCE) ->
+    MsgIds = cb_context:req_value(Context, ?VM_KEY_MESSAGES, []),
     Folder = get_folder_filter(Context, ?VM_FOLDER_SAVED),
-    {'ok', Result} = kz_vm_message:update_folder(Folder, MsgIds, cb_context:account_id(Context)),
+    {'ok', Result} = kz_vm_message:update_folder(Folder, MsgIds, cb_context:account_id(Context), DocId),
     C = cb_context:set_resp_data(Context, Result),
     update_mwi(C).
 
-post(Context, _DocId, ?MESSAGES_RESOURCE, MediaId) ->
-    C = update_message_folder(MediaId, Context),
+post(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
+    C = update_message_folder(DocId, MediaId, Context),
     update_mwi(C).
 
 %%--------------------------------------------------------------------
@@ -213,20 +213,19 @@ put(Context) ->
 -spec delete(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 delete(Context, DocId) ->
     AccountId = cb_context:account_id(Context),
-    Messages = kz_vm_message:messages(AccountId, DocId),
-    MsgIds = [kzd_box_message:media_id(M) || M <- Messages],
-    _ = kz_vm_message:update_folder(?VM_FOLDER_DELETED, MsgIds, cb_context:account_id(Context)),
+    Msgs = kz_vm_message:messages(AccountId, DocId),
+    _ = kz_vm_message:update_folder(?VM_FOLDER_DELETED, Msgs, cb_context:account_id(Context), DocId),
     C = crossbar_doc:delete(Context),
     update_mwi(C).
 
-delete(Context, _DocId, ?MESSAGES_RESOURCE) ->
+delete(Context, DocId, ?MESSAGES_RESOURCE) ->
     MsgIds = cb_context:resp_data(Context),
-    {'ok', Result} = kz_vm_message:update_folder(?VM_FOLDER_DELETED, MsgIds, cb_context:account_id(Context)),
+    {'ok', Result} = kz_vm_message:update_folder(?VM_FOLDER_DELETED, MsgIds, cb_context:account_id(Context), DocId),
     C = cb_context:set_resp_data(Context, Result),
     update_mwi(C).
 
-delete(Context, _DocId, ?MESSAGES_RESOURCE, MediaId) ->
-    C = update_message_folder(MediaId, Context),
+delete(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
+    C = update_message_folder(DocId, MediaId, Context),
     update_mwi(C).
 
 %%--------------------------------------------------------------------
@@ -255,10 +254,10 @@ patch(Context, _Id) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_message(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
-validate_message(Context, _DocId, MediaId, ?HTTP_GET) ->
+validate_message(Context, DocId, MediaId, ?HTTP_GET) ->
     case load_message(MediaId, 'undefined', Context) of
         {'true', C1} ->
-            C2 = update_message_folder(MediaId, C1),
+            C2 = update_message_folder(DocId, MediaId, C1),
             update_mwi(C2);
         {_, C} -> C
     end;
@@ -278,16 +277,17 @@ validate_message(Context, _DocId, MediaId, ?HTTP_DELETE) ->
 -spec validate_messages(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_messages(Context, DocId, ?HTTP_GET) ->
     load_message_summary(DocId, Context);
-validate_messages(Context, DocId, ?HTTP_POST) ->
-    Messages = kz_vm_message:messages(cb_context:account_id(Context), DocId),
-
-    Ids = cb_context:req_value(Context, ?VM_KEY_MESSAGES, []),
-    ToUpdate = filter_messages(Messages, Ids),
-
-    cb_context:set_resp_data(
-        cb_context:set_resp_status(Context, 'success')
-        ,ToUpdate
-    );
+validate_messages(Context, _DocId, ?HTTP_POST) ->
+    case cb_context:req_value(Context, ?VM_KEY_MESSAGES, []) =/= [] of
+        'false' ->
+            cb_context:add_validation_error(<<"messages">>
+                                            ,<<"required">>
+                                            ,kz_json:from_list([{<<"message">>, <<"No message ids are specified">>}])
+                                            ,Context
+                                           );
+        _ ->
+            cb_context:set_resp_status(Context, 'success')
+    end;
 validate_messages(Context, DocId, ?HTTP_DELETE) ->
     Messages = kz_vm_message:messages(cb_context:account_id(Context), DocId),
 
@@ -608,11 +608,11 @@ generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
 %% @doc update message folder
 %% @end
 %%--------------------------------------------------------------------
--spec update_message_folder(path_token(), cb_context:context()) -> cb_context:context().
-update_message_folder(MediaId, Context) ->
+-spec update_message_folder(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+update_message_folder(BoxId, MediaId, Context) ->
     AccountId = cb_context:account_id(Context),
     Folder = kzd_box_message:folder(cb_context:doc(Context)),
-    case kz_vm_message:update_folder(Folder, MediaId, AccountId) of
+    case kz_vm_message:update_folder(Folder, MediaId, AccountId, BoxId) of
         {'ok', Message} ->
             crossbar_util:response(Message, cb_context:set_resp_status(Context, 'success'));
         {'error', Error} ->

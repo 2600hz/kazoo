@@ -309,7 +309,7 @@ curl -v -X DELETE \
                 "media_id": "201605-6aadef09f6fcf5fd8bcdfca312e923ba"
             }
         ],
-        "failed": []
+        "failed": [{"201605-49be0985ea3a33046f8073083517d27b":"not_found"}]
     },
     "revision": "undefined",
     "request_id": "{REQUEST_ID}",
@@ -397,7 +397,7 @@ curl -v -X POST \
                 "media_id": "201605-6aadef09f6fcf5fd8bcdfca312e923ba"
             }
         ],
-        "failed": []
+        "failed": [{"201605-49be0985ea3a33046f8073083517d27b":"not_found"}]
     },
     "revision": "undefined",
     "request_id": "{REQUEST_ID}",
