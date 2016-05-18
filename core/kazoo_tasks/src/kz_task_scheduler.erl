@@ -73,8 +73,8 @@
 %% @doc
 %% Creates a linked process to manage scheduled tasks in coordination
 %% with the given nodes. The current node must be part of the node
-%% list. Each amqp_cron node must be working with the same list of
-%% nodes to coordinate correctly.
+%% list. Each node must be working with the same list of nodes to
+%% coordinate correctly.
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link([node()]) -> startlink_ret().

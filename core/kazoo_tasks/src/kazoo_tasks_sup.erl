@@ -9,7 +9,7 @@
 -module(kazoo_tasks_sup).
 -behaviour(supervisor).
 
--export([start_link/0]).
+-export([start_link/1]).
 -export([init/1]).
 
 -include("kz_tasks.hrl").
@@ -27,9 +27,9 @@
 %% @public
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
-start_link() ->
-    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
+-spec start_link([node()]) -> startlink_ret().
+start_link(Nodes) ->
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, [Nodes]).
 
 %% ===================================================================
 %% Supervisor callbacks
