@@ -161,7 +161,7 @@ init([]) ->
 %%--------------------------------------------------------------------
 
 handle_call({'where_is', Name}, _From, State) ->
-    {'reply', where_is(Name), State};
+    {'reply', where_is(Name, State), State};
 handle_call({'delete_remote', Pid}, _From, State) ->
     _ = delete_by_pid(Pid),
     {'reply', 'ok', State};
@@ -414,16 +414,18 @@ amqp_call(#kz_global{server=_ServerId, name=Name}, Msg) ->
         Error -> Error
     end.
 
--spec amqp_query(term()) -> 'undefined' | pid().
-amqp_query(Name) ->
+-spec amqp_query(term(), globals_state()) -> 'undefined' | pid().
+amqp_query(Name, State) ->
     Payload = [{<<"Name">>, Name}
                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     case kz_amqp_worker:call_collect(Payload, ?AMQP_QUERY_FUN) of
         {'ok', [JObj]} ->
-            gen_server:call(?SERVER, {'insert_remote', JObj});
+            Global = from_json(JObj, State),
+            register_remote(Global);
         {'timeout', [JObj]} ->
-            gen_server:call(?SERVER, {'insert_remote', JObj});
+            Global = from_json(JObj, State),
+            register_remote(Global);
         {'timeout', []} ->
             'undefined';
         {'error', Error} ->
@@ -559,15 +561,16 @@ whereis_name(Name) ->
     lager:debug("calling querying global ~s", [Name]),
     gen_server:call(?SERVER, {'where_is', Name}, 'infinity').
 
--spec where_is(Name) -> pid() | 'undefined' when
-      Name :: term().
-where_is(Name) ->
+-spec where_is(Name, State) -> pid() | 'undefined' when
+      Name :: term(),
+      State :: globals_state().
+where_is(Name, State) ->
     lager:debug("querying global ~s", [Name]),
     case where(Name) of
         #kz_global{pid=Pid} -> Pid;
         'undefined' ->
             lager:debug("querying global ~s thru amqp", [Name]),
-            amqp_query(Name)
+            amqp_query(Name, State)
     end.
 
 -spec where(Name) -> kz_global() | 'undefined' when
