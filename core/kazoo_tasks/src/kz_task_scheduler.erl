@@ -186,8 +186,7 @@ surrendered(State, Sync, _Election) ->
 
 handle_leader_call({'cancel', Name=?NE_BINARY}, From, State, Election) ->
     case pid_for_name(Name, State#state.tasks) of
-        {'error', Reason} ->
-            {'reply', {'error', Reason}, State};
+        {'error', _R}=E -> {'reply', E, State};
         Pid ->
             handle_leader_call({'cancel', Pid}, From, State, Election)
     end;
@@ -222,15 +221,14 @@ handle_leader_call({'schedule', {Name=?NE_BINARY, TaskData}}, _From, State, Elec
                     State1 = State#state{tasks = TaskList},
                     'ok' = send_tasks(TaskList, Election),
                     {'reply', {'ok', Pid}, State1};
-                {'error', Reason} ->
-                    {'reply', {'error', Reason}, State}
+                {'error', _R}=E ->
+                    {'reply', E, State}
             end
     end;
 
 handle_leader_call({'task_status', Name=?NE_BINARY}, From, State, Election) ->
     case pid_for_name(Name, State#state.tasks) of
-        {'error', Reason} ->
-            {'reply', {'error', Reason}, State};
+        {'error', _R}=E -> {'reply', E, State};
         Pid ->
             handle_leader_call({'task_status', Pid}, From, State, Election)
     end;

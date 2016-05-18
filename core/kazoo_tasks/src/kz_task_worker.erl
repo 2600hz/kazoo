@@ -84,10 +84,11 @@ init([TaskData]) ->
             fun () ->
                     gen_server:cast(Self, 'running'),
                     try
-                        M = kz_json:get_value([<<"task">>, <<"M">>], TaskData),
-                        F = kz_json:get_value([<<"task">>, <<"F">>], TaskData),
-                        Args = kz_json:get_value([<<"task">>, <<"Args">>], TaskData),
-                        R = apply(M, F, Args),
+                        lager:debug(">>> TaskData ~s", [kz_json:encode(TaskData)]),
+                        M = kz_util:to_atom(kz_json:get_value([<<"task">>, <<"M">>], TaskData), 'true'),
+                        F = kz_util:to_atom(kz_json:get_value([<<"task">>, <<"F">>], TaskData), 'true'),
+                        A = kz_json:get_list_value([<<"task">>, <<"Args">>], TaskData),
+                        R = apply(M, F, A),
                         gen_server:cast(Self, 'done'),
                         lager:debug("R = ~p. Should store this in MoDB", [R])
                     catch
