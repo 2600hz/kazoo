@@ -10,9 +10,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1
-        ,status/1
-        ,stop/1
+-export([start_link/4
         ]).
 
 %% gen_server callbacks
@@ -28,14 +26,8 @@
 
 -define(SERVER, ?MODULE).
 
--type task_data() :: kz_json:object().
--type task_status() :: 'waiting' | 'running' | 'done' | 'error'.
-
--record(state, { data :: task_data()
-               , task_pid :: pid()
-               , status = 'waiting' :: task_status()
+-record(state, { task_pid :: pid()
                }).
--type state() :: #state{}.
 
 %%%===================================================================
 %%% API
@@ -46,27 +38,10 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec start_link(task_data()) -> startlink_ret().
-start_link(TaskData) ->
-    gen_server:start_link(?SERVER, [TaskData], []).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec status(pid()) -> {task_status(), pid()}.
-status(Pid) ->
-    gen_server:call(Pid, 'status').
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec stop(pid()) -> 'ok'.
-stop(Pid) ->
-    gen_server:cast(Pid, 'stop').
+-spec start_link(kz_tasks:task_id(), module(), atom(), list()) -> startlink_ret().
+start_link(TaskId, M, F, A) ->
+    _ = kz_util:put_callid(TaskId),
+    gen_server:start_link(?SERVER, [TaskId, M, F, A], []).
 
 
 %%%===================================================================
@@ -75,64 +50,79 @@ stop(Pid) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Initializes the server
+%% @doc
+%% Initializes the server
+%%
+%% @spec init(Args) -> {ok, State} |
+%%                     {ok, State, Timeout} |
+%%                     ignore |
+%%                     {stop, Reason}
+%% @end
 %%--------------------------------------------------------------------
--spec init([task_data()]) -> {'ok', state()}.
-init([TaskData]) ->
-    Self = self(),
-    Pid = spawn_link(
-            fun () ->
-                    gen_server:cast(Self, 'running'),
-                    try
-                        lager:debug(">>> TaskData ~s", [kz_json:encode(TaskData)]),
-                        M = kz_util:to_atom(kz_json:get_value([<<"task">>, <<"M">>], TaskData), 'true'),
-                        F = kz_util:to_atom(kz_json:get_value([<<"task">>, <<"F">>], TaskData), 'true'),
-                        A = kz_json:get_list_value([<<"task">>, <<"Args">>], TaskData),
-                        R = apply(M, F, A),
-                        gen_server:cast(Self, 'done'),
-                        lager:debug("R = ~p. Should store this in MoDB", [R])
-                    catch
-                        _E:_R ->
-                            Stacktrace = erlang:get_stacktrace(),
-                            Msg = io_lib:format("Task ~p in process ~p with value: ~p"
-                                               ,[_E, self(), {_R, Stacktrace}]),
-                            gen_server:cast(Self, 'error'),
-                            lager:error(Msg),
-                            error_logger:error_report(Msg)
-                    end
-            end),
+init([TaskId, M, F, A]) ->
+    Pid =
+        spawn_link(
+          fun () ->
+                  _ = kz_tasks:worker_running(TaskId, self()),
+                  try
+                      R = apply(M, F, A),
+                      _ = kz_tasks:worker_finished(TaskId),
+                      lager:debug("R = ~p. Should store this in MoDB", [R])
+                  catch
+                      _E:_R ->
+                          Stacktrace = erlang:get_stacktrace(),
+                          Msg = io_lib:format("Task ~s (~p) error ~p: ~p  ~p"
+                                             ,[TaskId, self(), _E, _R, Stacktrace]),
+                          _ = kz_tasks:worker_failed(TaskId, Msg),
+                          lager:error(Msg),
+                          error_logger:error_report(Msg)
+                  end
+          end),
     {'ok', #state{ task_pid = Pid
-                 , data = TaskData
                  }
     }.
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Handling call messages
+%% @doc
+%% Handling call messages
+%%
+%% @spec handle_call(Request, From, State) ->
+%%                                   {reply, Reply, State} |
+%%                                   {reply, Reply, State, Timeout} |
+%%                                   {noreply, State} |
+%%                                   {noreply, State, Timeout} |
+%%                                   {stop, Reason, Reply, State} |
+%%                                   {stop, Reason, State}
+%% @end
 %%--------------------------------------------------------------------
-handle_call('status', _From, State) ->
-    Status = State#state.status,
-    TaskPid = State#state.task_pid,
-    {'reply', {Status, TaskPid}, State}.
+handle_call(_Request, _From, State) ->
+    lager:debug("unhandled call ~p from ~p", [_Request, _From]),
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Handling cast messages
+%% @doc
+%% Handling cast messages
+%%
+%% @spec handle_cast(Msg, State) -> {noreply, State} |
+%%                                  {noreply, State, Timeout} |
+%%                                  {stop, Reason, State}
+%% @end
 %%--------------------------------------------------------------------
-handle_cast('error', State) ->
-    {'noreply', State#state{status = 'error'}};
-handle_cast('done', State) ->
-    {'noreply', State#state{status = 'done'}};
-handle_cast('waiting', State) ->
-    {'noreply', State#state{status = 'waiting'}};
-handle_cast('running', State) ->
-    {'noreply', State#state{status = 'running'}};
-handle_cast('stop', State) ->
-    {'stop', 'normal', State}.
+handle_cast(_Msg, State) ->
+    lager:debug("unhandled cast ~p", [_Msg]),
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Handling all non call/cast messages
+%% @doc
+%% Handling all non call/cast messages
+%%
+%% @spec handle_info(Info, State) -> {noreply, State} |
+%%                                   {noreply, State, Timeout} |
+%%                                   {stop, Reason, State}
+%% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
     lager:debug("unhandled message ~p", [_Info]),
@@ -141,6 +131,13 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% This function is called by a gen_server when it is about to
+%% terminate. It should be the opposite of Module:init/1 and do any
+%% necessary cleaning up. When it returns, the gen_server terminates
+%% with Reason. The return value is ignored.
+%%
+%% @spec terminate(Reason, State) -> void()
+%% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{task_pid = Pid}) ->
     lager:debug("~s (handling ~p) terminating: ~p", [?MODULE, Pid, _Reason]),
@@ -149,7 +146,11 @@ terminate(_Reason, #state{task_pid = Pid}) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Convert process state when code is changed
+%% @doc
+%% Convert process state when code is changed
+%%
+%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
+%% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
@@ -157,3 +158,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+
+%%% End of Module.
