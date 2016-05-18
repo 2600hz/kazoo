@@ -9,7 +9,7 @@
 -compile({no_auto_import,[unregister/1]}).
 
 -export([name/1]).
--export([message/1, reply/1]).
+-export([message/1, reply/1, reason/1]).
 -export([encode/1, decode/1]).
 -export([state/1]).
 -export([is_pending/1]).
@@ -46,7 +46,8 @@
 encode(Term) ->
     base64:encode(term_to_binary(Term)).
 
--spec decode(binary()) -> term().
+-spec decode(api_binary()) -> term().
+decode('undefined') -> 'undefined';
 decode(Bin) ->
     binary_to_term(base64:decode(Bin)).
 
@@ -68,6 +69,10 @@ reply(JObj) ->
 -spec state(kz_json:object()) -> state().
 state(JObj) ->
     kz_json:get_atom_value(<<"State">>, JObj).
+
+-spec reason(kz_json:object()) -> term().
+reason(JObj) ->
+    decode(kz_json:get_value(<<"Reason">>, JObj)).
 
 -spec is_pending(kz_json:object()) -> boolean().
 is_pending(JObj) ->
@@ -105,7 +110,7 @@ is_pending(JObj) ->
 -define(REGISTER_REQ_TYPES, []).
 
 -define(UNREGISTER_REQ_HEADERS, [<<"Name">>]).
--define(OPTIONAL_UNREGISTER_REQ_HEADERS, []).
+-define(OPTIONAL_UNREGISTER_REQ_HEADERS, [<<"Reason">>]).
 -define(UNREGISTER_REQ_VALUES, [{<<"Event-Category">>, <<"globals">>}
                                 ,{<<"Event-Name">>, <<"unregister">>}
                                ]).
