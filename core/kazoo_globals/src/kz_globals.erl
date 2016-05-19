@@ -20,6 +20,7 @@
         ]).
 
 -export([start_link/0
+        ,stop/0
         ,delete_by_pid/1
         ]).
 
@@ -47,6 +48,16 @@
         ,handle_amqp_call/2
         ,handle_amqp_query/2
         ]).
+
+-ifdef(PROPER).
+%% Testing Helpers
+-export([register_name/3]).
+
+%% needed to differentiate between identical calls
+register_name(Name, Pid, _Extra) ->
+    register_name(Name, Pid).
+
+-endif.
 
 -include("kazoo_globals.hrl").
 
@@ -114,6 +125,57 @@ start_link() ->
                            ,[]
                            ).
 
+-spec stop() -> 'ok'.
+stop() ->
+    gen_listener:cast(?SERVER, 'stop').
+
+-spec send(kz_global:name(), term()) -> pid().
+send(Name, Msg) ->
+    case where(Name) of
+        'undefined' -> exit({'badarg', {Name, Msg}});
+        Global ->
+            kz_global_proxy:send(kz_global:pid(Global), Msg),
+            kz_global:pid(Global)
+    end.
+
+-spec whereis_name(kz_global:name()) -> api_pid().
+whereis_name(Name) ->
+    gen_listener:call(?SERVER, {'where_is', Name}, 'infinity').
+
+-spec where_is(kz_global:name(), globals_state()) -> api_pid().
+where_is(Name, State) ->
+    case where(Name) of
+        'undefined' -> amqp_query(Name, State);
+        Global -> kz_global:pid(Global)
+    end.
+
+-spec where(kz_global:name()) -> kz_global:global() | 'undefined'.
+where(Name) ->
+    case ets:lookup(?TAB_NAME, Name) of
+        [Global] -> Global;
+        [] -> 'undefined'
+    end.
+
+-spec register_name(kz_global:name(), pid()) -> 'yes' | 'no'.
+register_name(Name, Pid) ->
+    case where(Name) of
+        'undefined' ->
+            gen_listener:call(?SERVER, {'register', Name, Pid}, 'infinity');
+        _Pid -> 'no'
+    end.
+
+registered() ->
+    kz_global:all_names(?TAB_NAME).
+
+-spec unregister_name(kz_global:name()) -> 'ok'.
+unregister_name(Name) ->
+    case where(Name) of
+        'undefined' -> 'ok';
+        _Global ->
+            gen_listener:call(?SERVER, {'unregister', Name}, 'infinity')
+    end.
+
+-spec reconcile() -> [{pid(), 'ok'}].
 reconcile() ->
     [{Pid, unregister_name(Name)} ||
         {Name, Pid} <- kz_global:all_dead_pids(?TAB_NAME)
@@ -189,9 +251,11 @@ handle_call({'register', Name, Pid}, _From, State) ->
 handle_call({'unregister', Name}, _From, State) ->
     {'reply', amqp_unregister(Name), State};
 handle_call({'insert', Global}, _From, State) ->
+    lager:debug("inserting ~p", [Global]),
     ets:insert(?TAB_NAME, Global),
     {'reply', State};
 handle_call({'delete', Global}, _From, State) ->
+    lager:debug("deleting ~p", [Global]),
     ets:delete(?TAB_NAME, Global),
     {'reply', State};
 handle_call(_Request, _From, State) ->
@@ -226,6 +290,15 @@ handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     lager:info("globals acquired queue name ~s", [Q]),
     {'noreply', State#state{queue=Q}};
+handle_cast('stop', #state{ready='true'}=State) ->
+    lager:debug("instructed to stop"),
+    ets:delete_all_objects(?TAB_NAME),
+    {'stop', 'normal', State};
+handle_cast('stop', #state{ready='false'}=State) ->
+    lager:debug("want to go down, but not in control of ETS"),
+    timer:sleep(50),
+    ?MODULE:stop(),
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -333,7 +406,7 @@ get_zone_from_broker(JObj, #state{zones=Zones
 maybe_add_zone('undefined', _State) -> 'ok';
 maybe_add_zone(Zone, #state{zones=Zones}) ->
     case lists:member(Zone, Zones) of
-        'false' -> gen_server:cast(?MODULE, {'add_zone', Zone});
+        'false' -> gen_listener:cast(?SERVER, {'add_zone', Zone});
         'true' -> 'ok'
     end.
 
@@ -350,7 +423,7 @@ do_amqp_register(Name, Pid, #state{}=State) ->
               ,{<<"State">>, 'pending'}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
-    case kz_amqp_worker:call_collect(Payload, ?AMQP_REGISTER_FUN) of
+    case kz_amqp_worker:call_collect(Payload, ?AMQP_REGISTER_FUN, ?AMQP_CALL_SCOPE) of
         {'ok', JObjs} ->
             amqp_register_check(JObjs, Name, Pid, State);
         {'timeout', JObjs} ->
@@ -371,6 +444,7 @@ amqp_register_check(Responses, Name, Pid, State) ->
 -spec register_local(kz_global:name(), pid(), globals_state()) -> 'yes'.
 register_local(Name, Pid, #state{zone=Zone, queue=Q}) ->
     Global = kz_global:new_local(Name, Pid, Zone, Q),
+    lager:debug("inserting local ~p", [Global]),
     ets:insert(?TAB_NAME, Global),
     advertise_register(Global),
     'yes'.
@@ -391,9 +465,9 @@ advertise_register(Name, Queue) ->
 -spec register_remote(kz_global:global()) -> pid().
 register_remote(Global) ->
     {Pid, Ref} = start_proxy(Global),
-    ets:insert(?TAB_NAME
-              ,kz_global:update_with_pid_ref(Global, Pid, Ref)
-              ),
+    ProxyGlobal = kz_global:update_with_pid_ref(Global, Pid, Ref),
+    lager:debug("inserting proxy ~p", [ProxyGlobal]),
+    ets:insert(?TAB_NAME, ProxyGlobal),
     Pid.
 
 -spec amqp_unregister(kz_global:name()) -> 'ok'.
@@ -403,9 +477,9 @@ amqp_unregister(Name) ->
         Global ->
             (kz_global:is_local(Global)
                 andalso do_amqp_unregister(Global, 'normal') =:= 'ok'
-            ) orelse lager:debug("can't unregister ~p", [Global])
-    end,
-    'ok'.
+            ) orelse lager:debug("can't unregister ~p", [Global]),
+            'ok'
+    end.
 
 -spec do_amqp_unregister(kz_global:global(), term()) -> 'ok'.
 do_amqp_unregister(Global, Reason) ->
@@ -414,6 +488,7 @@ do_amqp_unregister(Global, Reason) ->
               ,{<<"Reason">>, kapi_globals:encode(Reason)}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
+    lager:debug("deleting ~p", [Name]),
     ets:delete(?TAB_NAME, Name),
     kz_amqp_worker:cast(Payload, ?AMQP_UNREGISTER_FUN).
 
@@ -423,7 +498,7 @@ amqp_query(Name, State) ->
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     lager:debug("querying cluster for ~p", [Name]),
-    case kz_amqp_worker:call_collect(Payload, ?AMQP_QUERY_FUN) of
+    case kz_amqp_worker:call_collect(Payload, ?AMQP_QUERY_FUN, ?AMQP_CALL_SCOPE) of
         {'ok', [JObj]} ->
             Global = from_json(JObj, State),
             register_remote(Global);
@@ -536,7 +611,7 @@ handle_amqp_register(JObj, _Props, 'pending') ->
 handle_amqp_register(JObj, Props, 'local') ->
     State = props:get_value('state', Props),
     Global = from_json(JObj, State),
-    gen_server:cast(?SERVER, {'insert_remote', Global}).
+    gen_listener:cast(?SERVER, {'insert_remote', Global}).
 
 -spec amqp_register_reply(kz_json:object()) -> 'ok'.
 amqp_register_reply(JObj) ->
@@ -565,53 +640,9 @@ handle_amqp_unregister(JObj, _Props) ->
     case where(kapi_globals:name(JObj)) of
         'undefined' -> 'ok';
         Global ->
-            gen_server:cast(?MODULE, {'amqp_delete', Global, kapi_globals:reason(JObj)})
-    end.
-
--spec send(kz_global:name(), term()) -> pid().
-send(Name, Msg) ->
-    case where(Name) of
-        'undefined' -> exit({'badarg', {Name, Msg}});
-        Global ->
-            kz_global_proxy:send(kz_global:pid(Global), Msg),
-            kz_global:pid(Global)
-    end.
-
--spec whereis_name(kz_global:name()) -> api_pid().
-whereis_name(Name) ->
-    gen_server:call(?SERVER, {'where_is', Name}, 'infinity').
-
--spec where_is(kz_global:name(), globals_state()) -> api_pid().
-where_is(Name, State) ->
-    case where(Name) of
-        'undefined' -> amqp_query(Name, State);
-        Global -> kz_global:pid(Global)
-    end.
-
--spec where(kz_global:name()) -> kz_global:global() | 'undefined'.
-where(Name) ->
-    case ets:lookup(?TAB_NAME, Name) of
-        [Global] -> Global;
-        [] -> 'undefined'
-    end.
-
--spec register_name(kz_global:name(), pid()) -> 'yes' | 'no'.
-register_name(Name, Pid) when is_pid(Pid) ->
-    case where(Name) of
-        'undefined' ->
-            gen_server:call(?SERVER, {'register', Name, Pid}, 'infinity');
-        _Pid -> 'no'
-    end.
-
-registered() ->
-    kz_global:all_names(?TAB_NAME).
-
--spec unregister_name(kz_global:name()) -> 'ok'.
-unregister_name(Name) ->
-    case where(Name) of
-        'undefined' -> 'ok';
-        _Global ->
-            gen_server:call(?MODULE, {'unregister', Name}, 'infinity')
+            gen_listener:cast(?SERVER
+                             ,{'amqp_delete', Global, kapi_globals:reason(JObj)}
+                             )
     end.
 
 -spec start_proxy(kz_global:global()) -> pid_ref().
@@ -646,6 +677,7 @@ delete_global(Global, Reason) ->
 delete_global(Global, Reason, Node) when Node =:= node() ->
     do_amqp_unregister(Global, Reason);
 delete_global(Global, _Reason, _Node) ->
+    lager:debug("deleting ~p", [Global]),
     ets:delete(?TAB_NAME, kz_global:name(Global)).
 
 -spec remonitor_globals() -> 'ok'.
