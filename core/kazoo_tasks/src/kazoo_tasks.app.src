@@ -8,7 +8,7 @@
                  , stdlib
 
                  , kazoo
-                 , amqp_leader
+                 , kazoo_apps
 
                  , lager
                  ]},
