@@ -11,7 +11,7 @@
 %%% }
 %%%
 %%% group_id defines list of eavesdrop's targets. If group_id is
-%%% undefuned then anybody can be eavesdroped.
+%%% undefined then anybody can be eavesdroped.
 %%% One of the approved_device_id, appoved_user_id, approved_group_id
 %%% must be defined to access feature code.
 %%%
