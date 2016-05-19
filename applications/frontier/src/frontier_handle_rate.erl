@@ -64,7 +64,7 @@ handle_rate_req(JObj, _Props) ->
 lookup_methods(JObj) ->
     Method = kz_json:get_value(<<"Method">>, JObj),
     MethodName = case Method of
-                     'undefined' -> 'undefuned';
+                     'undefined' -> 'undefined';
                      _ -> [resolve_method(Method)]
                  end,
     Methods = kz_json:get_value(<<"Method-List">>, JObj),
