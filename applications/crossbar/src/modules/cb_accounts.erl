@@ -1586,8 +1586,8 @@ delete_mod_dbs(AccountId, Year, Month) ->
 delete_remove_from_accounts(Context) ->
     case kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, cb_context:account_id(Context)) of
         {'ok', JObj} ->
-            _ = kz_util:spawn(fun provisioner_util:maybe_delete_account/1, [Context]),
-            _ = kz_util:spawn(fun cb_mobile_manager:delete_account/1, [Context]),
+            _ = provisioner_util:maybe_delete_account(Context),
+            _ = cb_mobile_manager:delete_account(Context),
             crossbar_doc:delete(
               cb_context:setters(Context
                                  ,[{fun cb_context:set_account_db/2, ?KZ_ACCOUNTS_DB}
