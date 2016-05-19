@@ -7,6 +7,7 @@
         ,server/1
         ,state/1
         ,is_local/1
+        ,node/1
 
         ,all_names/1
         ,all_globals_by_pid/2
@@ -71,11 +72,12 @@ update_with_pid_ref(Global, Pid, Ref)
                     ,pid=Pid
                     }.
 
--spec all_names(ets:tid()) -> names().
+-spec all_names(ets:tab()) -> names().
 all_names(Table) ->
     MatchSpec = [{#kz_global{name = '$1', _ = '_'} ,[],['$1']}],
     ets:select(Table, MatchSpec).
 
+-spec all_globals_by_pid(ets:tab(), pid()) -> globals().
 all_globals_by_pid(Table, Pid) ->
     MatchSpec = [{#kz_global{pid = Pid, _ = '_'} ,[],['$_']}],
     ets:select(Table, MatchSpec).
@@ -94,6 +96,9 @@ zone(#kz_global{zone=Zone}) ->
 
 server(#kz_global{server=Queue}) ->
     Queue.
+
+node(#kz_global{node=Node}) ->
+    Node.
 
 state(#kz_global{state=State}) ->
     State.
