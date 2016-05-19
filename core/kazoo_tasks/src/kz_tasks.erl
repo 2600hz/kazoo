@@ -13,7 +13,7 @@
 -export([start_link/0]).
 -export([new/3
         ,start/1
-        ,read/1, to_public_json/1
+        ,read/1
         ,all/0
 	]).
 
@@ -138,18 +138,9 @@ new(_, _, A) when not is_list(A) ->
 -spec read(task_id()) -> {'ok', kz_json:object()} |
                          {'error', 'not_found'}.
 read(TaskId=?NE_BINARY) ->
-    gen_server:call(?SERVER, {'get_task_by_id', TaskId}).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec to_public_json(task_id()) -> api_object().
-to_public_json(TaskId=?NE_BINARY) ->
-    case read(TaskId) of
-        {'ok', Task} -> task_to_public_json(Task);
-        {'error', _R} -> 'undefined'
+    case gen_server:call(?SERVER, {'get_task_by_id', TaskId}) of
+        {'ok', Task} -> {'ok', task_to_public_json(Task)};
+        {'error', _R}=E -> E
     end.
 
 %%%===================================================================
@@ -245,7 +236,7 @@ handle_call({'start_task', TaskId}, _From, State) ->
 handle_call({'get_task_by_id', TaskId}, _From, State) ->
     Rep =
         case task_by_id(TaskId, State) of
-            [Task] -> {'ok', task_to_public_json(Task)};
+            [Task] -> {'ok', Task};
             [] -> {'error', 'not_found'}
         end,
     {'reply', Rep, State};
