@@ -18,8 +18,6 @@
 
 -define(KNM_USER_AGENT, "Kazoo Number Manager " ++ binary_to_list(?APP_VERSION)).
 
--define(CARRIER_LOCAL_LEGACY, <<"wnm_local">>).
-
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").

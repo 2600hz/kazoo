@@ -594,7 +594,7 @@ get_account_realm(Db, AccountId) ->
 %%--------------------------------------------------------------------
 -spec try_load_module(string() | binary()) -> atom() | 'false'.
 try_load_module(Name) ->
-    Module = ?MODULE:to_atom(Name, 'true'),
+    Module = to_atom(Name, 'true'),
     try Module:module_info('exports') of
         _ when Module =:= 'undefined' -> 'false';
         _ ->
