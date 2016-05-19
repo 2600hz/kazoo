@@ -574,7 +574,6 @@ set_ported_in(N, Ported) when is_boolean(Ported) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec module_name(knm_phone_number()) -> api_binary().
-module_name(#knm_phone_number{module_name = ?CARRIER_LOCAL_LEGACY}) -> ?CARRIER_LOCAL;
 module_name(#knm_phone_number{module_name = Name}) -> Name.
 
 -spec set_module_name(knm_phone_number(), ne_binary()) -> knm_phone_number().
@@ -586,6 +585,8 @@ set_module_name(N0, ?CARRIER_LOCAL=Name) ->
         end,
     N = set_feature(N0, ?FEATURE_LOCAL, Feature),
     N#knm_phone_number{module_name=Name};
+set_module_name(N, <<"wnm_", Name/binary>>) ->
+    set_module_name(N, <<"knm_", Name/binary>>);
 set_module_name(N, Name=?NE_BINARY) ->
     N#knm_phone_number{module_name=Name}.
 
