@@ -146,7 +146,8 @@ read(TaskId=?NE_BINARY) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec worker_running(task_id(), pid()) -> 'ok'.
-worker_running(TaskId=?NE_BINARY, Pid) ->
+worker_running(TaskId=?NE_BINARY, Pid)
+  when is_pid(Pid) ->
     gen_server:cast(?SERVER, {'set_running', TaskId, Pid}).
 
 %%--------------------------------------------------------------------
@@ -164,7 +165,8 @@ worker_finished(TaskId=?NE_BINARY) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec worker_failed(task_id(), binary()) -> 'ok'.
-worker_failed(TaskId=?NE_BINARY, Reason) ->
+worker_failed(TaskId=?NE_BINARY, Reason)
+  when is_binary(Reason) ->
     gen_server:cast(?SERVER, {'set_failed', TaskId, Reason}).
 
 
@@ -214,7 +216,7 @@ handle_call({'start_task', TaskId}, _From, State) ->
         [] -> {'error', 'not_found'};
         [Task] ->
             #{m := M, f := F, a := A} = Task,
-            case kz_task_worker:start_link(Task, M, F, A) of
+            case kz_task_worker:start_link(TaskId, M, F, A) of
                 {'ok', _Pid} ->
                     lager:debug("started task ~s: ~p", [TaskId, _Pid]),
                     {'reply', 'ok', State};
@@ -320,6 +322,5 @@ code_change(_OldVsn, State, _Extra) ->
 -spec task_by_id(task_id(), state()) -> [] | [task()].
 task_by_id(TaskId, State) ->
     [T || T <- State#state.tasks, TaskId == maps:get('id', T)].
-
 
 %%% End of Module.
