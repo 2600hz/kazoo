@@ -62,7 +62,7 @@ terminate(_Reason, _Global) ->
 code_change(_OldVsn, Global, _Extra) ->
     {'ok', Global}.
 
--spec amqp_send(kz_globals:kz_global(), term()) -> 'ok'.
+-spec amqp_send(kz_global:global(), term()) -> 'ok'.
 amqp_send(Global, Message) ->
     Payload = [{<<"Name">>, kz_global:name(Global)}
               ,{<<"Message">>, kapi_globals:encode(Message)}
