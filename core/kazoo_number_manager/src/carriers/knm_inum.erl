@@ -1,13 +1,15 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
+%%%
+%%% Carrier for inums
 %%%
 %%% @end
 %%% @contributors
-%%%   Luis Azedo
+%%%   Karl Anderson
+%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
--module(knm_managed).
-
+-module(knm_inum).
 -behaviour(knm_gen_carrier).
 
 -export([find_numbers/3]).
@@ -17,12 +19,11 @@
 -export([should_lookup_cnam/0]).
 
 -export([generate_numbers/3]).
--export([import_numbers/2]).
 
 -include("knm.hrl").
 
--define(KZ_MANAGED, <<"numbers%2Fmanaged">>).
--define(MANAGED_VIEW_FILE, <<"views/managed.json">>).
+-define(KZ_INUM,<<"numbers%2Finum">>).
+-define(INUM_VIEW_FILE, <<"views/inum.json">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -45,9 +46,9 @@ find_numbers(Number, Quantity, Opts) ->
                                      {'error', any()}.
 find_numbers_in_account(Number, Quantity, AccountId) ->
     case do_find_numbers_in_account(Number, Quantity, AccountId) of
-        {'error', 'not_available'}=Error ->
+        {'error', 'not_available'}=E ->
             case kz_services:find_reseller_id(AccountId) of
-                AccountId -> Error;
+                AccountId -> E;
                 ResellerId ->
                     find_numbers_in_account(Number, Quantity, ResellerId)
             end;
@@ -63,15 +64,15 @@ do_find_numbers_in_account(Number, Quantity, AccountId) ->
                    ,{'limit', Quantity}
                    ,'include_docs'
                   ],
-    case kz_datamgr:get_results(?KZ_MANAGED, <<"numbers/status">>, ViewOptions) of
+    case kz_datamgr:get_results(?KZ_INUM, <<"numbers/status">>, ViewOptions) of
         {'ok', []} ->
-            lager:debug("found no available managed numbers for account ~p", [AccountId]),
+            lager:debug("found no available inum numbers for account ~p", [AccountId]),
             {'error', 'not_available'};
         {'ok', JObjs} ->
-            lager:debug("found available managed numbers for account ~s", [AccountId]),
+            lager:debug("found available inum numbers for account ~p", [AccountId]),
             {'ok', format_numbers_resp(AccountId, JObjs)};
         {'error', _R}=E ->
-            lager:debug("failed to lookup available managed numbers: ~p", [_R]),
+            lager:debug("failed to lookup available local numbers: ~p", [_R]),
             E
     end.
 
@@ -100,11 +101,9 @@ is_number_billable(_Number) -> 'false'.
 acquire_number(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     Num = knm_phone_number:number(PhoneNumber),
-    AssignTo = knm_phone_number:assigned_to(PhoneNumber),
-    State = knm_phone_number:state(PhoneNumber),
     lager:debug("acquiring number ~s in ~s provider", [Num, ?MODULE]),
-    update_doc(Number, [{?PVT_STATE, State}
-                       ,{?PVT_ASSIGNED_TO, AssignTo}
+    update_doc(Number, [{?PVT_STATE, knm_phone_number:state(PhoneNumber)}
+                       ,{?PVT_ASSIGNED_TO, knm_phone_number:assigned_to(PhoneNumber)}
                        ]).
 
 %%--------------------------------------------------------------------
@@ -119,54 +118,41 @@ disconnect_number(Number) ->
     Num = knm_phone_number:number(knm_number:phone_number(Number)),
     lager:debug("disconnect number ~s in managed provider", [Num]),
     update_doc(Number, [{?PVT_STATE, ?NUMBER_STATE_RELEASED}
-                       ,{?PVT_ASSIGNED_TO, <<>>}
+                       ,{?PVT_ASSIGNED_TO, 'undefined'}
+                       ,{?PVT_RESERVE_HISTORY, []}
                        ]).
 
 -spec generate_numbers(ne_binary(), pos_integer(), non_neg_integer()) -> 'ok'.
+generate_numbers(AccountId, <<"8835100",_/binary>> = Number, Quantity)
+  when byte_size(Number) =:= 15 ->
+    generate_numbers(AccountId, kz_util:to_integer(Number), kz_util:to_integer(Quantity));
 generate_numbers(_AccountId, _Number, 0) -> 'ok';
 generate_numbers(AccountId, Number, Quantity)
-  when Quantity > 0
-       andalso is_integer(Number)
-       andalso is_integer(Quantity) ->
-    {'ok', _JObj} = save_doc(AccountId, kz_util:to_binary(Number)),
+  when is_integer(Number),
+       is_integer(Quantity),
+       Quantity > 0 ->
+    _R = save_doc(AccountId, kz_util:to_binary(Number)),
+    lager:info("Number ~p/~p/~p", [Number, Quantity, _R]),
     generate_numbers(AccountId, Number+1, Quantity-1).
 
--spec import_numbers(ne_binary(), ne_binaries()) -> kz_json:object().
-import_numbers(_AccountId, Numbers) ->
-    import_numbers(_AccountId, Numbers, kz_json:new()).
-
--spec import_numbers(ne_binary(), ne_binaries(), kz_json:object()) -> kz_json:object().
-import_numbers(_AccountId, [], JObj) -> JObj;
-import_numbers(AccountId, [Number | Numbers], JObj) ->
-    NewJObj =
-        case save_doc(AccountId, Number) of
-            {'ok', _Doc} ->
-                kz_json:set_value([<<"success">>, Number], kz_json:new(), JObj);
-            {'error', Reason} ->
-                Error = kz_json:from_list([{<<"reason">>, Reason}
-                                          ,{<<"message">>, <<"error adding number to DB">>}
-                                          ]),
-                kz_json:set_value([<<"errors">>, Number], Error, JObj)
-        end,
-    import_numbers(AccountId, Numbers, NewJObj).
 
 -spec save_doc(ne_binary(), ne_binary()) -> {'ok', kz_json:object()} |
                                             {'error', any()}.
 save_doc(AccountId, Number) ->
     JObj = kz_json:from_list([{<<"_id">>, knm_converters:normalize(Number)}
-                              ,{<<"pvt_account_id">>, AccountId}
-                              ,{?PVT_STATE, ?NUMBER_STATE_AVAILABLE}
-                              ,{?PVT_TYPE, <<"number">>}
+                             ,{<<"pvt_account_id">>, AccountId}
+                             ,{?PVT_STATE, ?NUMBER_STATE_AVAILABLE}
+                             ,{?PVT_TYPE, <<"number">>}
                              ]),
     save_doc(JObj).
 
 -spec save_doc(kz_json:object()) -> {'ok', kz_json:object()} |
                                     {'error', any()}.
 save_doc(JObj) ->
-    case kz_datamgr:save_doc(?KZ_MANAGED, JObj) of
+    case kz_datamgr:save_doc(?KZ_INUM, JObj) of
         {'error', 'not_found'} ->
-            'true' = kz_datamgr:db_create(?KZ_MANAGED),
-            {'ok', _View} = kz_datamgr:revise_doc_from_file(?KZ_MANAGED, kz_util:to_atom(?APP_NAME), ?MANAGED_VIEW_FILE),
+            _ = kz_datamgr:db_create(?KZ_INUM),
+            {'ok', _View} = kz_datamgr:revise_doc_from_file(?KZ_INUM, kz_util:to_atom(?APP_NAME), ?INUM_VIEW_FILE),
             save_doc(JObj);
         Result -> Result
     end.
@@ -176,7 +162,7 @@ save_doc(JObj) ->
 update_doc(Number, UpdateProps) ->
     PhoneNumber = knm_number:phone_number(Number),
     Doc = knm_phone_number:doc(PhoneNumber),
-    case kz_datamgr:update_doc(?KZ_MANAGED, kz_doc:id(Doc), UpdateProps) of
+    case kz_datamgr:update_doc(?KZ_INUM, kz_doc:id(Doc), UpdateProps) of
         {'error', Reason} ->
             knm_errors:database_error(Reason, PhoneNumber);
         {'ok', UpdatedDoc} ->
