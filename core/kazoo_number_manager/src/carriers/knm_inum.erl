@@ -151,7 +151,7 @@ save_doc(AccountId, Number) ->
 save_doc(JObj) ->
     case kz_datamgr:save_doc(?KZ_INUM, JObj) of
         {'error', 'not_found'} ->
-            _ = kz_datamgr:db_create(?KZ_INUM),
+            'true' = kz_datamgr:db_create(?KZ_INUM),
             {'ok', _View} = kz_datamgr:revise_doc_from_file(?KZ_INUM, kz_util:to_atom(?APP_NAME), ?INUM_VIEW_FILE),
             save_doc(JObj);
         Result -> Result
