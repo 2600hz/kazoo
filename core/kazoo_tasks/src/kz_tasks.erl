@@ -85,9 +85,12 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec all() -> kz_json:objects().
 all() ->
-    [task_to_public_json(Task)
-     || Task <- gen_server:call(?SERVER, 'get_tasks')
-    ].
+    case gen_server:call(?SERVER, 'get_tasks') of
+        [] -> [];
+        Tasks ->
+            Sorted = lists:sort(fun compare_tasks/2, Tasks),
+            [task_to_public_json(Task) || Task <- Sorted]
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -359,5 +362,9 @@ task_to_public_json(#{id := TaskId
         ,{<<"finished">>, Finished}
         ,{<<"failed">>, Failed}
         ])).
+
+-spec compare_tasks(task(), task()) -> boolean().
+compare_tasks(#{submitted := A}, #{submitted := B}) ->
+    A =< B.
 
 %%% End of Module.
