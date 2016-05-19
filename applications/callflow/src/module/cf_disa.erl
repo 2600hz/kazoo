@@ -209,6 +209,12 @@ set_caller_id(Call) ->
                         C1 = whapps_call:set_caller_id_number(Number, C),
                         whapps_call:set_caller_id_name(Name, C1)
                 end
+               ,fun(C) ->
+                        Props = [{<<"Caller-ID-Number">>, Number}
+                                 ,{<<"Caller-ID-Name">>, Name}
+                                ],
+                        whapps_call:set_custom_channel_vars(Props, C)
+                end
               ],
     UpdatedCall = whapps_call:exec(Updates, Call),
     cf_exe:set_call(UpdatedCall),
