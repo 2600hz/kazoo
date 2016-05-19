@@ -13,7 +13,7 @@
 -export([start_link/0]).
 -export([new/3
         ,start/1
-        ,read/1
+        ,read/1, to_public_json/1
         ,all/0
 	]).
 
@@ -83,9 +83,11 @@ start_link() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec all() -> tasks().
+-spec all() -> kz_json:objects().
 all() ->
-    gen_server:call(?SERVER, 'get_tasks').
+    [task_to_public_json(Task)
+     || Task <- gen_server:call(?SERVER, 'get_tasks')
+    ].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -130,11 +132,22 @@ new(_, _, A) when not is_list(A) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec read(task_id()) -> {'ok', task()} |
+-spec read(task_id()) -> {'ok', kz_json:object()} |
                          {'error', 'not_found'}.
 read(TaskId=?NE_BINARY) ->
     gen_server:call(?SERVER, {'get_task_by_id', TaskId}).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec to_public_json(task_id()) -> api_object().
+to_public_json(TaskId=?NE_BINARY) ->
+    case read(TaskId) of
+        {'ok', Task} -> task_to_public_json(Task);
+        {'error', _R} -> 'undefined'
+    end.
 
 %%%===================================================================
 %%% Worker API
@@ -229,7 +242,7 @@ handle_call({'start_task', TaskId}, _From, State) ->
 handle_call({'get_task_by_id', TaskId}, _From, State) ->
     Rep =
         case task_by_id(TaskId, State) of
-            [Task] -> {'ok', Task};
+            [Task] -> {'ok', task_to_public_json(Task)};
             [] -> {'error', 'not_found'}
         end,
     {'reply', Rep, State};
@@ -324,5 +337,27 @@ code_change(_OldVsn, State, _Extra) ->
 -spec task_by_id(task_id(), state()) -> [] | [task()].
 task_by_id(TaskId, State) ->
     [T || T <- State#state.tasks, TaskId == maps:get('id', T)].
+
+-spec task_to_public_json(task()) -> kz_json:object().
+task_to_public_json(#{id := TaskId
+                     ,m := M
+                     ,f := F
+                     ,a := A
+                     ,submitted := Submitted
+                     ,running := Running
+                     ,finished := Finished
+                     ,failed := Failed
+                     }) ->
+    kz_json:from_list(
+      props:filter_undefined(
+        [{<<"id">>, TaskId}
+        ,{<<"M">>, M}
+        ,{<<"F">>, F}
+        ,{<<"A">>, A}
+        ,{<<"submitted">>, Submitted}
+        ,{<<"running">>, Running}
+        ,{<<"finished">>, Finished}
+        ,{<<"failed">>, Failed}
+        ])).
 
 %%% End of Module.
