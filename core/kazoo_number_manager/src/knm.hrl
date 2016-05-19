@@ -165,14 +165,14 @@
 -define(BW_EXISTING_DID, <<"+14122065197">>).
 -define(BW_EXISTING_JSON
         ,kz_json:from_list(
-           [{<<"_id">>,<<"+14122065197">>},
-            {<<"pvt_db_name">>,<<"numbers%2F%2B1412">>},
-            {<<"pvt_features">>,kz_json:new()},
-            {<<"pvt_state">>,<<"discovery">>},
-            {<<"pvt_reserve_history">>,[]},
-            {<<"pvt_ported_in">>,'false'},
-            {<<"pvt_module_name">>,<<"knm_bandwidth">>},
-            {<<"pvt_carrier_data">>
+           [{<<"_id">>, <<"+14122065197">>},
+            {?PVT_DB_NAME, <<"numbers%2F%2B1412">>},
+            {?PVT_FEATURES, kz_json:new()},
+            {?PVT_STATE, ?NUMBER_STATE_DISCOVERY},
+            {?PVT_RESERVE_HISTORY, []},
+            {?PVT_PORTED_IN, 'false'},
+            {?PVT_MODULE_NAME, <<"knm_bandwidth">>},
+            {?PVT_CARRIER_DATA
              ,kz_json:from_list(
                 [{<<"number_id">>, <<"0C107941-CDDA-42FE-823C-042EADBD3719">>},
                  {<<"ten_digit">>,<<"4122065197">>},
@@ -189,9 +189,9 @@
                  }
                 ])
             },
-            {<<"pvt_modified">>,63610268576},
-            {<<"pvt_created">>,63610268576},
-            {<<"pvt_type">>,<<"number">>}]
+            {?PVT_MODIFIED, 63610268576},
+            {?PVT_CREATED, 63610268576},
+            {?PVT_TYPE,<<"number">>}]
           )
        ).
 -else.
