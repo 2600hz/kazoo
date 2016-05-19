@@ -416,8 +416,8 @@ do_amqp_unregister(Global, Reason) ->
     ets:delete(?TAB_NAME, Name),
     kz_amqp_worker:cast(Payload, ?AMQP_UNREGISTER_FUN).
 
--spec amqp_query(kz_global:name()) -> api_pid().
-amqp_query(Name) ->
+-spec amqp_query(kz_global:name(), globals_state()) -> api_pid().
+amqp_query(Name, State) ->
     Payload = [{<<"Name">>, Name}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
@@ -531,7 +531,7 @@ handle_amqp_register(JObj, _Props, 'pending') ->
             advertise_register(Global),
             amqp_register_reply(JObj, Global)
     end;
-handle_amqp_register(JObj, Props, 'local') ->
+handle_amqp_register(JObj, Props, 'local'=State) ->
     State = props:get_value('state', Props),
     Global = from_json(JObj,  State),
     gen_server:cast(?SERVER, {'insert_remote', Global}).
@@ -580,13 +580,11 @@ whereis_name(Name) ->
     lager:debug("calling querying global ~s", [Name]),
     gen_server:call(?SERVER, {'where_is', Name}, 'infinity').
 
--spec where_is(Name, State) -> pid() | 'undefined' when
-      Name :: term(),
-      State :: globals_state().
+-spec where_is(kz_global:name(), globals_state()) -> api_pid().
 where_is(Name, State) ->
     lager:debug("querying global ~s", [Name]),
     case where(Name) of
-        'undefined' -> amqp_query(Name);
+        'undefined' -> amqp_query(Name, State);
         Global -> kz_global:pid(Global)
     end.
 
