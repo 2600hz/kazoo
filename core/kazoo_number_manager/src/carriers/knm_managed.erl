@@ -69,25 +69,21 @@ do_find_numbers_in_account(Number, Quantity, AccountId) ->
             {'error', 'not_available'};
         {'ok', JObjs} ->
             lager:debug("found available managed numbers for account ~s", [AccountId]),
-            {'ok', format_numbers_resp(JObjs)};
+            {'ok', format_numbers_resp(AccountId, JObjs)};
         {'error', _R}=E ->
             lager:debug("failed to lookup available managed numbers: ~p", [_R]),
             E
     end.
 
--spec format_numbers_resp(kz_json:objects()) -> knm_number:knm_numbers().
-format_numbers_resp(JObjs) ->
-    [format_number_resp(JObj) || JObj <- JObjs].
+-spec format_numbers_resp(ne_binary(), kz_json:objects()) -> knm_number:knm_numbers().
+format_numbers_resp(AccountId, JObjs) ->
+    [format_number_resp(AccountId, JObj) || JObj <- JObjs].
 
--spec format_number_resp(kz_json:object()) -> knm_number:knm_number().
-format_number_resp(JObj) ->
+-spec format_number_resp(ne_binary(), kz_json:object()) -> knm_number:knm_number().
+format_number_resp(AccountId, JObj) ->
     Doc = kz_json:get_value(<<"doc">>, JObj),
-    Updates = [{fun knm_phone_number:set_number/2, kz_doc:id(Doc)}
-               ,{fun knm_phone_number:set_carrier_data/2, Doc}
-               ,{fun knm_phone_number:set_module_name/2, ?CARRIER_MANAGED}
-              ],
     {'ok', PhoneNumber} =
-        knm_phone_number:setters(knm_phone_number:new(), Updates),
+        knm_phone_number:newly_found(kz_doc:id(Doc), ?MODULE, AccountId, Doc),
     knm_number:set_phone_number(knm_number:new(), PhoneNumber).
 
 -spec is_number_billable(knm_number:knm_number()) -> boolean().
@@ -169,8 +165,8 @@ save_doc(AccountId, Number) ->
 save_doc(JObj) ->
     case kz_datamgr:save_doc(?KZ_MANAGED, JObj) of
         {'error', 'not_found'} ->
-            _ = kz_datamgr:db_create(?KZ_MANAGED),
-            _ = kz_datamgr:revise_doc_from_file(?KZ_MANAGED, kz_util:to_atom(?APP_NAME), ?MANAGED_VIEW_FILE),
+            'true' = kz_datamgr:db_create(?KZ_MANAGED),
+            {'ok', _View} = kz_datamgr:revise_doc_from_file(?KZ_MANAGED, kz_util:to_atom(?APP_NAME), ?MANAGED_VIEW_FILE),
             save_doc(JObj);
         Result -> Result
     end.
