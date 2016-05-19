@@ -136,7 +136,7 @@ is_number_billable(DID, 'undefined') ->
             lager:debug("failed to get ~s: ~p", [DID, _R]),
             'false';
         {'ok', Number} ->
-            case knm_phone_number:module_name(Number) of
+            case knm_phone_number:module_name(knm_number:phone_number(Number)) of
                 'undefined' ->
                     lager:debug("number ~s had no number manager module, not billable", [DID]),
                     'false';
