@@ -15,6 +15,7 @@
         ,start/1
         ,read/1
         ,all/0
+        ,remove/1
 	]).
 
 %% API use by workers
@@ -52,13 +53,18 @@
                    }.
 -opaque tasks() :: [task()].
 
+-export_type([task_id/0
+             ,task/0, tasks/0
+             ]).
+
+
 -record(state, { tasks = [] :: tasks()
                }).
 -type state() :: #state{}.
 
--export_type([task_id/0
-             ,task/0, tasks/0
-             ]).
+-define(REPLY_FOUND(State, Task), {'reply', {'ok', Task}, State}).
+-define(REPLY_NOT_FOUND(State), {'reply', {'error', 'not_found'}, State}).
+
 
 %%%===================================================================
 %%% API
@@ -143,6 +149,16 @@ read(TaskId=?NE_BINARY) ->
         {'error', _R}=E -> E
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec remove(task_id()) -> {'ok', kz_json:object()} |
+                           {'error', 'not_found' | 'task_running'}.
+remove(TaskId=?NE_BINARY) ->
+    gen_server:call(?SERVER, {'remove_task', TaskId}).
+
 %%%===================================================================
 %%% Worker API
 %%%===================================================================
@@ -213,16 +229,15 @@ handle_call('get_tasks', _From, State) ->
     Tasks = State#state.tasks,
     {'reply', Tasks, State};
 
-handle_call({'add_task', Task}, _From, State) ->
+handle_call({'add_task', Task=#{id := TaskId}}, _From, State) ->
     Tasks = [Task | State#state.tasks],
     State1 = State#state{tasks = Tasks},
-    {'reply', {'ok', maps:get('id', Task)}, State1};
+    {'reply', {'ok', TaskId}, State1};
 
 handle_call({'start_task', TaskId}, _From, State) ->
     case task_by_id(TaskId, State) of
-        [] -> {'error', 'not_found'};
-        [Task] ->
-            #{m := M, f := F, a := A} = Task,
+        [] -> ?REPLY_NOT_FOUND(State);
+        [#{m := M, f := F, a := A}] ->
             case kz_task_worker:start_link(TaskId, M, F, A) of
                 {'ok', _Pid} ->
                     lager:debug("started task ~s: ~p", [TaskId, _Pid]),
@@ -234,12 +249,22 @@ handle_call({'start_task', TaskId}, _From, State) ->
     end;
 
 handle_call({'get_task_by_id', TaskId}, _From, State) ->
-    Rep =
-        case task_by_id(TaskId, State) of
-            [Task] -> {'ok', Task};
-            [] -> {'error', 'not_found'}
-        end,
-    {'reply', Rep, State};
+    case task_by_id(TaskId, State) of
+        [Task] -> ?REPLY_FOUND(State, Task);
+        [] -> ?REPLY_NOT_FOUND(State)
+    end;
+
+handle_call({'remove_task', TaskId}, _From, State) ->
+    case task_by_id(TaskId, State) of
+        [] -> ?REPLY_NOT_FOUND(State);
+        [Task] ->
+            case is_processing(Task) of
+                'true' -> {'reply', {'error', 'task_running'}, State};
+                'false' ->
+                    State1 = remove_task(TaskId, State),
+                    ?REPLY_FOUND(State1, Task)
+            end
+    end;
 
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled call ~p from ~p", [_Request, _From]),
@@ -260,24 +285,22 @@ handle_cast({'set_running', TaskId, Pid}, State) ->
     Task1 = Task#{ running => kz_util:current_tstamp()
                  , pid => Pid
                  },
-    Tasks = (State#state.tasks -- [Task]) ++ [Task1],
-    State1 = State#state{tasks = Tasks},
+    State1 = add_task(Task1, remove_task(TaskId, State)),
     {'noreply', State1};
 
 handle_cast({'set_finished', TaskId}, State) ->
     [Task] = task_by_id(TaskId, State),
     Task1 = Task#{ finished => kz_util:current_tstamp()
                  },
-    Tasks = (State#state.tasks -- [Task]) ++ [Task1],
-    State1 = State#state{tasks = Tasks},
+    State1 = add_task(Task1, remove_task(TaskId, State)),
     {'noreply', State1};
 
 handle_cast({'set_failed', TaskId, Reason}, State) ->
     [Task] = task_by_id(TaskId, State),
     Task1 = Task#{ failed => Reason
+                 , finished => kz_util:current_tstamp()
                  },
-    Tasks = (State#state.tasks -- [Task]) ++ [Task1],
-    State1 = State#state{tasks = Tasks},
+    State1 = add_task(Task1, remove_task(TaskId, State)),
     {'noreply', State1};
 
 handle_cast(_Msg, State) ->
@@ -330,7 +353,9 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec task_by_id(task_id(), state()) -> [] | [task()].
 task_by_id(TaskId, State) ->
-    [T || T <- State#state.tasks, TaskId == maps:get('id', T)].
+    [T || T=#{id := Id} <- State#state.tasks,
+          TaskId == Id
+    ].
 
 -spec task_to_public_json(task()) -> kz_json:object().
 task_to_public_json(#{id := TaskId
@@ -340,22 +365,109 @@ task_to_public_json(#{id := TaskId
                      ,submitted := Submitted
                      ,running := Running
                      ,finished := Finished
-                     ,failed := Failed
-                     }) ->
+                     ,failed := MaybeError
+                     } = Task) ->
+    IsProcessed =
+        case is_started(Task) of
+            'false' -> 'undefined';
+            'true' -> is_processed(Task)
+        end,
+    IsSuccess =
+        case IsProcessed of
+            'undefined' -> 'undefined';
+            'false' -> 'undefined';
+            'true' -> is_success(Task)
+        end,
     kz_json:from_list(
       props:filter_undefined(
         [{<<"id">>, TaskId}
         ,{<<"M">>, M}
         ,{<<"F">>, F}
         ,{<<"A">>, A}
-        ,{<<"submitted">>, Submitted}
-        ,{<<"running">>, Running}
-        ,{<<"finished">>, Finished}
-        ,{<<"failed">>, Failed}
+        ,{<<"submitted_at">>, Submitted}
+        ,{<<"started_at">>, Running}
+        ,{<<"ended_at">>, Finished}
+        ,{<<"error">>, MaybeError}
+        ,{<<"is_terminated">>, IsProcessed}
+        ,{<<"is_success">>, IsSuccess}
+        ,{<<"ran_for">>, time_ran(Task)}
         ])).
 
 -spec compare_tasks(task(), task()) -> boolean().
 compare_tasks(#{submitted := A}, #{submitted := B}) ->
     A =< B.
+
+-spec remove_task(task_id(), state()) -> state().
+remove_task(TaskId, State) ->
+    NewTasks =
+        [T || T=#{id := Id} <- State#state.tasks,
+              TaskId /= Id
+        ],
+    State#state{tasks = NewTasks}.
+
+-spec add_task(task(), state()) -> state().
+add_task(Task, State) ->
+    Tasks = [Task | State#state.tasks],
+    State#state{tasks = Tasks}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Whether a task has been started (can have finished or failed by now).
+%%--------------------------------------------------------------------
+-spec is_started(task()) -> boolean().
+is_started(#{running := Running})
+  when Running /= 'undefined' ->
+    'true';
+is_started(_Task) ->
+    'false'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Whether task has been started and is still running.
+%% @end
+%%--------------------------------------------------------------------
+-spec is_processing(task()) -> boolean().
+is_processing(#{ running := Running
+               , finished := Finished
+               })
+  when Running  /= 'undefined',
+       Finished /= 'undefined' ->
+    'true';
+is_processing(_Task) ->
+    'false'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Whether a started task succeeded or failed (ie. has terminated).
+%%--------------------------------------------------------------------
+-spec is_processed(task()) -> boolean().
+is_processed(#{finished := Finished})
+  when Finished /= 'undefined' ->
+    'true';
+is_processed(_Task) ->
+    'false'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Whether a started task ended with no error.
+%%--------------------------------------------------------------------
+-spec is_success(task()) -> boolean().
+is_success(#{ finished := Finished
+            , failed := Failed
+            })
+  when Finished /= 'undefined',
+       Failed   == 'undefined' ->
+    'true';
+is_success(_Task) ->
+    'false'.
+
+-spec time_ran(task()) -> api_non_neg_integer().
+time_ran(#{ running := Running
+          , finished := Finished
+          } = Task) ->
+    case is_processed(Task) of
+        'true' -> kz_util:elapsed_s(Running, Finished);
+        'false' -> 'undefined'
+    end.
 
 %%% End of Module.

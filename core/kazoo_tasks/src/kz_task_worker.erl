@@ -78,9 +78,9 @@ init([TaskId, M, F, A]) ->
                           error_logger:error_report(Msg)
                   end
           end),
-    {'ok', #state{ task_pid = Pid
-                 }
-    }.
+    State = #state{ task_pid = Pid
+                  },
+    {'ok', State}.
 
 %%--------------------------------------------------------------------
 %% @private
