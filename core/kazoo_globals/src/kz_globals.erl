@@ -255,6 +255,7 @@ handle_info({'nodedown', Node}, State) ->
     lager:info("VM ~s is no longer connected", [Node]),
     {'noreply', State};
 handle_info({'ETS-TRANSFER', _TblId, _From, _Data}, State) ->
+    remonitor_globals(),
     lager:info("ready to register names"),
     {'noreply', State#state{ready='true'}};
 handle_info(_Info, State) ->
@@ -421,6 +422,7 @@ amqp_query(Name, State) ->
     Payload = [{<<"Name">>, Name}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
+    lager:debug("querying cluster for ~p", [Name]),
     case kz_amqp_worker:call_collect(Payload, ?AMQP_QUERY_FUN) of
         {'ok', [JObj]} ->
             Global = from_json(JObj, State),
@@ -577,12 +579,10 @@ send(Name, Msg) ->
 
 -spec whereis_name(kz_global:name()) -> api_pid().
 whereis_name(Name) ->
-    lager:debug("calling querying global ~s", [Name]),
     gen_server:call(?SERVER, {'where_is', Name}, 'infinity').
 
 -spec where_is(kz_global:name(), globals_state()) -> api_pid().
 where_is(Name, State) ->
-    lager:debug("querying global ~s", [Name]),
     case where(Name) of
         'undefined' -> amqp_query(Name, State);
         Global -> kz_global:pid(Global)
@@ -647,3 +647,37 @@ delete_global(Global, Reason, Node) when Node =:= node() ->
     do_amqp_unregister(Global, Reason);
 delete_global(Global, _Reason, _Node) ->
     ets:delete(?TAB_NAME, kz_global:name(Global)).
+
+-spec remonitor_globals() -> 'ok'.
+remonitor_globals() ->
+    remonitor_globals(
+      ets:select(kz_globals:table_id(), [{'_', [], ['$_']}], 1)
+     ).
+
+remonitor_globals('$end_of_table') -> 'ok';
+remonitor_globals({[Global], Continuation}) ->
+    remonitor_global(Global),
+    remonitor_globals(ets:select(Continuation)).
+
+remonitor_global(Global) ->
+    remonitor_global(Global
+                    ,erlang:is_process_alive(kz_global:pid(Global))
+                    ,kz_global:is_local(Global)
+                    ).
+
+remonitor_global(Global, 'false', _IsLocal) ->
+    lager:info("global ~p(~p) down, cleaning up"
+              ,[kz_global:pid(Global), kz_global:name(Global)]
+              ),
+    unregister_name(kz_global:name(Global));
+remonitor_global(Global, 'true', 'true') ->
+    Pid = kz_global:pid(Global),
+    Ref = erlang:monitor('process', Pid),
+    lager:debug("remonitoring local ~p", [Pid]),
+    ets:insert(?TAB_NAME, kz_global:update_with_pid_ref(Global, Pid, Ref));
+remonitor_global(Global, 'true', 'false') ->
+    Pid = kz_global:pid(Global),
+    link(Pid),
+    Ref = erlang:monitor('process', Pid),
+    lager:debug("remonitoring proxy ~p", [Pid]),
+    ets:insert(?TAB_NAME, kz_global:update_with_pid_ref(Global, Pid, Ref)).
