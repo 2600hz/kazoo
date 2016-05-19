@@ -147,9 +147,17 @@ create_ledger_usage(Amount, Request, Limits) ->
 
 -spec metadata(j5_request:request()) -> kz_json:object().
 metadata(Request) ->
+    RateObj = kz_json:from_list(
+                [{<<"name">>, j5_request:rate_name(Request)}
+                 ,{<<"value">>, j5_request:rate(Request)}
+                 ,{<<"increment">>, j5_request:rate_increment(Request)}
+                 ,{<<"minimum">>, j5_request:rate_minimum(Request)}
+                ]),
     kz_json:from_list(
       [{<<"to">>, j5_request:to(Request)}
        ,{<<"from">>, j5_request:from(Request)}
        ,{<<"direction">>, j5_request:call_direction(Request)}
-       ,{<<"rate">>, j5_request:rate(Request)}
+       ,{<<"caller_id_number">>, j5_request:caller_id_number(Request)}
+       ,{<<"callee_id_number">>, j5_request:callee_id_number(Request)}
+       ,{<<"rate">>, RateObj}
       ]).
