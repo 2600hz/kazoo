@@ -227,10 +227,12 @@ handle_call({'start_task', TaskId}, _From, State) ->
     end;
 
 handle_call({'get_task_by_id', TaskId}, _From, State) ->
-    case task_by_id(TaskId, State) of
-        [Task] -> {'ok', Task};
-        [] -> {'error', 'not_found'}
-    end;
+    Rep =
+        case task_by_id(TaskId, State) of
+            [Task] -> {'ok', Task};
+            [] -> {'error', 'not_found'}
+        end,
+    {'reply', Rep, State};
 
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled call ~p from ~p", [_Request, _From]),
