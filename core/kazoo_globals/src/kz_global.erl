@@ -11,6 +11,7 @@
 
         ,all_names/1
         ,all_globals_by_pid/2
+        ,all_dead_pids/1
 
         ,from_jobj/2
         ,new_local/4
@@ -81,6 +82,16 @@ all_names(Table) ->
 all_globals_by_pid(Table, Pid) ->
     MatchSpec = [{#kz_global{pid = Pid, _ = '_'} ,[],['$_']}],
     ets:select(Table, MatchSpec).
+
+all_dead_pids(Table) ->
+    MatchSpec = [{#kz_global{pid = '$1', name = '$2', _ = '_'}
+                 ,[]
+                 ,[['$1', '$2']]
+                 }],
+    [{Name, Pid}
+     || [Pid, Name] <- ets:select(Table, MatchSpec),
+        erlang:is_process_alive(Pid) =:= 'false'
+    ].
 
 name(#kz_global{name=Name}) ->
     Name.

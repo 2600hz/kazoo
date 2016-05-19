@@ -16,6 +16,7 @@
         ,unregister_name/1
         ,send/2
         ,registered/0
+        ,reconcile/0
         ]).
 
 -export([start_link/0
@@ -112,6 +113,12 @@ start_link() ->
                             ]
                            ,[]
                            ).
+
+reconcile() ->
+    [{Pid, unregister_name(Name)} ||
+        {Name, Pid} <- kz_global:all_dead_pids(?TAB_NAME)
+    ].
+
 -spec table_id() -> ?TAB_NAME.
 table_id() -> ?TAB_NAME.
 
@@ -393,8 +400,9 @@ amqp_unregister(Name) ->
     case where(Name) of
         'undefined' -> 'ok';
         Global ->
-            kz_global:is_local(Global)
-                andalso do_amqp_unregister(Global, 'normal')
+            (kz_global:is_local(Global)
+                andalso do_amqp_unregister(Global, 'normal') =:= 'ok'
+            ) orelse lager:debug("can't unregister ~p", [Global])
     end,
     'ok'.
 
@@ -604,7 +612,7 @@ registered() ->
 unregister_name(Name) ->
     case where(Name) of
         'undefined' -> 'ok';
-        _Pid ->
+        _Global ->
             gen_server:call(?MODULE, {'unregister', Name}, 'infinity')
     end.
 
