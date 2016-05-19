@@ -15,7 +15,7 @@
 
 -include("../konami.hrl").
 
--define(LIST_BY_NUMBER, <<"callflow/listing_by_number">>).
+-define(LIST_BY_NUMBER, <<"callflows/listing_by_number">>).
 
 -spec handle(wh_json:object(), whapps_call:call()) ->
                     {'stop', whapps_call:call()}.
