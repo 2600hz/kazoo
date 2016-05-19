@@ -30,7 +30,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(CALLFLOW_VIEW, <<"callflow/listing_by_number">>).
+-define(CALLFLOW_VIEW, <<"callflows/listing_by_number">>).
 -define(DEVICES_VIEW, <<"devices/listing_by_owner">>).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".freeswitch">>).
