@@ -300,7 +300,7 @@ number_order_response_to_json(Xml) ->
     Props = [
         {<<"order_id">>, wh_util:get_xml_value("id/text()", Xml)}
        ,{<<"order_name">>, wh_util:get_xml_value("Name/text()", Xml)}
-       ,{<<"number">>, wh_util:get_xml_value("TelephoneNumberList/TelephoneNumber/text()", Xml)}
+       ,{<<"number">>, wnm_util:to_e164(wh_util:get_xml_value("TelephoneNumberList/TelephoneNumber/text()", Xml))}
     ],
     wh_json:from_list(props:filter_undefined(Props)).
 
@@ -316,9 +316,9 @@ search_response_to_json([]) ->
 search_response_to_json([Xml]) ->
     search_response_to_json(Xml);
 search_response_to_json(Xml) ->
-    Number = wnm_util:to_e164(wh_util:get_xml_value("//FullNumber/text()", Xml)),
+    Number = wh_util:get_xml_value("//FullNumber/text()", Xml),
     Props = [
-        {<<"number">>, Number}
+        {<<"number">>, wnm_util:to_e164(Number)}
        ,{<<"rate_center">>, rate_center_to_json(Xml)}
     ],
 
