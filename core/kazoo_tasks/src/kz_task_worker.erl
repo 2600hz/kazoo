@@ -71,10 +71,10 @@ init([TaskId, M, F, A]) ->
                   catch
                       _E:_R ->
                           Stacktrace = erlang:get_stacktrace(),
-                          Msg = io_lib:format("Task ~s (~p) error ~p: ~p  ~p"
-                                             ,[TaskId, self(), _E, _R, Stacktrace]),
-                          _ = kz_tasks:worker_failed(TaskId, Msg),
-                          lager:error(Msg),
+                          Msg = io_lib:format("(~p) ~p: ~w\n~p"
+                                             ,[self(), _E, _R, Stacktrace]),
+                          _ = kz_tasks:worker_failed(TaskId, iolist_to_binary(Msg)),
+                          lager:error("task ~s ~s", [TaskId, Msg]),
                           error_logger:error_report(Msg)
                   end
           end),
