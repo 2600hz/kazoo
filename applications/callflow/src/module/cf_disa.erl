@@ -206,8 +206,14 @@ set_caller_id(Call) ->
     lager:info("setting the caller id number to ~s from account ~s", [Number, AccountId]),
     Updates = [fun(C) -> kapps_call:kvs_store('dynamic_cid', Number, C) end
                ,fun(C) ->
-                        C1 = kapps_call:set_caller_id_number(Number, C),
-                        kapps_call:set_caller_id_name(Name, C1)
+                    C1 = kapps_call:set_caller_id_number(Number, C),
+                    kapps_call:set_caller_id_name(Name, C1)
+                end
+               ,fun(C) ->
+                    Props = [{<<"Caller-ID-Number">>, Number}
+                             ,{<<"Caller-ID-Name">>, Name}
+                            ],
+                    kapps_call:set_custom_channel_vars(Props, C)
                 end
               ],
     UpdatedCall = kapps_call:exec(Updates, Call),
