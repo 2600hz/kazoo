@@ -531,9 +531,9 @@ handle_amqp_register(JObj, _Props, 'pending') ->
             advertise_register(Global),
             amqp_register_reply(JObj, Global)
     end;
-handle_amqp_register(JObj, Props, 'local'=State) ->
+handle_amqp_register(JObj, Props, 'local') ->
     State = props:get_value('state', Props),
-    Global = from_json(JObj,  State),
+    Global = from_json(JObj, State),
     gen_server:cast(?SERVER, {'insert_remote', Global}).
 
 -spec amqp_register_reply(kz_json:object()) -> 'ok'.

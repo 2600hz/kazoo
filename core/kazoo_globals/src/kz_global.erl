@@ -27,7 +27,7 @@
 
 -record(kz_global, {node = node() :: atom() | '_'
                    ,zone :: atom() | '_'
-                   ,pid :: api_pid() | '_'
+                   ,pid :: api_pid() | '$2' | '_'
                    ,server :: any() | '_'
                    ,name :: name() | '$1' | '_'
                    ,monitor :: api_reference() | '_'
@@ -84,12 +84,12 @@ all_globals_by_pid(Table, Pid) ->
     ets:select(Table, MatchSpec).
 
 all_dead_pids(Table) ->
-    MatchSpec = [{#kz_global{pid = '$1', name = '$2', _ = '_'}
+    MatchSpec = [{#kz_global{pid = '$2', name = '$1', _ = '_'}
                  ,[]
                  ,[['$1', '$2']]
                  }],
     [{Name, Pid}
-     || [Pid, Name] <- ets:select(Table, MatchSpec),
+     || [Name, Pid] <- ets:select(Table, MatchSpec),
         erlang:is_process_alive(Pid) =:= 'false'
     ].
 
