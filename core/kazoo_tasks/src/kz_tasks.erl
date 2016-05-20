@@ -118,17 +118,24 @@ new(M, F, A)
   when is_atom(M),
        is_atom(F),
        is_list(A) ->
-    Task = #{ pid => 'undefined'
-            , id => ?A_TASK_ID
-            , m => M
-            , f => F
-            , a => A
-            , submitted => kz_util:current_tstamp()
-            , running => 'undefined'
-            , finished => 'undefined'
-            , failed => 'undefined'
-            },
-    gen_server:call(?SERVER, {'add_task', Task});
+    Arity = length(A),
+    case check_MFa(M, F, Arity) of
+        {'error', _R}=E ->
+            lager:debug("checking ~s:~s/~p failed: ~p", [M, F, Arity, _R]),
+            E;
+        'ok' ->
+            Task = #{ pid => 'undefined'
+                    , id => ?A_TASK_ID
+                    , m => M
+                    , f => F
+                    , a => A
+                    , submitted => kz_util:current_tstamp()
+                    , running => 'undefined'
+                    , finished => 'undefined'
+                    , failed => 'undefined'
+                    },
+            gen_server:call(?SERVER, {'add_task', Task})
+    end;
 new(M, _, _) when not is_atom(M) ->
     {'error', {'bad_module', M}};
 new(_, F, _) when not is_atom(F) ->
@@ -468,6 +475,18 @@ time_ran(#{ running := Running
     case is_processed(Task) of
         'true' -> kz_util:elapsed_s(Running, Finished);
         'false' -> 'undefined'
+    end.
+
+-spec check_MFa(module(), atom(), non_neg_integer()) -> 'ok' |
+                                                        {'error', any()}.
+check_MFa(M, F, Arity) ->
+    case kz_util:try_load_module(M) of
+        'false' -> {'error', {'no_module', M}};
+        M ->
+            case erlang:function_exported(M, F, Arity) of
+                'false' -> {'error', {'no_function', M, F, Arity}};
+                'true' -> 'ok'
+            end
     end.
 
 %%% End of Module.
