@@ -495,7 +495,7 @@ do_update_message_doc(AccountId, MsgId, JObj, Funs) ->
 %% @end
 %%--------------------------------------------------------------------
 -record(bulk_res, {succeeded = []  :: ne_binaries()
-                   ,failed = [] :: [{ne_binary(), ne_binary()}]
+                   ,failed = [] :: kz_json:objects()
                    ,moved = [] :: kz_json:objects()
                   }).
 -type bulk_results() :: #bulk_res{}.
@@ -772,14 +772,14 @@ media_url(AccountId, MessageId) ->
 %% @doc Abstract database operations
 %% @end
 %%--------------------------------------------------------------------
--spec open_modb_doc(ne_binary(), kazoo_data:docid(), ne_binary(), ne_binary()) -> kz_json:object().
+-spec open_modb_doc(ne_binary(), kazoo_data:docid(), ne_binary(), ne_binary()) -> db_ret().
 open_modb_doc(AccountId, DocId, Year, Month) ->
     case kazoo_modb:open_doc(AccountId, DocId, Year, Month) of
         {'ok', _}=OK -> OK;
         {'error', _}=E -> E
     end.
 
--spec open_accountdb_doc(ne_binary(), kazoo_data:docid(), ne_binary()) -> kz_json:object().
+-spec open_accountdb_doc(ne_binary(), kazoo_data:docid(), ne_binary()) -> db_ret().
 open_accountdb_doc(AccountId, DocId, Type) ->
     case kz_datamgr:open_doc(get_db(AccountId), DocId) of
         {'ok', D} -> check_doc_type(D, Type, kz_doc:type(D));
@@ -867,8 +867,8 @@ retry_conflict(Fun, Tries) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec publish_voicemail_saved_notify(ne_binary(), ne_binary(), kapps_call:call(), pos_integer(), kz_proplist()) ->
-                                    {'ok', kz_json:object()} |
-                                    {'timeout', kz_json:object()} |
+                                    {'ok', kz_json:objects()} |
+                                    {'timeout', kz_json:objects()} |
                                     {'error', any()}.
 publish_voicemail_saved_notify(MediaId, BoxId, Call, Length, Props) ->
     MaybeTranscribe = props:get_value(<<"Transcribe-Voicemail">>, Props),
@@ -897,7 +897,6 @@ publish_voicemail_saved_notify(MediaId, BoxId, Call, Length, Props) ->
                                 ,fun collecting/1
                                 ,30 * ?MILLISECONDS_IN_SECOND
                                ).
-
 
 -spec publish_voicemail_saved(pos_integer(), ne_binary(), kapps_call:call(), ne_binary(), gregorian_seconds()) -> 'ok'.
 publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp) ->
@@ -1037,7 +1036,7 @@ migrate(AccountId) ->
 
 -spec migrate(ne_binary(), ne_binary() | kz_json:object()) -> 'ok'.
 migrate(AccountId, ?JSON_WRAPPER(_)=Box) ->
-    migrate(AccountId, kz_json:get_value(<<"id">>, Box));
+    migrate(AccountId, kz_doc:id(Box));
 migrate(AccountId, BoxId) ->
     Msgs = messages(AccountId, BoxId),
     Ids = lists:filter(fun(M) -> maybe_migrate_to_modb(kzd_box_message:media_id(M)) end, Msgs),
@@ -1085,7 +1084,7 @@ cleanup_heard_voicemail(AccountId, Timestamp, Boxes) ->
 %%--------------------------------------------------------------------
 -spec cleanup_voicemail_box(ne_binary(), pos_integer(), kz_json:object()) -> 'ok'.
 cleanup_voicemail_box(AccountId, Timestamp, Box) ->
-    BoxId = kz_json:get_value(<<"id">>, Box),
+    BoxId = kz_doc:id(Box),
     Msgs = messages(AccountId, BoxId),
     case
         lists:partition(
