@@ -345,10 +345,13 @@ call_collect(Req, PubFun, Whapp, Timeout)
   when is_atom(Whapp) orelse is_binary(Whapp) ->
     call_collect(Req, PubFun, collect_from_whapp(Whapp), Timeout);
 call_collect(Req, PubFun, UntilFun, Timeout)
-  when is_integer(Timeout), Timeout >= 0 ->
+  when is_integer(Timeout) andalso Timeout >= 0 ->
     case next_worker() of
-        {'error', _}=E -> E;
-        Worker -> call_collect(Req, PubFun, UntilFun, Timeout, Worker)
+        {'error', _}=E ->
+            lager:debug("failed to get next worker: ~p", [E]),
+            E;
+        Worker ->
+            call_collect(Req, PubFun, UntilFun, Timeout, Worker)
     end.
 
 call_collect(Req, PubFun, {UntilFun, Acc}, Timeout, Worker)
@@ -476,7 +479,9 @@ send_request(CallId, Self, PublishFun, ReqProps)
     try PublishFun(Props) of
         'ok' -> 'ok'
     catch
-        _:E -> {'error', E}
+        _R:E ->
+            lager:debug("failed to publish: ~s: ~p", [_R, E]),
+            {'error', E}
     end.
 
 -spec request_proplist_filter({kz_proplist_key(), kz_proplist_value()}) -> boolean().
