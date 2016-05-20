@@ -33,7 +33,7 @@
         ,terminate/2
         ]).
 
--include("kz_tasks.hrl").
+-include("tasks.hrl").
 
 -define(SERVER, {'via', 'kz_globals', ?MODULE}).
 
