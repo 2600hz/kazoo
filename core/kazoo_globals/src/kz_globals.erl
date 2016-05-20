@@ -83,7 +83,7 @@
 -define(AMQP_REGISTER_FUN, fun kapi_globals:publish_register/1).
 -define(AMQP_UNREGISTER_FUN, fun kapi_globals:publish_unregister/1).
 -define(AMQP_QUERY_FUN, fun kapi_globals:publish_query/1).
--define(AMQP_CALL_SCOPE, {'kz_globals', 'true', 'true'}).
+-define(AMQP_CALL_SCOPE, {'kazoo_globals', 'true', 'true'}).
 
 -define(TAB_NAME, 'kazoo_global_names').
 
