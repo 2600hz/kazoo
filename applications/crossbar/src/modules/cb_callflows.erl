@@ -210,7 +210,7 @@ error_numbers_not_array(Context, OriginalNumbers) ->
 normalize_numbers(Ns, Context) ->
     normalize_numbers(Ns, cb_context:account_id(Context), Context).
 
--spec normalize_numbers(ne_binaries(), ne_binary(), cb_context:context()) -> cb_context:context().
+-spec normalize_numbers(ne_binaries(), api_binary(), cb_context:context()) -> cb_context:context().
 normalize_numbers(Ns, 'undefined', Context) ->
     set_request_numbers(Context, [wnm_util:to_e164(N) || N <- Ns]);
 normalize_numbers(Ns, AccountId, Context) ->
