@@ -59,27 +59,10 @@ start_link(TaskId, M, F, A) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([TaskId, M, F, A]) ->
-    Pid =
-        spawn_link(
-          fun () ->
-                  _ = kz_tasks:worker_running(TaskId, self()),
-                  try
-                      R = apply(M, F, A),
-                      _ = kz_tasks:worker_finished(TaskId),
-                      lager:debug("R = ~p. Should store this in MoDB", [R])
-                  catch
-                      _E:_R ->
-                          Stacktrace = erlang:get_stacktrace(),
-                          Msg = io_lib:format("(~p) ~p: ~w\n~p"
-                                             ,[self(), _E, _R, Stacktrace]),
-                          _ = kz_tasks:worker_failed(TaskId, iolist_to_binary(Msg)),
-                          lager:error("task ~s ~s", [TaskId, Msg]),
-                          error_logger:error_report(Msg)
-                  end
-          end),
-    State = #state{ task_pid = Pid
-                  },
+init([_TaskId, _M, _F, _A]=Args) ->
+    State =
+        #state{ task_pid = kz_util:spawn_link(fun run_task/4, Args)
+              },
     {'ok', State}.
 
 %%--------------------------------------------------------------------
@@ -159,5 +142,21 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+-spec run_task(kz_tasks:task_id(), module(), atom(), list()) -> any().
+run_task(TaskId, M, F, A) ->
+    _ = kz_tasks:worker_running(TaskId, self()),
+    try
+        R = apply(M, F, A),
+        _ = kz_tasks:worker_finished(TaskId),
+        lager:debug("R = ~p. Should store this in MoDB", [R])
+    catch
+        _E:_R ->
+            Stacktrace = erlang:get_stacktrace(),
+            Msg = io_lib:format("(~p) ~p: ~w\n~p"
+                               ,[self(), _E, _R, Stacktrace]),
+            _ = kz_tasks:worker_failed(TaskId, iolist_to_binary(Msg)),
+            lager:error("task ~s ~s", [TaskId, Msg]),
+            error_logger:error_report(Msg)
+    end.
 
 %%% End of Module.
