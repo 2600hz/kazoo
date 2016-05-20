@@ -44,3 +44,23 @@ When receiving the advertised registration:
 2. Create the `#kz_global{}` record to point to the remote node
 3. Start a proxy pid() to represent the remote side
 4. Insert the updated `#kz_global{}` record into the local ETS table
+
+## Testing
+
+There is a quickcheck model that will test the operation of the registry at `core/kazoo_globals/test/kz_globals_pqc.erl`. Compile the core lib with `make proper` and in your VM shell, issue:
+
+```erlang
+(pdx@pdx.2600hz.com)7> proper:quickcheck(kz_globals_pqc:correct()).
+....................................................................................................
+OK: Passed 100 test(s).
+
+27% {kz_globals,unregister_name,1}
+25% {kz_globals,registered,0}
+24% {kz_globals,register_name,2}
+22% {kz_globals,whereis_name,1}
+true
+```
+
+You can call `kz_globals_pqc:correct_parallel()` to run tests in parallel against the kz_globals server.
+
+Do note that you must have a running VM, but these tests are really only designed to run on a single node (non-clustered/federated). The test suite will simulate remote nodes.
