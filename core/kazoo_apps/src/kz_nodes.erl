@@ -572,7 +572,7 @@ maybe_add_kapps_data(Node) ->
 -spec add_kapps_data(kz_node()) -> kz_node().
 add_kapps_data(Node) ->
     Whapps = [{kz_util:to_binary(Whapp), get_whapp_info(Whapp)}
-              || Whapp <- kapps_controller:list_apps()
+              || Whapp <- ['kazoo_globals' | kapps_controller:list_apps()]
              ],
     maybe_add_ecallmgr_data(Node#kz_node{kapps=Whapps}).
 
