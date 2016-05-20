@@ -320,8 +320,8 @@ get_folder_filter(Context, Default) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_messages(kz_json:objects(), ne_binary() | ne_binaries()) -> kz_json:objects().
--spec filter_messages(kz_json:objects(), ne_binary() | ne_binaries(), kz_json:objects()) -> kz_json:objects().
+-spec filter_messages(kz_json:objects(), ne_binary() | ne_binaries()) -> ne_binaries().
+-spec filter_messages(kz_json:objects(), ne_binary() | ne_binaries(), ne_binaries()) -> ne_binaries().
 filter_messages(Messages, Filter) ->
     filter_messages(Messages, Filter, []).
 
@@ -340,11 +340,11 @@ filter_messages([Mess|Messages], Filter, Selected) when Filter =:= ?VM_FOLDER_NE
     end;
 filter_messages(_, [], Selected) ->
     Selected;
-filter_messages([Mess|Messages], Filter, Selected) ->
+filter_messages([Mess|Messages], Filters, Selected) ->
     Id = kzd_box_message:media_id(Mess),
-    case lists:member(Id, Filter) of
-        'true' -> filter_messages(Messages, Filter, [Id|Selected]);
-        'false' -> filter_messages(Messages, Filter, Selected)
+    case lists:member(Id, Filters) of
+        'true' -> filter_messages(Messages, Filters, [Id|Selected]);
+        'false' -> filter_messages(Messages, Filters, Selected)
     end.
 
 %%--------------------------------------------------------------------
