@@ -164,7 +164,10 @@ read(TaskId=?NE_BINARY) ->
 -spec remove(task_id()) -> {'ok', kz_json:object()} |
                            {'error', 'not_found' | 'task_running'}.
 remove(TaskId=?NE_BINARY) ->
-    gen_server:call(?SERVER, {'remove_task', TaskId}).
+    case gen_server:call(?SERVER, {'remove_task', TaskId}) of
+        {'ok', Task} -> {'ok', task_to_public_json(Task)};
+        {'error', _R}=E -> E
+    end.
 
 %%%===================================================================
 %%% Worker API
