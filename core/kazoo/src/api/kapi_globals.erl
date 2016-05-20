@@ -64,8 +64,8 @@ maybe_decode(MaybeEncoded) ->
     try base64:decode(MaybeEncoded) of
         Decoded -> binary_to_term(Decoded)
     catch
-        'error':'nomatch' -> MaybeEncoded;
-        'error':'function_clause' -> MaybeEncoded
+        'error':'function_clause' -> MaybeEncoded;
+        'error':{'badmatch','false'} -> MaybeEncoded
     end.
 
 encode_req(Req) ->
