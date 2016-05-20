@@ -17,6 +17,9 @@
 
 -define(MAX_CHARS, round(math:pow(2012, 80))).
 
+
+%%% API
+
 -spec main(string()) -> no_return().
 main(CommandLineArgs) ->
     main(CommandLineArgs, 0).
@@ -35,14 +38,21 @@ main(CommandLineArgs, Loops) ->
             lists:member('help', Options) andalso print_help(),
             Verbose = proplists:get_value('verbose', Options) =/= 'undefined',
             Target = get_target(Options, Verbose),
-            Module = list_to_atom(proplists:get_value('module', Options, 'nomodule')),
-            Function = list_to_atom(proplists:get_value('function', Options, 'nofunction')),
+            Module =
+                case proplists:get_value('module', Options) of
+                    'undefined' -> print_invalid_cli_args();
+                    M -> list_to_atom(M)
+                end,
+            Function =
+                case proplists:get_value('function', Options) of
+                    'undefined' -> print_invalid_cli_args();
+                    F -> list_to_atom(F)
+                end,
             Timeout = case proplists:get_value('timeout', Options) of 'undefined' -> 'infinity'; T -> T * 1000 end,
             Verbose andalso stdout("Running ~s:~s(~s)", [Module, Function, string:join(Args, ", ")]),
             case rpc:call(Target, Module, Function, [list_to_binary(Arg) || Arg <- Args], Timeout) of
                 {'badrpc', {'EXIT',{'undef', _}}} ->
-                    stderr("Invalid command or wrong number of arguments, please try again", []),
-                    halt(1);
+                    print_invalid_cli_args();
                 {'badrpc', Reason} ->
                     String = io_lib:print(Reason, 1, ?MAX_CHARS, -1),
                     stderr("Command failed: ~s", [String]),
@@ -59,6 +69,9 @@ main(CommandLineArgs, Loops) ->
                     halt(0)
             end
     end.
+
+
+%%% Internals
 
 -spec get_target(proplist(), boolean()) -> atom().
 get_target(Options, Verbose) ->
@@ -120,6 +133,11 @@ long_or_short_name() ->
         'false' -> 'shortnames'
     end.
 
+-spec print_invalid_cli_args() -> no_return().
+print_invalid_cli_args() ->
+    stderr("Invalid command or wrong number of arguments, please try again", []),
+    halt(1).
+
 -spec parse_args(string()) -> {'ok', proplist(), list()}.
 parse_args(CommandLineArgs) ->
     case getopt:parse(option_spec_list(), CommandLineArgs) of
@@ -180,3 +198,5 @@ option_spec_list() ->
     ,{'module', 'undefined', 'undefined', 'string', "The name of the remote module"}
     ,{'function', 'undefined', 'undefined', 'string', "The name of the remote module's function"}
     ].
+
+%%% End of Module
