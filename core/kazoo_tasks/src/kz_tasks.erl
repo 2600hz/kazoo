@@ -269,6 +269,7 @@ handle_call({'remove_task', TaskId}, _From, State) ->
             case is_processing(Task) of
                 'true' -> {'reply', {'error', 'task_running'}, State};
                 'false' ->
+                    _ = kz_task_worker:stop(maps:get('worker_pid', Task)),
                     State1 = remove_task(TaskId, State),
                     ?REPLY_FOUND(State1, Task)
             end

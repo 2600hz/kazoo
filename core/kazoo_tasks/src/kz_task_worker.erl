@@ -10,7 +10,8 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/4
+-export([start_link/4]).
+-export([stop/1
         ]).
 
 %% gen_server callbacks
@@ -42,6 +43,16 @@
 start_link(TaskId, M, F, A) ->
     _ = kz_util:put_callid(TaskId),
     gen_server:start_link(?SERVER, [TaskId, M, F, A], []).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec stop(pid()) -> any().
+stop(Pid)
+  when is_pid(Pid) ->
+    gen_server:cast(Pid, 'stop').
 
 
 %%%===================================================================
@@ -93,6 +104,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast('stop', State) ->
+    {'stop', 'normal', State};
+
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast ~p", [_Msg]),
     {'noreply', State}.
@@ -123,9 +137,8 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{task_pid = Pid}) ->
-    lager:debug("~s (handling ~p) terminating: ~p", [?MODULE, Pid, _Reason]),
-    _ = exit(Pid, 'kill'),
-    'ok'.
+    lager:debug("~s terminating (~p): killing ~p", [?MODULE, _Reason, Pid]),
+    exit(Pid, 'kill').
 
 %%--------------------------------------------------------------------
 %% @private
