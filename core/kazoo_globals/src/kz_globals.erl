@@ -20,7 +20,7 @@
         ]).
 
 -export([start_link/0
-        ,stop/0
+        ,stop/0, flush/0
         ,delete_by_pid/1
         ]).
 
@@ -48,16 +48,6 @@
         ,handle_amqp_call/2
         ,handle_amqp_query/2
         ]).
-
--ifdef(PROPER).
-%% Testing Helpers
--export([register_name/3]).
-
-%% needed to differentiate between identical calls
-register_name(Name, Pid, _Extra) ->
-    register_name(Name, Pid).
-
--endif.
 
 -include("kazoo_globals.hrl").
 
@@ -128,6 +118,10 @@ start_link() ->
 -spec stop() -> 'ok'.
 stop() ->
     gen_listener:cast(?SERVER, 'stop').
+
+-spec flush() -> 'ok'.
+flush() ->
+    gen_listener:call(?SERVER, 'flush').
 
 -spec send(kz_global:name(), term()) -> pid().
 send(Name, Msg) ->
@@ -237,7 +231,10 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-
+handle_call('flush', _From, State) ->
+    ets:delete_all_objects(?TAB_NAME),
+    lager:debug("flushed table"),
+    {'reply', 'ok', State};
 handle_call({'where_is', Name}, _From, State) ->
     {'reply', where_is(Name, State), State};
 handle_call({'delete_remote', Pid}, _From, State) ->
@@ -435,10 +432,16 @@ do_amqp_register(Name, Pid, #state{}=State) ->
 
 -spec amqp_register_check(kz_json:objects(), kz_global:name(), pid(), globals_state()) ->
                                  'yes' | 'no'.
+amqp_register_check([], Name, Pid, State) ->
+    lager:debug("no responses, registering locally"),
+    register_local(Name, Pid, State);
 amqp_register_check(Responses, Name, Pid, State) ->
     case lists:all(fun kapi_globals:is_pending/1, Responses) of
-        'true' -> register_local(Name, Pid, State);
-        'false' -> 'no'
+        'true' ->
+            lager:debug("registering ~p locally", [Name]),
+            register_local(Name, Pid, State);
+        'false' ->
+            'no'
     end.
 
 -spec register_local(kz_global:name(), pid(), globals_state()) -> 'yes'.
@@ -499,6 +502,7 @@ amqp_query(Name, State) ->
               ],
     lager:debug("querying cluster for ~p", [Name]),
     case kz_amqp_worker:call_collect(Payload, ?AMQP_QUERY_FUN, ?AMQP_CALL_SCOPE) of
+        {'ok', []} -> 'undefined';
         {'ok', [JObj]} ->
             Global = from_json(JObj, State),
             register_remote(Global);
