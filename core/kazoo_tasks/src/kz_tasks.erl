@@ -441,7 +441,7 @@ is_processing(#{ running := Running
                , finished := Finished
                })
   when Running  /= 'undefined',
-       Finished /= 'undefined' ->
+       Finished == 'undefined' ->
     'true';
 is_processing(_Task) ->
     'false'.
