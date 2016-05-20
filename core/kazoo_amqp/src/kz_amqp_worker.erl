@@ -309,6 +309,9 @@ call_collect(Req, PubFun, {_, _, _, _}=Until) ->
 call_collect(Req, PubFun, Timeout) ->
     call_collect(Req, PubFun, collect_until_timeout(), Timeout).
 
+call_collect(_Req, _PubFun, 'undefined', _Timeout) ->
+    lager:debug("no VFun, no responses"),
+    {'ok', []};
 call_collect(Req, PubFun, {Whapp, IncludeFederated}, Timeout)
   when (is_atom(Whapp) orelse is_binary(Whapp))
        andalso is_boolean(IncludeFederated) ->
@@ -399,15 +402,17 @@ cast(Req, PubFun, Worker) when is_pid(Worker) ->
 -spec collect_until_timeout() -> collect_until_fun().
 collect_until_timeout() -> fun kz_util:always_false/1.
 
--spec collect_from_whapp(text()) -> collect_until_fun().
+-spec collect_from_whapp(text()) -> 'undefined' | collect_until_fun().
 collect_from_whapp(Whapp) ->
     collect_from_whapp(Whapp, 'false').
 
--spec collect_from_whapp(text(), boolean()) -> collect_until_fun().
+-spec collect_from_whapp(text(), boolean()) ->
+                                'undefined' | collect_until_fun().
 collect_from_whapp(Whapp, IncludeFederated) ->
     collect_from_whapp(Whapp, IncludeFederated, 'false').
 
--spec collect_from_whapp(text(), boolean(), boolean()) -> collect_until_fun().
+-spec collect_from_whapp(text(), boolean(), boolean()) ->
+                                'undefined' | collect_until_fun().
 collect_from_whapp(Whapp, IncludeFederated, IsShared) ->
     Count = case {IncludeFederated, IsShared} of
                 {'true', 'true'} -> kz_nodes:whapp_zone_count(Whapp); %% Get from {0,1} whapp instance per zone
@@ -415,6 +420,11 @@ collect_from_whapp(Whapp, IncludeFederated, IsShared) ->
                 _ -> kz_nodes:whapp_count(Whapp, IncludeFederated) %% Get from all instances, either local or federated
             end,
     lager:debug("attempting to collect ~p responses from ~s", [Count, Whapp]),
+    count_fun(Count).
+
+-spec count_fun(non_neg_integer()) -> 'undefined' | collect_until_fun().
+count_fun(0) -> 'undefined';
+count_fun(Count) ->
     fun(Responses) -> length(Responses) >= Count end.
 
 -spec collect_from_whapp_or_validate(text(), validate_fun()) -> collect_until_fun().
