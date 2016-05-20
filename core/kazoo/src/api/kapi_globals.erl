@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%-------------------------------------------------------------------
 %%% @copyright (C) 2016, 2600Hz
 %%% @doc
 %%% Globals API
@@ -101,13 +101,22 @@ is_pending(JObj) ->
 -define(GLOBALS_EXCHANGE, <<"globals">>).
 -define(GLOBALS_EXCHANGE_TYPE, <<"topic">>).
 
+routing_key(Event, Name) when is_binary(Name) ->
+    <<"globals."
+      ,(kz_util:to_binary(Event))/binary
+      ,"."
+      ,(amqp_util:encode(Name))/binary
+    >>;
+routing_key(Event, Name) ->
+    <<"globals."
+      ,(kz_util:to_binary(Event))/binary
+      ,"."
+      ,(kz_util:to_hex_binary(maybe_encode(Name)))/binary
+    >>.
+
 %% Globals Events
 -define(GLOBALS_EVENT_ROUTING_KEY(Event, Name)
-       ,<<"globals."
-          ,(kz_util:to_binary(Event))/binary
-          ,"."
-          ,(kz_util:to_hex_binary(maybe_encode(Name)))/binary
-        >>
+        ,routing_key(Event, Name)
        ).
 
 -define(QUERY_REQ_HEADERS, [<<"Name">>]).
