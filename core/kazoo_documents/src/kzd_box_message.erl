@@ -142,7 +142,7 @@ type() -> ?PVT_TYPE.
 folder(JObj) ->
     folder(JObj, 'undefined').
 
--spec folder(doc(), Default) -> ne_binary() | Default.
+-spec folder(doc(), Default) -> kz_json:object() | Default.
 folder(JObj, Default) ->
     kz_json:get_value(?VM_KEY_FOLDER, JObj, Default).
 
