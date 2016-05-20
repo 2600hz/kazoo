@@ -144,7 +144,6 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec run_task(kz_tasks:task_id(), module(), atom(), list()) -> any().
 run_task(TaskId, M, F, A) ->
-    _ = kz_tasks:worker_running(TaskId, self()),
     try
         R = apply(M, F, A),
         _ = kz_tasks:worker_finished(TaskId),

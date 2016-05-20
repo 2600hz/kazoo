@@ -61,9 +61,7 @@ add(M, F, BinA=?NE_BINARY) ->
 -spec start(text() | kz_tasks:task_id()) -> 'no_return'.
 start(TaskId) ->
     case kz_tasks:start(TaskId) of
-        'ok' ->
-            io:format("Successfully started\n"),
-            'no_return';
+        {'ok', StartedTask} -> print_json(StartedTask);
         {'error', Reason} -> print_error(Reason)
     end.
 
