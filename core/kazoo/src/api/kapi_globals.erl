@@ -10,7 +10,7 @@
 
 -export([name/1]).
 -export([message/1, reply/1, reason/1]).
--export([encode/1, decode/1]).
+-export([encode/1, encode_req/1, decode/1]).
 -export([state/1]).
 -export([is_pending/1]).
 
@@ -51,14 +51,22 @@ decode('undefined') -> 'undefined';
 decode(Bin) ->
     binary_to_term(base64:decode(Bin)).
 
+-spec maybe_encode(term()) -> term().
 maybe_encode(<<131, _/binary>>=Encoded) ->
-    Encoded;
+    base64:encode(Encoded);
 maybe_encode(Term) ->
     encode(Term).
 
+-spec maybe_decode(term()) -> term().
 maybe_decode(<<131, _/binary>>=Encoded) ->
     decode(Encoded);
-maybe_decode(Raw) -> Raw.
+maybe_decode(MaybeEncoded) ->
+    try base64:decode(MaybeEncoded) of
+        Decoded -> binary_to_term(Decoded)
+    catch
+        'error':'nomatch' -> MaybeEncoded;
+        'error':'function_clause' -> MaybeEncoded
+    end.
 
 encode_req(Req) ->
     set_name(Req, name(Req)).
