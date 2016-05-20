@@ -8486,6 +8486,17 @@
                         "description": "A listing of messages"
                     }
                 }
+            },
+            "post": {
+                "description": "Change the folder of a list message",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A listing of messages"
+                    }
+                }
             }
         },
         "/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}": {
@@ -8513,20 +8524,12 @@
             },
             "post": {
                 "description": "Change the folder of a message",
-                "parameters": {
-                    "in": "body",
-                    "name": "vmboxes",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/mailbox_message"
-                    }
-                },
                 "produces": [
                     "application/json"
                 ],
                 "responses": {
                     "200": {
-                        "description": "The edited message object, in full"
+                        "description": "A listing of messages"
                     }
                 }
             }

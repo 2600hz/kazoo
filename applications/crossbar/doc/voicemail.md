@@ -279,9 +279,10 @@ Deleting all message is easy, just use `DELETE` method on message API endpoint t
 
 Optional payload for deleting a group of messages:
 
-* One can specify a `folder` in the payload of a request to delete all messages in that folder(e.g. `{"folder": "saved"}` to delete all saved messages)
+* One can apply a filter to delete all messages in a particular folder(e.g. new or saved) by adding a query string `?folder=saved` to the URL or set it in the payload as `{"data": {"folder": "saved"}}`
+* Or providing an array of message ids, e.g `{"data": {"messages": [MSG_ID1, MSG_ID2, ...]}}`.
 
-**Note:** If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id(media id) to change to the new format.
+**Note:** If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id to change to the new format.
 
 ```shell
 curl -v -X DELETE \
@@ -289,12 +290,39 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages
 ```
 
+##### Response
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "suceeded": [
+            {
+                "timestamp": 63630058722,
+                "from": "1001@aeac33.sip.2600hz.com",
+                "to": "1000@aeac33.sip.2600hz.com",
+                "caller_id_number": "1001",
+                "caller_id_name": "userb userb",
+                "call_id": "79959ZDNmM2I5ZTliMzA0NzA4N2FjNjlmODA5OWVkZjUxZWU",
+                "folder": "new",
+                "length": 3140,
+                "media_id": "201605-6aadef09f6fcf5fd8bcdfca312e923ba"
+            }
+        ],
+        "failed": [{"201605-49be0985ea3a33046f8073083517d27b":"not_found"}]
+    },
+    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "status": "success"
+}
+```
+
 #### Fetch all messages for a voicemail box
 
 > GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages
 
 ```shell
-curl curl -v -X GET \
+curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages
 ```
@@ -334,14 +362,57 @@ curl curl -v -X GET \
 }
 ```
 
+#### Change folder of a list of messages
+
+> POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages
+
+Provide an array of message ids, e.g `{"data": {"messages": ["MSG_ID1", "MSG_ID2", "MSG_ID3"]}}` and the folder that messaged should move to(e.g. new or saved) by adding a query string `?folder=saved` to the URL or set it in the payload as `{"data": {"folder": "saved"}}`. It will return two objects. The first is all the message ids that were successfully moved and the second is those that failed with the reasons.
+
+**Note:** If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id to change to the new format.
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: application/json"
+    -d '{"data": {"folder": "saved", "messages": ["MSG_ID1", "MSG_ID2", "MSG_ID3"]}}'
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages
+```
+
+##### Response
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "suceeded": [
+            {
+                "timestamp": 63630058722,
+                "from": "1001@aeac33.sip.2600hz.com",
+                "to": "1000@aeac33.sip.2600hz.com",
+                "caller_id_number": "1001",
+                "caller_id_name": "userb userb",
+                "call_id": "79959ZDNmM2I5ZTliMzA0NzA4N2FjNjlmODA5OWVkZjUxZWU",
+                "folder": "new",
+                "length": 3140,
+                "media_id": "201605-6aadef09f6fcf5fd8bcdfca312e923ba"
+            }
+        ],
+        "failed": [{"201605-49be0985ea3a33046f8073083517d27b":"not_found"}]
+    },
+    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "status": "success"
+}
+```
+
 #### Remove a message from the voicemail box
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}
 
-**Note:** If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id(media id) to change to the new format.
+**Note:** If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id to change to the new format.
 
 ```shell
-curl curl -v -X DELETE \
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/201605-6aadef09f6fcf5fd8bcdfca312e923ba
 ```
@@ -373,7 +444,7 @@ curl curl -v -X DELETE \
 > GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}
 
 ```shell
-curl curl -v -X GET \
+curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/201605-6aadef09f6fcf5fd8bcdfca312e923ba
 ```
@@ -406,10 +477,10 @@ curl curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}
 
-**Note:** If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id(media id) to change to the new format.
+**Note:** If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id to change to the new format.
 
 ```shell
-curl curl -v -X POST \
+curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -d '{"data": {"folder": "saved"}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/201605-6aadef09f6fcf5fd8bcdfca312e923ba
@@ -444,7 +515,7 @@ curl curl -v -X POST \
 **Note:** If message doesn't have a folder assign to it by any chance, it will be set to `new` by this method. Please also refer to the note for change the folder of a message regards of possible change of message id.
 
 ```shell
-curl curl -v -X GET \
+curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/201605-6aadef09f6fcf5fd8bcdfca312e923ba/raw
 ```

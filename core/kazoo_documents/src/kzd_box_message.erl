@@ -10,7 +10,6 @@
 
 -export([new/0, new/6, build_metadata_object/6
          ,count_folder/2, normalize_count/1
-         ,filter_vmbox_messages/2
          ,type/0
          ,folder/1, folder/2, set_folder/2, set_folder_saved/1, set_folder_deleted/1, filter_folder/2
          ,media_id/1, set_media_id/2
@@ -143,7 +142,7 @@ type() -> ?PVT_TYPE.
 folder(JObj) ->
     folder(JObj, 'undefined').
 
--spec folder(doc(), Default) -> ne_binary() | Default.
+-spec folder(doc(), Default) -> kz_json:object() | Default.
 folder(JObj, Default) ->
     kz_json:get_value(?VM_KEY_FOLDER, JObj, Default).
 
@@ -227,30 +226,3 @@ count_folder(Messages, Folders) when is_list(Folders) ->
               ]);
 count_folder(Messages, Folder) ->
     count_folder(Messages, [Folder]).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc Given the media_id of a message, filter the message out of messages in vmbox
-%% and return a tuple of deleted message and messages list
-%% @end
-%%--------------------------------------------------------------------
--type message_filter_ret() :: {kz_json:object(), kz_json:objects()} | {'error', 'not_found'}.
-
--spec filter_vmbox_messages(ne_binary(), kz_json:objects()) -> message_filter_ret().
-filter_vmbox_messages(_MediaId, []) ->
-    lager:warning("found media doc ~s but messages in vmbox is empty", [_MediaId]),
-    {'error', 'not_found'};
-filter_vmbox_messages(MediaId, [H|T]) ->
-    filter_vmbox_messages(MediaId, media_id(H), H, T, []).
-
--spec filter_vmbox_messages(ne_binary(), ne_binary(), kz_json:object(), kz_json:objects(), kz_json:objects()) ->
-                                message_filter_ret().
-filter_vmbox_messages(MediaId, MediaId, Msg, [], Acc) ->
-    {Msg, Acc};
-filter_vmbox_messages(_MediaId, _, _, [], _) ->
-    lager:warning("found media doc ~s but could not find metadata in vmbox", [_MediaId]),
-    {'error', 'not_found'};
-filter_vmbox_messages(MediaId, MediaId, Msg, Tail, Acc) ->
-    {Msg, lists:flatten([Acc | Tail])};
-filter_vmbox_messages(MediaId, _, _, [H|T], Acc) ->
-    filter_vmbox_messages(MediaId, media_id(H), H, T, [H|Acc]).

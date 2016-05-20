@@ -741,7 +741,7 @@ play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{timezone=Timezone
         {'ok', 'keep'} ->
             lager:info("caller chose to save the message"),
             _ = kapps_call_command:b_prompt(<<"vm-saved">>, Call),
-            {'ok', NMessage} = kz_vm_message:set_folder(?VM_FOLDER_SAVED, H, AccountId),
+            {_, NMessage} = kz_vm_message:set_folder(?VM_FOLDER_SAVED, H, AccountId),
             play_messages(T, [NMessage|PrevMessages], Count, Box, Call);
         {'ok', 'prev'} ->
             lager:info("caller chose to listen to previous message"),
