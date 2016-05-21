@@ -67,6 +67,7 @@
                   ,discount_percentage :: api_binary() | '_'
                   ,surcharge :: api_binary() | '_'
                   ,rate_name :: api_binary() | '_'
+                  ,rate_description :: api_binary() | '_'
                   ,rate_id :: api_binary() | '_'
                   ,base_cost :: api_binary() | '_'
                  }).
@@ -423,6 +424,7 @@ to_props(#channel{call_id=CallId
                   ,discount_percentage=DiscountPercentage
                   ,surcharge=Surcharge
                   ,rate_name=RateName
+                  ,rate_description=RateDescription
                   ,rate_id=RateId
                   ,base_cost=BaseCost
                  }) ->
@@ -444,6 +446,7 @@ to_props(#channel{call_id=CallId
        ,{<<"Discount-Percentage">>, DiscountPercentage}
        ,{<<"Surcharge">>, Surcharge}
        ,{<<"Rate-Name">>, RateName}
+       ,{<<"Rate-Description">>, RateDescription}
        ,{<<"Rate-ID">>, RateId}
        ,{<<"Base-Cost">>, BaseCost}
       ]
@@ -534,6 +537,7 @@ handle_cast({'rate_resp', JObj}, State) ->
                ,{#channel.discount_percentage, kz_json:get_value(<<"Discount-Percentage">>, JObj)}
                ,{#channel.surcharge, kz_json:get_value(<<"Surcharge">>, JObj)}
                ,{#channel.rate_name, kz_json:get_value(<<"Rate-Name">>, JObj)}
+               ,{#channel.rate_description, kz_json:get_value(<<"Rate-Description">>, JObj)}
                ,{#channel.rate_id, kz_json:get_value(<<"Rate-ID">>, JObj)}
                ,{#channel.base_cost, kz_json:get_value(<<"Base-Cost">>, JObj)}
               ]
