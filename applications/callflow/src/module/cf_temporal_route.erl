@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% "data":{
 %%%   "action": "menu" | "enable" | "disable" | "reset"
@@ -13,8 +13,8 @@
 %%%-------------------------------------------------------------------
 -module(cf_temporal_route).
 
--include("callflow.hrl").
--include("cf_temporal_route.hrl").
+-include("../callflow.hrl").
+-include("./cf_temporal_route.hrl").
 
 -export([handle/2
          ,normalize_date/1
@@ -747,6 +747,15 @@ to_dow(<<"friday">>) -> 5;
 to_dow(<<"saturday">>) -> 6;
 to_dow(<<"sunday">>) -> 7.
 
+-spec to_wday(wh_daynum()) -> wday().
+to_wday(1) -> <<"monday">>;
+to_wday(2) -> <<"tuesday">>;
+to_wday(3) -> <<"wednesday">>;
+to_wday(4) -> <<"thursday">>;
+to_wday(5) -> <<"friday">>;
+to_wday(6) -> <<"saturday">>;
+to_wday(7) -> <<"sunday">>.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -967,8 +976,8 @@ find_active_days(Weekdays, DOW0) ->
         DOW1 > DOW0
     ].
 
--spec sort_wdays(ne_binaries()) -> ne_binaries().
-sort_wdays([]) -> [];
+-spec sort_wdays([wday()]) -> [wday()].
+sort_wdays([]) -> [to_wday(D) || D <- lists:seq(1, 7)];
 sort_wdays(WDays0) ->
     {_, WDays1} = lists:unzip(
                     lists:keysort(1, [{to_dow(Day), Day} || Day <- WDays0])
