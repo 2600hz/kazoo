@@ -99,7 +99,7 @@
                               "&& echo -n success"
                             >>).
 
--define(CALLFLOW_LIST, <<"callflow/listing_by_number">>).
+-define(CALLFLOW_LIST, <<"callflows/listing_by_number">>).
 -define(ENSURE_CID_KEY, <<"ensure_valid_caller_id">>).
 -define(DEFAULT_ENSURE_CID, kapps_config:get_is_true(?CONFIG_CAT, ?ENSURE_CID_KEY, 'true')).
 
