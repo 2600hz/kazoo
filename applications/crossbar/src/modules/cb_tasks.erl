@@ -27,6 +27,8 @@
 %%%===================================================================
 
 init() ->
+    {'ok', _} = application:ensure_all_started('kazoo_tasks'),
+
     %%TODO: auth
     _ = crossbar_bindings:bind(<<"*.allowed_methods.tasks">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.tasks">>, ?MODULE, 'resource_exists'),
