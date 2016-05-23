@@ -33,6 +33,8 @@
          ,terminate/2
          ,code_change/3
         ]).
+-export([add_ecallmgr_data/1]).
+
 
 -include("ecallmgr.hrl").
 
@@ -768,3 +770,21 @@ node_interface(Node, CurrInterface) ->
 -spec interface(atom() | binary()) -> kz_proplist().
 interface(Node) ->
     gen_server:call(find_srv(Node), 'interface_props').
+
+-spec add_ecallmgr_data(kz_node()) -> kz_node().
+add_ecallmgr_data(#kz_node{kapps=Whapps}=Node) ->
+    Servers = [{kz_util:to_binary(Server)
+                ,kz_json:set_values(
+                   [{<<"Startup">>, Started}
+                    ,{<<"Interface">>, kz_json:from_list(ecallmgr_fs_node:interface(Server))}
+                   ]
+                   ,kz_json:new()
+                  )
+               }
+               || {Server, Started} <- ecallmgr_fs_nodes:connected('true')
+              ],
+    Node#kz_node{ media_servers=Servers
+                 ,kapps=[{<<"ecallmgr">>, kz_nodes:get_whapp_info('ecallmgr')} | Whapps]
+                 ,channels=ecallmgr_fs_channels:count()
+                 ,registrations=ecallmgr_registrar:count()
+                }.

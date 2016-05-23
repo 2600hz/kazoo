@@ -38,6 +38,15 @@
          ,code_change/3
         ]).
 
+-export([get_whapp_info/1]).
+-export([bind/3, unbind/3]).
+
+% passes as argument #kz_node{} to alter with extra info
+binding('add_data') -> <<"node.add_data">>.
+
+bind(Event, M, F) -> kazoo_bindings:bind(binding(Event), M, F).
+unbind(Event, M, F) -> kazoo_bindings:unbind(binding(Event), M, F).
+
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 
@@ -551,55 +560,22 @@ code_change(_OldVsn, State, _Extra) ->
 create_node(Heartbeat, #state{zone=Zone
                               ,version=Version
                              }) ->
-    maybe_add_kapps_data(#kz_node{expires=Heartbeat
-                                   ,broker=kz_util:normalize_amqp_uri(kz_amqp_connections:primary_broker())
-                                   ,used_memory=erlang:memory('total')
-                                   ,processes=erlang:system_info('process_count')
-                                   ,ports=length(erlang:ports())
-                                   ,version=Version
-                                   ,zone=Zone
-                                  }).
-
--spec maybe_add_kapps_data(kz_node()) -> kz_node().
-maybe_add_kapps_data(Node) ->
-    case is_kapps_present() of
-        'false' ->
-            maybe_add_ecallmgr_data(Node);
-        'true' ->
-            add_kapps_data(Node)
-    end.
+    add_kapps_data(#kz_node{expires=Heartbeat
+                                ,broker=kz_util:normalize_amqp_uri(kz_amqp_connections:primary_broker())
+                                ,used_memory=erlang:memory('total')
+                                ,processes=erlang:system_info('process_count')
+                                ,ports=length(erlang:ports())
+                                ,version=Version
+                                ,zone=Zone
+                            }).
 
 -spec add_kapps_data(kz_node()) -> kz_node().
 add_kapps_data(Node) ->
     Whapps = [{kz_util:to_binary(Whapp), get_whapp_info(Whapp)}
               || Whapp <- kapps_controller:list_apps()
              ],
-    maybe_add_ecallmgr_data(Node#kz_node{kapps=Whapps}).
-
--spec maybe_add_ecallmgr_data(kz_node()) -> kz_node().
-maybe_add_ecallmgr_data(Node) ->
-    case is_ecallmgr_present() of
-        'false' -> Node;
-        'true' -> add_ecallmgr_data(Node)
-    end.
-
--spec add_ecallmgr_data(kz_node()) -> kz_node().
-add_ecallmgr_data(#kz_node{kapps=Whapps}=Node) ->
-    Servers = [{kz_util:to_binary(Server)
-                ,kz_json:set_values(
-                   [{<<"Startup">>, Started}
-                    ,{<<"Interface">>, kz_json:from_list(ecallmgr_fs_node:interface(Server))}
-                   ]
-                   ,kz_json:new()
-                  )
-               }
-               || {Server, Started} <- ecallmgr_fs_nodes:connected('true')
-              ],
-    Node#kz_node{media_servers=Servers
-                 ,kapps=[{<<"ecallmgr">>, get_whapp_info('ecallmgr')} | Whapps]
-                 ,channels=ecallmgr_fs_channels:count()
-                 ,registrations=ecallmgr_registrar:count()
-                }.
+    [NewNode] = kazoo_bindings:fold(binding('add_data'), [Node#kz_node{kapps=Whapps}]),
+    NewNode.
 
 -spec get_whapp_info(atom() | pid() | kz_proplist() | 'undefined') -> whapp_info().
 get_whapp_info('undefined') -> #whapp_info{};
@@ -623,22 +599,6 @@ get_whapp_process_info([]) -> #whapp_info{};
 get_whapp_process_info(PInfo) ->
     Startup = props:get_value('$startup', props:get_value('dictionary', PInfo, [])),
     #whapp_info{startup=Startup}.
-
--spec is_kapps_present() -> boolean().
-is_kapps_present() ->
-    lists:any(fun({'kazoo_apps', _, _}) -> 'true';
-                 (_) -> 'false'
-              end
-              ,application:loaded_applications()
-             ).
-
--spec is_ecallmgr_present() -> boolean().
-is_ecallmgr_present() ->
-    lists:any(fun({'ecallmgr', _, _}) -> 'true';
-                 (_) -> 'false'
-              end
-              ,application:which_applications()
-             ).
 
 -spec advertise_payload(kz_node()) -> kz_proplist().
 advertise_payload(#kz_node{expires=Expires

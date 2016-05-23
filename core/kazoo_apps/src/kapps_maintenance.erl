@@ -45,6 +45,18 @@
 -export([delete_system_media_references/0]).
 -export([migrate_system/0]).
 
+-export([bind/3, unbind/3]).
+
+binding('migrate') -> <<"maintenance.migrate">>;
+binding('refresh') -> <<"maintenance.refresh">>;
+binding('refresh_account') -> <<"maintenance.refresh.account">>;
+binding({Common, Specific}) when is_atom(Common), is_binary(Specific) ->
+    CommonPath = binding(Common),
+    <<CommonPath/binary, ".", Specific/binary>>.
+
+bind(Event, M, F) -> kazoo_bindings:bind(binding(Event), M, F).
+unbind(Event, M, F) -> kazoo_bindings:unbind(binding(Event), M, F).
+
 -define(DEVICES_CB_LIST, <<"devices/crossbar_listing">>).
 -define(MAINTENANCE_VIEW_FILE, <<"views/maintenance.json">>).
 -define(RESELLER_VIEW_FILE, <<"views/reseller.json">>).
@@ -101,13 +113,7 @@ migrate(Pause) ->
     io:format("removing depreciated databases...~n"),
     _  = remove_depreciated_databases(Databases),
 
-    %% Remove depreciated crossbar modules from the startup list and add new defaults
-    io:format("running crossbar migrations...~n"),
-    _ = crossbar_maintenance:migrate(Accounts),
-
-    %% Migrate Faxes with private_media to fax
-    io:format("running fax migrations...~n"),
-    _ = fax_maintenance:migrate(Accounts),
+    kazoo_bindings:map(binding('migrate'), Accounts),
 
     %% Migrate settings for kazoo_media
     io:format("running media migrations...~n"),
@@ -171,13 +177,10 @@ refresh(?KZ_CONFIG_DB) ->
 refresh(?KZ_OAUTH_DB) ->
     kz_datamgr:db_create(?KZ_OAUTH_DB),
     kazoo_oauth_maintenance:register_common_providers();
-refresh(?KZ_WEBHOOKS_DB) ->
-    kz_datamgr:db_create(?KZ_WEBHOOKS_DB),
-    kz_datamgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>),
-    webhooks_maintenance:reset_webhooks_list();
-refresh(?KZ_OFFNET_DB) ->
-    kz_datamgr:db_create(?KZ_OFFNET_DB),
-    stepswitch_maintenance:refresh();
+refresh(Part = ?KZ_WEBHOOKS_DB) ->
+    kazoo_bindings:map(binding({'refresh', Part}), []);
+refresh(Part = ?KZ_OFFNET_DB) ->
+    kazoo_bindings:map(binding({'refresh', Part}), []);
 refresh(?KZ_SERVICES_DB) ->
     kz_datamgr:db_create(?KZ_SERVICES_DB),
     kazoo_services_maintenance:refresh();
@@ -300,7 +303,7 @@ refresh_account_db(Database) ->
     _ = kapps_util:update_views(AccountDb, Views, 'true'),
 
     kapps_account_config:migrate(AccountDb),
-    crossbar_util:descendants_count(AccountId).
+    kazoo_bindings:map(binding({'refresh', AccountDb}), AccountId).
 
 -spec remove_depreciated_account_views(ne_binary()) -> 'ok'.
 remove_depreciated_account_views(AccountDb) ->

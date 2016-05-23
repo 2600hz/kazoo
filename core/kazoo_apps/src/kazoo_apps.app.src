@@ -9,6 +9,7 @@
                   , stdlib
 
                   , kazoo
+                  , kazoo_bindings
                   , kazoo_config
                   , kazoo_data
                   , kazoo_amqp

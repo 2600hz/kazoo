@@ -17,8 +17,6 @@
 -export([declare_exchanges/0]).
 -export([publish_resume/1]).
 
-% -include("callflow.hrl").
-
 -define(RESUME_ROUTING_KEY, <<"callflow.resume">>).
 
 -define(RESUME_HEADERS, [<<"Call">>, <<"Flow">>]).

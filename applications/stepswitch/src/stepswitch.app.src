@@ -11,6 +11,7 @@
                  , inets
 
                  , kazoo_apps
+                 , kazoo_bindings
                  , kazoo_amqp
                  , kazoo_data
 

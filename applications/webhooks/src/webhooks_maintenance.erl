@@ -116,6 +116,8 @@ enable_descendant_hooks(AccountId) ->
 
 -spec reset_webhooks_list() -> 'ok'.
 reset_webhooks_list() ->
+    kz_datamgr:db_create(?KZ_WEBHOOKS_DB),
+    kz_datamgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>),
     case kapps_util:get_master_account_db() of
         {'ok', MasterAccountDb} ->
             Ids = get_webhooks(MasterAccountDb),
