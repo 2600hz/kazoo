@@ -178,6 +178,14 @@
                        ,{<<"Authorizing-Type">>, #kapps_call.authorizing_type}
                       ]).
 
+%% Origintate UUID
+-define(ORIGINATE_UUID_HEADERS, [<<"Outbound-Call-ID">>]).
+-define(OPTIONAL_ORIGINATE_UUID_HEADERS, [<<"Outbound-Call-Control-Queue">>]).
+-define(ORIGINATE_UUID_VALUES, [{<<"Event-Category">>, <<"resource">>}
+                                ,{<<"Event-Name">>, <<"originate_uuid">>}
+                               ]).
+-define(ORIGINATE_UUID_TYPES, []).
+
 -spec default_helper_function(Field, call()) -> Field.
 default_helper_function(Field, #kapps_call{}) -> Field.
 
@@ -332,7 +340,7 @@ from_originate_uuid(JObj) ->
     from_originate_uuid(JObj, new()).
 
 from_originate_uuid(JObj, #kapps_call{}=Call) ->
-    'true' = kapi_resource:originate_uuid_v(JObj),
+    'true' = originate_uuid_v(JObj),
     Call#kapps_call{control_q=kz_json:get_value(<<"Outbound-Call-Control-Queue">>, JObj, control_queue(Call))
                      ,call_id=kz_json:get_value(<<"Outbound-Call-ID">>, JObj, call_id(Call))
                     }.
@@ -1111,6 +1119,13 @@ retrieve(CallId) ->
 
 retrieve(CallId, AppName) ->
     kz_cache:fetch_local(?KAPPS_CALL_CACHE, {?MODULE, 'call', AppName, CallId}).
+
+-spec originate_uuid_v(api_terms()) -> boolean().
+originate_uuid_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?ORIGINATE_UUID_HEADERS, ?ORIGINATE_UUID_VALUES, ?ORIGINATE_UUID_TYPES);
+originate_uuid_v(JObj) ->
+    originate_uuid_v(kz_json:to_proplist(JObj)).
+
 
 %% EUNIT TESTING
 -ifdef(TEST).
