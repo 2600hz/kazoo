@@ -5840,6 +5840,41 @@
             "required": true,
             "type": "object"
         },
+        "tasks": {
+            "additionalProperties": false,
+            "description": "Create a background running task",
+            "name": "Task",
+            "properties": {
+                "arguments": {
+                    "description": "Ordered list of arguments for the function",
+                    "items": {
+                        "description": "Argument",
+                        "type": "string"
+                    },
+                    "minItems": 0,
+                    "required": true,
+                    "type": "array"
+                },
+                "function": {
+                    "description": "Function name of the module",
+                    "maxLength": 64,
+                    "minLength": 1,
+                    "name": "Function",
+                    "required": true,
+                    "type": "string"
+                },
+                "module": {
+                    "description": "Erlang module of the task",
+                    "maxLength": 64,
+                    "minLength": 1,
+                    "name": "Module",
+                    "required": true,
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
         "temporal_rules": {
             "description": "Schema for a temporal rules",
             "name": "Temporal Rule",
@@ -8298,6 +8333,15 @@
         "/v2/accounts/{ACCOUNT_ID}/sms/{_ID}": {
             "delete": {},
             "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/tasks": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}": {
+            "delete": {},
+            "get": {},
+            "patch": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/templates": {
             "get": {}
