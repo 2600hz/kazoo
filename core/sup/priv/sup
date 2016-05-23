@@ -7,5 +7,4 @@ default_rel='bla@tld'
 
 RELX_REPLACE_OS_VARS=true KZname="-name ${default_rel}" "${default_root}"/bin/kazoo escript lib/sup-*/priv/sup.escript "$*"
 
-unset default_root
-unset default_rel
+exit $?
