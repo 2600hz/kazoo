@@ -10,9 +10,9 @@
 
 -include("callflow.hrl").
 
--export([handle/2
-         ,get_endpoints/3
-        ]).
+-export([
+    handle/2
+]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -64,7 +64,6 @@ maybe_handle_bridge_failure(Reason, Call) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
 %% @doc
 %% Loop over the provided endpoints for the callflow and build the
 %% json object used in the bridge API
