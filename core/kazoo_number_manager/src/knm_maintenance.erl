@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(knm_maintenance).
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/include/knm.hrl").
 
 -export([ fix_account_numbers/1
         , fix_accounts_numbers/1

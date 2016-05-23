@@ -31,7 +31,7 @@
          ,message/1
         ]).
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/include/knm.hrl").
 
 -define(CODE, <<"code">>).
 -define(ERROR, <<"error">>).

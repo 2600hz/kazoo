@@ -13,7 +13,7 @@
 -export([delete/1]).
 -export([has_emergency_services/1]).
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/include/knm.hrl").
 
 -define(FAILOVER_KEY, <<"failover">>).
 

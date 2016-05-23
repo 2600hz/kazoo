@@ -8,7 +8,7 @@
 -module(knm_release_number_test).
 
 -include_lib("eunit/include/eunit.hrl").
--include("knm.hrl").
+-include_lib("kazoo_number_manager/include/knm.hrl").
 
 release_number_test_() ->
     Tests = [fun release_unknown_number/1
