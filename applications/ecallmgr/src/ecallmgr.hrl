@@ -173,7 +173,7 @@
 %% [{AMQP-Header, FS-var-name}]
 %% so FS-var-name of "foo_var" would become "foo_var=foo_val" in the channel/call string
 -define(SPECIAL_CHANNEL_VARS, [{<<"Auto-Answer">>, <<"sip_auto_answer">>}
-                               ,{<<"Auto-Answer-Notify">>, <<"sip_auto_answer_notify">>}
+                               ,{<<"Auto-Answer-Notify">>, <<"sip_auto_answer_suppress_notify">>}
                                ,{<<"Eavesdrop-Group">>, <<"eavesdrop_group">>}
                                ,{<<"Outbound-Caller-ID-Name">>, <<"origination_caller_id_name">>}
                                ,{<<"Outbound-Caller-ID-Number">>,<<"origination_caller_id_number">>}
@@ -277,6 +277,8 @@
                                ,{<<"To-URI">>, <<"sip_to_uri">>}
                                ,{<<"Request-URI">>, <<"sip_req_uri">>}
                                ,{<<"Loopback-Request-URI">>, <<"sip_loopback_req_uri">>}
+                               ,{<<"Hold-Media">>, <<"hold_music">>}
+                               ,{<<"Diversions">>, <<"sip_h_Diversion">>}
                               ]).
 
 %% [{FreeSWITCH-App-Name, Kazoo-App-Name}]
