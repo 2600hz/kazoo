@@ -32,7 +32,7 @@
          ,transfer_media_id/1
         ]).
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/src/knm.hrl").
 
 -type option() :: {'assign_to', ne_binary()} |
                   {'assigned_to', ne_binary()} |

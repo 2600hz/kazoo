@@ -15,7 +15,7 @@
 -export([delete/1]).
 -export([has_emergency_services/1]).
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/src/knm.hrl").
 -include("knm_port_request.hrl"). %% PORT_KEY
 
 %%--------------------------------------------------------------------

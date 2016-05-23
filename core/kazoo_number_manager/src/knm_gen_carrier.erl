@@ -10,7 +10,7 @@
 %%%-------------------------------------------------------------------
 -module(knm_gen_carrier).
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/src/knm.hrl").
 
 -callback find_numbers(ne_binary(), pos_integer(), kz_proplist()) ->
     {'error', any()} |

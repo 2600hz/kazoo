@@ -8,7 +8,7 @@
 -module(knm_vitelity_find_test).
 
 -include_lib("eunit/include/eunit.hrl").
--include("knm.hrl").
+-include_lib("kazoo_number_manager/src/knm.hrl").
 
 find_test_() ->
     [tollfree_tests()

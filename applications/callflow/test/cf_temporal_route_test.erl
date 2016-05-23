@@ -7,8 +7,13 @@
 %%%-------------------------------------------------------------------
 -module(cf_temporal_route_test).
 
+-ifdef(TEST).
 -include("callflow.hrl").
 -include("module/cf_temporal_route.hrl").
+-else.
+-include_lib("callflow/src/callflow.hrl").
+-include_lib("callflow/src/module/cf_temporal_route.hrl").
+-endif.
 -include_lib("eunit/include/eunit.hrl").
 
 sort_wdays_test() ->

@@ -47,7 +47,7 @@
 
 -export([list_attachments/2]).
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/src/knm.hrl").
 -include_lib("kazoo/src/kz_json.hrl").
 
 -record(knm_phone_number, {number :: ne_binary()

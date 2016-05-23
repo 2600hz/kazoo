@@ -15,7 +15,7 @@
 -export([delete/1]).
 -export([has_emergency_services/1]).
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/src/knm.hrl").
 
 -define(KNM_DASH_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".dash_e911">>).
 
