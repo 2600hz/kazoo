@@ -372,23 +372,17 @@ is_node_up(Node, UUID) ->
 get_fs_kv(Key, Value) ->
     get_fs_kv(Key, Value, 'undefined').
 
-get_fs_kv(<<?CHANNEL_VAR_PREFIX, Key/binary>>, Val, _) ->
-    list_to_binary([?CHANNEL_VAR_PREFIX, kz_util:to_list(Key), "=", kz_util:to_list(Val)]);
 get_fs_kv(<<"Hold-Media">>, Media, UUID) ->
     list_to_binary(["hold_music="
                     ,kz_util:to_list(media_path(Media, 'extant', UUID, kz_json:new()))
                    ]);
+get_fs_kv(<<?CHANNEL_VAR_PREFIX, Key/binary>>, Val, UUID) ->
+    get_fs_kv(Key, Val, UUID);
 get_fs_kv(Key, Val, _) ->
-    case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
-        'false' ->
-            list_to_binary([?CHANNEL_VAR_PREFIX, kz_util:to_list(Key), "=", kz_util:to_list(Val)]);
-        {_, Prefix} ->
-            V = maybe_sanitize_fs_value(Key, Val),
-            list_to_binary([Prefix, "=", kz_util:to_list(V), ""])
-    end.
+    list_to_binary([get_fs_key(Key), "=", maybe_sanitize_fs_value(Key, Val)]).
 
 -spec get_fs_key(ne_binary()) -> binary().
-get_fs_key(<<?CHANNEL_VAR_PREFIX, _/binary>>=Key) -> Key;
+get_fs_key(<<?CHANNEL_VAR_PREFIX, Key/binary>>) -> get_fs_key(Key);
 get_fs_key(Key) ->
     case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' -> <<?CHANNEL_VAR_PREFIX, Key/binary>>;
@@ -402,20 +396,34 @@ get_fs_key(Key) ->
                                   {ne_binary(), binary()} |
                                   [{ne_binary(), binary()}] |
                                   'skip'.
-get_fs_key_and_value(<<"Hold-Media">>, Media, UUID) ->
-    {<<"hold_music">>, media_path(Media, 'extant', UUID, kz_json:new())};
-get_fs_key_and_value(<<"Diversions">>, Diversions, _UUID) ->
+get_fs_key_and_value(<<"Hold-Media">>=Key, Media, UUID) ->
+    {get_fs_key(Key), media_path(Media, 'extant', UUID, kz_json:new())};
+get_fs_key_and_value(<<"Diversions">>=Key, Diversions, _UUID) ->
+    K = get_fs_key(Key),
     lager:debug("setting diversions ~p on the channel", [Diversions]),
-    [{<<"sip_h_Diversion">>, D} || D <- Diversions];
-get_fs_key_and_value(<<?CHANNEL_VAR_PREFIX, Key/binary>>=Prefix, Val, _UUID) ->
-    {Prefix, maybe_sanitize_fs_value(Key, Val)};
-get_fs_key_and_value(Key, Val, _UUID) when is_binary(Val) ->
-    case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
-        'false' ->
-            {list_to_binary([?CHANNEL_VAR_PREFIX, Key]), Val};
-        {_, Prefix} ->
-            {Prefix, maybe_sanitize_fs_value(Key, Val)}
-    end;
+    [{K, D} || D <- Diversions];
+get_fs_key_and_value(<<"Auto-Answer">> = Key, Value, _UUID) ->
+    [{<<"alert_info">>, <<"intercom">>}
+    ,{get_fs_key(Key), maybe_sanitize_fs_value(Key, Value)}
+    ];
+get_fs_key_and_value(<<"Auto-Answer-Notify">> = Key, Value, _UUID) ->
+    [{<<"alert_info">>, <<"intercom">>}
+    ,{get_fs_key(<<"Auto-Answer">>), maybe_sanitize_fs_value(<<"Auto-Answer">>, <<"true">>)}
+    ,{get_fs_key(Key), maybe_sanitize_fs_value(Key, Value)}
+    ];
+get_fs_key_and_value(<<"ringback">>=Key, Value, _UUID) ->
+    [{<<"ringback">>, maybe_sanitize_fs_value(Key, Value)}
+    ,{<<"transfer_ringback">>, maybe_sanitize_fs_value(<<"transfer_ringback">>, Value)}
+    ];
+get_fs_key_and_value(<<?CHANNEL_VAR_PREFIX, Key/binary>>, Val, UUID) ->
+    get_fs_key_and_value(Key, Val, UUID);
+get_fs_key_and_value(Key, Val, _UUID)
+  when is_binary(Val);
+       is_atom(Val);
+       is_number(Val);
+       is_list(Val);
+       is_boolean(Val) ->
+    {get_fs_key(Key), maybe_sanitize_fs_value(Key, Val)};
 get_fs_key_and_value(_, _, _) -> 'skip'.
 
 %%--------------------------------------------------------------------

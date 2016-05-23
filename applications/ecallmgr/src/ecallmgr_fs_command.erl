@@ -154,8 +154,7 @@ process_fs_kv(Node, UUID, [K|KVs], 'unset'=Action)
                     process_fs_kv_fold(Node, UUID, Prop, Action, Acc)
                 end, [<<X1/binary, "=">>], KVs).
 
-process_fs_kv_fold(_, _, {_Key, 'undefined'}, _, Acc) -> Acc;
-process_fs_kv_fold(_Node, UUID, {K, V}, Action, Acc) when is_binary(V) ->
+process_fs_kv_fold(_Node, UUID, {K, V}, Action, Acc) ->
     [format_fs_kv(K, V, UUID, Action) | Acc];
 process_fs_kv_fold(_Node, _UUID, K, 'unset', Acc)
   when is_binary(K) ->
@@ -165,23 +164,19 @@ process_fs_kv_fold(_, _, _, _, Acc) ->
     Acc.
 
 -spec format_fs_kv(ne_binary(), binary(), ne_binary(), atom()) -> [binary()].
-format_fs_kv(<<"Hold-Media">>, _, _, 'unset') ->
-    [<<"hold_music=">>];
-format_fs_kv(<<"ringback">>, _, _, 'unset') ->
-    [<<"ringback=">>];
-format_fs_kv(<<"Auto-Answer">>, _, _, 'unset') ->
-    [<<"alert_info=">>, <<"Auto-Answer=">>];
-format_fs_kv(Key, _Value, _UUID, 'unset') ->
-    K = ecallmgr_util:get_fs_key(Key),
-    [<<K/binary, "=">>];
-format_fs_kv(<<"ringback">>, Media, _, _) ->
-    [<<"ringback=", Media/binary>>, <<"transfer_ringback=", Media/binary>>];
-format_fs_kv(<<"Auto-Answer">> = Key, Value, _, _) ->
-    [<<"alert_info=intercom">>, <<Key/binary, "=", Value/binary>>];
+format_fs_kv(Key, Value, UUID, 'unset') ->
+    case ecallmgr_util:get_fs_key_and_value(Key, Value, UUID) of
+        'skip' -> [];
+        {K, _V} -> [<<K/binary, "=">>];
+        KVs -> [<<K/binary, "=">> || {K,_V} <- KVs]
+    end;
 format_fs_kv(_Key, 'undefined', _UUID, _) -> [];
 format_fs_kv(Key, Value, UUID, _) ->
-    {K, V} = ecallmgr_util:get_fs_key_and_value(Key, Value, UUID),
-    [<<K/binary, "=", V/binary>>].
+    case ecallmgr_util:get_fs_key_and_value(Key, Value, UUID) of
+        'skip' -> [];
+        {K, V} -> [<<K/binary, "=", V/binary>>];
+        KVs -> [<<K/binary, "=", V/binary>> || {K,V} <- KVs]
+    end.
 
 -spec maybe_export_vars(atom(), ne_binary(), kz_proplist()) -> kz_proplist().
 maybe_export_vars(Node, UUID, Props) ->
