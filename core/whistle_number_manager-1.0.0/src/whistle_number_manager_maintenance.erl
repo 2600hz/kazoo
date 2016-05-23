@@ -32,7 +32,7 @@
 %% beacuse if you reconcile without the callflow view then they will never
 %% run anyway (no callflow whapp connected to the db to execute). But it is
 %% still nasty...
--define(CALLFLOW_VIEW, <<"callflow/listing_by_number">>).
+-define(CALLFLOW_VIEW, <<"callflows/listing_by_number">>).
 
 %%--------------------------------------------------------------------
 %% @public

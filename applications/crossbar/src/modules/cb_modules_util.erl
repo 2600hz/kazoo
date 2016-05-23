@@ -186,12 +186,6 @@ get_devices_owned_by(OwnerID, DB) ->
             []
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% TODO: this breaks the callflow/crossbar seperation....
-%% @end
-%%--------------------------------------------------------------------
 -spec maybe_originate_quickcall(cb_context:context()) -> cb_context:context().
 maybe_originate_quickcall(Context) ->
     Call = create_call_from_context(Context),
