@@ -35,13 +35,17 @@ $(GEN_OUT): $(GEN_FILE) $(GEN_SRC)
 		>> $(GEN_OUT)
 	echo 'from_extension(_) -> <<"application/octet-stream">>.' >> $(GEN_OUT)
 	echo >> $(GEN_OUT)
+	echo 'to_extensions(<<"audio/mp3">>) -> [<<"mp3">>];' >> $(GEN_OUT)
 	cat $(GEN_FILE) \
 		| grep -v ^# \
 		| awk '{ \
 			printf("to_extensions(<<\"%s\">>) -> [", $$1); \
+			if ($$1 == "audio/mpeg") { \
+				printf("<<\"mp3\">>") \
+			} \
 			for (i=2; i<=NF; i++) \
-				if ($$i != "") { \
-					if (i >= 3){printf(",")} \
+				if ($$i != "" && $$i != "mp3") { \
+					if (i >= 3 || (i >= 2 && $$1 == "audio/mpeg") ){printf(",")} \
 					printf("<<\"%s\">>",  $$i) \
 				} \
 			print "];" \
