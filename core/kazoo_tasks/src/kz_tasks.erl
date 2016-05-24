@@ -265,11 +265,14 @@ handle_call({'get_task_by_id', TaskId}, _From, State) ->
 handle_call({'remove_task', TaskId}, _From, State) ->
     case task_by_id(TaskId, State) of
         [] -> ?REPLY_NOT_FOUND(State);
-        [Task] ->
+        [Task = #{worker_pid := 'undefined'}] ->
+            State1 = remove_task(TaskId, State),
+            ?REPLY_FOUND(State1, Task);
+        [Task = #{worker_pid := Pid}] ->
             case is_processing(Task) of
                 'true' -> {'reply', {'error', 'task_running'}, State};
                 'false' ->
-                    _ = kz_task_worker:stop(maps:get('worker_pid', Task)),
+                    _ = kz_task_worker:stop(Pid),
                     State1 = remove_task(TaskId, State),
                     ?REPLY_FOUND(State1, Task)
             end

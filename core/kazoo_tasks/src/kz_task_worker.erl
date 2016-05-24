@@ -137,7 +137,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{task_pid = Pid}) ->
-    lager:debug("~s terminating (~p): killing ~p", [?MODULE, _Reason, Pid]),
+    lager:debug("terminating (~p): killing ~p", [_Reason, Pid]),
     exit(Pid, 'kill').
 
 %%--------------------------------------------------------------------
