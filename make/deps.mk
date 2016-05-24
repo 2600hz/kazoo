@@ -1,7 +1,7 @@
 DEPS = lager eiconv gen_smtp amqp_client cowboy jesse jiffy certifi couchbeam wsock zucchini \
        erlsom erlydtl exml escalus folsom detergent erlang_localtime \
        nklib gproc poolboy syslog lager_syslog eflame hep ecsv reloader \
-       proper recon getopt
+       proper recon getopt sync eunit
 
 BUILD_DEPS = parse_trans
 
