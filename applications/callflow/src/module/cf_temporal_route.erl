@@ -13,8 +13,8 @@
 %%%-------------------------------------------------------------------
 -module(cf_temporal_route).
 
--include("../callflow.hrl").
--include("./cf_temporal_route.hrl").
+-include("callflow.hrl").
+-include("cf_temporal_route.hrl").
 
 -export([handle/2
          ,normalize_date/1
@@ -747,7 +747,7 @@ to_dow(<<"friday">>) -> 5;
 to_dow(<<"saturday">>) -> 6;
 to_dow(<<"sunday">>) -> 7.
 
--spec to_wday(wh_daynum()) -> wday().
+-spec to_wday(kz_daynum()) -> wday().
 to_wday(1) -> <<"monday">>;
 to_wday(2) -> <<"tuesday">>;
 to_wday(3) -> <<"wednesday">>;
