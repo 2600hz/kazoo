@@ -39,14 +39,15 @@ Some of the highlights:
   * For example, a list comprehension with a case inside, or blocks with begin/end, and nested stuff
 * Don't share your records
   * Records should not be shared among multiple modules. If you need to share objects that are represented as records, use opaque exported types and provide adequate accessor functions in your module.
-* Avoid records in specs
-  * ```erlang
+* Always add types for your records:
+  ```erlang
     -record(foo, {bar :: binary()}).
     -type foo() :: #foo{}.
     -type foos() :: [foo()].
-    ```
-  * ```erlang -type state() :: #state{}.```
-
+   ```
+   ```erlang
+   -type state() :: #state{}.
+   ```
 * Types in records
   * Always add type definitions to your record fields
 * Properly use logging levels
@@ -65,12 +66,18 @@ Some 2600Hz specifics:
   * Use `'foo'` not `foo`
 * Write accurate specs for all functions
   * Use the most restrictive type(s) you can.
-  ```erlang -spec foo(any()) -> any().``` is of no use to anyone!
+  ```erlang
+  -spec foo(any()) -> any(). % is of no use to anyone!
+  ```
   * Run [dialyzer](./dialyzer.md) on any modules you make changes to, plus any modules your new code makes calls to.
 * When creating lists or binaries, drop the comma and next element to a new line
-  * This includes ```erlang -export([...])``` directives.
-  * No: ```erlang [this, list, is, wrong]```
-  * Yes: ```erlang
+  * This includes `-export([...])` directives.
+  * No:
+  ```erlang
+  [this, list, is, wrong]
+  ```
+  * Yes:
+  ```erlang
   [this
   ,list
   ,is
