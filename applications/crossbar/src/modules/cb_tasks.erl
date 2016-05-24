@@ -9,12 +9,14 @@
 -module(cb_tasks).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,validate/1, validate/2
-         ,put/1
-         ,patch/2
-         ,delete/2
+        ,authenticate/1
+        ,authorize/1
+        ,allowed_methods/0, allowed_methods/1
+        ,resource_exists/0, resource_exists/1
+        ,validate/1, validate/2
+        ,put/1
+        ,patch/2
+        ,delete/2
         ]).
 
 -include("crossbar.hrl").
@@ -26,16 +28,43 @@
 %%% API
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Initializes the bindings this module will respond to.
+%% @end
+%%--------------------------------------------------------------------
 init() ->
     {'ok', _} = application:ensure_all_started('kazoo_tasks'),
 
-    %%TODO: auth
+    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.tasks">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.tasks">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.tasks">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.tasks">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.tasks">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.tasks">>, ?MODULE, 'delete').
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Authenticates the incoming request, returning true if the requestor is
+%% known, or false if not.
+%% @end
+%%--------------------------------------------------------------------
+-spec authenticate(cb_context:context()) -> 'false'.
+authenticate(_) -> 'false'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Authorizes the incoming request, returning true if the requestor is
+%% allowed to access the resource, or false if not.
+%% @end
+%%--------------------------------------------------------------------
+-spec authorize(cb_context:context()) -> 'false'.
+authorize(_) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @private
