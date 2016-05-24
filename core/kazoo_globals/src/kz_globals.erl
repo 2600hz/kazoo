@@ -240,6 +240,12 @@ handle_call({'where_is', Name}, _From, State) ->
 handle_call({'delete_remote', Pid}, _From, State) ->
     _ = delete_by_pid(Pid),
     {'reply', 'ok', State};
+handle_call({'amqp_delete', Global, 'undefined'}, _From, State) ->
+    kz_global_proxy:stop(kz_global:pid(Global)),
+    {'reply', 'ok', State};
+handle_call({'amqp_delete', Global, Reason}, _From, State) ->
+    kz_global_proxy:stop(kz_global:pid(Global), Reason),
+    {'reply', 'ok', State};
 handle_call({'insert_remote', Global}, _From, State) ->
     {'reply', register_remote(Global), State};
 handle_call({'register', Name, Pid}, _From, State) ->
@@ -640,7 +646,7 @@ handle_amqp_unregister(JObj, _Props) ->
     case where(kapi_globals:name(JObj)) of
         'undefined' -> 'ok';
         Global ->
-            gen_listener:cast(?SERVER
+            gen_listener:call(?SERVER
                              ,{'amqp_delete', Global, kapi_globals:reason(JObj)}
                              )
     end.

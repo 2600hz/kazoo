@@ -17,7 +17,9 @@
         ]).
 
 %% test helpers
--export([remote_register/3]).
+-export([remote_register/3
+         ,remote_unregister/2
+        ]).
 
 -define(LOCAL_NODE, 0).
 -define(REMOTE_NODES, 1).
@@ -67,7 +69,7 @@ command(_Registry) ->
           ,{'call', 'kz_globals', 'unregister_name', [name()]}
           ,{'call', 'kz_globals', 'registered', []}
           ,{'call', ?MODULE, 'remote_register', [remote_node(), name(), self()]}
-          %% ,{'call', ?MODULE, 'remote_unregister', [remote_node(), name(), self()]},
+          ,{'call', ?MODULE, 'remote_unregister', [remote_node(), name()]}
           ]).
 
 name() ->
@@ -89,6 +91,14 @@ name_exists(Name, Registries) ->
              ,maps:values(Registries)
              ).
 
+unregister_name(Name, Registries) ->
+    maps:fold(fun(Node, Registry, Acc) ->
+                      Acc#{Node => lists:keydelete(Name, 1, Registry)}
+              end
+             ,maps:new()
+             ,Registries
+             ).
+
 %% Remote Node updates
 next_state(Registries, _V
            ,{'call', ?MODULE, 'remote_register', [Remote, Name, Pid]}
@@ -104,6 +114,16 @@ next_state(Registries, _V
                       ,maps:new()
                       ,Registries
                      )
+    end;
+next_state(Registries, _V
+           ,{'call', ?MODULE, 'remote_unregister', [Remote, Name]}
+          ) ->
+    #{Remote := Registry} = Registries,
+    case lists:keysearch(Name, 1, Registry) of
+        'false' -> Registries;
+        {'value', ?REG(Name, _P, 'local')} ->
+            unregister_name(Name, Registries);
+        {'value', _} -> Registries
     end;
 
 %% Local Node State Changes
@@ -132,12 +152,7 @@ next_state(#{?LOCAL_NODE := LocalRegistry}=Registries, _V
     case lists:keysearch(Name, 1, LocalRegistry) of
         'false' -> Registries;
         {'value', ?REG(Name, _Pid, 'local')} ->
-            maps:fold(fun(Node, Registry, Acc) ->
-                              Acc#{Node => lists:keydelete(Name, 1, Registry)}
-                      end
-                      ,maps:new()
-                      ,Registries
-                     );
+            unregister_name(Name, Registries);
         {'value', ?REG(Name, _Pid, _State)} -> Registries
     end;
 next_state(Registries, _V
@@ -153,10 +168,17 @@ precondition(Registries
         {'value', ?REG(Name, _P, _State)} -> 'false';
         'false' -> 'true'
     end;
+precondition(Registries
+             ,{'call', ?MODULE, 'remote_unregister', [Node, Name]}
+            ) ->
+    #{Node := Registry} = Registries,
+    case lists:keysearch(Name, 1, Registry) of
+        {'value', ?REG(Name, _P, 'local')} -> 'true';
+        _ -> 'false'
+    end;
 precondition(#{?LOCAL_NODE := Registry}
              ,{'call', 'kz_globals', 'unregister_name', [Name]}
             ) ->
-    lager:debug("skpping unreg of ~p", [Name]),
     case lists:keysearch(Name, 1, Registry) of
         {'value', ?REG(Name, _Pid, 'local')} -> 'true';
         _ -> 'false'
@@ -171,7 +193,11 @@ postcondition(Registries
         'true' -> 'no' =:= WasRegistered;
         'false' -> 'yes' =:= WasRegistered
     end;
-
+postcondition(_Registries
+             ,{'call', ?MODULE, 'remote_unregister', [_Remote, _Name]}
+             ,Unregsister
+             ) ->
+    'ok' =:= Unregsister;
 %% Local Node Changes
 postcondition(#{?LOCAL_NODE := Registry}
              ,{'call', 'kz_globals', 'whereis_name', [Name]}
@@ -224,7 +250,7 @@ compare_names([?REG(_N, _, _)|_Reg], _Names) ->
 remote_register(Remote, Name, Pid) ->
     Payload = [{<<"Name">>, Name}
               ,{<<"State">>, 'pending'}
-              ,{<<"Node">>, list_to_binary([ Remote+$0, "@remote.host"])}
+              ,{<<"Node">>, remote_node_name(Remote)}
                | kz_api:default_headers(<<"testing">>, <<"4.0.0">>)
               ],
     case kz_amqp_worker:call_collect(Payload, fun kapi_globals:publish_register/1) of
@@ -241,7 +267,7 @@ remote_register_success(Remote, Name) ->
     Zone = list_to_binary(["zone", $0+Remote]),
     Payload = [{<<"Name">>, Name}
               ,{<<"State">>, 'local'}
-              ,{<<"Node">>, list_to_binary([ Remote+$0, "@remote.host"])}
+              ,{<<"Node">>, remote_node_name(Remote)}
               ,{<<"Zone">>, Zone}
                | kz_api:default_headers(<<>>, <<"testing">>, <<"4.0.0">>)
               ],
@@ -249,5 +275,18 @@ remote_register_success(Remote, Name) ->
     Global = kz_global:from_jobj(JObj, Zone),
     gen_listener:call('kz_globals', {'insert_remote', Global}),
     'yes'.
+
+remote_node_name(Remote) ->
+    list_to_binary([ Remote+$0, "@remote.host"]).
+
+remote_unregister(Remote, Name) ->
+        Payload = [{<<"Name">>, Name}
+                  ,{<<"Reason">>, kapi_globals:encode('normal')}
+                  ,{<<"Node">>, remote_node_name(Remote)}
+                   | kz_api:default_headers(<<"testing">>, <<"4.0.0">>)
+                  ],
+    kz_amqp_worker:cast(Payload, fun kapi_globals:publish_unregister/1),
+    timer:sleep(1000),
+    'ok'.
 
 -endif.
