@@ -63,11 +63,11 @@ add_node(N, M) ->
 
 command(_Registry) ->
     oneof([{'call', 'kz_globals', 'whereis_name', [name()]}
-           ,{'call', 'kz_globals', 'register_name', [name(), self()]}
-           ,{'call', 'kz_globals', 'unregister_name', [name()]}
-           ,{'call', 'kz_globals', 'registered', []}
+          ,{'call', 'kz_globals', 'register_name', [name(), self()]}
+          ,{'call', 'kz_globals', 'unregister_name', [name()]}
+          ,{'call', 'kz_globals', 'registered', []}
           ,{'call', ?MODULE, 'remote_register', [remote_node(), name(), self()]}
-           %% ,{'call', ?MODULE, 'remote_unregister', [remote_node(), name(), self()]},
+          %% ,{'call', ?MODULE, 'remote_unregister', [remote_node(), name(), self()]},
           ]).
 
 name() ->
@@ -145,13 +145,20 @@ next_state(Registries, _V
           ) ->
     Registries.
 
-%% precondiiton([], {'call', 'kz_globals', 'unregister_name', [_Name]}) -> 'false';
+precondition(Registries
+             ,{'call', ?MODULE, 'remote_register', [Node, Name, _Pid]}
+            ) ->
+    #{Node := Registry} = Registries,
+    case lists:keysearch(Name, 1, Registry) of
+        {'value', ?REG(Name, _P, _State)} -> 'false';
+        'false' -> 'true'
+    end;
 precondition(#{?LOCAL_NODE := Registry}
              ,{'call', 'kz_globals', 'unregister_name', [Name]}
             ) ->
     lager:debug("skpping unreg of ~p", [Name]),
     case lists:keysearch(Name, 1, Registry) of
-        ?REG(Name, _Pid, 'local') -> 'true';
+        {'value', ?REG(Name, _Pid, 'local')} -> 'true';
         _ -> 'false'
     end;
 precondition(_Registry, _Call) -> 'true'.
@@ -203,7 +210,12 @@ postcondition(#{?LOCAL_NODE := Registry}
 compare_names([], []) -> 'true';
 compare_names([], _) -> 'false';
 compare_names(_, []) -> 'false';
-compare_names([?REG(Name, _, _)|Registry], [Name | Names]) ->
+compare_names([?REG(Name, _, 'local')|Registry], [Name | Names]) ->
+    compare_names(Registry, Names);
+compare_names([?REG(Name, _, 'remote')|Registry], [Name | Names]) ->
+    compare_names(Registry, Names);
+compare_names([?REG(Name, _, 'pending')|Registry], Names) ->
+    lager:debug("ignoring provisional ~p", [Name]),
     compare_names(Registry, Names);
 compare_names([?REG(_N, _, _)|_Reg], _Names) ->
     lager:debug("failed to find ~p in ~p (~p)", [_N, _Names, _Reg]),
@@ -226,13 +238,16 @@ remote_register(Remote, Name, Pid) ->
     end.
 
 remote_register_success(Remote, Name) ->
+    Zone = list_to_binary(["zone", $0+Remote]),
     Payload = [{<<"Name">>, Name}
               ,{<<"State">>, 'local'}
               ,{<<"Node">>, list_to_binary([ Remote+$0, "@remote.host"])}
+              ,{<<"Zone">>, Zone}
                | kz_api:default_headers(<<>>, <<"testing">>, <<"4.0.0">>)
               ],
-    kz_amqp_worker:cast(Payload, fun kapi_globals:publish_register/1),
-    timer:sleep(1000),
+    JObj = kz_json:from_list(Payload),
+    Global = kz_global:from_jobj(JObj, Zone),
+    gen_listener:call('kz_globals', {'insert_remote', Global}),
     'yes'.
 
 -endif.
