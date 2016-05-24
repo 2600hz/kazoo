@@ -367,17 +367,24 @@ rate_center_to_json(Xml) ->
 -spec verify_response(xml_el()) -> {'ok', ne_binary()} |
                                    {'error', api_binary() | ne_binaries()}.
 verify_response(Xml) ->
-    case wh_util:get_xml_value("/*/status/text()", Xml) =:= <<"success">>
-        orelse wh_util:get_xml_value("//LoginResponse/LoginResult/text()", Xml) =/= 'undefined'
-        orelse wh_util:get_xml_value("//SearchTelephoneNumbersResponse/SearchTelephoneNumbersResult", Xml) =/= []
+    Path = "count(//TelephoneNumberDetailList/TelephoneNumberDetail)",
+    case validate_xpath_value(xmerl_xpath:string(Path, Xml))
+             orelse validate_xpath_value(wh_util:get_xml_value("//OrderStatus/text()", Xml))
     of
         'true' ->
             lager:debug("request was successful"),
             {'ok', Xml};
         'false' ->
             lager:debug("request failed"),
-            {'error', wh_util:get_xml_value("/*/errors/error/message/text()", Xml)}
+            ErrMessage = wh_util:get_xml_value("//ErrorList/Error/Description/text()", Xml),
+            {'error', ErrMessage}
     end.
+
+-spec validate_xpath_value(api_binary()) -> boolean().
+validate_xpath_value('undefined') -> false;
+validate_xpath_value(<<>>) -> false;
+validate_xpath_value({xmlObj, number, Num}) -> Num > 0;
+validate_xpath_value(_) -> 'true'.
 
 -spec should_lookup_cnam() -> 'true'.
 should_lookup_cnam() -> 'true'.
