@@ -18,7 +18,7 @@
          ,validate/1, validate/2, validate/3, validate/4, validate/5
          ,content_types_provided/5
          ,put/1
-         ,post/2, post/4
+         ,post/2, post/3, post/4
          ,patch/2
          ,delete/2, delete/3, delete/4
 
@@ -69,7 +69,7 @@ allowed_methods() ->
 allowed_methods(_VMBoxID) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PATCH].
 allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE) ->
-    [?HTTP_GET, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE, _MsgID) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE, _MsgID, ?BIN_DATA) ->
@@ -86,6 +86,8 @@ allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE, _MsgID, ?BIN_DATA) ->
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
 -spec resource_exists(path_token(), path_token()) -> 'true'.
+-spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
+-spec resource_exists(path_token(), path_token(), path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 resource_exists(_, ?MESSAGES_RESOURCE) -> 'true'.
@@ -157,10 +159,8 @@ validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
 validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId, ?BIN_DATA) ->
     case load_message_binary(DocId, MediaId, Context) of
         {'true', C1} ->
-            C2 = update_message_doc(MediaId, C1),
-            update_mwi(
-              cb_context:set_resp_data(C2, cb_context:resp_data(C1))
-             );
+            C2 = update_message_folder(DocId, MediaId, C1),
+            update_mwi(C2);
         {_, C} -> C
     end.
 
@@ -170,15 +170,28 @@ validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId, ?BIN_DATA) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
+-spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 post(Context, _DocId) ->
+    % disallow vmbox messages array changing
     DbDoc = cb_context:fetch(Context, 'db_doc'),
-    Props = [{<<"messages">>, kz_json:get_value(<<"messages">>, DbDoc, [])}],
+    Props = [{?VM_KEY_MESSAGES, kz_json:get_value(?VM_KEY_MESSAGES, DbDoc, [])}],
     Context1 = cb_context:set_doc(Context, kz_json:set_values(Props, cb_context:doc(Context))),
-    C = crossbar_doc:save(Context1),
+    C1 = crossbar_doc:save(Context1),
+
+    % remove messages array to not let it exposed
+    C2 = cb_context:set_doc(Context, kz_json:delete_key(?VM_KEY_MESSAGES, cb_context:doc(C1))),
+    update_mwi(C2).
+
+post(Context, DocId, ?MESSAGES_RESOURCE) ->
+    MsgIds = cb_context:req_value(Context, ?VM_KEY_MESSAGES, []),
+    Folder = get_folder_filter(Context, ?VM_FOLDER_SAVED),
+    {'ok', Result} = kz_vm_message:update_folder(Folder, MsgIds, cb_context:account_id(Context), DocId),
+    C = cb_context:set_resp_data(Context, Result),
     update_mwi(C).
-post(Context, _DocId, ?MESSAGES_RESOURCE, MediaId) ->
-    C = update_message_doc(MediaId, Context),
+
+post(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
+    C = update_message_folder(DocId, MediaId, Context),
     update_mwi(C).
 
 %%--------------------------------------------------------------------
@@ -200,19 +213,19 @@ put(Context) ->
 -spec delete(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 delete(Context, DocId) ->
     AccountId = cb_context:account_id(Context),
-    Messages = kz_vm_message:messages(AccountId, DocId),
-    _ = [kz_vm_message:set_folder(?VM_FOLDER_DELETED, M, AccountId) || M <- Messages],
+    Msgs = kz_vm_message:messages(AccountId, DocId),
+    _ = kz_vm_message:update_folder(?VM_FOLDER_DELETED, Msgs, cb_context:account_id(Context), DocId),
     C = crossbar_doc:delete(Context),
     update_mwi(C).
 
 delete(Context, DocId, ?MESSAGES_RESOURCE) ->
-    Messages = cb_context:resp_data(Context),
-    _ = [kz_vm_message:set_folder(?VM_FOLDER_DELETED, M, cb_context:account_id(Context)) || M <- Messages],
-    C = load_vmbox(DocId, Context),
+    MsgIds = cb_context:resp_data(Context),
+    {'ok', Result} = kz_vm_message:update_folder(?VM_FOLDER_DELETED, MsgIds, cb_context:account_id(Context), DocId),
+    C = cb_context:set_resp_data(Context, Result),
     update_mwi(C).
 
-delete(Context, _DocId, ?MESSAGES_RESOURCE, MediaId) ->
-    C = update_message_doc(MediaId, Context),
+delete(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
+    C = update_message_folder(DocId, MediaId, Context),
     update_mwi(C).
 
 %%--------------------------------------------------------------------
@@ -222,10 +235,14 @@ delete(Context, _DocId, ?MESSAGES_RESOURCE, MediaId) ->
 %%--------------------------------------------------------------------
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, _Id) ->
+% disallow vmbox messages array changing
     DbDoc = cb_context:fetch(Context, 'db_doc'),
-    Props = [{<<"messages">>, kz_json:get_value(<<"messages">>, DbDoc, [])}],
+    Props = [{?VM_KEY_MESSAGES, kz_json:get_value(?VM_KEY_MESSAGES, DbDoc, [])}],
     Context1 = cb_context:set_doc(Context, kz_json:set_values(Props, cb_context:doc(Context))),
-    crossbar_doc:save(Context1).
+    C1 = crossbar_doc:save(Context1),
+
+    % remove messages array to not let it exposed
+    cb_context:set_doc(Context, kz_json:delete_key(?VM_KEY_MESSAGES, cb_context:doc(C1))).
 
 %%%===================================================================
 %%% Internal functions
@@ -237,13 +254,11 @@ patch(Context, _Id) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_message(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
-validate_message(Context, _DocId, MediaId, ?HTTP_GET) ->
+validate_message(Context, DocId, MediaId, ?HTTP_GET) ->
     case load_message(MediaId, 'undefined', Context) of
         {'true', C1} ->
-            C2 = update_message_doc(MediaId, C1),
-            update_mwi(
-              cb_context:set_resp_data(C2, cb_context:resp_data(C1))
-             );
+            C2 = update_message_folder(DocId, MediaId, C1),
+            update_mwi(C2);
         {_, C} -> C
     end;
 validate_message(Context, _DocId, MediaId, ?HTTP_POST) ->
@@ -262,37 +277,74 @@ validate_message(Context, _DocId, MediaId, ?HTTP_DELETE) ->
 -spec validate_messages(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_messages(Context, DocId, ?HTTP_GET) ->
     load_message_summary(DocId, Context);
+validate_messages(Context, _DocId, ?HTTP_POST) ->
+    case cb_context:req_value(Context, ?VM_KEY_MESSAGES, []) =/= [] of
+        'false' ->
+            cb_context:add_validation_error(<<"messages">>
+                                            ,<<"required">>
+                                            ,kz_json:from_list([{<<"message">>, <<"No message ids are specified">>}])
+                                            ,Context
+                                           );
+        _ ->
+            cb_context:set_resp_status(Context, 'success')
+    end;
 validate_messages(Context, DocId, ?HTTP_DELETE) ->
     Messages = kz_vm_message:messages(cb_context:account_id(Context), DocId),
-    Filter = cb_context:req_value(Context, ?VM_KEY_FOLDER, <<"all">>),
-    Deleted = delete_messages(Messages, Filter),
+
+    Filter = case cb_context:req_value(Context, ?VM_KEY_MESSAGES) of
+                 L when is_list(L) -> L;
+                 _ -> get_folder_filter(Context, <<"all">>)
+             end,
+
+    ToDelete = filter_messages(Messages, Filter),
 
     cb_context:set_resp_data(
         cb_context:set_resp_status(Context, 'success')
-        ,Deleted
+        ,ToDelete
     ).
 
+-spec get_folder_filter(cb_context:context(), ne_binary()) -> ne_binary().
+get_folder_filter(Context, Default) ->
+    ReqData = cb_context:req_data(Context),
+    QS = cb_context:query_string(Context),
+    ReqJObj = cb_context:req_json(Context),
+
+    case kz_json:find(?VM_KEY_FOLDER, [ReqData, QS, ReqJObj]) of
+        ?VM_FOLDER_NEW -> ?VM_FOLDER_NEW;
+        ?VM_FOLDER_SAVED -> ?VM_FOLDER_SAVED;
+        _ -> Default
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec delete_messages(kz_json:objects(), ne_binary()) -> kz_json:objects().
--spec delete_messages(kz_json:objects(), ne_binary(), kz_json:objects()) -> kz_json:objects().
-delete_messages(Messages, Filter) ->
-    delete_messages(Messages, Filter, []).
+-spec filter_messages(kz_json:objects(), ne_binary() | ne_binaries()) -> ne_binaries().
+-spec filter_messages(kz_json:objects(), ne_binary() | ne_binaries(), ne_binaries()) -> ne_binaries().
+filter_messages(Messages, Filter) ->
+    filter_messages(Messages, Filter, []).
 
-delete_messages([], _Filter, Deleted) ->
-    Deleted;
-delete_messages([Mess|Messages], <<"all">> = Filter, Deleted) ->
-    delete_messages(Messages, Filter, [Mess|Deleted]);
-delete_messages([Mess|Messages], Filter, Deleted) ->
+filter_messages([], _Filter, Selected) ->
+    Selected;
+filter_messages([Mess|Messages], <<"all">>=Filter, Selected) ->
+    Id = kzd_box_message:media_id(Mess),
+    filter_messages(Messages, Filter, [Id|Selected]);
+filter_messages([Mess|Messages], Filter, Selected) when Filter =:= ?VM_FOLDER_NEW;
+                                                        Filter =:= ?VM_FOLDER_SAVED;
+                                                        Filter =:= ?VM_FOLDER_DELETED ->
+    Id = kzd_box_message:media_id(Mess),
     case kzd_box_message:folder(Mess) of
-        Filter ->
-            delete_messages(Messages, Filter, [Mess|Deleted]);
-        _ ->
-            delete_messages(Messages, Filter, Deleted)
+        Filter -> filter_messages(Messages, Filter, [Id|Selected]);
+        _ -> filter_messages(Messages, Filter, Selected)
+    end;
+filter_messages(_, [], Selected) ->
+    Selected;
+filter_messages([Mess|Messages], Filters, Selected) ->
+    Id = kzd_box_message:media_id(Mess),
+    case lists:member(Id, Filters) of
+        'true' -> filter_messages(Messages, Filters, [Id|Selected]);
+        'false' -> filter_messages(Messages, Filters, Selected)
     end.
 
 %%--------------------------------------------------------------------
@@ -444,9 +496,9 @@ load_message_summary(DocId, Context) ->
 load_message(MediaId, 'undefined', Context) ->
     load_message(MediaId, kz_json:new(), Context);
 load_message(MediaId, UpdateJObj, Context) ->
-    case kz_vm_message:message_doc(cb_context:account_id(Context), MediaId) of
+    case kz_vm_message:message(cb_context:account_id(Context), MediaId) of
         {'ok', Message} ->
-            load_message_metadata(Message, UpdateJObj, crossbar_doc:handle_json_success(Message, Context));
+            ensure_message_in_folder(Message, UpdateJObj, crossbar_doc:handle_json_success(Message, Context));
         {'error', Error} ->
             {'false', crossbar_doc:handle_couch_mgr_errors(Error, MediaId, Context)}
     end.
@@ -457,25 +509,22 @@ load_message(MediaId, UpdateJObj, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec load_message_metadata(kz_json:object(), kz_json:object(), cb_context:context()) ->
+-spec ensure_message_in_folder(kz_json:object(), kz_json:object(), cb_context:context()) ->
                                         {boolean(), cb_context:context()}.
-load_message_metadata(Message, UpdateJObj, Context) ->
-    CurrentMetaData = kzd_box_message:metadata(Message, kz_json:new()),
-    CurrentFolder = kzd_box_message:folder(CurrentMetaData, ?VM_FOLDER_NEW),
+ensure_message_in_folder(Message, UpdateJObj, Context) ->
+    CurrentFolder = kzd_box_message:folder(Message, ?VM_FOLDER_NEW),
 
     RequestedFolder = cb_context:req_value(Context
                                            ,?VM_KEY_FOLDER
                                            ,kzd_box_message:folder(UpdateJObj, CurrentFolder)
                                           ),
     lager:debug("ensuring message is in folder ~s", [RequestedFolder]),
-    MetaData = kz_json:merge_jobjs(kzd_box_message:set_folder(RequestedFolder, UpdateJObj)
-                                   ,CurrentMetaData
-                                  ),
+    NewMessage = kz_json:merge_jobjs(kzd_box_message:set_folder(RequestedFolder, UpdateJObj)
+                                     ,Message
+                                    ),
     {CurrentFolder =/= RequestedFolder
-     ,cb_context:set_resp_data(
-        cb_context:set_doc(Context, kzd_box_message:set_metadata(MetaData, Message))
-        ,MetaData
-       )}.
+     ,cb_context:set_resp_data(cb_context:set_doc(Context, NewMessage), NewMessage)
+    }.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -556,13 +605,16 @@ generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc update vm message doc and handle the result
+%% @doc update message folder
 %% @end
 %%--------------------------------------------------------------------
-update_message_doc(MediaId, Context) ->
-    case kz_vm_message:update_message_doc(cb_context:account_id(Context), MediaId) of
-        {'ok', JObj} ->
-            crossbar_doc:handle_json_success(JObj, Context);
+-spec update_message_folder(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+update_message_folder(BoxId, MediaId, Context) ->
+    AccountId = cb_context:account_id(Context),
+    Folder = kzd_box_message:folder(cb_context:doc(Context)),
+    case kz_vm_message:update_folder(Folder, MediaId, AccountId, BoxId) of
+        {'ok', Message} ->
+            crossbar_util:response(Message, cb_context:set_resp_status(Context, 'success'));
         {'error', Error} ->
             crossbar_doc:handle_couch_mgr_errors(Error, MediaId, Context)
     end.
