@@ -500,20 +500,18 @@ amqp_query(Name, State) ->
     Payload = [{<<"Name">>, Name}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
-    lager:debug("querying cluster for ~p", [Name]),
+
     case kz_amqp_worker:call_collect(Payload, ?AMQP_QUERY_FUN, ?AMQP_CALL_SCOPE) of
-        {'ok', []} -> 'undefined';
-        {'ok', [JObj]} ->
-            Global = from_json(JObj, State),
-            register_remote(Global);
-        {'timeout', [JObj]} ->
-            Global = from_json(JObj, State),
-            register_remote(Global);
-        {'timeout', []} ->
-            'undefined';
         {'error', Error} ->
             lager:error("error '~p' calling register ~p", [Error, Name]),
-            'undefined'
+            'undefined';
+        {_, []} ->
+            lager:debug("cluster didn't know ~p", [Name]),
+            'undefined';
+        {_, [JObj]} ->
+            lager:debug("cluster knew ~p: ~p", [Name, JObj]),
+            Global = from_json(JObj, State),
+            register_remote(Global)
     end.
 
 -spec handle_amqp_call(kz_json:object(), kz_proplist()) -> 'ok'.
