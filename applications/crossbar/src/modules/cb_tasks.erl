@@ -33,10 +33,9 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.tasks">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.tasks">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.tasks">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.get.tasks">>, ?MODULE, 'get'),
-    _ = crossbar_bindings:bind(<<"*.put.tasks">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"*.patch.tasks">>, ?MODULE, 'patch'),
-    _ = crossbar_bindings:bind(<<"*.delete.tasks">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.execute.put.tasks">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.tasks">>, ?MODULE, 'patch'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.tasks">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @private
@@ -133,13 +132,15 @@ put(Context) ->
     F = kz_util:to_atom(BinF, 'true'),
     A = kz_json:get_list_value(<<"arguments">>, ReqData),
     case kz_tasks:new(M, F, A) of
-        {'ok', Task} -> crossbar_util:response(Task, Context);
+        {'ok', TaskId} ->
+            JObj = kz_json:from_list([{<<"id">>, TaskId}]),
+            crossbar_util:response(JObj, Context);
         {'error', {'no_module', _M}} ->
             crossbar_util:response_bad_identifier(BinM, Context);
         {'error', {'no_function', _M, _F, Arity}} ->
             BinA = integer_to_binary(Arity),
-            Msg = kz_json:from_list([{<<"message">>, <<"no such function">>}
-                                    ,{<<"cause">>, <<BinM/binary, ":", BinF/binary, "/", BinA/binary>>}
+            Msg = kz_json:from_list([{<<"cause">>, <<"no such function">>}
+                                    ,{<<"M:F/A">>, <<BinM/binary, ":", BinF/binary, "/", BinA/binary>>}
                                     ]),
             cb_context:add_system_error('bad_identifier', Msg, Context)
     end.
