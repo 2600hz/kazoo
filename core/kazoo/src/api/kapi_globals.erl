@@ -59,10 +59,11 @@ maybe_encode(Term) ->
 
 -spec maybe_decode(term()) -> term().
 maybe_decode(<<131, _/binary>>=Encoded) ->
-    decode(Encoded);
+    binary_to_term(Encoded);
 maybe_decode(MaybeEncoded) ->
     try base64:decode(MaybeEncoded) of
-        Decoded -> binary_to_term(Decoded)
+        Decoded ->
+            binary_to_term(Decoded)
     catch
         'error':'function_clause' -> MaybeEncoded;
         'error':{'badmatch','false'} -> MaybeEncoded
