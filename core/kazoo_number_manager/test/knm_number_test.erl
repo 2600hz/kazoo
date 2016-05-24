@@ -8,7 +8,7 @@
 -module(knm_number_test).
 
 -include_lib("eunit/include/eunit.hrl").
--include("knm.hrl").
+-include_lib("kazoo_number_manager/include/knm.hrl").
 
 get_available_test_() ->
     [fun available_as_owner/0

@@ -19,7 +19,7 @@
 -export([generate_numbers/3]).
 -export([import_numbers/2]).
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/include/knm.hrl").
 
 -define(KZ_MANAGED, <<"numbers%2Fmanaged">>).
 -define(MANAGED_VIEW_FILE, <<"views/managed.json">>).

@@ -25,7 +25,7 @@
          ,code_change/3
         ]).
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/include/knm.hrl").
 
 -define(DISCOVERY_EXPIRY
         ,kapps_config:get_integer(?KNM_CONFIG_CAT, <<"discovery_expiry_d">>, 90)

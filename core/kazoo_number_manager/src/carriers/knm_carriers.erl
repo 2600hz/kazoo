@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(knm_carriers).
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/include/knm.hrl").
 
 -export([find/1, find/2, find/3
          ,check/1, check/2

@@ -8,7 +8,7 @@
 -module(knm_carriers_find_test).
 
 -include_lib("eunit/include/eunit.hrl").
--include("knm.hrl").
+-include_lib("kazoo_number_manager/include/knm.hrl").
 
 find_local_test_() ->
     [{"Finding local numbers not supported"

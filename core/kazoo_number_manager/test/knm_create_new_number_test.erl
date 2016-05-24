@@ -8,7 +8,7 @@
 -module(knm_create_new_number_test).
 
 -include_lib("eunit/include/eunit.hrl").
--include("knm.hrl").
+-include_lib("kazoo_number_manager/include/knm.hrl").
 
 create_new_number_test_() ->
     Props = [{'auth_by', ?MASTER_ACCOUNT_ID}

@@ -10,7 +10,7 @@
 %%%-------------------------------------------------------------------
 -module(knm_gen_provider).
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/include/knm.hrl").
 
 -callback save(knm_number:knm_number()) ->
     knm_number:knm_number().

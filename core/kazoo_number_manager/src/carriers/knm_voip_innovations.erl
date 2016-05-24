@@ -21,7 +21,7 @@
 - export([soap_request/2]).  %% Only to pass compilation
 -endif.
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/include/knm.hrl").
 
 -define(KNM_VI_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".voip_innovations">>).
 

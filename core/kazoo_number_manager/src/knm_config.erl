@@ -6,7 +6,7 @@
          ,locality_url/0, locality_url/1
         ]).
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/include/knm.hrl").
 
 -define(LOCALITY_CONFIG_CAT, <<"number_manager.locality">>).
 

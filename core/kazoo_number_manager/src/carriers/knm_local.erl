@@ -18,7 +18,7 @@
 -export([is_number_billable/1]).
 -export([should_lookup_cnam/0]).
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/include/knm.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

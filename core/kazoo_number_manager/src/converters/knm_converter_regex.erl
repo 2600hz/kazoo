@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(knm_converter_regex).
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/include/knm.hrl").
 
 -export([normalize/1, normalize/2, normalize/3
          ,to_npan/1

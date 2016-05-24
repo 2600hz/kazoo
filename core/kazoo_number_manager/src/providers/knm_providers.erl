@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(knm_providers).
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/include/knm.hrl").
 
 -export([save/1]).
 -export([delete/1]).

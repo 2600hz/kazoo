@@ -23,7 +23,7 @@
 -export([parse_until/2]).
 -endif.
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/include/knm.hrl").
 
 -record(sip_uri, {scheme = 'sip' :: 'sip' | 'sips'
                   ,user :: ne_binary()

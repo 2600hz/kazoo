@@ -20,7 +20,7 @@
 
 -export([generate_numbers/3]).
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/include/knm.hrl").
 
 -define(KZ_INUM,<<"numbers%2Finum">>).
 -define(INUM_VIEW_FILE, <<"views/inum.json">>).
