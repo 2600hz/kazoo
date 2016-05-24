@@ -77,6 +77,8 @@ clean-release:
 
 build-release: $(RELX) clean-release rel/relx.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release --relname 'kazoo'
+build-dev-release: $(RELX) clean-release rel/relx.config rel/vm.args
+	$(RELX) --dev-mode true --config rel/relx.config -V 2 release --relname 'kazoo'
 build-ci-release: $(RELX) clean-release rel/relx.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release --relname 'kazoo' --sys_config rel/ci-sys.config
 tar-release: $(RELX) rel/relx.config rel/vm.args
