@@ -242,7 +242,7 @@ handle_call({'start_task', TaskId}, _From, State) ->
         [] -> ?REPLY_NOT_FOUND(State);
         [#{started := Started}]
           when Started /= 'undefined' ->
-            {'reply', {'error', 'alread_started'}, State};
+            {'reply', {'error', 'already_started'}, State};
         [#{m := M, f := F, a := A} = Task] ->
             case kz_task_worker:start_link(TaskId, M, F, A) of
                 {'ok', Pid} ->
