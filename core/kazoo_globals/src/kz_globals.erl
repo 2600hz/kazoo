@@ -134,7 +134,7 @@ send(Name, Msg) ->
 
 -spec whereis_name(kz_global:name()) -> api_pid().
 whereis_name(Name) ->
-    gen_listener:call(?SERVER, {'where_is', Name}, 'infinity').
+    gen_listener:call(?SERVER, {'where_is', Name}, ?MILLISECONDS_IN_DAY).
 
 -spec where_is(kz_global:name(), globals_state()) -> api_pid().
 where_is(Name, State) ->
@@ -154,7 +154,7 @@ where(Name) ->
 register_name(Name, Pid) ->
     case where(Name) of
         'undefined' ->
-            gen_listener:call(?SERVER, {'register', Name, Pid}, 'infinity');
+            gen_listener:call(?SERVER, {'register', Name, Pid}, ?MILLISECONDS_IN_DAY);
         _Pid -> 'no'
     end.
 
@@ -166,7 +166,7 @@ unregister_name(Name) ->
     case where(Name) of
         'undefined' -> 'ok';
         _Global ->
-            gen_listener:call(?SERVER, {'unregister', Name}, 'infinity')
+            gen_listener:call(?SERVER, {'unregister', Name}, ?MILLISECONDS_IN_DAY)
     end.
 
 -spec reconcile() -> [{pid(), 'ok'}].
@@ -240,8 +240,7 @@ handle_call({'where_is', Name}, _From, State) ->
 handle_call({'delete_remote', Pid}, _From, State) ->
     _ = delete_by_pid(Pid),
     {'reply', 'ok', State};
-handle_call({'insert_remote', JObj}, _From, State) ->
-    Global = from_json(JObj, State),
+handle_call({'insert_remote', Global}, _From, State) ->
     {'reply', register_remote(Global), State};
 handle_call({'register', Name, Pid}, _From, State) ->
     {'reply', amqp_register(Name, Pid, State), State};
@@ -421,13 +420,11 @@ do_amqp_register(Name, Pid, #state{}=State) ->
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     case kz_amqp_worker:call_collect(Payload, ?AMQP_REGISTER_FUN, ?AMQP_CALL_SCOPE) of
-        {'ok', JObjs} ->
-            amqp_register_check(JObjs, Name, Pid, State);
-        {'timeout', JObjs} ->
-            amqp_register_check(JObjs, Name, Pid, State);
         {'error', Error} ->
             lager:error("error '~p' calling register ~p", [Error, Name]),
-            'no'
+            'no';
+        {_, JObjs} ->
+            amqp_register_check(JObjs, Name, Pid, State)
     end.
 
 -spec amqp_register_check(kz_json:objects(), kz_global:name(), pid(), globals_state()) ->
@@ -458,6 +455,7 @@ advertise_register(Global) ->
     advertise_register(kz_global:name(Global)
                        ,kz_global:server(Global)
                       ).
+
 advertise_register(Name, Queue) ->
     Payload = [{<<"Name">>, Name}
               ,{<<"State">>, 'local'}
@@ -613,7 +611,7 @@ handle_amqp_register(JObj, _Props, 'pending') ->
 handle_amqp_register(JObj, Props, 'local') ->
     State = props:get_value('state', Props),
     Global = from_json(JObj, State),
-    gen_listener:cast(?SERVER, {'insert_remote', Global}).
+    gen_listener:call(?SERVER, {'insert_remote', Global}).
 
 -spec amqp_register_reply(kz_json:object()) -> 'ok'.
 amqp_register_reply(JObj) ->
@@ -683,6 +681,8 @@ delete_global(Global, _Reason, _Node) ->
     ets:delete(?TAB_NAME, kz_global:name(Global)).
 
 -spec remonitor_globals() -> 'ok'.
+-spec remonitor_globals('$end_of_table' | {[kz_global:global()], ets:continuation()}) ->
+                               'ok'.
 remonitor_globals() ->
     remonitor_globals(
       ets:select(kz_globals:table_id(), [{'_', [], ['$_']}], 1)
@@ -693,6 +693,8 @@ remonitor_globals({[Global], Continuation}) ->
     remonitor_global(Global),
     remonitor_globals(ets:select(Continuation)).
 
+-spec remonitor_global(kz_global:global()) -> 'true'.
+-spec remonitor_global(kz_global:global(), boolean(), boolean()) -> 'true'.
 remonitor_global(Global) ->
     remonitor_global(Global
                     ,erlang:is_process_alive(kz_global:pid(Global))
