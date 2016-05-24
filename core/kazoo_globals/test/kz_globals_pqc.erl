@@ -16,7 +16,11 @@
         ,correct_parallel/0
         ]).
 
--define(SERVER, ?MODULE).
+%% test helpers
+-export([remote_register/3]).
+
+-define(LOCAL_NODE, 0).
+-define(REMOTE_NODES, 1).
 
 correct() ->
     ?FORALL(Cmds
@@ -49,72 +53,132 @@ correct_parallel() ->
                          )
             end).
 
-initial_state() -> [].
+initial_state() ->
+    lists:foldl(fun add_node/2
+               ,maps:new()
+               ,lists:seq(?LOCAL_NODE,?REMOTE_NODES)
+               ).
+add_node(N, M) ->
+    M#{N => []}.
 
 command(_Registry) ->
     oneof([{'call', 'kz_globals', 'whereis_name', [name()]}
            ,{'call', 'kz_globals', 'register_name', [name(), self()]}
            ,{'call', 'kz_globals', 'unregister_name', [name()]}
            ,{'call', 'kz_globals', 'registered', []}
+          ,{'call', ?MODULE, 'remote_register', [remote_node(), name(), self()]}
+           %% ,{'call', ?MODULE, 'remote_unregister', [remote_node(), name(), self()]},
           ]).
 
 name() ->
-    %% oneof([kz_util:rand_hex_binary(4)
-    %%        || _ <- lists:seq(1,5)
-    %%       ]).
-    oneof([atom_for_name
-          ,{tuple, for, name}
+    oneof(['atom_for_name'
+          ,{'tuple', 'for', 'name'}
           ,<<"binary for name">>
           ,"list for name"
           ]).
 
+remote_node() ->
+    integer(1,?REMOTE_NODES).
+
 -define(REG(Name, Pid, State), {Name, Pid, State}).
 
-next_state(Registry, _V
+name_exists(Name, Registries) ->
+    lists:any(fun(R) ->
+                      'false' =/= lists:keysearch(Name, 1, R)
+              end
+             ,maps:values(Registries)
+             ).
+
+%% Remote Node updates
+next_state(Registries, _V
+           ,{'call', ?MODULE, 'remote_register', [Remote, Name, Pid]}
+          ) ->
+    case name_exists(Name, Registries) of
+        'true' -> Registries;
+        'false' ->
+            maps:fold(fun(Node, Registry, Acc) when Remote =:= Node ->
+                              Acc#{Node => [?REG(Name, Pid, 'local') | Registry]};
+                         (Node, Registry, Acc) ->
+                              Acc#{Node => [?REG(Name, Pid, 'remote') | Registry]}
+                      end
+                      ,maps:new()
+                      ,Registries
+                     )
+    end;
+
+%% Local Node State Changes
+next_state(Registries, _V
           ,{'call', 'kz_globals', 'whereis_name', [_Name]}
           ) ->
-    Registry;
-next_state(Registry, _V
+    Registries;
+next_state(Registries, _V
           ,{'call', 'kz_globals', 'register_name', [Name, Pid]}
           ) ->
-    NewReg =
-        case lists:keysearch(Name, 1, Registry) of
-            'false' ->
-                [?REG(Name, Pid, 'local') | Registry];
-            {'value', ?REG(Name, _, _)} ->
-                Registry
-        end,
-    NewReg;
-next_state(Registry, _V
+    case name_exists(Name, Registries) of
+        'true' -> Registries;
+        'false' ->
+            maps:fold(fun(Node, Registry, Acc) when ?LOCAL_NODE =:= Node ->
+                              Acc#{Node => [?REG(Name, Pid, 'local') | Registry]};
+                         (Node, Registry, Acc) ->
+                              Acc#{Node => [?REG(Name, Pid, 'remote') | Registry]}
+                      end
+                     ,maps:new()
+                     ,Registries
+                     )
+    end;
+next_state(#{?LOCAL_NODE := LocalRegistry}=Registries, _V
           ,{'call', 'kz_globals', 'unregister_name', [Name]}
           ) ->
-    NewReg =
-        case lists:keytake(Name, 1, Registry) of
-            'false' ->
-                Registry;
-            {'value', _Entry, NewRegistry} ->
-                NewRegistry
-        end,
-    NewReg;
-next_state(Registry, _V
+    case lists:keysearch(Name, 1, LocalRegistry) of
+        'false' -> Registries;
+        {'value', ?REG(Name, _Pid, 'local')} ->
+            maps:fold(fun(Node, Registry, Acc) ->
+                              Acc#{Node => lists:keydelete(Name, 1, Registry)}
+                      end
+                      ,maps:new()
+                      ,Registries
+                     );
+        {'value', ?REG(Name, _Pid, _State)} -> Registries
+    end;
+next_state(Registries, _V
           ,{'call', 'kz_globals', 'registered', []}
           ) ->
-    Registry.
+    Registries.
 
 %% precondiiton([], {'call', 'kz_globals', 'unregister_name', [_Name]}) -> 'false';
+precondition(#{?LOCAL_NODE := Registry}
+             ,{'call', 'kz_globals', 'unregister_name', [Name]}
+            ) ->
+    lager:debug("skpping unreg of ~p", [Name]),
+    case lists:keysearch(Name, 1, Registry) of
+        ?REG(Name, _Pid, 'local') -> 'true';
+        _ -> 'false'
+    end;
 precondition(_Registry, _Call) -> 'true'.
 
-postcondition(Registry
+postcondition(Registries
+              ,{'call', ?MODULE, 'remote_register', [_Remote, Name, _Pid]}
+              ,WasRegistered
+              ) ->
+    case name_exists(Name, Registries) of
+        'true' -> 'no' =:= WasRegistered;
+        'false' -> 'yes' =:= WasRegistered
+    end;
+
+%% Local Node Changes
+postcondition(#{?LOCAL_NODE := Registry}
              ,{'call', 'kz_globals', 'whereis_name', [Name]}
              ,WhereIsIt
              ) ->
     case lists:keysearch(Name, 1, Registry) of
         'false' ->
             'undefined' =:= WhereIsIt;
-        {'value', ?REG(Name, Pid, _)} ->
-            WhereIsIt =:= Pid
+        {'value', ?REG(Name, Pid, 'local')} ->
+            WhereIsIt =:= Pid;
+        {'value', ?REG(Name, _Pid, 'remote')} ->
+            'true'
     end;
-postcondition(Registry
+postcondition(#{?LOCAL_NODE := Registry}
              ,{'call', 'kz_globals', 'register_name', [Name, _Pid]}
              ,WasRegistered
              ) ->
@@ -129,20 +193,46 @@ postcondition(_Registry
              ,Unregister
              ) ->
     'ok' =:= Unregister;
-postcondition(Registry
+postcondition(#{?LOCAL_NODE := Registry}
              ,{'call', 'kz_globals', 'registered', []}
              ,Names
              ) ->
-    RegNames = [Name || ?REG(Name, _Pid, _State) <- Registry],
-    compare_names(RegNames, Names).
+    lager:debug("comparing ~p to reg ~p", [Names, Registry]),
+    compare_names(lists:keysort(1, Registry), lists:sort(Names)).
 
 compare_names([], []) -> 'true';
 compare_names([], _) -> 'false';
 compare_names(_, []) -> 'false';
-compare_names(RegNames, [Name | Names]) ->
-    case lists:member(Name, RegNames) of
-        'false' -> 'false';
-        'true' -> compare_names(lists:delete(Name, RegNames), Names)
+compare_names([?REG(Name, _, _)|Registry], [Name | Names]) ->
+    compare_names(Registry, Names);
+compare_names([?REG(_N, _, _)|_Reg], _Names) ->
+    lager:debug("failed to find ~p in ~p (~p)", [_N, _Names, _Reg]),
+    'false'.
+
+remote_register(Remote, Name, Pid) ->
+    Payload = [{<<"Name">>, Name}
+              ,{<<"State">>, 'pending'}
+              ,{<<"Node">>, list_to_binary([ Remote+$0, "@remote.host"])}
+               | kz_api:default_headers(<<"testing">>, <<"4.0.0">>)
+              ],
+    case kz_amqp_worker:call_collect(Payload, fun kapi_globals:publish_register/1) of
+        {'error', _} -> 'no';
+        {_, []} -> 'yes';
+        {_, JObjs} ->
+            case lists:all(fun kapi_globals:is_pending/1, JObjs) of
+                'true' -> remote_register_success(Remote, Name);
+                'false' -> 'no'
+            end
     end.
+
+remote_register_success(Remote, Name) ->
+    Payload = [{<<"Name">>, Name}
+              ,{<<"State">>, 'local'}
+              ,{<<"Node">>, list_to_binary([ Remote+$0, "@remote.host"])}
+               | kz_api:default_headers(<<>>, <<"testing">>, <<"4.0.0">>)
+              ],
+    kz_amqp_worker:cast(Payload, fun kapi_globals:publish_register/1),
+    timer:sleep(1000),
+    'yes'.
 
 -endif.
