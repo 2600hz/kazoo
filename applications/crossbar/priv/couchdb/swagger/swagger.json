@@ -1318,6 +1318,46 @@
             "required": true,
             "type": "object"
         },
+        "callflows.voicemail": {
+            "description": "Validator for the Voicemail callflow element",
+            "properties": {
+                "action": {
+                    "default": "compose",
+                    "description": "Whether to check voicemail box or compose a new voicemail message",
+                    "enum": [
+                        "check",
+                        "compose"
+                    ],
+                    "name": "Action",
+                    "required": false,
+                    "type": "string"
+                },
+                "id": {
+                    "description": "The ID of the voicemail box",
+                    "maxLength": 32,
+                    "minLength": 32,
+                    "name": "ID",
+                    "required": false,
+                    "type": "string"
+                },
+                "interdigit_timeout": {
+                    "default": 2000,
+                    "description": "The amount of time (in milliseconds) to wait for the caller to press the next digit after pressing a digit",
+                    "name": "Interdigit Timeout",
+                    "required": false,
+                    "type": "integer"
+                },
+                "max_message_length": {
+                    "default": 500,
+                    "description": "Max length of the message that caller can leave in voicemail box",
+                    "name": "Max Message Lenght",
+                    "required": false,
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
         "cccps": {
             "description": "Calling cards callback platform user's info",
             "id": "http://json-schema.org/draft-03/schema#",
@@ -8488,7 +8528,7 @@
                 }
             },
             "post": {
-                "description": "Change the folder of a list message",
+                "description": "Change a list message",
                 "produces": [
                     "application/json"
                 ],
@@ -8523,7 +8563,7 @@
                 }
             },
             "post": {
-                "description": "Change the folder of a message",
+                "description": "Change a message",
                 "produces": [
                     "application/json"
                 ],
