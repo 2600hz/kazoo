@@ -203,6 +203,8 @@ MR: Thoughts: place where stuff goes (wapi, documents, deps, etc etc and how it 
 
 ## Be Ego-less
 
+Pulled from [here](https://blog.codinghorror.com/the-ten-commandments-of-egoless-programming/)
+
 ### Understand and accept that you will make mistakes.
 
 The point is to find them early, before they make it into production. Fortunately, except for the few of us developing rocket guidance software at JPL, mistakes are rarely fatal in our industry, so we can, and should, learn, laugh, and move on.
