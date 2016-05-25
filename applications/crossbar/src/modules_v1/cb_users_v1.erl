@@ -245,7 +245,6 @@ validate(Context, UserId, ?CHANNELS) ->
     Options = [{'key', [UserId, <<"device">>]}
                ,'include_docs'
               ],
-    %% TODO: Using the kz_attributes from crossbar isn't exactly kosher
     Context1 = crossbar_doc:load_view(<<"kz_attributes/owned">>, Options, Context),
     case cb_context:has_errors(Context1) of
         'true' -> Context1;
