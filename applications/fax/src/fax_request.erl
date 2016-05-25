@@ -11,10 +11,9 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/2
-        ,handle_fax_event/2
-        ,handle_execute_complete/2
-        ]).
+-export([new_request/2]).
+
+-export([start_link/2]).
 
 %% gen_listener callbacks
 -export([init/1
@@ -24,6 +23,10 @@
          ,handle_event/2
          ,terminate/2
          ,code_change/3
+        ]).
+
+-export([handle_fax_event/2
+        ,handle_execute_complete/2
         ]).
 
 -include("fax.hrl").
@@ -434,7 +437,7 @@ end_receive_fax(JObj, #state{call=Call}=State) ->
 maybe_store_fax(JObj, #state{storage=#fax_storage{id=FaxId}}=State) ->
     case store_fax(JObj, State) of
         {'ok', FaxDoc} ->
-            lager:debug("fax stored successfully into ~s", [FaxId]),
+            lager:debug("fax stored successfully into ~s / ~s", [kz_doc:account_db(FaxDoc), FaxId]),
             store_attachment(State#state{fax_doc=FaxDoc, fax_result=JObj});
         {'error', Error} ->
             lager:debug("store fax other resp: ~p", [Error]),
@@ -642,3 +645,8 @@ send_status(#state{call=Call
                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     kapi_fax:publish_status(Payload).
+
+-spec new_request(kz_json:object(), kz_proplist()) -> sup_startchild_ret().
+new_request(JObj, _Props) ->
+    'true' = kapi_fax:req_v(JObj),
+    fax_requests_sup:new(kapps_call:from_json(kz_json:get_value(<<"Call">>, JObj)), JObj).

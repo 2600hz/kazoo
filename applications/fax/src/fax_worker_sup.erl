@@ -4,9 +4,9 @@
 %%%
 %%% @end
 %%% @contributors
-%%%   Pierre Fenoll
+%%%   Luis Azedo
 %%%-------------------------------------------------------------------
--module(fax_worker_pool_sup).
+-module(fax_worker_sup).
 
 -behaviour(supervisor).
 
@@ -14,18 +14,17 @@
 
 -define(SERVER, ?MODULE).
 
+-export([start_fax_job/1]).
+
 -export([start_link/0]).
 -export([init/1]).
 
--define(CHILDREN, [?WORKER_NAME_ARGS('poolboy', ?FAX_WORKER_POOL, [[{'name', {'local', ?FAX_WORKER_POOL}}
-                                                                    ,{'worker_module', 'fax_worker'}
-                                                                    ,{'size', kapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 5)}
-                                                                    ,{'max_overflow', 0}
-                                                                   ]
-                                                                  ]
-                                    )
-                  ]).
+-define(CHILDREN, [?WORKER_TYPE('fax_worker', 'transient')]).
 
+-spec start_fax_job(fax_job()) -> any().
+start_fax_job(FaxJob) ->
+    _ = supervisor:start_child(?MODULE, [FaxJob]),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -46,7 +45,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init(any()) -> sup_init_ret().
 init([]) ->
-    RestartStrategy = 'one_for_one',
+    RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 5,
 

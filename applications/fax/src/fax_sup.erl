@@ -33,12 +33,12 @@
 
 -define(CHILDREN, [?WORKER('fax_init')
                    ,?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
-                   ,?SUPER('fax_worker_pool_sup')
                    ,?SUPER('fax_requests_sup')
                    ,?SUPER('fax_xmpp_sup')
-                   ,?WORKER('fax_jobs')
+                   ,?SUPER('fax_jobs_sup')
+                   ,?SUPER('fax_worker_sup')
                    ,?WORKER('fax_shared_listener')
-                   ,?WORKER('fax_listener')
+                   ,?WORKER('fax_monitor')
                    ,?WORKER_ARGS('gen_smtp_server', ?SMTP_ARGS)
                   ]).
 
@@ -89,6 +89,6 @@ init([]) ->
     kz_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
-    MaxSecondsBetweenRestarts = 10,
+    MaxSecondsBetweenRestarts = 25,
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
     {'ok', {SupFlags, ?CHILDREN}}.

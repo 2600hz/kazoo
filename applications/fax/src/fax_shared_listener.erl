@@ -11,9 +11,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0
-         ,new_request/2
-        ]).
+-export([start_link/0]).
 
 %% gen_listener callbacks
 -export([init/1
@@ -56,15 +54,29 @@
                      ,{{'fax_cloud', 'handle_faxbox_deleted'}
                        ,[{<<"configuration">>, ?DOC_DELETED}]
                       }
-                     ,{{?MODULE, 'new_request'}
+                     ,{{'fax_request', 'new_request'}
                        ,[{<<"dialplan">>, <<"fax_req">>}]
+                      }
+                     ,{{'fax_jobs', 'handle_start_account'}
+                       ,[{<<"start">>, <<"account">>}]
+                      }
+                     ,{{'fax_worker', 'handle_start_job'}
+                       ,[{<<"start">>, <<"job">>}]
+                      }
+                     ,{{'fax_xmpp', 'handle_printer_start'}
+                      ,[{<<"xmpp_event">>, <<"start">>}]
+                     }
+                     ,{{'fax_xmpp', 'handle_printer_stop'}
+                       ,[{<<"xmpp_event">>, <<"stop">>}]
                       }
                     ]).
 
 -define(BINDINGS, [{'notifications', [{'restrict_to', ?NOTIFY_RESTRICT}]}
                    ,{'xmpp',[{'restrict_to',['push']}]}
+                   ,{'xmpp', [{'restrict_to', ['start']}, 'federate']}
                    ,{'conf',?FAXBOX_RESTRICT}
                    ,{'fax', [{'restrict_to', ['req']}]}
+                   ,{'fax', [{'restrict_to', ['start']}, 'federate']}
                    ,{'self', []}
                   ]).
 -define(QUEUE_NAME, <<"fax_shared_listener">>).
@@ -86,11 +98,6 @@ start_link() ->
                                       ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
                                       ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
                                      ], []).
-
--spec new_request(kz_json:object(), kz_proplist()) -> sup_startchild_ret().
-new_request(JObj, _Props) ->
-    'true' = kapi_fax:req_v(JObj),
-    fax_requests_sup:new(kapps_call:from_json(kz_json:get_value(<<"Call">>, JObj)), JObj).
 
 %%%===================================================================
 %%% gen_server callbacks

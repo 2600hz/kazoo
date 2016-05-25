@@ -88,8 +88,8 @@ handle_HELO(Hostname, State) ->
 -spec handle_EHLO(binary(), list(), state()) ->
                          {'ok', list(), state()} |
                          error_message().
-handle_EHLO(Hostname, Extensions, #state{options=Options}=State) ->
-    lager:debug("EHLO from ~s", [Hostname]),
+handle_EHLO(Hostname, Extensions, #state{options=Options, proxy = Proxy}=State) ->
+    lager:debug("EHLO from ~s with proxy ~s", [Hostname, Proxy]),
     %% You can advertise additional extensions, or remove some defaults
     MyExtensions = case props:get_is_true('auth', Options, 'false') of
                        'false' -> Extensions;

@@ -5,12 +5,16 @@
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
+%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(fax_worker).
 
 -behaviour(gen_listener).
 
 -export([start_link/1]).
+
+-export([handle_start_job/2]).
+
 -export([handle_tx_resp/2
          ,handle_fax_event/2
          ,handle_channel_destroy/2
@@ -28,10 +32,9 @@
 
 -include("fax.hrl").
 
--define(SERVER, ?MODULE).
+-define(SERVER(N), {'via', 'kz_globals', <<"fax_outbound_", N/binary>>}).
 
 -record(state, {queue_name :: api_binary()
-                ,pool :: api_pid()
                 ,job_id :: api_binary()
                 ,job :: api_object()
                 ,account_id :: api_binary()
@@ -40,13 +43,28 @@
                 ,pages  :: integer()
                 ,page = 0  :: integer()
                 ,file :: ne_binary()
+                ,callid :: ne_binary()
+                ,controller :: ne_binary()
+                ,stage :: api_binary()
                }).
 -type state() :: #state{}.
 
+-define(ORIGINATE_TIMEOUT, ?MILLISECONDS_IN_MINUTE).
+-define(NEGOTIATE_TIMEOUT, ?MILLISECONDS_IN_MINUTE).
+-define(PAGE_TIMEOUT, ?MILLISECONDS_IN_MINUTE * 6).
 
--define(BINDINGS, [{'self', []}
-                  ,{'fax', [{'restrict_to', ['query_status']}]}
-                  ]).
+-define(BINDINGS(CallId), [{'self', []}
+                           ,{'fax', [{'restrict_to', ['query_status']}]}
+                           ,{'call', [{'callid', CallId}
+                                      ,{'restrict_to', [<<"CHANNEL_FAX_STATUS">>
+                                                        ,<<"CHANNEL_DESTROY">>
+                                                        ,<<"CHANNEL_REPLACED">>
+                                                       ]
+                                       }
+                                     ]
+                            }
+                          ]).
+
 -define(RESPONDERS, [{{?MODULE, 'handle_tx_resp'}
                      ,[{<<"resource">>, <<"offnet_resp">>}]
                      }
@@ -99,7 +117,7 @@
                               "&& echo -n success"
                             >>).
 
--define(CALLFLOW_LIST, <<"callflow/listing_by_number">>).
+-define(CALLFLOW_LIST, <<"callflows/listing_by_number">>).
 -define(ENSURE_CID_KEY, <<"ensure_valid_caller_id">>).
 -define(DEFAULT_ENSURE_CID, kapps_config:get_is_true(?CONFIG_CAT, ?ENSURE_CID_KEY, 'true')).
 
@@ -110,14 +128,21 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(any()) -> startlink_ret().
-start_link(_) ->
-    gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS}
-                                      ,{'responders', ?RESPONDERS}
-                                      ,{'queue_name', ?QUEUE_NAME}
-                                      ,{'queue_options', ?QUEUE_OPTIONS}
-                                      ,{'consume_options', ?CONSUME_OPTIONS}
-                                     ], []).
+-spec start_link(fax_job()) -> startlink_ret().
+start_link(FaxJob) ->
+    CallId = kz_util:rand_hex_binary(16),
+    _JobId = kapi_fax:job_id(FaxJob),
+    AccountId = kapi_fax:account_id(FaxJob),
+    Number = knm_converters:normalize(kapi_fax:to_number(FaxJob), AccountId),
+    gen_listener:start_link(?SERVER(Number)
+                            ,?MODULE
+                            ,[{'bindings', ?BINDINGS(CallId)}
+                              ,{'responders', ?RESPONDERS}
+                              ,{'queue_name', ?QUEUE_NAME}
+                              ,{'queue_options', ?QUEUE_OPTIONS}
+                              ,{'consume_options', ?CONSUME_OPTIONS}
+                             ]
+                            ,[FaxJob, CallId]).
 
 -spec handle_tx_resp(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_tx_resp(JObj, Props) ->
@@ -167,8 +192,16 @@ handle_job_status_query(JObj, Props) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([]) ->
-    {'ok', #state{}}.
+init([FaxJob, CallId]) ->
+    CtrlQ = kz_api:server_id(FaxJob),
+    JobId = kapi_fax:job_id(FaxJob),
+    kz_util:put_callid(JobId),
+    {'ok', #state{callid = CallId
+                  ,job_id = JobId
+                  ,account_id = kapi_fax:account_id(FaxJob)
+                  ,controller = CtrlQ
+                 }
+    }.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -199,33 +232,34 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({'tx_resp', JobId, JObj}, #state{job_id=JobId
                                              ,job=Job
-                                             ,pool=Pid
                                             }=State) ->
     case kz_call_event:response_message(JObj) of
         <<"SUCCESS">> ->
             lager:debug("received successful attempt to originate fax, continue processing"),
             send_status(State, <<"received successful attempt to originate fax">>),
-            {'noreply', State#state{status = <<"negotiating">>}};
+            {'noreply', State#state{stage = ?FAX_NEGOTIATE
+                                   ,status = <<"negotiating">>
+                                   }, ?NEGOTIATE_TIMEOUT
+            };
         _Else ->
             lager:debug("received failed attempt to tx fax, releasing job: ~s", [_Else]),
             send_error_status(State, kz_call_event:error_message(JObj)),
             release_failed_job('tx_resp', JObj, Job),
-            gen_server:cast(Pid, {'job_complete', self()}),
-            {'noreply', reset(State)}
+            gen_server:cast(self(), 'stop'),
+            {'noreply', State}
     end;
 handle_cast({'tx_resp', JobId2, _}, #state{job_id=JobId}=State) ->
     lager:debug("received txresp for ~s but this JobId is ~s",[JobId2, JobId]),
     {'noreply', State};
 handle_cast({'channel_destroy', JobId, JObj}, #state{job_id=JobId
                                                     ,job=Job
-                                                    ,pool=Pid
                                                     ,fax_status='undefined'
                                                     }=State) ->
     lager:debug("received channel destroy for ~s : ~p",[JobId, JObj]),
     send_error_status(State, kz_call_event:hangup_cause(JObj)),
     _ = release_failed_job('channel_destroy', JObj, Job),
-    gen_server:cast(Pid, {'job_complete', self()}),
-    {'noreply', reset(State)};
+    gen_server:cast(self(), 'stop'),
+    {'noreply', State};
 handle_cast({'channel_destroy', JobId, _JObj}, #state{job_id=JobId}=State) ->
     lager:debug("ignoring received channel destroy for ~s",[JobId]),
     {'noreply', State};
@@ -239,8 +273,10 @@ handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}, State) ->
     Status = list_to_binary(["Fax negotiated at ", kz_util:to_list(TransferRate)]),
     send_status(State, Status, Data),
     {'noreply', State#state{status=Status
-                            ,fax_status=Data
-                           }};
+                           ,fax_status=Data
+                           ,stage = ?FAX_SEND
+                           }, ?PAGE_TIMEOUT
+    };
 handle_cast({'fax_status', <<"pageresult">>, JobId, JObj}
             ,#state{pages=Pages}=State
            ) ->
@@ -254,11 +290,11 @@ handle_cast({'fax_status', <<"pageresult">>, JobId, JObj}
     {'noreply', State#state{page=Page
                            ,status=Status
                            ,fax_status=Data
-                           }};
+                           }, ?PAGE_TIMEOUT
+    };
 handle_cast({'fax_status', <<"result">>, JobId, JObj}
            ,#state{job_id=JobId
                   ,job=Job
-                  ,pool=Pid
                   }=State
            ) ->
     Data = kz_call_event:application_data(JObj),
@@ -270,8 +306,8 @@ handle_cast({'fax_status', <<"result">>, JobId, JObj}
             send_status(State, <<"Error sending fax">>, ?FAX_ERROR, Data),
             release_failed_job('fax_result', JObj, Job)
     end,
-    gen_server:cast(Pid, {'job_complete', self()}),
-    {'noreply', reset(State)};
+    gen_server:cast(self(), 'stop'),
+    {'noreply', State};
 handle_cast({'fax_status', Event, JobId, _}, State) ->
     lager:debug("fax status ~s - ~s event not handled",[JobId, Event]),
     {'noreply', State};
@@ -290,41 +326,31 @@ handle_cast({'query_status', JobId, Queue, MsgId, _JObj}, State) ->
     Status = list_to_binary(["Fax ", JobId, " not being processed by this Queue"]),
     send_reply_status(Queue, MsgId, JobId, Status, <<"*">>,'undefined'),
     {'noreply', State};
-handle_cast({_, Pid, _}, #state{queue_name='undefined'}=State) when is_pid(Pid) ->
-    lager:debug("worker received request with unknown queue name, rejecting", []),
-    gen_server:cast(Pid, {'job_complete', self()}),
-    {'noreply', State};
-handle_cast({_, Pid, _}, #state{job_id=JobId}=State) when is_binary(JobId),
-                                                          is_pid(Pid) ->
-    lager:debug("worker received request while still processing a job, rejecting"),
-    gen_server:cast(Pid, {'job_complete', self()}),
-    {'noreply', State};
-handle_cast({'attempt_transmission', Pid, Job}, #state{queue_name=Q}=State) ->
-    JobId = kz_doc:id(Job),
-    kz_util:put_callid(JobId),
+handle_cast('attempt_transmission', #state{job_id = JobId
+                                           ,queue_name=Q
+                                           ,controller=CtrlQ
+                                          }=State) ->
     case attempt_to_acquire_job(JobId, Q) of
         {'ok', JObj} ->
             lager:debug("acquired job ~s", [JobId]),
             Status = <<"preparing">>,
-            NewState = State#state{job_id = JobId
-                                  ,pool = Pid
-                                  ,job = JObj
-                                  ,account_id = kz_doc:account_id(JObj)
+            NewState = State#state{job = JObj
                                   ,status = Status
                                   ,page = 0
                                   ,fax_status = 'undefined'
+                                  ,stage = ?FAX_ACQUIRE
                                   },
             send_status(NewState, <<"job acquired">>, ?FAX_START, 'undefined'),
+            send_control_status(CtrlQ, Q, JobId, ?FAX_START),
             gen_server:cast(self(), 'prepare_job'),
             {'noreply', NewState};
-        {'error', _Reason} ->
-            lager:debug("failed to acquire job ~s: ~p", [JobId, _Reason]),
-            gen_server:cast(Pid, {'job_complete', self()}),
-            {'noreply', reset(State)}
+        {'error', Reason} ->
+            lager:debug("failed to acquire job ~s: ~p", [JobId, Reason]),
+            gen_server:cast(self(), 'stop'),
+            {'noreply', State}
     end;
 handle_cast('prepare_job', #state{job_id=JobId
                                  ,job=JObj
-                                 ,pool=Pid
                                  }=State) ->
     send_status(State, <<"fetching document to send">>, ?FAX_PREPARE, 'undefined'),
     case fetch_document(JObj) of
@@ -334,8 +360,8 @@ handle_cast('prepare_job', #state{job_id=JobId
                 {'error', Cause} ->
                     send_error_status(State, Cause),
                     release_failed_job('bad_file', Cause, JObj),
-                    gen_server:cast(Pid, {'job_complete', self()}),
-                    {'noreply', reset(State)};
+                    gen_server:cast(self(), 'stop'),
+                    {'noreply', State};
                 {'ok', OutputFile} ->
                     gen_server:cast(self(), 'count_pages'),
                     {'noreply', State#state{file=OutputFile}}
@@ -344,14 +370,14 @@ handle_cast('prepare_job', #state{job_id=JobId
             lager:debug("failed to fetch file for job: http response ~p", [Status]),
             _ = send_error_status(State, integer_to_binary(Status)),
             release_failed_job('fetch_failed', Status, JObj),
-            gen_server:cast(Pid, {'job_complete', self()}),
-            {'noreply', reset(State)};
+            gen_server:cast(self(), 'stop'),
+            {'noreply', State};
         {'error', Reason} ->
             lager:debug("failed to fetch file for job: ~p", [Reason]),
             send_error_status(State, <<"failed to fetch file for job">>),
             release_failed_job('fetch_error', Reason, JObj),
-            gen_server:cast(Pid, {'job_complete', self()}),
-            {'noreply', reset(State)}
+            gen_server:cast(self(), 'stop'),
+            {'noreply', State}
     end;
 handle_cast('count_pages', #state{file=File
                                  ,job=JObj
@@ -376,30 +402,35 @@ handle_cast('count_pages', #state{file=File
 handle_cast('send', #state{job_id=JobId
                           ,job=JObj
                           ,queue_name=Q
+                          ,callid=CallId
                           }=State) ->
     send_status(State, <<"ready to send">>, ?FAX_SEND, 'undefined'),
-    send_fax(JobId, JObj, Q),
-    {'noreply', State};
+    send_fax(JobId, kz_json:set_value(<<"Call-ID">>, CallId, JObj), Q),
+    {'noreply', State#state{stage=?FAX_ORIGINATE}, ?ORIGINATE_TIMEOUT};
 handle_cast({'error', 'invalid_number', Number}, #state{job=JObj
-                                                       ,pool=Pid
                                                        }=State) ->
     send_error_status(State, <<"invalid fax number">>),
     release_failed_job('invalid_number', Number, JObj),
-    gen_server:cast(Pid, {'job_complete', self()}),
-    {'noreply', reset(State)};
+    gen_server:cast(self(), 'stop'),
+    {'noreply', State};
 handle_cast({'error', 'invalid_cid', Number}, #state{job=JObj
-                                                    ,pool=Pid
                                                     }=State) ->
     send_error_status(State, <<"invalid fax cid number">>),
     release_failed_job('invalid_cid', Number, JObj),
-    gen_server:cast(Pid, {'job_complete', self()}),
-    {'noreply', reset(State)};
+    gen_server:cast(self(), 'stop'),
+    {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', QueueName}}, State) ->
     lager:debug("fax worker discovered queue name ~s", [QueueName]),
+    gen_server:cast(self(), 'attempt_transmission'),
     {'noreply', State#state{queue_name=QueueName}};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     lager:debug("fax worker is consuming : ~p", [_IsConsuming]),
     {'noreply', State};
+handle_cast('stop', #state{stage='undefined'}=State) ->
+    {'stop', 'normal', State};
+handle_cast('stop', #state{job_id=JobId, controller=CtrlQ, queue_name=Q}=State) ->
+    send_control_status(CtrlQ, Q, JobId, ?FAX_END),
+    {'stop', 'normal', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -414,13 +445,12 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info('job_timeout', #state{job=JObj}=State) ->
-    release_failed_job('job_timeout', 'undefined', JObj),
-    {'noreply', reset(State)};
-%% handle_info({'EXIT', _, 'normal'}, State) ->
-%%     {stop, normal, State};
-%% handle_info({'EXIT', _, 'shutdown'}, State) ->
-%%     {stop, 'shutdown', State};
+handle_info('timeout', #state{stage='undefined'}=State) ->
+    {'noreply', State};
+handle_info('timeout', #state{stage=Stage, job=JObj}=State) ->
+    release_failed_job('job_timeout', Stage, JObj),
+    gen_server:cast(self(), 'stop'),
+    {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("fax worker unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -543,6 +573,19 @@ release_failed_job('fetch_error', {Cause, _}, JObj) ->
               ,{<<"fax_error_correction">>, 'false'}
              ],
     release_job(Result, JObj);
+release_failed_job('fetch_error', Error, JObj) ->
+    Msg = kz_util:to_binary(io_lib:format("could not connect to document URL: ~s", [Error])),
+    Result = [{<<"success">>, 'false'}
+              ,{<<"result_code">>, 0}
+              ,{<<"result_text">>, Msg}
+              ,{<<"pages_sent">>, 0}
+              ,{<<"time_elapsed">>, elapsed_time(JObj)}
+              ,{<<"fax_bad_rows">>, 0}
+              ,{<<"fax_speed">>, 0}
+              ,{<<"fax_receiver_id">>, <<>>}
+              ,{<<"fax_error_correction">>, 'false'}
+             ],
+    release_job(Result, JObj);
 release_failed_job('tx_resp', Resp, JObj) ->
     Msg = kz_json:get_first_defined([<<"Error-Message">>, <<"Response-Message">>], Resp),
     <<"sip:", Code/binary>> = kz_json:get_value(<<"Response-Code">>, Resp, <<"sip:500">>),
@@ -587,10 +630,12 @@ release_failed_job('fax_result', Resp, JObj) ->
                 | fax_util:fax_properties(kz_json:get_value(<<"Application-Data">>, Resp, Resp))
                ]),
     release_job(Result, JObj, Resp);
-release_failed_job('job_timeout', _Error, JObj) ->
+release_failed_job('job_timeout', 'undefined', JObj) ->
+    release_failed_job('job_timeout', <<"undefined">>, JObj);
+release_failed_job('job_timeout', Reason, JObj) ->
     Result = [{<<"success">>, 'false'}
               ,{<<"result_code">>, 500}
-              ,{<<"result_text">>, <<"fax job timed out">>}
+              ,{<<"result_text">>, <<"fax job timed out - ", Reason/binary>>}
               ,{<<"pages_sent">>, 0}
               ,{<<"time_elapsed">>, elapsed_time(JObj)}
               ,{<<"fax_bad_rows">>, 0}
@@ -938,7 +983,7 @@ send_fax(JobId, JObj, Q, ToDID) ->
     IgnoreEarlyMedia = kz_util:to_binary(kapps_config:get_is_true(?CONFIG_CAT, <<"ignore_early_media">>, 'false')),
     ToNumber = kz_util:to_binary(kz_json:get_value(<<"to_number">>, JObj)),
     ToName = kz_util:to_binary(kz_json:get_value(<<"to_name">>, JObj, ToNumber)),
-    CallId = kz_util:rand_hex_binary(16),
+    CallId = kz_json:get_value(<<"Call-ID">>, JObj),
     ETimeout = kz_util:to_binary(kapps_config:get_integer(?CONFIG_CAT, <<"endpoint_timeout">>, 40)),
     AccountId =  kz_doc:account_id(JObj),
     AccountRealm = kz_util:get_account_realm(AccountId),
@@ -968,12 +1013,6 @@ send_fax(JobId, JObj, Q, ToDID) ->
                  ,{<<"Bypass-E164">>, kz_json:is_true(<<"bypass_e164">>, JObj)}
                  | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
                 ]),
-    gen_listener:add_binding(self(), 'call', [{'callid', CallId}
-                                              ,{'restrict_to', [<<"CHANNEL_FAX_STATUS">>
-                                                                ,<<"CHANNEL_DESTROY">>
-                                                                ,<<"CHANNEL_REPLACED">>
-                                                               ]}
-                                             ]),
     lager:debug("sending fax originate request ~s with call-id ~s", [JobId, CallId]),
     kapi_offnet_resource:publish_req(Request).
 
@@ -1014,15 +1053,6 @@ get_proxy_url(JobId) ->
     Hostname = kz_network_utils:get_hostname(),
     Port = kapps_config:get_binary(?CONFIG_CAT, <<"port">>),
     list_to_binary(["http://", Hostname, ":", Port, "/fax/", JobId, ".tiff"]).
-
--spec reset(state()) -> state().
-reset(State) ->
-    kz_util:put_callid(?LOG_SYSTEM_ID),
-    State#state{job_id = 'undefined'
-                ,job = 'undefined'
-                ,pool = 'undefined'
-                ,page = 0
-               }.
 
 -spec send_status(state(), ne_binary()) -> any().
 send_status(State, Status) ->
@@ -1072,3 +1102,17 @@ send_reply_status(Q, MsgId, JobId, Status, AccountId, JObj) ->
                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     kapi_fax:publish_targeted_status(Q, Payload).
+
+-spec send_control_status(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+send_control_status(CtrlQ, Q, JobId, FaxState) ->
+    Payload = [{<<"Job-ID">>, JobId}
+              ,{<<"Fax-State">>, FaxState}
+              | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+              ],
+    Publisher = fun(P) -> kapi_fax:publish_targeted_status(CtrlQ, P) end,
+    kz_amqp_worker:cast(Payload, Publisher).
+
+-spec handle_start_job(kz_json:object(), kz_proplist()) -> 'ok'.
+handle_start_job(JObj, _Props) ->
+    'true' = kapi_fax:start_job_v(JObj),
+    fax_worker_sup:start_fax_job(JObj).
