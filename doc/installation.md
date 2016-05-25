@@ -28,7 +28,7 @@ $ chmod a+x kerl
 $ mv kerl /usr/bin
 $ kerl list releases
 $ kerl build 18.2 r18.2 # this takes a while
-$ kerl install r18.2 /usr/lib/erlang
+$ kerl install r18.2 /usr/local/erlang
 $ . /usr/lib/erlang/activate
 ```
 
