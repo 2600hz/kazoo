@@ -21,6 +21,8 @@
          ,update_message_doc/2, update_message_doc/3, bulk_update/3
          ,find_message_differences/3
 
+         ,to_another_vmbox/4
+
          ,get_db/1, get_db/2
          ,get_range_view/2
 
@@ -423,7 +425,7 @@ maybe_set_folder(_FromFolder, ToFolder, MessageId, AccountId, _) ->
 %%--------------------------------------------------------------------
 -spec update_folder(ne_binary(), ne_binary() | ne_binaries(), ne_binary()) -> db_ret().
 update_folder(Folder, MessageId, AccountId) ->
-    update_folder(Folder, 'undefined', MessageId, AccountId).
+    update_folder(Folder, MessageId, AccountId, 'undefined').
 
 -spec update_folder(ne_binary(), ne_binary() | ne_binaries(), ne_binary(), ne_binary()) -> db_ret().
 update_folder(_, _, 'undefined', _) ->
@@ -629,26 +631,17 @@ update_media_id(MediaId, JObj) ->
     Metadata = kzd_box_message:set_media_id(MediaId, kzd_box_message:metadata(JObj)),
     kzd_box_message:set_metadata(Metadata, JObj).
 
--spec cleanup_moved_msgs(ne_binary(), ne_binary(), ne_binaries()) -> 'ok'.
+-spec cleanup_moved_msgs(ne_binary(), ne_binary(), ne_binaries()) -> 'ok' | db_ret().
 cleanup_moved_msgs(_, _, []) -> 'ok';
 cleanup_moved_msgs(AccountId, BoxId, OldIds) ->
     AccountDb = get_db(AccountId),
-    _ = kz_datamgr:del_docs(AccountDb, OldIds),
-    _ = remove_moved_msgs_from_vmbox(AccountId, BoxId, OldIds),
-    'ok'.
-
--spec remove_moved_msgs_from_vmbox(ne_binary(), ne_binary(), ne_binaries()) -> db_ret().
-remove_moved_msgs_from_vmbox(AccountId, BoxId, OldIds) ->
-    case kz_datamgr:open_cache_doc(AccountId, BoxId, kzd_voicemail_box:type()) of
+    case kz_datamgr:open_cache_doc(AccountDb, BoxId) of
         {'ok', VMBox} ->
             Messages = kz_json:get_value(?VM_KEY_MESSAGES, VMBox, []),
-            NewMessages = lists:filter(fun(M) ->
-                                           not lists:member(kzd_box_message:media_id(M), OldIds)
-                                       end
-                                       ,Messages
-                                      ),
+            FilterFun = fun(M) -> not lists:member(kzd_box_message:media_id(M), OldIds) end,
+            NewMessages = lists:filter(FilterFun, Messages),
             NewBoxJObj = kz_json:set_value(?VM_KEY_MESSAGES, NewMessages, VMBox),
-            case ?RETRY_CONFLICT(kz_datamgr:save_doc(get_db(AccountId), NewBoxJObj)) of
+            case ?RETRY_CONFLICT(kz_datamgr:save_doc(AccountDb, NewBoxJObj)) of
                 {'ok', _}=OK -> OK;
                 {'error', _R}=E ->
                     lager:error("could not update mailbox messages array after moving voicemail messages to MODb ~s: ~s", [BoxId, _R]),
@@ -658,6 +651,28 @@ remove_moved_msgs_from_vmbox(AccountId, BoxId, OldIds) ->
             lager:error("unable to open mailbox for update messages array after moving voicemail messages to MODb ~s: ~s", [BoxId, _R]),
             E
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc Move messages to another vmbox
+%% @end
+%%--------------------------------------------------------------------
+-spec to_another_vmbox(ne_binary(), ne_binary() | ne_binaries(), ne_binary(), ne_binary()) ->
+                                {kz_json:objects(), ne_binary(), ne_binary()}.
+to_another_vmbox(AccountId, MsgIds, OldBoxId, NewBoxId) when is_list(MsgIds) ->
+    AccountDb = get_db(AccountId),
+    {'ok', OBox} = kz_datamgr:open_cache_doc(AccountDb, OldBoxId),
+    {'ok', NBox} = kz_datamgr:open_cache_doc(AccountDb, NewBoxId),
+    OldOwnerId = kz_json:get_value(<<"owner_id">>, OBox),
+    NewOwnerId = kz_json:get_value(<<"owner_id">>, NBox),
+
+    Funs = [fun(JObj) -> kzd_box_message:set_source_id(NewBoxId, JObj) end
+            ,fun(JObj) -> apply_folder(?VM_FOLDER_NEW, JObj) end
+           ],
+    Moved = bulk_update(AccountId, OldBoxId, MsgIds, Funs),
+    {Moved, OldOwnerId, NewOwnerId};
+to_another_vmbox(AccountId, MsgId, OldBoxId, NewBoxId) ->
+    to_another_vmbox(AccountId, [MsgId], OldBoxId, NewBoxId).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -997,9 +1012,9 @@ get_caller_id_name(Call) ->
     CallerIdName = kapps_call:caller_id_name(Call),
     case kapps_call:kvs_fetch('prepend_cid_name', Call) of
         'undefined' -> CallerIdName;
-        Prepend -> Pre = <<(kz_util:to_binary(Prepend))/binary, CallerIdName/binary>>,
-                   kz_util:truncate_right_binary(Pre,
-                           kzd_schema_caller_id:external_name_max_length())
+        Prepend ->
+            Pre = <<(kz_util:to_binary(Prepend))/binary, CallerIdName/binary>>,
+            kz_util:truncate_right_binary(Pre, kzd_schema_caller_id:external_name_max_length())
     end.
 
 -spec get_caller_id_number(kapps_call:call()) -> ne_binary().
@@ -1007,9 +1022,9 @@ get_caller_id_number(Call) ->
     CallerIdNumber = kapps_call:caller_id_number(Call),
     case kapps_call:kvs_fetch('prepend_cid_number', Call) of
         'undefined' -> CallerIdNumber;
-        Prepend -> Pre = <<(kz_util:to_binary(Prepend))/binary, CallerIdNumber/binary>>,
-                   kz_util:truncate_right_binary(Pre,
-                           kzd_schema_caller_id:external_name_max_length())
+        Prepend ->
+            Pre = <<(kz_util:to_binary(Prepend))/binary, CallerIdNumber/binary>>,
+            kz_util:truncate_right_binary(Pre, kzd_schema_caller_id:external_name_max_length())
     end.
 
 %%--------------------------------------------------------------------

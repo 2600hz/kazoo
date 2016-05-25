@@ -11,10 +11,10 @@
 -export([new/0, new/6, build_metadata_object/6
          ,count_folder/2, normalize_count/1
          ,type/0
-         ,folder/1, folder/2, set_folder/2, set_folder_saved/1, set_folder_deleted/1, filter_folder/2
+         ,folder/1, folder/2, set_folder/2, set_folder_new/1, set_folder_saved/1, set_folder_deleted/1, filter_folder/2
          ,media_id/1, set_media_id/2
          ,metadata/1, metadata/2, set_metadata/2
-         ,source_id/1
+         ,source_id/1, set_source_id/2
          ,utc_seconds/1
         ]).
 
@@ -150,6 +150,10 @@ folder(JObj, Default) ->
 set_folder(Folder, JObj) ->
     kz_json:set_value(?VM_KEY_FOLDER, Folder, JObj).
 
+-spec set_folder_new(doc()) -> doc().
+set_folder_new(JObj) ->
+    kz_json:set_value(?VM_KEY_FOLDER, ?VM_FOLDER_NEW, JObj).
+
 -spec set_folder_saved(doc()) -> doc().
 set_folder_saved(JObj) ->
     kz_json:set_value(?VM_KEY_FOLDER, ?VM_FOLDER_SAVED, JObj).
@@ -185,6 +189,10 @@ utc_seconds(JObj) ->
 -spec source_id(doc()) -> ne_binary().
 source_id(JObj) ->
     kz_json:get_value(?KEY_SOURCE_ID, JObj).
+
+-spec set_source_id(api_binary(), doc()) -> doc().
+set_source_id(SourceId, JObj) ->
+    kz_json:set_value(?KEY_SOURCE_ID, SourceId, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
