@@ -1364,7 +1364,7 @@ maybe_set_trial_expires(JObj) ->
 -spec set_trial_expires(kz_json:object()) -> kz_json:object().
 set_trial_expires(JObj) ->
     TrialTime = kapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"trial_time">>, ?SECONDS_IN_DAY * 14),
-    Expires = kz_util:now_s(kz_util:now()) + TrialTime,
+    Expires = kz_util:current_tstamp() + TrialTime,
     kz_account:set_trial_expiration(JObj, Expires).
 
 
