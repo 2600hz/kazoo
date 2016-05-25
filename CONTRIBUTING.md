@@ -155,6 +155,11 @@ Here are some general guidelines for submitting new code.
 * Follow the guidelines for writing good commit messages.
 * Do not commit commented-out code or files that are no longer needed.
 * Check for unnecessary whitespace before committing with git diff --check.
+* Use `make ci` to run the continuous integration suite to provide feedback without having to wait for Travis.
+  * When you issue a pull request against Kazoo, a job on Travis will be queued up to run the various automated checks we use to catch issues.
+  * 2600Hz won't review a pull request until Travis green lights it as passing the bare minimum.
+  * Any failed Travis job will result in you needing to address the issues and updating the PR.
+  * Avoid these delays in acceptance by running the CI suite yourself prior to submitting
 * All pull requests should be issued to resolve a Jira ticket. The branch name of the submission should be Jira ticket ID, such as KAZOO-42.
 * Ensure that each pull request addresses only the work related to the ticket it is resolving.
 * Keep the changes in a pull request as concise as possible. If the pull request is a bug fix it should be the simplest possible approach with minimal code changes.
