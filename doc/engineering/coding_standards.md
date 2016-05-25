@@ -22,7 +22,7 @@ Some of the highlights:
 * Use your spacebar
   * Surround operators and commas with spaces.
 * No Trailing Whitespace
-  * Remove trailing whitespaces from your lines
+  * Remove trailing whitespace from your lines
 * Avoid deep nesting
   * Avoid nesting case or any conditionals.  If nesting is required do not exceed three levels.  It is better to call a well-named function to encapsulate the decision making of the inner case.
 * Do not use if statements.
@@ -95,7 +95,7 @@ Some 2600Hz specifics:
     * The use of plural to singular.  For example, `process_accounts` calls to `process_account` for each account.
     * The use of `maybe_X` executing `X` if a condition is met.  For example, `maybe_process_accounts` calls to `process_accounts` if there are accounts present in the system.
 * Never introduce a single letter variable.
-  * It is marginally acceptable to use a single letter in “inner” scope variables but they should match the first letter of a fully named variable they are shadowing. For example, in the predicate function it is ok to use `A` to represent `Account` if the `Account` variable is used outside the predicate.
+  * It is marginally acceptable to use a single letter in “inner” scope variables but they should match the first letter of a fully named variable they are shadowing. For example, in the predicate function it is OK to use `A` to represent `Account` if the `Account` variable is used outside the predicate.
 * Do not chain functions
   * Do not call the next function of a sequence of functions from the previous function.
   * If you need to chain functions together to make a sequence fold over a list of functions.
@@ -151,7 +151,7 @@ Here are some general guidelines for submitting new code.
 * Do not commit commented-out code or files that are no longer needed.
 * Check for unnecessary whitespace before committing with git diff --check.
 * All pull requests should be issued to resolve a Jira ticket.  The branch name of the submission should be Jira ticket ID, such as KAZOO-42.
-* Ensure that all each pull request addresses only the work related to the ticket it is resolving.
+* Ensure that each pull request addresses only the work related to the ticket it is resolving.
 * Keep the changes in a pull request as concise as possible.  If the pull request is a bug fix it should be the simplest possible approach with minimal code changes.
 * All work should be rebased to the originating branch prior to pull request submission.
 
@@ -215,7 +215,7 @@ Be open to it and accept it with a smile. Look at each change to your requiremen
 
 ### The only true authority stems from knowledge, not from position.
 
-Knowledge engenders authority, and authority engenders respect – so if you want respect in an egoless environment, cultivate knowledge.
+Knowledge engenders authority, and authority engenders respect – so if you want respect in an ego-less environment, cultivate knowledge.
 
 ### Fight for what you believe, but gracefully accept defeat.
 
@@ -229,8 +229,8 @@ Don't be the guy coding in the dark office emerging only to buy cola. The guy in
 
 As much as possible, make all of your comments positive and oriented to improving the code. Relate comments to local standards, program specs, increased performance, etc.
 
-MR: Always think about security; think twice when deciding to hardcode something that can be different in other regions/countries;
+MR: Always think about security; think twice when deciding to hard-code something that can be different in other regions/countries;
 
 ### Hold 2600Hz Accountable
 
-These are the standards that we set to ourselves as well as our partners.  As we push and the demands grow it is easy to forget some of these points in favour of speed or agility.  Occasional slips are marginally acceptable but we need to hold all those involved to the same standard.  If you see us not adhering to these guidelines call us out on it!  We welcome productive criticism!
+These are the standards that we set to ourselves as well as our partners.  As we push and the demands grow it is easy to forget some of these points in favor of speed or agility.  Occasional slips are marginally acceptable but we need to hold all those involved to the same standard.  If you see us not adhering to these guidelines call us out on it!  We welcome productive criticism!
