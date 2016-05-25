@@ -169,13 +169,17 @@ Here are some general guidelines for submitting new code.
 
 Bug fixes must never introduce new features.
 
-Bug fix branches must have originated from an updated version branch in the project which matches the affects version of the bug report. The pull request should be made against the version branch and all subsequent version branches including master.
+Bug fix branches must have originated from an updated version branch in the project which matches the `Affects` version of the bug ticket. The pull request should be made against the version branch and all subsequent version branches including master. For instance:
+
+* Ticket `KAZOO-0001` is a bug found affecting v4.0. You wish to fix the bug
+  1. Create a branch off the 4.0 branch: `git checkout -b KAZOO-0001 4.0`
+  2. Make the appropriate change(s) and commit: `git commit -m "KAZOO-0001: fixed X to do Y"`
+  3. Push `KAZOO-0001` to your Github repo and issue a PR against 2600hz/kazoo's 4.0 branch
+  4. Create appropriate pull requests for any version branches greater than your target, including the master branch. If 4.1 and 4.2 exist, create separate PRs for 4.1, 4.2, and master as well.
 
 All non-bug fix work branches must have originated from an updated master branch in the project and the pull request must be issued against the master branch.
 
-If the pull request was not for the master branch then all subsequent version branches must also have a pull request opened with the bug fix. It is acceptable to work with 2600Hz to organize a sequence of pull requests when more convenient (such as refactoring the pull request against 3.22 and re-opening it for master).
-
-A test should also be submitted to ensure that the bug is not accidentally reintroduced in the future.
+An appropriate test (unit, quickcheck, shell script) should also be submitted to ensure that the bug is not accidentally reintroduced in the future.
 
 ### New Functionality/Features Guidelines
 
