@@ -21,8 +21,10 @@ Some of the highlights:
   * When editing a module written by someone else, stick to the style in which it was written. If a project has an overall style, stick to that when writing new modules as well.
 * Use your spacebar
   * Surround operators and commas with spaces.
-* No Trailing Whitespace
-  * Remove trailing whitespace from your lines
+* No trailing whitespace
+  * Remove trailing whitespace at the end of lines
+  * Remove extraneous endlines at the end of the file
+  * One blank line between functions only
 * Avoid deep nesting
   * Avoid nesting case or any conditionals.  If nesting is required do not exceed three levels.  It is better to call a well-named function to encapsulate the decision making of the inner case.
 * Do not use if statements.
