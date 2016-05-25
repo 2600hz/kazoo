@@ -67,6 +67,7 @@ maybe_proxy(JObj, #media_store_path{db = Db
                                     ,att = Attachment
                                     ,opt = Options
                                    }=Store) ->
+    lager:debug("fetching attachment url for '~p' , '~p', '~p'", [Db, Id, Attachment]),
     case kz_datamgr:attachment_url(Db, Id, Attachment, Options) of
         {'error', 'not_found'} -> <<>>;
         {'proxy', _} -> proxy_uri(JObj, Store);

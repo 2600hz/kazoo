@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
-%%%   James Aimonetti
+%%%   Luis Azedo
 %%%-------------------------------------------------------------------
--module(fax_xmpp_sup).
+-module(fax_jobs_sup).
 
 -behaviour(supervisor).
 
@@ -14,18 +14,16 @@
 
 -define(SERVER, ?MODULE).
 
-%% API
--export([start_link/0]).
--export([start_printer/1]).
+-export([start_account_jobs/1]).
 
-%% Supervisor callbacks
+-export([start_link/0]).
 -export([init/1]).
 
--define(CHILDREN, [?WORKER_TYPE('fax_xmpp', 'transient')]).
+-define(CHILDREN, [?WORKER_TYPE('fax_jobs', 'transient')]).
 
-%% ===================================================================
-%% API functions
-%% ===================================================================
+-spec start_account_jobs(ne_binary()) -> sup_startchild_ret().
+start_account_jobs(AccountId) ->
+    supervisor:start_child(?MODULE, [AccountId]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -34,14 +32,6 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
-
--spec start_printer(ne_binary()) -> sup_startchild_ret().
-start_printer(PrinterId) ->
-    supervisor:start_child(?SERVER, [PrinterId]).
-
-%% ===================================================================
-%% Supervisor callbacks
-%% ===================================================================
 
 %%--------------------------------------------------------------------
 %% @public
@@ -55,8 +45,8 @@ start_printer(PrinterId) ->
 -spec init(any()) -> sup_init_ret().
 init([]) ->
     RestartStrategy = 'simple_one_for_one',
-    MaxRestarts = 25,
-    MaxSecondsBetweenRestarts = 10,
+    MaxRestarts = 5,
+    MaxSecondsBetweenRestarts = 5,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
