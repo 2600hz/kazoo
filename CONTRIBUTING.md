@@ -26,9 +26,12 @@ Some of the highlights:
   * Remove extraneous endlines at the end of the file
   * One blank line between functions only
 * Avoid deep nesting
-  * Avoid nesting case or any conditionals.  If nesting is required do not exceed three levels.  It is better to call a well-named function to encapsulate the decision making of the inner case.
-* Do not use if statements.
-  * In some circumstances if introduces static boolean logic in your code, reducing code flexibility. In other cases, a case or a function call with pattern matching in its clauses is just more declarative. For newcomers (that have learned to use if in other languages), Erlang's if can be either hard to understand or easily abused.
+  * Avoid nesting case or any conditionals. If nesting is required do not exceed three levels. It is better to call a well-named function to encapsulate the decision making of the inner case.
+* Do not use `if` statements.
+  * In some circumstances `if` introduces static boolean logic in your code, reducing code flexibility.
+  * In other cases, a case or a function call with pattern matching in its clauses is just more declarative.
+  * For newcomers (that have learned to use if in other languages), Erlang's `if` can be either hard to understand or easily abused.
+  * `if` only allows guards while `case` allows expressions to be evaluated for branching
 * Honor DRY.
   * Don't write the same code in many places, use functions and variables for that.
 * More, smaller functions over case expressions
