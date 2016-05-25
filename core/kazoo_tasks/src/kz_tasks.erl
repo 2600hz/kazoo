@@ -115,7 +115,7 @@ start(TaskId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec new(module(), atom(), list()) -> {'ok', task_id()} |
+-spec new(module(), atom(), list()) -> {'ok', kz_json:object()} |
                                        {'error', any()}.
 new(M, F, A)
   when is_atom(M),
@@ -137,7 +137,9 @@ new(M, F, A)
                     , finished => 'undefined'
                     , failed => 'undefined'
                     },
-            gen_server:call(?SERVER, {'add_task', Task})
+            task_to_public_json(
+              gen_server:call(?SERVER, {'add_task', Task})
+             )
     end;
 new(M, _, _) when not is_atom(M) ->
     {'error', {'bad_module', M}};
@@ -232,10 +234,10 @@ handle_call('get_tasks', _From, State) ->
     Tasks = State#state.tasks,
     {'reply', Tasks, State};
 
-handle_call({'add_task', Task=#{id := TaskId}}, _From, State) ->
+handle_call({'add_task', Task}, _From, State) ->
     Tasks = [Task | State#state.tasks],
     State1 = State#state{tasks = Tasks},
-    {'reply', {'ok', TaskId}, State1};
+    ?REPLY_FOUND(State1, Task);
 
 handle_call({'start_task', TaskId}, _From, State) ->
     case task_by_id(TaskId, State) of

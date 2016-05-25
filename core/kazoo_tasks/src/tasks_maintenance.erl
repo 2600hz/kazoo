@@ -37,9 +37,7 @@ add(M, F, A)
        is_atom(F),
        is_list(A) ->
     case kz_tasks:new(M, F, A) of
-        {'ok', TaskId} ->
-            io:format("~s\n", [TaskId]),
-            'no_return';
+        {'ok', NewTask} -> print_json(NewTask);
         {'error', Reason} -> print_error(Reason)
     end;
 add(M=?NE_BINARY, F, A) ->
