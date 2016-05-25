@@ -97,8 +97,8 @@ Some 2600Hz specifics:
     * `AccountId` instead of `Id` or `AcctId`
 * The function name should clearly describe what it will do.
   * Common patterns include:
-    * The use of plural to singular.  For example, `process_accounts` calls to `process_account` for each account.
-    * The use of `maybe_X` executing `X` if a condition is met.  For example, `maybe_process_accounts` calls to `process_accounts` if there are accounts present in the system.
+    * The use of plural to singular. For example, `process_accounts` calls to `process_account` for each account.
+    * The use of `maybe_X` executing `X` if a condition is met. For example, `maybe_process_accounts` calls to `process_accounts` if there are accounts present in the system.
 * Never introduce a single letter variable.
   * It is marginally acceptable to use a single letter in “inner” scope variables but they should match the first letter of a fully named variable they are shadowing. For example, in the predicate function it is OK to use `A` to represent `Account` if the `Account` variable is used outside the predicate.
 * Do not chain functions
@@ -135,7 +135,7 @@ All code commits require testing and evidence that tests were performed.
 
 ## Commits and Commit Messages
 
-Please have git setup with consistent user information for each commit in a pull requests.  Preferably with your real name and a working email address (such as the one you use on the [2600hz-dev mailing list](https://groups.google.com/forum/#!forum/2600hz-dev)).
+Please have git setup with consistent user information for each commit in a pull requests. Preferably with your real name and a working email address (such as the one you use on the [2600hz-dev mailing list](https://groups.google.com/forum/#!forum/2600hz-dev)).
 
 For quick reference, here are the relevant git commands:
 
@@ -155,28 +155,28 @@ Here are some general guidelines for submitting new code.
 * Follow the guidelines for writing good commit messages.
 * Do not commit commented-out code or files that are no longer needed.
 * Check for unnecessary whitespace before committing with git diff --check.
-* All pull requests should be issued to resolve a Jira ticket.  The branch name of the submission should be Jira ticket ID, such as KAZOO-42.
+* All pull requests should be issued to resolve a Jira ticket. The branch name of the submission should be Jira ticket ID, such as KAZOO-42.
 * Ensure that each pull request addresses only the work related to the ticket it is resolving.
-* Keep the changes in a pull request as concise as possible.  If the pull request is a bug fix it should be the simplest possible approach with minimal code changes.
+* Keep the changes in a pull request as concise as possible. If the pull request is a bug fix it should be the simplest possible approach with minimal code changes.
 * All work should be rebased to the originating branch prior to pull request submission.
 
 ### Bug Fix Guidelines
 
 Bug fixes must never introduce new features.
 
-Bug fix branches must have originated from an updated version branch in the project which matches the affects version of the bug report.  The pull request should be made against the version branch and all subsequent version branches including master.
+Bug fix branches must have originated from an updated version branch in the project which matches the affects version of the bug report. The pull request should be made against the version branch and all subsequent version branches including master.
 
 All non-bug fix work branches must have originated from an updated master branch in the project and the pull request must be issued against the master branch.
 
-If the pull request was not for the master branch then all subsequent version branches must also have a pull request opened with the bug fix.  It is acceptable to work with 2600Hz to organize a sequence of pull requests when more convenient (such as refactoring the pull request against 3.22 and re-opening it for master).
+If the pull request was not for the master branch then all subsequent version branches must also have a pull request opened with the bug fix. It is acceptable to work with 2600Hz to organize a sequence of pull requests when more convenient (such as refactoring the pull request against 3.22 and re-opening it for master).
 
 A test should also be submitted to ensure that the bug is not accidentally reintroduced in the future.
 
 ### New Functionality/Features Guidelines
 
-If you are implementing a new feature, also write new test cases.  The primary reason for writing test cases is not to prove that the new feature works correctly, but to make sure that it will be noticed if future changes — perhaps to code that seems unrelated — break the feature.
+If you are implementing a new feature, also write new test cases. The primary reason for writing test cases is not to prove that the new feature works correctly, but to make sure that it will be noticed if future changes — perhaps to code that seems unrelated — break the feature.
 
-If you are implementing a new feature, also update the documentation to describe the feature.  If the documentation belongs to a missing document, such as an addition to an undocumented API it is acceptable to only document the addition.  It is nice to create the full missing documentation section ;)
+If you are implementing a new feature, also update the documentation to describe the feature. If the documentation belongs to a missing document, such as an addition to an undocumented API it is acceptable to only document the addition. It is nice to create the full missing documentation section ;)
 
 Make sure the patch does not break backward compatibility. In general, we only break backward compatibility in major releases and only for a very good reason and usually after first deprecating the feature one or two releases beforehand.
 
@@ -238,4 +238,4 @@ MR: Always think about security; think twice when deciding to hard-code somethin
 
 ### Hold 2600Hz Accountable
 
-These are the standards that we set to ourselves as well as our partners.  As we push and the demands grow it is easy to forget some of these points in favor of speed or agility.  Occasional slips are marginally acceptable but we need to hold all those involved to the same standard.  If you see us not adhering to these guidelines call us out on it!  We welcome productive criticism!
+These are the standards that we set to ourselves as well as our partners. As we push and the demands grow it is easy to forget some of these points in favor of speed or agility. Occasional slips are marginally acceptable but we need to hold all those involved to the same standard. If you see us not adhering to these guidelines call us out on it!  We welcome productive criticism!
