@@ -155,7 +155,7 @@ $(ELVIS):
 elvis: $(ELVIS)
 	$(ELVIS) --config make/elvis.config rock
 
-ci: compile xref build-plt diff sup_completion build-ci-release compile-test eunit elvis
+ci: clean compile xref build-plt diff sup_completion build-ci-release compile-test eunit elvis
 
 diff:
 	FILES=$(git diff --name-only master... -- application/ core/) || true
