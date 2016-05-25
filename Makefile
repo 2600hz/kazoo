@@ -4,7 +4,7 @@ ELVIS = $(ROOT)/deps/elvis
 
 KAZOODIRS = core/Makefile applications/Makefile
 
-.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install
+.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff
 
 all: compile rel/dev-vm.args
 
@@ -154,3 +154,9 @@ $(ELVIS):
 
 elvis: $(ELVIS)
 	$(ELVIS) --config make/elvis.config rock
+
+ci: compile xref build-plt diff sup_completion build-ci-release compile-test eunit elvis
+
+diff:
+	FILES=$(git diff --name-only master... -- application/ core/) || true
+	./scripts/check-dialyzer.escript .kazoo.plt $(FILES)
