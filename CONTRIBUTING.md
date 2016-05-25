@@ -63,7 +63,7 @@ Some of the highlights:
   * error: Something bad and unexpected happen, usually an exception or error (DO log the stack trace here)
   * critical: The system (or a part of it) crashed and somebody should be informed and take action about it
 * Simple unit tests
-  *Single responsibility applies to tests as well. When writing unit tests, keep them short and don't put more than 1 or 2 asserts per test
+  * Single responsibility applies to tests as well. When writing unit tests, keep them short and don't put more than 1 or 2 asserts per test
 
 Some 2600Hz specifics:
 
