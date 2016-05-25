@@ -13,8 +13,8 @@ The full coding standard that we tend to use, and will likely adapt shortly in o
 Some of the highlights:
 
 * Loud errors
-  * Don't let errors and exceptions go unlogged. Even when you handle them, write a logline with the stack trace.
-  * If it is a log line that requires manual intervention, or action, then it should should be documented in “runbook” style for a system operator.
+  * Don't let unhandled errors and exceptions go unlogged.
+  * If it is a log line that requires manual intervention or action, then it should be documented in "runbook" style for a system operator to act upon.
 * Keep functions small
   * Try to write functions with a small number of expressions, and that do only one thing. 12 expressions per function except for integration tests is a good measure.
 * Maintain existing style
