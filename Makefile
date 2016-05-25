@@ -109,6 +109,7 @@ read-release-cookie:
 
 DIALYZER ?= dialyzer
 PLT ?= .kazoo.plt
+
 OTP_APPS ?= erts kernel stdlib crypto public_key ssl asn1 inets
 $(PLT): DEPS_SRCS  ?= $(shell find $(ROOT)/deps -name src )
 # $(PLT): CORE_EBINS ?= $(shell find $(ROOT)/core -name ebin)
@@ -131,9 +132,7 @@ dialyze:       TO_DIALYZE ?= $(shell find $(ROOT)/applications -name ebin)
 dialyze: $(PLT) dialyze-it
 
 dialyze-it:
-	@$(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE)
-	endif
-
+	@if [ -n "$(TO_DIALYZE)" ]; then $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE); fi;
 
 xref: TO_XREF ?= $(shell find $(ROOT)/applications $(ROOT)/core $(ROOT)/deps -name ebin)
 xref:
@@ -160,9 +159,5 @@ elvis: $(ELVIS)
 
 ci: clean compile xref build-plt diff sup_completion build-ci-release compile-test eunit elvis
 
-diff: TO_DIALYZE = $(git diff --name-only master... -- $(ROOT)/application/ $(ROOT)/core/)
-ifneq ($(TO_DIALYZE),)
+diff: export TO_DIALYZE = $(shell git diff --name-only master... -- $(ROOT)/application/ $(ROOT)/core/)
 diff: dialyze-it
-else
-diff:
-endif
