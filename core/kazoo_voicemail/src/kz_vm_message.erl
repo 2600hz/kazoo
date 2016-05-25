@@ -675,7 +675,7 @@ count_by_owner(?MATCH_ACCOUNT_ENCODED(_)=AccountDb, OwnerId) ->
 count_by_owner(AccountId, OwnerId) ->
     ViewOpts = [{'key', [OwnerId, <<"vmbox">>]}],
 
-    case kz_datamgr:get_results(get_db(AccountId), <<"cf_attributes/owned">>, ViewOpts) of
+    case kz_datamgr:get_results(get_db(AccountId), <<"kz_attributes/owned">>, ViewOpts) of
         {'ok', []} ->
             lager:info("voicemail box owner is not found"),
             {0, 0};
