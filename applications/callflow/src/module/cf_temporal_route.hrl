@@ -8,8 +8,11 @@
 -type strict_ordinal() :: binary(). %%<<"first">> | <<"second">> | <<"third">> | <<"fourth">> | <<"fifth">>.
 -type broad_ordinal() :: binary(). %%<<"every">> | <<"last">>.
 -type ordinal() :: strict_ordinal() | broad_ordinal().
--type wday() :: binary(). %%<<"monday">> | <<"tuesday">> | <<"wensday">> | <<"thursday">>
-%%                 | <<"friday">> | <<"saturday">> | <<"sunday">>.
+
+%% <<"monday">> | <<"tuesday">> | <<"wensday">> | <<"wednesday">> | <<"thursday">>
+%% | <<"friday">> | <<"saturday">> | <<"sunday">>.
+-type wday() :: binary().
+
 -type cycle_type() :: binary(). %%<<"date">> | <<"daily">> | <<"weekly">> | <<"monthly">> | <<"yearly">>.
 
 -record(keys, {enable = <<"1">> :: ne_binary()
