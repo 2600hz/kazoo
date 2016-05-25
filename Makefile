@@ -4,7 +4,7 @@ ELVIS = $(ROOT)/deps/elvis
 
 KAZOODIRS = core/Makefile applications/Makefile
 
-.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff
+.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff
 
 all: compile rel/dev-vm.args
 
@@ -128,8 +128,11 @@ dialyze-apps: dialyze
 dialyze-core:  TO_DIALYZE  = $(shell find $(ROOT)/core         -name ebin)
 dialyze-core: dialyze
 dialyze:       TO_DIALYZE ?= $(shell find $(ROOT)/applications -name ebin)
-dialyze: $(PLT)
+dialyze: $(PLT) dialyze-it
+
+dialyze-it:
 	@$(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE)
+	endif
 
 
 xref: TO_XREF ?= $(shell find $(ROOT)/applications $(ROOT)/core $(ROOT)/deps -name ebin)
@@ -157,6 +160,9 @@ elvis: $(ELVIS)
 
 ci: clean compile xref build-plt diff sup_completion build-ci-release compile-test eunit elvis
 
+diff: TO_DIALYZE = $(git diff --name-only master... -- $(ROOT)/application/ $(ROOT)/core/)
+ifneq ($(TO_DIALYZE),)
+diff: dialyze-it
+else
 diff:
-	FILES=$(git diff --name-only master... -- application/ core/) || true
-	./scripts/check-dialyzer.escript .kazoo.plt $(FILES)
+endif
