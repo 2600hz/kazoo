@@ -35,7 +35,7 @@ stop(Pid, Reason) ->
     gen_server:cast(Pid, {'$proxy_stop', Reason}).
 
 send(Pid, Message) ->
-    gen_server:cast(Pid, {'$proxy_send', Message}).
+    Pid ! Message.
 
 init([Global]) ->
     {'ok', Global}.
@@ -46,14 +46,14 @@ handle_call(Request, _From, Global) ->
 handle_cast({'$proxy_stop', Reason}, Global) ->
     gen_server:call('kz_globals', {'delete_remote', self()}),
     {'stop', Reason, Global};
-handle_cast({'$proxy_send', Message}, Global) ->
-    amqp_send(Global, Message),
-    {'noreply', Global};
-handle_cast(_Msg, Global) ->
+handle_cast(Message, Global) ->
+    lager:debug("relaying cast: ~p", [Message]),
+    amqp_send(Global, {'$gen_cast', Message}),
     {'noreply', Global}.
 
-handle_info(_Msg, Global) ->
-    lager:debug("unhandled msg: ~p", [_Msg]),
+handle_info(Message, Global) ->
+    lager:debug("relaying msg: ~p", [Message]),
+    amqp_send(Global, Message),
     {'noreply', Global}.
 
 terminate(_Reason, _Global) ->

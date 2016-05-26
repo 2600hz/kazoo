@@ -20,8 +20,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(CHILDREN, [?WORKER('kz_nodes')
-                   ,?SUPER('kz_hooks_listener_sup')
+-define(CHILDREN, [?SUPER('kz_hooks_listener_sup')
                    ,?WORKER('kazoo_apps_init')
                    ,?WORKER('kapps_controller')
                   ]).

@@ -7,16 +7,23 @@
         ,server/1
         ,state/1
         ,is_local/1
+        ,is_remote/1
         ,node/1
+        ,is_local_node/1
+        ,timestamp/1
 
         ,all_names/1
         ,all_globals_by_pid/2
+        ,all_globals_by_node/2
         ,all_dead_pids/1
 
         ,from_jobj/2
-        ,new_local/4
         ,update_with_pid_ref/2, update_with_pid_ref/3
-        ]).
+        ,new_global/4, new_global/5, new_global/6
+
+        ,register_local/2
+        ,register_remote/2
+]).
 
 -export_type([global/0
              ,globals/0
@@ -32,6 +39,7 @@
                    ,name :: name() | '$1' | '_'
                    ,monitor :: api_reference() | '_'
                    ,state = 'none' :: kapi_globals:state() | '_'
+                   ,timestamp :: integer() | '_'
                    }).
 
 -type global() :: #kz_global{}.
@@ -47,17 +55,26 @@ from_jobj(JObj, Zone) ->
               ,server = kz_api:server_id(JObj)
               ,name = kapi_globals:name(JObj)
               ,state = kapi_globals:state(JObj)
+              ,timestamp = kapi_globals:timestamp(JObj)
               }.
 
--spec new_local(name(), pid(), atom(), ne_binary()) -> global().
-new_local(Name, Pid, Zone, Queue) ->
+-spec new_global(name(), pid(), atom(), ne_binary()) -> global().
+new_global(Name, Pid, Zone, Queue) ->
+    new_global(Name, Pid, Zone, Queue, 'local').
+
+-spec new_global(name(), pid(), atom(), ne_binary(), atom()) -> global().
+new_global(Name, Pid, Zone, Queue, State) ->
+    new_global(Name, Pid, Zone, Queue, State, erlang:system_time('micro_seconds')).
+
+-spec new_global(name(), pid(), atom(), ne_binary(), atom(), integer()) -> global().
+new_global(Name, Pid, Zone, Queue, State, Timestamp) ->
     #kz_global{node = node()
               ,zone = Zone
               ,server = Queue
               ,pid = Pid
-              ,monitor = erlang:monitor('process', Pid)
               ,name = Name
-              ,state='local'
+              ,state=State
+              ,timestamp=Timestamp
               }.
 
 -spec update_with_pid_ref(global(), pid_ref()) -> global().
@@ -93,6 +110,11 @@ all_dead_pids(Table) ->
         erlang:is_process_alive(Pid) =:= 'false'
     ].
 
+-spec all_globals_by_node(ets:tab(), atom()) -> globals().
+all_globals_by_node(Table, Node) ->
+    MatchSpec = [{#kz_global{node = Node, _ = '_'} ,[],['$_']}],
+    ets:select(Table, MatchSpec).
+
 name(#kz_global{name=Name}) ->
     Name.
 
@@ -111,8 +133,48 @@ server(#kz_global{server=Queue}) ->
 node(#kz_global{node=Node}) ->
     Node.
 
+timestamp(#kz_global{timestamp=Timestamp}) ->
+    Timestamp.
+
+is_local_node(#kz_global{node=Node}) ->
+    Node =:= node().
+
 state(#kz_global{state=State}) ->
     State.
 
 is_local(#kz_global{state='local'}) -> 'true';
 is_local(#kz_global{}) -> 'false'.
+
+is_remote(#kz_global{state='remote'}) -> 'true';
+is_remote(#kz_global{}) -> 'false'.
+
+-spec register_local(ets:tab(), global()) -> global().
+register_local(Table
+              ,#kz_global{pid=Pid
+                         ,name=Name
+                         }=Global
+              ) ->
+    Monitor = erlang:monitor('process', Pid),
+    Updates = [{#kz_global.state, 'local'}
+              ,{#kz_global.monitor, Monitor}
+              ],
+    Local = Global#kz_global{state='local'
+                    ,monitor=Monitor
+                    },
+    lager:debug("inserting local ~p", [Local]),
+    ets:update_element(Table, Name, Updates),
+    Local.
+
+-spec register_remote(ets:tab(), global()) -> global().
+register_remote(Table, Global) ->
+    ProxyGlobal = start_proxy(Global),
+    lager:debug("inserting proxy ~p", [ProxyGlobal]),
+    ets:insert(Table, ProxyGlobal),
+    ProxyGlobal.
+
+-spec start_proxy(global()) -> global().
+start_proxy(Global) ->
+    {'ok', Pid} = kz_global_proxies_sup:new(Global),
+    link(Pid),
+    ProxyGlobal = update_with_pid_ref(Global, {Pid, monitor('process', Pid)}),
+    ProxyGlobal#kz_global{state='remote'}.
