@@ -1246,7 +1246,7 @@ get_devices_by_owner(AccountDb, OwnerId) ->
     ViewOptions = [{'key', [OwnerId, <<"device">>]},
                    'include_docs'
                   ],
-    case kz_datamgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"kz_attributes/owned">>, ViewOptions) of
         {'ok', JObjs} -> [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs];
         {'error', _R} ->
             lager:warning("unable to find documents owned by ~s: ~p", [OwnerId, _R]),

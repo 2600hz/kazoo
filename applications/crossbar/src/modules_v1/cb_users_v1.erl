@@ -245,8 +245,7 @@ validate(Context, UserId, ?CHANNELS) ->
     Options = [{'key', [UserId, <<"device">>]}
                ,'include_docs'
               ],
-    %% TODO: Using the cf_attributes from crossbar isn't exactly kosher
-    Context1 = crossbar_doc:load_view(<<"cf_attributes/owned">>, Options, Context),
+    Context1 = crossbar_doc:load_view(<<"kz_attributes/owned">>, Options, Context),
     case cb_context:has_errors(Context1) of
         'true' -> Context1;
         'false' -> get_channels(Context1)

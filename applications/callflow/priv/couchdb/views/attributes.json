@@ -1,5 +1,5 @@
 {
-    "_id": "_design/cf_attributes",
+    "_id": "_design/kz_attributes",
     "language": "javascript",
     "views": {
         "active_resources_by_rules": {
