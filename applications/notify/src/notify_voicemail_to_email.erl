@@ -105,7 +105,10 @@ get_owner(_AccountDb, _VMBox, 'undefined') ->
     {'ok', kz_json:new()};
 get_owner(AccountDb, _VMBox, OwnerId) ->
     lager:debug("attempting to load owner: ~s", [OwnerId]),
-    {'ok', _} = kz_datamgr:open_cache_doc(AccountDb, OwnerId).
+    case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
+        {'ok', _}=OK -> OK;
+        {'error', _} -> {'ok', kz_json:new()}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
