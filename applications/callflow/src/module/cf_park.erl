@@ -70,39 +70,54 @@ handle(Data, Call) ->
     SlotNumber = get_slot_number(ParkedCalls, kapps_call:kvs_fetch('cf_capture_group', Call)),
     ReferredTo = kapps_call:custom_channel_var(<<"Referred-To">>, <<>>, Call),
     PresenceType = presence_type(SlotNumber, Data, Call),
+
     case re:run(ReferredTo, "Replaces=([^;]*)", [{'capture', [1], 'binary'}]) of
         'nomatch' when ReferredTo =:= <<>> ->
-            lager:info("call was the result of a direct dial"),
-            case kz_json:get_value(<<"action">>, Data, <<"park">>) of
-                <<"park">> ->
-                    lager:info("action is to park the call"),
-                    Slot = create_slot(ReferredTo, PresenceType, Call),
-                    park_call(SlotNumber, Slot, ParkedCalls, 'undefined', Data, Call);
-                <<"retrieve">> ->
-                    lager:info("action is to retrieve a parked call"),
-                    case retrieve(SlotNumber, ParkedCalls, Call) of
-                        {'ok', _} -> 'ok';
-                        _Else ->
-                            _ = kapps_call_command:b_answer(Call),
-                            _ = kapps_call_command:b_prompt(<<"park-no_caller">>, Call),
-                            cf_exe:stop(Call)
-                    end;
-                <<"auto">> ->
-                    lager:info("action is to automatically determine if we should retrieve or park"),
-                    Slot = create_slot(cf_exe:callid(Call), PresenceType, Call),
-                    case retrieve(SlotNumber, ParkedCalls, Call) of
-                        {'error', _} -> park_call(SlotNumber, Slot, ParkedCalls, 'undefined', Data, Call);
-                        {'ok', _} -> cf_exe:transfer(Call)
-                    end
-            end;
+            handle_nomatch_with_empty_referred_to(Data, Call, PresenceType, ParkedCalls, SlotNumber);
         'nomatch' ->
-            lager:info("call was the result of a blind transfer, assuming intention was to park"),
-            Slot = create_slot('undefined', PresenceType, Call),
-            park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Data, Call);
+            handle_nomatch(Data, Call, PresenceType, ParkedCalls, SlotNumber, ReferredTo);
         {'match', [Replaces]} ->
-            lager:info("call was the result of an attended-transfer completion, updating call id"),
-            {'ok', FoundInSlotNumber, Slot} = update_call_id(Replaces, ParkedCalls, Call),
-            wait_for_pickup(FoundInSlotNumber, Slot, Data, Call)
+            handle_replaces(Data, Call, Replaces, ParkedCalls)
+    end.
+
+-spec handle_replaces(kz_json:object(), kapps_call:call(), ne_binary(), kz_json:object()) ->
+                             'ok' |
+                             {'error', 'timeout' | 'failed'}.
+handle_replaces(Data, Call, Replaces, ParkedCalls) ->
+    lager:info("call was the result of an attended-transfer completion, updating call id"),
+    {'ok', FoundInSlotNumber, Slot} = update_call_id(Replaces, ParkedCalls, Call),
+    wait_for_pickup(FoundInSlotNumber, Slot, Data, Call).
+
+-spec handle_nomatch(kz_json:object(), kapps_call:call(), ne_binary(), kz_json:object(), ne_binary(), ne_binary()) -> 'ok'.
+handle_nomatch(Data, Call, PresenceType, ParkedCalls, SlotNumber, ReferredTo) ->
+    lager:info("call was the result of a blind transfer, assuming intention was to park"),
+    Slot = create_slot('undefined', PresenceType, Call),
+    park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Data, Call).
+
+-spec handle_nomatch_with_empty_referred_to(kz_json:object(), kapps_call:call(), ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
+handle_nomatch_with_empty_referred_to(Data, Call, PresenceType, ParkedCalls, SlotNumber) ->
+    lager:info("call was the result of a direct dial"),
+    case kz_json:get_value(<<"action">>, Data, <<"park">>) of
+        <<"park">> ->
+            lager:info("action is to park the call"),
+            Slot = create_slot(<<>>, PresenceType, Call),
+            park_call(SlotNumber, Slot, ParkedCalls, 'undefined', Data, Call);
+        <<"retrieve">> ->
+            lager:info("action is to retrieve a parked call"),
+            case retrieve(SlotNumber, ParkedCalls, Call) of
+                {'ok', _} -> 'ok';
+                _Else ->
+                    _ = kapps_call_command:b_answer(Call),
+                    _ = kapps_call_command:b_prompt(<<"park-no_caller">>, Call),
+                    cf_exe:stop(Call)
+            end;
+        <<"auto">> ->
+            lager:info("action is to automatically determine if we should retrieve or park"),
+            Slot = create_slot(cf_exe:callid(Call), PresenceType, Call),
+            case retrieve(SlotNumber, ParkedCalls, Call) of
+                {'error', _} -> park_call(SlotNumber, Slot, ParkedCalls, 'undefined', Data, Call);
+                {'ok', _} -> cf_exe:transfer(Call)
+            end
     end.
 
 %%--------------------------------------------------------------------
