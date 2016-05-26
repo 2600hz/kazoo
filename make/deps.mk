@@ -23,7 +23,7 @@ dep_erlang_localtime = git https://github.com/lazedo/erlang_localtime 0bb2601638
 
 ### need to update upstream ###
 dep_hep = git https://github.com/lazedo/hep 1.5.4
-dep_ecsv = git https://github.com/lazedo/ecsv 0.2.1
+dep_ecsv = git https://github.com/lazedo/ecsv ecsv-1
 
 ### for scripts/dev-start-*.sh
 dep_reloader = git https://github.com/oinksoft/reloader
