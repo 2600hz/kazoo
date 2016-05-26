@@ -57,12 +57,12 @@ Some of the highlights:
 * Types in records
   * Always add type definitions to your record fields
 * Properly use logging levels
-  * debug: Very low-level info, that may cover your screen and don't let you type in it :P
-  * info: The system's life, in some detail. Things that happen usually, but not all the time. You should be able to use the console with acceptable interruptions in this level.
-  * notice: Meaningful things that are worth noticing, like the startup or termination of supervisors or important gen_servers, etc…
-  * warning: Handled errors, the system keeps working as usual, but something out of the ordinary happened
-  * error: Something bad and unexpected happen, usually an exception or error (DO log the stack trace here)
-  * critical: The system (or a part of it) crashed and somebody should be informed and take action about it
+  * `debug`: Very low-level info, that may cover your screen and don't let you type in it :P
+  * `info`: The system's life, in some detail. Things that happen usually, but not all the time. You should be able to use the console with acceptable interruptions in this level.
+  * `notice`: Meaningful things that are worth noticing, like the startup or termination of supervisors or important gen_servers, etc…
+  * `warning`: Handled errors, the system keeps working as usual, but something out of the ordinary happened
+  * `error`: Something bad and unexpected happen, usually an exception or error (DO log the stack trace here)
+  * `critical`: The system (or a part of it) crashed and somebody should be informed and take action about it
 * Simple unit tests
   * Single responsibility applies to tests as well. When writing unit tests, keep them short and don't put more than 1 or 2 asserts per test
 
