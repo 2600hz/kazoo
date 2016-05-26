@@ -131,6 +131,7 @@ render(TemplateId, Macros) ->
     render(TemplateId, Macros, kz_json:new()).
 
 render(TemplateId, Macros, DataJObj) ->
+    put('template_id', TemplateId),
     render(TemplateId, Macros, DataJObj, teletype_util:is_preview(DataJObj)).
 
 render(TemplateId, Macros, DataJObj, 'false') ->
@@ -142,6 +143,7 @@ render(TemplateId, Macros, DataJObj, 'false') ->
             lager:debug("rendering system template for ~s", [TemplateId]),
             render_masters(TemplateId, Macros);
         AccountDb ->
+            put('template_account_id', kz_util:format_account_id(AccountDb)),
             lager:debug("rendering template ~s from account ~s", [TemplateId, AccountDb]),
             render_accounts(TemplateId, AccountDb, Macros)
     end;

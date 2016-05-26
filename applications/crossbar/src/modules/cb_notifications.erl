@@ -1223,7 +1223,7 @@ load_smtp_log(Context) ->
     case cb_modules_util:range_modb_view_options(Context) of
         {'ok', ViewOptions} ->
             crossbar_doc:load_view(?CB_LIST_SMTP_LOG
-                                   ,['include_docs' | ViewOptions]
+                                   ,ViewOptions
                                    ,Context
                                    ,fun normalize_view_results/2
                                   );
@@ -1232,7 +1232,7 @@ load_smtp_log(Context) ->
 
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"doc">>, JObj)|Acc].
+    [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 -spec maybe_update_db(cb_context:context()) -> cb_context:context().
 maybe_update_db(Context) ->
