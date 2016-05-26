@@ -112,7 +112,7 @@ acquire_number(#number{auth_by = AuthBy
             Error = <<"Unable to acquire numbers on this system, carrier provisioning is disabled">>,
             wnm_number:error_carrier_fault(Error, N);
         'true' ->
-            Num  = reformat_number_for_acquire(wh_json:get_value(<<"number">>, Data)),
+            Num  = reformat_number_for_acquire(wh_json:get_string_value(<<"number">>, Data)),
             Peer = whapps_config:get_string(?WNM_BW_CONFIG_CAT, <<"sip_peer">>),
             Site = whapps_config:get_string(?WNM_BW_CONFIG_CAT, <<"site_id">>),
             ON   = list_to_binary([?BW_ORDER_NAME_PREFIX, "-", wh_util:to_binary(wh_util:current_tstamp())]),
@@ -147,9 +147,9 @@ acquire_number(#number{auth_by = AuthBy
             end
     end.
 
--spec reformat_number_for_acquire(ne_binary()) -> string().
-reformat_number_for_acquire(<<"+1", Number/binary>>) -> wh_util:to_list(Number);
-reformat_number_for_acquire(Number) -> wh_util:to_list(Number).
+-spec reformat_number_for_acquire(string()) -> string().
+reformat_number_for_acquire("+1" ++ Number) -> Number;
+reformat_number_for_acquire(Number) -> Number.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -376,11 +376,13 @@ verify_response(Xml) ->
             {'ok', Xml};
         'false' ->
             lager:debug("request failed"),
-            ErrMessage = wh_util:get_xml_value("//ErrorList/Error/Description/text()", Xml),
-            {'error', ErrMessage}
+            case wh_util:get_xml_value("//ErrorList/Error/Description/text()", Xml) of
+                'undefined' -> {'error', <<"Number not found">>};
+                ErrMessage -> {'error', ErrMessage}
+            end
     end.
 
--spec validate_xpath_value(api_binary()) -> boolean().
+-spec validate_xpath_value(api_binary() | {atom(), atom(), non_neg_integer()}) -> boolean().
 validate_xpath_value('undefined') -> false;
 validate_xpath_value(<<>>) -> false;
 validate_xpath_value({xmlObj, number, Num}) -> Num > 0;
