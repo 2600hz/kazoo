@@ -69,7 +69,7 @@
 -export([get_all_results/2
          ,get_results/2, get_results/3
          ,get_results_count/3
-         ,get_result_keys/1
+         ,get_result_keys/1, get_result_keys/3
          ,design_info/2
          ,design_compact/2
         ]).
@@ -1050,6 +1050,15 @@ get_results(DbName, DesignDoc, Options) ->
 get_results_count(DbName, DesignDoc, Options) ->
     Opts = maybe_add_doc_type_from_view(DesignDoc, Options),
     kzs_view:get_results_count(kzs_plan:plan(DbName, Opts), DbName, DesignDoc, Options).
+
+-spec get_result_keys(ne_binary(), ne_binary(), view_options()) ->
+          {'ok', ne_binaries()} | data_error().
+get_result_keys(DbName, DesignDoc, Options) ->
+    Opts = maybe_add_doc_type_from_view(DesignDoc, Options),
+    case kzs_view:get_results(kzs_plan:plan(DbName, Opts), DbName, DesignDoc, Options) of
+        {'ok', JObjs} -> {'ok', get_result_keys(JObjs)};
+        {'error', _} = Error -> Error
+    end.
 
 -spec get_result_keys(kz_json:objects()) -> kz_json:keys().
 get_result_keys(JObjs) ->

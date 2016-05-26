@@ -29,11 +29,17 @@
          }).
 -type fax_storage() :: #fax_storage{}.
 
+-type fax_job() :: kz_json:object().
+-type fax_jobs() :: [fax_job()].
+
 -define(FAX_OUTGOING, <<"outgoing">>).
 -define(FAX_INCOMING, <<"incoming">>).
 
 -define(FAX_START, <<"start">>).
+-define(FAX_ACQUIRE, <<"acquire">>).
 -define(FAX_PREPARE, <<"prepare">>).
+-define(FAX_ORIGINATE, <<"originate">>).
+-define(FAX_NEGOTIATE, <<"negotiate">>).
 -define(FAX_SEND, <<"send">>).
 -define(FAX_RECEIVE, <<"receive">>).
 -define(FAX_END, <<"end">>).
@@ -66,6 +72,8 @@
 -define(SMTP_PORT, kapps_config:get_integer(?CONFIG_CAT, <<"smtp_port">>, 19025)).
 
 -define(FAX_EXTENSION, <<"tiff">>).
+
+-define(FAX_OUTBOUND_SERVER(AccountId), <<"fax_outbound_", AccountId/binary>>).
 
 -define(FAX_HRL, 'true').
 -endif.

@@ -12,6 +12,7 @@
 
 -export([start_link/0]).
 -export([delete_by_pid/1]).
+-export([where_is/1]).
 
 -export([init/1
          ,handle_call/3
@@ -366,13 +367,17 @@ advertise_register(#kz_global{name=Name, server=Q}) ->
               ],
     kz_amqp_worker:cast(Payload, ?AMQP_REGISTER_FUN).
 
--spec register_remote(kz_global()) -> pid().
-register_remote(Global) ->
-    {Pid, Ref} = start_proxy(Global),
-    ets:insert(?TAB_NAME, Global#kz_global{monitor=Ref
-                                           ,pid=Pid
-                                          }),
-    Pid.
+-spec register_remote(kz_global()) -> pid() | 'undefined'.
+register_remote(#kz_global{name=Name}=Global) ->
+    case where(Name) of
+        #kz_global{pid=Pid} -> Pid;
+        _ ->
+            {Pid, Ref} = start_proxy(Global),
+            ets:insert(?TAB_NAME, Global#kz_global{monitor=Ref
+                                                   ,pid=Pid
+                                                  }),
+            Pid
+    end.
 
 
 -spec amqp_unregister(term()) -> 'ok'.
@@ -479,7 +484,7 @@ handle_amqp_query(JObj, Props) ->
                    ,node=Node
                   }=Global ->
             amqp_query_reply(JObj, Global);
-        'undefined' -> 'ok'
+        _ -> 'ok'
     end.
 
 -spec amqp_query_reply(kz_json:object(), kz_global()) -> 'ok'.
@@ -498,12 +503,13 @@ handle_amqp_register(JObj, Props) ->
     handle_amqp_register(kapi_globals:state(JObj), JObj, Props).
 
 -spec handle_amqp_register(kapi_globals:state(), kz_json:object(), kz_proplist()) -> 'ok'.
-handle_amqp_register('pending', JObj, _Props) ->
-    _Node = kz_api:node(JObj),
+handle_amqp_register('pending', JObj, Props) ->
+    Node = props:get_value('node', Props),
     case where(kapi_globals:name(JObj)) of
-        #kz_global{}=Global ->
+        #kz_global{node=Node}=Global ->
             advertise_register(Global),
             amqp_register_reply(JObj, Global);
+        #kz_global{} -> 'ok';
         'undefined' -> amqp_register_reply(JObj)
     end;
 handle_amqp_register('local', JObj, Props) ->
@@ -535,8 +541,10 @@ amqp_register_reply(JObj, Global) ->
 
 
 -spec handle_amqp_unregister(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_amqp_unregister(JObj, _Props) ->
+handle_amqp_unregister(JObj, Props) ->
+    Node = props:get_value('node', Props),
     case where(kapi_globals:name(JObj)) of
+        #kz_global{node=Node} -> 'ok';
         #kz_global{}=Global ->
             gen_server:cast(?MODULE, {'amqp_delete', Global, kapi_globals:reason(JObj)});
         _ -> 'ok'
@@ -578,6 +586,14 @@ where_is(Name, State) ->
 where(Name) ->
     case ets:lookup(?TAB_NAME, kz_util:to_binary(Name)) of
         [#kz_global{}=Global] -> Global;
+        [] -> 'undefined'
+    end.
+
+-spec where_is(Name) -> pid() | 'undefined' when
+          Name :: term().
+where_is(Name) ->
+    case ets:lookup(?TAB_NAME, kz_util:to_binary(Name)) of
+        [#kz_global{pid=Pid}] -> Pid;
         [] -> 'undefined'
     end.
 

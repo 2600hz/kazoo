@@ -1,32 +1,53 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
-%%%   Karl Anderson
+%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(fax_jobs).
 
--behaviour(gen_server).
+-behaviour(gen_listener).
 
--export([start_link/0]).
--export([cleanup_jobs/0]).
+-export([start_link/1]).
+
+-export([handle_start_account/2]).
+-export([is_running/1]).
+
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
          ,handle_info/2
+         ,handle_event/2
          ,terminate/2
          ,code_change/3
         ]).
 
 -include("fax.hrl").
 
--define(SERVER, ?MODULE).
-
 -define(POLLING_INTERVAL, 5000).
+-define(DEFAULT_LIMITS, #{account => 5}).
+-define(INIT_JOBS, #{distribute => [], serialize => [], pending => #{}, running => #{}, numbers => #{}}).
 
--record(state, {jobs=[]}).
+-record(state, {account_id :: ne_binary()
+               ,queue = 'undefined' :: api_binary()
+               ,jobs = #{}
+               ,limits = #{}
+               }).
+
+-type state() :: #state{}.
+
+-define(BINDINGS, [{'self', []}
+                  ]).
+-define(RESPONDERS, []).
+-define(QUEUE_NAME, <<>>).
+-define(QUEUE_OPTIONS, []).
+-define(CONSUME_OPTIONS, []).
+
+-define(SERVER(AccountId), {'via', 'kz_globals', ?FAX_OUTBOUND_SERVER(AccountId)}).
+
+-define(JOB_STATUS(J), {'job_status', {kapi_fax:job_id(J), kapi_fax:state(J), kz_api:server_id(J)}}).
 
 %%%===================================================================
 %%% API
@@ -35,9 +56,25 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
-start_link() ->
-    gen_server:start_link(?SERVER, [], []).
+-spec start_link(ne_binary()) -> startlink_ret().
+start_link(AccountId) ->
+    case gen_listener:start_link(?SERVER(AccountId)
+                            ,?MODULE
+                            , [{'bindings', ?BINDINGS}
+                               ,{'responders', ?RESPONDERS}
+                               ,{'queue_name', ?QUEUE_NAME}
+                               ,{'queue_options', ?QUEUE_OPTIONS}
+                               ,{'consume_options', ?CONSUME_OPTIONS}
+                              ]
+                            , [AccountId])
+    of
+        {'error', {'already_started', Pid}}
+          when is_pid(Pid) ->
+            erlang:link(Pid),
+            {'ok', Pid};
+        Other -> Other
+    end.
+
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -54,9 +91,11 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([]) ->
-    _ = kz_util:spawn(fun cleanup_jobs/0),
-    {'ok', #state{}, ?POLLING_INTERVAL}.
+init([AccountId]) ->
+    {'ok', #state{account_id=AccountId
+                 ,limits = ?DEFAULT_LIMITS
+                 ,jobs = ?INIT_JOBS
+                 }, ?POLLING_INTERVAL}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -85,9 +124,36 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'job_complete', Worker}, #state{jobs=Jobs}=State) ->
-    poolboy:checkin(?FAX_WORKER_POOL, Worker),
-    {'noreply', State#state{jobs=distribute_jobs(Jobs)}, ?POLLING_INTERVAL};
+handle_cast({'job_status',{JobId, <<"start">>, ServerId}}, #state{jobs=#{pending := Pending
+                                                              ,running := Running
+                                                              }=Jobs
+                                                       }=State) ->
+    #{JobId := Number} = Pending,
+    {'noreply', State#state{jobs=Jobs#{pending => maps:remove(JobId, Pending)
+                                      ,running => Running#{JobId => #{number => Number
+                                                                     ,queue => ServerId
+                                                                     }
+                                                          }
+                                      }
+                           }, ?POLLING_INTERVAL
+    };
+handle_cast({'job_status',{JobId, <<"end">>, ServerId}}, #state{jobs=#{pending := Pending
+                                                            ,running := Running
+                                                            ,numbers := Numbers
+                                                            }=Jobs
+                                                       }=State) ->
+    #{JobId := #{queue := ServerId
+                ,number := Number
+                }
+     } = Running,
+    {'noreply', State#state{jobs=Jobs#{pending => maps:remove(JobId, Pending)
+                                      ,running => maps:remove(JobId, Running)
+                                      ,numbers => maps:remove(Number, Numbers)
+                                      }
+                           }, ?POLLING_INTERVAL
+    };
+handle_cast({'gen_listener',{'created_queue', Queue}}, State) ->
+    {'noreply', State#state{queue=Queue}, ?POLLING_INTERVAL};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State, ?POLLING_INTERVAL}.
@@ -102,26 +168,47 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info('timeout', #state{jobs=[]}=State) ->
+handle_info('timeout', #state{queue='undefined'}=State) ->
+    {'noreply', State, ?POLLING_INTERVAL};
+handle_info('timeout', #state{account_id=AccountId
+                             ,jobs=#{distribute := []
+                                    ,serialize := []
+                                    }=Map
+                             }=State) ->
     Upto = kz_util:current_tstamp(),
     ViewOptions = [{'limit', 100}
-                  ,{'endkey', Upto}
+                  ,{'startkey', [AccountId, 0]}
+                  ,{'endkey', [AccountId, Upto]}
                   ],
-    case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/jobs">>, ViewOptions) of
+    case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/jobs_by_account">>, ViewOptions) of
         {'ok', []} -> {'noreply', State, ?POLLING_INTERVAL};
         {'ok', Jobs} ->
-            lager:debug("fetched ~b jobs, attempting to distribute to workers", [length(Jobs)]),
-            {'noreply', State#state{jobs=distribute_jobs(Jobs)}, ?POLLING_INTERVAL};
+            lager:debug("fetched ~b jobs for account ~s, attempting to distribute to workers"
+                       ,[length(Jobs), AccountId]
+                       ),
+            {'noreply', distribute_jobs(State#state{jobs=Map#{distribute => Jobs}}), ?POLLING_INTERVAL};
         {'error', _Reason} ->
-            lager:debug("failed to fetch fax jobs: ~p", [_Reason]),
+            lager:debug("failed to fetch fax jobs for account ~s : ~p", [AccountId, _Reason]),
             {'noreply', State, ?POLLING_INTERVAL}
     end;
-handle_info({'DOWN', Ref, process, Pid, Reason}, #state{jobs=Jobs}=State) ->
-    lager:debug("Fax Worker crashed ? ~p / ~p / ~p",[Ref, Pid, Reason]),
-    {'noreply', State#state{jobs=distribute_jobs(Jobs)}, ?POLLING_INTERVAL};
+%% handle_info({'DOWN', _Ref, process, Pid, 'normal'}, #state{jobs=Jobs}=State) ->
+%%     lager:debug("fax worker (~p) ended normally",[Pid]),
+%%     {'noreply', State#state{jobs=distribute_jobs(Jobs)}, ?POLLING_INTERVAL};
+%% handle_info({'DOWN', _Ref, process, Pid, Reason}, #state{jobs=Jobs}=State) ->
+%%     lager:debug("fax worker (~p) crashed with reason ~p",[Pid, Reason]),
+%%     {'noreply', State#state{jobs=distribute_jobs(Jobs)}, ?POLLING_INTERVAL};
+handle_info('timeout', State) ->
+    {'noreply', distribute_jobs(State), ?POLLING_INTERVAL};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State, ?POLLING_INTERVAL}.
+
+handle_event(JObj, _State) ->
+    case kapi_fax:status_v(JObj) of
+        'true' -> gen_server:cast(self(), ?JOB_STATUS(JObj));
+        'false' -> 'ok'
+    end,
+    'ignore'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -134,8 +221,8 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    lager:debug("fax jobs terminating: ~p", [_Reason]).
+terminate(_Reason, #state{account_id=AccountId}) ->
+    lager:debug("terminating fax jobs for account ~s: ~p", [AccountId, _Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -151,28 +238,65 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec distribute_jobs(kz_json:objects()) -> kz_json:objects().
-distribute_jobs([]) -> [];
-distribute_jobs([Job|Jobs]) ->
-    case catch poolboy:checkout(?FAX_WORKER_POOL, 'false', 1000) of
-        Worker when is_pid(Worker) ->
-            gen_server:cast(Worker, {'attempt_transmission', self(), Job}),
-            distribute_jobs(Jobs);
-        _Else -> Jobs
+-spec distribute_jobs(state()) -> state().
+distribute_jobs(#state{jobs=#{distribute := []
+                             ,serialize := []
+                             }
+                      }=State) -> State;
+distribute_jobs(#state{jobs=#{distribute := []
+                             ,serialize := Serialize
+                             }=Jobs
+                      }=State) ->
+    State#state{jobs=Jobs#{distribute => Serialize
+                          ,serialize => []
+                          }};
+distribute_jobs(#state{account_id=AccountId
+                      ,limits= #{account := MaxAccount}
+                      ,jobs=#{pending := Pending
+                             ,running := Running
+                             }
+                      }=State)
+  when map_size(Pending) + map_size(Running) >= MaxAccount ->
+    lager:warning("fax outbound limits (~b) reached for account ~s", [MaxAccount, AccountId]),
+    State;
+distribute_jobs(#state{account_id=AccountId
+                      ,queue=Q
+                      ,jobs=#{distribute := [Job | Jobs]
+                             ,pending := Pending
+                             ,serialize := Serialize
+                             ,numbers := Numbers
+                             }=Map
+                      }=State) ->
+    JobId = kz_doc:id(Job),
+    Number = kz_json:get_value([<<"value">>, <<"to">>], Job),
+    ToNumber = knm_converters:normalize(Number, AccountId),
+    case maps:is_key(ToNumber, Numbers) of
+        'true' -> distribute_jobs(State#state{jobs=Map#{distribute => Jobs
+                                                       ,serialize => [Job | Serialize]
+                                                       }});
+        'false' ->
+            Payload = [{<<"Job-ID">>, JobId}
+                       ,{<<"Account-ID">>, AccountId}
+                       ,{<<"To-Number">>, ToNumber}
+                           | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+                      ],
+            kz_amqp_worker:cast(Payload, fun kapi_fax:publish_start_job/1),
+            distribute_jobs(State#state{jobs=Map#{distribute => Jobs
+                                                  ,pending => Pending#{JobId => ToNumber}
+                                                  ,numbers => Numbers#{ToNumber => JobId}
+                                                 }})
     end.
 
--spec cleanup_jobs() -> 'ok'.
-cleanup_jobs() ->
-    ViewOptions = [{<<"key">>, kz_util:to_binary(node())}],
-    case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/processing_by_node">>, ViewOptions) of
-        {'ok', JObjs} ->
-            _ = [begin
-                     DocId = kz_doc:id(JObj),
-                     lager:debug("moving zombie job ~s status to pending", [DocId]),
-                     kz_datamgr:update_doc(?KZ_FAXES_DB, DocId, [{<<"pvt_job_status">>, <<"pending">>}])
-                 end
-                 || JObj <- JObjs
-                ],
-            'ok';
-        {'error', _R} -> lager:debug("unable to cleanup jobs: ~p", [_R])
+-spec handle_start_account(kz_json:object(), kz_proplist()) -> 'ok'.
+handle_start_account(JObj, _Props) ->
+    'true' = kapi_fax:start_account_v(JObj),
+    AccountId = kapi_fax:account_id(JObj),
+    case is_running(AccountId) of
+        'true' -> 'ok';
+        'false' -> fax_jobs_sup:start_account_jobs(AccountId),
+                   'ok'
     end.
+
+-spec is_running(ne_binary()) -> boolean().
+is_running(AccountId) ->
+    kz_globals:where_is(?FAX_OUTBOUND_SERVER(AccountId)) =/= 'undefined'.

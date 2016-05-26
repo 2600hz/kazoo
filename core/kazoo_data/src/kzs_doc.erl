@@ -215,7 +215,7 @@ copy_doc(Src, Dst, CopySpec, CopyFun, Opts) ->
                  ,dest_dbname = DestDbName
                  ,dest_doc_id = DestDocId
                 } = CopySpec,
-    Transform = props:get_value('transform', Opts),
+    Transform = props:get_value(?COPY_TRANSFORM, Opts),
     Options = props:delete(?COPY_TRANSFORM, Opts),
     case open_doc(Src, SourceDbName, SourceDocId, Options) of
         {'ok', SourceDoc} ->
