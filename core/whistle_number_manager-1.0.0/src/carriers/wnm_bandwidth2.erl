@@ -44,6 +44,26 @@
 -define(BW_ORDER_NAME_PREFIX,
         whapps_config:get_binary(?WNM_BW_CONFIG_CAT, <<"order_name_prefix">>, <<"Kazoo">>)).
 
+-define(IS_US_TOLLFREE(Prefix),
+    Prefix == <<"800">> orelse
+    Prefix == <<"822">> orelse
+    Prefix == <<"833">> orelse
+    Prefix == <<"844">> orelse
+    Prefix == <<"855">> orelse
+    Prefix == <<"866">> orelse
+    Prefix == <<"877">> orelse
+    Prefix == <<"880">> orelse
+    Prefix == <<"881">> orelse
+    Prefix == <<"882">> orelse
+    Prefix == <<"883">> orelse
+    Prefix == <<"884">> orelse
+    Prefix == <<"885">> orelse
+    Prefix == <<"886">> orelse
+    Prefix == <<"887">> orelse
+    Prefix == <<"888">> orelse
+    Prefix == <<"889">>
+).
+
 %% @public
 -spec is_number_billable(wnm_number()) -> 'true'.
 is_number_billable(_Number) -> 'true'.
@@ -63,7 +83,8 @@ find_numbers(<<"+", Rest/binary>>, Quantity, Opts) ->
 find_numbers(<<"1", Rest/binary>>, Quantity, Opts) ->
     find_numbers(Rest, Quantity, Opts);
 
-find_numbers(<<"8", Second:1/binary, _/binary>>, Quantity, _) ->
+find_numbers(<<Prefix:3/binary, _/binary>>, Quantity, _) when ?IS_US_TOLLFREE(Prefix) ->
+    <<"8", Second:1/binary, _/binary>> = Prefix,
     UseQuantity = list_to_binary(integer_to_list(Quantity)),
     {'ok', Result} = search(<<"tollFreeWildCardPattern=8", Second/binary, "*&enableTNDetail=true&quantity=", UseQuantity/binary>>),
     process_tollfree_response(Result);
