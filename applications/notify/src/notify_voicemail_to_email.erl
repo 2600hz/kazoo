@@ -105,7 +105,10 @@ get_owner(_AccountDb, _VMBox, 'undefined') ->
     {'ok', wh_json:new()};
 get_owner(AccountDb, _VMBox, OwnerId) ->
     lager:debug("attempting to load owner: ~s", [OwnerId]),
-    {'ok', _} = couch_mgr:open_cache_doc(AccountDb, OwnerId).
+    case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
+        {'ok', _}=OK -> OK;
+        {'error', _} -> {'ok', wh_json:new()}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
