@@ -21,7 +21,6 @@
 %% @doc Implement the application start behaviour
 -spec start(application:start_type(), any()) -> startapp_ret().
 start(_StartType, _StartArgs) ->
-    _ = kz_nodes:bind('add_data', 'ecallmgr_fs_node', 'add_ecallmgr_data'),
     _ = declare_exchanges(),
     ecallmgr_sup:start_link().
 
@@ -29,8 +28,8 @@ start(_StartType, _StartArgs) ->
 %% @doc Implement the application stop behaviour
 -spec stop(any()) -> any().
 stop(_State) ->
-    _ = kz_nodes:unbind('add_data', 'ecallmgr_fs_node', 'add_ecallmgr_data'),
     'ok'.
+
 
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
