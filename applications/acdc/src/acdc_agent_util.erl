@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2015, 2600Hz
+%%% @copyright (C) 2013-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -19,7 +19,7 @@
          ,most_recent_ets_statuses/1, most_recent_ets_statuses/2, most_recent_ets_statuses/3
          ,most_recent_db_statuses/1, most_recent_db_statuses/2, most_recent_db_statuses/3
 
-         ,changed/2
+         ,changed/2, find_most_recent_fold/3
         ]).
 
 -include("acdc.hrl").
