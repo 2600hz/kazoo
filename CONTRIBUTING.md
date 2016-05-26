@@ -27,8 +27,7 @@ Some of the highlights:
   * One blank line between functions only
 * Avoid deep nesting
   * Avoid nesting case or any conditionals. If nesting is required do not exceed three levels. It is better to call a well-named function to encapsulate the decision making of the inner case.
-  * An [example](https://github.com/2600hz/kazoo/blob/b7eff7b7a356f38eb3d36100256b660012bb0313/applications/callflow/src/module/cf_park.erl#L67-L106) of nesting that needs refactoring
-  *
+  * An [example](https://github.com/2600hz/kazoo/blob/b7eff7b7a356f38eb3d36100256b660012bb0313/applications/callflow/src/module/cf_park.erl#L67-L106) of nesting that needs refactoring, and the [example refactored](https://github.com/2600hz/kazoo/blob/master/applications/callflow/src/module/cf_park.erl#L67-L106).
 * Do not use `if` statements.
   * In some circumstances `if` introduces static boolean logic in your code, reducing code flexibility.
   * In other cases, a case or a function call with pattern matching in its clauses is just more declarative.
