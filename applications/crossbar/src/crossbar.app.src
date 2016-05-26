@@ -11,10 +11,6 @@
                   , ssl
                   , inets
 
-                  , kazoo
-                  , kazoo_amqp
-                  , kazoo_data
-                  , kazoo_bindings
                   , kazoo_apps
 
                   , lager

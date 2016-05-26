@@ -12,9 +12,6 @@
                  , inets
 
                  , kazoo_apps
-                 , kazoo_amqp
-                 , kazoo_data
-                 , kazoo_bindings
 
                  , lager
                  , ranch
