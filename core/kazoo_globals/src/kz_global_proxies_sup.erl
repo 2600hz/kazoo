@@ -22,7 +22,7 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--define(CHILDREN, [?WORKER_TYPE('kz_global_proxy', 'transient')]).
+-define(CHILDREN, [?WORKER_TYPE('kz_global_proxy', 'temporary')]).
 
 %% ===================================================================
 %% API functions

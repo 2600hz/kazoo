@@ -13,6 +13,8 @@
 -export([encode/1, encode_req/1, decode/1]).
 -export([state/1]).
 -export([is_pending/1]).
+-export([timestamp/1]).
+-export([node/1]).
 
 -export([bind_q/2, unbind_q/2]).
 -export([declare_exchanges/0]).
@@ -23,6 +25,7 @@
 -export([call/1, call_v/1]).
 -export([reply_msg/1, reply_msg_v/1]).
 -export([register/1, register_v/1]).
+-export([register_resp/1, register_resp_v/1]).
 -export([unregister/1, unregister_v/1]).
 
 -export([publish_query/1, publish_query/2]).
@@ -66,7 +69,8 @@ maybe_decode(MaybeEncoded) ->
             binary_to_term(Decoded)
     catch
         'error':'function_clause' -> MaybeEncoded;
-        'error':{'badmatch','false'} -> MaybeEncoded
+        'error':{'badmatch','false'} -> MaybeEncoded;
+        'error':{'badarg', _} -> MaybeEncoded
     end.
 
 encode_req(Req) ->
@@ -107,6 +111,14 @@ reason(JObj) ->
 is_pending(JObj) ->
     state(JObj) =:= 'pending'.
 
+-spec timestamp(kz_json:object()) -> integer().
+timestamp(JObj) ->
+    kz_json:get_integer_value(<<"Timestamp">>, JObj).
+
+-spec node(kz_json:object()) -> atom().
+node(JObj) ->
+    kz_util:to_atom(kz_api:node(JObj), 'true').
+
 -define(GLOBALS_EXCHANGE, <<"globals">>).
 -define(GLOBALS_EXCHANGE_TYPE, <<"topic">>).
 
@@ -136,18 +148,25 @@ routing_key(Event, Name) ->
 -define(QUERY_REQ_TYPES, []).
 
 -define(QUERY_RESP_HEADERS, [<<"Name">>]).
--define(OPTIONAL_QUERY_RESP_HEADERS, []).
+-define(OPTIONAL_QUERY_RESP_HEADERS, [<<"State">>, <<"Timestamp">>]).
 -define(QUERY_RESP_VALUES, [{<<"Event-Category">>, <<"globals">>}
                            ,{<<"Event-Name">>, <<"query_resp">>}
                            ]).
--define(QUERY_RESP_TYPES, []).
+-define(QUERY_RESP_TYPES, [{<<"Timestamp">>, fun is_integer/1}]).
 
 -define(REGISTER_REQ_HEADERS, [<<"Name">>]).
--define(OPTIONAL_REGISTER_REQ_HEADERS, [<<"State">>]).
+-define(OPTIONAL_REGISTER_REQ_HEADERS, [<<"State">>, <<"Timestamp">>]).
 -define(REGISTER_REQ_VALUES, [{<<"Event-Category">>, <<"globals">>}
                              ,{<<"Event-Name">>, <<"register">>}
                              ]).
--define(REGISTER_REQ_TYPES, []).
+-define(REGISTER_REQ_TYPES, [{<<"Timestamp">>, fun is_integer/1}]).
+
+-define(REGISTER_RESP_HEADERS, [<<"Name">>]).
+-define(OPTIONAL_REGISTER_RESP_HEADERS, [<<"State">>, <<"Timestamp">>]).
+-define(REGISTER_RESP_VALUES, [{<<"Event-Category">>, <<"globals">>}
+                              ,{<<"Event-Name">>, <<"register_resp">>}
+                           ]).
+-define(REGISTER_RESP_TYPES, [{<<"Timestamp">>, fun is_integer/1}]).
 
 -define(UNREGISTER_REQ_HEADERS, [<<"Name">>]).
 -define(OPTIONAL_UNREGISTER_REQ_HEADERS, [<<"Reason">>]).
@@ -191,6 +210,21 @@ register_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?REGISTER_REQ_HEADERS, ?REGISTER_REQ_VALUES, ?REGISTER_REQ_TYPES);
 register_v(JObj) ->
     register_v(kz_json:to_proplist(JObj)).
+
+-spec register_resp(api_terms()) -> api_formatter_return().
+register_resp(Prop) when is_list(Prop) ->
+    case register_resp_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?REGISTER_RESP_HEADERS, ?OPTIONAL_REGISTER_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for globals register"}
+    end;
+register_resp(JObj) ->
+    register_resp(kz_json:to_proplist(JObj)).
+
+-spec register_resp_v(api_terms()) -> boolean().
+register_resp_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?REGISTER_RESP_HEADERS, ?REGISTER_RESP_VALUES, ?REGISTER_RESP_TYPES);
+register_resp_v(JObj) ->
+    register_resp_v(kz_json:to_proplist(JObj)).
 
 -spec unregister(api_terms()) -> api_formatter_return().
 unregister(Prop) when is_list(Prop) ->
@@ -349,7 +383,7 @@ publish_register(Req, ContentType) ->
 publish_register_resp(ServerId, JObj) ->
     publish_register_resp(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_register_resp(ServerId, Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(encode_req(Req), ?REGISTER_REQ_VALUES, fun ?MODULE:register/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(encode_req(Req), ?REGISTER_RESP_VALUES, fun ?MODULE:register_resp/1),
     amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
 -spec publish_unregister(api_terms()) -> 'ok'.
