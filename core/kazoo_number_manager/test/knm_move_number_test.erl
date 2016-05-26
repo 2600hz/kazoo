@@ -8,7 +8,7 @@
 -module(knm_move_number_test).
 
 -include_lib("eunit/include/eunit.hrl").
--include("knm.hrl").
+-include_lib("kazoo_number_manager/src/knm.hrl").
 
 move_number_test_() ->
     TestFuns = [fun move_to_child/1],

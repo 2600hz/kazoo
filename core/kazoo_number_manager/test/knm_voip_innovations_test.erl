@@ -8,7 +8,7 @@
 -module(knm_voip_innovations_test).
 
 -include_lib("eunit/include/eunit.hrl").
--include("knm.hrl").
+-include_lib("kazoo_number_manager/src/knm.hrl").
 
 api_test_() ->
     Options = [{<<"account_id">>, ?RESELLER_ACCOUNT_ID}
