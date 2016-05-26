@@ -304,13 +304,10 @@ settings_sip(JObj) ->
 
 -spec settings_advanced(wh_json:object()) -> wh_json:object().
 settings_advanced(JObj) ->
-    SRTP = case wh_json:get_ne_value([<<"media">>, <<"secure_rtp">>], JObj) of
-               'undefined' -> 'undefined';
-               _Else -> 'true'
-           end,
+    EncryptionMethods = wh_json:get_value([<<"media">>, <<"encryption">>, <<"methods">>], JObj, []),
     Props = props:filter_undefined(
               [{<<"expire">>, wh_json:get_integer_value([<<"sip">>, <<"expire_seconds">>], JObj)}
-               ,{<<"srtp">>, SRTP}
+               | [{M, 'true'} || M <- EncryptionMethods]
               ]),
     wh_json:from_list(Props).
 
