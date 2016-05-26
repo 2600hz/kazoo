@@ -20,6 +20,7 @@
         ]).
 
 -include("crossbar.hrl").
+-include_lib("kazoo_tasks/include/kazoo_tasks.hrl").
 
 -define(SCHEMA_CREATE_TASK, <<"tasks">>).
 
@@ -67,84 +68,62 @@ authenticate(_) -> 'false'.
 authorize(_) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
-%% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
-%%
-%% Failure here returns 405
+%% Given the path tokens related to this module, what HTTP methods are
+%% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
-
 allowed_methods(_TaskId) ->
     [?HTTP_GET, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
-%% Failure here returns 404
+%% Does the path point to a valid resource
+%% So /tasks => []
+%%    /tasks/task_id => [<<"task_id">>]
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
-
 resource_exists(_TaskId) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% This function determines if the parameters and content are correct
-%% for this request
-%%
-%% Failure here returns 400
+%% Check the request (request body, query string params, path tokens, etc)
+%% and load necessary information.
+%% /tasks mights load a list of task objects
+%% /tasks/123 might load the task object 123
+%% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
-
 validate(Context) ->
-    case cb_context:req_verb(Context) of
-        ?HTTP_GET ->
-            %%TODO: view. summary(Context, undefined)?
-            cb_context:setters(Context, [{fun cb_context:set_resp_data/2, kz_tasks:all()}
-                                        ,{fun cb_context:set_resp_status/2, 'success'}
-                                        ]);
-        ?HTTP_PUT ->
-            cb_context:validate_request_data(?SCHEMA_CREATE_TASK, Context)
-    end.
-
+    validate_tasks(Context, cb_context:req_verb(Context)).
 validate(Context, TaskId) ->
     validate_task(Context, TaskId, cb_context:req_verb(Context)).
 
+-spec validate_tasks(cb_context:context(), http_method()) -> cb_context:context().
+validate_tasks(Context, ?HTTP_GET) ->
+    summary(Context);
+validate_tasks(Context, ?HTTP_PUT) ->
+    cb_context:validate_request_data(?SCHEMA_CREATE_TASK, Context).
+
 -spec validate_task(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_task(Context, TaskId, ?HTTP_GET) ->
-    case kz_tasks:read(TaskId) of
-        {'ok', JObj} ->
-            cb_context:setters(Context, [{fun cb_context:set_resp_data/2, JObj}
-                                        ,{fun cb_context:set_resp_status/2, 'success'}
-                                        ]);
-        {'error', _} ->
-            crossbar_util:response_bad_identifier(TaskId, Context)
-    end;
+    read(TaskId, Context);
 validate_task(Context, TaskId, ?HTTP_PATCH) ->
-    validate_task(Context, TaskId);
+    read(TaskId, Context);
 validate_task(Context, TaskId, ?HTTP_DELETE) ->
-    validate_task(Context, TaskId).
-
--spec validate_task(cb_context:context(), path_token()) -> cb_context:context().
-validate_task(Context, TaskId) ->
-    case kz_tasks:read(TaskId) of
-        {'ok', _JObj} -> cb_context:set_resp_status(Context, 'success');
-        {'error', _R} ->
-            crossbar_util:response_bad_identifier(TaskId, Context)
-    end.
+    read(TaskId, Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -160,10 +139,8 @@ put(Context) ->
     M = kz_util:to_atom(BinM, 'true'),
     F = kz_util:to_atom(BinF, 'true'),
     A = kz_json:get_list_value(<<"arguments">>, ReqData),
-    case kz_tasks:new(M, F, A) of
-        {'ok', TaskId} ->
-            JObj = kz_json:from_list([{<<"id">>, TaskId}]),
-            crossbar_util:response(JObj, Context);
+    case kz_tasks:new(cb_context:account_id(Context), M, F, A) of
+        {'ok', Task} -> crossbar_util:response(Task, Context);
         {'error', {'no_module', _M}} ->
             crossbar_util:response_bad_identifier(BinM, Context);
         {'error', {'no_function', _M, _F, Arity}} ->
@@ -177,7 +154,8 @@ put(Context) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% If the HTTP verb is PATCH, execute the actual action, usually a db update.
+%% If the HTTP verb is PATCH, execute the actual action, usually a db save
+%% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
@@ -208,8 +186,45 @@ delete(Context, TaskId) ->
             cb_context:add_system_error('bad_identifier', Msg, Context)
     end.
 
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 
-%%% End of Module
+%% @private
+-spec set_db(cb_context:context()) -> cb_context:context().
+set_db(Context) ->
+    cb_context:set_account_db(Context, ?KZ_TASKS_DB).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Load an instance from the database
+%% @end
+%%--------------------------------------------------------------------
+-spec read(ne_binary(), cb_context:context()) -> cb_context:context().
+read(Id, Context) ->
+    crossbar_doc:load(Id, set_db(Context), ?TYPE_CHECK_OPTION(?KZ_TASKS_DOC_TYPE)).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempt to load a summarized listing of all instances of this
+%% resource.
+%% @end
+%%--------------------------------------------------------------------
+-spec summary(cb_context:context()) -> cb_context:context().
+summary(Context) ->
+    ViewOptions = [{'key', cb_context:account_id(Context), 'undefined'}
+                  ],
+    crossbar_doc:load_view(?KZ_TASKS_BY_ACCOUNT, ViewOptions, set_db(Context), fun normalize_view_results/2).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Normalizes the resuts of a view
+%% @end
+%%--------------------------------------------------------------------
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
+normalize_view_results(JObj, Acc) ->
+    [kz_json:get_value(<<"value">>, JObj) | Acc].

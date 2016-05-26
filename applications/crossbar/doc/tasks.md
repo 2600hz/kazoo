@@ -18,11 +18,12 @@ curl -v -X GET \
     "auth_token": "{AUTH_TOKEN}",
     "data": [
         {
-            "A": [
+            "account_id": "{ACCOUNT_ID}",
+            "arguments": [
                 100000
             ],
-            "F": "sleep",
-            "M": "timer",
+            "function": "sleep",
+            "module": "timer",
             "ended_at": 63631324961,
             "id": "ab1d2f34b79973a076079b942519dc",
             "is_success": true,
@@ -32,11 +33,12 @@ curl -v -X GET \
             "submitted_at": 63631324811
         },
         {
-            "A": [
+            "account_id": "{ACCOUNT_ID}",
+            "arguments": [
                 "4157125234"
             ],
-            "F": "normalize",
-            "M": "knm_converters",
+            "function": "normalize",
+            "module": "knm_converters",
             "id": "7318ebc8f4c4bf40e741485f6a8679",
             "submitted_at": 63631324841
         }
@@ -65,9 +67,16 @@ curl -v -X PUT \
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "id": "af0a267f8f1b7edc87af00fa8dd948"
+        "account_id": "{ACCOUNT_ID}",
+        "arguments": [
+            {ARGUMENTS}
+        ],
+        "function": "{FUNCTION}",
+        "id": "754b9b2fec86eaed255e2c5f58df95",
+        "module": "{MODULE}",
+        "submitted_at": 63631506599
     },
-    "request_id": "1cd6a840a7e9599f5ba3d3619b36b07f",
+    "request_id": "30d6cd3153859cc57561437dd61abbb5",
     "revision": "undefined",
     "status": "success"
 }
@@ -122,9 +131,10 @@ curl -v -X DELETE \
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "A": [],
-        "F": "get_cookie",
-        "M": "erlang",
+        "account_id": "{ACCOUNT_ID}",
+        "arguments": [],
+        "function": "get_cookie",
+        "module": "erlang",
         "id": "{TASK_ID}",
         "submitted_at": 63631325071
     },
@@ -182,11 +192,12 @@ curl -v -X GET \
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "A": [
+        "account_id": "{ACCOUNT_ID}",
+        "arguments": [
             "bla"
         ],
-        "F": "sleep",
-        "M": "timer",
+        "function": "sleep",
+        "module": "timer",
         "ended_at": 63631325127,
         "error": "(<0.29082.4>) error: timeout_value\n[{timer,sleep,1,[{file,\"timer.erl\"},{line,153}]},\n {kz_task_worker,run_task,4,[{file,\"src/kz_task_worker.erl\"},{line,161}]}]",
         "id": "{TASK_ID}",
@@ -234,11 +245,12 @@ curl -v -X PATCH \
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "A": [
+        "account_id": "{ACCOUNT_ID}",
+        "arguments": [
             100000
         ],
-        "F": "sleep",
-        "M": "timer",
+        "function": "sleep",
+        "module": "timer",
         "id": "{TASK_ID}",
         "is_terminated": false,
         "started_at": 63631324861,

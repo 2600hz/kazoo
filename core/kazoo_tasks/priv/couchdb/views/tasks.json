@@ -1,0 +1,9 @@
+{
+    "_id": "_design/tasks",
+    "language": "javascript",
+    "views": {
+        "listing_by_account": {
+            "map": "function (doc) { if (doc.pvt_type != 'task' || doc.pvt_deleted) return; emit([doc._id, doc.pvt_account_id], { 'id':doc._id, 'module':doc.pvt_module, 'function':doc.pvt_function, 'arguments':doc.pvt_arguments, 'submitted_at':doc.pvt_submitted_at, 'started_at':(doc.pvt_started_at)?doc.pvt_started_at:undefined, 'ended_at':(doc.pvt_ended_at)?doc.pvt_ended_at:undefined, 'is_terminated':(doc.pvt_is_terminated)?doc.pvt_is_terminated:undefined, 'is_success':(doc.pvt_is_success)?doc.pvt_is_success:undefined, 'error':(doc.pvt_error)?doc.pvt_error:undefined, 'ran_for':(doc.pvt_ran_for)?doc.pvt_ran_for:undefined }); }"
+        }
+    }
+}

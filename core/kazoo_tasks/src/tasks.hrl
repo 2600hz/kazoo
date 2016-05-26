@@ -3,9 +3,24 @@
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 -include_lib("kazoo/include/kz_databases.hrl").
+-include_lib("kazoo_tasks/include/kazoo_tasks.hrl").
 
 -define(APP_NAME, <<"kazoo_tasks">>).
 -define(APP_VERSION, <<"4.0.0">> ).
+
+-define(PVT_TYPE, <<"pvt_type">>).
+-define(PVT_ACCOUNT_ID, <<"pvt_account_id">>).
+-define(PVT_MODULE, <<"pvt_module">>).
+-define(PVT_FUNCTION, <<"pvt_function">>).
+-define(PVT_ARGUMENTS, <<"pvt_arguments">>).
+-define(PVT_SUBMITTED_AT, <<"pvt_submitted_at">>).
+-define(PVT_STARTED_AT, <<"pvt_started_at">>).
+-define(PVT_FINISHED_AT, <<"pvt_finished_at">>).
+-define(PVT_FAILED_AT, <<"pvt_failed_at">>).
+-define(PVT_ERROR, <<"pvt_error">>).
+-define(PVT_IS_TERMINATED, <<"pvt_is_terminated">>).
+-define(PVT_IS_SUCCESS, <<"pvt_is_success">>).
+-define(PVT_RAN_FOR, <<"pvt_ran_for">>).
 
 -define(KZ_TASKS_HRL, 'true').
 -endif.

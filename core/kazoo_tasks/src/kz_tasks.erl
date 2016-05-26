@@ -11,10 +11,10 @@
 
 %% Public API
 -export([start_link/0]).
--export([new/3
+-export([new/4
         ,start/1
         ,read/1
-        ,all/0
+        ,all/0, all/1
         ,remove/1
 	]).
 
@@ -41,6 +41,7 @@
 -type task_id() :: <<_:(8*2*?TASK_ID_SIZE)>>.
 
 -opaque task() :: #{ worker_pid => api_pid()
+                   , account_id => ne_binary()
                    , id => task_id()
                    , m => module()
                    , f => atom()
@@ -61,7 +62,7 @@
                }).
 -type state() :: #state{}.
 
--define(REPLY_FOUND(State, Task), {'reply', {'ok', Task}, State}).
+-define(REPLY_FOUND(TaskJObj, State), {'reply', {'ok', TaskJObj}, State}).
 -define(REPLY_NOT_FOUND(State), {'reply', {'error', 'not_found'}, State}).
 
 
@@ -90,12 +91,20 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec all() -> kz_json:objects().
 all() ->
-    case gen_server:call(?SERVER, 'get_tasks') of
-        [] -> [];
-        Tasks ->
-            Sorted = lists:sort(fun compare_tasks/2, Tasks),
-            [task_to_public_json(Task) || Task <- Sorted]
-    end.
+    sort(
+      gen_server:call(?SERVER, 'get_tasks')
+     ).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec all(ne_binary()) -> kz_json:objects().
+all(AccountId=?NE_BINARY) ->
+    sort(
+      gen_server:call(?SERVER, {'get_tasks', AccountId})
+     ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -104,20 +113,17 @@ all() ->
 %%--------------------------------------------------------------------
 -spec start(task_id()) -> {'ok', kz_json:object()} |
                           {'error', 'not_found' | 'already_started'}.
-start(TaskId) ->
-    case gen_server:call(?SERVER, {'start_task', TaskId}) of
-        {'ok', Task} -> {'ok', task_to_public_json(Task)};
-        {'error', _R}=E -> E
-    end.
+start(TaskId=?NE_BINARY) ->
+    gen_server:call(?SERVER, {'start_task', TaskId}).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec new(module(), atom(), list()) -> {'ok', kz_json:object()} |
-                                       {'error', any()}.
-new(M, F, A)
+-spec new(ne_binary(), module(), atom(), list()) -> {'ok', kz_json:object()} |
+                                                    {'error', any()}.
+new(?MATCH_ACCOUNT_RAW(_)=AccountId, M, F, A)
   when is_atom(M),
        is_atom(F),
        is_list(A) ->
@@ -128,6 +134,7 @@ new(M, F, A)
             E;
         'ok' ->
             Task = #{ worker_pid => 'undefined'
+                    , account_id => AccountId
                     , id => ?A_TASK_ID
                     , m => M
                     , f => F
@@ -137,15 +144,13 @@ new(M, F, A)
                     , finished => 'undefined'
                     , failed => 'undefined'
                     },
-            task_to_public_json(
-              gen_server:call(?SERVER, {'add_task', Task})
-             )
+            gen_server:call(?SERVER, {'add_task', Task})
     end;
-new(M, _, _) when not is_atom(M) ->
+new(_, M, _, _) when not is_atom(M) ->
     {'error', {'bad_module', M}};
-new(_, F, _) when not is_atom(F) ->
+new(_, _, F, _) when not is_atom(F) ->
     {'error', {'bad_function', F}};
-new(_, _, A) when not is_list(A) ->
+new(_, _, _, A) when not is_list(A) ->
     {'error', {'bad_list', A}}.
 
 %%--------------------------------------------------------------------
@@ -156,10 +161,7 @@ new(_, _, A) when not is_list(A) ->
 -spec read(task_id()) -> {'ok', kz_json:object()} |
                          {'error', 'not_found'}.
 read(TaskId=?NE_BINARY) ->
-    case gen_server:call(?SERVER, {'get_task_by_id', TaskId}) of
-        {'ok', Task} -> {'ok', task_to_public_json(Task)};
-        {'error', _R}=E -> E
-    end.
+    gen_server:call(?SERVER, {'get_task_by_id', TaskId}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -169,10 +171,7 @@ read(TaskId=?NE_BINARY) ->
 -spec remove(task_id()) -> {'ok', kz_json:object()} |
                            {'error', 'not_found' | 'task_running'}.
 remove(TaskId=?NE_BINARY) ->
-    case gen_server:call(?SERVER, {'remove_task', TaskId}) of
-        {'ok', Task} -> {'ok', task_to_public_json(Task)};
-        {'error', _R}=E -> E
-    end.
+    gen_server:call(?SERVER, {'remove_task', TaskId}).
 
 %%%===================================================================
 %%% Worker API
@@ -214,6 +213,9 @@ worker_failed(TaskId=?NE_BINARY, Reason)
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    lager:info("ensuring db ~s exists", [?KZ_TASKS_DB]),
+    'true' = kz_datamgr:db_create(?KZ_TASKS_DB),
+    kz_datamgr:revise_views_from_folder(?KZ_TASKS_DB, kz_util:to_atom(?APP_NAME)),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -231,52 +233,56 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call('get_tasks', _From, State) ->
-    Tasks = State#state.tasks,
+    Tasks = view([]),
+    {'reply', Tasks, State};
+
+handle_call({'get_tasks', AccountId}, _From, State) ->
+    Tasks = view([{'key', AccountId, 'undefined'}
+                 ]),
     {'reply', Tasks, State};
 
 handle_call({'add_task', Task}, _From, State) ->
-    Tasks = [Task | State#state.tasks],
-    State1 = State#state{tasks = Tasks},
-    ?REPLY_FOUND(State1, Task);
+    {'ok', JObj} = save_task(Task),
+    ?REPLY_FOUND(JObj, State);
 
 handle_call({'start_task', TaskId}, _From, State) ->
     case task_by_id(TaskId, State) of
-        [] -> ?REPLY_NOT_FOUND(State);
+        [] ->
+            case task_by_id(TaskId) of
+                [] -> ?REPLY_NOT_FOUND(State);
+                [Task] -> handle_call_start_task(Task, State)
+            end;
         [#{started := Started}]
           when Started /= 'undefined' ->
             {'reply', {'error', 'already_started'}, State};
-        [#{m := M, f := F, a := A} = Task] ->
-            case kz_task_worker:start_link(TaskId, M, F, A) of
-                {'ok', Pid} ->
-                    Task1 = Task#{ started => kz_util:current_tstamp()
-                                 , worker_pid => Pid
-                                 },
-                    State1 = add_task(Task1, remove_task(TaskId, State)),
-                    ?REPLY_FOUND(State1, Task1);
-                {'error', _R}=E ->
-                    {'reply', E, State}
-            end
+        [Task] ->
+            handle_call_start_task(Task, State)
     end;
 
 handle_call({'get_task_by_id', TaskId}, _From, State) ->
-    case task_by_id(TaskId, State) of
-        [Task] -> ?REPLY_FOUND(State, Task);
+    case task_by_id(TaskId) of
+        [Task] -> ?REPLY_FOUND(to_public_json(Task), State);
         [] -> ?REPLY_NOT_FOUND(State)
     end;
 
 handle_call({'remove_task', TaskId}, _From, State) ->
     case task_by_id(TaskId, State) of
-        [] -> ?REPLY_NOT_FOUND(State);
-        [Task = #{worker_pid := 'undefined'}] ->
-            State1 = remove_task(TaskId, State),
-            ?REPLY_FOUND(State1, Task);
+        [] ->
+            case task_by_id(TaskId) of
+                [] -> ?REPLY_NOT_FOUND(State);
+                [Task] ->
+                    %%TODO: if app shutdown before task termination
+                    %%this would be the place to attempt some cleanup
+                    {'ok', _} = kz_datamgr:del_doc(?KZ_TASKS_DB, TaskId),
+                    ?REPLY_FOUND(to_public_json(Task), State)
+            end;
         [Task = #{worker_pid := Pid}] ->
             case is_processing(Task) of
                 'true' -> {'reply', {'error', 'task_running'}, State};
                 'false' ->
                     _ = kz_task_worker:stop(Pid),
                     State1 = remove_task(TaskId, State),
-                    ?REPLY_FOUND(State1, Task)
+                    ?REPLY_FOUND(to_public_json(Task), State1)
             end
     end;
 
@@ -303,7 +309,8 @@ handle_cast({'set_terminated', TaskId, IsFailed, MaybeReason}, State) ->
             'true' -> Task1#{failed => MaybeReason};
             'false' -> Task1
         end,
-    State1 = add_task(Task2, remove_task(TaskId, State)),
+    {'ok', _} = save_task(Task2),
+    State1 = remove_task(TaskId, State),
     {'noreply', State1};
 
 handle_cast(_Msg, State) ->
@@ -354,22 +361,95 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec task_by_id(task_id(), state()) -> [] | [task()].
+-spec sort(kz_json:objects()) -> kz_json:objects().
+sort([]) -> [];
+sort(Tasks) ->
+    lists:sort(fun compare_tasks/2, Tasks).
+
+-spec compare_tasks(task(), task()) -> boolean().
+compare_tasks(JObjA, JObjB) ->
+    kz_json:get_value(?PVT_SUBMITTED_AT, JObjA)
+        =<
+        kz_json:get_value(?PVT_SUBMITTED_AT, JObjB).
+
+-spec save_task(task()) -> {'ok', kz_json:object()} |
+                           {'error', any()}.
+save_task(Task = #{id := _TaskId}) ->
+    case kz_datamgr:save_doc(?KZ_TASKS_DB, to_json(Task)) of
+        {'ok', Doc} -> {'ok', to_public_json(from_json(Doc))};
+        {'error', _R}=E ->
+            lager:error("failed to save ~s in ~s: ~p", [_TaskId, ?KZ_TASKS_DB, _R]),
+            E
+    end.
+
+-spec view(list()) -> kz_json:objects().
+view(ViewOptions) ->
+    case kz_datamgr:get_results(?KZ_TASKS_DB, ?KZ_TASKS_BY_ACCOUNT, ViewOptions) of
+        {'ok', JObjs} -> [kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs];
+        {'error', _R} ->
+            lager:debug("error viewing tasks (~p): ~p", [ViewOptions, _R]),
+            []
+    end.
+
+-spec task_by_id(task_id()) -> [task()].
+task_by_id(TaskId) ->
+    case kz_datamgr:open_cache_doc(?KZ_TASKS_DB, TaskId) of
+        {'ok', JObj} -> [from_json(JObj)];
+        {'error', _R} ->
+            lager:error("failed to open ~s in ~s: ~p", [TaskId, ?KZ_TASKS_DB, _R]),
+            []
+    end.
+
+-spec task_by_id(task_id(), state()) -> [task()].
 task_by_id(TaskId, State) ->
     [T || T=#{id := Id} <- State#state.tasks,
           TaskId == Id
     ].
 
--spec task_to_public_json(task()) -> kz_json:object().
-task_to_public_json(#{id := TaskId
-                     ,m := M
-                     ,f := F
-                     ,a := A
-                     ,submitted := Submitted
-                     ,started := Started
-                     ,finished := Finished
-                     ,failed := MaybeError
-                     } = Task) ->
+-spec handle_call_start_task(task(), state()) -> any().
+handle_call_start_task(Task=#{ id := TaskId
+                             , m := M
+                             , f := F
+                             , a := A
+                             }, State) ->
+    case kz_task_worker:start_link(TaskId, M, F, A) of
+        {'ok', Pid} ->
+            Task1 = Task#{ started => kz_util:current_tstamp()
+                         , worker_pid => Pid
+                         },
+            {'ok', JObj} = save_task(Task1),
+            State1 = add_task(Task1, remove_task(TaskId, State)),
+            ?REPLY_FOUND(JObj, State1);
+        {'error', _R}=E ->
+            lager:error("wroker failed starting ~s: ~p", [TaskId, _R]),
+            {'reply', E, State}
+    end.
+
+-spec from_json(kz_json:object()) -> task().
+from_json(Doc) ->
+    #{ worker_pid => 'undefined'
+     , account_id => kz_json:get_value(?PVT_ACCOUNT_ID, Doc)
+     , id => kz_doc:id(Doc)
+     , m => kz_util:to_atom(kz_json:get_value(?PVT_MODULE, Doc), 'true')
+     , f => kz_util:to_atom(kz_json:get_value(?PVT_FUNCTION, Doc), 'true')
+     , a => kz_json:get_list_value(?PVT_ARGUMENTS, Doc)
+     , submitted => kz_json:get_value(?PVT_SUBMITTED_AT, Doc)
+     , started => kz_json:get_value(?PVT_STARTED_AT, Doc)
+     , finished => kz_json:get_value(?PVT_FINISHED_AT, Doc)
+     , failed => kz_json:get_value(?PVT_FAILED_AT, Doc)
+     }.
+
+-spec to_json(task()) -> kz_json:object().
+to_json(#{id := TaskId
+         ,account_id := AccountId
+         ,m := M
+         ,f := F
+         ,a := A
+         ,submitted := Submitted
+         ,started := Started
+         ,finished := Finished
+         ,failed := MaybeError
+         } = Task) ->
     IsProcessed =
         case is_started(Task) of
             'false' -> 'undefined';
@@ -383,22 +463,39 @@ task_to_public_json(#{id := TaskId
         end,
     kz_json:from_list(
       props:filter_undefined(
-        [{<<"id">>, TaskId}
-        ,{<<"M">>, M}
-        ,{<<"F">>, F}
-        ,{<<"A">>, A}
-        ,{<<"submitted_at">>, Submitted}
-        ,{<<"started_at">>, Started}
-        ,{<<"ended_at">>, Finished}
-        ,{<<"error">>, MaybeError}
-        ,{<<"is_terminated">>, IsProcessed}
-        ,{<<"is_success">>, IsSuccess}
-        ,{<<"ran_for">>, time_ran(Task)}
+        [{<<"_id">>, TaskId}
+        ,{?PVT_TYPE, ?KZ_TASKS_DOC_TYPE}
+        ,{?PVT_ACCOUNT_ID, AccountId}
+        ,{?PVT_MODULE, kz_util:to_binary(M)}
+        ,{?PVT_FUNCTION, kz_util:to_binary(F)}
+        ,{?PVT_ARGUMENTS, A}
+        ,{?PVT_SUBMITTED_AT, Submitted}
+        ,{?PVT_STARTED_AT, Started}
+        ,{?PVT_FINISHED_AT, Finished}
+        ,{?PVT_ERROR, MaybeError}
+        ,{?PVT_IS_TERMINATED, IsProcessed}
+        ,{?PVT_IS_SUCCESS, IsSuccess}
+        ,{?PVT_RAN_FOR, time_ran(Task)}
         ])).
 
--spec compare_tasks(task(), task()) -> boolean().
-compare_tasks(#{submitted := A}, #{submitted := B}) ->
-    A =< B.
+-spec to_public_json(task()) -> kz_json:object().
+to_public_json(Task) ->
+    Doc = to_json(Task),
+    kz_json:from_list(
+      props:filter_undefined(
+        [{<<"id">>, kz_doc:id(Doc)}
+        ,{<<"account_id">>, kz_json:get_value(?PVT_ACCOUNT_ID, Doc)}
+        ,{<<"module">>, kz_json:get_value(?PVT_MODULE, Doc)}
+        ,{<<"function">>, kz_json:get_value(?PVT_FUNCTION, Doc)}
+        ,{<<"arguments">>, kz_json:get_value(?PVT_ARGUMENTS, Doc)}
+        ,{<<"submitted_at">>, kz_json:get_value(?PVT_SUBMITTED_AT, Doc)}
+        ,{<<"started_at">>, kz_json:get_value(?PVT_STARTED_AT, Doc)}
+        ,{<<"ended_at">>, kz_json:get_value(?PVT_FINISHED_AT, Doc)}
+        ,{<<"error">>, kz_json:get_value(?PVT_ERROR, Doc)}
+        ,{<<"is_terminated">>, kz_json:get_value(?PVT_IS_TERMINATED, Doc)}
+        ,{<<"is_success">>, kz_json:get_value(?PVT_IS_SUCCESS, Doc)}
+        ,{<<"ran_for">>, kz_json:get_value(?PVT_RAN_FOR, Doc)}
+        ])).
 
 -spec remove_task(task_id(), state()) -> state().
 remove_task(TaskId, State) ->
