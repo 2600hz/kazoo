@@ -10,7 +10,7 @@
 %%%-------------------------------------------------------------------
 -module(kz_endpoints).
 
--export([by_owner_id/3]).
+-export([by_owner_id/3, ignore_early_media/1]).
 
 -include("kazoo_endpoint.hrl").
 
@@ -26,3 +26,14 @@ by_owner_id(OwnerId, Data, Call) ->
                ,[]
                ,kz_attributes:owned_by(OwnerId, <<"device">>, Call)
                ).
+
+% copy of kz_endpoints:ignore_early_media/1
+-spec ignore_early_media(kz_json:objects()) -> api_binary().
+ignore_early_media(Endpoints) ->
+    case lists:any(fun(Endpoint) ->
+                           kz_json:is_true(<<"Ignore-Early-Media">>, Endpoint)
+                   end, Endpoints)
+    of
+        'true' -> <<"true">>;
+        'false' -> 'undefined'
+    end.

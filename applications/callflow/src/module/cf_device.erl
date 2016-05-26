@@ -57,7 +57,7 @@ bridge_to_endpoints(Data, Call) ->
         {'ok', Endpoints} ->
             FailOnSingleReject = kz_json:get_value(<<"fail_on_single_reject">>, Data, 'undefined'),
             Timeout = kz_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
-            IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
+            IgnoreEarlyMedia = kz_endpoints:ignore_early_media(Endpoints),
             Command = [{<<"Application-Name">>, <<"bridge">>}
                 ,{<<"Endpoints">>, Endpoints}
                 ,{<<"Timeout">>, Timeout}

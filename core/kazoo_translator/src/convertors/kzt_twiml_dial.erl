@@ -128,7 +128,7 @@ exec(Call, [#xmlElement{}|_]=Endpoints, Attrs) ->
         EPs ->
             lager:debug("endpoints created, sending dial"),
             Timeout = dial_timeout(Props),
-            IgnoreEarlyMedia = ignore_early_media(EPs),
+            IgnoreEarlyMedia = kz_endpoints:ignore_early_media(EPs),
             Strategy = dial_strategy(Props),
 
             send_bridge_command(EPs, Timeout, Strategy, IgnoreEarlyMedia, Call1),
@@ -435,19 +435,6 @@ conference_member_flags(ConfProps) ->
         'false' -> 'undefined'
     end.
 
-% these copies are here for the sake of core/apps independence
-
-% copy of cf_util:ignore_early_media/1
--spec ignore_early_media(kz_json:objects()) -> api_binary().
-ignore_early_media(Endpoints) ->
-    case lists:any(fun(Endpoint) ->
-                           kz_json:is_true(<<"Ignore-Early-Media">>, Endpoint)
-                   end, Endpoints)
-    of
-        'true' -> <<"true">>;
-        'false' -> 'undefined'
-    end.
-
 % copy of cf_user:get_endpoints/3
 -spec get_endpoints(api_binary(), kz_json:object(), kapps_call:call()) ->
                            kz_json:objects().
@@ -455,5 +442,3 @@ get_endpoints('undefined', _, _) -> [];
 get_endpoints(UserId, Data, Call) ->
     Params = kz_json:set_value(<<"source">>, ?MODULE, Data),
     kz_endpoints:by_owner_id(UserId, Params, Call).
-
-
