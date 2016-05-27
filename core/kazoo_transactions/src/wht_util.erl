@@ -22,6 +22,7 @@
         ]).
 -export([get_balance_from_account/2]).
 -export([call_cost/1]).
+-export([calculate_call/1, calculate_call/5]).
 -export([per_minute_cost/1]).
 -export([calculate_cost/5]).
 -export([default_reason/0]).
@@ -284,6 +285,11 @@ get_balance_from_account(Account, ViewOptions) ->
 %%--------------------------------------------------------------------
 -spec call_cost(kz_json:object()) -> units().
 call_cost(JObj) ->
+    {_Seconds, Cost} = calculate_call(JObj),
+    Cost.
+
+-spec calculate_call(kz_json:object()) -> {integer(), units()}.
+calculate_call(JObj) ->
     CCVs = kz_json:get_first_defined([<<"Custom-Channel-Vars">>
                                       ,<<"custom_channel_vars">>
                                      ]
@@ -297,28 +303,29 @@ call_cost(JObj) ->
     %% fudge factor to allow accounts with no credit to terminate the call
     %% on the next re-authorization cycle (to allow for the in-flight time)
     case BillingSecs =< 0 of
-        'true' -> 0;
+        'true' -> {0, 0};
         'false' when BillingSecs =< RateNoChargeTime ->
             lager:info("billing seconds less then ~ps, no charge", [RateNoChargeTime]),
-            0;
+            {0, 0};
         'false' ->
             Rate = get_integer_value(<<"Rate">>, CCVs),
             RateIncr = get_integer_value(<<"Rate-Increment">>, CCVs, 60),
             RateMin = get_integer_value(<<"Rate-Minimum">>, CCVs),
             Surcharge = get_integer_value(<<"Surcharge">>, CCVs),
-            Cost = calculate_cost(Rate, RateIncr, RateMin, Surcharge, BillingSecs),
+            {ChargedSeconds, Cost} = calculate_call(Rate, RateIncr, RateMin, Surcharge, BillingSecs),
             Discount = trunc((get_integer_value(<<"Discount-Percentage">>, CCVs) * 0.01) * Cost),
-            lager:info("rate $~p/~ps, minimum ~ps, surcharge $~p, for ~ps, no charge time ~ps, sub total $~p, discount $~p, total $~p"
+            lager:info("rate $~p/~ps, minimum ~ps, surcharge $~p, for ~ps (~ps), no charge time ~ps, sub total $~p, discount $~p, total $~p"
                        ,[units_to_dollars(Rate)
                          ,RateIncr, RateMin
                          ,units_to_dollars(Surcharge)
                          ,BillingSecs
+                         ,ChargedSeconds
                          ,RateNoChargeTime
                          ,units_to_dollars(Cost)
                          ,units_to_dollars(Discount)
                          ,units_to_dollars(Cost - Discount)
                         ]),
-            trunc(Cost - Discount)
+            {ChargedSeconds, trunc(Cost - Discount)}
     end.
 
 -spec get_integer_value(ne_binary(), kz_json:object()) -> integer().
@@ -369,11 +376,21 @@ calculate_cost(_, _, _, _, 0) -> 0;
 calculate_cost(R, 0, RM, Sur, Secs) ->
     calculate_cost(R, 60, RM, Sur, Secs);
 calculate_cost(R, RI, RM, Sur, Secs) ->
+    {_Sec, Cost} = calculate_call(R, RI, RM, Sur, Secs),
+    Cost.
+
+-spec calculate_call(units(), integer(), integer(), units(), integer()) -> {integer(), units()}.
+calculate_call(_, _, _, _, 0) -> 0;
+calculate_call(R, 0, RM, Sur, Secs) ->
+    calculate_call(R, 60, RM, Sur, Secs);
+calculate_call(R, RI, RM, Sur, Secs) ->
     case Secs =< RM of
         'true' ->
-            trunc(Sur + ((RM / 60) * R));
+            {RM, trunc(Sur + ((RM / 60) * R))};
         'false' ->
-            trunc(Sur + ((RM / 60) * R) + (kz_util:ceiling((Secs - RM) / RI) * ((RI / 60) * R)))
+            {kz_util:ceiling( Secs / RI ) * RI
+            ,trunc(Sur + ((RM / 60) * R) + (kz_util:ceiling((Secs - RM) / RI) * ((RI / 60) * R)))
+            }
     end.
 
 %%--------------------------------------------------------------------
