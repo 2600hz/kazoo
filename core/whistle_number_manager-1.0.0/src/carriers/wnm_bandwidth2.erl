@@ -83,10 +83,14 @@ find_numbers(<<"+", Rest/binary>>, Quantity, Opts) ->
 find_numbers(<<"1", Rest/binary>>, Quantity, Opts) ->
     find_numbers(Rest, Quantity, Opts);
 
-find_numbers(<<Prefix:3/binary, _/binary>>, Quantity, _) when ?IS_US_TOLLFREE(Prefix) ->
+find_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, _) when ?IS_US_TOLLFREE(Prefix) ->
     <<"8", Second:1/binary, _/binary>> = Prefix,
+    ToSearch = case wnm_util:is_reconcilable(Num) of
+                   'true' -> Num;
+                   'false' -> Second
+               end,
     UseQuantity = list_to_binary(integer_to_list(Quantity)),
-    {'ok', Result} = search(<<"tollFreeWildCardPattern=8", Second/binary, "*&enableTNDetail=true&quantity=", UseQuantity/binary>>),
+    {'ok', Result} = search(<<"tollFreeWildCardPattern=8", ToSearch/binary, "*&enableTNDetail=true&quantity=", UseQuantity/binary>>),
     process_tollfree_response(Result);
 
 find_numbers(<<NPA:3/binary>>, Quantity, _) ->

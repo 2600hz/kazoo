@@ -96,9 +96,12 @@ find_numbers(<<"+", Rest/binary>>, Quantity, Opts) ->
     find_numbers(Rest, Quantity, Opts);
 find_numbers(<<"1", Rest/binary>>, Quantity, Opts) ->
     find_numbers(Rest, Quantity, Opts);
-find_numbers(<<Prefix:3/binary,_/binary>>, Quantity, _)
-  when ?IS_US_TOLLFREE(Prefix) ->
-    do_search_tollfree(wh_util:to_list(Prefix), Quantity);
+find_numbers(<<Prefix:3/binary,_/binary>>=Num, Quantity, _) when ?IS_US_TOLLFREE(Prefix) ->
+    ToSearch = case wnm_util:is_reconcilable(Num) of
+                   'true' -> Num;
+                   'false' -> Prefix
+               end,
+    do_search_tollfree(wh_util:to_list(ToSearch), Quantity);
 find_numbers(<<NPA:3/binary>>, Quantity, _) ->
     Props = [{'areaCode', [wh_util:to_list(NPA)]}
              ,{'maxQuantity', [wh_util:to_list(Quantity)]}
