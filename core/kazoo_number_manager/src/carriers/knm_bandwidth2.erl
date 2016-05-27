@@ -155,10 +155,7 @@ acquire_number(Number) ->
             knm_errors:unspecified('provisioning_disabled', Number);
         'true' ->
             PhoneNumber = knm_number:phone_number(Number),
-            Num = case knm_phone_number:number(PhoneNumber) of
-                      <<"+1", N/binary>> -> N;
-                      N -> N
-                  end,
+            Num = reformat_number_for_acquire(knm_phone_number:number(PhoneNumber)),
             ON = lists:flatten([?BW2_ORDER_NAME_PREFIX, "-", integer_to_list(kz_util:current_tstamp())]),
             AuthBy = knm_phone_number:auth_by(PhoneNumber),
 
@@ -185,6 +182,10 @@ acquire_number(Number) ->
                      )
             end
     end.
+
+-spec reformat_number_for_acquire(ne_binary()) -> ne_binary().
+ reformat_number_for_acquire(<<"+1", Number/binary>>) -> Number;
+ reformat_number_for_acquire(Number) -> Number.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -410,18 +411,28 @@ rate_center_to_json(Xml) ->
 -spec verify_response(xml_el()) -> {'ok', xml_el()} |
                                    {'error', any()}.
 verify_response(Xml) ->
-    case kz_util:get_xml_value("/*/status/text()", Xml) =:= <<"success">>
-        orelse kz_util:get_xml_value("//LoginResponse/LoginResult/text()", Xml) =/= 'undefined'
-        orelse kz_util:get_xml_value("//SearchTelephoneNumbersResponse/SearchTelephoneNumbersResult", Xml) =/= []
+    Path = "count(//TelephoneNumberDetailList/TelephoneNumberDetail)",
+    case validate_xpath_value(xmerl_xpath:string(Path, Xml))
+             orelse validate_xpath_value(kz_util:get_xml_value("//OrderStatus/text()", Xml))
     of
         'true' ->
             lager:debug("request was successful"),
             {'ok', Xml};
         'false' ->
-            Reason = kz_util:get_xml_value("/*/errors/error/message/text()", Xml),
+            ErrorPath = "//ErrorList/Error/Description/text()",
+            Reason = case kz_util:get_xml_value(ErrorPath, Xml) of
+                         'undefined' -> <<"Number not found">>;
+                         R -> R
+                     end,
             lager:debug("request failed: ~s", [Reason]),
             {'error', Reason}
     end.
+
+-spec validate_xpath_value(api_binary() | {atom(), atom(), non_neg_integer()}) -> boolean().
+validate_xpath_value('undefined') -> false;
+validate_xpath_value(<<>>) -> false;
+validate_xpath_value({xmlObj, number, Num}) -> Num > 0;
+validate_xpath_value(_) -> 'true'.
 
 -spec should_lookup_cnam() -> 'true'.
 should_lookup_cnam() -> 'true'.
