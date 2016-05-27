@@ -11,6 +11,7 @@
 
 %% Public API
 -export([start_link/0]).
+-export([available/0]).
 -export([new/4
         ,start/1
         ,read/1
@@ -18,7 +19,7 @@
         ,remove/1
 	]).
 
-%% API use by workers
+%% API used by workers
 -export([worker_finished/1
         ,worker_failed/2
         ]).
@@ -58,8 +59,12 @@
              ,task/0, tasks/0
              ]).
 
+-type api_category() :: ne_binary().
 
 -record(state, { tasks = [] :: tasks()
+               , apis = kz_json:new() :: kz_json:object()
+               , apps = #{} :: #{api_category() => ne_binary()}
+               , modules = #{} :: #{api_category() => module()}
                }).
 -type state() :: #state{}.
 
@@ -83,6 +88,31 @@ start_link() ->
             'true' = link(Pid),
             {'ok', Pid};
         Other -> Other
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec available() -> kz_json:object().
+available() ->
+    CollectUntil = {kz_util:to_atom(?APP_NAME), fun kapi_tasks:help_resp_v/1, 'true', 'true'},
+    case kz_amqp_worker:call_collect(kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                    ,fun kapi_tasks:publish_help_req/1
+                                    ,CollectUntil
+                                    )
+    of
+        {'ok', JObjs} ->
+            lager:debug("help_req got ~p replies", [length(JObjs)]),
+            {Apps, Modules, APIs} = parse_apis(JObjs),
+            gen_server:call(?SERVER, {'replace_APIs', Apps, Modules, APIs});
+        {'timeout', []} ->
+            lager:debug("no app replied to help_req"),
+            kz_json:new();
+        {'error', _Reason} ->
+            lager:error("error in broadcasted help_req: ~p", [_Reason]),
+            kz_json:new()
     end.
 
 %%--------------------------------------------------------------------
@@ -235,6 +265,13 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({'replace_APIs', Apps, Modules, APIs}, _From, State) ->
+    State1 = State#state{ apis = APIs
+                        , apps = Apps
+                        , modules = Modules
+                        },
+    {'reply', APIs, State1};
+
 handle_call({'start_task', TaskId}, _From, State) ->
     case task_by_id(TaskId, State) of
         [] ->
@@ -568,5 +605,22 @@ check_MFa(M, F, Arity) ->
                 'true' -> 'ok'
             end
     end.
+
+-type m_apis() :: {map(), map(), kz_json:object()}.
+-spec parse_apis(kz_json:objects()) -> m_apis().
+parse_apis(JObjs) ->
+    Acc0 = {#{}, #{}, kz_json:new()},
+    lists:foldl(fun parse_apis_fold/2, Acc0, JObjs).
+
+-spec parse_apis_fold(kz_json:object(), m_apis()) -> m_apis().
+parse_apis_fold(JObj, {Apps, Modules, APIs}) ->
+    APICategory = kz_json:get_value(<<"Tasks-For">>, JObj),
+    App = kz_json:get_value(<<"App-Name">>, JObj),
+    Module = kz_json:get_value(<<"Tasks-Module">>, JObj),
+    TasksProvided = kz_json:get_value(<<"Tasks">>, JObj),
+    { Apps#{APICategory => App}
+    , Modules#{APICategory => kz_util:to_atom(Module, 'true')}
+    , kz_json:set_value(APICategory, TasksProvided, APIs)
+    }.
 
 %%% End of Module.

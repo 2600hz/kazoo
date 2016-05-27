@@ -31,6 +31,7 @@
 -define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
                    ,?WORKER('knm_port_request_crawler')
                    ,?WORKER('knm_number_crawler')
+                   ,?WORKER('knm_tasks_listener')
                   ]).
 
 %% ===================================================================

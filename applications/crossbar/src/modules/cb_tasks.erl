@@ -24,6 +24,8 @@
 
 -define(SCHEMA_CREATE_TASK, <<"tasks">>).
 
+-define(HELP, <<"help">>).
+
 
 %%%===================================================================
 %%% API
@@ -78,6 +80,8 @@ authorize(_) -> 'false'.
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
+allowed_methods(?HELP) ->
+    [?HTTP_GET];
 allowed_methods(_TaskId) ->
     [?HTTP_GET, ?HTTP_PATCH, ?HTTP_DELETE].
 
@@ -92,6 +96,7 @@ allowed_methods(_TaskId) ->
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
+resource_exists(?HELP) -> 'true';
 resource_exists(_TaskId) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -108,8 +113,8 @@ resource_exists(_TaskId) -> 'true'.
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_tasks(Context, cb_context:req_verb(Context)).
-validate(Context, TaskId) ->
-    validate_task(Context, TaskId, cb_context:req_verb(Context)).
+validate(Context, PathToken) ->
+    validate_task(Context, PathToken, cb_context:req_verb(Context)).
 
 -spec validate_tasks(cb_context:context(), http_method()) -> cb_context:context().
 validate_tasks(Context, ?HTTP_GET) ->
@@ -118,6 +123,11 @@ validate_tasks(Context, ?HTTP_PUT) ->
     cb_context:validate_request_data(?SCHEMA_CREATE_TASK, Context).
 
 -spec validate_task(cb_context:context(), path_token(), http_method()) -> cb_context:context().
+validate_task(Context, ?HELP, ?HTTP_GET) ->
+    JObj = kz_json:from_list([{<<"tasks">>, kz_tasks:available()}]),
+    cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
+                                ,{fun cb_context:set_resp_data/2, JObj}
+                                ]);
 validate_task(Context, TaskId, ?HTTP_GET) ->
     read(TaskId, Context);
 validate_task(Context, TaskId, ?HTTP_PATCH) ->

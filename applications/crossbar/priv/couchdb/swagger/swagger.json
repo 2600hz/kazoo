@@ -7898,6 +7898,9 @@
         "/v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{ID}": {
             "get": {}
         },
+        "/v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{_ID}": {
+            "get": {}
+        },
         "/v2/accounts/{ACCOUNT_ID}/limits": {
             "get": {},
             "post": {}
@@ -8337,6 +8340,9 @@
         "/v2/accounts/{ACCOUNT_ID}/tasks": {
             "get": {},
             "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/tasks/help": {
+            "get": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}": {
             "delete": {},

@@ -277,3 +277,52 @@ curl -v -X PATCH \
     "status": "error"
 }
 ```
+
+
+#### List available tasks
+
+> GET /v2/accounts/{ACCOUNT_ID}/tasks/help
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/help
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "tasks": {
+            "number-management": {
+                "add": {
+                    "description": "Bulk-create numbers",
+                    "expected_content": "text/csv",
+                    "mandatory": [
+                        "number",
+                        "account_id"
+                    ],
+                    "optional": [
+                        "auth_by",
+                        "module_name"
+                    ]
+                },
+                "assign_to": {
+                    "description": "Bulk-assign numbers to the provided account",
+                    "expected_content": "text/csv",
+                    "mandatory": [
+                        "number",
+                        "account_id"
+                    ],
+                    "optional": [
+                        "auth_by"
+                    ]
+                }
+            }
+        }
+    },
+    "request_id": "71f237d7ccce7a2418c8e026f18289aa",
+    "revision": "undefined",
+    "status": "success"
+}
+```
