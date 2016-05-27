@@ -133,7 +133,7 @@ acquire_number(#number{auth_by = AuthBy
             Error = <<"Unable to acquire numbers on this system, carrier provisioning is disabled">>,
             wnm_number:error_carrier_fault(Error, N);
         'true' ->
-            Num  = wh_json:get_string_value(<<"number">>, Data),
+            Num  = reformat_number_for_acquire(wh_json:get_string_value(<<"number">>, Data)),
             Peer = whapps_config:get_string(?WNM_BW_CONFIG_CAT, <<"sip_peer">>),
             Site = whapps_config:get_string(?WNM_BW_CONFIG_CAT, <<"site_id">>),
             ON   = list_to_binary([?BW_ORDER_NAME_PREFIX, "-", wh_util:to_binary(wh_util:current_tstamp())]),
@@ -167,6 +167,10 @@ acquire_number(#number{auth_by = AuthBy
                     N#number{module_data = number_order_response_to_json(Response)}
             end
     end.
+
+-spec reformat_number_for_acquire(string()) -> string().
+reformat_number_for_acquire("+1" ++ Number) -> Number;
+reformat_number_for_acquire(Number) -> Number.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -384,17 +388,26 @@ rate_center_to_json(Xml) ->
 -spec verify_response(xml_el()) -> {'ok', ne_binary()} |
                                    {'error', api_binary() | ne_binaries()}.
 verify_response(Xml) ->
-    case wh_util:get_xml_value("/*/status/text()", Xml) =:= <<"success">>
-        orelse wh_util:get_xml_value("//LoginResponse/LoginResult/text()", Xml) =/= 'undefined'
-        orelse wh_util:get_xml_value("//SearchTelephoneNumbersResponse/SearchTelephoneNumbersResult", Xml) =/= []
+    Path = "count(//TelephoneNumberDetailList/TelephoneNumberDetail)",
+    case validate_xpath_value(xmerl_xpath:string(Path, Xml))
+             orelse validate_xpath_value(wh_util:get_xml_value("//OrderStatus/text()", Xml))
     of
         'true' ->
             lager:debug("request was successful"),
             {'ok', Xml};
         'false' ->
             lager:debug("request failed"),
-            {'error', wh_util:get_xml_value("/*/errors/error/message/text()", Xml)}
+            case wh_util:get_xml_value("//ErrorList/Error/Description/text()", Xml) of
+                'undefined' -> {'error', <<"Number not found">>};
+                ErrMessage -> {'error', ErrMessage}
+            end
     end.
+
+-spec validate_xpath_value(api_binary() | {atom(), atom(), non_neg_integer()}) -> boolean().
+validate_xpath_value('undefined') -> false;
+validate_xpath_value(<<>>) -> false;
+validate_xpath_value({xmlObj, number, Num}) -> Num > 0;
+validate_xpath_value(_) -> 'true'.
 
 -spec should_lookup_cnam() -> 'true'.
 should_lookup_cnam() -> 'true'.
