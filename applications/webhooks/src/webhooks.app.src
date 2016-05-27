@@ -9,8 +9,6 @@
                  , crypto
 
                  , kazoo_apps
-                 , kazoo_amqp
-                 , kazoo_data
 
                  , lager
                  , gproc

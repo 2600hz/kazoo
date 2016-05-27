@@ -23,6 +23,8 @@
 %%--------------------------------------------------------------------
 -spec start(application:start_type(), any()) -> startapp_ret().
 start(_StartType, _StartArgs) ->
+    _ = kapps_maintenance:bind('migrate', 'crossbar_maintenance', 'migrate'),
+    _ = kapps_maintenance:bind({'refresh_account', <<"*">>}, 'crossbar_util', 'descendants_count'),
     crossbar_sup:start_link().
 
 %%--------------------------------------------------------------------
@@ -31,6 +33,8 @@ start(_StartType, _StartArgs) ->
 %%--------------------------------------------------------------------
 -spec stop(any()) -> any().
 stop(_State) ->
+    _ = kapps_maintenance:unbind('migrate', 'crossbar_maintenance', 'migrate'),
+    _ = kapps_maintenance:unbind({'refresh_account', <<"*">>}, 'crossbar_util', 'descendants_count'),
     _ = cowboy:stop_listener('api_resource'),
     _ = cowboy:stop_listener('api_resource_ssl'),
     _ = crossbar_bindings:flush(),

@@ -19,6 +19,7 @@
 %%--------------------------------------------------------------------
 -spec start(application:start_type(), any()) -> startapp_ret().
 start(_Type, _Args) ->
+    _ = kapps_maintenance:bind('migrate', 'fax_maintenance', 'migrate'),
     fax_sup:start_link().
 
 %%--------------------------------------------------------------------
@@ -27,5 +28,6 @@ start(_Type, _Args) ->
 %%--------------------------------------------------------------------
 -spec stop(any()) -> any().
 stop(_State) ->
+    _ = kapps_maintenance:unbind('migrate', 'fax_maintenance', 'migrate'),
     _ = cowboy:stop_listener('fax_file'),
     'ok'.

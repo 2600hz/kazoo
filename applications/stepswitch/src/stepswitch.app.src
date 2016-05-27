@@ -11,8 +11,6 @@
                  , inets
 
                  , kazoo_apps
-                 , kazoo_amqp
-                 , kazoo_data
 
                  , lager
                  , poolboy

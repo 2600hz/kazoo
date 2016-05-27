@@ -128,7 +128,7 @@ exec(Call, [#xmlElement{}|_]=Endpoints, Attrs) ->
         EPs ->
             lager:debug("endpoints created, sending dial"),
             Timeout = dial_timeout(Props),
-            IgnoreEarlyMedia = cf_util:ignore_early_media(EPs),
+            IgnoreEarlyMedia = kz_endpoints:ignore_early_media(EPs),
             Strategy = dial_strategy(Props),
 
             send_bridge_command(EPs, Timeout, Strategy, IgnoreEarlyMedia, Call1),
@@ -246,7 +246,7 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='User'
     UserId = kz_xml:texts_to_binary(UserIdTxt),
     lager:debug("maybe adding user ~s to ring group", [UserId]),
 
-    case cf_user:get_endpoints(UserId, kz_json:new(), Call) of
+    case get_endpoints(UserId, kz_json:new(), Call) of
         [] ->
             lager:debug("no user endpoints built for ~s, skipping", [UserId]),
             xml_elements_to_endpoints(Call, EPs, Acc);
@@ -434,3 +434,11 @@ conference_member_flags(ConfProps) ->
         'true' -> <<"endconf">>;
         'false' -> 'undefined'
     end.
+
+% copy of cf_user:get_endpoints/3
+-spec get_endpoints(api_binary(), kz_json:object(), kapps_call:call()) ->
+                           kz_json:objects().
+get_endpoints('undefined', _, _) -> [];
+get_endpoints(UserId, Data, Call) ->
+    Params = kz_json:set_value(<<"source">>, ?MODULE, Data),
+    kz_endpoints:by_owner_id(UserId, Params, Call).

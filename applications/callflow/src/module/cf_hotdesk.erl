@@ -101,7 +101,7 @@ handle_action(<<"toggle">>, Hotdesk, Call) ->
 
 bridge_to_endpoints(#hotdesk{endpoint_ids=EndpointIds}, Call) ->
     Endpoints = build_endpoints(EndpointIds, Call),
-    IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
+    IgnoreEarlyMedia = kz_endpoints:ignore_early_media(Endpoints),
     kapps_call_command:b_bridge(Endpoints, ?DEFAULT_TIMEOUT_S, <<"simultaneous">>, IgnoreEarlyMedia, Call).
 
 build_endpoints(EndpointIds, Call) ->

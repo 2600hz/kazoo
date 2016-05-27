@@ -16,7 +16,7 @@
 -export([notification_register/2]).
 -export([unsolicited_owner_mwi_update/2]).
 -export([unsolicited_endpoint_mwi_update/2]).
--export([alpha_to_dialpad/1, ignore_early_media/1]).
+-export([alpha_to_dialpad/1]).
 
 -export([lookup_callflow/1, lookup_callflow/2]).
 -export([handle_bridge_failure/2, handle_bridge_failure/3]).
@@ -379,23 +379,6 @@ dialpad_digit(MNO) when MNO =:= $m orelse MNO =:= $n orelse MNO =:= $o -> $6;
 dialpad_digit(PQRS) when PQRS =:= $p orelse PQRS =:= $q orelse PQRS =:= $r orelse PQRS =:= $s -> $7;
 dialpad_digit(TUV) when TUV =:= $t orelse TUV =:= $u orelse TUV =:= $v -> $8;
 dialpad_digit(WXYZ) when WXYZ =:= $w orelse WXYZ =:= $x orelse WXYZ =:= $y orelse WXYZ =:= $z -> $9.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Determine if we should ignore early media
-%% @end
-%%--------------------------------------------------------------------
--spec ignore_early_media(kz_json:objects()) -> api_binary().
-ignore_early_media([]) -> 'undefined';
-ignore_early_media(Endpoints) ->
-    case lists:any(fun(Endpoint) ->
-                           kz_json:is_true(<<"Ignore-Early-Media">>, Endpoint)
-                   end, Endpoints)
-    of
-        'true' -> <<"true">>;
-        'false' -> 'undefined'
-    end.
 
 %%--------------------------------------------------------------------
 %% @public

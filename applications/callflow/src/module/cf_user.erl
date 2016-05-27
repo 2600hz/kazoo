@@ -10,9 +10,9 @@
 
 -include("callflow.hrl").
 
--export([handle/2
-         ,get_endpoints/3
-        ]).
+-export([
+    handle/2
+]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -29,7 +29,7 @@ handle(Data, Call) ->
     FailOnSingleReject = kz_json:get_value(<<"fail_on_single_reject">>, Data, 'undefined'),
     Timeout = kz_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
     Strategy = kz_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
-    IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
+    IgnoreEarlyMedia = kz_endpoints:ignore_early_media(Endpoints),
 
     Command = [{<<"Application-Name">>, <<"bridge">>}
         ,{<<"Endpoints">>, Endpoints}
@@ -64,7 +64,6 @@ maybe_handle_bridge_failure(Reason, Call) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
 %% @doc
 %% Loop over the provided endpoints for the callflow and build the
 %% json object used in the bridge API

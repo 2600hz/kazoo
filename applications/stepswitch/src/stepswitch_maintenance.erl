@@ -130,7 +130,7 @@ cnam_flush() ->
 -spec refresh() -> 'ok'.
 refresh() ->
     lager:debug("ensuring database ~s exists", [?RESOURCES_DB]),
-    kz_datamgr:db_create(?RESOURCES_DB),
+    kz_datamgr:db_create(?RESOURCES_DB), % RESOURCES_DB = KZ_OFFNET_DB
     Views = [kapps_util:get_view_json('crossbar', <<"views/resources.json">>)
              | kapps_util:get_views_json('stepswitch', "views")
             ],
