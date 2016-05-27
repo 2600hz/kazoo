@@ -25,10 +25,8 @@ handle(Data, Call) ->
     case is_binary(CaptureGroup) andalso cf_util:lookup_callflow(CaptureGroup, AccountId) of
         {'ok', Flow, 'false'} ->
             JObj = case kz_json:is_true(<<"barge_calls">>, Data) of
-                       'false' -> kz_json:from_list([{<<"Auto-Answer">>, <<"true">>}]);
-                       'true' -> kz_json:from_list([{<<"Auto-Answer">>, <<"true">>}
-                                                    ,{<<"Auto-Answer-Notify">>, <<"true">>}
-                                                   ])
+                       'false' -> kz_json:from_list([{<<"Auto-Answer-Suppress-Notify">>, <<"true">>}]);
+                       'true' -> kz_json:from_list([{<<"Auto-Answer-Suppress-Notify">>, <<"false">>}])
                    end,
             kapps_call_command:set('undefined', JObj, Call),
             cf_exe:branch(kz_json:get_value(<<"flow">>, Flow, kz_json:new()), Call);
