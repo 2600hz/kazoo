@@ -54,7 +54,7 @@
 -export([call_cost/1]).
 -export([ccvs/1]).
 -export([caller_network_address/1]).
--export([rate/1, rate_name/1, rate_increment/1, rate_minimum/1]).
+-export([rate/1, rate_name/1, rate_description/1, rate_increment/1, rate_minimum/1]).
 -export([caller_id_number/1, callee_id_number/1]).
 
 -include("jonny5.hrl").
@@ -515,6 +515,10 @@ rate(#request{request_ccvs=CCVs}) ->
 -spec rate_name(request()) -> ne_binary().
 rate_name(#request{request_ccvs=CCVs}) ->
     kz_json:get_ne_binary_value(<<"Rate-Name">>, CCVs).
+
+-spec rate_description(request()) -> ne_binary().
+rate_description(#request{request_ccvs=CCVs}) ->
+    kz_json:get_ne_binary_value(<<"Rate-Description">>, CCVs).
 
 -spec rate_increment(request()) -> ne_binary().
 rate_increment(#request{request_ccvs=CCVs}) ->
