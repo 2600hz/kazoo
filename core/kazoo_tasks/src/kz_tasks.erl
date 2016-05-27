@@ -91,9 +91,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec all() -> kz_json:objects().
 all() ->
-    sort(
-      gen_server:call(?SERVER, 'get_tasks')
-     ).
+    view([]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -102,9 +100,8 @@ all() ->
 %%--------------------------------------------------------------------
 -spec all(ne_binary()) -> kz_json:objects().
 all(AccountId=?NE_BINARY) ->
-    sort(
-      gen_server:call(?SERVER, {'get_tasks', AccountId})
-     ).
+    view([{'key', AccountId, 'undefined'}
+         ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -144,7 +141,8 @@ new(?MATCH_ACCOUNT_RAW(_)=AccountId, M, F, A)
                     , finished => 'undefined'
                     , failed => 'undefined'
                     },
-            gen_server:call(?SERVER, {'add_task', Task})
+            {'ok', _JObj} = Ok = save_task(Task),
+            Ok
     end;
 new(_, M, _, _) when not is_atom(M) ->
     {'error', {'bad_module', M}};
@@ -161,7 +159,10 @@ new(_, _, _, A) when not is_list(A) ->
 -spec read(task_id()) -> {'ok', kz_json:object()} |
                          {'error', 'not_found'}.
 read(TaskId=?NE_BINARY) ->
-    gen_server:call(?SERVER, {'get_task_by_id', TaskId}).
+    case task_by_id(TaskId) of
+        [Task] -> {'ok', to_public_json(Task)};
+        [] -> {'error', 'not_found'}
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -232,19 +233,6 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call('get_tasks', _From, State) ->
-    Tasks = view([]),
-    {'reply', Tasks, State};
-
-handle_call({'get_tasks', AccountId}, _From, State) ->
-    Tasks = view([{'key', AccountId, 'undefined'}
-                 ]),
-    {'reply', Tasks, State};
-
-handle_call({'add_task', Task}, _From, State) ->
-    {'ok', JObj} = save_task(Task),
-    ?REPLY_FOUND(JObj, State);
-
 handle_call({'start_task', TaskId}, _From, State) ->
     case task_by_id(TaskId, State) of
         [] ->
@@ -257,12 +245,6 @@ handle_call({'start_task', TaskId}, _From, State) ->
             {'reply', {'error', 'already_started'}, State};
         [Task] ->
             handle_call_start_task(Task, State)
-    end;
-
-handle_call({'get_task_by_id', TaskId}, _From, State) ->
-    case task_by_id(TaskId) of
-        [Task] -> ?REPLY_FOUND(to_public_json(Task), State);
-        [] -> ?REPLY_NOT_FOUND(State)
     end;
 
 handle_call({'remove_task', TaskId}, _From, State) ->
@@ -361,12 +343,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec sort(kz_json:objects()) -> kz_json:objects().
-sort([]) -> [];
-sort(Tasks) ->
-    lists:sort(fun compare_tasks/2, Tasks).
-
--spec compare_tasks(task(), task()) -> boolean().
+-spec compare_tasks(kz_json:object(), kz_json:object()) -> boolean().
 compare_tasks(JObjA, JObjB) ->
     kz_json:get_value(?PVT_SUBMITTED_AT, JObjA)
         =<
@@ -385,7 +362,10 @@ save_task(Task = #{id := _TaskId}) ->
 -spec view(list()) -> kz_json:objects().
 view(ViewOptions) ->
     case kz_datamgr:get_results(?KZ_TASKS_DB, ?KZ_TASKS_BY_ACCOUNT, ViewOptions) of
-        {'ok', JObjs} -> [kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs];
+        {'ok', []} -> [];
+        {'ok', JObjs} ->
+            Found = [kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs],
+            lists:sort(fun compare_tasks/2, Found);
         {'error', _R} ->
             lager:debug("error viewing tasks (~p): ~p", [ViewOptions, _R]),
             []
