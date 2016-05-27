@@ -51,10 +51,10 @@
 -export([classification/1]).
 -export([number/1]).
 -export([per_minute_cost/1]).
--export([call_cost/1]).
+-export([call_cost/1, calculate_call/1]).
 -export([ccvs/1]).
 -export([caller_network_address/1]).
--export([rate/1, rate_name/1, rate_description/1, rate_increment/1, rate_minimum/1]).
+-export([rate/1, rate_name/1, rate_description/1, rate_increment/1, rate_minimum/1, rate_nocharge_time/1]).
 -export([caller_id_number/1, callee_id_number/1]).
 
 -include("jonny5.hrl").
@@ -504,6 +504,10 @@ per_minute_cost(#request{request_jobj=JObj}) ->
 call_cost(#request{request_jobj=JObj}) ->
     wht_util:call_cost(JObj).
 
+-spec calculate_call(request()) -> {non_neg_integer(), non_neg_integer()}.
+calculate_call(#request{request_jobj=JObj}) ->
+    wht_util:calculate_call(JObj).
+
 -spec caller_network_address(request()) -> api_binary().
 caller_network_address(#request{request_jobj=JObj}) ->
     kz_json:get_value(<<"From-Network-Addr">>, JObj).
@@ -522,11 +526,15 @@ rate_description(#request{request_ccvs=CCVs}) ->
 
 -spec rate_increment(request()) -> ne_binary().
 rate_increment(#request{request_ccvs=CCVs}) ->
-    kz_json:get_ne_binary_value(<<"Rate-Increment">>, CCVs).
+    kz_json:get_integer_value(<<"Rate-Increment">>, CCVs, 0).
 
 -spec rate_minimum(request()) -> ne_binary().
 rate_minimum(#request{request_ccvs=CCVs}) ->
-    kz_json:get_ne_binary_value(<<"Rate-Minimum">>, CCVs).
+    kz_json:get_integer_value(<<"Rate-Minimum">>, CCVs, 0).
+
+-spec rate_nocharge_time(request()) -> ne_binary().
+rate_nocharge_time(#request{request_ccvs=CCVs}) ->
+    kz_json:get_integer_value(<<"Rate-NoCharge-Time">>, CCVs, 0).
 
 -spec caller_id_number(request()) -> api_binary().
 caller_id_number(#request{request_jobj=JObj}) ->

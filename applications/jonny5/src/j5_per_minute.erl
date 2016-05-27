@@ -45,10 +45,10 @@ reconcile_cdr(Request, Limits) ->
 
 -spec reconcile_call_cost(j5_request:request(), j5_limits:limits()) -> 'ok'.
 reconcile_call_cost(Request, Limits) ->
-    case j5_request:call_cost(Request) of
-        0 -> 'ok';
-        Amount ->
-            create_ledger_usage(Amount, Request, Limits)
+    case j5_request:calculate_call(Request) of
+        {_, 0} -> 'ok';
+        {Seconds, Amount} ->
+            create_ledger_usage(Seconds, Amount, Request, Limits)
     end.
 
 %%--------------------------------------------------------------------
@@ -124,8 +124,8 @@ maybe_postpay_credit_available(Balance, Amount, Limits) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create_ledger_usage(integer(), j5_request:request(), j5_limits:limits()) -> any().
-create_ledger_usage(Amount, Request, Limits) ->
+-spec create_ledger_usage(integer(), integer(), j5_request:request(), j5_limits:limits()) -> any().
+create_ledger_usage(Seconds, Amount, Request, Limits) ->
     SrcService = <<"per-minute-voip">>,
     SrcId = j5_request:call_id(Request),
     LedgerId = j5_limits:account_id(Limits),
@@ -133,7 +133,7 @@ create_ledger_usage(Amount, Request, Limits) ->
                 ,[LedgerId, SrcService, wht_util:units_to_dollars(Amount)]
                ),
     Usage = [{<<"type">>, <<"voice">>}
-             ,{<<"quantity">>, j5_request:billing_seconds(Request)}
+             ,{<<"quantity">>, Seconds}
              ,{<<"unit">>, <<"sec">>}
             ],
 
@@ -153,6 +153,7 @@ metadata(Request) ->
                  ,{<<"value">>, j5_request:rate(Request)}
                  ,{<<"increment">>, j5_request:rate_increment(Request)}
                  ,{<<"minimum">>, j5_request:rate_minimum(Request)}
+                 ,{<<"nocharge_time">>, j5_request:rate_nocharge_time(Request)}
                 ]),
     kz_json:from_list(
       [{<<"to">>, j5_request:to(Request)}
