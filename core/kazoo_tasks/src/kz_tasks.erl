@@ -41,6 +41,7 @@
 -type task_id() :: <<_:(8*2*?TASK_ID_SIZE)>>.
 
 -opaque task() :: #{ worker_pid => api_pid()
+                   , worker_node => ne_binary() | 'undefined'
                    , account_id => ne_binary()
                    , id => task_id()
                    , m => module()
@@ -131,6 +132,7 @@ new(?MATCH_ACCOUNT_RAW(_)=AccountId, M, F, A)
             E;
         'ok' ->
             Task = #{ worker_pid => 'undefined'
+                    , worker_node => 'undefined'
                     , account_id => AccountId
                     , id => ?A_TASK_ID
                     , m => M
@@ -396,6 +398,7 @@ handle_call_start_task(Task=#{ id := TaskId
         {'ok', Pid} ->
             Task1 = Task#{ started => kz_util:current_tstamp()
                          , worker_pid => Pid
+                         , worker_node => kz_util:to_binary(node())
                          },
             {'ok', JObj} = save_task(Task1),
             State1 = add_task(Task1, remove_task(TaskId, State)),
@@ -408,6 +411,7 @@ handle_call_start_task(Task=#{ id := TaskId
 -spec from_json(kz_json:object()) -> task().
 from_json(Doc) ->
     #{ worker_pid => 'undefined'
+     , worker_node => 'undefined'
      , account_id => kz_json:get_value(?PVT_ACCOUNT_ID, Doc)
      , id => kz_doc:id(Doc)
      , m => kz_util:to_atom(kz_json:get_value(?PVT_MODULE, Doc), 'true')
@@ -421,6 +425,7 @@ from_json(Doc) ->
 
 -spec to_json(task()) -> kz_json:object().
 to_json(#{id := TaskId
+         ,worker_node := Node
          ,account_id := AccountId
          ,m := M
          ,f := F
@@ -445,6 +450,7 @@ to_json(#{id := TaskId
       props:filter_undefined(
         [{<<"_id">>, TaskId}
         ,{?PVT_TYPE, ?KZ_TASKS_DOC_TYPE}
+        ,{?PVT_WORKER_NODE, Node}
         ,{?PVT_ACCOUNT_ID, AccountId}
         ,{?PVT_MODULE, kz_util:to_binary(M)}
         ,{?PVT_FUNCTION, kz_util:to_binary(F)}
@@ -464,6 +470,7 @@ to_public_json(Task) ->
     kz_json:from_list(
       props:filter_undefined(
         [{<<"id">>, kz_doc:id(Doc)}
+        ,{<<"node">>, kz_json:get_value(?PVT_WORKER_NODE, Doc)}
         ,{<<"account_id">>, kz_json:get_value(?PVT_ACCOUNT_ID, Doc)}
         ,{<<"module">>, kz_json:get_value(?PVT_MODULE, Doc)}
         ,{<<"function">>, kz_json:get_value(?PVT_FUNCTION, Doc)}
