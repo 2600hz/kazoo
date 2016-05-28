@@ -141,16 +141,16 @@ initialize_kapps() ->
         'true' -> 'ok'
     end,
     kapps_maintenance:migrate_system(),
-    WhApps = case os:getenv("KAZOO_APPS", "") of
+    KApps = case os:getenv("KAZOO_APPS", "") of
                  "" ->
                      kapps_config:get(?MODULE, <<"kapps">>, ?DEFAULT_KAPPS);
                  KAZOO_APPS ->
                      string:tokens(KAZOO_APPS, ", ")
              end,
-    StartWhApps = [kz_util:to_atom(WhApp, 'true') || WhApp <- WhApps],
+    StartKApps = [kz_util:to_atom(KApp, 'true') || KApp <- KApps],
 
-    _ = [start_app(A) || A <- lists:sort(fun sysconf_first/2, StartWhApps)],
-    lager:notice("auto-started kapps ~p", [StartWhApps]).
+    _ = [start_app(A) || A <- lists:sort(fun sysconf_first/2, StartKApps)],
+    lager:notice("auto-started kapps ~p", [StartKApps]).
 
 -spec sysconf_first(atom(), atom()) -> boolean().
 sysconf_first('sysconf', _) -> 'true';
@@ -161,8 +161,8 @@ sysconf_first(_, _) -> 'true'.
 list_apps() ->
     case get_running_apps() of
         [] ->
-            WhApps = kapps_config:get(?MODULE, <<"kapps">>, ?DEFAULT_KAPPS),
-            [kz_util:to_atom(WhApp, 'true') || WhApp <- WhApps];
+            KApps = kapps_config:get(?MODULE, <<"kapps">>, ?DEFAULT_KAPPS),
+            [kz_util:to_atom(KApp, 'true') || KApp <- KApps];
         Resp -> [App || {App, _, _} <- Resp]
     end.
 
