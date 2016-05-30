@@ -376,7 +376,7 @@ maybe_resource_to_endpoints(Resource
     Global = stepswitch_resources:get_resrc_global(Resource),
     Weight = stepswitch_resources:get_resrc_weight(Resource),
     Proxies = stepswitch_resources:get_resrc_proxies(Resource),
-    %% TODO: update CID Number from regex_cid_rules result 
+    %% TODO: update CID Number from regex_cid_rules result
     DestinationNumber = maybe_update_number(Resource, Number),
     lager:debug("building resource ~s endpoints", [Id]),
     CCVUpdates = [{<<"Global-Resource">>, kz_util:to_binary(Global)}
