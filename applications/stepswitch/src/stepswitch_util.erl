@@ -376,17 +376,19 @@ maybe_resource_to_endpoints(Resource
     Global = stepswitch_resources:get_resrc_global(Resource),
     Weight = stepswitch_resources:get_resrc_weight(Resource),
     Proxies = stepswitch_resources:get_resrc_proxies(Resource),
+    %% TODO: update CID Number from regex_cid_rules result 
+    DestinationNumber = maybe_update_number(Resource, Number),
     lager:debug("building resource ~s endpoints", [Id]),
     CCVUpdates = [{<<"Global-Resource">>, kz_util:to_binary(Global)}
                   ,{<<"Resource-ID">>, Id}
-                  ,{<<"E164-Destination">>, Number}
+                  ,{<<"E164-Destination">>, DestinationNumber}
                   ,{<<"Original-Number">>, kapi_offnet_resource:to_did(OffnetJObj)}
                  ],
     Updates = [{<<"Name">>, Name}
                ,{<<"Weight">>, Weight}
               ],
     EndpointList = [kz_json:set_values(Updates ,update_ccvs(Endpoint, CCVUpdates))
-                    || Endpoint <- stepswitch_resources:gateways_to_endpoints(Number, Gateways, OffnetJObj, [])
+                    || Endpoint <- stepswitch_resources:gateways_to_endpoints(DestinationNumber, Gateways, OffnetJObj, [])
                    ],
     stepswitch_resources:maybe_add_proxies(EndpointList, Proxies, Endpoints).
 
@@ -395,3 +397,7 @@ update_ccvs(Endpoint, Updates) ->
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, kz_json:new()),
     kz_json:set_value(<<"Custom-Channel-Vars">>, kz_json:set_values(Updates, CCVs), Endpoint).
 
+-spec maybe_update_number(stepswitch_resources:resource(), ne_binary()) -> stepswitch_resources:resource().
+maybe_update_number(Resource, Number) ->
+    SelectorsResult = stepswitch_resources:get_resrc_selectors(Resource),
+    props:get_value('regex_number_match', SelectorsResult, Number).

@@ -15,19 +15,22 @@
 -define(SRS_CONFIG_CAT, <<?SS_CONFIG_CAT/binary, ".", ?MOD_NAME/binary>>).
 -define(MOD_PREFIX, "kz_srs_").
 -define(DEFAULT_SRS_RULES, [{[{<<"get_resources">>
-                               ,{[{<<"source">>,<<"database">>}]}}
+                               ,{[]}}
+                               %,{[{<<"source">>,<<"database">>}]}}
                              ]}
                             ,{[{<<"filter_flags">>
                                 ,{[{<<"source">>,<<"resource">>}]}}
                               ]}
                             ,{[{<<"filter_regex_rules">>
                                 ,{[{<<"source">>,<<"resource">>}
-                                   ,{<<"empty_rules_action">>,<<"deny">>}
+                                   ,{<<"deny_on_empty_rules">>,'true'}
+                                   ,{<<"update_number">>,'true'}
                                   ]}
                                }]}
                             ,{[{<<"filter_regex_cid_rules">>
                                 ,{[{<<"source">>,<<"resource">>}
-                                   ,{<<"empty_rules_action">>,<<"allow">>}
+                                   ,{<<"deny_on_empty_rules">>,'false'}
+                                   ,{<<"update_cid_number">>,'false'}
                                   ]}
                                }]}
                             ,{[{<<"order_weight">>

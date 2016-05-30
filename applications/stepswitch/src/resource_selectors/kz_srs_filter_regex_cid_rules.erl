@@ -13,7 +13,8 @@
 
 -define(MOD_NAME, <<"filter_regex_cid_rules">>).
 -define(DEFAULT_RULES_SOURCE, <<"resource">>).
--define(DEFAULT_EMPTY_RULES_ACTION, <<"allow">>).
+-define(DEFAULT_DENY_ON_EMPTY_RULES, 'false').
+-define(DEFAULT_UPDATE_CID_NUMBER, 'false').
 
 -spec handle_req(stepswitch_resources:resources(), ne_binary(), kapi_offnet_resource:req(), ne_binary(), kz_json:object()) ->
     stepswitch_resources:resources().
@@ -23,31 +24,33 @@ handle_req(Resources, _Number, OffnetJObj, DB, Params) ->
                     'true' -> stepswitch_resources:check_diversion_fields(OffnetJObj)
                 end,
     FilterSource = kz_json:get_ne_binary_value(<<"source">>, Params, ?DEFAULT_RULES_SOURCE),
-    EmptyRulesAction = kz_json:get_ne_binary_value(<<"empty_rules_action">>, Params,  ?DEFAULT_EMPTY_RULES_ACTION),
     lager:debug("filtering resources by regex cid rules with data from ~s", [FilterSource]),
-    filter_by_regex_cid_rules(Resources, CIDNumber, DB, FilterSource, EmptyRulesAction).
+    filter_by_regex_cid_rules(Resources, CIDNumber, DB, FilterSource, Params).
 
 -spec filter_by_regex_cid_rules(stepswitch_resources:resources(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
     stepswitch_resources:resources().
-filter_by_regex_cid_rules(Resources, CIDNumber, _DB, <<"resource">>, EmptyRulesAction) ->
+filter_by_regex_cid_rules(Resources, CIDNumber, _DB, <<"resource">>, Params) ->
+    IsDenyOnEmptyRules = kz_json:is_true(<<"deny_on_empty_rules">>, Params,  ?DEFAULT_DENY_ON_EMPTY_RULES),
+    IsUpdateCIDNumber = kz_json:is_true(<<"update_cid_number">>, Params,  ?DEFAULT_UPDATE_CID_NUMBER),
     lists:filter(fun(R) ->
                          Rules = stepswitch_resources:get_resrc_cid_rules(R),
                          Id = stepswitch_resources:get_resrc_id(R),
                          case evaluate_rules(Rules, CIDNumber) of
-                             {'error', 'empty_rules'} when EmptyRulesAction =:= <<"allow">> ->
-                                 lager:debug("resource ~s has empty rules for caller idr, allow", [Id]),
-                                 'true';
-                             {'error', 'empty_rules'} when EmptyRulesAction =:= <<"deny">> ->
+                             {'error', 'empty_rules'} when IsDenyOnEmptyRules ->
                                  lager:debug("resource ~s has empty rules for caller id, skipping", [Id]),
                                  'false';
-                             {'ok', CIDMatch} ->
-                                 lager:debug("resource ~s matches caller id match '~s'"
-                                             ,[Id, CIDMatch]
-                                            ),
+                             {'error', 'empty_rules'} ->
+                                 lager:debug("resource ~s has empty rules for caller id, allow", [Id]),
                                  'true';
                              {'error', 'no_match'} ->
                                  lager:debug("resource ~s does not match caller id number '~s', skipping", [Id, CIDNumber]),
-                                 'false'
+                                 'false';
+                             {'ok', CIDMatch} when IsUpdateCIDNumber ->
+                                 lager:debug("resource ~s matches caller id match '~s'", [Id, CIDMatch]),
+                                 {'true', save_matched_cid_number(R, CIDMatch)};
+                             {'ok', CIDMatch} ->
+                                 lager:debug("resource ~s matches caller id match '~s'", [Id, CIDMatch]),
+                                 'true'
                          end
                  end
                  ,Resources
@@ -76,3 +79,9 @@ do_evaluate_rules([Rule|Rules], Number) ->
         _ -> do_evaluate_rules(Rules, Number)
     end.
 
+-spec save_matched_cid_number(stepswitch_resources:resource(), binary()) ->
+    stepswitch_resources:resource().
+save_matched_cid_number(Resource, CIDNumber) ->
+    OldSelectors = stepswitch_resources:get_resrc_selectors(Resource),
+    NewSelectors = props:set_value('regex_cid_number_match', CIDNumber, OldSelectors),
+    stepswitch_resources:set_resrc_selectors(Resource, NewSelectors).
