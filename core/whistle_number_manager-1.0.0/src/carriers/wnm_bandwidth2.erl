@@ -392,8 +392,10 @@ rate_center_to_json(Xml) ->
 -spec verify_response(xml_el()) -> {'ok', ne_binary()} |
                                    {'error', api_binary() | ne_binaries()}.
 verify_response(Xml) ->
-    Path = "count(//TelephoneNumberDetailList/TelephoneNumberDetail)",
-    case validate_xpath_value(xmerl_xpath:string(Path, Xml))
+    NPAPath = "count(//TelephoneNumberDetailList/TelephoneNumberDetail)",
+    TollFreePath = "count(//TelephoneNumberList/TelephoneNumber)",
+    case validate_xpath_value(xmerl_xpath:string(NPAPath, Xml))
+             orelse validate_xpath_value(xmerl_xpath:string(TollFreePath, Xml))
              orelse validate_xpath_value(wh_util:get_xml_value("//OrderStatus/text()", Xml))
     of
         'true' ->
