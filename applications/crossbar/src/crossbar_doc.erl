@@ -15,7 +15,7 @@
          ,merge/3
          ,patch_and_validate/3
          ,load_view/3, load_view/4, load_view/5, load_view/6
-         ,load_attachment/3, load_attachment/4, load_docs/2
+         ,load_attachment/4, load_docs/2
          ,save/1, save/2
          ,delete/1, delete/2
          ,save_attachment/4, save_attachment/5
@@ -544,11 +544,6 @@ load_docs(Context, Filter)
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load_attachment(kazoo_data:docid() | kz_json:object(), ne_binary(), cb_context:context()) ->
-                             cb_context:context().
-load_attachment(Doc, AName, Context) ->
-    load_attachment(Doc, AName, Context).
-
 -spec load_attachment(kazoo_data:docid() | kz_json:object(), ne_binary(), kz_proplist(), cb_context:context()) ->
                              cb_context:context().
 load_attachment({DocType, DocId}, AName, Options, Context) ->
