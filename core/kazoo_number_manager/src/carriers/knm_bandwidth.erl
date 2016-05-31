@@ -85,7 +85,7 @@ find_numbers(<<NPA:3/binary>>, Quanity, Options) ->
         {'ok', Xml} -> process_numbers_search_resp(Xml, Options)
     end;
 find_numbers(Search, Quanity, Options) ->
-    NpaNxx = binary:part(Search, 0, (case size(Search) of L when L < 6 -> L; _ -> 6 end)),
+    NpaNxx = kz_util:truncate_right_binary(Search, 6),
     Props = [{'npaNxx', [kz_util:to_list(NpaNxx)]}
              ,{'maxQuantity', [kz_util:to_list(Quanity)]}
             ],

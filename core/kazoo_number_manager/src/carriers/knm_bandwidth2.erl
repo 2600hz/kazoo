@@ -103,10 +103,14 @@ find_numbers(<<"+", Rest/binary>>, Quantity, Options) ->
 find_numbers(<<"1", Rest/binary>>, Quantity, Options) ->
     find_numbers(Rest, Quantity, Options);
 
-find_numbers(<<Prefix:3/binary, _/binary>>, Quantity, Options) when ?IS_US_TOLLFREE(Prefix) ->
+find_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, Options) when ?IS_US_TOLLFREE(Prefix) ->
     <<"8", Second:1/binary, _/binary>> = Prefix,
+    ToSearch = case knm_converters:is_reconcilable(Num) of
+                   'true' -> Num;
+                   'false' -> Second
+               end,
 
-    Params = [ "tollFreeWildCardPattern=8", binary_to_list(Second), "*"
+    Params = [ "tollFreeWildCardPattern=8", binary_to_list(ToSearch), "*"
                "&enableTNDetail=true&quantity=", integer_to_list(Quantity)
              ],
     {'ok', Result} = search(Params),
