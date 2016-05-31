@@ -235,7 +235,7 @@ from_route_req(RouteReq, #whapps_call{call_id=OldCallId
     Call1#whapps_call{
         call_id=CallId
         ,request=Request
-        ,request_user=wnm_util:to_e164(RequestUser)
+        ,request_user=to_e164(RequestUser)
         ,request_realm=RequestRealm
         ,from=From
         ,from_user=FromUser
@@ -614,10 +614,15 @@ maybe_append_caller_id(CallerId, Suffix) ->
     lager:info("appending cid with ~s~n", [BinSuffix]),
     <<CallerId/binary, BinSuffix/binary>>.
 
+-ifdef(TEST).
+set_caller_id_name(CIDName, Call) ->
+    Call#whapps_call{caller_id_name=CIDName}.
+-else.
 -spec set_caller_id_name(ne_binary(), call()) -> call().
 set_caller_id_name(CIDName, #whapps_call{}=Call) when is_binary(CIDName) ->
     whapps_call_command:set(wh_json:from_list([{<<"Caller-ID-Name">>, CIDName}]), 'undefined', Call),
     Call#whapps_call{caller_id_name=CIDName}.
+-endif.
 
 -spec caller_id_name(call()) -> ne_binary().
 caller_id_name(#whapps_call{caller_id_name=CIDName}) ->
@@ -626,10 +631,15 @@ caller_id_name(#whapps_call{caller_id_name=CIDName}) ->
         'false' -> CIDName
     end.
 
+-ifdef(TEST).
+set_caller_id_number(CIDNumber, #whapps_call{}=Call) ->
+    Call#whapps_call{caller_id_number=CIDNumber}.
+-else.
 -spec set_caller_id_number(api_binary(), call()) -> call().
 set_caller_id_number(CIDNumber, #whapps_call{}=Call) ->
     whapps_call_command:set(wh_json:from_list([{<<"Caller-ID-Number">>, CIDNumber}]), 'undefined', Call),
     Call#whapps_call{caller_id_number=CIDNumber}.
+-endif.
 
 -spec caller_id_number(call()) -> ne_binary().
 caller_id_number(#whapps_call{caller_id_number=CIDNumber}) ->
@@ -638,19 +648,29 @@ caller_id_number(#whapps_call{caller_id_number=CIDNumber}) ->
         'false' -> CIDNumber
     end.
 
+-ifdef(TEST).
+set_callee_id_name(CIDName, #whapps_call{}=Call) when is_binary(CIDName) ->
+    Call#whapps_call{callee_id_name=CIDName}.
+-else.
 -spec set_callee_id_name(ne_binary(), call()) -> call().
 set_callee_id_name(CIDName, #whapps_call{}=Call) when is_binary(CIDName) ->
     whapps_call_command:set(wh_json:from_list([{<<"Callee-ID-Number">>, CIDName}]), 'undefined', Call),
     Call#whapps_call{callee_id_name=CIDName}.
+-endif.
 
 -spec callee_id_name(call()) -> binary().
 callee_id_name(#whapps_call{callee_id_name='undefined'}) -> <<>>;
 callee_id_name(#whapps_call{callee_id_name=CIDName}) -> CIDName.
 
+-ifdef(TEST).
+set_callee_id_number(CIDNumber, #whapps_call{}=Call) when is_binary(CIDNumber) ->
+    Call#whapps_call{callee_id_number=CIDNumber}.
+-else.
 -spec set_callee_id_number(ne_binary(), call()) -> call().
 set_callee_id_number(CIDNumber, #whapps_call{}=Call) when is_binary(CIDNumber) ->
     whapps_call_command:set(wh_json:from_list([{<<"Callee-ID-Number">>, CIDNumber}]), 'undefined', Call),
     Call#whapps_call{callee_id_number=CIDNumber}.
+-endif.
 
 -spec callee_id_number(call()) -> binary().
 callee_id_number(#whapps_call{callee_id_number='undefined'}) -> <<>>;
@@ -660,9 +680,16 @@ callee_id_number(#whapps_call{callee_id_number=CIDNumber}) -> CIDNumber.
 set_request(Request, #whapps_call{}=Call) when is_binary(Request) ->
     [RequestUser, RequestRealm] = binary:split(Request, <<"@">>),
     Call#whapps_call{request=Request
-                     ,request_user=wnm_util:to_e164(RequestUser)
+                     ,request_user=to_e164(RequestUser)
                      ,request_realm=RequestRealm
                     }.
+
+-ifdef(TEST).
+to_e164(Number) -> Number.
+-else.
+to_e164(Number) ->
+    wnm_util:to_e164(Number).
+-endif.
 
 -spec request(call()) -> ne_binary().
 request(#whapps_call{request=Request}) ->
@@ -848,10 +875,14 @@ bridge_id(#whapps_call{bridge_id=BridgeId}) -> BridgeId.
 set_language(Language, #whapps_call{}=Call) when is_binary(Language) ->
     Call#whapps_call{language=Language}.
 
+-ifdef(TEST).
+language(#whapps_call{language=Lang}) -> Lang.
+-else.
 -spec language(call()) -> api_binary().
 language(#whapps_call{language='undefined', account_id=AccountId}) ->
     wh_media_util:prompt_language(AccountId);
 language(#whapps_call{language=Language}) -> Language.
+-endif.
 
 -spec set_to_tag(ne_binary(), call()) -> call().
 set_to_tag(ToTag, #whapps_call{}=Call) when is_binary(ToTag) ->
@@ -883,26 +914,43 @@ handle_ccvs_remove(Keys, #whapps_call{ccvs=CCVs}=Call) ->
         end
       end, Call#whapps_call{ccvs=wh_json:delete_keys(Keys, CCVs)}, Keys).
 
+-ifdef(TEST).
+set_custom_channel_var(Key, Value, Call) ->
+    insert_custom_channel_var(Key, Value, Call).
+-else.
 -spec set_custom_channel_var(any(), any(), call()) -> call().
 set_custom_channel_var(Key, Value, Call) ->
     whapps_call_command:set(wh_json:set_value(Key, Value, wh_json:new()), 'undefined', Call),
     insert_custom_channel_var(Key, Value, Call).
+-endif.
 
 -spec insert_custom_channel_var(any(), any(), call()) -> call().
 insert_custom_channel_var(Key, Value, #whapps_call{ccvs=CCVs}=Call) ->
     handle_ccvs_update(wh_json:set_value(Key, Value, CCVs), Call).
 
+-ifdef(TEST).
+set_custom_channel_vars(Props, #whapps_call{ccvs=CCVs}=Call) ->
+    NewCCVs = wh_json:set_values(Props, CCVs),
+    handle_ccvs_update(NewCCVs, Call).
+-else.
 -spec set_custom_channel_vars(wh_proplist(), call()) -> call().
 set_custom_channel_vars(Props, #whapps_call{ccvs=CCVs}=Call) ->
     NewCCVs = wh_json:set_values(Props, CCVs),
     whapps_call_command:set(NewCCVs, 'undefined', Call),
     handle_ccvs_update(NewCCVs, Call).
+-endif.
 
+-ifdef(TEST).
+update_custom_channel_vars(Updaters, #whapps_call{ccvs=CCVs}=Call) ->
+    NewCCVs = lists:foldr(fun(F, J) -> F(J) end, CCVs, Updaters),
+    handle_ccvs_update(NewCCVs, Call).
+-else.
 -spec update_custom_channel_vars([fun((wh_json:object()) -> wh_json:object()),...], call()) -> call().
 update_custom_channel_vars(Updaters, #whapps_call{ccvs=CCVs}=Call) ->
     NewCCVs = lists:foldr(fun(F, J) -> F(J) end, CCVs, Updaters),
     whapps_call_command:set(NewCCVs, 'undefined', Call),
     handle_ccvs_update(NewCCVs, Call).
+-endif.
 
 -spec custom_channel_var(any(), Default, call()) -> Default | _.
 custom_channel_var(Key, Default, #whapps_call{ccvs=CCVs}) ->
@@ -1042,14 +1090,14 @@ set_dtmf_collection(DTMF, Call) ->
 set_dtmf_collection('undefined', Collection, Call) ->
     Collections = kvs_fetch(<<"dtmf_collections">>, wh_json:new(), Call),
     kvs_store(<<"dtmf_collections">>
-                  ,wh_json:delete_key(Collection, Collections)
-              ,Call
+             ,wh_json:delete_key(Collection, Collections)
+             ,Call
              );
 set_dtmf_collection(DTMF, Collection, Call) ->
     Collections = kvs_fetch(<<"dtmf_collections">>, wh_json:new(), Call),
     kvs_store(<<"dtmf_collections">>
-                  ,wh_json:set_value(Collection, DTMF, Collections)
-              ,Call
+             ,wh_json:set_value(Collection, DTMF, Collections)
+             ,Call
              ).
 
 -spec get_dtmf_collection(call()) -> api_binary().
@@ -1144,5 +1192,11 @@ json_conversion_test() -> 'ok'.
     %%       is reversed.... and I am out of time for this module
     %%       You're just goind to have to take my word it works hehe ;)
 %%    ?assertEqual(Call1, Call2).
+
+encode_decode_test() ->
+    Call = exec(?UPDATERS, new()),
+    Call1 = from_json(to_json(Call)),
+
+    ?assertEqual(Call, Call1).
 
 -endif.
