@@ -237,7 +237,7 @@ from_route_req(RouteReq, #kapps_call{call_id=OldCallId
     Call1#kapps_call{
         call_id=CallId
         ,request=Request
-        ,request_user=knm_converters:normalize(RequestUser)
+        ,request_user=to_e164(RequestUser)
         ,request_realm=RequestRealm
         ,from=From
         ,from_user=FromUser
@@ -620,9 +620,14 @@ maybe_append_caller_id(CallerId, Suffix) ->
     <<CallerId/binary, BinSuffix/binary>>.
 
 -spec set_caller_id_name(ne_binary(), call()) -> call().
+-ifdef(TEST).
+set_caller_id_name(CIDName, Call) ->
+    Call#kapps_call{caller_id_name=CIDName}.
+-else.
 set_caller_id_name(CIDName, #kapps_call{}=Call) when is_binary(CIDName) ->
     kapps_call_command:set(kz_json:from_list([{<<"Caller-ID-Name">>, CIDName}]), 'undefined', Call),
     Call#kapps_call{caller_id_name=CIDName}.
+-endif.
 
 -spec caller_id_name(call()) -> ne_binary().
 caller_id_name(#kapps_call{caller_id_name=CIDName}) ->
@@ -632,9 +637,14 @@ caller_id_name(#kapps_call{caller_id_name=CIDName}) ->
     end.
 
 -spec set_caller_id_number(api_binary(), call()) -> call().
+-ifdef(TEST).
+set_caller_id_number(CIDNumber, Call) ->
+    Call#kapps_call{caller_id_number=CIDNumber}.
+-else.
 set_caller_id_number(CIDNumber, #kapps_call{}=Call) ->
     kapps_call_command:set(kz_json:from_list([{<<"Caller-ID-Number">>, CIDNumber}]), 'undefined', Call),
     Call#kapps_call{caller_id_number=CIDNumber}.
+-endif.
 
 -spec caller_id_number(call()) -> ne_binary().
 caller_id_number(#kapps_call{caller_id_number=CIDNumber}) ->
@@ -644,18 +654,28 @@ caller_id_number(#kapps_call{caller_id_number=CIDNumber}) ->
     end.
 
 -spec set_callee_id_name(ne_binary(), call()) -> call().
+-ifdef(TEST).
+set_callee_id_name(CIDName, Call) ->
+    Call#kapps_call{callee_id_name=CIDName}.
+-else.
 set_callee_id_name(CIDName, #kapps_call{}=Call) when is_binary(CIDName) ->
     kapps_call_command:set(kz_json:from_list([{<<"Callee-ID-Number">>, CIDName}]), 'undefined', Call),
     Call#kapps_call{callee_id_name=CIDName}.
+-endif.
 
 -spec callee_id_name(call()) -> binary().
 callee_id_name(#kapps_call{callee_id_name='undefined'}) -> <<>>;
 callee_id_name(#kapps_call{callee_id_name=CIDName}) -> CIDName.
 
 -spec set_callee_id_number(ne_binary(), call()) -> call().
+-ifdef(TEST).
+set_callee_id_number(CIDNumber, Call) ->
+    Call#kapps_call{callee_id_number=CIDNumber}.
+-else.
 set_callee_id_number(CIDNumber, #kapps_call{}=Call) when is_binary(CIDNumber) ->
     kapps_call_command:set(kz_json:from_list([{<<"Callee-ID-Number">>, CIDNumber}]), 'undefined', Call),
     Call#kapps_call{callee_id_number=CIDNumber}.
+-endif.
 
 -spec callee_id_number(call()) -> binary().
 callee_id_number(#kapps_call{callee_id_number='undefined'}) -> <<>>;
@@ -665,9 +685,16 @@ callee_id_number(#kapps_call{callee_id_number=CIDNumber}) -> CIDNumber.
 set_request(Request, #kapps_call{}=Call) when is_binary(Request) ->
     [RequestUser, RequestRealm] = binary:split(Request, <<"@">>),
     Call#kapps_call{request=Request
-                     ,request_user=knm_converters:normalize(RequestUser)
+                     ,request_user=to_e164(RequestUser)
                      ,request_realm=RequestRealm
                     }.
+
+-ifdef(TEST).
+to_e164(Number) -> Number.
+-else.
+to_e164(Number) ->
+    knm_converters:normalize(Number).
+-endif.
 
 -spec request(call()) -> ne_binary().
 request(#kapps_call{request=Request}) ->
@@ -854,9 +881,13 @@ set_language(Language, #kapps_call{}=Call) when is_binary(Language) ->
     Call#kapps_call{language=Language}.
 
 -spec language(call()) -> api_binary().
+-ifdef(TEST).
+language(#kapps_call{language=L}) -> L.
+-else.
 language(#kapps_call{language='undefined', account_id=AccountId}) ->
     kz_media_util:prompt_language(AccountId);
 language(#kapps_call{language=Language}) -> Language.
+-endif.
 
 -spec set_to_tag(ne_binary(), call()) -> call().
 set_to_tag(ToTag, #kapps_call{}=Call) when is_binary(ToTag) ->
@@ -896,25 +927,42 @@ handle_ccvs_remove(Keys, #kapps_call{ccvs=CCVs}=Call) ->
                ).
 
 -spec set_custom_channel_var(kz_json:key(), kz_json:json_term(), call()) -> call().
+-ifdef(TEST).
+set_custom_channel_var(Key, Value, Call) ->
+    insert_custom_channel_var(Key, Value, Call).
+-else.
 set_custom_channel_var(Key, Value, Call) ->
     kapps_call_command:set(kz_json:set_value(Key, Value, kz_json:new()), 'undefined', Call),
     insert_custom_channel_var(Key, Value, Call).
+-endif.
 
 -spec insert_custom_channel_var(kz_json:key(), kz_json:json_term(), call()) -> call().
 insert_custom_channel_var(Key, Value, #kapps_call{ccvs=CCVs}=Call) ->
     handle_ccvs_update(kz_json:set_value(Key, Value, CCVs), Call).
 
 -spec set_custom_channel_vars(kz_proplist(), call()) -> call().
+-ifdef(TEST).
+set_custom_channel_vars(Props, #kapps_call{ccvs=CCVs}=Call) ->
+    NewCCVs = wh_json:set_values(Props, CCVs),
+    handle_ccvs_update(NewCCVs, Call).
+-else.
 set_custom_channel_vars(Props, #kapps_call{ccvs=CCVs}=Call) ->
     NewCCVs = kz_json:set_values(Props, CCVs),
     kapps_call_command:set(NewCCVs, 'undefined', Call),
     handle_ccvs_update(NewCCVs, Call).
+-endif.
 
 -spec update_custom_channel_vars([fun((kz_json:object()) -> kz_json:object()),...], call()) -> call().
+-ifdef(TEST).
+update_custom_channel_vars(Updaters, #kapps_call{ccvs=CCVs}=Call) ->
+    NewCCVs = lists:foldr(fun(F, J) -> F(J) end, CCVs, Updaters),
+    handle_ccvs_update(NewCCVs, Call).
+-else.
 update_custom_channel_vars(Updaters, #kapps_call{ccvs=CCVs}=Call) ->
     NewCCVs = lists:foldr(fun(F, J) -> F(J) end, CCVs, Updaters),
     kapps_call_command:set(NewCCVs, 'undefined', Call),
     handle_ccvs_update(NewCCVs, Call).
+-endif.
 
 -spec custom_channel_var(any(), Default, call()) -> Default | _.
 custom_channel_var(Key, Default, #kapps_call{ccvs=CCVs}) ->
@@ -1054,14 +1102,14 @@ set_dtmf_collection(DTMF, Call) ->
 set_dtmf_collection('undefined', Collection, Call) ->
     Collections = kvs_fetch(<<"dtmf_collections">>, kz_json:new(), Call),
     kvs_store(<<"dtmf_collections">>
-                  ,kz_json:delete_key(Collection, Collections)
-              ,Call
+             ,kz_json:delete_key(Collection, Collections)
+             ,Call
              );
 set_dtmf_collection(DTMF, Collection, Call) ->
     Collections = kvs_fetch(<<"dtmf_collections">>, kz_json:new(), Call),
     kvs_store(<<"dtmf_collections">>
-                  ,kz_json:set_value(Collection, DTMF, Collections)
-              ,Call
+             ,kz_json:set_value(Collection, DTMF, Collections)
+             ,Call
              ).
 
 -spec get_dtmf_collection(call()) -> api_binary().
@@ -1156,5 +1204,11 @@ json_conversion_test() -> 'ok'.
     %%       is reversed.... and I am out of time for this module
     %%       You're just goind to have to take my word it works hehe ;)
 %%    ?assertEqual(Call1, Call2).
+
+encode_decode_test() ->
+    Call = exec(?UPDATERS, new()),
+    Call1 = from_json(to_json(Call)),
+
+    ?assertEqual(Call, Call1).
 
 -endif.
