@@ -137,7 +137,7 @@
                       %%,'skel'
                      ]).
 
--define(BINDINGS, [{'notifications', [{'restrict_to', ?RESTRICT_TO}]}
+-define(BINDINGS, [{'notifications', [{'restrict_to', ?RESTRICT_TO} | ?FEDERATE_BINDING(?NOTIFY_CONFIG_CAT)]}
                    ,{'self', []}
                   ]).
 -define(QUEUE_NAME, <<"teletype_shared_listener">>).

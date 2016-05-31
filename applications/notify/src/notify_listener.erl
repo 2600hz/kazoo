@@ -1,4 +1,4 @@
-  %%%-------------------------------------------------------------------
+%%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Handle updating devices and emails about voicemails
@@ -62,7 +62,7 @@
                       ,'system_alerts'
                      ]).
 
--define(BINDINGS, [{'notifications', [{'restrict_to', ?RESTRICT_TO}]}
+-define(BINDINGS, [{'notifications', [{'restrict_to', ?RESTRICT_TO} | ?FEDERATE_BINDING(?NOTIFY_CONFIG_CAT)]}
                    ,{'self', []}
                   ]).
 -define(QUEUE_NAME, <<"notify_listener">>).
