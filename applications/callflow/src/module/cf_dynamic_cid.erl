@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% "data":{
 %%%   "action": "manual" | "list"
@@ -29,8 +29,8 @@
         ,whapps_config:get_integer(?MOD_CONFIG_CAT, Key, Default)
        ).
 
--record(prompts, {
-          accept_tone =
+-record(prompts
+        ,{accept_tone =
               ?CONFIG_BIN(<<"accept_prompt">>, <<"tone_stream://%(250,50,440)">>)
           ,reject_tone =
               wh_media_util:get_prompt(
@@ -43,8 +43,8 @@
          }).
 -type prompts() :: #prompts{}.
 
--record(dynamic_cid, {
-          prompts = #prompts{} :: prompts()
+-record(dynamic_cid
+        ,{prompts = #prompts{} :: prompts()
           ,max_digits = ?CONFIG_INT(<<"max_digits">>, 10) :: integer()
           ,min_digits = ?CONFIG_INT(<<"min_digits">>, 10) :: integer()
           ,whitelist = ?CONFIG_BIN(<<"whitelist_regex">>, <<"\\d+">>) :: ne_binary()
@@ -62,10 +62,10 @@ handle(Data, Call) ->
     case wh_json:get_value(<<"action">>, Data) of
         <<"list">> ->
             lager:info("user is choosing a caller id for this call from couchdb doc"),
-	    handle_list(Data, Call);
+            handle_list(Data, Call);
         _ ->
-	    lager:info("user must manually enter on keypad the caller id for this call"),
-	    handle_manual(Data, Call)
+            lager:info("user must manually enter on keypad the caller id for this call"),
+            handle_manual(Data, Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -129,7 +129,7 @@ handle_manual(Data, Call) ->
 
     {'ok', C1} = cf_exe:get_call(Call),
     Updates = [{fun whapps_call:kvs_store/3, 'dynamic_cid', CID}
-	       ,{fun whapps_call:set_caller_id_number/2, CID}
+               ,{fun whapps_call:set_caller_id_number/2, CID}
               ],
     cf_exe:set_call(whapps_call:exec(Updates, C1)),
     cf_exe:continue(Call).
@@ -183,7 +183,7 @@ maybe_route_to_callflow(Data, Call, Number) ->
         _ ->
             lager:info("failed to find a callflow to satisfy ~s", [Number]),
             _ = whapps_call_command:b_prompt(<<"disa-invalid_extension">>, Call),
-	    cf_exe:stop(Call)
+            cf_exe:stop(Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -250,17 +250,17 @@ get_list_entry(Data, Call) ->
     case couch_mgr:open_cache_doc(AccountDb, ListId) of
         {'ok', ListJObj} ->
             LengthDigits = wh_json:get_ne_value(<<"length">>, ListJObj),
-	    lager:debug("digit length to limit lookup key in number: ~p ", [LengthDigits]),
-	    CaptureGroup = whapps_call:kvs_fetch('cf_capture_group', Call),
-	    lager:debug("capture_group ~s ", [CaptureGroup]),
-	    <<CIDKey:LengthDigits/binary, Dest/binary>> = CaptureGroup,
-	    lager:debug("CIDKey ~p to lookup in couchdb doc", [CIDKey]),
+            lager:debug("digit length to limit lookup key in number: ~p ", [LengthDigits]),
+            CaptureGroup = whapps_call:kvs_fetch('cf_capture_group', Call),
+            lager:debug("capture_group ~s ", [CaptureGroup]),
+            <<CIDKey:LengthDigits/binary, Dest/binary>> = CaptureGroup,
+            lager:debug("CIDKey ~p to lookup in couchdb doc", [CIDKey]),
             JObj = wh_json:get_ne_value(<<"entries">>, ListJObj),
             lager:info("list of possible values to use: ~p", [JObj]),
-	    NewCallerId = wh_json:get_value(CIDKey, JObj),
-	    lager:info("new caller id data : ~p",  [NewCallerId]),
-	    {NewCallerId, Dest};
-	{'error', _Reason}=E ->
+            NewCallerId = wh_json:get_value(CIDKey, JObj),
+            lager:info("new caller id data : ~p",  [NewCallerId]),
+            {NewCallerId, Dest};
+        {'error', _Reason}=E ->
             lager:info("failed to load match list box ~s: ~p", [ListId, _Reason]),
             E
     end.
