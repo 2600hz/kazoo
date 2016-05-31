@@ -64,6 +64,7 @@
 -record(state, { tasks = [] :: tasks()
                , apis = kz_json:new() :: kz_json:object()
                , apps = #{} :: #{api_category() => ne_binary()}
+               , nodes = #{} :: #{api_category() => ne_binary()}
                , modules = #{} :: #{api_category() => module()}
                }).
 -type state() :: #state{}.
@@ -105,8 +106,8 @@ available() ->
     of
         {'ok', JObjs} ->
             lager:debug("help_req got ~p replies", [length(JObjs)]),
-            {Apps, Modules, APIs} = parse_apis(JObjs),
-            gen_server:call(?SERVER, {'replace_APIs', Apps, Modules, APIs});
+            {Apps, Nodes, Modules, APIs} = parse_apis(JObjs),
+            gen_server:call(?SERVER, {'replace_APIs', Apps, Nodes, Modules, APIs});
         {'timeout', []} ->
             lager:debug("no app replied to help_req"),
             kz_json:new();
@@ -265,9 +266,10 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({'replace_APIs', Apps, Modules, APIs}, _From, State) ->
+handle_call({'replace_APIs', Apps, Nodes, Modules, APIs}, _From, State) ->
     State1 = State#state{ apis = APIs
                         , apps = Apps
+                        , nodes = Nodes
                         , modules = Modules
                         },
     {'reply', APIs, State1};
@@ -606,19 +608,21 @@ check_MFa(M, F, Arity) ->
             end
     end.
 
--type m_apis() :: {map(), map(), kz_json:object()}.
+-type m_apis() :: {map(), map(), map(), kz_json:object()}.
 -spec parse_apis(kz_json:objects()) -> m_apis().
 parse_apis(JObjs) ->
-    Acc0 = {#{}, #{}, kz_json:new()},
+    Acc0 = {#{}, #{}, #{}, kz_json:new()},
     lists:foldl(fun parse_apis_fold/2, Acc0, JObjs).
 
 -spec parse_apis_fold(kz_json:object(), m_apis()) -> m_apis().
-parse_apis_fold(JObj, {Apps, Modules, APIs}) ->
+parse_apis_fold(JObj, {Apps, Nodes, Modules, APIs}) ->
     APICategory = kz_json:get_value(<<"Tasks-For">>, JObj),
     App = kz_json:get_value(<<"App-Name">>, JObj),
+    Node = kz_json:get_value(<<"Tasks-Node">>, JObj),
     Module = kz_json:get_value(<<"Tasks-Module">>, JObj),
     TasksProvided = kz_json:get_value(<<"Tasks">>, JObj),
     { Apps#{APICategory => App}
+    , Nodes#{APICategory => Node}
     , Modules#{APICategory => kz_util:to_atom(Module, 'true')}
     , kz_json:set_value(APICategory, TasksProvided, APIs)
     }.

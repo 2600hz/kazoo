@@ -26,6 +26,7 @@
 
 -define(HELP_RESP_HEADERS, [<<"Tasks">>
                            ,<<"Tasks-For">>
+                           ,<<"Tasks-Node">>
                            ,<<"Tasks-Module">>
                            ]).
 -define(OPTIONAL_HELP_RESP_HEADERS, []).
@@ -34,6 +35,7 @@
                           ]).
 -define(HELP_RESP_TYPES, [{<<"Tasks">>, fun kz_json:is_json_object/1}
                          ,{<<"Tasks-For">>, fun erlang:is_binary/1}
+                         ,{<<"Tasks-Node">>, fun erlang:is_binary/1}
                          ,{<<"Tasks-Module">>, fun erlang:is_binary/1}
                          ]).
 

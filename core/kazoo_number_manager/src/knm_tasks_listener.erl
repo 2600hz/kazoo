@@ -62,9 +62,10 @@ help(JObj, _Props) ->
     Q = kz_json:get_value(<<"Server-ID">>, JObj),
     MessageId = kz_json:get_value(<<"Msg-ID">>, JObj),
     RespJObj =
-        kz_json:from_list([{<<"Tasks">>, kz_json:from_list(available_tasks())}
-                          ,{<<"Tasks-For">>, <<"number-management">>}
-                          ,{<<"Tasks-Module">>, <<"knm_tasks">>}
+        kz_json:from_list([{<<"Tasks">>, kz_json:from_list(knm_tasks:help())}
+                          ,{<<"Tasks-For">>, knm_tasks:for()}
+                          ,{<<"Tasks-Module">>, knm_tasks:module()}
+                          ,{<<"">>, knm_tasks:node()}
                           ,{<<"Msg-ID">>, MessageId}
                            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                           ]),
@@ -174,74 +175,5 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
--spec available_tasks() -> kz_proplist().
-available_tasks() ->
-    [{<<"list">>
-     ,kz_json:from_list([{<<"description">>, <<"List all numbers in the system">>}
-                        ,{<<"mandatory">>, [
-                                           ]}
-                        ,{<<"optional">>, [<<"auth_by">>
-                                          ]}
-                        ])
-     }
-
-    ,{<<"assign_to">>
-     ,kz_json:from_list([{<<"description">>, <<"Bulk-assign numbers to the provided account">>}
-                        ,{<<"expected_content">>, <<"text/csv">>}
-                        ,{<<"mandatory">>, [<<"number">>
-                                           ,<<"account_id">>
-                                           ]}
-                        ,{<<"optional">>, [<<"auth_by">>
-                                          ]}
-                        ])
-     }
-
-    ,{<<"delete">>
-     ,kz_json:from_list([{<<"description">>, <<"Bulk-remove numbers">>}
-                        ,{<<"expected_content">>, <<"text/csv">>}
-                        ,{<<"mandatory">>, [<<"number">>
-                                           ]}
-                        ,{<<"optional">>, [<<"auth_by">>
-                                          ]}
-                        ])
-     }
-
-    ,{<<"reserve">>
-     ,kz_json:from_list([{<<"description">>, <<"Bulk-move numbers to reserved (adding if missing)">>}
-                        ,{<<"expected_content">>, <<"text/csv">>}
-                        ,{<<"mandatory">>, [<<"number">>
-                                           ,<<"account_id">>
-                                           ]}
-                        ,{<<"optional">>, [<<"auth_by">>
-                                          ]}
-                        ])
-     }
-
-    ,{<<"add">>
-     ,kz_json:from_list([{<<"description">>, <<"Bulk-create numbers">>}
-                        ,{<<"expected_content">>, <<"text/csv">>}
-                        ,{<<"mandatory">>, [<<"number">>
-                                           ,<<"account_id">>
-                                           ]}
-                        ,{<<"optional">>, [<<"auth_by">>
-                                          ,<<"module_name">>
-                                          ]}
-                        ])
-     }
-
-    ,{<<"update_features">>
-     ,kz_json:from_list([{<<"description">>, <<"Bulk-update features of numbers">>}
-                        ,{<<"expected_content">>, <<"text/csv">>}
-                        ,{<<"mandatory">>, [<<"number">>
-                                           ]}
-                        ,{<<"optional">>, [<<"cnam.inbound">>
-                                          ,<<"cnam.outbound">>
-                                          ,<<"e911.street_address">>
-                                               %%TODO: exhaustive list
-                                          ]}
-                        ])
-     }
-    ].
 
 %% End of Module.

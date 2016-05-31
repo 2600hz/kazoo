@@ -294,7 +294,7 @@ curl -v -X GET \
     "auth_token": "{AUTH_TOKEN}",
     "data": {
         "tasks": {
-            "number-management": {
+            "number_management": {
                 "add": {
                     "description": "Bulk-create numbers",
                     "expected_content": "text/csv",

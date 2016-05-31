@@ -7,6 +7,15 @@
 %%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_tasks).
+%% behaviour: tasks_provider
+
+-compile({'no_auto_import', [node/0]}).
+
+-export([help/0
+        ,for/0
+        ,node/0
+        ,module/0
+        ]).
 
 -export([number/1
         ]).
@@ -19,6 +28,84 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec for() -> ne_binary().
+for() -> <<"number_management">>.
+
+-spec module() -> module().
+module() -> ?MODULE.
+
+-spec node() -> node().
+node() -> kz_util:to_binary(node()).
+
+-spec help() -> kz_proplist().
+help() ->
+    [{<<"list">>
+     ,kz_json:from_list([{<<"description">>, <<"List all numbers in the system">>}
+                        ,{<<"mandatory">>, [
+                                           ]}
+                        ,{<<"optional">>, [<<"auth_by">>
+                                          ]}
+                        ])
+     }
+
+    ,{<<"assign_to">>
+     ,kz_json:from_list([{<<"description">>, <<"Bulk-assign numbers to the provided account">>}
+                        ,{<<"expected_content">>, <<"text/csv">>}
+                        ,{<<"mandatory">>, [<<"number">>
+                                           ,<<"account_id">>
+                                           ]}
+                        ,{<<"optional">>, [<<"auth_by">>
+                                          ]}
+                        ])
+     }
+
+    ,{<<"delete">>
+     ,kz_json:from_list([{<<"description">>, <<"Bulk-remove numbers">>}
+                        ,{<<"expected_content">>, <<"text/csv">>}
+                        ,{<<"mandatory">>, [<<"number">>
+                                           ]}
+                        ,{<<"optional">>, [<<"auth_by">>
+                                          ]}
+                        ])
+     }
+
+    ,{<<"reserve">>
+     ,kz_json:from_list([{<<"description">>, <<"Bulk-move numbers to reserved (adding if missing)">>}
+                        ,{<<"expected_content">>, <<"text/csv">>}
+                        ,{<<"mandatory">>, [<<"number">>
+                                           ,<<"account_id">>
+                                           ]}
+                        ,{<<"optional">>, [<<"auth_by">>
+                                          ]}
+                        ])
+     }
+
+    ,{<<"add">>
+     ,kz_json:from_list([{<<"description">>, <<"Bulk-create numbers">>}
+                        ,{<<"expected_content">>, <<"text/csv">>}
+                        ,{<<"mandatory">>, [<<"number">>
+                                           ,<<"account_id">>
+                                           ]}
+                        ,{<<"optional">>, [<<"auth_by">>
+                                          ,<<"module_name">>
+                                          ]}
+                        ])
+     }
+
+    ,{<<"update_features">>
+     ,kz_json:from_list([{<<"description">>, <<"Bulk-update features of numbers">>}
+                        ,{<<"expected_content">>, <<"text/csv">>}
+                        ,{<<"mandatory">>, [<<"number">>
+                                           ]}
+                        ,{<<"optional">>, [<<"cnam.inbound">>
+                                          ,<<"cnam.outbound">>
+                                          ,<<"e911.street_address">>
+                                               %%TODO: exhaustive list
+                                          ]}
+                        ])
+     }
+    ].
 
 %% Verifiers
 
