@@ -41,6 +41,8 @@
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 
+-define(FILTER_APPS, ['kazoo_globals', 'ecallmgr']).
+
 -define(SERVER, ?MODULE).
 
 -define(BINDINGS, [{'nodes', ['federate']}
@@ -64,7 +66,7 @@
 -define(MEDIA_SERVERS_LINE, "                ").
 -define(MEDIA_SERVERS_DETAIL, "~s (~s)").
 
--record(state, {heartbeat_ref :: reference()
+-record(state, {heartbeat_ref = erlang:make_ref() :: reference()
                 ,tab :: ets:tid()
                 ,notify_new = sets:new() :: sets:set()
                 ,notify_expire = sets:new() :: sets:set()
@@ -72,7 +74,6 @@
                 ,zone = 'local' :: atom()
                 ,version :: ne_binary()
                 ,zones = [] :: kz_proplist()
-                ,is_consuming = 'false' :: boolean()
                }).
 -type nodes_state() :: #state{}.
 
@@ -372,6 +373,7 @@ init([]) ->
                 ," - "
                 ,(kz_util:to_binary(erlang:system_info('otp_release')))/binary
               >>,
+    self() ! {'heartbeat', State#state.heartbeat_ref},
     {'ok', State#state{version=Version}}.
 
 %%--------------------------------------------------------------------
@@ -419,16 +421,12 @@ handle_cast({'advertise', JObj}, #state{tab=Tab}=State) ->
             'false' -> ets:insert(Tab, Node)
         end,
     {'noreply', maybe_add_zone(Node, State)};
-handle_cast({'gen_listener', {'is_consuming', 'true'}}
-            ,#state{heartbeat_ref='undefined'}=State
-           ) ->
-    Reference = erlang:make_ref(),
-    erlang:send_after(?HEARTBEAT, self(), {'heartbeat', Reference}),
-    lager:debug("start heartbeat"),
-    {'noreply', State#state{heartbeat_ref=Reference, is_consuming='true'}};
+handle_cast({'gen_listener', {'created_queue', _Q}}, State) ->
+    lager:info("nodes acquired queue name ~s, starting remote heartbeats", [_Q]),
+    {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', IsConsuming}}, State) ->
-    lager:debug("heartbeat is ~p", [IsConsuming]),
-    {'noreply', State#state{is_consuming=IsConsuming}};
+    lager:debug("heartbeat from remotes is ~p", [IsConsuming]),
+    {'noreply', State};
 handle_cast('flush', State) ->
     ets:delete_all_objects(?MODULE),
     {'noreply', State};
@@ -466,7 +464,6 @@ handle_info('expire_nodes', #state{tab=Tab}=State) ->
     {'noreply', State};
 handle_info({'heartbeat', Ref}, #state{heartbeat_ref=Ref
                                        ,tab=Tab
-                                       ,is_consuming='true'
                                       }=State) ->
     Heartbeat = ?HEARTBEAT,
     Reference = erlang:make_ref(),
@@ -478,10 +475,6 @@ handle_info({'heartbeat', Ref}, #state{heartbeat_ref=Ref
         _E:_N -> lager:debug("error creating node ~p : ~p", [_E, _N])
     end,
     _ = erlang:send_after(Heartbeat, self(), {'heartbeat', Reference}),
-    {'noreply', State#state{heartbeat_ref=Reference}};
-handle_info({'heartbeat', _Ref}, State) ->
-    Reference = erlang:make_ref(),
-    _ = erlang:send_after(?HEARTBEAT, self(), {'heartbeat', Reference}),
     {'noreply', State#state{heartbeat_ref=Reference}};
 handle_info({'DOWN', Ref, 'process', Pid, _}, #state{notify_new=NewSet
                                                      ,notify_expire=ExpireSet
@@ -551,7 +544,7 @@ code_change(_OldVsn, State, _Extra) ->
 create_node(Heartbeat, #state{zone=Zone
                               ,version=Version
                              }) ->
-    maybe_add_kapps_data(#kz_node{expires=Heartbeat
+    add_apps_data(#kz_node{expires=Heartbeat
                                    ,broker=kz_util:normalize_amqp_uri(kz_amqp_connections:primary_broker())
                                    ,used_memory=erlang:memory('total')
                                    ,processes=erlang:system_info('process_count')
@@ -559,6 +552,22 @@ create_node(Heartbeat, #state{zone=Zone
                                    ,version=Version
                                    ,zone=Zone
                                   }).
+
+-spec add_apps_data(kz_node()) -> kz_node().
+add_apps_data(Node) ->
+    add_globals_data(maybe_add_kapps_data(Node)).
+
+-spec add_globals_data(kz_node()) -> kz_node().
+add_globals_data(#kz_node{kapps=Whapps}=Node) ->
+    Globals = case is_globals_present() of
+                  'false' -> {<<"kazoo_globals">>, #whapp_info{}};
+                  'true' -> kapp_data('kazoo_globals')
+              end,
+    Node#kz_node{kapps=[Globals | Whapps]}.
+
+-spec filter_app(atom()) -> boolean().
+filter_app(App) ->
+    lists:member(App, ?FILTER_APPS).
 
 -spec maybe_add_kapps_data(kz_node()) -> kz_node().
 maybe_add_kapps_data(Node) ->
@@ -569,11 +578,15 @@ maybe_add_kapps_data(Node) ->
             add_kapps_data(Node)
     end.
 
+-spec kapp_data(atom()) -> {ne_binary(), whapp_info()}.
+kapp_data(Whapp) ->
+    {kz_util:to_binary(Whapp), get_whapp_info(Whapp)}.
+
 -spec add_kapps_data(kz_node()) -> kz_node().
 add_kapps_data(Node) ->
-    Whapps = [{kz_util:to_binary(Whapp), get_whapp_info(Whapp)}
-              || Whapp <- kapps_controller:list_apps()
-             ],
+    Whapps = [ kapp_data(Whapp)
+              || Whapp <- kapps_controller:list_apps(), filter_app(Whapp)
+             ] ++ Node#kz_node.kapps,
     maybe_add_ecallmgr_data(Node#kz_node{kapps=Whapps}).
 
 -spec maybe_add_ecallmgr_data(kz_node()) -> kz_node().
@@ -604,7 +617,11 @@ add_ecallmgr_data(#kz_node{kapps=Whapps}=Node) ->
 -spec get_whapp_info(atom() | pid() | kz_proplist() | 'undefined') -> whapp_info().
 get_whapp_info('undefined') -> #whapp_info{};
 get_whapp_info(Whapp) when is_atom(Whapp) ->
-    get_whapp_info(application_controller:get_master(Whapp));
+    try
+        get_whapp_info(application_controller:get_master(Whapp))
+    catch
+        _E:_R -> #whapp_info{}
+    end;
 get_whapp_info(Master) when is_pid(Master) ->
     try
         get_whapp_info(application_master:get_child(Master))
@@ -612,7 +629,11 @@ get_whapp_info(Master) when is_pid(Master) ->
         _E:_R -> #whapp_info{}
     end;
 get_whapp_info({Pid, _Module}) when is_pid(Pid) ->
-    get_whapp_process_info(erlang:process_info(Pid));
+    try
+        get_whapp_process_info(erlang:process_info(Pid))
+    catch
+        _E:_R -> #whapp_info{}
+    end;
 get_whapp_info(_Arg) ->
     lager:debug("can't get info for ~p", [_Arg]),
     #whapp_info{}.
@@ -624,12 +645,20 @@ get_whapp_process_info(PInfo) ->
     Startup = props:get_value('$startup', props:get_value('dictionary', PInfo, [])),
     #whapp_info{startup=Startup}.
 
+-spec is_globals_present() -> boolean().
+is_globals_present() ->
+    lists:any(fun({'kazoo_globals', _, _}) -> 'true';
+                 (_) -> 'false'
+              end
+              ,application:which_applications()
+             ).
+
 -spec is_kapps_present() -> boolean().
 is_kapps_present() ->
     lists:any(fun({'kazoo_apps', _, _}) -> 'true';
                  (_) -> 'false'
               end
-              ,application:loaded_applications()
+              ,application:which_applications()
              ).
 
 -spec is_ecallmgr_present() -> boolean().

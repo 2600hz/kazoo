@@ -19,6 +19,7 @@
                   , kazoo_token_buckets
                   , kazoo_caches
                   , kazoo_web
+                  , kazoo_globals
 
                   , syslog
                   , lager

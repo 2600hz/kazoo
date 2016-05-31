@@ -206,11 +206,20 @@ format_sections(Sections) -> format_sections(Sections, 'zone', []).
 format_sections([], _, Acc) -> local_sections(lists:reverse(Acc));
 format_sections([Section | T], ZoneFilter, Acc) ->
     case props:get_value('host', Section, 'zone') of
-        'zone' -> case props:get_value(ZoneFilter, Section, 'generic') of
-                      'generic' -> format_sections(T, ZoneFilter, [{'generic', Section} | Acc]);
-                      Zone -> format_sections(T, ZoneFilter, [{{'zone', kz_util:to_atom(Zone, 'true')}, Section} | Acc])
-                  end;
-        Host -> format_sections(T, ZoneFilter, [{kz_util:to_binary(Host), Section} | Acc])
+        'zone' ->
+            format_zone_section(Section, T, ZoneFilter, Acc);
+        Host ->
+            format_sections(T, ZoneFilter, [{kz_util:to_binary(Host), Section} | Acc])
+    end.
+
+-spec format_zone_section(kz_proplist(), kz_proplist(), atom(), kz_proplist()) ->
+                                 kz_proplist().
+format_zone_section(Section, Sections, ZoneFilter, Acc) ->
+    case props:get_value(ZoneFilter, Section, 'generic') of
+        'generic' ->
+            format_sections(Sections, ZoneFilter, [{'generic', Section} | Acc]);
+        Zone ->
+            format_sections(Sections, ZoneFilter, [{{'zone', kz_util:to_atom(Zone, 'true')}, Section} | Acc])
     end.
 
 %%--------------------------------------------------------------------
@@ -233,9 +242,10 @@ local_sections([Section | T], Acc) ->
         {'false', _} -> local_sections(T, Acc)
     end.
 
--type section_type() :: {'generic' | {'zone', atom()}, kz_proplist}.
+-type section_type() :: {'generic' | ne_binary() | {'zone', atom()}, kz_proplist()}.
 
--spec add_section(atom(), section_type(), kz_proplist()) -> kz_proplist().
+-spec add_section('generics' | 'zones', section_type(), kz_proplist()) ->
+                         kz_proplist().
 add_section(Group, Value, Props) ->
     props:set_value(Group, [Value | props:get_value(Group, Props, [])], Props).
 
