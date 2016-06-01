@@ -25,7 +25,7 @@ Here are some general resources to keep handy and enjoy your experience with Kaz
 
 ## Developer
 
-* Code Standards (comming soon)
+* [Code Standards](/CONTRIBUTING.md)
 * [Number Manager Library](/core/kazoo_number_manager/doc)
 * [AMQP Workers](/core/kazoo_amqp/doc/amqp_workers.md)
 
