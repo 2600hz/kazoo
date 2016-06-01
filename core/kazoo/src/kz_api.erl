@@ -27,6 +27,7 @@
          ,default_headers/5
 
          ,server_id/1
+         ,queue_id/1
          ,msg_id/1
          ,msg_reply_id/1
          ,event_category/1
@@ -64,6 +65,10 @@
 -spec server_id(kz_json:object()) -> api_binary().
 server_id(JObj) ->
     kz_json:get_value(?KEY_SERVER_ID, JObj).
+
+-spec queue_id(kz_json:object()) -> api_binary().
+queue_id(JObj) ->
+    kz_json:get_value(?KEY_QUEUE_ID, JObj, server_id(JObj)).
 
 -spec event_category(kz_json:object()) -> api_binary().
 event_category(JObj) ->
@@ -320,7 +325,7 @@ validate_message(JObj, ReqH, Vals, Types) ->
 
 -spec build_message(api_terms(), api_headers(), api_headers()) -> api_formatter_return().
 build_message(Prop, ReqH, OptH) when is_list(Prop) ->
-    case defaults(Prop) of
+    case defaults(Prop, ReqH ++ OptH) of
         {'error', _Reason}=Error ->
             lager:debug("API message does not have the default headers ~s: ~p"
                         ,[string:join([kz_util:to_list(H) || H <- ReqH], ","), Error]
@@ -377,17 +382,18 @@ headers_to_json([_|_]=HeadersProp) ->
     end.
 
 %% Checks Prop for all default headers, throws error if one is missing
-%% defaults(PassedProps) -> { Headers, NewPropList } | {error, Reason}
--spec defaults(api_terms()) ->
+%% defaults(PassedProps, MessageHeaders) -> { Headers, NewPropList } | {error, Reason}
+
+-spec defaults(api_terms(), kz_proplist()) ->
                       {kz_proplist(), kz_proplist()} |
                       {'error', string()}.
-defaults(Prop) -> defaults(Prop, []).
-defaults(Prop, Headers) ->
-    case update_required_headers(Prop, ?DEFAULT_HEADERS, Headers) of
+defaults(Prop, MsgHeaders) -> defaults(Prop, MsgHeaders, []).
+defaults(Prop, MsgHeaders, Headers) ->
+    case update_required_headers(Prop, ?DEFAULT_HEADERS -- MsgHeaders, Headers) of
         {'error', _Reason} = Error ->
             Error;
         {Headers1, Prop1} ->
-            update_optional_headers(Prop1, ?OPTIONAL_DEFAULT_HEADERS, Headers1)
+            update_optional_headers(Prop1, ?OPTIONAL_DEFAULT_HEADERS -- MsgHeaders, Headers1)
     end.
 
 -spec update_required_headers(kz_proplist(), api_headers(), kz_proplist()) ->

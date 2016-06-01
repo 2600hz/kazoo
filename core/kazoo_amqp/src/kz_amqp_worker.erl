@@ -482,12 +482,14 @@ handle_resp(JObj, Props) ->
 send_request(CallId, Self, PublishFun, ReqProps)
   when is_function(PublishFun, 1) ->
     kz_util:put_callid(CallId),
-    Props = props:insert_values(
+    FilteredProps = request_filter(ReqProps),
+    Props = request_filter(props:set_values(
               [{?KEY_SERVER_ID, Self}
+               ,{?KEY_QUEUE_ID, props:get_value(?KEY_SERVER_ID, FilteredProps)}
                ,{?KEY_LOG_ID, CallId}
               ]
-              ,props:filter(fun request_proplist_filter/1, ReqProps)
-             ),
+              ,FilteredProps
+             )),
     try PublishFun(Props) of
         'ok' -> 'ok'
     catch
@@ -495,6 +497,10 @@ send_request(CallId, Self, PublishFun, ReqProps)
             lager:debug("failed to publish: ~s: ~p", [_R, E]),
             {'error', E}
     end.
+
+-spec request_filter(kz_proplist()) -> kz_proplist().
+request_filter(Props) ->
+    props:filter(fun request_proplist_filter/1, Props).
 
 -spec request_proplist_filter({kz_proplist_key(), kz_proplist_value()}) -> boolean().
 request_proplist_filter({<<"Server-ID">>, Value}) ->
