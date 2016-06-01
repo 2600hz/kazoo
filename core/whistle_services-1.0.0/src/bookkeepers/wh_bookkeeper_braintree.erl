@@ -218,12 +218,8 @@ handle_charged_transactions(BillingId, Code, []) ->
 handle_charged_transactions(BillingId, Code, JObjs) ->
     Props = [{<<"purchase_order">>, Code}],
     Amount = calculate_amount(JObjs),
-    BT = braintree_transaction:quick_sale(
-           BillingId
-           ,wht_util:units_to_dollars(Amount)
-           ,Props
-          ),
-    handle_quick_sale_response(BT).
+    {Success, _} = braintree_quick_sale(BillingId, Amount, Props),
+    Success.
 
 -spec handle_topup(ne_binary(), wh_json:objects()) -> boolean().
 handle_topup(BillingId, []) ->
@@ -235,24 +231,50 @@ handle_topup(BillingId, JObjs) ->
         'false' ->
             Amount = calculate_amount(JObjs),
             Props = [{<<"purchase_order">>, ?CODE_TOPUP}],
-            BT = braintree_transaction:quick_sale(
+            {Success, BraintreeTransaction} =
+                braintree_quick_sale(BillingId, Amount, Props),
+            send_topup_notification(Success, BillingId, Amount, BraintreeTransaction)
+    end.
+
+-spec braintree_quick_sale(ne_binary(), number() | ne_binary(), wh_proplist()) ->
+                                  {boolean(), bt_transaction() | 'undefined'}.
+braintree_quick_sale(BillingId, Amount, Props) ->
+    try braintree_transaction:quick_sale(
                    BillingId
                    ,wht_util:units_to_dollars(Amount)
                    ,Props
-                  ),
-            Success = handle_quick_sale_response(BT),
-            _ = send_topup_notification(Success, BillingId, BT),
-            Success
+                  )
+    of
+        BraintreeTransaction ->
+            {handle_quick_sale_response(BraintreeTransaction), BraintreeTransaction}
+    catch
+        _E:_R ->
+            lager:debug("braintree quick sale ~s: ~p", [_E, _R]),
+            {'false', 'undefined'}
     end.
 
--spec send_topup_notification(boolean(), ne_binary(), bt_transaction()) -> boolean().
-send_topup_notification(Success, BillingId, BtTransaction) ->
+-spec handle_quick_sale_response(bt_transaction()) -> boolean().
+handle_quick_sale_response(BtTransaction) ->
     Transaction = braintree_transaction:record_to_json(BtTransaction),
-    Amount = wht_util:dollars_to_units(wh_json:get_float_value(<<"amount">>, Transaction, 0.0)),
+    RespCode = wh_json:get_value(<<"processor_response_code">>, Transaction, ?CODE_UNKNOWN),
+    lager:debug("services charge for ~s resulted in braintree response: ~s ~s"
+               ,[wh_json:get_value(<<"amount">>, Transaction)
+                ,wh_json:get_value(<<"id">>, Transaction)
+                ,wh_json:get_value(<<"processor_response_text">>, Transaction)
+                ]
+               ),
+    %% https://www.braintreepayments.com/docs/ruby/reference/processor_responses
+    wh_util:to_integer(RespCode) < 2000.
+
+-spec send_topup_notification(boolean(), ne_binary(), number(), bt_transaction() | 'undefined' | ne_binary) ->
+                                     boolean().
+send_topup_notification(Success, BillingId, Amount, 'undefined') ->
+    send_topup_notification(Success, BillingId, Amount, <<"unknown error">>);
+send_topup_notification(Success, BillingId, Amount, ResponseText) when is_binary(ResponseText) ->
     Props = [{<<"Account-ID">>, BillingId}
              ,{<<"Amount">>, Amount}
              ,{<<"Success">>, Success}
-             ,{<<"Response">>, wh_json:get_value(<<"processor_response_text">>, Transaction)}
+             ,{<<"Response">>, ResponseText}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     _ = case
@@ -261,15 +283,18 @@ send_topup_notification(Success, BillingId, BtTransaction) ->
               ,fun wapi_notifications:publish_topup/1
              )
         of
-            'ok' ->
-                lager:debug("topup notification sent for ~s", [BillingId]);
+            'ok' -> lager:debug("topup notification sent for ~s", [BillingId]);
             {'error', _R} ->
                 lager:error(
                   "failed to send topup notification for ~s : ~p"
                            ,[BillingId, _R]
                  )
         end,
-    Success.
+    Success;
+send_topup_notification(Success, BillingId, Amount, BraintreeTransaction) ->
+    Transaction = braintree_transaction:record_to_json(BraintreeTransaction),
+    ResponseText = wh_json:get_ne_value(<<"processor_response_text">>, Transaction, <<"missing response">>),
+    send_topup_notification(Success, BillingId, Amount, ResponseText).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -459,19 +484,6 @@ calculate_amount(JObjs) ->
                     Amount + wh_json:get_integer_value(<<"pvt_amount">>, JObj, 0)
             end,
     lists:foldl(Adder, 0, JObjs).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec handle_quick_sale_response(bt_transaction()) -> boolean().
-handle_quick_sale_response(BtTransaction) ->
-    Transaction = braintree_transaction:record_to_json(BtTransaction),
-    RespCode = wh_json:get_value(<<"processor_response_code">>, Transaction, ?CODE_UNKNOWN),
-    %% https://www.braintreepayments.com/docs/ruby/reference/processor_responses
-    wh_util:to_integer(RespCode) < 2000.
 
 %%--------------------------------------------------------------------
 %% @private
