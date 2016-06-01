@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -38,13 +38,15 @@ find_candidate_rates(E164, _FromDID) when byte_size(E164) > ?MIN_PREFIX_LEN ->
     Keys = build_keys(E164),
 
     lager:debug("searching for prefixes for ~s: ~p", [E164, Keys]),
-    case kz_datamgr:get_results(?KZ_RATES_DB
-                               ,<<"rates/lookup">>
-                               ,[{'keys', Keys}
-                                 ,'include_docs'
-                                ]
-                              )
+    case Keys =/= []
+        andalso kz_datamgr:get_results(?KZ_RATES_DB
+                                      ,<<"rates/lookup">>
+                                      ,[{'keys', Keys}
+                                       ,'include_docs'
+                                       ]
+                                      )
     of
+        'false' -> {'error', 'did_too_short'};
         {'ok', []}=OK -> OK;
         {'error', _}=E -> E;
         {'ok', ViewRows} ->
@@ -58,11 +60,23 @@ find_candidate_rates(DID, _) ->
     lager:debug("DID ~s is too short", [DID]),
     {'error', 'did_too_short'}.
 
-build_keys(<<"+", E164/binary>>) ->
-    build_keys(E164);
-build_keys(<<D:1/binary, Rest/binary>>) ->
-    build_keys(Rest, D, [kz_util:to_integer(D)]).
+-spec build_keys(ne_binary()) -> [integer()].
+build_keys(Number) ->
+    case only_numeric(Number) of
+        <<>> -> [];
+        <<D:1/binary, Rest/binary>> ->
+            build_keys(Rest, D, [kz_util:to_integer(D)])
+    end.
 
+-spec only_numeric(binary()) -> [integer()].
+only_numeric(Number) ->
+    << <<N>> || <<N>> <= Number, is_numeric(N)>>.
+
+-spec is_numeric(integer()) -> boolean().
+is_numeric(N) ->
+    N >= $0 andalso N =< $9.
+
+-spec build_keys(binary(), ne_binary(), [integer()]) -> [integer()].
 build_keys(<<D:1/binary, Rest/binary>>, Prefix, Acc) ->
     build_keys(Rest, <<Prefix/binary, D/binary>>, [kz_util:to_integer(<<Prefix/binary, D/binary>>) | Acc]);
 build_keys(<<>>, _, Acc) -> Acc.
