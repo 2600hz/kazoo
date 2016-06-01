@@ -69,9 +69,9 @@
 -export_type([store_options/0]).
 
 -record(state, {name :: atom()
-                ,tab :: ets:tid()
-                ,pointer_tab :: ets:tid()
-                ,monitor_tab :: ets:tid()
+                ,tab :: ets:tab()
+                ,pointer_tab :: ets:tab()
+                ,monitor_tab :: ets:tab()
                 ,new_channel_flush = 'false' :: boolean()
                 ,channel_reconnect_flush = 'false' :: boolean()
                 ,new_node_flush = 'false' :: boolean()
@@ -276,7 +276,7 @@ dump_local(Srv, ShowValue) ->
         ],
     'ok'.
 
--spec dump_table(ets:tid(), boolean()) -> 'ok'.
+-spec dump_table(ets:tab(), boolean()) -> 'ok'.
 dump_table(Tab, ShowValue) ->
     Now = kz_util:current_tstamp(),
     io:format("Table ~p~n", [ets:info(Tab, 'name')]),
@@ -642,8 +642,8 @@ get_props_callback(Props) ->
 -spec get_props_origin(kz_proplist()) -> 'undefined' | origin_tuple() | origin_tuples().
 get_props_origin(Props) -> props:get_value('origin', Props).
 
--spec expire_objects(ets:tid(), [ets:tid()]) -> non_neg_integer().
--spec expire_objects(ets:tid(), [ets:tid()], list()) -> non_neg_integer().
+-spec expire_objects(ets:tab(), [ets:tab()]) -> non_neg_integer().
+-spec expire_objects(ets:tab(), [ets:tab()], list()) -> non_neg_integer().
 expire_objects(Tab, AuxTables) ->
     Now = kz_util:current_tstamp(),
     FindSpec = [{#cache_obj{key = '$1'
@@ -682,18 +682,18 @@ exec_expired_callback(Fun, K, V) ->
     _ = kz_util:spawn(Fun, [K, V, 'expire']),
     'ok'.
 
--spec maybe_remove_objects(ets:tid(), list()) -> 'ok'.
+-spec maybe_remove_objects(ets:tab(), list()) -> 'ok'.
 maybe_remove_objects(Tab, Objects) ->
     _ = [maybe_remove_object(Tab, Object) || Object <- Objects],
     'ok'.
 
--spec maybe_remove_object(ets:tid(), cache_obj() | any()) -> 'true'.
+-spec maybe_remove_object(ets:tab(), cache_obj() | any()) -> 'true'.
 maybe_remove_object(Tab, #cache_obj{key = Key}) ->
     maybe_remove_object(Tab, Key);
 maybe_remove_object(Tab, Key) ->
     ets:delete(Tab, Key).
 
--spec maybe_exec_erase_callbacks(ets:tid(), cache_obj() | any()) -> 'ok'.
+-spec maybe_exec_erase_callbacks(ets:tab(), cache_obj() | any()) -> 'ok'.
 maybe_exec_erase_callbacks(_Tab
                           ,#cache_obj{callback=Fun
                                      ,value=Value
@@ -713,13 +713,13 @@ maybe_exec_erase_callbacks(Tab, Key) ->
         'error':'badarg' -> 'ok'
     end.
 
--spec exec_erase_callbacks(ets:tid(), any(), callback_fun()) ->
+-spec exec_erase_callbacks(ets:tab(), any(), callback_fun()) ->
                                   any().
 exec_erase_callbacks(Tab, Key, Fun) ->
     Value = ets:lookup_element(Tab, Key, #cache_obj.value),
     Fun(Key, Value, 'erase').
 
--spec maybe_exec_flush_callbacks(ets:tid()) -> 'ok'.
+-spec maybe_exec_flush_callbacks(ets:tab()) -> 'ok'.
 maybe_exec_flush_callbacks(Tab) ->
     MatchSpec =
         [{#cache_obj{key = '$1'
@@ -754,7 +754,7 @@ maybe_exec_store_callbacks(#state{monitor_tab=MonitorTab}=State, Key, Value) ->
         end,
     State#state{has_monitors=has_monitors(MonitorTab)}.
 
--spec has_monitors(ets:tid()) -> boolean().
+-spec has_monitors(ets:tab()) -> boolean().
 has_monitors(MonitorTab) ->
     ets:info(MonitorTab, 'size') > 0.
 
@@ -764,7 +764,7 @@ exec_store_callback(Callbacks, Key, Value) ->
     _Pids = [kz_util:spawn(Callback, Args) || Callback <- Callbacks],
     'ok'.
 
--spec delete_monitor_callbacks(ets:tid(), any()) -> 'true'.
+-spec delete_monitor_callbacks(ets:tab(), any()) -> 'true'.
 delete_monitor_callbacks(MonitorTab, Key) ->
     ets:delete(MonitorTab, Key).
 
@@ -773,7 +773,7 @@ start_expire_period_timer(ExpirePeriod) ->
     erlang:start_timer(ExpirePeriod, self(), ?EXPIRE_PERIOD_MSG).
 
 -spec insert_origin_pointers('undefined' | origin_tuple() | origin_tuples()
-                            ,cache_obj(), ets:tid()) -> 'ok'.
+                            ,cache_obj(), ets:tab()) -> 'ok'.
 insert_origin_pointers('undefined', _CacheObj, _PointerTab) -> 'ok';
 insert_origin_pointers(Origin, CacheObj, PointerTab) when is_tuple(Origin) ->
     insert_origin_pointer(Origin, CacheObj, PointerTab);
@@ -781,7 +781,7 @@ insert_origin_pointers(Origins, CacheObj, PointerTab) when is_list(Origins) ->
     [insert_origin_pointer(Origin, CacheObj, PointerTab) || Origin <- Origins],
     'ok'.
 
--spec insert_origin_pointer(origin_tuple(), cache_obj(), ets:tid()) -> 'true'.
+-spec insert_origin_pointer(origin_tuple(), cache_obj(), ets:tab()) -> 'true'.
 insert_origin_pointer(Origin, #cache_obj{key=Key}=CacheObj, PointerTab) ->
     ets:insert(PointerTab
               ,CacheObj#cache_obj{key=Key

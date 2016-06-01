@@ -4,7 +4,7 @@ ELVIS = $(ROOT)/deps/elvis
 
 KAZOODIRS = core/Makefile applications/Makefile
 
-.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install
+.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff
 
 all: compile rel/dev-vm.args
 
@@ -109,6 +109,7 @@ read-release-cookie:
 
 DIALYZER ?= dialyzer
 PLT ?= .kazoo.plt
+
 OTP_APPS ?= erts kernel stdlib crypto public_key ssl asn1 inets
 $(PLT): DEPS_SRCS  ?= $(shell find $(ROOT)/deps -name src )
 # $(PLT): CORE_EBINS ?= $(shell find $(ROOT)/core -name ebin)
@@ -128,9 +129,10 @@ dialyze-apps: dialyze
 dialyze-core:  TO_DIALYZE  = $(shell find $(ROOT)/core         -name ebin)
 dialyze-core: dialyze
 dialyze:       TO_DIALYZE ?= $(shell find $(ROOT)/applications -name ebin)
-dialyze: $(PLT)
-	@$(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE)
+dialyze: $(PLT) dialyze-it
 
+dialyze-it:
+	@if [ -n "$(TO_DIALYZE)" ]; then $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE); fi;
 
 xref: TO_XREF ?= $(shell find $(ROOT)/applications $(ROOT)/core $(ROOT)/deps -name ebin)
 xref:
@@ -154,3 +156,8 @@ $(ELVIS):
 
 elvis: $(ELVIS)
 	$(ELVIS) --config make/elvis.config rock
+
+ci: clean compile xref build-plt diff sup_completion build-ci-release compile-test eunit elvis
+
+diff: export TO_DIALYZE = $(shell git diff --name-only master... -- $(ROOT)/application/ $(ROOT)/core/)
+diff: dialyze-it
