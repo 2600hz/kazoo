@@ -141,8 +141,8 @@ initialize_kapps() ->
         'true' -> 'ok'
     end,
     kapps_maintenance:migrate_system(),
-    KApps = case os:getenv("KAZOO_APPS", "") of
-                 "" ->
+    KApps = case os:getenv("KAZOO_APPS", "noenv") of
+                 "noenv" ->
                      kapps_config:get(?MODULE, <<"kapps">>, ?DEFAULT_KAPPS);
                  KAZOO_APPS ->
                      string:tokens(KAZOO_APPS, ", ")
