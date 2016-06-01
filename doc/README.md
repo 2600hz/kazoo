@@ -26,15 +26,16 @@ Here are some general resources to keep handy and enjoy your experience with Kaz
 ## Developer
 
 * [Code Standards](/CONTRIBUTING.md)
+* [AMQP Library](/core/kazoo_amqp/doc)
 * [Number Manager Library](/core/kazoo_number_manager/doc)
-* [AMQP Workers](/core/kazoo_amqp/doc/amqp_workers.md)
+* [Datastore Library](/core/kazoo_data/doc) (docs comming soon)
 
 ## Integrator
 
 * [REST API](/applications/crossbar/doc)
-* [Webhooks](/applications/webhooks/doc/maintenance.md)
-* [Websockets](/applications/blackhole/doc/index.md)
-* [Pivot](/applications/pivot/doc/index.md)
+* [Webhooks](/applications/webhooks/doc)
+* [Websockets](/applications/blackhole/doc)
+* [Pivot](/applications/pivot/doc)
 
 ## Operator
 
