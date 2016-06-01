@@ -867,6 +867,7 @@ media_path(MediaName, Type, UUID, JObj) when not is_binary(MediaName) ->
 media_path(<<"silence">> = Media, _Type, _UUID, _) -> Media;
 media_path(<<"silence_stream://", _/binary>> = Media, _Type, _UUID, _) -> Media;
 media_path(<<"tone_stream://", _/binary>> = Media, _Type, _UUID, _) -> Media;
+media_path(<<"shout://", _/binary>> = Media, _Type, _UUID, _) -> Media;
 media_path(<<"local_stream://", FSPath/binary>>, _Type, _UUID, _) -> recording_filename(FSPath);
 media_path(<<?LOCAL_MEDIA_PATH, _/binary>> = FSPath, _Type, _UUID, _) -> FSPath;
 media_path(<<"http://", _/binary>> = URI, _Type, _UUID, _) -> get_fs_playback(URI);
