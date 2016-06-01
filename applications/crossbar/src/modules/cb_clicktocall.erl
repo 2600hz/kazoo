@@ -313,6 +313,7 @@ clear_history_set_type(Context) ->
 %%-------------------------------------------------------------------
 -spec originate_call(ne_binary(), cb_context:context()) -> cb_context:context().
 -spec originate_call(ne_binary(), cb_context:context(), api_binary()) -> cb_context:context().
+-spec originate_call(ne_binary(), cb_context:context(), api_binary(), boolean()) -> cb_context:context().
 originate_call(C2CId, Context) ->
     originate_call(C2CId, Context, get_c2c_contact(cb_context:req_value(Context, <<"contact">>))).
 
@@ -325,6 +326,15 @@ originate_call(_C2CId, Context, 'undefined') ->
       ,Context
      );
 originate_call(C2CId, Context, Contact) ->
+    JObj = cb_context:doc(Context),
+    case kz_json:get_ne_value(<<"whitelist">>, JObj, []) of
+        [] -> originate_call(C2CId, Context, Contact, 'true');
+        Whitelist -> originate_call(C2CId, Context, Contact, match_regexps(Whitelist, Contact))
+    end.
+
+originate_call(_C2CId, Context, Contact, 'false') ->
+    crossbar_util:response_400(<<"Contact doesnt match whitelist">>, Contact, Context);
+originate_call(C2CId, Context, Contact, 'true') ->
     ReqId = cb_context:req_id(Context),
     AccountId = cb_context:account_id(Context),
     AccountModb = cb_context:account_modb(Context),
@@ -351,6 +361,14 @@ originate_call(C2CId, Context, Contact) ->
     JObj = kz_json:normalize(kz_json:from_list(kz_api:remove_defaults(Request))),
     lager:debug("attempting call in ~p", [JObj]),
     crossbar_util:response_202(<<"processing request">>, JObj, cb_context:set_resp_data(Context, Request)).
+
+-spec match_regexps(binaries(), ne_binary()) -> boolean().
+match_regexps([Pattern | Rest], Number) ->
+    case re:run(Number, Pattern) of
+        {'match', _} -> 'true';
+        'nomatch' -> match_regexps(Rest, Number)
+    end;
+match_regexps([], _Number) -> 'false'.
 
 -spec exec_originate(api_terms()) ->
                             {'success', ne_binary()} |
