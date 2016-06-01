@@ -12,7 +12,7 @@
 %% Public API
 -export([start_link/0]).
 -export([available/0]).
--export([new/4
+-export([new/3
         ,start/1
         ,read/1
         ,all/0, all/1
@@ -34,6 +34,7 @@
         ]).
 
 -include("tasks.hrl").
+-include_lib("kazoo/src/kz_json.hrl").
 
 -define(SERVER, {'via', 'kz_globals', ?MODULE}).
 
@@ -45,9 +46,8 @@
                    , worker_node => ne_binary() | 'undefined'
                    , account_id => ne_binary()
                    , id => task_id()
-                   , m => module()
-                   , f => atom()
-                   , a => list()
+                   , category => ne_binary()
+                   , action => ne_binary()
                    , submitted => gregorian_seconds() %% Times of state activation
                    , started => api_seconds()
                    , finished => api_seconds()
@@ -150,39 +150,10 @@ start(TaskId=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec new(ne_binary(), module(), atom(), list()) -> {'ok', kz_json:object()} |
+-spec new(ne_binary(), ne_binary(), ne_binary()) -> {'ok', kz_json:object()} |
                                                     {'error', any()}.
-new(?MATCH_ACCOUNT_RAW(_)=AccountId, M, F, A)
-  when is_atom(M),
-       is_atom(F),
-       is_list(A) ->
-    Arity = length(A),
-    case check_MFa(M, F, Arity) of
-        {'error', _R}=E ->
-            lager:debug("checking ~s:~s/~p failed: ~p", [M, F, Arity, _R]),
-            E;
-        'ok' ->
-            Task = #{ worker_pid => 'undefined'
-                    , worker_node => 'undefined'
-                    , account_id => AccountId
-                    , id => ?A_TASK_ID
-                    , m => M
-                    , f => F
-                    , a => A
-                    , submitted => kz_util:current_tstamp()
-                    , started => 'undefined'
-                    , finished => 'undefined'
-                    , failed => 'undefined'
-                    },
-            {'ok', _JObj} = Ok = save_task(Task),
-            Ok
-    end;
-new(_, M, _, _) when not is_atom(M) ->
-    {'error', {'bad_module', M}};
-new(_, _, F, _) when not is_atom(F) ->
-    {'error', {'bad_function', F}};
-new(_, _, _, A) when not is_list(A) ->
-    {'error', {'bad_list', A}}.
+new(?MATCH_ACCOUNT_RAW(_)=AccountId, Category=?NE_BINARY, Action=?NE_BINARY) ->
+    gen_server:call(?SERVER, {'new', AccountId, Category, Action}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -273,6 +244,27 @@ handle_call({'replace_APIs', Apps, Nodes, Modules, APIs}, _From, State) ->
                         , modules = Modules
                         },
     {'reply', APIs, State1};
+
+handle_call({'new', AccountId, Category, Action}, _From, State) ->
+    case validate_new_task(Category, Action, State#state.apis) of
+        {'error', _R}=E ->
+            lager:debug("adding task ~s ~s failed: ~p", [Category, Action, _R]),
+            {'reply', E, State};
+        'ok' ->
+            Task = #{ worker_pid => 'undefined'
+                    , worker_node => 'undefined'
+                    , account_id => AccountId
+                    , id => ?A_TASK_ID
+                    , category => Category
+                    , action => Action
+                    , submitted => kz_util:current_tstamp()
+                    , started => 'undefined'
+                    , finished => 'undefined'
+                    , failed => 'undefined'
+                    },
+            {'ok', _JObj} = Ok = save_task(Task),
+            {'reply', Ok, State}
+    end;
 
 handle_call({'start_task', TaskId}, _From, State) ->
     case task_by_id(TaskId, State) of
@@ -453,9 +445,8 @@ from_json(Doc) ->
      , worker_node => 'undefined'
      , account_id => kz_json:get_value(?PVT_ACCOUNT_ID, Doc)
      , id => kz_doc:id(Doc)
-     , m => kz_util:to_atom(kz_json:get_value(?PVT_MODULE, Doc), 'true')
-     , f => kz_util:to_atom(kz_json:get_value(?PVT_FUNCTION, Doc), 'true')
-     , a => kz_json:get_list_value(?PVT_ARGUMENTS, Doc)
+     , category => kz_json:get_value(?PVT_CATEGORY, Doc)
+     , action => kz_json:get_value(?PVT_ACTION, Doc)
      , submitted => kz_json:get_value(?PVT_SUBMITTED_AT, Doc)
      , started => kz_json:get_value(?PVT_STARTED_AT, Doc)
      , finished => kz_json:get_value(?PVT_FINISHED_AT, Doc)
@@ -466,9 +457,8 @@ from_json(Doc) ->
 to_json(#{id := TaskId
          ,worker_node := Node
          ,account_id := AccountId
-         ,m := M
-         ,f := F
-         ,a := A
+         ,category := Category
+         ,action := Action
          ,submitted := Submitted
          ,started := Started
          ,finished := Finished
@@ -491,9 +481,8 @@ to_json(#{id := TaskId
         ,{?PVT_TYPE, ?KZ_TASKS_DOC_TYPE}
         ,{?PVT_WORKER_NODE, Node}
         ,{?PVT_ACCOUNT_ID, AccountId}
-        ,{?PVT_MODULE, kz_util:to_binary(M)}
-        ,{?PVT_FUNCTION, kz_util:to_binary(F)}
-        ,{?PVT_ARGUMENTS, A}
+        ,{?PVT_CATEGORY, Category}
+        ,{?PVT_ACTION, Action}
         ,{?PVT_SUBMITTED_AT, Submitted}
         ,{?PVT_STARTED_AT, Started}
         ,{?PVT_FINISHED_AT, Finished}
@@ -511,9 +500,8 @@ to_public_json(Task) ->
         [{<<"id">>, kz_doc:id(Doc)}
         ,{<<"node">>, kz_json:get_value(?PVT_WORKER_NODE, Doc)}
         ,{<<"account_id">>, kz_json:get_value(?PVT_ACCOUNT_ID, Doc)}
-        ,{<<"module">>, kz_json:get_value(?PVT_MODULE, Doc)}
-        ,{<<"function">>, kz_json:get_value(?PVT_FUNCTION, Doc)}
-        ,{<<"arguments">>, kz_json:get_value(?PVT_ARGUMENTS, Doc)}
+        ,{<<"category">>, kz_json:get_value(?PVT_CATEGORY, Doc)}
+        ,{<<"action">>, kz_json:get_value(?PVT_ACTION, Doc)}
         ,{<<"submitted_at">>, kz_json:get_value(?PVT_SUBMITTED_AT, Doc)}
         ,{<<"started_at">>, kz_json:get_value(?PVT_STARTED_AT, Doc)}
         ,{<<"ended_at">>, kz_json:get_value(?PVT_FINISHED_AT, Doc)}
@@ -596,18 +584,6 @@ time_ran(#{ started := Started
         'false' -> 'undefined'
     end.
 
--spec check_MFa(module(), atom(), non_neg_integer()) -> 'ok' |
-                                                        {'error', any()}.
-check_MFa(M, F, Arity) ->
-    case kz_util:try_load_module(M) of
-        'false' -> {'error', {'no_module', M}};
-        M ->
-            case erlang:function_exported(M, F, Arity) of
-                'false' -> {'error', {'no_function', M, F, Arity}};
-                'true' -> 'ok'
-            end
-    end.
-
 -type m_apis() :: {map(), map(), map(), kz_json:object()}.
 -spec parse_apis(kz_json:objects()) -> m_apis().
 parse_apis(JObjs) ->
@@ -625,5 +601,19 @@ parse_apis_fold(JObj, {Apps, Nodes, Modules, APIs}) ->
     , Modules#{APICategory => kz_util:to_atom(Module, 'true')}
     , kz_json:set_value(APICategory, TasksProvided, APIs)
     }.
+
+-spec validate_new_task(ne_binary(), ne_binary(), kz_json:object()) -> 'ok' |
+                                                                       {'error', any()}.
+validate_new_task(_, _, ?EMPTY_JSON_OBJECT) ->
+    {'error', 'no_categories'};
+validate_new_task(Category, Action, JObj) ->
+    case kz_json:get_value([Category, Action], JObj) of
+        'undefined' ->
+            case kz_json:get_value(Category, JObj) of
+                'undefined' -> {'error', Category};
+                _ -> {'error', Action}
+            end;
+        _ -> 'ok'
+    end.
 
 %%% End of Module.

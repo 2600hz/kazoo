@@ -223,21 +223,17 @@ validate_attachment(Context, TaskId, AttachmentId, ?HTTP_DELETE) ->
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context) ->
     ReqData = cb_context:req_data(Context),
-    BinM = kz_json:get_value(<<"module">>, ReqData),
-    BinF = kz_json:get_value(<<"function">>, ReqData),
-    M = kz_util:to_atom(BinM, 'true'),
-    F = kz_util:to_atom(BinF, 'true'),
-    A = kz_json:get_list_value(<<"arguments">>, ReqData),
-    case kz_tasks:new(cb_context:account_id(Context), M, F, A) of
+    Category = kz_json:get_value([<<"task">>, <<"category">>], ReqData),
+    Action   = kz_json:get_value([<<"task">>, <<"action">>], ReqData),
+    case kz_tasks:new(cb_context:account_id(Context), Category, Action) of
         {'ok', Task} -> crossbar_util:response(Task, Context);
-        {'error', {'no_module', _M}} ->
-            crossbar_util:response_bad_identifier(BinM, Context);
-        {'error', {'no_function', _M, _F, Arity}} ->
-            BinA = integer_to_binary(Arity),
-            Msg = kz_json:from_list([{<<"cause">>, <<"no such function">>}
-                                    ,{<<"M:F/A">>, <<BinM/binary, ":", BinF/binary, "/", BinA/binary>>}
+        {'error', 'no_categories'} ->
+            Msg = kz_json:from_list([{<<"tip">>, <<"No APIs known yet: GET /help then try again!">>}
+                                    ,{<<"cause">>, Category}
                                     ]),
-            cb_context:add_system_error('bad_identifier', Msg, Context)
+            cb_context:add_system_error('bad_identifier', Msg, Context);
+        {'error', Identifier=?NE_BINARY} ->
+            crossbar_util:response_bad_identifier(Identifier, Context)
     end.
 
 put(Context, TaskId, ?CSV_ATTACHMENT) ->

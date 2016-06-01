@@ -57,7 +57,7 @@ curl -v -X GET \
 ```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data": {"module": "{MODULE}", "function": "{FUNCTION}", "arguments": [{ARGUMENTS}]}}' \
+    -d '{"data": {"task": {"category": "{CATEGORY}", "action": "{ACTION}"}}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks
 ```
 
@@ -68,48 +68,60 @@ curl -v -X PUT \
     "auth_token": "{AUTH_TOKEN}",
     "data": {
         "account_id": "{ACCOUNT_ID}",
-        "arguments": [
-            {ARGUMENTS}
-        ],
-        "function": "{FUNCTION}",
-        "id": "754b9b2fec86eaed255e2c5f58df95",
-        "module": "{MODULE}",
-        "submitted_at": 63631506599
+        "action": "{ACTION}",
+        "category": "{CATEGORY}",
+        "id": "edfb48ea9617fa6832e43ce676c53f",
+        "submitted_at": 63632025993
     },
-    "request_id": "30d6cd3153859cc57561437dd61abbb5",
+    "request_id": "6bc9187feafe54a5c16d07e1a493c04f",
     "revision": "undefined",
     "status": "success"
 }
 ```
 
-##### Unknown module
-
-```json
-{
-    "auth_token": "{AUTH_TOKEN}",
-    "data": [
-        "{MODULE}"
-    ],
-    "error": "404",
-    "message": "bad identifier",
-    "request_id": "69db4fd5ed24ac7ed5853197946a287a",
-    "status": "error"
-}
-```
-
-##### Function does not exist
+##### Failure: no task providers known yet
 
 ```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "M:F/A": "{MODULE}:{FUNCTION}/{ARGUMENTS_COUNT}",
-        "cause": "no such function",
-        "message": "bad identifier"
+        "cause": "{CATEGORY}",
+        "message": "bad identifier",
+        "tip": "No APIs known yet: GET /help then try again!"
     },
     "error": "404",
     "message": "bad_identifier",
-    "request_id": "5176170578fc954d7c113d2544e1687b",
+    "request_id": "0e77686d7dfc6ecb1b8c78b745c2ed92",
+    "status": "error"
+}
+```
+
+##### Unknown category
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        "{CATEGORY}"
+    ],
+    "error": "404",
+    "message": "bad identifier",
+    "request_id": "86218c6dcd58505f1dc6e036b08cd151",
+    "status": "error"
+}
+```
+
+##### Unknown action
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        "{ACTION}"
+    ],
+    "error": "404",
+    "message": "bad identifier",
+    "request_id": "151dc80b630e6cd1f50585dcd6c81268",
     "status": "error"
 }
 ```
