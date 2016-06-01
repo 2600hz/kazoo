@@ -268,7 +268,7 @@ handle_quick_sale_response(BtTransaction) ->
     kz_util:to_integer(RespCode) < 2000.
 
 
--spec send_topup_notification(boolean(), ne_binary(), number(), bt_transaction() | 'undefined' | ne_binary) ->
+-spec send_topup_notification(boolean(), ne_binary(), integer(), bt_transaction() | 'undefined' | ne_binary()) ->
                                      boolean().
 send_topup_notification(Success, BillingId, Amount, 'undefined') ->
     send_topup_notification(Success, BillingId, Amount, <<"unknown error">>);
