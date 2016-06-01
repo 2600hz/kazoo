@@ -51,6 +51,8 @@
          ,set_caller_controls/2, get_caller_controls/1
          ,set_advertise/2, get_advertise/1
          ,set_chat_permissions/2, get_chat_permissions/1
+
+         ,iteration/1, increment_iteration/1
         ]).
 
 -include("kzt.hrl").
@@ -329,3 +331,11 @@ get_request_vars(Call) ->
         ]
        )
      ).
+
+-spec iteration(whapps_call:call()) -> whapps_call:call().
+iteration(Call) ->
+    whapps_call:kvs_fetch('pivot_counter', 1, Call).
+
+-spec increment_iteration(whapps_call:call()) -> whapps_call:call().
+increment_iteration(Call) ->
+    whapps_call:kvs_update_counter('pivot_counter', 1, Call).
