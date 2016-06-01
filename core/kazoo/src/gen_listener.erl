@@ -599,10 +599,10 @@ handle_info({#'basic.deliver'{}=BD, #amqp_msg{props=#'P_basic'{content_type=CT}
                                              }}
            ,#state{params=Params}=State) ->
     case props:is_true('spawn_handle_event', Params, 'false') of
-        'true'  -> kz_util:spawn(fun handle_event/4, [Payload, CT, BD, State]);
-        'false' -> ?MODULE:handle_event(Payload, CT, BD, State)
-    end,
-    {'noreply', State};
+        'true'  -> kz_util:spawn(fun handle_event/4, [Payload, CT, BD, State]),
+                   {'noreply', State};
+        'false' -> {'noreply', handle_event(Payload, CT, BD, State)}
+    end;
 handle_info({#'basic.return'{}=BR, #amqp_msg{props=#'P_basic'{content_type=CT}
                                             ,payload=Payload
                                             }}, State) ->
@@ -665,7 +665,7 @@ handle_info(Message, State) ->
 %% @spec handle_event(JObj, State) -> {'reply', Options} | ignore
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(ne_binary(), ne_binary(), basic_deliver(), state()) ->  'ok'.
+-spec handle_event(ne_binary(), ne_binary(), basic_deliver(), state()) ->  state().
 handle_event(Payload, <<"application/json">>, BasicDeliver, State) ->
     JObj = kz_json:decode(Payload),
     _ = kz_util:put_callid(JObj),
@@ -785,17 +785,19 @@ format_status(_Opt, [_PDict, #state{module=Module
     end.
 
 
--spec distribute_event(kz_json:object(), basic_deliver(), state()) -> 'ok'.
+-spec distribute_event(kz_json:object(), basic_deliver(), state()) -> state().
 distribute_event(JObj, BasicDeliver, State) ->
     case callback_handle_event(JObj, BasicDeliver, State) of
-        'ignore' -> 'ok';
+        'ignore' -> State;
+        {'ignore', ModuleState} -> State#state{module_state=ModuleState};
+        {Props, ModuleState} -> distribute_event(Props, JObj, BasicDeliver, State#state{module_state=ModuleState});
         Props -> distribute_event(Props, JObj, BasicDeliver, State)
     end.
 
--spec distribute_event(kz_proplist(), kz_json:object(), basic_deliver(), state()) -> 'ok'.
+-spec distribute_event(kz_proplist(), kz_json:object(), basic_deliver(), state()) -> state().
 distribute_event(Props, JObj, BasicDeliver, #state{responders=Responders
                                                    ,consumer_key=ConsumerKey
-                                                  }) ->
+                                                  }=State) ->
     Key = kz_util:get_event_type(JObj),
     _ = [proc_lib:spawn(?MODULE, 'client_handle_event', [JObj
                                                          ,ConsumerKey
@@ -806,7 +808,7 @@ distribute_event(Props, JObj, BasicDeliver, #state{responders=Responders
          || {Evt, {Module, Fun}} <- Responders,
             maybe_event_matches_key(Key, Evt)
         ],
-    'ok'.
+    State.
 
 -spec client_handle_event(kz_json:object(), kz_amqp_channel:consumer_pid(), atom(), atom(), kz_proplist(), basic_deliver()) -> any().
 client_handle_event(JObj, ConsumerKey, Module, Fun, Props, BasicDeliver) ->
@@ -819,8 +821,8 @@ client_handle_event(JObj, ConsumerKey, Module, Fun, Props, BasicDeliver) ->
     end.
 
 -spec callback_handle_event(kz_json:object(), basic_deliver(), state()) ->
-                                   'ignore' |
-                                   kz_proplist().
+                                   'ignore' | {'ignore', state()} |
+                                   kz_proplist() | {kz_proplist(), state()}.
 callback_handle_event(JObj
                       ,BasicDeliver
                       ,#state{module=Module
@@ -836,16 +838,24 @@ callback_handle_event(JObj
         end
     of
         'ignore' -> 'ignore';
+        {'ignore', _NewModuleState} = Reply -> Reply;
         {'reply', Props} when is_list(Props) ->
             [{'server', Self}
              ,{'queue', Queue}
              ,{'other_queues', props:get_keys(OtherQueues)}
              | Props
             ];
+        {'reply', Props, NewModuleState} when is_list(Props) ->
+            {[{'server', Self}
+             ,{'queue', Queue}
+             ,{'other_queues', props:get_keys(OtherQueues)}
+             | Props
+            ], NewModuleState};
         {'EXIT', _Why} ->
             [{'server', Self}
              ,{'queue', Queue}
              ,{'other_queues', props:get_keys(OtherQueues)}
+             ,{'state', ModuleState}
             ]
     end.
 
