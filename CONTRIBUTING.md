@@ -119,7 +119,7 @@ Some 2600Hz specifics:
   * Yes:
   ```erlang
   do_x() ->
-      lists:foldl(fun(F, Acc) -> F(Acc) end, do_x(), [fun do_y/1, do_z/1]).
+      lists:foldl(fun(F, Acc) -> F(Acc) end, lookup(), [fun do_y/1, do_z/1]).
   ```
 
 Some additional guidance can be found:
