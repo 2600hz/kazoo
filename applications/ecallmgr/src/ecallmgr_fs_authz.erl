@@ -177,14 +177,14 @@ authz_response(JObj, Props, CallId, Node) ->
 -spec set_ccv_trunk_usage(wh_json:object(), ne_binary(), atom()) -> 'ok'.
 set_ccv_trunk_usage(JObj, CallId, Node) ->
     ecallmgr_fs_command:set(Node
-                      ,CallId
-                      ,[{Key, TrunkUsage}
-                        || Key <- [<<"Account-Trunk-Usage">>
-                                   ,<<"Reseller-Trunk-Usage">>
-                                  ],
-                           (TrunkUsage = kz_call_event:custom_channel_var(JObj, Key)) =/= 'undefined'
-                       ]
-                     ),
+                           ,CallId
+                           ,[{Key, TrunkUsage}
+                             || Key <- [<<"Account-Trunk-Usage">>
+                                       ,<<"Reseller-Trunk-Usage">>
+                                       ],
+                                (TrunkUsage = kz_call_event:custom_channel_var(JObj, Key)) =/= 'undefined'
+                            ]
+                           ),
     'ok'.
 
 -spec authorize_account(wh_json:object(), wh_proplist(), ne_binary(), atom()) ->
