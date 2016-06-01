@@ -1,107 +1,120 @@
-/*
-Section: Callflows
-Title: Dynamic change caller id
-Language: en-US
-Version: 4.0
-*/
+### Callflow Dynamic CID
 
-The `dynamic_cid` callflow enables you to change the caller id (CID).
+#### About Dynamic CID
 
-## Mandatory fields
+The Dynamic CID callflow enables you to dynamically change the Caller ID (CID). There are two methods for doing that:
 
-**action** - Must be set to `manual` or `list`.
+* **manual:** dial the new Caller ID on the keypad when prompted, this way you can set the Caller ID number only
+* **list:** setting Caller ID name and number based on the configurtion on the specified document in the database
 
-If undefined, will revert to historical behavior, *manual*.
+##### Callflow fields
 
-## Manual action mode
-### Optional fields
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`action` | Method to use for changing the Caller ID. Valid value are `manual` and `list` | `string` | `"manual"` | `true`
+`id` | The id of document in database that holds the new Caller ID when action is set to `list` | `string` | | `true` if action is `list`
+`media_id` | The id of the media prompt to play when collecting Caller ID from user if action is set to `manual` | `string` | `"dynamic-cid-enter_cid"` | `false`
+`interdigit_timeout` | The amount of time (in milliseconds) to wait for the caller to press the next digit after pressing a digit | `integer` | 2000 | `false`
 
-**interdigit_timeout** - default 2000 ms
+#### Manual action mode
 
-Can only set the caller id number with this method.
+In this method user is prompted to dial the new Caller ID number. The lenght of the dialed new Caller ID is checked to be
+in the default(or configured) boundry and it also matched against the default(or configured) regex, if these checks are passed the call will proceed.
 
-You dial the new caller id on the keypad when prompted.
+> **Notes** You can only set the Caller ID number with this method.
 
-## List action mode
-### Mandatory fields
+###### Example Scenario
 
-**id** - cidlist, couchdb doc id of the document that contains the new
-  callerid name and number information.
+User dial `*212223332222` (assuming you set the feature code to `*2` by setting callflow patterns to `"^\\*2([0-9]{2,})$"`) and
+prompted to dial the new Caller ID number, then the call will send onto real destination which in this case is `12223332222`.
 
-You can set the caller id number and the caller id name with this
-method.
+##### Manual callflow settings
 
-Please refer to the json sample documents at the end.
+You may want to customize `manual` behavior in `system_configs/callflow.dynamic_cid`.
 
-In this exmaple length is 2.
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`accept_prompt` | The media that would be played when the new caller id is accepted | `string` | `"tone_stream://%(250,50,440)"` | `false`
+`reject_prompt` | The media that would be played when the new caller id is rejected | `string` | `"dynamic-cid-invalid_using_default"` | `false`
+`default_prompt` | The media that would be played to user to dial the new caller id | `string` | `dynamic-cid-enter_cid` | `false`
+`max_digits` | Maximum lenght of the new caller id number | `integer` | 10 | `false`
+`min_digits` | Minimum lenght of the new caller id number | `integer` | 10 | `false`
+`whitelist_regex` | The regex to use for number to be matched against | `string` | `"\\d+"` | `false`
 
-On a handset you dial `*2015149072508`
+#### List action mode
 
-It's hooked in as a part of the feature codes.  The callflow regex looks like this:
+In this method you have flexibility to define multiple Caller ID, each assgin to a specific number. You can set both the Caller ID name and
+number in a document in database. This callflow's module use that information to set new Caller ID.
 
+> **Notes** You can set  both the Caller ID number and name with this method.
+
+##### List document fields
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`length` | Lenght of the numbers in the list entries for which it used to select desire Caller ID | `integer` | | `true`
+`entries` | Collection of maps of numbers to Caller ID | `object` | | `true`
+`entries.{NUMBER}` | Object that contains the desire Caller ID, it's key (number) is used to select this entry | `object` | | `true`
+`entries.{NUMBER}.number` | Caller ID number | `string` | | `true`
+`entries.{NUMBER}.name` | Caller ID name | `string` | | `true`
+
+###### Example 1: Two digits as CID selector
+
+Consider that the user wants to call number `5149072508` using the caller id `16139999999`. We assume that callflow patterns set as follow:
+
+```json
     "patterns": [
         "^\\*2([0-9]{2,})$"
-    ],
-
-This means that `*2` is the "feature code" for this feature.
-
-`01` is the entry in the `cidlist` document to use.  It's *length* is 2 digits.
-
-`5149072508` becomes `+15149072508` and gets dialed as such.
-
-Example "list" CouchDB document.  This CouchDB doc will end up being cached by Kazoo.  Make sure you flush changes..
-
-If you were to use the length 1 example..
-
-On a handset you dial
-`*2115149072508`
-or
-`*215149072508`
-
-In this case
-
-`15149072508` or `5149072508` becomes `+15149072508` and gets dialed as such.
-
-Sample JSON below.
-
-Please note length needs to be 1 or 2 ONLY..
-
-If you need more, you need to hack the code, or just use manual mode..
-
-Length 2 example
+    ]
 ```
+
+and the content list document is:
+
+```json
 {
-   "_id": "cidlist",
-   "_rev": "5-FyFaandfumIsmellthebloudofanEnglishman",
-   "length" : 2,
-	"entries": {
-       "00": {
-           "number": "16139999999",
-           "name": "sssy co"
-       },
-       "01": {
-           "number": "19058888888",
-           "name": "bobs inc"
-       }
-   }
+    "_id": "cidlist",
+    "_rev": "5-FyFaandfumIsmellthebloudofanEnglishman",
+    "length" : 2,
+    "entries": {
+        "00": {
+            "number": "16139999999",
+            "name": "Awesome Co."
+        },
+        "01": {
+            "number": "19058888888",
+            "name": "Awesome Inc."
+        }
+    }
 }
 ```
 
-Length 1 example
-```
+These are the steps will happen if a user dial `*2015149072508` in handset:
+
+1. This pattern above means that `*2` is the "feature code" for this feature. callflow will use this module to handle the call
+2. `01` will use to select the Caller ID with number "19058888888" and name "Awesome Inc.". Consider that it's **length** is 2 digits as specified in `lenght` field
+3. Selected CID will be set for the call
+3. `5149072508` becomes `+15149072508` and gets dialed as such
+
+###### Example 1: One digits as CID selector
+
+Another example which uses number with lenght of 1 to select the Caller ID:
+
+```json
 {
-   "_id": "cidlist",
-   "_rev": "5-FyFaandfumIsmellthebloudofanEnglishman",
-   "length" : 1,
-	"entries": {
-       "0": {
-           "number": "16139999999",
-           "name": "sssy co"
-       },
-       "1": {
-           "number": "19058888888",
-           "name": "bobs inc"
-       }
-   }
+    "_id": "cidlist",
+    "_rev": "5-FyFaandfumIsmellthebloudofanEnglishman",
+    "length" : 1,
+    "entries": {
+        "0": {
+            "number": "16139999999",
+            "name": "Awesome Co."
+        },
+        "1": {
+            "number": "19058888888",
+            "name": "Awesome Inc."
+        }
+    }
 }
 ```
+
+Dialing number `*205149072508` will cause number "5149072508" gets dialed with CID number set to "16139999999" CID name to "Awesome Co.".
