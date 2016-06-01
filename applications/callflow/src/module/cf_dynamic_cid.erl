@@ -34,13 +34,14 @@
               ?CONFIG_BIN(<<"accept_prompt">>, <<"tone_stream://%(250,50,440)">>)
           ,reject_tone =
               wh_media_util:get_prompt(
-                ?CONFIG_BIN(<<"reject_prompt">>, <<"dynamic-cid-invalid_using_default">>)
-               )
+                  ?CONFIG_BIN(<<"reject_prompt">>, <<"dynamic-cid-invalid_using_default">>)
+              )
           ,default_prompt =
               wh_media_util:get_prompt(
-                ?CONFIG_BIN(<<"default_prompt">>, <<"dynamic-cid-enter_cid">>)
-               )
-         }).
+                  ?CONFIG_BIN(<<"default_prompt">>, <<"dynamic-cid-enter_cid">>)
+              )
+         }
+       ).
 -type prompts() :: #prompts{}.
 
 -record(dynamic_cid
@@ -48,13 +49,13 @@
           ,max_digits = ?CONFIG_INT(<<"max_digits">>, 10) :: integer()
           ,min_digits = ?CONFIG_INT(<<"min_digits">>, 10) :: integer()
           ,whitelist = ?CONFIG_BIN(<<"whitelist_regex">>, <<"\\d+">>) :: ne_binary()
-         }).
+         }
+       ).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Entry point for this module, based on the payload will either
-%% connect a caller to check_voicemail or compose_voicemail.
+%% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
@@ -71,73 +72,34 @@ handle(Data, Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Entry point for this module, attempts to call an endpoint as defined
-%% in the Data payload.  Returns continue if fails to connect or
-%% stop when successfull.
-%%
-%% NOTE: It is written in a strange way to make it easier when Karl can
-%%       comeback and make it correctly ;)
+%% Handle manual mode of dynamic cid
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_manual(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle_manual(Data, Call) ->
-    DynamicCID = #dynamic_cid{},
-    Prompts = DynamicCID#dynamic_cid.prompts,
-    _ = whapps_call_command:b_play(<<"silence_stream://100">>, Call),
+    CID = collect_cid_number(Data, Call),
 
-    Media = case wh_json:get_ne_value(<<"media_id">>, Data) of
-                'undefined' -> Prompts#prompts.default_prompt;
-                Else -> Else
-            end,
+    Number = whapps_call:kvs_fetch('cf_capture_group', Call),
 
-    Min = DynamicCID#dynamic_cid.min_digits,
-    Max = DynamicCID#dynamic_cid.max_digits,
-    Regex = DynamicCID#dynamic_cid.whitelist,
-    DefaultCID = whapps_call:caller_id_number(Call),
+    Request = list_to_binary([Number, "@", whapps_call:request_realm(Call)]),
+    To = list_to_binary([Number, "@", whapps_call:to_realm(Call)]),
 
-    Interdigit = wh_json:get_integer_value(<<"interdigit_timeout">>
-                                           ,Data
-                                           ,whapps_call_command:default_interdigit_timeout()
-                                          ),
-
-    NoopId = whapps_call_command:play(Media, Call),
-
-    CID = case whapps_call_command:collect_digits(Max
-                                                  ,whapps_call_command:default_collect_timeout()
-                                                  ,Interdigit
-                                                  ,NoopId
-                                                  ,Call
-                                                 )
-          of
-              {'ok', <<>>} ->
-                  _ = whapps_call_command:play(Prompts#prompts.reject_tone, Call),
-                  DefaultCID;
-              {'ok', Digits} ->
-                  case re:run(Digits, Regex) of
-                      {'match', _} when byte_size(Digits) >= Min ->
-                          whapps_call_command:play(Prompts#prompts.accept_tone, Call),
-                          Digits;
-                      _ ->
-                          _ = whapps_call_command:play(Prompts#prompts.reject_tone, Call),
-                          DefaultCID
-                  end;
-              {'error', _} ->
-                  _ = whapps_call_command:play(Prompts#prompts.reject_tone, Call),
-                  DefaultCID
-          end,
-    lager:info("setting the caller id number to ~s", [CID]),
-
-    {'ok', C1} = cf_exe:get_call(Call),
     Updates = [{fun whapps_call:kvs_store/3, 'dynamic_cid', CID}
                ,{fun whapps_call:set_caller_id_number/2, CID}
+               ,{fun whapps_call:set_request/2, Request}
+               ,{fun whapps_call:set_to/2, To}
+               ,{fun whapps_call:set_callee_id_number/2, Number}
               ],
+    {'ok', C1} = cf_exe:get_call(Call),
+    lager:info("setting the caller id number to ~s", [CID]),
     cf_exe:set_call(whapps_call:exec(Updates, C1)),
+
+    lager:info("send the call onto real destination of: ~s", [Number]),
     cf_exe:continue(Call).
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Entry point for this module
+%% @doc Read CID info from a list of CID defined in database
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_list(wh_json:object(), whapps_call:call()) -> 'ok'.
@@ -236,8 +198,55 @@ should_restrict_call(Call, Number) ->
 
 %%--------------------------------------------------------------------
 %% @private
+%% @doc Collect CID number from user
+%% @end
+%%--------------------------------------------------------------------
+-spec collect_cid_number(wh_json:object(), whapps_call:call()) -> ne_binary().
+collect_cid_number(Data, Call) ->
+    DynamicCID = #dynamic_cid{},
+    Prompts = DynamicCID#dynamic_cid.prompts,
+    _ = whapps_call_command:b_play(<<"silence_stream://100">>, Call),
+
+    Media = case wh_json:get_ne_value(<<"media_id">>, Data) of
+                'undefined' -> Prompts#prompts.default_prompt;
+                Else -> Else
+            end,
+
+    Min = DynamicCID#dynamic_cid.min_digits,
+    Max = DynamicCID#dynamic_cid.max_digits,
+    Regex = DynamicCID#dynamic_cid.whitelist,
+    DefaultCID = whapps_call:caller_id_number(Call),
+
+    Interdigit = wh_json:get_integer_value(<<"interdigit_timeout">>
+                                           ,Data
+                                           ,whapps_call_command:default_interdigit_timeout()
+                                          ),
+
+    NoopId = whapps_call_command:play(Media, Call),
+
+    CollectTimeout = whapps_call_command:default_collect_timeout(),
+    case whapps_call_command:collect_digits(Max, CollectTimeout, Interdigit, NoopId, Call) of
+        {'ok', <<>>} ->
+            _ = whapps_call_command:play(Prompts#prompts.reject_tone, Call),
+            DefaultCID;
+        {'ok', Digits} ->
+            case re:run(Digits, Regex) of
+                {'match', _} when byte_size(Digits) >= Min ->
+                    whapps_call_command:play(Prompts#prompts.accept_tone, Call),
+                    Digits;
+                _ ->
+                    _ = whapps_call_command:play(Prompts#prompts.reject_tone, Call),
+                    DefaultCID
+            end;
+        {'error', _} ->
+            _ = whapps_call_command:play(Prompts#prompts.reject_tone, Call),
+            DefaultCID
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
 %% @doc
-%% Pull in document from couch with the callerid switching information inside..
+%% Pull in document from database with the callerid switching information inside
 %% @end
 %%--------------------------------------------------------------------
 -spec get_list_entry(wh_json:object(), whapps_call:call()) ->
@@ -249,18 +258,32 @@ get_list_entry(Data, Call) ->
 
     case couch_mgr:open_cache_doc(AccountDb, ListId) of
         {'ok', ListJObj} ->
-            LengthDigits = wh_json:get_ne_value(<<"length">>, ListJObj),
-            lager:debug("digit length to limit lookup key in number: ~p ", [LengthDigits]),
-            CaptureGroup = whapps_call:kvs_fetch('cf_capture_group', Call),
-            lager:debug("capture_group ~s ", [CaptureGroup]),
-            <<CIDKey:LengthDigits/binary, Dest/binary>> = CaptureGroup,
-            lager:debug("CIDKey ~p to lookup in couchdb doc", [CIDKey]),
-            JObj = wh_json:get_ne_value(<<"entries">>, ListJObj),
-            lager:info("list of possible values to use: ~p", [JObj]),
-            NewCallerId = wh_json:get_value(CIDKey, JObj),
-            lager:info("new caller id data : ~p",  [NewCallerId]),
-            {NewCallerId, Dest};
+            {CIDKey, DestNumber} = find_key_and_dest(ListJObj, Call),
+            lager:debug("CIDKey ~p to lookup in match list document", [CIDKey]),
+            NewCallerId = get_new_caller_id(CIDKey, ListJObj, Call),
+            lager:info("new caller id: ~p",  [NewCallerId]),
+            {NewCallerId, DestNumber};
         {'error', _Reason}=E ->
-            lager:info("failed to load match list box ~s: ~p", [ListId, _Reason]),
+            lager:info("failed to load match list document ~s: ~p", [ListId, _Reason]),
             E
+    end.
+
+-spec find_key_and_dest(wh_json:object(), whapps_call:call()) -> {ne_binary(), ne_binary()}.
+find_key_and_dest(ListJObj, Call) ->
+    LengthDigits = wh_json:get_integer_value(<<"length">>, ListJObj),
+    lager:debug("digit length to limit lookup key in number: ~p", [LengthDigits]),
+    CaptureGroup = whapps_call:kvs_fetch('cf_capture_group', Call),
+    <<CIDKey:LengthDigits/binary, Dest/binary>> = CaptureGroup,
+    {CIDKey, Dest}.
+
+-spec get_new_caller_id(integer(), wh_json:object(), whapps_call:call()) -> wh_json:object().
+get_new_caller_id(CIDKey, ListJObj, Call) ->
+    JObj = wh_json:get_ne_value(<<"entries">>, ListJObj, wh_json:new()),
+    case wh_json:get_value(CIDKey, JObj) of
+        'undefined' ->
+            lager:debug("failed to find cid with key ~B, not changing cid", [CIDKey]),
+            wh_json:from_list([{<<"number">>, whapps_call:caller_id_number(Call)}
+                               ,{<<"name">>, whapps_call:caller_id_name(Call)}
+                              ]);
+        NewCallerId -> NewCallerId
     end.
