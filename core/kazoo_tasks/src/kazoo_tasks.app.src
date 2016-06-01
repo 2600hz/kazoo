@@ -8,7 +8,7 @@
                  , stdlib
 
                  , kazoo
-                 , kazoo_apps
+                 , kazoo_globals
 
                  , lager
                  ]},

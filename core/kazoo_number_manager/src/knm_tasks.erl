@@ -9,11 +9,8 @@
 -module(knm_tasks).
 %% behaviour: tasks_provider
 
--compile({'no_auto_import', [node/0]}).
-
 -export([help/0
         ,for/0
-        ,node/0
         ,module/0
         ]).
 
@@ -33,10 +30,7 @@
 for() -> <<"number_management">>.
 
 -spec module() -> module().
-module() -> ?MODULE.
-
--spec node() -> node().
-node() -> kz_util:to_binary(node()).
+module() -> kz_util:to_binary(?MODULE).
 
 -spec help() -> kz_proplist().
 help() ->

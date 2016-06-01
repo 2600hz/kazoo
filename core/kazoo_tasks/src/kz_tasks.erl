@@ -618,11 +618,10 @@ parse_apis(JObjs) ->
 parse_apis_fold(JObj, {Apps, Nodes, Modules, APIs}) ->
     APICategory = kz_json:get_value(<<"Tasks-For">>, JObj),
     App = kz_json:get_value(<<"App-Name">>, JObj),
-    Node = kz_json:get_value(<<"Tasks-Node">>, JObj),
     Module = kz_json:get_value(<<"Tasks-Module">>, JObj),
     TasksProvided = kz_json:get_value(<<"Tasks">>, JObj),
     { Apps#{APICategory => App}
-    , Nodes#{APICategory => Node}
+    , Nodes#{APICategory => kz_api:node(JObj)}
     , Modules#{APICategory => kz_util:to_atom(Module, 'true')}
     , kz_json:set_value(APICategory, TasksProvided, APIs)
     }.

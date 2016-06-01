@@ -59,17 +59,14 @@ start_link() ->
 -spec help(kz_json:object(), kz_proplist()) -> 'ok'.
 help(JObj, _Props) ->
     'true' = kapi_tasks:help_req_v(JObj),
-    Q = kz_json:get_value(<<"Server-ID">>, JObj),
-    MessageId = kz_json:get_value(<<"Msg-ID">>, JObj),
     RespJObj =
         kz_json:from_list([{<<"Tasks">>, kz_json:from_list(knm_tasks:help())}
                           ,{<<"Tasks-For">>, knm_tasks:for()}
                           ,{<<"Tasks-Module">>, knm_tasks:module()}
-                          ,{<<"">>, knm_tasks:node()}
-                          ,{<<"Msg-ID">>, MessageId}
+                          ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
                            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                           ]),
-    kapi_tasks:publish_help_resp(Q, RespJObj).
+    kapi_tasks:publish_help_resp(kz_api:server_id(JObj), RespJObj).
 
 %%%===================================================================
 %%% gen_server callbacks
