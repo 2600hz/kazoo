@@ -195,12 +195,10 @@ If you must submit an incompatible change we prefer that the incompatible behavi
 ### New Applications Guidelines
 
 TODO
-MR: Thoughts: naming, copyrights section, support contacts that should work, !!!security testing!!!
 
 ### Core Updates/Modules Guidelines
 
 TODO
-MR: Thoughts: place where stuff goes (wapi, documents, deps, etc etc and how it should be broken down), comments, tests, support obligations
 
 ## Be Ego-less
 
