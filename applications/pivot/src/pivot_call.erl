@@ -145,8 +145,9 @@ init([Call, JObj]) ->
     ?MODULE:new_request(self(), VoiceUri, Method, BaseParams),
 
     {'ok'
+
      ,#state{cdr_uri=kz_json:get_value(<<"CDR-URI">>, JObj)
-             ,call=kapps_call:kvs_update_counter('pivot_counter', 1, Call)
+             ,call=kzt_util:increment_iteration(Call)
              ,request_format=ReqFormat
              ,debug=kz_json:is_true(<<"Debug">>, JObj, 'false')
              ,requester_queue = kapps_call:controller_queue(Call)
@@ -188,12 +189,12 @@ handle_cast('usurp', State) ->
     lager:debug("terminating pivot call because of usurp"),
     {'stop', 'normal', State#state{call='undefined'}};
 handle_cast({'request', Uri, Method}, #state{call=Call
-                                             ,request_format=ReqFormat
+                                            ,request_format=ReqFormat
                                             }=State) ->
     handle_cast({'request', Uri, Method, req_params(ReqFormat, Call)}, State);
 handle_cast({'request', Uri, Method, Params}, #state{call=Call
-                                                     ,debug=Debug
-                                                     ,requester_queue=Q
+                                                    ,debug=Debug
+                                                    ,requester_queue=Q
                                                     }=State) ->
     Call1 = kzt_util:set_voice_uri(Uri, Call),
 
@@ -201,12 +202,12 @@ handle_cast({'request', Uri, Method, Params}, #state{call=Call
         {'ok', ReqId, Call2} ->
             lager:debug("sent request ~p to '~s' via '~s'", [ReqId, Uri, Method]),
             {'noreply', State#state{request_id=ReqId
-                                    ,request_params=Params
-                                    ,response_content_type = <<>>
-                                    ,response_body = <<>>
-                                    ,method=Method
-                                    ,voice_uri=Uri
-                                    ,call=Call2
+                                   ,request_params=Params
+                                   ,response_content_type = <<>>
+                                   ,response_body = <<>>
+                                   ,method=Method
+                                   ,voice_uri=Uri
+                                   ,call=Call2
                                    }};
         _ ->
             kapi_pivot:publish_failed(Q, [{<<"Call-ID">>, kapps_call:call_id(Call)}
@@ -216,6 +217,7 @@ handle_cast({'request', Uri, Method, Params}, #state{call=Call
     end;
 
 handle_cast({'updated_call', Call}, State) ->
+
     {'noreply', State#state{call=Call}};
 
 handle_cast({'gen_listener', {'created_queue', Q}}, #state{call=Call}=State) ->
@@ -527,7 +529,7 @@ maybe_debug_req(Call, Uri, Method, ReqHdrs, ReqBody, 'true') ->
                        ,{<<"method">>, kz_util:to_binary(Method)}
                        ,{<<"req_headers">>, Headers}
                        ,{<<"req_body">>, iolist_to_binary(ReqBody)}
-                       ,{<<"iteration">>, kapps_call:kvs_fetch('pivot_counter', Call)}
+                       ,{<<"iteration">>, kzt_util:iteration(Call)}
                       ]).
 
 -spec maybe_debug_resp(boolean(), kapps_call:call(), ne_binary(), kz_proplist(), binary()) -> 'ok'.
@@ -539,7 +541,7 @@ maybe_debug_resp('true', Call, StatusCode, RespHeaders, RespBody) ->
         ,[{<<"resp_status_code">>, StatusCode}
           ,{<<"resp_headers">>, Headers}
           ,{<<"resp_body">>, RespBody}
-          ,{<<"iteration">>, kapps_call:kvs_fetch('pivot_counter', Call)}
+          ,{<<"iteration">>, kzt_util:iteration(Call)}
         ]
     ).
 
