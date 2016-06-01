@@ -14,7 +14,7 @@
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
         ,content_types_accepted/3
-        ,content_types_provided/3
+        ,content_types_provided/4
         ,validate/1, validate/2, validate/3, validate/4
         ,put/1, put/3
         ,post/4
@@ -126,9 +126,13 @@ resource_exists(_TaskId, ?CSV_ATTACHMENT, _AttachmentId) -> 'true'.
 %%--------------------------------------------------------------------
 -spec content_types_accepted(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 content_types_accepted(Context, _TaskId, ?CSV_ATTACHMENT) ->
+    cta(Context, cb_context:req_verb(Context)).
+
+-spec cta(cb_context:context(), http_method()) -> cb_context:context().
+cta(Context, ?HTTP_PUT) ->
     CTA = [{'from_binary', ?CSV_CONTENT_TYPES}],
     cb_context:add_content_types_accepted(Context, CTA);
-content_types_accepted(Context, _, _) ->
+cta(Context, _) ->
     Context.
 
 %%--------------------------------------------------------------------
@@ -139,12 +143,22 @@ content_types_accepted(Context, _, _) ->
 %% Of the form {atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_provided(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-content_types_provided(Context, _TaskId, ?CSV_ATTACHMENT) ->
-    CTP = [{'from_binary', ?CSV_CONTENT_TYPES}],
-    cb_context:add_content_types_provided(Context, CTP);
-content_types_provided(Context, _, _) ->
+-spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
+                                    cb_context:context().
+content_types_provided(Context, _TaskId, ?CSV_ATTACHMENT, _AttachmentId) ->
+    ctp(Context, cb_context:req_verb(Context)).
+
+-spec ctp(cb_context:context(), http_method()) -> cb_context:context().
+-spec ctp(cb_context:context()) -> cb_context:context().
+ctp(Context, ?HTTP_GET) ->
+    ctp(Context);
+ctp(Context, ?HTTP_POST) ->
+    ctp(Context);
+ctp(Context, _) ->
     Context.
+ctp(Context) ->
+    CTP = [{'from_binary', ?CSV_CONTENT_TYPES}],
+    cb_context:add_content_types_provided(Context, CTP).
 
 %%--------------------------------------------------------------------
 %% @public
