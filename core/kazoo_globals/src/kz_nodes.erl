@@ -567,7 +567,7 @@ add_globals_data(#kz_node{kapps=Whapps}=Node) ->
 
 -spec filter_app(atom()) -> boolean().
 filter_app(App) ->
-    lists:member(App, ?FILTER_APPS).
+    not lists:member(App, ?FILTER_APPS).
 
 -spec maybe_add_kapps_data(kz_node()) -> kz_node().
 maybe_add_kapps_data(Node) ->
