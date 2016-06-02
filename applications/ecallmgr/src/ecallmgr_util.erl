@@ -403,11 +403,11 @@ get_fs_key_and_value(<<"Diversions">>=Key, Diversions, _UUID) ->
     lager:debug("setting diversions ~p on the channel", [Diversions]),
     [{K, D} || D <- Diversions];
 get_fs_key_and_value(<<"Auto-Answer">> = Key, Value, _UUID) ->
-    [{<<"alert_info">>, <<"intercom">>}
+    [{get_fs_key(<<"Alert-Info">>), <<"intercom">>}
     ,{get_fs_key(Key), maybe_sanitize_fs_value(Key, Value)}
     ];
 get_fs_key_and_value(<<"Auto-Answer-Suppress-Notify">> = Key, Value, _UUID) ->
-    [{<<"alert_info">>, <<"intercom">>}
+    [{get_fs_key(<<"Alert-Info">>), <<"intercom">>}
     ,{get_fs_key(<<"Auto-Answer">>), maybe_sanitize_fs_value(<<"Auto-Answer">>, <<"true">>)}
     ,{get_fs_key(Key), maybe_sanitize_fs_value(Key, Value)}
     ];
