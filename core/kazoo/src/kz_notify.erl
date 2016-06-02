@@ -162,7 +162,7 @@ detailed_alert(Format, Args, Props) ->
     Msg = io_lib:format(Format, Args),
     detailed_alert(Msg, Msg, [{<<"Format">>, kz_util:to_binary(Format)} | Props], []).
 
--spec detailed_alert(ne_binary(), ne_binary(), kz_proplist(), kz_proplist()) -> 'ok'.
+-spec detailed_alert(string() | ne_binary(), string() | ne_binary(), kz_proplist(), kz_proplist()) -> 'ok'.
 detailed_alert(Subject, Msg, Props, Headers)
   when not is_binary(Subject);
        not is_binary(Msg) ->
@@ -175,7 +175,7 @@ detailed_alert(Subject, Msg, Props, Headers) ->
              ],
     kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1).
 
--spec detailed_alert(ne_binary(), string() | ne_binary(), [any()], kz_proplist(), kz_proplist()) -> 'ok'.
+-spec detailed_alert(string() | ne_binary(), string() | ne_binary(), [any()], kz_proplist(), kz_proplist()) -> 'ok'.
 detailed_alert(Subject, Format, Args, Props, Headers) ->
     Msg = io_lib:format(Format, Args),
     detailed_alert(Subject, Msg, [{<<"Format">>, kz_util:to_binary(Format)} | Props], Headers).
