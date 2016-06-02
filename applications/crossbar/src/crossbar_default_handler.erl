@@ -20,6 +20,7 @@
 
 -define(DEFAULT_PATHS, [<<"/:version/accounts/:account_id/vmboxes/:box_id/messages/:message_id/raw">>
                         ,<<"/:version/accounts/:account_id/faxes/:direction/:fax_id/attachment">>
+                        ,<<"/:version/accounts/:account_id/presence/:reportid">>
                        ]).
 
 -spec init({atom(), 'http'}, cowboy_req:req(), kz_proplist()) ->

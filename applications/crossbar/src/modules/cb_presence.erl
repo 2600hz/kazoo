@@ -9,8 +9,11 @@
 -module('cb_presence').
 
 -export([init/0
+         ,authenticate/1
+         ,authorize/1
          ,allowed_methods/0, allowed_methods/1
          ,resource_exists/0, resource_exists/1
+         ,content_types_provided/2
          ,validate/1, validate/2
          ,post/1, post/2
         ]).
@@ -29,17 +32,47 @@
                                                           ,?PRESENCE_QUERY_DEFAULT_TIMEOUT
                                                          )
        ).
+-define(REPORT_CONTENT_TYPE, [{'to_binary', [{<<"application">>, <<"json">>}]}]).
+-define(REPORT_PREFIX, "report-").
+-define(MATCH_REPORT_PREFIX(A), <<?REPORT_PREFIX, A/binary>>).
+-define(MATCH_REPORT_PREFIX, <<?REPORT_PREFIX, _/binary>>).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 init() ->
     Bindings = [{<<"*.allowed_methods.presence">>, 'allowed_methods'}
+               ,{<<"*.authenticate">>, 'authenticate'}
+                ,{<<"*.authorize">>, 'authorize'}
                 ,{<<"*.resource_exists.presence">>, 'resource_exists'}
+                ,{<<"*.content_types_provided.presence">>, 'content_types_provided'}
                 ,{<<"*.validate.presence">>, 'validate'}
                 ,{<<"*.execute.post.presence">>, 'post'}
                ],
     cb_modules_util:bind(?MODULE, Bindings).
+
+-spec authenticate(cb_context:context()) -> boolean().
+authenticate(Context) ->
+    authenticate(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
+
+-spec authenticate(cb_context:context(), req_nouns(), http_method()) -> boolean().
+authenticate(Context, [{<<"presence">>,[?MATCH_REPORT_PREFIX]}], ?HTTP_GET) ->
+    cb_context:magic_pathed(Context);
+authenticate(_Context, _Nouns, _Verb) -> 'false'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec authorize(cb_context:context()) -> boolean().
+authorize(Context) ->
+    authorize(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
+
+-spec authorize(cb_context:context(), req_nouns(), http_method()) -> boolean().
+authorize(Context, [{<<"presence">>,[?MATCH_REPORT_PREFIX]}], ?HTTP_GET) ->
+    cb_context:magic_pathed(Context);
+authorize(_Context, _Nouns, _Verb) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -54,6 +87,8 @@ init() ->
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_POST].
+allowed_methods(?MATCH_REPORT_PREFIX) ->
+    [?HTTP_GET];
 allowed_methods(_Extension) ->
     [?HTTP_POST].
 
@@ -73,6 +108,26 @@ resource_exists(_Extension) -> 'true'.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% This function allows report to be downloaded.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
+content_types_provided(Context, ?MATCH_REPORT_PREFIX(Report)) ->
+    content_types_provided_for_report(Context, Report);
+content_types_provided(Context, _) -> Context.
+
+-spec content_types_provided_for_report(cb_context:context(), ne_binary()) -> cb_context:context().
+content_types_provided_for_report(Context, Report) ->
+    File = <<"/tmp/", Report/binary, ".json">>,
+    case filelib:is_file(File) of
+        'false' -> Context;
+        'true' -> cb_context:set_content_types_provided(Context, ?REPORT_CONTENT_TYPE)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% This function determines if the parameters and content are correct
 %% for this request
 %%
@@ -86,6 +141,8 @@ resource_exists(_Extension) -> 'true'.
 validate(Context) ->
     validate_thing(Context, cb_context:req_verb(Context)).
 
+validate(Context, ?MATCH_REPORT_PREFIX(Report)) ->
+    load_report(Context, Report);
 validate(Context, _Extension) ->
     cb_context:set_resp_status(Context, 'success').
 
@@ -385,10 +442,12 @@ reset_validation_error(Context) ->
 -spec post(cb_context:context()) -> cb_context:context().
 post(Context) ->
     Things = cb_context:doc(Context),
+    _ = collect_report(Context, Things),
     send_reset(Context, Things).
 
 -spec post(cb_context:context(), ne_binary()) -> cb_context:context().
 post(Context, Extension) ->
+    _ = collect_report(Context, Extension),
     publish_presence_reset(cb_context:account_realm(Context), Extension),
     crossbar_util:response_202(<<"reset command sent for extension ", Extension/binary>>, Context).
 
@@ -428,6 +487,80 @@ find_presence_id(JObj) ->
         'false' -> kzd_user:presence_id(JObj)
     end.
 
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
+-spec load_report(cb_context:context(), path_token()) -> cb_context:context().
+load_report(Context, Report) ->
+    File = <<"/tmp/", Report/binary, ".json">>,
+    case file:read_file(File) of
+        {'ok', Bin} -> set_report_binary(Context, File, Bin);
+        {'error', _Error} ->
+            lager:error("error ~p while fetching report file ~s", [_Error, File]),
+            cb_context:add_system_error('bad_identifier', kz_json:from_list([{<<"cause">>, Report}]), Context)
+    end.
+
+-spec set_report_binary(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+set_report_binary(Context, File, Bin) ->
+    _ = file:delete(File),
+    Name = kz_util:to_binary(filename:basename(File)),
+    cb_context:setters(Context,
+                       [{fun cb_context:set_resp_data/2, Bin}
+                       ,{fun cb_context:set_resp_etag/2, 'undefined'}
+                       ,{fun cb_context:add_resp_headers/2
+                           ,[{<<"Content-Disposition">>, <<"attachment; filename=", Name/binary>>}]
+                        }
+                       ,{fun cb_context:set_resp_status/2, 'success'}
+                        ]
+                      ).
+
+-spec collect_report(cb_context:context(), ne_binary() | kz_json:object() | kz_json:objects()) -> any().
+collect_report(_Context, []) -> 'ok';
+collect_report(Context, Param) ->
+    Funs = [fun search_req/1
+           ,fun presentity_search_req/1
+           ],
+    Ctx = search(Context, Funs),
+    kz_util:spawn(fun send_report/2, [Ctx, Param]).
+
+-spec send_report(cb_context:context(), ne_binary() | kz_json:object() | kz_json:objects()) -> 'ok'.
+send_report(Context, Extension)
+  when is_binary(Extension) ->
+    Msg = <<"presence reset received for extension ", Extension/binary>>,
+    format_and_send_report(Context, Msg);
+send_report(Context, Things)
+  when is_list(Things) ->
+    Format = "presence reset received for user_id ~s~n~ndevices:~p",
+    Ids = list_to_binary([io_lib:format("~n~s", [kz_doc:id(Thing)])  || Thing <- Things]),
+    Msg = io_lib:format(Format, [cb_context:user_id(Context), Ids]),
+    format_and_send_report(Context, Msg);
+send_report(Context, Thing) ->
+    Format = "presence reset received for ~s : ~s",
+    Msg = io_lib:format(Format, [kz_doc:type(Thing), kz_doc:id(Thing)]),
+    format_and_send_report(Context, Msg).
+
+-spec format_and_send_report(cb_context:context(), ne_binary()) -> 'ok'.
+format_and_send_report(Context, Msg) ->
+    {ReportId, URL} = save_report(Context),
+    Subject = io_lib:format("presence reset for account ~s", [cb_context:account_id(Context)]),
+    Props = [{<<"Report-ID">>, ReportId}
+            ,{<<"Node">>, node()}
+            ],
+    Headers = [{<<"Attachment-URL">>, URL}
+              ,{<<"Account-ID">>, cb_context:account_id(Context)}
+              ,{<<"Request-ID">>, cb_context:req_id(Context)}
+              ],
+    kz_notify:detailed_alert(Subject, Msg, Props, Headers).
+
+-spec save_report(cb_context:context()) -> {ne_binary(), ne_binary()}.
+save_report(Context) ->
+    JObj = kz_json:encode(cb_context:resp_data(Context)),
+    Report = kz_util:rand_hex_binary(16),
+    File = <<"/tmp/", Report/binary, ".json">>,
+    file:write_file(File, JObj),
+    Args = [cb_context:api_version(Context)
+           ,cb_context:account_id(Context)
+           ,?MATCH_REPORT_PREFIX(Report)
+           ],
+    Path = io_lib:format("/~s/accounts/~s/presence/~s", Args),
+    MagicPath = kapps_util:to_magic_hash(Path),
+    HostURL = cb_context:host_url(Context),
+    URL = <<HostURL/binary, "/", MagicPath/binary>>,
+    {Report, URL}.
