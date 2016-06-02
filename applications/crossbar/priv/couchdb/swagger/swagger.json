@@ -5840,6 +5840,23 @@
             "required": true,
             "type": "object"
         },
+        "tasks.records": {
+            "additionalProperties": false,
+            "description": "Input data to go through as part of a background task",
+            "name": "Task records",
+            "properties": {
+                "description": "List the rows of input data",
+                "items": {
+                    "required": true,
+                    "type": "object"
+                },
+                "minItems": 1,
+                "name": "Records",
+                "required": true,
+                "type": "array",
+                "uniqueItems": true
+            }
+        },
         "temporal_rules": {
             "description": "Schema for a temporal rules",
             "name": "Temporal Rule",

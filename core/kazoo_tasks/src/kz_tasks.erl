@@ -12,12 +12,14 @@
 %% Public API
 -export([start_link/0]).
 -export([available/0]).
--export([new/3
+-export([new/4
         ,start/1
         ,read/1
         ,all/0, all/1
         ,remove/1
 	]).
+
+-export([is_csv/1]).
 
 %% API used by workers
 -export([worker_finished/1
@@ -55,8 +57,11 @@
                    }.
 -opaque tasks() :: [task()].
 
+-type input() :: ne_binary() | kz_json:object().
+
 -export_type([task_id/0
              ,task/0, tasks/0
+             ,input/0
              ]).
 
 -type api_category() :: ne_binary().
@@ -69,6 +74,7 @@
                }).
 -type state() :: #state{}.
 
+-define(REPLY(State, Value), {'reply', Value, State}).
 -define(REPLY_FOUND(TaskJObj, State), {'reply', {'ok', TaskJObj}, State}).
 -define(REPLY_NOT_FOUND(State), {'reply', {'error', 'not_found'}, State}).
 
@@ -150,10 +156,25 @@ start(TaskId=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec new(ne_binary(), ne_binary(), ne_binary()) -> {'ok', kz_json:object()} |
-                                                    {'error', any()}.
-new(?MATCH_ACCOUNT_RAW(_)=AccountId, Category=?NE_BINARY, Action=?NE_BINARY) ->
-    gen_server:call(?SERVER, {'new', AccountId, Category, Action}).
+-spec new(ne_binary(), ne_binary(), ne_binary(), input()) -> {'ok', kz_json:object()} |
+                                                             {'error', any()}.
+new(?MATCH_ACCOUNT_RAW(_)=AccountId, Category=?NE_BINARY, Action=?NE_BINARY, Input) ->
+    case get_API(Category, Action) of
+        {'error', _R}=E ->
+            lager:debug("adding task ~s ~s failed: ~p", [Category, Action, _R]),
+            E;
+        {'ok', API} ->
+            lager:debug("task ~s ~s matched api ~s", [Category, Action, kz_json:encode(API)]),
+            case find_input_errors(API, Input) of
+                Errors when Errors =/= #{} ->
+                    JObj = kz_json:from_list(
+                             props:filter_empty(
+                               maps:to_list(Errors))),
+                    {'error', JObj};
+                _ ->
+                    gen_server:call(?SERVER, {'new', AccountId, Category, Action})
+            end
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -243,28 +264,35 @@ handle_call({'replace_APIs', Apps, Nodes, Modules, APIs}, _From, State) ->
                         , nodes = Nodes
                         , modules = Modules
                         },
-    {'reply', APIs, State1};
+    ?REPLY(State1, APIs);
+
+handle_call({'get_API', _, _}, _From, State=#state{apis = ?EMPTY_JSON_OBJECT}) ->
+    ?REPLY(State, {'error', 'no_categories'});
+handle_call({'get_API', Category, Action}, _From, State=#state{apis = JObj}) ->
+    case kz_json:get_value([Category, Action], JObj) of
+        'undefined' ->
+            case kz_json:get_value(Category, JObj) of
+                'undefined' -> ?REPLY(State, {'error', Category});
+                _ -> ?REPLY(State, {'error', Action})
+            end;
+        API -> ?REPLY(State, {'ok', API})
+    end;
 
 handle_call({'new', AccountId, Category, Action}, _From, State) ->
-    case validate_new_task(Category, Action, State#state.apis) of
-        {'error', _R}=E ->
-            lager:debug("adding task ~s ~s failed: ~p", [Category, Action, _R]),
-            {'reply', E, State};
-        'ok' ->
-            Task = #{ worker_pid => 'undefined'
-                    , worker_node => 'undefined'
-                    , account_id => AccountId
-                    , id => ?A_TASK_ID
-                    , category => Category
-                    , action => Action
-                    , submitted => kz_util:current_tstamp()
-                    , started => 'undefined'
-                    , finished => 'undefined'
-                    , failed => 'undefined'
-                    },
-            {'ok', _JObj} = Ok = save_task(Task),
-            {'reply', Ok, State}
-    end;
+    Task = #{ worker_pid => 'undefined'
+            , worker_node => 'undefined'
+            , account_id => AccountId
+            , id => ?A_TASK_ID
+            , category => Category
+            , action => Action
+            , submitted => kz_util:current_tstamp()
+            , started => 'undefined'
+            , finished => 'undefined'
+            , failed => 'undefined'
+            },
+    {'ok', _JObj} = Ok = save_task(Task),
+    lager:debug("created task ~s", [kz_json:encode(_JObj)]),
+    ?REPLY(State, Ok);
 
 handle_call({'start_task', TaskId}, _From, State) ->
     case task_by_id(TaskId, State) of
@@ -371,6 +399,23 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
+%% @private
+-spec is_csv(binary()) -> boolean().
+is_csv(<<>>) -> 'false';
+is_csv(CSV) when is_binary(CSV) ->
+    ThrowBad = fun (Row, -1) -> length(Row);
+                   (Row, Acc) ->
+                       case length(Row) of
+                           Acc -> Acc;
+                           _ -> throw('bad_csv')
+                       end
+               end,
+    try
+        ecsv:process_csv_binary_with(CSV, ThrowBad, -1),
+        'true'
+    catch
+        'throw':'bad_csv' -> 'false'
+    end.
 
 %%%===================================================================
 %%% Internal functions
@@ -604,18 +649,87 @@ parse_apis_fold(JObj, {Apps, Nodes, Modules, APIs}) ->
     , kz_json:set_value(APICategory, TasksProvided, APIs)
     }.
 
--spec validate_new_task(ne_binary(), ne_binary(), kz_json:object()) -> 'ok' |
-                                                                       {'error', any()}.
-validate_new_task(_, _, ?EMPTY_JSON_OBJECT) ->
-    {'error', 'no_categories'};
-validate_new_task(Category, Action, JObj) ->
-    case kz_json:get_value([Category, Action], JObj) of
-        'undefined' ->
-            case kz_json:get_value(Category, JObj) of
-                'undefined' -> {'error', Category};
-                _ -> {'error', Action}
-            end;
-        _ -> 'ok'
+-spec get_API(ne_binary(), ne_binary()) -> {'ok', kz_json:object()} |
+                                           {'error', any()}.
+get_API(Category, Action) ->
+    gen_server:call(?SERVER, {'get_API', Category, Action}).
+
+-spec mandatory(kz_json:object()) -> ne_binaries().
+mandatory(APIJObj) ->
+    kz_json:get_list_value(?API_MANDATORY, APIJObj, []).
+
+-spec optional(kz_json:object()) -> ne_binaries().
+optional(APIJObj) ->
+    kz_json:get_list_value(?API_OPTIONAL, APIJObj, []).
+
+-spec find_input_errors(kz_json:object(), input()) -> map().
+find_input_errors(API, Input=?NE_BINARY) ->
+    [CSVHeader, InputData] = binary:split(Input, [<<"\r\n">>, <<"\n">>]),
+    Fields = binary:split(CSVHeader, <<$,>>, ['global']),
+    Mandatory = mandatory(API),
+    Errors = find_API_errors(API, Mandatory, Fields),
+    %% Stop here if there is no Mandatory fields to check against.
+    case Mandatory of
+        [] -> Errors;
+        _ ->
+            IsMandatory = [lists:member(Field, Mandatory) || Field <- Fields],
+            Unsets =
+                fun (Row, Es) ->
+                        case mandatories_unset(IsMandatory, Row) of
+                            'false' -> Es;
+                            'true' -> [string:join(Row, ",") | Es]
+                        end
+                end,
+            MMVs = ecsv:process_csv_binary_with(InputData, Unsets, []),
+            Errors#{<<"missing_mandatory_values">> => lists:reverse(MMVs)}
+    end;
+
+find_input_errors(API, InputRecord) ->
+    %%NOTE: assumes first record has all the fields that all the other records will ever need set
+    {Fields, _} = kz_json:get_values(hd(InputRecord)),
+    Mandatory = mandatory(API),
+    Errors = find_API_errors(API, Mandatory, Fields),
+    %% Stop here if there is no Mandatory fields to check against.
+    case Mandatory of
+        [] -> Errors;
+        _ ->
+            CheckJObjValues =
+                fun (JObj, Es) ->
+                        IsUnset = ['undefined' == kz_json:get_ne_binary_value(Key, JObj)
+                                   || Key <- kz_json:get_keys(JObj),
+                                      lists:member(Key, Mandatory)
+                                  ],
+                        case lists:foldl(fun erlang:'or'/2, 'false', IsUnset) of
+                            'false' -> Es;
+                            'true' -> [JObj | Es]
+                        end
+                end,
+            MMVs = lists:foldl(CheckJObjValues, [], InputRecord),
+            Errors#{<<"missing_mandatory_values">> => lists:reverse(MMVs)}
     end.
+
+find_API_errors(API, Mandatory, Fields) ->
+    Routines =
+        [fun (Errors) ->
+                 case Mandatory -- Fields of
+                     [] -> Errors;
+                     Missing -> Errors#{<<"missing_mandatory_fields">> => Missing}
+                  end
+         end
+        ,fun (Errors) ->
+                 case Fields -- (Mandatory ++ optional(API)) of
+                     [] -> Errors;
+                     Unknown -> Errors#{<<"unknown_fields">> => Unknown}
+                 end
+         end],
+    lists:foldl(fun (F, Errors) -> F(Errors) end, #{}, Routines).
+
+-spec mandatories_unset(nonempty_list(boolean()), nonempty_list(ne_binary())) -> boolean().
+mandatories_unset(IsMandatory, Row) ->
+    MapF = fun (Mandatory, Value) ->
+                   Mandatory andalso <<>> == Value
+           end,
+    RedF = fun erlang:'or'/2,
+    lists:foldl(RedF, 'false', lists:zipWith(MapF, IsMandatory, Row)).
 
 %%% End of Module.

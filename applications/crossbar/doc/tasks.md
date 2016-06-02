@@ -35,11 +35,18 @@ curl -v -X GET \
 
 #### Add a new task
 
+Make sure the content type matches the type of your input data file.
+`{CONTENT_TYPE}`: one of
+* `text/csv` (or alternative MIME types for CSV)
+* `application/json` (or alternative MIME types for JSON)
+
 > PUT /v2/accounts/{ACCOUNT_ID}/tasks
 
 ```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: {CONTENT_TYPE}" \
+    --data-binary @path/to/your/data/file \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks?category={CATEGORY}&action={ACTION}
 ```
 
@@ -172,6 +179,8 @@ curl -v -X DELETE \
 
 
 #### Get a specific task's details
+
+Optional: use `-H "Content-Type: text/csv"` to fetch the task's data file as a CSV.
 
 > GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
 
@@ -315,46 +324,3 @@ curl -v -X GET \
 }
 ```
 
-
-#### Create
-
-> PUT /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/csv
-
-```curl
-curl -v -X PUT \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/csv
-```
-
-
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/csv/{ATTACHMENT_ID}
-
-```curl
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/csv/{ATTACHMENT_ID}
-```
-
-
-#### Fetch
-
-> GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/csv/{ATTACHMENT_ID}
-
-```curl
-curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/csv/{ATTACHMENT_ID}
-```
-
-
-#### Change
-
-> POST /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/csv/{ATTACHMENT_ID}
-
-```curl
-curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/csv/{ATTACHMENT_ID}
-```

@@ -22,5 +22,8 @@
 -define(PVT_TYPE, <<"pvt_type">>).
 -define(PVT_WORKER_NODE, <<"pvt_worker_node">>).
 
+-define(API_MANDATORY, <<"mandatory">>).
+-define(API_OPTIONAL, <<"optional">>).
+
 -define(KZ_TASKS_HRL, 'true').
 -endif.

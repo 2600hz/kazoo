@@ -14,17 +14,23 @@
 -export([update_pvt_parameters/2, update_pvt_parameters/3
          ,public_fields/1
          ,private_fields/1
+
          ,attachments/1, attachments/2
          ,stub_attachments/1, stub_attachments/2
          ,external_attachments/1, external_attachments/2
          ,attachment_names/1
          ,attachment/1, attachment/2, attachment/3
+         ,latest_attachment/1
+
+         ,attachment_revision/1
+         ,compare_attachments/2
 
          ,attachment_length/2
          ,attachment_content_type/1, attachment_content_type/2, attachment_content_type/3
          ,attachment_property/3
          ,delete_attachments/1, delete_attachment/2
          ,maybe_remove_attachments/1, maybe_remove_attachments/2
+
          ,type/1, type/2, set_type/2
          ,id/1, id/2, set_id/2
          ,revision/1, set_revision/2, delete_revision/1
@@ -66,6 +72,8 @@
 -define(KEY_SOFT_DELETED, <<"pvt_deleted">>).
 -define(KEY_VSN, <<"pvt_vsn">>).
 -define(KEY_EXTERNAL_ATTACHMENTS, <<"pvt_attachments">>).
+
+-define(ATTACHMENT_PROPERTY_REVISION, <<"revpos">>).
 
 %% Helper Macros
 -define(KEYS_ATTACHMENTS, [?KEY_ATTACHMENTS, ?KEY_EXTERNAL_ATTACHMENTS]).
@@ -242,9 +250,29 @@ external_attachments(JObj, Default) ->
 attachment_names(JObj) ->
     kz_json:get_keys(attachments(JObj, kz_json:new())).
 
+-spec attachment_revision(kz_json:object()) -> pos_integer().
+attachment_revision(AttachmentJObj) ->
+    {[Values], _} = kz_json:get_values(AttachmentJObj),
+    kz_json:get_value(?ATTACHMENT_PROPERTY_REVISION, Values).
+
+-spec compare_attachments(kz_json:object(), kz_json:object()) -> boolean().
+compare_attachments(AttachmentJObjA, AttachmentJObjB) ->
+    attachment_revision(AttachmentJObjA) =< attachment_revision(AttachmentJObjB).
+
+-spec latest_attachment(kz_json:object()) -> api_object().
+latest_attachment(Doc) ->
+    case attachments(Doc) of
+        'undefined' -> 'undefined';
+        JObj ->
+            JObjs = [kz_json:from_list([KV]) || KV <- kz_json:to_proplist(JObj)],
+            lists:last(lists:sort(fun compare_attachments/2, JObjs))
+    end.
+
 -spec attachment(kz_json:object()) -> api_object().
 -spec attachment(kz_json:object(), kz_json:key()) -> api_object().
 -spec attachment(kz_json:object(), kz_json:key(), Default) -> kz_json:object() | Default.
+%% @public
+%% @doc Gets a random attachment from JObj (no order is imposed!)
 attachment(JObj) ->
     case kz_json:get_values(attachments(JObj, kz_json:new())) of
         {[], []} -> 'undefined';
