@@ -582,7 +582,9 @@ amqp_pool_request(Api, PubFun, ValidateFun)
 amqp_pool_request(Api, PubFun, ValidateFun, Timeout)
   when is_function(PubFun, 1),
        is_function(ValidateFun, 1),
-       ((is_integer(Timeout) andalso Timeout >= 0)
+       ((is_integer(Timeout)
+         andalso Timeout >= 0
+        )
         orelse Timeout =:= 'infinity') ->
     kz_amqp_worker:call(Api, PubFun, ValidateFun, Timeout).
 
@@ -597,7 +599,9 @@ amqp_pool_request_custom(Api, PubFun, ValidateFun, Bind)
 amqp_pool_request_custom(Api, PubFun, ValidateFun, Timeout, Bind)
   when is_function(PubFun, 1),
        is_function(ValidateFun, 1),
-       ((is_integer(Timeout) andalso Timeout >= 0)
+       ((is_integer(Timeout)
+         andalso Timeout >= 0
+        )
         orelse Timeout =:= 'infinity') ->
     kz_amqp_worker:call_custom(Api, PubFun, ValidateFun, Timeout, Bind).
 

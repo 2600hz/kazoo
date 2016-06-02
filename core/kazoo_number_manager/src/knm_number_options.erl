@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015, 2600Hz INC
+%%% @copyright (C) 2015-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -74,7 +74,8 @@ dry_run(Options) ->
     dry_run(Options, 'false').
 dry_run(Options, Default) ->
     R = props:get_is_true('dry_run', Options, Default),
-    _ = R andalso lager:debug("dry_run-ing btw"),
+    _ = R
+        andalso lager:debug("dry_run-ing btw"),
     R.
 
 -spec assigned_to(options()) -> api_binary().

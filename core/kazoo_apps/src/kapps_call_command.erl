@@ -356,8 +356,8 @@ b_channel_status(Call) -> b_channel_status(kapps_call:call_id(Call)).
                                    {'error', 'not_found'}.
 channel_status_filter([]) -> {'error', 'not_found'};
 channel_status_filter([JObj|JObjs]) ->
-    case kapi_call:channel_status_resp_v(JObj) andalso
-        kz_json:get_value(<<"Status">>, JObj) =:= <<"active">>
+    case kapi_call:channel_status_resp_v(JObj)
+        andalso kz_json:get_value(<<"Status">>, JObj) =:= <<"active">>
     of
         'true' -> {'ok', JObj};
         'false' -> channel_status_filter(JObjs)
@@ -689,7 +689,9 @@ send_dtmf_command(DTMFs, Duration) ->
 set('undefined', CallVars, Call) -> set(kz_json:new(), CallVars, Call);
 set(ChannelVars, 'undefined', Call) -> set(ChannelVars, kz_json:new(), Call);
 set(ChannelVars, CallVars, Call) ->
-    case kz_json:is_empty(ChannelVars) andalso kz_json:is_empty(CallVars) of
+    case kz_json:is_empty(ChannelVars)
+        andalso kz_json:is_empty(CallVars)
+    of
         'true' -> 'ok';
         'false' ->
             Command = [{<<"Application-Name">>, <<"set">>}
@@ -1148,7 +1150,8 @@ hold_command(MOH, Call) ->
 
 b_hold(Call) -> b_hold('infinity', 'undefined', Call).
 
-b_hold(Timeout, Call) when is_integer(Timeout) orelse Timeout =:= 'infinity' ->
+b_hold(Timeout, Call) when is_integer(Timeout)
+                           orelse Timeout =:= 'infinity' ->
     b_hold(Timeout, 'undefined', Call);
 b_hold(MOH, Call) -> b_hold('infinity', MOH, Call).
 
@@ -2161,7 +2164,8 @@ do_collect_digits(#wcc_collect_digits{max_digits=MaxDigits
                     do_collect_digits(Collect#wcc_collect_digits{after_timeout=kz_util:decr_timeout(After, Start)});
                 {'ok', Digit} ->
                     %% DTMF received, collect and start interdigit timeout
-                    Digits =:= <<>> andalso flush(Call),
+                    Digits =:= <<>>
+                        andalso flush(Call),
 
                     case lists:member(Digit, Terminators) of
                         'true' ->

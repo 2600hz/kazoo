@@ -273,7 +273,9 @@ merge_attributes([<<"do_not_disturb">> = Key|Keys], Account, Endpoint, Owner) ->
     AccountAttr = kz_json:is_true([Key, <<"enabled">>], Account, 'false'),
     EndpointAttr = kz_json:is_true([Key, <<"enabled">>], Endpoint, 'false'),
     OwnerAttr = kz_json:is_true([Key, <<"enabled">>], Owner, 'false'),
-    Dnd = AccountAttr orelse OwnerAttr orelse EndpointAttr,
+    Dnd = AccountAttr
+        orelse OwnerAttr
+        orelse EndpointAttr,
     merge_attributes(Keys, Account, kz_json:set_value([Key, <<"enabled">>], Dnd, Endpoint), Owner);
 merge_attributes([<<"language">>|_]=Keys, Account, Endpoint, Owner) ->
     merge_value(Keys, Account, Endpoint, Owner);
@@ -817,8 +819,8 @@ is_call_forward_enabled(Endpoint, Properties) ->
     kz_json:is_true(<<"enabled">>, CallForwarding)
         andalso not kz_util:is_empty(Number)
         andalso (kz_json:is_false(<<"direct_calls_only">>, CallForwarding, 'true')
-                 orelse
-                   (not lists:member(Source, ?NON_DIRECT_MODULES))).
+                 orelse (not lists:member(Source, ?NON_DIRECT_MODULES))
+                ).
 
 -spec maybe_create_endpoint(ne_binary(), kz_json:object(), kz_json:object(), kapps_call:call()) ->
                                    kz_json:object() | {'error', ne_binary()}.

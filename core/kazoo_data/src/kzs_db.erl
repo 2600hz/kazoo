@@ -38,11 +38,11 @@ db_create(Server, DbName) ->
 db_create(#{}=Map, DbName, Options) ->
     %%TODO storage policy
     Others = maps:get('others', Map, []),
-    do_db_create(Map, DbName, Options) andalso
-        lists:all(fun({_Tag, M1}) ->
-                          do_db_create(#{server => M1}, DbName, Options)
-                  end, Others) andalso
-        kzs_publish:maybe_publish_db(DbName, 'created') =:= 'ok'.
+    do_db_create(Map, DbName, Options)
+        andalso lists:all(fun({_Tag, M1}) ->
+                                  do_db_create(#{server => M1}, DbName, Options)
+                          end, Others)
+        andalso kzs_publish:maybe_publish_db(DbName, 'created') =:= 'ok'.
 
 -spec do_db_create(map(), ne_binary(), db_create_options()) -> boolean().
 do_db_create(#{server := {App, Conn}}, DbName, Options) ->
@@ -54,11 +54,11 @@ do_db_create(#{server := {App, Conn}}, DbName, Options) ->
 -spec db_delete(map(), ne_binary()) -> boolean().
 db_delete(#{}=Map, DbName) ->
     Others = maps:get('others', Map, []),
-    do_db_delete(Map, DbName) andalso
-        lists:all(fun({_Tag, M1}) ->
-                          do_db_delete(#{server => M1}, DbName)
-                  end, Others) andalso
-        kzs_publish:maybe_publish_db(DbName, 'deleted') =:= 'ok'.
+    do_db_delete(Map, DbName)
+        andalso lists:all(fun({_Tag, M1}) ->
+                                  do_db_delete(#{server => M1}, DbName)
+                          end, Others)
+        andalso kzs_publish:maybe_publish_db(DbName, 'deleted') =:= 'ok'.
 
 -spec do_db_delete(map(), ne_binary()) -> boolean().
 do_db_delete(#{server := {App, Conn}}, DbName) ->
@@ -73,10 +73,10 @@ db_replicate(#{server := {App, Conn}}, Prop) ->
 -spec db_view_cleanup(map(), ne_binary()) -> boolean().
 db_view_cleanup(#{}=Map, DbName) ->
     Others = maps:get('others', Map, []),
-    do_db_view_cleanup(Map, DbName) andalso
-        lists:all(fun({_Tag, M1}) ->
-                          do_db_view_cleanup(#{server => M1}, DbName)
-                  end, Others).
+    do_db_view_cleanup(Map, DbName)
+        andalso lists:all(fun({_Tag, M1}) ->
+                                  do_db_view_cleanup(#{server => M1}, DbName)
+                          end, Others).
 
 -spec do_db_view_cleanup(map(), ne_binary()) -> boolean().
 do_db_view_cleanup(#{server := {App, Conn}}, DbName) ->
@@ -104,8 +104,8 @@ db_exists_all(Map, DbName) ->
     case kz_cache:fetch_local(?KAZOO_DATA_PLAN_CACHE, {'database', DbName}) of
         {'ok', Exists} -> Exists;
         _ ->
-            Exists = db_exists(Map, DbName) andalso
-                db_exists_others(DbName, maps:get('others', Map, [])),
+            Exists = db_exists(Map, DbName)
+                andalso db_exists_others(DbName, maps:get('others', Map, [])),
             Props = [{'origin', {'db', DbName}}],
             kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, {'database', DbName}, Exists, Props),
             Exists
@@ -139,10 +139,10 @@ db_list_all_fold({_Tag, Server}, {Options, DBs}) ->
 -spec db_view_update(map(), ne_binary(), kz_proplist(), boolean()) -> boolean().
 db_view_update(#{}=Map, DbName, Views, Remove) ->
     Others = maps:get('others', Map, []),
-    do_db_view_update(Map, DbName, Views, Remove) andalso
-        lists:all(fun({_Tag, M1}) ->
-                          do_db_view_update(#{server => M1}, DbName, Views, Remove)
-                  end, Others).
+    do_db_view_update(Map, DbName, Views, Remove)
+        andalso lists:all(fun({_Tag, M1}) ->
+                                  do_db_view_update(#{server => M1}, DbName, Views, Remove)
+                          end, Others).
 
 -spec do_db_view_update(map(), ne_binary(), kz_proplist(), boolean()) -> boolean().
 do_db_view_update(#{server := {App, Conn}}=Server, Db, Views, Remove) ->
@@ -152,7 +152,7 @@ do_db_view_update(#{server := {App, Conn}}=Server, Db, Views, Remove) ->
             case App:db_exists(Conn, Db) of
                 'true' -> update_views([], Db, Views, Remove, Server);
                 'false' -> lager:error("error fetching current views for db ~s", [Db]),
-                           true
+                           'true'
             end
     end.
 

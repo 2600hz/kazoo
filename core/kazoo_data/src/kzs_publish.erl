@@ -122,23 +122,25 @@ publish(Action, Db, Doc) ->
     IsSoftDeleted = kz_doc:is_soft_deleted(Doc),
     IsHardDeleted = kz_doc:is_deleted(Doc),
 
-    EventName = doc_change_event_name(Action, IsSoftDeleted orelse IsHardDeleted),
+    EventName = doc_change_event_name(Action, IsSoftDeleted
+                                      orelse IsHardDeleted
+                                     ),
 
     Props = props:filter_undefined(
               [{<<"ID">>, Id}
-               ,{<<"Origin-Cache">>, ?CACHE_NAME}
-               ,{<<"Type">>, Type}
-               ,{<<"Database">>, Db}
-               ,{<<"Rev">>, kz_doc:revision(Doc)}
-               ,{<<"Account-ID">>, doc_acct_id(Db, Doc)}
-               ,{<<"Date-Modified">>, kz_doc:created(Doc)}
-               ,{<<"Date-Created">>, kz_doc:modified(Doc)}
-               ,{<<"Is-Soft-Deleted">>, IsSoftDeleted}
-                   | kz_api:default_headers(<<"configuration">>
-                                            ,EventName
-                                            ,?APP_NAME
-                                            ,?APP_VERSION
-                                           )
+              ,{<<"Origin-Cache">>, ?CACHE_NAME}
+              ,{<<"Type">>, Type}
+              ,{<<"Database">>, Db}
+              ,{<<"Rev">>, kz_doc:revision(Doc)}
+              ,{<<"Account-ID">>, doc_acct_id(Db, Doc)}
+              ,{<<"Date-Modified">>, kz_doc:created(Doc)}
+              ,{<<"Date-Created">>, kz_doc:modified(Doc)}
+              ,{<<"Is-Soft-Deleted">>, IsSoftDeleted}
+               | kz_api:default_headers(<<"configuration">>
+                                       ,EventName
+                                       ,?APP_NAME
+                                       ,?APP_VERSION
+                                       )
               ]),
     Fun = fun(P) -> kapi_conf:publish_doc_update(Action, Db, Type, Id, P) end,
     kz_amqp_worker:cast(Props, Fun).

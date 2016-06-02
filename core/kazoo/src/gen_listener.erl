@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz
+%%% @copyright (C) 2011-2016, 2600Hz
 %%% @doc
 %%%
 %%% Behaviour for setting up an AMQP listener.
@@ -275,7 +275,8 @@ reply(From, Msg) -> gen_server:reply(From, Msg).
 enter_loop(Module, Options, ModuleState) ->
     enter_loop(Module, Options, ModuleState, self(), 'infinity').
 enter_loop(Module, Options, ModuleState, {Scope, _Name}=ServerName)
-  when Scope =:= 'local' orelse Scope =:= 'global' ->
+  when Scope =:= 'local'
+       orelse Scope =:= 'global' ->
     enter_loop(Module, Options, ModuleState, ServerName, 'infinity');
 enter_loop(Module, Option, ModuleState, Timeout) ->
     enter_loop(Module, Option, ModuleState, self(), Timeout).
@@ -302,24 +303,32 @@ rm_responder(Srv, Responder, Keys) ->
 
 -spec add_binding(server_ref(), binding() | ne_binary() | atom()) -> 'ok'.
 add_binding(Srv, {Binding, Props}) when is_list(Props)
-                                        ,(is_atom(Binding) orelse is_binary(Binding)) ->
+                                        ,(is_atom(Binding)
+                                          orelse is_binary(Binding)
+                                         ) ->
     gen_server:cast(Srv, {'add_binding', kz_util:to_binary(Binding), Props});
-add_binding(Srv, Binding) when is_binary(Binding) orelse is_atom(Binding) ->
+add_binding(Srv, Binding) when is_binary(Binding)
+                               orelse is_atom(Binding) ->
     gen_server:cast(Srv, {'add_binding', kz_util:to_binary(Binding), []}).
 
 -spec add_binding(server_ref(), ne_binary() | atom(), kz_proplist()) -> 'ok'.
-add_binding(Srv, Binding, Props) when is_binary(Binding) orelse is_atom(Binding) ->
+add_binding(Srv, Binding, Props) when is_binary(Binding)
+                                      orelse is_atom(Binding) ->
     gen_server:cast(Srv, {'add_binding', kz_util:to_binary(Binding), Props}).
 
 -spec b_add_binding(server_ref(), binding() | ne_binary() | atom()) -> 'ok'.
 b_add_binding(Srv, {Binding, Props}) when is_list(Props)
-                                        ,(is_atom(Binding) orelse is_binary(Binding)) ->
+                                        ,(is_atom(Binding)
+                                          orelse is_binary(Binding)
+                                         ) ->
     gen_server:call(Srv, {'add_binding', kz_util:to_binary(Binding), Props});
-b_add_binding(Srv, Binding) when is_binary(Binding) orelse is_atom(Binding) ->
+b_add_binding(Srv, Binding) when is_binary(Binding)
+                                 orelse is_atom(Binding) ->
     gen_server:call(Srv, {'add_binding', kz_util:to_binary(Binding), []}).
 
 -spec b_add_binding(server_ref(), ne_binary() | atom(), kz_proplist()) -> 'ok'.
-b_add_binding(Srv, Binding, Props) when is_binary(Binding) orelse is_atom(Binding) ->
+b_add_binding(Srv, Binding, Props) when is_binary(Binding)
+                                        orelse is_atom(Binding) ->
     gen_server:call(Srv, {'add_binding', kz_util:to_binary(Binding), Props}).
 
 %% It is expected that responders have been set up already, prior to binding the new queue
@@ -902,7 +911,8 @@ stop_timer(Ref) when is_reference(Ref) -> erlang:cancel_timer(Ref).
 start_timer(0) ->
     self() ! ?CALLBACK_TIMEOUT_MSG,
     'undefined';
-start_timer(Timeout) when is_integer(Timeout) andalso Timeout >= 0 ->
+start_timer(Timeout) when is_integer(Timeout)
+                          andalso Timeout >= 0 ->
     erlang:send_after(Timeout, self(), ?CALLBACK_TIMEOUT_MSG);
 start_timer(_) -> 'undefined'.
 

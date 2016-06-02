@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2015, 2600Hz INC
+%%% @copyright (C) 2010-2016, 2600Hz INC
 %%% @doc
 %%% Various utilities - a veritable cornicopia
 %%% @end
@@ -117,7 +117,8 @@ is_ipv6(Address) when is_list(Address) ->
 
 -spec is_ip(text()) -> boolean().
 is_ip(Address) ->
-    is_ipv4(Address) orelse is_ipv6(Address).
+    is_ipv4(Address)
+        orelse is_ipv6(Address).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -135,7 +136,7 @@ to_cidr(IP, Prefix) when not is_binary(Prefix) ->
     to_cidr(IP, kz_util:to_binary(Prefix));
 to_cidr(IP, Prefix) ->
     case ?MODULE:is_ipv4(IP)
-        andalso  kz_util:to_integer(Prefix) =< 32
+        andalso kz_util:to_integer(Prefix) =< 32
     of
         'true' ->
             lager:debug("adjusting ip from ~s to ~s/~s~n", [IP, IP, Prefix]),

@@ -208,7 +208,8 @@ matches([<<"#">>, B | Bs], [B | Rs]) ->
 
     case lists:member(B, Rs) of
         'true' ->
-            matches(Bs, Rs) orelse matches([<<"#">> | Bs], Rs);
+            matches(Bs, Rs)
+                orelse matches([<<"#">> | Bs], Rs);
         'false' ->
             matches(Bs, Rs)
     end;

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -189,8 +189,8 @@ whapp_zone_count(Whapp) ->
 
 -spec determine_whapp_zones_fold({atom(), kapps_info()}, fold_zones_acc()) -> fold_zones_acc().
 determine_whapp_zones_fold({Zone, Whapps}, {Whapp, Zones, C}=Acc) ->
-    case props:is_defined(Whapp, Whapps) andalso
-        not lists:member(Zone, Zones)
+    case props:is_defined(Whapp, Whapps)
+        andalso not lists:member(Zone, Zones)
     of
         'true' -> {Whapp, [Zone | Zones], C+ 1};
         'false' -> Acc

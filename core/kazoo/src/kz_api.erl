@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @Copyright (C) 2010-2015, 2600Hz
+%%% @Copyright (C) 2010-2016, 2600Hz
 %%% @doc
 %%% Kazoo API Helpers
 %%%
@@ -224,8 +224,8 @@ do_empty_value_removal([{K,V}=KV|T], Recursive, Acc) ->
     case is_empty(V) of
         'true' -> do_empty_value_removal(T, Recursive, Acc);
         'false' ->
-            case (kz_json:is_json_object(V) orelse
-                  kz_util:is_proplist(V)
+            case (kz_json:is_json_object(V)
+                  orelse kz_util:is_proplist(V)
                  )
                 andalso Recursive
             of

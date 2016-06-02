@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%% Handles storage proxy requests for media binaries
 %%% @end
@@ -60,10 +60,10 @@ maybe_basic_authentication(Username, Password, PathTokens, Req1) ->
     AuthUsername = kapps_config:get_binary(?CONFIG_CAT, <<"proxy_username">>, <<>>),
     AuthPassword = kapps_config:get_binary(?CONFIG_CAT, <<"proxy_password">>, <<>>),
     case
-        not kz_util:is_empty(AuthUsername) andalso
-        not kz_util:is_empty(AuthPassword) andalso
-        Username == AuthUsername andalso
-        Password == AuthPassword
+        not kz_util:is_empty(AuthUsername)
+        andalso not kz_util:is_empty(AuthPassword)
+        andalso Username == AuthUsername
+        andalso Password == AuthPassword
     of
         'true' ->  {'ok', Req1, PathTokens};
         'false' ->

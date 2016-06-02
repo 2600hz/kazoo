@@ -35,7 +35,8 @@ main(CommandLineArgs, Loops) ->
             main(CommandLineArgs, Loops + 1);
         {'ok', _} ->
             {'ok', Options, Args} = parse_args(CommandLineArgs),
-            lists:member('help', Options) andalso print_help(),
+            lists:member('help', Options)
+                andalso print_help(),
             Verbose = proplists:get_value('verbose', Options) =/= 'undefined',
             Target = get_target(Options, Verbose),
             Module =
@@ -49,7 +50,8 @@ main(CommandLineArgs, Loops) ->
                     F -> list_to_atom(F)
                 end,
             Timeout = case proplists:get_value('timeout', Options) of 'undefined' -> 'infinity'; T -> T * 1000 end,
-            Verbose andalso stdout("Running ~s:~s(~s)", [Module, Function, string:join(Args, ", ")]),
+            Verbose
+                andalso stdout("Running ~s:~s(~s)", [Module, Function, string:join(Args, ", ")]),
             case rpc:call(Target, Module, Function, [list_to_binary(Arg) || Arg <- Args], Timeout) of
                 {'badrpc', {'EXIT',{'undef', _}}} ->
                     print_invalid_cli_args();
@@ -81,7 +83,8 @@ get_target(Options, Verbose) ->
     Target = list_to_atom(Node ++ "@" ++ Host),
      case net_adm:ping(Target) of
         'pong' ->
-            Verbose andalso stdout("Connected to service ~s with cookie ~s", [Target, Cookie]),
+            Verbose
+                 andalso stdout("Connected to service ~s with cookie ~s", [Target, Cookie]),
             Target;
         'pang' ->
             stderr("Connection to service failed!", []),

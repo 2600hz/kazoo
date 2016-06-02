@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2015, 2600Hz
+%%% @copyright (C) 2013-2016, 2600Hz
 %%% @doc
 %%% Implementation of a token bucket as gen_server
 %%%   https://en.wikipedia.org/wiki/Token_bucket#The_token_bucket_algorithm
@@ -44,7 +44,9 @@
 
 -ifdef(TEST).
 -define(FILL_TIME, <<"second">>).
--define(FILL_TIME(App), is_binary(App) andalso ?FILL_TIME).
+-define(FILL_TIME(App), is_binary(App)
+        andalso ?FILL_TIME
+       ).
 -else.
 -define(FILL_TIME, kapps_config:get_binary(?APP_NAME, <<"tokens_fill_time">>, <<"second">>)).
 -define(FILL_TIME(App), kapps_config:get(?APP_NAME, [App, <<"tokens_fill_time">>], ?FILL_TIME)).
@@ -76,15 +78,16 @@
 start_link(Max, FillRate) -> start_link(Max, FillRate, 'true').
 start_link(Max, FillRate, FillAsBlock) ->
     start_link(Max, FillRate, FillAsBlock, default_fill_time()).
-start_link(Max, FillRate, FillAsBlock, FillTime) when is_integer(FillRate), FillRate > 0,
-                                                    is_integer(Max), Max > 0,
-                                                    is_boolean(FillAsBlock),
-                                                    (FillTime =:= 'second'
-                                                     orelse FillTime =:= 'minute'
-                                                     orelse FillTime =:= 'hour'
-                                                     orelse FillTime =:= 'day'
-                                                    )
-                                                    ->
+start_link(Max, FillRate, FillAsBlock, FillTime)
+  when is_integer(FillRate), FillRate > 0,
+       is_integer(Max), Max > 0,
+       is_boolean(FillAsBlock),
+       (FillTime =:= 'second'
+        orelse FillTime =:= 'minute'
+        orelse FillTime =:= 'hour'
+        orelse FillTime =:= 'day'
+       )
+       ->
     gen_server:start_link(?SERVER, [Max, FillRate, FillAsBlock, FillTime], []).
 
 start_link(Name, Max, FillRate, FillAsBlock, FillTime)
@@ -108,19 +111,24 @@ stop(Srv) ->
     gen_server:cast(Srv, 'stop').
 
 -spec consume(pid(), non_neg_integer()) -> boolean().
-consume(_Srv, Tokens) when is_integer(Tokens) andalso Tokens =< 0 ->
+consume(_Srv, Tokens) when is_integer(Tokens)
+                           andalso Tokens =< 0 ->
     'true';
-consume(Srv, Tokens) when is_integer(Tokens) andalso Tokens > 0 ->
+consume(Srv, Tokens) when is_integer(Tokens)
+                          andalso Tokens > 0 ->
     gen_server:call(Srv, {'consume', Tokens}).
 
 -spec consume_until(pid(), non_neg_integer()) -> boolean().
-consume_until(_Srv, Tokens) when is_integer(Tokens) andalso Tokens =< 0 ->
+consume_until(_Srv, Tokens) when is_integer(Tokens)
+                                 andalso Tokens =< 0 ->
     'true';
-consume_until(Srv, Tokens) when is_integer(Tokens) andalso Tokens > 0 ->
+consume_until(Srv, Tokens) when is_integer(Tokens)
+                                andalso Tokens > 0 ->
     gen_server:call(Srv, {'consume_until', Tokens}).
 
 -spec credit(pid(), pos_integer()) -> 'ok'.
-credit(Srv, Tokens) when is_integer(Tokens) andalso Tokens > 0 ->
+credit(Srv, Tokens) when is_integer(Tokens)
+                         andalso Tokens > 0 ->
     gen_server:cast(Srv, {'credit', Tokens}).
 
 -spec tokens(pid()) -> non_neg_integer().

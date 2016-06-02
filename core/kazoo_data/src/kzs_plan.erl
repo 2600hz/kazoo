@@ -11,7 +11,9 @@
 
 -export([plan/0, plan/1, plan/2, plan/3, flush/0]).
 
--define(IS_JSON_GUARD(Obj), is_tuple(Obj) andalso is_list(element(1, Obj))).
+-define(IS_JSON_GUARD(Obj), is_tuple(Obj)
+        andalso is_list(element(1, Obj))
+       ).
 
 -define(NEW_CONNECTION_TIMEOUT, ?MILLISECONDS_IN_SECOND * 5).
 

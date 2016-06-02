@@ -200,7 +200,8 @@ do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
     try
         {'ok', Bin} = file:read_file(H),
         JObj = kz_json:decode(Bin),
-        Sleep andalso timer:sleep(250),
+        Sleep
+            andalso timer:sleep(250),
         _ = ensure_saved(DbName, JObj),
         do_revise_docs_from_folder(DbName, Sleep, T)
     catch
@@ -261,7 +262,8 @@ db_exists(DbName) ->
 db_exists(DbName, 'undefined') ->
     db_exists(DbName);
 db_exists(DbName, Type)
-  when ?VALID_DBNAME andalso is_binary(Type) ->
+  when ?VALID_DBNAME
+       andalso is_binary(Type) ->
     case add_doc_type_from_view(Type, []) of
         [] -> db_exists(DbName, [{'doc_type', Type}]);
         Options -> db_exists(DbName, Options)
@@ -743,7 +745,8 @@ maybe_revert_publish('false') ->
 save_docs(DbName, Docs) when is_list(Docs) ->
     save_docs(DbName, Docs, []).
 
-save_docs(DbName, [Doc|_]=Docs, Options) when is_list(Docs) andalso ?VALID_DBNAME ->
+save_docs(DbName, [Doc|_]=Docs, Options) when is_list(Docs)
+                                              andalso ?VALID_DBNAME ->
     OldSetting = maybe_toggle_publish(Options),
     Result = kzs_doc:save_docs(kzs_plan:plan(DbName, Doc), DbName, Docs, Options),
     maybe_revert_publish(OldSetting),
@@ -824,7 +827,8 @@ del_docs(DbName, Docs) ->
 -spec del_docs(text(), kz_json:objects() | ne_binaries(), kz_proplist()) ->
                       {'ok', kz_json:objects()} |
                       data_error().
-del_docs(DbName, Docs, Options) when is_list(Docs) andalso ?VALID_DBNAME ->
+del_docs(DbName, Docs, Options) when is_list(Docs)
+                                     andalso ?VALID_DBNAME ->
     kzs_doc:del_docs(kzs_plan:plan(DbName), DbName, Docs, Options);
 del_docs(DbName, Docs, Options) when is_list(Docs) ->
     case maybe_convert_dbname(DbName) of

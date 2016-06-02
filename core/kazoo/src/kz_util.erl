@@ -387,9 +387,16 @@ normalize_account_name('undefined') -> 'undefined';
 normalize_account_name(AccountName) ->
     << <<Char>>
        || <<Char>> <= to_lower_binary(AccountName),
-          (Char >= $a andalso Char =< $z)
-              or (Char >= $0 andalso Char =< $9)
+          is_alphanumeric(Char)
     >>.
+
+is_alphanumeric(Char) ->
+    (Char >= $a
+     andalso Char =< $z
+    )
+        orelse (Char >= $0
+                andalso Char =< $9
+               ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -410,7 +417,9 @@ is_in_account_hierarchy(_, 'undefined', _) -> 'false';
 is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
     CheckId = format_account_id(CheckFor),
     AccountId = format_account_id(InAccount),
-    case (IncludeSelf andalso AccountId =:= CheckId)
+    case (IncludeSelf
+          andalso AccountId =:= CheckId
+         )
         orelse kz_account:fetch(AccountId)
     of
         'true' ->
@@ -849,7 +858,8 @@ hex_char_to_binary(B) ->
 -spec rand_hex_binary(pos_integer() | ne_binary()) -> ne_binary().
 rand_hex_binary(Size) when not is_integer(Size) ->
     rand_hex_binary(?MODULE:to_integer(Size));
-rand_hex_binary(Size) when is_integer(Size) andalso Size > 0 ->
+rand_hex_binary(Size) when is_integer(Size)
+                           andalso Size > 0 ->
     to_hex_binary(rand_hex(Size)).
 
 -spec rand_hex(pos_integer()) -> ne_binary().
@@ -928,7 +938,6 @@ uri(BaseUrl, Tokens) ->
 safe_urlencode(V) when is_binary(V)
                        orelse is_number(V) ->
     kz_http_util:urlencode(kz_util:to_binary(V)).
-
 
 -spec to_integer(string() | binary() | integer() | float()) -> integer().
 -spec to_integer(string() | binary() | integer() | float(), 'strict' | 'notstrict') -> integer().

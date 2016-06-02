@@ -72,11 +72,15 @@ urlencode(<<C, R/binary>>, Acc) ->
         $- -> urlencode(R, <<Acc/binary, C>>);
         $~ -> urlencode(R, <<Acc/binary, C>>);
         $_ -> urlencode(R, <<Acc/binary, C>>);
-
-        C when C >= $0 andalso C=< $9 -> urlencode(R, <<Acc/binary, C>>);
-        C when C >= $a andalso C=< $z -> urlencode(R, <<Acc/binary, C>>);
-        C when C >= $A andalso C=< $Z -> urlencode(R, <<Acc/binary, C>>);
-
+        C when C >= $0
+               andalso C=< $9 ->
+            urlencode(R, <<Acc/binary, C>>);
+        C when C >= $a
+               andalso C=< $z ->
+            urlencode(R, <<Acc/binary, C>>);
+        C when C >= $A
+               andalso C=< $Z ->
+            urlencode(R, <<Acc/binary, C>>);
         _NotSafe ->
             SafeChar = encode_char(C),
             urlencode(R, <<Acc/binary, "%", SafeChar/binary>>)
@@ -176,15 +180,18 @@ urlsplit_s(<<>>, _Acc) ->
 urlsplit_s(<<C, R/binary>>, Acc) ->
     case C of
         $: -> {Acc, R};
-
         $+ -> urlsplit_s(R, <<Acc/binary, C>>);
         $- -> urlsplit_s(R, <<Acc/binary, C>>);
         $. -> urlsplit_s(R, <<Acc/binary, C>>);
-
-        C when C >= $a andalso C =< $z -> urlsplit_s(R, <<Acc/binary, C>>);
-        C when C >= $A andalso C =< $Z -> urlsplit_s(R, <<Acc/binary, C>>);
-        C when C >= $0 andalso C =< $9 -> urlsplit_s(R, <<Acc/binary, C>>);
-
+        C when C >= $a
+               andalso C =< $z ->
+            urlsplit_s(R, <<Acc/binary, C>>);
+        C when C >= $A
+               andalso C =< $Z ->
+            urlsplit_s(R, <<Acc/binary, C>>);
+        C when C >= $0
+               andalso C =< $9 ->
+            urlsplit_s(R, <<Acc/binary, C>>);
         _NoScheme -> 'no_scheme'
     end.
 

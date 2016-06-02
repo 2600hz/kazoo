@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2015, 2600Hz INC
+%%% @copyright (C) 2014-2016, 2600Hz INC
 %%% @doc
 %%% API interface for buckets
 %%% ETS writer for table
@@ -300,7 +300,9 @@ handle_call({'start', App, Name, MaxTokens, FillRate, FillTime}, _From, #state{t
     lager:debug("maybe starting token bucket for ~s, ~s (~b at ~b/~s)"
                 ,[App, Name, MaxTokens, FillRate, FillTime]
                ),
-    case not exists(App, Name) andalso kz_buckets_sup:start_bucket(MaxTokens, FillRate, FillTime) of
+    case not exists(App, Name)
+        andalso kz_buckets_sup:start_bucket(MaxTokens, FillRate, FillTime)
+    of
         {'ok', Pid} when is_pid(Pid) ->
             case ets:insert_new(Tbl, new_bucket(Pid, {App, Name})) of
                 'true' -> lager:debug("new bucket for ~s, ~s: ~p", [App, Name, Pid]);

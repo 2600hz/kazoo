@@ -1,5 +1,5 @@
 %-------------------------------------------------------------------
-%%% @copyright (C) 2015, 2600Hz INC
+%%% @copyright (C) 2015-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -248,7 +248,9 @@ ensure_number_is_not_porting(?TEST_AVAILABLE_NUM = Num, _Options) ->
 -else.
 ensure_number_is_not_porting(Num, Options) ->
     JustPorted = knm_number_options:ported_in(Options),
-    case JustPorted orelse knm_port_request:get(Num) of
+    case JustPorted
+        orelse knm_port_request:get(Num)
+    of
         'true' -> 'true';
         {'ok', _Doc} -> knm_errors:number_is_porting(Num);
         {'error', 'not_found'} -> 'true'
@@ -385,8 +387,8 @@ save(Number) ->
 reconcile(DID, Options) ->
     knm_number_options:assign_to(Options) == 'undefined'
         andalso knm_errors:assign_failure(Options, 'field_undefined'),
-    NewOptions = [ {'auth_by', ?KNM_DEFAULT_AUTH_BY}
-                   | Options
+    NewOptions = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
+                  | Options
                  ],
     case ?MODULE:get(DID) of
         {'ok', Number} ->

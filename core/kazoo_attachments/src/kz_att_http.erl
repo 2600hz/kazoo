@@ -1,13 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz
+%%% @copyright (C) 2011-2016, 2600Hz
 %%% @doc
 %%% Simple Url Storage for attachments
 %%% @end
 %%% @contributors
 %%%   Luis Azedo
 %%%-----------------------------------------------------------------------------
-
-
 -module(kz_att_http).
 
 -include("kz_att.hrl").
@@ -18,7 +16,6 @@
 
 -export([put_attachment/6]).
 -export([fetch_attachment/4]).
-
 
 put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
     #{url := BaseUrl, verb := Verb} = Params,
@@ -33,7 +30,9 @@ put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
 
     case kz_http:req(kz_util:to_atom(Verb, 'true'), Url, Headers, Contents) of
         {'ok', Code, _Headers, _Body} when
-              is_integer(Code) andalso Code >= 200 andalso Code =< 299 ->
+              is_integer(Code)
+              andalso Code >= 200
+              andalso Code =< 299 ->
             {'ok', [{'attachment', [{<<"url">>, Url}]}
                     | add_document_url_field(DocUrlField, Url)
                    ]};
@@ -55,10 +54,14 @@ fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->
     end.
 
 format_url(Fields, JObj, Args) ->
-    kz_util:join_binary(
-      lists:reverse(
-        lists:foldl(fun(F, Acc) -> format_url_field(JObj, Args, F, Acc) end, [], Fields)
-        ), <<"/">>).
+    FormattedFields = lists:foldl(fun(F, Acc) ->
+                                          format_url_field(JObj, Args, F, Acc)
+                                  end
+                                 ,[]
+                                 ,Fields
+                                 ),
+    Reversed = lists:reverse(FormattedFields),
+    kz_util:join_binary(Reversed, <<"/">>).
 
 format_url_field(_JObj, Args, <<":", Arg/binary>>, Fields) ->
     case props:get_value(Arg, Args) of
@@ -71,7 +74,5 @@ format_url_field(JObj, _Args, Field, Fields) ->
         V -> [V | Fields]
     end.
 
-
 default_format() ->
-    [<<"pvt_account_id">>, <<"owner_id">>, <<":id">>, <<":attachment">>
-    ].
+    [<<"pvt_account_id">>, <<"owner_id">>, <<":id">>, <<":attachment">>].
