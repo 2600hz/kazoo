@@ -17,8 +17,8 @@
 -export([first_call/1]).
 -export([first_registration/1]).
 -export([transaction/2, transaction/3]).
--export([system_alert/2]).
--export([detailed_alert/3]).
+-export([system_alert/2, system_alert/4, system_alert/4]).
+-export([detailed_alert/3, detailed_alert/4, detailed_alert/5]).
 
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
@@ -138,27 +138,39 @@ transaction(Account, Transaction, ServicePlan) ->
 -spec system_alert(atom() | string() | binary(), [any()]) -> 'ok'.
 system_alert(Format, Args) ->
     Msg = io_lib:format(Format, Args),
+    system_alert(Msg, Msg, []).
+
+-spec system_alert(ne_binary(), ne_binary(), kz_proplist()) -> 'ok'.
+system_alert(Subject, Msg, Headers) ->
     Notify= [{<<"Message">>, kz_util:to_binary(Msg)}
-             ,{<<"Subject">>, <<"KAZOO: ", (kz_util:to_binary(Msg))/binary>>}
-             | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
+             ,{<<"Subject">>, <<"KAZOO: ", Subject/binary>>}
+             | Headers ++ kz_api:default_headers(?APP_VERSION, ?APP_NAME)
             ],
     kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1).
+
+-spec system_alert(ne_binary(), string() | ne_binary(), [any()], kz_proplist()) -> 'ok'.
+system_alert(Subject, Format, Args, Headers) ->
+    Msg = io_lib:format(Format, Args),
+    system_alert(Subject, Msg, Headers).
 
 -spec detailed_alert(string(), list(), kz_proplist()) -> 'ok'.
 detailed_alert(Format, Args, Props) ->
     Msg = io_lib:format(Format, Args),
+    detailed_alert(Msg, Msg, [{<<"Format">>, kz_util:to_binary(Format)} | Props], []).
+
+-spec detailed_alert(ne_binary(), ne_binary(), kz_proplist(), kz_proplist()) -> 'ok'.
+detailed_alert(Subject, Msg, Props, Headers) ->
     Notify = [{<<"Message">>, kz_util:to_binary(Msg)}
-              ,{<<"Subject">>, <<"KAZOO: ", (kz_util:to_binary(Msg))/binary>>}
-              ,{<<"Details">>,
-                kz_json:from_list(
-                  %% Include Format to help parse JSON data sent
-                  [{<<"Format">>, kz_util:to_binary(Format)}
-                   | Props
-                  ])
-               }
-              | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
+              ,{<<"Subject">>, <<"KAZOO: ", Subject/binary>>}
+              ,{<<"Details">>, kz_json:from_list(Props)}
+              | Headers ++ kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1).
+
+-spec detailed_alert(ne_binary(), string() | ne_binary(), [any()], kz_proplist(), kz_proplist()) -> 'ok'.
+detailed_alert(Subject, Format, Args, Props, Headers) ->
+    Msg = io_lib:format(Format, Args),
+    detailed_alert(Subject, Msg, [{<<"Format">>, kz_util:to_binary(Format)} | Props], Headers).
 
 -spec generic_alert(atom() | string() | binary(), atom() | string() | binary()) -> 'ok'.
 generic_alert(Subject, Msg) ->
