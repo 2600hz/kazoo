@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -251,11 +251,11 @@ sort_split_uniq(RefParser, Chunks) ->
 -spec first_pass([chunk()], [chunk()]) -> {[chunk()], [chunk()]}.
 first_pass(InOrder, ToOrder) -> first_pass([], InOrder, ToOrder, []).
 first_pass(Before, [Ordered|InOrder], [Chunk|ToOrder], UnMergeable) ->
-    case {    label(Ordered) =:=    label(Chunk)
-         ,   dst_ip(Ordered) =:=   src_ip(Chunk) andalso
-           dst_port(Ordered) =:= src_port(Chunk)
-         ,   src_ip(Ordered) =:=   dst_ip(Chunk) andalso
-           src_port(Ordered) =:= dst_port(Chunk)
+    case {  label(Ordered) =:=    label(Chunk)
+         , dst_ip(Ordered) =:=   src_ip(Chunk)
+            andalso dst_port(Ordered) =:= src_port(Chunk)
+         , src_ip(Ordered) =:=   dst_ip(Chunk)
+            andalso src_port(Ordered) =:= dst_port(Chunk)
          }
     of
         {'true', 'true', 'true'} ->

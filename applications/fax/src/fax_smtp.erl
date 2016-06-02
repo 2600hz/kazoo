@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2015, 2600Hz INC
+%%% @copyright (C) 2014-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -812,7 +812,9 @@ maybe_process_image(CT, Body, Size, State) ->
     [W, H] = re:split(os:cmd(Cmd), "x"),
     Width = kz_util:to_integer(W),
     Height = kz_util:to_integer(H),
-    case MinX =< Width andalso MinY =< Height of
+    case MinX =< Width
+        andalso MinY =< Height
+    of
         'true' ->
             {'ok', NewState};
         'false' ->

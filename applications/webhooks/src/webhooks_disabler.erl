@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015, 2600Hz
+%%% @copyright (C) 2015-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -164,7 +164,8 @@ filter_cache(AccountId, HookId) ->
     kz_cache:filter_erase_local(?CACHE_NAME
                                 ,fun(?FAILURE_CACHE_KEY(A, H, _), _) ->
                                          lager:debug("maybe remove ~s/~s", [A, H]),
-                                         A =:= AccountId andalso H =:= HookId;
+                                         A =:= AccountId
+                                             andalso H =:= HookId;
                                     (_K, _V) -> 'false'
                                  end
                                ).

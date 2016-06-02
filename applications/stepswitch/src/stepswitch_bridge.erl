@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2015, 2600Hz
+%%% @copyright (C) 2013-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -388,7 +388,9 @@ bridge_from_uri(Number, OffnetReq) ->
     case (kapps_config:get_is_true(?SS_CONFIG_CAT, <<"format_from_uri">>, 'false')
           orelse kapi_offnet_resource:format_from_uri(OffnetReq)
          )
-        andalso (is_binary(Number) andalso is_binary(Realm))
+        andalso (is_binary(Number)
+                 andalso is_binary(Realm)
+                )
     of
         'false' -> 'undefined';
         'true' ->

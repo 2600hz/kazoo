@@ -127,7 +127,9 @@ correct_shortdial(Number, <<"+", CIDNum/binary>>) ->
 correct_shortdial(Number, CIDNum) when is_binary(CIDNum) ->
     MaxCorrection = kapps_config:get_integer(?SS_CONFIG_CAT, <<"max_shortdial_correction">>, 5),
     MinCorrection = kapps_config:get_integer(?SS_CONFIG_CAT, <<"min_shortdial_correction">>, 2),
-    case is_binary(CIDNum) andalso (size(CIDNum) - size(Number)) of
+    case is_binary(CIDNum)
+        andalso (size(CIDNum) - size(Number))
+    of
         Length when Length =< MaxCorrection, Length >= MinCorrection ->
             Correction = kz_util:truncate_right_binary(CIDNum, Length),
             CorrectedNumber = knm_converters:normalize(<<Correction/binary, Number/binary>>),

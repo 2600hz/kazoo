@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -592,10 +592,18 @@ apply_reschedule_rule(<<"error">>, ErrorObj, JObj) ->
     XReasons = kz_json:get_value(<<"xreason">>, ErrorObj, []),
     Code = kz_json:get_value(<<"code">>, JObj, <<>>),
     Reason = kz_json:get_value(<<"reason">>, JObj, <<>>),
-    case    (lists:member(Code, Codes) orelse Codes =:= [])
-    andalso (lists:member(Reason, Reasons) orelse Reasons =:= [])
-    andalso ((not lists:member(Code, XCodes)) orelse XCodes =:= [])
-    andalso ((not lists:member(Reason, XReasons)) orelse XReasons =:= [])
+    case (lists:member(Code, Codes)
+          orelse Codes =:= []
+         )
+        andalso (lists:member(Reason, Reasons)
+                 orelse Reasons =:= []
+                )
+        andalso ((not lists:member(Code, XCodes))
+                 orelse XCodes =:= []
+                )
+        andalso ((not lists:member(Reason, XReasons))
+                 orelse XReasons =:= []
+                )
     of
         'true' -> JObj;
         'false' -> 'no_match'

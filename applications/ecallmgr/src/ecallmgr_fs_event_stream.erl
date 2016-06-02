@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -173,13 +173,15 @@ handle_info({'tcp', Socket, Data}, #state{socket=Socket
                                           ,switch_url=SwitchURL
                                          }=State) ->
     try binary_to_term(Data) of
-        {'event', [UUID | Props]} when is_binary(UUID) orelse UUID =:= 'undefined' ->
+        {'event', [UUID | Props]} when is_binary(UUID)
+                                       orelse UUID =:= 'undefined' ->
             EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
             EventProps = props:filter_undefined([{<<"Switch-URL">>, SwitchURL}
                                                  ,{<<"Switch-URI">>, SwitchURI}
                                                  ,{<<"Switch-Nodename">>, kz_util:to_binary(Node)}
                                                 ]
-                                               ) ++ Props ,
+                                               )
+                ++ Props ,
             _ = kz_util:spawn(fun process_stream/4, [EventName, UUID, EventProps, Node]),
             {'noreply', State, Timeout};
         _Else ->

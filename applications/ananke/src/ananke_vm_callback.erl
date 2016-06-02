@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015, 2600Hz
+%%% @copyright (C) 2015-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -117,11 +117,13 @@ get_voicemail_number(AccountDb, Mailbox) ->
 -spec is_voicemail_cf(kz_json:object()) -> boolean().
 is_voicemail_cf(JObj) ->
     FlowJObj = get_cf_flow(JObj),
-    IsFlow = kz_json:is_json_object(FlowJObj) andalso not kz_json:is_empty(FlowJObj),
+    IsFlow = kz_json:is_json_object(FlowJObj)
+        andalso not kz_json:is_empty(FlowJObj),
     case {IsFlow
-          ,IsFlow
-            andalso kz_json:get_value(<<"module">>, FlowJObj) =:= <<"voicemail">>
-            andalso kz_json:get_value([<<"data">>, <<"action">>], FlowJObj) =:= <<"check">>}
+         ,IsFlow
+          andalso kz_json:get_value(<<"module">>, FlowJObj) =:= <<"voicemail">>
+              andalso kz_json:get_value([<<"data">>, <<"action">>], FlowJObj) =:= <<"check">>
+         }
     of
         {'false', _} -> 'false';
         {'true', 'true'} -> 'true';

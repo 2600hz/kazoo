@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2015, 2600Hz INC
+%%% @copyright (C) 2010-2016, 2600Hz INC
 %%% @doc
 %%% Manage a FreeSWITCH node and its resources
 %%% @end
@@ -492,7 +492,9 @@ run_start_cmds(Node, Options, Parent, 'false') ->
 run_start_cmds(Node, Options, Parent, Cmds) ->
     Res = process_cmds(Node, Options, Cmds),
 
-    case is_list(Res) andalso lists:filter(fun was_not_successful_cmd/1, Res) of
+    case is_list(Res)
+        andalso lists:filter(fun was_not_successful_cmd/1, Res)
+    of
         [] -> sync(Parent);
         'false' ->
             lager:debug("failed to run start commands, retrying"),

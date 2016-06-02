@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2015, 2600Hz
+%%% @copyright (C) 2010-2016, 2600Hz
 %%% @doc
 %%% Various utilities specific to ecallmgr. More general utilities go
 %%% in kazoo_util.erl
@@ -359,7 +359,8 @@ is_node_up(Node) -> ecallmgr_fs_nodes:is_node_up(Node).
 
 -spec is_node_up(atom(), ne_binary()) -> boolean().
 is_node_up(Node, UUID) ->
-    ecallmgr_fs_nodes:is_node_up(Node) andalso ecallmgr_fs_channel:exists(UUID).
+    ecallmgr_fs_nodes:is_node_up(Node)
+        andalso ecallmgr_fs_channel:exists(UUID).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -913,7 +914,8 @@ recording_directory(_RelativePath) -> ecallmgr_config:get(<<"recording_file_path
 -spec recording_extension(ne_binary()) -> ne_binary().
 recording_extension(MediaName) ->
     case filename:extension(MediaName) of
-        Empty when Empty =:= <<>> orelse Empty =:= [] ->
+        Empty when Empty =:= <<>>
+                   orelse Empty =:= [] ->
             ecallmgr_config:get(<<"default_recording_extension">>, <<".mp3">>);
         <<".mp3">> = MP3 -> MP3;
         <<".mp4">> = MP4 -> MP4;

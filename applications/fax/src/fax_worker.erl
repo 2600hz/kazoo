@@ -725,7 +725,9 @@ apply_reschedule_rules({[Rule | Rules], [Key | Keys]}, JObj) ->
     RetryAfter = kz_json:get_integer_value(<<"retry-after">>, Rule, ?DEFAULT_RETRY_PERIOD),
     Retries = kz_json:get_integer_value(<<"retries">>, Rule, ?DEFAULT_RETRY_COUNT),
     NewRetries = kz_json:get_integer_value(<<"new-retry-count">>, Rule, Retries),
-    case (Attempt =:= Attempts orelse Attempt =:= -1)
+    case (Attempt =:= Attempts
+          orelse Attempt =:= -1
+         )
         andalso lists:member(ResultValue, ValueList)
     of
         'true' ->

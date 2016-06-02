@@ -374,7 +374,9 @@ callee_id([]) -> {'undefined', 'undefined'};
 callee_id(['undefined' | T]) -> callee_id(T);
 callee_id([<<>> | T]) -> callee_id(T);
 callee_id([JObj | T]) ->
-    case kz_json:is_json_object(JObj) andalso (not kz_json:is_empty(JObj)) of
+    case kz_json:is_json_object(JObj)
+        andalso (not kz_json:is_empty(JObj))
+    of
         'false' -> callee_id(T);
         'true' ->
             case {kz_json:get_value(<<"cid_name">>, JObj)

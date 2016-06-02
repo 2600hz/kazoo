@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2015, 2600Hz INC
+%%% @copyright (C) 2010-2016, 2600Hz INC
 %%% @doc
 %%% utility functions for Trunkstore
 %%%
@@ -320,7 +320,9 @@ simple_extract(['undefined'|T]) -> simple_extract(T);
 simple_extract([<<>> | T]) -> simple_extract(T);
 simple_extract([B | _T]) when is_binary(B) -> B;
 simple_extract([JObj | T]) ->
-    case kz_json:is_json_object(JObj) andalso (not kz_json:is_empty(JObj)) of
+    case kz_json:is_json_object(JObj)
+        andalso (not kz_json:is_empty(JObj))
+    of
         'true' -> JObj;
         'false' -> simple_extract(T)
     end.
