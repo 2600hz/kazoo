@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz
+%%% @copyright (C) 2011-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -215,8 +215,8 @@ mwi_resp(Username, Realm, OwnerId, AccountDb, JObj) ->
 
 -spec is_unsolicited_mwi_enabled(ne_binary()) -> boolean().
 is_unsolicited_mwi_enabled(AccountId) ->
-    kapps_config:get_is_true(?CF_CONFIG_CAT, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true') andalso
-    kz_util:is_true(kapps_account_config:get(AccountId, ?CF_CONFIG_CAT, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true')).
+    kapps_config:get_is_true(?CF_CONFIG_CAT, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true')
+        andalso kz_util:is_true(kapps_account_config:get(AccountId, ?CF_CONFIG_CAT, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true')).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -362,7 +362,8 @@ alpha_to_dialpad(Value) ->
 %%--------------------------------------------------------------------
 -spec is_alpha(char()) -> boolean().
 is_alpha(Char) ->
-    Char =< $z andalso Char >= $a.
+    Char =< $z
+        andalso Char >= $a.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -371,14 +372,32 @@ is_alpha(Char) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec dialpad_digit(97..122) -> 50..57.
-dialpad_digit(ABC) when ABC =:= $a orelse ABC =:= $b orelse ABC =:= $c -> $2;
-dialpad_digit(DEF) when DEF =:= $d orelse DEF =:= $e orelse DEF =:= $f -> $3;
-dialpad_digit(GHI) when GHI =:= $g orelse GHI =:= $h orelse GHI =:= $i -> $4;
-dialpad_digit(JKL) when JKL =:= $j orelse JKL =:= $k orelse JKL =:= $l -> $5;
-dialpad_digit(MNO) when MNO =:= $m orelse MNO =:= $n orelse MNO =:= $o -> $6;
-dialpad_digit(PQRS) when PQRS =:= $p orelse PQRS =:= $q orelse PQRS =:= $r orelse PQRS =:= $s -> $7;
-dialpad_digit(TUV) when TUV =:= $t orelse TUV =:= $u orelse TUV =:= $v -> $8;
-dialpad_digit(WXYZ) when WXYZ =:= $w orelse WXYZ =:= $x orelse WXYZ =:= $y orelse WXYZ =:= $z -> $9.
+dialpad_digit(ABC) when ABC =:= $a
+                        orelse ABC =:= $b
+                        orelse ABC =:= $c -> $2;
+dialpad_digit(DEF) when DEF =:= $d
+                        orelse DEF =:= $e
+                        orelse DEF =:= $f -> $3;
+dialpad_digit(GHI) when GHI =:= $g
+                        orelse GHI =:= $h
+                        orelse GHI =:= $i -> $4;
+dialpad_digit(JKL) when JKL =:= $j
+                        orelse JKL =:= $k
+                        orelse JKL =:= $l -> $5;
+dialpad_digit(MNO) when MNO =:= $m
+                        orelse MNO =:= $n
+                        orelse MNO =:= $o -> $6;
+dialpad_digit(PQRS) when PQRS =:= $p
+                         orelse PQRS =:= $q
+                         orelse PQRS =:= $r
+                         orelse PQRS =:= $s -> $7;
+dialpad_digit(TUV) when TUV =:= $t
+                        orelse TUV =:= $u
+                        orelse TUV =:= $v -> $8;
+dialpad_digit(WXYZ) when WXYZ =:= $w
+                         orelse WXYZ =:= $x
+                         orelse WXYZ =:= $y
+                         orelse WXYZ =:= $z -> $9.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -499,7 +518,8 @@ handle_bridge_failure(Failure, Call) ->
 handle_bridge_failure(Cause, Code, Call) ->
     lager:info("attempting to find failure branch for ~s:~s", [Code, Cause]),
     case (handle_bridge_failure(Cause, Call) =:= 'ok')
-        orelse (handle_bridge_failure(Code, Call) =:= 'ok') of
+        orelse (handle_bridge_failure(Code, Call) =:= 'ok')
+    of
         'true' -> 'ok';
         'false' -> 'not_found'
     end.

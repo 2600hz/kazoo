@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% "data":{
 %%%   "id":"menu_id"
@@ -105,7 +105,9 @@ menu_handle_digits(#cf_menu_data{retries=Retries
     %% if it finds a callflow, the main CFPid will move on to it and try_match_digits
     %% will return true, matching here, and causing menu_loop to exit; this is
     %% expected behaviour as CFPid has moved on from this invocation
-    AllowRecord = (RecOffnet orelse kapps_call:inception(Call) =:= 'undefined'),
+    AllowRecord = (RecOffnet
+                   orelse kapps_call:inception(Call) =:= 'undefined'
+                  ),
     case try_match_digits(Digits, Menu, Call) of
         'true' -> lager:debug("hunt callflow found");
         'false' when Digits =:= RecordPin, AllowRecord ->
@@ -154,7 +156,8 @@ try_match_digits(Digits, Menu, Call) ->
         orelse (is_hunt_enabled(Digits, Menu, Call)
                 andalso is_hunt_allowed(Digits, Menu, Call)
                 andalso not is_hunt_denied(Digits, Menu, Call)
-                andalso hunt_for_callflow(Digits, Menu, Call)).
+                andalso hunt_for_callflow(Digits, Menu, Call)
+               ).
 
 %%--------------------------------------------------------------------
 %% @private

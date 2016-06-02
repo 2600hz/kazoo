@@ -507,14 +507,17 @@ next_rule_date(#rule{cycle = <<"monthly">>
     end;
 
 next_rule_date(#rule{cycle = <<"monthly">>
-                     ,interval=I0
-                     ,ordinal = <<"every">>
-                     ,wdays=[Weekday]
-                     ,start_date={Y0, M0, _}
-                    }, {Y1, M1, D1}) ->
+                    ,interval=I0
+                    ,ordinal = <<"every">>
+                    ,wdays=[Weekday]
+                    ,start_date={Y0, M0, _}
+                    }
+              ,{Y1, M1, D1}) ->
     Distance = ( Y1 - Y0 ) * 12 - M0 + M1,
     Offset = trunc( Distance / I0 ) * I0,
-    case Distance =:= Offset andalso find_next_weekday({Y1, M1, D1}, Weekday) of
+    case Distance =:= Offset
+        andalso find_next_weekday({Y1, M1, D1}, Weekday)
+    of
         %% If the next occurence of the weekday is during an 'active' month
         %%   and does not span the current month/year then it is correct
         {Y1, M1, _}=Date ->
@@ -535,10 +538,13 @@ next_rule_date(#rule{cycle = <<"monthly">>
                      ,ordinal = <<"last">>
                      ,wdays=[Weekday]
                      ,start_date={Y0, M0, _}
-                    }, {Y1, M1, D1}) ->
+                    }
+              ,{Y1, M1, D1}) ->
     Distance = ( Y1 - Y0 ) * 12 - M0 + M1,
     Offset = trunc( Distance / I0 ) * I0,
-    case Distance =:= Offset andalso find_last_weekday({Y1, M1, 1}, Weekday) of
+    case Distance =:= Offset
+        andalso find_last_weekday({Y1, M1, 1}, Weekday)
+    of
         %% If today is before the occurace day on an 'active' month since
         %%   the 'last' only happens once per month if we havent passed it
         %%   then it must be this month
@@ -559,10 +565,13 @@ next_rule_date(#rule{cycle = <<"monthly">>
                      ,ordinal=Ordinal
                      ,wdays=[Weekday]
                      ,start_date={Y0, M0, _}
-                    }, {Y1, M1, D1}) ->
+                    }
+              ,{Y1, M1, D1}) ->
     Distance = ( Y1 - Y0 ) * 12 - M0 + M1,
     Offset = trunc( Distance / I0 ) * I0,
-    case Distance =:= Offset andalso {find_ordinal_weekday(Y1, M1, Weekday, Ordinal), I0} of
+    case Distance =:= Offset
+        andalso {find_ordinal_weekday(Y1, M1, Weekday, Ordinal), I0}
+    of
         %% If today is before the occurance day on an 'active' month and
         %%   the occurance does not cross month/year boundaries then the
         %%   calculated date is accurate
@@ -586,23 +595,27 @@ next_rule_date(#rule{cycle = <<"monthly">>
 %%   an issue because we will 'pass' the invalid date and compute
 %%   the next
 next_rule_date(#rule{cycle = <<"yearly">>
-                     ,interval=I0
-                     ,month=Month
-                     ,days=[_|_]=Days
-                     ,start_date={Y0, _, _}
-                    }, {Y1, M1, D1}) ->
+                    ,interval=I0
+                    ,month=Month
+                    ,days=[_|_]=Days
+                    ,start_date={Y0, _, _}
+                    }
+              ,{Y1, M1, D1}) ->
     Distance = Y1 - Y0,
     Offset = trunc( Distance / I0 ) * I0,
     case Distance =:= Offset of
         %% If this is not an 'active' year it will be the first specified
         %% day (of days) next interval year(s)
-        'false' ->  {Y0 + Offset + I0, Month, hd(Days)};
+        'false' ->
+            {Y0 + Offset + I0, Month, hd(Days)};
         %% If this an 'active' year but the month has not occured yet
         %% it will be on the first day (of days) that month
-        'true' when M1 < Month -> {Y1, Month, hd(Days)};
+        'true' when M1 < Month ->
+            {Y1, Month, hd(Days)};
         %% If this an 'active' year but the month has not occured yet
         %% it will be on the first day (of days) next interval year(s)
-        'true' when M1 > Month -> {Y0 + Offset + I0, Month, hd(Days)};
+        'true' when M1 > Month ->
+            {Y0 + Offset + I0, Month, hd(Days)};
         'true' ->
             case lists:dropwhile(fun(D) -> D1 >= D end, Days) of
                 %% if this is the month but the all the days have passed
@@ -621,10 +634,13 @@ next_rule_date(#rule{cycle = <<"yearly">>
                      ,month=Month
                      ,wdays=[Weekday]
                      ,start_date={Y0, _, _}
-                    }, {Y1, M1, D1}) ->
+                    }
+              ,{Y1, M1, D1}) ->
     Distance = Y1 - Y0,
     Offset = trunc( Distance / I0 ) * I0,
-    case Distance =:= Offset andalso find_next_weekday({Y1, Month, D1}, Weekday) of
+    case Distance =:= Offset
+        andalso find_next_weekday({Y1, Month, D1}, Weekday)
+    of
         %% During an 'active' year before the target month the calculated
         %%   occurance is accurate
         {Y1, Month, _}=Date when M1 < Month ->
@@ -645,10 +661,13 @@ next_rule_date(#rule{cycle = <<"yearly">>
                      ,month=Month
                      ,wdays=[Weekday]
                      ,start_date={Y0, _, _}
-                    }, {Y1, M1, D1}) ->
+                    }
+              ,{Y1, M1, D1}) ->
     Distance = Y1 - Y0,
     Offset = trunc( Distance / I0 ) * I0,
-    case Distance =:= Offset andalso find_last_weekday({Y1, Month, 1}, Weekday) of
+    case Distance =:= Offset
+        andalso find_last_weekday({Y1, Month, 1}, Weekday)
+    of
         %% During an 'active' year before the target month the calculated
         %%   occurance is accurate
         {Y1, _, _}=Date when M1 < Month ->
@@ -669,10 +688,13 @@ next_rule_date(#rule{cycle = <<"yearly">>
                      ,month=Month
                      ,wdays=[Weekday]
                      ,start_date={Y0, _, _}
-                    }, {Y1, M1, D1}) ->
+                    }
+              ,{Y1, M1, D1}) ->
     Distance = Y1 - Y0,
     Offset = trunc( Distance / I0 ) * I0,
-    case Distance =:= Offset andalso find_ordinal_weekday(Y1, Month, Weekday, Ordinal) of
+    case Distance =:= Offset
+        andalso find_ordinal_weekday(Y1, Month, Weekday, Ordinal)
+    of
         %% During an 'active' year before the target month the calculated
         %%   occurance is accurate
         {Y1, Month, _}=Date when M1 < Month ->
@@ -933,10 +955,12 @@ our_iso_week_number({Year,_Month,_Day}=Date) ->
     D = calendar:date_to_gregorian_days(Date),
     W01_1_Year = gregorian_days_of_iso_w01_1(Year),
     W01_1_NextYear = gregorian_days_of_iso_w01_1(Year + 1),
-    if W01_1_Year =< D andalso D < W01_1_NextYear ->
+    if
+        W01_1_Year =< D
+        andalso D < W01_1_NextYear ->
             %% Current Year Week 01..52(,53)
             {Year, (D - W01_1_Year) div 7 + 1};
-       D < W01_1_Year ->
+        D < W01_1_Year ->
             %% Previous Year 52 or 53
             PWN = case day_of_the_week(Year - 1, 1, 1) of
                       4 -> 53;
@@ -946,7 +970,7 @@ our_iso_week_number({Year,_Month,_Day}=Date) ->
                            end
                   end,
             {Year - 1, PWN};
-       W01_1_NextYear =< D ->
+        W01_1_NextYear =< D ->
             %% Next Year, Week 01
             {Year + 1, 1}
     end.

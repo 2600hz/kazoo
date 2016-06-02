@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% handler for route requests, responds if callflows match
 %%% @end
@@ -40,7 +40,8 @@ handle_req(JObj, Props) ->
             case cf_util:lookup_callflow(Call) of
                 %% if NoMatch is false then allow the callflow or if it is true and we are able allowed
                 %% to use it for this call
-                {'ok', Flow, NoMatch} when (not NoMatch) orelse AllowNoMatch ->
+                {'ok', Flow, NoMatch} when (not NoMatch)
+                                           orelse AllowNoMatch ->
                     maybe_prepend_preflow(JObj, Props, Call, Flow, NoMatch);
                 {'ok', _, 'true'} ->
                     lager:info("only available callflow is a nomatch for a unauthorized call", []);
