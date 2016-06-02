@@ -159,11 +159,12 @@ handle_req_as_email(JObj, 'true') ->
     %% Gather data for template
     case teletype_util:is_notice_enabled_default(?TEMPLATE_ID) of
         'false' -> lager:debug("notification handling not configured");
-        'true' -> process_req(kz_json:normalize(JObj))
+        'true' -> process_req(JObj)
     end.
 
 -spec process_req(kz_json:object()) -> 'ok'.
-process_req(DataJObj) ->
+process_req(JObj) ->
+    DataJObj = kz_json:normalize(JObj),
     lager:debug("template is enabled for account, fetching templates for rendering"),
     Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:account_params(DataJObj)}
@@ -174,7 +175,7 @@ process_req(DataJObj) ->
              ],
 
     %% Populate templates
-    RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros),
+    RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, JObj),
 
     {'ok', TemplateMetaJObj} =
         teletype_templates:fetch_notification(?TEMPLATE_ID
@@ -194,8 +195,10 @@ process_req(DataJObj) ->
                ,?MOD_CONFIG_CAT
               ),
 
+    Attachments = teletype_util:maybe_get_attachments(DataJObj),
+
     put('skip_smtp_log', 'true'),
-    case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
+    case teletype_util:send_email(Emails, Subject, RenderedTemplates, Attachments) of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
