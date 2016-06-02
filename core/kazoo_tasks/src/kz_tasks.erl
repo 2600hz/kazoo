@@ -495,21 +495,23 @@ to_json(#{id := TaskId
 -spec to_public_json(task()) -> kz_json:object().
 to_public_json(Task) ->
     Doc = to_json(Task),
-    kz_json:from_list(
-      props:filter_undefined(
-        [{<<"id">>, kz_doc:id(Doc)}
-        ,{<<"node">>, kz_json:get_value(?PVT_WORKER_NODE, Doc)}
-        ,{<<"account_id">>, kz_json:get_value(?PVT_ACCOUNT_ID, Doc)}
-        ,{<<"category">>, kz_json:get_value(?PVT_CATEGORY, Doc)}
-        ,{<<"action">>, kz_json:get_value(?PVT_ACTION, Doc)}
-        ,{<<"submitted_at">>, kz_json:get_value(?PVT_SUBMITTED_AT, Doc)}
-        ,{<<"started_at">>, kz_json:get_value(?PVT_STARTED_AT, Doc)}
-        ,{<<"ended_at">>, kz_json:get_value(?PVT_FINISHED_AT, Doc)}
-        ,{<<"error">>, kz_json:get_value(?PVT_ERROR, Doc)}
-        ,{<<"is_terminated">>, kz_json:get_value(?PVT_IS_TERMINATED, Doc)}
-        ,{<<"is_success">>, kz_json:get_value(?PVT_IS_SUCCESS, Doc)}
-        ,{<<"ran_for">>, kz_json:get_value(?PVT_RAN_FOR, Doc)}
-        ])).
+    JObj =
+        kz_json:from_list(
+          props:filter_undefined(
+            [{<<"id">>, kz_doc:id(Doc)}
+            ,{<<"node">>, kz_json:get_value(?PVT_WORKER_NODE, Doc)}
+            ,{<<"account_id">>, kz_json:get_value(?PVT_ACCOUNT_ID, Doc)}
+            ,{<<"category">>, kz_json:get_value(?PVT_CATEGORY, Doc)}
+            ,{<<"action">>, kz_json:get_value(?PVT_ACTION, Doc)}
+            ,{<<"submitted_at">>, kz_json:get_value(?PVT_SUBMITTED_AT, Doc)}
+            ,{<<"started_at">>, kz_json:get_value(?PVT_STARTED_AT, Doc)}
+            ,{<<"ended_at">>, kz_json:get_value(?PVT_FINISHED_AT, Doc)}
+            ,{<<"error">>, kz_json:get_value(?PVT_ERROR, Doc)}
+            ,{<<"is_terminated">>, kz_json:get_value(?PVT_IS_TERMINATED, Doc)}
+            ,{<<"is_success">>, kz_json:get_value(?PVT_IS_SUCCESS, Doc)}
+            ,{<<"ran_for">>, kz_json:get_value(?PVT_RAN_FOR, Doc)}
+            ])),
+    kz_json:set_value(<<"_read_only">>, JObj, kz_json:new()).
 
 -spec remove_task(task_id(), state()) -> state().
 remove_task(TaskId, State) ->

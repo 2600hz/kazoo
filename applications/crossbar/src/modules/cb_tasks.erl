@@ -328,7 +328,14 @@ set_db(Context) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(TaskId, Context) ->
-    crossbar_doc:load(TaskId, set_db(Context), ?TYPE_CHECK_OPTION(?KZ_TASKS_DOC_TYPE)).
+    case kz_tasks:read(TaskId) of
+        {'error', 'not_found'} ->
+            crossbar_util:response_bad_identifier(TaskId, Context);
+        {'ok', TaskJObj} ->
+            cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
+                                        ,{fun cb_context:set_resp_data/2, TaskJObj}
+                                        ])
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

@@ -19,32 +19,15 @@ curl -v -X GET \
     "data": [
         {
             "account_id": "{ACCOUNT_ID}",
-            "arguments": [
-                100000
-            ],
-            "function": "sleep",
-            "module": "timer",
-            "ended_at": 63631324961,
-            "id": "ab1d2f34b79973a076079b942519dc",
-            "is_success": true,
-            "is_terminated": true,
-            "ran_for": 100,
-            "started_at": 63631324861,
-            "submitted_at": 63631324811
-        },
-        {
-            "account_id": "{ACCOUNT_ID}",
-            "arguments": [
-                "4157125234"
-            ],
-            "function": "normalize",
-            "module": "knm_converters",
-            "id": "7318ebc8f4c4bf40e741485f6a8679",
-            "submitted_at": 63631324841
+            "action": "list",
+            "category": "number_management",
+            "id": "65a3276a4e3ecc5890f56eb3e6fc6a",
+            "submitted_at": 63632026121
         }
     ],
-    "request_id": "de1856ce11c0cf4ae04f206fcf6875ed",
-    "revision": "undefined",
+    "page_size": 1,
+    "request_id": "4e94e914e7edb5bfbc74f6178b9cbbc3",
+    "revision": "815ddcbe3afb6a4a14dfb2d19462bdfc",
     "status": "success"
 }
 ```
@@ -144,9 +127,8 @@ curl -v -X DELETE \
     "auth_token": "{AUTH_TOKEN}",
     "data": {
         "account_id": "{ACCOUNT_ID}",
-        "arguments": [],
-        "function": "get_cookie",
-        "module": "erlang",
+        "action": "list",
+        "category": "number_management",
         "id": "{TASK_ID}",
         "submitted_at": 63631325071
     },
@@ -204,22 +186,15 @@ curl -v -X GET \
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "account_id": "{ACCOUNT_ID}",
-        "arguments": [
-            "bla"
-        ],
-        "function": "sleep",
-        "module": "timer",
-        "ended_at": 63631325127,
-        "error": "(<0.29082.4>) error: timeout_value\n[{timer,sleep,1,[{file,\"timer.erl\"},{line,153}]},\n {kz_task_worker,run_task,4,[{file,\"src/kz_task_worker.erl\"},{line,161}]}]",
-        "id": "{TASK_ID}",
-        "is_success": false,
-        "is_terminated": true,
-        "ran_for": 0,
-        "started_at": 63631325127,
-        "submitted_at": 63631325095
+        "_read_only": {
+            "account_id": "{ACCOUNT_ID}",
+            "action": "list",
+            "category": "number_management",
+            "id": "{TASK_ID}",
+            "submitted_at": 63632026121
+        }
     },
-    "request_id": "5468bd36454888e76266ef132730c73f",
+    "request_id": "8f6dff18a55a09110767004a05540397",
     "revision": "undefined",
     "status": "success"
 }
@@ -337,4 +312,48 @@ curl -v -X GET \
     "revision": "undefined",
     "status": "success"
 }
+```
+
+
+#### Create
+
+> PUT /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/csv
+
+```curl
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/csv
+```
+
+
+#### Remove
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/csv/{ATTACHMENT_ID}
+
+```curl
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/csv/{ATTACHMENT_ID}
+```
+
+
+#### Fetch
+
+> GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/csv/{ATTACHMENT_ID}
+
+```curl
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/csv/{ATTACHMENT_ID}
+```
+
+
+#### Change
+
+> POST /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/csv/{ATTACHMENT_ID}
+
+```curl
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/csv/{ATTACHMENT_ID}
 ```

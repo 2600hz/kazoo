@@ -5845,31 +5845,24 @@
             "description": "Create a background running task",
             "name": "Task",
             "properties": {
-                "arguments": {
-                    "description": "Ordered list of arguments for the function",
-                    "items": {
-                        "description": "Argument",
-                        "type": "string"
+                "task": {
+                    "description": "A task to be executed in the background",
+                    "properties": {
+                        "action": {
+                            "description": "The action to be executed",
+                            "name": "Action",
+                            "required": true,
+                            "type": "string"
+                        },
+                        "category": {
+                            "description": "Class of the task",
+                            "name": "For",
+                            "required": true,
+                            "type": "string"
+                        }
                     },
-                    "minItems": 0,
                     "required": true,
-                    "type": "array"
-                },
-                "function": {
-                    "description": "Function name of the module",
-                    "maxLength": 64,
-                    "minLength": 1,
-                    "name": "Function",
-                    "required": true,
-                    "type": "string"
-                },
-                "module": {
-                    "description": "Erlang module of the task",
-                    "maxLength": 64,
-                    "minLength": 1,
-                    "name": "Module",
-                    "required": true,
-                    "type": "string"
+                    "type": "object"
                 }
             },
             "required": true,
@@ -8348,6 +8341,14 @@
             "delete": {},
             "get": {},
             "patch": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/csv": {
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/csv/{ATTACHMENT_ID}": {
+            "delete": {},
+            "get": {},
+            "post": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/templates": {
             "get": {}
