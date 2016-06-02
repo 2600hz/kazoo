@@ -31,9 +31,11 @@
 -spec set(atom(), ne_binary(), kz_proplist()) -> ecallmgr_util:send_cmd_ret().
 set(_, _, []) -> 'ok';
 set(Node, UUID, Props) ->
-    NewProps = maybe_export_vars(Node, UUID, Props),
-    AppArgs = process_fs_kv(Node, UUID, NewProps, 'set'),
-    api(Node, UUID, ?FS_CMD_SET_MULTIVAR, AppArgs).
+    case maybe_export_vars(Node, UUID, Props) of
+        [] -> 'ok';
+        NewProps -> AppArgs = process_fs_kv(Node, UUID, NewProps, 'set'),
+                    api(Node, UUID, ?FS_CMD_SET_MULTIVAR, AppArgs)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -44,9 +46,11 @@ set(Node, UUID, Props) ->
 -spec bg_set(atom(), ne_binary(), kz_proplist()) -> ecallmgr_util:send_cmd_ret().
 bg_set(_, _, []) -> 'ok';
 bg_set(Node, UUID, Props) ->
-    NewProps = maybe_export_vars(Node, UUID, Props),
-    AppArgs = process_fs_kv(Node, UUID, NewProps, 'set'),
-    bgapi(Node, UUID, ?FS_CMD_SET_MULTIVAR, AppArgs).
+    case maybe_export_vars(Node, UUID, Props) of
+        [] -> 'ok';
+        NewProps -> AppArgs = process_fs_kv(Node, UUID, NewProps, 'set'),
+                    bgapi(Node, UUID, ?FS_CMD_SET_MULTIVAR, AppArgs)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
