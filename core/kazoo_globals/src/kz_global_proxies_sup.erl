@@ -4,26 +4,25 @@
 %%%
 %%% @end
 %%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(kazoo_apps_sup).
+-module(kz_global_proxies_sup).
 
 -behaviour(supervisor).
 
--export([start_link/0
-         ,initialize_kapps/1
-         ,init/1
-         ,start_child/1
-        ]).
-
--include("kapps_call_command.hrl").
--include("kazoo_apps.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
 
 -define(SERVER, ?MODULE).
 
--define(CHILDREN, [?SUPER('kz_hooks_listener_sup')
-                   ,?WORKER('kazoo_apps_init')
-                   ,?WORKER('kapps_controller')
-                  ]).
+%% API
+-export([start_link/0]).
+-export([new/1]).
+-export([workers/0]).
+
+%% Supervisor callbacks
+-export([init/1]).
+
+-define(CHILDREN, [?WORKER_TYPE('kz_global_proxy', 'temporary')]).
 
 %% ===================================================================
 %% API functions
@@ -37,12 +36,13 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec initialize_kapps(atoms()) -> sup_startchild_ret().
-initialize_kapps(Whapps) ->
-    supervisor:start_child(?SERVER, ?SUPER_ARGS('kapps_sup', Whapps)).
+-spec new(kz_globals:kz_global()) -> sup_startchild_ret().
+new(Global) ->
+    supervisor:start_child(?SERVER, [Global]).
 
-start_child(Spec) ->
-    supervisor:start_child(?SERVER, Spec).
+-spec workers() -> pids().
+workers() ->
+    [ Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?SERVER)].
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -59,8 +59,8 @@ start_child(Spec) ->
 %%--------------------------------------------------------------------
 -spec init(any()) -> sup_init_ret().
 init([]) ->
-    RestartStrategy = 'one_for_one',
-    MaxRestarts = 25,
+    RestartStrategy = 'simple_one_for_one',
+    MaxRestarts = 0,
     MaxSecondsBetweenRestarts = 1,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},

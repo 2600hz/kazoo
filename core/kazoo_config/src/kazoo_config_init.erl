@@ -38,7 +38,7 @@ load_file(File) ->
     case zucchini:parse_file(File) of
         {'ok', Props} ->
             lager:info("loaded configs from file ~s", [File]),
-            Props;
+            cleanup_configs(Props);
         {'error', 'enoent'} ->
             lager:warning("file ~s does not exist or is not accessible", [File]),
             lager:warning("please create ~s or set the environment variable ~s to the path of the config file", [File, ?CONFIG_FILE_ENV]),
@@ -69,6 +69,35 @@ set_zone(AppEnv) ->
 reload() ->
     set_env().
 
+cleanup_configs(Props) ->
+    [cleanup_config(Prop) || Prop <- Props].
+cleanup_config({'zone', Zone}) ->
+    {'zone', cleanup_zone(Zone)};
+cleanup_config({'bigcouch', _}=Config) ->
+    Config;
+cleanup_config({'log', _}=Config) ->
+    Config;
+cleanup_config({Section, Props}) ->
+    {Section, cleanup_section(Props)}.
+
+cleanup_section(Props) ->
+    [cleanup_section_prop(Prop) || Prop <- Props].
+
+cleanup_section_prop({'zone', Zone}=Prop) when is_atom(Zone) ->
+    Prop;
+cleanup_section_prop({'zone', Zone}) ->
+    {'zone', kz_util:to_atom(Zone, 'true')};
+cleanup_section_prop(Prop) -> Prop.
+
+cleanup_zone(Zone) ->
+    [cleanup_zone_prop(Prop) || Prop <- Zone].
+cleanup_zone_prop({'name', Name}=Prop) when is_atom(Name) -> Prop;
+cleanup_zone_prop({'name', Name}) ->
+    {'name', kz_util:to_atom(Name, 'true')};
+cleanup_zone_prop({'amqp_uri', URI}=Prop) when is_list(URI) -> Prop;
+cleanup_zone_prop({'amqp_uri', URI}) ->
+    {'amqp_uri', kz_util:to_list(URI)};
+cleanup_zone_prop(Prop) -> Prop.
 
 %%--------------------------------------------------------------------
 %% @public
