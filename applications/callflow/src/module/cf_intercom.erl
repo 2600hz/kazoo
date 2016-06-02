@@ -25,10 +25,8 @@ handle(Data, Call) ->
     case is_binary(CaptureGroup) andalso cf_util:lookup_callflow(CaptureGroup, AccountId) of
         {'ok', Flow, 'false'} ->
             JObj = case wh_json:is_true(<<"barge_calls">>, Data) of
-                       'false' -> wh_json:from_list([{<<"Auto-Answer">>, <<"true">>}]);
-                       'true' -> wh_json:from_list([{<<"Auto-Answer">>, <<"true">>}
-                                                    ,{<<"Auto-Answer-Notify">>, <<"true">>}
-                                                   ])
+                       'false' -> wh_json:from_list([{<<"Auto-Answer-Suppress-Notify">>, <<"true">>}]);
+                       'true' -> wh_json:from_list([{<<"Auto-Answer-Suppress-Notify">>, <<"false">>}])
                    end,
             whapps_call_command:set('undefined', JObj, Call),
             cf_exe:branch(wh_json:get_value(<<"flow">>, Flow, wh_json:new()), Call);

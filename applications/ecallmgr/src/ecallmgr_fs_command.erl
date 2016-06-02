@@ -22,8 +22,13 @@
 -spec set(atom(), ne_binary(), wh_proplist()) -> ecallmgr_util:send_cmd_ret().
 -spec set(atom(), ne_binary(), text(), text()) -> ecallmgr_util:send_cmd_ret().
 set(_, _, []) -> 'ok';
-set(Node, UUID, [{<<"Auto-Answer", _/binary>> = K, V}]) ->
-    do_set(Node, UUID, [{<<"alert_info">>, <<"intercom">>}, {K, V}], fun api/3);
+set(Node, UUID, [{<<"Auto-Answer">> = K, V}]) ->
+    do_set(Node, UUID, [{<<"Alert-Info">>, <<"intercom">>}, {K, V}], fun api/3);
+set(Node, UUID, [{<<"Auto-Answer-Suppress-Notify">> = K, V}]) ->
+    do_set(Node, UUID, [{<<"Alert-Info">>, <<"intercom">>}
+                       ,{<<"Auto-Answer">>, <<"true">>}
+                       ,{K, V}
+                       ], fun api/3);
 set(Node, UUID, [{<<"Hold-Media">>, Value}]) ->
     Media = ecallmgr_util:media_path(Value, 'extant', UUID, wh_json:new()),
     AppArg = wh_util:to_list(<<"hold_music=", Media/binary>>),
@@ -64,8 +69,12 @@ set_fold(Node, UUID, {<<"Hold-Media">>, Value}, Acc) ->
                                         ,{"execute-app-arg", AppArg}
                                        ]),
     Acc;
-set_fold(_, _, {<<"Auto-Answer", _/binary>> = K, V}, Acc) ->
-    [{<<"alert_info">>, <<"intercom">>} , {K, V} | Acc];
+set_fold(_, _, {<<"Auto-Answer">> = K, V}, Acc) ->
+    [{<<"Alert-Info">>, <<"intercom">>} , {K, V} | Acc];
+set_fold(_, _, {<<"Auto-Answer-Suppress-Notify">> = K, V}, Acc) ->
+    [{<<"Alert-Info">>, <<"intercom">>}
+    ,{<<"Auto-Answer">>, <<"true">>}
+    ,{K, V} | Acc];
 set_fold(_, _, {K, V}, Acc) when is_binary(V) ->
     [{K, V} | Acc];
 set_fold(_, _, _, Acc) ->
@@ -128,28 +137,35 @@ bg_unset(Node, UUID, K, V) -> bg_unset(Node, UUID, [{K, V}]).
 -define(EXPORT_DELIMITER, <<"|">>).
 -spec export(atom(), ne_binary(), wh_proplist()) -> ecallmgr_util:send_cmd_ret().
 export(_, _, []) -> 'ok';
-export(Node, UUID, [{<<"Auto-Answer", _/binary>> = K, V} | Props]) ->
-    Exports = [ecallmgr_util:get_fs_key_and_value(Key, Val, UUID)
-               || {Key, Val} <- Props
-              ],
-    do_export(Node, UUID, [{<<"alert_info">>, <<"intercom">>}
-                                            ,ecallmgr_util:get_fs_key_and_value(K, V, UUID)
-                                            | props:filter(Exports, 'skip')
-                                           ]);
 export(Node, UUID, Props) ->
-    Exports = [ecallmgr_util:get_fs_key_and_value(Key, Val, UUID) || {Key, Val} <- Props],
-    do_export(Node, UUID, props:filter(Exports, 'skip')).
+    KVs = lists:foldl(fun export_fold/2, [], Props),
+    do_export(Node, UUID, KVs).
+
+-spec export_fold({ne_binary(), ne_binary()}, wh_proplist()) -> wh_proplist().
+export_fold({<<"Auto-Answer">>, _}=KV, Acc) ->
+    [{<<"Alert-Info">>, <<"intercom">>}, KV | Acc];
+export_fold({<<"Auto-Answer-Suppress-Notify">>, _}=KV, Acc) ->
+    [{<<"Alert-Info">>, <<"intercom">>}
+    ,{<<"Auto-Answer">>, <<"true">>}
+    ,KV | Acc ];
+export_fold(KV, Acc) ->
+    [KV | Acc].
 
 -spec do_export(atom(), ne_binary(), wh_proplist()) -> ecallmgr_util:send_cmd_ret().
 do_export(_, _, []) -> 'ok';
 do_export(Node, UUID, [{K,V}|Exports]) ->
+    do_export_val(Node, UUID, ecallmgr_util:get_fs_key_and_value(K, V, UUID)),
+    do_export(Node, UUID, Exports).
+
+-spec do_export_val(atom(), ne_binary(), {ne_binary(), ne_binary()} | 'skip') -> ecallmgr_util:send_cmd_ret().
+do_export_val(_Node, _UUID, 'skip') -> 'ok';
+do_export_val(Node, UUID, {K,V}) ->
     Export = <<K/binary, "=", V/binary>>,
     lager:debug("~s sendmsg export ~s ~s", [Node, UUID, Export]),
     freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
                                     ,{"execute-app-name", "export"}
                                     ,{"execute-app-arg", wh_util:to_list(Export)}
-                                   ]),
-    do_export(Node, UUID, Exports).
+                                   ]).
 
 -spec bridge_export(atom(), ne_binary(), wh_proplist()) -> ecallmgr_util:send_cmd_ret().
 bridge_export(_, _, []) -> 'ok';
