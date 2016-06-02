@@ -365,15 +365,8 @@ demote_account(AccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_account(input_term(), input_term(), input_term(), input_term()) -> 'ok' | 'failed'.
-create_account(AccountName, Realm, Username, Password) when not is_binary(AccountName) ->
-    create_account(kz_util:to_binary(AccountName), Realm, Username, Password);
-create_account(AccountName, Realm, Username, Password) when not is_binary(Realm) ->
-    create_account(AccountName, kz_util:to_binary(Realm), Username, Password);
-create_account(AccountName, Realm, Username, Password) when not is_binary(Username) ->
-    create_account(AccountName, Realm, kz_util:to_binary(Username), Password);
-create_account(AccountName, Realm, Username, Password) when not is_binary(Password) ->
-    create_account(AccountName, Realm, Username, kz_util:to_binary(Password));
-create_account(AccountName, Realm, Username, Password) ->
+create_account(AccountName, Realm, Username, Password)
+    when is_binary(AccountName), is_binary(Realm), is_binary(Username), is_binary(Password) ->
     Account = kz_json:from_list([{<<"_id">>, kz_datamgr:get_uuid()}
                                  ,{<<"name">>, AccountName}
                                  ,{<<"realm">>, Realm}
@@ -410,7 +403,12 @@ create_account(AccountName, Realm, Username, Password) ->
             lager:error("crashed creating account: ~s: ~p", [_E, _R]),
             kz_util:log_stacktrace(ST),
             'failed'
-    end.
+    end;
+create_account(AccountName, Realm, Username, Password) ->
+    create_account(kz_util:to_binary(AccountName)
+                   , kz_util:to_binary(Realm)
+                   , kz_util:to_binary(Username)
+                   , kz_util:to_binary(Password)).
 
 -spec update_system_config(ne_binary()) -> 'ok'.
 update_system_config(AccountId) ->
