@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% SBC Rate limits
@@ -62,7 +62,8 @@ authorize(Context) ->
         _ ->
             {'ok', MasterAccount} = kapps_util:get_master_account_id(),
             AuthAccountId = cb_context:auth_account_id(Context),
-            AuthAccountId =:= MasterAccount orelse kz_services:is_reseller(AuthAccountId)
+            AuthAccountId =:= MasterAccount
+                orelse kz_services:is_reseller(AuthAccountId)
     end.
 
 -type thing_type() :: ne_binary().

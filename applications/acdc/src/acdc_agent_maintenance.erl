@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -30,7 +30,8 @@ acct_status(AcctId) ->
             'ok'
     end.
 
-agent_status(AcctId, AgentId) when (not is_binary(AcctId)) orelse (not is_binary(AgentId)) ->
+agent_status(AcctId, AgentId) when (not is_binary(AcctId))
+                                   orelse (not is_binary(AgentId)) ->
     agent_status(kz_util:to_binary(AcctId), kz_util:to_binary(AgentId));
 agent_status(AcctId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
@@ -51,7 +52,8 @@ acct_restart(AcctId) ->
             'ok'
     end.
 
-agent_restart(AcctId, AgentId) when (not is_binary(AcctId)) orelse (not is_binary(AgentId)) ->
+agent_restart(AcctId, AgentId) when (not is_binary(AcctId))
+                                    orelse (not is_binary(AgentId)) ->
     agent_restart(kz_util:to_binary(AcctId), kz_util:to_binary(AgentId));
 agent_restart(AcctId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of

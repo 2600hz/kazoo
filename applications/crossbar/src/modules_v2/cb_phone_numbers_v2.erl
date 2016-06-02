@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for phone_number documents
@@ -403,9 +403,9 @@ delete(Context, Number) ->
               ],
     case knm_number:release(Number, Options) of
         {'error', Data}=Error ->
-            case kz_json:is_json_object(Data) andalso
-                knm_errors:error(Data) == <<"invalid_state_transition">> andalso
-                knm_errors:cause(Data) == <<"from available to released">>
+            case kz_json:is_json_object(Data)
+                andalso knm_errors:error(Data) == <<"invalid_state_transition">>
+                andalso knm_errors:cause(Data) == <<"from available to released">>
             of
                 'true' -> reply_number_not_found(Context);
                 'false' -> set_response(Error, Context)
