@@ -41,7 +41,7 @@ from_filename(Path) ->
 %% '''
 -spec to_filename(binary()) -> binary().
 to_filename(CT) ->
-    list_to_binary([kz_util:rand_hex_bin(16), ".", hd(to_extensions(CT))]).
+    list_to_binary([kz_util:rand_hex_binary(16), ".", hd(to_extensions(CT))]).
 
 %% @doc Return the mimetype for any file by looking at its extension.
 %% Example:
