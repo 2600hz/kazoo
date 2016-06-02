@@ -25,7 +25,8 @@
 -include("crossbar.hrl").
 -include_lib("kazoo_tasks/include/kazoo_tasks.hrl").
 
--define(SCHEMA_CREATE_TASK, <<"tasks">>).
+-define(QS_CATEGORY, <<"category">>).
+-define(QS_ACTION, <<"action">>).
 
 -define(HELP, <<"help">>).
 -define(CSV_ATTACHMENT, <<"csv">>).
@@ -187,7 +188,14 @@ validate(Context, TaskId, ?CSV_ATTACHMENT, AttachmentId) ->
 validate_tasks(Context, ?HTTP_GET) ->
     summary(Context);
 validate_tasks(Context, ?HTTP_PUT) ->
-    cb_context:validate_request_data(?SCHEMA_CREATE_TASK, Context).
+    QS = cb_context:query_string(Context),
+    case {kz_json:get_ne_binary_value(?QS_CATEGORY, QS)
+         ,kz_json:get_ne_binary_value(?QS_ACTION, QS)
+         }
+    of
+        {?NE_BINARY, ?NE_BINARY} -> cb_context:set_resp_status(Context, 'success');
+        {_, _} -> cb_context:add_system_error('invalid request', Context)
+    end.
 
 -spec validate_task(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_task(Context, ?HELP, ?HTTP_GET) ->
@@ -222,9 +230,9 @@ validate_attachment(Context, TaskId, AttachmentId, ?HTTP_DELETE) ->
 -spec put(cb_context:context()) -> cb_context:context().
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context) ->
-    ReqData = cb_context:req_data(Context),
-    Category = kz_json:get_value([<<"task">>, <<"category">>], ReqData),
-    Action   = kz_json:get_value([<<"task">>, <<"action">>], ReqData),
+    QS = cb_context:query_string(Context),
+    Category = kz_json:get_value(?QS_CATEGORY, QS),
+    Action   = kz_json:get_value(?QS_ACTION, QS),
     case kz_tasks:new(cb_context:account_id(Context), Category, Action) of
         {'ok', Task} -> crossbar_util:response(Task, Context);
         {'error', 'no_categories'} ->

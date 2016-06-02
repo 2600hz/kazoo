@@ -4,11 +4,6 @@
 
 #### Schema
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`task` | A task to be executed in the background | `object` |   | `true`
-`task.action` | The action to be executed | `string` |   | `true`
-`task.category` | Class of the task | `string` |   | `true`
 
 
 #### Fetch

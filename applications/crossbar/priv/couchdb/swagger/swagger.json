@@ -5840,34 +5840,6 @@
             "required": true,
             "type": "object"
         },
-        "tasks": {
-            "additionalProperties": false,
-            "description": "Create a background running task",
-            "name": "Task",
-            "properties": {
-                "task": {
-                    "description": "A task to be executed in the background",
-                    "properties": {
-                        "action": {
-                            "description": "The action to be executed",
-                            "name": "Action",
-                            "required": true,
-                            "type": "string"
-                        },
-                        "category": {
-                            "description": "Class of the task",
-                            "name": "For",
-                            "required": true,
-                            "type": "string"
-                        }
-                    },
-                    "required": true,
-                    "type": "object"
-                }
-            },
-            "required": true,
-            "type": "object"
-        },
         "temporal_rules": {
             "description": "Schema for a temporal rules",
             "name": "Temporal Rule",

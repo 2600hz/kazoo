@@ -40,8 +40,7 @@ curl -v -X GET \
 ```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data": {"task": {"category": "{CATEGORY}", "action": "{ACTION}"}}}' \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks?category={CATEGORY}&action={ACTION}
 ```
 
 ##### Success
@@ -50,11 +49,13 @@ curl -v -X PUT \
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "account_id": "{ACCOUNT_ID}",
-        "action": "{ACTION}",
-        "category": "{CATEGORY}",
-        "id": "edfb48ea9617fa6832e43ce676c53f",
-        "submitted_at": 63632025993
+        "_read_only": {
+            "account_id": "{ACCOUNT_ID}",
+            "action": "{ACTION}",
+            "category": "{CATEGORY}",
+            "id": "edfb48ea9617fa6832e43ce676c53f",
+            "submitted_at": 63632025993
+        }
     },
     "request_id": "6bc9187feafe54a5c16d07e1a493c04f",
     "revision": "undefined",
