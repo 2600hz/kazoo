@@ -943,7 +943,7 @@ insert_custom_channel_var(Key, Value, #kapps_call{ccvs=CCVs}=Call) ->
 -spec set_custom_channel_vars(kz_proplist(), call()) -> call().
 -ifdef(TEST).
 set_custom_channel_vars(Props, #kapps_call{ccvs=CCVs}=Call) ->
-    NewCCVs = wh_json:set_values(Props, CCVs),
+    NewCCVs = kz_json:set_values(Props, CCVs),
     handle_ccvs_update(NewCCVs, Call).
 -else.
 set_custom_channel_vars(Props, #kapps_call{ccvs=CCVs}=Call) ->
