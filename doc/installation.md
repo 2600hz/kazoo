@@ -29,7 +29,7 @@ $ mv kerl /usr/bin
 $ kerl list releases
 $ kerl build 18.2 r18.2 # this takes a while
 $ kerl install r18.2 /usr/local/erlang
-$ . /usr/lib/erlang/activate
+$ . /usr/local/erlang/activate
 ```
 
 * Install from the [Erlang Solutions](https://www.erlang-solutions.com/resources/download.html) packages. These tend to be kept up-to-date better than the default distro's packages.
