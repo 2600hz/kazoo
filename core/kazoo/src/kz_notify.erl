@@ -17,7 +17,7 @@
 -export([first_call/1]).
 -export([first_registration/1]).
 -export([transaction/2, transaction/3]).
--export([system_alert/2, system_alert/4, system_alert/4]).
+-export([system_alert/2, system_alert/3, system_alert/4]).
 -export([detailed_alert/3, detailed_alert/4, detailed_alert/5]).
 
 -include_lib("kazoo/include/kz_types.hrl").
@@ -140,9 +140,13 @@ system_alert(Format, Args) ->
     Msg = io_lib:format(Format, Args),
     system_alert(Msg, Msg, []).
 
--spec system_alert(ne_binary(), ne_binary(), kz_proplist()) -> 'ok'.
+-spec system_alert(string() | ne_binary(), string() | ne_binary(), kz_proplist()) -> 'ok'.
+system_alert(Subject, Msg, Headers)
+  when not is_binary(Subject);
+       not is_binary(Msg) ->
+    system_alert(kz_util:to_binary(Subject), kz_util:to_binary(Msg), Headers);
 system_alert(Subject, Msg, Headers) ->
-    Notify= [{<<"Message">>, kz_util:to_binary(Msg)}
+    Notify= [{<<"Message">>, Msg}
              ,{<<"Subject">>, <<"KAZOO: ", Subject/binary>>}
              | Headers ++ kz_api:default_headers(?APP_VERSION, ?APP_NAME)
             ],
@@ -159,8 +163,12 @@ detailed_alert(Format, Args, Props) ->
     detailed_alert(Msg, Msg, [{<<"Format">>, kz_util:to_binary(Format)} | Props], []).
 
 -spec detailed_alert(ne_binary(), ne_binary(), kz_proplist(), kz_proplist()) -> 'ok'.
+detailed_alert(Subject, Msg, Props, Headers)
+  when not is_binary(Subject);
+       not is_binary(Msg) ->
+    detailed_alert(kz_util:to_binary(Subject), kz_util:to_binary(Msg), Props, Headers);
 detailed_alert(Subject, Msg, Props, Headers) ->
-    Notify = [{<<"Message">>, kz_util:to_binary(Msg)}
+    Notify = [{<<"Message">>, Msg}
               ,{<<"Subject">>, <<"KAZOO: ", Subject/binary>>}
               ,{<<"Details">>, kz_json:from_list(Props)}
               | Headers ++ kz_api:default_headers(?APP_VERSION, ?APP_NAME)
