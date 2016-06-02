@@ -10,7 +10,7 @@
 %% behaviour: tasks_provider
 
 -export([help/0
-        ,for/0
+        ,category/0
         ,module/0
         ]).
 
@@ -26,8 +26,8 @@
 %%% API
 %%%===================================================================
 
--spec for() -> ne_binary().
-for() -> <<"number_management">>.
+-spec category() -> ne_binary().
+category() -> <<"number_management">>.
 
 -spec module() -> module().
 module() -> kz_util:to_binary(?MODULE).

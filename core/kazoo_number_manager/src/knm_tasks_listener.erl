@@ -61,7 +61,7 @@ help(JObj, _Props) ->
     'true' = kapi_tasks:help_req_v(JObj),
     RespJObj =
         kz_json:from_list([{<<"Tasks">>, kz_json:from_list(knm_tasks:help())}
-                          ,{<<"Tasks-For">>, knm_tasks:for()}
+                          ,{<<"Tasks-Category">>, knm_tasks:category()}
                           ,{<<"Tasks-Module">>, knm_tasks:module()}
                           ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
                            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)

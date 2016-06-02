@@ -592,7 +592,7 @@ parse_apis(JObjs) ->
 
 -spec parse_apis_fold(kz_json:object(), m_apis()) -> m_apis().
 parse_apis_fold(JObj, {Apps, Nodes, Modules, APIs}) ->
-    APICategory = kz_json:get_value(<<"Tasks-For">>, JObj),
+    APICategory = kz_json:get_value(<<"Tasks-Category">>, JObj),
     App = kz_json:get_value(<<"App-Name">>, JObj),
     Module = kz_json:get_value(<<"Tasks-Module">>, JObj),
     TasksProvided = kz_json:get_value(<<"Tasks">>, JObj),

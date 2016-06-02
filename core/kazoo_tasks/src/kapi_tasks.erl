@@ -25,7 +25,7 @@
 -define(HELP_REQ_TYPES, []).
 
 -define(HELP_RESP_HEADERS, [<<"Tasks">>
-                           ,<<"Tasks-For">>
+                           ,<<"Tasks-Category">>
                            ,<<"Tasks-Module">>
                            ]).
 -define(OPTIONAL_HELP_RESP_HEADERS, []).
@@ -33,7 +33,7 @@
                           ,{<<"Event-Name">>, <<"help_resp">>}
                           ]).
 -define(HELP_RESP_TYPES, [{<<"Tasks">>, fun kz_json:is_json_object/1}
-                         ,{<<"Tasks-For">>, fun erlang:is_binary/1}
+                         ,{<<"Tasks-Category">>, fun erlang:is_binary/1}
                          ,{<<"Tasks-Module">>, fun erlang:is_binary/1}
                          ]).
 
