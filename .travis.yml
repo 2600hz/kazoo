@@ -36,6 +36,7 @@ script: make compile
 after_success:
   - if [[ 0 -ne `git status --porcelain -- applications/ core/ | wc -l` ]]; then echo Unstaged changes! && git diff && exit 1; fi
   - make xref
+  - ./scripts/code_checks.bash
   - git fetch origin master:master
   - files="$(git diff --name-only master... -- application/ core/)" || true && echo $files
   - make build-plt
