@@ -14,14 +14,14 @@
          ,count/2, count_per_folder/2, count_modb_messages/3
          ,count_by_owner/2
          ,set_folder/3, update_folder/3, update_folder/4
+         ,bulk_update/3
 
          ,media_url/2
 
          ,load_vmbox/2, load_vmbox/3, vmbox_summary/1
-         ,update_message_doc/2, update_message_doc/3, bulk_update/3
          ,find_message_differences/3
 
-         ,to_another_vmbox/4
+         ,change_vmbox/4
 
          ,get_db/1, get_db/2
          ,get_range_view/2
@@ -228,14 +228,14 @@ save_meta(Length, Action, Call, MediaId, BoxId) ->
                        apply_folder(?VM_FOLDER_DELETED, JObj)
                    end
                   ],
-            {'ok', _} = save_metadata(Metadata, AccountId, MediaId, Fun);
+            _ = save_metadata(Metadata, AccountId, MediaId, Fun);
         'save' ->
             lager:debug("attachment was sent out via notification, saving media file"),
             Fun = [fun(JObj) ->
                        apply_folder(?VM_FOLDER_SAVED, JObj)
                    end
                   ],
-            {'ok', _} = save_metadata(Metadata, AccountId, MediaId, Fun);
+            _ = save_metadata(Metadata, AccountId, MediaId, Fun);
         'nothing' ->
             {'ok', _} = save_metadata(Metadata, AccountId, MediaId, []),
             lager:debug("stored voicemail metadata for ~s", [MediaId]),
@@ -249,8 +249,7 @@ save_metadata(NewMessage, AccountId, MessageId, Funs) ->
                   end
                   | Funs
                  ],
-
-    case ?RETRY_CONFLICT(update_message_doc(AccountId, MessageId, UpdateFuns)) of
+    case ?RETRY_CONFLICT(update_message_doc(AccountId, 'undefined', MessageId, UpdateFuns)) of
         {'ok', _}=OK -> OK;
         {'error', R}=E ->
             lager:info("error while storing voicemail metadata: ~p", [R]),
@@ -414,7 +413,7 @@ maybe_set_folder(_, ?VM_FOLDER_DELETED=ToFolder, MessageId, AccountId, _) ->
 maybe_set_folder(FromFolder, FromFolder, ?MATCH_MODB_PREFIX(_, _, _), _, Msg) -> {'ok', Msg};
 maybe_set_folder(FromFolder, FromFolder, MessageId, AccountId, _) ->
     lager:info("folder is same, but doc is in accountdb, move it to modb"),
-    update_message_doc(AccountId, MessageId);
+    update_message_doc(AccountId, 'undefined', MessageId, []);
 maybe_set_folder(_FromFolder, ToFolder, MessageId, AccountId, _) ->
     update_folder(ToFolder, MessageId, AccountId).
 
@@ -463,19 +462,11 @@ apply_folder(Folder, Doc) ->
 %%--------------------------------------------------------------------
 -type update_funs() :: [fun((kz_json:object()) -> kz_json:object())].
 
--spec update_message_doc(ne_binary(), ne_binary()) -> db_ret().
-update_message_doc(AccountId, MsgId) ->
-    update_message_doc(AccountId, 'undefined', MsgId).
-
--spec update_message_doc(ne_binary(), ne_binary(), ne_binary()) -> db_ret().
-update_message_doc(AccountId, BoxId, MsgId) ->
-    update_message_doc(AccountId, BoxId, MsgId, []).
-
 -spec update_message_doc(ne_binary(), ne_binary(), ne_binary(), update_funs()) -> db_ret().
 update_message_doc(AccountId, BoxId, MsgId, Funs) ->
     case message_doc(AccountId, MsgId) of
         {'ok', JObj} ->
-            case BoxId =/= 'undefined'
+            case BoxId =:= 'undefined'
                      orelse kzd_box_message:source_id(JObj) =:= BoxId
             of
                 'true' -> do_update_message_doc(AccountId, MsgId, JObj, Funs);
@@ -657,22 +648,14 @@ cleanup_moved_msgs(AccountId, BoxId, OldIds) ->
 %% @doc Move messages to another vmbox
 %% @end
 %%--------------------------------------------------------------------
--spec to_another_vmbox(ne_binary(), ne_binary() | ne_binaries(), ne_binary(), ne_binary()) ->
-                                {kz_json:objects(), ne_binary(), ne_binary()}.
-to_another_vmbox(AccountId, MsgIds, OldBoxId, NewBoxId) when is_list(MsgIds) ->
-    AccountDb = get_db(AccountId),
-    {'ok', OBox} = kz_datamgr:open_cache_doc(AccountDb, OldBoxId),
-    {'ok', NBox} = kz_datamgr:open_cache_doc(AccountDb, NewBoxId),
-    OldOwnerId = kz_json:get_value(<<"owner_id">>, OBox),
-    NewOwnerId = kz_json:get_value(<<"owner_id">>, NBox),
-
+-spec change_vmbox(ne_binary(), ne_binary() | ne_binaries(), ne_binary(), ne_binary()) -> kz_json:objects().
+change_vmbox(AccountId, MsgIds, OldBoxId, NewBoxId) when is_list(MsgIds) ->
     Funs = [fun(JObj) -> kzd_box_message:set_source_id(NewBoxId, JObj) end
             ,fun(JObj) -> apply_folder(?VM_FOLDER_NEW, JObj) end
            ],
-    Moved = bulk_update(AccountId, OldBoxId, MsgIds, Funs),
-    {Moved, OldOwnerId, NewOwnerId};
-to_another_vmbox(AccountId, MsgId, OldBoxId, NewBoxId) ->
-    to_another_vmbox(AccountId, [MsgId], OldBoxId, NewBoxId).
+    bulk_update(AccountId, OldBoxId, MsgIds, Funs);
+change_vmbox(AccountId, MsgId, OldBoxId, NewBoxId) ->
+    change_vmbox(AccountId, [MsgId], OldBoxId, NewBoxId).
 
 %%--------------------------------------------------------------------
 %% @public

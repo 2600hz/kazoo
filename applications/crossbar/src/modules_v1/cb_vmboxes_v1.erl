@@ -157,7 +157,7 @@ validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId, ?BIN_DATA) ->
     case load_message_binary(DocId, MediaId, Context) of
         {'true', C1} ->
             C2 = update_message_folder(DocId, MediaId, C1),
-            update_mwi(C2, 'undefined', DocId);
+            update_mwi(C2, DocId);
         {_, C} -> C
     end.
 
@@ -178,34 +178,34 @@ post(Context, DocId) ->
 
     Props = [{?VM_KEY_MESSAGES, BoxMsg}],
     C = crossbar_doc:save(cb_context:set_doc(Context, kz_json:set_values(Props, Doc))),
-    update_mwi(C).
+    update_mwi(C, DocId).
 
-post(Context, DocId, ?MESSAGES_RESOURCE) ->
+post(Context, OldBoxId, ?MESSAGES_RESOURCE) ->
     AccountId = cb_context:account_id(Context),
     MsgIds = cb_context:req_value(Context, ?VM_KEY_MESSAGES, []),
     Folder = get_folder_filter(Context, ?VM_FOLDER_SAVED),
 
     case cb_context:req_value(Context, <<"source_id">>) of
         'undefined' ->
-            {'ok', Result} = kz_vm_message:update_folder(Folder, MsgIds, AccountId, DocId),
+            {'ok', Result} = kz_vm_message:update_folder(Folder, MsgIds, AccountId, OldBoxId),
             C = cb_context:set_resp_data(Context, Result),
-            update_mwi(C, 'undefined', DocId);
+            update_mwi(C, OldBoxId);
         NewBoxId ->
-            {Moved, OldOwnerId, NewOwnerId} = kz_vm_message:to_another_vmbox(AccountId, MsgIds, DocId, NewBoxId),
+            Moved = kz_vm_message:change_vmbox(AccountId, MsgIds, OldBoxId, NewBoxId),
             C = cb_context:set_resp_data(Context, Moved),
-            update_mwi(C, [OldOwnerId, NewOwnerId], 'undefined')
+            update_mwi(C, [OldBoxId, NewBoxId])
     end.
 
-post(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
+post(Context, OldBoxId, ?MESSAGES_RESOURCE, MediaId) ->
     AccountId = cb_context:account_id(Context),
     case cb_context:req_value(Context, <<"source_id">>) of
         'undefined' ->
-            C = update_message_folder(DocId, MediaId, Context),
-            update_mwi(C, 'undefined', DocId);
+            C = update_message_folder(OldBoxId, MediaId, Context),
+            update_mwi(C, OldBoxId);
         NewBoxId ->
-            {Moved, OldOwnerId, NewOwnerId} = kz_vm_message:to_another_vmbox(AccountId, MediaId, DocId, NewBoxId),
+            Moved = kz_vm_message:change_vmbox(AccountId, MediaId, OldBoxId, NewBoxId),
             C = cb_context:set_resp_data(Context, Moved),
-            update_mwi(C, [OldOwnerId, NewOwnerId], 'undefined')
+            update_mwi(C, [OldBoxId, NewBoxId])
     end.
 
 %%--------------------------------------------------------------------
@@ -230,17 +230,17 @@ delete(Context, DocId) ->
     Msgs = kz_vm_message:messages(AccountId, DocId),
     _ = kz_vm_message:update_folder(?VM_FOLDER_DELETED, Msgs, cb_context:account_id(Context), DocId),
     C = crossbar_doc:delete(Context),
-    update_mwi(C).
+    update_mwi(C, DocId).
 
 delete(Context, DocId, ?MESSAGES_RESOURCE) ->
     MsgIds = cb_context:resp_data(Context),
     {'ok', Result} = kz_vm_message:update_folder(?VM_FOLDER_DELETED, MsgIds, cb_context:account_id(Context), DocId),
     C = cb_context:set_resp_data(Context, Result),
-    update_mwi(C, 'undefined', DocId).
+    update_mwi(C, DocId).
 
 delete(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
     C = update_message_folder(DocId, MediaId, Context),
-    update_mwi(C, 'undefined', DocId).
+    update_mwi(C, DocId).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -272,7 +272,7 @@ validate_message(Context, DocId, MediaId, ?HTTP_GET) ->
     case load_message(MediaId, DocId, 'undefined', Context) of
         {'true', C1} ->
             C2 = update_message_folder(DocId, MediaId, C1),
-            update_mwi(C2, 'undefined', DocId);
+            update_mwi(C2, DocId);
         {_, C} -> C
     end;
 validate_message(Context, DocId, MediaId, ?HTTP_POST) ->
@@ -691,38 +691,20 @@ check_uniqueness(VMBoxId, Context, Mailbox) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_mwi(cb_context:context()) -> cb_context:context().
--spec update_mwi(cb_context:context(), atom()) -> cb_context:context().
--spec update_mwi(cb_context:context(),api_binary() | api_binaries(), api_binary()) -> cb_context:context().
--spec update_mwi(cb_context:context(), api_binary() | api_binaries(), api_binary(), atom()) -> cb_context:context().
-update_mwi(Context) ->
-    update_mwi(Context, cb_context:resp_status(Context)).
+-spec update_mwi(cb_context:context(), ne_binary() | ne_binaries()) -> cb_context:context().
+-spec update_mwi(cb_context:context(), ne_binary() | ne_binaries(), atom()) -> cb_context:context().
+update_mwi(Context, BoxId) when is_binary(BoxId) ->
+    update_mwi(Context, [BoxId]);
+update_mwi(Context, []) -> Context;
+update_mwi(Context, [BoxId | BoxIds]) ->
+    _ = update_mwi(Context, BoxId, cb_context:resp_status(Context)),
+    update_mwi(Context, BoxIds).
 
-update_mwi(Context, 'success') ->
-    OwnerId = kz_json:get_value(<<"owner_id">>, cb_context:doc(Context)),
-    _ = cb_modules_util:update_mwi(OwnerId, cb_context:account_db(Context)),
+update_mwi(Context, BoxId, 'success') ->
+    AccountId = cb_context:account_id(Context),
+    _ = cb_modules_util:update_mwi(BoxId, AccountId),
     Context;
-update_mwi(Context, _Status) ->
-    Context.
-
-update_mwi(Context, OwnerIds, BoxId) ->
-  update_mwi(Context, OwnerIds, BoxId, cb_context:resp_status(Context)).
-
-update_mwi(Context, 'undefined', BoxId, 'success') ->
-    AccountDb = cb_context:account_db(Context),
-    {'ok' , Box} = kz_datamgr:open_cache_doc(AccountDb, BoxId),
-    OwnerId = kz_json:get_value(<<"owner_id">>, Box),
-    _ = cb_modules_util:update_mwi(OwnerId, AccountDb),
-    Context;
-update_mwi(Context, [], _, 'success') ->
-    Context;
-update_mwi(Context, [OwnerId|OwnerIds], BoxId, 'success') ->
-    _ = update_mwi(Context, OwnerId, BoxId, 'success'),
-    update_mwi(Context, OwnerIds, BoxId, 'success');
-update_mwi(Context, OwnerId, _, 'success') ->
-    _ = cb_modules_util:update_mwi(OwnerId, cb_context:account_db(Context)),
-    Context;
-update_mwi(Context, _OwnerId, _BoxId, _Status) ->
+update_mwi(Context, _BoxId, _Status) ->
     Context.
 
 %%--------------------------------------------------------------------
