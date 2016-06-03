@@ -1048,7 +1048,7 @@ on_successful_validation(Id, Context) ->
 handle_missing_account_notification(Context, Id, [{<<"notifications">>, [_Id, ?PREVIEW]}|_]) ->
     %% Id is the notification.ID (the database doc id) while _Id is ID (the URI param)
     lager:debug("preview request, ignoring if notification ~s is missing", [Id]),
-    on_successful_validation(Id, Context);
+    Context;
 handle_missing_account_notification(Context, Id, _ReqNouns) ->
     _ = maybe_hard_delete(Context, Id),
     _Context = read_system_for_account(Context, Id, 'system_migrate'),
