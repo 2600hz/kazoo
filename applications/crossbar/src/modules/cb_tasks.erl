@@ -391,6 +391,13 @@ req_content_type(Context) ->
     cb_context:req_header(Context, <<"content-type">>).
 
 %% @private
+-spec replace_content_type(cb_context:context(), ne_binary()) -> cb_context:context().
+replace_content_type(Context, CT) ->
+    Key = <<"content-type">>,
+    Without = lists:keydelete(Key, 1, cb_context:req_headers(Context)),
+    cb_context:set_req_headers(Context, [{Key, CT} | Without]).
+
+%% @private
 -spec is_content_type_csv(cb_context:context()) -> boolean().
 is_content_type_csv(Context) ->
     [Lhs, Rhs] = binary:split(req_content_type(Context), <<$/>>),
@@ -416,7 +423,7 @@ attached_data(Context, 'false') ->
                                 cb_context:context().
 save_attached_data(Context, TaskId, CSV, 'true') ->
     Name = <<"csv">>,
-    CT = <<"text/csv">>,
+    CT = req_content_type(Context),
     Filename = cb_modules_util:attachment_name(Name, CT),
     Options = [{'content_type', CT}],
     lager:debug("saving ~s attachment in task ~s", [Name, TaskId]),
@@ -425,12 +432,12 @@ save_attached_data(Context, TaskId, Records, 'false') ->
     lager:debug("converting JSON to CSV before saving"),
     Fields = kz_json:get_keys(hd(Records)),
     lager:debug("CSV fields found: ~p", [Fields]),
-    CSV = [iolist_join(Fields, ","), "\n"
+    CSV = [iolist_join(",", Fields), "\n"
           ,[ [iolist_join(<<",">>, [kz_json:get_value(Field, Record) || Field <- Fields]), "\n"]
              || Record <- Records
            ]
           ],
-    Context1 = cb_context:set_req_headers(Context, <<"text/csv">>),
+    Context1 = replace_content_type(Context, <<"text/csv">>),
     save_attached_data(Context1, TaskId, iolist_to_binary(CSV), 'true').
 
 %% @private
