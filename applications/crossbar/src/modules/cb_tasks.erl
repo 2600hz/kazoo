@@ -223,14 +223,6 @@ validate_new_attachment(Context, 'true') ->
 validate_new_attachment(Context, 'false') ->
     cb_context:validate_request_data(?SCHEMA_RECORDS, Context).
 
-%% -spec validate_attachment(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
-%% validate_attachment(Context, TaskId, AttachmentId, ?HTTP_GET) ->
-%%     load_attachment(Context, TaskId, AttachmentId);
-%% validate_attachment(Context, TaskId, AttachmentId, ?HTTP_POST) ->
-%%     is_mutable(load_attachment(Context, TaskId, AttachmentId));
-%% validate_attachment(Context, TaskId, AttachmentId, ?HTTP_DELETE) ->
-%%     is_mutable(load_attachment(Context, TaskId, AttachmentId)).
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -268,33 +260,6 @@ put(Context) ->
                     crossbar_util:response('error', Reason, Context)
             end
     end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is POST, execute the actual action, usually a db save
-%% (after a merge perhaps).
-%% @end
-%%--------------------------------------------------------------------
-%% -spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
-%% post(Context, TaskId, ?CSV_ATTACHMENT, AttachmentId) ->
-%%     AttachmentId = TaskId,
-%%     [{_Filename, FileJObj}] = cb_context:req_files(Context),
-%%     Contents = kz_json:get_value(<<"contents">>, FileJObj),
-%%     CT = kz_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
-%%     Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(?KZ_TASKS_DOC_TYPE)],
-%%     case kz_doc:attachment(cb_context:doc(Context), AttachmentId) of
-%%         'undefined' -> lager:debug("no attachment named ~s", [AttachmentId]);
-%%         _AttachmentMeta ->
-%%             lager:debug("deleting old attachment ~s", [AttachmentId]),
-%%             kz_datamgr:delete_attachment(cb_context:account_db(Context), TaskId, AttachmentId)
-%%     end,
-%%     crossbar_doc:save_attachment(TaskId
-%%                                  ,AttachmentId
-%%                                  ,Contents
-%%                                  ,Context
-%%                                  ,Opts
-%%                                 ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -463,40 +428,3 @@ load_csv_attachment(Context, TaskId, AName) ->
        ,{<<"Content-Type">>, <<"text/csv">>}
        ,{<<"Content-Length">>, byte_size(cb_context:resp_data(Ctx))}
        ]).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Fetch a task's attachment (they share the Id)
-%% @end
-%%--------------------------------------------------------------------
-%% -spec load_attachment(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
-%% load_attachment(Context, TaskId, AttachmentId) ->
-%%     Context1 = read(TaskId, Context),
-%%     case cb_context:resp_status(Context1) of
-%%         'success' ->
-%%             Doc = cb_context:doc(Context),
-%%             cb_context:add_resp_headers(
-%%               crossbar_doc:load_attachment(Doc
-%%                                           ,AttachmentId
-%%                                           ,?TYPE_CHECK_OPTION(?KZ_TASKS_DOC_TYPE)
-%%                                           ,Context
-%%                                           )
-%%               ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
-%%                ,{<<"Content-Type">>, kz_doc:attachment_content_type(Doc, AttachmentId)}
-%%                ,{<<"Content-Length">>, kz_doc:attachment_length(Doc, AttachmentId)}
-%%                ]
-%%              );
-%%         _ ->
-%%             Context1
-%%     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
-%% -spec is_mutable(cb_context:context()) -> cb_context:context().
-%% is_mutable(Context) ->
-%%     %%TODO: add_system_error(invalid_method) if task is running
-%%     Context.
