@@ -774,7 +774,9 @@ read_doc(File) ->
 
 -spec is_preview(wh_json:object()) -> boolean().
 is_preview(DataJObj) ->
-    wh_json:is_true(<<"preview">>, DataJObj, 'false').
+    wh_util:is_true(
+      wh_json:get_first_defined([<<"Preview">>, <<"preview">>], DataJObj, 'false')
+     ).
 
 -spec public_proplist(wh_json:key(), wh_json:object()) -> wh_proplist().
 public_proplist(Key, JObj) ->
