@@ -112,7 +112,7 @@ resource_exists(_TaskId) -> 'true'.
 %% @doc
 %% What content-types will the module be requiring (matched to the client's
 %% Content-Type header
-%% Of the form {atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
+%% Of the form {atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_accepted(cb_context:context(), path_token()) -> cb_context:context().
@@ -132,8 +132,8 @@ cta(Context, _) ->
 %% @public
 %% @doc
 %% What content-types will the module be using to respond (matched against
-%% client's accept header)
-%% Of the form {atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
+%% client's Accept header)
+%% Of the form {atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
@@ -149,9 +149,9 @@ ctp(Context, ?HTTP_GET) ->
 ctp(Context, _) ->
     Context.
 ctp(Context) ->
-    CTP = [{'from_binary', ?CSV_CONTENT_TYPES ++ ?JSON_CONTENT_TYPES}],
-    %%FIXME: could use add_attachment_content_type + JSON here
-    %% but validate/2 needs to happen first.
+    CTP = [{'to_json', ?JSON_CONTENT_TYPES}
+          ,{'to_binary', ?CSV_CONTENT_TYPES}
+          ],
     cb_context:add_content_types_provided(Context, CTP).
 
 %%--------------------------------------------------------------------

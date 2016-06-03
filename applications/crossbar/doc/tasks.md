@@ -211,6 +211,20 @@ Optional: use `-H "Content-Type: text/csv"` to fetch the task's data file as a C
 
 > GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
 
+To fetch its CSV data:
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Accept: text/csv" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
+```
+
+Streams back the contents of the CSV file.
+
+
+To fetch a task's summary:
+
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
