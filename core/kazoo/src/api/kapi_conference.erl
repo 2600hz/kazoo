@@ -310,7 +310,7 @@
      ,<<"Focus">>
      ,<<"Conference-ID">>
      ,<<"Instance-ID">>
-     ,<<"Participant-ID">>
+     ,<<"Participant">>
      ,<<"Floor">>
      ,<<"Hear">>
      ,<<"Speak">>
