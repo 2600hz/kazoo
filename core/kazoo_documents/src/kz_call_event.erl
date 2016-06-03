@@ -19,7 +19,7 @@
          ,dtmf_digit/1
          ,event_name/1
          ,hangup_cause/1, hangup_code/1, disposition/1
-         ,application_name/1, application_response/1
+         ,application_name/1, application_response/1, is_authorized/1
          ,application_event/1, application_data/1
          ,response_message/1, response_code/1
          ,account_id/1
@@ -80,6 +80,12 @@ authorizing_id(JObj) ->
 -spec authorizing_type(kz_json:object()) -> api_binary().
 authorizing_type(JObj) ->
     custom_channel_var(JObj, <<"Authorizing-Type">>).
+
+-spec is_authorized(kz_json:object()) -> boolean().
+is_authorized(JObj) ->
+    kz_util:is_true(
+      custom_channel_var(JObj, <<"Channel-Authorized">>)
+     ).
 
 -spec dtmf_digit(kz_json:object()) -> api_binary().
 dtmf_digit(JObj) ->

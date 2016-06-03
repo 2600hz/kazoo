@@ -39,6 +39,7 @@
 -define(WAIT_FOR_WIN_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 
 -type state() :: #ts_callflow_state{}.
+-type event_type() :: {api_binary(), api_binary(), api_binary()}.
 
 -export_type([state/0]).
 
@@ -129,62 +130,80 @@ wait_for_bridge(State) ->
 
 -spec process_event_for_bridge(state(), kz_json:object()) ->
                                       'ignore' | {'hangup' | 'error', state()}.
+-spec process_event_for_bridge(state(), kz_json:object(), event_type()) ->
+                                      'ignore' | {'hangup' | 'error', state()}.
+process_event_for_bridge(State, JObj) ->
+    process_event_for_bridge(State, JObj, get_event_type(JObj)).
+
+process_event_for_bridge(State, JObj, {<<"resource">>, <<"offnet_resp">>, _}) ->
+    case is_success(<<"Response-Message">>, JObj)
+        orelse was_bridge_blocked(JObj)
+    of
+        'true' ->
+            lager:info("offnet bridge has finished"),
+            {'hangup', State};
+        'false' ->
+            Failure = kz_json:get_first_defined([<<"Error-Message">>
+                                                ,<<"Response-Code">>
+                                                ]
+                                               ,JObj
+                                               ),
+            lager:info("offnet failed: ~s ~s"
+                      ,[Failure, kz_json:get_value(<<"Response-Message">>, JObj)]
+                      ),
+            {'error', State}
+    end;
 process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg
-                                            ,callctl_q=CtlQ
+                                           ,callctl_q=CtlQ
                                            }=State
-                         ,JObj) ->
-    case get_event_type(JObj) of
-        {<<"resource">>, <<"offnet_resp">>, _} ->
-            case is_success(<<"Response-Message">>, JObj) of
-                'true' ->
-                    lager:info("offnet bridge has completed successfully"),
-                    {'hangup', State};
-                'false' ->
-                    Failure = kz_json:get_first_defined([<<"Error-Message">>
-                                                         ,<<"Response-Code">>
-                                                        ]
-                                                        ,JObj
-                                                       ),
-                    lager:info("offnet failed: ~s ~s"
-                               ,[Failure, kz_json:get_value(<<"Response-Message">>, JObj)]
-                              ),
-                    {'error', State}
-            end;
-        {<<"resource">>, <<"resource_error">>, _} ->
-            Code = kz_json:get_value(<<"Failure-Code">>, JObj, <<"486">>),
-            Message = kz_json:get_value(<<"Failure-Message">>, JObj),
-            lager:info("offnet failed: ~s ~s", [Code, Message]),
-            %% send failure code to Call
-            _ = kz_call_response:send(ALeg, CtlQ, Code, Message),
+                        ,JObj
+                        ,{<<"resource">>, <<"resource_error">>, _}
+                        ) ->
+    Code = kz_json:get_value(<<"Failure-Code">>, JObj, <<"486">>),
+    Message = kz_json:get_value(<<"Failure-Message">>, JObj),
+    lager:info("offnet failed: ~s ~s", [Code, Message]),
+    %% send failure code to Call
+    _ = kz_call_response:send(ALeg, CtlQ, Code, Message),
+    {'hangup', State};
+process_event_for_bridge(State, _JObj, {<<"call_event">>, <<"CHANNEL_DESTROY">>, _}) ->
+    lager:info("channel hungup before bridge"),
+    {'hangup', State};
+process_event_for_bridge(State, JObj, {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>}) ->
+    case was_bridge_successful(JObj)
+        orelse was_bridge_blocked(JObj)
+    of
+        'true' ->
+            lager:info("bridge finished, time to hangup"),
             {'hangup', State};
-        {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
-            lager:info("channel hungup before bridge"),
+        'false' ->
+            lager:info("bridge failed: ~s",[kz_json:encode(JObj)]),
+            {'error', State}
+    end;
+process_event_for_bridge(State, JObj, {<<"error">>, _, <<"bridge">>}) ->
+    lager:debug("channel execution error while waiting for bridge: ~s"
+               ,[kz_json:encode(JObj)]
+               ),
+    case was_bridge_blocked(JObj) of
+        'true' ->
+            lager:info("bridge was blocked"),
             {'hangup', State};
-        {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
-            case was_bridge_successful(JObj) of
-                'true' ->
-                    lager:info("bridge completed successfully"),
-                    {'hangup', State};
-                'false' ->
-                    lager:info("bridge failed: ~s",[kz_json:encode(JObj)]),
-                    {'error', State}
-             end;
-        {<<"error">>, _, <<"bridge">>} ->
-            lager:debug("channel execution error while waiting for bridge: ~s"
-                        ,[kz_json:encode(JObj)]
-                       ),
-            {'error', State};
-        {<<"call_event">>,<<"CHANNEL_EXECUTE_COMPLETE">>,<<"answer">>} ->
-            %% support one legged bridges such as on-net conference
-            lager:info("channel was answered"),
-            'ignore';
-        {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
-            BLeg = kz_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
-            lager:debug("channel ~s bridged to ~s", [ALeg, BLeg]),
-            'ignore';
-        _Unhandled ->
-            'ignore'
-    end.
+        'false' ->
+            {'error', State}
+    end;
+process_event_for_bridge(_State, _JObj, {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"answer">>}) ->
+    %% support one legged bridges such as on-net conference
+    lager:info("channel was answered"),
+    'ignore';
+process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg}
+                        ,JObj
+                        ,{<<"call_event">>, <<"CHANNEL_BRIDGE">>, _}
+                        ) ->
+    BLeg = kz_call_event:other_leg_call_id(JObj),
+    lager:debug("channel ~s bridged to ~s", [ALeg, BLeg]),
+    'ignore';
+process_event_for_bridge(_State, _JObj, _Unhandled) ->
+    lager:debug("ignoring ~p", [_Unhandled]),
+    'ignore'.
 
 -spec was_bridge_successful(kz_json:object()) -> boolean().
 was_bridge_successful(JObj) ->
@@ -196,15 +215,11 @@ was_bridge_successful(JObj) ->
                           ,<<"UNSPECIFIED">>
                          ).
 
--spec is_success(ne_binary(), kz_json:object()) -> boolean().
--spec is_success(ne_binaries(), kz_json:object(), ne_binary()) -> boolean().
-is_success(Key, JObj) ->
-    kz_json:get_value(Key, JObj) =:= <<"SUCCESS">>.
-is_success(Key, JObj, Default) ->
-    kz_json:get_first_defined(Key, JObj, Default) =:= <<"SUCCESS">>.
-
--spec get_event_type(kz_json:object()) ->
-                            {api_binary(), api_binary(), api_binary()}.
+-spec was_bridge_blocked(kz_json:object()) -> boolean().
+was_bridge_blocked(JObj) ->
+    Blocked = not kz_call_event:is_authorized(JObj),
+    lager:debug("was bridge blocked: ~p", [Blocked]),
+    Blocked.
 get_event_type(JObj) ->
     {C, N} = kz_util:get_event_type(JObj),
     {C, N, get_app(JObj)}.
@@ -297,3 +312,10 @@ pre_park_action() ->
         'false' -> <<"none">>;
         'true' -> <<"ring_ready">>
     end.
+
+-spec is_success(ne_binary(), kz_json:object()) -> boolean().
+-spec is_success(ne_binaries(), kz_json:object(), ne_binary()) -> boolean().
+is_success(Key, JObj) ->
+    kz_json:get_value(Key, JObj) =:= <<"SUCCESS">>.
+is_success(Key, JObj, Default) ->
+    kz_json:get_first_defined(Key, JObj, Default) =:= <<"SUCCESS">>.
