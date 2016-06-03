@@ -20,7 +20,7 @@
          ,external_attachments/1, external_attachments/2
          ,attachment_names/1
          ,attachment/1, attachment/2, attachment/3
-         ,latest_attachment/1
+         ,latest_attachment_id/1
 
          ,attachment_revision/1
          ,compare_attachments/2
@@ -259,13 +259,15 @@ attachment_revision(AttachmentJObj) ->
 compare_attachments(AttachmentJObjA, AttachmentJObjB) ->
     attachment_revision(AttachmentJObjA) =< attachment_revision(AttachmentJObjB).
 
--spec latest_attachment(kz_json:object()) -> api_object().
-latest_attachment(Doc) ->
+-spec latest_attachment_id(kz_json:object()) -> ne_binary() | 'undefined'.
+latest_attachment_id(Doc) ->
     case attachments(Doc) of
         'undefined' -> 'undefined';
         JObj ->
             JObjs = [kz_json:from_list([KV]) || KV <- kz_json:to_proplist(JObj)],
-            lists:last(lists:sort(fun compare_attachments/2, JObjs))
+            Latest = lists:last(lists:sort(fun compare_attachments/2, JObjs)),
+            [Name] = kz_json:get_keys(Latest),
+            Name
     end.
 
 -spec attachment(kz_json:object()) -> api_object().

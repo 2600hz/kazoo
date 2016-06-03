@@ -35,18 +35,24 @@ curl -v -X GET \
 
 #### Add a new task
 
-Make sure the content type matches the type of your input data file.
-`{CONTENT_TYPE}`: one of
-* `text/csv` (or alternative MIME types for CSV)
-* `application/json` (or alternative MIME types for JSON)
-
 > PUT /v2/accounts/{ACCOUNT_ID}/tasks
+
+With CSV data:
 
 ```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H "Content-Type: {CONTENT_TYPE}" \
-    --data-binary @path/to/your/data/file \
+    -H "Content-Type: text/csv" \
+    --data-binary @path/to/your/file.csv \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks?category={CATEGORY}&action={ACTION}
+```
+
+Or with JSON data:
+
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"records": [{RECORDS}]}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks?category={CATEGORY}&action={ACTION}
 ```
 
@@ -113,6 +119,27 @@ curl -v -X PUT \
     "error": "404",
     "message": "bad identifier",
     "request_id": "151dc80b630e6cd1f50585dcd6c81268",
+    "status": "error"
+}
+```
+
+##### Wrong input data
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "attachment": {
+            "type": {
+                "unknown_fields": [
+                    "wef"
+                ]
+            }
+        }
+    },
+    "error": "500",
+    "message": "invalid request",
+    "request_id": "296a70611e460b82628cb873c11e5c98",
     "status": "error"
 }
 ```

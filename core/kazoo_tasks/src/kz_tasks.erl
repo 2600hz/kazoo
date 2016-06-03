@@ -19,7 +19,9 @@
         ,remove/1
 	]).
 
--export([is_csv/1]).
+-export([is_csv/1
+        ,attachment_name/1
+        ]).
 
 %% API used by workers
 -export([worker_finished/1
@@ -54,6 +56,7 @@
                    , started => api_seconds()
                    , finished => api_seconds()
                    , failed => api_binary() %% Error that occured during processing
+                   , attachment => api_binary() %% Name of most up to date CSV/JSON
                    }.
 -opaque tasks() :: [task()].
 
@@ -187,6 +190,19 @@ read(TaskId=?NE_BINARY) ->
     case task_by_id(TaskId) of
         [Task] -> {'ok', to_public_json(Task)};
         [] -> {'error', 'not_found'}
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec attachment_name(task_id()) -> ne_binary() | 'undefined'.
+attachment_name(TaskId=?NE_BINARY) ->
+    case task_by_id(TaskId) of
+        [#{attachment := Name}]
+        when Name =/= 'undefined' -> Name;
+        _ -> 'undefined'
     end.
 
 %%--------------------------------------------------------------------
@@ -496,6 +512,7 @@ from_json(Doc) ->
      , started => kz_json:get_value(?PVT_STARTED_AT, Doc)
      , finished => kz_json:get_value(?PVT_FINISHED_AT, Doc)
      , failed => kz_json:get_value(?PVT_FAILED_AT, Doc)
+     , attachment => kz_doc:latest_attachment_id(Doc)
      }.
 
 -spec to_json(task()) -> kz_json:object().
@@ -686,7 +703,7 @@ find_input_errors(API, Input=?NE_BINARY) ->
 
 find_input_errors(API, InputRecord) ->
     %%NOTE: assumes first record has all the fields that all the other records will ever need set
-    {Fields, _} = kz_json:get_values(hd(InputRecord)),
+    Fields = kz_json:get_keys(hd(InputRecord)),
     Mandatory = mandatory(API),
     Errors = find_API_errors(API, Mandatory, Fields),
     %% Stop here if there is no Mandatory fields to check against.
@@ -730,6 +747,6 @@ mandatories_unset(IsMandatory, Row) ->
                    Mandatory andalso <<>> == Value
            end,
     RedF = fun erlang:'or'/2,
-    lists:foldl(RedF, 'false', lists:zipWith(MapF, IsMandatory, Row)).
+    lists:foldl(RedF, 'false', lists:zipwith(MapF, IsMandatory, Row)).
 
 %%% End of Module.
