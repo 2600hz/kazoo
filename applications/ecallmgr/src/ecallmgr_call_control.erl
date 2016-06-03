@@ -1,5 +1,5 @@
 %%%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2015, 2600Hz
+%%% @copyright (C) 2010-2016, 2600Hz
 %%% @doc
 %%% Created when a call hits a fetch_handler in ecallmgr_route.
 %%% A Control Queue is created by the lookup_route function in the
@@ -569,7 +569,9 @@ force_queue_advance(#state{call_id=CallId
                           }=State) ->
     lager:debug("received control queue unconditional advance, skipping wait for command completion of '~s'"
                 ,[CurrApp]),
-    case INU andalso queue:out(CmdQ) of
+    case INU
+        andalso queue:out(CmdQ)
+    of
         'false' ->
             %% if the node is down, don't inject the next FS event
             lager:debug("not continuing until the media node becomes avaliable"),
@@ -579,7 +581,9 @@ force_queue_advance(#state{call_id=CallId
             State#state{current_app='undefined'};
         {{'value', Cmd}, CmdQ1} ->
             AppName = kz_json:get_value(<<"Application-Name">>, Cmd),
-            _ = case CallUp orelse is_post_hangup_command(AppName) of
+            _ = case CallUp
+                    orelse is_post_hangup_command(AppName)
+                of
                     'true' ->
                         execute_control_request(Cmd, State);
                     'false' ->
@@ -651,7 +655,9 @@ forward_queue(#state{call_id = CallId
                      ,is_call_up = CallUp
                      ,command_q = CmdQ
                     }=State) ->
-    case INU andalso queue:out(CmdQ) of
+    case INU
+        andalso queue:out(CmdQ)
+    of
         'false' ->
             %% if the node is down, don't inject the next FS event
             lager:debug("not continuing until the media node becomes avaliable"),
@@ -661,7 +667,9 @@ forward_queue(#state{call_id = CallId
             State#state{current_app='undefined', msg_id='undefined'};
         {{'value', Cmd}, CmdQ1} ->
             AppName = kz_json:get_value(<<"Application-Name">>, Cmd),
-            _ = case CallUp orelse is_post_hangup_command(AppName) of
+            _ = case CallUp
+                    orelse is_post_hangup_command(AppName)
+                of
                     'true' -> execute_control_request(Cmd, State);
                     'false' ->
                         lager:debug("command '~s' is not valid after hangup, skipping", [AppName]),
@@ -860,11 +868,16 @@ handle_dialplan(JObj, #state{call_id=CallId
                       lager:debug("failed to insert command into control queue: ~p:~p", [_T, _R]),
                       CmdQ
               end,
-    case INU andalso (not queue:is_empty(NewCmdQ)) andalso CurrApp =:= 'undefined' of
+    case INU
+        andalso (not queue:is_empty(NewCmdQ))
+        andalso CurrApp =:= 'undefined'
+    of
         'true' ->
             {{'value', Cmd}, NewCmdQ1} = queue:out(NewCmdQ),
             AppName = kz_json:get_value(<<"Application-Name">>, Cmd),
-            _ = case CallUp orelse is_post_hangup_command(AppName) of
+            _ = case CallUp
+                    orelse is_post_hangup_command(AppName)
+                of
                     'true' -> execute_control_request(Cmd, State);
                     'false' ->
                         lager:debug("command '~s' is not valid after hangup, ignoring", [AppName]),
@@ -892,7 +905,9 @@ insert_command(#state{node=Node
                       ,is_node_up=IsNodeUp
                      }=State, 'now', JObj) ->
     AName = kz_json:get_value(<<"Application-Name">>, JObj),
-    case IsNodeUp andalso AName of
+    case IsNodeUp
+        andalso AName
+    of
         'false' ->
             lager:debug("node ~s is not avaliable", [Node]),
             lager:debug("sending execution error for command ~s", [AName]),

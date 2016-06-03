@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% Utility functions for AMQP listeners to use to add/remove responders
 %%% @end
@@ -40,7 +40,12 @@ rm_responder(Responders, Responder, []) ->
 %% remove events in Keys for module Responder
 rm_responder(Responders, Responder, Keys) ->
     %% if Evt is in the list of Keys and Module =:= Responder, remove it from the list of Responders
-    [ N || {Evt, Module}=N <- Responders, (not (Module =:= Responder andalso lists:member(Evt, Keys))) ].
+    [ N || {Evt, Module}=N <- Responders,
+           (not (Module =:= Responder
+                 andalso lists:member(Evt, Keys)
+                )
+           )
+    ].
 
 %%--------------------------------------------------------------------
 %% Internal functions
@@ -49,8 +54,8 @@ rm_responder(Responders, Responder, Keys) ->
 -spec is_responder_known(responders(), responder_callback()) -> boolean().
 is_responder_known(Responders, {Responder,_}=Callback) ->
     _ = maybe_load_responder(Responder),
-    erlang:function_exported(Responder, 'init', 0) andalso
-        kz_util:is_false(lists:keyfind(Callback, 2, Responders)).
+    erlang:function_exported(Responder, 'init', 0)
+        andalso kz_util:is_false(lists:keyfind(Callback, 2, Responders)).
 
 maybe_load_responder(Responder) ->
     case erlang:module_loaded(Responder) of

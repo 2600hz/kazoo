@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -622,7 +622,8 @@ handle_cast({'bridge_to_member', Call, WinJObj, _, CDRUrl, RecordingUrl}, #state
     AgentCallId = outbound_call_id(Call, AgentId),
     acdc_util:bind_to_call_events(AgentCallId),
 
-    ShouldRecord = record_calls(Agent) orelse kz_json:is_true(<<"Record-Caller">>, WinJObj, 'false'),
+    ShouldRecord = record_calls(Agent)
+        orelse kz_json:is_true(<<"Record-Caller">>, WinJObj, 'false'),
 
     kapps_call_command:pickup(kapps_call:call_id(Agent), <<"now">>, Call),
 

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2015, 2600Hz INC
+%%% @copyright (C) 2010-2016, 2600Hz INC
 %%% @doc
 %%% Mostly a drop-in replacement and extension of the proplists module,
 %%% but using the lists module to implement
@@ -101,9 +101,11 @@ get_value(Key, Props) ->
     get_value(Key, Props, 'undefined').
 
 get_value(_Key, [], Default) -> Default;
-get_value([Key], Props, Default) when is_binary(Key) orelse is_atom(Key) ->
+get_value([Key], Props, Default) when is_binary(Key)
+                                      orelse is_atom(Key) ->
     get_value(Key, Props, Default);
-get_value([Key|Keys], Props, Default) when is_binary(Key) orelse is_atom(Key) ->
+get_value([Key|Keys], Props, Default) when is_binary(Key)
+                                           orelse is_atom(Key) ->
     case get_value(Key, Props) of
         'undefined' -> Default;
         SubProps -> get_value(Keys, SubProps, Default)
@@ -281,7 +283,8 @@ fold_kvs([K|Ks], [V|Vs], Prefix, Acc) ->
 encode_kv(Prefix, K, Vs) when is_list(Vs) ->
     encode_kv(Prefix, kz_util:to_binary(K), Vs, <<"[]=">>, []);
 %% if the value is a "simple" value, just encode it (url-encoded)
-encode_kv(Prefix, K, V) when is_binary(V) orelse is_number(V) ->
+encode_kv(Prefix, K, V) when is_binary(V)
+                             orelse is_number(V) ->
     encode_kv(Prefix, K, <<"=">>, kz_http_util:urlencode(V));
 
 % key:{k1:v1, k2:v2} => key[k1]=v1&key[k2]=v2

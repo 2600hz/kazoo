@@ -567,7 +567,8 @@ handle_info({'timeout', Ref, ?EXPIRE_PERIOD_MSG}
                    }=State
            ) ->
     _Expired = expire_objects(Tab, [PointerTab, MonitorTab]),
-    _Expired > 0 andalso lager:debug("expired ~p objects", [_Expired]),
+    _Expired > 0
+        andalso lager:debug("expired ~p objects", [_Expired]),
     {'noreply', State#state{expire_period_ref=start_expire_period_timer(Period)}};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
@@ -582,10 +583,10 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(JObj, #state{tab=Tab}=State) ->
-    case (V=kapi_conf:doc_update_v(JObj)) andalso
-             (kz_api:node(JObj) =/= kz_util:to_binary(node()) orelse
-              kz_json:get_atom_value(<<"Origin-Cache">>, JObj) =/= ets:info(Tab, 'name')
-             )
+    case (V=kapi_conf:doc_update_v(JObj))
+        andalso (kz_api:node(JObj) =/= kz_util:to_binary(node())
+                 orelse kz_json:get_atom_value(<<"Origin-Cache">>, JObj) =/= ets:info(Tab, 'name')
+                )
     of
         'true' -> handle_document_change(JObj, State);
         'false' when V -> 'ok';
@@ -839,8 +840,8 @@ handle_document_change(JObj, State) ->
     Id = kz_json:get_value(<<"ID">>, JObj),
 
     _Keys = handle_document_change(Db, Type, Id, State),
-    _Keys =/= [] andalso
-        lager:debug("removed ~p keys for ~s/~s/~s", [length(_Keys), Db, Id, Type]).
+    _Keys =/= []
+        andalso lager:debug("removed ~p keys for ~s/~s/~s", [length(_Keys), Db, Id, Type]).
 
 -spec handle_document_change(ne_binary(), ne_binary(), ne_binary(), state()) ->
                                     list().

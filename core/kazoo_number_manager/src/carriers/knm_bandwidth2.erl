@@ -34,12 +34,12 @@
 -define(BW2_DEBUG_FILE, "/tmp/bandwidth2.com.xml").
 
 -define(DEBUG_WRITE(Format, Args),
-        _ = ?BW2_DEBUG andalso
-        file:write_file(?BW2_DEBUG_FILE, io_lib:format(Format, Args))
+        _ = ?BW2_DEBUG
+        andalso file:write_file(?BW2_DEBUG_FILE, io_lib:format(Format, Args))
        ).
 -define(DEBUG_APPEND(Format, Args),
-        _ = ?BW2_DEBUG andalso
-        file:write_file(?BW2_DEBUG_FILE, io_lib:format(Format, Args), ['append'])
+        _ = ?BW2_DEBUG
+        andalso file:write_file(?BW2_DEBUG_FILE, io_lib:format(Format, Args), ['append'])
        ).
 
 -define(BW2_BASE_URL, "https://api.inetwork.com/v1.0").
@@ -62,25 +62,25 @@
 -define(BW2_SITE_ID,
         kapps_config:get_string(?KNM_BW2_CONFIG_CAT, <<"site_id">>, "")).
 
--define(IS_US_TOLLFREE(Prefix),
-    Prefix == <<"800">> orelse
-    Prefix == <<"822">> orelse
-    Prefix == <<"833">> orelse
-    Prefix == <<"844">> orelse
-    Prefix == <<"855">> orelse
-    Prefix == <<"866">> orelse
-    Prefix == <<"877">> orelse
-    Prefix == <<"880">> orelse
-    Prefix == <<"881">> orelse
-    Prefix == <<"882">> orelse
-    Prefix == <<"883">> orelse
-    Prefix == <<"884">> orelse
-    Prefix == <<"885">> orelse
-    Prefix == <<"886">> orelse
-    Prefix == <<"887">> orelse
-    Prefix == <<"888">> orelse
-    Prefix == <<"889">>
-).
+-define(IS_US_TOLLFREE(Prefix)
+       ,Prefix == <<"800">>
+            orelse Prefix == <<"822">>
+            orelse Prefix == <<"833">>
+            orelse Prefix == <<"844">>
+            orelse Prefix == <<"855">>
+            orelse Prefix == <<"866">>
+            orelse Prefix == <<"877">>
+            orelse Prefix == <<"880">>
+            orelse Prefix == <<"881">>
+            orelse Prefix == <<"882">>
+            orelse Prefix == <<"883">>
+            orelse Prefix == <<"884">>
+            orelse Prefix == <<"885">>
+            orelse Prefix == <<"886">>
+            orelse Prefix == <<"887">>
+            orelse Prefix == <<"888">>
+            orelse Prefix == <<"889">>
+       ).
 
 %%% API
 
@@ -362,10 +362,13 @@ number_order_response_to_json(Xml) ->
         [{<<"order_id">>, kz_util:get_xml_value("id/text()", Xml)}
         ,{<<"order_name">>, kz_util:get_xml_value("Name/text()", Xml)}
         ,{<<"number">>, kz_util:get_xml_value("TelephoneNumberList/TelephoneNumber/text()", Xml)}
-        ])).
+        ]
+       )
+     ).
 
 %% @private
--spec search_response_to_KNM(xml_els() | xml_el(), ne_binary()) -> knm_number:knm_number().
+-spec search_response_to_KNM(xml_els() | xml_el(), ne_binary()) ->
+                                    knm_number:knm_number().
 search_response_to_KNM([Xml], AccountId) ->
     search_response_to_KNM(Xml, AccountId);
 search_response_to_KNM(Xml, AccountId) ->
@@ -380,7 +383,8 @@ search_response_to_KNM(Xml, AccountId) ->
     knm_number:set_phone_number(knm_number:new(), PhoneNumber).
 
 %% @private
--spec tollfree_search_response_to_KNM(xml_el(), ne_binary()) -> knm_number:knm_number().
+-spec tollfree_search_response_to_KNM(xml_el(), ne_binary()) ->
+                                             knm_number:knm_number().
 tollfree_search_response_to_KNM(Xml, AccountId) ->
     Num = kz_util:get_xml_value("//TelephoneNumber/text()", Xml),
     {'ok', PhoneNumber} = knm_phone_number:newly_found(Num, ?MODULE, AccountId, kz_json:new()),
@@ -403,7 +407,9 @@ rate_center_to_json(Xml) ->
         [{<<"name">>, kz_util:get_xml_value("//RateCenter/text()", Xml)}
         ,{<<"lata">>, kz_util:get_xml_value("//LATA/text()", Xml)}
         ,{<<"state">>, kz_util:get_xml_value("//State/text()", Xml)}
-        ])).
+        ]
+       )
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -418,8 +424,8 @@ verify_response(Xml) ->
     NPAPath = "count(//TelephoneNumberDetailList/TelephoneNumberDetail)",
     TollFreePath = "count(//TelephoneNumberList/TelephoneNumber)",
     case validate_xpath_value(xmerl_xpath:string(NPAPath, Xml))
-             orelse validate_xpath_value(xmerl_xpath:string(TollFreePath, Xml))
-             orelse validate_xpath_value(kz_util:get_xml_value("//OrderStatus/text()", Xml))
+        orelse validate_xpath_value(xmerl_xpath:string(TollFreePath, Xml))
+        orelse validate_xpath_value(kz_util:get_xml_value("//OrderStatus/text()", Xml))
     of
         'true' ->
             lager:debug("request was successful"),
@@ -435,9 +441,9 @@ verify_response(Xml) ->
     end.
 
 -spec validate_xpath_value(api_binary() | {atom(), atom(), non_neg_integer()}) -> boolean().
-validate_xpath_value('undefined') -> false;
-validate_xpath_value(<<>>) -> false;
-validate_xpath_value({xmlObj, number, Num}) -> Num > 0;
+validate_xpath_value('undefined') -> 'false';
+validate_xpath_value(<<>>) -> 'false';
+validate_xpath_value({'xmlObj', 'number', Num}) -> Num > 0;
 validate_xpath_value(_) -> 'true'.
 
 -spec should_lookup_cnam() -> 'true'.

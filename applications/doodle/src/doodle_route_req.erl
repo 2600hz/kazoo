@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2016, 2600Hz
 %%% @doc
 %%% Handlers for various AMQP payloads
 %%% @end
@@ -32,7 +32,8 @@ handle_req(JObj, Props) ->
             case cf_util:lookup_callflow(Call) of
                 %% if NoMatch is false then allow the callflow or if it is true and we are able allowed
                 %% to use it for this call
-                {'ok', Flow, NoMatch} when (not NoMatch) orelse AllowNoMatch ->
+                {'ok', Flow, NoMatch} when (not NoMatch)
+                                           orelse AllowNoMatch ->
                     NewFlow = maybe_prepend_preflow(Call, Flow),
                     maybe_reply_to_req(JObj, Props, Call, NewFlow, NoMatch);
                 {'ok', _, 'true'} ->

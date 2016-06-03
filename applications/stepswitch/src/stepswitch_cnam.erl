@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%% Lookup cnam
 %%% @end
@@ -347,7 +347,9 @@ maybe_enable_ssl(_, Props) -> Props.
 maybe_enable_auth(Props) ->
     Username = kapps_config:get_string(?CONFIG_CAT, <<"http_basic_auth_username">>, <<>>),
     Password = kapps_config:get_string(?CONFIG_CAT, <<"http_basic_auth_password">>, <<>>),
-    case kz_util:is_empty(Username) orelse kz_util:is_empty(Password) of
+    case kz_util:is_empty(Username)
+        orelse kz_util:is_empty(Password)
+    of
         'true' -> Props;
         'false' -> [basic_auth(Username, Password) | Props]
     end.

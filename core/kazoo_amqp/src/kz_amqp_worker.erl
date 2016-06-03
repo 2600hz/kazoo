@@ -313,39 +313,51 @@ call_collect(_Req, _PubFun, 'undefined', _Timeout) ->
     lager:debug("no VFun, no responses"),
     {'ok', []};
 call_collect(Req, PubFun, {Whapp, IncludeFederated}, Timeout)
-  when (is_atom(Whapp) orelse is_binary(Whapp))
+  when (is_atom(Whapp)
+        orelse is_binary(Whapp)
+       )
        andalso is_boolean(IncludeFederated) ->
     CollectFromWhapp = collect_from_whapp(Whapp, IncludeFederated),
     call_collect(Req, PubFun, CollectFromWhapp, Timeout);
 call_collect(Req, PubFun, {Whapp, VFun}, Timeout)
-  when (is_atom(Whapp) orelse is_binary(Whapp))
+  when (is_atom(Whapp)
+        orelse is_binary(Whapp)
+       )
        andalso is_function(VFun) ->
     CollectFromWhapp = collect_from_whapp_or_validate(Whapp, VFun),
     call_collect(Req, PubFun, CollectFromWhapp, Timeout);
 call_collect(Req, PubFun, {Whapp, IncludeFederated, IsShared}, Timeout)
-  when (is_atom(Whapp) orelse is_binary(Whapp))
+  when (is_atom(Whapp)
+        orelse is_binary(Whapp)
+       )
        andalso is_boolean(IncludeFederated)
        andalso is_boolean(IsShared) ->
     CollectFromWhapp = collect_from_whapp(Whapp, IncludeFederated, IsShared),
     call_collect(Req, PubFun, CollectFromWhapp, Timeout);
 call_collect(Req, PubFun, {Whapp, VFun, IncludeFederated}, Timeout)
-  when (is_atom(Whapp) orelse is_binary(Whapp))
+  when (is_atom(Whapp)
+        orelse is_binary(Whapp)
+       )
        andalso is_function(VFun)
        andalso is_boolean(IncludeFederated) ->
     CollectFromWhapp = collect_from_whapp_or_validate(Whapp, VFun, IncludeFederated),
     call_collect(Req, PubFun, CollectFromWhapp, Timeout);
 call_collect(Req, PubFun, {Whapp, VFun, IncludeFederated, IsShared}, Timeout)
-  when (is_atom(Whapp) orelse is_binary(Whapp))
+  when (is_atom(Whapp)
+        orelse is_binary(Whapp)
+       )
        andalso is_function(VFun)
        andalso is_boolean(IncludeFederated)
        andalso is_boolean(IsShared) ->
     CollectFromWhapp = collect_from_whapp_or_validate(Whapp, VFun, IncludeFederated, IsShared),
     call_collect(Req, PubFun, CollectFromWhapp, Timeout);
 call_collect(Req, PubFun, Whapp, Timeout)
-  when is_atom(Whapp) orelse is_binary(Whapp) ->
+  when is_atom(Whapp)
+       orelse is_binary(Whapp) ->
     call_collect(Req, PubFun, collect_from_whapp(Whapp), Timeout);
 call_collect(Req, PubFun, UntilFun, Timeout)
-  when is_integer(Timeout) andalso Timeout >= 0 ->
+  when is_integer(Timeout)
+       andalso Timeout >= 0 ->
     case next_worker() of
         {'error', _}=E ->
             lager:debug("failed to get next worker: ~p", [E]),
@@ -732,7 +744,8 @@ handle_cast({'event', MsgId, JObj}, #state{current_msg_id = MsgId
                                            ,acc = Acc
                                            ,req_start_time = StartTime
                                           }=State)
-  when is_list(Resps) andalso is_function(UntilFun, 2) ->
+  when is_list(Resps)
+       andalso is_function(UntilFun, 2) ->
     _ = kz_util:put_callid(JObj),
     lager:debug("recv message ~s", [MsgId]),
     Responses = [JObj | Resps],

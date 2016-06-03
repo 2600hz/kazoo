@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2015, 2600Hz Inc
+%%% @copyright (C) 2014-2016, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -84,8 +84,11 @@ handle_new_voicemail(JObj, _Props) ->
     %% If the box has emails, continue processing
     %% or If the voicemail notification is enabled on the user, continue processing
     %% otherwise stop processing
-    (Emails =/= [] andalso
-     (kzd_user:voicemail_notification_enabled(UserJObj) orelse kz_json:is_empty(UserJObj)))
+    (Emails =/= []
+     andalso (kzd_user:voicemail_notification_enabled(UserJObj)
+              orelse kz_json:is_empty(UserJObj)
+             )
+    )
         orelse teletype_util:stop_processing("box ~s has no emails or owner doesn't want emails", [VMBoxId]),
 
     ReqData =

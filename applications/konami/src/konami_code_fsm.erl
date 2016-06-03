@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2015, 2600Hz
+%%% @copyright (C) 2014-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -56,16 +56,28 @@
                }).
 -type state() :: #state{}.
 
--define(WSD_ID, ?WSD_ENABLED andalso {'file', get('callid')}).
+-define(WSD_ID, ?WSD_ENABLED
+        andalso {'file', get('callid')}
+       ).
 
--define(WSD_EVT(Fr, T, E), ?WSD_ENABLED andalso webseq:evt(?WSD_ID, Fr, T, <<(kz_util:to_binary(?LINE))/binary, "-", E/binary>>)).
+-define(WSD_EVT(Fr, T, E), ?WSD_ENABLED
+        andalso webseq:evt(?WSD_ID, Fr, T, <<(kz_util:to_binary(?LINE))/binary, "-", E/binary>>)
+       ).
 
--define(WSD_NOTE(W, D, N), ?WSD_ENABLED andalso webseq:note(?WSD_ID, W, D, <<(kz_util:to_binary(?LINE))/binary, "-", N/binary>>)).
+-define(WSD_NOTE(W, D, N), ?WSD_ENABLED
+        andalso webseq:note(?WSD_ID, W, D, <<(kz_util:to_binary(?LINE))/binary, "-", N/binary>>)
+       ).
 
--define(WSD_TITLE(T), ?WSD_ENABLED andalso webseq:title(?WSD_ID, [T, " in ", kz_util:to_binary(self())])).
--define(WSD_START(), ?WSD_ENABLED andalso webseq:start(?WSD_ID)).
+-define(WSD_TITLE(T), ?WSD_ENABLED
+        andalso webseq:title(?WSD_ID, [T, " in ", kz_util:to_binary(self())])
+       ).
+-define(WSD_START(), ?WSD_ENABLED
+        andalso webseq:start(?WSD_ID)
+       ).
 
--define(WSD_STOP(), ?WSD_ENABLED andalso webseq:stop(?WSD_ID)).
+-define(WSD_STOP(), ?WSD_ENABLED
+        andalso webseq:stop(?WSD_ID)
+       ).
 
 %%%===================================================================
 %%% API

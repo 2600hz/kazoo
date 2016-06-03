@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% Dialplan API commands
 %%% @end
@@ -274,7 +274,8 @@ store_http_resp_v(JObj) -> store_http_resp_v(kz_json:to_proplist(JObj)).
 
 -spec store_media_content_v(binary() | 'eof') -> boolean().
 store_media_content_v(V) ->
-    is_binary(V) orelse V =:= 'eof'.
+    is_binary(V)
+        orelse V =:= 'eof'.
 
 %%--------------------------------------------------------------------
 %% @doc Create a DTMF (or DTMFs) on the channel - see wiki

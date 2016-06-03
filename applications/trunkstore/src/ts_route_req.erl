@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz
+%%% @copyright (C) 2011-2016, 2600Hz
 %%% @doc
 %%% Handle route requests off AMQP
 %%% @end
@@ -30,7 +30,8 @@ handle_req(ApiJObj, _Options) ->
             %% Coming from carrier (off-net)
             lager:info("call with fetch-id ~s began from outside the network", [kapi_route:fetch_id(ApiJObj)]),
             ts_offnet_sup:start_handler(<<"offnet-", CallID/binary>>, ApiJObj);
-        {AcctID, AuthID} when is_binary(AcctID) andalso is_binary(AuthID) ->
+        {AcctID, AuthID} when is_binary(AcctID)
+                              andalso is_binary(AuthID) ->
             %% Coming from PBX (on-net); authed by Registrar or ts_auth
             lager:info("call with fetch-id ~s began on the network", [kapi_route:fetch_id(ApiJObj)]),
             ts_onnet_sup:start_handler(<<"onnet-", CallID/binary>>, ApiJObj);

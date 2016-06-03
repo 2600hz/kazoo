@@ -1,5 +1,5 @@
 %%%----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% Match list module
 %%%
@@ -157,30 +157,38 @@ check_list_entry_schema(ListId, EntryId, Context) ->
 -spec entry_schema_success(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 entry_schema_success(Context, ListId, EntryId) ->
     Pattern = kz_json:get_value(<<"pattern">>, cb_context:doc(Context)),
-    case is_binary(Pattern) andalso re:compile(Pattern) of
+    case is_binary(Pattern)
+        andalso re:compile(Pattern)
+    of
         {'ok', _CompiledRe} ->
             on_entry_successful_validation(ListId, EntryId, Context);
         'false' ->
             on_entry_successful_validation(ListId, EntryId, Context);
         {'error', {Reason0, Pos}} ->
             Reason = io_lib:format("Error: ~s in position ~p", [Reason0, Pos]),
-            cb_context:add_validation_error(
-                <<"pattern">>
-                ,<<"type">>
-                ,kz_json:from_list([
-                    {<<"message">>, iolist_to_binary(Reason)}
-                    ,{<<"cause">>, Pattern}
-                ])
-                ,Context
-            )
+            error_in_pattern(Context, Pattern, Reason)
     end.
+
+-spec error_in_pattern(cb_context:context(), binary(), iolist()) ->
+                              cb_context:context().
+error_in_pattern(Context, Pattern, Reason) ->
+    cb_context:add_validation_error(<<"pattern">>
+                                   ,<<"type">>
+                                   ,kz_json:from_list(
+                                      [{<<"message">>, iolist_to_binary(Reason)}
+                                      ,{<<"cause">>, Pattern}
+                                      ])
+                                   ,Context
+                                   ).
 
 -spec on_entry_successful_validation(path_token(), path_token() | 'undefined', cb_context:context()) ->
                                             cb_context:context().
 on_entry_successful_validation(_ListId, 'undefined', Context) ->
     cb_context:set_doc(Context
-                       ,kz_json:set_values([{<<"pvt_type">>, <<"list_entry">>}]
-                                           ,cb_context:doc(Context)));
+                      ,kz_json:set_values([{<<"pvt_type">>, <<"list_entry">>}]
+                                         ,cb_context:doc(Context)
+                                         )
+                      );
 on_entry_successful_validation(_ListId, EntryId, Context) ->
     crossbar_doc:load_merge(EntryId, Context, ?TYPE_CHECK_OPTION(<<"list_entry">>)).
 

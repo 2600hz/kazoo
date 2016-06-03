@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz Inc
+%%% @copyright (C) 2012-2016, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -20,7 +20,8 @@
 handle_event(Context, EventJObj) ->
     kz_util:put_callid(EventJObj),
     lager:debug("handle_event fired for ~s ~s", [bh_context:account_id(Context), bh_context:websocket_session_id(Context)]),
-    'true' = kapi_call:event_v(EventJObj) andalso is_account_event(Context, EventJObj),
+    'true' = kapi_call:event_v(EventJObj)
+        andalso is_account_event(Context, EventJObj),
     lager:debug("valid event and emitting to ~p: ~s", [bh_context:websocket_pid(Context), event_name(EventJObj)]),
     blackhole_data_emitter:emit(bh_context:websocket_pid(Context), event_name(EventJObj), EventJObj).
 

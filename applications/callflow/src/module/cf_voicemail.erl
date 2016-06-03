@@ -1758,7 +1758,8 @@ get_unix_epoch(Epoch, Timezone) ->
 find_max_message_length([]) -> ?MAILBOX_DEFAULT_MSG_MAX_LENGTH;
 find_max_message_length([JObj | T]) ->
     case kz_json:get_integer_value(?KEY_MAX_MESSAGE_LENGTH, JObj) of
-        Len when is_integer(Len) andalso Len > 0 -> Len;
+        Len when is_integer(Len)
+                 andalso Len > 0 -> Len;
         _ -> find_max_message_length(T)
     end.
 

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2015, 2600Hz INC
+%%% @copyright (C) 2010-2016, 2600Hz INC
 %%% @doc
 %%% Execute call commands
 %%% @end
@@ -686,8 +686,8 @@ prepare_app_status_filter([JObj|JObjs]) ->
     %%  that kazoo will never have a call that is active
     %%  then disconnected then active...This seems reasonable
     %%  for the foreseeable future ;)
-    case kapi_call:channel_status_resp_v(JObj) andalso
-        kz_json:get_value(<<"Status">>, JObj) =:= <<"active">>
+    case kapi_call:channel_status_resp_v(JObj)
+        andalso kz_json:get_value(<<"Status">>, JObj) =:= <<"active">>
     of
         'true' -> {'ok', JObj};
         'false' -> prepare_app_status_filter(JObjs)

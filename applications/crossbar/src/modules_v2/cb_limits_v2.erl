@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -74,15 +74,16 @@ process_billing(Context, [{<<"limits">>, _}|_], ?HTTP_GET) ->
     Context;
 process_billing(Context, [{<<"limits">>, _}|_], _Verb) ->
     AccountId = cb_context:account_id(Context),
-    try kz_services:allow_updates(AccountId) andalso is_allowed(Context) of
+    try kz_services:allow_updates(AccountId)
+             andalso is_allowed(Context)
+    of
         'true' -> Context;
         'false' ->
             Message = <<"Please contact your phone provider to add limits.">>,
-            cb_context:add_system_error(
-                'forbidden'
-                ,kz_json:from_list([{<<"message">>, Message}])
-                ,Context
-            )
+            cb_context:add_system_error('forbidden'
+                                       ,kz_json:from_list([{<<"message">>, Message}])
+                                       ,Context
+                                       )
     catch
         'throw':{Error, Reason} ->
             crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)

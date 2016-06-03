@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz
+%%% @copyright (C) 2010-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -26,7 +26,8 @@ is_device_defaults(JObj) ->
                          [?DEVICE_DEFAULT_RATES, _] -> 'true';
                          _ -> 'false'
                      end,
-    frontier_utils:is_device(JObj) andalso IsDefaultRates.
+    frontier_utils:is_device(JObj)
+        andalso IsDefaultRates.
 
 -spec names() -> ne_binaries().
 names() ->
@@ -112,7 +113,9 @@ build_list_of_querynames(Entity, IncludeRealm) ->
                     'true' -> Username;
                     'false' -> Realm
                 end,
-    case IncludeRealm andalso Realm =/= Entity of
+    case IncludeRealm
+        andalso Realm =/= Entity
+    of
         'true' -> [Realm, Username];
     'false' -> [QueryName]
     end.
@@ -122,14 +125,17 @@ run_rate_limits_query(Entity, AccountDB, IncludeRealm, MethodList) ->
     EntityList = build_list_of_querynames(Entity, IncludeRealm),
     Rates = fetch_rates(EntityList, IncludeRealm, MethodList, AccountDB),
     Realm = frontier_utils:extract_realm(Entity),
-    FromSysCOnfig = case Realm =/= EntityList andalso IncludeRealm of
-                        'true' ->
-                            fetch_rates_from_sys_config(Realm, <<"realm">>, MethodList)
-                                ++ fetch_rates_from_sys_config(Entity, <<"device">>, MethodList);
-                        'false' ->
-                            Type = frontier_utils:get_entity_type(Entity),
-                            fetch_rates_from_sys_config(Entity, Type, MethodList)
-                    end,
+    FromSysCOnfig =
+        case Realm =/= EntityList
+            andalso IncludeRealm
+        of
+            'true' ->
+                fetch_rates_from_sys_config(Realm, <<"realm">>, MethodList)
+                    ++ fetch_rates_from_sys_config(Entity, <<"device">>, MethodList);
+            'false' ->
+                Type = frontier_utils:get_entity_type(Entity),
+                fetch_rates_from_sys_config(Entity, Type, MethodList)
+        end,
     Rates ++ FromSysCOnfig.
 
 -spec to_json_key(ne_binary()) -> ne_binary().
@@ -145,11 +151,15 @@ fold_responses(Record, Acc) ->
     RPM = kz_json:get_value([<<"value">>, ?MINUTE], Record),
     RPS = kz_json:get_value([<<"value">>, ?SECOND], Record),
     Section = kz_json:get_value(Type, Acc, kz_json:new()),
-    S1 = case RPM =/= 'undefined' andalso kz_json:get_value([<<"Minute">>, JsonMethod], Section) of
+    S1 = case RPM =/= 'undefined'
+             andalso kz_json:get_value([<<"Minute">>, JsonMethod], Section)
+         of
              'undefined' -> kz_json:set_value([<<"Minute">>, JsonMethod], RPM, Section);
              _ -> Section
          end,
-    S2 = case RPS =/= 'undefined' andalso kz_json:get_value([<<"Second">>, JsonMethod], Section) of
+    S2 = case RPS =/= 'undefined'
+             andalso kz_json:get_value([<<"Second">>, JsonMethod], Section)
+         of
              'undefined' -> kz_json:set_value([<<"Second">>, JsonMethod], RPS, S1);
              _ -> S1
          end,
@@ -218,7 +228,9 @@ fetch_rates_from_sys_config(<<_/binary>> = Entity, Type, MethodList) ->
     lists:foldl(fun(Method, Acc) ->
                         RPM = kz_json:get_value([?MINUTE, Method], TargetRates),
                         RPS = kz_json:get_value([?SECOND, Method], TargetRates),
-                        case RPM =:= 'undefined' orelse RPS =:= 'undefined' of
+                        case RPM =:= 'undefined'
+                            orelse RPS =:= 'undefined'
+                        of
                             'true' -> Acc;
                             'false' -> construct_records(Method, Entity, RPM, RPS) ++ Acc
                          end
@@ -298,7 +310,9 @@ build_results({'ok', JObj}, MethodList, Realm) ->
 build(Method, Acc, JObj, Realm) ->
     PerMinute = kz_json:get_value([?MINUTE, Method], JObj),
     PerSecond = kz_json:get_value([?SECOND, Method], JObj),
-    case PerMinute =:= 'undefined' orelse PerSecond =:= 'undefined' of
+    case PerMinute =:= 'undefined'
+        orelse PerSecond =:= 'undefined'
+    of
         'true' -> Acc;
         'false' -> construct_records(Method, Realm, PerMinute, PerSecond)
     end.

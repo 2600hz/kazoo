@@ -128,7 +128,9 @@ validate_assignments({[#kz_amqp_assignment{timestamp={_, _, _}
                       ], Continuation})
   when is_pid(Channel), is_reference(ChannelRef), is_pid(Connection) ->
     %% validate prechannel
-    _ = case is_process_alive(Channel) andalso is_process_alive(Connection) of
+    _ = case is_process_alive(Channel)
+            andalso is_process_alive(Connection)
+        of
             'false' -> log_invalid_assignment(Assignment);
             'true' -> 'ok'
         end,

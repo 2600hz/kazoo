@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% Shared token auth module, this module validates the token
 %%% against a trusted central token server.  If the token
@@ -259,8 +259,8 @@ import_missing_data(RemoteData) ->
     AccountId = kz_doc:account_id(Account),
     User = kz_json:get_value(<<"user">>, RemoteData),
     UserId = kz_doc:id(User),
-    import_missing_account(AccountId, Account) andalso
-        import_missing_user(AccountId, UserId, User).
+    import_missing_account(AccountId, Account)
+        andalso import_missing_user(AccountId, UserId, User).
 
 %%--------------------------------------------------------------------
 %% @private

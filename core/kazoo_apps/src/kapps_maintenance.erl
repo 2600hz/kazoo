@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -769,7 +769,9 @@ remove_deprecated_attachment_properties(AccountDb, Id, JObj) ->
                              ,<<"content_type">>, <<"content_length">>
                              ,<<"format">>, <<"sample">>, <<"media_type">>
                             ], JObj),
-    Result = case (J =/= JObj) andalso kz_json:get_value(<<"source_id">>, J) of
+    Result = case (J =/= JObj)
+                 andalso kz_json:get_value(<<"source_id">>, J)
+             of
                  'false' -> 'ignore';
                  'undefined' ->
                      kz_datamgr:save_doc(AccountDb, kz_json:set_value(<<"media_source">>, <<"upload">>, J));

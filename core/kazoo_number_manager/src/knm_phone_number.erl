@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015, 2600Hz INC
+%%% @copyright (C) 2015-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -681,8 +681,7 @@ update_doc(N=#knm_phone_number{doc = Doc}, JObj=?JSON_WRAPPER(_)) ->
                                                            {'error', any()}.
 list_attachments(PhoneNumber, AuthBy) ->
     AssignedTo = assigned_to(PhoneNumber),
-    case
-        state(PhoneNumber) == ?NUMBER_STATE_PORT_IN
+    case state(PhoneNumber) == ?NUMBER_STATE_PORT_IN
         andalso kz_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true')
     of
         'true' -> {'ok', kz_doc:attachments(doc(PhoneNumber), kz_json:new())};
@@ -720,8 +719,12 @@ is_authorized(#knm_phone_number{assigned_to = AssignedTo
                                ,auth_by = AuthBy
                                }) ->
     ?LOG_DEBUG("is authz ~s ~s", [AuthBy, AssignedTo]),
-    (AssignedTo =:= ?RESELLER_ACCOUNT_ID orelse AssignedTo =:= ?MASTER_ACCOUNT_ID)
-        andalso (AuthBy =:= ?RESELLER_ACCOUNT_ID orelse AuthBy =:= ?MASTER_ACCOUNT_ID).
+    (AssignedTo =:= ?RESELLER_ACCOUNT_ID
+     orelse AssignedTo =:= ?MASTER_ACCOUNT_ID
+    )
+        andalso (AuthBy =:= ?RESELLER_ACCOUNT_ID
+                 orelse AuthBy =:= ?MASTER_ACCOUNT_ID
+                ).
 -else.
 is_authorized(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}) ->
     lager:info("bypassing auth"),

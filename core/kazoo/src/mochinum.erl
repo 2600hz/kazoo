@@ -130,7 +130,9 @@ digits1(Float, Exp, Frac) ->
                           Round, Round, Float)
             end;
         false ->
-            case (Exp =:= ?MIN_EXP) orelse (Frac =/= ?BIG_POW) of
+            case (Exp =:= ?MIN_EXP)
+                orelse (Frac =/= ?BIG_POW)
+            of
                 true ->
                     scale((Frac * 2), 1 bsl (1 - Exp), 1, 1,
                           Round, Round, Float);

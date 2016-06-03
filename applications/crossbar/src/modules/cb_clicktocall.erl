@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% Click to call
@@ -137,7 +137,8 @@ is_auth_required(Context) ->
 -spec is_c2c_url(cb_context:context(), req_nouns()) -> boolean().
 is_c2c_url(Context, ?CONNECT_C2C_URL) ->
     Verb = cb_context:req_verb(Context),
-    (Verb =:= ?HTTP_GET) orelse (Verb =:= ?HTTP_POST);
+    (Verb =:= ?HTTP_GET)
+        orelse (Verb =:= ?HTTP_POST);
 is_c2c_url(_Context, _Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------

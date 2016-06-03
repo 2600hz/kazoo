@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2016, 2600Hz
 %%% @doc
 %%% Handle channel move logic
 %%% @end
@@ -18,8 +18,8 @@ move(UUID, ONode, NNode) ->
     OriginalNode = kz_util:to_atom(ONode),
     NewNode = kz_util:to_atom(NNode),
 
-    'true' = ecallmgr_fs_nodes:has_capability(OriginalNode, <<"channel_move">>) andalso
-        ecallmgr_fs_nodes:has_capability(NewNode, <<"channel_move">>),
+    'true' = ecallmgr_fs_nodes:has_capability(OriginalNode, <<"channel_move">>)
+        andalso ecallmgr_fs_nodes:has_capability(NewNode, <<"channel_move">>),
     lager:debug("both servers support channel_move, continuing"),
 
     ecallmgr_fs_channel:set_node(NewNode, UUID),

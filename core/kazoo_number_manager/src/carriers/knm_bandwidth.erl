@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for phone_number documents
@@ -45,8 +45,8 @@
 -define(BW_DEBUG, kapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"debug">>, 'false')).
 -define(BW_DEBUG_FILE, "/tmp/bandwidth.com.xml").
 -define(BW_DEBUG(Format, Args),
-        _ = ?BW_DEBUG andalso
-        file:write_file(?BW_DEBUG_FILE, io_lib:format(Format, Args), ['append'])
+        _ = ?BW_DEBUG
+        andalso file:write_file(?BW_DEBUG_FILE, io_lib:format(Format, Args), ['append'])
        ).
 
 -define(IS_SANDBOX_PROVISIONING_TRUE,

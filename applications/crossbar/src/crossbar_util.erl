@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2015, 2600Hz
+%%% @copyright (C) 2010-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -1154,14 +1154,13 @@ maybe_refresh_fs_xml('device', Context, Precondition) ->
       or (kz_device:sip_password(DbDoc) =/= kz_device:sip_password(Doc))
       or (kz_json:get_value(<<"owner_id">>, DbDoc) =/=
               kz_json:get_value(<<"owner_id">>, Doc))
-      or (kz_json:is_true(<<"enabled">>, DbDoc) andalso
-          not kz_json:is_true(<<"enabled">>, Doc)
+      or (kz_json:is_true(<<"enabled">>, DbDoc)
+          andalso not kz_json:is_true(<<"enabled">>, Doc)
          )
-    ) andalso
-        refresh_fs_xml(
-          kz_util:get_account_realm(cb_context:account_db(Context))
-          ,DbDoc
-         ),
+    )
+        andalso refresh_fs_xml(kz_util:get_account_realm(cb_context:account_db(Context))
+                              ,DbDoc
+                              ),
     'ok';
 maybe_refresh_fs_xml('sys_info', Context, Precondition) ->
     Doc = cb_context:doc(Context),
@@ -1354,11 +1353,9 @@ maybe_validate_quickcall(Context, 'success') ->
 
     case kz_util:is_true(AllowAnon)
         orelse cb_context:is_authenticated(Context)
-        orelse
-        (AllowAnon =:= 'undefined'
-         andalso
-         kapps_config:get_is_true(?CONFIG_CAT, <<"default_allow_anonymous_quickcalls">>, 'true')
-        )
+        orelse (AllowAnon =:= 'undefined'
+                andalso kapps_config:get_is_true(?CONFIG_CAT, <<"default_allow_anonymous_quickcalls">>, 'true')
+               )
     of
         'false' -> cb_context:add_system_error('invalid_credentials', Context);
         'true' -> Context

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz, INC
+%%% @copyright (C) 2012-2016, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -354,7 +354,8 @@ save(#kz_services{jobj = JObj
     ) ->
     CurrentQuantities = kzd_services:quantities(JObj),
 
-    Dirty = have_quantities_changed(UpdatedQuantities, CurrentQuantities) orelse ForceDirty,
+    Dirty = have_quantities_changed(UpdatedQuantities, CurrentQuantities)
+        orelse ForceDirty,
 
     Props = [{fun kz_doc:set_id/2, AccountId}
              ,{fun kzd_services:set_is_dirty/2, Dirty}

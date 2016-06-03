@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% Common functions for the provisioner modules
@@ -688,7 +688,9 @@ set_account_overrides(Context) ->
                                 [fun((kz_json:object()) -> kz_json:object()),...].
 set_user_overrides(Context) ->
     OwnerId = kz_json:get_ne_value(<<"owner_id">>, cb_context:doc(Context)),
-    User = case is_binary(OwnerId) andalso kz_datamgr:open_doc(cb_context:account_db(Context), OwnerId) of
+    User = case is_binary(OwnerId)
+               andalso kz_datamgr:open_doc(cb_context:account_db(Context), OwnerId)
+           of
                {'ok', JObj} -> JObj;
                _Else -> kz_json:new()
            end,

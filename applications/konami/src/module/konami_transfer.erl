@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2015, 2600Hz
+%%% @copyright (C) 2014-2016, 2600Hz
 %%% @doc
 %%% Transfers caller to the extension extracted in the regex
 %%% Data = {
@@ -38,17 +38,23 @@
 
 -include("konami.hrl").
 
--define(WSD_ID, ?WSD_ENABLED andalso {'file', <<(get('callid'))/binary, "_transfer">>}).
+-define(WSD_ID, ?WSD_ENABLED
+        andalso {'file', <<(get('callid'))/binary, "_transfer">>}).
 
--define(WSD_EVT(Fr, T, E), ?WSD_ENABLED andalso webseq:evt(?WSD_ID, Fr, T, <<(kz_util:to_binary(?LINE))/binary, "-", E/binary>>)).
+-define(WSD_EVT(Fr, T, E), ?WSD_ENABLED
+        andalso webseq:evt(?WSD_ID, Fr, T, <<(kz_util:to_binary(?LINE))/binary, "-", E/binary>>)).
 
--define(WSD_NOTE(W, D, N), ?WSD_ENABLED andalso webseq:note(?WSD_ID, W, D, <<(kz_util:to_binary(?LINE))/binary, "-", N/binary>>)).
+-define(WSD_NOTE(W, D, N), ?WSD_ENABLED
+        andalso webseq:note(?WSD_ID, W, D, <<(kz_util:to_binary(?LINE))/binary, "-", N/binary>>)).
 
--define(WSD_TITLE(T), ?WSD_ENABLED andalso webseq:title(?WSD_ID, T)).
+-define(WSD_TITLE(T), ?WSD_ENABLED
+        andalso webseq:title(?WSD_ID, T)).
 
--define(WSD_START(), ?WSD_ENABLED andalso webseq:start(?WSD_ID)).
+-define(WSD_START(), ?WSD_ENABLED
+        andalso webseq:start(?WSD_ID)).
 
--define(WSD_STOP(), ?WSD_ENABLED andalso webseq:stop(?WSD_ID)).
+-define(WSD_STOP(), ?WSD_ENABLED
+        andalso webseq:stop(?WSD_ID)).
 
 -record(state, {transferor :: ne_binary()
                 ,transferee :: ne_binary()
@@ -149,7 +155,8 @@ pre_originate(?EVENT(UUID, <<"CHANNEL_UNBRIDGE">>, _Evt)
                       ,extension=Extension
                      }=State
              )
-  when UUID =:= Transferee orelse UUID =:= Transferor ->
+  when UUID =:= Transferee
+       orelse UUID =:= Transferor ->
     MOHToPlay = kz_media_util:media_path(MOH, Call),
     lager:info("putting transferee ~s on hold with MOH ~s", [Transferee, MOHToPlay]),
     HoldCommand = kapps_call_command:hold_command(MOHToPlay, Transferee),

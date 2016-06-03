@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2015, 2600Hz INC
+%%% @copyright (C) 2010-2016, 2600Hz INC
 %%% @doc
 %%% Utilities to facilitate AMQP interaction
 %%% @end
@@ -143,10 +143,21 @@
 -export([trim/3]).
 -endif.
 
--define(KEY_SAFE(C), ((C >= $a andalso C =< $z) orelse
-                     (C >= $A andalso C =< $Z) orelse
-                     (C >= $0 andalso C =< $9) orelse
-                     (C =:= $- orelse C =:= $~ orelse C =:= $_))).
+-define(KEY_SAFE(C), ((C >= $a
+                       andalso C =< $z
+                      )
+                      orelse (C >= $A
+                              andalso C =< $Z
+                             )
+                      orelse (C >= $0
+                              andalso C =< $9
+                             )
+                      orelse (C =:= $-
+                              orelse C =:= $~
+                              orelse C =:= $_
+                             )
+                     )
+       ).
 
 -define(P_GET(K, Prop), props:get_value(K, Prop)).
 -define(P_GET(K, Prop, D), props:get_value(K, Prop, D)).

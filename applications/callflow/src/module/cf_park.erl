@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -323,7 +323,9 @@ find_slot_number([A|[B|_]=Slots]) ->
 save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
     ParkedCallId = kz_json:get_ne_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls),
     ParkerCallId = kz_json:get_ne_value([<<"slots">>, SlotNumber, <<"Parker-Call-ID">>], ParkedCalls),
-    case kz_util:is_empty(ParkedCallId) orelse ParkedCallId =:= ParkerCallId of
+    case kz_util:is_empty(ParkedCallId)
+        orelse ParkedCallId =:= ParkerCallId
+    of
         'true' ->
             lager:info("slot has parked call '~s' by parker '~s', it is available", [ParkedCallId, ParkerCallId]),
             do_save_slot(SlotNumber, Slot, ParkedCalls, Call);
@@ -459,14 +461,20 @@ maybe_set_ringback_id(JObj, Call) ->
 maybe_set_hold_media(JObj, Call) ->
     RingbackId = kz_json:get_value(<<"Ringback-ID">>, JObj),
     HoldMedia = kz_json:get_value(<<"Hold-Media">>, JObj),
-    case RingbackId =/= 'undefined' andalso HoldMedia =:= 'undefined' of
+    case RingbackId =/= 'undefined'
+        andalso HoldMedia =:= 'undefined'
+    of
         'false' -> JObj;
         'true' ->
-            case kz_attributes:moh_attributes(RingbackId, <<"media_id">>, Call) of
-                'undefined' -> JObj;
-                RingbackHoldMedia ->
-                    kz_json:set_value(<<"Hold-Media">>, RingbackHoldMedia, JObj)
-            end
+            maybe_set_hold_media_from_ringback(JObj, Call, RingbackId)
+    end.
+
+-spec maybe_set_hold_media_from_ringback(kz_json:object(), kapps_call:call(), ne_binary()) -> kz_json:object().
+maybe_set_hold_media_from_ringback(JObj, Call, RingbackId) ->
+    case kz_attributes:moh_attributes(RingbackId, <<"media_id">>, Call) of
+        'undefined' -> JObj;
+        RingbackHoldMedia ->
+            kz_json:set_value(<<"Hold-Media">>, RingbackHoldMedia, JObj)
     end.
 
 -spec maybe_get_ringback_id(kapps_call:call()) -> api_binary().
@@ -604,7 +612,9 @@ wait_for_pickup(SlotNumber, Slot, Data, Call) ->
                             {'ok', _} -> 'true';
                             {'error', _} -> 'false'
                         end,
-            case ChannelUp andalso ringback_parker(RingbackId, SlotNumber, TmpCID, Data, Call) of
+            case ChannelUp
+                andalso ringback_parker(RingbackId, SlotNumber, TmpCID, Data, Call)
+            of
                 'answered' ->
                     lager:info("parked caller ringback was answered"),
                     _ = publish_retrieved(Call, SlotNumber),

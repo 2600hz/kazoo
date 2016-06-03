@@ -49,18 +49,19 @@ maybe_ignore_cdr(Fun, {JObj, Acc}) ->
 -spec maybe_ignore_app(kz_json:object()) -> {boolean(), binary()}.
 maybe_ignore_app(JObj) ->
     AppName = kz_util:to_binary(kz_call_event:application_name(JObj)),
-    {lists:member(AppName, ?IGNORED_APP),
-     <<"ignoring cdr request from ", AppName/binary>>
+    {lists:member(AppName, ?IGNORED_APP)
+     ,<<"ignoring cdr request from ", AppName/binary>>
     }.
 
 -spec maybe_ignore_loopback(kz_json:object()) -> {boolean(), binary()}.
 maybe_ignore_loopback(JObj) ->
-    {kz_util:is_true(?IGNORE_LOOPBACK(kz_call_event:account_id(JObj))) andalso
-         kz_json:is_true(<<"Channel-Is-Loopback">>, JObj) andalso
-         kz_json:is_true(<<"Channel-Loopback-Bowout">>, JObj) andalso
-         kz_json:is_true(<<"Channel-Loopback-Bowout-Execute">>, JObj) andalso
-         (is_normal_hangup_cause(kz_call_event:hangup_cause(JObj)) orelse
-              kz_json:get_ne_binary_value(<<"Channel-Loopback-Leg">>, JObj) =/= <<"B">>),
+    {kz_util:is_true(?IGNORE_LOOPBACK(kz_call_event:account_id(JObj)))
+     andalso kz_json:is_true(<<"Channel-Is-Loopback">>, JObj)
+     andalso kz_json:is_true(<<"Channel-Loopback-Bowout">>, JObj)
+     andalso kz_json:is_true(<<"Channel-Loopback-Bowout-Execute">>, JObj)
+     andalso (is_normal_hangup_cause(kz_call_event:hangup_cause(JObj))
+              orelse kz_json:get_ne_binary_value(<<"Channel-Loopback-Leg">>, JObj) =/= <<"B">>
+             ),
      <<"ignoring cdr request for loopback channel">>
     }.
 
@@ -114,11 +115,10 @@ update_pvt_parameters(AccountId, Timestamp, JObj) ->
 update_ccvs(_, _, JObj) ->
     CCVs = kz_call_event:custom_channel_vars(JObj, kz_json:new()),
     {UpdatedJobj, UpdatedCCVs} =
-        kz_json:foldl(
-            fun update_ccvs_foldl/3
-            ,{JObj, CCVs}
-            ,CCVs
-        ),
+        kz_json:foldl(fun update_ccvs_foldl/3
+                     ,{JObj, CCVs}
+                     ,CCVs
+                     ),
     kz_json:set_value(?CHANNEL_VARS, UpdatedCCVs, UpdatedJobj).
 
 -spec update_ccvs_foldl(kz_json:key(), kz_json:json_term(), {kz_json:object(), kz_json:object()}) ->

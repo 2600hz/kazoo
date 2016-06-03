@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2015, 2600Hz
+%%% @copyright (C) 2010-2016, 2600Hz
 %%% @doc
 %%% Receive call events from freeSWITCH, publish to the call's event queue
 %%% @end
@@ -174,7 +174,8 @@ handle_publisher_usurp(JObj, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec init([atom() | ne_binary(),...]) -> {'ok', state()}.
-init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
+init([Node, CallId]) when is_atom(Node)
+                          andalso is_binary(CallId) ->
     case register_event_process(Node, CallId) of
         'ok' -> init(Node, CallId);
         {'error', _R} ->
@@ -286,7 +287,8 @@ handle_cast({'b_leg_events', NewEvents}, #state{other_leg_events=Evts
                                                }=State) ->
     Events = lists:usort(Evts ++ NewEvents),
     lager:debug("tracking other leg events for ~s: ~p", [OtherLeg, Events]),
-    _Started = (Events =/= []) andalso ecallmgr_call_sup:start_event_process(Node, OtherLeg),
+    _Started = (Events =/= [])
+        andalso ecallmgr_call_sup:start_event_process(Node, OtherLeg),
     lager:debug("started event process: ~p", [_Started]),
 
     {'noreply', State#state{other_leg_events=Events}};
@@ -296,7 +298,8 @@ handle_cast({'other_leg', OtherLeg}
                     ,node=Node
                    }=State) ->
     lager:debug("tracking other leg events for ~s: ~p", [OtherLeg, Events]),
-    _Started = (Events =/= []) andalso ecallmgr_call_sup:start_event_process(Node, OtherLeg),
+    _Started = (Events =/= [])
+        andalso ecallmgr_call_sup:start_event_process(Node, OtherLeg),
     lager:debug("started event process: ~p", [_Started]),
 
     {'noreply', State#state{other_leg=OtherLeg}};

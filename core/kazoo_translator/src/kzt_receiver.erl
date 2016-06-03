@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz
+%%% @copyright (C) 2012-2016, 2600Hz
 %%% @doc
 %%% Receive call events for various scenarios
 %%% @end
@@ -168,14 +168,18 @@ handle_dtmf(Call, FinishKey, Timeout, N, OnFirstFun, Collected, DTMF) ->
                                   kz_timeout().
 collect_decr_timeout(Call, Timeout, Start) ->
     case kzt_util:get_gather_pidref(Call) of
-        {_Pid, _Ref} when is_pid(_Pid) andalso is_reference(_Ref) -> Timeout;
+        {_Pid, _Ref} when is_pid(_Pid)
+                          andalso is_reference(_Ref) ->
+            Timeout;
         _ -> kz_util:decr_timeout(Timeout, Start)
     end.
 
 -spec collect_timeout(kapps_call:call(), kz_timeout()) -> kz_timeout().
 collect_timeout(Call, Timeout) ->
     case kzt_util:get_gather_pidref(Call) of
-        {_Pid, _Ref} when is_pid(_Pid) andalso is_reference(_Ref) -> 'infinity';
+        {_Pid, _Ref} when is_pid(_Pid)
+                          andalso is_reference(_Ref) ->
+            'infinity';
         _ -> Timeout
     end.
 

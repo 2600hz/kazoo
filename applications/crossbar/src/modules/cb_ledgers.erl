@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -119,7 +119,11 @@ authorize_create(Context) ->
     IsAuthenticated = cb_context:is_authenticated(Context),
     IsSuperDuperAdmin = cb_modules_util:is_superduper_admin(Context),
     IsReseller = cb_context:reseller_id(Context) =:= cb_context:auth_account_id(Context),
-    case IsAuthenticated andalso (IsSuperDuperAdmin orelse IsReseller) of
+    case IsAuthenticated
+        andalso (IsSuperDuperAdmin
+                 orelse IsReseller
+                )
+    of
         'true' -> 'true';
         'false' -> {'halt', cb_context:add_system_error('forbidden', Context)}
     end.
@@ -244,8 +248,8 @@ process_action(?DEBIT, SrcService, SrcId, Account, Usage, Props) ->
 -spec maybe_impact_reseller(cb_context:context(), kz_json:object()) -> cb_context:context().
 maybe_impact_reseller(Context, Ledger) ->
     ResellerId = cb_context:reseller_id(Context),
-    ImpactReseller = kz_json:is_true(<<"impact_reseller">>, cb_context:req_json(Context)) andalso
-                         ResellerId =/= cb_context:account_id(Context),
+    ImpactReseller = kz_json:is_true(<<"impact_reseller">>, cb_context:req_json(Context))
+        andalso ResellerId =/= cb_context:account_id(Context),
     maybe_impact_reseller(Context, Ledger, ImpactReseller, ResellerId).
 
 -spec maybe_impact_reseller(cb_context:context(), kz_json:object(), boolean(), api_binary()) -> cb_context:context().
@@ -410,13 +414,12 @@ validate_returned_ledger_doc(Ledger, Context) ->
     JObj = cb_context:doc(Context),
     TransactionTypes = [?DEBIT, ?CREDIT],
     case (kz_doc:type(JObj) =:= <<"ledger">>
-         andalso kazoo_ledger:source_service(JObj) =:= Ledger
+              andalso kazoo_ledger:source_service(JObj) =:= Ledger
          )
-        orelse
-             (lists:member(kz_doc:type(JObj), TransactionTypes) andalso
-                  Ledger =:= <<"per-minute-voip">> andalso
-                  kz_transaction:is_per_minute(kz_transaction:from_json(JObj))
-             )
+        orelse (lists:member(kz_doc:type(JObj), TransactionTypes)
+                andalso Ledger =:= <<"per-minute-voip">>
+                    andalso kz_transaction:is_per_minute(kz_transaction:from_json(JObj))
+               )
     of
         'true' -> cb_context:set_resp_data(Context, normalize_view_result(Context, JObj));
         'false' ->

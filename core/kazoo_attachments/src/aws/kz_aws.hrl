@@ -1,5 +1,7 @@
 -ifndef(KZ_ATT_AWS_HRL).
 
+-include_lib("kazoo/include/kz_types.hrl").
+
 -record(aws_config, {
 %%           as_host="autoscaling.amazonaws.com"::string(),
 %%           ec2_host="ec2.amazonaws.com"::string(),
@@ -37,14 +39,14 @@
 %%           cloudtrail_host="cloudtrail.amazonaws.com"::string(),
 %%           cloudtrail_port=80::non_neg_integer(),
 %%           cloudformation_host="cloudformation.us-east-1.amazonaws.com"::string(),
-          access_key_id::string()|undefined|false,
-          secret_access_key::string()|undefined|false,
-          security_token=undefined::string()|undefined,
+          access_key_id::string()|'undefined'|'false',
+          secret_access_key::string()|'undefined'|'false',
+          security_token=undefined::string()|'undefined',
           %% Network request timeout; if not specifed, the default timeout will be used:
           %% ddb: 1s for initial call, 10s for subsequence;
           %% s3:delete_objects_batch/{2,3}, cloudtrail: 1s;
           %% other services: 10s.
-          timeout=undefined::timeout()|undefined,
+          timeout=undefined::timeout()|'undefined',
 %%          cloudtrail_raw_result=false::boolean(),
           http_client=hackney::kz_aws_httpc:request_fun(), %% If using hackney, ensure that it is started.
           hackney_pool=default::atom(), %% The name of the http request pool hackney should use.
@@ -62,7 +64,7 @@
 -record(aws_request,
         {
           %% Provided by requesting service
-          service :: s3,
+          service :: 's3',
           uri :: string() | binary(),
           method :: atom(),
           request_headers :: [{string(), string()}],
@@ -70,8 +72,8 @@
 
           %% Read from response
           attempt = 0 :: integer(),
-          response_type :: ok | error,
-          error_type :: aws | httpc,
+          response_type :: 'ok' | 'error',
+          error_type :: 'aws' | 'httpc',
           httpc_error_reason :: term(),
           response_status :: pos_integer(),
           response_status_line :: string(),

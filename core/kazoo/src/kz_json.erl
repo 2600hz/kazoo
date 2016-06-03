@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz
+%%% @copyright (C) 2011-2016, 2600Hz
 %%% @doc
 %%% proplists-like interface to json objects
 %%% @end
@@ -111,7 +111,8 @@ encode(JObj) -> jiffy:encode(JObj).
 -spec unsafe_decode(iolist() | ne_binary()) -> json_term().
 -spec unsafe_decode(iolist() | ne_binary(), ne_binary()) -> json_term().
 
-unsafe_decode(Thing) when is_list(Thing) orelse is_binary(Thing) ->
+unsafe_decode(Thing) when is_list(Thing)
+                          orelse is_binary(Thing) ->
     unsafe_decode(Thing, <<"application/json">>).
 
 unsafe_decode(JSON, <<"application/json">>) ->
@@ -133,7 +134,8 @@ unsafe_decode(JSON, <<"application/json">>) ->
 -spec decode(iolist() | ne_binary()) -> json_term().
 -spec decode(iolist() | ne_binary(), ne_binary()) -> json_term().
 
-decode(Thing) when is_list(Thing) orelse is_binary(Thing) ->
+decode(Thing) when is_list(Thing)
+                   orelse is_binary(Thing) ->
     decode(Thing, <<"application/json">>).
 
 decode(JSON, <<"application/json">>) ->
@@ -342,7 +344,8 @@ fold_kvs([K|Ks], [V|Vs], Prefix, Acc) ->
 encode_kv(Prefix, K, Vs) when is_list(Vs) ->
     encode_kv(Prefix, kz_util:to_binary(K), Vs, <<"[]=">>, []);
 %% if the value is a "simple" value, just encode it (url-encoded)
-encode_kv(Prefix, K, V) when is_binary(V) orelse is_number(V) ->
+encode_kv(Prefix, K, V) when is_binary(V)
+                             orelse is_number(V) ->
     encode_kv(Prefix, K, <<"=">>, kz_http_util:urlencode(V));
 encode_kv(Prefix, K, 'true') ->
     encode_kv(Prefix, K, <<"=">>, <<"true">>);

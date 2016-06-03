@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014
+%%% @copyright (C) 2014-2016
 %%% @doc
 %%% A singular call is as an entire conversation as dialed by the caller,
 %%% and it may comprise of multiple "legs" or "calls".
@@ -168,7 +168,8 @@ send_end_hook(Call, Event) ->
 %%--------------------------------------------------------------------
 -spec should_hook(kapps_call:call()) -> boolean().
 should_hook(Call) ->
-    is_enabled() andalso call_is_singular(Call).
+    is_enabled()
+        andalso call_is_singular(Call).
 
 %%--------------------------------------------------------------------
 %% @private

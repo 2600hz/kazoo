@@ -509,8 +509,10 @@ amqp_register_check_pending(JObj, Global) ->
         T1 when N1 =:= N2 -> 'no';
         T1 when T1 < T2 -> 'no';
         T1 when T1 > T2 -> 'yes';
-        T1 when T1 =:= T2 andalso N1 < N2 -> 'no';
-        T1 when T1 =:= T2 andalso N1 > N2 -> 'yes'
+        T1 when T1 =:= T2
+                andalso N1 < N2 -> 'no';
+        T1 when T1 =:= T2
+                andalso N1 > N2 -> 'yes'
     end.
 
 -spec register_local(kz_global:global()) -> 'yes' | 'no'.
@@ -560,8 +562,10 @@ register_remote_resolve(Local, Remote) ->
         T1 when N1 =:= N2 -> 'no';
         T1 when T1 < T2 -> 'no';
         T1 when T1 > T2 -> 'yes';
-        T1 when T1 =:= T2 andalso N1 < N2 -> 'no';
-        T1 when T1 =:= T2 andalso N1 > N2 -> 'yes'
+        T1 when T1 =:= T2
+                andalso N1 < N2 -> 'no';
+        T1 when T1 =:= T2
+                andalso N1 > N2 -> 'yes'
     end.
 
 -spec maybe_register_remote_reply(term(), pid()) -> 'ok'.
@@ -575,8 +579,9 @@ amqp_unregister(Name) ->
         'undefined' -> 'ok';
         Global ->
             (kz_global:is_local(Global)
-                andalso do_amqp_unregister(Global, 'normal') =:= 'ok'
-            ) orelse lager:debug("can't unregister ~p", [Global]),
+             andalso do_amqp_unregister(Global, 'normal') =:= 'ok'
+            )
+                orelse lager:debug("can't unregister ~p", [Global]),
             'ok'
     end.
 
