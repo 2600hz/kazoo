@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015, 2600Hz
+%%% @copyright (C) 2015-2016, 2600Hz
 %%% @doc
 %%% Call Event JSON Object
 %%% @end
@@ -14,7 +14,7 @@
          ,replaced_by/1
          ,custom_channel_vars/1, custom_channel_var/2, custom_channel_var/3
          ,custom_sip_headers/1
-         ,authorizing_id/1, authorizing_type/1
+         ,authorizing_id/1, authorizing_type/1, is_authorized/1
          ,dtmf_digit/1
          ,event_name/1
          ,hangup_cause/1, hangup_code/1
@@ -69,6 +69,12 @@ custom_sip_headers(JObj) ->
 -spec authorizing_id(wh_json:object()) -> api_binary().
 authorizing_id(JObj) ->
     custom_channel_var(JObj, <<"Authorizing-ID">>).
+
+-spec is_authorized(wh_json:object()) -> boolean().
+is_authorized(JObj) ->
+    wh_util:is_true(
+      custom_channel_var(JObj, <<"Channel-Authorized">>)
+     ).
 
 -spec authorizing_type(wh_json:object()) -> api_binary().
 authorizing_type(JObj) ->
