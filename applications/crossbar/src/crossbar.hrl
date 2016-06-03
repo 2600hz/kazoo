@@ -172,6 +172,7 @@
           ,api_version = ?VERSION_1 :: ne_binary()
           ,magic_pathed = 'false' :: boolean()
           ,should_paginate :: api_boolean()
+          ,host_url = <<>> :: binary()
          }).
 
 -define(MAX_RANGE, kapps_config:get_integer(?CONFIG_CAT

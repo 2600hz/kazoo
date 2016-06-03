@@ -4,6 +4,7 @@
 -export([to_extension/1, to_extensions/1]).
 -export([from_extension/1]).
 -export([from_filename/1]).
+-export([to_filename/1]).
 
 %% @doc Transform a mimetype to an extension
 %%
@@ -31,6 +32,16 @@ to_extension(CT) ->
 from_filename(Path) ->
     from_extension(filename:extension(Path)).
 
+%% @doc generate a filename with extension for content-type.
+%% Example:
+%%
+%% ```
+%% 1> kz_mime:to_filename(<<"text/plain">>).
+%% <<"1345678wdfghjk34rtghjk.txt">>
+%% '''
+-spec to_filename(binary()) -> binary().
+to_filename(CT) ->
+    list_to_binary([kz_util:rand_hex_binary(16), ".", hd(to_extensions(CT))]).
 
 %% @doc Return the mimetype for any file by looking at its extension.
 %% Example:
