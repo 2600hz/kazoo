@@ -86,7 +86,7 @@
                                    ,<<"From">>, <<"Reply-To">>
                                    ,<<"Subject">>, <<"HTML">>, <<"Text">>
                                    ,<<"Account-ID">>, <<"Account-DB">>
-                                   ,<<"Preview">>
+                                   ,<<"Preview">>, <<"Attachment-URL">>
                                   ]).
 
 -define(NOTIFY_VOICEMAIL_SAVED, <<"notifications.voicemail.saved">>).

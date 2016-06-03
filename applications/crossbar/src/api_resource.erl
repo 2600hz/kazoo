@@ -64,6 +64,7 @@ rest_init(Req0, Opts) ->
                     {'undefined', _} -> 'undefined';
                     {ProfId, _} -> kz_util:to_binary(ProfId)
                 end,
+    {HostUrl, _} = cowboy_req:host_url(Req0),
     {Host, Req1} = cowboy_req:host(Req0),
     {Port, Req2} = cowboy_req:port(Req1),
     {Path, Req3} = find_path(Req2, Opts),
@@ -82,6 +83,7 @@ rest_init(Req0, Opts) ->
 
     Setters = [{fun cb_context:set_req_id/2, ReqId}
               ,{fun cb_context:set_req_headers/2, Headers}
+              ,{fun cb_context:set_host_url/2, kz_util:to_binary(HostUrl)}
               ,{fun cb_context:set_raw_host/2, kz_util:to_binary(Host)}
               ,{fun cb_context:set_port/2, kz_util:to_integer(Port)}
               ,{fun cb_context:set_raw_path/2, kz_util:to_binary(Path)}

@@ -34,6 +34,9 @@
          ,public_proplist/2
 
          ,stop_processing/2
+
+         ,maybe_get_attachments/1
+         ,fetch_attachment_from_url/1
         ]).
 
 -include("teletype.hrl").
@@ -399,6 +402,7 @@ find_account_id(JObj) ->
                                ,<<"pvt_account_id">>
                                ,<<"_id">>, <<"id">>
                                ,<<"Account-ID">>
+                               ,[<<"Details">>, <<"Account-ID">>]
                               ]
                               ,JObj
                              ).
@@ -788,3 +792,39 @@ public_proplist(Key, JObj) ->
 stop_processing(Format, Args) ->
     lager:debug(Format, Args),
     exit('normal').
+
+-spec maybe_get_attachments(kz_json:object() | api_binary()) -> attachments().
+maybe_get_attachments('undefined') -> [];
+maybe_get_attachments(URL)
+  when is_binary(URL) ->
+    case fetch_attachment_from_url(URL) of
+        {'ok', Attachment} -> [Attachment];
+        {'error', _} -> []
+    end;
+maybe_get_attachments(DataObj) ->
+    maybe_get_attachments(kz_json:get_value(<<"attachment_url">>, DataObj)).
+
+-spec fetch_attachment_from_url(ne_binary()) -> {'ok', attachment()} | {'error', any()}.
+fetch_attachment_from_url(URL) ->
+    case kz_http:get(kz_util:to_list(URL)) of
+        {'ok', _2xx, Headers, Body}
+          when (_2xx - 200) < 100 -> %% ie: match "2"++_
+            {'ok', attachment_from_url_result(Headers, Body)};
+        {'ok', _Code, _Headers, _Body} ->
+            lager:debug("failed to get attachment from url ~s for reason: ~p : ~p", [URL, _Code, _Headers]),
+            {'error', 'not_handled'};
+        Error ->
+            lager:debug("failed to get attachment from url ~s for reason: ~p", [URL, Error]),
+            Error
+    end.
+
+-spec attachment_from_url_result(kz_proplist(), binary()) -> attachment().
+attachment_from_url_result(Headers, Body) ->
+    CT = kz_util:to_binary(props:get_value("content-type", Headers, <<"text/plain">>)),
+    Disposition = kz_util:to_binary(props:get_value("content-disposition", Headers, <<>>)),
+    CDs = [ list_to_tuple(binary:split(kz_util:strip_binary(CD), <<"=">>)) || CD <- binary:split(Disposition, <<";">>)],
+    Filename = case props:get_value(<<"filename">>, CDs) of
+                   'undefined' -> kz_mime:to_filename(CT);
+                   FileDisposition -> FileDisposition
+               end,
+    {CT, Filename, Body}.

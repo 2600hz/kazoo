@@ -85,6 +85,7 @@
 
          ,validation_errors/1, set_validation_errors/2
 
+         ,host_url/1, set_host_url/2
          ,set_raw_host/2
          ,set_port/2
          ,set_raw_path/2
@@ -421,6 +422,12 @@ set_validation_errors(#cb_context{}=Context, Errors) ->
 
 set_port(#cb_context{}=Context, Value) ->
     Context#cb_context{port = Value}.
+-spec set_host_url(context(), binary()) -> context().
+set_host_url(#cb_context{}=Context, Value) ->
+    Context#cb_context{host_url = Value}.
+
+-spec host_url(context()) -> binary().
+host_url(#cb_context{host_url = Value}) -> Value.
 
 set_raw_host(#cb_context{}=Context, Value) ->
     Context#cb_context{raw_host = Value}.
