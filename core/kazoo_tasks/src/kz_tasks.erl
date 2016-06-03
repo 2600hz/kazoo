@@ -11,7 +11,7 @@
 
 %% Public API
 -export([start_link/0]).
--export([help/0, help/1]).
+-export([help/0, help/1, help/2]).
 -export([new/4
         ,start/1
         ,read/1
