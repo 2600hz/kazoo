@@ -182,7 +182,7 @@ handle_info({'event', [CallId | Props]}, #state{node=Node}=State) ->
             'continue' ->
                 Event = make_participant_event(Action, CallId, Props, Node),
                 send_participant_event(Event, Props),
-                publish_participant_event(Action, Event, CallId, Props);
+                publish_participant_event(Event, CallId, Props);
             {'continue', CustomProps} ->
                 Event = make_participant_event(Action, CallId, Props, Node),
                 send_participant_event(Event, Props, CustomProps)
@@ -774,12 +774,6 @@ relay_event(UUID, Node, Props) ->
     Payload = {'event', [UUID, {<<"Caller-Unique-ID">>, UUID} | Props]},
     gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, Payload),
     gproc:send({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, UUID)}, Payload).
-
-publish_participant_event(<<"add-member">>, Event, CallId, Props) ->
-    publish_participant_event(Event, CallId, Props);
-publish_participant_event(<<"del-member">>, Event, CallId, Props) ->
-    publish_participant_event(Event, CallId, Props);
-publish_participant_event(_, _, _, _) -> ok.
 
 publish_participant_event(Event, CallId, Props) ->
    Ev = [{<<"Event-Category">>, <<"conference">>}
