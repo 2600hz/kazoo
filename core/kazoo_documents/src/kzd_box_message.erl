@@ -10,11 +10,15 @@
 
 -export([new/0, new/6, build_metadata_object/6
          ,count_folder/2, normalize_count/1
+         ,create_message_name/3
          ,type/0
          ,folder/1, folder/2, set_folder/2, set_folder_new/1, set_folder_saved/1, set_folder_deleted/1, filter_folder/2
+         ,message_history/1, add_message_history/2
+         ,message_name/1, message_name/2, set_message_name/2
          ,media_id/1, set_media_id/2
          ,metadata/1, metadata/2, set_metadata/2
          ,source_id/1, set_source_id/2
+         ,to_sip/1, to_sip/2, set_to_sip/2
          ,utc_seconds/1
         ]).
 
@@ -35,6 +39,7 @@
 -define(KEY_UTC_SEC, <<"utc_seconds">>).
 -define(KEY_MEDIA_ID, <<"media_id">>).
 -define(KEY_OWNER_ID, <<"owner_id">>).
+-define(KEY_HISTORY, <<"history">>).
 
 -define(KEY_METADATA, <<"metadata">>).
 -define(KEY_META_TIMESTAMP, <<"timestamp">>).
@@ -66,14 +71,7 @@ new() ->
 -spec new(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> doc().
 new(Db, DocId, AttachmentName, BoxNum, Timezone, Props) ->
     UtcSeconds = kz_util:current_tstamp(),
-    UtcDateTime = calendar:gregorian_seconds_to_datetime(UtcSeconds),
-    Name = case localtime:utc_to_local(UtcDateTime, Timezone) of
-               {'error', 'unknown_tz'} ->
-                   lager:info("unknown timezone: ~s", [Timezone]),
-                   message_name(BoxNum, UtcDateTime, " UTC");
-               DT ->
-                   message_name(BoxNum, DT)
-           end,
+    Name = create_message_name(BoxNum, Timezone, UtcSeconds),
 
     DocProps = props:filter_undefined(
               [{<<"_id">>, DocId}
@@ -93,9 +91,18 @@ new(Db, DocId, AttachmentName, BoxNum, Timezone, Props) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec message_name(ne_binary(), kz_datetime()) -> ne_binary().
-message_name(BoxNum, DT) ->
-    message_name(BoxNum, DT, "").
+-spec create_message_name(ne_binary(), api_binary(), gregorian_seconds()) -> ne_binary().
+create_message_name(BoxNum, 'undefined', UtcSeconds) ->
+    create_message_name(BoxNum, ?DEFAULT_TIMEZONE, UtcSeconds);
+create_message_name(BoxNum, Timezone, UtcSeconds) ->
+    UtcDateTime = calendar:gregorian_seconds_to_datetime(UtcSeconds),
+    case localtime:utc_to_local(UtcDateTime, Timezone) of
+        {'error', 'unknown_tz'} ->
+            lager:info("unknown timezone: ~s", [Timezone]),
+            message_name(BoxNum, UtcDateTime, " UTC");
+        DT ->
+            message_name(BoxNum, DT, "")
+    end.
 
 -spec message_name(ne_binary(), kz_datetime(), string()) -> ne_binary().
 message_name(BoxNum, {{Y,M,D},{H,I,S}}, TZ) ->
@@ -144,7 +151,7 @@ folder(JObj) ->
 
 -spec folder(doc(), Default) -> kz_json:object() | Default.
 folder(JObj, Default) ->
-    kz_json:get_value(?VM_KEY_FOLDER, JObj, Default).
+    kz_json:get_first_defined([[?KEY_METADATA, ?VM_KEY_FOLDER], ?VM_KEY_FOLDER], JObj, Default).
 
 -spec set_folder(api_binary(), doc()) -> doc().
 set_folder(Folder, JObj) ->
@@ -161,6 +168,26 @@ set_folder_saved(JObj) ->
 -spec set_folder_deleted(doc()) -> doc().
 set_folder_deleted(JObj) ->
     kz_json:set_value(?VM_KEY_FOLDER, ?VM_FOLDER_DELETED, JObj).
+
+-spec message_history(doc()) -> ne_binaries().
+message_history(JObj) ->
+    kz_json:get_value(?KEY_HISTORY, JObj, []).
+
+-spec add_message_history(ne_binary(), doc()) -> doc().
+add_message_history(History, JObj) ->
+    kz_json:set_value(?KEY_HISTORY, message_history(JObj) ++ [History], JObj).
+
+-spec message_name(doc()) -> api_binary().
+message_name(JObj) ->
+    message_name(JObj, 'undefined').
+
+-spec message_name(doc(), Default) -> api_binary() | Default.
+message_name(JObj, Default) ->
+    kz_json:get_value(?KEY_NAME, JObj, Default).
+
+-spec set_message_name(api_binary(), doc()) -> doc().
+set_message_name(Name, JObj) ->
+    kz_json:set_value(?KEY_NAME, Name, JObj).
 
 -spec media_id(doc()) -> api_binary().
 media_id(JObj) ->
@@ -182,9 +209,21 @@ metadata(JObj, Default) ->
 set_metadata(Metadata, JObj) ->
     kz_json:set_value(?KEY_METADATA, Metadata, JObj).
 
+-spec to_sip(doc()) -> api_binary().
+to_sip(JObj) ->
+    to_sip(JObj, 'undefined').
+
+-spec to_sip(doc(), Default) -> api_binary() | Default.
+to_sip(JObj, Default) ->
+    kz_json:get_first_defined([[?KEY_METADATA, ?KEY_META_TO], ?KEY_META_TO], JObj, Default).
+
+-spec set_to_sip(api_binary(), doc()) -> doc().
+set_to_sip(To, JObj) ->
+    kz_json:set_value(?KEY_META_TO, To, JObj).
+
 -spec utc_seconds(doc()) -> pos_integer().
 utc_seconds(JObj) ->
-    kz_json:get_integer_value(?KEY_UTC_SEC, JObj).
+    kz_json:get_integer_value(?KEY_UTC_SEC, JObj, 0).
 
 -spec source_id(doc()) -> ne_binary().
 source_id(JObj) ->

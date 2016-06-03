@@ -195,7 +195,7 @@ send_mwi_update(New, Saved, BoxNumber, AccountId) ->
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     lager:debug("updating MWI for vmbox ~s@~s (~b/~b)", [BoxNumber, Realm, New, Saved]),
-    kapps_util:amqp_pool_send(Command, fun kapi_presence:publish_mwi_update/1).
+    kz_amqp_worker:cast(Command, fun kapi_presence:publish_mwi_update/1).
 
 -spec get_devices_owned_by(ne_binary(), ne_binary()) -> kz_json:objects().
 get_devices_owned_by(OwnerID, DB) ->
