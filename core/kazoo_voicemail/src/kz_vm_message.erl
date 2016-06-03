@@ -650,12 +650,36 @@ cleanup_moved_msgs(AccountId, BoxId, OldIds) ->
 %%--------------------------------------------------------------------
 -spec change_vmbox(ne_binary(), ne_binary() | ne_binaries(), ne_binary(), ne_binary()) -> kz_json:objects().
 change_vmbox(AccountId, MsgIds, OldBoxId, NewBoxId) when is_list(MsgIds) ->
+    AccountDb = get_db(AccountId),
+    {'ok', NBoxJ} = kz_datamgr:open_cache_doc(AccountDb, NewBoxId),
+
     Funs = [fun(JObj) -> kzd_box_message:set_source_id(NewBoxId, JObj) end
             ,fun(JObj) -> apply_folder(?VM_FOLDER_NEW, JObj) end
+            ,fun(JObj) -> change_message_name(NBoxJ, JObj) end
+            ,fun(JObj) -> change_to_sip_field(AccountId, NBoxJ, JObj) end
+            ,fun(JObj) -> kzd_box_message:add_message_history(OldBoxId, JObj) end
            ],
     bulk_update(AccountId, OldBoxId, MsgIds, Funs);
 change_vmbox(AccountId, MsgId, OldBoxId, NewBoxId) ->
     change_vmbox(AccountId, [MsgId], OldBoxId, NewBoxId).
+
+-spec change_message_name(kz_json:object(), kz_json:object()) -> kz_json:object().
+change_message_name(NBoxJ, MsgJObj) ->
+    BoxNum = kzd_voicemail_box:mailbox_number(NBoxJ),
+    Timezone = kzd_voicemail_box:timezone(NBoxJ),
+    UtcSeconds = kzd_box_message:utc_seconds(MsgJObj),
+
+    NewName = kzd_box_message:create_message_name(BoxNum, Timezone, UtcSeconds),
+    kzd_box_message:set_message_name(NewName, MsgJObj).
+
+-spec change_to_sip_field(ne_binary(), kz_json:object(), kz_json:object()) -> kz_json:object().
+change_to_sip_field(AccountId, NBoxJ, MsgJObj) ->
+    Realm = kz_util:get_account_realm(AccountId),
+    BoxNum = kzd_voicemail_box:mailbox_number(NBoxJ),
+
+    Metadata = kzd_box_message:metadata(MsgJObj),
+    To = <<BoxNum/binary, "@", Realm/binary>>,
+    kzd_box_message:set_metadata(kzd_box_message:set_to_sip(To, Metadata), MsgJObj).
 
 %%--------------------------------------------------------------------
 %% @public
