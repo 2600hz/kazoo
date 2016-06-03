@@ -187,7 +187,8 @@ validate_tasks(Context, ?HTTP_PUT) ->
 
 -spec validate_task(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_task(Context, ?HELP, ?HTTP_GET) ->
-    JObj = kz_json:from_list([{<<"tasks">>, kz_tasks:available()}]),
+    lager:debug("starting discovery of task APIs"),
+    JObj = kz_json:from_list([{<<"tasks">>, kz_tasks:help()}]),
     cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
                                 ,{fun cb_context:set_resp_data/2, JObj}
                                 ]);
@@ -246,19 +247,14 @@ put(Context) ->
                                     ,{<<"cause">>, Category}
                                     ]),
             cb_context:add_system_error('bad_identifier', Msg, Context);
-        {'error', T=?NE_BINARY}
-          when T == Category; T == Action ->
-            crossbar_util:response_bad_identifier(T, Context);
+        {'error', 'unknown_category'} ->
+            crossbar_util:response_bad_identifier(Category, Context);
+        {'error', 'unknown_action'} ->
+            crossbar_util:response_bad_identifier(Action, Context);
         {'error', Reason} ->
-            case kz_json:is_json_object(Reason) of
-                'true' ->
-                    lager:debug("new ~s task ~s cannot be created: ~s"
-                               ,[Category, Action, kz_json:encode(Reason)]),
-                    cb_context:add_validation_error(<<"attachment">>, <<"type">>, Reason, Context);
-                'false' ->
-                    lager:debug("new ~s task ~s cannot be created: ~p", [Category, Action, Reason]),
-                    crossbar_util:response('error', Reason, Context)
-            end
+            lager:debug("new ~s task ~s cannot be created: ~s"
+                       ,[Category, Action, kz_json:encode(Reason)]),
+            cb_context:add_validation_error(<<"attachment">>, <<"type">>, Reason, Context)
     end.
 
 %%--------------------------------------------------------------------

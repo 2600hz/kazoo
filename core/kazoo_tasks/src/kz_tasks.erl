@@ -11,7 +11,7 @@
 
 %% Public API
 -export([start_link/0]).
--export([available/0]).
+-export([help/0, help/1]).
 -export([new/4
         ,start/1
         ,read/1
@@ -62,15 +62,22 @@
 
 -type input() :: ne_binary() | kz_json:object().
 
+-type help_error() :: {'error'
+                      ,'no_categories' |
+                       'unknown_category' |
+                       'unknown_action'
+                      }.
+
 -export_type([task_id/0
              ,task/0, tasks/0
              ,input/0
+             ,help_error/0
              ]).
 
 -type api_category() :: ne_binary().
 
 -record(state, { tasks = [] :: tasks()
-               , apis = kz_json:new() :: kz_json:object()
+               , apis = #{} :: #{api_category() => #{ne_binary() => kz_json:object()}}
                , apps = #{} :: #{api_category() => ne_binary()}
                , nodes = #{} :: #{api_category() => ne_binary()}
                , modules = #{} :: #{api_category() => module()}
@@ -105,8 +112,9 @@ start_link() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec available() -> kz_json:object().
-available() ->
+-spec help() -> {'ok', kz_json:object()} |
+                help_error().
+help() ->
     CollectUntil = {kz_util:to_atom(?APP_NAME), fun kapi_tasks:help_resp_v/1, 'true', 'true'},
     case kz_amqp_worker:call_collect(kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                                     ,fun kapi_tasks:publish_help_req/1
@@ -124,6 +132,26 @@ available() ->
             lager:error("error in broadcasted help_req: ~p", [_Reason]),
             kz_json:new()
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec help(ne_binary()) -> {'ok', kz_json:object()} |
+                           help_error().
+help(Category=?NE_BINARY) ->
+    gen_server:call(?SERVER, {'help', Category}).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec help(ne_binary(), ne_binary()) -> {'ok', kz_json:object()} |
+                                        help_error().
+help(Category=?NE_BINARY, Action=?NE_BINARY) ->
+    gen_server:call(?SERVER, {'help', Category, Action}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -160,9 +188,10 @@ start(TaskId=?NE_BINARY) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec new(ne_binary(), ne_binary(), ne_binary(), input()) -> {'ok', kz_json:object()} |
-                                                             {'error', any()}.
+                                                             help_error() |
+                                                             {'error', kz_json:object()}.
 new(?MATCH_ACCOUNT_RAW(_)=AccountId, Category=?NE_BINARY, Action=?NE_BINARY, Input) ->
-    case get_API(Category, Action) of
+    case help(Category, Action) of
         {'error', _R}=E ->
             lager:debug("adding task ~s ~s failed: ~p", [Category, Action, _R]),
             E;
@@ -280,18 +309,35 @@ handle_call({'replace_APIs', Apps, Nodes, Modules, APIs}, _From, State) ->
                         , nodes = Nodes
                         , modules = Modules
                         },
-    ?REPLY(State1, APIs);
+    JObj =
+        kz_json:from_list(
+          [ {Category, kz_json:from_list(maps:to_list(Actions))}
+            || {Category, Actions} <- maps:to_list(APIs)
+          ]),
+    ?REPLY(State1, JObj);
 
-handle_call({'get_API', _, _}, _From, State=#state{apis = ?EMPTY_JSON_OBJECT}) ->
+handle_call({'help', _}, _From, State=#state{apis = APIs})
+  when APIs == #{} ->
     ?REPLY(State, {'error', 'no_categories'});
-handle_call({'get_API', Category, Action}, _From, State=#state{apis = JObj}) ->
-    case kz_json:get_value([Category, Action], JObj) of
-        'undefined' ->
-            case kz_json:get_value(Category, JObj) of
-                'undefined' -> ?REPLY(State, {'error', Category});
-                _ -> ?REPLY(State, {'error', Action})
-            end;
-        API -> ?REPLY(State, {'ok', API})
+handle_call({'help', _, _}, _From, State=#state{apis = APIs})
+  when APIs == #{} ->
+    ?REPLY(State, {'error', 'no_categories'});
+%%FIXME: upgrade OTP http://stackoverflow.com/a/23107510/1418165
+handle_call({'help', Category}, _From, State=#state{apis = Categories}) ->
+    case maps:get(Category, Categories, 'undefined') of
+        'undefined' -> ?REPLY(State, {'error', 'unknown_category'});
+        Actions ->
+            JObj = kz_json:from_list(maps:to_list(Actions)),
+            ?REPLY_FOUND(State, JObj)
+    end;
+handle_call({'help', Category, Action}, _From, State=#state{apis = Categories}) ->
+    case maps:get(Category, Categories, 'undefined') of
+        'undefined' -> ?REPLY(State, {'error', 'unknown_category'});
+        Actions ->
+            case maps:get(Action, Actions, 'undefined') of
+                'undefined' -> ?REPLY(State, {'error', 'unknown_actions'});
+                API -> ?REPLY_FOUND(State, API)
+            end
     end;
 
 handle_call({'new', AccountId, Category, Action}, _From, State) ->
@@ -648,10 +694,10 @@ time_ran(#{ started := Started
         'false' -> 'undefined'
     end.
 
--type m_apis() :: {map(), map(), map(), kz_json:object()}.
+-type m_apis() :: {map(), map(), map(), map()}.
 -spec parse_apis(kz_json:objects()) -> m_apis().
 parse_apis(JObjs) ->
-    Acc0 = {#{}, #{}, #{}, kz_json:new()},
+    Acc0 = {#{}, #{}, #{}, #{}},
     lists:foldl(fun parse_apis_fold/2, Acc0, JObjs).
 
 -spec parse_apis_fold(kz_json:object(), m_apis()) -> m_apis().
@@ -663,13 +709,8 @@ parse_apis_fold(JObj, {Apps, Nodes, Modules, APIs}) ->
     { Apps#{APICategory => App}
     , Nodes#{APICategory => kz_api:node(JObj)}
     , Modules#{APICategory => kz_util:to_atom(Module, 'true')}
-    , kz_json:set_value(APICategory, TasksProvided, APIs)
+    , APIs#{APICategory => maps:from_list(kz_json:to_proplist(TasksProvided))}
     }.
-
--spec get_API(ne_binary(), ne_binary()) -> {'ok', kz_json:object()} |
-                                           {'error', any()}.
-get_API(Category, Action) ->
-    gen_server:call(?SERVER, {'get_API', Category, Action}).
 
 -spec mandatory(kz_json:object()) -> ne_binaries().
 mandatory(APIJObj) ->
