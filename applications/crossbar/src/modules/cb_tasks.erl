@@ -397,20 +397,13 @@ save_attached_data(Context, TaskId, Records, 'false') ->
     lager:debug("converting JSON to CSV before saving"),
     Fields = kz_json:get_keys(hd(Records)),
     lager:debug("CSV fields found: ~p", [Fields]),
-    CSV = [iolist_join(",", Fields), "\n"
-          ,[ [iolist_join(<<",">>, [kz_json:get_value(Field, Record) || Field <- Fields]), "\n"]
+    CSV = [kz_util:iolist_join(",", Fields), "\n"
+          ,[ [kz_util:iolist_join(",", [kz_json:get_value(Field, Record) || Field <- Fields]), "\n"]
              || Record <- Records
            ]
           ],
     Context1 = replace_content_type(Context, <<"text/csv">>),
     save_attached_data(Context1, TaskId, iolist_to_binary(CSV), 'true').
-
-%% @private
--spec iolist_join(ne_binary(), list()) -> iolist().
-iolist_join(_, []) -> [];
-iolist_join(_, [_]=One) -> One;
-iolist_join(Sep, [H|T]) ->
-    [H, Sep, [[X, Sep] || X <- T]].
 
 %% @private
 -spec load_csv_attachment(cb_context:context(), kz_tasks:task_id(), ne_binary()) ->
