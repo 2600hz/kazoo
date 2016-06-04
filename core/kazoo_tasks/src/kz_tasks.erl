@@ -85,7 +85,7 @@
 -type state() :: #state{}.
 
 -define(REPLY(State, Value), {'reply', Value, State}).
--define(REPLY_FOUND(TaskJObj, State), {'reply', {'ok', TaskJObj}, State}).
+-define(REPLY_FOUND(State, TaskJObj), {'reply', {'ok', TaskJObj}, State}).
 -define(REPLY_NOT_FOUND(State), {'reply', {'error', 'not_found'}, State}).
 
 
@@ -381,7 +381,7 @@ handle_call({'remove_task', TaskId}, _From, State) ->
                     %%TODO: if app shutdown before task termination
                     %%this would be the place to attempt some cleanup
                     {'ok', _} = kz_datamgr:del_doc(?KZ_TASKS_DB, TaskId),
-                    ?REPLY_FOUND(to_public_json(Task), State)
+                    ?REPLY_FOUND(State, to_public_json(Task))
             end;
         [Task = #{worker_pid := Pid}] ->
             case is_processing(Task) of
@@ -389,7 +389,7 @@ handle_call({'remove_task', TaskId}, _From, State) ->
                 'false' ->
                     _ = kz_task_worker:stop(Pid),
                     State1 = remove_task(TaskId, State),
-                    ?REPLY_FOUND(to_public_json(Task), State1)
+                    ?REPLY_FOUND(State1, to_public_json(Task))
             end
     end;
 
@@ -561,7 +561,7 @@ handle_call_start_task(Task=#{ id := TaskId
                          },
             {'ok', JObj} = save_task(Task1),
             State1 = add_task(Task1, remove_task(TaskId, State)),
-            ?REPLY_FOUND(JObj, State1);
+            ?REPLY_FOUND(State1, JObj);
         {'error', _R}=E ->
             lager:error("worker failed starting ~s: ~p", [TaskId, _R]),
             ?REPLY(State, E)
@@ -580,7 +580,6 @@ from_json(Doc) ->
      , finished => kz_json:get_value(?PVT_FINISHED_AT, Doc)
      , total_rows => kz_json:get_value(?PVT_TOTAL_ROWS, Doc)
      , total_rows_failed => kz_json:get_value(?PVT_TOTAL_ROWS_FAILED, Doc)
-     , status => kz_json:get_value(?PVT_STATUS, Doc)
      , attachment_name => kz_doc:latest_attachment_id(Doc)
      }.
 
@@ -609,6 +608,7 @@ to_json(#{id := TaskId
         ,{?PVT_FINISHED_AT, Finished}
         ,{?PVT_TOTAL_ROWS, TotalRows}
         ,{?PVT_TOTAL_ROWS_FAILED, TotalErrors}
+        ,{?PVT_TOTAL_ROWS_SUCCEEDED, success_count(TotalRows, TotalErrors)}
         ,{?PVT_STATUS, status(Task)}
         ])).
 
@@ -626,6 +626,8 @@ to_public_json(Task) ->
             ,{<<"submit_timestamp">>, kz_json:get_value(?PVT_SUBMITTED_AT, Doc)}
             ,{<<"start_timestamp">>, kz_json:get_value(?PVT_STARTED_AT, Doc)}
             ,{<<"end_timestamp">>, kz_json:get_value(?PVT_FINISHED_AT, Doc)}
+            ,{<<"failure_count">>, kz_json:get_value(?PVT_TOTAL_ROWS_FAILED, Doc)}
+            ,{<<"success_count">>, kz_json:get_value(?PVT_TOTAL_ROWS_SUCCEEDED, Doc)}
             ,{<<"status">>, kz_json:get_value(?PVT_STATUS, Doc)}
             ])),
     kz_json:set_value(<<"_read_only">>, JObj, kz_json:new()).
@@ -657,6 +659,13 @@ is_processing(#{ started := Started
     'true';
 is_processing(_Task) ->
     'false'.
+
+%% @private
+-spec success_count(api_pos_integer(), api_non_neg_integer()) -> api_non_neg_integer().
+success_count('undefined', _) -> 'undefined';
+success_count(_, 'undefined') -> 'undefined';
+success_count(TotalRows, TotalErrors) ->
+    TotalRows - TotalErrors.
 
 %% @private
 -spec status(task()) -> api_binary().

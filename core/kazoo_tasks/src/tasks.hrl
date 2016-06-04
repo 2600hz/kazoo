@@ -11,13 +11,13 @@
 -define(PVT_ACCOUNT_ID, <<"pvt_account_id">>).
 -define(PVT_ACTION, <<"pvt_action">>).
 -define(PVT_CATEGORY, <<"pvt_category">>).
--define(PVT_FAILED_AT, <<"pvt_failed_at">>).
 -define(PVT_FINISHED_AT, <<"pvt_finished_at">>).
 -define(PVT_STARTED_AT, <<"pvt_started_at">>).
 -define(PVT_STATUS, <<"pvt_status">>).
 -define(PVT_SUBMITTED_AT, <<"pvt_submitted_at">>).
 -define(PVT_TOTAL_ROWS, <<"pvt_total_rows">>).
 -define(PVT_TOTAL_ROWS_FAILED, <<"pvt_total_rows_failed">>).
+-define(PVT_TOTAL_ROWS_SUCCEEDED, <<"pvt_total_rows_failed">>).
 -define(PVT_TYPE, <<"pvt_type">>).
 -define(PVT_WORKER_NODE, <<"pvt_worker_node">>).
 
