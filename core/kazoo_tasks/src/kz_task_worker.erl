@@ -10,7 +10,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/4]).
+-export([start_link/6]).
 -export([stop/1
         ]).
 
@@ -27,8 +27,18 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, { task_pid :: pid()
+-record(state, { task_id :: kz_tasks:task_id()
+               , module :: module()
+               , function :: atom()
+               , fassoc :: kz_csv:fassoc()
+               , extra_args :: kz_proplist()
+               , total_rows = 0 :: non_neg_integer()
+               , total_errors = 0 :: non_neg_integer()
                }).
+
+-define(NOREPLY(State), {'noreply', State}).
+-define(CSV, 'csv').
+
 
 %%%===================================================================
 %%% API
@@ -39,10 +49,15 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec start_link(kz_tasks:task_id(), module(), atom(), list()) -> startlink_ret().
-start_link(TaskId, M, F, A) ->
-    _ = kz_util:put_callid(TaskId),
-    gen_server:start_link(?SERVER, [TaskId, M, F, A], []).
+-spec start_link(kz_tasks:task_id()
+                ,module()
+                ,atom()
+                ,kz_proplist()
+                ,ne_binaries()
+                ,ne_binary()
+                ) -> startlink_ret().
+start_link(TaskId, Module, Function, ExtraArgs, OrderedFields, AName) ->
+    gen_server:start_link(?SERVER, [TaskId, Module, Function, ExtraArgs, OrderedFields, AName], []).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -70,11 +85,27 @@ stop(Pid)
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([_TaskId, _M, _F, _A]=Args) ->
-    State =
-        #state{ task_pid = kz_util:spawn_link(fun run_task/4, Args)
-              },
-    {'ok', State}.
+init([TaskId, Module, Function, ExtraArgs, OrderedFields, AName]) ->
+    _ = kz_util:put_callid(TaskId),
+    case kz_datamgr:fetch_attachment(?KZ_TASKS_DB, TaskId, AName) of
+        {'error', Reason} ->
+            lager:error("failed loading attachment ~s from ~s/~s: ~p"
+                       ,[AName, ?KZ_TASKS_DB, TaskId, Reason]),
+            {'stop', Reason};
+        {'ok', CSV} ->
+            {Header, CSVRest} = kz_csv:take_row(CSV),
+            FAssoc = kz_csv:associator(Header, OrderedFields),
+            State = #state{ task_id = TaskId
+                          , module = Module
+                          , function = Function
+                          , fassoc = FAssoc
+                          , extra_args = ExtraArgs
+                          },
+            lager:debug("task ~s worker starting", [TaskId]),
+            'undefined' = put(?CSV, CSVRest),
+            gen_server:cast(?SERVER, 'go'),
+            {'ok', State}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -104,6 +135,39 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast('go', State=#state{task_id = TaskId
+                              ,module = Module
+                              ,function = Function
+                              ,fassoc = FAssoc
+                              ,extra_args = ExtraArgs
+                              ,total_rows = TotalRows
+                              ,total_errors = TotalErrors
+                              }) ->
+    case kz_csv:take_row(get(?CSV)) of
+        'eof' ->
+            kz_tasks:worker_finished(TaskId, TotalRows, TotalErrors),
+            gen_server:cast(self(), 'stop'),
+            _ = erase(?CSV),
+            ?NOREPLY(State);
+        {Row, CSVRest} ->
+            ReOrderedArgs = FAssoc(Row),
+            Errors =
+                try
+                    apply(Module, Function, [ExtraArgs]++ReOrderedArgs),
+                    0
+                catch
+                    _E:_R ->
+                        kz_util:log_stacktrace(),
+                        1
+                end,
+            NewState = State#state{total_errors = TotalErrors + Errors
+                                  ,total_rows = TotalRows + 1
+                                  },
+            _ = put(?CSV, CSVRest),
+            gen_server:cast(self(), 'go'),
+            ?NOREPLY(NewState)
+    end;
+
 handle_cast('stop', State) ->
     {'stop', 'normal', State};
 
@@ -136,9 +200,8 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{task_pid = Pid}) ->
-    lager:debug("terminating (~p): killing ~p", [_Reason, Pid]),
-    exit(Pid, 'kill').
+terminate(_Reason, _State) ->
+    lager:debug("terminating: ", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -154,21 +217,5 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
--spec run_task(kz_tasks:task_id(), module(), atom(), list()) -> any().
-run_task(TaskId, M, F, A) ->
-    try
-        R = apply(M, F, A),
-        _ = kz_tasks:worker_finished(TaskId),
-        lager:debug("R = ~p. Should store this in MoDB", [R])
-    catch
-        _E:_R ->
-            Stacktrace = erlang:get_stacktrace(),
-            Msg = io_lib:format("(~p) ~p: ~w\n~p"
-                               ,[self(), _E, _R, Stacktrace]),
-            _ = kz_tasks:worker_failed(TaskId, iolist_to_binary(Msg)),
-            lager:error("task ~s ~s", [TaskId, Msg]),
-            error_logger:error_report(Msg)
-    end.
 
 %%% End of Module.

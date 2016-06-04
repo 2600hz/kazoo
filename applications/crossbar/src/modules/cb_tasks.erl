@@ -243,10 +243,7 @@ put(Context) ->
             save_attached_data(set_db(Context), TaskId, CSVorJSON, IsCSV),
             crossbar_util:response(TaskJObj, Context);
         {'error', 'no_categories'} ->
-            Msg = kz_json:from_list([{<<"tip">>, <<"No APIs known yet: GET /help then try again!">>}
-                                    ,{<<"cause">>, Category}
-                                    ]),
-            cb_context:add_system_error('bad_identifier', Msg, Context);
+            no_categories(Context, Category);
         {'error', 'unknown_category'} ->
             crossbar_util:response_bad_identifier(Category, Context);
         {'error', 'unknown_action'} ->
@@ -268,6 +265,8 @@ put(Context) ->
 patch(Context, TaskId) ->
     case kz_tasks:start(TaskId) of
         {'ok', Task} -> crossbar_util:response(Task, Context);
+        {'error', 'no_categories'} ->
+            no_categories(Context, TaskId);
         {'error', 'already_started'} ->
             Msg = kz_json:from_list([{<<"message">>, <<"task already started">>}
                                     ,{<<"cause">>, TaskId}
@@ -417,3 +416,11 @@ load_csv_attachment(Context, TaskId, AName) ->
        ,{<<"Content-Type">>, <<"text/csv">>}
        ,{<<"Content-Length">>, byte_size(cb_context:resp_data(Ctx))}
        ]).
+
+%% @private
+-spec no_categories(cb_context:context(), ne_binary()) -> cb_context:context().
+no_categories(Context, Id) ->
+    Msg = kz_json:from_list([{<<"tip">>, <<"No APIs known yet: GET /help then try again!">>}
+                            ,{<<"cause">>, Id}
+                            ]),
+    cb_context:add_system_error('bad_identifier', Msg, Context).
