@@ -551,7 +551,9 @@ should_handle_notification(JObj) ->
     DataJObj = kz_json:normalize(JObj),
     should_handle_notification(DataJObj, is_preview(JObj)).
 
-should_handle_notification(_JObj, 'true') -> 'true';
+should_handle_notification(_JObj, 'true') ->
+    lager:debug("notification is a preview, handling"),
+    'true';
 should_handle_notification(JObj, 'false') ->
     case find_account_id(JObj) of
         'undefined' -> should_handle_system();
@@ -594,9 +596,9 @@ should_handle_account(_Account, _Preference) ->
 should_handle_reseller(Account) ->
     ResellerId = kz_services:find_reseller_id(Account),
 
-    lager:debug("should reseller ~s handle notification", [ResellerId]),
     case kz_account:fetch(ResellerId) of
-        {'error', _E} -> 'true';
+        {'error', _E} ->
+            'true';
         {'ok', ResellerJObj} ->
             kz_account:notification_preference(ResellerJObj) =:= ?APP_NAME
     end.
@@ -778,7 +780,9 @@ read_doc(File) ->
 
 -spec is_preview(kz_json:object()) -> boolean().
 is_preview(DataJObj) ->
-    kz_json:is_true(<<"preview">>, DataJObj, 'false').
+    kz_util:is_true(
+      kz_json:get_first_defined([<<"Preview">>, <<"preview">>], DataJObj, 'false')
+     ).
 
 -spec public_proplist(kz_json:key(), kz_json:object()) -> kz_proplist().
 public_proplist(Key, JObj) ->

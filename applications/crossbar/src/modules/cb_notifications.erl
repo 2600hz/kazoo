@@ -1144,7 +1144,7 @@ on_successful_validation(Id, Context) ->
                                                  cb_context:context().
 handle_missing_account_notification(Context, Id, [{<<"notifications">>, [_Id, ?PREVIEW]}|_]) ->
     lager:debug("preview request, ignoring if notification ~s is missing", [Id]),
-    on_successful_validation(Id, Context);
+    Context;
 handle_missing_account_notification(Context, Id, _ReqNouns) ->
     _ = maybe_hard_delete(Context, Id),
     _Context = read_system_for_account(Context, Id, 'system_migrate'),
