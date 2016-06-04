@@ -288,18 +288,18 @@ curl -v -X PATCH \
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "account_id": "{ACCOUNT_ID}",
-        "arguments": [
-            100000
-        ],
-        "function": "sleep",
-        "module": "timer",
-        "id": "{TASK_ID}",
-        "is_terminated": false,
-        "started_at": 63631324861,
-        "submitted_at": 63631324811
+        "_read_only": {
+            "account_id": "{ACCOUNT_ID}",
+            "action": "list",
+            "category": "number_management",
+            "id": "{TASK_ID}",
+            "node": "whistle_apps@qwd",
+            "start_timestamp": 63632222842,
+            "status": "executing",
+            "submit_timestamp": 63632222815
+        }
     },
-    "request_id": "5b04f981863b1f5f4c702a9a540073f5",
+    "request_id": "c8df9abfd8fec56b50ddfe8a1796e7dc",
     "revision": "undefined",
     "status": "success"
 }

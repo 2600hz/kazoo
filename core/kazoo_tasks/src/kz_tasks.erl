@@ -498,6 +498,16 @@ save_task(Task = #{id := _TaskId}) ->
             E
     end.
 
+-spec ensure_save_task(task()) -> {'ok', kz_json:object()} |
+                                  {'error', any()}.
+ensure_save_task(Task = #{id := _TaskId}) ->
+    case kz_datamgr:ensure_saved(?KZ_TASKS_DB, to_json(Task)) of
+        {'ok', Doc} -> {'ok', to_public_json(from_json(Doc))};
+        {'error', _R}=E ->
+            lager:error("failed to ensure_save ~s in ~s: ~p", [_TaskId, ?KZ_TASKS_DB, _R]),
+            E
+    end.
+
 -spec view(list()) -> kz_json:objects().
 view(ViewOptions) ->
     case kz_datamgr:get_results(?KZ_TASKS_DB, ?KZ_TASKS_BY_ACCOUNT, ViewOptions) of
@@ -559,7 +569,14 @@ handle_call_start_task(Task=#{ id := TaskId
                          , worker_pid => Pid
                          , worker_node => Node %%FIXME: start worker on Node for real
                          },
-            {'ok', JObj} = save_task(Task1),
+            JObj =
+                case save_task(Task1) of
+                    {'ok', TaskJObj} -> TaskJObj;
+                    {'error', 'conflict'} ->
+                        lager:debug("FIXME using ensure_saved for task ~s", [TaskId]),
+                        {'ok', TaskJObj} = ensure_save_task(Task1),
+                        TaskJObj
+                end,
             State1 = add_task(Task1, remove_task(TaskId, State)),
             ?REPLY_FOUND(State1, JObj);
         {'error', _R}=E ->
