@@ -11,6 +11,7 @@
 
 -export([get/1, get/2, get/3
          ,get_atom/2, get_atom/3
+         ,get_boolean/2, get_boolean/3
          ,get_integer/2, get_integer/3
          ,get_string/2, get_string/3
          ,get_raw_string/2, get_raw_string/3
@@ -61,6 +62,17 @@ get_atom(Section, Key, Default) ->
             [kz_util:to_atom(Value, 'true') || Value <- Values];
         Value ->
             [kz_util:to_atom(Value, 'true')]
+    end.
+
+-spec get_boolean(section(), atom()) -> boolean().
+get_boolean(Section, Key) ->
+    get_boolean(Section, Key, 'false').
+
+-spec get_boolean(section(), atom(), boolean()) -> boolean().
+get_boolean(Section, Key, Default) ->
+    case ?MODULE:get(Section, Key, Default) of
+        Default -> Default;
+        [Value] -> kz_util:is_true(Value)
     end.
 
 %%--------------------------------------------------------------------

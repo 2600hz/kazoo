@@ -6,6 +6,7 @@
 %%%   Karl Anderson
 %%%   James Aimonetti
 %%%   Pierre Fenoll
+%%%   Roman Galeev
 %%%-------------------------------------------------------------------
 -module(kapps_config).
 
