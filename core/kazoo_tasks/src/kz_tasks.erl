@@ -778,7 +778,7 @@ find_input_errors(API, Input=?NE_BINARY) ->
                 fun (Row, Es) ->
                         case are_mandatories_unset(IsMandatory, Row) of
                             'false' -> Es;
-                            'true' -> [iolist_to_binary(kz_util:iolist_join(",", Row)) | Es]
+                            'true' -> [list_to_binary(string:join(Row, ",")) | Es]
                         end
                 end,
             {'ok', MMVs} = ecsv:process_csv_binary_with(InputData, Unsets, []),
