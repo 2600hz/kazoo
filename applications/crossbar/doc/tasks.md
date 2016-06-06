@@ -124,7 +124,26 @@ curl -v -X PUT \
 }
 ```
 
-##### Wrong input data
+##### Bad CSV format
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "csv": {
+            "format": {
+                "message": "Empty CSV or some row(s) longer than others"
+            }
+        }
+    },
+    "error": "500",
+    "message": "invalid request",
+    "request_id": "f319f2a4fd112c91ba536dfa39fd50ff",
+    "status": "error"
+}
+```
+
+##### Bad input field name
 
 ```json
 {
@@ -141,6 +160,49 @@ curl -v -X PUT \
     "error": "500",
     "message": "invalid request",
     "request_id": "296a70611e460b82628cb873c11e5c98",
+    "status": "error"
+}
+```
+
+##### Missing mandatory fields
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "attachment": {
+            "type": {
+                "missing_mandatory_fields": [
+                    "number",
+                    "account_id"
+                ]
+            }
+        }
+    },
+    "error": "500",
+    "message": "invalid request",
+    "request_id": "216e9b80decc66a706320a9bd11da544",
+    "status": "error"
+}
+```
+
+##### Missing values for mandatory fields
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "attachment": {
+            "type": {
+                "missing_mandatory_values": [
+                    ",4159876543,"
+                ]
+            }
+        }
+    },
+    "error": "500",
+    "message": "invalid request",
+    "request_id": "dd1b7c575f4dddd81f94827f419ddb55",
     "status": "error"
 }
 ```
