@@ -17,7 +17,12 @@
 -export([number/1
         ]).
 
--export([assign_to/4
+-export([%%list/2
+        assign_to/4
+        ,delete/3
+        ,reserve/4
+        ,add/5
+        %,update_features/5
         ]).
 
 -include("knm.hrl").
@@ -34,16 +39,16 @@ module() -> kz_util:to_binary(?MODULE).
 
 -spec help() -> kz_proplist().
 help() ->
-    [{<<"list">>
-     ,kz_json:from_list([{<<"description">>, <<"List all numbers in the system">>}
-                        ,{<<"mandatory">>, [
-                                           ]}
-                        ,{<<"optional">>, [<<"auth_by">>
-                                          ]}
-                        ])
-     }
+    %% [{<<"list">>
+    %%  ,kz_json:from_list([{<<"description">>, <<"List all numbers in the system">>}
+    %%                     ,{<<"mandatory">>, [
+    %%                                        ]}
+    %%                     ,{<<"optional">>, [<<"auth_by">>
+    %%                                       ]}
+    %%                     ])
+    %%  }
 
-    ,{<<"assign_to">>
+    [{<<"assign_to">>
      ,kz_json:from_list([{<<"description">>, <<"Bulk-assign numbers to the provided account">>}
                         ,{<<"expected_content">>, <<"text/csv">>}
                         ,{<<"mandatory">>, [<<"number">>
@@ -87,18 +92,18 @@ help() ->
                         ])
      }
 
-    ,{<<"update_features">>
-     ,kz_json:from_list([{<<"description">>, <<"Bulk-update features of numbers">>}
-                        ,{<<"expected_content">>, <<"text/csv">>}
-                        ,{<<"mandatory">>, [<<"number">>
-                                           ]}
-                        ,{<<"optional">>, [<<"cnam.inbound">>
-                                          ,<<"cnam.outbound">>
-                                          ,<<"e911.street_address">>
-                                               %%TODO: exhaustive list
-                                          ]}
-                        ])
-     }
+    %% ,{<<"update_features">>
+    %%  ,kz_json:from_list([{<<"description">>, <<"Bulk-update features of numbers">>}
+    %%                     ,{<<"expected_content">>, <<"text/csv">>}
+    %%                     ,{<<"mandatory">>, [<<"number">>
+    %%                                        ]}
+    %%                     ,{<<"optional">>, [<<"cnam.inbound">>
+    %%                                       ,<<"cnam.outbound">>
+    %%                                       ,<<"e911.street_address">>
+    %%                                            %%TODO: exhaustive list
+    %%                                       ]}
+    %%                     ])
+    %%  }
     ].
 
 %% Verifiers
@@ -109,14 +114,60 @@ number(_) -> 'false'.
 
 %% Appliers
 
+%% -spec list(kz_proplist(), api_binary()) -> any().
+%% list(Props, AuthBy0) ->
+%%     AuthBy = case AuthBy0 of
+%%                  'undefined' -> props:get_value('auth_account_id', Props);
+%%                  _ -> AuthBy0
+%%              end,
+%%     Options =
+
 -spec assign_to(kz_proplist(), ne_binary(), ne_binary(), api_binary()) -> any().
-assign_to(Props, Number, AccountId, 'undefined') ->
-    AuthBy = props:get_value('auth_account_id', Props),
-    assign_to(Props, Number, AccountId, AuthBy);
-assign_to(_Props, Number, AccountId, AuthBy) ->
+assign_to(Props, Number, AccountId, AuthBy0) ->
+    AuthBy = case AuthBy0 of
+                 'undefined' -> props:get_value('auth_account_id', Props);
+                 _ -> AuthBy0
+             end,
     Options = [{'auth_by', AuthBy}
               ],
     knm_number:move(Number, AccountId, Options).
+
+-spec delete(kz_proplist(), ne_binary(), api_binary()) -> any().
+delete(Props, Number, AuthBy0) ->
+    AuthBy = case AuthBy0 of
+                 'undefined' -> props:get_value('auth_account_id', Props);
+                 _ -> AuthBy0
+             end,
+    Options = [{'auth_by', AuthBy}
+              ],
+    knm_number:release(Number, Options).
+
+-spec reserve(kz_proplist(), ne_binary(), ne_binary(), api_binary()) -> any().
+reserve(Props, Number, AccountId, AuthBy0) ->
+    AuthBy = case AuthBy0 of
+                 'undefined' -> props:get_value('auth_account_id', Props);
+                 _ -> AuthBy0
+             end,
+    Options = [{'auth_by', AuthBy}
+              ,{'assign_to', AccountId}
+              ],
+    knm_number:reserve(Number, Options).
+
+-spec add(kz_proplist(), ne_binary(), ne_binary(), api_binary(), api_binary()) -> any().
+add(Props, Number, AccountId, AuthBy0, ModuleName0) ->
+    AuthBy = case AuthBy0 of
+                 'undefined' -> props:get_value('auth_account_id', Props);
+                 _ -> AuthBy0
+             end,
+    Options = [{'auth_by', AuthBy}
+              ,{'assign_to', AccountId}
+              ,{'module_name', ModuleName0}
+              ],
+    knm_number:create(Number, Options).
+
+%% -spec update_features(kz_proplist(), ne_binary(), api_binary(), ...) -> any().
+%% update_features(Props, Number, CNAMInbound0, ...) ->
+
 
 %%%===================================================================
 %%% Internal functions
