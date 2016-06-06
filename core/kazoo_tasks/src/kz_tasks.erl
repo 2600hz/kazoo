@@ -332,7 +332,7 @@ handle_call({'help', Category, Action}, _From, State=#state{apis = Categories}) 
         'undefined' -> ?REPLY(State, {'error', 'unknown_category'});
         Actions ->
             case maps:get(Action, Actions, 'undefined') of
-                'undefined' -> ?REPLY(State, {'error', 'unknown_actions'});
+                'undefined' -> ?REPLY(State, {'error', 'unknown_action'});
                 API -> ?REPLY_FOUND(State, API)
             end
     end;
