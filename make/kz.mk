@@ -5,7 +5,12 @@
 ## pipefail enforces that the command fails even when run through a pipe
 SHELL = /bin/bash -o pipefail
 
-ERLC_OPTS += +debug_info -Iinclude -Isrc +'{parse_transform, lager_transform}'
+ifndef ERLC_OPTS_SUPERSECRET
+    ERLC_OPTS += +debug_info
+else
+    ERLC_OPTS += $(ERLC_OPTS_SUPERSECRET)
+endif
+ERLC_OPTS += -Iinclude -Isrc +'{parse_transform, lager_transform}'
 ## Use pedantic flags when compiling apps from applications/ & core/
 ERLC_OPTS += -Werror +warn_export_all +warn_unused_import +warn_unused_vars
 
