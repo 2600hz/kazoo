@@ -68,7 +68,7 @@ curl -v -X PUT \
             "action": "{ACTION}",
             "category": "{CATEGORY}",
             "id": "edfb48ea9617fa6832e43ce676c53f",
-            "submitted_at": 63632025993
+            "submit_timestamp": 63632025993
         }
     },
     "request_id": "6bc9187feafe54a5c16d07e1a493c04f",
