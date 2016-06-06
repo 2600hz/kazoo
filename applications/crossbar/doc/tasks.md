@@ -352,16 +352,16 @@ curl -v -X PATCH \
     "data": {
         "_read_only": {
             "account_id": "{ACCOUNT_ID}",
-            "action": "list",
+            "action": "add",
             "category": "number_management",
             "id": "{TASK_ID}",
             "node": "whistle_apps@qwd",
-            "start_timestamp": 63632222842,
+            "start_timestamp": 63632456149,
             "status": "executing",
-            "submit_timestamp": 63632222815
+            "submit_timestamp": 63632456101
         }
     },
-    "request_id": "c8df9abfd8fec56b50ddfe8a1796e7dc",
+    "request_id": "c05d845800c67d1cd5c01e5276155436",
     "revision": "undefined",
     "status": "success"
 }

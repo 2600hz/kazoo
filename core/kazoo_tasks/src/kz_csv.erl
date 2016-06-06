@@ -12,7 +12,7 @@
 -export([take_row/1
         ,split_row/1
         ,pad_row_to/2
-        ,associator/2
+        ,associator/3
         ]).
 
 -include_lib("kazoo/include/kz_types.hrl").
@@ -21,10 +21,12 @@
 -define(ZILCH, 'undefined').
 -endif.
 
--type row() :: [ne_binary() | ?ZILCH].
+-type cell() :: ne_binary() | ?ZILCH.
+-type row() :: [cell(), ...].
 
 -export_type([row/0
              ,fassoc/0
+             ,verifier/0
              ]).
 
 %%%===================================================================
@@ -76,9 +78,11 @@ pad_row_to(N, Row)
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--type fassoc() :: fun((row()) -> row()).
--spec associator(row(), row()) -> fassoc().
-associator(CSVHeader, OrderedFields) ->
+-type fassoc_ret() :: {'true', row()} | 'false'.
+-type fassoc() :: fun((row()) -> fassoc_ret()).
+-type verifier() :: fun((cell()) -> boolean()).
+-spec associator(row(), row(), verifier()) -> fassoc().
+associator(CSVHeader, OrderedFields, Verifier) ->
     Max = length(OrderedFields),
     Indexed = lists:zip(lists:seq(1, length(CSVHeader)), CSVHeader),
     F =
@@ -88,12 +92,21 @@ associator(CSVHeader, OrderedFields) ->
     Map = lists:foldl(F, #{}, Indexed),
     fun (Row0) ->
             Row = pad_row_to(Max, Row0),
-            [case maps:get(I, Map, 'undefined') of
-                 'undefined' -> ?ZILCH;
-                 J -> lists:nth(J, Row)
-             end
-             || I <- lists:seq(1, Max)
-            ]
+            ReOrdered =
+                [ begin
+                      Cell = case maps:get(I, Map, 'undefined') of
+                                 'undefined' -> ?ZILCH;
+                                 J -> lists:nth(J, Row)
+                             end,
+                      Verifier(lists:nth(I, OrderedFields), Cell)
+                          andalso Cell
+                  end
+                  || I <- lists:seq(1, Max)
+                ],
+            case lists:any(fun erlang:is_boolean/1, ReOrdered) of
+                'false' -> {'true', ReOrdered};
+                'true' -> 'false'
+            end
     end.
 
 %%%===================================================================
@@ -119,8 +132,19 @@ associator_test() ->
     OrderedFields = [<<"A">>, <<"B">>, <<"C">>, <<"D">>, <<"E">>],
     CSVHeader = [<<"A">>, <<"E">>, <<"C">>, <<"B">>],
     CSVRow    = [<<"1">>, <<"5">>, <<"3">>, <<"2">>],
-    FAssoc = ?MODULE:associator(CSVHeader, OrderedFields),
-    ?assertEqual([<<"1">>, <<"2">>, <<"3">>, 'undefined', <<"5">>], FAssoc(CSVRow)).
+    Verify = fun (_Cell) -> 'true' end,
+    Verifier = fun (_Field, Cell) -> Verify(Cell) end,
+    FAssoc = ?MODULE:associator(CSVHeader, OrderedFields, Verifier),
+    ?assertEqual({'true', [<<"1">>, <<"2">>, <<"3">>, 'undefined', <<"5">>]}, FAssoc(CSVRow)).
+
+associator_verify_test() ->
+    OrderedFields = [<<"A">>, <<"B">>, <<"C">>, <<"D">>, <<"E">>],
+    CSVHeader = [<<"A">>, <<"E">>, <<"C">>, <<"B">>],
+    CSVRow    = [<<"1">>, <<"5">>, <<"3">>, <<"2">>],
+    Verify = fun (_Cell) -> 'false' end,
+    Verifier = fun (<<"B">>, Cell) -> Verify(Cell); (_Field, _Cell) -> 'true' end,
+    FAssoc = ?MODULE:associator(CSVHeader, OrderedFields, Verifier),
+    ?assertEqual('false', FAssoc(CSVRow)).
 
 rows_test_() ->
     CSV1 = <<"a\r\nb\nc\nd\n\re\r\r">>,

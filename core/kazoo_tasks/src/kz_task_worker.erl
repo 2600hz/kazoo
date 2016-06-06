@@ -87,14 +87,30 @@ stop(Pid)
 %%--------------------------------------------------------------------
 init([TaskId, Module, Function, ExtraArgs, OrderedFields, AName]) ->
     _ = kz_util:put_callid(TaskId),
-    case kz_datamgr:fetch_attachment(?KZ_TASKS_DB, TaskId, AName) of
+    case kz_util:try_load_module(Module) == Module andalso
+        kz_datamgr:fetch_attachment(?KZ_TASKS_DB, TaskId, AName)
+    of
+        'false' ->
+            lager:error("failed loading module '~p' for task ~s", [Module, TaskId]),
+            {'stop', 'badmodule'};
         {'error', Reason} ->
             lager:error("failed loading attachment ~s from ~s/~s: ~p"
                        ,[AName, ?KZ_TASKS_DB, TaskId, Reason]),
             {'stop', Reason};
         {'ok', CSV} ->
+            Verify =
+                fun (Field, Value) ->
+                        Verifier = kz_util:to_atom(Field, 'true'),
+                        case Module:Verifier(Value) of
+                            'true' -> 'true';
+                            'false' ->
+                                lager:error("'~s' failed to validate with ~s:~s/1"
+                                           ,[Value, Module, Verifier]),
+                                'false'
+                        end
+                end,
             {Header, CSVRest} = kz_csv:take_row(CSV),
-            FAssoc = kz_csv:associator(Header, OrderedFields),
+            FAssoc = kz_csv:associator(Header, OrderedFields, Verify),
             State = #state{ task_id = TaskId
                           , module = Module
                           , function = Function
@@ -150,16 +166,7 @@ handle_cast('go', State=#state{task_id = TaskId
             _ = erase(?CSV),
             ?NOREPLY(State);
         {Row, CSVRest} ->
-            ReOrderedArgs = FAssoc(Row),
-            Errors =
-                try
-                    apply(Module, Function, [ExtraArgs]++ReOrderedArgs),
-                    0
-                catch
-                    _E:_R ->
-                        kz_util:log_stacktrace(),
-                        1
-                end,
+            Errors = try_apply(Module, Function, ExtraArgs, FAssoc, Row),
             NewState = State#state{total_errors = TotalErrors + Errors
                                   ,total_rows = TotalRows + 1
                                   },
@@ -217,5 +224,26 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+-spec try_apply(module(), atom(), list(), kz_csv:fassoc(), kz_csv:row()) -> non_neg_integer().
+try_apply(Module, Function, ExtraArgs, FAssoc, RawRow) ->
+    try FAssoc(RawRow) of
+        {'true', Args} ->
+            try
+                apply(Module, Function, [ExtraArgs|Args]),
+                0
+            catch
+                _E:_R ->
+                    kz_util:log_stacktrace(),
+                    1
+            end;
+        'false' ->
+            lager:error("verifier failed on ~p", [RawRow]),
+            1
+    catch
+        _:_R ->
+            lager:error("verifier crashed: ~p", [_R]),
+            1
+    end.
 
 %%% End of Module.
