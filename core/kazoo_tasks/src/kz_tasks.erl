@@ -781,8 +781,10 @@ find_input_errors(API, Input=?NE_BINARY) ->
                             'true' -> [list_to_binary(string:join(Row, ",")) | Es]
                         end
                 end,
-            {'ok', MMVs} = ecsv:process_csv_binary_with(InputData, Unsets, []),
-            Errors#{<<"missing_mandatory_values">> => lists:reverse(MMVs)}
+            case ecsv:process_csv_binary_with(InputData, Unsets, []) of
+                {'ok', []} -> Errors;
+                {'ok', MMVs} -> Errors#{<<"missing_mandatory_values">> => lists:reverse(MMVs)}
+            end
     end;
 
 find_input_errors(API, InputRecord) ->
@@ -805,8 +807,10 @@ find_input_errors(API, InputRecord) ->
                             'true' -> [JObj | Es]
                         end
                 end,
-            MMVs = lists:foldl(CheckJObjValues, [], InputRecord),
-            Errors#{<<"missing_mandatory_values">> => lists:reverse(MMVs)}
+            case lists:foldl(CheckJObjValues, [], InputRecord) of
+                [] -> Errors;
+                MMVs -> Errors#{<<"missing_mandatory_values">> => lists:reverse(MMVs)}
+            end
     end.
 
 find_API_errors(API, Mandatory, Fields) ->
