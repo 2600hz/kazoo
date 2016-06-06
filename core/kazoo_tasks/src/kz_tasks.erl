@@ -181,7 +181,8 @@ all(AccountId=?NE_BINARY) ->
                           {'error'
                           ,'not_found' |
                            'already_started' |
-                           'no_categories'
+                           'no_categories' |
+                           any()
                           }.
 start(TaskId=?NE_BINARY) ->
     gen_server:call(?SERVER, {'start_task', TaskId}).
@@ -279,6 +280,7 @@ worker_finished(TaskId=?NE_BINARY, TotalRows, TotalErrors)
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    _ = process_flag('trap_exit', 'true'),
     lager:info("ensuring db ~s exists", [?KZ_TASKS_DB]),
     'true' = kz_datamgr:db_create(?KZ_TASKS_DB),
     kz_datamgr:revise_views_from_folder(?KZ_TASKS_DB, kz_util:to_atom(?APP_NAME)),
@@ -563,8 +565,13 @@ handle_call_start_task(Task=#{ id := TaskId
     ExtraArgs = [{'auth_account_id', AccountId}
                 ],
     %% Task needs to run where App is started.
-    case kz_task_worker:start_link(TaskId, Module, Function, ExtraArgs, Fields, AName) of
-        {'ok', Pid} ->
+    try erlang:spawn_link(kz_util:to_atom(Node, 'true')
+                         ,'kz_task_worker'
+                         ,'start_link'
+                         ,[TaskId, Module, Function, ExtraArgs, Fields, AName]
+                         )
+    of
+        Pid ->
             Task1 = Task#{ started => kz_util:current_tstamp()
                          , worker_pid => Pid
                          , worker_node => Node %%FIXME: start worker on Node for real
@@ -578,10 +585,11 @@ handle_call_start_task(Task=#{ id := TaskId
                         TaskJObj
                 end,
             State1 = add_task(Task1, remove_task(TaskId, State)),
-            ?REPLY_FOUND(State1, JObj);
-        {'error', _R}=E ->
+            ?REPLY_FOUND(State1, JObj)
+    catch
+        _E:_R ->
             lager:error("worker failed starting ~s: ~p", [TaskId, _R]),
-            ?REPLY(State, E)
+            ?REPLY(State, {'error', _R})
     end.
 
 -spec from_json(kz_json:object()) -> task().
