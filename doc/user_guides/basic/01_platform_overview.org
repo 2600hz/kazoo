@@ -25,7 +25,109 @@
 In the beginning...
 #+END_CENTER
 
+** In the beginning
 
+*** Starting                                                          :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.40
+    :END:
+
+[[file:images/starting_out_h300.png]]
+
+*** How it starts                                     :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.55
+    :END:
+
+ - You decide to start a VoIP business!
+ - Setup an Asterisk box
+ - Get your first customer
+
+** In the beginning
+
+*** Starting                                                          :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.40
+    :END:
+
+[[file:images/starting_out_1_h300.png]]
+
+*** How it starts                                     :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.55
+    :END:
+
+ - Things are going well
+ - You add a few more customers
+ - Then you have an outage
+   - *Angry* Customers
+ - Redundant Server + Load Balancer
+ - /Phew!/
+
+
+** In the beginning
+
+*** Starting                                                          :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.40
+    :END:
+
+[[file:images/starting_out_2_h300.png]]
+
+*** How it starts                                     :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.55
+    :END:
+
+ - You need more automation
+ - You setup master/slave databases
+ - Your clients want more *features*
+ - You write some PHP/Perl to expose CDRs
+ - Start scripting dialplans
+
+** In the beginning
+
+*** Starting                                                          :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.40
+    :END:
+
+[[file:images/starting_out_2_h300.png]]
+
+*** How it starts                                     :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.55
+    :END:
+
+ - At this point, you have
+   - A bunch of clients
+   - Homegrown PHP/Perl scripts
+   - Homegrown load balancer
+   - Homegrown dialplan
+   - 7 servers
+   - OPS and/or Programmer on staff
+   - Support rep maybe?
+
+ - How much *time* are you spending on keeping it running?
+
+** In the beginning
+
+*** Starting                                                          :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.40
+    :END:
+
+[[file:images/starting_out_2_h300.png]]
+
+*** How it starts                                     :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.55
+    :END:
+
+ - Business is booming!
+ - Then it happens
+   - *Data center outage* for 4 hours
+ - Your clients are *furious*
 
 ** Thank You
 
