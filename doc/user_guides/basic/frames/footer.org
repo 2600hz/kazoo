@@ -1,0 +1,23 @@
+
+#+BEGIN_CENTER
+Thank You!
+#+END_CENTER
+
+*** Contact Us                                                        :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.5
+    :END:
+
+ - 415.886.7900
+ - info@2600hz.com
+ - https://www.2600hz.com
+ - https://github.com/2600hz/kazoo
+
+*** Follow Us                                                         :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.5
+    :END:
+
+ - http://facebook.com/2600hzofficial
+ - https://twitter.com/2600hertz
+ - https://www.youtube.com/user/2600hzofficial

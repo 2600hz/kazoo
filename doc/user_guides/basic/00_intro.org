@@ -39,13 +39,11 @@ Welcome!
  - Lead Architect at 2600Hz
  - mc_ on freenode
 
-*** Presenter Picture                                 :B_ignoreheading:BMCOL:
+*** Presenter                                                         :BMCOL:
     :PROPERTIES:
     :BEAMER_col: 0.45
-    :BEAMER_env: ignoreheading
     :END:
-    #+ATTR_LATEX: width=\textwidth
-    [[file:images/presenter_h280.jpg]]
+    [[./images/presenter_h280.jpg]]
 
 ** Class Structure
 
@@ -68,28 +66,30 @@ Topics
 
 ** Topics
 
-Lesson 1: Platform Overview
-Lesson 2: RabbitMQ
-Lesson 3: Kamailio
-Lesson 4: FreeSWITCH
-Lesson 5: CouchDB
-Lesson 6: HAProxy
+ - Lesson 1: Platform Overview
+ - Lesson 2: RabbitMQ
+ - Lesson 3: Kamailio
+ - Lesson 4: FreeSWITCH
+ - Lesson 5: CouchDB
+ - Lesson 6: HAProxy
 
 ** Topics
 
-Lesson 7: Kazoo Applications
-Lesson 8: Kazoo ecallmgr
-Lesson 9: Monster UI
-Lesson 10: REST APIs
-Lesson 11: System Configuration
-Lesson 12: Cluster Design
-Lesson 13: Common Troubleshooting
+ - Lesson 7: Kazoo Applications
+ - Lesson 8: Kazoo ecallmgr
+ - Lesson 9: Monster UI
+ - Lesson 10: REST APIs
+ - Lesson 11: System Configuration
+ - Lesson 12: Cluster Design
+ - Lesson 13: Common Troubleshooting
 
 ** Topics
 
-Lesson X: If time permits
- - Pivot
- - Websockets / WebRTC
- - Call Recording
+ - Lesson X: If time permits
+   - Pivot
+   - Websockets / WebRTC
+   - Call Recording
 
 ** Thank You
+
+#+INCLUDE: "./frames/footer.org"
