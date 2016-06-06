@@ -14,9 +14,14 @@
         ,module/0
         ]).
 
+%% Verifiers
 -export([number/1
+        ,account_id/1
+        ,auth_by/1
+        ,module_name/1
         ]).
 
+%% Appliers
 -export([%%list/2
         assign_to/4
         ,delete/3
@@ -111,6 +116,31 @@ help() ->
 -spec number(ne_binary()) -> boolean().
 number(<<"+", _/binary>>) -> 'true';
 number(_) -> 'false'.
+
+-spec account_id(ne_binary()) -> boolean().
+account_id(?MATCH_ACCOUNT_RAW(_)) -> 'true';
+account_id(_) -> 'false'.
+
+-spec auth_by(api_binary()) -> boolean().
+auth_by('undefined') -> 'true';
+auth_by(?MATCH_ACCOUNT_RAW(_)) -> 'true';
+auth_by(_) -> 'false'.
+
+-spec module_name(api_binary()) -> boolean().
+module_name('undefined') -> 'true';
+module_name(Thing) ->
+    Modules = [<<"knm_bandwidth2">>
+              ,<<"knm_bandwidth">>
+              ,<<"knm_carriers">>
+              ,<<"knm_inum">>
+              ,<<"knm_local">>
+              ,<<"knm_managed">>
+              ,<<"knm_other">>
+              ,<<"knm_simwood">>
+              ,<<"knm_vitelity">>
+              ,<<"knm_voip_innovations">>
+              ],
+    lists:member(Thing, Modules).
 
 %% Appliers
 
