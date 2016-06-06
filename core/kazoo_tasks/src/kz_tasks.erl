@@ -776,7 +776,7 @@ find_input_errors(API, Input=?NE_BINARY) ->
             IsMandatory = [lists:member(Field, Mandatory) || Field <- Fields],
             Unsets =
                 fun (Row, Es) ->
-                        case mandatories_unset(IsMandatory, Row) of
+                        case are_mandatories_unset(IsMandatory, Row) of
                             'false' -> Es;
                             'true' -> [iolist_to_binary(kz_util:iolist_join(",", Row)) | Es]
                         end
@@ -825,10 +825,11 @@ find_API_errors(API, Mandatory, Fields) ->
          end],
     lists:foldl(fun (F, Errors) -> F(Errors) end, #{}, Routines).
 
--spec mandatories_unset(nonempty_list(boolean()), nonempty_list(ne_binary())) -> boolean().
-mandatories_unset(IsMandatory, Row) ->
+-spec are_mandatories_unset(nonempty_list(boolean()), nonempty_list(ne_binary())) -> boolean().
+are_mandatories_unset(IsMandatory, Row) ->
     MapF = fun (Mandatory, Value) ->
-                   Mandatory andalso <<>> == Value
+                   %% Note: ecsv's empty cell is "".
+                   Mandatory andalso "" == Value
            end,
     RedF = fun erlang:'or'/2,
     lists:foldl(RedF, 'false', lists:zipwith(MapF, IsMandatory, Row)).
