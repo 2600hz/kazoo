@@ -1,0 +1,18 @@
+#+TITLE: Introduction to Kazoo
+#+AUTHOR: James Aimonetti
+#+OPTIONS: num:nil ^:nil f:nil
+#+STARTUP: hideblocks
+
+# some minor customization for nicer looking LaTeX output
+#+begin_LaTeX
+  \hypersetup{
+    linkcolor=blue,
+    pdfborder={0 0 0 0}
+  }
+  \lstset{basicstyle=\ttfamily\bfseries\small}
+#+end_LaTeX
+
+#+begin_center
+Kazoo Basic Training
+Intro
+#+end_center
