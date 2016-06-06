@@ -781,7 +781,7 @@ find_input_errors(API, Input=?NE_BINARY) ->
                             'true' -> [iolist_to_binary(kz_util:iolist_join(",", Row)) | Es]
                         end
                 end,
-            MMVs = ecsv:process_csv_binary_with(InputData, Unsets, []),
+            {'ok', MMVs} = ecsv:process_csv_binary_with(InputData, Unsets, []),
             Errors#{<<"missing_mandatory_values">> => lists:reverse(MMVs)}
     end;
 
