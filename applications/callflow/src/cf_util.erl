@@ -717,7 +717,13 @@ maybe_apply_dialplan([Regex|Regexs], DialPlan, Number) ->
             Root = lists:last(Captures),
             Prefix = kz_json:get_binary_value([Regex, <<"prefix">>], DialPlan, <<>>),
             Suffix = kz_json:get_binary_value([Regex, <<"suffix">>], DialPlan, <<>>),
-            <<Prefix/binary, Root/binary, Suffix/binary>>
+            N = <<Prefix/binary, Root/binary, Suffix/binary>>,
+            case kz_json:get_value([Regex, <<"dialplan">>], DialPlan) of
+                'undefined' -> maybe_apply_dialplan(Regexs, DialPlan, N);
+                InnerPlan -> InnerRegexs = kz_json:get_keys(InnerPlan),
+                             N1 = maybe_apply_dialplan(InnerRegexs, InnerPlan, N),
+                             maybe_apply_dialplan(Regexs, DialPlan, N1)
+            end
     end.
 
 -spec load_system_dialplans(ne_binaries()) -> kz_json:object().
