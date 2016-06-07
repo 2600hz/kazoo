@@ -17,7 +17,7 @@
 -define(PVT_SUBMITTED_AT, <<"pvt_submitted_at">>).
 -define(PVT_TOTAL_ROWS, <<"pvt_total_rows">>).
 -define(PVT_TOTAL_ROWS_FAILED, <<"pvt_total_rows_failed">>).
--define(PVT_TOTAL_ROWS_SUCCEEDED, <<"pvt_total_rows_failed">>).
+-define(PVT_TOTAL_ROWS_SUCCEEDED, <<"pvt_total_rows_succeeded">>).
 -define(PVT_TYPE, <<"pvt_type">>).
 -define(PVT_WORKER_NODE, <<"pvt_worker_node">>).
 
