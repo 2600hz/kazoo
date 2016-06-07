@@ -29,30 +29,33 @@ maybe_dry_run(Context, Callback) ->
     maybe_dry_run(Context, Callback, Type).
 
 maybe_dry_run(Context, Callback, Type) when is_binary(Type) ->
-    maybe_dry_run_by_type(Context, Callback, Type, cb_context:accepting_charges(Context));
+    maybe_dry_run(Context, Callback, Type, [], cb_context:accepting_charges(Context));
 maybe_dry_run(Context, Callback, Props) ->
-    maybe_dry_run_by_props(Context, Callback, Props, cb_context:accepting_charges(Context)).
-
--spec maybe_dry_run_by_props(cb_context:context(), callback(), wh_proplist(), boolean()) ->
-                                    cb_context:context().
-maybe_dry_run_by_props(Context, Callback, Props, 'true') ->
     Type = props:get_ne_binary_value(<<"type">>, Props),
+    maybe_dry_run(Context, Callback, Type, Props, cb_context:accepting_charges(Context)).
 
-    UpdatedServices = calc_service_updates(Context, Type, props:delete(<<"type">>, Props)),
+-spec maybe_dry_run(cb_context:context(), callback(), ne_binary(), wh_proplist(), boolean()) ->
+                                   cb_context:context().
+maybe_dry_run(Context, Callback, Type, Props, 'true') ->
+    UpdatedServices = calc_service_updates(Context, Type, Props),
     RespJObj = dry_run(UpdatedServices),
     lager:debug("accepting charges: ~s", [wh_json:encode(RespJObj)]),
-    _ = accepting_charges(Context, RespJObj, UpdatedServices),
-    Callback();
-maybe_dry_run_by_props(Context, Callback, Props, 'false') ->
-    Type = props:get_ne_binary_value(<<"type">>, Props),
-    UpdatedServices = calc_service_updates(Context, Type, props:delete(<<"type">>, Props)),
+    BillingId = wh_services:get_billing_id(cb_context:account_id(Context)),
+    Transactions = accepting_charges(Context, RespJObj),
+    Amount = lists:sum([wh_transaction:amount(Transaction) || Transaction <- Transactions]),
+    case wh_services:check_bookkeeper(BillingId, Amount) of
+        'true' ->
+            commit_transactions(Context, Transactions, UpdatedServices, Callback);
+        'false' ->
+            cb_context:add_system_error('no_credit', Context)
+    end;
+maybe_dry_run(Context, Callback, Type, Props, 'false') ->
+    UpdatedServices = calc_service_updates(Context, Type, Props),
     RespJObj = dry_run(UpdatedServices),
-    lager:debug("not accepting charges: ~s", [wh_json:encode(RespJObj)]),
-
     handle_dry_run_resp(Context, Callback, UpdatedServices, RespJObj).
 
--spec handle_dry_run_resp(cb_context:context(), callback(), wh_services:services(), wh_json:object()) ->
-                                 cb_context:context().
+
+-spec handle_dry_run_resp(cb_context:context(), callback(), wh_services:services(), wh_json:object()) -> cb_context:context().
 handle_dry_run_resp(Context, Callback, Services, RespJObj) ->
     case wh_json:is_empty(RespJObj) of
         'true' ->
@@ -64,38 +67,21 @@ handle_dry_run_resp(Context, Callback, Services, RespJObj) ->
             crossbar_util:response_402(RespJObj, Context)
     end.
 
--spec maybe_dry_run_by_type(cb_context:context(), callback(), ne_binary(), boolean()) ->
-                                   cb_context:context().
-maybe_dry_run_by_type(Context, Callback, Type, 'true') ->
-    UpdatedServices = calc_service_updates(Context, Type),
-    RespJObj = dry_run(UpdatedServices),
-    lager:debug("accepting charges: ~s", [wh_json:encode(RespJObj)]),
-    _ = accepting_charges(Context, RespJObj, UpdatedServices),
-    Callback();
-maybe_dry_run_by_type(Context, Callback, Type, 'false') ->
-    UpdatedServices = calc_service_updates(Context, Type),
-    RespJObj = dry_run(UpdatedServices),
-    lager:debug("not accepting charges: ~s", [wh_json:encode(RespJObj)]),
-
-    handle_dry_run_resp(Context, Callback, UpdatedServices, RespJObj).
-
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec accepting_charges(cb_context:context(), wh_json:object(), wh_services:services()) -> 'ok' | 'error'.
-accepting_charges(Context, JObj, Services) ->
+-spec accepting_charges(cb_context:context(), wh_json:object()) -> wh_transaction:transactions().
+accepting_charges(Context, JObj) ->
     Items = extract_items(wh_json:delete_key(<<"activation_charges">>, JObj)),
-    Transactions =
-        lists:foldl(
-          fun(Item, Acc) ->
-                  create_transactions(Context, Item, Acc)
-          end
-          ,[]
-          ,Items
-         ),
+    Fun = fun(Item, Acc) -> create_transactions(Context, Item, Acc) end,
+    lists:foldl(Fun, [], Items).
+
+-spec commit_transactions(cb_context:context(), wh_transaction:transactions(), wh_services:services(), callback()) -> cb_context:context().
+commit_transactions(Context, Transactions, Services, Callback) ->
     case wh_services:commit_transactions(Services, Transactions) of
-        'ok' -> save_an_audit_log(Context, Services);
-        'error' -> 'error'
+        'ok' -> save_an_audit_log(Context, Services),
+                Callback();
+        'error' -> cb_context:add_system_error('datasore_fault', Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -105,18 +91,12 @@ accepting_charges(Context, JObj, Services) ->
 %%--------------------------------------------------------------------
 -spec extract_items(wh_json:object()) -> wh_json:objects().
 extract_items(JObj) ->
-    wh_json:foldl(fun extract_items_from_category/3
-                  ,[]
-                  ,JObj
-                 ).
+    wh_json:foldl(fun extract_items_from_category/3, [], JObj).
 
 -spec extract_items_from_category(wh_json:key(), wh_json:object(), wh_json:objects()) ->
                                          wh_json:objects().
 extract_items_from_category(_, CategoryJObj, Acc) ->
-    wh_json:foldl(fun extract_item_from_category/3
-                  ,Acc
-                  ,CategoryJObj
-                 ).
+    wh_json:foldl(fun extract_item_from_category/3, Acc, CategoryJObj).
 
 -spec extract_item_from_category(wh_json:key(), wh_json:object(), wh_json:objects()) ->
                                          wh_json:objects().
@@ -247,6 +227,8 @@ calc_service_updates(_Context, _Type) ->
 calc_service_updates(Context, <<"ips">>, Props) ->
     Services = fetch_service(Context),
     wh_service_ips:reconcile(Services, Props);
+calc_service_updates(Context, Type, []) ->
+    calc_service_updates(Context, Type);
 calc_service_updates(_Context, _Type, _Props) ->
     lager:warning("unknown type ~p, cannot execute dry run", [_Type]),
     'undefined'.
@@ -276,17 +258,7 @@ port_request_foldl(Number, NumberJObj, JObj) ->
 -spec fetch_service(cb_context:context()) -> wh_services:services().
 fetch_service(Context) ->
     AccountId = cb_context:account_id(Context),
-    AuthAccountId = cb_context:auth_account_id(Context),
-    case wh_services:is_reseller(AuthAccountId) of
-        'false' ->
-            lager:debug("auth account ~s is not a reseller, loading service account ~s"
-                        ,[AuthAccountId, AccountId]
-                       ),
-            wh_services:fetch(AccountId);
-        'true' ->
-            lager:debug("auth account ~s is a reseller, loading service from reseller", [AuthAccountId]),
-            wh_services:fetch(AuthAccountId)
-    end.
+    wh_services:fetch(AccountId).
 
 -spec reconcile(cb_context:context()) -> cb_context:context().
 reconcile(Context) ->
