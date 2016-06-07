@@ -392,18 +392,22 @@ Let's Prepare for Kazoo!
     :BEAMER_env: block
     :END:
 1. Edit =/etc/hostname=
-   #+BEGIN_SRC bash
+   #+BEGIN_EXAMPLE
    $> echo "awesome.hostname.com" > /etc/hostname
-   #+END_SRC
+   #+END_EXAMPLE
 2. Edit =/etc/hosts=
-   #+BEGIN_SRC bash
+   #+BEGIN_EXAMPLE :wrap
    $> echo "127.0.0.1 awesome.hostname.com awesome" >> /etc/hosts
    $> echo "ip.ad.dr.ess awesome.hostname.com awesome" >> /etc/hosts
-   #+END_SRC
-3. Restart
-   #+BEGIN_SRC bash
+   #+END_EXAMPLE
+3. Set system time to UTC
+   #+BEGIN_EXAMPLE
+   $> ln -fs /usr/share/zoneinfo/UTC /etc/localtime
+   #+END_EXAMPLE
+4. Restart
+   #+BEGIN_EXAMPLE
    $> reboot
-   #+END_SRC
+   #+END_EXAMPLE
 
 ** Prepare for Kazoo
 
@@ -411,21 +415,24 @@ Let's Prepare for Kazoo!
     :PROPERTIES:
     :BEAMER_env: block
     :END:
-
 1. Set the hostname
-   #+BEGIN_SRC bash
+   #+BEGIN_EXAMPLE
    $> hostname awesome.hostname.com
-   #+END_SRC
-2. Add “HOSTNAME=awesome.hostname.com” to =/etc/sysconfig/network=
+   #+END_EXAMPLE
+2. Add "HOSTNAME=awesome.hostname.com" to =/etc/sysconfig/network=
 3. Edit =/etc/hosts=
-   #+BEGIN_SRC bash
+   #+BEGIN_EXAMPLE :wrap
    $> echo "127.0.0.1 awesome.hostname.com awesome" >> /etc/hosts
    $> echo "ip.ad.dr.ess awesome.hostname.com awesome" >> /etc/hosts
-   #+END_SRC
-4. Restart
-   #+BEGIN_SRC bash
+   #+END_EXAMPLE
+4. Set system time to UTC
+   #+BEGIN_EXAMPLE
+   $> ln -fs /usr/share/zoneinfo/UTC /etc/localtime
+   #+END_EXAMPLE
+5. Restart
+   #+BEGIN_EXAMPLE
    $> reboot
-   #+END_SRC
+   #+END_EXAMPLE
 
 ** Let's get started!
 
