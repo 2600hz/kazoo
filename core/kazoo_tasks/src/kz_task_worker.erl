@@ -57,7 +57,8 @@ start(TaskId, Module, Function, ExtraArgs, OrderedFields, AName) ->
 
 %% @private
 init(TaskId, Module, Function, ExtraArgs, OrderedFields, AName) ->
-    case kz_util:try_load_module(Module) == Module andalso
+    case
+        kz_util:try_load_module(Module) == Module andalso
         kz_datamgr:fetch_attachment(?KZ_TASKS_DB, TaskId, AName)
     of
         'false' ->
