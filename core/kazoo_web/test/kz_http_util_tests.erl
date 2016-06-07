@@ -52,5 +52,12 @@ urlencode_test() ->
     ?assertEqual(<<"foo">> , kz_http_util:urlencode(foo)),
     ?assertEqual(<<"foo+bar">> , kz_http_util:urlencode(<<"foo bar">>)),
     ?assertEqual(<<"foo%0A">> , kz_http_util:urlencode(<<"foo\n">>)),
-    ?assertEqual(<<"foo%3B%26%3D">> , kz_http_util:urlencode(<<"foo;&=">>)).
+    ?assertEqual(<<"foo%3B%26%3D">> , kz_http_util:urlencode(<<"foo;&=">>)),
 
+    QS = kz_json:to_querystring(
+           kz_json:from_list([{<<"bar">>, <<"baz">>}])
+          ),
+
+    ?assertEqual(<<"http://host:port/foo?bar=baz">>
+                ,kz_http_util:urlunsplit({<<"http">>, <<"host:port">>, <<"/foo">>, QS, <<>>})
+                ).
