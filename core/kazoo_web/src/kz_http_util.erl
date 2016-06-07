@@ -260,8 +260,8 @@ urlsplit_q(<<C, R/binary>>, Acc) ->
 %%--------------------------------------------------------------------
 -spec urlunsplit({binary(), binary(), binary(), binary(), binary()}) -> binary().
 urlunsplit({S, N, P, Q, F}) ->
-    Us = case S of <<>> -> <<>>; _ -> <<S/binary, "://">> end,
-    Uq = case Q of <<>> -> <<>>; _ -> <<$?, Q/binary>> end,
-    Uf = case F of <<>> -> <<>>; _ -> <<$#, F/binary>> end,
+    Us = case S of <<>> -> <<>>; _ -> [S, "://"] end,
+    Uq = case Q of <<>> -> <<>>; _ -> [$?, Q] end,
+    Uf = case F of <<>> -> <<>>; _ -> [$#, F] end,
 
-    <<Us/binary, N/binary, P/binary, Uq/binary, Uf/binary>>.
+    iolist_to_binary([Us, N, P, Uq, Uf]).
