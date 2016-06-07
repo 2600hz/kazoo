@@ -64,7 +64,6 @@ In the beginning...
  - Redundant Server + Load Balancer
  - /Phew!/
 
-
 ** In the beginning
 
 *** Starting                                                          :BMCOL:
@@ -128,6 +127,214 @@ In the beginning...
  - Then it happens
    - *Data center outage* for 4 hours
  - Your clients are *furious*
+
+** In the beginning
+
+*** Starting                                                          :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.40
+    :END:
+
+[[file:images/starting_out_3_h300.png]]
+
+*** How it starts                                     :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.55
+    :END:
+
+ - You setup a redundant datacenter
+ - Your load balancer must be modified
+ - Your server setup must be redesigned
+ - Your database setup must be modified or redesigned
+ - You just earned tons of work
+
+*It only gets harder from here. . .*
+
+** In the beginning
+
+*** Reality Sinks In                                                :B_block:
+    :PROPERTIES:
+    :BEAMER_env: block
+    :END:
+
+#+BEGIN_CENTER
+You need to make some tough choices
+#+END_CENTER
+
+** Reality sinks in
+
+*** Option 1: Keep going as-is                                      :B_block:
+    :PROPERTIES:
+    :BEAMER_env: block
+    :END:
+ - Keep building everything in-house
+ - Hire staff to support Operations
+ - Hire programmers
+
+Pro:
+ - Unique
+ - Fully customizable
+Con:
+ - Responsible for everything
+ - Unproven
+ - Learn “as you go”
+
+** Reality sinks in
+
+*** Option 2: Buy a Switch                                          :B_block:
+    :PROPERTIES:
+    :BEAMER_env: block
+    :END:
+
+ - Buy a carrier-grade platform
+ - Move all your customers over
+ - Hire minimal staff to run Operations
+
+Pro:
+ - Proven and polished
+ - Second line support
+Con:
+ - High upfront costs
+ - Difficult to know if the product will sell
+ - Unknown customization abilities
+ - No differentiator between competitors
+
+** Reality sinks in
+
+*** Option 3: Go with Hosted                                        :B_block:
+    :PROPERTIES:
+    :BEAMER_env: block
+    :END:
+
+ - “Rent” a carrier-grade platform
+ - Move all your customers over
+ - Use their cost model and telcos
+
+Pro:
+ - Proven and polished
+ - No huge up-front cost
+Con:
+ - Difficult to know if the product will sell
+ - Little customization abilities
+ - Inability to bring own carrier
+ - No differentiator between competitors
+
+** Introducing Kazoo
+
+*** Introducing Kazoo                                       :B_ignoreheading:
+    :PROPERTIES:
+    :BEAMER_env: ignoreheading
+    :END:
+
+#+BEGIN_CENTER
+Introducing Kazoo!
+#+END_CENTER
+
+** Introducing Kazoo
+
+*** Option 4: Use Kazoo & Share the Workload                        :B_block:
+    :PROPERTIES:
+    :BEAMER_env: block
+    :END:
+
+ - Use a platform designed and tested to scale
+ - Share the common tasks and bugs with others
+ - Keep your own differentiators to yourself
+ - Hire minimal staff
+
+Pro:
+ - Low cost
+   Instant ability to start
+   Full customization - full control
+   Rapid development
+Con:
+ - Core product must succeed and be maintained
+
+** Kazoo Evolution
+
+*** Kazoo Evolution                                         :B_ignoreheading:
+    :PROPERTIES:
+    :BEAMER_env: ignoreheading
+    :END:
+
+#+BEGIN_CENTER
+Evolution of Kazoo
+#+END_CENTER
+
+** Kazoo Evolution
+
+*** blue.box goals                                                  :B_block:
+    :PROPERTIES:
+    :BEAMER_env: block
+    :END:
+
+ - API-based platform
+ - Real-time messaging
+ - Real-time configuration
+ - Distribution of config
+ - Redundant setup
+ - Pre-built Graphical GUI
+ - Multi-lingual
+ - Easy to install and use
+ - PHP Object Oriented stack
+ - MySQL or Postgres Cluster
+ - FreeSWITCH Media Engine
+
+** Kazoo Evolution
+
+*** blue.box goals                                                  :B_block:
+    :PROPERTIES:
+    :BEAMER_env: block
+    :END:
+
+ - +API-based platform+
+ - +Real-time messaging+
+ - Real-time configuration
+ - Distribution of config
+ - Redundant setup
+ - Pre-built Graphical GUI
+ - Multi-lingual
+ - Easy to install and use
+ - PHP Object Oriented stack
+ - +MySQL or Postgres Cluster+
+ - FreeSWITCH Media Engine
+
+** Kazoo Evolution
+
+*** blue.box                                                  :B_block:BMCOL:
+    :PROPERTIES:
+    :BEAMER_env: block
+    :BEAMER_col: 0.5
+    :END:
+ - +API-based platform+
+ - +Real-time messaging+
+ - Real-time configuration
+ - Distribution of config
+ - Redundant setup
+ - Pre-built Graphical GUI
+ - Multi-lingual
+ - Easy to install and use
+ - PHP Object Oriented stack
+ - +MySQL or Postgres Cluster+
+ - FreeSWITCH Media Engine
+
+*** Kazoo                                                     :B_block:BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.5
+    :BEAMER_env: block
+    :END:
+
+ - API-based platform
+ - Real-time messaging
+ - Real-time configuration
+ - Distribution of config
+ - Redundant setup *over WAN*
+ - Pre-built Graphical GUI
+ - Multi-lingual
+ - Easy to install and use
+ - *Erlang & Javascript* Stack
+ - *Distributed NoSQL DB*
+ - FreeSWITCH Media Engine
 
 ** Thank You
 
