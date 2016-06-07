@@ -1,0 +1,128 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:2 \n:nil ^:t arch:headline
+#+OPTIONS: author:t c:nil creator:nil d:(not "LOGBOOK") date:nil e:t
+#+OPTIONS: email:nil f:t inline:t num:t p:nil pri:nil prop:nil stat:t
+#+OPTIONS: tags:t tasks:t tex:t timestamp:f title:t toc:nil todo:t |:t
+#+TITLE: Kazoo Basic Training - RabbitMQ
+#+DATE: <2016-06-06 Mon>
+#+AUTHOR: James Aimonetti
+#+EMAIL: james@2600hz.com
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+CREATOR: Emacs 25.1.50.3 (Org mode 8.3.4)
+#+STARTUP: beamer
+#+LaTeX_CLASS: beamer
+#+LaTeX_CLASS_OPTIONS: [bigger]
+#+BEAMER_FRAME_LEVEL: 2
+#+BEAMER_THEME: Madrid
+#+COLUMNS: %40ITEM %10BEAMER_env(Env) %9BEAMER_envargs(Env Args) %4BEAMER_col(Col) %10BEAMER_extra(Extra)
+
+* RabbitMQ
+
+** Kazoo Basic Training
+
+#+BEGIN_CENTER
+RabbitMQ
+#+END_CENTER
+** The Kazoo Stack - Cluster
+
+#+BEGIN_CENTER
+[[file:./images/kazoo_stack.png]]
+#+END_CENTER
+
+
+** The Kazoo Stack - RabbitMQ
+
+#+BEGIN_CENTER
+[[file:./images/kazoo_stack_rabbitmq.png]]
+#+END_CENTER
+
+** RabbitMQ
+
+#+BEGIN_CENTER
+What is RabbitMQ?
+#+END_CENTER
+
+** What is RabbitMQ                                                 :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+Let’s talk about the need for messaging:
+ - The world is asynchronous
+ - Programming is often synchronous
+ - This makes scaling in mass difficult
+
+Brainstorm:
+ - What messages would you want to receive about a call?
+ - What messages would you want to receive about a voicemail box?
+
+*** Why RabbitMQ
+
+ - Robust messaging for applications
+
+ - Flexible Routing
+
+ - Highly Available
+
+ - Written in Erlang
+
+*** AMQP
+
+#+BEGIN_CENTER
+*Uses AMQP to transfer messages*
+
+Advanced Message Queuing Protocol
+#+END_CENTER
+
+
+** What is AMQP                                                     :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+#+BEGIN_CENTER
+What is AMQP?
+#+END_CENTER
+
+*** The AMQP Working Group
+ - Set up by JPMorgan in 2006
+
+*** Includes:
+ - Bank of America
+ - Cisco
+ - Microsoft
+ - Novell
+ - Goldman Sachs
+ - VMWare
+
+See [[https://www.amqp.org/about/examples][more examples]] of companies using RabbitMQ
+
+*** Version 1.0 accepted by OASIS
+ - Organization for the Advancement of Structured Information Standards
+
+*** Performant
+ - [[https://blog.pivotal.io/pivotal/products/rabbitmq-hits-one-million-messages-per-second-on-google-compute-engine][One million msg/s]] on Google Compute Engine
+ - "[[http://blog.x-aeon.com/2013/04/10/a-quick-message-queue-benchmark-activemq-rabbitmq-hornetq-qpid-apollo/"][Except for big messages, RabbitMQ seems to be the best bet as it outperforms others by a factor of 3.]]"
+
+*** Interoperable
+ - [[https://www.rabbitmq.com/clients.html][Official Clients]]
+   - Java
+   - .Net
+   - Erlang
+ - [[https://www.rabbitmq.com/devtools.html][Community Clients]]
+   - JVM (Java, Spring, Scala, Groovy/Grails, Clojure, JRuby)
+   - .Net
+   - Ruby
+   - Python
+   - PHP
+   - Objective-C/Swift
+   - Node.js
+   - C/C++
+   - Go
+
+** Thank You
+
+#+INCLUDE: "./frames/footer.org"
