@@ -9,7 +9,8 @@
 -module(kz_csv).
 
 %% Public API
--export([take_row/1
+-export([count_rows/1
+        ,take_row/1
         ,split_row/1
         ,pad_row_to/2
         ,associator/3
@@ -32,6 +33,32 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Return count of rows minus the first one.
+%% Returns 0 if a row is longer than the header row.
+%% @end
+%%--------------------------------------------------------------------
+-spec count_rows(binary()) -> non_neg_integer().
+count_rows(<<>>) -> 0;
+count_rows(CSV) when is_binary(CSV) ->
+    ThrowBad = fun (Row, {-1,0}) -> {length(Row),1};
+                   (Row, {MaxRow,RowsCounted}) ->
+                       case length(Row) of
+                           MaxRow -> {MaxRow, RowsCounted+1};
+                           _ -> throw('bad_csv')
+                       end
+               end,
+    try ecsv:process_csv_binary_with(CSV, ThrowBad, {-1,0}) of
+        {'ok', {_, 0}} -> 0;
+        %% Strip header line from total rows count
+        {'ok', {_, 1}} -> 0;
+        {'ok', {_, TotalRows}} -> TotalRows -1
+    catch
+        'throw':'bad_csv' -> 0
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

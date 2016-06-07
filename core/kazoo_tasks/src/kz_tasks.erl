@@ -19,8 +19,7 @@
         ,remove/1
 	]).
 
--export([is_csv/1
-        ,attachment_name/1
+-export([attachment_name/1
         ]).
 
 %% API used by workers
@@ -488,26 +487,6 @@ terminate(_Reason, _State) ->
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
-
-%% @private
--spec is_csv(binary()) -> non_neg_integer().
-is_csv(<<>>) -> 0;
-is_csv(CSV) when is_binary(CSV) ->
-    ThrowBad = fun (Row, {-1,0}) -> {length(Row),1};
-                   (Row, {MaxRow,RowsCounted}) ->
-                       case length(Row) of
-                           MaxRow -> {MaxRow, RowsCounted+1};
-                           _ -> throw('bad_csv')
-                       end
-               end,
-    try ecsv:process_csv_binary_with(CSV, ThrowBad, {-1,0}) of
-        {'ok', {_, 0}} -> 0;
-        %% Strip header line from total rows count
-        {'ok', {_, 1}} -> 0;
-        {'ok', {_, TotalRows}} -> TotalRows -1
-    catch
-        'throw':'bad_csv' -> 0
-    end.
 
 %%%===================================================================
 %%% Internal functions

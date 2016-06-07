@@ -212,7 +212,7 @@ validate_task(Context, TaskId, ?HTTP_DELETE) ->
 validate_new_attachment(Context, 'true') ->
     [{_Filename, FileJObj}] = cb_context:req_files(Context),
     CSVBinary = kz_json:get_value(<<"contents">>, FileJObj),
-    case kz_tasks:is_csv(CSVBinary) of
+    case kz_csv:count_rows(CSVBinary) of
         0 ->
             Msg = kz_json:from_list([{<<"message">>, <<"Empty CSV or some row(s) longer than others">>}
                                     ]),
