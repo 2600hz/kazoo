@@ -44,7 +44,9 @@
 take_row(<<>>) -> 'eof';
 take_row(CSV=?NE_BINARY) ->
     case binary:split(CSV, [<<"\r\n">>, <<"\n\r">>, <<"\r\r">>, <<"\n">>, <<"\r">>]) of
-        [<<>>, _] -> 'eof';
+        [<<>>|_] -> 'eof';
+        [Row] ->
+            {split_row(Row), <<>>};
         [Row, CSVRest] ->
             {split_row(Row), CSVRest}
     end.
@@ -161,6 +163,7 @@ rows_test_() ->
     ,?_assertEqual({[<<"e">>], CSV6}, ?MODULE:take_row(CSV5))
     ,?_assertEqual('eof', ?MODULE:take_row(CSV6))
     ,?_assertEqual('eof', ?MODULE:take_row(CSV7))
+    ,?_assertEqual({[<<"1">>,<<"B">>], <<>>}, ?MODULE:take_row(<<"1,B">>))
     ].
 
 -endif.
