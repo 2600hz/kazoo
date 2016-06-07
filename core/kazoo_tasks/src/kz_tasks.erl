@@ -569,7 +569,7 @@ handle_call_start_task(Task=#{ id := TaskId
     %% Task needs to run where App is started.
     try erlang:spawn_link(kz_util:to_atom(Node, 'true')
                          ,'kz_task_worker'
-                         ,'start_link'
+                         ,'start'
                          ,[TaskId, Module, Function, ExtraArgs, Fields, AName]
                          )
     of
