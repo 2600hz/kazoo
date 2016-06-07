@@ -372,7 +372,24 @@ curl -v -X PATCH \
 }
 ```
 
-##### Task already running
+##### Task already started
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "cause": "{TASK_ID}",
+        "message": "bad identifier",
+        "reason": "task already started"
+    },
+    "error": "404",
+    "message": "bad_identifier",
+    "request_id": "d85d7a75fba07d672c58ef2a984619f9",
+    "status": "error"
+}
+```
+
+##### Task does not exist
 
 ```json
 {

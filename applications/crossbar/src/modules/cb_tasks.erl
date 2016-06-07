@@ -277,7 +277,7 @@ patch(Context, TaskId) ->
         {'error', 'no_categories'} ->
             no_categories(Context, TaskId);
         {'error', 'already_started'} ->
-            Msg = kz_json:from_list([{<<"message">>, <<"task already started">>}
+            Msg = kz_json:from_list([{<<"reason">>, <<"task already started">>}
                                     ,{<<"cause">>, TaskId}
                                     ]),
             cb_context:add_system_error('bad_identifier', Msg, Context)
