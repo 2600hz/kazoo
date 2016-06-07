@@ -40,7 +40,7 @@ fetch(PlanId, VendorId) ->
 %%--------------------------------------------------------------------
 -spec activation_charges(ne_binary(), ne_binary(), kzd_service_plan:doc()) -> float().
 activation_charges(CategoryId, ItemId, ServicePlan) ->
-    case kzd_service_plan:item_activation_charge(ServicePlan, CategoryId, ItemId) of
+    case kzd_service_plan:item_activation_charge(ServicePlan, CategoryId, ItemId, 'undefined') of
         'undefined' ->
             kzd_service_plan:category_activation_charge(ServicePlan, CategoryId, 0.0);
         Charge -> Charge
