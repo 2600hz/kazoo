@@ -8333,14 +8333,6 @@
             "get": {},
             "patch": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/csv": {
-            "put": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/csv/{ATTACHMENT_ID}": {
-            "delete": {},
-            "get": {},
-            "post": {}
-        },
         "/v2/accounts/{ACCOUNT_ID}/templates": {
             "get": {}
         },
