@@ -69,17 +69,7 @@ init(TaskId, Module, Function, ExtraArgs, OrderedFields, AName) ->
                        ,[AName, ?KZ_TASKS_DB, TaskId, Reason]),
             {'error', Reason};
         {'ok', CSV} ->
-            Verify =
-                fun (Field, Value) ->
-                        Verifier = kz_util:to_atom(Field, 'true'),
-                        case Module:Verifier(Value) of
-                            'true' -> 'true';
-                            'false' ->
-                                lager:error("'~s' failed to validate with ~s:~s/1"
-                                           ,[Value, Module, Verifier]),
-                                'false'
-                        end
-                end,
+            Verify = build_verifier(Module),
             {Header, CSVRest} = kz_csv:take_row(CSV),
             FAssoc = kz_csv:associator(Header, OrderedFields, Verify),
             State = #state{ task_id = TaskId
@@ -90,6 +80,20 @@ init(TaskId, Module, Function, ExtraArgs, OrderedFields, AName) ->
                           },
             'undefined' = put(?IN, CSVRest),
             {'ok', State}
+    end.
+
+%% @private
+-spec build_verifier(module()) -> fun((ne_binary(), api_binary()) -> boolean()).
+build_verifier(Module) ->
+    fun (Field, Value) ->
+            Verifier = kz_util:to_atom(Field, 'true'),
+            case Module:Verifier(Value) of
+                'true' -> 'true';
+                'false' ->
+                    lager:error("'~s' failed to validate with ~s:~s/1"
+                               ,[Value, Module, Verifier]),
+                    'false'
+            end
     end.
 
 %% @private
