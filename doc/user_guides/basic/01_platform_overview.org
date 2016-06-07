@@ -361,22 +361,76 @@ Evolution of Kazoo
 The Kazoo Stack
 #+END_CENTER
 
-** The Kazoo Stack
+** The Kazoo Stack - Cluster
 
 #+BEGIN_CENTER
 [[file:./images/kazoo_stack.png]]
 #+END_CENTER
 
-** The Kazoo Stack
+** The Kazoo Stack - Overview
 
 #+BEGIN_CENTER
 file:./images/kazoo_stack_1.png
 #+END_CENTER
 
-** The Kazoo Stack
+** The Kazoo Stack - Detailed
 
 #+BEGIN_CENTER
 file:./images/kazoo_stack_1_details.png
+#+END_CENTER
+
+** Prepare for Kazoo
+
+#+BEGIN_CENTER
+Let's Prepare for Kazoo!
+#+END_CENTER
+
+** Prepare for Kazoo
+
+*** Debian 8                                                        :B_block:
+    :PROPERTIES:
+    :BEAMER_env: block
+    :END:
+1. Edit =/etc/hostname=
+   #+BEGIN_SRC bash
+   $> echo "awesome.hostname.com" > /etc/hostname
+   #+END_SRC
+2. Edit =/etc/hosts=
+   #+BEGIN_SRC bash
+   $> echo "127.0.0.1 awesome.hostname.com awesome" >> /etc/hosts
+   $> echo "ip.ad.dr.ess awesome.hostname.com awesome" >> /etc/hosts
+   #+END_SRC
+3. Restart
+   #+BEGIN_SRC bash
+   $> reboot
+   #+END_SRC
+
+** Prepare for Kazoo
+
+*** CentOS                                                          :B_block:
+    :PROPERTIES:
+    :BEAMER_env: block
+    :END:
+
+1. Set the hostname
+   #+BEGIN_SRC bash
+   $> hostname awesome.hostname.com
+   #+END_SRC
+2. Add “HOSTNAME=awesome.hostname.com” to =/etc/sysconfig/network=
+3. Edit =/etc/hosts=
+   #+BEGIN_SRC bash
+   $> echo "127.0.0.1 awesome.hostname.com awesome" >> /etc/hosts
+   $> echo "ip.ad.dr.ess awesome.hostname.com awesome" >> /etc/hosts
+   #+END_SRC
+4. Restart
+   #+BEGIN_SRC bash
+   $> reboot
+   #+END_SRC
+
+** Let's get started!
+
+#+BEGIN_CENTER
+Let's Kazoo!
 #+END_CENTER
 
 ** Thank You
