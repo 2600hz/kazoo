@@ -415,7 +415,13 @@ handle_cast({'worker_terminated', TaskId, TotalSucceeded}, State) ->
     Task1 = Task#{ finished => kz_util:current_tstamp()
                  , total_rows_succeeded => TotalSucceeded
                  },
-    {'ok', _JObj} = save_task(Task1),
+    'ok' = case save_task(Task1) of
+               {'ok', _TaskJObj} -> 'ok';
+               {'error', 'conflict'} ->
+                   lager:debug("FIXME using ensure_saved for task ~s", [TaskId]),
+                   {'ok', _TaskJObj} = ensure_save_task(Task1),
+                   'ok'
+           end,
     State1 = remove_task(TaskId, State),
     {'noreply', State1};
 
