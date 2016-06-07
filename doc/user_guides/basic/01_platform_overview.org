@@ -336,6 +336,42 @@ Evolution of Kazoo
  - *Distributed NoSQL DB*
  - FreeSWITCH Media Engine
 
+** Kazoo Evolution
+
+ - blue.box:  Experiments with new concepts
+
+ - Whistle:   Developed core with real scalability
+
+ - Kazoo v1:  GUI + turnkey multi-tenant system
+
+ - Kazoo v2:  Features, features, features
+
+ - Kazoo v3:  Project achieved maturity
+
+ - Kazoo v4:  Scale to millions of devices
+
+** The Kazoo Stack
+
+*** The Kazoo Stack                                         :B_ignoreheading:
+    :PROPERTIES:
+    :BEAMER_env: ignoreheading
+    :END:
+
+#+BEGIN_CENTER
+The Kazoo Stack
+#+END_CENTER
+
+** The Kazoo Stack
+
+*** The Kazoo Stack                                         :B_ignoreheading:
+    :PROPERTIES:
+    :BEAMER_env: ignoreheading
+    :END:
+
+[[file:./images/kazoo_stack.png]]
+
+
+
 ** Thank You
 
 #+INCLUDE: "./frames/footer.org"
