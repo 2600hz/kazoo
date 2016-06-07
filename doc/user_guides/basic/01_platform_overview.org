@@ -363,14 +363,15 @@ The Kazoo Stack
 
 ** The Kazoo Stack
 
-*** The Kazoo Stack                                         :B_ignoreheading:
-    :PROPERTIES:
-    :BEAMER_env: ignoreheading
-    :END:
-
+#+BEGIN_CENTER
 [[file:./images/kazoo_stack.png]]
+#+END_CENTER
 
+** The Kazoo Stack
 
+#+BEGIN_CENTER
+file:./images/kazoo_stack_1_h195.jpg
+#+END_CENTER
 
 ** Thank You
 
