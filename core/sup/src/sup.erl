@@ -48,8 +48,9 @@ main(CommandLineArgs, Loops) ->
                     'undefined' -> print_invalid_cli_args();
                     F -> list_to_atom(F)
                 end,
-            Timeout = case proplists:get_value('timeout', Options) of 'undefined' -> 'infinity'; T -> T * 1000 end,
-            Verbose andalso stdout("Running ~s:~s(~s)", [Module, Function, string:join(Args, ", ")]),
+            Timeout = case proplists:get_value('timeout', Options) of 0 -> 'infinity'; T -> T * 1000 end,
+            Verbose
+                andalso stdout("Running ~s:~s(~s)", [Module, Function, string:join(Args, ", ")]),
             case rpc:call(Target, Module, Function, [list_to_binary(Arg) || Arg <- Args], Timeout) of
                 {'badrpc', {'EXIT',{'undef', _}}} ->
                     print_invalid_cli_args();
@@ -193,7 +194,7 @@ option_spec_list() ->
     ,{'host', $h, "host", {'string', localhost()}, "System hostname"}
     ,{'node', $n, "node", {'string', "kazoo_apps"}, "Node name"}
     ,{'cookie', $c, "cookie", {'string', "monster"}, "Erlang cookie"}
-    ,{'timeout', $t, "timeout", {'integer', 5}, "Command timeout"}
+    ,{'timeout', $t, "timeout", {'integer', 0}, "Command timeout"}
     ,{'verbose', $v, "verbose", 'undefined', "Be verbose"}
     ,{'module', 'undefined', 'undefined', 'string', "The name of the remote module"}
     ,{'function', 'undefined', 'undefined', 'string', "The name of the remote module's function"}
