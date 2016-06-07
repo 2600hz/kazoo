@@ -23,15 +23,14 @@ $(GEN_FILE):
 	wget -qO $@ $(GEN_URL)
 
 $(GEN_OUT): $(GEN_FILE) $(GEN_SRC)
-	head $(GEN_SRC) -n `grep -n '%% GENERATED' $(GEN_SRC) | cut -d: -f1` > $(GEN_OUT)
+	head -n `grep -n '%% GENERATED' $(GEN_SRC) | cut -d: -f1` $(GEN_SRC) > $(GEN_OUT)
 	echo 'from_extension(Ext) when not is_binary(Ext) -> from_extension(kz_util:to_binary(Ext));' >> $(GEN_OUT)
 	echo 'from_extension(<<$$., Ext/binary>>) -> from_extension(Ext);' >> $(GEN_OUT)
 	cat $(GEN_FILE) \
 		| grep -v ^# \
 		| awk '{for (i=2; i<=NF; i++) if ($$i != "") { \
 			print "from_extension(<<\"" $$i "\">>) -> <<\"" $$1 "\">>;"}}' \
-		| sort \
-		| uniq -w 25 \
+		| sort -u -t' ' -k1,1 \
 		>> $(GEN_OUT)
 	echo 'from_extension(_) -> <<"application/octet-stream">>.' >> $(GEN_OUT)
 	echo >> $(GEN_OUT)
@@ -54,6 +53,6 @@ $(GEN_OUT): $(GEN_FILE) $(GEN_SRC)
 		| sort \
 		>> $(GEN_OUT)
 	echo 'to_extensions(_) -> [<<>>].' >> $(GEN_OUT)
-	tail $(GEN_SRC) -n +`grep -n '%% GENERATED' $(GEN_SRC) | cut -d: -f1` >> $(GEN_OUT)
+	tail -n +`grep -n '%% GENERATED' $(GEN_SRC) | cut -d: -f1` $(GEN_SRC) >> $(GEN_OUT)
 	@mkdir -p ebin/
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $(GEN_OUT)
