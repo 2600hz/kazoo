@@ -230,13 +230,18 @@ curl -v -X DELETE \
             "account_id": "{ACCOUNT_ID}",
             "action": "add",
             "category": "number_management",
+            "end_timestamp": 63632524230,
+            "failure_count": 2,
             "id": "{TASK_ID}",
-            "status": "pending",
-            "submit_timestamp": 63632222244
+            "node": "whistle_apps@qwd",
+            "start_timestamp": 63632524230,
+            "status": "failure",
+            "submit_timestamp": 63632524207,
+            "success_count": 0,
             "total_count": 2
         }
     },
-    "request_id": "00b7c5d89fc334b477626cd7bd91a85e",
+    "request_id": "de3900aff99402497280f11928c81ea6",
     "revision": "undefined",
     "status": "success"
 }
