@@ -51,9 +51,9 @@
                    , id => task_id()
                    , category => ne_binary()
                    , action => ne_binary()
-                   , submitted => gregorian_seconds() %% Times of state activation
-                   , started => api_seconds()
-                   , finished => api_seconds()
+                   , created => gregorian_seconds() %% Time of task creation (PUT)
+                   , started => api_seconds() %% Time of task start (PATCH)
+                   , finished => api_seconds() %% Time of task finish (> started)
                    , total_rows => api_pos_integer() %% CSV rows
                    , total_rows_succeeded => api_non_neg_integer() %% CSV rows that didn't crash
                    , attachment_name => api_binary() %% Name of most up to date CSV/JSON
@@ -345,7 +345,7 @@ handle_call({'new', AccountId, Category, Action, TotalRows}, _From, State) ->
             , id => ?A_TASK_ID
             , category => Category
             , action => Action
-            , submitted => kz_util:current_tstamp()
+            , created => kz_util:current_tstamp()
             , started => 'undefined'
             , finished => 'undefined'
             , total_rows => TotalRows
@@ -494,9 +494,9 @@ is_csv(CSV) when is_binary(CSV) ->
 
 -spec compare_tasks(kz_json:object(), kz_json:object()) -> boolean().
 compare_tasks(JObjA, JObjB) ->
-    kz_json:get_value(?PVT_SUBMITTED_AT, JObjA)
+    kz_json:get_value(?PVT_CREATED, JObjA)
         =<
-        kz_json:get_value(?PVT_SUBMITTED_AT, JObjB).
+        kz_json:get_value(?PVT_CREATED, JObjB).
 
 -spec save_task(task()) -> {'ok', kz_json:object()} |
                            {'error', any()}.
@@ -608,7 +608,7 @@ from_json(Doc) ->
      , id => kz_doc:id(Doc)
      , category => kz_json:get_value(?PVT_CATEGORY, Doc)
      , action => kz_json:get_value(?PVT_ACTION, Doc)
-     , submitted => kz_json:get_value(?PVT_SUBMITTED_AT, Doc)
+     , created => kz_doc:created(Doc)
      , started => kz_json:get_value(?PVT_STARTED_AT, Doc)
      , finished => kz_json:get_value(?PVT_FINISHED_AT, Doc)
      , total_rows => kz_json:get_value(?PVT_TOTAL_ROWS, Doc)
@@ -622,7 +622,7 @@ to_json(#{id := TaskId
          ,account_id := AccountId
          ,category := Category
          ,action := Action
-         ,submitted := Submitted
+         ,created := Created
          ,started := Started
          ,finished := Finished
          ,total_rows := TotalRows
@@ -636,7 +636,8 @@ to_json(#{id := TaskId
         ,{?PVT_ACCOUNT_ID, AccountId}
         ,{?PVT_CATEGORY, Category}
         ,{?PVT_ACTION, Action}
-        ,{?PVT_SUBMITTED_AT, Submitted}
+        ,{?PVT_CREATED, Created}
+        ,{?PVT_MODIFIED, kz_util:current_tstamp()}
         ,{?PVT_STARTED_AT, Started}
         ,{?PVT_FINISHED_AT, Finished}
         ,{?PVT_TOTAL_ROWS, TotalRows}
@@ -656,7 +657,7 @@ to_public_json(Task) ->
             ,{<<"account_id">>, kz_json:get_value(?PVT_ACCOUNT_ID, Doc)}
             ,{<<"category">>, kz_json:get_value(?PVT_CATEGORY, Doc)}
             ,{<<"action">>, kz_json:get_value(?PVT_ACTION, Doc)}
-            ,{<<"submit_timestamp">>, kz_json:get_value(?PVT_SUBMITTED_AT, Doc)}
+            ,{<<"created">>, kz_doc:created(Doc)}
             ,{<<"start_timestamp">>, kz_json:get_value(?PVT_STARTED_AT, Doc)}
             ,{<<"end_timestamp">>, kz_json:get_value(?PVT_FINISHED_AT, Doc)}
             ,{<<"total_count">>, kz_json:get_value(?PVT_TOTAL_ROWS, Doc)}
