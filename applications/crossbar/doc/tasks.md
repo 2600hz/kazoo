@@ -19,11 +19,12 @@ curl -v -X GET \
     "data": [
         {
             "account_id": "{ACCOUNT_ID}",
-            "action": "list",
+            "action": "add",
             "category": "number_management",
             "id": "65a3276a4e3ecc5890f56eb3e6fc6a",
             "status": "pending"
             "submit_timestamp": 63632026121
+            "total_count": 2
         }
     ],
     "page_size": 1,
@@ -69,6 +70,7 @@ curl -v -X PUT \
             "category": "{CATEGORY}",
             "id": "edfb48ea9617fa6832e43ce676c53f",
             "submit_timestamp": 63632025993
+            "total_count": {RECORDS_COUNT}
         }
     },
     "request_id": "6bc9187feafe54a5c16d07e1a493c04f",
@@ -226,11 +228,12 @@ curl -v -X DELETE \
     "data": {
         "_read_only": {
             "account_id": "{ACCOUNT_ID}",
-            "action": "list",
+            "action": "add",
             "category": "number_management",
             "id": "{TASK_ID}",
             "status": "pending",
             "submit_timestamp": 63632222244
+            "total_count": 2
         }
     },
     "request_id": "00b7c5d89fc334b477626cd7bd91a85e",
@@ -305,11 +308,12 @@ curl -v -X GET \
     "data": {
         "_read_only": {
             "account_id": "{ACCOUNT_ID}",
-            "action": "list",
+            "action": "add",
             "category": "number_management",
             "id": "{TASK_ID}",
             "status": "pending",
             "submit_timestamp": 63632220951
+            "total_count": 2
         }
     },
     "request_id": "8341d44579d03e7aa2e97e1cc0c5123f",
@@ -359,6 +363,7 @@ curl -v -X PATCH \
             "start_timestamp": 63632456149,
             "status": "executing",
             "submit_timestamp": 63632456101
+            "total_count": 2
         }
     },
     "request_id": "c05d845800c67d1cd5c01e5276155436",

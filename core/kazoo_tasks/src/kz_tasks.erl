@@ -12,7 +12,7 @@
 %% Public API
 -export([start_link/0]).
 -export([help/0, help/1, help/2]).
--export([new/4
+-export([new/5
         ,start/1
         ,read/1
         ,all/0, all/1
@@ -24,7 +24,7 @@
         ]).
 
 %% API used by workers
--export([worker_finished/3
+-export([worker_finished/2
         ]).
 
 %% gen_server callbacks
@@ -55,7 +55,7 @@
                    , started => api_seconds()
                    , finished => api_seconds()
                    , total_rows => api_pos_integer() %% CSV rows
-                   , total_rows_failed => api_non_neg_integer() %% Amount of CSV entries that crashed
+                   , total_rows_succeeded => api_non_neg_integer() %% CSV rows that didn't crash
                    , attachment_name => api_binary() %% Name of most up to date CSV/JSON
                    }.
 -opaque tasks() :: [task()].
@@ -192,10 +192,11 @@ start(TaskId=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec new(ne_binary(), ne_binary(), ne_binary(), input()) -> {'ok', kz_json:object()} |
-                                                             help_error() |
-                                                             {'error', kz_json:object()}.
-new(?MATCH_ACCOUNT_RAW(_)=AccountId, Category=?NE_BINARY, Action=?NE_BINARY, Input) ->
+-spec new(ne_binary(), ne_binary(), ne_binary(), pos_integer(), input()) -> {'ok', kz_json:object()} |
+                                                                            help_error() |
+                                                                            {'error', kz_json:object()}.
+new(?MATCH_ACCOUNT_RAW(_)=AccountId, Category=?NE_BINARY, Action=?NE_BINARY, TotalRows, Input)
+  when is_integer(TotalRows), TotalRows > 0 ->
     case help(Category, Action) of
         {'error', _R}=E ->
             lager:debug("adding task ~s ~s failed: ~p", [Category, Action, _R]),
@@ -209,7 +210,7 @@ new(?MATCH_ACCOUNT_RAW(_)=AccountId, Category=?NE_BINARY, Action=?NE_BINARY, Inp
                                maps:to_list(Errors))),
                     {'error', JObj};
                 _ ->
-                    gen_server:call(?SERVER, {'new', AccountId, Category, Action})
+                    gen_server:call(?SERVER, {'new', AccountId, Category, Action, TotalRows})
             end
     end.
 
@@ -258,10 +259,10 @@ remove(TaskId=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec worker_finished(task_id(), pos_integer(), non_neg_integer()) -> 'ok'.
-worker_finished(TaskId=?NE_BINARY, TotalRows, TotalErrors)
-  when is_integer(TotalRows), is_integer(TotalErrors) ->
-    gen_server:cast(?SERVER, {'worker_terminated', TaskId, TotalRows, TotalErrors}).
+-spec worker_finished(task_id(), non_neg_integer()) -> 'ok'.
+worker_finished(TaskId=?NE_BINARY, TotalSucceeded)
+  when is_integer(TotalSucceeded) ->
+    gen_server:cast(?SERVER, {'worker_terminated', TaskId, TotalSucceeded}).
 
 
 %%%===================================================================
@@ -337,7 +338,7 @@ handle_call({'help', Category, Action}, _From, State=#state{apis = Categories}) 
             end
     end;
 
-handle_call({'new', AccountId, Category, Action}, _From, State) ->
+handle_call({'new', AccountId, Category, Action, TotalRows}, _From, State) ->
     Task = #{ worker_pid => 'undefined'
             , worker_node => 'undefined'
             , account_id => AccountId
@@ -347,8 +348,8 @@ handle_call({'new', AccountId, Category, Action}, _From, State) ->
             , submitted => kz_util:current_tstamp()
             , started => 'undefined'
             , finished => 'undefined'
-            , total_rows => 'undefined'
-            , total_rows_failed => 'undefined'
+            , total_rows => TotalRows
+            , total_rows_succeeded => 'undefined'
             },
     {'ok', _JObj} = Ok = save_task(Task),
     lager:debug("created task ~s", [kz_json:encode(_JObj)]),
@@ -409,11 +410,10 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'worker_terminated', TaskId, TotalRows, TotalErrors}, State) ->
+handle_cast({'worker_terminated', TaskId, TotalSucceeded}, State) ->
     [Task] = task_by_id(TaskId, State),
     Task1 = Task#{ finished => kz_util:current_tstamp()
-                 , total_rows => TotalRows
-                 , total_rows_failed => TotalErrors
+                 , total_rows_succeeded => TotalSucceeded
                  },
     {'ok', _JObj} = save_task(Task1),
     State1 = remove_task(TaskId, State),
@@ -463,21 +463,23 @@ code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
 %% @private
--spec is_csv(binary()) -> boolean().
-is_csv(<<>>) -> 'false';
+-spec is_csv(binary()) -> non_neg_integer().
+is_csv(<<>>) -> 0;
 is_csv(CSV) when is_binary(CSV) ->
-    ThrowBad = fun (Row, -1) -> length(Row);
-                   (Row, Acc) ->
+    ThrowBad = fun (Row, {-1,0}) -> {length(Row),1};
+                   (Row, {MaxRow,RowsCounted}) ->
                        case length(Row) of
-                           Acc -> Acc;
+                           MaxRow -> {MaxRow, RowsCounted+1};
                            _ -> throw('bad_csv')
                        end
                end,
-    try
-        ecsv:process_csv_binary_with(CSV, ThrowBad, -1),
-        'true'
+    try ecsv:process_csv_binary_with(CSV, ThrowBad, {-1,0}) of
+        {'ok', {_, 0}} -> 0;
+        %% Strip header line from total rows count
+        {'ok', {_, 1}} -> 0;
+        {'ok', {_, TotalRows}} -> TotalRows -1
     catch
-        'throw':'bad_csv' -> 'false'
+        'throw':'bad_csv' -> 0
     end.
 
 %%%===================================================================
@@ -604,7 +606,7 @@ from_json(Doc) ->
      , started => kz_json:get_value(?PVT_STARTED_AT, Doc)
      , finished => kz_json:get_value(?PVT_FINISHED_AT, Doc)
      , total_rows => kz_json:get_value(?PVT_TOTAL_ROWS, Doc)
-     , total_rows_failed => kz_json:get_value(?PVT_TOTAL_ROWS_FAILED, Doc)
+     , total_rows_succeeded => kz_json:get_value(?PVT_TOTAL_ROWS_SUCCEEDED, Doc)
      , attachment_name => kz_doc:latest_attachment_id(Doc)
      }.
 
@@ -618,7 +620,7 @@ to_json(#{id := TaskId
          ,started := Started
          ,finished := Finished
          ,total_rows := TotalRows
-         ,total_rows_failed := TotalErrors
+         ,total_rows_succeeded := TotalSucceeded
          } = Task) ->
     kz_json:from_list(
       props:filter_undefined(
@@ -632,8 +634,8 @@ to_json(#{id := TaskId
         ,{?PVT_STARTED_AT, Started}
         ,{?PVT_FINISHED_AT, Finished}
         ,{?PVT_TOTAL_ROWS, TotalRows}
-        ,{?PVT_TOTAL_ROWS_FAILED, TotalErrors}
-        ,{?PVT_TOTAL_ROWS_SUCCEEDED, success_count(TotalRows, TotalErrors)}
+        ,{?PVT_TOTAL_ROWS_FAILED, failure_count(TotalRows, TotalSucceeded)}
+        ,{?PVT_TOTAL_ROWS_SUCCEEDED, TotalSucceeded}
         ,{?PVT_STATUS, status(Task)}
         ])).
 
@@ -651,6 +653,7 @@ to_public_json(Task) ->
             ,{<<"submit_timestamp">>, kz_json:get_value(?PVT_SUBMITTED_AT, Doc)}
             ,{<<"start_timestamp">>, kz_json:get_value(?PVT_STARTED_AT, Doc)}
             ,{<<"end_timestamp">>, kz_json:get_value(?PVT_FINISHED_AT, Doc)}
+            ,{<<"total_count">>, kz_json:get_value(?PVT_TOTAL_ROWS, Doc)}
             ,{<<"failure_count">>, kz_json:get_value(?PVT_TOTAL_ROWS_FAILED, Doc)}
             ,{<<"success_count">>, kz_json:get_value(?PVT_TOTAL_ROWS_SUCCEEDED, Doc)}
             ,{<<"status">>, kz_json:get_value(?PVT_STATUS, Doc)}
@@ -686,11 +689,11 @@ is_processing(_Task) ->
     'false'.
 
 %% @private
--spec success_count(api_pos_integer(), api_non_neg_integer()) -> api_non_neg_integer().
-success_count('undefined', _) -> 'undefined';
-success_count(_, 'undefined') -> 'undefined';
-success_count(TotalRows, TotalErrors) ->
-    TotalRows - TotalErrors.
+-spec failure_count(api_pos_integer(), api_non_neg_integer()) -> api_non_neg_integer().
+failure_count('undefined', _) -> 'undefined';
+failure_count(_, 'undefined') -> 'undefined';
+failure_count(TotalRows, TotalSucceeded) ->
+    TotalRows - TotalSucceeded.
 
 %% @private
 -spec status(task()) -> api_binary().
@@ -702,22 +705,23 @@ status(#{started := Started
   when Started /= 'undefined' ->
     ?STATUS_EXECUTING;
 status(#{finished := Finished
-        ,total_rows_failed := 0
+        ,total_rows := TotalRows
+        ,total_rows_succeeded := TotalRows
         })
-  when Finished /= 'undefined' ->
+  when Finished /= 'undefined',
+       is_integer(TotalRows) ->
     ?STATUS_SUCCESS;
 status(#{finished := Finished
-        ,total_rows := Total
-        ,total_rows_failed := Total
+        ,total_rows_succeeded := 0
         })
-  when Finished /= 'undefined',
-       is_integer(Total) ->
+  when Finished /= 'undefined' ->
     ?STATUS_FAILURE;
 status(#{finished := Finished
-        ,total_rows_failed := TotalErrors
+        ,total_rows := TotalRows
+        ,total_rows_succeeded := TotalSucceeded
         })
   when Finished /= 'undefined',
-       TotalErrors /= 0 ->
+       is_integer(TotalRows), is_integer(TotalSucceeded), TotalRows /= TotalSucceeded ->
     ?STATUS_PARTIAL;
 status(_Task) ->
     lager:error("impossible task ~p", [_Task]),

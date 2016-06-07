@@ -32,8 +32,7 @@
                , function :: atom()
                , fassoc :: kz_csv:fassoc()
                , extra_args :: kz_proplist()
-               , total_rows = 0 :: non_neg_integer()
-               , total_errors = 0 :: non_neg_integer()
+               , total_succeeded = 0 :: non_neg_integer()
                }).
 
 -define(NOREPLY(State), {'noreply', State}).
@@ -156,19 +155,17 @@ handle_cast('go', State=#state{task_id = TaskId
                               ,function = Function
                               ,fassoc = FAssoc
                               ,extra_args = ExtraArgs
-                              ,total_rows = TotalRows
-                              ,total_errors = TotalErrors
+                              ,total_succeeded = TotalSucceeded
                               }) ->
     case kz_csv:take_row(get(?CSV)) of
         'eof' ->
-            kz_tasks:worker_finished(TaskId, TotalRows, TotalErrors),
+            kz_tasks:worker_finished(TaskId, TotalSucceeded),
             gen_server:cast(self(), 'stop'),
             _ = erase(?CSV),
             ?NOREPLY(State);
         {Row, CSVRest} ->
-            Errors = try_apply(Module, Function, ExtraArgs, FAssoc, Row),
-            NewState = State#state{total_errors = TotalErrors + Errors
-                                  ,total_rows = TotalRows + 1
+            Success = try_apply(Module, Function, ExtraArgs, FAssoc, Row),
+            NewState = State#state{total_succeeded = TotalSucceeded + Success
                                   },
             _ = put(?CSV, CSVRest),
             gen_server:cast(self(), 'go'),
@@ -231,19 +228,19 @@ try_apply(Module, Function, ExtraArgs, FAssoc, RawRow) ->
         {'true', Args} ->
             try
                 apply(Module, Function, [ExtraArgs|Args]),
-                0
+                1
             catch
                 _E:_R ->
                     kz_util:log_stacktrace(),
-                    1
+                    0
             end;
         'false' ->
             lager:error("verifier failed on ~p", [RawRow]),
-            1
+            0
     catch
         _:_R ->
             lager:error("verifier crashed: ~p", [_R]),
-            1
+            0
     end.
 
 %%% End of Module.

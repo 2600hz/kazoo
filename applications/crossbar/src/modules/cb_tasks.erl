@@ -215,14 +215,22 @@ validate_new_attachment(Context, 'true') ->
     [{_Filename, FileJObj}] = cb_context:req_files(Context),
     CSVBinary = kz_json:get_value(<<"contents">>, FileJObj),
     case kz_tasks:is_csv(CSVBinary) of
-        'true' -> cb_context:set_resp_status(Context, 'success');
-        'false' ->
+        0 ->
             Msg = kz_json:from_list([{<<"message">>, <<"Empty CSV or some row(s) longer than others">>}
                                     ]),
-            cb_context:add_validation_error(<<"csv">>, <<"format">>, Msg, Context)
+            cb_context:add_validation_error(<<"csv">>, <<"format">>, Msg, Context);
+        TotalRows ->
+            cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
+                                        ,{fun cb_context:store/3, 'total_rows', TotalRows}
+                                        ])
     end;
 validate_new_attachment(Context, 'false') ->
-    cb_context:validate_request_data(?SCHEMA_RECORDS, Context).
+    Ctx = cb_context:validate_request_data(?SCHEMA_RECORDS, Context),
+    case cb_context:resp_status(Ctx) of
+        'success' ->
+            cb_context:store(Ctx, 'total_rows', length(cb_context:req_data(?RD_RECORDS)));
+        _ -> Ctx
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -237,7 +245,8 @@ put(Context) ->
     Action   = kz_json:get_value(?QS_ACTION, QS),
     IsCSV = is_content_type_csv(Context),
     CSVorJSON = attached_data(Context, IsCSV),
-    case kz_tasks:new(cb_context:account_id(Context), Category, Action, CSVorJSON) of
+    TotalRows = cb_context:fetch(Context, 'total_rows'),
+    case kz_tasks:new(cb_context:account_id(Context), Category, Action, TotalRows, CSVorJSON) of
         {'ok', TaskJObj} ->
             TaskId = kz_json:get_value([<<"_read_only">>, <<"id">>], TaskJObj),
             save_attached_data(set_db(Context), TaskId, CSVorJSON, IsCSV),
