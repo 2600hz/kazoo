@@ -1616,7 +1616,6 @@ iolist_join(Sep, [H|T]) ->
     [H, Sep, [[X, Sep] || X <- T]].
 
 
-
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
