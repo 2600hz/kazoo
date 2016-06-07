@@ -386,11 +386,11 @@ handle_call({'remove_task', TaskId}, _From, State) ->
                     {'ok', _} = kz_datamgr:del_doc(?KZ_TASKS_DB, TaskId),
                     ?REPLY_FOUND(State, to_public_json(Task))
             end;
-        [Task = #{worker_pid := Pid}] ->
+        [Task = #{worker_pid := _Pid}] ->
             case is_processing(Task) of
                 'true' -> ?REPLY(State, {'error', 'task_running'});
                 'false' ->
-                    _ = kz_task_worker:stop(Pid),
+                    %%FIXME: should attempt to kill worker process.
                     State1 = remove_task(TaskId, State),
                     ?REPLY_FOUND(State1, to_public_json(Task))
             end
@@ -439,6 +439,27 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'EXIT', Pid, _Reason}, State) ->
+    case task_by_pid(Pid, State) of
+        [] ->
+            lager:debug("worker ~p finished: ~p", [Pid, _Reason]),
+            {'noreply', State};
+        [Task=#{id := TaskId}] ->
+            lager:error("worker ~p died executing ~s: ~p", [Pid, TaskId, _Reason]),
+            Task1 = Task#{ finished => kz_util:current_tstamp()
+                         , total_rows_succeeded => 0
+                         },
+            'ok' = case save_task(Task1) of
+                       {'ok', _TaskJObj} -> 'ok';
+                       {'error', 'conflict'} ->
+                           lager:debug("FIXME using ensure_saved for task ~s", [TaskId]),
+                           {'ok', _TaskJObj} = ensure_save_task(Task1),
+                           'ok'
+                   end,
+            State1 = remove_task(TaskId, State),
+            {'noreply', State1}
+        end;
+
 handle_info(_Info, State) ->
     lager:debug("unhandled message ~p", [_Info]),
     {'noreply', State}.
@@ -543,6 +564,12 @@ task_by_id(TaskId) ->
 task_by_id(TaskId, State) ->
     [T || T=#{id := Id} <- State#state.tasks,
           TaskId == Id
+    ].
+
+-spec task_by_pid(pid(), state()) -> [task()].
+task_by_pid(Pid, State) ->
+    [T || T=#{worker_pid := WPid} <- State#state.tasks,
+          Pid == WPid
     ].
 
 -spec handle_call_start_task(task(), state()) -> ?REPLY(state(), Response) when
