@@ -4,6 +4,9 @@
 
 #### Schema
 
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`records` | List the rows of input data | `array(object)` |   | `true`
 
 
 #### Fetch
