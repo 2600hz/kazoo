@@ -207,8 +207,8 @@ relay_encoded_email(To, From, Encoded) ->
                                 ),
             _ = lager:debug("relayed message: ~p", [Receipt]),
             {'ok', binary:replace(Receipt, <<"\r\n">>, <<>>, ['global'])};
-        {'relay_response', {'error', _Type, Message}} ->
-            lager:debug("error relaying message: ~p: ~p", [_Type, Message]),
+        {'relay_response', {'error', _Type, {_SubType, _FailHost, Message}}} ->
+            lager:debug("error relaying message: ~p(~p): ~p", [_Type, _SubType, Message]),
             {'error', Message};
         {'relay_response', {'exit', Reason}} ->
             lager:debug("failed to send email:"),
