@@ -9,7 +9,7 @@
 -module(tasks_maintenance).
 
 -export([tasks/0, tasks/1]).
--export([task/1]).
+-export([task/1, task_csv/1]).
 -export([start/1]).
 -export([remove/1]).
 
@@ -33,6 +33,20 @@ tasks(Account) ->
 task(TaskId) ->
     case kz_tasks:read(TaskId) of
         {'ok', JObj} -> print_json(JObj);
+        {'error', Reason} -> print_error(Reason)
+    end.
+
+-spec task_csv(text() | kz_tasks:task_id()) -> 'no_return'.
+task_csv(TaskId) ->
+    case kz_tasks:read(TaskId) of
+        {'ok', _JObj} ->
+            AName = kz_tasks:attachment_name(TaskId),
+            case kz_datamgr:fetch_attachment(?KZ_TASKS_DB, TaskId, AName) of
+                {'ok', AttachBin} ->
+                    io:fwrite(AttachBin),
+                    'no_return';
+                {'error', Reason} -> print_error(Reason)
+            end;
         {'error', Reason} -> print_error(Reason)
     end.
 

@@ -200,10 +200,8 @@ validate_task(Context, TaskId, ?HTTP_GET) ->
         'false' -> Context1;
         'true' ->
             lager:debug("trying to fetch attachment for task ~s", [TaskId]),
-            case kz_tasks:attachment_name(TaskId) of
-                'undefined' -> crossbar_util:response_bad_identifier(TaskId, Context);
-                Name -> load_csv_attachment(Context, TaskId, Name)
-            end
+            AName = kz_tasks:attachment_name(TaskId),
+            load_csv_attachment(Context, TaskId, AName)
     end;
 validate_task(Context, TaskId, ?HTTP_PATCH) ->
     read(TaskId, Context);
