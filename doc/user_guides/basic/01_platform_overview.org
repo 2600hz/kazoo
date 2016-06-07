@@ -370,7 +370,13 @@ The Kazoo Stack
 ** The Kazoo Stack
 
 #+BEGIN_CENTER
-file:./images/kazoo_stack_1_h195.jpg
+file:./images/kazoo_stack_1.png
+#+END_CENTER
+
+** The Kazoo Stack
+
+#+BEGIN_CENTER
+file:./images/kazoo_stack_1_details.png
 #+END_CENTER
 
 ** Thank You
