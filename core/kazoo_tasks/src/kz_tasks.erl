@@ -570,11 +570,8 @@ handle_call_start_task(Task=#{ id := TaskId
     API = maps:get(Action, maps:get(Category, APIs)),
     lager:debug("API ~s", [kz_json:encode(API)]),
     Node = maps:get(Category, Nodes),
-    lager:debug("node ~p", [Node]),
     Module = maps:get(Category, Modules),
-    lager:debug("module ~p", [Module]),
-    lager:debug("app ~s", [maps:get(Category, Apps)]),
-    Function = kz_util:to_atom(Action, 'true'),
+    lager:debug("app ~s module ~s node ~s", [maps:get(Category, Apps), Module, Node]),
     Fields = mandatory(API) ++ optional(API),
     ExtraArgs = [{'auth_account_id', AccountId}
                 ],
@@ -582,7 +579,7 @@ handle_call_start_task(Task=#{ id := TaskId
     try erlang:spawn_link(kz_util:to_atom(Node, 'true')
                          ,'kz_task_worker'
                          ,'start'
-                         ,[TaskId, Module, Function, ExtraArgs, Fields, AName]
+                         ,[TaskId, Module, kz_util:to_atom(Action,'true'), ExtraArgs, Fields, AName]
                          )
     of
         Pid ->

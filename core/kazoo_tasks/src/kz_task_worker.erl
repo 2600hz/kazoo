@@ -56,6 +56,13 @@ start(TaskId, Module, Function, ExtraArgs, OrderedFields, AName) ->
 %%%===================================================================
 
 %% @private
+-spec init(kz_tasks:task_id()
+          ,module()
+          ,atom()
+          ,kz_proplist()
+          ,ne_binaries()
+          ,ne_binary()
+          ) -> any().
 init(TaskId, Module, Function, ExtraArgs, OrderedFields, AName) ->
     case
         kz_util:try_load_module(Module) == Module andalso
