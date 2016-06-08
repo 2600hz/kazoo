@@ -577,7 +577,7 @@ handle_call_start_task(Task=#{ id := TaskId
         Pid ->
             Task1 = Task#{ started => kz_util:current_tstamp()
                          , worker_pid => Pid
-                         , worker_node => Node %%FIXME: start worker on Node for real
+                         , worker_node => Node
                          },
             lager:debug("FIXME using ensure_saved for task ~s", [TaskId]),
             {'ok', JObj} = ensure_save_task(Task1),
