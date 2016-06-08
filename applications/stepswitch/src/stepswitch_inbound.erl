@@ -289,8 +289,8 @@ is_blacklisted(JObj) ->
 
 -spec is_number_blacklisted(wh_json:object(), ne_binary()) -> boolean().
 is_number_blacklisted(Blacklist, Number) ->
-    Normalized = wnm_util:normalize_number(Number),
-    case wh_json:get_value(Normalized, Blacklist) of
+    Normalized = wnm_util:to_e164(Number),
+    case wh_json:get_first_defined([Normalized, Number], Blacklist) of
         'undefined' ->
             lager:debug("~s(~s) not blacklisted, did not match any rule", [Number, Normalized]),
             'false';

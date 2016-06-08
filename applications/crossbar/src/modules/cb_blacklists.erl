@@ -213,11 +213,15 @@ format_numbers(Context) ->
         ,wh_json:set_value(<<"numbers">>, Numbers, Doc)
     ).
 
-
 -spec format_numbers_foldl(ne_binary(), wh_json:object(), wh_json:object()) -> wh_json:object().
 format_numbers_foldl(Number, Data, JObj) ->
     case wh_util:anonymous_caller_id_number() of
-        Number -> wh_json:set_value(Number, Data, JObj);
+        Number ->
+            wh_json:set_values([{Number, Data}
+                               ,{wnm_util:normalize_number(Number), Data}
+                               ]
+                              ,JObj
+                              );
         _Else ->
             E164 = wnm_util:normalize_number(Number),
             wh_json:set_value(E164, Data, JObj)
