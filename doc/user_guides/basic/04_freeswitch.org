@@ -1,0 +1,166 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:2 \n:nil ^:t arch:headline
+#+OPTIONS: author:t c:nil creator:nil d:(not "LOGBOOK") date:nil e:t
+#+OPTIONS: email:nil f:t inline:t num:t p:nil pri:nil prop:nil stat:t
+#+OPTIONS: tags:t tasks:t tex:t timestamp:f title:t toc:nil todo:t |:t
+#+TITLE: Kazoo Basic Training - FreeSWITCH
+#+DATE: <2016-06-06 Mon>
+#+AUTHOR: James Aimonetti
+#+EMAIL: james@2600hz.com
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+CREATOR: Emacs 25.1.50.3 (Org mode 8.3.4)
+#+STARTUP: beamer
+#+LaTeX_CLASS: beamer
+#+LaTeX_CLASS_OPTIONS: [bigger]
+#+BEAMER_FRAME_LEVEL: 2
+#+BEAMER_THEME: Madrid
+#+COLUMNS: %40ITEM %10BEAMER_env(Env) %9BEAMER_envargs(Env Args) %4BEAMER_col(Col) %10BEAMER_extra(Extra)
+
+* FreeSWITCH
+
+** Kazoo Basic Training
+#+BEGIN_CENTER
+FreeSWITCH
+#+END_CENTER
+** The Kazoo Stack - Cluster
+
+#+BEGIN_CENTER
+[[file:./images/kazoo_stack.png]]
+#+END_CENTER
+
+** The Kazoo Stack - FreeSWITCH
+
+#+BEGIN_CENTER
+[[file:./images/kazoo_stack_freeswitch.png]]
+#+END_CENTER
+
+** What is FreeSWITCH                                               :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** FreeSWITCH is a media softswitch
+ - FreeSWITCH is a stand alone server for call processing
+ - Extremely scalable and powerful softswitch
+ - SIP, XMPP, Bluetooth, TDM, etc.
+
+*** Very powerful XML configuration
+ - Mostly static call handling
+ - Building blocks for realtime call control
+
+*** 2600hz provides a three day FreeSWITCH course!
+ - Check out [[https://voipkb.com/][voipkb]] for dates
+ - Check out [[http://voipkb.com/FreeSWITCH_Training.html][this page]] for more information
+
+*** FreeSWITCH architeture                                  :B_ignoreheading:
+    :PROPERTIES:
+    :BEAMER_env: ignoreheading
+    :END:
+#+BEGIN_CENTER
+[[file:./images/freeswitch_core.jpg]]
+#+END_CENTER
+
+** How is FreeSWITCH used                                           :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Audio transcoding and Multiplexing
+ - All RTP streams terminate and originate from these servers
+
+*** Session control server
+ - Rating, session authorization is per FreeSWITCH channel
+
+*** Application server
+ - Kazoo asynchronously controls all aspects of FreeSWITCH channels, in realtime
+
+** Installing FreeSWITCH                                            :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Debian
+
+Taken from [[https://freeswitch.org/confluence/display/FREESWITCH/Debian+8+Jessie][FreeSWITCH's installation instructions]]:
+1. Add the FreeSWITCH public key:
+   #+BEGIN_EXAMPLE
+   $> curl https://files.freeswitch.org/repo/deb/debian/freeswitch_archive_g0.pub | apt-key add -
+   #+END_EXAMPLE
+2. Add the FreeSWITCH repo:
+   #+BEGIN_EXAMPLE
+   $> echo "deb http://files.freeswitch.org/repo/deb/freeswitch-1.6/ jessie main" > /etc/apt/sources.list.d/freeswitch.list
+   #+END_EXAMPLE
+3. Symlink Kazoo's FreeSWITCH configs
+   #+BEGIN_EXAMPLE
+   $> ln -s /etc/kazoo/freeswitch /etc/freeswitch
+   #+END_EXAMPLE
+4. Install FreeSWITCH packages
+   #+BEGIN_EXAMPLE
+   $> apt-get update && apt-get install -y freeswitch-meta-all
+   #+END_EXAMPLE
+
+*** CentOS
+
+Building FreeSWITCH 1.6 for CentOS is deprecated. If you'd like to build it, try using [[https://freeswitch.org/confluence/display/FREESWITCH/CentOS+6+DEPRECATED][these instructions]]; YMMV
+
+*** Configuration in /etc/kazoo/freeswitch
+ - =autoload_configs/=: Module and switch configuration
+  - =autoload_configs/kazoo.conf.xml=: Settings for talking to Kazoo
+ - =certs/=: Encryption Certificates
+ - =sip_profiles/=: SIP interface configuration
+  - =sip_profiles/sipinterface_1.xml=: The default SIP profile
+
+*** Open =freeswitch.xml=
+ - This is the only file that FreeSWITCH loads
+ - Includes all other configuration
+
+*** Open =autoload_configs/modules.conf.xml=
+ - These are the modules loaded at runtime
+
+*** =mod_kazoo=
+ - provides connectivity to Kazoo (as an Erlang [[http://erlang.org/doc/tutorial/cnode.html][C-Node]])
+
+*** =mod_sofia=
+ - Provides all SIP handling
+ - Based on Nokia's Sofia stack
+ - Not loaded at startup!
+   - Loaded when Kazoo successfully connects for the first time
+
+*** Other FreeSWITCH Modules
+ - =mod_console= / =mod_logfile= (logging)
+ - =mod_dialplan_xml= (used during call setup)
+ - =mod_conference= (used to multiplex RTP streams)
+ - =mod_commands= / =mod_dptools= (call commands such as play)
+ - =mod_http_cache= (used to stream media files)
+ - =mod_spandsp= (faxing)
+
+*** FreeSWTICH Codecs
+ - By default we load a majority of the available codecs
+
+*** Open =/etc/kazoo/freeswitch/autoload\_configs/kazoo.conf.xml=
+
+#+INCLUDE: "/etc/kazoo/freeswitch/autoload_configs/kazoo.conf.xml" example
+
+*** The Cookie in =kazoo.conf.xml=
+
+#+INCLUDE: "/etc/kazoo/freeswitch/autoload_configs/kazoo.conf.xml" example :lines "7-8"
+
+The cookie value is important when Kazoo connects to FreeSWITCH. It should match the cookie for Kazoo.
+
+*** Start FreeSWITCH
+#+BEGIN_EXAMPLE
+$> service freeswitch start
+#+END_EXAMPLE
+
+*** Check if it is running
+#+BEGIN_EXAMPLE
+$> fs_cli -x status
+#+END_EXAMPLE
+
+** Thank You
+
+#+INCLUDE: "./frames/footer.org"
