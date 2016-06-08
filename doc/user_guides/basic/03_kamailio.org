@@ -21,7 +21,21 @@
 
 ** Kazoo Basic Training
 
+#+BEGIN_CENTER
+Kamailio
+#+END_CENTER
 
+** The Kazoo Stack - Cluster
+
+#+BEGIN_CENTER
+[[file:./images/kazoo_stack.png]]
+#+END_CENTER
+
+** The Kazoo Stack - Kamailio
+
+#+BEGIN_CENTER
+[[file:./images/kazoo_stack_kamailio.png]]
+#+END_CENTER
 
 ** Thank You
 
