@@ -353,7 +353,7 @@ handle_call({'new', AccountId, Category, Action, TotalRows}, _From, State) ->
             , total_rows => TotalRows
             , total_rows_succeeded => 'undefined'
             },
-    {'ok', _JObj} = Ok = save_task(Task),
+    {'ok', _JObj} = Ok = save_new_task(Task),
     lager:debug("task ~s created, rows: ~p", [TaskId, TotalRows]),
     ?REPLY(State, Ok);
 
@@ -417,8 +417,7 @@ handle_cast({'worker_terminated', TaskId, TotalSucceeded}, State) ->
     Task1 = Task#{ finished => kz_util:current_tstamp()
                  , total_rows_succeeded => TotalSucceeded
                  },
-    lager:debug("FIXME using ensure_saved for task ~s", [TaskId]),
-    {'ok', _TaskJObj} = ensure_save_task(Task1),
+    {'ok', _JObj} = update_task(Task1),
     State1 = remove_task(TaskId, State),
     {'noreply', State1};
 
@@ -446,8 +445,7 @@ handle_info({'EXIT', Pid, _Reason}, State) ->
             Task1 = Task#{ finished => kz_util:current_tstamp()
                          , total_rows_succeeded => 0
                          },
-            lager:debug("FIXME using ensure_saved for task ~s", [TaskId]),
-            {'ok', _TaskJObj} = ensure_save_task(Task1),
+            {'ok', _JObj} = update_task(Task1),
             State1 = remove_task(TaskId, State),
             {'noreply', State1}
         end;
@@ -491,9 +489,9 @@ compare_tasks(JObjA, JObjB) ->
         =<
         kz_json:get_value(?PVT_CREATED, JObjB).
 
--spec save_task(task()) -> {'ok', kz_json:object()} |
-                           {'error', any()}.
-save_task(Task = #{id := _TaskId}) ->
+-spec save_new_task(task()) -> {'ok', kz_json:object()} |
+                               {'error', any()}.
+save_new_task(Task = #{id := _TaskId}) ->
     case kz_datamgr:save_doc(?KZ_TASKS_DB, to_json(Task)) of
         {'ok', Doc} -> {'ok', to_public_json(from_json(Doc))};
         {'error', _R}=E ->
@@ -501,13 +499,14 @@ save_task(Task = #{id := _TaskId}) ->
             E
     end.
 
--spec ensure_save_task(task()) -> {'ok', kz_json:object()} |
-                                  {'error', any()}.
-ensure_save_task(Task = #{id := _TaskId}) ->
-    case kz_datamgr:ensure_saved(?KZ_TASKS_DB, to_json(Task)) of
+-spec update_task(task()) -> {'ok', kz_json:object()} |
+                             {'error', any()}.
+update_task(Task = #{id := TaskId}) ->
+    Updates = kz_json:to_proplist(to_json(Task)),
+    case kz_datamgr:update_doc(?KZ_TASKS_DB, TaskId, Updates) of
         {'ok', Doc} -> {'ok', to_public_json(from_json(Doc))};
         {'error', _R}=E ->
-            lager:error("failed to ensure_save ~s in ~s: ~p", [_TaskId, ?KZ_TASKS_DB, _R]),
+            lager:error("failed to ensure_save ~s in ~s: ~p", [TaskId, ?KZ_TASKS_DB, _R]),
             E
     end.
 
@@ -579,8 +578,7 @@ handle_call_start_task(Task=#{ id := TaskId
                          , worker_pid => Pid
                          , worker_node => Node
                          },
-            lager:debug("FIXME using ensure_saved for task ~s", [TaskId]),
-            {'ok', JObj} = ensure_save_task(Task1),
+            {'ok', JObj} = update_task(Task1),
             State1 = add_task(Task1, State),
             ?REPLY_FOUND(State1, JObj)
     catch
