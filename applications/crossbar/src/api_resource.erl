@@ -642,7 +642,7 @@ from_binary(Req0, Context0) ->
         {'true', Req1, Context1} ->
             Event = api_util:create_event_name(Context1, <<"from_binary">>),
             _ = crossbar_bindings:map(Event, {Req1, Context1}),
-            api_util:create_push_response(Req1, Context1);
+            create_from_response(Req1, Context1);
         Else -> Else
     end.
 
@@ -654,7 +654,7 @@ from_json(Req0, Context0) ->
         {'true', Req1, Context1} ->
             Event = api_util:create_event_name(Context1, <<"from_json">>),
             _ = crossbar_bindings:map(Event, {Req1, Context1}),
-            api_util:create_push_response(Req1, Context1);
+            create_from_response(Req1, Context1);
         Else -> Else
     end.
 
@@ -666,8 +666,29 @@ from_form(Req0, Context0) ->
         {'true', Req1, Context1} ->
             Event = api_util:create_event_name(Context1, <<"from_form">>),
             _ = crossbar_bindings:map(Event, {Req1, Context1}),
-            api_util:create_push_response(Req1, Context1);
+            create_from_response(Req1, Context1);
         Else -> Else
+    end.
+
+-spec create_from_response(cowboy_req:req(), cb_context:context()) ->
+                       {boolean(), cowboy_req:req(), cb_context:context()}.
+-spec create_from_response(cowboy_req:req(), cb_context:context(), api_binary()) ->
+                       {boolean(), cowboy_req:req(), cb_context:context()}.
+create_from_response(Req, Context) ->
+    %% TODO: find the return type by find out what client provided as accepted type,
+    %% or if the client didn't specify the accepted header, return the resource default type
+    %% for that request.
+    create_from_response(Req, Context, cb_context:req_header(Context, <<"accept">>)).
+
+create_from_response(Req, Context, 'undefined') ->
+    api_util:create_push_response(Req, Context);
+create_from_response(Req, Context, Accept) ->
+    case to_fun(Context, Accept, 'to_json') of
+        'to_json' -> create_from_response(Req, Context, 'undefined');
+        'send_file' -> send_file(Req, Context);
+        _ ->
+            %% sending json for now until we implement other types
+            create_from_response(Req, Context, 'undefined')
     end.
 
 -spec to_json(cowboy_req:req(), cb_context:context()) ->
@@ -801,6 +822,18 @@ to_pdf(Req, Context, RespData) ->
      ,api_util:set_resp_headers(Req, cb_context:set_resp_headers(Context, RespHeaders))
      ,Context
     }.
+-spec send_file(cowboy_req:req(), cb_context:context()) ->
+                       {boolean(), cowboy_req:req(), cb_context:context()}.
+send_file(Req0, Context) ->
+    lager:debug("run: send_file"),
+    File = cb_context:resp_file(Context),
+    F = fun (Socket, Transport) ->
+            lager:debug("sending file ~s", [File]),
+            Transport:sendfile(Socket, kz_util:to_list(File))
+        end,
+    Req1 = api_util:set_resp_headers(Req0, Context),
+    Req2 = cowboy_req:set_resp_body_fun(filelib:file_size(File), F, Req1),
+    {api_util:succeeded(Context), Req2, Context}.
 
 -spec accept_override(cb_context:context()) -> api_binary().
 accept_override(Context) ->
