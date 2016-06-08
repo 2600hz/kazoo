@@ -303,6 +303,72 @@ SET:: 1
  - Corrects NAT’d registrations
  - Sends OPTION pings every 30 seconds to NAT’d UA
 
+** Presence Role                                                    :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Handles SIP SUBSCRIBE method
+ - Stores subscribtions in Kazoo via AMQP
+
+*** Produces NOTIFY packets
+ - Kazoo updates channel states via AMQP
+
+*** Kamailio tracks subscription dialogs
+ - Kazoo tracks subscribers and channels
+
+** Traffic Filter Role                                              :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Drops REGISTER, SUBSCRIBE, or OPTIONS
+ - If the To header has an IP
+
+*** Drops INVITE challenge responses
+ - If the domain in the Proxy-Authorization is an IP
+ - Uses the PIKE module to drop excessive requests
+
+*** Ignores IP addresses
+ - Add to =/etc/kazoo/kamailio/dbtext/trusted=
+
+** Monitoring Kamailio                                              :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Monitor the logs
+ - Logs to =/var/log/kamailio/kamailio.log=
+
+*** Find calls by Call-ID
+#+BEGIN_EXAMPLE
+$> zgrep '{CALL_ID}' /var/log/kamailio/kamailio.log
+$> zgrep '{CALL_ID}' /var/log/kamailio/kamailio.log.4.gz
+#+END_EXAMPLE
+
+#+BEGIN_CENTER
+What might you see?
+#+END_CENTER
+
+*** Kamailio Stats
+#+BEGIN_EXAMPLE
+$> kamctl stats
+#+END_EXAMPLE
+
+*** Dispatcher Role
+#+BEGIN_EXAMPLE
+$> kamctl fifo ds_list
+#+END_EXAMPLE
+
+*** Presence Role
+#+BEGIN_EXAMPLE
+$> kamctl fifo presence_list
+$> kamctl fifo presence_flush all
+#+END_EXAMPLE
+
 ** Thank You
 
 #+INCLUDE: "./frames/footer.org"
