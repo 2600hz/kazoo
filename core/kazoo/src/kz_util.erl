@@ -1609,11 +1609,24 @@ application_version(Application) ->
 
 
 %% @public
--spec iolist_join(iodata(), list()) -> iolist().
+-spec iolist_join(Sep, List1) -> List2 when
+      Sep :: T,
+      List1 :: [T],
+      List2 :: [T],
+      T :: iodata().
 iolist_join(_, []) -> [];
-iolist_join(_, [_]=One) -> One;
 iolist_join(Sep, [H|T]) ->
-    [H, Sep, [[X, Sep] || X <- T]].
+    [H | iolist_join_prepend(Sep, T)].
+
+%% @private
+-spec iolist_join_prepend(Sep, List1) -> List2 when
+      Sep :: T,
+      List1 :: [T],
+      List2 :: [T],
+      T :: iodata().
+iolist_join_prepend(_, []) -> [];
+iolist_join_prepend(Sep, [H|T]) ->
+    [Sep, H | iolist_join_prepend(Sep, T)].
 
 
 -ifdef(TEST).
