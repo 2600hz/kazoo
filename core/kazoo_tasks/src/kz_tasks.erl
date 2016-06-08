@@ -506,7 +506,7 @@ update_task(Task = #{id := TaskId}) ->
     case kz_datamgr:update_doc(?KZ_TASKS_DB, TaskId, Updates) of
         {'ok', Doc} -> {'ok', to_public_json(from_json(Doc))};
         {'error', _R}=E ->
-            lager:error("failed to ensure_save ~s in ~s: ~p", [TaskId, ?KZ_TASKS_DB, _R]),
+            lager:error("failed to update ~s in ~s: ~p", [TaskId, ?KZ_TASKS_DB, _R]),
             E
     end.
 
