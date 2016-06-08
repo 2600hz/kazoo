@@ -200,7 +200,7 @@ curl -v -X PUT \
 }
 ```
 
-##### Missing values for mandatory fields
+##### Rows or records missing values for mandatory fields
 
 ```json
 {
@@ -209,14 +209,15 @@ curl -v -X PUT \
         "attachment": {
             "type": {
                 "missing_mandatory_values": [
-                    ",4159876543,"
+                    ",+14157215234",
+                    "009afc511c97b2ae693c6cc4920988e8,"
                 ]
             }
         }
     },
     "error": "500",
     "message": "invalid request",
-    "request_id": "dd1b7c575f4dddd81f94827f419ddb55",
+    "request_id": "5d2a8cd40b3e9242eeeb456cc76b5ad9",
     "status": "error"
 }
 ```

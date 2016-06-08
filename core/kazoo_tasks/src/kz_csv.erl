@@ -15,6 +15,7 @@
         ,split_row/1
         ,pad_row_to/2
         ,associator/3
+        ,row_to_iolist/1
         ]).
 
 -include_lib("kazoo/include/kz_types.hrl").
@@ -26,7 +27,9 @@
 -type cell() :: ne_binary() | ?ZILCH.
 -type row() :: [cell(), ...].
 
--export_type([row/0
+-export_type([cell/0
+             ,row/0
+             ,folder/1
              ,fassoc/0
              ,verifier/0
              ]).
@@ -162,6 +165,16 @@ associator(CSVHeader, OrderedFields, Verifier) ->
             end
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec row_to_iolist(row()) -> ne_binary().
+row_to_iolist([Cell]) -> cell_to_binary(Cell);
+row_to_iolist(Row=[_|_]) ->
+    kz_util:iolist_join(",", [cell_to_binary(Cell) || Cell <- Row]).
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
@@ -173,6 +186,11 @@ associator(CSVHeader, OrderedFields, Verifier) ->
 find_position(Item, [Item|_], Pos) -> Pos;
 find_position(Item, [_|Items], N) ->
     find_position(Item, Items, N+1).
+
+%% @private
+-spec cell_to_binary(cell()) -> binary().
+cell_to_binary(?ZILCH) -> <<>>;
+cell_to_binary(Cell=?NE_BINARY) -> Cell.
 
 
 %%% End of Module.
@@ -224,5 +242,16 @@ count_rows_test_() ->
     ,?_assertEqual(1, ?MODULE:count_rows(<<"a,b,c\n1,2,3">>))
     ,?_assertEqual(3, ?MODULE:count_rows(<<"a,b,c\n1,2,3\r\n4,5,6\n7,8,9\n">>))
     ].
+
+row_to_iolist_test_() ->
+    [?_assertException('error', 'function_clause', ?MODULE:row_to_iolist([]))] ++
+        [?_assertEqual(Expected, iolist_to_binary(?MODULE:row_to_iolist(Input)))
+         || {Expected, Input} <- [{<<"a,b">>, [<<"a">>, <<"b">>]}
+                                 ,{<<"a,,b">>, [<<"a">>, ?ZILCH, <<"b">>]}
+                                 ,{<<",,b">>, [?ZILCH, ?ZILCH, <<"b">>]}
+                                 ,{<<"a,b,">>, [<<"a">>, <<"b">>, ?ZILCH]}
+                                 ,{<<"a,b,,,c">>, [<<"a">>, <<"b">>, ?ZILCH, ?ZILCH, <<"c">>]}
+                                 ]
+        ].
 
 -endif.

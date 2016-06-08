@@ -795,8 +795,7 @@ find_input_errors(API, Input=?NE_BINARY) ->
                 fun (Row, Es) ->
                         case are_mandatories_unset(IsMandatory, Row) of
                             'false' -> Es;
-                            'true' ->
-                                [iolist_to_binary(kz_util:iolist_join(",", Row)) | Es]
+                            'true' -> [iolist_to_binary(kz_csv:row_to_iolist(Row)) | Es]
                         end
                 end,
             case kz_csv:fold(InputData, Unsets, []) of
