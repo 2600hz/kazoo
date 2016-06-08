@@ -3,6 +3,54 @@
 Kazoo Tasks enables listing, adding, starting & removing generic background tasks.
 
 
+#### List available tasks
+
+> GET /v2/tasks
+
+```shell
+curl -v -X GET \
+    http://{SERVER}:8000/v2/tasks
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "tasks": {
+            "number_management": {
+                "add": {
+                    "description": "Bulk-create numbers",
+                    "expected_content": "text/csv",
+                    "mandatory": [
+                        "number",
+                        "account_id"
+                    ],
+                    "optional": [
+                        "auth_by",
+                        "module_name"
+                    ]
+                },
+                "assign_to": {
+                    "description": "Bulk-assign numbers to the provided account",
+                    "expected_content": "text/csv",
+                    "mandatory": [
+                        "number",
+                        "account_id"
+                    ],
+                    "optional": [
+                        "auth_by"
+                    ]
+                }
+            }
+        }
+    },
+    "request_id": "71f237d7ccce7a2418c8e026f18289aa",
+    "revision": "undefined",
+    "status": "success"
+}
+```
+
+
 #### List all tasks
 
 > GET /v2/accounts/{ACCOUNT_ID}/tasks
@@ -99,7 +147,7 @@ curl -v -X PUT \
     "data": {
         "cause": "{CATEGORY}",
         "message": "bad identifier",
-        "tip": "No APIs known yet: GET /help then try again!"
+        "tip": "No APIs known yet: GET /v2/tasks then try again!"
     },
     "error": "404",
     "message": "bad_identifier",
@@ -420,55 +468,6 @@ curl -v -X PATCH \
     "message": "bad_identifier",
     "request_id": "f1a27978cada1d8cc41bd2473edd3ade",
     "status": "error"
-}
-```
-
-
-#### List available tasks
-
-> GET /v2/accounts/{ACCOUNT_ID}/tasks/help
-
-```shell
-curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/help
-```
-
-```json
-{
-    "auth_token": "{AUTH_TOKEN}",
-    "data": {
-        "tasks": {
-            "number_management": {
-                "add": {
-                    "description": "Bulk-create numbers",
-                    "expected_content": "text/csv",
-                    "mandatory": [
-                        "number",
-                        "account_id"
-                    ],
-                    "optional": [
-                        "auth_by",
-                        "module_name"
-                    ]
-                },
-                "assign_to": {
-                    "description": "Bulk-assign numbers to the provided account",
-                    "expected_content": "text/csv",
-                    "mandatory": [
-                        "number",
-                        "account_id"
-                    ],
-                    "optional": [
-                        "auth_by"
-                    ]
-                }
-            }
-        }
-    },
-    "request_id": "71f237d7ccce7a2418c8e026f18289aa",
-    "revision": "undefined",
-    "status": "success"
 }
 ```
 

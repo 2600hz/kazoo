@@ -30,7 +30,6 @@
 -define(QS_ACTION, <<"action">>).
 -define(RD_RECORDS, <<"records">>).
 
--define(HELP, <<"help">>).
 -define(ERRORS, <<"errors">>).
 
 
@@ -65,8 +64,14 @@ init() ->
 %% known, or false if not.
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate(cb_context:context()) -> 'false'.
-authenticate(_) -> 'false'.
+-spec authenticate(cb_context:context()) -> boolean().
+authenticate(Context) ->
+    case {cb_context:req_verb(Context)
+         ,cb_context:req_nouns(Context)
+         } of
+        {?HTTP_GET, [{<<"tasks">>, []}]} -> 'true';
+        _ -> 'false'
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -75,8 +80,14 @@ authenticate(_) -> 'false'.
 %% allowed to access the resource, or false if not.
 %% @end
 %%--------------------------------------------------------------------
--spec authorize(cb_context:context()) -> 'false'.
-authorize(_) -> 'false'.
+-spec authorize(cb_context:context()) -> boolean().
+authorize(Context) ->
+    case {cb_context:req_verb(Context)
+         ,cb_context:req_nouns(Context)
+         } of
+        {?HTTP_GET, [{<<"tasks">>, []}]} -> 'true';
+        _ -> 'false'
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -90,8 +101,6 @@ authorize(_) -> 'false'.
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
-allowed_methods(?HELP) ->
-    [?HTTP_GET];
 allowed_methods(_TaskId) ->
     [?HTTP_GET, ?HTTP_PATCH, ?HTTP_DELETE].
 allowed_methods(_TaskId, ?ERRORS) ->
@@ -109,7 +118,6 @@ allowed_methods(_TaskId, ?ERRORS) ->
 -spec resource_exists(path_token()) -> 'true'.
 -spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
-resource_exists(?HELP) -> 'true';
 resource_exists(_TaskId) -> 'true'.
 resource_exists(_TaskId, ?ERRORS) -> 'true'.
 
@@ -122,8 +130,6 @@ resource_exists(_TaskId, ?ERRORS) -> 'true'.
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_accepted(cb_context:context(), path_token()) -> cb_context:context().
-content_types_accepted(Context, ?HELP) ->
-    Context;
 content_types_accepted(Context, _TaskId) ->
     cta(Context, cb_context:req_verb(Context)).
 
@@ -143,8 +149,6 @@ cta(Context, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
-content_types_provided(Context, ?HELP) ->
-    Context;
 content_types_provided(Context, _TaskId) ->
     ctp(Context, cb_context:req_verb(Context)).
 
@@ -182,7 +186,16 @@ validate(Context, PathToken1, PathToken2) ->
 
 -spec validate_tasks(cb_context:context(), http_method()) -> cb_context:context().
 validate_tasks(Context, ?HTTP_GET) ->
-    summary(Context);
+    case cb_context:account_id(Context) of
+        'undefined' ->
+            lager:debug("starting discovery of task APIs"),
+            JObj = kz_json:from_list([{<<"tasks">>, kz_tasks:help()}]),
+            cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
+                                        ,{fun cb_context:set_resp_data/2, JObj}
+                                        ]);
+        _AccountId ->
+            summary(Context)
+    end;
 validate_tasks(Context, ?HTTP_PUT) ->
     QS = cb_context:query_string(Context),
     case {kz_json:get_ne_binary_value(?QS_CATEGORY, QS)
@@ -195,12 +208,6 @@ validate_tasks(Context, ?HTTP_PUT) ->
     end.
 
 -spec validate_tasks(cb_context:context(), path_token(), http_method()) -> cb_context:context().
-validate_tasks(Context, ?HELP, ?HTTP_GET) ->
-    lager:debug("starting discovery of task APIs"),
-    JObj = kz_json:from_list([{<<"tasks">>, kz_tasks:help()}]),
-    cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
-                                ,{fun cb_context:set_resp_data/2, JObj}
-                                ]);
 validate_tasks(Context, TaskId, ?HTTP_GET) ->
     Context1 = read(TaskId, Context),
     case cb_context:resp_status(Context1) == 'success'
@@ -456,7 +463,7 @@ load_errors_attachment(Context, TaskId) ->
 %% @private
 -spec no_categories(cb_context:context(), ne_binary()) -> cb_context:context().
 no_categories(Context, Id) ->
-    Msg = kz_json:from_list([{<<"tip">>, <<"No APIs known yet: GET /help then try again!">>}
+    Msg = kz_json:from_list([{<<"tip">>, <<"No APIs known yet: GET /v2/tasks then try again!">>}
                             ,{<<"cause">>, Id}
                             ]),
     cb_context:add_system_error('bad_identifier', Msg, Context).

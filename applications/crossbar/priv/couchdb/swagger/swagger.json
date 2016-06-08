@@ -8325,9 +8325,6 @@
             "get": {},
             "put": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/tasks/help": {
-            "get": {}
-        },
         "/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}": {
             "delete": {},
             "get": {},
