@@ -197,7 +197,7 @@ Let's look at a simplified example
  - Re-sync on reconnect
 
 *** The Bad
-- In-progress calls NOT in bridge mode can drop
+ - In-progress calls NOT in bridge mode can drop
 
 ** Installing RabbitMQ                                              :B_frame:
    :PROPERTIES:
@@ -227,7 +227,7 @@ Taken from [[https://www.rabbitmq.com/install-debian.html][RabbitMQ's installati
 
 *** CentOS
 
-Take from [[https://www.rabbitmq.com/install-rpm.html][RabbitMQ's installation instructions]]:
+Taken from [[https://www.rabbitmq.com/install-rpm.html][RabbitMQ's installation instructions]]:
 1. Install Erlang from [[https://www.erlang-solutions.com/resources/download.html][Erlang Solutions]]:
    #+BEGIN_EXAMPLE
    $> wget https://packages.erlang-solutions.com/erlang-solutions-1.0-1.noarch.rpm

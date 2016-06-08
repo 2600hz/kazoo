@@ -404,10 +404,6 @@ Let's Prepare for Kazoo!
    #+BEGIN_EXAMPLE
    $> ln -fs /usr/share/zoneinfo/UTC /etc/localtime
    #+END_EXAMPLE
-4. Restart
-   #+BEGIN_EXAMPLE
-   $> reboot
-   #+END_EXAMPLE
 
 ** Prepare for Kazoo
 
@@ -428,6 +424,30 @@ Let's Prepare for Kazoo!
 4. Set system time to UTC
    #+BEGIN_EXAMPLE
    $> ln -fs /usr/share/zoneinfo/UTC /etc/localtime
+   #+END_EXAMPLE
+
+** Prepare for Kazoo
+
+*** Configs setup
+
+Kazoo brings along its own configs for the various packages relied upon. Once the Debian and CentOS builds are completed, this step will be done automatically. For now, we do it manually:
+
+1. Install the Kazoo Configs repo
+   #+BEGIN_EXAMPLE
+   $> git clone https://github.com/2600hz/kazoo-configs /etc/kazoo
+   #+END_EXAMPLE
+2. Symlink rsyslog configs
+   #+BEGIN_EXAMPLE
+   $> ln -s /etc/kazoo/system/rsyslog.d/* /etc/rsyslog.d/
+   $> service rsyslog restart
+   #+END_EXAMPLE
+3. Symlink logrotate configs
+   #+BEGIN_EXAMPLE
+   $> ln -s /etc/kazoo/system/logrotate.d/* /etc/logrotate.d/
+   #+END_EXAMPLE
+4. Symlink limits configs
+   #+BEGIN_EXAMPLE
+   $> ln -s /etc/kazoo/system/security/limits.d/* /etc/security/limits.d/
    #+END_EXAMPLE
 5. Restart
    #+BEGIN_EXAMPLE
