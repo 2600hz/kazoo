@@ -19,11 +19,9 @@
         ,remove/1
 	]).
 
--export([attachment_name/1
-        ]).
-
 %% API used by workers
 -export([worker_finished/2
+        ,worker_result/2
         ]).
 
 %% gen_server callbacks
@@ -55,7 +53,6 @@
                    , finished => api_seconds() %% Time of task finish (> started)
                    , total_rows => api_pos_integer() %% CSV rows
                    , total_rows_succeeded => api_non_neg_integer() %% CSV rows that didn't crash
-                   , attachment_name => api_binary() %% Name of most up to date CSV/JSON
                    }.
 -opaque tasks() :: [task()].
 
@@ -233,19 +230,6 @@ read(TaskId=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec attachment_name(task_id()) -> ne_binary() | 'undefined'.
-attachment_name(TaskId=?NE_BINARY) ->
-    case task_by_id(TaskId) of
-        [#{attachment_name := Name}]
-        when Name =/= 'undefined' -> Name;
-        _ -> 'undefined'
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec remove(task_id()) -> {'ok', kz_json:object()} |
                            {'error', 'not_found' | 'task_running'}.
 remove(TaskId=?NE_BINARY) ->
@@ -264,6 +248,15 @@ remove(TaskId=?NE_BINARY) ->
 worker_finished(TaskId=?NE_BINARY, TotalSucceeded)
   when is_integer(TotalSucceeded) ->
     gen_server:cast(?SERVER, {'worker_terminated', TaskId, TotalSucceeded}).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec worker_result(task_id(), ne_binary()) -> 'ok'.
+worker_result(TaskId=?NE_BINARY, Errors=?NE_BINARY) ->
+    gen_server:cast(?SERVER, {'worker_result', TaskId, Errors}).
 
 
 %%%===================================================================
@@ -421,6 +414,19 @@ handle_cast({'worker_terminated', TaskId, TotalSucceeded}, State) ->
     State1 = remove_task(TaskId, State),
     {'noreply', State1};
 
+handle_cast({'worker_result', TaskId, Errors}, State) ->
+    case kz_datamgr:put_attachment(?KZ_TASKS_DB
+                                  ,TaskId
+                                  ,?KZ_TASKS_ATTACHMENT_NAME_OUT
+                                  ,Errors
+                                  )
+    of
+        {'ok', _} -> lager:debug("saved ~s", [?KZ_TASKS_ATTACHMENT_NAME_OUT]);
+        {'error', _R} -> lager:error("failed saving ~s/~s: ~p"
+                                    ,[TaskId, ?KZ_TASKS_ATTACHMENT_NAME_OUT, _R])
+    end,
+    {'noreply', State};
+
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast ~p", [_Msg]),
     {'noreply', State}.
@@ -550,7 +556,6 @@ handle_call_start_task(Task=#{ id := TaskId
                              , account_id := AccountId
                              , category := Category
                              , action := Action
-                             , attachment_name := AName
                              }
                       ,State=#state{ apis = APIs
                                    , nodes = Nodes
@@ -558,7 +563,8 @@ handle_call_start_task(Task=#{ id := TaskId
                                    , apps = Apps
                                    }
                       ) ->
-    lager:info("about to start task ~s: ~s ~s using ~s", [TaskId, Category, Action, AName]),
+    lager:info("about to start task ~s: ~s ~s using ~s"
+              ,[TaskId, Category, Action, ?KZ_TASKS_ATTACHMENT_NAME_IN]),
     API = maps:get(Action, maps:get(Category, APIs)),
     lager:debug("API ~s", [kz_json:encode(API)]),
     Node = maps:get(Category, Nodes),
@@ -570,7 +576,7 @@ handle_call_start_task(Task=#{ id := TaskId
                 ],
     %% Task needs to run where App is started.
     try erlang:spawn_link(kz_util:to_atom(Node, 'true')
-                         ,fun () -> kz_task_worker:start(TaskId, Module, Function, ExtraArgs, Fields, AName) end
+                         ,fun () -> kz_task_worker:start(TaskId, Module, Function, ExtraArgs, Fields) end
                          )
     of
         Pid ->
@@ -600,7 +606,6 @@ from_json(Doc) ->
      , finished => kz_json:get_value(?PVT_FINISHED_AT, Doc)
      , total_rows => kz_json:get_value(?PVT_TOTAL_ROWS, Doc)
      , total_rows_succeeded => kz_json:get_value(?PVT_TOTAL_ROWS_SUCCEEDED, Doc)
-     , attachment_name => kz_doc:latest_attachment_id(Doc)
      }.
 
 -spec to_json(task()) -> kz_json:object().

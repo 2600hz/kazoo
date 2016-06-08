@@ -9,7 +9,7 @@
 -module(tasks_maintenance).
 
 -export([tasks/0, tasks/1]).
--export([task/1, task_csv/1]).
+-export([task/1, task_csv/1, task_errors/1]).
 -export([start/1]).
 -export([remove/1]).
 
@@ -38,17 +38,11 @@ task(TaskId) ->
 
 -spec task_csv(text() | kz_tasks:task_id()) -> 'no_return'.
 task_csv(TaskId) ->
-    case kz_tasks:read(TaskId) of
-        {'ok', _JObj} ->
-            AName = kz_tasks:attachment_name(TaskId),
-            case kz_datamgr:fetch_attachment(?KZ_TASKS_DB, TaskId, AName) of
-                {'ok', AttachBin} ->
-                    io:fwrite(AttachBin),
-                    'no_return';
-                {'error', Reason} -> print_error(Reason)
-            end;
-        {'error', Reason} -> print_error(Reason)
-    end.
+    attachment(TaskId, ?KZ_TASKS_ATTACHMENT_NAME_IN).
+
+-spec task_errors(text() | kz_tasks:task_id()) -> 'no_return'.
+task_errors(TaskId) ->
+    attachment(TaskId, ?KZ_TASKS_ATTACHMENT_NAME_OUT).
 
 -spec start(text() | kz_tasks:task_id()) -> 'no_return'.
 start(TaskId) ->
@@ -75,5 +69,18 @@ print_json(Data) ->
 print_error(Reason) ->
     io:format("ERROR: ~p\n", [Reason]),
     'no_return'.
+
+-spec attachment(kz_tasks:task_id(), ne_binary()) -> 'no_return'.
+attachment(TaskId, AName) ->
+    case kz_tasks:read(TaskId) of
+        {'ok', _JObj} ->
+            case kz_datamgr:fetch_attachment(?KZ_TASKS_DB, TaskId, AName) of
+                {'ok', AttachBin} ->
+                    io:fwrite(AttachBin),
+                    'no_return';
+                {'error', Reason} -> print_error(Reason)
+            end;
+        {'error', Reason} -> print_error(Reason)
+    end.
 
 %%% End of Module
