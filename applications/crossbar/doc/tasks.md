@@ -146,7 +146,7 @@ curl -v -X PUT \
     "data": {
         "csv": {
             "format": {
-                "message": "Empty CSV or some row(s) longer than others"
+                "message": "Empty CSV or some row(s) longer than others or header missing"
             }
         }
     },

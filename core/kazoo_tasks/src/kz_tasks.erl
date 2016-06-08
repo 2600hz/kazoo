@@ -340,10 +340,11 @@ handle_call({'help', Category, Action}, _From, State=#state{apis = Categories}) 
     end;
 
 handle_call({'new', AccountId, Category, Action, TotalRows}, _From, State) ->
+    TaskId = ?A_TASK_ID,
     Task = #{ worker_pid => 'undefined'
             , worker_node => 'undefined'
             , account_id => AccountId
-            , id => ?A_TASK_ID
+            , id => TaskId
             , category => Category
             , action => Action
             , created => kz_util:current_tstamp()
@@ -353,7 +354,7 @@ handle_call({'new', AccountId, Category, Action, TotalRows}, _From, State) ->
             , total_rows_succeeded => 'undefined'
             },
     {'ok', _JObj} = Ok = save_task(Task),
-    lager:debug("created task ~s", [kz_json:encode(_JObj)]),
+    lager:debug("task ~s created, rows: ~p", [TaskId, TotalRows]),
     ?REPLY(State, Ok);
 
 handle_call({'start_task', _TaskId}, _From, State=#state{apis = APIs})
@@ -830,6 +831,7 @@ find_input_errors(API, InputRecord=[_|_]) ->
             end
     end.
 
+-spec find_API_errors(kz_json:object(), ne_binaries(), ne_binaries()) -> map().
 find_API_errors(API, Mandatory, Fields) ->
     Routines =
         [fun (Errors) ->

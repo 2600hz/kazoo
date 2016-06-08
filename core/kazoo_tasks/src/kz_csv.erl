@@ -10,6 +10,7 @@
 
 %% Public API
 -export([count_rows/1
+        ,fold/3
         ,take_row/1
         ,split_row/1
         ,pad_row_to/2
@@ -38,26 +39,48 @@
 %% @public
 %% @doc
 %% Return count of rows minus the first one.
-%% Returns 0 if a row is longer than the header row.
+%% Returns 0 if a row is longer/smaller than the header row.
 %% @end
 %%--------------------------------------------------------------------
 -spec count_rows(binary()) -> non_neg_integer().
 count_rows(<<>>) -> 0;
 count_rows(CSV) when is_binary(CSV) ->
-    ThrowBad = fun (Row, {-1,0}) -> {length(Row),1};
-                   (Row, {MaxRow,RowsCounted}) ->
-                       case length(Row) of
-                           MaxRow -> {MaxRow, RowsCounted+1};
-                           _ -> throw('bad_csv')
-                       end
-               end,
-    try ecsv:process_csv_binary_with(CSV, ThrowBad, {-1,0}) of
-        {'ok', {_, 0}} -> 0;
-        %% Strip header line from total rows count
-        {'ok', {_, 1}} -> 0;
-        {'ok', {_, TotalRows}} -> TotalRows -1
+    ThrowBad =
+        fun (Header, {-1,0}) ->
+                case lists:all(fun is_binary/1, Header) of
+                    %% Strip header line from total rows count
+                    'true' -> {length(Header), 0};
+                    'false' -> throw('bad_csv')
+                end;
+            (Row, {MaxRow,RowsCounted}) ->
+                case length(Row) of
+                    MaxRow -> {MaxRow, RowsCounted+1};
+                    _ -> throw('bad_csv')
+                end
+        end,
+    try fold(CSV, ThrowBad, {-1,0}) of
+        {0, _} -> 0;
+        {_, TotalRows} -> TotalRows
     catch
         'throw':'bad_csv' -> 0
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-type folder(T) :: fun((row(), T) -> T).
+-spec fold(CSV, folder(T), T) -> T when
+      CSV :: binary(),
+      T :: any().
+fold(CSV, Fun, Acc)
+  when is_binary(CSV), is_function(Fun, 2) ->
+    case take_row(CSV) of
+        'eof' -> Acc;
+        {Row, CSVRest} ->
+            NewAcc = Fun(Row, Acc),
+            fold(CSVRest, Fun, NewAcc)
     end.
 
 %%--------------------------------------------------------------------
@@ -192,6 +215,14 @@ rows_test_() ->
     ,?_assertEqual('eof', ?MODULE:take_row(CSV6))
     ,?_assertEqual('eof', ?MODULE:take_row(CSV7))
     ,?_assertEqual({[<<"1">>,<<"B">>], <<>>}, ?MODULE:take_row(<<"1,B">>))
+    ].
+
+count_rows_test_() ->
+    [?_assertEqual(0, ?MODULE:count_rows(<<"a,b,\n,1,2,">>))
+    ,?_assertEqual(0, ?MODULE:count_rows(<<"abc">>))
+    ,?_assertEqual(0, ?MODULE:count_rows(<<"a,b,c\n1\n2\n3">>))
+    ,?_assertEqual(1, ?MODULE:count_rows(<<"a,b,c\n1,2,3">>))
+    ,?_assertEqual(3, ?MODULE:count_rows(<<"a,b,c\n1,2,3\r\n4,5,6\n7,8,9\n">>))
     ].
 
 -endif.

@@ -214,7 +214,7 @@ validate_new_attachment(Context, 'true') ->
     CSVBinary = kz_json:get_value(<<"contents">>, FileJObj),
     case kz_csv:count_rows(CSVBinary) of
         0 ->
-            Msg = kz_json:from_list([{<<"message">>, <<"Empty CSV or some row(s) longer than others">>}
+            Msg = kz_json:from_list([{<<"message">>, <<"Empty CSV or some row(s) longer than others or header missing">>}
                                     ]),
             cb_context:add_validation_error(<<"csv">>, <<"format">>, Msg, Context);
         TotalRows ->
@@ -400,6 +400,7 @@ save_attached_data(Context, TaskId, Records, 'false') ->
     lager:debug("converting JSON to CSV before saving"),
     Fields = kz_json:get_keys(hd(Records)),
     lager:debug("CSV fields found: ~p", [Fields]),
+    %% We assume fields for first record are defined in all other records.
     CSV = [kz_util:iolist_join(",", Fields), "\n"
           ,[ [kz_util:iolist_join(",", [kz_json:get_value(Field, Record) || Field <- Fields]), "\n"]
              || Record <- Records
