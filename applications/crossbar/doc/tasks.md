@@ -472,3 +472,23 @@ curl -v -X GET \
 }
 ```
 
+
+#### Retrieve an errors listing
+
+> GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/errors
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/errors
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": "{ERROR_DATA}",
+    "request_id": "ea84cd0a07faad793256a52084e63996",
+    "revision": "7-1af9813cd3da385e5a018af885bec70b",
+    "status": "success"
+}
+```

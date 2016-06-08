@@ -177,8 +177,8 @@ validate(Context) ->
     validate_tasks(Context, cb_context:req_verb(Context)).
 validate(Context, PathToken) ->
     validate_tasks(Context, PathToken, cb_context:req_verb(Context)).
-validate(Context, PathToken, PathToken) ->
-    validate_tasks(Context, PathToken, PathToken, cb_context:req_verb(Context)).
+validate(Context, PathToken1, PathToken2) ->
+    validate_tasks(Context, PathToken1, PathToken2, cb_context:req_verb(Context)).
 
 -spec validate_tasks(cb_context:context(), http_method()) -> cb_context:context().
 validate_tasks(Context, ?HTTP_GET) ->
@@ -220,10 +220,8 @@ validate_tasks(Context, TaskId, ?HTTP_DELETE) ->
                             cb_context:context().
 validate_tasks(Context, TaskId, ?ERRORS, ?HTTP_GET) ->
     Context1 = read(TaskId, Context),
-    case cb_context:resp_status(Context1) == 'success'
-        andalso is_accept_csv(Context)
-    of
-        'false' -> Context1;
+    case cb_context:resp_status(Context1) == 'success' of
+        'false' -> Context;
         'true' ->
             lager:debug("trying to fetch attachment for task ~s", [TaskId]),
             load_errors_attachment(Context, TaskId)
@@ -452,13 +450,8 @@ load_errors_attachment(Context, TaskId) ->
                                       ,?TYPE_CHECK_OPTION(?KZ_TASKS_DOC_TYPE)
                                       ,set_db(Context)
                                       ),
-    lager:debug("loaded csv ~s from task doc ~s", [?KZ_TASKS_ATTACHMENT_NAME_OUT, TaskId]),
-    cb_context:add_resp_headers(
-      Ctx
-      ,[{<<"Content-Disposition">>, <<"attachment; filename=", (?KZ_TASKS_ATTACHMENT_NAME_OUT)/binary>>}
-       ,{<<"Content-Type">>, <<"application/json">>}
-       ,{<<"Content-Length">>, byte_size(cb_context:resp_data(Ctx))}
-       ]).
+    lager:debug("loaded ~s from task doc ~s", [?KZ_TASKS_ATTACHMENT_NAME_OUT, TaskId]),
+    Ctx.
 
 %% @private
 -spec no_categories(cb_context:context(), ne_binary()) -> cb_context:context().

@@ -22,7 +22,7 @@
                }).
 
 -define(IN, 'csv_in').
--define(OUT, 'json_out').
+-define(OUT, 'txt_out').
 
 
 %%%===================================================================
@@ -115,7 +115,8 @@ loop(State=#state{task_id = TaskId
             kz_tasks:worker_finished(TaskId, TotalSucceeded),
             %%FIXME: when this goes over the wire shmem is of no help!
             %%Need to have some bucket to stream to!
-            kz_tasks:worker_result(TaskId, iolist_to_binary(lists:reverse(get(?OUT)))),
+            <<",",Bin/binary>> = iolist_to_binary(lists:reverse(get(?OUT))),
+            kz_tasks:worker_result(TaskId, <<"[",Bin/binary,"]">>),
             _ = erase(?OUT),
             _ = erase(?IN),
             'stop';
@@ -138,11 +139,8 @@ try_apply(Module, Function, ExtraArgs, FAssoc, RawRow) ->
                 1
             catch
                 _E:_R ->
-                    ST = erlang:get_stacktrace(),
-                    kz_util:log_stacktrace(ST),
-                    %% hd * hd: removes try_apply/5 then loop/1
-                    Reason = io_lib:format("~p1000", [hd(hd(ST))]),
-                    store_error(Reason, RawRow),
+                    kz_util:log_stacktrace(),
+                    store_error(<<"error">>, RawRow),
                     0
             end;
         'false' ->
@@ -159,8 +157,7 @@ try_apply(Module, Function, ExtraArgs, FAssoc, RawRow) ->
 %% @private
 -spec store_error(binary(), kz_csv:row()) -> 'ok'.
 store_error(Reason, Row) ->
-    Error = [<<"{\"">>, kz_csv:row_to_iolist(Row), <<"\":\"">>
-            ,Reason, <<"\"},">>
+    Error = [<<",{\"">>, kz_csv:row_to_iolist(Row), <<"\":\"">>, Reason, <<"\"}">>
             ],
     _ = put(?OUT, [Error | get(?OUT)]).
 
