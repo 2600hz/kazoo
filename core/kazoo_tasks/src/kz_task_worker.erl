@@ -90,15 +90,14 @@ init(TaskId, Module, Function, ExtraArgs, OrderedFields, AName) ->
     end.
 
 %% @private
--spec build_verifier(module()) -> fun((ne_binary(), api_binary()) -> boolean()).
+-spec build_verifier(module()) -> kz_csv:verifier().
 build_verifier(Module) ->
     fun (Field, Value) ->
-            Verifier = kz_util:to_atom(Field, 'true'),
-            case Module:Verifier(Value) of
+            case Module:Field(Value) of
                 'true' -> 'true';
                 'false' ->
                     lager:error("'~s' failed to validate with ~s:~s/1"
-                               ,[Value, Module, Verifier]),
+                               ,[Value, Module, Field]),
                     'false'
             end
     end.

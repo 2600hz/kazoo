@@ -59,7 +59,7 @@
                    }.
 -opaque tasks() :: [task()].
 
--type input() :: ne_binary() | kz_json:object().
+-type input() :: ne_binary() | kz_json:objects().
 
 -type help_error() :: {'error'
                       ,'no_categories' |
@@ -74,12 +74,15 @@
              ]).
 
 -type api_category() :: ne_binary().
-
+-type map_apis() :: #{api_category() => #{ne_binary() => kz_json:object()}}.
+-type map_apps() :: #{api_category() => ne_binary()}.
+-type map_nodes() :: #{api_category() => ne_binary()}.
+-type map_modules() :: #{api_category() => module()}.
 -record(state, { tasks = [] :: tasks()
-               , apis = #{} :: #{api_category() => #{ne_binary() => kz_json:object()}}
-               , apps = #{} :: #{api_category() => ne_binary()}
-               , nodes = #{} :: #{api_category() => ne_binary()}
-               , modules = #{} :: #{api_category() => module()}
+               , apis = #{} :: map_apis()
+               , apps = #{} :: map_apps()
+               , nodes = #{} :: map_nodes()
+               , modules = #{} :: map_modules()
                }).
 -type state() :: #state{}.
 
@@ -111,8 +114,7 @@ start_link() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec help() -> {'ok', kz_json:object()} |
-                help_error().
+-spec help() -> kz_json:object().
 help() ->
     CollectUntil = {kz_util:to_atom(?APP_NAME), fun kapi_tasks:help_resp_v/1, 'true', 'true'},
     case kz_amqp_worker:call_collect(kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -572,14 +574,13 @@ handle_call_start_task(Task=#{ id := TaskId
     Node = maps:get(Category, Nodes),
     Module = maps:get(Category, Modules),
     lager:debug("app ~s module ~s node ~s", [maps:get(Category, Apps), Module, Node]),
+    Function = kz_util:to_atom(Action, 'true'),
     Fields = mandatory(API) ++ optional(API),
     ExtraArgs = [{'auth_account_id', AccountId}
                 ],
     %% Task needs to run where App is started.
     try erlang:spawn_link(kz_util:to_atom(Node, 'true')
-                         ,'kz_task_worker'
-                         ,'start'
-                         ,[TaskId, Module, kz_util:to_atom(Action,'true'), ExtraArgs, Fields, AName]
+                         ,fun () -> kz_task_worker:start(TaskId, Module, Function, ExtraArgs, Fields, AName) end
                          )
     of
         Pid ->
@@ -737,13 +738,13 @@ status(_Task) ->
     lager:error("impossible task ~p", [_Task]),
     'undefined'.
 
--type m_apis() :: {map(), map(), map(), map()}.
--spec parse_apis(kz_json:objects()) -> m_apis().
+-type maps() :: {map_apps(), map_nodes(), map_modules(), map_apis()}.
+-spec parse_apis(kz_json:objects()) -> maps().
 parse_apis(JObjs) ->
     Acc0 = {#{}, #{}, #{}, #{}},
     lists:foldl(fun parse_apis_fold/2, Acc0, JObjs).
 
--spec parse_apis_fold(kz_json:object(), m_apis()) -> m_apis().
+-spec parse_apis_fold(kz_json:object(), maps()) -> maps().
 parse_apis_fold(JObj, {Apps, Nodes, Modules, APIs}) ->
     APICategory = kz_json:get_value(<<"Tasks-Category">>, JObj),
     App = kz_json:get_value(<<"App-Name">>, JObj),
@@ -758,11 +759,12 @@ parse_apis_fold(JObj, {Apps, Nodes, Modules, APIs}) ->
     , APIs#{APICategory => maps:from_list(kz_json:to_proplist(TasksProvided))}
     }.
 
--spec verify_unicity_map(ne_binary(), kz_json:object()) -> any().
+-spec verify_unicity_map(ne_binary(), kz_json:object()) -> 'ok'.
 verify_unicity_map(_Action, API) ->
     Fields0 = mandatory(API) ++ optional(API),
     Fields = [kz_util:to_lower_binary(Field) || Field <- Fields0],
-    case length(lists:usort(Fields)) == length(Fields)
+    case
+        length(lists:usort(Fields)) == length(Fields)
         andalso Fields == Fields0
     of
         'true' -> 'ok';
@@ -802,7 +804,7 @@ find_input_errors(API, Input=?NE_BINARY) ->
             end
     end;
 
-find_input_errors(API, InputRecord) ->
+find_input_errors(API, InputRecord=[_|_]) ->
     %%NOTE: assumes first record has all the fields that all the other records will ever need set
     Fields = kz_json:get_keys(hd(InputRecord)),
     Mandatory = mandatory(API),

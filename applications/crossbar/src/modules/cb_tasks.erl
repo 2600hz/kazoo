@@ -226,7 +226,8 @@ validate_new_attachment(Context, 'false') ->
     Ctx = cb_context:validate_request_data(?SCHEMA_RECORDS, Context),
     case cb_context:resp_status(Ctx) of
         'success' ->
-            cb_context:store(Ctx, 'total_rows', length(cb_context:req_data(?RD_RECORDS, Context)));
+            Records = kz_json:get_value(?RD_RECORDS, cb_context:req_data(Context)),
+            cb_context:store(Ctx, 'total_rows', length(Records));
         _ -> Ctx
     end.
 

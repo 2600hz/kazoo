@@ -109,7 +109,7 @@ pad_row_to(N, Row)
 %%--------------------------------------------------------------------
 -type fassoc_ret() :: {'true', row()} | 'false'.
 -type fassoc() :: fun((row()) -> fassoc_ret()).
--type verifier() :: fun((cell()) -> boolean()).
+-type verifier() :: fun((atom(), cell()) -> boolean()).
 -spec associator(row(), row(), verifier()) -> fassoc().
 associator(CSVHeader, OrderedFields, Verifier) ->
     Max = length(OrderedFields),
@@ -119,6 +119,7 @@ associator(CSVHeader, OrderedFields, Verifier) ->
                 Map#{find_position(Header, OrderedFields, 1) => I}
         end,
     Map = lists:foldl(F, #{}, Indexed),
+    OrderedFieldsAtoms = [kz_util:to_atom(Field, 'true') || Field <- OrderedFields],
     fun (Row0) ->
             Row = pad_row_to(Max, Row0),
             ReOrdered =
@@ -127,12 +128,12 @@ associator(CSVHeader, OrderedFields, Verifier) ->
                                  'undefined' -> ?ZILCH;
                                  J -> lists:nth(J, Row)
                              end,
-                      Verifier(lists:nth(I, OrderedFields), Cell)
+                      Verifier(lists:nth(I, OrderedFieldsAtoms), Cell)
                           andalso Cell
                   end
                   || I <- lists:seq(1, Max)
                 ],
-            case lists:any(fun erlang:is_boolean/1, ReOrdered) of
+            case lists:any(fun is_boolean/1, ReOrdered) of
                 'false' -> {'true', ReOrdered};
                 'true' -> 'false'
             end
@@ -171,7 +172,7 @@ associator_verify_test() ->
     CSVHeader = [<<"A">>, <<"E">>, <<"C">>, <<"B">>],
     CSVRow    = [<<"1">>, <<"5">>, <<"3">>, <<"2">>],
     Verify = fun (_Cell) -> 'false' end,
-    Verifier = fun (<<"B">>, Cell) -> Verify(Cell); (_Field, _Cell) -> 'true' end,
+    Verifier = fun ('B', Cell) -> Verify(Cell); (_Field, _Cell) -> 'true' end,
     FAssoc = ?MODULE:associator(CSVHeader, OrderedFields, Verifier),
     ?assertEqual('false', FAssoc(CSVRow)).
 

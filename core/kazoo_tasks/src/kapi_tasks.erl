@@ -33,8 +33,8 @@
                           ,{<<"Event-Name">>, <<"help_resp">>}
                           ]).
 -define(HELP_RESP_TYPES, [{<<"Tasks">>, fun kz_json:is_json_object/1}
-                         ,{<<"Tasks-Category">>, fun erlang:is_binary/1}
-                         ,{<<"Tasks-Module">>, fun erlang:is_binary/1}
+                         ,{<<"Tasks-Category">>, fun is_binary/1}
+                         ,{<<"Tasks-Module">>, fun is_binary/1}
                          ]).
 
 -define(TASKS_AMQP_KEY(SubKey), <<"tasks.", SubKey>>).
