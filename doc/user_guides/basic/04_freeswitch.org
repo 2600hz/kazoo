@@ -141,9 +141,10 @@ Building FreeSWITCH 1.6 for CentOS is deprecated. If you'd like to build it, try
 *** FreeSWTICH Codecs
  - By default we load a majority of the available codecs
 
-*** Open =/etc/kazoo/freeswitch/autoload\_configs/kazoo.conf.xml=
-
+*** Open =autoload_configs/kazoo.conf.xml=
+#+BEGIN_CENTER
 #+INCLUDE: "/etc/kazoo/freeswitch/autoload_configs/kazoo.conf.xml" example
+#+END_CENTER
 
 *** The Cookie in =kazoo.conf.xml=
 
@@ -159,7 +160,86 @@ $> service freeswitch start
 *** Check if it is running
 #+BEGIN_EXAMPLE
 $> fs_cli -x status
+$> fs_cli -x 'erlang status'
+Running mod_kazoo v1.2.10-14
+Listening for new Erlang connections on 0.0.0.0:8031 with cookie change_me
+Registered as Erlang node freeswitch@awesome.hostname.com, visible as freeswitch
+No erlang nodes connected
 #+END_EXAMPLE
+
+** Understanding Media                                              :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Almost all media is streamed
+ - A few exceptions on local disk
+ - =mod_say=
+
+*** Streaming requires access directly to the database
+ - Usually this happens via haproxy to ensure connectivity and zones
+
+*** All media is cached
+ - Each time a media file is requested, it is cached locally
+ - The cache resets each time the media is used
+ - Most popular media stays local
+
+*** Large media files still screw with this strategy
+ - Pre-cache coming
+ - Most commonly delays with large Music on Hold files
+
+*** Media is requested from the media manager
+ - Media manager is a Kazoo App
+ - Sends instructions to eCallMgr with the location of the file.
+ - Usually a HTTP address; it could just as easily send a local filename
+ - Allows you to replace media streams with static shared file systems
+
+*** TIFFs are a type of media
+ - Stored locally while being processed, for faxes
+ - Need to be cleaned up manually (via cron)
+
+*** Media and Streaming Errors!
+ - A lot of people mis-interpret errors here
+ - Need to note the command that was actually requested
+ - If the file extension isn’t understood
+ - If the BigCouch database isn’t accessible
+ - If you are out of file descriptors
+ - If the media file is damaged
+ - Errors will LOOK like a local disk error
+
+** Monitoring FreeSWITCH                                            :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** =fs_cli=
+
+Key FS CLI Commands:
+ |status|Show status of switch|
+ |erlang status|Show Kazoo connection info|
+ |show channels|Show a list of active channels|
+ |fsctl pause inbound|Reply to new requests with SIP 503|
+ |fsctl shutdown graceful|Shuts down once all calls are finished|
+ |reloadacl|Reloads the Access Control Lists|
+ |sofia status|Shows what port and IP we’re listening on|
+ |sofia status profile =sipinterface_1=|Shows more settings for port/IP|
+
+*** Monitor the logs
+ - Logs to =/var/log/freeswitch/debug.log=
+
+*** Find calls by Call-ID
+1. First, get the [[https://raw.githubusercontent.com/2600hz/community-scripts/master/FreeSWITCH/sipify.sh][sipify.sh]] script:
+   #+BEGIN_EXAMPLE
+   $> curl https://raw.githubusercontent.com/2600hz/community-scripts/master/FreeSWITCH/sipify.sh -O /usr/bin
+   $> chmod 755 /usr/bin/sipify.sh
+   #+END_EXAMPLE
+2. Search the logs:
+   #+BEGIN_EXAMPLE
+   $> sipify.sh {CALL_ID} /var/log/freeswitch/debug.log
+   $> zcat /var/log/freeswitch/debug.2.gz | sipify.sh | grep {CALL_ID}
+   #+END_EXAMPLE
 
 ** Thank You
 
