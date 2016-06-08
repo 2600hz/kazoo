@@ -37,6 +37,272 @@ Kamailio
 [[file:./images/kazoo_stack_kamailio.png]]
 #+END_CENTER
 
+** What is Kamailio
+
+#+BEGIN_CENTER
+Kamailio® (former OpenSER) is an Open Source SIP Server
+released under GPL, able to handle thousands of call
+setups per second.
+#+END_CENTER
+
+** What Is Kamailio
+
+#+BEGIN_CENTER
+[[file:./images/kamailio_history.png]]
+#+END_CENTER
+
+** What is Kamailio
+
+Robust and Performant SIP (RFC3261) Server
+
+Only signaling
+ - No media capabilities by default
+
+Scalable
+
+Asynchronous Processing
+
+In stateless mode, Kamailio can handle over 5000 call setups per second
+
+With 4GB memory, Kamailio can serve over 300000 online subscribers
+
+Mature Project (SER started September 2001)
+
+** How Kamailio Is Used
+
+ - SIP session border controller
+
+ - As a websocket gateway
+
+ - As an application server
+
+ - Provides core services we call roles
+
+** Installing Kamailio                                              :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Debian
+
+Taken from [[http://www.kamailio.org/wiki/packages/debs][Kamailio's installation instructions]]:
+
+1. Download and add the Kamailio GPG key:
+   #+BEGIN_EXAMPLE
+   $> apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 0xfb40d3e6508ea4c8
+   #+END_EXAMPLE
+2. Add the appropriate repo (example uses Jessie):
+   #+BEGIN_EXAMPLE
+   $> echo "deb http://deb.kamailio.org/kamailio jessie main" > /etc/apt/sources.list.d/kamailio.list
+   $> echo "deb-src http://deb.kamailio.org/kamailio jessie main" >> /etc/apt/sources.list.d/kamailio.list
+   #+END_EXAMPLE
+3. Update and install kamailio:
+   #+BEGIN_EXAMPLE
+   $> apt-get update
+   $> apt-get install kamailio kamailio-kazoo-modules kamailio-presence-modules
+   #+END_EXAMPLE
+
+*** CentOS
+
+Taken from [[https://dopensource.com/2016/05/10/kamailio-quick-install-guide/][dOpenSource's installation guide]]:
+1. Install the repo:
+   #+BEGIN_EXAMPLE
+   $> curl -O /etc/yum.repos.d/kamailio.repo \
+   http://download.opensuse.org/repositories/home:/kamailio:/v4.4.x-rpms/CentOS_6/home:kamailio:v4.4.x-rpms.repo
+   #+END_EXAMPLE
+2. Update and install kamailio:
+   #+BEGIN_EXAMPLE
+   $> yum update
+   $> yum install kamailio kamailio-kazoo-modules kamailio-presence-modules
+   #+END_EXAMPLE
+
+#+beamer: \framebreak
+
+*** General Setup
+
+1. Point kazoo configs to Kamailio configs
+   #+BEGIN_EXAMPLE
+   $> rm -rf /etc/kamailio
+   $> ln -s /etc/kazoo/kamailio /etc/kamailio
+   #+END_EXAMPLE
+
+#+beamer: \framebreak
+
+** Open /etc/kazoo/kamailio/local.cfg                               :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Enabled Roles                                                   :B_block:
+    :PROPERTIES:
+    :BEAMER_env: block
+    :END:
+
+#+BEGIN_CENTER
+#+INCLUDE: "/etc/kazoo/kamailio/local.cfg" example :lines "9-18"
+#+END_CENTER
+
+*** Disabled Roles                                                  :B_block:
+    :PROPERTIES:
+    :BEAMER_env: block
+    :END:
+
+#+BEGIN_CENTER
+#+INCLUDE: "/etc/kazoo/kamailio/local.cfg" example :lines "19-31"
+#+END_CENTER
+
+*** Change Hostname
+
+#+BEGIN_CENTER
+#+INCLUDE: "/etc/kazoo/kamailio/local.cfg" example :lines "35-37"
+#+END_CENTER
+
+*** Change IP Address
+
+#+BEGIN_CENTER
+#+INCLUDE: "/etc/kazoo/kamailio/local.cfg" example :lines "38-43"
+#+END_CENTER
+
+*** Change AMQP Address
+
+#+BEGIN_CENTER
+#+INCLUDE: "/etc/kazoo/kamailio/local.cfg" example :lines "44-48"
+#+END_CENTER
+
+*** Change WebSockets
+
+#+BEGIN_CENTER
+#+INCLUDE: "/etc/kazoo/kamailio/local.cfg" example :lines "49-55"
+#+END_CENTER
+
+*** UDP MTU
+
+#+BEGIN_CENTER
+#+INCLUDE: "/etc/kazoo/kamailio/local.cfg" example :lines "77-85"
+#+END_CENTER
+
+*** Multi-homed host
+
+#+BEGIN_CENTER
+#+INCLUDE: "/etc/kazoo/kamailio/local.cfg" example :lines "89-97"
+#+END_CENTER
+
+*** Listening for traffic
+
+#+BEGIN_CENTER
+#+INCLUDE: "/etc/kazoo/kamailio/local.cfg" example :lines "114-125"
+#+END_CENTER
+
+** Installing Kamailio                                              :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Start Kamailio
+#+BEGIN_EXAMPLE
+$> service kamailio start
+#+END_EXAMPLE
+
+*** Check if Kamailio is listening
+#+BEGIN_EXAMPLE
+$> netstat -naput | grep kamailio | grep -v ESTABLISHED
+tcp        0      0 1.2.3.4:5060           0.0.0.0:*                   LISTEN      9724/kamailio
+tcp        0      0 1.2.3.4:7000           0.0.0.0:*                   LISTEN      9724/kamailio
+udp        0      0 1.2.3.4:5060           0.0.0.0:*                               9013/kamailio
+udp        0      0 1.2.3.4:7000           0.0.0.0:*                               9013/kamailio
+#+END_EXAMPLE
+
+*** Check if Kamailio is connect to RabbitMQ
+
+Was it able to connect to RabbitMQ?
+ - Navigate to http://ip.addr:15672
+ - Do you see new connections?
+ - What about queues?
+
+** Dispatcher Role                                                  :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+The dispatcher config is found at =/etc/kazoo/kamailio/dbtext/dispatcher=
+
+*** Example Dispatcher Behaviour
+#+BEGIN_CENTER
+[[file:./images/kamailio_dispatcher.png]]
+#+END_CENTER
+
+*** Dispatcher Format
+
+| Set-ID | SIP URI | Flags |
+|--------+---------+-------|
+|    1   | sip:1.2.3.4:11000 | 0 |
+|    2   | sip:9.8.7.6:11000 | 0 |
+
+*** Dispatcher Set IDs
+
+|Set-ID|Description|
+|------+-----------|
+| 1 | Primary media servers to distribute calls to|
+| 2 | Secondary media servers to be used if no primary is available|
+| 3 | SIP URI of media servers not to be used for distribution but may forward though this proxy.|
+| 10 | Kamailio servers dedicated to handling presence|
+| 20 | Kamailio servers dedicated to handling registrations|
+
+*** Update the localhost IP to your public IP
+Without modification to the FreeSWITCH configuration (which will not be made in this training) it will listen to the public IP by default.
+#+BEGIN_EXAMPLE
+1 sip:your.ip:11000 0
+#+END_EXAMPLE
+
+*** Reload and check for your changes
+#+BEGIN_EXAMPLE
+$> kamctl fifo ds_reload
+$> kamctl fifo ds_list
+SET_NO:: 2
+SET:: 2
+        URI:: sip:9.8.7.6:11000 flags=AP priority=0 attrs=
+SET:: 1
+        URI:: sip:1.2.3.4:11000 flags=AP priority=0 attrs=
+#+END_EXAMPLE
+
+** NAT-Traversal Role                                               :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Corrects SIP traffic from clients behind NAT
+ - Contact header field is searched for RFC1918 addresses.
+ - Address in Via is compared against source IP address of signaling
+
+*** If client is determined to be NAT’d
+ - RPORT is forced
+ - Contact is modified to contain request's source address:port
+
+*** If SDP is present it is checked for RFC1918 addresses
+ - IP from origin description (o=) is modified to source address
+ - Media IP address (c=) is modified to source address
+
+** Registrar Role                                                   :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Handles SIP REGISTER method
+ - Fetches credentials from Kazoo via AMQP
+ - Stores successful registrations in Kazoo via AMQP
+
+*** Adds PATH headers
+
+*** If NAT-Traversal Role is enabled
+ - Corrects NAT’d registrations
+ - Sends OPTION pings every 30 seconds to NAT’d UA
+
 ** Thank You
 
 #+INCLUDE: "./frames/footer.org"
