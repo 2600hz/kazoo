@@ -10,52 +10,135 @@
 # Source function library.
 . /etc/rc.d/init.d/functions
 
-KZ_DIR="/opt/kazoo"
-KZ_APP=$(basename $0)
-KZ_APP=${KZ_APP#*-}
-LOCKFILE=${LOCKFILE-/var/lock/subsys/${KZ_APP}}
-USER="kazoo"
+NAME=$(basename $0)
+KAZOO_ROOT="/opt/kazoo"
+KAZOO_BIN="${KAZOO_ROOT}/bin/kazoo"
+USER="root"
+
+test -x $KAZOO_BIN || exit 0
+
 RETVAL=0
+set -e
+
+[ -f /etc/default/${NAME} ] && . /etc/default/${NAME}
+
+[ -f /etc/sysconfig/${NAME} ] && . /etc/sysconfig/${NAME}
+
+if [ "${NAME}" == "kazoo-applications" ]; then
+    NAME="kazoo_apps"
+else
+    NAME=${NAME#*-}
+fi
+
+# export
+export HOME="${KAZOO_ROOT}"
+export NAME_ARG="-name ${NAME}"
+export VMARGS_PATH=/etc/kazoo/vm.args
 
 # Check that networking is up.
 if [ "$NETWORKING" = "no" ]; then
     exit 0
 fi
 
-ensure_cookie () {
-   if [ ! -f /opt/kazoo/.erlang.cookie ] ; then
-        date +%s | sha256sum | base64 | head -c 32 > /opt/kazoo/.erlang.cookie
-   fi
-   chmod 400 /opt/kazoo/.erlang.cookie
-   chown ${USER}:daemon /opt/kazoo/.erlang.cookie
-}
-
 start() {
-    echo -n $"Starting ${KZ_APP}: "
+    echo -n $"Starting ${NAME}: "
 
-    cd ${KZ_DIR}
-    export HOME=${KZ_DIR}
-    export ERL_CRASH_DUMP=$(date +%s)_${KZ_APP}_erl_crash.dump
-    export ERL_LIBS="$ERL_LIBS":${KZ_DIR}/deps:${KZ_DIR}/core:${KZ_DIR}/applications
-    ensure_cookie
-    daemon --user=${USER} --pidfile="nofile" "erl -name ${KZ_APP} -args_file /etc/kazoo/vm.args -detached -s ${KZ_APP} >/dev/null &"
-    RETVAL=$?
-    echo
-    [ $RETVAL -eq 0 ] && touch ${LOCKFILE}
-    return $RETVAL
+    cd $KAZOO_ROOT
+    export CODE_LOADING_MODE=interactive
+    $KAZOO_BIN start  > /dev/null 2>&1;
+
+    for (( i=0; i<10; ++i )); do
+        OUT=`$KAZOO_BIN getpid`;
+        if [ $? == 0 ]; then PID=$OUT; break; fi
+        sleep 1;
+    done
+
+    if [ -z "$PID" ]; then
+        failure
+        RETVAL=1
+    else
+        success
+    fi
 }
 
 stop() {
-    echo -n $"Stopping $KZ_APP: "
-    pkill -f "\-name ${KZ_APP}"
-    RETVAL=$?
-    [ $RETVAL -eq 0 ] && rm ${LOCKFILE}
-    echo
+    echo -n $"Stopping ${NAME}: "
+
+    cd $KAZOO_ROOT
+    $KAZOO_BIN stop > /dev/null 2>&1;
+
+    if [ $? != 0 ]; then
+        failure
+        RETVAL=1
+    else
+        success
+    fi
 }
 
 restart() {
     stop
     start
+}
+
+status() {
+    cd $KAZOO_ROOT
+    $KAZOO_BIN eval "kz_nodes:status()." | sed \$d
+
+    if [ $? != 0 ]; then
+        (>&2 echo "${NAME} is not running!")
+        RETVAL=1
+    fi
+}
+
+connect() {
+    cd $KAZOO_ROOT
+    export COOKIE_ARG="-setcookie `$KAZOO_BIN eval 'erlang:get_cookie()'`"
+    $KAZOO_BIN remote_console
+    if [ $? != 0 ]; then
+        (>&2 echo "${NAME} is not running!")
+        RETVAL=1
+    fi
+}
+
+attach() {
+    cd $KAZOO_ROOT
+    $KAZOO_BIN attach
+
+    if [ $? != 0 ]; then
+        (>&2 echo "${NAME} is not running!")
+        RETVAL=1
+    fi
+}
+
+ping() {
+    cd $KAZOO_ROOT
+    export COOKIE_ARG="-setcookie `$KAZOO_BIN eval 'erlang:get_cookie()'`"
+    $KAZOO_BIN ping
+    if [ $? != 0 ]; then
+        (>&2 echo "${NAME} is not running!")
+        RETVAL=1
+    fi
+}
+
+pid() {
+    cd $KAZOO_ROOT
+    $KAZOO_BIN pid
+    if [ $? != 0 ]; then
+        (>&2 echo "${NAME} is not running!")
+        RETVAL=1
+    fi
+}
+
+foreground() {
+    cd $KAZOO_ROOT
+    export CODE_LOADING_MODE=interactive
+    $KAZOO_BIN foreground
+}
+
+console() {
+    cd $KAZOO_ROOT
+    export CODE_LOADING_MODE=interactive
+    $KAZOO_BIN console
 }
 
 case "$1" in
@@ -66,18 +149,31 @@ case "$1" in
         stop
         ;;
     status)
-        export HOME=${KZ_DIR}
-        sup -n${KZ_APP} kazoo_maintenance nodes
-        RETVAL=$?
+        status
         ;;
-    restart|reload)
+    restart)
         restart
         ;;
-    condrestart)
-        [ ! -e ${LOCKFILE} ] && restart
+    connect)
+        connect
         ;;
+    attach)
+       attach
+       ;;
+    ping)
+       ping
+       ;;
+    pid)
+       pid
+       ;;
+    foreground)
+       foreground
+       ;;
+    console)
+       console
+       ;;
     *)
-        echo $"Usage: $0 (start|stop|restart|status)"
+        echo $"Usage: $0 (start|stop|restart|status|connect|attach|ping|pid|foreground|console)"
         exit 1
 esac
 
