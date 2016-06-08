@@ -11,7 +11,6 @@
                  , kazoo_globals
 
                  , lager
-                 , ecsv
                  ]},
   {mod, {kazoo_tasks_app, []}}
  ]}.

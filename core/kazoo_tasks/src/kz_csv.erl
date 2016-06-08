@@ -199,7 +199,7 @@ associator_verify_test() ->
     FAssoc = ?MODULE:associator(CSVHeader, OrderedFields, Verifier),
     ?assertEqual('false', FAssoc(CSVRow)).
 
-rows_test_() ->
+take_row_test_() ->
     CSV1 = <<"a\r\nb\nc\nd\n\re\r\r">>,
     CSV2 = <<"b\nc\nd\n\re\r\r">>,
     CSV3 = <<"c\nd\n\re\r\r">>,

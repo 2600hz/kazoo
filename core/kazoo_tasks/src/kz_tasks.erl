@@ -799,9 +799,9 @@ find_input_errors(API, Input=?NE_BINARY) ->
                                 [iolist_to_binary(kz_util:iolist_join(",", Row)) | Es]
                         end
                 end,
-            case ecsv:process_csv_binary_with(InputData, Unsets, []) of
-                {'ok', []} -> Errors;
-                {'ok', MMVs} -> Errors#{<<"missing_mandatory_values">> => lists:reverse(MMVs)}
+            case kz_csv:fold(InputData, Unsets, []) of
+                [] -> Errors;
+                MMVs -> Errors#{<<"missing_mandatory_values">> => lists:reverse(MMVs)}
             end
     end;
 
@@ -851,8 +851,7 @@ find_API_errors(API, Mandatory, Fields) ->
 -spec are_mandatories_unset(nonempty_list(boolean()), nonempty_list(ne_binary())) -> boolean().
 are_mandatories_unset(IsMandatory, Row) ->
     MapF = fun (Mandatory, Value) ->
-                   %% Note: ecsv's empty cell is "".
-                   Mandatory andalso "" == Value
+                   Mandatory andalso 'undefined' == Value
            end,
     RedF = fun erlang:'or'/2,
     lists:foldl(RedF, 'false', lists:zipwith(MapF, IsMandatory, Row)).
