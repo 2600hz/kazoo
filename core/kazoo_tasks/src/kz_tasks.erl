@@ -581,7 +581,7 @@ handle_call_start_task(Task=#{ id := TaskId
                          },
             lager:debug("FIXME using ensure_saved for task ~s", [TaskId]),
             {'ok', JObj} = ensure_save_task(Task1),
-            State1 = add_task(Task1, remove_task(TaskId, State)),
+            State1 = add_task(Task1, State),
             ?REPLY_FOUND(State1, JObj)
     catch
         _E:_R ->
