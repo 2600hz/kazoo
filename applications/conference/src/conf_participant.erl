@@ -14,7 +14,6 @@
 %% API
 -export([start_link/1]).
 -export([relay_amqp/2]).
--export([handle_participants_event/2]).
 -export([handle_conference_error/2]).
 
 -export([consume_call_events/1]).
@@ -30,6 +29,9 @@
 -export([deaf/1, undeaf/1, toggle_deaf/1]).
 -export([hangup/1]).
 -export([dtmf/2]).
+-export([state/1]).
+
+-export([handle_participant_event/2]).
 
 %% gen_server callbacks
 -export([init/1
@@ -47,10 +49,10 @@
 
 -define(RESPONDERS, [{{?MODULE, 'relay_amqp'}
                       ,[{<<"call_event">>, <<"*">>}]
+                     },
+                     {{?MODULE, 'handle_participant_event'}
+                      ,[{<<"conference">>, <<"participant_event">>}]
                      }
-                     ,{{?MODULE, 'handle_participants_event'}
-                       ,[{<<"conference">>, <<"participants_event">>}]
-                      }
                      ,{{?MODULE, 'handle_conference_error'}
                        ,[{<<"conference">>, <<"error">>}]
                       }
@@ -120,6 +122,9 @@ join_local(Srv) -> gen_listener:cast(Srv, 'join_local').
 -spec join_remote(pid(), kz_json:object()) -> 'ok'.
 join_remote(Srv, JObj) -> gen_listener:cast(Srv, {'join_remote', JObj}).
 
+-spec state(pid()) -> 'ok'.
+state(Srv) -> gen_listener:call(Srv, {'state'}).
+
 -spec mute(pid()) -> 'ok'.
 mute(Srv) -> gen_listener:cast(Srv, 'mute').
 
@@ -160,16 +165,6 @@ relay_amqp(JObj, Props) ->
             Srv = props:get_value('server', Props),
             dtmf(Srv, Digit)
     end.
-
--spec handle_participants_event(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_participants_event(JObj, Props) ->
-    'true' = kapi_conference:participants_event_v(JObj),
-    _ = [kapps_call_command:relay_event(Pid, JObj)
-         || Pid <- props:get_value('call_event_consumers', Props, []),
-            is_pid(Pid)
-        ],
-    Srv = props:get_value('server', Props),
-    gen_listener:cast(Srv, {'sync_participant', JObj}).
 
 -spec handle_conference_error(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_conference_error(JObj, Props) ->
@@ -224,6 +219,8 @@ handle_call({'get_discovery_event'}, _, #participant{discovery_event=DE}=P) ->
     {'reply', {'ok', DE}, P};
 handle_call({'get_call'}, _, #participant{call=Call}=P) ->
     {'reply', {'ok', Call}, P};
+handle_call({'state'}, _, Participant) ->
+    {reply, Participant, Participant};
 handle_call(_Request, _, P) ->
     {'reply', {'error', 'unimplemented'}, P}.
 
@@ -271,10 +268,11 @@ handle_cast({'add_consumer', C}, #participant{call_event_consumers=Cs}=P) ->
 handle_cast({'remove_consumer', C}, #participant{call_event_consumers=Cs}=P) ->
     lager:debug("removing call event consumer ~p", [C]),
     {'noreply', P#participant{call_event_consumers=[C1 || C1 <- Cs, C=/=C1]}};
-handle_cast({'set_conference', Conference}, Participant) ->
+handle_cast({'set_conference', Conference}, Participant=#participant{call=Call}) ->
     ConferenceId = kapps_conference:id(Conference),
+    CallId = kapps_call:call_id(Call),
     lager:debug("received conference data for conference ~s", [ConferenceId]),
-    gen_listener:add_binding(self(), 'conference', [{'restrict_to', [{'conference', ConferenceId}]}]),
+    gen_listener:add_binding(self(), 'conference', [{ 'restrict_to', [{'conference', {ConferenceId,CallId}}] }]),
     {'noreply', Participant#participant{conference=Conference}};
 handle_cast({'set_discovery_event', DE}, #participant{}=Participant) ->
     {'noreply', Participant#participant{discovery_event=DE}};
@@ -376,6 +374,9 @@ handle_cast(_Cast, Participant) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'event', [_CallId | Props]}, Participant) ->
+    _Action = props:get_value(<<"Action">>, Props),
+    {'noreply', Participant};
 handle_info({'EXIT', Consumer, _R}, #participant{call_event_consumers=Consumers}=P) ->
     lager:debug("call event consumer ~p died: ~p", [Consumer, _R]),
     Cs = [C || C <- Consumers, C =/= Consumer],
@@ -447,51 +448,31 @@ code_change(_OldVsn, Participant, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec find_participant(kz_proplist(), ne_binary()) ->
-                              {'ok', kz_json:object()} |
-                              {'error', 'not_found'}.
-find_participant([], _) -> {'error', 'not_found'};
-find_participant([Participant|Participants], CallId) ->
-    case kz_json:get_value(<<"Call-ID">>, Participant) of
-        CallId -> {'ok', Participant};
-        _Else -> find_participant(Participants, CallId)
-    end.
 
 -spec sync_participant(kz_json:objects(), kapps_call:call(), participant()) ->
                               participant().
 sync_participant(JObj, Call, #participant{in_conference='false'
                                           ,conference=Conference
                                          }=Participant) ->
-    Participants = kz_json:get_value(<<"Participants">>, JObj, []),
+    Participator = kz_json:get_value(<<"Participant">>, JObj),
     IsModerator = kapps_conference:moderator(Conference),
-    case find_participant(Participants, kapps_call:call_id(Call)) of
-        {'ok', Moderator} when IsModerator ->
+    case Participator of
+        Moderator when IsModerator ->
             Focus = kz_json:get_value(<<"Focus">>, JObj),
             C = kapps_conference:set_focus(Focus, Conference),
             sync_moderator(Moderator, Call, Participant#participant{conference=C});
-        {'ok', Member} ->
+        Member ->
             Focus = kz_json:get_value(<<"Focus">>, JObj),
             C = kapps_conference:set_focus(Focus, Conference),
-            sync_member(Member, Call, Participant#participant{conference=C});
-        {'error', 'not_found'} ->
-            lager:debug("caller not found in the list of conference participants"),
-            Focus = kz_json:get_value(<<"Focus">>, JObj),
-            C = kapps_conference:set_focus(Focus, Conference),
-            Participant#participant{conference=C}
+            sync_member(Member, Call, Participant#participant{conference=C})
     end;
-sync_participant(JObj, Call, #participant{in_conference='true'}=Participant) ->
-    Participants = kz_json:get_value(<<"Participants">>, JObj, []),
-    case find_participant(Participants, kapps_call:call_id(Call)) of
-        {'ok', Participator} ->
-            lager:debug("caller has is still in the conference"),
-            Participant#participant{in_conference='true'
-                                    ,muted=(not kz_json:is_true(<<"Speak">>, Participator))
-                                    ,deaf=(not kz_json:is_true(<<"Hear">>, Participator))
-                                   };
-        {'error', 'not_found'} ->
-            lager:debug("participant is not present in conference anymore, terminating"),
-            Participant
-    end.
+sync_participant(JObj, _Call, #participant{in_conference='true'}=Participant) ->
+    Participator = kz_json:get_value(<<"Participant">>, JObj),
+    lager:debug("caller has is still in the conference"),
+    Participant#participant{in_conference='true'
+                            ,muted=(not kz_json:is_true(<<"Speak">>, Participator))
+                            ,deaf=(not kz_json:is_true(<<"Hear">>, Participator))
+                            }.
 
 -spec sync_moderator(kz_json:object(), kapps_call:call(), participant()) -> participant().
 sync_moderator(JObj, Call, #participant{conference=Conference
@@ -694,3 +675,9 @@ play_entry_tone_media(Tone, Conference) ->
         Media = ?NE_BINARY -> kapps_conference_command:play_command(Media);
         _Else -> kapps_conference_command:play_command(Tone)
     end.
+
+-spec handle_participant_event(kz_json:object(), kz_proplist()) -> 'ok'.
+handle_participant_event(JObj, Props) ->
+    Srv = props:get_value('server', Props),
+    gen_listener:cast(Srv, {'sync_participant', JObj}),
+    ok.
