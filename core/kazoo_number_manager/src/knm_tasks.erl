@@ -160,7 +160,7 @@ assign_to(Props, Number, AccountId, AuthBy0) ->
              end,
     Options = [{'auth_by', AuthBy}
               ],
-    knm_number:move(Number, AccountId, Options).
+    {'ok', _} = knm_number:move(Number, AccountId, Options).
 
 -spec delete(kz_proplist(), ne_binary(), api_binary()) -> any().
 delete(Props, Number, AuthBy0) ->
@@ -170,7 +170,7 @@ delete(Props, Number, AuthBy0) ->
              end,
     Options = [{'auth_by', AuthBy}
               ],
-    knm_number:release(Number, Options).
+    {'ok', _} = knm_number:release(Number, Options).
 
 -spec reserve(kz_proplist(), ne_binary(), ne_binary(), api_binary()) -> any().
 reserve(Props, Number, AccountId, AuthBy0) ->
@@ -181,7 +181,7 @@ reserve(Props, Number, AccountId, AuthBy0) ->
     Options = [{'auth_by', AuthBy}
               ,{'assign_to', AccountId}
               ],
-    knm_number:reserve(Number, Options).
+    {'ok', _} = knm_number:reserve(Number, Options).
 
 -spec add(kz_proplist(), ne_binary(), ne_binary(), api_binary(), api_binary()) -> any().
 add(Props, Number, AccountId, AuthBy0, ModuleName0) ->
@@ -193,7 +193,7 @@ add(Props, Number, AccountId, AuthBy0, ModuleName0) ->
               ,{'assign_to', AccountId}
               ,{'module_name', ModuleName0}
               ],
-    knm_number:create(Number, Options).
+    {'ok', _} = knm_number:create(Number, Options).
 
 %% -spec update_features(kz_proplist(), ne_binary(), api_binary(), ...) -> any().
 %% update_features(Props, Number, CNAMInbound0, ...) ->
