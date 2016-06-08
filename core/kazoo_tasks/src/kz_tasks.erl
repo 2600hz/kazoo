@@ -417,13 +417,8 @@ handle_cast({'worker_terminated', TaskId, TotalSucceeded}, State) ->
     Task1 = Task#{ finished => kz_util:current_tstamp()
                  , total_rows_succeeded => TotalSucceeded
                  },
-    'ok' = case save_task(Task1) of
-               {'ok', _TaskJObj} -> 'ok';
-               {'error', 'conflict'} ->
-                   lager:debug("FIXME using ensure_saved for task ~s", [TaskId]),
-                   {'ok', _TaskJObj} = ensure_save_task(Task1),
-                   'ok'
-           end,
+    lager:debug("FIXME using ensure_saved for task ~s", [TaskId]),
+    {'ok', _TaskJObj} = ensure_save_task(Task1),
     State1 = remove_task(TaskId, State),
     {'noreply', State1};
 
@@ -451,13 +446,8 @@ handle_info({'EXIT', Pid, _Reason}, State) ->
             Task1 = Task#{ finished => kz_util:current_tstamp()
                          , total_rows_succeeded => 0
                          },
-            'ok' = case save_task(Task1) of
-                       {'ok', _TaskJObj} -> 'ok';
-                       {'error', 'conflict'} ->
-                           lager:debug("FIXME using ensure_saved for task ~s", [TaskId]),
-                           {'ok', _TaskJObj} = ensure_save_task(Task1),
-                           'ok'
-                   end,
+            lager:debug("FIXME using ensure_saved for task ~s", [TaskId]),
+            {'ok', _TaskJObj} = ensure_save_task(Task1),
             State1 = remove_task(TaskId, State),
             {'noreply', State1}
         end;
@@ -589,14 +579,8 @@ handle_call_start_task(Task=#{ id := TaskId
                          , worker_pid => Pid
                          , worker_node => Node %%FIXME: start worker on Node for real
                          },
-            JObj =
-                case save_task(Task1) of
-                    {'ok', TaskJObj} -> TaskJObj;
-                    {'error', 'conflict'} ->
-                        lager:debug("FIXME using ensure_saved for task ~s", [TaskId]),
-                        {'ok', TaskJObj} = ensure_save_task(Task1),
-                        TaskJObj
-                end,
+            lager:debug("FIXME using ensure_saved for task ~s", [TaskId]),
+            {'ok', JObj} = ensure_save_task(Task1),
             State1 = add_task(Task1, remove_task(TaskId, State)),
             ?REPLY_FOUND(State1, JObj)
     catch
