@@ -771,26 +771,33 @@ apply_dialplan(Number, DialPlan) ->
 maybe_apply_dialplan([], _, Number) -> Number;
 maybe_apply_dialplan([<<"system">>], DialPlan, Number) ->
     SystemDialPlans = load_system_dialplans(wh_json:get_value(<<"system">>, DialPlan)),
-    SystemRegexs = wh_json:get_keys(SystemDialPlans),
+    SystemRegexs = lists:sort(wh_json:get_keys(SystemDialPlans)),
     maybe_apply_dialplan(SystemRegexs, SystemDialPlans, Number);
 maybe_apply_dialplan([<<"system">>|Regexs], DialPlan, Number) ->
     maybe_apply_dialplan(Regexs ++ [<<"system">>], DialPlan, Number);
-maybe_apply_dialplan([Regex|Regexs], DialPlan, Number) ->
+maybe_apply_dialplan([Key|_]=Keys, DialPlan, Number) ->
+    case wh_json:get_value([Key, <<"regex">>], DialPlan) of
+        'undefined' -> apply_dialplan(Key, Keys, DialPlan, Number);
+        Regex -> apply_dialplan(Regex, Keys, DialPlan, Number)
+    end.
+
+-spec apply_dialplan(ne_binary(), wh_json:keys(), wh_json:object(), ne_binary()) -> ne_binary().
+apply_dialplan(Regex, [Key|Keys], DialPlan, Number) ->
     case re:run(Number, Regex, [{'capture', 'all', 'binary'}]) of
         'nomatch' ->
-            maybe_apply_dialplan(Regexs, DialPlan, Number);
+            maybe_apply_dialplan(Keys, DialPlan, Number);
         'match' ->
             Number;
         {'match', Captures} ->
             Root = lists:last(Captures),
-            Prefix = wh_json:get_binary_value([Regex, <<"prefix">>], DialPlan, <<>>),
-            Suffix = wh_json:get_binary_value([Regex, <<"suffix">>], DialPlan, <<>>),
+            Prefix = wh_json:get_binary_value([Key, <<"prefix">>], DialPlan, <<>>),
+            Suffix = wh_json:get_binary_value([Key, <<"suffix">>], DialPlan, <<>>),
             N = <<Prefix/binary, Root/binary, Suffix/binary>>,
-            case wh_json:get_value([Regex, <<"dialplan">>], DialPlan) of
-                'undefined' -> maybe_apply_dialplan(Regexs, DialPlan, N);
+            case wh_json:get_value([Key, <<"dialplan">>], DialPlan) of
+                'undefined' -> maybe_apply_dialplan(Keys, DialPlan, N);
                 InnerPlan -> InnerRegexs = wh_json:get_keys(InnerPlan),
                              N1 = maybe_apply_dialplan(InnerRegexs, InnerPlan, N),
-                             maybe_apply_dialplan(Regexs, DialPlan, N1)
+                             maybe_apply_dialplan(Keys, DialPlan, N1)
             end
     end.
 
@@ -803,13 +810,37 @@ load_system_dialplans(Names) ->
 -spec fold_system_dialplans(ne_binaries()) ->
                                    fun(({ne_binary(), wh_json:object()}, wh_json:object()) -> wh_json:object()).
 fold_system_dialplans(Names) ->
-    fun({Key, Val}, Acc) ->
-            Name = wh_util:to_lower_binary(wh_json:get_value(<<"name">>, Val)),
-            case lists:member(Name, Names) of
-                'true' -> wh_json:set_value(Key, Val, Acc);
-                'false' -> Acc
-            end
+    fun({Key, Val}, Acc) when is_list(Val) ->
+        lists:foldl(fun(ValElem, A) -> maybe_dialplan_suits({Key, ValElem}, A, Names) end, Acc, Val);
+       ({Key, Val}, Acc) ->
+        maybe_dialplan_suits({Key, Val}, Acc, Names)
     end.
+
+-spec maybe_dialplan_suits({ne_binary(), wh_json:object()} ,wh_json:object(), ne_binaries()) -> wh_json:object().
+maybe_dialplan_suits({Key, Val}=KV, Acc, Names) ->
+    Name = wh_util:to_lower_binary(wh_json:get_value(<<"name">>, Val)),
+    case lists:member(Name, Names) of
+        'true' -> wh_json:set_value(Key, Val, Acc);
+        'false' -> maybe_system_dialplan_name(KV, Acc, Names)
+    end.
+
+-spec maybe_system_dialplan_name({ne_binary(), wh_json:object()} ,wh_json:object(), ne_binaries()) -> wh_json:object().
+maybe_system_dialplan_name({Key, Val}, Acc, Names) ->
+    Name = wh_util:to_lower_binary(Key),
+    case lists:member(Name, Names) of
+        'true' ->
+            N = wh_util:to_binary(index_of(Name, Names)),
+            wh_json:set_value(<<N/binary, "-", Key/binary>>, Val, Acc);
+        'false' -> Acc
+    end.
+
+-spec index_of(ne_binary(), list()) -> api_integer().
+index_of(Value, List) ->
+   Map = lists:zip(List, lists:seq(1, length(List))),
+   case dict:find(Value, dict:from_list(Map)) of
+      {ok, Index} -> Index;
+      error -> 'undefined'
+   end.
 
 -spec encryption_method_map(api_object(), api_binaries() | wh_json:object()) -> api_object().
 encryption_method_map(JObj, []) -> JObj;
