@@ -50,6 +50,7 @@
 -define(REALM, [?SIP, <<"realm">>]).
 -define(IP, [?SIP, <<"ip">>]).
 -define(INVITE_FORMAT, [?SIP, <<"invite_format">>]).
+-define(ROUTE, [?SIP, <<"route">>]).
 -define(CUSTOM_SIP_HEADERS, <<"custom_sip_headers">>).
 -define(CUSTOM_SIP_HEADERS_KV_ONLY, [?SIP, ?CUSTOM_SIP_HEADERS]).
 -define(CUSTOM_SIP_HEADERS_IN, [?SIP, ?CUSTOM_SIP_HEADERS, <<"in">>]).
@@ -128,7 +129,7 @@ sip_route(DeviceJObj) ->
     sip_route(DeviceJObj, 'undefined').
 
 sip_route(DeviceJObj, Default) ->
-    kz_json:get_value(?IP, DeviceJObj, Default).
+    kz_json:get_value(?ROUTE, DeviceJObj, Default).
 
 -spec custom_sip_headers_inbound(doc()) -> api_object().
 -spec custom_sip_headers_inbound(doc(), Default) -> kz_json:object() | Default.
@@ -191,8 +192,8 @@ set_sip_invite_format(DeviceJObj, InviteFormat) ->
     kz_json:set_value(?INVITE_FORMAT, InviteFormat, DeviceJObj).
 
 -spec set_sip_route(doc(), ne_binary()) -> doc().
-set_sip_route(DeviceJObj, Ip) ->
-    kz_json:set_value(?IP, Ip, DeviceJObj).
+set_sip_route(DeviceJObj, Route) ->
+    kz_json:set_value(?ROUTE, Route, DeviceJObj).
 
 -spec set_custom_sip_headers_inbound(doc(), kz_json:object()) -> doc().
 set_custom_sip_headers_inbound(Device, Headers) ->
