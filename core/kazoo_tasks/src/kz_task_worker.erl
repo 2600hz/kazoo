@@ -121,37 +121,41 @@ loop(State=#state{task_id = TaskId
             _ = erase(?IN),
             'stop';
         {Row, CSVRest} ->
-            Success = try_apply(Module, Function, ExtraArgs, FAssoc, Row),
-            NewState = State#state{total_succeeded = TotalSucceeded + Success
-                                  },
+            NewState =
+                case is_task_successful(Module, Function, ExtraArgs, FAssoc, Row) of
+                    'false' -> State;
+                    'true' ->
+                        State#state{total_succeeded = TotalSucceeded + 1
+                                   }
+                end,
             _ = put(?IN, CSVRest),
             loop(NewState)
     end.
 
 %% @private
--spec try_apply(module(), atom(), list(), kz_csv:fassoc(), kz_csv:row()) -> non_neg_integer().
-try_apply(Module, Function, ExtraArgs, FAssoc, RawRow) ->
+-spec is_task_successful(module(), atom(), list(), kz_csv:fassoc(), kz_csv:row()) -> boolean().
+is_task_successful(Module, Function, ExtraArgs, FAssoc, RawRow) ->
     try FAssoc(RawRow) of
         {'true', Args} ->
             try
                 TaskReturn = apply(Module, Function, [ExtraArgs|Args]),
                 store_error(TaskReturn, RawRow),
-                case TaskReturn of 'ok' -> 1; _ -> 0 end
+                'ok' == TaskReturn
             catch
                 _E:_R ->
                     kz_util:log_stacktrace(),
                     store_error(<<"error">>, RawRow),
-                    0
+                    'false'
             end;
         'false' ->
             lager:error("verifier failed on ~p", [RawRow]),
             store_error(<<"typecheck">>, RawRow),
-            0
+            'false'
     catch
         _:_R ->
             lager:error("verifier crashed: ~p", [_R]),
             store_error(<<"internal">>, RawRow),
-            0
+            'false'
     end.
 
 %% @private
