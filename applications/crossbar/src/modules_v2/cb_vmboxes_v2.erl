@@ -24,6 +24,7 @@
          ,delete/2, delete/3, delete/4
 
          ,migrate/1
+         ,acceptable_content_types/0
          ,finish_request/1
         ]).
 
@@ -34,7 +35,8 @@
 
 -define(MESSAGES_RESOURCE, ?VM_KEY_MESSAGES).
 -define(BIN_DATA, <<"raw">>).
--define(MEDIA_MIME_TYPES, [{<<"application">>, <<"octet-stream">>}]).
+-define(MEDIA_MIME_TYPES, [{<<"application">>, <<"octet-stream">>}
+                           ,{<<"application">>, <<"zip">>}]).
 
 %%%===================================================================
 %%% API
@@ -105,6 +107,9 @@ resource_exists(_, ?MESSAGES_RESOURCE, _, ?BIN_DATA) -> 'true'.
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec acceptable_content_types() -> kz_proplist().
+acceptable_content_types() -> ?MEDIA_MIME_TYPES.
+
 -spec content_types_accepted(cb_context:context(), path_token(), path_token(), path_token()) ->
                                     cb_context:context().
 content_types_accepted(Context, _VMBox, ?MESSAGES_RESOURCE, ?BIN_DATA) ->
@@ -124,9 +129,7 @@ content_types_provided_for_vm_download(Context, ?HTTP_GET) ->
     CTP = [{'to_binary', ?MEDIA_MIME_TYPES}],
     cb_context:set_content_types_provided(Context, CTP);
 content_types_provided_for_vm_download(Context, ?HTTP_POST) ->
-    CTP = [{'send_file', [{<<"application">>, <<"zip">>}]}
-           ,{'send_file', ?MEDIA_MIME_TYPES}
-          ],
+    CTP = [{'send_file', ?MEDIA_MIME_TYPES}],
     cb_context:set_content_types_provided(Context, CTP);
 content_types_provided_for_vm_download(Context, _Verb) ->
     Context.
@@ -670,11 +673,11 @@ save_attachments_to_file([Id|Ids], BoxId, Context, Timezone, WorkDir) ->
     try save_attachment_to_file(Id, BoxId, Context, Timezone, WorkDir) of
         'ok' -> save_attachments_to_file(Ids, BoxId, Context, Timezone, WorkDir);
         {'error', Error} ->
-            del_dir(WorkDir),
+            _ = del_dir(WorkDir),
             crossbar_doc:handle_couch_mgr_errors(Error, Id, Context)
     catch
         _:_ ->
-            del_dir(WorkDir),
+            _ = del_dir(WorkDir),
             cb_context:add_system_error('unspecified_fault', Context)
     end.
 
@@ -702,7 +705,7 @@ save_attachment_to_file(MsgId, BoxId, Context, Timezone, WorkDir) ->
         {'error', _}=E -> E
     end.
 
--spec maybe_create_zip_file(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec maybe_create_zip_file(string(), cb_context:context()) -> cb_context:context().
 maybe_create_zip_file(WorkDir, Context) ->
     Files = [kz_util:to_list(F) || F <- filelib:wildcard("*", WorkDir)],
     try Files =/= []
@@ -715,11 +718,11 @@ maybe_create_zip_file(WorkDir, Context) ->
     catch
         _T:_E ->
             lager:debug("failed to generate a zip file of voicemail messages: ~p:~p", [_T, _E]),
-            del_dir(WorkDir),
+            _ = del_dir(WorkDir),
             cb_context:add_system_error('unspecified_fault', Context)
     end.
 
--spec create_zip_file(ne_binary(), [string()], cb_context:context()) -> cb_context:context().
+-spec create_zip_file(string(), [string()], cb_context:context()) -> cb_context:context().
 create_zip_file(WorkDir, Files, Context) ->
     ZipName = lists:concat([kz_util:to_list(cb_context:req_id(Context)), ".zip"]),
     ZipPath = ["/tmp/", ZipName],
