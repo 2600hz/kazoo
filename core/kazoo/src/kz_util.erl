@@ -1509,7 +1509,7 @@ write_file(Filename, Bytes, Modes) ->
     case file:write_file(Filename, Bytes, Modes) of
         'ok' -> 'ok';
         {'error', _}=_E ->
-            lager:debug("writing file ~s (~p) failed : ~p", [Filename, Modes, _E])
+            lager:error("writing file ~s (~p) failed : ~p", [Filename, Modes, _E])
     end.
 
 %% @public
@@ -1518,7 +1518,7 @@ delete_file(Filename) ->
     case file:delete(Filename) of
         'ok' -> 'ok';
         {'error', _}=_E ->
-            lager:debug("deleting file ~s failed : ~p", [Filename, _E])
+            lager:error("deleting file ~s failed : ~p", [Filename, _E])
     end.
 
 %% @public
@@ -1527,7 +1527,7 @@ make_dir(Filename) ->
     case file:make_dir(Filename) of
         'ok' -> 'ok';
         {'error', _}=_E ->
-            lager:debug("creating directory ~s failed : ~p", [Filename, _E])
+            lager:error("creating directory ~s failed : ~p", [Filename, _E])
     end.
 
 normalize_amqp_uri(URI) ->
