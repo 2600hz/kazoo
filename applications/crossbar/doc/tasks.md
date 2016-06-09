@@ -147,7 +147,7 @@ curl -v -X PUT \
     "data": {
         "cause": "{CATEGORY}",
         "message": "bad identifier",
-        "tip": "No APIs known yet: GET /v2/tasks then try again!"
+        "tip": "No APIs known yet: please try again in a second."
     },
     "error": "404",
     "message": "bad_identifier",

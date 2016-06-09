@@ -463,7 +463,8 @@ load_errors_attachment(Context, TaskId) ->
 %% @private
 -spec no_categories(cb_context:context(), ne_binary()) -> cb_context:context().
 no_categories(Context, Id) ->
-    Msg = kz_json:from_list([{<<"tip">>, <<"No APIs known yet: GET /v2/tasks then try again!">>}
+    Msg = kz_json:from_list([{<<"tip">>, <<"No APIs known yet: please try again in a second.">>}
                             ,{<<"cause">>, Id}
                             ]),
+    _ = kz_util:spawn(fun kz_tasks:help/0),
     cb_context:add_system_error('bad_identifier', Msg, Context).
