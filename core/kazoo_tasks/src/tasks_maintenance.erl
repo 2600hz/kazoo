@@ -23,14 +23,14 @@
 help() ->
     print_json(kz_tasks:help()).
 
--spec help(text() | ne_binary()) -> 'no_return'.
+-spec help(text()) -> 'no_return'.
 help(Category) ->
     case kz_tasks:help(Category) of
         {'ok', JObj} -> print_json(JObj);
         {'error', Reason} -> print_error(Reason)
     end.
 
--spec help(text() | ne_binary(), text() | ne_binary()) -> 'no_return'.
+-spec help(text(), text()) -> 'no_return'.
 help(Category, Action) ->
     case kz_tasks:help(Category, Action) of
         {'ok', JObj} -> print_json(JObj);
@@ -42,35 +42,35 @@ tasks() ->
     Tasks = kz_tasks:all(),
     print_json(Tasks).
 
--spec tasks(text() | ne_binary()) -> 'no_return'.
+-spec tasks(text()) -> 'no_return'.
 tasks(Account) ->
     AccountId = kz_util:format_account_id(Account),
     Tasks = kz_tasks:all(AccountId),
     print_json(Tasks).
 
--spec task(text() | kz_tasks:task_id()) -> 'no_return'.
+-spec task(text()) -> 'no_return'.
 task(TaskId) ->
     case kz_tasks:read(TaskId) of
         {'ok', JObj} -> print_json(JObj);
         {'error', Reason} -> print_error(Reason)
     end.
 
--spec task_csv(text() | kz_tasks:task_id()) -> 'no_return'.
+-spec task_csv(text()) -> 'no_return'.
 task_csv(TaskId) ->
     attachment(TaskId, ?KZ_TASKS_ATTACHMENT_NAME_IN).
 
--spec task_errors(text() | kz_tasks:task_id()) -> 'no_return'.
+-spec task_errors(text()) -> 'no_return'.
 task_errors(TaskId) ->
     attachment(TaskId, ?KZ_TASKS_ATTACHMENT_NAME_OUT).
 
--spec start(text() | kz_tasks:task_id()) -> 'no_return'.
+-spec start(text()) -> 'no_return'.
 start(TaskId) ->
     case kz_tasks:start(TaskId) of
         {'ok', StartedTask} -> print_json(StartedTask);
         {'error', Reason} -> print_error(Reason)
     end.
 
--spec remove(text() | kz_tasks:task_id()) -> 'no_return'.
+-spec remove(text()) -> 'no_return'.
 remove(TaskId) ->
     case kz_tasks:remove(TaskId) of
         {'ok', RemovedTask} -> print_json(RemovedTask);
