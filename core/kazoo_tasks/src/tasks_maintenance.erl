@@ -8,6 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(tasks_maintenance).
 
+-export([help/0, help/1, help/2]).
 -export([tasks/0, tasks/1]).
 -export([task/1, task_csv/1, task_errors/1]).
 -export([start/1]).
@@ -17,6 +18,24 @@
 
 
 %%% API
+
+-spec help() -> 'no_return'.
+help() ->
+    print_json(kz_tasks:help()).
+
+-spec help(text() | ne_binary()) -> 'no_return'.
+help(Category) ->
+    case kz_tasks:help(Category) of
+        {'ok', JObj} -> print_json(JObj);
+        {'error', Reason} -> print_error(Reason)
+    end.
+
+-spec help(text() | ne_binary(), text() | ne_binary()) -> 'no_return'.
+help(Category, Action) ->
+    case kz_tasks:help(Category, Action) of
+        {'ok', JObj} -> print_json(JObj);
+        {'error', Reason} -> print_error(Reason)
+    end.
 
 -spec tasks() -> 'no_return'.
 tasks() ->
