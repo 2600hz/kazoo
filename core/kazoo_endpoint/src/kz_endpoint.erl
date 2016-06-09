@@ -1327,11 +1327,7 @@ maybe_add_alert_info(JObj, Endpoint, _Inception) ->
 maybe_add_aor(JObj, Endpoint, Call) ->
     Realm = kz_device:sip_realm(Endpoint, kapps_call:account_realm(Call)),
     Username = kz_device:sip_username(Endpoint),
-    case kz_device:sip_invite_format(Endpoint) of
-        <<"username">> -> maybe_add_aor(JObj, Endpoint, Username, Realm);
-        'undefined' -> maybe_add_aor(JObj, Endpoint, Username, Realm);
-        _ -> JObj
-    end.
+    maybe_add_aor(JObj, Endpoint, Username, Realm).
 
 maybe_add_aor(JObj, _, 'undefined', _Realm) -> JObj;
 maybe_add_aor(JObj, _, Username, Realm) ->
