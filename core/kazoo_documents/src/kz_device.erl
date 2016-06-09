@@ -120,7 +120,7 @@ sip_invite_format(DeviceJObj) ->
     sip_invite_format(DeviceJObj, 'undefined').
 
 sip_invite_format(DeviceJObj, Default) ->
-    kz_json:get_value(?IP, DeviceJObj, Default).
+    kz_json:get_value(?INVITE_FORMAT, DeviceJObj, Default).
 
 -spec sip_route(doc()) -> api_binary().
 -spec sip_route(doc(), Default) -> ne_binary() | Default.
@@ -187,8 +187,8 @@ set_sip_ip(DeviceJObj, Ip) ->
     kz_json:set_value(?IP, Ip, DeviceJObj).
 
 -spec set_sip_invite_format(doc(), ne_binary()) -> doc().
-set_sip_invite_format(DeviceJObj, Ip) ->
-    kz_json:set_value(?IP, Ip, DeviceJObj).
+set_sip_invite_format(DeviceJObj, InviteFormat) ->
+    kz_json:set_value(?INVITE_FORMAT, InviteFormat, DeviceJObj).
 
 -spec set_sip_route(doc(), ne_binary()) -> doc().
 set_sip_route(DeviceJObj, Ip) ->
