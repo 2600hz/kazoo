@@ -136,7 +136,7 @@ try_apply(Module, Function, ExtraArgs, FAssoc, RawRow) ->
             try
                 TaskReturn = apply(Module, Function, [ExtraArgs|Args]),
                 store_error(TaskReturn, RawRow),
-                1
+                case TaskReturn of 'ok' -> 1; _ -> 0 end
             catch
                 _E:_R ->
                     kz_util:log_stacktrace(),
@@ -155,14 +155,15 @@ try_apply(Module, Function, ExtraArgs, FAssoc, RawRow) ->
     end.
 
 %% @private
--spec store_error(binary(), kz_csv:row()) -> 'ok'.
+-spec store_error(task_return(), kz_csv:row()) -> 'ok'.
 store_error(Reason, Row) ->
     Error = [<<",\"">>, kz_csv:row_to_iolist(Row), <<"\":\"">>, reason(Reason), <<"\"">>
             ],
-    _ = put(?OUT, [Error | get(?OUT)]).
+    _ = put(?OUT, [Error | get(?OUT)]),
+    'ok'.
 
 %% @private
--spec reason(any()) -> ne_binary().
+-spec reason(task_return()) -> binary().
 reason(?NE_BINARY=Reason) -> Reason;
 reason(_) -> <<>>.
 
