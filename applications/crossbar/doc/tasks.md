@@ -473,14 +473,14 @@ curl -v -X PATCH \
 ```
 
 
-#### Retrieve an errors listing
+#### Retrieve a task's output CSV
 
-> GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/errors
+> GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/output
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/errors
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/output
 ```
 
 ```json

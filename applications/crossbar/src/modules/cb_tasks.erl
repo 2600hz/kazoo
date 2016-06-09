@@ -30,7 +30,7 @@
 -define(QS_ACTION, <<"action">>).
 -define(RD_RECORDS, <<"records">>).
 
--define(ERRORS, <<"errors">>).
+-define(CSV_OUT, <<"output">>).
 
 
 %%%===================================================================
@@ -103,7 +103,7 @@ allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_TaskId) ->
     [?HTTP_GET, ?HTTP_PATCH, ?HTTP_DELETE].
-allowed_methods(_TaskId, ?ERRORS) ->
+allowed_methods(_TaskId, ?CSV_OUT) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -119,7 +119,7 @@ allowed_methods(_TaskId, ?ERRORS) ->
 -spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
 resource_exists(_TaskId) -> 'true'.
-resource_exists(_TaskId, ?ERRORS) -> 'true'.
+resource_exists(_TaskId, ?CSV_OUT) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -216,7 +216,7 @@ validate_tasks(Context, TaskId, ?HTTP_GET) ->
         'false' -> Context1;
         'true' ->
             lager:debug("trying to fetch attachment for task ~s", [TaskId]),
-            load_csv_attachment(Context, TaskId)
+            load_csv_attachment(Context, TaskId, ?KZ_TASKS_ATTACHMENT_NAME_IN)
     end;
 validate_tasks(Context, TaskId, ?HTTP_PATCH) ->
     read(TaskId, Context);
@@ -225,13 +225,13 @@ validate_tasks(Context, TaskId, ?HTTP_DELETE) ->
 
 -spec validate_tasks(cb_context:context(), path_token(), path_token(), http_method()) ->
                             cb_context:context().
-validate_tasks(Context, TaskId, ?ERRORS, ?HTTP_GET) ->
+validate_tasks(Context, TaskId, ?CSV_OUT, ?HTTP_GET) ->
     Context1 = read(TaskId, Context),
     case cb_context:resp_status(Context1) == 'success' of
         'false' -> Context;
         'true' ->
             lager:debug("trying to fetch attachment for task ~s", [TaskId]),
-            load_errors_attachment(Context, TaskId)
+            load_csv_attachment(Context, TaskId, ?KZ_TASKS_ATTACHMENT_NAME_OUT)
     end.
 
 -spec validate_new_attachment(cb_context:context(), boolean()) -> cb_context:context().
@@ -434,31 +434,21 @@ save_attached_data(Context, TaskId, Records, 'false') ->
     save_attached_data(Context1, TaskId, iolist_to_binary(CSV), 'true').
 
 %% @private
--spec load_csv_attachment(cb_context:context(), kz_tasks:task_id()) -> cb_context:context().
-load_csv_attachment(Context, TaskId) ->
+-spec load_csv_attachment(cb_context:context(), kz_tasks:task_id(), ne_binary()) ->
+                                 cb_context:context().
+load_csv_attachment(Context, TaskId, AName) ->
     Ctx = crossbar_doc:load_attachment(TaskId
-                                      ,?KZ_TASKS_ATTACHMENT_NAME_IN
+                                      ,AName
                                       ,?TYPE_CHECK_OPTION(?KZ_TASKS_DOC_TYPE)
                                       ,set_db(Context)
                                       ),
-    lager:debug("loaded csv ~s from task doc ~s", [?KZ_TASKS_ATTACHMENT_NAME_IN, TaskId]),
+    lager:debug("loaded csv ~s from task doc ~s", [AName, TaskId]),
     cb_context:add_resp_headers(
       Ctx
-      ,[{<<"Content-Disposition">>, <<"attachment; filename=", (?KZ_TASKS_ATTACHMENT_NAME_IN)/binary>>}
+      ,[{<<"Content-Disposition">>, <<"attachment; filename=", AName/binary>>}
        ,{<<"Content-Type">>, <<"text/csv">>}
        ,{<<"Content-Length">>, byte_size(cb_context:resp_data(Ctx))}
        ]).
-
-%% @private
--spec load_errors_attachment(cb_context:context(), kz_tasks:task_id()) -> cb_context:context().
-load_errors_attachment(Context, TaskId) ->
-    Ctx = crossbar_doc:load_attachment(TaskId
-                                      ,?KZ_TASKS_ATTACHMENT_NAME_OUT
-                                      ,?TYPE_CHECK_OPTION(?KZ_TASKS_DOC_TYPE)
-                                      ,set_db(Context)
-                                      ),
-    lager:debug("loaded ~s from task doc ~s", [?KZ_TASKS_ATTACHMENT_NAME_OUT, TaskId]),
-    Ctx.
 
 %% @private
 -spec no_categories(cb_context:context(), ne_binary()) -> cb_context:context().

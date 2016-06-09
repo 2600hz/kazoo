@@ -258,8 +258,19 @@ worker_finished(TaskId=?NE_BINARY, TotalSucceeded, TotalFailed)
 %% @end
 %%--------------------------------------------------------------------
 -spec worker_result(task_id(), ne_binary()) -> 'ok'.
-worker_result(TaskId=?NE_BINARY, Errors=?NE_BINARY) ->
-    gen_server:cast(?SERVER, {'worker_result', TaskId, Errors}).
+worker_result(TaskId=?NE_BINARY, CSVOut=?NE_BINARY) ->
+    case kz_datamgr:put_attachment(?KZ_TASKS_DB
+                                  ,TaskId
+                                  ,?KZ_TASKS_ATTACHMENT_NAME_OUT
+                                  ,CSVOut
+                                  ,[{'content_type', <<"text/csv">>}]
+                                  )
+    of
+        {'ok', _} -> lager:debug("saved ~s", [?KZ_TASKS_ATTACHMENT_NAME_OUT]);
+        {'error', _R} ->
+            lager:error("failed saving ~s/~s: ~p"
+                       ,[TaskId, ?KZ_TASKS_ATTACHMENT_NAME_OUT, _R])
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -436,19 +447,6 @@ handle_cast({'worker_finished', TaskId, TotalSucceeded, TotalFailed}, State) ->
     {'ok', _JObj} = update_task(Task1),
     State1 = remove_task(TaskId, State),
     {'noreply', State1};
-
-handle_cast({'worker_result', TaskId, Errors}, State) ->
-    case kz_datamgr:put_attachment(?KZ_TASKS_DB
-                                  ,TaskId
-                                  ,?KZ_TASKS_ATTACHMENT_NAME_OUT
-                                  ,Errors
-                                  )
-    of
-        {'ok', _} -> lager:debug("saved ~s", [?KZ_TASKS_ATTACHMENT_NAME_OUT]);
-        {'error', _R} -> lager:error("failed saving ~s/~s: ~p"
-                                    ,[TaskId, ?KZ_TASKS_ATTACHMENT_NAME_OUT, _R])
-    end,
-    {'noreply', State};
 
 handle_cast({'worker_error', TaskId}, State) ->
     [Task=#{total_rows := TotalRows}] = task_by_id(TaskId, State),

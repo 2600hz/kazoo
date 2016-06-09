@@ -24,7 +24,7 @@
 -type state() :: #state{}.
 
 -define(IN, 'csv_in').
--define(OUT, 'txt_out').
+-define(OUT(TaskId), <<"/tmp/task_out.", (TaskId)/binary, ".csv">>).
 
 
 %%%===================================================================
@@ -77,7 +77,6 @@ init(TaskId, Module, Function, ExtraArgs, OrderedFields) ->
                           , extra_args = ExtraArgs
                           },
             _ = put(?IN, CSVRest),
-            _ = put(?OUT, []),
             {'ok', State}
     end.
 
@@ -106,16 +105,12 @@ loop(State=#state{task_id = TaskId
     case kz_csv:take_row(get(?IN)) of
         'eof' ->
             kz_tasks:worker_finished(TaskId, TotalSucceeded, TotalFailed),
-            %%FIXME: when this goes over the wire shmem is of no help!
-            %%Need to have some bucket to stream to!
-            <<",",Bin/binary>> = iolist_to_binary(lists:reverse(get(?OUT))),
-            kz_tasks:worker_result(TaskId, <<"{",Bin/binary,"}">>),
-            _ = erase(?OUT),
+            _ = upload_output(TaskId),
             _ = erase(?IN),
             'stop';
         {Row, CSVRest} ->
             NewState =
-                case is_task_successful(Module, Function, ExtraArgs, FAssoc, Row) of
+                case is_task_successful(TaskId, Module, Function, ExtraArgs, FAssoc, Row) of
                     'false' ->
                         State#state{total_failed = TotalFailed + 1
                                    };
@@ -129,42 +124,42 @@ loop(State=#state{task_id = TaskId
     end.
 
 %% @private
--spec is_task_successful(module(), atom(), list(), kz_csv:fassoc(), kz_csv:row()) -> boolean().
-is_task_successful(Module, Function, ExtraArgs, FAssoc, RawRow) ->
+-spec is_task_successful(kz_tasks:task_id(), module(), atom(), list(), kz_csv:fassoc(), kz_csv:row()) ->
+                                boolean().
+is_task_successful(TaskId, Module, Function, ExtraArgs, FAssoc, RawRow) ->
     try FAssoc(RawRow) of
         {'true', Args} ->
             try
                 TaskReturn = apply(Module, Function, [ExtraArgs|Args]),
-                store_error(TaskReturn, RawRow),
+                store_return(TaskId, RawRow, TaskReturn),
                 'ok' == TaskReturn
             catch
                 _E:_R ->
                     kz_util:log_stacktrace(),
-                    store_error(<<"error">>, RawRow),
+                    store_return(TaskId, RawRow, <<"error">>),
                     'false'
             end;
         'false' ->
             lager:error("verifier failed on ~p", [RawRow]),
-            store_error(<<"typecheck">>, RawRow),
+            store_return(TaskId, RawRow, <<"typecheck">>),
             'false'
     catch
         _:_R ->
             lager:error("verifier crashed: ~p", [_R]),
-            store_error(<<"internal">>, RawRow),
+            store_return(TaskId, RawRow, <<"internal">>),
             'false'
     end.
 
 %% @private
--spec store_error(task_return(), kz_csv:row()) -> 'ok'.
-store_error(Reason, Row) ->
-    Error = [<<",\"">>, kz_csv:row_to_iolist(Row), <<"\":\"">>, reason(Reason), <<"\"">>
-            ],
-    _ = put(?OUT, [Error | get(?OUT)]),
-    'ok'.
+-spec store_return(kz_tasks:task_id(), kz_csv:row(), task_return()) -> 'ok'.
+store_return(TaskId, Row, Reason) ->
+    Data = [kz_csv:row_to_iolist(Row), $,, reason(Reason), $\n],
+    kz_util:write_file(?OUT(TaskId), Data, ['append']).
 
 %% @private
 -spec reason(task_return()) -> binary().
-reason(?NE_BINARY=Reason) -> Reason;
+reason(?NE_BINARY=Reason) ->
+    binary:replace(Reason, <<$,>>, <<$;>>, ['global']);
 reason(_) -> <<>>.
 
 %% @private
@@ -177,5 +172,13 @@ maybe_send_update(#state{task_id = TaskId
     kz_tasks:worker_update_processed(TaskId, TotalSucceeded, TotalFailed);
 maybe_send_update(_) ->
     'ok'.
+
+%% @private
+-spec upload_output(kz_tasks:task_id()) -> 'ok'.
+upload_output(TaskId) ->
+    _ = timer:sleep(10*1000),%%FIXME: race condition with 'worker_finished' cast!
+    {'ok', Out} = file:read_file(?OUT(TaskId)),
+    kz_tasks:worker_result(TaskId, Out),
+    kz_util:delete_file(?OUT(TaskId)).
 
 %%% End of Module.

@@ -8330,7 +8330,7 @@
             "get": {},
             "patch": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/errors": {
+        "/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/output": {
             "get": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/templates": {

@@ -52,7 +52,7 @@ Note: set timeout to 300 seconds or more when your `{CSV_FILE}` fails to upload.
 Note: set timeout to 300 seconds or more when the CSV file fails to download.
 
 ```shell
-{SUP} -t 300 tasks_maintenance task_csv {TASK_ID}
+{SUP} -t 300 tasks_maintenance task_input {TASK_ID}
 ```
 
 
@@ -63,10 +63,10 @@ Note: set timeout to 300 seconds or more when the CSV file fails to download.
 ```
 
 
-#### Retrieve an errors listing
+#### Retrieve a task's output CSV
 
 Note: set timeout to 300 seconds or more when the errors listing fails to download.
 
 ```shell
-{SUP} -t 300 tasks_maintenance task_errors {TASK_ID}
+{SUP} -t 300 tasks_maintenance task_output {TASK_ID}
 ```

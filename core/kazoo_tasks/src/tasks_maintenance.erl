@@ -11,7 +11,7 @@
 -export([help/0, help/1, help/2]).
 -export([tasks/0, tasks/1]).
 -export([add/4]).
--export([task/1, task_csv/1, task_errors/1]).
+-export([task/1, task_input/1, task_output/1]).
 -export([start/1]).
 -export([remove/1]).
 
@@ -70,12 +70,12 @@ task(TaskId) ->
         {'error', Reason} -> print_error(Reason)
     end.
 
--spec task_csv(text()) -> 'no_return'.
-task_csv(TaskId) ->
+-spec task_input(text()) -> 'no_return'.
+task_input(TaskId) ->
     attachment(TaskId, ?KZ_TASKS_ATTACHMENT_NAME_IN).
 
--spec task_errors(text()) -> 'no_return'.
-task_errors(TaskId) ->
+-spec task_output(text()) -> 'no_return'.
+task_output(TaskId) ->
     attachment(TaskId, ?KZ_TASKS_ATTACHMENT_NAME_OUT).
 
 -spec start(text()) -> 'no_return'.
