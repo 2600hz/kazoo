@@ -264,6 +264,7 @@ request_macros(DataJObj) ->
                            ,<<"to">>
                            ,<<"reply_to">>
                            ,<<"format">>
+                           ,<<"attachment_url">>
                           ]
                           ,DataJObj
                          )
