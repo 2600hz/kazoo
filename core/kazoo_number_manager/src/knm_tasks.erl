@@ -152,7 +152,7 @@ module_name(Thing) ->
 %%              end,
 %%     Options =
 
--spec assign_to(kz_proplist(), ne_binary(), ne_binary(), api_binary()) -> any().
+-spec assign_to(kz_proplist(), ne_binary(), ne_binary(), api_binary()) -> task_return().
 assign_to(Props, Number, AccountId, AuthBy0) ->
     AuthBy = case AuthBy0 of
                  'undefined' -> props:get_value('auth_account_id', Props);
@@ -160,7 +160,7 @@ assign_to(Props, Number, AccountId, AuthBy0) ->
              end,
     Options = [{'auth_by', AuthBy}
               ],
-    {'ok', _} = knm_number:move(Number, AccountId, Options).
+    handle_result(knm_number:move(Number, AccountId, Options)).
 
 -spec delete(kz_proplist(), ne_binary(), api_binary()) -> any().
 delete(Props, Number, AuthBy0) ->
@@ -170,7 +170,7 @@ delete(Props, Number, AuthBy0) ->
              end,
     Options = [{'auth_by', AuthBy}
               ],
-    {'ok', _} = knm_number:release(Number, Options).
+    handle_result(knm_number:release(Number, Options)).
 
 -spec reserve(kz_proplist(), ne_binary(), ne_binary(), api_binary()) -> any().
 reserve(Props, Number, AccountId, AuthBy0) ->
@@ -181,7 +181,7 @@ reserve(Props, Number, AccountId, AuthBy0) ->
     Options = [{'auth_by', AuthBy}
               ,{'assign_to', AccountId}
               ],
-    {'ok', _} = knm_number:reserve(Number, Options).
+    handle_result(knm_number:reserve(Number, Options)).
 
 -spec add(kz_proplist(), ne_binary(), ne_binary(), api_binary(), api_binary()) -> any().
 add(Props, Number, AccountId, AuthBy0, ModuleName0) ->
@@ -193,7 +193,7 @@ add(Props, Number, AccountId, AuthBy0, ModuleName0) ->
               ,{'assign_to', AccountId}
               ,{'module_name', ModuleName0}
               ],
-    {'ok', _} = knm_number:create(Number, Options).
+    handle_result(knm_number:create(Number, Options)).
 
 %% -spec update_features(kz_proplist(), ne_binary(), api_binary(), ...) -> any().
 %% update_features(Props, Number, CNAMInbound0, ...) ->
@@ -202,5 +202,17 @@ add(Props, Number, AccountId, AuthBy0, ModuleName0) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+-spec handle_result(knm_number_return()) -> task_return().
+handle_result({'ok', _KNMNumber}) -> 'ok';
+handle_result({'dry_run', _Services, _Charges}) -> <<"accept_charges">>;
+handle_result({'error', Reason})
+  when is_atom(Reason) ->
+    kz_util:to_binary(Reason);
+handle_result({'error', KNMError}) ->
+    case knm_errors:message(KNMError) of
+        'undefined' -> knm_errors:error(KNMError);
+        Reason -> Reason
+    end.
 
 %% End of Module.

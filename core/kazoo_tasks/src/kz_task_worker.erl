@@ -134,8 +134,8 @@ try_apply(Module, Function, ExtraArgs, FAssoc, RawRow) ->
     try FAssoc(RawRow) of
         {'true', Args} ->
             try
-                apply(Module, Function, [ExtraArgs|Args]),
-                store_error(<<>>, RawRow),
+                TaskReturn = apply(Module, Function, [ExtraArgs|Args]),
+                store_error(TaskReturn, RawRow),
                 1
             catch
                 _E:_R ->
@@ -157,8 +157,13 @@ try_apply(Module, Function, ExtraArgs, FAssoc, RawRow) ->
 %% @private
 -spec store_error(binary(), kz_csv:row()) -> 'ok'.
 store_error(Reason, Row) ->
-    Error = [<<",\"">>, kz_csv:row_to_iolist(Row), <<"\":\"">>, Reason, <<"\"">>
+    Error = [<<",\"">>, kz_csv:row_to_iolist(Row), <<"\":\"">>, reason(Reason), <<"\"">>
             ],
     _ = put(?OUT, [Error | get(?OUT)]).
+
+%% @private
+-spec reason(any()) -> ne_binary().
+reason(?NE_BINARY=Reason) -> Reason;
+reason(_) -> <<>>.
 
 %%% End of Module.
