@@ -165,12 +165,37 @@ pass_hashes(Username, Password) ->
     MD5 = kz_util:to_hex_binary(crypto:hash('md5', Creds)),
     {MD5, SHA1}.
 
--spec update_mwi(api_binary(), ne_binary()) -> pid().
-update_mwi(OwnerId, AccountDb) ->
-    kz_util:spawn(fun() ->
-                          timer:sleep(?MILLISECONDS_IN_SECOND),
-                          cf_util:unsolicited_owner_mwi_update(AccountDb, OwnerId)
-                  end).
+-spec update_mwi(ne_binary(), ne_binary()) -> pid().
+update_mwi(BoxId, AccountId) ->
+    kz_util:spawn(fun() -> send_mwi_update(BoxId, AccountId) end).
+
+-spec send_mwi_update(ne_binary(), ne_binary()) -> 'ok'.
+send_mwi_update(BoxId, AccountId) ->
+    timer:sleep(?MILLISECONDS_IN_SECOND),
+
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    {'ok', BoxJObj} = kz_datamgr:open_cache_doc(AccountDb, BoxId),
+    OwnerId = kzd_voicemail_box:owner_id(BoxJObj),
+    BoxNumber = kzd_voicemail_box:mailbox_number(BoxJObj),
+
+    _ = kz_util:spawn(fun cf_util:unsolicited_owner_mwi_update/2, [AccountDb, OwnerId]),
+    Messages = kz_vm_message:messages(AccountId, BoxId),
+    New = kzd_box_message:count_folder(Messages, <<"New">>),
+    Saved = kzd_box_message:count_folder(Messages, <<"Saved">>),
+    _ = kz_util:spawn(fun send_mwi_update/4, [New, Saved, BoxNumber, AccountId]),
+    lager:debug("sent MWI updates for vmbox ~s in account ~s (~b/~b)", [BoxNumber, AccountId, New, Saved]).
+
+-spec send_mwi_update(non_neg_integer(), non_neg_integer(), ne_binary(), ne_binary()) -> 'ok'.
+send_mwi_update(New, Saved, BoxNumber, AccountId) ->
+    Realm = kz_util:get_account_realm(AccountId),
+    Command = [{<<"To">>, <<BoxNumber/binary, "@", Realm/binary>>}
+               ,{<<"Messages-New">>, New}
+               ,{<<"Messages-Saved">>, Saved}
+               ,{<<"Call-ID">>, <<>>}
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ],
+    lager:debug("updating MWI for vmbox ~s@~s (~b/~b)", [BoxNumber, Realm, New, Saved]),
+    kz_amqp_worker:cast(Command, fun kapi_presence:publish_mwi_update/1).
 
 -spec get_devices_owned_by(ne_binary(), ne_binary()) -> kz_json:objects().
 get_devices_owned_by(OwnerID, DB) ->
