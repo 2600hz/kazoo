@@ -289,7 +289,7 @@ setters_fold(F, C) when is_function(F, 1) -> F(C).
 -spec set_doc(context(), api_object() | kz_json:objects()) -> context().
 -spec set_load_merge_bypass(context(), api_binary()) -> context().
 -spec set_start(context(), kz_now()) -> context().
--spec set_resp_file(context(), req_files()) -> context().
+-spec set_resp_file(context(), api_binary()) -> context().
 -spec set_resp_data(context(), resp_data()) -> context().
 -spec set_resp_status(context(), crossbar_status()) -> context().
 -spec set_resp_expires(context(), kz_datetime()) -> context().
