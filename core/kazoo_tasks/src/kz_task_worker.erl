@@ -18,8 +18,10 @@
                , function :: atom()
                , fassoc :: kz_csv:fassoc()
                , extra_args :: kz_proplist()
+               , total_failed = 0 :: non_neg_integer()
                , total_succeeded = 0 :: non_neg_integer()
                }).
+-type state() :: #state{}.
 
 -define(IN, 'csv_in').
 -define(OUT, 'txt_out').
@@ -47,7 +49,7 @@ start(TaskId, Module, Function, ExtraArgs, OrderedFields) ->
             lager:debug("worker for ~s started", [TaskId]),
             loop(State);
         {'error', _R} ->
-            kz_tasks:worker_finished(TaskId, 0),
+            kz_tasks:worker_error(TaskId),
             lager:debug("worker exiting now: ~p", [_R])
     end.
 
@@ -108,11 +110,12 @@ loop(State=#state{task_id = TaskId
                  ,function = Function
                  ,fassoc = FAssoc
                  ,extra_args = ExtraArgs
+                 ,total_failed = TotalFailed
                  ,total_succeeded = TotalSucceeded
                  }) ->
     case kz_csv:take_row(get(?IN)) of
         'eof' ->
-            kz_tasks:worker_finished(TaskId, TotalSucceeded),
+            kz_tasks:worker_finished(TaskId, TotalSucceeded, TotalFailed),
             %%FIXME: when this goes over the wire shmem is of no help!
             %%Need to have some bucket to stream to!
             <<",",Bin/binary>> = iolist_to_binary(lists:reverse(get(?OUT))),
@@ -123,11 +126,14 @@ loop(State=#state{task_id = TaskId
         {Row, CSVRest} ->
             NewState =
                 case is_task_successful(Module, Function, ExtraArgs, FAssoc, Row) of
-                    'false' -> State;
+                    'false' ->
+                        State#state{total_failed = TotalFailed + 1
+                                   };
                     'true' ->
                         State#state{total_succeeded = TotalSucceeded + 1
                                    }
                 end,
+            _ = maybe_send_update(NewState),
             _ = put(?IN, CSVRest),
             loop(NewState)
     end.
@@ -170,5 +176,16 @@ store_error(Reason, Row) ->
 -spec reason(task_return()) -> binary().
 reason(?NE_BINARY=Reason) -> Reason;
 reason(_) -> <<>>.
+
+%% @private
+-spec maybe_send_update(state()) -> 'ok'.
+maybe_send_update(#state{task_id = TaskId
+                        ,total_failed = TotalFailed
+                        ,total_succeeded = TotalSucceeded
+                        })
+  when (TotalFailed + TotalSucceeded) rem 1000 == 0 ->
+    kz_tasks:worker_update_processed(TaskId, TotalSucceeded, TotalFailed);
+maybe_send_update(_) ->
+    'ok'.
 
 %%% End of Module.
