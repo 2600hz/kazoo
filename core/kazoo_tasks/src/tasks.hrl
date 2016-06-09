@@ -30,6 +30,7 @@
 -define(STATUS_PARTIAL, <<"partial">>).
 -define(STATUS_PENDING, <<"pending">>).
 -define(STATUS_SUCCESS, <<"success">>).
+-define(STATUS_BAD, <<"internal_error">>).
 
 -define(KZ_TASKS_HRL, 'true').
 -endif.

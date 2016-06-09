@@ -488,11 +488,13 @@ handle_info({'EXIT', Pid, _Reason}, State) ->
         [] ->
             lager:debug("worker ~p finished: ~p", [Pid, _Reason]),
             {'noreply', State};
-        [Task=#{id := TaskId, total_rows := TotalRows}] ->
+        [Task=#{id := TaskId}] ->
             lager:error("worker ~p died executing ~s: ~p", [Pid, TaskId, _Reason]),
+            %% Note: this means output attachment was NOT saved to task doc.
+            %% Note: setting total_rows_failed to undefined here will change
+            %%  status to ?STATUS_BAD but will not update total_rows_failed value in doc.
             Task1 = Task#{ finished => kz_util:current_tstamp()
-                         , total_rows_failed => TotalRows
-                         , total_rows_succeeded => 0
+                         , total_rows_failed := 'undefined'
                          },
             {'ok', _JObj} = update_task(Task1),
             State1 = remove_task(TaskId, State),
@@ -742,25 +744,34 @@ status(#{started := Started
   when Started /= 'undefined' ->
     ?STATUS_EXECUTING;
 status(#{finished := Finished
+        ,total_rows := TotalRows
         ,total_rows_failed := 0
+        ,total_rows_succeeded := TotalRows
         })
-  when Finished /= 'undefined' ->
+  when Finished /= 'undefined',
+       is_integer(TotalRows), TotalRows > 0 ->
     ?STATUS_SUCCESS;
 status(#{finished := Finished
+        ,total_rows := TotalRows
+        ,total_rows_failed := TotalRows
         ,total_rows_succeeded := 0
         })
-  when Finished /= 'undefined' ->
+  when Finished /= 'undefined',
+       is_integer(TotalRows), TotalRows > 0 ->
     ?STATUS_FAILURE;
 status(#{finished := Finished
         ,total_rows := TotalRows
+        ,total_rows := TotalFailed
         ,total_rows_succeeded := TotalSucceeded
         })
   when Finished /= 'undefined',
-       is_integer(TotalRows), is_integer(TotalSucceeded), TotalRows /= TotalSucceeded ->
+       is_integer(TotalRows), is_integer(TotalFailed), is_integer(TotalSucceeded),
+       TotalRows > TotalFailed, TotalRows > TotalSucceeded ->
     ?STATUS_PARTIAL;
 status(_Task) ->
     lager:error("impossible task ~p", [_Task]),
-    'undefined'.
+    %% Probably due to worker killed (due to e.g. OOM).
+    ?STATUS_BAD.
 
 -type maps() :: {map_apps(), map_nodes(), map_modules(), map_apis()}.
 -spec parse_apis(kz_json:objects()) -> maps().
