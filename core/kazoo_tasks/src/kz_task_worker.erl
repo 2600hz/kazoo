@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2016, 2600Hz INC
 %%% @doc
-%%% Run tasks scheduled by parent.
+%%%  Run tasks scheduled by kz_tasks.
 %%% @end
 %%% @contributors
 %%%   Pierre Fenoll
@@ -36,12 +36,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec start(kz_tasks:task_id()
-           ,module()
-           ,atom()
-           ,kz_proplist()
-           ,ne_binaries()
-           ) -> any().
+-spec start(kz_tasks:task_id(), module(), atom(), kz_proplist(), ne_binaries()) -> any().
 start(TaskId, Module, Function, ExtraArgs, OrderedFields) ->
     _ = kz_util:put_callid(TaskId),
     case init(TaskId, Module, Function, ExtraArgs, OrderedFields) of
@@ -58,12 +53,7 @@ start(TaskId, Module, Function, ExtraArgs, OrderedFields) ->
 %%%===================================================================
 
 %% @private
--spec init(kz_tasks:task_id()
-          ,module()
-          ,atom()
-          ,kz_proplist()
-          ,ne_binaries()
-          ) -> any().
+-spec init(kz_tasks:task_id(), module(), atom(), kz_proplist(), ne_binaries()) -> any().
 init(TaskId, Module, Function, ExtraArgs, OrderedFields) ->
     case
         kz_util:try_load_module(Module) == Module andalso
