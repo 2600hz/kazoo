@@ -10,6 +10,7 @@
 
 -export([help/0, help/1, help/2]).
 -export([tasks/0, tasks/1]).
+-export([add/4]).
 -export([task/1, task_csv/1, task_errors/1]).
 -export([start/1]).
 -export([remove/1]).
@@ -35,6 +36,20 @@ help(Category, Action) ->
     case kz_tasks:help(Category, Action) of
         {'ok', JObj} -> print_json(JObj);
         {'error', Reason} -> print_error(Reason)
+    end.
+
+-spec add(text(), text(), text(), text()) -> 'no_return'.
+add(Account, Category, Action, CSVFile) ->
+    AccountId = kz_util:format_account_id(Account),
+    case file:read_file(CSVFile) of
+        {'ok', CSVBin} ->
+            case kz_csv:count_rows(CSVBin) of
+                0 -> print_error(<<"Empty CSV or some row(s) longer than others or header missing">>);
+                TotalRows ->
+                    new_task(AccountId, Category, Action, TotalRows, CSVBin)
+            end;
+        {'error', Reason} ->
+            print_error(Reason)
     end.
 
 -spec tasks() -> 'no_return'.
@@ -85,6 +100,10 @@ print_json(Data) ->
     'no_return'.
 
 -spec print_error(any()) -> 'no_return'.
+print_error(Reason)
+  when is_atom(Reason); is_binary(Reason) ->
+    io:format("ERROR: ~s\n", [Reason]),
+    'no_return';
 print_error(Reason) ->
     io:format("ERROR: ~p\n", [Reason]),
     'no_return'.
@@ -100,6 +119,32 @@ attachment(TaskId, AName) ->
                 {'error', Reason} -> print_error(Reason)
             end;
         {'error', Reason} -> print_error(Reason)
+    end.
+
+-spec new_task(ne_binary(), ne_binary(), ne_binary(), pos_integer(), ne_binary()) -> 'no_return'.
+new_task(AccountId, Category, Action, TotalRows, CSVBin) ->
+    case kz_tasks:new(AccountId, Category, Action, TotalRows, CSVBin) of
+        {'ok', TaskJObj} ->
+            TaskId = kz_json:get_value([<<"_read_only">>, <<"id">>], TaskJObj),
+            case kz_datamgr:put_attachment(?KZ_TASKS_DB
+                                          ,TaskId
+                                          ,?KZ_TASKS_ATTACHMENT_NAME_IN
+                                          ,CSVBin
+                                          ,[{'content_type', <<"text/csv">>}]
+                                          )
+            of
+                {'ok', _} -> print_json(TaskJObj);
+                {'error', Reason} -> print_error(Reason)
+            end;
+        {'error', 'no_categories'} ->
+            _ = kz_util:spawn(fun kz_tasks:help/0),
+            print_error(<<"No APIs known yet: please try again in a second.">>);
+        {'error', 'unknown_category'} ->
+            print_error(<<"No such category: ", Category/binary>>);
+        {'error', 'unknown_action'} ->
+            print_error(<<"No such action: ", Action/binary>>);
+        {'error', JObj} ->
+            print_json(kz_json:from_list([{<<"errors">>, JObj}]))
     end.
 
 %%% End of Module
