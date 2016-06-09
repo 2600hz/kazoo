@@ -79,6 +79,7 @@ curl -v -X GET \
             "action": "add",
             "category": "number_management",
             "created": 63632526924,
+            "end_timestamp": 63632526969,
             "id": "7c17c051d6553f0329d9f8c47b253c",
             "node": "whistle_apps@qwd",
             "start_timestamp": 63632526968,

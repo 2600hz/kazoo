@@ -12,7 +12,7 @@
 -define(PVT_ACTION, <<"pvt_action">>).
 -define(PVT_CATEGORY, <<"pvt_category">>).
 -define(PVT_CREATED, <<"pvt_created">>).
--define(PVT_FINISHED_AT, <<"pvt_finished_at">>).
+-define(PVT_FINISHED_AT, <<"pvt_ended_at">>).
 -define(PVT_STARTED_AT, <<"pvt_started_at">>).
 -define(PVT_STATUS, <<"pvt_status">>).
 -define(PVT_TOTAL_ROWS, <<"pvt_total_rows">>).
