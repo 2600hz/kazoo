@@ -124,7 +124,9 @@ content_types_provided_for_vm_download(Context, ?HTTP_GET) ->
     CTP = [{'to_binary', ?MEDIA_MIME_TYPES}],
     cb_context:set_content_types_provided(Context, CTP);
 content_types_provided_for_vm_download(Context, ?HTTP_POST) ->
-    CTP = [{'send_file', ?MEDIA_MIME_TYPES}],
+    CTP = [{'send_file', [{<<"application">>, <<"zip">>}]}
+           ,{'send_file', ?MEDIA_MIME_TYPES}
+          ],
     cb_context:set_content_types_provided(Context, CTP);
 content_types_provided_for_vm_download(Context, _Verb) ->
     Context.

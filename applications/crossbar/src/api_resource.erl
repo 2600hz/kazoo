@@ -675,15 +675,17 @@ from_form(Req0, Context0) ->
 -spec create_from_response(cowboy_req:req(), cb_context:context(), api_binary()) ->
                        {boolean(), cowboy_req:req(), cb_context:context()}.
 create_from_response(Req, Context) ->
-    %% TODO: find the return type by find out what client provided as accepted type,
-    %% or if the client didn't specify the accepted header, return the resource default type
-    %% for that request.
     create_from_response(Req, Context, cb_context:req_header(Context, <<"accept">>)).
 
 create_from_response(Req, Context, 'undefined') ->
     api_util:create_push_response(Req, Context);
 create_from_response(Req, Context, Accept) ->
-    case to_fun(Context, Accept, 'to_json') of
+    CTPs = [F || {F, _} <- cb_context:content_types_provided(Context)],
+    DefaultFun = case CTPs of
+                     [] -> 'to_json';
+                     [F|_] -> F
+                 end,
+    case to_fun(Context, Accept, DefaultFun) of
         'to_json' -> create_from_response(Req, Context, 'undefined');
         'send_file' -> send_file(Req, Context);
         _ ->
@@ -833,7 +835,15 @@ send_file(Req0, Context) ->
         end,
     Req1 = api_util:set_resp_headers(Req0, Context),
     Req2 = cowboy_req:set_resp_body_fun(filelib:file_size(File), F, Req1),
-    {api_util:succeeded(Context), Req2, Context}.
+    send_file(api_util:succeeded(Context), cb_context:req_verb(Context), Req2, Context).
+
+send_file('false', _, Req, Context) -> {'false', Req, Context};
+send_file('true', <<"PUT">>, Req, Context) ->
+    {'ok', Req1} = cowboy_req:reply(201, Req),
+    {'halt', Req1, Context};
+send_file('true', _, Req, Context) ->
+    {'ok', Req1} = cowboy_req:reply(200, Req),
+    {'halt', Req1, Context}.
 
 -spec accept_override(cb_context:context()) -> api_binary().
 accept_override(Context) ->
