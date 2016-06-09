@@ -116,7 +116,7 @@ loop(State=#state{task_id = TaskId
             %%FIXME: when this goes over the wire shmem is of no help!
             %%Need to have some bucket to stream to!
             <<",",Bin/binary>> = iolist_to_binary(lists:reverse(get(?OUT))),
-            kz_tasks:worker_result(TaskId, <<"[",Bin/binary,"]">>),
+            kz_tasks:worker_result(TaskId, <<"{",Bin/binary,"}">>),
             _ = erase(?OUT),
             _ = erase(?IN),
             'stop';
@@ -157,7 +157,7 @@ try_apply(Module, Function, ExtraArgs, FAssoc, RawRow) ->
 %% @private
 -spec store_error(binary(), kz_csv:row()) -> 'ok'.
 store_error(Reason, Row) ->
-    Error = [<<",{\"">>, kz_csv:row_to_iolist(Row), <<"\":\"">>, Reason, <<"\"}">>
+    Error = [<<",\"">>, kz_csv:row_to_iolist(Row), <<"\":\"">>, Reason, <<"\"">>
             ],
     _ = put(?OUT, [Error | get(?OUT)]).
 
