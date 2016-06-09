@@ -703,26 +703,33 @@ apply_dialplan(Number, DialPlan) ->
 maybe_apply_dialplan([], _, Number) -> Number;
 maybe_apply_dialplan([<<"system">>], DialPlan, Number) ->
     SystemDialPlans = load_system_dialplans(kz_json:get_value(<<"system">>, DialPlan)),
-    SystemRegexs = kz_json:get_keys(SystemDialPlans),
+    SystemRegexs = lists:sort(kz_json:get_keys(SystemDialPlans)),
     maybe_apply_dialplan(SystemRegexs, SystemDialPlans, Number);
 maybe_apply_dialplan([<<"system">>|Regexs], DialPlan, Number) ->
     maybe_apply_dialplan(Regexs ++ [<<"system">>], DialPlan, Number);
-maybe_apply_dialplan([Regex|Regexs], DialPlan, Number) ->
+maybe_apply_dialplan([Key|_]=Keys, DialPlan, Number) ->
+    case kz_json:get_value([Key, <<"regex">>], DialPlan) of
+        'undefined' -> apply_dialplan(Key, Keys, DialPlan, Number);
+        Regex -> apply_dialplan(Regex, Keys, DialPlan, Number)
+    end.
+
+-spec apply_dialplan(ne_binary(), kz_json:keys(), kz_json:object(), ne_binary()) -> ne_binary().
+apply_dialplan(Regex, [Key|Keys], DialPlan, Number) ->
     case re:run(Number, Regex, [{'capture', 'all', 'binary'}]) of
         'nomatch' ->
-            maybe_apply_dialplan(Regexs, DialPlan, Number);
+            maybe_apply_dialplan(Keys, DialPlan, Number);
         'match' ->
             Number;
         {'match', Captures} ->
             Root = lists:last(Captures),
-            Prefix = kz_json:get_binary_value([Regex, <<"prefix">>], DialPlan, <<>>),
-            Suffix = kz_json:get_binary_value([Regex, <<"suffix">>], DialPlan, <<>>),
+            Prefix = kz_json:get_binary_value([Key, <<"prefix">>], DialPlan, <<>>),
+            Suffix = kz_json:get_binary_value([Key, <<"suffix">>], DialPlan, <<>>),
             N = <<Prefix/binary, Root/binary, Suffix/binary>>,
-            case kz_json:get_value([Regex, <<"dialplan">>], DialPlan) of
-                'undefined' -> maybe_apply_dialplan(Regexs, DialPlan, N);
+            case kz_json:get_value([Key, <<"dialplan">>], DialPlan) of
+                'undefined' -> maybe_apply_dialplan(Keys, DialPlan, N);
                 InnerPlan -> InnerRegexs = kz_json:get_keys(InnerPlan),
                              N1 = maybe_apply_dialplan(InnerRegexs, InnerPlan, N),
-                             maybe_apply_dialplan(Regexs, DialPlan, N1)
+                             maybe_apply_dialplan(Keys, DialPlan, N1)
             end
     end.
 
@@ -736,18 +743,36 @@ load_system_dialplans(Names) ->
                                    fun(({ne_binary(), kz_json:object()}, kz_json:object()) -> kz_json:object()).
 fold_system_dialplans(Names) ->
     fun({Key, Val}, Acc) when is_list(Val) ->
-        lists:foldl(fun(ValElem, A) -> may_be_dialplan_suits({Key, ValElem}, A, Names) end, Acc, Val);
+        lists:foldl(fun(ValElem, A) -> maybe_dialplan_suits({Key, ValElem}, A, Names) end, Acc, Val);
        ({Key, Val}, Acc) ->
-        may_be_dialplan_suits({Key, Val}, Acc, Names)
+        maybe_dialplan_suits({Key, Val}, Acc, Names)
     end.
 
--spec may_be_dialplan_suits({ne_binary(), kz_json:object()} ,kz_json:object(), ne_binaries()) -> kz_json:object().
-may_be_dialplan_suits({Key, Val}, Acc, Names) ->
+-spec maybe_dialplan_suits({ne_binary(), kz_json:object()} ,kz_json:object(), ne_binaries()) -> kz_json:object().
+maybe_dialplan_suits({Key, Val}=KV, Acc, Names) ->
     Name = kz_util:to_lower_binary(kz_json:get_value(<<"name">>, Val)),
     case lists:member(Name, Names) of
         'true' -> kz_json:set_value(Key, Val, Acc);
+        'false' -> maybe_system_dialplan_name(KV, Acc, Names)
+    end.
+
+-spec maybe_system_dialplan_name({ne_binary(), kz_json:object()} ,kz_json:object(), ne_binaries()) -> kz_json:object().
+maybe_system_dialplan_name({Key, Val}, Acc, Names) ->
+    Name = kz_util:to_lower_binary(Key),
+    case lists:member(Name, Names) of
+        'true' ->
+            N = kz_util:to_binary(index_of(Name, Names)),
+            kz_json:set_value(<<N/binary, "-", Key/binary>>, Val, Acc);
         'false' -> Acc
     end.
+
+-spec index_of(ne_binary(), list()) -> api_integer().
+index_of(Value, List) ->
+   Map = lists:zip(List, lists:seq(1, length(List))),
+   case dict:find(Value, dict:from_list(Map)) of
+      {ok, Index} -> Index;
+      error -> 'undefined'
+   end.
 
 -spec start_event_listener(kapps_call:call(), atom(), list()) ->
           {'ok', pid()} | {'error', any()}.
