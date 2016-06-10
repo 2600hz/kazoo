@@ -552,9 +552,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec compare_tasks(kz_json:object(), kz_json:object()) -> boolean().
 compare_tasks(JObjA, JObjB) ->
-    kz_json:get_value(?PVT_CREATED, JObjA)
-        =<
-        kz_json:get_value(?PVT_CREATED, JObjB).
+    kz_doc:created(JObjA) =< kz_doc:created(JObjB).
 
 -spec save_new_task(task()) -> {'ok', kz_json:object()} |
                                {'error', any()}.
@@ -663,11 +661,11 @@ from_json(Doc) ->
      , category => kz_json:get_value(?PVT_CATEGORY, Doc)
      , action => kz_json:get_value(?PVT_ACTION, Doc)
      , created => kz_doc:created(Doc)
-     , started => kz_json:get_value(?PVT_STARTED_AT, Doc)
-     , finished => kz_json:get_value(?PVT_FINISHED_AT, Doc)
-     , total_rows => kz_json:get_value(?PVT_TOTAL_ROWS, Doc)
-     , total_rows_failed => kz_json:get_value(?PVT_TOTAL_ROWS_FAILED, Doc)
-     , total_rows_succeeded => kz_json:get_value(?PVT_TOTAL_ROWS_SUCCEEDED, Doc)
+     , started => kz_json:get_integer_value(?PVT_STARTED_AT, Doc)
+     , finished => kz_json:get_integer_value(?PVT_FINISHED_AT, Doc)
+     , total_rows => kz_json:get_integer_value(?PVT_TOTAL_ROWS, Doc)
+     , total_rows_failed => kz_json:get_integer_value(?PVT_TOTAL_ROWS_FAILED, Doc)
+     , total_rows_succeeded => kz_json:get_integer_value(?PVT_TOTAL_ROWS_SUCCEEDED, Doc)
      }.
 
 -spec to_json(task()) -> kz_json:object().
@@ -713,11 +711,11 @@ to_public_json(Task) ->
             ,{<<"category">>, kz_json:get_value(?PVT_CATEGORY, Doc)}
             ,{<<"action">>, kz_json:get_value(?PVT_ACTION, Doc)}
             ,{<<"created">>, kz_doc:created(Doc)}
-            ,{<<"start_timestamp">>, kz_json:get_value(?PVT_STARTED_AT, Doc)}
-            ,{<<"end_timestamp">>, kz_json:get_value(?PVT_FINISHED_AT, Doc)}
-            ,{<<"total_count">>, kz_json:get_value(?PVT_TOTAL_ROWS, Doc)}
-            ,{<<"failure_count">>, kz_json:get_value(?PVT_TOTAL_ROWS_FAILED, Doc)}
-            ,{<<"success_count">>, kz_json:get_value(?PVT_TOTAL_ROWS_SUCCEEDED, Doc)}
+            ,{<<"start_timestamp">>, kz_json:get_integer_value(?PVT_STARTED_AT, Doc)}
+            ,{<<"end_timestamp">>, kz_json:get_integer_value(?PVT_FINISHED_AT, Doc)}
+            ,{<<"total_count">>, kz_json:get_integer_value(?PVT_TOTAL_ROWS, Doc)}
+            ,{<<"failure_count">>, kz_json:get_integer_value(?PVT_TOTAL_ROWS_FAILED, Doc)}
+            ,{<<"success_count">>, kz_json:get_integer_value(?PVT_TOTAL_ROWS_SUCCEEDED, Doc)}
             ,{<<"status">>, kz_json:get_value(?PVT_STATUS, Doc)}
             ])),
     kz_json:set_value(<<"_read_only">>, JObj, kz_json:new()).
