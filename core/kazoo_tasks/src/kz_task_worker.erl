@@ -136,17 +136,17 @@ is_task_successful(TaskId, Module, Function, ExtraArgs, FAssoc, RawRow) ->
             catch
                 _E:_R ->
                     kz_util:log_stacktrace(),
-                    store_return(TaskId, RawRow, <<"error">>),
+                    store_return(TaskId, RawRow, ?WORKER_TASK_FAILED),
                     'false'
             end;
         'false' ->
             lager:error("verifier failed on ~p", [RawRow]),
-            store_return(TaskId, RawRow, <<"typecheck">>),
+            store_return(TaskId, RawRow, ?WORKER_TASK_TYPE),
             'false'
     catch
         _:_R ->
             lager:error("verifier crashed: ~p", [_R]),
-            store_return(TaskId, RawRow, <<"internal">>),
+            store_return(TaskId, RawRow, ?WORKER_TASK_MAYBE_OK),
             'false'
     end.
 

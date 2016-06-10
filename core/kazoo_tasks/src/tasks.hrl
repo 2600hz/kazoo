@@ -32,5 +32,9 @@
 -define(STATUS_SUCCESS, <<"success">>).
 -define(STATUS_BAD, <<"internal_error">>).
 
+-define(WORKER_TASK_FAILED, <<"error">>).
+-define(WORKER_TASK_TYPE, <<"typecheck">>).
+-define(WORKER_TASK_MAYBE_OK, <<"internal">>).
+
 -define(KZ_TASKS_HRL, 'true').
 -endif.
