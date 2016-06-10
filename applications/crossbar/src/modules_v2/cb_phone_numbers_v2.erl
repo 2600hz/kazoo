@@ -796,7 +796,6 @@ set_response(Result, Context) ->
 -type result() :: {'ok', kz_json:object()} |
                   {ne_binary(), [kz_services:services()], kz_json:object()} |
                   knm_number_return() |
-                  {'dry_run', ne_binary(), kz_json:object()} |
                   {binary(), binary()}.
 -type cb() :: fun(() -> cb_context:context()).
 
