@@ -44,20 +44,19 @@
 -define(A_TASK_ID, kz_util:rand_hex_binary(?TASK_ID_SIZE)).
 -type task_id() :: <<_:(8*2*?TASK_ID_SIZE)>>.
 
--opaque task() :: #{ worker_pid => api_pid()
-                   , worker_node => ne_binary() | 'undefined'
-                   , account_id => ne_binary()
-                   , id => task_id()
-                   , category => ne_binary()
-                   , action => ne_binary()
-                   , created => gregorian_seconds() %% Time of task creation (PUT)
-                   , started => api_seconds() %% Time of task start (PATCH)
-                   , finished => api_seconds() %% Time of task finish (> started)
-                   , total_rows => api_pos_integer() %% CSV rows
-                   , total_rows_failed => api_non_neg_integer() %% Rows that crashed or didn't return ok
-                   , total_rows_succeeded => api_non_neg_integer() %% Rows that returned 'ok'
-                   }.
--opaque tasks() :: [task()].
+-type task() :: #{ worker_pid => api_pid()
+                 , worker_node => ne_binary() | 'undefined'
+                 , account_id => ne_binary()
+                 , id => task_id()
+                 , category => ne_binary()
+                 , action => ne_binary()
+                 , created => gregorian_seconds() %% Time of task creation (PUT)
+                 , started => api_seconds() %% Time of task start (PATCH)
+                 , finished => api_seconds() %% Time of task finish (> started)
+                 , total_rows => api_pos_integer() %% CSV rows
+                 , total_rows_failed => api_non_neg_integer() %% Rows that crashed or didn't return ok
+                 , total_rows_succeeded => api_non_neg_integer() %% Rows that returned 'ok'
+                 }.
 
 -type input() :: ne_binary() | kz_json:objects().
 
@@ -68,7 +67,6 @@
                       }.
 
 -export_type([task_id/0
-             ,task/0, tasks/0
              ,input/0
              ,help_error/0
              ]).
