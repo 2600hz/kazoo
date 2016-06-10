@@ -104,8 +104,8 @@ loop(State=#state{task_id = TaskId
                  }) ->
     case kz_csv:take_row(get(?IN)) of
         'eof' ->
-            kz_tasks:worker_finished(TaskId, TotalSucceeded, TotalFailed),
             _ = upload_output(TaskId),
+            kz_tasks:worker_finished(TaskId, TotalSucceeded, TotalFailed),
             _ = erase(?IN),
             'stop';
         {Row, CSVRest} ->
@@ -176,9 +176,8 @@ maybe_send_update(_) ->
 %% @private
 -spec upload_output(kz_tasks:task_id()) -> 'ok'.
 upload_output(TaskId) ->
-    _ = timer:sleep(10*1000),%%FIXME: race condition with 'worker_finished' cast!
     {'ok', Out} = file:read_file(?OUT(TaskId)),
-    kz_tasks:worker_result(TaskId, Out),
+    kz_tasks:worker_upload_result(TaskId, Out),
     kz_util:delete_file(?OUT(TaskId)).
 
 %%% End of Module.

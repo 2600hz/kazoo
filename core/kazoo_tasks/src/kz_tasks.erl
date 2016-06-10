@@ -20,8 +20,8 @@
 	]).
 
 %% API used by workers
--export([worker_finished/3
-        ,worker_result/2
+-export([worker_upload_result/2
+        ,worker_finished/3
         ,worker_error/1
         ,worker_update_processed/3
         ]).
@@ -255,8 +255,8 @@ worker_finished(TaskId=?NE_BINARY, TotalSucceeded, TotalFailed)
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec worker_result(task_id(), ne_binary()) -> 'ok'.
-worker_result(TaskId=?NE_BINARY, CSVOut=?NE_BINARY) ->
+-spec worker_upload_result(task_id(), ne_binary()) -> 'ok'.
+worker_upload_result(TaskId=?NE_BINARY, CSVOut=?NE_BINARY) ->
     case kz_datamgr:put_attachment(?KZ_TASKS_DB
                                   ,TaskId
                                   ,?KZ_TASKS_ATTACHMENT_NAME_OUT
