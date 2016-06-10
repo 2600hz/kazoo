@@ -179,9 +179,13 @@ handle_info({'event', [CallId | Props]}, #state{node=Node}=State) ->
     Action = props:get_value(<<"Action">>, Props),
     _ = case process_participant_event(Action, Props, Node, CallId) of
             'stop' -> 'ok';
-            'continue' -> send_participant_event(Action, CallId, Props);
+            'continue' ->
+                Event = make_participant_event(Action, CallId, Props, Node),
+                send_participant_event(Event, Props),
+                publish_participant_event(Action, Event, CallId, Props);
             {'continue', CustomProps} ->
-                send_participant_event(Action, CallId, Props, CustomProps)
+                Event = make_participant_event(Action, CallId, Props, Node),
+                send_participant_event(Event, Props, CustomProps)
         end,
     {'noreply', State};
 handle_info(_Info, State) ->
@@ -234,13 +238,9 @@ code_change(_OldVsn, State, _Extra) ->
                                        'stop'.
 process_participant_event(<<"add-member">>, Props, Node, CallId) ->
     _ = ecallmgr_fs_conferences:participant_create(Props, Node, CallId),
-    %% TODO: this can be removed once the kapps conf_participant is refactored
-    _ = publish_new_participant_event(Props, Node),
     'continue';
-process_participant_event(<<"del-member">>, Props, Node, CallId) ->
+process_participant_event(<<"del-member">>, _Props, _Node, CallId) ->
     _ = ecallmgr_fs_conferences:participant_destroy(CallId),
-    %% TODO: this can be removed once the kapps conf_participant is refactored
-    _ = publish_participant_destroy_event(Props, Node),
     'continue';
 process_participant_event(<<"stop-talking">>, _, _, _) -> 'continue';
 process_participant_event(<<"start-talking">>, _, _, _) -> 'continue';
@@ -409,33 +409,35 @@ send_conference_event(Action, Props, CustomProps) ->
     %% TODO: After KAZOO-27 is accepted the relay should not be necessary
     relay_event(Event ++ CustomProps ++ props:delete_keys([<<"Event-Name">>, <<"Event-Subclass">>], Props)).
 
--spec send_participant_event(ne_binary(), ne_binary(), kz_proplist()) -> 'ok'.
-send_participant_event(Action, CallId, Props) ->
-    send_participant_event(Action, CallId, Props, []).
+make_participant_event(Action, CallId, Props, Node) ->
+    ConferenceName = props:get_value(<<"Conference-Name">>, Props),
+    [{<<"Event">>, Action}
+     ,{<<"Call-ID">>, CallId}
+     ,{<<"Focus">>, kz_util:to_binary(Node)}
+     ,{<<"Conference-ID">>, ConferenceName}
+     ,{<<"Instance-ID">>, props:get_value(<<"Conference-Unique-ID">>, Props)}
+     ,{<<"Participant-ID">>, props:get_integer_value(<<"Member-ID">>, Props, 0)}
+     ,{<<"Floor">>, props:get_is_true(<<"Floor">>, Props, 'false')}
+     ,{<<"Hear">>, props:get_is_true(<<"Hear">>, Props, 'true')}
+     ,{<<"Speak">>, props:get_is_true(<<"Speak">>, Props, 'true')}
+     ,{<<"Talking">>, props:get_is_true(<<"Talking">>, Props, 'false')}
+     ,{<<"Current-Energy">>, props:get_integer_value(<<"Current-Energy">>, Props, 0)}
+     ,{<<"Energy-Level">>, props:get_integer_value(<<"Energy-Level">>, Props, 0)}
+     ,{<<"Video">>, props:get_is_true(<<"Video">>, Props, 'false')}
+     ,{<<"Mute-Detect">>, props:get_is_true(<<"Must-Detect">>, Props, 'false')}
+     ,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, Props)}
+     ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, Props)}
+     ,{<<"Channel-Presence-ID">>, props:get_value(<<"Channel-Presence-ID">>, Props)}
+     ,{<<"Custom-Channel-Vars">>, kz_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
+     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ].
 
--spec send_participant_event(ne_binary(), ne_binary(), kz_proplist(), kz_proplist()) -> 'ok'.
-send_participant_event(Action, CallId, Props, CustomProps) ->
-    ConferenceName =  props:get_value(<<"Conference-Name">>, Props),
-    Event = [{<<"Event">>, Action}
-             ,{<<"Call-ID">>, CallId}
-             ,{<<"Conference-ID">>, ConferenceName}
-             ,{<<"Instance-ID">>, props:get_value(<<"Conference-Unique-ID">>, Props)}
-             ,{<<"Participant-ID">>, props:get_integer_value(<<"Member-ID">>, Props, 0)}
-             ,{<<"Floor">>, props:get_is_true(<<"Floor">>, Props, 'false')}
-             ,{<<"Hear">>, props:get_is_true(<<"Hear">>, Props, 'true')}
-             ,{<<"Speak">>, props:get_is_true(<<"Speak">>, Props, 'true')}
-             ,{<<"Talking">>, props:get_is_true(<<"Talking">>, Props, 'false')}
-             ,{<<"Current-Energy">>, props:get_integer_value(<<"Current-Energy">>, Props, 0)}
-             ,{<<"Energy-Level">>, props:get_integer_value(<<"Energy-Level">>, Props, 0)}
-             ,{<<"Video">>, props:get_is_true(<<"Video">>, Props, 'false')}
-             ,{<<"Mute-Detect">>, props:get_is_true(<<"Must-Detect">>, Props, 'false')}
-             ,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, Props)}
-             ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, Props)}
-             ,{<<"Channel-Presence-ID">>, props:get_value(<<"Channel-Presence-ID">>, Props)}
-             ,{<<"Custom-Channel-Vars">>, kz_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
-             %% NOTE: Participant-ID is depreciated, use call-id instead
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-            ],
+-spec send_participant_event(kz_proplist(), kz_proplist()) -> 'ok'.
+send_participant_event(Event, Props) ->
+    send_participant_event(Event, Props, []).
+
+-spec send_participant_event(kz_proplist(), kz_proplist(), kz_proplist()) -> 'ok'.
+send_participant_event(Event, Props, CustomProps) ->
     relay_event(Event ++ CustomProps ++ props:delete_keys([<<"Event-Name">>, <<"Event-Subclass">>], Props)).
 
 -spec exec(atom(), ne_binary(), kz_json:object()) -> 'ok'.
@@ -773,36 +775,16 @@ relay_event(UUID, Node, Props) ->
     gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, Payload),
     gproc:send({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, UUID)}, Payload).
 
-%% TODO: this can be removed once the KAZOO-27 is accepted
--spec publish_new_participant_event(kz_proplist(), atom()) -> 'ok'.
-publish_new_participant_event(Props, Node) ->
-    ConferenceName = props:get_value(<<"Conference-Name">>, Props),
-    Participants = ecallmgr_fs_conferences:participants(ConferenceName),
-    Event = [{<<"Participants">>, ecallmgr_fs_conferences:participants_to_json(Participants)}
-             ,{<<"Focus">>, kz_util:to_binary(Node)}
-             ,{<<"Conference-ID">>, ConferenceName}
-             ,{<<"Instance-ID">>, props:get_value(<<"Conference-Unique-ID">>, Props)}
-             ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props, kz_util:to_binary(Node))}
-             ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Node)}
-             ,{<<"Switch-External-IP">>, ecallmgr_fs_nodes:sip_external_ip(Node)}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-            ],
-    Publisher = fun(P) -> kapi_conference:publish_participants_event(ConferenceName, P) end,
-    kz_amqp_worker:cast(Event, Publisher).
+publish_participant_event(<<"add-member">>, Event, CallId, Props) ->
+    publish_participant_event(Event, CallId, Props);
+publish_participant_event(<<"del-member">>, Event, CallId, Props) ->
+    publish_participant_event(Event, CallId, Props);
+publish_participant_event(_, _, _, _) -> ok.
 
-%% TODO: this can be removed once the KAZOO-27 is accepted
--spec publish_participant_destroy_event(kz_proplist(), atom()) -> 'ok'.
-publish_participant_destroy_event(Props, Node) ->
-    ConferenceName = props:get_value(<<"Conference-Name">>, Props),
-    Participants = ecallmgr_fs_conferences:participants(ConferenceName),
-    Event = [{<<"Participants">>, ecallmgr_fs_conferences:participants_to_json(Participants)}
-             ,{<<"Focus">>, kz_util:to_binary(Node)}
-             ,{<<"Conference-ID">>, ConferenceName}
-             ,{<<"Instance-ID">>, props:get_value(<<"Conference-Unique-ID">>, Props)}
-             ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props, kz_util:to_binary(Node))}
-             ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Node)}
-             ,{<<"Switch-External-IP">>, ecallmgr_fs_nodes:sip_external_ip(Node)}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-            ],
-    Publisher = fun(P) -> kapi_conference:publish_participants_event(ConferenceName, P) end,
-    kz_amqp_worker:cast(Event, Publisher).
+publish_participant_event(Event, CallId, Props) ->
+   Ev = [{<<"Event-Category">>, <<"conference">>}
+       ,{<<"Event-Name">>, <<"participant_event">>}
+       | Event],
+    ConferenceId = props:get_value(<<"Conference-Name">>, Props),
+    Publisher = fun(P) -> kapi_conference:publish_participant_event(ConferenceId, CallId, P) end,
+    kz_amqp_worker:cast(Ev, Publisher).
