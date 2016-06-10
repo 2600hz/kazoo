@@ -33,7 +33,7 @@
          ,delete_resource/2
          ,delete_completed/2
          ,is_conflict/2
-         ,to_json/2, to_binary/2, to_csv/2, to_pdf/2
+         ,to_json/2, to_binary/2, to_csv/2, to_pdf/2, send_file/2
          ,from_json/2, from_binary/2, from_form/2
          ,multiple_choices/2
          ,generate_etag/2
@@ -678,7 +678,7 @@ create_from_response(Req, Context) ->
     create_from_response(Req, Context, cb_context:req_header(Context, <<"accept">>)).
 
 create_from_response(Req, Context, 'undefined') ->
-    api_util:create_push_response(Req, Context);
+    create_from_response(Req, Context, <<"*/*">>);
 create_from_response(Req, Context, Accept) ->
     CTPs = [F || {F, _} <- cb_context:content_types_provided(Context)],
     DefaultFun = case CTPs of
@@ -686,11 +686,11 @@ create_from_response(Req, Context, Accept) ->
                      [F|_] -> F
                  end,
     case to_fun(Context, Accept, DefaultFun) of
-        'to_json' -> create_from_response(Req, Context, 'undefined');
-        'send_file' -> send_file(Req, Context);
+        'to_json' -> api_util:create_push_response(Req, Context);
+        'send_file' -> api_util:create_push_file_response(Req, Context);
         _ ->
             %% sending json for now until we implement other types
-            create_from_response(Req, Context, 'undefined')
+            api_util:create_push_response(Req, Context)
     end.
 
 -spec to_json(cowboy_req:req(), cb_context:context()) ->
@@ -744,6 +744,11 @@ to_binary(Req, Context, Accept) ->
             lager:debug("calling ~s instead of to_binary to render response", [Fun]),
             apply(?MODULE, Fun, [Req, Context])
     end.
+
+-spec send_file(cowboy_req:req(), cb_context:context()) -> api_util:pull_file_response_return().
+send_file(Req, Context) ->
+    lager:debug("run: send_file"),
+    api_util:create_pull_file_response(Req, Context).
 
 -spec to_fun(cb_context:context(), ne_binary(), atom()) -> atom().
 -spec to_fun(cb_context:context(), ne_binary(), ne_binary(), atom()) -> atom().
@@ -824,26 +829,6 @@ to_pdf(Req, Context, RespData) ->
      ,api_util:set_resp_headers(Req, cb_context:set_resp_headers(Context, RespHeaders))
      ,Context
     }.
--spec send_file(cowboy_req:req(), cb_context:context()) ->
-                       {boolean(), cowboy_req:req(), cb_context:context()}.
-send_file(Req0, Context) ->
-    lager:debug("run: send_file"),
-    File = cb_context:resp_file(Context),
-    F = fun (Socket, Transport) ->
-            lager:debug("sending file ~s", [File]),
-            Transport:sendfile(Socket, kz_util:to_list(File))
-        end,
-    Req1 = api_util:set_resp_headers(Req0, Context),
-    Req2 = cowboy_req:set_resp_body_fun(filelib:file_size(File), F, Req1),
-    send_file(api_util:succeeded(Context), cb_context:req_verb(Context), Req2, Context).
-
-send_file('false', _, Req, Context) -> {'false', Req, Context};
-send_file('true', <<"PUT">>, Req, Context) ->
-    {'ok', Req1} = cowboy_req:reply(201, Req),
-    {'halt', Req1, Context};
-send_file('true', _, Req, Context) ->
-    {'ok', Req1} = cowboy_req:reply(200, Req),
-    {'halt', Req1, Context}.
 
 -spec accept_override(cb_context:context()) -> api_binary().
 accept_override(Context) ->

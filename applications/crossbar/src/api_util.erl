@@ -27,10 +27,10 @@
          ,succeeded/1
          ,execute_request/2
          ,finish_request/2
-         ,create_push_response/2
+         ,create_push_response/2, create_push_file_response/2
          ,set_resp_headers/2
          ,create_resp_content/2
-         ,create_pull_response/2
+         ,create_pull_response/2, create_pull_file_response/2
          ,halt/2
          ,content_type_matches/2
          ,ensure_content_type/1
@@ -58,7 +58,15 @@
 -define(DEFAULT_JSON_ERROR_MSG, <<"All JSON must be valid">>).
 
 -type halt_return() :: {'halt', cowboy_req:req(), cb_context:context()}.
+-type resp_file() :: {integer(), send_file_fun()}.
+-type resp_content_return() :: {ne_binary() | iolist() | resp_file(), cowboy_req:req()}.
+-type resp_content_fun() :: fun((cowboy_req:req(), cb_context:context()) ->  resp_content_return()).
+-type send_file_fun() :: fun((any(), module()) -> ok).
+-type pull_file_resp() :: {'stream', integer(), send_file_fun()}.
+-type pull_file_response_return() :: {pull_file_resp(), cowboy_req:req(), cb_context:context()} |
+                                     halt_return().
 
+-export_type([pull_file_response_return/0]).
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -1138,6 +1146,19 @@ create_resp_content(Req0, Context) ->
             {<<"failure in request, contact support">>, Req0}
     end.
 
+-spec create_resp_file(cowboy_req:req(), cb_context:context()) ->
+                                 {resp_file(), cowboy_req:req()}.
+create_resp_file(Req, Context) ->
+    File = cb_context:resp_file(Context),
+    Len = filelib:file_size(File),
+    Fun = fun(Socket, Transport) ->
+                  lager:debug("sending file ~s", [File]),
+                  Res = Transport:sendfile(Socket, kz_util:to_list(File)),
+                  _ = file:delete(File),
+                  Res
+          end,
+    {{Len, Fun}, Req}.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -1148,10 +1169,20 @@ create_resp_content(Req0, Context) ->
 -spec create_push_response(cowboy_req:req(), cb_context:context()) ->
                                   {boolean(), cowboy_req:req(), cb_context:context()}.
 create_push_response(Req0, Context) ->
-    {Content, Req1} = create_resp_content(Req0, Context),
+    create_push_response(Req0, Context, fun create_resp_content/2).
+
+-spec create_push_response(cowboy_req:req(), cb_context:context(), resp_content_fun()) ->
+                                  {boolean(), cowboy_req:req(), cb_context:context()}.
+create_push_response(Req0, Context, Fun) ->
+    {Content, Req1} = Fun(Req0, Context),
     Req2 = set_resp_headers(Req1, Context),
-    lager:debug("push response content: ~s", [kz_util:to_binary(Content)]),
     {succeeded(Context), cowboy_req:set_resp_body(Content, Req2), Context}.
+
+-spec create_push_file_response(cowboy_req:req(), cb_context:context()) ->
+                                  {boolean(), cowboy_req:req(), cb_context:context()}.
+create_push_file_response(Req, Context) ->
+    create_push_response(Req, Context, fun create_resp_file/2).
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1160,17 +1191,38 @@ create_push_response(Req0, Context) ->
 %% is pulling data (like GET)
 %% @end
 %%--------------------------------------------------------------------
+-type pull_response() :: text() | resp_file().
+
 -spec create_pull_response(cowboy_req:req(), cb_context:context()) ->
-                                  {text(), cowboy_req:req(), cb_context:context()} |
+                                  {pull_response(), cowboy_req:req(), cb_context:context()} |
                                   halt_return().
 create_pull_response(Req0, Context) ->
-    {Content, Req1} = create_resp_content(Req0, Context),
-    lager:debug("pull response content: ~s", [kz_util:to_binary(Content)]),
+    create_pull_response(Req0, Context, fun create_resp_content/2).
+
+-spec create_pull_response(cowboy_req:req(), cb_context:context(), resp_content_fun()) ->
+                                  {pull_response(), cowboy_req:req(), cb_context:context()} |
+                                  halt_return().
+create_pull_response(Req0, Context, Fun) ->
+    {Content, Req1} = Fun(Req0, Context),
     Req2 = set_resp_headers(Req1, Context),
     case succeeded(Context) of
         'false' -> ?MODULE:halt(Req2, Context);
-        'true' -> {Content, Req2, Context}
+        'true' -> {maybe_set_pull_response_stream(Content), Req2, Context}
     end.
+
+-spec maybe_set_pull_response_stream(text() | resp_file()) -> text() | pull_file_resp().
+maybe_set_pull_response_stream({I, F})
+  when is_integer(I) andalso is_function(F,2) ->
+    {'stream', I, F};
+maybe_set_pull_response_stream(Other) ->
+    Other.
+
+-spec create_pull_file_response(cowboy_req:req(), cb_context:context()) ->
+                                  {pull_file_resp(), cowboy_req:req(), cb_context:context()} |
+                                  halt_return().
+create_pull_file_response(Req, Context) ->
+    create_pull_response(Req, Context, fun create_resp_file/2).
+
 
 %%--------------------------------------------------------------------
 %% @private
