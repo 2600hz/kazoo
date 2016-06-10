@@ -36,7 +36,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec start(kz_tasks:task_id(), module(), atom(), kz_proplist(), ne_binaries()) -> any().
+-spec start(kz_tasks:task_id(), module(), atom(), kz_proplist(), ne_binaries()) -> 'ok'.
 start(TaskId, Module, Function, ExtraArgs, OrderedFields) ->
     _ = kz_util:put_callid(TaskId),
     case init(TaskId, Module, Function, ExtraArgs, OrderedFields) of
@@ -53,7 +53,8 @@ start(TaskId, Module, Function, ExtraArgs, OrderedFields) ->
 %%%===================================================================
 
 %% @private
--spec init(kz_tasks:task_id(), module(), atom(), kz_proplist(), ne_binaries()) -> any().
+-spec init(kz_tasks:task_id(), module(), atom(), kz_proplist(), ne_binaries()) -> {'ok', state()} |
+                                                                                  {'error', any()}.
 init(TaskId, Module, Function, ExtraArgs, OrderedFields) ->
     case
         kz_util:try_load_module(Module) == Module andalso
@@ -62,22 +63,28 @@ init(TaskId, Module, Function, ExtraArgs, OrderedFields) ->
         'false' ->
             lager:error("failed loading module '~p' for task ~s", [Module, TaskId]),
             {'error', 'badmodule'};
-        {'error', Reason} ->
+        {'error', _R}=Error ->
             lager:error("failed loading attachment ~s from ~s/~s: ~p"
-                       ,[?KZ_TASKS_ATTACHMENT_NAME_IN, ?KZ_TASKS_DB, TaskId, Reason]),
-            {'error', Reason};
+                       ,[?KZ_TASKS_ATTACHMENT_NAME_IN, ?KZ_TASKS_DB, TaskId, _R]),
+            Error;
         {'ok', CSV} ->
-            Verify = build_verifier(Module),
             {Header, CSVRest} = kz_csv:take_row(CSV),
-            FAssoc = kz_csv:associator(Header, OrderedFields, Verify),
-            State = #state{ task_id = TaskId
-                          , module = Module
-                          , function = Function
-                          , fassoc = FAssoc
-                          , extra_args = ExtraArgs
-                          },
-            _ = put(?IN, CSVRest),
-            {'ok', State}
+            case write_output_csv_header(TaskId, Module, Function, Header) of
+                {'error', _R}=Error ->
+                    lager:error("failed writing CSV header in ~s", [?OUT(TaskId)]),
+                    Error;
+                'ok' ->
+                    Verifier = build_verifier(Module),
+                    FAssoc = kz_csv:associator(Header, OrderedFields, Verifier),
+                    State = #state{ task_id = TaskId
+                                  , module = Module
+                                  , function = Function
+                                  , fassoc = FAssoc
+                                  , extra_args = ExtraArgs
+                                  },
+                    _ = put(?IN, CSVRest),
+                    {'ok', State}
+            end
     end.
 
 %% @private
@@ -179,5 +186,20 @@ upload_output(TaskId) ->
     {'ok', Out} = file:read_file(?OUT(TaskId)),
     kz_tasks:worker_upload_result(TaskId, Out),
     kz_util:delete_file(?OUT(TaskId)).
+
+%% @private
+-spec write_output_csv_header(kz_tasks:task_id(), module(), atom(), kz_csv:row()) -> 'ok' |
+                                                                                     {'error', any()}.
+write_output_csv_header(TaskId, Module, Function, HeaderRow) ->
+    HeaderRHS =
+        try Module:output_header(Function)
+        catch
+            _E:_R ->
+                lager:debug("output_header not found for ~s:~s (~p:~p), using default"
+                           ,[Module, Function, _E, _R]),
+                ?OUTPUT_CSV_HEADER_ROW
+        end,
+    Data = [kz_csv:row_to_iolist(HeaderRow ++ HeaderRHS), $\n],
+    file:write_file(?OUT(TaskId), Data).
 
 %%% End of Module.

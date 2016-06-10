@@ -36,5 +36,7 @@
 -define(WORKER_TASK_TYPE, <<"typecheck">>).
 -define(WORKER_TASK_MAYBE_OK, <<"internal">>).
 
+-define(OUTPUT_CSV_HEADER_ROW, [<<"error">>]).
+
 -define(KZ_TASKS_HRL, 'true').
 -endif.
