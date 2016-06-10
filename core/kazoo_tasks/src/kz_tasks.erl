@@ -9,7 +9,7 @@
 -module(kz_tasks).
 -behaviour(gen_server).
 
-%% Public API
+%%% Public API
 -export([start_link/0]).
 -export([help/0, help/1, help/2]).
 -export([new/5
@@ -19,14 +19,18 @@
         ,remove/1
 	]).
 
-%% API used by workers
--export([worker_upload_result/2
-        ,worker_finished/3
+%%% API used by workers
+%% Casts
+-export([worker_finished/3
         ,worker_error/1
         ,worker_update_processed/3
         ]).
+%% Non ?SERVER-related
+-export([worker_upload_result/2
+        ,get_output_header/2
+        ]).
 
-%% gen_server callbacks
+%%% gen_server callbacks
 -export([init/1
         ,handle_cast/2
         ,handle_call/3
@@ -236,6 +240,7 @@ read(TaskId=?NE_BINARY) ->
 remove(TaskId=?NE_BINARY) ->
     gen_server:call(?SERVER, {'remove_task', TaskId}).
 
+
 %%%===================================================================
 %%% Worker API
 %%%===================================================================
@@ -249,6 +254,24 @@ remove(TaskId=?NE_BINARY) ->
 worker_finished(TaskId=?NE_BINARY, TotalSucceeded, TotalFailed)
   when is_integer(TotalSucceeded), is_integer(TotalFailed) ->
     gen_server:cast(?SERVER, {'worker_finished', TaskId, TotalSucceeded, TotalFailed}).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec worker_error(task_id()) -> 'ok'.
+worker_error(TaskId=?NE_BINARY) ->
+    gen_server:cast(?SERVER, {'worker_error', TaskId}).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec worker_update_processed(task_id(), pos_integer(), pos_integer()) -> 'ok'.
+worker_update_processed(TaskId=?NE_BINARY, TotalSucceeded, TotalFailed) ->
+    gen_server:cast(?SERVER, {'worker_update_processed', TaskId, TotalSucceeded, TotalFailed}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -275,18 +298,15 @@ worker_upload_result(TaskId=?NE_BINARY, CSVOut=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec worker_error(task_id()) -> 'ok'.
-worker_error(TaskId=?NE_BINARY) ->
-    gen_server:cast(?SERVER, {'worker_error', TaskId}).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec worker_update_processed(task_id(), pos_integer(), pos_integer()) -> 'ok'.
-worker_update_processed(TaskId=?NE_BINARY, TotalSucceeded, TotalFailed) ->
-    gen_server:cast(?SERVER, {'worker_update_processed', TaskId, TotalSucceeded, TotalFailed}).
+-spec get_output_header(module(), atom()) -> kz_csv:row().
+get_output_header(Module, Function) ->
+    try Module:output_header(Function)
+    catch
+        _E:_R ->
+            lager:debug("output_header not found for ~s:~s (~p:~p), using default"
+                       ,[Module, Function, _E, _R]),
+            ?OUTPUT_CSV_HEADER_ROW
+    end.
 
 
 %%%===================================================================

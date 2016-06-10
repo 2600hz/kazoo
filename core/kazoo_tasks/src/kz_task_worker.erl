@@ -191,14 +191,7 @@ upload_output(TaskId) ->
 -spec write_output_csv_header(kz_tasks:task_id(), module(), atom(), kz_csv:row()) -> 'ok' |
                                                                                      {'error', any()}.
 write_output_csv_header(TaskId, Module, Function, HeaderRow) ->
-    HeaderRHS =
-        try Module:output_header(Function)
-        catch
-            _E:_R ->
-                lager:debug("output_header not found for ~s:~s (~p:~p), using default"
-                           ,[Module, Function, _E, _R]),
-                ?OUTPUT_CSV_HEADER_ROW
-        end,
+    HeaderRHS = kz_tasks:get_output_header(Module, Function),
     Data = [kz_csv:row_to_iolist(HeaderRow ++ HeaderRHS), $\n],
     file:write_file(?OUT(TaskId), Data).
 
