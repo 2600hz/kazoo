@@ -36,7 +36,8 @@ save_services_to_modb(AccountMODb, ServicesJObj, Id) ->
 -spec maybe_save_to_previous_modb(ne_binary(), kz_json:object()) -> 'ok'.
 maybe_save_to_previous_modb(NewMODb, ServicesJObj) ->
     PrevMODb = kazoo_modb_util:prev_year_month_mod(NewMODb),
-    case kz_datamgr:db_exists(PrevMODb) of
+    AccountDb = kz_util:format_account_modb(PrevMODb, 'encoded'),
+    case kz_datamgr:db_exists(AccountDb) of
         'true' -> save_services_to_modb(PrevMODb, ServicesJObj, <<"services_eom">>);
         'false' -> 'ok'
     end.
