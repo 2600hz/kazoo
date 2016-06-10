@@ -595,10 +595,12 @@ public_json(<<_/binary>> = Account) ->
 -spec to_json(services()) -> kz_json:object().
 to_json(#kz_services{jobj=JObj
                      ,updates=UpdatedQuantities
+                     ,cascade_quantities=CascadeQuantities
                     }
        ) ->
     CurrentQuantities = kzd_services:quantities(JObj),
-    Props = [{fun kzd_services:set_quantities/2, kz_json:merge_jobjs(UpdatedQuantities, CurrentQuantities)}],
+    Props = [{fun kzd_services:set_quantities/2, kz_json:merge_jobjs(UpdatedQuantities, CurrentQuantities)}
+        ,{<<"cascade_quantities">>, CascadeQuantities}],
     kz_json:set_values(props:filter_undefined(Props), JObj).
 
 %%--------------------------------------------------------------------
