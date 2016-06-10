@@ -850,7 +850,7 @@ find_input_errors(API, Input=?NE_BINARY) ->
                 end,
             case kz_csv:fold(InputData, Unsets, []) of
                 [] -> Errors;
-                MMVs -> Errors#{<<"missing_mandatory_values">> => lists:reverse(MMVs)}
+                MMVs -> Errors#{?KZ_TASKS_INPUT_ERROR_MMV => lists:reverse(MMVs)}
             end
     end;
 
@@ -876,7 +876,7 @@ find_input_errors(API, InputRecord=[_|_]) ->
                 end,
             case lists:foldl(CheckJObjValues, [], InputRecord) of
                 [] -> Errors;
-                MMVs -> Errors#{<<"missing_mandatory_values">> => lists:reverse(MMVs)}
+                MMVs -> Errors#{?KZ_TASKS_INPUT_ERROR_MMV => lists:reverse(MMVs)}
             end
     end.
 
@@ -886,13 +886,13 @@ find_API_errors(API, Mandatory, Fields) ->
         [fun (Errors) ->
                  case Mandatory -- Fields of
                      [] -> Errors;
-                     Missing -> Errors#{<<"missing_mandatory_fields">> => Missing}
+                     Missing -> Errors#{?KZ_TASKS_INPUT_ERROR_MMF => Missing}
                   end
          end
         ,fun (Errors) ->
                  case Fields -- (Mandatory ++ optional(API)) of
                      [] -> Errors;
-                     Unknown -> Errors#{<<"unknown_fields">> => Unknown}
+                     Unknown -> Errors#{?KZ_TASKS_INPUT_ERROR_UF => Unknown}
                  end
          end],
     lists:foldl(fun (F, Errors) -> F(Errors) end, #{}, Routines).

@@ -6,5 +6,9 @@
 -define(KZ_TASKS_ATTACHMENT_NAME_IN, <<"in.csv">>).
 -define(KZ_TASKS_ATTACHMENT_NAME_OUT, <<"out.csv">>).
 
+-define(KZ_TASKS_INPUT_ERROR_MMV, <<"missing_mandatory_values">>).
+-define(KZ_TASKS_INPUT_ERROR_MMF, <<"missing_mandatory_fields">>).
+-define(KZ_TASKS_INPUT_ERROR_UF, <<"unknown_fields">>).
+
 -define(KAZOO_TASKS_HRL, 'true').
 -endif.
