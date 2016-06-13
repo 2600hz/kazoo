@@ -137,6 +137,8 @@
 
 -export([application_version/1]).
 
+-export([iolist_join/2]).
+
 -include_lib("kernel/include/inet.hrl").
 
 -include_lib("kazoo/include/kz_types.hrl").
@@ -1604,6 +1606,26 @@ get_app(AppName) ->
 application_version(Application) ->
     {'ok', Vsn} = application:get_key(Application, 'vsn'),
     to_binary(Vsn).
+
+%% @public
+-spec iolist_join(Sep, List1) -> List2 when
+      Sep :: T,
+      List1 :: [T],
+      List2 :: [T],
+      T :: iodata().
+iolist_join(_, []) -> [];
+iolist_join(Sep, [H|T]) ->
+    [H | iolist_join_prepend(Sep, T)].
+
+%% @private
+-spec iolist_join_prepend(Sep, List1) -> List2 when
+      Sep :: T,
+      List1 :: [T],
+      List2 :: [T],
+      T :: iodata().
+iolist_join_prepend(_, []) -> [];
+iolist_join_prepend(Sep, [H|T]) ->
+    [Sep, H | iolist_join_prepend(Sep, T)].
 
 -ifdef(TEST).
 

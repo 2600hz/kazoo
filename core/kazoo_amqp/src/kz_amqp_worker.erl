@@ -79,7 +79,7 @@
                          {whapp(), validate_fun() | boolean()} | %% {Whapp, VFun | IncludeFederated}
                          {whapp(), validate_fun(), boolean()} |  %% {Whapp, VFun, IncludeFederated}
                          {whapp(), boolean(), boolean()} |       %% {Whapp, IncludeFederated, IsShared}
-                         {whapp(), validate_fun(), boolean(), boolean()}. %% {Whapp, VFun, IncludeFederated. IsShared}
+                         {whapp(), validate_fun(), boolean(), boolean()}. %% {Whapp, VFun, IncludeFederated, IsShared}
 -type timeout_or_until() :: kz_timeout() | collect_until().
 
 %% case {IsFederated, IsShared} of
