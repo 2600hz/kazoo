@@ -10,7 +10,7 @@
 
 -export([help/0, help/1, help/2]).
 -export([tasks/0, tasks/1]).
--export([add/4]).
+-export([add/4, add/3]).
 -export([task/1, task_input/1, task_output/1]).
 -export([start/1]).
 -export([remove/1]).
@@ -50,6 +50,14 @@ add(Account, Category, Action, CSVFile) ->
             end;
         {'error', Reason} ->
             print_error(Reason)
+    end.
+
+-spec add(text(), text(), text()) -> 'no_return'.
+add(Account, Category, Action) ->
+    AccountId = kz_util:format_account_id(Account),
+    case kz_tasks:new(AccountId, Category, Action, 'undefined', 'undefined') of
+        {'ok', TaskJObj} -> print_json(TaskJObj);
+        {'error', Reason} -> handle_new_task_error(Reason, Category, Action)
     end.
 
 -spec tasks() -> 'no_return'.
@@ -136,15 +144,19 @@ new_task(AccountId, Category, Action, TotalRows, CSVBin) ->
                 {'ok', _} -> print_json(TaskJObj);
                 {'error', Reason} -> print_error(Reason)
             end;
-        {'error', 'no_categories'} ->
-            _ = kz_util:spawn(fun kz_tasks:help/0),
-            print_error(<<"No APIs known yet: please try again in a second.">>);
-        {'error', 'unknown_category'} ->
-            print_error(<<"No such category: ", Category/binary>>);
-        {'error', 'unknown_action'} ->
-            print_error(<<"No such action: ", Action/binary>>);
-        {'error', JObj} ->
-            print_json(kz_json:from_list([{<<"errors">>, JObj}]))
+        {'error', Reason} ->
+            handle_new_task_error(Reason, Category, Action)
     end.
+
+-spec handle_new_task_error(atom() | kz_json:object(), ne_binary(), ne_binary()) -> 'no_return'.
+handle_new_task_error('no_categories', _, _) ->
+    _ = kz_util:spawn(fun kz_tasks:help/0),
+    print_error(<<"No APIs known yet: please try again in a second.">>);
+handle_new_task_error('unknown_category', Category, _) ->
+    print_error(<<"No such category: ", Category/binary>>);
+handle_new_task_error('unknown_action', _, Action) ->
+    print_error(<<"No such action: ", Action/binary>>);
+handle_new_task_error(JObj, _, _) ->
+    print_json(kz_json:from_list([{<<"errors">>, JObj}])).
 
 %%% End of Module

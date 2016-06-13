@@ -196,9 +196,10 @@ start(TaskId=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec new(ne_binary(), ne_binary(), ne_binary(), api_pos_integer(), input()) -> {'ok', kz_json:object()} |
-                                                                                help_error() |
-                                                                                {'error', kz_json:object()}.
+-spec new(ne_binary(), ne_binary(), ne_binary(), api_pos_integer(), input()) ->
+                 {'ok', kz_json:object()} |
+                 help_error() |
+                 {'error', kz_json:object()}.
 new(?MATCH_ACCOUNT_RAW(_)=AccountId, Category=?NE_BINARY, Action=?NE_BINARY, TotalRows, Input)
   when is_integer(TotalRows), TotalRows > 0;
        TotalRows == 'undefined', Input == 'undefined' ->
@@ -864,9 +865,13 @@ mandatory(APIJObj) ->
 optional(APIJObj) ->
     kz_json:get_list_value(?API_OPTIONAL, APIJObj, []).
 
+-spec input_mime(kz_json:object()) -> api_binary().
+input_mime(APIJObj) ->
+    kz_json:get_ne_binary_value(?API_INPUT_MIME, APIJObj).
+
 -spec find_input_errors(kz_json:object(), input()) -> map().
 find_input_errors(API, 'undefined') ->
-    find_API_errors(API, mandatory(API), []);
+    Errors = find_API_errors(API, mandatory(API), []),
     case input_mime(API) of
         'undefined' -> Errors;
         MIME -> Errors#{?KZ_TASKS_INPUT_ERROR_MIME => MIME}

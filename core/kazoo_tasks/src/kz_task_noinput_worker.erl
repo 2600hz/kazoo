@@ -76,10 +76,10 @@ init(TaskId, Module, Function, ExtraArgs, _) ->
 
 %% @private
 -spec loop(task_iterator(), state()) -> any().
-loop('stop', State=#state{task_id = TaskId
-                         ,total_failed = TotalFailed
-                         ,total_succeeded = TotalSucceeded
-                         }) ->
+loop('stop', #state{task_id = TaskId
+                   ,total_failed = TotalFailed
+                   ,total_succeeded = TotalSucceeded
+                   }) ->
     _ = upload_output(TaskId),
     _ = kz_tasks:worker_finished(TaskId, TotalSucceeded, TotalFailed),
     'stop';
@@ -90,32 +90,31 @@ loop(IterValue, State=#state{task_id = TaskId
                             ,total_failed = TotalFailed
                             ,total_succeeded = TotalSucceeded
                             }) ->
-    NewState =
+    {NewIterValue, NewState} =
         case is_task_successful(TaskId, Module, Function, ExtraArgs, IterValue) of
-            'false' ->
-                State#state{total_failed = TotalFailed + 1
-                           };
-            'true' ->
-                State#state{total_succeeded = TotalSucceeded + 1
-                           }
+            {'false', NewValue} ->
+                {NewValue, State#state{total_failed = TotalFailed + 1
+                                      }};
+            {'true', NewValue} ->
+                {NewValue, State#state{total_succeeded = TotalSucceeded + 1
+                                      }}
         end,
     _ = maybe_send_update(NewState),
-    loop(NewState).
+    loop(NewIterValue, NewState).
 
 %% @private
--spec is_task_successful(kz_tasks:task_id(), module(), atom(), list(), any()) -> boolean().
+-spec is_task_successful(kz_tasks:task_id(), module(), atom(), list(), any()) -> {boolean(), any()}.
 is_task_successful(TaskId, Module, Function, ExtraArgs, IterValue) ->
     try
         TaskReturn = Module:Function(ExtraArgs, IterValue),
         store_return(TaskId, TaskReturn),
-        'ok' == TaskReturn
+        {'ok' == TaskReturn, TaskReturn}
     catch
         _E:_R ->
             kz_util:log_stacktrace(),
             store_return(TaskId, ?WORKER_TASK_FAILED),
-            'false'
-    end,
-    NewIterValue
+            {'false', 'stop'}
+    end.
 
 %% @private
 -spec store_return(kz_tasks:task_id(), task_return()) -> 'ok'.

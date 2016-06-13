@@ -23,7 +23,7 @@
         ]).
 
 %% Appliers
--export([list/1
+-export([list/2
         ,assign_to/4
         ,delete/3
         ,reserve/4
@@ -43,7 +43,7 @@ category() -> <<"number_management">>.
 -spec module() -> module().
 module() -> kz_util:to_binary(?MODULE).
 
--spec row(atom()) -> kz_csv:row().
+-spec output_header(atom()) -> kz_csv:row().
 output_header('list') ->
     [<<"e164">>
     ,<<"account_id">>
@@ -74,7 +74,7 @@ help() ->
                         ])
      }
 
-    [{<<"assign_to">>
+    ,{<<"assign_to">>
      ,kz_json:from_list([{<<"description">>, <<"Bulk-assign numbers to the provided account">>}
                         ,{<<"expected_content">>, <<"text/csv">>}
                         ,{<<"mandatory">>, [<<"number">>
