@@ -365,8 +365,8 @@ Provide an array of message ids, e.g `{"data": {"messages": ["MSG_ID1", "MSG_ID2
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H "Content-Type: application/json"
-    -d '{"data": {"folder": "saved", "messages": ["MSG_ID1", "MSG_ID2", "MSG_ID3"]}}'
+    -H "Content-Type: application/json" \
+    -d '{"data": {"folder": "saved", "messages": ["MSG_ID1", "MSG_ID2", "MSG_ID3"]}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages
 ```
 
@@ -383,6 +383,22 @@ curl -v -X POST \
     "request_id": "{REQUEST_ID}",
     "status": "success"
 }
+```
+
+
+#### Fetch the raw audio of a list of messages as a ZIP file
+
+> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/raw
+
+You can provide a list of voicemail message ID in the playload and get raw audio of them in a single ZIP file.
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -H "Accept: application/zip" \
+    -d '{"data": {"messages": ["MSG_ID1", "MSG_ID2", "MSG_ID3"]}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/raw
 ```
 
 #### Remove a message from the voicemail box
