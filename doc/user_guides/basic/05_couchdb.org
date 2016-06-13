@@ -18,7 +18,6 @@
 #+COLUMNS: %40ITEM %10BEAMER_env(Env) %9BEAMER_envargs(Env Args) %4BEAMER_col(Col) %10BEAMER_extra(Extra)
 
 * CouchDB
-
 ** Kazoo Basic Training
 
 #+BEGIN_CENTER
@@ -118,6 +117,8 @@ Taken from [[https://cwiki.apache.org/confluence/display/COUCHDB/Debian][CouchDB
    $> wget -O - http://binaries.erlang-solutions.com/debian/erlang_solutions.asc \
    | sudo apt-key add -
    #+END_EXAMPLE
+
+*** Debian
 2. Install dependencies:
    #+BEGIN_EXAMPLE
    $> sudo apt-get update -y
@@ -132,30 +133,33 @@ The installation instructions are missing at the moment. Yum commands
 with similar packages as in Debian's installtion instructions should
 suffice.
 
-*** General
+*** Setup CouchDB
 
 See the [[https://couchdb.apache.org/developer-preview/2.0/][Developer preview]]:
 
-1. Setup CouchDB
    #+BEGIN_EXAMPLE
    $> git clone https://git-wip-us.apache.org/repos/asf/couchdb.git
    $> npm install -g grunt-cli
    $> cd couchdb
-   $> git checkout developer-preview-2.0
-   $> ./configure
-   $> make
+   $couchdb/> git checkout developer-preview-2.0
+   $couchdb/> ./configure
+   $couchdb/> make
    #+END_EXAMPLE
-2. Start CouchDB
+
+*** Start CouchDB
    #+BEGIN_EXAMPLE
-   $> dev/run --with-admin-party-please --with-haproxy -n 3
-   $> /usr/sbin/haproxy -D -f rel/haproxy.cfg
+   $couchdb/> dev/run --with-admin-party-please --with-haproxy -n 3
+   $couchdb/> /usr/sbin/haproxy -D -f rel/haproxy.cfg
    #+END_EXAMPLE
-3. Accessing CouchDB API
+
+*** Accessing CouchDB API
    #+BEGIN_EXAMPLE
-   $> curl 127.0.0.1:5984
+   $couchdb/> curl 127.0.0.1:5984
    {"couchdb":"Welcome","version":"b49d069","vendor":{"name":"The Apache Software Foundation"}}
    #+END_EXAMPLE
-4. CouchDB UI (Fauxton) - access http://localhost:5984/_utils
+
+*** CouchDB UI (Fauxton)
+ - Open http://localhost:5984/_utils
 
 *** Configuration files
 
@@ -179,20 +183,6 @@ override them in =local.ini=
    [httpd]
    port = 15986
    bind_address = 127.0.0.1
-   authentication_handlers = {couch_httpd_oauth, oauth_authentication_handler}, {couch_httpd_auth, cookie_authentication_handler}, {couch_httpd_auth, default_authentication_handler}
-   default_handler = {couch_httpd_db, handle_request}
-   secure_rewrites = true
-   vhost_global_handlers = _utils, _uuids, _session, _oauth, _users
-   allow_jsonp = false
-   ; Options for the MochiWeb HTTP server.
-   ;server_options = [{backlog, 128}, {acceptor_pool_size, 16}]
-   ; For more socket options, consult Erlang's module 'inet' man page.
-   ;socket_options = [{recbuf, 262144}, {sndbuf, 262144}, {nodelay, true}]
-   socket_options = [{recbuf, 262144}, {sndbuf, 262144}]
-   log_max_chunk_size = 1000000
-   enable_cors = false
-   ; CouchDB can optionally enforce a maximum uri length;
-   ; max_uri_length = 8000
    #+END_EXAMPLE
 
 *** =[cluster]= - Quorum settings
@@ -217,27 +207,12 @@ override them in =local.ini=
 *** =[couchdb]=
     #+BEGIN_EXAMPLE
     [couchdb]
-    uuid = fake_uuid_for_dev
     database_dir = /srv/db
     view_index_dir = /srv/view_index
-    ; util_driver_dir =
-    ; plugin_dir =
     max_document_size = 67108864 ; 64 MB
     os_process_timeout = 5000 ; 5 seconds. for view and external servers.
     max_dbs_open = 500
-    delayed_commits = false
-    ; Method used to compress everything that is appended to database and view index files, except
-    ; for attachments (see the attachments section). Available methods are:
-    ;
-    ; none         - no compression
-    ; snappy       - use google snappy, a very fast compressor/decompressor
-    ; deflate_[N]  - use zlib's deflate, N is the compression level which ranges from 1 (fastest,
-    ;                lowest compression ratio) to 9 (slowest, highest compression ratio)
     file = /var/log/couchdb/couchdb.log
-    ; Higher values may give better read performance due to less read operations
-    ; and/or more OS page cache hits, but they can also increase overall response
-    ; time for writes when there are many attachment write requests in parallel.
-    attachment_stream_buffer_size = 4096
     #+END_EXAMPLE
 
 *** Quorum Settings
@@ -267,25 +242,19 @@ except maybe =-setcookie monster=.
  - Add some JSON key/value pairs
  - Click on "Create Document"
 
-*** What files got created
+*** Shards created on node1
 
- - Check node1's files
    #+BEGIN_EXAMPLE
    $couchdb/> ls dev/lib/node1/data/shards
    00000000-1fffffff  40000000-5fffffff  80000000-9fffffff  c0000000-dfffffff
    20000000-3fffffff  60000000-7fffffff  a0000000-bfffffff  e0000000-ffffffff
+   #+END_EXAMPLE
+
+*** Files created on node1, shard 00000000-1fffffff
+   #+BEGIN_EXAMPLE
    $couchdb/> ls dev/lib/node1/data/shards/00000000-1fffffff/
    _global_changes.1462857809.couch _metadata.1462857809.couch _replicator.1462857809.couch
    _users.1462857809.couch test.1465831158.couch
-   $couchdb/> find dev/lib/node1/data/shards/ -name "test.*.couch"
-   dev/lib/node1/data/shards/20000000-3fffffff/test.1465831158.couch
-   dev/lib/node1/data/shards/40000000-5fffffff/test.1465831158.couch
-   dev/lib/node1/data/shards/e0000000-ffffffff/test.1465831158.couch
-   dev/lib/node1/data/shards/60000000-7fffffff/test.1465831158.couch
-   dev/lib/node1/data/shards/a0000000-bfffffff/test.1465831158.couch
-   dev/lib/node1/data/shards/c0000000-dfffffff/test.1465831158.couch
-   dev/lib/node1/data/shards/80000000-9fffffff/test.1465831158.couch
-   dev/lib/node1/data/shards/00000000-1fffffff/test.1465831158.couch
    #+END_EXAMPLE
 
 *** Your data is stored in a file named after the database name
@@ -308,7 +277,7 @@ except maybe =-setcookie monster=.
 *** Can you access your documents in the UI now?
  - Of course! Nodes 2 and 3 contain copies as well
    #+BEGIN_EXAMPLE
-   $couchdb/> find dev/lib/ -name "test.*.couch"
+   $couchdb/> find dev/lib/node3 -name "test.*.couch"
    dev/lib/node3/data/shards/20000000-3fffffff/test.1465831158.couch
    dev/lib/node3/data/shards/40000000-5fffffff/test.1465831158.couch
    dev/lib/node3/data/shards/e0000000-ffffffff/test.1465831158.couch
@@ -317,45 +286,18 @@ except maybe =-setcookie monster=.
    dev/lib/node3/data/shards/c0000000-dfffffff/test.1465831158.couch
    dev/lib/node3/data/shards/80000000-9fffffff/test.1465831158.couch
    dev/lib/node3/data/shards/00000000-1fffffff/test.1465831158.couch
-   dev/lib/node2/data/shards/20000000-3fffffff/test.1465831158.couch
-   dev/lib/node2/data/shards/40000000-5fffffff/test.1465831158.couch
-   dev/lib/node2/data/shards/e0000000-ffffffff/test.1465831158.couch
-   dev/lib/node2/data/shards/60000000-7fffffff/test.1465831158.couch
-   dev/lib/node2/data/shards/a0000000-bfffffff/test.1465831158.couch
-   dev/lib/node2/data/shards/c0000000-dfffffff/test.1465831158.couch
-   dev/lib/node2/data/shards/80000000-9fffffff/test.1465831158.couch
-   dev/lib/node2/data/shards/00000000-1fffffff/test.1465831158.couch
    #+END_EXAMPLE
 
 *** Check node 1 sepcifically
     #+BEGIN_EXAMPLE
-    $> curl localhost:15984/test | python -mjson.tool
-    {
-    "compact_running": false,
-    "data_size": 1621,
-    "db_name": "test",
-    "disk_format_version": 6,
-    "disk_size": 54455,
-    "doc_count": 1,
-    "doc_del_count": 0,
-    "instance_start_time": "0",
-    "other": {
-        "data_size": 105
-    },
-    "purge_seq": 0,
-    "sizes": {
-        "active": 1621,
-        "external": 105,
-        "file": 54455
-    },
-    "update_seq": "1-g1AAAAFDeJzLYWBg4MhgTmHgz8tPSTV2MDQy1zMAQsMcoARTIkOS_P___7MSGXAqSVIAkkn2hFQ5gFTFE1KVAFJVT0BVHguQZGgAUkCF8wmrXABRuZ-wygMQlfezEhkJqHwAUQlyZxYAKXdWhw"
-    }
+    $couchdb/> curl localhost:15984/test | python -mjson.tool
+    {...}
     #+END_EXAMPLE
 
 *** Check nodes 2 and 3 as well
     #+BEGIN_EXAMPLE
-    $> curl localhost:25984/test | python -mjson.tool
-    $> curl localhost:35984/test | python -mjson.tool
+    $couchdb/> curl localhost:25984/test | python -mjson.tool
+    $couchdb/> curl localhost:35984/test | python -mjson.tool
     #+END_EXAMPLE
 
 *** CouchDB tracks data about data in CouchDB
@@ -365,18 +307,11 @@ except maybe =-setcookie monster=.
 *** Open the =_dbs= database and select a document
  - This is where CouchDB tracks which servers have what parts of your databases.
    #+BEGIN_EXAMPLE
-   {
-   "_id": "test",
-   "_rev": "1-4b68b817875bf961c745742fed04e589",
-   "shard_suffix": [46,49,52,54,53,56,51,49,49,53,56],
-   "changelog": [
-       [
-       "add",
-       "00000000-1fffffff",
-       "node1@127.0.0.1"
-       ],
-    ...
-    ],
+   {...}
+   #+END_EXAMPLE
+
+*** =_dbs/test= =by_node=
+    #+BEGIN_EXAMPLE
     "by_node": {
         "node1@127.0.0.1": [
             "00000000-1fffffff",
@@ -385,7 +320,11 @@ except maybe =-setcookie monster=.
             ],
         ...
         ]
-    },
+    }
+    #+END_EXAMPLE
+
+*** =_dbs/test= =by_range=
+    #+BEGIN_EXAMPLE
     "by_range": {
         "00000000-1fffffff": [
             "node1@127.0.0.1",
@@ -394,11 +333,10 @@ except maybe =-setcookie monster=.
             ],
         ...
     }
-   }
-   #+END_EXAMPLE
+    #+END_EXAMPLE
 
 *** There is other data here too!
- - Open the "_nodes" database
+ - Open the =_nodes= database
  - This is where CouchDB tracks the nodes in the cluster
  - This is also where you'd add a "zone"
    - See [[https://mail-archives.apache.org/mod_mbox/couchdb-user/201604.mbox/%3CAB0DB9FD-987E-4D29-929D-70EAC3468B17@apache.org%3E][this ML post for more]] on zones
@@ -411,6 +349,99 @@ except maybe =-setcookie monster=.
    :BEAMER_opt: allowframebreaks,label=
    :BEAMER_env: frame
    :END:
+
+*** Check =_membership=
+    #+BEGIN_EXAMPLE
+    $couchdb/> curl localhost:5984/_membership
+    #+END_EXAMPLE
+
+*** =_membership= =all_nodes=
+ - =all_nodes= is the list of nodes actually connected
+    #+BEGIN_EXAMPLE
+    "all_nodes": [
+        "node1@127.0.0.1",
+        "node2@127.0.0.1",
+        "node3@127.0.0.1"
+    ],
+    #+END_EXAMPLE
+
+*** =_membership= =cluster_nodes=
+ - =cluster_nodes= is the nodes we know of
+   #+BEGIN_EXAMPLE
+    "cluster_nodes": [
+        "node1@127.0.0.1",
+        "node2@127.0.0.1",
+        "node3@127.0.0.1"
+    ]
+   #+END_EXAMPLE
+
+*** Adding a new node
+    #+BEGIN_EXAMPLE
+    $couchdb/> curl -X PUT localhost:15986/_nodes/node4@w.x.y.z:5984 -d {}
+    $couchdb/> curl localhost:5984/_membership | python -mjson.tool
+    {...}
+    #+END_EXAMPLE
+
+*** Losing a server
+
+ - Deleting the files don't impact service
+ - Being unreachable doesn't impact service
+   - Syncs when connectivity is restored
+
+*** Remove a node
+
+ - Before removing a node, manually move shards to other nodes
+ - Remove node:
+   #+BEGIN_EXAMPLE
+   $couchdb/> curl -X GET localhost:15986/_nodes/node@10.1.10.1
+   {"_id":"node@10.1.10.1","_rev":"1-967a00dff5e02add41819138abb3284d"}
+   $couchdb/> curl -X DELETE 'localhost:15986/_nodes/node@10.1.10.1?rev=1-967a00dff5e02add41819138abb3284d'
+   {"ok":true,"id":"node@10.1.10.1","rev":"2-eec205a9d413992850a6e32678485900"}
+   #+END_EXAMPLE
+
+** Monitoring CouchDB                                               :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Lets look at some logs
+    $couchdb/> tail -f dev/logs/node1.log
+
+*** Try adding and modifying documents in the UI
+- What might you see?
+- They are not as bad as they first appear.
+
+*** Missing shards or bad permissions
+    #+BEGIN_EXAMPLE
+    [error] [<0.15064.5491>] [771d5943] Uncaught Error in HTTP request:
+    {error, {internal_server_error, "No DB shards could be opened."}}
+    #+END_EXAMPLE
+
+*** No file descriptors
+    #+BEGIN_EXAMPLE
+    [info] [<0.100.0>] [--------] db shards/00000000-55555554/test.1398903460
+    died with reason {{badmatch,{error,emfile}}
+    #+END_EXAMPLE
+
+*** Statistics
+    #+BEGIN_EXAMPLE
+    $couchdb/> curl 127.0.0.1:15986/_stats
+    #+END_EXAMPLE
+
+*** Active Tasks
+    #+BEGIN_EXAMPLE
+    $couchdb/> curl 127.0.0.1:5986/_active_tasks
+    #+END_EXAMPLE
+
+*** Resetting the cluster
+ - In preparation for Kazoo, let's reset the dbs:
+   #+BEGIN_EXAMPLE
+   $couchdb/> rm -rf dev/lib/node*
+   $couchdb/> ps -ef | grep beam | grep couchdb
+   $couchdb/> kill PID1; kill PID2; kill PID3
+   $couchdb> dev/run --with-admin-party-please --with-haproxy -n 3
+   #+END_EXAMPLE
 
 ** Thank You
 
