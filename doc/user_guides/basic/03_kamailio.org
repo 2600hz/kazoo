@@ -100,7 +100,7 @@ Taken from [[http://www.kamailio.org/wiki/packages/debs][Kamailio's installation
 3. Update and install kamailio:
    #+BEGIN_EXAMPLE
    $> apt-get update
-   $> apt-get install kamailio kamailio-kazoo-modules kamailio-presence-modules
+   $> apt-get install kamailio kamailio-kazoo-modules kamailio-presence-modules kamailio-extras-modules
    #+END_EXAMPLE
 
 *** CentOS
@@ -255,7 +255,7 @@ The dispatcher config is found at =/etc/kazoo/kamailio/dbtext/dispatcher=
 *** Update the localhost IP to your public IP
 Without modification to the FreeSWITCH configuration (which will not be made in this training) it will listen to the public IP by default.
 #+BEGIN_EXAMPLE
-1 sip:your.ip:11000 0
+1 sip:1.2.3.4:11000 0
 #+END_EXAMPLE
 
 *** Reload and check for your changes
@@ -364,9 +364,10 @@ $> kamctl fifo ds_list
 #+END_EXAMPLE
 
 *** Presence Role
+
 #+BEGIN_EXAMPLE
-$> kamctl fifo presence_list
-$> kamctl fifo presence_flush all
+$> sup omnipresence_maintenance reset_subscription sip_username account_realm
+$> sup omnipresence_maintenance reset_subscriber sip_username account_realm
 #+END_EXAMPLE
 
 ** Thank You
