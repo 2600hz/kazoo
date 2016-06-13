@@ -76,13 +76,6 @@ init(TaskId, Module, Function, ExtraArgs, _) ->
 
 %% @private
 -spec loop(task_iterator(), state()) -> any().
-loop('stop', #state{task_id = TaskId
-                   ,total_failed = TotalFailed
-                   ,total_succeeded = TotalSucceeded
-                   }) ->
-    _ = upload_output(TaskId),
-    _ = kz_tasks:worker_finished(TaskId, TotalSucceeded, TotalFailed),
-    'stop';
 loop(IterValue, State=#state{task_id = TaskId
                             ,module = Module
                             ,function = Function
@@ -90,25 +83,41 @@ loop(IterValue, State=#state{task_id = TaskId
                             ,total_failed = TotalFailed
                             ,total_succeeded = TotalSucceeded
                             }) ->
-    {NewIterValue, NewState} =
-        case is_task_successful(TaskId, Module, Function, ExtraArgs, IterValue) of
-            {'false', NewValue} ->
-                {NewValue, State#state{total_failed = TotalFailed + 1
-                                      }};
-            {'true', NewValue} ->
-                {NewValue, State#state{total_succeeded = TotalSucceeded + 1
-                                      }}
-        end,
-    _ = maybe_send_update(NewState),
-    loop(NewIterValue, NewState).
+    case is_task_successful(TaskId, Module, Function, ExtraArgs, IterValue) of
+        'stop' ->
+            _ = upload_output(TaskId),
+            _ = kz_tasks:worker_finished(TaskId, TotalSucceeded, TotalFailed),
+            'stop';
+        {'false', {_PrevRow, NewIterValue}} ->
+            NewState = State#state{total_failed = TotalFailed + 1
+                                  },
+            _ = maybe_send_update(NewState),
+            loop(NewIterValue, NewState);
+        {'true', {_PrevRow, NewIterValue}} ->
+            NewState = State#state{total_succeeded = TotalSucceeded + 1
+                                  },
+            _ = maybe_send_update(NewState),
+            loop(NewIterValue, NewState)
+    end.
 
 %% @private
--spec is_task_successful(kz_tasks:task_id(), module(), atom(), list(), any()) -> {boolean(), any()}.
+-spec is_task_successful(kz_tasks:task_id(), module(), atom(), list(), task_iterator()) ->
+                                {boolean(), task_iterator()}.
 is_task_successful(TaskId, Module, Function, ExtraArgs, IterValue) ->
-    try
-        TaskReturn = Module:Function(ExtraArgs, IterValue),
-        store_return(TaskId, TaskReturn),
-        {'ok' == TaskReturn, TaskReturn}
+    try Module:Function(ExtraArgs, IterValue) of
+        'stop' -> 'stop';
+        {'ok', _Data}=NewIterValue ->
+            %% For initialisation steps. Skeeps writing a CSV output row.
+            {'true', NewIterValue};
+        {[_|_]=NewRow, _Data}=NewIterValue ->
+            store_return(TaskId, NewRow),
+            {'true', NewIterValue};
+        {?NE_BINARY=NewRow, _Data}=NewIterValue ->
+            store_return(TaskId, NewRow),
+            {'true', NewIterValue};
+        {Error, _Data}=NewIterValue ->
+            store_return(TaskId, Error),
+            {'false', NewIterValue}
     catch
         _E:_R ->
             kz_util:log_stacktrace(),
@@ -124,7 +133,7 @@ store_return(TaskId, Reason) ->
 
 %% @private
 -spec reason(task_return()) -> binary().
-reason([?NE_BINARY|_]=Row) ->
+reason([_|_]=Row) ->
     kz_csv:row_to_iolist(Row);
 reason(?NE_BINARY=Reason) ->
     binary:replace(Reason, <<$,>>, <<$;>>, ['global']);

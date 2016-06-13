@@ -165,12 +165,35 @@ module_name(Thing) ->
 
 %% Appliers
 
--spec list(kz_proplist(), task_iterator()) -> task_return().
+-spec list(kz_proplist(), task_iterator()) -> task_iterator().
 list(Props, 'init') ->
     ForAccount = kz_util:format_account_db(props:get_value('auth_account_id', Props)),
-    %%TODO
-    knm_numbers:account_listing(ForAccount),
-    'stop'.
+    {'ok', knm_numbers:account_listing(ForAccount)};
+list(_, []) ->
+    'stop';
+list(Props, [{E164,JObj} | E164s]) ->
+    Options = [{'auth_by', auth_by('undefined', Props)}
+              ],
+    {'ok', KNMNumber} = knm_number:get(E164, Options),
+    PhoneNumber = knm_number:phone_number(KNMNumber),
+    Row = [E164
+          ,knm_phone_number:assigned_to(PhoneNumber)
+          ,knm_phone_number:prev_assigned_to(PhoneNumber)
+          ,knm_phone_number:state(PhoneNumber)
+          ,integer_to_binary(kz_json:get_value(<<"created">>, JObj))
+          ,integer_to_binary(kz_json:get_value(<<"updated">>, JObj))
+          ,knm_phone_number:used_by(PhoneNumber)
+          ,kz_util:to_binary(knm_phone_number:ported_in(PhoneNumber))
+          ,knm_phone_number:module_name(PhoneNumber)
+          ,'undefined'%%TODO
+          ,'undefined'%%TODO
+          ,'undefined'%%TODO
+          ,'undefined'%%TODO
+          ,'undefined'%%TODO
+          ,'undefined'%%TODO
+          ,'undefined'%%TODO
+          ],
+    {Row, E164s}.
 
 -spec assign_to(kz_proplist(), ne_binary(), ne_binary(), api_binary()) -> task_return().
 assign_to(Props, Number, AccountId, AuthBy) ->

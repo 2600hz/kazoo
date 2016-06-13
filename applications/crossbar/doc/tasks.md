@@ -351,7 +351,7 @@ curl -v -X DELETE \
 
 #### Get a specific task's details
 
-Optional: use `-H "Content-Type: text/csv"` to fetch the task's data file as a CSV.
+Optional: use `-H "Content-Type: text/csv"` to fetch the task's input data file as a CSV.
 
 > GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
 
