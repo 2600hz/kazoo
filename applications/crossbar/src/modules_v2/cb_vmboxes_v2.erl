@@ -25,7 +25,6 @@
 
          ,migrate/1
          ,acceptable_content_types/0
-         ,finish_request/1
         ]).
 
 -include("crossbar.hrl").
@@ -276,15 +275,6 @@ patch(Context, _Id) ->
 
     % remove messages array to not let it exposed
     cb_context:set_doc(Context, kz_json:delete_key(?VM_KEY_MESSAGES, cb_context:doc(C1))).
-
--spec finish_request(cb_context:context()) -> any().
-finish_request(Context) ->
-    maybe_delete_tmp_file(Context, cb_context:resp_file(Context)).
-
--spec maybe_delete_tmp_file(cb_context:context(), api_binary()) -> any().
-maybe_delete_tmp_file(_Context, <<>>) -> 'ok';
-maybe_delete_tmp_file(_Context, File) ->
-    file:delete(File).
 
 %%%===================================================================
 %%% Internal functions
