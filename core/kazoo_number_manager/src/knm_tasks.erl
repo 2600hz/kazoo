@@ -154,26 +154,26 @@ module_name(Thing) ->
 
 -spec assign_to(kz_proplist(), ne_binary(), ne_binary(), api_binary()) -> task_return().
 assign_to(Props, Number, AccountId, AuthBy) ->
-    Options = [{'auth_by', get_auth_by(AuthBy, Props)}
+    Options = [{'auth_by', auth_by(AuthBy, Props)}
               ],
     handle_result(knm_number:move(Number, AccountId, Options)).
 
 -spec delete(kz_proplist(), ne_binary(), api_binary()) -> task_return().
 delete(Props, Number, AuthBy) ->
-    Options = [{'auth_by', get_auth_by(AuthBy, Props)}
+    Options = [{'auth_by', auth_by(AuthBy, Props)}
               ],
     handle_result(knm_number:release(Number, Options)).
 
 -spec reserve(kz_proplist(), ne_binary(), ne_binary(), api_binary()) -> task_return().
 reserve(Props, Number, AccountId, AuthBy) ->
-    Options = [{'auth_by', get_auth_by(AuthBy, Props)}
+    Options = [{'auth_by', auth_by(AuthBy, Props)}
               ,{'assign_to', AccountId}
               ],
     handle_result(knm_number:reserve(Number, Options)).
 
 -spec add(kz_proplist(), ne_binary(), ne_binary(), api_binary(), api_binary()) -> task_return().
 add(Props, Number, AccountId, AuthBy, ModuleName0) ->
-    Options = [{'auth_by', get_auth_by(AuthBy, Props)}
+    Options = [{'auth_by', auth_by(AuthBy, Props)}
               ,{'assign_to', AccountId}
               ,{'module_name', ModuleName0}
               ],
@@ -199,8 +199,8 @@ handle_result({'error', KNMError}) ->
         Reason -> Reason
     end.
 
--spec get_auth_by(api_binary()) -> api_binary().
-get_auth_by('undefined', Props) -> props:get_value('auth_account_id', Props);
-get_auth_by(AuthBy, _) -> AuthBy.
+-spec auth_by(api_binary(), kz_proplist()) -> api_binary().
+auth_by('undefined', Props) -> props:get_value('auth_account_id', Props);
+auth_by(AuthBy, _) -> AuthBy.
 
 %% End of Module.

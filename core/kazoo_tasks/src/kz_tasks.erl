@@ -80,7 +80,7 @@
 -type map_apps() :: #{api_category() => ne_binary()}.
 -type map_nodes() :: #{api_category() => ne_binary()}.
 -type map_modules() :: #{api_category() => module()}.
--record(state, { tasks = [] :: tasks()
+-record(state, { tasks = [] :: [task()]
                , apis = #{} :: map_apis()
                , apps = #{} :: map_apps()
                , nodes = #{} :: map_nodes()
