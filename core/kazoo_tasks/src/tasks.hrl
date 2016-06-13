@@ -24,6 +24,7 @@
 
 -define(API_MANDATORY, <<"mandatory">>).
 -define(API_OPTIONAL, <<"optional">>).
+-define(API_INPUT_MIME, <<"expected_content">>).
 
 -define(STATUS_EXECUTING, <<"executing">>).
 -define(STATUS_FAILURE, <<"failure">>).

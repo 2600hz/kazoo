@@ -71,7 +71,7 @@ init(TaskId, Module, Function, ExtraArgs, OrderedFields) ->
             {Header, CSVRest} = kz_csv:take_row(CSV),
             case write_output_csv_header(TaskId, Module, Function, Header) of
                 {'error', _R}=Error ->
-                    lager:error("failed writing CSV header in ~s", [?OUT(TaskId)]),
+                    lager:error("failed to write CSV header in ~s", [?OUT(TaskId)]),
                     Error;
                 'ok' ->
                     Verifier = build_verifier(Module),
@@ -101,6 +101,7 @@ build_verifier(Module) ->
     end.
 
 %% @private
+-spec loop(state()) -> any().
 loop(State=#state{task_id = TaskId
                  ,module = Module
                  ,function = Function
@@ -165,6 +166,8 @@ store_return(TaskId, Row, Reason) ->
 
 %% @private
 -spec reason(task_return()) -> binary().
+reason([?NE_BINARY|_]=Row) ->
+    kz_csv:row_to_iolist(Row);
 reason(?NE_BINARY=Reason) ->
     binary:replace(Reason, <<$,>>, <<$;>>, ['global']);
 reason(_) -> <<>>.

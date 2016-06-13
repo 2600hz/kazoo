@@ -249,12 +249,16 @@ validate_new_attachment(Context, 'true') ->
                                         ])
     end;
 validate_new_attachment(Context, 'false') ->
-    Ctx = cb_context:validate_request_data(?SCHEMA_RECORDS, Context),
-    case cb_context:resp_status(Ctx) of
-        'success' ->
-            Records = kz_json:get_value(?RD_RECORDS, cb_context:req_data(Context)),
-            cb_context:store(Ctx, 'total_rows', length(Records));
-        _ -> Ctx
+    case kz_util:is_empty(cb_context:req_data(Context)) of
+        'true' -> Context; %% For tasks without input data.
+        'false' ->
+            Ctx = cb_context:validate_request_data(?SCHEMA_RECORDS, Context),
+            case cb_context:resp_status(Ctx) of
+                'success' ->
+                    Records = kz_json:get_value(?RD_RECORDS, cb_context:req_data(Context)),
+                    cb_context:store(Ctx, 'total_rows', length(Records));
+                _ -> Ctx
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -420,6 +424,9 @@ save_attached_data(Context, TaskId, CSV, 'true') ->
     Options = [{'content_type', CT}],
     lager:debug("saving ~s attachment in task ~s", [?KZ_TASKS_ATTACHMENT_NAME_IN, TaskId]),
     crossbar_doc:save_attachment(TaskId, ?KZ_TASKS_ATTACHMENT_NAME_IN, CSV, Context, Options);
+save_attached_data(Context, _TaskId, 'undefined', 'false') ->
+    lager:debug("no attachment to save for task ~s", [_TaskId]),
+    Context;
 save_attached_data(Context, TaskId, Records, 'false') ->
     lager:debug("converting JSON to CSV before saving"),
     Fields = kz_json:get_keys(hd(Records)),

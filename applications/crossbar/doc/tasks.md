@@ -100,7 +100,7 @@ curl -v -X GET \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/tasks
 
-With CSV data:
+With CSV input data:
 
 ```shell
 curl -v -X PUT \
@@ -110,12 +110,20 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks?category={CATEGORY}&action={ACTION}
 ```
 
-Or with JSON data:
+With JSON input data:
 
 ```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -d '{"data": {"records": [{RECORDS}]}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks?category={CATEGORY}&action={ACTION}
+```
+
+Without input data:
+
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks?category={CATEGORY}&action={ACTION}
 ```
 

@@ -50,6 +50,7 @@
 
 -type task() :: #{ worker_pid => api_pid()
                  , worker_node => ne_binary() | 'undefined'
+                 , worker_module => module() | 'undefined' %% Worker to execute the task with.
                  , account_id => ne_binary()
                  , id => task_id()
                  , category => ne_binary()
@@ -57,12 +58,12 @@
                  , created => gregorian_seconds() %% Time of task creation (PUT)
                  , started => api_seconds() %% Time of task start (PATCH)
                  , finished => api_seconds() %% Time of task finish (> started)
-                 , total_rows => api_pos_integer() %% CSV rows
+                 , total_rows => api_pos_integer() %% CSV rows (undefined for a noinput task)
                  , total_rows_failed => api_non_neg_integer() %% Rows that crashed or didn't return ok
                  , total_rows_succeeded => api_non_neg_integer() %% Rows that returned 'ok'
                  }.
 
--type input() :: ne_binary() | kz_json:objects().
+-type input() :: ne_binary() | kz_json:objects() | 'undefined'.
 
 -type help_error() :: {'error'
                       ,'no_categories' |
@@ -195,11 +196,12 @@ start(TaskId=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec new(ne_binary(), ne_binary(), ne_binary(), pos_integer(), input()) -> {'ok', kz_json:object()} |
-                                                                            help_error() |
-                                                                            {'error', kz_json:object()}.
+-spec new(ne_binary(), ne_binary(), ne_binary(), api_pos_integer(), input()) -> {'ok', kz_json:object()} |
+                                                                                help_error() |
+                                                                                {'error', kz_json:object()}.
 new(?MATCH_ACCOUNT_RAW(_)=AccountId, Category=?NE_BINARY, Action=?NE_BINARY, TotalRows, Input)
-  when is_integer(TotalRows), TotalRows > 0 ->
+  when is_integer(TotalRows), TotalRows > 0;
+       TotalRows == 'undefined', Input == 'undefined' ->
     case help(Category, Action) of
         {'error', _R}=E ->
             lager:debug("adding task ~s ~s failed: ~p", [Category, Action, _R]),
@@ -386,6 +388,7 @@ handle_call({'new', AccountId, Category, Action, TotalRows}, _From, State) ->
     TaskId = ?A_TASK_ID,
     Task = #{ worker_pid => 'undefined'
             , worker_node => 'undefined'
+            , worker_module => 'undefined'
             , account_id => AccountId
             , id => TaskId
             , category => Category
@@ -615,6 +618,7 @@ handle_call_start_task(Task=#{ id := TaskId
                              , account_id := AccountId
                              , category := Category
                              , action := Action
+                             , worker_module := WorkerModule
                              }
                       ,State=#state{ apis = APIs
                                    , nodes = Nodes
@@ -622,8 +626,8 @@ handle_call_start_task(Task=#{ id := TaskId
                                    , apps = Apps
                                    }
                       ) ->
-    lager:info("about to start task ~s: ~s ~s using ~s"
-              ,[TaskId, Category, Action, ?KZ_TASKS_ATTACHMENT_NAME_IN]),
+    lager:info("about to start task ~s: ~s ~s on ~s"
+              ,[TaskId, Category, Action, WorkerModule]),
     API = maps:get(Action, maps:get(Category, APIs)),
     lager:debug("API ~s", [kz_json:encode(API)]),
     Node = maps:get(Category, Nodes),
@@ -635,7 +639,7 @@ handle_call_start_task(Task=#{ id := TaskId
                 ],
     %% Task needs to run where App is started.
     try erlang:spawn_link(kz_util:to_atom(Node, 'true')
-                         ,fun () -> kz_task_worker:start(TaskId, Module, Function, ExtraArgs, Fields) end
+                         ,fun () -> WorkerModule:start(TaskId, Module, Function, ExtraArgs, Fields) end
                          )
     of
         Pid ->
@@ -654,8 +658,10 @@ handle_call_start_task(Task=#{ id := TaskId
 
 -spec from_json(kz_json:object()) -> task().
 from_json(Doc) ->
+    TotalRows = kz_json:get_integer_value(?PVT_TOTAL_ROWS, Doc),
     #{ worker_pid => 'undefined'
      , worker_node => kz_json:get_value(?PVT_WORKER_NODE, Doc)
+     , worker_module => worker_module(TotalRows)
      , account_id => kz_json:get_value(?PVT_ACCOUNT_ID, Doc)
      , id => kz_doc:id(Doc)
      , category => kz_json:get_value(?PVT_CATEGORY, Doc)
@@ -663,7 +669,7 @@ from_json(Doc) ->
      , created => kz_doc:created(Doc)
      , started => kz_json:get_integer_value(?PVT_STARTED_AT, Doc)
      , finished => kz_json:get_integer_value(?PVT_FINISHED_AT, Doc)
-     , total_rows => kz_json:get_integer_value(?PVT_TOTAL_ROWS, Doc)
+     , total_rows => TotalRows
      , total_rows_failed => kz_json:get_integer_value(?PVT_TOTAL_ROWS_FAILED, Doc)
      , total_rows_succeeded => kz_json:get_integer_value(?PVT_TOTAL_ROWS_SUCCEEDED, Doc)
      }.
@@ -757,6 +763,8 @@ status(#{started := Started
         })
   when Started /= 'undefined' ->
     ?STATUS_EXECUTING;
+
+%% For tasks with CSV input
 status(#{finished := Finished
         ,total_rows := TotalRows
         ,total_rows_failed := 0
@@ -775,13 +783,40 @@ status(#{finished := Finished
     ?STATUS_FAILURE;
 status(#{finished := Finished
         ,total_rows := TotalRows
-        ,total_rows := TotalFailed
+        ,total_rows_failed := TotalFailed
         ,total_rows_succeeded := TotalSucceeded
         })
   when Finished /= 'undefined',
        is_integer(TotalRows), is_integer(TotalFailed), is_integer(TotalSucceeded),
        TotalRows > TotalFailed, TotalRows > TotalSucceeded ->
     ?STATUS_PARTIAL;
+
+%% For noinput tasks
+status(#{finished := Finished
+        ,total_rows := 'undefined'
+        ,total_rows_failed := 0
+        ,total_rows_succeeded := TotalSucceeded
+        })
+  when Finished /= 'undefined',
+       is_integer(TotalSucceeded), TotalSucceeded > 0 ->
+    ?STATUS_SUCCESS;
+status(#{finished := Finished
+        ,total_rows := 'undefined'
+        ,total_rows_failed := TotalFailed
+        ,total_rows_succeeded := 0
+        })
+  when Finished /= 'undefined',
+       is_integer(TotalFailed), TotalFailed > 0 ->
+    ?STATUS_FAILURE;
+status(#{finished := Finished
+        ,total_rows := 'undefined'
+        ,total_rows_failed := TotalFailed
+        ,total_rows_succeeded := TotalSucceeded
+        })
+  when Finished /= 'undefined',
+       is_integer(TotalFailed), is_integer(TotalSucceeded) ->
+    ?STATUS_PARTIAL;
+
 status(_Task) ->
     lager:error("impossible task ~p", [_Task]),
     %% Probably due to worker killed (due to e.g. OOM).
@@ -830,6 +865,13 @@ optional(APIJObj) ->
     kz_json:get_list_value(?API_OPTIONAL, APIJObj, []).
 
 -spec find_input_errors(kz_json:object(), input()) -> map().
+find_input_errors(API, 'undefined') ->
+    find_API_errors(API, mandatory(API), []);
+    case input_mime(API) of
+        'undefined' -> Errors;
+        MIME -> Errors#{?KZ_TASKS_INPUT_ERROR_MIME => MIME}
+    end;
+
 find_input_errors(API, Input=?NE_BINARY) ->
     {Fields, InputData} = kz_csv:take_row(Input),
     Mandatory = mandatory(API),
@@ -902,5 +944,11 @@ are_mandatories_unset(IsMandatory, Row) ->
            end,
     RedF = fun erlang:'or'/2,
     lists:foldl(RedF, 'false', lists:zipwith(MapF, IsMandatory, Row)).
+
+-spec worker_module(api_pos_integer()) -> module().
+worker_module('undefined') -> 'kz_task_noinput_worker';
+worker_module(TotalRows)
+  when is_integer(TotalRows), TotalRows > 0 ->
+    'kz_task_worker'.
 
 %%% End of Module.

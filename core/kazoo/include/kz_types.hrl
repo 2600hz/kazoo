@@ -340,7 +340,8 @@
 -type kz_node() :: #kz_node{}.
 -type kz_nodes() :: [kz_node()].
 
--type task_return() :: 'ok' | ne_binary().
+-type task_return() :: 'ok' | ne_binary() | kz_csv:row().
+-type task_iterator() :: 'init' | 'stop' | any().
 
 -define(KAZOO_TYPES_INCLUDED, 'true').
 -endif.

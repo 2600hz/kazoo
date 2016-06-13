@@ -12,6 +12,7 @@
 -export([help/0
         ,category/0
         ,module/0
+        ,output_header/1
         ]).
 
 %% Verifiers
@@ -22,8 +23,8 @@
         ]).
 
 %% Appliers
--export([%%list/2
-        assign_to/4
+-export([list/1
+        ,assign_to/4
         ,delete/3
         ,reserve/4
         ,add/5
@@ -42,16 +43,36 @@ category() -> <<"number_management">>.
 -spec module() -> module().
 module() -> kz_util:to_binary(?MODULE).
 
+-spec row(atom()) -> kz_csv:row().
+output_header('list') ->
+    [<<"e164">>
+    ,<<"account_id">>
+    ,<<"previously_assigned_to">>
+    ,<<"state">>
+    ,<<"created">>
+    ,<<"modified">>
+    ,<<"used_by">>
+    ,<<"port_in">>
+    ,<<"carrier_module">>
+    ,<<"cnam.inbound">>
+    ,<<"cnam.outbound">>
+    ,<<"e911.postal_code">>
+    ,<<"e911.street_address">>
+    ,<<"e911.extended_address">>
+    ,<<"e911.locality">>
+    ,<<"e911.region">>
+    ].
+
 -spec help() -> kz_proplist().
 help() ->
-    %% [{<<"list">>
-    %%  ,kz_json:from_list([{<<"description">>, <<"List all numbers in the system">>}
-    %%                     ,{<<"mandatory">>, [
-    %%                                        ]}
-    %%                     ,{<<"optional">>, [<<"auth_by">>
-    %%                                       ]}
-    %%                     ])
-    %%  }
+    [{<<"list">>
+     ,kz_json:from_list([{<<"description">>, <<"List all numbers in the system">>}
+                        ,{<<"mandatory">>, [
+                                           ]}
+                        ,{<<"optional">>, [
+                                          ]}
+                        ])
+     }
 
     [{<<"assign_to">>
      ,kz_json:from_list([{<<"description">>, <<"Bulk-assign numbers to the provided account">>}
@@ -144,13 +165,12 @@ module_name(Thing) ->
 
 %% Appliers
 
-%% -spec list(kz_proplist(), api_binary()) -> any().
-%% list(Props, AuthBy0) ->
-%%     AuthBy = case AuthBy0 of
-%%                  'undefined' -> props:get_value('auth_account_id', Props);
-%%                  _ -> AuthBy0
-%%              end,
-%%     Options =
+-spec list(kz_proplist(), task_iterator()) -> task_return().
+list(Props, 'init') ->
+    ForAccount = kz_util:format_account_db(props:get_value('auth_account_id', Props)),
+    %%TODO
+    knm_numbers:account_listing(ForAccount),
+    'stop'.
 
 -spec assign_to(kz_proplist(), ne_binary(), ne_binary(), api_binary()) -> task_return().
 assign_to(Props, Number, AccountId, AuthBy) ->
