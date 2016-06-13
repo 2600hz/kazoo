@@ -109,8 +109,47 @@ CouchDB
 
 *** Debian
 
+Taken from [[https://cwiki.apache.org/confluence/display/COUCHDB/Debian][CouchDB's installation instructions]]:
+1. Setup Erlang Solutions' Erlang package:
+   #+BEGIN_EXAMPLE
+   $> apt-get install -y lsb-release
+   $> echo "deb http://binaries.erlang-solutions.com/debian `lsb_release -cs` contrib" \
+   | sudo tee /etc/apt/sources.list.d/erlang-solutions.list
+   $> wget -O - http://binaries.erlang-solutions.com/debian/erlang_solutions.asc \
+   | sudo apt-key add -
+   #+END_EXAMPLE
+2. Install dependencies:
+   #+BEGIN_EXAMPLE
+   $> sudo apt-get update -y
+   $> sudo apt-get install -y libmozjs185 libmozjs185-dev erlang-nox erlang-dev \
+   build-essential libnspr4 libnspr4-0d libnspr4-dev libcurl4-openssl-dev curl libicu-dev \
+   pkg-config git haproxy nodejs
+   #+END_EXAMPLE
+
 *** CentOS
 
+The installation instructions are missing at the moment. Yum commands
+with similar packages as in Debian's installtion instructions should
+suffice.
+
+*** General
+
+See the [[https://couchdb.apache.org/developer-preview/2.0/][Developer preview]]:
+
+1. Setup CouchDB
+   #+BEGIN_EXAMPLE
+   $> git clone https://git-wip-us.apache.org/repos/asf/couchdb.git
+   $> npm install -g grunt-cli
+   $> cd couchdb
+   $> git checkout developer-preview-2.0
+   $> ./configure
+   $> make
+   #+END_EXAMPLE
+2. Start CouchDB
+   #+BEGIN_EXAMPLE
+   $> dev/run --with-admin-party-please --with-haproxy -n 3
+   $> /usr/sbin/haproxy -D -f rel/haproxy.cfg
+   #+END_EXAMPLE
 
 
 ** Thank You
