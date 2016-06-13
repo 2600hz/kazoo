@@ -280,13 +280,20 @@ Please choose one now
 *** Management Console
 
 Check out the management console
-
+ - Ensure its enabled:
+   #+BEGIN_EXAMPLE
+   $> rabbitmq-plugins enable rabbitmq_management
+   #+END_EXAMPLE
  - Navigate to http://ip.addr:15672
    - You may need to disable the firewall
      #+BEGIN_EXAMPLE
      $> service iptables stop
      #+END_EXAMPLE
  - Initial User/Pass: guest
+ - If you try to access the management console from a non-localhost IP/hostname:
+   #+BEGIN_EXAMPLE
+   $> rabbitmqctl eval 'application:set_env(rabbit, loopback_users, []).'
+   #+END_EXAMPLE
 
 You should both open the management console on your computer.
 
