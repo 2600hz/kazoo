@@ -1211,8 +1211,8 @@ create_pull_response(Req0, Context, Fun) ->
     end.
 
 -spec maybe_set_pull_response_stream(text() | resp_file()) -> text() | pull_file_resp().
-maybe_set_pull_response_stream({I, F})
-  when is_integer(I) andalso is_function(F,2) ->
+maybe_set_pull_response_stream({I, F}) when is_integer(I)
+                                            andalso is_function(F,2) ->
     {'stream', I, F};
 maybe_set_pull_response_stream(Other) ->
     Other.
