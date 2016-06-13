@@ -14,7 +14,7 @@
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
         ,resource_exists/0, resource_exists/1, resource_exists/2
         ,content_types_accepted/2
-        ,content_types_provided/2
+        ,content_types_provided/2, content_types_provided/3
         ,validate/1, validate/2, validate/3
         ,put/1
         ,patch/2
@@ -149,8 +149,15 @@ cta(Context, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
+-spec content_types_provided(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 content_types_provided(Context, _TaskId) ->
     ctp(Context, cb_context:req_verb(Context)).
+content_types_provided(Context, _TaskId, ?CSV_OUT) ->
+    case cb_context:req_verb(Context) of
+        ?HTTP_GET ->
+            cb_context:add_content_types_provided(Context, [{'to_binary', ?CSV_CONTENT_TYPES}]);
+        _ -> Context
+    end.
 
 -spec ctp(cb_context:context(), http_method()) -> cb_context:context().
 -spec ctp(cb_context:context()) -> cb_context:context().
