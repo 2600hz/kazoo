@@ -102,7 +102,7 @@ loop(IterValue, State=#state{task_id = TaskId
 
 %% @private
 -spec is_task_successful(kz_tasks:task_id(), module(), atom(), list(), task_iterator()) ->
-                                {boolean(), task_iterator()}.
+                                {boolean(), task_iterator()} | 'stop'.
 is_task_successful(TaskId, Module, Function, ExtraArgs, IterValue) ->
     try Module:Function(ExtraArgs, IterValue) of
         'stop' -> 'stop';
