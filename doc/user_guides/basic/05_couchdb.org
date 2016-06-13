@@ -150,7 +150,108 @@ See the [[https://couchdb.apache.org/developer-preview/2.0/][Developer preview]]
    $> dev/run --with-admin-party-please --with-haproxy -n 3
    $> /usr/sbin/haproxy -D -f rel/haproxy.cfg
    #+END_EXAMPLE
+3. Accessing CouchDB API
+   #+BEGIN_EXAMPLE
+   $> curl 127.0.0.1:5984
+   {"couchdb":"Welcome","version":"b49d069","vendor":{"name":"The Apache Software Foundation"}}
+   #+END_EXAMPLE
+4. CouchDB UI (Fauxton) - access http://localhost:5984/_utils
 
+*** Configuration files
+
+Once you've started CouchDB, you can take a look at the configuration
+files. There aren't many knobs you need to tweak but its worth taking
+a peek. You can find these files in the =default.ini= file and
+override them in =local.ini=
+
+*** =[chttpd]= - CouchDB API
+    #+BEGIN_EXAMPLE
+    [chttpd]
+    port = 15984
+    bind_address = 127.0.0.1
+    backlog = 512
+    docroot = src/fauxton/dist/release
+    socket_options = [{recbuf, 262144}, {sndbuf, 262144}, {nodelay, true}]
+    #+END_EXAMPLE
+
+*** =[httpd]= - CouchDB Admin Interface
+   #+BEGIN_EXAMPLE
+   [httpd]
+   port = 15986
+   bind_address = 127.0.0.1
+   authentication_handlers = {couch_httpd_oauth, oauth_authentication_handler}, {couch_httpd_auth, cookie_authentication_handler}, {couch_httpd_auth, default_authentication_handler}
+   default_handler = {couch_httpd_db, handle_request}
+   secure_rewrites = true
+   vhost_global_handlers = _utils, _uuids, _session, _oauth, _users
+   allow_jsonp = false
+   ; Options for the MochiWeb HTTP server.
+   ;server_options = [{backlog, 128}, {acceptor_pool_size, 16}]
+   ; For more socket options, consult Erlang's module 'inet' man page.
+   ;socket_options = [{recbuf, 262144}, {sndbuf, 262144}, {nodelay, true}]
+   socket_options = [{recbuf, 262144}, {sndbuf, 262144}]
+   log_max_chunk_size = 1000000
+   enable_cors = false
+   ; CouchDB can optionally enforce a maximum uri length;
+   ; max_uri_length = 8000
+   #+END_EXAMPLE
+
+*** =[cluster]= - Quorum settings
+    #+BEGIN_EXAMPLE
+    [cluster]
+    q=8
+    r=2
+    w=2
+    n=3
+    #+END_EXAMPLE
+
+*** =[couch_httpd_auth]=
+   #+BEGIN_EXAMPLE
+   [couch_httpd_auth]
+   ; If you set this to true, you should also uncomment the WWW-Authenticate line
+   ; above. If you don't configure a WWW-Authenticate header, CouchDB will send
+   ; Basic realm="server" in order to prevent you getting logged out.
+   ; require_valid_user = false
+   secret = d27d82ed2bd6485d9eda59a10a61e7a1
+   #+END_EXAMPLE
+
+*** =[couchdb]=
+    #+BEGIN_EXAMPLE
+    [couchdb]
+    uuid = fake_uuid_for_dev
+    database_dir = /srv/db
+    view_index_dir = /srv/view_index
+    ; util_driver_dir =
+    ; plugin_dir =
+    max_document_size = 67108864 ; 64 MB
+    os_process_timeout = 5000 ; 5 seconds. for view and external servers.
+    max_dbs_open = 500
+    delayed_commits = false
+    ; Method used to compress everything that is appended to database and view index files, except
+    ; for attachments (see the attachments section). Available methods are:
+    ;
+    ; none         - no compression
+    ; snappy       - use google snappy, a very fast compressor/decompressor
+    ; deflate_[N]  - use zlib's deflate, N is the compression level which ranges from 1 (fastest,
+    ;                lowest compression ratio) to 9 (slowest, highest compression ratio)
+    file = /var/log/couchdb/couchdb.log
+    ; Higher values may give better read performance due to less read operations
+    ; and/or more OS page cache hits, but they can also increase overall response
+    ; time for writes when there are many attachment write requests in parallel.
+    attachment_stream_buffer_size = 4096
+    #+END_EXAMPLE
+
+*** Quorum Settings
+ - Q: Number of shards per DB
+ - R: Read quorum
+ - W: Write quorum
+ - N: Number of redundant copies
+
+*** =vm.args=
+
+Erlang configuration file. You shouldn't need to change anything
+except maybe =-setcookie monster=.
+
+** Managing CouchDB
 
 ** Thank You
 
