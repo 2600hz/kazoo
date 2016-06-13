@@ -154,12 +154,7 @@ validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
     validate_message(Context, DocId, MediaId, cb_context:req_verb(Context)).
 
 validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId, ?BIN_DATA) ->
-    case load_message_binary(DocId, MediaId, Context) of
-        {'true', C1} ->
-            C2 = update_message_folder(DocId, MediaId, C1),
-            update_mwi(C2, DocId);
-        {_, C} -> C
-    end.
+    load_message_binary(DocId, MediaId, Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -564,20 +559,18 @@ ensure_message_in_folder(Message, UpdateJObj, Context) ->
 %% VMId is the id for the voicemail document, containing the binary data
 %% @end
 %%--------------------------------------------------------------------
--spec load_message_binary(ne_binary(), ne_binary(), cb_context:context()) ->
-                                 {boolean(), cb_context:context()}.
-load_message_binary(BoxId, MediaId, Context) ->
-    {Update, Context1} = load_message(MediaId, BoxId, 'undefined', Context),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            case kz_datamgr:open_cache_doc(cb_context:account_db(Context), BoxId) of
-                {'error', _E} ->
-                    {'false', cb_context:add_system_error('datastore_fault', Context)};
+-spec load_message_binary(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+load_message_binary(DocId, MediaId, Context) ->
+    case kz_vm_message:message_doc(cb_context:account_id(Context), MediaId) of
+        {'ok', JObj} ->
+            case kz_datamgr:open_cache_doc(cb_context:account_db(Context), DocId) of
+                {'error', Error} ->
+                    crossbar_doc:handle_couch_mgr_errors(Error, DocId, Context);
                 {'ok', BoxJObj} ->
                     Timezone = kzd_voicemail_box:timezone(BoxJObj),
-                    load_attachment_from_message(MediaId, Context1, Update, Timezone)
+                    load_attachment_from_message(JObj, Context, Timezone)
             end;
-        _Status -> {Update, Context1}
+        {'error', Err} -> crossbar_doc:handle_couch_mgr_errors(Err, MediaId, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -585,10 +578,9 @@ load_message_binary(BoxId, MediaId, Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec load_attachment_from_message(ne_binary(), cb_context:context(), boolean(), ne_binary()) ->
-                                              {boolean(), cb_context:context()}.
-load_attachment_from_message(MediaId, Context, Update, Timezone) ->
-    Doc = cb_context:doc(Context),
+-spec load_attachment_from_message(kz_json:object(), cb_context:context(), ne_binary()) -> cb_context:context().
+load_attachment_from_message(Doc, Context, Timezone) ->
+    MediaId = kz_doc:id(Doc),
     VMMetaJObj = kzd_box_message:metadata(Doc),
 
     [AttachmentId] = kz_doc:attachment_names(Doc),
@@ -599,10 +591,11 @@ load_attachment_from_message(MediaId, Context, Update, Timezone) ->
                                   ),
     case kz_datamgr:fetch_attachment(kz_doc:account_db(Doc), MediaId, AttachmentId) of
         {'error', Error} ->
-            {'false', crossbar_doc:handle_couch_mgr_errors(Error, MediaId, Context)};
+            crossbar_doc:handle_couch_mgr_errors(Error, MediaId, Context);
         {'ok', AttachBin} ->
             lager:debug("Sending file with filename ~s", [Filename]),
-            Setters = [{fun cb_context:set_resp_data/2, AttachBin}
+            Setters = [{fun cb_context:set_resp_status/2, 'success'}
+                       ,{fun cb_context:set_resp_data/2, AttachBin}
                        ,{fun cb_context:set_resp_etag/2, 'undefined'}
                        ,{fun cb_context:add_resp_headers/2
                          ,[{<<"Content-Type">>, kz_doc:attachment_content_type(Doc, AttachmentId)}
@@ -611,7 +604,7 @@ load_attachment_from_message(MediaId, Context, Update, Timezone) ->
                           ]
                         }
                       ],
-            {Update, cb_context:setters(Context, Setters)}
+            cb_context:setters(Context, Setters)
     end.
 
 %%--------------------------------------------------------------------

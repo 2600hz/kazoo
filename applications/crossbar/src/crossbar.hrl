@@ -154,6 +154,7 @@
           ,resp_status = 'error' :: crossbar_status()
           ,resp_error_msg :: kz_json:key()
           ,resp_error_code :: api_integer()
+          ,resp_file = <<>> :: api_binary()
           ,resp_data :: resp_data()
           ,resp_headers = [] :: kz_proplist() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
           ,resp_envelope = kz_json:new() :: kz_json:object()

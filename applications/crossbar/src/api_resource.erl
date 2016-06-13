@@ -33,7 +33,7 @@
          ,delete_resource/2
          ,delete_completed/2
          ,is_conflict/2
-         ,to_json/2, to_binary/2, to_csv/2, to_pdf/2
+         ,to_json/2, to_binary/2, to_csv/2, to_pdf/2, send_file/2
          ,from_json/2, from_binary/2, from_form/2
          ,multiple_choices/2
          ,generate_etag/2
@@ -642,7 +642,7 @@ from_binary(Req0, Context0) ->
         {'true', Req1, Context1} ->
             Event = api_util:create_event_name(Context1, <<"from_binary">>),
             _ = crossbar_bindings:map(Event, {Req1, Context1}),
-            api_util:create_push_response(Req1, Context1);
+            create_from_response(Req1, Context1);
         Else -> Else
     end.
 
@@ -654,7 +654,7 @@ from_json(Req0, Context0) ->
         {'true', Req1, Context1} ->
             Event = api_util:create_event_name(Context1, <<"from_json">>),
             _ = crossbar_bindings:map(Event, {Req1, Context1}),
-            api_util:create_push_response(Req1, Context1);
+            create_from_response(Req1, Context1);
         Else -> Else
     end.
 
@@ -666,8 +666,31 @@ from_form(Req0, Context0) ->
         {'true', Req1, Context1} ->
             Event = api_util:create_event_name(Context1, <<"from_form">>),
             _ = crossbar_bindings:map(Event, {Req1, Context1}),
-            api_util:create_push_response(Req1, Context1);
+            create_from_response(Req1, Context1);
         Else -> Else
+    end.
+
+-spec create_from_response(cowboy_req:req(), cb_context:context()) ->
+                       {boolean(), cowboy_req:req(), cb_context:context()}.
+-spec create_from_response(cowboy_req:req(), cb_context:context(), api_binary()) ->
+                       {boolean(), cowboy_req:req(), cb_context:context()}.
+create_from_response(Req, Context) ->
+    create_from_response(Req, Context, cb_context:req_header(Context, <<"accept">>)).
+
+create_from_response(Req, Context, 'undefined') ->
+    create_from_response(Req, Context, <<"*/*">>);
+create_from_response(Req, Context, Accept) ->
+    CTPs = [F || {F, _} <- cb_context:content_types_provided(Context)],
+    DefaultFun = case CTPs of
+                     [] -> 'to_json';
+                     [F|_] -> F
+                 end,
+    case to_fun(Context, Accept, DefaultFun) of
+        'to_json' -> api_util:create_push_response(Req, Context);
+        'send_file' -> api_util:create_push_file_response(Req, Context);
+        _ ->
+            %% sending json for now until we implement other types
+            api_util:create_push_response(Req, Context)
     end.
 
 -spec to_json(cowboy_req:req(), cb_context:context()) ->
@@ -721,6 +744,11 @@ to_binary(Req, Context, Accept) ->
             lager:debug("calling ~s instead of to_binary to render response", [Fun]),
             apply(?MODULE, Fun, [Req, Context])
     end.
+
+-spec send_file(cowboy_req:req(), cb_context:context()) -> api_util:pull_file_response_return().
+send_file(Req, Context) ->
+    lager:debug("run: send_file"),
+    api_util:create_pull_file_response(Req, Context).
 
 -spec to_fun(cb_context:context(), ne_binary(), atom()) -> atom().
 -spec to_fun(cb_context:context(), ne_binary(), ne_binary(), atom()) -> atom().

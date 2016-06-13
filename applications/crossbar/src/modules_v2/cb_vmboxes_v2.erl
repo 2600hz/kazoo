@@ -16,7 +16,8 @@
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3, allowed_methods/4
          ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3, resource_exists/4
          ,validate/1, validate/2, validate/3, validate/4, validate/5
-         ,content_types_provided/5
+         ,content_types_accepted/4
+         ,content_types_provided/4, content_types_provided/5
          ,put/1
          ,post/2, post/3, post/4
          ,patch/2
@@ -33,12 +34,14 @@
 
 -define(MESSAGES_RESOURCE, ?VM_KEY_MESSAGES).
 -define(BIN_DATA, <<"raw">>).
--define(MEDIA_MIME_TYPES, [{<<"application">>, <<"octet-stream">>}]).
+-define(MEDIA_MIME_TYPES, [{<<"application">>, <<"octet-stream">>}
+                           ,{<<"application">>, <<"zip">>}]).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 init() ->
+    _ = crossbar_bindings:bind(<<"v2_resource.content_types_accpeted.vmboxes">>, ?MODULE, 'content_types_accepted'),
     _ = crossbar_bindings:bind(<<"v2_resource.content_types_provided.vmboxes">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"v2_resource.allowed_methods.vmboxes">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"v2_resource.resource_exists.vmboxes">>, ?MODULE, 'resource_exists'),
@@ -47,6 +50,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"v2_resource.execute.post.vmboxes">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.patch.vmboxes">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.delete.vmboxes">>, ?MODULE, 'delete'),
+    _ = crossbar_bindings:bind(<<"v2_resource.finish_request.post.vmboxes">>, ?MODULE, 'finish_request'),
     _ = crossbar_bindings:bind(crossbar_cleanup:binding_account(), 'kz_vm_message', 'cleanup_heard_voicemail').
 
 %%--------------------------------------------------------------------
@@ -69,6 +73,8 @@ allowed_methods(_VMBoxID) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PATCH].
 allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE, ?BIN_DATA) ->
+    [?HTTP_POST];
 allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE, _MsgID) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE, _MsgID, ?BIN_DATA) ->
@@ -103,13 +109,26 @@ resource_exists(_, ?MESSAGES_RESOURCE, _, ?BIN_DATA) -> 'true'.
 -spec acceptable_content_types() -> kz_proplist().
 acceptable_content_types() -> ?MEDIA_MIME_TYPES.
 
+-spec content_types_accepted(cb_context:context(), path_token(), path_token(), path_token()) ->
+                                    cb_context:context().
+content_types_accepted(Context, _VMBox, ?MESSAGES_RESOURCE, ?BIN_DATA) ->
+    CTA = [{'from_json', <<"application/json">>}],
+    cb_context:set_content_types_provided(Context, CTA).
+
+-spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
+                                    cb_context:context().
 -spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token(), path_token()) ->
                                     cb_context:context().
+content_types_provided(Context, _VMBox, ?MESSAGES_RESOURCE, ?BIN_DATA) ->
+    content_types_provided_for_vm_download(Context, cb_context:req_verb(Context)).
 content_types_provided(Context, _VMBox, ?MESSAGES_RESOURCE, _MsgID, ?BIN_DATA) ->
     content_types_provided_for_vm_download(Context, cb_context:req_verb(Context)).
 
 content_types_provided_for_vm_download(Context, ?HTTP_GET) ->
     CTP = [{'to_binary', ?MEDIA_MIME_TYPES}],
+    cb_context:set_content_types_provided(Context, CTP);
+content_types_provided_for_vm_download(Context, ?HTTP_POST) ->
+    CTP = [{'send_file', ?MEDIA_MIME_TYPES}],
     cb_context:set_content_types_provided(Context, CTP);
 content_types_provided_for_vm_download(Context, _Verb) ->
     Context.
@@ -151,16 +170,13 @@ validate_vmbox(Context, DocId, ?HTTP_DELETE) ->
 validate(Context, DocId, ?MESSAGES_RESOURCE) ->
     validate_messages(Context, DocId, cb_context:req_verb(Context)).
 
+validate(Context, DocId, ?MESSAGES_RESOURCE, ?BIN_DATA) ->
+    load_messages_binaries(DocId, Context);
 validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
     validate_message(Context, DocId, MediaId, cb_context:req_verb(Context)).
 
 validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId, ?BIN_DATA) ->
-    case load_message_binary(DocId, MediaId, Context) of
-        {'true', C1} ->
-            C2 = update_message_folder(DocId, MediaId, C1),
-            update_mwi(C2, DocId);
-        {_, C} -> C
-    end.
+    load_message_binary(DocId, MediaId, Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -196,6 +212,8 @@ post(Context, OldBoxId, ?MESSAGES_RESOURCE) ->
             update_mwi(C, [OldBoxId, NewBoxId])
     end.
 
+post(Context, _DocId, ?MESSAGES_RESOURCE, ?BIN_DATA) ->
+    Context;
 post(Context, OldBoxId, ?MESSAGES_RESOURCE, MediaId) ->
     AccountId = cb_context:account_id(Context),
     case cb_context:req_value(Context, <<"source_id">>) of
@@ -571,20 +589,19 @@ ensure_message_in_folder(Message, UpdateJObj, Context) ->
 %% VMId is the id for the voicemail document, containing the binary data
 %% @end
 %%--------------------------------------------------------------------
--spec load_message_binary(ne_binary(), ne_binary(), cb_context:context()) ->
-                                 {boolean(), cb_context:context()}.
+-spec load_message_binary(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
 load_message_binary(BoxId, MediaId, Context) ->
-    {Update, Context1} = load_message(MediaId, BoxId, 'undefined', Context),
-    case cb_context:resp_status(Context1) of
-        'success' ->
+    case kz_vm_message:message_doc(cb_context:account_id(Context), MediaId) of
+        {'ok', JObj} ->
             case kz_datamgr:open_cache_doc(cb_context:account_db(Context), BoxId) of
-                {'error', _E} ->
-                    {'false', cb_context:add_system_error('datastore_fault', Context)};
+                {'error', Error} ->
+                    crossbar_doc:handle_couch_mgr_errors(Error, BoxId, Context);
                 {'ok', BoxJObj} ->
                     Timezone = kzd_voicemail_box:timezone(BoxJObj),
-                    load_attachment_from_message(MediaId, Context1, Update, Timezone)
+                    %% TODO: check source_id of message against BoxId(BoxId)
+                    load_attachment_from_message(JObj, BoxId, Context, Timezone)
             end;
-        _Status -> {Update, Context1}
+        {'error', Err} -> crossbar_doc:handle_couch_mgr_errors(Err, MediaId, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -592,10 +609,10 @@ load_message_binary(BoxId, MediaId, Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec load_attachment_from_message(ne_binary(), cb_context:context(), boolean(), ne_binary()) ->
-                                              {boolean(), cb_context:context()}.
-load_attachment_from_message(MediaId, Context, Update, Timezone) ->
-    Doc = cb_context:doc(Context),
+-spec load_attachment_from_message(kz_json:object(), ne_binary(), cb_context:context(), ne_binary()) ->
+                                cb_context:context().
+load_attachment_from_message(Doc, BoxId, Context, Timezone) ->
+    MediaId = kz_doc:id(Doc),
     VMMetaJObj = kzd_box_message:metadata(Doc),
 
     [AttachmentId] = kz_doc:attachment_names(Doc),
@@ -604,12 +621,16 @@ load_attachment_from_message(MediaId, Context, Update, Timezone) ->
                                    ,filename:extension(AttachmentId)
                                    ,Timezone
                                   ),
-    case kz_datamgr:fetch_attachment(kz_doc:account_db(Doc), MediaId, AttachmentId) of
+    case (kzd_box_message:source_id(Doc) =:= BoxId)
+             andalso kz_datamgr:fetch_attachment(kz_doc:account_db(Doc), MediaId, AttachmentId)
+    of
+        'false' -> crossbar_doc:handle_couch_mgr_errors('not_found', MediaId, Context);
         {'error', Error} ->
-            {'false', crossbar_doc:handle_couch_mgr_errors(Error, MediaId, Context)};
+            crossbar_doc:handle_couch_mgr_errors(Error, MediaId, Context);
         {'ok', AttachBin} ->
             lager:debug("Sending file with filename ~s", [Filename]),
-            Setters = [{fun cb_context:set_resp_data/2, AttachBin}
+            Setters = [{fun cb_context:set_resp_status/2, 'success'}
+                       ,{fun cb_context:set_resp_data/2, AttachBin}
                        ,{fun cb_context:set_resp_etag/2, 'undefined'}
                        ,{fun cb_context:add_resp_headers/2
                          ,[{<<"Content-Type">>, kz_doc:attachment_content_type(Doc, AttachmentId)}
@@ -618,8 +639,109 @@ load_attachment_from_message(MediaId, Context, Update, Timezone) ->
                           ]
                         }
                       ],
-            {Update, cb_context:setters(Context, Setters)}
+            cb_context:setters(Context, Setters)
     end.
+
+-spec load_messages_binaries(ne_binary(), cb_context:context()) -> cb_context:context().
+load_messages_binaries(BoxId, Context) ->
+    WorkDir = kz_util:to_list(<<"/tmp/", (cb_context:req_id(Context))/binary, "/">>),
+    Ids = cb_context:req_value(Context, ?VM_KEY_MESSAGES, []),
+    case kz_datamgr:open_cache_doc(cb_context:account_db(Context), BoxId) of
+        {'error', Error} ->
+            crossbar_doc:handle_couch_mgr_errors(Error, BoxId, Context);
+        {'ok', BoxJObj} ->
+            Timezone = kzd_voicemail_box:timezone(BoxJObj),
+            _ = save_attachments_to_file(Ids, BoxId, Context, Timezone, WorkDir),
+            maybe_create_zip_file(WorkDir, Context)
+    end.
+
+-spec save_attachments_to_file(ne_binaries(), ne_binary(), cb_context:context(), ne_binary(), string()) ->
+                                cb_context:context().
+save_attachments_to_file([], _, Context, _, _) -> Context;
+save_attachments_to_file([Id|Ids], BoxId, Context, Timezone, WorkDir) ->
+    _ = file:make_dir(WorkDir),
+    try save_attachment_to_file(Id, BoxId, Context, Timezone, WorkDir) of
+        'ok' -> save_attachments_to_file(Ids, BoxId, Context, Timezone, WorkDir);
+        {'error', Error} ->
+            _ = del_dir(WorkDir),
+            crossbar_doc:handle_couch_mgr_errors(Error, Id, Context)
+    catch
+        _:_ ->
+            _ = del_dir(WorkDir),
+            cb_context:add_system_error('unspecified_fault', Context)
+    end.
+
+-spec save_attachment_to_file(ne_binary(), ne_binary(), cb_context:context(), ne_binary(), string()) ->
+                                'ok' | {atom(), any()}.
+save_attachment_to_file(MsgId, BoxId, Context, Timezone, WorkDir) ->
+    case kz_vm_message:message_doc(cb_context:account_id(Context), MsgId) of
+        {'ok', Doc} ->
+            VMMetaJObj = kzd_box_message:metadata(Doc),
+
+            [AttachmentId] = kz_doc:attachment_names(Doc),
+            Filename = generate_media_name(kz_json:get_value(<<"caller_id_number">>, VMMetaJObj)
+                                           ,kz_json:get_value(<<"timestamp">>, VMMetaJObj)
+                                           ,filename:extension(AttachmentId)
+                                           ,Timezone
+                                          ),
+            case (kzd_box_message:source_id(Doc) =:= BoxId)
+                     andalso kz_datamgr:fetch_attachment(kz_doc:account_db(Doc), MsgId, AttachmentId)
+            of
+                'false' -> {'error', 'not_found'};
+                {'error', _}=E -> E;
+                {'ok', AttachBin} ->
+                    'ok' = file:write_file(lists:concat([WorkDir, kz_util:to_list(Filename)]), AttachBin)
+            end;
+        {'error', _}=E -> E
+    end.
+
+-spec maybe_create_zip_file(string(), cb_context:context()) -> cb_context:context().
+maybe_create_zip_file(WorkDir, Context) ->
+    Files = [kz_util:to_list(F) || F <- filelib:wildcard("*", WorkDir)],
+    try Files =/= []
+              andalso create_zip_file(WorkDir, Files, Context)
+    of
+        'false' ->
+            _ = del_dir(WorkDir),
+            cb_context:add_system_error('not_found', Context);
+        C -> C
+    catch
+        _T:_E ->
+            lager:debug("failed to generate a zip file of voicemail messages: ~p:~p", [_T, _E]),
+            _ = del_dir(WorkDir),
+            cb_context:add_system_error('unspecified_fault', Context)
+    end.
+
+-spec create_zip_file(string(), [string()], cb_context:context()) -> cb_context:context().
+create_zip_file(WorkDir, Files, Context) ->
+    ZipName = lists:concat([kz_util:to_list(cb_context:req_id(Context)), ".zip"]),
+    ZipPath = ["/tmp/", ZipName],
+    {'ok', _} = zip:zip(ZipPath , Files, [{'cwd', WorkDir}]),
+    _ = del_dir(WorkDir),
+    Setters = [{fun cb_context:set_resp_status/2, 'success'}
+               ,{fun cb_context:set_resp_etag/2, 'undefined'}
+               ,{fun cb_context:set_resp_file/2, kz_util:to_binary(ZipPath)}
+               ,{fun cb_context:add_resp_headers/2
+                 ,[{<<"Content-Type">>, <<"application/zip">>}
+                   ,{<<"Content-Disposition">>, <<"attachment; filename=", (kz_util:to_binary(ZipName))/binary>>}
+                   ,{<<"Content-Length">>, filelib:file_size(ZipPath)}
+                  ]
+                }
+              ],
+    cb_context:setters(Context, Setters).
+
+-spec del_dir(string()) -> 'ok' | {'error', any()}.
+del_dir(Dir) ->
+    _ = del_all_files(Dir),
+    file:del_dir(Dir).
+
+-spec del_all_files(string()) -> any().
+del_all_files(Dir) ->
+    {'ok', Files} = file:list_dir(Dir),
+    lists:foreach(fun(F) ->
+                      file:delete(Dir ++ F)
+                  end, Files
+                 ).
 
 %%--------------------------------------------------------------------
 %% @private

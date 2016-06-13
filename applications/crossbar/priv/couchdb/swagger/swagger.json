@@ -8507,6 +8507,19 @@
                 }
             }
         },
+        "/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/raw": {
+            "post": {
+                "description": "Fetch raw aduio of a list message id",
+                "produces": [
+                    "application/zip"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "ZIP file containing the raw audio of voicemail messages"
+                    }
+                }
+            }
+        },
         "/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}": {
             "delete": {},
             "get": {},
