@@ -615,6 +615,10 @@ task_by_pid(Pid, State) ->
 -spec handle_call_start_task(task(), state()) -> ?REPLY(state(), Response) when
       Response :: {'ok', kz_json:object()} |
                   {'error', any()}.
+handle_call_start_task(#{ finished := Finished
+                        }, State)
+  when Finished /= 'undefined' ->
+    ?REPLY(State, {'error', 'already_started'});
 handle_call_start_task(Task=#{ id := TaskId
                              , account_id := AccountId
                              , category := Category
