@@ -19,6 +19,10 @@
 
 * Platform Overview
 
+** Kazoo Basic Training
+#+BEGIN_CENTER
+Platform Overview
+#+END_CENTER
 ** The Beginning
 
 #+BEGIN_CENTER
@@ -385,7 +389,11 @@ file:./images/kazoo_stack_1_details.png
 Let's Prepare for Kazoo!
 #+END_CENTER
 
-** Prepare for Kazoo
+** Prepare for Kazoo                                                :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
 
 *** Debian 8                                                        :B_block:
     :PROPERTIES:
@@ -404,8 +412,6 @@ Let's Prepare for Kazoo!
    #+BEGIN_EXAMPLE
    $> ln -fs /usr/share/zoneinfo/UTC /etc/localtime
    #+END_EXAMPLE
-
-** Prepare for Kazoo
 
 *** CentOS                                                          :B_block:
     :PROPERTIES:
@@ -426,11 +432,19 @@ Let's Prepare for Kazoo!
    $> ln -fs /usr/share/zoneinfo/UTC /etc/localtime
    #+END_EXAMPLE
 
-** Prepare for Kazoo
 
-*** Configs setup
-
+*** Configs setup                                                   :B_block:
+    :PROPERTIES:
+    :BEAMER_env: block
+    :END:
+#+BEGIN_CENTER
 Kazoo brings along its own configs for the various packages relied upon. Once the Debian and CentOS builds are completed, this step will be done automatically. For now, we do it manually:
+#+END_CENTER
+
+*** Configs setup                                                   :B_block:
+    :PROPERTIES:
+    :BEAMER_env: block
+    :END:
 
 1. Install the Kazoo Configs repo
    #+BEGIN_EXAMPLE
@@ -453,6 +467,7 @@ Kazoo brings along its own configs for the various packages relied upon. Once th
    #+BEGIN_EXAMPLE
    $> reboot
    #+END_EXAMPLE
+
 
 ** Let's get started!
 
