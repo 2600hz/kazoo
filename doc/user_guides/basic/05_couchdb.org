@@ -123,7 +123,7 @@ Taken from [[https://cwiki.apache.org/confluence/display/COUCHDB/Debian][CouchDB
    $> sudo apt-get update -y
    $> sudo apt-get install -y libmozjs185 libmozjs185-dev erlang-nox erlang-dev \
    build-essential libnspr4 libnspr4-0d libnspr4-dev libcurl4-openssl-dev curl libicu-dev \
-   pkg-config git haproxy nodejs
+   pkg-config git haproxy nodejs python-sphinx
    #+END_EXAMPLE
 
 *** CentOS
@@ -251,7 +251,166 @@ override them in =local.ini=
 Erlang configuration file. You shouldn't need to change anything
 except maybe =-setcookie monster=.
 
-** Managing CouchDB
+** Managing CouchDB                                                 :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Lets create a new database!
+ - Click "Create Database" (top right corner)
+ - Name your database and click "Create"
+
+*** Lets add some documents!
+ - Click on the "+" to the right of "All Documents"
+ - Click on “New Doc”
+ - Add some JSON key/value pairs
+ - Click on "Create Document"
+
+*** What files got created
+
+ - Check node1's files
+   #+BEGIN_EXAMPLE
+   $couchdb/> ls dev/lib/node1/data/shards
+   00000000-1fffffff  40000000-5fffffff  80000000-9fffffff  c0000000-dfffffff
+   20000000-3fffffff  60000000-7fffffff  a0000000-bfffffff  e0000000-ffffffff
+   $couchdb/> ls dev/lib/node1/data/shards/00000000-1fffffff/
+   _global_changes.1462857809.couch _metadata.1462857809.couch _replicator.1462857809.couch
+   _users.1462857809.couch test.1465831158.couch
+   $couchdb/> find dev/lib/node1/data/shards/ -name "test.*.couch"
+   dev/lib/node1/data/shards/20000000-3fffffff/test.1465831158.couch
+   dev/lib/node1/data/shards/40000000-5fffffff/test.1465831158.couch
+   dev/lib/node1/data/shards/e0000000-ffffffff/test.1465831158.couch
+   dev/lib/node1/data/shards/60000000-7fffffff/test.1465831158.couch
+   dev/lib/node1/data/shards/a0000000-bfffffff/test.1465831158.couch
+   dev/lib/node1/data/shards/c0000000-dfffffff/test.1465831158.couch
+   dev/lib/node1/data/shards/80000000-9fffffff/test.1465831158.couch
+   dev/lib/node1/data/shards/00000000-1fffffff/test.1465831158.couch
+   #+END_EXAMPLE
+
+*** Your data is stored in a file named after the database name
+ - This keeps it simple
+ - Slashes become folder names (organizational)
+ - Your database is broken up into pieces (shards)
+ - You can copy these files – they’re a backup
+ - You can move them around – that’s a restore
+
+*** Lets backup your database
+    #+BEGIN_EXAMPLE
+    $couchdb/> cp –a dev/lib/node1/data/shards /tmp/
+    #+END_EXAMPLE
+
+*** Create an disaster!!!
+    #+BEGIN_EXAMPLE
+    $couchdb/> rm -rf dev/lib/node1/data/shards
+    #+END_EXAMPLE
+
+*** Can you access your documents in the UI now?
+ - Of course! Nodes 2 and 3 contain copies as well
+   #+BEGIN_EXAMPLE
+   $couchdb/> find dev/lib/ -name "test.*.couch"
+   dev/lib/node3/data/shards/20000000-3fffffff/test.1465831158.couch
+   dev/lib/node3/data/shards/40000000-5fffffff/test.1465831158.couch
+   dev/lib/node3/data/shards/e0000000-ffffffff/test.1465831158.couch
+   dev/lib/node3/data/shards/60000000-7fffffff/test.1465831158.couch
+   dev/lib/node3/data/shards/a0000000-bfffffff/test.1465831158.couch
+   dev/lib/node3/data/shards/c0000000-dfffffff/test.1465831158.couch
+   dev/lib/node3/data/shards/80000000-9fffffff/test.1465831158.couch
+   dev/lib/node3/data/shards/00000000-1fffffff/test.1465831158.couch
+   dev/lib/node2/data/shards/20000000-3fffffff/test.1465831158.couch
+   dev/lib/node2/data/shards/40000000-5fffffff/test.1465831158.couch
+   dev/lib/node2/data/shards/e0000000-ffffffff/test.1465831158.couch
+   dev/lib/node2/data/shards/60000000-7fffffff/test.1465831158.couch
+   dev/lib/node2/data/shards/a0000000-bfffffff/test.1465831158.couch
+   dev/lib/node2/data/shards/c0000000-dfffffff/test.1465831158.couch
+   dev/lib/node2/data/shards/80000000-9fffffff/test.1465831158.couch
+   dev/lib/node2/data/shards/00000000-1fffffff/test.1465831158.couch
+   #+END_EXAMPLE
+
+*** Check node 1 sepcifically
+    #+BEGIN_EXAMPLE
+    $> curl localhost:15984/test | python -mjson.tool
+    {
+    "compact_running": false,
+    "data_size": 1621,
+    "db_name": "test",
+    "disk_format_version": 6,
+    "disk_size": 54455,
+    "doc_count": 1,
+    "doc_del_count": 0,
+    "instance_start_time": "0",
+    "other": {
+        "data_size": 105
+    },
+    "purge_seq": 0,
+    "sizes": {
+        "active": 1621,
+        "external": 105,
+        "file": 54455
+    },
+    "update_seq": "1-g1AAAAFDeJzLYWBg4MhgTmHgz8tPSTV2MDQy1zMAQsMcoARTIkOS_P___7MSGXAqSVIAkkn2hFQ5gFTFE1KVAFJVT0BVHguQZGgAUkCF8wmrXABRuZ-wygMQlfezEhkJqHwAUQlyZxYAKXdWhw"
+    }
+    #+END_EXAMPLE
+
+*** Check nodes 2 and 3 as well
+    #+BEGIN_EXAMPLE
+    $> curl localhost:25984/test | python -mjson.tool
+    $> curl localhost:35984/test | python -mjson.tool
+    #+END_EXAMPLE
+
+*** CouchDB tracks data about data in CouchDB
+ - Navigate to http://your.ip.addr:5986/_utils/
+ - Note the port, *5986* instead of 5984.
+
+*** Open the =_dbs= database and select a document
+ - This is where CouchDB tracks which servers have what parts of your databases.
+   #+BEGIN_EXAMPLE
+   {
+   "_id": "test",
+   "_rev": "1-4b68b817875bf961c745742fed04e589",
+   "shard_suffix": [46,49,52,54,53,56,51,49,49,53,56],
+   "changelog": [
+       [
+       "add",
+       "00000000-1fffffff",
+       "node1@127.0.0.1"
+       ],
+    ...
+    ],
+    "by_node": {
+        "node1@127.0.0.1": [
+            "00000000-1fffffff",
+            "20000000-3fffffff",
+            ...
+            ],
+        ...
+        ]
+    },
+    "by_range": {
+        "00000000-1fffffff": [
+            "node1@127.0.0.1",
+            "node2@127.0.0.1",
+            "node3@127.0.0.1"
+            ],
+        ...
+    }
+   }
+   #+END_EXAMPLE
+
+*** There is other data here too!
+ - Open the "_nodes" database
+ - This is where CouchDB tracks the nodes in the cluster
+ - This is also where you'd add a "zone"
+   - See [[https://mail-archives.apache.org/mod_mbox/couchdb-user/201604.mbox/%3CAB0DB9FD-987E-4D29-929D-70EAC3468B17@apache.org%3E][this ML post for more]] on zones
+ - See your own node in there?
+ - If you know what you are doing you can change these!
+ - That topic is covered in our advanced course
+
+** Clustering CouchDB                                               :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
 
 ** Thank You
 
