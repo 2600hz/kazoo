@@ -63,7 +63,23 @@ resource_exists() -> 'true'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
-    Doc = kz_json:from_list(kapps_config:get_all_kvs(<<"dialplans">>)),
+    Doc = maybe_add_name(kapps_config:get_all_kvs(<<"dialplans">>)),
     cb_context:setters(Context, [{fun cb_context:set_resp_data/2, Doc}
                                  ,{fun cb_context:set_resp_status/2, 'success'}
                                 ]).
+
+-spec maybe_add_name(kz_proplist()) -> kz_json:object().
+maybe_add_name(KVs) ->
+    maybe_add_name(KVs, kz_json:new()).
+
+-spec maybe_add_name(kz_proplist(), kz_json:object()) -> kz_json:object().
+maybe_add_name([], Acc) -> Acc;
+maybe_add_name([{K, V} | KVs], Acc0) ->
+    Acc = case kz_json:get_ne_binary_value(<<"name">>, V) of
+              'undefined' ->
+                  JObj = kz_json:set_value(<<"name">>, K, V),
+                  kz_json:set_value(K, JObj, Acc0);
+              _Other ->
+                  kz_json:set_value(K, V, Acc0)
+          end,
+    maybe_add_name(KVs, Acc).
