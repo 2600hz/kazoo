@@ -34,8 +34,7 @@
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'help'}, [{<<"tasks">>, <<"help_req">>}]}
                     ]).
--define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
-
+-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -48,7 +47,6 @@ start_link() ->
     gen_listener:start_link(?SERVER
                            ,[{'bindings', ?BINDINGS}
                             ,{'responders', ?RESPONDERS}
-                            ,{'consume_options', ?CONSUME_OPTIONS}
                             ]
                            ,[]
                            ).
