@@ -15,6 +15,7 @@
                   , kazoo_amqp
                   , kazoo_services
                   , kazoo_documents
+                  , kazoo_tasks
                   , kazoo_number_manager
                   , kazoo_token_buckets
                   , kazoo_caches

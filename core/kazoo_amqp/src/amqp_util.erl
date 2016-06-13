@@ -101,6 +101,13 @@
 -export([unbind_q_from_leader/2]).
 -export([leader_publish/2, leader_publish/3, leader_publish/4]).
 
+-export([tasks_exchange/0]).
+-export([new_tasks_queue/0, new_tasks_queue/1]).
+-export([delete_tasks_queue/1]).
+-export([bind_q_to_tasks/2, bind_q_to_tasks/3]).
+-export([unbind_q_from_tasks/2]).
+-export([tasks_publish/2, tasks_publish/3, tasks_publish/4]).
+
 -export([originate_resource_publish/1, originate_resource_publish/2]).
 
 -export([offnet_resource_publish/1, offnet_resource_publish/2]).
@@ -405,6 +412,17 @@ leader_publish(Routing, Payload, ContentType) ->
 leader_publish(Routing, Payload, ContentType, Opts) ->
     basic_publish(?EXCHANGE_LEADER, Routing, Payload, ContentType, Opts).
 
+-spec tasks_publish(ne_binary(), amqp_payload()) -> 'ok'.
+-spec tasks_publish(ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.
+-spec tasks_publish(ne_binary(), amqp_payload(), ne_binary(), kz_proplist()) -> 'ok'.
+tasks_publish(Routing, Payload) ->
+    tasks_publish(Routing, Payload, ?DEFAULT_CONTENT_TYPE).
+tasks_publish(Routing, Payload, ContentType) ->
+    tasks_publish(Routing, Payload, ContentType, []).
+tasks_publish(Routing, Payload, ContentType, Opts) ->
+    basic_publish(?EXCHANGE_TASKS, Routing, Payload, ContentType, Opts).
+
+
 %% generic publisher for an Exchange.Queue
 %% Use <<"#">> for a default Queue
 -spec basic_publish(ne_binary(), binary(), amqp_payload()) -> 'ok'.
@@ -529,6 +547,11 @@ registrar_exchange() ->
 -spec leader_exchange() -> 'ok'.
 leader_exchange() ->
     new_exchange(?EXCHANGE_LEADER, ?TYPE_LEADER).
+
+-spec tasks_exchange() -> 'ok'.
+tasks_exchange() ->
+    new_exchange(?EXCHANGE_TASKS, ?TYPE_TASKS).
+
 
 %% A generic Exchange maker
 -spec new_exchange(ne_binary(), ne_binary()) -> 'ok'.
@@ -667,6 +690,12 @@ new_conference_queue(Queue) ->
                       ,{'nowait', 'false'}
                      ]).
 
+-spec new_tasks_queue() -> ne_binary() | {'error', any()}.
+-spec new_tasks_queue(binary()) -> ne_binary() | {'error', any()}.
+new_tasks_queue() -> new_tasks_queue(<<>>).
+new_tasks_queue(Queue) -> new_queue(Queue, [{'nowait', 'false'}]).
+
+
 %% Declare a queue and returns the queue Name
 -type new_queue_ret() :: api_binary() | integer() |
                          {ne_binary(), integer(), integer()} |
@@ -775,6 +804,7 @@ delete_configuration_queue(Queue) -> queue_delete(Queue, []).
 delete_conference_queue(Queue) -> queue_delete(Queue, []).
 delete_monitor_queue(Queue) -> queue_delete(Queue, []).
 delete_registrar_queue(Queue) -> queue_delete(Queue, []).
+delete_tasks_queue(Queue) -> queue_delete(Queue, []).
 
 delete_callevt_queue(CallID) -> delete_callevt_queue(CallID, []).
 delete_callevt_queue(CallID, Prop) ->
@@ -783,6 +813,7 @@ delete_callevt_queue(CallID, Prop) ->
 delete_callctl_queue(CallID) -> delete_callctl_queue(CallID, []).
 delete_callctl_queue(CallID, Prop) ->
     queue_delete(list_to_binary([?EXCHANGE_CALLCTL, ".", encode(CallID)]), Prop).
+
 
 queue_delete(Queue) -> queue_delete(Queue, []).
 queue_delete(Queue, _Prop) when not is_binary(Queue) ->
@@ -913,6 +944,14 @@ bind_q_to_leader(Queue, Bind) ->
 unbind_q_from_leader(Queue, Bind) ->
     unbind_q_from_exchange(Queue, Bind, ?EXCHANGE_LEADER).
 
+-spec bind_q_to_tasks(ne_binary(), ne_binary()) -> 'ok'.
+-spec bind_q_to_tasks(ne_binary(), ne_binary(), kz_proplist()) -> 'ok'.
+bind_q_to_tasks(Queue, Routing) ->
+    bind_q_to_tasks(Queue, Routing, []).
+bind_q_to_tasks(Queue, Routing, Options) ->
+    bind_q_to_exchange(Queue, Routing, ?EXCHANGE_TASKS, Options).
+
+
 -spec bind_q_to_exchange(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 -spec bind_q_to_exchange(ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> 'ok'.
 bind_q_to_exchange(Queue, _Routing, _Exchange) when not is_binary(Queue) ->
@@ -992,6 +1031,10 @@ unbind_q_from_presence(Queue, Routing) ->
 
 unbind_q_from_registrar(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_REGISTRAR).
+
+unbind_q_from_tasks(Queue, Routing) ->
+    unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_TASKS).
+
 
 -spec unbind_q_from_exchange(ne_binary(), ne_binary(), ne_binary()) ->
                                     'ok' | {'error', any()}.

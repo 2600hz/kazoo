@@ -121,7 +121,7 @@ resource_exists(_) -> 'true'.
 %% @doc
 %% What content-types will the module be using to respond (matched against
 %% client's accept header)
-%% Of the form {atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
+%% Of the form {atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context()) -> cb_context:context().
@@ -133,7 +133,7 @@ content_types_provided(Context) ->
 %% @doc
 %% What content-types will the module be requiring (matched to the client's
 %% Content-Type header
-%% Of the form {atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
+%% Of the form {atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_accepted(cb_context:context()) -> cb_context:context().

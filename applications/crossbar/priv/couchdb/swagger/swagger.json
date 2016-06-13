@@ -5880,6 +5880,25 @@
             "required": true,
             "type": "object"
         },
+        "tasks.records": {
+            "additionalProperties": false,
+            "description": "Input data to go through as part of a background task",
+            "name": "Task records",
+            "properties": {
+                "records": {
+                    "description": "List the rows of input data",
+                    "items": {
+                        "required": true,
+                        "type": "object"
+                    },
+                    "minItems": 1,
+                    "name": "Records",
+                    "required": true,
+                    "type": "array",
+                    "uniqueItems": true
+                }
+            }
+        },
         "temporal_rules": {
             "description": "Schema for a temporal rules",
             "name": "Temporal Rule",
@@ -7903,6 +7922,9 @@
         "/v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{ID}": {
             "get": {}
         },
+        "/v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{_ID}": {
+            "get": {}
+        },
         "/v2/accounts/{ACCOUNT_ID}/limits": {
             "get": {},
             "post": {}
@@ -8337,6 +8359,18 @@
         },
         "/v2/accounts/{ACCOUNT_ID}/sms/{_ID}": {
             "delete": {},
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/tasks": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}": {
+            "delete": {},
+            "get": {},
+            "patch": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/output": {
             "get": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/templates": {

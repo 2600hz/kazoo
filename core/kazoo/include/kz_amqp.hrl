@@ -69,8 +69,8 @@
 -define(TYPE_RESOURCE, <<"fanout">>).
 
 %% Call Manager Exchange
-%% - ecallmgr will publish requests to this exchange using routing keys
-%%   apps that want to handle certain messages will create a queue with the appropriate routing key
+%% - ecallmgr will publish requests to this exchange using routing keys.
+%%   Apps that want to handle certain messages will create a queue with the appropriate routing key
 %%   in the binding to receive the messages.
 %% - ecallmgr publishes to the exchange with a routing key; consumers bind their queue with the
 %%   routing keys they want messages for.
@@ -103,8 +103,8 @@
 -define(EXCHANGE_CONFIGURATION, <<"configuration">>).
 -define(TYPE_CONFIGURATION, <<"topic">>).
 
-%% WhApp Exchange
-%% - For inter-whapp communication (amongst themselves)
+%% KApp Exchange
+%% - For inter-kapp communication (amongst themselves)
 -define(EXCHANGE_KAPPS, <<"kapps">>).
 -define(TYPE_KAPPS, <<"topic">>).
 
@@ -137,6 +137,14 @@
 %% - Used for leader election
 -define(EXCHANGE_LEADER, <<"leader">>).
 -define(TYPE_LEADER, <<"topic">>).
+
+%% Tasks Exchange
+%% - kazoo_tasks can publish tasks discovery request to the appropriate queue in this
+%%   exchange to identify a kapp's available tasks.
+%% - kapps use this exchange to share API information
+-define(EXCHANGE_TASKS, <<"tasks">>).
+-define(TYPE_TASKS, <<"topic">>).
+
 
 -type kz_amqp_command() :: #'queue.declare'{} | #'queue.delete'{} |
                            #'queue.bind'{} | #'queue.unbind'{} |
