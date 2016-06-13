@@ -263,7 +263,6 @@ Read about [[https://www.rabbitmq.com/configure.html][configuration]] for detail
    - Configures the running envirnoment for RabbitMQ
    - Read more [[https://www.rabbitmq.com/man/rabbitmq-env.conf.5.man.html][here]]
 
-
 ** Playing with RabbitMQ                                            :B_frame:
    :PROPERTIES:
    :BEAMER_opt: allowframebreaks,label=
@@ -283,6 +282,8 @@ Check out the management console
      $> service iptables stop
      #+END_EXAMPLE
  - Initial User/Pass: guest
+
+*** Management Console Continued
  - If you try to access the management console from a non-localhost IP/hostname:
    #+BEGIN_EXAMPLE
    $> rabbitmqctl eval 'application:set_env(rabbit, loopback_users, []).'
