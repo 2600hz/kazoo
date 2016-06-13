@@ -1,0 +1,156 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:2 \n:nil ^:t arch:headline
+#+OPTIONS: author:t c:nil creator:nil d:(not "LOGBOOK") date:nil e:t
+#+OPTIONS: email:nil f:t inline:t num:t p:nil pri:nil prop:nil stat:t
+#+OPTIONS: tags:t tasks:t tex:t timestamp:f title:t toc:nil todo:t |:t
+#+TITLE: Kazoo Basic Training - HAProxy
+#+DATE: <2016-06-06 Mon>
+#+AUTHOR: James Aimonetti
+#+EMAIL: james@2600hz.com
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+CREATOR: Emacs 25.1.50.3 (Org mode 8.3.4)
+#+STARTUP: beamer
+#+LaTeX_CLASS: beamer
+#+LaTeX_CLASS_OPTIONS: [bigger]
+#+BEAMER_FRAME_LEVEL: 2
+#+BEAMER_THEME: Madrid
+#+COLUMNS: %40ITEM %10BEAMER_env(Env) %9BEAMER_envargs(Env Args) %4BEAMER_col(Col) %10BEAMER_extra(Extra)
+
+* HAProxy
+
+** Kazoo Basic Training
+#+BEGIN_CENTER
+HAProxy
+#+END_CENTER
+
+** The Kazoo Stack - Cluster
+
+#+BEGIN_CENTER
+[[file:./images/kazoo_stack.png]]
+#+END_CENTER
+
+** The Kazoo Stack - HAProxy
+
+#+BEGIN_CENTER
+[[file:./images/kazoo_stack_haproxy.png]]
+#+END_CENTER
+
+** What Is HAProxy                                                  :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Open-Source TCP/HTTP Load Balancer
+
+*** Very mature and active project
+ - Started in 2000 by a core contributor to the linux kernel
+
+*** Used by a number of high-profile companies
+ - Reddit
+ - Tumblr
+ - Twitter
+ - Amazon Web Services
+
+*** How does Kazoo use HAProxy?
+
+ - Access to CouchDB is made via HAProxy
+ - Provides fault-tolerance by round-robin
+ - Provides zone support by marking some nodes as backups
+
+** Installing HAProxy                                               :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Debian
+    #+BEGIN_EXAMPLE
+    $> apt-get install haproxy
+    #+END_EXAMPLE
+
+*** CentOS
+    #+BEGIN_EXAMPLE
+    $> yum install haproxy
+    #+END_EXAMPLE
+
+*** General
+    #+BEGIN_EXAMPLE
+    $> rm -rf /etc/haproxy
+    $> ln -s /etc/kazoo/haproxy /etc/
+    #+END_EXAMPLE
+
+*** =/etc/kazoo/haproxy/haproxy.cfg=
+    #+BEGIN_EXAMPLE
+    global
+        maxconn 4096
+    #+END_EXAMPLE
+
+*** =/etc/kazoo/haproxy/haproxy.cfg=
+    #+BEGIN_EXAMPLE
+    defaults
+        log global
+        mode http
+        maxconn 2000
+        timeout connect 6000ms
+        timeout client 12000ms
+        timeout server 12000ms
+    #+END_EXAMPLE
+
+*** =/etc/kazoo/haproxy/haproxy.cfg=
+    #+BEGIN_EXAMPLE
+    listen couch-data 127.0.0.1:15984
+      balance roundrobin
+        server db1.zone1.mydomain.com 127.0.0.1:5984 check
+        server db2.zone1.mydomain.com 127.0.0.2:5984 check
+        server db3.zone2.mydomain.com 127.0.0.3:5984 check backup
+        server db4.zone2.mydomain.com 127.0.0.4:5984 check backup
+    #+END_EXAMPLE
+
+*** =/etc/kazoo/haproxy/haproxy.cfg=
+    #+BEGIN_EXAMPLE
+    listen couch-mgr 127.0.0.1:15986
+      balance roundrobin
+        server db1.zone1.mydomain.com 127.0.0.1:5986 check
+        server db2.zone1.mydomain.com 127.0.0.2:5986 check
+        server db3.zone2.mydomain.com 127.0.0.3:5986 check backup
+        server db4.zone2.mydomain.com 127.0.0.4:5986 check backup
+    #+END_EXAMPLE
+
+*** =/etc/kazoo/haproxy/haproxy.cfg=
+    #+BEGIN_EXAMPLE
+    listen haproxy-stats 127.0.0.1:22002
+      mode http
+      stats uri /
+    #+END_EXAMPLE
+
+
+*** Start HAProxy
+    #+BEGIN_EXAMPLE
+    $> service haproxy start
+    $> service haproxy status
+    #+END_EXAMPLE
+
+** Monitoring HAProxy                                               :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Access the database
+    #+BEGIN_EXAMPLE
+    $> curl 127.0.0.1:15984
+    #+END_EXAMPLE
+
+*** Check out the management console
+    Navigate to http://ip.addr:22002
+
+*** Take a look at the logs
+    #+BEGIN_EXAMPLE
+    $> tail –f /var/log/haproxy/haproxy.log
+    #+END_EXAMPLE
+
+** Thank You
+
+#+INCLUDE: "./frames/footer.org"
