@@ -63,7 +63,23 @@ resource_exists() -> 'true'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
-    Doc = wh_json:from_list(whapps_config:get_all_kvs(<<"dialplans">>)),
+    Doc = maybe_add_name(whapps_config:get_all_kvs(<<"dialplans">>)),
     cb_context:setters(Context, [{fun cb_context:set_resp_data/2, Doc}
                                  ,{fun cb_context:set_resp_status/2, 'success'}
                                 ]).
+
+-spec maybe_add_name(wh_proplist()) -> wh_json:object().
+maybe_add_name(KVs) ->
+    maybe_add_name(KVs, wh_json:new()).
+
+-spec maybe_add_name(wh_proplist(), wh_json:object()) -> wh_json:object().
+maybe_add_name([], Acc) -> Acc;
+maybe_add_name([{K, V} | KVs], Acc0) ->
+    Acc = case wh_json:get_ne_binary_value(<<"name">>, V) of
+              'undefined' ->
+                  JObj = wh_json:set_value(<<"name">>, K, V),
+                  wh_json:set_value(K, JObj, Acc0);
+              _Other ->
+                  wh_json:set_value(K, V, Acc0)
+          end,
+    maybe_add_name(KVs, Acc).
