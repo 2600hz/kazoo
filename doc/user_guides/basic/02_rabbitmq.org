@@ -263,19 +263,12 @@ Read about [[https://www.rabbitmq.com/configure.html][configuration]] for detail
    - Configures the running envirnoment for RabbitMQ
    - Read more [[https://www.rabbitmq.com/man/rabbitmq-env.conf.5.man.html][here]]
 
+
 ** Playing with RabbitMQ                                            :B_frame:
    :PROPERTIES:
    :BEAMER_opt: allowframebreaks,label=
    :BEAMER_env: frame
    :END:
-
-*** Find a partner
-
-#+BEGIN_CENTER
-We are only going to use one of your servers
-
-Please choose one now
-#+END_CENTER
 
 *** Management Console
 
@@ -285,8 +278,8 @@ Check out the management console
    $> rabbitmq-plugins enable rabbitmq_management
    #+END_EXAMPLE
  - Navigate to http://ip.addr:15672
-   - You may need to disable the firewall
-     #+BEGIN_EXAMPLE
+ - You may need to disable the firewall
+   #+BEGIN_EXAMPLE
      $> service iptables stop
      #+END_EXAMPLE
  - Initial User/Pass: guest
@@ -294,13 +287,19 @@ Check out the management console
    #+BEGIN_EXAMPLE
    $> rabbitmqctl eval 'application:set_env(rabbit, loopback_users, []).'
    #+END_EXAMPLE
+ - When in production, you'll want to disable the guest user again. See the RabbitMQ docs
+
+*** Find a partner
+#+BEGIN_CENTER
+We are only going to use one of your servers
+
+Please choose one now
 
 You should both open the management console on your computer.
 
 One of you will use the IP address of your partner.
 
-#+beamer: \framebreak
-
+#+END_CENTER
 *** Person A
 
  - Click on Queues
@@ -310,8 +309,6 @@ One of you will use the IP address of your partner.
 Once done both of you should:
  - Click on Queues
  - Find the Queue in the list and click on the name
-
-#+beamer: \framebreak
 
 *** Person A
 
@@ -324,21 +321,17 @@ Prepare to receive a message!
  - Enter a payload of "I want to call 222-333-4444"
  - Click Publish Message
 
-#+beamer: \framebreak
-
 *** Person A
 
-Note the message counter at the top of the page
- - Did it increase?
+ - Note the message counter at the top of the page
+   - Did it increase?
 
-Change the Requeue option to No
- - Click Get Message
+ - 'Ack Mode' should be 'Ack message requeue false'
+ - Click 'Get Message(s)'
 
-What do you see?
+ - What do you see?
 
-What about the counter at the top of the page?
-
-#+beamer: \framebreak
+ - What about the counter at the top of the page?
 
 *** Person A
 #+BEGIN_CENTER
@@ -349,8 +342,6 @@ Write something back!
 #+BEGIN_CENTER
 Retrieve the reply
 #+END_CENTER
-
-#+beamer: \framebreak
 
 *** The heart of messaging in Kazoo
  - Multiple applications get the chance to respond
