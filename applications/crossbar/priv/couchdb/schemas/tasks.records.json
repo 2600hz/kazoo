@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "tasks.records",
-    "additionalProperties": false,
+    "additionalProperties": true,
     "description": "Input data to go through as part of a background task",
     "name": "Task records",
     "properties": {
