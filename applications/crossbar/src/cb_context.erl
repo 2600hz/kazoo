@@ -57,6 +57,7 @@
          ,doc/1, set_doc/2, update_doc/2
          ,load_merge_bypass/1, set_load_merge_bypass/2
          ,start/1, set_start/2
+         ,resp_file/1, set_resp_file/2
          ,resp_data/1, set_resp_data/2
          ,resp_status/1, set_resp_status/2
          ,resp_expires/1, set_resp_expires/2
@@ -214,6 +215,7 @@ req_id(#cb_context{req_id=ReqId}) -> ReqId.
 doc(#cb_context{doc=Doc}) -> Doc.
 load_merge_bypass(#cb_context{load_merge_bypass=ByPass}) -> ByPass.
 start(#cb_context{start=Start}) -> Start.
+resp_file(#cb_context{resp_file=RespFile}) -> RespFile.
 resp_data(#cb_context{resp_data=RespData}) -> RespData.
 resp_status(#cb_context{resp_status=RespStatus}) -> RespStatus.
 resp_expires(#cb_context{resp_expires=RespExpires}) -> RespExpires.
@@ -287,6 +289,7 @@ setters_fold(F, C) when is_function(F, 1) -> F(C).
 -spec set_doc(context(), api_object() | kz_json:objects()) -> context().
 -spec set_load_merge_bypass(context(), api_binary()) -> context().
 -spec set_start(context(), kz_now()) -> context().
+-spec set_resp_file(context(), api_binary()) -> context().
 -spec set_resp_data(context(), resp_data()) -> context().
 -spec set_resp_status(context(), crossbar_status()) -> context().
 -spec set_resp_expires(context(), kz_datetime()) -> context().
@@ -361,6 +364,8 @@ set_load_merge_bypass(#cb_context{}=Context, JObj) ->
     Context#cb_context{load_merge_bypass=JObj}.
 set_start(#cb_context{}=Context, Start) ->
     Context#cb_context{start=Start}.
+set_resp_file(#cb_context{}=Context, RespFile) ->
+    Context#cb_context{resp_file=RespFile}.
 set_resp_data(#cb_context{}=Context, RespData) ->
     Context#cb_context{resp_data=RespData}.
 set_resp_status(#cb_context{}=Context, RespStatus) ->
