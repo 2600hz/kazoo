@@ -30,7 +30,7 @@ CouchDB
 [[file:./images/kazoo_stack.png]]
 #+END_CENTER
 
-** The Kazoo Stack - FreeSWITCH
+** The Kazoo Stack - CouchDB
 
 #+BEGIN_CENTER
 [[file:./images/kazoo_stack_couchdb.png]]
