@@ -28,7 +28,7 @@
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Query the local system for a quanity of available numbers
+%% Query the local system for a quantity of available numbers
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
