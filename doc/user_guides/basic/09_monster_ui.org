@@ -1,0 +1,79 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:2 \n:nil ^:t arch:headline
+#+OPTIONS: author:t c:nil creator:nil d:(not "LOGBOOK") date:nil e:t
+#+OPTIONS: email:nil f:t inline:t num:t p:nil pri:nil prop:nil stat:t
+#+OPTIONS: tags:t tasks:t tex:t timestamp:f title:t toc:nil todo:t |:t
+#+TITLE: Kazoo Basic Training - Monster UI
+#+DATE: <2016-06-06 Mon>
+#+AUTHOR: James Aimonetti
+#+EMAIL: james@2600hz.com
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+CREATOR: Emacs 25.1.50.3 (Org mode 8.3.4)
+#+STARTUP: beamer
+#+LaTeX_CLASS: beamer
+#+LaTeX_CLASS_OPTIONS: [bigger]
+#+BEAMER_FRAME_LEVEL: 2
+#+BEAMER_THEME: Madrid
+#+COLUMNS: %40ITEM %10BEAMER_env(Env) %9BEAMER_envargs(Env Args) %4BEAMER_col(Col) %10BEAMER_extra(Extra)
+
+* Monster UI
+
+** Kazoo Basic Training
+#+BEGIN_CENTER
+Monster UI
+#+END_CENTER
+
+** The Kazoo Stack - Cluster
+
+#+BEGIN_CENTER
+[[file:./images/kazoo_stack.png]]
+#+END_CENTER
+
+** The Kazoo Stack - Monster UI
+#+BEGIN_CENTER
+[[file:./images/kazoo_stack_monster.png]]
+#+END_CENTER
+
+
+** Installing Monster UI
+
+*** Packaging
+#+BEGIN_CENTER
+At this time, it is not ready. However, installing from source is straightforward
+#+END_CENTER
+
+*** Monster UI
+ - Install apache
+    #+BEGIN_EXAMPLE
+    $> apt-get install apache2
+    #+END_EXAMPLE
+
+*** Browse Monster Apps
+ - [[https://github.com/2600hz/][Our GitHub page]] has all the available apps
+ - monster-ui-*** repositories are the default apps available
+
+*** Install Monster and its apps
+ - Copy the [[file:./monster-update.bash][monster-update.bash]] script to =/var/www=
+   - You can update the =REPOS\== in the script if there are more apps
+   #+BEGIN_EXAMPLE
+   $/var/www/> bash monster-update.bash
+   $/var/www/> rm -rf html/
+   $/var/www/> ln -s monster-ui html
+   #+END_EXAMPLE
+ - Edit =/var/www/monster-ui/js/config.js=
+   #+BEGIN_EXAMPLE
+   "default":"http://localhost:8000/v2"
+   #+END_EXAMPLE
+
+*** Load apps into Kazoo
+#+BEGIN_EXAMPLE
+$> sup crossbar_maintenance init_apps \
+'/var/www/html/apps/' 'http://localhost:8000/v2'
+#+END_EXAMPLE
+
+
+
+** Thank You
+
+#+INCLUDE: "./frames/footer.org"
