@@ -249,7 +249,10 @@ validate(Context) ->
 validate_phone_numbers(Context, ?HTTP_GET, 'undefined') ->
     find_numbers(Context);
 validate_phone_numbers(Context, ?HTTP_GET, _AccountId) ->
-    summary(Context).
+    case kz_json:get_ne_value(?PREFIX, cb_context:query_string(Context)) of
+        'undefined' -> summary(Context);
+        _Prefix -> find_numbers(Context)
+    end.
 
 validate(Context, ?FIX) ->
     cb_context:set_resp_data(

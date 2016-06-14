@@ -58,6 +58,40 @@ curl -v -X GET \
 ```
 
 
+#### Search for available numbers you own
+
+Set `number_manager.search_prefers_available_numbers` to `true` to only look for
+available numbers you already bought & imported.
+
+- `PREFIX`: a 3-digit number prefix such as an area code (e.g. `499`)
+- `QUANTITY`: maximum amount of numbers to be returned (e.g. `2`)
+- `OFFSET`: page number (e.g. `0`)
+
+> GET /v2/accounts/{ACCOUNT_ID}/phone_numbers?prefix={PREFIX}&quantity={QUANTITY}&offset={OFFSET}
+
+```shell
+curl -v -X GET \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers?prefix={PREFIX}&quantity={QUANTITY}&offset={OFFSET}
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "number": "+14990000027"
+        },
+        {
+            "number": "+14990000028"
+        }
+    ],
+    "request_id": "d4261f0c19bba7aa19e53dd6a51efa22",
+    "revision": "undefined",
+    "status": "success"
+}
+```
+
+
 #### List an account's phone numbers
 
 This lists the numbers an account owns, along with their properties.
