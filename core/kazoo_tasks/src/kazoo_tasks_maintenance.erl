@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
--module(tasks_maintenance).
+-module(kazoo_tasks_maintenance).
 
 -export([help/0, help/1, help/2]).
 -export([tasks/0, tasks/1]).
@@ -15,7 +15,7 @@
 -export([start/1]).
 -export([remove/1]).
 
--include("tasks.hrl").
+-include("kz_tasks.hrl").
 
 
 %%% API
