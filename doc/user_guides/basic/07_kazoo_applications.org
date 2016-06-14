@@ -158,6 +158,7 @@ yum packages should be similar to Debian instructions
    $/opt/> git clone https://github.com/2600Hz/kazoo kazoo
    $/opt/> cd kazoo
    $/opt/kazoo> make
+   $/opt/kazoo> make build-release
    #+END_EXAMPLE
 2. Install SUP:
    #+BEGIN_EXAMPLE
