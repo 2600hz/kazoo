@@ -179,7 +179,7 @@ ecallmgr_maintenance carrier_acls
 #+END_EXAMPLE
 
 *** Local or Global ACLs
-All ACL commands can be made specific to a ecallmgr or applied to the entire cluster.
+All ACL commands can be made specific to an ecallmgr or applied to the entire cluster.
 
 By adding 'false' to the end of any command it will only apply to the specific ecallmgr.
 
