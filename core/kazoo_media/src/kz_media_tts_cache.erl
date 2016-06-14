@@ -99,7 +99,7 @@ init([Text, JObj]) ->
     MediaName = kz_util:binary_md5(Text),
     lager:debug("text '~s' has id '~s'", [Text, MediaName]),
 
-    Meta = kz_json:from_list([{<<"content_type">>, kz_mime_types:from_extension(Format)}
+    Meta = kz_json:from_list([{<<"content_type">>, kz_mime:from_extension(Format)}
                               ,{<<"media_name">>, MediaName}
                              ]),
 
