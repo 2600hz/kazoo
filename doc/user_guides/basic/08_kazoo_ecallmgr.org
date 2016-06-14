@@ -35,6 +35,265 @@
 [[file:./images/kazoo_stack_ecallmgr.png]]
 #+END_CENTER
 
+** What is ecallmgr                                                 :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Erlang Call Manager
+ - Connects Kazoo to the FreeSWITCH =mod_kazoo= module
+ - Abstracts basic FreeSWITCH events to Kazoo terms
+ - Establishes Queues between Apps and FreeSWITCH
+ - Tracks sessions, channels, and resources
+
+*** Connection Handling
+ - Handles connects / disconnects from FreeSWITCH
+
+*** Handles Core Device Handling Functions
+ - Call Routing
+ - Call Authorization
+
+*** It is designed to be replaceable
+ - FreeSWITCH could be replaced with another media manager
+
+*** It is designed to work with other resource handlers
+ - You could create an application to expose additional hardware
+  - Acme Packet
+  - Audio Codes
+
+*** It is designed to be redundant
+ - Multiple ecallmgr instances connect to the same FreeSWITCH server
+ - The load is shared and redundancy is achieved
+
+** How does ecallmgr work?                                          :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Initial Connection
+ - ecallmgr connects to FreeSWITCH via DistErl
+
+*** Secondary Connections
+ - ecallmgr connects via additional TCP sockets
+ - These are created per-event that Kazoo is interested in
+
+*** XML Bindings
+ - ecallmgr requests mod_kazoo to bind in for various XML hooks
+   - channels
+   - chatplan
+   - configuration
+   - dialplan
+   - directory
+ - similar to mod_xml_curl
+ - Internal FreeSWITCH events
+ - Tests for FreeSWITCH aliveness
+
+*** Multiple ecallmgr connections
+ - Ensure messages reach AMQP no matter what
+ - Allows for ability for AMQP to be disconnected from a single ecallmgr
+ - Allows for FreeSWITCH to be disconnected from an ecallmgr
+ - Allows for maintenance without disrupting calls
+ - Distributes the load
+
+*** Multiple ecallmgr connections
+#+BEGIN_CENTER
+[[file:./images/ecallmgr_freeswitch.png]]
+#+END_CENTER
+
+** Installing ecallmgr                                              :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** ecallmgr is in =applications/=
+ - Nothing to install if you've setup Kazoo already
+
+*** Ensure your Erlang cookies match
+ - =/etc/kazoo/freeswitch/autoload_configs/kazoo.conf.xml=
+ - =/etc/kazoo/config.ini=
+
+*** Restart FreeSWITCH
+    If needed
+    #+BEGIN_EXAMPLE
+    $> service freeswitch restart
+    #+END_EXAMPLE
+
+*** Start ecallmgr
+    If needed
+    #+BEGIN_EXAMPLE
+    $> sup kapps_controller start_app ecallmgr
+    #+END_EXAMPLE
+
+*** Lets connect Kazoo to FreeSWITCH!
+    #+BEGIN_EXAMPLE
+    #> sup ecallmgr_maintenance add_fs_node freeswitch@awesome.hostname.com
+    fs_nodes in kazoo_apps@awesome.hostname.com was misconfigured(undefined), using []
+    adding freeswitch@awesome.hostname.com to ecallmgr system config
+    ok
+    #+END_EXAMPLE
+
+Unless the configuration is changed this eCallMgr will always attempt to connect to this FreeSWITCH!
+
+** Access Control Lists (ACLs)                                      :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** The SBC ACL
+Authorizes the proxy to forward the source IP as a custom SIP header (X-AUTH-IP) for use in the carrier ACL
+
+*** Adding Kamailio server to the list
+    #+BEGIN_EXAMPLE
+    $> sup ecallmgr_maintenance allow_sbc kamilio1 ip.add.re.ss
+    updating authoritative ACLs kamailio1(ip.add.re.ss/32) to allow traffic
+    issued reload ACLs to freeswitch@awesome.hostname.com
+    #+END_EXAMPLE
+
+*** Verify SBC ACLs
+    #+BEGIN_EXAMPLE
+    $> sup ecallmgr_maintenance sbc_acls
+    +--------------------------------+-------------------+---------------+-------+------------------+----+
+    | Name                           | CIDR              | List          | Type  | Authorizing Type | ID |
+    +================================+===================+===============+=======+==================+====+
+    | kamailio                       | 192.168.1.15/32   | authoritative | allow | system_config    |    |
+    +--------------------------------+-------------------+---------------+-------+------------------+----+
+    #+END_EXAMPLE
+
+*** The Carrier ACL
+Allow carriers to make calls from a particular CIDR without authenticating.
+
+Your users should never be added to this list!
+
+We have no carriers but the available commands are:
+#+BEGIN_EXAMPLE
+ecallmgr_maintenance allow_carrier upstream upstream.ip.address
+ecallmgr_maintenance deny_carrier upstream upstream.ip.address
+ecallmgr_maintenance carrier_acls
+#+END_EXAMPLE
+
+*** Local or Global ACLs
+All ACL commands can be made specific to a ecallmgr or applied to the entire cluster.
+
+By adding 'false' to the end of any command it will only apply to the specific ecallmgr.
+
+If you are adding ACLs this will transition the ecallmgr from the global list a list specific for that node, only containing entries explicitly added for that node.
+
+*** For Example
+ - To make a certain ACL specific to a ecallmgr
+ #+BEGIN_EXAMPLE
+ ecallmgr_maintenance allow_carrier carrier carrier.ip.address false
+ #+END_EXAMPLE
+
+** Monitoring ecallmgr                                              :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Lets check the connection from Kazoo
+    #+BEGIN_EXAMPLE
+    $> sup ecallmgr_maintenance node_summary
+    +-----------------------------------+-----------+-----------+----------------------+
+    | Node Name                         | Connected | Cookie    | Version              |
+    +===================================+===========+===========+======================+
+    | freeswitch@lappy64.pdx.2600hz.com | true      | change_me | mod_kazoo v1.2.10-14 |
+    +-----------------------------------+-----------+-----------+----------------------+
+    Found 1 nodes
+    #+END_EXAMPLE
+
+*** Lets verify that FreeSWITCH agrees
+    #+BEGIN_EXAMPLE
+    $> fs_cli -x 'erlang status‘
+    Running mod_kazoo v1.2.10-14
+    Listening for new Erlang connections on 0.0.0.0:8031 with cookie change_me
+    Registered as Erlang node freeswitch@awesome.hostname.com, visible as freeswitch
+    Connected to:
+    kazoo_apps@awesome.hostname.com (127.0.0.1:8031) up 0 years, 0 days, 0 hours, 12 minutes, 27 seconds
+    #+END_EXAMPLE
+
+*** It is also listed in the cluster status
+    #+BEGIN_EXAMPLE
+    $> sup kz_nodes status
+    ...
+    Channels      : 0
+    Registrations : 0
+    Media Servers : freeswitch@awesome.hostname.com (13m26s)
+    ...
+    #+END_EXAMPLE
+
+*** Once Kazoo connected it should have started SIP services
+    #+BEGIN_EXAMPLE
+    $> kamctl fifo ds_list
+    SET_NO:: 2
+    SET:: 2
+            URI:: sip:9.8.7.6:11000 flags=AP priority=0 attrs=
+    SET:: 1
+            URI:: sip:1.2.3.4:11000 flags=AP priority=0 attrs=
+    #+END_EXAMPLE
+
+*** Lets look at the details of a connection
+    #+BEGIN_EXAMPLE
+    $> sup -necallmgr ecallmgr_maintenance node_details
+    #+END_EXAMPLE
+
+*** Node Details
+#+BEGIN_EXAMPLE
+Node        : freeswitch@lappy64.pdx.2600hz.com
+Cookie      : change_me
+Client      : mod_kazoo v1.2.10-14
+Connected   : true
+Options     : [{cookie,change_me}]
+SIP URL     : sip:mod_sofia@192.168.179.115:11000
+SIP External: 192.168.179.115
+Supervisor  : <9825.4545.58>
+#+END_EXAMPLE
+
+*** Node Details
+#+BEGIN_EXAMPLE
+Workers
+    <9825.4823.58>  freeswitch@lappy64.pdx.2600hz.com_msg
+    <9825.4630.58>  freeswitch@lappy64.pdx.2600hz.com_event_stream_sup
+    <9825.4726.58>  freeswitch@lappy64.pdx.2600hz.com_conference
+    <9825.4622.58>  freeswitch@lappy64.pdx.2600hz.com_notify
+    <9825.4654.58>  freeswitch@lappy64.pdx.2600hz.com_resource
+    <9825.4631.58>  freeswitch@lappy64.pdx.2600hz.com_config
+    <9825.4611.58>  freeswitch@lappy64.pdx.2600hz.com_channel
+    <9825.4569.58>  freeswitch@lappy64.pdx.2600hz.com_route
+    <9825.4712.58>  freeswitch@lappy64.pdx.2600hz.com_authn
+    <9825.4595.58>  freeswitch@lappy64.pdx.2600hz.com_node
+#+END_EXAMPLE
+
+*** Node Details
+#+BEGIN_EXAMPLE
+Capabilities:
+  conference   provided by mod_conference, is available
+  channel_move provided by mod_channel_move, is not available
+  http_cache   provided by mod_http_cache, is not available
+  dialplan     provided by mod_dptools, is available
+  sip          provided by mod_sofia, is available
+  fax          provided by mod_spandsp, is available
+  tts          provided by mod_flite, is not available
+  freetdm      provided by mod_freetdm, is not available
+  skype        provided by mod_skypopen, is not available
+  xmpp         provided by mod_dingaling, is not available
+  skinny       provided by mod_skinny, is not available
+  sms          provided by mod_sms, is not available
+#+END_EXAMPLE
+
+** Get Excited
+
+ - ecallmgr is the last part of our required components
+ - Once you’ve confirmed apps are running
+ - Once you’ve confirmed ecallmgr is running
+ - Once you’ve attached ecallmgr to FreeSWITCH
+
+#+BEGIN_CENTER
+You will be ready to register devices and make calls!
+#+END_CENTER
 
 ** Thank You
 
