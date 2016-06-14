@@ -80,13 +80,13 @@
  - These are created per-event that Kazoo is interested in
 
 *** XML Bindings
- - ecallmgr requests mod_kazoo to bind in for various XML hooks
+ - ecallmgr requests =mod_kazoo= to bind in for various XML hooks
    - channels
    - chatplan
    - configuration
    - dialplan
    - directory
- - similar to mod_xml_curl
+ - similar to =mod_xml_curl=
  - Internal FreeSWITCH events
  - Tests for FreeSWITCH aliveness
 
@@ -138,7 +138,7 @@
     ok
     #+END_EXAMPLE
 
-Unless the configuration is changed this eCallMgr will always attempt to connect to this FreeSWITCH!
+Unless the configuration is changed this ecallmgr will always attempt to connect to this FreeSWITCH!
 
 ** Access Control Lists (ACLs)                                      :B_frame:
    :PROPERTIES:
