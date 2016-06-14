@@ -37,6 +37,134 @@ AKA Crossbar
 [[file:./images/kazoo_stack_crossbar.png]]
 #+END_CENTER
 
+** What is a REST API                                               :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** REST - *Re*presentational *S*tate *T*ransfer
+
+*** A nice analogy for REST vs. SOAP
+ - SOAP: Mailing a letter using an envelope
+ - REST: It's a postcard
+
+*** SOAP
+#+BEGIN_EXAMPLE
+POST /InStock HTTP/1.1
+Host: www.example.org
+Content-Type: application/soap+xml; charset=utf-8
+Content-Length: nnn
+<?xml version="1.0"?>
+<soap:Envelope
+xmlns:soap="http://www.w3.org/2001/12/soap-envelope"
+soap:encodingStyle="http://www.w3.org/2001/12/soap-encoding">
+<soap:Body xmlns:m="http://www.example.org/stock">
+  <m:GetStockPrice><m:StockName>IBM</m:StockName></m:GetStockPrice>
+</soap:Body>
+</soap:Envelope>
+#+END_EXAMPLE
+
+*** REST
+#+BEGIN_EXAMPLE
+GET /InStock/IBM HTTP/1.1
+Host: www.example.org
+Accept: application/json; charset=utf-8
+#+END_EXAMPLE
+
+*** Pragmatic REST Verbs
+ - GET: Retrieve (list or single entry)
+   - Usually denotes list if no ID
+ - POST: Update an existing document
+ - PUT: Create a document
+ - DELETE: Delete a document
+ - PATCH: Update portion of document
+
+** The Kazoo REST API                                               :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Configuration APIs
+ - Crossbar
+
+*** Real-time Call Control
+ - Pivot
+
+*** Streaming Events and Callbacks
+ - WebSockets
+ - Webhooks
+ - Call Recording
+
+*** URI Structure
+#+BEGIN_EXAMPLE
+/{VERSION}/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
+#+END_EXAMPLE
+
+*** URI Structure
+ - {VERSION} - The version of the API you are calling.
+   - v1: Deprecated version
+   - v2: The current version
+ - accounts: The collection of accounts
+ - ={ACCOUNT_ID}=: Most requests operate against a specific account
+ - resources: The collection of resources in ={ACCOUNT_ID}=
+ - ={RESOURCE_ID}=: Specific entity accessed
+
+*** Collections
+Given =/v2/accounts/{ACCOUNT_ID}/resources=:
+ - GET: Fetches a summary of the resources
+ - PUT: Creates a new instance of the resource in ={ACCOUNT_ID}=
+
+*** Entities
+Given =/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}=:
+ - GET: Fetches the full representation of the resource
+ - POST: Updates the full representation of the resource
+ - PATCH: Updates a portion of the resource
+ - DELETE: Deletes the resource
+
+*** JSON Request Envelope
+|Key|Description|Required|
++---+-----------|--------|
+|data|Top-level key will contain the object you wish to update|true|
+|=auth_token=|Authorization token for the request|false|
+|verb|Tunnel a PUT or DELETE in a POST request|false|
+
+*** Sample JSON Request Envelope
+#+BEGIN_SRC json
+{
+   "data":{
+      "foo":"bar"
+   },
+   "auth_token":"xyzpdq123bfg",
+   "verb":"delete"
+}
+#+END_SRC
+
+*** JSON Response Envelope
+|Key|Description|Always Present |
+|---+-----------|---------------|
+|data|Contains the results of the request|true|
+|=auth_token=|Contains the auth_token used on the request|true|
+|status|One of 'success', 'error', or 'fatal'|true|
+|=request_id=|For debugging the server-side processing of the request|true|
+|message|Clarifies what happened on the request|false|
+|error|Error code, if any|false|
+|revision|Revision of the entity|false|
+
+*** Sample JSON Response Envelope
+#+BEGIN_SRC json
+{
+   "data":{
+      "the":"response",
+      "data":"is here"
+   },
+   "auth_token":"xyzpdq123bfg",
+   "status":"success",
+   "request_id":"123abc456qwerty"
+}
+#+END_SRC
+
 
 
 ** Thank You
