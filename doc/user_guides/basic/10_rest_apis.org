@@ -125,7 +125,7 @@ Given =/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}=:
 
 *** JSON Request Envelope
 |Key|Description|Required|
-+---+-----------|--------|
+|---+-----------+--------|
 |data|Top-level key will contain the object you wish to update|true|
 |=auth_token=|Authorization token for the request|false|
 |verb|Tunnel a PUT or DELETE in a POST request|false|
@@ -142,8 +142,8 @@ Given =/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}=:
 #+END_SRC
 
 *** JSON Response Envelope
-|Key|Description|Always Present |
-|---+-----------|---------------|
+|Key|Description|Always Present|
+|---+-----------+--------------|
 |data|Contains the results of the request|true|
 |=auth_token=|Contains the auth_token used on the request|true|
 |status|One of 'success', 'error', or 'fatal'|true|
@@ -165,7 +165,100 @@ Given =/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}=:
 }
 #+END_SRC
 
+** Kazoo API Authentication                                         :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
 
+*** Authentication Tokens
+All Kazoo requests require an authentication token
+
+An authentication token is acquired by:
+ - User credentials
+ - An API key
+ - Oauth
+ - HTTP Basic Auth
+ - Other custom modules
+
+An authentication token is temporary and may be restricted
+
+*** Using an API Key
+Get your API key for your account:
+#+BEGIN_EXAMPLE
+$> curl -v http://your.ip:15984/accounts/{ACCOUNT_ID}
+$> curl -v -X PUT -H "content-type:application/json" \
+-d '{"data":{"api_key":"{API_KEY}"}' \
+http://ip.add.re.ss:8000/v2/api_auth
+#+END_EXAMPLE
+
+See the [[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/doc/api_authentication.md][api auth]] docs for more details.
+
+*** Using user credentials
+ - Determine the MD5 hash of your creds
+   #+BEGIN_EXAMPLE
+   $> echo -n "{USERNAME}:{PASSWORD}" | md5sum
+   {MD5_HASH}  -
+   $> curl -v -X PUT -H "content-type:application/json" \
+   -d '{"data":{"credentials":“{MD5_HASH}","account_name":“{NAME}"}' \
+   http://ip.add.re.ss:8000/v2/user_auth
+   #+END_EXAMPLE
+
+See the [[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/doc/user_authentication.md][user auth]] docs for more details.
+
+***
+#+BEGIN_CENTER
+Lets use your authentication token and make some requests!
+#+END_CENTER
+
+** CORS                                                             :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Cross-origin resource sharing
+#+BEGIN_CENTER
+Allows requests otherwise forbidden by the [[https://en.wikipedia.org/wiki/Same-origin_policy][same origin policy]]
+#+END_CENTER
+
+*** HTTP Headers
+ - =Origin:http://portal.2600hz.com=
+ - =Access-Control-Allow-Origin: http://www.example.com=
+
+*** Preflight
+ - OPTIONS sent to server
+ - Response includes CORS Headers
+ - Browser makes real request (GET/PUT/POST/...)
+
+*** Browser Support
+ - Gecko 1.9.1
+ - Firefox 3.5, SeaMonkey 2.0, Camino 2.1 and above.
+ - WebKitSafari 4
+ - Google Chrome 3 (possibly earlier) and above
+ - Trident 6.0 (Internet Explorer 10) has native support
+ - Trident 4.0 & 5.0 (Internet Explorer 8 & 9) partial support
+ - Opera 12.00 and Opera Mobile 12
+
+*** JSON-P alternative
+#+BEGIN_CENTER
+CORS can be used as a modern alternative to the [[https://en.wikipedia.org/wiki/JSONP][JSONP]] pattern
+#+END_CENTER
+
+** What APIs are available?                                         :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Web Developer tool
+ - Switch to the network tab and browse around the UI
+ - You can play with the API in the UI with a community-contributed app
+   - [[https://github.com/siplabs/monster-ui-apiexplorer][API Explorer]] from SIPLabs
+
+*** Actively developed
+ - We are always adding new APIs and features
+ - See the [[https://github.com/2600hz/kazoo/tree/master/applications/crossbar/doc][Crossbar Docs]] for more
 
 ** Thank You
 
