@@ -1,0 +1,116 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:2 \n:nil ^:t arch:headline
+#+OPTIONS: author:t c:nil creator:nil d:(not "LOGBOOK") date:nil e:t
+#+OPTIONS: email:nil f:t inline:t num:t p:nil pri:nil prop:nil stat:t
+#+OPTIONS: tags:t tasks:t tex:t timestamp:f title:t toc:nil todo:t |:t
+#+TITLE: Kazoo Basic Training - System Config
+#+DATE: <2016-06-06 Mon>
+#+AUTHOR: James Aimonetti
+#+EMAIL: james@2600hz.com
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+CREATOR: Emacs 25.1.50.3 (Org mode 8.3.4)
+#+STARTUP: beamer
+#+LaTeX_CLASS: beamer
+#+LaTeX_CLASS_OPTIONS: [bigger]
+#+BEAMER_FRAME_LEVEL: 2
+#+BEAMER_THEME: Madrid
+#+COLUMNS: %40ITEM %10BEAMER_env(Env) %9BEAMER_envargs(Env Args) %4BEAMER_col(Col) %10BEAMER_extra(Extra)
+
+* System Config
+
+** Kazoo Basic Training
+#+BEGIN_CENTER
+System Config
+#+END_CENTER
+
+** The =system_config= situation                                    :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframesplits,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Strategy
+ - Keep as little on disk as is possible
+ - Load most items from the database
+ - But we have to know how to connect to the database
+ - Some components must be configured from files
+   - This list is rapidly shrinking
+ - The rest is stored in the database
+
+*** =/etc/kazoo=
+ - All component configuration is stored in /etc/kazoo
+ - These files are installed via the RPM/DEB
+   - Watch out for .rpmnew when updating!
+ - We avoid updating these files as much as possible
+ - System specific configuration are in their own files
+   - Easier upgrades
+
+*** O/S configs
+There are additional linux configurations added:
+ - =/etc/logrotate.d=
+ - =/etc/rsyslog.d=
+ - =/etc/security/limits.d=
+ - Also init scripts
+ - Currently all targeted to CentOS; Debian-compatible mostly
+
+** The =system_config= database                                     :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** What's stored in there?
+ - Kazoo and some component settings
+ - Most documents are named after the corresponding App
+ - Some confusion on how these work; let’s clear that up first
+
+*** Settings are created on-demand
+ - You can add them prior to creation
+
+*** All settings added with a default value
+ - New properties added with a value to maintain backward compatibility
+
+*** "default" object
+ - These settings apply to the entire cluster
+
+*** Override sections
+ - Check for node-specific object first
+ - Check for zone-specific object next
+ - Check "default" object lastly
+
+*** Example: =system_config.ecallmgr=
+#+BEGIN_SRC json
+{
+   "_id": "ecallmgr",
+   "ecallmgr@apps001-qa.2600hz.com": {
+       "fs_nodes": [ “freeswitch@fs001-qa.2600hz.com” ]
+   },
+   "ecallmgr@apps002-qa.2600hz.com": {
+       "fs_nodes": [ “freeswitch@fs002-qa.2600hz.com” ]
+   },
+   "qa-east":{
+       "fs_nodes": ["freeswitch@fs001-qa.2600hz.com"
+                    ,“freeswitch@fs002-qa.2600hz.com”
+                   ]
+   },
+   "default": {
+       "fs_nodes": [ ]
+   }
+}
+#+END_SRC
+
+*** Commonly modified documents
+ - ecallmgr
+ - kapps_controller
+ - media_mgr
+
+*** Lets look at these now!
+ - Navigate to [[http://ip.add.re.ss:5984/_utils/database.html?system_config][the =system_config= db]]
+
+*** Number manager is the most often misunderstood
+ - This gets a section of its own
+
+** Thank You
+
+#+INCLUDE: "./frames/footer.org"
