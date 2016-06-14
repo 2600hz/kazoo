@@ -65,7 +65,7 @@ do_find_numbers_in_account(Number, Quantity, AccountId) ->
                   ],
     case kz_datamgr:get_results(?KZ_MANAGED, <<"numbers/status">>, ViewOptions) of
         {'ok', []} ->
-            lager:debug("found no available managed numbers for account ~p", [AccountId]),
+            lager:debug("found no available managed numbers for account ~s", [AccountId]),
             {'error', 'not_available'};
         {'ok', JObjs} ->
             lager:debug("found available managed numbers for account ~s", [AccountId]),
@@ -86,11 +86,16 @@ format_number_resp(AccountId, JObj) ->
         knm_phone_number:newly_found(kz_doc:id(Doc), ?MODULE, AccountId, Doc),
     knm_number:set_phone_number(knm_number:new(), PhoneNumber).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec is_number_billable(knm_number:knm_number()) -> boolean().
 is_number_billable(_Number) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Acquire a given number from the carrier
 %% @end
@@ -108,7 +113,7 @@ acquire_number(Number) ->
                        ]).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Release a number from the routing table
 %% @end
@@ -186,5 +191,10 @@ update_doc(Number, UpdateProps) ->
              )
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec should_lookup_cnam() -> 'true'.
 should_lookup_cnam() -> 'true'.

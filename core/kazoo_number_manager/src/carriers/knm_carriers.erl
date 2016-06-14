@@ -25,16 +25,12 @@
 -export([process_carrier_results/2
          ,process_bulk_carrier_results/2
         ]).
+-endif.
 
--define(DEFAULT_CARRIER_MODULE, ?CARRIER_LOCAL).
--define(CARRIER_MODULES, ?DEFAULT_CARRIER_MODULES).
-
--else.
 -define(DEFAULT_CARRIER_MODULE
        ,kapps_config:get_binary(?KNM_CONFIG_CAT, <<"available_module_name">>, ?CARRIER_LOCAL)).
 -define(CARRIER_MODULES
        ,kapps_config:get(?KNM_CONFIG_CAT, <<"carrier_modules">>, ?DEFAULT_CARRIER_MODULES)).
--endif.
 
 %%--------------------------------------------------------------------
 %% @public

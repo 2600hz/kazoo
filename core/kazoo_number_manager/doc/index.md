@@ -53,7 +53,7 @@ Activating features, numbers, calculating charges - anything involving an accoun
 
 ### Locality
 
-The `knm_locality` is a generic HTTP client for fetching the locality associate with a number. The module will POST to the configured URL appended with "/locality/metadata', sending a JSON payload of `{"data":["DID1", "DID2"...]}`.
+The `knm_locality` is a generic HTTP client for fetching locality data associated with a number. The module will POST to the configured URL appended with "/locality/metadata', sending a JSON payload of `{"data":["DID1", "DID2"...]}`.
 
 The response is expected to be a JSON payload of `{"status":"success","data":{...}}` where `"status"="success"` indicates the query was successful (any other value is treated as an error) and `"data"` is a JSON object with the locality information of each supplied DID.
 
