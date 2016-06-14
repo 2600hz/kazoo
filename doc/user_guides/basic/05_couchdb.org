@@ -119,6 +119,12 @@ Taken from [[https://cwiki.apache.org/confluence/display/COUCHDB/Debian][CouchDB
    #+END_EXAMPLE
 
 *** Debian
+1. Install a newer nodejs
+   #+BEGIN_EXAMPLE
+   $> curl -sL https://deb.nodesource.com/setup_4.x | sudo -E bash -
+   #+END_EXAMPLE
+
+*** Debian
 2. Install dependencies:
    #+BEGIN_EXAMPLE
    $> sudo apt-get update -y
