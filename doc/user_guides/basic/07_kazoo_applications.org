@@ -1,0 +1,238 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:2 \n:nil ^:t arch:headline
+#+OPTIONS: author:t c:nil creator:nil d:(not "LOGBOOK") date:nil e:t
+#+OPTIONS: email:nil f:t inline:t num:t p:nil pri:nil prop:nil stat:t
+#+OPTIONS: tags:t tasks:t tex:t timestamp:f title:t toc:nil todo:t |:t
+#+TITLE: Kazoo Basic Training - Kazoo Applications
+#+DATE: <2016-06-06 Mon>
+#+AUTHOR: James Aimonetti
+#+EMAIL: james@2600hz.com
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+CREATOR: Emacs 25.1.50.3 (Org mode 8.3.4)
+#+STARTUP: beamer
+#+LaTeX_CLASS: beamer
+#+LaTeX_CLASS_OPTIONS: [bigger]
+#+BEAMER_FRAME_LEVEL: 2
+#+BEAMER_THEME: Madrid
+#+COLUMNS: %40ITEM %10BEAMER_env(Env) %9BEAMER_envargs(Env Args) %4BEAMER_col(Col) %10BEAMER_extra(Extra)
+
+* Kazoo Applications
+
+** Kazoo Basic Training
+
+#+BEGIN_CENTER
+Kazoo Applications
+#+END_CENTER
+
+** The Kazoo Stack - Cluster
+
+#+BEGIN_CENTER
+[[file:./images/kazoo_stack.png]]
+#+END_CENTER
+
+** The Kazoo Stack - Kazoo Applications
+
+#+BEGIN_CENTER
+[[file:./images/kazoo_stack_applications.png]]
+#+END_CENTER
+
+
+** What are Kazoo Applications                                      :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Apps listen on the message bus and respond to requests
+ - API Requests
+ - Call Requests
+ - Voicemail to Email
+ - BLF
+ - Most activity is triggered by an AMQP message
+ - Unix philosophy - do one thing, do it well
+
+*** Apps provide back-end and consumer services
+ - Back-end services
+   - Registrations
+   - Presence
+   - Email notifications
+
+*** Apps provide back-end and consumer services
+ - Consumer Services are "end products"
+   - Conference Service
+   - Fax Service
+   - Callflows
+   - Crossbar
+
+*** Example: Conference App
+ - Listens on the AMQP bus for calls
+ - Checks "To" phone number for configured conference
+ - Responds to take control
+ - Places caller in conference (or initiates conference)
+
+*** Example: Conference App
+ - Elects which media servers to start a conference
+   - Coordination between simulatneous participants
+ - Responds to AMQP queries about conference status and control
+   - API can manipulate participants
+   - Relate commands coming soon
+
+*** Example: Registrar App
+ - Listens for authentication requests (authn)
+ - Finds credentials in appropriate database
+   - Skips is realm is an IP address
+   - Checks account database
+   - Checks aggregate database (=sip_auth=)
+
+*** Example: Registrar App
+ - Does authn by IP lookups too (on =route_req=)
+   - If Account-ID exists, ignore
+ - Queries =sip_auth= database for IP
+ - Republishes =route_req= with account information
+
+*** Apps are designed to be redundant
+ - Run multiple copies of the same app on multiple servers
+
+*** Apps are designed to be elastic
+ - Most apps are stateless and part of a worker pool
+ - They can be safely started or stopped
+
+*** Apps are designed to interact via AMQP
+ - This allows for extremely flexible architecture
+   - Seperate servers for API, call control, back-office
+ - Allows custom applications, in any language, to participate
+
+*** Our Apps are in Erlang
+ - Some people don’t like Erlang
+ - Some people don’t know Erlang
+ - Create proper bindings, respond with proper JSON
+   - Congrats, you've build a Kazoo application!
+ - Pivot provides simplified dynamic call control as well
+
+*** Apps consume different types of resources
+ - HTTP Request/Response
+ - Media and Caching
+ - Registrations (in-memory)
+ - Sensitive to different behaviors
+
+#+BEGIN_CENTER
+Examples of apps that behave differently?
+#+END_CENTER
+
+** Current Applications
+
+#+BEGIN_SRC shell :exports both
+ls -U -I Makefile ../../../applications/
+#+END_SRC
+
+** Installing Kazoo Applications                                    :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Debian Packages Disclaimer
+#+BEGIN_CENTER
+Debian packages in progress. For now, installing from source is the way to go.
+#+END_CENTER
+
+*** Debian: From Source
+
+These instructions are taken from [[file:../../installation.md][the installation guide]]:
+
+1. Install dependencies
+   #+BEGIN_EXAMPLE
+   $> apt-get install build-essential libxslt-dev \
+    zip unzip expat zlib1g-dev libssl-dev curl \
+    libncurses5-dev git-core libexpat1-dev \
+    htmldoc
+   #+END_EXAMPLE
+2. You should have Erlang installed via kerl/Erlang Solutions
+
+*** CentOS
+
+#+BEGIN_CENTER
+yum packages should be similar to Debian instructions
+#+END_CENTER
+
+*** General
+
+1. Install Kazoo
+   #+BEGIN_EXAMPLE
+   $> cd /opt
+   $/opt/> git clone https://github.com/2600Hz/kazoo kazoo
+   $/opt/> cd kazoo
+   $/opt/kazoo> make
+   #+END_EXAMPLE
+2. Install SUP:
+   #+BEGIN_EXAMPLE
+   $/opt/kazoo> make sup_completion
+   $/opt/kazoo> ln -s /opt/kazoo/core/sup/priv/sup /usr/bin/sup
+   $/opt/kazoo> ln -s sup.bash /etc/bash_completion.d/
+   #+END_EXAMPLE
+
+** Configuring Kazoo                                                :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** =/etc/kazoo/config.ini=
+    #+BEGIN_EXAMPLE
+    [amqp]
+    amqp_uri = "amqp://guest:guest@ip.add.re.ss:5672"
+    #+END_EXAMPLE
+
+*** =/etc/kazoo/config.ini=
+    #+BEGIN_EXAMPLE
+    [bigcouch]
+    compact_automatically = false
+    cookie = change_me
+    ip = "127.0.0.1"
+    port = 5984
+    ; username = "kazoo"
+    ; password = "supermegaexcellenttelephonyplatform"
+    admin_port = 15986
+    #+END_EXAMPLE
+
+*** =/etc/kazoo/config.ini=
+    #+BEGIN_EXAMPLE
+    [kazoo_apps]
+    cookie = change_me
+    #+END_EXAMPLE
+
+    #+BEGIN_CENTER
+    If you run ecallmgr in the VM, cookie should match =mod_kazoo's=!
+    #+END_CENTER
+
+*** =/etc/kazoo/config.ini=
+    #+BEGIN_EXAMPLE
+    [log]
+    syslog = debug
+    console = notice
+    file = error
+    #+END_EXAMPLE
+
+*** Start Kazoo
+    #+BEGIN_EXAMPLE
+    # In seperate shell
+    $/opt/kazoo/> ./scripts/dev-start-apps.sh kazoo_apps
+    #+END_EXAMPLE
+
+*** After Kazoo Starts
+
+1. Install System Prompts
+   #+BEGIN_EXAMPLE
+   $> git clone https://github.com/2600hz/kazoo-sounds /opt/kazoo-sounds
+   $> sup kazoo_media_maintenance import_prompts /opt/kazoo-sounds/kazoo-core/en-us en-us
+   #+END_EXAMPLE
+2. Create First Account
+   #+BEGIN_EXAMPLE
+   $> sup crossbar_maintenance create_account \
+   {ACCOUNT_NAME} {ACCOUNT_REALM} {ADMIN_USER} {ADMIN_PASS}
+   #+END_EXAMPLE
+
+** Thank You
+
+#+INCLUDE: "./frames/footer.org"
