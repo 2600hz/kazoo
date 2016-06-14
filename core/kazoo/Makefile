@@ -36,6 +36,7 @@ $(GEN_OUT): $(GEN_FILE) $(GEN_SRC)
 	echo 'from_extension(_) -> <<"application/octet-stream">>.' >> $(GEN_OUT)
 	echo >> $(GEN_OUT)
 	echo 'to_extensions(<<"audio/mp3">>) -> [<<"mp3">>];' >> $(GEN_OUT)
+	echo 'to_extensions(<<"audio/wav">>) -> [<<"wav">>];' >> $(GEN_OUT)
 	cat $(GEN_FILE) \
 		| grep -v ^# \
 		| awk '{ \
