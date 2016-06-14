@@ -491,7 +491,7 @@ $ chkconfig httpd on
 
 ```shell
 $ git clone https://github.com/2600hz/kazoo-sounds.git /opt/kazoo-sounds
-$ sup kazoo_media_maintenance import_prompts /opt/kazoo-sounds/kazoo-core/en-us en-us
+$ sup kazoo_media_maintenance import_prompts /opt/kazoo-sounds/kazoo-core/en/us en-us
 ```
 
 ### Configure ecallmgr

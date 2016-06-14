@@ -225,7 +225,7 @@ yum packages should be similar to Debian instructions
 1. Install System Prompts
    #+BEGIN_EXAMPLE
    $> git clone https://github.com/2600hz/kazoo-sounds /opt/kazoo-sounds
-   $> sup kazoo_media_maintenance import_prompts /opt/kazoo-sounds/kazoo-core/en-us en-us
+   $> sup kazoo_media_maintenance import_prompts /opt/kazoo-sounds/kazoo-core/en/us en-us
    #+END_EXAMPLE
 2. Create First Account
    #+BEGIN_EXAMPLE
