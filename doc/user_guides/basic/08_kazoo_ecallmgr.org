@@ -151,7 +151,7 @@ Authorizes the proxy to forward the source IP as a custom SIP header (X-AUTH-IP)
 
 *** Adding Kamailio server to the list
     #+BEGIN_EXAMPLE
-    $> sup ecallmgr_maintenance allow_sbc kamilio1 ip.add.re.ss
+    $> sup ecallmgr_maintenance allow_sbc kamailio1 ip.add.re.ss
     updating authoritative ACLs kamailio1(ip.add.re.ss/32) to allow traffic
     issued reload ACLs to freeswitch@awesome.hostname.com
     #+END_EXAMPLE
