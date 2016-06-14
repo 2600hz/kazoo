@@ -97,7 +97,10 @@
  - Allows for maintenance without disrupting calls
  - Distributes the load
 
-*** Multiple ecallmgr connections
+*** Multiple ecallmgr connections                           :B_ignoreheading:
+    :PROPERTIES:
+    :BEAMER_env: ignoreheading
+    :END:
 #+BEGIN_CENTER
 [[file:./images/ecallmgr_freeswitch.png]]
 #+END_CENTER
@@ -156,11 +159,11 @@ Authorizes the proxy to forward the source IP as a custom SIP header (X-AUTH-IP)
 *** Verify SBC ACLs
     #+BEGIN_EXAMPLE
     $> sup ecallmgr_maintenance sbc_acls
-    +--------------------------------+-------------------+---------------+-------+------------------+----+
-    | Name                           | CIDR              | List          | Type  | Authorizing Type | ID |
-    +================================+===================+===============+=======+==================+====+
-    | kamailio                       | 192.168.1.15/32   | authoritative | allow | system_config    |    |
-    +--------------------------------+-------------------+---------------+-------+------------------+----+
+    +----------+-----------------+---------------+-------+------------------+----+
+    | Name     | CIDR            | List          | Type  | Authorizing Type | ID |
+    +==========+=================+===============+=======+==================+====+
+    | kamailio | 192.168.1.15/32 | authoritative | allow | system_config    |    |
+    +----------+-----------------+---------------+-------+------------------+----+
     #+END_EXAMPLE
 
 *** The Carrier ACL
@@ -197,11 +200,6 @@ If you are adding ACLs this will transition the ecallmgr from the global list a 
 *** Lets check the connection from Kazoo
     #+BEGIN_EXAMPLE
     $> sup ecallmgr_maintenance node_summary
-    +-----------------------------------+-----------+-----------+----------------------+
-    | Node Name                         | Connected | Cookie    | Version              |
-    +===================================+===========+===========+======================+
-    | freeswitch@lappy64.pdx.2600hz.com | true      | change_me | mod_kazoo v1.2.10-14 |
-    +-----------------------------------+-----------+-----------+----------------------+
     Found 1 nodes
     #+END_EXAMPLE
 
