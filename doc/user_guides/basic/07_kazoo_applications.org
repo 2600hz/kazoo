@@ -120,12 +120,6 @@ Kazoo Applications
 Examples of apps that behave differently?
 #+END_CENTER
 
-** Current Applications
-
-#+BEGIN_SRC shell :exports both
-ls -U -I Makefile ../../../applications/
-#+END_SRC
-
 ** Installing Kazoo Applications                                    :B_frame:
    :PROPERTIES:
    :BEAMER_opt: allowframebreaks,label=
@@ -220,18 +214,107 @@ yum packages should be similar to Debian instructions
     $/opt/kazoo/> ./scripts/dev-start-apps.sh kazoo_apps
     #+END_EXAMPLE
 
-*** After Kazoo Starts
-
-1. Install System Prompts
+*** Install System Prompts
    #+BEGIN_EXAMPLE
    $> git clone https://github.com/2600hz/kazoo-sounds /opt/kazoo-sounds
    $> sup kazoo_media_maintenance import_prompts /opt/kazoo-sounds/kazoo-core/en/us en-us
    #+END_EXAMPLE
-2. Create First Account
+
+*** Create Master Account
    #+BEGIN_EXAMPLE
    $> sup crossbar_maintenance create_account \
    {ACCOUNT_NAME} {ACCOUNT_REALM} {ADMIN_USER} {ADMIN_PASS}
+   created new account {ACCOUNT_ID} in db {ACCOUNT_DB}
+   created new account admin user {USER_ID}
+   promoting account {ACCOUNT_ID} to reseller status, updating sub accounts
+   updating master account id in system_config.accounts
+   ok
    #+END_EXAMPLE
+
+** Current Applications                                             :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+#+name: Application Listing
+#+BEGIN_SRC shell :results output raw :exports results
+for file in `ls -S -I Makefile ../../../applications/`; do
+  echo "*** =$file="
+done
+#+END_SRC
+
+** Recap
+
+*** Lets look at CouchDB
+ - Navigate to http://your.ip.addr:5984/_utils/
+
+*** Now lets look at RabbitMQ
+ - Navigate to http://your.ip.addr:15672
+
+** Monitoring Kazoo Applications
+
+*** SUP
+    #+BEGIN_EXAMPLE
+    Usage: sup [-?] [-h [<host>]] [-n [<node>]] [-c [<cookie>]]
+    [-t <timeout>] [-v] [<module>] [<function>] [args ...]
+
+    -?, --help     Show the program options
+    -h, --host     System hostname [default: awesome.hostname.com]
+    -n, --node     Node name [default: kazoo_apps]
+    -c, --cookie   Erlang cookie [default: ]
+    -t, --timeout  Command timeout, default 5
+    -v, --verbose  Be verbose
+    <module>       The name of the remote module
+    <function>     The name of the remote module's function
+    #+END_EXAMPLE
+
+*** Change runtime log level
+    #+BEGIN_EXAMPLE
+    $> sup kazoo_maintenance syslog_level debug
+    #+END_EXAMPLE
+
+*** See AMQP broker usage
+    #+BEGIN_EXAMPLE
+    $> sup kazoo_amqp_maintenance broker_summary
+    #+END_EXAMPLE
+
+*** Start a Kazoo application
+    #+BEGIN_EXAMPLE
+    $> sup kapps_controller start_app crossbar
+    #+END_EXAMPLE
+
+*** Find out which carrier will be used for a DID
+    #+BEGIN_EXAMPLE
+    $> sup stepswitch_maintenance process_number 4158867900
+    #+END_EXAMPLE
+
+*** You can access the running Erlang VM
+    #+BEGIN_EXAMPLE
+    $> /opt/kazoo/scripts/conn-to-apps.sh
+    #+END_EXAMPLE
+
+    There is little you can’t do in this shell...if you know some Erlang.
+
+*** Start the Erlang VM in the foreground
+    #+BEGIN_EXAMPLE
+    $> /opt/kazoo/scripts/dev-start-apps.sh
+    #+END_EXAMPLE
+
+*** Logs
+    #+BEGIN_EXAMPLE
+    $> tail -f /var/log/2600hz/kazoo.log
+    #+END_EXAMPLE
+
+    #+BEGIN_CENTER
+    {CALL_ID} is prepended to all relevant log lines
+    #+END_CENTER
+
+*** Hotload code
+    #+BEGIN_EXAMPLE
+    $> sup kazoo_maintenance hotload cf_voicemail
+    $> sup kazoo_maintenance hotload_app callflow
+    #+END_EXAMPLE
 
 ** Thank You
 
