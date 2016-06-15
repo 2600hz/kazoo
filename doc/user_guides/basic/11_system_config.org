@@ -85,13 +85,8 @@ There are additional linux configurations added:
    "ecallmgr@apps001-qa.2600hz.com": {
        "fs_nodes": [ “freeswitch@fs001-qa.2600hz.com” ]
    },
-   "ecallmgr@apps002-qa.2600hz.com": {
-       "fs_nodes": [ “freeswitch@fs002-qa.2600hz.com” ]
-   },
    "qa-east":{
-       "fs_nodes": ["freeswitch@fs001-qa.2600hz.com"
-                    ,“freeswitch@fs002-qa.2600hz.com”
-                   ]
+       "fs_nodes": ["freeswitch@fs001-qa.2600hz.com",“freeswitch@fs002-qa.2600hz.com”]
    },
    "default": {
        "fs_nodes": [ ]
@@ -101,8 +96,8 @@ There are additional linux configurations added:
 
 *** Commonly modified documents
  - ecallmgr
- - kapps_controller
- - media_mgr
+ - =kapps_controller=
+ - =media_mgr=
 
 *** Lets look at these now!
  - Navigate to [[http://ip.add.re.ss:5984/_utils/database.html?system_config][the =system_config= db]]
