@@ -145,7 +145,7 @@ Given =/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}=:
 |Key|Description|Always Present|
 |---+-----------+--------------|
 |data|Contains the results of the request|true|
-|=auth_token=|Contains the auth_token used on the request|true|
+|=auth_token=|Contains the =auth_token= used on the request|true|
 |status|One of 'success', 'error', or 'fatal'|true|
 |=request_id=|For debugging the server-side processing of the request|true|
 |message|Clarifies what happened on the request|false|
