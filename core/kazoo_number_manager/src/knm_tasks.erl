@@ -16,14 +16,16 @@
         ]).
 
 %% Verifiers
--export([number/1
+-export([number/1, e164/1
         ,account_id/1
         ,auth_by/1
-        ,module_name/1
+        ,module_name/1, carrier_module/1
+        ,state/1
         ]).
 
 %% Appliers
 -export([list/2
+        ,import_list/17
         ,assign_to/4
         ,delete/3
         ,reserve/4
@@ -70,6 +72,30 @@ help() ->
                         ,{<<"mandatory">>, [
                                            ]}
                         ,{<<"optional">>, [
+                                          ]}
+                        ])
+     }
+
+    ,{<<"import_list">>
+     ,kz_json:from_list([{<<"description">>, <<"Import numbers that were previously listed">>}
+                        ,{<<"expected_content">>, <<"text/csv">>}
+                        ,{<<"mandatory">>, [<<"e164">>
+                                           ,<<"account_id">>
+                                           ,<<"state">>
+                                           ,<<"carrier_module">>
+                                           ]}
+                        ,{<<"optional">>, [<<"port_in">>
+                                          ,<<"previously_assigned_to">>
+                                          ,<<"created">>
+                                          ,<<"modified">>
+                                          ,<<"used_by">>
+                                          ,<<"cnam.inbound">>
+                                          ,<<"cnam.outbound">>
+                                          ,<<"e911.postal_code">>
+                                          ,<<"e911.street_address">>
+                                          ,<<"e911.extended_address">>
+                                          ,<<"e911.locality">>
+                                          ,<<"e911.region">>
                                           ]}
                         ])
      }
@@ -132,11 +158,14 @@ help() ->
     %%  }
     ].
 
-%% Verifiers
+%%% Verifiers
 
 -spec number(ne_binary()) -> boolean().
 number(<<"+", _/binary>>) -> 'true';
 number(_) -> 'false'.
+
+-spec e164(ne_binary()) -> boolean().
+e164(Thing) -> number(Thing).
 
 -spec account_id(ne_binary()) -> boolean().
 account_id(?MATCH_ACCOUNT_RAW(_)) -> 'true';
@@ -149,21 +178,35 @@ auth_by(_) -> 'false'.
 
 -spec module_name(api_binary()) -> boolean().
 module_name('undefined') -> 'true';
-module_name(Thing) ->
-    Modules = [<<"knm_bandwidth2">>
-              ,<<"knm_bandwidth">>
-              ,<<"knm_carriers">>
-              ,<<"knm_inum">>
-              ,<<"knm_local">>
-              ,<<"knm_managed">>
-              ,<<"knm_other">>
-              ,<<"knm_simwood">>
-              ,<<"knm_vitelity">>
-              ,<<"knm_voip_innovations">>
-              ],
-    lists:member(Thing, Modules).
+module_name(Thing) -> carrier_module(Thing).
 
-%% Appliers
+-spec carrier_module(ne_binary()) -> boolean().
+carrier_module(<<"knm_bandwidth2">>) -> 'true';
+carrier_module(<<"knm_bandwidth">>) -> 'true';
+carrier_module(<<"knm_carriers">>) -> 'true';
+carrier_module(<<"knm_inum">>) -> 'true';
+carrier_module(<<"knm_local">>) -> 'true';
+carrier_module(<<"knm_managed">>) -> 'true';
+carrier_module(<<"knm_other">>) -> 'true';
+carrier_module(<<"knm_simwood">>) -> 'true';
+carrier_module(<<"knm_vitelity">>) -> 'true';
+carrier_module(<<"knm_voip_innovations">>) -> 'true';
+carrier_module(_) -> 'false'.
+
+-spec state(ne_binary()) -> boolean().
+state(<<"port_in">>) -> 'true';
+state(<<"port_out">>) -> 'true';
+state(<<"discovery">>) -> 'true';
+state(<<"in_service">>) -> 'true';
+state(<<"released">>) -> 'true';
+state(<<"reserved">>) -> 'true';
+state(<<"available">>) -> 'true';
+state(<<"disconnected">>) -> 'true';
+state(<<"deleted">>) -> 'true';
+state(_) -> 'false'.
+
+
+%%% Appliers
 
 -spec list(kz_proplist(), task_iterator()) -> task_iterator().
 list(Props, 'init') ->
@@ -194,6 +237,23 @@ list(Props, [{E164,JObj} | E164s]) ->
           ,'undefined'%%TODO
           ],
     {Row, E164s}.
+
+-spec import_list(kz_proplist(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()
+                 ,api_binary(), api_binary(), api_binary(), api_binary(), api_binary(), api_binary()
+                 ,api_binary()
+                 ,api_binary(), api_binary(), api_binary(), api_binary()) ->
+                         task_return().
+import_list(Props, E164, AccountId, State, Carrier
+           ,_PortIn, _PrevAssignedTo, _Created, _Modified, _UsedBy, _CNAMInbound, _CNAMOutbound
+           ,_E911PostalCode
+           ,_E911StreetAddress, _E911ExtendedAddress, _E911Locality, _E911Region) ->
+    %%TODO: use the optional fields
+    Options = [{'auth_by', props:get_value('auth_account_id', Props)}
+              ,{'assign_to', AccountId}
+              ,{'state', State}
+              ,{'module_name', Carrier}
+              ],
+    handle_result(knm_number:create(E164, Options)).
 
 -spec assign_to(kz_proplist(), ne_binary(), ne_binary(), api_binary()) -> task_return().
 assign_to(Props, Number, AccountId, AuthBy) ->
@@ -246,4 +306,4 @@ handle_result({'error', KNMError}) ->
 auth_by('undefined', Props) -> props:get_value('auth_account_id', Props);
 auth_by(AuthBy, _) -> AuthBy.
 
-%% End of Module.
+%%% End of Module.
