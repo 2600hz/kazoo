@@ -63,6 +63,7 @@
 -define(CARRIER_OTHER, <<"knm_other">>).
 -define(CARRIER_LOCAL, <<"knm_local">>).
 -define(CARRIER_MANAGED, <<"knm_managed">>).
+-define(CARRIER_INUM, <<"knm_inum">>).
 
 -define(KNM_PHONE_NUMBERS_DOC, <<"phone_numbers">>).
 
