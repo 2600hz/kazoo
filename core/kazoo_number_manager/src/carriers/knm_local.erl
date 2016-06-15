@@ -33,8 +33,6 @@
 -spec find_numbers(ne_binary(), pos_integer(), kz_proplist()) ->
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
-find_numbers(Number, Quantity, Options) when size(Number) < 5 ->
-    find_numbers(<<"+1", Number/binary>>, Quantity, Options);
 find_numbers(Number, Quantity, Options) ->
     case ?PREFER_AVAILABLE_NUMBERS of
         'false' -> {'error', 'not_available'};
@@ -48,12 +46,12 @@ find_numbers(Number, Quantity, Options) ->
 -spec do_find_numbers(ne_binary(), pos_integer(), ne_binary()) ->
                              {'ok', knm_number:knm_numbers()} |
                              {'error', any()}.
-do_find_numbers(Number, Quantity, AccountId) ->
+do_find_numbers(<<"+",_/binary>>=Number, Quantity, AccountId) ->
     ViewOptions = [{'startkey', [?NUMBER_STATE_AVAILABLE, Number]}
                   ,{'endkey', [?NUMBER_STATE_AVAILABLE, <<"\ufff0">>]}
                   ,{'limit', Quantity}
                   ],
-    DB = knm_converters:to_db(Number),
+    DB = ?NE_BINARY = knm_converters:to_db(Number),
     case kz_datamgr:get_results(DB, <<"numbers/status">>, ViewOptions) of
         {'ok', []} ->
             lager:debug("found no available local numbers for account ~s", [AccountId]),
@@ -64,7 +62,9 @@ do_find_numbers(Number, Quantity, AccountId) ->
         {'error', _R}=E ->
             lager:debug("failed to lookup available local numbers: ~p", [_R]),
             E
-    end.
+    end;
+do_find_numbers(<<Prefix:3/binary>>, Quantity, AccountId) ->
+    do_find_numbers(<<"+1", Prefix/binary>>, Quantity, AccountId).
 
 -spec format_numbers(ne_binary(), kz_json:objects()) -> knm_number:knm_numbers().
 format_numbers(AccountId, JObjs) ->
