@@ -21,6 +21,9 @@
 
 -define(DEFAULT_CARRIER_MODULES, [?CARRIER_LOCAL]).
 
+-define(KNM_PREFER_RESELLERS_RESERVED
+       ,kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"prefer_resellers_reserved">>, 'false')).
+
 -ifdef(TEST).
 -export([process_carrier_results/2
          ,process_bulk_carrier_results/2
@@ -52,8 +55,8 @@ find(Num, Quantity, Options) ->
     lists:foldl(fun(Carrier, Acc) ->
                         find_fold(Carrier, Acc, NormalizedNumber, Quantity, Options)
                 end
-                ,[]
-                ,available_carriers(Options)
+               ,[]
+               ,available_carriers(Options)
                ).
 
 -spec find_fold(atom(), kz_json:objects(), ne_binary(), non_neg_integer(), kz_proplist()) ->
@@ -229,20 +232,17 @@ check(Numbers, Options) ->
 %%--------------------------------------------------------------------
 -spec available_carriers() -> atoms().
 available_carriers() ->
-    [Module
-     || M <- ?CARRIER_MODULES,
-        (Module = kz_util:try_load_module(M)) =/= 'false'
-    ].
+    case ?KNM_PREFER_RESELLERS_RESERVED of
+        'false' -> keep_only_reachable(?CARRIER_MODULES);
+        'true' -> keep_only_reachable([?CARRIER_RESERVED])
+    end.
 
 -ifdef(TEST).
 available_carriers(Options) ->
     case props:get_value(<<"carriers">>, Options) of
         'undefined' -> available_carriers();
         [] -> available_carriers();
-        Cs -> [Module
-               || C <- Cs,
-                  (Module = kz_util:try_load_module(C)) =/= 'false'
-              ]
+        Cs -> keep_only_reachable(Cs)
     end.
 -else.
 available_carriers(_Options) ->
@@ -251,10 +251,7 @@ available_carriers(_Options) ->
 
 -spec default_carriers() -> atoms().
 default_carriers() ->
-    [Module
-     || M <- ?DEFAULT_CARRIER_MODULES,
-        (Module = kz_util:try_load_module(M)) =/= 'false'
-    ].
+    keep_only_reachable(?DEFAULT_CARRIER_MODULES).
 
 -spec default_carrier() -> ne_binary().
 default_carrier() ->
@@ -318,6 +315,18 @@ carrier_module(?NE_BINARY = Module) ->
 carrier_module(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     carrier_module(knm_phone_number:module_name(PhoneNumber)).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec keep_only_reachable([ne_binary()]) -> atoms().
+keep_only_reachable(ModuleNames) ->
+    [Module
+     || M <- ModuleNames,
+        (Module = kz_util:try_load_module(M)) =/= 'false'
+    ].
 
 %%--------------------------------------------------------------------
 %% @private
