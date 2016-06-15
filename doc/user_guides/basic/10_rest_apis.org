@@ -188,7 +188,7 @@ Get your API key for your account:
 #+BEGIN_EXAMPLE
 $> curl -v http://your.ip:15984/accounts/{ACCOUNT_ID}
 $> curl -v -X PUT -H "content-type:application/json" \
--d '{"data":{"api_key":"{API_KEY}"}' \
+-d '{"data":{"api_key":"{API_KEY}"}}' \
 http://ip.add.re.ss:8000/v2/api_auth
 #+END_EXAMPLE
 
