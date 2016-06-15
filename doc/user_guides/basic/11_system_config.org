@@ -26,10 +26,9 @@ System Config
 
 ** The =system_config= situation                                    :B_frame:
    :PROPERTIES:
-   :BEAMER_opt: allowframesplits,label=
+   :BEAMER_opt: allowframebreaks,label=
    :BEAMER_env: frame
    :END:
-
 *** Strategy
  - Keep as little on disk as is possible
  - Load most items from the database
@@ -39,14 +38,14 @@ System Config
  - The rest is stored in the database
 
 *** =/etc/kazoo=
- - All component configuration is stored in /etc/kazoo
+ - All component configuration is stored in =/etc/kazoo=
  - These files are installed via the RPM/DEB
-   - Watch out for .rpmnew when updating!
+   - Watch out for =.rpmnew= when updating!
  - We avoid updating these files as much as possible
  - System specific configuration are in their own files
    - Easier upgrades
 
-*** O/S configs
+*** Operating system configs
 There are additional linux configurations added:
  - =/etc/logrotate.d=
  - =/etc/rsyslog.d=
@@ -110,6 +109,75 @@ There are additional linux configurations added:
 
 *** Number manager is the most often misunderstood
  - This gets a section of its own
+
+** Number Manager Configuration                                     :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** =carrier_modules=
+ - List of Kazoo Number Manager modules used to interact with a carrier
+ - There are two special modules
+   - =knm_local=: Untrusted numbers added locally to an account (BYOC)
+   - =knm_other=: Trusted numbers that are managed by an external system
+ - [[https://github.com/2600hz/kazoo/tree/master/core/kazoo_number_manager/src/carriers][Other modules]] exist, some of which utilize carriers APIs
+
+*** providers
+ - List of [[https://github.com/2600hz/kazoo/tree/master/core/kazoo_number_manager/src/providers][modules]] that provide supplemental services to numbers
+ - For example:
+   - E911: Connects to Dash or Vitelity E911 API
+   - Porting: Sends port request emails
+   - CNAM: Sends CNAM update request emails
+
+*** =reconcile_regex=
+ - Used to differentiate PSTN numbers from extensions
+ - For example:
+   - It should match a US number like +14158867938
+   - It should NOT match a extension number like 7938
+ - Numbers that match are stored in the numbers/XXXXX databases
+ - These databases are used to determine which account a number belongs to when a unchallenged SIP INVITE is received (carrier ACL)
+
+*** =e164_converters=
+ - The converters ensure all numbers are processed in the same format
+ - Should be able to normalize any format your carriers may present
+ - For example:
+   - 4158867900 and 14158867900 should convert to +14158867900
+ - Does not necessarily have to be e.164, as long as its consistent
+ - Should be changed with extreme care on live systems!
+
+*** classifiers
+ - A set of regular expressions to identify a number "type"
+ - Could be thought of as a way to avoid copying a regex to match, say US DIDs, all over the system
+ - Used to restrict number types, such as "international"
+ - The type "emergency" will trigger additional outbound logic
+ - Can be changed at any time safely
+
+*** More details
+ - Read more about [[https://github.com/2600hz/kazoo/blob/master/doc/internationalization/numbers.md][numbers]] and how to properly configure your system
+
+** Sysconf Application
+ - Not all applications connect to the database
+ - Your application, written in Python, may not use BigCouch
+ - Those that don’t need configuration too
+ - Sysconf answers requests for configuration via AMQP
+ - Should be run in Erlang virtual machines that are connected to CouchDB
+
+** Kazoo Caches                                                     :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Configuration values are cached when fetched
+ - Typical manual flush commands:
+   #+BEGIN_EXAMPLE
+   $> sup kz_datamgr flush_cache_docs
+   $> sup kapps_config flush
+   $> sup ecallmgr_config flush
+   #+END_EXAMPLE
+ - Only needed when manual changes to the database are made
+ - Should use APIs or SUP instead
 
 ** Thank You
 
