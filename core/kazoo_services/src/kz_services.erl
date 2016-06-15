@@ -1170,8 +1170,14 @@ get_service_modules() ->
 
 -spec get_filesystem_service_modules() -> atoms().
 get_filesystem_service_modules() ->
+    get_filesystem_service_modules(filelib:wildcard([code:lib_dir('kazoo_services'), "/src/services/*.erl"])).
+
+-spec get_filesystem_service_modules([file:filename()]) -> atoms().
+get_filesystem_service_modules([]) ->
+    get_default_service_modules();
+get_filesystem_service_modules(Files) ->
     Mods = [Mod
-            || P <- filelib:wildcard([code:lib_dir('kazoo_services'), "/src/services/*.erl"]),
+            || P <- Files,
                begin
                    Name = kz_util:to_binary(filename:rootname(filename:basename(P))),
                    (Mod = kz_util:try_load_module(Name)) =/= 'false'
@@ -1179,6 +1185,19 @@ get_filesystem_service_modules() ->
            ],
     lager:debug("found filesystem service modules: ~p", [Mods]),
     Mods.
+
+-spec get_default_service_modules() -> atoms().
+get_default_service_modules() ->
+    Modules = [<<"kz_service_devices">>
+              ,<<"kz_service_ips">>
+              ,<<"kz_service_ledgers">>
+              ,<<"kz_service_limits">>
+              ,<<"kz_service_phone_numbers">>
+              ,<<"kz_service_ui_apps">>
+              ,<<"kz_service_users">>
+              ,<<"kz_service_whitelabel">>
+              ],
+    [Mod || Module <- Modules, (Mod = kz_util:try_load_module(Module)) =/= 'false'].
 
 %%--------------------------------------------------------------------
 %% @private
