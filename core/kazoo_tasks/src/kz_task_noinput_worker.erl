@@ -85,8 +85,8 @@ loop(IterValue, State=#state{task_id = TaskId
                             }) ->
     case is_task_successful(TaskId, Module, Function, ExtraArgs, IterValue) of
         'stop' ->
-            _ = upload_output(TaskId),
-            _ = kz_tasks:worker_finished(TaskId, TotalSucceeded, TotalFailed),
+            TaskRev = upload_output(TaskId),
+            _ = kz_tasks:worker_finished(TaskId, TaskRev, TotalSucceeded, TotalFailed),
             'stop';
         {'false', {_PrevRow, NewIterValue}} ->
             NewState = State#state{total_failed = TotalFailed + 1
@@ -151,11 +151,12 @@ maybe_send_update(_) ->
     'ok'.
 
 %% @private
--spec upload_output(kz_tasks:task_id()) -> 'ok'.
+-spec upload_output(kz_tasks:task_id()) -> ne_binary().
 upload_output(TaskId) ->
     {'ok', Out} = file:read_file(?OUT(TaskId)),
-    kz_tasks:worker_upload_result(TaskId, Out),
-    kz_util:delete_file(?OUT(TaskId)).
+    {'ok', TaskRev} = kz_tasks:worker_upload_result(TaskId, Out),
+    kz_util:delete_file(?OUT(TaskId)),
+    TaskRev.
 
 %% @private
 -spec write_output_csv_header(kz_tasks:task_id(), module(), atom()) -> 'ok' |

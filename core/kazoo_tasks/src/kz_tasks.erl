@@ -21,7 +21,7 @@
 
 %%% API used by workers
 %% Casts
--export([worker_finished/3
+-export([worker_finished/4
         ,worker_error/1
         ,worker_update_processed/3
         ]).
@@ -53,6 +53,7 @@
                  , worker_module => module() | 'undefined' %% Worker to execute the task with.
                  , account_id => ne_binary()
                  , id => task_id()
+                 , rev => ne_binary() | 'undefined'
                  , category => ne_binary()
                  , action => ne_binary()
                  , created => gregorian_seconds() %% Time of task creation (PUT)
@@ -253,10 +254,10 @@ remove(TaskId=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec worker_finished(task_id(), non_neg_integer(), non_neg_integer()) -> 'ok'.
-worker_finished(TaskId=?NE_BINARY, TotalSucceeded, TotalFailed)
+-spec worker_finished(task_id(), ne_binary(), non_neg_integer(), non_neg_integer()) -> 'ok'.
+worker_finished(TaskId=?NE_BINARY, TaskRev=?NE_BINARY, TotalSucceeded, TotalFailed)
   when is_integer(TotalSucceeded), is_integer(TotalFailed) ->
-    gen_server:cast(?SERVER, {'worker_finished', TaskId, TotalSucceeded, TotalFailed}).
+    gen_server:cast(?SERVER, {'worker_finished', TaskId, TaskRev, TotalSucceeded, TotalFailed}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -281,7 +282,8 @@ worker_update_processed(TaskId=?NE_BINARY, TotalSucceeded, TotalFailed) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec worker_upload_result(task_id(), ne_binary()) -> 'ok'.
+-spec worker_upload_result(task_id(), ne_binary()) -> {'ok', ne_binary()} |
+                                                      {'error', any()}.
 worker_upload_result(TaskId=?NE_BINARY, CSVOut=?NE_BINARY) ->
     case kz_datamgr:put_attachment(?KZ_TASKS_DB
                                   ,TaskId
@@ -290,10 +292,13 @@ worker_upload_result(TaskId=?NE_BINARY, CSVOut=?NE_BINARY) ->
                                   ,[{'content_type', <<"text/csv">>}]
                                   )
     of
-        {'ok', _} -> lager:debug("saved ~s", [?KZ_TASKS_ATTACHMENT_NAME_OUT]);
-        {'error', _R} ->
+        {'ok', TaskJObj} ->
+            lager:debug("saved ~s", [?KZ_TASKS_ATTACHMENT_NAME_OUT]),
+            {'ok', kz_doc:revision(TaskJObj)};
+        {'error', _R}=Error ->
             lager:error("failed saving ~s/~s: ~p"
-                       ,[TaskId, ?KZ_TASKS_ATTACHMENT_NAME_OUT, _R])
+                       ,[TaskId, ?KZ_TASKS_ATTACHMENT_NAME_OUT, _R]),
+            Error
     end.
 
 %%--------------------------------------------------------------------
@@ -392,6 +397,7 @@ handle_call({'new', AccountId, Category, Action, TotalRows}, _From, State) ->
             , worker_module => 'undefined'
             , account_id => AccountId
             , id => TaskId
+            , rev => 'undefined'
             , category => Category
             , action => Action
             , created => kz_util:current_tstamp()
@@ -460,11 +466,12 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'worker_finished', TaskId, TotalSucceeded, TotalFailed}, State) ->
+handle_cast({'worker_finished', TaskId, TaskRev, TotalSucceeded, TotalFailed}, State) ->
     [Task] = task_by_id(TaskId, State),
     Task1 = Task#{ finished => kz_util:current_tstamp()
                  , total_rows_failed => TotalFailed
                  , total_rows_succeeded => TotalSucceeded
+                 , rev => TaskRev
                  },
     {'ok', _JObj} = update_task(Task1),
     State1 = remove_task(TaskId, State),
@@ -669,6 +676,7 @@ from_json(Doc) ->
      , worker_module => worker_module(TotalRows)
      , account_id => kz_json:get_value(?PVT_ACCOUNT_ID, Doc)
      , id => kz_doc:id(Doc)
+     , rev => kz_doc:revision(Doc)
      , category => kz_json:get_value(?PVT_CATEGORY, Doc)
      , action => kz_json:get_value(?PVT_ACTION, Doc)
      , created => kz_doc:created(Doc)
@@ -681,6 +689,7 @@ from_json(Doc) ->
 
 -spec to_json(task()) -> kz_json:object().
 to_json(#{id := TaskId
+         ,rev := Rev
          ,worker_node := Node
          ,account_id := AccountId
          ,category := Category
@@ -695,6 +704,7 @@ to_json(#{id := TaskId
     kz_json:from_list(
       props:filter_undefined(
         [{<<"_id">>, TaskId}
+        ,{<<"_rev">>, Rev} %% Set to not have conflicts (put_attachment).
         ,{?PVT_TYPE, ?KZ_TASKS_DOC_TYPE}
         ,{?PVT_WORKER_NODE, Node}
         ,{?PVT_ACCOUNT_ID, AccountId}
