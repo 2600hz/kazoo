@@ -1622,7 +1622,7 @@ application_version(Application) ->
       Sep :: T,
       List1 :: [T],
       List2 :: [T],
-      T :: iodata().
+      T :: iolist().
 iolist_join(_, []) -> [];
 iolist_join(Sep, [H|T]) ->
     [H | iolist_join_prepend(Sep, T)].
@@ -1632,7 +1632,7 @@ iolist_join(Sep, [H|T]) ->
       Sep :: T,
       List1 :: [T],
       List2 :: [T],
-      T :: iodata().
+      T :: iolist().
 iolist_join_prepend(_, []) -> [];
 iolist_join_prepend(Sep, [H|T]) ->
     [Sep, H | iolist_join_prepend(Sep, T)].
