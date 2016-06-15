@@ -170,10 +170,10 @@ associator(CSVHeader, OrderedFields, Verifier) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec row_to_iolist(row()) -> ne_binary().
+-spec row_to_iolist(row()) -> iodata().
 row_to_iolist([Cell]) -> cell_to_binary(Cell);
 row_to_iolist(Row=[_|_]) ->
-    kz_util:iolist_join(",", [cell_to_binary(Cell) || Cell <- Row]).
+    kz_util:iolist_join($,, [cell_to_binary(Cell) || Cell <- Row]).
 
 %%%===================================================================
 %%% Internal functions
@@ -190,7 +190,8 @@ find_position(Item, [_|Items], N) ->
 %% @private
 -spec cell_to_binary(cell()) -> binary().
 cell_to_binary(?ZILCH) -> <<>>;
-cell_to_binary(Cell=?NE_BINARY) -> Cell.
+cell_to_binary(Cell=?NE_BINARY) ->
+    binary:replace(Cell, <<$,>>, <<$;>>, ['global']).
 
 
 %%% End of Module.

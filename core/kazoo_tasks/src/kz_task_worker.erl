@@ -165,11 +165,11 @@ store_return(TaskId, Row, Reason) ->
     kz_util:write_file(?OUT(TaskId), Data, ['append']).
 
 %% @private
--spec reason(task_return()) -> binary().
-reason([?NE_BINARY|_]=Row) ->
-    kz_csv:row_to_iolist(Row);
+-spec reason(task_return()) -> iodata().
+reason([_|_]=Row) ->
+    kz_csv:row_to_iolist([reason(Cell) || Cell <- Row]);
 reason(?NE_BINARY=Reason) ->
-    binary:replace(Reason, <<$,>>, <<$;>>, ['global']);
+    reason([Reason]);
 reason(_) -> <<>>.
 
 %% @private
