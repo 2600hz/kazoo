@@ -124,7 +124,7 @@ disconnect_number(Number) ->
 
 -spec generate_numbers(ne_binary(), pos_integer(), non_neg_integer()) -> 'ok'.
 generate_numbers(_AccountId, _Number, 0) -> 'ok';
-generate_numbers(AccountId, Number, Quantity)
+generate_numbers(?MATCH_ACCOUNT_RAW(AccountId), Number, Quantity)
   when Quantity > 0
        andalso is_integer(Number)
        andalso is_integer(Quantity) ->
