@@ -264,25 +264,25 @@ handle_url_encoded_body(Context, Req, QS, ReqBody, JObj) ->
                                          halt_return().
 set_request_data_in_context(Context, Req, 'undefined', QS) ->
     lager:debug("request json is empty"),
-    set_valid_data_in_context(Context, Req, kz_json:new(), QS);
+    {set_valid_data_in_context(Context, kz_json:new(), QS), Req};
 set_request_data_in_context(Context, Req, JObj, QS) ->
     case is_valid_request_envelope(JObj, Context) of
         'true' ->
             lager:debug("request json is valid : ~p", [JObj]),
-            set_valid_data_in_context(Context, Req, JObj, QS);
+            {set_valid_data_in_context(Context, JObj, QS), Req};
         Errors ->
             lager:info("failed to validate json request, invalid request"),
             ?MODULE:halt(Req, cb_context:failed(Context, Errors))
     end.
 
--spec set_valid_data_in_context(cb_context:context(), cowboy_req:req(), kz_json:object(), kz_json:object()) ->
-                                       {cb_context:context(), cowboy_req:req()}.
-set_valid_data_in_context(Context, Req, JObj, QS) ->
+-spec set_valid_data_in_context(cb_context:context(), kz_json:object(), kz_json:object()) ->
+                                       cb_context:context().
+set_valid_data_in_context(Context, JObj, QS) ->
     Setters = [{fun cb_context:set_req_json/2, JObj}
               ,{fun cb_context:set_req_data/2, kz_json:get_value(<<"data">>, JObj, kz_json:new())}
               ,{fun cb_context:set_query_string/2, QS}
               ],
-    {cb_context:setters(Context, Setters), Req}.
+    cb_context:setters(Context, Setters).
 
 -spec try_json(ne_binary(), kz_json:object(), cb_context:context(), cowboy_req:req()) ->
                       {cb_context:context(), cowboy_req:req()} |
