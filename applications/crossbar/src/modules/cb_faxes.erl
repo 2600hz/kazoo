@@ -469,7 +469,7 @@ fax_modb_summary(Context, Folder) ->
         {'ok', ViewOptions} ->
             crossbar_doc:load_view(View
                                    ,['include_docs' | ViewOptions]
-                                   ,Context
+                                   ,cb_context:set_resp_status(Context, 'success')
                                    ,fun normalize_incoming_view_results/2
                                   );
         Ctx -> Ctx
