@@ -42,7 +42,7 @@
 -define(MAX_UPLOAD_SIZE, kapps_config:get_integer(?CONFIG_CAT, <<"max_upload_size">>, 8000000)).
 
 -define(DATA_SCHEMA
-        ,kz_json:from_list([{<<"type">>, <<"object">>}
+        ,kz_json:from_list([{<<"type">>, [<<"object">>, <<"array">>]}
                             ,{<<"description">>, <<"The request data to be processed">>}
                             ,{<<"required">>, 'true'}
                            ])
