@@ -89,7 +89,7 @@
 
 -type db_classifications() :: 'account' | 'modb' | 'acdc' |
                               'numbers' | 'aggregate' | 'system' |
-                              'deprecated' | 'undefined'.
+                              'resource_selectors' | 'deprecated' | 'undefined'.
 
 -type db_create_options() :: [{'q',integer()} | {'n',integer()}].
 

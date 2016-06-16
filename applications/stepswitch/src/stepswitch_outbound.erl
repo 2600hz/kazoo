@@ -144,7 +144,8 @@ maybe_force_outbound_sms(Props, OffnetReq) ->
 %%--------------------------------------------------------------------
 -spec maybe_bridge(ne_binary(), kapi_offnet_resource:req()) -> any().
 maybe_bridge(Number, OffnetReq) ->
-    case stepswitch_resources:endpoints(Number, OffnetReq) of
+    RouteBy = stepswitch_util:route_by(),
+    case RouteBy:endpoints(Number, OffnetReq) of
         [] -> maybe_correct_shortdial(Number, OffnetReq);
         Endpoints -> stepswitch_request_sup:bridge(Endpoints, OffnetReq)
     end.
@@ -171,7 +172,8 @@ maybe_correct_shortdial(Number, OffnetReq) ->
 %%--------------------------------------------------------------------
 -spec maybe_sms(ne_binary(), kapi_offnet_resource:req()) -> any().
 maybe_sms(Number, OffnetReq) ->
-    case stepswitch_resources:endpoints(Number, OffnetReq) of
+    RouteBy = stepswitch_util:route_by(),
+    case RouteBy:endpoints(Number, OffnetReq) of
         [] -> publish_no_resources(OffnetReq);
         Endpoints -> stepswitch_request_sup:sms(Endpoints, OffnetReq)
     end.
@@ -205,7 +207,8 @@ local_sms(Props, OffnetReq) ->
 %%--------------------------------------------------------------------
 -spec maybe_originate(ne_binary(), kapi_offnet_resource:req()) -> any().
 maybe_originate(Number, OffnetReq) ->
-    case stepswitch_resources:endpoints(Number, OffnetReq) of
+    RouteBy = stepswitch_util:route_by(),
+    case RouteBy:endpoints(Number, OffnetReq) of
         [] -> publish_no_resources(OffnetReq);
         Endpoints -> stepswitch_request_sup:originate(Endpoints, OffnetReq)
     end.

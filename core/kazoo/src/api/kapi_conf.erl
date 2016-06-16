@@ -48,6 +48,7 @@
                                  ,{<<"Event-Name">>, [?DOC_EDITED
                                                       ,?DOC_CREATED
                                                       ,?DOC_DELETED
+                                                      ,?DB_EDITED
                                                       ,?DB_CREATED
                                                       ,?DB_DELETED
                                                      ]}

@@ -21,6 +21,8 @@
 -define(CACHE_NAME, 'stepswitch_cache').
 -define(STEPSWITCH_CNAM_POOL, 'stepswitch_cnam_pool').
 
+-define(DEFAULT_ROUTE_BY, <<"stepswitch_resources">>).
+
 -define(CCV(Key), [<<"Custom-Channel-Vars">>, Key]).
 
 -type direction() :: 'inbound' | 'outbound' | 'both'.
