@@ -20,7 +20,7 @@
 -spec handle_req(stepswitch_resources:resources(), ne_binary(), kapi_offnet_resource:req(), ne_binary(), kz_json:object()) ->
     stepswitch_resources:resources().
 handle_req([], _Number, _OffnetJObj, _DB, _Params) ->
-    lager:warn("empty resource list", []),
+    lager:warning("empty resource list", []),
     [];
 handle_req([Resource], _Number, _OffnetJObj, _DB, _Params) ->
     Id = stepswitch_resources:get_resrc_id(Resource),

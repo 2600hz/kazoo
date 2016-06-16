@@ -60,7 +60,6 @@ db_classification(?KZ_SCHEMA_DB) -> 'system';
 db_classification(?KZ_OAUTH_DB) -> 'system';
 db_classification(?KZ_DATA_DB) -> 'system';
 db_classification(?KZ_TASKS_DB) -> 'system';
-db_classification(?KZ_RESOURCE_SELECTORS_DB) -> 'system';
 db_classification(_Database) ->
     lager:debug("unknown type for database ~s", [_Database]),
     'undefined'.
