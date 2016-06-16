@@ -79,7 +79,7 @@ find_fold(Carrier, Acc, NormalizedNumber, Quantity, Options) ->
 -spec process_bulk_carrier_results(kz_json:objects(), knm_number:knm_numbers()) ->
                                           kz_json:objects().
 process_bulk_carrier_results(Acc, Numbers) ->
-    found_numbers_to_jobjs(Numbers) ++ Acc.
+    [found_number_to_jobj(Number) || Number <- Numbers] ++ Acc.
 
 -spec process_carrier_results(kz_json:objects(), knm_number:knm_numbers()) ->
                                      kz_json:objects().
@@ -157,10 +157,6 @@ check_existing_phone_number(Number, Acc, PhoneNumber) ->
         'true' -> [found_number_to_jobj(Number) | Acc];
         'false' -> Acc
     end.
-
--spec found_numbers_to_jobjs(knm_number:knm_numbers()) -> kz_json:objects().
-found_numbers_to_jobjs(Numbers) ->
-    [found_number_to_jobj(Number) || Number <- Numbers].
 
 -spec found_number_to_jobj(knm_number:knm_number()) -> kz_json:object().
 found_number_to_jobj(Number) ->
