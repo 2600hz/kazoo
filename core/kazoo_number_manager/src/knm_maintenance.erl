@@ -13,6 +13,8 @@
 
 -export([ fix_account_numbers/1
         , fix_accounts_numbers/1
+
+          ,generate_numbers/3
         ]).
 
 -define(TIME_BETWEEN_ACCOUNTS_MS
@@ -257,4 +259,7 @@ maybe_fix_used_by(#{ old := OldPN
             add_fixes(['noop'], ToFix)
     end.
 
-%% End of Module
+generate_numbers(AccountId, StartingNumber, Quantity) ->
+    knm_managed:generate_numbers(AccountId, kz_util:to_integer(StartingNumber), kz_util:to_integer(Quantity)).
+
+%% "End of Module" ~ Captain Obvious
