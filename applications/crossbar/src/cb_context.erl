@@ -1280,7 +1280,7 @@ maybe_fix_js_type(_, JObj) -> JObj.
                                   kz_json:object().
 maybe_fix_js_integer(Key, Value, JObj) ->
     try kz_util:to_integer(Value) of
-        V -> kz_json:set_value(Key, V, JObj)
+        V -> kz_json:set_value(maybe_fix_index(Key), V, JObj)
     catch
         _E:_R ->
             lager:debug("error converting value to integer ~p : ~p : ~p"
@@ -1288,3 +1288,13 @@ maybe_fix_js_integer(Key, Value, JObj) ->
                        ),
             JObj
     end.
+
+-spec maybe_fix_index(kz_json:key() | kz_json:keys()) -> kz_json:key() | kz_json:keys().
+maybe_fix_index(Keys)
+  when is_list(Keys) ->
+    lists:map(fun(K) when is_integer(K) ->
+                      K + 1;
+                 (K) -> K
+              end, Keys);
+maybe_fix_index(Key) ->
+    Key.
