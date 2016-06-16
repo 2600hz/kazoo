@@ -20,9 +20,6 @@
 
 -include("knm.hrl").
 
--define(PREFER_AVAILABLE_NUMBERS,
-        kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"search_prefers_available_numbers">>, 'false')).
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -34,10 +31,12 @@
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
 find_numbers(Number, Quantity, Options) ->
-    case ?PREFER_AVAILABLE_NUMBERS of
+    AccountId = props:get_value(<<"account_id">>, Options),
+    ResellerId = kz_services:find_reseller_id(AccountId),
+    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
+    case ResellerId == MasterAccountId of
         'false' -> {'error', 'not_available'};
         'true' ->
-            AccountId = props:get_value(<<"account_id">>, Options),
             do_find_numbers(Number, Quantity, AccountId)
             %% TODO: given the requestor's account, discover knm_local numbers
             %%        that are available but managed by accendants of the account.

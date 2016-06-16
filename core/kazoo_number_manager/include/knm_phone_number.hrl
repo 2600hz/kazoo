@@ -60,11 +60,12 @@
 -define(VITELITY_KEY, <<"vitelity_e911">>).
 -define(DASH_KEY, <<"dash_e911">>).
 
--define(CARRIER_OTHER, <<"knm_other">>).
--define(CARRIER_LOCAL, <<"knm_local">>).
--define(CARRIER_RESERVED, <<"knm_reserved">>).
--define(CARRIER_MANAGED, <<"knm_managed">>).
 -define(CARRIER_INUM, <<"knm_inum">>).
+-define(CARRIER_LOCAL, <<"knm_local">>).
+-define(CARRIER_MANAGED, <<"knm_managed">>).
+-define(CARRIER_OTHER, <<"knm_other">>).
+-define(CARRIER_RESERVED, <<"knm_reserved">>).
+-define(CARRIER_RESERVED_RESELLER, <<"knm_reserved_reseller">>).
 
 -define(KNM_PHONE_NUMBERS_DOC, <<"phone_numbers">>).
 

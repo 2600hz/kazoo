@@ -13,16 +13,13 @@
 
 -export([find/1, find/2, find/3
          ,check/1, check/2
-         ,available_carriers/0, available_carriers/1
+         ,available_carriers/1
          ,default_carriers/0, default_carrier/0
          ,acquire/1
          ,disconnect/1
         ]).
 
 -define(DEFAULT_CARRIER_MODULES, [?CARRIER_LOCAL]).
-
--define(KNM_PREFER_RESELLERS_RESERVED
-       ,kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"prefer_resellers_reserved">>, 'false')).
 
 -ifdef(TEST).
 -export([process_carrier_results/2
@@ -52,12 +49,16 @@ find(Num, Quantity) ->
 
 find(Num, Quantity, Options) ->
     NormalizedNumber = knm_converters:normalize(Num),
-    lists:foldl(fun(Carrier, Acc) ->
-                        find_fold(Carrier, Acc, NormalizedNumber, Quantity, Options)
-                end
-               ,[]
-               ,available_carriers(Options)
-               ).
+    try
+        lists:foldl(fun(Carrier, Acc) ->
+                            find_fold(Carrier, Acc, NormalizedNumber, Quantity, Options)
+                    end
+                   ,[]
+                   ,available_carriers(Options)
+                   )
+    catch 'throw':{'stopping_here', FoundSoFar} ->
+            FoundSoFar
+    end.
 
 -spec find_fold(atom(), kz_json:objects(), ne_binary(), non_neg_integer(), kz_proplist()) ->
                        kz_json:objects().
@@ -65,6 +66,7 @@ find_fold(Carrier, Acc, NormalizedNumber, Quantity, Options) ->
     try Carrier:find_numbers(NormalizedNumber, Quantity, Options) of
         {'ok', Numbers} -> process_carrier_results(Acc, Numbers);
         {'bulk', Numbers} -> process_bulk_carrier_results(Acc, Numbers);
+        {'error', 'stopping_here'} -> throw({'stopping_here', Acc});
         {'error', _E} -> Acc
     catch
         _E:_R ->
@@ -91,8 +93,8 @@ process_carrier_results(Acc, Numbers) ->
 -spec process_number_result(knm_number:knm_number(), kz_json:objects()) ->
                                    kz_json:objects().
 process_number_result(Number, Acc) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    process_number_result(Number, Acc, knm_phone_number:module_name(PhoneNumber)).
+    Carrier = knm_phone_number:module_name(knm_number:phone_number(Number)),
+    process_number_result(Number, Acc, Carrier).
 
 process_number_result(Number, Acc, ?CARRIER_OTHER) ->
     [found_number_to_jobj(Number) | Acc];
@@ -226,23 +228,37 @@ check(Numbers, Options) ->
 %% @public
 %% @doc Create a list of all available carrier modules
 %%--------------------------------------------------------------------
--spec available_carriers() -> atoms().
-available_carriers() ->
-    case ?KNM_PREFER_RESELLERS_RESERVED of
-        'false' -> keep_only_reachable(?CARRIER_MODULES);
-        'true' -> keep_only_reachable([?CARRIER_RESERVED])
-    end.
-
+-spec available_carriers(kz_proplist()) -> atoms().
 -ifdef(TEST).
 available_carriers(Options) ->
     case props:get_value(<<"carriers">>, Options) of
-        'undefined' -> available_carriers();
-        [] -> available_carriers();
-        Cs -> keep_only_reachable(Cs)
+        Cs=[_|_] -> keep_only_reachable(Cs);
+        _ -> keep_only_reachable([?CARRIER_LOCAL])
     end.
 -else.
-available_carriers(_Options) ->
-    available_carriers().
+available_carriers(Options) ->
+    case kz_json:get_value(<<"account_id">>, Options) of
+        'undefined' ->
+            keep_only_reachable(?CARRIER_MODULES -- [?CARRIER_RESERVED, ?CARRIER_LOCAL]);
+        AccountId ->
+            ResellerId = kz_services:find_reseller_id(AccountId),
+            lager:debug("found ~s's reseller: ~p", [AccountId, ResellerId]),
+            {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
+            case ResellerId == MasterAccountId of
+                'true' ->
+                    First = [?CARRIER_RESERVED, ?CARRIER_LOCAL],
+                    keep_only_reachable(
+                      First ++
+                          (?CARRIER_MODULES -- (First ++ [?CARRIER_RESERVED_RESELLER]))
+                     );
+                'false' ->
+                    First = [?CARRIER_RESERVED, ?CARRIER_RESERVED_RESELLER],
+                    keep_only_reachable(
+                      First ++
+                          (?CARRIER_MODULES -- (First ++ [?CARRIER_LOCAL]))
+                     )
+            end
+    end.
 -endif.
 
 -spec default_carriers() -> atoms().
