@@ -234,12 +234,10 @@ response_to_numbers(JObj, Options) ->
 -spec response_pair_to_number(ne_binary(), kz_json:object(), knm_number:knm_numbers(), api_binary()) ->
                                      knm_number:knm_numbers().
 response_pair_to_number(DID, CarrierData, Acc, AccountId) ->
-    {'ok', PhoneNumber} =
-        knm_phone_number:newly_found(DID, ?MODULE, AccountId, CarrierData),
-    [knm_number:set_phone_number(knm_number:new(), PhoneNumber)
-     | Acc
-    ].
-
+    case knm_number:newly_found(DID, ?MODULE, AccountId, CarrierData) of
+        {'ok', N} -> [N | Acc];
+        _ -> Acc
+    end.
 
 
 %%--------------------------------------------------------------------

@@ -12,7 +12,7 @@
 
 -export([new/0
          ,get/1, get/2
-         ,create/2
+         ,create/2, newly_found/4
          ,move/2, move/3
          ,update/2, update/3
          ,release/1, release/2
@@ -44,6 +44,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
+-include_lib("kazoo/src/kz_json.hrl").
 -include("knm.hrl").
 
 -record(knm_number, {knm_phone_number :: knm_phone_number:knm_phone_number()
@@ -116,6 +117,22 @@ get_number(Num, Options) ->
 -spec create(ne_binary(), knm_number_options:options()) ->
                     knm_number_return().
 create(Num, Options) ->
+    attempt(fun create_or_load/2, [Num, Options]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec newly_found(ne_binary(), module(), ne_binary(), kz_json:object()) ->
+                         knm_number_return().
+newly_found(Num=?NE_BINARY, Carrier, ?MATCH_ACCOUNT_RAW(AuthBy), Data=?JSON_WRAPPER(_))
+  when is_atom(Carrier) ->
+    Options = [{'auth_by', AuthBy}
+              ,{'module_name', kz_util:to_binary(Carrier)}
+              ,{'assign_to', 'undefined'}
+              ,{'carrier_data', Data}
+              ],
     attempt(fun create_or_load/2, [Num, Options]).
 
 -spec create_or_load(ne_binary(), knm_number_options:options()) -> knm_number() |

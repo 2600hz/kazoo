@@ -115,8 +115,9 @@ find_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, Options) when ?IS_US_T
              ],
     {'ok', Result} = search(Params),
     AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
-    {'ok', [tollfree_search_response_to_KNM(X, AccountId)
-            || X <- xmerl_xpath:string("TelephoneNumberList/TelephoneNumber", Result)
+    {'ok', [N
+            || X <- xmerl_xpath:string("TelephoneNumberList/TelephoneNumber", Result),
+               {'ok', N} <- [tollfree_search_response_to_KNM(X, AccountId)]
            ]
     };
 
@@ -138,8 +139,9 @@ find_numbers(Search, Quantity, Options) ->
 -spec process_search_response(xml_el(), kz_proplist()) -> knm_number:knm_numbers().
 process_search_response(Result, Options) ->
     AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
-    [search_response_to_KNM(X, AccountId)
-     || X <- xmerl_xpath:string("TelephoneNumberDetailList/TelephoneNumberDetail", Result)
+    [N
+     || X <- xmerl_xpath:string("TelephoneNumberDetailList/TelephoneNumberDetail", Result),
+        {'ok', N} <- [search_response_to_KNM(X, AccountId)]
     ].
 
 %%--------------------------------------------------------------------
@@ -368,7 +370,7 @@ number_order_response_to_json(Xml) ->
 
 %% @private
 -spec search_response_to_KNM(xml_els() | xml_el(), ne_binary()) ->
-                                    knm_number:knm_number().
+                                    knm_number:knm_number_return().
 search_response_to_KNM([Xml], AccountId) ->
     search_response_to_KNM(Xml, AccountId);
 search_response_to_KNM(Xml, AccountId) ->
@@ -379,16 +381,14 @@ search_response_to_KNM(Xml, AccountId) ->
                ,{<<"rate_center">>, rate_center_to_json(Xml)}
                ])
             ),
-    {'ok', PhoneNumber} = knm_phone_number:newly_found(Num, ?MODULE, AccountId, JObj),
-    knm_number:set_phone_number(knm_number:new(), PhoneNumber).
+    knm_number:newly_found(Num, ?MODULE, AccountId, JObj).
 
 %% @private
 -spec tollfree_search_response_to_KNM(xml_el(), ne_binary()) ->
-                                             knm_number:knm_number().
+                                             knm_number:knm_number_return().
 tollfree_search_response_to_KNM(Xml, AccountId) ->
     Num = kz_util:get_xml_value("//TelephoneNumber/text()", Xml),
-    {'ok', PhoneNumber} = knm_phone_number:newly_found(Num, ?MODULE, AccountId, kz_json:new()),
-    knm_number:set_phone_number(knm_number:new(), PhoneNumber).
+    knm_number:newly_found(Num, ?MODULE, AccountId, kz_json:new()).
 
 %%--------------------------------------------------------------------
 %% @private

@@ -159,15 +159,17 @@ should_lookup_cnam() -> 'true'.
 to_numbers({'error',_R}=Error, _) ->
     Error;
 to_numbers({'ok',JObjs}, AccountId) ->
-    {'ok',
-     [ begin
-           Num = kz_json:get_value(<<"e164">>, JObj),
-           {'ok', PhoneNumber} =
-               knm_phone_number:newly_found(Num, ?MODULE, AccountId, JObj),
-           knm_number:set_phone_number(knm_number:new(), PhoneNumber)
-       end
-       || JObj <- JObjs ]
-    }.
+    Numbers =
+        [N || JObj <- JObjs,
+              {'ok', N} <-
+                  [knm_number:newly_found(kz_json:get_value(<<"e164">>, JObj)
+                                         ,?MODULE
+                                         ,AccountId
+                                         ,JObj
+                                         )
+                  ]
+        ],
+    {'ok', Numbers}.
 
 -spec maybe_return(to_json_ret(), knm_number:knm_number()) ->
                           knm_number:knm_number().

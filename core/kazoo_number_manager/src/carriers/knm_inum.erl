@@ -78,14 +78,14 @@ do_find_numbers_in_account(Number, Quantity, AccountId) ->
 
 -spec format_numbers_resp(ne_binary(), kz_json:objects()) -> knm_number:knm_numbers().
 format_numbers_resp(AccountId, JObjs) ->
-    [format_number_resp(AccountId, JObj) || JObj <- JObjs].
+    [N || JObj <- JObjs,
+          {'ok', N} <- [format_number_resp(AccountId, JObj)]
+    ].
 
--spec format_number_resp(ne_binary(), kz_json:object()) -> knm_number:knm_number().
+-spec format_number_resp(ne_binary(), kz_json:object()) -> knm_number:knm_number_return().
 format_number_resp(AccountId, JObj) ->
     Doc = kz_json:get_value(<<"doc">>, JObj),
-    {'ok', PhoneNumber} =
-        knm_phone_number:newly_found(kz_doc:id(Doc), ?MODULE, AccountId, Doc),
-    knm_number:set_phone_number(knm_number:new(), PhoneNumber).
+    knm_number:newly_found(kz_doc:id(Doc), ?MODULE, AccountId, Doc).
 
 %%--------------------------------------------------------------------
 %% @public

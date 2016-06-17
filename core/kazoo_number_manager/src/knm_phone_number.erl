@@ -13,7 +13,6 @@
          ,delete/1
          ,release/1
          ,new/1, new/2
-         ,newly_found/4
         ]).
 
 -export([to_json/1
@@ -90,33 +89,20 @@ new(DID) ->
 -spec new(ne_binary(), knm_number_options:options()) -> knm_phone_number().
 new(DID, Options) ->
     NormalizedNum = knm_converters:normalize(DID),
+    CarrierData = props:get_value('carrier_data', Options, kz_json:new()),
     {'ok', PhoneNumber} =
         setters(new(),
                 [{fun set_number/2, NormalizedNum}
                 ,{fun set_number_db/2, knm_converters:to_db(NormalizedNum)}
                 ,{fun set_assign_to/2, knm_number_options:assign_to(Options)}
                 ,{fun set_state/2, ?NUMBER_STATE_DISCOVERY}
-                ,{fun set_module_name/2, ?CARRIER_OTHER}
-                ,{fun set_carrier_data/2, kz_json:new()}
+                ,{fun set_module_name/2, knm_number_options:module_name(Options)}
+                ,{fun set_carrier_data/2, CarrierData}
                 ,{fun set_auth_by/2, knm_number_options:auth_by(Options)}
                 ,{fun set_dry_run/2, knm_number_options:dry_run(Options)}
                 ,{fun set_doc/2, knm_number_options:public_fields(Options)}
                 ]),
     PhoneNumber.
-
--spec newly_found(ne_binary(), module(), ne_binary(), kz_json:object()) ->
-                         knm_phone_number_return().
-newly_found(Num=?NE_BINARY, Carrier, AssignTo=?NE_BINARY, Data=?JSON_WRAPPER(_))
-  when is_atom(Carrier) ->
-    NormalizedNum = knm_converters:normalize(Num),
-    setters(new(),
-            [{fun set_number/2, NormalizedNum}
-            ,{fun set_number_db/2, knm_converters:to_db(NormalizedNum)}
-            ,{fun set_module_name/2, kz_util:to_binary(Carrier)}
-            ,{fun set_carrier_data/2, Data}
-            ,{fun set_state/2, ?NUMBER_STATE_DISCOVERY}
-            ,{fun set_assign_to/2, kz_util:format_account_id(AssignTo)}
-            ]).
 
 %%--------------------------------------------------------------------
 %% @public

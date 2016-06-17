@@ -154,12 +154,12 @@ sw_quantity(_Quantity) -> <<"100">>.
                               {'ok', knm_number:knm_numbers()}.
 process_response(JObjs, Options) ->
     AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
-    {'ok', [response_jobj_to_number(JObj, AccountId) || JObj <- JObjs]}.
+    {'ok', [N || JObj <- JObjs,
+                 {'ok', N} <- [response_jobj_to_number(JObj, AccountId)]
+           ]}.
 
 -spec response_jobj_to_number(kz_json:object(), api_binary()) ->
-                              knm_number:knm_number().
+                              knm_number:knm_number_return().
 response_jobj_to_number(JObj, AccountId) ->
     Num = kz_json:get_value(<<"number">>, JObj),
-    {'ok', PhoneNumber} =
-        knm_phone_number:newly_found(Num, ?MODULE, AccountId, JObj),
-    knm_number:set_phone_number(knm_number:new(), PhoneNumber).
+    knm_number:newly_found(Num, ?MODULE, AccountId, JObj).

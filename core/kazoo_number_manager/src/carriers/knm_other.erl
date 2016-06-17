@@ -250,7 +250,7 @@ format_numbers_resp(JObj, Options) ->
             {'ok'
              ,lists:reverse(
                 kz_json:foldl(fun(K, V, Acc) ->
-                                      [format_number_resp(K, V, AccountId) | Acc]
+                                      format_number_resp(K, V, AccountId, Acc)
                               end
                               ,[]
                               ,DataJObj
@@ -262,12 +262,13 @@ format_numbers_resp(JObj, Options) ->
             {'error', 'not_available'}
     end.
 
--spec format_number_resp(ne_binary(), kz_json:object(), knm_number:knm_numbers()) ->
-                                knm_number:knm_number().
-format_number_resp(DID, CarrierData, AccountId) ->
-    {'ok', PhoneNumber} =
-        knm_phone_number:newly_found(DID, ?MODULE, AccountId, CarrierData),
-    knm_number:set_phone_number(knm_number:new(), PhoneNumber).
+-spec format_number_resp(ne_binary(), kz_json:object(), ne_binary(), knm_number:knm_numbers()) ->
+                                knm_number:knm_number_return().
+format_number_resp(DID, CarrierData, AccountId, Acc) ->
+    case knm_number:newly_found(DID, ?MODULE, AccountId, CarrierData) of
+        {'ok', N} -> [N | Acc];
+        _ -> Acc
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -346,17 +347,16 @@ format_block_resp_fold(Block, Numbers, AccountId) ->
 -spec format_block_resp(kz_json:object(), knm_number:knm_numbers(), api_binary(), ne_binary(), ne_binary()) ->
                                knm_number:knm_numbers().
 format_block_resp(JObj, Numbers, AccountId, Start, End) ->
-    [block_resp(JObj, AccountId, Start)
-     ,block_resp(JObj, AccountId, End)
-     | Numbers
-    ].
+    [N || {'ok', N} <- [block_resp(JObj, AccountId, Start)
+                       ,block_resp(JObj, AccountId, End)
+                       ]
+    ]
+        ++ Numbers.
 
 -spec block_resp(kz_json:object(), api_binary(), ne_binary()) ->
-                        knm_number:knm_number().
+                        knm_number:knm_number_return().
 block_resp(JObj, AccountId, Num) ->
-    {'ok', PhoneNumber} =
-        knm_phone_number:newly_found(Num, ?MODULE, AccountId, JObj),
-    knm_number:set_phone_number(knm_number:new(), PhoneNumber).
+    knm_number:newly_found(Num, ?MODULE, AccountId, JObj).
 
 %%--------------------------------------------------------------------
 %% @private
