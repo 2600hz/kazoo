@@ -91,7 +91,6 @@
         },
         "name": {
             "description": "Human-friendly name of the trunkstore account",
-            "required": true,
             "type": "string"
         },
         "servers": {
