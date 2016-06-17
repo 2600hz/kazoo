@@ -219,9 +219,12 @@ get_modb(Account, Year, Month) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_create(ne_binary()) -> boolean().
-maybe_create(?MATCH_MODB_SUFFIX_RAW(_,Year,Month) = AccountMODb) ->
+maybe_create(?MATCH_MODB_SUFFIX_RAW(AccountId, Year, Month) = AccountMODb) ->
     {Y, M, _} = erlang:date(),
-    case {kz_util:to_binary(Y), kz_util:pad_month(M)} of
+    case is_account_deleted(AccountId) =/= 'true'
+            andalso {kz_util:to_binary(Y), kz_util:pad_month(M)}
+    of
+        'false' -> 'false';
         {Year, Month} ->
             create(AccountMODb),
             'true';
@@ -231,6 +234,13 @@ maybe_create(<<"account/", AccountId/binary>>) ->
     maybe_create(binary:replace(AccountId, <<"/">>, <<>>, ['global']));
 maybe_create(<<"account%2F", AccountId/binary>>) ->
     maybe_create(binary:replace(AccountId, <<"%2F">>, <<>>, ['global'])).
+
+-spec is_account_deleted(ne_binary()) -> boolean().
+is_account_deleted(AccountId) ->
+    case kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, AccountId) of
+        {'ok', JObj} -> kz_doc:is_soft_deleted(JObj);
+        {'error', _} -> 'true'
+    end.
 
 -spec create(ne_binary()) -> 'ok'.
 create(AccountMODb) ->
