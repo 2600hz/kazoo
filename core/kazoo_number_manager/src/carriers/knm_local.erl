@@ -31,15 +31,18 @@
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
 find_numbers(Number, Quantity, Options) ->
-    AccountId = props:get_value(<<"account_id">>, Options),
-    ResellerId = kz_services:find_reseller_id(AccountId),
-    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
-    case ResellerId == MasterAccountId of
-        'false' -> {'error', 'not_available'};
-        'true' ->
-            do_find_numbers(Number, Quantity, AccountId)
-            %% TODO: given the requestor's account, discover knm_local numbers
-            %%        that are available but managed by accendants of the account.
+    case props:get_value(<<"account_id">>, Options) of
+        'undefined' -> {'error', 'not_available'};
+        AccountId ->
+            ResellerId = kz_services:find_reseller_id(AccountId),
+            {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
+            case ResellerId == MasterAccountId of
+                'false' -> {'error', 'not_available'};
+                'true' ->
+                    do_find_numbers(Number, Quantity, AccountId)
+                    %% TODO: given the requestor's account, discover knm_local numbers
+                    %%        that are available but managed by accendants of the account.
+            end
     end.
 
 -spec do_find_numbers(ne_binary(), pos_integer(), ne_binary()) ->

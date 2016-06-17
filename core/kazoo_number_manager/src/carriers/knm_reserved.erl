@@ -30,20 +30,16 @@
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
 find_numbers(<<"+",_/binary>>=Number, Quantity, Options) ->
-    AccountId = props:get_value(<<"account_id">>, Options),
-    %% case do_find_numbers(Number, Quantity, AccountId) of
-    %%     {'ok', Enough}=Ok when length(Enough) >= Quantity -> Ok;
-    %%     {'error', _R}=Error -> Error;
-    %%     {'ok', NotEnough} ->
-            %% ResellerId = kz_services:find_reseller_id(AccountId),
-            %% lager:debug("found ~s's reseller: ~p", [AccountId, ResellerId]),
-            %% Missing = Quantity - length(NotEnough),
-            %% case do_find_numbers(Number, Missing, ResellerId) of
-            %%     {'ok', Enough}=Ok when length(Enough) >= Missing -> Ok;
-            %%     {'error', _R}=Error -> Error;
-            %%     {'ok', StillNotEnough} ->
-            %%         {'ok', ResellerJObj} = kz_account:fetch(ResellerId),
+    case props:get_value(<<"account_id">>, Options) of
+        'undefined' -> {'error', 'not_available'};
+        AccountId ->
+            do_find_numbers(Number, Quantity, AccountId)
+    end.
 
+-spec do_find_numbers(ne_binary(), pos_integer(), ne_binary()) ->
+                             {'ok', knm_number:knm_numbers()} |
+                             {'error', any()}.
+do_find_numbers(Number, Quantity, AccountId) ->
     AccountDb = kz_util:format_account_db(AccountId),
     ViewOptions = [{'startkey', Number}
                   ,{'endkey', <<Number/binary, "\ufff0">>}

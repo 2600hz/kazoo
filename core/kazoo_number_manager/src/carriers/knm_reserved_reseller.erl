@@ -30,16 +30,19 @@
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
 find_numbers(<<"+",_/binary>>=Number, Quantity, Options) ->
-    AccountId = props:get_value(<<"account_id">>, Options),
-    ResellerId = kz_services:find_reseller_id(AccountId),%TODO: add it in Options
-    case do_find_numbers(Number, Quantity, ResellerId) of
-        {'ok', Enough}=Ok when length(Enough) >= Quantity -> Ok;
-        {'error', _R}=Error -> Error;
-        {'ok', NotEnough}=Meh ->
-            {'ok', ResellerJObj} = kz_account:fetch(ResellerId),
-            case kz_account:allow_number_additions(ResellerJObj) of
-                'true' -> throw({'stopping_here', NotEnough});
-                'false' -> Meh
+    case props:get_value(<<"account_id">>, Options) of
+        'undefined' -> {'error', 'not_available'};
+        AccountId ->
+            ResellerId = kz_services:find_reseller_id(AccountId),%TODO: add it in Options
+            case do_find_numbers(Number, Quantity, ResellerId) of
+                {'ok', Enough}=Ok when length(Enough) >= Quantity -> Ok;
+                {'error', _R}=Error -> Error;
+                {'ok', NotEnough}=Meh ->
+                    {'ok', ResellerJObj} = kz_account:fetch(ResellerId),
+                    case kz_account:allow_number_additions(ResellerJObj) of
+                        'true' -> throw({'stopping_here', NotEnough});
+                        'false' -> Meh
+                    end
             end
     end.
 

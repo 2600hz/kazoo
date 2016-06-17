@@ -48,7 +48,7 @@ find_blocks() ->
     [StartJObj, EndJObj]=Results =
         knm_carriers:find(<<"415">>, Limit, Options),
 
-    [{"Verify the same number of numbers and results"
+    [{"Verify the same amount of numbers and results"
      ,?_assertEqual(length(Numbers), length(Results))
      }
      | verify_start(StartNumber, StartJObj)
