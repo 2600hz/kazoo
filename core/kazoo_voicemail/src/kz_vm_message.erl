@@ -615,7 +615,24 @@ do_move_to_modb(AccountId, JObj, Funs) ->
                      | Funs
                     ],
     Options = [{'transform', fun(_, B) -> lists:foldl(fun(F, J) -> F(J) end, B, TransformFuns) end}],
-    kz_datamgr:move_doc(FromDb, FromId, ToDb, ToId, Options).
+    try_move(FromDb, FromId, ToDb, ToId, Options, 3).
+
+-spec try_move(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_proplist(), non_neg_integer()) -> db_ret().
+try_move(FromDb, FromId, ToDb, ToId, Options, Tries) ->
+    case kz_datamgr:move_doc(FromDb, FromId, ToDb, ToId, Options) of
+        {'ok', _}=OK -> OK;
+        {'error', 'not_found'} when Tries > 0 ->
+            maybe_create_modb(ToDb),
+            try_move(FromDb, FromId, ToDb, ToId, Options, Tries - 1);
+        {'error', _}=Error -> Error
+    end.
+
+-spec maybe_create_modb(ne_binary()) -> 'ok'.
+maybe_create_modb(MODb) ->
+    case kz_datamgr:db_exists(MODb) of
+        'true' -> 'ok';
+        'false' -> kazoo_modb:create(MODb)
+    end.
 
 -spec update_media_id(ne_binary(), kz_json:object()) -> kz_json:object().
 update_media_id(MediaId, JObj) ->
