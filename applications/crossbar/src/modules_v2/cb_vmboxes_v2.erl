@@ -505,9 +505,11 @@ load_vmbox_summary(Context) ->
 -spec maybe_load_vmboxes(ne_binaries(), cb_context:context()) -> cb_context:context().
 maybe_load_vmboxes('undefined', Context) -> cb_context:set_resp_status(Context, 'success');
 maybe_load_vmboxes([], Context) -> Context;
+maybe_load_vmboxes(['undefined'|Ids], Context) ->
+    maybe_load_vmboxes(Ids, Context);
 maybe_load_vmboxes([Id|Ids], Context) ->
     C1 = load_vmbox(Id, Context),
-    load_vmbox(Ids, C1).
+    maybe_load_vmboxes(Ids, C1).
 
 -spec load_vmbox(ne_binary(), cb_context:context()) -> cb_context:context().
 load_vmbox(DocId, Context) ->

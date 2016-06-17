@@ -43,6 +43,7 @@
 -define(MODB_COUNT_VIEW, <<"mailbox_messages/count_per_folder">>).
 -define(COUNT_BY_VMBOX, <<"mailbox_messages/count_by_vmbox">>).
 -define(BOX_MESSAGES_CB_LIST, <<"vmboxes/crossbar_listing">>).
+-define(PVT_LEGACY_TYPE, <<"private_media">>).
 
 -define(RETENTION_DURATION
         ,kapps_config:get_integer(?CF_CONFIG_CAT
@@ -268,7 +269,7 @@ message_doc(AccountId, {_, ?MATCH_MODB_PREFIX(Year, Month, _)}=DocId) ->
 message_doc(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _)=DocId) ->
     open_modb_doc(AccountId, DocId, Year, Month);
 message_doc(AccountId, MediaId) ->
-    case open_accountdb_doc(AccountId, MediaId, kzd_box_message:type()) of
+    case open_accountdb_doc(AccountId, MediaId, ?PVT_LEGACY_TYPE) of
         {'ok', MediaJObj} ->
             SourceId = kzd_box_message:source_id(MediaJObj),
             case fetch_vmbox_messages(AccountId, SourceId) of
@@ -818,6 +819,7 @@ open_accountdb_doc(AccountId, DocId, Type) ->
 check_doc_type(Doc, Type, Type) ->
     {'ok', Doc};
 check_doc_type(_Doc, _ExpectedType, _DocType) ->
+    lager:debug("not expected type : ~s , ~s", [_ExpectedType, _DocType]),
     {'error', 'not_found'}.
 
 -spec fetch_vmbox_messages(ne_binary(), ne_binary()) -> db_ret().
