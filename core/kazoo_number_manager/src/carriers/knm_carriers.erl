@@ -49,12 +49,14 @@ find(Num, Quantity) ->
 
 find(Num, Quantity, Options) ->
     NormalizedNumber = knm_converters:normalize(Num),
+    Carriers = available_carriers(Options),
+    lager:debug("contacting, in order: ~p", [Carriers]),
     try
         lists:foldl(fun(Carrier, Acc) ->
                             find_fold(Carrier, Acc, NormalizedNumber, Quantity, Options)
                     end
                    ,[]
-                   ,available_carriers(Options)
+                   ,Carriers
                    )
     catch 'throw':{'stopping_here', FoundSoFar} ->
             FoundSoFar
@@ -237,7 +239,7 @@ available_carriers(Options) ->
     end.
 -else.
 available_carriers(Options) ->
-    case kz_json:get_value(<<"account_id">>, Options) of
+    case props:get_value(?KNM_ACCOUNTID_CARRIER, Options) of
         'undefined' ->
             keep_only_reachable(?CARRIER_MODULES -- [?CARRIER_RESERVED, ?CARRIER_LOCAL]);
         AccountId ->
@@ -335,6 +337,7 @@ carrier_module(Number) ->
 %%--------------------------------------------------------------------
 -spec keep_only_reachable([ne_binary()]) -> atoms().
 keep_only_reachable(ModuleNames) ->
+    lager:debug("resolving carrier modules: ~p", [ModuleNames]),
     [Module
      || M <- ModuleNames,
         (Module = kz_util:try_load_module(M)) =/= 'false'

@@ -16,7 +16,7 @@ find_test_() ->
     ].
 
 npan_tests() ->
-    Options = [{<<"account_id">>, ?RESELLER_ACCOUNT_ID}
+    Options = [{?KNM_ACCOUNTID_CARRIER, ?RESELLER_ACCOUNT_ID}
                ,{<<"carriers">>, [<<"knm_bandwidth">>]}
               ],
     Limit = 1,
@@ -28,7 +28,7 @@ npan_tests() ->
     ].
 
 area_code_tests() ->
-    Options = [{<<"account_id">>, ?RESELLER_ACCOUNT_ID}
+    Options = [{?KNM_ACCOUNTID_CARRIER, ?RESELLER_ACCOUNT_ID}
                ,{<<"carriers">>, [<<"knm_bandwidth">>]}
               ],
     Limit = 15,

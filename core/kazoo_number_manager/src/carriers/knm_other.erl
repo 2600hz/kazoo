@@ -245,7 +245,7 @@ format_numbers_resp(JObj, Options) ->
     case kz_json:get_value(<<"status">>, JObj) of
         <<"success">> ->
             DataJObj = kz_json:get_value(<<"data">>, JObj),
-            AccountId = props:get_value(<<"account_id">>, Options),
+            AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
 
             {'ok'
              ,lists:reverse(
@@ -318,7 +318,7 @@ get_blocks(Url, Number, Quantity, Props) ->
 format_blocks_resp(JObj, Options) ->
     case kz_json:get_value(<<"status">>, JObj) of
         <<"success">> ->
-            AccountId = props:get_value(<<"account_id">>, Options),
+            AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
             Numbers =
                 lists:foldl(
                   fun(I, Acc) -> format_block_resp_fold(I, Acc, AccountId) end

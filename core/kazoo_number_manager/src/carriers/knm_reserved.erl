@@ -30,7 +30,7 @@
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
 find_numbers(<<"+",_/binary>>=Number, Quantity, Options) ->
-    case props:get_value(<<"account_id">>, Options) of
+    case props:get_value(?KNM_ACCOUNTID_CARRIER, Options) of
         'undefined' -> {'error', 'not_available'};
         AccountId ->
             do_find_numbers(Number, Quantity, AccountId)
@@ -53,7 +53,7 @@ do_find_numbers(Number, Quantity, AccountId) ->
             lager:debug("found ~p reserved numbers in ~s", [length(JObjs), AccountDb]),
             {'ok', format_numbers(AccountId, JObjs)};
         {'error', _R}=E ->
-            lager:debug("failed to lookup reserved numbers: ~p", [_R]),
+            lager:debug("failed to lookup reserved numbers in ~s: ~p", [AccountDb, _R]),
             E
     end.
 

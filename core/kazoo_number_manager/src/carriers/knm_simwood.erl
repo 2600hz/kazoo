@@ -153,7 +153,7 @@ sw_quantity(_Quantity) -> <<"100">>.
 -spec process_response(kz_json:objects(), kz_proplist()) ->
                               {'ok', knm_number:knm_numbers()}.
 process_response(JObjs, Options) ->
-    AccountId = props:get_value(<<"account_id">>, Options),
+    AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
     {'ok', [response_jobj_to_number(JObj, AccountId) || JObj <- JObjs]}.
 
 -spec response_jobj_to_number(kz_json:object(), api_binary()) ->

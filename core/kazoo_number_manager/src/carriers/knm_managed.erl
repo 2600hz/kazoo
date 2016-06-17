@@ -35,7 +35,7 @@
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
 find_numbers(<<"+", _/binary>>=Number, Quantity, Opts) ->
-    AccountId = props:get_value(<<"Account-ID">>, Opts),
+    AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Opts),
     find_numbers_in_account(Number, Quantity, AccountId);
 find_numbers(Number, Quantity, Opts) ->
     find_numbers(<<"+",Number/binary>>, Quantity, Opts).

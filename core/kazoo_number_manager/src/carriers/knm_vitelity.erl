@@ -223,7 +223,7 @@ find(Prefix, Quantity, Options, VitelityOptions) ->
 -spec response_to_numbers(kz_json:object(), kz_proplist()) ->
                                  {'ok', knm_number:knm_numbers()}.
 response_to_numbers(JObj, Options) ->
-    AccountId = props:get_value(<<"account_id">>, Options),
+    AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
     {'ok'
      ,kz_json:foldl(fun(K, V, Acc) -> response_pair_to_number(K, V, Acc, AccountId) end
                     ,[]
