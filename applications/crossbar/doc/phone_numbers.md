@@ -79,10 +79,12 @@ curl -v -X GET \
     "auth_token": "{AUTH_TOKEN}",
     "data": [
         {
-            "number": "+14990000027"
+            "number": "+14990000027",
+            "state": "reserved"
         },
         {
-            "number": "+14990000028"
+            "number": "+14990000028",
+            "state": "available"
         }
     ],
     "request_id": "d4261f0c19bba7aa19e53dd6a51efa22",

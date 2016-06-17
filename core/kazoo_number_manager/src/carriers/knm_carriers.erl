@@ -188,6 +188,7 @@ found_number_to_jobj(Number) ->
                 [{<<"number">>, DID}
                 ,{<<"rate">>, kz_json:get_value(<<"rate">>, CarrierData, <<"1">>)}
                 ,{<<"activation_charge">>, kz_json:get_value(<<"activation_charge">>, CarrierData, <<"0">>)}
+                ,{<<"state">>, knm_phone_number:state(PhoneNumber)}
                 ])
              );
         _Carrier ->
@@ -195,6 +196,7 @@ found_number_to_jobj(Number) ->
             Add = props:filter_undefined(
                     [{<<"number">>, DID}
                     ,{<<"activation_charge">>, activation_charge(DID, AssignTo)}
+                    ,{<<"state">>, knm_phone_number:state(PhoneNumber)}
                     ]),
             kz_json:set_values(Add, CarrierData)
     end.
