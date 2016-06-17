@@ -50,7 +50,7 @@ do_find_numbers(Number, Quantity, AccountId) ->
             lager:debug("no reserved numbers found"),
             {'error', 'not_available'};
         {'ok', JObjs} ->
-            lager:debug("found ~p reserved numbers in ~s", [length(JObjs), AccountDb]),
+            lager:debug("found reserved numbers in ~s", [AccountDb]),
             {'ok', format_numbers(AccountId, JObjs)};
         {'error', _R}=E ->
             lager:debug("failed to lookup reserved numbers in ~s: ~p", [AccountDb, _R]),

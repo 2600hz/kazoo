@@ -59,7 +59,7 @@ do_find_numbers(<<"+",_/binary>>=Number, Quantity, AccountId) ->
             lager:debug("found no available local numbers for account ~s", [AccountId]),
             {'error', 'not_available'};
         {'ok', JObjs} ->
-            lager:debug("found ~p available local numbers for account ~s", [length(JObjs), AccountId]),
+            lager:debug("found available local numbers for account ~s", [AccountId]),
             {'ok', format_numbers(AccountId, JObjs)};
         {'error', _R}=E ->
             lager:debug("failed to lookup available local numbers: ~p", [_R]),
