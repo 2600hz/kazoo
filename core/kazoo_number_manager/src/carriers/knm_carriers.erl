@@ -56,12 +56,14 @@ find(Num, Quantity, Options) ->
             ,left => Quantity
             ,should_continue => 'true'
             },
-    lists:foldl(fun(Carrier, Acc) ->
-                        find_fold(Carrier, NormalizedNumber, Options, Acc)
-                end
-               ,Acc0
-               ,Carriers
-               ).
+    #{found := Found} =
+        lists:foldl(fun(Carrier, Acc) ->
+                            find_fold(Carrier, NormalizedNumber, Options, Acc)
+                    end
+                   ,Acc0
+                   ,Carriers
+                   ),
+    Found.
 
 -type find_acc() :: #{found => kz_json:objects()
                      ,count => non_neg_integer()
@@ -69,14 +71,13 @@ find(Num, Quantity, Options) ->
                      ,should_continue => boolean()
                      }.
 -spec find_fold(atom(), ne_binary(), kz_proplist(), find_acc()) -> find_acc().
-find_fold(_, _, _, #{should_continue := ShouldContinue
-                    ,found := NumbersFound
-                    ,count := _Count
-                    ,left := Left
-                    })
+find_fold(_Carrier, _, _, Acc=#{should_continue := ShouldContinue
+                               ,count := _Count
+                               ,left := Left
+                               })
   when ShouldContinue == 'false'; Left < 1 ->
-    lager:debug("stopping here with ~p (~p) numbers found", [_Count, Left]),
-    NumbersFound;
+    lager:debug("stopping ~s with ~p (~p) numbers found", [_Carrier, _Count, Left]),
+    Acc;
 find_fold(Carrier, NormalizedNumber, Options, Acc=#{left := Quantity}) ->
     try Carrier:find_numbers(NormalizedNumber, Quantity, Options) of
         {'ok', []} -> Acc;
@@ -93,8 +94,7 @@ find_fold(Carrier, NormalizedNumber, Options, Acc=#{left := Quantity}) ->
         _E:_R ->
             ST = erlang:get_stacktrace(),
             ?LOG_WARN("failed to query carrier ~s for ~p numbers: ~s: ~p"
-                      ,[Carrier, Quantity, _E, _R]
-                     ),
+                     ,[Carrier, Quantity, _E, _R]),
             log_stacktrace(ST),
             Acc
     end.
@@ -103,20 +103,20 @@ find_fold(Carrier, NormalizedNumber, Options, Acc=#{left := Quantity}) ->
 process_bulk_carrier_results(Numbers, Acc) ->
     acc_found(Acc, [found_number_to_jobj(Number) || Number <- Numbers]).
 
+-spec process_carrier_results(knm_number:knm_numbers(), find_acc()) -> find_acc().
+process_carrier_results(Numbers, Acc) ->
+    acc_found(Acc, lists:foldl(fun process_number_result/2, [], Numbers)).
+
 -spec acc_found(find_acc(), kz_json:objects()) -> find_acc().
 acc_found(Acc=#{found := Found
                ,count := Count
                ,left := Left
                }, NewNumbers) ->
     NewNumbersCount = length(NewNumbers),
-    Acc#{found => NewNumbers ++ Found
+    Acc#{found => Found ++ NewNumbers
         ,count => Count + NewNumbersCount
         ,left => Left - NewNumbersCount
         }.
-
--spec process_carrier_results(knm_number:knm_numbers(), find_acc()) -> find_acc().
-process_carrier_results(Numbers, Acc) ->
-    acc_found(Acc, lists:foldl(fun process_number_result/2, [], Numbers)).
 
 -spec process_number_result(knm_number:knm_number(), kz_json:objects()) ->
                                    kz_json:objects().
@@ -139,7 +139,7 @@ check_for_existing_did(_Number, Acc, _Carrier, {'error', _R}) ->
     Acc;
 check_for_existing_did(Number, Acc, Carrier, {'ok', ExistingPhoneNumber}) ->
     case knm_phone_number:module_name(ExistingPhoneNumber) of
-        Carrier -> check_existing_phone_number(Number, Acc, ExistingPhoneNumber);
+        Carrier -> [found_number_to_jobj(Number) | Acc];
         _OtherCarrier ->
             create_discovery(
               transition_existing_to_discovery(Number, ExistingPhoneNumber, Carrier)
@@ -176,47 +176,28 @@ transition_existing_to_discovery(Number, ExistingPhoneNumber, Carrier) ->
          ),
     knm_number:set_phone_number(Number, PhoneNumber).
 
--spec check_existing_phone_number(knm_number:knm_number(), kz_json:objects(), knm_phone_number:knm_phone_number()) ->
-                                         kz_json:objects().
-check_existing_phone_number(Number, Acc, PhoneNumber) ->
-    State = knm_phone_number:state(PhoneNumber),
-    case lists:member(State, ?KNM_AVAILABLE_STATES) of
-        'true' -> [found_number_to_jobj(Number) | Acc];
-        'false' ->
-            lager:debug("skipping number ~s: ~p"
-                       ,[knm_phone_number:number(PhoneNumber), State]),
-            Acc
-    end.
-
 -spec found_number_to_jobj(knm_number:knm_number()) -> kz_json:object().
 found_number_to_jobj(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
-    found_number_to_jobj(PhoneNumber, knm_phone_number:module_name(PhoneNumber)).
-
--spec found_number_to_jobj(knm_phone_number:knm_phone_number(), ne_binary()) ->
-                                  kz_json:object().
-found_number_to_jobj(PhoneNumber, ?CARRIER_MANAGED) ->
     CarrierData = knm_phone_number:carrier_data(PhoneNumber),
-    kz_json:from_list(
-      props:filter_undefined(
-              [{<<"number">>, knm_phone_number:number(PhoneNumber)}
-               ,{<<"rate">>, kz_json:get_value(<<"rate">>, CarrierData, <<"1">>)}
-               ,{<<"activation_charge">>, kz_json:get_value(<<"activation_charge">>, CarrierData, <<"0">>)}
-              ])
-     );
-found_number_to_jobj(PhoneNumber, _Carrier) ->
     DID = knm_phone_number:number(PhoneNumber),
-    CarrierData = knm_phone_number:carrier_data(PhoneNumber),
-    AssignTo = knm_phone_number:assign_to(PhoneNumber),
-
-    kz_json:set_values(
-      props:filter_undefined(
-        [{<<"number">>, DID}
-         ,{<<"activation_charge">>, activation_charge(DID, AssignTo)}
-        ]
-       )
-      ,CarrierData
-     ).
+    case knm_phone_number:module_name(PhoneNumber) of
+        ?CARRIER_MANAGED ->
+            kz_json:from_list(
+              props:filter_undefined(
+                [{<<"number">>, DID}
+                ,{<<"rate">>, kz_json:get_value(<<"rate">>, CarrierData, <<"1">>)}
+                ,{<<"activation_charge">>, kz_json:get_value(<<"activation_charge">>, CarrierData, <<"0">>)}
+                ])
+             );
+        _Carrier ->
+            AssignTo = knm_phone_number:assign_to(PhoneNumber),
+            Add = props:filter_undefined(
+                    [{<<"number">>, DID}
+                    ,{<<"activation_charge">>, activation_charge(DID, AssignTo)}
+                    ]),
+            kz_json:set_values(Add, CarrierData)
+    end.
 
 -spec activation_charge(ne_binary(), api_binary()) -> api_number().
 -ifdef(TEST).
