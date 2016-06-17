@@ -486,8 +486,8 @@ set_prev_assigned_to(N, PrevAssignedTo=?MATCH_ACCOUNT_RAW(_)) ->
 -spec used_by(knm_phone_number()) -> api_binary().
 used_by(#knm_phone_number{used_by=UsedBy}) -> UsedBy.
 
--spec set_used_by(knm_phone_number(), ne_binary()) -> knm_phone_number().
-set_used_by(N, UsedBy=?NE_BINARY) ->
+-spec set_used_by(knm_phone_number(), api_binary()) -> knm_phone_number().
+set_used_by(N, UsedBy) ->
     N#knm_phone_number{used_by=UsedBy}.
 
 %%--------------------------------------------------------------------
