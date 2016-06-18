@@ -56,13 +56,16 @@ find(Num, Quantity, Options) ->
             ,left => Quantity
             ,should_continue => 'true'
             },
-    #{found := Found} =
+    #{found := Found
+     ,count := _Count
+     } =
         lists:foldl(fun(Carrier, Acc) ->
                             find_fold(Carrier, NormalizedNumber, Options, Acc)
                     end
                    ,Acc0
                    ,Carriers
                    ),
+    lager:debug("found ~p/~p numbers", [_Count, Quantity]),
     Found.
 
 -type find_acc() :: #{found => kz_json:objects()
@@ -250,7 +253,7 @@ available_carriers(Options) ->
 available_carriers(Options) ->
     case props:get_value(?KNM_ACCOUNTID_CARRIER, Options) of
         'undefined' ->
-            keep_only_reachable(?CARRIER_MODULES -- [?CARRIER_RESERVED, ?CARRIER_LOCAL]);
+            keep_only_reachable(?CARRIER_MODULES);
         AccountId ->
             ResellerId = kz_services:find_reseller_id(AccountId),
             lager:debug("found ~s's reseller: ~p", [AccountId, ResellerId]),

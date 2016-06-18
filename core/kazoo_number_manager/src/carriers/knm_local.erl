@@ -48,7 +48,8 @@ find_numbers(Number, Quantity, Options) ->
 -spec do_find_numbers(ne_binary(), pos_integer(), ne_binary()) ->
                              {'ok', knm_number:knm_numbers()} |
                              {'error', any()}.
-do_find_numbers(<<"+",_/binary>>=Number, Quantity, AccountId) ->
+do_find_numbers(<<"+",_/binary>>=Number, Quantity, AccountId)
+  when is_integer(Quantity), Quantity > 0 ->
     ViewOptions = [{'startkey', [?NUMBER_STATE_AVAILABLE, Number]}
                   ,{'endkey', [?NUMBER_STATE_AVAILABLE, <<"\ufff0">>]}
                   ,{'limit', Quantity}
@@ -60,13 +61,26 @@ do_find_numbers(<<"+",_/binary>>=Number, Quantity, AccountId) ->
             {'error', 'not_available'};
         {'ok', JObjs} ->
             lager:debug("found available local numbers for account ~s", [AccountId]),
-            {'ok', format_numbers(AccountId, JObjs)};
+            Numbers = format_numbers(AccountId, JObjs),
+            find_more(Quantity, AccountId, length(Numbers), Numbers);
         {'error', _R}=E ->
             lager:debug("failed to lookup available local numbers: ~p", [_R]),
             E
     end;
-do_find_numbers(<<Prefix:3/binary>>, Quantity, AccountId) ->
-    do_find_numbers(<<"+1", Prefix/binary>>, Quantity, AccountId).
+do_find_numbers(_, _, _) ->
+    {'error', 'not_available'}.
+
+-spec find_more(pos_integer(), ne_binary(), pos_integer(), knm_number:knm_numbers()) ->
+                       knm_number:knm_numbers().
+find_more(Quantity, AccountId, NotEnough, Numbers)
+  when NotEnough < Quantity ->
+    NewStart = bump(knm_phone_number:number(knm_number:phone_number(lists:last(Numbers)))),
+    case do_find_numbers(NewStart, Quantity - NotEnough, AccountId) of
+        {'ok', MoreNumbers} -> {'ok', Numbers ++ MoreNumbers};
+        _Error -> {'ok', Numbers}
+    end;
+find_more(_, _, _Enough, Numbers) ->
+    {'ok', Numbers}.
 
 -spec format_numbers(ne_binary(), kz_json:objects()) -> knm_number:knm_numbers().
 format_numbers(AccountId, JObjs) ->
@@ -74,6 +88,11 @@ format_numbers(AccountId, JObjs) ->
     Options = [{'auth_by', AccountId}
               ],
     [Number || {_Num,{'ok',Number}} <- knm_numbers:get(Nums, Options)].
+
+-spec bump(ne_binary()) -> ne_binary().
+bump(<<"+", Num/binary>>) ->
+    Bumped = erlang:integer_to_binary(1 + erlang:binary_to_integer(Num)),
+    <<"+", Bumped/binary>>.
 
 %%--------------------------------------------------------------------
 %% @public

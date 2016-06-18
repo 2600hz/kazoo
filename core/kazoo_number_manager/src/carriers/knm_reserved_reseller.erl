@@ -29,7 +29,7 @@
 -spec find_numbers(ne_binary(), pos_integer(), kz_proplist()) ->
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
-find_numbers(<<"+",_/binary>>=Number, Quantity, Options) ->
+find_numbers(Number, Quantity, Options) ->
     case props:get_value(?KNM_ACCOUNTID_CARRIER, Options) of
         'undefined' -> {'error', 'not_available'};
         AccountId ->
@@ -49,7 +49,8 @@ find_numbers(<<"+",_/binary>>=Number, Quantity, Options) ->
 -spec do_find_numbers(ne_binary(), pos_integer(), ne_binary()) ->
                              {'ok', knm_number:knm_numbers()} |
                              {'error', any()}.
-do_find_numbers(Number, Quantity, ResellerId) ->
+do_find_numbers(<<"+",_/binary>>=Number, Quantity, ResellerId)
+  when is_integer(Quantity), Quantity > 0 ->
     ResellerDb = kz_util:format_account_db(ResellerId),
     ViewOptions = [{'startkey', Number}
                   ,{'endkey', <<Number/binary, "\ufff0">>}
@@ -61,18 +62,38 @@ do_find_numbers(Number, Quantity, ResellerId) ->
             {'error', 'not_available'};
         {'ok', JObjs} ->
             lager:debug("found reserved numbers in ~s", [ResellerDb]),
-            {'ok', format_numbers(ResellerId, JObjs)};
+            Numbers = format_numbers(ResellerId, JObjs),
+            find_more(Quantity, ResellerId, length(Numbers), Numbers);
         {'error', _R}=E ->
             lager:debug("failed to lookup reserved numbers: ~p", [_R]),
             E
-    end.
+    end;
+do_find_numbers(_, _, _) ->
+    {'error', 'not_available'}.
+
+-spec find_more(pos_integer(), ne_binary(), pos_integer(), knm_number:knm_numbers()) ->
+                       knm_number:knm_numbers().
+find_more(Quantity, ResellerId, NotEnough, Numbers)
+  when NotEnough < Quantity ->
+    NewStart = bump(knm_phone_number:number(knm_number:phone_number(lists:last(Numbers)))),
+    case do_find_numbers(NewStart, Quantity - NotEnough, ResellerId) of
+        {'ok', MoreNumbers} -> {'ok', Numbers ++ MoreNumbers};
+        _Error -> {'ok', Numbers}
+    end;
+find_more(_, _, _Enough, Numbers) ->
+    {'ok', Numbers}.
 
 -spec format_numbers(ne_binary(), kz_json:objects()) -> knm_number:knm_numbers().
-format_numbers(AuthBy, JObjs) ->
+format_numbers(ResellerId, JObjs) ->
     Nums = [kz_doc:id(JObj) || JObj <- JObjs],
-    Options = [{'auth_by', AuthBy}
+    Options = [{'auth_by', ResellerId}
               ],
     [Number || {_Num,{'ok',Number}} <- knm_numbers:get(Nums, Options)].
+
+-spec bump(ne_binary()) -> ne_binary().
+bump(<<"+", Num/binary>>) ->
+    Bumped = erlang:integer_to_binary(1 + erlang:binary_to_integer(Num)),
+    <<"+", Bumped/binary>>.
 
 %%--------------------------------------------------------------------
 %% @public
