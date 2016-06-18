@@ -195,7 +195,7 @@ post(Context, OldBoxId, ?MESSAGES_RESOURCE, MediaId) ->
     AccountId = cb_context:account_id(Context),
     case cb_context:req_value(Context, <<"source_id">>) of
         'undefined' ->
-            C = update_message_folder(OldBoxId, MediaId, Context),
+            C = update_message_folder(OldBoxId, MediaId, Context, ?VM_FOLDER_SAVED),
             update_mwi(C, OldBoxId);
         NewBoxId ->
             Moved = kz_vm_message:change_vmbox(AccountId, MediaId, OldBoxId, NewBoxId),
@@ -234,7 +234,7 @@ delete(Context, DocId, ?MESSAGES_RESOURCE) ->
     update_mwi(C, DocId).
 
 delete(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
-    C = update_message_folder(DocId, MediaId, Context),
+    C = update_message_folder(DocId, MediaId, Context, ?VM_FOLDER_DELETED),
     update_mwi(C, DocId).
 
 %%--------------------------------------------------------------------
@@ -266,7 +266,7 @@ patch(Context, Id) ->
 validate_message(Context, DocId, MediaId, ?HTTP_GET) ->
     case load_message(MediaId, DocId, 'undefined', Context) of
         {'true', C1} ->
-            C2 = update_message_folder(DocId, MediaId, C1),
+            C2 = update_message_folder(DocId, MediaId, C1, ?VM_FOLDER_NEW),
             update_mwi(C2, DocId);
         {_, C} -> C
     end;
@@ -631,10 +631,10 @@ generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
 %% @doc update message folder
 %% @end
 %%--------------------------------------------------------------------
--spec update_message_folder(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
-update_message_folder(BoxId, MediaId, Context) ->
+-spec update_message_folder(ne_binary(), ne_binary(), cb_context:context(), ne_binary()) -> cb_context:context().
+update_message_folder(BoxId, MediaId, Context, DefaultFolder) ->
     AccountId = cb_context:account_id(Context),
-    Folder = kzd_box_message:folder(cb_context:doc(Context)),
+    Folder = get_folder_filter(Context, DefaultFolder),
     case kz_vm_message:update_folder(Folder, MediaId, AccountId, BoxId) of
         {'ok', Message} ->
             crossbar_util:response(Message, cb_context:set_resp_status(Context, 'success'));
