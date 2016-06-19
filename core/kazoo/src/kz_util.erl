@@ -940,8 +940,7 @@ rand_hex_binary(Size) when is_integer(Size)
 
 -spec rand_hex(pos_integer()) -> ne_binary().
 rand_hex(Size) ->
-    try crypto:strong_rand_bytes(Size) of
-        Bytes -> Bytes
+    try crypto:strong_rand_bytes(Size)
     catch
         _:'low_entropy' -> crypto:rand_bytes(Size)
     end.
@@ -1023,8 +1022,7 @@ to_integer(X, 'strict') when is_float(X) -> erlang:error('badarg');
 to_integer(X, 'notstrict') when is_float(X) -> round(X);
 to_integer(X, S) when is_binary(X) -> to_integer(binary_to_list(X), S);
 to_integer(X, S) when is_list(X) ->
-    try list_to_integer(X) of
-        I -> I
+    try list_to_integer(X)
     catch
         'error':'badarg' when S =:= 'notstrict' ->
             round(list_to_float(X))
@@ -1038,8 +1036,7 @@ to_float(X) -> to_float(X, 'notstrict').
 
 to_float(X, S) when is_binary(X) -> to_float(binary_to_list(X), S);
 to_float(X, S) when is_list(X) ->
-    try list_to_float(X) of
-        F -> F
+    try list_to_float(X)
     catch
         'error':'badarg' when S =:= 'notstrict' -> list_to_integer(X)*1.0 %% "500" -> 500.0
     end;
@@ -1051,8 +1048,7 @@ to_float(X, _) when is_float(X) -> X.
 to_number(X) when is_number(X) -> X;
 to_number(X) when is_binary(X) -> to_number(to_list(X));
 to_number(X) when is_list(X) ->
-    try list_to_integer(X) of
-        Int -> Int
+    try list_to_integer(X)
     catch
         'error':'badarg' -> list_to_float(X)
     end.
@@ -1117,8 +1113,7 @@ to_datetime(X) when is_list(X) -> to_datetime(to_integer(X)).
 error_to_binary({'error', Reason}) ->
     error_to_binary(Reason);
 error_to_binary(Reason) ->
-    try to_binary(Reason) of
-        Message -> Message
+    try to_binary(Reason)
     catch
         _:_ -> <<"Unknown Error">>
     end.
@@ -1284,8 +1279,7 @@ truncate_right_binary(Bin, _) ->
 -spec suffix_binary(binary(), binary()) -> boolean().
 suffix_binary(<<>>, _Bin) -> 'false';
 suffix_binary(<<_/binary>> = Suffix, <<_/binary>> = Bin) ->
-    try truncate_left_binary(Bin, byte_size(Suffix)) =:= Suffix of
-        Bool -> Bool
+    try truncate_left_binary(Bin, byte_size(Suffix)) =:= Suffix
     catch
         _:_ -> 'false'
     end.

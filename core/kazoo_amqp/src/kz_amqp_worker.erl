@@ -203,8 +203,6 @@ call(Req, PubFun, VFun, Timeout, Worker) when is_pid(Worker) ->
                           ,{'request', Prop, PubFun, VFun, Timeout}
                           ,fudge_timeout(Timeout)
                          )
-    of
-        Reply -> Reply
     catch
         _E:R ->
             lager:warning("request failed: ~s: ~p", [_E, R]),
@@ -274,8 +272,6 @@ call_custom(Req, PubFun, VFun, Timeout, Bind, Worker) ->
                           ,{'request', Prop, PubFun, VFun, Timeout}
                           ,fudge_timeout(Timeout)
                          )
-    of
-        Reply -> Reply
     catch
         _E:R ->
             lager:debug("request failed: ~s: ~p", [_E, R]),
@@ -377,8 +373,6 @@ call_collect(Req, PubFun, UntilFun, Timeout, Acc, Worker) ->
                           ,{'call_collect', Prop, PubFun, UntilFun, Timeout, Acc}
                           ,fudge_timeout(Timeout)
                          )
-    of
-        Reply -> Reply
     catch
         _E:R ->
             lager:debug("request failed: ~s: ~p", [_E, R]),
@@ -406,8 +400,7 @@ cast(Req, PubFun, Pool) when is_atom(Pool) ->
     end;
 cast(Req, PubFun, Worker) when is_pid(Worker) ->
     Prop = maybe_convert_to_proplist(Req),
-    try gen_listener:call(Worker, {'publish', Prop, PubFun}) of
-        Reply -> Reply
+    try gen_listener:call(Worker, {'publish', Prop, PubFun})
     catch
         _E:R ->
             lager:debug("request failed: ~s: ~p", [_E, R]),

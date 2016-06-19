@@ -390,14 +390,11 @@ voicefabric_get_media_rate(Headers1) ->
     Headers = [{kz_util:to_lower_binary(X), kz_util:to_binary(Y)}
                || {X, Y} <- Headers1
               ],
-    case props:get_value(<<"content-type">>, Headers) of
-        <<"audio/raw; ", Params/binary>> ->
-            [<<"rate=", Rate/binary>>] =
-                lists:filter(fun voicefabric_filter_rate/1
-                             ,re:split(Params, "; ")
-                            ),
-            {'ok', Rate}
-    end.
+    <<"audio/raw; ", Params/binary>> =
+	props:get_value(<<"content-type">>, Headers),
+    [<<"rate=", Rate/binary>>] =
+	lists:filter(fun voicefabric_filter_rate/1, re:split(Params, "; ")),
+    {'ok', Rate}.
 
 -spec voicefabric_filter_rate(ne_binary()) -> boolean().
 voicefabric_filter_rate(<<"rate=", _/binary>>) -> 'true';

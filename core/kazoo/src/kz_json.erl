@@ -116,8 +116,7 @@ unsafe_decode(Thing) when is_list(Thing)
     unsafe_decode(Thing, <<"application/json">>).
 
 unsafe_decode(JSON, <<"application/json">>) ->
-    try jiffy:decode(JSON) of
-        JObj -> JObj
+    try jiffy:decode(JSON)
     catch
         'throw':{'error',{_Loc, 'invalid_string'}}=Error ->
             lager:debug("invalid string(near char ~p) in input, checking for unicode", [_Loc]),
@@ -139,8 +138,7 @@ decode(Thing) when is_list(Thing)
     decode(Thing, <<"application/json">>).
 
 decode(JSON, <<"application/json">>) ->
-    try unsafe_decode(JSON) of
-        JObj -> JObj
+    try unsafe_decode(JSON)
     catch
         _:{'invalid_json', {'error', {_Loc, _Msg}}, _JSON} ->
             lager:debug("decode error ~s near char # ~b", [_Msg, _Loc]),
@@ -503,8 +501,7 @@ get_integer_value(Key, JObj, Default) ->
 
 -spec safe_cast(json_term(), json_term(), fun()) -> json_term().
 safe_cast(Value, Default, CastFun) ->
-    try CastFun(Value) of
-        Casted -> Casted
+    try CastFun(Value)
     catch
         _:_ -> Default
     end.
