@@ -6,7 +6,7 @@
     "properties": {
         "reset_id": {
             "description": "The UUID that is part of the password-reset link",
-            "pattern": "^[a-fA-F0-9]{256}$",
+            "pattern": "^[a-fA-F0-9]{250}$",
             "required": true,
             "type": "string"
         }
