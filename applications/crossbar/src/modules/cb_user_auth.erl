@@ -31,7 +31,7 @@
 
 -define(RECOVERY, <<"recovery">>).
 -define(RESET_ID, <<"reset_id">>).
--define(RESET_ID_SIZE, 256).
+-define(RESET_ID_SIZE, 250).
 -define(RESET_PVT_TYPE, <<"password_reset">>).
 
 %%%===================================================================
