@@ -31,7 +31,13 @@
 
 -define(RECOVERY, <<"recovery">>).
 -define(RESET_ID, <<"reset_id">>).
--define(RESET_ID_SIZE, 250).
+-define(RESET_ID_SIZE_DEFAULT, 250).
+-define(RESET_ID_SIZE,
+        case kapps_config:get_integer(?CONFIG_CAT, <<"reset_id_size">>, ?RESET_ID_SIZE_DEFAULT) of
+            _TooBig when _TooBig >= 255 -> ?RESET_ID_SIZE_DEFAULT;
+            _TooSmall when _TooSmall =< 40 -> ?RESET_ID_SIZE_DEFAULT;
+            Ok -> Ok
+        end).
 -define(RESET_PVT_TYPE, <<"password_reset">>).
 
 %%%===================================================================
@@ -148,8 +154,8 @@ put(Context, ?RECOVERY) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?RECOVERY) ->
+    _ = cb_context:put_reqid(Context),
     Context1 = crossbar_doc:save(Context),
-    _ = cb_context:put_reqid(Context1),
     crossbar_util:create_auth_token(Context1, ?MODULE).
 
 %%%===================================================================
@@ -415,9 +421,9 @@ maybe_load_user_doc_by_username(Account, Context) ->
 save_reset_id_then_send_email(Context) ->
     AccountDb = cb_context:account_db(Context),
     ResetId = reset_id(AccountDb),
-    %% Not much chance for doc to already exist
-    {'ok',_} = kz_datamgr:save_doc(AccountDb, create_resetid_doc(ResetId)),
     UserDoc = cb_context:doc(Context),
+    %% Not much chance for doc to already exist
+    {'ok',_} = kz_datamgr:save_doc(AccountDb, create_resetid_doc(ResetId, kz_doc:id(UserDoc))),
     Email = kz_json:get_ne_binary_value(<<"email">>, UserDoc),
     lager:debug("created recovery id, sending email to '~s'", [Email]),
     ReqData = cb_context:req_data(Context),
@@ -445,11 +451,15 @@ maybe_load_user_doc_via_reset_id(Context) ->
     AccountDb = reset_id(ResetId),
     lager:debug("looking up password reset doc: ~s", [ResetId]),
     case kz_datamgr:open_cache_doc(AccountDb, ResetId) of
-        {'ok', [ResetIdDoc]} ->
+        {'ok', ResetIdDoc} ->
             lager:debug("found password reset doc"),
-            _ = kz_datamgr:del_doc(AccountDb, ResetIdDoc),
+            UserId = kz_json:get_value(<<"pvt_userid">>, ResetIdDoc),
+            UserDoc = crossbar_doc:load(UserId, Context, ?TYPE_CHECK_OPTION(kzd_user:type())),
+            NewUserDoc = kz_json:set_value(<<"require_password_update">>, 'true', UserDoc),
+            _ = kz_datamgr:del_doc(AccountDb, ResetId),
             cb_context:setters(Context, [{fun cb_context:set_account_db/2, AccountDb}
-                                         ,{fun cb_context:set_resp_status/2, 'success'}
+                                        ,{fun cb_context:set_resp_status/2, 'success'}
+                                        ,{fun cb_context:set_doc/2, NewUserDoc}
                                         ]);
         _ ->
             Msg = kz_json:from_list(
@@ -462,28 +472,34 @@ maybe_load_user_doc_via_reset_id(Context) ->
 
 %% @private
 -spec reset_id(ne_binary()) -> ne_binary().
-reset_id(?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
-    Noise = kz_util:rand_hex_binary((?RESET_ID_SIZE - 32) / 2),
-    <<(?MATCH_ACCOUNT_RAW(A,B,Rest))/binary, Noise/binary>>;
-reset_id(<<ResetId:?RESET_ID_SIZE/binary>>) ->
-    <<Account:32/binary, _Noise/binary>> = ResetId,
-    kz_util:format_account_db(kz_util:to_lower_binary(Account)).
+reset_id(AccountOrResetId) ->
+    ResetIdSize = ?RESET_ID_SIZE,
+    case AccountOrResetId of
+        ?MATCH_ACCOUNT_ENCODED(A,B,Rest) ->
+            Noise = kz_util:rand_hex_binary((ResetIdSize - 32) / 2),
+            <<(?MATCH_ACCOUNT_RAW(A,B,Rest))/binary, Noise/binary>>;
+        <<ResetId:ResetIdSize/binary>> ->
+            <<Account:32/binary, _Noise/binary>> = ResetId,
+            kz_util:format_account_db(kz_util:to_lower_binary(Account))
+    end.
 
 %% @private
 -spec reset_link(kz_json:object(), ne_binary()) -> ne_binary().
 reset_link(UIURL, ResetId) ->
-    Url = hd(binary:split(UIURL, <<"#">>)),
-    <<Url/binary, "/#/", (?RECOVERY)/binary, ":", ResetId/binary>>.
+    case binary:match(UIURL, <<$?>>) of
+        'nomatch' -> <<UIURL/binary, "?recovery=", ResetId/binary>>;
+        _ -> <<UIURL/binary, "&recovery=", ResetId/binary>>
+    end.
 
 %% @private
--spec create_resetid_doc(ne_binary()) -> kz_json:object().
-create_resetid_doc(ResetId) ->
+-spec create_resetid_doc(ne_binary(), ne_binary()) -> kz_json:object().
+create_resetid_doc(ResetId, UserId) ->
     kz_json:from_list(
       [{<<"_id">>, ResetId}
-       ,{<<"pvt_created">>, kz_util:current_tstamp()}
-       ,{<<"pvt_type">>, ?RESET_PVT_TYPE}
-      ]
-     ).
+      ,{<<"pvt_userid">>, UserId}
+      ,{<<"pvt_created">>, kz_util:current_tstamp()}
+      ,{<<"pvt_type">>, ?RESET_PVT_TYPE}
+      ]).
 
 %%--------------------------------------------------------------------
 %% @private
