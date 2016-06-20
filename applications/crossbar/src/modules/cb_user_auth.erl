@@ -154,8 +154,8 @@ put(Context, ?RECOVERY) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?RECOVERY) ->
+    _ = cb_context:put_reqid(Context),
     Context1 = crossbar_doc:save(Context),
-    _ = cb_context:put_reqid(Context1),
     crossbar_util:create_auth_token(Context1, ?MODULE).
 
 %%%===================================================================
@@ -454,8 +454,10 @@ maybe_load_user_doc_via_reset_id(Context) ->
         {'ok', [ResetIdDoc]} ->
             lager:debug("found password reset doc"),
             _ = kz_datamgr:del_doc(AccountDb, ResetIdDoc),
+            NewDoc = kz_json:set_value(<<"require_password_update">>, 'true', cb_context:doc(Context)),
             cb_context:setters(Context, [{fun cb_context:set_account_db/2, AccountDb}
-                                         ,{fun cb_context:set_resp_status/2, 'success'}
+                                        ,{fun cb_context:set_resp_status/2, 'success'}
+                                        ,{fun cb_context:set_doc/2, NewDoc}
                                         ]);
         _ ->
             Msg = kz_json:from_list(
