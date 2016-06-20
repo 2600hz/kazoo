@@ -354,6 +354,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({'replace_APIs', Apps, Nodes, Modules, APIs}, _From, State) ->
+    lager:debug("replacing APIs"),
     State1 = State#state{ apis = APIs
                         , apps = Apps
                         , nodes = Nodes
@@ -374,6 +375,7 @@ handle_call({'help', _, _}, _From, State=#state{apis = APIs})
     ?REPLY(State, {'error', 'no_categories'});
 %%FIXME: upgrade OTP http://stackoverflow.com/a/23107510/1418165
 handle_call({'help', Category}, _From, State=#state{apis = Categories}) ->
+    lager:debug("fetching category ~s", [Category]),
     case maps:get(Category, Categories, 'undefined') of
         'undefined' -> ?REPLY(State, {'error', 'unknown_category'});
         Actions ->
@@ -381,6 +383,7 @@ handle_call({'help', Category}, _From, State=#state{apis = Categories}) ->
             ?REPLY_FOUND(State, JObj)
     end;
 handle_call({'help', Category, Action}, _From, State=#state{apis = Categories}) ->
+    lager:debug("fetching category/action ~s/~s", [Category, Action]),
     case maps:get(Category, Categories, 'undefined') of
         'undefined' -> ?REPLY(State, {'error', 'unknown_category'});
         Actions ->
@@ -391,6 +394,7 @@ handle_call({'help', Category, Action}, _From, State=#state{apis = Categories}) 
     end;
 
 handle_call({'new', AccountId, Category, Action, TotalRows}, _From, State) ->
+    lager:debug("creating ~s/~s task (~p)", [Category, Action, TotalRows]),
     TaskId = ?A_TASK_ID,
     Task = #{ worker_pid => 'undefined'
             , worker_node => 'undefined'
@@ -417,6 +421,7 @@ handle_call({'start_task', _TaskId}, _From, State=#state{apis = APIs})
                ,[_TaskId]),
     ?REPLY(State, {'error', 'no_categories'});
 handle_call({'start_task', TaskId}, _From, State) ->
+    lager:debug("attempting to start ~s", [TaskId]),
     %% Running tasks are stored in server State.
     %% They are then promptly removed.
     %% Rationale is to rely on the task document most.
@@ -432,6 +437,7 @@ handle_call({'start_task', TaskId}, _From, State) ->
     end;
 
 handle_call({'remove_task', TaskId}, _From, State) ->
+    lager:debug("attempting to remove ~s", [TaskId]),
     case task_by_id(TaskId, State) of
         [] ->
             case task_by_id(TaskId) of
@@ -467,6 +473,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({'worker_finished', TaskId, TaskRev, TotalSucceeded, TotalFailed}, State) ->
+    lager:debug("worker finished ~s: ~p/~p", [TaskId, TotalSucceeded, TotalFailed]),
     [Task] = task_by_id(TaskId, State),
     Task1 = Task#{ finished => kz_util:current_tstamp()
                  , total_rows_failed => TotalFailed
@@ -478,6 +485,7 @@ handle_cast({'worker_finished', TaskId, TaskRev, TotalSucceeded, TotalFailed}, S
     {'noreply', State1};
 
 handle_cast({'worker_error', TaskId}, State) ->
+    lager:debug("worker error ~s", [TaskId]),
     [Task=#{total_rows := TotalRows}] = task_by_id(TaskId, State),
     Task1 = Task#{ finished => kz_util:current_tstamp()
                  , total_rows_failed => TotalRows
@@ -488,6 +496,7 @@ handle_cast({'worker_error', TaskId}, State) ->
     {'noreply', State1};
 
 handle_cast({'worker_update_processed', TaskId, TotalSucceeded, TotalFailed}, State) ->
+    lager:debug("worker update ~s: ~p/~p", [TaskId, TotalSucceeded, TotalFailed]),
     [Task] = task_by_id(TaskId, State),
     Task1 = Task#{ total_rows_failed => TotalFailed
                  , total_rows_succeeded => TotalSucceeded
