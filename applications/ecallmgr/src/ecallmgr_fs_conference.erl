@@ -566,7 +566,7 @@ get_conf_command(<<"play">>, _Focus, ConferenceId, JObj) ->
         'true' ->
             UUID = kz_json:get_ne_value(<<"Call-ID">>, JObj, ConferenceId),
             Media = list_to_binary(["'", ecallmgr_util:media_path(kz_json:get_value(<<"Media-Name">>, JObj), UUID, JObj), "'"]),
-            Args = case kz_json:get_binary_value(<<"Participant">>, JObj) of
+            Args = case kz_json:get_binary_value(<<"Participant-ID">>, JObj) of
                        'undefined' -> Media;
                        Participant -> list_to_binary([Media, " ", Participant])
                    end,
@@ -580,7 +580,7 @@ get_conf_command(<<"stop_play">>, _Focus, _ConferenceId, JObj) ->
             {'error', <<"conference stop_play failed to execute as JObj did not validate.">>};
         'true' ->
             Affects = kz_json:get_binary_value(<<"Affects">>, JObj, <<"all">>),
-            Args = case kz_json:get_binary_value(<<"Participant">>, JObj) of
+            Args = case kz_json:get_binary_value(<<"Participant-ID">>, JObj) of
                        undefined -> Affects;
                        Participant -> list_to_binary([Affects, " ", Participant])
                    end,
@@ -592,7 +592,7 @@ get_conf_command(Say, _Focus, _ConferenceId, JObj) when Say =:= <<"say">> orelse
         'true'->
             SayMe = kz_json:get_value(<<"Text">>, JObj),
 
-            case kz_json:get_binary_value(<<"Participant">>, JObj) of
+            case kz_json:get_binary_value(<<"Participant-ID">>, JObj) of
                 'undefined' -> {<<"say">>, ["'", SayMe, "'"]};
                 Id -> {<<"saymember">>, [Id, " '", SayMe, "'"]}
             end
@@ -603,28 +603,28 @@ get_conf_command(<<"kick">>, _Focus, _ConferenceId, JObj) ->
         'false' ->
             {'error', <<"conference kick failed to execute as JObj did not validate.">>};
         'true' ->
-            {<<"hup">>, kz_json:get_binary_value(<<"Participant">>, JObj, <<"last">>)}
+            {<<"hup">>, kz_json:get_binary_value(<<"Participant-ID">>, JObj, <<"last">>)}
     end;
 get_conf_command(<<"mute_participant">>, _Focus, _ConferenceId, JObj) ->
     case kapi_conference:mute_participant_v(JObj) of
         'false' ->
             {'error', <<"conference mute_participant failed to execute as JObj did not validate.">>};
         'true' ->
-            {<<"mute">>, kz_json:get_binary_value(<<"Participant">>, JObj, <<"last">>)}
+            {<<"mute">>, kz_json:get_binary_value(<<"Participant-ID">>, JObj, <<"last">>)}
     end;
 get_conf_command(<<"deaf_participant">>, _Focus, _ConferenceId, JObj) ->
     case kapi_conference:deaf_participant_v(JObj) of
         'false' ->
             {'error', <<"conference deaf_participant failed to execute as JObj did not validate.">>};
         'true' ->
-            {<<"deaf">>, kz_json:get_binary_value(<<"Participant">>, JObj)}
+            {<<"deaf">>, kz_json:get_binary_value(<<"Participant-ID">>, JObj)}
     end;
 get_conf_command(<<"participant_energy">>, _Focus, _ConferenceId, JObj) ->
     case kapi_conference:participant_energy_v(JObj) of
         'false' ->
             {'error', <<"conference participant_energy failed to execute as JObj did not validate.">>};
         'true' ->
-            Args = list_to_binary([kz_json:get_binary_value(<<"Participant">>, JObj)
+            Args = list_to_binary([kz_json:get_binary_value(<<"Participant-ID">>, JObj)
                                    ," ", kz_json:get_binary_value(<<"Energy-Level">>, JObj, <<"20">>)
                                   ]),
             {<<"energy">>, Args}
@@ -634,7 +634,7 @@ get_conf_command(<<"relate_participants">>, _Focus, _ConferenceId, JObj) ->
         'false' ->
             {'error', <<"conference relate_participants failed to execute as JObj did not validate.">>};
         'true' ->
-            Args = list_to_binary([kz_json:get_binary_value(<<"Participant">>, JObj)
+            Args = list_to_binary([kz_json:get_binary_value(<<"Participant-ID">>, JObj)
                                    ," ", kz_json:get_binary_value(<<"Other-Participant">>, JObj)
                                    ," ", relationship(kz_json:get_binary_value(<<"Relationship">>, JObj))
                                   ]),
@@ -655,21 +655,21 @@ get_conf_command(<<"undeaf_participant">>, _Focus, _ConferenceId, JObj) ->
         'false' ->
             {'error', <<"conference undeaf_participant failed to execute as JObj did not validate.">>};
         'true' ->
-            {<<"undeaf">>, kz_json:get_binary_value(<<"Participant">>, JObj)}
+            {<<"undeaf">>, kz_json:get_binary_value(<<"Participant-ID">>, JObj)}
     end;
 get_conf_command(<<"unmute_participant">>, _Focus, _ConferenceId, JObj) ->
     case kapi_conference:unmute_participant_v(JObj) of
         'false' ->
             {'error', <<"conference unmute failed to execute as JObj did not validate.">>};
         'true' ->
-            {<<"unmute">>, kz_json:get_binary_value(<<"Participant">>, JObj)}
+            {<<"unmute">>, kz_json:get_binary_value(<<"Participant-ID">>, JObj)}
     end;
 get_conf_command(<<"participant_volume_in">>, _Focus, _ConferenceId, JObj) ->
     case kapi_conference:participant_volume_in_v(JObj) of
         'false' ->
             {'error', <<"conference participant_volume_in failed to execute as JObj did not validate.">>};
         'true' ->
-            Args = list_to_binary([kz_json:get_binary_value(<<"Participant">>, JObj)
+            Args = list_to_binary([kz_json:get_binary_value(<<"Participant-ID">>, JObj)
                                    ," ", kz_json:get_binary_value(<<"Volume-In-Level">>, JObj, <<"0">>)
                                   ]),
             {<<"volume_in">>, Args}
@@ -679,7 +679,7 @@ get_conf_command(<<"participant_volume_out">>, _Focus, _ConferenceId, JObj) ->
         'false' ->
             {'error', <<"conference participant_volume_out failed to execute as JObj did not validate.">>};
         'true' ->
-            Args = list_to_binary([kz_json:get_binary_value(<<"Participant">>, JObj)
+            Args = list_to_binary([kz_json:get_binary_value(<<"Participant-ID">>, JObj)
                                    ," ", kz_json:get_binary_value(<<"Volume-Out-Level">>, JObj, <<"0">>)
                                   ]),
             {<<"volume_out">>, Args}
