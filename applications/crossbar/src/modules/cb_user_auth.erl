@@ -421,9 +421,9 @@ maybe_load_user_doc_by_username(Account, Context) ->
 save_reset_id_then_send_email(Context) ->
     AccountDb = cb_context:account_db(Context),
     ResetId = reset_id(AccountDb),
-    %% Not much chance for doc to already exist
-    {'ok',_} = kz_datamgr:save_doc(AccountDb, create_resetid_doc(ResetId)),
     UserDoc = cb_context:doc(Context),
+    %% Not much chance for doc to already exist
+    {'ok',_} = kz_datamgr:save_doc(AccountDb, create_resetid_doc(ResetId, kz_doc:id(UserDoc))),
     Email = kz_json:get_ne_binary_value(<<"email">>, UserDoc),
     lager:debug("created recovery id, sending email to '~s'", [Email]),
     ReqData = cb_context:req_data(Context),
@@ -451,13 +451,15 @@ maybe_load_user_doc_via_reset_id(Context) ->
     AccountDb = reset_id(ResetId),
     lager:debug("looking up password reset doc: ~s", [ResetId]),
     case kz_datamgr:open_cache_doc(AccountDb, ResetId) of
-        {'ok', [ResetIdDoc]} ->
+        {'ok', ResetIdDoc} ->
             lager:debug("found password reset doc"),
-            _ = kz_datamgr:del_doc(AccountDb, ResetIdDoc),
-            NewDoc = kz_json:set_value(<<"require_password_update">>, 'true', cb_context:doc(Context)),
+            UserId = kz_json:get_value(<<"pvt_userid">>, ResetIdDoc),
+            UserDoc = crossbar_doc:load(UserId, Context, ?TYPE_CHECK_OPTION(kzd_user:type())),
+            NewUserDoc = kz_json:set_value(<<"require_password_update">>, 'true', UserDoc),
+            _ = kz_datamgr:del_doc(AccountDb, ResetId),
             cb_context:setters(Context, [{fun cb_context:set_account_db/2, AccountDb}
                                         ,{fun cb_context:set_resp_status/2, 'success'}
-                                        ,{fun cb_context:set_doc/2, NewDoc}
+                                        ,{fun cb_context:set_doc/2, NewUserDoc}
                                         ]);
         _ ->
             Msg = kz_json:from_list(
@@ -490,14 +492,14 @@ reset_link(UIURL, ResetId) ->
     end.
 
 %% @private
--spec create_resetid_doc(ne_binary()) -> kz_json:object().
-create_resetid_doc(ResetId) ->
+-spec create_resetid_doc(ne_binary(), ne_binary()) -> kz_json:object().
+create_resetid_doc(ResetId, UserId) ->
     kz_json:from_list(
       [{<<"_id">>, ResetId}
-       ,{<<"pvt_created">>, kz_util:current_tstamp()}
-       ,{<<"pvt_type">>, ?RESET_PVT_TYPE}
-      ]
-     ).
+      ,{<<"pvt_userid">>, UserId}
+      ,{<<"pvt_created">>, kz_util:current_tstamp()}
+      ,{<<"pvt_type">>, ?RESET_PVT_TYPE}
+      ]).
 
 %%--------------------------------------------------------------------
 %% @private
