@@ -119,7 +119,7 @@
 -define(DISCOVERY_RESP_TYPES, []).
 
 %% Conference Deaf
--define(DEAF_PARTICIPANT_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant">>]).
+-define(DEAF_PARTICIPANT_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant-ID">>]).
 -define(OPTIONAL_DEAF_PARTICIPANT_HEADERS, []).
 -define(DEAF_PARTICIPANT_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                   ,{<<"Event-Name">>, <<"command">>}
@@ -130,7 +130,7 @@
 
 %% Conference Energy
 -define(PARTICIPANT_ENERGY_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>
-                                         ,<<"Participant">>, <<"Energy-Level">>
+                                         ,<<"Participant-ID">>, <<"Energy-Level">>
                                     ]).
 -define(OPTIONAL_PARTICIPANT_ENERGY_HEADERS, []).
 -define(PARTICIPANT_ENERGY_VALUES, [{<<"Event-Category">>, <<"conference">>}
@@ -142,7 +142,7 @@
 
 %% Conference Kick
 -define(KICK_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>]).
--define(OPTIONAL_KICK_HEADERS, [<<"Participant">>]).
+-define(OPTIONAL_KICK_HEADERS, [<<"Participant-ID">>]).
 -define(KICK_VALUES, [{<<"Event-Category">>, <<"conference">>}
                       ,{<<"Event-Name">>, <<"command">>}
                       ,{<<"Application-Name">>, <<"kick">>}
@@ -178,7 +178,7 @@
                     ]).
 
 %% Conference Mute
--define(MUTE_PARTICIPANT_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant">>]).
+-define(MUTE_PARTICIPANT_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant-ID">>]).
 -define(OPTIONAL_MUTE_PARTICIPANT_HEADERS, []).
 -define(MUTE_PARTICIPANT_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                   ,{<<"Event-Name">>, <<"command">>}
@@ -189,7 +189,7 @@
 
 %% Conference Play
 -define(PLAY_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Media-Name">>]).
--define(OPTIONAL_PLAY_HEADERS, [<<"Participant">>, <<"Call-ID">>]).
+-define(OPTIONAL_PLAY_HEADERS, [<<"Participant-ID">>, <<"Call-ID">>]).
 -define(PLAY_VALUES, [{<<"Event-Category">>, <<"conference">>}
                       ,{<<"Event-Name">>, <<"command">>}
                       ,{<<"Application-Name">>, <<"play">>}
@@ -218,7 +218,7 @@
 
 
 %% Conference Relate Participants
--define(RELATE_PARTICIPANTS_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant">>, <<"Other-Participant">>]).
+-define(RELATE_PARTICIPANTS_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant-ID">>, <<"Other-Participant">>]).
 -define(OPTIONAL_RELATE_PARTICIPANTS_HEADERS, [<<"Relationship">>]).
 -define(RELATE_PARTICIPANTS_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                      ,{<<"Event-Name">>, <<"command">>}
@@ -242,7 +242,7 @@
 
 %% Conference Stop Play
 -define(STOP_PLAY_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>]).
--define(OPTIONAL_STOP_PLAY_HEADERS, [<<"Participant">>, <<"Affects">>]).
+-define(OPTIONAL_STOP_PLAY_HEADERS, [<<"Participant-ID">>, <<"Affects">>]).
 -define(STOP_PLAY_VALUES, [{<<"Event-Category">>, <<"conference">>}
                            ,{<<"Event-Name">>, <<"command">>}
                            ,{<<"Application-Name">>, <<"stop_play">>}
@@ -251,7 +251,7 @@
 -define(STOP_PLAY_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
                          ]).
 %% Conference Undeaf
--define(UNDEAF_PARTICIPANT_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant">>]).
+-define(UNDEAF_PARTICIPANT_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant-ID">>]).
 -define(OPTIONAL_UNDEAF_PARTICIPANT_HEADERS, []).
 -define(UNDEAF_PARTICIPANT_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                     ,{<<"Event-Name">>, <<"command">>}
@@ -271,7 +271,7 @@
                       ]).
 
 %% Conference Unmute
--define(UNMUTE_PARTICIPANT_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant">>]).
+-define(UNMUTE_PARTICIPANT_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant-ID">>]).
 -define(OPTIONAL_UNMUTE_PARTICIPANT_HEADERS, []).
 -define(UNMUTE_PARTICIPANT_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                     ,{<<"Event-Name">>, <<"command">>}
@@ -282,7 +282,7 @@
 
 %% Conference Set Volume In
 -define(PARTICIPANT_VOLUME_IN_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>
-                                            ,<<"Participant">>, <<"Volume-In-Level">>
+                                            ,<<"Participant-ID">>, <<"Volume-In-Level">>
                                        ]).
 -define(OPTIONAL_PARTICIPANT_VOLUME_IN_HEADERS, []).
 -define(PARTICIPANT_VOLUME_IN_VALUES, [{<<"Event-Category">>, <<"conference">>}
@@ -294,7 +294,7 @@
 
 %% Conference Set Volume Out
 -define(PARTICIPANT_VOLUME_OUT_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>
-                                             ,<<"Participant">>, <<"Volume-Out-Level">>
+                                             ,<<"Participant-ID">>, <<"Volume-Out-Level">>
                                         ]).
 -define(OPTIONAL_PARTICIPANT_VOLUME_OUT_HEADERS, []).
 -define(PARTICIPANT_VOLUME_OUT_VALUES, [{<<"Event-Category">>, <<"conference">>}
