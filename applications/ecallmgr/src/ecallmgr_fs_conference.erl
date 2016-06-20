@@ -1,10 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015 2600Hz INC
+%%% @copyright (C) 2011-2016 2600Hz INC
 %%% @doc
 %%% Execute conference commands
 %%% @end
 %%% @contributors
 %%%   Karl Anderson <karl@2600hz.org>
+%%%   Roman Galeev
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_conference).
 
@@ -44,8 +45,19 @@
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
+-define(DEFAULT_PARTICIPANT_EVENTS, [<<"add-member">>
+                            , <<"del-member">>
+                            , <<"stop-talking">>
+                            , <<"start-talking">>
+                            , <<"mute-member">>
+                            , <<"unmute-member">>
+                            , <<"deaf-member">>
+                            , <<"undeaf-member">>
+                        ]).
+
 -record(state, {node = 'undefined' :: atom()
                 ,options = [] :: kz_proplist()
+                ,publish_participant_event = [] :: [ne_binary()]
                }).
 
 %%%===================================================================
@@ -97,7 +109,11 @@ init([Node, Options]) ->
     lager:info("starting new fs conference listener for ~s", [Node]),
     gen_server:cast(self(), 'bind_to_events'),
     ecallmgr_fs_conferences:sync_node(Node),
-    {'ok', #state{node=Node, options=Options}}.
+    {'ok', #state{node=Node
+                    ,options=Options
+                    ,publish_participant_event=ecallmgr_config:get(<<"publish_participant_event">>, ?DEFAULT_PARTICIPANT_EVENTS)
+                }
+    }.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -175,14 +191,14 @@ handle_info({'event', ['undefined' | Props]}, #state{node=Node}=State) ->
                 send_conference_event(Action, Props, CustomProps)
         end,
     {'noreply', State};
-handle_info({'event', [CallId | Props]}, #state{node=Node}=State) ->
+handle_info({'event', [CallId | Props]}, #state{node=Node, publish_participant_event=EventsToPublish}=State) ->
     Action = props:get_value(<<"Action">>, Props),
     _ = case process_participant_event(Action, Props, Node, CallId) of
             'stop' -> 'ok';
             'continue' ->
                 Event = make_participant_event(Action, CallId, Props, Node),
                 send_participant_event(Event, Props),
-                publish_participant_event(Event, CallId, Props);
+                publish_participant_event(lists:member(Event, EventsToPublish), Event, CallId, Props);
             {'continue', CustomProps} ->
                 Event = make_participant_event(Action, CallId, Props, Node),
                 send_participant_event(Event, Props, CustomProps)
@@ -775,10 +791,11 @@ relay_event(UUID, Node, Props) ->
     gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, Payload),
     gproc:send({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, UUID)}, Payload).
 
-publish_participant_event(Event, CallId, Props) ->
+publish_participant_event(true=_Publish, Event, CallId, Props) ->
    Ev = [{<<"Event-Category">>, <<"conference">>}
        ,{<<"Event-Name">>, <<"participant_event">>}
        | Event],
     ConferenceId = props:get_value(<<"Conference-Name">>, Props),
     Publisher = fun(P) -> kapi_conference:publish_participant_event(ConferenceId, CallId, P) end,
-    kz_amqp_worker:cast(Ev, Publisher).
+    kz_amqp_worker:cast(Ev, Publisher);
+publish_participant_event(_, _, _, _) -> skip.
