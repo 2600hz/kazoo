@@ -1125,6 +1125,8 @@ create_call_fwd_endpoint(Endpoint, Properties, Call) ->
             ,{<<"Endpoint-Timeout">>, get_timeout(Properties)}
             ,{<<"Endpoint-Delay">>, get_delay(Properties)}
             ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
+            ,{<<"Caller-ID-Name">>, Clid#clid.caller_name}
+            ,{<<"Caller-ID-Number">>, Clid#clid.caller_number}
             ,{<<"Callee-ID-Name">>, Clid#clid.callee_name}
             ,{<<"Callee-ID-Number">>, Clid#clid.callee_number}
             ,{<<"Outbound-Callee-ID-Name">>, Clid#clid.callee_name}
