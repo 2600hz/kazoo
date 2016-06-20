@@ -128,6 +128,7 @@ loop(State=#state{task_id = TaskId
                 end,
             _ = maybe_send_update(NewState),
             _ = put(?IN, CSVRest),
+            _ = pause(),
             loop(NewState)
     end.
 
@@ -198,5 +199,10 @@ write_output_csv_header(TaskId, Module, Function, HeaderRow) ->
     HeaderRHS = kz_tasks:get_output_header(Module, Function),
     Data = [kz_csv:row_to_iolist(HeaderRow ++ HeaderRHS), $\n],
     file:write_file(?OUT(TaskId), Data).
+
+%% @private
+-spec pause() -> 'ok'.
+pause() ->
+    timer:sleep(?KZ_TASKS_WAIT_AFTER_ROW).
 
 %%% End of Module.
