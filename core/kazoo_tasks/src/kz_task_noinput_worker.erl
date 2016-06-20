@@ -136,9 +136,9 @@ store_return(TaskId, Reason) ->
 %% @private
 -spec reason(task_return()) -> iodata().
 reason([_|_]=Row) ->
-    kz_csv:row_to_iolist([reason(Cell) || Cell <- Row]);
+    kz_csv:row_to_iolist(Row);
 reason(?NE_BINARY=Reason) ->
-    reason([Reason]);
+    kz_csv:row_to_iolist([Reason]);
 reason(_) -> <<>>.
 
 %% @private
