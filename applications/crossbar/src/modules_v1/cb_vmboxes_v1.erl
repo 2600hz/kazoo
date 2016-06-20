@@ -472,8 +472,9 @@ load_vmbox_summary(Context) ->
 %% Load a vmbox document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_load_vmboxes(ne_binaries(), cb_context:context()) -> cb_context:context().
+-spec maybe_load_vmboxes(api_binary() | api_binaries(), cb_context:context()) -> cb_context:context().
 maybe_load_vmboxes('undefined', Context) -> cb_context:set_resp_status(Context, 'success');
+maybe_load_vmboxes(Id, Context) when is_binary(Id) -> load_vmbox(Id, Context);
 maybe_load_vmboxes([], Context) -> Context;
 maybe_load_vmboxes(['undefined'|Ids], Context) ->
     maybe_load_vmboxes(Ids, Context);
