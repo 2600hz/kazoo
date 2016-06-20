@@ -203,6 +203,7 @@ write_output_csv_header(TaskId, Module, Function, HeaderRow) ->
 %% @private
 -spec pause() -> 'ok'.
 pause() ->
+    lager:debug("taking a break before next row"),
     timer:sleep(?KZ_TASKS_WAIT_AFTER_ROW).
 
 %%% End of Module.
