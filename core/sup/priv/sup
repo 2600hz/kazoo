@@ -2,8 +2,14 @@
 
 # The file to copy/symlink under /usr/bin or similar
 
-default_root="${KAZOO_ROOT:-_rel/kazoo}"
 default_rel='bla@tld'
+if [[ ! -z "$KAZOO_ROOT" ]]; then
+    default_root="$KAZOO_ROOT"
+elif [[ -d _rel/kazoo ]]; then
+    default_root=_rel/kazoo
+else
+    default_root=/opt/kazoo
+fi
 
 RELX_REPLACE_OS_VARS=true KZname="-name ${default_rel}" "${default_root}"/bin/kazoo escript lib/sup-*/priv/sup.escript "$*"
 
