@@ -972,6 +972,8 @@ create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
          ,{<<"Route">>, kz_json:get_value(<<"route">>, SIPJObj)}
          ,{<<"Proxy-IP">>, kz_json:get_value(<<"proxy">>, SIPJObj)}
          ,{<<"Forward-IP">>, kz_json:get_value(<<"forward">>, SIPJObj)}
+         ,{<<"Caller-ID-Name">>, Clid#clid.caller_name}
+         ,{<<"Caller-ID-Number">>, Clid#clid.caller_number}
          ,{<<"Callee-ID-Name">>, Clid#clid.callee_name}
          ,{<<"Callee-ID-Number">>, Clid#clid.callee_number}
          ,{<<"Outbound-Callee-ID-Name">>, Clid#clid.callee_name}
