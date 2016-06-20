@@ -134,10 +134,10 @@ curl -v -X POST \
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/raw
+> POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/raw
 
 ```curl
-curl -v -X GET \
+curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
     -H "Accept: application/zip" \
