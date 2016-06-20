@@ -218,12 +218,12 @@ curl -v -X POST \
 
 #### Fetch the raw audio of a list of messages as a ZIP file
 
-> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/raw
+> POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/raw
 
 You can provide a list of voicemail message ID in the playload and get raw audio of them in a single ZIP file.
 
 ```shell
-curl -v -X GET \
+curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
     -H "Accept: application/zip" \
