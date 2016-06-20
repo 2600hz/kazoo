@@ -472,8 +472,10 @@ reset_id(<<ResetId:?RESET_ID_SIZE/binary>>) ->
 %% @private
 -spec reset_link(kz_json:object(), ne_binary()) -> ne_binary().
 reset_link(UIURL, ResetId) ->
-    Url = hd(binary:split(UIURL, <<"#">>)),
-    <<Url/binary, "/#/", (?RECOVERY)/binary, ":", ResetId/binary>>.
+    case binary:match(UIURL, <<$?>>) of
+        'nomatch' -> <<UIURL/binary, "?recovery=", ResetId/binary>>;
+        _ -> <<UIURL/binary, "&recovery=", ResetId/binary>>
+    end.
 
 %% @private
 -spec create_resetid_doc(ne_binary()) -> kz_json:object().
