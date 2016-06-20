@@ -12,5 +12,8 @@
 -define(KZ_TASKS_INPUT_ERROR_UF, <<"unknown_fields">>).
 -define(KZ_TASKS_INPUT_ERROR_MIME, <<"expected_content">>).
 
+-define(KZ_TASKS_WAIT_AFTER_ROW,
+        ?MILLISECONDS_IN_SECOND * kapps_config:get_integer(?KZ_TASKS_DOC_TYPE, <<"wait_seconds_after_row">>, 2)).
+
 -define(KAZOO_TASKS_HRL, 'true').
 -endif.

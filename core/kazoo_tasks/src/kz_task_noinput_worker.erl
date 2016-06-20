@@ -92,11 +92,13 @@ loop(IterValue, State=#state{task_id = TaskId
             NewState = State#state{total_failed = TotalFailed + 1
                                   },
             _ = maybe_send_update(NewState),
+            _ = pause(),
             loop(NewIterValue, NewState);
         {'true', {_PrevRow, NewIterValue}} ->
             NewState = State#state{total_succeeded = TotalSucceeded + 1
                                   },
             _ = maybe_send_update(NewState),
+            _ = pause(),
             loop(NewIterValue, NewState)
     end.
 
@@ -134,9 +136,9 @@ store_return(TaskId, Reason) ->
 %% @private
 -spec reason(task_return()) -> iodata().
 reason([_|_]=Row) ->
-    kz_csv:row_to_iolist([reason(Cell) || Cell <- Row]);
+    kz_csv:row_to_iolist(Row);
 reason(?NE_BINARY=Reason) ->
-    reason([Reason]);
+    kz_csv:row_to_iolist([Reason]);
 reason(_) -> <<>>.
 
 %% @private
@@ -165,5 +167,11 @@ write_output_csv_header(TaskId, Module, Function) ->
     HeaderRHS = kz_tasks:get_output_header(Module, Function),
     Data = [kz_csv:row_to_iolist(HeaderRHS), $\n],
     file:write_file(?OUT(TaskId), Data).
+
+%% @private
+-spec pause() -> 'ok'.
+pause() ->
+    lager:debug("taking a break before next row"),
+    timer:sleep(?KZ_TASKS_WAIT_AFTER_ROW).
 
 %%% End of Module.
