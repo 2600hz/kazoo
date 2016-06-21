@@ -791,11 +791,13 @@ relay_event(UUID, Node, Props) ->
     gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, Payload),
     gproc:send({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, UUID)}, Payload).
 
+-spec publish_participant_event(boolean(), kz_proplist(), ne_binary(), kz_proplist()) -> ok | skip.
 publish_participant_event(true=_Publish, Event, CallId, Props) ->
    Ev = [{<<"Event-Category">>, <<"conference">>}
        ,{<<"Event-Name">>, <<"participant_event">>}
        | Event],
     ConferenceId = props:get_value(<<"Conference-Name">>, Props),
     Publisher = fun(P) -> kapi_conference:publish_participant_event(ConferenceId, CallId, P) end,
-    kz_amqp_worker:cast(Ev, Publisher);
-publish_participant_event(_, _, _, _) -> skip.
+    kz_amqp_worker:cast(Ev, Publisher),
+    ok;
+publish_participant_event(_, _, _, _) -> 'skip'.

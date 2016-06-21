@@ -468,9 +468,9 @@ sync_participant(JObj, Call, #participant{in_conference='false'
                                           ,discovery_event=DiscoveryEvent
                                          }=Participant) ->
     ParticipantId = kz_json:get_value(<<"Participant-ID">>, JObj),
-    join_conference(kapps_conference:moderator(Conference), ParticipantId, Conference),
     kapps_conference:set_focus(kz_json:get_value(<<"Focus">>, JObj), Conference),
     gen_listener:cast(self(), 'play_announce'),
+    join_conference(kapps_conference:moderator(Conference), ParticipantId, Conference),
     _ = kz_util:spawn(fun notify_requestor/4, [kapps_call:controller_queue(Call)
                                                 ,ParticipantId
                                                 ,DiscoveryEvent
