@@ -142,7 +142,7 @@ find_numbers(Search, Quantity, Options) ->
 
 -spec process_search_response(xml_el(), kz_proplist()) -> knm_number:knm_numbers().
 process_search_response(Result, Options) ->
-    AccountId = props:get_first_defined([<<"Account-ID">>, <<"account_id">>], Options),
+    AccountId = props:get_value(<<"account_id">>, Options),
     [search_response_to_KNM(X, AccountId)
      || X <- xmerl_xpath:string("TelephoneNumberDetailList/TelephoneNumberDetail", Result)
     ].
