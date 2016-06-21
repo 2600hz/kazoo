@@ -486,9 +486,9 @@ arm_bleg(#state{digit_timeout=Timeout}=State) ->
                 ,b_leg_armed='true'
                }.
 
--spec maybe_fast_rearm(ne_binary(), ne_binary(), ne_binary())
-maybe_fast_rearm(DTMFisBindingDigit, DTMFisBindingDigit, Collected) -> <<>>;
-maybe_fast_rearm(DTMF, BindingDigit, Collected) -> <<Collected/binary, DTMF/binary>>.
+-spec maybe_fast_rearm(ne_binary(), ne_binary(), ne_binary()) -> binary().
+maybe_fast_rearm(DTMFisBindingDigit, DTMFisBindingDigit, _Collected) -> <<>>;
+maybe_fast_rearm(DTMF, _BindingDigit, Collected) -> <<Collected/binary, DTMF/binary>>.
 
 -spec add_aleg_dtmf(state(), ne_binary()) -> state().
 add_aleg_dtmf(#state{a_collected_dtmf=Collected
