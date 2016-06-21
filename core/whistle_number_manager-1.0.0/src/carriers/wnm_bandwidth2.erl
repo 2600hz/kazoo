@@ -8,6 +8,7 @@
 %%% @contributors
 %%%     Karl Anderson
 %%%     Mark Magnusson
+%%%     Luis Azedo
 %%%-------------------------------------------------------------------
 -module(wnm_bandwidth2).
 
@@ -63,6 +64,10 @@
     Prefix == <<"888">> orelse
     Prefix == <<"889">>
 ).
+
+-define(ORDER_NUMBER_XPATH, "ExistingTelephoneNumberOrderType/TelephoneNumberList/TelephoneNumber/text()").
+-define(ORDER_ID_XPATH, "CustomerOrderId/text()").
+-define(ORDER_NAME_XPATH, "Name/text()").
 
 %% @public
 -spec is_number_billable(wnm_number()) -> 'true'.
@@ -326,10 +331,11 @@ number_order_response_to_json([]) ->
 number_order_response_to_json([Xml]) ->
     number_order_response_to_json(Xml);
 number_order_response_to_json(Xml) ->
+    Num = maybe_add_us_prefix(wh_util:get_xml_value(?ORDER_NUMBER_XPATH, Xml)),
     Props = [
-        {<<"order_id">>, wh_util:get_xml_value("id/text()", Xml)}
-       ,{<<"order_name">>, wh_util:get_xml_value("Name/text()", Xml)}
-       ,{<<"number">>, wnm_util:to_e164(wh_util:get_xml_value("TelephoneNumberList/TelephoneNumber/text()", Xml))}
+        {<<"order_id">>, wh_util:get_xml_value(?ORDER_ID_XPATH, Xml)}
+       ,{<<"order_name">>, wh_util:get_xml_value(?ORDER_NAME_XPATH, Xml)}
+       ,{<<"number">>, Num}
     ],
     wh_json:from_list(props:filter_undefined(Props)).
 
@@ -345,13 +351,16 @@ search_response_to_json([]) ->
 search_response_to_json([Xml]) ->
     search_response_to_json(Xml);
 search_response_to_json(Xml) ->
-    Number = wh_util:get_xml_value("//FullNumber/text()", Xml),
+    Number = maybe_add_us_prefix(wh_util:get_xml_value("//FullNumber/text()", Xml)),
     Props = [
-        {<<"number">>, wnm_util:to_e164(Number)}
+        {<<"number">>, Number}
        ,{<<"rate_center">>, rate_center_to_json(Xml)}
     ],
-
     {Number, wh_json:from_list(props:filter_undefined(Props))}.
+
+-spec maybe_add_us_prefix(binary()) -> binary().
+maybe_add_us_prefix(<<"+1", _/binary>>=Num) -> Num;
+maybe_add_us_prefix(Num) -> <<"+1", Num/binary>>.
 
 -spec tollfree_search_response_to_json(xml_el()) -> wh_json:object().
 tollfree_search_response_to_json(Xml) ->
