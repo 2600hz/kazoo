@@ -1035,8 +1035,7 @@ kvs_flush(#kapps_call{}=Call) -> Call#kapps_call{kvs=orddict:new()}.
 -spec kvs_fetch(kz_json:key(), Default, call()) -> any() | Default.
 kvs_fetch(Key, Call) -> kvs_fetch(Key, 'undefined', Call).
 kvs_fetch(Key, Default, #kapps_call{kvs=Dict}) ->
-    try orddict:fetch(kz_util:to_binary(Key), Dict) of
-        Ok -> Ok
+    try orddict:fetch(kz_util:to_binary(Key), Dict)
     catch
         'error':'function_clause' -> Default
     end.

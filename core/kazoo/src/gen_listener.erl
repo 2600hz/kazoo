@@ -894,8 +894,7 @@ start_consumer(Q, ConsumeProps) -> amqp_util:basic_consume(Q, ConsumeProps).
 remove_binding(Binding, Props, Q) ->
     Wapi = list_to_binary([<<"kapi_">>, kz_util:to_binary(Binding)]),
     lager:debug("trying to remove bindings with ~s:unbind_q(~s, ~p)", [Wapi, Q, Props]),
-    try (kz_util:to_atom(Wapi, 'true')):unbind_q(Q, Props) of
-        Return -> Return
+    try (kz_util:to_atom(Wapi, 'true')):unbind_q(Q, Props)
     catch
         'error':'undef' ->
             erlang:error({'api_module_undefined', Wapi})
@@ -906,8 +905,7 @@ create_binding(Binding, Props, Q) when not is_binary(Binding) ->
     create_binding(kz_util:to_binary(Binding), Props, Q);
 create_binding(Binding, Props, Q) ->
     Wapi = list_to_binary([<<"kapi_">>, kz_util:to_binary(Binding)]),
-    try (kz_util:to_atom(Wapi, 'true')):bind_q(Q, Props) of
-        Return -> Return
+    try (kz_util:to_atom(Wapi, 'true')):bind_q(Q, Props)
     catch
         'error':'undef' ->
             erlang:error({'api_module_undefined', Wapi})

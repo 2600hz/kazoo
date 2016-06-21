@@ -49,8 +49,5 @@ type() -> ?PVT_TYPE.
 %%--------------------------------------------------------------------
 -spec is_feature_code(kz_json:object()) -> boolean().
 is_feature_code(JObj) ->
-    case kz_json:get_value(?FEATURE_CODE, JObj, 'false') of
-        'false' -> 'false';
-        _ -> 'true'
-    end.
+    kz_json:get_value(?FEATURE_CODE, JObj, 'false') =/= 'false'.
 

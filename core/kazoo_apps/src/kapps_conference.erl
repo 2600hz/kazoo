@@ -453,8 +453,7 @@ kvs_erase(Key, #kapps_conference{kvs=Dict}=Conference) ->
 
 -spec kvs_fetch(any(), kapps_conference:conference()) -> any().
 kvs_fetch(Key, #kapps_conference{kvs=Dict}) ->
-    try orddict:fetch(kz_util:to_binary(Key), Dict) of
-        Ok -> Ok
+    try orddict:fetch(kz_util:to_binary(Key), Dict)
     catch
         'error':'function_clause' -> 'undefined'
     end.

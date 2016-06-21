@@ -120,8 +120,7 @@ reconcile('all') ->
 reconcile(Account) when not is_binary(Account) ->
     reconcile(kz_util:to_binary(Account));
 reconcile(Account) ->
-    try kz_services:reconcile(Account) of
-        Any -> Any
+    try kz_services:reconcile(Account)
     catch
         _E:_R ->
             io:format("failed to reconcile account ~s(~p):~n  ~p~n", [Account, _E, _R])
