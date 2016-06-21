@@ -1,10 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015 2600Hz INC
+%%% @copyright (C) 2011-2016 2600Hz INC
 %%% @doc
 %%% Execute conference commands
 %%% @end
 %%% @contributors
 %%%   Karl Anderson <karl@2600hz.org>
+%%%   Roman Galeev
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_conference).
 
@@ -44,8 +45,19 @@
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
+-define(DEFAULT_PARTICIPANT_EVENTS, [<<"add-member">>
+                            , <<"del-member">>
+                            , <<"stop-talking">>
+                            , <<"start-talking">>
+                            , <<"mute-member">>
+                            , <<"unmute-member">>
+                            , <<"deaf-member">>
+                            , <<"undeaf-member">>
+                        ]).
+
 -record(state, {node = 'undefined' :: atom()
                 ,options = [] :: kz_proplist()
+                ,publish_participant_event = [] :: [ne_binary()]
                }).
 
 %%%===================================================================
@@ -97,7 +109,11 @@ init([Node, Options]) ->
     lager:info("starting new fs conference listener for ~s", [Node]),
     gen_server:cast(self(), 'bind_to_events'),
     ecallmgr_fs_conferences:sync_node(Node),
-    {'ok', #state{node=Node, options=Options}}.
+    {'ok', #state{node=Node
+                    ,options=Options
+                    ,publish_participant_event=ecallmgr_config:get(<<"publish_participant_event">>, ?DEFAULT_PARTICIPANT_EVENTS)
+                }
+    }.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -175,14 +191,14 @@ handle_info({'event', ['undefined' | Props]}, #state{node=Node}=State) ->
                 send_conference_event(Action, Props, CustomProps)
         end,
     {'noreply', State};
-handle_info({'event', [CallId | Props]}, #state{node=Node}=State) ->
+handle_info({'event', [CallId | Props]}, #state{node=Node, publish_participant_event=EventsToPublish}=State) ->
     Action = props:get_value(<<"Action">>, Props),
     _ = case process_participant_event(Action, Props, Node, CallId) of
             'stop' -> 'ok';
             'continue' ->
                 Event = make_participant_event(Action, CallId, Props, Node),
                 send_participant_event(Event, Props),
-                publish_participant_event(Action, Event, CallId, Props);
+                publish_participant_event(lists:member(Event, EventsToPublish), Event, CallId, Props);
             {'continue', CustomProps} ->
                 Event = make_participant_event(Action, CallId, Props, Node),
                 send_participant_event(Event, Props, CustomProps)
@@ -566,7 +582,7 @@ get_conf_command(<<"play">>, _Focus, ConferenceId, JObj) ->
         'true' ->
             UUID = kz_json:get_ne_value(<<"Call-ID">>, JObj, ConferenceId),
             Media = list_to_binary(["'", ecallmgr_util:media_path(kz_json:get_value(<<"Media-Name">>, JObj), UUID, JObj), "'"]),
-            Args = case kz_json:get_binary_value(<<"Participant">>, JObj) of
+            Args = case kz_json:get_binary_value(<<"Participant-ID">>, JObj) of
                        'undefined' -> Media;
                        Participant -> list_to_binary([Media, " ", Participant])
                    end,
@@ -580,7 +596,7 @@ get_conf_command(<<"stop_play">>, _Focus, _ConferenceId, JObj) ->
             {'error', <<"conference stop_play failed to execute as JObj did not validate.">>};
         'true' ->
             Affects = kz_json:get_binary_value(<<"Affects">>, JObj, <<"all">>),
-            Args = case kz_json:get_binary_value(<<"Participant">>, JObj) of
+            Args = case kz_json:get_binary_value(<<"Participant-ID">>, JObj) of
                        undefined -> Affects;
                        Participant -> list_to_binary([Affects, " ", Participant])
                    end,
@@ -592,7 +608,7 @@ get_conf_command(Say, _Focus, _ConferenceId, JObj) when Say =:= <<"say">> orelse
         'true'->
             SayMe = kz_json:get_value(<<"Text">>, JObj),
 
-            case kz_json:get_binary_value(<<"Participant">>, JObj) of
+            case kz_json:get_binary_value(<<"Participant-ID">>, JObj) of
                 'undefined' -> {<<"say">>, ["'", SayMe, "'"]};
                 Id -> {<<"saymember">>, [Id, " '", SayMe, "'"]}
             end
@@ -603,28 +619,28 @@ get_conf_command(<<"kick">>, _Focus, _ConferenceId, JObj) ->
         'false' ->
             {'error', <<"conference kick failed to execute as JObj did not validate.">>};
         'true' ->
-            {<<"hup">>, kz_json:get_binary_value(<<"Participant">>, JObj, <<"last">>)}
+            {<<"hup">>, kz_json:get_binary_value(<<"Participant-ID">>, JObj, <<"last">>)}
     end;
 get_conf_command(<<"mute_participant">>, _Focus, _ConferenceId, JObj) ->
     case kapi_conference:mute_participant_v(JObj) of
         'false' ->
             {'error', <<"conference mute_participant failed to execute as JObj did not validate.">>};
         'true' ->
-            {<<"mute">>, kz_json:get_binary_value(<<"Participant">>, JObj, <<"last">>)}
+            {<<"mute">>, kz_json:get_binary_value(<<"Participant-ID">>, JObj, <<"last">>)}
     end;
 get_conf_command(<<"deaf_participant">>, _Focus, _ConferenceId, JObj) ->
     case kapi_conference:deaf_participant_v(JObj) of
         'false' ->
             {'error', <<"conference deaf_participant failed to execute as JObj did not validate.">>};
         'true' ->
-            {<<"deaf">>, kz_json:get_binary_value(<<"Participant">>, JObj)}
+            {<<"deaf">>, kz_json:get_binary_value(<<"Participant-ID">>, JObj)}
     end;
 get_conf_command(<<"participant_energy">>, _Focus, _ConferenceId, JObj) ->
     case kapi_conference:participant_energy_v(JObj) of
         'false' ->
             {'error', <<"conference participant_energy failed to execute as JObj did not validate.">>};
         'true' ->
-            Args = list_to_binary([kz_json:get_binary_value(<<"Participant">>, JObj)
+            Args = list_to_binary([kz_json:get_binary_value(<<"Participant-ID">>, JObj)
                                    ," ", kz_json:get_binary_value(<<"Energy-Level">>, JObj, <<"20">>)
                                   ]),
             {<<"energy">>, Args}
@@ -634,7 +650,7 @@ get_conf_command(<<"relate_participants">>, _Focus, _ConferenceId, JObj) ->
         'false' ->
             {'error', <<"conference relate_participants failed to execute as JObj did not validate.">>};
         'true' ->
-            Args = list_to_binary([kz_json:get_binary_value(<<"Participant">>, JObj)
+            Args = list_to_binary([kz_json:get_binary_value(<<"Participant-ID">>, JObj)
                                    ," ", kz_json:get_binary_value(<<"Other-Participant">>, JObj)
                                    ," ", relationship(kz_json:get_binary_value(<<"Relationship">>, JObj))
                                   ]),
@@ -655,21 +671,21 @@ get_conf_command(<<"undeaf_participant">>, _Focus, _ConferenceId, JObj) ->
         'false' ->
             {'error', <<"conference undeaf_participant failed to execute as JObj did not validate.">>};
         'true' ->
-            {<<"undeaf">>, kz_json:get_binary_value(<<"Participant">>, JObj)}
+            {<<"undeaf">>, kz_json:get_binary_value(<<"Participant-ID">>, JObj)}
     end;
 get_conf_command(<<"unmute_participant">>, _Focus, _ConferenceId, JObj) ->
     case kapi_conference:unmute_participant_v(JObj) of
         'false' ->
             {'error', <<"conference unmute failed to execute as JObj did not validate.">>};
         'true' ->
-            {<<"unmute">>, kz_json:get_binary_value(<<"Participant">>, JObj)}
+            {<<"unmute">>, kz_json:get_binary_value(<<"Participant-ID">>, JObj)}
     end;
 get_conf_command(<<"participant_volume_in">>, _Focus, _ConferenceId, JObj) ->
     case kapi_conference:participant_volume_in_v(JObj) of
         'false' ->
             {'error', <<"conference participant_volume_in failed to execute as JObj did not validate.">>};
         'true' ->
-            Args = list_to_binary([kz_json:get_binary_value(<<"Participant">>, JObj)
+            Args = list_to_binary([kz_json:get_binary_value(<<"Participant-ID">>, JObj)
                                    ," ", kz_json:get_binary_value(<<"Volume-In-Level">>, JObj, <<"0">>)
                                   ]),
             {<<"volume_in">>, Args}
@@ -679,7 +695,7 @@ get_conf_command(<<"participant_volume_out">>, _Focus, _ConferenceId, JObj) ->
         'false' ->
             {'error', <<"conference participant_volume_out failed to execute as JObj did not validate.">>};
         'true' ->
-            Args = list_to_binary([kz_json:get_binary_value(<<"Participant">>, JObj)
+            Args = list_to_binary([kz_json:get_binary_value(<<"Participant-ID">>, JObj)
                                    ," ", kz_json:get_binary_value(<<"Volume-Out-Level">>, JObj, <<"0">>)
                                   ]),
             {<<"volume_out">>, Args}
@@ -775,16 +791,13 @@ relay_event(UUID, Node, Props) ->
     gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, Payload),
     gproc:send({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, UUID)}, Payload).
 
-publish_participant_event(<<"add-member">>, Event, CallId, Props) ->
-    publish_participant_event(Event, CallId, Props);
-publish_participant_event(<<"del-member">>, Event, CallId, Props) ->
-    publish_participant_event(Event, CallId, Props);
-publish_participant_event(_, _, _, _) -> ok.
-
-publish_participant_event(Event, CallId, Props) ->
+-spec publish_participant_event(boolean(), kz_proplist(), ne_binary(), kz_proplist()) -> ok | skip.
+publish_participant_event(true=_Publish, Event, CallId, Props) ->
    Ev = [{<<"Event-Category">>, <<"conference">>}
        ,{<<"Event-Name">>, <<"participant_event">>}
        | Event],
     ConferenceId = props:get_value(<<"Conference-Name">>, Props),
     Publisher = fun(P) -> kapi_conference:publish_participant_event(ConferenceId, CallId, P) end,
-    kz_amqp_worker:cast(Ev, Publisher).
+    kz_amqp_worker:cast(Ev, Publisher),
+    ok;
+publish_participant_event(_, _, _, _) -> 'skip'.

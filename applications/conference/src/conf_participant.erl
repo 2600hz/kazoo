@@ -449,78 +449,44 @@ code_change(_OldVsn, Participant, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+-spec join_conference(boolean(), ne_binary(), kapps_conference:conference()) -> ok.
+join_conference('true'=_Moderator, ParticipantId, Conference) ->
+    lager:debug("caller has joined the local conference as moderator ~p", [ParticipantId]),
+    kapps_conference:moderator_join_muted(Conference) andalso gen_listener:cast(self(), 'mute'),
+    kapps_conference:moderator_join_deaf(Conference) andalso gen_listener:cast(self(), 'deaf'),
+    ok;
+join_conference('false'=_Moderator, ParticipantId, Conference) ->
+    lager:debug("caller has joined the local conference as member ~p", [ParticipantId]),
+    kapps_conference:member_join_muted(Conference) andalso gen_listener:cast(self(), 'mute'),
+    kapps_conference:member_join_deaf(Conference) andalso gen_listener:cast(self(), 'deaf'),
+    ok.
+
 -spec sync_participant(kz_json:objects(), kapps_call:call(), participant()) ->
                               participant().
 sync_participant(JObj, Call, #participant{in_conference='false'
                                           ,conference=Conference
+                                          ,discovery_event=DiscoveryEvent
                                          }=Participant) ->
-    Participator = kz_json:get_value(<<"Participant">>, JObj),
-    IsModerator = kapps_conference:moderator(Conference),
-    case Participator of
-        Moderator when IsModerator ->
-            Focus = kz_json:get_value(<<"Focus">>, JObj),
-            C = kapps_conference:set_focus(Focus, Conference),
-            sync_moderator(Moderator, Call, Participant#participant{conference=C});
-        Member ->
-            Focus = kz_json:get_value(<<"Focus">>, JObj),
-            C = kapps_conference:set_focus(Focus, Conference),
-            sync_member(Member, Call, Participant#participant{conference=C})
-    end;
+    ParticipantId = kz_json:get_value(<<"Participant-ID">>, JObj),
+    kapps_conference:set_focus(kz_json:get_value(<<"Focus">>, JObj), Conference),
+    gen_listener:cast(self(), 'play_announce'),
+    join_conference(kapps_conference:moderator(Conference), ParticipantId, Conference),
+    _ = kz_util:spawn(fun notify_requestor/4, [kapps_call:controller_queue(Call)
+                                                ,ParticipantId
+                                                ,DiscoveryEvent
+                                                ,kapps_conference:id(Conference)
+                                               ]),
+    Participant#participant{in_conference='true'
+                  ,participant_id=ParticipantId
+                  ,muted=(not kz_json:is_true(<<"Speak">>, JObj))
+                  ,deaf=(not kz_json:is_true(<<"Hear">>, JObj))
+                 };
 sync_participant(JObj, _Call, #participant{in_conference='true'}=Participant) ->
-    Participator = kz_json:get_value(<<"Participant">>, JObj),
     lager:debug("caller has is still in the conference"),
     Participant#participant{in_conference='true'
-                            ,muted=(not kz_json:is_true(<<"Speak">>, Participator))
-                            ,deaf=(not kz_json:is_true(<<"Hear">>, Participator))
+                            ,muted=(not kz_json:is_true(<<"Speak">>, JObj))
+                            ,deaf=(not kz_json:is_true(<<"Hear">>, JObj))
                             }.
-
--spec sync_moderator(kz_json:object(), kapps_call:call(), participant()) -> participant().
-sync_moderator(JObj, Call, #participant{conference=Conference
-                                        ,discovery_event=DiscoveryEvent
-                                       }=Participant) ->
-    ParticipantId = kz_json:get_value(<<"Participant-ID">>, JObj),
-    lager:debug("caller has joined the local conference as moderator ~p", [ParticipantId]),
-    Deaf = not kz_json:is_true(<<"Hear">>, JObj),
-    Muted = not kz_json:is_true(<<"Speak">>, JObj),
-    gen_listener:cast(self(), 'play_announce'),
-    kapps_conference:moderator_join_muted(Conference)
-        andalso gen_listener:cast(self(), 'mute'),
-    kapps_conference:moderator_join_deaf(Conference)
-        andalso gen_listener:cast(self(), 'deaf'),
-    _ = kz_util:spawn(fun notify_requestor/4, [kapps_call:controller_queue(Call)
-                                               ,ParticipantId
-                                               ,DiscoveryEvent
-                                               ,kapps_conference:id(Conference)
-                                              ]),
-    Participant#participant{in_conference='true'
-                            ,muted=Muted
-                            ,deaf=Deaf
-                            ,participant_id=ParticipantId
-                           }.
-
--spec sync_member(kz_json:object(), kapps_call:call(), participant()) -> participant().
-sync_member(JObj, Call, #participant{conference=Conference
-                                     ,discovery_event=DiscoveryEvent
-                                    }=Participant) ->
-    ParticipantId = kz_json:get_value(<<"Participant-ID">>, JObj),
-    lager:debug("caller has joined the local conference as member ~p", [ParticipantId]),
-    Deaf = not kz_json:is_true(<<"Hear">>, JObj),
-    Muted = not kz_json:is_true(<<"Speak">>, JObj),
-    gen_listener:cast(self(), 'play_announce'),
-    kapps_conference:member_join_muted(Conference)
-        andalso gen_listener:cast(self(), 'mute'),
-    kapps_conference:member_join_deaf(Conference)
-        andalso gen_listener:cast(self(), 'deaf'),
-    _ = kz_util:spawn(fun notify_requestor/4, [kapps_call:controller_queue(Call)
-                                               ,ParticipantId
-                                               ,DiscoveryEvent
-                                               ,kapps_conference:id(Conference)
-                                              ]),
-    Participant#participant{in_conference='true'
-                            ,muted=Muted
-                            ,deaf=Deaf
-                            ,participant_id=ParticipantId
-                           }.
 
 -spec notify_requestor(ne_binary(), ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
 notify_requestor(MyQ, MyId, DiscoveryEvent, ConferenceId) ->
