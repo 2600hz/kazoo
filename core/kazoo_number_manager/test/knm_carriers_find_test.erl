@@ -70,8 +70,11 @@ verify_block(PhoneNumber, JObj, DID, Activation) ->
      ,{"Verify start number carrier module"
        ,?_assertEqual(?CARRIER_OTHER, knm_phone_number:module_name(PhoneNumber))
       }
-     ,{"Verify assign_to account id"
-       ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assign_to(PhoneNumber))
+     ,{"Verify auth_by account id"
+       ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:auth_by(PhoneNumber))
+      }
+     ,{"Verify assigned_to account id"
+       ,?_assertEqual('undefined', knm_phone_number:assigned_to(PhoneNumber))
       }
      ,{"Verify phone number database"
        ,?_assertEqual(<<"numbers%2F%2B1415">>, knm_phone_number:number_db(PhoneNumber))
