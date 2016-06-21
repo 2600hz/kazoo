@@ -381,14 +381,14 @@ search_response_to_KNM(Xml, AccountId) ->
                ,{<<"rate_center">>, rate_center_to_json(Xml)}
                ])
             ),
-    knm_number:newly_found(Num, ?MODULE, AccountId, JObj).
+    knm_carriers:create_discovery(Num, ?MODULE, AccountId, JObj).
 
 %% @private
 -spec tollfree_search_response_to_KNM(xml_el(), ne_binary()) ->
                                              knm_number:knm_number_return().
 tollfree_search_response_to_KNM(Xml, AccountId) ->
     Num = kz_util:get_xml_value("//TelephoneNumber/text()", Xml),
-    knm_number:newly_found(Num, ?MODULE, AccountId, kz_json:new()).
+    knm_carriers:create_discovery(Num, ?MODULE, AccountId, kz_json:new()).
 
 %%--------------------------------------------------------------------
 %% @private

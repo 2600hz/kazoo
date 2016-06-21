@@ -9,6 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(knm_carriers).
 
+-include_lib("kazoo/src/kz_json.hrl").
 -include("knm.hrl").
 
 -export([find/1, find/2, find/3
@@ -18,6 +19,9 @@
          ,acquire/1
          ,disconnect/1
         ]).
+
+%%% For knm carriers only
+-export([create_discovery/4]).
 
 -define(DEFAULT_CARRIER_MODULES, [?CARRIER_LOCAL]).
 
@@ -134,29 +138,32 @@ process_number_result(Number, Acc) ->
     end.
 
 -spec check_for_existing_did(knm_number:knm_number(), kz_json:objects(), ne_binary()
-                            ,knm_phone_number_return()) ->
-                                    kz_json:objects().
-check_for_existing_did(_Number, Acc, _Carrier, {'error', _R}) ->
-    lager:debug("skipping number ~s: ~p"
-               ,[knm_phone_number:number(knm_number:phone_number(_Number)), _R]),
-    Acc;
+                            ,knm_phone_number_return()) -> kz_json:objects().
+check_for_existing_did(Number, Acc, _Carrier, {'error', 'not_found'}) ->
+    %% This case is only possible for -dTEST: tests don't save to DB (yet)
+    io:format(user, "number ~s was not in db\n"
+             ,[knm_phone_number:number(knm_number:phone_number(Number))]),
+    [found_number_to_jobj(Number) | Acc];
 check_for_existing_did(Number, Acc, Carrier, {'ok', ExistingPhoneNumber}) ->
     case knm_phone_number:module_name(ExistingPhoneNumber) of
         Carrier -> [found_number_to_jobj(Number) | Acc];
         _OtherCarrier ->
-            create_discovery(
-              transition_existing_to_discovery(Number, ExistingPhoneNumber, Carrier)
-              ,Acc
-             )
+            transition_existing_to_discovery(Number, ExistingPhoneNumber, Acc)
     end.
 
--spec create_discovery(knm_number:knm_number(), kz_json:objects()) ->
-                              kz_json:objects().
-create_discovery(Number, Acc) ->
-    DiscoveryUpdates =
-        [{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}],
+-spec transition_existing_to_discovery(knm_number:knm_number(), knm_phone_number:knm_phone_number()
+                                      ,kz_json:objects()) ->
+                                              kz_json:objects().
+transition_existing_to_discovery(Number, ExistingPhoneNumber, Acc) ->
+    PhoneNumber0 = knm_number:phone_number(Number),
     {'ok', PhoneNumber} =
-        knm_phone_number:setters(knm_number:phone_number(Number), DiscoveryUpdates),
+        knm_phone_number:setters(
+          ExistingPhoneNumber
+          ,[{fun knm_phone_number:set_module_name/2, knm_phone_number:module_name(PhoneNumber0)}
+           ,{fun knm_phone_number:set_carrier_data/2, knm_phone_number:carrier_data(PhoneNumber0)}
+           ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
+           ]
+         ),
     case knm_number:save(knm_number:set_phone_number(Number, PhoneNumber)) of
         {'ok', SavedNumber} ->
             [found_number_to_jobj(SavedNumber) | Acc];
@@ -164,20 +171,6 @@ create_discovery(Number, Acc) ->
             lager:debug("skipping number ~s: ~p", [knm_phone_number:number(PhoneNumber), _R]),
             Acc
     end.
-
--spec transition_existing_to_discovery(knm_number:knm_number(), knm_phone_number:knm_phone_number(), ne_binary()) ->
-                                              knm_number:knm_number().
-transition_existing_to_discovery(Number, ExistingPhoneNumber, Carrier) ->
-    PhoneNumber0 = knm_number:phone_number(Number),
-    {'ok', PhoneNumber} =
-        knm_phone_number:setters(
-          ExistingPhoneNumber
-          ,[{fun knm_phone_number:set_module_name/2, knm_phone_number:module_name(PhoneNumber0)}
-            ,{fun knm_phone_number:set_carrier_data/2, knm_phone_number:carrier_data(PhoneNumber0)}
-            ,{fun knm_phone_number:set_module_name/2, Carrier}
-           ]
-         ),
-    knm_number:set_phone_number(Number, PhoneNumber).
 
 -spec found_number_to_jobj(knm_number:knm_number()) -> kz_json:object().
 found_number_to_jobj(Number) ->
@@ -247,10 +240,15 @@ check(Numbers, Options) ->
 available_carriers(Options) ->
     case props:get_value(<<"carriers">>, Options) of
         Cs=[_|_] -> keep_only_reachable(Cs);
-        _ -> keep_only_reachable([?CARRIER_LOCAL])
+        _ -> get_available_carriers(Options)
     end.
 -else.
 available_carriers(Options) ->
+    get_available_carriers(Options).
+-endif.
+
+-spec get_available_carriers(kz_proplist()) -> atoms().
+get_available_carriers(Options) ->
     case props:get_value(?KNM_ACCOUNTID_CARRIER, Options) of
         'undefined' ->
             keep_only_reachable(?CARRIER_MODULES);
@@ -273,7 +271,6 @@ available_carriers(Options) ->
                      )
             end
     end.
--endif.
 
 -spec default_carriers() -> atoms().
 default_carriers() ->
@@ -325,6 +322,43 @@ disconnect(Number) ->
             lager:debug("non-existant carrier module ~p, allowing disconnect", [_Mod]),
             Number
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Create a number in a discovery state.
+%% @end
+%%--------------------------------------------------------------------
+-spec create_discovery(ne_binary(), module(), ne_binary(), kz_json:object()) ->
+                              knm_number_return().
+create_discovery(DID=?NE_BINARY, Carrier, ?MATCH_ACCOUNT_RAW(AuthBy), Data=?JSON_WRAPPER(_))
+  when is_atom(Carrier) ->
+    case knm_number:get(DID) of
+        {'ok', _Number}=Ok -> Ok;
+        {'error', 'not_found'} ->
+            NormalizedNum = knm_converters:normalize(DID),
+            {'ok', PhoneNumber} =
+                knm_phone_number:setters(
+                  knm_phone_number:new()
+                  ,[{fun knm_phone_number:set_number/2, NormalizedNum}
+                   ,{fun knm_phone_number:set_number_db/2, knm_converters:to_db(NormalizedNum)}
+                   ,{fun knm_phone_number:set_assign_to/2, 'undefined'}
+                   ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
+                   ,{fun knm_phone_number:set_module_name/2, kz_util:to_binary(Carrier)}
+                   ,{fun knm_phone_number:set_carrier_data/2, Data}
+                   ,{fun knm_phone_number:set_auth_by/2, AuthBy}
+                   ]),
+            io:format(user, "create_discovery ~p\n", [DID]),
+            Number = knm_number:set_phone_number(knm_number:new(), PhoneNumber),
+            case knm_number:save(Number) of
+                {'ok', _}=Ok -> Ok;
+                {'error', _R}=Error ->
+                    io:format(user, "create_discovery error ~p\n", [_R]),
+                    lager:debug("create ~s as discovery error: ~p", [DID, _R]),
+                    Error
+            end
+    end.
+
 
 %%%===================================================================
 %%% Internal functions

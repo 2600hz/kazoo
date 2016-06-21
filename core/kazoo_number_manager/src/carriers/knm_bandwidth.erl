@@ -110,7 +110,7 @@ process_numbers_search_resp(Xml, Options) ->
 found_number_to_KNM(Found, AccountId) ->
     JObj = number_search_response_to_json(Found),
     Num = kz_json:get_value(<<"e164">>, JObj),
-    knm_number:newly_found(Num, ?MODULE, AccountId, JObj).
+    knm_carriers:create_discovery(Num, ?MODULE, AccountId, JObj).
 
 %%--------------------------------------------------------------------
 %% @public

@@ -89,7 +89,6 @@ new(DID) ->
 -spec new(ne_binary(), knm_number_options:options()) -> knm_phone_number().
 new(DID, Options) ->
     NormalizedNum = knm_converters:normalize(DID),
-    CarrierData = props:get_value('carrier_data', Options, kz_json:new()),
     {'ok', PhoneNumber} =
         setters(new(),
                 [{fun set_number/2, NormalizedNum}
@@ -97,7 +96,6 @@ new(DID, Options) ->
                 ,{fun set_assign_to/2, knm_number_options:assign_to(Options)}
                 ,{fun set_state/2, ?NUMBER_STATE_DISCOVERY}
                 ,{fun set_module_name/2, knm_number_options:module_name(Options)}
-                ,{fun set_carrier_data/2, CarrierData}
                 ,{fun set_auth_by/2, knm_number_options:auth_by(Options)}
                 ,{fun set_dry_run/2, knm_number_options:dry_run(Options)}
                 ,{fun set_doc/2, knm_number_options:public_fields(Options)}

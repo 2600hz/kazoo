@@ -162,7 +162,7 @@ to_numbers({'ok',JObjs}, AccountId) ->
     Numbers =
         [N || JObj <- JObjs,
               {'ok', N} <-
-                  [knm_number:newly_found(kz_json:get_value(<<"e164">>, JObj)
+                  [knm_carriers:create_discovery(kz_json:get_value(<<"e164">>, JObj)
                                          ,?MODULE
                                          ,AccountId
                                          ,JObj

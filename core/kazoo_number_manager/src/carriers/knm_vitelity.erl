@@ -234,7 +234,7 @@ response_to_numbers(JObj, Options) ->
 -spec response_pair_to_number(ne_binary(), kz_json:object(), knm_number:knm_numbers(), api_binary()) ->
                                      knm_number:knm_numbers().
 response_pair_to_number(DID, CarrierData, Acc, AccountId) ->
-    case knm_number:newly_found(DID, ?MODULE, AccountId, CarrierData) of
+    case knm_carriers:create_discovery(DID, ?MODULE, AccountId, CarrierData) of
         {'ok', N} -> [N | Acc];
         _ -> Acc
     end.
