@@ -107,6 +107,7 @@ temporal-menu: Time based call routing. To mark the office as open, press 1. To 
 vm-abort: I'm sorry, there have been too many failed attempts to log in; goodbye.
 vm-deleted: Deleted.
 vm-enter_id: Please enter you mailbox number, then press pound.
+vm-enter_forward_id: Please enter the mailbox number you wish to forward to, then press pound.
 vm-enter_new_pin_confirm: To confirm, please enter your new password again, then press pound.
 vm-enter_new_pin: Please enter your new password, then press pound.
 vm-enter_pass: Please enter your password, then press pound.
@@ -116,7 +117,7 @@ vm-greeting_intro: The subscriber you are trying to reach is unavailable.
 vm-mailbox_full: The voicemail box is full, please try your call again later.
 vm-main_menu_not_configurable: To hear new messages, press one. To hear your saved messages, press two.
 vm-main_menu: To hear new messages, press one. To hear your saved messages, press two. To change your settings, press five.
-vm-message_menu: To save, press one. To replay, press two.  To delete, press seven. To return to the main menu, press zero.
+vm-message_menu: To save, press one. To replay, press two. To forward, press three. To delete, press seven. To return to the main menu, press zero.
 vm-message_number: Message
 vm-new_and: new and
 vm-new_message: new message

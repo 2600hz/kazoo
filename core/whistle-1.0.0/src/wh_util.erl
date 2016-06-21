@@ -6,6 +6,7 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%   Karl Anderson
+%%%   SIPLABS, LLC (Vladimir Potapev)
 %%%-------------------------------------------------------------------
 -module(wh_util).
 
@@ -122,6 +123,7 @@
 
 -export([write_file/2, write_file/3
          ,delete_file/1
+         ,rename_file/2
          ,make_dir/1
         ]).
 
@@ -1383,6 +1385,14 @@ delete_file(Filename) ->
         'ok' -> 'ok';
         {'error', _}=_E ->
             lager:debug("deleting file ~s failed : ~p", [Filename, _E])
+    end.
+
+-spec rename_file(file:name(), file:name()) -> 'ok'.
+rename_file(FilenameFrom, FilenameTo) ->
+    case file:rename(FilenameFrom, FilenameTo) of
+        'ok' -> 'ok';
+        {'error', _}=_E ->
+            lager:error("moving file ~s into ~s failed : ~p", [FilenameFrom, FilenameTo, _E])
     end.
 
 %% @public
