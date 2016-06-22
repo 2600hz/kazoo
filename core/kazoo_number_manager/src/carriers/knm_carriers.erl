@@ -348,15 +348,7 @@ create_discovery(DID=?NE_BINARY, Carrier, ?MATCH_ACCOUNT_RAW(AuthBy), Data=?JSON
                    ,{fun knm_phone_number:set_carrier_data/2, Data}
                    ,{fun knm_phone_number:set_auth_by/2, AuthBy}
                    ]),
-            io:format(user, "create_discovery ~p\n", [DID]),
-            Number = knm_number:set_phone_number(knm_number:new(), PhoneNumber),
-            case knm_number:save(Number) of
-                {'ok', _}=Ok -> Ok;
-                {'error', _R}=Error ->
-                    io:format(user, "create_discovery error ~p\n", [_R]),
-                    lager:debug("create ~s as discovery error: ~p", [DID, _R]),
-                    Error
-            end
+            knm_number:save(knm_number:set_phone_number(knm_number:new(), PhoneNumber))
     end.
 
 

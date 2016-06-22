@@ -795,7 +795,13 @@ fetch_account_from_ports(NormalizedNum, Error) ->
 wrap_phone_number_return(Result) ->
     wrap_phone_number_return(Result, new()).
 
-wrap_phone_number_return({'error', _}=E, _Number) -> E;
+wrap_phone_number_return({'error', _R}=E, _Number) ->
+    lager:debug("error saving ~s (~s): ~p"
+               ,[knm_phone_number:number(knm_number:phone_number(_Number))
+                ,knm_phone_number:state(knm_number:phone_number(_Number))
+                ,_R
+                ]),
+    E;
 wrap_phone_number_return({'ok', PhoneNumber}, Number) ->
     {'ok', set_phone_number(Number, PhoneNumber)};
 wrap_phone_number_return(PhoneNumber, Number) ->
