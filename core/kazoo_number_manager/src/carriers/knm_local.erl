@@ -64,7 +64,7 @@ do_find_numbers(<<"+",_/binary>>=Number, Quantity, AccountId)
             {'error', 'not_available'};
         {'ok', JObjs} ->
             lager:debug("found available local numbers for account ~s", [AccountId]),
-            Numbers = format_numbers(AccountId, JObjs),
+            Numbers = format_numbers(JObjs),
             find_more(Quantity, AccountId, length(Numbers), Numbers);
         {'error', _R}=E ->
             lager:debug("failed to lookup available local numbers: ~p", [_R]),
@@ -85,10 +85,10 @@ find_more(Quantity, AccountId, NotEnough, Numbers)
 find_more(_, _, _Enough, Numbers) ->
     {'ok', Numbers}.
 
--spec format_numbers(ne_binary(), kz_json:objects()) -> knm_number:knm_numbers().
-format_numbers(AccountId, JObjs) ->
+-spec format_numbers(kz_json:objects()) -> knm_number:knm_numbers().
+format_numbers(JObjs) ->
     Nums = [kz_doc:id(JObj) || JObj <- JObjs],
-    Options = [{'auth_by', AccountId}
+    Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
               ],
     [Number || {_Num,{'ok',Number}} <- knm_numbers:get(Nums, Options)].
 
