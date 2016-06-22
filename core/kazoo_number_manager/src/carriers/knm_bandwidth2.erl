@@ -9,6 +9,7 @@
 %%%     Karl Anderson
 %%%     Mark Magnusson
 %%%     Pierre Fenoll
+%%%     Luis Azedo
 %%%-------------------------------------------------------------------
 -module(knm_bandwidth2).
 -behaviour(knm_gen_carrier).
@@ -81,6 +82,10 @@
             orelse Prefix == <<"888">>
             orelse Prefix == <<"889">>
        ).
+
+-define(ORDER_NUMBER_XPATH, "ExistingTelephoneNumberOrderType/TelephoneNumberList/TelephoneNumber/text()").
+-define(ORDER_ID_XPATH, "CustomerOrderId/text()").
+-define(ORDER_NAME_XPATH, "Name/text()").
 
 %%% API
 
@@ -281,7 +286,7 @@ api_post(Url, Body) ->
                   ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
                   ,{'body_format', 'string'}
                   ],
-    ?DEBUG_WRITE("Request:~n~s ~s~n~s~n~p~n~s~n", ['post', Url, Headers, HTTPOptions, Body]),
+    ?DEBUG_WRITE("Request:~n~s ~s~n~p~n~p~n~p~p~n", ['post', Url, Headers, HTTPOptions, Body, UnicodeBody]),
     Response = kz_http:post(Url, Headers, UnicodeBody, HTTPOptions),
     handle_response(Response).
 -else.
@@ -299,6 +304,9 @@ api_post("https://api.inetwork.com/v1.0/accounts//orders", Body) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_response(kz_http:ret()) -> api_res().
+handle_response({Result, Code, Props, Response})
+  when is_binary(Response) ->
+    handle_response({Result, Code, Props, kz_util:to_list(Response)});
 handle_response({'ok', 401, _, _Response}) ->
     ?DEBUG_APPEND("Response:~n401~n~s~n", [_Response]),
     lager:debug("bandwidth.com request error: 401 (unauthenticated)"),
@@ -357,14 +365,15 @@ number_order_response_to_json([]) ->
 number_order_response_to_json([Xml]) ->
     number_order_response_to_json(Xml);
 number_order_response_to_json(Xml) ->
+    Num = maybe_add_us_prefix(kz_util:get_xml_value(?ORDER_NUMBER_XPATH, Xml)),
     kz_json:from_list(
       props:filter_empty(
-        [{<<"order_id">>, kz_util:get_xml_value("id/text()", Xml)}
-        ,{<<"order_name">>, kz_util:get_xml_value("Name/text()", Xml)}
-        ,{<<"number">>, kz_util:get_xml_value("TelephoneNumberList/TelephoneNumber/text()", Xml)}
+        [{<<"order_id">>, kz_util:get_xml_value(?ORDER_ID_XPATH, Xml)}
+        ,{<<"order_name">>, kz_util:get_xml_value(?ORDER_NAME_XPATH, Xml)}
+        ,{<<"number">>, Num}
         ]
        )
-     ).
+    ).
 
 %% @private
 -spec search_response_to_KNM(xml_els() | xml_el(), ne_binary()) ->
@@ -372,7 +381,7 @@ number_order_response_to_json(Xml) ->
 search_response_to_KNM([Xml], AccountId) ->
     search_response_to_KNM(Xml, AccountId);
 search_response_to_KNM(Xml, AccountId) ->
-    Num = kz_util:get_xml_value("//FullNumber/text()", Xml),
+    Num = maybe_add_us_prefix(kz_util:get_xml_value("//FullNumber/text()", Xml)),
     JObj = kz_json:from_list(
              props:filter_empty(
                [{<<"number">>, Num}
@@ -381,6 +390,10 @@ search_response_to_KNM(Xml, AccountId) ->
             ),
     {'ok', PhoneNumber} = knm_phone_number:newly_found(Num, ?MODULE, AccountId, JObj),
     knm_number:set_phone_number(knm_number:new(), PhoneNumber).
+
+-spec maybe_add_us_prefix(binary()) -> binary().
+maybe_add_us_prefix(<<"+1", _/binary>>=Num) -> Num;
+maybe_add_us_prefix(Num) -> <<"+1", Num/binary>>.
 
 %% @private
 -spec tollfree_search_response_to_KNM(xml_el(), ne_binary()) ->
