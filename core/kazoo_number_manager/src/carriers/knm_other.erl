@@ -44,7 +44,7 @@
         ,props:get_value(<<"phonebook_url">>, Options)
        ).
 -else.
--define(PHONEBOOK_URL(Options)
+-define(PHONEBOOK_URL(_Options)
         ,kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>)
        ).
 -endif.

@@ -54,8 +54,11 @@ do_find_numbers(<<"+",_/binary>>=Number, Quantity, AccountId)
                   ,{'endkey', [?NUMBER_STATE_AVAILABLE, <<"\ufff0">>]}
                   ,{'limit', Quantity}
                   ],
-    DB = ?NE_BINARY = knm_converters:to_db(Number),
-    case kz_datamgr:get_results(DB, <<"numbers/status">>, ViewOptions) of
+    case
+        'undefined' /= (DB = knm_converters:to_db(Number)) andalso
+        kz_datamgr:get_results(DB, <<"numbers/status">>, ViewOptions)
+    of
+        'false' -> {'error', 'not_available'};
         {'ok', []} ->
             lager:debug("found no available local numbers for account ~s", [AccountId]),
             {'error', 'not_available'};
