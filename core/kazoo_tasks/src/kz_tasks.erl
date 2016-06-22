@@ -308,7 +308,11 @@ worker_upload_result(TaskId=?NE_BINARY, CSVOut=?NE_BINARY) ->
 %%--------------------------------------------------------------------
 -spec get_output_header(module(), atom()) -> kz_csv:row().
 get_output_header(Module, Function) ->
-    try Module:output_header(Function)
+    try Module:output_header(Function) of
+        [_|_]=Header -> Header;
+        _NotARow ->
+            lager:debug("bad CSV output header ~p, using default", [_NotARow]),
+            ?OUTPUT_CSV_HEADER_ROW
     catch
         _E:_R ->
             lager:debug("output_header not found for ~s:~s (~p:~p), using default"
