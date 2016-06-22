@@ -519,20 +519,21 @@ validate_move(AccountId, ToAccount) ->
                               {'ok', 'done'} |
                               {'error', any()}.
 move_descendants(<<_/binary>> = AccountId, Tree, NewResellerId) ->
-    update_descendants_tree(get_descendants(AccountId), Tree, NewResellerId).
+    update_descendants_tree(get_descendants(AccountId), Tree, NewResellerId, AccountId).
 
--spec update_descendants_tree(ne_binaries(), ne_binaries(), ne_binary()) ->
+-spec update_descendants_tree(ne_binaries(), ne_binaries(), ne_binary(), ne_binary()) ->
                                      {'ok', 'done'} |
                                      {'error', any()}.
-update_descendants_tree([], _, _) -> {'ok', 'done'};
-update_descendants_tree([Descendant|Descendants], Tree, NewResellerId) ->
+update_descendants_tree([], _, _, _) -> {'ok', 'done'};
+update_descendants_tree([Descendant|Descendants], Tree, NewResellerId, MovedAccountId) ->
     AccountId = kz_util:format_account_id(Descendant, 'raw'),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:open_doc(AccountDb, AccountId) of
         {'error', _E}=Error -> Error;
         {'ok', JObj} ->
             PreviousTree = kz_account:tree(JObj),
-            {_, Tail} = lists:split(erlang:length(Tree), PreviousTree),
+            %% Preserve tree below and including common ancestor
+            {_, Tail} = lists:splitwith(fun(X) -> X =/= MovedAccountId end, PreviousTree),
             ToTree = Tree ++ Tail,
             JObj1 = kz_json:set_values([{<<"pvt_tree">>, ToTree}
                                         ,{<<"pvt_previous_tree">>, PreviousTree}
@@ -543,7 +544,7 @@ update_descendants_tree([Descendant|Descendants], Tree, NewResellerId) ->
                 {'ok', _} ->
                     {'ok', _} = replicate_account_definition(JObj1),
                     {'ok', _} = move_service(AccountId, ToTree, NewResellerId, 'undefined'),
-                    update_descendants_tree(Descendants, ToTree, NewResellerId)
+                    update_descendants_tree(Descendants, Tree, NewResellerId, MovedAccountId)
             end
     end.
 
