@@ -12,12 +12,14 @@ Inside the "metaflows" object should be a familiar couple of keys, plus a couple
 
 * numbers: An object with keys that correspond to collected DTMF sequence after the binding_digit is pressed
 * patterns: An object with keys of regexes to match against the collected DTMF sequence
-* binding_digit: DTMF to trigger a metaflow; defaults to '*'. The binding digit will typically reset the previous input allowing the user to start over at any time if they made a mistake. This also means you can't have the binding digit in the number sequence that follows, because the binding digit will discard the prior digits. For example if your binding digit is '*' and you have "123*456" number configured when you dial "*123*456" it will activate metaflow "456", not "123*456". An exception to this rule when you need a double binding digit, so binding digit '*' and number "*" is a valid shortcut. Another valid example is binding digit '*' and number "*123", so when you dial "**123" the first '*' is the binding digit that arms metaflows, but the second '*' is part of the number and will be treated as "*123", not as just "123".
+* binding_digit: DTMF to trigger a metaflow; defaults to '*'.
 * digit_timeout_ms: how long to wait for another DTMF before processing the collected DTMFs
 * listen_on: restrict which leg of the call to listen on for DTMF
     * "self": listen for DTMF on the leg of the device/user with the metaflow
     * "peer": listen on the opposite leg of the device/user
     * "both": listen to both legs of the call for DTMF
+* use_fast_rearm: allows immediate retries of failed entries; defaults to false. When true, the binding digit will typically reset the previous input allowing the user to start over at any time if they made a mistake. This also means you can't have the binding digit in the number sequence that follows, because the binding digit will discard the prior digits. For example if your binding digit is '*' and you have "123*456" number configured when you dial "*123*456" it will activate metaflow "456", not "123*456". An exception to this rule when you need a double binding digit, so binding digit '*' and number "*" is a valid shortcut. Another valid example is binding digit '*' and number "*123", so when you dial "**123" the first '*' is the binding digit that arms metaflows, but the second '*' is part of the number and will be treated as "*123", not as just "123".
+
 
 ###### Numbers
 
