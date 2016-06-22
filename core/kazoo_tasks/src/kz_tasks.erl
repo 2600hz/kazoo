@@ -257,7 +257,7 @@ remove(TaskId=?NE_BINARY) ->
 -spec worker_finished(task_id(), ne_binary(), non_neg_integer(), non_neg_integer()) -> 'ok'.
 worker_finished(TaskId=?NE_BINARY, TaskRev=?NE_BINARY, TotalSucceeded, TotalFailed)
   when is_integer(TotalSucceeded), is_integer(TotalFailed) ->
-    gen_server:cast(?SERVER, {'worker_finished', TaskId, TaskRev, TotalSucceeded, TotalFailed}).
+    gen_server:call(?SERVER, {'worker_finished', TaskId, TaskRev, TotalSucceeded, TotalFailed}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -308,7 +308,11 @@ worker_upload_result(TaskId=?NE_BINARY, CSVOut=?NE_BINARY) ->
 %%--------------------------------------------------------------------
 -spec get_output_header(module(), atom()) -> kz_csv:row().
 get_output_header(Module, Function) ->
-    try Module:output_header(Function)
+    try Module:output_header(Function) of
+        [_|_]=Header -> Header;
+        _NotARow ->
+            lager:debug("bad CSV output header ~p, using default", [_NotARow]),
+            ?OUTPUT_CSV_HEADER_ROW
     catch
         _E:_R ->
             lager:debug("output_header not found for ~s:~s (~p:~p), using default"
@@ -436,6 +440,19 @@ handle_call({'start_task', TaskId}, _From, State) ->
             ?REPLY(State, {'error', 'already_started'})
     end;
 
+%% This used to be cast but would race with worker process' EXIT signal.
+handle_call({'worker_finished', TaskId, TaskRev, TotalSucceeded, TotalFailed}, _From, State) ->
+    lager:debug("worker finished ~s: ~p/~p", [TaskId, TotalSucceeded, TotalFailed]),
+    [Task] = task_by_id(TaskId, State),
+    Task1 = Task#{ finished => kz_util:current_tstamp()
+                 , total_rows_failed => TotalFailed
+                 , total_rows_succeeded => TotalSucceeded
+                 , rev => TaskRev
+                 },
+    {'ok', _JObj} = update_task(Task1),
+    State1 = remove_task(TaskId, State),
+    ?REPLY(State1, 'ok');
+
 handle_call({'remove_task', TaskId}, _From, State) ->
     lager:debug("attempting to remove ~s", [TaskId]),
     case task_by_id(TaskId, State) of
@@ -472,18 +489,6 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'worker_finished', TaskId, TaskRev, TotalSucceeded, TotalFailed}, State) ->
-    lager:debug("worker finished ~s: ~p/~p", [TaskId, TotalSucceeded, TotalFailed]),
-    [Task] = task_by_id(TaskId, State),
-    Task1 = Task#{ finished => kz_util:current_tstamp()
-                 , total_rows_failed => TotalFailed
-                 , total_rows_succeeded => TotalSucceeded
-                 , rev => TaskRev
-                 },
-    {'ok', _JObj} = update_task(Task1),
-    State1 = remove_task(TaskId, State),
-    {'noreply', State1};
-
 handle_cast({'worker_error', TaskId}, State) ->
     lager:debug("worker error ~s", [TaskId]),
     [Task=#{total_rows := TotalRows}] = task_by_id(TaskId, State),
