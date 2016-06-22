@@ -176,27 +176,15 @@ transition_existing_to_discovery(Number, ExistingPhoneNumber, Acc) ->
 -spec found_number_to_jobj(knm_number:knm_number()) -> kz_json:object().
 found_number_to_jobj(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
-    CarrierData = knm_phone_number:carrier_data(PhoneNumber),
+    AssignTo = knm_phone_number:assign_to(PhoneNumber),
     DID = knm_phone_number:number(PhoneNumber),
-    case knm_phone_number:module_name(PhoneNumber) of
-        ?CARRIER_MANAGED ->
-            kz_json:from_list(
-              props:filter_undefined(
-                [{<<"number">>, DID}
-                ,{<<"rate">>, kz_json:get_value(<<"rate">>, CarrierData, <<"1">>)}
-                ,{<<"activation_charge">>, kz_json:get_value(<<"activation_charge">>, CarrierData, <<"0">>)}
-                ,{<<"state">>, knm_phone_number:state(PhoneNumber)}
-                ])
-             );
-        _Carrier ->
-            AssignTo = knm_phone_number:assign_to(PhoneNumber),
-            Add = props:filter_undefined(
-                    [{<<"number">>, DID}
-                    ,{<<"activation_charge">>, activation_charge(DID, AssignTo)}
-                    ,{<<"state">>, knm_phone_number:state(PhoneNumber)}
-                    ]),
-            kz_json:set_values(Add, CarrierData)
-    end.
+    kz_json:from_list(
+      props:filter_undefined(
+        [{<<"number">>, DID}
+        ,{<<"activation_charge">>, activation_charge(DID, AssignTo)}
+        ,{<<"state">>, knm_phone_number:state(PhoneNumber)}
+        ])
+     ).
 
 -spec activation_charge(ne_binary(), api_binary()) -> api_number().
 -ifdef(TEST).
