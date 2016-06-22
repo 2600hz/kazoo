@@ -77,10 +77,9 @@ resume(UUID, NewNode, Evt) ->
 %% and its corresponding '>' to %3C and %3E as they should be
 -spec fix_metadata(ne_binary()) -> ne_binary().
 fix_metadata(Meta) ->
-    Replacements = [
-                    {<<"\<sip\:">>, <<"%3Csip:">>}
-                    ,{<<"\>\<sip">>, <<"%3E<sip">>}
-                    ,{<<"\>;">>, <<"%3E;">>} % this is especially nice :)
+    Replacements = [{<<"<sip:">>, <<"%3Csip:">>}
+                    ,{<<"><sip">>, <<"%3E<sip">>}
+                    ,{<<">;">>, <<"%3E;">>} % this is especially nice :)
                     %% until such time as FS sets these properly
                     ,{<<"<dialplan></dialplan>">>, <<"<dialplan>XML</dialplan>">>}
                     ,{<<"<context>default</context>">>, <<"<context>context_2</context>">>}
