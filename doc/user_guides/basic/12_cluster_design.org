@@ -57,6 +57,11 @@ Cluster Design
    :END:
 
 *** Monolithic
+#+BEGIN_CENTER
+[[file:./images/kazoo_stack_monolithic.png]]
+#+END_CENTER
+
+*** Monolithic
 
 
 
