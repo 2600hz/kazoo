@@ -487,7 +487,7 @@ arm_bleg(#state{digit_timeout=Timeout}=State) ->
                }.
 
 -spec maybe_fast_rearm(ne_binary(), ne_binary(), binary()) -> binary().
-maybe_fast_rearm(DoubleBindingDigit, DoubleBindingDigit, <<>>) -> <<DoubleBindingDigit>>;
+maybe_fast_rearm(DoubleBindingDigit, DoubleBindingDigit, <<>>) -> DoubleBindingDigit;
 maybe_fast_rearm(DTMFisBindingDigit, DTMFisBindingDigit, _Collected) -> <<>>;
 maybe_fast_rearm(DTMF, _BindingDigit, Collected) -> <<Collected/binary, DTMF/binary>>.
 
