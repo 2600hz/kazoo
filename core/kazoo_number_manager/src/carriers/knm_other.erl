@@ -321,9 +321,8 @@ format_blocks_resp(JObj, Options) ->
         <<"success">> ->
             AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
             Numbers =
-                lists:foldl(
-                  fun(I, Acc) -> format_block_resp_fold(I, Acc, AccountId) end
-                  ,[]
+                lists:flatmap(
+                  fun(I) -> format_block_resp_fold(I, AccountId) end
                   ,kz_json:get_value(<<"data">>, JObj, [])
                  ),
             {'bulk', Numbers};
@@ -332,26 +331,14 @@ format_blocks_resp(JObj, Options) ->
             {'error', 'not_available'}
     end.
 
--spec format_block_resp_fold(kz_json:object(), knm_number:knm_numbers(), api_binary()) ->
-                                    knm_number:knm_numbers().
-format_block_resp_fold(Block, Numbers, AccountId) ->
+-spec format_block_resp_fold(kz_json:object(), api_binary()) -> knm_number:knm_numbers().
+format_block_resp_fold(Block, AccountId) ->
     StartNumber = kz_json:get_value(<<"start_number">>, Block),
     EndNumber = kz_json:get_value(<<"end_number">>, Block),
-    format_block_resp(Block, Numbers, AccountId, StartNumber, EndNumber).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec format_block_resp(kz_json:object(), knm_number:knm_numbers(), api_binary(), ne_binary(), ne_binary()) ->
-                               knm_number:knm_numbers().
-format_block_resp(JObj, Numbers, AccountId, Start, End) ->
-    [N || {'ok', N} <- [block_resp(JObj, AccountId, Start)
-                       ,block_resp(JObj, AccountId, End)
+    [N || {'ok', N} <- [block_resp(Block, AccountId, StartNumber)
+                       ,block_resp(Block, AccountId, EndNumber)
                        ]
-    ]
-        ++ Numbers.
+    ].
 
 -spec block_resp(kz_json:object(), api_binary(), ne_binary()) ->
                         knm_number:knm_number_return().
