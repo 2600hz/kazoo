@@ -13,7 +13,7 @@
 -define(KZ_TASKS_INPUT_ERROR_MIME, <<"expected_content">>).
 
 -define(KZ_TASKS_WAIT_AFTER_ROW,
-        kapps_config:get_integer(?KZ_TASKS_DOC_TYPE, <<"wait_milliseconds_after_row">>, 500)).
+        kapps_config:get_integer(?KZ_TASKS_DOC_TYPE, <<"wait_after_row_ms">>, 500)).
 
 -define(KAZOO_TASKS_HRL, 'true').
 -endif.
