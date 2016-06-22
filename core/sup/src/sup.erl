@@ -195,7 +195,7 @@ option_spec_list() ->
     [{'help', $?, "help", 'undefined', "Show the program options"}
     ,{'host', $h, "host", {'string', localhost()}, "System hostname"}
     ,{'node', $n, "node", {'string', "kazoo_apps"}, "Node name"}
-    ,{'cookie', $c, "cookie", {'string', "monster"}, "Erlang cookie"}
+    ,{'cookie', $c, "cookie", {'string', "change_me"}, "Erlang cookie"}
     ,{'timeout', $t, "timeout", {'integer', 0}, "Command timeout"}
     ,{'verbose', $v, "verbose", 'undefined', "Be verbose"}
     ,{'module', 'undefined', 'undefined', 'string', "The name of the remote module"}
