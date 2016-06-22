@@ -97,6 +97,10 @@ Most operations have been moved to the Cowboy or Cowlib projects. We will formal
 
 exmpp library has problems restarting. it will be replaced by `deps/escalus`
 
+#### Deprecating `deps/ejson`
+
+ejson used for json encode, decode will be replaced by `deps/jiffy`
+
 #### Deprecating `deps/ibrowse`
 `ibrowse` will be replaced by `core/kazoo_web/kz_http` which is using Erlang `httpc`. `kz_http` is the new HTTP client module now and the previous `kz_http` module is renamed to `kz_http_util`.
 
