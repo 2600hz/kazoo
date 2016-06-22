@@ -129,10 +129,10 @@ acc_found(Acc=#{found := Found
                                    kz_json:objects().
 process_number_result(Number, Acc) ->
     PhoneNumber = knm_number:phone_number(Number),
-    case knm_phone_number:module_name(PhoneNumber) of
-        ?CARRIER_OTHER ->
-            [found_number_to_jobj(Number) | Acc];
-        Carrier ->
+    Carrier = knm_phone_number:module_name(PhoneNumber),
+    case is_local(Carrier) of
+        'true' -> [found_number_to_jobj(Number) | Acc];
+        'false' ->
             DID = knm_phone_number:number(PhoneNumber),
             check_for_existing_did(Number, Acc, Carrier, knm_phone_number:fetch(DID))
     end.
@@ -141,6 +141,7 @@ process_number_result(Number, Acc) ->
                             ,knm_phone_number_return()) -> kz_json:objects().
 check_for_existing_did(Number, Acc, _Carrier, {'error', 'not_found'}) ->
     %% This case is only possible for -dTEST: tests don't save to DB (yet)
+    %% and we make sure that non-local carriers save discovered numbers to DB.
     io:format(user, "number ~s was not in db\n"
              ,[knm_phone_number:number(knm_number:phone_number(Number))]),
     [found_number_to_jobj(Number) | Acc];
@@ -355,6 +356,21 @@ create_discovery(DID=?NE_BINARY, Carrier, ?MATCH_ACCOUNT_RAW(AuthBy), Data=?JSON
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Returns whether carrier handles numbers local to the system.
+%% Note: a non-local (foreign) carrier module makes HTTP requests.
+%% @end
+%%--------------------------------------------------------------------
+-spec is_local(ne_binary()) -> boolean().
+is_local(?CARRIER_LOCAL) -> 'true';
+is_local(?CARRIER_RESERVED) -> 'true';
+is_local(?CARRIER_RESERVED_RESELLER) -> 'true';
+is_local(?CARRIER_MANAGED) -> 'true';
+is_local(?CARRIER_INUM) -> 'true';
+is_local(_ForeignCarrier) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @private
