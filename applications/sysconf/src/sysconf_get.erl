@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% Handle requests to read configuration data
 %%% Support nested keys a la kz_json, with a #
@@ -51,4 +51,4 @@ get_value(_, <<"acls">>, _, Node) ->
 get_value(_, <<"gateways">>, _, Node) ->
     sysconf_gateways:build(Node);
 get_value(Category, Key, Default, Node) ->
-    kapps_config:get(Category, Key, Default, Node).
+    kapps_config:get_current(Category, Key, Default, Node).
