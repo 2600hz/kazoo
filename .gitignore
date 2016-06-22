@@ -34,3 +34,4 @@ core/kazoo/mime.types
 applications/*/priv/archive_data/*
 
 core/sup/sup
+.rebar/
