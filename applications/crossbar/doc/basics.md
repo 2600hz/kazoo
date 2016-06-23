@@ -8,8 +8,8 @@ Crossbar is the REST API server, from which developers can build applications th
     /{VERSION}/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 
 * {VERSION} - The version of the API you are calling.
-    * v1 - Most APIs respond on the v1
-    * v2 - A select number of APIs have newer behaviour. If you used the v1 version, it will work as before.
+    * v2 - Most APIs respond on the v2
+    * v2 - A select number of APIs have newer behaviour. If you used the v2 version, it will work as before.
 * {ACCOUNT\_ID} - Most requests operate against a specific account and thus require the account_id to route the resquest properly
 * {RESOURCE\_ID} - When accessing a specific resource, like a device, user, or callflow, this is the {RESOURCE\_ID} points to the specific instance you're accessing.
 
@@ -17,25 +17,25 @@ Crossbar is the REST API server, from which developers can build applications th
 
 There are two parts to how a request is routed in Crossbar: the REST endpoint and the resource ID. Let's break down a common URI and see how Crossbar figures out what is an endpoint and what is a resource ID.
 
-Given a uri of `/v1/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}`:
+Given a uri of `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}`:
 
 0. First, strip the version off the URI
-    * Version: v1
+    * Version: v2
     * URI Remaining: `/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}`
 1. See if the next token is a REST endpoint module. It is, so track the module for later routing:
-    * Version: v1
+    * Version: v2
     * Modules: `{accounts: []}`
     * URI Remaining: `/{ACCOUNT_ID}/devices/{DEVICE_ID}`
 2. See if the next token is a REST endpoint module. It is not, so add the token to the last module's data:
-    * Version: v1
+    * Version: v2
     * Modules: `{accounts: [{ACCOUNT_ID}]}`
     * URI Remaining: `/devices/{DEVICE_ID}`
 3. Repeat parsing. devices is a REST endpoint:
-    * Version: v1
+    * Version: v2
     * Modules: `{accounts: [{ACCOUNT_ID}], devices: []}`
     * Remaining URI: `/{DEVICE_ID}`
 4. Repeat parsing. {DEVICE_ID} is an argument:
-    * Version: `v1`
+    * Version: `v2`
     * Modules: `{accounts: [{ACCOUNT_ID}], devices: [{DEVICE_ID}]}`
 
 So we have a request to account {account\_id} to do something with a device {device\_id}.
@@ -44,11 +44,11 @@ So we have a request to account {account\_id} to do something with a device {dev
 
 The HTTP verb will determine the class of actions to take against the resource. Generically speaking, the verbs map thusly:
 
-* `/v1/accounts/{ACCOUNT_ID}/resources`
+* `/v2/accounts/{ACCOUNT_ID}/resources`
     * GET: Fetches a summary of configured resources
     * PUT: Creates a new instance of the resource.
 
-* `/v1/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}`
+* `/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}`
     * GET: Fetches the full representation of the resource
     * POST: Updates the full respresentation of the resource
     * DELETE: Deletes the resource
@@ -68,7 +68,7 @@ If a resource does not support PATCH yet, clients can expect to receive a `405 M
 Some clients do not support the full range of HTTP verbs, and are typically limited to *GET* and *POST*. To access the functionalities of *PUT* and *DELETE*, you can tunnel the verb in a *POST* in a couple of ways:
 
 1. As part of the [request envelope](#request_envelope): `{"data":{...},"verb":"PUT"}`
-1. As a query string parameter: `/v1/accounts/{ACCOUNT_ID}/resources?verb=PUT`
+1. As a query string parameter: `/v2/accounts/{ACCOUNT_ID}/resources?verb=PUT`
 
 ###### Tunneling the Accept Header
 
@@ -150,7 +150,7 @@ The pagination response keys are `next_start_key`, `page_size`, and `start_key`.
 
 Assuming no changes are made to the underlying documents, `start_key` will get you this page of results, and `next_start_key` will give you a pointer to the next page (imagine a linked-list).
 
-####### Requesting a page
+###### Requesting a page
 
 Using the `next_start_key` value, let's request the next page of CDRs:
 
