@@ -47,6 +47,11 @@
 
 -export([list_attachments/2]).
 
+%%% For internal debugging only! No use outside of ?MODULE permitted!
+-export([save_to_number_db/1, handle_assignment/1
+        ,delete_number_doc/1, maybe_remove_number_from_account/1
+        ]).
+
 -include("knm.hrl").
 -include_lib("kazoo/src/kz_json.hrl").
 
@@ -92,15 +97,14 @@ new(DID, Options) ->
     NormalizedNum = knm_converters:normalize(DID),
     {'ok', PhoneNumber} =
         setters(new(),
-                [{fun set_number/2, NormalizedNum}
-                ,{fun set_number_db/2, knm_converters:to_db(NormalizedNum)}
-                ,{fun set_assign_to/2, knm_number_options:assign_to(Options)}
-                ,{fun set_state/2, ?NUMBER_STATE_DISCOVERY}
-                ,{fun set_module_name/2, ?CARRIER_OTHER}
-                ,{fun set_carrier_data/2, kz_json:new()}
-                ,{fun set_auth_by/2, knm_number_options:auth_by(Options)}
-                ,{fun set_dry_run/2, knm_number_options:dry_run(Options)}
-                ,{fun set_doc/2, knm_number_options:public_fields(Options)}
+                [{fun ?MODULE:set_number/2, NormalizedNum}
+                ,{fun ?MODULE:set_number_db/2, knm_converters:to_db(NormalizedNum)}
+                ,{fun ?MODULE:set_assign_to/2, knm_number_options:assign_to(Options)}
+                ,{fun ?MODULE:set_state/2, ?NUMBER_STATE_DISCOVERY}
+                ,{fun ?MODULE:set_module_name/2, knm_number_options:module_name(Options)}
+                ,{fun ?MODULE:set_auth_by/2, knm_number_options:auth_by(Options)}
+                ,{fun ?MODULE:set_dry_run/2, knm_number_options:dry_run(Options)}
+                ,{fun ?MODULE:set_doc/2, knm_number_options:public_fields(Options)}
                 ]),
     PhoneNumber.
 
@@ -174,8 +178,8 @@ save(#knm_phone_number{dry_run='true'}=PhoneNumber) ->
     lager:debug("dry_run-ing btw"),
     PhoneNumber;
 save(#knm_phone_number{dry_run='false'}=PhoneNumber) ->
-    Routines = [fun save_to_number_db/1
-                ,fun handle_assignment/1
+    Routines = [fun ?MODULE:save_to_number_db/1
+                ,fun ?MODULE:handle_assignment/1
                ],
     {'ok', NewPhoneNumber} = setters(PhoneNumber, Routines),
     NewPhoneNumber.
@@ -190,8 +194,8 @@ delete(#knm_phone_number{dry_run='true'}=Number) ->
     lager:debug("dry_run-ing btw"),
     {'ok', Number};
 delete(#knm_phone_number{dry_run='false'}=Number) ->
-    Routines = [fun delete_number_doc/1
-                ,fun maybe_remove_number_from_account/1
+    Routines = [fun ?MODULE:delete_number_doc/1
+                ,fun ?MODULE:maybe_remove_number_from_account/1
                ],
     {'ok', NewPhoneNumber} = setters(Number, Routines),
     NewPhoneNumber.
@@ -245,11 +249,11 @@ authorize_release(PhoneNumber, AuthBy) ->
 authorized_release(PhoneNumber) ->
     ReleasedState = knm_config:released_state(?NUMBER_STATE_AVAILABLE),
     Routines =
-        [{fun set_features/2, kz_json:new()}
-         ,{fun set_doc/2, kz_json:private_fields(doc(PhoneNumber))}
-         ,{fun set_prev_assigned_to/2, assigned_to(PhoneNumber)}
-         ,{fun set_assigned_to/2, 'undefined'}
-         ,{fun set_state/2, ReleasedState}
+        [{fun ?MODULE:set_features/2, kz_json:new()}
+        ,{fun ?MODULE:set_doc/2, kz_json:private_fields(doc(PhoneNumber))}
+        ,{fun ?MODULE:set_prev_assigned_to/2, assigned_to(PhoneNumber)}
+        ,{fun ?MODULE:set_assigned_to/2, 'undefined'}
+        ,{fun ?MODULE:set_state/2, ReleasedState}
         ],
     {'ok', NewPhoneNumber} = setters(PhoneNumber, Routines),
     NewPhoneNumber.
@@ -331,22 +335,23 @@ from_json(JObj) ->
             FeaturesJObj -> FeaturesJObj
         end,
     {'ok', PhoneNumber} =
-        setters(new(),
-                [{fun set_number/2, kz_doc:id(JObj)}
-                ,{fun set_number_db/2, kz_json:get_value(?PVT_DB_NAME, JObj)}
-                ,{fun set_assigned_to/2, kz_json:get_value(?PVT_ASSIGNED_TO, JObj)}
-                ,{fun set_prev_assigned_to/2, kz_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)}
-                ,{fun set_used_by/2, kz_json:get_value(?PVT_USED_BY, JObj)}
-                ,{fun set_features/2, Features}
-                ,{fun set_state/2, kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)}
-                ,{fun set_reserve_history/2, kz_json:get_value(?PVT_RESERVE_HISTORY, JObj, [])}
-                ,{fun set_ported_in/2, kz_json:is_true(?PVT_PORTED_IN, JObj, 'false')}
-                ,{fun set_module_name/2, kz_json:get_value(?PVT_MODULE_NAME, JObj)}
-                ,{fun set_carrier_data/2, kz_json:get_value(?PVT_CARRIER_DATA, JObj)}
-                ,{fun set_region/2, kz_json:get_value(?PVT_REGION, JObj)}
-                ,{fun set_auth_by/2, kz_json:get_value(?PVT_AUTH_BY, JObj)}
-                ,{fun set_doc/2, kz_json:delete_key(<<"id">>, kz_json:public_fields(JObj))}
-                ]),
+        setters(
+          new()
+          ,[{fun ?MODULE:set_number/2, kz_doc:id(JObj)}
+           ,{fun ?MODULE:set_number_db/2, kz_json:get_value(?PVT_DB_NAME, JObj)}
+           ,{fun ?MODULE:set_assigned_to/2, kz_json:get_value(?PVT_ASSIGNED_TO, JObj)}
+           ,{fun ?MODULE:set_prev_assigned_to/2, kz_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)}
+           ,{fun ?MODULE:set_used_by/2, kz_json:get_value(?PVT_USED_BY, JObj)}
+           ,{fun ?MODULE:set_features/2, Features}
+           ,{fun ?MODULE:set_state/2, kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)}
+           ,{fun ?MODULE:set_reserve_history/2, kz_json:get_value(?PVT_RESERVE_HISTORY, JObj, [])}
+           ,{fun ?MODULE:set_ported_in/2, kz_json:is_true(?PVT_PORTED_IN, JObj, 'false')}
+           ,{fun ?MODULE:set_module_name/2, kz_json:get_value(?PVT_MODULE_NAME, JObj)}
+           ,{fun ?MODULE:set_carrier_data/2, kz_json:get_value(?PVT_CARRIER_DATA, JObj)}
+           ,{fun ?MODULE:set_region/2, kz_json:get_value(?PVT_REGION, JObj)}
+           ,{fun ?MODULE:set_auth_by/2, kz_json:get_value(?PVT_AUTH_BY, JObj)}
+           ,{fun ?MODULE:set_doc/2, kz_json:delete_key(<<"id">>, kz_json:public_fields(JObj))}
+           ]),
     PhoneNumber.
 
 %%--------------------------------------------------------------------
@@ -699,10 +704,10 @@ list_attachments(PhoneNumber, AuthBy) ->
 %%--------------------------------------------------------------------
 -spec set_options(knm_phone_number(), knm_number_options:options()) -> knm_phone_number().
 set_options(Number, Options) when is_list(Options) ->
-    Updates = [{fun set_assign_to/2, knm_number_options:assign_to(Options)}
+    Updates = [{fun ?MODULE:set_assign_to/2, knm_number_options:assign_to(Options)}
                %% See knm_number_options:default/0 for these 2.
-              ,{fun set_dry_run/2, knm_number_options:dry_run(Options, 'false')}
-              ,{fun set_auth_by/2, knm_number_options:auth_by(Options, ?KNM_DEFAULT_AUTH_BY)}
+              ,{fun ?MODULE:set_dry_run/2, knm_number_options:dry_run(Options, 'false')}
+              ,{fun ?MODULE:set_auth_by/2, knm_number_options:auth_by(Options, ?KNM_DEFAULT_AUTH_BY)}
               ],
     {'ok', PhoneNumber} = setters(Number, Updates),
     PhoneNumber.
