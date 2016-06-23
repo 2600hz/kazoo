@@ -109,10 +109,7 @@ get_integer(XPath, Doc, Default) ->
     end.
 
 get_bool(XPath, Doc) ->
-    case get_text(XPath, Doc, "false") of
-        "true" -> true;
-        _ -> false
-    end.
+    get_text(XPath, Doc, "false") =:= "true".
 
 get_time(XPath, Doc) ->
     case get_text(XPath, Doc, undefined) of

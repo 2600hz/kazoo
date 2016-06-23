@@ -85,10 +85,7 @@ delete(Number) ->
 %%--------------------------------------------------------------------
 -spec has_emergency_services(knm_number:knm_number()) -> boolean().
 has_emergency_services(Number) ->
-    case knm_phone_number:feature(knm_number:phone_number(Number), ?DASH_KEY) of
-        'undefined' -> 'false';
-        _Else -> 'true'
-    end.
+    knm_phone_number:feature(knm_number:phone_number(Number), ?DASH_KEY) =/= 'undefined'.
 
 %%%===================================================================
 %%% Internal functions
