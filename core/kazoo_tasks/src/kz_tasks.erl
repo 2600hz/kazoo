@@ -50,7 +50,6 @@
 
 -type task() :: #{ worker_pid => api_pid()
                  , worker_node => ne_binary() | 'undefined'
-                 , worker_module => module() | 'undefined' %% Worker to execute the task with.
                  , account_id => ne_binary()
                  , id => task_id()
                  , rev => ne_binary() | 'undefined'
@@ -402,7 +401,6 @@ handle_call({'new', AccountId, Category, Action, TotalRows}, _From, State) ->
     TaskId = ?A_TASK_ID,
     Task = #{ worker_pid => 'undefined'
             , worker_node => 'undefined'
-            , worker_module => 'undefined'
             , account_id => AccountId
             , id => TaskId
             , rev => 'undefined'
@@ -644,7 +642,6 @@ handle_call_start_task(Task=#{ id := TaskId
                              , account_id := AccountId
                              , category := Category
                              , action := Action
-                             , worker_module := WorkerModule
                              }
                       ,State=#state{ apis = APIs
                                    , nodes = Nodes
@@ -652,10 +649,11 @@ handle_call_start_task(Task=#{ id := TaskId
                                    , apps = Apps
                                    }
                       ) ->
-    lager:info("about to start task ~s: ~s ~s on ~s"
-              ,[TaskId, Category, Action, WorkerModule]),
+    lager:info("about to start task ~s: ~s ~s", [TaskId, Category, Action]),
     API = maps:get(Action, maps:get(Category, APIs)),
     lager:debug("API ~s", [kz_json:encode(API)]),
+    WorkerModule = worker_module(API),
+    lager:debug("using worker type: ~s", [WorkerModule]),
     Node = maps:get(Category, Nodes),
     Module = maps:get(Category, Modules),
     lager:debug("app ~s module ~s node ~s", [maps:get(Category, Apps), Module, Node]),
@@ -664,10 +662,8 @@ handle_call_start_task(Task=#{ id := TaskId
     ExtraArgs = [{'auth_account_id', AccountId}
                 ],
     %% Task needs to run where App is started.
-    try erlang:spawn_link(kz_util:to_atom(Node, 'true')
-                         ,fun () -> WorkerModule:start(TaskId, Module, Function, ExtraArgs, Fields) end
-                         )
-    of
+    Job = fun () -> WorkerModule:start(TaskId, Module, Function, ExtraArgs, Fields) end,
+    try erlang:spawn_link(kz_util:to_atom(Node, 'true'), Job) of
         Pid ->
             Task1 = Task#{ started => kz_util:current_tstamp()
                          , worker_pid => Pid
@@ -687,7 +683,6 @@ from_json(Doc) ->
     TotalRows = kz_json:get_integer_value(?PVT_TOTAL_ROWS, Doc),
     #{ worker_pid => 'undefined'
      , worker_node => kz_json:get_value(?PVT_WORKER_NODE, Doc)
-     , worker_module => worker_module(TotalRows)
      , account_id => kz_json:get_value(?PVT_ACCOUNT_ID, Doc)
      , id => kz_doc:id(Doc)
      , rev => kz_doc:revision(Doc)
@@ -978,10 +973,11 @@ are_mandatories_unset(IsMandatory, Row) ->
     RedF = fun erlang:'or'/2,
     lists:foldl(RedF, 'false', lists:zipwith(MapF, IsMandatory, Row)).
 
--spec worker_module(api_pos_integer()) -> module().
-worker_module('undefined') -> 'kz_task_noinput_worker';
-worker_module(TotalRows)
-  when is_integer(TotalRows), TotalRows > 0 ->
-    'kz_task_worker'.
+-spec worker_module(kz_json:object()) -> module().
+worker_module(API) ->
+    case input_mime(API) of
+        'undefined' -> 'kz_task_noinput_worker';
+        _TextCSV -> 'kz_task_worker'
+    end.
 
 %%% End of Module.
