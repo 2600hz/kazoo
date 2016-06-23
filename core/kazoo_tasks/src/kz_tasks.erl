@@ -20,13 +20,11 @@
     ]).
 
 %%% API used by workers
-%% Casts
 -export([worker_finished/4
         ,worker_error/1
-        ,worker_update_processed/3
-        ]).
-%% Non ?SERVER-related
--export([worker_upload_result/2
+        ,worker_pause/0
+        ,worker_maybe_send_update/3
+        ,worker_upload_result/2
         ,get_output_header/2
         ]).
 
@@ -43,6 +41,11 @@
 -include_lib("kazoo/src/kz_json.hrl").
 
 -define(SERVER, {'via', 'kz_globals', ?MODULE}).
+
+-define(WAIT_AFTER_ROW,
+        kapps_config:get_integer(?CONFIG_CAT, <<"wait_after_row_ms">>, 500)).
+-define(PROGRESS_AFTER_PROCESSED,
+        kapps_config:get_integer(?CONFIG_CAT, <<"send_progress_after_processed">>, 1000)).
 
 -define(TASK_ID_SIZE, 15).
 -define(A_TASK_ID, kz_util:rand_hex_binary(?TASK_ID_SIZE)).
@@ -272,9 +275,24 @@ worker_error(TaskId=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec worker_update_processed(task_id(), pos_integer(), pos_integer()) -> 'ok'.
-worker_update_processed(TaskId=?NE_BINARY, TotalSucceeded, TotalFailed) ->
-    gen_server:cast(?SERVER, {'worker_update_processed', TaskId, TotalSucceeded, TotalFailed}).
+-spec worker_pause() -> 'ok'.
+worker_pause() ->
+    MS = ?WAIT_AFTER_ROW,
+    lager:debug("taking a ~pms break before next row", [MS]),
+    timer:sleep(MS).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec worker_maybe_send_update(task_id(), pos_integer(), pos_integer()) -> 'ok'.
+worker_maybe_send_update(TaskId, TotalSucceeded, TotalFailed) ->
+    case (TotalFailed + TotalSucceeded) rem ?PROGRESS_AFTER_PROCESSED == 0 of
+        'false' -> 'ok';
+        'true' ->
+            gen_server:cast(?SERVER, {'worker_update_processed', TaskId, TotalSucceeded, TotalFailed})
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

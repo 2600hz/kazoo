@@ -91,14 +91,14 @@ loop(IterValue, State=#state{task_id = TaskId
         {'false', {_PrevRow, NewIterValue}} ->
             NewState = State#state{total_failed = TotalFailed + 1
                                   },
-            _ = maybe_send_update(NewState),
-            _ = pause(),
+            _ = kz_tasks:worker_maybe_send_update(TaskId, TotalSucceeded, TotalFailed+1),
+            _ = kz_tasks:worker_pause(),
             loop(NewIterValue, NewState);
         {'true', {_PrevRow, NewIterValue}} ->
             NewState = State#state{total_succeeded = TotalSucceeded + 1
                                   },
-            _ = maybe_send_update(NewState),
-            _ = pause(),
+            _ = kz_tasks:worker_maybe_send_update(TaskId, TotalSucceeded+1, TotalFailed),
+            _ = kz_tasks:worker_pause(),
             loop(NewIterValue, NewState)
     end.
 
@@ -142,17 +142,6 @@ reason(?NE_BINARY=Reason) ->
 reason(_) -> <<>>.
 
 %% @private
--spec maybe_send_update(state()) -> 'ok'.
-maybe_send_update(#state{task_id = TaskId
-                        ,total_failed = TotalFailed
-                        ,total_succeeded = TotalSucceeded
-                        })
-  when (TotalFailed + TotalSucceeded) rem 1000 == 0 ->
-    kz_tasks:worker_update_processed(TaskId, TotalSucceeded, TotalFailed);
-maybe_send_update(_) ->
-    'ok'.
-
-%% @private
 -spec upload_output(kz_tasks:task_id()) -> ne_binary().
 upload_output(TaskId) ->
     {'ok', Out} = file:read_file(?OUT(TaskId)),
@@ -167,12 +156,5 @@ write_output_csv_header(TaskId, Module, Function) ->
     HeaderRHS = kz_tasks:get_output_header(Module, Function),
     Data = [kz_csv:row_to_iolist(HeaderRHS), $\n],
     file:write_file(?OUT(TaskId), Data).
-
-%% @private
--spec pause() -> 'ok'.
-pause() ->
-    MS = ?KZ_TASKS_WAIT_AFTER_ROW,
-    lager:debug("taking a ~pms break before next row", [MS]),
-    timer:sleep(MS).
 
 %%% End of Module.
