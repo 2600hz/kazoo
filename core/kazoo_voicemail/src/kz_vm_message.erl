@@ -59,6 +59,8 @@
 
 -type db_ret() :: 'ok' | {'ok', kz_json:object() | kz_json:objects()} | {'error', any()}.
 
+-export_type([vm_folder/0]).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc Generate database name based on DocId
