@@ -21,7 +21,7 @@
         ]).
 
 %%% For knm carriers only
--export([create_found/4]).
+-export([create_found/4, create_found/5]).
 
 -define(DEFAULT_CARRIER_MODULES, [?CARRIER_LOCAL]).
 
