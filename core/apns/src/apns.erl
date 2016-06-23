@@ -91,7 +91,7 @@ stop([]) -> ok.
   {ok, pid()} | {error, {already_started, pid()}} | {error, Reason::any()}.
 connect(Name) when is_atom(Name) ->
   connect(Name, default_connection());
-connect(Connection) when is_record(Connection, apns_connection) ->
+connect(#apns_connection{} = Connection) ->
   apns_sup:start_connection(Connection);
 connect(Fun) when is_function(Fun, 1) ->
   connect((default_connection())#apns_connection{feedback_fun = Fun});
@@ -103,7 +103,7 @@ connect(Fun) when is_function(Fun, 2) ->
 %%      or using the given connection() parameters
 -spec connect(atom(), string() | fun((string()) -> any()) | connection()) ->
     {ok, pid()} | {error, {already_started, pid()}} | {error, Reason::any()}.
-connect(Name, Connection) when is_record(Connection, apns_connection) ->
+connect(Name, #apns_connection{} = Connection) ->
   apns_sup:start_connection(Name, Connection);
 connect(Name, Fun) when is_function(Fun, 1) ->
   connect(Name, (default_connection())#apns_connection{feedback_fun = Fun});

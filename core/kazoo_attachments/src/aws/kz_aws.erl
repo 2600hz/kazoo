@@ -87,14 +87,17 @@ aws_request2(Method, Protocol, Host, Port, Path, Params, Config) ->
             {error, Reason}
     end.
 
-aws_request2_no_update(Method, Protocol, Host, Port, Path, Params, #aws_config{} = Config) ->
+aws_request2_no_update(Method, Protocol, Host, Port, Path, Params,
+		       #aws_config{access_key_id = AccessKeyId,
+				   secret_access_key = SecretAccessKey,
+				   security_token = SecurityToken} = Config) ->
     Timestamp = format_timestamp(erlang:universaltime()),
     QParams = lists:sort(
                 [{"Timestamp", Timestamp},
                  {"SignatureVersion", "2"},
                  {"SignatureMethod", "HmacSHA1"},
-                 {"AWSAccessKeyId", Config#aws_config.access_key_id}|Params] ++
-                    case Config#aws_config.security_token of
+                 {"AWSAccessKeyId", AccessKeyId}|Params] ++
+                    case SecurityToken of
                         undefined -> [];
                         Token -> [{"SecurityToken", Token}]
                     end),
@@ -102,7 +105,7 @@ aws_request2_no_update(Method, Protocol, Host, Port, Path, Params, #aws_config{}
     QueryToSign = kz_aws_http:make_query_string(QParams),
     RequestToSign = [string:to_upper(atom_to_list(Method)), $\n,
                      string:to_lower(Host), $\n, Path, $\n, QueryToSign],
-    Signature = base64:encode(kz_att_util:sha_mac(Config#aws_config.secret_access_key, RequestToSign)),
+    Signature = base64:encode(kz_att_util:sha_mac(SecretAccessKey, RequestToSign)),
 
     Query = [QueryToSign, "&Signature=", kz_aws_http:url_encode(Signature)],
 

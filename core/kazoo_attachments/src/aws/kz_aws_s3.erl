@@ -129,8 +129,7 @@ copy_object(DestBucketName, DestKeyName, SrcBucketName, SrcKeyName) ->
 -spec copy_object(string(), string(), string(), string(), kz_proplist() | aws_config()) ->
                          {'ok', kz_proplist()} |
                          {'error', any()} .
-copy_object(DestBucketName, DestKeyName, SrcBucketName, SrcKeyName, Config)
-  when is_record(Config, 'aws_config') ->
+copy_object(DestBucketName, DestKeyName, SrcBucketName, SrcKeyName, #aws_config{} = Config) ->
     copy_object(DestBucketName, DestKeyName, SrcBucketName, SrcKeyName, [], Config);
 
 copy_object(DestBucketName, DestKeyName, SrcBucketName, SrcKeyName, Options) ->
@@ -173,8 +172,7 @@ create_bucket(BucketName) ->
           {'ok', kz_proplist()} | {'error', any()} .
 
 
-create_bucket(BucketName, Config)
-  when is_record(Config, aws_config) ->
+create_bucket(BucketName, #aws_config{} = Config) ->
     create_bucket(BucketName, private, Config);
 
 create_bucket(BucketName, ACL) ->
@@ -184,8 +182,7 @@ create_bucket(BucketName, ACL) ->
           {'ok', kz_proplist()} | {'error', any()} .
 
 
-create_bucket(BucketName, ACL, Config)
-  when is_record(Config, aws_config) ->
+create_bucket(BucketName, ACL, #aws_config{} = Config) ->
     create_bucket(BucketName, ACL, none, Config);
 
 create_bucket(BucketName, ACL, LocationConstraint) ->
@@ -372,14 +369,13 @@ get_bucket_policy(BucketName) ->
 %                                   <HostId>DRtkAB80cAeom+4ffSGU3PFCxS7QvtiW+wxLnPF0dM2nxoaRqQk1SK/z62ZJVHAD</HostId>
 %                               </Error>"}}
 -spec(get_bucket_policy/2 :: (BucketName::string(), Config::aws_config()) -> {'ok', Policy::string()} | {'error', Reason::term()}).
-get_bucket_policy(BucketName, Config)
-    when is_record(Config, aws_config) ->
-        case s3_request(Config, get, BucketName, "/", "policy", [], <<>>, []) of
-            {'ok', {_Headers, Body}} ->
-                {'ok', binary_to_list(Body)};
-            Error ->
-                Error
-        end.
+get_bucket_policy(BucketName, #aws_config{} = Config) ->
+    case s3_request(Config, get, BucketName, "/", "policy", [], <<>>, []) of
+	{'ok', {_Headers, Body}} ->
+	    {'ok', binary_to_list(Body)};
+	Error ->
+	    Error
+    end.
 
 -spec put_bucket_policy(string(), binary()) ->
           {'ok', kz_proplist()} | {'error', any()} .
@@ -388,8 +384,8 @@ put_bucket_policy(BucketName, Policy) ->
 
 -spec put_bucket_policy(string(), binary(), aws_config()) ->
           {'ok', kz_proplist()} | {'error', any()} .
-put_bucket_policy(BucketName, Policy, Config)
-  when is_list(BucketName), is_binary(Policy), is_record(Config, aws_config) ->
+put_bucket_policy(BucketName, Policy, #aws_config{} = Config)
+  when is_list(BucketName), is_binary(Policy) ->
     s3_simple_request(Config, put, BucketName, "/", "policy", [], Policy, []).
 
 
@@ -400,8 +396,7 @@ list_objects(BucketName) ->
 
 -spec list_objects(string(), kz_proplist() | aws_config()) -> kz_proplist().
 
-list_objects(BucketName, Config)
-  when is_record(Config, aws_config) ->
+list_objects(BucketName, #aws_config{} = Config) ->
     list_objects(BucketName, [], Config);
 
 list_objects(BucketName, Options) ->
@@ -530,8 +525,7 @@ get_object(BucketName, Key) ->
 -spec get_object(string(), string(), kz_proplist() | aws_config()) ->
           {'ok', kz_proplist()} | {'error', any()} .
 
-get_object(BucketName, Key, Config)
-  when is_record(Config, aws_config) ->
+get_object(BucketName, Key, #aws_config{} = Config) ->
     get_object(BucketName, Key, [], Config);
 
 get_object(BucketName, Key, Options) ->
@@ -574,8 +568,7 @@ get_object_acl(BucketName, Key) ->
 
 -spec get_object_acl(string(), string(), kz_proplist() | aws_config()) -> kz_proplist().
 
-get_object_acl(BucketName, Key, Config)
-  when is_record(Config, aws_config) ->
+get_object_acl(BucketName, Key, #aws_config{} = Config) ->
     get_object_acl(BucketName, Key, [], Config);
 
 get_object_acl(BucketName, Key, Options) ->
@@ -603,8 +596,7 @@ get_object_metadata(BucketName, Key) ->
 -spec get_object_metadata(string(), string(), kz_proplist() | aws_config()) ->
           {'ok', kz_proplist()} | {'error', any()} .
 
-get_object_metadata(BucketName, Key, Config)
-  when is_record(Config, aws_config) ->
+get_object_metadata(BucketName, Key, #aws_config{} = Config) ->
     get_object_metadata(BucketName, Key, [], Config);
 
 get_object_metadata(BucketName, Key, Options) ->
@@ -668,8 +660,7 @@ list_object_versions(BucketName) ->
 
 -spec list_object_versions(string(), kz_proplist() | aws_config()) -> kz_proplist().
 
-list_object_versions(BucketName, Config)
-  when is_record(Config, aws_config) ->
+list_object_versions(BucketName, #aws_config{} = Config) ->
     list_object_versions(BucketName, [], Config);
 
 list_object_versions(BucketName, Options) ->
@@ -735,8 +726,7 @@ put_object(BucketName, Key, Value) ->
 -spec put_object(string(), string(), iodata(), kz_proplist() | aws_config()) ->
           {'ok', kz_proplist()} | {'error', any()} .
 
-put_object(BucketName, Key, Value, Config)
-  when is_record(Config, aws_config) ->
+put_object(BucketName, Key, Value, #aws_config{} = Config) ->
     put_object(BucketName, Key, Value, [], Config);
 
 put_object(BucketName, Key, Value, Options) ->
@@ -745,8 +735,7 @@ put_object(BucketName, Key, Value, Options) ->
 -spec put_object(string(), string(), iodata(), kz_proplist(), [{string(), string()}] | aws_config()) ->
           {'ok', kz_proplist()} | {'error', any()} .
 
-put_object(BucketName, Key, Value, Options, Config)
-  when is_record(Config, aws_config) ->
+put_object(BucketName, Key, Value, Options, #aws_config{} = Config) ->
     put_object(BucketName, Key, Value, Options, [], Config);
 
 put_object(BucketName, Key, Value, Options, HTTPHeaders) ->
@@ -866,8 +855,8 @@ start_multipart(BucketName, Key)
     start_multipart(BucketName, Key, [], [], default_config()).
 
 -spec start_multipart(string(), string(), kz_proplist(), [{string(), string()}], aws_config()) -> {'ok', kz_proplist()} | {'error', any()}.
-start_multipart(BucketName, Key, Options, HTTPHeaders, Config)
-  when is_list(BucketName), is_list(Key), is_list(Options), is_list(HTTPHeaders), is_record(Config, aws_config) ->
+start_multipart(BucketName, Key, Options, HTTPHeaders, #aws_config{} = Config)
+  when is_list(BucketName), is_list(Key), is_list(Options), is_list(HTTPHeaders) ->
 
     RequestHeaders = [{"x-amz-acl", encode_acl(props:get_value(acl, Options))}|HTTPHeaders]
         ++ [{"x-amz-meta-" ++ string:to_lower(MKey), MValue} ||
@@ -888,7 +877,7 @@ upload_part(BucketName, Key, UploadId, PartNumber, Value) ->
     upload_part(BucketName, Key, UploadId, PartNumber, Value, [], default_config()).
 
 -spec upload_part(string(), string(), string(), integer(), iodata(), [{string(), string()}], aws_config()) -> {'ok', kz_proplist()} | {'error', any()}.
-upload_part(BucketName, Key, UploadId, PartNumber, Value, HTTPHeaders, Config)
+upload_part(BucketName, Key, UploadId, PartNumber, Value, HTTPHeaders, #aws_config{} = Config)
   when is_list(BucketName)
        andalso is_list(Key)
        andalso is_list(UploadId)
@@ -896,8 +885,7 @@ upload_part(BucketName, Key, UploadId, PartNumber, Value, HTTPHeaders, Config)
        andalso (is_list(Value)
                 orelse is_binary(Value)
                )
-       andalso is_list(HTTPHeaders)
-       andalso is_record(Config, 'aws_config') ->
+       andalso is_list(HTTPHeaders) ->
     POSTData = iolist_to_binary(Value),
     case s3_request(Config
                    ,'put'
@@ -923,8 +911,8 @@ complete_multipart(BucketName, Key, UploadId, ETags)
     complete_multipart(BucketName, Key, UploadId, ETags, [], default_config()).
 
 -spec complete_multipart(string(), string(), string(), [{integer(), string()}], [{string(), string()}], aws_config()) -> 'ok' | {'error', any()}.
-complete_multipart(BucketName, Key, UploadId, ETags, HTTPHeaders, Config)
-  when is_list(BucketName), is_list(Key), is_list(UploadId), is_list(ETags), is_list(HTTPHeaders), is_record(Config, 'aws_config') ->
+complete_multipart(BucketName, Key, UploadId, ETags, HTTPHeaders, #aws_config{} = Config)
+  when is_list(BucketName), is_list(Key), is_list(UploadId), is_list(ETags), is_list(HTTPHeaders) ->
     POSTData = list_to_binary(xmerl:export_simple([{'CompleteMultipartUpload',
                                                     [{'Part',
                                                       [{'PartNumber', [integer_to_list(Num)]},
@@ -952,9 +940,8 @@ abort_multipart(BucketName, Key, UploadId)
     abort_multipart(BucketName, Key, UploadId, [], [], default_config()).
 
 -spec abort_multipart(string(), string(), string(), kz_proplist(), [{string(), string()}], aws_config()) -> 'ok' | {'error', any()}.
-abort_multipart(BucketName, Key, UploadId, Options, HTTPHeaders, Config)
-  when is_list(BucketName), is_list(Key), is_list(UploadId), is_list(Options),
-       is_list(HTTPHeaders), is_record(Config, aws_config) ->
+abort_multipart(BucketName, Key, UploadId, Options, HTTPHeaders, #aws_config{} = Config)
+  when is_list(BucketName), is_list(Key), is_list(UploadId), is_list(Options), is_list(HTTPHeaders) ->
 
     case s3_request(Config, delete, BucketName, [$/|Key], [], [{"uploadId", UploadId}],
                      <<>>, HTTPHeaders) of
@@ -979,11 +966,8 @@ list_multipart_uploads(BucketName, Options)
 -spec list_multipart_uploads(string(), kz_proplist(), [{string(), string()}], aws_config()) ->
                                     {'ok', kz_proplist()} |
                                     {'error', any()}.
-list_multipart_uploads(BucketName, Options, HTTPHeaders, Config)
-  when is_list(BucketName)
-       andalso is_list(Options)
-       andalso is_list(HTTPHeaders)
-       andalso is_record(Config, 'aws_config') ->
+list_multipart_uploads(BucketName, Options, HTTPHeaders, #aws_config{} = Config)
+  when is_list(BucketName), is_list(Options), is_list(HTTPHeaders) ->
 
     Params = [{"uploads", ""}
              ,{"delimiter", props:get_value('delimiter', Options)}

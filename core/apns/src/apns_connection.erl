@@ -156,17 +156,17 @@ handle_cast(Msg, State=#state{ out_socket = undefined
     _:{error, Reason2} -> {stop, Reason2}
   end;
 
-handle_cast(Msg, State) when is_record(Msg, apns_msg) ->
-  Socket = State#state.out_socket,
+handle_cast(#apns_msg{device_token = DeviceToken, expiry = Expiry,
+		      id = Id, priority = Priority} = Msg,
+	    #state{out_socket = Socket, queue = Queue} = State) ->
   Payload = build_payload(Msg),
-  BinToken = hexstr_to_bin(Msg#apns_msg.device_token),
-  apns_queue:in(State#state.queue, Msg),
-  case send_payload(
-        Socket, Msg#apns_msg.id, Msg#apns_msg.expiry, BinToken, Payload, Msg#apns_msg.priority) of
+  BinToken = hexstr_to_bin(DeviceToken),
+  apns_queue:in(Queue, Msg),
+  case send_payload(Socket, Id, Expiry, BinToken, Payload, Priority) of
     ok ->
       {noreply, State};
     {error, Reason} ->
-      apns_queue:fail(State#state.queue, Msg#apns_msg.id),
+      apns_queue:fail(Queue, Id),
       {stop, {error, Reason}, State}
   end;
 
@@ -181,13 +181,14 @@ handle_info( {ssl, SslSocket, Data}
            , State = #state{ out_socket = SslSocket
                            , connection = #apns_connection{error_fun = Error}
                            , out_buffer = CurrentBuffer
+			   , queue = Queue
                            }) ->
   case <<CurrentBuffer/binary, Data/binary>> of
     <<Command:1/unit:8, StatusCode:1/unit:8, MsgId:4/binary, Rest/binary>> ->
       case Command of
         8 -> %% Error
           Status = parse_status(StatusCode),
-          {_MsgFailed, RestMsg} = apns_queue:fail(State#state.queue, MsgId),
+          {_MsgFailed, RestMsg} = apns_queue:fail(Queue, MsgId),
           _ = [send_message(self(), M) || M <- RestMsg],
           try Error(MsgId, Status) of
             stop -> throw({stop, {msg_error, MsgId, Status}, State});
@@ -275,10 +276,10 @@ build_payload(Params, Extra, Content_Available) ->
   kz_json:encode(
     {[{<<"aps">>, do_build_payload(Params, Content_Available)} | Extra]}).
 
-do_build_payload(Params, Content_Available) when Content_Available ->
+do_build_payload(Params, true) ->
   do_build_payload(Params, [{<<"content-available">>, 1}]);
 
-do_build_payload(Params, Content_Available) when Content_Available == false ->
+do_build_payload(Params, false) ->
   do_build_payload(Params, []);
 
 do_build_payload([{Key, Value} | Params], Payload) ->
@@ -311,7 +312,7 @@ do_build_payload([{Key, Value} | Params], Payload) ->
                             end ++
                 [{<<"loc-key">>, unicode:characters_to_binary(LocKey)},
                  {<<"loc-args">>,
-                    lists:map(fun unicode:characters_to_binary/1, Args)}
+                    [unicode:characters_to_binary(A) || A <- Args]}
                 ]},
       do_build_payload(Params, [{atom_to_binary(Key, utf8), Json} | Payload]);
     _ ->
