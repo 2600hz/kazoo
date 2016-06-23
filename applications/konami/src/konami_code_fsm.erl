@@ -489,10 +489,9 @@ arm_bleg(#state{digit_timeout=Timeout}=State) ->
 -spec maybe_fast_rearm(ne_binary(), ne_binary(), binary()) -> binary().
 -spec maybe_fast_rearm(ne_binary(), ne_binary(), binary(), boolean()) -> binary().
 
--define(USE_FAST_REARM, kapps_config:get_boolean(<<"metaflows">>, <<"use_fast_rearm">>, 'false')).
-
 maybe_fast_rearm(DTMF, BindingDigit, Collected) ->
-    maybe_fast_rearm(DTMF, BindingDigit, Collected, ?USE_FAST_REARM).
+    maybe_fast_rearm(DTMF, BindingDigit, Collected
+        ,kapps_config:get_boolean(<<"metaflows">>, <<"use_fast_rearm">>, 'false'))).
 
 maybe_fast_rearm(DTMF, _BindingDigit, Collected, 'false') -> <<Collected/binary, DTMF/binary>>;
 maybe_fast_rearm(DoubleBindingDigit, DoubleBindingDigit, <<>>, 'true') -> DoubleBindingDigit;
