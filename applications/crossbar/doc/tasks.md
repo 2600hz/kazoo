@@ -475,7 +475,25 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/output
 ```
 
+##### Success
+
 Streams back the task's output in CSV format.
+
+##### Task does not exist or output not yet in database
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "cause": "{TASK_ID}",
+        "message": "bad identifier"
+    },
+    "error": "404",
+    "message": "bad_identifier",
+    "request_id": "6c1e1918ce36baf380972ea4b1e2566b",
+    "status": "error"
+}
+```
 
 
 #### Retrieve a task's input CSV
@@ -488,4 +506,22 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/input
 ```
 
+##### Success
+
 Streams back the task's input in CSV format.
+
+##### Task does not exist or did not have any input data
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "cause": "{TASK_ID}",
+        "message": "bad identifier"
+    },
+    "error": "404",
+    "message": "bad_identifier",
+    "request_id": "f0198cd34b4a58cb65ad903ae1259256",
+    "status": "error"
+}
+```

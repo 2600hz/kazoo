@@ -446,13 +446,19 @@ load_csv_attachment(Context, TaskId, AName) ->
                                       ,?TYPE_CHECK_OPTION(?KZ_TASKS_DOC_TYPE)
                                       ,set_db(Context)
                                       ),
-    lager:debug("loaded csv ~s from task doc ~s", [AName, TaskId]),
-    cb_context:add_resp_headers(
-      Ctx
-      ,[{<<"Content-Disposition">>, <<"attachment; filename=", AName/binary>>}
-       ,{<<"Content-Type">>, <<"text/csv">>}
-       ,{<<"Content-Length">>, byte_size(cb_context:resp_data(Ctx))}
-       ]).
+    case cb_context:resp_status(Ctx) of
+        'success' ->
+            lager:debug("loaded csv ~s from task doc ~s", [AName, TaskId]),
+            cb_context:add_resp_headers(
+              Ctx
+              ,[{<<"Content-Disposition">>, <<"attachment; filename=", AName/binary>>}
+               ,{<<"Content-Type">>, <<"text/csv">>}
+               ,{<<"Content-Length">>, byte_size(cb_context:resp_data(Ctx))}
+               ]);
+        _ ->
+            lager:debug("no such csv ~s in task doc ~s", [AName, TaskId]),
+            Ctx
+    end.
 
 %% @private
 -spec no_categories(cb_context:context(), ne_binary()) -> cb_context:context().
