@@ -463,9 +463,8 @@ handle_call({'worker_finished', TaskId, TaskRev, TotalSucceeded, TotalFailed}, _
     Task1 = Task#{ finished => kz_util:current_tstamp()
                  , total_rows_failed => TotalFailed
                  , total_rows_succeeded => TotalSucceeded
-                 , rev => TaskRev
                  },
-    {'ok', _JObj} = update_task(Task1),
+    {'ok', _JObj} = update_task(Task1, TaskRev),
     State1 = remove_task(TaskId, State),
     ?REPLY(State1, 'ok');
 
@@ -607,7 +606,13 @@ save_new_task(Task = #{id := _TaskId}) ->
 
 -spec update_task(task()) -> {'ok', kz_json:object()} |
                              {'error', any()}.
-update_task(Task = #{id := TaskId}) ->
+-spec update_task(task(), ne_binary() | 'undefined') -> {'ok', kz_json:object()} |
+                                                        {'error', any()}.
+update_task(Task) ->
+    %% "I'm feeling lucky"
+    update_task(Task, 'undefined').
+update_task(Task0 = #{id := TaskId}, Rev) ->
+    Task = Task0#{rev => Rev},
     Updates = kz_json:to_proplist(to_json(Task)),
     case kz_datamgr:update_doc(?KZ_TASKS_DB, TaskId, Updates) of
         {'ok', Doc} -> {'ok', to_public_json(from_json(Doc))};

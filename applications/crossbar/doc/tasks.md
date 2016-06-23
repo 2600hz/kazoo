@@ -367,15 +367,18 @@ curl -v -X GET \
     "data": {
         "_read_only": {
             "account_id": "{ACCOUNT_ID}",
-            "action": "add",
+            "action": "list",
             "category": "number_management",
+            "created": 63633924886,
+            "failure_count": 0,
             "id": "{TASK_ID}",
-            "status": "pending",
-            "submit_timestamp": 63632220951
-            "total_count": 2
+            "node": "whistle_apps@qwd",
+            "start_timestamp": 63633924909,
+            "status": "executing",
+            "success_count": 50
         }
     },
-    "request_id": "8341d44579d03e7aa2e97e1cc0c5123f",
+    "request_id": "fac9bad28d115f3ce8a5a7f02902e7f7",
     "revision": "undefined",
     "status": "success"
 }
