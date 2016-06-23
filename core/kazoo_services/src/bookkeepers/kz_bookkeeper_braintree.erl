@@ -622,8 +622,7 @@ update_subscriptions(PlanId, Subscription, #kz_service_updates{bt_subscriptions=
                                'undefined' | braintree_customer:customer().
 fetch_bt_customer(AccountId, NewItems) ->
     lager:debug("requesting braintree customer ~s", [AccountId]),
-    try braintree_customer:find(AccountId) of
-        Customer -> Customer
+    try braintree_customer:find(AccountId)
     catch
         'throw':{'not_found', Error} when NewItems ->
             throw({'no_payment_token', kz_json:from_list([{<<"no_payment_token">>, Error}])});

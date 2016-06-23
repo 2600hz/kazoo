@@ -151,8 +151,6 @@ get_e164_converters() ->
                           ,?KEY_E164_CONVERTERS
                           ,Default
                          )
-    of
-        Converters -> Converters
     catch
         _:_ -> Default
     end.
@@ -166,8 +164,6 @@ get_e164_converters(AccountId) ->
                                          ,?KEY_E164_CONVERTERS
                                          ,Default
                                         )
-    of
-        Converters -> Converters
     catch
         _:_ -> Default
     end.
