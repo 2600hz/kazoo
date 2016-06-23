@@ -863,7 +863,6 @@ collection_process(Context, Action, Numbers) ->
                             knm_numbers:numbers_return().
 numbers_action(Context, ?ACTIVATE, Numbers) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
-               ,{'assign_to', cb_context:account_id(Context)}
                ,{'dry_run', not cb_context:accepting_charges(Context)}
                ,{'public_fields', cb_context:req_data(Context)}
               ],

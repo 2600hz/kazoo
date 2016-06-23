@@ -554,7 +554,6 @@ collection_action(Context, ?HTTP_DELETE, Number) ->
 
 collection_action(Context, ?HTTP_PUT, Number, ?ACTIVATE) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
-               ,{'assign_to', cb_context:account_id(Context)}
                ,{'public_fields', kz_json:delete_key(<<"numbers">>, cb_context:doc(Context))}
               ],
     case knm_number:move(Number, cb_context:account_id(Context), Options) of
