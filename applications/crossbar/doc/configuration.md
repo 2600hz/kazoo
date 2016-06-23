@@ -6,7 +6,7 @@
 The following table outlines the configs that can be found in the `system_config` database, `crossbar` document:
 
 | Key | Type | Default | Description |
-|-----+------+---------+-------------|
+|-----|------|---------|-------------|
 | `api_auth_tokens` | `integer()` | 35 | Default token cost of creating an auth token via API key |
 | `autoload_modules` | `list(string())` | See [here](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/src/crossbar.hrl#L65-L119) | The list of Crossbar modules initially started |
 | `cache_ttl` | `integer()` | 300 | Cache TTL, in seconds |
