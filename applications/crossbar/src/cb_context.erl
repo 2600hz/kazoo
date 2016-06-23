@@ -51,7 +51,7 @@
          ,req_files/1, set_req_files/2
          ,req_nouns/1, set_req_nouns/2
          ,req_headers/1, set_req_headers/2
-         ,req_header/2
+         ,req_header/2, set_req_header/3
          ,query_string/1, set_query_string/2
          ,client_ip/1, set_client_ip/2
          ,doc/1, set_doc/2, update_doc/2
@@ -284,6 +284,7 @@ setters_fold(F, C) when is_function(F, 1) -> F(C).
 -spec set_req_files(context(), req_files()) -> context().
 -spec set_req_nouns(context(), req_nouns()) -> context().
 -spec set_req_headers(context(), cowboy:http_headers()) -> context().
+-spec set_req_header(context(), ne_binary(), iodata()) -> context().
 -spec set_query_string(context(), kz_json:object()) -> context().
 -spec set_req_id(context(), ne_binary()) -> context().
 -spec set_doc(context(), api_object() | kz_json:objects()) -> context().
@@ -354,6 +355,9 @@ set_req_nouns(#cb_context{}=Context, ReqNouns) ->
     Context#cb_context{req_nouns=ReqNouns}.
 set_req_headers(#cb_context{}=Context, ReqHs) ->
     Context#cb_context{req_headers=ReqHs}.
+set_req_header(#cb_context{req_headers=ReqHs}=Context, HKey, HValue) ->
+    NewReqHs = [{HKey,HValue} | ReqHs],
+    Context#cb_context{req_headers=NewReqHs}.
 set_query_string(#cb_context{}=Context, Q) ->
     Context#cb_context{query_json=Q}.
 set_req_id(#cb_context{}=Context, ReqId) ->

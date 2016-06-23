@@ -185,7 +185,8 @@ get_parsed_content_type({'ok', {Main, Sub, _Opts}, Req}) ->
 get_req_data(Context, {'undefined', Req0}, QS) ->
     lager:debug("undefined content type when getting req data, assuming application/json"),
     {Body, Req1} = get_request_body(Req0),
-    try_json(Body, QS, Context, Req1);
+    Ctx = cb_context:set_req_header(Context, <<"content-type">>, ?DEFAULT_CONTENT_TYPE),
+    try_json(Body, QS, Ctx, Req1);
 get_req_data(Context, {<<"multipart/form-data">>, Req}, QS) ->
     lager:debug("multipart/form-data content type when getting req data"),
     maybe_extract_multipart(cb_context:set_query_string(Context, QS), Req, QS);
