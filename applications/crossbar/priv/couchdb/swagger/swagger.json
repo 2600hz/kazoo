@@ -3390,6 +3390,13 @@
         },
         "find_numbers": {
             "properties": {
+                "country": {
+                    "default": "US",
+                    "maxLength": 2,
+                    "minLength": 2,
+                    "required": false,
+                    "type": "string"
+                },
                 "prefix": {
                     "maxLength": 10,
                     "minLength": 3,
@@ -4992,81 +4999,6 @@
             "required": true,
             "type": "object"
         },
-        "qubicle_queues": {
-            "description": "Qubicle queues",
-            "name": "Qubicle Call Queue",
-            "properties": {
-                "agent_connect_timeout": {
-                    "default": 15,
-                    "description": "Amount of time in seconds that qubicle will wait for the agent to successfully answer a call.",
-                    "minimum": 1,
-                    "name": "Agent Connect Timeout",
-                    "required": false,
-                    "type": "integer"
-                },
-                "agent_wrapup_time": {
-                    "default": 2,
-                    "description": "Pre-defined wait period applied after an agent handles a customer call",
-                    "minimum": 0,
-                    "name": "Agent Wrapup Time",
-                    "required": false,
-                    "type": "integer"
-                },
-                "hold_treatment": {
-                    "description": "Media ID (or appropriate media URI) of media to play while caller is on hold.",
-                    "name": "Hold Treatment",
-                    "required": false,
-                    "type": "string"
-                },
-                "queue_name": {
-                    "description": "A friendly name for the queue",
-                    "maxLength": 128,
-                    "minLength": 1,
-                    "name": "Name",
-                    "required": true,
-                    "type": "string"
-                },
-                "queue_router": {
-                    "default": "route_round_robin",
-                    "description": "The queue router used for routing and delivering calls to recipients",
-                    "enum": [
-                        "route_round_robin",
-                        "route_most_idle"
-                    ],
-                    "name": "Router",
-                    "required": false,
-                    "type": "string"
-                },
-                "queue_timeout": {
-                    "default": 3600,
-                    "description": "The maximum amount of time in seconds that a call will wait in queue.",
-                    "minimum": 10,
-                    "name": "Queue Timeout",
-                    "required": false,
-                    "type": "integer"
-                },
-                "queue_type": {
-                    "default": "queue_basic",
-                    "description": "The type of queue",
-                    "enum": [
-                        "queue_basic"
-                    ],
-                    "name": "Type",
-                    "required": true,
-                    "type": "string"
-                },
-                "tick_time": {
-                    "default": 1000,
-                    "description": "The time between delivery ticks in milliseconds",
-                    "minimum": 250,
-                    "name": "Tick Time",
-                    "required": false,
-                    "type": "integer"
-                }
-            },
-            "required": true,
-            "type": "object"
-        },
         "queue_update": {
             "description": "Schema for queue update request",
             "name": "Call Update",
@@ -5384,6 +5316,27 @@
                     "description": "The Resource ID the numbers are coming from",
                     "required": true,
                     "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "resource_selector.rules": {
+            "default": {},
+            "description": "Schema for resource selector rules",
+            "name": "Resource Selectord Rules",
+            "required": true,
+            "type": "object"
+        },
+        "resource_selectors": {
+            "description": "Schema for resource selectors",
+            "name": "Resource Selectors",
+            "properties": {
+                "selectors": {
+                    "description": "Data used for selectors",
+                    "name": "Selectors Data",
+                    "required": true,
+                    "type": "array"
                 }
             },
             "required": true,
@@ -5881,7 +5834,7 @@
             "type": "object"
         },
         "tasks.records": {
-            "additionalProperties": false,
+            "additionalProperties": true,
             "description": "Input data to go through as part of a background task",
             "name": "Task records",
             "properties": {
@@ -6201,7 +6154,6 @@
                 },
                 "name": {
                     "description": "Human-friendly name of the trunkstore account",
-                    "required": true,
                     "type": "string"
                 },
                 "servers": {
@@ -6518,7 +6470,7 @@
             "properties": {
                 "reset_id": {
                     "description": "The UUID that is part of the password-reset link",
-                    "pattern": "^[a-fA-F0-9]{256}$",
+                    "pattern": "^[a-fA-F0-9]{40,250}$",
                     "required": true,
                     "type": "string"
                 }
@@ -8209,6 +8161,9 @@
             "get": {},
             "post": {}
         },
+        "/v2/accounts/{ACCOUNT_ID}/presence/report-{REPORT_ID}": {
+            "get": {}
+        },
         "/v2/accounts/{ACCOUNT_ID}/presence/{EXTENSION}": {
             "post": {}
         },
@@ -8263,6 +8218,28 @@
         "/v2/accounts/{ACCOUNT_ID}/reseller": {
             "delete": {},
             "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/resource_selectors": {
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}/selector/{SELECTORNAME}": {
+            "delete": {},
+            "get": {},
+            "post": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/resource_selectors/selector": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/resource_selectors/selector/{SELECTORNAME}": {
+            "get": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/resource_templates": {
             "get": {},
@@ -8407,6 +8384,9 @@
         },
         "/v2/accounts/{ACCOUNT_ID}/transactions": {
             "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/transactions/credit": {
+            "put": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/transactions/current_balance": {
             "get": {}
