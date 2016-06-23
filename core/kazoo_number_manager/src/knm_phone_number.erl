@@ -379,9 +379,6 @@ setters(Number, Routines) ->
 -spec setters_fold(set_function(), setter_acc()) -> setter_acc().
 setters_fold(_, {'error', _R}=Error) ->
     throw({'stop', Error});
-%% setters_fold({_Fun, 'undefined'}, PhoneNumber) ->
-%%     lager:debug("skipping ~p", [_Fun]),
-%%     PhoneNumber;
 setters_fold({Fun, Value}, PhoneNumber) when is_function(Fun, 2) ->
     setters_fold_apply(Fun, [PhoneNumber, Value]);
 setters_fold(Fun, PhoneNumber) when is_function(Fun, 1) ->
@@ -391,7 +388,6 @@ setters_fold(Fun, PhoneNumber) when is_function(Fun, 1) ->
 setters_fold_apply(Fun, [{'ok',PhoneNumber}|Args]) ->
     setters_fold_apply(Fun, [PhoneNumber|Args]);
 setters_fold_apply(Fun, Args) ->
-    lager:debug("applying ~p", [Fun]),
     erlang:apply(Fun, Args).
 
 %%--------------------------------------------------------------------
