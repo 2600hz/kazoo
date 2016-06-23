@@ -321,7 +321,7 @@ validate_messages(Context, DocId, ?HTTP_DELETE) ->
         ,ToDelete
     ).
 
--spec get_folder_filter(cb_context:context(), ne_binary()) -> ne_binary() | {ne_binary(), boolean()}.
+-spec get_folder_filter(cb_context:context(), ne_binary()) -> kz_vm_message:vm_folder().
 get_folder_filter(Context, Default) ->
     ReqData = cb_context:req_data(Context),
     QS = cb_context:query_string(Context),
@@ -338,7 +338,7 @@ get_folder_filter(Context, Default) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_messages(kz_json:objects(), ne_binary() | ne_binaries() | {ne_binary(), boolean()}) -> ne_binaries().
+-spec filter_messages(kz_json:objects(), kz_vm_message:vm_folder() | ne_binaries()) -> ne_binaries().
 -spec filter_messages(kz_json:objects(), ne_binary() | ne_binaries(), ne_binaries()) -> ne_binaries().
 filter_messages(Messages, {?VM_FOLDER_DELETED, _}) ->
     filter_messages(Messages, ?VM_FOLDER_DELETED, []);
