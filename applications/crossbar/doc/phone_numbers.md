@@ -484,14 +484,53 @@ curl -v -X POST \
 ```
 
 
-#### Fetch
+#### List available numbers of a given US city
 
 > GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/prefix
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/prefix
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/prefix?city={CITY}
+```
+
+##### Responses
+
+###### Success
+
+```json
+
+```
+
+###### Country or city not found
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "data": {},
+        "error": 404,
+        "message": "Not Found",
+        "status": "error"
+    },
+    "error": "500",
+    "message": "init failed",
+    "request_id": "8346e500b7e1e71423a922f1348f351e",
+    "status": "error"
+}
+```
+
+###### Backend to PhoneBook not set up
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": "Unable to acquire numbers missing carrier url",
+    "error": "500",
+    "message": "init failed",
+    "request_id": "d2beaea7fe3d6b8e195ff9567516c351",
+    "status": "error"
+}
 ```
 
 
