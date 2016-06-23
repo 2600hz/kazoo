@@ -351,23 +351,7 @@ curl -v -X DELETE \
 
 #### Get a specific task's details
 
-Optional: use `-H "Accept: text/csv"` to fetch the task's input data file as a CSV.
-
 > GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
-
-To fetch its CSV data:
-
-```shell
-curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H "Accept: text/csv" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
-```
-
-Streams back the contents of the task's input in CSV format.
-
-
-To fetch a task's summary:
 
 ```shell
 curl -v -X GET \
@@ -492,3 +476,16 @@ curl -v -X GET \
 ```
 
 Streams back the task's output in CSV format.
+
+
+#### Retrieve a task's input CSV
+
+> GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/input
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/input
+```
+
+Streams back the task's input in CSV format.
