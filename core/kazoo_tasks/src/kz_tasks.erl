@@ -892,22 +892,18 @@ optional(APIJObj) ->
 input_mime(APIJObj) ->
     kz_json:get_ne_binary_value(?API_INPUT_MIME, APIJObj).
 
+
 -spec find_input_errors(kz_json:object(), input()) -> map().
 find_input_errors(API, 'undefined') ->
-    Errors = find_API_errors(API, mandatory(API), []),
-    case input_mime(API) of
-        'undefined' -> Errors;
-        MIME -> Errors#{?KZ_TASKS_INPUT_ERROR_MIME => MIME}
-    end;
+    find_API_errors(API, [], 'false');
 
 find_input_errors(API, Input=?NE_BINARY) ->
     {Fields, InputData} = kz_csv:take_row(Input),
-    Mandatory = mandatory(API),
-    Errors = find_API_errors(API, Mandatory, Fields),
+    Errors = find_API_errors(API, Fields, 'true'),
     %% Stop here if there is no Mandatory fields to check against.
-    case Mandatory of
+    case mandatory(API) of
         [] -> Errors;
-        _ ->
+        Mandatory ->
             IsMandatory = [lists:member(Field, Mandatory) || Field <- Fields],
             Unsets =
                 fun (Row, Es) ->
@@ -925,12 +921,11 @@ find_input_errors(API, Input=?NE_BINARY) ->
 find_input_errors(API, InputRecord=[_|_]) ->
     %%NOTE: assumes first record has all the fields that all the other records will ever need set
     Fields = kz_json:get_keys(hd(InputRecord)),
-    Mandatory = mandatory(API),
-    Errors = find_API_errors(API, Mandatory, Fields),
+    Errors = find_API_errors(API, Fields, 'true'),
     %% Stop here if there is no Mandatory fields to check against.
-    case Mandatory of
+    case mandatory(API) of
         [] -> Errors;
-        _ ->
+        Mandatory ->
             CheckJObjValues =
                 fun (JObj, Es) ->
                         IsUnset = ['undefined' == kz_json:get_ne_binary_value(Key, JObj)
@@ -948,8 +943,9 @@ find_input_errors(API, InputRecord=[_|_]) ->
             end
     end.
 
--spec find_API_errors(kz_json:object(), ne_binaries(), ne_binaries()) -> map().
-find_API_errors(API, Mandatory, Fields) ->
+-spec find_API_errors(kz_json:object(), ne_binaries(), boolean()) -> map().
+find_API_errors(API, Fields, HasInputData) ->
+    Mandatory = mandatory(API),
     Routines =
         [fun (Errors) ->
                  case Mandatory -- Fields of
@@ -962,7 +958,17 @@ find_API_errors(API, Mandatory, Fields) ->
                      [] -> Errors;
                      Unknown -> Errors#{?KZ_TASKS_INPUT_ERROR_UF => Unknown}
                  end
-         end],
+         end
+        ,fun (Errors) ->
+                 MIME = input_mime(API),
+                 APIRequiresInputData = 'undefined' /= MIME,
+                 RequestedMIME = case MIME of 'undefined' -> <<"none">>; _ -> MIME end,
+                 case APIRequiresInputData xor HasInputData of
+                     'false' -> Errors;
+                     'true' ->  Errors#{?KZ_TASKS_INPUT_ERROR_MIME => RequestedMIME}
+                 end
+         end
+        ],
     lists:foldl(fun (F, Errors) -> F(Errors) end, #{}, Routines).
 
 -spec are_mandatories_unset(nonempty_list(boolean()), nonempty_list(ne_binary())) -> boolean().
