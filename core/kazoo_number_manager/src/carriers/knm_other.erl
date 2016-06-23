@@ -265,7 +265,7 @@ format_numbers_resp(JObj, Options) ->
 -spec format_number_resp(ne_binary(), kz_json:object(), ne_binary(), knm_number:knm_numbers()) ->
                                 knm_number:knm_number_return().
 format_number_resp(DID, CarrierData, AccountId, Acc) ->
-    case knm_carriers:create_discovery(DID, ?MODULE, AccountId, CarrierData) of
+    case knm_carriers:create_found(DID, ?MODULE, AccountId, CarrierData) of
         {'ok', N} -> [N | Acc];
         _ -> Acc
     end.
@@ -343,7 +343,7 @@ format_block_resp_fold(Block, AccountId) ->
 -spec block_resp(kz_json:object(), api_binary(), ne_binary()) ->
                         knm_number:knm_number_return().
 block_resp(JObj, AccountId, Num) ->
-    knm_carriers:create_discovery(Num, ?MODULE, AccountId, JObj).
+    knm_carriers:create_found(Num, ?MODULE, AccountId, JObj).
 
 %%--------------------------------------------------------------------
 %% @private

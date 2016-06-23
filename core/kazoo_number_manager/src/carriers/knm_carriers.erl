@@ -21,7 +21,7 @@
         ]).
 
 %%% For knm carriers only
--export([create_discovery/4]).
+-export([create_found/4]).
 
 -define(DEFAULT_CARRIER_MODULES, [?CARRIER_LOCAL]).
 
@@ -315,27 +315,30 @@ disconnect(Number) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Create a number in a discovery state.
+%% Create a number in a discovery (or given) state.
 %% @end
 %%--------------------------------------------------------------------
--spec create_discovery(ne_binary(), module(), ne_binary(), kz_json:object()) ->
-                              knm_number_return().
-create_discovery(DID=?NE_BINARY, Carrier, ?MATCH_ACCOUNT_RAW(AuthBy), Data=?JSON_WRAPPER(_))
+-spec create_found(ne_binary(), module(), ne_binary(), kz_json:object()) ->
+                          knm_number_return().
+-spec create_found(ne_binary(), module(), ne_binary(), kz_json:object(), ne_binary()) ->
+                          knm_number_return().
+create_found(DID=?NE_BINARY, Carrier, ?MATCH_ACCOUNT_RAW(AuthBy), Data=?JSON_WRAPPER(_))
+  when is_atom(Carrier) ->
+    create_found(DID, Carrier, AuthBy, Data, ?NUMBER_STATE_DISCOVERY).
+create_found(DID=?NE_BINARY, Carrier, ?MATCH_ACCOUNT_RAW(AuthBy), Data=?JSON_WRAPPER(_), State=?NE_BINARY)
   when is_atom(Carrier) ->
     case knm_number:get(DID) of
         {'ok', _Number}=Ok -> Ok;
         {'error', 'not_found'} ->
-            NormalizedNum = knm_converters:normalize(DID),
+            Options = [{'auth_by', AuthBy}
+                      ,{'assign_to', 'undefined'}
+                      ,{'state', State}
+                      ,{'module_name', kz_util:to_binary(Carrier)}
+                      ],
             {'ok', PhoneNumber} =
                 knm_phone_number:setters(
-                  knm_phone_number:new()
-                  ,[{fun knm_phone_number:set_number/2, NormalizedNum}
-                   ,{fun knm_phone_number:set_number_db/2, knm_converters:to_db(NormalizedNum)}
-                   ,{fun knm_phone_number:set_assign_to/2, 'undefined'}
-                   ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
-                   ,{fun knm_phone_number:set_module_name/2, kz_util:to_binary(Carrier)}
-                   ,{fun knm_phone_number:set_carrier_data/2, Data}
-                   ,{fun knm_phone_number:set_auth_by/2, AuthBy}
+                  knm_phone_number:new(DID, Options)
+                  ,[{fun knm_phone_number:set_carrier_data/2, Data}
                    ]),
             knm_number:save(knm_number:set_phone_number(knm_number:new(), PhoneNumber))
     end.

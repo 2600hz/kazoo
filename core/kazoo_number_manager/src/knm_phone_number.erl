@@ -94,9 +94,8 @@ new(DID, Options) ->
                 [{fun set_number/2, NormalizedNum}
                 ,{fun set_number_db/2, knm_converters:to_db(NormalizedNum)}
                 ,{fun set_assign_to/2, knm_number_options:assign_to(Options)}
-                ,{fun set_state/2, ?NUMBER_STATE_DISCOVERY}
-                ,{fun set_module_name/2, ?CARRIER_OTHER}
-                ,{fun set_carrier_data/2, kz_json:new()}
+                ,{fun set_state/2, knm_number_options:state(Options)}
+                ,{fun set_module_name/2, knm_number_options:module_name(Options)}
                 ,{fun set_auth_by/2, knm_number_options:auth_by(Options)}
                 ,{fun set_dry_run/2, knm_number_options:dry_run(Options)}
                 ,{fun set_doc/2, knm_number_options:public_fields(Options)}

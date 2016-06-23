@@ -162,4 +162,4 @@ process_response(JObjs, Options) ->
                               knm_number:knm_number_return().
 response_jobj_to_number(JObj, AccountId) ->
     Num = kz_json:get_value(<<"number">>, JObj),
-    knm_carriers:create_discovery(Num, ?MODULE, AccountId, JObj).
+    knm_carriers:create_found(Num, ?MODULE, AccountId, JObj).

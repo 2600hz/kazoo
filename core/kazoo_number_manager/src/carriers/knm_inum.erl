@@ -85,22 +85,7 @@ format_numbers_resp(AccountId, JObjs) ->
 -spec format_number_resp(ne_binary(), kz_json:object()) -> knm_number:knm_number_return().
 format_number_resp(AccountId, JObj) ->
     Doc = kz_json:get_value(<<"doc">>, JObj),
-    case knm_number:get(kz_doc:id(Doc)) of
-        {'ok', _}=Ok -> Ok;
-        {'error', 'not_found'} ->
-            {'ok', PhoneNumber} =
-                knm_phone_number:setters(
-                  knm_phone_number:new()
-                  ,[{fun knm_phone_number:set_number/2, kz_doc:id(Doc)}
-                   ,{fun knm_phone_number:set_number_db/2, ?KZ_INUM}
-                   ,{fun knm_phone_number:set_assign_to/2, 'undefined'}
-                   ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_AVAILABLE}
-                   ,{fun knm_phone_number:set_module_name/2, kz_util:to_binary(?MODULE)}
-                   ,{fun knm_phone_number:set_carrier_data/2, Doc}
-                   ,{fun knm_phone_number:set_auth_by/2, AccountId}
-                   ]),
-            knm_number:save(knm_number:set_phone_number(knm_number:new(), PhoneNumber))
-    end.
+    knm_carriers:create_found(kz_doc:id(Doc), ?MODULE, AccountId, Doc, ?NUMBER_STATE_AVAILABLE).
 
 %%--------------------------------------------------------------------
 %% @public
