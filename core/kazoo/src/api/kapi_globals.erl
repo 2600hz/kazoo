@@ -12,7 +12,9 @@
 -export([message/1, reply/1, reason/1]).
 -export([encode/1, encode_req/1, decode/1]).
 -export([state/1]).
--export([is_pending/1]).
+-export([is_pending/1
+        ,is_none/1
+        ]).
 -export([timestamp/1]).
 -export([node/1]).
 
@@ -42,7 +44,7 @@
 -include_lib("kazoo/include/kz_api.hrl").
 
 %% Types & Accessors
--type state() :: 'none' | 'local' | 'pending' | 'remote'.
+-type state() :: 'none' | 'local' | 'pending' | 'remote' | 'registered'.
 -export_type([state/0]).
 
 -spec encode(term()) -> ne_binary().
@@ -111,6 +113,10 @@ reason(JObj) ->
 is_pending(JObj) ->
     state(JObj) =:= 'pending'.
 
+-spec is_none(kz_json:object()) -> boolean().
+is_none(JObj) ->
+    state(JObj) =:= 'none'.
+
 -spec timestamp(kz_json:object()) -> integer().
 timestamp(JObj) ->
     kz_json:get_integer_value(<<"Timestamp">>, JObj).
@@ -165,7 +171,7 @@ routing_key(Event, Name) ->
 -define(OPTIONAL_REGISTER_RESP_HEADERS, [<<"State">>, <<"Timestamp">>]).
 -define(REGISTER_RESP_VALUES, [{<<"Event-Category">>, <<"globals">>}
                               ,{<<"Event-Name">>, <<"register_resp">>}
-                           ]).
+                              ]).
 -define(REGISTER_RESP_TYPES, [{<<"Timestamp">>, fun is_integer/1}]).
 
 -define(UNREGISTER_REQ_HEADERS, [<<"Name">>]).

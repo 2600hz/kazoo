@@ -215,6 +215,7 @@ postcondition(#{?LOCAL_NODE := Registry}
              ,{'call', 'kz_globals', 'register_name', [Name, _Pid]}
              ,WasRegistered
              ) ->
+    lager:debug("looking for ~p in ~p", [Name, Registry]),
     case lists:keysearch(Name, 1, Registry) of
         'false' ->
             'yes' =:= WasRegistered;
@@ -230,7 +231,7 @@ postcondition(#{?LOCAL_NODE := Registry}
              ,{'call', 'kz_globals', 'registered', []}
              ,Names
              ) ->
-    lager:debug("comparing ~p to reg ~p", [Names, Registry]),
+    lager:debug("comparing names ~p to model ~p", [Names, Registry]),
     compare_names(lists:keysort(1, Registry), lists:sort(Names)).
 
 compare_names([], []) -> 'true';
@@ -254,37 +255,41 @@ remote_register(Remote, Name, Pid) ->
                | kz_api:default_headers(<<"testing">>, <<"4.0.0">>)
               ],
     case kz_amqp_worker:call_collect(Payload, fun kapi_globals:publish_register/1) of
-        {'error', _} -> 'no';
-        {_, []} -> 'yes';
+        {'error', _E} ->
+            lager:debug("failed to find: ~p", [_E]),
+            'no';
+        {_, []} ->
+            remote_register_success(Remote, Name);
         {_, JObjs} ->
-            case lists:all(fun kapi_globals:is_pending/1, JObjs) of
+            case lists:all(fun kapi_globals:is_none/1, JObjs) of
                 'true' -> remote_register_success(Remote, Name);
-                'false' -> 'no'
+                'false' ->
+                    lager:debug("name ~p is registered: ~p", [Name, JObjs]),
+                    'no'
             end
     end.
 
 remote_register_success(Remote, Name) ->
     Zone = list_to_binary(["zone", $0+Remote]),
     Payload = [{<<"Name">>, Name}
-              ,{<<"State">>, 'local'}
+              ,{<<"State">>, 'registered'}
               ,{<<"Node">>, remote_node_name(Remote)}
+              ,{<<"Timestamp">>, kz_global:new_timestamp()}
               ,{<<"Zone">>, Zone}
                | kz_api:default_headers(<<>>, <<"testing">>, <<"4.0.0">>)
               ],
-    JObj = kz_json:from_list(Payload),
-    Global = kz_global:from_jobj(JObj, Zone),
-    gen_listener:call('kz_globals', {'insert_remote', Global}),
+    kz_amqp_worker:call_collect(Payload, fun kapi_globals:publish_register/1),
     'yes'.
 
 remote_node_name(Remote) ->
-    list_to_binary([ Remote+$0, "@remote.host"]).
+    list_to_binary([Remote+$0, "@remote.host"]).
 
 remote_unregister(Remote, Name) ->
-        Payload = [{<<"Name">>, Name}
-                  ,{<<"Reason">>, kapi_globals:encode('normal')}
-                  ,{<<"Node">>, remote_node_name(Remote)}
-                   | kz_api:default_headers(<<"testing">>, <<"4.0.0">>)
-                  ],
+    Payload = [{<<"Name">>, Name}
+              ,{<<"Reason">>, kapi_globals:encode('normal')}
+              ,{<<"Node">>, remote_node_name(Remote)}
+               | kz_api:default_headers(<<"testing">>, <<"4.0.0">>)
+              ],
     kz_amqp_worker:cast(Payload, fun kapi_globals:publish_unregister/1),
     timer:sleep(1000),
     'ok'.

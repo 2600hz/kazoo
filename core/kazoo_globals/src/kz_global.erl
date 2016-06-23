@@ -1,3 +1,12 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2016, 2600Hz INC
+%%% @doc
+%%%
+%%% @end
+%%% @contributors
+%%%   Luis Azedo
+%%%   James Aimonetti
+%%%-------------------------------------------------------------------
 -module(kz_global).
 
 -export([name/1
@@ -10,7 +19,7 @@
         ,is_remote/1
         ,node/1
         ,is_local_node/1
-        ,timestamp/1
+        ,timestamp/1, new_timestamp/0
 
         ,all_names/1
         ,all_globals_by_pid/2
@@ -23,7 +32,7 @@
 
         ,register_local/2
         ,register_remote/2
-]).
+        ]).
 
 -export_type([global/0
              ,globals/0
@@ -39,7 +48,7 @@
                    ,name :: name() | '$1' | '_'
                    ,monitor :: api_reference() | '_'
                    ,state = 'none' :: kapi_globals:state() | '_'
-                   ,timestamp :: integer() | '_'
+                   ,timestamp = new_timestamp() :: integer() | '_'
                    }).
 
 -type global() :: #kz_global{}.
@@ -48,6 +57,7 @@
 -type name() :: term().
 -type names() :: [name()].
 
+-spec from_jobj(kz_json:object(), atom()) -> global().
 from_jobj(JObj, Zone) ->
     Node = kz_api:node(JObj),
     #kz_global{node=kz_util:to_atom(Node, 'true')
@@ -64,7 +74,7 @@ new_global(Name, Pid, Zone, Queue) ->
 
 -spec new_global(name(), pid(), atom(), ne_binary(), atom()) -> global().
 new_global(Name, Pid, Zone, Queue, State) ->
-    new_global(Name, Pid, Zone, Queue, State, erlang:system_time('micro_seconds')).
+    new_global(Name, Pid, Zone, Queue, State, new_timestamp()).
 
 -spec new_global(name(), pid(), atom(), ne_binary(), atom(), integer()) -> global().
 new_global(Name, Pid, Zone, Queue, State, Timestamp) ->
@@ -100,6 +110,7 @@ all_globals_by_pid(Table, Pid) ->
     MatchSpec = [{#kz_global{pid = Pid, _ = '_'} ,[],['$_']}],
     ets:select(Table, MatchSpec).
 
+-spec all_dead_pids(ets:tab()) -> [{term(), pid()}].
 all_dead_pids(Table) ->
     MatchSpec = [{#kz_global{pid = '$2', name = '$1', _ = '_'}
                  ,[]
@@ -115,36 +126,43 @@ all_globals_by_node(Table, Node) ->
     MatchSpec = [{#kz_global{node = Node, _ = '_'} ,[],['$_']}],
     ets:select(Table, MatchSpec).
 
-name(#kz_global{name=Name}) ->
-    Name.
+-spec name(global()) -> name().
+name(#kz_global{name=Name}) -> Name.
 
-name_pos() ->
-    #kz_global.name.
+-spec name_pos() -> integer().
+name_pos() -> #kz_global.name.
 
-pid(#kz_global{pid=Pid}) ->
-    Pid.
+-spec pid(global()) -> pid().
+pid(#kz_global{pid=Pid}) -> Pid.
 
-zone(#kz_global{zone=Zone}) ->
-    Zone.
+-spec zone(global()) -> atom().
+zone(#kz_global{zone=Zone}) -> Zone.
 
-server(#kz_global{server=Queue}) ->
-    Queue.
+-spec server(global()) -> api_binary().
+server(#kz_global{server=Queue}) -> Queue.
 
-node(#kz_global{node=Node}) ->
-    Node.
+-spec node(global()) -> atom().
+node(#kz_global{node=Node}) -> Node.
 
-timestamp(#kz_global{timestamp=Timestamp}) ->
-    Timestamp.
+-spec timestamp(global()) -> integer().
+timestamp(#kz_global{timestamp=Timestamp}) -> Timestamp.
 
+-spec new_timestamp() -> integer().
+new_timestamp() ->
+    erlang:system_time('micro_seconds').
+
+-spec is_local_node(global()) -> boolean().
 is_local_node(#kz_global{node=Node}) ->
     Node =:= node().
 
-state(#kz_global{state=State}) ->
-    State.
+-spec state(global()) -> kapi_globals:state().
+state(#kz_global{state=State}) -> State.
 
+-spec is_local(global()) -> boolean().
 is_local(#kz_global{state='local'}) -> 'true';
 is_local(#kz_global{}) -> 'false'.
 
+-spec is_remote(global()) -> boolean().
 is_remote(#kz_global{state='remote'}) -> 'true';
 is_remote(#kz_global{}) -> 'false'.
 
@@ -159,8 +177,8 @@ register_local(Table
               ,{#kz_global.monitor, Monitor}
               ],
     Local = Global#kz_global{state='local'
-                    ,monitor=Monitor
-                    },
+                            ,monitor=Monitor
+                            },
     lager:debug("inserting local ~p", [Local]),
     ets:update_element(Table, Name, Updates),
     Local.

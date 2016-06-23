@@ -33,7 +33,7 @@ When client code calls (directly or using `{'via', 'kz_globals', Name}`) `regist
 
 1. Receive an AMQP `register` payload with `State="pending"`.
 2. Check the local ETS table for the Name
-  a. If not found, reply back to request with `State="pending"`
+  a. If not found, reply back to request with `State="none"`
   b. If found:
       1. Reply back to request with the value of `state` in the ETS entry (`none`, `local`, `remote`)
       2. Advertise the registration so all remote nodes can update their local ETS (if needed)

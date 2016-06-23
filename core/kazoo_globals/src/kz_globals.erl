@@ -258,14 +258,14 @@ handle_call({'register', Name, Pid}, From
            ,#state{zone=Zone, queue=Q}=State
            ) ->
     Global = kz_global:new_global(Name, Pid, Zone, Q, 'pending'),
+    lager:debug("inserting ~p for ~p", [Name, Pid]),
     ets:insert(?TAB_NAME, Global),
     kz_util:spawn(fun amqp_register/2 , [Global, From]),
     {'noreply', State};
-%    {'reply', amqp_register(Name, Pid, State), State};
 handle_call({'unregister', Name}, _From, State) ->
     {'reply', amqp_unregister(Name), State};
 handle_call({'insert', Global}, _From, State) ->
-    lager:debug("inserting ~p", [Global]),
+    lager:debug("inserting global ~p", [Global]),
     ets:insert(?TAB_NAME, Global),
     {'reply', State};
 handle_call({'delete', Global}, _From, State) ->
@@ -298,7 +298,7 @@ handle_cast({'register_remote', JObj, From}, State) ->
     _ = register_remote(from_json(JObj, State), From),
     {'noreply', State};
 handle_cast({'register_local', Global, From}, State) ->
-    gen_server:reply(From, register_local(Global)),
+    gen_listener:reply(From, register_local(Global)),
     {'noreply', State};
 handle_cast({'add_zone', Zone}, #state{zones=Zones}=State) ->
     case lists:member(Zone, Zones) of
@@ -433,10 +433,10 @@ amqp_register(Global, From) ->
             case do_amqp_register(Global) of
                 'yes' ->
                     lager:debug("amqp register ok, registering ~p locally", [Name]),
-                    gen_server:cast(?SERVER, {'register_local',Global, From});
-                'no' -> gen_server:reply(From, 'no')
+                    gen_listener:cast(?SERVER, {'register_local', Global, From});
+                'no' -> gen_listener:reply(From, 'no')
             end;
-        _Pid -> gen_server:reply(From, 'no')
+        _Pid -> gen_listener:reply(From, 'no')
     end.
 
 -spec do_amqp_register(kz_global:global()) -> 'yes' | 'no'.
@@ -489,15 +489,11 @@ amqp_register_check_response_fold([Fun | Funs], JObj, Global) ->
 amqp_register_check_valid_state(JObj, _Global) ->
     amqp_register_check_response_state(kapi_globals:state(JObj)).
 
--spec amqp_register_check_response_state(atom()) -> 'yes' | 'no' | 'maybe'.
+-spec amqp_register_check_response_state(kapi_globals:state()) -> 'yes' | 'no' | 'maybe'.
 amqp_register_check_response_state('none') -> 'yes';
 amqp_register_check_response_state('pending') -> 'maybe';
 amqp_register_check_response_state('local') -> 'no';
-amqp_register_check_response_state('registered') -> 'no';
-amqp_register_check_response_state('remote') -> 'yes';
-amqp_register_check_response_state(State) ->
-    lager:warning("unknown state (~p) checking amqp register response", [State]),
-    'no'.
+amqp_register_check_response_state('remote') -> 'yes'.
 
 -spec amqp_register_check_pending(kz_json:object(), kz_global:global()) -> 'yes' | 'no' | 'maybe'.
 amqp_register_check_pending(JObj, Global) ->
@@ -571,7 +567,7 @@ register_remote_resolve(Local, Remote) ->
 -spec maybe_register_remote_reply(term(), pid()) -> 'ok'.
 maybe_register_remote_reply('undefined', _Pid) -> 'ok';
 maybe_register_remote_reply(From, Pid) ->
-    gen_server:reply(From, Pid).
+    gen_listener:reply(From, Pid).
 
 -spec amqp_unregister(kz_global:name()) -> 'ok'.
 amqp_unregister(Name) ->
@@ -600,9 +596,8 @@ do_amqp_unregister(Global, Reason) ->
 maybe_amqp_query(Name, From) ->
     case where(Name) of
         'undefined' -> amqp_query(Name, From);
-        Global -> gen_server:reply(From, kz_global:pid(Global))
+        Global -> gen_listener:reply(From, kz_global:pid(Global))
     end.
-
 
 -spec amqp_query(kz_global:name(), term()) -> 'ok'.
 amqp_query(Name, From) ->
@@ -613,14 +608,14 @@ amqp_query(Name, From) ->
     case ?AMQP_CALL_COLLECT(Payload, ?AMQP_QUERY_FUN) of
         {'error', Error} ->
             lager:error("error '~p' calling register ~p", [Error, Name]),
-            gen_server:reply(From, 'undefined');
+            gen_listener:reply(From, 'undefined');
         {_, []} ->
             lager:debug("cluster didn't know ~p", [Name]),
-            gen_server:reply(From, 'undefined');
+            gen_listener:reply(From, 'undefined');
         {_, [JObj]} ->
             lager:debug("cluster knew ~p: ~p", [Name, JObj]),
             Pid = gen_listener:call(?SERVER, {'register_remote', JObj}),
-            gen_server:reply(From, Pid)
+            gen_listener:reply(From, Pid)
     end.
 
 -spec handle_amqp_call(kz_json:object(), kz_proplist()) -> 'ok'.
@@ -711,6 +706,7 @@ amqp_query_reply(JObj, Global) ->
 
 -spec handle_amqp_register(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_amqp_register(JObj, _Props) ->
+    lager:debug("checking amqp register ~p: ~p", [kapi_globals:state(JObj), JObj]),
     handle_amqp_register_state(JObj, kapi_globals:state(JObj)).
 
 -spec handle_amqp_register_state(kz_json:object(), kapi_globals:state()) -> 'ok'.
@@ -735,6 +731,9 @@ amqp_register_reply(JObj) ->
               ],
     ServerId = kz_api:server_id(JObj),
     Publisher = fun(P) -> kapi_globals:publish_register_resp(ServerId, P) end,
+    lager:debug("replying to ~p that ~p isn't found locally"
+               ,[ServerId, kapi_globals:name(JObj)]
+               ),
     kz_amqp_worker:cast(Payload, Publisher).
 
 maybe_handle_local_register(JObj, Global, 'true', 'true') ->
@@ -753,6 +752,9 @@ amqp_register_reply(JObj, Global) ->
               ],
     ServerId = kz_api:server_id(JObj),
     Publisher = fun(P) -> kapi_globals:publish_register_resp(ServerId, P) end,
+    lager:debug("replying to ~p that ~p is found locally in state ~p"
+               ,[ServerId, kapi_globals:name(JObj), kz_global:state(Global)]
+               ),
     kz_amqp_worker:cast(Payload, Publisher).
 
 -spec handle_amqp_unregister(kz_json:object(), kz_proplist()) -> 'ok'.
