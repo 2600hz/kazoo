@@ -705,25 +705,46 @@ set_options(Number, Options) when is_list(Options) ->
 -spec is_authorized(knm_phone_number()) -> boolean().
 -ifdef(TEST).
 is_authorized(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}) -> 'true';
+is_authorized(#knm_phone_number{auth_by = 'undefined'}) -> 'false';
+is_authorized(#knm_phone_number{assigned_to = 'undefined'
+                               ,assign_to = AssignTo
+                               ,auth_by = AuthBy
+                               }) ->
+    is_in_account_hierarchy(AuthBy, AssignTo);
 is_authorized(#knm_phone_number{assigned_to = AssignedTo
                                ,auth_by = AuthBy
                                }) ->
-    ?LOG_DEBUG("is authz ~s ~s", [AuthBy, AssignedTo]),
-    (AssignedTo =:= ?RESELLER_ACCOUNT_ID
-     orelse AssignedTo =:= ?MASTER_ACCOUNT_ID
+    is_in_account_hierarchy(AuthBy, AssignedTo).
+-else.
+is_authorized(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}) ->
+    lager:info("bypassing auth"),
+    'true';
+is_authorized(#knm_phone_number{auth_by = 'undefined'}) -> 'false';
+is_authorized(#knm_phone_number{assigned_to = 'undefined'
+                               ,assign_to = AssignTo
+                               ,auth_by = AuthBy
+                               }) ->
+    is_in_account_hierarchy(AuthBy, AssignTo);
+is_authorized(#knm_phone_number{assigned_to = AssignedTo
+                               ,auth_by = AuthBy
+                               }) ->
+    is_in_account_hierarchy(AuthBy, AssignedTo).
+-endif.
+
+-spec is_in_account_hierarchy(ne_binary(), ne_binary()) -> boolean().
+-ifdef(TEST).
+is_in_account_hierarchy(AuthBy, AccountId) ->
+    ?LOG_DEBUG("is authz ~s ~s", [AuthBy, AccountId]),
+    (AccountId =:= ?RESELLER_ACCOUNT_ID
+     orelse AccountId =:= ?MASTER_ACCOUNT_ID
     )
         andalso (AuthBy =:= ?RESELLER_ACCOUNT_ID
                  orelse AuthBy =:= ?MASTER_ACCOUNT_ID
                 ).
 -else.
-is_authorized(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}) ->
-    lager:info("bypassing auth"),
-    'true';
-is_authorized(#knm_phone_number{assigned_to = AssignedTo
-                               ,auth_by = AuthBy
-                               }) ->
-    ?LOG_DEBUG("is authz ~s ~s", [AuthBy, AssignedTo]),
-    kz_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true').
+is_in_account_hierarchy(AuthBy, AccountId) ->
+    ?LOG_DEBUG("is authz ~s ~s", [AuthBy, AccountId]),
+    kz_util:is_in_account_hierarchy(AuthBy, AccountId, 'true').
 -endif.
 
 %%--------------------------------------------------------------------
