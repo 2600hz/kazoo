@@ -32,7 +32,7 @@
                                                           ,?PRESENCE_QUERY_DEFAULT_TIMEOUT
                                                          )
        ).
--define(REPORT_CONTENT_TYPE, [{'to_binary', [{<<"application">>, <<"json">>}]}]).
+-define(REPORT_CONTENT_TYPE, [{'send_file', [{<<"application">>, <<"json">>}]}]).
 -define(REPORT_PREFIX, "report-").
 -define(MATCH_REPORT_PREFIX(A), <<?REPORT_PREFIX, A/binary>>).
 -define(MATCH_REPORT_PREFIX, <<?REPORT_PREFIX, _/binary>>).
@@ -490,19 +490,18 @@ find_presence_id(JObj) ->
 -spec load_report(cb_context:context(), path_token()) -> cb_context:context().
 load_report(Context, Report) ->
     File = <<"/tmp/", Report/binary, ".json">>,
-    case file:read_file(File) of
-        {'ok', Bin} -> set_report_binary(Context, File, Bin);
-        {'error', _Error} ->
-            lager:error("error ~p while fetching report file ~s", [_Error, File]),
+    case filelib:is_file(File) of
+        'true' -> set_report(Context, File);
+        'false' ->
+            lager:error("invalid file while fetching report file ~s", [File]),
             cb_context:add_system_error('bad_identifier', kz_json:from_list([{<<"cause">>, Report}]), Context)
     end.
 
--spec set_report_binary(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
-set_report_binary(Context, File, Bin) ->
-    _ = file:delete(File),
+-spec set_report(cb_context:context(), ne_binary()) -> cb_context:context().
+set_report(Context, File) ->
     Name = kz_util:to_binary(filename:basename(File)),
     cb_context:setters(Context,
-                       [{fun cb_context:set_resp_data/2, Bin}
+                       [{fun cb_context:set_resp_file/2, File}
                        ,{fun cb_context:set_resp_etag/2, 'undefined'}
                        ,{fun cb_context:add_resp_headers/2
                            ,[{<<"Content-Disposition">>, <<"attachment; filename=", Name/binary>>}]
