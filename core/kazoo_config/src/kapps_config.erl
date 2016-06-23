@@ -225,6 +225,9 @@ get_ne_binary(Category, Key, Default, Node) ->
 get(_, _) -> 'undefined'.
 get(_, _, Default) -> Default.
 get(_, _, Default, _) -> Default.
+get_current(_, _) -> 'undefined'.
+get_current(_, _, Default) -> Default.
+get_current(_, _, Default, _) -> Default.
 -else.
 
 get(Category, Key) ->
