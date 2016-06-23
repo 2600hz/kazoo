@@ -383,13 +383,11 @@ create_apps_store_doc(AccountId) ->
 -spec validate_move(ne_binary(), cb_context:context(), ne_binary(), ne_binary()) -> boolean().
 validate_move(<<"superduper_admin">>, Context, _, _) ->
     lager:debug("using superduper_admin flag to allow move account"),
-    AuthDoc = cb_context:auth_doc(Context),
-    AuthId = kz_json:get_value(<<"account_id">>, AuthDoc),
+    AuthId = kz_doc:account_id(cb_context:auth_doc(Context)),
     kz_util:is_system_admin(AuthId);
 validate_move(<<"tree">>, Context, MoveAccount, ToAccount) ->
     lager:debug("using tree to allow move account"),
-    AuthDoc = cb_context:auth_doc(Context),
-    AuthId = kz_json:get_value(<<"account_id">>, AuthDoc),
+    AuthId = kz_doc:account_id(cb_context:auth_doc(Context)),
     MoveTree = crossbar_util:get_tree(MoveAccount),
     ToTree = crossbar_util:get_tree(ToAccount),
     L = lists:foldl(fun(Id, Acc) ->
