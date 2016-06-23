@@ -59,6 +59,7 @@
 -define(PREFIX, <<"prefix">>).
 -define(LOCALITY, <<"locality">>).
 -define(CHECK, <<"check">>).
+-define(COUNTRY, <<"country">>).
 
 -define(MAX_TOKENS, kapps_config:get_integer(?PHONE_NUMBERS_CONFIG_CAT, <<"activations_per_day">>, 100)).
 
@@ -489,7 +490,10 @@ normalize_view_results(JObj, Acc) ->
 find_numbers(Context) ->
     JObj = get_find_numbers_req(Context),
     Context1 = cb_context:set_req_data(Context, JObj),
-    Prefix = kz_json:get_ne_value(?PREFIX, JObj),
+    PrefixQuery = kz_json:get_ne_value(?PREFIX, JObj),
+    Country = kz_json:get_ne_value(?COUNTRY, JObj, ?DEFAULT_COUNTRY),
+    CountryPrefix = knm_util:prefix_for_country(Country),
+    Prefix = <<CountryPrefix/binary, PrefixQuery/binary>>, 
     Quantity = kz_json:get_value(<<"quantity">>, JObj),
     OnSuccess =
         fun(C) ->
