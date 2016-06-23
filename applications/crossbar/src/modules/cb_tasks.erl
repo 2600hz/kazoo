@@ -257,7 +257,9 @@ validate_new_attachment(Context, 'true') ->
     end;
 validate_new_attachment(Context, 'false') ->
     case kz_util:is_empty(cb_context:req_data(Context)) of
-        'true' -> Context; %% For tasks without input data.
+        'true' ->
+            %% For tasks without input data.
+            cb_context:set_resp_status(Context, 'success');
         'false' ->
             Ctx = cb_context:validate_request_data(?SCHEMA_RECORDS, Context),
             case cb_context:resp_status(Ctx) of
