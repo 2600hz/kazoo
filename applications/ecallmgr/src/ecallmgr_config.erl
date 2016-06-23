@@ -198,16 +198,15 @@ fetch(Key, Default, Node, RequestTimeout) ->
     end.
 
 -spec maybe_cache_resp(ne_binary(), ne_binary(), any()) -> 'ok'.
-maybe_cache_resp(_, _ , 'undefined') -> 'ok';
 maybe_cache_resp(_, _ , 'null') -> 'ok';
-maybe_cache_resp(_, _ , <<"undefined">>) -> 'ok';
 maybe_cache_resp(_, _ , <<"null">>) -> 'ok';
 maybe_cache_resp(Key, Node, Value) ->
     CacheProps = [{'origin', {'db', ?KZ_CONFIG_DB, <<"ecallmgr">>}}],
     kz_cache:store_local(?ECALLMGR_UTIL_CACHE
-                         ,cache_key(Key, Node)
-                         ,Value
-                         ,CacheProps).
+                        ,cache_key(Key, Node)
+                        ,Value
+                        ,CacheProps
+                        ).
 
 -spec set(kz_json:key(), kz_json:json_term()) -> 'ok'.
 set(Key, Value) ->

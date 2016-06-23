@@ -764,7 +764,6 @@ start_preconfigured_servers() ->
         [] ->
             lager:info("no preconfigured servers available. Is the sysconf whapp running?"),
             timer:sleep(5 * ?MILLISECONDS_IN_SECOND),
-            _ = ecallmgr_config:flush(<<"fs_nodes">>),
             start_preconfigured_servers();
         Nodes when is_list(Nodes) ->
             lager:info("successfully retrieved FreeSWITCH nodes to connect with, doing so..."),
@@ -773,12 +772,10 @@ start_preconfigured_servers() ->
         'undefined' ->
             lager:debug("failed to receive a response for node configs"),
             timer:sleep(5 * ?MILLISECONDS_IN_SECOND),
-            _ = ecallmgr_config:flush(<<"fs_nodes">>),
             start_preconfigured_servers();
         _E ->
             lager:debug("received a non-list for fs_nodes: ~p", [_E]),
             timer:sleep(5 * ?MILLISECONDS_IN_SECOND),
-            _ = ecallmgr_config:flush(<<"fs_nodes">>),
             start_preconfigured_servers()
     end.
 

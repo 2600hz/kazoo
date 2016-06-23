@@ -12,7 +12,10 @@
 
 -include("kazoo_config.hrl").
 
--export([get/2, get/3, get/4, get_all_kvs/1]).
+-export([get/2, get/3, get/4
+        ,get_all_kvs/1
+        ,get_current/2, get_current/3, get_current/4
+        ]).
 -export([get_string/2, get_string/3, get_string/4]).
 -export([get_binary/2, get_binary/3, get_binary/4]).
 -export([get_atom/2, get_atom/3, get_atom/4]).
@@ -222,6 +225,9 @@ get_ne_binary(Category, Key, Default, Node) ->
 get(_, _) -> 'undefined'.
 get(_, _, Default) -> Default.
 get(_, _, Default, _) -> Default.
+get_current(_, _) -> 'undefined'.
+get_current(_, _, Default) -> Default.
+get_current(_, _, Default, _) -> Default.
 -else.
 
 get(Category, Key) ->
@@ -240,6 +246,33 @@ get(Category, Keys, Default, Node) when not is_binary(Node) ->
     get(Category, Keys, Default, kz_util:to_binary(Node));
 get(Category, Keys, Default, Node) ->
     case get_category(Category) of
+        {'ok', JObj} -> get_value(Category, Node, Keys, Default, JObj);
+        {'error', 'not_found'} ->
+            lager:debug("missing category ~s(default) ~p: ~p", [Category, Keys, Default]),
+            _ = set(Category, Keys, Default),
+            Default
+    end.
+
+-spec get_current(config_category(), config_key()) -> any() | 'undefined'.
+-spec get_current(config_category(), config_key(), Default) -> any() | Default.
+-spec get_current(config_category(), config_key(), Default, ne_binary() | atom()) -> any() | Default.
+
+get_current(Category, Key) ->
+    get_current(Category, Key, 'undefined').
+
+get_current(Category, Key, Default) ->
+    get_current(Category, Key, Default, node()).
+
+get_current(Category, Key, Default, 'undefined') ->
+    get_current(Category, Key, Default, ?KEY_DEFAULT);
+get_current(Category, Key, Default, Node) when not is_list(Key) ->
+    get_current(Category, [kz_util:to_binary(Key)], Default, Node);
+get_current(Category, Keys, Default, Node) when not is_binary(Category) ->
+    get_current(kz_util:to_binary(Category), Keys, Default, Node);
+get_current(Category, Keys, Default, Node) when not is_binary(Node) ->
+    get_current(Category, Keys, Default, kz_util:to_binary(Node));
+get_current(Category, Keys, Default, Node) ->
+    case get_category(Category, 'false') of
         {'ok', JObj} -> get_value(Category, Node, Keys, Default, JObj);
         {'error', 'not_found'} ->
             lager:debug("missing category ~s(default) ~p: ~p", [Category, Keys, Default]),
@@ -528,9 +561,14 @@ flush(Category, Keys, Node) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec get_category(ne_binary()) -> fetch_ret().
+-spec get_category(ne_binary(), boolean()) -> fetch_ret().
 get_category(Category) ->
-    kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, Category, [{'cache_failures', ['not_found']}]).
+    get_category(Category, 'true').
 
+get_category(Category, 'true') ->
+    kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, Category, [{'cache_failures', ['not_found']}]);
+get_category(Category, 'false') ->
+    kz_datamgr:open_doc(?KZ_CONFIG_DB, Category).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -733,11 +771,10 @@ remove_config_setting([{Id, Node, Setting} | Keys], JObj, Removed) ->
     case kz_json:get_value(Key, JObj) of
         'undefined' -> remove_config_setting(Keys, JObj, Removed);
         Value ->
-            remove_config_setting(
-              Keys
-              ,kz_json:delete_key(Key, JObj)
-              ,[{Id, Node, Setting, Value} | Removed]
-             )
+            remove_config_setting(Keys
+                                 ,kz_json:delete_key(Key, JObj)
+                                 ,[{Id, Node, Setting, Value} | Removed]
+                                 )
     end.
 
 -spec config_setting_key(ne_binary(), config_key()) -> ne_binaries().
