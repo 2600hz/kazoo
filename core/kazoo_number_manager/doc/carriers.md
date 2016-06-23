@@ -13,13 +13,14 @@ The `knm_carriers` module provides the interface to the enabled carrier modules,
 
 The `knm_gen_carrier` module provides an Erlang behaviour which all carrier modules must implement.
 
-There are five callbacks:
+There are six callbacks:
 
 1. `find_numbers/3`
 2. `acquire_number/1`
 3. `disconnect_number/1`
 4. `should_lookup_cnam/0`
 5. `is_number_billable/1`
+6. `is_local/0`
 
 ### `find_numbers/3`
 
@@ -52,3 +53,9 @@ Returns a boolean for whether this carrier's numbers should be queried for CNAM.
 The argument is the `#knm_number{}` record.
 
 The result is a boolean, representing whether the number should be billed.
+
+### `is_local/0`
+
+Returns a boolean for whether the carrier handles numbers local to the system.
+
+Note: a non-local (foreign) carrier module usually makes HTTP requests.

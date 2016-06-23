@@ -13,6 +13,7 @@
 -module(knm_bandwidth2).
 -behaviour(knm_gen_carrier).
 
+-export([is_local/0]).
 -export([find_numbers/3]).
 -export([acquire_number/1]).
 -export([disconnect_number/1]).
@@ -83,6 +84,16 @@
        ).
 
 %%% API
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Is this carrier handling numbers local to the system?
+%% Note: a non-local (foreign) carrier module makes HTTP requests.
+%% @end
+%%--------------------------------------------------------------------
+-spec is_local() -> boolean().
+is_local() -> 'false'.
 
 %% @public
 -spec is_number_billable(knm_number:knm_number()) -> 'true'.

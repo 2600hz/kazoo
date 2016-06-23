@@ -356,12 +356,9 @@ create_found(DID=?NE_BINARY, Carrier, ?MATCH_ACCOUNT_RAW(AuthBy), Data=?JSON_WRA
 %% @end
 %%--------------------------------------------------------------------
 -spec is_local(ne_binary()) -> boolean().
-is_local(?CARRIER_LOCAL) -> 'true';
-is_local(?CARRIER_RESERVED) -> 'true';
-is_local(?CARRIER_RESERVED_RESELLER) -> 'true';
-is_local(?CARRIER_MANAGED) -> 'true';
-is_local(?CARRIER_INUM) -> 'true';
-is_local(_ForeignCarrier) -> 'false'.
+is_local(Carrier) ->
+    Module = erlang:binary_to_existing_atom(Carrier, 'utf8'),
+    Module:is_local().
 
 %%--------------------------------------------------------------------
 %% @private

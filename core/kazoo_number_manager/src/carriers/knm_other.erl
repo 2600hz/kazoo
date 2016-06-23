@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for phone_number documents
@@ -7,11 +7,12 @@
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
+%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_other).
-
 -behaviour(knm_gen_carrier).
 
+-export([is_local/0]).
 -export([find_numbers/3]).
 -export([check_numbers/2]).
 -export([is_number_billable/1]).
@@ -31,6 +32,16 @@
         ,kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY)
        ).
 -endif.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Is this carrier handling numbers local to the system?
+%% Note: a non-local (foreign) carrier module makes HTTP requests.
+%% @end
+%%--------------------------------------------------------------------
+-spec is_local() -> boolean().
+is_local() -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public

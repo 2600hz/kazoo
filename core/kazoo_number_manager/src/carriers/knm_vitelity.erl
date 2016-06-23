@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2015, 2600Hz INC
+%%% @copyright (C) 2014-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for phone_number documents
@@ -7,20 +7,31 @@
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_vitelity).
-
 -behaviour(knm_gen_carrier).
 
--export([find_numbers/3
-         ,acquire_number/1
-         ,disconnect_number/1
-         ,should_lookup_cnam/0
-         ,is_number_billable/1
-        ]).
+-export([is_local/0]).
+-export([find_numbers/3]).
+-export([acquire_number/1]).
+-export([disconnect_number/1]).
+-export([should_lookup_cnam/0]).
+-export([is_number_billable/1]).
 
 -include("knm.hrl").
 -include("knm_vitelity.hrl").
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Is this carrier handling numbers local to the system?
+%% Note: a non-local (foreign) carrier module makes HTTP requests.
+%% @end
+%%--------------------------------------------------------------------
+-spec is_local() -> boolean().
+is_local() -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public

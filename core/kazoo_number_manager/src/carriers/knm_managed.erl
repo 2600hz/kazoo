@@ -1,15 +1,16 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
 %%%   Luis Azedo
+%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_managed).
-
 -behaviour(knm_gen_carrier).
 
+-export([is_local/0]).
 -export([find_numbers/3]).
 -export([acquire_number/1]).
 -export([disconnect_number/1]).
@@ -23,6 +24,16 @@
 
 -define(KZ_MANAGED, <<"numbers%2Fmanaged">>).
 -define(MANAGED_VIEW_FILE, <<"views/managed.json">>).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Is this carrier handling numbers local to the system?
+%% Note: a non-local (foreign) carrier module makes HTTP requests.
+%% @end
+%%--------------------------------------------------------------------
+-spec is_local() -> boolean().
+is_local() -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
