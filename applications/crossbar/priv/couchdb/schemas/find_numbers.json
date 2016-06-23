@@ -2,6 +2,13 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "find_numbers",
     "properties": {
+        "country": {
+            "default": "US",
+            "maxLength": 2,
+            "minLength": 2,
+            "required": false,
+            "type": "string"
+        },
         "prefix": {
             "maxLength": 10,
             "minLength": 3,

@@ -50,6 +50,10 @@
 
 -define(MAX_TOKENS, kapps_config:get_integer(?PHONE_NUMBERS_CONFIG_CAT, <<"activations_per_day">>, 100)).
 
+-define(DEFAULT_COUNTRY, <<"US">>).
+-define(PREFIX, <<"prefix">>).
+-define(COUNTRY, <<"country">>).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -412,7 +416,10 @@ get_find_numbers_req(Context) ->
 %%--------------------------------------------------------------------
 -spec get_numbers(kz_json:object()) -> ne_binaries().
 get_numbers(QueryString) ->
-    Prefix = kz_json:get_ne_value(<<"prefix">>, QueryString),
+    PrefixQuery = kz_json:get_ne_value(?PREFIX, QueryString),
+    Country = kz_json:get_ne_value(?COUNTRY, QueryString, ?DEFAULT_COUNTRY),
+    CountryPrefix = knm_util:prefix_for_country(Country),
+    Prefix = <<CountryPrefix/binary, PrefixQuery/binary>>,     
     Quantity = kz_json:get_ne_value(<<"quantity">>, QueryString, 1),
     lists:reverse(
         lists:foldl(

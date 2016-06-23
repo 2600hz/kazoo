@@ -13,6 +13,7 @@
 
 -export([pretty_print/1, pretty_print/2
          ,fixture/1
+         ,prefix_for_country/1
         ]).
 
 -include("knm.hrl").
@@ -126,3 +127,9 @@ read_fixture({'ok', Contents}, _F) ->
     kz_util:to_list(Contents);
 read_fixture({'error', 'enoent'}, F) ->
     throw({'error', 'missing_fixture', F}).
+
+%% TODO
+%% this should be replaced with a call to elibphonenumber
+%% when/if we integrate that lib or do it ourselves
+-spec prefix_for_country(ne_binary()) -> ne_binary().
+prefix_for_country(<<"US">>) -> <<"+1">>.
