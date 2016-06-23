@@ -40,6 +40,8 @@
 
 -type api_terms() :: kz_json:object() | kz_proplist().
 -type api_binary() :: binary() | 'undefined'.
+-type api_ne_binary() :: ne_binary() | 'undefined'.
+-type api_ne_binaries() :: [api_ne_binary()] | 'undefined'.
 -type api_binaries() :: [api_binary()] | 'undefined'.
 -type api_object() :: kz_json:object() | 'undefined'.
 -type api_objects() :: kz_json:objects() | 'undefined'.

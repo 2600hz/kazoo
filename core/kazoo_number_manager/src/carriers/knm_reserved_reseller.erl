@@ -2,14 +2,13 @@
 %%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
-%%% Find manually-added `available' numbers.
+%%% Find reserved numbers in an account's reseller account.
 %%%
 %%% @end
 %%% @contributors
-%%%   Karl Anderson
 %%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
--module(knm_local).
+-module(knm_reserved_reseller).
 -behaviour(knm_gen_carrier).
 
 -export([is_local/0]).
@@ -34,8 +33,8 @@ is_local() -> 'true'.
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Query the local system for a quantity of available numbers
-%% in a rate center
+%% Query the local system for a quantity of reserved numbers
+%% assigned to an account's reseller account.
 %% @end
 %%--------------------------------------------------------------------
 -spec find_numbers(ne_binary(), pos_integer(), kz_proplist()) ->
@@ -45,40 +44,39 @@ find_numbers(Number, Quantity, Options) ->
     case props:get_value(?KNM_ACCOUNTID_CARRIER, Options) of
         'undefined' -> {'error', 'not_available'};
         AccountId ->
-            ResellerId = kz_services:find_reseller_id(AccountId),
-            {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
-            case ResellerId == MasterAccountId of
-                'false' -> {'error', 'not_available'};
-                'true' ->
-                    do_find_numbers(Number, Quantity, AccountId)
-                    %% TODO: given the requestor's account, discover knm_local numbers
-                    %%        that are available but managed by accendants of the account.
+            ResellerId = kz_services:find_reseller_id(AccountId),%TODO: add it in Options
+            case do_find_numbers(Number, Quantity, ResellerId) of
+                {'ok', Enough}=Ok when length(Enough) >= Quantity -> Ok;
+                {'error', _R}=Error -> Error;
+                {'ok', NotEnough}=Meh ->
+                    {'ok', ResellerJObj} = kz_account:fetch(ResellerId),
+                    case kz_account:allow_number_additions(ResellerJObj) of
+                        'true' -> throw({'stopping_here', NotEnough});
+                        'false' -> Meh
+                    end
             end
     end.
 
 -spec do_find_numbers(ne_binary(), pos_integer(), ne_binary()) ->
                              {'ok', knm_number:knm_numbers()} |
                              {'error', any()}.
-do_find_numbers(<<"+",_/binary>>=Number, Quantity, AccountId)
+do_find_numbers(<<"+",_/binary>>=Number, Quantity, ResellerId)
   when is_integer(Quantity), Quantity > 0 ->
-    ViewOptions = [{'startkey', [?NUMBER_STATE_AVAILABLE, Number]}
-                  ,{'endkey', [?NUMBER_STATE_AVAILABLE, <<"\ufff0">>]}
+    ResellerDb = kz_util:format_account_db(ResellerId),
+    ViewOptions = [{'startkey', Number}
+                  ,{'endkey', <<Number/binary, "\ufff0">>}
                   ,{'limit', Quantity}
                   ],
-    case
-        'undefined' /= (DB = knm_converters:to_db(Number)) andalso
-        kz_datamgr:get_results(DB, <<"numbers/status">>, ViewOptions)
-    of
-        'false' -> {'error', 'not_available'};
+    case kz_datamgr:get_results(ResellerDb, <<"numbers/list_reserved">>, ViewOptions) of
         {'ok', []} ->
-            lager:debug("found no available local numbers for account ~s", [AccountId]),
+            lager:debug("no reserved numbers found"),
             {'error', 'not_available'};
         {'ok', JObjs} ->
-            lager:debug("found available local numbers for account ~s", [AccountId]),
-            Numbers = format_numbers(JObjs),
-            find_more(Quantity, AccountId, length(Numbers), Numbers);
+            lager:debug("found reserved numbers in ~s", [ResellerDb]),
+            Numbers = format_numbers(ResellerId, JObjs),
+            find_more(Quantity, ResellerId, length(Numbers), Numbers);
         {'error', _R}=E ->
-            lager:debug("failed to lookup available local numbers: ~p", [_R]),
+            lager:debug("failed to lookup reserved numbers: ~p", [_R]),
             E
     end;
 do_find_numbers(_, _, _) ->
@@ -86,20 +84,20 @@ do_find_numbers(_, _, _) ->
 
 -spec find_more(pos_integer(), ne_binary(), pos_integer(), knm_number:knm_numbers()) ->
                        knm_number:knm_numbers().
-find_more(Quantity, AccountId, NotEnough, Numbers)
+find_more(Quantity, ResellerId, NotEnough, Numbers)
   when NotEnough < Quantity ->
     NewStart = bump(knm_phone_number:number(knm_number:phone_number(lists:last(Numbers)))),
-    case do_find_numbers(NewStart, Quantity - NotEnough, AccountId) of
+    case do_find_numbers(NewStart, Quantity - NotEnough, ResellerId) of
         {'ok', MoreNumbers} -> {'ok', Numbers ++ MoreNumbers};
         _Error -> {'ok', Numbers}
     end;
 find_more(_, _, _Enough, Numbers) ->
     {'ok', Numbers}.
 
--spec format_numbers(kz_json:objects()) -> knm_number:knm_numbers().
-format_numbers(JObjs) ->
+-spec format_numbers(ne_binary(), kz_json:objects()) -> knm_number:knm_numbers().
+format_numbers(ResellerId, JObjs) ->
     Nums = [kz_doc:id(JObj) || JObj <- JObjs],
-    Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
+    Options = [{'auth_by', ResellerId}
               ],
     [Number || {_Num,{'ok',Number}} <- knm_numbers:get(Nums, Options)].
 

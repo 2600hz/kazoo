@@ -1,15 +1,16 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
 %%%   Luis Azedo
+%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_managed).
-
 -behaviour(knm_gen_carrier).
 
+-export([is_local/0]).
 -export([find_numbers/3]).
 -export([acquire_number/1]).
 -export([disconnect_number/1]).
@@ -27,7 +28,17 @@
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Query the local system for a quanity of available numbers
+%% Is this carrier handling numbers local to the system?
+%% Note: a non-local (foreign) carrier module makes HTTP requests.
+%% @end
+%%--------------------------------------------------------------------
+-spec is_local() -> boolean().
+is_local() -> 'true'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Query the local system for a quantity of available numbers
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
@@ -35,7 +46,7 @@
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
 find_numbers(<<"+", _/binary>>=Number, Quantity, Opts) ->
-    AccountId = props:get_value(<<"Account-ID">>, Opts),
+    AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Opts),
     find_numbers_in_account(Number, Quantity, AccountId);
 find_numbers(Number, Quantity, Opts) ->
     find_numbers(<<"+",Number/binary>>, Quantity, Opts).
@@ -65,7 +76,7 @@ do_find_numbers_in_account(Number, Quantity, AccountId) ->
                   ],
     case kz_datamgr:get_results(?KZ_MANAGED, <<"numbers/status">>, ViewOptions) of
         {'ok', []} ->
-            lager:debug("found no available managed numbers for account ~p", [AccountId]),
+            lager:debug("found no available managed numbers for account ~s", [AccountId]),
             {'error', 'not_available'};
         {'ok', JObjs} ->
             lager:debug("found available managed numbers for account ~s", [AccountId]),
@@ -77,20 +88,25 @@ do_find_numbers_in_account(Number, Quantity, AccountId) ->
 
 -spec format_numbers_resp(ne_binary(), kz_json:objects()) -> knm_number:knm_numbers().
 format_numbers_resp(AccountId, JObjs) ->
-    [format_number_resp(AccountId, JObj) || JObj <- JObjs].
+    [N || JObj <- JObjs,
+          {'ok', N} <- [format_number_resp(AccountId, JObj)]
+    ].
 
--spec format_number_resp(ne_binary(), kz_json:object()) -> knm_number:knm_number().
+-spec format_number_resp(ne_binary(), kz_json:object()) -> knm_number:knm_number_return().
 format_number_resp(AccountId, JObj) ->
     Doc = kz_json:get_value(<<"doc">>, JObj),
-    {'ok', PhoneNumber} =
-        knm_phone_number:newly_found(kz_doc:id(Doc), ?MODULE, AccountId, Doc),
-    knm_number:set_phone_number(knm_number:new(), PhoneNumber).
+    knm_carriers:create_found(kz_doc:id(Doc), ?MODULE, AccountId, Doc, ?NUMBER_STATE_AVAILABLE).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec is_number_billable(knm_number:knm_number()) -> boolean().
 is_number_billable(_Number) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Acquire a given number from the carrier
 %% @end
@@ -108,7 +124,7 @@ acquire_number(Number) ->
                        ]).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Release a number from the routing table
 %% @end
@@ -186,5 +202,10 @@ update_doc(Number, UpdateProps) ->
              )
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec should_lookup_cnam() -> 'true'.
 should_lookup_cnam() -> 'true'.

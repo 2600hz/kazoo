@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% When implementing carrier modules, these callbacks are a must!
@@ -7,6 +7,7 @@
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
+%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_gen_carrier).
 
@@ -27,4 +28,7 @@
     boolean().
 
 -callback is_number_billable(knm_number:knm_number()) ->
+    boolean().
+
+-callback is_local() ->
     boolean().

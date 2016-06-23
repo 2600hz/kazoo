@@ -11,6 +11,7 @@
 -module(knm_voip_innovations).
 -behaviour(knm_gen_carrier).
 
+-export([is_local/0]).
 -export([find_numbers/3]).
 -export([acquire_number/1]).
 -export([disconnect_number/1]).
@@ -62,6 +63,16 @@
 
 %%% API
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Is this carrier handling numbers local to the system?
+%% Note: a non-local (foreign) carrier module makes HTTP requests.
+%% @end
+%%--------------------------------------------------------------------
+-spec is_local() -> boolean().
+is_local() -> 'false'.
+
 %% @public
 -spec is_number_billable(knm_number:knm_number()) -> boolean().
 is_number_billable(_Number) -> 'true'.
@@ -83,11 +94,11 @@ find_numbers(<<"1", Rest/binary>>, Quantity, Options) ->
 find_numbers(<<NPA:3/binary>>, Quantity, Options) ->
     Resp = soap("getDIDs", [{"npa", NPA}]),
     MaybeJson = to_json('find_numbers', Quantity, Resp),
-    to_numbers(MaybeJson, props:get_value(<<"account_id">>, Options));
+    to_numbers(MaybeJson, props:get_value(?KNM_ACCOUNTID_CARRIER, Options));
 find_numbers(<<NXX:6/binary,_/binary>>, Quantity, Options) ->
     Resp = soap("getDIDs", [{"nxx", NXX}]),
     MaybeJson = to_json('find_numbers', Quantity, Resp),
-    to_numbers(MaybeJson, props:get_value(<<"account_id">>, Options)).
+    to_numbers(MaybeJson, props:get_value(?KNM_ACCOUNTID_CARRIER, Options)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -159,15 +170,17 @@ should_lookup_cnam() -> 'true'.
 to_numbers({'error',_R}=Error, _) ->
     Error;
 to_numbers({'ok',JObjs}, AccountId) ->
-    {'ok',
-     [ begin
-           Num = kz_json:get_value(<<"e164">>, JObj),
-           {'ok', PhoneNumber} =
-               knm_phone_number:newly_found(Num, ?MODULE, AccountId, JObj),
-           knm_number:set_phone_number(knm_number:new(), PhoneNumber)
-       end
-       || JObj <- JObjs ]
-    }.
+    Numbers =
+        [N || JObj <- JObjs,
+              {'ok', N} <-
+                  [knm_carriers:create_found(kz_json:get_value(<<"e164">>, JObj)
+                                            ,?MODULE
+                                            ,AccountId
+                                            ,JObj
+                                            )
+                  ]
+        ],
+    {'ok', Numbers}.
 
 -spec maybe_return(to_json_ret(), knm_number:knm_number()) ->
                           knm_number:knm_number().

@@ -14,6 +14,7 @@
 -module(knm_bandwidth2).
 -behaviour(knm_gen_carrier).
 
+-export([is_local/0]).
 -export([find_numbers/3]).
 -export([acquire_number/1]).
 -export([disconnect_number/1]).
@@ -89,6 +90,16 @@
 
 %%% API
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Is this carrier handling numbers local to the system?
+%% Note: a non-local (foreign) carrier module makes HTTP requests.
+%% @end
+%%--------------------------------------------------------------------
+-spec is_local() -> boolean().
+is_local() -> 'false'.
+
 %% @public
 -spec is_number_billable(knm_number:knm_number()) -> 'true'.
 is_number_billable(_Number) -> 'true'.
@@ -119,9 +130,10 @@ find_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, Options) when ?IS_US_T
                "&enableTNDetail=true&quantity=", integer_to_list(Quantity)
              ],
     {'ok', Result} = search(Params),
-    AccountId = props:get_value(<<"account_id">>, Options),
-    {'ok', [tollfree_search_response_to_KNM(X, AccountId)
-            || X <- xmerl_xpath:string("TelephoneNumberList/TelephoneNumber", Result)
+    AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
+    {'ok', [N
+            || X <- xmerl_xpath:string("TelephoneNumberList/TelephoneNumber", Result),
+               {'ok', N} <- [tollfree_search_response_to_KNM(X, AccountId)]
            ]
     };
 
@@ -142,9 +154,10 @@ find_numbers(Search, Quantity, Options) ->
 
 -spec process_search_response(xml_el(), kz_proplist()) -> knm_number:knm_numbers().
 process_search_response(Result, Options) ->
-    AccountId = props:get_value(<<"account_id">>, Options),
-    [search_response_to_KNM(X, AccountId)
-     || X <- xmerl_xpath:string("TelephoneNumberDetailList/TelephoneNumberDetail", Result)
+    AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
+    [N
+     || X <- xmerl_xpath:string("TelephoneNumberDetailList/TelephoneNumberDetail", Result),
+        {'ok', N} <- [search_response_to_KNM(X, AccountId)]
     ].
 
 %%--------------------------------------------------------------------
@@ -377,7 +390,7 @@ number_order_response_to_json(Xml) ->
 
 %% @private
 -spec search_response_to_KNM(xml_els() | xml_el(), ne_binary()) ->
-                                    knm_number:knm_number().
+                                    knm_number:knm_number_return().
 search_response_to_KNM([Xml], AccountId) ->
     search_response_to_KNM(Xml, AccountId);
 search_response_to_KNM(Xml, AccountId) ->
@@ -388,8 +401,7 @@ search_response_to_KNM(Xml, AccountId) ->
                ,{<<"rate_center">>, rate_center_to_json(Xml)}
                ])
             ),
-    {'ok', PhoneNumber} = knm_phone_number:newly_found(Num, ?MODULE, AccountId, JObj),
-    knm_number:set_phone_number(knm_number:new(), PhoneNumber).
+    knm_carriers:create_found(Num, ?MODULE, AccountId, JObj).
 
 -spec maybe_add_us_prefix(binary()) -> binary().
 maybe_add_us_prefix(<<"+1", _/binary>>=Num) -> Num;
@@ -397,11 +409,10 @@ maybe_add_us_prefix(Num) -> <<"+1", Num/binary>>.
 
 %% @private
 -spec tollfree_search_response_to_KNM(xml_el(), ne_binary()) ->
-                                             knm_number:knm_number().
+                                             knm_number:knm_number_return().
 tollfree_search_response_to_KNM(Xml, AccountId) ->
     Num = kz_util:get_xml_value("//TelephoneNumber/text()", Xml),
-    {'ok', PhoneNumber} = knm_phone_number:newly_found(Num, ?MODULE, AccountId, kz_json:new()),
-    knm_number:set_phone_number(knm_number:new(), PhoneNumber).
+    knm_carriers:create_found(Num, ?MODULE, AccountId, kz_json:new()).
 
 %%--------------------------------------------------------------------
 %% @private

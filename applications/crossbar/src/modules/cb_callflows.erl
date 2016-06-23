@@ -496,9 +496,9 @@ track_assignment('post', Context) ->
     NewNums = kz_json:get_value(<<"numbers">>, cb_context:doc(Context), []),
     OldNums = kz_json:get_value(<<"numbers">>, cb_context:fetch(Context, 'db_doc'), []),
 
-    Unassigned = [{Num, <<>>}
+    Unassigned = [{Num, 'undefined'}
                   || Num <- OldNums,
-                     not(lists:member(Num, NewNums))
+                     not lists:member(Num, NewNums)
                          andalso Num =/= <<"undefined">>
                  ],
     Assigned =  [{Num, kzd_callflow:type()}
@@ -519,7 +519,7 @@ track_assignment('put', Context) ->
     cb_modules_util:log_assignment_updates(Updates);
 track_assignment('delete', Context) ->
     Nums = kz_json:get_value(<<"numbers">>, cb_context:doc(Context), []),
-    Unassigned =  [{Num, <<>>}
+    Unassigned =  [{Num, 'undefined'}
                    || Num <- Nums,
                       Num =/= <<"undefined">>
                   ],

@@ -44,6 +44,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
+-include_lib("kazoo/src/kz_json.hrl").
 -include("knm.hrl").
 
 -record(knm_number, {knm_phone_number :: knm_phone_number:knm_phone_number()
@@ -794,7 +795,14 @@ fetch_account_from_ports(NormalizedNum, Error) ->
 wrap_phone_number_return(Result) ->
     wrap_phone_number_return(Result, new()).
 
-wrap_phone_number_return({'error', _}=E, _Number) -> E;
+wrap_phone_number_return({'error', _R}=E, #knm_number{knm_phone_number = _PhoneNumber})
+  when _PhoneNumber /= 'undefined' ->
+    lager:debug("number ~s (~s) error: ~p"
+               ,[knm_phone_number:number(_PhoneNumber), knm_phone_number:state(_PhoneNumber), _R]),
+    E;
+wrap_phone_number_return({'error', _R}=E, _) ->
+    lager:debug("number error: ~p", [_R]),
+    E;
 wrap_phone_number_return({'ok', PhoneNumber}, Number) ->
     {'ok', set_phone_number(Number, PhoneNumber)};
 wrap_phone_number_return(PhoneNumber, Number) ->

@@ -249,7 +249,10 @@ validate(Context) ->
 validate_phone_numbers(Context, ?HTTP_GET, 'undefined') ->
     find_numbers(Context);
 validate_phone_numbers(Context, ?HTTP_GET, _AccountId) ->
-    summary(Context).
+    case kz_json:get_ne_value(?PREFIX, cb_context:query_string(Context)) of
+        'undefined' -> summary(Context);
+        _Prefix -> find_numbers(Context)
+    end.
 
 validate(Context, ?FIX) ->
     cb_context:set_resp_data(
@@ -487,7 +490,7 @@ find_numbers(Context) ->
     JObj = get_find_numbers_req(Context),
     Context1 = cb_context:set_req_data(Context, JObj),
     Prefix = kz_json:get_ne_value(?PREFIX, JObj),
-    Quantity = kz_json:get_value(<<"quantity">>, JObj, 1),
+    Quantity = kz_json:get_value(<<"quantity">>, JObj),
     OnSuccess =
         fun(C) ->
                 Found = knm_carriers:find(Prefix, Quantity, kz_json:to_proplist(JObj)),
@@ -504,7 +507,7 @@ get_find_numbers_req(Context) ->
     AccountId = cb_context:auth_account_id(Context),
     Quantity = kz_util:to_integer(cb_context:req_value(Context, <<"quantity">>, 1)),
     kz_json:set_values([{<<"quantity">>, Quantity}
-                       ,{<<"Account-ID">>, AccountId}
+                       ,{?KNM_ACCOUNTID_CARRIER, AccountId}
                        ], JObj).
 
 %%--------------------------------------------------------------------

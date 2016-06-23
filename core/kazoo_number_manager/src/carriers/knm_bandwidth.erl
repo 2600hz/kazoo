@@ -9,9 +9,9 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(knm_bandwidth).
-
 -behaviour(knm_gen_carrier).
 
+-export([is_local/0]).
 -export([find_numbers/3]).
 -export([acquire_number/1]).
 -export([disconnect_number/1]).
@@ -65,6 +65,16 @@
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Is this carrier handling numbers local to the system?
+%% Note: a non-local (foreign) carrier module makes HTTP requests.
+%% @end
+%%--------------------------------------------------------------------
+-spec is_local() -> boolean().
+is_local() -> 'false'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% Query the Bandwidth.com system for a quanity of available numbers
 %% in a rate center
 %% @end
@@ -98,21 +108,19 @@ find_numbers(Search, Quanity, Options) ->
                                          {'ok', knm_number:knm_numbers()}.
 process_numbers_search_resp(Xml, Options) ->
     TelephoneNumbers = "/numberSearchResponse/telephoneNumbers/telephoneNumber",
-    AccountId = props:get_value(<<"account_id">>, Options),
-
-    {'ok', [found_number_to_KNM(Number, AccountId)
-            || Number <- xmerl_xpath:string(TelephoneNumbers, Xml)
+    AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
+    {'ok', [N
+            || Number <- xmerl_xpath:string(TelephoneNumbers, Xml),
+               {'ok', N} <- [found_number_to_KNM(Number, AccountId)]
            ]
     }.
 
 -spec found_number_to_KNM(xml_el() | xml_els(), api_binary()) ->
-                                 knm_number:knm_number().
+                                 knm_number:knm_number_return().
 found_number_to_KNM(Found, AccountId) ->
     JObj = number_search_response_to_json(Found),
     Num = kz_json:get_value(<<"e164">>, JObj),
-    {'ok', PhoneNumber} =
-        knm_phone_number:newly_found(Num, ?MODULE, AccountId, JObj),
-    knm_number:set_phone_number(knm_number:new(), PhoneNumber).
+    knm_carriers:create_found(Num, ?MODULE, AccountId, JObj).
 
 %%--------------------------------------------------------------------
 %% @public

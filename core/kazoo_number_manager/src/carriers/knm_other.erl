@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for phone_number documents
@@ -7,11 +7,12 @@
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
+%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_other).
-
 -behaviour(knm_gen_carrier).
 
+-export([is_local/0]).
 -export([find_numbers/3]).
 -export([check_numbers/2]).
 -export([is_number_billable/1]).
@@ -35,6 +36,16 @@
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Is this carrier handling numbers local to the system?
+%% Note: a non-local (foreign) carrier module makes HTTP requests.
+%% @end
+%%--------------------------------------------------------------------
+-spec is_local() -> boolean().
+is_local() -> 'false'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% Query the local system for a quanity of available numbers
 %% in a rate center
 %% @end
@@ -44,7 +55,7 @@
         ,props:get_value(<<"phonebook_url">>, Options)
        ).
 -else.
--define(PHONEBOOK_URL(Options)
+-define(PHONEBOOK_URL(_Options)
         ,kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>)
        ).
 -endif.
@@ -245,12 +256,12 @@ format_numbers_resp(JObj, Options) ->
     case kz_json:get_value(<<"status">>, JObj) of
         <<"success">> ->
             DataJObj = kz_json:get_value(<<"data">>, JObj),
-            AccountId = props:get_value(<<"account_id">>, Options),
+            AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
 
             {'ok'
              ,lists:reverse(
                 kz_json:foldl(fun(K, V, Acc) ->
-                                      [format_number_resp(K, V, AccountId) | Acc]
+                                      format_number_resp(K, V, AccountId, Acc)
                               end
                               ,[]
                               ,DataJObj
@@ -262,12 +273,13 @@ format_numbers_resp(JObj, Options) ->
             {'error', 'not_available'}
     end.
 
--spec format_number_resp(ne_binary(), kz_json:object(), knm_number:knm_numbers()) ->
-                                knm_number:knm_number().
-format_number_resp(DID, CarrierData, AccountId) ->
-    {'ok', PhoneNumber} =
-        knm_phone_number:newly_found(DID, ?MODULE, AccountId, CarrierData),
-    knm_number:set_phone_number(knm_number:new(), PhoneNumber).
+-spec format_number_resp(ne_binary(), kz_json:object(), ne_binary(), knm_number:knm_numbers()) ->
+                                knm_number:knm_number_return().
+format_number_resp(DID, CarrierData, AccountId, Acc) ->
+    case knm_carriers:create_found(DID, ?MODULE, AccountId, CarrierData) of
+        {'ok', N} -> [N | Acc];
+        _ -> Acc
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -318,11 +330,10 @@ get_blocks(Url, Number, Quantity, Props) ->
 format_blocks_resp(JObj, Options) ->
     case kz_json:get_value(<<"status">>, JObj) of
         <<"success">> ->
-            AccountId = props:get_value(<<"account_id">>, Options),
+            AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
             Numbers =
-                lists:foldl(
-                  fun(I, Acc) -> format_block_resp_fold(I, Acc, AccountId) end
-                  ,[]
+                lists:flatmap(
+                  fun(I) -> format_block_resp_fold(I, AccountId) end
                   ,kz_json:get_value(<<"data">>, JObj, [])
                  ),
             {'bulk', Numbers};
@@ -331,32 +342,19 @@ format_blocks_resp(JObj, Options) ->
             {'error', 'not_available'}
     end.
 
--spec format_block_resp_fold(kz_json:object(), knm_number:knm_numbers(), api_binary()) ->
-                                    knm_number:knm_numbers().
-format_block_resp_fold(Block, Numbers, AccountId) ->
+-spec format_block_resp_fold(kz_json:object(), api_binary()) -> knm_number:knm_numbers().
+format_block_resp_fold(Block, AccountId) ->
     StartNumber = kz_json:get_value(<<"start_number">>, Block),
     EndNumber = kz_json:get_value(<<"end_number">>, Block),
-    format_block_resp(Block, Numbers, AccountId, StartNumber, EndNumber).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec format_block_resp(kz_json:object(), knm_number:knm_numbers(), api_binary(), ne_binary(), ne_binary()) ->
-                               knm_number:knm_numbers().
-format_block_resp(JObj, Numbers, AccountId, Start, End) ->
-    [block_resp(JObj, AccountId, Start)
-     ,block_resp(JObj, AccountId, End)
-     | Numbers
+    [N || {'ok', N} <- [block_resp(Block, AccountId, StartNumber)
+                       ,block_resp(Block, AccountId, EndNumber)
+                       ]
     ].
 
 -spec block_resp(kz_json:object(), api_binary(), ne_binary()) ->
-                        knm_number:knm_number().
+                        knm_number:knm_number_return().
 block_resp(JObj, AccountId, Num) ->
-    {'ok', PhoneNumber} =
-        knm_phone_number:newly_found(Num, ?MODULE, AccountId, JObj),
-    knm_number:set_phone_number(knm_number:new(), PhoneNumber).
+    knm_carriers:create_found(Num, ?MODULE, AccountId, JObj).
 
 %%--------------------------------------------------------------------
 %% @private

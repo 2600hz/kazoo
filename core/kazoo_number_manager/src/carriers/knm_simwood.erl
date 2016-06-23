@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015, 2600Hz INC
+%%% @copyright (C) 2015-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for phone_number at Simwood (UK based provider)
@@ -8,17 +8,17 @@
 %%% @end
 %%% @contributors
 %%%   OnNet (Kirill Sysoev github.com/onnet)
+%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_simwood).
-
 -behaviour(knm_gen_carrier).
 
--export([find_numbers/3
-         ,acquire_number/1
-         ,disconnect_number/1
-         ,is_number_billable/1
-         ,should_lookup_cnam/0
-        ]).
+-export([is_local/0]).
+-export([find_numbers/3]).
+-export([acquire_number/1]).
+-export([disconnect_number/1]).
+-export([is_number_billable/1]).
+-export([should_lookup_cnam/0]).
 
 -include("knm.hrl").
 
@@ -34,6 +34,17 @@
 -define(SW_ACCOUNT_ID, kapps_config:get_string(?KNM_SW_CONFIG_CAT, <<"simwood_account_id">>, <<>>)).
 -define(SW_AUTH_USERNAME, kapps_config:get_binary(?KNM_SW_CONFIG_CAT, <<"auth_username">>, <<>>)).
 -define(SW_AUTH_PASSWORD, kapps_config:get_binary(?KNM_SW_CONFIG_CAT, <<"auth_password">>, <<>>)).
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Is this carrier handling numbers local to the system?
+%% Note: a non-local (foreign) carrier module makes HTTP requests.
+%% @end
+%%--------------------------------------------------------------------
+-spec is_local() -> boolean().
+is_local() -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -153,13 +164,13 @@ sw_quantity(_Quantity) -> <<"100">>.
 -spec process_response(kz_json:objects(), kz_proplist()) ->
                               {'ok', knm_number:knm_numbers()}.
 process_response(JObjs, Options) ->
-    AccountId = props:get_value(<<"account_id">>, Options),
-    {'ok', [response_jobj_to_number(JObj, AccountId) || JObj <- JObjs]}.
+    AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
+    {'ok', [N || JObj <- JObjs,
+                 {'ok', N} <- [response_jobj_to_number(JObj, AccountId)]
+           ]}.
 
 -spec response_jobj_to_number(kz_json:object(), api_binary()) ->
-                              knm_number:knm_number().
+                              knm_number:knm_number_return().
 response_jobj_to_number(JObj, AccountId) ->
     Num = kz_json:get_value(<<"number">>, JObj),
-    {'ok', PhoneNumber} =
-        knm_phone_number:newly_found(Num, ?MODULE, AccountId, JObj),
-    knm_number:set_phone_number(knm_number:new(), PhoneNumber).
+    knm_carriers:create_found(Num, ?MODULE, AccountId, JObj).

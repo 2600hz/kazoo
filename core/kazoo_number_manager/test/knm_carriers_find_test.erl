@@ -38,7 +38,7 @@ find_no_phonebook() ->
 find_blocks() ->
     Options = [{<<"phonebook_url">>, ?BLOCK_PHONEBOOK_URL}
                ,{<<"blocks">>, 'true'}
-               ,{<<"account_id">>, ?RESELLER_ACCOUNT_ID}
+               ,{?KNM_ACCOUNTID_CARRIER, ?RESELLER_ACCOUNT_ID}
                ,{<<"carriers">>, [?CARRIER_OTHER]}
               ],
     Limit = 10,
@@ -48,7 +48,7 @@ find_blocks() ->
     [StartJObj, EndJObj]=Results =
         knm_carriers:find(<<"415">>, Limit, Options),
 
-    [{"Verify the same number of numbers and results"
+    [{"Verify the same amount of numbers and results"
      ,?_assertEqual(length(Numbers), length(Results))
      }
      | verify_start(StartNumber, StartJObj)
@@ -70,8 +70,11 @@ verify_block(PhoneNumber, JObj, DID, Activation) ->
      ,{"Verify start number carrier module"
        ,?_assertEqual(?CARRIER_OTHER, knm_phone_number:module_name(PhoneNumber))
       }
-     ,{"Verify assign_to account id"
-       ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assign_to(PhoneNumber))
+     ,{"Verify auth_by account id"
+       ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:auth_by(PhoneNumber))
+      }
+     ,{"Verify assigned_to account id"
+       ,?_assertEqual('undefined', knm_phone_number:assigned_to(PhoneNumber))
       }
      ,{"Verify phone number database"
        ,?_assertEqual(<<"numbers%2F%2B1415">>, knm_phone_number:number_db(PhoneNumber))
@@ -87,7 +90,7 @@ verify_block(PhoneNumber, JObj, DID, Activation) ->
 
 find_numbers() ->
     Options = [{<<"phonebook_url">>, ?NUMBER_PHONEBOOK_URL}
-               ,{<<"account_id">>, ?MASTER_ACCOUNT_ID}
+               ,{?KNM_ACCOUNTID_CARRIER, ?MASTER_ACCOUNT_ID}
                ,{<<"carriers">>, [?CARRIER_OTHER]}
               ],
     Limit = 10,
@@ -103,7 +106,7 @@ verify_number_results(Results) ->
     {Tests, _} =
         lists:foldl(fun verify_number_result/2
                     ,{[], 0}
-                    ,Results
+                    ,lists:reverse(Results)
                    ),
     Tests.
 

@@ -17,7 +17,7 @@ find_test_() ->
     ].
 
 tollfree_tests() ->
-    Options = [{<<"account_id">>, ?RESELLER_ACCOUNT_ID}
+    Options = [{?KNM_ACCOUNTID_CARRIER, ?RESELLER_ACCOUNT_ID}
                ,{<<"carriers">>, [<<"knm_vitelity">>]}
               ],
     Limit = 1,
@@ -33,7 +33,7 @@ tollfree_tests() ->
     ].
 
 local_number_tests() ->
-    Options = [{<<"account_id">>, ?RESELLER_ACCOUNT_ID}
+    Options = [{?KNM_ACCOUNTID_CARRIER, ?RESELLER_ACCOUNT_ID}
                ,{<<"carriers">>, [<<"knm_vitelity">>]}
               ],
     Limit = 1,
@@ -45,7 +45,7 @@ local_number_tests() ->
     ].
 
 local_prefix_tests() ->
-    Options = [{<<"account_id">>, ?RESELLER_ACCOUNT_ID}
+    Options = [{?KNM_ACCOUNTID_CARRIER, ?RESELLER_ACCOUNT_ID}
                ,{<<"carriers">>, [<<"knm_vitelity">>]}
               ],
     Limit = 2,
