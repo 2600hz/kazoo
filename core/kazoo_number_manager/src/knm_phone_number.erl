@@ -719,6 +719,13 @@ is_authorized(#knm_phone_number{assigned_to = AssignedTo
 is_authorized(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}) ->
     lager:info("bypassing auth"),
     'true';
+is_authorized(#knm_phone_number{auth_by = 'undefined'}) -> 'false';
+is_authorized(#knm_phone_number{assigned_to = 'undefined'
+                               ,assign_to = AssignTo
+                               ,auth_by = AuthBy
+                               }) ->
+    ?LOG_DEBUG("is authz ~s ~s", [AuthBy, AssignTo]),
+    kz_util:is_in_account_hierarchy(AuthBy, AssignTo, 'true');
 is_authorized(#knm_phone_number{assigned_to = AssignedTo
                                ,auth_by = AuthBy
                                }) ->
