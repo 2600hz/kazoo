@@ -31,7 +31,7 @@
 -define(NO_ENVELOPE_VERSIONS, [?INBOUND_HOOK]).
 -define(INBOUND_HOOKS, [?INBOUND_HOOK]).
 
--define(CACHE_TTL, kapps_config:get_integer(<<"crossbar">>, <<"cache_ttl">>, 300)).
+-define(CACHE_TTL, kapps_config:get_integer(?CONFIG_CAT, <<"cache_ttl">>, 300)).
 
 -define(CROSSBAR_DEFAULT_CONTENT_TYPE, {<<"application">>, <<"json">>, []}).
 
@@ -177,9 +177,9 @@
          }).
 
 -define(MAX_RANGE, kapps_config:get_integer(?CONFIG_CAT
-                                            ,<<"maximum_range">>
-                                            ,(?SECONDS_IN_DAY * 31 + ?SECONDS_IN_HOUR)
-                                            )
+                                           ,<<"maximum_range">>
+                                           ,(?SECONDS_IN_DAY * 31 + ?SECONDS_IN_HOUR)
+                                           )
        ).
 
 -define(OPTION_EXPECTED_TYPE, 'expected_type').
