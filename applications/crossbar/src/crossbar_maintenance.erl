@@ -807,8 +807,8 @@ maybe_create_app(AppPath, MetaData, MasterAccountDb) ->
     AppName = kz_json:get_value(<<"name">>, MetaData),
     case find_app(MasterAccountDb, AppName) of
         {'ok', JObj} ->
-	    io:format(" app ~s already loaded in system~n", [AppName]),
-	    maybe_update_app(AppPath, MetaData, MasterAccountDb, JObj);
+            io:format(" app ~s already loaded in system~n", [AppName]),
+            maybe_update_app(AppPath, MetaData, MasterAccountDb, JObj);
         {'error', 'not_found'} -> create_app(AppPath, MetaData, MasterAccountDb);
         {'error', _E} -> io:format(" failed to find app ~s: ~p", [AppName, _E])
     end.
@@ -820,14 +820,14 @@ maybe_update_app(AppPath, MetaData, MasterAccountDb, JObj) ->
     CurrentApiUrl = kz_json:get_value([<<"value">>, ApiUrlKey], JObj),
 
     case kz_json:get_value(ApiUrlKey, MetaData) of
-	'undefined'   -> io:format(" not updating ~s, it is undefined~n", [ApiUrlKey]);
-	CurrentApiUrl -> io:format(" not updating ~s, it is unchanged~n", [ApiUrlKey]);
-	NewApiUrl ->
-	    Update = [{ApiUrlKey, NewApiUrl}],
-	    case kz_datamgr:update_doc(MasterAccountDb, CurrentDocId, Update) of
-		{'ok', _NJObj} -> io:format(" updated ~s to ~s~n", [ApiUrlKey, NewApiUrl]);
-		{'error', Err} -> io:format(" error updating ~s: ~p~n", [ApiUrlKey, Err])
-	    end
+    'undefined'   -> io:format(" not updating ~s, it is undefined~n", [ApiUrlKey]);
+    CurrentApiUrl -> io:format(" not updating ~s, it is unchanged~n", [ApiUrlKey]);
+    NewApiUrl ->
+        Update = [{ApiUrlKey, NewApiUrl}],
+        case kz_datamgr:update_doc(MasterAccountDb, CurrentDocId, Update) of
+            {'ok', _NJObj} -> io:format(" updated ~s to ~s~n", [ApiUrlKey, NewApiUrl]);
+            {'error', Err} -> io:format(" error updating ~s: ~p~n", [ApiUrlKey, Err])
+        end
     end,
 
     'ok' = delete_old_images(CurrentDocId, MetaData, MasterAccountDb),
@@ -873,8 +873,8 @@ delete_old_images(AppId, MetaData, MasterAccountDb) ->
 safe_delete_image(_AccountDb, _AppId, 'undefined') -> 'ok';
 safe_delete_image(AccountDb, AppId, Image) ->
     case kz_datamgr:fetch_attachment(AccountDb, AppId, Image) of
-	{'ok', _}    -> kz_datamgr:delete_attachment(AccountDb, AppId, Image);
-	{'error', _} -> 'ok'
+        {'ok', _}    -> kz_datamgr:delete_attachment(AccountDb, AppId, Image);
+        {'error', _} -> 'ok'
     end.
 
 -spec maybe_add_images(file:filename(), ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.

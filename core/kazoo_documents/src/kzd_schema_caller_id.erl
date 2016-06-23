@@ -18,4 +18,4 @@
 
 -spec external_name_max_length() -> api_object().
 external_name_max_length() ->
-	kzd_schema:max_length(?SCHEMA_EXTERNAL_NAME, ?SCHEMA_NAME).
+    kzd_schema:max_length(?SCHEMA_EXTERNAL_NAME, ?SCHEMA_NAME).

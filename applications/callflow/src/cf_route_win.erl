@@ -40,9 +40,9 @@ execute_callflow(JObj, Call) ->
 
 -spec should_restrict_call(kapps_call:call()) -> boolean().
 should_restrict_call(Call) ->
-	DefaultEndpointId = kapps_call:authorizing_id(Call),
-	EndpointId = kapps_call:kvs_fetch(?RESTRICTED_ENDPOINT_KEY, DefaultEndpointId, Call),
-	should_restrict_call(EndpointId, Call).
+    DefaultEndpointId = kapps_call:authorizing_id(Call),
+    EndpointId = kapps_call:kvs_fetch(?RESTRICTED_ENDPOINT_KEY, DefaultEndpointId, Call),
+    should_restrict_call(EndpointId, Call).
 
 -spec should_restrict_call(api_binary(), kapps_call:call()) -> boolean().
 should_restrict_call('undefined', _Call) -> 'false';
