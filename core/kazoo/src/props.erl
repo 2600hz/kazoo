@@ -242,17 +242,12 @@ unique(List) ->
 -spec unique(kz_proplist(), kz_proplist()) -> kz_proplist().
 unique([], Uniques) -> lists:reverse(Uniques);
 unique([{Key, _}=H|T], Uniques) ->
-    unique(lists:filter(fun({K, _}) -> not (K =:= Key);
-                           (K) -> not (K =:= Key)
-                        end, T)
-           ,[H|Uniques]
-          );
+    unique([X || X <- T, ufun(X, Key)], [H|Uniques]);
 unique([Key|T], Uniques) ->
-    unique(lists:filter(fun({K, _}) -> not (K =:= Key);
-                           (K) -> not (K =:= Key)
-                        end, T)
-          ,[Key|Uniques]
-          ).
+    unique([X || X <- T, ufun(X, Key)], [Key|Uniques]).
+
+ufun({K, _}, Key) -> K =/= Key;
+ufun(K, Key) -> K =/= Key.
 
 -spec get_values_and_keys(kz_proplist()) -> {kz_proplist_values(), kz_proplist_keys()}.
 get_values_and_keys(Props) ->
