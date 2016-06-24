@@ -5,8 +5,7 @@
 
 -define(APP_NAME, <<"registrar">>).
 -define(APP_VERSION, <<"4.0.0">>).
-
--define(CONFIG_CAT, <<"registrar">>).
+-define(CONFIG_CAT, ?APP_NAME).
 
 -define(CACHE_NAME, 'registrar_cache').
 

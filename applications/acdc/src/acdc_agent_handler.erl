@@ -25,7 +25,7 @@
 -include("acdc.hrl").
 -include_lib("kazoo/include/kapi_conf.hrl").
 
--define(DEFAULT_PAUSE ,kapps_config:get(<<"acdc">>, <<"default_agent_pause_timeout">>, 600)).
+-define(DEFAULT_PAUSE ,kapps_config:get(?CONFIG_CAT, <<"default_agent_pause_timeout">>, 600)).
 
 -spec handle_status_update(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_status_update(JObj, _Props) ->

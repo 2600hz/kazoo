@@ -1,7 +1,7 @@
 {application, ananke,
  [
   {description, "Ananke was the personification of destiny, necessity and fate, depicted as holding a spindle in ancient Greek religion. This application to schedule calls on events."},
-  {vsn, "0.0.1"},
+  {vsn, "4.0.0"},
   {modules, []},
   {registered, [ananke_callback_sup, ananke_listener, ananke_sup]},
   {applications, [

@@ -8,6 +8,7 @@
 
 -define(APP_NAME, <<"trunkstore">>).
 -define(APP_VERSION, <<"4.0.0">>).
+-define(CONFIG_CAT, ?APP_NAME).
 
 %% couch params for the trunk store and its views
 -define(TS_DB, <<"ts">>).
@@ -35,8 +36,6 @@
 -define(DEFAULT_PROGRESS_TIMEOUT, 6). % seconds to timeout if no progress
 
 -define(INBOUND_FORMATS, [<<"E.164">>, <<"NPANXXXXXX">>, <<"1NPANXXXXXX">>, <<"e164">>, <<"npan">>, <<"1npan">>]).
-
--define(TS_CONFIG_CAT, <<"trunkstore">>).
 
 % just want to deal with binary K/V pairs
 -type active_calls() :: [{binary(), 'flat_rate' | 'per_min'}].

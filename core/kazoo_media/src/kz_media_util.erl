@@ -127,7 +127,7 @@ recording_url(CallId, Data) ->
 
 -spec max_recording_time_limit() -> ?SECONDS_IN_HOUR.
 max_recording_time_limit() ->
-    kapps_config:get_integer(?WHM_CONFIG_CAT, <<"max_recording_time_limit">>, ?SECONDS_IN_HOUR).
+    kapps_config:get_integer(?CONFIG_CAT, <<"max_recording_time_limit">>, ?SECONDS_IN_HOUR).
 
 %% base_url(Host) ->
 %%     Port = kz_couch_connections:get_port(),
@@ -411,7 +411,7 @@ default_prompt_language() ->
     default_prompt_language(<<"en-us">>).
 default_prompt_language(Default) ->
     kz_util:to_lower_binary(
-      kapps_config:get(?WHM_CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, Default)
+      kapps_config:get(?CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, Default)
      ).
 
 -spec prompt_language(api_binary()) -> ne_binary().
@@ -429,7 +429,7 @@ prompt_language(<<_/binary>> = AccountId, Default) ->
         'false' -> default_prompt_language();
         'true' ->
             kz_util:to_lower_binary(
-              kapps_account_config:get(AccountId, ?WHM_CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, kz_util:to_lower_binary(Default))
+              kapps_account_config:get(AccountId, ?CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, kz_util:to_lower_binary(Default))
              )
     end.
 

@@ -324,7 +324,7 @@ handle_update(JObj, State, From, To, Expires) ->
 
 -spec build_update_to_uri(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
 build_update_to_uri(State, App, From, Realm, Cookie) ->
-    case kapps_config:get(<<"omnipresence">>, <<"use_fast_pickup_cookies">>, 'true') of
+    case kapps_config:get(?CONFIG_CAT, <<"use_fast_pickup_cookies">>, 'true') of
         'true' -> to_uri_cookie(State, App, From, Realm, Cookie);
         _Other -> to_uri(State, App, From, Realm, Cookie)
     end.

@@ -7,8 +7,8 @@
 
 -define(APP_NAME, <<"omnipresence">>).
 -define(APP_VERSION, <<"4.0.0">>).
+-define(CONFIG_CAT, ?APP_NAME).
 
--define(CONFIG_CAT, <<"omnipresence">>).
 -define(CACHE_NAME, 'omnipresence_cache').
 
 -define(PRESENCE_HANGUP, <<"terminated">>).

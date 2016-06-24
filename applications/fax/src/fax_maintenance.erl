@@ -165,7 +165,7 @@ maybe_migrate_fax_to_modb(AccountDb, JObj, Options) ->
         {'ok', Doc} ->
             case kz_doc:attachments(Doc) of
                 'undefined' ->
-                    case kapps_config:get_is_true(<<"fax">>, <<"delete_empty_faxes">>, 'false') of
+                    case kapps_config:get_is_true(?CONFIG_CAT, <<"delete_empty_faxes">>, 'false') of
                         'true' ->
                             io:format("deleting no attachments fax doc ~s from ~s~n",[DocId, AccountDb]),
                             kz_datamgr:del_doc(AccountDb, Doc);

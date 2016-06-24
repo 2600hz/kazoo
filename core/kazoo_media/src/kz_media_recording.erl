@@ -74,7 +74,7 @@
 -type state() :: #state{}.
 
 -define(STORAGE_RETRY_TIMES(AccountId)
-        ,kapps_account_config:get_global(AccountId, ?WHM_CONFIG_CAT
+        ,kapps_account_config:get_global(AccountId, ?CONFIG_CAT
                                           ,[<<"call_recording">>, <<"storage_retry_times">>]
                                           ,5
                                          )).
@@ -167,7 +167,7 @@ init([Call, Data]) ->
     RecordOnAnswer = kz_json:is_true(<<"record_on_answer">>, Data, 'false'),
     RecordOnBridge = kz_json:is_true(<<"record_on_bridge">>, Data, 'false'),
     SampleRate = kz_json:get_integer_value(<<"record_sample_rate">>, Data),
-    DefaultRecordMinSec = kapps_config:get_integer(?WHM_CONFIG_CAT, <<"record_min_sec">>, 0),
+    DefaultRecordMinSec = kapps_config:get_integer(?CONFIG_CAT, <<"record_min_sec">>, 0),
     RecordMinSec = kz_json:get_integer_value(<<"record_min_sec">>, Data, DefaultRecordMinSec),
     AccountId = kapps_call:account_id(Call),
     {Year, Month, _} = erlang:date(),
@@ -410,7 +410,7 @@ get_timelimit(TL) ->
     end.
 
 -spec get_format(api_binary()) -> ne_binary().
-get_format('undefined') -> kapps_config:get(?WHM_CONFIG_CAT, [<<"call_recording">>, <<"extension">>], <<"mp3">>);
+get_format('undefined') -> kapps_config:get(?CONFIG_CAT, [<<"call_recording">>, <<"extension">>], <<"mp3">>);
 get_format(<<"mp3">> = MP3) -> MP3;
 get_format(<<"wav">> = WAV) -> WAV;
 get_format(_) -> get_format('undefined').

@@ -44,7 +44,7 @@
 -include("ts.hrl").
 -include_lib("kernel/include/inet.hrl"). %% for hostent record, used in find_ip/1
 
--define(VALIDATE_CALLER_ID, kapps_config:get_is_true(<<"trunkstore">>, <<"ensure_valid_caller_id">>, 'false')).
+-define(VALIDATE_CALLER_ID, kapps_config:get_is_true(?CONFIG_CAT, <<"ensure_valid_caller_id">>, 'false')).
 
 -spec find_ip(ne_binary() | nonempty_string()) -> nonempty_string().
 find_ip(Domain) when is_binary(Domain) ->
@@ -355,7 +355,7 @@ validate_from_user(FromUser, AccountId) ->
             lager:info("CID Number derived from CID Name, normalized and set to: ~s", [NormalizedFromUser]),
             NormalizedFromUser;
         _NothingLeft ->
-            DefaultCID = kapps_config:get(<<"trunkstore">>, <<"default_caller_id_number">>, kz_util:anonymous_caller_id_number()),
+            DefaultCID = kapps_config:get(?CONFIG_CAT, <<"default_caller_id_number">>, kz_util:anonymous_caller_id_number()),
             lager:info("no valid caller id identified! Will use default trunkstore caller id: ~s", [DefaultCID]),
             DefaultCID
     end.

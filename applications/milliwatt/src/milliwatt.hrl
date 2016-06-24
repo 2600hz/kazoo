@@ -16,7 +16,7 @@
 
 -define(APP_NAME, <<"milliwatt">>).
 -define(APP_VERSION, <<"4.0.0">>).
--define(CONFIG_CAT, <<"milliwatt">>).
+-define(CONFIG_CAT, ?APP_NAME).
 
 -define(MILLIWATT_HRL, 'true').
 -endif.

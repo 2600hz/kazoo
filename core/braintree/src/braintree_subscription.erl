@@ -607,7 +607,7 @@ record_to_json(Subscription) ->
 %%--------------------------------------------------------------------
 -spec should_prorate(subscription(), kz_proplist()) -> kz_proplist().
 should_prorate(#bt_subscription{prorate_charges=Value}, Props) ->
-    case kapps_config:get_is_true(<<"braintree">>, <<"should_prorate">>, 'true') of
+    case kapps_config:get_is_true(?CONFIG_CAT, <<"should_prorate">>, 'true') of
         'true' -> update_options('prorate-charges', Value, Props);
         'false' -> Props
     end.
