@@ -424,7 +424,7 @@ handle_cast({'start_workers'}, #state{account_id=AccountId
             'ok';
         {'error', _E} ->
             lager:debug("failed to find agent count: ~p", [_E]),
-            QWC = kapps_config:get_integer(<<"acdc">>, <<"queue_worker_count">>, 5),
+            QWC = kapps_config:get_integer(?CONFIG_CAT, <<"queue_worker_count">>, 5),
             acdc_queue_workers_sup:new_workers(WorkersSup, AccountId, QueueId, QWC)
     end,
     {'noreply', State};

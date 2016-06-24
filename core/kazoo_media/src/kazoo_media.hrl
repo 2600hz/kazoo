@@ -5,10 +5,10 @@
 -include_lib("kazoo/include/kz_databases.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 
--define(WHM_CONFIG_CAT, <<"media">>).
-
 -define(APP_NAME, <<"media_srv">>).
 -define(APP_VERSION, <<"4.0.0">>).
+
+-define(CONFIG_CAT, <<"media">>).
 
 -define(MEDIA_DB, <<"system_media">>).
 -define(PORT_RANGE, 0). % use 0 to have OS assign port #, {Low, Hi} for range of ports to try
@@ -19,8 +19,6 @@
                       ]).
 -define(MAX_RESERVED_PORTS, 10).
 -define(MAX_WAIT_FOR_LISTENERS, 600 * ?MILLISECONDS_IN_SECOND). %% 600 secs = 10 minutes
-
--define(CONFIG_CAT, ?WHM_CONFIG_CAT).
 
 -define(PROMPT_LANGUAGE_KEY, <<"default_language">>).
 

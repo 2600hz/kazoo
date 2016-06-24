@@ -4,10 +4,9 @@
 -include_lib("kazoo/include/kz_databases.hrl").
 -include_lib("kazoo/include/kz_api.hrl").
 
--define(CONFIG_CAT, <<"acdc">>).
-
 -define(APP_NAME, <<"acdc">>).
 -define(APP_VERSION, <<"4.0.0">>).
+-define(CONFIG_CAT, ?APP_NAME).
 
 -define(CACHE_NAME, 'acdc_cache').
 

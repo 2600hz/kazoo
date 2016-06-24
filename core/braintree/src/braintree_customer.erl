@@ -26,7 +26,7 @@
 -export([json_to_record/1]).
 -export([record_to_json/1]).
 
--include_lib("braintree/include/braintree.hrl").
+-include("bt.hrl").
 
 -type customer() :: #bt_customer{}.
 -type customers() :: [customer()].

@@ -7,8 +7,7 @@
 
 -define(APP_NAME, <<"pusher">>).
 -define(APP_VERSION, <<"4.0.0">>).
-
--define(CONFIG_CAT, <<"pusher">>).
+-define(CONFIG_CAT, ?APP_NAME).
 
 -define(CACHE_NAME, 'pusher_cache').
 

@@ -7,20 +7,20 @@
 -include_lib("kazoo_apps/src/kapps_call_command_types.hrl").
 
 -define(APP_NAME, <<"doodle">>).
--define(APP_VERSION, <<"4.0.0">> ).
--define(CONFIG_CAT, <<"doodle">>).
+-define(APP_VERSION, <<"4.0.0">>).
+-define(CONFIG_CAT, ?APP_NAME).
 
 -define(CACHE_NAME, 'doodle_cache').
 
 -define(CCV(Key), [<<"Custom-Channel-Vars">>, Key]).
 
--record(amqp_listener_connection,{name :: binary()
+-record(amqp_listener_connection, {name :: binary()
                                   ,broker :: binary()
                                   ,exchange :: binary()
                                   ,type :: binary()
                                   ,queue :: binary()
                                   ,options :: kz_proplist()
-                                 }).
+                                  }).
 
 -type amqp_listener_connection() :: #amqp_listener_connection{}.
 -type amqp_listener_connections() :: [amqp_listener_connection(),...].

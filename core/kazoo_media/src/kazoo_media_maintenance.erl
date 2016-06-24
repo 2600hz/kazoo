@@ -20,11 +20,11 @@
 
 -spec migrate() -> 'no_return'.
 migrate() ->
-    io:format("migrating relevant settings from system_config/callflow to system_config/~s~n", [?WHM_CONFIG_CAT]),
+    io:format("migrating relevant settings from system_config/callflow to system_config/~s~n", [?CONFIG_CAT]),
 
     maybe_migrate_system_config(<<"callflow">>),
 
-    io:format("migrating relevant settings from system_config/media_mgr to system_config/~s~n", [?WHM_CONFIG_CAT]),
+    io:format("migrating relevant settings from system_config/media_mgr to system_config/~s~n", [?CONFIG_CAT]),
     maybe_migrate_system_config(<<"media_mgr">>, 'true'),
 
     'no_return'.
@@ -40,7 +40,7 @@ set_account_language(Account, Language) ->
     OldLang = kz_media_util:prompt_language(AccountId),
 
     try kapps_account_config:set(AccountId
-                                  ,?WHM_CONFIG_CAT
+                                  ,?CONFIG_CAT
                                   ,?PROMPT_LANGUAGE_KEY
                                   ,kz_util:to_lower_binary(Language)
                                  )
@@ -252,10 +252,10 @@ migrate_system_config(ConfigJObj) ->
 
 -spec get_media_config_doc() -> {'ok', kz_json:object()}.
 get_media_config_doc() ->
-    case kz_datamgr:open_doc(?KZ_CONFIG_DB, ?WHM_CONFIG_CAT) of
+    case kz_datamgr:open_doc(?KZ_CONFIG_DB, ?CONFIG_CAT) of
         {'ok', _MediaJObj}=OK -> OK;
         {'error', 'not_found'} ->
-            {'ok', kz_json:from_list([{<<"_id">>, ?WHM_CONFIG_CAT}])}
+            {'ok', kz_json:from_list([{<<"_id">>, ?CONFIG_CAT}])}
     end.
 
 -spec migrate_system_config_fold(ne_binary(), kz_json:json_term(), kz_json:object()) ->
@@ -378,6 +378,6 @@ fix_media_name(JObj) ->
 fix_media_names() ->
     {'ok', JObjs} = kz_datamgr:all_docs(?KZ_MEDIA_DB),
     case [ JObj || JObj <- JObjs, filter_media_names(JObj)] of
-        [] -> kapps_config:set(?WHM_CONFIG_CAT, <<"fix_media_names">>, 'false');
+        [] -> kapps_config:set(?CONFIG_CAT, <<"fix_media_names">>, 'false');
         List -> lists:foreach(fun fix_media_name/1, List)
     end.

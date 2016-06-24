@@ -23,9 +23,9 @@
 -export([record_to_json/1]).
 -export([json_to_record/1]).
 
--define(MIN_AMOUNT, kapps_config:get_float(<<"braintree">>, <<"min_amount">>, 5.00)).
+-define(MIN_AMOUNT, kapps_config:get_float(?CONFIG_CAT, <<"min_amount">>, 5.00)).
 
--include_lib("braintree/include/braintree.hrl").
+-include("bt.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
@@ -109,7 +109,7 @@ find_by_customer(CustomerId, Min, Max) ->
 -spec create(ne_binary(), bt_transaction()) -> bt_transaction().
 
 create(#bt_transaction{amount=Amount}=Transaction) ->
-    MaxAmount = kapps_config:get_float(<<"braintree">>, <<"max_amount">>, 200.00),
+    MaxAmount = kapps_config:get_float(?CONFIG_CAT, <<"max_amount">>, 200.00),
     case kz_util:to_float(Amount) >  MaxAmount of
         'true' -> braintree_util:error_max_amount(MaxAmount);
         'false' -> 'ok'

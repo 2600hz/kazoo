@@ -56,7 +56,7 @@ maybe_onnet_data(State) ->
     case knm_converters:is_reconcilable(ToDID)
         orelse knm_converters:classify(ToDID) =:= <<"emergency">>
         orelse kz_json:is_true(<<"hunt_non_reconcilable">>, SrvOptions, 'false')
-        orelse kapps_config:get_is_true(?TS_CONFIG_CAT, <<"default_hunt_non_reconcilable">>, 'false')
+        orelse kapps_config:get_is_true(?CONFIG_CAT, <<"default_hunt_non_reconcilable">>, 'false')
     of
         'false' ->
             lager:debug("number ~p is non_reconcilable and the server does not allow it", [ToDID]);
@@ -100,7 +100,7 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
                                ])
         of
             {'undefined', 'undefined'} ->
-                case kapps_config:get_is_true(<<"trunkstore">>, <<"ensure_valid_caller_id">>, 'false') of
+                case kapps_config:get_is_true(?CONFIG_CAT, <<"ensure_valid_caller_id">>, 'false') of
                     'true' ->
                         ValidCID = ts_util:maybe_ensure_cid_valid('external', OriginalCIdNumber, FromUser, AccountId),
                         [{<<"Outbound-Caller-ID-Number">>, ValidCID}

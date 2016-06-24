@@ -83,8 +83,10 @@ tone_or_echo(Call) ->
     From = kz_json:get_binary_value(<<"Caller-ID-Number">>, CallJObj, <<>>),
     To = kz_json:get_binary_value(<<"To-User">>, CallJObj, <<>>),
 
-    case {kapps_config:get_non_empty(<<"milliwatt">>, <<"echo">>, ?ECHO)
-         ,kapps_config:get_non_empty(<<"milliwatt">>, <<"tone">>, ?TONE)} of
+    case {kapps_config:get_non_empty(?CONFIG_CAT, <<"echo">>, ?ECHO)
+         ,kapps_config:get_non_empty(?CONFIG_CAT, <<"tone">>, ?TONE)
+         }
+    of
         {'undefined', 'undefined'} -> 'undefined';
         {Echo, 'undefined'} ->
             maybe_echo(Echo, To, From);

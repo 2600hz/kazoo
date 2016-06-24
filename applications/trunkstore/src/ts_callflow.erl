@@ -308,7 +308,7 @@ is_trunkstore_acct(JObj, Type) ->
 
 -spec pre_park_action() -> ne_binary().
 pre_park_action() ->
-    case kapps_config:get_is_true(<<"trunkstore">>, <<"ring_ready_offnet">>, 'true') of
+    case kapps_config:get_is_true(?CONFIG_CAT, <<"ring_ready_offnet">>, 'true') of
         'false' -> <<"none">>;
         'true' -> <<"ring_ready">>
     end.

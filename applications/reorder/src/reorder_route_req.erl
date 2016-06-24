@@ -36,7 +36,7 @@ maybe_known_number(ControllerQ, JObj) ->
 -spec get_dest_number(kz_json:object()) -> ne_binary().
 get_dest_number(JObj) ->
     {User, _} = kapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
-    case kapps_config:get_is_true(<<"reorder">>, <<"assume_inbound_e164">>) of
+    case kapps_config:get_is_true(?CONFIG_CAT, <<"assume_inbound_e164">>) of
         'true' ->
             Number = assume_e164(User),
             lager:debug("assuming number is e164, normalizing to ~s", [Number]),

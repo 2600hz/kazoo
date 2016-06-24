@@ -453,7 +453,7 @@ check_permissions(#state{from=From
                                      {'ok', state()} |
                                      {'error', string(), state()}.
 check_empty_permissions(#state{errors=Errors}=State) ->
-    case kapps_config:get_is_true(<<"fax">>, <<"allow_all_addresses_when_empty">>, 'false') of
+    case kapps_config:get_is_true(?CONFIG_CAT, <<"allow_all_addresses_when_empty">>, 'false') of
         'true' -> add_fax_document(State);
         'false' ->
             Error = <<"faxbox permissions is empty and policy doesn't allow it">>,

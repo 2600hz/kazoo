@@ -7,7 +7,9 @@
 
 -include("crossbar_types.hrl").
 
--define(CONFIG_CAT, <<"crossbar">>).
+-define(APP_NAME, <<"crossbar">>).
+-define(APP_VERSION, <<"4.0.0">>).
+-define(CONFIG_CAT, ?APP_NAME).
 
 -define(CACHE_NAME, 'crossbar_cache').
 
@@ -17,9 +19,6 @@
 -define(LIST_BY_USERNAME, <<"users/list_by_username">>).
 
 -define(CB_APPS_STORE_LIST, <<"apps_store/crossbar_listing">>).
-
--define(APP_NAME, <<"crossbar">>).
--define(APP_VERSION, <<"4.0.0">>).
 
 -define(VERSION_1, <<"v1">>).
 -define(VERSION_2, <<"v2">>).

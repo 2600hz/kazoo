@@ -5,10 +5,9 @@
 -include_lib("kazoo/include/kz_log.hrl").
 -include_lib("kazoo/include/kz_databases.hrl").
 
--define(CONFIG_CAT, <<"fax">>).
-
 -define(APP_NAME, <<"fax">>).
 -define(APP_VERSION, <<"4.0.0">>).
+-define(CONFIG_CAT, ?APP_NAME).
 
 -define(CACHE_NAME, 'fax_cache').
 -define(FAX_WORKER_POOL, 'fax_worker_pool').

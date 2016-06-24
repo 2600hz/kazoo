@@ -26,6 +26,7 @@
 
 -define(APP_NAME, <<"callflow">>).
 -define(APP_VERSION, <<"4.0.0">> ).
+-define(CF_CONFIG_CAT, ?APP_NAME).
 
 -define(RECORDED_NAME_KEY, [<<"media">>, <<"name">>]).
 -define(CF_RECORDING_ID_KEY, <<"Recording-ID">>).
@@ -40,8 +41,6 @@
 -define(NO_MATCH_CF, <<"no_match">>).
 
 -define(DEFAULT_TIMEOUT_S, 20).
-
--define(CF_CONFIG_CAT, <<"callflow">>).
 
 -define(MANUAL_PRESENCE_DOC, <<"manual_presence">>).
 

@@ -443,7 +443,7 @@ agent_logout(AcctId, AgentId) ->
 
 agent_pause(AcctId, AgentId) ->
     agent_pause(AcctId, AgentId
-                ,kapps_config:get(<<"acdc">>, <<"default_agent_pause_timeout">>, 600)
+                ,kapps_config:get(?CONFIG_CAT, <<"default_agent_pause_timeout">>, 600)
                ).
 agent_pause(AcctId, AgentId, Timeout) ->
     kz_util:put_callid(?MODULE),

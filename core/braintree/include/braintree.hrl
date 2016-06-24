@@ -1,3 +1,5 @@
+-ifndef(BRAINTREE_HRL).
+
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 
@@ -13,8 +15,6 @@
                               'maintenance' |
                               'io_fault' |
                               'api_error'.
-
--define(BT_DEBUG, kapps_config:get_is_true(<<"braintree">>, <<"debug">>, 'false')).
 
 -define(BT_XML_PROLOG, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>").
 -define(BT_API_VERSION, 2).
@@ -263,3 +263,6 @@
                        ,message:: api_binary()
                       }).
 -type bt_api_error() :: #bt_api_error{}.
+
+-define(BRAINTREE_HRL, 'true').
+-endif.

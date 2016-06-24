@@ -18,7 +18,7 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    case kapps_config:get_is_true(?WHM_CONFIG_CAT, <<"fix_media_names">>, 'true') of
+    case kapps_config:get_is_true(?CONFIG_CAT, <<"fix_media_names">>, 'true') of
         'true' ->
             kz_datamgr:suppress_change_notice(),
             kazoo_media_maintenance:fix_media_names(),

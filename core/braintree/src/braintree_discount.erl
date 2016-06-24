@@ -13,7 +13,7 @@
 -export([record_to_json/1]).
 -export([json_to_record/1]).
 
--include_lib("braintree/include/braintree.hrl").
+-include("bt.hrl").
 
 -export_type([discount/0
               ,discounts/0
