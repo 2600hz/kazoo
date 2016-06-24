@@ -35,7 +35,7 @@
 -export([is_cancelled/1]).
 -export([is_expired/1]).
 
--include_lib("braintree/include/braintree.hrl").
+-include("bt.hrl").
 
 -type changes() :: [{atom(), proplist(), [proplist()]}].
 -type subscription() :: #bt_subscription{}.

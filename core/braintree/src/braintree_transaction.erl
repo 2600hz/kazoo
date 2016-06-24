@@ -25,7 +25,7 @@
 
 -define(MIN_AMOUNT, kapps_config:get_float(?CONFIG_CAT, <<"min_amount">>, 5.00)).
 
--include_lib("braintree/include/braintree.hrl").
+-include("bt.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

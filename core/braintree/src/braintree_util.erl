@@ -25,7 +25,7 @@
 -export([error_min_amount/1]).
 -export([error_max_amount/1]).
 
--include_lib("braintree/include/braintree.hrl").
+-include("bt.hrl").
 
 %% from stdlib/src/unicode.erl
 -type char_to_bin_res() :: binary() |
