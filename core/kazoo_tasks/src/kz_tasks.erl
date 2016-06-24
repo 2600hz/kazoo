@@ -20,13 +20,11 @@
     ]).
 
 %%% API used by workers
-%% Casts
 -export([worker_finished/4
         ,worker_error/1
-        ,worker_update_processed/3
-        ]).
-%% Non ?SERVER-related
--export([worker_upload_result/2
+        ,worker_pause/0
+        ,worker_maybe_send_update/3
+        ,worker_upload_result/2
         ,get_output_header/2
         ]).
 
@@ -44,13 +42,17 @@
 
 -define(SERVER, {'via', 'kz_globals', ?MODULE}).
 
+-define(WAIT_AFTER_ROW,
+        kapps_config:get_integer(?CONFIG_CAT, <<"wait_after_row_ms">>, 500)).
+-define(PROGRESS_AFTER_PROCESSED,
+        kapps_config:get_integer(?CONFIG_CAT, <<"send_progress_after_processed">>, 1000)).
+
 -define(TASK_ID_SIZE, 15).
 -define(A_TASK_ID, kz_util:rand_hex_binary(?TASK_ID_SIZE)).
 -type task_id() :: <<_:(8*2*?TASK_ID_SIZE)>>.
 
 -type task() :: #{ worker_pid => api_pid()
                  , worker_node => ne_binary() | 'undefined'
-                 , worker_module => module() | 'undefined' %% Worker to execute the task with.
                  , account_id => ne_binary()
                  , id => task_id()
                  , rev => ne_binary() | 'undefined'
@@ -273,9 +275,24 @@ worker_error(TaskId=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec worker_update_processed(task_id(), pos_integer(), pos_integer()) -> 'ok'.
-worker_update_processed(TaskId=?NE_BINARY, TotalSucceeded, TotalFailed) ->
-    gen_server:cast(?SERVER, {'worker_update_processed', TaskId, TotalSucceeded, TotalFailed}).
+-spec worker_pause() -> 'ok'.
+worker_pause() ->
+    MS = ?WAIT_AFTER_ROW,
+    lager:debug("taking a ~pms break before next row", [MS]),
+    timer:sleep(MS).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec worker_maybe_send_update(task_id(), pos_integer(), pos_integer()) -> 'ok'.
+worker_maybe_send_update(TaskId, TotalSucceeded, TotalFailed) ->
+    case (TotalFailed + TotalSucceeded) rem ?PROGRESS_AFTER_PROCESSED == 0 of
+        'false' -> 'ok';
+        'true' ->
+            gen_server:cast(?SERVER, {'worker_update_processed', TaskId, TotalSucceeded, TotalFailed})
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -402,7 +419,6 @@ handle_call({'new', AccountId, Category, Action, TotalRows}, _From, State) ->
     TaskId = ?A_TASK_ID,
     Task = #{ worker_pid => 'undefined'
             , worker_node => 'undefined'
-            , worker_module => 'undefined'
             , account_id => AccountId
             , id => TaskId
             , rev => 'undefined'
@@ -447,9 +463,8 @@ handle_call({'worker_finished', TaskId, TaskRev, TotalSucceeded, TotalFailed}, _
     Task1 = Task#{ finished => kz_util:current_tstamp()
                  , total_rows_failed => TotalFailed
                  , total_rows_succeeded => TotalSucceeded
-                 , rev => TaskRev
                  },
-    {'ok', _JObj} = update_task(Task1),
+    {'ok', _JObj} = update_task(Task1, TaskRev),
     State1 = remove_task(TaskId, State),
     ?REPLY(State1, 'ok');
 
@@ -591,7 +606,13 @@ save_new_task(Task = #{id := _TaskId}) ->
 
 -spec update_task(task()) -> {'ok', kz_json:object()} |
                              {'error', any()}.
-update_task(Task = #{id := TaskId}) ->
+-spec update_task(task(), ne_binary() | 'undefined') -> {'ok', kz_json:object()} |
+                                                        {'error', any()}.
+update_task(Task) ->
+    %% "I'm feeling lucky"
+    update_task(Task, 'undefined').
+update_task(Task0 = #{id := TaskId}, Rev) ->
+    Task = Task0#{rev => Rev},
     Updates = kz_json:to_proplist(to_json(Task)),
     case kz_datamgr:update_doc(?KZ_TASKS_DB, TaskId, Updates) of
         {'ok', Doc} -> {'ok', to_public_json(from_json(Doc))};
@@ -644,7 +665,6 @@ handle_call_start_task(Task=#{ id := TaskId
                              , account_id := AccountId
                              , category := Category
                              , action := Action
-                             , worker_module := WorkerModule
                              }
                       ,State=#state{ apis = APIs
                                    , nodes = Nodes
@@ -652,10 +672,11 @@ handle_call_start_task(Task=#{ id := TaskId
                                    , apps = Apps
                                    }
                       ) ->
-    lager:info("about to start task ~s: ~s ~s on ~s"
-              ,[TaskId, Category, Action, WorkerModule]),
+    lager:info("about to start task ~s: ~s ~s", [TaskId, Category, Action]),
     API = maps:get(Action, maps:get(Category, APIs)),
     lager:debug("API ~s", [kz_json:encode(API)]),
+    WorkerModule = worker_module(API),
+    lager:debug("using worker type: ~s", [WorkerModule]),
     Node = maps:get(Category, Nodes),
     Module = maps:get(Category, Modules),
     lager:debug("app ~s module ~s node ~s", [maps:get(Category, Apps), Module, Node]),
@@ -664,10 +685,8 @@ handle_call_start_task(Task=#{ id := TaskId
     ExtraArgs = [{'auth_account_id', AccountId}
                 ],
     %% Task needs to run where App is started.
-    try erlang:spawn_link(kz_util:to_atom(Node, 'true')
-                         ,fun () -> WorkerModule:start(TaskId, Module, Function, ExtraArgs, Fields) end
-                         )
-    of
+    Job = fun () -> WorkerModule:start(TaskId, Module, Function, ExtraArgs, Fields) end,
+    try erlang:spawn_link(kz_util:to_atom(Node, 'true'), Job) of
         Pid ->
             Task1 = Task#{ started => kz_util:current_tstamp()
                          , worker_pid => Pid
@@ -687,7 +706,6 @@ from_json(Doc) ->
     TotalRows = kz_json:get_integer_value(?PVT_TOTAL_ROWS, Doc),
     #{ worker_pid => 'undefined'
      , worker_node => kz_json:get_value(?PVT_WORKER_NODE, Doc)
-     , worker_module => worker_module(TotalRows)
      , account_id => kz_json:get_value(?PVT_ACCOUNT_ID, Doc)
      , id => kz_doc:id(Doc)
      , rev => kz_doc:revision(Doc)
@@ -897,22 +915,18 @@ optional(APIJObj) ->
 input_mime(APIJObj) ->
     kz_json:get_ne_binary_value(?API_INPUT_MIME, APIJObj).
 
+
 -spec find_input_errors(kz_json:object(), input()) -> map().
 find_input_errors(API, 'undefined') ->
-    Errors = find_API_errors(API, mandatory(API), []),
-    case input_mime(API) of
-        'undefined' -> Errors;
-        MIME -> Errors#{?KZ_TASKS_INPUT_ERROR_MIME => MIME}
-    end;
+    find_API_errors(API, [], 'false');
 
 find_input_errors(API, Input=?NE_BINARY) ->
     {Fields, InputData} = kz_csv:take_row(Input),
-    Mandatory = mandatory(API),
-    Errors = find_API_errors(API, Mandatory, Fields),
+    Errors = find_API_errors(API, Fields, 'true'),
     %% Stop here if there is no Mandatory fields to check against.
-    case Mandatory of
+    case mandatory(API) of
         [] -> Errors;
-        _ ->
+        Mandatory ->
             IsMandatory = [lists:member(Field, Mandatory) || Field <- Fields],
             Unsets =
                 fun (Row, Es) ->
@@ -930,12 +944,11 @@ find_input_errors(API, Input=?NE_BINARY) ->
 find_input_errors(API, InputRecord=[_|_]) ->
     %%NOTE: assumes first record has all the fields that all the other records will ever need set
     Fields = kz_json:get_keys(hd(InputRecord)),
-    Mandatory = mandatory(API),
-    Errors = find_API_errors(API, Mandatory, Fields),
+    Errors = find_API_errors(API, Fields, 'true'),
     %% Stop here if there is no Mandatory fields to check against.
-    case Mandatory of
+    case mandatory(API) of
         [] -> Errors;
-        _ ->
+        Mandatory ->
             CheckJObjValues =
                 fun (JObj, Es) ->
                         IsUnset = ['undefined' == kz_json:get_ne_binary_value(Key, JObj)
@@ -953,8 +966,9 @@ find_input_errors(API, InputRecord=[_|_]) ->
             end
     end.
 
--spec find_API_errors(kz_json:object(), ne_binaries(), ne_binaries()) -> map().
-find_API_errors(API, Mandatory, Fields) ->
+-spec find_API_errors(kz_json:object(), ne_binaries(), boolean()) -> map().
+find_API_errors(API, Fields, HasInputData) ->
+    Mandatory = mandatory(API),
     Routines =
         [fun (Errors) ->
                  case Mandatory -- Fields of
@@ -967,7 +981,17 @@ find_API_errors(API, Mandatory, Fields) ->
                      [] -> Errors;
                      Unknown -> Errors#{?KZ_TASKS_INPUT_ERROR_UF => Unknown}
                  end
-         end],
+         end
+        ,fun (Errors) ->
+                 MIME = input_mime(API),
+                 APIRequiresInputData = 'undefined' /= MIME,
+                 RequestedMIME = case MIME of 'undefined' -> <<"none">>; _ -> MIME end,
+                 case APIRequiresInputData xor HasInputData of
+                     'false' -> Errors;
+                     'true' ->  Errors#{?KZ_TASKS_INPUT_ERROR_MIME => RequestedMIME}
+                 end
+         end
+        ],
     lists:foldl(fun (F, Errors) -> F(Errors) end, #{}, Routines).
 
 -spec are_mandatories_unset(nonempty_list(boolean()), nonempty_list(ne_binary())) -> boolean().
@@ -978,10 +1002,11 @@ are_mandatories_unset(IsMandatory, Row) ->
     RedF = fun erlang:'or'/2,
     lists:foldl(RedF, 'false', lists:zipwith(MapF, IsMandatory, Row)).
 
--spec worker_module(api_pos_integer()) -> module().
-worker_module('undefined') -> 'kz_task_noinput_worker';
-worker_module(TotalRows)
-  when is_integer(TotalRows), TotalRows > 0 ->
-    'kz_task_worker'.
+-spec worker_module(kz_json:object()) -> module().
+worker_module(API) ->
+    case input_mime(API) of
+        'undefined' -> 'kz_task_noinput_worker';
+        _TextCSV -> 'kz_task_worker'
+    end.
 
 %%% End of Module.

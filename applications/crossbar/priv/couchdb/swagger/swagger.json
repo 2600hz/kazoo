@@ -5833,7 +5833,7 @@
             "required": true,
             "type": "object"
         },
-        "tasks.records": {
+        "tasks": {
             "additionalProperties": true,
             "description": "Input data to go through as part of a background task",
             "name": "Task records",
@@ -5846,7 +5846,7 @@
                     },
                     "minItems": 1,
                     "name": "Records",
-                    "required": true,
+                    "required": false,
                     "type": "array",
                     "uniqueItems": true
                 }
@@ -8346,6 +8346,9 @@
             "delete": {},
             "get": {},
             "patch": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/input": {
+            "get": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/output": {
             "get": {}

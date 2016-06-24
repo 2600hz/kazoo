@@ -2,6 +2,13 @@
 
 Kazoo Tasks enables listing, adding, starting & removing generic background tasks.
 
+#### Schema
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`records` | List the rows of input data | `array(object)` |   | `false`
+
+
 
 #### List available tasks
 
@@ -351,23 +358,7 @@ curl -v -X DELETE \
 
 #### Get a specific task's details
 
-Optional: use `-H "Accept: text/csv"` to fetch the task's input data file as a CSV.
-
 > GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
-
-To fetch its CSV data:
-
-```shell
-curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H "Accept: text/csv" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
-```
-
-Streams back the contents of the task's input in CSV format.
-
-
-To fetch a task's summary:
 
 ```shell
 curl -v -X GET \
@@ -383,15 +374,18 @@ curl -v -X GET \
     "data": {
         "_read_only": {
             "account_id": "{ACCOUNT_ID}",
-            "action": "add",
+            "action": "list",
             "category": "number_management",
+            "created": 63633924886,
+            "failure_count": 0,
             "id": "{TASK_ID}",
-            "status": "pending",
-            "submit_timestamp": 63632220951
-            "total_count": 2
+            "node": "whistle_apps@qwd",
+            "start_timestamp": 63633924909,
+            "status": "executing",
+            "success_count": 50
         }
     },
-    "request_id": "8341d44579d03e7aa2e97e1cc0c5123f",
+    "request_id": "fac9bad28d115f3ce8a5a7f02902e7f7",
     "revision": "undefined",
     "status": "success"
 }
@@ -481,6 +475,37 @@ curl -v -X PATCH \
 ```
 
 
+#### Retrieve a task's input CSV
+
+> GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/input
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/input
+```
+
+##### Success
+
+Streams back the task's input in CSV format.
+
+##### Task does not exist or did not have any input data
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "cause": "{TASK_ID}",
+        "message": "bad identifier"
+    },
+    "error": "404",
+    "message": "bad_identifier",
+    "request_id": "f0198cd34b4a58cb65ad903ae1259256",
+    "status": "error"
+}
+```
+
+
 #### Retrieve a task's output CSV
 
 > GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/output
@@ -491,4 +516,22 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/output
 ```
 
+##### Success
+
 Streams back the task's output in CSV format.
+
+##### Task does not exist or output not yet in database
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "cause": "{TASK_ID}",
+        "message": "bad identifier"
+    },
+    "error": "404",
+    "message": "bad_identifier",
+    "request_id": "6c1e1918ce36baf380972ea4b1e2566b",
+    "status": "error"
+}
+```
