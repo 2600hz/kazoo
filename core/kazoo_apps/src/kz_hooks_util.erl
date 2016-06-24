@@ -114,10 +114,7 @@ maybe_add_hook(Hook) ->
     end.
 
 maybe_add_hook(Hook, Pids) ->
-    case lists:member(self(), Pids) of
-        'true' -> 'true';
-        'false' -> hook_it_up(Hook)
-    end.
+    lists:member(self(), Pids) orelse hook_it_up(Hook).
 
 -spec hook_it_up(tuple()) -> 'true'.
 hook_it_up(Hook) ->
