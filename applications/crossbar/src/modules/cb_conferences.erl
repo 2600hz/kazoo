@@ -9,6 +9,7 @@
 %%% @contributors
 %%%   Karl Anderson
 %%%   James Aimonetti
+%%%   Roman Galeev
 %%%-------------------------------------------------------------------
 -module(cb_conferences).
 
@@ -22,7 +23,7 @@
          ,delete/2
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
 
 -define(CB_LIST, <<"conferences/crossbar_listing">>).
 -define(CB_LIST_BY_NUMBER, <<"conference/listing_by_number">>).
@@ -68,7 +69,9 @@ allowed_methods() ->
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 allowed_methods(_, <<"details">>) ->
-    [?HTTP_GET].
+    [?HTTP_GET];
+allowed_methods(_, <<"mute">>) ->
+    [?HTTP_POST].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -83,7 +86,8 @@ allowed_methods(_, <<"details">>) ->
 -spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
-resource_exists(_, <<"details">>) -> 'true'.
+resource_exists(_, <<"details">>) -> 'true';
+resource_exists(_, <<"mute">>) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -121,7 +125,9 @@ validate_conference(Context, Id, ?HTTP_DELETE) ->
     load_conference(Id, Context).
 
 validate(Context, Id, <<"details">>) ->
-    load_conference_details(Context, Id).
+    load_conference_details(Context, Id);
+validate(Context, Id, <<"mute">>) ->
+    mute_conference(Context, Id).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
@@ -226,6 +232,20 @@ is_number_already_used(Numbers, [Number|NewNumbers], Acc) ->
 create_conference(Context) ->
     OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
     cb_context:validate_request_data(<<"conferences">>, Context, OnSuccess).
+
+mute_conference(Context, ConfId) ->
+    Realm = kz_util:get_account_realm(cb_context:account_id(Context)),
+    {ok, Confs} = get_conferences(Realm, ConfId),
+    lager:error("Confs: ~p", [Confs]),
+    Participants = conference_participants(Confs),
+    lager:error("P:~p", [Participants]),
+    Conference = kapps_conference:set_id(ConfId, kapps_conference:new()),
+    Muted = [
+        perform_conference_action(Conference, <<"mute">>, kz_json:get_value(<<"Participant-ID">>, P))
+            || P <- Participants, kz_json:is_false(<<"Is-Moderator">>, P), kz_json:is_true(<<"Speak">>, P)
+    ],
+    Resp = kz_json:set_value(<<"resp">>, Muted, kz_json:new()),
+    crossbar_doc:handle_json_success(Resp, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -346,15 +366,18 @@ do_conference_action(Context, Id, Action, ParticipantId) ->
         _ -> cb_context:add_system_error('forbidden', Context)
     end.
 
--spec perform_conference_action(kapps_conference:conference(), ne_binary(), api_integer()) -> 'ok'.
+-spec perform_conference_action(kapps_conference:conference(), ne_binary(), api_integer()) -> integer().
 perform_conference_action(Conference, <<"mute">>, ParticipantId) ->
     kapps_conference_command:mute_participant(ParticipantId, Conference),
-    kapps_conference_command:prompt(<<"conf-muted">>, ParticipantId, Conference);
+    kapps_conference_command:prompt(<<"conf-muted">>, ParticipantId, Conference),
+    ParticipantId;
 perform_conference_action(Conference, <<"unmute">>, ParticipantId) ->
     kapps_conference_command:unmute_participant(ParticipantId, Conference),
-    kapps_conference_command:prompt(<<"conf-unmuted">>, ParticipantId, Conference);
+    kapps_conference_command:prompt(<<"conf-unmuted">>, ParticipantId, Conference),
+    ParticipantId;
 perform_conference_action(Conference, <<"kick">>, ParticipantId) ->
-    kapps_conference_command:kick(ParticipantId, Conference).
+    kapps_conference_command:kick(ParticipantId, Conference),
+    ParticipantId.
 
 %%--------------------------------------------------------------------
 %% @private
