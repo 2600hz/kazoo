@@ -43,14 +43,14 @@
 
 %% API
 -export([start_link/1,
-	 status/0,
-	 schedule_task/2,
-	 schedule_task/3,
-	 cancel_task/1,
-	 task_status/1,
-	 task_list/0,
-	 remove_done_tasks/0
-	]).
+     status/0,
+     schedule_task/2,
+     schedule_task/3,
+     cancel_task/1,
+     task_status/1,
+     task_list/0,
+     remove_done_tasks/0
+    ]).
 
 %% gen_leader callbacks
 -export([init/1,
@@ -142,7 +142,7 @@ schedule_task(Schedule, Exec) ->
 %%--------------------------------------------------------------------
 
 -spec schedule_task(ident(), Schedule, Exec) ->
-			   {ok, pid()} | {error, term()} when
+               {ok, pid()} | {error, term()} when
       Schedule :: amqp_cron_task:schedule(),
       Exec :: amqp_cron_task:execargs().
 
@@ -213,20 +213,20 @@ init([]) ->
 %% @private
 elected(State, _Election, undefined) ->
     State1 = case State#state.is_leader of
-		 false ->
-		     start_tasks(State);
-		 true ->
-		     State
-	     end,
+        false ->
+            start_tasks(State);
+        true ->
+            State
+        end,
     State2 = State1#state{is_leader = true},
     {ok, State2#state.tasks, State2};
 elected(State, _Election, _Node) ->
     State1 = case State#state.is_leader of
-		 false ->
-		     start_tasks(State);
-		 true ->
-		     State
-	     end,
+        false ->
+            start_tasks(State);
+        true ->
+            State
+        end,
     State2 = State1#state{is_leader = true},
     {reply, State2#state.tasks, State2}.
 
@@ -248,19 +248,20 @@ handle_leader_call({cancel, Name}, From, State, Election) when
     end;
 handle_leader_call({cancel, Pid}, _From, State, Election) ->
     Tasks = State#state.tasks,
-    {Reply, State1} = case lists:keyfind(Pid, 2, Tasks) of
-			  false ->
-			      {{error, no_such_pid}, State};
-			  {_, Pid, _, _} ->
-			      ok = amqp_cron_task:stop(Pid),
-			      Tasks1 = lists:keydelete(Pid, 2, Tasks),
-			      send_tasks(Tasks1, Election),
-			      {ok, State#state{tasks = Tasks1}}
-		      end,
+    {Reply, State1} =
+        case lists:keyfind(Pid, 2, Tasks) of
+            false ->
+                {{error, no_such_pid}, State};
+            {_, Pid, _, _} ->
+                ok = amqp_cron_task:stop(Pid),
+                Tasks1 = lists:keydelete(Pid, 2, Tasks),
+                send_tasks(Tasks1, Election),
+                {ok, State#state{tasks = Tasks1}}
+        end,
     {reply, Reply, State1};
 handle_leader_call({schedule, {Name, Schedule, Exec}}, _From, State, Election) ->
     case not (Name == undefined)
-	andalso lists:keymember(Name, 1, State#state.tasks) of
+        andalso lists:keymember(Name, 1, State#state.tasks) of
         true ->
             {reply, {error, already_exists}, State};
         false ->
@@ -312,12 +313,12 @@ handle_DOWN(_Node, State, _Election) ->
 %% @private
 handle_call(status, _From, State, Election) ->
     Reply = [{leader, amqp_leader_proc:leader_node(Election)},
-	     {alive, amqp_leader_proc:alive(Election)},
-	     {down, amqp_leader_proc:down(Election)},
-	     {candidates, amqp_leader_proc:candidates(Election)},
-	     {workers, amqp_leader_proc:workers(Election)},
-	     {me, node()}
-	    ],
+             {alive, amqp_leader_proc:alive(Election)},
+             {down, amqp_leader_proc:down(Election)},
+             {candidates, amqp_leader_proc:candidates(Election)},
+             {workers, amqp_leader_proc:workers(Election)},
+             {me, node()}
+        ],
     {reply, Reply, State};
 handle_call(_Request, _From, State, _Election) ->
     Reply = ok,
@@ -352,13 +353,13 @@ save_tasks(State, Tasks) ->
 
 send_tasks(Tasks, Election) ->
     case amqp_leader_proc:alive(Election) -- [node()] of
-	[] ->
-	    ok;
-	Alive ->
-	    Election = amqp_leader_proc:broadcast({from_leader, {tasks, Tasks}},
-					    Alive,
-					    Election),
-	    ok
+        [] ->
+            ok;
+        Alive ->
+            Election = amqp_leader_proc:broadcast({from_leader, {tasks, Tasks}},
+                        Alive,
+                        Election),
+            ok
     end.
 
 -spec stop_tasks(State :: #state{}) -> #state{}.
@@ -379,7 +380,7 @@ stop_tasks(State) ->
 start_tasks(State) ->
     TaskList = State#state.tasks,
     TaskList1 = lists:foldl(
-	     fun(Task, Acc) ->
+        fun(Task, Acc) ->
                     {Name, _, Schedule, Exec} = Task,
                     case amqp_cron_task:start_link(Schedule, Exec) of
                         {ok, Pid} ->
@@ -387,21 +388,21 @@ start_tasks(State) ->
                         {error, Reason} ->
                             Format = "Could not start task ~p ~p, name: ~p",
                             Message = io_lib:format(Format,
-						    [Exec, Reason, Name]),
+                            [Exec, Reason, Name]),
                             error_logger:error_report(Message),
                             [{Name, undefined, Schedule, Exec}|Acc]
                     end
-	     end, [], TaskList),
+        end, [], TaskList),
     State#state{tasks = TaskList1}.
 
 remove_task_if_done(Task, Acc) ->
     {_, Pid, _, _} = Task,
     case amqp_cron_task:status(Pid) of
-	{done, _, _} ->
-	    ok = amqp_cron_task:stop(Pid),
-	    Acc;
-	_ ->
-	    [Task|Acc]
+        {done, _, _} ->
+            ok = amqp_cron_task:stop(Pid),
+            Acc;
+        _ ->
+            [Task|Acc]
     end.
 
 pid_for_name(Name, Tasks) ->

@@ -391,9 +391,9 @@ voicefabric_get_media_rate(Headers1) ->
                || {X, Y} <- Headers1
               ],
     <<"audio/raw; ", Params/binary>> =
-	props:get_value(<<"content-type">>, Headers),
+        props:get_value(<<"content-type">>, Headers),
     [<<"rate=", Rate/binary>>] =
-	lists:filter(fun voicefabric_filter_rate/1, re:split(Params, "; ")),
+        lists:filter(fun voicefabric_filter_rate/1, re:split(Params, "; ")),
     {'ok', Rate}.
 
 -spec voicefabric_filter_rate(ne_binary()) -> boolean().

@@ -311,7 +311,7 @@ encode_kv(_, _, [], _, Acc) -> lists:reverse(Acc).
 
 -spec to_log(kz_proplist()) -> 'ok'.
 to_log(Props) ->
-	to_log(Props,<<"Props">>).
+    to_log(Props,<<"Props">>).
 
 -spec to_log(kz_proplist(), ne_binary()) -> 'ok'.
 to_log(Props, Header) ->

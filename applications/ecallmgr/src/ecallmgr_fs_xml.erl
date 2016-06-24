@@ -928,7 +928,7 @@ action_el(App, Data, Inline) ->
     #xmlElement{name='action'
                 ,attributes=[xml_attrib('application', App)
                              ,xml_attrib('data', Data)
-							 ,xml_attrib('inline', kz_util:to_binary(Inline))
+                             ,xml_attrib('inline', kz_util:to_binary(Inline))
                             ]
                }.
 

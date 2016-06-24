@@ -314,7 +314,7 @@ fetch_all_current_stats(Context, AgentId) ->
 
 -spec fetch_current_status(cb_context:context(), api_binary(), api_boolean()) -> cb_context:context().
 fetch_current_status(Context, AgentId, 'false') ->
-	{'ok', Resp} = acdc_agent_util:most_recent_status(cb_context:account_id(Context), AgentId),
+    {'ok', Resp} = acdc_agent_util:most_recent_status(cb_context:account_id(Context), AgentId),
         crossbar_util:response(Resp, Context);
 fetch_current_status(Context, AgentId, 'true') ->
         Req = props:filter_undefined(
@@ -336,8 +336,8 @@ fetch_current_status(Context, AgentId, 'true') ->
                     Stats = kz_json:get_value([<<"Agents">>, AgentId], Resp),
                     {_, StatusJObj} = kz_json:foldl(fun acdc_agent_util:find_most_recent_fold/3, {0, kz_json:new()}, Stats),
                     crossbar_util:response(StatusJObj, Context)
-        end.	
-	
+        end.
+
 -spec fetch_all_current_statuses(cb_context:context(), api_binary(), api_binary()) ->
                                         cb_context:context().
 fetch_all_current_statuses(Context, AgentId, Status) ->

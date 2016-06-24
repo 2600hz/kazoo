@@ -56,7 +56,7 @@ allowed_methods() ->
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 allowed_methods(_, <<"details">>) ->
-	[?HTTP_GET].
+    [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
