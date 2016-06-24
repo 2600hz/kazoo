@@ -26,8 +26,6 @@
 -export([json_to_record/1]).
 -export([record_to_json/1]).
 
--import('kz_util', [get_xml_value/2]).
-
 -include_lib("braintree/include/braintree.hrl").
 
 -type customer() :: #bt_customer{}.
@@ -277,25 +275,25 @@ xml_to_record(Xml, Base) ->
     CreditCardPath = lists:flatten([Base, "/credit-cards/credit-card"]),
     AddressPath = lists:flatten([Base, "/addresses/address"]),
     SubscriptionPath = lists:flatten([Base, "/credit-cards/credit-card/subscriptions/subscription"]),
-    #bt_customer{id = get_xml_value([Base, "/id/text()"], Xml)
-                 ,first_name = get_xml_value([Base, "/first-name/text()"], Xml)
-                 ,last_name = get_xml_value([Base, "/last-name/text()"], Xml)
-                 ,company = get_xml_value([Base, "/company/text()"], Xml)
-                 ,email = get_xml_value([Base, "/email/text()"], Xml)
-                 ,phone = get_xml_value([Base, "/phone/text()"], Xml)
-                 ,fax = get_xml_value([Base, "/fax/text()"], Xml)
-                 ,website = get_xml_value([Base, "/website/text()"], Xml)
-                 ,created_at = get_xml_value([Base, "/created-at/text()"], Xml)
-                 ,updated_at = get_xml_value([Base, "/updated-at/text()"], Xml)
-                 ,credit_cards = [braintree_card:xml_to_record(Card)
-                                  || Card <- xmerl_xpath:string(CreditCardPath, Xml)
+    #bt_customer{id = kz_util:get_xml_value([Base, "/id/text()"], Xml)
+                ,first_name = kz_util:get_xml_value([Base, "/first-name/text()"], Xml)
+                ,last_name = kz_util:get_xml_value([Base, "/last-name/text()"], Xml)
+                ,company = kz_util:get_xml_value([Base, "/company/text()"], Xml)
+                ,email = kz_util:get_xml_value([Base, "/email/text()"], Xml)
+                ,phone = kz_util:get_xml_value([Base, "/phone/text()"], Xml)
+                ,fax = kz_util:get_xml_value([Base, "/fax/text()"], Xml)
+                ,website = kz_util:get_xml_value([Base, "/website/text()"], Xml)
+                ,created_at = kz_util:get_xml_value([Base, "/created-at/text()"], Xml)
+                ,updated_at = kz_util:get_xml_value([Base, "/updated-at/text()"], Xml)
+                ,credit_cards = [braintree_card:xml_to_record(Card)
+                                 || Card <- xmerl_xpath:string(CreditCardPath, Xml)
+                                ]
+                ,addresses = [braintree_address:xml_to_record(Address)
+                              || Address <- xmerl_xpath:string(AddressPath, Xml)
+                             ]
+                ,subscriptions = [braintree_subscription:xml_to_record(Subscription)
+                                  || Subscription <- xmerl_xpath:string(SubscriptionPath, Xml)
                                  ]
-                 ,addresses = [braintree_address:xml_to_record(Address)
-                               || Address <- xmerl_xpath:string(AddressPath, Xml)
-                              ]
-                 ,subscriptions = [braintree_subscription:xml_to_record(Subscription)
-                                   || Subscription <- xmerl_xpath:string(SubscriptionPath, Xml)
-                                  ]
                 }.
 
 %%--------------------------------------------------------------------

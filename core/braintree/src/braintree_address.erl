@@ -18,9 +18,6 @@
 -export([json_to_record/1]).
 -export([record_to_json/1]).
 
--import('braintree_util', [make_doc_xml/2]).
--import('kz_util', [get_xml_value/2]).
-
 -include_lib("braintree/include/braintree.hrl").
 
 %%--------------------------------------------------------------------
@@ -115,22 +112,22 @@ xml_to_record(Xml) ->
     xml_to_record(Xml, "/address").
 
 xml_to_record(Xml, Base) ->
-    #bt_address{id = get_xml_value([Base, "/id/text()"], Xml)
-                ,customer_id = get_xml_value([Base, "/customer-id/text()"], Xml)
-                ,first_name = get_xml_value([Base, "/first-name/text()"], Xml)
-                ,last_name = get_xml_value([Base, "/last-name/text()"], Xml)
-                ,company = get_xml_value([Base, "/company/text()"], Xml)
-                ,street_address = get_xml_value([Base, "/street-address/text()"], Xml)
-                ,extended_address = get_xml_value([Base, "/extended-address/text()"], Xml)
-                ,locality = get_xml_value([Base, "/locality/text()"], Xml)
-                ,region = get_xml_value([Base, "/region/text()"], Xml)
-                ,postal_code = get_xml_value([Base, "/postal-code/text()"], Xml)
-                ,country_code_two = get_xml_value([Base, "/country-code-alpha2/text()"], Xml)
-                ,country_code_three = get_xml_value([Base, "/country-code-alpha3/text()"], Xml)
-                ,country_code = get_xml_value([Base, "/country-code-numeric/text()"], Xml)
-                ,country_name = get_xml_value([Base, "/country-name/text()"], Xml)
-                ,created_at = get_xml_value([Base, "/created-at/text()"], Xml)
-                ,updated_at = get_xml_value([Base, "/updated-at/text()"], Xml)
+    #bt_address{id = kz_util:get_xml_value([Base, "/id/text()"], Xml)
+               ,customer_id = kz_util:get_xml_value([Base, "/customer-id/text()"], Xml)
+               ,first_name = kz_util:get_xml_value([Base, "/first-name/text()"], Xml)
+               ,last_name = kz_util:get_xml_value([Base, "/last-name/text()"], Xml)
+               ,company = kz_util:get_xml_value([Base, "/company/text()"], Xml)
+               ,street_address = kz_util:get_xml_value([Base, "/street-address/text()"], Xml)
+               ,extended_address = kz_util:get_xml_value([Base, "/extended-address/text()"], Xml)
+               ,locality = kz_util:get_xml_value([Base, "/locality/text()"], Xml)
+               ,region = kz_util:get_xml_value([Base, "/region/text()"], Xml)
+               ,postal_code = kz_util:get_xml_value([Base, "/postal-code/text()"], Xml)
+               ,country_code_two = kz_util:get_xml_value([Base, "/country-code-alpha2/text()"], Xml)
+               ,country_code_three = kz_util:get_xml_value([Base, "/country-code-alpha3/text()"], Xml)
+               ,country_code = kz_util:get_xml_value([Base, "/country-code-numeric/text()"], Xml)
+               ,country_name = kz_util:get_xml_value([Base, "/country-name/text()"], Xml)
+               ,created_at = kz_util:get_xml_value([Base, "/created-at/text()"], Xml)
+               ,updated_at = kz_util:get_xml_value([Base, "/updated-at/text()"], Xml)
                }.
 
 %%--------------------------------------------------------------------
@@ -165,7 +162,7 @@ record_to_xml(Address, ToString) ->
                  _ -> Props
              end,
     case ToString of
-        'true' -> make_doc_xml(Props1, 'address');
+        'true' -> braintree_util:make_doc_xml(Props1, 'address');
         'false' -> Props1
     end.
 

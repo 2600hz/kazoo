@@ -35,8 +35,6 @@
 -export([is_cancelled/1]).
 -export([is_expired/1]).
 
--import('kz_util', [get_xml_value/2]).
-
 -include_lib("braintree/include/braintree.hrl").
 
 -type changes() :: [{atom(), proplist(), [proplist()]}].
@@ -472,35 +470,35 @@ xml_to_record(Xml) ->
 xml_to_record(Xml, Base) ->
     AddOnsPath = lists:flatten([Base, "/add-ons/add-on"]),
     DiscountsPath = lists:flatten([Base, "/discounts/discount"]),
-    #bt_subscription{id = get_xml_value([Base, "/id/text()"], Xml)
-                     ,balance = get_xml_value([Base, "/balance/text()"], Xml)
-                     ,billing_dom = get_xml_value([Base, "/billing-day-of-month/text()"], Xml)
-                     ,billing_first_date = get_xml_value([Base, "/first-billing-date/text()"], Xml)
-                     ,billing_end_date = get_xml_value([Base, "/billing-period-end-date/text()"], Xml)
-                     ,billing_start_date = get_xml_value([Base, "/billing-period-start-date/text()"], Xml)
-                     ,billing_cycle = get_xml_value([Base, "/current-billing-cycle/text()"], Xml)
-                     ,number_of_cycles = get_xml_value([Base, "/number-of-billing-cycles/text()"], Xml)
-                     ,days_past_due = get_xml_value([Base, "/days-past-due/text()"], Xml)
-                     ,failure_count = get_xml_value([Base, "/failure-count/text()"], Xml)
-                     ,merchant_account_id = get_xml_value([Base, "/merchant-account-id/text()"], Xml)
-                     ,never_expires = kz_util:is_true(get_xml_value([Base, "/never-expires/text()"], Xml))
-                     ,next_bill_amount = get_xml_value([Base, "/next-bill-amount/text()"], Xml)
-                     ,next_cycle_amount = get_xml_value([Base, "/next-billing-period-amount/text()"], Xml)
-                     ,next_bill_date = get_xml_value([Base, "/next-billing-date/text()"], Xml)
-                     ,paid_through_date = get_xml_value([Base, "/paid-through-date/text()"], Xml)
-                     ,payment_token = get_xml_value([Base, "/payment-method-token/text()"], Xml)
-                     ,plan_id = get_xml_value([Base, "/plan-id/text()"], Xml)
-                     ,price = get_xml_value([Base, "/price/text()"], Xml)
-                     ,status = get_xml_value([Base, "/status/text()"], Xml)
-                     ,trial_duration = get_xml_value([Base, "/trial-duration/text()"], Xml)
-                     ,trial_duration_unit = get_xml_value([Base, "/trial-duration-unit/text()"], Xml)
-                     ,trial_period = get_xml_value([Base, "/trial-period/text()"], Xml)
-                     ,add_ons = [braintree_addon:xml_to_record(Addon)
-                                 || Addon <- xmerl_xpath:string(AddOnsPath, Xml)
-                                ]
-                     ,discounts = [braintree_discount:xml_to_record(Discount)
-                                   || Discount <- xmerl_xpath:string(DiscountsPath, Xml)
-                                  ]
+    #bt_subscription{id = kz_util:get_xml_value([Base, "/id/text()"], Xml)
+                    ,balance = kz_util:get_xml_value([Base, "/balance/text()"], Xml)
+                    ,billing_dom = kz_util:get_xml_value([Base, "/billing-day-of-month/text()"], Xml)
+                    ,billing_first_date = kz_util:get_xml_value([Base, "/first-billing-date/text()"], Xml)
+                    ,billing_end_date = kz_util:get_xml_value([Base, "/billing-period-end-date/text()"], Xml)
+                    ,billing_start_date = kz_util:get_xml_value([Base, "/billing-period-start-date/text()"], Xml)
+                    ,billing_cycle = kz_util:get_xml_value([Base, "/current-billing-cycle/text()"], Xml)
+                    ,number_of_cycles = kz_util:get_xml_value([Base, "/number-of-billing-cycles/text()"], Xml)
+                    ,days_past_due = kz_util:get_xml_value([Base, "/days-past-due/text()"], Xml)
+                    ,failure_count = kz_util:get_xml_value([Base, "/failure-count/text()"], Xml)
+                    ,merchant_account_id = kz_util:get_xml_value([Base, "/merchant-account-id/text()"], Xml)
+                    ,never_expires = kz_util:is_true(kz_util:get_xml_value([Base, "/never-expires/text()"], Xml))
+                    ,next_bill_amount = kz_util:get_xml_value([Base, "/next-bill-amount/text()"], Xml)
+                    ,next_cycle_amount = kz_util:get_xml_value([Base, "/next-billing-period-amount/text()"], Xml)
+                    ,next_bill_date = kz_util:get_xml_value([Base, "/next-billing-date/text()"], Xml)
+                    ,paid_through_date = kz_util:get_xml_value([Base, "/paid-through-date/text()"], Xml)
+                    ,payment_token = kz_util:get_xml_value([Base, "/payment-method-token/text()"], Xml)
+                    ,plan_id = kz_util:get_xml_value([Base, "/plan-id/text()"], Xml)
+                    ,price = kz_util:get_xml_value([Base, "/price/text()"], Xml)
+                    ,status = kz_util:get_xml_value([Base, "/status/text()"], Xml)
+                    ,trial_duration = kz_util:get_xml_value([Base, "/trial-duration/text()"], Xml)
+                    ,trial_duration_unit = kz_util:get_xml_value([Base, "/trial-duration-unit/text()"], Xml)
+                    ,trial_period = kz_util:get_xml_value([Base, "/trial-period/text()"], Xml)
+                    ,add_ons = [braintree_addon:xml_to_record(Addon)
+                                || Addon <- xmerl_xpath:string(AddOnsPath, Xml)
+                               ]
+                    ,discounts = [braintree_discount:xml_to_record(Discount)
+                                  || Discount <- xmerl_xpath:string(DiscountsPath, Xml)
+                                 ]
                      }.
 
 
