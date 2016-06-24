@@ -474,7 +474,7 @@ cleanup_voicemail_media(Account) ->
     AccountDb = kz_util:format_account_id(Account, 'encoded'),
     Medias = get_medias(Account),
     Messages = get_messages(Account),
-    ExtraMedia = lists:subtract(Medias, Messages),
+    ExtraMedia = Medias -- Messages,
     case kz_datamgr:del_docs(AccountDb, ExtraMedia) of
         {'ok', _}=Res -> Res;
         {'error', _E}=Err ->

@@ -254,7 +254,7 @@ wait_for_available_tag(Tag) -> wait_for_available(fun() -> is_tag_available(Tag)
 -spec wait_for_available(any(), 'infinity') -> 'ok';
                         (any(), non_neg_integer()) -> 'ok' | {'error', 'timeout'}.
 wait_for_available(Fun, Timeout) ->
-    case apply(Fun,[]) of
+    case Fun() of
         'true' -> 'ok';
         'false' ->
             gen_server:cast(?SERVER, {'add_watcher', Fun, self()}),
@@ -333,7 +333,7 @@ handle_cast({'connection_unavailable', Connection}, State) ->
     _ = ets:update_element(?TAB, Connection, Props),
     {'noreply', State, 'hibernate'};
 handle_cast({'add_watcher', Fun, Watcher}, State) ->
-    case apply(Fun, []) of
+    case Fun() of
         'false' -> {'noreply', add_watcher(Watcher, State), 'hibernate'};
         'true' ->
             _ = notify_watcher(Watcher),

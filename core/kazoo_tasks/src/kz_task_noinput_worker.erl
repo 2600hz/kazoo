@@ -56,7 +56,7 @@ start(TaskId, Module, Function, ExtraArgs, OrderedFields) ->
                                                                                   {'error', any()}.
 init(TaskId, Module, Function, ExtraArgs, _) ->
     case
-        kz_util:try_load_module(Module) == Module andalso
+        kz_util:try_load_module(Module) =:= Module andalso
         write_output_csv_header(TaskId, Module, Function)
     of
         'false' ->
