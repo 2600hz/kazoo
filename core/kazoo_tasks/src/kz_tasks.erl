@@ -176,7 +176,8 @@ all() ->
 %%--------------------------------------------------------------------
 -spec all(ne_binary()) -> kz_json:objects().
 all(AccountId=?NE_BINARY) ->
-    view([{'key', AccountId, 'undefined'}
+    view([{'startkey', [AccountId]}
+         ,{'endkey', [AccountId, kz_json:new()]}
          ]).
 
 %%--------------------------------------------------------------------
