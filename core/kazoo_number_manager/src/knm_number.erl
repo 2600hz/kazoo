@@ -236,10 +236,7 @@ ensure_account_can_create(Options) ->
 
 ensure_account_is_allowed_to_create(_Options, _AccountId) ->
     {'ok', JObj} = ?LOAD_ACCOUNT(_Options, _AccountId),
-    case kz_account:allow_number_additions(JObj) of
-        'true' -> 'true';
-        'false' -> knm_errors:unauthorized()
-    end.
+    kz_account:allow_number_additions(JObj) orelse knm_errors:unauthorized().
 
 -spec ensure_number_is_not_porting(ne_binary(), knm_number_options:options()) -> 'true'.
 -ifdef(TEST).

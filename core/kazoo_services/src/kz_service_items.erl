@@ -65,10 +65,7 @@ get_item(Key, Items) ->
 
 -spec compare(kz_service_item:item(), kz_service_item:item()) -> boolean().
 compare(Item1, Item2) ->
-    case compare_quantity(Item1, Item2) of
-        'true' -> 'true';
-        'false' -> compare_rate(Item1, Item2)
-    end.
+    compare_quantity(Item1, Item2) orelse compare_rate(Item1, Item2).
 
 -spec compare_quantity(kz_service_item:item(), kz_service_item:item()) -> boolean().
 compare_quantity(Item1, Item2) ->
