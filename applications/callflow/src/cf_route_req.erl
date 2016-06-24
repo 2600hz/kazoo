@@ -258,7 +258,7 @@ get_ringback_media(Flow, JObj) ->
 %%-----------------------------------------------------------------------------
 -spec pre_park_action(kapps_call:call()) -> ne_binary().
 pre_park_action(Call) ->
-    case kapps_config:get_is_true(?CONFIG_CAT, <<"ring_ready_offnet">>, 'true')
+    case kapps_config:get_is_true(?CF_CONFIG_CAT, <<"ring_ready_offnet">>, 'true')
         andalso kapps_call:inception(Call) =/= 'undefined'
         andalso kapps_call:authorizing_type(Call) =:= 'undefined'
     of
