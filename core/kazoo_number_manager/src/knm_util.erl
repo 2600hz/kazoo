@@ -133,4 +133,4 @@ read_fixture({'error', 'enoent'}, F) ->
 %% when/if we integrate that lib or do it ourselves
 -spec prefix_for_country(ne_binary()) -> ne_binary().
 prefix_for_country(Country) ->
-    knm_iso3166a2_itu:to_itu(Country).
+    knm_iso3166a2_itu:to_itu(kz_util:to_upper_binary(Country)).
