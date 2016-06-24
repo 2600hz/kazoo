@@ -119,7 +119,7 @@ cf_menu(#callfwd{keys=#keys{menu_toggle_cf=Toggle
 -spec cf_toggle(callfwd(), api_binary(), kapps_call:call()) -> callfwd().
 cf_toggle(#callfwd{enabled='false'
                    ,number=Number
-                  }=CF, _, Call) when is_binary(Number), size(Number) > 0 ->
+                  }=CF, _, Call) when Number =/= <<>> ->
     _ = try
             {'ok', _} = kapps_call_command:b_prompt(<<"cf-now_forwarded_to">>, Call),
             {'ok', _} = kapps_call_command:b_say(Number, Call)

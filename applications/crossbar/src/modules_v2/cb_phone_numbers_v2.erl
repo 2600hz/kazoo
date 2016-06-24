@@ -560,7 +560,7 @@ validate_collection_request(Context, []) ->
 validate_collection_request(Context, Numbers)
   when is_list(Numbers) ->
     UniqNomalised = lists:usort([knm_converters:normalize(N) || N <- Numbers]),
-    case length(Numbers) == length(UniqNomalised) of
+    case length(Numbers) =:= length(UniqNomalised) of
         'true' -> cb_context:set_resp_status(Context, 'success');
         'false' ->
             Msg = kz_json:from_list([{<<"message">>, <<"some numbers appear twice">>}

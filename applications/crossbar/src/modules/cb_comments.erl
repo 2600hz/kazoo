@@ -261,12 +261,7 @@ create(Context) ->
     ReqData = cb_context:req_data(Context),
     NewComments = kz_json:get_value(?COMMENTS, ReqData, []),
 
-    Doc1 =
-        kz_json:set_value(
-          ?COMMENTS
-          ,lists:append(Comments, NewComments)
-          ,Doc
-         ),
+    Doc1 = kz_json:set_value(?COMMENTS, Comments ++ NewComments, Doc),
     crossbar_doc:save(cb_context:set_doc(Context, Doc1)).
 
 %%--------------------------------------------------------------------

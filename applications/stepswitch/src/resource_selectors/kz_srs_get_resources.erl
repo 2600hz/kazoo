@@ -20,7 +20,7 @@ handle_req(Resources, _Number, OffnetJObj, _DB, _Params) ->
                            AccountId = kapi_offnet_resource:account_id(OffnetJObj),
                            maybe_get_local_resources(HuntAccount, AccountId)
                    end,
-    lists:append(Resources, NewResources).
+    Resources ++ NewResources.
 
 -spec maybe_get_local_resources(ne_binary(), ne_binary()) -> kz_json:objects().
 maybe_get_local_resources(HuntAccount, AccountId) ->

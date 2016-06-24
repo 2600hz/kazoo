@@ -432,8 +432,7 @@ process_row(Row, {Count, JObjs}=Acc) ->
 
 -spec get_row_prefix(rate_row()) -> api_binary().
 get_row_prefix([Prefix | _]=_R) ->
-    try kz_util:to_integer(Prefix) of
-        P -> P
+    try kz_util:to_integer(Prefix)
     catch
         _:_ ->
             lager:info("non-integer prefix on row: ~p", [_R]),

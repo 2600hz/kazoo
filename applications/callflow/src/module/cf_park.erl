@@ -291,8 +291,7 @@ create_slot(ParkerCallId, PresenceType, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_slot_number(kz_json:object(), kapps_call:call()) -> ne_binary().
-get_slot_number(_, CaptureGroup) when is_binary(CaptureGroup)
-                                      andalso size(CaptureGroup) > 0 ->
+get_slot_number(_, CaptureGroup) when byte_size(CaptureGroup) > 0 ->
     CaptureGroup;
 get_slot_number(ParkedCalls, _) ->
     Slots = [kz_util:to_integer(Slot)

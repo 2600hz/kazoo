@@ -232,12 +232,10 @@ extract_chunk(Dev, Buffer) ->
     end.
 
 -spec acc(binary(), buffer(), file:io_device()) -> buffer().
-acc(<<"recv ", _/binary>>=Line, Buffer, Dev)
-  when Buffer == [] ->
+acc(<<"recv ", _/binary>>=Line, [], Dev) ->
     %% Start of a new chunk
     extract_chunk(Dev, [Line]);
-acc(<<"send ", _/binary>>=Line, Buffer, Dev)
-  when Buffer == [] ->
+acc(<<"send ", _/binary>>=Line, [], Dev) ->
     %% Start of a new chunk
     extract_chunk(Dev, [Line]);
 acc(<<"   ------------------------------------------------------------------------\n">>, [_]=Buffer, Dev) ->
