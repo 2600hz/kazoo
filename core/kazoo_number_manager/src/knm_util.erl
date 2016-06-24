@@ -129,7 +129,8 @@ read_fixture({'error', 'enoent'}, F) ->
     throw({'error', 'missing_fixture', F}).
 
 %% TODO
-%% this should be replaced with a call to elibphonenumber
+%% This should be replaced with a call to elibphonenumber
 %% when/if we integrate that lib or do it ourselves
 -spec prefix_for_country(ne_binary()) -> ne_binary().
-prefix_for_country(<<"US">>) -> <<"+1">>.
+prefix_for_country(Country) ->
+    knm_iso3166a2_itu:to_itu(kz_util:to_upper_binary(Country)).
