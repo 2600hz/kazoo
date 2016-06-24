@@ -24,7 +24,7 @@
 -include("crossbar.hrl").
 -include_lib("kazoo_tasks/include/kazoo_tasks.hrl").
 
--define(SCHEMA_RECORDS, <<"tasks">>).
+-define(SCHEMA_TASKS, <<"tasks">>).
 
 -define(QS_CATEGORY, <<"category">>).
 -define(QS_ACTION, <<"action">>).
@@ -251,15 +251,15 @@ validate_new_attachment(Context, 'true') ->
                                         ])
     end;
 validate_new_attachment(Context, 'false') ->
-    case kz_util:is_empty(cb_context:req_data(Context)) of
+    Records = kz_json:get_value(?RD_RECORDS, cb_context:req_data(Context)),
+    case kz_util:is_empty(Records) of
         'true' ->
             %% For tasks without input data.
             cb_context:set_resp_status(Context, 'success');
         'false' ->
-            Ctx = cb_context:validate_request_data(?SCHEMA_RECORDS, Context),
+            Ctx = cb_context:validate_request_data(?SCHEMA_TASKS, Context),
             case cb_context:resp_status(Ctx) of
                 'success' ->
-                    Records = kz_json:get_value(?RD_RECORDS, cb_context:req_data(Context)),
                     cb_context:store(Ctx, 'total_rows', length(Records));
                 _ -> Ctx
             end
