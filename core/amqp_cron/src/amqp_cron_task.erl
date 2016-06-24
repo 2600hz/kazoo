@@ -326,12 +326,12 @@ oneshot({oneshot, DateTime}, Exec, ParentPid) ->
             gen_server:cast(ParentPid, {error, Message})
     end.
 
-run_task({sleeper, Millis}, Exec, ParentPid) ->
+run_task({sleeper, Millis} = Sleeper, Exec, ParentPid) ->
     gen_server:cast(ParentPid, {running, Millis}),
     apply_task(Exec),
     gen_server:cast(ParentPid, {waiting, Millis}),
     sleep_accounting_for_max(Millis),
-    run_task({sleeper, Millis}, Exec, ParentPid);
+    run_task(Sleeper, Exec, ParentPid);
 run_task(Schedule, Exec, ParentPid) ->
     CurrentDateTime = calendar:universal_time(),
     NextValidDateTime = next_valid_datetime(Schedule, CurrentDateTime),
@@ -372,17 +372,17 @@ time_to_wait_millis(CurrentDateTime, NextDateTime) ->
 
 -spec next_valid_datetime(cron(), datetime()) -> datetime().
 
-next_valid_datetime({cron, Schedule}, DateTime) ->
+next_valid_datetime({cron, _Schedule} = Cron, DateTime) ->
     DateTime1 = advance_seconds(DateTime, ?MINUTE_IN_SECONDS),
     {{Y, Mo, D}, {H, M, _}} = DateTime1,
     DateTime2 = {{Y, Mo, D}, {H, M, 0}},
-    next_valid_datetime(not_done, {cron, Schedule}, DateTime2).
+    next_valid_datetime(not_done, Cron, DateTime2).
 
 -spec next_valid_datetime(done|not_done, cron(), datetime()) -> datetime().
 
 next_valid_datetime(done, _, DateTime) ->
     DateTime;
-next_valid_datetime(not_done, {cron, Schedule}, DateTime) ->
+next_valid_datetime(not_done, {cron, Schedule} = Cron, DateTime) ->
     {MinuteSpec, HourSpec, DayOfMonthSpec, MonthSpec, DayOfWeekSpec} = Schedule,
     {{Year, Month, Day},  {Hour, Minute, _}} = DateTime,
     {Done, Time} =
@@ -427,9 +427,9 @@ next_valid_datetime(not_done, {cron, Schedule}, DateTime) ->
                     end
             end
     end,
-    next_valid_datetime(Done, {cron, Schedule}, Time).
+    next_valid_datetime(Done, Cron, Time).
 
--spec value_valid(cronspec(), integer(), integer(), integer()) -> true | false.
+-spec value_valid(cronspec(), integer(), integer(), integer()) -> boolean().
 
 value_valid(Spec, Min, Max, Value) when Value >= Min, Value =< Max->
     case Spec of

@@ -461,10 +461,10 @@ maybe_save_category(Category, JObj, PvtFields, Looped, _) ->
     JObj1 = update_pvt_fields(Category, JObj, PvtFields),
 
     case kz_datamgr:save_doc(?KZ_CONFIG_DB, JObj1) of
-        {'ok', SavedJObj} ->
+        {'ok', SavedJObj}=Ok ->
             lager:debug("saved cat ~s to db ~s (~s)", [Category, ?KZ_CONFIG_DB, kz_doc:revision(SavedJObj)]),
             kz_datamgr:add_to_doc_cache(?KZ_CONFIG_DB, Category, SavedJObj),
-            {'ok', SavedJObj};
+            Ok;
         {'error', 'not_found'} when not Looped ->
             lager:debug("attempting to create ~s DB", [?KZ_CONFIG_DB]),
             kz_datamgr:db_create(?KZ_CONFIG_DB),

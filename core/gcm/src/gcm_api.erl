@@ -25,8 +25,8 @@ push(RegIds, Message, Key) ->
             {error, {retry, RetryTime}};
         {ok, {{_StatusLine, _, _}, _, _Body}} ->
             {error, timeout};
-        {error, Reason} ->
-            {error, Reason};
+        {error, _Reason} = Error ->
+            Error;
         _OtherError ->
             {noreply, unknown}
     catch

@@ -206,10 +206,10 @@ peek_local(Srv, K) ->
 fetch_local(Srv, K) ->
     case peek_local(Srv, K) of
         {'error', 'not_found'}=E -> E;
-        {'ok', Value} ->
+        {'ok', _Value}=Ok ->
             ets:update_element(Srv, K, {#cache_obj.timestamp, kz_util:current_tstamp()}),
 %            gen_server:cast(Srv, {'update_timestamp', K, }),
-            {'ok', Value}
+            Ok
     end.
 
 -spec erase_local(atom(), any()) -> 'ok'.

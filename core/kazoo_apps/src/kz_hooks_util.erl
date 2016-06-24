@@ -184,7 +184,7 @@ lookup_account_id(JObj) ->
         'undefined' ->
             Number = get_inbound_destination(JObj),
             case kz_cache:peek_local(?HOOKS_CACHE_NAME, cache_key_number(Number)) of
-                {'ok', AccountId} -> {'ok', AccountId};
+                {'ok', _AccountId}=Ok -> Ok;
                 {'error', 'not_found'} -> fetch_account_id(Number)
             end;
         Id -> {'ok', Id}

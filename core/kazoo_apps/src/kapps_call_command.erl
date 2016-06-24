@@ -1820,10 +1820,10 @@ b_play_and_collect_digits(_MinDigits, _MaxDigits, _Media, 0, _Timeout, MediaInva
 b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, Terminators, Call) ->
     NoopId = play(Media, Terminators, Call),
     case collect_digits(MaxDigits, Timeout, ?DEFAULT_INTERDIGIT_TIMEOUT, NoopId, Call) of
-        {'ok', Digits} ->
+        {'ok', Digits}=Ok ->
             case re:run(Digits, Regex) of
                 {'match', _} when byte_size(Digits) >= MinDigits ->
-                    {'ok', Digits};
+                    Ok;
                 _ ->
                     b_play_and_collect_digits(MinDigits, MaxDigits
                                               ,Media, Tries - 1
@@ -2262,7 +2262,7 @@ wait_for_message(Call, Application, Event, Type, Timeout) ->
     Start = os:timestamp(),
     case receive_event(Timeout) of
         {'error', 'timeout'}=E -> E;
-        {'ok', JObj} ->
+        {'ok', JObj}=Ok ->
             case get_event_type(JObj) of
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     lager:debug("channel was destroyed while waiting for ~s", [Application]),
@@ -2271,7 +2271,7 @@ wait_for_message(Call, Application, Event, Type, Timeout) ->
                     lager:debug("channel execution error while waiting for ~s: ~s", [Application, kz_json:encode(JObj)]),
                     {'error', JObj};
                 {Type, Event, Application} ->
-                    {'ok', JObj};
+                    Ok;
                 _ ->
                     wait_for_message(Call, Application, Event, Type, kz_util:decr_timeout(Timeout, Start))
             end
@@ -2306,7 +2306,7 @@ wait_for_application(Call, Application, Event, Type, Timeout) ->
     Start = os:timestamp(),
     case receive_event(Timeout) of
         {'error', 'timeout'}=E -> E;
-        {'ok', JObj} ->
+        {'ok', JObj}=Ok ->
             case get_event_type(JObj) of
                 {<<"error">>, _, Application} ->
                     lager:debug("channel execution error while waiting for ~s: ~s", [Application, kz_json:encode(JObj)]),
@@ -2315,7 +2315,7 @@ wait_for_application(Call, Application, Event, Type, Timeout) ->
                     lager:debug("channel was hungup while waiting for ~s", [Application]),
                     {'error', 'channel_hungup'};
                 {Type, Event, Application} ->
-                    {'ok', JObj};
+                    Ok;
                 _ ->
                     wait_for_application(Call, Application, Event, Type, kz_util:decr_timeout(Timeout, Start))
             end
@@ -2365,7 +2365,7 @@ wait_for_headless_application(Application, Event, Type, Timeout) ->
 wait_for_headless_application(Application, {StartEv, StopEv}=Event, Type, Fun, Timeout) ->
     Start = os:timestamp(),
     case receive_event(Timeout) of
-        {'ok', JObj} ->
+        {'ok', JObj}=Ok ->
             case get_event_type(JObj) of
                 {<<"error">>, _, Application} ->
                     lager:debug("channel execution error while waiting for ~s: ~s"
@@ -2380,7 +2380,7 @@ wait_for_headless_application(Application, {StartEv, StopEv}=Event, Type, Fun, T
                     wait_for_headless_application(Application, StopEv, Type, Fun, kz_util:decr_timeout(Timeout, Start));
                 {Type, StopEv, Application} ->
                     case Fun(JObj) of
-                        'true' -> {'ok', JObj};
+                        'true' -> Ok;
                         'false' -> wait_for_headless_application(Application, Event, Type, Fun, kz_util:decr_timeout(Timeout, Start))
                     end;
                 _T ->
@@ -2392,7 +2392,7 @@ wait_for_headless_application(Application, {StartEv, StopEv}=Event, Type, Fun, T
 wait_for_headless_application(Application, Event, Type, Fun, Timeout) ->
     Start = os:timestamp(),
     case receive_event(Timeout) of
-        {'ok', JObj} ->
+        {'ok', JObj}=Ok ->
             case get_event_type(JObj) of
                 {<<"error">>, _, Application} ->
                     lager:debug("channel execution error while waiting for ~s: ~s", [Application, kz_json:encode(JObj)]),
@@ -2402,7 +2402,7 @@ wait_for_headless_application(Application, Event, Type, Fun, Timeout) ->
                     wait_for_headless_application(Application, Event, Type, Fun, 60 * ?MILLISECONDS_IN_SECOND);
                 {Type, Event, Application} ->
                     case Fun(JObj) of
-                        'true' -> {'ok', JObj};
+                        'true' -> Ok;
                         'false' -> wait_for_headless_application(Application, Event, Type, Fun, kz_util:decr_timeout(Timeout, Start))
                     end;
                 _T ->
@@ -2547,10 +2547,10 @@ wait_for_channel_unbridge() ->
 -spec wait_for_channel_bridge() -> {'ok', kz_json:object()}.
 wait_for_channel_bridge() ->
     case receive_event('infinity') of
-        {'ok', JObj} ->
+        {'ok', JObj}=Ok ->
             case kapps_util:get_event_type(JObj) of
-                {<<"call_event">>, <<"CHANNEL_BRIDGE">>} -> {'ok', JObj};
-                {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> {'ok', JObj};
+                {<<"call_event">>, <<"CHANNEL_BRIDGE">>} -> Ok;
+                {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> Ok;
                 _ -> wait_for_channel_bridge()
             end;
         _ -> wait_for_channel_bridge()
@@ -2593,8 +2593,7 @@ wait_for_hangup(Timeout) ->
 %% Wait forever for the channel to hangup
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_unbridge() ->
-                               {'ok', 'leg_hungup'} |
+-spec wait_for_unbridge() ->   {'ok', 'leg_hungup'} |
                                {'error', 'timeout'}.
 -spec wait_for_unbridge(kz_timeout()) ->
                                {'ok', 'leg_hungup'} |
@@ -2626,7 +2625,7 @@ wait_for_application_or_dtmf(Application, Timeout) ->
     Start = os:timestamp(),
     case receive_event(Timeout) of
         {'error', 'timeout'}=E -> E;
-        {'ok', JObj} ->
+        {'ok', JObj}=Ok ->
             case get_event_type(JObj) of
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     lager:debug("channel was destroyed while waiting for ~s or DTMF", [Application]),
@@ -2634,7 +2633,7 @@ wait_for_application_or_dtmf(Application, Timeout) ->
                 {<<"error">>, _, Application} ->
                     lager:debug("channel execution error while waiting ~s or DTMF: ~s", [Application, kz_json:encode(JObj)]),
                     {'error', JObj};
-                {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, Application} -> {'ok', JObj};
+                {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, Application} -> Ok;
                 {<<"call_event">>, <<"DTMF">>, _} -> {'dtmf', kz_json:get_value(<<"DTMF-Digit">>, JObj)};
                 _ ->
                     wait_for_application_or_dtmf(Application, kz_util:decr_timeout(Timeout, Start))
@@ -2923,7 +2922,7 @@ wait_for_unparked_call(Call, Timeout) ->
     Start = os:timestamp(),
     case receive_event(Timeout) of
         {'error', 'timeout'}=E -> E;
-        {'ok', JObj} ->
+        {'ok', JObj}=Ok ->
             case get_event_type(JObj) of
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     lager:debug("channel was destroyed while waiting for unparked call"),
@@ -2933,12 +2932,12 @@ wait_for_unparked_call(Call, Timeout) ->
                     {'error', 'channel_disconnected'};
                 {<<"call_event">>, <<"CHANNEL_INTERCEPTED">>, _} ->
                     lager:debug("channel was intercepted while waiting for unparked call"),
-                    {'ok', JObj};
+                    Ok;
                 {<<"error">>, _, <<"hold">>} ->
                     lager:debug("channel execution error while waiting for unparked call: ~s", [kz_json:encode(JObj)]),
                     {'error', JObj};
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"hold">>} ->
-                    {'ok', JObj};
+                    Ok;
                 _ ->
                     wait_for_unparked_call(Call, kz_util:decr_timeout(Timeout, Start))
             end

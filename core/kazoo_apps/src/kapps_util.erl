@@ -379,9 +379,10 @@ get_ccvs_by_ip(IP) ->
 do_get_ccvs_by_ip(IP) ->
     case kz_datamgr:get_results(?KZ_SIP_DB, ?AGG_LIST_BY_IP, [{'key', IP}]) of
         {'ok', []} ->
+	    NotF = {'error', 'not_found'},
             lager:debug("no entry in ~s for IP: ~s", [?KZ_SIP_DB, IP]),
-            kz_cache:store_local(?KAPPS_GETBY_CACHE, ?ACCT_BY_IP_CACHE(IP), {'error', 'not_found'}),
-            {'error', 'not_found'};
+            kz_cache:store_local(?KAPPS_GETBY_CACHE, ?ACCT_BY_IP_CACHE(IP), NotF),
+            NotF;
         {'ok', [Doc|_]} ->
             lager:debug("found IP ~s in db ~s (~s)", [IP, ?KZ_SIP_DB, kz_doc:id(Doc)]),
             AccountCCVs = account_ccvs_from_ip_auth(Doc),

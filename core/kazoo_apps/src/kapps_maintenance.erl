@@ -821,9 +821,9 @@ find_attachment_content_type(A) ->
     end.
 
 -spec maybe_add_extension({ne_binary(), ne_binary()}) -> {ne_binary(), ne_binary()}.
-maybe_add_extension({A, CT}) ->
+maybe_add_extension({A, CT}=T) ->
     case kz_util:is_empty(filename:extension(A)) of
-        'false' -> {A, CT};
+        'false' -> T;
         'true' -> {add_extension(A, CT), CT}
     end.
 

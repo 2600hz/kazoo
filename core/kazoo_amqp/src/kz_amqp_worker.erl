@@ -572,9 +572,9 @@ handle_call({'request', ReqProp, PublishFun, VFun, Timeout}
                 ,callid = CallId
                }
             };
-        {'error', Err} ->
+        {'error', Err}=Error ->
             lager:debug("failed to send request: ~p", [Err]),
-            {'reply', {'error', Err}, reset(State)}
+            {'reply', Error, reset(State)}
     end;
 handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout, Acc}
             ,{ClientPid, _}=From
@@ -602,9 +602,9 @@ handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout, Acc}
                 ,callid = CallId
                }
             };
-        {'error', Err} ->
+        {'error', Err}=Error ->
             lager:debug("failed to send request: ~p", [Err]),
-            {'reply', {'error', Err}, reset(State)}
+            {'reply', Error, reset(State)}
     end;
 handle_call({'publish', ReqProp, PublishFun}, {Pid, _}=From, #state{confirms=C}=State) ->
     _ = kz_util:put_callid(ReqProp),
@@ -665,8 +665,8 @@ handle_cast({'gen_listener', {'created_queue', Q}}, #state{defer={Call,From}}=St
         {'reply', Reply, NewState} ->
             gen_server:reply(From, Reply),
             {'noreply', NewState};
-        {'noreply', NewState} ->
-            {'noreply', NewState}
+        {'noreply', _NewState}=NoReply ->
+            NoReply
     end;
 handle_cast({'set_negative_threshold', NegThreshold}, State) ->
     lager:debug("set negative threshold to ~p", [NegThreshold]),

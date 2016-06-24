@@ -119,8 +119,8 @@ open_out(Connection) ->
     ssl_opts(Connection),
     Connection#apns_connection.timeout
   ) of
-    {ok, OutSocket} -> {ok, OutSocket};
-    {error, Reason} -> {error, Reason}
+    {ok, _OutSocket} = OK -> OK;
+    {error, _Reason} = Er -> Er
   end.
 
 %% @hidden
@@ -131,15 +131,16 @@ open_feedback(Connection) ->
     ssl_opts(Connection),
     Connection#apns_connection.timeout
   ) of
-    {ok, InSocket} -> {ok, InSocket};
-    {error, Reason} -> {error, Reason}
+    {ok, _InSocket} = OK -> OK;
+    {error, _Reason} = E -> E
   end.
 
 %% @hidden
 -spec handle_call(X, {pid(), reference()}, state()) ->
-  {stop, {unknown_request, X}, {unknown_request, X}, state()}.
+  {stop, Unknown, Unknown, state()} when Unknown :: {'unknown_request', X}.
 handle_call(Request, _From, State) ->
-  {stop, {unknown_request, Request}, {unknown_request, Request}, State}.
+  Unknown = {unknown_request, Request},
+  {stop, Unknown, Unknown, State}.
 
 %% @hidden
 -spec handle_cast(stop | apns:msg(), state()) ->
@@ -165,9 +166,9 @@ handle_cast(#apns_msg{device_token = DeviceToken, expiry = Expiry,
   case send_payload(Socket, Id, Expiry, BinToken, Payload, Priority) of
     ok ->
       {noreply, State};
-    {error, Reason} ->
+    {error, _Reason} = Error ->
       apns_queue:fail(Queue, Id),
-      {stop, {error, Reason}, State}
+      {stop, Error, State}
   end;
 
 handle_cast(stop, State) ->
