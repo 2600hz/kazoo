@@ -17,7 +17,7 @@ all: compile | $(GEN_OUT)
 include $(ROOT)/make/kz.mk
 
 clean-generated:
-	$(if $(wildcard src/kz_mime.erl), rm src/kz_mime.erl)
+	$(if $(wildcard $(GEN_OUT)), rm $(GEN_OUT))
 
 $(GEN_FILE):
 	wget -qO $@ $(GEN_URL)
