@@ -58,12 +58,42 @@ Cluster Design
 
 *** Monolithic
 #+BEGIN_CENTER
+All components are interconnected
+#+END_CENTER
+
+*** Monolithic
+#+BEGIN_CENTER
 [[file:./images/kazoo_stack_monolithic.png]]
 #+END_CENTER
 
 *** Monolithic
+ - Pros
+   - Maximum redundancy
+   - Maximum utilization
+ - Cons
+   - No isolation from DoS and other attacks
+   - No regions
+   - Easy to have a cascading failure
 
+*** Geographic Zones
+#+BEGIN_CENTER
+Components connected in a single region, regions interconnected
+#+END_CENTER
 
+*** Geographic Zones
+#+BEGIN_CENTER
+[[file:./images/kazoo_stack_geographic.png]]
+#+END_CENTER
+
+*** Geographic Zones
+ - Pros
+   - Isolation from DoS and other attacks
+   - Isolation from Overloaded Servers
+   -Better media path (possibly)
+ - Cons
+   - Under utilizes resources if poorly planned
+   - More management
+   - More equipment
 
 ** Thank You
 
