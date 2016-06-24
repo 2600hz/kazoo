@@ -95,6 +95,38 @@ Components connected in a single region, regions interconnected
    - More management
    - More equipment
 
+*** Private Service Zones
+#+BEGIN_CENTER
+Service offerings are isolated, DB is still connected
+#+END_CENTER
+
+*** Private Service Zones
+#+BEGIN_CENTER
+[[file:./images/kazoo_stack_service_zones.png]]
+#+END_CENTER
+
+*** Private Service Zones
+ - Pros
+   - Moderate Isolation in Key Risk Areas
+   - Easier to sell as a private service
+   - Easier to deal with spikes in volume/load
+ - Cons
+   - More Expensive
+   - Requires More Management
+   - Data Integrity Issues
+
+** Get it right
+#+BEGIN_CENTER
+The design of your cluster is the most important decision impacting your success
+
+Clients demand a reliable system
+
+S**t happens. You must be prepared for it.
+
+Your clients expect you to be prepared for it.
+
+#+END_CENTER
+
 ** Thank You
 
 #+INCLUDE: "./frames/footer.org"
