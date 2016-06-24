@@ -45,19 +45,15 @@ kz_trace_opt(Options, Forms) ->
 
 
 tree(N, Mod, Fun, Ari, Args) ->
+    Attr = {attr,N,[],none},
     {tree,application,
-     {attr,N,[],none},
+     Attr,
      {application,
       {tree,module_qualifier,
-       {attr,N,[],none},
+       Attr,
        {module_qualifier,{atom,N,kzs_perf},{atom,N,profile}}},
-      [{tree,tuple,
-        {attr,N,[],none},
-        [{atom,N,Mod},{atom,N,Fun},{integer,N,Ari}]},
-       {tree,list,
-        {attr,N,[],none},
-        {list, Args,
-         none}}]}}.
+      [{tree,tuple,Attr,[{atom,N,Mod},{atom,N,Fun},{integer,N,Ari}]},
+       {tree,list, Attr,{list,Args,none}}]}}.
 
 yup(Mod, Fun, Ari, Form) ->
     N = erl_syntax:get_pos(Form),

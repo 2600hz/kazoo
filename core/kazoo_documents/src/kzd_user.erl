@@ -83,8 +83,9 @@ to_vcard(JObj) ->
 
 -spec vcard_escape_chars(binary()) -> binary().
 vcard_escape_chars(Val) ->
-    Val1 = re:replace(Val, "(:|;|,)", "\\\\&", ['global', {'return', 'binary'}]),
-    re:replace(Val1, "\n", "\\\\n", ['global', {'return', 'binary'}]).
+    Opts = ['global', {'return', 'binary'}],
+    Val1 = re:replace(Val, "(:|;|,)", "\\\\&", Opts),
+    re:replace(Val1, "\n", "\\\\n", Opts).
 
 -spec vcard_fields_acc(vcard_field(), [{ne_binary(), binary()}]) -> [{ne_binary(), binary()}].
 vcard_fields_acc({_, Val}, Acc)

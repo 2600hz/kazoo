@@ -48,8 +48,8 @@ aws_request_xml2(Method, Protocol, Host, Port, Path, Params, #aws_config{} = Con
     case aws_request2(Method, Protocol, Host, Port, Path, Params, Config) of
         {ok, Body} ->
             {ok, element(1, xmerl_scan:string(binary_to_list(Body)))};
-        {error, Reason} ->
-            {error, Reason}
+        {error, _Reason}=Error ->
+            Error
     end.
 
 aws_request_xml4(Method, Host, Path, Params, Service, #aws_config{} = Config) ->
@@ -58,8 +58,8 @@ aws_request_xml4(Method, Protocol, Host, Port, Path, Params, Service, #aws_confi
     case aws_request4(Method, Protocol, Host, Port, Path, Params, Service, Config) of
         {ok, Body} ->
             {ok, element(1, xmerl_scan:string(binary_to_list(Body)))};
-        {error, Reason} ->
-            {error, Reason}
+        {error, _Reason}=Error ->
+            Error
     end.
 
 aws_request(Method, Host, Path, Params, #aws_config{} = Config) ->
@@ -83,8 +83,8 @@ aws_request2(Method, Protocol, Host, Port, Path, Params, Config) ->
     case update_config(Config) of
         {ok, Config1} ->
             aws_request2_no_update(Method, Protocol, Host, Port, Path, Params, Config1);
-        {error, Reason} ->
-            {error, Reason}
+        {error, _Reason}=Error ->
+            Error
     end.
 
 aws_request2_no_update(Method, Protocol, Host, Port, Path, Params,
@@ -133,8 +133,8 @@ aws_request4(Method, Protocol, Host, Port, Path, Params, Service, Config) ->
     case update_config(Config) of
         {ok, Config1} ->
             aws_request4_no_update(Method, Protocol, Host, Port, Path, Params, Service, Config1);
-        {error, Reason} ->
-            {error, Reason}
+        {error, _Reason}=Error ->
+            Error
     end.
 
 aws_request4_no_update(Method, Protocol, Host, Port, Path, Params, Service, #aws_config{} = Config) ->
@@ -242,8 +242,8 @@ update_config(#aws_config{access_key_id = KeyId} = Config)
 update_config(#aws_config{} = Config) ->
     %% AccessKey is not set. Try to read from role metadata.
     case get_metadata_credentials(Config) of
-        {error, Reason} ->
-            {error, Reason};
+        {error, _Reason}=Error ->
+            Error;
         {ok, Credentials} ->
             {ok, Config#aws_config {
                    access_key_id = Credentials#metadata_credentials.access_key_id,
@@ -285,8 +285,8 @@ get_credentials_from_metadata(Config) ->
            kz_aws_httpc:request(
              "http://169.254.169.254/latest/meta-data/iam/security-credentials/",
              get, [], <<>>, timeout(Config), Config)) of
-        {error, Reason} ->
-            {error, Reason};
+        {error, _Reason}=Error ->
+            Error;
         {ok, Body} ->
             %% Always use the first role
             [Role | _] = binary:split(Body, <<$\n>>),
@@ -295,8 +295,8 @@ get_credentials_from_metadata(Config) ->
                      "http://169.254.169.254/latest/meta-data/iam/security-credentials/" ++
                          binary_to_list(Role),
                      get, [], <<>>, timeout(Config), Config)) of
-                {error, Reason} ->
-                    {error, Reason};
+                {error, _Reason}=Error ->
+                    Error;
                 {ok, Json} ->
                     Creds = kz_json:decode(Json),
                     Record = #metadata_credentials
@@ -322,8 +322,8 @@ http_body(Return) ->
     case http_headers_body(Return) of
         {ok, {_, Body}} ->
             {ok, Body};
-        {error, Reason} ->
-            {error, Reason}
+        {error, _Reason}=Error ->
+            Error
     end.
 
 -type headers() :: [{string(), string()}].

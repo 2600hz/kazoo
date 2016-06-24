@@ -54,18 +54,18 @@ wait_for_refs(Start, MaxMailbox, Tables, []) ->
         _ -> timer:sleep(1000),
              wait_for_refs(Start, MaxMailbox, Tables, [])
     end;
-wait_for_refs(Start, {M, G}, Tables, [{Pid, Ref}|R]=PRs) ->
+wait_for_refs(Start, {M,_G}=MG, Tables, [{Pid, Ref}|R]=PRs) ->
     receive
         {'DOWN', Ref, 'process', Pid, _Reason} ->
-            wait_for_refs(Start, {M, G}, Tables, R)
+            wait_for_refs(Start, MG, Tables, R)
     after 1000 ->
             case cache_data() of
-                {N, F} when N > M ->
+                {N, F}=NF when N > M ->
                     io:format("new max message queue size ~p (~p)~n", [N, F]),
                     table_status(Tables),
-                    wait_for_refs(Start, {N, F}, Tables, PRs);
+                    wait_for_refs(Start, NF, Tables, PRs);
                 _ ->
-                    wait_for_refs(Start, {M, G}, Tables, PRs)
+                    wait_for_refs(Start, MG, Tables, PRs)
             end
     end.
 
@@ -159,17 +159,17 @@ cache_data() ->
 wait_for_cache(Start) ->
     wait_for_cache(Start, {0, 'ok'}).
 
-wait_for_cache(Start, {N, F}) ->
+wait_for_cache(Start, {N, F}=NF) ->
     case cache_data() of
-        {M, G} when M > N ->
+        {M, G}=MG when M > N ->
             io:format("~p new max msg queue size ~p (~p)~n", [Start, M, G]),
             timer:sleep(1000),
-            wait_for_cache(Start, {M, G});
+            wait_for_cache(Start, MG);
         {0, _F} ->
             io:format("~pms done (in ~p)~n", [kz_util:elapsed_ms(Start), _F]);
         _ ->
             timer:sleep(1000),
-            wait_for_cache(Start, {N, F})
+            wait_for_cache(Start, NF)
     end.
 
 perform_op({'edit', Doc}, Acc, AccountDb) ->

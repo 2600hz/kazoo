@@ -410,12 +410,12 @@ update_category(Category, Keys, Value, Node, Options) ->
                      -> {'ok', kz_json:object()}.
 update_category(Category, Keys, Value, Node, Options, JObj) ->
     PvtFields = props:get_value('pvt_fields', Options),
-
-    case kz_json:get_value([Node | Keys], JObj) =/= 'undefined'
+    L = [Node | Keys],
+    case kz_json:get_value(L, JObj) =/= 'undefined'
         orelse props:is_true('node_specific', Options, 'false')
     of
         'true' ->
-            update_category(Category, kz_json:set_value([Node | Keys], Value, JObj), PvtFields);
+            update_category(Category, kz_json:set_value(L, Value, JObj), PvtFields);
         'false' ->
             update_category(Category, kz_json:set_value([?KEY_DEFAULT | Keys], Value, JObj), PvtFields)
     end.

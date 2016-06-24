@@ -326,7 +326,7 @@ handle_topup_transactions(Account, JObjs, Failed) when is_list(Failed) ->
         'false' -> handle_topup_transactions(Account, JObjs, 3)
     end;
 handle_topup_transactions(_, [], _) -> 'ok';
-handle_topup_transactions(Account, [JObj|JObjs], Retry) when Retry > 0 ->
+handle_topup_transactions(Account, [JObj|JObjs]=List, Retry) when Retry > 0 ->
     case kz_json:get_integer_value(<<"pvt_code">>, JObj) of
         ?CODE_TOPUP ->
             Amount = kz_json:get_value(<<"pvt_amount">>, JObj),
@@ -340,7 +340,7 @@ handle_topup_transactions(Account, [JObj|JObjs], Retry) when Retry > 0 ->
                     lager:error("failed to write top up transaction ~p , for account ~s (amount: ~p), retrying ~p..."
                                 ,[_E, Account, Amount, Retry]
                                ),
-                    handle_topup_transactions(Account, [JObj|JObjs], Retry-1)
+                    handle_topup_transactions(Account, List, Retry-1)
             end;
         _ -> handle_topup_transactions(Account, JObjs, 3)
     end;

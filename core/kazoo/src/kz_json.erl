@@ -1051,14 +1051,15 @@ flatten([_ | _] = Elems, Acc, Keys, Depth) ->
                 end,
                 Acc, Elems);
 flatten({Key, Value}, Acc, Keys, Depth) ->
+    KList = [Key | Keys],
     case length(Keys) + 2 =:=  Depth of
         'false' ->
-            flatten(Value, Acc, [Key | Keys], Depth);
+            flatten(Value, Acc, KList, Depth);
         'true' ->
-            case flatten(Value, [], [Key | Keys], Depth) of
+            case flatten(Value, [], KList, Depth) of
                 [] -> Acc;
                 Group ->
-                    Pos = lists:reverse([Key | Keys]),
+                    Pos = lists:reverse(KList),
                     [{Pos, Group} | Acc]
             end
     end;

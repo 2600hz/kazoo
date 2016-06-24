@@ -139,9 +139,9 @@ handle_cast(_,State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'send_stats', SendStats},State) ->
+handle_info({'send_stats', SendStats}=Info,State) ->
     send_stats(State#state.variables, State#state.sip),
-    erlang:send_after(SendStats, self(), {'send_stats', SendStats}),
+    erlang:send_after(SendStats, self(), Info),
     {'noreply', State};
 handle_info(_Info, State) ->
     {'noreply', State}.

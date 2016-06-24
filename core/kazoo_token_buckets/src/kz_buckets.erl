@@ -170,10 +170,11 @@ get_bucket(App, Key, 'record') ->
         [Bucket] -> Bucket
     end;
 get_bucket(App, Key, 'server') ->
-    case ets:lookup(table_id(), {App, Key}) of
+    T = {App, Key},
+    case ets:lookup(table_id(), T) of
         [] -> 'undefined';
         [#bucket{srv=Srv}] ->
-            gen_server:cast(?SERVER, {'bucket_accessed', {App, Key}}),
+            gen_server:cast(?SERVER, {'bucket_accessed', T}),
             Srv
     end.
 
@@ -304,13 +305,14 @@ handle_call({'start', App, Name, MaxTokens, FillRate, FillTime}, _From, #state{t
         andalso kz_buckets_sup:start_bucket(MaxTokens, FillRate, FillTime)
     of
         {'ok', Pid} when is_pid(Pid) ->
-            case ets:insert_new(Tbl, new_bucket(Pid, {App, Name})) of
+	    T = {App, Name},
+            case ets:insert_new(Tbl, new_bucket(Pid, T)) of
                 'true' -> lager:debug("new bucket for ~s, ~s: ~p", [App, Name, Pid]);
                 'false' ->
                     lager:debug("hmm, bucket appears to exist for ~s, ~s, stopping ~p", [App, Name, Pid]),
                     kz_buckets_sup:stop_bucket(Pid)
             end,
-            kz_token_bucket:set_name(Pid, {App, Name}),
+            kz_token_bucket:set_name(Pid, T),
             {'reply', 'ok', State};
         'false' ->
             lager:debug("good chance the bucket ~s, ~s already exists", [App, Name]),
