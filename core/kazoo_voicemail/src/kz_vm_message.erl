@@ -59,6 +59,8 @@
 
 -type db_ret() :: 'ok' | {'ok', kz_json:object() | kz_json:objects()} | {'error', any()}.
 
+-export_type([vm_folder/0]).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc Generate database name based on DocId
@@ -447,7 +449,14 @@ update_folder(Folder, MsgIds, AccountId, BoxId) ->
           ],
     {'ok', bulk_update(AccountId, BoxId, MsgIds, Fun)}.
 
--spec apply_folder(ne_binary(), kz_json:object()) -> kz_json:object().
+-type vm_folder() :: ne_binary() | {ne_binary(), boolean()}.
+
+-spec apply_folder(vm_folder(), kz_json:object()) -> kz_json:object().
+apply_folder({?VM_FOLDER_DELETED, 'false'}, Doc) ->
+    Metadata = kzd_box_message:set_folder_deleted(kzd_box_message:metadata(Doc)),
+    kzd_box_message:set_metadata(Metadata, Doc);
+apply_folder({?VM_FOLDER_DELETED, 'true'}, Doc) ->
+    apply_folder(?VM_FOLDER_DELETED, Doc);
 apply_folder(?VM_FOLDER_DELETED, Doc) ->
     Metadata = kzd_box_message:set_folder_deleted(kzd_box_message:metadata(Doc)),
     kz_doc:set_soft_deleted(kzd_box_message:set_metadata(Metadata, Doc), 'true');
