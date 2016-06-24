@@ -1,5 +1,5 @@
 #!/bin/bash
-: ${KAZOO_NODE=kazoo_apps@$(hostname)}
+KAZOO_NODE=${KAZOO_NODE:-kazoo_apps@$(hostname)}
 echo Connecting to node: $KAZOO_NODE
 
 IFS='@' read -r -a NH <<< "$KAZOO_NODE"
