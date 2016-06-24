@@ -523,7 +523,14 @@ process_exports(File, Module, Fs) ->
 
 process_api_module(File, Module) ->
     {'ok', {Module, [{'abstract_code', AST}]}} = beam_lib:chunks(File, ['abstract_code']),
-    process_api_ast(Module, AST).
+    try process_api_ast(Module, AST)
+    catch
+        _E:_R ->
+            ST = erlang:get_stacktrace(),
+            lager:error("failed to process ~p(~p): ~s: ~p", [File, Module, _E, _R]),
+            kz_util:log_stacktrace(ST),
+            'undefined'
+    end.
 
 process_api_ast(Module, {'raw_abstract_v1', Attributes}) ->
     APIFunctions = [{F, A, Clauses}
@@ -534,8 +541,8 @@ process_api_ast(Module, {'raw_abstract_v1', Attributes}) ->
 
 process_api_ast_functions(Module, Functions) ->
     {Module
-      ,[process_api_ast_function(Module, F, A, Cs) || {F, A, Cs} <- Functions]
-     }.
+    ,[process_api_ast_function(Module, F, A, Cs) || {F, A, Cs} <- Functions]
+    }.
 
 process_api_ast_function(_Module, 'allowed_methods', _Arity, Clauses) ->
     Methods = find_http_methods(Clauses),
@@ -557,17 +564,36 @@ args_list_to_path([]) ->
 args_list_to_path(Args) ->
     lists:reverse(lists:foldl(fun arg_to_path/2, [], Args)).
 
--define(BINARY(Value), {'bin',_, [{'bin_element', _, {'string', _, Value}, 'default', 'default'}]}).
+-define(BINARY_STRING(Value)
+        ,{'bin_element', _, {'string', _, Value}, 'default', 'default'}
+       ).
+-define(BINARY_VAR(VarName)
+       ,{'bin_element',_,?VAR_NAME(VarName),'default',['binary']}
+       ).
+-define(BINARY(Value), {'bin',_, [?BINARY_STRING(Value)]}).
+-define(BINARY_MATCH(Matches)
+       ,{'bin',_,Matches}
+       ).
+
 -define(VAR_NAME(Name), {'var', _, Name}).
 
-arg_to_path(?BINARY(Name), Acc) ->
-    [kz_util:to_binary(Name) | Acc];
+arg_to_path(?BINARY_MATCH(Matches), Acc) ->
+    [binary_match_to_path(Matches) | Acc];
 arg_to_path(?VAR_NAME('Context'), Acc) ->
     Acc;
 arg_to_path(?VAR_NAME(Name), Acc) ->
     [kz_util:to_binary(Name) | Acc];
 arg_to_path({'match', _, {'bin', _, _}, ?VAR_NAME(Name)}, Acc) ->
     [kz_util:to_binary(Name) | Acc].
+
+binary_match_to_path(Matches) ->
+    iolist_to_binary(
+      [binary_to_path(Match) || Match <- Matches]
+     ).
+binary_to_path(?BINARY_STRING(Name)) ->
+    Name;
+binary_to_path(?BINARY_VAR(VarName)) ->
+    format_path_token(kz_util:to_binary(VarName)).
 
 find_methods(ClauseBody) ->
     find_methods(ClauseBody, []).

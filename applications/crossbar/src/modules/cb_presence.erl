@@ -34,8 +34,8 @@
        ).
 -define(REPORT_CONTENT_TYPE, [{'send_file', [{<<"application">>, <<"json">>}]}]).
 -define(REPORT_PREFIX, "report-").
--define(MATCH_REPORT_PREFIX(A), <<?REPORT_PREFIX, A/binary>>).
--define(MATCH_REPORT_PREFIX, <<?REPORT_PREFIX, _/binary>>).
+-define(MATCH_REPORT_PREFIX(ReportId), <<?REPORT_PREFIX, ReportId/binary>>).
+-define(MATCH_REPORT_PREFIX, <<?REPORT_PREFIX, _ReportId/binary>>).
 
 %%%===================================================================
 %%% API
@@ -43,11 +43,11 @@
 init() ->
     Bindings = [{<<"*.allowed_methods.presence">>, 'allowed_methods'}
                ,{<<"*.authenticate">>, 'authenticate'}
-                ,{<<"*.authorize">>, 'authorize'}
-                ,{<<"*.resource_exists.presence">>, 'resource_exists'}
-                ,{<<"*.content_types_provided.presence">>, 'content_types_provided'}
-                ,{<<"*.validate.presence">>, 'validate'}
-                ,{<<"*.execute.post.presence">>, 'post'}
+               ,{<<"*.authorize">>, 'authorize'}
+               ,{<<"*.resource_exists.presence">>, 'resource_exists'}
+               ,{<<"*.content_types_provided.presence">>, 'content_types_provided'}
+               ,{<<"*.validate.presence">>, 'validate'}
+               ,{<<"*.execute.post.presence">>, 'post'}
                ],
     cb_modules_util:bind(?MODULE, Bindings).
 

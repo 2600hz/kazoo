@@ -46,6 +46,16 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/debit
 ```
 
+#### Create
+
+> PUT /v2/accounts/{ACCOUNT_ID}/transactions/credit
+
+```curl
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/credit
+```
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/transactions/current_balance
