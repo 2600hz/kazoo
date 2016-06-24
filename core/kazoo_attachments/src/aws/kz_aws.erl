@@ -188,7 +188,7 @@ aws_request_form(Method, Protocol, Host, Port, Path, Form, Headers, Config) ->
 
 param_list([], _Key) -> [];
 param_list(Values, Key) when is_tuple(Key) ->
-    Seq = lists:seq(1, size(Key)),
+    Seq = lists:seq(1, tuple_size(Key)),
     lists:flatten(
       [[{lists:append([element(J, Key), ".", integer_to_list(I)]),
          element(J, Value)} || J <- Seq] ||

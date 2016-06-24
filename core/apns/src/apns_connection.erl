@@ -199,7 +199,7 @@ handle_info( {ssl, SslSocket, Data}
                 "Error trying to inform error (~p) msg ~p:~n\t~p~n",
                 [Status, MsgId, ErrorResult])
           end,
-          case erlang:size(Rest) of
+          case byte_size(Rest) of
             0 -> %% It was a whole package
               {noreply, State#state{out_buffer = <<>>}};
             _ ->
@@ -229,7 +229,7 @@ handle_info( {ssl, SslSocket, Data}
           error_logger:error_msg(
             "Error trying to inform feedback token ~p:~n\t~p~n", [Token, Error])
       end,
-      case erlang:size(Rest) of
+      case byte_size(Rest) of
         0 -> {noreply, State#state{in_buffer = <<>>}}; %% It was a whole package
         _ -> handle_info({ssl, SslSocket, Rest}, State#state{in_buffer = <<>>})
       end;
@@ -325,7 +325,7 @@ do_build_payload([], Payload) ->
   ok | {error, any()}.
 send_payload(Socket, MsgId, Expiry, BinToken, Payload, Priority) ->
     Frame = build_frame(MsgId, Expiry, BinToken, Payload, Priority),
-    FrameLength = erlang:size(Frame),
+    FrameLength = byte_size(Frame),
     Packet = [<<2:8,
                 FrameLength:32/big,
                 Frame/binary>>],
@@ -344,7 +344,7 @@ hexstr_to_bin([X, Y|T], Acc) ->
   hexstr_to_bin(T, [V | Acc]).
 
 bin_to_hexstr(Binary) ->
-    L = size(Binary),
+    L = byte_size(Binary),
     Bits = L * 8,
     <<X:Bits/big-unsigned-integer>> = Binary,
     F = lists:flatten(io_lib:format("~~~B.16.0B", [L * 2])),
@@ -363,7 +363,7 @@ parse_status(10) -> shutdown;
 parse_status(_) -> unknown.
 %
 build_frame(MsgId, Expiry, BinToken, Payload, Priority) ->
-  PayloadLength = erlang:size(Payload),
+  PayloadLength = byte_size(Payload),
   <<1:8, 32:16/big, BinToken/binary,
     2:8, PayloadLength:16/big, Payload/binary,
     3:8, 4:16/big, MsgId/binary,
