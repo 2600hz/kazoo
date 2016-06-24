@@ -369,7 +369,9 @@ read(TaskId, Context) ->
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    ViewOptions = [{'key', cb_context:account_id(Context), 'undefined'}
+    AccountId = cb_context:account_id(Context),
+    ViewOptions = [{'startkey', [AccountId]}
+                  ,{'endkey', [AccountId, kz_json:new()]}
                   ],
     crossbar_doc:load_view(?KZ_TASKS_BY_ACCOUNT
                           ,ViewOptions
