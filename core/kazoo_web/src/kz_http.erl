@@ -209,17 +209,17 @@ execute_request(Method, Request, Opts) ->
 %% @doc Response to caller in a proper manner
 %%--------------------------------------------------------------------
 -spec handle_response(httpc_ret()) -> ret().
-handle_response({'ok', 'saved_to_file'}) ->
-    {'ok', 'saved_to_file'};
+handle_response({'ok', 'saved_to_file'}=Ok) ->
+    Ok;
 handle_response({'ok', ReqId})
   when is_reference(ReqId) ->
     {'http_req_id', ReqId};
 handle_response({'ok', {{_, StatusCode, _}, Headers, Body}})
   when is_integer(StatusCode) ->
     {'ok', StatusCode, Headers, Body};
-handle_response({'error', 'timeout'}) ->
+handle_response({'error', 'timeout'}=Err) ->
     lager:debug("connection timeout"),
-    {'error', 'timeout'};
+    Err;
 handle_response({'EXIT', {Error,_Trace}}) ->
     lager:debug("caught EXIT ~p: ~p", [Error, _Trace]),
     {'error', Error};
@@ -232,9 +232,9 @@ handle_response({'error', {'failed_connect',[{_, _Address}, {_, _, 'econnrefused
 handle_response({'error', {'malformed_url', _, Url}}) ->
     lager:debug("failed to parse URL ~p", [Url]),
     {'error', {'malformed_url', Url}};
-handle_response({'error', Error}) ->
+handle_response({'error', Error}=Err) ->
     lager:debug("request failed with ~p", [Error]),
-    {'error', Error}.
+    Err.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -284,4 +284,4 @@ ensure_string_headers(Headers) ->
 %%--------------------------------------------------------------------
 -spec get_options(list(), kz_proplist()) -> kz_proplist().
 get_options(Type, Options) ->
-    [{K, V} || {K, V} <- Options, lists:member(K, Type)].
+    [KV || KV = {K, _V} <- Options, lists:member(K, Type)].

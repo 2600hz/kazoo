@@ -22,10 +22,10 @@
 %% ====================================================================
 -export([profile/2]).
 
--spec profile({atom(), atom(), arity()}, list()) -> any().
-profile({Mod, Fun, Arity}, Args) ->
+-spec profile(mfa(), list()) -> any().
+profile({Mod, Fun, Arity}=MFA, Args) ->
     case profile_match(Mod, Fun, Arity) of
-        #{} -> do_profile({Mod, Fun, Arity}, Args, #{});
+        #{} -> do_profile(MFA, Args, #{});
         _ -> erlang:apply(Mod, Fun, Args)
     end.
 

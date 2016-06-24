@@ -315,13 +315,13 @@ wait_for_correlated_message(CallId, Event, Type, Timeout) when is_binary(CallId)
     Start = os:timestamp(),
     case kapps_call_command:receive_event(Timeout) of
         {'error', 'timeout'}=E -> E;
-        {'ok', JObj} ->
+        {'ok', JObj}=Ok ->
             case get_correlated_msg_type(JObj) of
                 {<<"error">>, _, CallId} ->
                     lager:debug("channel execution error while waiting for ~s", [CallId]),
                     {'error', JObj};
                 {Type, Event, CallId } ->
-                    {'ok', JObj};
+                    Ok;
                 {_Type, _Event, _CallId} ->
                     lager:debug("received message (~s , ~s, ~s)",[_Type, _Event, _CallId]),
                     wait_for_correlated_message(CallId, Event, Type, kz_util:decr_timeout(Timeout, Start))

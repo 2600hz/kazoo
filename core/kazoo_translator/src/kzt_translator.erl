@@ -37,8 +37,8 @@ exec(Call, Cmds, CT) ->
 just_the_type(ContentType) ->
     case binary:split(ContentType, <<";">>) of
         [ContentType] -> kz_util:strip_binary(ContentType);
-        [JustContentType | _Other] ->
-            lager:debug("just using content type ~s, ignoring ~p", [JustContentType, _Other]),
+        [JustContentType | _Other]=L ->
+            lager:debug("just using content type ~s, ignoring ~p", L),
             kz_util:strip_binary(JustContentType)
     end.
 

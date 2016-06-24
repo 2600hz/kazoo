@@ -242,8 +242,8 @@ surrendered(State, Sync, _Election) ->
 handle_leader_call({cancel, Name}, From, State, Election) when
       is_binary(Name); is_atom(Name) ->
     case pid_for_name(Name, State#state.tasks) of
-        {error, Reason} ->
-            {reply, {error, Reason}, State};
+        {error, _Reason} = Error ->
+            {reply, Error, State};
         Pid ->
             handle_leader_call({cancel, Pid}, From, State, Election)
     end;
@@ -261,27 +261,27 @@ handle_leader_call({cancel, Pid}, _From, State, Election) ->
         end,
     {reply, Reply, State1};
 handle_leader_call({schedule, {Name, Schedule, Exec}}, _From, State, Election) ->
-    case not (Name == undefined)
+    case (Name =/= undefined)
         andalso lists:keymember(Name, 1, State#state.tasks) of
         true ->
             {reply, {error, already_exists}, State};
         false ->
             case amqp_cron_task:start_link(Schedule, Exec) of
-                {ok, Pid} ->
+                {ok, Pid} = Ok ->
                     Task = {Name, Pid, Schedule, Exec},
                     TaskList = [Task|State#state.tasks],
                     State1 = State#state{tasks = TaskList},
                     ok = send_tasks(TaskList, Election),
-                    {reply, {ok, Pid}, State1};
-                {error, Reason} ->
-                    {reply, {error, Reason}, State}
+                    {reply, Ok, State1};
+                {error, _Reason} = Error ->
+                    {reply, Error, State}
             end
     end;
 handle_leader_call({task_status, Name}, From, State, Election) when
       is_binary(Name); is_atom(Name) ->
     case pid_for_name(Name, State#state.tasks) of
-        {error, Reason} ->
-            {reply, {error, Reason}, State};
+        {error, _Reason} = Error ->
+            {reply, Error, State};
         Pid ->
             handle_leader_call({task_status, Pid}, From, State, Election)
     end;

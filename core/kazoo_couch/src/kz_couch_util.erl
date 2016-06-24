@@ -68,9 +68,9 @@ retry504s(Fun, Cnt) ->
             kazoo_stats:increment_counter(<<"bigcouch-other-error">>),
             lager:critical("response code ~b not expected : ~p", [_Code, _Body]),
             {'error', format_error(Response)};
-        {'error', Other} when is_binary(Other) ->
+        {'error', Other}=Error when is_binary(Other) ->
             kazoo_stats:increment_counter(<<"bigcouch-other-error">>),
-            {'error', Other};
+            Error;
         {'error', Other} ->
             kazoo_stats:increment_counter(<<"bigcouch-other-error">>),
             {'error', format_error(Other)};
@@ -119,11 +119,11 @@ filter_options(Options) ->
 convert_options(Options) ->
     [convert_option(O) || O <- Options].
 
-convert_option({K, V}) ->
+convert_option({K, V} = KV) ->
     case lists:member(K, ?ATOM_OPTIONS) of
         'true' -> {K, kz_util:to_atom(V, 'true')};
         'false' when is_map(V) -> {K, maps:to_list(V)};
-        'false' -> {K, V}
+        'false' -> KV
     end.
 
 -spec connection_parse(any(), any(), couch_connection()) -> couch_connection().

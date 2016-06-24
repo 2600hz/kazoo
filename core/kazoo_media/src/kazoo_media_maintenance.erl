@@ -104,9 +104,9 @@ import_prompt(Path, Lang) ->
         {'ok', Contents} ->
             io:format("importing prompt '~s' with language '~s'~n", [Path, Lang]),
             import_prompt(Path, Lang, Contents);
-        {'error', E} ->
+        {'error', E}=Error ->
             io:format("failed to open path '~s' for importing: ~p~n", [Path, E]),
-            {'error', E}
+            Error
     end.
 
 import_prompt(Path0, Lang0, Contents) ->
@@ -154,9 +154,9 @@ import_prompt(Path0, Lang0, Contents) ->
                             ,{'rev', kz_doc:revision(MetaJObj1)}
                            ]
                          );
-        {'error', E} ->
+        {'error', E}=Error ->
             io:format("  error saving metadata: ~p~n", [E]),
-            {'error', E}
+            Error
     end.
 
 -spec upload_prompt(ne_binary(), ne_binary(), ne_binary(), kz_proplist()) ->
@@ -190,9 +190,9 @@ maybe_cleanup_metadoc(ID, E) ->
         {'ok', _} ->
             io:format("  removed metadata for ~s~n", [ID]),
             {'error', E};
-        {'error', E1} ->
+        {'error', E1}=Error ->
             io:format("  failed to remove metadata for ~s: ~p~n", [ID, E1]),
-            {'error', E1}
+            Error
     end.
 
 -spec maybe_retry_upload(ne_binary(), ne_binary(), ne_binary(), kz_proplist(), non_neg_integer()) ->
@@ -209,9 +209,9 @@ maybe_retry_upload(ID, AttachmentName, Contents, Options, Retries) ->
                 _Attachment ->
                     io:format("  attachment appears to have uploaded successfully!")
             end;
-        {'error', E} ->
+        {'error', E}=Error ->
             io:format("  failed to open the media doc again: ~p~n", [E]),
-            {'error', E}
+            Error
     end.
 
 -spec refresh() -> 'ok'.

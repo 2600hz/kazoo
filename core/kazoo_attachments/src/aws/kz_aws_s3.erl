@@ -1146,8 +1146,8 @@ s3_request(Config, Method, Host, Path, Subresource, Params, POSTData, Headers) -
     case kz_aws:update_config(Config) of
         {'ok', Config1} ->
             s3_request2_no_update(Config1, Method, Host, Path, Subresource, Params, POSTData, Headers);
-        {'error', Reason} ->
-            {'error', Reason}
+        {'error', _Reason}=Error ->
+            Error
     end.
 
 s3_xml_request2(Config, Method, Host, Path, Subresource, Params, POSTData, Headers) ->
@@ -1260,8 +1260,8 @@ make_authorization(Config, Method, ContentMD5, ContentType, Date, AmzHeaders,
         [[Name, $:, Value, $\n] || {Name, Value} <- lists:sort(AmzHeaders)],
 
     SubResourcesToInclude = ["acl", "lifecycle", "location", "logging", "notification", "partNumber", "policy", "requestPayment", "torrent", "uploadId", "uploads", "versionId", "versioning", "versions", "website"],
-    FilteredParams = [{Name, Value}
-                      || {Name, Value} <- Params,
+    FilteredParams = [NV
+                      || {Name, _Value}=NV <- Params,
                          lists:member(Name, SubResourcesToInclude)
                      ],
 

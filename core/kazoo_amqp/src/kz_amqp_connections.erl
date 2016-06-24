@@ -96,11 +96,11 @@ add(#kz_amqp_connection{broker=Broker, tags=Tags}=Connection, Zone) ->
         {'ok', Pid} ->
             gen_server:cast(?SERVER, {'new_connection', Pid, Broker, Zone, Tags}),
             Connection;
-        {'error', Reason} ->
+        {'error', Reason} = Error ->
             lager:warning("unable to start amqp connection to '~s': ~p"
                           ,[Broker, Reason]
                          ),
-            {'error', Reason}
+            Error
     end;
 add(Broker, Zone) when not is_binary(Broker) ->
     add(kz_util:to_binary(Broker), Zone);

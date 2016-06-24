@@ -99,7 +99,7 @@ get('undefined', _Call) ->
     {'error', 'invalid_endpoint_id'};
 get(EndpointId, AccountDb) when is_binary(AccountDb) ->
     case kz_cache:peek_local(?CACHE_NAME, {?MODULE, AccountDb, EndpointId}) of
-        {'ok', Endpoint} -> {'ok', Endpoint};
+        {'ok', _Endpoint}=Ok -> Ok;
         {'error', 'not_found'} ->
             maybe_fetch_endpoint(EndpointId, AccountDb)
     end;
@@ -262,21 +262,23 @@ merge_attributes([<<"caller_id">> = Key|Keys], Account, Endpoint, Owner) ->
     EndpointAttr = kz_json:get_ne_value(Key, Endpoint, kz_json:new()),
     OwnerAttr = caller_id_owner_attr(Owner),
     Merged = merge_attribute_caller_id(Account, AccountAttr, OwnerAttr, EndpointAttr),
-    case kz_json:get_ne_value([<<"emergency">>, <<"number">>], EndpointAttr) of
+    L = [<<"emergency">>, <<"number">>],
+    case kz_json:get_ne_value(L, EndpointAttr) of
         'undefined' ->
             merge_attributes(Keys, Account, kz_json:set_value(Key, Merged, Endpoint), Owner);
         Number ->
-            CallerId = kz_json:set_value([<<"emergency">>, <<"number">>], Number, Merged),
+            CallerId = kz_json:set_value(L, Number, Merged),
             merge_attributes(Keys, Account, kz_json:set_value(Key, CallerId, Endpoint), Owner)
     end;
 merge_attributes([<<"do_not_disturb">> = Key|Keys], Account, Endpoint, Owner) ->
-    AccountAttr = kz_json:is_true([Key, <<"enabled">>], Account, 'false'),
-    EndpointAttr = kz_json:is_true([Key, <<"enabled">>], Endpoint, 'false'),
-    OwnerAttr = kz_json:is_true([Key, <<"enabled">>], Owner, 'false'),
+    L = [Key, <<"enabled">>],
+    AccountAttr = kz_json:is_true(L, Account, 'false'),
+    EndpointAttr = kz_json:is_true(L, Endpoint, 'false'),
+    OwnerAttr = kz_json:is_true(L, Owner, 'false'),
     Dnd = AccountAttr
         orelse OwnerAttr
         orelse EndpointAttr,
-    merge_attributes(Keys, Account, kz_json:set_value([Key, <<"enabled">>], Dnd, Endpoint), Owner);
+    merge_attributes(Keys, Account, kz_json:set_value(L, Dnd, Endpoint), Owner);
 merge_attributes([<<"language">>|_]=Keys, Account, Endpoint, Owner) ->
     merge_value(Keys, Account, Endpoint, Owner);
 merge_attributes([<<"presence_id">>|_]=Keys, Account, Endpoint, Owner) ->
@@ -333,13 +335,14 @@ merge_value([Key|Keys], Account, Endpoint, Owner) ->
 -spec caller_id_owner_attr(kz_json:object()) -> kz_json:object().
 caller_id_owner_attr(Owner) ->
     OwnerAttr = kz_json:get_ne_value(<<"caller_id">>, Owner, kz_json:new()),
-    case kz_json:get_value([<<"internal">>, <<"name">>], OwnerAttr) of
+    L = [<<"internal">>, <<"name">>],
+    case kz_json:get_value(L, OwnerAttr) of
         'undefined' ->
             Name = create_endpoint_name(kz_json:get_ne_value(<<"first_name">>, Owner)
                                         ,kz_json:get_ne_value(<<"last_name">>, Owner)
                                         ,'undefined'
                                         ,'undefined'),
-            kz_json:set_value([<<"internal">>, <<"name">>], Name, OwnerAttr);
+            kz_json:set_value(L, Name, OwnerAttr);
         _Else -> OwnerAttr
     end.
 
@@ -347,20 +350,21 @@ caller_id_owner_attr(Owner) ->
                                      kz_json:object().
 merge_call_restrictions([], _, Endpoint, _) -> Endpoint;
 merge_call_restrictions([Key|Keys], Account, Endpoint, Owner) ->
-    case kz_json:get_value([<<"call_restriction">>, Key, <<"action">>], Account) =:= <<"deny">>
-        orelse kz_json:get_value([<<"call_restriction">>, Key, <<"action">>], Owner)
+    L = [<<"call_restriction">>, Key, <<"action">>],
+    case kz_json:get_value(L, Account) =:= <<"deny">>
+        orelse kz_json:get_value(L, Owner)
     of
         'true' ->
             %% denied at the account level
-            Update = kz_json:set_value([<<"call_restriction">>, Key, <<"action">>], <<"deny">>, Endpoint),
+            Update = kz_json:set_value(L, <<"deny">>, Endpoint),
             merge_call_restrictions(Keys, Account, Update, Owner);
         <<"deny">> ->
             %% denied at the user level
-            Update = kz_json:set_value([<<"call_restriction">>, Key, <<"action">>], <<"deny">>, Endpoint),
+            Update = kz_json:set_value(L, <<"deny">>, Endpoint),
             merge_call_restrictions(Keys, Account, Update, Owner);
         <<"allow">> ->
             %% allowed at the user level
-            Update = kz_json:set_value([<<"call_restriction">>, Key, <<"action">>], <<"allow">>, Endpoint),
+            Update = kz_json:set_value(L, <<"allow">>, Endpoint),
             merge_call_restrictions(Keys, Account, Update, Owner);
         _Else ->
             %% user inherit or no user, either way use the device restrictions

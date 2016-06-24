@@ -410,12 +410,12 @@ update_category(Category, Keys, Value, Node, Options) ->
                      -> {'ok', kz_json:object()}.
 update_category(Category, Keys, Value, Node, Options, JObj) ->
     PvtFields = props:get_value('pvt_fields', Options),
-
-    case kz_json:get_value([Node | Keys], JObj) =/= 'undefined'
+    L = [Node | Keys],
+    case kz_json:get_value(L, JObj) =/= 'undefined'
         orelse props:is_true('node_specific', Options, 'false')
     of
         'true' ->
-            update_category(Category, kz_json:set_value([Node | Keys], Value, JObj), PvtFields);
+            update_category(Category, kz_json:set_value(L, Value, JObj), PvtFields);
         'false' ->
             update_category(Category, kz_json:set_value([?KEY_DEFAULT | Keys], Value, JObj), PvtFields)
     end.
@@ -461,10 +461,10 @@ maybe_save_category(Category, JObj, PvtFields, Looped, _) ->
     JObj1 = update_pvt_fields(Category, JObj, PvtFields),
 
     case kz_datamgr:save_doc(?KZ_CONFIG_DB, JObj1) of
-        {'ok', SavedJObj} ->
+        {'ok', SavedJObj}=Ok ->
             lager:debug("saved cat ~s to db ~s (~s)", [Category, ?KZ_CONFIG_DB, kz_doc:revision(SavedJObj)]),
             kz_datamgr:add_to_doc_cache(?KZ_CONFIG_DB, Category, SavedJObj),
-            {'ok', SavedJObj};
+            Ok;
         {'error', 'not_found'} when not Looped ->
             lager:debug("attempting to create ~s DB", [?KZ_CONFIG_DB]),
             kz_datamgr:db_create(?KZ_CONFIG_DB),

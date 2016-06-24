@@ -268,7 +268,8 @@ fetch_storage_dataplan({AccountId, StorageId}) ->
 
 -spec fetch_cached_dataplan(term(), fun()) -> map().
 fetch_cached_dataplan(Key, Fun) ->
-    case kz_cache:fetch_local(?KAZOO_DATA_PLAN_CACHE, {'plan', Key}) of
+    PT = {'plan', Key},
+    case kz_cache:fetch_local(?KAZOO_DATA_PLAN_CACHE, PT) of
         {'ok', Plan} -> Plan;
         {'error', 'not_found'} ->
             lager:debug("creating new dataplan ~p", [Key]),
@@ -277,7 +278,7 @@ fetch_cached_dataplan(Key, Fun) ->
             CacheProps = [{'origin', [{'db', ?KZ_DATA_DB, K } || K <- Keys]}
                           ,{'expires','infinity'}
                          ],
-            kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, {'plan', Key}, Plan, CacheProps),
+            kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, PT, Plan, CacheProps),
             Plan
     end.
 

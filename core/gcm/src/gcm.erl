@@ -100,9 +100,9 @@ do_push(RegIds, Message, Key, Retry) ->
             lager:info("retry after: ~p", [RetryAfter]),
             _ = do_backoff(RetryAfter, RegIds, Message, Key, Retry),
             {error, retry};
-        {error, Reason} ->
+        {error, Reason} = Error ->
             lager:info("error pushing: ~p", [Reason]),
-            {error, Reason}
+            Error
     end.
 
 %% handle_result(GCMResult, RegIds) ->
