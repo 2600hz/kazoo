@@ -24,7 +24,7 @@
 -include("crossbar.hrl").
 -include_lib("kazoo_tasks/include/kazoo_tasks.hrl").
 
--define(SCHEMA_RECORDS, <<"tasks.records">>).
+-define(SCHEMA_RECORDS, <<"tasks">>).
 
 -define(QS_CATEGORY, <<"category">>).
 -define(QS_ACTION, <<"action">>).

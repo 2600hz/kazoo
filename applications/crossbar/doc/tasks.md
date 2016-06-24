@@ -2,6 +2,13 @@
 
 Kazoo Tasks enables listing, adding, starting & removing generic background tasks.
 
+#### Schema
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`records` | List the rows of input data | `array(object)` |   | `false`
+
+
 
 #### List available tasks
 
@@ -468,37 +475,6 @@ curl -v -X PATCH \
 ```
 
 
-#### Retrieve a task's output CSV
-
-> GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/output
-
-```shell
-curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/output
-```
-
-##### Success
-
-Streams back the task's output in CSV format.
-
-##### Task does not exist or output not yet in database
-
-```json
-{
-    "auth_token": "{AUTH_TOKEN}",
-    "data": {
-        "cause": "{TASK_ID}",
-        "message": "bad identifier"
-    },
-    "error": "404",
-    "message": "bad_identifier",
-    "request_id": "6c1e1918ce36baf380972ea4b1e2566b",
-    "status": "error"
-}
-```
-
-
 #### Retrieve a task's input CSV
 
 > GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/input
@@ -525,6 +501,37 @@ Streams back the task's input in CSV format.
     "error": "404",
     "message": "bad_identifier",
     "request_id": "f0198cd34b4a58cb65ad903ae1259256",
+    "status": "error"
+}
+```
+
+
+#### Retrieve a task's output CSV
+
+> GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/output
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/output
+```
+
+##### Success
+
+Streams back the task's output in CSV format.
+
+##### Task does not exist or output not yet in database
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "cause": "{TASK_ID}",
+        "message": "bad identifier"
+    },
+    "error": "404",
+    "message": "bad_identifier",
+    "request_id": "6c1e1918ce36baf380972ea4b1e2566b",
     "status": "error"
 }
 ```
