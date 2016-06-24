@@ -1,4 +1,5 @@
 #!/usr/bin/env python2
+# -*- coding: utf-8 -*-
 
 # print 'Usage: ' + sys.argv[0] + ' file.json+'
 
@@ -27,6 +28,7 @@ def fmap(F, data):
     elif isinstance(data, int):
         pass
 
+
 def couchjs((field, js)):
     TMP = '_'
     with open(TMP, 'w') as wd:
@@ -42,8 +44,23 @@ def couchjs((field, js)):
     finally:
         os.remove(TMP)
 
+
+def basename2(file_name):
+    ## http://stackoverflow.com/a/678242/1418165
+    return os.path.splitext(os.path.basename(file_name))[0]
+
+def check_name(file_name, JSON_name):
+    fname = basename2(file_name)
+    jname = JSON_name.split('/')[-1]
+    if fname != jname:
+        print 'File name does not match _id field!'
+        print '\t', fname, u' ≠ ', jname
+        exit(1)
+
+
 for fn in sys.argv[1:]:
     print 'checking ' + fn
     with open(fn) as rd:
         data = json.load(rd)
+        check_name(fn, data['_id'])
         fmap(couchjs, data)
