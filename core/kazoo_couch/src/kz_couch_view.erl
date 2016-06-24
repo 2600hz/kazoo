@@ -99,7 +99,7 @@ do_fetch_results(Db, DesignDoc, Options) ->
 
 -spec map_options(view_options()) -> view_options().
 map_options(Options) ->
-    lists:map(fun map_view_option/1, Options).
+    [map_view_option(O) || O <- Options].
 
 -spec map_view_option(term()) -> term().
 map_view_option({K, V})

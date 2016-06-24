@@ -82,6 +82,7 @@
 %% Task definition.
 
 -record(state, {tasks = [], is_leader = false}).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
@@ -362,12 +363,12 @@ send_tasks(Tasks, Election) ->
             ok
     end.
 
--spec stop_tasks(State :: #state{}) -> #state{}.
+-spec stop_tasks(State :: state()) -> state().
 
 stop_tasks(State) ->
     Tasks = State#state.tasks,
     Tasks1 = lists:foldl(
-               fun({Name, Pid, Schedule, Exec}, Acc) when node(Pid) == node() ->
+               fun({Name, Pid, Schedule, Exec}, Acc) when node(Pid) =:= node() ->
                        ok = amqp_cron_task:stop(Pid),
                        [{Name, undefined, Schedule, Exec}|Acc];
                   (Task, Acc) ->
@@ -375,7 +376,7 @@ stop_tasks(State) ->
                end, [], Tasks),
     State#state{tasks = Tasks1}.
 
--spec start_tasks(#state{}) -> #state{}.
+-spec start_tasks(state()) -> state().
 
 start_tasks(State) ->
     TaskList = State#state.tasks,

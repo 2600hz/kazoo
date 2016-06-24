@@ -44,9 +44,9 @@ get_content_type(MediaType, _) ->
     end.
 
 -spec corrected_base64_decode(ne_binary()) -> ne_binary().
-corrected_base64_decode(Base64) when byte_size(Base64) rem 4 == 3 ->
+corrected_base64_decode(Base64) when byte_size(Base64) rem 4 =:= 3 ->
     base64:decode(<<Base64/binary, "=">>);
-corrected_base64_decode(Base64) when byte_size(Base64) rem 4 == 2 ->
+corrected_base64_decode(Base64) when byte_size(Base64) rem 4 =:= 2 ->
     base64:decode(<<Base64/binary, "==">>);
 corrected_base64_decode(Base64) ->
     base64:decode(Base64).

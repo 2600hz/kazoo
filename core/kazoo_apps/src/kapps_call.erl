@@ -359,6 +359,7 @@ from_json(JObj) ->
     from_json(JObj, new()).
 
 from_json(JObj, #kapps_call{ccvs=OldCCVs
+                             ,kvs=Kvs
                              ,sip_headers=OldSHs
                             }=Call) ->
     CCVs = kz_json:merge_recursive(OldCCVs, kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())),
@@ -398,7 +399,7 @@ from_json(JObj, #kapps_call{ccvs=OldCCVs
       ,app_version = kz_json:get_ne_value(<<"App-Version">>, JObj, application_version(Call))
       ,ccvs = CCVs
       ,sip_headers = SHs
-      ,kvs = orddict:merge(fun(_, _, V2) -> V2 end, Call#kapps_call.kvs, KVS)
+      ,kvs = orddict:merge(fun(_, _, V2) -> V2 end, Kvs, KVS)
       ,other_leg_call_id = kz_json:get_ne_value(<<"Other-Leg-Call-ID">>, JObj, other_leg_call_id(Call))
       ,resource_type = kz_json:get_ne_value(<<"Resource-Type">>, JObj, resource_type(Call))
       ,to_tag = kz_json:get_ne_value(<<"To-Tag">>, JObj, to_tag(Call))
@@ -1043,8 +1044,7 @@ kvs_fetch(Key, Default, #kapps_call{kvs=Dict}) ->
 -spec kvs_fetch_keys(call()) -> [any(),...].
 kvs_fetch_keys(#kapps_call{kvs=Dict}) -> orddict:fetch_keys(Dict).
 
--spec kvs_filter(fun((any(), any()) -> boolean()), call()) ->
-                              call().
+-spec kvs_filter(fun((any(), any()) -> boolean()), call()) -> call().
 kvs_filter(Pred, #kapps_call{kvs=Dict}=Call) ->
     Call#kapps_call{kvs=orddict:filter(Pred, Dict)}.
 
