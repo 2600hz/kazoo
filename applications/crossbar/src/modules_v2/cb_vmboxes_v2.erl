@@ -252,13 +252,19 @@ delete(Context, DocId) ->
 
 delete(Context, DocId, ?MESSAGES_RESOURCE) ->
     MsgIds = cb_context:resp_data(Context),
-    {'ok', Result} = kz_vm_message:update_folder(?VM_FOLDER_DELETED, MsgIds, cb_context:account_id(Context), DocId),
+    {'ok', Result} = kz_vm_message:update_folder({?VM_FOLDER_DELETED, 'true'}, MsgIds, cb_context:account_id(Context), DocId),
     C = cb_context:set_resp_data(Context, Result),
     update_mwi(C, DocId).
 
 delete(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
-    C = update_message_folder(DocId, MediaId, Context, ?VM_FOLDER_DELETED),
-    update_mwi(C, DocId).
+    AccountId = cb_context:account_id(Context),
+    case kz_vm_message:update_folder({?VM_FOLDER_DELETED, 'true'}, MediaId, AccountId, DocId) of
+        {'ok', Message} ->
+            C = crossbar_util:response(Message, cb_context:set_resp_status(Context, 'success')),
+            update_mwi(C, DocId);
+        {'error', Error} ->
+            crossbar_doc:handle_couch_mgr_errors(Error, MediaId, Context)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -338,7 +344,7 @@ validate_messages(Context, DocId, ?HTTP_DELETE) ->
         ,ToDelete
     ).
 
--spec get_folder_filter(cb_context:context(), ne_binary()) -> ne_binary().
+-spec get_folder_filter(cb_context:context(), ne_binary()) -> kz_vm_message:vm_folder().
 get_folder_filter(Context, Default) ->
     ReqData = cb_context:req_data(Context),
     QS = cb_context:query_string(Context),
@@ -347,7 +353,7 @@ get_folder_filter(Context, Default) ->
     case kz_json:find(?VM_KEY_FOLDER, [ReqData, QS, ReqJObj]) of
         ?VM_FOLDER_NEW -> ?VM_FOLDER_NEW;
         ?VM_FOLDER_SAVED -> ?VM_FOLDER_SAVED;
-        ?VM_FOLDER_DELETED -> ?VM_FOLDER_DELETED;
+        ?VM_FOLDER_DELETED -> {?VM_FOLDER_DELETED, 'false'};
         _ -> Default
     end.
 
@@ -356,8 +362,10 @@ get_folder_filter(Context, Default) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_messages(kz_json:objects(), ne_binary() | ne_binaries()) -> ne_binaries().
+-spec filter_messages(kz_json:objects(), kz_vm_message:vm_folder() | ne_binaries()) -> ne_binaries().
 -spec filter_messages(kz_json:objects(), ne_binary() | ne_binaries(), ne_binaries()) -> ne_binaries().
+filter_messages(Messages, {?VM_FOLDER_DELETED, _}) ->
+    filter_messages(Messages, ?VM_FOLDER_DELETED, []);
 filter_messages(Messages, Filters) ->
     filter_messages(Messages, Filters, []).
 
