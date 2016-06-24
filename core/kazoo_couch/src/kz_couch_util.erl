@@ -117,7 +117,7 @@ filter_options(Options) ->
     [ KV || {K, _} = KV <- Options, not lists:member(K, ?NO_OPTIONS)].
 
 convert_options(Options) ->
-    lists:map(fun convert_option/1, Options).
+    [convert_option(O) || O <- Options].
 
 convert_option({K, V}) ->
     case lists:member(K, ?ATOM_OPTIONS) of

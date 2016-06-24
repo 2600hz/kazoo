@@ -1089,7 +1089,7 @@ migrate(AccountId, ?JSON_WRAPPER(_)=Box) ->
     migrate(AccountId, kz_doc:id(Box));
 migrate(AccountId, BoxId) ->
     Msgs = messages(AccountId, BoxId),
-    Ids = lists:filter(fun(M) -> maybe_migrate_to_modb(kzd_box_message:media_id(M)) end, Msgs),
+    Ids = [M || M <- Msgs, maybe_migrate_to_modb(kzd_box_message:media_id(M))],
     _ = bulk_update(AccountId, BoxId, Ids, []),
     'ok'.
 

@@ -234,9 +234,8 @@ delete_objects_batch(Bucket, KeyList) ->
 
 -spec delete_objects_batch(string(), list(), aws_config()) -> no_return().
 delete_objects_batch(Bucket, KeyList, Config) ->
-    Data = lists:map(fun(Item) ->
-            lists:concat(["<Object><Key>", Item, "</Key></Object>"]) end,
-                KeyList),
+    Data = [lists:concat(["<Object><Key>", Item, "</Key></Object>"])
+            || Item <- KeyList],
     Payload = unicode:characters_to_list(
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Delete>" ++ Data ++ "</Delete>",
                 utf8),
