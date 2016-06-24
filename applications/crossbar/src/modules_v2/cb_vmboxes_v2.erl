@@ -263,7 +263,7 @@ delete(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
             C = crossbar_util:response(Message, cb_context:set_resp_status(Context, 'success')),
             update_mwi(C, DocId);
         {'error', Error} ->
-            crossbar_doc:handle_couch_mgr_errors(Error, MediaId, Context)
+            crossbar_doc:handle_datamgr_errors(Error, MediaId, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -305,7 +305,7 @@ validate_message(Context, DocId, MediaId, ?HTTP_POST) ->
             NewBoxId = cb_context:req_value(Context, <<"source_id">>),
             maybe_load_vmboxes(NewBoxId, Context);
         {'error', Error} ->
-            crossbar_doc:handle_couch_mgr_errors(Error, MediaId, Context)
+            crossbar_doc:handle_datamgr_errors(Error, MediaId, Context)
     end;
 validate_message(Context, DocId, MediaId, ?HTTP_DELETE) ->
     Update = kz_json:from_list([{?VM_KEY_FOLDER, ?VM_FOLDER_DELETED}]),
@@ -525,7 +525,7 @@ maybe_load_vmboxes([Id|Ids], Context) ->
 load_vmbox(DocId, Context) ->
     case kz_vm_message:load_vmbox(cb_context:account_id(Context), DocId, 'false') of
         {'ok', JObj} -> crossbar_doc:handle_json_success(JObj, Context);
-        {'error', Error} -> crossbar_doc:handle_couch_mgr_errors(Error, DocId, Context)
+        {'error', Error} -> crossbar_doc:handle_datamgr_errors(Error, DocId, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -556,7 +556,7 @@ load_message(MediaId, BoxId, UpdateJObj, Context) ->
             C = crossbar_doc:handle_json_success(Message, Context),
             ensure_message_in_folder(Message, UpdateJObj, C);
         {'error', Error} ->
-            {'false', crossbar_doc:handle_couch_mgr_errors(Error, MediaId, Context)}
+            {'false', crossbar_doc:handle_datamgr_errors(Error, MediaId, Context)}
     end.
 
 -spec load_message_doc(ne_binary(), ne_binary(), cb_context:context()) -> {atom(), any()}.
@@ -607,13 +607,13 @@ load_message_binary(BoxId, MediaId, Context) ->
         {'ok', JObj} ->
             case kz_datamgr:open_cache_doc(cb_context:account_db(Context), BoxId) of
                 {'error', Error} ->
-                    crossbar_doc:handle_couch_mgr_errors(Error, BoxId, Context);
+                    crossbar_doc:handle_datamgr_errors(Error, BoxId, Context);
                 {'ok', BoxJObj} ->
                     Timezone = kzd_voicemail_box:timezone(BoxJObj),
                     %% TODO: check source_id of message against BoxId(BoxId)
                     load_attachment_from_message(JObj, BoxId, Context, Timezone)
             end;
-        {'error', Err} -> crossbar_doc:handle_couch_mgr_errors(Err, MediaId, Context)
+        {'error', Err} -> crossbar_doc:handle_datamgr_errors(Err, MediaId, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -636,9 +636,9 @@ load_attachment_from_message(Doc, BoxId, Context, Timezone) ->
     case (kzd_box_message:source_id(Doc) =:= BoxId)
              andalso kz_datamgr:fetch_attachment(kz_doc:account_db(Doc), MediaId, AttachmentId)
     of
-        'false' -> crossbar_doc:handle_couch_mgr_errors('not_found', MediaId, Context);
+        'false' -> crossbar_doc:handle_datamgr_errors('not_found', MediaId, Context);
         {'error', Error} ->
-            crossbar_doc:handle_couch_mgr_errors(Error, MediaId, Context);
+            crossbar_doc:handle_datamgr_errors(Error, MediaId, Context);
         {'ok', AttachBin} ->
             lager:debug("Sending file with filename ~s", [Filename]),
             Setters = [{fun cb_context:set_resp_status/2, 'success'}
@@ -660,7 +660,7 @@ load_messages_binaries(BoxId, Context) ->
     Ids = cb_context:req_value(Context, ?VM_KEY_MESSAGES, []),
     case kz_datamgr:open_cache_doc(cb_context:account_db(Context), BoxId) of
         {'error', Error} ->
-            crossbar_doc:handle_couch_mgr_errors(Error, BoxId, Context);
+            crossbar_doc:handle_datamgr_errors(Error, BoxId, Context);
         {'ok', BoxJObj} ->
             Timezone = kzd_voicemail_box:timezone(BoxJObj),
             _ = save_attachments_to_file(Ids, BoxId, Context, Timezone, WorkDir),
@@ -676,7 +676,7 @@ save_attachments_to_file([Id|Ids], BoxId, Context, Timezone, WorkDir) ->
         'ok' -> save_attachments_to_file(Ids, BoxId, Context, Timezone, WorkDir);
         {'error', Error} ->
             _ = del_dir(WorkDir),
-            crossbar_doc:handle_couch_mgr_errors(Error, Id, Context)
+            crossbar_doc:handle_datamgr_errors(Error, Id, Context)
     catch
         _:_ ->
             _ = del_dir(WorkDir),
@@ -787,7 +787,7 @@ update_message_folder(BoxId, MediaId, Context, DefaultFolder) ->
         {'ok', Message} ->
             crossbar_util:response(Message, cb_context:set_resp_status(Context, 'success'));
         {'error', Error} ->
-            crossbar_doc:handle_couch_mgr_errors(Error, MediaId, Context)
+            crossbar_doc:handle_datamgr_errors(Error, MediaId, Context)
     end.
 
 %%--------------------------------------------------------------------

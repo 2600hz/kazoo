@@ -984,7 +984,7 @@ load_account_tree(Context) ->
     Tree = get_authorized_account_tree(Context),
     Options = [{'keys', Tree}, 'include_docs'],
     case kz_datamgr:all_docs(?KZ_ACCOUNTS_DB, Options) of
-        {'error', R} -> crossbar_doc:handle_couch_mgr_errors(R, ?KZ_ACCOUNTS_DB, Context);
+        {'error', R} -> crossbar_doc:handle_datamgr_errors(R, ?KZ_ACCOUNTS_DB, Context);
         {'ok', JObjs} -> format_account_tree_results(Context, JObjs)
     end.
 
