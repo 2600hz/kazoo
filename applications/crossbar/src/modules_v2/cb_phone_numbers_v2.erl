@@ -492,8 +492,8 @@ find_numbers(Context) ->
     Context1 = cb_context:set_req_data(Context, JObj),
     PrefixQuery = kz_json:get_ne_value(?PREFIX, JObj),
     Country = kz_json:get_ne_value(?COUNTRY, JObj, ?DEFAULT_COUNTRY),
-    CountryPrefix = knm_iso3166a2_itu:to_itu(Country),
-    Prefix = <<CountryPrefix/binary, PrefixQuery/binary>>,
+    CountryPrefix = knm_util:prefix_for_country(Country),
+    Prefix = <<CountryPrefix/binary, PrefixQuery/binary>>, 
     Quantity = kz_json:get_value(<<"quantity">>, JObj),
     OnSuccess =
         fun(C) ->
