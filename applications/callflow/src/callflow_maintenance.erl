@@ -437,7 +437,7 @@ print_devices_level_call_restrictions(DbName) ->
 
 -spec print_trunkstore_call_restrictions(ne_binary()) -> 'ok'.
 print_trunkstore_call_restrictions(DbName) ->
-        case kz_datamgr:get_results(DbName, <<"trunkstore/LookUpUserFlags">>) of
+        case kz_datamgr:get_results(DbName, <<"trunkstore/lookup_user_flags">>) of
         {'ok', JObj} ->
             io:format("\n\nTrunkstore classifiers:\n\n"),
             lists:foreach(fun(UserObj) ->

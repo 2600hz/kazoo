@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-03/schema#",
-    "_id": "callflows.language",
+    "_id": "callflows.voicemail",
     "description": "Validator for the Voicemail callflow element",
     "properties": {
         "action": {

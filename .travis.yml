@@ -24,7 +24,7 @@ cache:
 
 before_install:
   - set -e
-  - if [[ ! -d $HOME/proper/.git/ ]]; then git clone --depth=50 --branch=master https://github.com/manopapad/proper.git $HOME/proper && cd $HOME/proper && make fast; fi
+  - if [[ ! -d $HOME/proper/.git ]]; then git clone --depth=50 --branch=master https://github.com/manopapad/proper.git $HOME/proper && cd $HOME/proper && make fast; fi
   - cd $TRAVIS_BUILD_DIR
 
 script:

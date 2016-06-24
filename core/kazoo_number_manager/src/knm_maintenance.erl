@@ -83,7 +83,7 @@ get_result_keys(AccountDb, View) ->
 -spec get_phone_numbers(ne_binary()) -> [number_to_fix()].
 get_phone_numbers(AccountDb) ->
     CallflowNumbers = get_result_keys(AccountDb, <<"callflows/listing_by_number">>),
-    TrunkstoreNumbers = get_result_keys(AccountDb, <<"trunkstore/LookUpDID">>),
+    TrunkstoreNumbers = get_result_keys(AccountDb, <<"trunkstore/lookup_did">>),
     case kz_datamgr:open_doc(AccountDb, ?KNM_PHONE_NUMBERS_DOC) of
         {'ok', JObj} ->
             [ #{ key => Key

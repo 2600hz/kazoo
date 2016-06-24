@@ -39,8 +39,6 @@ def couchjs((field, js)):
             print 'Key:', field
             print 'Code:', js
             exit(1)
-        else:
-            print field, 'passed'
     finally:
         os.remove(TMP)
 
@@ -59,6 +57,9 @@ def check_name(file_name, JSON_name):
 
 
 for fn in sys.argv[1:]:
+    exploded = fn.split(os.sep)
+    if (not 'couchdb' in exploded) or 'fixtures' in exploded or 'swagger.json' in exploded:
+        continue
     print 'checking ' + fn
     with open(fn) as rd:
         data = json.load(rd)
