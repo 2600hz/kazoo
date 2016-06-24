@@ -159,7 +159,7 @@ cache_data() ->
 wait_for_cache(Start) ->
     wait_for_cache(Start, {0, 'ok'}).
 
-wait_for_cache(Start, {N, F}=NF) ->
+wait_for_cache(Start, {N, _}=NF) ->
     case cache_data() of
         {M, G}=MG when M > N ->
             io:format("~p new max msg queue size ~p (~p)~n", [Start, M, G]),
