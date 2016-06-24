@@ -2,7 +2,7 @@
 
 -behaviour(application).
 
--include("kz_data.hrl").
+-include_lib("kazoo_data/src/kz_data.hrl").
 
 %% Application callbacks
 -export([start/2, stop/1]).

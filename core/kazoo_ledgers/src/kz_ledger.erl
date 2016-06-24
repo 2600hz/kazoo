@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(kz_ledger).
 
--include("kzl.hrl").
+-include_lib("kazoo_ledgers/src/kzl.hrl").
 
 -export([get/2
          ,credit/1 ,credit/4, credit/5

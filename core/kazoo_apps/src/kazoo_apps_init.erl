@@ -12,7 +12,7 @@
          ,init/0
         ]).
 
--include("kazoo_apps.hrl").
+-include_lib("kazoo_apps/src/kazoo_apps.hrl").
 
 start_link() ->
     _ = kz_util:spawn(fun init/0),

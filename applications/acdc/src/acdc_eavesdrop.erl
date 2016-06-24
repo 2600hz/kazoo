@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(acdc_eavesdrop).
 
--include("acdc.hrl").
+-include_lib("acdc/src/acdc.hrl").
 
 -export([start/3]).
 

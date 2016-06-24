@@ -9,7 +9,7 @@
 -module(fax_xmpp).
 -behaviour(gen_server).
 
--include("fax_cloud.hrl").
+-include_lib("fax/src/fax_cloud.hrl").
 -include_lib("escalus/include/escalus.hrl").
 -include_lib("exml/include/exml.hrl").
 

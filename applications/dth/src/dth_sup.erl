@@ -10,7 +10,7 @@
 
 -behaviour(supervisor).
 
--include("dth.hrl").
+-include_lib("dth/src/dth.hrl").
 
 -define(SERVER, ?MODULE).
 

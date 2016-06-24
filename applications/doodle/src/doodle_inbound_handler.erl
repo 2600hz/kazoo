@@ -10,7 +10,8 @@
 
 -export([handle_req/3]).
 
--include("doodle.hrl").
+-include_lib("doodle/src/doodle.hrl").
+
 
 -spec handle_req(kz_json:object(), kz_proplist(), gen_listener:basic_deliver()) -> 'ok'.
 handle_req(JObj, Props, Deliver) ->

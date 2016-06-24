@@ -17,7 +17,8 @@
          ,authorize/1
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(SERVER, ?MODULE).
 -define(VIEW_SUMMARY, <<"accounts/listing_by_id">>).

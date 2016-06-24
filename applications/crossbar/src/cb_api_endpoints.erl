@@ -10,7 +10,8 @@
          ,schema_to_table/1
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 -include_lib("kazoo/src/kz_json.hrl").
 
 -define(REF_PATH(Module)

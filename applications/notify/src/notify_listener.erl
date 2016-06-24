@@ -22,7 +22,8 @@
          ,code_change/3
         ]).
 
--include("notify.hrl").
+-include_lib("notify/src/notify.hrl").
+
 
 -define(SERVER, ?MODULE).
 

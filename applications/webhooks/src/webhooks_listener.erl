@@ -22,7 +22,7 @@
          ,code_change/3
         ]).
 
--include("webhooks.hrl").
+-include_lib("webhooks/src/webhooks.hrl").
 -include_lib("kazoo/include/kapi_conf.hrl").
 
 -define(SERVER, ?MODULE).

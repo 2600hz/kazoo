@@ -23,7 +23,7 @@
          ,code_change/3
         ]).
 
--include("webhooks.hrl").
+-include_lib("webhooks/src/webhooks.hrl").
 
 -define(SERVER, ?MODULE).
 

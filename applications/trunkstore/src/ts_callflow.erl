@@ -34,7 +34,7 @@
          ,get_account_id/1
         ]).
 
--include("ts.hrl").
+-include_lib("trunkstore/src/ts.hrl").
 
 -define(WAIT_FOR_WIN_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 

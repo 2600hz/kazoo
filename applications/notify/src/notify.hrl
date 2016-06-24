@@ -5,7 +5,7 @@
 -include_lib("kazoo/include/kz_amqp.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 -include_lib("kazoo/include/kz_config.hrl").
--include("notify_templates.hrl").
+-include_lib("notify/src/notify_templates.hrl").
 
 -define(NOTIFY_CONFIG_CAT, <<"notify">>).
 

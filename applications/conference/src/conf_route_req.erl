@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(conf_route_req).
 
--include("conference.hrl").
+-include_lib("conference/src/conference.hrl").
 
 -export([handle_req/2]).
 

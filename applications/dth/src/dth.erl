@@ -12,7 +12,7 @@
          ,rm_binding_from_q/1
         ]).
 
--include("dth.hrl").
+-include_lib("dth/src/dth.hrl").
 
 
 %% TODO move these two to a better place

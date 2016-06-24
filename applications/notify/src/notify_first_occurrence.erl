@@ -8,7 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(notify_first_occurrence).
 
--include("notify.hrl").
+-include_lib("notify/src/notify.hrl").
+
 -include_lib("kazoo/include/kz_databases.hrl").
 
 -export([init/0]).

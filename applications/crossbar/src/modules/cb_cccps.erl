@@ -17,7 +17,8 @@
          ,delete/2
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(CB_LIST, <<"cccps/crossbar_listing">>).
 -define(AUTODIAL, <<"autodial">>).

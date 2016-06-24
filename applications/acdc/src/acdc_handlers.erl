@@ -11,7 +11,7 @@
 -export([handle_route_req/2
         ]).
 
--include("acdc.hrl").
+-include_lib("acdc/src/acdc.hrl").
 
 handle_route_req(JObj, Props) ->
     'true' = kapi_route:req_v(JObj),

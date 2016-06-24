@@ -36,7 +36,7 @@
          ,gift_data/0
         ]).
 
--include("webhooks.hrl").
+-include_lib("webhooks/src/webhooks.hrl").
 
 -define(TABLE, 'webhooks_listener').
 

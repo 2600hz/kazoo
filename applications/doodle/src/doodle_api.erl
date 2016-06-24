@@ -10,7 +10,8 @@
 
 -export([handle_api_sms/2]).
 
--include("doodle.hrl").
+-include_lib("doodle/src/doodle.hrl").
+
 
 -spec handle_api_sms(ne_binary(), ne_binary()) -> 'ok'.
 handle_api_sms(Db, Id) ->

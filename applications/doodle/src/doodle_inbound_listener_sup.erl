@@ -13,7 +13,8 @@
 -export([init/1]).
 -export([start_inbound_listener/1]).
 
--include("doodle.hrl").
+-include_lib("doodle/src/doodle.hrl").
+
 
 -define(SERVER, ?MODULE).
 

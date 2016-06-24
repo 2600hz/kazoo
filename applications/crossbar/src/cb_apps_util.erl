@@ -14,7 +14,8 @@
 -export([load_default_apps/0]).
 -export([create_apps_store_doc/1]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(PLAN_CATEGORY, <<"ui_apps">>).
 

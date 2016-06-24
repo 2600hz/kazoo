@@ -16,7 +16,7 @@
          ,fix_media_names/0
         ]).
 
--include("kazoo_media.hrl").
+-include_lib("kazoo_media/src/kazoo_media.hrl").
 
 -spec migrate() -> 'no_return'.
 migrate() ->

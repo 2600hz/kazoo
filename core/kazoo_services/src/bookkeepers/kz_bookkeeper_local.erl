@@ -12,7 +12,7 @@
 -export([commit_transactions/2]).
 -export([charge_transactions/2]).
 
--include("kazoo_services.hrl").
+-include_lib("kazoo_services/src/kazoo_services.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

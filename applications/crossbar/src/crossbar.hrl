@@ -5,7 +5,7 @@
 -include_lib("kazoo/include/kz_databases.hrl").
 -include_lib("kazoo/include/kz_system_config.hrl").
 
--include("crossbar_types.hrl").
+-include_lib("crossbar/src/crossbar_types.hrl").
 
 -define(APP_NAME, <<"crossbar">>).
 -define(APP_VERSION, <<"4.0.0">>).

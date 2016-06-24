@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(kazoo_ips_maintenance).
 
--include("kazoo_ips.hrl").
+-include_lib("kazoo_ips/src/kazoo_ips.hrl").
 
 -export([refresh/0]).
 -export([add/0

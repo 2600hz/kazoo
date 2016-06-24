@@ -20,7 +20,7 @@
         ]).
 
 
--include("kz_data.hrl").
+-include_lib("kazoo_data/src/kz_data.hrl").
 
 -type copy_function() :: fun((map(), ne_binary(), kz_json:object(), kz_proplist()) ->
                               {'ok', kz_json:object()} | data_error()).

@@ -17,7 +17,7 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--include("kazoo_endpoint.hrl").
+-include_lib("kazoo_endpoint/src/kazoo_endpoint.hrl").
 
 -define(SERVER, ?MODULE).
 

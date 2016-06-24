@@ -10,7 +10,7 @@
 %%%-------------------------------------------------------------------
 -module(kapps_config).
 
--include("kazoo_config.hrl").
+-include_lib("kazoo_config/src/kazoo_config.hrl").
 
 -export([get/2, get/3, get/4
         ,get_all_kvs/1

@@ -7,8 +7,8 @@
 
 -behaviour(gen_server).
 
--include("apns.hrl").
--include("localized.hrl").
+-include_lib("apns/include/apns.hrl").
+-include_lib("apns/include/localized.hrl").
 
 -define(SERVER, ?MODULE).
 

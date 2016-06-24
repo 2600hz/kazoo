@@ -9,7 +9,8 @@
 %%%-------------------------------------------------------------------
 -module(notify_maintenance).
 
--include("notify.hrl").
+-include_lib("notify/src/notify.hrl").
+
 
 -export([check_initial_call/1]).
 -export([check_initial_registration/1]).

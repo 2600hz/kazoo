@@ -16,7 +16,7 @@
          ,bridge/7
         ]).
 
--include("cccp.hrl").
+-include_lib("cccp/src/cccp.hrl").
 
 -define(DEFAULT_CALLEE_REGEX, <<"^\\+?\\d{7,}$">>).
 

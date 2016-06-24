@@ -12,7 +12,7 @@
          ,add_amqp_binding/2, rm_amqp_binding/2
         ]).
 
--include("blackhole.hrl").
+-include_lib("blackhole/src/blackhole.hrl").
 -include_lib("kazoo/include/kapi_conf.hrl").
 
 %%--------------------------------------------------------------------

@@ -11,7 +11,8 @@
 
 -export([start/0]).
 
--include("ecallmgr.hrl").
+-include_lib("ecallmgr/src/ecallmgr.hrl").
+
 
 -define(SERVER, ?MODULE).
 -define(INTERACCOUNT_DELAY_MS, ecallmgr_config:get_integer(<<"balance_crawler_interaccount_delay_ms">>, 10)).

@@ -13,7 +13,7 @@
          ,max_length/2
         ]).
 
--include("kz_documents.hrl").
+-include_lib("kazoo_documents/src/kz_documents.hrl").
 
 -define(SCHEMA_KEYWORDS_MAXLENGTH, <<"maxLength">>).
 

@@ -14,7 +14,7 @@
          ,has_unread/2
         ]).
 
--include("ananke.hrl").
+-include_lib("ananke/src/ananke.hrl").
 
 -record(args, {account_id             :: api_binary()
                ,user_id               :: api_binary()

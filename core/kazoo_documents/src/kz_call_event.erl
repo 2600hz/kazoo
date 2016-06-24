@@ -30,7 +30,7 @@
          ,error_message/1
         ]).
 
--include("kz_documents.hrl").
+-include_lib("kazoo_documents/src/kz_documents.hrl").
 
 -spec call_id(kz_json:object()) -> api_binary().
 call_id(JObj) ->

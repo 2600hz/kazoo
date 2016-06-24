@@ -25,7 +25,8 @@
          ,lookup_regs/1
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(STATUS_PATH_TOKEN, <<"status">>).
 

@@ -15,7 +15,7 @@
          ,get_oid/4
         ]).
 
--include("stats.hrl").
+-include_lib("stats/src/stats.hrl").
 
 %%% get_oid - implementation function to read from a table.
 -spec get_oid('get_next' | 'get', integer(), integer(), any()) -> any().

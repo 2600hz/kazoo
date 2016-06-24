@@ -20,7 +20,8 @@
          ,code_change/3
         ]).
 
--include("hotornot.hrl").
+-include_lib("hotornot/src/hotornot.hrl").
+
 
 -define(SERVER, ?MODULE).
 

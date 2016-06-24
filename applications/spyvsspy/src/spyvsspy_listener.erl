@@ -20,7 +20,7 @@
          ,code_change/3
         ]).
 
--include("spyvsspy.hrl").
+-include_lib("spyvsspy/src/spyvsspy.hrl").
 
 -define(SERVER, ?MODULE).
 

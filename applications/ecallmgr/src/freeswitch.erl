@@ -32,7 +32,8 @@
         ]).
 -export([sendmsg/3]).
 
--include("ecallmgr.hrl").
+-include_lib("ecallmgr/src/ecallmgr.hrl").
+
 
 -define(TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 

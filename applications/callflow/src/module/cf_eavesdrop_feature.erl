@@ -21,7 +21,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_eavesdrop_feature).
 
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 
 -export([handle/2
          ,get_target_for_extension/2

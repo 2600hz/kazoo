@@ -12,7 +12,7 @@
          ,stop/0
         ]).
 
--include("kazoo_media.hrl").
+-include_lib("kazoo_media/src/kazoo_media.hrl").
 
 -spec start_link() -> startlink_ret().
 start_link() ->

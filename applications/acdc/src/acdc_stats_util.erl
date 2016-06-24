@@ -17,8 +17,8 @@
          ,db_name/1
         ]).
 
--include("acdc.hrl").
--include("acdc_stats.hrl").
+-include_lib("acdc/src/acdc.hrl").
+-include_lib("acdc/src/acdc_stats.hrl").
 
 -spec wait_time(ne_binary(), kz_json:object()) -> api_integer().
 wait_time(<<"paused">>, _) -> 'undefined';

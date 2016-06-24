@@ -22,7 +22,7 @@
          ,handle_destroy/2
         ]).
 
--include("acdc.hrl").
+-include_lib("acdc/src/acdc.hrl").
 -include_lib("kazoo/include/kapi_conf.hrl").
 
 -define(DEFAULT_PAUSE ,kapps_config:get(?CONFIG_CAT, <<"default_agent_pause_timeout">>, 600)).

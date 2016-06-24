@@ -12,7 +12,7 @@
          ,handle_event/2
         ]).
 
--include("webhooks.hrl").
+-include_lib("webhooks/src/webhooks.hrl").
 -include_lib("kazoo/include/kapi_conf.hrl").
 
 -define(ID, kz_util:to_binary(?MODULE)).

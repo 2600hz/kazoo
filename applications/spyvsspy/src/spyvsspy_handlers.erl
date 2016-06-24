@@ -10,7 +10,7 @@
 
 -export([handle_eavesdrop_req/2]).
 
--include("spyvsspy.hrl").
+-include_lib("spyvsspy/src/spyvsspy.hrl").
 
 -define(RESOURCE_TYPE_AUDIO, <<"audio">>).
 

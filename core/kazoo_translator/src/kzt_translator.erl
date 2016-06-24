@@ -14,7 +14,7 @@
          ,set_user_vars/2
         ]).
 
--include("kzt.hrl").
+-include_lib("kazoo_translator/src/kzt.hrl").
 
 -spec exec(kapps_call:call(), list()) -> exec_return().
 -spec exec(kapps_call:call(), list(), api_binary() | list()) -> exec_return().

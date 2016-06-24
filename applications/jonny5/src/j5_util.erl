@@ -10,7 +10,8 @@
 -export([remove_call_charges/2]).
 -export([send_system_alert/1]).
 
--include("jonny5.hrl").
+-include_lib("jonny5/src/jonny5.hrl").
+
 
 -spec remove_call_charges(api_binary(), api_binary()) -> 'ok'.
 remove_call_charges('undefined', _) -> 'ok';

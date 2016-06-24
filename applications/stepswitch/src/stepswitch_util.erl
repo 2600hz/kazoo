@@ -17,7 +17,7 @@
 -export([route_by/0]).
 -export([resources_to_endpoints/3]).
 
--include("stepswitch.hrl").
+-include_lib("stepswitch/src/stepswitch.hrl").
 -include_lib("kazoo/src/kz_json.hrl").
 -include_lib("kazoo/include/kapi_offnet_resource.hrl").
 

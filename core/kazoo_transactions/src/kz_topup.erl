@@ -9,7 +9,7 @@
 
 -export([init/2]).
 
--include("include/kazoo_transactions.hrl").
+-include_lib("kazoo_transactions/include/kazoo_transactions.hrl").
 
 -define(KZ_SERVICES_DB, <<"services">>).
 

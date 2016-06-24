@@ -14,7 +14,7 @@
          ,lookup_account_by_ip/1
         ]).
 
--include("reg.hrl").
+-include_lib("registrar/src/reg.hrl").
 
 -define(ENCRYPTION_MAP, [{<<"srtp">>, [{<<"RTP-Secure-Media">>, 'true'}]}
                         ,{<<"zrtp">>, [{<<"ZRTP-Secure-Media">>, 'true'}

@@ -27,7 +27,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_camping_feature).
 
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 
 -export([handle/2]).
 

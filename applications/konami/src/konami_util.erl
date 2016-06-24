@@ -12,7 +12,7 @@
 -export([send_hangup_req/1]).
 -export([send_break_req/1]).
 
--include("konami.hrl").
+-include_lib("konami/src/konami.hrl").
 
 -spec listen_on_other_leg(kapps_call:call(), ne_binaries()) -> 'ok'.
 listen_on_other_leg(Call, Events) ->

@@ -8,7 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(frontier_utils).
 
--include("frontier.hrl").
+-include_lib("frontier/src/frontier.hrl").
+
 
 %% API
 -export([extract_realm/1

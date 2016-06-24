@@ -12,7 +12,8 @@
 
 -export([filter/3, filter/4]).
 
--include("ecallmgr.hrl").
+-include_lib("ecallmgr/src/ecallmgr.hrl").
+
 
 -define(IS_LOOPBACK(Props), props:get_value(<<"variable_loopback_leg">>, Props) =:= <<"B">>
        andalso props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, ?LOOPBACK_FILTERED>>, Props) =:= 'undefined'

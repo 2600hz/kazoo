@@ -24,7 +24,7 @@
          ,code_change/3
         ]).
 
--include("konami.hrl").
+-include_lib("konami/src/konami.hrl").
 
 -define(SERVER, ?MODULE).
 

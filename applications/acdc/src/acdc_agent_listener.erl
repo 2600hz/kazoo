@@ -63,7 +63,7 @@
 -type config() :: {ne_binary(), ne_binary(), ne_binary()}.
 -export_type([config/0]).
 
--include("acdc.hrl").
+-include_lib("acdc/src/acdc.hrl").
 
 -define(SERVER, ?MODULE).
 

@@ -11,7 +11,7 @@
          ,modb/1
         ]).
 
--include("kazoo_services.hrl").
+-include_lib("kazoo_services/src/kazoo_services.hrl").
 
 -spec start_link() -> startlink_ret().
 start_link() ->

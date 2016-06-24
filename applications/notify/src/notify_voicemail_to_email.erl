@@ -15,7 +15,8 @@
          ,handle_req/2
         ]).
 
--include("notify.hrl").
+-include_lib("notify/src/notify.hrl").
+
 
 -define(DEFAULT_TEXT_TMPL, 'notify_voicemail_to_email_text_tmpl').
 -define(DEFAULT_HTML_TMPL, 'notify_voicemail_to_email_html_tmpl').

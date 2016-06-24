@@ -16,7 +16,7 @@
          ,agent_status/2
         ]).
 
--include("acdc.hrl").
+-include_lib("acdc/src/acdc.hrl").
 status() -> acdc_agents_sup:status().
 
 acct_status(AcctId) when not is_binary(AcctId) ->

@@ -16,7 +16,8 @@
          ,record_call/3
         ]).
 
--include("ecallmgr.hrl").
+-include_lib("ecallmgr/src/ecallmgr.hrl").
+
 
 -define(FS_CMD_SET_MULTIVAR, 'kz_uuid_setvar_multi').
 -define(FS_MULTI_VAR_SEP, ";").

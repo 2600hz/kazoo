@@ -10,7 +10,8 @@
 
 -behaviour(application).
 
--include("hotornot.hrl").
+-include_lib("hotornot/src/hotornot.hrl").
+
 
 %% Application callbacks
 -export([start/2, stop/1]).

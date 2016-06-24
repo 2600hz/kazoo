@@ -12,7 +12,7 @@
          ,handle_req/2
         ]).
 
--include("ts.hrl").
+-include_lib("trunkstore/src/ts.hrl").
 
 init() -> 'ok'.
 

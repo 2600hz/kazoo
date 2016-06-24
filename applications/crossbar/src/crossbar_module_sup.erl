@@ -18,7 +18,8 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(SERVER, ?MODULE).
 

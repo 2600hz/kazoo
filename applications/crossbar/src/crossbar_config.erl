@@ -14,7 +14,8 @@
          ,flush/0
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -spec flush() -> 'ok'.
 flush() -> kapps_config:flush(?CONFIG_CAT).

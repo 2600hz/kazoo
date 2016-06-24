@@ -11,7 +11,8 @@
 
 -export([move/3]).
 
--include("ecallmgr.hrl").
+-include_lib("ecallmgr/src/ecallmgr.hrl").
+
 
 -spec move(ne_binary(), atom(), atom()) -> boolean().
 move(UUID, ONode, NNode) ->

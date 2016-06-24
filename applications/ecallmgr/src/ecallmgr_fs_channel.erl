@@ -48,7 +48,8 @@
 
 -compile([{'no_auto_import', [node/1]}]).
 
--include("ecallmgr.hrl").
+-include_lib("ecallmgr/src/ecallmgr.hrl").
+
 -include_lib("kazoo_sip/include/kzsip_uri.hrl").
 
 -define(SERVER, ?MODULE).

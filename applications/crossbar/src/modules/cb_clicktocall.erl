@@ -30,7 +30,8 @@
          ,maybe_migrate_history/1
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(CONNECT_CALL, <<"connect">>).
 -define(HISTORY, <<"history">>).

@@ -10,7 +10,7 @@
 
 -behaviour(supervisor).
 
--include("milliwatt.hrl").
+-include_lib("milliwatt/src/milliwatt.hrl").
 
 -define(SERVER, ?MODULE).
 

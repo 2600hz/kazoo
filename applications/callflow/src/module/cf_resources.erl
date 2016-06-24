@@ -24,7 +24,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_resources).
 
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 -include_lib("kazoo/include/kapi_offnet_resource.hrl").
 
 -export([handle/2]).

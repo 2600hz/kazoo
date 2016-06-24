@@ -10,7 +10,8 @@
 
 -behaviour(supervisor).
 
--include("fax.hrl").
+-include_lib("fax/src/fax.hrl").
+
 
 -define(SERVER, ?MODULE).
 

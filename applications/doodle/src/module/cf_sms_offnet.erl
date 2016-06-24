@@ -9,7 +9,8 @@
 %%%-------------------------------------------------------------------
 -module(cf_sms_offnet).
 
--include("doodle.hrl").
+-include_lib("doodle/src/doodle.hrl").
+
 
 -export([handle/2]).
 

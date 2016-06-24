@@ -16,7 +16,8 @@
 -export([collect_recipients/1]).
 
 
--include("notify.hrl").
+-include_lib("notify/src/notify.hrl").
+
 
 -define(DEFAULT_TEXT_TMPL, 'notify_low_balance_text_tmpl').
 -define(DEFAULT_HTML_TMPL, 'notify_low_balance_html_tmpl').

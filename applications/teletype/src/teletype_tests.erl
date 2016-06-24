@@ -14,7 +14,7 @@
          ,skel/1, skel/2
         ]).
 
--include("teletype.hrl").
+-include_lib("teletype/src/teletype.hrl").
 
 voicemail_to_email(AccountId) ->
     case find_vmboxes(AccountId) of

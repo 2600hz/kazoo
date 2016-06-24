@@ -1,6 +1,7 @@
 -ifndef(FAX_CLOUD_HRL).
 
--include("fax.hrl").
+-include_lib("fax/src/fax.hrl").
+
 -include_lib("kazoo_oauth/include/kazoo_oauth_types.hrl").
 
 -define(GPC_URL, "https://www.google.com/cloudprint/").

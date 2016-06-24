@@ -24,7 +24,7 @@
          ,delete_test_accounts/0
         ]).
 
--include("cdr.hrl").
+-include_lib("cdr/src/cdr.hrl").
 
 %%%===================================================================
 %%% API

@@ -20,7 +20,7 @@
 -export([disconnect_number/1]).
 -export([should_lookup_cnam/0]).
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/src/knm.hrl").
 
 -define(DEFAULT_COUNTRY, <<"US">>).
 -define(KNM_OTHER_CONFIG_CAT, <<?KNM_CONFIG_CAT/binary, ".other">>).

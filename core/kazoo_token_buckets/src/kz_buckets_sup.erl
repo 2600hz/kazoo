@@ -19,7 +19,7 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--include("kz_buckets.hrl").
+-include_lib("kazoo_token_buckets/src/kz_buckets.hrl").
 
 -define(SERVER, ?MODULE).
 

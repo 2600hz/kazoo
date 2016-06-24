@@ -11,7 +11,7 @@
 -export([activation_charges/3]).
 -export([create_items/3]).
 
--include("kazoo_services.hrl").
+-include_lib("kazoo_services/src/kazoo_services.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

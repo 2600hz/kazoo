@@ -9,7 +9,7 @@
 
 -export([build/1]).
 
--include("sysconf.hrl").
+-include_lib("sysconf/src/sysconf.hrl").
 
 -define(REQUEST_TIMEOUT, kapps_config:get_integer(?APP_NAME, <<"acl_request_timeout_ms">>, 2 * ?MILLISECONDS_IN_SECOND)).
 -define(REQUEST_TIMEOUT_FUDGE, kapps_config:get_integer(?APP_NAME, <<"acl_request_timeout_fudge_ms">>, 100)).

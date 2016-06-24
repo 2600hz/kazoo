@@ -28,7 +28,7 @@
          ,code_change/3
         ]).
 
--include("blackhole.hrl").
+-include_lib("blackhole/src/blackhole.hrl").
 
 -define(SERVER, ?MODULE).
 

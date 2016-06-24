@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(kapps_conference_command).
 
--include("kapps_call_command.hrl").
+-include_lib("kazoo_apps/src/kapps_call_command.hrl").
 
 -export([search/1]).
 -export([deaf_participant/2]).

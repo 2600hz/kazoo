@@ -27,7 +27,7 @@
 %%%-------------------------------------------------------------------
 
 -module(cf_singular_call_hooks).
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 
 %% API to send hooks
 -export([maybe_hook_call/1

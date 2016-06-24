@@ -2,7 +2,7 @@
 %% @doc @todo Add description to kz_aws_httpc.
 -module(kz_aws_httpc).
 
--include("kz_aws.hrl").
+-include_lib("kazoo_attachments/src/aws/kz_aws.hrl").
 
 -export([request/6]).
 

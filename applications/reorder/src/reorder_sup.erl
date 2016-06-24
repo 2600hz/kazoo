@@ -9,7 +9,7 @@
 
 -behaviour(supervisor).
 
--include("reorder.hrl").
+-include_lib("reorder/src/reorder.hrl").
 
 -define(SERVER, ?MODULE).
 

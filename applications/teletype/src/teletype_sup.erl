@@ -14,7 +14,7 @@
         ]).
 -export([init/1]).
 
--include("teletype.hrl").
+-include_lib("teletype/src/teletype.hrl").
 
 -define(SERVER, ?MODULE).
 

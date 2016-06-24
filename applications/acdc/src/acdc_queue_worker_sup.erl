@@ -11,7 +11,7 @@
 
 -behaviour(supervisor).
 
--include("acdc.hrl").
+-include_lib("acdc/src/acdc.hrl").
 
 -define(SERVER, ?MODULE).
 

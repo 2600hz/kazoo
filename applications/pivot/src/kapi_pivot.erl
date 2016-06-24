@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(kapi_pivot).
 
--include("pivot.hrl").
+-include_lib("pivot/src/pivot.hrl").
 
 -export([req/1, req_v/1
          ,bind_q/2

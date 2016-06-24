@@ -7,7 +7,8 @@
 %%%-------------------------------------------------------------------
 -module(doodle_maintenance).
 
--include("doodle.hrl").
+-include_lib("doodle/src/doodle.hrl").
+
 
 -export([send_outbound_sms/2, send_outbound_sms/3, send_outbound_sms/4, send_outbound_sms/5]).
 

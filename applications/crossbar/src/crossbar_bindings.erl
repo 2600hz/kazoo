@@ -40,7 +40,8 @@
          ,matches/2
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -type payload() :: path_tokens() | % mapping over path tokens in URI
                    ne_binary() | % crossbar_cleanup

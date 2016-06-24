@@ -17,7 +17,7 @@
          ,handle_presence_probe/2
         ]).
 
--include("acdc.hrl").
+-include_lib("acdc/src/acdc.hrl").
 -include_lib("kazoo/include/kapi_conf.hrl").
 
 -spec handle_call_event(kz_json:object(), kz_proplist()) -> 'ok'.

@@ -19,7 +19,7 @@
          ,rollup_account/2
         ]).
 
--include("kazoo_modb.hrl").
+-include_lib("kazoo_modb/src/kazoo_modb.hrl").
 
 -spec delete_modbs(ne_binary()) -> 'ok' | 'no_return'.
 -spec delete_modbs(ne_binary() | kz_year(), ne_binary() | kz_month()) -> 'ok' | 'no_return'.

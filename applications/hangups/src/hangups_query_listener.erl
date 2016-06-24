@@ -25,7 +25,8 @@
          ,code_change/3
         ]).
 
--include("hangups.hrl").
+-include_lib("hangups/src/hangups.hrl").
+
 -include_lib("folsom/include/folsom.hrl").
 
 -define(SERVER, ?MODULE).

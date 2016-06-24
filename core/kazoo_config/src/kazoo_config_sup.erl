@@ -13,7 +13,7 @@
          ,init/1
         ]).
 
--include("kazoo_config.hrl").
+-include_lib("kazoo_config/src/kazoo_config.hrl").
 
 -define(SERVER, ?MODULE).
 

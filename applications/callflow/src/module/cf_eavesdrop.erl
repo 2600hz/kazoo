@@ -22,7 +22,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_eavesdrop).
 
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 
 -export([handle/2
          ,no_permission_to_eavesdrop/1

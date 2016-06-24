@@ -12,7 +12,7 @@
 -export([start_link/0]).
 -export([init/1]).
 
--include("call_inspector.hrl").
+-include_lib("call_inspector/src/call_inspector.hrl").
 
 -define(SERVER, ?MODULE).
 

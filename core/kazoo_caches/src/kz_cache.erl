@@ -44,7 +44,7 @@
          ,code_change/3
         ]).
 
--include("kz_caches.hrl").
+-include_lib("kazoo_caches/src/kz_caches.hrl").
 
 -define(SERVER, ?MODULE).
 -define(EXPIRES, ?SECONDS_IN_HOUR). %% an hour

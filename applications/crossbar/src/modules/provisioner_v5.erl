@@ -17,8 +17,9 @@
 -export([update_user/3]).
 -export([check_MAC/2]).
 
--include("crossbar.hrl").
--include("provisioner_v5.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
+-include_lib("crossbar/src/modules/provisioner_v5.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

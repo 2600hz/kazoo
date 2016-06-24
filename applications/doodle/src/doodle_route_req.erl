@@ -10,7 +10,8 @@
 
 -export([handle_req/2]).
 
--include("doodle.hrl").
+-include_lib("doodle/src/doodle.hrl").
+
 
 -define(RESOURCE_TYPES_HANDLED,[<<"sms">>]).
 

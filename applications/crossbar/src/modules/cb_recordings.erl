@@ -30,7 +30,8 @@
          ,validate/1, validate/2, validate/3
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(CB_LIST, <<"recordings/crossbar_listing">>).
 -define(CB_LIST_BY_OWNERID, <<"recordings/listing_by_user">>).

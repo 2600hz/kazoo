@@ -14,7 +14,7 @@
 
 -export([handle/2]).
 
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".menu">>).
 

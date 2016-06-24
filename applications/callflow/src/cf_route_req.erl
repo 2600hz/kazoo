@@ -10,7 +10,7 @@
 
 -export([handle_req/2]).
 
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 
 -define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>]).
 

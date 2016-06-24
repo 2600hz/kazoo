@@ -23,7 +23,8 @@
          ,acceptable_content_types/0
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(WHITELABEL_ID, <<"whitelabel">>).
 -define(LOGO_REQ, <<"logo">>).

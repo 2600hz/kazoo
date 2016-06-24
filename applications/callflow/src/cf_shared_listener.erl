@@ -20,7 +20,7 @@
          ,code_change/3
         ]).
 
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 
 -define(SERVER, ?MODULE).
 

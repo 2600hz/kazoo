@@ -10,7 +10,7 @@
 
 -export([handle_req/2]).
 
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 
 -spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->

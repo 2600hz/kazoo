@@ -12,7 +12,7 @@
          ,init/0
         ]).
 
--include("konami.hrl").
+-include_lib("konami/src/konami.hrl").
 
 -spec start_link() -> 'ignore'.
 start_link() ->

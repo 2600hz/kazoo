@@ -30,7 +30,7 @@
          ,req_id/1
         ]).
 
--include("blackhole.hrl").
+-include_lib("blackhole/src/blackhole.hrl").
 
 -type context() :: #bh_context{}.
 -type setter_fun_1() :: fun((context()) -> context()).

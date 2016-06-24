@@ -19,7 +19,8 @@
         ]).
 -endif.
 
--include("ecallmgr.hrl").
+-include_lib("ecallmgr/src/ecallmgr.hrl").
+
 
 -define(RECORD_SOFTWARE, ecallmgr_config:get(<<"recording_software_name">>, <<"2600Hz, Inc.'s Kazoo">>)).
 

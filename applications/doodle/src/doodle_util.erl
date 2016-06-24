@@ -8,7 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(doodle_util).
 
--include("doodle.hrl").
+-include_lib("doodle/src/doodle.hrl").
+
 
 -define(SIP_ENDPOINT_ID_KEY(Realm, User)
         ,{?MODULE, 'sip_endpoint_id', Realm, User}

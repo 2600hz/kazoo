@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(kazoo_modb_util).
 
--include("kazoo_modb.hrl").
+-include_lib("kazoo_modb/src/kazoo_modb.hrl").
 
 -export([prev_year_month/1, prev_year_month/2
          ,prev_year_month_mod/1

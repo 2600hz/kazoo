@@ -80,7 +80,8 @@
 -export([trunkstore_servers_changed/2]).
 -endif.
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(DEFAULT_LANGUAGE
         ,kapps_config:get(?CONFIG_CAT, <<"default_language">>, <<"en-US">>)

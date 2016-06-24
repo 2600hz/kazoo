@@ -28,7 +28,7 @@
 -export([maybe_deny_access/1]).
 
 -include_lib("eunit/include/eunit.hrl").
--include("test/cb_token_restrictions_test.hrl").
+-include_lib("crossbar/test/cb_token_restrictions_test.hrl").
 
 -define(LOG_DEBUG(F), ?debugFmt(F ++ "\n", [])).
 -define(LOG_DEBUG(F, A), ?debugFmt(F ++ "\n", A)).
@@ -37,7 +37,8 @@
 -define(LOG_DEBUG(F, A), lager:debug(F, A)).
 -endif.
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(PVT_TYPE, <<"token_restrictions">>).
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".token_restrictions">>).

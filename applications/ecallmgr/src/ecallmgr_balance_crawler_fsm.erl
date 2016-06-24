@@ -27,7 +27,8 @@
          ,worker_timeout/2
         ]).
 
--include("ecallmgr.hrl").
+-include_lib("ecallmgr/src/ecallmgr.hrl").
+
 
 -define(SERVER, ?MODULE).
 

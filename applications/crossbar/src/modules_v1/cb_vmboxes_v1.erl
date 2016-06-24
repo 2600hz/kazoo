@@ -26,7 +26,8 @@
          ,acceptable_content_types/0
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 -include_lib("kazoo_documents/include/kazoo_documents.hrl").
 
 -define(CB_LIST, <<"vmboxes/crossbar_listing">>).

@@ -16,8 +16,8 @@
 %%%-------------------------------------------------------------------
 -module(kapps_speech).
 
--include("kazoo_apps.hrl").
--include("kapps_speech.hrl").
+-include_lib("kazoo_apps/src/kazoo_apps.hrl").
+-include_lib("kazoo_apps/src/kapps_speech.hrl").
 
 -export([create/1
          ,create/2

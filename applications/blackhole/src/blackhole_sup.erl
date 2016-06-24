@@ -16,7 +16,7 @@
 -export([start_link/0]).
 -export([init/1]).
 
--include("blackhole.hrl").
+-include_lib("blackhole/src/blackhole.hrl").
 
 -define(SERVER, ?MODULE).
 

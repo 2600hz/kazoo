@@ -9,7 +9,7 @@
 
 -export([handle_req/5]).
 
--include("stepswitch_resource_selectors.hrl").
+-include_lib("stepswitch/src/stepswitch_resource_selectors.hrl").
 
 -define(MOD_NAME, <<"filter_prefix">>).
 -define(ALLOWED_FILTER_MODES, [<<"empty_ok">>

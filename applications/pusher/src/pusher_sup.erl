@@ -12,7 +12,7 @@
 -export([start_link/0]).
 -export([init/1]).
 
--include("pusher.hrl").
+-include_lib("pusher/src/pusher.hrl").
 
 -define(SERVER, ?MODULE).
 

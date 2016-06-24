@@ -20,7 +20,8 @@
          ,delete/3
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 -include_lib("kazoo_transactions/include/kazoo_transactions.hrl").
 -include_lib("braintree/include/braintree.hrl").
 

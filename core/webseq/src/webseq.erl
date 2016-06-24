@@ -22,7 +22,7 @@
          ,reg_who/3
         ]).
 
--include("webseq.hrl").
+-include_lib("webseq/src/webseq.hrl").
 
 -spec what(what()) -> ne_binary().
 what(B) when is_binary(B) -> B;

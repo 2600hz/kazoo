@@ -11,7 +11,8 @@
 
 -export([handle_req/2]).
 
--include("ecallmgr.hrl").
+-include_lib("ecallmgr/src/ecallmgr.hrl").
+
 
 -spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(JObj, Props) ->

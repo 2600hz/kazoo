@@ -16,7 +16,8 @@
          ,set_monitor_threshold/2, set_monitor_threshold/3
         ]).
 
--include("hangups.hrl").
+-include_lib("hangups/src/hangups.hrl").
+
 
 -spec hangups_summary() -> 'ok'.
 -spec hangup_summary(ne_binary()) -> 'ok'.

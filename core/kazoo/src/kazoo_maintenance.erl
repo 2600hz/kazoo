@@ -22,8 +22,8 @@
          ,etop/0
         ]).
 
--include("include/kz_types.hrl").
--include("include/kz_databases.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo/include/kz_databases.hrl").
 
 -spec gc_all/0 :: () -> 'ok'.
 -spec gc_pids/1 :: ([pid(),...]) -> 'ok'.

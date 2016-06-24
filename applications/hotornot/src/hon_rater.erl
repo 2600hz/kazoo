@@ -10,7 +10,8 @@
 
 -export([init/0, handle_req/2]).
 
--include("hotornot.hrl").
+-include_lib("hotornot/src/hotornot.hrl").
+
 
 init() -> kapps_maintenance:refresh(?KZ_RATES_DB).
 

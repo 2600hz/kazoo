@@ -16,7 +16,8 @@
 -export([is_valid_caller_id/2]).
 -export([normalize_content_type/1]).
 
--include("fax.hrl").
+-include_lib("fax/src/fax.hrl").
+
 
 -spec fax_properties(kz_json:object()) -> kz_proplist().
 fax_properties(JObj) ->

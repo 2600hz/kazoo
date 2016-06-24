@@ -16,7 +16,7 @@
         ,get_printer_oauth_credentials/1
         ]).
 
--include("fax_cloud.hrl").
+-include_lib("fax/src/fax_cloud.hrl").
 
 -define(JSON(L), kz_json:from_list(L)).
 -define(DEFAULT_CLOUD_REG_SLEEP, 5000).

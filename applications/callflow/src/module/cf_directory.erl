@@ -37,7 +37,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_directory).
 
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 
 -export([handle/2]).
 

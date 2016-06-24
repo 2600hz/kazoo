@@ -20,7 +20,7 @@
          ,code_change/3
         ]).
 
--include("reg.hrl").
+-include_lib("registrar/src/reg.hrl").
 
 -define(SERVER, ?MODULE).
 

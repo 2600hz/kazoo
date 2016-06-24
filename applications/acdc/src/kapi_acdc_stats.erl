@@ -71,7 +71,7 @@
          ,publish_status_update/1, publish_status_update/2
         ]).
 
--include("acdc.hrl").
+-include_lib("acdc/src/acdc.hrl").
 
 -define(CALL_REQ_HEADERS, [<<"Call-ID">>, <<"Account-ID">>, <<"Queue-ID">>]).
 -define(CALL_REQ_VALUES(Name), [{<<"Event-Category">>, <<"acdc_call_stat">>}

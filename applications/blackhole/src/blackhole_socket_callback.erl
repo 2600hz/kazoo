@@ -8,7 +8,7 @@
 
 -module(blackhole_socket_callback).
 
--include("blackhole.hrl").
+-include_lib("blackhole/src/blackhole.hrl").
 
 -export([
     open/3,

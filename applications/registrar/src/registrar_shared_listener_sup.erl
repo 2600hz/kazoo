@@ -10,7 +10,7 @@
 
 -behaviour(supervisor).
 
--include("reg.hrl").
+-include_lib("registrar/src/reg.hrl").
 
 -define(SERVER, ?MODULE).
 

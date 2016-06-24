@@ -25,7 +25,8 @@
          ,post_json/3
         ]).
 
--include("notify.hrl").
+-include_lib("notify/src/notify.hrl").
+
 -include_lib("kazoo/include/kz_databases.hrl").
 
 %%--------------------------------------------------------------------

@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(camper_init).
 
--include("camper.hrl").
+-include_lib("camper/src/camper.hrl").
 
 -export([start_link/0]).
 

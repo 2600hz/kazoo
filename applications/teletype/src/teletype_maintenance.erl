@@ -10,7 +10,7 @@
 
 -export([receipts/0]).
 
--include("teletype.hrl").
+-include_lib("teletype/src/teletype.hrl").
 
 -define(RECEIPT_FORMAT, " ~4.s | ~45.s | ~-45.s | ~-30.s | ~-30.s | ~-20.s~n").
 

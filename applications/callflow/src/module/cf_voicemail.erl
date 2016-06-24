@@ -15,7 +15,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_voicemail).
 
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 -include_lib("kazoo/src/kz_json.hrl").
 
 -export([handle/2]).

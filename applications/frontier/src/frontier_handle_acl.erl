@@ -12,7 +12,8 @@
          ,lookup_acl_records/1, lookup_acl_records/2
         ]).
 
--include("frontier.hrl").
+-include_lib("frontier/src/frontier.hrl").
+
 
 -spec handle_acl_req(kz_json:object(), kz_proplist()) -> any().
 handle_acl_req(Reqest, _Props) ->

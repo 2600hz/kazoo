@@ -17,7 +17,7 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--include("cdr.hrl").
+-include_lib("cdr/src/cdr.hrl").
 
 -define(SERVER, ?MODULE).
 

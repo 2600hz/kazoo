@@ -16,7 +16,7 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--include("pusher.hrl").
+-include_lib("pusher/src/pusher.hrl").
 
 -define(SERVER, ?MODULE).
 

@@ -24,7 +24,8 @@
 -export([params_el/1, param_el/2, maybe_param_el/2]).
 -export([xml_attrib/2]).
 
--include("ecallmgr.hrl").
+-include_lib("ecallmgr/src/ecallmgr.hrl").
+
 
 -define(DEFAULT_USER_CACHE_TIME_IN_MS, ?MILLISECONDS_IN_HOUR). %% 1 hour
 

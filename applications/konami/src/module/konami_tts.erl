@@ -17,7 +17,7 @@
 
 -export([handle/2]).
 
--include("konami.hrl").
+-include_lib("konami/src/konami.hrl").
 
 -spec handle(kz_json:object(), kapps_call:call()) ->
                     {'continue', kapps_call:call()}.

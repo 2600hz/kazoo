@@ -8,7 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_flite).
 
--include("ecallmgr.hrl").
+-include_lib("ecallmgr/src/ecallmgr.hrl").
+
 
 -export([call_command/3
          ,voice/1

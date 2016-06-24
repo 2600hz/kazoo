@@ -12,7 +12,7 @@
 -export([start_link/0]).
 -export([init/1]).
 
--include("spyvsspy.hrl").
+-include_lib("spyvsspy/src/spyvsspy.hrl").
 
 -define(SERVER, ?MODULE).
 

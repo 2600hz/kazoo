@@ -16,7 +16,7 @@
          ,flush/0, flush/1
         ]).
 
--include("ts.hrl").
+-include_lib("trunkstore/src/ts.hrl").
 
 -spec flush() -> 'ok'.
 -spec flush(ne_binary()) -> 'ok'.

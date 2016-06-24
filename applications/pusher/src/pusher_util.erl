@@ -14,7 +14,7 @@
 -export([binary_to_keycert/1]).
 -export([user_agent_push_properties/1]).
 
--include("pusher.hrl").
+-include_lib("pusher/src/pusher.hrl").
 
 -type pki_asn1_type() :: 'Certificate' |
                          'RSAPrivateKey'| 'RSAPublicKey' |

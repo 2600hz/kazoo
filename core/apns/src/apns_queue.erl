@@ -8,7 +8,7 @@
 -behaviour(gen_server).
 -author('Manuel Rubio <manuel@altenwald.com>').
 
--include("apns.hrl").
+-include_lib("apns/include/apns.hrl").
 
 -define(SERVER, ?MODULE).
 

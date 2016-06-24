@@ -7,7 +7,7 @@
 %%%-----------------------------------------------------------------------------
 -module(kz_data).
 
--include("kz_data.hrl").
+-include_lib("kazoo_data/src/kz_data.hrl").
 
 -type connection() :: any().
 -type options() :: kz_proplist().

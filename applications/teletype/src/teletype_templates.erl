@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(teletype_templates).
 
--include("teletype.hrl").
+-include_lib("teletype/src/teletype.hrl").
 
 -define(TEMPLATE_FAILURE_KEY(TemplateId, AccountId)
         ,{?MODULE, TemplateId, AccountId}

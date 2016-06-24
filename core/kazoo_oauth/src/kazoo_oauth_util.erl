@@ -4,7 +4,7 @@
 
 -module(kazoo_oauth_util).
 
--include("kazoo_oauth.hrl").
+-include_lib("kazoo_oauth/src/kazoo_oauth.hrl").
 
 -export([get_oauth_provider/1
          ,get_oauth_app/1

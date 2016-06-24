@@ -26,7 +26,8 @@
 -export([notify_new_account/1]).
 -export([is_unique_realm/2]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(SERVER, ?MODULE).
 

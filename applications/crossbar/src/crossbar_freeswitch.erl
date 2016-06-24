@@ -25,7 +25,8 @@
 
 -export([reset/0]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 
 -define(SERVER, ?MODULE).

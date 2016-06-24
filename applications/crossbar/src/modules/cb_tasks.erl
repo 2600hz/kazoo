@@ -21,7 +21,8 @@
         ,delete/2
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 -include_lib("kazoo_tasks/include/kazoo_tasks.hrl").
 
 -define(SCHEMA_TASKS, <<"tasks">>).

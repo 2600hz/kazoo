@@ -10,7 +10,7 @@
 %%%-------------------------------------------------------------------
 -module(blackhole_util).
 
--include("blackhole.hrl").
+-include_lib("blackhole/src/blackhole.hrl").
 
 -export([is_authorized/1]).
 -export([maybe_add_binding_to_listener/3

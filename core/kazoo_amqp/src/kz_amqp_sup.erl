@@ -18,7 +18,7 @@
 
 -export([init/1]).
 
--include("amqp_util.hrl").
+-include_lib("kazoo_amqp/src/amqp_util.hrl").
 
 -define(SERVER, ?MODULE).
 

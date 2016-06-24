@@ -22,7 +22,8 @@
          ,code_change/3
         ]).
 
--include("ecallmgr.hrl").
+-include_lib("ecallmgr/src/ecallmgr.hrl").
+
 
 -define(SERVER, ?MODULE).
 

@@ -9,7 +9,8 @@
 
 -export([handle_req/2]).
 
--include("jonny5.hrl").
+-include_lib("jonny5/src/jonny5.hrl").
+
 
 -spec handle_req(kz_json:object(), kz_proplist()) -> any().
 handle_req(JObj, _) ->

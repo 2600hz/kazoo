@@ -12,7 +12,7 @@
          ,add_default_account_metaflow/1
         ]).
 
--include("konami.hrl").
+-include_lib("konami/src/konami.hrl").
 
 -record(builder_action, {module_fun_name :: atom()
                          ,metaflow_key :: ne_binary()

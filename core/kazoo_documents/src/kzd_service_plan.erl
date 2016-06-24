@@ -33,7 +33,7 @@
          ,all_items_key/0
         ]).
 
--include("kz_documents.hrl").
+-include_lib("kazoo_documents/src/kz_documents.hrl").
 
 -type doc() :: kz_json:object().
 -type docs() :: [doc()].

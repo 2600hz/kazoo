@@ -19,7 +19,8 @@
          ,code_change/3
         ]).
 
--include("jonny5.hrl").
+-include_lib("jonny5/src/jonny5.hrl").
+
 
 -record(state, {}).
 

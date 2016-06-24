@@ -12,7 +12,7 @@
          ,handle_full_voicemail/2
         ]).
 
--include("teletype.hrl").
+-include_lib("teletype/src/teletype.hrl").
 
 -define(TEMPLATE_ID, <<"voicemail_full">>).
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).

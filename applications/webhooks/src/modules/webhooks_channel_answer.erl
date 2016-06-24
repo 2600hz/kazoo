@@ -10,7 +10,7 @@
          ,bindings_and_responders/0
         ]).
 
--include("webhooks.hrl").
+-include_lib("webhooks/src/webhooks.hrl").
 
 -define(ID, kz_util:to_binary(?MODULE)).
 -define(NAME, <<"channel_answer">>).

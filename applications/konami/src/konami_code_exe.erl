@@ -10,7 +10,7 @@
 
 -export([handle/2]).
 
--include("konami.hrl").
+-include_lib("konami/src/konami.hrl").
 
 -spec handle(api_object(), kapps_call:call()) -> 'ok'.
 handle('undefined', _Call) ->

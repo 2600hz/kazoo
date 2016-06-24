@@ -20,7 +20,7 @@
          sign_v4/8,
          get_service_status/1]).
 
--include("kz_aws.hrl").
+-include_lib("kazoo_attachments/src/aws/kz_aws.hrl").
 
 -record(metadata_credentials,
         {access_key_id :: string(),

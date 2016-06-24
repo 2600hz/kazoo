@@ -10,7 +10,7 @@
 
 -export([handle_config_change/2]).
 
--include("ts.hrl").
+-include_lib("trunkstore/src/ts.hrl").
 
 -spec handle_config_change(kz_json:object(), any()) -> any().
 handle_config_change(JObj, _Props) ->

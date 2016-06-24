@@ -12,7 +12,7 @@
          ,handle_system_alert/2
         ]).
 
--include("teletype.hrl").
+-include_lib("teletype/src/teletype.hrl").
 
 -define(TEMPLATE_ID, <<"system_alert">>).
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).

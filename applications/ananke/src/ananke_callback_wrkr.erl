@@ -22,7 +22,7 @@
          ,code_change/3
         ]).
 
--include("ananke.hrl").
+-include_lib("ananke/src/ananke.hrl").
 
 -define(SERVER, ?MODULE).
 

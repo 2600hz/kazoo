@@ -11,7 +11,7 @@
          ,handle_event/2
         ]).
 
--include("webhooks.hrl").
+-include_lib("webhooks/src/webhooks.hrl").
 
 -define(ID, kz_util:to_binary(?MODULE)).
 -define(NAME, <<"callflow">>).

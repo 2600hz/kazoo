@@ -12,7 +12,7 @@
 -export([start_link/0]).
 -export([init/1]).
 
--include("skel.hrl").
+-include_lib("skel/src/skel.hrl").
 
 -define(SERVER, ?MODULE).
 

@@ -13,7 +13,8 @@
 -export([start_link/0]).
 -export([init/1]).
 
--include("frontier.hrl").
+-include_lib("frontier/src/frontier.hrl").
+
 
 -define(SERVER, ?MODULE).
 

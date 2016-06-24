@@ -7,7 +7,7 @@
 
 -behaviour(gen_listener).
 
--include("stepswitch.hrl").
+-include_lib("stepswitch/src/stepswitch.hrl").
 
 %% API
 -export([start_link/0]).

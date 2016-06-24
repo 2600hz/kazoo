@@ -8,7 +8,7 @@
 %%%============================================================================
 -module(kapps_conference).
 
--include("kapps_call_command.hrl").
+-include_lib("kazoo_apps/src/kapps_call_command.hrl").
 
 -export([new/0]).
 -export([from_conference_doc/1, from_conference_doc/2]).

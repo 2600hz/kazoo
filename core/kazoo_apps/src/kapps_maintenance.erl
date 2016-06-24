@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(kapps_maintenance).
 
--include("kazoo_apps.hrl").
+-include_lib("kazoo_apps/src/kazoo_apps.hrl").
 
 -export([rebuild_token_auth/0
         ,rebuild_token_auth/1

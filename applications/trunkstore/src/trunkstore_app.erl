@@ -13,7 +13,7 @@
 %% Application callbacks
 -export([start/2, stop/1]).
 
--include("ts.hrl").
+-include_lib("trunkstore/src/ts.hrl").
 
 %% ===================================================================
 %% Application callbacks

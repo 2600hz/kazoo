@@ -10,7 +10,7 @@
 
 -export([handle_req/5]).
 
--include("stepswitch.hrl").
+-include_lib("stepswitch/src/stepswitch.hrl").
 
 -define(MOD_NAME, <<"order_by">>).
 -define(DEFAULT_SORT_ORDER, <<"ascend">>).

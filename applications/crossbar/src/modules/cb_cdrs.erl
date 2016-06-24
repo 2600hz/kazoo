@@ -29,7 +29,8 @@
 -export([maybe_paginate_and_clean/2]).
 -export([load_chunked_cdrs/3]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".cdrs">>).
 -define(MAX_BULK, kapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_bulk">>, 50)).

@@ -30,7 +30,7 @@
              ,name/0
              ]).
 
--include("kazoo_globals.hrl").
+-include_lib("kazoo_globals/src/kazoo_globals.hrl").
 
 -record(kz_global, {node = node() :: atom() | '_'
                    ,zone :: atom() | '_'

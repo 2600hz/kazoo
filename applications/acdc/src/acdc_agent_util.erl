@@ -22,7 +22,7 @@
          ,changed/2, find_most_recent_fold/3
         ]).
 
--include("acdc.hrl").
+-include_lib("acdc/src/acdc.hrl").
 
 -spec update_status(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 -spec update_status(ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> 'ok'.

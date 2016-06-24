@@ -19,7 +19,7 @@
          ,code_change/3
         ]).
 
--include("reorder.hrl").
+-include_lib("reorder/src/reorder.hrl").
 
 -define(SERVER, ?MODULE).
 

@@ -34,7 +34,7 @@
          ,rollup/2
         ]).
 
--include("include/kazoo_transactions.hrl").
+-include_lib("kazoo_transactions/include/kazoo_transactions.hrl").
 
 %% tracked in hundred-ths of a cent
 -define(DOLLAR_TO_UNIT, 10000).

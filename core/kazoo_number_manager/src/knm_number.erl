@@ -45,7 +45,7 @@
 -endif.
 
 -include_lib("kazoo/src/kz_json.hrl").
--include("knm.hrl").
+-include_lib("kazoo_number_manager/src/knm.hrl").
 
 -record(knm_number, {knm_phone_number :: knm_phone_number:knm_phone_number()
                      ,services :: kz_services:services()

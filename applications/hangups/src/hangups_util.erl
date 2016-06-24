@@ -16,7 +16,8 @@
          ,meter_hangup_cause/1
         ]).
 
--include("hangups.hrl").
+-include_lib("hangups/src/hangups.hrl").
+
 
 -define(METER_PREFIX_LIST, "hangups").
 -define(METER_PREFIX, <<?METER_PREFIX_LIST>>).

@@ -11,7 +11,7 @@
 -export([fetch/1]).
 -export([prefix/3]).
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/src/knm.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

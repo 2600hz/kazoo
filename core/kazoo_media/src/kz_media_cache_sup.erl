@@ -20,7 +20,7 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--include("kazoo_media.hrl").
+-include_lib("kazoo_media/src/kazoo_media.hrl").
 
 -define(SERVER, ?MODULE).
 

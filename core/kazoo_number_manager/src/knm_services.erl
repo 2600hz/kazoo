@@ -18,7 +18,7 @@
          ,phone_number_activation_charges/1
         ]).
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/src/knm.hrl").
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").

@@ -15,7 +15,7 @@
          ,listen_on/0, listen_on/1
         ]).
 
--include("konami.hrl").
+-include_lib("konami/src/konami.hrl").
 
 -define(DEFAULT_BINDING_DIGIT, <<"*">>).
 -define(DEFAULT_DIGIT_TIMEOUT, 800).

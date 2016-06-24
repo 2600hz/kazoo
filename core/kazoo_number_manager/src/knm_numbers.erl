@@ -26,7 +26,7 @@
          ,account_listing/1
         ]).
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/src/knm.hrl").
 
 -type number_return() :: {ne_binary(), knm_number:knm_number_return()}.
 -type numbers_return() :: [number_return()].

@@ -10,7 +10,7 @@
 
 -behaviour(supervisor).
 
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 
 -define(SERVER, ?MODULE).
 

@@ -12,7 +12,7 @@
          ,get_shout_header/2
         ]).
 
--include("kazoo_media.hrl").
+-include_lib("kazoo_media/src/kazoo_media.hrl").
 
 -type shout_header() :: {0, ne_binary()}.
 -export_type([shout_header/0]).

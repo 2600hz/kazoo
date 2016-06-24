@@ -9,7 +9,8 @@
 
 -export([get_attachment/2]).
 
--include("notify.hrl").
+-include_lib("notify/src/notify.hrl").
+
 
 -define(TIFF_TO_PDF_CMD, <<"tiff2pdf -o ~s ~s &> /dev/null && echo -n \"success\"">>).
 

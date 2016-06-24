@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_park).
 
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 
 -export([handle/2]).
 -export([update_presence/3]).

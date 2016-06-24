@@ -43,7 +43,7 @@
          ,code_change/3
         ]).
 
--include("kazoo_media.hrl").
+-include_lib("kazoo_media/src/kazoo_media.hrl").
 
 -define(SERVER, ?MODULE).
 

@@ -36,7 +36,7 @@
          extract_metadata/1
         ]).
 
--include("kz_aws.hrl").
+-include_lib("kazoo_attachments/src/aws/kz_aws.hrl").
 
 %%% Note that get_bucket_and_key/1 may be used to obtain the Bucket and Key to pass to various
 %%%   functions here, from a URL such as https://s3.amazonaws.com/some_bucket/path_to_file

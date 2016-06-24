@@ -13,7 +13,7 @@
          ,handle/2
         ]).
 
--include("kazoo_media.hrl").
+-include_lib("kazoo_media/src/kazoo_media.hrl").
 
 -spec init({any(), any()}, cowboy_req:req(), kz_proplist()) ->
                   {'ok', cowboy_req:req(), ne_binaries()} |

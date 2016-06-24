@@ -24,7 +24,7 @@
         ]).
 -export([store_path_from_doc/1, store_path_from_doc/2]).
 
--include("kazoo_media.hrl").
+-include_lib("kazoo_media/src/kazoo_media.hrl").
 
 -define(USE_HTTPS, kapps_config:get_is_true(?CONFIG_CAT, <<"use_https">>, 'false')).
 -define(AUTH_PLAYBACK, kapps_config:get_is_true(?CONFIG_CAT, <<"authenticated_playback">>, 'false')).

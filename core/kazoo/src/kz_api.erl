@@ -52,8 +52,8 @@
          ,validate_message/4
         ]).
 
--include("include/kz_api.hrl").
--include("include/kz_log.hrl").
+-include_lib("kazoo/include/kz_api.hrl").
+-include_lib("kazoo/include/kz_log.hrl").
 
 -ifdef(TEST).
 -export([has_any/2, has_all/2]).

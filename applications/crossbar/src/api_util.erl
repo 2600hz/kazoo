@@ -37,7 +37,8 @@
          ,create_event_name/2
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(MAX_UPLOAD_SIZE, kapps_config:get_integer(?CONFIG_CAT, <<"max_upload_size">>, 8000000)).
 

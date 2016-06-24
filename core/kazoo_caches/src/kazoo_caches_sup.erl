@@ -12,7 +12,7 @@
 -export([start_link/0]).
 -export([init/1]).
 
--include("kz_caches.hrl").
+-include_lib("kazoo_caches/src/kz_caches.hrl").
 
 -define(SERVER, ?MODULE).
 

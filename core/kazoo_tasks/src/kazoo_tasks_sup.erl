@@ -12,7 +12,7 @@
 -export([start_link/0]).
 -export([init/1]).
 
--include("kz_tasks.hrl").
+-include_lib("kazoo_tasks/src/kz_tasks.hrl").
 
 -define(SERVER, ?MODULE).
 

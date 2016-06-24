@@ -15,7 +15,7 @@
 
 -export([handle/2]).
 
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

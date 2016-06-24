@@ -18,7 +18,7 @@
         ]).
 
 
--include("kz_data.hrl").
+-include_lib("kazoo_data/src/kz_data.hrl").
 
 -define(KEY_STUB_ATTACHMENTS, <<"pvt_attachments">>).
 

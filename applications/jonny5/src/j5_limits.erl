@@ -27,7 +27,8 @@
 -export([reserve_amount/1]).
 -export([max_postpay/1]).
 
--include("jonny5.hrl").
+-include_lib("jonny5/src/jonny5.hrl").
+
 
 -record(limits, {account_id  :: api_binary()
                  ,account_db :: api_binary()

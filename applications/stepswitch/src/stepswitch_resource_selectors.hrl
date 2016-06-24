@@ -1,5 +1,5 @@
 -ifndef(STEPSWITCH_RESOURCE_SELECTORS_HRL).
--include("stepswitch.hrl").
+-include_lib("stepswitch/src/stepswitch.hrl").
 
 -define(ALLOWED_RESOURCE_FIELDS,[{<<"weight_cost">>, 'get_resrc_weight'}
                                  ,{<<"rules">>, 'get_resrc_rules'}

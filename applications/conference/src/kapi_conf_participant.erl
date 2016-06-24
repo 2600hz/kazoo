@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(kapi_conf_participant).
 
--include("conference.hrl").
+-include_lib("conference/src/conference.hrl").
 
 -export([dialplan_req/1]).
 

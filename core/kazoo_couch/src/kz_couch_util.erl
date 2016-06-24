@@ -21,7 +21,7 @@
 
 -export([maybe_add_rev/3]).
 
--include("kz_couch.hrl").
+-include_lib("kazoo_couch/src/kz_couch.hrl").
 -include_lib("kazoo/include/kapi_conf.hrl").
 
 

@@ -21,7 +21,7 @@
          ,zone/0, zone/1
         ]).
 
--include("kazoo_config.hrl").
+-include_lib("kazoo_config/src/kazoo_config.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

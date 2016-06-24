@@ -11,7 +11,7 @@
 -export([blocking_refresh/0]).
 -export([refresh/0, refresh/1]).
 
--include("conference.hrl").
+-include_lib("conference/src/conference.hrl").
 
 %%--------------------------------------------------------------------
 %% @private

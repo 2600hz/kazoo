@@ -23,7 +23,7 @@
          ,db_list/2
         ]).
 
--include("kz_couch.hrl").
+-include_lib("kazoo_couch/src/kz_couch.hrl").
 
 -type db_create_options() :: [{'q',integer()} | {'n',integer()}].
 

@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(kz_ip).
 
--include("kazoo_ips.hrl").
+-include_lib("kazoo_ips/src/kazoo_ips.hrl").
 
 -export([to_json/1
          ,from_json/1

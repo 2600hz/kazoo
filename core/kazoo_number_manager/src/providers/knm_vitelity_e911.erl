@@ -17,7 +17,7 @@
 -export([is_valid_location/1]).
 -export([get_location/1]).
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/src/knm.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

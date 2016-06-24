@@ -8,7 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(omnipresence_maintenance).
 
--include("omnipresence.hrl").
+-include_lib("omnipresence/src/omnipresence.hrl").
+
 
 -export([current_subscriptions/0, current_subscriptions/1, current_subscriptions/2
          ,count_current_subscriptions/0

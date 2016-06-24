@@ -7,7 +7,7 @@
 %%%-----------------------------------------------------------------------------
 -module(kzs_plan).
 
--include("kz_data.hrl").
+-include_lib("kazoo_data/src/kz_data.hrl").
 
 -export([plan/0, plan/1, plan/2, plan/3, flush/0]).
 

@@ -13,7 +13,7 @@
 
 -export([handle/2]).
 
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->

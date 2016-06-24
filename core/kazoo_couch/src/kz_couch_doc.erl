@@ -20,7 +20,7 @@
          ,move_doc/3
         ]).
 
--include("kz_couch.hrl").
+-include_lib("kazoo_couch/src/kz_couch.hrl").
 
 %% Throttle how many docs we bulk insert to BigCouch
 -define(MAX_BULK_INSERT, 2000).

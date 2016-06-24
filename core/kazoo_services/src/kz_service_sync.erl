@@ -20,7 +20,7 @@
          ,code_change/3
         ]).
 
--include("kazoo_services.hrl").
+-include_lib("kazoo_services/src/kazoo_services.hrl").
 
 -define(SERVER, ?MODULE).
 

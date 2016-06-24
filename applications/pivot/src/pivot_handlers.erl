@@ -10,7 +10,8 @@
 
 -export([handle_pivot_req/2]).
 
--include("pivot.hrl").
+-include_lib("pivot/src/pivot.hrl").
+
 
 -spec handle_pivot_req(kz_json:object(), kz_proplist()) -> any().
 handle_pivot_req(JObj, _Props) ->

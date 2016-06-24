@@ -10,7 +10,8 @@
 %%%-------------------------------------------------------------------
 -module(hangups_channel_destroy).
 
--include("hangups.hrl").
+-include_lib("hangups/src/hangups.hrl").
+
 
 -export([handle_req/2]).
 -export([start_meters/1

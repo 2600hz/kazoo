@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(reorder_route_req).
 
--include("reorder.hrl").
+-include_lib("reorder/src/reorder.hrl").
 
 -export([handle_req/2]).
 

@@ -29,7 +29,8 @@
         ,handle_execute_complete/2
         ]).
 
--include("fax.hrl").
+-include_lib("fax/src/fax.hrl").
+
 
 -define(SERVER, ?MODULE).
 

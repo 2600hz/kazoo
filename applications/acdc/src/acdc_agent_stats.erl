@@ -30,8 +30,8 @@
          ,archive_status_data/2
         ]).
 
--include("acdc.hrl").
--include("acdc_stats.hrl").
+-include_lib("acdc/src/acdc.hrl").
+-include_lib("acdc/src/acdc_stats.hrl").
 
 status_table_id() -> 'acdc_stats_status'.
 status_key_pos() -> #status_stat.id.

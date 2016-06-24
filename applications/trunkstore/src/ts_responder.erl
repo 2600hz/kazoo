@@ -26,7 +26,7 @@
          ,code_change/3
         ]).
 
--include("ts.hrl").
+-include_lib("trunkstore/src/ts.hrl").
 
 -define(SERVER, ?MODULE).
 

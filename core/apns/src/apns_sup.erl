@@ -8,7 +8,7 @@
 
 -behaviour(supervisor).
 
--include("apns.hrl").
+-include_lib("apns/include/apns.hrl").
 
 -define(SERVER, ?MODULE).
 

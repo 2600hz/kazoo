@@ -10,7 +10,7 @@
 
 -module(kz_att_s3).
 
--include("kz_att.hrl").
+-include_lib("kazoo_attachments/src/kz_att.hrl").
 
 %% ====================================================================
 %% API functions

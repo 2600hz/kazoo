@@ -12,7 +12,7 @@
          ,handle_route_req/2
         ]).
 
--include("reg.hrl").
+-include_lib("registrar/src/reg.hrl").
 
 -spec init() -> 'ok'.
 init() -> 'ok'.

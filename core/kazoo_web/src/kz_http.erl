@@ -20,7 +20,7 @@
          ,handle_response/1
         ]).
 
--include("kz_web.hrl").
+-include_lib("kazoo_web/src/kz_web.hrl").
 
 -type method() :: 'delete' |
                   'get' |

@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(kzsip_uri).
 
--include("kazoo_sip.hrl").
+-include_lib("kazoo_sip/src/kazoo_sip.hrl").
 
 -export([uris/1
          ,ruri/1

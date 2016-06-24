@@ -17,7 +17,8 @@
 -export([find_proc/1]).
 -export([init/1]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(SERVER, ?MODULE).
 

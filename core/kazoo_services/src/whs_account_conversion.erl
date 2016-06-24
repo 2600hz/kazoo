@@ -17,7 +17,7 @@
 -export([set_reseller_id/2]).
 -export([has_reseller_descendants/1]).
 
--include("kazoo_services.hrl").
+-include_lib("kazoo_services/src/kazoo_services.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

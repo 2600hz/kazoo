@@ -98,7 +98,8 @@
          ,hangup_long_running_channels/0, hangup_long_running_channels/1
         ]).
 
--include("ecallmgr.hrl").
+-include_lib("ecallmgr/src/ecallmgr.hrl").
+
 
 -spec add_fs_node(text()) -> 'ok'.
 add_fs_node(FSNode) ->

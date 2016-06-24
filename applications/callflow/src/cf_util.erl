@@ -46,7 +46,7 @@
          ,event_listener_name/2
         ]).
 
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 -include_lib("kazoo/src/kz_json.hrl").
 
 -define(OWNER_KEY(Db, User), {?MODULE, 'owner_id', Db, User}).

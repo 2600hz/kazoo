@@ -9,7 +9,7 @@
 
 -behaviour(supervisor).
 
--include("stepswitch.hrl").
+-include_lib("stepswitch/src/stepswitch.hrl").
 
 -define(SERVER, ?MODULE).
 

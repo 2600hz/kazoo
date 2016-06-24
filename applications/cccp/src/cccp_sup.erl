@@ -13,7 +13,7 @@
 -export([start_link/0]).
 -export([init/1]).
 
--include("cccp.hrl").
+-include_lib("cccp/src/cccp.hrl").
 
 -define(SERVER, ?MODULE).
 

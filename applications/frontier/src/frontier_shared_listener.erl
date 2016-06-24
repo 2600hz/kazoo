@@ -20,7 +20,8 @@
          ,code_change/3
         ]).
 
--include("frontier.hrl").
+-include_lib("frontier/src/frontier.hrl").
+
 
 -define(SERVER, ?MODULE).
 

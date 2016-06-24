@@ -9,7 +9,7 @@
 
 -export([handle_req/5]).
 
--include("stepswitch.hrl").
+-include_lib("stepswitch/src/stepswitch.hrl").
 
 -define(MOD_NAME, <<"filter_list">>).
 -define(ALLOWED_FILTER_MODES, [<<"exact">>

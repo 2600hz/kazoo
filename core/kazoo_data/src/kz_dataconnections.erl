@@ -25,7 +25,7 @@
          ,code_change/3
         ]).
 
--include("kz_data.hrl").
+-include_lib("kazoo_data/src/kz_data.hrl").
 
 -define(SERVER, ?MODULE).
 

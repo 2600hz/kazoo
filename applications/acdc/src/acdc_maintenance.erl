@@ -31,7 +31,7 @@
          ,agent_queue_logout/3
         ]).
 
--include("acdc.hrl").
+-include_lib("acdc/src/acdc.hrl").
 
 -spec logout_agents(ne_binary()) -> 'ok'.
 logout_agents(AccountId) ->

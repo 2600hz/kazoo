@@ -10,7 +10,7 @@
 
 -export([handle_req/2]).
 
--include("milliwatt.hrl").
+-include_lib("milliwatt/src/milliwatt.hrl").
 
 -define(CONFLICT_ACTION, 'tone').
 

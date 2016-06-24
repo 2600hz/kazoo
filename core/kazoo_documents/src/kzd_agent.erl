@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(kzd_agent).
 
--include("kz_documents.hrl").
+-include_lib("kazoo_documents/src/kz_documents.hrl").
 
 %% API
 -export([maybe_add_queue/2, maybe_add_queue/3

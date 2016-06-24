@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(kapps_sms_command).
 
--include("kapps_sms_command.hrl").
+-include_lib("kazoo_apps/src/kapps_sms_command.hrl").
 
 -export([send_sms/2, send_sms/3]).
 -export([b_send_sms/2, b_send_sms/3, b_send_sms/4]).

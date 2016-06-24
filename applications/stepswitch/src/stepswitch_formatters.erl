@@ -10,7 +10,7 @@
 
 -export([apply/3]).
 
--include("stepswitch.hrl").
+-include_lib("stepswitch/src/stepswitch.hrl").
 
 -spec apply(kz_json:object(), kz_json:object(), direction()) ->
                    kz_json:object().

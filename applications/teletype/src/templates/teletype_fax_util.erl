@@ -13,7 +13,7 @@
          ,get_attachments/2
         ]).
 
--include("teletype.hrl").
+-include_lib("teletype/src/teletype.hrl").
 
 -define(FAX_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax">>).
 -define(TIFF_TO_PDF_CMD, <<"tiff2pdf -o ~s ~s &> /dev/null && echo -n \"success\"">>).

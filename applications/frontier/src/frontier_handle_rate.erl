@@ -14,7 +14,8 @@
          ,name_to_method/1
         ]).
 
--include("frontier.hrl").
+-include_lib("frontier/src/frontier.hrl").
+
 
 -define(DEVICE_DEFAULT_RATES, <<"device-default-rate-limits">>).
 -define(RATES_CROSSBAR_LISTING, <<"rate_limits/crossbar_listing">>).
