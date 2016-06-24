@@ -23,7 +23,7 @@
          ,delete/2
         ]).
 
--include_lib("crossbar/src/crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(CB_LIST, <<"conferences/crossbar_listing">>).
 -define(CB_LIST_BY_NUMBER, <<"conference/listing_by_number">>).
@@ -235,8 +235,7 @@ create_conference(Context) ->
 
 mute_conference(Context, ConfId) ->
     Realm = kz_util:get_account_realm(cb_context:account_id(Context)),
-    {ok, Confs} = get_conferences(Realm, ConfId),
-    lager:error("Confs: ~p", [Confs]),
+    {'ok', Confs} = get_conferences(Realm, ConfId),
     Participants = conference_participants(Confs),
     lager:error("P:~p", [Participants]),
     Conference = kapps_conference:set_id(ConfId, kapps_conference:new()),
@@ -297,12 +296,12 @@ get_conferences(Realm, ConfId) ->
 conference_participants(JObjs) ->
     lists:flatten([ kz_json:get_value(<<"Participants">>, JObj, []) || JObj <- JObjs ]).
 
--spec conference_runtime({ok, kz_json:objects()}) -> integer().
+-spec conference_runtime({'ok', kz_json:objects()}) -> integer().
 conference_runtime({'ok', JObjs}) when is_list(JObjs) ->
     lists:min([kz_json:get_value(<<"Run-Time">>, JObj, 0) || JObj <- JObjs ]);
 conference_runtime(_) -> 0.
 
--spec conference_starttime({ok, kz_json:objects()}) -> integer().
+-spec conference_starttime({'ok', kz_json:objects()}) -> integer().
 conference_starttime({'ok', JObjs}) when is_list(JObjs) ->
     lists:min([kz_json:get_value(<<"Start-Time">>, JObj, 0) || JObj <- JObjs ]);
 conference_starttime(_) -> 0.
@@ -433,12 +432,12 @@ normalize_view_results(JObj, Acc) ->
 conference_stats(JObj, Conf) ->
     ConfId = kz_json:get_value(<<"id">>, JObj),
     Realm = kz_util:get_account_realm(kz_json:get_value(<<"owner_id">>, Conf)),
-    {ok, Confs} = get_conferences(Realm, ConfId),
+    {'ok', Confs} = get_conferences(Realm, ConfId),
     Participants = conference_participants(Confs),
     [
         {<<"members">>, count_members(Participants)}
         ,{<<"admins">>, count_admins(Participants)}
-        ,{<<"duration">>, conference_runtime({ok, Confs})}
+        ,{<<"duration">>, conference_runtime({'ok', Confs})}
     ].
 
 -spec count_admins(kz_json:objects()) -> integer().
