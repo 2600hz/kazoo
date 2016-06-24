@@ -401,7 +401,30 @@ on_successful_validation(DocId, Context) ->
 %%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].
+    Conf = kz_json:get_value(<<"value">>, JObj),
+    Stats = conference_stats(JObj, Conf),
+    ExtConf = lists:foldr(fun({K,V}, ExtConf) -> kz_json:set_value(K, V, ExtConf) end, Conf, Stats),
+    [ExtConf | Acc].
+
+-spec conference_stats(kz_json:object(), kz_json:object()) -> kz_json:object().
+conference_stats(JObj, Conf) ->
+    ConfId = kz_json:get_value(<<"id">>, JObj),
+    Realm = kz_util:get_account_realm(kz_json:get_value(<<"owner_id">>, Conf)),
+    {ok, Confs} = get_conferences(Realm, ConfId),
+    Participants = conference_participants(Confs),
+    [
+        {<<"members">>, count_members(Participants)}
+        ,{<<"admins">>, count_admins(Participants)}
+        ,{<<"duration">>, conference_runtime({ok, Confs})}
+    ].
+
+-spec count_admins(kz_json:objects()) -> integer().
+count_admins(Participants) ->
+    erlang:length([ P || P <- Participants, kz_json:is_true(<<"Is-Moderator">>, P) ]).
+
+-spec count_members(kz_json:objects()) -> integer().
+count_members(Participants) ->
+    erlang:length([ P || P <- Participants, kz_json:is_false(<<"Is-Moderator">>, P) ]).
 
 -spec normalize_users_results(kz_json:object(), kz_json:objects(), ne_binary()) ->
                                      api_objects().
