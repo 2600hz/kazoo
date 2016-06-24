@@ -177,11 +177,10 @@ version(#server{options=Options}) ->
     props:get_value('driver_version', Options).
 
 db_local_filter(List, Options) ->
-    lists:filter(
-      fun(DB) -> lists:all(
-                   fun(Option) -> db_local_filter_option(Option, DB) end
-                   , Options)
-      end, List).
+    [DB || DB <- List,
+	   lists:all(fun(Option) ->
+			     db_local_filter_option(Option, DB)
+		     end, Options)].
 
 db_local_filter_option({'start_key', Value}, DB) ->
     DB >= Value;

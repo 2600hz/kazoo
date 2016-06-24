@@ -1012,15 +1012,12 @@ handle_module_cast(Msg, #state{module=Module
 handle_rm_binding(Binding, Props, #state{queue=Q
                                         ,bindings=Bs
                                         }=State) ->
-    KeepBs = lists:filter(fun(BP) ->
-                                  maybe_remove_binding(BP
-                                                      ,kz_util:to_binary(Binding)
-                                                      ,Props
-                                                      ,Q
-                                                      )
-                          end
-                         ,Bs
-                         ),
+    KeepBs = [BP || BP <- Bs,
+                    maybe_remove_binding(BP
+                                        ,kz_util:to_binary(Binding)
+                                        ,Props
+                                        ,Q
+                                        )],
     State#state{bindings=KeepBs}.
 
 -spec handle_add_binding(binding_module(), kz_proplist(), state()) ->

@@ -154,11 +154,10 @@ dataplan_match(Classification, Plan, AccountId) ->
      } = Plan,
 
     {Tag, Server} = maybe_start_connection(CCon, maps:get(CCon, GCon, #{})),
-    Others = lists:filter(fun(T) -> T =/= Tag end
-                         ,lists:usort(fun({T1,_}, {T2, _}) -> T1 =< T2 end
-                                     ,dataplan_connections(Types, GCon)
-                                     )
-                         ),
+    Others = [T || T <- lists:usort(fun({T1,_}, {T2, _}) -> T1 =< T2 end
+                                   ,dataplan_connections(Types, GCon)
+                                   ),
+                        T =/= Tag],
 
     case maps:get(<<"handler">>, CAtt, 'undefined') of
         'undefined' ->

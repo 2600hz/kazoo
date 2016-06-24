@@ -154,7 +154,7 @@ card_field(Key = <<"PHOTO">>, JObj) ->
             {[Key, {<<"ENCODING">>, <<"B">>}, {<<"TYPE">>, TypeType}], Data}
     end;
 card_field(Key = <<"ADR">>, JObj) ->
-    Addresses = lists:map(fun normalize_address/1, kz_json:get_value(<<"addresses">>, JObj, [])),
+    Addresses = [normalize_address(A) || A <- kz_json:get_value(<<"addresses">>, JObj, [])],
     [{[Key, {<<"TYPE">>, Type}], Address} || {Type, Address} <- Addresses];
 card_field(Key = <<"TEL">>, JObj) ->
     CallerId = kz_json:get_value(<<"caller_id">>, JObj, kz_json:new()),
