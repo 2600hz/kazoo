@@ -156,17 +156,17 @@ handle_cast(Msg, State=#state{ out_socket = undefined
     _:{error, Reason2} -> {stop, Reason2}
   end;
 
-handle_cast(Msg, State) when is_record(Msg, apns_msg) ->
-  Socket = State#state.out_socket,
+handle_cast(#apns_msg{device_token = DeviceToken, expiry = Expiry,
+		      id = Id, priority = Priority} = Msg,
+	    #state{out_socket = Socket, queue = Queue} = State) ->
   Payload = build_payload(Msg),
-  BinToken = hexstr_to_bin(Msg#apns_msg.device_token),
-  apns_queue:in(State#state.queue, Msg),
-  case send_payload(
-        Socket, Msg#apns_msg.id, Msg#apns_msg.expiry, BinToken, Payload, Msg#apns_msg.priority) of
+  BinToken = hexstr_to_bin(DeviceToken),
+  apns_queue:in(Queue, Msg),
+  case send_payload(Socket, Id, Expiry, BinToken, Payload, Priority) of
     ok ->
       {noreply, State};
     {error, Reason} ->
-      apns_queue:fail(State#state.queue, Msg#apns_msg.id),
+      apns_queue:fail(Queue, Id),
       {stop, {error, Reason}, State}
   end;
 
@@ -181,13 +181,14 @@ handle_info( {ssl, SslSocket, Data}
            , State = #state{ out_socket = SslSocket
                            , connection = #apns_connection{error_fun = Error}
                            , out_buffer = CurrentBuffer
+			   , queue = Queue
                            }) ->
   case <<CurrentBuffer/binary, Data/binary>> of
     <<Command:1/unit:8, StatusCode:1/unit:8, MsgId:4/binary, Rest/binary>> ->
       case Command of
         8 -> %% Error
           Status = parse_status(StatusCode),
-          {_MsgFailed, RestMsg} = apns_queue:fail(State#state.queue, MsgId),
+          {_MsgFailed, RestMsg} = apns_queue:fail(Queue, MsgId),
           _ = [send_message(self(), M) || M <- RestMsg],
           try Error(MsgId, Status) of
             stop -> throw({stop, {msg_error, MsgId, Status}, State});
@@ -198,7 +199,7 @@ handle_info( {ssl, SslSocket, Data}
                 "Error trying to inform error (~p) msg ~p:~n\t~p~n",
                 [Status, MsgId, ErrorResult])
           end,
-          case erlang:size(Rest) of
+          case byte_size(Rest) of
             0 -> %% It was a whole package
               {noreply, State#state{out_buffer = <<>>}};
             _ ->
@@ -228,7 +229,7 @@ handle_info( {ssl, SslSocket, Data}
           error_logger:error_msg(
             "Error trying to inform feedback token ~p:~n\t~p~n", [Token, Error])
       end,
-      case erlang:size(Rest) of
+      case byte_size(Rest) of
         0 -> {noreply, State#state{in_buffer = <<>>}}; %% It was a whole package
         _ -> handle_info({ssl, SslSocket, Rest}, State#state{in_buffer = <<>>})
       end;
@@ -275,10 +276,10 @@ build_payload(Params, Extra, Content_Available) ->
   kz_json:encode(
     {[{<<"aps">>, do_build_payload(Params, Content_Available)} | Extra]}).
 
-do_build_payload(Params, Content_Available) when Content_Available ->
+do_build_payload(Params, true) ->
   do_build_payload(Params, [{<<"content-available">>, 1}]);
 
-do_build_payload(Params, Content_Available) when Content_Available == false ->
+do_build_payload(Params, false) ->
   do_build_payload(Params, []);
 
 do_build_payload([{Key, Value} | Params], Payload) ->
@@ -311,7 +312,7 @@ do_build_payload([{Key, Value} | Params], Payload) ->
                             end ++
                 [{<<"loc-key">>, unicode:characters_to_binary(LocKey)},
                  {<<"loc-args">>,
-                    lists:map(fun unicode:characters_to_binary/1, Args)}
+                    [unicode:characters_to_binary(A) || A <- Args]}
                 ]},
       do_build_payload(Params, [{atom_to_binary(Key, utf8), Json} | Payload]);
     _ ->
@@ -324,7 +325,7 @@ do_build_payload([], Payload) ->
   ok | {error, any()}.
 send_payload(Socket, MsgId, Expiry, BinToken, Payload, Priority) ->
     Frame = build_frame(MsgId, Expiry, BinToken, Payload, Priority),
-    FrameLength = erlang:size(Frame),
+    FrameLength = byte_size(Frame),
     Packet = [<<2:8,
                 FrameLength:32/big,
                 Frame/binary>>],
@@ -343,7 +344,7 @@ hexstr_to_bin([X, Y|T], Acc) ->
   hexstr_to_bin(T, [V | Acc]).
 
 bin_to_hexstr(Binary) ->
-    L = size(Binary),
+    L = byte_size(Binary),
     Bits = L * 8,
     <<X:Bits/big-unsigned-integer>> = Binary,
     F = lists:flatten(io_lib:format("~~~B.16.0B", [L * 2])),
@@ -362,7 +363,7 @@ parse_status(10) -> shutdown;
 parse_status(_) -> unknown.
 %
 build_frame(MsgId, Expiry, BinToken, Payload, Priority) ->
-  PayloadLength = erlang:size(Payload),
+  PayloadLength = byte_size(Payload),
   <<1:8, 32:16/big, BinToken/binary,
     2:8, PayloadLength:16/big, Payload/binary,
     3:8, 4:16/big, MsgId/binary,

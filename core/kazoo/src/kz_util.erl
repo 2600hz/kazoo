@@ -699,12 +699,12 @@ try_load_module(Name) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec pad_binary(binary(), non_neg_integer(), binary()) -> binary().
-pad_binary(Bin, Size, Value) when size(Bin) < Size ->
+pad_binary(Bin, Size, Value) when byte_size(Bin) < Size ->
     pad_binary(<<Bin/binary, Value/binary>>, Size, Value);
 pad_binary(Bin, _, _) -> Bin.
 
 -spec pad_binary_left(binary(), non_neg_integer(), binary()) -> binary().
-pad_binary_left(Bin, Size, Value) when size(Bin) < Size ->
+pad_binary_left(Bin, Size, Value) when byte_size(Bin) < Size ->
     pad_binary_left(<<Value/binary, Bin/binary>>, Size, Value);
 pad_binary_left(Bin, _Size, _Value) -> Bin.
 
