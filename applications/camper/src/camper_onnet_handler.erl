@@ -290,7 +290,7 @@ clear_request(Requestor, Exten, Local) ->
 
 -spec make_requests(ne_binaries(), {ne_binary(), ne_binary()}, ne_binary(), non_neg_integer()) -> dict:dict().
 make_requests(SIPNames, Requestor, Exten, Timeout) ->
-    R = lists:map(fun(SIPName) -> {SIPName, Requestor} end, SIPNames),
+    R = [{SIPName, Requestor} || SIPName <- SIPNames],
     {_, Seconds, _} = os:timestamp(),
     lists:foldl(fun(Req, Acc) -> dict:store(Req, {Exten, Seconds + Timeout}, Acc) end, dict:new(), R).
 

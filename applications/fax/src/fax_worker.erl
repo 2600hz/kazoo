@@ -946,8 +946,6 @@ get_sizes(OutputFile) when is_binary(OutputFile) ->
     Cmd = io_lib:format(CmdCount, [OutputFile]),
     NumberOfPages = try Result = os:cmd(kz_util:to_list(Cmd)),
                         kz_util:to_integer(Result)
-                    of
-                        Count -> Count
                     catch
                         _:_ -> 0
                     end,

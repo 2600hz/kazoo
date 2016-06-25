@@ -503,7 +503,7 @@ validate_move(AccountId, ToAccount) ->
     case kz_account:fetch(AccountId) of
         {'error', _E}=Error -> Error;
         {'ok', JObj} ->
-            ToTree = lists:append(get_tree(ToAccount), [ToAccount]),
+            ToTree = get_tree(ToAccount) ++ [ToAccount],
             case lists:member(AccountId, ToTree) of
                 'true' -> {'error', 'forbidden'};
                 'false' -> {'ok', JObj, ToTree}

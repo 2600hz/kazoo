@@ -681,8 +681,7 @@ spawn_cf_module(CFModule, Data, Call) ->
 cf_module_task(CFModule, Data, Call, AMQPConsumer) ->
     _ = kz_amqp_channel:consumer_pid(AMQPConsumer),
     kz_util:put_callid(kapps_call:call_id_direct(Call)),
-    try CFModule:handle(Data, Call) of
-        Result -> Result
+    try CFModule:handle(Data, Call)
     catch
         _E:R ->
             ST = erlang:get_stacktrace(),

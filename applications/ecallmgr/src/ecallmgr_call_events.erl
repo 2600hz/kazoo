@@ -1150,9 +1150,10 @@ get_is_loopback(_) -> 'true'.
 callee_call_event_props(Props) ->
     UUID = get_call_id(Props),
     case kz_cache:peek_local(?ECALLMGR_INTERACTION_CACHE, {'channel', UUID}) of
-        {'ok', Channel} when Channel#channel.callee_number =/= 'undefined' ->
-            [{<<"Callee-ID-Number">>, Channel#channel.callee_number}
-             ,{<<"Callee-ID-Name">>, Channel#channel.callee_name}
+        {'ok', #channel{callee_name = Name,
+                        callee_number = Num}} when Num =/= 'undefined' ->
+            [{<<"Callee-ID-Number">>, Num}
+             ,{<<"Callee-ID-Name">>, Name}
             ];
         _ ->
             [{<<"Callee-ID-Number">>, kzd_freeswitch:callee_id_number(Props)}

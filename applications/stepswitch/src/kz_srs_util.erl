@@ -45,13 +45,8 @@ get_value('cid_number', _Resources, _Number, OffnetJObj, _DB, _Default) ->
 get_value({'request', Field}, _Resources, _Number, OffnetJObj, _DB, Default) ->
     kz_json:get_value(Field, OffnetJObj, Default);
 get_value({'resource', Field}, Resources, _Number, _OffnetJObj, _DB, _Default) ->
-    lists:map(fun(R) ->
-                      Id = stepswitch_resources:get_resrc_id(R),
-                      Value = get_data_from_resource(Field, R),
-                      {Id, Value}
-              end
-              ,Resources
-             );
+    [{stepswitch_resources:get_resrc_id(R), get_data_from_resource(Field, R)}
+     || R <- Resources];
 get_value({'database', SelectorName}, Resources, Number, OffnetJObj, DB, Default) ->
     Keys = [[stepswitch_resources:get_resrc_id(R), SelectorName] || R <- Resources],
     View = <<"selectors/resource_name_listsing">>,

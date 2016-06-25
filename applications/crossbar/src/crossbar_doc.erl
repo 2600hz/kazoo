@@ -201,10 +201,8 @@ check_document_type(DocId, Context, JObj, Options) when is_binary(DocId) ->
 check_document_type([], _Context, _JObjs, _Options) ->
     'true';
 check_document_type([DocId|DocIds], Context, [JObj|JObjs], Options) ->
-    case check_document_type(DocId, Context, JObj, Options) of
-        'true' -> check_document_type(DocIds, Context, JObjs, Options);
-        'false' -> 'false'
-    end.
+    check_document_type(DocId, Context, JObj, Options)
+        andalso check_document_type(DocIds, Context, JObjs, Options).
 
 -spec document_type_match(api_binary(), api_binary(), ne_binary()) -> boolean().
 document_type_match('undefined', _ExpectedType, _ReqType) ->
@@ -381,9 +379,8 @@ load_view(View, Options, Context, StartKey, PageSize, FilterFun) ->
                                 ,start_key=StartKey
                                 ,page_size=PageSize
                                 ,filter_fun=FilterFun
-                                ,dbs=lists:filter(fun(Db) -> kz_datamgr:db_exists(Db, View) end
-                                                  ,props:get_value('databases', Options, [cb_context:account_db(Context)])
-                                                 )
+                                ,dbs=[Db || Db <- props:get_value('databases', Options, [cb_context:account_db(Context)]),
+                                            kz_datamgr:db_exists(Db, View)]
                                 ,direction=view_sort_direction(Options)
                                }).
 

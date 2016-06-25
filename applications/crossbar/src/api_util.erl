@@ -221,8 +221,7 @@ get_req_data(Context, {ContentType, Req1}, QS) ->
                                      {cb_context:context(), cowboy_req:req()} |
                                      halt_return().
 maybe_extract_multipart(Context, Req0, QS) ->
-    try extract_multipart(Context, Req0, QS) of
-        Resp -> Resp
+    try extract_multipart(Context, Req0, QS)
     catch
         _E:_R ->
             ST = erlang:get_stacktrace(),
@@ -350,8 +349,7 @@ extract_multipart(Context, Req, QS) ->
                           {cb_context:context(), cowboy_req:req()} |
                           halt_return().
 extract_file(Context, ContentType, Req0) ->
-    try extract_file_part_body(Context, ContentType, Req0) of
-        Return -> Return
+    try extract_file_part_body(Context, ContentType, Req0)
     catch
         _E:_R ->
             extract_file_body(Context, ContentType, Req0)
@@ -481,8 +479,7 @@ decode_base64(Context, CT, Req0, Body) ->
 get_request_body(Req) ->
     get_request_body(Req, []).
 get_request_body(Req0, Body) ->
-    try get_request_body(Req0, Body, cowboy_req:part_body(Req0)) of
-        Resp -> Resp
+    try get_request_body(Req0, Body, cowboy_req:part_body(Req0))
     catch
         'error':{'badmatch', _} ->
             get_request_body(Req0, Body, cowboy_req:body(Req0))
@@ -548,17 +545,12 @@ normalize_envelope_keys_foldl(K, V, JObj) -> kz_json:set_value(kz_json:normalize
 %%--------------------------------------------------------------------
 -spec is_valid_request_envelope(kz_json:object(), cb_context:context()) -> 'true' | jesse_error:error().
 is_valid_request_envelope(Envelope, Context) ->
-    case lists:member(cb_context:api_version(Context), ?NO_ENVELOPE_VERSIONS) of
-        'true' -> 'true';
-        'false' -> validate_request_envelope(Envelope)
-    end.
+    lists:member(cb_context:api_version(Context), ?NO_ENVELOPE_VERSIONS)
+        orelse validate_request_envelope(Envelope).
 
 -spec validate_request_envelope(kz_json:object()) -> 'true' | jesse_error:error().
 validate_request_envelope(Envelope) ->
-    case kz_json_schema:validate(?ENVELOPE_SCHEMA
-                                ,Envelope
-                                )
-    of
+    case kz_json_schema:validate(?ENVELOPE_SCHEMA, Envelope) of
         {'ok', _} -> 'true';
         {'error', Errors} -> Errors
     end.

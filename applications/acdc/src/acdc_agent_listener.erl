@@ -1156,10 +1156,8 @@ account_db(Agent) ->
 
 -spec record_calls(agent()) -> boolean().
 record_calls(Agent) ->
-    case kz_json:is_json_object(Agent) of
-        'true' -> kz_json:is_true(<<"record_calls">>, Agent, 'false');
-        'false' -> 'false'
-    end.
+    kz_json:is_json_object(Agent)
+        andalso kz_json:is_true(<<"record_calls">>, Agent, 'false').
 
 -spec is_thief(agent()) -> boolean().
 is_thief(Agent) -> not kz_json:is_json_object(Agent).

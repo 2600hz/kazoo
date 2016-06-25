@@ -77,8 +77,7 @@ get_magic_token(Path) ->
 get_magic_token_from_path([]) -> 'undefined';
 get_magic_token_from_path([<<>>|Paths]) -> get_magic_token_from_path(Paths);
 get_magic_token_from_path([Path|Paths]) ->
-    try kapps_util:from_magic_hash(Path) of
-        Token -> Token
+    try kapps_util:from_magic_hash(Path)
     catch
         _:_ -> get_magic_token_from_path(Paths)
     end.

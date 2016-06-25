@@ -43,7 +43,8 @@ print_limits(Section, Rates) ->
     Min = kz_json:get_value(<<"Minute">>, Rates, kz_json:new()),
     Sec = kz_json:get_value(<<"Second">>, Rates, kz_json:new()),
     io:format("~s rates for ~s~n", [Section, Name]),
-    Keys = lists:map(fun frontier_handle_rate:name_to_method/1, frontier_handle_rate:names()),
+    Keys = [frontier_handle_rate:name_to_method(N)
+            || N <- frontier_handle_rate:names()],
     lists:foreach(fun(Key) ->
                           io:format("~-15s: ~7.10B/m ~7.10B/s~n"
                                     ,[Key, kz_json:get_value(Key, Min), kz_json:get_value(Key, Sec)]

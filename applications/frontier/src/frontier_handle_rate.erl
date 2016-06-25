@@ -70,7 +70,7 @@ lookup_methods(JObj) ->
                  end,
     Methods = kz_json:get_value(<<"Method-List">>, JObj),
     MethodNames = case is_list(Methods) of
-                      'true' -> lists:map(fun resolve_method/1, Methods);
+                      'true' -> [resolve_method(M) || M <- Methods];
                       'false' -> []
                   end,
     case is_list(MethodName) of
@@ -205,11 +205,8 @@ construct_records(Method, Entity, RPM, RPS) ->
     Record = kz_json:from_list([{<<"id">>, 'undefined'}
                                 ,{<<"key">>, [Name, Method]}
                                ]),
-    lists:map(fun(JObj) ->
-                      kz_json:set_value(<<"value">>, JObj, Record)
-              end
-              ,[RPMObject, RPSObject]
-             ).
+    [kz_json:set_value(<<"value">>, JObj, Record)
+     || JObj <- [RPMObject, RPSObject]].
 
 -spec section_type(ne_binary()) -> ne_binary().
 section_type(<<"realm">>) -> <<"account">>;

@@ -152,10 +152,8 @@ is_proxied(Peer) ->
 
 is_proxied(_Peer, []) -> 'false';
 is_proxied(Peer, [Proxy|Rest]) ->
-    case kz_network_utils:verify_cidr(Peer, kz_network_utils:to_cidr(Proxy)) of
-        'true' -> 'true';
-        'false' -> is_proxied(Peer, Rest)
-    end.
+    kz_network_utils:verify_cidr(Peer, kz_network_utils:to_cidr(Proxy))
+        orelse is_proxied(Peer, Rest).
 
 to_version(<<"v", Int/binary>>=Version) ->
     try kz_util:to_integer(Int) of
@@ -722,7 +720,7 @@ to_json(Req, Context, Accept) ->
         'to_json' -> to_json(Req, Context, 'undefined');
         Fun ->
             lager:debug("calling ~s instead of to_json to render response", [Fun]),
-            apply(?MODULE, Fun, [Req, Context])
+            (?MODULE):Fun(Req, Context)
     end.
 
 -spec to_binary(cowboy_req:req(), cb_context:context()) ->
@@ -742,7 +740,7 @@ to_binary(Req, Context, Accept) ->
         'to_binary' -> to_binary(Req, Context, 'undefined');
         Fun ->
             lager:debug("calling ~s instead of to_binary to render response", [Fun]),
-            apply(?MODULE, Fun, [Req, Context])
+            (?MODULE):Fun(Req, Context)
     end.
 
 -spec send_file(cowboy_req:req(), cb_context:context()) -> api_util:pull_file_response_return().
@@ -914,11 +912,10 @@ csv_ize([F|Rest]) ->
 
 -spec try_to_binary(any()) -> binary().
 try_to_binary(Value) ->
-    try kz_util:to_binary(Value) of
-        V -> V
+    try kz_util:to_binary(Value)
     catch
         _E:_R -> <<"">>
-   end.
+    end.
 
 -spec json_to_csv(kz_json:object()) -> iolist().
 json_to_csv(JObj) ->
@@ -928,7 +925,7 @@ json_to_csv(JObj) ->
 -spec correct_jobj(kz_json:object()) -> kz_json:object().
 correct_jobj(JObj) ->
     Prop = kz_json:to_proplist(JObj),
-    L = lists:map(fun(X) -> correct_proplist(X) end, Prop),
+    L = [correct_proplist(P) || P <- Prop],
     kz_json:from_list(L).
 
 correct_proplist({K}) -> {K, <<>>};

@@ -114,10 +114,8 @@ failed(Res) when is_list(Res) ->
 matches([], _) -> 'false';
 matches([R|Restrictions], Tokens) ->
     Restriction = [cow_qs:urldecode(T) || T <- binary:split(R, <<"/">>, ['global', 'trim'])],
-    case kazoo_bindings:matches(Restriction, Tokens) of
-        'true' -> 'true';
-        'false' -> matches(Restrictions, Tokens)
-    end.
+    kazoo_bindings:matches(Restriction, Tokens)
+        orelse matches(Restrictions, Tokens).
 
 %%-------------------------------------------------------------------------
 %% @doc
