@@ -169,10 +169,8 @@ authz_response(JObj, Props, CallId, Node) ->
                        ,[kz_json:get_value(<<"Account-Billing">>, JObj)
                          ,kz_json:get_value(<<"Reseller-Billing">>, JObj)
                         ]),
-            case maybe_deny_call(Props, CallId, Node) of
-                'true' -> authorize_account(JObj, Props, CallId, Node);
-                'false' -> 'false'
-            end
+            maybe_deny_call(Props, CallId, Node)
+                andalso authorize_account(JObj, Props, CallId, Node)
     end.
 
 -spec set_ccv_trunk_usage(kz_json:object(), ne_binary(), atom()) -> 'ok'.

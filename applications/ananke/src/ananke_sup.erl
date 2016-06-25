@@ -71,6 +71,5 @@ init([]) ->
 %% After that all kazoo_apps nodes will try to syncronize with it.
 -spec get_amqp_cron_nodes() -> atoms().
 get_amqp_cron_nodes() ->
-    lists:map(fun(X) -> kz_util:to_atom(kz_util:to_list(X), 'true') end
-              ,kapps_config:get(?CONFIG_CAT, <<"nodes">>, [node()])
-              ) -- [node()].
+    [kz_util:to_atom(kz_util:to_list(X), 'true')
+     || X <- kapps_config:get(?CONFIG_CAT, <<"nodes">>, [node()])] -- [node()].

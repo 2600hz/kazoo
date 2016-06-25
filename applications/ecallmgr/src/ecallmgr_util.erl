@@ -574,7 +574,7 @@ build_bridge_channels(Endpoints) ->
 
 -spec maybe_apply_call_waiting(kz_json:objects()) -> kz_json:objects().
 maybe_apply_call_waiting(Endpoints) ->
-    lists:map(fun call_waiting_map/1, Endpoints).
+    [call_waiting_map(E) || E <- Endpoints].
 
 -spec call_waiting_map(kz_json:object()) -> kz_json:object().
 call_waiting_map(Endpoint) ->

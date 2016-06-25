@@ -768,8 +768,7 @@ safe_integer_get(Key, Props) ->
 
 -spec safe_integer_get(any(), kz_proplist(), any()) -> any().
 safe_integer_get(Key, Props, Default) ->
-    try props:get_integer_value(Key, Props, Default) of
-        Value -> Value
+    try props:get_integer_value(Key, Props, Default)
     catch
         'error':'badarg' -> Default
     end.

@@ -1062,8 +1062,7 @@ is_post_hangup_command(AppName) ->
 -spec get_module(ne_binary(), ne_binary()) -> atom().
 get_module(Category, Name) ->
     ModuleName = <<"ecallmgr_", Category/binary, "_", Name/binary>>,
-    try kz_util:to_atom(ModuleName) of
-        Module -> Module
+    try kz_util:to_atom(ModuleName)
     catch
         'error':'badarg' ->
             kz_util:to_atom(ModuleName, 'true')
@@ -1094,8 +1093,7 @@ execute_control_request(Cmd, #state{node=Node
     CmdLeg = kz_json:get_value(<<"Call-ID">>, Cmd),
     CallLeg = which_call_leg(CmdLeg, OtherLegs, CallId),
 
-    try Mod:exec_cmd(Node, CallLeg, Cmd, self()) of
-        Result -> Result
+    try Mod:exec_cmd(Node, CallLeg, Cmd, self())
     catch
         _:{'error', 'nosession'} ->
             lager:debug("unable to execute command, no session"),

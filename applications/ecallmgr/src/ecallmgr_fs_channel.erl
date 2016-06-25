@@ -151,8 +151,7 @@ exists(UUID) -> ets:member(?CHANNELS_TBL, UUID).
 
 -spec import_moh(ne_binary()) -> boolean().
 import_moh(UUID) ->
-    try ets:lookup_element(?CHANNELS_TBL, UUID, #channel.import_moh) of
-        Import -> Import
+    try ets:lookup_element(?CHANNELS_TBL, UUID, #channel.import_moh)
     catch
         'error':'badarg' -> 'false'
     end.

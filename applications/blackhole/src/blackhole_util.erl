@@ -130,8 +130,7 @@ get_callback_module(Binding) ->
     case binary:split(Binding, <<".">>) of
         [M|_] ->
             Mod = special_bindings(M),
-            try kz_util:to_atom(<<"bh_", Mod/binary>>, 'true') of
-                Module -> Module
+            try kz_util:to_atom(<<"bh_", Mod/binary>>, 'true')
             catch
                 'error':'badarg' -> 'undefined'
             end;

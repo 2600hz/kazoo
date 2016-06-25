@@ -571,11 +571,7 @@ response(#cb_context{resp_error_code=Code
                      ,resp_data=DataJObj
                      ,validation_errors=ValidationJObj
                     }) ->
-    ErrorCode = try kz_util:to_integer(Code) of
-                    C -> C
-                catch
-                    _:_ -> 500
-                end,
+    ErrorCode = try kz_util:to_integer(Code) catch _:_ -> 500 end,
     ErrorMsg = case kz_util:is_empty(Msg) of
                    'false' -> kz_util:to_binary(Msg);
                    'true' -> <<"generic_error">>

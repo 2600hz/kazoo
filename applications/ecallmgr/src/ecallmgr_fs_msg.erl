@@ -201,7 +201,7 @@ send_message(JObj, Props, [Endpoint]) ->
             send_error(Node, JObj, E);
         {'ok', EndpointProps} ->
             lager:debug("sending sms message ~s to freeswitch", [kz_json:get_value(<<"Call-ID">>, JObj)]),
-            EvtProps = lists:append(build_message_headers(JObj, Endpoint), EndpointProps),
+            EvtProps = build_message_headers(JObj, Endpoint) ++ EndpointProps,
             freeswitch:sendevent_custom(Node, 'SMS::SEND_MESSAGE', EvtProps)
     end.
 
@@ -384,7 +384,7 @@ get_event_uris(Props, EventProps) ->
     Uris = [{<<"From">>, <<"from_full">>}
             ,{<<"To">>, <<"to">>}],
     lists:foldl(fun(T, Acc) ->
-                        lists:append(Acc, get_event_uris_props(T, Props))
+                        Acc ++ get_event_uris_props(T, Props)
                 end, EventProps, Uris).
 
 -spec get_event_uris_props(tuple() | ne_binary(), kz_proplist() | ne_binary()) -> kz_proplist().
@@ -403,4 +403,4 @@ is_ccv(_) -> 'false'.
 
 -spec get_ccvs(kz_proplist()) -> kz_proplist().
 get_ccvs(Props) ->
-    [ {K, V} || {?GET_CCV(K), V} <- lists:filter(fun is_ccv/1, Props)].
+    [{K, V} || {?GET_CCV(K), V} <- [P || P <- Props, is_ccv(P)]].

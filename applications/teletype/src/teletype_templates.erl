@@ -292,8 +292,7 @@ load_preview_templates(DataJObj) ->
 -spec maybe_decode_html(api_binary()) -> api_binary().
 maybe_decode_html('undefined') -> 'undefined';
 maybe_decode_html(HTML) ->
-    try base64:decode(HTML) of
-        Decoded -> Decoded
+    try base64:decode(HTML)
     catch
         _E:'badarg' -> HTML;
         _E:_R ->

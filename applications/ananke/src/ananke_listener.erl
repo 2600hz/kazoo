@@ -24,6 +24,7 @@
 -include("ananke.hrl").
 
 -record(state, {}).
+-type state() :: #state{}.
 
 -define(SERVER, ?MODULE).
 %% By convention, we put the options here in macros, but not required.
@@ -73,7 +74,7 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> {'ok', #state{}}.
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     kz_util:spawn(fun load_schedules/0),
     %% we should wait about 7-10 seconds before gen_leader syncronization
@@ -95,7 +96,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), any(), #state{}) -> {'noreply', #state{}}.
+-spec handle_call(any(), any(), state()) -> {'noreply', state()}.
 handle_call(_Request, _From, State) ->
     {'noreply', State}.
 
@@ -109,15 +110,15 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), #state{}) -> {'noreply', #state{}}.
+-spec handle_cast(any(), state()) -> {'noreply', state()}.
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast('load_schedules', State) ->
     Schedules = kapps_config:get(?CONFIG_CAT, <<"schedules">>, []),
-    NormalizedSchedules = lists:map(fun normalize_schedule/1, Schedules),
-    _ = lists:foreach(fun schedule/1, NormalizedSchedules),
+    NormalizedSchedules = [normalize_schedule(S) || S <- Schedules],
+    lists:foreach(fun schedule/1, NormalizedSchedules),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
@@ -132,7 +133,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), #state{}) -> {'noreply', #state{}}.
+-spec handle_info(any(), state()) -> {'noreply', state()}.
 handle_info(_Info, State) ->
     {'noreply', State}.
 
@@ -144,7 +145,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), #state{}) -> {'reply', []}.
+-spec handle_event(kz_json:object(), state()) -> {'reply', []}.
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
@@ -159,7 +160,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate(any(), #state{}) -> 'ok'.
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("listener terminating: ~p", [_Reason]).
 
@@ -171,7 +172,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
--spec code_change(any(), #state{}, any()) -> {'ok', #state{}}.
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
@@ -272,13 +273,12 @@ action_suffixes(_Type, _JObj) ->
 -spec time_suffix(time()) -> ne_binary().
 time_suffix({'cron', {Minutes, Hours, MonthDays, Monthes, Weekdays}}) ->
     kz_util:join_binary(
-      lists:map(fun time_tokens_to_binary/1
-                ,[Minutes, Hours, MonthDays, Monthes, Weekdays])
+      [time_tokens_to_binary(T)
+       || T <- [Minutes, Hours, MonthDays, Monthes, Weekdays]]
       , "-");
 time_suffix({'oneshot', {{Year, Month, Day}, {Hour, Minute, Second}}}) ->
     kz_util:join_binary(
-      lists:map(fun kz_util:to_binary/1
-                ,[Year, Month, Day, Hour, Minute, Second])
+      [kz_util:to_binary(B) || B <- [Year, Month, Day, Hour, Minute, Second]]
       , "-");
 time_suffix({'sleeper', MilliSeconds}) ->
     kz_util:to_binary(MilliSeconds).

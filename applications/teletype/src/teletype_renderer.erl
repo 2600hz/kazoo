@@ -56,8 +56,6 @@ render(TemplateId, Template, TemplateData) ->
                         ,{'render', TemplateId, Template, TemplateData}
                         ,?MILLISECONDS_IN_HOUR
                        )
-    of
-        Resp -> Resp
     catch
         _E:_R ->
             lager:debug("rendering failed: ~s: ~p", [_E, _R]),

@@ -526,10 +526,8 @@ emergency_cid_number(Requested, [Candidate|Candidates], EmergencyEnabled) ->
 -spec contains_emergency_endpoints(kz_json:objects()) -> boolean().
 contains_emergency_endpoints([]) -> 'false';
 contains_emergency_endpoints([Endpoint|Endpoints]) ->
-    case kz_json:is_true([<<"Custom-Channel-Vars">>, <<"Emergency-Resource">>], Endpoint) of
-        'true' -> 'true';
-        'false' -> contains_emergency_endpoints(Endpoints)
-    end.
+    kz_json:is_true([<<"Custom-Channel-Vars">>, <<"Emergency-Resource">>], Endpoint)
+        orelse contains_emergency_endpoints(Endpoints).
 
 -spec sms_timeout(kapi_offnet_resource:req()) -> kz_proplist().
 sms_timeout(OffnetReq) ->

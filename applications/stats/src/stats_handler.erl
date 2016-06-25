@@ -90,7 +90,7 @@ collect_items([{Domain, Items} | Rest], Db) ->
           end,
     NewData = [{Key, Fun(Key,Value)} || {Key, Value} <- Items]
         ++ [{Key, Value} || {Key, Value} <- DomainData,
-                            lists:keymember(Key, 1, Items) == 'false'
+                            not lists:keymember(Key, 1, Items)
            ],
     collect_items(Rest, lists:keystore(Domain, 1, Db, {Domain, NewData})).
 
