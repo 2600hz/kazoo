@@ -13,8 +13,8 @@
 %%%-------------------------------------------------------------------
 -module(cf_temporal_route).
 
--include("callflow.hrl").
--include("cf_temporal_route.hrl").
+-include_lib("callflow/src/callflow.hrl").
+-include_lib("callflow/src/module/cf_temporal_route.hrl").
 
 -export([handle/2
          ,normalize_date/1

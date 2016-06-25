@@ -22,7 +22,8 @@
 
 -export([freeswitch_periodic_build/0]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(FS_OFFLINE_SERVER, 'crossbar_freeswitch').
 

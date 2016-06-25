@@ -13,7 +13,7 @@
 -export([start_link/0]).
 -export([init/1]).
 
--include("stepswitch.hrl").
+-include_lib("stepswitch/src/stepswitch.hrl").
 
 -define(SERVER, ?MODULE).
 

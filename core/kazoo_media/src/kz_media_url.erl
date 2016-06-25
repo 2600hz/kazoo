@@ -11,7 +11,7 @@
 -export([playback/1, playback/2]).
 -export([store/2, store/3, store/4]).
 
--include("kazoo_media.hrl").
+-include_lib("kazoo_media/src/kazoo_media.hrl").
 
 -define(STREAM_TYPE_STORE, kz_json:from_list([{<<"Stream-Type">>, <<"store">>}])).
 

@@ -18,7 +18,7 @@
          ,doc_type_from_view/2
         ]).
 
--include("kz_data.hrl").
+-include_lib("kazoo_data/src/kz_data.hrl").
 
 %%% View-related functions -----------------------------------------------------
 -spec design_compact(map(), ne_binary(), ne_binary()) -> boolean().

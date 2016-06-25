@@ -30,7 +30,7 @@
          ,format_status/2
         ]).
 
--include("konami.hrl").
+-include_lib("konami/src/konami.hrl").
 
 -type listen_on() :: 'a' | 'b' | 'ab'.
 

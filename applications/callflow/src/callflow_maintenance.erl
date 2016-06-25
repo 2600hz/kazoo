@@ -30,7 +30,7 @@
         ]).
 -export([update_feature_codes/0, update_feature_codes/1]).
 
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

@@ -9,7 +9,7 @@
 
 -export([reconcile/1, reconcile/2]).
 
--include("kazoo_services.hrl").
+-include_lib("kazoo_services/src/kazoo_services.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

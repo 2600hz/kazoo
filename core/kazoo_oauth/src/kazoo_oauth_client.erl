@@ -4,7 +4,7 @@
 
 -module(kazoo_oauth_client).
 
--include("kazoo_oauth.hrl").
+-include_lib("kazoo_oauth/src/kazoo_oauth.hrl").
 
 %% ====================================================================
 %% API functions

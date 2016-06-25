@@ -12,7 +12,7 @@
          ,handle_route_win/2
         ]).
 
--include("skel.hrl").
+-include_lib("skel/src/skel.hrl").
 
 -spec handle_route_req(kz_json:object(), kz_proplist()) -> any().
 handle_route_req(JObj, Props) ->

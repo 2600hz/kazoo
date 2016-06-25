@@ -9,7 +9,7 @@
 
 -export([build/1]).
 
--include("sysconf.hrl").
+-include_lib("sysconf/src/sysconf.hrl").
 
 -spec build(ne_binary()) -> kz_json:object().
 build(_Node) ->

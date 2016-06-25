@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(kazoo_modb).
 
--include("kazoo_modb.hrl").
+-include_lib("kazoo_modb/src/kazoo_modb.hrl").
 
 -export([get_results/3]).
 -export([open_doc/2, open_doc/3, open_doc/4]).

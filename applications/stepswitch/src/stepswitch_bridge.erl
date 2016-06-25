@@ -26,7 +26,7 @@
          ,code_change/3
         ]).
 
--include("stepswitch.hrl").
+-include_lib("stepswitch/src/stepswitch.hrl").
 -include_lib("kazoo/include/kapi_offnet_resource.hrl").
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 

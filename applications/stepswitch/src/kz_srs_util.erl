@@ -11,7 +11,7 @@
 -export([get_source/1, get_value/5, get_value/6]).
 -export([check_value/2]).
 
--include("stepswitch_resource_selectors.hrl").
+-include_lib("stepswitch/src/stepswitch_resource_selectors.hrl").
 
 select_filter_action(Params) ->
     do_select_filter_action(kz_json:get_ne_binary_value(<<"action">>, Params)).

@@ -20,7 +20,8 @@
          ,jid_resource/1
         ]).
 
--include("fax.hrl").
+-include_lib("fax/src/fax.hrl").
+
 
 -define(XMPP_EXCHANGE, <<"xmpp">>).
 

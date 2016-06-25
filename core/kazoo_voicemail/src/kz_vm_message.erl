@@ -30,7 +30,7 @@
          ,cleanup_heard_voicemail/1
         ]).
 
--include("kz_voicemail.hrl").
+-include_lib("kazoo_voicemail/src/kz_voicemail.hrl").
 -include_lib("kazoo/src/kz_json.hrl").
 
 -define(APP_NAME, <<"callflow">>).

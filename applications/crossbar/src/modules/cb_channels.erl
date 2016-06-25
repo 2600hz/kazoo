@@ -17,7 +17,8 @@
         ,post/2
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -type endpoints_return() :: {kz_json:objects(), cb_context:context()}.
 

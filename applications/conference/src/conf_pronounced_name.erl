@@ -11,7 +11,7 @@
 %% API
 -export([lookup_name/1, record/1]).
 
--include("conference.hrl").
+-include_lib("conference/src/conference.hrl").
 
 -type name_pronounced_media() :: {'media_doc_id', ne_binary(), ne_binary()}.
 -type name_pronounced_ids()   :: {'temp_doc_id', ne_binary(), ne_binary()} |

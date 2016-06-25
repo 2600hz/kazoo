@@ -10,7 +10,7 @@
 
 -behaviour(supervisor).
 
--include("conference.hrl").
+-include_lib("conference/src/conference.hrl").
 
 -define(SERVER, ?MODULE).
 

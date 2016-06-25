@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_group).
 
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 -include_lib("kazoo/src/api/kapi_dialplan.hrl").
 
 -export([handle/2]).

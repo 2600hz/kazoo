@@ -20,7 +20,8 @@
          ,cleanup/1
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".services">>).
 

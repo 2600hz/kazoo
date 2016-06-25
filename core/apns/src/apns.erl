@@ -3,8 +3,8 @@
 -author('Brujo Benavides <elbrujohalcon@inaka.net>').
 -vsn('1.0.2').
 
--include("apns.hrl").
--include("localized.hrl").
+-include_lib("apns/include/apns.hrl").
+-include_lib("apns/include/localized.hrl").
 
 -define(EPOCH, 62167219200).
 -define(MAX_PAYLOAD, 256).

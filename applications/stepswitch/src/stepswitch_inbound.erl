@@ -8,7 +8,7 @@
 
 -export([handle_req/2]).
 
--include("stepswitch.hrl").
+-include_lib("stepswitch/src/stepswitch.hrl").
 
 -define(SHOULD_BLOCK_ANONYMOUS(AccountId)
         ,kapps_account_config:get_global(AccountId, ?SS_CONFIG_CAT, <<"block_anonymous_caller_id">>, 'false')

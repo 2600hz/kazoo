@@ -13,7 +13,7 @@
          ,is_feature_code/1
         ]).
 
--include("kz_documents.hrl").
+-include_lib("kazoo_documents/src/kz_documents.hrl").
 
 -type doc() :: kz_json:object().
 -export_type([doc/0]).

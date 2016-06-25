@@ -8,7 +8,7 @@
 -module(kazoo_media_sup).
 -behaviour(supervisor).
 
--include("kazoo_media.hrl").
+-include_lib("kazoo_media/src/kazoo_media.hrl").
 
 -define(SERVER, ?MODULE).
 

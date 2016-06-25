@@ -29,7 +29,8 @@
          ,declare_exchanges/0
         ]).
 
--include("omnipresence.hrl").
+-include_lib("omnipresence/src/omnipresence.hrl").
+
 
 -define(ROUTING_KEY(A, B), <<A/binary, ".", (props:get_value('realm', B, <<"*">>))/binary, ".", (props:get_value('presence_id', B, <<"*">>))/binary >>).
 -define(SUBSCRIBE_RK(A), ?ROUTING_KEY(<<"subscribe">>, A)).

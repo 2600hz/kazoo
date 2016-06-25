@@ -58,7 +58,7 @@
          ,code_change/3
         ]).
 
--include("kazoo_bindings.hrl").
+-include_lib("kazoo_bindings/src/kazoo_bindings.hrl").
 
 -define(SERVER, ?MODULE).
 

@@ -7,7 +7,7 @@
 -module(cb_token_restrictions_test).
 
 -include_lib("eunit/include/eunit.hrl").
--include("cb_token_restrictions_test.hrl").
+-include_lib("crossbar/test/cb_token_restrictions_test.hrl").
 
 -define(DENY_REQ, 'true').
 -define(ALLOW_REQ, 'false').

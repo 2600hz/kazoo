@@ -21,7 +21,7 @@
          ,code_change/3
         ]).
 
--include("sysconf.hrl").
+-include_lib("sysconf/src/sysconf.hrl").
 
 -define(SERVER, ?MODULE).
 

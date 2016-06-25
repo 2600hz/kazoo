@@ -17,7 +17,8 @@
 -export([build_keys/1]).
 -endif.
 
--include("hotornot.hrl").
+-include_lib("hotornot/src/hotornot.hrl").
+
 
 -define(MIN_PREFIX_LEN, 1). % how many chars to strip off the e164 DID
 -define(BOTH_DIRECTIONS, [<<"inbound">>, <<"outbound">>]).

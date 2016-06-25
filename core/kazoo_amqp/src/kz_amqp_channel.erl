@@ -32,7 +32,7 @@
          ,command/2
         ]).
 
--include("amqp_util.hrl").
+-include_lib("kazoo_amqp/src/amqp_util.hrl").
 
 -define(ASSIGNMENT_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 

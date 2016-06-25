@@ -20,7 +20,7 @@
          ,code_change/3
         ]).
 
--include("camper.hrl").
+-include_lib("camper/src/camper.hrl").
 -include_lib("amqp_client/include/amqp_client.hrl").
 
 -define(SERVER, ?MODULE).

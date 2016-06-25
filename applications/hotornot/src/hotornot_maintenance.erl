@@ -13,7 +13,8 @@
          ,rates_between/2
         ]).
 
--include("hotornot.hrl").
+-include_lib("hotornot/src/hotornot.hrl").
+
 
 -define(LOCAL_SUMMARY_ROW_FORMAT, " ~45.s | ~9.s | ~9.s | ~9.s | ~9.s | ~9.s | ~15.s |~n").
 -define(LOCAL_SUMMARY_HEADER, io:format(?LOCAL_SUMMARY_ROW_FORMAT, [<<"RATE NAME">>, <<"COST">>, <<"INCREMENT">>, <<"MINIMUM">>

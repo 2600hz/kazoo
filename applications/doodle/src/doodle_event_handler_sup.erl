@@ -10,7 +10,8 @@
 
 -behaviour(supervisor).
 
--include("doodle.hrl").
+-include_lib("doodle/src/doodle.hrl").
+
 
 -define(SERVER, ?MODULE).
 

@@ -22,7 +22,7 @@
 -export([maybe_get_assigned_number/3]).
 -export([maybe_get_account_default_number/4]).
 
--include("kazoo_endpoint.hrl").
+-include_lib("kazoo_endpoint/src/kazoo_endpoint.hrl").
 
 -define(CALLER_PRIVACY(CCVs)
        ,(kz_json:is_true(<<"Caller-Privacy-Number">>, CCVs, 'false')

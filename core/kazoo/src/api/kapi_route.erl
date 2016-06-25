@@ -28,7 +28,7 @@
         ]).
 
 -include_lib("kazoo/include/kz_api.hrl").
--include("kapi_dialplan.hrl").
+-include_lib("kazoo/src/api/kapi_dialplan.hrl").
 
 -define(KEY_CALL_ID, <<"Call-ID">>).
 -define(KEY_CONTROL_QUEUE, <<"Control-Queue">>).

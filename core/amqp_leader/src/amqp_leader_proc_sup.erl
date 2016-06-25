@@ -15,7 +15,7 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--include("amqp_leader.hrl").
+-include_lib("amqp_leader/src/amqp_leader.hrl").
 
 -define(SERVER, ?MODULE).
 

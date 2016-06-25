@@ -17,7 +17,7 @@
          ,init_acct_agents/1
         ]).
 
--include("acdc.hrl").
+-include_lib("acdc/src/acdc.hrl").
 
 -spec start_link() -> 'ignore'.
 start_link() ->

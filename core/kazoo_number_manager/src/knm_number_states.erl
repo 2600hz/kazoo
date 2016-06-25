@@ -14,7 +14,7 @@
          ,to_state/2, to_state/3
         ]).
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/src/knm.hrl").
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").

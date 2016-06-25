@@ -16,7 +16,7 @@
 
 -export([publish_transferred/2]).
 
--include("konami.hrl").
+-include_lib("konami/src/konami.hrl").
 
 -define(TRANSFERRED_HEADERS, [<<"Transferee">>, <<"Target">>, <<"Call">>]).
 -define(OPTIONAL_TRANSFERRED_HEADERS, [<<"Transferor">>]).

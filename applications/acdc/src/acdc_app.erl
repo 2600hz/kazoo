@@ -10,7 +10,7 @@
 
 -behaviour(application).
 
--include("acdc.hrl").
+-include_lib("acdc/src/acdc.hrl").
 
 %% Application callbacks
 -export([start/2, stop/1]).

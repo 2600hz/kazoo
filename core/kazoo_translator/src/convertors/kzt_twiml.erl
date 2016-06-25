@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(kzt_twiml).
 
--include("kzt.hrl").
+-include_lib("kazoo_translator/src/kzt.hrl").
 
 -export([exec/2
          ,parse_cmds/1

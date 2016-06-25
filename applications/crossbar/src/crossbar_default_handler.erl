@@ -16,7 +16,8 @@
          ,terminate/3
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(DEFAULT_PATHS, [<<"/:version/accounts/:account_id/vmboxes/:box_id/messages/:message_id/raw">>
                         ,<<"/:version/accounts/:account_id/faxes/:direction/:fax_id/attachment">>

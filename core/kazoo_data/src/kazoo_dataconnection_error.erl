@@ -9,7 +9,7 @@
 
 -behaviour(kz_data).
 
--include("kz_data.hrl").
+-include_lib("kazoo_data/src/kz_data.hrl").
 
 %% Driver callbacks
 -export([new_connection/1

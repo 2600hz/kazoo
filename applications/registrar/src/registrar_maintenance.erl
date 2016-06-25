@@ -11,7 +11,7 @@
 -export([device_by_ip/1]).
 -export([set_listeners/1]).
 
--include("reg.hrl").
+-include_lib("registrar/src/reg.hrl").
 
 -spec device_by_ip(text()) -> 'ok'.
 device_by_ip(IP) when not is_binary(IP) ->

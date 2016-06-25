@@ -27,7 +27,8 @@
          ,acceptable_content_types/0
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(SERVER, ?MODULE).
 -define(BIN_DATA, <<"raw">>).

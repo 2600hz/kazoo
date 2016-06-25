@@ -32,7 +32,7 @@
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
 
--include("kz_documents.hrl").
+-include_lib("kazoo_documents/src/kz_documents.hrl").
 
 -define(MACROS, <<"macros">>).
 -define(SUBJECT, <<"subject">>).

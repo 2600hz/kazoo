@@ -22,7 +22,7 @@
          ,process_number/2
         ]).
 
--include("stepswitch.hrl").
+-include_lib("stepswitch/src/stepswitch.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

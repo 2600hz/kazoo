@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_prepend_cid).
 
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 
 -export([handle/2]).
 

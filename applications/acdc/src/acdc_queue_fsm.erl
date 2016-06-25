@@ -43,7 +43,7 @@
          ,code_change/4
         ]).
 
--include("acdc.hrl").
+-include_lib("acdc/src/acdc.hrl").
 
 -define(SERVER, ?MODULE).
 

@@ -21,7 +21,7 @@
          ,maybe_start_call_recording/2, start_call_recording/2
         ]).
 
--include("kazoo_endpoint.hrl").
+-include_lib("kazoo_endpoint/src/kazoo_endpoint.hrl").
 -include_lib("kazoo/include/kapi_conf.hrl").
 -include_lib("kazoo/src/kz_json.hrl").
 

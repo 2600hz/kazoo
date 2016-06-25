@@ -19,7 +19,8 @@
          ,code_change/3
         ]).
 
--include("doodle.hrl").
+-include_lib("doodle/src/doodle.hrl").
+
 -include_lib("kazoo/include/kapi_conf.hrl").
 
 -define(SERVER, ?MODULE).

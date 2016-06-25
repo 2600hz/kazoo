@@ -10,7 +10,7 @@
          ,init/0
         ]).
 
--include("reg.hrl").
+-include_lib("registrar/src/reg.hrl").
 
 -spec start_link() -> startlink_ret().
 start_link() ->

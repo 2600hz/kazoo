@@ -1,6 +1,6 @@
 -ifndef(CB_TOKEN_RESTRICTIONS_TEST_HRL).
 
--include("crossbar_types.hrl").
+-include_lib("crossbar/src/crossbar_types.hrl").
 
 -define(AUTH_ACCOUNT_ID, <<"6eb37425cd30bf7e5b1785abdcbc2c1d">>).
 -define(ACCOUNT_ID, <<"c959c8f96db9891f99e6f655d1aeb503">>).

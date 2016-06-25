@@ -12,7 +12,7 @@
 -export([start_link/0]).
 -export([init/1]).
 
--include("kazoo_services.hrl").
+-include_lib("kazoo_services/src/kazoo_services.hrl").
 
 -define(SERVER, ?MODULE).
 

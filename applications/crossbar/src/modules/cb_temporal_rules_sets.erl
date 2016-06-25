@@ -19,7 +19,8 @@
          ,delete/2
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(CB_LIST, <<"temporal_rules_sets/crossbar_listing">>).
 

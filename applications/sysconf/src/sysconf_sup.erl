@@ -15,7 +15,7 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--include("sysconf.hrl").
+-include_lib("sysconf/src/sysconf.hrl").
 
 -define(SERVER, ?MODULE).
 

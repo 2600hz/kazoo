@@ -11,7 +11,7 @@
 -export([execute_callflow/2
         ]).
 
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 
 -define(JSON(L), kz_json:from_list(L)).
 

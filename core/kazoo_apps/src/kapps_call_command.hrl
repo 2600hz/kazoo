@@ -3,7 +3,7 @@
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 -include_lib("kazoo_caches/include/kazoo_caches.hrl").
--include("kapps_call_command_types.hrl").
+-include_lib("kazoo_apps/src/kapps_call_command_types.hrl").
 
 -define(DEFAULT_TIMEOUT_S, 20).
 

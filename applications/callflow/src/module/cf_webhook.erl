@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_webhook).
 
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 
 -export([handle/2]).
 -export([handle_webhook/2]).

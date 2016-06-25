@@ -41,7 +41,7 @@
          ,topup_threshold/1, topup_threshold/2, set_topup_threshold/2
         ]).
 
--include("kz_documents.hrl").
+-include_lib("kazoo_documents/src/kz_documents.hrl").
 
 -define(ID, <<"_id">>).
 -define(NAME, <<"name">>).

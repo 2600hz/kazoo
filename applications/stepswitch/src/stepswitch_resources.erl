@@ -68,7 +68,7 @@
          ,set_resrc_selector_marks/2
         ]).
 
--include("stepswitch.hrl").
+-include_lib("stepswitch/src/stepswitch.hrl").
 
 -define(CONFIG_CAT, <<"number_manager">>).
 

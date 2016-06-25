@@ -15,7 +15,8 @@
          ,post/1
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 -include_lib("kazoo/src/kz_json.hrl").
 
 -define(LIST_CONSUMED, <<"allotments/consumed">>).

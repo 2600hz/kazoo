@@ -12,7 +12,7 @@
          ,add_amqp_binding/2, rm_amqp_binding/2
         ]).
 
--include("blackhole.hrl").
+-include_lib("blackhole/src/blackhole.hrl").
 
 -spec handle_event(bh_context:context(), kz_json:object()) -> 'ok'.
 handle_event(Context, EventJObj) ->

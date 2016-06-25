@@ -45,7 +45,7 @@
 -export([service_save/1]).
 -export([is_per_minute/1]).
 
--include("include/kazoo_transactions.hrl").
+-include_lib("kazoo_transactions/include/kazoo_transactions.hrl").
 
 -define(KZ_SERVICES_DB, <<"services">>).
 

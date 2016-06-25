@@ -16,7 +16,7 @@
     websocket_terminate/3
 ]).
 
--include("blackhole.hrl").
+-include_lib("blackhole/src/blackhole.hrl").
 
 init({_Any, 'http'}, _Req0, _HandlerOpts) ->
     {'upgrade', 'protocol', 'cowboy_websocket'}.

@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(kazoo_config_init).
 
--include("kazoo_config.hrl").
+-include_lib("kazoo_config/src/kazoo_config.hrl").
 
 -export([start_link/0
          ,reload/0

@@ -19,7 +19,7 @@
          ,list_apps/0
         ]).
 
--include("kazoo_apps.hrl").
+-include_lib("kazoo_apps/src/kazoo_apps.hrl").
 
 -define(HIDDEN_APPS
         ,['amqp_client','apns','asn1'

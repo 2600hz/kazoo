@@ -19,7 +19,8 @@
 -export([start_proc/1]).
 -export([init/1]).
 
--include("ecallmgr.hrl").
+-include_lib("ecallmgr/src/ecallmgr.hrl").
+
 
 -define(SERVER, ?MODULE).
 

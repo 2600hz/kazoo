@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_intercom).
 
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 
 -export([handle/2]).
 

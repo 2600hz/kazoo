@@ -23,7 +23,7 @@
          ,code_change/3
         ]).
 
--include("stats.hrl").
+-include_lib("stats/src/stats.hrl").
 
 -define(SERVER, ?MODULE).
 

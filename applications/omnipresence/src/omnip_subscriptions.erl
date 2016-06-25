@@ -44,7 +44,8 @@
          ,code_change/3
         ]).
 
--include("omnipresence.hrl").
+-include_lib("omnipresence/src/omnipresence.hrl").
+
 -include_lib("kazoo_etsmgr/include/kazoo_etsmgr.hrl").
 
 -define(SERVER, ?MODULE).

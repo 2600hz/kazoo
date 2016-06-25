@@ -17,7 +17,7 @@
 
 -export([init/1]).
 
--include("ananke.hrl").
+-include_lib("ananke/src/ananke.hrl").
 
 -define(SERVER, ?MODULE).
 

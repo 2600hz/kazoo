@@ -28,8 +28,8 @@
          ,xml_els_to_proplist/1
         ]).
 
--include("knm.hrl").
--include("knm_vitelity.hrl").
+-include_lib("kazoo_number_manager/src/knm.hrl").
+-include_lib("kazoo_number_manager/src/knm_vitelity.hrl").
 
 -export_type([query_options/0]).
 

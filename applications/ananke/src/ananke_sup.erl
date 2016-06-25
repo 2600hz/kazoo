@@ -14,7 +14,7 @@
 -export([start_supervisor/1]).
 -export([init/1]).
 
--include("ananke.hrl").
+-include_lib("ananke/src/ananke.hrl").
 
 -define(SERVER, ?MODULE).
 %% Helper macro for declaring children of supervisor

@@ -9,7 +9,7 @@
 
 -export([endpoints/2]).
 
--include("stepswitch_resource_selectors.hrl").
+-include_lib("stepswitch/src/stepswitch_resource_selectors.hrl").
 
 -define(MOD_NAME, <<"resource_selectors">>).
 -define(SRS_CONFIG_CAT, <<?SS_CONFIG_CAT/binary, ".", ?MOD_NAME/binary>>).

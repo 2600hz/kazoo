@@ -16,7 +16,8 @@
         ,put/1
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(DEFAULT_LANGUAGE, <<"en-US">>).
 

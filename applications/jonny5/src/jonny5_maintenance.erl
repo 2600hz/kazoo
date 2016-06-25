@@ -18,7 +18,8 @@
         ]).
 -export([limits_details/1]).
 
--include("jonny5.hrl").
+-include_lib("jonny5/src/jonny5.hrl").
+
 
 -spec flush() -> 'ok'.
 flush() -> kz_cache:flush_local(?CACHE_NAME).

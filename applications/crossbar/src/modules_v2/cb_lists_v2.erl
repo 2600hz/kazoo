@@ -21,7 +21,8 @@
          ,save/1, save/2, save/3, save/4, save/5
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(CB_LIST, <<"lists/crossbar_listing">>).
 -define(ENTRIES, <<"entries">>).

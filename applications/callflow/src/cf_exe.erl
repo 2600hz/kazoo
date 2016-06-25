@@ -45,7 +45,7 @@
          ,code_change/3
         ]).
 
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 -include_lib("kazoo/src/kz_json.hrl").
 
 -define(SERVER, ?MODULE).

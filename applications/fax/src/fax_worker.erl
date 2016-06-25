@@ -30,7 +30,8 @@
          ,code_change/3
         ]).
 
--include("fax.hrl").
+-include_lib("fax/src/fax.hrl").
+
 
 -define(SERVER(N), {'via', 'kz_globals', <<"fax_outbound_", N/binary>>}).
 

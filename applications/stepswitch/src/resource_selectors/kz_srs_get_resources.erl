@@ -9,7 +9,7 @@
 
 -export([handle_req/5]).
 
--include("stepswitch.hrl").
+-include_lib("stepswitch/src/stepswitch.hrl").
 
 -spec handle_req(stepswitch_resources:resources(), ne_binary(), kapi_offnet_resource:req(), ne_binary(), kz_proplist()) ->
     stepswitch_resources:resources().

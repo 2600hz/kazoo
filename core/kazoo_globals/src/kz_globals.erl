@@ -50,7 +50,7 @@
         ,handle_amqp_query/2
         ]).
 
--include("kazoo_globals.hrl").
+-include_lib("kazoo_globals/src/kazoo_globals.hrl").
 
 -define(SERVER, ?MODULE).
 

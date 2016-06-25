@@ -8,7 +8,7 @@
 -export([handle_event/2]).
 -export([maybe_handle_channel_event/3]).
 
--include("webhooks.hrl").
+-include_lib("webhooks/src/webhooks.hrl").
 
 -spec handle_event(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_event(JObj, _Props) ->

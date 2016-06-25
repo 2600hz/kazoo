@@ -14,7 +14,7 @@
 -export([cleanup_dial_me/1]).
 -endif.
 
--include("kzt.hrl").
+-include_lib("kazoo_translator/src/kzt.hrl").
 
 -spec exec(kapps_call:call(), xml_els() | xml_texts(), xml_attribs()) ->
                   {'ok' | 'stop', kapps_call:call()}.

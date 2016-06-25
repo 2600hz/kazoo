@@ -24,7 +24,8 @@
 
 -define(SERVER, ?MODULE).
 
--include("ecallmgr.hrl").
+-include_lib("ecallmgr/src/ecallmgr.hrl").
+
 
 -record(state, {node :: atom()
                 ,options = [] :: kz_proplist()

@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(kazoo_media_init).
 
--include("kazoo_media.hrl").
+-include_lib("kazoo_media/src/kazoo_media.hrl").
 
 -export([start_link/0]).
 

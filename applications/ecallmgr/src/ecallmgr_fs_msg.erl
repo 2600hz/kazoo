@@ -45,7 +45,8 @@
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 -include_lib("kazoo_sip/include/kzsip_uri.hrl").
--include("ecallmgr.hrl").
+-include_lib("ecallmgr/src/ecallmgr.hrl").
+
 
 -define(SERVER, ?MODULE).
 

@@ -1,7 +1,7 @@
 -module(pm_google).
 -behaviour(gen_server).
 
--include("pusher.hrl").
+-include_lib("pusher/src/pusher.hrl").
 
 -define(SERVER, ?MODULE).
 

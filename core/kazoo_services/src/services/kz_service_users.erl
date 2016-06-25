@@ -10,7 +10,7 @@
 -export([reconcile/1]).
 -export([reconcile/2]).
 
--include("kazoo_services.hrl").
+-include_lib("kazoo_services/src/kazoo_services.hrl").
 
 -define(SERVICE_CATEGORY, <<"users">>).
 

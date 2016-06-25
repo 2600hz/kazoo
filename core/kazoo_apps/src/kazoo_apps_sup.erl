@@ -15,8 +15,8 @@
          ,start_child/1
         ]).
 
--include("kapps_call_command.hrl").
--include("kazoo_apps.hrl").
+-include_lib("kazoo_apps/src/kapps_call_command.hrl").
+-include_lib("kazoo_apps/src/kazoo_apps.hrl").
 
 -define(SERVER, ?MODULE).
 

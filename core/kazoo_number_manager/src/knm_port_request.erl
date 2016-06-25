@@ -25,7 +25,7 @@
 
 -compile({'no_auto_import', [get/1]}).
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/src/knm.hrl").
 -include_lib("kazoo_number_manager/include/knm_port_request.hrl").
 
 -define(VIEW_LISTING_SUBMITTED, <<"port_requests/listing_submitted">>).

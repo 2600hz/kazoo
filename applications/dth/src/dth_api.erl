@@ -13,7 +13,7 @@
 
 -export([blacklist_req_v/1, blacklist_resp_v/1]).
 
--include("dth.hrl").
+-include_lib("dth/src/dth.hrl").
 
 %%--------------------------------------------------------------------
 %% @doc Blacklist Request - see wiki

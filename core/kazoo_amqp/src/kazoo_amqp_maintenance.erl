@@ -25,7 +25,7 @@
          ,consumer_details/3
         ]).
 
--include("amqp_util.hrl").
+-include_lib("kazoo_amqp/src/amqp_util.hrl").
 
 -define(ASSIGNMENTS, 'kz_amqp_assignments').
 -define(CONNECTIONS, 'kz_amqp_connections').

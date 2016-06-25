@@ -57,7 +57,8 @@
 -export([rate/1, rate_name/1, rate_description/1, rate_increment/1, rate_minimum/1, rate_nocharge_time/1]).
 -export([caller_id_number/1, callee_id_number/1]).
 
--include("jonny5.hrl").
+-include_lib("jonny5/src/jonny5.hrl").
+
 
 -record(request, {account_id :: api_binary()
                   ,account_billing :: api_binary()

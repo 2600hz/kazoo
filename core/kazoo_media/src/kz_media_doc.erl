@@ -10,7 +10,7 @@
 
 -export([single_attachment_url/3]).
 
--include("kazoo_media.hrl").
+-include_lib("kazoo_media/src/kazoo_media.hrl").
 
 -spec single_attachment_url/3 :: (ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
 single_attachment_url(AccountDb, MediaId, AttachmentName) ->

@@ -13,7 +13,7 @@
 -export([start_link/0]).
 -export([init/1]).
 
--include("stats.hrl").
+-include_lib("stats/src/stats.hrl").
 
 -define(SERVER, ?MODULE).
 

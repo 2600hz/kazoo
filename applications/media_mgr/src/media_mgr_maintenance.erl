@@ -10,7 +10,7 @@
 
 -export([prompt_url/1, prompt_url/2, prompt_url/3]).
 
--include("media.hrl").
+-include_lib("media_mgr/src/media.hrl").
 
 prompt_url(PromptId) ->
     AccountId = ?KZ_MEDIA_DB,

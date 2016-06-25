@@ -39,7 +39,7 @@
          ,fetch_attachment_from_url/1
         ]).
 
--include("teletype.hrl").
+-include_lib("teletype/src/teletype.hrl").
 
 -define(TEMPLATE_RENDERING_ORDER, [{?TEXT_PLAIN, 3}
                                    ,{?TEXT_HTML, 2}

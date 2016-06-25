@@ -39,7 +39,7 @@
         ,failed/1
         ]).
 
--include("blackhole.hrl").
+-include_lib("blackhole/src/blackhole.hrl").
 
 -type payload() :: bh_context:context() | ne_binary().
 

@@ -19,7 +19,8 @@
          ,publish_acls_resp/2
         ]).
 
--include("frontier.hrl").
+-include_lib("frontier/src/frontier.hrl").
+
 -include_lib("kazoo/include/kz_amqp.hrl").
 
 -define(FRONTIER_EXCHANGE, <<"frontier">>).

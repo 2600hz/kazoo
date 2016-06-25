@@ -14,7 +14,7 @@
          ,handle/2
         ]).
 
--include("kazoo_media.hrl").
+-include_lib("kazoo_media/src/kazoo_media.hrl").
 
 init({_Transport, _Proto}, Req0, _Opts) ->
     kz_util:put_callid(kz_util:rand_hex_binary(16)),

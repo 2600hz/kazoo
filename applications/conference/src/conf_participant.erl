@@ -43,7 +43,7 @@
          ,code_change/3
         ]).
 
--include("conference.hrl").
+-include_lib("conference/src/conference.hrl").
 
 -define(SERVER, ?MODULE).
 

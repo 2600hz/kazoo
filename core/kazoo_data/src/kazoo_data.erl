@@ -1,6 +1,6 @@
 -module(kazoo_data).
 
--include("kz_data.hrl").
+-include_lib("kazoo_data/src/kz_data.hrl").
 
 -export_type([db_create_options/0
               ,data_error/0

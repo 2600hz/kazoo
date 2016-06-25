@@ -8,7 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(frontier_maintenance).
 
--include("frontier.hrl").
+-include_lib("frontier/src/frontier.hrl").
+
 
 %% API
 -export([lookup_acls/1

@@ -11,7 +11,7 @@
 %%%-------------------------------------------------------------------
 -module(cdr_channel_destroy).
 
--include("cdr.hrl").
+-include_lib("cdr/src/cdr.hrl").
 
 -define(IGNORED_APP, kapps_config:get(?CONFIG_CAT, <<"ignore_apps">>, [<<"milliwatt">>])).
 

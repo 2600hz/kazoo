@@ -21,7 +21,8 @@
          ,handle_debug/3
         ]).
 
--include("doodle.hrl").
+-include_lib("doodle/src/doodle.hrl").
+
 
 -define(SERVER, ?MODULE).
 

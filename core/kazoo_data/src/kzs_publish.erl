@@ -17,7 +17,7 @@
          ,publish/3
         ]).
 
--include("kz_data.hrl").
+-include_lib("kazoo_data/src/kz_data.hrl").
 -include_lib("kazoo/include/kapi_conf.hrl").
 
 -spec maybe_publish_docs(ne_binary(), kz_json:objects(), kz_json:objects()) -> 'ok'.

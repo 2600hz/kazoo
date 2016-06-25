@@ -55,7 +55,7 @@
          ,iteration/1, increment_iteration/1
         ]).
 
--include("kzt.hrl").
+-include_lib("kazoo_translator/src/kzt.hrl").
 
 -define(DEFAULT_HTTP_METHOD, 'post').
 

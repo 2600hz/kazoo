@@ -92,7 +92,7 @@
 -include_lib("kazoo/include/kz_api.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 
--include("kapi_dialplan.hrl").
+-include_lib("kazoo/src/api/kapi_dialplan.hrl").
 
 -spec optional_bridge_req_headers() -> ne_binaries().
 optional_bridge_req_headers() ->

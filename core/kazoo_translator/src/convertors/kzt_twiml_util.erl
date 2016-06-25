@@ -26,7 +26,7 @@
          ,reject_status/1
         ]).
 
--include("kzt.hrl").
+-include_lib("kazoo_translator/src/kzt.hrl").
 
 -spec get_terminators(kz_proplist()) -> ne_binaries().
 get_terminators(Props) ->

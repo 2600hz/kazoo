@@ -35,7 +35,7 @@
          ,cleanup_bindings/1
         ]).
 
--include("konami.hrl").
+-include_lib("konami/src/konami.hrl").
 -include_lib("kazoo_apps/include/kz_hooks.hrl").
 
 -define(SERVER, ?MODULE).

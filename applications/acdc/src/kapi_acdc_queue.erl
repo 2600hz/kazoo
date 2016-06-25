@@ -55,7 +55,7 @@
 
 -export([queue_size/2, shared_queue_name/2]).
 
--include("acdc.hrl").
+-include_lib("acdc/src/acdc.hrl").
 
 %%------------------------------------------------------------------------------
 %% Member Call

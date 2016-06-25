@@ -10,7 +10,7 @@
 %%%-------------------------------------------------------------------
 -module(csv_util).
 
--include("cdr.hrl").
+-include_lib("cdr/src/cdr.hrl").
 
 %% API
 -export([json_objs_to_csv/1,

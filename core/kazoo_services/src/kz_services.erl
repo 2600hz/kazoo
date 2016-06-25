@@ -57,7 +57,7 @@
 
 -export([dry_run/1]).
 
--include("kazoo_services.hrl").
+-include_lib("kazoo_services/src/kazoo_services.hrl").
 
 -define(STATUS_GOOD, kzd_services:status_good()).
 -define(QUANTITIES_ACCOUNT, <<"account_quantities">>).

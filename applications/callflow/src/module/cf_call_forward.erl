@@ -10,7 +10,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_call_forward).
 
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 
 -export([handle/2]).
 

@@ -10,7 +10,7 @@
 
 -export([get_uri/2]).
 
--include("kazoo_media.hrl").
+-include_lib("kazoo_media/src/kazoo_media.hrl").
 
 get_uri(<<"tts://", Text/binary>>, JObj) ->
     {'ok', _TTSServer} = kz_media_cache_sup:find_tts_server(Text, JObj),

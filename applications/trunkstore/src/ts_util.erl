@@ -41,7 +41,7 @@
          ,maybe_restrict_call/2
         ]).
 
--include("ts.hrl").
+-include_lib("trunkstore/src/ts.hrl").
 -include_lib("kernel/include/inet.hrl"). %% for hostent record, used in find_ip/1
 
 -define(VALIDATE_CALLER_ID, kapps_config:get_is_true(?CONFIG_CAT, <<"ensure_valid_caller_id">>, 'false')).

@@ -7,7 +7,8 @@
 %%%-------------------------------------------------------------------
 -module(fax_init).
 
--include("fax.hrl").
+-include_lib("fax/src/fax.hrl").
+
 
 -export([start_link/0]).
 

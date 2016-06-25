@@ -24,7 +24,7 @@
          ,code_change/3
         ]).
 
--include("pusher.hrl").
+-include_lib("pusher/src/pusher.hrl").
 -include_lib("kazoo_sip/include/kzsip_uri.hrl").
 
 -define(SERVER, ?MODULE).

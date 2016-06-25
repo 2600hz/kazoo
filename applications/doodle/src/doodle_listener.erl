@@ -19,7 +19,8 @@
          ,code_change/3
         ]).
 
--include("doodle.hrl").
+-include_lib("doodle/src/doodle.hrl").
+
 
 -define(SERVER, ?MODULE).
 

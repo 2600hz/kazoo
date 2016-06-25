@@ -24,7 +24,7 @@
 -define(PORT_LOA, [?PORT, <<"loa">>]).
 -define(PORT_RESPORG, [?PORT, <<"resporg">>]).
 
--include("kz_documents.hrl").
+-include_lib("kazoo_documents/src/kz_documents.hrl").
 
 -spec fetch(api_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 fetch('undefined') ->

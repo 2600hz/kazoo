@@ -1,7 +1,7 @@
 -module(pm_apple).
 -behaviour(gen_server).
 
--include("pusher.hrl").
+-include_lib("pusher/src/pusher.hrl").
 -include_lib("apns/include/apns.hrl").
 -include_lib("apns/include/localized.hrl").
 

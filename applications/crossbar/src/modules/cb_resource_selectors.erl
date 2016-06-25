@@ -22,7 +22,8 @@
 
 -export([normalize_view_results/2]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(SRS_LIST, <<"selectors/resource_listing">>).
 -define(SRS_SEARCH, <<"selectors/crossbar_search">>).

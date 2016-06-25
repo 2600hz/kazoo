@@ -19,7 +19,8 @@
          ,code_change/3
         ]).
 
--include("pivot.hrl").
+-include_lib("pivot/src/pivot.hrl").
+
 
 -define(SERVER, ?MODULE).
 

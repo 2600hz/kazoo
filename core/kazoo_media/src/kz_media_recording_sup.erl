@@ -10,7 +10,7 @@
 
 -behaviour(supervisor).
 
--include("kz_media.hrl").
+-include_lib("kazoo_media/include/kz_media.hrl").
 
 -define(SERVER, ?MODULE).
 

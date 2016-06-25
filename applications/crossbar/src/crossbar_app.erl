@@ -15,7 +15,8 @@
 %% Application callbacks
 -export([start/2, stop/1]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 %%--------------------------------------------------------------------
 %% @public

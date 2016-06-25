@@ -10,7 +10,7 @@
 
 -export([get_uri/2]).
 
--include("kazoo_media.hrl").
+-include_lib("kazoo_media/src/kazoo_media.hrl").
 
 
 -type build_uri() :: ne_binaries() | ne_binary() |  media_store_path().

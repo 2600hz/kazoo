@@ -75,7 +75,7 @@
         ]).
 
 -include_lib("kazoo/include/kz_api.hrl").
--include("kapi_dialplan.hrl").
+-include_lib("kazoo/src/api/kapi_dialplan.hrl").
 
 %% Conference Search Request
 -define(SEARCH_REQ_HEADERS, [<<"Conference-ID">>]).

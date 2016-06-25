@@ -13,7 +13,7 @@
          ,handle_config_change/2
         ]).
 
--include("cccp.hrl").
+-include_lib("cccp/src/cccp.hrl").
 
 -spec handle_route_req(kz_json:object(), kz_proplist()) -> any().
 handle_route_req(JObj, Props) ->

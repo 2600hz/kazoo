@@ -16,7 +16,8 @@
          ,validate/1, validate/2
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 -include_lib("kazoo/include/kapi_conf.hrl").
 
 -define(CB_LIST, <<"websockets/crossbar_listing">>).

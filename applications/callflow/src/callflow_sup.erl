@@ -18,7 +18,7 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 
 -define(SERVER, ?MODULE).
 

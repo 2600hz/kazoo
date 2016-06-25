@@ -16,7 +16,7 @@
          ,prefix_for_country/1
         ]).
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/src/knm.hrl").
 
 -spec get_all_number_dbs() -> ne_binaries().
 get_all_number_dbs() ->

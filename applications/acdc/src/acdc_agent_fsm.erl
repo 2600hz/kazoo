@@ -69,7 +69,7 @@
 -export([changed_endpoints/2]).
 -endif.
 
--include("acdc.hrl").
+-include_lib("acdc/src/acdc.hrl").
 
 -define(SERVER, ?MODULE).
 

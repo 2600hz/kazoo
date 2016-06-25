@@ -21,7 +21,8 @@
          ,delete/2, delete/3
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 %%%===================================================================
 %%% API

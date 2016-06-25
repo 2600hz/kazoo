@@ -11,7 +11,7 @@
 %%%-------------------------------------------------------------------
 -module(amqp_util).
 
--include("amqp_util.hrl").
+-include_lib("kazoo_amqp/src/amqp_util.hrl").
 
 -export([targeted_exchange/0]).
 -export([new_targeted_queue/0, new_targeted_queue/1]).

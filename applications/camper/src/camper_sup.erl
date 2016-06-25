@@ -16,7 +16,7 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--include("camper.hrl").
+-include_lib("camper/src/camper.hrl").
 
 -define(SERVER, ?MODULE).
 

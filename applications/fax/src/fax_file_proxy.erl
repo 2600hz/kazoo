@@ -12,7 +12,8 @@
 -export([handle/2]).
 -export([terminate/3]).
 
--include("fax.hrl").
+-include_lib("fax/src/fax.hrl").
+
 
 -spec init({'tcp' | 'ssl', 'http'}, cowboy_req:req(), kz_proplist()) ->
                   {'ok', cowboy_req:req(), 'undefined'} |

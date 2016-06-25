@@ -9,7 +9,7 @@
 
 -module(kz_att_google_drive).
 
--include("kz_att.hrl").
+-include_lib("kazoo_attachments/src/kz_att.hrl").
 
 %% ====================================================================
 %% API functions

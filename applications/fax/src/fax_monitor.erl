@@ -21,7 +21,8 @@
          ,code_change/3
         ]).
 
--include("fax.hrl").
+-include_lib("fax/src/fax.hrl").
+
 
 -define(NAME, ?MODULE).
 -define(SERVER, {via, kz_globals, ?NAME}).

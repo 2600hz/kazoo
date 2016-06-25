@@ -11,8 +11,8 @@
 -export([start_link/0]).
 -export([init/1]).
 
--include("kazoo_apps.hrl").
--include("kz_hooks.hrl").
+-include_lib("kazoo_apps/src/kazoo_apps.hrl").
+-include_lib("kazoo_apps/include/kz_hooks.hrl").
 
 -define(SERVER, ?MODULE).
 

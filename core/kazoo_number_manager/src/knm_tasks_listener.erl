@@ -22,7 +22,7 @@
          ,code_change/3
         ]).
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/src/knm.hrl").
 
 -define(SERVER, ?MODULE).
 

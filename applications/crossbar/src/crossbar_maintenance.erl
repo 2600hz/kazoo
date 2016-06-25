@@ -35,7 +35,8 @@
 
 -export([init_apps/2, init_app/2]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 -include_lib("kazoo/include/kz_system_config.hrl").
 
 -type input_term() :: atom() | string() | ne_binary().

@@ -24,7 +24,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_group_pickup).
 
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 
 -export([handle/2]).
 

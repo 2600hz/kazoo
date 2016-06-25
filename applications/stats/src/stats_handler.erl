@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(stats_handler).
 
--include("stats.hrl").
+-include_lib("stats/src/stats.hrl").
 
 -export([get_db/1
          ,handle_event/2
@@ -16,8 +16,6 @@
          ,get_next/3
          ,handle_req/2
         ]).
-
--include("stats.hrl").
 
 handle_req(JObj, _Props) ->
     Items = kz_json:recursive_to_proplist(JObj),

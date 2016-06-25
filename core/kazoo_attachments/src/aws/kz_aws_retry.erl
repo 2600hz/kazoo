@@ -5,7 +5,7 @@
 -module(kz_aws_retry).
 
 
--include("kz_aws.hrl").
+-include_lib("kazoo_attachments/src/aws/kz_aws.hrl").
 
 %% Helpers
 -export([backoff/1,

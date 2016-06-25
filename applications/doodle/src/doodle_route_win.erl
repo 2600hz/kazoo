@@ -8,7 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(doodle_route_win).
 
--include("doodle.hrl").
+-include_lib("doodle/src/doodle.hrl").
+
 
 -define(JSON(L), kz_json:from_list(L)).
 

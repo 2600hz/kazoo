@@ -17,7 +17,8 @@
          ,clean_modb/1
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -spec init() -> 'ok'.
 init() ->

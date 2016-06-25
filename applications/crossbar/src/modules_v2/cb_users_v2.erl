@@ -32,7 +32,8 @@
          ,patch/2
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(CB_LIST, <<"users/crossbar_listing">>).
 -define(LIST_BY_PRESENCE_ID, <<"devices/listing_by_presence_id">>).

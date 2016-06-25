@@ -10,7 +10,7 @@
 
 -export([exec/1]).
 
--include("milliwatt.hrl").
+-include_lib("milliwatt/src/milliwatt.hrl").
 
 -define(FREQUENCIES, [<<"2600">>]).
 -define(DURATION, 30000).

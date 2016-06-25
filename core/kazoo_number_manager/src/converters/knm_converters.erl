@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(knm_converters).
 
--include("knm.hrl").
+-include_lib("kazoo_number_manager/src/knm.hrl").
 
 -export([normalize/1, normalize/2, normalize/3
          ,is_normalized/1

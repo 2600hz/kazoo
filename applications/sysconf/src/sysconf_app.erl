@@ -9,7 +9,7 @@
 
 -behaviour(application).
 
--include("sysconf.hrl").
+-include_lib("sysconf/src/sysconf.hrl").
 
 %% Application callbacks
 -export([start/2

@@ -10,7 +10,8 @@
 -export([authorize/2]).
 -export([reconcile_cdr/2]).
 
--include("jonny5.hrl").
+-include_lib("jonny5/src/jonny5.hrl").
+
 
 -define(DEFAULT_WHITELIST, <<"^\\+?1\\d{10}$">>).
 -define(DEFAULT_BLACKLIST, <<"^\\+?1(684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340|900|8(?:[0,2,3,4,5,6,7]{2}|8[0-9]))\\d{7}$">>).

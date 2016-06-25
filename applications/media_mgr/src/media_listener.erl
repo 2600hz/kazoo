@@ -26,7 +26,7 @@
          ,code_change/3
         ]).
 
--include("media.hrl").
+-include_lib("media_mgr/src/media.hrl").
 
 -define(SERVER, ?MODULE).
 

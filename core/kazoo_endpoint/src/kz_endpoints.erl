@@ -12,7 +12,7 @@
 
 -export([by_owner_id/3, ignore_early_media/1]).
 
--include("kazoo_endpoint.hrl").
+-include_lib("kazoo_endpoint/src/kazoo_endpoint.hrl").
 
 -spec by_owner_id(ne_binary(), kz_json:object(), kapps_call:call()) ->
                          kz_json:objects().

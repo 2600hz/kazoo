@@ -27,7 +27,7 @@
          ,code_change/3
         ]).
 
--include("acdc.hrl").
+-include_lib("acdc/src/acdc.hrl").
 -include_lib("kazoo_apps/include/kz_hooks.hrl").
 
 -define(SERVER, ?MODULE).

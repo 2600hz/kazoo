@@ -99,7 +99,8 @@
          ,req_param/2, req_param/3
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(KEY_ACCEPT_CHARGES, <<"accept_charges">>).
 

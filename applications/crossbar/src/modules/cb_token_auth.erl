@@ -24,7 +24,8 @@
          ,clean_expired/0, clean_expired/1
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(LOOP_TIMEOUT
         ,kapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_HOUR)

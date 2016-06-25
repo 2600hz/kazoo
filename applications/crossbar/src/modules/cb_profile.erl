@@ -15,7 +15,8 @@
          ,req_finish/1
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(TRACE_PATH, kapps_config:get(?CONFIG_CAT, <<"trace_path">>, <<"/tmp">>)).
 

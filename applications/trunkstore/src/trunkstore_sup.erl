@@ -16,7 +16,7 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--include("ts.hrl").
+-include_lib("trunkstore/src/ts.hrl").
 
 -define(SERVER, ?MODULE).
 

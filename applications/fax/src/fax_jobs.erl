@@ -24,7 +24,8 @@
          ,code_change/3
         ]).
 
--include("fax.hrl").
+-include_lib("fax/src/fax.hrl").
+
 
 -define(POLLING_INTERVAL, 5000).
 -define(DEFAULT_LIMITS, #{account => 5}).

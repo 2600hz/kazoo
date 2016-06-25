@@ -23,7 +23,7 @@
          ,code_change/3
         ]).
 
--include("kazoo_globals.hrl").
+-include_lib("kazoo_globals/src/kazoo_globals.hrl").
 
 start_link(Global) ->
     gen_server:start_link(?MODULE, [Global], []).

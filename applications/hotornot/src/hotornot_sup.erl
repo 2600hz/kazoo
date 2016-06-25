@@ -16,7 +16,8 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--include("hotornot.hrl").
+-include_lib("hotornot/src/hotornot.hrl").
+
 
 -define(SERVER, ?MODULE).
 

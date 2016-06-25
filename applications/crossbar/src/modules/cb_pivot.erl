@@ -16,7 +16,8 @@
          ,validate/2, validate/3
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(CB_LIST, <<"pivot/crossbar_listing">>).
 -define(CB_DEBUG_LIST, <<"pivot/debug_listing">>).

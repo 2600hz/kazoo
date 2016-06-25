@@ -21,7 +21,8 @@
          ,code_change/3
         ]).
 
--include("omnipresence.hrl").
+-include_lib("omnipresence/src/omnipresence.hrl").
+
 -include_lib("kazoo_apps/include/kz_hooks.hrl").
 
 -define(SERVER, ?MODULE).

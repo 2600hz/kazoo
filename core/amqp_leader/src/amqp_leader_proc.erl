@@ -68,7 +68,7 @@
                     | ne_binary().
 -type from() :: any().
 
--include("amqp_leader.hrl").
+-include_lib("amqp_leader/src/amqp_leader.hrl").
 
 -define(is_leader, State#state.role =:= 'leader').
 -define(from_leader, (State#state.role =/= 'leader')

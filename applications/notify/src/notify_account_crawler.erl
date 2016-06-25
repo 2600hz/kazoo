@@ -20,7 +20,8 @@
          ,code_change/3
         ]).
 
--include("notify.hrl").
+-include_lib("notify/src/notify.hrl").
+
 -include_lib("kazoo/include/kz_databases.hrl").
 
 -define(SERVER, ?MODULE).

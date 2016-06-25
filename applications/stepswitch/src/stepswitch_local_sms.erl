@@ -9,7 +9,7 @@
 
 -export([local_message_handling/2]).
 
--include("stepswitch.hrl").
+-include_lib("stepswitch/src/stepswitch.hrl").
 
 -spec local_message_handling(knm_number_options:extra_options(), kapi_offnet_resource:req()) -> 'ok'.
 local_message_handling(Props, OffnetReq) ->

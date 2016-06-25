@@ -12,7 +12,8 @@
          ,redirect_remote/2
         ]).
 
--include("ecallmgr.hrl").
+-include_lib("ecallmgr/src/ecallmgr.hrl").
+
 
 -spec redirect(ne_binary(), atom() | ne_binary()) -> ecallmgr_util:send_cmd_ret().
 redirect(UUID, DestinationNode) ->

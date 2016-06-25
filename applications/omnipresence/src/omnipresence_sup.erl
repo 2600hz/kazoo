@@ -14,7 +14,8 @@
         ]).
 -export([init/1]).
 
--include("omnipresence.hrl").
+-include_lib("omnipresence/src/omnipresence.hrl").
+
 
 -define(SERVER, ?MODULE).
 

@@ -9,7 +9,8 @@
 
 -behaviour(supervisor).
 
--include("jonny5.hrl").
+-include_lib("jonny5/src/jonny5.hrl").
+
 
 -define(SERVER, ?MODULE).
 

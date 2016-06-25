@@ -37,7 +37,7 @@
 
 -define(SOLO_EXTENSION, <<"_solo_">>).
 
--include("kazoo_sip.hrl").
+-include_lib("kazoo_sip/src/kazoo_sip.hrl").
 
 -type diversion() :: kz_json:object().
 -export_type([diversion/0]).

@@ -18,7 +18,8 @@
          ,delete/2
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(CB_LIST, <<"service_plans/crossbar_listing">>).
 -define(AVAILABLE, <<"available">>).

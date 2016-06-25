@@ -22,7 +22,8 @@
          ,delete/2
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(ICON, <<"icon">>).
 -define(SCREENSHOT, <<"screenshot">>).

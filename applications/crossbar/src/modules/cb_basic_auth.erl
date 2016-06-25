@@ -17,7 +17,8 @@
          ,authenticate/1
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".auth">>).
 -define(DEFAULT_BASIC_AUTH_TYPE, <<"md5">>).

@@ -10,7 +10,7 @@
 
 -export([decode_base64/1]).
 
--include("kz_documents.hrl").
+-include_lib("kazoo_documents/src/kz_documents.hrl").
 
 %%--------------------------------------------------------------------
 %% @Public

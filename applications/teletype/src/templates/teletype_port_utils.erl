@@ -13,7 +13,7 @@
 -export([fix_email/1, fix_email/2]).
 -export([fix_port_request_data/1]).
 
--include("teletype.hrl").
+-include_lib("teletype/src/teletype.hrl").
 
 -spec is_comment_private(any()) -> boolean().
 is_comment_private('undefined') -> 'false';

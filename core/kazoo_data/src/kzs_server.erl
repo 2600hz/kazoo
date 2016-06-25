@@ -15,7 +15,7 @@
          ,format_error/1
         ]).
 
--include("kz_data.hrl").
+-include_lib("kazoo_data/src/kz_data.hrl").
 
 -spec server_info(map() | server()) -> {'ok', kz_json:object()} |
                                {'error', any()}.

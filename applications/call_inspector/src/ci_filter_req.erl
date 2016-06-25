@@ -10,7 +10,7 @@
 
 -export([handle_req/2]).
 
--include("call_inspector.hrl").
+-include_lib("call_inspector/src/call_inspector.hrl").
 
 -spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->

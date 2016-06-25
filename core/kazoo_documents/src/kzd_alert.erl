@@ -37,7 +37,7 @@
 -define(TO, <<"to">>).
 -define(EXPIRATION_DATE, <<"expiration_date">>).
 
--include("kz_documents.hrl").
+-include_lib("kazoo_documents/src/kz_documents.hrl").
 
 -type doc() :: kz_json:object().
 -export_type([doc/0]).

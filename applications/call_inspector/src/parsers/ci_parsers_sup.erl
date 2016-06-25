@@ -16,7 +16,7 @@
          ,children/0
         ]).
 
--include("call_inspector.hrl").
+-include_lib("call_inspector/src/call_inspector.hrl").
 
 -define(SERVER, ?MODULE).
 

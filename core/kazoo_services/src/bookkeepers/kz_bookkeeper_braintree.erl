@@ -17,7 +17,7 @@
 -export([timestamp_to_braintree/1]).
 
 -include_lib("braintree/include/braintree.hrl").
--include("kazoo_services.hrl").
+-include_lib("kazoo_services/src/kazoo_services.hrl").
 
 -define(TR_DESCRIPTION, <<"braintree transaction">>).
 

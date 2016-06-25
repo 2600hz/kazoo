@@ -18,7 +18,7 @@
          ,all_docs/2, all_docs/3
         ]).
 
--include("kz_couch.hrl").
+-include_lib("kazoo_couch/src/kz_couch.hrl").
 
 -type ddoc() :: atom() | ne_binary() | {ne_binary(), ne_binary()}.
 

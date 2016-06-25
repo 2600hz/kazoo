@@ -13,7 +13,7 @@
          ,req_params/1
         ]).
 
--include("kzt.hrl").
+-include_lib("kazoo_translator/src/kzt.hrl").
 
 -spec exec(kapps_call:call(), kz_json:object()) -> usurp_return().
 exec(Call, FlowJObj) ->

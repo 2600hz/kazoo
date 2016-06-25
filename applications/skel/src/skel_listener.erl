@@ -19,7 +19,7 @@
          ,code_change/3
         ]).
 
--include("skel.hrl").
+-include_lib("skel/src/skel.hrl").
 
 -define(SERVER, ?MODULE).
 

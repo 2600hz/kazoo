@@ -60,7 +60,7 @@
 -export([media_local_store_url/2]).
 -export([system_report/2, system_report/3]).
 
--include("kazoo_apps.hrl").
+-include_lib("kazoo_apps/src/kazoo_apps.hrl").
 -include_lib("kazoo_caches/include/kazoo_caches.hrl").
 
 -define(REPLICATE_ENCODING, 'encoded').

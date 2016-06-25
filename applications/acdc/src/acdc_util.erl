@@ -21,7 +21,7 @@
          ,send_cdr/2
         ]).
 
--include("acdc.hrl").
+-include_lib("acdc/src/acdc.hrl").
 
 -define(CALL_EVENT_RESTRICTIONS, ['CHANNEL_CREATE'
                                   ,'CHANNEL_ANSWER'

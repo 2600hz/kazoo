@@ -12,7 +12,7 @@
 -export([start_link/0]).
 -export([init/1]).
 
--include("konami.hrl").
+-include_lib("konami/src/konami.hrl").
 
 -define(SERVER, ?MODULE).
 

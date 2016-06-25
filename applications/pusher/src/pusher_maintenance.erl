@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(pusher_maintenance).
 
--include("pusher.hrl").
+-include_lib("pusher/src/pusher.hrl").
 
 -export([add_google_app/2, add_apple_app/2]).
 

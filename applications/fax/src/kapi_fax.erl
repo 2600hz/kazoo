@@ -25,7 +25,8 @@
          ,publish_start_job/1, publish_start_job/2
         ]).
 
--include("fax.hrl").
+-include_lib("fax/src/fax.hrl").
+
 
 -define(FAX_EXCHANGE, <<"fax">>).
 

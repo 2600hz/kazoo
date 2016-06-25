@@ -8,7 +8,7 @@
 
 -module(blackhole_data_emitter).
 
--include("blackhole.hrl").
+-include_lib("blackhole/src/blackhole.hrl").
 
 -export([emit/3]).
 

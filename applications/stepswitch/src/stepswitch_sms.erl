@@ -21,7 +21,7 @@
 
 -export([handle_message_delivery/2]).
 
--include("stepswitch.hrl").
+-include_lib("stepswitch/src/stepswitch.hrl").
 
 -define(SERVER, ?MODULE).
 

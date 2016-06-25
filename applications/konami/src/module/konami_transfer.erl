@@ -36,7 +36,7 @@
          ,code_change/4
         ]).
 
--include("konami.hrl").
+-include_lib("konami/src/konami.hrl").
 
 -define(WSD_ID, ?WSD_ENABLED
         andalso {'file', <<(get('callid'))/binary, "_transfer">>}).

@@ -2,7 +2,7 @@
 %% @doc @todo Add description to registrar_crypto.
 
 -module(registrar_crypto).
--include("reg.hrl").
+-include_lib("registrar/src/reg.hrl").
 
 -on_load(load_nif/0).
 

@@ -30,7 +30,7 @@
          ,terminate/2
         ]).
 
--include("webseq.hrl").
+-include_lib("webseq/src/webseq.hrl").
 
 -record(state, {type :: diagram_type()
                 ,name :: ne_binary()

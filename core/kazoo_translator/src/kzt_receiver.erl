@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(kzt_receiver).
 
--include("kzt.hrl").
+-include_lib("kazoo_translator/src/kzt.hrl").
 
 -export([wait_for_offnet/1, wait_for_offnet/2
          ,wait_for_noop/2

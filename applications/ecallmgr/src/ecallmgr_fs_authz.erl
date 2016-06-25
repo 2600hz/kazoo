@@ -13,7 +13,8 @@
 -export([rate_channel/2]).
 -export([kill_channel/2]).
 
--include("ecallmgr.hrl").
+-include_lib("ecallmgr/src/ecallmgr.hrl").
+
 
 -define(RATE_VARS, [<<"Rate">>, <<"Rate-Increment">>
                     ,<<"Rate-Minimum">>, <<"Surcharge">>

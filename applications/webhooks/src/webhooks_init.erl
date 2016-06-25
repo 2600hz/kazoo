@@ -13,7 +13,7 @@
          ,maybe_init_account/2
         ]).
 
--include("webhooks.hrl").
+-include_lib("webhooks/src/webhooks.hrl").
 
 -spec start_link() -> 'ignore'.
 start_link() ->

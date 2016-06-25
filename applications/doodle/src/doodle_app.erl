@@ -9,7 +9,8 @@
 
 -behaviour(application).
 
--include("doodle.hrl").
+-include_lib("doodle/src/doodle.hrl").
+
 
 -export([start/2, stop/1]).
 

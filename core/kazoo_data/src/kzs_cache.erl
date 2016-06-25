@@ -21,7 +21,7 @@
         ]).
 
 
--include("kz_data.hrl").
+-include_lib("kazoo_data/src/kz_data.hrl").
 
 -define(DEFAULT_NO_CACHING_TYPES, [<<"media">>, <<"private_media">>, <<"call_recording">>
                                    ,<<"fax">>, <<"mailbox_message">>

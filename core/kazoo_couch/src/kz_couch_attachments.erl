@@ -18,7 +18,7 @@
          ,attachment_url/5
         ]).
 
--include("kz_couch.hrl").
+-include_lib("kazoo_couch/src/kz_couch.hrl").
 
 %% Attachment-related functions ------------------------------------------------
 -spec fetch_attachment(server(), ne_binary(), ne_binary(), ne_binary()) ->

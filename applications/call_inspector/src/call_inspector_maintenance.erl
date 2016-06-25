@@ -19,7 +19,7 @@
         ]).
 -export([callid_details/1]).
 
--include("call_inspector.hrl").
+-include_lib("call_inspector/src/call_inspector.hrl").
 
 %% API
 

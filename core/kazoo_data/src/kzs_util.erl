@@ -11,7 +11,7 @@
          ,map_keys_to_atoms/1
         ]).
 
--include("kz_data.hrl").
+-include_lib("kazoo_data/src/kz_data.hrl").
 
 %%------------------------------------------------------------------------------
 %% @public

@@ -28,7 +28,8 @@
 -export([merge_available/2]).
 -endif.
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+
 
 -define(NOTIFICATION_MIME_TYPES, [{<<"text">>, <<"html">>}
                                   ,{<<"text">>, <<"plain">>}

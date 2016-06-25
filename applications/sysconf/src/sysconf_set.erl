@@ -13,7 +13,7 @@
          ,handle_req/2
         ]).
 
--include("sysconf.hrl").
+-include_lib("sysconf/src/sysconf.hrl").
 
 -spec init() -> 'ok'.
 init() -> 'ok'.

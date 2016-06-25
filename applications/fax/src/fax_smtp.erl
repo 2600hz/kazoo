@@ -27,7 +27,8 @@
          ,terminate/2
         ]).
 
--include("fax.hrl").
+-include_lib("fax/src/fax.hrl").
+
 
 -define(RELAY, 'true').
 -define(SMTP_MAX_SESSIONS, kapps_config:get_integer(?CONFIG_CAT, <<"smtp_sessions">>, 50)).

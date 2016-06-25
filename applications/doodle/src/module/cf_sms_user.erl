@@ -8,7 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(cf_sms_user).
 
--include("doodle.hrl").
+-include_lib("doodle/src/doodle.hrl").
+
 
 -export([handle/2
          ,get_endpoints/3

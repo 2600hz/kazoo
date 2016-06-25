@@ -2,7 +2,7 @@
 
 -behaviour(kz_data).
 
--include("kz_couch.hrl").
+-include_lib("kazoo_couch/src/kz_couch.hrl").
 
 %% Driver callbacks
 -export([new_connection/1

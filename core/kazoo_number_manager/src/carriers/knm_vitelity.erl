@@ -19,8 +19,8 @@
 -export([should_lookup_cnam/0]).
 -export([is_number_billable/1]).
 
--include("knm.hrl").
--include("knm_vitelity.hrl").
+-include_lib("kazoo_number_manager/src/knm.hrl").
+-include_lib("kazoo_number_manager/src/knm_vitelity.hrl").
 
 
 %%--------------------------------------------------------------------

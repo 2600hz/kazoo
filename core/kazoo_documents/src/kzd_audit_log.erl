@@ -30,7 +30,7 @@
         ]).
 
 -include_lib("kazoo/include/kz_log.hrl").
--include("kz_documents.hrl").
+-include_lib("kazoo_documents/src/kz_documents.hrl").
 
 -define(KEY_AUDIT, <<"audit">>).
 -define(KEY_CASCADE_QUANTITIES, <<"cascade_quantities">>).

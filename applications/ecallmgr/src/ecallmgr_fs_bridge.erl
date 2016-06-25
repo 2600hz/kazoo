@@ -10,7 +10,8 @@
 -module(ecallmgr_fs_bridge).
 
 -include_lib("kazoo/src/api/kapi_dialplan.hrl").
--include("ecallmgr.hrl").
+-include_lib("ecallmgr/src/ecallmgr.hrl").
+
 
 -export([call_command/3
          ,unbridge/2

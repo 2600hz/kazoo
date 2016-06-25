@@ -11,7 +11,8 @@
 -export([reconcile_cdr/2]).
 -export([maybe_credit_available/2, maybe_credit_available/3]).
 
--include("jonny5.hrl").
+-include_lib("jonny5/src/jonny5.hrl").
+
 
 %%--------------------------------------------------------------------
 %% @public
