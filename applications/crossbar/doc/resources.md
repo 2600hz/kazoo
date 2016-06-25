@@ -95,7 +95,6 @@ This URI is used to manipulate the resources available to the account.
              {"channel_selection": "ascending",
               "codecs": ["PCMU", "PCMA"],
               "custom_sip_headers": {},
-              "emergency": false,
               "enabled": true,
               "endpoint_type": "sip",
               "format_from_uri": false,
@@ -144,7 +143,6 @@ This URI is used to manipulate the resources available to the account.
          "gateways": [
              {"channel_selection": "ascending",
               "custom_sip_headers": {},
-              "emergency": false,
               "enabled": true,
               "endpoint_type": "sip",
               "invite_format": "route",

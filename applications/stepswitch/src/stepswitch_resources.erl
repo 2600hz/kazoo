@@ -747,7 +747,7 @@ create_resource([{Classifier, ClassifierJObj}|Classifiers], ConfigClassifiers, R
                   Resource
                   ,ClassifierJObj
                   ,Classifier
-                  ,wh_json:get_value(<<"regex">>, ConfigClassifier)
+                  ,ConfigClassifier
                  ),
             create_resource(
               Classifiers
@@ -759,14 +759,17 @@ create_resource([{Classifier, ClassifierJObj}|Classifiers], ConfigClassifiers, R
              )
     end.
 
--spec create_classifier_resource(wh_json:object(), wh_json:object(), ne_binary(), ne_binary()) -> wh_json:object().
-create_classifier_resource(Resource, ClassifierJObj, Classifier, DefaultRegex) ->
+-spec create_classifier_resource(wh_json:object(), wh_json:object(), ne_binary(), wh_proplist()) -> wh_json:object().
+create_classifier_resource(Resource, ClassifierJObj, Classifier, ConfigClassifier) ->
+    DefaultRegex = wh_json:get_value(<<"regex">>, ConfigClassifier),
+    DefaultEmergency = wh_json:is_true(<<"emergency">>, ConfigClassifier, 'undefined'),
     Props =
         props:filter_undefined(
           [{<<"_id">>, <<(wh_json:get_value(<<"_id">>, Resource))/binary, "-", Classifier/binary>>}
            ,{<<"name">>, <<(wh_json:get_value(<<"name">>, Resource))/binary, " - ", Classifier/binary>>}
            ,{<<"rules">>, [wh_json:get_value(<<"regex">>, ClassifierJObj, DefaultRegex)]}
            ,{<<"weight_cost">>, wh_json:get_value(<<"weight_cost">>, ClassifierJObj)}
+           ,{<<"emergency">>, classifier_is_emergency(ClassifierJObj, Classifier, DefaultEmergency)}
           ]
          ),
     create_classifier_gateways(wh_json:set_values(Props, Resource), ClassifierJObj).
@@ -784,6 +787,12 @@ create_classifier_gateways(Resource, ClassifierJObj) ->
          || Gateway <- wh_json:get_value(<<"gateways">>, Resource, [])
         ],
     wh_json:set_value(<<"gateways">>, Gateways, Resource).
+
+-spec classifier_is_emergency(wh_json:object(), ne_binary(), boolean() | 'undefined') -> boolean().
+classifier_is_emergency(ClassifierJObj, <<"emergency">>, _DefaultEmergency) ->
+    wh_json:is_true(<<"emergency">>, ClassifierJObj, 'true');
+classifier_is_emergency(ClassifierJObj, _Classifier, DefaultEmergency) ->
+    wh_json:is_true(<<"emergency">>, ClassifierJObj, DefaultEmergency).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -886,8 +895,8 @@ resource_weight(W) -> W.
 
 -spec resource_is_emergency(wh_json:object()) -> boolean().
 resource_is_emergency(JObj) ->
-    (wh_json:get_value([<<"caller_id_options">>, <<"type">>], JObj) =:= <<"emergency">>)
-        orelse wh_json:is_true(<<"emergency">>, JObj).
+    wh_json:is_true(<<"emergency">>, JObj)
+        orelse (wh_json:get_value([<<"caller_id_options">>, <<"type">>], JObj) =:= <<"emergency">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -935,7 +944,7 @@ gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
              ,invite_format=wh_json:get_value(<<"invite_format">>, JObj, <<"route">>)
              ,format_from_uri=wh_json:is_true(<<"format_from_uri">>, JObj, FormatFrom)
              ,from_uri_realm=wh_json:get_ne_value(<<"from_uri_realm">>, JObj, FromRealm)
-             ,is_emergency=wh_json:is_true(<<"emergency">>, JObj, IsEmergency)
+             ,is_emergency=gateway_is_emergency(JObj, IsEmergency)
              ,fax_option=wh_json:is_true([<<"media">>, <<"fax_option">>], JObj, T38)
              ,codecs=wh_json:get_value(<<"codecs">>, JObj, Codecs)
              ,bypass_media=wh_json:is_true(<<"bypass_media">>, JObj, BypassMedia)
@@ -947,6 +956,11 @@ gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
              ,progress_timeout=gateway_progress_timeout(JObj)
              ,endpoint_options=endpoint_options(JObj, EndpointType)
             }.
+
+-spec gateway_is_emergency(wh_json:object(), boolean()) -> boolean().
+gateway_is_emergency(_, 'true') -> 'true';
+gateway_is_emergency(JObj, IsEmergency) ->
+    wh_json:is_true(<<"emergency">>, JObj, IsEmergency).
 
 -spec gateway_route(wh_json:object()) -> api_binary().
 gateway_route(JObj) ->
