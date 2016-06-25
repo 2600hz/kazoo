@@ -58,6 +58,7 @@
 
 -define(CLASSIFIER_EMERGENCY
         ,kz_json:from_list([{<<"regex">>, <<"^(911)$">>}
+                            ,{<<"emergency">>, 'true'}
                             ,{<<"friendly_name">>, <<"Emergency Dispatcher">>}
                            ])
        ).
