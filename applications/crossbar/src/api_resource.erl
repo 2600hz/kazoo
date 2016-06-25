@@ -153,7 +153,7 @@ is_proxied(Peer) ->
 is_proxied(_Peer, []) -> 'false';
 is_proxied(Peer, [Proxy|Rest]) ->
     kz_network_utils:verify_cidr(Peer, kz_network_utils:to_cidr(Proxy))
-	orelse is_proxied(Peer, Rest).
+        orelse is_proxied(Peer, Rest).
 
 to_version(<<"v", Int/binary>>=Version) ->
     try kz_util:to_integer(Int) of
