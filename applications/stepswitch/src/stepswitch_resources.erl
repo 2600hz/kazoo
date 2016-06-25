@@ -843,7 +843,7 @@ create_resource([{Classifier, ClassifierJObj}|Classifiers], ConfigClassifiers, R
                   Resource
                   ,ClassifierJObj
                   ,Classifier
-                  ,kz_json:get_value(<<"regex">>, ConfigClassifier)
+                  ,ConfigClassifier
                  ),
             create_resource(
               Classifiers
@@ -855,14 +855,17 @@ create_resource([{Classifier, ClassifierJObj}|Classifiers], ConfigClassifiers, R
              )
     end.
 
--spec create_classifier_resource(kz_json:object(), kz_json:object(), ne_binary(), ne_binary()) -> kz_json:object().
-create_classifier_resource(Resource, ClassifierJObj, Classifier, DefaultRegex) ->
+-spec create_classifier_resource(kz_json:object(), kz_json:object(), ne_binary(), kz_proplist()) -> kz_json:object().
+create_classifier_resource(Resource, ClassifierJObj, Classifier, ConfigClassifier) ->
+    DefaultRegex = kz_json:get_value(<<"regex">>, ConfigClassifier),
+    DefaultEmergency = kz_json:is_true(<<"emergency">>, ConfigClassifier, 'undefined'),
     Props =
         props:filter_undefined(
           [{<<"_id">>, <<(kz_json:get_value(<<"_id">>, Resource))/binary, "-", Classifier/binary>>}
            ,{<<"name">>, <<(kz_json:get_value(<<"name">>, Resource))/binary, " - ", Classifier/binary>>}
            ,{<<"rules">>, [kz_json:get_value(<<"regex">>, ClassifierJObj, DefaultRegex)]}
            ,{<<"weight_cost">>, kz_json:get_value(<<"weight_cost">>, ClassifierJObj)}
+           ,{<<"emergency">>, classifier_is_emergency(ClassifierJObj, Classifier, DefaultEmergency)}
           ]
          ),
     create_classifier_gateways(kz_json:set_values(Props, Resource), ClassifierJObj).
@@ -880,6 +883,12 @@ create_classifier_gateways(Resource, ClassifierJObj) ->
          || Gateway <- kz_json:get_value(<<"gateways">>, Resource, [])
         ],
     kz_json:set_value(<<"gateways">>, Gateways, Resource).
+
+-spec classifier_is_emergency(kz_json:object(), ne_binary(), boolean() | 'undefined') -> boolean().
+classifier_is_emergency(ClassifierJObj, <<"emergency">>, _DefaultEmergency) ->
+    kz_json:is_true(<<"emergency">>, ClassifierJObj, 'true');
+classifier_is_emergency(ClassifierJObj, _Classifier, DefaultEmergency) ->
+    kz_json:is_true(<<"emergency">>, ClassifierJObj, DefaultEmergency).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -983,8 +992,8 @@ resource_weight(W) -> W.
 
 -spec resource_is_emergency(kz_json:object()) -> boolean().
 resource_is_emergency(JObj) ->
-    (kz_json:get_value([<<"caller_id_options">>, <<"type">>], JObj) =:= <<"emergency">>)
-        orelse kz_json:is_true(<<"emergency">>, JObj).
+    kz_json:is_true(<<"emergency">>, JObj)
+        orelse (kz_json:get_value([<<"caller_id_options">>, <<"type">>], JObj) =:= <<"emergency">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1034,7 +1043,7 @@ gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
              ,format_from_uri = kz_json:is_true(<<"format_from_uri">>, JObj, FormatFrom)
              ,from_uri_realm = kz_json:get_ne_value(<<"from_uri_realm">>, JObj, FromRealm)
              ,from_account_realm=kz_json:is_true(<<"from_account_realm">>, JObj, FromAccountRealm)
-             ,is_emergency = kz_json:is_true(<<"emergency">>, JObj, IsEmergency)
+             ,is_emergency = gateway_is_emergency(JObj, IsEmergency)
              ,fax_option = kz_json:is_true([<<"media">>, <<"fax_option">>], JObj, T38)
              ,codecs = kz_json:get_value(<<"codecs">>, JObj, Codecs)
              ,bypass_media = kz_json:is_true(<<"bypass_media">>, JObj, BypassMedia)
@@ -1046,6 +1055,11 @@ gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
              ,progress_timeout = kz_json:get_integer_value(<<"progress_timeout">>, JObj, ?DEFAULT_PROGRESS_TIMEOUT)
              ,endpoint_options = endpoint_options(JObj, EndpointType)
             }.
+
+-spec gateway_is_emergency(kz_json:object(), boolean()) -> boolean().
+gateway_is_emergency(_, 'true') -> 'true';
+gateway_is_emergency(JObj, IsEmergency) ->
+    kz_json:is_true(<<"emergency">>, JObj, IsEmergency).
 
 -spec endpoint_options(kz_json:object(), api_binary()) -> kz_json:object().
 endpoint_options(JObj, <<"freetdm">>) ->
