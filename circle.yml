@@ -25,10 +25,15 @@ dependencies:
 test:
   override:
     - . ~/.kerl/$OTP_VERSION/activate && make
-    - . ~/.kerl/$OTP_VERSION/activate && if [[ 0 -ne `git status --porcelain | wc -l` ]]; then echo Unstaged changes! && git diff && exit 1; fi
-    #- . ~/.kerl/$OTP_VERSION/activate && ./scripts/validate-js.sh $(find applications/ core/ -name '*.json')
+    - |
+      if [[ 0 -ne `git status --porcelain | wc -l` ]]; then
+        echo Unstaged changes!
+        git diff
+        exit 1
+      fi
+    - ./scripts/validate-js.sh $(find applications/ core/ -name '*.json')
     - . ~/.kerl/$OTP_VERSION/activate && make elvis
-    - . ~/.kerl/$OTP_VERSION/activate && ./scripts/code_checks.bash
+    - ./scripts/code_checks.bash
     - . ~/.kerl/$OTP_VERSION/activate && make sup_completion
     - . ~/.kerl/$OTP_VERSION/activate && make xref
     - |
