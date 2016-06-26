@@ -3,16 +3,16 @@ PROJECT = kazoo
 
 SOURCES = src/kazoo_transform.erl src/*.erl src/api/*.erl
 
-CLEAN_MOAR = clean-generated
-
 # Mimetypes module generator.
-
 GEN_URL = http://svn.apache.org/repos/asf/httpd/httpd/trunk/docs/conf/mime.types
 GEN_FILE = mime.types
 GEN_SRC = src/kz_mime.erl.src
 GEN_OUT = src/kz_mime.erl
 
-all: compile | $(GEN_OUT)
+COMPILE_MOAR = $(GEN_OUT)
+CLEAN_MOAR = clean-generated
+
+all: compile
 
 include $(ROOT)/make/kz.mk
 
