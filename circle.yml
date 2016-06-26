@@ -1,0 +1,39 @@
+machine:
+  environment:
+    OTP_VERSION: 18.2
+    PATH: ${HOME}/.kerl/$OTP_VERSION/bin:${PATH}
+  services:
+    - rabbitmq-server
+#    - couchdb-server
+
+dependencies:
+  cache_directories:
+    - ~/.kerl
+  pre:
+    - |
+    if [ ! -d ~/.kerl/$OTP_VERSION ]; then
+    if [ ! -d ~/.kerl ]; then
+    mkdir ~/.kerl
+    curl -fsSLo ~/.kerl/kerl https://raw.githubusercontent.com/kerl/kerl/master/kerl
+    chmod +x ~/.kerl/kerl
+    ~/.kerl/kerl update releases
+    fi
+    ~/.kerl/kerl build $OTP_VERSION $OTP_VERSION
+    ~/.kerl/kerl install $OTP_VERSION ~/.kerl/$OTP_VERSION
+    . ~/.kerl/$OTP_VERSION/activate
+    fi
+
+test:
+  override:
+    - make
+    - if [[ 0 -ne `git status --porcelain | wc -l` ]]; then echo Unstaged changes! && git diff && exit 1; fi
+#    - ./scripts/validate-js.sh $(find applications/ core/ -name '*.json')
+    - make elvis
+    - ./scripts/code_checks.bash
+    - make sup_completion
+    - make xref
+    - files="$(git diff --name-only master...)" || true && echo $files
+    - make build-plt
+    - ./scripts/check-dialyzer.escript .kazoo.plt $files
+    - make build-ci-release
+    - ./scripts/check-release-startup.sh
