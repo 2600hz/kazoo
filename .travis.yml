@@ -28,6 +28,7 @@ before_install:
   - cd $TRAVIS_BUILD_DIR
 
 script:
+  - make elvis
   - make compile-test
   - make eunit
   - # ERL_LIBS="$HOME/proper" ERLC_OPTS='-DPROPER' make compile-test
