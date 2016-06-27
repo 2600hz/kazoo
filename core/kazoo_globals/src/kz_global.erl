@@ -149,7 +149,7 @@ timestamp(#kz_global{timestamp=Timestamp}) -> Timestamp.
 
 -spec new_timestamp() -> integer().
 new_timestamp() ->
-    erlang:system_time('micro_seconds').
+    kz_util:now_us().
 
 -spec is_local_node(global()) -> boolean().
 is_local_node(#kz_global{node=Node}) ->

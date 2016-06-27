@@ -95,10 +95,11 @@
          ,bin_usage/0, mem_usage/0
         ]).
 -export([microseconds_to_seconds/1
-         ,milliseconds_to_seconds/1
-         ,elapsed_s/1, elapsed_ms/1, elapsed_us/1
-         ,elapsed_s/2, elapsed_ms/2, elapsed_us/2
-         ,now/0, now_s/1, now_ms/1, now_us/1
+        ,milliseconds_to_seconds/1
+        ,elapsed_s/1, elapsed_ms/1, elapsed_us/1
+        ,elapsed_s/2, elapsed_ms/2, elapsed_us/2
+        ,now/0, now_s/0, now_ms/0, now_us/0
+        ,now_s/1, now_ms/1, now_us/1
         ]).
 
 -export([put_callid/1, get_callid/0
@@ -1513,6 +1514,13 @@ elapsed_us(Start, Now) when is_integer(Start), is_integer(Now) -> (Now - Start) 
 
 -spec now() -> kz_now().
 now() -> erlang:timestamp().
+
+-spec now_s() -> gregorian_seconds().
+-spec now_ms() -> pos_integer().
+-spec now_us() -> pos_integer().
+now_s() ->  erlang:system_time('seconds').
+now_ms() -> erlang:system_time('milli_seconds').
+now_us() -> erlang:system_time('micro_seconds').
 
 -spec now_s(any()) -> gregorian_seconds().
 -spec now_ms(any()) -> pos_integer().
