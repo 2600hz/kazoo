@@ -26,17 +26,15 @@ test:
   pre:
     - ./scripts/validate-js.sh $(find applications/ core/ -name '*.json')
     - ./scripts/code_checks.bash
-  override:
     - . ~/.kerl/$OTP_VERSION/activate && make
-  post:
     - |
       if [[ 0 -ne `git status --porcelain | wc -l` ]]; then
         echo Unstaged changes!
         git diff
         exit 1
       fi
-    - . ~/.kerl/$OTP_VERSION/activate && make sup_completion
     - . ~/.kerl/$OTP_VERSION/activate && make xref
+    - . ~/.kerl/$OTP_VERSION/activate && make sup_completion
     - |
       . ~/.kerl/$OTP_VERSION/activate
       files="$(git diff --name-only master... applications/ core/)" || true
