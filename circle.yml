@@ -23,10 +23,12 @@ dependencies:
       fi
 
 test:
-  override:
+  pre:
     - ./scripts/validate-js.sh $(find applications/ core/ -name '*.json')
     - ./scripts/code_checks.bash
+  override:
     - . ~/.kerl/$OTP_VERSION/activate && make
+  post:
     - |
       if [[ 0 -ne `git status --porcelain | wc -l` ]]; then
         echo Unstaged changes!
