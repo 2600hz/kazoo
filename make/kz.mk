@@ -2,6 +2,33 @@
 
 .PHONY: compile json compile-test clean clean-test eunit dialyze xref proper
 
+## Platform detection.
+ifeq ($(PLATFORM),)
+    UNAME_S := $(shell uname -s)
+
+    ifeq ($(UNAME_S),Linux)
+        PLATFORM = linux
+    else ifeq ($(UNAME_S),Darwin)
+        PLATFORM = darwin
+    else ifeq ($(UNAME_S),SunOS)
+        PLATFORM = solaris
+    else ifeq ($(UNAME_S),GNU)
+        PLATFORM = gnu
+    else ifeq ($(UNAME_S),FreeBSD)
+        PLATFORM = freebsd
+    else ifeq ($(UNAME_S),NetBSD)
+        PLATFORM = netbsd
+    else ifeq ($(UNAME_S),OpenBSD)
+        PLATFORM = openbsd
+    else ifeq ($(UNAME_S),DragonFly)
+        PLATFORM = dragonfly
+    else
+        $(error Unable to detect platform.)
+    endif
+
+    export PLATFORM
+endif
+
 ## pipefail enforces that the command fails even when run through a pipe
 SHELL = /bin/bash -o pipefail
 

@@ -32,6 +32,7 @@ core/kazoo/src/kz_mime.erl
 core/kazoo/mime.types
 
 applications/*/priv/archive_data/*
+applications/registrar/c_src/env.mk
 
 core/sup/sup
 .rebar/
