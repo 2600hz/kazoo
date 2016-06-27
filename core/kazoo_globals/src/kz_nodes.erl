@@ -444,7 +444,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info('expire_nodes', #state{tab=Tab}=State) ->
-    Now = kz_util:now_ms(kz_util:now()),
+    Now = kz_util:now_ms(),
     FindSpec = [{#kz_node{expires='$2'
                           ,last_heartbeat='$3'
                           ,_ = '_'

@@ -1518,16 +1518,18 @@ now() -> erlang:timestamp().
 -spec now_s() -> gregorian_seconds().
 -spec now_ms() -> pos_integer().
 -spec now_us() -> pos_integer().
+
 now_s() ->  erlang:system_time('seconds').
 now_ms() -> erlang:system_time('milli_seconds').
 now_us() -> erlang:system_time('micro_seconds').
 
--spec now_s(any()) -> gregorian_seconds().
--spec now_ms(any()) -> pos_integer().
--spec now_us(any()) -> pos_integer().
-now_s(_) ->  erlang:system_time('seconds').
-now_ms(_) -> erlang:system_time('milli_seconds').
-now_us(_) -> erlang:system_time('micro_seconds').
+-spec now_s(kz_now()) -> gregorian_seconds().
+-spec now_ms(kz_now()) -> pos_integer().
+-spec now_us(kz_now()) -> pos_integer().
+now_us({MegaSecs,Secs,MicroSecs}) ->
+    (MegaSecs*1000000 + Secs)*1000000 + MicroSecs.
+now_ms({_,_,_}=Now) -> now_us(Now) div ?MILLISECONDS_IN_SECOND.
+now_s({_,_,_}=Now) -> unix_seconds_to_gregorian_seconds(now_us(Now) div 1000000).
 
 -spec format_date() -> binary().
 -spec format_date(gregorian_seconds()) -> binary().

@@ -662,7 +662,7 @@ set_data_for_callflow(JObj, BaseGroup) ->
 
 -spec set_number_for_callflow(kz_json:object(), kz_json:object()) -> kz_json:object().
 set_number_for_callflow(JObj, BaseGroup) ->
-    Number = <<"group_", (kz_util:to_binary(kz_util:now_ms(os:timestamp())))/binary>>,
+    Number = <<"group_", (kz_util:to_binary(kz_util:now_ms()))/binary>>,
     Numbers = [Number],
     set_name_for_callflow(JObj, kz_json:set_value(<<"numbers">>, Numbers, BaseGroup)).
 
