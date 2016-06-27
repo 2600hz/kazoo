@@ -8,8 +8,12 @@ PDFS = $(TRAINING_DOCS:.org=.pdf)
 # $(foreach org_el,$(ORG_MODE_ELS),-l $(org_el))
 
 docs: $(PDFS)
-	@rm *.tex
+	$(if $(wildcard *.tex), rm *.tex)
+
+clean:
+	$(if $(wildcard *.pdf), rm *.pdf)
+	$(if $(wildcard *.tex), rm *.tex)
 
 %.pdf: %.org
-	@emacs -l ~/.emacs --visit=$< --batch -f org-beamer-export-to-pdf --kill 2>/dev/null
+	@emacs -l ./.emacs --visit=$< --batch -f org-beamer-export-to-pdf --kill # 2>/dev/null
 	@echo "created $@"
