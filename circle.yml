@@ -24,6 +24,8 @@ dependencies:
 
 test:
   override:
+    - ./scripts/validate-js.sh $(find applications/ core/ -name '*.json')
+    - ./scripts/code_checks.bash
     - . ~/.kerl/$OTP_VERSION/activate && make
     - |
       if [[ 0 -ne `git status --porcelain | wc -l` ]]; then
@@ -31,15 +33,13 @@ test:
         git diff
         exit 1
       fi
-    - ./scripts/validate-js.sh $(find applications/ core/ -name '*.json')
-    - . ~/.kerl/$OTP_VERSION/activate && make elvis
-    - ./scripts/code_checks.bash
     - . ~/.kerl/$OTP_VERSION/activate && make sup_completion
     - . ~/.kerl/$OTP_VERSION/activate && make xref
     - |
       . ~/.kerl/$OTP_VERSION/activate
-      files="$(git diff --name-only master... applications/ core/)" || true && echo $files
-      if [[ -n "$files" ]]; then
+      files="$(git diff --name-only master... applications/ core/)" || true
+      echo .$files.
+      if [[ ! -z "$files" ]]; then
         make build-plt
         ./scripts/check-dialyzer.escript .kazoo.plt $files
       fi
