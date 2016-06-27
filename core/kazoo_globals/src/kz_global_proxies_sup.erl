@@ -36,13 +36,13 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec new(kz_globals:kz_global()) -> sup_startchild_ret().
+-spec new(kz_global:global()) -> sup_startchild_ret().
 new(Global) ->
     supervisor:start_child(?SERVER, [Global]).
 
 -spec workers() -> pids().
 workers() ->
-    [ Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?SERVER)].
+    [Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?SERVER)].
 
 %% ===================================================================
 %% Supervisor callbacks
