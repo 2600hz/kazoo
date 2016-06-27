@@ -318,8 +318,8 @@ is_digit(N) -> N >= $0 andalso N =< $9.
 -spec build_number(ne_binary()) -> {api_binary(), kz_proplist()}.
 build_number(Number) ->
     N = binary:split(Number, <<",">>, ['global']),
-    case length(N) of
-        1 -> {Number, []};
+    case N of
+        [_One] -> {Number, []};
         _ -> lists:foldl(fun parse_number/2, {'undefined', []}, N)
     end.
 

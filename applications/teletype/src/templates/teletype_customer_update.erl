@@ -96,7 +96,7 @@ process_account(AccountId, DataJObj) ->
         _ ->
             AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
             {'ok', Users} = kz_datamgr:get_results(AccountDb, ?ACC_USERS_LIST, []),
-            select_users_to_update(lists:map(fun(User) -> kz_json:get_value(<<"value">>, User) end, Users), DataJObj)
+            select_users_to_update([kz_json:get_value(<<"value">>, User) || User <- Users], DataJObj)
     end.
 
 -spec select_users_to_update(kz_proplist(), kz_json:object()) -> kz_proplist().

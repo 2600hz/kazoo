@@ -42,10 +42,7 @@ authorize(Context) ->
     authorize(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
 authorize(Context, Verb, [{?KZ_ACCOUNTS_DB, []}]) ->
-    case cb_modules_util:is_superduper_admin(Context) of
-        'true' -> 'true';
-        'false' -> Verb =:= ?HTTP_PUT
-    end;
+    cb_modules_util:is_superduper_admin(Context) orelse Verb =:= ?HTTP_PUT;
 authorize(_Context, ?HTTP_GET, [{<<"global_provisioner_templates">>,_}|_]) ->
     'true';
 authorize(Context, Verb, _Nouns) ->

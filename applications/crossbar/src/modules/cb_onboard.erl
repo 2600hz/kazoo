@@ -93,16 +93,14 @@ validate(Context, ?HTTP_PUT) ->
                   ,fun(R) -> create_braintree_cards(JObj, Context, R) end
                   ,fun(R) -> create_account(JObj, Context, R) end
                  ],
-    case lists:foldr(fun(F, Acc) -> F(Acc) end, {[], kz_json:new()}, Generators) of
-        {P, Failures} ->
-            case kz_json:is_empty(Failures) of
-                'true' ->
-                    cb_context:setters(Context, [{fun cb_context:set_doc/2, lists:flatten(P)}
-                                                 ,{fun cb_context:set_resp_status/2, 'success'}
-                                                ]);
-                'false' ->
-                    crossbar_util:response_invalid_data(Failures, Context)
-            end
+    {P, Failures} = lists:foldr(fun(F, Acc) -> F(Acc) end, {[], kz_json:new()}, Generators),
+    case kz_json:is_empty(Failures) of
+        'true' ->
+            cb_context:setters(Context, [{fun cb_context:set_doc/2, lists:flatten(P)}
+                                         ,{fun cb_context:set_resp_status/2, 'success'}
+                                        ]);
+        'false' ->
+            crossbar_util:response_invalid_data(Failures, Context)
     end.
 
 put(Context) ->

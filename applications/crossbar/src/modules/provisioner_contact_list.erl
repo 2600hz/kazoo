@@ -101,7 +101,7 @@ maybe_append_module(Contacts, _) ->
               end, Contacts).
 
 filter_contacts(Contacts, _) ->
-    lists:filter(fun filter_contacts/1, Contacts).
+    [C || C <- Contacts, filter_contacts(C)].
 
 filter_contacts(#contact{external_numbers = [], internal_numbers = []}) -> false;
 filter_contacts(#contact{name = undefined}) -> false;

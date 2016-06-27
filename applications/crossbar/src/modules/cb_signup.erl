@@ -134,16 +134,12 @@ resource_exists(_) -> 'true'.
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
-    case cb_context:req_verb(Context) of
-        ?HTTP_PUT ->
-            validate_new_signup(cb_context:set_account_db(Context, ?SIGNUP_DB))
-    end.
+    (?HTTP_PUT) = cb_context:req_verb(Context),
+    validate_new_signup(cb_context:set_account_db(Context, ?SIGNUP_DB)).
 
 validate(Context, ActivationKey) ->
-    case cb_context:req_verb(Context) of
-        ?HTTP_POST ->
-            check_activation_key(ActivationKey, cb_context:set_account_db(Context, ?SIGNUP_DB))
-    end.
+    (?HTTP_POST) = cb_context:req_verb(Context),
+    check_activation_key(ActivationKey, cb_context:set_account_db(Context, ?SIGNUP_DB)).
 
 -spec authorize(cb_context:context()) -> 'true'.
 -spec authorize_nouns(req_nouns()) -> 'true'.

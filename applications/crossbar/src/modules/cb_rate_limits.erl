@@ -141,7 +141,7 @@ get_rate_limits_id_for_thing(Context, ThingId) ->
     ViewOpt = [{'key', ThingId}],
     case kz_datamgr:get_results(cb_context:account_db(Context), ?LISTING_BY_OWNER, ViewOpt) of
         {'ok', JObjs} ->
-            lists:map(fun get_id/1, JObjs);
+            [get_id(JB) || JB <- JObjs];
         {'error', _Err} ->
             lager:error("Can't load rate limits due to err: ~p", [_Err]),
             'undefined'

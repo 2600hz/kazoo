@@ -462,9 +462,8 @@ card_field(Key, JObj) when Key =:= <<"PHOTO">> ->
         {?PHOTO, 'undefined'} -> {Key, 'undefined'};
         {?PHOTO, PhotoJObj} ->
             [{CT, PhotoBin}] = kz_json:to_proplist(PhotoJObj),
-            TypeType = case CT of
-                           <<"image/jpeg">> -> <<"JPEG">>
-                       end,
+            <<"image/jpeg">> = CT,
+            TypeType = <<"JPEG">>,
             Data = base64:encode(PhotoBin),
             {[Key, {<<"ENCODING">>, <<"B">>}, {<<"TYPE">>, TypeType}], Data}
     end;

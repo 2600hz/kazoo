@@ -152,12 +152,9 @@ eavesdrop_cmd(TargetCallId) ->
 find_sip_endpoints(Data, Call) ->
     case kz_json:get_value(<<"device_id">>, Data) of
         'undefined' ->
-            case kz_json:get_value(<<"user_id">>, Data) of
-                UserId ->
-                    sip_users_from_endpoints(
-                      cf_util:find_user_endpoints([UserId], [], Call), Call
-                     )
-            end;
+            UserId = kz_json:get_value(<<"user_id">>, Data),
+            sip_users_from_endpoints(
+              cf_util:find_user_endpoints([UserId], [], Call), Call);
         DeviceId ->
             sip_users_from_endpoints([DeviceId], Call)
     end.

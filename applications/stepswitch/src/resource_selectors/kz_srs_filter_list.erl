@@ -60,10 +60,7 @@ handle_req(Resources, Number, OffnetJObj, DB, Params) ->
 filter_list(Set, Set, <<"axact">>) -> 'true';
 filter_list(SetA, SetB, <<"subset">>) -> sets:is_subset(SetA, SetB);
 filter_list(SetA, SetB, <<"ne_subset">>) ->
-    case sets:size(SetA) > 0 of
-        'true' -> sets:is_subset(SetA, SetB);
-        'false' -> 'false'
-    end;
+    sets:size(SetA) > 0 andalso sets:is_subset(SetA, SetB);
 filter_list(SetA, SetB, <<"ne_subset_or_exact">>) ->
     case sets:size(SetA) > 0 of
         'true' -> sets:is_subset(SetA, SetB);

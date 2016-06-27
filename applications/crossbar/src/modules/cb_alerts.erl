@@ -242,17 +242,13 @@ fix_envelope(Context) ->
 %%--------------------------------------------------------------------
 -spec filter_alerts(kz_json:objects()) -> kz_json:objects().
 filter_alerts(Alerts) ->
-    lists:filter(
-        fun(Alert) ->
-            case kzd_alert:expired(Alert) of
-                'false' -> 'true';
-                'true' ->
-                    _ = kz_util:spawn(fun kapps_alert:delete/1, [kzd_alert:id(Alert)]),
-                    'false'
-            end
-        end
-        ,lists:usort(Alerts)
-    ).
+    [Alert || Alert <- lists:usort(Alerts),
+              case kzd_alert:expired(Alert) of
+                  'false' -> 'true';
+                  'true' ->
+                      _ = kz_util:spawn(fun kapps_alert:delete/1, [kzd_alert:id(Alert)]),
+                      'false'
+              end].
 
 %%--------------------------------------------------------------------
 %% @private

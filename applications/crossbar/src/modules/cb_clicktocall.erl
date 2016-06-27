@@ -97,17 +97,13 @@ resource_exists(_, ?HISTORY) ->
 
 -spec authenticate(cb_context:context()) -> 'true'.
 authenticate(Context) ->
-    case is_c2c_url(Context, cb_context:req_nouns(Context)) of
-        'true' -> maybe_authenticate(Context);
-        'false' -> 'false'
-    end.
+    is_c2c_url(Context, cb_context:req_nouns(Context))
+	andalso maybe_authenticate(Context).
 
 -spec authorize(cb_context:context()) -> 'true'.
 authorize(Context) ->
-    case is_c2c_url(Context, cb_context:req_nouns(Context)) of
-        'true' -> maybe_authorize(Context);
-        'false' -> 'false'
-    end.
+    is_c2c_url(Context, cb_context:req_nouns(Context))
+	andalso maybe_authorize(Context).
 
 -spec maybe_authenticate(cb_context:context()) -> boolean().
 maybe_authenticate(Context) ->

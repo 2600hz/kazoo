@@ -289,7 +289,7 @@ validate_recipient_id(RecipientId, Context) ->
                ],
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ?ACC_CHILDREN_LIST, ViewOpts) of
         {'ok', Accounts} ->
-            AccountIds = lists:map(fun(Account) -> kz_json:get_value(<<"id">>, Account) end, Accounts),
+            AccountIds = [kz_json:get_value(<<"id">>, Acc) || Acc <- Accounts],
             case lists:member(RecipientId, AccountIds) of
                 'true' -> cb_context:set_resp_status(Context, 'success');
                 'false' -> Context
