@@ -1,10 +1,7 @@
 ROOT = ../..
 PROJECT = kazoo_number_manager
 
-CLEAN_MOAR = clean-generated
-
 # ISO3166-alpha2 to dialcode (ITU) module generator.
-
 ITU = src/knm_iso3166a2_itu.erl
 ITU_SRC = src/knm_iso3166a2_itu.erl.src
 ITU_FILE = dialcodes.json
@@ -25,7 +22,10 @@ ITU_URL = https://raw.githubusercontent.com/mledoze/countries/master/countries.j
 # https://countrycode.org/
 # https://en.wikipedia.org/wiki/List_of_country_calling_codes
 
-all: compile | $(ITU)
+COMPILE_MOAR = $(ITU)
+CLEAN_MOAR = clean-generated
+
+all: compile
 
 include $(ROOT)/make/kz.mk
 
@@ -40,5 +40,3 @@ $(ITU): $(ITU_FILE) $(ITU_SRC)
 	@cat $(ITU_SRC) >$(ITU)
 	@python -c 'from __future__ import print_function; import json; [print("to_itu(<<\"", l["cca2"], "\">>) -> <<\"+", l["callingCode"][0], "\">>;", sep="") for l in sorted(json.load(open("dialcodes.json")), key=lambda l: l["cca2"]) if len(l["callingCode"]) > 0]' >>$(ITU)
 	@echo 'to_itu(_) -> <<>>.' >>$(ITU)
-	@mkdir -p ebin/
-	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $(ITU)
