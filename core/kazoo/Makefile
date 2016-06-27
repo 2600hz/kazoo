@@ -56,3 +56,4 @@ $(GEN_OUT): $(GEN_FILE) $(GEN_SRC)
 	tail -n +`grep -n '%% GENERATED' $(GEN_SRC) | cut -d: -f1` $(GEN_SRC) >> $(GEN_OUT)
 	@mkdir -p ebin/
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $(GEN_OUT)
+
