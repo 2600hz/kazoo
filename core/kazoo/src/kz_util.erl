@@ -151,6 +151,8 @@
 
 -define(KAZOO_VERSION_CACHE_KEY, {?MODULE, 'kazoo_version'}).
 
+-export_type([account_format/0]).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
