@@ -45,8 +45,8 @@ maybe_save_to_previous_modb(NewMODb, ServicesJObj) ->
 -spec update_pvts(ne_binary(), kz_json:object(), ne_binary()) -> kz_json:object().
 update_pvts(?MATCH_MODB_SUFFIX_RAW(AccountId, _Year, _Month) = AccountMODb, ServicesJObj, Id) ->
     kz_doc:update_pvt_parameters(kz_json:delete_key(<<"_rev">>, kz_doc:set_id(ServicesJObj, Id))
-                                 ,AccountMODb
-                                 ,[{'account_db', AccountMODb}
-                                   ,{'account_id', AccountId}
-                                  ]
+                                ,AccountMODb
+                                ,[{'account_db', AccountMODb}
+                                 ,{'account_id', AccountId}
+                                 ]
                                 ).

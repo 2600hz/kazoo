@@ -111,8 +111,8 @@ is_task_successful(TaskId, Module, Function, ExtraArgs, IterValue) ->
         {'ok', _Data}=NewIterValue ->
             %% For initialisation steps. Skeeps writing a CSV output row.
             {'true', NewIterValue};
-        {[_|_]=NewRow, _Data}=NewIterValue ->
-            store_return(TaskId, NewRow),
+        {[_|_]=NewRowOrRows, _Data}=NewIterValue ->
+            store_return(TaskId, NewRowOrRows),
             {'true', NewIterValue};
         {?NE_BINARY=NewRow, _Data}=NewIterValue ->
             store_return(TaskId, NewRow),
@@ -129,6 +129,8 @@ is_task_successful(TaskId, Module, Function, ExtraArgs, IterValue) ->
 
 %% @private
 -spec store_return(kz_tasks:task_id(), task_return()) -> 'ok'.
+store_return(TaskId, Rows=[_List|_]) when is_list(_List) ->
+    lists:foreach(fun (Row) -> store_return(TaskId, Row) end, Rows);
 store_return(TaskId, Reason) ->
     Data = [reason(Reason), $\n],
     kz_util:write_file(?OUT(TaskId), Data, ['append']).
