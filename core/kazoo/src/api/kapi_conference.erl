@@ -88,7 +88,7 @@
 %% Conference Search Response
 -define(SEARCH_RESP_HEADERS, [<<"Conference-ID">>, <<"Participant-Count">>]).
 -define(OPTIONAL_SEARCH_RESP_HEADERS, [<<"UUID">>, <<"Running">>, <<"Answered">>, <<"Dynamic">>
-                                       ,<<"Run-Time">>, <<"Participants">>, <<"Locked">>
+                                       ,<<"Run-Time">>, <<"Start-Time">>, <<"Participants">>, <<"Locked">>
                                        ,<<"Switch-Hostname">>, <<"Switch-URL">>, <<"Switch-External-IP">>
                                       ]).
 -define(SEARCH_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}

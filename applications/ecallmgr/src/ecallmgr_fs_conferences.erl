@@ -206,6 +206,7 @@ handle_search_req(JObj, _Props) ->
                     ,{<<"Conference-ID">>, Name}
                     ,{<<"UUID">>, UUID}
                     ,{<<"Run-Time">>, kz_util:current_tstamp() - StartTime}
+                    ,{<<"Start-Time">>, StartTime}
                     ,{<<"Switch-Hostname">>, Hostname}
                     ,{<<"Switch-URL">>, SwitchURL}
                     ,{<<"Switch-External-IP">>, ExternalIP}
