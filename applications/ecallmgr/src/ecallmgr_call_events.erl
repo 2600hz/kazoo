@@ -626,7 +626,7 @@ specific_call_channel_vars_props(_EventName, Props) ->
 
 -spec generic_call_event_props(kz_proplist()) -> kz_proplist().
 generic_call_event_props(Props) ->
-    Timestamp = kz_util:now_us(os:timestamp()),
+    Timestamp = kz_util:now_us(),
     FSTimestamp = props:get_integer_value(<<"Event-Date-Timestamp">>, Props, Timestamp),
     NormalizedFSTimestamp = kz_util:unix_seconds_to_gregorian_seconds(FSTimestamp div 1000000),
 
