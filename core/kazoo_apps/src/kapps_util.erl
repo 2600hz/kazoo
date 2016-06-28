@@ -331,22 +331,6 @@ is_matched_account_mod(?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, _, _)  %% DbActId
                        ,?MATCH_ACCOUNT_ENCODED(A, B, Rest)  %% SearchId
                       ) ->
     'true';
-is_matched_account_mod(?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, _, _)  %% DbActId
-                       ,?MATCH_ACCOUNT_UNENCODED(A, B, Rest)  %% SearchId
-                      ) ->
-    'true';
-is_matched_account_mod(?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, _, _)  %% DbActId
-                       ,?MATCH_ACCOUNT_ENCODED(A, B, Rest)  %% SearchId
-                      ) ->
-    'true';
-is_matched_account_mod(?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, _, _)  %% DbActId
-                       ,?MATCH_ACCOUNT_RAW(A, B, Rest)  %% SearchId
-                      ) ->
-    'true';
-is_matched_account_mod(?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, _, _)  %% DbActId
-                       ,?MATCH_ACCOUNT_RAW(A, B, Rest)  %% SearchId
-                      ) ->
-    'true';
 is_matched_account_mod(_, _) ->
     'false'.
 
