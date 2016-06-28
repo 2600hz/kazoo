@@ -134,6 +134,9 @@
                       ,'voicemail_full'
                       ,'webhook_disabled'
                       ,'customer_update'
+                      ,'pwd_recovery'
+                      %%,'new_fax'
+                      %%,'fax_error'
                       %%,'skel'
                      ]).
 
