@@ -486,26 +486,40 @@ arm_bleg(#state{digit_timeout=Timeout}=State) ->
                 ,b_leg_armed='true'
                }.
 
+-spec maybe_fast_rearm(ne_binary(), ne_binary(), binary()) -> binary().
+-spec maybe_fast_rearm(ne_binary(), ne_binary(), binary(), boolean()) -> binary().
+
+maybe_fast_rearm(DTMF, BindingDigit, Collected) ->
+    maybe_fast_rearm(DTMF, BindingDigit, Collected
+        ,kapps_config:get_is_true(?CONFIG_CAT, <<"use_fast_rearm">>, 'false')).
+
+maybe_fast_rearm(DTMF, _BindingDigit, Collected, 'false') -> <<Collected/binary, DTMF/binary>>;
+maybe_fast_rearm(DoubleBindingDigit, DoubleBindingDigit, <<>>, 'true') -> DoubleBindingDigit;
+maybe_fast_rearm(DTMFisBindingDigit, DTMFisBindingDigit, _Collected, 'true') -> <<>>;
+maybe_fast_rearm(DTMF, _BindingDigit, Collected, 'true') -> <<Collected/binary, DTMF/binary>>.
+
 -spec add_aleg_dtmf(state(), ne_binary()) -> state().
 add_aleg_dtmf(#state{a_collected_dtmf=Collected
                      ,a_digit_timeout_ref=OldRef
                      ,digit_timeout=Timeout
+                     ,binding_digit=BindingDigit
                     }=State, DTMF) ->
     lager:debug("a recv dtmf '~s' while armed, adding to '~s'", [DTMF, Collected]),
     maybe_cancel_timer(OldRef),
     State#state{a_digit_timeout_ref = gen_fsm:start_timer(Timeout, 'digit_timeout')
-                ,a_collected_dtmf = <<Collected/binary, DTMF/binary>>
+                ,a_collected_dtmf = maybe_fast_rearm(DTMF, BindingDigit, Collected)
                }.
 
 -spec add_bleg_dtmf(state(), ne_binary()) -> state().
 add_bleg_dtmf(#state{b_collected_dtmf=Collected
                      ,b_digit_timeout_ref=OldRef
                      ,digit_timeout=Timeout
+                     ,binding_digit=BindingDigit
                     }=State, DTMF) ->
     lager:debug("b recv dtmf '~s' while armed, adding to '~s'", [DTMF, Collected]),
     maybe_cancel_timer(OldRef),
     State#state{b_digit_timeout_ref = gen_fsm:start_timer(Timeout, 'digit_timeout')
-                ,b_collected_dtmf = <<Collected/binary, DTMF/binary>>
+                ,b_collected_dtmf = maybe_fast_rearm(DTMF, BindingDigit, Collected)
                }.
 
 -spec maybe_add_call_event_bindings(api_binary() | kapps_call:call()) -> 'ok'.
