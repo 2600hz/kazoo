@@ -86,11 +86,6 @@ descendant_quantities(_, [SubAccountMoDB | DescendantsMoDBs]) ->
            ,Category
            ,Item
            ,integer_to_binary(kz_json:get_integer_value(Item, BoMItem, 0))
-           ]
-          ,[AccountId
-           ,YYYYMM
-           ,Category
-           ,Item
            ,integer_to_binary(kz_json:get_integer_value(Item, EoMItem, 0))
            ]
           ]
