@@ -316,7 +316,7 @@ get_account_mods(AccountId) ->
 
 get_account_mods(AccountId, Encoding) ->
     MODs = get_all_account_mods(Encoding),
-    [kz_util:format_account_id(MOD, Encoding)
+    [kz_util:format_account_modb(MOD, Encoding)
      || MOD <- MODs,
         is_account_mod(MOD),
         is_matched_account_mod(MOD, AccountId)
