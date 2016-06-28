@@ -69,10 +69,6 @@ output_header('list') ->
 help() ->
     [{<<"list">>
      ,kz_json:from_list([{<<"description">>, <<"List all numbers in the system">>}
-                        ,{<<"mandatory">>, [
-                                           ]}
-                        ,{<<"optional">>, [
-                                          ]}
                         ])
      }
 

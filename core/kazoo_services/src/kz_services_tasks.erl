@@ -49,10 +49,6 @@ output_header('descendant_quantities') ->
 help() ->
     [{<<"descendant_quantities">>
      ,kz_json:from_list([{<<"description">>, <<"List per-month descendant accounts quantities">>}
-                        ,{<<"mandatory">>, [
-                                           ]}
-                        ,{<<"optional">>, [
-                                          ]}
                         ])
      }
     ].
@@ -66,6 +62,8 @@ help() ->
 descendant_quantities(Props, 'init') ->
     Descendants = get_descendants(props:get_value('auth_account_id', Props)),
     DescendantsMoDBs = lists:flatmap(fun kapps_util:get_account_mods/1, Descendants),
+    lager:debug("found ~p descendants & ~p MoDBs in total"
+               ,[length(Descendants), length(DescendantsMoDBs)]),
     {'ok', DescendantsMoDBs};
 
 descendant_quantities(_, []) ->
@@ -85,8 +83,8 @@ descendant_quantities(_, [SubAccountMoDB | DescendantsMoDBs]) ->
            ,YYYYMM
            ,Category
            ,Item
-           ,integer_to_binary(kz_json:get_integer_value(Item, BoMItem, 0))
-           ,integer_to_binary(kz_json:get_integer_value(Item, EoMItem, 0))
+           ,maybe_integer_to_binary(Item, BoMItem)
+           ,maybe_integer_to_binary(Item, EoMItem)
            ]
           ]
           || Item <- fields(BoMItem, EoMItem)
@@ -96,8 +94,12 @@ descendant_quantities(_, [SubAccountMoDB | DescendantsMoDBs]) ->
             EoMItem <- [kz_json:get_value(Category, EoM)],
             BoMItem =/= 'undefined' andalso EoMItem =/= 'undefined'
         ],
-    Rows = lists:append(lists:append(Data)),
-    {Rows, DescendantsMoDBs}.
+    case lists:append(lists:append(Data)) of
+        [] ->
+            %% No rows generated: ask worker to skip writing for this step.
+            {'ok', DescendantsMoDBs};
+        Rows -> {Rows, DescendantsMoDBs}
+    end.
 
 
 %%%===================================================================
@@ -135,5 +137,12 @@ modb_service_quantities(MoDB, IsBoM) ->
 -spec fields(kz_json:object(), kz_json:object()) -> ne_binaries().
 fields(JObjA, JObjB) ->
     lists:usort(kz_json:get_keys(JObjA) ++ kz_json:get_keys(JObjB)).
+
+-spec maybe_integer_to_binary(ne_binary(), kz_json:object()) -> api_non_neg_integer().
+maybe_integer_to_binary(Item, JObj) ->
+    case kz_json:get_integer_value(Item, JObj) of
+        'undefined' -> 'undefined';
+        Quantity -> integer_to_binary(Quantity)
+    end.
 
 %%% End of Module.
