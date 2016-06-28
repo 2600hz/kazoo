@@ -36,7 +36,6 @@ Key | Description | Type | Default | Required
 `gateways.[].codecs.[]` |   | `string` |   | `false`
 `gateways.[].custom_sip_headers` |   | `object` | `{}` | `false`
 `gateways.[].custom_sip_interface` | The name of a custom SIP interface | `string` |   | `false`
-`gateways.[].emergency` | Determines if the resource gateway represents emergency services | `boolean` | `false` | `false`
 `gateways.[].enabled` | Determines if the resource gateway is currently enabled | `boolean` | `true` | `false`
 `gateways.[].endpoint_type` | What type of endpoint is this gateway | `string('sip', 'freetdm', 'skype', 'amqp')` | `sip` | `false`
 `gateways.[].force_port` | Allow request only from this port | `boolean` | `false` | `false`
