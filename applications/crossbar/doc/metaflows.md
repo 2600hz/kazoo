@@ -18,8 +18,6 @@ Inside the "metaflows" object should be a familiar couple of keys, plus a couple
     * "self": listen for DTMF on the leg of the device/user with the metaflow
     * "peer": listen on the opposite leg of the device/user
     * "both": listen to both legs of the call for DTMF
-* use_fast_rearm: allows immediate retries of failed entries; defaults to false. When true, the binding digit will typically reset the previous input allowing the user to start over at any time if they made a mistake. This also means you can't have the binding digit in the number sequence that follows, because the binding digit will discard the prior digits. For example if your binding digit is '*' and you have "123*456" number configured when you dial "*123*456" it will activate metaflow "456", not "123*456". An exception to this rule when you need a double binding digit, so binding digit '*' and number "*" is a valid shortcut. Another valid example is binding digit '*' and number "*123", so when you dial "**123" the first '*' is the binding digit that arms metaflows, but the second '*' is part of the number and will be treated as "*123", not as just "123".
-
 
 ###### Numbers
 
@@ -69,6 +67,8 @@ The callflow metaflow module, in this case, would look at the "captured" list an
 What DTMF triggers a metaflow collection? Typically this would be '*' or '#', but could ostensibly be any DTMF.
 
     "binding_digit":"*"
+
+There is also a global flag in `system_config/konami` key `use_fast_rearm` which allows immediate retries of failed entries; defaults to 'false'. When 'true', the binding digit will typically reset the previous input allowing the user to start over at any time if they made a mistake. This also means you can't have the binding digit in the number sequence that follows, because the binding digit will discard the prior digits. For example if your binding digit is '*' and you have "123*456" number configured when you dial "*123*456" it will activate metaflow "456", not "123*456". An exception to this rule when you need a double binding digit, so binding digit '*' and number "*" is a valid shortcut. Another valid example is binding digit '*' and number "*123", so when you dial "**123" the first '*' is the binding digit that arms metaflows, but the second '*' is part of the number and will be treated as "*123", not as just "123".
 
 ###### Digit Timeout
 
