@@ -257,7 +257,7 @@ find_oldest_doc([First|Docs]) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_all_accounts() -> ne_binaries().
--spec get_all_accounts('unencoded' | 'encoded' | 'raw') -> ne_binaries().
+-spec get_all_accounts(kz_util:account_format()) -> ne_binaries().
 get_all_accounts() -> get_all_accounts(?REPLICATE_ENCODING).
 
 get_all_accounts(Encoding) ->
@@ -269,7 +269,7 @@ get_all_accounts(Encoding) ->
     ].
 
 -spec get_all_accounts_and_mods() -> ne_binaries().
--spec get_all_accounts_and_mods('unencoded' | 'encoded' | 'raw') -> ne_binaries().
+-spec get_all_accounts_and_mods(kz_util:account_format()) -> ne_binaries().
 get_all_accounts_and_mods() ->
     get_all_accounts_and_mods(?REPLICATE_ENCODING).
 
@@ -281,7 +281,7 @@ get_all_accounts_and_mods(Encoding) ->
             orelse is_account_mod(Db)
     ].
 
--spec format_db(ne_binary(), 'unencoded' | 'encoded' | 'raw') -> ne_binary().
+-spec format_db(ne_binary(), kz_util:account_format()) -> ne_binary().
 format_db(Db, Encoding) ->
     Fs =
         [{fun is_account_db/1, fun kz_util:format_account_id/2}
@@ -296,7 +296,7 @@ format_db(Db, Encoding, [{Predicate, Formatter}|Fs]) ->
     end.
 
 -spec get_all_account_mods() -> ne_binaries().
--spec get_all_account_mods('unencoded' | 'encoded' | 'raw') -> ne_binaries().
+-spec get_all_account_mods(kz_util:account_format()) -> ne_binaries().
 get_all_account_mods() ->
     get_all_account_mods(?REPLICATE_ENCODING).
 
@@ -307,38 +307,45 @@ get_all_account_mods(Encoding) ->
         is_account_mod(Db)
     ].
 
--spec get_account_mods(ne_binary()) ->
-                              ne_binaries().
--spec get_account_mods(ne_binary(), 'unencoded' | 'encoded' | 'raw') ->
-                              ne_binaries().
-get_account_mods(AccountId) ->
-    get_account_mods(AccountId, ?REPLICATE_ENCODING).
+-spec get_account_mods(ne_binary()) -> ne_binaries().
+-spec get_account_mods(ne_binary(), kz_util:account_format()) -> ne_binaries().
+get_account_mods(Account) ->
+    get_account_mods(Account, ?REPLICATE_ENCODING).
 
-get_account_mods(AccountId, Encoding) ->
-    MODs = get_all_account_mods(Encoding),
-    [kz_util:format_account_id(MOD, Encoding)
-     || MOD <- MODs,
+get_account_mods(Account, Encoding) ->
+    AccountId = kz_util:format_account_id(Account, Encoding),
+    [MOD
+     || MOD <- get_all_account_mods(Encoding),
         is_account_mod(MOD),
-        is_matched_account_mod(MOD, AccountId)
+        is_matched_account_mod(Encoding, MOD, AccountId)
     ].
 
--spec is_matched_account_mod(ne_binary(), ne_binary()) -> boolean().
-is_matched_account_mod(?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, _, _)  %% DbActId
-                       ,?MATCH_ACCOUNT_UNENCODED(A, B, Rest)  %% SearchId
+-spec is_matched_account_mod(kz_util:account_format(), ne_binary(), ne_binary()) -> boolean().
+is_matched_account_mod('unencoded'
+                      ,?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, _, _)
+                      ,?MATCH_ACCOUNT_UNENCODED(A, B, Rest)
                       ) ->
     'true';
-is_matched_account_mod(?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, _, _)  %% DbActId
-                       ,?MATCH_ACCOUNT_ENCODED(A, B, Rest)  %% SearchId
+is_matched_account_mod('encoded'
+                      ,?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, _, _)
+                      ,?MATCH_ACCOUNT_ENCODED(A, B, Rest)
                       ) ->
     'true';
-is_matched_account_mod(_, _) ->
+is_matched_account_mod('raw'
+                      ,?MATCH_MODB_SUFFIX_RAW(A, B, Rest, _, _)
+                      ,?MATCH_ACCOUNT_RAW(A, B, Rest)
+                      ) ->
+    'true';
+is_matched_account_mod(_, _, _) ->
     'false'.
 
 -spec is_account_mod(ne_binary()) -> boolean().
-is_account_mod(Db) -> kz_datamgr:db_classification(Db) =:= 'modb'.
+is_account_mod(Db) ->
+    kz_datamgr:db_classification(Db) =:= 'modb'.
 
 -spec is_account_db(ne_binary()) -> boolean().
-is_account_db(Db) -> kz_datamgr:db_classification(Db) =:= 'account'.
+is_account_db(Db) ->
+    kz_datamgr:db_classification(Db) =:= 'account'.
 
 
 -type getby_return() :: {'ok', ne_binary()} |
