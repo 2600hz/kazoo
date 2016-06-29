@@ -843,6 +843,13 @@ status(#{finished := Finished
 status(#{finished := Finished
         ,total_rows := 'undefined'
         ,total_rows_failed := 0
+        ,total_rows_succeeded := 0
+        })
+  when Finished /= 'undefined' ->
+    ?STATUS_SUCCESS;
+status(#{finished := Finished
+        ,total_rows := 'undefined'
+        ,total_rows_failed := 0
         ,total_rows_succeeded := TotalSucceeded
         })
   when Finished /= 'undefined',
