@@ -699,8 +699,11 @@ maybe_bookkeeper_allow_updates(Bookkeeper, AccountId, Status) ->
         'true' -> spawn_move_to_good_standing(AccountId);
         'false' ->
             lager:debug("denying update request for services ~s due to status ~s", [AccountId, Status]),
-            Error = io_lib:format("Unable to continue due to billing account ~s status", [AccountId]),
-            throw({Status, kz_util:to_binary(Error)})
+            Reason = io_lib:format("Unable to continue due to billing account ~s status is ~s", [AccountId, Status]),
+            Error = kz_json:from_list([{<<"error">>, <<"bad_status">>}
+                                      ,{<<"message">>, kz_util:to_binary(Reason)}
+                                      ]),
+            throw({<<"account_billing_invalid">>, Error})
     end.
 
 -spec default_maybe_allow_updates(ne_binary()) -> 'true'.
@@ -709,8 +712,11 @@ default_maybe_allow_updates(AccountId) ->
         'true' -> 'true';
         'false' ->
             lager:debug("denying update request, ~s.default_allow_updates is false", [?WHS_CONFIG_CAT]),
-            Error = io_lib:format("Service updates are disallowed by default for billing account ~s", [AccountId]),
-            throw({<<"updates_disallowed">>, kz_util:to_binary(Error)})
+            Reason = io_lib:format("Service updates are disallowed by default for billing account ~s", [AccountId]),
+            Error = kz_json:from_list([{<<"error">>, <<"updates_disallowed">>}
+                                      ,{<<"message">>, kz_util:to_binary(Reason)}
+                                      ]),
+            throw({<<"account_billing_invalid">>, kz_util:to_binary(Error)})
     end.
 
 -spec spawn_move_to_good_standing(ne_binary()) -> 'true'.
