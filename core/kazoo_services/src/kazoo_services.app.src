@@ -11,6 +11,7 @@
                  , kazoo_config
                  , kazoo_modb
                  , braintree
+                 , kazoo_tasks
 
                  , lager
                  ]},

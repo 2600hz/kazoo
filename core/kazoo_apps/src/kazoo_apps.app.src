@@ -13,7 +13,6 @@
                   , kazoo_config
                   , kazoo_data
                   , kazoo_amqp
-                  , kazoo_tasks
                   , kazoo_services
                   , kazoo_documents
                   , kazoo_number_manager
