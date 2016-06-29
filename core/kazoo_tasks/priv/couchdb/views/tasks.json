@@ -3,7 +3,7 @@
     "language": "javascript",
     "views": {
         "listing_by_account": {
-            "map": "function (doc) { if (doc.pvt_type != 'task' || doc.pvt_deleted) return; emit([doc.pvt_account_id, doc._id], { 'id':doc._id, 'account_id':doc.pvt_account_id, 'category':doc.pvt_category, 'action':doc.pvt_action, 'created':doc.pvt_created, 'status':(doc.pvt_status)?doc.pvt_status:undefined, 'node':(doc.pvt_worker_node)?doc.pvt_worker_node:undefined, 'start_timestamp':(doc.pvt_started_at)?doc.pvt_started_at:undefined, 'end_timestamp':(doc.pvt_ended_at)?doc.pvt_ended_at:undefined, 'failure_count':(doc.pvt_total_rows_failed)?doc.pvt_total_rows_failed:undefined, 'success_count':(doc.pvt_total_rows_succeeded)?doc.pvt_total_rows_succeeded:undefined, 'total_count':(doc.pvt_total_rows)?doc.pvt_total_rows:undefined }); }"
+            "map": "function (doc) { if (doc.pvt_type != 'task' || doc.pvt_deleted) return; emit([doc.pvt_account_id, doc._id], { 'id':doc._id, 'account_id':doc.pvt_account_id, 'category':doc.pvt_category, 'action':doc.pvt_action, 'created':doc.pvt_created, 'status':doc.pvt_status, 'node':doc.pvt_worker_node, 'start_timestamp':doc.pvt_started_at, 'end_timestamp':doc.pvt_ended_at, 'failure_count':doc.pvt_total_rows_failed, 'success_count':doc.pvt_total_rows_succeeded, 'total_count':doc.pvt_total_rows }); }"
         }
     }
 }
