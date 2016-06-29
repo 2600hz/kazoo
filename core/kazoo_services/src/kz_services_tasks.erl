@@ -73,8 +73,8 @@ descendant_quantities(_, [SubAccountMoDB | DescendantsMoDBs]) ->
     ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, Year, Month) = SubAccountMoDB,
     AccountId = ?MATCH_ACCOUNT_RAW(A, B, Rest),
     YYYYMM = <<Year/binary, Month/binary>>,
-    BoM = modb_service_quantities(SubAccountMoDB, 'true'),
-    EoM = modb_service_quantities(SubAccountMoDB, 'false'),
+    BoM = modb_service_quantities(SubAccountMoDB, ?SERVICES_BOM),
+    EoM = modb_service_quantities(SubAccountMoDB, ?SERVICES_EOM),
     Data =
         [
          [
@@ -120,12 +120,8 @@ get_descendants(AccountId) ->
             []
     end.
 
--spec modb_service_quantities(ne_binary(), boolean()) -> kz_json:object().
-modb_service_quantities(MoDB, IsBoM) ->
-    Id = case IsBoM of
-             'true' -> <<"services_bom">>;
-             'false' -> <<"services_eom">>
-         end,
+-spec modb_service_quantities(ne_binary(), ne_binary()) -> kz_json:object().
+modb_service_quantities(MoDB, Id) ->
     case kz_datamgr:open_doc(MoDB, Id) of
         {'ok', JObj} -> kz_json:get_value(<<"quantities">>, JObj);
         {'error', _R} ->
