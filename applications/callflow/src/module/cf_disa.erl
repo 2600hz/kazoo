@@ -106,7 +106,7 @@ allow_dial(Data, Call, Retries, Interdigit) ->
     maybe_route_to_callflow(Data, Call1, Retries, Interdigit, Number).
 
 maybe_route_to_callflow(Data, Call, Retries, Interdigit, Number) ->
-    case cf_util:lookup_callflow(Number, kapps_call:account_id(Call)) of
+    case cf_flow:lookup(Number, kapps_call:account_id(Call)) of
         {'ok', Flow, NoMatch} ->
             lager:info("callflow ~s satisfies request", [kz_doc:id(Flow)]),
             Updates = [{fun kapps_call:set_request/2

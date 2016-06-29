@@ -693,6 +693,7 @@ set_request(Request, #kapps_call{}=Call) when is_binary(Request) ->
 -ifdef(TEST).
 to_e164(Number) -> Number.
 -else.
+to_e164(<<"*", _/binary>>=Number) -> Number;
 to_e164(Number) ->
     knm_converters:normalize(Number).
 -endif.

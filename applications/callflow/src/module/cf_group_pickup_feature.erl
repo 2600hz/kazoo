@@ -90,7 +90,7 @@ build_pickup_params(_Number, <<"group">>, _Call) ->
     {'error', <<"work in progress">>};
 build_pickup_params(Number, <<"extension">>, Call) ->
     AccountId = kapps_call:account_id(Call),
-    case cf_util:lookup_callflow(Number, AccountId) of
+    case cf_flow:lookup(Number, AccountId) of
         {'ok', FlowDoc, 'false'} ->
             Data = kz_json:get_value([<<"flow">>, <<"data">>], FlowDoc),
             Module = kz_json:get_value([<<"flow">>, <<"module">>], FlowDoc),

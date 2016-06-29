@@ -23,7 +23,7 @@ handle(Data, Call) ->
     CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
     AccountId = kapps_call:account_id(Call),
     case is_binary(CaptureGroup)
-        andalso cf_util:lookup_callflow(CaptureGroup, AccountId)
+        andalso cf_flow:lookup(CaptureGroup, AccountId)
     of
         {'ok', Flow, 'false'} ->
             JObj = suppress_ccv(Data),

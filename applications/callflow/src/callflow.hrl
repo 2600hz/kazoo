@@ -53,6 +53,8 @@
 -define(RESTRICTED_ENDPOINT_KEY, <<"Restricted-Endpoint-ID">>).
 
 -define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>]).
+-define(CF_FLOW_CACHE_KEY(Number, AccountId), {'cf_flow', Number, AccountId}).
+-define(CF_PATTERN_CACHE_KEY(AccountId), {'cf_patterns', AccountId}).
 
 -define(CALLFLOW_HRL, 'true').
 -endif.
