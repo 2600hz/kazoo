@@ -15,4 +15,5 @@ function stop() {
 
 sleep 180 && stop &
 
+export KAZOO_CONFIG=rel/ci-config.ini
 REL=$rel make release
