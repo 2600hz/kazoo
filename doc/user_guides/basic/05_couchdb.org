@@ -1,0 +1,454 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:2 \n:nil ^:t arch:headline
+#+OPTIONS: author:t c:nil creator:nil d:(not "LOGBOOK") date:nil e:t
+#+OPTIONS: email:nil f:t inline:t num:t p:nil pri:nil prop:nil stat:t
+#+OPTIONS: tags:t tasks:t tex:t timestamp:f title:t toc:nil todo:t |:t
+#+TITLE: Kazoo Basic Training - CouchDB
+#+DATE: <2016-06-06 Mon>
+#+AUTHOR: James Aimonetti
+#+EMAIL: james@2600hz.com
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+CREATOR: Emacs 25.1.50.3 (Org mode 8.3.4)
+#+STARTUP: beamer
+#+LaTeX_CLASS: beamer
+#+LaTeX_CLASS_OPTIONS: [bigger]
+#+BEAMER_FRAME_LEVEL: 2
+#+BEAMER_THEME: Madrid
+#+COLUMNS: %40ITEM %10BEAMER_env(Env) %9BEAMER_envargs(Env Args) %4BEAMER_col(Col) %10BEAMER_extra(Extra)
+
+* CouchDB
+** Kazoo Basic Training
+
+#+BEGIN_CENTER
+CouchDB
+#+END_CENTER
+
+** The Kazoo Stack - Cluster
+
+#+BEGIN_CENTER
+[[file:./images/kazoo_stack.png]]
+#+END_CENTER
+
+** The Kazoo Stack - CouchDB
+
+#+BEGIN_CENTER
+[[file:./images/kazoo_stack_couchdb.png]]
+#+END_CENTER
+
+** Why CouchDB                                                      :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Two Architectural Lessons Learned
+ - Modeling Schema is Difficult
+   - Modular, Rapid Development System
+ - Master / Slave Doesn’t Scale
+
+*** Two Enhancements Desired
+ - Find a database that works well over a WAN
+ - Gain additional uptime guarantees
+
+*** Multi-Master database
+ - Any node can answer any request
+
+*** Supports Zones
+ - Requires a 'zone' attribute when adding a node
+ - Requires a [cluster] placement attribute
+ - Provides geo-redundancy
+
+*** No Single Point of Failure
+ - Properly tuned quorum settings ensure this
+
+*** Eventual Consistency
+ - Data is automatically replicated, eventually
+ - Link latency typically the limit
+
+*** Coherence
+ - Written in Erlang
+
+*** Backup Without Downtime
+ - as simple as cp/rsync
+
+*** More Servers Creates More Capacity
+ - Pre-allocate based on expected growth
+
+*** Simple, Simple, Simple
+ - OPS will love it
+
+** How Does It Work                                                 :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Nodes                                                   :B_ignoreheading:
+    :PROPERTIES:
+    :BEAMER_env: ignoreheading
+    :END:
+#+BEGIN_CENTER
+[[file:./images/couchdb_nodes.png]]
+#+END_CENTER
+
+*** The Ring                                                :B_ignoreheading:
+    :PROPERTIES:
+    :BEAMER_env: ignoreheading
+    :END:
+#+BEGIN_CENTER
+[[file:./images/couchdb_ring.png]]
+#+END_CENTER
+
+** Installing CouchDB                                               :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Debian
+
+Taken from [[https://cwiki.apache.org/confluence/display/COUCHDB/Debian][CouchDB's installation instructions]]:
+1. Setup Erlang Solutions' Erlang package:
+   #+BEGIN_EXAMPLE
+   $> apt-get install -y lsb-release
+   $> echo "deb http://binaries.erlang-solutions.com/debian `lsb_release -cs` contrib" \
+   | sudo tee /etc/apt/sources.list.d/erlang-solutions.list
+   $> wget -O - http://binaries.erlang-solutions.com/debian/erlang_solutions.asc \
+   | sudo apt-key add -
+   #+END_EXAMPLE
+
+*** Debian
+1. Install a newer nodejs
+   #+BEGIN_EXAMPLE
+   $> curl -sL https://deb.nodesource.com/setup_4.x | sudo -E bash -
+   #+END_EXAMPLE
+
+*** Debian
+2. Install dependencies:
+   #+BEGIN_EXAMPLE
+   $> sudo apt-get update -y
+   $> sudo apt-get install -y libmozjs185 libmozjs185-dev erlang-nox erlang-dev \
+   build-essential libnspr4 libnspr4-0d libnspr4-dev libcurl4-openssl-dev curl libicu-dev \
+   pkg-config git haproxy nodejs python-sphinx
+   #+END_EXAMPLE
+
+*** CentOS
+
+The installation instructions are missing at the moment. Yum commands
+with similar packages as in Debian's installtion instructions should
+suffice.
+
+*** Setup CouchDB
+
+See the [[https://couchdb.apache.org/developer-preview/2.0/][Developer preview]]:
+
+   #+BEGIN_EXAMPLE
+   $> git clone https://git-wip-us.apache.org/repos/asf/couchdb.git
+   $> npm install -g grunt-cli
+   $> cd couchdb
+   $couchdb/> git checkout developer-preview-2.0
+   $couchdb/> ./configure
+   $couchdb/> make
+   #+END_EXAMPLE
+
+*** Start CouchDB
+   #+BEGIN_EXAMPLE
+   $couchdb/> dev/run --with-admin-party-please --with-haproxy -n 3
+   $couchdb/> /usr/sbin/haproxy -D -f rel/haproxy.cfg
+   #+END_EXAMPLE
+
+*** Accessing CouchDB API
+   #+BEGIN_EXAMPLE
+   $couchdb/> curl 127.0.0.1:5984
+   {"couchdb":"Welcome","version":"b49d069","vendor":{"name":"The Apache Software Foundation"}}
+   #+END_EXAMPLE
+
+*** CouchDB UI (Fauxton)
+ - Open http://localhost:5984/_utils
+
+*** Configuration files
+
+Once you've started CouchDB, you can take a look at the configuration
+files. There aren't many knobs you need to tweak but its worth taking
+a peek. You can find these files in the =default.ini= file and
+override them in =local.ini=
+
+*** =[chttpd]= - CouchDB API
+    #+BEGIN_EXAMPLE
+    [chttpd]
+    port = 15984
+    bind_address = 127.0.0.1
+    backlog = 512
+    docroot = src/fauxton/dist/release
+    socket_options = [{recbuf, 262144}, {sndbuf, 262144}, {nodelay, true}]
+    #+END_EXAMPLE
+
+*** =[httpd]= - CouchDB Admin Interface
+   #+BEGIN_EXAMPLE
+   [httpd]
+   port = 15986
+   bind_address = 127.0.0.1
+   #+END_EXAMPLE
+
+*** =[cluster]= - Quorum settings
+    #+BEGIN_EXAMPLE
+    [cluster]
+    q=8
+    r=2
+    w=2
+    n=3
+    #+END_EXAMPLE
+
+*** =[couch_httpd_auth]=
+   #+BEGIN_EXAMPLE
+   [couch_httpd_auth]
+   ; If you set this to true, you should also uncomment the WWW-Authenticate line
+   ; above. If you don't configure a WWW-Authenticate header, CouchDB will send
+   ; Basic realm="server" in order to prevent you getting logged out.
+   ; require_valid_user = false
+   secret = d27d82ed2bd6485d9eda59a10a61e7a1
+   #+END_EXAMPLE
+
+*** =[couchdb]=
+    #+BEGIN_EXAMPLE
+    [couchdb]
+    database_dir = /srv/db
+    view_index_dir = /srv/view_index
+    max_document_size = 67108864 ; 64 MB
+    os_process_timeout = 5000 ; 5 seconds. for view and external servers.
+    max_dbs_open = 500
+    file = /var/log/couchdb/couchdb.log
+    #+END_EXAMPLE
+
+*** Quorum Settings
+ - Q: Number of shards per DB
+ - R: Read quorum
+ - W: Write quorum
+ - N: Number of redundant copies
+
+*** =vm.args=
+
+Erlang configuration file. You shouldn't need to change anything
+except maybe =-setcookie monster=.
+
+** Managing CouchDB                                                 :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Lets create a new database!
+ - Click "Create Database" (top right corner)
+ - Name your database and click "Create"
+
+*** Lets add some documents!
+ - Click on the "+" to the right of "All Documents"
+ - Click on “New Doc”
+ - Add some JSON key/value pairs
+ - Click on "Create Document"
+
+*** Shards created on node1
+
+   #+BEGIN_EXAMPLE
+   $couchdb/> ls dev/lib/node1/data/shards
+   00000000-1fffffff  40000000-5fffffff  80000000-9fffffff  c0000000-dfffffff
+   20000000-3fffffff  60000000-7fffffff  a0000000-bfffffff  e0000000-ffffffff
+   #+END_EXAMPLE
+
+*** Files created on node1, shard 00000000-1fffffff
+   #+BEGIN_EXAMPLE
+   $couchdb/> ls dev/lib/node1/data/shards/00000000-1fffffff/
+   _global_changes.1462857809.couch _metadata.1462857809.couch _replicator.1462857809.couch
+   _users.1462857809.couch test.1465831158.couch
+   #+END_EXAMPLE
+
+*** Your data is stored in a file named after the database name
+ - This keeps it simple
+ - Slashes become folder names (organizational)
+ - Your database is broken up into pieces (shards)
+ - You can copy these files – they’re a backup
+ - You can move them around – that’s a restore
+
+*** Lets backup your database
+    #+BEGIN_EXAMPLE
+    $couchdb/> cp –a dev/lib/node1/data/shards /tmp/
+    #+END_EXAMPLE
+
+*** Create an disaster!!!
+    #+BEGIN_EXAMPLE
+    $couchdb/> rm -rf dev/lib/node1/data/shards
+    #+END_EXAMPLE
+
+*** Can you access your documents in the UI now?
+ - Of course! Nodes 2 and 3 contain copies as well
+   #+BEGIN_EXAMPLE
+   $couchdb/> find dev/lib/node3 -name "test.*.couch"
+   dev/lib/node3/data/shards/20000000-3fffffff/test.1465831158.couch
+   dev/lib/node3/data/shards/40000000-5fffffff/test.1465831158.couch
+   dev/lib/node3/data/shards/e0000000-ffffffff/test.1465831158.couch
+   dev/lib/node3/data/shards/60000000-7fffffff/test.1465831158.couch
+   dev/lib/node3/data/shards/a0000000-bfffffff/test.1465831158.couch
+   dev/lib/node3/data/shards/c0000000-dfffffff/test.1465831158.couch
+   dev/lib/node3/data/shards/80000000-9fffffff/test.1465831158.couch
+   dev/lib/node3/data/shards/00000000-1fffffff/test.1465831158.couch
+   #+END_EXAMPLE
+
+*** Check node 1 sepcifically
+    #+BEGIN_EXAMPLE
+    $couchdb/> curl localhost:15984/test | python -mjson.tool
+    {...}
+    #+END_EXAMPLE
+
+*** Check nodes 2 and 3 as well
+    #+BEGIN_EXAMPLE
+    $couchdb/> curl localhost:25984/test | python -mjson.tool
+    $couchdb/> curl localhost:35984/test | python -mjson.tool
+    #+END_EXAMPLE
+
+*** CouchDB tracks data about data in CouchDB
+ - Navigate to http://your.ip.addr:5986/_utils/
+ - Note the port, *5986* instead of 5984.
+
+*** Open the =_dbs= database and select a document
+ - This is where CouchDB tracks which servers have what parts of your databases.
+   #+BEGIN_EXAMPLE
+   {...}
+   #+END_EXAMPLE
+
+*** =_dbs/test= =by_node=
+    #+BEGIN_EXAMPLE
+    "by_node": {
+        "node1@127.0.0.1": [
+            "00000000-1fffffff",
+            "20000000-3fffffff",
+            ...
+            ],
+        ...
+        ]
+    }
+    #+END_EXAMPLE
+
+*** =_dbs/test= =by_range=
+    #+BEGIN_EXAMPLE
+    "by_range": {
+        "00000000-1fffffff": [
+            "node1@127.0.0.1",
+            "node2@127.0.0.1",
+            "node3@127.0.0.1"
+            ],
+        ...
+    }
+    #+END_EXAMPLE
+
+*** There is other data here too!
+ - Open the =_nodes= database
+ - This is where CouchDB tracks the nodes in the cluster
+ - This is also where you'd add a "zone"
+   - See [[https://mail-archives.apache.org/mod_mbox/couchdb-user/201604.mbox/%3CAB0DB9FD-987E-4D29-929D-70EAC3468B17@apache.org%3E][this ML post for more]] on zones
+ - See your own node in there?
+ - If you know what you are doing you can change these!
+ - That topic is covered in our advanced course
+
+** Clustering CouchDB                                               :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Check =_membership=
+    #+BEGIN_EXAMPLE
+    $couchdb/> curl localhost:5984/_membership
+    #+END_EXAMPLE
+
+*** =_membership= =all_nodes=
+ - =all_nodes= is the list of nodes actually connected
+    #+BEGIN_EXAMPLE
+    "all_nodes": [
+        "node1@127.0.0.1",
+        "node2@127.0.0.1",
+        "node3@127.0.0.1"
+    ],
+    #+END_EXAMPLE
+
+*** =_membership= =cluster_nodes=
+ - =cluster_nodes= is the nodes we know of
+   #+BEGIN_EXAMPLE
+    "cluster_nodes": [
+        "node1@127.0.0.1",
+        "node2@127.0.0.1",
+        "node3@127.0.0.1"
+    ]
+   #+END_EXAMPLE
+
+*** Adding a new node
+    #+BEGIN_EXAMPLE
+    $couchdb/> curl -X PUT localhost:15986/_nodes/node4@w.x.y.z:5984 -d {}
+    $couchdb/> curl localhost:5984/_membership | python -mjson.tool
+    {...}
+    #+END_EXAMPLE
+
+*** Losing a server
+
+ - Deleting the files don't impact service
+ - Being unreachable doesn't impact service
+   - Syncs when connectivity is restored
+
+*** Remove a node
+
+ - Before removing a node, manually move shards to other nodes
+ - Remove node:
+   #+BEGIN_EXAMPLE
+   $couchdb/> curl -X GET localhost:15986/_nodes/node@10.1.10.1
+   {"_id":"node@10.1.10.1","_rev":"1-967a00dff5e02add41819138abb3284d"}
+   $couchdb/> curl -X DELETE 'localhost:15986/_nodes/node@10.1.10.1?rev=1-967a00dff5e02add41819138abb3284d'
+   {"ok":true,"id":"node@10.1.10.1","rev":"2-eec205a9d413992850a6e32678485900"}
+   #+END_EXAMPLE
+
+** Monitoring CouchDB                                               :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Lets look at some logs
+    $couchdb/> tail -f dev/logs/node1.log
+
+*** Try adding and modifying documents in the UI
+- What might you see?
+- They are not as bad as they first appear.
+
+*** Missing shards or bad permissions
+    #+BEGIN_EXAMPLE
+    [error] [<0.15064.5491>] [771d5943] Uncaught Error in HTTP request:
+    {error, {internal_server_error, "No DB shards could be opened."}}
+    #+END_EXAMPLE
+
+*** No file descriptors
+    #+BEGIN_EXAMPLE
+    [info] [<0.100.0>] [--------] db shards/00000000-55555554/test.1398903460
+    died with reason {{badmatch,{error,emfile}}
+    #+END_EXAMPLE
+
+*** Statistics
+    #+BEGIN_EXAMPLE
+    $couchdb/> curl 127.0.0.1:15986/_stats
+    #+END_EXAMPLE
+
+*** Active Tasks
+    #+BEGIN_EXAMPLE
+    $couchdb/> curl 127.0.0.1:5986/_active_tasks
+    #+END_EXAMPLE
+
+*** Resetting the cluster
+ - In preparation for Kazoo, let's reset the dbs:
+   #+BEGIN_EXAMPLE
+   $couchdb/> rm -rf dev/lib/node*
+   $couchdb/> ps -ef | grep beam | grep couchdb
+   $couchdb/> kill PID1; kill PID2; kill PID3
+   $couchdb> dev/run --with-admin-party-please --with-haproxy -n 3
+   #+END_EXAMPLE
+
+** Thank You
+
+#+INCLUDE: "./frames/footer.org"

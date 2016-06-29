@@ -1,0 +1,132 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:2 \n:nil ^:t arch:headline
+#+OPTIONS: author:t c:nil creator:nil d:(not "LOGBOOK") date:nil e:t
+#+OPTIONS: email:nil f:t inline:t num:t p:nil pri:nil prop:nil stat:t
+#+OPTIONS: tags:t tasks:t tex:t timestamp:f title:t toc:nil todo:t |:t
+#+TITLE: Kazoo Basic Training - Cluster Design
+#+DATE: <2016-06-06 Mon>
+#+AUTHOR: James Aimonetti
+#+EMAIL: james@2600hz.com
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+CREATOR: Emacs 25.1.50.3 (Org mode 8.3.4)
+#+STARTUP: beamer
+#+LaTeX_CLASS: beamer
+#+LaTeX_CLASS_OPTIONS: [bigger]
+#+BEAMER_FRAME_LEVEL: 2
+#+BEAMER_THEME: Madrid
+#+COLUMNS: %40ITEM %10BEAMER_env(Env) %9BEAMER_envargs(Env Args) %4BEAMER_col(Col) %10BEAMER_extra(Extra)
+
+* Cluster Design
+
+** Kazoo Basic Training
+#+BEGIN_CENTER
+Cluster Design
+#+END_CENTER
+
+** Environment Considerations                                       :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Consider your customer
+
+*** Consider your growth strategy
+ - What’s easy to change?
+ - What’s not? (over provision your DB)
+
+*** Resource consumption and constraints
+
+*** Every cluster we have designed is unique!
+
+*** Virtual servers or bare-metal?
+
+*** Dedicated servers or multi-service servers?
+ - Which? where?
+
+*** Hosted servers or racks in datacenters?
+ - Hybrid?
+
+*** SIP trunking, TDM, BGP, crossconnects?
+
+** Possible Designs                                                 :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Monolithic
+#+BEGIN_CENTER
+All components are interconnected
+#+END_CENTER
+
+*** Monolithic
+#+BEGIN_CENTER
+[[file:./images/kazoo_stack_monolithic.png]]
+#+END_CENTER
+
+*** Monolithic
+ - Pros
+   - Maximum redundancy
+   - Maximum utilization
+ - Cons
+   - No isolation from DoS and other attacks
+   - No regions
+   - Easy to have a cascading failure
+
+*** Geographic Zones
+#+BEGIN_CENTER
+Components connected in a single region, regions interconnected
+#+END_CENTER
+
+*** Geographic Zones
+#+BEGIN_CENTER
+[[file:./images/kazoo_stack_geographic.png]]
+#+END_CENTER
+
+*** Geographic Zones
+ - Pros
+   - Isolation from DoS and other attacks
+   - Isolation from Overloaded Servers
+   -Better media path (possibly)
+ - Cons
+   - Under utilizes resources if poorly planned
+   - More management
+   - More equipment
+
+*** Private Service Zones
+#+BEGIN_CENTER
+Service offerings are isolated, DB is still connected
+#+END_CENTER
+
+*** Private Service Zones
+#+BEGIN_CENTER
+[[file:./images/kazoo_stack_service_zones.png]]
+#+END_CENTER
+
+*** Private Service Zones
+ - Pros
+   - Moderate Isolation in Key Risk Areas
+   - Easier to sell as a private service
+   - Easier to deal with spikes in volume/load
+ - Cons
+   - More Expensive
+   - Requires More Management
+   - Data Integrity Issues
+
+** Get it right
+#+BEGIN_CENTER
+The design of your cluster is the most important decision impacting your success
+
+Clients demand a reliable system
+
+S**t happens. You must be prepared for it.
+
+Your clients expect you to be prepared for it.
+
+#+END_CENTER
+
+** Thank You
+
+#+INCLUDE: "./frames/footer.org"

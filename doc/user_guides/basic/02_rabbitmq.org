@@ -1,0 +1,385 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:2 \n:nil ^:t arch:headline
+#+OPTIONS: author:t c:nil creator:nil d:(not "LOGBOOK") date:nil e:t
+#+OPTIONS: email:nil f:t inline:t num:t p:nil pri:nil prop:nil stat:t
+#+OPTIONS: tags:t tasks:t tex:t timestamp:f title:t toc:nil todo:t |:t
+#+TITLE: Kazoo Basic Training - RabbitMQ
+#+DATE: <2016-06-06 Mon>
+#+AUTHOR: James Aimonetti
+#+EMAIL: james@2600hz.com
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+CREATOR: Emacs 25.1.50.3 (Org mode 8.3.4)
+#+STARTUP: beamer
+#+LaTeX_CLASS: beamer
+#+LaTeX_CLASS_OPTIONS: [bigger]
+#+BEAMER_FRAME_LEVEL: 2
+#+BEAMER_THEME: Madrid
+#+COLUMNS: %40ITEM %10BEAMER_env(Env) %9BEAMER_envargs(Env Args) %4BEAMER_col(Col) %10BEAMER_extra(Extra)
+
+* RabbitMQ
+
+** Kazoo Basic Training
+
+#+BEGIN_CENTER
+RabbitMQ
+#+END_CENTER
+** The Kazoo Stack - Cluster
+
+#+BEGIN_CENTER
+[[file:./images/kazoo_stack.png]]
+#+END_CENTER
+
+** The Kazoo Stack - RabbitMQ
+
+#+BEGIN_CENTER
+[[file:./images/kazoo_stack_rabbitmq.png]]
+#+END_CENTER
+
+** RabbitMQ
+
+#+BEGIN_CENTER
+What is RabbitMQ?
+#+END_CENTER
+
+** What is RabbitMQ                                                 :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+Let’s talk about the need for messaging:
+ - The world is asynchronous
+ - Programming is often synchronous
+ - This makes scaling in mass difficult
+
+Brainstorm:
+ - What messages would you want to receive about a call?
+ - What messages would you want to receive about a voicemail box?
+
+*** Why RabbitMQ
+
+ - Robust messaging for applications
+
+ - Flexible Routing
+
+ - Highly Available
+
+ - Written in Erlang
+
+*** AMQP
+
+#+BEGIN_CENTER
+*Uses AMQP to transfer messages*
+
+Advanced Message Queuing Protocol
+#+END_CENTER
+
+** What is AMQP                                                     :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+#+BEGIN_CENTER
+What is AMQP?
+#+END_CENTER
+
+*** The AMQP Working Group
+ - Set up by JPMorgan in 2006
+
+*** Includes:
+ - Bank of America
+ - Cisco
+ - Microsoft
+ - Novell
+ - Goldman Sachs
+ - VMWare
+
+See [[https://www.amqp.org/about/examples][more examples]] of companies using RabbitMQ
+
+*** Version 1.0 accepted by OASIS
+ - Organization for the Advancement of Structured Information Standards
+
+*** Performant
+ - [[https://blog.pivotal.io/pivotal/products/rabbitmq-hits-one-million-messages-per-second-on-google-compute-engine][One million msg/s]] on Google Compute Engine
+ - "[[http://blog.x-aeon.com/2013/04/10/a-quick-message-queue-benchmark-activemq-rabbitmq-hornetq-qpid-apollo/"][Except for big messages, RabbitMQ seems to be the best bet as it outperforms others by a factor of 3.]]"
+
+*** Interoperable
+ - [[https://www.rabbitmq.com/clients.html][Official Clients]]
+   - Java
+   - .Net
+   - Erlang
+ - [[https://www.rabbitmq.com/devtools.html][Community Clients]]
+   - JVM (Java, Spring, Scala, Groovy/Grails, Clojure, JRuby)
+   - .Net
+   - Ruby
+   - Python
+   - PHP
+   - Objective-C/Swift
+   - Node.js
+   - C/C++
+   - Go
+
+** AMQP Basics                                                      :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Message Delivery
+
+How do messages get delivered?
+ - Direct: One to one exchange of messages
+ - Topic: Subscribe to a topic by name
+ - Fanout: Send the message to everyone
+
+Let’s review these exchanges in detail
+
+** Fanout Exchange                                              :B_fullframe:
+    :PROPERTIES:
+    :BEAMER_env: fullframe
+    :END:
+
+[[file:./images/fanout_exchange.png]]
+
+** Direct Exchange                                              :B_fullframe:
+    :PROPERTIES:
+    :BEAMER_env: fullframe
+    :END:
+
+[[file:./images/direct_exchange.png]]
+
+** Topic Exchange                                               :B_fullframe:
+    :PROPERTIES:
+    :BEAMER_env: fullframe
+    :END:
+
+[[file:./images/topic_exchange.png]]
+
+** Example: Call Control                                            :B_frame:
+   :PROPERTIES:
+   :BEAMER_env: frame
+   :END:
+
+#+BEGIN_CENTER
+Let's look at a simplified example
+#+END_CENTER
+
+** Basic Message Flow                                           :B_fullframe:
+   :PROPERTIES:
+   :BEAMER_env: fullframe
+   :END:
+[[file:./images/basic_call_messaging.png]]
+
+** Example: Call Control                                            :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Brainstorm
+
+ - What delivery mechanism might be used in this example?
+
+ - What are some things that could go wrong?
+
+ - What trade-offs could be made to achieve higher efficiency?
+
+#+beamer: \framebreak
+
+*** The Good
+ - Failures have almost no impact on most issues
+ - Network latency has almost no impact
+ - Database outages have no impact
+ - Network failures have no impact
+ - Clusters can become split and work independently
+ - Re-sync on reconnect
+
+*** The Bad
+ - In-progress calls NOT in bridge mode can drop
+
+** Installing RabbitMQ                                              :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Debian
+
+Taken from [[https://www.rabbitmq.com/install-debian.html][RabbitMQ's installation instructions]]:
+
+ 1. Add APT source:
+   #+BEGIN_EXAMPLE
+   $> echo 'deb http://www.rabbitmq.com/debian/ testing main' |
+   sudo tee /etc/apt/sources.list.d/rabbitmq.list
+   #+END_EXAMPLE
+ 2. Add RabbitMQ Key:
+   #+BEGIN_EXAMPLE
+   $> wget -O- https://www.rabbitmq.com/rabbitmq-release-signing-key.asc |
+   sudo apt-key add -
+   #+END_EXAMPLE
+ 3. Update and install rabbitmq-server
+    #+BEGIN_EXAMPLE
+    $> sudo apt-get update
+    $> sudo apt-get install rabbitmq-server
+    #+END_EXAMPLE
+
+*** CentOS
+
+Taken from [[https://www.rabbitmq.com/install-rpm.html][RabbitMQ's installation instructions]]:
+1. Install Erlang from [[https://www.erlang-solutions.com/resources/download.html][Erlang Solutions]]:
+   #+BEGIN_EXAMPLE
+   $> wget https://packages.erlang-solutions.com/erlang-solutions-1.0-1.noarch.rpm
+   $> rpm -Uvh erlang-solutions-1.0-1.noarch.rpm
+   $> yum install erlang
+   #+END_EXAMPLE
+2. Install RabbitMQ:
+   #+BEGIN_EXAMPLE
+   $> rpm --import https://www.rabbitmq.com/rabbitmq-release-signing-key.asc
+   $> wget https://www.rabbitmq.com/releases/rabbitmq-server/v3.6.2/rabbitmq-server-3.6.2-1.noarch.rpm
+   $> yum install rabbitmq-server-3.6.2-1.noarch.rpm
+   #+END_EXAMPLE
+
+*** Starting RabbitMQ
+
+1. Start the service:
+   #+BEGIN_EXAMPLE
+   $> chkconfig rabbitmq-server on
+   $> service rabbitmq start
+   #+END_EXAMPLE
+2. Check that its running
+   #+BEGIN_EXAMPLE
+   $> rabbitmqctl status
+   #+END_EXAMPLE
+
+*** Configuration worth mentioning
+
+Read about [[https://www.rabbitmq.com/configure.html][configuration]] for details
+
+ - =/etc/rabbitmq/rabbitmq.config=
+   - Configures RabbitMQ core application, Erlang services and RabbitMQ plugins
+ - =/etc/rabbitmq/rabbitmq-env.config=
+   - Configures the running envirnoment for RabbitMQ
+   - Read more [[https://www.rabbitmq.com/man/rabbitmq-env.conf.5.man.html][here]]
+
+** Playing with RabbitMQ                                            :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Management Console
+
+Check out the management console
+ - Ensure its enabled:
+   #+BEGIN_EXAMPLE
+   $> rabbitmq-plugins enable rabbitmq_management
+   #+END_EXAMPLE
+ - Navigate to http://ip.addr:15672
+ - You may need to disable the firewall
+   #+BEGIN_EXAMPLE
+     $> service iptables stop
+     #+END_EXAMPLE
+ - Initial User/Pass: guest
+
+*** Management Console Continued
+ - If you try to access the management console from a non-localhost IP/hostname:
+   #+BEGIN_EXAMPLE
+   $> rabbitmqctl eval 'application:set_env(rabbit, loopback_users, []).'
+   #+END_EXAMPLE
+ - When in production, you'll want to disable the guest user again. See the RabbitMQ docs
+
+*** Find a partner
+#+BEGIN_CENTER
+We are only going to use one of your servers
+
+Please choose one now
+
+You should both open the management console on your computer.
+
+One of you will use the IP address of your partner.
+
+#+END_CENTER
+*** Person A
+
+ - Click on Queues
+ - Add a Queue (at the bottom)
+  - Name it whatever you like
+
+Once done both of you should:
+ - Click on Queues
+ - Find the Queue in the list and click on the name
+
+*** Person A
+
+Prepare to receive a message!
+ - Scroll down to “Get messages” and expand it
+
+*** Person B
+
+ - Scroll down to “Publish Message” and expand
+ - Enter a payload of "I want to call 222-333-4444"
+ - Click Publish Message
+
+*** Person A
+
+ - Note the message counter at the top of the page
+   - Did it increase?
+
+ - 'Ack Mode' should be 'Ack message requeue false'
+ - Click 'Get Message(s)'
+
+ - What do you see?
+
+ - What about the counter at the top of the page?
+
+*** Person A
+#+BEGIN_CENTER
+Write something back!
+#+END_CENTER
+
+*** Person B
+#+BEGIN_CENTER
+Retrieve the reply
+#+END_CENTER
+
+*** The heart of messaging in Kazoo
+ - Multiple applications get the chance to respond
+   - Even multiple copies of the same application
+ - Only one application and server "wins" the call
+ - Processes it for the duration of the call
+ - Explicit passing of call control
+
+** Monitoring RabbitMQ                                              :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** RabbitMQ Management HTTP API
+
+Queues should never have pending messages:
+#+BEGIN_EXAMPLE
+$> curl -i -u guest:guest http://localhost:15672/api/overview
+#+END_EXAMPLE
+
+Creates a queue, publishes a message, and consumes to test
+#+BEGIN_EXAMPLE
+$> curl -i -u guest:guest http://localhost:15672/api/aliveness-test/%2F
+#+END_EXAMPLE
+
+*** RabbitMQ Control
+
+A great deal of information on the running node
+#+BEGIN_EXAMPLE
+$> rabbitmqctl status
+#+END_EXAMPLE
+
+*** The Management Console
+
+Navigate to http://ip.addr:15672
+
+** Thank You
+
+#+INCLUDE: "./frames/footer.org"

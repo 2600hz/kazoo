@@ -1,0 +1,265 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:2 \n:nil ^:t arch:headline
+#+OPTIONS: author:t c:nil creator:nil d:(not "LOGBOOK") date:nil e:t
+#+OPTIONS: email:nil f:t inline:t num:t p:nil pri:nil prop:nil stat:t
+#+OPTIONS: tags:t tasks:t tex:t timestamp:f title:t toc:nil todo:t |:t
+#+TITLE: Kazoo Basic Training - REST API
+#+DATE: <2016-06-06 Mon>
+#+AUTHOR: James Aimonetti
+#+EMAIL: james@2600hz.com
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+CREATOR: Emacs 25.1.50.3 (Org mode 8.3.4)
+#+STARTUP: beamer
+#+LaTeX_CLASS: beamer
+#+LaTeX_CLASS_OPTIONS: [bigger]
+#+BEAMER_FRAME_LEVEL: 2
+#+BEAMER_THEME: Madrid
+#+COLUMNS: %40ITEM %10BEAMER_env(Env) %9BEAMER_envargs(Env Args) %4BEAMER_col(Col) %10BEAMER_extra(Extra)
+
+* REST API
+
+** Kazoo Basic Training
+#+BEGIN_CENTER
+REST APIs
+
+AKA Crossbar
+#+END_CENTER
+
+** The Kazoo Stack - Cluster
+
+#+BEGIN_CENTER
+[[file:./images/kazoo_stack.png]]
+#+END_CENTER
+
+** The Kazoo Stack - Crossbar
+#+BEGIN_CENTER
+[[file:./images/kazoo_stack_crossbar.png]]
+#+END_CENTER
+
+** What is a REST API                                               :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** REST - *Re*presentational *S*tate *T*ransfer
+
+*** A nice analogy for REST vs. SOAP
+ - SOAP: Mailing a letter using an envelope
+ - REST: It's a postcard
+
+*** SOAP
+#+BEGIN_EXAMPLE
+POST /InStock HTTP/1.1
+Host: www.example.org
+Content-Type: application/soap+xml; charset=utf-8
+Content-Length: nnn
+<?xml version="1.0"?>
+<soap:Envelope
+xmlns:soap="http://www.w3.org/2001/12/soap-envelope"
+soap:encodingStyle="http://www.w3.org/2001/12/soap-encoding">
+<soap:Body xmlns:m="http://www.example.org/stock">
+  <m:GetStockPrice><m:StockName>IBM</m:StockName></m:GetStockPrice>
+</soap:Body>
+</soap:Envelope>
+#+END_EXAMPLE
+
+*** REST
+#+BEGIN_EXAMPLE
+GET /InStock/IBM HTTP/1.1
+Host: www.example.org
+Accept: application/json; charset=utf-8
+#+END_EXAMPLE
+
+*** Pragmatic REST Verbs
+ - GET: Retrieve (list or single entry)
+   - Usually denotes list if no ID
+ - POST: Update an existing document
+ - PUT: Create a document
+ - DELETE: Delete a document
+ - PATCH: Update portion of document
+
+** The Kazoo REST API                                               :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Configuration APIs
+ - Crossbar
+
+*** Real-time Call Control
+ - Pivot
+
+*** Streaming Events and Callbacks
+ - WebSockets
+ - Webhooks
+ - Call Recording
+
+*** URI Structure
+#+BEGIN_EXAMPLE
+/{VERSION}/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
+#+END_EXAMPLE
+
+*** URI Structure
+ - {VERSION} - The version of the API you are calling.
+   - v1: Deprecated version
+   - v2: The current version
+ - accounts: The collection of accounts
+ - ={ACCOUNT_ID}=: Most requests operate against a specific account
+ - resources: The collection of resources in ={ACCOUNT_ID}=
+ - ={RESOURCE_ID}=: Specific entity accessed
+
+*** Collections
+Given =/v2/accounts/{ACCOUNT_ID}/resources=:
+ - GET: Fetches a summary of the resources
+ - PUT: Creates a new instance of the resource in ={ACCOUNT_ID}=
+
+*** Entities
+Given =/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}=:
+ - GET: Fetches the full representation of the resource
+ - POST: Updates the full representation of the resource
+ - PATCH: Updates a portion of the resource
+ - DELETE: Deletes the resource
+
+*** JSON Request Envelope
+|Key|Description|Required|
+|---+-----------+--------|
+|data|Top-level key will contain the object you wish to update|true|
+|=auth_token=|Authorization token for the request|false|
+|verb|Tunnel a PUT or DELETE in a POST request|false|
+
+*** Sample JSON Request Envelope
+#+BEGIN_SRC json
+{
+   "data":{
+      "foo":"bar"
+   },
+   "auth_token":"xyzpdq123bfg",
+   "verb":"delete"
+}
+#+END_SRC
+
+*** JSON Response Envelope
+|Key|Description|Always Present|
+|---+-----------+--------------|
+|data|Contains the results of the request|true|
+|=auth_token=|Contains the =auth_token= used on the request|true|
+|status|One of 'success', 'error', or 'fatal'|true|
+|=request_id=|For debugging the server-side processing of the request|true|
+|message|Clarifies what happened on the request|false|
+|error|Error code, if any|false|
+|revision|Revision of the entity|false|
+
+*** Sample JSON Response Envelope
+#+BEGIN_SRC json
+{
+   "data":{
+      "the":"response",
+      "data":"is here"
+   },
+   "auth_token":"xyzpdq123bfg",
+   "status":"success",
+   "request_id":"123abc456qwerty"
+}
+#+END_SRC
+
+** Kazoo API Authentication                                         :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Authentication Tokens
+All Kazoo requests require an authentication token
+
+An authentication token is acquired by:
+ - User credentials
+ - An API key
+ - Oauth
+ - HTTP Basic Auth
+ - Other custom modules
+
+An authentication token is temporary and may be restricted
+
+*** Using an API Key
+Get your API key for your account:
+#+BEGIN_EXAMPLE
+$> curl -v http://your.ip:15984/accounts/{ACCOUNT_ID}
+$> curl -v -X PUT -H "content-type:application/json" \
+-d '{"data":{"api_key":"{API_KEY}"}}' \
+http://ip.add.re.ss:8000/v2/api_auth
+#+END_EXAMPLE
+
+See the [[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/doc/api_authentication.md][api auth]] docs for more details.
+
+*** Using user credentials
+ - Determine the MD5 hash of your creds
+   #+BEGIN_EXAMPLE
+   $> echo -n "{USERNAME}:{PASSWORD}" | md5sum
+   {MD5_HASH}  -
+   $> curl -v -X PUT -H "content-type:application/json" \
+   -d '{"data":{"credentials":“{MD5_HASH}","account_name":“{NAME}"}' \
+   http://ip.add.re.ss:8000/v2/user_auth
+   #+END_EXAMPLE
+
+See the [[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/doc/user_authentication.md][user auth]] docs for more details.
+
+***
+#+BEGIN_CENTER
+Lets use your authentication token and make some requests!
+#+END_CENTER
+
+** CORS                                                             :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Cross-origin resource sharing
+#+BEGIN_CENTER
+Allows requests otherwise forbidden by the [[https://en.wikipedia.org/wiki/Same-origin_policy][same origin policy]]
+#+END_CENTER
+
+*** HTTP Headers
+ - =Origin:http://portal.2600hz.com=
+ - =Access-Control-Allow-Origin: http://www.example.com=
+
+*** Preflight
+ - OPTIONS sent to server
+ - Response includes CORS Headers
+ - Browser makes real request (GET/PUT/POST/...)
+
+*** Browser Support
+ - Gecko 1.9.1
+ - Firefox 3.5, SeaMonkey 2.0, Camino 2.1 and above.
+ - WebKitSafari 4
+ - Google Chrome 3 (possibly earlier) and above
+ - Trident 6.0 (Internet Explorer 10) has native support
+ - Trident 4.0 & 5.0 (Internet Explorer 8 & 9) partial support
+ - Opera 12.00 and Opera Mobile 12
+
+*** JSON-P alternative
+#+BEGIN_CENTER
+CORS can be used as a modern alternative to the [[https://en.wikipedia.org/wiki/JSONP][JSONP]] pattern
+#+END_CENTER
+
+** What APIs are available?                                         :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Web Developer tool
+ - Switch to the network tab and browse around the UI
+ - You can play with the API in the UI with a community-contributed app
+   - [[https://github.com/siplabs/monster-ui-apiexplorer][API Explorer]] from SIPLabs
+
+*** Actively developed
+ - We are always adding new APIs and features
+ - See the [[https://github.com/2600hz/kazoo/tree/master/applications/crossbar/doc][Crossbar Docs]] for more
+
+** Thank You
+
+#+INCLUDE: "./frames/footer.org"

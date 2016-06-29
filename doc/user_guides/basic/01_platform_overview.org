@@ -1,0 +1,480 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:2 \n:nil ^:t arch:headline
+#+OPTIONS: author:t c:nil creator:nil d:(not "LOGBOOK") date:nil e:t
+#+OPTIONS: email:nil f:t inline:t num:t p:nil pri:nil prop:nil stat:t
+#+OPTIONS: tags:t tasks:t tex:t timestamp:f title:t toc:nil todo:t |:t
+#+TITLE: Kazoo Basic Training - Platform Overview
+#+DATE: <2016-06-06 Mon>
+#+AUTHOR: James Aimonetti
+#+EMAIL: james@2600hz.com
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+CREATOR: Emacs 25.1.50.3 (Org mode 8.3.4)
+#+STARTUP: beamer
+#+LaTeX_CLASS: beamer
+#+LaTeX_CLASS_OPTIONS: [bigger]
+#+BEAMER_FRAME_LEVEL: 2
+#+BEAMER_THEME: Madrid
+#+COLUMNS: %40ITEM %10BEAMER_env(Env) %9BEAMER_envargs(Env Args) %4BEAMER_col(Col) %10BEAMER_extra(Extra)
+
+* Platform Overview
+
+** Kazoo Basic Training
+#+BEGIN_CENTER
+Platform Overview
+#+END_CENTER
+** The Beginning
+
+#+BEGIN_CENTER
+In the beginning...
+#+END_CENTER
+
+** In the beginning
+
+*** Starting                                                          :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.40
+    :END:
+
+[[file:images/starting_out_h300.png]]
+
+*** How it starts                                     :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.55
+    :END:
+
+ - You decide to start a VoIP business!
+ - Setup an Asterisk box
+ - Get your first customer
+
+** In the beginning
+
+*** Starting                                                          :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.40
+    :END:
+
+[[file:images/starting_out_1_h300.png]]
+
+*** How it starts                                     :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.55
+    :END:
+
+ - Things are going well
+ - You add a few more customers
+ - Then you have an outage
+   - *Angry* Customers
+ - Redundant Server + Load Balancer
+ - /Phew!/
+
+** In the beginning
+
+*** Starting                                                          :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.40
+    :END:
+
+[[file:images/starting_out_2_h300.png]]
+
+*** How it starts                                     :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.55
+    :END:
+
+ - You need more automation
+ - You setup master/slave databases
+ - Your clients want more *features*
+ - You write some PHP/Perl to expose CDRs
+ - Start scripting dialplans
+
+** In the beginning
+
+*** Starting                                                          :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.40
+    :END:
+
+[[file:images/starting_out_2_h300.png]]
+
+*** How it starts                                     :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.55
+    :END:
+
+ - At this point, you have
+   - A bunch of clients
+   - Homegrown PHP/Perl scripts
+   - Homegrown load balancer
+   - Homegrown dialplan
+   - 7 servers
+   - OPS and/or Programmer on staff
+   - Support rep maybe?
+
+ - How much *time* are you spending on keeping it running?
+
+** In the beginning
+
+*** Starting                                                          :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.40
+    :END:
+
+[[file:images/starting_out_2_h300.png]]
+
+*** How it starts                                     :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.55
+    :END:
+
+ - Business is booming!
+ - Then it happens
+   - *Data center outage* for 4 hours
+ - Your clients are *furious*
+
+** In the beginning
+
+*** Starting                                                          :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.40
+    :END:
+
+[[file:images/starting_out_3_h300.png]]
+
+*** How it starts                                     :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.55
+    :END:
+
+ - You setup a redundant datacenter
+ - Your load balancer must be modified
+ - Your server setup must be redesigned
+ - Your database setup must be modified or redesigned
+ - You just earned tons of work
+
+*It only gets harder from here. . .*
+
+** In the beginning
+
+*** Reality Sinks In                                                :B_block:
+    :PROPERTIES:
+    :BEAMER_env: block
+    :END:
+
+#+BEGIN_CENTER
+You need to make some tough choices
+#+END_CENTER
+
+** Reality sinks in
+
+*** Option 1: Keep going as-is                                      :B_block:
+    :PROPERTIES:
+    :BEAMER_env: block
+    :END:
+ - Keep building everything in-house
+ - Hire staff to support Operations
+ - Hire programmers
+
+Pro:
+ - Unique
+ - Fully customizable
+Con:
+ - Responsible for everything
+ - Unproven
+ - Learn “as you go”
+
+** Reality sinks in
+
+*** Option 2: Buy a Switch                                          :B_block:
+    :PROPERTIES:
+    :BEAMER_env: block
+    :END:
+
+ - Buy a carrier-grade platform
+ - Move all your customers over
+ - Hire minimal staff to run Operations
+
+Pro:
+ - Proven and polished
+ - Second line support
+Con:
+ - High upfront costs
+ - Difficult to know if the product will sell
+ - Unknown customization abilities
+ - No differentiator between competitors
+
+** Reality sinks in
+
+*** Option 3: Go with Hosted                                        :B_block:
+    :PROPERTIES:
+    :BEAMER_env: block
+    :END:
+
+ - “Rent” a carrier-grade platform
+ - Move all your customers over
+ - Use their cost model and telcos
+
+Pro:
+ - Proven and polished
+ - No huge up-front cost
+Con:
+ - Difficult to know if the product will sell
+ - Little customization abilities
+ - Inability to bring own carrier
+ - No differentiator between competitors
+
+** Introducing Kazoo
+
+*** Introducing Kazoo                                       :B_ignoreheading:
+    :PROPERTIES:
+    :BEAMER_env: ignoreheading
+    :END:
+
+#+BEGIN_CENTER
+Introducing Kazoo!
+#+END_CENTER
+
+** Introducing Kazoo
+
+*** Option 4: Use Kazoo & Share the Workload                        :B_block:
+    :PROPERTIES:
+    :BEAMER_env: block
+    :END:
+
+ - Use a platform designed and tested to scale
+ - Share the common tasks and bugs with others
+ - Keep your own differentiators to yourself
+ - Hire minimal staff
+
+Pro:
+ - Low cost
+   Instant ability to start
+   Full customization - full control
+   Rapid development
+Con:
+ - Core product must succeed and be maintained
+
+** Kazoo Evolution
+
+*** Kazoo Evolution                                         :B_ignoreheading:
+    :PROPERTIES:
+    :BEAMER_env: ignoreheading
+    :END:
+
+#+BEGIN_CENTER
+Evolution of Kazoo
+#+END_CENTER
+
+** Kazoo Evolution
+
+*** blue.box goals                                                  :B_block:
+    :PROPERTIES:
+    :BEAMER_env: block
+    :END:
+
+ - API-based platform
+ - Real-time messaging
+ - Real-time configuration
+ - Distribution of config
+ - Redundant setup
+ - Pre-built Graphical GUI
+ - Multi-lingual
+ - Easy to install and use
+ - PHP Object Oriented stack
+ - MySQL or Postgres Cluster
+ - FreeSWITCH Media Engine
+
+** Kazoo Evolution
+
+*** blue.box goals                                                  :B_block:
+    :PROPERTIES:
+    :BEAMER_env: block
+    :END:
+
+ - +API-based platform+
+ - +Real-time messaging+
+ - Real-time configuration
+ - Distribution of config
+ - Redundant setup
+ - Pre-built Graphical GUI
+ - Multi-lingual
+ - Easy to install and use
+ - PHP Object Oriented stack
+ - +MySQL or Postgres Cluster+
+ - FreeSWITCH Media Engine
+
+** Kazoo Evolution
+
+*** blue.box                                                  :B_block:BMCOL:
+    :PROPERTIES:
+    :BEAMER_env: block
+    :BEAMER_col: 0.5
+    :END:
+ - +API-based platform+
+ - +Real-time messaging+
+ - Real-time configuration
+ - Distribution of config
+ - Redundant setup
+ - Pre-built Graphical GUI
+ - Multi-lingual
+ - Easy to install and use
+ - PHP Object Oriented stack
+ - +MySQL or Postgres Cluster+
+ - FreeSWITCH Media Engine
+
+*** Kazoo                                                     :B_block:BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.5
+    :BEAMER_env: block
+    :END:
+
+ - API-based platform
+ - Real-time messaging
+ - Real-time configuration
+ - Distribution of config
+ - Redundant setup *over WAN*
+ - Pre-built Graphical GUI
+ - Multi-lingual
+ - Easy to install and use
+ - *Erlang & Javascript* Stack
+ - *Distributed NoSQL DB*
+ - FreeSWITCH Media Engine
+
+** Kazoo Evolution
+
+ - blue.box:  Experiments with new concepts
+
+ - Whistle:   Developed core with real scalability
+
+ - Kazoo v1:  GUI + turnkey multi-tenant system
+
+ - Kazoo v2:  Features, features, features
+
+ - Kazoo v3:  Project achieved maturity
+
+ - Kazoo v4:  Scale to millions of devices
+
+** The Kazoo Stack
+
+*** The Kazoo Stack                                         :B_ignoreheading:
+    :PROPERTIES:
+    :BEAMER_env: ignoreheading
+    :END:
+
+#+BEGIN_CENTER
+The Kazoo Stack
+#+END_CENTER
+
+** The Kazoo Stack - Cluster
+
+#+BEGIN_CENTER
+[[file:./images/kazoo_stack.png]]
+#+END_CENTER
+
+** The Kazoo Stack - Overview
+
+#+BEGIN_CENTER
+file:./images/kazoo_stack_1.png
+#+END_CENTER
+
+** The Kazoo Stack - Detailed
+
+#+BEGIN_CENTER
+file:./images/kazoo_stack_1_details.png
+#+END_CENTER
+
+** Prepare for Kazoo
+
+#+BEGIN_CENTER
+Let's Prepare for Kazoo!
+#+END_CENTER
+
+** Prepare for Kazoo                                                :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Debian 8                                                        :B_block:
+    :PROPERTIES:
+    :BEAMER_env: block
+    :END:
+1. Edit =/etc/hostname=
+   #+BEGIN_EXAMPLE
+   $> echo "awesome.hostname.com" > /etc/hostname
+   #+END_EXAMPLE
+2. Edit =/etc/hosts=
+   #+BEGIN_EXAMPLE :wrap
+   $> echo "127.0.0.1 awesome.hostname.com awesome" >> /etc/hosts
+   $> echo "ip.ad.dr.ess awesome.hostname.com awesome" >> /etc/hosts
+   #+END_EXAMPLE
+3. Set system time to UTC
+   #+BEGIN_EXAMPLE
+   $> ln -fs /usr/share/zoneinfo/UTC /etc/localtime
+   #+END_EXAMPLE
+
+*** CentOS                                                          :B_block:
+    :PROPERTIES:
+    :BEAMER_env: block
+    :END:
+1. Set the hostname
+   #+BEGIN_EXAMPLE
+   $> hostname awesome.hostname.com
+   #+END_EXAMPLE
+2. Add "HOSTNAME=awesome.hostname.com" to =/etc/sysconfig/network=
+3. Edit =/etc/hosts=
+   #+BEGIN_EXAMPLE :wrap
+   $> echo "127.0.0.1 awesome.hostname.com awesome" >> /etc/hosts
+   $> echo "ip.ad.dr.ess awesome.hostname.com awesome" >> /etc/hosts
+   #+END_EXAMPLE
+4. Set system time to UTC
+   #+BEGIN_EXAMPLE
+   $> ln -fs /usr/share/zoneinfo/UTC /etc/localtime
+   #+END_EXAMPLE
+
+
+*** Configs setup                                                   :B_block:
+    :PROPERTIES:
+    :BEAMER_env: block
+    :END:
+#+BEGIN_CENTER
+Kazoo brings along its own configs for the various packages relied upon. Once the Debian and CentOS builds are completed, this step will be done automatically. For now, we do it manually:
+#+END_CENTER
+
+*** Configs setup                                                   :B_block:
+    :PROPERTIES:
+    :BEAMER_env: block
+    :END:
+
+1. Install the Kazoo Configs repo
+   #+BEGIN_EXAMPLE
+   $> git clone https://github.com/2600hz/kazoo-configs /etc/kazoo
+   #+END_EXAMPLE
+2. Symlink rsyslog configs
+   #+BEGIN_EXAMPLE
+   $> ln -s /etc/kazoo/system/rsyslog.d/* /etc/rsyslog.d/
+   $> service rsyslog restart
+   #+END_EXAMPLE
+3. Symlink logrotate configs
+   #+BEGIN_EXAMPLE
+   $> ln -s /etc/kazoo/system/logrotate.d/* /etc/logrotate.d/
+   #+END_EXAMPLE
+4. Symlink limits configs
+   #+BEGIN_EXAMPLE
+   $> ln -s /etc/kazoo/system/security/limits.d/* /etc/security/limits.d/
+   #+END_EXAMPLE
+5. Restart
+   #+BEGIN_EXAMPLE
+   $> reboot
+   #+END_EXAMPLE
+
+
+** Let's get started!
+
+#+BEGIN_CENTER
+Let's Kazoo!
+#+END_CENTER
+
+** Thank You
+
+#+INCLUDE: "./frames/footer.org"

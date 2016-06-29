@@ -1,0 +1,145 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:2 \n:nil ^:t arch:headline
+#+OPTIONS: author:t c:nil creator:nil d:(not "LOGBOOK") date:nil e:t
+#+OPTIONS: email:nil f:t inline:t num:t p:nil pri:nil prop:nil stat:t
+#+OPTIONS: tags:t tasks:t tex:t timestamp:f title:t toc:nil todo:t |:t
+#+TITLE: Kazoo Basic Training - Monster UI
+#+DATE: <2016-06-06 Mon>
+#+AUTHOR: James Aimonetti
+#+EMAIL: james@2600hz.com
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+CREATOR: Emacs 25.1.50.3 (Org mode 8.3.4)
+#+STARTUP: beamer
+#+LaTeX_CLASS: beamer
+#+LaTeX_CLASS_OPTIONS: [bigger]
+#+BEAMER_FRAME_LEVEL: 2
+#+BEAMER_THEME: Madrid
+#+COLUMNS: %40ITEM %10BEAMER_env(Env) %9BEAMER_envargs(Env Args) %4BEAMER_col(Col) %10BEAMER_extra(Extra)
+
+* Monster UI
+
+** Kazoo Basic Training
+#+BEGIN_CENTER
+Monster UI
+#+END_CENTER
+
+** The Kazoo Stack - Cluster
+
+#+BEGIN_CENTER
+[[file:./images/kazoo_stack.png]]
+#+END_CENTER
+
+** The Kazoo Stack - Monster UI
+#+BEGIN_CENTER
+[[file:./images/kazoo_stack_monster.png]]
+#+END_CENTER
+
+
+** Installing Monster UI
+
+*** Packaging
+#+BEGIN_CENTER
+At this time, it is not ready. However, installing from source is straightforward
+#+END_CENTER
+
+*** Monster UI
+ - Install apache
+    #+BEGIN_EXAMPLE
+    $> apt-get install apache2
+    #+END_EXAMPLE
+
+*** Browse Monster Apps
+ - [[https://github.com/2600hz/][Our GitHub page]] has all the available apps
+ - monster-ui-*** repositories are the default apps available
+
+*** Install Monster and its apps
+ - Copy the [[file:./monster-update.bash][monster-update.bash]] script to =/var/www=
+   - You can update the =REPOS\== in the script if there are more apps
+   #+BEGIN_EXAMPLE
+   $/var/www/> bash monster-update.bash
+   $/var/www/> rm -rf html/
+   $/var/www/> ln -s monster-ui html
+   #+END_EXAMPLE
+ - Edit =/var/www/monster-ui/js/config.js=
+   #+BEGIN_EXAMPLE
+   "default":"http://ip.add.re.ss:8000/v2"
+   #+END_EXAMPLE
+ - There are whitelabel options if you like as well
+
+*** Load apps into Kazoo
+#+BEGIN_EXAMPLE
+$> sup crossbar_maintenance init_apps \
+'/var/www/html/apps/' 'http://ip.add.re.ss:8000/v2'
+#+END_EXAMPLE
+
+*** Start the Apache webserver
+#+BEGIN_EXAMPLE
+$> service httpd start
+#+END_EXAMPLE
+
+*** Verify the Kazoo API is running
+    #+BEGIN_EXAMPLE
+    $> curl http://ip.add.re.ss:8000/
+    #+END_EXAMPLE
+
+** Using MonsterUI                                                  :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** Lets sign-in to the UI!
+ - Navigate to http://ip.add.re.ss/
+ - Login using the credentials you created with =crossbar_maintenance=
+
+*** Turn on apps in the App Exchange
+ - Click on the "Apps" button at the top-right of the page
+ - Click on the "App Exchange" button
+ - Click on an App in the list
+   - turn it on (toggle-button at the top-right)
+   - click on "Save"
+
+*** Choose your default App
+ - Click on the "Apps" button at the top-right of the page
+ - Drag-and-drop an App from the list to the lighter-gray square on the left side of the page
+
+*** Launch an App
+ - Click on an App in the list to launch it
+
+** Troubleshooting                                                  :B_frame:
+   :PROPERTIES:
+   :BEAMER_opt: allowframebreaks,label=
+   :BEAMER_env: frame
+   :END:
+
+*** First, let’s generate an error to troubleshoot:
+ - Go to SmartPBX
+ - Open the Users section
+ - Create two new test users, using the exact same email address.
+ - Since the email address must be unique, the API will fail, and return a 400 error.
+
+*** Three ways to find details on a failing API call.
+ 1. The error popup
+  - When an API call returns an error, a popup is displayed on the page.
+  - Click on "More Information" to see which API failed, get the Request ID, and view the error details.
+
+*** Three ways to find details on a failing API call.
+ 2. Your web browser’s developer tools
+  - Right click anywhere on the page and select "Inspect Element".
+  - Open the network tab and select the failing API call (in red)
+  - Click on "Preview" (Chrome) or "Response" (Firefox)
+    - View the response from the API
+    - "Headers" to view all the request and response headers.
+  - Note: You can also see the javascript errors on the "Console" tab
+
+*** Three ways to find details on a failing API call.
+ 3. The UI Errors Log
+  - Open "My Account" (Button with your name at the top-right)
+  - Open the "UI Errors Log" section
+  - Both API and Javascript errors will be displayed
+  - You can click on the "Details" link on each error to get more information.
+
+** Thank You
+
+#+INCLUDE: "./frames/footer.org"

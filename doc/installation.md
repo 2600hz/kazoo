@@ -490,7 +490,8 @@ $ chkconfig httpd on
 *Server 1 OR Server 3*
 
 ```shell
-$ sup kazoo_media_maintenance import_prompts /opt/kazoo/system_media/en-us en-us
+$ git clone https://github.com/2600hz/kazoo-sounds.git /opt/kazoo-sounds
+$ sup kazoo_media_maintenance import_prompts /opt/kazoo-sounds/kazoo-core/en/us en-us
 ```
 
 ### Configure ecallmgr
