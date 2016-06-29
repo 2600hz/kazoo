@@ -98,6 +98,7 @@
                     ,lost_floor :: 'undefined' | non_neg_integer() | '_' % which participant has lost the floor
                     ,running = 'true' :: boolean() | '_'
                     ,answered = 'true' :: boolean() | '_'
+                    ,locked = 'false' :: boolean() | '_'
                     ,enforce_min = 'true' :: boolean() | '_'
                     ,dynamic = 'true' :: boolean() | '_'
                     ,exit_sound = 'true' :: boolean() | '_'
@@ -107,7 +108,7 @@
                     ,switch_url :: api_binary() | '_'
                     ,switch_external_ip :: api_binary() | '_'
                     ,account_id :: api_binary() | '_'
-                    }).
+                   }).
 
 -type conference() :: #conference{}.
 -type conferences() :: [conference()].
@@ -129,7 +130,8 @@
                      ,current_energy = 0 :: non_neg_integer() | '_'
                      ,video = 'false' :: boolean() | '_'
                      ,is_moderator = 'false' :: boolean() | '_'
-                     }).
+                     ,join_time = kz_util:current_tstamp() :: non_neg_integer() | '_'
+                    }).
 -type participant() :: #participant{}.
 -type participants() :: [participant()].
 

@@ -1053,6 +1053,7 @@ handle_datamgr_success(JObj, Context) ->
         'false' -> handle_thing_success(JObj, Context)
     end.
 
+%% FIXME: not used
 -spec handle_thing_success(any(), cb_context:context()) -> cb_context:context().
 handle_thing_success(Thing, Context) ->
     cb_context:setters(Context

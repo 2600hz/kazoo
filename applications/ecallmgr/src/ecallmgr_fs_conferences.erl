@@ -195,6 +195,7 @@ handle_search_req(JObj, _Props) ->
         %% TODO: this ignores conferences on multiple nodes until big-conferences
         [#conference{uuid=UUID
                     ,start_time=StartTime
+                    ,locked=Locked
                     ,switch_hostname=Hostname
                     ,switch_url=SwitchURL
                     ,switch_external_ip=ExternalIP
@@ -207,12 +208,13 @@ handle_search_req(JObj, _Props) ->
                    ,{<<"UUID">>, UUID}
                    ,{<<"Run-Time">>, kz_util:current_tstamp() - StartTime}
                    ,{<<"Start-Time">>, StartTime}
+                   ,{<<"Locked">>, Locked}
                    ,{<<"Switch-Hostname">>, Hostname}
                    ,{<<"Switch-URL">>, SwitchURL}
                    ,{<<"Switch-External-IP">>, ExternalIP}
                    ,{<<"Participant-Count">>, length(Participants)}
                    ,{<<"Participants">>, participants_to_json(Participants)}
-                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             kapi_conference:publish_search_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp);
         [] ->
@@ -445,6 +447,7 @@ participant_from_props(Props, Node, CallId, Participant) ->
                            ,energy_level=props:get_integer_value(<<"Energy-Level">>, Props, 0)
                            ,current_energy=props:get_integer_value(<<"Current-Energy">>, Props, 0)
                            ,video=props:get_is_true(<<"Video">>, Props, 'false')
+                           ,join_time=props:get_integer_value(<<"Join-Time">>, Props, kz_util:current_tstamp())
                            }.
 
 -spec participants_to_json(participants(), kz_json:objects()) -> kz_json:objects().
@@ -459,38 +462,40 @@ participant_to_json(#participant{}=Participant) ->
 
 -spec participant_to_props(participant()) -> kz_proplist().
 participant_to_props(#participant{uuid=UUID
-                                 ,conference_name=ConfName
-                                 ,conference_uuid=ConfUUID
-                                 ,floor=Floor
-                                 ,hear=Hear
-                                 ,speak=Speak
-                                 ,talking=Talking
-                                 ,mute_detect=MuteDetect
-                                 ,member_id=MemberId
-                                 ,member_type=MemberType
-                                 ,energy_level=EnergyLevel
-                                 ,current_energy=CurrentEnergy
-                                 ,video=Video
-                                 ,is_moderator=IsMod
-                                 ,node=Node
+                                  ,conference_name=ConfName
+                                  ,conference_uuid=ConfUUID
+                                  ,floor=Floor
+                                  ,hear=Hear
+                                  ,speak=Speak
+                                  ,talking=Talking
+                                  ,mute_detect=MuteDetect
+                                  ,member_id=MemberId
+                                  ,member_type=MemberType
+                                  ,energy_level=EnergyLevel
+                                  ,current_energy=CurrentEnergy
+                                  ,video=Video
+                                  ,is_moderator=IsMod
+                                  ,node=Node
+                                  ,join_time=JoinTime
                                  }) ->
-    props:filter_undefined(
-      [{<<"Call-ID">>, UUID}
-      ,{<<"Conference-Name">>, ConfName}
-      ,{<<"Conference-UUID">>, ConfUUID}
-      ,{<<"Switch-Hostname">>, Node}
-      ,{<<"Floor">>, Floor}
-      ,{<<"Hear">>, Hear}
-      ,{<<"Speak">>, Speak}
-      ,{<<"Talking">>, Talking}
-      ,{<<"Mute-Detect">>, MuteDetect}
-      ,{<<"Participant-ID">>, MemberId}
-      ,{<<"Participant-Type">>, MemberType}
-      ,{<<"Energy-Level">>, EnergyLevel}
-      ,{<<"Current-Energy">>, CurrentEnergy}
-      ,{<<"Video">>, Video}
-      ,{<<"Is-Moderator">>, IsMod}
-      ]).
+      props:filter_undefined(
+        [{<<"Call-ID">>, UUID}
+         ,{<<"Conference-Name">>, ConfName}
+         ,{<<"Conference-UUID">>, ConfUUID}
+         ,{<<"Switch-Hostname">>, Node}
+         ,{<<"Floor">>, Floor}
+         ,{<<"Hear">>, Hear}
+         ,{<<"Speak">>, Speak}
+         ,{<<"Talking">>, Talking}
+         ,{<<"Mute-Detect">>, MuteDetect}
+         ,{<<"Participant-ID">>, MemberId}
+         ,{<<"Participant-Type">>, MemberType}
+         ,{<<"Energy-Level">>, EnergyLevel}
+         ,{<<"Current-Energy">>, CurrentEnergy}
+         ,{<<"Video">>, Video}
+         ,{<<"Is-Moderator">>, IsMod}
+         ,{<<"Join-Time">>, JoinTime}
+        ]).
 
 -spec conference_to_props(conference()) -> kz_proplist().
 conference_to_props(#conference{name=Name
@@ -599,6 +604,8 @@ xml_attr_to_conference(Conference, 'uuid', Value) ->
     Conference#conference{uuid=kz_util:to_binary(Value)};
 xml_attr_to_conference(Conference, 'running', Value) ->
     Conference#conference{running=kz_util:is_true(Value)};
+xml_attr_to_conference(Conference, 'locked', Value) ->
+    Conference#conference{locked=kz_util:is_true(Value)};
 xml_attr_to_conference(Conference, 'answered', Value) ->
     Conference#conference{answered=kz_util:is_true(Value)};
 xml_attr_to_conference(Conference, 'enforce_min', Value) ->
