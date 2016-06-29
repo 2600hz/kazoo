@@ -220,21 +220,9 @@ validate_tasks(Context, TaskId, ?HTTP_DELETE) ->
 -spec validate_tasks(cb_context:context(), path_token(), path_token(), http_method()) ->
                             cb_context:context().
 validate_tasks(Context, TaskId, ?CSV_OUT, ?HTTP_GET) ->
-    Context1 = read(TaskId, Context),
-    case cb_context:resp_status(Context1) == 'success' of
-        'false' -> Context;
-        'true' ->
-            lager:debug("trying to fetch attachment for task ~s", [TaskId]),
-            load_csv_attachment(Context, TaskId, ?KZ_TASKS_ATTACHMENT_NAME_OUT)
-    end;
+    maybe_load_csv_attachment(Context, TaskId, ?KZ_TASKS_ATTACHMENT_NAME_OUT);
 validate_tasks(Context, TaskId, ?CSV_IN, ?HTTP_GET) ->
-    Context1 = read(TaskId, Context),
-    case cb_context:resp_status(Context1) == 'success' of
-        'false' -> Context;
-        'true' ->
-            lager:debug("trying to fetch attachment for task ~s", [TaskId]),
-            load_csv_attachment(Context, TaskId, ?KZ_TASKS_ATTACHMENT_NAME_IN)
-    end.
+    maybe_load_csv_attachment(Context, TaskId, ?KZ_TASKS_ATTACHMENT_NAME_IN).
 
 -spec validate_new_attachment(cb_context:context(), boolean()) -> cb_context:context().
 validate_new_attachment(Context, 'true') ->
@@ -440,9 +428,27 @@ save_attached_data(Context, TaskId, Records, 'false') ->
     save_attached_data(Context1, TaskId, iolist_to_binary(CSV), 'true').
 
 %% @private
+-spec maybe_load_csv_attachment(cb_context:context(), kz_tasks:task_id(), ne_binary()) ->
+                                       cb_context:context().
+maybe_load_csv_attachment(Context, TaskId, AName) ->
+    Context1 = read(TaskId, Context),
+    case cb_context:resp_status(Context1) =:= 'success' of
+        'false' -> Context1;
+        'true' ->
+            lager:debug("trying to fetch attachment for task ~s", [TaskId]),
+            load_csv_attachment(Context1, TaskId, AName)
+    end.
+
+%% @private
 -spec load_csv_attachment(cb_context:context(), kz_tasks:task_id(), ne_binary()) ->
                                  cb_context:context().
 load_csv_attachment(Context, TaskId, AName) ->
+    RD = kz_json:get_value(<<"_read_only">>, cb_context:resp_data(Context)),
+    Filename =
+        <<(kz_json:get_value(?QS_CATEGORY, RD))/binary, "_",
+          (kz_json:get_value(?QS_ACTION, RD))/binary, "_",
+          TaskId/binary, ".csv"
+        >>,
     Ctx = crossbar_doc:load_attachment(TaskId
                                       ,AName
                                       ,?TYPE_CHECK_OPTION(?KZ_TASKS_DOC_TYPE)
@@ -453,7 +459,7 @@ load_csv_attachment(Context, TaskId, AName) ->
             lager:debug("loaded csv ~s from task doc ~s", [AName, TaskId]),
             cb_context:add_resp_headers(
               Ctx
-              ,[{<<"Content-Disposition">>, <<"attachment; filename=", AName/binary>>}
+              ,[{<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>}
                ,{<<"Content-Type">>, <<"text/csv">>}
                ,{<<"Content-Length">>, byte_size(cb_context:resp_data(Ctx))}
                ]);
