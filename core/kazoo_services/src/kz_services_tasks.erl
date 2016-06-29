@@ -91,8 +91,7 @@ descendant_quantities(_, [SubAccountMoDB | DescendantsMoDBs]) ->
          ]
          || Category <- fields(BoM, EoM),
             BoMItem <- [kz_json:get_value(Category, BoM)],
-            EoMItem <- [kz_json:get_value(Category, EoM)],
-            BoMItem =/= 'undefined' andalso EoMItem =/= 'undefined'
+            EoMItem <- [kz_json:get_value(Category, EoM)]
         ],
     case lists:append(lists:append(Data)) of
         [] ->
@@ -134,11 +133,16 @@ modb_service_quantities(MoDB, IsBoM) ->
             kz_json:new()
     end.
 
--spec fields(kz_json:object(), kz_json:object()) -> ne_binaries().
+-spec fields(api_object(), api_object()) -> ne_binaries().
+fields('undefined', JObjB) ->
+    fields(kz_json:new(), JObjB);
+fields(JObjA, 'undefined') ->
+    fields(JObjA, kz_json:new());
 fields(JObjA, JObjB) ->
     lists:usort(kz_json:get_keys(JObjA) ++ kz_json:get_keys(JObjB)).
 
--spec maybe_integer_to_binary(ne_binary(), kz_json:object()) -> api_non_neg_integer().
+-spec maybe_integer_to_binary(ne_binary(), api_object()) -> api_non_neg_integer().
+maybe_integer_to_binary(_, 'undefined') -> 'undefined';
 maybe_integer_to_binary(Item, JObj) ->
     case kz_json:get_integer_value(Item, JObj) of
         'undefined' -> 'undefined';
