@@ -210,7 +210,7 @@ state(_) -> 'false'.
 
 -spec list(kz_proplist(), task_iterator()) -> task_iterator().
 list(Props, 'init') ->
-    ForAccount = kz_util:format_account_db(props:get_value('auth_account_id', Props)),
+    ForAccount = kz_util:format_account_db(auth_by('undefined', Props)),
     {'ok', knm_numbers:account_listing(ForAccount)};
 list(_, []) ->
     'stop';
@@ -248,7 +248,7 @@ import_list(Props, E164, AccountId, State, Carrier
            ,_E911PostalCode
            ,_E911StreetAddress, _E911ExtendedAddress, _E911Locality, _E911Region) ->
     %%TODO: use the optional fields
-    Options = [{'auth_by', props:get_value('auth_account_id', Props)}
+    Options = [{'auth_by', auth_by('undefined', Props)}
               ,{'assign_to', AccountId}
               ,{'state', State}
               ,{'module_name', Carrier}
