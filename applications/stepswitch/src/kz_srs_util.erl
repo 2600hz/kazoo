@@ -49,7 +49,7 @@ get_value({'resource', Field}, Resources, _Number, _OffnetJObj, _DB, _Default) -
      || R <- Resources];
 get_value({'database', SelectorName}, Resources, Number, OffnetJObj, DB, Default) ->
     Keys = [[stepswitch_resources:get_resrc_id(R), SelectorName] || R <- Resources],
-    View = <<"selectors/resource_name_listsing">>,
+    View = <<"resource_selectors/resource_name_listsing">>,
     Options = [{'keys', Keys}],
     get_value({'database', View, Options}, Resources, Number, OffnetJObj, DB, Default);
 get_value({'database', View, Options}, _Resources, _Number, _OffnetJObj, DB, Default) ->

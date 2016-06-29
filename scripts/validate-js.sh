@@ -1,15 +1,14 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 
-# print 'Usage: ' + sys.argv[0] + ' file.json+'
-
 import sys
 import json
 from subprocess import call
 import os
 
 if len(sys.argv) < 2:
-    pass
+    print 'Usage: ' + sys.argv[0] + ' file.json+'
+    exit(1)
 
 def fmap(F, data):
     if isinstance(data, dict):
