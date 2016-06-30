@@ -40,5 +40,7 @@
 -define(GSM_ANY_METHOD, <<"gsm_", _/binary>>).
 -define(ANY_AUTH_METHOD, _ ).
 
+-define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>, <<"sms">>]).
+
 -define(REG_HRL, 'true').
 -endif.
