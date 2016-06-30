@@ -31,7 +31,7 @@
 
 -define(MWI_BODY, "Messages-Waiting: ~s\r\nMessage-Account: ~s\r\nVoice-Message: ~b/~b (~b/~b)\r\n\r\n").
 
--define(BINDINGS, [{'presence', [{'restrict_to', ['mwi_update'
+-define(BINDINGS, [{'presence', [{'restrict_to', ['mwi_unsolicited_update'
                                                   ,'register_overwrite'
                                                   ,'probe'
                                                  ]}
@@ -43,7 +43,7 @@
                       ,[{<<"presence">>, <<"probe">>}]
                      }
                      ,{{?MODULE, 'mwi_update'}
-                       ,[{<<"presence">>, <<"mwi_update">>}]
+                       ,[{<<"presence">>, <<"mwi_unsolicited_update">>}]
                       }
                      ,{{?MODULE, 'register_overwrite'}
                        ,[{<<"presence">>, <<"register_overwrite">>}]
@@ -147,7 +147,7 @@ send_check_sync(Node, Username, Realm, Contact) ->
 -spec mwi_update(kz_json:object(), kz_proplist()) -> no_return().
 mwi_update(JObj, Props) ->
     _ = kz_util:put_callid(JObj),
-    'true' = kapi_presence:mwi_update_v(JObj),
+    'true' = kapi_presence:mwi_unsolicited_update_v(JObj),
     [Username, Realm] = binary:split(kz_json:get_value(<<"To">>, JObj), <<"@">>),
     case ecallmgr_registrar:lookup_registration(Realm, Username) of
         {'error', 'not_found'} ->

@@ -4,6 +4,7 @@
 -include_lib("kazoo/include/kz_log.hrl").
 -include_lib("kazoo/include/kz_databases.hrl").
 -include_lib("kazoo/include/kz_system_config.hrl").
+-include_lib("kazoo_documents/include/kazoo_documents.hrl").
 
 -include("crossbar_types.hrl").
 
