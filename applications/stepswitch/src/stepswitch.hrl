@@ -35,5 +35,7 @@
         ,kapps_config:get_is_true(?SS_CONFIG_CAT, <<"cid_rules_honor_diversions">>, 'false')
        ).
 
+-define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>, <<"sms">>]).
+
 -define(STEPSWITCH_HRL, 'true').
 -endif.

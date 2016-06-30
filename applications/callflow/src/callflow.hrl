@@ -52,5 +52,7 @@
 
 -define(RESTRICTED_ENDPOINT_KEY, <<"Restricted-Endpoint-ID">>).
 
+-define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>]).
+
 -define(CALLFLOW_HRL, 'true').
 -endif.

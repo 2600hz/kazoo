@@ -49,5 +49,7 @@
 
 -define(DEFAULT_MAX_MEMBERS_MEDIA, <<"conf-max_participants">>).
 
+-define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>]).
+
 -define(CONFERENCE_HRL, 'true').
 -endif.

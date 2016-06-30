@@ -12,8 +12,6 @@
 
 -include("callflow.hrl").
 
--define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>]).
-
 -define(DEFAULT_METAFLOWS(AccountId)
         ,kapps_account_config:get(AccountId, <<"metaflows">>, <<"default_metaflow">>, 'false')
        ).
@@ -32,7 +30,6 @@ handle_req(JObj, Props) ->
     Call = kapps_call:exec(Routines, kapps_call:from_route_req(JObj)),
     case is_binary(kapps_call:account_id(Call))
         andalso callflow_should_respond(Call)
-        andalso callflow_resource_allowed(Call)
     of
         'true' ->
             lager:info("received request ~s asking if callflows can route this call", [kapi_route:fetch_id(JObj)]),
@@ -186,15 +183,6 @@ callflow_should_respond(Call) ->
         'undefined' -> 'true';
         _Else -> 'false'
     end.
-
--spec callflow_resource_allowed(kapps_call:call()) -> boolean().
-callflow_resource_allowed(Call) ->
-    is_resource_allowed(kapps_call:resource_type(Call)).
-
--spec is_resource_allowed(api_binary()) -> boolean().
-is_resource_allowed('undefined') -> 'true';
-is_resource_allowed(ResourceType) ->
-    lists:member(ResourceType, ?RESOURCE_TYPES_HANDLED).
 
 %%-----------------------------------------------------------------------------
 %% @private

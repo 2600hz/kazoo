@@ -27,8 +27,7 @@
 -type state() :: #state{}.
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{'route', []}
-                   ,{'self', []}
+-define(BINDINGS, [{'self', []}
                    ,{'pivot', []}
                   ]).
 -define(RESPONDERS, [{{'pivot_handlers', 'handle_pivot_req'}

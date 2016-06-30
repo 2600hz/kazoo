@@ -18,5 +18,7 @@
 -define(APP_VERSION, <<"4.0.0">>).
 -define(CONFIG_CAT, ?APP_NAME).
 
+-define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>]).
+
 -define(MILLIWATT_HRL, 'true').
 -endif.

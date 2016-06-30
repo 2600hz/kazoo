@@ -30,5 +30,7 @@
 
 -type state() :: #state{}.
 
+-define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>]).
+
 -define(CCCP_HRL, 'true').
 -endif.

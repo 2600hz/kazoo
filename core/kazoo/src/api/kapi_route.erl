@@ -64,7 +64,7 @@
                            ,{<<"Event-Name">>, ?ROUTE_REQ_EVENT_NAME}
                            ,{<<"Resource-Type">>, [<<"mms">>, <<"sms">>
                                                    ,<<"audio">>, <<"video">>
-                                                   ,<<"chat">>
+                                                   ,<<"chat">>, <<"metaflow">>
                                                   ]}
                            ,{<<"Media">>, [<<"process">>, <<"proxy">>, <<"bypass">>]}
                           ]).
@@ -267,13 +267,29 @@ win_v(JObj) -> win_v(kz_json:to_proplist(JObj)).
 bind_q(Queue, Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
     User = props:get_value('user', Props, <<"*">>),
-    amqp_util:bind_q_to_callmgr(Queue, get_route_req_routing(Realm, User)).
+    Types = props:get_value('restrict_to', Props, [<<"*">>]),
+    bind_q(Queue, Realm, User, Types).
+
+-spec bind_q(ne_binary(), ne_binary(), ne_binary(), list()) -> 'ok'.
+bind_q(_Queue, _Realm, _User, []) -> 'ok';
+bind_q(Queue, Realm, User, [Type|Types]) ->
+    Key = get_route_req_routing(kz_util:to_binary(Type), Realm, User),
+    amqp_util:bind_q_to_callmgr(Queue, Key),
+    bind_q(Queue, Realm, User, Types).
 
 -spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
     User = props:get_value('user', Props, <<"*">>),
-    amqp_util:unbind_q_from_callmgr(Queue, get_route_req_routing(Realm, User)).
+    Types = props:get_value('restrict_to', Props, [<<"*">>]),
+    unbind_q(Queue, Realm, User, Types).
+
+-spec unbind_q(ne_binary(), ne_binary(), ne_binary(), list()) -> 'ok'.
+unbind_q(_Queue, _Realm, _User, []) -> 'ok';
+unbind_q(Queue, Realm, User, [Type|Types]) ->
+    Key = get_route_req_routing(kz_util:to_binary(Type), Realm, User),
+    amqp_util:unbind_q_from_callmgr(Queue, Key),
+    unbind_q(Queue, Realm, User, Types).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -284,14 +300,15 @@ unbind_q(Queue, Props) ->
 declare_exchanges() ->
     amqp_util:callmgr_exchange().
 
--spec get_route_req_routing(ne_binary(), ne_binary()) -> ne_binary().
-get_route_req_routing(Realm, User) ->
-    list_to_binary([?KEY_ROUTE_REQ, ".", amqp_util:encode(Realm), ".", amqp_util:encode(User)]).
+-spec get_route_req_routing(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+get_route_req_routing(Type, Realm, User) ->
+    list_to_binary([?KEY_ROUTE_REQ, ".", amqp_util:encode(Type), ".", amqp_util:encode(Realm), ".", amqp_util:encode(User)]).
 
 -spec get_route_req_routing(api_terms()) -> ne_binary().
 get_route_req_routing(Api) ->
     {User, Realm} = get_auth_user_realm(Api),
-    get_route_req_routing(Realm, User).
+    Type = resource_type(Api),
+    get_route_req_routing(Type, Realm, User).
 
 -spec publish_req(api_terms()) -> 'ok'.
 -spec publish_req(api_terms(), binary()) -> 'ok'.
@@ -347,6 +364,12 @@ get_auth_user_realm(ApiProp) when is_list(ApiProp) ->
 get_auth_user_realm(ApiJObj) ->
     [ReqUser, ReqDomain] = binary:split(kz_json:get_value(<<"From">>, ApiJObj), <<"@">>),
     {ReqUser, ReqDomain}.
+
+-spec resource_type(api_terms()) -> ne_binary().
+resource_type(ApiProp) when is_list(ApiProp) ->
+    props:get_value(<<"Resource-Type">>, ApiProp);
+resource_type(ApiJObj) ->
+    kz_json:get_value(<<"Resource-Type">>, ApiJObj).
 
 -spec call_id(kz_json:object()) -> api_binary().
 call_id(JObj) ->

@@ -47,6 +47,7 @@
 %% Save data to the DB
 -define(ARCHIVE_WINDOW, kapps_config:get_integer(?CONFIG_CAT, <<"archive_window_s">>, 60)).
 
+-define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>]).
 
 -define(ACDC_HRL, 'true').
 -endif.

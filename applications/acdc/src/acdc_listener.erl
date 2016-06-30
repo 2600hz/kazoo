@@ -28,7 +28,7 @@
 -record(state, {}).
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{'route', []}
+-define(BINDINGS, [{'route', [{'restrict_to', ?RESOURCE_TYPES_HANDLED}]}
                    ,{'self', []}
                    ,{'conf', [{'doc_type', <<"queue">>}
                               ,{'action', <<"created">>}
