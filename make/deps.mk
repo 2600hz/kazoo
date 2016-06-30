@@ -16,7 +16,7 @@ dep_jiffy = hex 0.14.7
 dep_jesse = git https://github.com/for-GET/jesse 9e7830001deb78b57ce2ae15049afb7fecb8d386
 dep_nklib = git https://github.com/NetComposer/nklib
 dep_couchbeam = git https://github.com/benoitc/couchbeam 1.3.0
-dep_lager = git https://github.com/basho/lager 3.2.0
+dep_lager = git https://github.com/basho/lager 3.2.1
 dep_sync = git https://github.com/jamhed/sync
 
 ### PR opened upstream ###
