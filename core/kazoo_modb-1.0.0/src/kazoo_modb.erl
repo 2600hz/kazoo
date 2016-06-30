@@ -141,9 +141,9 @@ save_doc(Account, Doc, Year, Month) ->
     AccountMODb = get_modb(Account, Year, Month),
     couch_save(AccountMODb, Doc, 3).
 
--spec couch_save(ne_binary(), wh_json:object(), integer()) ->
+-spec couch_save(ne_binary(), wh_json:object(), non_neg_integer()) ->
                         {'ok', wh_json:object()} |
-                        {'error', atom()}.
+                        couch_mgr:couchbeam_error().
 couch_save(AccountMODb, _Doc, 0) ->
     lager:error("failed to save doc in ~p", AccountMODb),
     {'error', 'doc_save_failed'};
