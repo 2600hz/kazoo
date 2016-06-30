@@ -68,11 +68,11 @@ init() ->
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
-allowed_methods(_) ->
+allowed_methods(_C2CId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
-allowed_methods(_, ?CONNECT_CALL) ->
+allowed_methods(_C2CId, ?CONNECT_CALL) ->
     [?HTTP_GET, ?HTTP_POST];
-allowed_methods(_, ?HISTORY) ->
+allowed_methods(_C2CId, ?HISTORY) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -316,12 +316,11 @@ originate_call(C2CId, Context) ->
 
 originate_call(_C2CId, Context, 'undefined') ->
     Message = <<"The contact extension for this click to call has not been set">>,
-    cb_context:add_validation_error(
-      <<"contact">>
+    cb_context:add_validation_error(<<"contact">>
                                    ,<<"required">>
                                    ,kz_json:from_list([{<<"message">>, Message}])
                                    ,Context
-     );
+                                   );
 originate_call(C2CId, Context, Contact) ->
     JObj = cb_context:doc(Context),
     case kz_json:get_ne_value(<<"whitelist">>, JObj, []) of
@@ -352,7 +351,8 @@ originate_call(C2CId, Context, Contact, 'true') ->
                                                      ,AccountModb
                                                      ,[{'account_id', AccountId}
                                                       ,{'type', <<"c2c_history">>}
-                                                      ]),
+                                                      ]
+                                                     ),
                      kazoo_modb:save_doc(AccountId, HistoryItem)
              end),
     JObj = kz_json:normalize(kz_json:from_list(kz_api:remove_defaults(Request))),
@@ -433,10 +433,13 @@ build_originate_req(Contact, Context) ->
     {Caller, Callee} = get_caller_callee(kz_json:get_value(<<"dial_first">>, JObj, <<"extension">>)
                                         ,#contact{number = OutboundNumber
                                                  ,name = FriendlyName
-                                                 ,route = Contact}
+                                                 ,route = Contact
+                                                 }
                                         ,#contact{number = CalleeNumber
                                                  ,name = CalleeName
-                                                 ,route = Exten}),
+                                                 ,route = Exten
+                                                 }
+                                        ),
 
     lager:debug("attempting clicktocall ~s in account ~s", [FriendlyName, AccountId]),
     {'ok', AccountDoc} = kz_account:fetch(AccountId),
@@ -451,7 +454,6 @@ build_originate_req(Contact, Context) ->
            ,{<<"Request-URI">>, <<OutboundNumber/binary, "@", (kz_account:realm(AccountDoc))/binary>>}
            ],
 
-
     Endpoint = [{<<"Invite-Format">>, <<"loopback">>}
                ,{<<"Route">>,  Callee#contact.route}
                ,{<<"To-DID">>, Callee#contact.route}
@@ -461,6 +463,7 @@ build_originate_req(Contact, Context) ->
 
     MsgId = kz_json:get_value(<<"msg_id">>, JObj, kz_util:rand_hex_binary(16)),
     CallId = <<(kz_util:rand_hex_binary(18))/binary, "-clicktocall">>,
+
     props:filter_undefined(
       [{<<"Application-Name">>, <<"transfer">>}
       ,{<<"Application-Data">>, kz_json:from_list([{<<"Route">>, Caller#contact.route}])}
@@ -484,7 +487,8 @@ build_originate_req(Contact, Context) ->
       ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>
                                           ,<<"Auto-Answer-Loopback">>, <<"Loopback-Request-URI">>
                                           ,<<"From-URI">>, <<"Request-URI">>
-                                          ]}
+                                          ]
+       }
       ,{<<"Simplify-Loopback">>, <<"false">>}
       ,{<<"Loopback-Bowout">>, <<"false">>}
       ,{<<"Start-Control-Process">>, <<"false">>}

@@ -58,7 +58,7 @@ init() ->
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
-allowed_methods(_) ->
+allowed_methods(_DirectoryId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
@@ -225,11 +225,10 @@ pdf_props(Context) ->
 
     Directory = kz_json:to_proplist(kz_json:delete_key(<<"users">>, RespData)),
     Users =
-        pdf_users(
-          AccountId
+        pdf_users(AccountId
                  ,props:get_binary_value(<<"sort_by">>, Directory, <<"last_name">>)
                  ,kz_json:get_value(<<"users">>, RespData, [])
-         ),
+                 ),
 
     [{<<"type">>, <<"directory">>}
     ,{<<"users">>, Users}
@@ -253,8 +252,7 @@ pdf_users(_AccountDb, SortBy, [], Acc) ->
 pdf_users(AccountDb, SortBy, [JObj|Users], Acc) ->
     UserId = kz_json:get_value(<<"user_id">>, JObj),
     CallflowId = kz_json:get_value(<<"callflow_id">>, JObj),
-    Props = [
-             {<<"user">>, pdf_user(AccountDb, UserId)}
+    Props = [{<<"user">>, pdf_user(AccountDb, UserId)}
             ,{<<"callflow">>, pdf_callflow(AccountDb, CallflowId)}
             ],
     pdf_users(AccountDb, SortBy, Users, [Props|Acc]).
@@ -318,7 +316,7 @@ read(Id, Context) ->
 -spec load_directory_users(ne_binary(), cb_context:context()) -> cb_context:context().
 load_directory_users(Id, Context) ->
     Context1 = crossbar_doc:load_view(?CB_USERS_LIST
-                                     ,[{<<"key">>, Id}]
+                                     ,[{'key', Id}]
                                      ,Context
                                      ,fun normalize_users_results/2
                                      ),
@@ -329,8 +327,6 @@ load_directory_users(Id, Context) ->
             cb_context:set_resp_data(Context, kz_json:set_value(<<"users">>, Users, Directory));
         _Status -> Context
     end.
-
-
 
 %%--------------------------------------------------------------------
 %% @private

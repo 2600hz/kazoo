@@ -284,8 +284,7 @@ handle_cast(_Req, State) ->
 handle_info({'stop', _Call}, State) ->
     {'stop', 'normal', State};
 handle_info({'http', {ReqId, 'stream_start', Hdrs}}
-           ,#state{request_id=ReqId
-                  }=State) ->
+           ,#state{request_id=ReqId}=State) ->
     RespHeaders = normalize_resp_headers(Hdrs),
     lager:debug("recv resp headers"),
     {'noreply', State#state{response_headers=RespHeaders}};
@@ -304,12 +303,13 @@ handle_info({'http', {ReqId, 'stream', Chunk}}
     lager:info("adding response chunk: '~s'", [Chunk]),
     {'noreply', State#state{response_body = <<RespBody/binary, Chunk/binary>>}};
 
-handle_info({'http', {ReqId, 'stream_end', FinalHeaders}}, #state{request_id=ReqId
-                                                                 ,response_body=RespBody
-                                                                 ,call=Call
-                                                                 ,debug=Debug
-                                                                 ,requester_queue=RequesterQ
-                                                                 }=State) ->
+handle_info({'http', {ReqId, 'stream_end', FinalHeaders}}
+           ,#state{request_id=ReqId
+                  ,response_body=RespBody
+                  ,call=Call
+                  ,debug=Debug
+                  ,requester_queue=RequesterQ
+                  }=State) ->
     RespHeaders = normalize_resp_headers(FinalHeaders),
     maybe_debug_resp(Debug, Call, <<"200">>, RespHeaders, RespBody),
     HandleArgs = [RequesterQ
@@ -328,32 +328,43 @@ handle_info({'http', {ReqId, 'stream_end', FinalHeaders}}, #state{request_id=Req
                            }
     ,'hibernate'};
 
-handle_info({'http', {ReqId, {{_, StatusCode, _}, RespHeaders, _}}}
-           ,#state{request_id=ReqId}=State)
+handle_info({'http', {ReqId, {{_, StatusCode, _}, RespHeaders, RespBody}}}
+           ,#state{request_id=ReqId
+                   ,requester_queue=RequesterQ
+                   ,call=Call
+                   ,debug=ShouldDebug
+                  }=State)
   when (StatusCode - 400) < 100 ->
     lager:info("recv client failure status code ~p", [StatusCode]),
-    {'noreply', State#state{
-                  response_content_type=props:get_value(<<"content-type">>, RespHeaders)
-                           ,response_code = integer_to_binary(StatusCode)
-                           ,response_headers=RespHeaders
-                 }
-    };
-handle_info({'http', {ReqId, {{_, StatusCode, _}, RespHeaders, _}}}
-           ,#state{request_id=ReqId}=State)
+    publish_failed(Call, RequesterQ),
+    maybe_debug_resp(ShouldDebug, Call, kz_util:to_binary(StatusCode), RespHeaders, RespBody),
+    {'stop', 'normal', State};
+handle_info({'http', {ReqId, {{_, StatusCode, _}, RespHeaders, RespBody}}}
+           ,#state{request_id=ReqId
+                   ,requester_queue=RequesterQ
+                   ,call=Call
+                   ,debug=ShouldDebug
+                  }=State)
   when (StatusCode - 500) < 100 ->
     lager:info("recv server failure status code ~p", [StatusCode]),
-    {'noreply', State#state{
-                  response_content_type=props:get_value(<<"content-type">>, RespHeaders)
-                           ,response_code = integer_to_binary(StatusCode)
-                           ,response_headers=RespHeaders
-                 }
-    };
+    publish_failed(Call, RequesterQ),
+    maybe_debug_resp(ShouldDebug, Call, kz_util:to_binary(StatusCode), RespHeaders, RespBody),
+    {'stop', 'normal', State};
 
-handle_info({'DOWN', Ref, 'process', Pid, Reason}, #state{response_pid=Pid
-                                                         ,response_ref=Ref
-                                                         }=State) ->
-    lager:debug("response pid ~p(~p) down: ~p", [Pid, Ref, Reason]),
+handle_info({'DOWN', Ref, 'process', Pid, 'normal'}
+           ,#state{response_pid=Pid
+                  ,response_ref=Ref
+                  }=State) ->
     {'noreply', State#state{response_pid='undefined'}, 'hibernate'};
+handle_info({'DOWN', Ref, 'process', Pid, Reason}
+           ,#state{response_pid=Pid
+                  ,response_ref=Ref
+                  ,call=Call
+                  ,requester_queue=RequesterQ
+                  }=State) ->
+    lager:info("response pid ~p(~p) down: ~p", [Pid, Ref, Reason]),
+    publish_failed(Call, RequesterQ),
+    {'stop', 'normal', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -431,7 +442,7 @@ send(Call, Uri, Method, ReqHdrs, ReqBody, Debug) ->
 
     maybe_debug_req(Call, Uri, Method, ReqHdrs, ReqBody, Debug),
 
-    case kz_http:async_req(self(), Method, kz_util:to_list(Uri), ReqHdrs, ReqBody) of
+    case kz_http:async_req(self(), Method, Uri, ReqHdrs, ReqBody) of
         {'http_req_id', ReqId} ->
             lager:debug("response coming in asynchronosly to ~p", [ReqId]),
             {'ok', ReqId, Call};
@@ -445,7 +456,7 @@ normalize_resp_headers(Headers) ->
     [{kz_util:to_lower_binary(K), kz_util:to_binary(V)} || {K, V} <- Headers].
 
 -spec handle_resp(api_binary(), kapps_call:call(), ne_binary(), binary()) -> 'ok'.
-handle_resp(RequesterQ, Call, CT, RespBody) ->
+handle_resp(RequesterQ, Call, CT, <<_/binary>> = RespBody) ->
     kz_util:put_callid(kapps_call:call_id(Call)),
     Srv = kzt_util:get_amqp_listener(Call),
 
@@ -473,7 +484,7 @@ process_resp(RequesterQ, Call, Hdrs, RespBody) when is_list(Hdrs) ->
     handle_resp(RequesterQ, Call, props:get_value(<<"content-type">>, Hdrs), RespBody);
 process_resp(RequesterQ, Call, CT, RespBody) ->
     lager:info("finding translator for content type ~s", [CT]),
-    try kzt_translator:exec(Call, kz_util:to_list(RespBody), CT) of
+    try kzt_translator:exec(Call, RespBody, CT) of
         {'stop', _Call1}=Stop ->
             lager:debug("translator says stop"),
             Stop;
@@ -488,18 +499,32 @@ process_resp(RequesterQ, Call, CT, RespBody) ->
             U;
         {'error', Call1} ->
             lager:debug("error in translator, FAIL"),
+            {'stop', Call1};
+        {'error', Call1, Errors} ->
+            lager:error("validation errors in response, FAIL"),
+            debug_error(Call1, Errors, RespBody),
             {'stop', Call1}
     catch
+        'throw':{'json', Msg, Before, After} ->
+            debug_json_error(Call, Msg, Before, After, RespBody),
+            {'stop', Call};
         'throw':{'error', 'no_translators', _CT} ->
             lager:info("unknown content type ~s, no translators", [_CT]),
             {'stop', Call};
         'throw':{'error', 'unrecognized_cmds'} ->
             lager:info("no translators recognize the supplied commands: ~s", [RespBody]),
-            kapi_pivot:publish_failed(RequesterQ, [{<<"Call-ID">>, kapps_call:call_id(Call)}
-                                                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-                                                  ]),
+            publish_failed(Call, RequesterQ),
             {'stop', Call}
     end.
+
+-spec publish_failed(kapps_call:call(), ne_binary()) -> 'ok'.
+publish_failed(Call, RequesterQ) ->
+    PubFun = fun(P) -> kapi_pivot:publish_failed(RequesterQ, P) end,
+    kz_amqp_worker:cast([{<<"Call-ID">>, kapps_call:call_id(Call)}
+                         | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                        ]
+                       ,PubFun
+                       ).
 
 -spec uri(ne_binary(), iolist()) -> ne_binary().
 uri(URI, QueryString) ->
@@ -529,35 +554,62 @@ maybe_debug_req(Call, Uri, Method, ReqHdrs, ReqBody, 'true') ->
                       ,{<<"method">>, kz_util:to_binary(Method)}
                       ,{<<"req_headers">>, Headers}
                       ,{<<"req_body">>, iolist_to_binary(ReqBody)}
-                      ,{<<"iteration">>, kzt_util:iteration(Call)}
                       ]).
 
 -spec maybe_debug_resp(boolean(), kapps_call:call(), ne_binary(), kz_proplist(), binary()) -> 'ok'.
 maybe_debug_resp('false', _Call, _StatusCode, _RespHeaders, _RespBody) -> 'ok';
 maybe_debug_resp('true', Call, StatusCode, RespHeaders, RespBody) ->
     Headers = kz_json:from_list([{fix_value(K), fix_value(V)} || {K, V} <- RespHeaders]),
-    store_debug(
-      Call
+    store_debug(Call
                ,[{<<"resp_status_code">>, StatusCode}
                 ,{<<"resp_headers">>, Headers}
                 ,{<<"resp_body">>, RespBody}
-                ,{<<"iteration">>, kzt_util:iteration(Call)}
                 ]
-     ).
+               ).
 
--spec store_debug(kapps_call:call(), kz_proplist()) -> 'ok'.
-store_debug(Call, Doc) ->
+-spec debug_error(kapps_call:call(), [jesse_error:error_reason()], iolist()) -> 'ok'.
+debug_error(Call, Errors, RespBody) ->
+    JObj = lists:foldl(fun error_to_jobj/2, kz_json:new(), Errors),
+    store_debug(Call
+               ,kz_json:from_list([{<<"schema_errors">>, JObj}
+                                  ,{<<"resp_body">>, RespBody}
+                                  ])
+               ).
+
+debug_json_error(Call, Msg, Before, After, RespBody) ->
+    JObj = kz_json:from_list([{<<"resp_body">>, RespBody}
+                              ,{<<"json_errors">>
+                               ,kz_json:from_list([{<<"before">>, Before}
+                                                   ,{<<"after">>, After}
+                                                   ,{<<"message">>, Msg}
+                                                  ])
+                               }
+                             ]),
+    store_debug(Call, JObj).
+
+-spec error_to_jobj(jesse_error:error_reason(), kz_json:object()) -> kz_json:object().
+error_to_jobj(Error, Errors) ->
+    {_Code, _Message, JObj} = kz_json_schema:error_to_jobj(Error),
+    kz_json:merge_jobjs(JObj, Errors).
+
+-spec store_debug(kapps_call:call(), kz_proplist() | kz_json:object()) -> 'ok'.
+store_debug(Call, Doc) when is_list(Doc) ->
+    store_debug(Call, kz_json:from_list(Doc));
+store_debug(Call, DebugJObj) ->
     AccountModDb = kz_util:format_account_mod_id(kapps_call:account_id(Call)),
     JObj =
-        kz_doc:update_pvt_parameters(
-          kz_json:from_list([{<<"call_id">>, kapps_call:call_id(Call)} | Doc])
+        kz_doc:update_pvt_parameters(kz_json:set_values([{<<"call_id">>, kapps_call:call_id(Call)}
+                                                        ,{<<"iteration">>, kzt_util:iteration(Call)}
+                                                        ]
+                                                       ,DebugJObj
+                                                       )
                                     ,AccountModDb
                                     ,[{'account_id', kapps_call:account_id(Call)}
                                      ,{'account_db', AccountModDb}
                                      ,{'type', <<"pivot_debug">>}
                                      ,{'now', kz_util:current_tstamp()}
                                      ]
-         ),
+                                    ),
     case kazoo_modb:save_doc(AccountModDb, JObj) of
         {'ok', _Saved} ->
             lager:debug("saved debug doc: ~p", [_Saved]);

@@ -165,15 +165,14 @@ validate_email_address(Context) ->
     case IsValid of
         'true' -> Context;
         'false' ->
-            cb_context:add_validation_error(
-              <<"custom_smtp_email_address">>
+            cb_context:add_validation_error(<<"custom_smtp_email_address">>
                                            ,<<"unique">>
                                            ,kz_json:from_list(
                                               [{<<"message">>, <<"email address must be unique">>}
                                               ,{<<"cause">>, Email}
                                               ])
                                            ,Context
-             )
+                                           )
     end.
 
 -spec validate_patch(cb_context:context()) -> cb_context:context().
@@ -338,16 +337,15 @@ update_faxbox(Id, Context) ->
 -spec on_faxbox_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_faxbox_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context
-                      ,kz_json:set_values(
-                         [{<<"pvt_type">>, kzd_fax_box:type()}
-                         ,{<<"pvt_account_id">>, cb_context:account_id(Context)}
-                         ,{<<"pvt_account_db">>, cb_context:account_db(Context)}
-                         ,{<<"pvt_reseller_id">>, cb_context:reseller_id(Context)}
-                         ,{<<"_id">>, kz_util:rand_hex_binary(16)}
-                         ,{<<"pvt_smtp_email_address">>, generate_email_address(Context)}
-                         ]
+                      ,kz_json:set_values([{<<"pvt_type">>, kzd_fax_box:type()}
+                                          ,{<<"pvt_account_id">>, cb_context:account_id(Context)}
+                                          ,{<<"pvt_account_db">>, cb_context:account_db(Context)}
+                                          ,{<<"pvt_reseller_id">>, cb_context:reseller_id(Context)}
+                                          ,{<<"_id">>, kz_util:rand_hex_binary(16)}
+                                          ,{<<"pvt_smtp_email_address">>, generate_email_address(Context)}
+                                          ]
                                          ,cb_context:doc(Context)
-                        )
+                                         )
                       );
 on_faxbox_successful_validation(DocId, Context) ->
     crossbar_doc:load_merge(DocId, Context, ?TYPE_CHECK_OPTION(kzd_fax_box:type())).

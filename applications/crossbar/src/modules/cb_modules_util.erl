@@ -34,6 +34,7 @@
         ]).
 
 -include("crossbar.hrl").
+-include_lib("kazoo/src/kz_json.hrl").
 
 -define(QCALL_NUMBER_FILTER, [<<" ">>, <<",">>, <<".">>, <<"-">>, <<"(">>, <<")">>]).
 
@@ -514,7 +515,7 @@ token_cost(Context, [_|_]=Suffix) ->
 token_cost(Context, Default) ->
     token_cost(Context, Default, []).
 
-token_cost(Context, Default, Suffix) when is_integer(Default), Default >= 0 ->
+token_cost(Context, Default, Suffix) when is_integer(Default) andalso Default >= 0 ->
     Costs = kapps_config:get(?CONFIG_CAT, <<"token_costs">>, 1),
     find_token_cost(Costs
                    ,Default
@@ -525,23 +526,22 @@ token_cost(Context, Default, Suffix) when is_integer(Default), Default >= 0 ->
                    ).
 
 -spec find_token_cost(kz_json:object() | non_neg_integer()
-                     ,non_neg_integer()
+                     ,Default
                      ,kz_json:keys()
                      ,req_nouns()
                      ,http_method()
                      ,api_binary()
                      ) ->
-                             non_neg_integer().
-
+                             integer() | Default.
 find_token_cost(N, _Default, _Suffix, _Nouns, _ReqVerb, _AccountId) when is_integer(N) ->
     lager:debug("flat token cost of ~p configured", [N]),
     N;
-find_token_cost(JObj, Default, Suffix, [{Endpoint, _} | _], ReqVerb, 'undefined') ->
+find_token_cost(?JSON_WRAPPER(_) = JObj, Default, Suffix, [{Endpoint, _} | _], ReqVerb, 'undefined') ->
     Keys = [[Endpoint, ReqVerb | Suffix]
            ,[Endpoint | Suffix]
            ],
     get_token_cost(JObj, Default, Keys);
-find_token_cost(JObj, Default, Suffix, [{Endpoint, _}|_], ReqVerb, AccountId) ->
+find_token_cost(?JSON_WRAPPER(_) = JObj, Default, Suffix, [{Endpoint, _}|_], ReqVerb, AccountId) ->
     Keys = [[AccountId, Endpoint, ReqVerb | Suffix]
            ,[AccountId, Endpoint | Suffix]
            ,[AccountId | Suffix]
@@ -550,8 +550,8 @@ find_token_cost(JObj, Default, Suffix, [{Endpoint, _}|_], ReqVerb, AccountId) ->
            ],
     get_token_cost(JObj, Default, Keys).
 
--spec get_token_cost(kz_json:object(), non_neg_integer(), kz_json:keys()) ->
-                            non_neg_integer().
+-spec get_token_cost(kz_json:object(), Default, kz_json:keys()) ->
+                            integer() | Default.
 get_token_cost(JObj, Default, Keys) ->
     case kz_json:get_first_defined(Keys, JObj) of
         'undefined' -> Default;

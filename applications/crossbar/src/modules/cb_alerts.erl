@@ -41,7 +41,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.put.alerts">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.alerts">>, ?MODULE, 'delete').
 
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -155,17 +154,15 @@ create(Context) ->
 
     case kapps_alert:create(Title, Msg, From, To, Props) of
         {'required', Item} ->
-            cb_context:add_validation_error(
-              Item
+            cb_context:add_validation_error(Item
                                            ,<<"required">>
                                            ,<<"missing property">>
                                            ,Context
-             );
+                                           );
         {'error', 'disabled'} ->
             cb_context:add_system_error('disabled', Context);
         {'ok', JObj} ->
-            Setters = [
-                       {fun cb_context:set_resp_status/2, 'success'}
+            Setters = [{fun cb_context:set_resp_status/2, 'success'}
                       ,{fun cb_context:set_doc/2, JObj}
                       ],
             cb_context:setters(Context, Setters)
@@ -208,12 +205,11 @@ summary(Context) ->
 -spec load_summary(cb_context:context()) -> cb_context:context().
 load_summary(Context) ->
     Context1 = cb_context:set_account_db(Context, ?KZ_ALERTS_DB),
-    crossbar_doc:load_view(
-      ?AVAILABLE_LIST
+    crossbar_doc:load_view(?AVAILABLE_LIST
                           ,[{'keys', view_keys(Context1)}]
                           ,Context1
                           ,fun normalize_view_results/2
-     ).
+                          ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -227,13 +223,12 @@ fix_envelope(Context) ->
 
     Alerts = filter_alerts(RespData),
 
-    Setters = [
-               {fun cb_context:set_resp_data/2, Alerts}
+    Setters = [{fun cb_context:set_resp_data/2, Alerts}
               ,{fun cb_context:set_resp_envelope/2
-               ,kz_json:set_value(<<"page_size">>, erlang:length(Alerts), RespEnv)}
+               ,kz_json:set_value(<<"page_size">>, erlang:length(Alerts), RespEnv)
+               }
               ],
     cb_context:setters(Context, Setters).
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -243,12 +238,17 @@ fix_envelope(Context) ->
 -spec filter_alerts(kz_json:objects()) -> kz_json:objects().
 filter_alerts(Alerts) ->
     [Alert || Alert <- lists:usort(Alerts),
-              case kzd_alert:expired(Alert) of
-                  'false' -> 'true';
-                  'true' ->
-                      _ = kz_util:spawn(fun kapps_alert:delete/1, [kzd_alert:id(Alert)]),
-                      'false'
-              end].
+              should_filter_alert(Alert)
+    ].
+
+-spec should_filter_alert(kzd_alert:doc()) -> boolean().
+should_filter_alert(Alert) ->
+    case kzd_alert:expired(Alert) of
+        'false' -> 'true';
+        'true' ->
+            _ = kz_util:spawn(fun kapps_alert:delete/1, [kzd_alert:id(Alert)]),
+            'false'
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -266,14 +266,15 @@ view_keys(Context) ->
 
     IsAdmin = is_user_admin(AccountId, OwnerId),
 
-    Routines = [
-                fun(K) -> [[<<"all">>, <<"all">>], [<<"all">>, <<"users">>]|K] end
+    Routines = [fun(K) ->
+                        [[<<"all">>, <<"all">>]
+                        ,[<<"all">>, <<"users">>]
+                         |K
+                        ]
+                end
                ,fun(K) -> [[AccountId, <<"all">>], [AccountId, <<"users">>]|K] end
-               ,fun(K) ->
-                        case OwnerId of
-                            'undefined' -> K;
-                            UserId -> [[AccountId, UserId]|K]
-                        end
+               ,fun(K) when OwnerId =:= 'undefined' -> K;
+                   (K) -> [[AccountId, OwnerId]|K]
                 end
                ,fun(K) ->
                         case kz_services:is_reseller(AccountId) of
@@ -281,25 +282,21 @@ view_keys(Context) ->
                             'true' -> [[<<"resellers">>, <<"all">>], [<<"resellers">>, <<"users">>]|K]
                         end
                 end
-               ,fun(K) ->
-                        case IsAdmin of
-                            'false' -> K;
-                            'true' ->
-                                [[<<"all">>, <<"admins">>]
-                                ,[AccountId, <<"admins">>]
-                                ,[<<"resellers">>, <<"admins">>]
-                                 |K
-                                ]
-                        end
+               ,fun(K) when IsAdmin ->
+                        [[<<"all">>, <<"admins">>]
+                        ,[AccountId, <<"admins">>]
+                        ,[<<"resellers">>, <<"admins">>]
+                         |K
+                        ];
+                   (K) -> K
                 end
                ,fun(K) ->
-                        lists:foldl(
-                          fun(Descendant, Acc) ->
-                                  add_descendants(Descendant, IsAdmin, Acc)
-                          end
+                        lists:foldl(fun(Descendant, Acc) ->
+                                            add_descendants(Descendant, IsAdmin, Acc)
+                                    end
                                    ,K
                                    ,crossbar_util:get_descendants(AccountId)
-                         )
+                                   )
                 end
                ],
     lists:foldl(fun(F, Keys) -> F(Keys) end, [], Routines).
@@ -333,12 +330,14 @@ is_user_admin(Account, UserId) ->
 add_descendants(Descendant, 'false', Keys) ->
     [[<<"descendants">>, [Descendant, <<"all">>]]
     ,[<<"descendants">>, [Descendant, <<"users">>]]
-     | Keys];
+     | Keys
+    ];
 add_descendants(Descendant, 'true', Keys) ->
     [[<<"descendants">>, [Descendant, <<"all">>]]
     ,[<<"descendants">>, [Descendant, <<"users">>]]
     ,[<<"descendants">>, [Descendant, <<"admins">>]]
-     | Keys].
+     | Keys
+    ].
 
 %%--------------------------------------------------------------------
 %% @private

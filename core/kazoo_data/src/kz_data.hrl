@@ -64,7 +64,7 @@
 
 -type stale() :: 'ok' | 'update_after'.
 
--type key_range() :: binary() | [binary() | kz_json:object()].
+-type key_range() :: integer() | binary() | [integer() | binary() | kz_json:object()].
 
 -type view_option() :: 'conflicts' |
                        'descending' |

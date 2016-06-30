@@ -740,10 +740,9 @@ validate_request(Context) ->
 %%--------------------------------------------------------------------
 -spec validate_delete(cb_context:context()) -> cb_context:context().
 validate_delete(Context) ->
-    cb_context:set_doc(
-      cb_context:set_resp_status(Context, 'success')
+    cb_context:set_doc(cb_context:set_resp_status(Context, 'success')
                       ,'undefined'
-     ).
+                      ).
 
 %%--------------------------------------------------------------------
 %% @private

@@ -40,6 +40,7 @@
 -endif.
 
 -export_type([view_options/0
+             ,load_options/0
              ,startkey/0
              ]).
 
@@ -74,6 +75,11 @@
                         [{'databases', ne_binaries()} |
                          {'startkey_fun', startkey_fun()}
                         ].
+
+-type load_option() :: {?OPTION_EXPECTED_TYPE, ne_binary()} |
+                       {'use_cache', boolean()}.
+-type load_options() :: kazoo_data:view_options() |
+                        [load_option()].
 
 -record(load_view_params, {view :: api_binary()
                           ,view_options = [] :: view_options()
@@ -125,9 +131,9 @@ current_doc_vsn() -> ?CROSSBAR_DOC_VSN.
 %%--------------------------------------------------------------------
 -spec load(kazoo_data:docid() | kazoo_data:docids(), cb_context:context()) ->
                   cb_context:context().
--spec load(kazoo_data:docid() | kazoo_data:docids(), cb_context:context(), kz_proplist()) ->
+-spec load(kazoo_data:docid() | kazoo_data:docids(), cb_context:context(), load_options()) ->
                   cb_context:context().
--spec load(ne_binary() | ne_binaries(), cb_context:context(), kz_proplist(), crossbar_status()) ->
+-spec load(ne_binary() | ne_binaries(), cb_context:context(), load_options(), crossbar_status()) ->
                   cb_context:context().
 
 load({DocType, DocId}, Context) ->
@@ -147,7 +153,7 @@ load(DocId, Context, Options, _RespStatus) when is_binary(DocId) ->
         {'error', Error} ->
             handle_datamgr_errors(Error, DocId, Context);
         {'ok', JObj} ->
-            case check_document_type(DocId, Context, JObj, Options) of
+            case check_document_type(Context, JObj, Options) of
                 'true' -> handle_successful_load(Context, JObj);
                 'false' ->
                     ErrorCause = kz_json:from_list([{<<"cause">>, DocId}]),
@@ -162,7 +168,7 @@ load([_|_]=IDs, Context, Opts, _RespStatus) ->
         {'error', Error} -> handle_datamgr_errors(Error, IDs, Context);
         {'ok', JObjs} ->
             Docs = extract_included_docs(JObjs),
-            case check_document_type(IDs, Context, Docs, Opts) of
+            case check_document_type(Context, Docs, Opts) of
                 'true' ->
                     cb_context:store(handle_datamgr_success(Docs, Context), 'db_doc', Docs);
                 'false' ->
@@ -190,19 +196,20 @@ get_open_function(Options) ->
 %% it will return `true`.
 %% @end
 %%--------------------------------------------------------------------
--spec check_document_type(ne_binary() | ne_binaries(), cb_context:context(), kz_json:object() | kz_json:objects(), kz_proplist()) ->
+-spec check_document_type(cb_context:context(), kz_json:object() | kz_json:objects(), kz_proplist()) ->
                                  boolean().
-check_document_type(DocId, Context, JObj, Options) when is_binary(DocId) ->
+check_document_type(_Context, [], _Options) ->
+    'true';
+check_document_type(Context, [_|_]=JObjs, Options) ->
+    lists:all(fun(JObj) -> check_document_type(Context, JObj, Options) end
+             ,JObjs
+             );
+check_document_type(Context, JObj, Options) ->
     JObjType = kz_doc:type(JObj),
     ExpectedType = props:get_value(?OPTION_EXPECTED_TYPE, Options),
     [{Noun, _}| _] = cb_context:req_nouns(Context),
     ReqType = normalize_requested_resource_name(Noun),
-    document_type_match(JObjType, ExpectedType, ReqType);
-check_document_type([], _Context, _JObjs, _Options) ->
-    'true';
-check_document_type([DocId|DocIds], Context, [JObj|JObjs], Options) ->
-    check_document_type(DocId, Context, JObj, Options)
-        andalso check_document_type(DocIds, Context, JObjs, Options).
+    document_type_match(JObjType, ExpectedType, ReqType).
 
 -spec document_type_match(api_binary(), api_binary(), ne_binary()) -> boolean().
 document_type_match('undefined', _ExpectedType, _ReqType) ->
@@ -218,7 +225,8 @@ document_type_match(ReqType, _, ReqType) ->
     'true';
 document_type_match(_JObjType, _ExpectedType, _ReqType) ->
     lager:warning("the document type ~s does not match the expected type ~s nor the requested type ~s"
-                 ,[_JObjType, _ExpectedType, _ReqType]),
+                 ,[_JObjType, _ExpectedType, _ReqType]
+                 ),
     'false'.
 
 -spec normalize_requested_resource_name(ne_binary()) -> ne_binary().

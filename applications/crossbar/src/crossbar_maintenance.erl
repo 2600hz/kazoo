@@ -765,20 +765,20 @@ save_old_ring_group(JObj, NewCallflow) ->
             io:format("  saved ring group callflow: ~s~n", [kz_json:encode(_OldJObj)])
     end.
 
--spec init_apps(filelib:dirname()) -> 'ok'.
+-spec init_apps(file:name()) -> 'ok'.
 init_apps(AppsPath) ->
     init_apps(AppsPath, 'undefined').
 
--spec init_apps(filelib:dirname(), api_binary()) -> 'ok'.
+-spec init_apps(file:name(), api_binary()) -> 'ok'.
 init_apps(AppsPath, AppUrl) ->
     Apps = find_apps(AppsPath),
     InitApp = fun(App) -> init_app(App, AppUrl) end,
     lists:foreach(InitApp, Apps).
 
--spec find_apps(filelib:dirname()) -> [file:name()].
+-spec find_apps(file:name()) -> [file:name()].
 find_apps(AppsPath) ->
     AccFun =
-        fun (AppJSONPath, Acc) ->
+        fun(AppJSONPath, Acc) ->
                 App = filename:absname(AppJSONPath),
                 %% App/metadata/app.json --> App
                 [filename:dirname(filename:dirname(App)) | Acc]

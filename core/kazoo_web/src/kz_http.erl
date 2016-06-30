@@ -198,10 +198,8 @@ async_req(Pid, Method, Url, Hdrs, Body, Opts) ->
 execute_request(Method, Request, Opts) ->
     HTTPOptions = get_options(?HTTP_OPTIONS, Opts),
     Opts1 = get_options(?OPTIONS, Opts),
-    Options = case props:get_value('body_format', Opts1) of
-                  'undefined' -> [{'body_format', 'binary'} | Opts1];
-                  _ -> Opts1
-              end,
+    Options = props:insert_value('body_format', 'binary', Opts1),
+
     handle_response(catch httpc:request(Method, Request, HTTPOptions, Options)).
 
 %%--------------------------------------------------------------------

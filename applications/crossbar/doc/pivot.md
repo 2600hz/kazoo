@@ -61,11 +61,27 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/pivot/debug
 {
     "auth_token": "{AUTH_TOKEN}"
-     ,"data": [
-         "UUID"
-     ]
+    ,"data": [
+        {
+            "call_id": "{UUID_1}",
+            "created": 63635231906,
+            "iteration": 1,
+            "node": "{PIVOT_SERVER}",
+            "status_code": "404",
+            "has_schema_errors": false,
+            "uri": "http://127.0.0.1/pivot/kazoo_4786.php?Language=en-us&Caller-ID-Number=user_suyt9r93ng&Caller-ID-Name=user_suyt9r93ng&Direction=inbound&Api-Version=2015-03-01&To-Realm={SIP_REALM}&To=4786&From-Realm={SIP_REALM}&From=user_suyt9r93ng&Account-ID={ACCOUNT_ID}&Call-ID={UUID_1}"
+        },
+        {
+            "call_id": "{UUID_2}",
+            "created": 63635230409,
+            "iteration": 1,
+            "node": "{PIVOT_SERVER}",
+            "has_schema_errors": true
+        }
+      ],
+     ,"page_size": 3,
      ,"request_id": "{REQUEST_ID}"
-     ,"revision": "undefined"
+     ,"revision": {REVISION}
      ,"status": "success"
 }
 ```

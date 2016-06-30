@@ -21,11 +21,6 @@
 
 -define(CB_APPS_STORE_LIST, <<"apps_store/crossbar_listing">>).
 
--define(VERSION_1, <<"v1">>).
--define(VERSION_2, <<"v2">>).
--define(VERSION_SUPPORTED, [?VERSION_1, ?VERSION_2]).
--define(CURRENT_VERSION, ?VERSION_2).
-
 -define(INBOUND_HOOK, <<"hooks">>).
 
 -define(NO_ENVELOPE_VERSIONS, [?INBOUND_HOOK]).

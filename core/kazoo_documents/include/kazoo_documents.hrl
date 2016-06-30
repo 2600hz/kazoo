@@ -12,5 +12,10 @@
 
 -include_lib("kazoo/include/kz_databases.hrl").
 
+-define(VERSION_1, <<"v1">>).
+-define(VERSION_2, <<"v2">>).
+-define(VERSION_SUPPORTED, [?VERSION_1, ?VERSION_2]).
+-define(CURRENT_VERSION, ?VERSION_2).
+
 -define(KAZOO_DOCUMENTS_HRL, 'true').
 -endif.
