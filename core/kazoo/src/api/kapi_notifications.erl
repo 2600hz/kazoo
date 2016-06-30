@@ -99,7 +99,7 @@
 -define(NOTIFY_DEREGISTER, <<"notifications.sip.deregister">>).
 %%-define(NOTIFY_REGISTER_OVERWRITE, <<"notifications.sip.register_overwrite">>).
 -define(NOTIFY_REGISTER, <<"notifications.sip.register">>).
--define(NOTIFY_PASSWORD_RECOVERY, <<"notifications.password_recovery">>).
+-define(NOTIFY_PASSWORD_RECOVERY, <<"notifications.user.password_recovery">>).
 -define(NOTIFY_NEW_ACCOUNT, <<"notifications.account.new">>).
 -define(NOTIFY_NEW_USER, <<"notifications.user.new">>).
 %% -define(NOTIFY_DELETE_ACCOUNT, <<"notifications.account.delete">>).
