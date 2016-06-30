@@ -26,6 +26,10 @@
 
 -define(SERVER, ?MODULE).
 
+-define(DEFAULT_VM_NUMBER, <<"*98">>).
+-define(VM_NUMBER_KEY, <<"dialog_subscribed_mwi_prefix">>).
+-define(VM_NUMBER(A), kapps_account_config:get_global(A, ?CONFIG_CAT, ?VM_NUMBER_KEY, ?DEFAULT_VM_NUMBER)).
+
 -record(state, {}).
 
 %%%===================================================================
@@ -99,6 +103,10 @@ handle_cast({'omnipresence',{'channel_event', JObj}}, State) ->
 handle_cast({'omnipresence',{'presence_update', JObj}}, State) ->
     kz_util:put_callid(JObj),
     _ = kz_util:spawn(fun presence_event/1, [JObj]),
+    {'noreply', State};
+handle_cast({'omnipresence',{'mwi_update', JObj}}, State) ->
+    kz_util:put_callid(JObj),
+    _ = kz_util:spawn(fun mwi_event/1, [JObj]),
     {'noreply', State};
 handle_cast({'omnipresence',{'presence_reset', JObj}}, State) ->
     kz_util:put_callid(JObj),
@@ -289,7 +297,7 @@ handle_update(JObj, State, From, To, Expires) ->
                          ])
                 };
             _Direction ->
-                App = kz_json:get_value(<<"App-Name">>, JObj),
+                App = kz_json:get_value(<<"App-Name">>, JObj, ?APP_NAME),
                 ToURI = build_update_to_uri(State, App, From, ToRealm, Cookie),
                 {To, props:filter_undefined(
                        [{<<"From">>, <<"sip:", To/binary>>}
@@ -392,3 +400,20 @@ reset_user_blf(User) ->
             [reset_blf(SubUser) || #omnip_subscription{user=SubUser} <- Subs];
         _ -> 'ok'
     end.
+
+-spec mwi_event(kz_json:object()) -> 'ok'.
+mwi_event(JObj) ->
+    To = kz_json:get_value(<<"To">>, JObj),
+    [_, ToRealm] = binary:split(To, <<"@">>),
+    {ok, AccountDb} = kapps_util:get_account_by_realm(ToRealm),
+    AccountId = kz_util:format_account_id(AccountDb),
+    State = case kz_json:get_integer_value(<<"Messages-New">>, JObj, 0) of
+                0 -> ?PRESENCE_HANGUP;
+                _ -> ?PRESENCE_ANSWERED
+            end,
+    Props = props:filter_undefined(
+              [{<<"Presence-ID">>, <<(?VM_NUMBER(AccountId))/binary, To/binary>>}
+              ,{<<"Flush-Level">>, 1}
+              ,{<<"Call-Direction">>, <<"inbound">>}
+              ]),
+    handle_update(kz_json:from_list(Props), State, 0).
