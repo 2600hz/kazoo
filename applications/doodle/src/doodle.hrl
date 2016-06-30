@@ -28,5 +28,8 @@
 -define(ATOM(X), kz_util:to_atom(X, 'true')).
 -define(APP, ?ATOM(?APP_NAME)).
 
+-define(RESOURCE_TYPES_HANDLED,[<<"sms">>]).
+
+
 -define(DOODLE_HRL, 'true').
 -endif.

@@ -12,8 +12,6 @@
 
 -include("doodle.hrl").
 
--define(RESOURCE_TYPES_HANDLED,[<<"sms">>]).
-
 -define(DEFAULT_ROUTE_WIN_TIMEOUT, 3000).
 -define(ROUTE_WIN_TIMEOUT_KEY, <<"route_win_timeout">>).
 -define(ROUTE_WIN_TIMEOUT, kapps_config:get_integer(?CONFIG_CAT, ?ROUTE_WIN_TIMEOUT_KEY, ?DEFAULT_ROUTE_WIN_TIMEOUT)).
@@ -23,7 +21,6 @@ handle_req(JObj, Props) ->
     'true' = kapi_route:req_v(JObj),
     Call = kapps_call:from_route_req(JObj),
     case is_binary(kapps_call:account_id(Call))
-        andalso resource_allowed(Call)
     of
         'false' -> 'ok';
         'true' ->
@@ -68,17 +65,6 @@ prepend_preflow(AccountDb, PreflowId, CallFlow) ->
             Preflow = kz_json:set_value(<<"children">>, Children, kz_json:get_value(<<"flow">>, Doc)),
             kz_json:set_value(<<"flow">>, Preflow, CallFlow)
     end.
-
-
-
--spec resource_allowed(kapps_call:call()) -> boolean().
-resource_allowed(Call) ->
-    is_resource_allowed(kapps_call:resource_type(Call)).
-
--spec is_resource_allowed(api_binary()) -> boolean().
-is_resource_allowed('undefined') -> 'true';
-is_resource_allowed(ResourceType) ->
-    lists:member(ResourceType, ?RESOURCE_TYPES_HANDLED).
 
 -spec allow_no_match(kapps_call:call()) -> boolean().
 allow_no_match(Call) ->
