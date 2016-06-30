@@ -15,6 +15,7 @@
 -export([update/1, update_v/1]).
 -export([probe/1, probe_v/1]).
 -export([mwi_update/1, mwi_update_v/1
+         ,mwi_unsolicited_update/1, mwi_unsolicited_update_v/1
          ,mwi_query/1, mwi_query_v/1
          ,sync/1, sync_v/1
         ]).
@@ -28,6 +29,7 @@
          ,publish_update/1, publish_update/2
          ,publish_probe/1, publish_probe/2
          ,publish_mwi_update/1, publish_mwi_update/2
+         ,publish_unsolicited_mwi_update/1, publish_unsolicited_mwi_update/2
          ,publish_mwi_query/1, publish_mwi_query/2
          ,publish_register_overwrite/1, publish_register_overwrite/2
          ,publish_flush/1, publish_flush/2
@@ -117,6 +119,9 @@
 -define(MWI_REQ_VALUES, [{<<"Event-Category">>, <<"presence">>}
                          ,{<<"Event-Name">>, <<"mwi_update">>}
                         ]).
+-define(MWI_UNSOLICITED_REQ_VALUES, [{<<"Event-Category">>, <<"presence">>}
+                                     ,{<<"Event-Name">>, <<"mwi_unsolicited_update">>}
+                                    ]).
 -define(MWI_REQ_TYPES, [{<<"Messages-New">>, fun is_integer/1}
                         ,{<<"Messages-Saved">>, fun is_integer/1}
                         ,{<<"Messages-Urgent">>, fun is_integer/1}
@@ -378,6 +383,38 @@ mwi_update_routing_key(To) when is_binary(To) ->
 mwi_update_routing_key(JObj) ->
     mwi_update_routing_key(kz_json:get_value(<<"To">>, JObj)).
 
+-spec mwi_unsolicited_update(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+mwi_unsolicited_update(Prop) when is_list(Prop) ->
+    case mwi_unsolicited_update_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?MWI_REQ_HEADERS, ?OPTIONAL_MWI_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for mwi_req"}
+    end;
+mwi_unsolicited_update(JObj) -> mwi_unsolicited_update(kz_json:to_proplist(JObj)).
+
+-spec mwi_unsolicited_update_v(api_terms()) -> boolean().
+mwi_unsolicited_update_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?MWI_REQ_HEADERS, ?MWI_UNSOLICITED_REQ_VALUES, ?MWI_REQ_TYPES);
+mwi_unsolicited_update_v(JObj) -> mwi_unsolicited_update_v(kz_json:to_proplist(JObj)).
+
+-spec publish_unsolicited_mwi_update(api_terms()) -> 'ok'.
+-spec publish_unsolicited_mwi_update(api_terms(), ne_binary()) -> 'ok'.
+publish_unsolicited_mwi_update(JObj) -> publish_unsolicited_mwi_update(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_unsolicited_mwi_update(Req, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?MWI_UNSOLICITED_REQ_VALUES, fun ?MODULE:mwi_unsolicited_update/1),
+     amqp_util:presence_publish(mwi_unsolicited_update_routing_key(Req), Payload, ContentType).
+
+-spec mwi_unsolicited_update_routing_key(api_terms() | api_binary()) -> ne_binary().
+mwi_unsolicited_update_routing_key(Prop) when is_list(Prop) ->
+    mwi_unsolicited_update_routing_key(props:get_value(<<"To">>, Prop));
+mwi_unsolicited_update_routing_key(To) when is_binary(To) ->
+    R = case binary:split(To, <<"@">>) of
+            [_To, Realm] -> amqp_util:encode(Realm);
+            [Realm] -> amqp_util:encode(Realm)
+        end,
+    <<"mwi_unsolicited_updates.", R/binary>>;
+mwi_unsolicited_update_routing_key(JObj) ->
+    mwi_unsolicited_update_routing_key(kz_json:get_value(<<"To">>, JObj)).
+
 %%--------------------------------------------------------------------
 %% @doc MWI - Query the Message Waiting Indicator on a device - see wiki
 %% Takes proplist, creates JSON string or error
@@ -580,6 +617,11 @@ bind_q(Queue, ['mwi_update'|Restrict], Props) ->
     RoutingKey = mwi_update_routing_key(User),
     amqp_util:bind_q_to_presence(Queue, RoutingKey),
     bind_q(Queue, Restrict, Props);
+bind_q(Queue, ['mwi_unsolicited_update'|Restrict], Props) ->
+    User = props:get_value('user', Props, <<"*">>),
+    RoutingKey = mwi_unsolicited_update_routing_key(User),
+    amqp_util:bind_q_to_presence(Queue, RoutingKey),
+    bind_q(Queue, Restrict, Props);
 bind_q(Queue, ['mwi_query'|Restrict], Props) ->
     User = props:get_value('user', Props, <<"*">>),
     RoutingKey = mwi_query_routing_key(User),
@@ -640,6 +682,11 @@ unbind_q(Queue, ['mwi_update'|Restrict], Props) ->
     RoutingKey = mwi_update_routing_key(User),
     amqp_util:unbind_q_from_presence(Queue, RoutingKey),
     unbind_q(Queue, Restrict, Props);
+unbind_q(Queue, ['mwi_unsolicited_update'|Restrict], Props) ->
+    User = props:get_value('user', Props, <<"*">>),
+    RoutingKey = mwi_unsolicited_update_routing_key(User),
+    amqp_util:unbind_q_from_presence(Queue, RoutingKey),
+    bind_q(Queue, Restrict, Props);
 unbind_q(Queue, ['mwi_query'|Restrict], Props) ->
     User = props:get_value('user', Props, <<"*">>),
     RoutingKey = mwi_query_routing_key(User),

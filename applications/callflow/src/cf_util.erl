@@ -342,7 +342,7 @@ send_mwi_update(New, Saved, Username, Realm, JObj) ->
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     lager:debug("updating MWI for ~s@~s (~b/~b)", [Username, Realm, New, Saved]),
-    kapps_util:amqp_pool_send(Command, fun kapi_presence:publish_mwi_update/1).
+    kapps_util:amqp_pool_send(Command, fun kapi_presence:publish_unsolicited_mwi_update/1).
 
 %%--------------------------------------------------------------------
 %% @public
