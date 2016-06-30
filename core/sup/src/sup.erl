@@ -102,7 +102,6 @@ get_cookie(Options, Node) ->
             {_, [C]} -> C;
             {"", []} -> print_no_setcookie()
         end,
-    lager:debug("cookie found (~p)", [CookieStr]),
     Cookie = kz_util:to_atom(CookieStr, 'true'),
     'true' = erlang:set_cookie(node(), Cookie),
     Cookie.
