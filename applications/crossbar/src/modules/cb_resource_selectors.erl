@@ -31,7 +31,7 @@
 -define(UPLOAD_MIME_TYPES, [{<<"text">>, <<"csv">>}
                             ,{<<"text">>, <<"comma-separated-values">>}
                            ]).
--define(SELECTOR, <<"selector">>).
+-define(NAME, <<"name">>).
 -define(RESOURCE, <<"resource">>).
 -define(ZERO_STATS, [{'total', 0}
                      ,{'success', 0}
@@ -102,15 +102,17 @@ maybe_authorize_admin(Context) ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_POST].
 
-allowed_methods(?SELECTOR) ->
+allowed_methods(?NAME) ->
     [?HTTP_GET];
 allowed_methods(?RESOURCE) ->
     [?HTTP_GET].
-allowed_methods(?SELECTOR, _SelectorName) ->
+allowed_methods(?NAME, _SelectorName) ->
     [?HTTP_GET];
 allowed_methods(?RESOURCE, _ResourceId) ->
     [?HTTP_GET].
-allowed_methods(?RESOURCE, _ResourceId, ?SELECTOR, _SelectorName) ->
+allowed_methods(?RESOURCE, _ResourceId, ?NAME, _SelectorName) ->
+    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE];
+allowed_methods(?NAME, _SelectorName, ?RESOURCE, _ResourceId) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
@@ -126,11 +128,12 @@ allowed_methods(?RESOURCE, _ResourceId, ?SELECTOR, _SelectorName) ->
 -spec resource_exists(path_token(), path_token()) -> 'true'.
 -spec resource_exists(path_token(), path_token(), path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
-resource_exists(?SELECTOR) -> 'true';
+resource_exists(?NAME) -> 'true';
 resource_exists(?RESOURCE) -> 'true'.
-resource_exists(?SELECTOR, _SelectorName) -> 'true';
+resource_exists(?NAME, _SelectorName) -> 'true';
 resource_exists(?RESOURCE, _ResourceId) -> 'true'.
-resource_exists(?RESOURCE, _ResourceId, ?SELECTOR, _SelectorName) -> 'true'.
+resource_exists(?RESOURCE, _ResourceId, ?NAME, _SelectorName) -> 'true';
+resource_exists(?NAME, _SelectorName, ?RESOURCE, _ResourceId) -> 'true'.
 
 -spec content_types_accepted(cb_context:context()) -> cb_context:context().
 -spec content_types_accepted(cb_context:context(), path_token()) -> cb_context:context().
@@ -138,15 +141,17 @@ resource_exists(?RESOURCE, _ResourceId, ?SELECTOR, _SelectorName) -> 'true'.
 -spec content_types_accepted(cb_context:context(), path_token(), path_token(), path_token(), path_token()) -> cb_context:context().
 content_types_accepted(Context) ->
     Context.
-content_types_accepted(Context, ?SELECTOR) ->
+content_types_accepted(Context, ?NAME) ->
     Context;
 content_types_accepted(Context, ?RESOURCE) ->
     Context.
-content_types_accepted(Context, ?SELECTOR, _SelectorName) ->
+content_types_accepted(Context, ?NAME, _SelectorName) ->
     Context;
 content_types_accepted(Context, ?RESOURCE, _ResourceId) ->
     Context.
-content_types_accepted(Context, ?RESOURCE, _ResourceId, ?SELECTOR, _SelectorName) ->
+content_types_accepted(Context, ?RESOURCE, _ResourceId, ?NAME, _SelectorName) ->
+    content_types_accepted_by_verb(Context, cb_context:req_verb(Context));
+content_types_accepted(Context, ?NAME, _SelectorName, ?RESOURCE, _ResourceId) ->
     content_types_accepted_by_verb(Context, cb_context:req_verb(Context)).
 
 -spec content_types_accepted_by_verb(cb_context:context(), http_method()) -> cb_context:context().
@@ -171,17 +176,19 @@ content_types_accepted_by_verb(Context, _) ->
 validate(Context) ->
     validate_rules(set_account_db(Context), cb_context:req_verb(Context)).
 
-validate(Context, ?SELECTOR) ->
+validate(Context, ?NAME) ->
     validate_selector(set_selectors_db(Context));
 validate(Context, ?RESOURCE) ->
     validate_resource(set_selectors_db(Context)).
 
-validate(Context, ?SELECTOR, SelectorName) ->
+validate(Context, ?NAME, SelectorName) ->
     validate_selector(set_selectors_db(Context), SelectorName);
 validate(Context, ?RESOURCE, ResourceId) ->
     validate_resource(set_selectors_db(Context), ResourceId).
 
-validate(Context, ?RESOURCE, ResourceId, ?SELECTOR, SelectorName) ->
+validate(Context, ?RESOURCE, ResourceId, ?NAME, SelectorName) ->
+    validate_resource_selector(set_selectors_db(Context), ResourceId, SelectorName, cb_context:req_verb(Context));
+validate(Context, ?NAME, SelectorName, ?RESOURCE, ResourceId) ->
     validate_resource_selector(set_selectors_db(Context), ResourceId, SelectorName, cb_context:req_verb(Context)).
 
 -spec set_selectors_db(cb_context:context()) -> cb_context:context().
@@ -253,7 +260,9 @@ validate_delete_resource_selector(Context, _ResourceId, _SelectorName) ->
 -spec post(cb_context:context(), path_token(), path_token(), path_token(), path_token()) -> cb_context:context().
 post(Context) ->
     post_rules(Context).
-post(Context, ?RESOURCE, ResourceId, ?SELECTOR, SelectorName) ->
+post(Context, ?RESOURCE, ResourceId, ?NAME, SelectorName) ->
+    post_resource_selector(Context, ResourceId, SelectorName);
+post(Context, ?NAME, SelectorName, ?RESOURCE, ResourceId) ->
     post_resource_selector(Context, ResourceId, SelectorName).
 
 -spec post_rules(cb_context:context()) -> cb_context:context().
@@ -266,7 +275,9 @@ post_resource_selector(Context, ResourceId, SelectorName) ->
     upload_selectors_csv(Context, ResourceId, SelectorName).
 
 -spec put(cb_context:context(), path_token(), path_token(), path_token(), path_token()) -> cb_context:context().
-put(Context, ?RESOURCE, ResourceId, ?SELECTOR, SelectorName) ->
+put(Context, ?RESOURCE, ResourceId, ?NAME, SelectorName) ->
+    put_resource_selector(Context, ResourceId, SelectorName);
+put(Context, ?NAME, SelectorName, ?RESOURCE, ResourceId) ->
     put_resource_selector(Context, ResourceId, SelectorName).
 
 -spec put_resource_selector(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
@@ -304,7 +315,9 @@ generate_selector_doc(Context, ResourceId, SelectorName, Selector, Value) ->
     kz_json:from_list(props:filter_undefined(Props)).
 
 -spec delete(cb_context:context(), path_token(), path_token(), path_token(), path_token()) -> cb_context:context().
-delete(Context, ?RESOURCE, ResourceId, ?SELECTOR, SelectorName) ->
+delete(Context, ?RESOURCE, ResourceId, ?NAME, SelectorName) ->
+    delete_resource_selector(Context, ResourceId, SelectorName);
+delete(Context, ?NAME, SelectorName, ?RESOURCE, ResourceId) ->
     delete_resource_selector(Context, ResourceId, SelectorName).
 
 -spec delete_resource_selector(cb_context:context(), path_token(), path_token()) -> cb_context:context().
@@ -354,6 +367,7 @@ do_bulk_delete_all_selectors(Context, ResourceId, SelectorName) ->
     BulkLimit = kz_datamgr:max_bulk_insert(),
     Options = [{'key', [ResourceId, SelectorName]}
                ,{'limit', BulkLimit}
+               ,{'reduce', 'false'}
               ],
     Stats = do_delete_all_selectors(Db, Options, ?ZERO_STATS),
     crossbar_util:response(kz_json:from_list(Stats), Context).
@@ -365,6 +379,7 @@ do_delete_all_selectors(Db, Options, AccStats) ->
     {'ok', SearchResult}  = kz_datamgr:get_results(Db, <<"selectors/resource_name_listing">>, Options),
     Stats = case [ kz_json:get_ne_value(<<"id">>, R, []) || R <- SearchResult ] of
                 [] -> AccStats;
+                [[]] -> AccStats;
                 IDs -> 
                     NewStats = do_delete_selectors(Db, IDs, AccStats),
                     do_delete_all_selectors(Db, Options, NewStats)
