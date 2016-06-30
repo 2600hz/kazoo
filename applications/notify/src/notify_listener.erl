@@ -52,7 +52,7 @@
                       ,'outbound_fax'
                       ,'outbound_fax_error'
                       ,'deregister'
-                      ,'pwd_recovery'
+                      ,'password_recovery'
                       ,'new_account'
                       ,'cnam_requests'
                       ,'port_request'

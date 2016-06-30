@@ -120,11 +120,11 @@
                       ,'new_voicemail'
                       ,'outbound_fax'
                       ,'outbound_fax_error'
+                      ,'password_recovery'
                       ,'ported'
                       ,'port_cancel'
                       ,'port_comment'
                       ,'port_pending'
-                      ,'pwd_recovery'
                       ,'port_rejected'
                       ,'port_request'
                       ,'port_scheduled'
@@ -134,9 +134,6 @@
                       ,'voicemail_full'
                       ,'webhook_disabled'
                       ,'customer_update'
-                      ,'pwd_recovery'
-                      %%,'new_fax'
-                      %%,'fax_error'
                       %%,'skel'
                      ]).
 

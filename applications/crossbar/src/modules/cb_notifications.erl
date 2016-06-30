@@ -485,7 +485,7 @@ publish_fun(<<"deregister">>) ->
 publish_fun(<<"transaction">>) ->
     fun kapi_notifications:publish_transaction/1;
 publish_fun(<<"password_recovery">>) ->
-    fun kapi_notifications:publish_pwd_recovery/1;
+    fun kapi_notifications:publish_password_recovery/1;
 publish_fun(<<"system_alert">>) ->
     fun kapi_notifications:publish_system_alert/1;
 publish_fun(<<"cnam_request">>) ->

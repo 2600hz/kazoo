@@ -31,11 +31,11 @@
 
 -define(RECOVERY, <<"recovery">>).
 -define(RESET_ID, <<"reset_id">>).
--define(RESET_ID_SIZE_DEFAULT, 250).
+-define(RESET_ID_SIZE_DEFAULT, 137).
 -define(RESET_ID_SIZE,
         case kapps_config:get_integer(?CONFIG_CAT, <<"reset_id_size">>, ?RESET_ID_SIZE_DEFAULT) of
-            _TooBig when _TooBig >= 255 -> ?RESET_ID_SIZE_DEFAULT;
-            _TooSmall when _TooSmall =< 40 -> ?RESET_ID_SIZE_DEFAULT;
+            _TooBig when _TooBig >= 180 -> ?RESET_ID_SIZE_DEFAULT;
+            _TooSmall when _TooSmall =< 60 -> ?RESET_ID_SIZE_DEFAULT;
             Ok -> Ok
         end).
 -define(RESET_PVT_TYPE, <<"password_reset">>).
@@ -426,20 +426,18 @@ save_reset_id_then_send_email(Context) ->
     {'ok',_} = kz_datamgr:save_doc(AccountDb, create_resetid_doc(ResetId, kz_doc:id(UserDoc))),
     Email = kz_json:get_ne_binary_value(<<"email">>, UserDoc),
     lager:debug("created recovery id, sending email to '~s'", [Email]),
-    ReqData = cb_context:req_data(Context),
-    UIURL = kz_json:get_ne_binary_value(<<"ui_url">>, ReqData),
+    UIURL = kz_json:get_ne_binary_value(<<"ui_url">>, cb_context:req_data(Context)),
     Link = reset_link(UIURL, ResetId),
     lager:debug("created password reset link: ~s", [Link]),
     Notify = [{<<"Email">>, Email}
-              ,{<<"First-Name">>, kz_json:get_value(<<"first_name">>, UserDoc)}
-              ,{<<"Last-Name">>,  kz_json:get_value(<<"last_name">>, UserDoc)}
-              ,{<<"Password-Reset-Link">>, Link}
-              ,{<<"Account-ID">>, kz_doc:account_id(UserDoc)}
-              ,{<<"Account-DB">>, kz_doc:account_db(UserDoc)}
-              ,{<<"Request">>, kz_json:delete_key(<<"username">>, ReqData)}
-              | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
+             ,{<<"First-Name">>, kz_json:get_value(<<"first_name">>, UserDoc)}
+             ,{<<"Last-Name">>,  kz_json:get_value(<<"last_name">>, UserDoc)}
+             ,{<<"Password-Reset-Link">>, Link}
+             ,{<<"Account-ID">>, kz_doc:account_id(UserDoc)}
+             ,{<<"Account-DB">>, kz_doc:account_db(UserDoc)}
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ],
-    'ok' = kapi_notifications:publish_pwd_recovery(Notify),
+    'ok' = kapi_notifications:publish_password_recovery(Notify),
     Msg = <<"Request for password reset handled, email sent to: ", Email/binary>>,
     crossbar_util:response(Msg, Context).
 

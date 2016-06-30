@@ -42,7 +42,7 @@ init() ->
 %%--------------------------------------------------------------------
 -spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
-    'true' = kapi_notifications:pwd_recovery_v(JObj),
+    'true' = kapi_notifications:password_recovery_v(JObj),
     kz_util:put_callid(JObj),
 
     lager:debug("request for password reset taken into account, sending email notification"),
