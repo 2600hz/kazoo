@@ -89,5 +89,7 @@
 -define(TS_COUCH_DESIGN_DOCS, ["filter.json", "lookupuserauth.json", "lookupmonitor.json", "lookupipauth.json", "lookupdid.json", "lookupuser.json", "ts_cdr.json"]).
 -define(TS_COUCH_BASE_DOCS, ["carriers.json"]).
 
+-define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>]).
+
 -define(TS_HRL, 'true').
 -endif.
