@@ -914,10 +914,9 @@ iso_week_to_gregorian_date({Year, Week}) ->
     Jan1 = calendar:date_to_gregorian_days(Year, 1, 1),
     Offset = 4 - day_of_the_week(Year, 1, 4),
     Days =
-        if
-            Offset =:= 0 ->
-                Jan1 + ( Week * 7 );
-            'true' ->
+        case Offset =:= 0 of
+            'true' -> Jan1 + ( Week * 7 );
+            'false' ->
                 Jan1 + Offset + ( ( Week - 1 ) * 7 )
         end,
     calendar:gregorian_days_to_date(Days).
@@ -979,9 +978,9 @@ our_iso_week_number({Year,_Month,_Day}=Date) ->
 gregorian_days_of_iso_w01_1(Year) ->
     D0101 = calendar:date_to_gregorian_days(Year, 1, 1),
     DOW = calendar:day_of_the_week(Year, 1, 1),
-    if DOW =< 4 ->
-            D0101 - DOW + 1;
-       'true' ->
+    case DOW =< 4 of
+        'true' -> D0101 - DOW + 1;
+       'false' ->
             D0101 + 7 - DOW + 1
     end.
 

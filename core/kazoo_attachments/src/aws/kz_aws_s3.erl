@@ -1205,13 +1205,7 @@ s3_request2_no_update(Config, Method, Host, Path, Subresource, Params, Body, Hea
                                ,HostURI
                                ,EscapedPath
                                ,case Subresource of "" -> ""; _ -> [$?, Subresource] end
-                               ,if
-                                    Params =:= [] -> "";
-                                    Subresource =:= "" ->
-                                        [$?, kz_aws_http:make_query_string(Params, 'no_assignment')];
-                                    'true' ->
-                                        [$&, kz_aws_http:make_query_string(Params, 'no_assignment')]
-                                end
+                               ,query_string_from_params(Params, Subresource)
                                ]),
 
     Request = #aws_request{service = 's3'
@@ -1240,6 +1234,12 @@ s3_request2_no_update(Config, Method, Host, Path, Subresource, Params, Body, Hea
                end,
     Request3 = kz_aws_retry:request(Config, Request2, fun s3_result_fun/1),
     kz_aws:request_to_return(Request3).
+
+query_string_from_params([], _SubResource) -> "";
+query_string_from_params(Params, "") ->
+    [$?, kz_aws_http:make_query_string(Params, 'no_assignment')];
+query_string_from_params(Params, _SubResource) ->
+    [$&, kz_aws_http:make_query_string(Params, 'no_assignment')].
 
 s3_result_fun(#aws_request{response_type = 'ok'} = Request) ->
     Request;
@@ -1276,14 +1276,16 @@ make_authorization(Config, Method, ContentMD5, ContentType, Date, AmzHeaders,
                    ,case Host of "" -> ""; _ -> [$/, Host] end
                    ,Resource
                    ,case Subresource of "" -> ""; _ -> [$?, Subresource] end
-                   ,if
-                        ParamsQueryString =:= "" -> "";
-                        Subresource =:= "" -> [$?, ParamsQueryString];
-                        'true' -> [$&, ParamsQueryString]
-                    end
+                   ,string_from_params_QS(ParamsQueryString, Subresource)
                    ],
     Signature = base64:encode(kz_att_util:sha_mac(Config#aws_config.secret_access_key, StringToSign)),
     ["AWS ", Config#aws_config.access_key_id, $:, Signature].
+
+string_from_params_QS("", _SubResource) -> "";
+string_from_params_QS(ParamsQueryString, "") ->
+    [$?, ParamsQueryString];
+string_from_params_QS(ParamsQueryString, _SubResource) ->
+    [$&, ParamsQueryString].
 
 default_config() -> kz_aws:default_config().
 
