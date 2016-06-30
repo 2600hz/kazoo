@@ -26,7 +26,7 @@ handle_req(JObj, Props) ->
         'true' ->
             lager:info("received a request asking if doodle can route this message"),
             AllowNoMatch = allow_no_match(Call),
-            case cf_util:lookup_callflow(Call) of
+            case cf_flow:lookup(Call) of
                 %% if NoMatch is false then allow the callflow or if it is true and we are able allowed
                 %% to use it for this call
                 {'ok', Flow, NoMatch} when (not NoMatch)

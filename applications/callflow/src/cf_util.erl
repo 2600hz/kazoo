@@ -18,7 +18,6 @@
 -export([unsolicited_endpoint_mwi_update/2]).
 -export([alpha_to_dialpad/1]).
 
--export([lookup_callflow/1, lookup_callflow/2]).
 -export([handle_bridge_failure/2, handle_bridge_failure/3]).
 -export([send_default_response/2]).
 
@@ -50,7 +49,6 @@
 -include_lib("kazoo/src/kz_json.hrl").
 
 -define(OWNER_KEY(Db, User), {?MODULE, 'owner_id', Db, User}).
--define(CF_FLOW_CACHE_KEY(Number, Db), {'cf_flow', Number, Db}).
 -define(SIP_USER_OWNERS_KEY(Db, User), {?MODULE, 'sip_user_owners', Db, User}).
 -define(SIP_ENDPOINT_ID_KEY(Db, User), {?MODULE, 'sip_endpoint_id', Db, User}).
 -define(PARKING_PRESENCE_KEY(Db, Request), {?MODULE, 'parking_callflow', Db, Request}).
@@ -98,7 +96,7 @@ maybe_presence_parking_slot_resp(Username, Realm, AccountDb) ->
 -spec maybe_presence_parking_flow(ne_binary(), ne_binary(), ne_binary()) -> 'ok' | 'not_found'.
 maybe_presence_parking_flow(Username, Realm, AccountDb) ->
     AccountId = kz_util:format_account_id(AccountDb, 'raw'),
-    _ = lookup_callflow(Username, AccountId),
+    _ = cf_flow:lookup(Username, AccountId),
     case kz_cache:fetch_local(?CACHE_NAME, ?CF_FLOW_CACHE_KEY(Username, AccountDb)) of
         {'error', 'not_found'} -> 'not_found';
         {'ok', Flow} ->
@@ -541,131 +539,6 @@ send_default_response(Cause, Call) ->
                     _ = kapps_call_command:wait_for_noop(Call, NoopId),
                     'ok'
             end
-    end.
-
-%%-----------------------------------------------------------------------------
-%% @public
-%% @doc
-%% lookup the callflow based on the requested number in the account
-%% @end
-%%-----------------------------------------------------------------------------
--type lookup_callflow_ret() :: {'ok', kz_json:object(), boolean()} |
-                               {'error', any()}.
-
--spec lookup_callflow(kapps_call:call()) -> lookup_callflow_ret().
-lookup_callflow(Call) ->
-    lookup_callflow(kapps_call:request_user(Call), kapps_call:account_id(Call)).
-
--spec lookup_callflow(ne_binary(), ne_binary()) -> lookup_callflow_ret().
-lookup_callflow(Number, AccountId) when not is_binary(Number) ->
-    lookup_callflow(kz_util:to_binary(Number), AccountId);
-lookup_callflow(<<>>, _) -> {'error', 'invalid_number'};
-lookup_callflow(Number, AccountId) ->
-    Db = kz_util:format_account_id(AccountId, 'encoded'),
-    do_lookup_callflow(Number, Db).
-
-do_lookup_callflow(Number, Db) ->
-    lager:info("searching for callflow in ~s to satisfy '~s'", [Db, Number]),
-    Options = [{'key', Number}, 'include_docs'],
-    case kz_datamgr:get_results(Db, ?LIST_BY_NUMBER, Options) of
-        {'error', _}=E -> E;
-        {'ok', []} when Number =/= ?NO_MATCH_CF ->
-            case lookup_callflow_patterns(Number, Db) of
-                {'error', _} -> maybe_use_nomatch(Number, Db);
-                {'ok', {Flow, Capture}} ->
-                    F = kz_json:set_value(<<"capture_group">>, Capture, Flow),
-                    kz_cache:store_local(?CACHE_NAME, ?CF_FLOW_CACHE_KEY(Number, Db), F),
-                    {'ok', F, 'false'}
-            end;
-        {'ok', []} -> {'error', 'not_found'};
-        {'ok', [JObj]} ->
-            Flow = kz_json:get_value(<<"doc">>, JObj),
-            kz_cache:store_local(?CACHE_NAME, ?CF_FLOW_CACHE_KEY(Number, Db), Flow),
-            {'ok', Flow, Number =:= ?NO_MATCH_CF};
-        {'ok', [JObj | _Rest]} ->
-            lager:info("lookup resulted in more than one result, using the first"),
-            Flow = kz_json:get_value(<<"doc">>, JObj),
-            kz_cache:store_local(?CACHE_NAME, ?CF_FLOW_CACHE_KEY(Number, Db), Flow),
-            {'ok', Flow, Number =:= ?NO_MATCH_CF}
-    end.
-
-%% only route to nomatch when Number is all digits and/or +
-maybe_use_nomatch(<<"+", Number/binary>>, Db) ->
-    maybe_use_nomatch(Number, Db);
-maybe_use_nomatch(Number, Db) ->
-    case lists:all(fun is_digit/1, kz_util:to_list(Number)) of
-        'true' -> do_lookup_callflow(?NO_MATCH_CF, Db);
-        'false' ->
-            lager:info("can't use no_match: number not all digits: ~s", [Number]),
-            {'error', 'not_found'}
-    end.
-
-is_digit(X) when X >= $0, X =< $9 -> 'true';
-is_digit(_) -> 'false'.
-
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% send a route response for a route request that can be fulfilled by this
-%% process
-%% @end
-%%-----------------------------------------------------------------------------
--spec lookup_callflow_patterns(ne_binary(), ne_binary()) ->
-                                      {'ok', {kz_json:object(), api_binary()}} |
-                                      {'error', any()}.
-lookup_callflow_patterns(Number, Db) ->
-    lager:info("lookup callflow patterns for ~s in ~s", [Number, Db]),
-    case kz_datamgr:get_results(Db, ?LIST_BY_PATTERN, ['include_docs']) of
-        {'ok', Patterns} ->
-            case test_callflow_patterns(Patterns, Number, {'undefined', <<>>}) of
-                {'undefined', <<>>} -> {'error', 'not_found'};
-                {Flow, <<>>} -> {'ok', {Flow, 'undefined'}};
-                Match -> {'ok', Match}
-            end;
-        {'error', _}=E ->
-            E
-    end.
-
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%-----------------------------------------------------------------------------
--spec test_callflow_patterns(kz_json:objects(), ne_binary()
-                             ,{'undefined', <<>>} | {kz_json:object(), ne_binary()}
-                            ) ->
-                                    {'undefined', <<>>} |
-                                    {kz_json:object(), ne_binary()}.
-test_callflow_patterns([], _, Result) ->
-    Result;
-test_callflow_patterns([Pattern|T], Number, {_, Capture}=Result) ->
-    Regex = kz_json:get_value(<<"key">>, Pattern),
-    case re:run(Number, Regex) of
-        {'match', [{Start,End}]} ->
-            Flow = kz_json:get_value(<<"doc">>, Pattern),
-            case binary:part(Number, Start, End) of
-                <<>> when Capture =:= <<>> ->
-                    test_callflow_patterns(T, Number, {Flow, <<>>});
-                Match when size(Match) > size(Capture); size(Match) =:= 0 ->
-                    test_callflow_patterns(T, Number, {Flow, Match});
-                _ ->
-                    test_callflow_patterns(T, Number, Result)
-            end;
-        {'match', CaptureGroups} ->
-            %% find the largest matching group if present by sorting the position of the
-            %% matching groups by list, reverse so head is largest, then take the head of the list
-            {Start, End} = hd(lists:reverse(lists:keysort(2, tl(CaptureGroups)))),
-            Flow = kz_json:get_value(<<"doc">>, Pattern),
-            case binary:part(Number, Start, End) of
-                <<>> when Capture =:= <<>> ->
-                    test_callflow_patterns(T, Number, {Flow, <<>>});
-                Match when size(Match) > size(Capture) ->
-                    test_callflow_patterns(T, Number, {Flow, Match});
-                _ ->
-                    test_callflow_patterns(T, Number, Result)
-            end;
-        _ ->
-            test_callflow_patterns(T, Number, Result)
     end.
 
 %%--------------------------------------------------------------------

@@ -109,21 +109,21 @@ handle_manual(Data, Call) ->
 
 -spec handle_list(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle_list(Data, Call) ->
-    maybe_procees_with_call(get_list_entry(Data, Call), Data, Call).
+    maybe_proceed_with_call(get_list_entry(Data, Call), Data, Call).
 
 -spec handle_lists(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle_lists(Data, Call) ->
-    maybe_procees_with_call(get_lists_entry(Data, Call), Data, Call).
+    maybe_proceed_with_call(get_lists_entry(Data, Call), Data, Call).
 
--spec maybe_procees_with_call(cid_entry(), kz_json:object(), kapps_call:call()) -> 'ok'.
-maybe_procees_with_call({<<>>, <<>>, _}, _, Call) ->
+-spec maybe_proceed_with_call(cid_entry(), kz_json:object(), kapps_call:call()) -> 'ok'.
+maybe_proceed_with_call({<<>>, <<>>, _}, _, Call) ->
     lager:debug("empty cid entry, hanging up"),
     _ = kapps_call_command:answer(Call),
     _ = kapps_call_command:prompt(<<"menu-invalid_entry">>, Call),
     kapps_call_command:queued_hangup(Call);
-maybe_procees_with_call({NewCallerIdName, NewCallerIdNumber, Dest}, Data, Call) ->
+maybe_proceed_with_call({NewCallerIdName, NewCallerIdNumber, Dest}, Data, Call) ->
     proceed_with_call(NewCallerIdName, NewCallerIdNumber, Dest, Data, Call);
-maybe_procees_with_call(_, _, Call) ->
+maybe_proceed_with_call(_, _, Call) ->
     _ = kapps_call_command:answer(Call),
     _ = kapps_call_command:prompt(<<"fault-can_not_be_completed_at_this_time">>, Call),
     kapps_call_command:queued_hangup(Call).
@@ -142,7 +142,7 @@ proceed_with_call(NewCallerIdName, NewCallerIdNumber, Dest, Data, Call) ->
 
 -spec maybe_route_to_callflow(kz_json:object(), kapps_call:call(), ne_binary()) -> 'ok'.
 maybe_route_to_callflow(Data, Call, Number) ->
-    case cf_util:lookup_callflow(Number, kapps_call:account_id(Call)) of
+    case cf_flow:lookup(Number, kapps_call:account_id(Call)) of
         {'ok', Flow, 'true'} ->
             lager:info("callflow ~s satisfies request", [kz_json:get_value(<<"_id">>, Flow)]),
             Updates = [{fun kapps_call:set_request/2
@@ -269,12 +269,23 @@ get_list_entry(Data, Call) ->
 
     case kz_datamgr:open_cache_doc(AccountDb, ListId) of
         {'ok', ListJObj} ->
-            {CIDKey, DestNumber} = find_key_and_dest(ListJObj, Call),
+            {CIDKey, DestNumber} = find_key_and_dest(ListJObj, Data, Call),
             {NewCallerIdName, NewCallerIdNumber} = get_new_caller_id(CIDKey, ListJObj),
             {NewCallerIdName, NewCallerIdNumber, DestNumber};
         {'error', _Reason}=E ->
             lager:info("failed to load match list document ~s: ~p", [ListId, _Reason]),
             E
+    end.
+
+-spec find_key_and_dest(kz_json:object(), kz_json:object(), kapps_call:call()) -> {binary(), binary()}.
+find_key_and_dest(ListJObj, Data, Call) ->
+    case kz_json:get_value(<<"idx_name">>, Data) of
+        'undefined' -> find_key_and_dest(ListJObj, Call);
+        Idx ->
+            Groups = kapps_call:kvs_fetch('cf_capture_groups', Call),
+            CIDKey = kz_json:get_value(Idx, Groups),
+            Dest = kapps_call:kvs_fetch('cf_capture_group', Call),
+            {CIDKey, Dest}
     end.
 
 -spec find_key_and_dest(kz_json:object(), kapps_call:call()) -> {binary(), binary()}.
@@ -287,7 +298,6 @@ find_key_and_dest(ListJObj, Call) ->
 
 -spec get_new_caller_id(binary(), kz_json:object()) -> {binary(), binary()}.
 get_new_caller_id(CIDKey, ListJObj) ->
-
     JObj = kz_json:get_ne_value(<<"entries">>, ListJObj, kz_json:new()),
     case kz_json:get_value(CIDKey, JObj) of
         'undefined' -> {<<>>, <<>>};

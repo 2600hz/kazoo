@@ -34,7 +34,7 @@ handle_req(JObj, Props) ->
         'true' ->
             lager:info("received request ~s asking if callflows can route this call", [kapi_route:fetch_id(JObj)]),
             AllowNoMatch = allow_no_match(Call),
-            case cf_util:lookup_callflow(Call) of
+            case cf_flow:lookup(Call) of
                 %% if NoMatch is false then allow the callflow or if it is true and we are able allowed
                 %% to use it for this call
                 {'ok', Flow, NoMatch} when (not NoMatch)
@@ -267,6 +267,7 @@ update_call(Flow, NoMatch, ControllerQ, Call) ->
     Props = [{'cf_flow_id', kz_doc:id(Flow)}
              ,{'cf_flow', kz_json:get_value(<<"flow">>, Flow)}
              ,{'cf_capture_group', kz_json:get_ne_value(<<"capture_group">>, Flow)}
+             ,{'cf_capture_groups', kz_json:get_value(<<"capture_groups">>, Flow, kz_json:new())}
              ,{'cf_no_match', NoMatch}
              ,{'cf_metaflow', kz_json:get_value(<<"metaflows">>, Flow, ?DEFAULT_METAFLOWS(kapps_call:account_id(Call)))}
             ],

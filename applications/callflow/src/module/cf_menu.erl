@@ -242,7 +242,7 @@ is_hunt_denied(Digits, #cf_menu_data{hunt_deny=RegEx}, _) ->
 hunt_for_callflow(Digits, Menu, Call) ->
     AccountId = kapps_call:account_id(Call),
     lager:info("hunting for ~s in account ~s", [Digits, AccountId]),
-    case cf_util:lookup_callflow(Digits, AccountId) of
+    case cf_flow:lookup(Digits, AccountId) of
         {'ok', Flow, 'false'} ->
             lager:info("callflow hunt succeeded, branching"),
             _ = kapps_call_command:flush_dtmf(Call),
