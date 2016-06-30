@@ -25,7 +25,7 @@
 -define(SERVER, ?MODULE).
 
 -define(BINDINGS, [{'self', []}
-                  ,{'route', []}
+                  ,{'route', [{'restrict_to', ?RESOURCE_TYPES_HANDLED}]}
                   ,{'conf', [{'doc_type', <<"sys_info">>}]}
                   ]).
 -define(RESPONDERS, [{{'cccp_handlers', 'handle_route_req'}, [{<<"dialplan">>, <<"route_req">>}]}
