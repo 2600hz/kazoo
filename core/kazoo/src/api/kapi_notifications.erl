@@ -247,9 +247,13 @@
 -define(REGISTER_TYPES, []).
 
 %% Notify Password Recovery
--define(PASSWORD_RECOVERY_HEADERS, [<<"Email">>, <<"Account-ID">>, <<"Password-Reset-Link">>]).
--define(OPTIONAL_PASSWORD_RECOVERY_HEADERS, [<<"First-Name">>, <<"Last-Name">>
-                                            ,<<"Account-DB">>, <<"Request">>
+-define(PASSWORD_RECOVERY_HEADERS, [<<"Account-ID">>
+                                   ,<<"Email">>
+                                   ,<<"Password-Reset-Link">>
+                                   ]).
+-define(OPTIONAL_PASSWORD_RECOVERY_HEADERS, [<<"Account-DB">>
+                                            ,<<"First-Name">>
+                                            ,<<"Last-Name">>
                                                  | ?DEFAULT_OPTIONAL_HEADERS
                                             ]).
 -define(PASSWORD_RECOVERY_VALUES, [{<<"Event-Category">>, <<"notification">>}

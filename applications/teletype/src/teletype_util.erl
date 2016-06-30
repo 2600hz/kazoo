@@ -587,16 +587,13 @@ should_handle_account(_Account, ?APP_NAME) -> 'true';
 should_handle_account(Account, 'undefined') ->
     should_handle_reseller(Account);
 should_handle_account(_Account, _Preference) ->
-    lager:debug(
-      "not handling notification; unknown notification preference '~s' for '~s'"
-      ,[_Preference, _Account]
-     ).
+    lager:debug("not handling notification;"
+                " unknown notification preference '~s' for '~s'"
+               ,[_Preference, _Account]).
 
 -spec should_handle_reseller(ne_binary()) -> boolean().
 should_handle_reseller(Account) ->
-    ResellerId = kz_services:find_reseller_id(Account),
-
-    case kz_account:fetch(ResellerId) of
+    case kz_account:fetch(kz_services:find_reseller_id(Account)) of
         {'error', _E} ->
             'true';
         {'ok', ResellerJObj} ->

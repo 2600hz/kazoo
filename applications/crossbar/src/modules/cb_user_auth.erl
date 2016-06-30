@@ -426,8 +426,7 @@ save_reset_id_then_send_email(Context) ->
     {'ok',_} = kz_datamgr:save_doc(AccountDb, create_resetid_doc(ResetId, kz_doc:id(UserDoc))),
     Email = kz_json:get_ne_binary_value(<<"email">>, UserDoc),
     lager:debug("created recovery id, sending email to '~s'", [Email]),
-    ReqData = cb_context:req_data(Context),
-    UIURL = kz_json:get_ne_binary_value(<<"ui_url">>, ReqData),
+    UIURL = kz_json:get_ne_binary_value(<<"ui_url">>, cb_context:req_data(Context)),
     Link = reset_link(UIURL, ResetId),
     lager:debug("created password reset link: ~s", [Link]),
     Notify = [{<<"Email">>, Email}
@@ -436,7 +435,6 @@ save_reset_id_then_send_email(Context) ->
              ,{<<"Password-Reset-Link">>, Link}
              ,{<<"Account-ID">>, kz_doc:account_id(UserDoc)}
              ,{<<"Account-DB">>, kz_doc:account_db(UserDoc)}
-             ,{<<"Request">>, kz_json:delete_key(<<"username">>, ReqData)}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ],
     'ok' = kapi_notifications:publish_password_recovery(Notify),
