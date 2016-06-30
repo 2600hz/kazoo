@@ -467,7 +467,7 @@ next_rule_date(#rule{cycle = <<"weekly">>
                     }
               ,{Y1, M1, D1}=_PrevDate
               ) ->
-    DOW0 = day_of_the_week({Y1, M1, D1}),
+    DOW0 = calendar:day_of_the_week({Y1, M1, D1}),
     Distance = iso_week_difference({Y0, M0, D0}, {Y1, M1, D1}),
     Offset = trunc( Distance / I0 ) * I0,
 
@@ -482,7 +482,7 @@ next_rule_date(#rule{cycle = <<"weekly">>
         %% Non Empty List that failed the guard:
         %%   During an 'inactive' week
         _ ->
-            {WY0, W0} = iso_week_number({Y0, M0, D0}),
+            {WY0, W0} = calendar:iso_week_number({Y0, M0, D0}),
             {Y2, M2, D2} = iso_week_to_gregorian_date({WY0, W0 + Offset + I0}),
             normalize_date({Y2, M2, ( D2 - 1 ) + to_dow( hd( Weekdays ) )})
     end;
@@ -791,7 +791,7 @@ to_wday(7) -> <<"sunday">>.
 -spec find_next_weekday(kz_date(), wday()) -> kz_date().
 find_next_weekday({Y, M, D}, Weekday) ->
     RefDOW = to_dow(Weekday),
-    case day_of_the_week({Y, M, D}) of
+    case calendar:day_of_the_week({Y, M, D}) of
         %% Today is the DOW we wanted, calculate for next week
         RefDOW ->
             normalize_date({Y, M, D + 7});
@@ -872,7 +872,7 @@ date_of_dow(Year, Month, Weekday, Ordinal) ->
     RefDays = calendar:date_to_gregorian_days(RefDate),
     DOW = to_dow(Weekday),
     Occurance = from_ordinal(Ordinal),
-    Days = case day_of_the_week(RefDate) of
+    Days = case calendar:day_of_the_week(RefDate) of
                DOW ->
                    RefDays + 7 + (7 * Occurance );
                RefDOW when DOW < RefDOW ->
@@ -899,8 +899,8 @@ date_of_dow(Year, Month, Weekday, Ordinal) ->
 %%--------------------------------------------------------------------
 -spec iso_week_difference(kz_date(), kz_date()) -> non_neg_integer().
 iso_week_difference({Y0, M0, D0}, {Y1, M1, D1}) ->
-    DS0 = calendar:date_to_gregorian_days(iso_week_to_gregorian_date(iso_week_number({Y0, M0, D0}))),
-    DS1 = calendar:date_to_gregorian_days(iso_week_to_gregorian_date(iso_week_number({Y1, M1, D1}))),
+    DS0 = calendar:date_to_gregorian_days(iso_week_to_gregorian_date(calendar:iso_week_number({Y0, M0, D0}))),
+    DS1 = calendar:date_to_gregorian_days(iso_week_to_gregorian_date(calendar:iso_week_number({Y1, M1, D1}))),
     trunc( abs( DS0 - DS1 ) / 7 ).
 
 %%--------------------------------------------------------------------
@@ -912,7 +912,7 @@ iso_week_difference({Y0, M0, D0}, {Y1, M1, D1}) ->
 -spec iso_week_to_gregorian_date(kz_iso_week()) -> kz_date().
 iso_week_to_gregorian_date({Year, Week}) ->
     Jan1 = calendar:date_to_gregorian_days(Year, 1, 1),
-    Offset = 4 - day_of_the_week(Year, 1, 4),
+    Offset = 4 - calendar:day_of_the_week(Year, 1, 4),
     Days =
         case Offset =:= 0 of
             'true' -> Jan1 + ( Week * 7 );
@@ -920,77 +920,6 @@ iso_week_to_gregorian_date({Year, Week}) ->
                 Jan1 + Offset + ( ( Week - 1 ) * 7 )
         end,
     calendar:gregorian_days_to_date(Days).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Wrapper for calender:iso_week_number introduced in R14B02 (?) using
-%% a local copy on older systems
-%% @end
-%%--------------------------------------------------------------------
--spec iso_week_number(kz_date()) -> kz_iso_week().
-iso_week_number(Date) ->
-    case erlang:function_exported('calendar', 'iso_week_number', 1) of
-        'true' -> calendar:iso_week_number(Date);
-        'false' -> our_iso_week_number(Date)
-    end.
-
--spec day_of_the_week(kz_date()) -> kz_day().
-day_of_the_week({Year, Month, Day}=Date) ->
-    case erlang:function_exported('calendar', 'day_of_the_week', 1) of
-        'true' -> calendar:day_of_the_week(Date);
-        'false' -> our_day_of_the_week(Year, Month, Day)
-    end.
-
--spec day_of_the_week(kz_year(), kz_month(), kz_day()) -> kz_day().
-day_of_the_week(Year, Month, Day) ->
-    case erlang:function_exported('calendar', 'day_of_the_week', 3) of
-        'true' -> calendar:day_of_the_week(Year, Month, Day);
-        'false' -> our_day_of_the_week(Year, Month, Day)
-    end.
-
-%% TAKEN FROM THE R14B02 SOURCE FOR calender.erl
-our_iso_week_number({Year,_Month,_Day}=Date) ->
-    D = calendar:date_to_gregorian_days(Date),
-    W01_1_Year = gregorian_days_of_iso_w01_1(Year),
-    W01_1_NextYear = gregorian_days_of_iso_w01_1(Year + 1),
-    if
-        W01_1_Year =< D
-        andalso D < W01_1_NextYear ->
-            %% Current Year Week 01..52(,53)
-            {Year, (D - W01_1_Year) div 7 + 1};
-        D < W01_1_Year ->
-            %% Previous Year 52 or 53
-            PWN = case day_of_the_week(Year - 1, 1, 1) of
-                      4 -> 53;
-                      _ -> case day_of_the_week(Year - 1, 12, 31) of
-                               4 -> 53;
-                               _ -> 52
-                           end
-                  end,
-            {Year - 1, PWN};
-        W01_1_NextYear =< D ->
-            %% Next Year, Week 01
-            {Year + 1, 1}
-    end.
-
--spec gregorian_days_of_iso_w01_1(calendar:year()) -> non_neg_integer().
-gregorian_days_of_iso_w01_1(Year) ->
-    D0101 = calendar:date_to_gregorian_days(Year, 1, 1),
-    DOW = calendar:day_of_the_week(Year, 1, 1),
-    case DOW =< 4 of
-        'true' -> D0101 - DOW + 1;
-       'false' ->
-            D0101 + 7 - DOW + 1
-    end.
-
-%% day_of_the_week(Year, Month, Day)
-%% day_of_the_week({Year, Month, Day})
-%%
-%% Returns: 1 | .. | 7. Monday = 1, Tuesday = 2, ..., Sunday = 7.
--spec our_day_of_the_week(calendar:year(), calendar:month(), calendar:day()) -> calendar:daynum().
-our_day_of_the_week(Year, Month, Day) ->
-    (calendar:date_to_gregorian_days(Year, Month, Day) + 5) rem 7 + 1.
 
 -spec find_active_days(ne_binaries(), kz_day()) -> [kz_daynum()].
 find_active_days(Weekdays, DOW0) ->
