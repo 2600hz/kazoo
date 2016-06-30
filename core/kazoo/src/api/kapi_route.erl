@@ -365,7 +365,7 @@ get_auth_user_realm(ApiJObj) ->
     [ReqUser, ReqDomain] = binary:split(kz_json:get_value(<<"From">>, ApiJObj), <<"@">>),
     {ReqUser, ReqDomain}.
 
--spec resource_type(api_terms()) -> {ne_binary(), ne_binary()}.
+-spec resource_type(api_terms()) -> ne_binary().
 resource_type(ApiProp) when is_list(ApiProp) ->
     props:get_value(<<"Resource-Type">>, ApiProp);
 resource_type(ApiJObj) ->
