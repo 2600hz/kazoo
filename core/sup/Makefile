@@ -1,9 +1,9 @@
 ROOT = ../..
 PROJECT = sup
 
-all: compile escriptize
+all: $(PROJECT)
 
-escriptize: compile
+$(PROJECT): $(SOURCES)
 	@$(REBAR) escriptize
 
 include $(ROOT)/make/kz.mk
