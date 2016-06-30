@@ -42,7 +42,7 @@
 -spec category() -> ne_binary().
 category() -> <<"number_management">>.
 
--spec module() -> module().
+-spec module() -> ne_binary().
 module() -> kz_util:to_binary(?MODULE).
 
 -spec output_header(atom()) -> kz_csv:row().
@@ -69,10 +69,6 @@ output_header('list') ->
 help() ->
     [{<<"list">>
      ,kz_json:from_list([{<<"description">>, <<"List all numbers in the system">>}
-                        ,{<<"mandatory">>, [
-                                           ]}
-                        ,{<<"optional">>, [
-                                          ]}
                         ])
      }
 

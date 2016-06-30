@@ -56,8 +56,8 @@ start(TaskId, Module, Function, ExtraArgs, OrderedFields) ->
                                                                                   {'error', any()}.
 init(TaskId, Module, Function, ExtraArgs, _) ->
     case
-        kz_util:try_load_module(Module) =:= Module andalso
-        write_output_csv_header(TaskId, Module, Function)
+        kz_util:try_load_module(Module) =:= Module
+        andalso write_output_csv_header(TaskId, Module, Function)
     of
         'false' ->
             lager:error("failed loading module '~p' for task ~s", [Module, TaskId]),
@@ -88,50 +88,64 @@ loop(IterValue, State=#state{task_id = TaskId
             TaskRev = upload_output(TaskId),
             _ = kz_tasks:worker_finished(TaskId, TaskRev, TotalSucceeded, TotalFailed),
             'stop';
-        {'false', {_PrevRow, NewIterValue}} ->
-            NewState = State#state{total_failed = TotalFailed + 1
-                                  },
-            _ = kz_tasks:worker_maybe_send_update(TaskId, TotalSucceeded, TotalFailed+1),
-            _ = kz_tasks:worker_pause(),
-            loop(NewIterValue, NewState);
-        {'true', {_PrevRow, NewIterValue}} ->
-            NewState = State#state{total_succeeded = TotalSucceeded + 1
-                                  },
-            _ = kz_tasks:worker_maybe_send_update(TaskId, TotalSucceeded+1, TotalFailed),
-            _ = kz_tasks:worker_pause(),
+        {IsSuccessful, Written, {_PrevRow, NewIterValue}} ->
+            NewState = state_after_writing(IsSuccessful, Written, State),
             loop(NewIterValue, NewState)
     end.
 
 %% @private
+-spec state_after_writing(boolean(), non_neg_integer(), state()) -> state().
+state_after_writing('true', Written, State) ->
+    new_state_after_writing(Written, 0, State);
+state_after_writing('false', Written, State) ->
+    new_state_after_writing(0, Written, State).
+
+%% @private
+-spec new_state_after_writing(non_neg_integer(), non_neg_integer(), state()) -> state().
+new_state_after_writing(WrittenSucceeded, WrittenFailed, State) ->
+    NewTotalSucceeded = WrittenSucceeded + State#state.total_succeeded,
+    NewTotalFailed = WrittenFailed + State#state.total_failed,
+    S = State#state{total_succeeded = NewTotalSucceeded
+                   ,total_failed = NewTotalFailed
+                   },
+    _ = kz_tasks:worker_maybe_send_update(State#state.task_id, NewTotalSucceeded, NewTotalFailed),
+    _ = kz_tasks:worker_pause(),
+    S.
+
+%% @private
 -spec is_task_successful(kz_tasks:task_id(), module(), atom(), list(), task_iterator()) ->
-                                {boolean(), task_iterator()} | 'stop'.
+                                {boolean(), non_neg_integer(), task_iterator()} |
+                                'stop'.
 is_task_successful(TaskId, Module, Function, ExtraArgs, IterValue) ->
     try Module:Function(ExtraArgs, IterValue) of
         'stop' -> 'stop';
         {'ok', _Data}=NewIterValue ->
             %% For initialisation steps. Skeeps writing a CSV output row.
-            {'true', NewIterValue};
-        {[_|_]=NewRow, _Data}=NewIterValue ->
-            store_return(TaskId, NewRow),
-            {'true', NewIterValue};
+            {'true', 0, NewIterValue};
+        {[_|_]=NewRowOrRows, _Data}=NewIterValue ->
+            Written = store_return(TaskId, NewRowOrRows),
+            {'true', Written, NewIterValue};
         {?NE_BINARY=NewRow, _Data}=NewIterValue ->
-            store_return(TaskId, NewRow),
-            {'true', NewIterValue};
+            Written = store_return(TaskId, NewRow),
+            {'true', Written, NewIterValue};
         {Error, _Data}=NewIterValue ->
-            store_return(TaskId, Error),
-            {'false', NewIterValue}
+            Written = store_return(TaskId, Error),
+            {'false', Written, NewIterValue}
     catch
         _E:_R ->
             kz_util:log_stacktrace(),
-            store_return(TaskId, ?WORKER_TASK_FAILED),
-            {'false', 'stop'}
+            Written = store_return(TaskId, ?WORKER_TASK_FAILED),
+            {'false', Written, 'stop'}
     end.
 
 %% @private
--spec store_return(kz_tasks:task_id(), task_return()) -> 'ok'.
+-spec store_return(kz_tasks:task_id(), task_return()) -> pos_integer().
+store_return(TaskId, Rows=[_List|_]) when is_list(_List) ->
+    lists:sum([store_return(TaskId, Row) || Row <- Rows]);
 store_return(TaskId, Reason) ->
     Data = [reason(Reason), $\n],
-    kz_util:write_file(?OUT(TaskId), Data, ['append']).
+    _ = kz_util:write_file(?OUT(TaskId), Data, ['append']),
+    1.
 
 %% @private
 -spec reason(task_return()) -> iodata().

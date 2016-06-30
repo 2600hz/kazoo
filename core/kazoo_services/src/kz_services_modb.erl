@@ -24,7 +24,7 @@ modb(?MATCH_MODB_SUFFIX_ENCODED(_AccountId, _Year, _Month) = AccountMODb) ->
     modb(kz_util:format_account_modb(AccountMODb, 'raw'));
 modb(?MATCH_MODB_SUFFIX_RAW(AccountId, _Year, _Month) = AccountMODb) ->
     ServicesJObj = kz_services:to_json(kz_services:fetch(AccountId)),
-    save_services_to_modb(AccountMODb, ServicesJObj, <<"services_bom">>),
+    save_services_to_modb(AccountMODb, ServicesJObj, ?SERVICES_BOM),
     maybe_save_to_previous_modb(AccountMODb, ServicesJObj).
 
 -spec save_services_to_modb(ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
@@ -38,15 +38,15 @@ maybe_save_to_previous_modb(NewMODb, ServicesJObj) ->
     PrevMODb = kazoo_modb_util:prev_year_month_mod(NewMODb),
     AccountDb = kz_util:format_account_modb(PrevMODb, 'encoded'),
     case kz_datamgr:db_exists(AccountDb) of
-        'true' -> save_services_to_modb(PrevMODb, ServicesJObj, <<"services_eom">>);
+        'true' -> save_services_to_modb(PrevMODb, ServicesJObj, ?SERVICES_EOM);
         'false' -> 'ok'
     end.
 
 -spec update_pvts(ne_binary(), kz_json:object(), ne_binary()) -> kz_json:object().
 update_pvts(?MATCH_MODB_SUFFIX_RAW(AccountId, _Year, _Month) = AccountMODb, ServicesJObj, Id) ->
     kz_doc:update_pvt_parameters(kz_json:delete_key(<<"_rev">>, kz_doc:set_id(ServicesJObj, Id))
-                                 ,AccountMODb
-                                 ,[{'account_db', AccountMODb}
-                                   ,{'account_id', AccountId}
-                                  ]
+                                ,AccountMODb
+                                ,[{'account_db', AccountMODb}
+                                 ,{'account_id', AccountId}
+                                 ]
                                 ).

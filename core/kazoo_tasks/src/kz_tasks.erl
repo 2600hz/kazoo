@@ -122,19 +122,19 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec help() -> kz_json:object().
 help() ->
-    CollectUntil = {kz_util:to_atom(?APP_NAME), fun kapi_tasks:help_resp_v/1, 'true', 'true'},
+    CollectUntil = {fun (Resp, Acc) -> {'false', [Resp|Acc]} end, []},
     case kz_amqp_worker:call_collect(kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                                     ,fun kapi_tasks:publish_help_req/1
                                     ,CollectUntil
                                     )
     of
-        {'ok', JObjs} ->
-            lager:debug("help_req got ~p replies", [length(JObjs)]),
-            {Apps, Nodes, Modules, APIs} = parse_apis(JObjs),
-            gen_server:call(?SERVER, {'replace_APIs', Apps, Nodes, Modules, APIs});
         {'timeout', []} ->
             lager:debug("no app replied to help_req"),
             kz_json:new();
+        {'timeout', JObjs} ->
+            lager:debug("help_req got ~p replies", [length(JObjs)]),
+            {Apps, Nodes, Modules, APIs} = parse_apis(JObjs),
+            gen_server:call(?SERVER, {'replace_APIs', Apps, Nodes, Modules, APIs});
         {'error', _Reason} ->
             lager:error("error in broadcasted help_req: ~p", [_Reason]),
             kz_json:new()

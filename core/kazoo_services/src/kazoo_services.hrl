@@ -18,5 +18,8 @@
 -define(SUPPORT_BILLING_ID, 'true').
 -endif.
 
+-define(SERVICES_BOM, <<"services_bom">>).
+-define(SERVICES_EOM, <<"services_eom">>).
+
 -define(KAZOO_SERVICES_HRL, 'true').
 -endif.

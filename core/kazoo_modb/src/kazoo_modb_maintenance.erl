@@ -159,9 +159,7 @@ rollup_accounts() ->
 -spec rollup_account_fold(ne_binary(), {pos_integer(), pos_integer()}) ->
                                  {pos_integer(), pos_integer()}.
 rollup_account_fold(AccountDb, {Current, Total}) ->
-    io:format("rollup accounts (~p/~p) '~s'~n"
-              ,[Current, Total, AccountDb]
-             ),
+    io:format("rollup accounts (~p/~p) '~s'~n", [Current, Total, AccountDb]),
     _ = rollup_account(AccountDb),
     {Current + 1, Total}.
 
@@ -174,9 +172,7 @@ rollup_account(Account) ->
 -spec rollup_account(ne_binary(), integer()) -> 'ok'.
 rollup_account(AccountId, Balance) ->
     AccountMODb = kazoo_modb:get_modb(AccountId),
-    lager:debug("rolling up ~p credits to ~s"
-                ,[Balance, AccountMODb]
-               ),
+    lager:debug("rolling up ~p credits to ~s", [Balance, AccountMODb]),
     wht_util:rollup(AccountMODb, Balance).
 
 -spec rollup_balance(kz_json:object()) -> integer().
