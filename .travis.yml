@@ -12,10 +12,6 @@ otp_release:
 
 sudo: false
 
-services:
-  - rabbitmq
-  - couchdb
-
 addons:
   apt:
     packages:
@@ -31,22 +27,9 @@ before_install:
   - if [[ ! -d $HOME/proper/.git/ ]]; then git clone --depth=50 --branch=master https://github.com/manopapad/proper.git $HOME/proper && cd $HOME/proper && make fast; fi
   - cd $TRAVIS_BUILD_DIR
 
-script: make compile
-
-after_success:
-  - if [[ 0 -ne `git status --porcelain -- applications/ core/ | wc -l` ]]; then echo Unstaged changes! && git diff && exit 1; fi
-  - make xref
-  - ./scripts/code_checks.bash
-  - git fetch origin master:master
-  - files="$(git diff --name-only master... -- application/ core/)" || true && echo $files
-  - make build-plt
-  - ./scripts/check-dialyzer.escript .kazoo.plt $files
-  - ./scripts/validate-js.sh $(find applications/ core/ -name '*.json')
-  - make sup_completion
-  - make build-ci-release
+script:
+  - make compile-test
+  - make elvis
+  - make eunit
   - # ERL_LIBS="$HOME/proper" ERLC_OPTS='-DPROPER' make compile-test
   - # ERL_LIBS="$HOME/proper" make eunit
-  - make compile-test
-  - make eunit
-  - make elvis
-  - ./scripts/check-release-startup.sh

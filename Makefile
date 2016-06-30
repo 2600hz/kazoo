@@ -27,7 +27,7 @@ clean-kazoo: ACTION = clean
 clean-kazoo: $(KAZOODIRS)
 
 compile-test: ACTION = compile-test
-compile-test: $(KAZOODIRS)
+compile-test: deps $(KAZOODIRS)
 
 eunit: ACTION = eunit
 eunit: $(KAZOODIRS)

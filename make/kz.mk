@@ -55,7 +55,7 @@ TEST_SOURCES = $(SOURCES) $(if $(wildcard test/*.erl), test/*.erl)
 ## COMPILE_MOAR can contain Makefile-specific targets (see CLEAN_MOAR, compile-test)
 compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json
 
-ebin/$(PROJECT).app: $(wildcard $(SOURCES))
+ebin/$(PROJECT).app: $(SOURCES)
 	@mkdir -p ebin/
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $?
 	@sed "s/{modules, \[\]}/{modules, \[`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`\]}/" src/$(PROJECT).app.src > $@
@@ -69,7 +69,7 @@ json:
 compile-test: clean-test $(COMPILE_MOAR) test/$(PROJECT).app
 
 test/$(PROJECT).app: ERLC_OPTS += -DTEST
-test/$(PROJECT).app: $(wildcard $(TEST_SOURCES))
+test/$(PROJECT).app: $(TEST_SOURCES)
 	@mkdir -p test/
 	@mkdir -p ebin/
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(TEST_PA) -o ebin/ $(TEST_SOURCES)
