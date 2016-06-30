@@ -5416,13 +5416,6 @@
                                 "required": false,
                                 "type": "string"
                             },
-                            "emergency": {
-                                "default": false,
-                                "description": "Determines if the resource gateway represents emergency services",
-                                "name": "Is Emergency?",
-                                "required": false,
-                                "type": "boolean"
-                            },
                             "enabled": {
                                 "default": true,
                                 "description": "Determines if the resource gateway is currently enabled",
