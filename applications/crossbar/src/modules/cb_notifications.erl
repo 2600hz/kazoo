@@ -48,6 +48,8 @@
         ,kapps_config:get_integer(?MOD_CONFIG_CAT, <<"notification_timeout_ms">>, 5 * ?MILLISECONDS_IN_SECOND)
        ).
 
+-define(PVT_TYPE_SMTPLOG, <<"notify_smtp_log">>).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -1216,7 +1218,7 @@ load_smtp_log_doc(?MATCH_MODB_PREFIX(YYYY,MM,_) = Id, Context) ->
     Month = kz_util:to_integer(MM),
     crossbar_doc:load(Id
                       ,cb_context:set_account_modb(Context, Year, Month)
-                      ,?TYPE_CHECK_OPTION(kz_notification:pvt_type())).
+                      ,?TYPE_CHECK_OPTION(?PVT_TYPE_SMTPLOG)).
 
 -spec load_smtp_log(cb_context:context()) -> cb_context:context().
 load_smtp_log(Context) ->

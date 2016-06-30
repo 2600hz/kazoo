@@ -54,6 +54,9 @@
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".fax">>).
 
+-define(FAX_TYPE, <<"fax">>).
+-define(SMTP_TYPE, <<"fax_smtp_log">>).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -320,25 +323,25 @@ create(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), cb_context:context()) -> cb_context:context().
-read(?MATCH_MODB_PREFIX(YYYY,MM,_) = Id, Context) ->
+-spec read(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+read(?MATCH_MODB_PREFIX(YYYY,MM,_) = Id, Type, Context) ->
     Year  = kz_util:to_integer(YYYY),
     Month = kz_util:to_integer(MM),
-    crossbar_doc:load({<<"fax">>, Id}, cb_context:set_account_modb(Context, Year, Month), ?TYPE_CHECK_OPTION(<<"fax">>));
-read(Id, Context) ->
-    crossbar_doc:load({<<"fax">>, Id}, Context, ?TYPE_CHECK_OPTION(<<"fax">>)).
+    crossbar_doc:load({Type, Id}, cb_context:set_account_modb(Context, Year, Month), ?TYPE_CHECK_OPTION(Type));
+read(Id, Type, Context) ->
+    crossbar_doc:load({Type, Id}, Context, ?TYPE_CHECK_OPTION(Type)).
 
 -spec load_modb_fax_doc(ne_binary(), cb_context:context()) -> cb_context:context().
 load_modb_fax_doc(Id, Context) ->
-    read(Id, Context).
+    read(Id, ?FAX_TYPE, Context).
 
 -spec load_smtp_log_doc(ne_binary(), cb_context:context()) -> cb_context:context().
 load_smtp_log_doc(Id, Context) ->
-    read(Id, Context).
+    read(Id, ?SMTP_TYPE, Context).
 
 -spec load_outgoing_fax_doc(ne_binary(), cb_context:context()) -> cb_context:context().
 load_outgoing_fax_doc(Id, Context) ->
-    Ctx = read(Id, Context),
+    Ctx = read(Id, ?FAX_TYPE, Context),
     crossbar_util:apply_response_map(Ctx, ?OUTGOING_FAX_DOC_MAP).
 
 -spec get_delivered_date(kz_json:object()) -> api_integer().
