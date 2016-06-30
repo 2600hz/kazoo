@@ -32,7 +32,7 @@
 -spec category() -> ne_binary().
 category() -> <<"services">>.
 
--spec module() -> module().
+-spec module() -> ne_binary().
 module() -> kz_util:to_binary(?MODULE).
 
 -spec output_header(atom()) -> kz_csv:row().

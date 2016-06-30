@@ -56,8 +56,8 @@ start(TaskId, Module, Function, ExtraArgs, OrderedFields) ->
                                                                                   {'error', any()}.
 init(TaskId, Module, Function, ExtraArgs, _) ->
     case
-        kz_util:try_load_module(Module) =:= Module andalso
-        write_output_csv_header(TaskId, Module, Function)
+        kz_util:try_load_module(Module) =:= Module
+        andalso write_output_csv_header(TaskId, Module, Function)
     of
         'false' ->
             lager:error("failed loading module '~p' for task ~s", [Module, TaskId]),
