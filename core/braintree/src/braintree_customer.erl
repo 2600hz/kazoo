@@ -215,7 +215,7 @@ update_card(Customer, Card) ->
                         ,get_cards(UpdatedCustomer)
                        ),
 
-    NewSubscriptions =
+    _NewSubscriptions =
         [braintree_subscription:update(
            braintree_subscription:update_payment_token(Sub, NewPaymentToken)
           )
@@ -226,17 +226,29 @@ update_card(Customer, Card) ->
     %% Make card as default /after/ updating subscriptions: this way
     %%  subscriptions are not attached to a deleted card and thus do not
     %%  get cancelled before we can update their payment token.
-    NewCards = [braintree_card:update(
-                  braintree_card:make_default(NewCard, 'true')
-                 )
-               ],
+    NewCard1 = braintree_card:update(
+                   braintree_card:make_default(NewCard, 'true')
+               ),
 
-    %% Delete previous cards /after/ changing subscriptions' payment token.
-    lists:foreach(fun braintree_card:delete/1, OldCards),
+    %% Delete previous cards and addresses /after/ changing subscriptions' payment token.
+    delete_old_cards_and_addresses(OldCards, NewCard1),
 
-    UpdatedCustomer#bt_customer{credit_cards = NewCards
-                                ,subscriptions = NewSubscriptions
-                               }.
+    %%get all the new user info
+    braintree_customer:find(UpdatedCustomer).
+
+-spec delete_old_cards_and_addresses(bt_cards(), bt_card()) -> ok.
+delete_old_cards_and_addresses(OldCards, #bt_card{billing_address_id=NewAddressId}) ->
+    lists:foreach(
+        fun(#bt_card{billing_address_id='undefined'}=OldCard) ->
+                braintree_card:delete(OldCard);
+            (#bt_card{billing_address_id=OldAddressId}=OldCard) when OldAddressId =:= NewAddressId ->
+                braintree_card:delete(OldCard);
+            (#bt_card{billing_address=OldAddress}=OldCard) ->
+                braintree_card:delete(OldCard),
+                braintree_address:delete(OldAddress)
+            end
+           ,OldCards
+    ).
 
 -spec do_update(bt_customer()) -> bt_customer().
 do_update(#bt_customer{id=CustomerId}=Customer) ->
