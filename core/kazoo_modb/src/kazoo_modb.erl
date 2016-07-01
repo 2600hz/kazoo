@@ -99,7 +99,7 @@ open_doc(Account, DocId) ->
 
 open_doc(Account, DocId, Options)
   when is_list(Options) ->
-    AccountMODb = get_modb(Account),
+    AccountMODb = get_modb(Account, Options),
     couch_open(AccountMODb, DocId, Options);
 open_doc(Account, DocId, Timestamp)
   when is_integer(Timestamp) ->
