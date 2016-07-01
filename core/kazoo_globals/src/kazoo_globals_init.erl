@@ -19,4 +19,5 @@ wait_for_globals('true') ->
     lager:info("kazoo globals is ready"),
     'ignore';
 wait_for_globals('false') ->
+    timer:sleep(?MILLISECONDS_IN_SECOND),
     wait_for_globals(kz_globals:is_ready()).
