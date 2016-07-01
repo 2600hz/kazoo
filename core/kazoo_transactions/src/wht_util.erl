@@ -134,13 +134,18 @@ previous_balance(Account, Year, Month) ->
     get_balance(Account, [{'year', Year}, {'month', Month}]).
 
 -spec get_balance(ne_binary(), couch_util:view_options()) -> units().
-get_balance(Account, ViewOptions) ->
+get_balance(Account, Options) ->
     View = <<"transactions/credit_remaining">>,
+    ViewOptions = ['reduce'
+                   ,'group'
+                   ,{'group_level', 1}
+                   | Options
+                  ],
     case kazoo_modb:get_results(Account, View, ViewOptions) of
-        {'ok', []} -> get_balance_from_previous(Account, ViewOptions);
+        {'ok', []} -> get_balance_from_previous(Account, Options);
         {'ok', [ViewRes|_]} ->
             Balance = kz_json:get_integer_value(<<"value">>, ViewRes, 0),
-            maybe_rollup(Account, ViewOptions, Balance);
+            maybe_rollup(Account, Options, Balance);
         {'error', _E} ->
             lager:warning("unable to get current balance for ~s: ~p", [Account, _E]),
             0
@@ -158,8 +163,8 @@ get_balance_from_previous(Account, ViewOptions, Retries) when Retries >= 0 ->
     M = props:get_integer_value('month', ViewOptions, DefaultMonth),
     {Year, Month} = kazoo_modb_util:prev_year_month(Y, M),
 
-    VOptions = [{'year', kz_util:to_binary(Year)}
-                ,{'month', kz_util:pad_month(Month)}
+    VOptions = [{'year', Year}
+                ,{'month', Month}
                 ,{'retry', Retries-1}
                ],
     lager:warning("could not find current balance trying previous month: ~p", [VOptions]),
@@ -202,7 +207,7 @@ maybe_rollup_previous_month(Account, Balance) ->
         {'error', _} -> Balance;
         {'ok', PrevBalance} ->
             _ = rollup(Account, PrevBalance),
-            PrevBalance
+            Balance - PrevBalance
     end.
 
 -spec get_rollup_from_previous(ne_binary()) ->
@@ -211,8 +216,8 @@ maybe_rollup_previous_month(Account, Balance) ->
 get_rollup_from_previous(Account) ->
     {Y, M, _} = erlang:date(),
     {Year, Month} = kazoo_modb_util:prev_year_month(Y, M),
-    ModbOptions = [{'year', kz_util:to_binary(Year)}
-                   ,{'month', kz_util:pad_month(Month)}
+    ModbOptions = [{'year', Year}
+                   ,{'month', Month}
                   ],
     case kazoo_modb:open_doc(Account, <<"monthly_rollup">>, ModbOptions) of
         {'ok', _} ->
@@ -232,8 +237,13 @@ get_rollup_from_previous(Account) ->
 -spec get_rollup_balance(ne_binary(), couch_util:view_options()) ->
                                 {'ok', units()} |
                                 {'error', any()}.
-get_rollup_balance(Account, ViewOptions) ->
+get_rollup_balance(Account, Options) ->
     View = <<"transactions/credit_remaining">>,
+    ViewOptions = ['reduce'
+                   ,'group'
+                   ,{'group_level', 1}
+                   | Options
+                  ],
     case kazoo_modb:get_results(Account, View, ViewOptions) of
         {'ok', []} -> {'error', 'not_found'};
         {'ok', [ViewRes|_]} ->

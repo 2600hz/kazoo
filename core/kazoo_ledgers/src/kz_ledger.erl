@@ -11,8 +11,8 @@
 -include("kzl.hrl").
 
 -export([get/2
-         ,credit/1 ,credit/4, credit/5
-         ,debit/1, debit/4, debit/5
+         ,credit/1 ,credit/2 ,credit/4, credit/5, credit/6
+         ,debit/1, debit/2, debit/4, debit/5, debit/6
         ]).
 
 -type save_return() :: {'ok', ledger()} | {'error', any()}.
@@ -46,17 +46,26 @@ get(Account, Name) ->
 %%--------------------------------------------------------------------
 -spec credit(ledger()) -> save_return().
 credit(Ledger) ->
-    create(?CREDIT, Ledger).
+    credit(kazoo_ledger:account_id(Ledger), Ledger).
+
+-spec credit(ne_binary(), ledger()) -> save_return().
+credit(LedgerId, Ledger) ->
+    create(LedgerId, ?CREDIT, Ledger).
 
 -spec credit(ne_binary(), ne_binary()
              ,ne_binary(), kz_proplist()) -> save_return().
-credit(SrcService, SrcId, Account, Usage) ->
-    credit(SrcService, SrcId, Account, Usage, []).
+credit(LedgerId, SrcService, SrcId, Usage) ->
+    credit(LedgerId, SrcService, SrcId, Usage, []).
 
 -spec credit(ne_binary(), ne_binary(), ne_binary()
-            ,kz_proplist(), kz_proplist()) -> save_return().
-credit(SrcService, SrcId, Account, Usage, Props) ->
-    create(?CREDIT, SrcService, SrcId, Account, Usage, Props).
+             ,kz_proplist(), kz_proplist()) -> save_return().
+credit(LedgerId, SrcService, SrcId, Usage, Props) ->
+    credit(LedgerId, SrcService, SrcId, Usage, Props, LedgerId).
+
+-spec credit(ne_binary(), ne_binary(), ne_binary()
+            ,kz_proplist(), kz_proplist(), ne_binary()) -> save_return().
+credit(LedgerId, SrcService, SrcId, Usage, Props, AccountId) ->
+    create(LedgerId, ?CREDIT, SrcService, SrcId, Usage, Props, AccountId).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -66,17 +75,26 @@ credit(SrcService, SrcId, Account, Usage, Props) ->
 %%--------------------------------------------------------------------
 -spec debit(ledger()) -> save_return().
 debit(Ledger) ->
-    create(?DEBIT, Ledger).
+    debit(kazoo_ledger:account_id(Ledger), Ledger).
+
+-spec debit(ne_binary(), ledger()) -> save_return().
+debit(LedgerId, Ledger) ->
+    create(LedgerId, ?DEBIT, Ledger).
 
 -spec debit(ne_binary(), ne_binary()
              ,ne_binary(), kz_proplist()) -> save_return().
-debit(SrcService, SrcId, Account, Usage) ->
-    debit(SrcService, SrcId, Account, Usage, []).
+debit(LedgerId, SrcService, SrcId, Usage) ->
+    debit(LedgerId, SrcService, SrcId, Usage, []).
 
 -spec debit(ne_binary(), ne_binary(), ne_binary()
-            ,kz_proplist(), kz_proplist()) -> save_return().
-debit(SrcService, SrcId, Account, Usage, Props) ->
-    create(?DEBIT, SrcService, SrcId, Account, Usage, Props).
+             ,kz_proplist(), kz_proplist()) -> save_return().
+debit(LedgerId, SrcService, SrcId, Usage, Props) ->
+    debit(LedgerId, SrcService, SrcId, Usage, Props, LedgerId).
+
+-spec debit(ne_binary(), ne_binary(), ne_binary()
+            ,kz_proplist(), kz_proplist(), ne_binary()) -> save_return().
+debit(LedgerId, SrcService, SrcId, Usage, Props, AccountId) ->
+    create(LedgerId, ?DEBIT, SrcService, SrcId, Usage, Props, AccountId).
 
 %%%===================================================================
 %%% Internal functions
@@ -88,21 +106,21 @@ debit(SrcService, SrcId, Account, Usage, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create(ne_binary(), ne_binary(), ne_binary()
-             ,ne_binary(), kz_proplist(), kz_proplist()) -> save_return().
-create(Type, SrcService, SrcId, Account, Usage, Props) ->
+-spec create(ne_binary(), ne_binary(), ne_binary(), ne_binary()
+             ,kz_proplist(), kz_proplist(),ne_binary()) -> save_return().
+create(LedgerId, Type, SrcService, SrcId, Usage, Props, AccountId) ->
     Routines = [{fun kazoo_ledger:set_source_service/2, SrcService}
                ,{fun kazoo_ledger:set_source_id/2, SrcId}
-               ,{fun set_account/2, Account}
+               ,{fun set_account/2, AccountId}
                ,{fun set_usage/2, Usage}
                ,{fun set_extra/2, Props}
                ],
-    create(Type, lists:foldl(fun apply_routine/2, kazoo_ledger:new(), Routines)).
+    create(LedgerId, Type, lists:foldl(fun apply_routine/2, kazoo_ledger:new(), Routines)).
 
--spec create(ne_binary(), ledger()) -> save_return().
-create(Type, Ledger) ->
+-spec create(ne_binary(), ne_binary(), ledger()) -> save_return().
+create(LedgerId, Type, Ledger) ->
     Routines = [{fun kazoo_ledger:set_type/2, Type}
-               ,fun kazoo_ledger:save/1
+               ,{fun kazoo_ledger:save/2, LedgerId}
                ],
     lists:foldl(fun apply_routine/2, Ledger, Routines).
 

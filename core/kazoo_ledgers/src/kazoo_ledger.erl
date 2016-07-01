@@ -55,19 +55,17 @@ new() ->
 %%--------------------------------------------------------------------
 -spec save(ledger()) -> {'ok', ledger()} | {'error', any()}.
 save(Ledger) ->
-    AccountId = account_id(Ledger),
-    Props = [{<<"pvt_type">>, ?PVT_TYPE}
-             ,{<<"pvt_modified">>, kz_util:current_tstamp()}
-             ,{<<"pvt_created">>, kz_util:current_tstamp()}
-            ],
-    save(kz_json:set_values(Props, Ledger), AccountId).
+    LedgerId = account_id(Ledger),
+    save(Ledger, LedgerId).
 
 -spec save(ledger(), ne_binary()) -> {'ok', ledger()} | {'error', any()}.
-save(Ledger, AccountId) ->
-    Props = [{<<"pvt_account_id">>, AccountId}
+save(Ledger, LedgerId) ->
+    Props = [{<<"pvt_type">>, ?PVT_TYPE}
+             ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+             ,{<<"pvt_account_id">>, LedgerId}
             | maybe_add_id(Ledger)
             ],
-    kazoo_modb:save_doc(AccountId, kz_json:set_values(Props, Ledger)).
+    kazoo_modb:save_doc(LedgerId, kz_json:set_values(Props, Ledger)).
 
 -spec maybe_add_id(ledger()) -> kz_proplist().
 maybe_add_id(Ledger) ->
@@ -78,7 +76,9 @@ maybe_add_id(Ledger) ->
                            ,(kz_util:pad_month(Month))/binary
                            ,"-"
                            ,(kz_util:rand_hex_binary(16))/binary
-                         >>}];
+                         >>}
+             ,{<<"pvt_created">>, kz_util:current_tstamp()}
+            ];
         _ -> []
     end.
 
