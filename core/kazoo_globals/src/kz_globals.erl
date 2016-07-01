@@ -17,6 +17,7 @@
         ,send/2
         ,registered/0
         ,reconcile/0
+        ,is_ready/0
         ]).
 
 -export([start_link/0
@@ -272,6 +273,8 @@ handle_call({'delete', Global}, _From, State) ->
     lager:debug("deleting ~p", [Global]),
     ets:delete(?TAB_NAME, Global),
     {'reply', State};
+handle_call('is_ready', _From, #state{ready=Ready}=State) ->
+    {'reply', Ready, State};
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -887,3 +890,7 @@ amqp_call_scope_fun(Count) ->
     fun([_|_]=Responses) ->
             length(Responses) >= Count
     end.
+
+-spec is_ready() -> boolean().
+is_ready() ->
+    gen_listener:call(?MODULE, 'is_ready').
