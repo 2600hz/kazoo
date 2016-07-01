@@ -215,10 +215,11 @@ log_warnings(Ws, Template) ->
     _ = [log_infos("warning", Module, Warnings, Template) || {Module, Warnings} <- Ws],
     'ok'.
 
--spec log_infos(string(), string(), [info()], binary()) -> ['ok'].
+-spec log_infos(string(), string(), [info()], binary()) -> 'ok'.
 log_infos(Type, Module, Errors, Template) ->
     lager:info("~s in module ~s", [Type, Module]),
-    [catch log_info(Error, Template) || Error <- Errors].
+    [catch log_info(Error, Template) || Error <- Errors],
+    'ok'.
 
 -spec log_info(info(), binary()) -> 'ok'.
 log_info({{Row, Column}, _ErlydtlModule, Msg}, Template) ->
