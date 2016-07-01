@@ -24,30 +24,35 @@ start_link() ->
     set_env(),
     'ignore'.
 
-ini_file() ->
+-spec ini_files() -> list().
+ini_files() ->
     case os:getenv(?CONFIG_FILE_ENV) of
-        'false' -> ?CONFIG_FILE;
-        File -> File
+        'false' -> [?CONFIG_FILE, ?V4_CONFIG_FILE];
+        File    -> [File]
     end.
 
 -spec load_file() -> kz_proplist().
--spec load_file(file:name()) -> kz_proplist().
 load_file() ->
-    load_file(ini_file()).
-load_file(File) ->
+    maybe_load_file(ini_files()).
+
+-spec maybe_load_file(list(file:name())) -> kz_proplist().
+maybe_load_file([]) ->
+    lager:warning("out of config files to attempt, loading defaults..."),
+    ?SECTION_DEFAULTS;
+
+maybe_load_file([File|T]) ->
     case zucchini:parse_file(File) of
         {'ok', Props} ->
             lager:info("loaded configs from file ~s", [File]),
             cleanup_configs(Props);
+
         {'error', 'enoent'} ->
             lager:warning("file ~s does not exist or is not accessible", [File]),
-            lager:warning("please create ~s or set the environment variable ~s to the path of the config file", [File, ?CONFIG_FILE_ENV]),
-            lager:warning("trying defaults instead"),
-            ?SECTION_DEFAULTS;
+            maybe_load_file(T);
+
         {'error', _}=Error ->
             lager:warning("error loading file ~s: ~s", [File, Error]),
-            lager:warning("trying defaults instead"),
-            ?SECTION_DEFAULTS
+            maybe_load_file(T)
     end.
 
 -spec set_env() -> 'ok'.

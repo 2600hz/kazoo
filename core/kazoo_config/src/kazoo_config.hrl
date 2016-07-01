@@ -8,6 +8,7 @@
 
 -define(CONFIG_FILE_ENV, "KAZOO_CONFIG").
 -define(CONFIG_FILE, "/etc/kazoo/config.ini").
+-define(V4_CONFIG_FILE, "/etc/kazoo/core/config.ini").
 
 -define(APP_NAME_ATOM, 'kazoo_config').
 
