@@ -564,9 +564,11 @@ notify_failure(JObj, State) ->
     Reason = kz_json:get_value([<<"Application-Data">>,<<"Fax-Result">>], JObj),
     notify_failure(JObj, Reason, State).
 
--spec notify_failure(kz_json:object(), api_binary(), state()) -> 'ok'.
+-spec notify_failure(kz_json:object(), binary() | atom(), state()) -> 'ok'.
 notify_failure(JObj, 'undefined', State) ->
     notify_failure(JObj, <<"unknown error">>, State);
+notify_failure(JObj, NonBinary, State) when not is_binary(NonBinary) ->
+    notify_failure(JObj, kz_util:to_binary(NonBinary), State);
 notify_failure(JObj, Reason, #state{call=Call
                                     ,owner_id=OwnerId
                                     ,faxbox_id=FaxBoxId
