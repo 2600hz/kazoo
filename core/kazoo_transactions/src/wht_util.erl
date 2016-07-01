@@ -136,11 +136,10 @@ previous_balance(Account, Year, Month) ->
 -spec get_balance(ne_binary(), couch_util:view_options()) -> units().
 get_balance(Account, Options) ->
     View = <<"transactions/credit_remaining">>,
-    ViewOptions = [
-                   'reduce'
+    ViewOptions = ['reduce'
                    ,'group'
                    ,{'group_level', 1}
-                       | Options
+                   | Options
                   ],
     case kazoo_modb:get_results(Account, View, ViewOptions) of
         {'ok', []} -> get_balance_from_previous(Account, Options);
@@ -240,12 +239,11 @@ get_rollup_from_previous(Account) ->
                                 {'error', any()}.
 get_rollup_balance(Account, Options) ->
     View = <<"transactions/credit_remaining">>,
-    ViewOptions = [
-               'reduce'
-               ,'group'
-               ,{'group_level', 1}
+    ViewOptions = ['reduce'
+                   ,'group'
+                   ,{'group_level', 1}
                    | Options
-              ],
+                  ],
     case kazoo_modb:get_results(Account, View, ViewOptions) of
         {'ok', []} -> {'error', 'not_found'};
         {'ok', [ViewRes|_]} ->
