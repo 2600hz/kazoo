@@ -140,7 +140,6 @@ initialize_kapps() ->
         'false' -> kapps_maintenance:refresh();
         'true' -> 'ok'
     end,
-    kapps_maintenance:migrate_system(),
     KApps = case os:getenv("KAZOO_APPS", "noenv") of
                  "noenv" ->
                      kapps_config:get(?MODULE, <<"kapps">>, ?DEFAULT_KAPPS);
