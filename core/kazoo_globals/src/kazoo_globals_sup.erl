@@ -29,6 +29,7 @@
                    ,?SUPER('kz_global_proxies_sup')
                    ,?WORKER_ARGS('kazoo_etsmgr_srv', ?ETSMGR_ARGS)
                    ,?WORKER('kz_globals')
+                   ,?WORKER('kazoo_globals_init')
                   ]).
 
 %% ===================================================================
