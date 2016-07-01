@@ -12,7 +12,7 @@
 
 -export([get/2
          ,credit/1 ,credit/2 ,credit/4, credit/5, credit/6
-         ,debit/1, debit/2, debit/4, debit/5, debit/6 
+         ,debit/1, debit/2, debit/4, debit/5, debit/6
         ]).
 
 -type save_return() :: {'ok', ledger()} | {'error', any()}.
