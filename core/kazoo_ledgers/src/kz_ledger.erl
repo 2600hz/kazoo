@@ -89,7 +89,7 @@ debit(LedgerId, SrcService, SrcId, Usage) ->
 -spec debit(ne_binary(), ne_binary(), ne_binary()
              ,kz_proplist(), kz_proplist()) -> save_return().
 debit(LedgerId, SrcService, SrcId, Usage, Props) ->
-    debit(LedgerId, SrcService, SrcId, Usage, Props, AccountId).
+    debit(LedgerId, SrcService, SrcId, Usage, Props, LedgerId).
 
 -spec debit(ne_binary(), ne_binary(), ne_binary()
             ,kz_proplist(), kz_proplist(), ne_binary()) -> save_return().
