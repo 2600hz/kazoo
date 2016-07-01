@@ -570,7 +570,7 @@ should_handle_system() ->
         =:= ?APP_NAME.
 
 -spec should_handle_account(ne_binary()) -> boolean().
--spec should_handle_account(ne_binary(), api_binary()) -> boolean().
+-spec should_handle_account(api_binary(), api_binary()) -> boolean().
 should_handle_account(Account) ->
     case kz_account:fetch(Account) of
         {'error', _E} ->
@@ -584,6 +584,8 @@ should_handle_account(Account) ->
     end.
 
 should_handle_account(_Account, ?APP_NAME) -> 'true';
+should_handle_account('undefined', 'undefined') ->
+    should_handle_system();
 should_handle_account(Account, 'undefined') ->
     should_handle_reseller(Account);
 should_handle_account(_Account, _Preference) ->
@@ -597,7 +599,10 @@ should_handle_reseller(Account) ->
         {'error', _E} ->
             'true';
         {'ok', ResellerJObj} ->
-            kz_account:notification_preference(ResellerJObj) =:= ?APP_NAME
+            should_handle_account(
+              'undefined'
+              ,kz_account:notification_preference(ResellerJObj)
+            )
     end.
 
 -define(MOD_CONFIG_CAT(Key), <<(?NOTIFY_CONFIG_CAT)/binary, ".", Key/binary>>).

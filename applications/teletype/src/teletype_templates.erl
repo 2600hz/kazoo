@@ -170,7 +170,7 @@ templates_source(_TemplateId, 'undefined', _ResellerId) ->
     'undefined';
 templates_source(TemplateId, AccountId, AccountId) ->
     case fetch_notification(TemplateId, AccountId) of
-        {'ok', _Template} -> AccountId;
+        {'ok', Template} -> kz_doc:account_id(Template);
         {'error', 'not_found'} -> ?KZ_CONFIG_DB;
         {'error', _E} -> 'undefined'
     end;
@@ -180,8 +180,7 @@ templates_source(TemplateId, AccountId, ResellerId) ->
             lager:debug("failed to find template ~s in account ~s", [TemplateId, AccountId]),
             ParentId = teletype_util:get_parent_account_id(AccountId),
             templates_source(TemplateId, ParentId, ResellerId);
-        {'ok', Template} ->
-            kz_doc:account_id(Template);
+        {'ok', Template} -> kz_doc:account_id(Template);
         {'error', _E} -> 'undefined'
     end.
 
