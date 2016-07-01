@@ -278,8 +278,12 @@ read_ledgers(Context) ->
         {'error', Reason} ->
             crossbar_util:response('error', Reason, Context);
         {'ok', Ledgers} ->
-            crossbar_util:response(Ledgers, Context)
+            crossbar_util:response(kz_json:map(fun ledger_resume_to_dollars/2, Ledgers), Context)
     end.
+
+-spec ledger_resume_to_dollars(kz_json:key(), kz_json:json_term()) -> kz_json:json_term().
+ledger_resume_to_dollars(K, V) ->
+    {K, wht_util:units_to_dollars(V)}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -336,7 +340,9 @@ normalize_view_result(Context, JObj) ->
 
 -spec normalize_view_result(cb_context:context(), ne_binary(), kz_json:object()) -> kz_json:object().
 normalize_view_result(_Context, <<"ledger">>, JObj) ->
-    kz_json:public_fields(maybe_set_doc_modb_prefix(JObj));
+    Value = wht_util:units_to_dollars(kazoo_ledger:amount(JObj)),
+    Ledger = kazoo_ledger:set_amount(JObj, Value),
+    kz_json:public_fields(maybe_set_doc_modb_prefix(Ledger));
 %% Legacy, this would be debit or credit from per-minute transactions
 normalize_view_result(Context, _DocType, JObj) ->
     Transaction = kz_transaction:from_json(JObj),
@@ -360,7 +366,7 @@ normalize_view_result(Context, _DocType, JObj) ->
                                        ,{<<"unit">>, <<"sec">>}
                                        ,{<<"quantity">>, kz_json:get_integer_value(<<"duration">>, kz_transaction:metadata(Transaction), 0)}
                                        ])}
-      ,{<<"amount">>, kz_transaction:amount(Transaction)}
+      ,{<<"amount">>, wht_util:units_to_dollars(kz_transaction:amount(Transaction))}
       ,{<<"description">>, kz_transaction:description(Transaction)}
       ,{<<"period">>, kz_json:from_list([{<<"start">>, kz_transaction:created(Transaction)}])}
       ,{<<"metadata">>, kz_transaction:metadata(Transaction)}
