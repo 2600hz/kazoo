@@ -144,7 +144,7 @@ create_ledger_usage(Seconds, Amount, Request, Limits) ->
              ,{<<"metadata">>, metadata(Request)}
             ],
 
-    kz_ledger:debit(LedgerId, SrcService, SrcId, AccountId, Usage, Extra).
+    kz_ledger:debit(LedgerId, SrcService, SrcId, Usage, Extra, AccountId).
 
 -spec metadata(j5_request:request()) -> kz_json:object().
 metadata(Request) ->

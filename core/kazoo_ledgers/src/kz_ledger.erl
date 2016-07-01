@@ -55,17 +55,17 @@ credit(LedgerId, Ledger) ->
 -spec credit(ne_binary(), ne_binary()
              ,ne_binary(), kz_proplist()) -> save_return().
 credit(LedgerId, SrcService, SrcId, Usage) ->
-    credit(LedgerId, SrcService, SrcId, LedgerId, Usage).
+    credit(LedgerId, SrcService, SrcId, Usage, []).
 
 -spec credit(ne_binary(), ne_binary(), ne_binary()
-             ,ne_binary(), kz_proplist()) -> save_return().
-credit(LedgerId, SrcService, SrcId, AccountId, Usage) ->
-    credit(LedgerId, SrcService, SrcId, AccountId, Usage, []).
+             ,kz_proplist(), kz_proplist()) -> save_return().
+credit(LedgerId, SrcService, SrcId, Usage, Props) ->
+    credit(LedgerId, SrcService, SrcId, Usage, Props, LedgerId).
 
--spec credit(ne_binary(), ne_binary(), ne_binary(), ne_binary()
-            ,kz_proplist(), kz_proplist()) -> save_return().
-credit(LedgerId, SrcService, SrcId, AccountId, Usage, Props) ->
-    create(LedgerId, ?CREDIT, SrcService, SrcId, AccountId, Usage, Props).
+-spec credit(ne_binary(), ne_binary(), ne_binary()
+            ,kz_proplist(), kz_proplist(), ne_binary()) -> save_return().
+credit(LedgerId, SrcService, SrcId, Usage, Props, AccountId) ->
+    create(LedgerId, ?CREDIT, SrcService, SrcId, Usage, Props, AccountId).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -84,17 +84,17 @@ debit(LedgerId, Ledger) ->
 -spec debit(ne_binary(), ne_binary()
              ,ne_binary(), kz_proplist()) -> save_return().
 debit(LedgerId, SrcService, SrcId, Usage) ->
-    debit(LedgerId, SrcService, SrcId, LedgerId, Usage).
+    debit(LedgerId, SrcService, SrcId, Usage, []).
 
 -spec debit(ne_binary(), ne_binary(), ne_binary()
-             ,ne_binary(), kz_proplist()) -> save_return().
-debit(LedgerId, SrcService, SrcId, AccountId, Usage) ->
-    debit(LedgerId, SrcService, SrcId, AccountId, Usage, []).
+             ,kz_proplist(), kz_proplist()) -> save_return().
+debit(LedgerId, SrcService, SrcId, Usage, Props) ->
+    debit(LedgerId, SrcService, SrcId, Usage, Props, AccountId).
 
--spec debit(ne_binary(), ne_binary(), ne_binary(), ne_binary()
-            ,kz_proplist(), kz_proplist()) -> save_return().
-debit(LedgerId, SrcService, SrcId, AccountId, Usage, Props) ->
-    create(LedgerId, ?DEBIT, SrcService, SrcId, AccountId, Usage, Props).
+-spec debit(ne_binary(), ne_binary(), ne_binary()
+            ,kz_proplist(), kz_proplist(), ne_binary()) -> save_return().
+debit(LedgerId, SrcService, SrcId, Usage, Props, AccountId) ->
+    create(LedgerId, ?DEBIT, SrcService, SrcId, Usage, Props, AccountId).
 
 %%%===================================================================
 %%% Internal functions
@@ -107,8 +107,8 @@ debit(LedgerId, SrcService, SrcId, AccountId, Usage, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create(ne_binary(), ne_binary(), ne_binary(), ne_binary()
-             ,ne_binary(), kz_proplist(), kz_proplist()) -> save_return().
-create(LedgerId, Type, SrcService, SrcId, AccountId, Usage, Props) ->
+             ,kz_proplist(), kz_proplist(),ne_binary()) -> save_return().
+create(LedgerId, Type, SrcService, SrcId, Usage, Props, AccountId) ->
     Routines = [{fun kazoo_ledger:set_source_service/2, SrcService}
                ,{fun kazoo_ledger:set_source_id/2, SrcId}
                ,{fun set_account/2, AccountId}

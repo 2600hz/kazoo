@@ -234,10 +234,10 @@ credit_or_debit(Context, Action) ->
                      ,ne_binary(), kz_proplist(), kz_proplist()) ->
                             {'ok', kz_json:object()} |
                             {'error', any()}.
-process_action(?CREDIT, SrcService, SrcId, Account, Usage, Props) ->
-    kz_ledger:credit(SrcService, SrcId, Account, Usage, Props);
-process_action(?DEBIT, SrcService, SrcId, Account, Usage, Props) ->
-    kz_ledger:debit(SrcService, SrcId, Account, Usage, Props).
+process_action(?CREDIT, SrcService, SrcId, AccountId, Usage, Props) ->
+    kz_ledger:credit(AccountId, SrcService, SrcId, Usage, Props);
+process_action(?DEBIT, SrcService, SrcId, AccountId, Usage, Props) ->
+    kz_ledger:debit(AccountId, SrcService, SrcId, Usage, Props).
 
 %%--------------------------------------------------------------------
 %% @private
