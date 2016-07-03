@@ -329,7 +329,7 @@ save_conflicting_as_dirty(#kz_services{account_id=AccountId}, BackOff) ->
             NewServices;
         'false' ->
             lager:debug("new services doc for ~s not dirty, marking it as so", [AccountId]),
-            timer:sleep(BackOff + random:uniform(?BASE_BACKOFF)),
+            timer:sleep(BackOff + rand:uniform(?BASE_BACKOFF)),
             save_as_dirty(NewServices, BackOff*2)
     end.
 
@@ -387,7 +387,7 @@ save(#kz_services{jobj = JObj
             save(Services, BackOff);
         {'error', 'conflict'} ->
             lager:debug("services for ~s conflicted, merging changes and retrying", [AccountId]),
-            timer:sleep(BackOff + random:uniform(?BASE_BACKOFF)),
+            timer:sleep(BackOff + rand:uniform(?BASE_BACKOFF)),
             {'ok', Existing} = kz_datamgr:open_doc(?KZ_SERVICES_DB, AccountId),
             save(Services#kz_services{jobj=Existing}, BackOff*2)
     end.

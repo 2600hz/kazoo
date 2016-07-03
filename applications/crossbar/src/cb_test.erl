@@ -28,7 +28,7 @@ start(N, X, CDRTot, ECDRTot, Raw) ->
 
 start_key() ->
     %% 365 days * secs/day + start seconds - start somewhere within the year
-    (random:uniform(365) * 86400) + 63477725277.
+    (rand:uniform(365) * 86400) + 63477725277.
 
 end_key(Start) ->
-    Start + (random:uniform(30) * 86400). % up to 30 days in the future
+    Start + (rand:uniform(30) * 86400). % up to 30 days in the future

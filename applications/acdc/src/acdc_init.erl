@@ -117,7 +117,7 @@ init_agents(AccountId, {'error', _E}) ->
 init_agents(AccountId, {'ok', As}) ->
     [acdc_agents_sup:new(AccountId, kz_doc:id(A)) || A <- As].
 
-wait_a_bit() -> timer:sleep(1000 + random:uniform(500)).
+wait_a_bit() -> timer:sleep(1000 + rand:uniform(500)).
 
 try_queues_again(AccountId) ->
     try_again(AccountId, <<"queues/crossbar_listing">>, fun init_queues/2).

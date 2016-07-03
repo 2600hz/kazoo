@@ -34,7 +34,7 @@ get_vals(L) ->
 get_vals([], Acc) ->
     Acc;
 get_vals([H|T], Acc) ->
-    case random:uniform(20) of
+    case rand:uniform(20) of
         X when X < 5 -> get_vals(T, [{H, undefined}|Acc]);
-        _ -> get_vals(T, [{H,crypto:rand_bytes(16)}|Acc])
+        _ -> get_vals(T, [{H,crypto:strong_rand_bytes(16)}|Acc])
     end.

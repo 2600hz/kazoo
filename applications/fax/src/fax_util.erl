@@ -66,7 +66,7 @@ attachment_name(Filename, CT) ->
 -spec maybe_generate_random_filename(binary()) -> ne_binary().
 maybe_generate_random_filename(A) ->
     case kz_util:is_empty(A) of
-        'true' -> kz_util:to_hex_binary(crypto:rand_bytes(16));
+        'true' -> kz_util:to_hex_binary(crypto:strong_rand_bytes(16));
         'false' -> A
     end.
 

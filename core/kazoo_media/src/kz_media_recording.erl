@@ -312,7 +312,7 @@ handle_cast('store_failed', #state{retries=0}=State) ->
 handle_cast('store_failed', #state{retries=Retries
                                   ,should_store=Store
                                   }=State) ->
-    Sleep = ?MILLISECONDS_IN_SECOND * random:uniform(10),
+    Sleep = ?MILLISECONDS_IN_SECOND * rand:uniform(10),
     lager:debug("store failed, retrying ~p more times, next in ~p seconds", [Retries, Sleep]),
     timer:sleep(Sleep),
     save_recording(State, Store),

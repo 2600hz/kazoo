@@ -212,7 +212,7 @@ do_menu_migration(Menu, Db) ->
         {'ok', Bin} ->
             Name = <<(kz_json:get_value(<<"name">>, Doc, <<>>))/binary, " menu greeting">>,
             MediaId = create_media_doc(Name, <<"menu">>, MenuId, Db),
-            AName = <<(kz_util:to_hex_binary(crypto:rand_bytes(16)))/binary, ".mp3">>,
+            AName = <<(kz_util:to_hex_binary(crypto:strong_rand_bytes(16)))/binary, ".mp3">>,
             {'ok', _} = kz_datamgr:put_attachment(Db, MediaId, AName, Bin),
             'ok' = update_doc([<<"media">>, <<"greeting">>], MediaId, MenuId, Db),
             'ok' = update_doc([<<"pvt_vsn">>], <<"2">>, MenuId, Db),
