@@ -12,7 +12,7 @@
 
 -export([handle_req/2]).
 
--spec handle_req/2 :: (kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
     AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
     case kz_util:is_empty(AccountId) of

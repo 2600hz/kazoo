@@ -28,8 +28,8 @@
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec xml_to_record/1 :: (bt_xml()) -> #bt_discount{}.
--spec xml_to_record/2 :: (bt_xml(), kz_deeplist()) -> #bt_discount{}.
+-spec xml_to_record(bt_xml()) -> bt_discount().
+-spec xml_to_record(bt_xml(), kz_deeplist()) -> bt_discount().
 
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/discount").
@@ -49,8 +49,8 @@ xml_to_record(Xml, Base) ->
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml/1 :: (#bt_discount{}) -> proplist() | bt_xml().
--spec record_to_xml/2 :: (#bt_discount{}, boolean()) -> proplist() | bt_xml().
+-spec record_to_xml(bt_discount()) -> proplist() | bt_xml().
+-spec record_to_xml(bt_discount(), boolean()) -> proplist() | bt_xml().
 
 record_to_xml(Discount) ->
     record_to_xml(Discount, false).
@@ -75,14 +75,13 @@ record_to_xml(Discount, ToString) ->
 %% Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_json/1 :: (#bt_discount{}) -> kz_json:object().
+-spec record_to_json(bt_discount()) -> kz_json:object().
 record_to_json(#bt_discount{id=Id, amount=Amount, quantity=Q}) ->
     Props = [{<<"id">>, Id}
              ,{<<"amount">>, Amount}
              ,{<<"quantity">>, kz_util:to_integer(Q)}
             ],
     kz_json:from_list([KV || {_, V}=KV <- Props, V =/= 'undefined']).
-
 
 %%--------------------------------------------------------------------
 %% @public

@@ -25,13 +25,13 @@
 -include("include/kz_types.hrl").
 -include("include/kz_databases.hrl").
 
--spec gc_all/0 :: () -> 'ok'.
--spec gc_pids/1 :: ([pid(),...]) -> 'ok'.
--spec gc_top_mem_consumers/0 :: () -> 'ok'.
--spec gc_top_mem_consumers/1 :: (pos_integer()) -> 'ok'.
--spec top_mem_consumers/0 :: () -> {kz_proplist_kv(pid(), integer()), kz_proplist_kv(pid(), integer())}.
--spec top_mem_consumers/1 :: (pos_integer()) -> {kz_proplist_kv(pid(), integer()), kz_proplist_kv(pid(), integer())}.
--spec etop/0 :: () -> 'ok'.
+-spec gc_all() -> 'ok'.
+-spec gc_pids([pid(),...]) -> 'ok'.
+-spec gc_top_mem_consumers() -> 'ok'.
+-spec gc_top_mem_consumers(pos_integer()) -> 'ok'.
+-spec top_mem_consumers() -> {kz_proplist_kv(pid(), integer()), kz_proplist_kv(pid(), integer())}.
+-spec top_mem_consumers(pos_integer()) -> {kz_proplist_kv(pid(), integer()), kz_proplist_kv(pid(), integer())}.
+-spec etop() -> 'ok'.
 
 syslog_level(Level) ->
     kz_util:change_syslog_log_level(kz_util:to_atom(Level)).

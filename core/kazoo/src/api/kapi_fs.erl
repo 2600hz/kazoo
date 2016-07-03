@@ -28,7 +28,7 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
         true -> kz_api:build_message(Prop, ?FS_REQ_HEADERS, ?OPTIONAL_FS_REQ_HEADERS);
@@ -37,7 +37,7 @@ req(Prop) when is_list(Prop) ->
 req(JObj) ->
     req(kz_json:to_proplist(JObj)).
 
--spec req_v/1 :: (api_terms()) -> boolean().
+-spec req_v(api_terms()) -> boolean().
 req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?FS_REQ_HEADERS, ?FS_REQ_VALUES, ?FS_REQ_TYPES);
 req_v(JObj) ->
@@ -52,8 +52,8 @@ req_v(JObj) ->
 declare_exchanges() ->
     amqp_util:callctl_exchange().
 
--spec publish_req/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_req/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_req(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_req(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_req(Queue, JObj) ->
     publish_req(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Queue, Req, ContentType) ->
