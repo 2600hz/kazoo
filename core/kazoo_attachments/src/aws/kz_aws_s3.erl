@@ -351,7 +351,7 @@ list_buckets(Config) ->
 % @doc Get S3 bucket policy JSON object
 % API Document: http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGETacl.html
 %
--spec(get_bucket_policy/1 :: (BucketName::string()) -> 'ok' | {'error', Reason::term()}).
+-spec(get_bucket_policy(BucketName::string()) -> 'ok' | {'error', Reason::term()}).
 get_bucket_policy(BucketName) ->
     get_bucket_policy(BucketName, default_config()).
 
@@ -367,7 +367,7 @@ get_bucket_policy(BucketName) ->
 %                                   <RequestId>DC1EA9456B266EF5</RequestId>
 %                                   <HostId>DRtkAB80cAeom+4ffSGU3PFCxS7QvtiW+wxLnPF0dM2nxoaRqQk1SK/z62ZJVHAD</HostId>
 %                               </Error>"}}
--spec(get_bucket_policy/2 :: (BucketName::string(), Config::aws_config()) -> {'ok', Policy::string()} | {'error', Reason::term()}).
+-spec(get_bucket_policy(BucketName::string(), Config::aws_config()) -> {'ok', Policy::string()} | {'error', Reason::term()}).
 get_bucket_policy(BucketName, #aws_config{} = Config) ->
     case s3_request(Config, get, BucketName, "/", "policy", [], <<>>, []) of
 	{'ok', {_Headers, Body}} ->
