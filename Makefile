@@ -129,9 +129,9 @@ dialyze-apps: dialyze
 dialyze-core:  TO_DIALYZE  = $(shell find $(ROOT)/core         -name ebin)
 dialyze-core: dialyze
 dialyze:       TO_DIALYZE ?= $(shell find $(ROOT)/applications -name ebin)
-dialyze: $(PLT) dialyze-it
+dialyze: dialyze-it
 
-dialyze-it:
+dialyze-it: $(PLT)
 	@if [ -n "$(TO_DIALYZE)" ]; then $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE); fi;
 
 xref: TO_XREF ?= $(shell find $(ROOT)/applications $(ROOT)/core $(ROOT)/deps -name ebin)
@@ -159,5 +159,5 @@ elvis: $(ELVIS)
 
 ci: clean compile xref build-plt diff sup_completion build-ci-release compile-test eunit elvis
 
-diff: export TO_DIALYZE = $(shell git diff --name-only master... -- $(ROOT)/application/ $(ROOT)/core/)
+diff: export TO_DIALYZE = $(shell git diff --name-only master... -- $(ROOT)/applications/ $(ROOT)/core/)
 diff: dialyze-it
