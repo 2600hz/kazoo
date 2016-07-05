@@ -157,8 +157,12 @@ put(Context, ?RECOVERY) ->
 post(Context, ?RECOVERY) ->
     _ = cb_context:put_reqid(Context),
     Context1 = crossbar_doc:save(Context),
-    AccountId = kz_util:format_account_id(cb_context:account_db(Context1)),
-    Context2 = cb_context:set_doc(Context1, kz_json:from_list([{<<"account_id">>, AccountId}])),
+    DocForCreation =
+        kz_json:from_list(
+          [{<<"account_id">>, kz_util:format_account_id(cb_context:account_db(Context1))}
+          ,{<<"owner_id">>, cb_context:fetch(Context1, 'owner_id')}
+          ]),
+    Context2 = cb_context:set_doc(Context1, DocForCreation),
     crossbar_util:create_auth_token(Context2, ?MODULE).
 
 %%%===================================================================
@@ -461,6 +465,7 @@ maybe_load_user_doc_via_reset_id(Context) ->
             cb_context:setters(Context1, [{fun cb_context:set_account_db/2, AccountDb}
                                          ,{fun cb_context:set_resp_status/2, 'success'}
                                          ,{fun cb_context:set_doc/2, NewUserDoc}
+                                         ,{fun cb_context:store/3, 'owner_id', UserId}
                                          ]);
         _ ->
             Msg = kz_json:from_list(
